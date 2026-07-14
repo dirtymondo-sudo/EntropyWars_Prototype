@@ -108,8 +108,11 @@
         const _origPrepareBattle = prepareBattleStateFromCurrentBuilds;
         prepareBattleStateFromCurrentBuilds = function() {
             _origPrepareBattle();
-            /* fresh match ⇒ stale intro-skip votes from the last one are void */
+            /* fresh match ⇒ stale intro-skip / ready / intro-done votes from
+               the last one are void */
             window._ewIntroRemoteSkip = false;
+            window._ewRemoteMatchReady = false;
+            window._ewRemoteIntroDone = false;
             if (_isOnline()) {
 
                 state.aiPlayer = -1;
@@ -2228,6 +2231,23 @@
                         if (typeof window._ewIntroSkipPoke === 'function') window._ewIntroSkipPoke();
                         return;
                     }
+                    if (data.type === 'match-ready') {
+                        /* Opponent's loading screen finished warming its assets.
+                           Latch it (it can arrive before OUR loading screen
+                           mounts) and poke the waiting screen — see battle.js
+                           _lsAwaitRemoteReady (both-clients-ready start barrier). */
+                        window._ewRemoteMatchReady = true;
+                        if (typeof window._ewMatchReadyPoke === 'function') window._ewMatchReadyPoke();
+                        return;
+                    }
+                    if (data.type === 'intro-done') {
+                        /* Guest's opening cinematic finished. The HOST holds the
+                           engine start (beginBlitzRound / shot clock) on this —
+                           see battle.js _syncedAfterVSSplash. */
+                        window._ewRemoteIntroDone = true;
+                        if (typeof window._ewIntroDonePoke === 'function') window._ewIntroDonePoke();
+                        return;
+                    }
                     if (data.type === 'rematch-request') {
                         if (!NET._rematchState) NET._rematchState = {
                             1: false,
@@ -2954,8 +2974,13 @@
 
                     if (prevPhase === 'setup' && st.phase === 'battle') {
 
-                        /* fresh match on the guest ⇒ void stale intro-skip votes */
+                        /* fresh match on the guest ⇒ void stale intro-skip /
+                           ready votes (the host's OWN match-ready for THIS match
+                           can't be missed: it's relayed on the same ordered
+                           socket after the phase-flip snapshot we just applied) */
                         window._ewIntroRemoteSkip = false;
+                        window._ewRemoteMatchReady = false;
+                        window._ewRemoteIntroDone = false;
 
                         var _splashFn = typeof showVSSplash === 'function' ? showVSSplash
                                       : typeof window.showVSSplash === 'function' ? window.showVSSplash
@@ -2971,12 +2996,23 @@
                                 : _splashFn;
                             _introFn(function _afterGuestVSSplash() {
 
+                                /* Tell the HOST our intro finished — it holds
+                                   the engine start (round 1, shot clock) on
+                                   this (battle.js _syncedAfterVSSplash). */
+                                if (NET.socket) {
+                                    NET.socket.emit('relay', { type: 'intro-done', from: NET.myPlayer || 0 });
+                                }
+
                                 CONFIG.tileSize = BASE_TILE;
                                 if (typeof invalidateLayoutCache === 'function') invalidateLayoutCache();
 
                                 if (typeof _clearZoomMemo === 'function') _clearZoomMemo();
                                 if (typeof renderBoard === 'function') renderBoard();
-                                if (typeof resetBoardCamera === 'function') resetBoardCamera(true);
+                                /* A naturally-finished intro already landed the
+                                   camera on the tactical framing — snapping again
+                                   caused the abrupt zoom-out cut after FIGHT!. */
+                                if (window._ewIntroCamLanded) window._ewIntroCamLanded = false;
+                                else if (typeof resetBoardCamera === 'function') resetBoardCamera(true);
 
                                 /* Open on the guest's OWN side: only frame the
                                    active blitz unit when it's ours — framing

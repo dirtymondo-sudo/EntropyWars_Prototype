@@ -10789,6 +10789,7 @@ const ThreeRenderer = (function () {
 
     function _computeFogVisibleKey() {
         if (!state.fogOfWar) return 'off';
+        if (_introCineActive) { _fogVisibleSet = _introAllTilesVisible(); return 'intro'; }
         var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
         var vis = (typeof computeVisibleTiles === 'function') ? computeVisibleTiles(vp) : null;
         if (!vis || vis.size === 0) return 'empty';
@@ -11160,7 +11161,8 @@ const ThreeRenderer = (function () {
         var _bh = (typeof bh === 'function') ? bh() : 8;
 
         var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
-        var visible = (typeof computeVisibleTiles === 'function') ? computeVisibleTiles(vp) : new Set();
+        var visible = _introCineActive ? _introAllTilesVisible()
+            : (typeof computeVisibleTiles === 'function') ? computeVisibleTiles(vp) : new Set();
         _fogVisibleSet = visible;
 
         /* Fog grid hidden (Video setting): no boxes, no dimming — just apply
@@ -11810,7 +11812,8 @@ const ThreeRenderer = (function () {
        it flips its edge/core shape. Terrain visibility itself is eased separately. */
     function _fogRecomputeVisibility(_bw, _bh) {
         var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
-        var visible = (typeof computeVisibleTiles === 'function') ? computeVisibleTiles(vp) : new Set();
+        var visible = _introCineActive ? _introAllTilesVisible()
+            : (typeof computeVisibleTiles === 'function') ? computeVisibleTiles(vp) : new Set();
         _fogVisibleSet = visible;
         var ts = CONFIG.tileSize || BASE_TILE;
         for (var y = 0; y < _bh; y++) {
@@ -20935,6 +20938,24 @@ const ThreeRenderer = (function () {
     var _introFadeTimer = null;
     var _introOccUids = [];          // units the occlusion fade keeps clear this beat
     var _introGroundSet = new Set(); // flyers visually grounded for the intro
+    /* TRUE while the opening cinematic owns the scene: the intro shows BOTH
+       rosters to both players, so NO vision rule applies — every fog/vision
+       computation below treats the whole board as visible. (Spawn zones are
+       public knowledge; real fog snaps back the moment the intro ends, so
+       nothing mid-match is ever leaked.) */
+    var _introCineActive = false;
+
+    function _introAllTilesVisible() {
+        var s = new Set();
+        var _bwv = (typeof bw === 'function') ? bw()
+                 : (state.boardTerrain && state.boardTerrain[0] ? state.boardTerrain[0].length : 0);
+        var _bhv = (typeof bh === 'function') ? bh()
+                 : (state.boardTerrain ? state.boardTerrain.length : 0);
+        for (var y = 0; y < _bhv; y++) {
+            for (var x = 0; x < _bwv; x++) s.add(x + ',' + y);
+        }
+        return s;
+    }
 
     function _introZoneInfo(player) {
         var zone = (state.spawnZones && state.spawnZones[player]) || null;
@@ -20962,6 +20983,29 @@ const ThreeRenderer = (function () {
         return { zone: zone, cx: ax, cy: ay, ox: ox, oy: oy, topZ: topZ, len: zone.length };
     }
 
+    /* Scale a stair box's UVs so the 1-tile terrain texture TILES across it
+       at board pixel density (one repeat per tile of surface) instead of one
+       copy smeared across the whole prop. Needs RepeatWrapping on the map. */
+    function _introTileBoxUVs(geo, w, h, d, ts) {
+        var uv = geo.getAttribute('uv');
+        if (!uv || uv.count < 24) return geo;
+        /* BoxGeometry face order: ±X (u=depth, v=height), ±Y (u=width,
+           v=depth), ±Z (u=width, v=height) — 4 verts each. */
+        var scale = [
+            [d / ts, h / ts], [d / ts, h / ts],
+            [w / ts, d / ts], [w / ts, d / ts],
+            [w / ts, h / ts], [w / ts, h / ts]
+        ];
+        for (var f = 0; f < 6; f++) {
+            for (var v = 0; v < 4; v++) {
+                var i = f * 4 + v;
+                uv.setXY(i, uv.getX(i) * scale[f][0], uv.getY(i) * scale[f][1]);
+            }
+        }
+        uv.needsUpdate = true;
+        return geo;
+    }
+
     function _introBuildStairs(zi, ts) {
         var group = new THREE.Group();
         var mats = [];
@@ -20975,13 +21019,35 @@ const ThreeRenderer = (function () {
             else if (state.boardTerrain && state.boardTerrain[t0.y]) tKey = state.boardTerrain[t0.y][t0.x];
         } catch (e) {}
         var tex = null;
-        try { tex = tKey ? getTerrainTexture(tKey) : null; } catch (e) {}
+        try {
+            var srcTex = tKey ? getTerrainTexture(tKey) : null;
+            if (srcTex) {
+                /* Per-prop CLONE with RepeatWrapping: the cached original is
+                   shared by the board tiles and must stay clamped. If the
+                   shared copy is still downloading, refresh the clone's image
+                   when it lands (clone() copies the empty image reference). */
+                tex = srcTex.clone();
+                tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+                tex.needsUpdate = true;
+                if ((!srcTex.image || !srcTex.image.complete)
+                    && typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[tKey]) {
+                    getTexture(TERRAIN_SPRITES[tKey][0], function (loaded) {
+                        tex.image = loaded.image;
+                        tex.needsUpdate = true;
+                    });
+                }
+            }
+        } catch (e) { tex = null; }
         function _mat(shade) {
             var m = tex
                 ? new THREE.MeshLambertMaterial({ map: tex, color: new THREE.Color(shade, shade, shade), transparent: true })
                 : new THREE.MeshLambertMaterial({ color: new THREE.Color(0.45 * shade, 0.42 * shade, 0.37 * shade), transparent: true });
             mats.push(m);
             return m;
+        }
+        function _box(w, h, d) {
+            var g = new THREE.BoxGeometry(w, h, d);
+            return tex ? _introTileBoxUVs(g, w, h, d, ts) : g;
         }
         var elevStep = ts * ELEV_STEP_RATIO;
         var topY = zi.topZ * elevStep;
@@ -20997,22 +21063,22 @@ const ThreeRenderer = (function () {
             var stepTop = baseY + rise * (i + 1) / STEPS;
             var dOut = d1 - depth * (i + 0.5);
             var hgt = (stepTop - baseY) + ts * 0.55;
-            var sm = new THREE.Mesh(new THREE.BoxGeometry(width, hgt, depth), _mat(0.8 + 0.05 * (i % 2)));
+            var sm = new THREE.Mesh(_box(width, hgt, depth), _mat(0.8 + 0.05 * (i % 2)));
             sm.position.set(0, stepTop - hgt / 2, dOut);
             group.add(sm);
         }
         /* Approach causeway floating out into the void behind the steps. */
         var cwLen = ts * 3.6;
-        var cw = new THREE.Mesh(new THREE.BoxGeometry(width, ts * 0.6, cwLen), _mat(0.72));
+        var cw = new THREE.Mesh(_box(width, ts * 0.6, cwLen), _mat(0.72));
         cw.position.set(0, baseY - ts * 0.3, d1 + cwLen / 2);
         group.add(cw);
         /* Flanking pillars at the stair head — a little ceremonial gate. */
         for (var s = -1; s <= 1; s += 2) {
             var pw = ts * 0.24, ph = ts * 1.25;
-            var p = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, pw), _mat(0.9));
+            var p = new THREE.Mesh(_box(pw, ph, pw), _mat(0.9));
             p.position.set(s * (width / 2 + pw * 0.7), topY + ph / 2, d0 + ts * 0.2);
             group.add(p);
-            var c = new THREE.Mesh(new THREE.BoxGeometry(pw * 1.5, pw * 0.5, pw * 1.5), _mat(1.0));
+            var c = new THREE.Mesh(_box(pw * 1.5, pw * 0.5, pw * 1.5), _mat(1.0));
             c.position.set(s * (width / 2 + pw * 0.7), topY + ph + pw * 0.25, d0 + ts * 0.2);
             group.add(c);
         }
@@ -21041,6 +21107,11 @@ const ThreeRenderer = (function () {
         (state.units || []).forEach(function (u) { if (!u.dead) _introGroundSet.add(u.id); });
         if (_spawnZoneGroup) _spawnZoneGroup.visible = false;
         if (_sanctuaryWallGroup) _sanctuaryWallGroup.visible = false;
+        /* NO vision rules during the intro (see _introCineActive): reveal the
+           whole board + both rosters instantly — the board comes up behind
+           the intro's opaque veil, so the hard rebuild is never seen. */
+        _introCineActive = true;
+        if (state.fogOfWar) { try { rebuildFog(); } catch (e) {} }
         _introStairGroup = new THREE.Group();
         _introStairGroup.name = 'introCineStairs';
         for (var w = 0; w < walkTeams.length; w++) {
@@ -21119,6 +21190,13 @@ const ThreeRenderer = (function () {
        still-running intro march (units snap to their real tiles — where they
        already logically are), restore walk-clip speeds and visibility. */
     function introCineEnd() {
+        if (_introCineActive) {
+            _introCineActive = false;
+            /* Vision rules return: recompute on the next fog tick (0.2s) so
+               boxes/hidden enemies FADE back in instead of popping. */
+            _fogLastCheckTime = 0;
+            _fogNoGridLastKey = '';
+        }
         if (_introFadeTimer) { clearInterval(_introFadeTimer); _introFadeTimer = null; }
         if (_introStairGroup) {
             if (scene) scene.remove(_introStairGroup);

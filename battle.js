@@ -21984,6 +21984,42 @@
         // settles, so fast connections never see the difference.
         const LS_MAX_WAIT_MS = 45000;
         const LS_HINT_CYCLE_MS = 9500;   // slow enough to actually read the lore
+        /* Online: after OUR assets settle, how long to hold the loading screen
+           for the opponent's 'match-ready' before proceeding anyway. Generous
+           (their GLBs stream on their connection), but never a hostage. */
+        const LS_REMOTE_WAIT_MS = 60000;
+
+        /* ── Online start barrier ──
+           Both clients hold the loading screen until BOTH have their assets
+           hot, then the opening cinematic starts on both screens at the same
+           moment (so neither player's intro ends while the other is still
+           loading — the intros are the same length, and skipping already
+           requires both players' votes). The opponent's vote arrives on the
+           relay channel as {type:'match-ready'} (online.js latches it into
+           window._ewRemoteMatchReady and pokes the waiter, mirroring the
+           intro-skip plumbing). Resolves immediately offline. */
+        function _lsAwaitRemoteReady(onWaiting) {
+            const net = window._NET;
+            if (!(net && net.online && net.socket)) return Promise.resolve();
+            try {
+                net.socket.emit('relay', { type: 'match-ready', from: net.myPlayer || 0 });
+            } catch (_e) {}
+            if (window._ewRemoteMatchReady) return Promise.resolve();
+            if (onWaiting) onWaiting();
+            return new Promise(res => {
+                let settled = false;
+                const go = () => {
+                    if (settled) return;
+                    settled = true;
+                    window._ewMatchReadyPoke = null;
+                    res();
+                };
+                window._ewMatchReadyPoke = () => { if (window._ewRemoteMatchReady) go(); };
+                /* a vanished opponent must never wedge the match — the
+                   reconnect/forfeit flow deals with them, we move on */
+                setTimeout(go, LS_REMOTE_WAIT_MS);
+            });
+        }
 
         /* Skyrim-style rotating lines. FIELD MANUAL = real mechanics;
            INTEL FRAGMENT = the best lines from the codex dossiers (ui.js
@@ -22120,7 +22156,12 @@
                 new Promise(res => setTimeout(res, LS_MAX_WAIT_MS)),
             ]);
 
-            if (_skipVisuals()) { finish(); return; }
+            if (_skipVisuals()) {
+                /* No visuals, but online still honors the start barrier so a
+                   dev/animations-off client can't race ahead of its opponent. */
+                assetsReady.then(() => _lsAwaitRemoteReady()).then(finish);
+                return;
+            }
 
             /* ── Build the card ── */
             let overlay;
@@ -22274,13 +22315,23 @@
                 const minShow = new Promise(res => setTimeout(res, LS_MIN_SHOW_MS));
                 Promise.all([assetsReady, minShow]).then(() => {
                     if (dismissed) return;
-                    ready = true;
                     maxPct = 100;
                     fill.style.width = '100%';
-                    overlay.classList.add('ls-ready');
-                    statusLabel.textContent = 'SYNC COMPLETE — TAP TO DEPLOY';
-                    playSfx('uiCursorFocus');
-                    setTimeout(dismiss, 900);
+                    /* Online: hold here until the opponent's assets are hot too,
+                       so both intros start (and end) together — otherwise the
+                       faster loader's match could begin while the slower player
+                       is still staring at this screen. */
+                    return _lsAwaitRemoteReady(() => {
+                        statusLabel.textContent = 'SYNC COMPLETE — WAITING FOR OPPONENT…';
+                        overlay.classList.add('ls-ready');
+                    }).then(() => {
+                        if (dismissed) return;
+                        ready = true;
+                        overlay.classList.add('ls-ready');
+                        statusLabel.textContent = 'SYNC COMPLETE — TAP TO DEPLOY';
+                        playSfx('uiCursorFocus');
+                        setTimeout(dismiss, 900);
+                    });
                 });
 
                 document.body.appendChild(overlay);
@@ -22300,10 +22351,14 @@
            staircase out of the void into their spawn zones (ground-level feet
            shot for each), a skewed medium shot of your party settling into
            line, a slow push clean across the map into the enemy's faces, a
-           hard cut up to the sun while the map title slams in, then a crane
-           down onto the tactical view — FIGHT!
+           hard cut up to the sun (moon at night) while the map title slams in,
+           then a crane down that lands EXACTLY on the gameplay framing —
+           FIGHT! — and round 1 starts with no cut.
            Skippable with a click; online BOTH players must click (votes ride
-           the relay channel, see online.js 'intro-skip').
+           the relay channel, see online.js 'intro-skip'). Online start is a
+           barrier at both ends: the loading screens hold until both clients'
+           assets are hot ('match-ready'), and the HOST holds the engine start
+           until the guest's intro finishes ('intro-done').
            Kill-switch (console): window.EW_DISABLE_INTRO_CINE = true. */
 
         function _introCineEligible() {
@@ -22337,6 +22392,7 @@
 
             const ts = CONFIG.tileSize || BASE_TILE;
             const online = !!(window._NET && window._NET.online);
+            window._ewIntroCamLanded = false;   // set by the FIGHT! beat only
 
             /* ── chrome ── */
             const overlay = document.createElement('div');
@@ -22528,6 +22584,32 @@
                focal + dist·(sin yaw, cos yaw) in tile axes) */
             const _yawFor = (ex, ey) => Math.atan2(ex, ey) * 180 / Math.PI;
 
+            /* The tactical framing the intro must LAND on. getDefaultZoom()
+               frames for the LIVE tilt (state.dioramaTiltDeg tracks the craned
+               sky gaze via _zoomRefTilt), so calling it mid-intro resolves
+               ~1.8× too tight — the old beats landed there and startMatch's
+               resetBoardCamera(true) then visibly zoomed out in a hard cut
+               right after FIGHT!. Recompute the default for the REST tilt the
+               crane-down actually ends on, honoring an engaged user zoom the
+               same way reset() does, so the intro's final frame IS the
+               gameplay frame and round 1 starts with no cut at all. */
+            function _restFramingZoom() {
+                const ts2 = CONFIG.tileSize || BASE_TILE;
+                const gap = CONFIG.tileGap ?? 0;
+                const parentH = _layoutCache.valid ? _layoutCache.parentH
+                    : (boardStageEl?.parentElement?.clientHeight || window.innerHeight);
+                const tilt = (camera._restTilt != null) ? camera._restTilt : DEFAULT_BOARD_TILT;
+                const tf = Math.max(0.35, Math.cos(tilt * Math.PI / 180));
+                const zoomFor = (tiles) => Math.max(0.15, Math.min(10.0, parentH / (tiles * (ts2 + gap) * tf)));
+                /* _getBattleZoom + clampAutoZoom + view preset, at rest tilt */
+                let z = Math.max(zoomFor(MAX_AUTO_ZOOM_OUT_TILES),
+                    Math.min(10.0, zoomFor(Math.max(bh() || 10, bw() || 10) + 4)));
+                const pm = (typeof getCameraPreset === 'function') ? getCameraPreset().zoomMult : 1;
+                z = Math.max(0.15, Math.min(10.0, z * pm));
+                const uz = state.userZoomScale || 0;
+                return (uz >= 0.01 && uz > z * 1.05) ? uz : z;
+            }
+
             /* ═══ THE TIMELINE ═══ */
             function _runBeats(info) {
                 if (finished) return;
@@ -22661,10 +22743,14 @@
                     });
                 }, 7850);
 
-                /* BEAT 5 (10.0–12.4s) — hard cut: flat on the map's center
-                   looking STRAIGHT UP at the sky while the map name slams in.
-                   Yaw/zoom already match the tactical view, so the crane-down
-                   is one pure rotation that lands exactly on the rest framing. */
+                /* BEAT 5 (10.0–12.4s) — hard cut: flat on the map's center,
+                   gazing up at the SKY while the map name slams in — aimed so
+                   the dome's actual sun (moon at night) hangs in the lower
+                   frame under the title (getSkyShot returns the dead-center
+                   framing; the tilt/yaw bias parks the disc off-center so the
+                   title owns the top of the screen). Zoom is already the
+                   final tactical framing, so the crane-down is rotation only. */
+                const landZoom = _restFramingZoom();
                 later(() => {
                     _hideTag();
                     dip();
@@ -22673,13 +22759,23 @@
                     camera._tpsSubject = null;
                     camera._cineShotTarget = null;
                     const bcx = Math.floor(bw() / 2), bcy = Math.floor(bh() / 2);
+                    let sky = null;
+                    try {
+                        const isNight = (typeof getCurrentCyclePhase === 'function')
+                            && getCurrentCyclePhase() === 'night';
+                        if (ThreeRenderer.getSkyShot) {
+                            sky = ThreeRenderer.getSkyShot(isNight ? 'bloodMoon' : 'solarEclipse');
+                        }
+                    } catch (e) {}
+                    const skyTilt = sky ? Math.min(166, sky.tilt + 12) : 164;
+                    const skyYaw = sky ? sky.yaw - 12 : restYaw;
                     _cineHardCut({
                         x: bcx, y: bcy,
-                        zoom: getDefaultZoom(),
-                        tilt: 164, yaw: restYaw
+                        zoom: landZoom,
+                        tilt: skyTilt, yaw: skyYaw
                     });
                     _cineBeatMove({
-                        tilt: 168,
+                        tilt: skyTilt + 6,
                         duration: 2300, easing: 'linear',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                     });
@@ -22690,14 +22786,16 @@
                 }, 10350);
 
                 /* BEAT 6 (12.4–14.2s) — one clean rotation down out of the sky
-                   onto the tactical view (no pan, no yaw — already home) */
+                   onto the tactical view: tilt/yaw sweep to the rest angles,
+                   zoom already home (landZoom) — the frame this lands on is
+                   EXACTLY where round 1 plays, no post-FIGHT! cut. */
                 later(() => {
                     const tc = $ei('ewi-title-card');
                     tc.classList.remove('ewi-title-in');
                     tc.classList.add('ewi-title-out');
                     _cineBeatMove({
                         tilt: restTilt, yaw: restYaw,
-                        zoom: getDefaultZoom(),
+                        zoom: landZoom,
                         duration: 1750, easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                     });
@@ -22712,6 +22810,11 @@
                     playSfx('newRound');
                     playSfx('explosion');
                     shakeBoard('hard');
+                    /* the crane-down has landed on the exact gameplay framing —
+                       tell _afterVSSplash to SKIP its resetBoardCamera snap so
+                       the match starts with no cut (skip/fallback paths never
+                       set this and keep the hard reset) */
+                    window._ewIntroCamLanded = true;
                 }, 14150);
 
                 later(finish, 14850);
@@ -23048,7 +23151,36 @@
                (and the hub) should feel like one continuous crawl. */
             const _launchVSSplash = () => ((typeof _isDungeonMode === 'function' && _isDungeonMode())
                 ? _afterVSSplash()
-                : showVSSplash(_afterVSSplash));
+                : showVSSplash(_syncedAfterVSSplash));
+
+            /* Online host: the ENGINE starts here (beginBlitzRound, turn
+               loop, shot clock), so don't fire it until the GUEST's intro has
+               finished too — the loading-screen barrier starts both intros
+               together, but a skipped-into-fallback or slightly-drifted intro
+               could still end early, and starting round 1 then would burn the
+               guest's shot clock (or play whole turns) behind their cinematic.
+               The guest emits {type:'intro-done'} on the relay when its intro
+               completes (online.js latches window._ewRemoteIntroDone). */
+            function _syncedAfterVSSplash() {
+                const net = window._NET;
+                if (!(net && net.online && net.role === 'host')) { _afterVSSplash(); return; }
+                if (window._ewRemoteIntroDone) { _afterVSSplash(); return; }
+                let fired = false;
+                const go = () => {
+                    if (fired) return;
+                    fired = true;
+                    window._ewIntroDonePoke = null;
+                    _afterVSSplash();
+                };
+                window._ewIntroDonePoke = go;
+                /* cap: a crashed/vanished guest must never wedge the match */
+                setTimeout(go, 20000);
+                setTimeout(() => {
+                    if (!fired && typeof showCombatBanner === 'function') {
+                        showCombatBanner('⏳ WAITING FOR OPPONENT', 'Their intro is still playing', 'neutral');
+                    }
+                }, 1500);
+            }
             function _afterVSSplash() {
 
             if (mpMode.hasFlags) {
@@ -23122,7 +23254,13 @@
                 renderBoard();
 
                 if (!state.cameraDisabled) {
-                    resetBoardCamera(true);
+                    /* A naturally-finished intro cinematic already landed the
+                       camera on this exact framing (see the FIGHT! beat) —
+                       snapping again was the "board zooms out in an abrupt
+                       cut" right after FIGHT!. Skips and fallbacks never set
+                       the flag and keep the hard reset. */
+                    if (window._ewIntroCamLanded) window._ewIntroCamLanded = false;
+                    else resetBoardCamera(true);
                 }
                 if (typeof _isDungeonMode === 'function' && _isDungeonMode() && state._mdPhase === 'hub') {
                     /* hub: no "ROUND 1" — free-roam takes over */
