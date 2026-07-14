@@ -42,6 +42,30 @@ changed ⇒ ship a fresh index.html too.
   `?v=`-tagged. If you change an asset in place, either rename its file (new path
   = auto cache-bust) or tell the user, since the token bump won't cover it.
 
+## RULE #2 — ONLINE PVP PARITY (every gameplay/visual change MUST work online)
+Online is host-authoritative: the HOST runs the entire engine (blitz turns, AI
+auto-play, damage, banners, camera); the GUEST is a dumb mirror that only (a)
+applies `state-sync` snapshots and (b) replays `relay` events it's explicitly
+sent (online.js). **Anything that happens engine-side — a banner, a camera move,
+a VFX, floating text — simply does not exist for the guest unless it is relayed.**
+That's why online kept drifting behind VS-CPU. So, for EVERY change:
+- New on-screen moment (banner/announce/VFX/camera)? Wrap the global fn in
+  online.js like `showTurnBanner`/`showPlayerTurnAnnounce`/
+  `playOffensiveActionCamera`: host `_emit('relay', {type: ...})`, plus a guest
+  handler in the `socket.on('relay')` dispatcher. Relay ALL opts that change
+  behavior (dropping `noActionCam` is how guests got cinematics on basic attacks).
+- New `state.*` field the guest needs? Check `_serializeState`'s skip list.
+  New UI-only field? ADD it to the skip list + `_guestUIKeys` if guest-local.
+- New player action? Guest must EMIT it (engine-wrapper pattern, see
+  `doEntropyStrike`/`doBuildAction`), never execute locally.
+- Fog is ENFORCED online. Any camera pan / select / text keyed to an ENEMY unit
+  must gate on screen-true visibility: `_shouldCameraFollowUnit` /
+  `_isTileVisibleToViewer` (both use the fog renderer's `computeVisibleTiles`
+  set — do NOT reintroduce flat awr-radius checks, they see through walls and
+  leak positions to the opponent).
+- Before delivering, ask: "what does PLAYER 2 (guest) see when this fires?"
+  If the answer is "nothing" and it's player-facing, it's not done.
+
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /
 dev-sim — they can do that themselves) and report pain points: unresponsive

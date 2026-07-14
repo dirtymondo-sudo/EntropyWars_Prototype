@@ -4,7 +4,36 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## LIQUID PASS: tinted-water bogs/ooze + Minecraft flow + oil detonation (2026-07-14, LATEST) — data.js, sprites.js, map.js, state.js, battle.js, three-renderer.js, ai.js, index.html
+## ONLINE PVP PARITY PASS (2026-07-14, LATEST) — online.js, battle.js, CLAUDE.md, index.html
+User report: P2 (guest) never sees the "Your Turn"/"Opponent's Turn" sweep, guest
+camera followed P1's units (position leak under fog), and basic attacks played the
+full cinematic action cam on the guest. Root causes + fixes (see CLAUDE.md RULE #2):
+- **Turn sweep missing on guest**: `showPlayerTurnAnnounce` fires only inside the
+  host-side blitz engine (`_continueBlitzWithUnit_impl`) and was never relayed
+  (unlike showTurnBanner/showRoundBanner). Now wrapped in online.js → host emits
+  `relay {type:'player-turn-announce', player, unitId}`; guest handler replays it
+  (label recomputed from the guest's own viewpoint). NOTE: the persistent
+  `turnBannerOverlay` card is CSS-hidden (hud.js `.turn-banner-overlay.visible
+  {display:none}`) — the SWEEP (`playerTurnAnnounce`) is the visible banner.
+- **Camera leak**: the guest state-sync handler snapped the camera (+selection) to
+  the host's newly-active blitz unit gated only by `_shouldCameraFollowUnit`, whose
+  fog check was `_isUnitVisibleToViewer` = FLAT awr-Manhattan radius that sees
+  THROUGH walls — while the real fog renderer uses LOS `computeVisibleTiles`. Both
+  `_isTileVisibleToViewer` and `_shouldCameraFollowUnit` (battle.js) now gate on
+  `computeVisibleTilesCached(viewer)` — the exact set the renderer draws — and the
+  offensive-cam hidden-actor gate uses the same screen-true check. Guest match-start
+  focus now frames the guest's OWN unit, never the host's opener. Hidden enemy turns
+  leave the guest camera alone (walk/attack relays are already fog-trimmed).
+- **Basic-attack cinematic on guest**: the host→guest `camera-events` relay dropped
+  `noActionCam`/`_noCinematic` (set by basic attacks, battle.js ~30426), so the guest
+  replayed EVERY attack as a cinematic. Flags now relayed + applied. Fallback actors
+  in the guest handler also carry the real `srcPlayer`/`tgtPlayer` (was hardcoded
+  player:2 = "friendly", which defeated the fog gate when unitFromId missed).
+- Architecture reminder: HOST runs the whole engine; GUEST = state-sync mirror +
+  explicit relay events. Any new player-facing moment MUST be relayed or the guest
+  never sees it — that's CLAUDE.md RULE #2 now.
+
+## LIQUID PASS: tinted-water bogs/ooze + Minecraft flow + oil detonation (2026-07-14) — data.js, sprites.js, map.js, state.js, battle.js, three-renderer.js, ai.js, index.html
 Token `20260714a-status-fixes` → `20260714b-liquids`.
 - **Tinted water rendering**: `poison`/`poison_bog`/`purple_bog` render as
   PURPLE water, `swamp`/`oil` as BLACK water — same animated fluid pipeline

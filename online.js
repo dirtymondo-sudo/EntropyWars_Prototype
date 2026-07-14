@@ -777,13 +777,20 @@
                     srcX: sourceUnit.x,
                     srcY: sourceUnit.y,
                     tgtX: target.x,
-                    tgtY: target.y
+                    tgtY: target.y,
+                    srcPlayer: sourceUnit.player || null,
+                    tgtPlayer: target.player || null
                 };
 
                 if (opts) {
                     if (opts.attackName) camEvt.attackName = opts.attackName;
                     if (opts.sourceHold) camEvt.sourceHold = opts.sourceHold;
                     if (opts.targetHold) camEvt.targetHold = opts.targetHold;
+                    /* Basic attacks (and other opted-out actions) must stay
+                       tactical on the guest too — dropping these flags made
+                       EVERY relayed attack replay as a full cinematic. */
+                    if (opts.noActionCam) camEvt.noActionCam = true;
+                    if (opts._noCinematic) camEvt._noCinematic = true;
                 }
                 if (state._remoteAction) {
 
@@ -840,6 +847,25 @@
             }
         };
         window.showRoundBanner = showRoundBanner;
+
+        /* Turn-handoff sweep ("Your Turn" / "Opponent's Turn"). The blitz
+           engine only runs on the HOST, so without this relay the guest
+           NEVER sees the handoff announcement — one of the biggest "online
+           feels broken vs CPU" gaps. The guest recomputes the label from its
+           own viewpoint (data.player vs its own player number). */
+        const _origShowPlayerTurnAnnounce = showPlayerTurnAnnounce;
+        showPlayerTurnAnnounce = function(unit) {
+            _origShowPlayerTurnAnnounce(unit);
+            var _netOn = window._NET && window._NET.online;
+            if (_netOn && _isHost() && unit) {
+                _emit('relay', {
+                    type: 'player-turn-announce',
+                    player: unit.player,
+                    unitId: unit.id || null
+                });
+            }
+        };
+        window.showPlayerTurnAnnounce = showPlayerTurnAnnounce;
 
         const _origShowFloatingTextAtTile = showFloatingTextAtTile;
         showFloatingTextAtTile = function(x, y, textValue, kind, opts) {
@@ -2291,16 +2317,20 @@
                                 var src = typeof window.unitFromId === 'function' ? window.unitFromId(camEvt.srcId) : null;
                                 var tgt = typeof window.unitFromId === 'function' ? window.unitFromId(camEvt.tgtId) : null;
 
+                                /* Fallback actors carry the REAL owning player
+                                   (relayed) — hardcoding player:2 made the fog
+                                   gate treat an unresolved HOST attacker as one
+                                   of the guest's own (always-visible) units. */
                                 if (!src) src = {
                                     x: camEvt.srcX,
                                     y: camEvt.srcY,
-                                    player: 2,
+                                    player: camEvt.srcPlayer || 1,
                                     id: camEvt.srcId
                                 };
                                 if (!tgt) tgt = {
                                     x: camEvt.tgtX,
                                     y: camEvt.tgtY,
-                                    player: 1,
+                                    player: camEvt.tgtPlayer || null,
                                     id: camEvt.tgtId
                                 };
 
@@ -2308,6 +2338,8 @@
                                 if (camEvt.attackName) camOpts.attackName = camEvt.attackName;
                                 if (camEvt.sourceHold) camOpts.sourceHold = camEvt.sourceHold;
                                 if (camEvt.targetHold) camOpts.targetHold = camEvt.targetHold;
+                                if (camEvt.noActionCam) camOpts.noActionCam = true;
+                                if (camEvt._noCinematic) camOpts._noCinematic = true;
                                 if (typeof window.playOffensiveActionCamera === 'function') {
                                     window.playOffensiveActionCamera(src, tgt, camOpts);
                                 }
@@ -2334,6 +2366,18 @@
                     if (data.type === 'round-banner' && NET.role === 'guest') {
                         if (typeof window.showRoundBanner === 'function') {
                             window.showRoundBanner(data.roundNum, function() {});
+                        }
+                    }
+
+                    if (data.type === 'player-turn-announce' && NET.role === 'guest') {
+                        if (typeof window.showPlayerTurnAnnounce === 'function' && data.player) {
+                            var _ptaUnit = null;
+                            if (data.unitId && st && st.units) {
+                                _ptaUnit = st.units.find(function(u) { return u.id === data.unitId; }) || null;
+                            }
+                            /* The announce only needs .player to pick the label
+                               ("Your Turn" vs "Opponent's Turn") and color. */
+                            window.showPlayerTurnAnnounce(_ptaUnit || { player: data.player });
                         }
                     }
 
@@ -2823,19 +2867,27 @@
                             st.pendingTarget = null;
                             st.comboPartner = null;
 
+                            /* Select + follow the opponent's newly-active unit
+                               ONLY when the viewer can genuinely see it.
+                               _shouldCameraFollowUnit is screen-true (LOS fog
+                               set + concealment) — snapping the camera (or the
+                               selection ring) to a fog-hidden enemy hands its
+                               position to the guest for free. Hidden enemy
+                               turns leave the camera where the player put it;
+                               the relayed walk/attack cams (already fog-
+                               trimmed) cover anything that becomes visible. */
                             if (_activeUnitChanged && st._blitzActiveUnitId) {
-                                st.selectedUnitId = st._blitzActiveUnitId;
-                            }
-
-                            if (_activeUnitChanged && st._blitzActiveUnitId && typeof focusBoardCameraOnTiles === 'function') {
                                 var hostUnit = st.units.find(function(u) { return u.id === st._blitzActiveUnitId && !u.dead; });
                                 if (hostUnit && typeof _shouldCameraFollowUnit === 'function' && _shouldCameraFollowUnit(hostUnit)) {
-                                    var _bz = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
-                                    var _dz = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
-                                    focusBoardCameraOnTiles([{ x: hostUnit.x, y: hostUnit.y }], {
-                                        zoom: (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? _bz : _dz,
-                                        holdMs: 99999, persist: true, transitionMs: 750, _fogAllowed: true
-                                    });
+                                    st.selectedUnitId = hostUnit.id;
+                                    if (typeof focusBoardCameraOnTiles === 'function') {
+                                        var _bz = typeof getUserZoomScale === 'function' ? getUserZoomScale() : 1;
+                                        var _dz = typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1;
+                                        focusBoardCameraOnTiles([{ x: hostUnit.x, y: hostUnit.y }], {
+                                            zoom: (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()) ? _bz : _dz,
+                                            holdMs: 99999, persist: true, transitionMs: 750, _fogAllowed: true
+                                        });
+                                    }
                                 }
                             }
                         } else {
@@ -2926,9 +2978,12 @@
                                 if (typeof renderBoard === 'function') renderBoard();
                                 if (typeof resetBoardCamera === 'function') resetBoardCamera(true);
 
+                                /* Open on the guest's OWN side: only frame the
+                                   active blitz unit when it's ours — framing
+                                   the host's opening unit revealed its spawn. */
                                 var activeU = null;
                                 if (st._blitzActiveUnitId) {
-                                    activeU = (st.units || []).find(function(u) { return u.id === st._blitzActiveUnitId && !u.dead; });
+                                    activeU = (st.units || []).find(function(u) { return u.id === st._blitzActiveUnitId && !u.dead && u.player === NET.myPlayer; });
                                 }
                                 if (!activeU) {
                                     activeU = (st.units || []).find(function(u) { return !u.dead && u.player === NET.myPlayer; });

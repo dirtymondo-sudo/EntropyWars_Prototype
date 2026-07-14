@@ -5370,17 +5370,34 @@
             if (!state.fogOfWar) return true;
             if (!unit) return false;
             if (unit.player === viewer) return true;
-            return _isUnitVisibleToViewer(unit, viewer);
+            /* Screen-true fog gate: follow only units standing on a tile the
+               fog renderer actually draws as visible. The old flat awareness-
+               radius check (_isUnitVisibleToViewer) sees THROUGH walls, so the
+               camera panned to enemies the screen showed as fogged — handing
+               their position over for free (worst in online PvP, where the
+               "AI" being followed is a human opponent). */
+            return _isTileVisibleToViewer(unit.x, unit.y);
         }
 
         function _isTileVisibleToViewer(tx, ty) {
             if (!state.fogOfWar) return true;
             const viewer = getViewerPlayer();
-            const friendlies = state.units.filter(u => !u.dead && u.player === viewer);
-            for (const f of friendlies) {
-                const dist = Math.abs(f.x - tx) + Math.abs(f.y - ty);
-                const awr = f.awr || 3;
-                if (dist <= awr) return true;
+            /* Use the SAME visibility set the fog renderer draws (LOS-based
+               computeVisibleTiles: terrain/height blocking, wards, towers,
+               reveal tiles) so camera pans / relayed combat text can never
+               reference a tile the screen shows as fogged. The old flat
+               awareness-radius scan disagreed with the screen in BOTH
+               directions: it saw through walls (position leak) and missed
+               far tiles that open line-of-sight plainly shows. */
+            if (typeof computeVisibleTilesCached === 'function' && typeof posKey === 'function') {
+                if (computeVisibleTilesCached(viewer).has(posKey(tx, ty))) return true;
+            } else {
+                const friendlies = state.units.filter(u => !u.dead && u.player === viewer);
+                for (const f of friendlies) {
+                    const dist = Math.abs(f.x - tx) + Math.abs(f.y - ty);
+                    const awr = f.awr || 3;
+                    if (dist <= awr) return true;
+                }
             }
             if (state._visionWards?.length) {
                 for (const w of state._visionWards) {
@@ -13522,8 +13539,15 @@
             const isAiFogTurn = state.activePlayer !== getViewerPlayer();
             if (isAiFogTurn) {
                 const viewer = getViewerPlayer();
-                const srcVisible = _isUnitVisibleToViewer(sourceUnit, viewer);
-                const tgtVisible = _isUnitVisibleToViewer(target, viewer);
+                /* Screen-true visibility: concealment (Invisible/smoke) plus
+                   the SAME fog set the renderer draws. The old flat awareness-
+                   radius check saw through walls, so the shot could still
+                   swing behind an attacker the screen showed as fogged. */
+                const _screenSeen = (u) => !!u && (u.player === viewer
+                    || (!isUnitConcealedFrom(u, viewer)
+                        && (!state.fogOfWar || _isTileVisibleToViewer(u.x, u.y))));
+                const srcVisible = _screenSeen(sourceUnit);
+                const tgtVisible = _screenSeen(target);
 
                 if (!srcVisible && tgtVisible) {
 
