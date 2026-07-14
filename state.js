@@ -907,6 +907,7 @@
                     sourceUnit,
                     damageType: ds.damageType || 'physical',
                     spellType: ds.spellType || null,
+                    bonusVsStatus: ds.bonusVsStatus || null,
                     ignoreArmor: !!ds.ignoreArmor,
                     flashColor: 'hit'
                 });
@@ -925,7 +926,8 @@
                     applyDamageToUnit(hit, ds.dmg, `${ds.spellName} detonates: `, {
                         sourceUnit,
                         damageType: ds.damageType || 'magic',
-                        spellType: ds.spellType || null
+                        spellType: ds.spellType || null,
+                        bonusVsStatus: ds.bonusVsStatus || null
                     });
                     for (const eff of (ds.statusEffects || [])) {
                         if (sourceUnit && !hit.dead) applyStatusPayload(hit, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${ds.spellName}: `, sourceUnit);

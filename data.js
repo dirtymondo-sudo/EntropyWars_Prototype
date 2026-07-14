@@ -3697,7 +3697,8 @@ const SPELL_LIBRARY = [
         tier: 'II',
         school: 'Warrior',
         classRestriction: 'Warrior',
-        desc: 'A devastating melee strike that cleaves through armor. Massive single-target damage.'
+        bonusVsStatus: { status: 'burn', mult: 1.5 },
+        desc: 'A devastating melee strike that cleaves through armor. Massive single-target damage. COMBO: ×1.5 damage against Burned targets.'
     },
 
     {
@@ -4089,7 +4090,8 @@ const SPELL_LIBRARY = [
         school: 'Harvester',
         classRestriction: 'Harvester',
         drainPct: 0.70,
-        desc: 'Siphon life force from an enemy. Heals self for 70% of damage dealt. Harvesters heal 20% more.'
+        bonusVsStatus: { status: 'poison', mult: 1.5 },
+        desc: 'Siphon life force from an enemy. Heals self for 70% of damage dealt. Harvesters heal 20% more. COMBO: ×1.5 damage against Poisoned targets — tainted blood flows freely.'
     },
     {
         id: 'leechSeed',
@@ -4394,8 +4396,7 @@ const SPELL_LIBRARY = [
             id: 'slow',
             duration: 2
         }],
-        statStageBoost: { int: -1 },
-        desc: 'Sing a soothing melody that lulls an enemy: magic damage, slowed for 2 turns, and a drowsy, dulled mind (-1 INT stage).'
+        desc: 'Sing a soothing melody that lulls an enemy: magic damage and a drowsy, slowed stupor for 2 turns.'
     },
 
     {
@@ -4416,7 +4417,8 @@ const SPELL_LIBRARY = [
         classRestriction: 'Raider',
         jobPreference: ['Raider'],
         statusEffects: [],
-        desc: 'A devastating overhand punch that ALWAYS sends the target flying 2 tiles. +40 bonus damage if they slam into a wall, obstacle, or another unit.'
+        bonusVsStatus: { status: 'stagger', mult: 1.5 },
+        desc: 'A devastating overhand punch that ALWAYS sends the target flying 2 tiles. +40 bonus damage if they slam into a wall, obstacle, or another unit. COMBO: ×1.5 damage against Staggered targets — hit them while they\'re reeling.'
     },
     {
         id: 'groundSlam',
@@ -4492,8 +4494,7 @@ const SPELL_LIBRARY = [
         classRestriction: 'Raider',
         jobPreference: ['Raider'],
         statusEffects: [{ id: 'silence', duration: 1 }],
-        statStageBoost: { int: -1 },
-        desc: 'A vicious blow to the skull. The anti-caster: silenced for 1 turn and left seeing stars (-1 INT) for 2. Wizards hate this one trick.'
+        desc: 'A vicious blow to the skull. The anti-caster: silenced for 1 turn. Wizards hate this one trick.'
     },
 
     {
@@ -4514,7 +4515,8 @@ const SPELL_LIBRARY = [
         school: 'Sniper',
         classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
-        desc: 'A carefully aimed long-range shot. Deals +4 bonus damage to targets that already acted. Range 5.'
+        bonusVsStatus: { status: 'root', mult: 1.5 },
+        desc: 'A carefully aimed long-range shot. Deals +4 bonus damage to targets that already acted. Range 5. COMBO: ×1.5 damage against Rooted targets — they can\'t dodge what they can\'t outrun.'
     },
     {
         id: 'headshot',
@@ -4537,7 +4539,8 @@ const SPELL_LIBRARY = [
         school: 'Sniper',
         classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
-        desc: 'Paint a target with a laser sight instead of firing. The lethal armor-piercing shot lands at the end of the round — but ONLY if your team still has eyes on the target. Break their line of sight and the shot is wasted.'
+        bonusVsStatus: { status: 'stun', mult: 1.5 },
+        desc: 'Paint a target with a laser sight instead of firing. The lethal armor-piercing shot lands at the end of the round — but ONLY if your team still has eyes on the target. Break their line of sight and the shot is wasted. COMBO: ×1.5 damage against Stunned targets.'
     },
     {
         id: 'spotter',
@@ -4748,13 +4751,10 @@ const SPELL_LIBRARY = [
         aoeRadius: 2,
         aoeOriginSelf: true,
         statusEffects: [{
-            id: 'silence',
-            duration: 1
-        }, {
             id: 'jammed',
             duration: 1
         }],
-        desc: 'Emit a massive EMP pulse centered on self. Damages all enemies within 2 tiles and silences + jams them for 1 turn.'
+        desc: 'Emit a massive EMP pulse centered on self. Damages all enemies within 2 tiles and jams them for 1 turn.'
     },
 
     {
@@ -4776,7 +4776,8 @@ const SPELL_LIBRARY = [
             id: 'silence',
             duration: 1
         }],
-        desc: 'Tear apart an enemy\'s mind. Heavy magic damage and silences for 1 turn. Total shutdown.'
+        bonusVsStatus: { status: 'silence', mult: 1.5 },
+        desc: 'Tear apart an enemy\'s mind. Heavy magic damage and silences for 1 turn. Total shutdown. COMBO: ×1.5 damage against already-Silenced targets — a muzzled mind cannot defend itself.'
     },
 
     {
@@ -4799,11 +4800,8 @@ const SPELL_LIBRARY = [
         statusEffects: [{
             id: 'slow',
             duration: 2
-        }, {
-            id: 'poison',
-            duration: 3
         }],
-        desc: 'Erupt thorny vines in a 3x3 area. Damages, poisons for 3 turns, and slows all enemies caught for 2 turns. Leaves dark woods in its wake.'
+        desc: 'Erupt thorny vines in a 3x3 area. Damages and slows all enemies caught for 2 turns. Leaves dark woods in its wake.'
     },
 
 
@@ -4933,11 +4931,8 @@ const SPELL_LIBRARY = [
             id: 'marked',
             duration: 2,
             bonusDamage: 25
-        }, {
-            id: 'slow',
-            duration: 1
         }],
-        desc: 'Cloak-dash up to 3 tiles through enemy lines, grazing units in your path. Tags and slows the primary target — a painted, slowed mark your team can collapse on.'
+        desc: 'Cloak-dash up to 3 tiles through enemy lines, grazing units in your path. Tags the primary target — a painted mark your team can collapse on.'
     },
 
     {
@@ -4992,7 +4987,8 @@ const SPELL_LIBRARY = [
         school: 'White Mage',
         classRestriction: 'White Mage',
         unholyBonus: 80,
-        desc: 'A purifying blast of holy energy. Deals massive bonus damage (+80) to Unholy-type targets.'
+        bonusVsStatus: { status: 'discord', mult: 1.5 },
+        desc: 'A purifying blast of holy energy. Deals massive bonus damage (+80) to Unholy-type targets. COMBO: ×1.5 damage against targets in Discord — a soul at war with itself cannot resist the light.'
     },
 
     {
@@ -5284,7 +5280,8 @@ const SPELL_LIBRARY = [
         school: 'Swordmaster',
         classRestriction: 'Swordmaster',
         jobPreference: ['Swordmaster'],
-        desc: 'Two blindingly fast cuts in the shape of an X. Reliable single-target sword damage.'
+        bonusVsStatus: { status: 'slow', mult: 1.5 },
+        desc: 'Two blindingly fast cuts in the shape of an X. Reliable single-target sword damage. COMBO: ×1.5 damage against Slowed targets — speed kills.'
     },
     {
         id: 'swordBeam',
@@ -5472,8 +5469,21 @@ const SHARED_GLACIAL_TOMB = {
     type: 'debuff', cost: 30, range: 3, apCost: 1,
     kind: 'debuff',
     statusEffects: [{ id: 'stun', duration: 1 }],
-    statStageBoost: { def: -1 },
-    desc: 'Encase an enemy in ice. Stunned 1 turn and -1 DEF stage.'
+    desc: 'Encase an enemy in ice. Stunned for 1 turn.'
+};
+
+/* One wall spell, one name. The knight's old "Castle Fortress" and King
+   Arthur's "Walls of Camelot" were two copies of the same spell sharing the
+   id `raceShieldWall`, so the party-builder pool showed one name and the
+   equipped slot resolved (via SPELL_BY_ID) to the other. Single shared
+   object — both races raise the Walls of Camelot. */
+const SHARED_WALLS_OF_CAMELOT = {
+    id: 'raceShieldWall', spellType: 'human', element: 'earth', name: 'Walls of Camelot',
+    type: 'utility', cost: 25, apCost: 1, range: 3,
+    kind: 'terrainCreate', terrainType: 'castle_wall', tileCount: 3, orientable: true,
+    dmg: 40, damageType: 'physical',
+    terrainDeform: { centerDelta: 2, edgeDelta: 0 },
+    desc: 'Raise the walls of Camelot — a 3-tile rampart of brick masonry (castle wall stone). Enemies caught in the rising wall take damage.'
 };
 
 const SHARED_MAELSTROM = {
@@ -5596,8 +5606,8 @@ const SHARED_EMP_PULSE = {
     id: 'raceEmpPulse', spellType: 'tech', element: 'lightning', name: 'EMP Burst',
     type: 'damage', cost: 40, dmg: 84, range: 0,
     kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
-    statusEffects: [{ id: 'silence', duration: 1 }, { id: 'jammed', duration: 1 }],
-    desc: 'Vent a massive electromagnetic pulse from your own chassis. Damages all enemies within 2 tiles and silences + jams them for 1 turn.'
+    statusEffects: [{ id: 'jammed', duration: 1 }],
+    desc: 'Vent a massive electromagnetic pulse from your own chassis. Damages all enemies within 2 tiles and jams them for 1 turn.'
 };
 
 
@@ -5626,8 +5636,7 @@ const RACE_ABILITIES = {
           type: 'utility', cost: 40, range: 4, apCost: 2,
           kind: 'buff',
           statusEffects: [{ id: 'protect', duration: 1 }],
-          statStageBoost: { atk: 2, def: 1 },
-          desc: 'Radiate divine transcendence. All allies within 2 tiles gain +2 ATK/+1 DEF stages and Protect 1 turn.' },
+          desc: 'Radiate divine transcendence. All allies within 2 tiles are Protected for 1 turn.' },
         SHARED_TERRAFORM,
     ],
     'orb of light': [
@@ -5655,8 +5664,8 @@ const RACE_ABILITIES = {
         { id: 'racePossession', spellType: 'divine', name: 'Possession',
           type: 'debuff', cost: 35, range: 3, apCost: 2,
           kind: 'debuff',
-          statusEffects: [{ id: 'jammed', duration: 2 }, { id: 'burn', duration: 2 }],
-          desc: 'Invade an enemy\'s mind. Jammed for 2 turns and take burning psychic damage.' },
+          statusEffects: [{ id: 'jammed', duration: 2 }],
+          desc: 'Invade an enemy\'s mind. Jammed for 2 turns — the body obeys someone else.' },
         { id: 'raceSpectralPassage', spellType: 'divine', name: 'Spectral Passage',
           type: 'utility', cost: 20, range: 5, apCost: 1,
           kind: 'teleport', teleportDistance: 5, requiresLineOfSight: false,
@@ -5684,8 +5693,7 @@ const RACE_ABILITIES = {
         { id: 'racePerchForm', spellType: 'unholy', name: 'Perch Form',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff', statusEffects: [{ id: 'protect', duration: 1 }],
-          statStageBoost: { atk: 1 },
-          desc: 'Petrify in place 1 turn (protected). Next attack deals boosted damage.' },
+          desc: 'Petrify in place — Protected for 1 turn. Stone until it strikes.' },
         { id: 'raceStonefall', spellType: 'unholy', name: 'Stonefall',
           type: 'damage', cost: 30, dmg: 115, range: 4,
           kind: 'damage', damageType: 'physical', ignoresLineOfSight: true,
@@ -5752,8 +5760,8 @@ const RACE_ABILITIES = {
         { id: 'raceInfectiousBite', spellType: 'unholy', name: 'Infectious Bite',
           type: 'damage', cost: 20, dmg: 128, range: 1,
           kind: 'damage', damageType: 'physical',
-          statusEffects: [{ id: 'poison', duration: 3 }, { id: 'slow', duration: 1 }],
-          desc: 'Savage melee bite. Poisons for 3 turns and slows.' },
+          statusEffects: [{ id: 'poison', duration: 3 }],
+          desc: 'Savage melee bite. Poisons for 3 turns.' },
         { id: 'raceShamblingHorde', spellType: 'unholy', name: 'Shambling Horde',
           type: 'utility', cost: 25, range: 2, apCost: 1,
           kind: 'deployObject', objectHp: 2, blocksMovement: true,
@@ -5815,8 +5823,8 @@ const RACE_ABILITIES = {
         { id: 'raceRedEyes', spellType: 'unholy', name: 'Red Eyes',
           type: 'debuff', cost: 20, range: 4, apCost: 1,
           kind: 'debuff',
-          statusEffects: [{ id: 'marked', duration: 3, bonusDamage: 30 }, { id: 'discord', duration: 2 }],
-          desc: 'Lock onto a target with piercing red eyes. Marked for +30 damage and discord 2 turns.' },
+          statusEffects: [{ id: 'marked', duration: 3, bonusDamage: 30 }],
+          desc: 'Lock onto a target with piercing red eyes. Marked for +30 damage — the omen has chosen.' },
         { id: 'raceAbduction', spellType: 'unholy', name: 'Abduction',
           type: 'damage', cost: 25, dmg: 60, range: 1, apCost: 1,
           kind: 'skyDrop', damageType: 'physical', carryHeight: 5, dmgPerLevel: 25,
@@ -5828,14 +5836,13 @@ const RACE_ABILITIES = {
     'shadow entity': [
         { id: 'racePhaseShift', spellType: 'anomaly', name: 'Phase Shift',
           type: 'buff', cost: 25, apCost: 1, range: 0,
-          kind: 'buff', statusEffects: [{ id: 'protect', duration: 1 }, { id: 'invisible', duration: 1 }],
-          desc: 'Phase out of reality. Protected and invisible for 1 turn.' },
+          kind: 'buff', statusEffects: [{ id: 'invisible', duration: 1 }],
+          desc: 'Phase out of reality. Invisible for 1 turn.' },
         { id: 'raceShadowBind', spellType: 'anomaly', name: 'Shadow Bind',
           type: 'debuff', cost: 25, range: 3, apCost: 1,
           kind: 'debuff',
           statusEffects: [{ id: 'slow', duration: 2 }],
-          statStageBoost: { def: -1 },
-          desc: 'Pin a target\'s shadow to the ground. Slowed and DEF reduced for 2 turns.' },
+          desc: 'Pin a target\'s shadow to the ground. Slowed for 2 turns.' },
         { id: 'raceVoidStep', spellType: 'anomaly', name: 'Void Step',
           type: 'utility', cost: 15, range: 4, apCost: 1,
           kind: 'teleport', teleportDistance: 4, requiresLineOfSight: false,
@@ -5898,8 +5905,7 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
           statusEffects: [{ id: 'invisible', duration: 2 }],
-          statStageBoost: { atk: 1 },
-          desc: 'Blend into the environment. Invisible 2 turns, +1 ATK. They\'re already among us.' },
+          desc: 'Blend into the environment. Invisible 2 turns. They\'re already among us.' },
         SHARED_POISON_SWAMP,
         SHARED_SMOKE_SCREEN
     ],
@@ -5915,8 +5921,8 @@ const RACE_ABILITIES = {
         { id: 'raceMimicry', spellType: 'anomaly', name: 'Mimicry',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { atk: 3, def: 2 },
-          desc: 'Study visible enemies and adapt. +3 ATK/+2 DEF stages.' },
+          statStageBoost: { atk: 2, def: 2 },
+          desc: 'Study visible enemies and adapt. +2 ATK/+2 DEF stages.' },
         SHARED_SMOKE_SCREEN,
         SHARED_POISON_SWAMP
     ],
@@ -6002,9 +6008,9 @@ const RACE_ABILITIES = {
           desc: 'Long-range indirect 3x3 bombardment. Can fire over walls and obstacles.' },
         { id: 'raceSiegeMode', spellType: 'tech', name: 'Siege Mode',
           type: 'buff', cost: 25, apCost: 1, range: 0,
-          kind: 'buff', statusEffects: [{ id: 'protect', duration: 1 }],
+          kind: 'buff',
           statStageBoost: { atk: 2, def: 1 },
-          desc: 'Lock down into siege configuration. +2 ATK, +1 DEF stages and Protected for 1 turn.' },
+          desc: 'Lock down into siege configuration. +2 ATK, +1 DEF stages — trade mobility for firepower.' },
         { id: 'raceEject', spellType: 'tech', name: 'Eject!',
           type: 'utility', cost: 15, range: 0, apCost: 1,
           kind: 'escape', teleportDistance: 3,
@@ -6020,13 +6026,13 @@ const RACE_ABILITIES = {
           desc: 'Corrupt a target. Damage now, then again if they end next turn on the same tile.' },
         { id: 'raceMemoryLeak', spellType: 'tech', name: 'Memory Leak',
           type: 'debuff', cost: 25, range: 3, apCost: 1,
-          kind: 'debuff', statusEffects: [{ id: 'jammed', duration: 2 }, { id: 'slow', duration: 1 }],
-          desc: 'Corrupt target\'s systems. Jammed for 2 turns and slowed.' },
+          kind: 'debuff', statusEffects: [{ id: 'jammed', duration: 2 }],
+          desc: 'Corrupt target\'s systems. Jammed for 2 turns.' },
         { id: 'raceBlueScreen', spellType: 'tech', name: 'Blue Screen',
           type: 'debuff', cost: 35, range: 3, apCost: 2,
           kind: 'debuff',
-          statusEffects: [{ id: 'stun', duration: 1 }, { id: 'silence', duration: 1 }],
-          desc: 'Target\'s consciousness encounters a fatal error. Stunned and silenced 1 turn.' },
+          statusEffects: [{ id: 'stun', duration: 1 }],
+          desc: 'Target\'s consciousness encounters a fatal error. Stunned for 1 turn.' },
         SHARED_FISSURE
     ],
     'ai': [
@@ -6195,12 +6201,7 @@ const RACE_ABILITIES = {
     ],
 
     'knight': [
-        { id: 'raceShieldWall', spellType: 'human', element: 'earth', name: 'Castle Fortress',
-          type: 'utility', cost: 25, apCost: 1, range: 3,
-          kind: 'terrainCreate', terrainType: 'castle_wall', tileCount: 3, orientable: true,
-          dmg: 40, damageType: 'physical',
-          terrainDeform: { centerDelta: 2, edgeDelta: 0 },
-          desc: 'Raise a 3-tile brick wall of fortress stone. Impassable rampart that walls off the battlefield.' },
+        SHARED_WALLS_OF_CAMELOT,
         { id: 'raceOathOfValor', spellType: 'divine', element: 'light', name: 'Oath of Valor',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'warCry', auraRadius: 2,
@@ -6231,14 +6232,13 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 35, apCost: 2, range: 0,
           kind: 'buff',
           selfHealPct: 0.50, cleanse: 99,
-          statStageBoost: { atk: 1, def: 1, mdef: 1 },
-          desc: 'Enter a deep trance. Heal 50% max HP, cleanse ALL debuffs, and gain +1 ATK/DEF/MDEF. Costs 2 AP.' },
+          statStageBoost: { def: 1, mdef: 1 },
+          desc: 'Enter a deep trance. Heal 50% max HP, cleanse ALL debuffs, and gain +1 DEF/MDEF. Costs 2 AP.' },
         { id: 'raceBadTrip', spellType: 'alien', element: 'psychic', name: 'Bad Trip',
           type: 'damage', cost: 30, dmg: 110, range: 3,
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'slow', duration: 1 }],
-          statStageBoost: { def: -1, int: -1 },
-          desc: 'Send the target on a bad trip through the spirit world. Damage, DEF shredded 2 turns, mind dulled (-1 INT) 2 turns, slowed 1 turn. Not every vision is a gift.' },
+          desc: 'Send the target on a bad trip through the spirit world. Magic damage and slowed for 1 turn. Not every vision is a gift.' },
     ],
     'mad scientist': [
         { id: 'raceTeslaTrap', spellType: 'tech', element: 'lightning', name: 'Tesla Coil',
@@ -6387,8 +6387,8 @@ const RACE_ABILITIES = {
         { id: 'raceCurseOfMisfortune', spellType: 'anomaly', element: 'shadow', name: 'Family Curse',
           type: 'debuff', cost: 25, range: 4, apCost: 1,
           kind: 'debuff',
-          statStageBoost: { atk: -1, def: -1, mdef: -1, int: -1 },
-          desc: 'Lay a generational hex of bad luck. Target loses -1 ATK, -1 DEF, -1 MDEF and -1 INT stages.' },
+          statStageBoost: { atk: -1, def: -1 },
+          desc: 'Lay a generational hex of bad luck. Target loses -1 ATK and -1 DEF stages.' },
         { id: 'raceCrystalBall', spellType: 'anomaly', element: 'arcane', name: 'Crystal Ball',
           type: 'damage', cost: 45, manaCostOverride: 45, dmg: 200, range: 5, apCost: 1,
           kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
@@ -6513,9 +6513,9 @@ const RACE_ABILITIES = {
           desc: 'Vicious 3-hit melee combo with razor mandibles. 168 total.' },
         { id: 'raceChitinArmor', spellType: 'alien', name: 'Chitin Armor',
           type: 'buff', cost: 20, apCost: 1, range: 0,
-          kind: 'buff', statusEffects: [{ id: 'protect', duration: 1 }],
+          kind: 'buff',
           statStageBoost: { def: 2 },
-          desc: 'Harden exoskeleton. Protected for 1 turn and +2 DEF stages.' },
+          desc: 'Harden exoskeleton. +2 DEF stages.' },
         { id: 'raceAmbushLunge', spellType: 'alien', name: 'Ambush Lunge',
           type: 'damage', cost: 25, dmg: 120, range: 3,
           kind: 'damage', damageType: 'physical',
@@ -6606,8 +6606,8 @@ const RACE_ABILITIES = {
         { id: 'raceOverclock', spellType: 'tech', name: 'Overclock',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { atk: 2, def: 1, spd: 1 },
-          desc: 'Push augmented systems past safe limits. +2 ATK/+1 DEF/+1 SPD stages.' },
+          statStageBoost: { atk: 2, spd: 1 },
+          desc: 'Push augmented systems past safe limits. +2 ATK/+1 SPD stages.' },
         { id: 'raceEMPGrenade', spellType: 'tech', name: 'EMP Grenade',
           type: 'damage', cost: 30, dmg: 96, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -6640,14 +6640,12 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 30, apCost: 1, range: 0,
           kind: 'buff',
           statusEffects: [{ id: 'protect', duration: 1 }],
-          statStageBoost: { atk: 1 },
-          desc: 'Claim a throne of burning rubble. Protected 1 turn and +1 ATK stage.' },
+          desc: 'Claim a throne of burning rubble. Protected for 1 turn — nothing touches the crown.' },
         { id: 'raceInfernalConscription', spellType: 'unholy', name: 'Infernal Conscription',
           type: 'debuff', cost: 35, range: 3, apCost: 1,
           kind: 'debuff',
           statusEffects: [{ id: 'marked', duration: 3, bonusDamage: 40 }],
-          statStageBoost: { def: -1 },
-          desc: 'Conscript an enemy\'s soul. Marked +40 damage and DEF reduced for 2 turns.' },
+          desc: 'Conscript an enemy\'s soul. Marked for +40 bonus damage — the legion collects.' },
         { id: 'raceMeteorSlam', spellType: 'unholy', name: 'Meteor Slam',
           type: 'damage', cost: 35, dmg: 80, range: 1, apCost: 2,
           kind: 'skySlam', damageType: 'physical', carryHeight: 5, dmgPerLevel: 30,
@@ -6661,8 +6659,8 @@ const RACE_ABILITIES = {
     'demon princess': [
         { id: 'raceHexOfAgony', spellType: 'unholy', name: 'Hex of Agony',
           type: 'debuff', cost: 30, range: 4, apCost: 1,
-          kind: 'debuff', statusEffects: [{ id: 'poison', duration: 3 }, { id: 'slow', duration: 2 }],
-          desc: 'Lay a wasting hex on a target. Poison 3 turns and slow 2 turns.' },
+          kind: 'debuff', statusEffects: [{ id: 'poison', duration: 3 }],
+          desc: 'Lay a wasting hex on a target. Poisoned for 3 turns.' },
         { id: 'raceDarkLullaby', spellType: 'unholy', name: 'Dark Lullaby',
           type: 'damage', cost: 35, dmg: 96, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -6684,8 +6682,8 @@ const RACE_ABILITIES = {
         { id: 'raceNightmarePulse', spellType: 'alien', name: 'Nightmare Pulse',
           type: 'damage', cost: 35, dmg: 80, range: 0,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1, aoeOriginSelf: true,
-          statusEffects: [{ id: 'stagger', duration: 1 }, { id: 'slow', duration: 1 }],
-          desc: 'Emit a wave of psychic dread around self. 3x3 damage, staggers and slows.' },
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Emit a wave of psychic dread around self. 3x3 damage and staggers.' },
         { id: 'raceLucidTrap', spellType: 'alien', name: 'Lucid Trap',
           type: 'utility', cost: 25, range: 3, apCost: 1,
           kind: 'deployObject', objectHp: 1, blocksMovement: false,
@@ -6704,8 +6702,7 @@ const RACE_ABILITIES = {
         { id: 'raceAbyssalWings', spellType: 'unholy', name: 'Abyssal Wings',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff', statusEffects: [{ id: 'protect', duration: 1 }],
-          statStageBoost: { atk: 1, def: 1 },
-          desc: 'Unfurl dark wings. Protected for 1 turn, boosted ATK and DEF.' },
+          desc: 'Unfurl dark wings that shield the whole body. Protected for 1 turn.' },
         { id: 'raceCorruptedSanctuary', spellType: 'unholy', name: 'Corrupted Sanctuary',
           type: 'utility', cost: 30, range: 3, apCost: 1,
           kind: 'zoneHeal', aoeRadius: 1, zoneDuration: 2, healPerTurn: 30,
@@ -6736,8 +6733,8 @@ const RACE_ABILITIES = {
         { id: 'raceBlackPhillipsGaze', spellType: 'unholy', name: 'Black Phillip\'s Gaze',
           type: 'debuff', cost: 25, range: 3, apCost: 1,
           kind: 'debuff',
-          statusEffects: [{ id: 'discord', duration: 2 }, { id: 'slow', duration: 1 }],
-          desc: 'Wouldst thou like to live deliciously? Discord 2 turns and slow 1 turn.' },
+          statusEffects: [{ id: 'discord', duration: 2 }],
+          desc: 'Wouldst thou like to live deliciously? Discord for 2 turns.' },
         { id: 'raceCliffCharge', spellType: 'unholy', name: 'Cliff Charge',
           type: 'damage', cost: 25, dmg: 80, range: 2, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 20,
@@ -6763,8 +6760,8 @@ const RACE_ABILITIES = {
         { id: 'raceInnerDemon', spellType: 'unholy', element: 'shadow', name: 'Inner Demon',
           type: 'buff', cost: 25, apCost: 1, range: 0, cooldownRounds: 2,
           kind: 'buff', selfDamagePct: 0.20,
-          statStageBoost: { atk: 3, def: 1 },
-          desc: 'Let the other half out. -20% HP, +3 ATK/+1 DEF stages.' },
+          statStageBoost: { atk: 2, def: 1 },
+          desc: 'Let the other half out. -20% HP, +2 ATK/+1 DEF stages.' },
         SHARED_SCORCHED_EARTH,
         SHARED_SMOKE_SCREEN
     ],
@@ -6870,8 +6867,7 @@ const RACE_ABILITIES = {
           type: 'utility', cost: 35, range: 4, apCost: 2,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
           statusEffects: [{ id: 'slow', duration: 1 }],
-          statStageBoost: { def: -1 },
-          desc: 'Impose entropy on a 3×3 area for 2 turns. All energy tends toward entropy.' },
+          desc: 'Impose entropy on a 3×3 area for 2 turns — everything inside winds down, slowed. All energy tends toward entropy.' },
         SHARED_FISSURE,
         SHARED_SUMMON_BLIZZARD
     ],
@@ -6894,22 +6890,20 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 30, apCost: 2, range: 0,
           kind: 'buff',
           statusEffects: [{ id: 'protect', duration: 2 }],
-          statStageBoost: { atk: 2, def: 1 },
-          desc: 'Activate superhuman durability. Protected 2 turns, +2 ATK/+1 DEF stages. Bullets bounce off.' },
+          desc: 'Activate superhuman durability. Protected for 2 turns. Bullets bounce off.' },
         SHARED_CALL_LIGHTNING
     ],
     'general': [
         { id: 'raceRallyCommand', spellType: 'human', name: 'Rally Command',
           type: 'buff', cost: 30, range: 0, apCost: 2,
           kind: 'warCry', aoeRadius: 2,
-          statStageBoost: { atk: 3, def: 2 },
-          desc: 'Rally all allies within 2 tiles. Grants +3 ATK/+2 DEF stages.' },
+          statStageBoost: { atk: 2, def: 2 },
+          desc: 'Rally all allies within 2 tiles. Grants +2 ATK/+2 DEF stages.' },
         { id: 'raceIronBulwark', spellType: 'human', name: 'Iron Bulwark',
           type: 'buff', cost: 20, range: 0, apCost: 1,
           kind: 'buff',
-          statusEffects: [{ id: 'protect', duration: 2 }],
           statStageBoost: { def: 2 },
-          desc: 'Brace for impact. Grants Protect and +2 DEF stages for 2 turns.' },
+          desc: 'Brace for impact. +2 DEF stages.' },
         { id: 'raceArtilleryStrike', spellType: 'human', name: 'Artillery Strike',
           type: 'damage', cost: 40, dmg: 160, range: 6, apCost: 2,
           kind: 'delayed', damageType: 'physical', aoeRadius: 1, delayTurns: 1,
@@ -6923,8 +6917,8 @@ const RACE_ABILITIES = {
         { id: 'raceSystemAnalysis', spellType: 'tech', name: 'System Analysis',
           type: 'debuff', cost: 20, range: 5, apCost: 1,
           kind: 'debuff',
-          statusEffects: [{ id: 'marked', duration: 3, bonusDamage: 40 }, { id: 'scanner', duration: 2 }],
-          desc: 'Deep-scan a target. Marks them for +40 bonus damage and reveals for 2 turns.' },
+          statusEffects: [{ id: 'scanner', duration: 2 }],
+          desc: 'Deep-scan a target. Revealed and analyzed for 2 turns.' },
         { id: 'raceFirewallProtocol', spellType: 'tech', name: 'Firewall Protocol',
           type: 'buff', cost: 35, range: 3, apCost: 2,
           kind: 'aoeShield', aoeRadius: 1, shieldHp: 120,
@@ -6948,8 +6942,7 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 30, range: 0, apCost: 1,
           kind: 'buff',
           statusEffects: [{ id: 'overclock', duration: 1 }],
-          statStageBoost: { atk: 2, def: 1, spd: 2 },
-          desc: 'Dilate time around yourself. Grants Overclock and +2 ATK/+1 DEF/+2 SPD stages.' },
+          desc: 'Dilate time around yourself. Overclocked for 1 turn — you move between the seconds.' },
         { id: 'raceDarkJustice', spellType: 'human', name: 'Dark Justice',
           type: 'damage', cost: 30, dmg: 120, range: 3,
           kind: 'damage', damageType: 'physical',
@@ -6961,8 +6954,8 @@ const RACE_ABILITIES = {
         { id: 'raceVOXBroadcast', spellType: 'human', name: 'VOX Broadcast',
           type: 'buff', cost: 30, range: 0, apCost: 2,
           kind: 'warCry', aoeRadius: 2,
-          statStageBoost: { atk: 3, def: 1 },
-          desc: 'Go live on the underground signal. Inspires all allies within 2 tiles and boosts ATK.' },
+          statStageBoost: { atk: 2, def: 1 },
+          desc: 'Go live on the underground signal. Inspires all allies within 2 tiles: +2 ATK/+1 DEF stages.' },
         { id: 'raceDeadAir', spellType: 'human', name: 'Dead Air',
           type: 'utility', cost: 30, range: 3, apCost: 2,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
@@ -6988,9 +6981,8 @@ const RACE_ABILITIES = {
         { id: 'raceHellfireCrown', spellType: 'unholy', name: 'Hellfire Crown',
           type: 'buff', cost: 30, range: 0, apCost: 1,
           kind: 'buff',
-          statusEffects: [{ id: 'protect', duration: 1 }],
-          statStageBoost: { atk: 4, def: 1 },
-          desc: 'Ignite the infernal crown. +4 ATK/+1 DEF stages and Protect 1 turn.' },
+          statStageBoost: { atk: 2, def: 1 },
+          desc: 'Ignite the infernal crown. +2 ATK/+1 DEF stages.' },
         { id: 'raceVassalage', spellType: 'unholy', name: 'Vassalage',
           type: 'debuff', cost: 25, range: 4, apCost: 1,
           kind: 'debuff',
@@ -7021,9 +7013,8 @@ const RACE_ABILITIES = {
         { id: 'raceProphecyFulfilled', spellType: 'divine', name: 'Prophecy Fulfilled',
           type: 'buff', cost: 30, apCost: 2, range: 0,
           kind: 'buff',
-          statusEffects: [{ id: 'overclock', duration: 1 }, { id: 'protect', duration: 1 }],
-          statStageBoost: { atk: 2, def: 1 },
-          desc: 'This was always how it was going to end. Overclock + Protect 1 turn and +2 ATK/+1 DEF stages.' },
+          statusEffects: [{ id: 'overclock', duration: 1 }],
+          desc: 'This was always how it was going to end. Overclocked for 1 turn — destiny takes its extra turn.' },
         SHARED_TERRAFORM
     ],
     'politician': [
@@ -7036,8 +7027,7 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 25, range: 3, apCost: 1,
           kind: 'buff',
           statusEffects: [{ id: 'overclock', duration: 1 }],
-          statStageBoost: { atk: 2, def: 1 },
-          desc: 'Funnel classified resources to an ally. Grants Overclock and +2 ATK/+1 DEF stages.' },
+          desc: 'Funnel classified resources to an ally. Overclocked for 1 turn — money buys time.' },
         { id: 'raceFilibuster', spellType: 'human', name: 'Filibuster',
           type: 'utility', cost: 30, range: 3, apCost: 1,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
@@ -7110,8 +7100,7 @@ const RACE_ABILITIES = {
           type: 'debuff', cost: 25, range: 0, apCost: 1,
           kind: 'barrage', aoeRadius: 3, aoeOriginSelf: true,
           statusEffects: [{ id: 'discord', duration: 2 }],
-          statStageBoost: { def: -1 },
-          desc: 'Ancient terror. All enemies within 3 tiles: discord 2 turns and DEF down 1 turn.' },
+          desc: 'Ancient terror. All enemies within 3 tiles suffer discord for 2 turns.' },
         { id: 'raceDragonToss', spellType: 'anomaly', name: 'Dragon Toss',
           type: 'damage', cost: 30, dmg: 70, range: 1, apCost: 1,
           kind: 'skyThrow', damageType: 'physical', carryHeight: 5, dmgPerLevel: 25,
@@ -7191,8 +7180,8 @@ const RACE_ABILITIES = {
         { id: 'raceInkCloud', spellType: 'anomaly', name: 'Ink Cloud',
           type: 'debuff', cost: 30, range: 4, apCost: 1,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
-          statusEffects: [{ id: 'slow', duration: 1 }, { id: 'discord', duration: 2 }],
-          desc: 'Spray blinding ink over a 3×3 area for 2 turns. Enemies are slowed and disoriented.' },
+          statusEffects: [{ id: 'discord', duration: 2 }],
+          desc: 'Spray blinding ink over a 3×3 area for 2 turns. Enemies inside are disoriented — discord for 2 turns.' },
         { id: 'raceDepthCharge', spellType: 'anomaly', name: 'Depth Charge',
           type: 'damage', cost: 35, dmg: 100, range: 4,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
@@ -7234,8 +7223,7 @@ const RACE_ABILITIES = {
           type: 'debuff', cost: 25, range: 3, apCost: 1,
           kind: 'debuff',
           statusEffects: [{ id: 'stun', duration: 1 }],
-          statStageBoost: { def: -1 },
-          desc: 'Encase a target in ice. Stunned 1 turn and -1 DEF stage. Frozen solid.' },
+          desc: 'Encase a target in ice. Stunned for 1 turn. Frozen solid.' },
         { id: 'raceWhiteout', spellType: 'anomaly', name: 'Whiteout',
           type: 'utility', cost: 30, range: 3, apCost: 1,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
@@ -7271,8 +7259,7 @@ const RACE_ABILITIES = {
           type: 'debuff', cost: 25, range: 3, apCost: 1,
           kind: 'debuff',
           statusEffects: [{ id: 'discord', duration: 2 }],
-          statStageBoost: { atk: -1 },
-          desc: 'Irresistible charm ray. Target is confused 2 turns and ATK reduced.' },
+          desc: 'Irresistible charm ray. Target is confused for 2 turns.' },
         { id: 'racePlasmaWhip', spellType: 'tech', name: 'Plasma Whip',
           type: 'damage', cost: 30, dmg: 130, range: 2,
           kind: 'damage', damageType: 'physical',
@@ -7293,8 +7280,8 @@ const RACE_ABILITIES = {
         { id: 'raceMitosisSplit', spellType: 'anomaly', name: 'Mitosis',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff',
-          statusEffects: [{ id: 'protect', duration: 2 }, { id: 'regen', duration: 2 }],
-          desc: 'Split and reform. Gain Protect and Regen for 2 turns as mass redistributes.' },
+          statusEffects: [{ id: 'regen', duration: 2 }],
+          desc: 'Split and reform. Regen for 2 turns as mass redistributes.' },
         { id: 'raceOozeTrail', spellType: 'unholy', name: 'Ooze Trail',
           type: 'utility', cost: 25, range: 4, apCost: 1,
           kind: 'terrainCreate', terrainType: 'swamp', tileCount: 3, orientable: true,
@@ -7319,8 +7306,7 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff',
           statStageBoost: { def: 2 },
-          statusEffects: [{ id: 'protect', duration: 2 }],
-          desc: 'Harden to living stone. +2 DEF stages and Protect for 2 turns.' },
+          desc: 'Harden to living stone. +2 DEF stages.' },
         { id: 'raceQuake', spellType: 'human', name: 'Quake',
           type: 'damage', cost: 35, dmg: 90, range: 0, apCost: 2,
           kind: 'barrage', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
@@ -7360,8 +7346,8 @@ const RACE_ABILITIES = {
         { id: 'raceNitroBoost', spellType: 'tech', name: 'Nitro Boost',
           type: 'buff', cost: 15, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { atk: 2, def: 1, spd: 2 },
-          desc: 'Hit the nitrous. +2 ATK/+1 DEF/+2 SPD stages. VTEC kicked in, yo.' },
+          statStageBoost: { atk: 2, spd: 2 },
+          desc: 'Hit the nitrous. +2 ATK/+2 SPD stages. VTEC kicked in, yo.' },
     ],
 
     'ice queen': [
@@ -7373,9 +7359,8 @@ const RACE_ABILITIES = {
         { id: 'raceFrostThrone', spellType: 'anomaly', name: 'Frost Throne',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { def: 2, atk: 1 },
           statusEffects: [{ id: 'protect', duration: 2 }],
-          desc: 'Conjure a throne of ice. +2 DEF, +1 ATK stages, and Protect for 2 turns. Bow before your queen.' },
+          desc: 'Conjure a throne of ice. Protected for 2 turns. Bow before your queen.' },
         { id: 'raceDiamondDust', spellType: 'anomaly', name: 'Diamond Dust',
           type: 'damage', cost: 35, dmg: 95, range: 4, apCost: 2,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -7388,8 +7373,8 @@ const RACE_ABILITIES = {
         { id: 'raceAbsoluteZero', spellType: 'anomaly', name: 'Absolute Zero',
           type: 'damage', cost: 40, dmg: 160, range: 3, apCost: 2,
           kind: 'damage', damageType: 'magic',
-          statusEffects: [{ id: 'stun', duration: 1 }, { id: 'slow', duration: 2 }],
-          desc: 'Flash-freeze a single target to absolute zero. Massive damage, stunned 1 turn, slowed 2. Temperature: 0 Kelvin.' }
+          statusEffects: [{ id: 'stun', duration: 1 }],
+          desc: 'Flash-freeze a single target to absolute zero. Massive damage and stunned 1 turn. Temperature: 0 Kelvin.' }
     ],
 
     'juggernaut': [
@@ -7408,8 +7393,7 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 15, apCost: 1, range: 0,
           kind: 'buff',
           statStageBoost: { def: 2 },
-          statusEffects: [{ id: 'protect', duration: 3 }],
-          desc: 'Flex and harden. +2 DEF stages and Protect for 3 turns. Too dumb to feel pain.' },
+          desc: 'Flex and harden. +2 DEF stages. Too dumb to feel pain.' },
         { id: 'raceBodyCheck', spellType: 'human', name: 'Body Check',
           type: 'damage', cost: 20, dmg: 100, range: 1,
           kind: 'displacement', damageType: 'physical', pushDistance: 2,
@@ -7417,8 +7401,8 @@ const RACE_ABILITIES = {
         { id: 'raceRampage', spellType: 'unholy', name: 'Rampage',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { atk: 4, def: 1 },
-          desc: 'Enter a mindless rampage. +4 ATK/+1 DEF stages. JUGGERNAUT SMASH.' }
+          statStageBoost: { atk: 2, def: 1 },
+          desc: 'Enter a mindless rampage. +2 ATK/+1 DEF stages. JUGGERNAUT SMASH.' }
     ],
 
     'ki fighter': [
@@ -7435,8 +7419,8 @@ const RACE_ABILITIES = {
         { id: 'raceKiCharge', spellType: 'human', element: 'light', name: 'Ki Charge',
           type: 'buff', cost: 15, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { atk: 4, def: 1 },
-          desc: 'Channel inner ki. +4 ATK/+1 DEF stages. Power up!' },
+          statStageBoost: { atk: 2, def: 1 },
+          desc: 'Channel inner ki. +2 ATK/+1 DEF stages. Power up!' },
         { id: 'raceKiWave', spellType: 'human', element: 'light', name: 'Ki Wave',
           type: 'damage', cost: 35, dmg: 150, range: 5, apCost: 2,
           kind: 'line', damageType: 'magic', lineWidth: 1,
@@ -7462,14 +7446,9 @@ const RACE_ABILITIES = {
         { id: 'raceRoyalDecree', spellType: 'divine', name: 'Royal Decree',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'warCry', aoeRadius: 2,
-          statStageBoost: { atk: 3, def: 2 },
-          desc: 'Issue a royal decree. All allies within 2 tiles gain +3 ATK/+2 DEF stages.' },
-        { id: 'raceShieldWall', spellType: 'human', name: 'Walls of Camelot',
-          type: 'utility', cost: 25, apCost: 1, range: 3,
-          kind: 'terrainCreate', terrainType: 'castle_wall', tileCount: 3, orientable: true,
-          dmg: 40, damageType: 'physical',
-          terrainDeform: { centerDelta: 2, edgeDelta: 0 },
-          desc: 'Raise the walls of Camelot — a 3-tile rampart of brick masonry (castle wall stone). Enemies caught in the rising wall take damage.' },
+          statStageBoost: { atk: 2, def: 2 },
+          desc: 'Issue a royal decree. All allies within 2 tiles gain +2 ATK/+2 DEF stages.' },
+        SHARED_WALLS_OF_CAMELOT,
         { id: 'raceKnightsOfRound', spellType: 'divine', name: 'Knights of Round',
           type: 'utility', cost: 30, range: 0, apCost: 1,
           kind: 'rallyPull',
@@ -7480,9 +7459,8 @@ const RACE_ABILITIES = {
         { id: 'raceChestPound', spellType: 'anomaly', name: 'Chest Pound',
           type: 'debuff', cost: 20, range: 0, apCost: 1,
           kind: 'barrage', aoeRadius: 2, aoeOriginSelf: true,
-          statusEffects: [{ id: 'slow', duration: 1 }],
           statStageBoost: { def: -1 },
-          desc: 'Pound chest with terrifying fury. All enemies within 2 tiles are slowed and DEF shredded.' },
+          desc: 'Pound chest with terrifying fury. All enemies within 2 tiles cower — -1 DEF stage.' },
         { id: 'racePrimalSmash', spellType: 'human', name: 'Primal Smash',
           type: 'damage', cost: 30, dmg: 160, range: 1,
           kind: 'damage', damageType: 'physical',
@@ -7497,8 +7475,8 @@ const RACE_ABILITIES = {
         { id: 'raceApeFury', spellType: 'anomaly', name: 'Ape Fury',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { atk: 4, def: 1 },
-          desc: 'Enter a primal fury. +4 ATK/+1 DEF stages. The king of the jungle awakens.' },
+          statStageBoost: { atk: 2, def: 1 },
+          desc: 'Enter a primal fury. +2 ATK/+1 DEF stages. The king of the jungle awakens.' },
         { id: 'raceGroundSlam', spellType: 'human', name: 'Ground Slam',
           type: 'damage', cost: 35, dmg: 80, range: 0, apCost: 2,
           kind: 'barrage', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
@@ -7553,8 +7531,8 @@ const RACE_ABILITIES = {
         { id: 'raceDeathPact', spellType: 'unholy', name: 'Death Pact',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { atk: 4, def: 1 },
-          desc: 'Sacrifice vitality for power. +4 ATK/+1 DEF stages. The dead demand their due.' },
+          statStageBoost: { atk: 2, def: 1 },
+          desc: 'Sacrifice vitality for power. +2 ATK/+1 DEF stages. The dead demand their due.' },
         { id: 'racePlaguefield', spellType: 'unholy', name: 'Plaguefield',
           type: 'utility', cost: 30, range: 4, apCost: 1,
           kind: 'terrainCreate', terrainType: 'plague_flesh', squareFlood: true, aoeRadius: 1,
@@ -7616,8 +7594,8 @@ const RACE_ABILITIES = {
         { id: 'raceAudible', spellType: 'human', element: 'sonic', name: 'Audible',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'warCry', aoeRadius: 2,
-          statStageBoost: { atk: 3, def: 1, spd: 1 },
-          desc: 'Call an audible at the line. All allies within 2 tiles gain +3 ATK/+1 DEF/+1 SPD stages.' },
+          statStageBoost: { atk: 2, spd: 1 },
+          desc: 'Call an audible at the line. All allies within 2 tiles gain +2 ATK/+1 SPD stages.' },
         { id: 'raceSpikeTheBall', spellType: 'human', element: 'earth', name: 'Spike the Ball',
           type: 'damage', cost: 25, dmg: 64, range: 3,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
@@ -7649,8 +7627,8 @@ const RACE_ABILITIES = {
         { id: 'raceForestAmbush', spellType: 'human', name: 'Forest Ambush',
           type: 'utility', cost: 15, range: 0, apCost: 1,
           kind: 'buff',
-          statStageBoost: { atk: 2, def: 1, spd: 1 },
-          desc: 'Meld into the surroundings. +2 ATK/+1 DEF/+1 SPD stages. The outlaw vanishes.' },
+          statStageBoost: { atk: 2, spd: 1 },
+          desc: 'Meld into the surroundings. +2 ATK/+1 SPD stages. The outlaw vanishes.' },
         { id: 'raceSplittingArrow', spellType: 'human', name: 'Splitting Arrow',
           type: 'damage', cost: 30, dmg: 100, range: 4,
           kind: 'ricochet', damageType: 'physical',
@@ -7674,9 +7652,8 @@ const RACE_ABILITIES = {
         { id: 'raceNaughtyList', spellType: 'anomaly', name: 'Naughty List',
           type: 'debuff', cost: 25, range: 3, apCost: 1,
           kind: 'debuff',
-          statusEffects: [{ id: 'discord', duration: 2 }],
           statStageBoost: { atk: -1, def: -1 },
-          desc: 'Put an enemy on the naughty list. -1 ATK, -1 DEF, confused for 2 turns.' },
+          desc: 'Put an enemy on the naughty list. -1 ATK and -1 DEF stages. Coal for you.' },
         { id: 'raceBlizzardPresent', spellType: 'anomaly', name: 'Blizzard Present',
           type: 'damage', cost: 30, dmg: 80, range: 4, apCost: 1,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -7701,10 +7678,9 @@ const RACE_ABILITIES = {
         { id: 'sentaiBlackGuard', spellType: 'human', name: 'Black Guard',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { def: 2 },
           statusEffects: [{ id: 'protect', duration: 2 }],
           _sentaiColor: 'black',
-          desc: 'Black Ranger takes defensive stance. +2 DEF and Protect for 2 turns.' },
+          desc: 'Black Ranger takes defensive stance. Protected for 2 turns.' },
         { id: 'sentaiGreenArrow', spellType: 'human', name: 'Green Arrow',
           type: 'damage', cost: 25, dmg: 110, range: 5,
           kind: 'damage', damageType: 'physical',
@@ -7752,9 +7728,8 @@ const RACE_ABILITIES = {
         { id: 'raceSymbioteArmor', spellType: 'unholy', name: 'Symbiote Armor',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { def: 1, atk: 1 },
           statusEffects: [{ id: 'regen', duration: 2 }],
-          desc: 'The symbiote hardens into armor. +1 ATK/DEF and Regen for 2 turns.' },
+          desc: 'The symbiote knits flesh as fast as it tears. Regen for 2 turns.' },
         { id: 'racePredatorLeap', spellType: 'unholy', name: 'Predator Leap',
           type: 'damage', cost: 25, dmg: 80, range: 3, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 20,
@@ -7782,8 +7757,8 @@ const RACE_ABILITIES = {
         { id: 'raceNordicWarcry', spellType: 'divine', name: 'Nordic War Cry',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'warCry', aoeRadius: 2,
-          statStageBoost: { atk: 3, def: 2 },
-          desc: 'Battle cry of the Valkyries. All allies within 2 tiles gain +3 ATK/+2 DEF stages.' },
+          statStageBoost: { atk: 2, def: 2 },
+          desc: 'Battle cry of the Valkyries. All allies within 2 tiles gain +2 ATK/+2 DEF stages.' },
     ],
 
     'watcher': [
@@ -8019,6 +7994,9 @@ function computeSpellManaCost(s){
     // Conditional damage riders count at partial weight — they don't always
     // apply, but a spell that can hit harder must cost more than one that can't.
     dmg += (s.unholyBonus || 0) * 0.5 + (s.actedTargetBonus || 0) * 0.5 + (s.repeatDmg || 0) * 0.7;
+    // Status-combo spells (bonusVsStatus) hit ×mult against an ailment the
+    // team set up — conditional, so the extra counts at half weight.
+    if (s.bonusVsStatus) dmg += (s.dmg || 0) * ((s.bonusVsStatus.mult || 1.5) - 1) * 0.5;
     if (s.lumberScale) dmg += (s.lumberCap || 0) * 0.25;
     let dmgMod = 1;
     if (s.ignoreArmor || s.piercing || s.bounceShieldIgnore) dmgMod *= 1.25;

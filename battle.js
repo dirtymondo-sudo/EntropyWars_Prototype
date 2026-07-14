@@ -2207,7 +2207,7 @@
                     sourceUnit: caster,
                     allowMarkBonus: false,
                     damageType: 'magic',
-                    spellType: spell.spellType || null,
+                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
                     element: 'lightning',
                     flashColor: 'shock'
                 });
@@ -2302,7 +2302,7 @@
                     sourceUnit: caster,
                     allowMarkBonus: false,
                     damageType: 'magic',
-                    spellType: spell.spellType || null,
+                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
                     element: 'lightning',
                     flashColor: 'shock'
                 });
@@ -2331,7 +2331,7 @@
                         sourceUnit: caster,
                         allowMarkBonus: false,
                         damageType: 'magic',
-                        spellType: spell.spellType || null
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                     });
                     showFloatingTextForUnit(u, '💎 SHARDS!', 'damage', { durationMs: 1100 });
                     cut++;
@@ -3067,7 +3067,7 @@
                                 ignoreArmor: !!spell.ignoreArmor,
                                 statusEffects: idx === 0 ? spell.statusEffects : null,
                                 damageType: spell.damageType || 'magic',
-                                spellType: spell.spellType || null,
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
                                 element: _spellEl
                             });
                     };
@@ -3101,7 +3101,7 @@
                         ignoreArmor: !!spell.ignoreArmor,
                         statusEffects: spell.statusEffects,
                         damageType: spell.damageType || 'magic',
-                        spellType: spell.spellType || null,
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
                         element: _spellEl
                     });
                 if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${damage}`, false);
@@ -3175,6 +3175,7 @@
                 sourcePlayer: unit.player,
                 spellId: spell.id,
                 spellType: spell.spellType,
+                bonusVsStatus: spell.bonusVsStatus || null,
                 damageType: spell.damageType || 'physical',
                 spellName: spell.name,
                 impactSfx: spell.impactSfx || null,
@@ -3242,7 +3243,7 @@
                         {
                             sourceUnit: unit,
                             damageType: spell.damageType || 'physical',
-                            spellType: spell.spellType || null,
+                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
                             element: classifySpellElement(spell)
                         });
                     if (idx === 0 && _activeCinematic?.showDamage) {
@@ -3284,7 +3285,7 @@
             applyDamageToUnit(first, dmg, `Ricochet from ${unit.cls}: `, {
                 sourceUnit: unit,
                 damageType: spell.damageType || 'physical',
-                spellType: spell.spellType || null,
+                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
                 element: classifySpellElement(spell)
             });
             if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${dmg}`, false);
@@ -3322,7 +3323,7 @@
                             `Ricochet bounces to `, {
                                 sourceUnit: unit,
                                 damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null,
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
                                 shieldIgnore: spell.bounceShieldIgnore || 0
                             });
                     }, bounceProjectileMs + actionMs(60));
@@ -3355,7 +3356,7 @@
                         allowMarkBonus: false,
                         statusEffects: spell.statusEffects,
                         damageType: spell.damageType || opts.damageType || 'magic',
-                        spellType: spell.spellType || opts.spellType || null,
+                        spellType: spell.spellType || opts.spellType || null, bonusVsStatus: spell.bonusVsStatus || opts.bonusVsStatus || null,
                         element: classifySpellElement(spell)
                     });
 
@@ -3603,7 +3604,7 @@
                 applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                     sourceUnit: unit,
                     damageType: spell.damageType || 'magic',
-                    spellType: spell.spellType || null,
+                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
                     element: classifySpellElement(spell)
                 });
                 applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
@@ -13730,6 +13731,26 @@
                 clearStatus(target, 'marked');
                 target.markBonus = 0;
                 addLog(`${unitDisplayName(target)} was marked, so the hit deals extra damage.`);
+            }
+
+            // ── ⚗ STATUS-COMBO BONUS (2026-07-14 spell rework) ─────────────
+            // Some spells punish an existing ailment: a definition carrying
+            // spell.bonusVsStatus = { status: 'burn', mult: 1.5 } deals
+            // amplified damage while the target suffers that status (burn,
+            // poison, root, stun, slow, stagger, silence, discord…). The
+            // ailment is NOT consumed — apply it with one spell, then collapse
+            // on the afflicted target with the partner spell. Threaded per-hit
+            // as opts.bonusVsStatus by the spell resolvers.
+            const _bvs = opts.bonusVsStatus || null;
+            if (_bvs && _bvs.status && finalDamage > 0 && sourceUnit
+                && isEnemyUnit(sourceUnit, target) && unitHasStatus(target, _bvs.status)) {
+                const _bvsMult = _bvs.mult || 1.5;
+                finalDamage = Math.max(1, Math.round(finalDamage * _bvsMult));
+                const _bvsName = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[_bvs.status]?.name) || _bvs.status;
+                if (damageType !== 'dot' && !_skipVisuals()) {
+                    showFloatingTextForUnit(target, `⚗ ×${(+_bvsMult.toFixed(2))} COMBO!`, 'mult', { durationMs: 1100 });
+                }
+                addLog(`⚗ Combo! ${unitDisplayName(target)} is ${_bvsName} — the hit lands ×${(+_bvsMult.toFixed(2))} harder.`);
             }
 
             // ── Level 100 magnitude ────────────────────────────────────────
@@ -33292,7 +33313,7 @@
                             sourceUnit: unit,
                             allowMarkBonus: false,
                             damageType: spell.damageType || 'magic',
-                            spellType: spell.spellType || null
+                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                         });
                         if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${_debDmg}`, false);
                     }
@@ -33934,7 +33955,7 @@
                                         allowMarkBonus: false,
                                         statusEffects: spell.statusEffects,
                                         damageType: spell.damageType || 'physical',
-                                        spellType: spell.spellType || null
+                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                                     });
                                 }, actionMs(400));
                             }, idx * barrageGap);
@@ -34032,7 +34053,7 @@
                     applyDamageToUnit(target, damage, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'magic',
-                        spellType: spell.spellType || null,
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
                         element: classifySpellElement(spell)
                     });
                     if (hitObstacle) {
@@ -34241,7 +34262,7 @@
                     if (spell.pullThroughHazards) {
                         const terrain = getTerrainAt(nx, ny);
                         if (terrain === 'lava' || terrain === 'poison') {
-                            applyDamageToUnit(target, 24, `Dragged through ${terrain}: `, { sourceUnit: unit, damageType: 'magic', spellType: spell.spellType || null });
+                            applyDamageToUnit(target, 24, `Dragged through ${terrain}: `, { sourceUnit: unit, damageType: 'magic', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null });
                         }
                     }
                     target.x = nx;
@@ -34266,7 +34287,7 @@
                     applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                     });
                 }
                 addLog(`${unitDisplayName(unit)} pulls ${unitDisplayName(target)} ${pulled} tile${pulled !== 1 ? 's' : ''}.`);
@@ -34592,7 +34613,7 @@
                     applyDamageToUnit(target, primaryDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'magic',
-                        spellType: spell.spellType || null
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                     });
 
                     if (typeof window !== 'undefined' && window.ThreeVFXEffects
@@ -34625,7 +34646,7 @@
                                 applyDamageToUnit(hit, splitDmg + spellPower, `${spell.name} splits to `, {
                                     sourceUnit: unit,
                                     damageType: spell.damageType || 'magic',
-                                    spellType: spell.spellType || null
+                                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                                 });
                             }, splitProjectileMs + actionMs(60));
                         }, hitDelay);
@@ -34650,6 +34671,7 @@
                     sourcePlayer: unit.player,
                     spellId: spell.id,
                     spellType: spell.spellType,
+                    bonusVsStatus: spell.bonusVsStatus || null,
                     damageType: spell.damageType || 'magic',
                     spellName: spell.name,
                     roundsLeft: delay,
@@ -35146,7 +35168,7 @@
                                 applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                                     sourceUnit: unit,
                                     damageType: spell.damageType || 'magic',
-                                    spellType: spell.spellType || null,
+                                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
                                     statusEffects: spell.statusEffects
                                 });
                             }
@@ -35259,7 +35281,7 @@
                             }
 
                             const grappleDmg = Math.max(16, Math.floor(unit.atk * 0.3) + spellPower);
-                            applyDamageToUnit(target, grappleDmg, `${unitDisplayName(unit)} grapples: `, { sourceUnit: unit, damageType: 'physical', spellType: spell.spellType || null });
+                            applyDamageToUnit(target, grappleDmg, `${unitDisplayName(unit)} grapples: `, { sourceUnit: unit, damageType: 'physical', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null });
                             if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${grappleDmg}`, false);
                             addLog(`${unitDisplayName(unit)} grapples ${unitDisplayName(target)}, pulling them ${pulled} tile${pulled !== 1 ? 's' : ''} closer and dealing ${grappleDmg} damage.`);
                             showFloatingTextForUnit(target, `GRAPPLED!`, 'status', { durationMs: 1000 });
@@ -35372,7 +35394,7 @@
                             sourceUnit: unit,
                             allowMarkBonus: false,
                             damageType: spell.damageType || 'physical',
-                            spellType: spell.spellType || null
+                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                         });
                         if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${_plDmg}`, false);
                     }
@@ -35567,7 +35589,7 @@
                                 const hit = unitAt(x + dx, y + dy);
                                 if (hit && !hit.dead && isEnemyUnit(hit, unit)) {
                                     const dmg = Math.max(1, spell.dmg + spellPwr);
-                                    applyDamageToUnit(hit, dmg, `${spell.name}: `, { sourceUnit: unit, damageType: spell.damageType || 'magic', spellType: spell.spellType || null });
+                                    applyDamageToUnit(hit, dmg, `${spell.name}: `, { sourceUnit: unit, damageType: spell.damageType || 'magic', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null });
                                     showFloatingTextForUnit(hit, `-${dmg}`, 'damage', { durationMs: 900 });
                                     addLog(`${unitDisplayName(hit)} takes ${dmg} damage from ${spell.name}!`);
                                     if (spell.statusEffects && spell.statusEffects.length > 0) {
@@ -35776,7 +35798,7 @@
                         damageType: 'magic',
                         // Type matchup keys off the SPELL's type (e.g. unholy vs
                         // anomaly), never the caster's own type.
-                        spellType: spell.spellType || null
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                     });
                     let drainMult = spell.drainPct || 0.50;
                     if (unit.cls === 'Harvester') drainMult *= 1.20;
@@ -36281,7 +36303,7 @@
                             sourceUnit: unit,
                             allowMarkBonus: true,
                             damageType: spell.damageType || 'physical',
-                            spellType: spell.spellType || null
+                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                         });
                         if (spell.statusEffects && spell.statusEffects.length > 0) {
                             applyStatusEffects(victim, spell.statusEffects, `${spell.name}: `, unit);
@@ -36396,7 +36418,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
 
@@ -36505,11 +36527,11 @@
                             const colBonus = spell.collisionBonus || 50;
                             applyDamageToUnit(throwTarget, totalDmg + colBonus, `${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                             });
                             applyDamageToUnit(collisionTarget, colBonus, `${spell.name} collision: `, {
                                 sourceUnit: unit, damageType: 'physical',
-                                spellType: spell.spellType || null
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                             });
                             addLog(`${unitDisplayName(throwTarget)} is hurled into ${unitDisplayName(collisionTarget)}! Collision!`);
                             showFloatingTextForUnit(throwTarget, `-${totalDmg + colBonus}`, 'damage', { durationMs: 900 });
@@ -36536,7 +36558,7 @@
 
                             applyDamageToUnit(throwTarget, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                             });
                             applyStatusEffects(throwTarget, spell.statusEffects, `${spell.name}: `, unit);
                             throwTarget.x = x;
@@ -36722,7 +36744,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                     showFloatingTextForUnit(target, `-${totalDmg}`, 'damage', { durationMs: 900 });
@@ -36739,7 +36761,7 @@
                                 if (aoeVictim && !aoeVictim.dead && isEnemyUnit(aoeVictim, unit)) {
                                     applyDamageToUnit(aoeVictim, aoeDmg, `${spell.name} shockwave: `, {
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                        spellType: spell.spellType || null
+                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                                     });
                                     showFloatingTextForUnit(aoeVictim, `-${aoeDmg}`, 'damage', { durationMs: 800 });
                                 }
@@ -36857,7 +36879,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                     showFloatingTextForUnit(target, `-${totalDmg}`, 'damage', { durationMs: 900 });
@@ -36874,7 +36896,7 @@
                                 if (aoeVictim && !aoeVictim.dead && aoeVictim.id !== target.id && isEnemyUnit(aoeVictim, unit)) {
                                     applyDamageToUnit(aoeVictim, aoeDmg, `${spell.name} shockwave: `, {
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                        spellType: spell.spellType || null
+                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                                     });
                                     showFloatingTextForUnit(aoeVictim, `-${aoeDmg}`, 'damage', { durationMs: 800 });
                                 }
