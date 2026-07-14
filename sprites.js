@@ -272,6 +272,10 @@ function getR2RaceSpriteUrl(race, gender, cls) {
 
   const _HOMOSAPIEN_RACE_JOB_MAP = {
     'knight': 'knight',
+    // Pirate is the human Raider — its 2D sprites live in the raider job
+    // folder (the pirate/ copies are only the 3D GLBs). Pin it here so it
+    // doesn't fall through to JOB_FOLDER_MAP['Swordmaster'] → knight art.
+    'pirate': 'raider',
     'shaman': 'harvester',
     'mad scientist': 'engineer',
     'cowboy': 'gunslinger',
