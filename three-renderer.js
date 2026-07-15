@@ -17776,8 +17776,13 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
         var stone = function (c) { return _hzGeoMat(_hzTex('bricks_2') || _hzTex('ruins'), c || 0xe0d0b0); };
-        var H = ts * 3.4;
-        _hzAt(g, _hzBox(ts * 0.85, H, ts * 0.5, ts, stone()), 0, H / 2, 0, 0, (rng() - 0.5) * 0.05);
+        /* Total height (shaft H + 0.7 head) must equal 2× the 1.9 head width:
+           monument scaling fits the widest dimension to the footprint, so this
+           makes a 1-tile placement land at EXACTLY 2.0 tiles tall — flush with
+           its 2-voxel collision stamp (units jump onto the T-head). No random
+           shaft tilt for the same reason: the standing surface stays flat. */
+        var H = ts * 3.1;
+        _hzAt(g, _hzBox(ts * 0.85, H, ts * 0.5, ts, stone()), 0, H / 2, 0);
         _hzAt(g, _hzBox(ts * 1.9, ts * 0.7, ts * 0.62, ts, stone(0xd6c6a4)), 0, H + ts * 0.35, 0);        // T head
         _hzAt(g, _hzBox(ts * 0.16, H * 0.5, ts * 0.06, ts, stone(0xb8a678)), ts * 0.2, H * 0.55, ts * 0.26); // relief arm
         _hzAt(g, _hzBox(ts * 0.4, ts * 0.14, ts * 0.06, ts, stone(0xb8a678)), ts * 0.12, H * 0.32, ts * 0.26); // relief hand

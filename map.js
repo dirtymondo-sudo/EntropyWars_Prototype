@@ -2258,7 +2258,16 @@
              stairway         → a rising flight of steps (climbable)
              obelisk          → a tall thin solid (impassable, blocks sight)
              colossus         → a low platform you can clamber onto
-           greek & arch are left passable (visual-only) for now. */
+             tpillar          → EXACTLY 2 voxels of hard cover: blocks sight at
+                                ground level, and since JUMP_HEIGHT = 2 a unit
+                                can JUMP onto the T-head (never stand inside it)
+             monolith/ankh/greytube → full-height solid masses (capped by the
+                                placement's maxH — an h2 monolith is a jumpable
+                                block, an h3 one is a true wall)
+             blastdoor        → a thin full-height wall row (stamps are
+                                rotation-blind: the row runs along X)
+           greek & arch are left passable (visual-only) for now. Placements
+           that want any of these purely cosmetic pass { solid: false }. */
         const _MON_COLLISION = {
             pyramid:  (dx, dy, rr) => rr - Math.max(Math.abs(dx), Math.abs(dy)),
             ziggurat: (dx, dy, rr) => rr - Math.max(Math.abs(dx), Math.abs(dy)),
@@ -2269,7 +2278,14 @@
             // (climb the bus/lander roof); the Owl of the Grove is a wall
             bus:      (dx, dy, rr) => 1,
             lander:   (dx, dy, rr) => 1,
-            owlidol:  (dx, dy, rr) => (dx === 0 && dy === 0) ? 6 : 0
+            owlidol:  (dx, dy, rr) => (dx === 0 && dy === 0) ? 6 : 0,
+            // 2026-07-15 hard-cover pass: solid landmarks you can no longer
+            // stand inside / see through (see the profile notes above)
+            tpillar:   (dx, dy, rr) => 2,
+            monolith:  (dx, dy, rr) => 6,
+            ankh:      (dx, dy, rr) => (dx === 0 && dy === 0) ? 6 : 0,
+            greytube:  (dx, dy, rr) => (dx === 0 && dy === 0) ? 6 : 0,
+            blastdoor: (dx, dy, rr) => (dy === 0) ? 6 : 0
         };
         function _stampMonumentCollision() {
             state._monumentTiles = null;

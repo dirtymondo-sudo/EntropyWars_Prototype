@@ -10546,9 +10546,10 @@ _MF_BUILDERS.prebuilt_gobekli = function () {
     M.rect(2, 2, 4, 3, 'ruins', 2);
     M.obj(2, 3, 'stairs_2');
     M.sym180();
-    // the twin great T-pillars at the sanctum
-    M.mon('tpillar', 7, 7, 1, 3, { solid: false });
-    M.mon('tpillar', 8, 8, 1, 3, { rot: 180, solid: false });
+    // the twin great T-pillars at the sanctum — SOLID hard cover: 2 voxels
+    // tall, block sight, jump on top for the high ground
+    M.mon('tpillar', 7, 7, 1, 3, {});
+    M.mon('tpillar', 8, 8, 1, 3, { rot: 180 });
     M.monSym('handbag', 3, 2, 2, 2, { rot: 15, solid: false });  // you have seen this shape before
     M.monSym('arch', 12, 2, 2, 2, { solid: false });
     M.monSym('colossus', 2, 12, 2, 1, { rot: 45 });
