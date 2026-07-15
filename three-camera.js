@@ -439,6 +439,26 @@ const ThreeCamera = (function () {
         for (let hi = 0; hi < hits.length; hi++) {
             const ho = hits[hi].object;
             if (ho && ho._ew_canopy && !ho.visible) continue;
+            /* Occlusion-ghosted blocks (the action-cam / selected-unit fade in
+               three-renderer swaps in a transparent clone and tags the mesh
+               _ew_occOrig) are see-through ON SCREEN, so they must be
+               see-through to the POINTER too — otherwise the ghosted wall in
+               front of the camera eats every hover/click aimed at the tiles
+               the player can actually see behind it. Skip while mostly faded;
+               a block fading back in (>50% opaque) picks normally again. */
+            if (ho && ho._ew_occOrig) {
+                const fm = Array.isArray(ho.material) ? ho.material[0] : ho.material;
+                if (fm && fm.opacity < 0.5) continue;
+            }
+            /* Props hidden along with their canopy floor (tagged by the
+               cutaway in three-renderer) must not eat the pick either — the
+               raycaster ignores `visible`, so walk up for the root tag. */
+            let anc = ho, cutHidden = false;
+            while (anc) {
+                if (anc._ew_canopyHiddenObj) { cutHidden = true; break; }
+                anc = anc.parent;
+            }
+            if (cutHidden) continue;
             hit = hits[hi];
             break;
         }

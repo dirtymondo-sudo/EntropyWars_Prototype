@@ -11577,7 +11577,7 @@ const ThreeRenderer = (function () {
         });
         if (_canopyFaded.size) _shadowsDirty = true;
         _canopyFaded.clear();
-        _canopyHiddenObjs.forEach(function (om) { if (om) om.visible = true; });
+        _canopyHiddenObjs.forEach(function (om) { if (om) { om.visible = true; om._ew_canopyHiddenObj = false; } });
         _canopyHiddenObjs.clear();
         _canopyWant = null;
     }
@@ -11666,7 +11666,10 @@ const ThreeRenderer = (function () {
             hiddenTiles.forEach(function (pk) {
                 if (_canopyHiddenObjs.has(pk)) return;
                 var om = objectMeshes.get(pk);
-                if (om && om.visible) { om.visible = false; _canopyHiddenObjs.set(pk, om); }
+                /* _ew_canopyHiddenObj lets ThreeCamera.screenToTile skip these
+                   (raycaster ignores `visible`) so a hidden prop can't eat the
+                   pick aimed at the floor seen through the cutaway hole. */
+                if (om && om.visible) { om.visible = false; om._ew_canopyHiddenObj = true; _canopyHiddenObjs.set(pk, om); }
             });
         }
         var objDone = [];
@@ -11674,12 +11677,13 @@ const ThreeRenderer = (function () {
             if (hiddenTiles && hiddenTiles.has(pk)) {
                 /* objectGroup may have been rebuilt — re-hide the fresh mesh */
                 var cur = objectMeshes.get(pk);
-                if (cur && cur !== om) { cur.visible = false; _canopyHiddenObjs.set(pk, cur); }
-                else if (cur) cur.visible = false;
+                if (cur && cur !== om) { cur.visible = false; cur._ew_canopyHiddenObj = true; _canopyHiddenObjs.set(pk, cur); }
+                else if (cur) { cur.visible = false; cur._ew_canopyHiddenObj = true; }
                 return;
             }
             var back = objectMeshes.get(pk);
             /* under fog the fog pass owns visibility — only restore what it allows */
+            if (back) back._ew_canopyHiddenObj = false;
             if (back && (!state.fogOfWar || !_fogVisibleSet || _fogVisibleSet.has(pk))) back.visible = true;
             objDone.push(pk);
         });
