@@ -11442,7 +11442,7 @@ function getSpellUnlockLevel(cls, spellIdx) {
 // Milestone levels (single place to tune).
 const SPELL_SHOP_LEVEL = 10;
 const SECONDARY_JOB_LEVEL = 15;
-// Units always have exactly UNIT_MAX_AP (3) AP — no bonus-AP level milestones.
+// Units always have exactly UNIT_MAX_AP (2) AP — no bonus-AP level milestones.
 const AP_BONUS_LEVELS = [];
 
 // Mode level rules — PvP is normalized to the cap; progression modes level up

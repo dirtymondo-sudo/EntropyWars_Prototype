@@ -4,7 +4,45 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## MENU NAV: no uninvited / all-grey submenus (2026-07-15, LATEST) — battle.js, ui.js, hud.js
+## AP ECONOMY REWORK: 2 AP turns + damaging actions end turn + one +2 press + once-per-turn abilities (2026-07-15, LATEST) — battle.js, hud.js, data.js
+The turn economy changed from "3 AP, everything costs 1-2" to:
+- **`UNIT_MAX_AP = 2`** (battle.js). Moves still cost 1 AP each (max 2 moves/turn).
+- **Any attack or DAMAGING spell cast ENDS the turn**: new `spendAllAP(unit)`
+  (next to `spendAP`) zeroes the pool. Converted sites: doAttack ALL branches
+  (unit, tower, mirror, turret, deployed obj, seed, tree chop, terrain smash),
+  doSpell `finishAction` (gated on `spellDealsDamage`), the early
+  spell-vs-turret/deployed paths (~line 1570), doComboAttack (initiator;
+  partner still pays 1 from its own pool), doEntropyStrike.
+- **NON-damaging spells/abilities do NOT end the turn** — they spend their
+  normal apCost, so heal-then-move and buff-then-attack work.
+  `spellDealsDamage(spell)` (battle.js, next to spendAllAP) = any of
+  dmg/hitDamages/dotDamage/dashDamage set, OR kind ∈ `_PRESS_SPELL_KINDS`.
+  Items, banes, scanner, ping, inspect, detonate, build/reshape, altitude,
+  WASD 2-tile move, nexus channel also remain fixed-cost (1), non-ending.
+- **Every spell/ability is once per turn** (implicit 1-turn cooldown, basic
+  attacks exempt): `unit._spellsUsedThisTurn` map, set by
+  `_markSpellUsedThisTurn` in finishAction + the early cast paths, enforced
+  as `'Used this turn'` in `getSpellBlockReason` (so every menu greys it and
+  doSpell/canAffordSpell/AI/repeat-queue all reject it — you can't recast
+  the nuke a press just refunded, or double-heal). Cleared wherever the
+  other turn flags reset (blitz turn start ×2, gauntlet reset, round reset);
+  syncs to the guest automatically (unit fields serialize wholesale).
+- **Press = one +2 AP burst, then entropy**: `PRESS_REFUND_AP = 2`,
+  `PRESS_MAX_BONUS_AP = 2` → the turn's FIRST weak/crit press refills the
+  whole bar (+2 at once); every later press overflows through the existing
+  `pressOverflowAP` vent into the Entropy Gauge (applyPressTurn's cap math
+  handles this unchanged). Max 2 attacks per unit per turn, by construction.
+  WEAK_CRIT still "wants" 4 → the extra 2 vents to entropy on the first press.
+  Feedback popups are now dynamic (`+2 AP!` / `⚛ ENTROPY!`) and ride the
+  existing `floating-text` relay → guest parity free.
+- **ON FIRE kill reward** no longer refunds +1 AP (it would be wiped by the
+  turn-ending spend); it always vents `onFireOverflowAP` entropy instead.
+- No ability costs >2 AP anywhere (data.js max apCost is 2; apCost-2 spells
+  now require a full bar — you can't move first). hud.js pip `baseAP` and the
+  `getUnitMaxAP` fallbacks (battle/hud) updated 3→2. `AP_BONUS_LEVELS` was
+  already empty so max AP is exactly 2.
+
+## MENU NAV: no uninvited / all-grey submenus (2026-07-15) — battle.js, ui.js, hud.js
 User report: quick-casting a bane off the enemy menu (click werewolf → bane row)
 dumped them into the ITEMS submenu afterwards — a menu they never opened, with
 every remaining item greyed out (heal potion at full HP) — forcing back-out

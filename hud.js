@@ -2022,7 +2022,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
 
   const pips = [];
   const shown = Math.min(maxAP, 8);
-  const baseAP = 3;   // UNIT_MAX_AP — pips past this are level-up bonus AP
+  const baseAP = 2;   // UNIT_MAX_AP — pips past this are level-up bonus AP
   for (let i = 0; i < shown; i++) {
     const on = i < ap;
     const spend = on && hoverCost > 0 && i >= ap - hoverCost;
@@ -2704,35 +2704,11 @@ function _hrlgTargetBlades(unit, st, mode) {
       },
     };
   });
-  // ── Multi-strike picker: once a basic-attack target is pending, and the
-  // unit holds AP for more than one swing, offer ×1/×2/×3… rows. Picking a
-  // count just arms it on the pendingTarget (no cast); CONFIRM then fires
-  // the whole chain via the repeat queue — every extra swing re-validates
-  // AP / range / target-alive, so a mid-chain kill simply stops early.
-  if (mode === 'attack' && st.pendingTarget && !st._actionExecuting) {
-    const _atkAp = (typeof window !== 'undefined' && window.GAME && window.GAME.AP_COST_ACTION) || 1;
-    const _maxN = Math.min(6, Math.floor((unit.ap || 0) / _atkAp));
-    if (_maxN >= 2) {
-      const _curN = st.pendingTarget._repeatN || 1;
-      for (let n = 1; n <= _maxN; n++) {
-        blades.push({
-          id: 'repN:' + n,
-          icon: '⟳',
-          label: 'Strike ×' + n,
-          available: true,
-          check: _curN === n,
-          cost: n * _atkAp,
-          sub: n > 1 ? n + ' swings, back-to-back' : null,
-          fire: () => {
-            if (state.pendingTarget) state.pendingTarget._repeatN = n;
-            if (typeof playSfx === 'function') playSfx('uiCursorFocus');
-            if (typeof markDirty === 'function') markDirty('hud');
-            if (typeof renderIfDirty === 'function') renderIfDirty();
-          },
-        });
-      }
-    }
-  }
+  // (The ×1/×2/×3 multi-strike picker is gone: an attack ENDS the turn, so
+  // extra swings only exist via a press refund — never pre-promisable. The
+  // repeat queue itself survives for click-again-while-animating chains,
+  // which re-validate AP per swing and so continue exactly when a press
+  // handed the AP back.)
 
   if (!blades.length) {
     blades.push({
@@ -3017,7 +2993,7 @@ function _hrlgMoreBlades(unit, st) {
     });
   }
 
-  if (!unit._skippedTurn && !st._skippedUnit && (unit.ap || 0) >= (typeof getUnitMaxAP === 'function' ? getUnitMaxAP(unit) : 3)) {
+  if (!unit._skippedTurn && !st._skippedUnit && (unit.ap || 0) >= (typeof getUnitMaxAP === 'function' ? getUnitMaxAP(unit) : 2)) {
     moreItems.push({ label: '⏭ Skip', onClick: () => { if (typeof doSkipTurn === 'function' && typeof getSelectedUnit === 'function') doSkipTurn(getSelectedUnit()); } });
   }
 
@@ -3046,7 +3022,7 @@ function ActionMenu({ st, hidden }) {
   if (st.battleDialogueQueue && st.battleDialogueQueue.length > 0) return null;
 
   const fc = getFactionColor(unit);
-  const maxAP = typeof getUnitMaxAP === 'function' ? getUnitMaxAP(unit) : 3;
+  const maxAP = typeof getUnitMaxAP === 'function' ? getUnitMaxAP(unit) : 2;
   const slot = unit._partySlot || unit.slot || 1;
   const roman = ['I','II','III','IV','V','VI','VII','VIII'][slot - 1] || slot;
   const unitName = typeof unitDisplayName === 'function' ? unitDisplayName(unit) : (unit.name || unit.cls);
@@ -3888,31 +3864,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       typeNote: typeof getTypeCombatNote === 'function' ? getTypeCombatNote(actingUnit, targetUnit) : '',
       available: true,
     });
-    // Multi-strike rows: enough AP for 2+ swings from where the unit stands
-    // (no move leg) → offer "Attack ×N" one-click chains. Fired via the same
-    // repeat queue as the confirm-drum picker; each swing re-validates.
-    if (canAttack) {
-      const _atkApQ = G.AP_COST_ACTION || 1;
-      const _maxRep = Math.min(4, Math.floor(unitAP / _atkApQ));
-      const _hasMinMax = atkPreview && atkPreview.min != null && atkPreview.max != null;
-      const _baseAvg = _hasMinMax ? (atkPreview.min + atkPreview.max) / 2 : 0;
-      for (let n = 2; n <= _maxRep; n++) {
-        actions.push({
-          id: 'attack',
-          repeat: n,
-          label: 'Attack ×' + n,
-          icon: '⚔',
-          apCost: _atkApQ * n,
-          moveTile: null,
-          preview: _hasMinMax ? { type: 'damage', min: atkPreview.min * n, max: atkPreview.max * n } : atkPreview,
-          typeNote: typeof getTypeCombatNote === 'function' ? getTypeCombatNote(actingUnit, targetUnit) : '',
-          available: true,
-          // sort just BELOW the single Attack row (not by total damage, which
-          // would bury the primary verb under its own multipliers)
-          _sortDamage: _baseAvg - n * 0.01,
-        });
-      }
-    }
+    // (No "Attack ×N" rows anymore: an attack ENDS the turn, so a second
+    // swing only exists when the first one presses — never guaranteed.)
   } else {
     actions.push({
       id: 'attack',
@@ -3929,63 +3882,9 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
   const allSpells = [...(actingUnit.spells || []), ...(actingUnit._raceAbilities || [])].filter(Boolean);
 
-  // --- Grapple → strike combo -------------------------------------------------
-  // If a plain attack can't reach this turn but the unit carries a grappling
-  // hook, check whether reeling the target in first would land it inside melee
-  // range. If so, expose a one-click "Grapple + Strike" action. Only offered
-  // when the pull actually brings the target into attack range from where the
-  // caster currently stands (no post-grapple pathing guesswork).
-  if (!canAttack && !atkMoveTile) {
-    const grappleSp = allSpells.find(s => s.id === 'grapple' || s.id === 'raceGrapple');
-    if (grappleSp) {
-      const gApCost = typeof getSpellApCost === 'function' ? getSpellApCost(grappleSp) : 1;
-      const atkApCost = G.AP_COST_ACTION || 1;
-      const mpPenalty = typeof getStatusMpCostDelta === 'function' ? getStatusMpCostDelta(actingUnit) : 0;
-      const gMpCost = (typeof getSpellMpCostFor === 'function')
-        ? getSpellMpCostFor(actingUnit, grappleSp) : (grappleSp.cost || 0) + mpPenalty;
-      const gRange = typeof getEffectiveSpellRange === 'function' ? getEffectiveSpellRange(actingUnit, grappleSp) : (grappleSp.range || 3);
-      const silenced = typeof unitHasStatus === 'function' && unitHasStatus(actingUnit, 'silence');
-      const gTierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, grappleSp) : true;
-      const canAffordCombo = unitAP >= (gApCost + atkApCost) && actingUnit.mp >= gMpCost && !silenced && gTierOk;
-      const inGrappleRange = dist >= 1 && dist <= gRange && !losBlocked;
-      if (canAffordCombo && inGrappleRange) {
-        // Simulate the 2-tile reel toward the caster (stops at edge/obstacle/
-        // occupied, never onto the caster) and test the landing tile.
-        const gdx = Math.sign(actingUnit.x - tx), gdy = Math.sign(actingUnit.y - ty);
-        let lx = tx, ly = ty;
-        for (let i = 1; i <= 2; i++) {
-          const nx = tx + gdx * i, ny = ty + gdy * i;
-          if (typeof isInside === 'function' && !isInside(nx, ny)) break;
-          if (typeof isTerrainPassable === 'function' && !isTerrainPassable(nx, ny)) break;
-          if (typeof unitAt === 'function' && unitAt(nx, ny)) break;
-          if (nx === actingUnit.x && ny === actingUnit.y) break;
-          lx = nx; ly = ny;
-        }
-        const landDist = _cd(actingUnit.x, actingUnit.y, actingUnit.z ?? 0, lx, ly, targetZ);
-        const landLos = typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, lx, ly);
-        if ((lx !== tx || ly !== ty) && landDist >= 1 && landDist <= effRange && !landLos) {
-          const minRoll = -2, maxRoll = 2;
-          let minDmg = Math.max(24, Math.floor(actingUnit.atk * 0.65) + minRoll);
-          let maxDmg = Math.max(24, Math.floor(actingUnit.atk * 0.65) + maxRoll);
-          const effArmor = typeof getEffectiveArmor === 'function' ? getEffectiveArmor(targetUnit) : 0;
-          if (effArmor) { minDmg = Math.max(1, minDmg - effArmor); maxDmg = Math.max(1, maxDmg - effArmor); }
-          if (targetUnit.shield > 0) { minDmg = Math.max(0, minDmg - targetUnit.shield); maxDmg = Math.max(0, maxDmg - targetUnit.shield); }
-          actions.push({
-            id: 'grappleAttack',
-            label: 'Grapple + Strike',
-            icon: '🪝',
-            spell: grappleSp,
-            apCost: gApCost + atkApCost,
-            moveTile: null,
-            grappleThenAttack: true,
-            preview: { type: 'damage', min: minDmg, max: maxDmg },
-            typeNote: typeof getTypeCombatNote === 'function' ? getTypeCombatNote(actingUnit, targetUnit) : '',
-            available: true,
-          });
-        }
-      }
-    }
-  }
+  // (The "Grapple + Strike" one-click combo is gone: casting Grapple now ENDS
+  // the turn, so the follow-up swing can never fire. Grapple itself still
+  // shows below as a normal spell row.)
 
   // Anything that can land on the clicked enemy belongs in this menu: damage
   // and debuffs, but also target-focused utility — poison/leech seeds, terrain

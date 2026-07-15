@@ -1570,7 +1570,8 @@
                     unit.mp -= effectiveSpellCost;
                     const tDmg = Math.max(32, (spell.dmg || 0) + spellPower + Math.floor(Math.random() * 40) - 16);
                     damageTurretAt(x, y, tDmg, unit);
-                    spendAP(unit, spellApCost);
+                    _markSpellUsedThisTurn(unit, spell);
+                    spendAllAP(unit);   // damaging cast ends the turn
                     state.actionMode = null;
                     state._actionExecuting = false;
                     state.actionMenuView = 'root';
@@ -1607,7 +1608,8 @@
                         showFloatingTextAtTile(x, y, 'DESTROYED', 'damage');
                         playSfx(spellLaunchSfx(spell));
                     }
-                    spendAP(unit, spellApCost);
+                    _markSpellUsedThisTurn(unit, spell);
+                    spendAllAP(unit);   // damaging cast ends the turn
                     state.actionMode = null;
                     state._actionExecuting = false;
                     state.actionMenuView = 'root';
@@ -4185,7 +4187,7 @@
                 entries.push({
                     key: 'damage',
                     text: _hot
-                        ? `🔥 ON FIRE — ${unit._killStreak} kills (+${unit._streakAtkBonus || 0} ATK, kills refund +1 AP)`
+                        ? `🔥 ON FIRE — ${unit._killStreak} kills (+${unit._streakAtkBonus || 0} ATK, kills vent entropy)`
                         : `♨️ HEATING UP — ${unit._killStreak} kills (+${unit._streakAtkBonus || 0} ATK)`
                 });
                 const _bounty = (typeof getUnitBountyGold === 'function') ? getUnitBountyGold(unit) : 0;
@@ -6185,12 +6187,12 @@
            All numbers live in ENTROPY_PTS so balance is one edit. */
         const ENTROPY_GAUGE_MAX = 100;
         const ENTROPY_PTS = {
-            pressOverflowAP:   8,  // per clipped press-refund AP (the "6th AP")
+            pressOverflowAP:   8,  // per press AP the pool can't hold (2nd+ press of a turn)
             pressRefund:       1,  // even a banked press refund charges a little
             kill:              4,
             multiKill:         3,  // extra, per same-turn kill beyond the first
             bounty:            8,  // ending an enemy's ON FIRE streak
-            onFireOverflowAP:  4,  // ON FIRE +1 AP reward with a full AP tank
+            onFireOverflowAP:  4,  // ON FIRE kill reward (vents to entropy — attacks end the turn)
             overkill:          2,
             hourglass:         2,
             destructTurret:    3,
@@ -6252,7 +6254,7 @@
            (resetKillStreak, called from defeatUnit). ON FIRE units carry a
            BOUNTY — killing them pays bonus gold (and arena points), scaling
            with how long the streak ran. While ON FIRE, every kill also
-           refunds +1 AP (overflow feeds the Entropy Gauge instead). */
+           feeds the Entropy Gauge. */
         const STREAK_LABELS = {
             2: {
                 text: 'HEATING UP!',
@@ -6426,18 +6428,13 @@
                 }
             }
 
-            // ON FIRE reward: every kill while burning refunds +1 AP (keep the
-            // rampage rolling). If the AP tank is already full, the surplus
-            // heat vents into the team's Entropy Gauge instead.
+            // ON FIRE reward: attacks now END the turn (only a press extends
+            // it), so a kill while burning can't refund AP anymore — the heat
+            // vents into the team's Entropy Gauge instead.
             if (streak >= BOUNTY_STREAK_MIN) {
-                const apRoom = Math.max(0, getUnitMaxAP(killer) - (killer.ap || 0));
-                if (apRoom > 0) {
-                    killer.ap = (killer.ap || 0) + 1;
-                    if (!_skipVisuals()) {
-                        showFloatingTextForUnit(killer, '🔥 +1 AP', 'revive', { durationMs: 1100, jitterY: -26 });
-                    }
-                } else {
-                    addEntropy(killer.player, ENTROPY_PTS.onFireOverflowAP, 'onFireOverflow', killer);
+                addEntropy(killer.player, ENTROPY_PTS.onFireOverflowAP, 'onFireOverflow', killer);
+                if (!_skipVisuals()) {
+                    showFloatingTextForUnit(killer, '🔥 ⚛ ENTROPY', 'buff', { durationMs: 1100, jitterY: -26 });
                 }
             }
 
@@ -6461,7 +6458,8 @@
         /* ═══════════════════════════════════════════════════════════════════
            ENTROPY STRIKE — the full-gauge team attack.
            Any allied unit can trigger it on its turn once the team's Entropy
-           Gauge is full (1 AP). Every living ally channels; every enemy the
+           Gauge is full (ends that unit's turn). Every living ally channels;
+           every enemy the
            team can SEE takes massive anomaly damage. Consumes the whole gauge
            (refillable). The presentation is the biggest cinematic in the game:
            letterboxed banner → allies ignite in casting circles → the sky
@@ -6561,7 +6559,7 @@
             state.entropyGauge[unit.player] = 0;
             state._entropyStrikeCount = state._entropyStrikeCount || { 1: 0, 2: 0 };
             state._entropyStrikeCount[unit.player] += 1;
-            spendAP(unit, ENTROPY_STRIKE_AP_COST);
+            spendAllAP(unit);   // the team attack ends the triggering unit's turn
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
             if (typeof window._updateEntropyGaugeHUD === 'function') window._updateEntropyGaugeHUD();
 
@@ -12313,7 +12311,7 @@
                 u.dead = false; u._dying = false;
                 u.hp = u.maxHp; u.mp = u.maxMp; u.shield = 0;
                 u.status = { spawnGuard: 1 };
-                u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 3;
+                u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 2;
                 u._rtCd = {}; u._rtAtkAt = 0; u._rtGcdAt = 0; u._rtHurtAt = 0;
                 u._respawnIn = null;
                 const t = _spawnTile(u);
@@ -12661,7 +12659,7 @@
                    at 0 AP and stray legacy paths can zero it — keep it topped. */
                 for (const u of _units()) {
                     if (!_alive(u)) continue;
-                    if ((u.ap || 0) <= 0) u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 3;
+                    if ((u.ap || 0) <= 0) u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 2;
                     if ((u.mp || 0) < (u.maxMp || 0)) {
                         u._rtMpAcc = (u._rtMpAcc || 0) + (u.maxMp || 0) * MP_REGEN_FRAC * dt;
                         if (u._rtMpAcc >= 1) { const g = Math.floor(u._rtMpAcc); u._rtMpAcc -= g; u.mp = Math.min(u.maxMp, (u.mp || 0) + g); }
@@ -12718,7 +12716,7 @@
                 pendingFx = []; zones = []; deadTimers.clear(); bots.clear();
                 _descCache.clear();
                 for (const u of _units()) {
-                    u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 3;
+                    u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 2;
                     u._rtCd = {}; u._rtGcdAt = 0; u._rtAtkAt = 0; u._rtHurtAt = 0;
                     u._rtHpAcc = 0; u._rtMpAcc = 0;
                     if (u.id !== playerUid && !u.dead) bots.set(u.id, _mkBot(u));
@@ -16946,7 +16944,7 @@
             return state.units.find(u => u.id === (state.focusedUnitId || state.selectedUnitId)) || null;
         }
 
-        const UNIT_MAX_AP = 3;
+        const UNIT_MAX_AP = 2;
         const AP_COST_SPELL = 2;
         const AP_COST_ACTION = 1;
         const UNIT_MAX_MOVES = 2;
@@ -16954,16 +16952,19 @@
         const COMBO_AP_COST_PARTNER = 1;
 
         /* ─── Press Turn (AP-based) ──────────────────────────────────────────
-           SMT-style "press" mapped onto the per-unit AP pool: an offensive
-           action that hits a type weakness or crits REFUNDS AP (the unit keeps
-           acting this turn — a flurry); a whiff DRAINS extra AP (turn cut
-           short). Refunds are capped per turn so flurries stay bounded. Only
-           unit.ap mutates → online-safe (host authoritative) and undo-safe
-           (ap is in every pushUndoSnapshot). See PRESS_OUTCOME / applyPressTurn
-           below; turn termination stays owned by unitFinished/endUnitIfDone. */
-        const PRESS_REFUND_AP       = 1;   // AP returned per press (weak/crit)
-        const PRESS_MISS_PENALTY_AP = 1;   // extra AP drained on miss/dodge
-        const PRESS_MAX_BONUS_AP    = 2;   // cap on refunds per unit per turn
+           SMT-style "press" mapped onto the per-unit AP pool. Units get 2 AP
+           per turn and any attack / spell cast ENDS the turn (spendAllAP —
+           it consumes ALL remaining AP). The ONLY way to keep acting is a
+           press: the turn's FIRST weakness hit or crit hands back +2 AP at
+           once (a full fresh action); every press AFTER that vents into the
+           team's Entropy Gauge instead — so a unit can attack at most TWICE
+           in one turn. Only unit.ap mutates → online-safe (host
+           authoritative) and undo-safe (ap is in every pushUndoSnapshot).
+           See PRESS_OUTCOME / applyPressTurn below; turn termination stays
+           owned by unitFinished/endUnitIfDone. */
+        const PRESS_REFUND_AP       = 2;   // AP granted by the turn's first press (weak/crit)
+        const PRESS_MISS_PENALTY_AP = 1;   // extra AP drained on miss/dodge (post-press swings)
+        const PRESS_MAX_BONUS_AP    = 2;   // total press AP per unit per turn → ONE +2 press; extras vent to entropy
 
         const PRESS_OUTCOME = {
             MISS:      'miss',     // dodged/evaded → extra AP drain
@@ -17390,8 +17391,50 @@
             unit.ap = Math.max(0, (unit.ap || 0) - cost);
         }
 
+        // An attack or DAMAGING spell cast ENDS the unit's turn: it consumes
+        // ALL remaining AP, not a fixed cost. The only way the unit acts again
+        // this turn is the press refund applied right after (applyPressTurn).
+        function spendAllAP(unit) {
+            unit.ap = 0;
+        }
+
+        // Does this spell hurt somebody? Damaging casts end the turn;
+        // non-damaging support (heals, buffs, wards, terrain shaping,
+        // summons…) spends its AP cost normally so a unit can heal-then-move
+        // or buff-then-attack. Detected off the damage payload fields plus
+        // the press-eligible offensive kinds (same vocabulary as
+        // spellIsPureStatus / _PRESS_SPELL_KINDS).
+        function spellDealsDamage(spell) {
+            if (!spell) return false;
+            if (spell.dmg || spell.hitDamages || spell.dotDamage || spell.dashDamage) return true;
+            return _PRESS_SPELL_KINDS.has(spell.kind);
+        }
+
+        /* Once-per-turn ability lock: EVERY spell/ability has an implicit
+           1-turn cooldown — a unit may not repeat the same one within a
+           single activation (no double heal, no re-buff, no recasting the
+           nuke a press just refunded). Keyed per unit in
+           unit._spellsUsedThisTurn (cleared with the other turn flags);
+           enforced in getSpellBlockReason so every menu greys it and every
+           cast path rejects it. Basic attacks are exempt. */
+        function _markSpellUsedThisTurn(unit, spell) {
+            if (!unit || !spell) return;
+            const key = spell.id || spell.name;
+            if (!key) return;
+            if (!unit._spellsUsedThisTurn) unit._spellsUsedThisTurn = {};
+            unit._spellsUsedThisTurn[key] = 1;
+        }
+        function spellUsedThisTurn(unit, spell) {
+            if (!unit || !spell || !unit._spellsUsedThisTurn) return false;
+            return !!unit._spellsUsedThisTurn[spell.id || spell.name];
+        }
+        window.spellUsedThisTurn = spellUsedThisTurn;
+
         function getSpellApCost(spell) {
-            return (spell && spell.apCost != null) ? spell.apCost : AP_COST_SPELL;
+            const cost = (spell && spell.apCost != null) ? spell.apCost : AP_COST_SPELL;
+            // No ability may cost more than a full 2-AP turn — a 3+ AP spell
+            // would be permanently uncastable. Clamp instead of trusting data.
+            return Math.min(cost, UNIT_MAX_AP);
         }
 
         // Spell cooldowns: a spell with cooldownRounds > 0 stamps the round it
@@ -17422,6 +17465,8 @@
             }
             const cdLeft = getSpellCooldownRemaining(unit, spell);
             if (cdLeft > 0) return '⏳ CD ' + cdLeft;
+            // Universal once-per-turn lock (see _markSpellUsedThisTurn).
+            if (spellUsedThisTurn(unit, spell)) return 'Used this turn';
             // Berserker's Brand / Archon's Focus choice lock: each life the
             // unit is bound to the FIRST spell it casts. doSpell already
             // rejects other casts — this surfaces the lock in every menu.
@@ -17600,8 +17645,8 @@
             const _refundIfPerfect = Math.min(want, capRoomIfPerfect, apRoom);
             if (refund < _refundIfPerfect) result.pressDenied = true;
 
-            /* ENTROPY: a press the AP pool can't hold — the per-turn refund cap
-               is maxed or the tank is full — is "the 6th AP". It vents into the
+            /* ENTROPY: a press the AP pool can't hold — the unit already got
+               its one +2 press this turn, or the tank is full — vents into the
                team's Entropy Gauge instead of evaporating (the single biggest
                charge source; keep pressing weaknesses on a maxed turn).
                Banked refunds trickle a little charge too. Refunds forfeited to
@@ -17626,8 +17671,15 @@
             if (!unit || !res) return;
             if (_skipVisuals()) return;
             if (res.pressed) {
-                showFloatingTextForUnit(unit, '+1 AP!', 'revive', { durationMs: 1000, jitterY: -26 });
-                showBattleDialogue([`<span class="dlg-effective">⚡ +1 AP — Free action!</span>`], 1100);
+                const _apGain = Math.max(1, res.apDelta || 0);
+                showFloatingTextForUnit(unit, `+${_apGain} AP!`, 'revive', { durationMs: 1000, jitterY: -26 });
+                showBattleDialogue([`<span class="dlg-effective">⚡ +${_apGain} AP — Free action!</span>`], 1100);
+                if (typeof playSfx === 'function') playSfx('buff');
+            } else if (res.entropyOverflow > 0 && !res.penalty) {
+                // Already pressed this turn (or the tank is full) — the press
+                // vents into the Entropy Gauge instead of granting AP.
+                showFloatingTextForUnit(unit, '⚛ ENTROPY!', 'buff', { durationMs: 1000, jitterY: -26 });
+                showBattleDialogue([`<span class="dlg-effective">⚛ Press → Entropy Gauge!</span>`], 1100);
                 if (typeof playSfx === 'function') playSfx('buff');
             } else if (res.penalty) {
                 showFloatingTextForUnit(unit, 'WASTED!', 'dodge', { durationMs: 1000 });
@@ -17723,6 +17775,7 @@
             u.movesThisTurn = 0;
             u._pressGainedThisTurn = 0;
             u._pressPenaltiesThisTurn = 0;
+            u._spellsUsedThisTurn = null;
             u._reshapeThisTurn = 0;
             u._buildCharges = 0;
             u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
@@ -21517,6 +21570,7 @@
                 u._turnKills = 0;
                 u._pressGainedThisTurn = 0;
                 u._pressPenaltiesThisTurn = 0;
+                u._spellsUsedThisTurn = null;
 
                 u._guardCounterBonus = 0;
             }
@@ -21628,6 +21682,7 @@
                     u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                     u._pressGainedThisTurn = 0;
                     u._pressPenaltiesThisTurn = 0;
+                    u._spellsUsedThisTurn = null;
                     u._skippedTurn = false;
                 }
             }
@@ -23949,6 +24004,7 @@
                             u._turnKills = 0;
                             u._pressGainedThisTurn = 0;
                             u._pressPenaltiesThisTurn = 0;
+                            u._spellsUsedThisTurn = null;
                             u._aiFailedSpells = null;
                             u._aiFailedCombos = null;
                             u._aiSkipAttack = false;
@@ -30528,7 +30584,7 @@
                 }
                 damage = Math.max(1, damage - (tw.def || 0));
 
-                spendAP(unit, AP_COST_ACTION);
+                spendAllAP(unit);   // attacking ends the turn
                 state.actionMode = null;
                 state._actionExecuting = false;
                 state.actionMenuView = 'root';
@@ -30613,7 +30669,7 @@
                     else animateStrikeLeap(unit, x, y);
                     damageMirrorAt(x, y, unit);
                     playSfx('damage');
-                    spendAP(unit, AP_COST_ACTION);
+                    spendAllAP(unit);   // attacking ends the turn
                     state.actionMode = null;
                     state._actionExecuting = false;
                     state.actionMenuView = 'root';
@@ -30635,7 +30691,7 @@
                     let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(40) - 16);
                     damageTurretAt(x, y, damage, unit);
                     playSfx('damage');
-                    spendAP(unit, AP_COST_ACTION);
+                    spendAllAP(unit);   // attacking ends the turn
                     state.actionMode = null;
                     state._actionExecuting = false;
                     state.actionMenuView = 'root';
@@ -30672,7 +30728,7 @@
                         playSfx('uiConfirm');
                         state._deployedObjects.splice(dObjIdx, 1);
                     }
-                    spendAP(unit, AP_COST_ACTION);
+                    spendAllAP(unit);   // attacking ends the turn
                     state.actionMode = null;
                     state._actionExecuting = false;
                     state.actionMenuView = 'root';
@@ -30696,7 +30752,7 @@
                     addLog(`${unitDisplayName(unit)} destroys a ${seedName} Seed at ${coordLabel(x, y)}!`);
                     showFloatingTextAtTile(x, y, 'DESTROYED', 'damage');
                     playSfx('uiConfirm');
-                    spendAP(unit, AP_COST_ACTION);
+                    spendAllAP(unit);   // attacking ends the turn
                     state.actionMode = null;
                     state._actionExecuting = false;
                     state.actionMenuView = 'root';
@@ -30724,7 +30780,7 @@
                 showFloatingTextAtTile(x, y, '🪓 TIMBER!', 'damage', { durationMs: 1100 });
                 playSfx('basicAttack');
                 grantXP(unit, 4, 'chop');
-                spendAP(unit, AP_COST_ACTION);
+                spendAllAP(unit);   // attacking ends the turn
                 state.actionMode = null;
                 state._actionExecuting = false;
                 state.actionMenuView = 'root';
@@ -30749,7 +30805,7 @@
                 playSfx('basicAttack');
                 if (typeof shakeBoard === 'function') shakeBoard('normal');
                 grantXP(unit, 4, 'smash');
-                spendAP(unit, AP_COST_ACTION);
+                spendAllAP(unit);   // attacking ends the turn
                 state.actionMode = null;
                 state._actionExecuting = false;
                 state.actionMenuView = 'root';
@@ -30957,7 +31013,7 @@
                 }
 
                 unit._trackBasicAttacks = (unit._trackBasicAttacks || 0) + 1;
-                spendAP(unit, AP_COST_ACTION);
+                spendAllAP(unit);   // attacking ends the turn — only a press hands AP back
                 const _pressRes = applyPressTurn(unit, _pressOutcome, { cost: AP_COST_ACTION });
                 _showPressFeedback(unit, _pressRes);
                 state._actionExecuting = false;
@@ -32373,7 +32429,7 @@
             const _comboStatBonus = Math.floor(((initiator[_comboStatKey] || 0) + (partner[_comboStatKey] || 0)) * 0.5 * 0.35);
             const combinedPower = (initiator.spellPower || 0) + (partner.spellPower || 0) + getHourglassPower(initiator) + getHourglassPower(partner) + _comboStatBonus;
 
-            spendAP(initiator, COMBO_AP_COST_INITIATOR);
+            spendAllAP(initiator);   // a combo is an attack — it ends the initiator's turn
             spendAP(partner, COMBO_AP_COST_PARTNER);
 
             // Press Turn: an offensive combo that hits a weakness refunds AP to
@@ -33562,7 +33618,11 @@
                 }
 
                 state._lastSpellCast = { spellId: spell.id, caster: unit.id, player: unit.player };
-                spendAP(unit, spellApCost);
+                _markSpellUsedThisTurn(unit, spell);
+                // Damaging casts end the turn (only a press hands AP back);
+                // support casts spend their AP cost and leave the turn alive.
+                if (spellDealsDamage(spell)) spendAllAP(unit);
+                else spendAP(unit, spellApCost);
                 const _spellPressRes = _consumePressCollector(unit, spellApCost);
                 _showPressFeedback(unit, _spellPressRes);
                 state._actionExecuting = false;
