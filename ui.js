@@ -4649,6 +4649,19 @@
                 addLog(`${unitDisplayName(unit)} is silenced and cannot cast this turn.`);
                 return;
             }
+            // Never open a submenu whose every row would be greyed out — it
+            // only costs the player the clicks to back out of it again.
+            if (view === 'spells' && typeof anyCastableSpellNow === 'function' && !anyCastableSpellNow(unit)) {
+                addLog(`${unitDisplayName(unit)} has no usable abilities right now.`);
+                playErrorSfx();
+                return;
+            }
+            if (view === 'items' && typeof anyUsableItemNow === 'function' && !anyUsableItemNow(unit)) {
+                const _holdsAny = unit.items && Object.values(unit.items).some(n => (n || 0) > 0);
+                addLog(_holdsAny ? 'No items can be used right now.' : `${unitDisplayName(unit)} has no items.`);
+                playErrorSfx();
+                return;
+            }
             playSfx('uiConfirm');
             state.actionMode = null;
             if (view === 'pings') {
@@ -5201,7 +5214,11 @@
             state.actionMode = null;
             state.selectedTool = null;
             state.pendingTarget = null;
-            state.actionMenuView = (!unitFinished(unit) && !unit.dead) ? 'items' : 'root';
+            // Stay in the Items submenu only if the stim was used FROM it
+            // (clock-slot uses fire from root) and something is still usable.
+            state.actionMenuView = (!unitFinished(unit) && !unit.dead
+                && state.actionMenuView === 'items'
+                && typeof anyUsableItemNow === 'function' && anyUsableItemNow(unit)) ? 'items' : 'root';
             endUnitIfDone(unit);
             renderAfterCombat();
         }

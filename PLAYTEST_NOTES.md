@@ -4,7 +4,38 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## ONLINE PVP PARITY PASS (2026-07-14, LATEST) — online.js, battle.js, CLAUDE.md, index.html
+## MENU NAV: no uninvited / all-grey submenus (2026-07-15, LATEST) — battle.js, ui.js, hud.js
+User report: quick-casting a bane off the enemy menu (click werewolf → bane row)
+dumped them into the ITEMS submenu afterwards — a menu they never opened, with
+every remaining item greyed out (heal potion at full HP) — forcing back-out
+clicks. Root cause: `doItem`'s two tails (bane branch + shared potion/scanner
+tail) set `state.actionMenuView = 'items'` UNCONDITIONALLY when the unit could
+still act, unlike doAttack/doSpell which restore the PREVIOUS view. Fixes:
+- **battle.js `doItem` (both tails) + ui.js `useStimItem`**: return to 'items'
+  only when the item was armed FROM the items submenu (`actionMenuView ===
+  'items'` at resolve time — quick-cast and clock-slot fires leave it 'root')
+  AND `anyUsableItemNow(unit)` — else land on the root verbs. Side benefit:
+  a guest-initiated remote doItem no longer forces the HOST's menu to 'items'.
+- **New probes `anyUsableItemNow` / `anyCastableSpellNow`** (battle.js, next to
+  `canUseItemNow`): "would this submenu have ≥1 live row?" The spell probe is
+  cooldown/guard-aware (canAffordSpell + getSpellMpCostFor) and covers race
+  abilities + move-then-cast reach, mirroring `_hrlgSpellBlades` availability.
+- **NEVER open an all-grey submenu**: `chooseActionMenu` (ui.js) now refuses
+  'spells'/'items' with an error blip + log line when the probe fails. The root
+  ITEMS blade greys with 'Nothing usable' (not just 'Empty'); the ABILITIES
+  blade lost its `forceLive` (was: grey-but-clickable to read reasons — user
+  explicitly wants it unopenable instead; the one-word sub reason stays). The
+  hud.js abilities-button probe now folds in `canAffordSpell` and uses
+  `anyCastableSpellNow` so button state always agrees with the gate.
+- **Post-action returns gated the same way**: doSpell's finishAction falls back
+  to the spellbook only if `anyCastableSpellNow`; doAttack re-arms
+  'attackTargets' only if `attackHasReachableTarget` and returns to 'spells'
+  only if something is castable — otherwise root. (Staying ARMED on the same
+  still-affordable spell is unchanged.)
+No new state fields, no new relayed moments — menu state is viewer-local (in
+the `_serializeState` skip list), so no online.js changes needed.
+
+## ONLINE PVP PARITY PASS (2026-07-14) — online.js, battle.js, CLAUDE.md, index.html
 User report: P2 (guest) never sees the "Your Turn"/"Opponent's Turn" sweep, guest
 camera followed P1's units (position leak under fog), and basic attacks played the
 full cinematic action cam on the guest. Root causes + fixes (see CLAUDE.md RULE #2):

@@ -15247,7 +15247,33 @@
             return true;
         }
 
-        const TRADEABLE_ITEM_KEYS = ['healPotion', 'manaPotion', 'scanner', 'panacea', 'warpStone', 'humanBane', 'divineBane', 'unholyBane', 'techBane', 'anomalyBane', 'alienBane', 'entropyGrenade', 'adrenalStim', 'bulwarkStim', 'psiStim'];
+        // ── Menu-worthiness probes ──────────────────────────────────────────
+        // A submenu where EVERY row is greyed out is a dead menu the player
+        // then has to click back out of. These gate both OPENING the Items /
+        // Abilities submenus and RETURNING to them after an action resolves.
+        function anyUsableItemNow(unit) {
+            if (typeof ITEM_RULES === 'undefined' || !unit || unit.dead || !unit.items) return false;
+            if (!canUnitAct(unit)) return false;
+            return Object.keys(ITEM_RULES).some(k => (unit.items[k] || 0) > 0 && canUseItemNow(unit, k));
+        }
+
+        // ≥1 spell/race ability the unit could actually fire this turn:
+        // AP/MP/universal-guard affordable AND a target in range or reachable
+        // via move-then-cast — mirrors _hrlgSpellBlades' row availability so
+        // this gate always agrees with what the list would show.
+        function anyCastableSpellNow(unit) {
+            if (!unit || unit.dead) return false;
+            if (unitHasStatus(unit, 'silence')) return false;
+            const spells = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(Boolean);
+            return spells.some(sp => {
+                if (!canAffordSpell(unit, sp)) return false;
+                if ((unit.mp || 0) < getSpellMpCostFor(unit, sp)) return false;
+                if (hasSpellTargetInRange(unit, sp)) return true;
+                return typeof spellHasReachableTarget === 'function' && spellHasReachableTarget(unit, sp);
+            });
+        }
+
+        const TRADEABLE_ITEM_KEYS =['healPotion', 'manaPotion', 'scanner', 'panacea', 'warpStone', 'humanBane', 'divineBane', 'unholyBane', 'techBane', 'anomalyBane', 'alienBane', 'entropyGrenade', 'adrenalStim', 'bulwarkStim', 'psiStim'];
 
         function canTradeWithUnit(source, target) {
             if (!source || !target || source.id === target.id) return false;
@@ -30916,10 +30942,15 @@
                 state._enemyActionTargetId = null;
 
                 const _atkPrevView = state.actionMenuView;
-                if (!unitFinished(unit) && !unit.dead && _atkPrevView === 'attackTargets') {
+                // Re-arm the previous list only when it still has live rows —
+                // an empty target list / all-grey spellbook is a dead menu.
+                const _atkCanSwingAgain = typeof attackHasReachableTarget === 'function'
+                    ? attackHasReachableTarget(unit, { combatOnly: true }) : true;
+                if (!unitFinished(unit) && !unit.dead && _atkPrevView === 'attackTargets' && _atkCanSwingAgain) {
                     state.actionMode = 'attack';
                     state.actionMenuView = 'attackTargets';
-                } else if (!unitFinished(unit) && !unit.dead && (_atkPrevView === 'spells' || _atkPrevView === 'spellTargets')) {
+                } else if (!unitFinished(unit) && !unit.dead && (_atkPrevView === 'spells' || _atkPrevView === 'spellTargets')
+                    && anyCastableSpellNow(unit)) {
                     state.actionMode = null;
                     state.actionMenuView = 'spells';
                 } else {
@@ -32911,13 +32942,15 @@
                     state._actionExecuting = false;
                     state._tileActionTarget = null;
                     state._enemyActionTargetId = null;
-                    if (!unitFinished(unit) && !unit.dead) {
-                        state.actionMode = null;
-                        state.actionMenuView = 'items';
-                    } else {
-                        state.actionMode = null;
-                        state.actionMenuView = 'root';
-                    }
+                    // Return to the Items submenu ONLY when the throw was armed
+                    // FROM it (a quick-cast throw off the enemy menu never was)
+                    // and something in it is still usable — otherwise land on
+                    // the root verbs, matching doAttack/doSpell. Unconditionally
+                    // forcing 'items' here is what dumped players into a fully-
+                    // greyed item list after quick-casting a bane.
+                    state.actionMode = null;
+                    state.actionMenuView = (!unitFinished(unit) && !unit.dead
+                        && state.actionMenuView === 'items' && anyUsableItemNow(unit)) ? 'items' : 'root';
                     state.selectedTool = null;
                     state.pendingTarget = null;
                     if (!unit.dead) _softResetCameraToUnit(unit);
@@ -32937,13 +32970,12 @@
             state._actionExecuting = false;
             state._tileActionTarget = null;
             state._enemyActionTargetId = null;
-            if (!unitFinished(unit) && !unit.dead) {
-                state.actionMode = null;
-                state.actionMenuView = 'items';
-            } else {
-                state.actionMode = null;
-                state.actionMenuView = 'root';
-            }
+            // Same rule as the bane branch above: only fall back INTO the
+            // Items submenu when the item was used from it and another item
+            // is still usable — never force a dead/unrelated menu open.
+            state.actionMode = null;
+            state.actionMenuView = (!unitFinished(unit) && !unit.dead
+                && state.actionMenuView === 'items' && anyUsableItemNow(unit)) ? 'items' : 'root';
             state.selectedTool = null;
             state.pendingTarget = null;
             endUnitIfDone(unit);
@@ -33512,9 +33544,15 @@
                         state.actionMode = 'spell';
                         state.actionMenuView = 'spells';
                         state.selectedTool = spell.name;
-                    } else {
+                    } else if (anyCastableSpellNow(unit)) {
                         state.actionMode = null;
                         state.actionMenuView = 'spells';
+                        state.selectedTool = null;
+                    } else {
+                        // Nothing left to cast — a spellbook of grey rows is a
+                        // dead menu; drop back to the root verbs instead.
+                        state.actionMode = null;
+                        state.actionMenuView = 'root';
                         state.selectedTool = null;
                     }
                 } else {

@@ -3098,7 +3098,11 @@ function ActionMenu({ st, hidden }) {
     sub: atkReach ? null : 'No target',
   };
 
-  const hasSpells = typeof canCastAnySpellWithTargets === 'function' ? canCastAnySpellWithTargets(unit) : false;
+  // anyCastableSpellNow (battle.js) is the SAME probe chooseActionMenu gates
+  // on — cooldown/guard-aware and covering race abilities + move-then-cast —
+  // so the button's lit state always agrees with whether the menu will open.
+  const hasSpells = typeof anyCastableSpellNow === 'function' ? anyCastableSpellNow(unit)
+    : (typeof canCastAnySpellWithTargets === 'function' ? canCastAnySpellWithTargets(unit) : false);
   const hasAnySpells = (unit.spells || []).some(Boolean) || (unit._raceAbilities || []).some(Boolean);
   let abilSub = null;
   if (!hasAnySpells) {
@@ -3121,7 +3125,11 @@ function ActionMenu({ st, hidden }) {
         const mpOk = (unit.mp || 0) >= (sp.cost || 0);
         const tgt = (typeof hasSpellTargetInRange === 'function' ? hasSpellTargetInRange(unit, sp) : true)
                  || (typeof spellHasReachableTarget === 'function' && spellHasReachableTarget(unit, sp));
-        if (apOk && mpOk && tgt) { anyCastable = true; break; }
+        // canAffordSpell folds in cooldown/materials/hard locks — without it a
+        // cooldown-blocked spell could light the button for a menu that then
+        // refuses to open (chooseActionMenu gates on the same full check).
+        const guardOk = typeof canAffordSpell !== 'function' || canAffordSpell(unit, sp);
+        if (apOk && mpOk && tgt && guardOk) { anyCastable = true; break; }
         if (!mpOk) mpShort = true;
         if (apOk && tgt && !mpOk) mpBlocked = true;        // would cast if it had MP
         else if (mpOk && tgt && !apOk) apBlocked = true;   // would cast if it had AP
@@ -3138,11 +3146,11 @@ function ActionMenu({ st, hidden }) {
   }
   const abilAction = {
     id: 'abil', label: 'Abilities', icon: '✦', cost: '—',
-    // abilSub is only set when nothing is castable (even via move→cast),
-    // so it doubles as the grey-out signal; forceLive keeps the blade
-    // clickable so the list can explain WHY each spell is blocked.
+    // abilSub is only set when nothing is castable (even via move→cast), so
+    // it doubles as the grey-out signal. The blade itself carries the reason
+    // (No MP / No AP / No target / Silenced); the all-grey list behind it is
+    // NOT opened anymore — a menu with zero live rows is just wasted clicks.
     available: hasSpells || (hasAnySpells && !abilSub),
-    forceLive: true,
     selected: menuView === 'spells',
     sub: abilSub,
   };
@@ -3164,11 +3172,18 @@ function ActionMenu({ st, hidden }) {
     sub: apc.hasCombo ? null : comboSub,
   };
 
+  // Items greys out not just when the bag is EMPTY but when nothing in it is
+  // usable right now (e.g. only a heal potion and everyone's at full HP) —
+  // opening a list of all-grey rows would just cost clicks to back out of.
+  const _heldItemKeys = (typeof ITEM_RULES !== 'undefined')
+    ? Object.keys(ITEM_RULES).filter(k => (unit.items?.[k] || 0) > 0) : [];
+  const _anyItemUsable = typeof canUseItemNow === 'function'
+    ? _heldItemKeys.some(k => canUseItemNow(unit, k)) : _heldItemKeys.length > 0;
   const itemsAction = {
     id: 'items', label: 'Items', icon: '❖', cost: null,
-    available: !!apc.hasAnyItem,
+    available: !!apc.hasAnyItem && _anyItemUsable,
     selected: menuView === 'items',
-    sub: apc.hasAnyItem ? null : 'Empty',
+    sub: !apc.hasAnyItem ? 'Empty' : (_anyItemUsable ? null : 'Nothing usable'),
   };
 
   // 🧱 Build — the universal place/dig block verb (1 AP per block; Mason's
@@ -3273,7 +3288,7 @@ function ActionMenu({ st, hidden }) {
   const inTileTarget = am && tileTargetModes.includes(am) && menuView === 'root' && !isWasdWalking;
 
   function onAction(a) {
-    if (!a.available && a.id !== 'abil') return;
+    if (!a.available) return;
     switch (a.id) {
       case 'move':
 
