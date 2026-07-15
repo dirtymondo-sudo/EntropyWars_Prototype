@@ -17561,12 +17561,15 @@
             if (!unit) return result;
 
             // A dodge/miss OR a "not very effective" hit both waste momentum and
-            // drain an extra AP (turn cut short).
+            // drain an extra AP (turn cut short). Each mistake ALSO permanently
+            // shrinks this turn's press-refund cap (see below): a turn that
+            // wasn't perfect can never snowball back to the full +2 bonus.
             if (outcome === PRESS_OUTCOME.MISS || outcome === PRESS_OUTCOME.RESIST) {
                 const before = unit.ap || 0;
                 spendAP(unit, PRESS_MISS_PENALTY_AP);
                 result.apDelta = (unit.ap || 0) - before; // <= 0
                 result.penalty = result.apDelta < 0;
+                unit._pressPenaltiesThisTurn = (unit._pressPenaltiesThisTurn || 0) + 1;
                 return result;
             }
 
@@ -17576,7 +17579,13 @@
             if (want <= 0) return result; // NORMAL / RESIST → unchanged
 
             const gained = unit._pressGainedThisTurn || 0;
-            const capRoom = Math.max(0, PRESS_MAX_BONUS_AP - gained);
+            // Every earlier miss/resist this turn burns one slot of the refund
+            // cap: perfect turn → up to +2, one mistake → at most +1 more,
+            // two mistakes → no more presses. (SMT-honest: you don't get to
+            // fumble a spell and then farm free actions off weaknesses.)
+            const penalties = unit._pressPenaltiesThisTurn || 0;
+            const capRoom = Math.max(0, PRESS_MAX_BONUS_AP - gained - penalties);
+            const capRoomIfPerfect = Math.max(0, PRESS_MAX_BONUS_AP - gained);
             const apRoom = Math.max(0, getUnitMaxAP(unit) - (unit.ap || 0));
             const refund = Math.min(want, capRoom, apRoom);
             if (refund > 0) {
@@ -17586,13 +17595,19 @@
                 result.apDelta = refund;
                 result.pressed = true;
             }
+            // The hit WOULD have pressed but an earlier fumble locked it out —
+            // flag it so the feedback layer can tell the player why.
+            const _refundIfPerfect = Math.min(want, capRoomIfPerfect, apRoom);
+            if (refund < _refundIfPerfect) result.pressDenied = true;
 
             /* ENTROPY: a press the AP pool can't hold — the per-turn refund cap
                is maxed or the tank is full — is "the 6th AP". It vents into the
                team's Entropy Gauge instead of evaporating (the single biggest
                charge source; keep pressing weaknesses on a maxed turn).
-               Banked refunds trickle a little charge too. */
-            const overflow = want - refund;
+               Banked refunds trickle a little charge too. Refunds forfeited to
+               an earlier miss/resist (the penalty lockout above) do NOT vent —
+               a sloppy turn shouldn't farm entropy off its own mistakes. */
+            const overflow = want - _refundIfPerfect;
             if (overflow > 0) {
                 addEntropy(unit.player, overflow * ENTROPY_PTS.pressOverflowAP, 'pressOverflow', unit);
                 result.entropyOverflow = overflow;
@@ -17618,6 +17633,10 @@
                 showFloatingTextForUnit(unit, 'WASTED!', 'dodge', { durationMs: 1000 });
                 showBattleDialogue([`<span class="dlg-resist">💢 Wasted! Turn cut short.</span>`], 1100);
                 if (typeof playErrorSfx === 'function') playErrorSfx();
+            } else if (res.pressDenied) {
+                // Would have pressed, but an earlier fumble locked the refund out.
+                showFloatingTextForUnit(unit, 'NO PRESS', 'neutral', { durationMs: 1000 });
+                showBattleDialogue([`<span class="dlg-resist">💢 No press — momentum already wasted this turn.</span>`], 1100);
             }
         }
 
@@ -17703,6 +17722,7 @@
         function _gauntletResetTurnFlags(u) {
             u.movesThisTurn = 0;
             u._pressGainedThisTurn = 0;
+            u._pressPenaltiesThisTurn = 0;
             u._reshapeThisTurn = 0;
             u._buildCharges = 0;
             u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
@@ -21496,6 +21516,7 @@
                 u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                 u._turnKills = 0;
                 u._pressGainedThisTurn = 0;
+                u._pressPenaltiesThisTurn = 0;
 
                 u._guardCounterBonus = 0;
             }
@@ -21606,6 +21627,7 @@
                     u._buildCharges = 0;
                     u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                     u._pressGainedThisTurn = 0;
+                    u._pressPenaltiesThisTurn = 0;
                     u._skippedTurn = false;
                 }
             }
@@ -23926,6 +23948,7 @@
                             u._altitudeChangesThisTurn = 0; u._jumpedThisTurn = false;
                             u._turnKills = 0;
                             u._pressGainedThisTurn = 0;
+                            u._pressPenaltiesThisTurn = 0;
                             u._aiFailedSpells = null;
                             u._aiFailedCombos = null;
                             u._aiSkipAttack = false;
@@ -31815,6 +31838,11 @@
                         occ.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y, occ.z) : Math.max(0, oldH - 1);
                         if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: occ, fromX: x, fromY: y });
                         if (occ.id !== unit.id) addLog(`${unitDisplayName(occ)} drops as the ground is dug out underfoot!`);
+                        // Digging out your own footing: ride the camera down to
+                        // the new floor (same natural-height ease as a fall).
+                        if (occ.id === unit.id && typeof followUnitFall === 'function') {
+                            followUnitFall(occ, { duration: actionMs(420) });
+                        }
                     }
                     playSfx('physicalAbility');
                     showFloatingTextForUnit(unit, '⛏ DIG', 'neutral', { durationMs: 800 });
@@ -31847,6 +31875,14 @@
                         rider.z = info.oldH + 1;
                         if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: rider, fromX: x, fromY: y });
                         if (rider.id !== unit.id) addLog(`${unitDisplayName(rider)} rides the new block up!`);
+                        // Building under your own feet: the camera RISES with
+                        // the unit. followUnitFall despite the name just eases
+                        // the focal onto the tile and hands the height back to
+                        // natural terrain tracking — works upward too, and it's
+                        // fog-gated + relayed to the online guest already.
+                        if (rider.id === unit.id && typeof followUnitFall === 'function') {
+                            followUnitFall(rider, { duration: actionMs(420) });
+                        }
                     }
                     addLog(`${unitDisplayName(unit)} stacks a ${matDef.label} block at ${coordLabel(x, y)} (1 ${matDef.icon} spent).`);
                 }
