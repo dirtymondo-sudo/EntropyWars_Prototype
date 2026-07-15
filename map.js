@@ -6746,6 +6746,30 @@
         let _meTintH = 0, _meTintS = 0, _meTintV = 100;   // wheel state (HSV)
         let _meTintRebuildRAF = 0;
         let _me3DPreview = false;
+        /* Per-map sky + horizon-scenery override the author picked in the
+           "Sky & Background" section. null = the default cosmic dome. Shape
+           matches EW_MAP_META env: { tint, tintAmt, stars, nebula,
+           fog:{color,amount,top,band}|null, scenery, density }. Flows:
+           editor live-preview via state.mapEnv (_meSyncToState) → playtest via
+           window._customEditorEnv (state.js applyGameMode) → saved/exported
+           with the map JSON as `env`. */
+        let _meEnv = null;
+        /* Horizon-scenery themes (three-renderer _HZ_THEME_ROSTERS + specials). */
+        const ME_ENV_SCENERY = [
+            ['cosmic',   '🌌 Cosmic (default mix)'],
+            ['divine',   '😇 Divine — gates & light pillars'],
+            ['infernal', '😈 Infernal — colossi & skulls'],
+            ['ruins',    '🏛 Ruins — temples & obelisks'],
+            ['pyramids', '🔺 Pyramids & ziggurats'],
+            ['crystals', '💎 Crystals & sacred rings'],
+            ['orbs',     '🔮 Astral orbs & saucers'],
+            ['eyes',     '👁 Watcher eyes'],
+            ['islands',  '🏝 Floating islands'],
+            ['city',     '🌃 City monoliths'],
+            ['space',    '🪐 Deep space'],
+            ['dark',     '🌑 Dark — crosses & gateways'],
+            ['none',     '⬛ None (empty void)'],
+        ];
 
         /* ── Esoteric monuments (reused _hz* background geometry as on-board
            landmarks). Stored as {kind,x,y,foot,maxH,seed}. Climbable kinds stamp
@@ -7260,6 +7284,10 @@
             state._editorSpawns = _meSpawns;
             state._editorSanctuaryZones = _meSanctuaryZones;
 
+            /* Author-picked sky/backdrop previews LIVE in the editor —
+               three-renderer reads state.mapEnv every frame. */
+            state.mapEnv = _meEnv ? JSON.parse(JSON.stringify(_meEnv)) : null;
+
             /* Esoteric monuments — render (and climb-stamp) live in the editor.
                Stamp BEFORE building columns so climb cubes land in boardColumns. */
             state.monuments = (_meMonuments && _meMonuments.length)
@@ -7366,8 +7394,8 @@
                 _editorOverlay3DGroup.traverse(ch => {
                     if (ch.geometry) ch.geometry.dispose();
                     if (ch.material) {
-                        if (Array.isArray(ch.material)) ch.material.forEach(m => m.dispose());
-                        else ch.material.dispose();
+                        const mats = Array.isArray(ch.material) ? ch.material : [ch.material];
+                        mats.forEach(m => { if (m.map) m.map.dispose(); m.dispose(); });
                     }
                 });
                 _editorOverlay3DGroup = null;
@@ -7398,6 +7426,62 @@
             const spawnP2Mat = new THREE.MeshBasicMaterial({ color: 0xff4444, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false });
             const sanctP1Mat = new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false });
             const sanctP2Mat = new THREE.MeshBasicMaterial({ color: 0xff4444, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false });
+
+            /* ── Walls of light: the same gradient perimeter planes the game
+               draws around spawn sanctuaries and nexus zones (three-renderer
+               rebuildSanctuaryWalls), so zones look in the editor exactly like
+               they will in a match — and stay VISIBLE above raised terrain
+               instead of sinking under it like the old flat markers. ── */
+            const _wallTopY = (x, y) => Math.max(ts * 0.25, (state.boardHeights?.[y]?.[x] ?? 0) * ts * 0.5) + 0.5;
+            const _mkWallMat = (color) => {
+                const cv = document.createElement('canvas');
+                cv.width = 4; cv.height = 64;
+                const c2 = cv.getContext('2d');
+                const r = (color >> 16) & 0xff, g = (color >> 8) & 0xff, b = color & 0xff;
+                const grad = c2.createLinearGradient(0, 0, 0, 64);
+                grad.addColorStop(0, `rgba(${r},${g},${b},0)`);
+                grad.addColorStop(0.3, `rgba(${r},${g},${b},0.3)`);
+                grad.addColorStop(0.7, `rgba(${r},${g},${b},0.6)`);
+                grad.addColorStop(1, `rgba(${r},${g},${b},0.8)`);
+                c2.fillStyle = grad;
+                c2.fillRect(0, 0, 4, 64);
+                const tex = new THREE.CanvasTexture(cv);
+                tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter;
+                return new THREE.MeshBasicMaterial({
+                    map: tex, transparent: true, opacity: 0.85, depthWrite: false,
+                    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+                    side: THREE.DoubleSide, blending: THREE.AdditiveBlending
+                });
+            };
+            /* Perimeter walls around a set of tiles (hScale: sanctuary walls
+               are 1.3× an elevation step in-game, nexus walls 2×). */
+            const _addLightWalls = (tiles, color, hScale) => {
+                if (!tiles || !tiles.length) return;
+                const wallH = ts * 0.5 * (hScale || 1.3);
+                const zoneSet = {};
+                tiles.forEach(t => { zoneSet[t.x + ',' + t.y] = true; });
+                const mat = _mkWallMat(color);
+                const geo = new THREE.PlaneGeometry(ts, wallH);
+                for (const t of tiles) {
+                    if (t.x < 0 || t.y < 0 || t.x >= bw || t.y >= bh) continue;
+                    const baseY = _wallTopY(t.x, t.y) + wallH / 2;
+                    const cxw = t.x * ts + ts / 2, czw = t.y * ts + ts / 2, halfTs = ts / 2;
+                    const edges = [
+                        [!zoneSet[t.x + ',' + (t.y - 1)], cxw, czw - halfTs, 0],
+                        [!zoneSet[t.x + ',' + (t.y + 1)], cxw, czw + halfTs, Math.PI],
+                        [!zoneSet[(t.x - 1) + ',' + t.y], cxw - halfTs, czw, Math.PI / 2],
+                        [!zoneSet[(t.x + 1) + ',' + t.y], cxw + halfTs, czw, -Math.PI / 2],
+                    ];
+                    for (const [exposed, px, pz, rotY] of edges) {
+                        if (!exposed) continue;
+                        const mesh = new THREE.Mesh(geo, mat);
+                        mesh.position.set(px, baseY, pz);
+                        mesh.rotation.y = rotY;
+                        mesh.renderOrder = 20;
+                        _editorOverlay3DGroup.add(mesh);
+                    }
+                }
+            };
 
             const sLookup = {};
             (_meSpawns[1] || []).forEach(s => { sLookup[s.x + ',' + s.y] = 1; });
@@ -7441,6 +7525,15 @@
                        removed — they cluttered the board while raising/placing
                        elevation. The 3D voxel stack itself shows the height. */
                 }
+            }
+
+            /* Authored spawn tiles get the real in-game light walls (blue/red
+               per player). When the Zones preview is ON it draws these same
+               walls itself — skip here so the additive blending doesn't
+               double-brighten them. */
+            if (!_meShowZones) {
+                _addLightWalls(_meSpawns[1] || [], 0x4488ff, 1.3);
+                _addLightWalls(_meSpawns[2] || [], 0xff4444, 1.3);
             }
 
             /* ── Selection highlight: a gold ring + translucent disc + a big
@@ -7521,11 +7614,27 @@
                 };
                 az.p1.forEach(t => drawZoneTile(t.x, t.y, zP1Mat));
                 az.p2.forEach(t => drawZoneTile(t.x, t.y, zP2Mat));
-                if (az.p1.length) addZoneLabel(az.p1[Math.floor(az.p1.length / 2)].x, az.p1[Math.floor(az.p1.length / 2)].y, 'P1 SPAWN ZONE', 'rgba(48,100,220,0.9)');
-                if (az.p2.length) addZoneLabel(az.p2[Math.floor(az.p2.length / 2)].x, az.p2[Math.floor(az.p2.length / 2)].y, 'P2 SPAWN ZONE', 'rgba(210,50,50,0.9)');
+                /* The real thing: sanctuary walls of light around each spawn
+                   zone, nexus walls (taller, gold) around each nexus zone. */
+                _addLightWalls(az.p1, 0x4488ff, 1.3);
+                _addLightWalls(az.p2, 0xff4444, 1.3);
+                if (az.p1.length) addZoneLabel(az.p1[Math.floor(az.p1.length / 2)].x, az.p1[Math.floor(az.p1.length / 2)].y, az.p1Auto ? 'P1 SPAWN (auto strip)' : 'P1 SPAWN (your tiles)', 'rgba(48,100,220,0.9)');
+                if (az.p2.length) addZoneLabel(az.p2[Math.floor(az.p2.length / 2)].x, az.p2[Math.floor(az.p2.length / 2)].y, az.p2Auto ? 'P2 SPAWN (auto strip)' : 'P2 SPAWN (your tiles)', 'rgba(210,50,50,0.9)');
+                const nzSz = az.nexusSize || 2;
                 for (const nz of az.nexus) {
-                    for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) drawZoneTile(nz.x + dx, nz.y + dy, zNexMat);
+                    const nTiles = [];
+                    for (let dy = 0; dy < nzSz; dy++) for (let dx = 0; dx < nzSz; dx++) {
+                        drawZoneTile(nz.x + dx, nz.y + dy, zNexMat);
+                        nTiles.push({ x: nz.x + dx, y: nz.y + dy });
+                    }
+                    _addLightWalls(nTiles, 0xffd24a, 2.0);
                     addZoneLabel(nz.x, nz.y, nz.label, 'rgba(190,140,20,0.92)');
+                }
+                /* Nexus-count rule, spelled out where the author is looking:
+                   maps below 16×16 only ever get ONE nexus. */
+                if (az.nexus.length === 1) {
+                    addZoneLabel(Math.floor(bw / 2), Math.min(bh - 1, Math.floor(bh / 2) + 2),
+                        `${bw}×${bh} map → 1 nexus · reach 16×16 for 3`, 'rgba(80,60,20,0.88)');
                 }
                 for (const fl of az.flags) {
                     addZoneLabel(fl.x, fl.y, '⚑ CTF FLAG P' + fl.player, fl.player === 1 ? 'rgba(48,100,220,0.9)' : 'rgba(210,50,50,0.9)');
@@ -7565,51 +7674,24 @@
 
         function _meComputeAutoZones() {
             const w = _meW, h = _meH;
-            const sp1 = _meSpawns[1] || [], sp2 = _meSpawns[2] || [];
-            const teamSize = Math.max(1, Math.min(6, Math.min(sp1.length || 4, sp2.length || 4)));
 
-            let orientation = 'vertical';
-            if (sp1.length > 0 && sp2.length > 0) {
-                const avgY1 = sp1.reduce((s, p) => s + p.y, 0) / sp1.length;
-                const avgY2 = sp2.reduce((s, p) => s + p.y, 0) / sp2.length;
-                const avgX1 = sp1.reduce((s, p) => s + p.x, 0) / sp1.length;
-                const avgX2 = sp2.reduce((s, p) => s + p.x, 0) / sp2.length;
-                if (Math.abs(avgX1 - avgX2) > Math.abs(avgY1 - avgY2) * 1.5) orientation = 'horizontal';
-            }
+            /* Spawn zones — EXACTLY what a playtest does: hand-placed spawn
+               tiles are used verbatim (autoGenerateSpawnZones' custom-map
+               path), and a side with no tiles gets the auto 4×1 edge strip
+               from _meComputeAutoSpawnStrips. No more preview strips that the
+               real match then ignores. */
+            const strips = _meComputeAutoSpawnStrips();
+            const p1 = strips[1], p2 = strips[2];
+            const p1Auto = _meSpawns[1].length === 0, p2Auto = _meSpawns[2].length === 0;
 
-            const p1 = [], p2 = [];
-            if (orientation === 'vertical') {
-                let p1Row = h - 1, p2Row = 0;
-                if (sp1.length && sp2.length) {
-                    const avgY1 = sp1.reduce((s, p) => s + p.y, 0) / sp1.length;
-                    const avgY2 = sp2.reduce((s, p) => s + p.y, 0) / sp2.length;
-                    p1Row = avgY1 > avgY2 ? h - 1 : 0;
-                    p2Row = p1Row === h - 1 ? 0 : h - 1;
-                }
-                const startCol = Math.max(0, Math.floor((w - teamSize) / 2));
-                for (let i = 0; i < teamSize; i++) {
-                    const col = Math.min(startCol + i, w - 1);
-                    p1.push({ x: col, y: p1Row });
-                    p2.push({ x: col, y: p2Row });
-                }
-            } else {
-                let p1Col = 0, p2Col = w - 1;
-                if (sp1.length && sp2.length) {
-                    const avgX1 = sp1.reduce((s, p) => s + p.x, 0) / sp1.length;
-                    const avgX2 = sp2.reduce((s, p) => s + p.x, 0) / sp2.length;
-                    p1Col = avgX1 < avgX2 ? 0 : w - 1;
-                    p2Col = p1Col === 0 ? w - 1 : 0;
-                }
-                const startRow = Math.max(0, Math.floor((h - teamSize) / 2));
-                for (let i = 0; i < teamSize; i++) {
-                    const row = Math.min(startRow + i, h - 1);
-                    p1.push({ x: p1Col, y: row });
-                    p2.push({ x: p2Col, y: row });
-                }
-            }
-
+            /* Nexus zones — mirrors _autoPlaceNexusIfNeeded: one NEXUS_ZONE_SIZE²
+               zone at dead center; maps 16×16 and larger get the full diagonal
+               of three (center + NW + SE at min(w,h)/4). */
+            const nzSz = (typeof NEXUS_ZONE_SIZE !== 'undefined') ? NEXUS_ZONE_SIZE : 2;
+            const nzHalf = Math.floor(nzSz / 2);
+            const midX = Math.floor(w / 2), midY = Math.floor(h / 2);
+            const cx = midX - nzHalf, cy = midY - nzHalf;
             const nexus = [];
-            const cx = Math.floor(w / 2) - 1, cy = Math.floor(h / 2) - 1;   // 2×2 zone anchor
             if (w >= 16 && h >= 16) {
                 const off = Math.floor(Math.min(w, h) / 4);
                 nexus.push({ x: cx, y: cy, label: '◈ NEXUS (CENTER)' });
@@ -7623,7 +7705,7 @@
             if (p1.length) flags.push({ x: p1[Math.floor(p1.length / 2)].x, y: p1[Math.floor(p1.length / 2)].y, player: 1 });
             if (p2.length) flags.push({ x: p2[Math.floor(p2.length / 2)].x, y: p2[Math.floor(p2.length / 2)].y, player: 2 });
 
-            return { p1, p2, nexus, flags };
+            return { p1, p2, p1Auto, p2Auto, nexus, nexusSize: nzSz, flags };
         }
 
         window._meToggleZonePreview = function() {
@@ -7631,7 +7713,131 @@
             _meSfx('uiButtonConfirm');
             const btn = document.getElementById('meZonesBtn');
             if (btn) btn.classList.toggle('active', _meShowZones);
+            _meUpdateZoneInfo();
             _meRebuildEditorOverlays3D();
+        };
+
+        /* The sidebar strip under the toolbar that explains, in words, what
+           the zone preview is showing — including the nexus-count rule the
+           board labels can only hint at. Refreshed on toggle, resize and
+           spawn edits. */
+        function _meUpdateZoneInfo() {
+            const el = document.getElementById('meZoneInfo');
+            if (!el) return;
+            if (!_meShowZones) { el.style.display = 'none'; return; }
+            const nx = (_meW >= 16 && _meH >= 16) ? 3 : 1;
+            const s1 = _meSpawns[1].length, s2 = _meSpawns[2].length;
+            el.style.display = '';
+            el.innerHTML = `🗺️ <b>Zone preview — this IS the real match layout.</b><br>` +
+                `<b>Spawns:</b> ${(s1 && s2)
+                    ? `your placed tiles are used verbatim (P1: ${s1} · P2: ${s2})`
+                    : `auto 4×1 strips on opposite edges, like the built-in maps — place P1/P2 spawn tiles to override`}.<br>` +
+                `<b>Nexus:</b> ${_meW}×${_meH} map → <b>${nx} zone${nx > 1 ? 's' : ''}</b>` +
+                (nx === 1 ? ' — grow the map to <b>16×16 or bigger</b> to get all 3 (center + NW + SE).' : ' on the center diagonal (center + NW + SE).');
+        }
+
+        /* ── Sky & Background (state.mapEnv) editor controls ─────────────────
+           The firmament dome + horizon-scenery ring are driven per-map by an
+           `env` object (see EW_MAP_META in data.js). These controls edit the
+           map's own env: presets copy a built-in map's sky 1:1, the rest of
+           the controls tweak individual knobs. Everything applies LIVE in the
+           editor because three-renderer reads state.mapEnv every frame. */
+        function _meEnsureEnv() {
+            if (!_meEnv) _meEnv = { tint: 0x8877cc, tintAmt: 0, stars: 1, nebula: 1, fog: null, scenery: 'cosmic', density: 1 };
+            return _meEnv;
+        }
+        function _meEnvSummaryText() {
+            if (!_meEnv) return 'Default cosmic';
+            const scen = (ME_ENV_SCENERY.find(s => s[0] === (_meEnv.scenery || 'cosmic')) || [])[1] || _meEnv.scenery;
+            return (_meEnv._presetLabel ? _meEnv._presetLabel : 'Custom') + ' · ' + String(scen).replace(/^[^ ]+ /, '');
+        }
+        function _meApplyEnvLive() {
+            if (typeof state !== 'undefined') {
+                state.mapEnv = _meEnv ? JSON.parse(JSON.stringify(_meEnv)) : null;
+            }
+            const sum = document.getElementById('meEnvSummary');
+            if (sum) sum.textContent = _meEnvSummaryText();
+        }
+        function _meEnvPresetList() {
+            return (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.filter(m => m && m.env) : [];
+        }
+        function _meRenderEnvControls() {
+            const body = document.getElementById('meEnvBody');
+            if (!body) return;
+            const env = _meEnv;
+            const hex = v => '#' + ((v != null ? v : 0x8877cc) >>> 0).toString(16).padStart(6, '0');
+            const scenOpts = ME_ENV_SCENERY.map(([k, lbl]) =>
+                `<option value="${k}"${(env ? (env.scenery || 'cosmic') : 'cosmic') === k ? ' selected' : ''}>${lbl}</option>`).join('');
+            const presetOpts = ['<option value="">— copy a built-in map’s sky —</option>']
+                .concat(_meEnvPresetList().map((m, i) =>
+                    `<option value="${i}"${env && env._presetLabel === m.label ? ' selected' : ''}>${m.label} · ${m.env.scenery || 'cosmic'}</option>`))
+                .join('');
+            body.innerHTML = `
+                <div class="me-env-row">
+                    <select class="me-env-select" id="meEnvPreset" onchange="window._meEnvPreset(this.value)">${presetOpts}</select>
+                    <button class="me-btn" onclick="window._meEnvReset()" title="Back to the default cosmic sky &amp; backdrop">↺ Default</button>
+                </div>
+                <div class="me-env-row">
+                    <span class="me-env-label">Backdrop</span>
+                    <select class="me-env-select" onchange="window._meEnvSet('scenery', this.value)">${scenOpts}</select>
+                </div>
+                <div class="me-env-row">
+                    <span class="me-env-label">Density</span>
+                    <input type="range" min="0.25" max="2" step="0.05" value="${env && env.density != null ? env.density : 1}" oninput="window._meEnvSet('density', this.value)" title="How crowded the esoteric backdrop ring is">
+                </div>
+                <div class="me-env-row">
+                    <span class="me-env-label">Sky tint</span>
+                    <input type="color" value="${hex(env && env.tint)}" onchange="window._meEnvSet('tint', this.value)" title="Color wash pulled over the whole sky">
+                    <input type="range" min="0" max="1" step="0.05" value="${env ? (env.tintAmt || 0) : 0}" oninput="window._meEnvSet('tintAmt', this.value)" title="Tint strength (0 = untinted cosmic sky)">
+                </div>
+                <div class="me-env-row">
+                    <span class="me-env-label">Stars</span>
+                    <input type="range" min="0" max="2" step="0.05" value="${env && env.stars != null ? env.stars : 1}" oninput="window._meEnvSet('stars', this.value)" title="Starfield brightness">
+                </div>
+                <div class="me-env-row">
+                    <span class="me-env-label">Nebula</span>
+                    <input type="range" min="0" max="2" step="0.05" value="${env && env.nebula != null ? env.nebula : 1}" oninput="window._meEnvSet('nebula', this.value)" title="Nebula intensity">
+                </div>
+                <div class="me-env-row">
+                    <span class="me-env-label">Fog</span>
+                    <input type="color" value="${hex(env && env.fog && env.fog.color != null ? env.fog.color : 0x9fb4d8)}" onchange="window._meEnvSet('fogColor', this.value)" title="Horizon haze color">
+                    <input type="range" min="0" max="1" step="0.05" value="${env && env.fog ? (env.fog.amount || 0) : 0}" oninput="window._meEnvSet('fogAmount', this.value)" title="Horizon haze amount (0 = none)">
+                </div>
+                <div class="me-env-hint">Applies live — orbit the camera to see the horizon ring. Saved &amp; exported with the map, and used when the map is played.</div>
+            `;
+            const sum = document.getElementById('meEnvSummary');
+            if (sum) sum.textContent = _meEnvSummaryText();
+        }
+        window._meEnvPreset = function(idxStr) {
+            if (idxStr === '') return;
+            const m = _meEnvPresetList()[+idxStr];
+            if (!m) return;
+            _meEnv = JSON.parse(JSON.stringify(m.env));
+            _meEnv._presetLabel = m.label;
+            _meSfx('uiButtonConfirm');
+            _meApplyEnvLive();
+            _meRenderEnvControls();
+        };
+        window._meEnvReset = function() {
+            _meEnv = null;
+            _meSfx('uiButtonConfirm');
+            _meApplyEnvLive();
+            _meRenderEnvControls();
+        };
+        window._meEnvSet = function(key, val) {
+            const env = _meEnsureEnv();
+            if (key === 'tint') env.tint = parseInt(String(val).slice(1), 16);
+            else if (key === 'scenery') env.scenery = val;
+            else if (key === 'tintAmt' || key === 'stars' || key === 'nebula' || key === 'density') env[key] = +val;
+            else if (key === 'fogColor') {
+                if (!env.fog) env.fog = { color: 0x9fb4d8, amount: 0.4, top: 0.06, band: 0.5 };
+                env.fog.color = parseInt(String(val).slice(1), 16);
+            } else if (key === 'fogAmount') {
+                if (!env.fog) env.fog = { color: 0x9fb4d8, amount: 0, top: 0.06, band: 0.5 };
+                env.fog.amount = +val;
+            }
+            delete env._presetLabel;
+            _meApplyEnvLive();
         };
 
         /* The editor's base stylesheet lives in styles-editor.css (R2). This
@@ -7664,6 +7870,49 @@
                 .me-editor-hud::-webkit-scrollbar { width: 8px; }
                 .me-editor-hud::-webkit-scrollbar-thumb { background: rgba(124,77,255,0.55); border-radius: 4px; }
                 .me-editor-hud::-webkit-scrollbar-track { background: transparent; }
+
+                /* Grab the glowing grip beside the panel to resize it. */
+                .me-hud-resizer {
+                    flex: 0 0 8px;
+                    align-self: stretch;
+                    cursor: ew-resize; z-index: 40; touch-action: none;
+                    background: linear-gradient(90deg, transparent, rgba(124,77,255,0.55));
+                    border-radius: 3px;
+                    opacity: 0.4; transition: opacity 0.12s;
+                }
+                .me-hud-resizer:hover, .me-hud-resizer:active { opacity: 1; }
+
+                .me-zone-info {
+                    font-size: 10.5px; line-height: 1.5;
+                    color: #dcd6ff;
+                    background: rgba(64,48,120,0.35);
+                    border: 1px solid rgba(150,120,255,0.4);
+                    border-radius: 7px; padding: 6px 9px;
+                }
+                .me-zone-info b { color: #fff; }
+
+                .me-env-row { display: flex; align-items: center; gap: 7px; flex-wrap: nowrap; }
+                .me-env-label {
+                    flex: 0 0 62px; font-size: 10px; font-weight: 700;
+                    letter-spacing: 0.06em; text-transform: uppercase;
+                    color: rgba(200,190,255,0.8);
+                }
+                .me-env-select {
+                    flex: 1 1 auto; min-width: 0;
+                    background: rgba(40,36,58,0.9); color: #e8e6f4;
+                    border: 1px solid rgba(255,255,255,0.14); border-radius: 6px;
+                    padding: 5px 6px; font-size: 11px;
+                }
+                .me-env-row input[type=range] { flex: 1 1 auto; min-width: 0; accent-color: #8c64ff; }
+                .me-env-row input[type=color] {
+                    flex: 0 0 34px; width: 34px; height: 24px; padding: 0;
+                    border: 1px solid rgba(255,255,255,0.2); border-radius: 5px;
+                    background: transparent; cursor: pointer;
+                }
+                .me-env-hint {
+                    font-size: 9.5px; line-height: 1.4; color: rgba(220,220,255,0.55);
+                    border-top: 1px dashed rgba(150,120,255,0.25); padding-top: 5px;
+                }
 
                 .me-help-bar {
                     font-size: 9.5px;
@@ -8189,6 +8438,8 @@
                     <button class="me-tbtn" onclick="window._meExport()" title="Export this map to text"><span class="ico">⬆</span>Export</button>
                 </div>
 
+                <div class="me-zone-info" id="meZoneInfo" style="display:none"></div>
+
                 <div class="me-filebar">
                     <input type="text" class="me-name-input" id="meMapName" placeholder="Map name…" value="Custom Map" />
                     <button class="me-btn" onclick="window._meSave()" title="Save this map">💾 Save</button>
@@ -8270,9 +8521,45 @@
                     <div class="me-palette" id="mePalette"></div>
                     </div>
                 </div>
+
+                <div class="me-section collapsed" id="meSec-env">
+                    <button type="button" class="me-section-label" onclick="window._meToggleSection('meSec-env')"><span class="me-sec-caret">▾</span> Sky &amp; Background · <span id="meEnvSummary">Default cosmic</span></button>
+                    <div class="me-section-body" id="meEnvBody"></div>
+                </div>
             `;
 
             mapRow.appendChild(hud);
+
+            /* Drag the grip between board and panel to resize the panel; the
+               chosen width sticks (localStorage) across sessions. It lives as
+               a SIBLING flex item, not inside the panel — the panel scrolls,
+               and an absolutely-positioned handle would scroll away with it. */
+            const rz = document.createElement('div');
+            rz.className = 'me-hud-resizer';
+            rz.id = 'meHudResizer';
+            rz.title = 'Drag to resize the editor panel';
+            mapRow.insertBefore(rz, hud);
+            const savedW = parseInt(localStorage.getItem('ew_me_hud_w') || '', 10);
+            if (savedW >= 300 && savedW <= 820) hud.style.width = savedW + 'px';
+            rz.addEventListener('pointerdown', (ev) => {
+                ev.preventDefault();
+                rz.setPointerCapture(ev.pointerId);
+                const startX = ev.clientX;
+                const startW = hud.getBoundingClientRect().width;
+                const onMove = (mv) => {
+                    const wNew = Math.max(300, Math.min(820, startW + (startX - mv.clientX)));
+                    hud.style.width = wNew + 'px';
+                };
+                const onUp = () => {
+                    rz.removeEventListener('pointermove', onMove);
+                    rz.removeEventListener('pointerup', onUp);
+                    rz.removeEventListener('pointercancel', onUp);
+                    localStorage.setItem('ew_me_hud_w', String(Math.round(hud.getBoundingClientRect().width)));
+                };
+                rz.addEventListener('pointermove', onMove);
+                rz.addEventListener('pointerup', onUp);
+                rz.addEventListener('pointercancel', onUp);
+            });
 
             const picker = hud.querySelector('#meElevPicker');
             if (picker) {
@@ -8288,6 +8575,13 @@
 
             _mePopulateSavedList();
             _meUpdateToolButtons();
+            _meRenderEnvControls();
+            /* Rebuilding the HUD must not lose the zone-preview state. */
+            if (_meShowZones) {
+                const zb = hud.querySelector('#meZonesBtn');
+                if (zb) zb.classList.add('active');
+                _meUpdateZoneInfo();
+            }
             /* Show the palette that matches the active tool. Default is Paint, so
                the terrain swatches should be visible on open — the elevation guide
                only belongs when an elevation tool is selected. */
@@ -8301,6 +8595,8 @@
         function _meHideEditorHUD() {
             const hud = document.getElementById('meEditorHUD');
             if (hud) hud.remove();
+            const rz = document.getElementById('meHudResizer');
+            if (rz) rz.remove();
         }
 
         function _meEnterDioramaEditor() {
@@ -8519,6 +8815,19 @@
                 }
             }
             return best;
+        }
+
+        /* Remove a monument by index, keeping the selection ref coherent
+           (used by the erase tools AND the Delete button so every path
+           refreshes the 3D layer the same way). */
+        function _meRemoveMonument(idx) {
+            if (!Array.isArray(_meMonuments) || idx == null || !_meMonuments[idx]) return false;
+            _meMonuments.splice(idx, 1);
+            if (_meSelectedMonRef != null) {
+                if (_meSelectedMonRef === idx) _meSelectedMonRef = null;
+                else if (_meSelectedMonRef > idx) _meSelectedMonRef--;
+            }
+            return true;
         }
 
         function _meScrollPaletteToTop() {
@@ -9534,6 +9843,7 @@
                 if (hv) hv.textContent = _meH;
                 const ss = document.getElementById('meSizeSummary');
                 if (ss) ss.textContent = _meW + '×' + _meH;
+                _meUpdateZoneInfo();
                 _meSyncToState();
                 if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
                 if (typeof renderBoard === 'function') renderBoard();
@@ -9788,6 +10098,10 @@
         function _mePaintCell(cell) {
             const x = +cell.dataset.x, y = +cell.dataset.y;
             if (x < 0 || y < 0 || x >= _meW || y >= _meH) return;
+            /* Set when an erase branch removed an object/monument: the 3D
+               object layer must rebuild AFTER _meRenderGrid() has synced the
+               edit into state (rebuildObjects reads state, not _me* grids). */
+            let _refreshObjs3D = false;
 
             if (_meTool === 'paint') {
                 const tid = ME_TERRAIN_TO_ID[_meSelectedTerrain] || 1;
@@ -9911,6 +10225,16 @@
                     }
                 }
             } else if (_meTool === 'erase') {
+                /* Erase what the user can SEE, in order: a monument whose
+                   footprint covers this tile goes first (previously monuments
+                   simply ignored both erasers — "can't delete it"), THEN
+                   terrain blocks. */
+                const monHit = _meFindMonumentNear(x, y);
+                if (monHit != null) {
+                    _meSfx('block');
+                    _meRemoveMonument(monHit);
+                    _refreshObjs3D = true;
+                } else {
                 /* Erase the block the user can SEE: with Z-lock off, target the
                    block at the active Z if there is one, otherwise the column's
                    top block (previously erase silently targeted _meActiveZ only,
@@ -9926,10 +10250,14 @@
 
                 const col = _meGetColumn(x, y);
                 if (col.length === 0) {
-                    _meObjects[y][x] = [];
+                    if (Array.isArray(_meObjects[y][x]) && _meObjects[y][x].length > 0) {
+                        _meObjects[y][x] = [];
+                        _refreshObjs3D = true;
+                    }
                     if (_meSelectedObjRef && _meSelectedObjRef.x === x && _meSelectedObjRef.y === y) _meSelectedObjRef = null;
                     _meSpawns[1] = _meSpawns[1].filter(s => !(s.x === x && s.y === y));
                     _meSpawns[2] = _meSpawns[2].filter(s => !(s.x === x && s.y === y));
+                }
                 }
             } else if (_meTool === 'eraseObj') {
                 if (Array.isArray(_meObjects[y][x]) && _meObjects[y][x].length > 0) {
@@ -9937,6 +10265,31 @@
                     _meObjects[y][x].pop();
                     if (_meSelectedObjRef && _meSelectedObjRef.x === x && _meSelectedObjRef.y === y &&
                         _meSelectedObjRef.idx >= _meObjects[y][x].length) _meSelectedObjRef = null;
+                    _refreshObjs3D = true;
+                } else {
+                    /* Nothing anchored on the clicked tile. Tall sprites render
+                       OFFSET from their base tile and monuments span several
+                       tiles, so an exact-tile check alone made the eraser feel
+                       broken ("some objects and monuments don't erase").
+                       Fall back to: monument footprint under the click, then —
+                       on a deliberate single click only, never mid-drag — the
+                       nearest object within 2 tiles (same forgiveness as the
+                       Select tool). */
+                    const monHit = _meFindMonumentNear(x, y);
+                    if (monHit != null) {
+                        _meSfx('block');
+                        _meRemoveMonument(monHit);
+                        _refreshObjs3D = true;
+                    } else if (!_meEditorDragging) {
+                        const near = _meFindObjectNear(x, y);
+                        if (near) {
+                            _meSfx('block');
+                            _meObjects[near.y][near.x].splice(near.idx, 1);
+                            if (_meSelectedObjRef && _meSelectedObjRef.x === near.x && _meSelectedObjRef.y === near.y &&
+                                _meSelectedObjRef.idx >= _meObjects[near.y][near.x].length) _meSelectedObjRef = null;
+                            _refreshObjs3D = true;
+                        }
+                    }
                 }
             } else if (_meTool === 'spawn1' || _meTool === 'spawn2') {
                 _meSfx('uiButtonConfirm');
@@ -9984,6 +10337,7 @@
                 _meSyncVoxelsToLegacy();
             }
             _meRenderGrid();
+            if (_refreshObjs3D) _meRefreshObjects3D();
         }
 
         function _meShowInspector(tx, ty, px, py) {
@@ -10258,6 +10612,7 @@
                 voxels: _meVoxels ? _meVoxels.map(row => row.map(col => col.map(b => ({...b})))) : null,
                 monuments: _meMonuments ? _meMonuments.map(m => ({...m})) : [],
                 terrainTints: Object.assign({}, _meTerrainTints),
+                env: _meEnv ? JSON.parse(JSON.stringify(_meEnv)) : null,
                 /* fmt 2 = empty columns are REAL void holes; older saves treat
                    empty as grass and get back-filled on load. */
                 fmt: 2,
@@ -10295,6 +10650,9 @@
             _meMonuments = Array.isArray(m.monuments) ? m.monuments.map(mm => ({...mm})) : [];
             _meTerrainTints = m.terrainTints ? Object.assign({}, m.terrainTints) : {};
             _meApplyTintsLive();
+            _meEnv = m.env ? JSON.parse(JSON.stringify(m.env)) : null;
+            _meApplyEnvLive();
+            _meRenderEnvControls();
             _meSelectedObjRef = null;
             _meSelectedMonRef = null;
             _meSanctuaryZones = m.sanctuaryZones ? m.sanctuaryZones.map(row => [...row]) : _meEmptySanctuaryGrid(_meH, _meW);
@@ -10338,6 +10696,7 @@
                 voxels: _meVoxels,
                 monuments: _meMonuments || [],
                 terrainTints: _meTerrainTints,
+                env: _meEnv ? JSON.parse(JSON.stringify(_meEnv)) : null,
                 fmt: 2
             };
             const json = JSON.stringify(data);
@@ -10361,6 +10720,9 @@
                 _meMonuments = Array.isArray(data.monuments) ? data.monuments.map(m => ({...m})) : [];
                 _meTerrainTints = data.terrainTints ? Object.assign({}, data.terrainTints) : {};
                 _meApplyTintsLive();
+                _meEnv = data.env ? JSON.parse(JSON.stringify(data.env)) : null;
+                _meApplyEnvLive();
+                _meRenderEnvControls();
                 _meSelectedObjRef = null;
                 _meSelectedMonRef = null;
                 _meSanctuaryZones = data.sanctuaryZones ? data.sanctuaryZones.map(row => [...row]) : _meEmptySanctuaryGrid(_meH, _meW);
@@ -10823,64 +11185,100 @@
             if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
         };
 
-        function _meAutoPlaceSpawns() {
+        /* Can a unit stand here? Top block passable, no blocking object, and
+           not inside a monument footprint. */
+        function _mePassableForSpawn(x, y) {
+            const col = _meVoxels ? (_meVoxels[y]?.[x] || []) : [];
+            if (col.length === 0) return false;
+            const tid = col[col.length - 1].tid;
+            const terrainKey = ME_TERRAIN_IDS[tid] || 'grass';
+            const rule = (typeof TERRAIN_RULES !== 'undefined') ? TERRAIN_RULES[terrainKey] : null;
+            if (rule && rule.passable === false) return false;
+            const stk = Array.isArray(_meObjects[y]?.[x]) ? _meObjects[y][x] : [];
+            for (let oi = 0; oi < stk.length; oi++) {
+                const objKey = ME_OBJECT_IDS[stk[oi].oid];
+                if (objKey && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[objKey] && !OBJECT_RULES[objKey].walkable) {
+                    return false;
+                }
+            }
+            if (Array.isArray(_meMonuments)) {
+                for (const m of _meMonuments) {
+                    const rr = Math.max(1, Math.floor((m.foot || 3) / 2));
+                    if (Math.abs(x - m.x) <= rr && Math.abs(y - m.y) <= rr) return false;
+                }
+            }
+            return true;
+        }
+
+        /* Auto-spawn layout = what every REAL map uses: a centered 4×1 strip
+           along each of two OPPOSITE edges (P1 bottom, P2 top), sliding each
+           seat to the nearest standable tile when terrain blocks the ideal
+           spot. (The old version greedily picked the tiles closest to the NW
+           and SE CORNERS — so the editor's zone preview showed edge strips but
+           playtest dumped the teams into the corners.) Pure: returns
+           {1:[...],2:[...]} without touching _meSpawns, so the zone preview
+           can show exactly what playtest will do. */
+        function _meComputeAutoSpawnStrips() {
             const w = _meW, h = _meH;
+            const teamSize = Math.max(1, Math.min(4, w));
+            const startCol = Math.max(0, Math.floor((w - teamSize) / 2));
 
-            const passable = [];
-            for (let y = 0; y < h; y++) {
-                for (let x = 0; x < w; x++) {
-                    const col = _meVoxels ? (_meVoxels[y]?.[x] || []) : [];
-                    if (col.length === 0) continue;
-                    const tid = col[col.length - 1].tid;
-                    const terrainKey = ME_TERRAIN_IDS[tid] || 'grass';
-                    const rule = (typeof TERRAIN_RULES !== 'undefined') ? TERRAIN_RULES[terrainKey] : null;
-                    if (rule && rule.passable === false) continue;
+            const usedKeys = new Set();
+            _meSpawns[1].forEach(s => usedKeys.add(s.x + ',' + s.y));
+            _meSpawns[2].forEach(s => usedKeys.add(s.x + ',' + s.y));
 
-                    const stk = Array.isArray(_meObjects[y]?.[x]) ? _meObjects[y][x] : [];
-                    let blocked = false;
-                    for (let oi = 0; oi < stk.length; oi++) {
-                        const objKey = ME_OBJECT_IDS[stk[oi].oid];
-                        if (objKey && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[objKey] && !OBJECT_RULES[objKey].walkable) {
-                            blocked = true; break;
+            /* Opposite edges. If ONE side is already hand-placed, put the auto
+               side on the edge farthest from it. */
+            let p1Row = h - 1, p2Row = 0;
+            if (_meSpawns[1].length && !_meSpawns[2].length) {
+                const avgY = _meSpawns[1].reduce((s, p) => s + p.y, 0) / _meSpawns[1].length;
+                p2Row = avgY > (h - 1) / 2 ? 0 : h - 1;
+                p1Row = p2Row === 0 ? h - 1 : 0;
+            } else if (_meSpawns[2].length && !_meSpawns[1].length) {
+                const avgY = _meSpawns[2].reduce((s, p) => s + p.y, 0) / _meSpawns[2].length;
+                p1Row = avgY > (h - 1) / 2 ? 0 : h - 1;
+                p2Row = p1Row === h - 1 ? 0 : h - 1;
+            }
+
+            const buildStrip = (edgeRow, inwardStep) => {
+                const out = [];
+                for (let i = 0; i < teamSize; i++) {
+                    const wantX = Math.min(startCol + i, w - 1);
+                    let placed = null;
+                    /* Ideal seat first; then slide along the row; then retreat
+                       inward row by row — nearest usable tile wins. */
+                    outer:
+                    for (let rOff = 0; rOff < h; rOff++) {
+                        const yy = edgeRow + inwardStep * rOff;
+                        if (yy < 0 || yy >= h) break;
+                        for (let xOff = 0; xOff < w; xOff++) {
+                            for (const sgn of (xOff === 0 ? [1] : [1, -1])) {
+                                const xx = wantX + sgn * xOff;
+                                if (xx < 0 || xx >= w) continue;
+                                const key = xx + ',' + yy;
+                                if (usedKeys.has(key)) continue;
+                                if (!_mePassableForSpawn(xx, yy)) continue;
+                                placed = { x: xx, y: yy };
+                                usedKeys.add(key);
+                                break outer;
+                            }
                         }
                     }
-                    if (blocked) continue;
-
-                    passable.push({ x, y });
+                    if (placed) out.push(placed);
                 }
-            }
-            if (passable.length < 2) return;
+                return out;
+            };
 
-            const p1Tiles = passable.slice().sort((a, b) => (a.x + a.y) - (b.x + b.y));
-            const p2Tiles = passable.slice().sort((a, b) => ((w - 1 - a.x) + (h - 1 - a.y)) - ((w - 1 - b.x) + (h - 1 - b.y)));
+            return {
+                1: _meSpawns[1].length ? _meSpawns[1].map(s => ({ x: s.x, y: s.y })) : buildStrip(p1Row, p1Row === h - 1 ? -1 : 1),
+                2: _meSpawns[2].length ? _meSpawns[2].map(s => ({ x: s.x, y: s.y })) : buildStrip(p2Row, p2Row === 0 ? 1 : -1),
+            };
+        }
 
-            const maxPerTeam = Math.min(4, Math.floor(passable.length / 2));
-            const usedKeys = new Set();
-
-            if (_meSpawns[1].length === 0) {
-                _meSpawns[1] = [];
-                for (let i = 0; i < p1Tiles.length && _meSpawns[1].length < maxPerTeam; i++) {
-                    const t = p1Tiles[i];
-                    const key = t.x + ',' + t.y;
-                    if (usedKeys.has(key)) continue;
-                    _meSpawns[1].push({ x: t.x, y: t.y });
-                    usedKeys.add(key);
-                }
-            } else {
-
-                _meSpawns[1].forEach(s => usedKeys.add(s.x + ',' + s.y));
-            }
-
-            if (_meSpawns[2].length === 0) {
-                _meSpawns[2] = [];
-                for (let i = 0; i < p2Tiles.length && _meSpawns[2].length < maxPerTeam; i++) {
-                    const t = p2Tiles[i];
-                    const key = t.x + ',' + t.y;
-                    if (usedKeys.has(key)) continue;
-                    _meSpawns[2].push({ x: t.x, y: t.y });
-                    usedKeys.add(key);
-                }
-            }
+        function _meAutoPlaceSpawns() {
+            const strips = _meComputeAutoSpawnStrips();
+            if (_meSpawns[1].length === 0) _meSpawns[1] = strips[1];
+            if (_meSpawns[2].length === 0) _meSpawns[2] = strips[2];
         }
 
         window._mePlayTest = function() {
@@ -10978,6 +11376,7 @@
             window._customEditorBoard = board;
             window._customEditorObjects = objBoard;
             window._customEditorMonuments = (_meMonuments && _meMonuments.length) ? _meMonuments.map(m => ({ ...m })) : null;
+            window._customEditorEnv = _meEnv ? JSON.parse(JSON.stringify(_meEnv)) : null;
             window._customEditorSanctuaryZones = _meSanctuaryZones ? _meSanctuaryZones.map(r => [...r]) : null;
 
             window._customEditorHeights = walkHeights;

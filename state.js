@@ -1047,8 +1047,13 @@
             state.streetLamps = !!layout.streetLamps;
             /* Per-map environment preset: sky tint / stars / fog / horizon
                scenery theme. three-renderer reads state.mapEnv every frame
-               (see _updateEnvironment) — null means the default cosmic dome. */
-            state.mapEnv = layout.env ? JSON.parse(JSON.stringify(layout.env)) : null;
+               (see _updateEnvironment) — null means the default cosmic dome.
+               Custom editor/community maps carry their author-picked env in
+               window._customEditorEnv (map.js _mePlayTest / profile.js
+               _mePlayCommunityMap), same pattern as _customEditorTints. */
+            state.mapEnv = ((modeId === '_custom_editor' || modeId === '_custom_community') && window._customEditorEnv)
+                ? JSON.parse(JSON.stringify(window._customEditorEnv))
+                : (layout.env ? JSON.parse(JSON.stringify(layout.env)) : null);
 
             if (!layout.isElliptical) state.zoneMap = null;
 

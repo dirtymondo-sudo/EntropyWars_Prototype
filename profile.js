@@ -1901,6 +1901,12 @@ window._mePlayCommunityMap = function(mapData) {
       window._customEditorSanctuaryZones = mapData.sanctuaryZones.map(function(r) { return r.slice(); });
     }
 
+    /* Author-picked sky/backdrop (env) rides along with the shared map —
+       state.js applyGameMode reads window._customEditorEnv for
+       '_custom_community'. Always assign (null clears any stale env from a
+       previous custom match). */
+    window._customEditorEnv = mapData.env ? JSON.parse(JSON.stringify(mapData.env)) : null;
+
     if (typeof applyGameMode === 'function') applyGameMode('_custom_community');
     if (typeof CONFIG !== 'undefined') CONFIG.teamSize = teamSize;
 
