@@ -8559,6 +8559,15 @@
         // reads strategically, with a 45° yaw for the classic isometric look.
         const DEFAULT_BOARD_TILT = 40;
         const DEFAULT_BOARD_YAW  = 45;
+        /* Tile-pick overhead (Move / Jump / Build / free-aim spell rings):
+           a genuinely top-down "over the map" pitch, distinctly ABOVE the
+           normal gameplay view, so entering Move visibly lifts the camera
+           over the board to read the reachable tiles. Deliberately lower
+           (more top-down) than every camera preset (far=30 / standard=40 /
+           close=55). This view is TRANSIENT: it goes through moveTo(), which
+           never writes _restTilt, so the next unit's turn start returns to
+           the normal resting view automatically. */
+        const TILE_PICK_TILT = 20;
         // Ceiling on the REMEMBERED resting/return pitch. The player can still
         // crane the live camera all the way up (tilt-drag allows 135° — looking
         // at the sky), but that pose must never become the angle every
@@ -26740,9 +26749,8 @@
                             getDefaultZoom());
                         camera.moveTo({
                             x: unit.x, y: unit.y, zoom,
-                            // Never more angled than the resting view — same
-                            // rule as the Move framing (camera-reversal fix).
-                            tilt: Math.min(getTacticalTilt(), camera._restTilt ?? DEFAULT_BOARD_TILT),
+                            // Same over-the-map overhead as the Move framing.
+                            tilt: TILE_PICK_TILT,
                             duration: 380, easing: 'easeInOut',
                             _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                         });
@@ -27569,11 +27577,11 @@
                     getDefaultZoom());
                 camera.moveTo({
                     x: unit.x, y: unit.y,
-                    // Tile picking is the most top-down context there is, so it
-                    // must never be MORE angled than the player's resting view —
-                    // orbit to near-top-down and Move used to snap you back to
-                    // the preset's 40°, which read as a camera reversal.
-                    tilt: Math.min(getTacticalTilt(), camera._restTilt ?? DEFAULT_BOARD_TILT),
+                    // Over-the-map overhead. The old getTacticalTilt() was the
+                    // PRESET tilt (40) — identical to the default resting view,
+                    // so "entering Move" changed nothing but zoom and the
+                    // tactical view read as the camera barely reacting.
+                    tilt: TILE_PICK_TILT,
                     zoom: _mvZoom,
                     duration: 420, easing: 'easeInOut', _fogAllowed: true,
                     _allowZoomChange: true, _bypassCap: true

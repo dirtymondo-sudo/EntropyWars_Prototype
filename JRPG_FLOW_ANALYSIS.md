@@ -7,6 +7,40 @@ match-select.js, party-builder.js, profile.js, index.html, PLAYTEST_NOTES.md).*
 
 ---
 
+## ✅ Implementation status (2026-07-15, token `20260715a`)
+
+**P0 — all four reported bugs fixed** (battle.js, ui.js, state.js, hud.js):
+1. Camera — **§4's diagnosis was WRONG** (corrected 2026-07-15 after user feedback). The real problem:
+   `getTacticalTilt()` returns the PRESET tilt (40), which is identical to the default resting view —
+   so clicking Move changed nothing but zoom ("camera barely moves"). Fix: new `TILE_PICK_TILT = 20`
+   (battle.js, next to DEFAULT_BOARD_TILT) — Move/Jump/Build and free-aim spell framing now sweep to a
+   genuinely over-the-map overhead. It's transient by construction (moveTo never writes `_restTilt`),
+   so the next unit's turn start returns to the normal resting view automatically. Do NOT cap the pick
+   tilt at `_restTilt` — that was tried and it makes Move a no-op. `_restTilt` still resets per match.
+2. Super-effective: the four ui.js highlight writers share one `_spellEffClass` helper that backs STAB
+   out (`>1.001/<0.999`) — the nameplate `!` badge self-corrects since it parses these classes.
+3. Spell targeting: `_getSpellValidTargets` now LOS-exempts `delayed` and fog-filters (with the
+   telescope exemption, mirroring doSpell exactly); map clicks z-snap to the sole valid target in a
+   column; free-aim clicks run `spellTargetUsableOn` (full-HP ally heal rejected on click 1, with reason).
+4. Jump: fall damage applies at LANDING (in `_doPostJump`); local-human jumps no longer pan the camera
+   (walk parity — AI/remote keep the fog-gated follow); post-jump re-arm 650→500 ms; damaging landings
+   paint **hazard-crimson** in both Move and Jump overlays via new pure `predictFallDamage` (state.js,
+   twin of `applyFallDamage`); quick-menu "Jump here" shows the exact `−N HP`; Jump blade explains
+   itself when greyed ('Jumped' / 'No AP' / 'No landing').
+
+**P1 — input correctness, all six done** (ui.js, hud.js, battle.js):
+Esc single-owner (dialog > pause-close > back-one-level > pause; `_escHasBackTarget`); arrow keys owned
+by the drum while browsable (`window._hrlgArrowsOwned`, board keeps WASD; aiming returns arrows to the
+board); `_execAction` hoisted out of clickTile and EVERY latch-setting path funnels through it (setTool
+self-casts, selectTargetFromMenu, the hud.js quick-cast `_fireEnemyAction`); quick-menu anchors cleared
+in `setActionMode`; forfeit now confirms via a new generic `confirm` uiDialog type (late-binds the
+online.js wrapper); menu failsafe — drum force-shows after 4 s of stuck-busy on a local human turn.
+
+**Not yet done:** P2 TargetQuery refactor, P3 genre features (forecast card, threat overlay, undo move,
+turn timeline, height readout, onboarding, speed control, minimap toggle).
+
+---
+
 ## 0. Executive summary
 
 The bones here are genuinely good: one declarative menu component (the Horologe drum) driven
@@ -179,6 +213,12 @@ that the exclamation mark *always* means the matchup, never the caster's self-bo
 ---
 
 ## 4. BUG — Camera: top-down at turn start, angled after clicking Move
+
+> ⚠️ **This section's diagnosis and fix were WRONG** — see the implementation-status note at the top.
+> The intended design (per the game's author): clicking Move sweeps UP to a distinct over-the-map
+> overhead (`TILE_PICK_TILT = 20`), and the next unit's turn start returns to the normal resting view.
+> The preset tilt (40) equals the default rest tilt, so the old `getTacticalTilt()` framing was a
+> visual no-op — and capping it at `_restTilt` (the fix below) makes it worse. Kept for the record.
 
 **Convention:** tilt 0 = straight down (top-down); bigger tilt = lower/more angled
 (three-camera.js:139–141). Presets: standard 40 / far 30 / close 55 (battle.js:9935–9939);
