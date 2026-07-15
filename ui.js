@@ -3742,6 +3742,17 @@
         }
 
         var _lastHoverPanelFP = '';
+        // Portrait art for the INSPECT card — dedicated face art when the race
+        // has it (sprites.js RACE_PORTRAITS), else the unit's map sprite. Same
+        // fallback chain the Horologe's view tab uses (_hrlgPortraitData).
+        function renderUnitPortrait(unit) {
+            let url = typeof getUnitPortraitUrl === 'function' ? getUnitPortraitUrl(unit) : null;
+            const isFace = !!url;
+            if (!url && typeof getBattleMapSpriteUrl === 'function') url = getBattleMapSpriteUrl(unit);
+            if (!url) return '';
+            return `<div class="unit-portrait${isFace ? '' : ' sprite'}" style="background-image:url('${url}')"></div>`;
+        }
+
         function renderSelectedUnitPanel() {
             if (!selectedUnitPanel || !unitHoverHud) return;
 

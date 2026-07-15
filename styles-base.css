@@ -1750,6 +1750,26 @@
             margin-bottom: 8px;
         }
 
+        .unit-hover-hud .unit-portrait {
+            flex: 0 0 auto;
+            width: 46px;
+            height: 46px;
+            border-radius: 8px;
+            border: 1px solid rgba(212, 200, 176, 0.25);
+            background-color: rgba(10, 14, 28, 0.7);
+            background-size: cover;
+            background-position: center top;
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
+        }
+
+        /* map sprites are pixel art and not square-cropped faces — contain them */
+        .unit-hover-hud .unit-portrait.sprite {
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            image-rendering: pixelated;
+        }
+
         .unit-hover-hud .selected-stat-block {
             display: flex;
             flex-direction: column;
