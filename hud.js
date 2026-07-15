@@ -1692,6 +1692,10 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     const hpCol = hpPct <= 30 ? EW.bad : hpPct <= 55 ? EW.warn : EW.good;
     const shPct = (port.maxHp > 0 && port.shield > 0)
       ? Math.min(100, Math.round((port.shield / port.maxHp) * 100)) : 0;
+    // Confirm forecast: the slice of HP the armed action would take blinks
+    // white at the leading edge of the fill (lethal → the whole fill blinks).
+    const prevPct = (b.previewDmg > 0 && port.maxHp > 0)
+      ? Math.max(0, Math.min(hpPct, (b.previewDmg / port.maxHp) * 100)) : 0;
     portCol = h('span', { className: 'hrlg-tcol' },
       h('span', { className: 'hrlg-blabel', style: { flex: '0 0 auto' } }, b.label),
       h('span', { className: 'hrlg-thp' },
@@ -1700,6 +1704,10 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
           width: hpPct + '%',
           background: hpCol,
         }}),
+        prevPct > 0 && h('span', {
+          className: 'hrlg-thp-preview' + (b.previewDmg >= port.hp ? ' dmg-preview-lethal' : ''),
+          style: { left: (hpPct - prevPct) + '%', width: prevPct + '%' },
+        }),
         shPct > 0 && h('span', { className: 'hrlg-thp-shield', style: { width: shPct + '%' } }),
         h('span', { className: 'hrlg-thp-num' }, port.hp + '/' + port.maxHp),
       ),
@@ -2683,6 +2691,14 @@ function _hrlgTargetBlades(unit, st, mode) {
     // structures keep the old hp% text since they have no face art.
     const portrait = tUnit ? _hrlgPortraitData(tUnit, unit) : null;
 
+    // Confirm forecast: the armed (✓) target's HP bar blinks the projected
+    // damage in white (predictDamageToUnit, ui.js — mid estimate IF it
+    // lands; dodge/counter/crit stay a gamble).
+    const previewDmg = (isPending && tUnit && isOffensive
+        && typeof predictDamageToUnit === 'function'
+        && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
+      ? predictDamageToUnit(unit, tUnit, spell || null) : 0;
+
     return {
       id: 'tg:' + i + ':' + t.x + ',' + t.y,
       icon: typeAdv || '⌖',
@@ -2691,6 +2707,9 @@ function _hrlgTargetBlades(unit, st, mode) {
       available: true,
       check: !!isPending,
       superEff: superEff,
+      previewDmg: previewDmg,
+      // Forecast chip on the armed row: "≈−34" (reuses the power chip slot).
+      power: previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad } : undefined,
       portrait: portrait,
       meta: portrait
         ? { text: t.dist + 't' }
@@ -2885,7 +2904,10 @@ function _hrlgMoreBlades(unit, st) {
   const moreItems = [];
 
   if ((unit.ap || 0) >= 2) {
-    moreItems.push({ label: '🛡 Guard', sub: '2 AP', onClick: () => { if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); } });
+    // Guard = defensive stance + Overwatch: one reaction shot at the first
+    // enemy that finishes a move inside this unit's attack range (battle.js
+    // checkOverwatchTriggers).
+    moreItems.push({ label: '🛡 Guard 👁 Overwatch', sub: '2 AP', onClick: () => { if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); } });
   }
 
   if (typeof _isGauntlet === 'function' && _isGauntlet()) {

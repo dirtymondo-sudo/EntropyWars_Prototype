@@ -641,3 +641,30 @@
             50% { opacity: 1; }
         }
 
+        /* ── Confirm-step damage forecast ──────────────────────────────
+           While a target is armed for confirm, the slice of HP the action
+           would take blinks white on the target's HP bar — .tp-dmg-preview
+           rides the 3D nameplate (three-renderer _updateDmgPreviewPlates),
+           .hrlg-thp-preview the target drum row (hud.js HorologeBlade).
+           Opacity-only blink (GPU composited, like the pulses above). */
+        .tp-dmg-preview,
+        .hrlg-thp-preview {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            background: #ffffff;
+            pointer-events: none;
+            animation: dmgPreviewBlink 0.85s ease-in-out infinite;
+        }
+
+        /* Lethal forecast: the blink warms to kill-red at its peak. */
+        .tp-dmg-preview.dmg-preview-lethal,
+        .hrlg-thp-preview.dmg-preview-lethal {
+            background: #ffb3bc;
+        }
+
+        @keyframes dmgPreviewBlink {
+            0%, 100% { opacity: 0.25; }
+            50% { opacity: 0.95; }
+        }
+

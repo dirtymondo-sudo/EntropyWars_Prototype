@@ -6987,6 +6987,49 @@ const ThreeRenderer = (function () {
         return r;
     }
 
+    /* ── Confirm-step damage forecast on the nameplate HP bar ─────────────
+       While an attack/spell target is armed for confirm (ui.js
+       getPendingDamagePreview reads state.pendingTarget — viewer-local,
+       never synced), the slice of HP the action would take blinks white at
+       the leading edge of the fill. Runs every frame (pendingTarget changes
+       don't bump the unit serial, so _patchPlateStats can't carry this);
+       the idle path is a single cheap null check. */
+    var _dmgPrevUnitId = null;
+    function _updateDmgPreviewPlates() {
+        var info = (typeof window.getPendingDamagePreview === 'function') ? window.getPendingDamagePreview() : null;
+        if (!info && _dmgPrevUnitId === null) return;
+        if (_dmgPrevUnitId !== null && (!info || info.unitId !== _dmgPrevUnitId)) {
+            var oldPo = _plateObjs.get(_dmgPrevUnitId);
+            var oldEl = (oldPo && oldPo.el) ? oldPo.el.querySelector('.tp-dmg-preview') : null;
+            if (oldEl) oldEl.remove();
+            _dmgPrevUnitId = null;
+        }
+        if (!info) return;
+        var u = null;
+        for (var i = 0; i < (state.units || []).length; i++) {
+            if (state.units[i].id === info.unitId) { u = state.units[i]; break; }
+        }
+        var po = _plateObjs.get(info.unitId);
+        if (!u || u.dead || !po || !po.el) return;
+        var refs = _plateRefs(po);
+        if (!refs.hpBar) return;
+        var el = refs.hpBar.querySelector('.tp-dmg-preview');
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'tp-dmg-preview';
+            // Before the HP number so the text keeps painting on top.
+            refs.hpBar.insertBefore(el, refs.hpNum || null);
+        }
+        var maxHp = u.maxHp || 1;
+        var hpPct = Math.max(0, Math.min(100, 100 * (u.hp || 0) / maxHp));
+        var lossPct = Math.max(0, Math.min(hpPct, 100 * info.dmg / maxHp));
+        el.style.left = (hpPct - lossPct) + '%';
+        el.style.width = lossPct + '%';
+        if (info.lethal) el.classList.add('dmg-preview-lethal');
+        else el.classList.remove('dmg-preview-lethal');
+        _dmgPrevUnitId = info.unitId;
+    }
+
     function _patchPlateStats() {
         if (!state.units) return;
         for (var i = 0; i < state.units.length; i++) {
@@ -20334,6 +20377,7 @@ const ThreeRenderer = (function () {
         rebuildSanctuaryWalls();
         _updateSpawnZonePulse();
         _updateSanctuaryWallPulse();
+        _updateDmgPreviewPlates();
         var uSer = _computeUnitSerial();
         if (uSer !== _lastUnitSerial) {
 

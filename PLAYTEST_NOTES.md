@@ -4,7 +4,62 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## AP ECONOMY REWORK: 2 AP turns + damaging actions end turn + one +2 press + once-per-turn abilities (2026-07-15, LATEST) — battle.js, hud.js, data.js
+## GUARD+OVERWATCH & CONFIRM DAMAGE FORECAST (2026-07-15, LATEST) — battle.js, ui.js, hud.js, online.js, three-renderer.js, styles-animations.css
+Two tactical-JRPG staples, kept deliberately simple (token `20260715j`):
+- **Guard now includes Overwatch** (the XCOM reaction shot, folded into the
+  existing 2 AP Guard stance instead of a new verb). `doGuard` (ui.js) sets
+  `unit._overwatchArmed = true` next to `_guardCounterBonus`; new
+  `checkOverwatchTriggers(mover)` + `_fireOverwatchShot` (battle.js, right
+  above doMove) fire ONE reaction shot at the first ENEMY that *finishes* a
+  move or jump inside the guardian's attack range. Hooks: doMove (next to
+  checkTrapTrigger) and `_doPostJump`. Gates mirror a real attack: combatDist
+  ≤ getEffectiveRange, `isRangeBlockedByTerrain` LOS, `isInVision` fog, and
+  camouflaged (`invisible` w/o `marked`) movers slip past. Damage =
+  `getCounterDamage` (same reduced formula as melee counters: no crit, no
+  dodge), XP_COUNTER, physical, via applyDamageToUnit. Disarmed by firing,
+  by the 'guarding' status ending, and at the same three round-reset sites
+  that zero `_guardCounterBonus` (search `_overwatchArmed = false`).
+  - **Deliberate scope**: triggers on move END only (not mid-path pass-bys) —
+    predictable, readable, no walk-anim interrupts. Forced displacement
+    (push/pull), teleports and flight altitude changes do NOT trigger it.
+  - **Online**: engine-side ⇒ host-authoritative like traps; speaks through
+    relayed primitives (showFloatingTextForUnit→floating-text, playSfx→sfx,
+    HP via state-sync). The projectile/attack anim is host-local — same
+    parity level as melee counters. ALSO: `doGuard` was never wrapped in
+    online.js (guest Guard ran locally and rolled back on the next sync — a
+    real desync bug); it now has the standard guest-emit wrapper + a
+    `doGuard` case in the game-action dispatcher.
+  - AI: ai.js already calls `g.doGuard` — AI guards auto-arm overwatch. The
+    AI does NOT yet path around enemy overwatch (future: feed into threat map).
+- **Confirm-step damage forecast** ("the contract if it lands"): while a
+  target is armed for confirm (`state.pendingTarget`, both hover-arm and
+  click-arm), the slice of HP the action would remove **blinks white** on
+  (a) the target's 3D nameplate HP bar and (b) the target-drum row's HP bar,
+  plus a red `≈−34` chip on the armed blade. Deliberately does NOT reveal
+  dodge/counter/crit — risk stays (author's design call).
+  - ui.js: `_estimateBasicAttackDamage` (new, mirrors doAttack's roll at the
+    randInt midpoint +4) + `predictDamageToUnit(attacker, target, spell?)`
+    (wraps `_estimateSpellDamage`/the new attack estimator, then status
+    damage-taken mults + shield soak + clamp to hp; 0 for invulnerable) +
+    `getPendingDamagePreview()` (resolves pendingTarget → {unitId, dmg,
+    lethal}, memoized; on `window`). Spells use `pt.tool || selectedTool`;
+    non-damaging spells/allies → null.
+  - three-renderer.js: `_updateDmgPreviewPlates()` runs EVERY frame (right
+    after `_updateSanctuaryWallPulse()`) because pendingTarget doesn't bump
+    the unit serial — `_patchPlateStats` alone can't drive it. Injects/
+    removes a `.tp-dmg-preview` div in the plate's HP bar (inserted before
+    `.tp-bar-num` so the number stays readable).
+  - hud.js: `_hrlgTargetBlades` computes `previewDmg` for the pending blade;
+    `HorologeBlade` renders `.hrlg-thp-preview` inside `.hrlg-thp`.
+  - CSS: `.tp-dmg-preview`/`.hrlg-thp-preview` + `dmgPreviewBlink` keyframes
+    in styles-animations.css (global sheet — reaches plate DOM and drum).
+    Lethal forecast tints kill-red (`.dmg-preview-lethal`).
+  - Viewer-local by construction: pendingTarget is in the serialize skip
+    list AND `_guestUIKeys`, so the preview never syncs (RULE #2 safe).
+  - Known v1 limits: single armed target only (no AoE splash preview), no
+    preview on item/bane throws, Chivalry `_guardedBy` redirect not shown.
+
+## AP ECONOMY REWORK: 2 AP turns + damaging actions end turn + one +2 press + once-per-turn abilities (2026-07-15) — battle.js, hud.js, data.js
 The turn economy changed from "3 AP, everything costs 1-2" to:
 - **`UNIT_MAX_AP = 2`** (battle.js). Moves still cost 1 AP each (max 2 moves/turn).
 - **Any attack or DAMAGING spell cast ENDS the turn**: new `spendAllAP(unit)`

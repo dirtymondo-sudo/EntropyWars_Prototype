@@ -530,6 +530,22 @@
             };
         }
 
+        /* Guard (More-menu stance, ui.js doGuard) mutates AP + status +
+           the Overwatch arm — a guest running it locally desyncs on the
+           next state-sync (the classic "my Guard did nothing" rollback).
+           Route it like every other engine mutator. */
+        const _origDoGuard = (typeof doGuard === 'function') ? doGuard : null;
+        if (_origDoGuard) {
+            doGuard = function(unit) {
+                if (!_isOnline() || state._remoteAction) return _origDoGuard(unit);
+                if (_isHost()) return _hostRunAndSync(_origDoGuard, [unit]);
+                if (!_guestOwnsAction(unit)) return;
+                playSfx('uiConfirm');   // click feedback; the stance arrives with the sync
+                _emit('game-action', { type: 'engine', fn: 'doGuard', unitId: unit.id });
+            };
+            window.doGuard = doGuard;
+        }
+
         /* Host: rebroadcast at every action COMPLETION. Damage/AP land on
            impact timers ~1-2s after the click that triggered them, long after
            the click-time broadcast went out — this is why the guest saw enemy
@@ -1094,6 +1110,9 @@
                                 break;
                             case 'doEntropyStrike':
                                 if (typeof doEntropyStrike === 'function') doEntropyStrike(engUnit);
+                                break;
+                            case 'doGuard':
+                                if (typeof doGuard === 'function') doGuard(engUnit);
                                 break;
                         }
                         break;

@@ -17769,6 +17769,7 @@
             unit.shield = 0;
             if (typeof resetKillStreak === 'function') resetKillStreak(unit);
             unit._guardCounterBonus = 0;
+            unit._overwatchArmed = false;
         }
 
         function _gauntletResetTurnFlags(u) {
@@ -21573,6 +21574,7 @@
                 u._spellsUsedThisTurn = null;
 
                 u._guardCounterBonus = 0;
+                u._overwatchArmed = false;
             }
 
             if (!state.bench) state.bench = { 1: [], 2: [] };
@@ -24012,6 +24014,7 @@
                             u._encoreThisRound = false;
 
                             u._guardCounterBonus = 0;
+                            u._overwatchArmed = false;
                             u._skippedTurn = false;
                             const stunned = getActiveStatusKeys(u).some(k => STATUS_DEFS[k]?.blockMove);
                             if (stunned) addLog(`${unitDisplayName(u)} is stunned and cannot move!`);
@@ -30025,6 +30028,69 @@
             requestAnimationFrame(tick);
         }
 
+        /* ── Guard / Overwatch reaction shot ─────────────────────────────
+           doGuard (ui.js) arms ONE reaction shot alongside the defensive
+           stance: the first ENEMY unit to finish a move or jump inside the
+           guardian's attack range — range + LOS + team vision checked, the
+           same gates a real attack obeys — takes a snap shot at counter
+           power (getCounterDamage: reduced, no crit, no dodge). One shot
+           per stance; the stance's own round reset disarms it. Engine-side
+           only, so online it runs on the HOST like traps do, and it speaks
+           through the same relayed primitives (showFloatingTextForUnit →
+           floating-text relay, playSfx → sfx relay, HP via state-sync) so
+           the guest sees the shot land. Camouflaged movers slip past. */
+        function checkOverwatchTriggers(mover) {
+            if (!mover || mover.dead || mover._dying) return false;
+            if (unitHasStatus(mover, 'invisible') && !unitHasStatus(mover, 'marked')) return false;
+            let fired = false;
+            for (const g of state.units) {
+                if (!g || g.dead || g._dying || g.id === mover.id) continue;
+                if (!g._overwatchArmed) continue;
+                if (!unitHasStatus(g, 'guarding')) { g._overwatchArmed = false; continue; }
+                if (!isEnemyUnit(g, mover)) continue;
+                const d = combatDist(g.x, g.y, g.z ?? 0, mover.x, mover.y, mover.z ?? 0);
+                if (d < 1 || d > getEffectiveRange(g)) continue;
+                if (isRangeBlockedByTerrain(g.x, g.y, mover.x, mover.y, g.z)) continue;
+                if (state.fogOfWar && typeof isInVision === 'function' && !isInVision(g, mover.x, mover.y)) continue;
+                g._overwatchArmed = false;   // one shot per Guard stance
+                _fireOverwatchShot(g, mover, d);
+                fired = true;
+            }
+            return fired;
+        }
+
+        function _fireOverwatchShot(guardian, mover, dist) {
+            setUnitFacing(guardian, mover.x - guardian.x, mover.y - guardian.y);
+            const dmg = getCounterDamage(guardian);
+            addLog(`👁 OVERWATCH! ${unitDisplayName(guardian)} snaps off a reaction shot at ${unitDisplayName(mover)}!`);
+            showFloatingTextForUnit(guardian, '👁 OVERWATCH!', 'counter', { durationMs: 1100 });
+            const _isMelee = dist <= 1;
+            const _shotDelay = actionMs(320);
+            const _impactDelay = _isMelee ? actionMs(260) : actionMs(400);
+            window.setTimeout(() => {
+                if (state.winner || guardian.dead || guardian._dying) return;
+                playSfx('basicAttack');
+                if (_isMelee) {
+                    if (_unitAttacksWithClip(guardian)) triggerAttackAnim(guardian, mover.x, mover.y);
+                    else animateStrikeLeap(guardian, mover.x, mover.y);
+                } else {
+                    triggerAttackAnim(guardian, mover.x, mover.y);
+                    if (typeof playProjectileToUnit === 'function') {
+                        playProjectileToUnit(guardian, mover, 'attack', _impactDelay, null, _getProjectileOverride(guardian, null));
+                    }
+                }
+                window.setTimeout(() => {
+                    if (state.winner || mover.dead || mover._dying) return;
+                    applyDamageToUnit(mover, dmg, `${unitDisplayName(guardian)}'s overwatch: `, {
+                        sourceUnit: guardian, damageType: 'physical'
+                    });
+                    grantXP(guardian, XP_COUNTER, 'counter');
+                    checkWin();
+                    scheduleBoardRender();
+                }, _impactDelay);
+            }, _shotDelay);
+        }
+
         function doMove(unit, x, y, z) {
             if (!canUnitMove(unit)) {
                 if (!state.autoPlayers?.[unit.player]) {
@@ -30205,6 +30271,7 @@
             checkTrapTrigger(unit);
             checkWarpRuneTrigger(unit);
             checkSeedStepTrigger(unit);
+            checkOverwatchTriggers(unit);
 
             if (_aiWalkAnimDelay > 0) {
                 return _aiWalkAnimDelay;
@@ -30440,6 +30507,9 @@
                 if (hDiff < 0 && typeof applyFallDamage === 'function') {
                     applyFallDamage(unit, fromZ, z, 'Jump: ');
                 }
+                // Landing in a guardian's sights: jumping IS movement, so
+                // Overwatch reads it exactly like finishing a walk.
+                checkOverwatchTriggers(unit);
                 /* Jumping IS movement: stay in move mode when the unit can still
                    walk (same re-arm cascade as finishMoveAt) instead of dumping
                    the player back to the root menu after every hop. */

@@ -4718,7 +4718,12 @@
             applyStatusEffects(unit, [{ id: 'guarding', duration: 1 }], 'Guard: ');
 
             unit._guardCounterBonus = 0.15;
-            addLog(`${unitDisplayName(unit)} takes a defensive stance! (+3 Armor, +15% Counter chance)`);
+            /* Overwatch rides the Guard stance: one reaction shot at the first
+               enemy that finishes a move inside this unit's attack range
+               (checkOverwatchTriggers, battle.js). Disarmed by the same round
+               reset that clears _guardCounterBonus. */
+            unit._overwatchArmed = true;
+            addLog(`${unitDisplayName(unit)} takes a defensive stance! (+DEF/MDEF, +15% Counter — 👁 Overwatch: the first enemy to stop in attack range gets shot)`);
             showFloatingTextForUnit(unit, '🛡 GUARD', 'buff', { durationMs: 1200 });
             playSfx('uiConfirm');
 
@@ -8709,6 +8714,101 @@
             }
             return 0;
         }
+
+        /* ── Confirm-step damage forecast ────────────────────────────────
+           While a target is armed for confirm (state.pendingTarget), the
+           projected damage blinks white on the target's HP bar — nameplate
+           (three-renderer _updateDmgPreviewPlates) and target drum
+           (hud.js hrlg-thp-preview). Midpoint estimate, non-crit, front
+           arc: this is the contract IF the hit lands — dodge, counter and
+           crit stay a gamble on purpose. Viewer-local only (pendingTarget
+           never syncs), so it's fog/online-safe by construction. */
+        function _estimateBasicAttackDamage(attacker, target) {
+            if (!attacker || !target) return 0;
+            // Mirrors doAttack's roll (battle.js): randInt(40)−16 ≈ +4 mid.
+            let dmg = Math.max(24, Math.floor((attacker.atk || 0) * 0.65)
+                + (typeof getPlantedTreeBonus === 'function' ? getPlantedTreeBonus(attacker) : 0)
+                + getHourglassPower(attacker) + 4);
+            if (isEnemyUnit(attacker, target)) {
+                dmg += getEffectiveAttackBonus(attacker, 'physical');
+                dmg = Math.max(1, Math.round(dmg * getTypeDamageMultiplier(attacker, target, null)));
+                if (typeof getUnitStandingHeight === 'function') {
+                    const srcH = getUnitStandingHeight(attacker);
+                    const tgtH = getUnitStandingHeight(target);
+                    if (srcH > tgtH) {
+                        dmg = Math.max(1, Math.round(dmg * (1 + (typeof DOWNHILL_DAMAGE_BONUS !== 'undefined' ? DOWNHILL_DAMAGE_BONUS : 0.1) * (srcH - tgtH))));
+                    } else if (tgtH > srcH) {
+                        dmg = Math.max(1, dmg - (typeof HIGH_GROUND_DEF_BONUS !== 'undefined' ? HIGH_GROUND_DEF_BONUS : 5) * (tgtH - srcH));
+                    }
+                }
+                if (unitHasStatus(target, 'marked')) dmg += target.markBonus ?? 40;
+            }
+            const armor = getEffectiveArmor(target, 'physical');
+            if (armor > 0) dmg = Math.max(1, dmg - armor);
+            const hgRed = getHourglassDamageReduction(target);
+            if (hgRed > 0) dmg = Math.max(1, dmg - hgRed);
+            return Math.max(1, dmg);
+        }
+
+        /* Projected HP the target actually loses: the mid estimate run through
+           the status damage-taken multipliers and the shield soak, clamped to
+           current HP. spell=null → basic attack. Returns 0 for non-damage. */
+        function predictDamageToUnit(attacker, target, spell) {
+            if (!attacker || !target || target.dead) return 0;
+            if (!isEnemyUnit(attacker, target)) return 0;
+            if (getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable)) return 0;
+            let dmg = spell ? _estimateSpellDamage(attacker, target, spell)
+                            : _estimateBasicAttackDamage(attacker, target);
+            if (dmg <= 0) return 0;
+            const _dmgType = spell ? (spell.damageType || 'magic') : 'physical';
+            if (_dmgType !== 'magic' && typeof getStatusRangedDamageTakenMultiplier === 'function') {
+                const rm = getStatusRangedDamageTakenMultiplier(target);
+                if (rm !== 1) dmg = Math.max(1, Math.round(dmg * rm));
+            }
+            if (typeof getStatusDamageTakenMultiplier === 'function') {
+                const dm = getStatusDamageTakenMultiplier(target);
+                if (dm !== 1) dmg = Math.max(1, Math.round(dmg * dm));
+            }
+            dmg = Math.max(0, dmg - (target.shield || 0));   // shield soaks first
+            return Math.min(dmg, Math.max(0, target.hp));
+        }
+
+        /* Resolve the currently ARMED action into {unitId, dmg, lethal} — or
+           null when nothing damaging is armed. Called per frame by the 3D
+           nameplate pass, so it memoizes on the action/target fingerprint. */
+        let _dmgPreviewCacheKey = '';
+        let _dmgPreviewCacheVal = null;
+        function getPendingDamagePreview() {
+            const pt = state.pendingTarget;
+            if (!pt || state._actionExecuting || state.devAutoSim) return null;
+            const mode = pt.mode || state.actionMode;
+            if (mode !== 'attack' && mode !== 'spell') return null;
+            const attacker = typeof getSelectedUnit === 'function' ? getSelectedUnit() : null;
+            if (!attacker || attacker.dead) return null;
+            const target = (pt.z !== undefined && pt.z !== null)
+                ? (unitAt(pt.x, pt.y, pt.z) || unitAt(pt.x, pt.y))
+                : unitAt(pt.x, pt.y);
+            if (!target || target.dead || target.id === attacker.id) return null;
+            let spell = null;
+            if (mode === 'spell') {
+                const toolName = pt.tool || state.selectedTool;
+                spell = (attacker.spells || []).find(s => s.name === toolName)
+                    || (attacker._raceAbilities || []).find(s => s.name === toolName);
+                if (!spell) return null;
+                const _damaging = spell.dmg || (spell.hitDamages && spell.hitDamages.length) || spell.dotDamage;
+                if (!_damaging) return null;
+            }
+            const key = [attacker.id, target.id, mode, (spell && spell.name) || '',
+                target.hp, target.shield || 0, attacker.x, attacker.y, attacker.z ?? 0].join('|');
+            if (key === _dmgPreviewCacheKey) return _dmgPreviewCacheVal;
+            const dmg = predictDamageToUnit(attacker, target, spell);
+            _dmgPreviewCacheKey = key;
+            _dmgPreviewCacheVal = dmg > 0
+                ? { unitId: target.id, dmg: dmg, lethal: dmg >= (target.hp || 0) }
+                : null;
+            return _dmgPreviewCacheVal;
+        }
+        window.getPendingDamagePreview = getPendingDamagePreview;
 
         // Green !-circle marking a super-effective hit (inline-styled so it
         // renders identically through the 3D intent badges and the DOM path).
