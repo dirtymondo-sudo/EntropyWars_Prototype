@@ -186,17 +186,38 @@ window._hrlgNoteAction = function (ms) {
 // or end without dispatching a state-change event.
 function useMenusHidden(st) {
   const [, setN] = useState(0);
-  const ref = useRef({ lastBusy: 0, hidden: false });
+  const ref = useRef({ lastBusy: 0, hidden: false, hiddenSince: 0 });
+  const LINGER = 180;   // debounce so back-to-back anims don't strobe the menu
+  /* Failsafe: menu visibility hangs off busy FLAGS — if one ever sticks
+     (a VFX that never reports done, a camera that never settles), the whole
+     command UI vanishes with no recovery. If we've been hidden for > 4 s
+     while it's a local human's turn and nothing is executing, a flag has
+     stuck: show the menus anyway. */
+  const FAILSAFE_MS = 4000;
+  const compute = (t, stArg) => {
+    let hid = (t - ref.current.lastBusy < LINGER) || (window._hrlgHoldUntil || 0) > t;
+    if (hid) {
+      if (!ref.current.hiddenSince) ref.current.hiddenSince = t;
+      if (t - ref.current.hiddenSince > FAILSAFE_MS
+          && stArg && stArg.phase === 'battle' && !stArg.winner
+          && !stArg._actionExecuting && !stArg.autoPlayers?.[stArg.activePlayer]) {
+        hid = false;
+      }
+    } else {
+      ref.current.hiddenSince = 0;
+    }
+    return hid;
+  };
   const now = performance.now();
   if (_hudBoardBusy(st)) ref.current.lastBusy = now;
-  const LINGER = 180;   // debounce so back-to-back anims don't strobe the menu
-  const hidden = (now - ref.current.lastBusy < LINGER) || (window._hrlgHoldUntil || 0) > now;
+  const hidden = compute(now, st);
   ref.current.hidden = hidden;
   useEffect(() => {
     const iv = setInterval(() => {
       const t = performance.now();
-      if (_hudBoardBusy(window.GAME && window.GAME.state)) ref.current.lastBusy = t;
-      const next = (t - ref.current.lastBusy < LINGER) || (window._hrlgHoldUntil || 0) > t;
+      const _st = window.GAME && window.GAME.state;
+      if (_hudBoardBusy(_st)) ref.current.lastBusy = t;
+      const next = compute(t, _st);
       if (next !== ref.current.hidden) setN(n => n + 1);
     }, 110);
     return () => clearInterval(iv);
@@ -1970,12 +1991,22 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
 
   // ↑/↓ move the cursor, ENTER fires the selected row — full keyboard
   // play without stealing keys the game already uses (WASD/SPACE/ESC).
+  // Arrow OWNERSHIP: while the drum is browsable the arrows belong to the
+  // menu cursor and the board keeps WASD (ui.js consults this flag) — one
+  // press must never move the menu cursor AND start a provisional board
+  // step. While AIMING the arrows go back to the board.
+  const _arrowsOwned = view !== 'aim';
+  useEffect(() => {
+    window._hrlgArrowsOwned = _arrowsOwned;
+    return () => { window._hrlgArrowsOwned = false; };
+  }, [_arrowsOwned]);
   const fireSelRef = useRef(null);
   useEffect(() => {
     const onKey = (e) => {
       const tag = (document.activeElement && document.activeElement.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        if (!window._hrlgArrowsOwned) return;   // aiming → arrows steer the board
         e.preventDefault();
         cycleRef.current(e.key === 'ArrowDown' ? 1 : -1);
       } else if (e.key === 'Enter') {
@@ -3041,7 +3072,13 @@ function ActionMenu({ st, hidden }) {
   } else if (showJump) {
     const jumpTiles = getJumpTiles(unit);
     const jumpOk = jumpTiles.length > 0 && (typeof canUnitAct === 'function' ? canUnitAct(unit) : true);
-    moveAction = { id: 'jump', label: 'Jump', icon: '↑', cost: 1, available: jumpOk, sub: jumpOk ? null : 'Blocked' };
+    // Say WHY it's greyed — "Blocked" explained nothing when the real reason
+    // was the one-leap-per-turn rule (teal tiles vanish after the first hop).
+    const jumpSub = jumpOk ? null
+      : unit._jumpedThisTurn ? 'Jumped'
+      : !(typeof canUnitAct === 'function' ? canUnitAct(unit) : (unit.ap || 0) > 0) ? 'No AP'
+      : 'No landing';
+    moveAction = { id: 'jump', label: 'Jump', icon: '↑', cost: 1, available: jumpOk, sub: jumpSub };
   } else if (apc.canMove) {
     moveAction = { id: 'move', label: 'Move', icon: '↑', cost: 1, available: true };
   } else {
@@ -4733,9 +4770,14 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
       return;
     }
     state._actionExecuting = true;
+    // Funnel every engine call through _execAction (battle.js): it clears the
+    // executing latch when the action rejects synchronously and arms the 8 s
+    // stuck-input watchdog when it commits — a bare doSpell/doAttack that
+    // early-returned here used to wedge ALL input with no recovery.
+    const _run = (fn) => (typeof _execAction === 'function') ? _execAction(fn) : fn();
     if (actionId === 'attack') {
       if (typeof doAttack === 'function') {
-        const _atkQr = doAttack(actingUnit, tx, ty, tz);
+        const _atkQr = _run(() => doAttack(actingUnit, tx, ty, tz));
         // "Attack ×N" row → pre-load the repeat queue with the remaining
         // swings (drained back-to-back by endUnitIfDone, each re-validated).
         // Armed only when the first swing actually fired.
@@ -4752,7 +4794,7 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
       state.actionMode = 'spell';
       const _combTarget = target;
       let _grCd = 0;
-      if (typeof doSpell === 'function') _grCd = doSpell(actingUnit, tx, ty, tz) || 0;
+      if (typeof doSpell === 'function') _grCd = _run(() => doSpell(actingUnit, tx, ty, tz)) || 0;
       if (_grCd) {
         window.setTimeout(() => {
           if (!_combTarget || _combTarget.dead) return;
@@ -4772,22 +4814,22 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
       // you click your own tile.
       const _selfCast = typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell);
       if (typeof doSpell === 'function') {
-        if (_selfCast) doSpell(actingUnit, actingUnit.x, actingUnit.y, actingUnit.z);
-        else doSpell(actingUnit, tx, ty, tz);
+        if (_selfCast) _run(() => doSpell(actingUnit, actingUnit.x, actingUnit.y, actingUnit.z));
+        else _run(() => doSpell(actingUnit, tx, ty, tz));
       }
     } else if (actionId.startsWith('item:')) {
 
       const _itemKey = actionId.substring(5);
       state.selectedTool = _itemKey;
       state.actionMode = 'item';
-      if (typeof doItem === 'function') doItem(actingUnit, tx, ty, tz);
+      if (typeof doItem === 'function') _run(() => doItem(actingUnit, tx, ty, tz));
     } else if (actionId === 'combo') {
       if (typeof setActionMode === 'function') setActionMode('combo');
 
       const partners = typeof getComboPartners === 'function' ? getComboPartners(actingUnit) : [];
       if (partners.length > 0) {
         state.comboPartner = partners[0];
-        if (typeof doComboAttack === 'function') doComboAttack(actingUnit, partners[0], tx, ty, tz);
+        if (typeof doComboAttack === 'function') _run(() => doComboAttack(actingUnit, partners[0], tx, ty, tz));
       }
     }
 
@@ -5110,8 +5152,14 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     const jumpTile = _jpAll.find(t => (t.z ?? 0) === _jpZRef)
       || _jpAll.slice().sort((a, b) => Math.abs((a.z ?? 0) - _jpZRef) - Math.abs((b.z ?? 0) - _jpZRef))[0];
     if (jumpTile && !(typeof unitAt === 'function' && unitAt(tx, ty, jumpTile.z))) {
+      // Damaging drop? Put the price ON the button — the board already tints
+      // the landing hazard-crimson; this is the exact number (predictFallDamage
+      // mirrors applyFallDamage: threshold, splash, physique, zodiac).
+      const _jpDropDmg = (typeof predictFallDamage === 'function')
+        ? predictFallDamage(actingUnit, actingUnit.z ?? 0, jumpTile.z ?? 0, tx, ty) : 0;
       actions.push({
-        id: 'jump', label: 'Jump here', icon: '↷', category: 'movement',
+        id: 'jump', label: _jpDropDmg > 0 ? `Jump here (−${_jpDropDmg} HP)` : 'Jump here',
+        icon: '↷', category: 'movement',
         apCost: 1, available: true,
         handler: () => {
           state._tileActionTarget = null;

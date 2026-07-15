@@ -2439,6 +2439,18 @@
         _hlZExtra = new Map();
         if (_selectedForHl && state.actionMode && state.phase === 'battle' && !state._actionExecuting) {
           try {
+        // Effectiveness tint for enemy tiles in spell views. STAB (the caster's
+        // same-type self-bonus, ×1.25) is baked into getTypeDamageMultiplier,
+        // but it is NOT a matchup — painting it green made every neutral enemy
+        // read as "super effective" to a same-type caster (the false green `!`:
+        // the nameplate badge trusts these classes). Back STAB out first, same
+        // as getTypeCombatNote / _getTypeEffLabel / the target-drum chip.
+        const _spellEffClass = (caster, target, spell) => {
+          const mult = getTypeDamageMultiplier(caster, target, spell.spellType || null);
+          const hasStab = spell.spellType && (caster.types || []).includes(spell.spellType);
+          const eff = hasStab ? mult / ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : mult;
+          return eff > 1.001 ? ' type-strong' : eff < 0.999 ? ' type-weak' : '';
+        };
         let _cachedMoveTiles, _cachedAttackTiles, _cachedInspectTiles;
         if (state.actionMode === 'move' && canUnitMove(_selectedForHl)) {
 
@@ -2671,7 +2683,15 @@
               const _ty = parseInt(_pk.slice(_c + 1), 10);
               const _tz = _hlZCache.has(_pk) ? _hlZCache.get(_pk) : undefined;
               let _tok = _cls;
-              if (_strikeFrom(_tx, _ty, _tz)) _tok += ' strike';
+              // Drop warning first, even above 'strike': a jump landing that
+              // deals fall damage must NEVER read as a safe/gold tile — FFT
+              // rule: no innocent-looking tile may hurt you unannounced.
+              // predictFallDamage (state.js) mirrors applyFallDamage exactly
+              // (threshold, splash-landing, physique, zodiac).
+              const _dropZ = _tz ?? (typeof getHeightAt === 'function' ? getHeightAt(_tx, _ty) : 0);
+              if (_cls === 'move-jump' && typeof predictFallDamage === 'function'
+                  && predictFallDamage(_self, _self.z ?? 0, _dropZ, _tx, _ty) > 0) _tok += ' hazard';
+              else if (_strikeFrom(_tx, _ty, _tz)) _tok += ' strike';
               else if (_hazardTile(_tx, _ty, _tz)) _tok += ' hazard';
               else {
                 const _rule = getTerrainRule(_terrAt(_tx, _ty, _tz));
@@ -2740,24 +2760,32 @@
           if (typeof getJumpTiles === 'function') {
             const _jumpTiles = getJumpTiles(_selectedForHl);
             const _jSelZ = _selectedForHl.z ?? 0;
+            // Drop warning (same rule as the Move overlay): a landing that
+            // deals fall damage paints hazard-crimson, never safe teal.
+            const _jClsFor = (t) => (typeof predictFallDamage === 'function'
+                && predictFallDamage(_selectedForHl, _jSelZ, t.z ?? 0, t.x, t.y) > 0)
+                ? 'move-jump hazard' : 'move-jump';
             for (const t of _jumpTiles) {
               const pk = posKey(t.x, t.y);
-              // multi-floor: keep every landing surface (primary + zExtra)
-              if (_hlCache.get(pk) === 'move-jump' && t.z !== undefined && _hlZCache.has(pk)) {
+              const _jCls = _jClsFor(t);
+              // multi-floor: keep every landing surface (primary + zExtra),
+              // each carrying its OWN safe/hazard class for its z.
+              if (String(_hlCache.get(pk) || '').indexOf('move-jump') === 0 && t.z !== undefined && _hlZCache.has(pk)) {
                 const _pz = _hlZCache.get(pk);
                 if (t.z !== _pz) {
                   const list = _hlZExtra.get(pk) || [];
                   if (Math.abs(t.z - _jSelZ) < Math.abs(_pz - _jSelZ)) {
-                    list.push({ z: _pz, cls: 'move-jump' });
+                    list.push({ z: _pz, cls: _hlCache.get(pk) });
                     _hlZCache.set(pk, t.z);
+                    _hlCache.set(pk, _jCls);
                   } else if (!list.some(e => e.z === t.z)) {
-                    list.push({ z: t.z, cls: 'move-jump' });
+                    list.push({ z: t.z, cls: _jCls });
                   }
                   _hlZExtra.set(pk, list);
                 }
                 continue;
               }
-              _hlCache.set(pk, 'move-jump');
+              _hlCache.set(pk, _jCls);
               if (t.z !== undefined) _hlZCache.set(pk, t.z);
             }
           }
@@ -2984,9 +3012,7 @@
                   const pk = posKey(lx, ly);
                   const target = _liveUnitMap.get(pk);
                   if (target && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
-                    const typeMult = getTypeDamageMultiplier(_selectedForHl, target, spell.spellType || null);
-                    const typeClass = typeMult > 1 ? ' type-strong' : typeMult < 1 ? ' type-weak' : '';
-                    _hlCache.set(pk, 'attack enemy' + typeClass);
+                    _hlCache.set(pk, 'attack enemy' + _spellEffClass(_selectedForHl, target, spell));
                   } else {
                     _hlCache.set(pk, 'attack');
                   }
@@ -3032,9 +3058,7 @@
                 const pk = posKey(cx, cy);
                 const target = _liveUnitMap.get(pk);
                 if (target && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
-                  const typeMult = getTypeDamageMultiplier(_selectedForHl, target, spell.spellType || null);
-                  const typeClass = typeMult > 1 ? ' type-strong' : typeMult < 1 ? ' type-weak' : '';
-                  _hlCache.set(pk, 'attack enemy' + typeClass);
+                  _hlCache.set(pk, 'attack enemy' + _spellEffClass(_selectedForHl, target, spell));
                 } else {
                   _hlCache.set(pk, 'attack');
                 }
@@ -3079,9 +3103,7 @@
                     if (spell.kind === 'barrage') {
                       const target = _liveUnitMap.get(posKey(cx, cy));
                       if (target && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
-                        const typeMult = getTypeDamageMultiplier(_selectedForHl, target, spell.spellType || null);
-                        const typeClass = typeMult > 1 ? ' type-strong' : typeMult < 1 ? ' type-weak' : '';
-                        _hlCache.set(posKey(cx, cy), 'attack enemy' + typeClass);
+                        _hlCache.set(posKey(cx, cy), 'attack enemy' + _spellEffClass(_selectedForHl, target, spell));
                       } else {
                         _hlCache.set(posKey(cx, cy), 'spell-range-bg');
                       }
@@ -3117,9 +3139,7 @@
                       // enemies only, exactly as before.
                       const _gTT = (typeof spellTileTeam === 'function') ? spellTileTeam(spell) : 'both';
                       if (target && _gTT !== 'ally' && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
-                        const typeMult = getTypeDamageMultiplier(_selectedForHl, target, spell.spellType || null);
-                        const typeClass = typeMult > 1 ? ' type-strong' : typeMult < 1 ? ' type-weak' : '';
-                        _hlCache.set(posKey(cx, cy), 'attack enemy' + typeClass);
+                        _hlCache.set(posKey(cx, cy), 'attack enemy' + _spellEffClass(_selectedForHl, target, spell));
                       } else if (target && _gTT === 'ally' && isAllyUnit(target, _selectedForHl)) {
                         _hlCache.set(posKey(cx, cy), 'heal');
                       } else if (state.actionMenuView !== 'spellTargets') {
@@ -4479,6 +4499,18 @@
             if (u) renderHudActions(u);
         }
 
+        /* True when handleBackAction() has a menu/aim level to step out of —
+           the Escape owner uses this to pick back-vs-pause. Deliberately
+           EXCLUDES the bare unit selection: Esc at the root menu pauses
+           (genre standard); right-click / the BACK blade still deselect via
+           handleBackAction directly. */
+        function _escHasBackTarget() {
+            return !!(state._enemyActionTargetId || state._tileActionTarget
+                || state.showUnitInfo || state.pendingTarget || state.selectedTool
+                || state.actionMode
+                || (state.actionMenuView && state.actionMenuView !== 'root'));
+        }
+
         function handleBackAction() {
             if (state.phase !== 'battle' || state.winner) return;
             if (state.autoPlayers?.[state.activePlayer]) return;
@@ -5745,6 +5777,36 @@
                 return;
             }
 
+            /* ── Generic confirm (forfeit, any irreversible click) ──────────
+               state.uiDialog = { type:'confirm', icon, title, text,
+                 confirmLabel/confirmIcon/confirmSub, cancelLabel/cancelSub,
+                 onConfirm, onCancel } — reuses the pickup-dialog styling. */
+            if (dialog.type === 'confirm') {
+                card.innerHTML = `
+          <div class="pickup-dialog">
+            <div class="pickup-icon pickup-icon-text">${escapeHtml(dialog.icon || '⚠')}</div>
+            <div class="pickup-title">${escapeHtml(dialog.title || 'Are you sure?')}</div>
+            ${dialog.text ? `<div class="pickup-flavor">${escapeHtml(dialog.text)}</div>` : ''}
+            <div class="pickup-choices">
+              <button class="pickup-btn pickup-btn-take" data-dialog-action="primary">
+                <span class="pickup-btn-icon">${escapeHtml(dialog.confirmIcon || '✓')}</span>
+                <span class="pickup-btn-text"><strong>${escapeHtml(dialog.confirmLabel || 'Confirm')}</strong>${dialog.confirmSub ? `<small>${escapeHtml(dialog.confirmSub)}</small>` : ''}</span>
+              </button>
+              <button class="pickup-btn pickup-btn-leave" data-dialog-action="secondary">
+                <span class="pickup-btn-icon">✕</span>
+                <span class="pickup-btn-text"><strong>${escapeHtml(dialog.cancelLabel || 'Cancel')}</strong>${dialog.cancelSub ? `<small>${escapeHtml(dialog.cancelSub)}</small>` : ''}</span>
+              </button>
+            </div>
+          </div>`;
+                card.onclick = function(e) {
+                    const btn = e.target.closest('[data-dialog-action]');
+                    if (!btn) return;
+                    if (btn.getAttribute('data-dialog-action') === 'primary') handleUiDialogPrimary();
+                    else handleUiDialogSecondary();
+                };
+                return;
+            }
+
             if (dialog.type === 'pickupDecision') {
                 const unit = state.units.find(u => u.id === dialog.unitId) || null;
                 const coord = coordLabel(dialog.event?.x, dialog.event?.y);
@@ -6004,7 +6066,7 @@
                 if (window._mdPartyStart) window._mdPartyStart();
                 return;
             }
-            if (dialog.type === 'pickupDecision') {
+            if (dialog.type === 'pickupDecision' || dialog.type === 'confirm') {
                 const action = dialog.onConfirm;
                 state.uiDialog = null;
                 markDirty('dialog');
@@ -6034,7 +6096,7 @@
             }
 
             if (dialog.type === 'secondaryJobPick') return;
-            if (dialog.type === 'pickupDecision') {
+            if (dialog.type === 'pickupDecision' || dialog.type === 'confirm') {
                 const action = dialog.onCancel;
                 state.uiDialog = null;
                 markDirty('dialog');
@@ -8209,10 +8271,22 @@
         }
 
         document.addEventListener('keydown', (e) => {
-            /* Esc pauses in battle AND in the map editor (settings + music). */
-            if (e.key === 'Escape' && ((state.phase === 'battle' && !state.winner) || state.phase === 'editor')) {
+            /* ── Single Escape owner ────────────────────────────────────────
+               One press = ONE action. Priority: modal dialog (handled by the
+               dialog listener, we stand down) > pause menu open (close it) >
+               back out one menu/aim level > pause. Previously two independent
+               keydown listeners both fired: Esc with a submenu open opened
+               Pause AND backed a level in the same press. */
+            if (e.key === 'Escape' && !state.uiDialog
+                && ((state.phase === 'battle' && !state.winner) || state.phase === 'editor')) {
                 e.preventDefault();
-                togglePauseMenu();
+                if (state.phase === 'editor' || _gamePaused) {
+                    togglePauseMenu();
+                } else if (typeof _escHasBackTarget === 'function' && _escHasBackTarget()) {
+                    handleBackAction();
+                } else {
+                    togglePauseMenu();
+                }
             }
 
             if (e.key === 'Tab' && state.phase === 'battle' && state.actionMode === 'spell' && state._spellCycleTargets?.length > 1) {
@@ -9298,7 +9372,21 @@
         const devSimBattleBtn = document.getElementById('devSimBattleBtn');
         if (devSimBattleBtn) devSimBattleBtn.onclick = toggleDevAutoSim;
         if (forfeitBtn) forfeitBtn.onclick = function() {
-            forfeitMatch();
+            // One misclick used to end the match on the spot — irreversible
+            // actions get a confirm (the dialog system was already there).
+            // onConfirm resolves forfeitMatch LATE so online.js's network
+            // wrapper (which reassigns the global) is the one that runs.
+            if (state.phase !== 'battle' || state.winner) return;
+            state.uiDialog = {
+                type: 'confirm', icon: '🏳',
+                title: 'Forfeit the match?',
+                text: 'Your opponent takes the win. There is no undo.',
+                confirmLabel: 'Forfeit', confirmIcon: '🏳', confirmSub: 'Concede defeat',
+                cancelLabel: 'Keep fighting', cancelSub: 'Back to the battle',
+                onConfirm: () => forfeitMatch(),
+            };
+            markDirty('dialog');
+            renderIfDirty();
         };
         if (skipTrackBtn) skipTrackBtn.onclick = () => {
             skipBattleTrack();
@@ -9340,11 +9428,9 @@
             if (event.key === 'Escape' && state.uiDialog) {
                 handleUiDialogSecondary();
             }
-
-            if (event.key === 'Escape' && !state.uiDialog && state.phase === 'battle') {
-                event.preventDefault();
-                handleBackAction();
-            }
+            /* In-battle Escape (back vs pause) lives in the single Escape
+               owner above — a second handleBackAction here made one press
+               fire twice (open Pause AND back a menu level). */
         });
 
         let _wasdOrigin = null;
@@ -9570,6 +9656,12 @@
                 'a': [-1, 0], 'arrowleft': [-1, 0],
                 'd': [1, 0],  'arrowright': [1, 0]
             };
+
+            /* Arrow ownership: while the Horologe drum is browsable it claims
+               the arrow keys for its cursor (hud.js sets the flag) — WASD
+               stays on the board. Without this, one ↑ press moved the menu
+               cursor AND started a provisional board move. */
+            if (window._hrlgArrowsOwned && key.indexOf('arrow') === 0) return;
 
             if (dirs[key]) {
                 event.preventDefault();

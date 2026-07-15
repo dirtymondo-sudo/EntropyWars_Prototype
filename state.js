@@ -1756,6 +1756,34 @@
             return dmg;
         }
 
+        /* Pure preview twin of applyFallDamage — same threshold, splash-landing,
+           physique and zodiac rules, but NO side effects. Drives the jump-tile
+           drop warning (ui.js paints damaging landings hazard-crimson), so what
+           the overlay predicts is exactly what the landing will deal. atX/atY
+           are the LANDING coordinates (applyFallDamage reads unit.x/y because
+           the unit has already moved when it runs). Keep the two in lockstep. */
+        function predictFallDamage(unit, fromZ, toZ, atX, atY) {
+            if (!unit || unit.dead) return 0;
+            if (typeof canFly === 'function' && canFly(unit)) return 0;
+            const FALL_THRESHOLD = (typeof FALL_DAMAGE_THRESHOLD !== 'undefined') ? FALL_DAMAGE_THRESHOLD : 3;
+            const drop = (fromZ ?? 0) - (toZ ?? 0);
+            if (drop < FALL_THRESHOLD) return 0;
+            const _x = (atX ?? unit.x), _y = (atY ?? unit.y);
+            let _splash = null;
+            if (typeof liquidFamilyOf === 'function' && typeof getTerrainAt === 'function') {
+                _splash = liquidFamilyOf(getTerrainAt(_x, _y));
+            }
+            if (!_splash && typeof getLiquidFlowAt === 'function') {
+                const _fl = getLiquidFlowAt(_x, _y);
+                if (_fl) _splash = _fl.t;
+            }
+            if (_splash) return 0;
+            const FALL_PCT = (typeof FALL_DAMAGE_PCT_PER_LEVEL !== 'undefined') ? FALL_DAMAGE_PCT_PER_LEVEL : 0.05;
+            const _wMult = (typeof getUnitFallDamageMult === 'function') ? getUnitFallDamageMult(unit) : 1.0;
+            const _zEarthMult = (typeof isEarthZodiacActive === 'function' && isEarthZodiacActive()) ? 1.5 : 1;
+            return Math.max(1, Math.round((unit.maxHp || 100) * FALL_PCT * (drop - (FALL_THRESHOLD - 1)) * _wMult * _zEarthMult));
+        }
+
         const BLOWBACK_DAMAGE = 3;
 
         function applyBlowback(unit, sourceX, sourceY, logPrefix) {

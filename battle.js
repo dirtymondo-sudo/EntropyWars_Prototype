@@ -21249,6 +21249,10 @@
                 camera.tilt = DEFAULT_BOARD_TILT; camera.yaw = DEFAULT_BOARD_YAW;
                 camera._smoothTilt = DEFAULT_BOARD_TILT; camera._smoothYaw = DEFAULT_BOARD_YAW;
                 camera._restYaw = DEFAULT_BOARD_YAW;
+                // Also reset the remembered resting PITCH — a hand-orbited tilt
+                // from the previous match must not leak into the next one (the
+                // turn-start framing and the Move/free-aim framing both honor it).
+                camera._restTilt = Math.min(getCameraPreset().tilt, REST_TILT_MAX);
             }
             // When the match is started from a menu, CONFIG.tileSize is still the
             // menu value (MENU_TILE). The 3D renderer runs continuously, so the
@@ -26736,7 +26740,9 @@
                             getDefaultZoom());
                         camera.moveTo({
                             x: unit.x, y: unit.y, zoom,
-                            tilt: getTacticalTilt(),
+                            // Never more angled than the resting view — same
+                            // rule as the Move framing (camera-reversal fix).
+                            tilt: Math.min(getTacticalTilt(), camera._restTilt ?? DEFAULT_BOARD_TILT),
                             duration: 380, easing: 'easeInOut',
                             _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                         });
@@ -26768,7 +26774,7 @@
                         clearHoveredTarget();
                         clearSpellRangePreview();
                         if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
-                        doSpell(unit, unit.x, unit.y);
+                        _execAction(() => doSpell(unit, unit.x, unit.y));
                         scheduleBoardRender();
                     } else {
                         state.actionMenuView = 'spellTargets';
@@ -26789,7 +26795,7 @@
                     clearHoveredTarget();
                     clearSpellRangePreview();
                     if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
-                    doSpell(unit, unit.x, unit.y);
+                    _execAction(() => doSpell(unit, unit.x, unit.y));
                     scheduleBoardRender();
                 } else {
 
@@ -26831,9 +26837,21 @@
             const isOffensive = !!_skm.offensive;
             const effRange = getEffectiveSpellRange(unit, spell);
             // Sky grabs dive from the air — terrain LOS never blocks them (matches
-            // doSpell, which does no LOS check for these kinds).
+            // doSpell, which does no LOS check for these kinds). 'delayed'
+            // (artillery) is indirect fire that arcs over terrain — doSpell and
+            // getSpellRangeTiles both LOS-exempt it; omitting it here made
+            // artillery castable from the map but missing from the target drum.
             const skipLOS = spell.ignoresLineOfSight === true || spell.kind === 'teleport'
+                || spell.kind === 'delayed'
                 || spell.kind === 'skyDrop' || spell.kind === 'skyThrow' || spell.kind === 'skySlam';
+            // Fog parity with doSpell/getSpellRangeTiles: a fogged unit must not
+            // sit in the target drum — picking it just bounced off doSpell's own
+            // fog gate ("the list target does nothing"). Telescope casters keep
+            // their doSpell privilege of hitting sky enemies through fog.
+            const fogLimit = state.fogOfWar && !state.autoPlayers?.[unit.player];
+            const _fogTelescope = fogLimit && typeof unitHasTelescope === 'function'
+                && unitHasTelescope(unit)
+                && typeof getSectionForUnit === 'function' && getSectionForUnit(unit) === 'earth';
             const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
             const _needsAbove = spellRequiresAboveTarget(spell);
             const _casterStandH = _needsAbove
@@ -26880,6 +26898,8 @@
                 }
                 if (d < minRange || d > effRange) continue;
                 if (!skipLOS && dxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, u.x, u.y, unitZ)) continue;
+                if (fogLimit && dxy >= 1 && !_skm.fogExempt && !isInVision(unit, u.x, u.y)
+                    && !(_fogTelescope && !u.dead && u.player !== unit.player && getSectionForUnit(u) === 'above')) continue;
                 if (isOffensive && isAllyUnit(u, unit)) continue;
                 if (!isOffensive && _skm.allyOnly && !isAllyUnit(u, unit)) continue;
                 // Tile-targeted AoE/zone spells: only suggest units the spell
@@ -27400,11 +27420,11 @@
                     ? { unitId: unit.id, mode: state.actionMode, tool: state.selectedTool, x, y, z: execZ, queued: _preQueued }
                     : null;
                 if (state.actionMode === 'attack') {
-                    const _atkR = doAttack(unit, x, y, execZ);
+                    const _atkR = _execAction(() => doAttack(unit, x, y, execZ));
                     // first swing rejected → don't leave pre-loaded repeats armed
                     if ((_atkR === 0 || _atkR === false) && state._repeatQueue) state._repeatQueue.queued = 0;
                 }
-                else if (state.actionMode === 'spell') { doSpell(unit, x, y, execZ); }
+                else if (state.actionMode === 'spell') { _execAction(() => doSpell(unit, x, y, execZ)); }
                 else if (state.actionMode === 'item') {
                     // Items don't own the executing latch the way attacks/spells
                     // do (board clicks call doItem directly) — release it here.
@@ -27506,6 +27526,11 @@
             state.hoverUnitId = null;
             state.selectedTool = null;
             state.pendingTarget = null;
+            // Quick-menu anchors are render-GATED while a mode is armed, not
+            // cleared — cancel the mode and a stale enemy/tile card popped
+            // back up. Arming a mode dismisses them for real.
+            state._enemyActionTargetId = null;
+            state._tileActionTarget = null;
 
             if (unit._skyThrowGrab) { unit._skyThrowGrab = null; }
             if (state._skyThrowHighlight) { state._skyThrowHighlight = null; }
@@ -27544,7 +27569,11 @@
                     getDefaultZoom());
                 camera.moveTo({
                     x: unit.x, y: unit.y,
-                    tilt: getTacticalTilt(),
+                    // Tile picking is the most top-down context there is, so it
+                    // must never be MORE angled than the player's resting view —
+                    // orbit to near-top-down and Move used to snap you back to
+                    // the preset's 40°, which read as a camera reversal.
+                    tilt: Math.min(getTacticalTilt(), camera._restTilt ?? DEFAULT_BOARD_TILT),
                     zoom: _mvZoom,
                     duration: 420, easing: 'easeInOut', _fogAllowed: true,
                     _allowZoomChange: true, _bypassCap: true
@@ -27974,6 +28003,45 @@
             return true;
         }
 
+        /* THE ONE WAY to run an action while state._actionExecuting is armed.
+           Every path that sets _actionExecuting = true and then fires a
+           doAttack/doSpell/doMove/... MUST go through here: it clears the
+           latch when the action rejects synchronously (returns 0/false or
+           throws) and arms the 8 s stuck-input watchdog when it commits.
+           Callers that set the latch and called the do* function bare could
+           wedge ALL input with no recovery (hoisted out of clickTile
+           2026-07-15 so setTool / selectTargetFromMenu funnel through too). */
+        function _execAction(fn) {
+            let result;
+            try {
+                result = fn();
+            } catch (e) {
+                console.error('[_execAction] action threw:', e);
+                state._actionExecuting = false;
+                state.actionMode = null;
+                scheduleBoardRender();
+                return 0;
+            }
+            if (result === 0 || result === false) {
+                state._actionExecuting = false;
+                scheduleBoardRender();
+            } else {
+
+                clearTimeout(state._actionExecutingWatchdog);
+                state._actionExecutingWatchdog = setTimeout(() => {
+                    if (state._actionExecuting) {
+                        console.warn('[_execAction] watchdog: _actionExecuting was stuck true — force-clearing');
+                        state._actionExecuting = false;
+                        if (state.phase === 'battle' && !state.winner) {
+                            markDirty('board', 'hud', 'selectedUnit');
+                            renderIfDirty();
+                        }
+                    }
+                }, 8000);
+            }
+            return result;
+        }
+
         function clickTile(x, y, z) {
             if (state.phase === 'setup') {
                 return;
@@ -28225,6 +28293,18 @@
                         }
                         return;
                     }
+                    // z-snap: clicking the TILE under a flyer resolves to ground
+                    // z (the mesh pick only returns the unit's z when the sprite
+                    // itself is hit), so the confirm/execute path could aim at a
+                    // different height than the target the player picked. When
+                    // the clicked column holds exactly one valid target and the
+                    // resolved z doesn't match it, snap to that target's z — the
+                    // same z the target drum would pass.
+                    const _colTargets = validTargets.filter(t => t.x === x && t.y === y);
+                    if (_colTargets.length === 1 && _colTargets[0].unit
+                        && !_colTargets.some(t => t.unit && t.unit.z === state._clickedZ)) {
+                        state._clickedZ = _colTargets[0].unit.z;
+                    }
                 }
             }
 
@@ -28271,6 +28351,27 @@
                         markDirty('board', 'hud');
                         renderIfDirty();
                         if (clickedUnit && !clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
+                            return;
+                        }
+                        return;
+                    }
+
+                    // Per-target usability (mirrors the target drum): a full-HP
+                    // ally is not a heal target, a clean ally not a cleanse
+                    // target — the drum already omits them, but the map click
+                    // let you arm the cast and fizzle. Say why on the FIRST
+                    // click instead. Tile/self/directional kinds aim at tiles,
+                    // so any occupant is legitimate splash — skip those.
+                    if (clickedUnit && clickedUnit.x === x && clickedUnit.y === y
+                        && !isSpellTileTargeted(spell) && !isSpellSelfCast(spell)
+                        && !_kindMeta(spell).directional
+                        && !spellTargetUsableOn(actingUnit, spell, clickedUnit)) {
+                        if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                        addLog(`${spell.name} would have no effect on that target.`, actingUnit.player);
+                        playErrorSfx();
+                        markDirty('board', 'hud');
+                        renderIfDirty();
+                        if (!clickedUnit.dead && _exitModeAndShowUnitMenu(actingUnit, clickedUnit)) {
                             return;
                         }
                         return;
@@ -28610,36 +28711,6 @@
                 return doMove(actingUnit, x, y, state._clickedZ);
             }
 
-            function _execAction(fn) {
-                let result;
-                try {
-                    result = fn();
-                } catch (e) {
-                    console.error('[_execAction] action threw:', e);
-                    state._actionExecuting = false;
-                    state.actionMode = null;
-                    scheduleBoardRender();
-                    return 0;
-                }
-                if (result === 0 || result === false) {
-                    state._actionExecuting = false;
-                    scheduleBoardRender();
-                } else {
-
-                    clearTimeout(state._actionExecutingWatchdog);
-                    state._actionExecutingWatchdog = setTimeout(() => {
-                        if (state._actionExecuting) {
-                            console.warn('[_execAction] watchdog: _actionExecuting was stuck true — force-clearing');
-                            state._actionExecuting = false;
-                            if (state.phase === 'battle' && !state.winner) {
-                                markDirty('board', 'hud', 'selectedUnit');
-                                renderIfDirty();
-                            }
-                        }
-                    }, 8000);
-                }
-                return result;
-            }
 
             if (state.actionMode === 'attack') {
                 const _atkRes = _execAction(() => doAttack(actingUnit, x, y, state._clickedZ));
@@ -30207,10 +30278,9 @@
             playSfx('moveStep');
             checkStealthReveals(unit);
             const hDiff = z - fromZ;
-
-            if (hDiff < 0 && typeof applyFallDamage === 'function') {
-                applyFallDamage(unit, fromZ, z, 'Jump: ');
-            }
+            /* Fall damage is applied in _doPostJump, WITH the landing — dealing
+               it here dropped the HP bar while the sprite was still mid-arc
+               over an empty tile. */
 
             const _hasArc = typeof animateJumpArc === 'function' && boardEl && !_skipVisuals();
             if (_hasArc) {
@@ -30225,22 +30295,14 @@
             }
 
             if (!state.cameraDisabled) {
-                // A replayed remote jump is "human" but the local viewer is the
-                // opponent — apply the same fog visibility gate as AI jumps.
+                /* Camera parity with walking: a local human's walk never pans,
+                   so their jump doesn't either — jump tiles live inside the
+                   Move overlay, and the 400 ms lurch ONLY on teal tiles read
+                   as the camera glitching. AI + replayed remote jumps keep the
+                   follow pan (the viewer is watching someone else act), gated
+                   on screen-true fog visibility like every enemy camera move. */
                 const isHuman = !state.autoPlayers?.[unit.player] && !state._remoteAction;
-                if (isHuman && _fogCamTilesVisible({ x: fromX, y: fromY }, { x, y })) {
-
-                    const _curZoom = typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()
-                        ? getUserZoomScale()
-                        : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
-                    if (typeof animateBoardCameraPath === 'function') {
-                        animateBoardCameraPath(
-                            { x: fromX, y: fromY },
-                            { x: x, y: y },
-                            { duration: 400, zoom: _curZoom, _fogAllowed: true }
-                        );
-                    }
-                } else if (typeof _shouldCameraFollowUnit === 'function' && _shouldCameraFollowUnit(unit)) {
+                if (!isHuman && typeof _shouldCameraFollowUnit === 'function' && _shouldCameraFollowUnit(unit)) {
                     const _curZoom = typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()
                         ? getUserZoomScale()
                         : (typeof getDefaultZoom === 'function' ? getDefaultZoom() : 1);
@@ -30254,9 +30316,17 @@
                 }
             }
 
-            const _jumpAnimMs = (!boardEl || _skipVisuals()) ? 0 : 650;
+            /* 500 ms: the arc tween is 480 ms — the old 650 left a ~170 ms
+               input-dead tail on every jump. */
+            const _jumpAnimMs = (!boardEl || _skipVisuals()) ? 0 : 500;
             const _doPostJump = () => {
                 state._actionExecuting = false;
+                // Fall damage lands with the unit (arc is done here). Dying to
+                // the drop is handled below: a dead unit can't move, so the
+                // move re-arm falls through to the full mode reset.
+                if (hDiff < 0 && typeof applyFallDamage === 'function') {
+                    applyFallDamage(unit, fromZ, z, 'Jump: ');
+                }
                 /* Jumping IS movement: stay in move mode when the unit can still
                    walk (same re-arm cascade as finishMoveAt) instead of dumping
                    the player back to the root menu after every hop. */
