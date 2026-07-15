@@ -3302,6 +3302,7 @@ function ActionMenu({ st, hidden }) {
       case 'combo': if (typeof setActionMode === 'function') setActionMode('combo'); break;
       case 'items': if (typeof chooseActionMenu === 'function') chooseActionMenu('items'); break;
       case 'more': if (typeof chooseActionMenu === 'function') chooseActionMenu('more'); break;
+      case 'info': if (typeof toggleUnitInfo === 'function') toggleUnitInfo(); break;
     }
   }
 
@@ -3330,6 +3331,13 @@ function ActionMenu({ st, hidden }) {
   // root verbs are short words → the root panel is narrow; the grey-out
   // reason renders UNDER the name (subBelow) instead of as a right-side tag
   const rootBlades = actions.map(a => ({ ...a, subBelow: true }));   // declared order IS the menu order
+  // ⓘ INSPECT — free look at any unit's full stat card (ATK/DEF/MDEF/INT…)
+  // plus its attack reach on the board. Costs nothing, never greys out.
+  rootBlades.push({
+    id: 'info', label: 'Inspect', icon: 'ⓘ', available: true,
+    selected: !!st.showUnitInfo,
+    hint: (window.EWInput && window.EWInput.device === 'pad') ? null : 'I',
+  });
   rootBlades.push({ id: 'end', label: 'END TURN', icon: '■', available: true, danger: true, hint: _hintKey('endTurn', 'SPACE') });
   const rootPanel = { key: 'root', title: null, blades: rootBlades };
   const _mkPanel = (key, built, extra) => ({
@@ -4939,6 +4947,17 @@ function _hrlgEnemyBlades(actingUnit, st) {
     };
   });
   if (!blades.length) blades.push({ id: 'none', icon: '⚔', label: 'No actions available', available: false });
+
+  // ⓘ INSPECT — the clicked enemy's full stat card (DEF/MDEF/INT…) + its
+  // attack reach, so you can judge physical-vs-magic before committing.
+  blades.push({
+    id: 'einfo', icon: 'ⓘ', label: 'Inspect', available: true,
+    selected: !!st.showUnitInfo,
+    fire: () => {
+      if (typeof focusUnitPanel === 'function') focusUnitPanel(targetUnit.id);
+      if (typeof toggleUnitInfo === 'function') toggleUnitInfo();
+    },
+  });
 
   // The clicked enemy's face rides the view tab — instant "who am I on".
   const tabPort = _hrlgPortraitData(targetUnit, actingUnit);

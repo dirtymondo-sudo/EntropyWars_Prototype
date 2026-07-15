@@ -27870,6 +27870,47 @@
         }
         window.clearAttackRangePreview = clearAttackRangePreview;
 
+        // ── INSPECT-panel attack range (ⓘ blade / I key) ─────────────────────
+        // Shows the INSPECTED unit's reach — enemy or ally, not necessarily the
+        // selected unit — on its own overlay key (amber, not the attack-red) so
+        // it never fights the attack blade's hover preview. Purely viewer-local
+        // UI: each client draws it off its own state.showUnitInfo.
+        let _infoRangePreviewTiles = [];
+        let _infoRangePreviewFP = null;
+
+        function previewUnitInfoRange(unit) {
+            if (!unit) { clearUnitInfoRangePreview(); return; }
+            const fp = unit.id + '|' + unit.x + ',' + unit.y + '|' + getEffectiveRange(unit);
+            if (_infoRangePreviewFP === fp) return;
+            clearUnitInfoRangePreview();
+            _infoRangePreviewFP = fp;
+            const rangeTiles = getAttackTiles(unit);
+
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
+                ThreeRenderer.setOverlay('infoRange', rangeTiles, 0xffb347, 0.35);
+                return;
+            }
+
+            const size = bw();
+            const tiles = boardEl.children;
+            for (const t of rangeTiles) {
+                const tile = tiles[t.y * size + t.x];
+                if (tile) {
+                    tile.classList.add('attack-range-preview');
+                    _infoRangePreviewTiles.push(tile);
+                }
+            }
+        }
+        window.previewUnitInfoRange = previewUnitInfoRange;
+
+        function clearUnitInfoRangePreview() {
+            _infoRangePreviewFP = null;
+            for (const t of _infoRangePreviewTiles) t.classList.remove('attack-range-preview');
+            _infoRangePreviewTiles = [];
+            if (typeof ThreeRenderer !== 'undefined') ThreeRenderer.clearOverlay('infoRange');
+        }
+        window.clearUnitInfoRangePreview = clearUnitInfoRangePreview;
+
         // ── One sweep for EVERY targeting visual ─────────────────────────────
         // AoE tiles, range overlays, terrain ghost blocks, intent/approach/plan
         // arrows, highlight cache. Called from doSpell/doAttack the moment a

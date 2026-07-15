@@ -3755,6 +3755,7 @@
                     selectedUnitPanel.innerHTML = '';
                     unitHoverHud.classList.remove('visible');
                     unitHoverHud.innerHTML = '';
+                    if (typeof clearUnitInfoRangePreview === 'function') clearUnitInfoRangePreview();
                 }
                 return;
             }
@@ -3926,6 +3927,23 @@
           ${pendingTargetText}
         </div>
       `;
+
+            // The inspected unit's attack reach paints on the board while the
+            // card is up — the FP cache above means this only re-runs when the
+            // unit / its position / the toggle actually changed.
+            if (typeof previewUnitInfoRange === 'function') previewUnitInfoRange(unit);
+
+            // 3D mode: the 2D tile-anchor math below is meaningless against the
+            // WebGL canvas (and would drift with every camera move) — dock the
+            // card to the top-left of the screen instead, CSS-positioned.
+            const _dock3D = typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive();
+            unitHoverHud.classList.toggle('docked', _dock3D);
+            if (_dock3D) {
+                unitHoverHud.style.left = '';
+                unitHoverHud.style.top = '';
+                unitHoverHud.style.transform = '';
+                return;
+            }
 
             const transformMatch = (boardStageEl?.style.transform || '').match(/scale\(([^)]+)\)/);
             const zoom = Math.max(1, parseFloat(transformMatch?.[1] || '1') || 1);
@@ -4497,6 +4515,9 @@
 
             const u = getSelectedUnit();
             if (u) renderHudActions(u);
+            // the Horologe's ⓘ blade lights while the panel is open — poke the
+            // React HUD so its selected state tracks the toggle immediately
+            if (typeof markDirty === 'function') { markDirty('hud'); if (typeof renderIfDirty === 'function') renderIfDirty(); }
         }
 
         /* True when handleBackAction() has a menu/aim level to step out of —
@@ -9902,6 +9923,13 @@
             if (key === 'c' && !event.ctrlKey && !event.metaKey && !event.altKey) {
                 event.preventDefault();
                 if (typeof cycleCameraMode === 'function') cycleCameraMode();
+                return;
+            }
+            // I toggles the unit INSPECT card — stats + attack range for the
+            // focused (clicked) unit, falling back to the selected unit.
+            if (key === 'i' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                event.preventDefault();
+                toggleUnitInfo();
                 return;
             }
             // B toggles Build mode — in and out, Minecraft-style.

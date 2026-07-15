@@ -2855,7 +2855,10 @@
             var _guestUIKeys = [
                 'selectedUnitId', 'focusedUnitId', 'hoverUnitId',
                 'actionMode', 'actionMenuView', 'selectedTool',
-                'pendingTarget', 'comboPartner'
+                'pendingTarget', 'comboPartner',
+                // the INSPECT card toggle is per-viewer UI — without this the
+                // host's ⓘ state would stomp the guest's on every state-sync
+                'showUnitInfo'
             ];
 
             function _applyRemoteState(data) {
