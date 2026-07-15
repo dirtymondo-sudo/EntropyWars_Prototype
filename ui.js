@@ -3756,6 +3756,12 @@
         function renderSelectedUnitPanel() {
             if (!selectedUnitPanel || !unitHoverHud) return;
 
+            // The card MUST live at body level: its original home inside
+            // #boardStage sits under the board's 3D perspective transform, so
+            // any position:fixed/absolute child renders tilted on the board
+            // plane. Body-level = true screen space, no inherited transforms.
+            if (unitHoverHud.parentElement !== document.body) document.body.appendChild(unitHoverHud);
+
             const infoUnitId = state.showUnitInfo ? (state.focusedUnitId || state.selectedUnitId) : null;
             const unit = infoUnitId ? state.units.find(u => u.id === infoUnitId && !u.dead) || null : null;
             const suppressHoverHud = state.phase !== 'battle' || !unit || !state.showUnitInfo;
@@ -3784,37 +3790,6 @@
                 (preview.text || `Potential healing: +${preview.amount} HP`) :
                 '';
             const mpPreviewText = preview?.type === 'mp' ? `Potential mana: +${preview.amount} MP` : '';
-            const controllableUnit = unit.player === state.activePlayer && !state.autoPlayers?.[state.activePlayer] && canUnitAct(unit) && !state.winner;
-            const apText = `⚡${unit.ap || 0}/${getUnitMaxAP(unit)} AP`;
-            const modeLine = controllableUnit ?
-                `${apText} · ${state.actionMode || 'Ready'}` :
-                (unit.player === getViewerPlayer() ? `${apText} · Done` : 'Enemy unit.');
-            const pendingTargetText = state.pendingTarget && actingUnit && (state.actionMode === 'attack' || state.actionMode === 'spell' || state.actionMode === 'item' || state.actionMode === 'trade') ?
-                `<div class="small-note"><strong>Target:</strong>${coordLabel(state.pendingTarget.x, state.pendingTarget.y)}. Hover a target, then click once to confirm${state.actionMode === 'trade' ? ' the trade' : ''}.</div>` :
-                '';
-
-            const cycle = getCurrentCyclePhase();
-            const sleepPref = unit.sleepPreference || 'none';
-            const sleepMod = getSleepAffinityModifier(unit);
-            const sleepActive = sleepPref !== 'none';
-            const sleepFavored = (sleepPref === 'nocturnal' && cycle === 'night') || (sleepPref === 'daywalker' && cycle === 'day');
-
-            const zodiacMatch = unit.zodiac === state.activeZodiac;
-            const zodiacIcon = ZODIAC_ICONS[unit.zodiac] || '✦';
-            const zodiacLabel = (unit.zodiac || 'aries').charAt(0).toUpperCase() + (unit.zodiac || 'aries').slice(1);
-
-            const terrainHere = getTerrainAt(unit.x, unit.y);
-            const terrainPref = unit.terrainPreference || 'grass';
-            const onPreferred = terrainHere === terrainPref;
-            const terrainRule = getTerrainRule(terrainHere);
-
-            const factionLabel = (unit.faction || '').charAt(0).toUpperCase() + (unit.faction || '').slice(1);
-            const typesLabel = (unit.types || []).map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(', ');
-            const hasSynergy = hasFactionSynergy(unit.player, unit.faction);
-            const synergyName = hasSynergy ? getFactionSynergyName(unit.faction) : '';
-
-            const skyBonus = getSkyEventBonus(unit);
-
             const effAtk = unit.atk + getEffectiveAttackBonus(unit);
             // 'none' → gear/status/faction armor only, without folding the DEF
             // stat in again (we add unit.def explicitly here for the display).
@@ -3822,120 +3797,69 @@
             const effMDef = (unit.mdef || 0) + (typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(unit) : 0);
             const effMov = getEffectiveMove(unit);
             const effRng = getEffectiveRange(unit);
-            const effAwr = getEffectiveAwr(unit);
             const effInt = getEffectiveInt(unit);
-            const weatherMods = getWeatherStatMod(unit);
-            const hasWeatherMod = Object.values(weatherMods).some(v => v !== 0);
-            const weatherNames = getWeatherAtTile(unit.x, unit.y).map(w => w.label);
 
+            // Active statuses are the only extra context worth the pixels —
+            // everything else (zodiac/terrain/weather/faction/items) lives in
+            // other UI and just buried the numbers here.
             const statusEntries = Object.entries(unit.status || {}).filter(([, t]) => (t || 0) > 0);
-
-            function infoTag(icon, label, sub, cls) {
-                return `<div class="hover-tag ${cls || ''}">${icon ? `<span class="hover-tag-icon">${icon}</span>` : ''}<span class="hover-tag-body"><strong>${label}</strong>${sub ? `<span class="hover-tag-sub">${sub}</span>` : ''}</span></div>`;
-            }
-
-            let tagsHtml = '<div class="hover-tags">';
-
-            tagsHtml += infoTag('⚔', `${factionLabel}`, typesLabel, hasSynergy ? 'tag-active' : '');
-            if (hasSynergy) tagsHtml += infoTag('✦', synergyName, '', 'tag-bonus');
-
-            const _hudZNature = (typeof ZODIAC_NATURES !== 'undefined') ? ZODIAC_NATURES[unit.zodiac] : null;
-            const _hudZNatureTip = _hudZNature
-                ? `${_hudZNature.label} · +10% ${(typeof ZODIAC_STAT_LABELS !== 'undefined' ? ZODIAC_STAT_LABELS[_hudZNature.buff] : _hudZNature.buff.toUpperCase())} / −10% ${(typeof ZODIAC_STAT_LABELS !== 'undefined' ? ZODIAC_STAT_LABELS[_hudZNature.debuff] : _hudZNature.debuff.toUpperCase())}`
-                : '';
-            const _hudZSeasonTip = zodiacMatch ? ' · Season: +10% all' : '';
-            tagsHtml += infoTag(zodiacIcon, zodiacLabel, _hudZNatureTip + _hudZSeasonTip, zodiacMatch ? 'tag-active' : '');
-
-            if (sleepActive) {
-                tagsHtml += infoTag(sleepPref === 'nocturnal' ? '🌙' : '☀', sleepPref === 'nocturnal' ? 'Nocturnal' : 'Daywalker', sleepFavored ? 'Favored' : 'Hindered', sleepFavored ? 'tag-active' : 'tag-penalty');
-            }
-
-            tagsHtml += infoTag('', `${terrainRule.label}`, onPreferred ? 'Preferred' : '', onPreferred ? 'tag-active' : '');
-
-            if (hasWeatherMod) {
-                for (const wName of weatherNames) {
-                    tagsHtml += infoTag('', wName, '', 'tag-weather');
-                }
-            }
-
-            if (skyBonus.active) {
-                const skyMeta = SKY_EVENTS[state.skyEvent?.type];
-                if (skyMeta) tagsHtml += infoTag(skyMeta.icon, skyMeta.label, '', 'tag-active');
-            }
-
+            let statusPills = '';
             if (statusEntries.length > 0) {
-                for (const [name, turns] of statusEntries) {
+                statusPills = '<div class="ins-status">' + statusEntries.map(([name, turns]) => {
                     const sDef = STATUS_DEFS[name];
-                    const sIcon = sDef?.icon || sDef?.glyph || '⚠';
-                    const sLabel = sDef?.label || name;
-                    const sKind = sDef?.kind === 'debuff' ? 'tag-status tag-debuff' : sDef?.kind === 'buff' ? 'tag-status tag-buff' : 'tag-status';
-                    tagsHtml += infoTag(sIcon, sLabel, `${turns} rnd`, sKind);
-                }
+                    const kind = sDef?.kind === 'debuff' ? ' debuff' : sDef?.kind === 'buff' ? ' buff' : '';
+                    return `<span class="ins-status-pill${kind}">${sDef?.icon || sDef?.glyph || '⚠'} ${escapeHtml(sDef?.label || name)} · ${turns}</span>`;
+                }).join('') + '</div>';
             }
 
-            const heldItemKeys = Object.keys(unit.items || {}).filter(k => (unit.items[k] || 0) > 0);
-            if (heldItemKeys.length > 0) {
-                const itemSummary = heldItemKeys.map(k => {
-                    return `${getItemIconHtml(k, 16)}${unit.items[k] > 1 ? 'x' + unit.items[k] : ''}`;
-                }).join(' ');
-                tagsHtml += infoTag('🎒', `Items (${getTotalItemCount(unit)}/${CONFIG.unitItemSlots})`, itemSummary, 'tag-items');
-            }
-
-            tagsHtml += '</div>';
-
-            function statChip(label, val, base, weatherVal) {
+            // FFT-style horizontal stat bar: length reads at a glance, exact
+            // number at the end. Buffed/debuffed values tint green/red with a
+            // white tick marking the unbuffed base on the bar.
+            function statBar(label, val, base, cap, color, isPct) {
                 const diff = val - base;
-                let cls = '';
-                if (diff > 0) cls = 'stat-up';
-                else if (diff < 0) cls = 'stat-down';
-                const weatherMark = weatherVal && weatherVal !== 0 ? ' weather-affected' : '';
-                return `<span class="hover-stat-chip ${cls}${weatherMark}">${label} ${val}</span>`;
+                const cls = diff > 0 ? 'up' : diff < 0 ? 'down' : '';
+                const scale = Math.max(cap, val, base, 1);
+                const w = Math.max(2, Math.min(100, (Math.max(0, val) / scale) * 100));
+                const baseW = Math.max(0, Math.min(100, (Math.max(0, base) / scale) * 100));
+                return `<div class="ins-stat">` +
+                    `<span class="ins-stat-label">${label}</span>` +
+                    `<span class="ins-stat-track"><span class="ins-stat-fill ${cls}" style="width:${w}%;background:${color}"></span>${diff !== 0 ? `<span class="ins-stat-base" style="left:${baseW}%"></span>` : ''}</span>` +
+                    `<span class="ins-stat-val ${cls}">${val}${isPct ? '%' : ''}</span>` +
+                    `</div>`;
             }
 
-            const statsLine = `<div class="hover-stat-row">${statChip('ATK', effAtk, unit.atk, weatherMods.atk)}${statChip('DEF', effDef, unit.def || 0, weatherMods.def)}${statChip('MDEF', effMDef, unit.mdef || 0, 0)}${statChip('MOV', effMov, unit.move, weatherMods.move)}${statChip('RNG', effRng, unit.range, weatherMods.rng)}${statChip('AWR', effAwr, unit.awr, weatherMods.awr)}${statChip('INT', effInt, unit.intStat || 0, weatherMods.int)}<span class="hover-stat-chip" title="Critical hit chance">CRIT ${Math.round(getCritChance(unit)*100)}%</span><span class="hover-stat-chip" title="Evasion chance">EVA ${Math.round(getEvasionChance(unit)*100)}%</span></div>`;
+            const statBars =
+                statBar('ATK', effAtk, unit.atk, 200, '#e0705a') +
+                statBar('DEF', effDef, unit.def || 0, 200, '#7a9cc8') +
+                statBar('MDEF', effMDef, unit.mdef || 0, 200, '#a98fd6') +
+                statBar('INT', effInt, unit.intStat || 0, 200, '#62c4c9') +
+                statBar('MOV', effMov, unit.move, 8, '#86c47e') +
+                statBar('RNG', effRng, unit.range, 8, '#e0b45a') +
+                statBar('CRIT', Math.round(getCritChance(unit) * 100), Math.round(getCritChance(unit) * 100), 100, '#d9c06a', true) +
+                statBar('EVA', Math.round(getEvasionChance(unit) * 100), Math.round(getEvasionChance(unit) * 100), 100, '#b9bfd4', true);
 
-            const _activeSpellForMatchup = (state.pendingTarget?.mode === 'spell') ? getSelectedSpell(actingUnit) : null;
-            const matchupLine = actingUnit && actingUnit.id !== unit.id && isEnemyUnit(actingUnit, unit) ?
-                `<div class="small-note"><strong>Matchup:</strong>${escapeHtml(getTypeCombatNote(actingUnit, unit, _activeSpellForMatchup?.spellType || null) || 'Neutral')}</div>` :
-                '';
+            const isAlly = unit.player === getViewerPlayer();
+            const forecastNote = hpPreviewText || mpPreviewText;
 
             selectedUnitPanel.classList.toggle('damage-flash', state.selectedPanelFlash === 'damage');
             selectedUnitPanel.classList.toggle('heal-flash', state.selectedPanelFlash === 'heal');
             selectedUnitPanel.innerHTML = '';
             unitHoverHud.classList.toggle('visible', true);
             unitHoverHud.innerHTML = `
-
-        <div class="unit-summary-card ${state.selectedPanelFlash === 'damage' ? 'damage-flash' : state.selectedPanelFlash === 'heal' ? 'heal-flash' : ''}">
-          <div class="selected-unit-head">
+        <div class="ins-card ${state.selectedPanelFlash === 'damage' ? 'damage-flash' : state.selectedPanelFlash === 'heal' ? 'heal-flash' : ''}">
+          <div class="ins-head">
             ${renderUnitPortrait(unit)}
-            <div>
-              <div class="selected-unit-name">${escapeHtml(unit.name || unit.cls)} <span style="font-size:10px;color:var(--gold);background:rgba(255,215,0,0.15);border-radius:3px;padding:1px 4px;margin-left:4px">Lv.${getUnitLevel(unit)}</span></div>
-              <div class="selected-unit-sub">${escapeHtml(getJobDisplayName(unit.cls))} · ${escapeHtml(unit.race || '')} · ${unit.player === getViewerPlayer() ? 'Ally' : 'Enemy'} ${renderTypeBadges(unit.types || [])}</div>
-              <div class="selected-unit-sub">${coordLabel(unit.x, unit.y)}${unit.hourglasses ? ` · ⏳${unit.hourglasses}` : ''}</div>
+            <div class="ins-head-text">
+              <div class="ins-name">${escapeHtml(unit.name || unit.cls)}<span class="ins-lv">Lv.${getUnitLevel(unit)}</span></div>
+              <div class="ins-sub">${escapeHtml(getJobDisplayName(unit.cls))} · ${escapeHtml(unit.race || '')}</div>
+              <div class="ins-sub"><span class="ins-side ${isAlly ? 'ally' : 'enemy'}">${isAlly ? 'ALLY' : 'ENEMY'}</span></div>
             </div>
           </div>
-          <div class="selected-stat-block">
-            <div>
-              <div class="selected-label">Health</div>
-              <div class="selected-bar-track"><div class="selected-bar-fill hp${hpPct <= 30 ? ' low' : ''}" style="width:${hpPct}%"></div>${unit.shield > 0 ? `<div class="selected-bar-fill shield" style="left:${hpPct}%;width:${(unit.shield / unit.maxHp) * 100}%"></div>` : ''}${buildPreviewSegment(unit.hp, unit.maxHp, preview?.type === 'damage' || preview?.type === 'heal' ? preview : null)}</div>
-              <div class="selected-stat-text">${unit.hp} / ${unit.maxHp} HP${hpPreviewText ? ` · ${hpPreviewText}` : ''}</div>
-            </div>
-            <div>
-              <div class="selected-label">Mana</div>
-              <div class="selected-bar-track"><div class="selected-bar-fill mp" style="width:${mpPct}%"></div>${buildPreviewSegment(unit.mp, unit.maxMp, preview?.type === 'mp' ? preview : null)}</div>
-              <div class="selected-stat-text">${unit.mp} / ${unit.maxMp} MP${mpPreviewText ? ` · ${mpPreviewText}` : ''}</div>
-            </div>
-            <div>
-              <div class="selected-label">XP · Lv.${getUnitLevel(unit)}${getUnitLevel(unit) < XP_MAX_LEVEL ? ` → ${getXPForNextLevel(unit)} XP` : ' MAX'}</div>
-              <div class="selected-bar-track"><div class="selected-bar-fill" style="width:${getXPProgressPct(unit)}%;background:linear-gradient(90deg,var(--gold),#ffee88)"></div></div>
-              <div class="selected-stat-text">${unit._xp || 0} XP${getUnitLevel(unit) >= XP_MAX_LEVEL ? ' · Max Level' : ''}</div>
-            </div>
-          </div>
-          ${statsLine}
-          ${tagsHtml}
-          ${matchupLine}
-          <div class="ability-mode-line"><strong>${modeLine}</strong></div>
-          ${pendingTargetText}
+          <div class="ins-vital"><span class="ins-stat-label">HP</span><span class="selected-bar-track ins-vital-track"><span class="selected-bar-fill hp${hpPct <= 30 ? ' low' : ''}" style="width:${hpPct}%"></span>${unit.shield > 0 ? `<span class="selected-bar-fill shield" style="left:${hpPct}%;width:${(unit.shield / unit.maxHp) * 100}%"></span>` : ''}${buildPreviewSegment(unit.hp, unit.maxHp, preview?.type === 'damage' || preview?.type === 'heal' ? preview : null)}</span><span class="ins-vital-num">${unit.hp}/${unit.maxHp}</span></div>
+          <div class="ins-vital"><span class="ins-stat-label">MP</span><span class="selected-bar-track ins-vital-track"><span class="selected-bar-fill mp" style="width:${mpPct}%"></span>${buildPreviewSegment(unit.mp, unit.maxMp, preview?.type === 'mp' ? preview : null)}</span><span class="ins-vital-num">${unit.mp}/${unit.maxMp}</span></div>
+          ${forecastNote ? `<div class="ins-note">${forecastNote}</div>` : ''}
+          <div class="ins-stats">${statBars}</div>
+          ${statusPills}
         </div>
       `;
 
@@ -3943,41 +3867,6 @@
             // card is up — the FP cache above means this only re-runs when the
             // unit / its position / the toggle actually changed.
             if (typeof previewUnitInfoRange === 'function') previewUnitInfoRange(unit);
-
-            // 3D mode: the 2D tile-anchor math below is meaningless against the
-            // WebGL canvas (and would drift with every camera move) — dock the
-            // card to the top-left of the screen instead, CSS-positioned.
-            const _dock3D = typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive();
-            unitHoverHud.classList.toggle('docked', _dock3D);
-            if (_dock3D) {
-                unitHoverHud.style.left = '';
-                unitHoverHud.style.top = '';
-                unitHoverHud.style.transform = '';
-                return;
-            }
-
-            const transformMatch = (boardStageEl?.style.transform || '').match(/scale\(([^)]+)\)/);
-            const zoom = Math.max(1, parseFloat(transformMatch?.[1] || '1') || 1);
-            const hudScale = 1 / zoom;
-            const hudWidth = 280;
-            const hudHeight = 340;
-            const boardWidth = _layoutCache.valid ? _layoutCache.stageW : (boardStageEl?.offsetWidth || 0);
-            const boardHeight = _layoutCache.valid ? _layoutCache.stageH : (boardStageEl?.offsetHeight || 0);
-            const clampWidth = Math.min(boardWidth || 0, _layoutCache.valid ? _layoutCache.parentW : (mapCenterEl?.clientWidth || boardWidth || 0));
-            const clampHeight = Math.min(boardHeight || 0, _layoutCache.valid ? _layoutCache.parentH : (mapCenterEl?.clientHeight || boardHeight || 0));
-            const center = tilePixelCenter(unit.x, unit.y);
-            const sideGap = (CONFIG.tileSize / 2) + (hudWidth * hudScale * 0.56);
-
-            const preferLeft = unit.x >= Math.floor(bw() / 2);
-            let left = preferLeft ? center.left - sideGap : center.left + (CONFIG.tileSize / 2) + 20;
-            const minLeft = (hudWidth * hudScale / 2) + 12;
-            const maxLeft = Math.max(minLeft, clampWidth - (hudWidth * hudScale / 2) - 12);
-            left = Math.max(minLeft, Math.min(maxLeft, left));
-            let top = center.top - (hudHeight * hudScale * 0.5);
-            top = Math.max(12, Math.min(Math.max(12, clampHeight - hudHeight * hudScale - 12), top));
-            unitHoverHud.style.left = `${left}px`;
-            unitHoverHud.style.top = `${top}px`;
-            unitHoverHud.style.transform = `scale(${hudScale})`;
         }
 
         function ensureBattleHUD() {

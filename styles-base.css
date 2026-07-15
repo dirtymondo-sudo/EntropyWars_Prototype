@@ -1702,52 +1702,90 @@
         }
 
         /* ══════════ UNIT INSPECT CARD (ⓘ blade / I key) ══════════
-           #unitHoverHud — the full stat readout for the focused/selected unit,
-           ally or enemy. 2D board: tile-anchored via inline left/top (ui.js).
-           3D battle: .docked pins it top-left of the screen, clear of the
-           Horologe (bottom-left), scoreboard (top-center) and combat log
-           (right). pointer-events stays off — it's a readout, never a wall. */
+           #unitHoverHud — compact stat readout for the focused/selected unit,
+           ally or enemy. Lives at BODY level (ui.js reparents it) in pure
+           screen space: position:fixed under a transformed ancestor (the 3D
+           board stage) renders tilted on the board plane — never nest it.
+           Docked top-left, clear of the Horologe (bottom-left), scoreboard
+           (top-center) and combat log (right). pointer-events stays off. */
         .unit-hover-hud {
-            position: absolute;
-            width: 280px;
-            margin-left: -140px;
-            z-index: 55;
+            position: fixed;
+            left: 14px;
+            top: 110px;
+            width: 300px;
+            z-index: 70;
             display: none;
             pointer-events: none;
-            transform-origin: top center;
+            transform: scale(var(--ew-ui-scale, 1));
+            transform-origin: top left;
+            font-family: 'DotGothic16', monospace;
         }
 
         .unit-hover-hud.visible {
             display: block;
         }
 
-        .unit-hover-hud.docked {
-            position: fixed;
-            left: 14px;
-            top: 96px;
-            margin-left: 0;
-            transform: scale(var(--ew-ui-scale, 1));
-            transform-origin: top left;
-        }
-
-        /* the card itself — same dark-navy/parchment skin as the HUD panels */
-        .unit-hover-hud .unit-summary-card {
-            display: block;
-            margin-bottom: 0;
+        /* the card — same dark-navy/parchment skin as the HUD panels */
+        .ins-card {
             padding: 12px 14px;
             border-radius: 12px;
             background:
                 linear-gradient(180deg, rgba(140, 140, 200, 0.05), rgba(200, 180, 150, 0.02)),
-                rgba(8, 10, 18, 0.92);
+                rgba(8, 10, 18, 0.94);
             border: 1px solid rgba(212, 200, 176, 0.18);
             box-shadow: inset 0 1px 0 rgba(140, 140, 200, 0.06), 0 12px 28px rgba(0, 0, 0, 0.45);
         }
 
-        .unit-hover-hud .selected-unit-head {
+        .ins-head {
             display: flex;
             align-items: center;
             gap: 10px;
             margin-bottom: 8px;
+        }
+
+        .ins-head-text {
+            min-width: 0;
+        }
+
+        .ins-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #d4c8b0;
+            letter-spacing: 0.04em;
+        }
+
+        .ins-lv {
+            font-size: 10px;
+            color: var(--gold);
+            background: rgba(255, 215, 0, 0.12);
+            border-radius: 3px;
+            padding: 1px 4px;
+            margin-left: 6px;
+        }
+
+        .ins-sub {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .ins-side {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            padding: 0 5px;
+            border-radius: 3px;
+        }
+
+        .ins-side.ally {
+            color: #8fd694;
+            background: rgba(120, 210, 140, 0.12);
+        }
+
+        .ins-side.enemy {
+            color: #e08a8a;
+            background: rgba(220, 120, 120, 0.12);
         }
 
         .unit-hover-hud .unit-portrait {
@@ -1770,10 +1808,17 @@
             image-rendering: pixelated;
         }
 
-        .unit-hover-hud .selected-stat-block {
+        /* ── vitals: HP / MP bars with the number at the end ── */
+        .ins-vital {
             display: flex;
-            flex-direction: column;
+            align-items: center;
             gap: 6px;
+            margin-top: 4px;
+        }
+
+        .ins-vital-track {
+            flex: 1 1 auto;
+            display: block;
         }
 
         .unit-hover-hud .selected-bar-fill {
@@ -1782,136 +1827,120 @@
             border-radius: 999px;
         }
 
-        .unit-hover-hud .small-note {
+        .ins-vital-num {
+            flex: 0 0 auto;
+            min-width: 66px;
+            text-align: right;
+            font-size: 11px;
+            color: #cfd6ea;
+            white-space: nowrap;
+        }
+
+        .ins-note {
+            font-size: 10px;
+            color: #e0b45a;
+            margin: 4px 0 0;
+            line-height: 1.35;
+        }
+
+        /* ── stat bars: ATK / DEF / MDEF / INT / MOV / RNG / CRIT / EVA ── */
+        .ins-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            margin: 9px 0 2px;
+        }
+
+        .ins-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ins-stat-label {
+            flex: 0 0 34px;
             font-size: 10px;
             color: var(--muted);
-            margin-top: 6px;
-            line-height: 1.4;
+            letter-spacing: 0.06em;
         }
 
-        .unit-hover-hud .small-note strong {
-            color: #d4c8b0;
-            margin-right: 4px;
+        .ins-stat-track {
+            flex: 1 1 auto;
+            position: relative;
+            height: 9px;
+            border-radius: 999px;
+            background: rgba(140, 140, 200, 0.08);
+            border: 1px solid rgba(140, 140, 200, 0.1);
+            overflow: hidden;
         }
 
-        .unit-hover-hud .ability-mode-line {
-            margin-top: 6px;
+        .ins-stat-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            border-radius: 999px;
+            opacity: 0.9;
         }
 
-        /* ── the stat chips: ATK / DEF / MDEF / MOV / RNG / AWR / INT / CRIT / EVA ── */
-        .hover-stat-row {
+        .ins-stat-fill.up {
+            box-shadow: 0 0 6px rgba(120, 210, 140, 0.6);
+        }
+
+        .ins-stat-fill.down {
+            opacity: 0.55;
+        }
+
+        .ins-stat-base {
+            position: absolute;
+            top: -1px;
+            bottom: -1px;
+            width: 2px;
+            background: rgba(255, 255, 255, 0.65);
+        }
+
+        .ins-stat-val {
+            flex: 0 0 40px;
+            text-align: right;
+            font-size: 11px;
+            color: #cfd6ea;
+            white-space: nowrap;
+        }
+
+        .ins-stat-val.up {
+            color: #8fd694;
+        }
+
+        .ins-stat-val.down {
+            color: #e08a8a;
+        }
+
+        /* ── active status effects only — compact pills ── */
+        .ins-status {
             display: flex;
             flex-wrap: wrap;
             gap: 4px;
-            margin: 8px 0 2px;
+            margin-top: 8px;
         }
 
-        .hover-stat-chip {
-            font-family: 'DotGothic16', monospace;
-            font-size: 10px;
-            letter-spacing: 0.05em;
-            white-space: nowrap;
-            line-height: 1.2;
-            padding: 2px 5px;
+        .ins-status-pill {
+            font-size: 9.5px;
+            line-height: 1.3;
+            padding: 2px 6px;
             border-radius: 4px;
             color: #cfd6ea;
-            background: rgba(140, 140, 200, 0.08);
+            background: rgba(10, 14, 28, 0.6);
             border: 1px solid rgba(140, 140, 200, 0.16);
         }
 
-        .hover-stat-chip.stat-up {
+        .ins-status-pill.buff {
             color: #8fd694;
             border-color: rgba(120, 210, 140, 0.4);
         }
 
-        .hover-stat-chip.stat-down {
+        .ins-status-pill.debuff {
             color: #e08a8a;
             border-color: rgba(220, 120, 120, 0.4);
-        }
-
-        .hover-stat-chip.weather-affected {
-            border-style: dashed;
-        }
-
-        /* ── the context tags: faction / zodiac / terrain / statuses / items ── */
-        .hover-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            margin: 6px 0 2px;
-        }
-
-        .hover-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            max-width: 100%;
-            font-size: 9.5px;
-            line-height: 1.25;
-            padding: 2px 5px;
-            border-radius: 4px;
-            color: var(--muted);
-            background: rgba(10, 14, 28, 0.6);
-            border: 1px solid rgba(140, 140, 200, 0.12);
-        }
-
-        .hover-tag-icon {
-            font-size: 11px;
-            line-height: 1;
-        }
-
-        .hover-tag-body {
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-        }
-
-        .hover-tag-body strong {
-            font-size: 9.5px;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            color: #d4c8b0;
-        }
-
-        .hover-tag-sub {
-            font-size: 8.5px;
-            color: var(--muted);
-        }
-
-        .hover-tag.tag-active {
-            border-color: rgba(255, 215, 0, 0.45);
-        }
-
-        .hover-tag.tag-active strong {
-            color: var(--gold);
-        }
-
-        .hover-tag.tag-bonus {
-            border-color: rgba(120, 210, 140, 0.4);
-        }
-
-        .hover-tag.tag-bonus strong {
-            color: #8fd694;
-        }
-
-        .hover-tag.tag-penalty {
-            border-color: rgba(220, 120, 120, 0.4);
-        }
-
-        .hover-tag.tag-penalty strong {
-            color: #e08a8a;
-        }
-
-        .hover-tag.tag-weather {
-            border-color: rgba(120, 170, 220, 0.4);
-        }
-
-        .hover-tag.tag-buff strong {
-            color: #8fd694;
-        }
-
-        .hover-tag.tag-debuff strong {
-            color: #e08a8a;
         }
 
         @keyframes previewPulse {
