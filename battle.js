@@ -28481,7 +28481,11 @@
 
                 if (clickedUnit && !clickedUnit.dead) {
 
-                    if (canControl && clickedUnit.player !== actingUnit.player) {
+                    /* ANY other living unit — enemy OR ally — opens its quick
+                       menu (the HUD picks the offensive playbook vs the ally
+                       quick-cast list by team). Clicking an ally used to only
+                       reselect/focus it; now it's one click to heal/buff it. */
+                    if (canControl) {
 
                         if ((state.actionMenuView || 'root') !== 'root') {
                             state.actionMenuView = 'root';

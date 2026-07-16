@@ -2726,6 +2726,11 @@
                     pendingTarget: 1,
                     comboPartner: 1,
                     _buildTool: 1,
+                    /* quick-menu anchors (enemy/ally card, tile card) are
+                       per-viewer UI — syncing them let the host's state stomp
+                       the guest's open quick menu on every heartbeat */
+                    _enemyActionTargetId: 1,
+                    _tileActionTarget: 1,
 
                     aiPlayer: 1,
                     aiThinking: 1,
@@ -2892,7 +2897,10 @@
                 'pendingTarget', 'comboPartner',
                 // the INSPECT card toggle is per-viewer UI — without this the
                 // host's ⓘ state would stomp the guest's on every state-sync
-                'showUnitInfo'
+                'showUnitInfo',
+                // quick-menu anchors (enemy/ally card, tile card) — guest-local
+                // too, or the handoff heartbeat closes the guest's open card
+                '_enemyActionTargetId', '_tileActionTarget'
             ];
 
             function _applyRemoteState(data) {

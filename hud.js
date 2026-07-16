@@ -153,17 +153,19 @@ window._updateEntropyGaugeHUD = function() {
 function _hudBoardBusy(st) {
   if (!st) return false;
   if (st._walkAnimActive) return true;          // set by battle.js + online.js walks
-  // TARGET BROWSING (a ✓ pick armed, nothing executing yet): the only thing
-  // moving is the caster→target camera preview — the menu must STAY UP, not
-  // blink out for the length of every camera glide (it made the two-click
-  // confirm read as broken and forced a "click again").
-  const _targetBrowsing = !!(st.pendingTarget && !st._actionExecuting);
+  // CAMERA-ONLY motion (unit-select pan, back-out reset, turn-start glide,
+  // the caster→target preview while browsing a ✓ pick) must NEVER hide the
+  // menu while the player is free to act — waiting out a 400–700ms glide
+  // for the command list to pop back was the single biggest "the menu feels
+  // laggy" complaint. Real action playback still hides it through the
+  // walk / VFX / projectile / dying flags plus _actionExecuting.
+  const _camIgnorable = !st._actionExecuting;
   const G = window.GAME;
   try {
-    if (G && typeof G.boardBusy === 'function') return !!G.boardBusy({ ignoreCamera: _targetBrowsing });
+    if (G && typeof G.boardBusy === 'function') return !!G.boardBusy({ ignoreCamera: _camIgnorable });
     // Fallbacks for an older battle.js that doesn't export boardBusy yet:
     if (st.units && st.units.some(u => u._dying)) return true;
-    if (!_targetBrowsing && G && G._camera && typeof G._camera.isBusy === 'function' && G._camera.isBusy()) return true;
+    if (!_camIgnorable && G && G._camera && typeof G._camera.isBusy === 'function' && G._camera.isBusy()) return true;
     if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()
         && typeof ThreeRenderer.hasActiveAnims === 'function' && ThreeRenderer.hasActiveAnims()) return true;
     if (typeof ThreeVFX !== 'undefined' && typeof ThreeVFX.hasActiveParticles === 'function'
@@ -177,17 +179,20 @@ function _hudBoardBusy(st) {
    next render (forced via ew-state-change), before the engine's own busy
    flags even flip. Zero-delay "your input registered" feedback. */
 window._hrlgNoteAction = function (ms) {
-  window._hrlgHoldUntil = performance.now() + (ms || 450);
+  // 300ms default: just long enough to bridge click → the engine's own busy
+  // flags flipping. Animated actions keep the menu down via those flags; a
+  // longer fixed hold only added dead air before the menu came back.
+  window._hrlgHoldUntil = performance.now() + (ms || 300);
   try { window.dispatchEvent(new Event('ew-state-change')); } catch (_) {}
 };
 
 // True while menus should hide. Re-renders only on hidden↔shown
-// transitions; a light 110ms boolean poll catches animations that start
+// transitions; a light 50ms boolean poll catches animations that start
 // or end without dispatching a state-change event.
 function useMenusHidden(st) {
   const [, setN] = useState(0);
   const ref = useRef({ lastBusy: 0, hidden: false, hiddenSince: 0 });
-  const LINGER = 180;   // debounce so back-to-back anims don't strobe the menu
+  const LINGER = 100;   // debounce so back-to-back anims don't strobe the menu
   /* Failsafe: menu visibility hangs off busy FLAGS — if one ever sticks
      (a VFX that never reports done, a camera that never settles), the whole
      command UI vanishes with no recovery. If we've been hidden for > 4 s
@@ -219,7 +224,7 @@ function useMenusHidden(st) {
       if (_hudBoardBusy(_st)) ref.current.lastBusy = t;
       const next = compute(t, _st);
       if (next !== ref.current.hidden) setN(n => n + 1);
-    }, 110);
+    }, 50);
     return () => clearInterval(iv);
   }, []);
   return hidden;
@@ -1743,9 +1748,10 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
       ...(catVars || {}),
       animationDelay: (Math.min(idx, 9) * 14) + 'ms',
     },
-    // Rows in a DIMMED parent panel stay clickable — the panel-level click
-    // backs up to that menu. Live rows fire on one click, always.
-    onClick: (dead && !muted) ? undefined : () => onFire(b),
+    // Rows in a DIMMED parent panel stay clickable: LIVE rows jump straight
+    // to their submenu/action (the handler stops propagation), dead rows
+    // bubble to the panel-level click which backs up to that menu.
+    onClick: (dead && !muted) ? undefined : (e) => onFire(b, e),
     onMouseEnter: muted ? undefined : (e) => onHover(b, true, e),
     onMouseLeave: muted ? undefined : (e) => onHover(b, false, e),
   },
@@ -2299,7 +2305,19 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
               muted: !isOn,
               fireId: isOn ? fireId : null,
               confirmBtn: (isOn && i === _ckIdx) ? confirm : null,
-              onFire: isOn ? fireBlade : () => {},   // dimmed rows: panel click backs up
+              // Dimmed-parent rows are LIVE SHORTCUTS: clicking a usable row
+              // switches straight to that submenu/action (chooseActionMenu /
+              // setActionMode / setTool all re-arm cleanly from any view) —
+              // no more back-up-then-click-again two-step. Unusable rows
+              // still bubble to the panel click = plain back-up.
+              onFire: isOn ? fireBlade : (b2, e) => {
+                // END TURN / CANCEL never fire from a dimmed panel — a click
+                // meant as "back" must not end the turn. They bubble = back.
+                if (b2.id === 'end' || b2.id === 'cancel') return;
+                if (!b2.available && !b2.forceLive) return;
+                if (e && e.stopPropagation) e.stopPropagation();
+                fireBlade(b2);
+              },
               onHover: isOn ? hoverBlade : () => {},
             })),
           ),
@@ -3442,7 +3460,16 @@ function ActionMenu({ st, hidden }) {
   } else if (menuView !== 'root') {
     view = 'sub';   // unknown view: bare root + crown
   } else if (st._enemyActionTargetId && !am) {
-    panels.push(_mkPanel('enemy|' + st._enemyActionTargetId, _hrlgEnemyBlades(unit, st))); view = 'quick';
+    // One anchor field, two menus: clicking an ENEMY opens the offensive
+    // playbook, clicking an ALLY opens the quick-cast support menu
+    // (heals / buffs / potions / trade) — decided here by team.
+    const _qtU = (st.units || []).find(u => u.id === st._enemyActionTargetId && !u.dead);
+    const _qtAlly = !!(_qtU && _qtU.id !== unit.id
+      && !(typeof isEnemyUnit === 'function' ? isEnemyUnit(unit, _qtU) : _qtU.player !== unit.player));
+    panels.push(_qtAlly
+      ? _mkPanel('ally|' + st._enemyActionTargetId, _hrlgAllyBlades(unit, st))
+      : _mkPanel('enemy|' + st._enemyActionTargetId, _hrlgEnemyBlades(unit, st)));
+    view = 'quick';
   } else if (st._tileActionTarget && !am) {
     panels.push(_mkPanel('tile|' + st._tileActionTarget.x + ',' + st._tileActionTarget.y, _hrlgTileBlades(unit, st))); view = 'quick';
   } else {
@@ -4970,6 +4997,284 @@ function _hrlgEnemyBlades(actingUnit, st) {
       : h('span', { className: 'hrlg-view-tab-icon', style: { color: EW.bad } }, '⌖'),
     h('span', { className: 'hrlg-view-tab-text' }, targetName),
     h('span', { className: 'hrlg-view-tab-count', style: { color: hpPct <= 30 ? EW.bad : EW.good } }, hpPct + '%'),
+    h('span', { className: 'hrlg-view-tab-count' }, dist + 't'),
+  ) };
+  return { title, blades };
+}
+
+/* ── ALLY QUICK-CAST ─────────────────────────────────────────────────
+   The clicked ally's support playbook: every heal / buff / shield /
+   cleanse the acting unit can land on them (move-then-cast included,
+   through the same engine approach finder the enemy menu uses), the
+   bag's potions used ON them, Trade when adjacent, Move Towards to
+   regroup. Everything fires through the same _fireEnemyAction funnel
+   as the enemy quick menu, so walk→cast chains, validation and online
+   relay behave identically. */
+function _computeAllyActions(actingUnit, targetUnit) {
+  if (!actingUnit || !targetUnit || targetUnit.dead) return [];
+  const actions = [];
+  const G = window.GAME;
+  if (!G) return actions;
+
+  const tx = targetUnit.x, ty = targetUnit.y;
+  const unitAP = actingUnit.ap || 0;
+  const dist = (typeof G.combatDist === 'function')
+    ? G.combatDist(actingUnit.x, actingUnit.y, actingUnit.z ?? 0, tx, ty, targetUnit.z ?? 0)
+    : Math.abs(actingUnit.x - tx) + Math.abs(actingUnit.y - ty);
+
+  // Caster-origin team casts: no aiming — the engine casts them on the
+  // caster's own tile and they wash over every ally, the clicked one included.
+  const _teamKinds = new Set(['healAll', 'manaRestoreAll', 'warCry']);
+  // Unit-target support kinds, aimed AT the ally.
+  const _allyKinds = new Set(['heal', 'shield', 'buff', 'cleanse', 'encore',
+    'zoneHeal', 'seedHeal', 'aoeShield', 'guard', 'swap', 'rallyPull']);
+
+  const allSpells = [...(actingUnit.spells || []), ...(actingUnit._raceAbilities || [])].filter(Boolean);
+  for (const sp of allSpells) {
+    const cls = typeof classifySpell === 'function' ? classifySpell(sp) : (sp.type || 'damage');
+    const _tt = typeof spellTileTeam === 'function' ? spellTileTeam(sp) : 'both';
+    const isTeamCast = _teamKinds.has(sp.kind);
+    const isAllySpell = isTeamCast || _allyKinds.has(sp.kind)
+      || ((cls === 'heal' || cls === 'buff') && _tt !== 'enemy');
+    if (!isAllySpell || _tt === 'enemy') continue;
+    // Self-only casts can't be aimed at someone else; revives need remains.
+    if (sp.kind === 'selfHeal' || sp.kind === 'revive' || sp.kind === 'raiseDead') continue;
+    if (!isTeamCast && typeof isSpellSelfCast === 'function' && isSpellSelfCast(sp)) continue;
+    const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, sp) : true;
+    if (!tierOk) continue;   // level-locked — not quick-cast material
+
+    const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
+    const mpCost = (typeof getSpellMpCostFor === 'function')
+      ? getSpellMpCostFor(actingUnit, sp)
+      : (sp.cost || 0) + (typeof getStatusMpCostDelta === 'function' ? getStatusMpCostDelta(actingUnit) : 0);
+    const canAfford = unitAP >= spellApCost && (actingUnit.mp || 0) >= mpCost
+      && !(typeof unitHasStatus === 'function' && unitHasStatus(actingUnit, 'silence'))
+      && (typeof canAffordSpell !== 'function' || canAffordSpell(actingUnit, sp));
+
+    const healAmt = sp.heal || sp.healAmt || 0;
+    const isHealish = cls === 'heal' || !!healAmt;
+    const fullHp = (targetUnit.hp || 0) >= (targetUnit.maxHp || 0);
+
+    // Castable on THIS ally from where we stand? The engine's own
+    // valid-target list is authoritative (range, LOS, full-HP heal
+    // filtering, already-applied statuses…).
+    let validHere;
+    if (isTeamCast) {
+      validHere = sp.kind === 'healAll' ? !fullHp
+        : sp.kind === 'manaRestoreAll' ? ((targetUnit.maxMp || 0) > 0 && (targetUnit.mp || 0) < targetUnit.maxMp)
+        : true;
+    } else {
+      validHere = typeof _getSpellValidTargets === 'function'
+        && _getSpellValidTargets(actingUnit, sp)
+          .some(t => (t.unit && t.unit.id === targetUnit.id) || (t.x === tx && t.y === ty));
+    }
+
+    let reason = '';
+    let moveTile = null;
+    if (!canAfford) {
+      reason = (typeof getSpellBlockReason === 'function' && getSpellBlockReason(actingUnit, sp))
+        || ((actingUnit.mp || 0) < mpCost ? 'No MP' : unitAP < spellApCost ? 'No AP' : 'Unavailable');
+    } else if (!validHere) {
+      if (isHealish && fullHp) reason = 'Full HP';
+      else if (isTeamCast) reason = 'No effect';
+      else {
+        // Same authoritative walk/jump/take-off approach finder the enemy
+        // quick menu uses → one-click MOVE→CAST onto the ally.
+        moveTile = (typeof findSpellApproachTile === 'function')
+          ? findSpellApproachTile(actingUnit, sp, tx, ty, targetUnit.z) : null;
+        if (moveTile && (unitAP - (moveTile.moveCost || 1)) < spellApCost) moveTile = null;
+        if (!moveTile) reason = 'Out of range';
+      }
+    }
+
+    actions.push({
+      id: 'spell:' + sp.name,
+      label: sp.name,
+      icon: (typeof _HRLG_CAT !== 'undefined' && _HRLG_CAT[cls]) ? _HRLG_CAT[cls].icon : '✦',
+      spellType: sp.spellType || '',
+      apCost: spellApCost,
+      mpCost: sp.cost || 0,
+      moveTile: validHere ? null : moveTile,
+      preview: healAmt ? { type: 'heal', amount: healAmt } : null,
+      powerLabel: typeof getSpellPowerLabel === 'function' ? getSpellPowerLabel(sp) : '',
+      typeNote: '',
+      available: !!(canAfford && (validHere || moveTile)),
+      reason: reason || null,
+      spell: sp,
+      _teamCast: isTeamCast,
+    });
+  }
+
+  // Potions from the bag, used ON the ally — the same doItem the Items menu
+  // fires (potions reach any living ally, mirroring _hrlgItemTargetBlades).
+  if (typeof ITEM_RULES !== 'undefined' && actingUnit.items) {
+    const itemApCost = G.AP_COST_ACTION || 1;
+    const _pushPotion = (key, usable, why) => {
+      if ((actingUnit.items[key] || 0) <= 0) return;
+      const rule = ITEM_RULES[key] || {};
+      const ok = usable && unitAP >= itemApCost;
+      actions.push({
+        id: 'item:' + key,
+        label: rule.name || key,
+        icon: rule.icon || '❖',
+        apCost: itemApCost,
+        moveTile: null,
+        preview: null,
+        typeNote: '',
+        available: ok,
+        reason: ok ? null : (!usable ? why : 'No AP'),
+        itemKey: key,
+        _count: actingUnit.items[key] || 0,
+      });
+    };
+    _pushPotion('healPotion', (targetUnit.hp || 0) < (targetUnit.maxHp || 0), 'Full HP');
+    _pushPotion('manaPotion',
+      (targetUnit.maxMp || 0) > 0 && (targetUnit.mp || 0) < targetUnit.maxMp,
+      (targetUnit.maxMp || 0) > 0 ? 'Full MP' : 'No MP pool');
+  }
+
+  // Trade — hand items across when adjacent (opens the trade dialog, free).
+  if (typeof canTradeWithUnit === 'function' && typeof doTrade === 'function') {
+    const adj = canTradeWithUnit(actingUnit, targetUnit);
+    actions.push({
+      id: 'trade', label: 'Trade', icon: '🔄',
+      apCost: 0, moveTile: null, preview: null, typeNote: '',
+      available: !!adj,
+      reason: adj ? null : 'Not adjacent',
+    });
+  }
+
+  // Move Towards — close the distance to regroup / carry the healer in.
+  if (unitAP >= 1 && dist > 1) {
+    const movesLeft = (typeof G.UNIT_MAX_MOVES !== 'undefined' ? G.UNIT_MAX_MOVES : 2) - (actingUnit.movesThisTurn || 0);
+    const _flatD = (fx, fy) => Math.abs(fx - tx) + Math.abs(fy - ty);
+    let towardTile = null;
+    let towardDist = _flatD(actingUnit.x, actingUnit.y);
+    let towardLabel = 'Move Towards', towardIcon = '➜';
+    if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function'
+        && canUnitMove(actingUnit) && movesLeft > 0) {
+      for (const t of getMoveTiles(actingUnit)) {
+        if (t._takeoff) continue;   // altitude changes cost extra AP — plain steps only
+        if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
+        const d = _flatD(t.x, t.y);
+        if (d < towardDist) { towardTile = { moveCost: 1, x: t.x, y: t.y, z: t.z }; towardDist = d; }
+      }
+    }
+    if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
+      for (const t of getJumpTiles(actingUnit)) {
+        if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
+        const d = _flatD(t.x, t.y);
+        if (d < towardDist) {
+          towardTile = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: true };
+          towardDist = d; towardLabel = 'Jump Towards'; towardIcon = '↷';
+        }
+      }
+    }
+    if (towardTile) {
+      const towardPath = _predictMoveTowardsPath(actingUnit, targetUnit, towardTile);
+      actions.push({
+        id: 'moveTowards', label: towardLabel, icon: towardIcon,
+        apCost: 1, moveTile: towardTile,
+        _towardPath: towardPath && towardPath.length ? towardPath : null,
+        preview: null, typeNote: '', available: true,
+      });
+    }
+  }
+
+  actions.sort((a, b) => {
+    // Usable rows lead; heals before buffs/utility, then potions, then the
+    // togglers (trade / move towards) — the "patch them up" verbs on top.
+    const availA = a.available ? 0 : 1, availB = b.available ? 0 : 1;
+    if (availA !== availB) return availA - availB;
+    const rank = (x) => x.id.startsWith('spell:')
+      ? ((x.spell && (typeof classifySpell === 'function' ? classifySpell(x.spell) : x.spell.type) === 'heal') ? 0 : 1)
+      : x.id.startsWith('item:') ? 2 : x.id === 'trade' ? 3 : 4;
+    return rank(a) - rank(b);
+  });
+  return actions;
+}
+
+// The clicked ALLY's support playbook as drum blades — same layout as the
+// enemy quick menu, healer-green: heal amounts, MP/AP costs, one-click
+// move+cast approaches, unavailability reasons, and the ally's face + HP
+// (and MP) riding the view tab.
+function _hrlgAllyBlades(actingUnit, st) {
+  const targetUnit = (st.units || []).find(u => u.id === st._enemyActionTargetId && !u.dead);
+  if (!targetUnit) return { title: null, blades: [] };
+  const actions = _computeAllyActions(actingUnit, targetUnit);
+  const dist = Math.abs(actingUnit.x - targetUnit.x) + Math.abs(actingUnit.y - targetUnit.y);
+  const targetName = typeof unitDisplayName === 'function' ? unitDisplayName(targetUnit) : (targetUnit.name || targetUnit.cls);
+  const hpPct = targetUnit.maxHp > 0 ? Math.max(0, Math.round((targetUnit.hp / targetUnit.maxHp) * 100)) : 0;
+
+  const blades = actions.map((a, i) => {
+    const isMove = !!a.moveTile;
+    const cls = a.spell ? (typeof classifySpell === 'function' ? classifySpell(a.spell) : 'heal') : null;
+    const cc = cls ? (_HRLG_CAT[cls] || _HRLG_CAT.heal) : null;
+    let power = null;
+    if (a.preview && a.preview.amount) power = { v: '+' + a.preview.amount, color: '#57d97e' };
+    else if (a.powerLabel) power = { v: a.powerLabel, color: '#57d97e' };
+    return {
+      id: 'aa:' + a.id + ':' + i,
+      icon: a.icon,
+      iconColor: a.id.startsWith('item:') ? '#57d97e' : undefined,
+      label: a.label,
+      available: a.available,
+      spell: a.spell || null,
+      catColor: cc ? cc.color : (a.id === 'item:healPotion' ? '#57d97e' : undefined),
+      badges: a.spell ? _hrlgSpellBadges(a.spell, cls, true) : undefined,
+      power: power,
+      mp: a.mpCost || null,
+      cost: a.available && a.apCost ? a.apCost : null,
+      count: a._count ? '×' + a._count : null,
+      note: isMove
+        ? (a.id === 'moveTowards'
+          ? (a._towardPath && a._towardPath.length
+            ? '↳ ' + (typeof coordLabel === 'function'
+                ? coordLabel(a._towardPath[a._towardPath.length - 1].x, a._towardPath[a._towardPath.length - 1].y)
+                : a._towardPath[a._towardPath.length - 1].x + ',' + a._towardPath[a._towardPath.length - 1].y)
+            : null)
+          : '↳ ' + (a.moveTile._jump ? 'JUMP' : 'MOVE'))
+        : (a._teamCast ? '↳ ALL ALLIES' : null),
+      sub: !a.available ? (a.reason || 'Unavailable') : null,
+      fire: () => {
+        if (a.id === 'trade') {
+          if (!a.available) return;
+          hideSpellTooltip();
+          if (typeof doTrade === 'function') doTrade(actingUnit, targetUnit.x, targetUnit.y, targetUnit.z);
+          state._enemyActionTargetId = null;
+          if (typeof markDirty === 'function') { markDirty('hud'); renderIfDirty(); }
+          return;
+        }
+        _fireEnemyAction(actingUnit, targetUnit, a);
+      },
+      hoverIn: (e) => { if (a.spell) showSpellTooltip(a.spell, e); if (a.available) _showMoveArrowPreview(actingUnit, targetUnit, a.moveTile, a); },
+      hoverOut: () => { hideSpellTooltip(); _clearMoveArrowPreview(); },
+    };
+  });
+  if (!blades.length) blades.push({ id: 'none', icon: '♥', label: 'Nothing to cast on this ally', available: false });
+
+  // ⓘ INSPECT — the ally's full stat card, same as the enemy quick menu.
+  blades.push({
+    id: 'ainfo', icon: 'ⓘ', label: 'Inspect', available: true,
+    selected: !!st.showUnitInfo,
+    fire: () => {
+      if (typeof focusUnitPanel === 'function') focusUnitPanel(targetUnit.id);
+      if (typeof toggleUnitInfo === 'function') toggleUnitInfo();
+    },
+  });
+
+  const tabPort = _hrlgPortraitData(targetUnit, actingUnit);
+  const mpTxt = (targetUnit.maxMp || 0) > 0 ? Math.round(targetUnit.mp || 0) + 'MP' : null;
+  const title = { node: h(React.Fragment, null,
+    tabPort
+      ? h('span', {
+          className: 'hrlg-tport ally' + (tabPort.isFace ? '' : ' sprite'),
+          style: { width: 34, height: 34, backgroundImage: 'url("' + tabPort.url + '")' },
+        })
+      : h('span', { className: 'hrlg-view-tab-icon', style: { color: '#57d97e' } }, '♥'),
+    h('span', { className: 'hrlg-view-tab-text' }, targetName),
+    h('span', { className: 'hrlg-view-tab-count', style: { color: hpPct <= 30 ? EW.bad : EW.good } }, hpPct + '%'),
+    mpTxt ? h('span', { className: 'hrlg-view-tab-count', style: { color: '#5fd6ff' } }, mpTxt) : null,
     h('span', { className: 'hrlg-view-tab-count' }, dist + 't'),
   ) };
   return { title, blades };
