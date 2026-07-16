@@ -4,7 +4,49 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## DAMAGE FORMULA REWORK: capped multiplier product + range profile + passives audit (2026-07-16, LATEST) — battle.js, ui.js, index.html
+## FLYER MOVEMENT WYSIWYG: takeoff folded into doMove + grounded-flyer jumps (2026-07-16, LATEST) — battle.js, hud.js, ui.js, online.js, index.html
+Token `20260716h`. User bug: flyer move preview showed a destination, the click
+took off (burning 1 AP) and then the move failed / landed somewhere else.
+Root causes + fixes (all four had to land together):
+- **getMoveTiles takeoff fan-out was a hand-rolled scan** (flat cost 1/tile, no
+  `objectBlocksEdge`, no diagonal corner-cut check, altitude = raw
+  `getMinFlyingZ` ignoring the collision-climb doAltitudeChange does). Now it
+  resolves the REAL takeoff altitude via shared `_resolveTakeoffZ(unit)`
+  (battle.js, above canChangeAltitude — also used by doAltitudeChange), parks
+  the unit there and RECURSES into getMoveTiles' own airborne scan, so teal
+  tiles are by construction exactly what the post-takeoff move can reach.
+  Columns already walk-reachable are skipped (1 AP beats 2).
+- **Takeoff now happens INSIDE doMove**: a `_takeoff` matched tile triggers
+  doAltitudeChange('ascend') + re-entry (battle.js doMove, right after the
+  z-matching block). clickTile / hud "Take Off + Move" card simplified to plain
+  doMove calls; the old two-step in clickTile ran doAltitudeChange guest-locally
+  ONLINE and desynced (doAltitudeChange was never relayed!). online.js now also
+  wraps doAltitudeChange (engine-wrapper pattern) + dispatcher case for the
+  standalone Take Off / Land menu verbs.
+- **Grounded flyers can JUMP now** (user request): getJumpTiles/doJump only
+  reject AIRBORNE flyers. Main-scan climb legs are `_jump` for everyone —
+  previously a grounded flyer's climb tiles were mislabeled `_takeoff`, and the
+  executor's real takeoff (min clearance 2) could never land on the previewed
+  ground surface.
+- **findMovePath empty-path teleports**: an airborne dest z is route-derived
+  (clearance clamps), so caller z vs search z could disagree → `[]` → the unit
+  SLID/teleported instead of flying. findMovePath now falls back to the
+  cheapest reached node at the dest column for airborne movers.
+- Visuals: doAltitudeChange tweens the rise/descent via ThreeAnim.walkPath
+  (1-node path) instead of teleporting to altitude; takeoff+move prepends the
+  vertical rise to the glide via `state._takeoffRiseFromZ` (set by doMove,
+  consumed once by animateWalkPath, 3D renderer only, added to online.js
+  serialize skip-list). Hover preview for teal tiles draws rise+glide at
+  flight height from the same `_resolveTakeoffZ` sim, ghost at the real
+  airborne z.
+- Also fixed: 2-AP walk+walk executor (and its hover/ring-2 previews) took
+  ring-2 `_jump`/`_takeoff` tiles on faith — could slide a flyer to altitude
+  without paying/animating the takeoff. All three now filter to plain walks.
+- Gotcha for future sessions: ANY divergence between a preview scan and the
+  executor's re-scan = player betrayal. Prefer "simulate by mutating unit.z +
+  reuse the same function" over duplicating Dijkstra loops.
+
+## DAMAGE FORMULA REWORK: capped multiplier product + range profile + passives audit (2026-07-16) — battle.js, ui.js, index.html
 Token `20260716a`. The damage pipeline is now explicitly two halves:
 - **Caster side — `computeSpellBase(spell, spellPower, {baseDmg, floor, variance})`**
   (battle.js, right above `_applyDamageSpellHit`): replaces every hand-rolled

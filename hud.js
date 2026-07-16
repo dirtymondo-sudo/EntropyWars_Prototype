@@ -5074,13 +5074,10 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
           handler: (unitAP >= takeoffApCost) ? () => {
             state._tileActionTarget = null;
             if (typeof setActionMode === 'function') setActionMode('move');
-
-            if (typeof doAltitudeChange === 'function') {
-              const ascResult = doAltitudeChange(actingUnit, 'ascend');
-              if (ascResult !== 0 && typeof doMove === 'function') {
-                doMove(actingUnit, tx, ty, moveTile.z);
-              }
-            }
+            // doMove performs the takeoff itself (one action, one online
+            // relay — the old two-step ran the ascend guest-locally online
+            // and desynced).
+            if (typeof doMove === 'function') doMove(actingUnit, tx, ty, moveTile.z);
           } : null,
         });
       } else {

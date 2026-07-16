@@ -2510,7 +2510,7 @@
                 const r2 = getMoveTiles(_selectedForHl);
                 for (const t2 of r2) {
 
-                  if (t2._jump) continue;
+                  if (t2._jump || t2._takeoff) continue;
                   const pk = posKey(t2.x, t2.y);
                   if (!_r1Set.has(pk) && pk !== _originPk) {
                     _ring2Set.add(pk);

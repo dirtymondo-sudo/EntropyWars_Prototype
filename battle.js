@@ -15450,7 +15450,7 @@
                 }
             }
             const startKey = _has3D ? posKey3(unit.x, unit.y, unitZ) : posKey(unit.x, unit.y);
-            const goalKey = _has3D ? posKey3(destX, destY, destZ) : posKey(destX, destY);
+            let goalKey = _has3D ? posKey3(destX, destY, destZ) : posKey(destX, destY);
             const parents = new Map();
             const costs = new Map([
                 [startKey, 0]
@@ -15549,6 +15549,21 @@
                         open.push({ x: nx, y: ny, z: nz, cost: nextCost });
                     }
                 }
+            }
+            if (!costs.has(goalKey) && _pathFlies && isUnitAirborne(unit)) {
+                /* An airborne flyer's z at a tile is derived from the route
+                   flown (clearance clamped along the way), so the caller's
+                   destZ and this search's z can disagree by a clamp. NEVER
+                   let that become an empty path — an empty path means the
+                   unit teleports instead of flying. Land the path on the
+                   cheapest node we DID reach at the destination column. */
+                let _bestKey = null, _bestCost = Infinity;
+                for (const [k, c] of costs) {
+                    if (k === startKey) continue;
+                    const p = k.split(',');
+                    if ((+p[0]) === destX && (+p[1]) === destY && c < _bestCost) { _bestCost = c; _bestKey = k; }
+                }
+                if (_bestKey) goalKey = _bestKey;
             }
             if (!costs.has(goalKey)) return [];
             const path = [];
@@ -19167,6 +19182,39 @@
                     if (matches.length) {
                         const dest = _pickByZ(matches);
                         const routeColor = (dest._jump || dest._takeoff) ? 0x66ffcc : 0xffcc44;
+
+                        /* Takeoff+move (grounded flyer, teal tile): route the
+                           preview through the SAME simulated takeoff the tile
+                           scan used — a vertical rise leg off the start tile,
+                           then the glide at flight height, ghost parked at
+                           the real airborne z. What you see is what doMove's
+                           internal ascend + fly will actually do. */
+                        if (dest._takeoff
+                            && !_isAir && canFly(unit) && typeof _resolveTakeoffZ === 'function') {
+                            const _toZ = _resolveTakeoffZ(unit);
+                            if (_toZ !== null) {
+                                const _tSaved = unit.z;
+                                unit.z = _toZ;
+                                let toPath = [];
+                                try { toPath = findMovePath(unit, x, y, dest.z); } finally { unit.z = _tSaved; }
+                                const _fts = CONFIG.tileSize || BASE_TILE;
+                                const _flyY = (wz) => Math.max(_fts * 0.04,
+                                    (typeof window._getElevationPx === 'function') ? window._getElevationPx(wz) : wz * _fts);
+                                const wps = [
+                                    { x: unit.x, y: unit.y, yOverride: actingY },
+                                    { x: unit.x, y: unit.y, yOverride: _flyY(_toZ) }
+                                ];
+                                for (const p of toPath) wps.push({ x: p.x, y: p.y, yOverride: _flyY(p.z ?? _toZ) });
+                                if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, routeColor);
+                                ThreeRenderer.setOverlay('moveHoverDest',
+                                    [{ x: x, y: y, color: routeColor, opacity: 0.45 }], routeColor, 0.45);
+                                ThreeRenderer.showGhostUnit(unit, x, y, _flyY(dest.z), { tag: 'caster', color: ghostTint, opacity: 0.55 });
+                                state._moveHoverActive = true;
+                                scheduleBoardRender();
+                                return;
+                            }
+                        }
+
                         const path = findMovePath(unit, x, y, dest.z);
                         const wps = [{ x: unit.x, y: unit.y, yOverride: actingY }];
                         for (const p of path) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y, p.z) });
@@ -19206,7 +19254,8 @@
                         if (t1._jump || t1._takeoff) continue;
                         unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? savedZ;
                         const r2 = getMoveTiles(unit);
-                        const m2 = r2.filter(t2 => t2.x === x && t2.y === y);
+                        // Plain walks only, both legs — mirrors the executor.
+                        const m2 = r2.filter(t2 => t2.x === x && t2.y === y && !t2._jump && !t2._takeoff);
                         if (m2.length) {
                             m2.sort((a, b) => Math.abs((a.z ?? 0) - _zRef2) - Math.abs((b.z ?? 0) - _zRef2));
                             const exact = (_hovZ === undefined || _hovZ === null) || (m2[0].z ?? 0) === _hovZ;
@@ -28797,15 +28846,10 @@
                     }
                 }
                 if (_r1Match) {
-
-                    if (_r1Match._takeoff && canFly(actingUnit) && !isUnitAirborne(actingUnit)) {
-                        const _toResult = doAltitudeChange(actingUnit, 'ascend');
-                        if (_toResult !== 0) {
-                            return _execMove(() => doMove(actingUnit, x, y, _r1Match.z));
-                        }
-                        state._actionExecuting = false;
-                        return false;
-                    }
+                    /* _takeoff (teal) tiles too: doMove performs the ascend
+                       itself now — one action, one online relay. The old
+                       two-step here ran doAltitudeChange guest-locally in
+                       online matches and desynced. */
                     return _execMove(() => doMove(actingUnit, x, y, _r1Match.z));
                 }
 
@@ -28845,7 +28889,11 @@
                         if (t1._jump || t1._takeoff) continue;
                         actingUnit.x = t1.x; actingUnit.y = t1.y; actingUnit.z = t1.z ?? savedZ;
                         const r2 = getMoveTiles(actingUnit);
-                        const m2 = r2.filter(t2 => t2.x === x && t2.y === y);
+                        /* Both legs must be plain walks: a _jump/_takeoff tile in
+                           ring 2 is NOT reachable by this walk+walk executor —
+                           taking one on faith slid flyers to altitude without
+                           paying (or animating) the takeoff. */
+                        const m2 = r2.filter(t2 => t2.x === x && t2.y === y && !t2._jump && !t2._takeoff);
                         if (m2.length) {
                             m2.sort((a, b) => Math.abs((a.z ?? 0) - _zRef2) - Math.abs((b.z ?? 0) - _zRef2));
                             const _exactZ = (state._clickedZ === undefined || state._clickedZ === null)
@@ -28974,21 +29022,8 @@
                     }
                 }
 
-                if (canFly(actingUnit) && !isUnitAirborne(actingUnit)) {
-                    const _toTiles = _r1Tiles.filter(t => t._takeoff);
-                    const _toMatch = _toTiles.find(t => t.x === x && t.y === y);
-                    if (_toMatch) {
-
-                        const _toResult = doAltitudeChange(actingUnit, 'ascend');
-                        if (_toResult !== 0) {
-
-                            return _execMove(() => doMove(actingUnit, x, y, _toMatch.z));
-                        }
-
-                        state._actionExecuting = false;
-                        return false;
-                    }
-                }
+                // (Takeoff tiles are handled by the _r1Match branch above —
+                // doMove performs the ascend internally.)
 
                 // Jump is a deliberate, first-class action — not a one-click
                 // walk+jump combo. Standalone jump tiles were already resolved
@@ -29469,6 +29504,26 @@
         }
 
         function animateWalkPath(unit, path, onComplete) {
+            /* Takeoff-then-move (doMove's internal ascend): prepend the
+               vertical rise so the flyer visibly lifts off its start tile
+               before gliding, instead of popping to altitude and sliding
+               flat. 3D tween only — the DOM ghost fallback would read the
+               rise as a jump arc. The flag is set by doMove right before it
+               re-enters itself post-takeoff, and consumed exactly once. */
+            const _riseFromZ = state._takeoffRiseFromZ;
+            state._takeoffRiseFromZ = null;
+            if (_riseFromZ !== undefined && _riseFromZ !== null
+                && window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive()
+                && (unit.z ?? 0) !== _riseFromZ) {
+                const _savedZ = unit.z;
+                unit.z = _riseFromZ;   // the tween's start node reads unit.z
+                try {
+                    animateWalkPath(unit, [{ x: unit.x, y: unit.y, z: _savedZ }, ...(path || [])], onComplete);
+                } finally {
+                    unit.z = _savedZ;
+                }
+                return;
+            }
             _walkAnimUnitId = unit.id;
 
             if (window.ThreeAnim && window.ThreeAnim.isActive()) {
@@ -30285,6 +30340,7 @@
             }
             const moveTiles = getMoveTiles(unit);
 
+            let _matchedTile = null;
             {
                 const matches = moveTiles.filter(t => t.x === x && t.y === y);
                 if (matches.length > 0) {
@@ -30297,6 +30353,7 @@
                         ? matches.find(t => (t.z ?? 0) === z) : null;
                     if (_exact) {
                         z = _exact.z;
+                        _matchedTile = _exact;
                     } else {
                         /* Tie-break toward the REQUESTED surface when one was
                            given (the clicked floor), not the unit's own z — a
@@ -30305,10 +30362,29 @@
                         const zRef = (z !== undefined && z !== null) ? z : (unit.z ?? 0);
                         matches.sort((a, b) => Math.abs((a.z ?? 0) - zRef) - Math.abs((b.z ?? 0) - zRef));
                         z = matches[0].z;
+                        _matchedTile = matches[0];
                     }
                 } else if (z === undefined || z === null) {
                     z = (typeof nearestWalkableZ === 'function' ? nearestWalkableZ(x, y, unit.z) : 0);
                 }
+            }
+
+            /* Grounded flyer heading to a fly-only (teal _takeoff) tile: the
+               takeoff IS part of this move. Doing it here — instead of in
+               every caller — means the click executor, the tile card, the AI
+               and the online replay all pay the same AP and land exactly
+               where the preview (which simulated this same takeoff in
+               getMoveTiles) said they would. Online: one doMove relay covers
+               the whole thing; the old two-step ran doAltitudeChange on the
+               guest's local copy only and desynced. */
+            if (_matchedTile && _matchedTile._takeoff
+                && canFly(unit) && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
+                const _preTakeoffZ = unit.z ?? 0;
+                if (doAltitudeChange(unit, 'ascend') === 0) return false;
+                // animateWalkPath prepends the vertical rise off this flag so
+                // the flyer visibly lifts off before gliding its route.
+                state._takeoffRiseFromZ = _preTakeoffZ;
+                return doMove(unit, x, y, _matchedTile.z);
             }
             const legalMove = moveTiles.some(tile => tile.x === x && tile.y === y && (tile.z === undefined || tile.z === z));
             if (!legalMove || unitAt(x, y, z) || !unitCanTraverse(unit, x, y, z)) {
@@ -30432,6 +30508,11 @@
 
             }
 
+            /* The rise flag is consumed by animateWalkPath; when no walk anim
+               ran this move (fog-hidden AI, camera off) drop it here so it
+               can't leak onto a later unit's walk. */
+            state._takeoffRiseFromZ = null;
+
             pushUndoSnapshot(_moveWillGainInfo(unit, x, y));
 
             if (!unit._aiRecentTiles) unit._aiRecentTiles = [];
@@ -30466,7 +30547,10 @@
 
         function getJumpTiles(unit) {
             if (!unit || unit.dead) return [];
-            if (canFly(unit)) return [];          // flyers take to the air, they don't jump
+            // AIRBORNE flyers glide with Move — no jumping mid-air. A flyer
+            // standing on the ground leaps like anyone else (a 1-AP hop up a
+            // ledge should never force a 2-AP takeoff-and-hover).
+            if (canFly(unit) && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return [];
             if (unit._jumpedThisTurn) return [];  // one decisive leap per turn
             const unitZ = unit.z ?? 0;
             const tiles = [];
@@ -30606,8 +30690,8 @@
                 addLog('That unit already acted this round.');
                 return false;
             }
-            if (canFly(unit)) {
-                addLog('Flyers take to the air instead of jumping.');
+            if (canFly(unit) && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) {
+                addLog('Airborne flyers glide with Move — land first to jump.');
                 return false;
             }
             if (unit._jumpedThisTurn) {
@@ -31586,6 +31670,28 @@
             return false;
         }
 
+        /* The EXACT altitude a takeoff (doAltitudeChange 'ascend') will put
+           this unit at: min flying clearance from the ground, climbing past
+           any airborne unit already parked in the column, clamped to the
+           ceiling. null = no room (airspace full). Shared by doAltitudeChange
+           AND getMoveTiles' takeoff fan-out so the previewed teal tiles are
+           computed from the SAME altitude the real takeoff will use — any
+           drift between the two is how players get betrayed by the preview. */
+        function _resolveTakeoffZ(unit) {
+            const groundZ = getHeightAt(unit.x, unit.y);
+            const maxZ = getMaxFlyingZ(unit.x, unit.y);
+            const oldZ = unit.z ?? 0;
+            let newZ = oldZ + 1;
+            if (oldZ <= groundZ) newZ = getMinFlyingZ(unit.x, unit.y);
+            newZ = Math.min(newZ, maxZ);
+            while (newZ <= maxZ && state.units.some(u =>
+                u !== unit && !u.dead && !u._dying &&
+                u.x === unit.x && u.y === unit.y && (u.z ?? 0) === newZ)) {
+                newZ++;
+            }
+            return (newZ > maxZ) ? null : newZ;
+        }
+
         function canChangeAltitude(unit, mode) {
             if (!unit || unit.dead || unit._dying) return { ok: false, reason: 'Unit is dead.' };
             if (!canFly(unit)) return { ok: false, reason: 'Only flying units can change altitude.' };
@@ -31768,25 +31874,20 @@
             const maxZ = getMaxFlyingZ(unit.x, unit.y);
 
             if (mode === 'ascend') {
-                let newZ = oldZ + 1;
-
-                if (oldZ <= groundZ) newZ = minZ;
-
-                newZ = Math.min(newZ, maxZ);
-
-                // Collision guard: two units may never share a tile + elevation.
-                // If another airborne unit already occupies this altitude over
-                // the same column, climb to the next free level instead of
-                // stacking on top of them.
-                while (newZ <= maxZ && state.units.some(u =>
-                    u !== unit && !u.dead && !u._dying &&
-                    u.x === unit.x && u.y === unit.y && (u.z ?? 0) === newZ)) {
-                    newZ++;
-                }
-                if (newZ > maxZ) {
+                // Shared with getMoveTiles' takeoff fan-out (collision-climb
+                // included) so previewed tiles and the real takeoff can never
+                // disagree about the altitude the unit ends up at.
+                const newZ = _resolveTakeoffZ(unit);
+                if (newZ === null) {
                     addLog('No room to climb — the airspace above is occupied.');
                     if (typeof playErrorSfx === 'function') playErrorSfx();
                     return 0;
+                }
+                // Visible lift-off: tween the rig up to altitude (start z is
+                // captured from unit.z, so fire this BEFORE the assignment)
+                // instead of teleporting it there in one frame.
+                if (window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive() && !_skipVisuals()) {
+                    window.ThreeAnim.walkPath(unit, [{ x: unit.x, y: unit.y, z: newZ }]);
                 }
                 unit.z = newZ;
 
@@ -31815,6 +31916,11 @@
 
                 if (unit.race === 'vampire' && oldZ > groundZ) {
                     _triggerBatTransform(unit, 'out');
+                }
+                // Visible descent: tween the rig down to the ground (start z
+                // is captured from unit.z, so fire BEFORE the assignment).
+                if (window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive() && !_skipVisuals()) {
+                    window.ThreeAnim.walkPath(unit, [{ x: unit.x, y: unit.y, z: _finalZ }]);
                 }
                 unit.z = _finalZ;
                 playSfx('moveStep');
@@ -38629,14 +38735,17 @@
                         if (!_blocked && !_isBuilding && !tileSet.has(nKey)) {
                             tileSet.add(nKey);
 
-                            const _isGroundedFlyer = _unitFlies && !_isAirborne;
+                            /* Climb legs are JUMPS for everyone — grounded
+                               flyers included (they can leap now). Marking
+                               them _takeoff used to route the click through a
+                               real takeoff, which can't land on the previewed
+                               ground surface (min flying clearance is 2). */
                             tiles.push({
                                 x: nx,
                                 y: ny,
                                 z: nz,
                                 cost: nextCost,
-                                _jump: _nodeViaJump && !_isGroundedFlyer,
-                                _takeoff: _nodeViaJump && _isGroundedFlyer
+                                _jump: _nodeViaJump
                             });
                         }
                         open.push({
@@ -38650,65 +38759,39 @@
                 }
             }
 
+            /* ── Grounded flyer: TAKE OFF + MOVE fan-out (teal tiles) ────────
+               These tiles must be EXACTLY what a real takeoff-then-move will
+               produce, or the preview betrays the player: the takeoff AP gets
+               spent and then the move comes back "Invalid". So resolve the
+               same altitude doAltitudeChange('ascend') will pick (shared
+               _resolveTakeoffZ — collision-climb included), park the unit
+               there, and re-run THIS function's airborne scan (terrain costs,
+               edge blockers, corner cuts, occupancy — everything doMove will
+               re-check after the real takeoff). The old hand-rolled scan here
+               used flat step costs and skipped the edge/corner checks, which
+               is how previewed tiles turned out unreachable after the AP was
+               already burned. */
             if (_unitFlies && !isUnitAirborne(unit) && canChangeAltitude(unit, 'ascend').ok) {
 
                 const takeoffApCost = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined' ? FLYING_ALTITUDE_CONFIG.apCost : 1) + AP_COST_ACTION;
                 if ((unit.ap || 0) >= takeoffApCost) {
-
-                    const groundZ = getHeightAt(unit.x, unit.y);
-                    const flyZ = getMinFlyingZ(unit.x, unit.y);
-
-                    const savedZ = unit.z;
-                    unit.z = flyZ;
-                    const flyMaxCost = getEffectiveMove(unit);
-                    const flyBestCost = new Map();
-                    const flyStartKey = _has3D ? posKey3(unit.x, unit.y, flyZ) : posKey(unit.x, unit.y);
-                    flyBestCost.set(flyStartKey, 0);
-                    const flyOpen = [{ x: unit.x, y: unit.y, z: flyZ, cost: 0 }];
-                    while (flyOpen.length) {
-                        let minI = 0;
-                        for (let i = 1; i < flyOpen.length; i++) {
-                            if (flyOpen[i].cost < flyOpen[minI].cost) minI = i;
-                        }
-                        const cur = flyOpen[minI];
-                        flyOpen[minI] = flyOpen[flyOpen.length - 1];
-                        flyOpen.pop();
-                        const curKey = _has3D ? posKey3(cur.x, cur.y, cur.z) : posKey(cur.x, cur.y);
-                        if (cur.cost > (flyBestCost.get(curKey) ?? Infinity)) continue;
-                        for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) {
-                            const nx = cur.x + dx, ny = cur.y + dy;
-                            if (!isInside(nx, ny)) continue;
-
-                            const _toFlyMinZ = getMinFlyingZ(nx, ny);
-                            const _toFlyMaxZ = getMaxFlyingZ(nx, ny);
-                            const _toCurGround = getHeightAt(cur.x, cur.y);
-                            const _toClearance = cur.z - _toCurGround;
-                            const _toNbrGround = getHeightAt(nx, ny);
-                            const nz = Math.max(_toFlyMinZ, Math.min(_toFlyMaxZ, _toNbrGround + _toClearance));
-
-                            if (!unitCanTraverse(unit, nx, ny, _has3D ? nz : undefined)) continue;
-
-                            const _toOccupant = unitAt(nx, ny, nz);
-                            if (_toOccupant && _toOccupant.player !== unit.player) continue;
-                            const nextCost = cur.cost + 1 + ((dx !== 0 && dy !== 0) ? 0.001 : 0);
-                            if (nextCost > flyMaxCost) continue;
-                            const nKey = _has3D ? posKey3(nx, ny, nz) : posKey(nx, ny);
-                            if (nextCost >= (flyBestCost.get(nKey) ?? Infinity)) continue;
-                            flyBestCost.set(nKey, nextCost);
-
-                            const groundPk = posKey(nx, ny);
-                            if (!tileSet.has(groundPk) && !(nx === unit.x && ny === unit.y)) {
-
-                                const _toBlocked = !!_toOccupant;
-                                if (!_toBlocked) {
-                                    tileSet.add(groundPk);
-                                    tiles.push({ x: nx, y: ny, z: nz, cost: nextCost, _takeoff: true });
-                                }
+                    const _toZ = (typeof _resolveTakeoffZ === 'function') ? _resolveTakeoffZ(unit) : null;
+                    if (_toZ !== null) {
+                        // Columns already reachable on foot keep their walk tile
+                        // (1 AP beats 2) — takeoff tiles only where walking can't go.
+                        const _walkCols = new Set(tiles.map(t => posKey(t.x, t.y)));
+                        const savedZ = unit.z;
+                        unit.z = _toZ;   // simulate the post-takeoff unit (isUnitAirborne → true)
+                        try {
+                            for (const t of getMoveTiles(unit)) {
+                                const groundPk = posKey(t.x, t.y);
+                                if (_walkCols.has(groundPk)) continue;
+                                if (t.x === unit.x && t.y === unit.y) continue;
+                                _walkCols.add(groundPk);
+                                tiles.push({ x: t.x, y: t.y, z: t.z, cost: t.cost, _takeoff: true });
                             }
-                            flyOpen.push({ x: nx, y: ny, z: nz, cost: nextCost });
-                        }
+                        } finally { unit.z = savedZ; }
                     }
-                    unit.z = savedZ;
                 }
             }
 

@@ -466,6 +466,24 @@
             return true;
         };
 
+        /* Take Off / Land (More menu + Move-Towards unblock). Never relayed
+           before: a guest's takeoff ran on its own non-authoritative copy,
+           the host never saw it, and the next state-sync slammed the flyer
+           back to the ground (with the AP gone client-side until the sync).
+           doMove's internal takeoff path is covered by the doMove relay; this
+           covers the standalone altitude verbs. */
+        const _origDoAltitudeChange = (typeof doAltitudeChange === 'function') ? doAltitudeChange : null;
+        if (_origDoAltitudeChange) {
+            doAltitudeChange = function(unit, mode) {
+                if (!_isOnline() || state._remoteAction) return _origDoAltitudeChange(unit, mode);
+                if (_isHost()) return _hostRunAndSync(_origDoAltitudeChange, [unit, mode]);
+                if (!_guestOwnsAction(unit)) return 0;
+                playSfx(mode === 'ascend' ? 'buff' : 'moveStep');
+                _emit('game-action', { type: 'engine', fn: 'doAltitudeChange', unitId: unit.id, mode: mode });
+                return 500; /* nominal delay — the authoritative result arrives via state-sync */
+            };
+        }
+
         const _origDoItem = doItem;
         doItem = function(unit, x, y, z) {
             if (!_isOnline() || state._remoteAction) return _origDoItem(unit, x, y, z);
@@ -1104,6 +1122,9 @@
                                 break;
                             case 'doEnterBuilding':
                                 if (typeof doEnterBuilding === 'function') doEnterBuilding(engUnit);
+                                break;
+                            case 'doAltitudeChange':
+                                if (typeof doAltitudeChange === 'function') doAltitudeChange(engUnit, data.mode);
                                 break;
                             case 'channelNexus':
                                 if (typeof channelNexus === 'function') channelNexus(engUnit);
@@ -2730,6 +2751,7 @@
                     _actionExecuting: 1,
 
                     _walkAnimActive: 1,
+                    _takeoffRiseFromZ: 1,
 
                     battleDialogueTimer: 1,
                     battleDialogueQueue: 1,
