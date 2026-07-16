@@ -12425,10 +12425,38 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         },
     };
 
+    /* ── Anime power-aura bursts (three-renderer EWPowerAura) ─────────────
+       Power-up spells that deserve the full DBZ shroud on top of their
+       particle aura. Fired from _fireAura, so it inherits the vfx3d relay
+       (host emits, guest replays) — online parity for free. Only `color` is
+       required; mid/core/light/ring/spark stops derive from it. `radius`
+       wraps same-team units within Chebyshev range too (AoE war cries). */
+    var _POWER_AURA_SPELLS = {
+        raceKiCharge:      { color: 0x55ccff, durationMs: 2600 },                /* classic ki blue-white */
+        warCry:            { color: 0xffb830, durationMs: 2200 },
+        raceNordicWarcry:  { color: 0x7fd4ff, durationMs: 2200, radius: 2 },
+        raceRampage:       { color: 0xff3322, durationMs: 2400 },
+        raceApeFury:       { color: 0xff7722, durationMs: 2400 },
+        raceInnerDemon:    { color: 0x9933ff, durationMs: 2400 },
+        overclock:         { color: 0x33ffcc, durationMs: 2000 },
+        raceOverclock:     { color: 0x33ffcc, durationMs: 2000 },
+        raceNitroBoost:    { color: 0x3377ff, durationMs: 2000 },
+        raceHowl:          { color: 0xbfd4e8, durationMs: 2000 },
+        raceAdrenalineRush:{ color: 0xffcc44, durationMs: 2000 }
+    };
+
     function _fireAura(spellId, params) {
         if (_catOff('spells')) return;
         if (!_canSpawn()) return;
         if (!params) return;
+
+        /* power-up shroud rides on top of the spell's particle aura (note:
+           fire() only routes here for spells with an 'aura' SPELL_MAP entry —
+           every _POWER_AURA_SPELLS id has one) */
+        if (_POWER_AURA_SPELLS[spellId] && params.tx != null && params.ty != null &&
+            window.EWPowerAura && typeof window.EWPowerAura.burst === 'function') {
+            try { window.EWPowerAura.burst(params.tx, params.ty, _POWER_AURA_SPELLS[spellId]); } catch (e) {}
+        }
 
         var auraEffectId = SPELL_MAP[spellId] && SPELL_MAP[spellId].aura;
         if (!auraEffectId) return;

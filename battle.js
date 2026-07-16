@@ -4256,7 +4256,7 @@
                 entries.push({
                     key: 'damage',
                     text: _hot
-                        ? `🔥 ON FIRE — ${unit._killStreak} kills (+${unit._streakAtkBonus || 0} ATK, kills vent entropy)`
+                        ? `🌀 FLOW STATE — ${unit._killStreak} kills (+${unit._streakAtkBonus || 0} ATK, kills vent entropy)`
                         : `♨️ HEATING UP — ${unit._killStreak} kills (+${unit._streakAtkBonus || 0} ATK)`
                 });
                 const _bounty = (typeof getUnitBountyGold === 'function') ? getUnitBountyGold(unit) : 0;
@@ -4328,6 +4328,7 @@
                 .replace(/\bDODGE!\b/g, '<span style="color:#85a9ff;font-weight:700">DODGE!</span>')
                 .replace(/\bOVERKILL\b/g, '<span style="color:#b78cff;font-weight:900">OVERKILL</span>')
                 .replace(/\bLAST STAND\b/g, '<span style="color:#ff6b6b;font-weight:900">LAST STAND</span>')
+                .replace(/\bFLOW STATE\b/g, '<span style="color:#ffc84d;font-weight:900">FLOW STATE</span>')
                 .replace(/\b(Double Kill!|Triple Kill!|Rampage!|GODLIKE!)\b/g, m => `<span style="color:#f8d66d;font-weight:900">${m}</span>`)
                 .replace(/\breturned to the void\b/g, '<span style="color:#ff6b6b;font-weight:700">returned to the void</span>');
 
@@ -6264,8 +6265,8 @@
             pressRefund:       1,  // even a banked press refund charges a little
             kill:              4,
             multiKill:         3,  // extra, per same-turn kill beyond the first
-            bounty:            8,  // ending an enemy's ON FIRE streak
-            onFireOverflowAP:  4,  // ON FIRE kill reward (vents to entropy — attacks end the turn)
+            bounty:            8,  // ending an enemy's FLOW STATE streak
+            onFireOverflowAP:  4,  // FLOW STATE kill reward (vents to entropy — attacks end the turn)
             overkill:          2,
             hourglass:         2,
             destructTurret:    3,
@@ -6323,19 +6324,21 @@
         window.addEntropy = addEntropy;
 
         /* ── Killstreak heat states (beer-pong rules) ───────────────────────
-           2 kills without dying = HEATING UP, 3+ = ON FIRE. Dying resets
-           (resetKillStreak, called from defeatUnit). ON FIRE units carry a
+           2 kills without dying = HEATING UP, 3+ = FLOW STATE (renamed from
+           "ON FIRE" — that read like the burn status effect). Dying resets
+           (resetKillStreak, called from defeatUnit). FLOW STATE units carry a
            BOUNTY — killing them pays bonus gold (and arena points), scaling
-           with how long the streak ran. While ON FIRE, every kill also
-           feeds the Entropy Gauge. */
+           with how long the streak ran. While in FLOW STATE, every kill also
+           feeds the Entropy Gauge. The internal isUnitOnFire/_killStreak
+           plumbing keeps its old names; only player-facing labels changed. */
         const STREAK_LABELS = {
             2: {
                 text: 'HEATING UP!',
                 icon: '♨️'
             },
             3: {
-                text: 'ON FIRE!',
-                icon: '🔥'
+                text: 'FLOW STATE!',
+                icon: '🌀'
             },
             4: {
                 text: 'RAMPAGE!',
@@ -6347,7 +6350,7 @@
             }
         };
 
-        const BOUNTY_STREAK_MIN    = 3;   // ON FIRE = bounty on your head
+        const BOUNTY_STREAK_MIN    = 3;   // FLOW STATE = bounty on your head
         const BOUNTY_GOLD_BASE     = 15;  // at exactly 3 kills (GOLD_PER_KILL is 10)
         const BOUNTY_GOLD_PER_KILL = 5;   // each streak kill past 3 raises it…
         const BOUNTY_GOLD_CAP      = 35;  // …up to here
@@ -6383,10 +6386,10 @@
                 if (!state._arenaBountyPts) state._arenaBountyPts = { 1: 0, 2: 0 };
                 state._arenaBountyPts[killer.player] = (state._arenaBountyPts[killer.player] || 0) + bountyPts;
             }
-            addLog(`💰 BOUNTY CLAIMED! ${unitDisplayName(killer)} extinguishes ${unitDisplayName(victim)} (+${bounty}g${bountyPts ? `, +${bountyPts} pts` : ''})`);
+            addLog(`💰 BOUNTY CLAIMED! ${unitDisplayName(killer)} shatters ${unitDisplayName(victim)}'s flow (+${bounty}g${bountyPts ? `, +${bountyPts} pts` : ''})`);
             if (!_skipVisuals()) {
                 showFloatingTextForUnit(killer, `💰 BOUNTY +${bounty}g`, 'pickup', { durationMs: 1500 });
-                showBattleDialogue([`<span class="dlg-effective">💰 Bounty claimed — ${unitDisplayName(victim)}'s fire is out!</span>`], 1400);
+                showBattleDialogue([`<span class="dlg-effective">💰 Bounty claimed — ${unitDisplayName(victim)}'s flow is broken!</span>`], 1400);
             }
             addEntropy(killer.player, ENTROPY_PTS.bounty, 'bounty', killer);
         }
@@ -6493,22 +6496,22 @@
                 shakeBoard(streak >= 4 ? 'hard' : 'normal');
             }
 
-            // Reaching ON FIRE puts a bounty on your head — announce it so the
-            // other team knows there's gold to collect.
+            // Reaching FLOW STATE puts a bounty on your head — announce it so
+            // the other team knows there's gold to collect.
             if (streak === BOUNTY_STREAK_MIN) {
-                addLog(`💰 BOUNTY POSTED: ${unitDisplayName(killer)} is ON FIRE — worth +${getUnitBountyGold(killer)}g to whoever puts them down!`);
+                addLog(`💰 BOUNTY POSTED: ${unitDisplayName(killer)} enters FLOW STATE — worth +${getUnitBountyGold(killer)}g to whoever puts them down!`);
                 if (!_skipVisuals()) {
-                    showBattleDialogue([`<span class="dlg-effective">🔥 ${unitDisplayName(killer)} is ON FIRE! A bounty has been posted.</span>`], 1600);
+                    showBattleDialogue([`<span class="dlg-effective">🌀 ${unitDisplayName(killer)} enters FLOW STATE! A bounty has been posted.</span>`], 1600);
                 }
             }
 
-            // ON FIRE reward: attacks now END the turn (only a press extends
+            // FLOW STATE reward: attacks now END the turn (only a press extends
             // it), so a kill while burning can't refund AP anymore — the heat
             // vents into the team's Entropy Gauge instead.
             if (streak >= BOUNTY_STREAK_MIN) {
                 addEntropy(killer.player, ENTROPY_PTS.onFireOverflowAP, 'onFireOverflow', killer);
                 if (!_skipVisuals()) {
-                    showFloatingTextForUnit(killer, '🔥 ⚛ ENTROPY', 'buff', { durationMs: 1100, jitterY: -26 });
+                    showFloatingTextForUnit(killer, '🌀 ⚛ ENTROPY', 'buff', { durationMs: 1100, jitterY: -26 });
                 }
             }
 

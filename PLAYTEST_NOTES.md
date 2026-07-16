@@ -5568,3 +5568,41 @@ Gotchas learned:
   (the deep_water hook already does this).
 - Spell-made terrains (castle_wall, plague_flesh) do NOT need MF_TID /
   ME_TERRAIN_IDS entries — those arrays only serialize editor-placed maps.
+
+## FLOW STATE rename + anime power auras (2026-07-16) — three-renderer.js, three-vfx-effects.js, battle.js, hud.js
+Token bumped `20260716d` → `20260716e`. NOT playtested (per RULE #1c) — syntax-checked only.
+- **"ON FIRE" (3+ killstreak) renamed to "FLOW STATE"** everywhere player-facing
+  (it read like the burn status effect): STREAK_LABELS[3] = `🌀 FLOW STATE!`,
+  bounty post/claim log+dialogue lines, unit-panel status entry, hud.js chip,
+  nameplate badge (still class `tp-onfire`, now gold-tinted), combat-log
+  colorizer (gold, next to LAST STAND red). INTERNAL names unchanged:
+  `isUnitOnFire/_killStreak/onFireOverflowAP/ENTROPY_PTS.bounty` etc.
+- **DBZ-style power aura system** (three-renderer.js, after _updateTorchFlames):
+  two nested wobbling shader flame shells (tileable value-noise canvas scrolled
+  in the frag shader, additive), pulsing ground shock-ring, base glow sprite,
+  8 rising energy streaks, occasional ThreeLightning crackles, budgeted
+  PointLight (max 4). Driven per-frame by `_updateUnitAuras()` straight from
+  unit STATE — attaches/detaches to `unitEntries` groups itself, survives
+  rebuilds (re-attaches at full fade if seen <600ms ago → no flicker on move),
+  shared geometry cache flagged `_ew_shared`.
+  - killstreak ≥3 → persistent GOLD Flow State aura (replaces the old
+    head-torch flame billboard, which was removed from _buildUnitEntry).
+  - `_lastStandTriggered` → persistent CRIMSON aura.
+  - `window.EWPowerAura.burst(tx, ty, {color, durationMs, scale, radius})` →
+    timed spell-cast aura; only `color` needed (mid/core/light/ring/spark
+    stops derive); `radius` wraps same-team units in Chebyshev range.
+  - Kill-switch: `window.EW_DISABLE_POWER_AURA = true`. Suppressed during
+    devAutoSim/animationsDisabled.
+- **Spell integration** (three-vfx-effects.js `_POWER_AURA_SPELLS`, called from
+  `_fireAura`): raceKiCharge (ki blue-white, the flagship), warCry (gold),
+  raceNordicWarcry (ice, radius 2 → allies too), raceRampage (red), raceApeFury
+  (orange), raceInnerDemon (violet), overclock + raceOverclock (teal),
+  raceNitroBoost (blue), raceHowl (silver), raceAdrenalineRush (amber).
+- **ONLINE PARITY (RULE #2)**: persistent auras key off SYNCED unit fields
+  (`_killStreak`, `_lastStandTriggered` ride the wholesale state.units sync),
+  so guests render them locally — no relay needed. Spell bursts fire inside
+  `_fireAura`, which the guest replays via the existing `vfx3d` relay (with its
+  fog gate). Fog hides persistent auras with the unit group they're parented to.
+- GOTCHA: `_updateUnitAuras` builds a fresh id→unit map each frame — on guests
+  `state.units` is REPLACED by every state-sync, and `_unitById` only refreshes
+  on STRUCTURAL rebuilds, so caching unit refs there would go stale.

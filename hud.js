@@ -1853,7 +1853,7 @@ function _hrlgStatusChips(unit) {
     title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects',
   });
   const ks = unit._killStreak || 0;
-  if (ks >= 3) chips.push({ key: 'ks', label: '🔥 ON FIRE', kind: 'fire', title: 'ON FIRE — ' + ks + ' kill streak' });
+  if (ks >= 3) chips.push({ key: 'ks', label: '🌀 FLOW STATE', kind: 'fire', title: 'FLOW STATE — ' + ks + ' kill streak' });
   else if (ks === 2) chips.push({ key: 'ks', label: '♨️ HOT', kind: 'fire', title: 'HEATING UP — 2 kill streak' });
   return chips;
 }

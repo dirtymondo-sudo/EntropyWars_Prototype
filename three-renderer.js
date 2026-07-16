@@ -4769,6 +4769,444 @@ const ThreeRenderer = (function () {
         _torchFlames = alive;
     }
 
+    /* ═══════════════ ANIME POWER AURA (Flow State / Last Stand) ═══════════════
+       A DBZ-style energy shroud wrapped around a unit: two nested shader-driven
+       flame shells (procedural noise tongues licking upward with wobbling
+       silhouettes), a pulsing ground shock-ring, a base glow, rising energy
+       streaks, occasional lightning crackles and a budgeted point light. The
+       whole thing is driven per-frame by _updateUnitAuras() straight from unit
+       STATE — no rebuild coupling, no explicit teardown:
+         • killstreak >= 3        → FLOW STATE golden aura (persistent)
+         • _lastStandTriggered    → crimson LAST STAND aura (persistent)
+         • window.EWPowerAura.burst(tx, ty, opts) → timed spell-cast aura
+           (three-vfx-effects._fireAura calls this for power-up spells, so it
+           rides the existing host→guest vfx3d relay = online parity for free)
+       Persistent auras key off synced unit fields, so guests see exactly what
+       the host sees; fog hides the aura with the unit group it's parented to.
+       Kill-switch (console): window.EW_DISABLE_POWER_AURA = true. */
+
+    var _auraNoiseTexObj = null;
+    function _getAuraNoiseTex() {
+        if (_auraNoiseTexObj) return _auraNoiseTexObj;
+        /* tileable multi-octave value noise (wrap-around lattice + smooth
+           interpolation) — the shader scrolls two copies of this to get the
+           licking-flame body without any GLSL noise code */
+        var N = 128;
+        var c = document.createElement('canvas'); c.width = c.height = N;
+        var ctx = c.getContext('2d');
+        var img = ctx.createImageData(N, N);
+        function lattice(size) {
+            var g = new Array(size * size);
+            for (var i = 0; i < g.length; i++) g[i] = Math.random();
+            return g;
+        }
+        function sample(g, size, u, v) {
+            var fx = u * size, fy = v * size;
+            var x0 = Math.floor(fx) % size, y0 = Math.floor(fy) % size;
+            var x1 = (x0 + 1) % size, y1 = (y0 + 1) % size;
+            var tx = fx - Math.floor(fx), ty = fy - Math.floor(fy);
+            tx = tx * tx * (3 - 2 * tx); ty = ty * ty * (3 - 2 * ty);
+            var a = g[y0 * size + x0], b = g[y0 * size + x1];
+            var d = g[y1 * size + x0], e = g[y1 * size + x1];
+            var top = a + (b - a) * tx, bot = d + (e - d) * tx;
+            return top + (bot - top) * ty;
+        }
+        var l1 = lattice(8), l2 = lattice(16), l3 = lattice(32);
+        for (var y = 0; y < N; y++) {
+            for (var x = 0; x < N; x++) {
+                var u = x / N, v = y / N;
+                var n = sample(l1, 8, u, v) * 0.5 + sample(l2, 16, u, v) * 0.3 + sample(l3, 32, u, v) * 0.2;
+                var q = Math.max(0, Math.min(255, Math.round(n * 255)));
+                var o = (y * N + x) * 4;
+                img.data[o] = img.data[o + 1] = img.data[o + 2] = q;
+                img.data[o + 3] = 255;
+            }
+        }
+        ctx.putImageData(img, 0, 0);
+        _auraNoiseTexObj = new THREE.CanvasTexture(c);
+        _auraNoiseTexObj.wrapS = _auraNoiseTexObj.wrapT = THREE.RepeatWrapping;
+        _auraNoiseTexObj.minFilter = THREE.LinearFilter;
+        _auraNoiseTexObj.magFilter = THREE.LinearFilter;
+        return _auraNoiseTexObj;
+    }
+
+    /* Vertex shader: wobble the shell silhouette with layered sines (amplitude
+       grows toward the crown = tongues licking); fragment: two scrolling noise
+       octaves masked solid-at-the-feet / ragged-at-the-top, color ramped from
+       the outer hue into the near-white core. Additive, so bloom eats it up. */
+    var _AURA_VERT = [
+        'uniform float uTime;',
+        'uniform float uWobble;',
+        'varying vec2 vUv;',
+        'void main() {',
+        '    vUv = uv;',
+        '    vec3 p = position;',
+        '    float ang = atan(p.z, p.x);',
+        '    float t = uTime;',
+        '    float w = sin(ang * 3.0 + uv.y * 8.0  - t * 6.2) * 0.45',
+        '            + sin(ang * 5.0 - uv.y * 13.0 - t * 9.7) * 0.32',
+        '            + sin(ang * 8.0 + uv.y * 4.0  + t * 3.9) * 0.23;',
+        '    float amp = uWobble * (0.10 + 0.55 * uv.y * uv.y);',
+        '    p.x *= 1.0 + w * amp;',
+        '    p.z *= 1.0 + w * amp;',
+        '    gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);',
+        '}'
+    ].join('\n');
+    var _AURA_FRAG = [
+        'uniform float uTime;',
+        'uniform vec3 uColor;',
+        'uniform vec3 uCore;',
+        'uniform float uOpacity;',
+        'uniform sampler2D uNoise;',
+        'varying vec2 vUv;',
+        'void main() {',
+        '    float t = uTime;',
+        '    float n1 = texture2D(uNoise, vec2(vUv.x * 2.0,        vUv.y * 1.15 - t * 0.55)).r;',
+        '    float n2 = texture2D(uNoise, vec2(vUv.x * 3.0 + 0.37, vUv.y * 2.30 - t * 1.05)).r;',
+        '    float n = n1 * 0.62 + n2 * 0.55;',
+        '    float root = 1.0 - vUv.y;',
+        '    float flame = smoothstep(0.30 + 0.55 * vUv.y, 0.62 + 0.55 * vUv.y, n + root * 0.62);',
+        '    float body = flame * (1.0 - vUv.y * 0.82);',
+        '    vec3 col = mix(uColor, uCore, clamp(body * 1.7 - 0.28, 0.0, 1.0));',
+        '    gl_FragColor = vec4(col * (0.72 + body * 0.9), body * uOpacity);',
+        '}'
+    ].join('\n');
+
+    function _makeAuraShellMat(colorHex, coreHex, opacity, speed, wobble) {
+        var m = new THREE.ShaderMaterial({
+            uniforms: {
+                uTime:    { value: Math.random() * 20 },
+                uWobble:  { value: wobble },
+                uColor:   { value: new THREE.Color(colorHex) },
+                uCore:    { value: new THREE.Color(coreHex) },
+                uOpacity: { value: 0 },
+                uNoise:   { value: _getAuraNoiseTex() }
+            },
+            vertexShader: _AURA_VERT, fragmentShader: _AURA_FRAG,
+            transparent: true, depthWrite: false, side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+        });
+        m._ew_speed = speed;
+        m._ew_baseOp = opacity;
+        return m;
+    }
+
+    /* Shared shell/ring/streak geometries — rebuilds are frequent (every unit
+       move tears unit groups down), so geometry is cached by rounded size and
+       flagged _ew_shared to survive _disposeR. */
+    var _auraGeoCache = {};
+    function _auraShellGeo(rTop, rBot, h) {
+        var key = 'c' + Math.round(rTop) + '_' + Math.round(rBot) + '_' + Math.round(h);
+        if (_auraGeoCache[key]) return _auraGeoCache[key];
+        var g = new THREE.CylinderGeometry(rTop, rBot, h, 26, 8, true);
+        g.translate(0, h / 2, 0);
+        g._ew_shared = true;
+        _auraGeoCache[key] = g;
+        return g;
+    }
+    function _auraRingGeo(rIn, rOut) {
+        var key = 'r' + Math.round(rIn) + '_' + Math.round(rOut);
+        if (_auraGeoCache[key]) return _auraGeoCache[key];
+        var g = new THREE.RingGeometry(rIn, rOut, 40, 1);
+        g._ew_shared = true;
+        _auraGeoCache[key] = g;
+        return g;
+    }
+    function _auraStreakGeo(w, h) {
+        var key = 's' + Math.round(w) + '_' + Math.round(h);
+        if (_auraGeoCache[key]) return _auraGeoCache[key];
+        var g = new THREE.PlaneGeometry(w, h);
+        g._ew_shared = true;
+        _auraGeoCache[key] = g;
+        return g;
+    }
+
+    function _auraLighten(hex, t) {
+        return new THREE.Color(hex).lerp(new THREE.Color(0xffffff), t).getHex();
+    }
+
+    /* The two persistent palettes. Spell bursts derive theirs from one base
+       color (see _powerAuraBurst) unless the caller specifies every stop. */
+    var _AURA_KINDS = {
+        flow: {
+            color: 0xffa820, mid: 0xffdf70, core: 0xfff6d8,
+            light: 0xffc860, ring: 0xffd070, spark: 0xfff0b0, sparkGlow: 0xffaa33
+        },
+        laststand: {
+            color: 0xff2a1a, mid: 0xff6a4a, core: 0xffd6c0,
+            light: 0xff5533, ring: 0xff4433, spark: 0xffc0b0, sparkGlow: 0xff3322
+        }
+    };
+    var AURA_MAX_LIGHTS = 4;
+
+    var _unitAuras = new Map();    /* unitId -> live aura entry */
+    var _tempAuras = new Map();    /* unitId -> { until, palette, scale } (spell bursts) */
+    var _auraLastFull = new Map(); /* unitId -> last time shown at full fade (skip re-fade-in across rebuilds) */
+    var _auraLastT = 0;
+
+    function _buildPowerAuraEntry(unit, entry, pal, kindKey, scaleMul) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var boss = (unit._isBoss && unit._bossSize === 2) ? 1.8 : 1;
+        var r = ts * 0.42 * boss * (scaleMul || 1);
+        var topY = entry.group._ew_spriteTopY != null
+            ? (entry.group._ew_spriteTopY - entry.group.position.y) : ts;
+        var h = Math.max(ts * 0.9, topY) * 1.1;
+
+        var g = new THREE.Group();
+        g._ew_aura = true;
+        var mats = [];
+
+        /* outer + inner flame shells */
+        var outer = new THREE.Mesh(
+            _auraShellGeo(r * 0.55, r, h * 1.45),
+            _makeAuraShellMat(pal.color, pal.mid, 0.85, 1.0, 1.0));
+        var inner = new THREE.Mesh(
+            _auraShellGeo(r * 0.40, r * 0.72, h * 1.15),
+            _makeAuraShellMat(pal.mid, pal.core, 0.9, 1.35, 0.7));
+        mats.push(outer.material, inner.material);
+        g.add(outer); g.add(inner);
+
+        /* ground shock-ring */
+        var ringMat = new THREE.MeshBasicMaterial({
+            color: pal.ring, transparent: true, opacity: 0,
+            blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+        });
+        var ring = new THREE.Mesh(_auraRingGeo(r * 0.72, r * 1.35), ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 2;
+        g.add(ring);
+
+        /* base glow (soft radial sprite, animated manually — no _hzPulse so
+           the fade owns opacity) */
+        var glow = _hzGlowSprite(r * 3.2, pal.light, 0.0, 0, 0);
+        glow.position.y = h * 0.22;
+        g.add(glow);
+
+        /* rising energy streaks */
+        var streaks = [];
+        var streakMatProto = new THREE.MeshBasicMaterial({
+            map: _hzGlowTexture(), color: pal.mid, transparent: true, opacity: 0,
+            blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+        });
+        for (var si = 0; si < 8; si++) {
+            var sm = new THREE.Mesh(_auraStreakGeo(r * 0.16, h * 0.5), si === 0 ? streakMatProto : streakMatProto.clone());
+            var ang = (si / 8) * Math.PI * 2 + Math.random() * 0.7;
+            sm._ew_ang = ang;
+            sm._ew_r = r * (0.72 + Math.random() * 0.33);
+            sm._ew_ph = Math.random();
+            sm._ew_spd = 0.55 + Math.random() * 0.5;
+            sm.rotation.y = ang + Math.PI / 2;
+            g.add(sm);
+            streaks.push(sm);
+        }
+
+        /* everything is pure light — never a click target, never a shadow */
+        for (var ci = 0; ci < g.children.length; ci++) {
+            g.children[ci].raycast = function () {};
+            g.children[ci]._ew_shadowFlagged = true;
+        }
+
+        /* budgeted point light */
+        var light = null;
+        var litCount = 0;
+        _unitAuras.forEach(function (a) { if (a.light) litCount++; });
+        if (litCount < AURA_MAX_LIGHTS) {
+            light = new THREE.PointLight(pal.light, 0, ts * 3.2, 1.6);
+            light.position.y = h * 0.45;
+            g.add(light);
+        }
+
+        entry.group.add(g);
+        return {
+            kind: kindKey, group: g, mats: mats, ring: ring, ringMat: ringMat,
+            glow: glow, streaks: streaks, light: light, pal: pal,
+            h: h, r: r, fade: 0, seed: (unit.id * 13) % 100,
+            nextSpark: performance.now() + 300 + Math.random() * 700
+        };
+    }
+
+    function _disposeAuraEntry(a) {
+        if (a.group.parent) a.group.parent.remove(a.group);
+        _disposeR(a.group);
+    }
+
+    /* Timed spell-cast aura at a tile (finds the unit standing there).
+       opts: { color, mid, core, light, ring, spark, sparkGlow (hexes — only
+       `color` is required, the rest derive), durationMs, scale, radius
+       (also wrap same-player units within Chebyshev radius, for AoE cries) } */
+    function _powerAuraBurst(tx, ty, opts) {
+        opts = opts || {};
+        if (typeof state === 'undefined' || !state.units) return;
+        if (window.EW_DISABLE_POWER_AURA) return;
+        if (state.devAutoSim || state.animationsDisabled) return;
+        var base = opts.color != null ? opts.color : 0x66bbff;
+        var pal = {
+            color:     base,
+            mid:       opts.mid       != null ? opts.mid       : _auraLighten(base, 0.40),
+            core:      opts.core      != null ? opts.core      : _auraLighten(base, 0.82),
+            light:     opts.light     != null ? opts.light     : _auraLighten(base, 0.25),
+            ring:      opts.ring      != null ? opts.ring      : _auraLighten(base, 0.30),
+            spark:     opts.spark     != null ? opts.spark     : _auraLighten(base, 0.70),
+            sparkGlow: opts.sparkGlow != null ? opts.sparkGlow : base
+        };
+        var until = performance.now() + (opts.durationMs || 2200);
+        var center = null;
+        for (var i = 0; i < state.units.length; i++) {
+            var u = state.units[i];
+            if (!u.dead && !u._dying && u.x === tx && u.y === ty) { center = u; break; }
+        }
+        if (!center) return;
+        var targets = [center];
+        if (opts.radius) {
+            for (var j = 0; j < state.units.length; j++) {
+                var v = state.units[j];
+                if (v === center || v.dead || v._dying || v.player !== center.player) continue;
+                if (Math.max(Math.abs(v.x - tx), Math.abs(v.y - ty)) <= opts.radius) targets.push(v);
+            }
+        }
+        for (var k = 0; k < targets.length; k++) {
+            _tempAuras.set(targets[k].id, { until: until, palette: pal, scale: opts.scale || 1 });
+        }
+    }
+    window.EWPowerAura = { burst: _powerAuraBurst };
+
+    function _updateUnitAuras() {
+        var now = performance.now();
+        var dt = _auraLastT ? Math.min(0.1, (now - _auraLastT) / 1000) : 0.016;
+        _auraLastT = now;
+        if ((!_unitAuras.size && !_tempAuras.size) && (typeof state === 'undefined' || !state.units)) return;
+
+        var disabled = !!window.EW_DISABLE_POWER_AURA ||
+            (typeof state !== 'undefined' && (state.devAutoSim || state.animationsDisabled));
+
+        /* fresh id→unit map every frame: on online guests state.units is
+           REPLACED wholesale by each state-sync, so cached refs go stale */
+        var byId = {};
+        if (typeof state !== 'undefined' && state.units) {
+            for (var ui = 0; ui < state.units.length; ui++) byId[state.units[ui].id] = state.units[ui];
+        }
+
+        /* pass 1 — what does each on-board unit WANT right now? */
+        if (unitEntries && unitEntries.size) {
+            unitEntries.forEach(function (entry, uid) {
+                var unit = byId[uid];
+                var tmp = _tempAuras.get(uid);
+                if (tmp && (tmp.until <= now || !unit || unit.dead)) { _tempAuras.delete(uid); tmp = null; }
+
+                var pal = null, kindKey = null, scaleMul = 1;
+                if (!disabled && unit && !unit.dead && !unit._dying) {
+                    if (tmp) { pal = tmp.palette; kindKey = 'spell'; scaleMul = tmp.scale; }
+                    else if (unit._lastStandTriggered) { pal = _AURA_KINDS.laststand; kindKey = 'laststand'; }
+                    else if ((unit._killStreak || 0) >= 3) { pal = _AURA_KINDS.flow; kindKey = 'flow'; }
+                }
+
+                var cur = _unitAuras.get(uid);
+                /* orphaned by a rebuild (its meshes are already disposed), the
+                   kind flipped, or a new spell burst swapped the palette —
+                   drop and rebuild fresh below */
+                if (cur && (!cur.group.parent || cur.kind !== kindKey ||
+                            (kindKey === 'spell' && cur.pal !== pal))) {
+                    if (cur.group.parent) _disposeAuraEntry(cur);
+                    _unitAuras.delete(uid);
+                    cur = null;
+                }
+                if (!cur && kindKey) {
+                    cur = _buildPowerAuraEntry(unit, entry, pal, kindKey, scaleMul);
+                    /* seen at full strength moments ago (unit moved → group
+                       rebuilt) — reattach at full, no pop-flicker refade */
+                    var lastFull = _auraLastFull.get(uid) || 0;
+                    if (now - lastFull < 600) cur.fade = 1;
+                    _unitAuras.set(uid, cur);
+                }
+                if (cur) cur._want = !!kindKey;
+            });
+        }
+
+        if (!_unitAuras.size) return;
+
+        /* pass 2 — animate every live aura; fade out the unwanted ones */
+        var dead = null;
+        _unitAuras.forEach(function (a, uid) {
+            if (!a.group.parent) {                     /* torn down mid-frame */
+                (dead = dead || []).push(uid);
+                return;
+            }
+            var want = a._want !== false && !disabled && unitEntries.has(uid);
+            a._want = false;                           /* re-armed next frame by pass 1 */
+            a.fade += (want ? 1 : -1) * dt / (want ? 0.30 : 0.24);
+            a.fade = Math.max(0, Math.min(1, a.fade));
+            if (a.fade <= 0 && !want) {
+                _disposeAuraEntry(a);
+                (dead = dead || []).push(uid);
+                return;
+            }
+            if (a.fade >= 0.99) _auraLastFull.set(uid, now);
+
+            var t = now * 0.001;
+            var ease = a.fade * a.fade * (3 - 2 * a.fade);   /* smoothstep */
+            /* multi-sine flicker, torch-style */
+            var f = 1.0
+                + 0.07 * Math.sin(t * 7.1 + a.seed * 1.7)
+                + 0.05 * Math.sin(t * 12.3 + a.seed * 3.2)
+                + 0.03 * Math.sin(t * 2.4 + a.seed * 5.0);
+
+            a.group.scale.set(
+                (0.55 + 0.45 * ease) * (1 + 0.04 * Math.sin(t * 5.3 + a.seed)),
+                0.4 + 0.6 * ease,
+                (0.55 + 0.45 * ease) * (1 + 0.04 * Math.cos(t * 4.7 + a.seed)));
+
+            for (var mi = 0; mi < a.mats.length; mi++) {
+                var m = a.mats[mi];
+                m.uniforms.uTime.value += dt * m._ew_speed;
+                m.uniforms.uOpacity.value = m._ew_baseOp * ease * (0.85 + 0.15 * f);
+            }
+            a.ringMat.opacity = 0.5 * ease * (0.7 + 0.3 * Math.sin(t * 4.2 + a.seed));
+            a.ring.rotation.z += dt * 0.9;
+            var rs = 1 + 0.07 * Math.sin(t * 4.2 + a.seed);
+            a.ring.scale.set(rs, rs, 1);
+            a.glow.material.opacity = 0.42 * ease * (0.85 + 0.15 * f);
+            for (var si = 0; si < a.streaks.length; si++) {
+                var s = a.streaks[si];
+                var prog = (t * s._ew_spd + s._ew_ph) % 1;
+                s._ew_ang += dt * 0.35;
+                s.position.set(Math.cos(s._ew_ang) * s._ew_r, prog * a.h * 1.15, Math.sin(s._ew_ang) * s._ew_r);
+                s.rotation.y = s._ew_ang + Math.PI / 2;
+                s.material.opacity = 0.65 * ease * Math.sin(Math.PI * prog);
+            }
+            if (a.light) a.light.intensity = (a.kind === 'laststand' ? 1.5 : 1.2) * ease * f;
+
+            /* occasional SSJ2-style crackle around the shroud */
+            if (window.ThreeLightning && a.fade > 0.6 && now >= a.nextSpark) {
+                a.nextSpark = now + 380 + Math.random() * 900;
+                try {
+                    var wp = new THREE.Vector3();
+                    a.group.getWorldPosition(wp);
+                    var ang = Math.random() * Math.PI * 2;
+                    var y0 = a.h * (0.15 + Math.random() * 0.7);
+                    var from = { x: wp.x + Math.cos(ang) * a.r * 0.9, y: wp.y + y0, z: wp.z + Math.sin(ang) * a.r * 0.9 };
+                    var ang2 = ang + (Math.random() - 0.5) * 1.6;
+                    var to = {
+                        x: wp.x + Math.cos(ang2) * a.r * 1.5,
+                        y: wp.y + y0 + (Math.random() - 0.3) * a.h * 0.4,
+                        z: wp.z + Math.sin(ang2) * a.r * 1.5
+                    };
+                    ThreeLightning.bolt(from, to, {
+                        segments: 5, jitter: 0.5, branchChance: 0.15, branchDepth: 0,
+                        coreWidth: 2, glowWidth: 6,
+                        durationMs: 110 + Math.random() * 90,
+                        color: a.pal.spark, glowColor: a.pal.sparkGlow
+                    });
+                } catch (e) {}
+            }
+        });
+        if (dead) for (var di = 0; di < dead.length; di++) _unitAuras.delete(dead[di]);
+
+        /* keep the refade-suppression map from growing forever */
+        if (_auraLastFull.size > 64) {
+            _auraLastFull.forEach(function (ts2, k) { if (now - ts2 > 5000) _auraLastFull.delete(k); });
+        }
+    }
+
     /* ── Crystal Cluster: 3-5 tall cones with crystal.png texture + glow ── */
     function _buildCrystalCluster3D(x, y) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -7088,11 +7526,11 @@ const ThreeRenderer = (function () {
         if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');
         else if (totalMov < 0) badges.push('<span class="tp-sbadge tp-stat-dn">MOV' + totalMov + '</span>');
 
-        /* 🔥 Killstreak heat: HEATING UP at 2 kills, ON FIRE (+ bounty) at 3+. */
+        /* 🌀 Killstreak heat: HEATING UP at 2 kills, FLOW STATE (+ bounty) at 3+. */
         var _ks = unit._killStreak || 0;
         if (_ks >= 3) {
             var _bg = (typeof window.getUnitBountyGold === 'function') ? window.getUnitBountyGold(unit) : 0;
-            badges.push('<span class="tp-sbadge tp-onfire" title="ON FIRE — ' + _ks + ' kill streak. Bounty: +' + _bg + 'g to whoever kills this unit">🔥 ON FIRE</span>');
+            badges.push('<span class="tp-sbadge tp-onfire" title="FLOW STATE — ' + _ks + ' kill streak. Bounty: +' + _bg + 'g to whoever kills this unit">🌀 FLOW STATE</span>');
             if (_bg > 0) badges.push('<span class="tp-sbadge tp-bounty" title="Kill this unit to claim +' + _bg + 'g">💰' + _bg + 'g</span>');
         } else if (_ks === 2) {
             badges.push('<span class="tp-sbadge tp-heatup" title="HEATING UP — 2 kill streak">♨️ HOT</span>');
@@ -8898,32 +9336,10 @@ const ThreeRenderer = (function () {
             group._ew_spriteTopY = surfY + _effectiveSprH - bottomShift2 - topShift + 4;
         }
 
-        /* 🔥 ON FIRE (killstreak ≥3): a live torch-style flame floats over the
-           unit's head — the walking bounty. Registered with the torch flutter
-           loop (_updateTorchFlames), which auto-drops it when this group is
-           torn down by a rebuild (death resets the streak → flame gone). */
-        if ((unit._killStreak || 0) >= 3) {
-            try {
-                var fireW = ts * 0.52, fireH = ts * 0.74;
-                var fireMat = new THREE.MeshBasicMaterial({
-                    map: _getTorchFlameTex(), transparent: true, depthWrite: false, fog: false,
-                    blending: THREE.AdditiveBlending, side: THREE.DoubleSide
-                });
-                var fireG = new THREE.Group();
-                var fpA = new THREE.Mesh(new THREE.PlaneGeometry(fireW, fireH), fireMat);
-                fpA.position.y = fireH * 0.5;
-                fireG.add(fpA);
-                var fpB = new THREE.Mesh(new THREE.PlaneGeometry(fireW, fireH), fireMat);
-                fpB.rotation.y = Math.PI / 2;
-                fpB.position.y = fireH * 0.5;
-                fireG.add(fpB);
-                fpA.raycast = function () {}; fpB.raycast = function () {};
-                fpA._ew_shadowFlagged = true; fpB._ew_shadowFlagged = true;
-                fireG.position.y = _effectiveSprH * 1.02;
-                group.add(fireG);
-                _torchRegisterFlame({ root: group, flame: fireG, mat: fireMat, light: null, seed: (unit.id * 17) % 100 });
-            } catch (e) {}
-        }
+        /* 🌀 FLOW STATE (killstreak ≥3) / 💢 LAST STAND: the anime power aura
+           is NOT built here — _updateUnitAuras() attaches/detaches it per
+           frame straight from unit state, so it survives rebuilds and needs
+           no teardown hook (the old head-torch flame this replaced did). */
 
         var entryObj = { group: group, sprite: spriteMesh, silhouette: silhouetteMesh };
         if (_m3dDef) _attachUnitModel(entryObj, unit, _m3dDef, ts);
@@ -9092,7 +9508,7 @@ const ThreeRenderer = (function () {
                 /* 🔥 killstreak heat + bounty markers */
                 '@keyframes tpOnFire { 0%,100% { box-shadow: 0 0 4px rgba(255,110,30,0.7); } 50% { box-shadow: 0 0 10px rgba(255,160,60,1); } }',
                 '.tp-wrap .tp-heatup { background: rgba(255,140,50,0.28); color: #ffb36e; }',
-                '.tp-wrap .tp-onfire { background: rgba(255,80,20,0.4); color: #ffd2a8; animation: tpOnFire 0.8s ease-in-out infinite; }',
+                '.tp-wrap .tp-onfire { background: rgba(255,168,32,0.38); color: #fff0c0; animation: tpOnFire 0.8s ease-in-out infinite; }',
                 '.tp-wrap .tp-bounty { background: rgba(255,200,60,0.3); color: #ffe08a; }',
 
                 /* Type badges stack vertically alongside the bars. With a single
@@ -20617,6 +21033,7 @@ const ThreeRenderer = (function () {
         _updateTowerCubes();
         _updateTrafficLights();
         _updateTorchFlames();
+        _updateUnitAuras();
         _updateBombFuses();
         _updateInsideBuildingVisibility();
         _updatePlateVisibility();
