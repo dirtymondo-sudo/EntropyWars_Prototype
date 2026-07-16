@@ -4,7 +4,51 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## GUARD+OVERWATCH & CONFIRM DAMAGE FORECAST (2026-07-15, LATEST) — battle.js, ui.js, hud.js, online.js, three-renderer.js, styles-animations.css
+## DAMAGE FORMULA REWORK: capped multiplier product + range profile + passives audit (2026-07-16, LATEST) — battle.js, ui.js, index.html
+Token `20260716a`. The damage pipeline is now explicitly two halves:
+- **Caster side — `computeSpellBase(spell, spellPower, {baseDmg, floor, variance})`**
+  (battle.js, right above `_applyDamageSpellHit`): replaces every hand-rolled
+  `max(32, dmg + spellPower + randInt(40)−16)`. Variance is now SYMMETRIC
+  `±SPELL_DMG_VARIANCE` (=8, was −16…+23 ≈ ±13% swing) — flavor only, per the
+  no-big-RNG design goal. Basic attacks (doAttack, RT arena, tower/turret
+  swings) use the same ±8. Floors preserved per site (16/24/32).
+- **Defender side — `applyDamageToUnit` rework**: all offensive multipliers
+  (STAB×matchup, high-ground, RANGE PROFILE, `bonusVsStatus` combo, elemental
+  combo/zodiac resonance) now ACCUMULATE into one product `_offMult`, capped
+  at `MAX_OFFENSIVE_MULT = 3.0`, applied ONCE **before** armor. Previously the
+  elemental layer multiplied the post-armor number (defense evaporated on the
+  biggest hits) and the stack could compound past ×5 → guaranteed one-shots.
+  Penalty products (<×1) are deliberately uncapped. Marked is now a flat rider
+  added AFTER the product (card value = hit value). Defender height advantage
+  (−5/step) moved to the armor stage so it stays truly flat.
+- **🎯 RANGE PROFILE (new, deterministic — damage, NOT accuracy)**:
+  `getRangeDamageMult(source, target)` (battle.js, next to the HIGH_GROUND
+  consts; exported on GAME). Sweet spot 3 tiles: +10%/tile closer (cap +20%
+  point-blank), −10%/tile farther (floor −20%). **Snipers invert** — this IS
+  the previously-uncoded Bullet Drop passive: 0.6 at dist 1, +0.15/tile,
+  1.2 at 5+. Applies to basic attacks AND spells; skipped for `damageType
+  'dot'` and `opts.noRangeMult` (turret shots, traps/mines, bombs/explosion
+  objects, terrain conduction/oil/crystal reactions, laser beams/lattice,
+  censer lashback, block-erupt — anywhere caster distance is meaningless).
+  Callouts: `🎯 BULLET DROP ×N` / `⚔ CLOSE RANGE ×N` / `↘ LONG SHOT ×N` over
+  the attacker. Two FIELD MANUAL tips added.
+- **Passives audit** (data.js JOB_PASSIVES text vs code) — wired the missing:
+  Bulwark (Warrior −8 flat, armor stage), Brute Force (Raider basic ×1.2, TB
+  + RT), Arcane Surge (`getJobPassiveSpellBonus` +8 into both spellPower
+  assemblies), Grace +2 heal/revive range + Crescendo Lullaby +1 (both in
+  `getEffectiveSpellRange`), Crescendo ally-buff +1 turn (applyStatusPayload,
+  next to Third Eye), Tinker turret +1 range (TB + RT deploy) & Repair ×1.2.
+  Already coded before: Deadeye (+1 SPD via JOB_MODIFIERS), Grace +24 heal
+  (map.js healBonus), Field Operative, Third Eye, Green Thumb, Riposte,
+  werewolf Nocturnal (sleep affinity → getEffectiveAttackBonus).
+- **Forecast parity**: ui.js `_estimateBasicAttackDamage` /
+  `_estimateSpellDamage` mirror the new pipeline (capped product, range mult,
+  Brute Force, Bulwark, Arcane Surge, known bonusVsStatus) so the confirm-step
+  preview stays "the contract if it lands".
+- **Online**: all engine-side (host-authoritative); feedback rides the same
+  relayed primitives as the existing HIGH GROUND callouts. No new state keys.
+
+## GUARD+OVERWATCH & CONFIRM DAMAGE FORECAST (2026-07-15) — battle.js, ui.js, hud.js, online.js, three-renderer.js, styles-animations.css
 Two tactical-JRPG staples, kept deliberately simple (token `20260715j`):
 - **Guard now includes Overwatch** (the XCOM reaction shot, folded into the
   existing 2 AP Guard stance instead of a new verb). `doGuard` (ui.js) sets

@@ -8579,7 +8579,10 @@
 
         function _estimateSpellDamage(caster, target, spell) {
             if (!caster || !target || !spell) return 0;
-            const spellPower = (caster.spellPower || 0) + getHourglassPower(caster) + (typeof getSpellStatBonus === 'function' ? getSpellStatBonus(caster, spell) : 0);
+            // Mirrors doSpell's spellPower assembly (incl. Arcane Surge).
+            const spellPower = (caster.spellPower || 0) + getHourglassPower(caster)
+                + (typeof getSpellStatBonus === 'function' ? getSpellStatBonus(caster, spell) : 0)
+                + (typeof getJobPassiveSpellBonus === 'function' ? getJobPassiveSpellBonus(caster) : 0);
             let baseDmg = 0;
 
             if (spell.dmg) {
@@ -8591,19 +8594,32 @@
             }
             if (baseDmg <= 0) return 0;
 
+            // Mirrors applyDamageToUnit's capped multiplier product: STAB ×
+            // matchup × high ground × range profile × known status combo,
+            // applied ONCE before flat mitigation.
+            let heightSoak = 0;
             if (isEnemyUnit(caster, target)) {
                 baseDmg += getEffectiveAttackBonus(caster, spell.damageType === 'magic' ? 'magic' : 'physical');
-                baseDmg = Math.max(1, Math.round(baseDmg * getTypeDamageMultiplier(caster, target, spell.spellType || null)));
+                let offMult = getTypeDamageMultiplier(caster, target, spell.spellType || null);
 
                 if (typeof getUnitStandingHeight === 'function') {
                     const srcH = getUnitStandingHeight(caster);
                     const tgtH = getUnitStandingHeight(target);
                     if (srcH > tgtH) {
-                        baseDmg = Math.max(1, Math.round(baseDmg * (1 + (typeof DOWNHILL_DAMAGE_BONUS !== 'undefined' ? DOWNHILL_DAMAGE_BONUS : 0.15) * (srcH - tgtH))));
+                        offMult *= 1 + (typeof DOWNHILL_DAMAGE_BONUS !== 'undefined' ? DOWNHILL_DAMAGE_BONUS : 0.1) * (srcH - tgtH);
                     } else if (tgtH > srcH) {
-                        baseDmg = Math.max(1, baseDmg - (typeof HIGH_GROUND_DEF_BONUS !== 'undefined' ? HIGH_GROUND_DEF_BONUS : 4) * (tgtH - srcH));
+                        heightSoak = (typeof HIGH_GROUND_DEF_BONUS !== 'undefined' ? HIGH_GROUND_DEF_BONUS : 5) * (tgtH - srcH);
                     }
                 }
+                if (typeof getRangeDamageMult === 'function') {
+                    offMult *= getRangeDamageMult(caster, target);
+                }
+                if (spell.bonusVsStatus && spell.bonusVsStatus.status
+                    && unitHasStatus(target, spell.bonusVsStatus.status)) {
+                    offMult *= spell.bonusVsStatus.mult || 1.5;
+                }
+                offMult = Math.min(offMult, typeof MAX_OFFENSIVE_MULT !== 'undefined' ? MAX_OFFENSIVE_MULT : 3);
+                baseDmg = Math.max(1, Math.round(baseDmg * offMult));
             }
 
             if (isEnemyUnit(caster, target) && unitHasStatus(target, 'marked')) {
@@ -8614,6 +8630,9 @@
             if (!ignoreArmor) {
                 const armor = getEffectiveArmor(target, spell.damageType);
                 if (armor > 0) baseDmg = Math.max(1, baseDmg - armor);
+                if (heightSoak > 0) baseDmg = Math.max(1, baseDmg - heightSoak);
+                // Bulwark (Warrior passive): flat 8 soak on armor-respecting hits.
+                if (target.cls === 'Warrior') baseDmg = Math.max(1, baseDmg - 8);
                 const hgRed = getHourglassDamageReduction(target);
                 if (hgRed > 0) baseDmg = Math.max(1, baseDmg - hgRed);
             }
@@ -8646,26 +8665,38 @@
            never syncs), so it's fog/online-safe by construction. */
         function _estimateBasicAttackDamage(attacker, target) {
             if (!attacker || !target) return 0;
-            // Mirrors doAttack's roll (battle.js): randInt(40)−16 ≈ +4 mid.
+            // Mirrors doAttack's roll (battle.js): symmetric ±variance, 0 mid.
             let dmg = Math.max(24, Math.floor((attacker.atk || 0) * 0.65)
                 + (typeof getPlantedTreeBonus === 'function' ? getPlantedTreeBonus(attacker) : 0)
-                + getHourglassPower(attacker) + 4);
+                + getHourglassPower(attacker));
+            // Brute Force (Raider passive): basic attacks land +20% harder.
+            if (attacker.cls === 'Raider') dmg = Math.floor(dmg * 1.2);
+            let heightSoak = 0;
             if (isEnemyUnit(attacker, target)) {
                 dmg += getEffectiveAttackBonus(attacker, 'physical');
-                dmg = Math.max(1, Math.round(dmg * getTypeDamageMultiplier(attacker, target, null)));
+                // Capped multiplier product, mirroring applyDamageToUnit.
+                let offMult = getTypeDamageMultiplier(attacker, target, null);
                 if (typeof getUnitStandingHeight === 'function') {
                     const srcH = getUnitStandingHeight(attacker);
                     const tgtH = getUnitStandingHeight(target);
                     if (srcH > tgtH) {
-                        dmg = Math.max(1, Math.round(dmg * (1 + (typeof DOWNHILL_DAMAGE_BONUS !== 'undefined' ? DOWNHILL_DAMAGE_BONUS : 0.1) * (srcH - tgtH))));
+                        offMult *= 1 + (typeof DOWNHILL_DAMAGE_BONUS !== 'undefined' ? DOWNHILL_DAMAGE_BONUS : 0.1) * (srcH - tgtH);
                     } else if (tgtH > srcH) {
-                        dmg = Math.max(1, dmg - (typeof HIGH_GROUND_DEF_BONUS !== 'undefined' ? HIGH_GROUND_DEF_BONUS : 5) * (tgtH - srcH));
+                        heightSoak = (typeof HIGH_GROUND_DEF_BONUS !== 'undefined' ? HIGH_GROUND_DEF_BONUS : 5) * (tgtH - srcH);
                     }
                 }
+                if (typeof getRangeDamageMult === 'function') {
+                    offMult *= getRangeDamageMult(attacker, target);
+                }
+                offMult = Math.min(offMult, typeof MAX_OFFENSIVE_MULT !== 'undefined' ? MAX_OFFENSIVE_MULT : 3);
+                dmg = Math.max(1, Math.round(dmg * offMult));
                 if (unitHasStatus(target, 'marked')) dmg += target.markBonus ?? 40;
             }
             const armor = getEffectiveArmor(target, 'physical');
             if (armor > 0) dmg = Math.max(1, dmg - armor);
+            if (heightSoak > 0) dmg = Math.max(1, dmg - heightSoak);
+            // Bulwark (Warrior passive): flat 8 soak on armor-respecting hits.
+            if (target.cls === 'Warrior') dmg = Math.max(1, dmg - 8);
             const hgRed = getHourglassDamageReduction(target);
             if (hgRed > 0) dmg = Math.max(1, dmg - hgRed);
             return Math.max(1, dmg);

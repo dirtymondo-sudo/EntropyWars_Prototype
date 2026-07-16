@@ -102,6 +102,45 @@
         const HIGH_GROUND_DEF_BONUS = 5;
         const DOWNHILL_DAMAGE_BONUS = 0.1;
 
+        // ── Range profile (2026-07-16) — deterministic damage-by-distance ──
+        // The sweet spot is 3 tiles: every tile CLOSER lands +10% harder
+        // (capped +20% point-blank), every tile FARTHER −10% (floored −20%).
+        // Rewards committing to the engagement instead of max-range poking.
+        // Snipers INVERT the curve (Bullet Drop passive, data.js JOB_PASSIVES):
+        // −40% point-blank, climbing +15%/tile to +20% from 5+ tiles out.
+        // Deliberately a damage multiplier, NOT an accuracy roll — outcomes
+        // stay deterministic (no XCOM 95%-miss moments).
+        const RANGE_SWEET_SPOT = 3;
+        const RANGE_DAMAGE_STEP = 0.10;
+        const RANGE_MULT_MIN = 0.8, RANGE_MULT_MAX = 1.2;
+        const SNIPER_RANGE_STEP = 0.15;
+        const SNIPER_RANGE_MULT_MIN = 0.6, SNIPER_RANGE_MULT_MAX = 1.2;
+        function getRangeDamageMult(sourceUnit, target) {
+            if (!sourceUnit || !target) return 1;
+            const dist = Math.abs(sourceUnit.x - target.x) + Math.abs(sourceUnit.y - target.y);
+            if (dist <= 0) return 1;
+            if (sourceUnit.cls === 'Sniper') {
+                return Math.max(SNIPER_RANGE_MULT_MIN, Math.min(SNIPER_RANGE_MULT_MAX,
+                    SNIPER_RANGE_MULT_MIN + SNIPER_RANGE_STEP * (dist - 1)));
+            }
+            return Math.max(RANGE_MULT_MIN, Math.min(RANGE_MULT_MAX,
+                1 + RANGE_DAMAGE_STEP * (RANGE_SWEET_SPOT - dist)));
+        }
+
+        // Hard ceiling on the PRODUCT of all offensive multipliers (STAB ×
+        // matchup × high ground × status combo × elemental combo × range).
+        // Individually each is a fair reward; stacked they used to compound
+        // past ×5 and one-shot through full armor. ×3 keeps "everything
+        // aligned" as a huge spike without deleting a healthy unit outright.
+        const MAX_OFFENSIVE_MULT = 3.0;
+
+        // Symmetric flavor variance on spell/attack base damage. Was
+        // randInt(40)−16 (−16…+23, ~±13% swing) — big enough to decide
+        // exchanges. ±8 keeps numbers organic while positioning, matchups
+        // and combos decide outcomes (Into the Breach school: RNG is
+        // seasoning, never the meal).
+        const SPELL_DMG_VARIANCE = 8;
+
         // ── Jump stat ──────────────────────────────────────────────────────────
         // Horizontal jump reach (in tiles). For most units it's derived from agility
         // (spd) so we don't have to hand-author every race. 1 = adjacent-only (the 8
@@ -1568,7 +1607,7 @@
                     playSfx(spellLaunchSfx(spell));
                     _spellFocusCamera(unit, x, y);
                     unit.mp -= effectiveSpellCost;
-                    const tDmg = Math.max(32, (spell.dmg || 0) + spellPower + Math.floor(Math.random() * 40) - 16);
+                    const tDmg = computeSpellBase(spell, spellPower);
                     damageTurretAt(x, y, tDmg, unit);
                     _markSpellUsedThisTurn(unit, spell);
                     spendAllAP(unit);   // damaging cast ends the turn
@@ -2236,6 +2275,7 @@
             for (const { u } of victims) {
                 applyDamageToUnit(u, tick, `⚡ The water conducts ${spell.name}: `, {
                     sourceUnit: caster,
+                    noRangeMult: true,
                     allowMarkBonus: false,
                     damageType: 'magic',
                     spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
@@ -2335,6 +2375,7 @@
             for (const { u } of victims) {
                 applyDamageToUnit(u, boom, `💥 The burning oil erupts under ${unitDisplayName(u)}: `, {
                     sourceUnit: caster,
+                    noRangeMult: true,
                     allowMarkBonus: false,
                     damageType: 'magic',
                     spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
@@ -2379,6 +2420,7 @@
             for (const { u } of victims) {
                 applyDamageToUnit(u, tick, `⚡ The metal conducts ${spell.name}: `, {
                     sourceUnit: caster,
+                    noRangeMult: true,
                     allowMarkBonus: false,
                     damageType: 'magic',
                     spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
@@ -2408,6 +2450,7 @@
                 if (u && !u.dead && !u._dying && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u))) {
                     applyDamageToUnit(u, _shardDmg, `💎 ${spell.name} shatters the crystal under ${unitDisplayName(u)}: `, {
                         sourceUnit: caster,
+                        noRangeMult: true,
                         allowMarkBonus: false,
                         damageType: 'magic',
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
@@ -3117,6 +3160,24 @@
         // damage spell (kind: 'damage'). Handles bonus damage modifiers,
         // chain profiles, cinematic damage display, and post-effects.
         // ═══════════════════════════════════════════════════════════════════
+        // ═══════════════════════════════════════════════════════════════════
+        // computeSpellBase() — THE caster-side base-damage assembler.
+        // Every damaging resolver used to hand-roll
+        //   Math.max(32, (spell.dmg||0) + spellPower + randInt(40) − 16)
+        // with drifting floors (16/24/32) and variance windows (±16…±20).
+        // This is now the single source of truth: base + power + a small
+        // SYMMETRIC ±SPELL_DMG_VARIANCE roll. opts: { baseDmg, floor,
+        // variance } override the spell's dmg field, the damage floor and
+        // the variance window (0 = fully deterministic).
+        // ═══════════════════════════════════════════════════════════════════
+        function computeSpellBase(spell, spellPower, opts = {}) {
+            const base = (opts.baseDmg != null ? opts.baseDmg : ((spell && spell.dmg) || 0))
+                + (spellPower || 0);
+            const v = opts.variance != null ? opts.variance : SPELL_DMG_VARIANCE;
+            const roll = v > 0 ? Math.floor(Math.random() * (2 * v + 1)) - v : 0;
+            return Math.max(opts.floor != null ? opts.floor : 32, base + roll);
+        }
+
         function _applyDamageSpellHit(unit, spell, target, spellPower, travelType) {
             const _spellEl = classifySpellElement(spell);
             if (spell.chainProfile?.length) {
@@ -3172,8 +3233,7 @@
                 });
             } else {
                 // Single-hit damage path
-                let damage = Math.max(32, (spell.dmg || 0) + spellPower
-                    + Math.floor(Math.random() * 40) - 16);
+                let damage = computeSpellBase(spell, spellPower);
                 if (spell.actedTargetBonus && unitFinished(target)) {
                     damage += spell.actedTargetBonus;
                 }
@@ -3446,7 +3506,8 @@
                     ? opts.findTarget(tile)
                     : enemies.find(e => e.x === tile.x && e.y === tile.y);
                 if (target && !target.dead) {
-                    const rng = opts.noRandom ? 0 : (Math.floor(Math.random() * (opts.rngRange || 32)) - Math.floor((opts.rngRange || 32) / 2));
+                    const _vr = opts.noRandom ? 0 : (opts.rngRange != null ? Math.floor(opts.rngRange / 2) : SPELL_DMG_VARIANCE);
+                    const rng = _vr > 0 ? Math.floor(Math.random() * (2 * _vr + 1)) - _vr : 0;
                     let dmg = Math.max(opts.minDmg || 32, Math.floor((baseDmg + rng) * waterMult));
                     applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
@@ -3705,7 +3766,7 @@
             }
             const dmgBase = Math.max(32, baseDmg + spellPower);
             for (const hit of hitTargets) {
-                const dmg = dmgBase + Math.floor(Math.random() * 24) - 12;
+                const dmg = computeSpellBase(null, 0, { baseDmg: dmgBase, floor: 1 });
                 applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                     sourceUnit: unit,
                     damageType: spell.damageType || 'magic',
@@ -3923,6 +3984,14 @@
                 const unitH = (typeof getUnitStandingHeight === 'function') ? getUnitStandingHeight(unit) : (unit.z ?? 0);
                 if (unitH >= 2) range += HIGH_GROUND_RANGE_BONUS;
             }
+            // Grace (White Mage passive): heal and revive spells reach +2.
+            if (range > 0 && unit.cls === 'White Mage'
+                && (spell.heal || spell.healAmt || spell.kind === 'heal'
+                    || spell.kind === 'healAll' || spell.kind === 'revive')) {
+                range += 2;
+            }
+            // Crescendo (Harbinger passive): Lullaby carries +1 tile.
+            if (unit.cls === 'Harbinger' && spell.id === 'lullaby') range += 1;
             return range;
         }
 
@@ -4333,6 +4402,9 @@
             // last +1 turn. (Generalized from the old Glare-only bonus — the
             // Glare spell is a stat-stage debuff now, not a status.)
             if (isEnemyDebuff && sourceUnit.cls === 'Psychic') nextValue += 1;
+            // Crescendo (Harbinger passive): buffs this unit grants last +1 turn.
+            if (sourceUnit && sourceUnit.cls === 'Harbinger' && meta.kind === 'buff'
+                && !isEnemyUnit(sourceUnit, target)) nextValue += 1;
             if (meta.stack === 'replace') {
                 status[payload.id] = nextValue;
             } else {
@@ -4394,6 +4466,7 @@
                         if (_censerSrc.dead || _censerSrc._dying || state.winner) return;
                         applyDamageToUnit(_censerSrc, _censerDmg, `${unitDisplayName(_censerBearer)}'s censer lashes back: `, {
                             sourceUnit: _censerBearer,
+                            noRangeMult: true,
                             allowMarkBonus: false,
                             damageType: 'magic',
                             typeEffect: 'neutral',
@@ -6360,6 +6433,7 @@
                     const blastDmg = dmg + Math.floor(Math.random() * 20) - 10;
                     applyDamageToUnit(hit, blastDmg, `${obj.spellName || 'Explosion'}: `, {
                         sourceUnit: sourceUnit || null,
+                        noRangeMult: true,
                         damageType: 'physical',
                         spellType: 'tech'
                     });
@@ -11523,6 +11597,7 @@
                 let p = u.spellPower || 0;
                 try { if (typeof getSpellStatBonus === 'function') p += (getSpellStatBonus(u, sp) || 0); } catch (e) {}
                 try { if (typeof getHourglassPower === 'function') p += (getHourglassPower(u) || 0); } catch (e) {}
+                try { if (typeof getJobPassiveSpellBonus === 'function') p += (getJobPassiveSpellBonus(u) || 0); } catch (e) {}
                 return p;
             }
 
@@ -11747,7 +11822,7 @@
             }
             function _spellHit(caster, sp, d, target) {
                 if (d.dmg) {
-                    const dmg = Math.max(32, d.dmg + _spellPower(caster, sp) + randInt(40) - 16);
+                    const dmg = computeSpellBase(d, _spellPower(caster, sp));
                     _dmg(target, dmg, sp.name, {
                         sourceUnit: caster,
                         damageType: sp.damageType || 'magic',
@@ -11815,7 +11890,7 @@
                         const tp = _posOf(t);
                         if (Math.hypot(tp.fx - gx, tp.fy - gy) > radius) continue;
                         if (d.dmg) {
-                            const dmg = Math.max(24, d.dmg + _spellPower(caster, sp) + randInt(32) - 16);
+                            const dmg = computeSpellBase(d, _spellPower(caster, sp), { floor: 24 });
                             _dmg(t, dmg, sp.name, {
                                 sourceUnit: caster, damageType: sp.damageType || 'magic',
                                 spellType: sp.spellType, statusEffects: d.statuses || undefined,
@@ -11949,7 +12024,8 @@
                     z: (typeof getHeightAt === 'function') ? getHeightAt(tx, ty) : 0,
                     owner: caster.player, casterUnitId: caster.id,
                     hp: sp.turretHp || 150, maxHp: sp.turretHp || 150,
-                    dmg: sp.turretDmg || 40, range: sp.turretRange || 4,
+                    // Tinker (Engineer passive): turrets reach +1 tile.
+                    dmg: sp.turretDmg || 40, range: (sp.turretRange || 4) + (caster.cls === 'Engineer' ? 1 : 0),
                     spellId: sp.id, hitsToKill: sp.hitsToKill,
                 });
                 try { playSfx('turret', { volume: 0.7 }); } catch (e) {}
@@ -12034,7 +12110,9 @@
                 }
             }
             function _hitBasic(att, tgt) {
-                let dmg = Math.max(24, Math.floor((att.atk || 0) * 0.65) + randInt(40) - 16);
+                let dmg = Math.max(24, Math.floor((att.atk || 0) * 0.65) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
+                // Brute Force (Raider passive): basic attacks land +20% harder.
+                if (att.cls === 'Raider') dmg = Math.floor(dmg * 1.2);
                 let isCrit = false;
                 try {
                     if (typeof rollCrit === 'function' && rollCrit(att)) {
@@ -13846,6 +13924,46 @@
             const sourceUnit = opts.sourceUnit || null;
             const damageType = opts.damageType || 'physical';
 
+            /* ═══ OFFENSIVE MULTIPLIER PIPELINE (2026-07-16 rework) ═══════════
+               Every multiplicative bonus (STAB × matchup, high ground, range,
+               status combo, elemental combo/resonance) ACCUMULATES into one
+               product, capped at MAX_OFFENSIVE_MULT, and applies ONCE — before
+               armor. Two structural fixes over the old sequential version:
+               1. Multipliers no longer scale the post-armor number, so flat
+                  defense keeps its full value on exactly the big hits where
+                  it used to evaporate.
+               2. The stacked product can no longer compound past the cap
+                  (×1.625 STAB+weak × ×1.5 combo × ×1.25 resonance × … used
+                  to exceed ×5 and one-shot through full armor). */
+            let _offMult = 1;
+
+            // Surface the hidden math: small ×N callouts for every live
+            // multiplier so the player sees WHY a number came out big.
+            // Attacker-side results pop over the attacker, the matchup/
+            // victim-condition results pop over the target — spreads the
+            // visual load across both tiles.
+            const _multCallout = (u, txt, ms) => {
+                if (damageType === 'dot' || _skipVisuals()) return;
+                // AOE / multi-target / barrage spam guard: applyDamage runs once
+                // per hit, so a 3-target spell would pop the same "⛰ HIGH
+                // GROUND!" (etc.) three times over the caster. One identical
+                // callout per unit per 1.5s is plenty (covers barrage pacing).
+                const _now = Date.now();
+                const _seen = (window._ewMultCalloutSeen = window._ewMultCalloutSeen || new Map());
+                const _key = u.id + '|' + txt;
+                if (_now - (_seen.get(_key) || 0) < 1500) return;
+                _seen.set(_key, _now);
+                showFloatingTextForUnit(u, txt, 'mult', { durationMs: ms || 1000 });
+            };
+            // Clean 2-decimal multiplier, trailing zeros stripped:
+            // 2 → "×2", 1.5 → "×1.5", 1.3 → "×1.3", 0.75 → "×0.75".
+            const _fmtMult = (m) => `×${(+m.toFixed(2))}`;
+
+            // Defender-side flat height soak (−5/step of height advantage) —
+            // applied at the ARMOR stage below so it stays truly flat instead
+            // of being scaled by the offensive product.
+            let _heightSoak = 0;
+
             // Banes (and any item/effect with a fixed type matchup) pass an
             // explicit override so effectiveness is judged by the EFFECT's type
             // vs the target — never the thrower's own type. 'super' forces the
@@ -13863,29 +13981,8 @@
                 // streak bonuses apply to both.
                 finalDamage += getEffectiveAttackBonus(sourceUnit, damageType === 'magic' ? 'magic' : 'physical');
                 const _typeMult = typeEffectOverride ? 1 : getTypeDamageMultiplier(sourceUnit, target, opts.spellType || null);
-                finalDamage = Math.max(1, Math.round(finalDamage * _typeMult));
+                _offMult *= _typeMult;
 
-                // Surface the hidden math: small ×N callouts for every live
-                // multiplier so the player sees WHY a number came out big.
-                // Attacker-side buffs (zodiac) pop over the attacker, the
-                // matchup/positioning results pop over the target — spreads
-                // the visual load across both tiles.
-                const _multCallout = (u, txt, ms) => {
-                    if (damageType === 'dot' || _skipVisuals()) return;
-                    // AOE / multi-target / barrage spam guard: applyDamage runs once
-                    // per hit, so a 3-target spell would pop the same "⛰ HIGH
-                    // GROUND!" (etc.) three times over the caster. One identical
-                    // callout per unit per 1.5s is plenty (covers barrage pacing).
-                    const _now = Date.now();
-                    const _seen = (window._ewMultCalloutSeen = window._ewMultCalloutSeen || new Map());
-                    const _key = u.id + '|' + txt;
-                    if (_now - (_seen.get(_key) || 0) < 1500) return;
-                    _seen.set(_key, _now);
-                    showFloatingTextForUnit(u, txt, 'mult', { durationMs: ms || 1000 });
-                };
-                // Clean 2-decimal multiplier, trailing zeros stripped:
-                // 2 → "×2", 1.5 → "×1.5", 1.3 → "×1.3", 0.75 → "×0.75".
-                const _fmtMult = (m) => `×${(+m.toFixed(2))}`;
                 // STAB and the type matchup are TWO SEPARATE mechanics that
                 // happen to multiply together — never show their blended
                 // product (a "×0.94 RESIST" reads as nonsense). The type
@@ -13917,22 +14014,35 @@
 
                         const heightAdv = srcH - tgtH;
                         const _hgMult = 1 + DOWNHILL_DAMAGE_BONUS * heightAdv;
-                        finalDamage = Math.max(1, Math.round(finalDamage * _hgMult));
+                        _offMult *= _hgMult;
                         _multCallout(sourceUnit, `⛰ HIGH GROUND! ×${_hgMult.toFixed(1)}`, 1100);
                     } else if (tgtH > srcH) {
 
                         const heightAdv = tgtH - srcH;
-                        finalDamage = Math.max(1, finalDamage - HIGH_GROUND_DEF_BONUS * heightAdv);
+                        _heightSoak = HIGH_GROUND_DEF_BONUS * heightAdv;
                     }
                 }
-            }
 
-            const canConsumeMarked = opts.consumeMarked ?? (damageType === 'physical');
-            if (sourceUnit && isEnemyUnit(sourceUnit, target) && opts.allowMarkBonus !== false && canConsumeMarked && unitHasStatus(target, 'marked')) {
-                finalDamage += opts.markBonus ?? target.markBonus ?? 40;
-                clearStatus(target, 'marked');
-                target.markBonus = 0;
-                addLog(`${unitDisplayName(target)} was marked, so the hit deals extra damage.`);
+                // ── 🎯 RANGE PROFILE (2026-07-16) ──────────────────────────
+                // Deterministic damage-by-distance: +10%/tile inside the
+                // 3-tile sweet spot, −10%/tile beyond (clamped ±20%). Snipers
+                // invert the curve (Bullet Drop: −40% point-blank → +20% at
+                // 5+ tiles). Skipped for DoT ticks and for indirect sources
+                // (turrets, traps, terrain reactions — opts.noRangeMult)
+                // where "distance to the caster" is meaningless.
+                if (damageType !== 'dot' && !opts.noRangeMult) {
+                    const _rangeMult = getRangeDamageMult(sourceUnit, target);
+                    if (_rangeMult !== 1) {
+                        _offMult *= _rangeMult;
+                        if (sourceUnit.cls === 'Sniper') {
+                            _multCallout(sourceUnit, `🎯 BULLET DROP ${_fmtMult(_rangeMult)}`, 1000);
+                        } else if (_rangeMult > 1) {
+                            _multCallout(sourceUnit, `⚔ CLOSE RANGE ${_fmtMult(_rangeMult)}`, 1000);
+                        } else {
+                            _multCallout(sourceUnit, `↘ LONG SHOT ${_fmtMult(_rangeMult)}`, 1000);
+                        }
+                    }
+                }
             }
 
             // ── ⚗ STATUS-COMBO BONUS (2026-07-14 spell rework) ─────────────
@@ -13947,12 +14057,74 @@
             if (_bvs && _bvs.status && finalDamage > 0 && sourceUnit
                 && isEnemyUnit(sourceUnit, target) && unitHasStatus(target, _bvs.status)) {
                 const _bvsMult = _bvs.mult || 1.5;
-                finalDamage = Math.max(1, Math.round(finalDamage * _bvsMult));
+                _offMult *= _bvsMult;
                 const _bvsName = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[_bvs.status]?.name) || _bvs.status;
                 if (damageType !== 'dot' && !_skipVisuals()) {
                     showFloatingTextForUnit(target, `⚗ ×${(+_bvsMult.toFixed(2))} COMBO!`, 'mult', { durationMs: 1100 });
                 }
                 addLog(`⚗ Combo! ${unitDisplayName(target)} is ${_bvsName} — the hit lands ×${(+_bvsMult.toFixed(2))} harder.`);
+            }
+
+            // ── ⚗️ ELEMENTAL COMBO LAYER (2026-07-13) ──────────────────────
+            // Element-aware interactions between the incoming hit, the
+            // victim's condition and the reigning zodiac. Callers pass
+            // opts.element ('lightning'|'fire'|'cold') — spell resolvers get
+            // it from classifySpellElement, conduction and elemental weather
+            // pass theirs explicitly. Post-hit halves (Overclock grant,
+            // flash-freeze, drying out) resolve after the damage lands below.
+            // 2026-07-16: folded into the capped offensive product (used to
+            // multiply the post-armor number, devaluing defense on big hits).
+            const _comboEl = opts.element || null;
+            let _comboSupercharge = false;
+            if (_comboEl && finalDamage > 0) {
+                // ★ Zodiac resonance: the active sign's trine empowers its
+                // element for both teams (fire signs → fire, air → lightning,
+                // water → frost). Time the big elemental turn to the stars.
+                if (typeof getZodiacResonanceElement === 'function'
+                    && getZodiacResonanceElement() === _comboEl) {
+                    _offMult *= ZODIAC_RESONANCE_MULT;
+                    if (sourceUnit && sourceUnit._zResCalloutRound !== state.round) {
+                        sourceUnit._zResCalloutRound = state.round;
+                        showFloatingTextForUnit(sourceUnit, `★ RESONANCE ×${ZODIAC_RESONANCE_MULT}`, 'mult', { durationMs: 1000 });
+                        addLog(`★ The ${state.activeZodiac} sky resonates with the ${_comboEl === 'cold' ? 'frost' : _comboEl} — its power swells!`);
+                    }
+                }
+                const _isSoaked = _unitIsSoaked(target);
+                if (_comboEl === 'lightning') {
+                    const _isTech = (target.types || []).includes('tech');
+                    if (_isSoaked) {
+                        // ⚡💧 Water conducts — a dripping-wet target fries.
+                        // (Soaked TECH shorts out instead of supercharging.)
+                        _offMult *= 1.5;
+                        showFloatingTextForUnit(target, _isTech ? '⚡💧 ×1.5 SHORT CIRCUIT!' : '⚡💧 ×1.5 SOAKED!', 'mult', { durationMs: 1100 });
+                    } else if (_isTech) {
+                        // ⚙️ Dry tech runs on current: the surge half-hurts and
+                        // OVERCLOCKS the machine (bolting your own robot is a play).
+                        _offMult *= 0.5;
+                        _comboSupercharge = true;
+                    }
+                } else if (_comboEl === 'fire' && _isSoaked) {
+                    // 🔥💧 Soaked flesh chars poorly — the blast steams them dry.
+                    _offMult *= 0.75;
+                    showFloatingTextForUnit(target, '💧 ×0.75 SOAKED', 'mult', { durationMs: 1000 });
+                }
+            }
+
+            // Apply the whole offensive product ONCE, capped. (Penalty stacks
+            // below ×1 are left uncapped — resist × long shot × soak is the
+            // defender's earned reward.)
+            if (_offMult !== 1 && finalDamage > 0) {
+                finalDamage = Math.max(1, Math.round(finalDamage * Math.min(_offMult, MAX_OFFENSIVE_MULT)));
+            }
+
+            // Marked is a FLAT rider — added after the multiplier product so
+            // its value on the card is its value on the hit.
+            const canConsumeMarked = opts.consumeMarked ?? (damageType === 'physical');
+            if (sourceUnit && isEnemyUnit(sourceUnit, target) && opts.allowMarkBonus !== false && canConsumeMarked && unitHasStatus(target, 'marked')) {
+                finalDamage += opts.markBonus ?? target.markBonus ?? 40;
+                clearStatus(target, 'marked');
+                target.markBonus = 0;
+                addLog(`${unitDisplayName(target)} was marked, so the hit deals extra damage.`);
             }
 
             // ── Level 100 magnitude ────────────────────────────────────────
@@ -13970,8 +14142,13 @@
             // level to stay proportional against the now-scaled incoming damage.
             const _defLs = (typeof levelScale === 'function') ? levelScale(getUnitLevel(target)) : 1;
             const hourglassReduction = opts.ignoreArmor ? 0 : Math.round(getHourglassDamageReduction(target) * _defLs);
+            // Bulwark (Warrior passive): a flat 8 shaved off every hit that
+            // respects armor — the tank shrugs off chip damage.
+            const _bulwarkSoak = (!opts.ignoreArmor && target.cls === 'Warrior') ? Math.round(8 * _defLs) : 0;
             const effectiveArmor = opts.ignoreArmor ? 0 : Math.round(getEffectiveArmor(target, damageType) * _defLs);
             if (effectiveArmor > 0) finalDamage = Math.max(1, finalDamage - effectiveArmor);
+            if (_heightSoak > 0) finalDamage = Math.max(1, finalDamage - _heightSoak);
+            if (_bulwarkSoak > 0) finalDamage = Math.max(1, finalDamage - _bulwarkSoak);
             if (hourglassReduction > 0) finalDamage = Math.max(1, finalDamage - hourglassReduction);
             if (damageType === 'physical' && sourceUnit && isEnemyUnit(sourceUnit, target)) {
                 finalDamage = Math.max(1, Math.round(finalDamage * getStatusRangedDamageTakenMultiplier(target)));
@@ -13979,49 +14156,6 @@
             const _dtMult = getStatusDamageTakenMultiplier(target);
             if (_dtMult !== 1 && finalDamage > 0) {
                 finalDamage = Math.max(1, Math.round(finalDamage * _dtMult));
-            }
-
-            // ── ⚗️ ELEMENTAL COMBO LAYER (2026-07-13) ──────────────────────
-            // Element-aware interactions between the incoming hit, the
-            // victim's condition and the reigning zodiac. Callers pass
-            // opts.element ('lightning'|'fire'|'cold') — spell resolvers get
-            // it from classifySpellElement, conduction and elemental weather
-            // pass theirs explicitly. Post-hit halves (Overclock grant,
-            // flash-freeze, drying out) resolve after the damage lands below.
-            const _comboEl = opts.element || null;
-            let _comboSupercharge = false;
-            if (_comboEl && finalDamage > 0) {
-                // ★ Zodiac resonance: the active sign's trine empowers its
-                // element for both teams (fire signs → fire, air → lightning,
-                // water → frost). Time the big elemental turn to the stars.
-                if (typeof getZodiacResonanceElement === 'function'
-                    && getZodiacResonanceElement() === _comboEl) {
-                    finalDamage = Math.max(1, Math.round(finalDamage * ZODIAC_RESONANCE_MULT));
-                    if (sourceUnit && sourceUnit._zResCalloutRound !== state.round) {
-                        sourceUnit._zResCalloutRound = state.round;
-                        showFloatingTextForUnit(sourceUnit, `★ RESONANCE ×${ZODIAC_RESONANCE_MULT}`, 'mult', { durationMs: 1000 });
-                        addLog(`★ The ${state.activeZodiac} sky resonates with the ${_comboEl === 'cold' ? 'frost' : _comboEl} — its power swells!`);
-                    }
-                }
-                const _isSoaked = _unitIsSoaked(target);
-                if (_comboEl === 'lightning') {
-                    const _isTech = (target.types || []).includes('tech');
-                    if (_isSoaked) {
-                        // ⚡💧 Water conducts — a dripping-wet target fries.
-                        // (Soaked TECH shorts out instead of supercharging.)
-                        finalDamage = Math.round(finalDamage * 1.5);
-                        showFloatingTextForUnit(target, _isTech ? '⚡💧 ×1.5 SHORT CIRCUIT!' : '⚡💧 ×1.5 SOAKED!', 'mult', { durationMs: 1100 });
-                    } else if (_isTech) {
-                        // ⚙️ Dry tech runs on current: the surge half-hurts and
-                        // OVERCLOCKS the machine (bolting your own robot is a play).
-                        finalDamage = Math.max(1, Math.round(finalDamage * 0.5));
-                        _comboSupercharge = true;
-                    }
-                } else if (_comboEl === 'fire' && _isSoaked) {
-                    // 🔥💧 Soaked flesh chars poorly — the blast steams them dry.
-                    finalDamage = Math.max(1, Math.round(finalDamage * 0.75));
-                    showFloatingTextForUnit(target, '💧 ×0.75 SOAKED', 'mult', { durationMs: 1000 });
-                }
             }
 
             if (target.shield > 0) {
@@ -14432,6 +14566,7 @@
                     ignoreArmor: false,
                     damageType: 'physical',
                     sourceUnit: caster || undefined,
+                    noRangeMult: true,
                     // Caster gone (dead/despawned)? Fall back to target-level
                     // scaling so orphaned turrets don't tickle 10k-HP units.
                     scaleByTargetLevel: true,
@@ -14721,7 +14856,8 @@
             applyDamageToUnit(unit, dmg, `${f.glyph} Laser beam: `, {
                 damageType: 'magic', spellType: f.spellType,
                 statusEffects: f.status ? [f.status] : null, allowMarkBonus: false,
-                sourceUnit: ownerId != null ? unitFromId(ownerId) : undefined
+                sourceUnit: ownerId != null ? unitFromId(ownerId) : undefined,
+                noRangeMult: true
             });
             if (f.stageBoost && !unit.dead) {
                 applyStatStageBoost(unit, f.stageBoost, `${f.glyph} Laser beam: `, ownerId != null ? unitFromId(ownerId) : null);
@@ -14752,7 +14888,8 @@
                 applyDamageToUnit(b.unit, b.dmg, `${b.f.glyph} Caught in the lattice: `, {
                     damageType: 'magic', spellType: b.f.spellType,
                     statusEffects: b.f.status ? [b.f.status] : null, allowMarkBonus: false,
-                    sourceUnit: b.ownerId != null ? unitFromId(b.ownerId) : undefined
+                    sourceUnit: b.ownerId != null ? unitFromId(b.ownerId) : undefined,
+                    noRangeMult: true
                 });
                 if (b.f.stageBoost && !b.unit.dead) {
                     applyStatStageBoost(b.unit, b.f.stageBoost, `${b.f.glyph} Caught in the lattice: `, b.ownerId != null ? unitFromId(b.ownerId) : null);
@@ -14793,7 +14930,8 @@
                 if (tiles.has(e.x + ',' + e.y)) {
                     applyDamageToUnit(e, dmg, `${f.glyph} Pulse Lattice: `, {
                         sourceUnit: unit, damageType: 'magic', spellType: f.spellType,
-                        statusEffects: f.status ? [f.status] : null, allowMarkBonus: false
+                        statusEffects: f.status ? [f.status] : null, allowMarkBonus: false,
+                        noRangeMult: true
                     });
                     if (f.stageBoost && !e.dead) {
                         applyStatStageBoost(e, f.stageBoost, `${f.glyph} Pulse Lattice: `, unit);
@@ -22234,6 +22372,8 @@
             { t: 'FIELD MANUAL', q: 'Spells cost MP. Moving and acting cost AP. Bankruptcy on either is how vessels die.' },
             { t: 'FIELD MANUAL', q: 'Werewolves walk the field as ordinary humans by day. Keep one eye on the sky’s cycle.' },
             { t: 'FIELD MANUAL', q: 'The zodiac wheel turns as rounds pass. When the sky changes, the battlefield changes with it.' },
+            { t: 'FIELD MANUAL', q: 'Distance is damage. Hits land 10% harder for every tile inside 3 range — and 10% softer for every tile beyond. Commit to the engagement.' },
+            { t: 'FIELD MANUAL', q: 'Snipers defy the range rule: their shots STRENGTHEN with distance and go soft point-blank. Never let one sit at the horizon — and never be the one cornering them slowly.' },
             { t: 'FIELD MANUAL', q: 'Ping the field. A marked tile speaks louder than a typed apology.' },
             { t: 'FIELD MANUAL', q: 'Victory pays gold, and gold buys new vessels in the shop. Defeat pays considerably less.' },
             { t: 'FIELD MANUAL', q: 'Cinematics can be skipped with a tap. So can this screen — once the data is in.' },
@@ -26298,6 +26438,7 @@
             unitHasJetpack, unitHasSpelunkingGear,
             SKY_RACES, UNDERGROUND_RACES, unitFinished,
             getEffectiveRange, getEffectiveSpellRange, getEffectiveMove, getEffectiveAwr,
+            getRangeDamageMult, computeSpellBase,
             getEffectiveAttackBonus, getHourglassPower, getSpellStatBonus,
             getStatusArmorDelta, getStatusMdefDelta, getStatusAtkDelta, getStatusIntDelta,
             getStatStageCount, applyStatStageBoost,
@@ -29179,7 +29320,7 @@
 
             if (trap.trapType === 'spike') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Snare Trap'}: `, {
-                    sourceUnit: owner, damageType: 'physical'
+                    sourceUnit: owner, damageType: 'physical', noRangeMult: true
                 });
                 if (!victim.dead) {
                     applyStatusEffects(victim, [{ id: 'root', duration: 2 }], `${trap.spellName || 'Snare Trap'}: `, owner);
@@ -29187,7 +29328,7 @@
                 }
             } else if (trap.trapType === 'frost') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Frost Mine'}: `, {
-                    sourceUnit: owner, damageType: 'magic'
+                    sourceUnit: owner, damageType: 'magic', noRangeMult: true
                 });
                 if (!victim.dead) {
                     applyStatusEffects(victim, [{ id: 'stun', duration: 1 }], `${trap.spellName || 'Frost Mine'}: `, owner);
@@ -29210,7 +29351,7 @@
                 }
             } else if (trap.trapType === 'tremor') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Tremor Charge'}: `, {
-                    sourceUnit: owner, damageType: 'physical'
+                    sourceUnit: owner, damageType: 'physical', noRangeMult: true
                 });
                 const fromZ = victim.z ?? getBaseHeightAt(trap.x, trap.y);
                 applyTerrainDeform(trap.x, trap.y, 0, { centerDelta: -2, edgeDelta: 0 });
@@ -29220,7 +29361,7 @@
                 addLog('⛏ The ground collapses into a fresh pit!');
             } else if (trap.trapType === 'magnet') {
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Magnet Mine'}: `, {
-                    sourceUnit: owner, damageType: 'magic', flashColor: 'shock'
+                    sourceUnit: owner, damageType: 'magic', flashColor: 'shock', noRangeMult: true
                 });
                 // Drag every grounded unit within 2 tiles one step toward the mine.
                 let dragged = 0;
@@ -30685,7 +30826,7 @@
                 pushUndoSnapshot(true);
                 if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
                 else animateStrikeLeap(unit, x, y);
-                let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(40) - 16);
+                let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
 
                 // Level 100: towers live in the same magnitude space as unit HP
                 // (map.js scales TOWER_MAX_HP/TOWER_DEF by the match level), so
@@ -30799,7 +30940,7 @@
                     pushUndoSnapshot(true);
                     if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
                     else animateStrikeLeap(unit, x, y);
-                    let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(40) - 16);
+                    let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
                     damageTurretAt(x, y, damage, unit);
                     playSfx('damage');
                     spendAllAP(unit);   // attacking ends the turn
@@ -30971,7 +31112,9 @@
             // flows into applyDamageToUnit, which adds it for every enemy hit.
             // Adding it in both places double-counted chaos/killstreak/terrain
             // attack bonuses for basic attacks (spells only ever got it once).
-            let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getPlantedTreeBonus(unit) + getHourglassPower(unit) + randInt(40) - 16);
+            let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getPlantedTreeBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
+            // Brute Force (Raider passive): basic attacks land +20% harder.
+            if (unit.cls === 'Raider') damage = Math.floor(damage * 1.2);
             if (isCrit) {
                 damage = Math.floor(damage * getCritMultiplier(unit));
                 unit._matchCrits = (unit._matchCrits || 0) + 1;
@@ -32029,7 +32172,7 @@
                         if (typeof nearestWalkableZ === 'function') info.enemyOcc.z = nearestWalkableZ(info.shoveTo.x, info.shoveTo.y, info.enemyOcc.z);
                         animateDisplacement(info.enemyOcc, _fromX, _fromY, info.shoveTo.x, info.shoveTo.y, 180);
                         applyDamageToUnit(info.enemyOcc, BUILD_ACTION_CONFIG.eruptDamage, 'The block erupts underfoot: ', {
-                            sourceUnit: unit, damageType: 'physical'
+                            sourceUnit: unit, damageType: 'physical', noRangeMult: true
                         });
                         showFloatingTextForUnit(info.enemyOcc, '🧱 SHOVED!', 'damage', { durationMs: 1000 });
                         addLog(`${unitDisplayName(unit)}'s block erupts under ${unitDisplayName(info.enemyOcc)}, hurling them aside!`);
@@ -33209,6 +33352,12 @@
             return Math.floor(((unit.intStat || 0) + getNecroDeathPower(unit)) * 0.35);
         }
 
+        // Arcane Surge (Black Mage passive, data.js JOB_PASSIVES): +8 spell
+        // power on every cast. Cheap flat rider folded into spellPower.
+        function getJobPassiveSpellBonus(unit) {
+            return (unit && unit.cls === 'Black Mage') ? 8 : 0;
+        }
+
         // ── Necromancer racial PASSIVE: Deathfeed ───────────────────────────
         // The necromancer's Intelligence swells with every unit CURRENTLY dead
         // on the field (both sides — death is death). +8 effective INT per
@@ -33681,7 +33830,7 @@
             }
 
             const spellPower = (unit.spellPower || 0) + getHourglassPower(unit) + getSpellStatBonus(unit, spell)
-                + getPlantedTreeBonus(unit) + getLumberBonus(unit, spell);
+                + getPlantedTreeBonus(unit) + getLumberBonus(unit, spell) + getJobPassiveSpellBonus(unit);
             let panelFocusTarget = null;
             let completionDelay = 0;
             const spellApCost = getSpellApCost(spell);
@@ -33874,6 +34023,8 @@
                 const _baseHeal = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
                 let healAmount = _baseHeal + getEffectiveHealBonus(unit, _baseHeal, _ht) + getHourglassPower(unit);
                 if (spell.lowHpBonus && _ht.hp / _ht.maxHp < 0.4) healAmount += spell.lowHpBonus;
+                // Tinker (Engineer passive): Repair heals 20% more.
+                if (spell.id === 'repair' && unit.cls === 'Engineer') healAmount = Math.round(healAmount * 1.2);
                 // The HP lands when the gift ARRIVES (support cinematic beat 2)
                 // so the +N and the glow pop while the recipient is on camera.
                 window.setTimeout(() => {
@@ -34631,7 +34782,7 @@
                                     applyStatusEffects(enemy, spell.statusEffects, `${spell.name}: `, unit);
                                     return;
                                 }
-                                let dmg = Math.max(32, Math.floor(((spell.dmg || 0) + spellPower + Math.floor(Math.random() * 40) - 16) * _barrageWaterMult));
+                                let dmg = Math.max(32, Math.floor(computeSpellBase(spell, spellPower, { floor: 0 }) * _barrageWaterMult));
                                 if (spell.id === 'shootout' && typeof window !== 'undefined'
                                     && window.ThreeVFXEffects && window.ThreeVFXEffects.spawnBulletRain3D
                                     && state.phase === 'battle' && !_skipVisuals()) {
@@ -34707,7 +34858,7 @@
 
                 const impactDelay = Math.max((cam?.sourceHold ?? actionMs(600)) + (cam?.travelMs ?? actionMs(400)) + actionMs(80), actionMs(620));
                 window.setTimeout(() => {
-                    let damage = Math.max(32, (spell.dmg || 0) + spellPower + Math.floor(Math.random() * 32) - 16);
+                    let damage = computeSpellBase(spell, spellPower);
 
                     const dx = Math.sign(target.x - unit.x) || 1;
                     const dy = Math.sign(target.y - unit.y);
@@ -36487,7 +36638,7 @@
                 window.setTimeout(() => playProjectileToUnit(unit, target, 'damage', cam?.travelMs ?? actionMs(480), spell.spellType, null, spell), projectileDelay);
                 unit.mp -= effectiveSpellCost;
                 window.setTimeout(() => {
-                    let dmg = Math.max(32, (spell.dmg || 144) + spellPower + Math.floor(Math.random() * 40) - 16);
+                    let dmg = computeSpellBase(spell, spellPower, { baseDmg: spell.dmg || 144 });
                     applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} drains life from `, {
                         sourceUnit: unit,
                         damageType: 'magic',
@@ -36663,7 +36814,8 @@
                 unit.mp -= effectiveSpellCost;
                 const turretHp = spell.turretHp || 20;
                 const turretDmg = spell.turretDmg || 8;
-                const turretRange = spell.turretRange || 2;
+                // Tinker (Engineer passive): turrets reach +1 tile.
+                const turretRange = (spell.turretRange || 2) + (unit.cls === 'Engineer' ? 1 : 0);
 
                 let _initFacing = Math.PI * 0.75;
                 const _deployEnemies = aliveUnitsOnFloor(enemyOf(unit.player), null);
