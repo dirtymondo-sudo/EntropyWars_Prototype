@@ -1492,7 +1492,9 @@
                     var safeParams = {};
                     if (params) {
                         ['tx', 'ty', 'tz', 'fromX', 'fromY', 'dx', 'dy', 'range',
-                         'spellType', 'casterX', 'casterY'].forEach(function(k) {
+                         'spellType', 'casterX', 'casterY', 'aoeRadius', 'cx', 'cy',
+                         'toX', 'toY', 'fromZ', 'toZ', 'flyMs', 'headGlow',
+                         'staggerMs', 'includePrimary'].forEach(function(k) {
                             if (params[k] !== undefined) safeParams[k] = params[k];
                         });
                         if (params.hitTiles) {
@@ -1500,6 +1502,15 @@
                                 return { x: t.x, y: t.y };
                             });
                         }
+                        // tile-list params (wall segments, chain hops) — plain
+                        // {x,y} copies so nothing non-serializable rides along
+                        ['tiles', 'chain'].forEach(function(k) {
+                            if (Array.isArray(params[k])) {
+                                safeParams[k] = params[k].map(function(t) {
+                                    return { x: t.x, y: t.y };
+                                });
+                            }
+                        });
                     }
                     _emit('relay', {
                         type: 'vfx3d',
@@ -2615,6 +2626,7 @@
                             var _pts = [];
                             if (_vp.tx !== undefined) _pts.push([_vp.tx, _vp.ty]);
                             if (_vp.fromX !== undefined) _pts.push([_vp.fromX, _vp.fromY]);
+                            if (_vp.toX !== undefined) _pts.push([_vp.toX, _vp.toY]);
                             if (_vp.casterX !== undefined) _pts.push([_vp.casterX, _vp.casterY]);
                             if (_vp.hitTiles) for (var _hi = 0; _hi < _vp.hitTiles.length; _hi++) _pts.push([_vp.hitTiles[_hi].x, _vp.hitTiles[_hi].y]);
                             if (_pts.length > 0) {

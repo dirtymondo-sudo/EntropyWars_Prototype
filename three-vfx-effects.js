@@ -1112,6 +1112,58 @@ EFFECTS['_status_discord'] = {
     ]
 };
 
+/* ─── ENTROPY GRENADE — magenta detonation for the thrown item ───────────
+   The grenade lands as a 3×3 blast (battle.js bane-throw path) but had no
+   VFX beyond the board shake. Mapped as an "aoe": one fire('aoe') call
+   spawns the big entropy-magenta burst on the target tile and a smaller
+   splash pop on every other tile in the square — matching exactly where
+   splash damage lands. Colors follow the grenade prop's core band
+   (entropy magenta, 0xdc3c82 family): pink sparks, psi haze, void smoke.
+   No `shake` here — battle.js already shakes the board on detonation. */
+EFFECTS['entropyGrenade_impact_center'] = {
+    layers: [
+        /* hard white pop + lingering magenta flash */
+        { sprite: 'flash', ml: 200, z: 8, size0: 150, size1: 36 },
+        { sprite: 'psi-pulse', ml: 340, z: 10, size0: 40, size1: 130, opacity0: 0.9 },
+        /* scorched tile */
+        { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 2000, z: 1,
+          size0: 100, size1: 122, opacity0: 0.85 },
+        /* shockwave ring racing outward across the blast area */
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 420, z: 2,
+          size0: 40, size1: 360, opacity0: 0.85 },
+        /* entropy sparks thrown hard in every direction */
+        { count: 26, sprite: 'spark-pink', ml: [350, 650], offsetXY: 10,
+          vxRange: 240, vyRange: 240, vzRange: [60, 260], gravity: 380, drag: 1.2,
+          size0: [7, 12], size1: 2, opacity0: 0.95 },
+        /* corrupt haze blooming out of the core */
+        { count: 8, sprite: 'psi-pulse', ml: [400, 750], offsetXY: 14,
+          vxRange: 90, vyRange: 90, vzRange: [30, 120], gravity: -10, drag: 0.6,
+          size0: [8, 14], size1: [22, 36], opacity0: 0.7 },
+        /* dark smoke column */
+        { count: 5, delayMs: 120, mode: 'y-locked', sprite: 'void-mist', ml: [900, 1400],
+          offsetXY: 18, vzRange: [35, 70], drag: 0.4, size0: [30, 44], size1: [80, 120],
+          opacity0: 0.6 },
+    ]
+};
+EFFECTS['entropyGrenade_impact_tile'] = {
+    layers: [
+        { sprite: 'flash', ml: 150, z: 4, size0: 60, size1: 16, opacity0: 0.7 },
+        { count: 8, sprite: 'spark-pink', ml: [250, 480], offsetXY: 10,
+          vxRange: 130, vyRange: 130, vzRange: [30, 140], gravity: 340, drag: 1.2,
+          size0: [5, 9], size1: 2, opacity0: 0.9 },
+        { count: 2, delayMs: 80, sprite: 'void-mist', ml: [500, 850], offsetXY: 14,
+          vzRange: [25, 50], drag: 0.4, size0: [16, 24], size1: [40, 60], opacity0: 0.5 },
+    ]
+};
+EFFECTS['entropyGrenade_aoe'] = {
+    aoeRadius: 1,
+    shape: 'square',
+    impactTileEffect: 'entropyGrenade_impact_tile',
+    impactCenterEffect: 'entropyGrenade_impact_center',
+    layers: []
+};
+SPELL_MAP['entropyGrenade'] = { aoe: 'entropyGrenade_aoe' };
+
 /* ─── WALL OF FIRE — hand-authored "real fire" override ──────────────────
    The auto-generated wallOfFire_tile read as a couple of flat flame quads.
    This rebuilds it as a dense, layered, flickering sheet of flame: a warm
@@ -12663,5 +12715,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 })();
 
 window.ThreeVFXEffects = ThreeVFXEffects;
+/* Legacy alias — online.js's host→guest VFX relay (the vfx3d channel: host
+   wraps VFX3D.fire to _emit('relay'), guest replays it with fog gating) was
+   written against a `VFX3D` global that no longer existed after the rename
+   to ThreeVFXEffects, leaving the whole channel dormant and every mapped
+   spell/impact VFX host-only. Restoring the alias revives it. */
+window.VFX3D = ThreeVFXEffects;
 
 window.__playFx = ThreeVFXEffects.__playFx;

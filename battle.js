@@ -33261,6 +33261,14 @@
                     if (baneRule.aoeRadius > 0 && baneRule.aoeDmg > 0) {
                         const _blastX = target.x, _blastY = target.y;
                         shakeBoard('normal');
+                        // Detonation VFX — fire() no-ops for items with no
+                        // SPELL_MAP entry, so this stays generic for any
+                        // future aoe bane-family item.
+                        if (window.ThreeVFXEffects?.fire) {
+                            window.ThreeVFXEffects.fire('aoe', baneKey, {
+                                tx: _blastX, ty: _blastY, aoeRadius: baneRule.aoeRadius
+                            });
+                        }
                         for (const other of state.units) {
                             if (other.dead || other._dying || other.id === target.id) continue;
                             const _bd = Math.max(Math.abs(other.x - _blastX), Math.abs(other.y - _blastY));
