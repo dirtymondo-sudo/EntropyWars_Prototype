@@ -1268,6 +1268,7 @@ const ThreeRenderer = (function () {
         'proj-shield':      { url: _R2_PROJ + 'proj_shield.png',       glow: 0x66aadd },
         'proj-debuff':      { url: _R2_PROJ + 'proj_debuff.png',       glow: 0xaa77dd },
         'proj-bomb':        { url: _R2_PROJ + 'proj_bomb.png',         glow: 0x985050 },
+        'proj-grenade':     { url: _R2_PROJ + 'proj_bomb.png',         glow: 0xdc3c82 },
         'proj-ricochet':    { url: _R2_PROJ + 'proj_ricochet.png',     glow: 0xffe38a },
         'proj-lightning':   { url: _R2_PROJ + 'proj_lightning.png',     glow: 0x88ccff },
         'proj-pull-hook':   { url: _R2_PROJ + 'proj_pull_hook.png',    glow: 0xaaaaaa },
@@ -5195,7 +5196,6 @@ const ThreeRenderer = (function () {
         'seed-heal':   (typeof HEALING_SEED_SPRITE_URL !== 'undefined') ? HEALING_SEED_SPRITE_URL : null,
         'seed-poison': (typeof POISON_SEED_SPRITE_URL  !== 'undefined') ? POISON_SEED_SPRITE_URL  : null,
         'seed-leech':  (typeof LEECH_SEED_SPRITE_URL   !== 'undefined') ? LEECH_SEED_SPRITE_URL   : null,
-        'bomb':        (typeof BOMB_SPRITE_URL          !== 'undefined') ? BOMB_SPRITE_URL          : null,
         'ward':        (typeof WARD_SPRITE_URL          !== 'undefined') ? WARD_SPRITE_URL          : null
     };
 
@@ -5338,6 +5338,143 @@ const ThreeRenderer = (function () {
         m._ew_billboard = true;
         m._ew_deployable = true;
         return m;
+    }
+
+    /* ── 3D bomb prop ────────────────────────────────────────────────────
+       Procedural gunmetal sphere bomb (was: flat bomb.png / proj_bomb.png
+       billboards). Shared by the planted-bomb tile prop and the proj-bomb
+       flight mesh. Origin at the BOTTOM of the sphere so it sits on the
+       tile; r = sphere radius. Phong keeps the metal highlight without
+       needing an environment map. */
+    var _bombFuses = [];   /* live spark entries — self-cleaning like _torchFlames */
+    function _makeBombProp(r, opts) {
+        opts = opts || {};
+        var g = new THREE.Group();
+        var bodyMat = new THREE.MeshPhongMaterial({
+            color: 0x353b42, specular: 0x9aa4b0, shininess: 68
+        });
+        var ironMat = new THREE.MeshPhongMaterial({
+            color: 0x1f2328, specular: 0x666e78, shininess: 40
+        });
+        var body = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 14), bodyMat);
+        body.position.y = r;
+        g.add(body);
+        /* cast-iron weld seam around the equator */
+        var seam = new THREE.Mesh(new THREE.TorusGeometry(r * 0.99, r * 0.05, 6, 24), ironMat);
+        seam.rotation.x = Math.PI / 2;
+        seam.position.y = r;
+        g.add(seam);
+        /* fuse collar bolted on top */
+        var collar = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.30, r * 0.40, r * 0.30, 10), ironMat);
+        collar.position.y = r * 1.95;
+        g.add(collar);
+        /* curved fuse cord — a torus arc whose start sits on the collar and
+           whose tip curls up and out (spark lives at the tip) */
+        var fuseR = r * 0.34, fuseArc = Math.PI * 0.85;
+        var fuseMat = new THREE.MeshLambertMaterial({ color: 0x8a7350 });
+        var fuse = new THREE.Mesh(new THREE.TorusGeometry(fuseR, r * 0.055, 5, 10, fuseArc), fuseMat);
+        fuse.position.set(-fuseR, r * 2.08, 0);
+        g.add(fuse);
+        if (opts.spark !== false) {
+            var tipX = -fuseR + fuseR * Math.cos(fuseArc);
+            var tipY = r * 2.08 + fuseR * Math.sin(fuseArc);
+            var sparkGrp = new THREE.Group();
+            var glowMat = new THREE.MeshBasicMaterial({
+                color: 0xff8c28, transparent: true, opacity: 0.55, fog: false,
+                blending: THREE.AdditiveBlending, depthWrite: false
+            });
+            sparkGrp.add(new THREE.Mesh(new THREE.SphereGeometry(r * 0.11, 8, 6),
+                new THREE.MeshBasicMaterial({ color: 0xffe9b0, fog: false })));
+            sparkGrp.add(new THREE.Mesh(new THREE.SphereGeometry(r * 0.28, 8, 6), glowMat));
+            sparkGrp.position.set(tipX, tipY, 0);
+            g.add(sparkGrp);
+            g._ew_bombSpark = sparkGrp;
+            g._ew_bombGlowMat = glowMat;
+        }
+        return g;
+    }
+    function _buildBombMesh(x, y) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = _makeBombProp(ts * 0.22, { spark: true });
+        g.position.set(x * ts + ts / 2, tileTopY(x, y), y * ts + ts / 2);
+        /* deterministic per-tile yaw so a bomb line doesn't look stamped */
+        g.rotation.y = ((x * 7 + y * 13) % 8) * (Math.PI / 4);
+        g._ew_deployable = true;
+        _bombFuses.push({ root: g, spark: g._ew_bombSpark, glowMat: g._ew_bombGlowMat, seed: x * 31 + y * 17 });
+        return g;
+    }
+    /* Entropy Grenade — frag-style gunmetal body (squashed sphere with dark
+       segment grooves), fuze cap + safety lever + pull ring, and a glowing
+       entropy-magenta core band around the equator that throbs via the same
+       _bombFuses pulse loop (glowMat entry, no spark). Origin at the bottom
+       like _makeBombProp; r = body radius, squash = 1.18 on Y. */
+    function _makeGrenadeProp(r) {
+        var g = new THREE.Group();
+        var SQ = 1.18, cy = r * SQ;   /* vertical squash + body-center height */
+        var bodyMat = new THREE.MeshPhongMaterial({
+            color: 0x3a4048, specular: 0x9aa4b0, shininess: 60
+        });
+        var ironMat = new THREE.MeshPhongMaterial({
+            color: 0x1d2126, specular: 0x5f6670, shininess: 36
+        });
+        var body = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 14), bodyMat);
+        body.scale.y = SQ;
+        body.position.y = cy;
+        g.add(body);
+        /* frag grooves: two horizontal + three vertical dark rings partially
+           embedded in the shell so the surface reads segmented */
+        var grooveH = new THREE.TorusGeometry(r * 0.88, r * 0.045, 5, 22);
+        for (var hi = -1; hi <= 1; hi += 2) {
+            var gh = new THREE.Mesh(grooveH, ironMat);
+            gh.rotation.x = Math.PI / 2;
+            gh.position.y = cy + hi * r * 0.5;
+            g.add(gh);
+        }
+        var grooveV = new THREE.TorusGeometry(r * 0.97, r * 0.04, 5, 22);
+        for (var vi = 0; vi < 3; vi++) {
+            var gv = new THREE.Mesh(grooveV, ironMat);
+            gv.rotation.y = vi * Math.PI / 3;
+            gv.scale.y = SQ;
+            gv.position.y = cy;
+            g.add(gv);
+        }
+        /* glowing entropy core band at the equator (throbs via _bombFuses) */
+        var coreMat = new THREE.MeshBasicMaterial({
+            color: 0xdc3c82, transparent: true, opacity: 0.7, fog: false,
+            blending: THREE.AdditiveBlending, depthWrite: false
+        });
+        var core = new THREE.Mesh(new THREE.TorusGeometry(r * 0.99, r * 0.07, 6, 26), coreMat);
+        core.rotation.x = Math.PI / 2;
+        core.position.y = cy;
+        g.add(core);
+        g._ew_bombGlowMat = coreMat;
+        /* fuze cap, safety lever hugging the shoulder, pull ring */
+        var capH = r * 0.34;
+        var cap = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.30, r * 0.34, capH, 10), ironMat);
+        cap.position.y = cy * 2 + capH / 2 - r * 0.06;
+        g.add(cap);
+        var lever = new THREE.Mesh(new THREE.BoxGeometry(r * 0.14, r * 1.05, r * 0.30), ironMat);
+        lever.position.set(r * 0.72, cy * 1.65, 0);
+        lever.rotation.z = 0.42;
+        g.add(lever);
+        var ring = new THREE.Mesh(new THREE.TorusGeometry(r * 0.18, r * 0.035, 5, 12), bodyMat);
+        ring.position.set(-r * 0.36, cy * 2 + r * 0.10, 0);
+        g.add(ring);
+        return g;
+    }
+
+    function _updateBombFuses() {
+        if (!_bombFuses.length) return;
+        var now = performance.now() * 0.001;
+        var alive = [];
+        for (var i = 0; i < _bombFuses.length; i++) {
+            var e = _bombFuses[i];
+            if (!e.root.parent) continue;   /* torn down by a rebuild — drop */
+            alive.push(e);
+            if (e.spark) e.spark.scale.setScalar(0.8 + 0.45 * Math.abs(Math.sin(now * 9.7 + e.seed)));
+            if (e.glowMat) e.glowMat.opacity = 0.35 + 0.35 * Math.abs(Math.sin(now * 7.3 + e.seed * 1.3));
+        }
+        _bombFuses = alive;
     }
 
     /* ── Gravestones ─────────────────────────────────────────────────────
@@ -5899,7 +6036,7 @@ const ThreeRenderer = (function () {
         if (state.bombs) {
             for (var i = 0; i < state.bombs.length; i++) {
                 var b = state.bombs[i];
-                var m = _buildDeployableBillboard('bomb', b.x, b.y, null);
+                var m = _buildBombMesh(b.x, b.y);
                 if (m) {
                     var key = 'dep_' + (idx++);
                     m._ew_depX = b.x; m._ew_depY = b.y;
@@ -13166,6 +13303,40 @@ const ThreeRenderer = (function () {
             }
         }
 
+        /* Thrown bombs / entropy grenades fly as the same 3D gunmetal props
+           as the tile versions (was: flat proj_bomb.png). Built through the
+           isModel path so the existing orient/tumble/fade machinery applies
+           unchanged. */
+        if (!mesh && (projClass === 'proj-bomb' || projClass === 'proj-grenade')) {
+            var bombR, bombProp;
+            if (projClass === 'proj-grenade') {
+                bombR = ts * 0.14;
+                bombProp = _makeGrenadeProp(bombR);
+            } else {
+                bombR = ts * 0.16;
+                bombProp = _makeBombProp(bombR, { spark: true });
+            }
+            bombProp.position.y = -bombR;      /* center the body on the flight path */
+            fadeMats = [];
+            bombProp.traverse(function (n) {
+                if (!n.isMesh || !n.material) return;
+                n.material.transparent = true;
+                fadeMats.push(n.material);
+            });
+            spinner = new THREE.Group();
+            spinner.add(bombProp);
+            mesh = new THREE.Group();
+            mesh.rotation.order = 'YXZ';
+            mesh.add(spinner);
+            isModel = true;
+            /* keep the grenade's entropy core throbbing in flight — rooted
+               on the OUTER group so the entry self-cleans when the tween
+               removes it from projectileGroup */
+            if (bombProp._ew_bombGlowMat) {
+                _bombFuses.push({ root: mesh, spark: null, glowMat: bombProp._ew_bombGlowMat, seed: _projIdCounter * 2.3 });
+            }
+        }
+
         if (!mesh) {
             var tex = getTexture(info.url);
             var mat = new THREE.MeshBasicMaterial({
@@ -13207,11 +13378,13 @@ const ThreeRenderer = (function () {
             endX: endX, endY: endY, endZ: endZ,
             startTime: _animNow(),
             durationMs: Math.max(40, flyMs || 320),
-            spinSpeed: isModel ? ((_PROJ_MODELS[projClass] && _PROJ_MODELS[projClass].spin) || 0)
+            spinSpeed: isModel ? ((_PROJ_MODELS[projClass] && _PROJ_MODELS[projClass].spin) || (projClass === 'proj-bomb' ? 6.5 : 0) || (projClass === 'proj-grenade' ? 9.0 : 0))
                      : (projClass === 'proj-spiderweb') ? 10.5
                      : (projClass === 'proj-knife') ? 14.0
                      : (projClass === 'proj-football') ? 6.0 : 0,
             arcHeight: (projClass === 'proj-knife') ? ts * 0.35
+                     : (projClass === 'proj-bomb') ? ts * 0.55
+                     : (projClass === 'proj-grenade') ? ts * 0.6
                      : (projClass === 'proj-football') ? ts * 0.55 : 0,
             needsDirRot: needsDirRot,
             travelDX: endX - startX,
@@ -20444,6 +20617,7 @@ const ThreeRenderer = (function () {
         _updateTowerCubes();
         _updateTrafficLights();
         _updateTorchFlames();
+        _updateBombFuses();
         _updateInsideBuildingVisibility();
         _updatePlateVisibility();
         _updatePlateEffBadges();

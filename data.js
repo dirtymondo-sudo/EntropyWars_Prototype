@@ -3444,7 +3444,7 @@ const ITEM_RULES = {
         baseDmg: 60,
         aoeDmg: 36,
         aoeRadius: 1,
-        proj: 'proj-bomb',
+        proj: 'proj-grenade',
         shopPrice: 70
     },
     adrenalStim: {

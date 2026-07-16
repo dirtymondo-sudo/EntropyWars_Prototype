@@ -287,6 +287,10 @@
             background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_bomb.png');
             box-shadow: 0 0 6px rgba(152, 80, 80, 0.7);
         }
+        .projectile.proj-grenade {
+            background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_bomb.png');
+            box-shadow: 0 0 6px rgba(220, 60, 130, 0.7);
+        }
         .projectile.proj-ricochet {
             background-image: url('https://pub-c56e84829c9b4c98afb6a62ff33b2981.r2.dev/Assets/Sprites/projectiles/proj_ricochet.png');
             box-shadow: 0 0 6px rgba(255, 227, 138, 0.7);
