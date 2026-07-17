@@ -758,6 +758,9 @@
       'Bubble':         'rgba(140,180,255,0.90)',
       'Star Decree':    'rgba(180,120,255,0.90)',
       'Dimensional Web':'rgba(180,200,220,0.85)',
+      // Gravity fields (2026-07-17): heavy void-purple crush, airy cyan lift.
+      'Gravity Crush':  'rgba(120,80,220,0.90)',
+      'Low Gravity':    'rgba(120,230,220,0.90)',
     };
     const ZONE_OUTLINE_COLORS_BY_TYPE = {
       heal:    'rgba(120,220,120,0.85)',
@@ -8378,6 +8381,14 @@
             if (spell.kind === 'aoe') {
                 const cx = spell.aoeOriginSelf ? casterUnit.x : tx;
                 const cy = spell.aoeOriginSelf ? casterUnit.y : ty;
+                // 2026-07-17 shape pass: aoeShape 'round' (Meteor — 5×5 minus
+                // corners) / 'diamond' — must mirror battle.js getSpellAoeArea.
+                if (spell.aoeShape === 'round' && typeof getRoundArea === 'function') {
+                    return getRoundArea(cx, cy, spell.aoeRadius || 1);
+                }
+                if (spell.aoeShape === 'diamond' && typeof getDiamondArea === 'function') {
+                    return getDiamondArea(cx, cy, spell.aoeRadius || 1);
+                }
                 return getSquareArea(cx, cy, spell.aoeRadius || 1);
             }
             if (spell.kind === 'bomb') {
@@ -8395,10 +8406,17 @@
                 if (spell.diamond && typeof getDiamondArea === 'function') {
                     return getDiamondArea(cx, cy, r);
                 }
+                // diagonal: true = X arms (Crossfire / Arcane Sigil); default
+                // cardinal arms — must mirror battle.js getCrossArea.
                 const tiles = [{ x: cx, y: cy }];
                 for (let i = 1; i <= r; i++) {
-                    tiles.push({ x: cx + i, y: cy }, { x: cx - i, y: cy },
-                               { x: cx, y: cy + i }, { x: cx, y: cy - i });
+                    if (spell.diagonal) {
+                        tiles.push({ x: cx + i, y: cy + i }, { x: cx - i, y: cy - i },
+                                   { x: cx + i, y: cy - i }, { x: cx - i, y: cy + i });
+                    } else {
+                        tiles.push({ x: cx + i, y: cy }, { x: cx - i, y: cy },
+                                   { x: cx, y: cy + i }, { x: cx, y: cy - i });
+                    }
                 }
                 return tiles.filter(t => t.x >= 0 && t.y >= 0 && t.x < bw() && t.y < bh());
             }
@@ -8576,7 +8594,15 @@
             }
             if (radius <= 0 && kind !== 'selfHeal' && kind !== 'escape') return;
 
-            const tiles = [];
+            // 2026-07-17 shape pass: self-centered aoe/cross kinds preview
+            // their TRUE footprint (X arms, diamond, round blob, square) via
+            // getSpellAoeFootprint — the old Manhattan wash lied about square
+            // bursts and can't draw the new shapes at all. Auras (warCry/
+            // barrage/healAll/scan) keep the Manhattan wash: that IS their rule.
+            let tiles = [];
+            if (spell.aoeOriginSelf && (kind === 'aoe' || kind === 'cross')) {
+                tiles = getSpellAoeFootprint(spell, unit.x, unit.y, unit);
+            } else {
             for (let dy = -radius; dy <= radius; dy++) {
                 for (let dx = -radius; dx <= radius; dx++) {
                     if (Math.abs(dx) + Math.abs(dy) > radius) continue;
@@ -8584,6 +8610,7 @@
                     if (tx < 0 || ty < 0 || tx >= bw() || ty >= bh()) continue;
                     tiles.push({ x: tx, y: ty });
                 }
+            }
             }
             if (tiles.length === 0) tiles.push({ x: unit.x, y: unit.y });
 

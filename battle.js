@@ -177,6 +177,40 @@
             return Math.max(JUMP_HEIGHT, getUnitJumpStat(unit));
         }
 
+        /* ── Gravity fields (2026-07-17: Gravity Crush / Low Gravity) ─────────
+           Returns 'super', 'weak' or null for a tile. Fields are persistent
+           zones in state._activeZones (kind zoneDebuff + spell.gravityField)
+           and are INDISCRIMINATE — physics bends for both teams. 'super' wins
+           when fields overlap. Consumers: jump math here, the move-path climb
+           gates, takeoff/altitude gates, fall damage (state.js), and the
+           end-of-round zone tick that keeps flyers slammed down.
+           Exported on window because state.js applyFallDamage/predictFallDamage
+           live in a different script scope. */
+        function getGravityFieldAt(x, y) {
+            const zones = state._activeZones;
+            if (!zones || !zones.length) return null;
+            let field = null;
+            for (const zone of zones) {
+                if (!zone.gravityField) continue;
+                const r = zone.radius || 1;
+                if (Math.abs(x - zone.x) > r || Math.abs(y - zone.y) > r) continue;
+                if (zone.gravityField === 'super') return 'super';
+                field = zone.gravityField;
+            }
+            return field;
+        }
+        window.getGravityFieldAt = getGravityFieldAt;
+
+        /* Climb ceiling for one pathing step, honoring the gravity field on the
+           DESTINATION tile: super = no hop at all beyond a normal step, weak =
+           +2 on top of the usual allowance. Shared by findMovePath/getMoveTiles. */
+        function _climbCeilingAt(nx, ny, baseCeiling) {
+            const gf = getGravityFieldAt(nx, ny);
+            if (gf === 'super') return Math.min(baseCeiling, MAX_CLIMB_HEIGHT);
+            if (gf === 'weak') return baseCeiling + 2;
+            return baseCeiling;
+        }
+
         function rollStatusApply(sourceUnit, targetUnit, baseChance = 1) {
             const chance = Math.max(0.05, Math.min(0.95, baseChance + getDebuffIntModifier(sourceUnit, targetUnit)));
             return Math.random() <= chance;
@@ -3553,6 +3587,7 @@
                         // Don't slam the target down onto a tile already occupied
                         // at ground level — resolve the collision (push the
                         // occupant aside or relocate the falling unit) first.
+                        const _gaFromZ = target.z ?? 0;
                         const _gz = getHeightAt(target.x, target.y);
                         const _landedZ = (typeof resolveDescentCollision === 'function')
                             ? resolveDescentCollision(target, _gz, { byLabel: `as ${unitDisplayName(target)} crashes down` })
@@ -3560,6 +3595,13 @@
                         target.z = (_landedZ === null) ? _gz : _landedZ;
                         showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
                         addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
+                        // 2026-07-17 fix: the yank now deals forced fall damage
+                        // (Gravity Well's whole pitch) — same rule as
+                        // forceGroundUnit, flyer immunity bypassed.
+                        if (typeof applyFallDamage === 'function') {
+                            applyFallDamage(target, _gaFromZ, target.z ?? 0,
+                                `${spell.name}: `, { byEnemy: true, forced: true });
+                        }
                         _groundedThisBlast.push(target);
                     }
                     hitCount++;
@@ -4174,6 +4216,18 @@
 
         function applyStatStageBoost(target, boost, sourceLabel = '', sourceUnit = null) {
             if (!target || target.dead || !boost) return;
+            // 🔏 Fermata (statLock): NO stat stage can change while the lock
+            // holds — enemy debuffs fizzle, but so do fresh friendly buffs.
+            // This is the single chokepoint every statStageBoost routes
+            // through; stageMod-carrying statuses are blocked separately in
+            // applyStatusPayload.
+            if (unitHasStatus(target, 'statLock')) {
+                addLog(`🔏 ${unitDisplayName(target)}'s stats are locked — ${sourceLabel || 'the stat change '}washes over them with no effect.`);
+                if (typeof showFloatingTextForUnit === 'function') {
+                    showFloatingTextForUnit(target, '🔏 LOCKED', 'buff', { durationMs: 1000 });
+                }
+                return;
+            }
             // Fresh application (no live carrier): clear any stale magnitudes.
             if (!unitHasStatus(target, 'statUp') && !unitHasStatus(target, 'statDown')) {
                 target.statStages = { atk: 0, def: 0, mdef: 0, spd: 0, int: 0 };
@@ -4390,6 +4444,17 @@
             }
             const status = ensureUnitStatus(target);
             const meta = STATUS_DEFS[payload.id];
+            // 🔏 Fermata (statLock): statuses that carry a stageMod (Discord,
+            // Overclock, Guarding, Minimize…) ARE stat changes — they bounce
+            // off a locked unit entirely. The carrier statuses statUp/statDown
+            // are gated in applyStatStageBoost before they ever get here.
+            if (meta.stageMod && unitHasStatus(target, 'statLock')) {
+                addLog(`🔏 ${unitDisplayName(target)}'s stats are locked — ${meta.label} has no effect!`);
+                if (typeof showFloatingTextForUnit === 'function') {
+                    showFloatingTextForUnit(target, '🔏 LOCKED', 'buff', { durationMs: 1000 });
+                }
+                return false;
+            }
             const isEnemyDebuff = !!sourceUnit && isEnemyUnit(sourceUnit, target) && meta.kind === 'debuff';
             if (isEnemyDebuff) {
                 const chance = getStatusApplyChance(sourceUnit, target, payload);
@@ -4417,6 +4482,10 @@
             /* Track caster for mechanics that need it */
             if (payload.id === 'sirenSong' && sourceUnit) target._sirenCasterId = sourceUnit.id;
             if (payload.id === 'contract' && sourceUnit) target._contractCasterId = sourceUnit.id;
+            // 2026-07-17: taunt needs its challenger (forced targeting), hexed
+            // its curse-layer (kill credit on hex procs).
+            if (payload.id === 'taunt' && sourceUnit) target._tauntCasterId = sourceUnit.id;
+            if (payload.id === 'hexed' && sourceUnit) target._hexCasterId = sourceUnit.id;
             addLog(`${sourceLabel}${unitDisplayName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
 
             if (!_skipVisuals()) {
@@ -4679,6 +4748,20 @@
                             }
                         }
                     } else if (zone.type === 'debuff') {
+                        // Gravity fields tick their own physics: any flyer that
+                        // wandered (or took off… it can't, but belt+braces) into
+                        // a super field is slammed down. No status spam — the
+                        // field's rules live in the jump/flight/fall hooks.
+                        if (zone.gravityField) {
+                            if (zone.gravityField === 'super' && typeof isUnitAirborne === 'function') {
+                                for (const _gzU of state.units.filter(u => !u.dead && !u._dying)) {
+                                    if (!area.some(t => t.x === _gzU.x && t.y === _gzU.y)) continue;
+                                    if (canFly(_gzU) && isUnitAirborne(_gzU)) {
+                                        forceGroundUnit(_gzU, { byLabel: `by ${zone.spellName}` });
+                                    }
+                                }
+                            }
+                        } else {
                         const enemies = state.units.filter(u => !u.dead && u.player !== zone.ownerPlayer);
                         for (const enemy of enemies) {
                             if (area.some(t => t.x === enemy.x && t.y === enemy.y)) {
@@ -4690,6 +4773,7 @@
                                 evt.msgs.push(`<span class="dlg-damage">🔮 ${zone.spellName} zone afflicts ${unitDisplayName(enemy)}</span>`);
                                 addLog(`${zone.spellName} zone affects ${unitDisplayName(enemy)}.`);
                             }
+                        }
                         }
                         // Refresh ally buffs (e.g. Smoke Screen invisibility) for friendlies still inside the cloud.
                         if (zone.allyStatusEffects && zone.allyStatusEffects.length) {
@@ -15296,6 +15380,55 @@
             return out;
         }
 
+        /* ── 2026-07-17 shape pass ────────────────────────────────────────────
+           ROUND blast: a Chebyshev square with the extreme corners sheared off
+           (|dx|==|dy|==radius skipped) — at radius 2 that's a 5×5 minus its 4
+           corners, 21 tiles, the circle-ish blob between a 3×3 and a 5×5.
+           Selected per-spell via `aoeShape: 'round'` on kind:'aoe' (Meteor).
+           Mirrors live in ui.js getSpellAoeFootprint and ai.js — keep in sync. */
+        function getRoundArea(cx, cy, radius = 1) {
+            const out = [];
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    if (radius > 0 && Math.abs(dx) === radius && Math.abs(dy) === radius) continue;
+                    const nx = cx + dx;
+                    const ny = cy + dy;
+                    if (isInside(nx, ny)) out.push({ x: nx, y: ny });
+                }
+            }
+            return out;
+        }
+
+        /* One dispatcher for every kind:'aoe' footprint so the handler, the
+           hover preview and the AI all agree: aoeShape 'round' → getRoundArea,
+           'diamond' → getDiamondArea, default → the classic square. */
+        function getSpellAoeArea(spell, cx, cy) {
+            const r = spell.aoeRadius || 1;
+            if (spell.aoeShape === 'round') return getRoundArea(cx, cy, r);
+            if (spell.aoeShape === 'diamond') return getDiamondArea(cx, cy, r);
+            return getSquareArea(cx, cy, r);
+        }
+
+        /* Cross-kind footprint: 4 arms out to crossRadius — cardinal by
+           default, DIAGONAL (an X) when `diagonal: true` (Crossfire, Arcane
+           Sigil), or the full Manhattan diamond when `diamond: true`
+           (Resonance Pulse, Blade Waltz, Diamond Dust). */
+        function getCrossArea(spell, cx, cy) {
+            const radius = spell.crossRadius || 1;
+            if (spell.diamond) return getDiamondArea(cx, cy, radius);
+            const tiles = [{ x: cx, y: cy }];
+            for (let i = 1; i <= radius; i++) {
+                if (spell.diagonal) {
+                    tiles.push({ x: cx + i, y: cy + i }, { x: cx - i, y: cy - i },
+                                { x: cx + i, y: cy - i }, { x: cx - i, y: cy + i });
+                } else {
+                    tiles.push({ x: cx + i, y: cy }, { x: cx - i, y: cy },
+                                { x: cx, y: cy + i }, { x: cx, y: cy - i });
+                }
+            }
+            return tiles.filter(t => isInside(t.x, t.y));
+        }
+
         function getOrientedLineTiles(cx, cy, count, orientation) {
             const out = [];
             const half = Math.floor(count / 2);
@@ -15519,7 +15652,10 @@
                                roof — the Enter Building lift is the way up. */
                             if (_noR && _noR.roofWalkable && _signedHd > MAX_CLIMB_HEIGHT) continue;
                             if (!_sr) {
-                                if (_signedHd > JUMP_HEIGHT) continue;
+                                // Gravity fields bend the mid-move hop ceiling
+                                // (super: no hop, weak: +2) — keyed on the tile
+                                // being climbed onto. Mirrors getMoveTiles.
+                                if (_signedHd > _climbCeilingAt(nx, ny, JUMP_HEIGHT)) continue;
                             }
                         }
 
@@ -15714,6 +15850,15 @@
             // Walking into (or out of) a friendly smoke cloud toggles the cloak
             // immediately — no waiting for the end-of-round zone refresh.
             updateSmokeZoneCloak(unit);
+
+            // 🕳 Flying INTO a Gravity Crush field ends the flight right there —
+            // slammed to the deck with forced fall damage (×3 from the field).
+            if (_wasAirborne && getGravityFieldAt(unit.x, unit.y) === 'super') {
+                forceGroundUnit(unit, { byLabel: 'by the crushing gravity' });
+            }
+
+            // 🕯 Hex of Toil: moving feeds the curse.
+            _procHexedOnAction(unit, 'moves');
 
             if (!_wasAirborne) {
                 // Walking into ground fire hurts NOW (and sets you burning).
@@ -16378,16 +16523,16 @@
                     const usedSpellIds = new Set(existingSpells.filter(Boolean));
 
                     const preferred = {
-                        'Agent': ['assassinate', 'shadowLunge', 'placeBomb', 'sneakSlash', 'poisonDart', 'knifeThrow'],
+                        'Agent': ['assassinate', 'shadowLunge', 'placeBomb', 'sneakSlash', 'pistolWhip', 'poisonDart', 'knifeThrow'],
                         'Black Mage': ['meteor', 'wallOfFire', 'thunder1', 'fire1', 'thunderstorm'],
                         'White Mage': ['healAll', 'revive1', 'heal1', 'protect1', 'exorcism'],
-                        'Warrior': ['judgment', 'dragonSlash', 'warCry', 'guardSlash', 'shieldBash', 'fortify'],
+                        'Warrior': ['judgment', 'dragonSlash', 'warCry', 'provoke', 'guardSlash', 'shieldBash', 'fortify'],
                         'Swordmaster': ['zantetsuken', 'lungingStrike', 'bladeWaltz', 'parryStance', 'swordBeam', 'crossSlash'],
-                        'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'pistolWhip'],
+                        'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'crossfire'],
                         'Psychic': ['mindShatter', 'psychosis', 'teleport', 'glare', 'warpRune'],
                         'Harvester': ['overgrowth', 'lifeDrain', 'wildwood', 'timberStrike', 'leechSeed', 'healingSeed', 'poisonSeed'],
                         'Engineer': ['fiveGTower', 'overclock', 'empBurst', 'magnetMine', 'repair', 'freeEnergy', 'plasmaGun', 'deployTurret'],
-                        'Harbinger': ['requiem', 'encore', 'sonicCharge', 'discordance', 'lullaby'],
+                        'Harbinger': ['requiem', 'encore', 'fermata', 'sonicCharge', 'discordance', 'lullaby'],
                         'Raider': ['rampage', 'groundSlam', 'skullCrack', 'haymaker', 'ironGrip'],
                         'Sniper': ['headshot', 'precisionShot', 'spotter', 'camouflage'],
                         'Freelancer': ['jackOfAll', 'improvise', 'reallyGoodPunch']
@@ -16519,16 +16664,16 @@
             const usedSpellIds = new Set(existingSpells.filter(Boolean));
 
             const preferred = {
-                'Agent': ['assassinate', 'shadowLunge', 'placeBomb', 'sneakSlash', 'poisonDart', 'knifeThrow'],
+                'Agent': ['assassinate', 'shadowLunge', 'placeBomb', 'sneakSlash', 'pistolWhip', 'poisonDart', 'knifeThrow'],
                 'Black Mage': ['meteor', 'wallOfFire', 'thunder1', 'fire1', 'thunderstorm'],
                 'White Mage': ['healAll', 'revive1', 'heal1', 'protect1', 'exorcism'],
-                'Warrior': ['judgment', 'dragonSlash', 'warCry', 'guardSlash', 'shieldBash', 'fortify'],
+                'Warrior': ['judgment', 'dragonSlash', 'warCry', 'provoke', 'guardSlash', 'shieldBash', 'fortify'],
                         'Swordmaster': ['zantetsuken', 'lungingStrike', 'bladeWaltz', 'parryStance', 'swordBeam', 'crossSlash'],
-                'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'pistolWhip'],
+                'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'crossfire'],
                 'Psychic': ['mindShatter', 'psychosis', 'teleport', 'glare', 'warpRune'],
                 'Harvester': ['overgrowth', 'lifeDrain', 'wildwood', 'timberStrike', 'leechSeed', 'healingSeed', 'poisonSeed'],
                 'Engineer': ['fiveGTower', 'overclock', 'empBurst', 'magnetMine', 'repair', 'freeEnergy', 'plasmaGun', 'deployTurret'],
-                'Harbinger': ['requiem', 'encore', 'sonicCharge', 'discordance', 'lullaby'],
+                'Harbinger': ['requiem', 'encore', 'fermata', 'sonicCharge', 'discordance', 'lullaby'],
                 'Raider': ['rampage', 'groundSlam', 'skullCrack', 'haymaker', 'ironGrip'],
                 'Sniper': ['headshot', 'precisionShot', 'spotter', 'camouflage'],
                 'Freelancer': ['jackOfAll', 'improvise', 'reallyGoodPunch']
@@ -27197,6 +27342,15 @@
                 targets.push({ x: u.x, y: u.y, dist: d, unit: u });
             }
             targets.sort((a, b) => a.dist - b.dist);
+            // 🗯 Provoke: when the caster is taunted and the challenger sits in
+            // this drum, unit-targeted offensive casts collapse to the
+            // challenger alone — mirrors the doSpell gate exactly.
+            if (isOffensive && !_skm.tileTargeted && !_skm.directional) {
+                const _drumTaunter = getTauntTargeter(unit);
+                if (_drumTaunter && targets.some(t => t.unit && t.unit.id === _drumTaunter.id)) {
+                    return targets.filter(t => !t.unit || !isEnemyUnit(unit, t.unit) || t.unit.id === _drumTaunter.id);
+                }
+            }
             return targets;
         }
 
@@ -27532,6 +27686,16 @@
                 const d = distToTarget(unit.x, unit.y, e, unit.z);
                 if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, unitZ)) {
                     targets.push({ x: e.x, y: e.y, dist: d, unit: e, kind: 'unit' });
+                }
+            }
+            // 🗯 Provoke: while the challenger is attackable, they are the ONLY
+            // enemy unit in the drum — mirrors the doAttack gate.
+            {
+                const _atkDrumTaunter = getTauntTargeter(unit);
+                if (_atkDrumTaunter && targets.some(t => t.unit && t.unit.id === _atkDrumTaunter.id)) {
+                    for (let i = targets.length - 1; i >= 0; i--) {
+                        if (targets[i].unit && targets[i].unit.id !== _atkDrumTaunter.id) targets.splice(i, 1);
+                    }
                 }
             }
 
@@ -27894,13 +28058,19 @@
             if (!spell.range) {
                 // Diamond novae (Resonance Pulse) have crossRadius but no
                 // aoeRadius — the Manhattan wash below is exactly their shape.
+                // Cardinal/diagonal cross novae (Crossfire) get their true
+                // footprint via getCrossArea instead of a misleading wash.
                 const auraR = spell.auraRadius || spell.aoeRadius || (spell.diamond ? (spell.crossRadius || 1) : 0) || 0;
-                if (!auraR) return;
-                const auraTiles = [];
+                if (!auraR && !(spell.kind === 'cross' && spell.crossRadius)) return;
+                let auraTiles = [];
+                if (!auraR) {
+                    auraTiles = getCrossArea(spell, unit.x, unit.y);
+                } else {
                 for (let ty = 0; ty < bh(); ty++) {
                     for (let tx = 0; tx < bw(); tx++) {
                         if (Math.abs(tx - unit.x) + Math.abs(ty - unit.y) <= auraR) auraTiles.push({ x: tx, y: ty });
                     }
+                }
                 }
                 if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                     const auraColor = _kindMeta(spell).offensive ? 0xff5544 : 0x4488ff;
@@ -27928,7 +28098,11 @@
                 const effRange = getEffectiveSpellRange(unit, spell);
 
                 const lineLen = isCross ? (spell.crossRadius || effRange) : (isDirectional ? Math.max(bw(), bh()) : effRange);
-                const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+                // Diagonal crosses (Crossfire / Arcane Sigil) hint their X
+                // arms; everything else hints the 4 cardinals.
+                const dirs = (isCross && spell.diagonal)
+                    ? [[1,1],[-1,-1],[1,-1],[-1,1]]
+                    : [[1,0],[-1,0],[0,1],[0,-1]];
                 for (const [dx, dy] of dirs) {
                     for (let i = 1; i <= lineLen; i++) {
                         const tx = unit.x + dx * i;
@@ -30533,11 +30707,16 @@
             // ledge should never force a 2-AP takeoff-and-hover).
             if (canFly(unit) && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return [];
             if (unit._jumpedThisTurn) return [];  // one decisive leap per turn
+            // 🕳 Gravity Crush: jumping is impossible inside the field — knees
+            // buckle under triple weight. 🌫 Low Gravity: +2 reach AND +2 climb.
+            const _jumpGrav = getGravityFieldAt(unit.x, unit.y);
+            if (_jumpGrav === 'super') return [];
             const unitZ = unit.z ?? 0;
             const tiles = [];
             const tileSet = new Set();
-            const reach = getUnitJumpStat(unit);   // horizontal reach in tiles (1/2/3)
-            const climb = getUnitJumpClimb(unit);  // max height we can hop up
+            const _gravBonus = _jumpGrav === 'weak' ? 2 : 0;
+            const reach = getUnitJumpStat(unit) + _gravBonus;   // horizontal reach in tiles
+            const climb = getUnitJumpClimb(unit) + _gravBonus;  // max height we can hop up
             const has3D = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
             for (let dy = -reach; dy <= reach; dy++) {
                 for (let dx = -reach; dx <= reach; dx++) {
@@ -30567,7 +30746,9 @@
                             const _jRule = _jObj ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_jObj] : null) : null;
                             if (_jRule && _jRule.roofWalkable) continue;
                         }
-                        if (hDiff > climb) continue;
+                        // Leaping UP onto a ledge INSIDE a super-gravity field is
+                        // blocked too — the field slaps the arc down.
+                        if (hDiff > (getGravityFieldAt(nx, ny) === 'super' ? Math.min(climb, MAX_CLIMB_HEIGHT) : climb)) continue;
 
                         // Skip tile if occupied — but ignore airborne units at different z
                         const _jOccupant = unitAt(nx, ny, nz);
@@ -30620,6 +30801,7 @@
             if (!unit || unit.dead || unit._dying) return false;
             if (typeof canFly !== 'function' || !canFly(unit)) return false;
             if (typeof isUnitAirborne !== 'function' || !isUnitAirborne(unit)) return false;
+            const _fgFromZ = unit.z ?? 0;
             const groundZ = getHeightAt(unit.x, unit.y);
             const landedZ = (typeof resolveDescentCollision === 'function')
                 ? resolveDescentCollision(unit, groundZ, { byLabel: opts.byLabel || '' })
@@ -30635,9 +30817,57 @@
                 showFloatingTextForUnit(unit, '⬇ GROUNDED!', 'debuff', { durationMs: 1100 });
                 addLog(`${unitDisplayName(unit)} is forced out of the sky${opts.byLabel ? ' ' + opts.byLabel : ''}!`);
             }
+            /* 🪝 2026-07-17 fix: being slammed out of the sky now HURTS.
+               forceGroundUnit dropped unit.z but never called applyFallDamage —
+               and applyFallDamage's canFly early-return zeroed it anyway, so
+               Anchor/Lasso/Stasis Beam groundings were always free. opts.forced
+               bypasses the flyer immunity and counts every level of the drop.
+               The wounded-crash path stays free: that unit is already at <25%
+               HP, and pre-fix behavior charged nothing for it. */
+            if (opts.reason !== 'wounded' && typeof applyFallDamage === 'function') {
+                applyFallDamage(unit, _fgFromZ, unit.z ?? 0,
+                    opts.byLabel ? `Slammed down ${opts.byLabel}: ` : 'Slammed down: ',
+                    { byEnemy: true, forced: true });
+            }
             playSfx('debuff');
             scheduleBoardRender();
             return true;
+        }
+
+        /* ── Provoke / taunt (2026-07-17) ─────────────────────────────────────
+           If `unit` is taunted, returns the living enemy that provoked it —
+           else null. doAttack/doSpell use this to force single-target actions
+           onto the challenger whenever the challenger is actually reachable;
+           the target drum filters to the taunter; ai.js getTargetPriority
+           steers AI units the same way. AoE/tile casts stay free — the taunt
+           binds the blade, not the battlefield. */
+        function getTauntTargeter(unit) {
+            if (!unit || !unitHasStatus(unit, 'taunt') || !unit._tauntCasterId) return null;
+            const taunter = state.units.find(u => u.id === unit._tauntCasterId && !u.dead && !u._dying);
+            if (!taunter || !isEnemyUnit(unit, taunter)) return null;
+            return taunter;
+        }
+        window.getTauntTargeter = getTauntTargeter;
+
+        /* ── Hex of Toil (2026-07-17): acting feeds the curse ─────────────────
+           A `hexed` unit takes flat armor-ignoring chip damage every time it
+           MOVES, JUMPS or CASTS. The forced choice (act and bleed, or hold
+           still and concede tempo) IS the spell. Caster credited via
+           _hexCasterId (stamped in applyStatusPayload) for kill attribution. */
+        const HEXED_PROC_DAMAGE = 36;
+        function _procHexedOnAction(unit, verb) {
+            if (!unit || unit.dead || unit._dying) return;
+            if (!unitHasStatus(unit, 'hexed')) return;
+            const _hexSrc = state.units.find(u => u.id === unit._hexCasterId && !u.dead) || null;
+            showFloatingTextForUnit(unit, '🕯 HEX', 'debuff', { durationMs: 900 });
+            applyDamageToUnit(unit, HEXED_PROC_DAMAGE, `🕯 The hex flares as ${unitDisplayName(unit)} ${verb}: `, {
+                ignoreArmor: true,
+                damageType: 'dot',
+                consumeMarked: false,
+                sourceUnit: _hexSrc || undefined,
+                flashColor: 'poison'
+            });
+            if (typeof checkWin === 'function') checkWin();
         }
 
         function _skySwoopTakeoff(unit) {
@@ -30645,6 +30875,11 @@
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             if (typeof isFlightCrippled === 'function' && isFlightCrippled(unit)) {
                 addLog(`${unitDisplayName(unit)} is too wounded to fly! (below 25% HP)`);
+                return false;
+            }
+            // 🕳 Gravity Crush: no wings beat hard enough inside the field.
+            if (getGravityFieldAt(unit.x, unit.y) === 'super') {
+                addLog(`🕳 ${unitDisplayName(unit)} can't take off — the crushing gravity pins them to the ground!`);
                 return false;
             }
             if (typeof getMinFlyingZ !== 'function') return false;
@@ -30757,6 +30992,8 @@
                 if (hDiff < 0 && typeof applyFallDamage === 'function') {
                     applyFallDamage(unit, fromZ, z, 'Jump: ');
                 }
+                // 🕯 Hex of Toil: a jump is a move — the curse flares.
+                _procHexedOnAction(unit, 'leaps');
                 // Landing in a guardian's sights: jumping IS movement, so
                 // Overwatch reads it exactly like finishing a walk.
                 checkOverwatchTriggers(unit);
@@ -30886,6 +31123,22 @@
                             }, 3500);
                         }
                     }
+                }
+            }
+
+            // 🗯 Provoke (2026-07-17): a taunted attacker must swing at the
+            // challenger whenever the challenger is attackable from here (in
+            // range, LOS clear). Towers/objects stay fair game, and if the
+            // challenger is out of reach the taunt doesn't paralyze — it only
+            // binds the blade while the challenge can actually be answered.
+            const _atkTaunter = getTauntTargeter(unit);
+            if (_atkTaunter && target && target.id !== _atkTaunter.id && isEnemyUnit(unit, target)) {
+                const _tntD = combatDist(unit.x, unit.y, unit.z ?? 0, _atkTaunter.x, _atkTaunter.y, _atkTaunter.z ?? 0);
+                if (_tntD >= 1 && _tntD <= getEffectiveRange(unit)
+                    && !isRangeBlockedByTerrain(unit.x, unit.y, _atkTaunter.x, _atkTaunter.y, unit.z)) {
+                    addLog(`🗯 ${unitDisplayName(unit)} is provoked — only ${unitDisplayName(_atkTaunter)} can be attacked!`);
+                    playErrorSfx();
+                    return 0;
                 }
             }
 
@@ -31699,6 +31952,10 @@
                 }
                 if (typeof isFlightCrippled === 'function' && isFlightCrippled(unit)) {
                     return { ok: false, reason: 'Too wounded to fly (below 25% HP). Heal up to take off again.' };
+                }
+                // 🕳 Gravity Crush: flight is disabled inside the field.
+                if (getGravityFieldAt(unit.x, unit.y) === 'super') {
+                    return { ok: false, reason: 'The crushing gravity field pins everything to the ground here.' };
                 }
             } else if (mode === 'descend') {
 
@@ -33804,6 +34061,32 @@
                 }
             }
 
+            // 🗯 Provoke (2026-07-17): a taunted caster can aim UNIT-TARGETED
+            // offensive spells only at the challenger while the challenger is
+            // castable-at (range + LOS + vision). Tile-targeted AoEs, lines and
+            // support casts stay free — the taunt binds the blade, not the
+            // battlefield.
+            {
+                const _spTaunter = getTauntTargeter(unit);
+                const _spMeta = _kindMeta(spell);
+                if (_spTaunter && _spMeta.offensive && !_spMeta.tileTargeted && !_spMeta.directional
+                    && _spellClickTarget && _spellClickTarget.id !== _spTaunter.id
+                    && isEnemyUnit(unit, _spellClickTarget)) {
+                    const _spTd = combatReach(unit.x, unit.y, unit.z ?? 0,
+                        _spTaunter.x, _spTaunter.y, _spTaunter.z ?? 0, _spellLongRange);
+                    const _spTVisible = !state.fogOfWar || state.autoPlayers?.[unit.player]
+                        || isInVision(unit, _spTaunter.x, _spTaunter.y);
+                    if (_spTd >= (_spMeta.minRange ?? 1) && _spTd <= getEffectiveSpellRange(unit, spell)
+                        && _spTVisible
+                        && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, _spTaunter.x, _spTaunter.y, unit.z ?? 0))) {
+                        addLog(`🗯 ${unitDisplayName(unit)} is provoked — ${spell.name} can only target ${unitDisplayName(_spTaunter)}!`);
+                        state._teleportingUnit = null;
+                        playErrorSfx();
+                        return 0;
+                    }
+                }
+            }
+
             // Facing: casting turns the caster toward the target tile
             // (self-casts pass a zero vector, which keeps current facing).
             setUnitFacing(unit, x - unit.x, y - unit.y);
@@ -34806,7 +35089,7 @@
             } else if (spell.kind === 'aoe') {
                 // Phase 4 migration: aoe uses shared AoE helpers
                 playSfx(spellLaunchSfx(spell));
-                const _aoeArea = getSquareArea(x, y, spell.aoeRadius || 1);
+                const _aoeArea = getSpellAoeArea(spell, x, y);
                 const timing = _setupAoeCameraAndTiming(unit, spell, x, y, _aoeArea);
                 completionDelay = timing.completionDelay;
 
@@ -34821,7 +35104,7 @@
                 }
                 unit.mp -= effectiveSpellCost;
                 window.setTimeout(() => {
-                    const area = getSquareArea(x, y, spell.aoeRadius || 1);
+                    const area = getSpellAoeArea(spell, x, y);
                     const hitCount = _applyAoeDamage(unit, spell, area,
                         (spell.dmg || 0) + spellPower, spellPower, {
                             waterBonus: spell.waterBonus,
@@ -35135,18 +35418,11 @@
                 unit.mp -= effectiveSpellCost;
                 const cx = spell.aoeOriginSelf ? unit.x : x;
                 const cy = spell.aoeOriginSelf ? unit.y : y;
-                const radius = spell.crossRadius || 1;
-                // `diamond: true` (Resonance Pulse) = every tile within Manhattan
-                // radius, not just the 4 cross arms.
-                let crossTiles;
-                if (spell.diamond) {
-                    crossTiles = getDiamondArea(cx, cy, radius);
-                } else {
-                    crossTiles = [{ x: cx, y: cy }];
-                    for (let i = 1; i <= radius; i++) {
-                        crossTiles.push({ x: cx + i, y: cy }, { x: cx - i, y: cy }, { x: cx, y: cy + i }, { x: cx, y: cy - i });
-                    }
-                }
+                // Footprint via the shared dispatcher: cardinal arms, DIAGONAL
+                // arms (diagonal: true — Crossfire / Arcane Sigil), or full
+                // Manhattan diamond (diamond: true — Resonance Pulse / Blade
+                // Waltz / Diamond Dust).
+                const crossTiles = getCrossArea(spell, cx, cy);
 
                 const timing = _setupAoeCameraAndTiming(unit, spell, cx, cy, crossTiles);
                 completionDelay = timing.completionDelay;
@@ -35160,7 +35436,7 @@
                             pushFromCenter: spell.pushDistance ? { x: cx, y: cy } : null,
                             deformCenter: { x: cx, y: cy }
                         });
-                    addLog(`${spell.name} hits ${hitCount} target${hitCount !== 1 ? 's' : ''} in a ${spell.diamond ? 'resonant diamond' : 'cross pattern'}.`);
+                    addLog(`${spell.name} hits ${hitCount} target${hitCount !== 1 ? 's' : ''} in a${spell.diamond ? ' resonant diamond' : spell.diagonal ? 'n X pattern' : ' cross pattern'}.`);
                     scheduleBoardRender();
                 }, timing.impactDelay);
             }
@@ -35222,10 +35498,17 @@
                 }
 
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(target)) {
+                    const _pullAirZ = target.z ?? 0;
                     const _pullGroundZ = getHeightAt(target.x, target.y);
                     target.z = _pullGroundZ;
                     showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
                     addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
+                    // 2026-07-17 fix: the drop from flight altitude now deals
+                    // forced fall damage (the normal call above ran while the
+                    // target still counted as a flyer, so it always returned 0).
+                    if (typeof applyFallDamage === 'function') {
+                        applyFallDamage(target, _pullAirZ, _pullGroundZ, `${spell.name}: `, { byEnemy: true, forced: true });
+                    }
                     followUnitFall(target);   // camera rides the drop
                 }
                 if (spell.dmg) {
@@ -35749,8 +36032,23 @@
                     statusEffects: spell.statusEffects || [],
                     allyStatusEffects: spell.allyStatusEffects || [],
                     smokeConcealment: !!spell.smokeConcealment,
+                    // Gravity fields (2026-07-17): 'super' | 'weak' — physics
+                    // zones consumed by getGravityFieldAt.
+                    gravityField: spell.gravityField || null,
                     spellName: spell.name
                 });
+                // 🕳 Gravity Crush lands: every airborne unit already inside the
+                // field — EITHER team's — is slammed down on the spot (forced
+                // fall damage, ×3 from the field itself).
+                if (spell.gravityField === 'super' && typeof isUnitAirborne === 'function') {
+                    const _gcArea = getSquareArea(x, y, spell.aoeRadius || 1);
+                    for (const _gcU of state.units.filter(u => !u.dead && !u._dying)) {
+                        if (!_gcArea.some(t => t.x === _gcU.x && t.y === _gcU.y)) continue;
+                        if (canFly(_gcU) && isUnitAirborne(_gcU)) {
+                            forceGroundUnit(_gcU, { byLabel: `by ${spell.name}` });
+                        }
+                    }
+                }
                 // Apply ally buffs (e.g. Smoke Screen invisibility) to friendly units already inside the zone.
                 if (spell.allyStatusEffects && spell.allyStatusEffects.length) {
                     const zoneArea = getSquareArea(x, y, spell.aoeRadius || 1);
@@ -37004,7 +37302,16 @@
                 } else { _vfxBuff(unit.x, unit.y); }
                 const allies = aliveUnitsFor(unit.player).filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);
                 let buffCount = 0;
-                if (spell.randomTeamBuff) {
+                if (spell.teamStatusEffects) {
+                    // Fermata & co: a warCry that lands STATUSES on the team
+                    // (statLock) instead of stat stages.
+                    for (const ally of allies) {
+                        applyStatusEffects(ally, spell.teamStatusEffects, `${spell.name}: `, unit);
+                        buffCount++;
+                    }
+                    showFloatingTextForUnit(unit, '🎵', 'buff');
+                    addLog(`${unitDisplayName(unit)} holds ${spell.name} — ${buffCount} all${buffCount === 1 ? 'y is' : 'ies are'} carried by the chord.`);
+                } else if (spell.randomTeamBuff) {
                     // Tarot Draw: one random stat, boosted for the WHOLE team.
                     const _rtb = spell.randomTeamBuff;
                     const _stat = _rtb.stats[Math.floor(Math.random() * _rtb.stats.length)];
@@ -37906,6 +38213,13 @@
             if (panelFocusTarget) focusUnitPanel(panelFocusTarget.id);
 
             if (completionDelay < actionMs(600)) completionDelay = actionMs(600);
+            // 🕯 Hex of Toil: casting feeds the curse. Timed just before
+            // finishAction so the flare lands after the spell's own visuals
+            // and a hex death can't strand a half-finished handler.
+            if (unitHasStatus(unit, 'hexed')) {
+                window.setTimeout(() => _procHexedOnAction(unit, `casts ${spell.name}`),
+                    Math.max(0, completionDelay - actionMs(60)));
+            }
             window.setTimeout(finishAction, completionDelay);
             return completionDelay;
         }
@@ -38637,7 +38951,9 @@
                                 continue;
                             }
                             if (!_isStairs && !_hasStairObj) {
-                                if (_signedHDiff > JUMP_HEIGHT) {
+                                // Gravity fields bend the hop ceiling (super:
+                                // no hop, weak: +2) — mirrors findMovePath.
+                                if (_signedHDiff > _climbCeilingAt(nx, ny, JUMP_HEIGHT)) {
                                     continue;
                                 }
                             }

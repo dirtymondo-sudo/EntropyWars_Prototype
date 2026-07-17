@@ -4,7 +4,92 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## Horologe refactor: INFO button, More menu retired (2026-07-17, LATEST) — hud.js, battle.js, ui.js, online.js
+## Spell shapes / new statuses / gravity fields / fall-damage fix (2026-07-17b, LATEST) — data.js, state.js, battle.js, ui.js, hud.js, ai.js, three-renderer.js
+
+- **New AoE shapes** (params on existing kinds — NO new kind, so
+  SPELL_KIND_META/spellTileTeam/online needed nothing):
+  - `kind:'cross'` + `diagonal:true` = X-shape (4 diagonal arms out to
+    `crossRadius`). `diamond:true` still = Manhattan diamond. Footprint math
+    now centralized in battle.js `getCrossArea(spell,cx,cy)`; MIRRORS (keep in
+    sync): ui.js `getSpellAoeFootprint` cross branch, ai.js `scoreSpell` cross
+    + `findSpellTarget` `_crossFootprint`, battle.js `previewSpellRange` (arm
+    hints + range-0 footprint).
+  - `kind:'aoe'` + `aoeShape:'round'` = Chebyshev square minus the 4 extreme
+    corners (r2 → 5×5-minus-corners, 21 tiles); `'diamond'` also accepted.
+    Dispatcher battle.js `getSpellAoeArea(spell,cx,cy)` (+ `getRoundArea`);
+    mirrors in ui.js footprint + ai.js `getSpellAoeAreaAI`.
+  - Reshaped: **Meteor** (round r2, dmg 192→180, cost 70→80), **Judgment**
+    (cardinal cross r3 + stun), **Blade Waltz** (diamond r2 self, 126→118),
+    **Arcane Blast → "Arcane Sigil"** (wizard, X r3 ranged), **Diamond Dust**
+    (diamond r2). ui.js `showSelfCastAoePreview` now draws TRUE footprints for
+    self aoe/cross kinds via getSpellAoeFootprint (old Manhattan wash lied).
+- **New class spells**: `crossfire` (Gunslinger, X r2 self, replaces Pistol
+  Whip's slot), `provoke` (Warrior/Tank, taunt 2 turns), `fermata` (Harbinger,
+  warCry kind + NEW `teamStatusEffects` option → statLock allies r4).
+  **pistolWhip moved Gunslinger→Agent** (classRestriction, learn order, both
+  bot `preferred` tables in battle.js ~16525/16666).
+- **New shared race spells** (SHARED_* consts in data.js ~5500):
+  `sharedShrinkRay` (mad scientist+martian, minimize), `sharedHexOfToil`
+  (shaman+fortune teller+scarecrow, hexed), `sharedGravityCrush`
+  (annunaki+grey, super-gravity zone), `sharedLowGravity` (martian+grey,
+  weak-gravity zone).
+- **New statuses** (STATUS_DEFS end of registry; added to `_STATUS_EFFECT_IDS`
+  state.js:9, resist table `getStatusApplyChance`, color maps hud.js
+  `_HRLG_SB_COLORS` + three-renderer `_TP_SB_COLORS`):
+  - `taunt` — victim may aim SINGLE-TARGET attacks/spells only at the taunter
+    while reachable. Caster stamped as `_tauntCasterId` (applyStatusPayload).
+    Gates: doAttack (before tower branch), doSpell (before setUnitFacing,
+    offensive+!tileTargeted+!directional kinds only), target drums
+    `_getAttackValidTargets`/`_getSpellValidTargets` collapse to the taunter.
+    AI: `getTargetPriority` ±200/−150 via `getTauntTargeter` (window export).
+    AoEs/lines/tiles stay free BY DESIGN ("binds the blade").
+  - `minimize` — stageMod {atk:-2} (auto-feeds damage math) + the unit's 3D
+    model/sprite eases to 0.55 scale: three-renderer `_updateUnitModels`
+    scales `entry.group` (NOT entry.model/sprite — squash anims reset those
+    to 1,1,1), `entry._ew_minimize` eased per-frame.
+  - `statLock` — Fermata's ward: `applyStatStageBoost` early-returns on a
+    locked target, and `applyStatusPayload` rejects any status whose def
+    carries `stageMod` (Discord/Overclock/Guarding/Minimize…). Locks BOTH
+    directions (own buffs too) — cast after buffing, that's the skill.
+  - `hexed` — `_procHexedOnAction(unit, verb)` (battle.js, near
+    getTauntTargeter): 36 armor-ignoring dot damage, credited to
+    `_hexCasterId`. Hooks: finishMoveAt (after updateSmokeZoneCloak),
+    `_doPostJump`, doSpell tail (scheduled just before finishAction — only
+    successful casts reach it).
+- **Gravity fields** — zones in `state._activeZones` with `gravityField:
+  'super'|'weak'` (zoneDebuff handler carries it; EOR tick has a gravity
+  branch that re-grounds flyers and skips the status-afflict spam).
+  `getGravityFieldAt(x,y)` (battle.js, window-exported; 'super' wins overlap).
+  Hooks: getJumpTiles (super=no jump, weak=+2 reach/climb; landing in super
+  caps climb), findMovePath + getMoveTiles hop gates via `_climbCeilingAt`,
+  `_skySwoopTakeoff` + `canChangeAltitude` ascend blocked in super,
+  finishMoveAt grounds airborne flyers entering super, applyFallDamage /
+  predictFallDamage (state.js): weak→0 ("FEATHER FALL"), super→×3. Zone
+  colors: ui.js ZONE_OUTLINE_COLORS_BY_NAME + three-renderer
+  _ZONE_OVERLAY_NAMES ('Gravity Crush' purple / 'Low Gravity' cyan).
+  Fields are INDISCRIMINATE (both teams) by design.
+- **FALL DAMAGE FIX (user-reported: Anchor on a flyer dealt 0)**: TWO
+  compounding causes — `forceGroundUnit` never called applyFallDamage, and
+  applyFallDamage's `canFly` early-return zeroed any such call anyway. Now
+  `applyFallDamage(..., {forced:true})` bypasses flyer immunity and uses
+  threshold 1 (every level counts — flyers hover at ground+2, below the
+  normal threshold 3). Forced-grounding callers: forceGroundUnit (Anchor/
+  Stasis Beam/Lasso/Earthen Grasp/Iron Grip + new gravity paths),
+  `_applyAoeDamage` groundAirborne (Gravity Well), pull-handler sky-yank
+  (which previously called applyFallDamage BEFORE grounding → always 0).
+  Wounded-crash (<25% HP) grounding stays free (pre-fix behavior).
+- **AI**: scoreStatusEffect entries (taunt 55+ on hitters, minimize 50+ on
+  physical, hexed 30+12/turn), warCry branch scores Fermata by live buff
+  stages to lock, zoneDebuff score/target branches special-case gravityField
+  ('weak' → ally clusters, 'super' → +flyer bonus).
+- **ONLINE (RULE #2)**: zero new relay plumbing needed — spells relay
+  generically by tool name (host re-runs doSpell), `_activeZones` + unit
+  status/`_tauntCasterId`/`_hexCasterId` ride the state sync (skip list
+  untouched), floats relay via the wrapped showFloatingTextAtTile, fall
+  camera via the followUnitFall relay; taunt gates run host-side for guest
+  actions, guest drums filter locally on synced state.
+
+## Horologe refactor: INFO button, More menu retired (2026-07-17) — hud.js, battle.js, ui.js, online.js
 
 - **"Inspect" name collision resolved**: the free stat-card look is now
   **INFO** — a little round ⓘ button (`.hrlg-infobtn`) beside the unit name
@@ -87,7 +172,7 @@ restructured rather than re-tuned:
   ARE the gen-100 champion, so nothing is lost). Weight import skips unknown
   keys, so old export JSONs still load partially.
 
-## FLYER MOVEMENT WYSIWYG: takeoff folded into doMove + grounded-flyer jumps (2026-07-16, LATEST) — battle.js, hud.js, ui.js, online.js, index.html
+## FLYER MOVEMENT WYSIWYG: takeoff folded into doMove + grounded-flyer jumps (2026-07-16) — battle.js, hud.js, ui.js, online.js, index.html
 Token `20260716h`. User bug: flyer move preview showed a destination, the click
 took off (burning 1 AP) and then the move failed / landed somewhere else.
 Root causes + fixes (all four had to land together):

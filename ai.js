@@ -960,6 +960,18 @@
 
         if (g.unitHasStatus(target, 'stun')) priority -= 8;
 
+        // 🗯 Provoke (2026-07-17): a taunted unit answers the challenge. The
+        // engine hard-gates single-target actions onto the taunter; this bias
+        // makes the AI's whole plan (movement, AoE centers, spell picks) bend
+        // the same way instead of fighting the gate.
+        if (typeof g.getTauntTargeter === 'function') {
+            const _taunter = g.getTauntTargeter(unit);
+            if (_taunter) {
+                if (target.id === _taunter.id) priority += 200;
+                else priority -= 150;
+            }
+        }
+
         const turnOrder = g.blitzTurnOrderIds || [];
         const myIdx = turnOrder.indexOf(unit.id);
         const targetIdx = turnOrder.indexOf(target.id);
@@ -1566,7 +1578,7 @@
         if (kind === 'aoe') {
             const cx = spell.aoeOriginSelf ? unit.x : target.x;
             const cy = spell.aoeOriginSelf ? unit.y : target.y;
-            const area = getSquareArea(cx, cy, spell.aoeRadius || 1);
+            const area = getSpellAoeAreaAI(spell, cx, cy);
             const hits = Math.max(1, area.filter(t => v.visibleEnemies.some(e => e.x === t.x && e.y === t.y)).length);
 
             const allyHits = spell.aoeOriginSelf
@@ -1940,6 +1952,15 @@
         if (kind === 'warCry') {
             const radius = spell.auraRadius || 3;
             const inRange = g.aliveUnitsFor(unit.player).filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= radius);
+            // Fermata (teamStatusEffects → statLock): worth casting when there
+            // are live buff stages to lock in — the lock preserves them and
+            // blanks enemy stat debuffs for a round.
+            if (spell.teamStatusEffects) {
+                const lockable = inRange.filter(a => !g.unitHasStatus(a, 'statLock'));
+                const buffed = lockable.filter(a => a.statStages
+                    && ['atk', 'def', 'mdef', 'spd', 'int'].some(k => (a.statStages[k] || 0) > 0));
+                return buffed.length >= 2 ? 20 + buffed.length * 14 : (buffed.length === 1 ? 10 : 0);
+            }
             // War Cry grants ATK stages now (stackable to +5) — value allies
             // who still have stage headroom instead of a defunct status check.
             const unboosted = inRange.filter(a => !(a.statStages && (a.statStages.atk || 0) >= 5));
@@ -2004,7 +2025,8 @@
             const cy = spell.aoeOriginSelf ? unit.y : (target ? target.y : unit.y);
             const r = spell.crossRadius || 1;
 
-            // diamond: true (Resonance Pulse) = full Manhattan diamond
+            // diamond: true (Resonance Pulse) = full Manhattan diamond;
+            // diagonal: true (Crossfire / Arcane Sigil) = X arms.
             const crossTiles = [{ x: cx, y: cy }];
             if (spell.diamond) {
                 for (let dy = -r; dy <= r; dy++) {
@@ -2014,8 +2036,13 @@
                     }
                 }
             } else for (let i = 1; i <= r; i++) {
-                crossTiles.push({ x: cx + i, y: cy }, { x: cx - i, y: cy },
-                                { x: cx, y: cy + i }, { x: cx, y: cy - i });
+                if (spell.diagonal) {
+                    crossTiles.push({ x: cx + i, y: cy + i }, { x: cx - i, y: cy - i },
+                                    { x: cx + i, y: cy - i }, { x: cx - i, y: cy + i });
+                } else {
+                    crossTiles.push({ x: cx + i, y: cy }, { x: cx - i, y: cy },
+                                    { x: cx, y: cy + i }, { x: cx, y: cy - i });
+                }
             }
             const hits = Math.max(1, crossTiles.filter(t =>
                 v.visibleEnemies.some(e => e.x === t.x && e.y === t.y)
@@ -2223,10 +2250,27 @@
         if (kind === 'zoneDebuff') {
             if (!target) return 0;
             const area = getSquareArea(target.x, target.y, spell.aoeRadius || 1);
+            // 🌫 Low Gravity is a FRIENDLY mobility field — score it by allies
+            // lifted, not enemies afflicted (findSpellTarget aims it at the
+            // team's own cluster).
+            if (spell.gravityField === 'weak') {
+                const alliesInArea = [unit, ...v.allies].filter(a =>
+                    !a.dead && area.some(t => t.x === a.x && t.y === a.y)
+                ).length;
+                return alliesInArea >= 2 ? 30 + alliesInArea * 24 : 0;
+            }
             const enemiesInArea = area.filter(t =>
                 v.visibleEnemies.some(e => e.x === t.x && e.y === t.y)
             ).length;
             let s = 40 + enemiesInArea * 48;
+            // 🕳 Gravity Crush: denial + anti-air — grounded flyers and dead
+            // jumps are worth more than a generic status cloud.
+            if (spell.gravityField === 'super') {
+                const flyersCaught = v.visibleEnemies.filter(e =>
+                    area.some(t => t.x === e.x && t.y === e.y)
+                    && typeof g.canFly === 'function' && g.canFly(e)).length;
+                s += flyersCaught * 60;
+            }
 
             s *= Math.min(spell.zoneDuration || 1, 3) * 0.6;
 
@@ -2447,6 +2491,19 @@
         if (id === 'slow') return 8 + dur * 3;
 
         if (id === 'burn') return 8 + dur * 3;
+
+        // 2026-07-17 pass: taunt is gold ON a hard hitter (their turn is spent
+        // chewing the Tank); minimize guts physical attackers; hexed punishes
+        // mobile/casty units (they act every turn — each act bleeds 36).
+        if (id === 'taunt') {
+            const hitter = (target.atk || 0) >= 30 || ['Raider', 'Swordmaster', 'Gunslinger', 'Sniper', 'Agent'].includes(target.cls);
+            return hitter ? 55 + dur * 10 : 20;
+        }
+        if (id === 'minimize') {
+            const physical = (target.atk || 0) >= (target.int || 0);
+            return physical ? 50 + dur * 8 : 15;
+        }
+        if (id === 'hexed') return 30 + dur * 12;
 
         if (id === 'poison') return 6 + dur * 2;
 
@@ -4090,7 +4147,7 @@
         if (kind === 'aoe') {
 
             if (spell.aoeOriginSelf) {
-                const area = getSquareArea(unit.x, unit.y, spell.aoeRadius || 1);
+                const area = getSpellAoeAreaAI(spell, unit.x, unit.y);
                 const hits = area.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
                 return hits > 0 ? { x: unit.x, y: unit.y } : null;
             }
@@ -4099,7 +4156,7 @@
                 const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
                 if (d < 1 || d > _effRange(unit, spell)) continue;
                 if (g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y)) continue;
-                const area = getSquareArea(e.x, e.y, spell.aoeRadius || 1);
+                const area = getSpellAoeAreaAI(spell, e.x, e.y);
                 const hits = area.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
                 const allyHits = area.filter(t => v.allies.some(a => a.x === t.x && a.y === t.y) || (unit.x === t.x && unit.y === t.y)).length;
                 const score = hits * 10 - allyHits * 15;
@@ -4469,7 +4526,8 @@
         }
 
         if (kind === 'cross') {
-            // diamond: true (Resonance Pulse) = full Manhattan diamond footprint
+            // diamond: true (Resonance Pulse) = full Manhattan diamond footprint;
+            // diagonal: true (Crossfire / Arcane Sigil) = X arms.
             const _crossFootprint = (cx, cy, r) => {
                 const tiles = [{ x: cx, y: cy }];
                 if (spell.diamond) {
@@ -4480,8 +4538,13 @@
                         }
                     }
                 } else for (let i = 1; i <= r; i++) {
-                    tiles.push({ x: cx + i, y: cy }, { x: cx - i, y: cy },
-                                { x: cx, y: cy + i }, { x: cx, y: cy - i });
+                    if (spell.diagonal) {
+                        tiles.push({ x: cx + i, y: cy + i }, { x: cx - i, y: cy - i },
+                                    { x: cx + i, y: cy - i }, { x: cx - i, y: cy + i });
+                    } else {
+                        tiles.push({ x: cx + i, y: cy }, { x: cx - i, y: cy },
+                                    { x: cx, y: cy + i }, { x: cx, y: cy - i });
+                    }
                 }
                 return tiles;
             };
@@ -4660,12 +4723,29 @@
         }
 
         if (kind === 'zoneDebuff') {
+            // 🌫 Low Gravity aims at the team's own cluster (it's a friendly
+            // mobility field) — reuse the zoneHeal-style ally-center pick.
+            if (spell.gravityField === 'weak') {
+                let bestAlly = null, bestAllyScore = 0;
+                for (const a of [unit, ...v.allies]) {
+                    if (a.dead) continue;
+                    const d = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y);
+                    if (d > (_effRange(unit, spell) || 4)) continue;
+                    const area = getSquareArea(a.x, a.y, spell.aoeRadius || 1);
+                    const inArea = [unit, ...v.allies].filter(h => !h.dead && area.some(t => t.x === h.x && t.y === h.y)).length;
+                    if (inArea > bestAllyScore) { bestAllyScore = inArea; bestAlly = a; }
+                }
+                return bestAllyScore >= 2 ? bestAlly : null;
+            }
             let best = null, bestScore = 0;
             for (const e of v.visibleEnemies) {
                 const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
                 if (d < 1 || d > (_effRange(unit, spell) || 4)) continue;
                 const area = getSquareArea(e.x, e.y, spell.aoeRadius || 1);
-                const hits = area.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
+                let hits = area.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
+                // 🕳 Gravity Crush prefers centers that trap flyers.
+                if (spell.gravityField === 'super' && typeof g.canFly === 'function'
+                    && g.canFly(e)) hits += 3;
                 const allyHits = area.filter(t => v.allies.some(a => a.x === t.x && a.y === t.y)).length;
                 const score = hits * 10 - allyHits * 8;
                 if (score > bestScore) { bestScore = score; best = e; }
@@ -5216,6 +5296,28 @@
             }
         }
         return tiles;
+    }
+
+    // 2026-07-17 shape pass — AI mirrors of battle.js getRoundArea /
+    // getSpellAoeArea (local copies on purpose, like getSquareArea above).
+    function getRoundArea(cx, cy, radius) {
+        const tiles = [];
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                if (radius > 0 && Math.abs(dx) === radius && Math.abs(dy) === radius) continue;
+                tiles.push({ x: cx + dx, y: cy + dy });
+            }
+        }
+        return tiles;
+    }
+
+    function getSpellAoeAreaAI(spell, cx, cy) {
+        const r = spell.aoeRadius || 1;
+        if (spell.aoeShape === 'round') return getRoundArea(cx, cy, r);
+        if (spell.aoeShape === 'diamond') {
+            return getSquareArea(cx, cy, r).filter(t => Math.abs(t.x - cx) + Math.abs(t.y - cy) <= r);
+        }
+        return getSquareArea(cx, cy, r);
     }
 
     console.log('[AI] Entropy Wars strategic AI v3 loaded (action memory + context gates + centipawn normalization).');

@@ -7517,7 +7517,8 @@ const ThreeRenderer = (function () {
         burn:'#c0392b',poison:'#9b59b6',silence:'#7f8c8d',stun:'#f39c12',
         stagger:'#e67e22',marked:'#e74c6f',lasered:'#ff2b2b',jammed:'#8e44ad',drowning:'#2980b9',
         lava_burn:'#d35400',protect:'#3498db',charm:'#e84393',sirenSong:'#6c5ce7',
-        invisible:'#1a7a4a',regen:'#2ecc71'
+        invisible:'#1a7a4a',regen:'#2ecc71',
+        taunt:'#ff8a50',minimize:'#5ab0d4',statLock:'#a88ae0',hexed:'#b06ad3'
     };
     function _plateStatusBadgesHtml(unit) {
         if (typeof getActiveStatusKeys !== 'function' || typeof _STATUS_EFFECT_IDS === 'undefined') return '';
@@ -9018,6 +9019,24 @@ const ThreeRenderer = (function () {
                     if (entry.modelMats[gi].color.r !== grey) {
                         entry.modelMats[gi].color.setRGB(grey, grey, grey);
                     }
+                }
+            }
+            // 🤏 Minimize (2026-07-17): the whole unit — model or sprite slab —
+            // eases down to toy size while the status is live, and back up when
+            // it wears off. Scales the OUTER group so the squash/stretch
+            // animation resets on entry.model/entry.sprite never fight it.
+            if (entry.group) {
+                var _mzU = _findUnit(uid);
+                var _mzTarget = (_mzU && !_mzU.dead && typeof unitHasStatus === 'function'
+                    && unitHasStatus(_mzU, 'minimize')) ? 0.55 : 1;
+                var _mzCur = entry._ew_minimize != null ? entry._ew_minimize : 1;
+                if (Math.abs(_mzCur - _mzTarget) > 0.002) {
+                    _mzCur += (_mzTarget - _mzCur) * Math.min(1, dt * 6);
+                    if (Math.abs(_mzCur - _mzTarget) < 0.01) _mzCur = _mzTarget;
+                    entry.group.scale.setScalar(_mzCur);
+                    entry._ew_minimize = _mzCur;
+                } else if (entry._ew_minimize != null && _mzCur === _mzTarget && entry.group.scale.x !== _mzTarget) {
+                    entry.group.scale.setScalar(_mzTarget);
                 }
             }
             // Animations off (pause toggle / dev-sim): freeze the rig here —
@@ -19984,6 +20003,9 @@ const ThreeRenderer = (function () {
         'Bubble':          0x8cb4ff,
         'Star Decree':     0xb478ff,
         'Dimensional Web': 0xb4c8dc,
+        // Gravity fields (2026-07-17) — match ui.js zone outline colors.
+        'Gravity Crush':   0x7850dc,
+        'Low Gravity':     0x78e6dc,
     };
 
     var _zoneBorderMats = [];

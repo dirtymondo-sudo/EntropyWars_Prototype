@@ -6,7 +6,10 @@
            the nameplate status badges. 'regen' was defined with a heal tick but
            missing here, so it never actually ticked (dead code bug — fixed);
            'charm' is hard CC (blockMove) and belongs on the nameplate. */
-        const _STATUS_EFFECT_IDS = new Set(['burn','poison','silence','stun','stagger','marked','lasered','jammed','drowning','protect','regen','charm']);
+        const _STATUS_EFFECT_IDS = new Set(['burn','poison','silence','stun','stagger','marked','lasered','jammed','drowning','protect','regen','charm',
+            // 2026-07-17 spell/status pass: taunt (Provoke), minimize (Shrink
+            // Ray), statLock (Fermata), hexed (Hex of Toil).
+            'taunt','minimize','statLock','hexed']);
 
         const GAME_MODES = {
             normal: {
@@ -1706,10 +1709,27 @@
 
         function applyFallDamage(unit, fromZ, toZ, logPrefix, opts) {
             if (!unit || unit.dead) return 0;
-            if (typeof canFly === 'function' && canFly(unit)) return 0;
-            const FALL_THRESHOLD = (typeof FALL_DAMAGE_THRESHOLD !== 'undefined') ? FALL_DAMAGE_THRESHOLD : 3;
+            // 🪝 FORCED groundings (Anchor, Gravity Well, Lasso, Stasis Beam,
+            // Gravity Crush — opts.forced) are the one case a FLYER takes fall
+            // damage: being slammed out of the sky is not a controlled landing.
+            // The grace threshold drops to 1 too — every level of the yank
+            // counts, where a voluntary hop-down forgives the first 2.
+            const _forced = !!(opts && opts.forced);
+            if (!_forced && typeof canFly === 'function' && canFly(unit)) return 0;
+            const FALL_THRESHOLD = _forced ? 1
+                : ((typeof FALL_DAMAGE_THRESHOLD !== 'undefined') ? FALL_DAMAGE_THRESHOLD : 3);
             const drop = (fromZ ?? 0) - (toZ ?? 0);
             if (drop < FALL_THRESHOLD) return 0;
+            // 🌌 Low Gravity field (2026-07-17): landing inside the zone erases
+            // fall damage entirely — everyone floats down like a feather.
+            const _gravField = (typeof getGravityFieldAt === 'function') ? getGravityFieldAt(unit.x, unit.y) : null;
+            if (_gravField === 'weak') {
+                addLog(`🌫 ${unitDisplayName(unit)} drifts down ${drop} levels — the low gravity cushions the fall!`);
+                if (typeof showFloatingTextForUnit === 'function') {
+                    showFloatingTextForUnit(unit, '🌫 FEATHER FALL', 'heal', { durationMs: 900 });
+                }
+                return 0;
+            }
             // 💦 Liquid landing (2026-07-14): splashing down into ANY liquid —
             // water, deep water, a poison bog, black ooze/oil, lava, or even the
             // shallow spread-flow at a pool's edge (map.js getLiquidFlowAt) —
@@ -1746,10 +1766,14 @@
             // fall hits ×1.5 (yours too; mind the ledges under Taurus). Dig a
             // pit or shove someone off a tower while the earth signs rule.
             const _zEarthMult = (typeof isEarthZodiacActive === 'function' && isEarthZodiacActive()) ? 1.5 : 1;
-            const dmg = Math.max(1, Math.round((unit.maxHp || 100) * FALL_PCT * (drop - (FALL_THRESHOLD - 1)) * _wMult * _zEarthMult));
+            // 🕳 Super Gravity field (2026-07-17): landing inside Gravity Crush
+            // hits 3× harder — the field does the shoving for you.
+            const _gravMult = _gravField === 'super' ? 3 : 1;
+            const dmg = Math.max(1, Math.round((unit.maxHp || 100) * FALL_PCT * (drop - (FALL_THRESHOLD - 1)) * _wMult * _zEarthMult * _gravMult));
             const prefix = logPrefix || '';
             const _wNote = (_wMult > 1 ? ' Their sheer mass makes it worse!' : (_wMult < 1 ? ' Their light frame softens the landing.' : ''))
-                + (_zEarthMult > 1 ? ' ⛰ The earth sign drags them down hard!' : '');
+                + (_zEarthMult > 1 ? ' ⛰ The earth sign drags them down hard!' : '')
+                + (_gravMult > 1 ? ' 🕳 The crushing gravity triples the impact!' : '');
             addLog(`${prefix}${unitDisplayName(unit)} falls ${drop} levels and takes ${dmg} damage!${_wNote}`);
             applyDamageToUnit(unit, dmg, `Fall damage: `, { ignoreArmor: true });
             // Enemy-caused falls (knockbacks, pulls, tremor pits — callers tag
@@ -1774,6 +1798,10 @@
             const drop = (fromZ ?? 0) - (toZ ?? 0);
             if (drop < FALL_THRESHOLD) return 0;
             const _x = (atX ?? unit.x), _y = (atY ?? unit.y);
+            // Gravity fields (2026-07-17) — mirror applyFallDamage: weak = no
+            // damage, super = ×3, keyed on the LANDING tile.
+            const _gravField = (typeof getGravityFieldAt === 'function') ? getGravityFieldAt(_x, _y) : null;
+            if (_gravField === 'weak') return 0;
             let _splash = null;
             if (typeof liquidFamilyOf === 'function' && typeof getTerrainAt === 'function') {
                 _splash = liquidFamilyOf(getTerrainAt(_x, _y));
@@ -1786,7 +1814,8 @@
             const FALL_PCT = (typeof FALL_DAMAGE_PCT_PER_LEVEL !== 'undefined') ? FALL_DAMAGE_PCT_PER_LEVEL : 0.05;
             const _wMult = (typeof getUnitFallDamageMult === 'function') ? getUnitFallDamageMult(unit) : 1.0;
             const _zEarthMult = (typeof isEarthZodiacActive === 'function' && isEarthZodiacActive()) ? 1.5 : 1;
-            return Math.max(1, Math.round((unit.maxHp || 100) * FALL_PCT * (drop - (FALL_THRESHOLD - 1)) * _wMult * _zEarthMult));
+            const _gravMult = _gravField === 'super' ? 3 : 1;
+            return Math.max(1, Math.round((unit.maxHp || 100) * FALL_PCT * (drop - (FALL_THRESHOLD - 1)) * _wMult * _zEarthMult * _gravMult));
         }
 
         const BLOWBACK_DAMAGE = 3;
@@ -3085,7 +3114,13 @@
                 sirenSong: 0.8,
                 stagger: 0.9,
                 slow: 0.9,
-                discord: 0.9
+                discord: 0.9,
+                // 2026-07-17: new debuffs. Taunt sticks often (a Tank whose
+                // Provoke whiffs does nothing all round); minimize/hexed
+                // resist like other strong single-target debuffs.
+                taunt: 0.9,
+                minimize: 0.84,
+                hexed: 0.84
             };
             const base = Number(payload.chance ?? baseByStatus[payload.id] ?? 1);
             if (!sourceUnit || !targetUnit || sourceUnit.player === targetUnit.player || base >= 0.999) return Math.max(0, Math.min(1, base));

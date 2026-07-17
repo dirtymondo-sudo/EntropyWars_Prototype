@@ -3961,6 +3961,9 @@ const SPELL_LIBRARY = [
         desc: 'Mark a tile and rain bullets onto it. Hits every enemy in the 3×3 area for moderate damage.'
     },
     {
+        /* 2026-07-17 job-identity pass: moved Gunslinger → Agent (Assassin).
+           A cheap, brutal melee opener fits the up-close killer, not the
+           ranged duelist — Gunslinger got Crossfire in its place. */
         id: 'pistolWhip',
         spellType: 'human',
         name: 'Pistol Whip',
@@ -3972,10 +3975,35 @@ const SPELL_LIBRARY = [
         kind: 'damage',
         damageType: 'physical',
         tier: 'I',
+        school: 'Agent',
+        classRestriction: 'Agent',
+        jobPreference: ['Agent'],
+        desc: 'Crack an adjacent enemy across the face with your pistol. Cheap, reliable close-range physical damage. The assassin\'s rude hello.'
+    },
+    {
+        /* NEW 2026-07-17: Gunslinger's replacement for Pistol Whip — the
+           duelist surrounded in the saloon. First X-shaped (diagonal cross)
+           footprint in the class kits. */
+        id: 'crossfire',
+        spellType: 'human',
+        element: 'metal',
+        name: 'Crossfire',
+        type: 'damage',
+        cost: 30,
+        equipCost: 16,
+        dmg: 96,
+        range: 0,
+        kind: 'cross',
+        diagonal: true,
+        crossRadius: 2,
+        aoeOriginSelf: true,
+        damageType: 'physical',
+        projectileOverride: 'proj-bullet',
+        tier: 'II',
         school: 'Gunslinger',
         classRestriction: 'Gunslinger',
         jobPreference: ['Gunslinger'],
-        desc: 'Crack an adjacent enemy across the face with your pistol. Cheap, reliable close-range physical damage.'
+        desc: 'Spin with both barrels blazing — bullets rip down all four DIAGONALS, 2 tiles each way. The answer to being surrounded. Doesn\'t touch the cardinal tiles: stand beside a Gunslinger, never at their corners.'
     },
 
     {
@@ -4369,6 +4397,30 @@ const SPELL_LIBRARY = [
         desc: 'Rally all allies within 3 tiles: +2 ATK/+1 DEF stages each. The Tank himself gains +1 ATK stage.'
     },
     {
+        /* NEW 2026-07-17: the Tank finally tanks. Taunt is enforced by the
+           engine (doAttack/doSpell gates + AI target priority): a provoked
+           enemy can only aim single-target attacks and spells at the caster
+           while the caster is reachable. */
+        id: 'provoke',
+        spellType: 'human',
+        element: 'sonic',
+        name: 'Provoke',
+        type: 'debuff',
+        cost: 20,
+        equipCost: 12,
+        range: 3,
+        kind: 'debuff',
+        tier: 'I',
+        school: 'Warrior',
+        classRestriction: 'Warrior',
+        jobPreference: ['Warrior'],
+        statusEffects: [{
+            id: 'taunt',
+            duration: 2
+        }],
+        desc: 'Bellow a challenge no warrior can ignore. For 2 turns the target can aim attacks and single-target spells ONLY at you (while you\'re in reach). Their AoEs still fall where they like — but their blade answers to you. Pair with Bulwark and Fortify and let them break against the shield.'
+    },
+    {
         id: 'discordance',
         spellType: 'anomaly',
         element: 'sonic',
@@ -4386,6 +4438,31 @@ const SPELL_LIBRARY = [
             duration: 2
         }],
         desc: 'Disharmonize an enemy for 2 turns: -24 ATK, -10 DEF, and their spells cost +10 MP. More interactive than a hard stun.'
+    },
+    {
+        /* NEW 2026-07-17: team stat-ward — the anti-Discordance. Rides the
+           warCry aura pipeline via teamStatusEffects (battle.js). While
+           statLock holds, NO stat-stage change can touch the ally — enemy
+           Glares and Family Curses fizzle, but so do your own War Cries:
+           buff FIRST, then hold the chord. */
+        id: 'fermata',
+        spellType: 'anomaly',
+        element: 'sonic',
+        name: 'Fermata',
+        type: 'buff',
+        cost: 30,
+        equipCost: 18,
+        range: 0,
+        kind: 'warCry',
+        auraRadius: 4,
+        teamStatusEffects: [{
+            id: 'statLock',
+            duration: 2
+        }],
+        tier: 'II',
+        school: 'Harbinger',
+        classRestriction: 'Harbinger',
+        desc: 'Hold the chord. Allies within 4 tiles have their stats LOCKED for a round — no stat can be raised or lowered by anyone, friend or foe. Play it after your crescendo of buffs, or to blank an enemy debuff turn cold.'
     },
     {
         id: 'encore',
@@ -4681,6 +4758,9 @@ const SPELL_LIBRARY = [
     },
 
     {
+        /* 2026-07-17 shape pass: was a 3×3 like every other slam. Now a
+           literal CROSS of light — 3 tiles down each cardinal arm — so the
+           Tank ult reads on the board like nothing else in the game. */
         id: 'judgment',
         spellType: 'divine',
         element: 'light',
@@ -4690,17 +4770,17 @@ const SPELL_LIBRARY = [
         equipCost: 25,
         dmg: 210,
         range: 1,
-        kind: 'aoe',
+        kind: 'cross',
+        crossRadius: 3,
         damageType: 'physical',
         tier: 'III',
         school: 'Warrior',
         classRestriction: 'Warrior',
-        aoeRadius: 1,
         statusEffects: [{
             id: 'stun',
             duration: 1
         }],
-        desc: 'Slam the ground with divine fury. Deals heavy physical damage in a 3x3 area and stuns all enemies hit for 1 turn.'
+        desc: 'Slam the ground and a blazing CROSS of divine light erupts — the struck tile plus 3 tiles down each cardinal arm. Heavy physical damage, and everyone caught in the light is stunned for 1 turn. Line your enemies up and pass sentence.'
     },
 
     {
@@ -4729,21 +4809,27 @@ const SPELL_LIBRARY = [
     },
 
     {
+        /* 2026-07-17 shape pass: was yet another 3×3 (16 spells share that
+           footprint). Now the game's first ROUND blast — a 5×5 with the
+           corners sheared off (21 tiles), the crater a falling rock actually
+           leaves. Damage trimmed 192→180 and cost 70→80 to pay for the
+           footprint. */
         id: 'meteor',
         spellType: 'unholy',
         element: 'fire',
         name: 'Meteor',
         type: 'damage',
-        cost: 70,
+        cost: 80,
         equipCost: 25,
-        dmg: 192,
+        dmg: 180,
         range: 4,
         kind: 'aoe',
+        aoeShape: 'round',
         damageType: 'magic',
         tier: 'III',
         school: 'Black Mage',
         classRestriction: 'Black Mage',
-        aoeRadius: 1,
+        aoeRadius: 2,
         leaveTerrain: 'scorched',
         projectileOverride: 'proj-fire',
         statusEffects: [{
@@ -4752,7 +4838,7 @@ const SPELL_LIBRARY = [
         }],
         terrainDeform: { centerDelta: -2, edgeDelta: -1 },
         demolishesBuildings: true,
-        desc: 'Call down a meteor strike on a 3x3 area. Massive magic damage, applies a 3-turn burn, scorches the impact site, and levels any building it hits.'
+        desc: 'Call down a meteor whose ROUND crater swallows a 5×5 area (corners spared). Massive magic damage, applies a 3-turn burn, scorches the impact site, and levels any building it hits. The biggest footprint in the game — mind your own troops.'
     },
 
 
@@ -5346,6 +5432,10 @@ const SPELL_LIBRARY = [
         desc: 'Settle into a perfect guard. Gain a 110 HP shield and +1 DEF for 3 turns — blades turn on steel, not skin.'
     },
     {
+        /* 2026-07-17 shape pass: was one of NINE identical 3×3 self-slams.
+           Now a Manhattan DIAMOND, radius 2 — the waltz steps carry the
+           blades two full tiles out in every cardinal direction. Damage
+           trimmed 126→118 for the extra reach. */
         id: 'bladeWaltz',
         spellType: 'human',
         element: 'metal',
@@ -5353,16 +5443,17 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 30,
         equipCost: 18,
-        dmg: 126,
+        dmg: 118,
         range: 0,
-        kind: 'aoe',
-        damageType: 'physical',
-        aoeRadius: 1,
+        kind: 'cross',
+        diamond: true,
+        crossRadius: 2,
         aoeOriginSelf: true,
+        damageType: 'physical',
         tier: 'II',
         school: 'Swordmaster',
         classRestriction: 'Swordmaster',
-        desc: 'A spinning dance of steel around the wielder. Physical damage to every adjacent enemy.'
+        desc: 'A whirling dance of steel — the waltz sweeps a DIAMOND two tiles out in every direction around the wielder. Wider than any stomp, but the far corners stay safe: dance partners choose where they stand.'
     },
     {
         id: 'lungingStrike',
@@ -5495,6 +5586,47 @@ const SHARED_GLACIAL_TOMB = {
     kind: 'debuff',
     statusEffects: [{ id: 'stun', duration: 1 }],
     desc: 'Encase an enemy in ice. Stunned for 1 turn.'
+};
+
+/* ── 2026-07-17 spell/status pass: new shared kits ──────────────────────
+   Shrink Ray (mad scientist / martian) — the classic B-movie beam; applies
+   `minimize` (-2 ATK stages + the model physically shrinks).
+   Hex of Toil (shaman / fortune teller / scarecrow) — punish-action curse:
+   the victim takes damage every time they MOVE or CAST while hexed.
+   Gravity fields (annunaki / grey / martian) — persistent physics zones:
+   super gravity kills jumps+flight and triples fall damage; low gravity
+   grants +2 jump and erases fall damage. Both are indiscriminate — they
+   bend physics for EVERYONE inside, both teams. */
+const SHARED_SHRINK_RAY = {
+    id: 'sharedShrinkRay', spellType: 'tech', element: 'metal', name: 'Shrink Ray',
+    type: 'debuff', cost: 25, range: 4, apCost: 1,
+    kind: 'debuff',
+    statusEffects: [{ id: 'minimize', duration: 3 }],
+    desc: 'ZAP! The target is shrunk to a fraction of their size for 3 turns: -2 ATK stages, and they look exactly as ridiculous as you\'d hope. Science has gone too far, and it\'s wonderful.'
+};
+
+const SHARED_HEX_OF_TOIL = {
+    id: 'sharedHexOfToil', spellType: 'anomaly', element: 'shadow', name: 'Hex of Toil',
+    type: 'debuff', cost: 25, range: 4, apCost: 1,
+    kind: 'debuff',
+    statusEffects: [{ id: 'hexed', duration: 3 }],
+    desc: 'Brand a victim with cursed sigils for 3 turns. Every time they MOVE, JUMP or CAST, the hex flares and burns them. Stillness is safety — a hexed unit must choose between acting and bleeding.'
+};
+
+const SHARED_GRAVITY_CRUSH = {
+    id: 'sharedGravityCrush', spellType: 'alien', element: 'arcane', name: 'Gravity Crush',
+    type: 'utility', cost: 35, range: 4, apCost: 1,
+    kind: 'zoneDebuff', gravityField: 'super', aoeRadius: 1, zoneDuration: 3,
+    statusEffects: [],
+    desc: 'Crush a 3×3 area under triple gravity for 3 rounds. Inside the field NOBODY (yours included) can jump, flyers are slammed from the sky and stay grounded, and falls hit 3× harder. Cast it under a ledge and start shoving.'
+};
+
+const SHARED_LOW_GRAVITY = {
+    id: 'sharedLowGravity', spellType: 'alien', element: 'arcane', name: 'Low Gravity',
+    type: 'utility', cost: 20, range: 4, apCost: 1,
+    kind: 'zoneDebuff', gravityField: 'weak', aoeRadius: 1, zoneDuration: 3,
+    statusEffects: [],
+    desc: 'Loosen gravity over a 3×3 area for 3 rounds. EVERYONE inside (both teams) jumps +2 tiles further and higher, and takes zero fall damage. Moon-bounce your bruisers up a cliff — just remember the enemy can bounce too.'
 };
 
 /* One wall spell, one name. The knight's old "Castle Fortress" and King
@@ -5986,6 +6118,7 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'discord', duration: 2 }],
           desc: 'A murder of crows descends on a 3×3 area. Damages and discords enemies. The crows remember.' },
+        SHARED_HEX_OF_TOIL,
         SHARED_SUMMON_SANDSTORM,
     ],
     'bigfoot': [
@@ -6264,6 +6397,7 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Send the target on a bad trip through the spirit world. Magic damage and slowed for 1 turn. Not every vision is a gift.' },
+        SHARED_HEX_OF_TOIL,
     ],
     'mad scientist': [
         { id: 'raceTeslaTrap', spellType: 'tech', element: 'lightning', name: 'Tesla Coil',
@@ -6287,7 +6421,8 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 40, manaCostOverride: 40, dmg: 100, range: 3,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'burn', duration: 2 }],
-          desc: 'Douse a 3×3 area in caustic chemicals. Magic damage and burns everyone hit for 2 turns.' }
+          desc: 'Douse a 3×3 area in caustic chemicals. Magic damage and burns everyone hit for 2 turns.' },
+        SHARED_SHRINK_RAY
     ],
     'cowboy': [
         { id: 'raceFanTheHammer', spellType: 'human', element: 'metal', name: 'Fan the Hammer',
@@ -6385,10 +6520,13 @@ const RACE_ABILITIES = {
           desc: 'Strike with holy wrath. 110 magic damage, +50% bonus against Unholy type units.' },
     ],
     'wizard': [
-        { id: 'raceArcaneBlast', spellType: 'unholy', element: 'arcane', name: 'Arcane Blast',
+        /* 2026-07-17 shape pass: was the 16th identical 3×3 nuke. Now the
+           wizard paints an X-shaped sigil — diagonal arms 3 tiles each way,
+           the user-requested "X, 3 tiles in each direction". */
+        { id: 'raceArcaneBlast', spellType: 'unholy', element: 'arcane', name: 'Arcane Sigil',
           type: 'damage', cost: 38, dmg: 100, range: 4,
-          kind: 'aoe', damageType: 'magic', aoeRadius: 1,
-          desc: 'Unleash raw arcane energy. 3×3 area magic damage.' },
+          kind: 'cross', diagonal: true, crossRadius: 3, damageType: 'magic',
+          desc: 'Scrawl a rune of raw arcane power on the battlefield — it detonates in an X, blasting 3 tiles down each DIAGONAL. Catches staggered formations that a square blast never touches.' },
         { id: 'raceSpellsteal', spellType: 'unholy', element: 'arcane', name: 'Spellsteal',
           type: 'debuff', cost: 25, range: 4, apCost: 1, cooldownRounds: 3,
           kind: 'debuff', stealSpell: true,
@@ -6421,7 +6559,8 @@ const RACE_ABILITIES = {
         { id: 'raceSpiritChannel', spellType: 'anomaly', element: 'psychic', name: 'Palm Read',
           type: 'heal', cost: 30, range: 3, apCost: 1,
           kind: 'heal', healAmt: 190, cleanse: 2,
-          desc: 'Read an ally\'s fate in their palm. Heal 190 HP and cleanse 2 debuffs.' }
+          desc: 'Read an ally\'s fate in their palm. Heal 190 HP and cleanse 2 debuffs.' },
+        SHARED_HEX_OF_TOIL
     ],
 
     'martian': [
@@ -6440,6 +6579,8 @@ const RACE_ABILITIES = {
           kind: 'deployTurret', turretDmg: 120, turretRange: 3, turretHp: 140,
           maxActivePerCaster: 1,
           desc: 'Deploy a tripod turret. Auto-fires at nearest enemy each round. 120 damage, 3 range.' },
+        SHARED_SHRINK_RAY,
+        SHARED_LOW_GRAVITY,
         SHARED_SCORCHED_EARTH,
         SHARED_SUMMON_SANDSTORM
     ],
@@ -6460,6 +6601,7 @@ const RACE_ABILITIES = {
           dmg: 60, damageType: 'physical',
           terrainDeform: { centerDelta: 2, edgeDelta: 0 },
           desc: 'Raise a 3-tile wall of stone. They didn\'t build the pyramids. They grew them.' },
+        SHARED_GRAVITY_CRUSH,
         SHARED_CALL_LIGHTNING,
         SHARED_FISSURE
     ],
@@ -6529,7 +6671,9 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 30, dmg: 80, range: 4, apCost: 1,
           kind: 'aoe', damageType: 'magic', aoeRadius: 2,
           terrainDeform: { centerDelta: -2, edgeDelta: -1 },
-          desc: 'Burn a 5×5 crop circle into the battlefield. Magic damage and presses the terrain into a concentric ringed depression.' }
+          desc: 'Burn a 5×5 crop circle into the battlefield. Magic damage and presses the terrain into a concentric ringed depression.' },
+        SHARED_GRAVITY_CRUSH,
+        SHARED_LOW_GRAVITY
     ],
     'mantid': [
         { id: 'raceMandibleStrike', spellType: 'alien', name: 'Mandible Strike',
@@ -7386,12 +7530,14 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statusEffects: [{ id: 'protect', duration: 2 }],
           desc: 'Conjure a throne of ice. Protected for 2 turns. Bow before your queen.' },
+        /* 2026-07-17 shape pass: Diamond Dust now falls in a literal DIAMOND
+           (Manhattan radius 2, 13 tiles) instead of another 3×3. */
         { id: 'raceDiamondDust', spellType: 'anomaly', name: 'Diamond Dust',
-          type: 'damage', cost: 35, dmg: 95, range: 4, apCost: 2,
-          kind: 'aoe', damageType: 'magic', aoeRadius: 1,
+          type: 'damage', cost: 35, dmg: 90, range: 4, apCost: 2,
+          kind: 'cross', diamond: true, crossRadius: 2, damageType: 'magic',
           statusEffects: [{ id: 'slow', duration: 2 }],
           leaveTerrain: 'ice',
-          desc: 'Shower of ice crystals over 3x3. Damages, slows, and freezes the ground.' },
+          desc: 'A shower of ice crystals falls in a glittering DIAMOND — two tiles out in every direction. Damages, slows, and freezes the ground. The shape is the signature.' },
         SHARED_FLASH_FREEZE,
         SHARED_GLACIAL_TOMB,
         SHARED_SUMMON_BLIZZARD,
@@ -8940,6 +9086,66 @@ const STATUS_DEFS = {
         category: 'status',
         stack: 'replace',
         iconSrc: createStatusIconDataUri('📜', '#2a1a1a', '#ffd6d6', '#d45a5a')
+    },
+
+    /* ── 2026-07-17 spell/status pass ─────────────────────────────────────
+       taunt    — Provoke: the victim may only aim single-target attacks and
+                  spells at the taunter while the taunter is reachable.
+                  Enforced in battle.js (doAttack/doSpell gates, target drum)
+                  and steered in ai.js getTargetPriority. Caster is tracked
+                  on the victim as _tauntCasterId (applyStatusPayload).
+       minimize — Shrink Ray: -2 ATK stages via stageMod, and the 3D model
+                  physically shrinks (three-renderer reads this status).
+       statLock — Fermata: while live, applyStatStageBoost no-ops on this
+                  unit and stageMod-carrying statuses are rejected — stats
+                  can't be raised OR lowered by anyone.
+       hexed    — Hex of Toil: the victim takes damage every time they move,
+                  jump or cast (battle.js _procHexedOnAction). Caster tracked
+                  as _hexCasterId for kill credit. */
+    taunt: {
+        icon: '🗯️',
+        glyph: '🗯️',
+        short: 'PRV',
+        label: 'Provoked',
+        colorText: 'provoked — forced to fight the challenger',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'replace',
+        iconSrc: createStatusIconDataUri('🗯️', '#3a1c14', '#ffe0cc', '#ff8a50')
+    },
+    minimize: {
+        icon: '🤏',
+        glyph: '🤏',
+        short: 'MIN',
+        label: 'Minimized',
+        colorText: 'shrunk down to size',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'max',
+        stageMod: { atk: -2 },
+        iconSrc: createStatusIconDataUri('🤏', '#1c2a34', '#d6f0ff', '#5ab0d4')
+    },
+    statLock: {
+        icon: '🔏',
+        glyph: '🔏',
+        short: 'LCK',
+        label: 'Stat Lock',
+        colorText: 'stat-locked — no stat can change',
+        kind: 'buff',
+        category: 'status',
+        stack: 'max',
+        iconSrc: createStatusIconDataUri('🔏', '#2a2440', '#e8dcff', '#a88ae0')
+    },
+    hexed: {
+        icon: '🕯️',
+        glyph: '🕯️',
+        short: 'HEX',
+        label: 'Hexed',
+        colorText: 'hexed — acting feeds the curse',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'max',
+        iconSrc: createStatusIconDataUri('🕯️', '#241a2e', '#f0dcff', '#b06ad3')
     }
 };
 const STATUS_META = STATUS_DEFS;
@@ -11473,15 +11679,15 @@ function getRaceXpYield(race) {
 
 const CLASS_SPELL_LEARN_ORDER = {
 
-    'Gunslinger':  ['pistolWhip', 'doubleShot', 'ricochet1', 'shootout', 'deadEye'],
-    'Warrior':      ['fortify', 'guardSlash', 'warCry', 'shieldBash', 'dragonSlash', 'judgment'],
+    'Gunslinger':  ['crossfire', 'doubleShot', 'ricochet1', 'shootout', 'deadEye'],
+    'Warrior':      ['fortify', 'provoke', 'guardSlash', 'warCry', 'shieldBash', 'dragonSlash', 'judgment'],
     'Black Mage':  ['fire1', 'thunder1', 'wallOfFire', 'frostMine', 'meteor', 'thunderstorm'],
     'White Mage':  ['heal1', 'radiantBolt', 'veilOfLight', 'cleanse', 'exorcism', 'healAll'],
-    'Agent':       ['knifeThrow', 'placeBomb', 'snareTrap', 'poisonDart', 'sneakSlash', 'shadowLunge', 'assassinate'],
+    'Agent':       ['knifeThrow', 'pistolWhip', 'placeBomb', 'snareTrap', 'poisonDart', 'sneakSlash', 'shadowLunge', 'assassinate'],
     'Psychic':     ['kineticHurl', 'glare', 'warpRune', 'psychosis', 'mindShatter'],
     'Harvester':   ['lifeDrain', 'healingSeed', 'poisonSeed', 'wildwood', 'timberSteps', 'timberStrike', 'leechSeed', 'overgrowth'],
     'Engineer':    ['plasmaGun', 'deployTurret', 'repair', 'fieldBridge', 'watchtower', 'tremorCharge', 'freeEnergy', 'fiveGTower', 'bulwarkRing', 'overclock', 'magnetMine', 'empBurst'],
-    'Harbinger':   ['lullaby', 'sonicCharge', 'discordance', 'encore', 'requiem'],
+    'Harbinger':   ['lullaby', 'sonicCharge', 'discordance', 'fermata', 'encore', 'requiem'],
     'Freelancer':  ['improvise', 'jackOfAll', 'reallyGoodPunch'],
     'Raider':      ['haymaker', 'ironGrip', 'skullCrack', 'groundSlam', 'rampage'],
     'Sniper':      ['kneecapShot', 'spotter', 'steadyAim', 'precisionShot', 'headshot'],
