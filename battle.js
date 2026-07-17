@@ -27957,7 +27957,9 @@
                 } else if (['buff', 'shield', 'aoeShield', 'warCry'].includes(k)) {
                     rangeColor = 0x4488ff;
                 } else if (['debuff', 'zoneDebuff', 'lifeDrain', 'leechSeed', 'seedPoison'].includes(k)) {
-                    rangeColor = 0xcc44aa;
+                    // hostile drains/debuffs read as damage — red, matching the
+                    // armed-mode 'spell-range-dmg' wash (was magenta)
+                    rangeColor = 0xff5544;
                 }
                 ThreeRenderer.setOverlay('spellRange', rangeTiles, rangeColor, 0.45);
                 // 🗺️ Elemental damage spells: tint the tiles the spell can be
@@ -28008,7 +28010,9 @@
             const rangeTiles = getAttackTiles(unit);
 
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
-                ThreeRenderer.setOverlay('attackRange', rangeTiles, 0xff3333, 0.45);
+                // GOLD = basic attack (matches the gold 'strike' move tiles) —
+                // red is reserved for damage landing on a tile/enemy.
+                ThreeRenderer.setOverlay('attackRange', rangeTiles, 0xffcc33, 0.45);
                 return;
             }
 
@@ -28034,9 +28038,11 @@
 
         // ── INSPECT-panel attack range (ⓘ blade / I key) ─────────────────────
         // Shows the INSPECTED unit's reach — enemy or ally, not necessarily the
-        // selected unit — on its own overlay key (amber, not the attack-red) so
-        // it never fights the attack blade's hover preview. Purely viewer-local
-        // UI: each client draws it off its own state.showUnitInfo.
+        // selected unit — on its own overlay key so it never fights the attack
+        // blade's hover preview. Colour speaks allegiance: YOUR unit's reach is
+        // gold (same language as the attack blade / strike tiles), an ENEMY's
+        // reach is red = danger zone. Purely viewer-local UI: each client draws
+        // it off its own state.showUnitInfo.
         let _infoRangePreviewTiles = [];
         let _infoRangePreviewFP = null;
 
@@ -28049,7 +28055,9 @@
             const rangeTiles = getAttackTiles(unit);
 
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
-                ThreeRenderer.setOverlay('infoRange', rangeTiles, 0xffb347, 0.35);
+                const _infoViewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
+                const _infoColor = (unit.player === _infoViewer) ? 0xffcc33 : 0xff3333;
+                ThreeRenderer.setOverlay('infoRange', rangeTiles, _infoColor, 0.4);
                 return;
             }
 
@@ -28087,7 +28095,7 @@
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.clearOverlay) {
                 for (const ov of ['spellApproachMove', 'spellApproachTarget', 'spellApproachShove',
                                   'movePreview', 'actionPlanTarget', 'actionPlanAoe', 'actionPlanShove',
-                                  'moveHoverDest', 'enemyRange']) {
+                                  'actionPlanRange', 'moveHoverDest', 'enemyRange']) {
                     ThreeRenderer.clearOverlay(ov);
                 }
                 if (ThreeRenderer.clearArrows3D) ThreeRenderer.clearArrows3D();

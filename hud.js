@@ -4384,6 +4384,55 @@ function _clearMoveArrowPreview() {
   ThreeRenderer.clearOverlay('actionPlanTarget');
   ThreeRenderer.clearOverlay('actionPlanAoe');
   ThreeRenderer.clearOverlay('actionPlanShove');
+  ThreeRenderer.clearOverlay('actionPlanRange');
+}
+
+// Kind buckets for the quick-cast range wash: red = the spell damages what it
+// lands on, green = it helps allies, blue = neutral utility. Basic attack /
+// combo reach is gold, matching the attack blade + 'strike' move tiles.
+const _QA_DMG_KINDS = { damage:1, aoe:1, barrage:1, multiHit:1, ricochet:1,
+  splitBeam:1, bomb:1, delayed:1, cross:1, leapStrike:1, lifeDrain:1,
+  zoneDebuff:1, debuff:1, seedPoison:1, leechSeed:1, pull:1, aoePull:1,
+  aoePush:1, displacement:1, skySlam:1 };
+const _QA_SUP_KINDS = { heal:1, healAll:1, selfHeal:1, seedHeal:1, revive:1,
+  cleanse:1, shield:1, aoeShield:1, buff:1, guard:1, warCry:1, encore:1 };
+
+// Semi-transparent reach field for the hovered quick-menu blade, drawn from
+// the tile the action will actually be cast FROM (the move destination on a
+// move-then-cast). The solid target/AoE tiles stay the loud layer on top —
+// this quietly answers "how far could this reach?", which the quick menus
+// never showed before.
+function _showQuickActionRange(actingUnit, castX, castY, action) {
+  if (!action || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+  const sp = action.spell;
+  let r = 0, color = 0xffcc33;
+  if (action.id === 'attack' || action.id === 'combo') {
+    r = (typeof getEffectiveRange === 'function') ? (getEffectiveRange(actingUnit) || 1) : (actingUnit.range || 1);
+  } else if (sp) {
+    // Board-length beams (line kinds / directional) already read from the
+    // strike arrow + swept footprint — a range field would just paint the map.
+    if (sp.kind === 'line' || sp.kind === 'linePush') return;
+    r = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(actingUnit, sp) : (sp.range || 0);
+    color = _QA_DMG_KINDS[sp.kind] ? 0xff4444 : _QA_SUP_KINDS[sp.kind] ? 0x33cc55 : 0x66aaff;
+  } else {
+    return;
+  }
+  if (!r || r > 14) return;
+  const skipLOS = !!(sp && (sp.ignoresLineOfSight || sp.kind === 'teleport'
+    || sp.kind === 'skyDrop' || sp.kind === 'skyThrow' || sp.kind === 'skySlam'));
+  const _W = (typeof bw === 'function') ? bw() : (window.GAME ? GAME.bw() : 16);
+  const _H = (typeof bh === 'function') ? bh() : (window.GAME ? GAME.bh() : 8);
+  const tiles = [];
+  for (let ty = Math.max(0, castY - r); ty <= Math.min(_H - 1, castY + r); ty++) {
+    for (let tx = Math.max(0, castX - r); tx <= Math.min(_W - 1, castX + r); tx++) {
+      const d = Math.abs(tx - castX) + Math.abs(ty - castY);
+      if (d < 1 || d > r) continue;
+      if (!skipLOS && typeof isRangeBlockedByTerrain === 'function'
+          && isRangeBlockedByTerrain(castX, castY, tx, ty)) continue;
+      tiles.push({ x: tx, y: ty });
+    }
+  }
+  if (tiles.length) ThreeRenderer.setOverlay('actionPlanRange', tiles, color, 0.4);
 }
 
 function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
@@ -4494,6 +4543,10 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
     // Arced strike arrow straight from the unit's current tile onto the target.
     ThreeRenderer.drawArrow3D(actingUnit.x, actingUnit.y, tx, ty, arrowColor, false, actingY, targetY, { arc: 0.35, flow: true });
   }
+
+  // Quiet reach field under the loud target/AoE layer (gold attack / red
+  // damage / green support), measured from the actual cast tile.
+  _showQuickActionRange(actingUnit, castX, castY, action);
 
   ThreeRenderer.setOverlay('actionPlanTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
 

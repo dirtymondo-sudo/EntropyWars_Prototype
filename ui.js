@@ -2451,6 +2451,13 @@
           const eff = hasStab ? mult / ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : mult;
           return eff > 1.001 ? ' type-strong' : eff < 0.999 ? ' type-weak' : '';
         };
+        // Spell kinds that hurt whatever they land on — their free-aim range
+        // paints red ('spell-range-dmg'), not neutral purple. RED = DAMAGE,
+        // everywhere, including drains/debuffs/displacement bursts.
+        const _DMG_SPELL_KINDS = { damage:1, aoe:1, barrage:1, multiHit:1, ricochet:1,
+          splitBeam:1, bomb:1, delayed:1, line:1, linePush:1, cross:1, leapStrike:1,
+          lifeDrain:1, zoneDebuff:1, debuff:1, seedPoison:1, leechSeed:1, pull:1,
+          aoePull:1, aoePush:1, displacement:1, skySlam:1 };
         let _cachedMoveTiles, _cachedAttackTiles, _cachedInspectTiles;
         if (state.actionMode === 'move' && canUnitMove(_selectedForHl)) {
 
@@ -2869,7 +2876,8 @@
                     const typeClass = isEffective ? ' type-strong' : '';
                     _hlCache.set(pk, 'attack enemy' + typeClass);
                   } else {
-                    _hlCache.set(pk, 'spell-range-bg');
+                    // bane throws are damage → red reach wash
+                    _hlCache.set(pk, 'spell-range-dmg');
                   }
                 }
               }
@@ -3014,7 +3022,8 @@
                   if (target && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
                     _hlCache.set(pk, 'attack enemy' + _spellEffClass(_selectedForHl, target, spell));
                   } else {
-                    _hlCache.set(pk, 'attack');
+                    // red = damage: every tile the beam sweeps WILL be hit
+                    _hlCache.set(pk, 'spell-damage');
                   }
                 }
               }
@@ -3029,14 +3038,17 @@
                   const d = _rangeD(cx, cy);
                   if (d >= 1 && d <= _crossEffRange && (_crossSkipLOS || !isRangeBlockedByTerrain(_selectedForHl.x, _selectedForHl.y, cx, cy, _crossSrcZ))) {
                     if (_fogLimitCross && !isInVision(_selectedForHl, cx, cy)) continue;
-                    _hlCache.set(posKey(cx, cy), 'spell-range');
+                    // cross spells deal damage → red range wash, not purple
+                    _hlCache.set(posKey(cx, cy), 'spell-range-dmg');
                   }
                 }
               }
             } else if (spell.kind === 'cross' && spell.aoeOriginSelf) {
 
               const _crossR = spell.crossRadius || 1;
-              _hlCache.set(posKey(_selectedForHl.x, _selectedForHl.y), 'attack');
+              // self-burst: the whole footprint (origin included) paints
+              // damage-red — these used to read blue and looked harmless
+              _hlCache.set(posKey(_selectedForHl.x, _selectedForHl.y), 'spell-damage');
               // diamond novae highlight every tile within Manhattan radius,
               // plain crosses just the 4 arms.
               const _crossOffsets = [];
@@ -3060,7 +3072,7 @@
                 if (target && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
                   _hlCache.set(pk, 'attack enemy' + _spellEffClass(_selectedForHl, target, spell));
                 } else {
-                  _hlCache.set(pk, 'attack');
+                  _hlCache.set(pk, 'spell-damage');
                 }
               }
             } else if (spell.kind === 'utility') {
@@ -3105,7 +3117,7 @@
                       if (target && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
                         _hlCache.set(posKey(cx, cy), 'attack enemy' + _spellEffClass(_selectedForHl, target, spell));
                       } else {
-                        _hlCache.set(posKey(cx, cy), 'spell-range-bg');
+                        _hlCache.set(posKey(cx, cy), 'spell-range-dmg');
                       }
                     } else if (['heal', 'shield', 'buff', 'cleanse', 'guard'].includes(spell.kind)) {
                       // Ally-only kinds: green-light ONLY friendly occupants — an
@@ -3121,11 +3133,16 @@
                           && (typeof spellTargetUsableOn !== 'function' || spellTargetUsableOn(_selectedForHl, spell, friendlyTarget))) {
                         _hlCache.set(posKey(cx, cy), 'heal');
                       } else if (state.actionMenuView !== 'spellTargets') {
-                        _hlCache.set(posKey(cx, cy), 'spell-range-bg');
+                        // support reach = faint green wash (green = help)
+                        _hlCache.set(posKey(cx, cy), 'heal-range');
                       }
                     } else if (['scan'].includes(spell.kind)) {
                       _hlCache.set(posKey(cx, cy), 'inspect');
-                    } else if (['bomb', 'summonWeather', 'aoe', 'remoteView', 'placeBlock', 'buildStructure', 'placeTrap', 'placeMirror'].includes(spell.kind)) {
+                    } else if (['bomb', 'aoe'].includes(spell.kind)) {
+                      // Tile-targeted DAMAGE (bombs, ground-aimed AoE): faint
+                      // red reach — anywhere in here can become a blast zone.
+                      _hlCache.set(posKey(cx, cy), 'spell-range-dmg');
+                    } else if (['summonWeather', 'remoteView', 'placeBlock', 'buildStructure', 'placeTrap', 'placeMirror'].includes(spell.kind)) {
                       // Placement kinds paint the neutral build/aim color — they
                       // target TILES, so no enemy-red attack highlighting.
                       _hlCache.set(posKey(cx, cy), 'spell-range');
@@ -3143,8 +3160,12 @@
                       } else if (target && _gTT === 'ally' && isAllyUnit(target, _selectedForHl)) {
                         _hlCache.set(posKey(cx, cy), 'heal');
                       } else if (state.actionMenuView !== 'spellTargets') {
-
-                        _hlCache.set(posKey(cx, cy), 'spell-range');
+                        // Range wash keyed to what the spell DOES: red for
+                        // anything that hurts, green for ally-serving zones,
+                        // purple only for genuinely neutral utility.
+                        const _rangeCls = _DMG_SPELL_KINDS[spell.kind] ? 'spell-range-dmg'
+                          : (_gTT === 'ally') ? 'heal-range' : 'spell-range';
+                        _hlCache.set(posKey(cx, cy), _rangeCls);
                       }
 
                     }
@@ -3195,7 +3216,8 @@
               var _thl = _hlCache.get(_tpk);
               if (!_thl) continue;
 
-              if (_thl === 'spell-range' || _thl === 'spell-range-bg' || _thl === 'attack' || _thl === 'selected') continue;
+              if (_thl === 'spell-range' || _thl === 'spell-range-bg' || _thl === 'spell-range-dmg'
+                  || _thl === 'heal-range' || _thl === 'spell-damage' || _thl === 'attack' || _thl === 'selected') continue;
 
               if (_thl === 'move' || _thl === 'move-jump' || _thl === 'move-takeoff' || _thl === 'move-2ap' || _thl === 'move-3ap' || _thl === 'move-edge') continue;
 

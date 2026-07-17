@@ -538,13 +538,22 @@ const ThreeRenderer = (function () {
         'move-takeoff':    0x35d0c0,
         'move-2ap':        0x4da6ff,
         'move-3ap':        0x4da6ff,
-        'move-edge':       0x991111,
+        'move-edge':       0xcc2222,
         /* Tactical move-tile overlays (appended as tokens by ui.js): */
         'strike':          0xffcc33,   /* gold   — can attack/cast a visible enemy from here */
         'hazard':          0xff3a3a,   /* crimson— ending here damages you / bad status */
         'benefit':         0x33dd77,   /* green  — healing terrain / cover */
-        'attack':          0x3366ee,
+        /* 2026-07-17 colour-language pass: GOLD = basic attack, RED = damage,
+           GREEN = help. 'attack' (basic-attack range) is gold to match the
+           'strike' move token; damage spells paint their range as faint red
+           ('spell-range-dmg') and their footprint as strong red
+           ('spell-damage'); support spells get the green pair. Purple
+           'spell-range' remains for neutral utility/placement kinds only. */
+        'attack':          0xffcc33,
         'attack enemy':    0xff2222,
+        'spell-damage':    0xff3a3a,   /* strong red — tiles the spell WILL hit */
+        'spell-range-dmg': 0xff4444,   /* faint red  — where a damage spell can reach */
+        'heal-range':      0x33dd77,   /* faint green— where a support spell can reach */
         'spell-range':     0x8844ee,
         'spell-range-bg':  0x6633bb,
         'heal':            0x22ee55,
@@ -567,11 +576,16 @@ const ThreeRenderer = (function () {
     const HL_FILL = {
         'spell-range':     0.13,
         'spell-range-bg':  0.08,
+        'spell-range-dmg': 0.12,
+        'heal-range':      0.10,
+        'spell-damage':    0.48,
         'attack':          0.13,
         'inspect':         0.12,
-        'move-edge':       0.08,
-        'attack enemy':    0.50,
-        'heal':            0.42,
+        /* in-range-but-unreachable move tile: a REAL red fill (not the old
+           near-invisible 0.08) so blocked ground reads at a glance */
+        'move-edge':       0.30,
+        'attack enemy':    0.55,
+        'heal':            0.58,
         'move ally':       0.30,
         'combo-target':    0.48,
         'placeable':       0.28,
@@ -579,11 +593,14 @@ const ThreeRenderer = (function () {
     };
 
     const HL_OPACITY_MAP = {
-        'move-edge':       0.40,
+        'move-edge':       0.55,
         'spell-range-bg':  0.35,
+        'spell-range-dmg': 0.50,
+        'heal-range':      0.48,
+        'spell-damage':    0.72,
         'move-2ap':        0.62,
         'move-3ap':        0.58,
-        'attack enemy':    0.72
+        'attack enemy':    0.75
     };
 
     const HL_DOT_COUNT = {
@@ -595,24 +612,27 @@ const ThreeRenderer = (function () {
     };
 
     const HL_EDGE_GLOW = {
-        'move':         0.75,
-        'move-jump':    0.85,
-        'move-takeoff': 0.8,
-        'move-2ap':     0.6,
-        'move-3ap':     0.5,
-        'move-edge':    0.4,
-        'attack':       0.8,
-        'attack enemy': 1.15,
-        /* Range = crisp thin outline, faint fill (HL_FILL) — the FFT-style
+        'move':         1.0,
+        'move-jump':    1.05,
+        'move-takeoff': 1.0,
+        'move-2ap':     0.8,
+        'move-3ap':     0.7,
+        'move-edge':    0.55,
+        'attack':       1.1,
+        'attack enemy': 1.3,
+        /* Range = crisp bright outline, faint fill (HL_FILL) — the FFT-style
            "lattice" read: reach stays obvious without shouting. */
-        'spell-range':  1.0,
-        'spell-range-bg': 0.5,
-        'heal':         1.0,
-        'inspect':      0.6,
-        'move ally':    0.7,
-        'combo-target': 1.0,
+        'spell-range':  1.1,
+        'spell-range-bg': 0.7,
+        'spell-range-dmg': 1.05,
+        'heal-range':   0.95,
+        'spell-damage': 1.2,
+        'heal':         1.2,
+        'inspect':      0.8,
+        'move ally':    0.9,
+        'combo-target': 1.15,
         'selected':     0.35,
-        'placeable':    0.6
+        'placeable':    0.85
     };
 
     var _hlGlobalTime = { value: 0.0 };
@@ -652,8 +672,12 @@ const ThreeRenderer = (function () {
            (AoE impact) = solid fill + stripes. The old shader stamped grid
            lines + corner brackets + border + glow on EVERY tile, which is why
            forty range tiles all screamed like cursors. */
+        /* 2026-07-17: outlines got the "solid glowing" treatment — a harder
+           crisp line plus a wider soft halo, with a white-hot core (see the
+           bright mix below). Fills stay semi-transparent; the OUTLINE is the
+           bright layer now. */
         '  float borderHard = 1.0 - smoothstep(0.02, 0.055, edge);',
-        '  float borderSoft = (1.0 - smoothstep(0.0, 0.16, edge)) * 0.30;',
+        '  float borderSoft = (1.0 - smoothstep(0.0, 0.16, edge)) * 0.40;',
         '',
         // Calmer highlights (2026-07-07 readability pass): tiny pulse — the
         // old ±12% throb made the whole board feel like it was shouting.
@@ -713,13 +737,13 @@ const ThreeRenderer = (function () {
         // white is kept low so each highlight KEEPS ITS COLOR — color is how
         // the player tells move/strike/hazard/terrain apart at a glance.
         '  float fill = uFill * pulse;',
-        '  float border = (borderHard + borderSoft) * uEdgeGlow * pulse;',
+        '  float border = (borderHard * 1.35 + borderSoft) * uEdgeGlow * pulse;',
         '',
         '  float alpha = (fill + border + brackets + hatch * 0.55 + dots) * uOpacity;',
         '  alpha = clamp(alpha, 0.0, 1.0);',
         '',
-        '  float bright = borderHard * uEdgeGlow * 0.28 + brackets * 0.30 + dots * 0.85;',
-        '  vec3 col = mix(uColor, vec3(1.0), clamp(bright, 0.0, 0.40));',
+        '  float bright = borderHard * uEdgeGlow * 0.42 + brackets * 0.30 + dots * 0.85;',
+        '  vec3 col = mix(uColor, vec3(1.0), clamp(bright, 0.0, 0.55));',
         '  gl_FragColor = vec4(col, alpha);',
         '}'
     ].join('\n');
@@ -9306,6 +9330,18 @@ const ThreeRenderer = (function () {
             selHalo.position.y = SELECTED_RING_OFFSET + 0.2;
             selHalo.raycast = function () {};
             group.add(selHalo);
+
+            /* The tile UNDER the current unit: a white glowing outline, near-
+               empty body — the default "this is who's acting" marker. Rides
+               the unit group so walks/knockbacks carry it automatically. */
+            var selTile = new THREE.Mesh(
+                new THREE.PlaneGeometry(ts * 0.96, ts * 0.96),
+                _makeHlMaterial(0xffffff, 0.9, 1.5, 0, { fill: 0.05 })
+            );
+            selTile.rotation.x = -Math.PI / 2;
+            selTile.position.y = SELECTED_RING_OFFSET - 0.15;
+            selTile.raycast = function () {};
+            group.add(selTile);
         }
 
         var _subSink = _getSubmersionDepth(unit) * _effectiveSprH;
@@ -10357,14 +10393,14 @@ const ThreeRenderer = (function () {
            2-AP tiles recede below 1-AP tiles so cost also reads at a glance. */
         if (baseTok.indexOf('move') === 0 && baseTok !== 'move-edge') {
             dotCount = HL_DOT_COUNT[baseTok] || 0;
-            if (hlType.indexOf(' strike') !== -1)       { color = HL_COLORS['strike'];  opacity = 0.66; edgeGlow = 1.0;  style = { fill: 0.36 }; }
-            else if (hlType.indexOf(' hazard') !== -1)  { color = HL_COLORS['hazard'];  opacity = 0.62; edgeGlow = 0.9;  style = { fill: 0.30 }; }
-            else if (hlType.indexOf(' benefit') !== -1) { color = HL_COLORS['benefit']; opacity = 0.60; edgeGlow = 0.85; style = { fill: 0.32 }; }
+            if (hlType.indexOf(' strike') !== -1)       { color = HL_COLORS['strike'];  opacity = 0.66; edgeGlow = 1.2;  style = { fill: 0.36 }; }
+            else if (hlType.indexOf(' hazard') !== -1)  { color = HL_COLORS['hazard'];  opacity = 0.62; edgeGlow = 1.1;  style = { fill: 0.30 }; }
+            else if (hlType.indexOf(' benefit') !== -1) { color = HL_COLORS['benefit']; opacity = 0.60; edgeGlow = 1.0;  style = { fill: 0.32 }; }
             else {
                 color = HL_COLORS[baseTok] || HL_COLORS['move'];
                 var _far = (baseTok === 'move-2ap' || baseTok === 'move-3ap');
                 opacity = _far ? 0.34 : 0.5;
-                edgeGlow = _far ? 0.45 : 0.7;
+                edgeGlow = _far ? 0.6 : 0.95;
                 style = { fill: _far ? 0.22 : 0.28 };
             }
         } else {
@@ -10387,6 +10423,7 @@ const ThreeRenderer = (function () {
            _updateHlFocusDim): ranges dim so the consequence pops. Valid-target
            tiles (attack enemy / heal / combo) and the cursor stay full. */
         mat._ew_dimmable = (matKey === 'spell-range' || matKey === 'spell-range-bg' ||
+                            matKey === 'spell-range-dmg' || matKey === 'heal-range' ||
                             matKey === 'attack' || matKey === 'inspect' ||
                             baseTok.indexOf('move') === 0);
         _hlMatCache.set(matKey, mat);
@@ -10503,10 +10540,14 @@ const ThreeRenderer = (function () {
         'actionPlanAoe':       { fill: 0.45, edgeGlow: 0.9 },
         'actionPlanTarget':    { fill: 0.50, edgeGlow: 1.1 },
         'spellApproachTarget': { fill: 0.50, edgeGlow: 1.1 },
-        'spellRange':          { fill: 0.13, edgeGlow: 1.0 },
-        'attackRange':         { fill: 0.13, edgeGlow: 1.0 },
+        'spellRange':          { fill: 0.13, edgeGlow: 1.1 },
+        'attackRange':         { fill: 0.13, edgeGlow: 1.1 },
         'spellRangeElem':      { fill: 0.30, edgeGlow: 0.9 },
         'enemyRange':          { fill: 0.14, edgeGlow: 0.55 },
+        /* stat-panel (ⓘ) reach + quick-cast blade-hover reach: quiet
+           semi-transparent context washes under the loud target/AoE layer */
+        'infoRange':           { fill: 0.12, edgeGlow: 1.0 },
+        'actionPlanRange':     { fill: 0.10, edgeGlow: 0.9 },
         'weather':             { fill: 0.30, edgeGlow: 0.15 },
         'movePreview':         { fill: 0.30, edgeGlow: 0.9 },
         'moveHoverDest':       { fill: 0.34, edgeGlow: 1.0 },
