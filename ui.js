@@ -7192,6 +7192,21 @@
             } catch (e) {}
         };
 
+        /* CPU difficulty picker — shared by the pause menu and the main-menu
+           settings page (map.js). `rerender` is the inline JS that refreshes
+           whichever panel hosts it. The ladder changes decision QUALITY only
+           (see AI_DIFFICULTY_PROFILES in ai.js) — no stat cheats. */
+        window._buildAiDifficultyHTML = function (rerender) {
+            const cur = (typeof window._ewGetAiDifficulty === 'function') ? window._ewGetAiDifficulty() : 'normal';
+            const btn = (k, label) => `<button class="pm-set-btn${cur === k ? ' active' : ''}" onclick="window._ewSetAiDifficulty('${k}');${rerender}">${label}</button>`;
+            return `
+                <div class="pm-set-group">
+                    <div class="pm-set-group-title">CPU Difficulty</div>
+                    <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Changes how well the computer <b>plays</b>, never its stats. <b>Easy</b> skips combos, team focus-fire and press-turn lines, and sometimes takes the second-best action. <b>Normal</b> is the full trained AI. <b>Hard</b> additionally hunts win conditions — towers, zones, hourglasses, flags — instead of just trading kills. Applies to VS CPU, Challenge and Mystery Dungeon (never to online opponents). Takes effect from the CPU's next turn.</div>
+                    <div class="pm-set-row">${btn('easy', 'Easy')}${btn('normal', 'Normal')}${btn('hard', 'Hard')}</div>
+                </div>`;
+        };
+
         function _buildPauseControls() {
             const curSpeed = state.devSimSpeed || 1;
 
@@ -7205,6 +7220,7 @@
                         <button class="pm-set-btn speed${curSpeed===4?' active':''}" onclick="document.getElementById('devSimBattleSpeed4Btn')?.click();_renderPauseMenu();">×4</button>
                     </div>
                 </div>
+                ${window._buildAiDifficultyHTML('_renderPauseMenu();')}
                 ${window._buildControlsSettingsHTML()}
             </div>`;
         }

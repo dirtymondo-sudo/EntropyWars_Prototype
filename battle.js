@@ -24738,89 +24738,51 @@
             }, state.devAutoSim ? scaleDevSimDelay(35, 2) : 350);
         }
 
-        /* Schema 11 — weight table audit (2026-07-11):
-           ainew.js used to wrap getAIWeight and FLOOR several of these keys
-           (killBonusScore→60, statusEffectBonus→40, the move/jump/fly height
-           weights) — some floors sat ABOVE the key's own max, so the A/B
-           trainer was burning 40-match experiments on weights whose runtime
-           value never changed. Those floors are now folded in here as the
-           real defaults (ranges widened to keep them trainable) and the
-           ainew.js wrapper is gone: ONE source of truth, every experiment
-           real again. Keys whose code paths only exist on some boards carry
-           a `probe` tag — _weightRelevantNow() skips their experiments when
-           the current training board can't exercise them (e.g. hourglass
-           weights on an hourglass-less TDM map = 40 matches of coin flips). */
-        const AI_WEIGHT_SCHEMA_VERSION = 11;
+        /* Schema 12 — the great prune (2026-07-16):
+           The gen-100 A/B run (5652 matches) proved most of the old 45-key
+           table untrainable: the jump family + enemySpawnZonePenalty were
+           referenced by NO code at all, the level weights guarded dead code
+           (unit.level / g.xpForLevel never existed), and half a dozen more
+           sat pinned against a range edge through every experiment. Those
+           are now frozen constants in ai.js (AI_TUNE) or deleted outright.
+           What remains is the curated set with a live code path and room to
+           move — 15 weights instead of 45, so each training pass costs ~1/3
+           as many matches and every experiment tests something real.
+           Values are the gen-100 champion weights. Keys whose code paths
+           only exist on some boards carry a `probe` tag — _weightRelevantNow()
+           skips their experiments when the training board can't exercise
+           them. `noMult: true` marks thresholds/comparators the campaign
+           _challengeAiMult must NOT scale (multiplying a heal threshold or a
+           negative engage threshold changes behavior non-monotonically). */
+        const AI_WEIGHT_SCHEMA_VERSION = 12;
 
         const AI_WEIGHT_DEFAULTS = {
+            // NOTE: these defaults are also the BASELINE side of the
+            // strength-test gauntlet — adopting a new export moves that goalpost.
+            healPotionHpPct_v1:       { value: 0.45,  min: 0.20, max: 0.70, noMult: true, label: 'Heal Potion HP%', desc: 'Use heal potion when HP below this %' },
 
-            // Values below are the champion weights adopted from the gen-60
-            // self-play training run (schemaVersion 11, 3520 matches, pass 2).
-            healPotionHpPct_v1:       { value: 0.554, min: 0.20, max: 0.70, label: 'Heal Potion HP%', desc: 'Use heal potion when HP below this %' },
-
-            killBonusScore_v1:        { value: 47.5,  min: 10,   max: 120,  label: 'Kill Bonus', desc: 'Score bonus for attacks that would kill' },
-            markedTargetBonus_v1:     { value: 2,     min: 2,    max: 15,   label: 'Marked Target Bonus', desc: 'Score bonus for attacking marked targets' },
-            hourglassTargetBonus_v1:  { value: 20,    min: 10,   max: 50,   probe: 'hourglass', label: 'HG Carrier Bonus', desc: 'Score bonus for attacking hourglass carriers' },
-            comboSynergyBonus_v1:     { value: 22.206, min: 4,   max: 25,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
+            killBonusScore_v1:        { value: 28.75, min: 10,   max: 120,  label: 'Kill Bonus', desc: 'Score bonus for attacks that would kill' },
+            comboSynergyBonus_v1:     { value: 23.953, min: 4,   max: 40,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
             comboKillBonus_v1:        { value: 27.688, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
             statusEffectBonus_v1:     { value: 29.85, min: 2,    max: 60,   label: 'Status Effect Bonus', desc: 'Score bonus for spells/combos with status effects' },
 
-            pressRefundValue_v1:      { value: 32.75, min: 10,   max: 140,  label: 'Press: Refund Value', desc: 'Score bonus for an offensive action expected to press (hit a type weakness or crit) and grant a free action this turn' },
-            whiffRiskPenalty_v1:      { value: 0,     min: 0,    max: 120,  label: 'Press: Whiff Risk Penalty', desc: "Penalty scaled by the target's evade chance — a missed attack drains extra AP and cuts the turn short" },
+            pressRefundValue_v1:      { value: 51.032, min: 10,  max: 140,  label: 'Press: Refund Value', desc: 'Score bonus for an offensive action expected to press (hit a type weakness or crit) and grant a free action this turn' },
 
-            engageAdvantage_v1:       { value: -0.385, min: -0.5, max: 0.3,  label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
-            hgCarrierFleeAdv_v1:      { value: -0.23, min: -0.3, max: 0.4,  label: 'HG Carrier Flee Threshold', desc: 'Advantage below which HG carriers retreat' },
+            engageAdvantage_v1:       { value: -0.5,  min: -1.0, max: 0.3,  noMult: true, label: 'Engage Threshold', desc: 'Min advantage score to engage enemies (range widened: gen-100 pinned the old -0.5 floor twice)' },
 
             safeEnemyDistWeight_v1:   { value: 7.875, min: 3,   max: 18,   label: 'Safe Move: Enemy Distance Weight', desc: 'How much to value distance from enemies when retreating' },
-            safeAllyProximity_v1:     { value: 1,     min: 1,    max: 15,   label: 'Safe Move: Ally Proximity Bonus', desc: 'Bonus for staying near allies when retreating' },
 
-            towerLowHpPush_v1:       { value: 25,    min: 25,   max: 90,   label: 'Tower Low HP Push', desc: 'Score bonus when enemy tower is nearly destroyed' },
-            towerMidHpPush_v1:       { value: 38.407, min: 10,   max: 55,   label: 'Tower Mid HP Push', desc: 'Score bonus when enemy tower is at half HP' },
+            towerBaseBonus_v1:       { value: 18.223, min: 10,   max: 60,   label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
+            towerDefendBonus_v1:     { value: 40.798, min: 10,   max: 55,   label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
 
-            towerBaseBonus_v1:       { value: 26.446, min: 10,   max: 60,   label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
-            towerClearBonus_v1:      { value: 29.75, min: 20,   max: 80,   label: 'Tower Clear Bonus', desc: 'Score bonus for tower attack when no enemies on ground' },
+            hgSeekPriority_v1:       { value: 8,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'Movement pull toward visible loose hourglasses (reachable since schema 12 — used to be shadowed by the engage branch)' },
+            scannerPriority_v1:      { value: 19.063, min: 5,   max: 35,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
 
-            levelAggressionMod_v1:   { value: 0.007, min: 0.0,  max: 0.15, label: 'Level Aggression Mod', desc: 'Per-level aggression bonus (higher level = more aggressive)' },
-            nearLevelUpBonus_v1:     { value: 3.5,   min: 0,    max: 20,   label: 'Near Level-Up Bonus', desc: 'Score bonus for combat actions when unit is close to leveling up' },
+            antiOscillationPen_v1:   { value: -1.663, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
 
-            hgSeekPriority_v1:       { value: 0,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'How aggressively AI hunts hidden hourglasses (higher = earlier inspect/move to center)' },
+            nexusCapBonus_v1:        { value: 28.938, min: 10,  max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
 
-            antiOscillationPen_v1:   { value: -6.785, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
-
-            recallBonus_v1:          { value: 10.625, min: 0,   max: 25,   probe: 'hourglass', label: 'Recall Bonus', desc: 'Score for using Recall to return to spawn zone' },
-            scannerPriority_v1:      { value: 18.5,  min: 5,    max: 35,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
-
-            nexusCapBonus_v1:        { value: 35.25, min: 10,   max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
-            towerDefendBonus_v1:     { value: 32.923, min: 10,   max: 55,   label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
-
-            earlyExploreBonus_v1:    { value: 17,    min: 0,    max: 25,   label: 'Early Explore Bonus', desc: 'Score for spreading out and exploring in rounds 1-3' },
-
-            healAllyThreshold_v1:    { value: 0.538, min: 0.3,  max: 0.8,  label: 'Heal Ally Threshold', desc: 'HP% below which units prefer self-heal/lifeDrain actions' },
-
-            mpPotionPriority_v1:     { value: 280,   min: 40,   max: 280,  label: 'Mana Potion Priority', desc: 'Base score for using mana potion (scales with spell value unlocked)' },
-
-            jumpHighGroundRanged_v1: { value: 22.55, min: 4,    max: 30,   label: 'Jump: Ranged High Ground', desc: 'Per-level score for ranged units jumping to higher ground' },
-            jumpHighGroundMelee_v1:  { value: 5.55,  min: 1,    max: 15,   label: 'Jump: Melee High Ground', desc: 'Per-level score for melee units jumping to higher ground' },
-            jumpAttackEnable_v1:     { value: 23.625, min: 10,   max: 45,   label: 'Jump: Attack Enable', desc: 'Base score for jump that puts enemy in attack range' },
-            jumpTraversalBonus_v1:   { value: 29.6,  min: 8,    max: 40,   label: 'Jump: Traversal', desc: 'Bonus when jump reaches closer to goal than any walk tile' },
-            jumpStuckCritical_v1:    { value: 30.407, min: 15,   max: 50,   label: 'Jump: Stuck Escape', desc: 'Bonus when jump is the only way to move toward goal' },
-            jumpDownPenalty_v1:      { value: 4.275, min: 2,    max: 15,   label: 'Jump: Downhill Penalty', desc: 'Per-level penalty for jumping to lower ground' },
-            jumpThreatPenalty_v1:    { value: 4.875, min: 3,    max: 20,   label: 'Jump: Threat Penalty', desc: 'Per-threat penalty for jumping into danger zones' },
-
-            reshapeRangedRaise_v1:   { value: 19.663, min: 2,    max: 20,   label: 'Reshape: Ranged Raise Base', desc: 'Base score for ranged units raising their own tile' },
-            reshapePerEnemy_v1:      { value: 1,     min: 1,    max: 12,   label: 'Reshape: Per-Enemy Gain', desc: 'Score per enemy that we gain height advantage over by raising' },
-            reshapeDefensive_v1:     { value: 5.25,  min: 2,    max: 15,   label: 'Reshape: Defensive Raise', desc: 'Score for raising tile defensively when enemies approach' },
-
-            moveHighGroundRanged_v1: { value: 0.903, min: 0.3,  max: 6,    label: 'Move: Ranged Height Pref', desc: 'Per-level score bonus for ranged units moving to higher tiles' },
-            moveHighGroundMelee_v1:  { value: 3.782, min: 0,    max: 5,    label: 'Move: Melee Height Pref', desc: 'Per-level score bonus for melee units moving to higher tiles' },
-            moveRetreatHeight_v1:    { value: 0.788, min: 0.5,  max: 6,    label: 'Move: Retreat Height', desc: 'Per-level score bonus for retreating to higher ground' },
-
-            enemySpawnZonePenalty_v1: { value: 11.875, min: 5,   max: 40,   label: 'Enemy Spawn Zone Penalty', desc: 'Penalty for moving into enemy spawn zone' },
-
-            landToChannelBonus_v1:   { value: 8,     min: 8,    max: 45,   probe: 'nexus', label: 'Land to Channel Bonus', desc: 'Score for landing specifically to channel a nexus' },
-
-            flyEscapeMeleeBonus_v1:  { value: 9.45,  min: 4,    max: 30,   label: 'Fly: Escape Melee Bonus', desc: 'Score for ascending to escape melee threats' },
-            flyRangedHeightBonus_v1: { value: 14,    min: 3,    max: 25,   label: 'Fly: Ranged Height Bonus', desc: 'Score for ranged flyers gaining height advantage' },
+            healAllyThreshold_v1:    { value: 0.757, min: 0.3,  max: 0.8,  noMult: true, label: 'Heal Ally Threshold', desc: 'HP% below which units prefer self-heal/lifeDrain actions' },
         };
 
         let _aiTrainedWeights = null;
@@ -24897,7 +24859,10 @@
 
             if (p === 2 && state.isCampaign && typeof state._challengeAiMult === 'number') {
                 const mult = state._challengeAiMult;
-                if (mult !== 1) {
+                // Thresholds/comparators (heal %, engage advantage) are marked
+                // noMult — scaling them is non-monotonic in difficulty (a
+                // 1.2× "harder" heal threshold just heals at the wrong time).
+                if (mult !== 1 && !(AI_WEIGHT_DEFAULTS[key] && AI_WEIGHT_DEFAULTS[key].noMult)) {
                     val = val * mult;
                 }
             }
@@ -25148,6 +25113,10 @@
                 } else {
 
                     _syncChallengerFromExperiment();
+                    // Persist in-flight progress so a reload resumes the
+                    // experiment mid-batch instead of replaying it from its
+                    // last saved (previously: finished) snapshot.
+                    _saveAbExperiments();
                 }
             }
 
@@ -25163,8 +25132,13 @@
             const maxWR = total > 0 ? exp.maxWins / total : 0.5;
             const minWR = total > 0 ? exp.minWins / total : 0.5;
 
+            // Schema 12: the old 55% "lean" tier is gone. At n=60 the standard
+            // error is ±6.5%, so 55% is inside one sigma of a coin flip — the
+            // lean tier was adopting noise (see gen-100: healPotionHpPct went
+            // SPRT-high in gen 4 and SPRT-low in gen 96; pressRefundValue
+            // random-walked 33→21→51). Adopt only SPRT calls or a decisive
+            // 60%+ full batch; everything else keeps the champion value.
             const DECISIVE_THRESHOLD = 0.60;
-            const STRONG_THRESHOLD = 0.55;
             let adopted = null;
             let newVal = exp.currentVal;
 
@@ -25186,16 +25160,6 @@
                 newVal = exp.lowVal;
                 adopted = 'low';
                 addLog(`🧪 ✓ ${exp.label}: LOW wins ${exp.minWins}-${exp.maxWins} → adopting ${newVal}`);
-            } else if (maxWR >= STRONG_THRESHOLD) {
-
-                newVal = Math.round(((exp.currentVal + exp.highVal) / 2) * 1000) / 1000;
-                adopted = 'lean-high';
-                addLog(`🧪 ~ ${exp.label}: HIGH leans ${exp.maxWins}-${exp.minWins} → nudging to ${newVal}`);
-            } else if (minWR >= STRONG_THRESHOLD) {
-
-                newVal = Math.round(((exp.currentVal + exp.lowVal) / 2) * 1000) / 1000;
-                adopted = 'lean-low';
-                addLog(`🧪 ~ ${exp.label}: LOW leans ${exp.minWins}-${exp.maxWins} → nudging to ${newVal}`);
             } else {
 
                 adopted = 'inconclusive';
@@ -25245,10 +25209,15 @@
             _aiTrainingStats.batchWeightSnapshots = [];
             _aiTrainingStats.generation++;
 
-            _saveAbExperiments();
-
             _abExperiment = null;
             _startNextExperiment();
+
+            // Persist AFTER the next experiment is staged. Saving before
+            // clearing _abExperiment stored the FINISHED experiment as
+            // `current`, so every page reload restored it, played one match,
+            // re-finalized and re-adopted it — the gen 60–64 "Mana Potion
+            // Priority ×5" artifact in the gen-100 export was exactly this.
+            _saveAbExperiments();
 
             saveAIWeights();
         }
@@ -26494,7 +26463,7 @@
             getEffectiveAttackBonus, getHourglassPower, getSpellStatBonus,
             getStatusArmorDelta, getStatusMdefDelta, getStatusAtkDelta, getStatusIntDelta,
             getStatStageCount, applyStatStageBoost,
-            getUnitLevel, getXPProgressPct,
+            getUnitLevel, getXPProgressPct, xpProgressionActive,
 
             canUnitAct, canUnitMove,
             canAffordSpell, getSpellApCost, getSpellCooldownRemaining,

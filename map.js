@@ -1182,6 +1182,7 @@
                             <button class="pm-set-btn${isFs ? ' active' : ''}" id="mmFsBtn" onclick="toggleFullscreen();setTimeout(()=>{const b=document.getElementById('mmFsBtn');if(b)b.textContent=document.fullscreenElement?'Exit Fullscreen':'⛶ Fullscreen';},120);">${isFs ? 'Exit Fullscreen' : '⛶ Fullscreen'}</button>
                         </div>
                     </div>
+                    ${typeof window._buildAiDifficultyHTML === 'function' ? window._buildAiDifficultyHTML('window._openMainMenuSettings();') : ''}
                     ${typeof window._buildControlsSettingsHTML === 'function' ? window._buildControlsSettingsHTML() : ''}
                     <div class="pm-set-group">
                         <div class="pm-set-group-title">Developer</div>

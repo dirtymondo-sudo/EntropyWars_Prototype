@@ -797,6 +797,17 @@
             }
         } catch (e) {}
 
+        // CPU difficulty: on Easy this whole overlay (focus-fire, real-damage
+        // eval, press-turn exploitation, CC valuation, kiting) is bypassed —
+        // the stock AI plays alone, and ai.js adds decision noise on top.
+        // The capability ladder IS the difficulty curve; no stat cheats.
+        try {
+            if (typeof window._ewGetAiDifficulty === 'function'
+                && window._ewGetAiDifficulty() === 'easy') {
+                return _baseAiTakeTurn(unit);
+            }
+        } catch (e) {}
+
         // One-shot bail-out: a focus action just got rejected for this unit, so
         // hand this turn to the stock AI (whose leapStrike scorer height-checks
         // and won't re-pick it). Consume the flag immediately so it never sticks.

@@ -4,6 +4,61 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## AI SCHEMA 12: weight prune + intent layer + CPU difficulty (2026-07-16, LATEST) — ai.js, ainew.js, battle.js, ui.js, map.js, index.html
+
+Audit of the gen-100 training export (5652 matches, champion WR 49% = no
+measurable gain) found most of the 45-weight table untrainable, so the AI got
+restructured rather than re-tuned:
+
+- **Weight table pruned 45 → 15** (`AI_WEIGHT_DEFAULTS`, schema 12). Deleted
+  outright: the 7 `jump*` weights + `enemySpawnZonePenalty` — referenced by NO
+  code anywhere (phantoms from a removed jump-action system). Frozen as
+  constants in ai.js `AI_TUNE` (hand-tunable design knobs, trained values):
+  everything pinned at a range edge or flat across every experiment
+  (mpPotionPriority, towerLow/Mid/Clear push, marked/hourglass target bonuses,
+  whiffRiskPenalty, reshape*/move-height/fly* family, recall, earlyExplore,
+  safeAllyProximity, hgCarrierFleeAdv, level mods). Trainable keys that remain
+  all have a live code path and room to move; `engageAdvantage` range widened
+  to [-1.0, 0.3] (gen-100 slammed the old floor twice), `comboSynergyBonus`
+  max 25→40 (kept leaning on the ceiling), `hgSeekPriority` default 0→8.
+- **Dead code fixed**: `nearLevelUpBonus`/`levelAggressionMod` gated on
+  `unit.level`/`g.xpForLevel` which never existed — never fired once. Now use
+  `getUnitLevel`/`getXPProgressPct`/`xpProgressionActive` (exported), apply in
+  progression modes only. Also `c.type === 'tower_attack'` in the final
+  chooser (real type `attack_tower`) — the "winning → press tower" bonus
+  never fired; fixed.
+- **pickMoveGoal is now an intent layer** (the XCOM shape): every applicable
+  goal (ctf/hotspot/domination/nexus/hg/tower/defend/retreat/engage/explore)
+  is pushed as a scored candidate and argmax wins — previously a first-match-
+  wins if/return ladder where branch ORDER decided and several weights were
+  unreachable. Two deliberate behavior changes: Domination zones stay a
+  candidate mid-fight (−15 when enemies visible) instead of being abandoned
+  the moment a fight starts; TDM hunt scores 16 (below retreat 20) at combat
+  disadvantage so outnumbered units stop feeding kills. Chosen intent is
+  stamped on `unit._aiLastIntent` for debugging.
+- **CPU difficulty** (`window._ewSetAiDifficulty('easy'|'normal'|'hard')`,
+  persisted `ew-ai-difficulty-v1`, UI in pause-menu Controls tab + main-menu
+  Settings): capability ladder, zero stat cheats. Easy = stock ai.js only
+  (ainew focus-fire/press/CC overlay bypassed), no combos, no press-refund
+  scoring, softmax-samples among top-3 candidates. Normal = unchanged trained
+  AI. Hard = objective persona — `_OBJECTIVE_INTENTS` movement goals ×1.3 so
+  it presses towers/zones/hourglasses/flags instead of kill-trading (the
+  gen-100 self-play optimum is kill-trading; Hard deliberately overrides it
+  for pressure). AI-vs-AI harnesses (devAutoSim) always run at normal so
+  training/strength-test numbers stay comparable.
+- **Trainer statistics fixed**: the 55%-WR "lean" adoption tier is gone (at
+  n=60 that's inside one sigma of a coin flip — it random-walked the champion;
+  healPotionHpPct went SPRT-high gen 4 and SPRT-low gen 96). Only SPRT calls
+  or ≥60% full-batch adopt now. Persistence bug fixed: `_finalizeExperiment`
+  saved the finished experiment as `current`, so every reload replayed and
+  re-adopted it (the gen 60-64 "Mana Potion ×5" ghost generations); saves now
+  happen after the next experiment is staged + progress persists per match.
+  Campaign `_challengeAiMult` no longer scales `noMult` threshold weights
+  (heal %/engage advantage — scaling those is non-monotonic in difficulty).
+- Old `ai-weights-v11` localStorage is orphaned by the schema bump (defaults
+  ARE the gen-100 champion, so nothing is lost). Weight import skips unknown
+  keys, so old export JSONs still load partially.
+
 ## FLYER MOVEMENT WYSIWYG: takeoff folded into doMove + grounded-flyer jumps (2026-07-16, LATEST) — battle.js, hud.js, ui.js, online.js, index.html
 Token `20260716h`. User bug: flyer move preview showed a destination, the click
 took off (burning 1 AP) and then the move failed / landed somewhere else.
