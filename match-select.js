@@ -367,7 +367,13 @@ function ModeCard({ m, selected, onClick }) {
       h('div', { style: {
         fontFamily: '"Cinzel", serif',
         fontSize: 18, color: EW.ink, lineHeight: 1, letterSpacing: '0.02em',
-      }}, m.label),
+      }}, m.label,
+        m.tag && h('span', { style: {
+          fontFamily: '"DotGothic16", monospace', fontSize: 9, letterSpacing: '0.1em',
+          color: EW.time, border: '1px solid ' + EW.time + '66',
+          padding: '1px 5px', marginLeft: 8, verticalAlign: 'middle',
+        }}, m.tag)
+      ),
       h('div', { style: {
         fontFamily: '"DotGothic16", monospace', fontSize: 10, letterSpacing: '0.06em',
         color: EW.inkMute, lineHeight: 1.4, marginTop: 5,

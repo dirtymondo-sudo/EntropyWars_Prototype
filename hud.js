@@ -507,6 +507,19 @@ function _getModeInfo(st) {
 function _scoreboardTurnData(st) {
   const units = (st.units || []).filter(u => !u.dead);
   const activeId = st._blitzActiveUnitId;
+  /* SIMUL mode: units idle at 0 AP between orders, so the blitz "finished"
+     dimming would grey the whole roster. Nobody is ever spent (any unit can
+     be ordered every turn) — rank the flanks by SPD instead, which IS the
+     resolution order, so the display doubles as a who-acts-first chart. */
+  const simul = typeof window._isSimulMode === 'function' && window._isSimulMode();
+  if (simul) {
+    return units.map(u => ({
+      id: u.id, unit: u,
+      active: u.id === activeId,
+      finished: false,
+      sortKey: u.id === activeId ? -1 : (1000 - (u.spd || 0)),
+    }));
+  }
   const G = window.GAME;
   const orderIds = (G && G.blitzTurnOrderIds) ? G.blitzTurnOrderIds : null;
   const idx = {};
@@ -2163,7 +2176,9 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
       },
         h('span', { className: 'hrlg-crown-cap' },
           h('span', { className: 'hrlg-crown-arrow' }, '■'),
-          h('span', { className: 'hrlg-crown-text' }, 'END TURN'),
+          h('span', { className: 'hrlg-crown-text' },
+            (typeof window._isSimulMode === 'function' && window._isSimulMode()
+              && window.GAME?.state?._simulPhase === 'plan') ? 'COMMIT ORDER' : 'END TURN'),
           inputDev === 'pad' && window.EWPad ? h('span', {
             className: 'ew-padbtn ew-padbtn-face ew-padbtn-inline',
           }, _hintKey('endTurn', '')) : null,

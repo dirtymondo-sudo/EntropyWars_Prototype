@@ -6707,6 +6707,12 @@
         }
 
         function doEntropyStrike(unit) {
+            /* SIMUL plan phase: queue the strike instead of executing. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving
+                && typeof SimulEngine !== 'undefined') {
+                return SimulEngine.queueStep(unit, { type: 'entropyStrike' });
+            }
             if (!canUseEntropyStrike(unit)) {
                 if (unit && !isEntropyGaugeFull(unit.player)) addLog('⚛ The Entropy Gauge is not full yet.');
                 return false;
@@ -15970,6 +15976,13 @@
         }
 
         function doTrade(unit, x, y, z) {
+            /* SIMUL: trading executes instantly — not plannable yet. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                addLog('🤝 Trading is not available in Simul mode (yet).');
+                playErrorSfx();
+                return;
+            }
             if (!canUnitAct(unit)) {
                 addLog('That unit already acted this round.');
                 return 0;
@@ -17930,8 +17943,13 @@
             // two mistakes → no more presses. (SMT-honest: you don't get to
             // fumble a spell and then farm free actions off weaknesses.)
             const penalties = unit._pressPenaltiesThisTurn || 0;
-            const capRoom = Math.max(0, PRESS_MAX_BONUS_AP - gained - penalties);
-            const capRoomIfPerfect = Math.max(0, PRESS_MAX_BONUS_AP - gained);
+            /* SIMUL MODE: an AP refund after a committed order is meaningless
+               (there is no further input this activation) — cap the refund at
+               0 so EVERY weak/crit press vents through the entropy branch
+               below instead. Hitting weaknesses still pays, in gauge. */
+            const _simulNoPress = typeof window._isSimulMode === 'function' && window._isSimulMode();
+            const capRoom = _simulNoPress ? 0 : Math.max(0, PRESS_MAX_BONUS_AP - gained - penalties);
+            const capRoomIfPerfect = _simulNoPress ? 0 : Math.max(0, PRESS_MAX_BONUS_AP - gained);
             const apRoom = Math.max(0, getUnitMaxAP(unit) - (unit.ap || 0));
             const refund = Math.min(want, capRoom, apRoom);
             if (refund > 0) {
@@ -21966,6 +21984,13 @@
             state.matchScores = { 1: 0, 2: 0 };
             state._arenaNexusControl = { 1: 0, 2: 0 };
             state.entropyGauge = { 1: 0, 2: 0 };
+            // Simul mode: a stale plan/resolve phase from an aborted match
+            // would make interceptAdvance swallow the new match's boot.
+            state._simulPhase = null;
+            state._simulResolving = false;
+            state._simulPlan = null;
+            state._simulPlans = null;
+            state._simulAiLastUnit = null;
             state._arenaBountyPts = { 1: 0, 2: 0 };
             state._entropyStrikeCount = { 1: 0, 2: 0 };
             state._nexusSurgeAnnounced = false;
@@ -23628,6 +23653,13 @@
             state.matchScores = { 1: 0, 2: 0 };
             state._arenaNexusControl = { 1: 0, 2: 0 };
             state.entropyGauge = { 1: 0, 2: 0 };
+            // Simul mode: never inherit a stale plan/resolve phase from a
+            // previous (possibly aborted) match — it would deadlock the boot.
+            state._simulPhase = null;
+            state._simulResolving = false;
+            state._simulPlan = null;
+            state._simulPlans = null;
+            state._simulAiLastUnit = null;
             state._arenaBountyPts = { 1: 0, 2: 0 };
             state._entropyStrikeCount = { 1: 0, 2: 0 };
             state._nexusSurgeAnnounced = false;
@@ -24168,6 +24200,902 @@
             }, showDuration);
         }
 
+        /* ═══════════════════════════════════════════════════════════════════
+           SIMUL MODE — simultaneous WeGo turns (chess × Pokémon).
+           Each turn BOTH sides secretly commit ONE order — any living unit
+           plus up to 2 AP of steps (moves + one action). The same unit may be
+           ordered again next turn. Orders then resolve together:
+             priority (Guard 3 > stationary support 2 > everything else 0,
+             a plan's priority = its LOWEST step so adding a move forfeits it)
+             → higher SPD → the alternating initiative token.
+           A round is max(teamSize) turns, then the stock end-of-round
+           sequence runs (statuses, hazards, regen, respawns, round++).
+
+           Integration contract with the blitz engine:
+           - Units sit at 0 AP between activations; AP is granted per-plan by
+             _armActivation. getNextBlitzUnit() therefore returns null and the
+             untouched blitz EOR path fires whenever SimulEngine lets
+             maybeAdvanceTurn fall through (_simulPhase === null).
+           - _continueBlitzWithUnit redirects into beginRound() (match start
+             AND every post-EOR restart), so the blitz activation flow never
+             runs while _isSimulMode().
+           - PLANNING uses ghost projection: a planned move ACTUALLY sets
+             unit.x/y/z (no doMove — no traps/overwatch/hex procs), so every
+             existing range oracle and highlight is truthful from the planned
+             position; commit snaps the unit back and the real doMove replays
+             during resolution (triggers fire then, for both sides equally).
+           - RESOLUTION re-validates every step from the unit's REAL position:
+             dead/displaced targets are re-acquired via _getAttackValidTargets
+             / _getSpellValidTargets (nearest, tie → lowest HP) or the action
+             WHIFFS (AP/MP burned — commitment has teeth).
+           - Press-turn AP refunds are disabled (applyPressTurn caps at 0 in
+             simul); every WEAK/CRIT vents into the Entropy Gauge instead.
+           - VS-CPU/local only: _isSimulMode() is false when any controller is
+             'remote', so online matches fall back to standard blitz (like
+             Strike Mode). No new relay/serialize plumbing needed (RULE #2 by
+             exclusion).                                                    */
+        const SimulEngine = (() => {
+
+            function _isSimul() {
+                return typeof window._isSimulMode === 'function' && window._isSimulMode();
+            }
+
+            function _aliveFor(p) {
+                return state.units.filter(u => !u.dead && !u._dying && !u._mdNpc && u.player === p);
+            }
+
+            /* Fresh per-activation budget — mirrors the blitz round reset for
+               ONE unit (simul grants it at plan/resolve time instead). */
+            function _armActivation(u) {
+                u.ap = getUnitMaxAP(u);
+                u.movesThisTurn = 0;
+                u._spellsUsedThisTurn = null;
+                u._reshapeThisTurn = 0;
+                u._buildCharges = 0;
+                u._altitudeChangesThisTurn = 0;
+                u._jumpedThisTurn = false;
+                u._pressGainedThisTurn = 0;
+                u._pressPenaltiesThisTurn = 0;
+            }
+
+            function _disarmUnit(u) {
+                u.ap = 0;
+                u.movesThisTurn = 0;
+                u._spellsUsedThisTurn = null;
+                u._jumpedThisTurn = false;
+            }
+
+            /* ── Phase pill (self-contained DOM, shot-clock-pill pattern) ── */
+            function _updatePill(text) {
+                let el = document.getElementById('simulPhasePill');
+                if (!_isSimul() || state.phase !== 'battle' || state.winner) {
+                    if (el) el.style.display = 'none';
+                    return;
+                }
+                if (!el) {
+                    el = document.createElement('div');
+                    el.id = 'simulPhasePill';
+                    el.style.cssText = 'position:fixed;top:84px;left:50%;transform:translateX(-50%);'
+                        + 'z-index:1200;pointer-events:none;background:rgba(10,6,18,0.72);'
+                        + 'border:1px solid rgba(190,150,255,0.55);color:#e8ddff;'
+                        + 'font-family:"Cinzel",serif;font-size:13px;letter-spacing:0.12em;'
+                        + 'padding:5px 16px;text-shadow:0 0 8px rgba(190,150,255,0.6);white-space:nowrap;';
+                    document.body.appendChild(el);
+                    /* Janitor: the pill must never survive into menus/other modes. */
+                    window.setInterval(() => {
+                        const p = document.getElementById('simulPhasePill');
+                        if (p && p.style.display !== 'none'
+                            && (!_isSimul() || state.phase !== 'battle' || state.winner)) {
+                            p.style.display = 'none';
+                        }
+                    }, 1500);
+                }
+                el.style.display = '';
+                if (text) { el.innerHTML = text; return; }
+                if (state._simulPhase === 'plan') {
+                    el.innerHTML = `♟️ PLAN — TURN ${state._simulTurn}/${state._simulTurnsTotal} · order ANY unit (2 AP) · END TURN commits`;
+                } else {
+                    el.innerHTML = '⚔ RESOLVING ORDERS…';
+                }
+            }
+            function _hidePill() {
+                const el = document.getElementById('simulPhasePill');
+                if (el) el.style.display = 'none';
+            }
+
+            /* ── Round / turn lifecycle ─────────────────────────────────── */
+
+            function beginRound() {
+                if (state.winner || state.phase !== 'battle') return;
+                hideTurnBanner();
+                hidePlayerTurnAnnounce();
+                for (const u of state.units) { if (!u.dead) u.ap = 0; }
+                state._simulTurnsTotal = Math.max(1, _aliveFor(1).length, _aliveFor(2).length);
+                state._simulTurn = 1;
+                beginTurnPlanning();
+            }
+
+            function beginTurnPlanning() {
+                if (state.winner || state.phase !== 'battle') return;
+                state._simulPhase = 'plan';
+                state._simulResolving = false;
+                state._simulPlan = null;
+                state._simulPlans = null;
+                state._blitzActiveUnitId = null;
+                state.activePlayer = 1;
+                state.selectedUnitId = null;
+                state.focusedUnitId = null;
+                state.hoverUnitId = null;
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                state.aiThinking = false;
+                state._fogCameraAllowed = false;
+                if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                clearSpellRangePreview();
+                clearAttackRangePreview();
+                /* Initiative token: alternates every simul turn, offset by round
+                   parity so neither side owns "turn 1" of every round. Breaks
+                   priority+speed ties deterministically. */
+                state._simulInitiative = ((state.round + state._simulTurn) % 2 === 0) ? 1 : 2;
+                addLog(`♟️ Turn ${state._simulTurn}/${state._simulTurnsTotal} — both sides plan in secret. Initiative: P${state._simulInitiative}.`);
+                _updatePill();
+                scheduleBoardRender();
+
+                /* No human in seat 1 (dev auto-sim / AI training)? Self-play:
+                   plan seat 1 with the same planner the CPU uses. */
+                const humanSeat = state.controllers?.[1] === CTRL.LOCAL && !state.devAutoSim;
+                if (!humanSeat) {
+                    window.setTimeout(() => {
+                        if (state.winner || state._simulPhase !== 'plan' || state._simulResolving) return;
+                        state._simulResolving = true;
+                        state._simulPlans = { 1: _buildAiPlanFor(1) };
+                        _commitAndResolve();
+                    }, state.devAutoSim ? 40 : 350);
+                }
+            }
+
+            /* ── Local planning (ghost projection) ──────────────────────── */
+
+            function pickPlanningUnit(unit) {
+                if (!_isSimul() || state._simulPhase !== 'plan' || state._simulResolving) return false;
+                if (!unit || unit.dead || unit._dying || unit.player !== 1) return false;
+                if (state._simulPlan && state._simulPlan.unitId === unit.id) return true;
+                if (state._simulPlan) {
+                    addLog('♟️ Order redrawn — previous plan cancelled.');
+                    _rollbackLocalPlan();
+                }
+                state._simulPlan = {
+                    unitId: unit.id,
+                    steps: [],
+                    origin: { x: unit.x, y: unit.y, z: unit.z },
+                };
+                state._blitzActiveUnitId = unit.id;
+                state.activePlayer = 1;
+                _armActivation(unit);
+                _updatePill();
+                return true;
+            }
+
+            function _rollbackLocalPlan() {
+                const plan = state._simulPlan;
+                if (!plan) return;
+                const u = state.units.find(x => x.id === plan.unitId);
+                if (u) {
+                    if (plan.origin) { u.x = plan.origin.x; u.y = plan.origin.y; u.z = plan.origin.z; }
+                    _disarmUnit(u);
+                }
+                state._simulPlan = null;
+                state._blitzActiveUnitId = null;
+                scheduleBoardRender();
+            }
+
+            /* Entry for every intercepted verb during the plan phase. Returns a
+               small ms delay on success (the do* contract) or 0 on rejection. */
+            function queueStep(unit, step) {
+                if (!_isSimul() || state._simulPhase !== 'plan' || state._simulResolving) return 0;
+                if (!unit || unit.dead || unit._dying) return 0;
+                if (unit.player !== 1) return 0;
+                if (!state._simulPlan || state._simulPlan.unitId !== unit.id) {
+                    if (!pickPlanningUnit(unit)) return 0;
+                }
+                const plan = state._simulPlan;
+                let ok = 0;
+                switch (step.type) {
+                    case 'move': ok = _queueMove(unit, plan, step); break;
+                    case 'jump': ok = _queueJump(unit, plan, step); break;
+                    case 'attack': ok = _queueAttack(unit, plan, step); break;
+                    case 'spell': ok = _queueSpell(unit, plan, step); break;
+                    case 'item': ok = _queueItem(unit, plan, step); break;
+                    case 'guard': ok = _queueGuard(unit, plan); break;
+                    case 'build': ok = _queueBuild(unit, plan, step); break;
+                    case 'entropyStrike': ok = _queueEntropy(unit, plan); break;
+                }
+                if (ok) {
+                    state.pendingTarget = null;
+                    /* Nothing actually executed — never leave the click path's
+                       animation latch armed (its 8s watchdog would freeze the
+                       planning UI). */
+                    state._actionExecuting = false;
+                    if (typeof markDirty === 'function') { markDirty('board', 'hud', 'selectedUnit'); }
+                    if (typeof renderIfDirty === 'function') renderIfDirty();
+                    scheduleBoardRender();
+                    if ((unit.ap || 0) <= 0) _scheduleAutoCommit();
+                }
+                return ok;
+            }
+
+            function _scheduleAutoCommit() {
+                window.setTimeout(() => {
+                    if (state._simulPhase === 'plan' && !state._simulResolving && state._simulPlan) {
+                        commitLocalPlan();
+                    }
+                }, 500);
+            }
+
+            function _queueMove(unit, plan, step) {
+                if (!canUnitMove(unit)) {
+                    addLog((unit.movesThisTurn || 0) >= UNIT_MAX_MOVES
+                        ? 'That unit already used all its planned moves.' : 'No AP left to plan a move.');
+                    return 0;
+                }
+                const tiles = getMoveTiles(unit);
+                const matches = tiles.filter(t => t.x === step.x && t.y === step.y);
+                if (!matches.length) { addLog('Invalid move.'); return 0; }
+                let dest = (step.z != null) ? matches.find(t => (t.z ?? 0) === step.z) : null;
+                if (!dest) {
+                    const zRef = (step.z != null) ? step.z : (unit.z ?? 0);
+                    matches.sort((a, b) => Math.abs((a.z ?? 0) - zRef) - Math.abs((b.z ?? 0) - zRef));
+                    dest = matches[0];
+                }
+                plan.steps.push({ type: 'move', x: dest.x, y: dest.y, z: dest.z });
+                /* Ghost projection: stand the unit at the planned tile so every
+                   subsequent range check/highlight is computed from there. No
+                   doMove — traps/overwatch/hexes must not fire off a plan. */
+                unit.x = dest.x; unit.y = dest.y;
+                unit.z = (dest.z != null) ? dest.z
+                    : ((typeof nearestWalkableZ === 'function') ? nearestWalkableZ(dest.x, dest.y, unit.z ?? 0) : (unit.z ?? 0));
+                unit.movesThisTurn = (unit.movesThisTurn || 0) + 1;
+                spendAP(unit, AP_COST_ACTION);
+                showFloatingTextForUnit(unit, '👣 PLANNED', 'buff', { durationMs: 900 });
+                playSfx('uiCursorMove');
+                state.actionMode = null;
+                return 200;
+            }
+
+            function _queueJump(unit, plan, step) {
+                if (!canUnitAct(unit)) { addLog('No AP left to plan a jump.'); return 0; }
+                if (unit._jumpedThisTurn) { addLog('That unit has already planned a jump this turn.'); return 0; }
+                const jumpTiles = (typeof getJumpTiles === 'function') ? getJumpTiles(unit) : [];
+                let z = step.z;
+                if (z == null) {
+                    const m = jumpTiles.find(t => t.x === step.x && t.y === step.y);
+                    z = m ? m.z : undefined;
+                }
+                if (!jumpTiles.some(t => t.x === step.x && t.y === step.y && (z == null || t.z === z))) {
+                    addLog('Invalid jump target.');
+                    playErrorSfx();
+                    return 0;
+                }
+                plan.steps.push({ type: 'jump', x: step.x, y: step.y, z });
+                /* Ghost projection, same as a planned move. */
+                unit.x = step.x; unit.y = step.y;
+                if (z != null) unit.z = z;
+                unit._jumpedThisTurn = true;
+                spendAP(unit, AP_COST_ACTION);
+                showFloatingTextForUnit(unit, '⬆ PLANNED', 'buff', { durationMs: 900 });
+                playSfx('uiCursorMove');
+                state.actionMode = null;
+                return 200;
+            }
+
+            function _queueAttack(unit, plan, step) {
+                if (!canUnitAct(unit)) { addLog('No AP left to plan an attack.'); return 0; }
+                const valid = _getAttackValidTargets(unit) || [];
+                const hit = valid.find(v => v.x === step.x && v.y === step.y);
+                if (!hit) { addLog('No valid attack target there.'); playErrorSfx(); return 0; }
+                const t = hit.unit || null;
+                plan.steps.push({ type: 'attack', x: step.x, y: step.y, z: step.z, targetId: t ? t.id : null });
+                spendAllAP(unit);
+                showFloatingTextForUnit(unit, '⚔ ORDER LOCKED', 'buff', { durationMs: 1100 });
+                playSfx('uiConfirm');
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+                return 250;
+            }
+
+            function _queueSpell(unit, plan, step) {
+                if (!canUnitAct(unit)) { addLog('No AP left to plan a cast.'); return 0; }
+                const spell = (unit.spells || []).find(s => s.name === state.selectedTool)
+                    || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                if (!spell) { addLog('No spell selected.'); return 0; }
+                if (spell.kind === 'skyThrow' || spell.kind === 'teleport') {
+                    addLog(`🌀 ${spell.name} cannot be planned in Simul mode (yet).`);
+                    playErrorSfx();
+                    return 0;
+                }
+                if (!canAffordSpell(unit, spell)) { addLog(`Cannot plan ${spell.name} right now.`); playErrorSfx(); return 0; }
+                if ((unit.mp || 0) < getSpellMpCostFor(unit, spell)) { addLog('Not enough MP.'); playErrorSfx(); return 0; }
+                let x = step.x, y = step.y, z = step.z;
+                if (isSpellSelfCast(spell)) { x = unit.x; y = unit.y; z = unit.z; }
+                const isLineDir = spell.kind === 'line' || spell.kind === 'linePush';
+                if (!isSpellSelfCast(spell) && !isLineDir) {
+                    const tiles = getSpellRangeTiles(unit, spell) || [];
+                    if (!tiles.some(t => t.x === x && t.y === y)) {
+                        addLog('Spell target is out of range.');
+                        playErrorSfx();
+                        return 0;
+                    }
+                }
+                const tgt = ((z != null) ? unitAt(x, y, z) : null) || unitAt(x, y);
+                const dmg = spellDealsDamage(spell);
+                plan.steps.push({
+                    type: 'spell', tool: spell.name, x, y, z,
+                    targetId: (tgt && tgt.id !== unit.id) ? tgt.id : null, dmg,
+                });
+                _markSpellUsedThisTurn(unit, spell);
+                if (dmg) spendAllAP(unit);
+                else spendAP(unit, (spell.apCost != null) ? spell.apCost : AP_COST_SPELL);
+                showFloatingTextForUnit(unit, `📜 ${spell.name}`, 'buff', { durationMs: 1100 });
+                playSfx('uiConfirm');
+                state.actionMode = null;
+                state.selectedTool = null;
+                state.actionMenuView = 'root';
+                return 250;
+            }
+
+            function _queueItem(unit, plan, step) {
+                if (!canUnitAct(unit)) { addLog('No AP left to plan an item.'); return 0; }
+                const tool = state.selectedTool;
+                if (!tool) return 0;
+                const tgt = ((step.z != null) ? unitAt(step.x, step.y, step.z) : null) || unitAt(step.x, step.y);
+                plan.steps.push({
+                    type: 'item', tool, x: step.x, y: step.y, z: step.z,
+                    targetId: (tgt && tgt.id !== unit.id) ? tgt.id : null,
+                });
+                spendAP(unit, AP_COST_ACTION);
+                showFloatingTextForUnit(unit, `🎒 ${tool}`, 'buff', { durationMs: 1000 });
+                playSfx('uiConfirm');
+                state.actionMode = null;
+                state.selectedTool = null;
+                state.actionMenuView = 'root';
+                return 250;
+            }
+
+            function _queueGuard(unit, plan) {
+                if ((unit.ap || 0) < 2) { addLog('Guard requires a full 2 AP order.'); return 0; }
+                plan.steps.push({ type: 'guard' });
+                spendAllAP(unit);
+                showFloatingTextForUnit(unit, '🛡 ORDER LOCKED', 'buff', { durationMs: 1100 });
+                playSfx('uiConfirm');
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+                return 250;
+            }
+
+            function _queueBuild(unit, plan, step) {
+                if (!canUnitAct(unit)) { addLog('No AP left to plan a build.'); return 0; }
+                plan.steps.push({ type: 'build', x: step.x, y: step.y, tool: step.tool });
+                spendAP(unit, AP_COST_ACTION);
+                showFloatingTextForUnit(unit, '🔨 PLANNED', 'buff', { durationMs: 1000 });
+                playSfx('uiConfirm');
+                state.actionMode = null;
+                return 250;
+            }
+
+            function _queueEntropy(unit, plan) {
+                if (typeof canUseEntropyStrike === 'function' && !canUseEntropyStrike(unit)) return 0;
+                plan.steps.push({ type: 'entropyStrike' });
+                spendAllAP(unit);
+                showFloatingTextForUnit(unit, '⚛ ORDER LOCKED', 'buff', { durationMs: 1100 });
+                playSfx('uiConfirm');
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+                return 250;
+            }
+
+            /* ── Commit ─────────────────────────────────────────────────── */
+
+            function commitLocalPlan() {
+                if (!_isSimul() || state._simulPhase !== 'plan' || state._simulResolving) return;
+                state._simulResolving = true;   // seal against double-commits
+                const plan = state._simulPlan;
+                if (plan) {
+                    const u = state.units.find(x => x.id === plan.unitId);
+                    if (u) {
+                        /* Snap the ghost back — the REAL move replays in resolution. */
+                        if (plan.origin) { u.x = plan.origin.x; u.y = plan.origin.y; u.z = plan.origin.z; }
+                        _disarmUnit(u);
+                    }
+                }
+                state._simulPlans = {
+                    1: (plan && plan.steps.length)
+                        ? { unitId: plan.unitId, steps: plan.steps.slice() }
+                        : { unitId: null, steps: [] },
+                };
+                state._simulPlan = null;
+                state._blitzActiveUnitId = null;
+                state.selectedUnitId = null;
+                state.focusedUnitId = null;
+                state.hoverUnitId = null;
+                state.actionMode = null;
+                state.actionMenuView = 'root';
+                state.selectedTool = null;
+                state.pendingTarget = null;
+                if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+                clearSpellRangePreview();
+                clearAttackRangePreview();
+                scheduleBoardRender();
+                if (state._simulPlans[1].unitId) addLog('📜 Orders sealed. The enemy commits theirs…');
+                else addLog('📜 You hold this turn. The enemy commits their order…');
+                playSfx('uiConfirm');
+                window.setTimeout(() => _commitAndResolve(), 450);
+            }
+
+            function _commitAndResolve() {
+                if (state.winner || state.phase !== 'battle') return;
+                if (!state._simulPlans) state._simulPlans = {};
+                if (!state._simulPlans[1]) state._simulPlans[1] = { unitId: null, steps: [] };
+                if (!state._simulPlans[2]) state._simulPlans[2] = _buildAiPlanFor(2);
+                _resolvePlans();
+            }
+
+            /* ── CPU planner: reuse the strategic AI's candidate scorer with a
+               temp activation, without executing anything ───────────────── */
+
+            function _planCandidateAllowed(c) {
+                if (!c || (c.score || 0) <= 0) return false;
+                if (c.type === 'attack' || c.type === 'move' || c.type === 'guard'
+                    || c.type === 'entropyStrike') return true;
+                if (c.type === 'spell') {
+                    if (!c.spell) return false;
+                    if (c.spell.kind === 'skyThrow' || c.spell.kind === 'teleport') return false;
+                    return !!c.target || isSpellSelfCast(c.spell);
+                }
+                return false;
+            }
+
+            function _candToStep(c) {
+                switch (c.type) {
+                    case 'attack':
+                        return { type: 'attack', x: c.target.x, y: c.target.y, z: c.target.z, targetId: c.target.id ?? null };
+                    case 'spell':
+                        return {
+                            type: 'spell', tool: c.spell.name,
+                            x: c.target ? c.target.x : 0, y: c.target ? c.target.y : 0,
+                            z: c.target ? c.target.z : undefined,
+                            targetId: c.target ? (c.target.id ?? null) : null,
+                            dmg: spellDealsDamage(c.spell),
+                        };
+                    case 'guard': return { type: 'guard' };
+                    case 'entropyStrike': return { type: 'entropyStrike' };
+                    case 'move': return { type: 'move', x: c.x, y: c.y, z: c.z };
+                }
+                return null;
+            }
+
+            function _buildAiPlanFor(player) {
+                let best = null;
+                for (const u of _aliveFor(player)) {
+                    let steps = [], score = 0;
+                    try {
+                        _armActivation(u);
+                        const cands = (typeof window._aiPlanCandidates === 'function'
+                            ? window._aiPlanCandidates(u) : []).filter(_planCandidateAllowed);
+                        const top = cands[0];
+                        if (top) {
+                            if (top.type === 'move') {
+                                steps.push({ type: 'move', x: top.x, y: top.y, z: top.z });
+                                score += (top.score || 0);
+                                /* Ghost the move, plan the follow-up from there. */
+                                const sx = u.x, sy = u.y, sz = u.z;
+                                u.x = top.x; u.y = top.y;
+                                u.z = (top.z != null) ? top.z
+                                    : ((typeof nearestWalkableZ === 'function') ? nearestWalkableZ(top.x, top.y, u.z ?? 0) : (u.z ?? 0));
+                                u.movesThisTurn = 1;
+                                u.ap = Math.max(0, (u.ap || 0) - 1);
+                                const follow = (typeof window._aiPlanCandidates === 'function'
+                                    ? window._aiPlanCandidates(u) : [])
+                                    .filter(c => _planCandidateAllowed(c) && c.type !== 'move');
+                                const f = follow[0];
+                                const fs = f ? _candToStep(f) : null;
+                                if (fs) { steps.push(fs); score += (f.score || 0) * 0.9; }
+                                u.x = sx; u.y = sy; u.z = sz;
+                            } else {
+                                const s0 = _candToStep(top);
+                                if (s0) { steps.push(s0); score += (top.score || 0); }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('[SIMUL] CPU planning failed for', u && u.name, e);
+                    }
+                    _disarmUnit(u);
+                    /* Spread encouragement: mild penalty for re-picking the same
+                       unit turn after turn, tiny jitter so openings vary. */
+                    if (state._simulAiLastUnit && state._simulAiLastUnit[player] === u.id) score *= 0.85;
+                    score += Math.random() * 6;
+                    if (steps.length && (!best || score > best.score)) {
+                        best = { unitId: u.id, steps, score };
+                    }
+                }
+                if (best) {
+                    if (!state._simulAiLastUnit) state._simulAiLastUnit = {};
+                    state._simulAiLastUnit[player] = best.unitId;
+                    return { unitId: best.unitId, steps: best.steps };
+                }
+                return { unitId: null, steps: [] };
+            }
+
+            /* ── Resolution ─────────────────────────────────────────────── */
+
+            function _stepPriority(step) {
+                if (step.type === 'guard') return 3;
+                if (step.type === 'spell' && !step.dmg) return 2;
+                if (step.type === 'item') return 2;
+                return 0;
+            }
+
+            /* A plan's priority is its LOWEST step: pure stationary defensive/
+               support orders jump the queue; mixing in movement (or any
+               damaging action) forfeits priority and speed decides. */
+            function _planPriority(plan) {
+                if (!plan || !plan.steps || !plan.steps.length) return 0;
+                return Math.min(...plan.steps.map(_stepPriority));
+            }
+
+            function _describeEntry(e) {
+                if (!e.plan || !e.plan.unitId || !e.plan.steps.length || !e.unit) return 'holds position';
+                const verbs = e.plan.steps.map(st =>
+                    st.type === 'move' ? '👣 Move'
+                        : st.type === 'jump' ? '⬆ Jump'
+                        : st.type === 'attack' ? '⚔ Attack'
+                        : st.type === 'spell' ? `✨ ${st.tool}`
+                        : st.type === 'guard' ? '🛡 Guard'
+                        : st.type === 'item' ? `🎒 ${st.tool}`
+                        : st.type === 'entropyStrike' ? '⚛ ENTROPY STRIKE'
+                        : st.type === 'build' ? '🔨 Build'
+                        : st.type).join(' → ');
+                return `${unitDisplayName(e.unit)} (SPD ${e.unit.spd || 0}): ${verbs}`;
+            }
+
+            function _resolvePlans() {
+                state._simulPhase = 'resolve';
+                state._simulResolving = true;
+                _updatePill();
+                const entries = [1, 2].map(p => {
+                    const plan = state._simulPlans ? state._simulPlans[p] : null;
+                    const unit = (plan && plan.unitId) ? state.units.find(u => u.id === plan.unitId) : null;
+                    return { player: p, plan, unit };
+                });
+                addLog(`♟️ ORDERS REVEALED — P1: ${_describeEntry(entries[0])} · P2: ${_describeEntry(entries[1])}`);
+                const order = entries.slice().sort((a, b) => {
+                    const pa = _planPriority(a.plan), pb = _planPriority(b.plan);
+                    if (pa !== pb) return pb - pa;
+                    const sa = a.unit ? (a.unit.spd || 0) : -1;
+                    const sb = b.unit ? (b.unit.spd || 0) : -1;
+                    if (sa !== sb) return sb - sa;
+                    return (a.player === state._simulInitiative) ? -1 : 1;
+                });
+                if (order[0].unit && order[1].unit) {
+                    const why = _planPriority(order[0].plan) > _planPriority(order[1].plan) ? 'priority'
+                        : ((order[0].unit.spd || 0) !== (order[1].unit.spd || 0) ? 'speed' : 'initiative');
+                    addLog(`⚡ ${unitDisplayName(order[0].unit)} acts first (${why}).`);
+                }
+                _execPlanEntry(order[0], () => {
+                    if (state.winner) { _finishSimulTurn(); return; }
+                    _execPlanEntry(order[1], () => _finishSimulTurn());
+                });
+            }
+
+            function _execPlanEntry(entry, done) {
+                const plan = entry.plan;
+                if (!plan || !plan.unitId || !plan.steps || !plan.steps.length) { done(); return; }
+                const unit = state.units.find(u => u.id === plan.unitId);
+                if (!unit || unit.dead || unit._dying) {
+                    if (unit) addLog(`💀 ${unitDisplayName(unit)} falls before their order resolves!`);
+                    done();
+                    return;
+                }
+                _armActivation(unit);
+                state.activePlayer = entry.player;
+                state._blitzActiveUnitId = unit.id;
+                state._fogCameraAllowed = false;
+                try { showTurnBanner(entry.player, state.round, false, unit); } catch (e) {}
+                const steps = plan.steps.slice();
+                const runNext = () => {
+                    if (state.winner || !steps.length || unit.dead || unit._dying) {
+                        _endPlanExec(unit, done);
+                        return;
+                    }
+                    const step = steps.shift();
+                    let delay = 0;
+                    try {
+                        delay = _execStep(unit, step) || 0;
+                    } catch (e) {
+                        console.error('[SIMUL] step execution failed', step && step.type, e);
+                    }
+                    window.setTimeout(runNext, Math.max(250, (typeof delay === 'number' ? delay : 0) + 200));
+                };
+                window.setTimeout(runNext, 600);   // let the banner beat land
+            }
+
+            function _endPlanExec(unit, done) {
+                if (unit && !unit.dead) _disarmUnit(unit);
+                state.selectedTool = null;
+                state.actionMode = null;
+                state.pendingTarget = null;
+                state._blitzActiveUnitId = null;
+                _waitForAnimationsThen(done);
+            }
+
+            function _whiff(unit, label) {
+                showFloatingTextForUnit(unit, '💨 WHIFF', 'status', { durationMs: 1300 });
+                addLog(`💨 ${unitDisplayName(unit)}'s planned ${label} finds no target!`);
+            }
+
+            function _spellWhiff(unit, spell) {
+                /* The cast was committed — burn the MP and the action. */
+                unit.mp = Math.max(0, (unit.mp || 0) - getSpellMpCostFor(unit, spell));
+                if (spellDealsDamage(spell)) spendAllAP(unit);
+                else spendAP(unit, (spell.apCost != null) ? spell.apCost : AP_COST_SPELL);
+                _whiff(unit, spell.name);
+            }
+
+            function _execStep(unit, step) {
+                switch (step.type) {
+                    case 'move': return _execMove(unit, step);
+                    case 'jump': return _execJump(unit, step);
+                    case 'attack': return _execAttack(unit, step);
+                    case 'spell': return _execSpell(unit, step);
+                    case 'item': return _execItem(unit, step);
+                    case 'guard':
+                        if ((unit.ap || 0) >= 2 && typeof window.doGuard === 'function') {
+                            window.doGuard(unit);
+                            return 700;
+                        }
+                        return 0;
+                    case 'entropyStrike':
+                        if (typeof canUseEntropyStrike === 'function' && canUseEntropyStrike(unit)) {
+                            return doEntropyStrike(unit) || 0;
+                        }
+                        _whiff(unit, 'Entropy Strike');
+                        return 400;
+                    case 'build':
+                        return doBuildAction(unit, step.x, step.y, step.tool) || 400;
+                }
+                return 0;
+            }
+
+            function _execMove(unit, step) {
+                if (!canUnitMove(unit)) {
+                    addLog(`🚫 ${unitDisplayName(unit)} can no longer move!`);
+                    return 0;
+                }
+                const tiles = getMoveTiles(unit) || [];
+                let dest = tiles.find(t => t.x === step.x && t.y === step.y
+                    && (step.z == null || (t.z ?? 0) === step.z))
+                    || tiles.find(t => t.x === step.x && t.y === step.y);
+                if (!dest) {
+                    /* Displaced or blocked — adapt: closest reachable tile to the
+                       intended destination, but only if it actually gets closer
+                       than standing still. */
+                    const standD = Math.abs(unit.x - step.x) + Math.abs(unit.y - step.y);
+                    let bestT = null, bestD = Infinity;
+                    for (const t of tiles) {
+                        const d = Math.abs(t.x - step.x) + Math.abs(t.y - step.y);
+                        if (d < bestD || (d === bestD && bestT && (t.cost || 0) < (bestT.cost || 0))) {
+                            bestD = d; bestT = t;
+                        }
+                    }
+                    if (bestT && bestD < standD) {
+                        dest = bestT;
+                        addLog(`↪️ ${unitDisplayName(unit)}'s path changed — they adapt.`);
+                    }
+                }
+                if (!dest) {
+                    addLog(`🚫 ${unitDisplayName(unit)} can't reach their planned position.`);
+                    spendAP(unit, AP_COST_ACTION);
+                    return 300;
+                }
+                return doMove(unit, dest.x, dest.y, dest.z) || 0;
+            }
+
+            function _execJump(unit, step) {
+                if (!canUnitAct(unit)) return 0;
+                const jumpTiles = (typeof getJumpTiles === 'function') ? getJumpTiles(unit) : [];
+                let dest = jumpTiles.find(t => t.x === step.x && t.y === step.y
+                    && (step.z == null || t.z === step.z))
+                    || jumpTiles.find(t => t.x === step.x && t.y === step.y);
+                if (!dest) {
+                    /* Displaced — nearest jump tile toward the intent, if it
+                       actually gets closer than standing still. */
+                    const standD = Math.abs(unit.x - step.x) + Math.abs(unit.y - step.y);
+                    let bestT = null, bestD = Infinity;
+                    for (const t of jumpTiles) {
+                        const d = Math.abs(t.x - step.x) + Math.abs(t.y - step.y);
+                        if (d < bestD) { bestD = d; bestT = t; }
+                    }
+                    if (bestT && bestD < standD) {
+                        dest = bestT;
+                        addLog(`↪️ ${unitDisplayName(unit)}'s jump is re-aimed.`);
+                    }
+                }
+                if (!dest) {
+                    addLog(`🚫 ${unitDisplayName(unit)} can't make their planned jump.`);
+                    spendAP(unit, AP_COST_ACTION);
+                    return 300;
+                }
+                const r = doJump(unit, dest.x, dest.y, dest.z);
+                return (typeof r === 'number' && r > 1) ? r : (r ? 700 : 0);
+            }
+
+            function _execAttack(unit, step) {
+                if (!canUnitAct(unit)) return 0;
+                const valid = _getAttackValidTargets(unit) || [];
+                let tile = null;
+                if (step.targetId) {
+                    const t = state.units.find(u2 => u2.id === step.targetId);
+                    if (t && !t.dead && !t._dying) {
+                        const hit = valid.find(v => v.unit && v.unit.id === t.id);
+                        if (hit) tile = { x: hit.x, y: hit.y, z: t.z };
+                    }
+                } else {
+                    const hit = valid.find(v => v.x === step.x && v.y === step.y);
+                    if (hit) tile = { x: step.x, y: step.y, z: step.z };
+                }
+                if (!tile) {
+                    /* Retarget: nearest valid enemy, tie → lowest HP. */
+                    const alt = valid.filter(v => v.unit)
+                        .sort((a, b) => (a.dist - b.dist) || (a.unit.hp - b.unit.hp))[0];
+                    if (alt) {
+                        addLog(`🔄 ${unitDisplayName(unit)}'s target slipped away — they strike ${unitDisplayName(alt.unit)} instead!`);
+                        tile = { x: alt.x, y: alt.y, z: alt.unit.z };
+                    }
+                }
+                if (!tile) {
+                    _whiff(unit, 'attack');
+                    spendAllAP(unit);
+                    return 600;
+                }
+                state.actionMode = 'attack';
+                const ms = doAttack(unit, tile.x, tile.y, tile.z) || 0;
+                state.actionMode = null;
+                if (!ms) {
+                    _whiff(unit, 'attack');
+                    spendAllAP(unit);
+                    return 600;
+                }
+                return ms;
+            }
+
+            function _execSpell(unit, step) {
+                const spell = (unit.spells || []).find(s => s.name === step.tool)
+                    || (unit._raceAbilities || []).find(s => s.name === step.tool);
+                if (!spell) { _whiff(unit, step.tool || 'spell'); return 400; }
+                if (!canAffordSpell(unit, spell) || (unit.mp || 0) < getSpellMpCostFor(unit, spell)) {
+                    addLog(`🚫 ${unitDisplayName(unit)} can no longer cast ${spell.name}!`);
+                    spendAllAP(unit);
+                    return 400;
+                }
+                let cx = step.x, cy = step.y, cz = step.z;
+                const meta = _kindMeta(spell);
+                const isLineDir = spell.kind === 'line' || spell.kind === 'linePush';
+                if (isSpellSelfCast(spell)) {
+                    cx = unit.x; cy = unit.y; cz = unit.z;
+                } else if (isLineDir) {
+                    /* Re-aim the beam from the caster's current position. */
+                    if (step.targetId && typeof window._aiReaimLineSpell === 'function') {
+                        const aim = window._aiReaimLineSpell(unit, spell, step.targetId);
+                        if (aim) { cx = aim.x; cy = aim.y; cz = undefined; }
+                    }
+                } else if (step.targetId && !meta.tileTargeted) {
+                    const t = state.units.find(u2 => u2.id === step.targetId);
+                    const valid = _getSpellValidTargets(unit, spell) || [];
+                    const still = t && !t.dead && !t._dying && valid.some(v => v.unit && v.unit.id === t.id);
+                    if (still) {
+                        cx = t.x; cy = t.y; cz = t.z;
+                    } else {
+                        /* Retarget within the spell's own valid-target drum
+                           (already the right team, fog/LOS-checked, sorted by
+                           distance) — or the cast whiffs. */
+                        const alt = valid.filter(v => v.unit)
+                            .sort((a, b) => (a.dist - b.dist) || (a.unit.hp - b.unit.hp))[0];
+                        if (alt) {
+                            addLog(`🔄 ${unitDisplayName(unit)} redirects ${spell.name} at ${unitDisplayName(alt.unit)}!`);
+                            cx = alt.x; cy = alt.y; cz = alt.unit.z;
+                        } else {
+                            _spellWhiff(unit, spell);
+                            return 600;
+                        }
+                    }
+                } else {
+                    /* Tile-targeted (AoE/zone/artillery): keep the aimed tile if
+                       still castable, else shift to the nearest in-range tile. */
+                    const tiles = getSpellRangeTiles(unit, spell) || [];
+                    if (!tiles.some(t2 => t2.x === cx && t2.y === cy)) {
+                        let bestT = null, bestD = Infinity;
+                        for (const t2 of tiles) {
+                            const d = Math.abs(t2.x - cx) + Math.abs(t2.y - cy);
+                            if (d < bestD) { bestD = d; bestT = t2; }
+                        }
+                        if (bestT) {
+                            addLog(`🎯 ${unitDisplayName(unit)} adjusts their aim.`);
+                            cx = bestT.x; cy = bestT.y; cz = bestT.z;
+                        } else {
+                            _spellWhiff(unit, spell);
+                            return 600;
+                        }
+                    }
+                }
+                state.selectedTool = spell.name;
+                state.actionMode = 'spell';
+                state.pendingTarget = null;
+                const ms = doSpell(unit, cx, cy, cz) || 0;
+                state.selectedTool = null;
+                state.actionMode = null;
+                if (!ms) { _spellWhiff(unit, spell); return 600; }
+                return ms;
+            }
+
+            function _execItem(unit, step) {
+                if (!canUnitAct(unit)) return 0;
+                let ix = step.x, iy = step.y, iz = step.z;
+                if (step.targetId) {
+                    const t = state.units.find(u2 => u2.id === step.targetId);
+                    if (t && !t.dead && !t._dying) { ix = t.x; iy = t.y; iz = t.z; }
+                }
+                state.selectedTool = step.tool;
+                state.actionMode = 'item';
+                doItem(unit, ix, iy, iz);
+                state.selectedTool = null;
+                state.actionMode = null;
+                return 900;
+            }
+
+            function _finishSimulTurn() {
+                state._simulResolving = false;
+                state._blitzActiveUnitId = null;
+                state._simulPlans = null;
+                state._simulPlan = null;
+                for (const u of state.units) { if (!u.dead) u.ap = 0; }
+                if (state.winner) {
+                    state._simulPhase = null;
+                    _hidePill();
+                    return;
+                }
+                state._simulTurn = (state._simulTurn || 1) + 1;
+                if (state._simulTurn > (state._simulTurnsTotal || 1)) {
+                    /* Round over → clear the phase and let maybeAdvanceTurn fall
+                       through to the untouched blitz end-of-round sequence
+                       (every unit is at 0 AP, so getNextBlitzUnit() is null). */
+                    state._simulPhase = null;
+                    _updatePill('⏳ END OF ROUND');
+                    maybeAdvanceTurn();
+                } else {
+                    beginTurnPlanning();
+                }
+            }
+
+            /* Swallow engine advances while SimulEngine drives the turn; fall
+               through (return false) only when the phase is cleared — that path
+               is the blitz EOR sequence or the initial match boot. */
+            function interceptAdvance() {
+                if (!_isSimul() || state.phase !== 'battle') return false;
+                return state._simulPhase === 'plan' || state._simulPhase === 'resolve' || !!state._simulResolving;
+            }
+
+            return {
+                beginRound,
+                beginTurnPlanning,
+                pickPlanningUnit,
+                queueStep,
+                commitLocalPlan,
+                interceptAdvance,
+            };
+        })();
+        window.SimulEngine = SimulEngine;
+
         function maybeAdvanceTurn() {
 
             /* ── STRIKE MODE (real-time): there ARE no turns. The StrikeEngine
@@ -24179,6 +25107,15 @@
                 if (typeof StrikeEngine !== 'undefined' && StrikeEngine.ensureStarted) StrikeEngine.ensureStarted();
                 return;
             }
+
+            /* ── SIMUL MODE: while a plan/resolve turn is in flight the
+               SimulEngine owns the loop — swallow every stray advance
+               (endUnitIfDone, doGuard tails, finishComputerAction…). With the
+               phase cleared, fall through: every unit sits at 0 AP, so
+               getNextBlitzUnit() is null and the stock end-of-round sequence
+               below runs; its restart lands in _continueBlitzWithUnit, which
+               hands the new round back to SimulEngine.beginRound(). ── */
+            if (SimulEngine.interceptAdvance()) return;
 
             const mode = getActiveGameMode();
             if (mode.blitzMode) {
@@ -24539,6 +25476,16 @@
                 if (!nextUnit) return;
                 if (state.winner) return;
 
+                /* SIMUL MODE: both the match-start boot and every post-EOR
+                   restart funnel through here — redirect them into the
+                   simultaneous plan/resolve loop instead of a single-unit
+                   blitz activation. */
+                if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                    && state.phase === 'battle') {
+                    _waitForAnimationsThen(() => SimulEngine.beginRound());
+                    return;
+                }
+
                 _waitForAnimationsThen(() => _continueBlitzWithUnit_impl(nextUnit));
         }
 
@@ -24819,6 +25766,10 @@
             /* Strike Mode real-time: bots are driven by StrikeEngine every
                frame — the turn-based AI must never fire. */
             if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return;
+            /* Simul mode: the CPU never takes a blitz activation — its side is
+               planned by SimulEngine._buildAiPlanFor and executed by the
+               resolution pass. aiTakeTurn must never fire. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()) return;
             if (state.phase !== 'battle' || state.winner || state.aiThinking) return;
             if (_gauntletAwaitingHumanReplace()) return;
 
@@ -26933,6 +27884,22 @@
             if (typeof _mdUnitAuto === 'function' && _mdUnitAuto(unit)) {
                 focusUnitPanel(unitId);
                 return;
+            }
+
+            /* ── SIMUL plan phase: clicking ANY of your living units makes it
+               the planning unit (chess: order whichever piece you like).
+               Switching units redraws the previous plan; enemies stay
+               inspect-only. During resolution, clicks inspect as usual. ── */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                if (unit.player === 1 && state.controllers?.[1] === CTRL.LOCAL) {
+                    SimulEngine.pickPlanningUnit(unit);
+                    /* fall through — the normal selection flow below opens the
+                       action menus for the (now active) planning unit. */
+                } else {
+                    focusUnitPanel(unitId);
+                    return;
+                }
             }
 
             if (state._blitzActiveUnitId && unitId !== state._blitzActiveUnitId) {
@@ -30487,6 +31454,12 @@
         }
 
         function doMove(unit, x, y, z) {
+            /* SIMUL plan phase: record the step (ghost projection) instead of
+               executing — the real move replays during resolution. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                return SimulEngine.queueStep(unit, { type: 'move', x, y, z });
+            }
             if (!canUnitMove(unit)) {
                 if (!state.autoPlayers?.[unit.player]) {
                     addLog((unit.movesThisTurn || 0) >= UNIT_MAX_MOVES ? 'That unit already used all its moves this turn.' : 'That unit already acted this round.', unit.player);
@@ -30902,6 +31875,11 @@
         }
 
         function doJump(unit, x, y, z) {
+            /* SIMUL plan phase: queue the jump (ghost projection, like Move). */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                return SimulEngine.queueStep(unit, { type: 'jump', x, y, z });
+            }
             if (!canUnitAct(unit)) {
                 addLog('That unit already acted this round.');
                 return false;
@@ -31030,6 +32008,11 @@
         }
 
         function doAttack(unit, x, y, z) {
+            /* SIMUL plan phase: queue the order instead of executing. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                return SimulEngine.queueStep(unit, { type: 'attack', x, y, z });
+            }
             if (!canUnitAct(unit)) {
                 addLog('That unit already acted this round.');
                 return 0;
@@ -31729,6 +32712,13 @@
         }
 
         function doInspect(unit, x, y) {
+            /* SIMUL: inspect executes instantly — not plannable yet. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                addLog('🔍 Inspect is not available in Simul mode (yet).');
+                playErrorSfx();
+                return 0;
+            }
             if (!canUnitAct(unit)) {
                 addLog('That unit already acted this round.');
                 return;
@@ -32444,6 +33434,12 @@
         // The Build verb itself: one dig or one placement at (x,y). Returns a
         // completion delay (ms) on success, 0 on rejection (nothing spent).
         function doBuildAction(unit, x, y, tool) {
+            /* SIMUL plan phase: queue the build instead of executing (the
+               engine re-validates terrain at resolution). */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                return SimulEngine.queueStep(unit, { type: 'build', x, y, tool });
+            }
             tool = tool || state._buildTool || 'dig';
             const coarse = _buildActionProblem(unit);
             if (coarse) {
@@ -32935,6 +33931,13 @@
         }
 
         function doDetonate(unit) {
+            /* SIMUL: detonation is a damaging action — not plannable yet. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                addLog('💥 Detonate is not available in Simul mode (yet).');
+                playErrorSfx();
+                return 0;
+            }
             if (!canUnitAct(unit)) {
                 addLog('That unit already acted this round.');
                 return 0;
@@ -32971,6 +33974,14 @@
         }
 
         function doComboAttack(initiator, partner, targetX, targetY, targetZ) {
+            /* SIMUL: combos span TWO units' budgets — they don't fit the
+               one-unit-per-order planning model yet. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                addLog('🤝 Combo attacks are not available in Simul mode (yet).');
+                playErrorSfx();
+                return 0;
+            }
             if (!initiator || !partner || initiator.dead || partner.dead) return 0;
             if ((initiator.ap || 0) < COMBO_AP_COST_INITIATOR || (partner.ap || 0) < COMBO_AP_COST_PARTNER) {
                 addLog('Combo requires 3 AP total (2 from initiator, 1 from partner).');
@@ -33262,6 +34273,12 @@
         }
 
         function doItem(unit, x, y, z) {
+            /* SIMUL plan phase: queue the item use instead of executing. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                SimulEngine.queueStep(unit, { type: 'item', x, y, z });
+                return;
+            }
             if (!canUnitAct(unit)) {
                 addLog('That unit already acted this round.');
                 return;
@@ -33924,6 +34941,11 @@
         }
 
         function doSpell(unit, x, y, z) {
+            /* SIMUL plan phase: queue the cast instead of executing. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                return SimulEngine.queueStep(unit, { type: 'spell', x, y, z });
+            }
             if (!canUnitAct(unit)) {
                 addLog('That unit already acted this round.');
                 return 0;

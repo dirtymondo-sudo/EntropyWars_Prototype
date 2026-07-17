@@ -251,6 +251,37 @@
                 isRealtime: true,
                 compatibleMaps: [],   // generated below from the MapForge roster
             },
+            /* SIMULTANEOUS turns (WeGo) — chess meets Pokémon. Each "turn" BOTH
+               sides secretly commit one order (ANY living unit + up to 2 AP of
+               moves/actions — the same unit may be ordered again next turn),
+               then the two orders resolve together: higher priority first
+               (Guard/defensive), then higher SPD, initiative token breaks ties.
+               A round is teamSize turns, then the normal end-of-round sequence
+               runs. Displaced/killed targets are re-acquired within the
+               action's range from the unit's REAL position — or the action
+               whiffs. Press-turn refunds are disabled; every WEAK/CRIT vents
+               straight into the Entropy Gauge instead. isSimul drives
+               battle.js's SimulEngine; everything gates on _isSimulMode() so
+               the sequential blitz game stays 100% intact. */
+            simul: {
+                id: 'simul',
+                label: 'Simul',
+                icon: '♟️',
+                desc: 'SIMULTANEOUS turns — both sides secretly order one unit (any unit, 2 AP), then the orders play out together: priority first, then speed. Displaced targets are re-acquired or the action whiffs. Most kills in 12 rounds wins.',
+                roundLimit: 12,
+                timeLimitSec: 0,
+                hasTowers: false,
+                hasNexus: false,
+                hasHourglasses: false,
+                hasFlags: false,
+                respawns: true,
+                winConditions: ['most_kills', 'wipeout'],
+                tiebreaker: 'sudden_death_kill',
+                scoringType: 'kills',
+                suddenDeath: true,
+                isSimul: true,
+                compatibleMaps: [],   // generated below from the MapForge roster
+            },
             ffa: {
                 id: 'ffa',
                 label: 'Free For All',
@@ -441,6 +472,25 @@
             return true;
         }
         window._isStrikeRT = _isStrikeRT;
+
+        /* Simul mode (simultaneous WeGo turns): battle.js's SimulEngine owns
+           the plan→resolve loop, the blitz driver early-returns, and the
+           single-active-unit invariant (_blitzActiveUnitId) is suspended
+           during planning. Everything simultaneous gates on THIS flag so the
+           sequential blitz game stays 100% intact. Like Strike Mode, ONLINE
+           matches fall back to the standard turn-based scheme — the planning/
+           resolution loop has no netcode yet. VS CPU only for now. */
+        function _isSimulMode() {
+            if (typeof activeMultiplayerMode === 'undefined') return false;
+            const m = MULTIPLAYER_MODES[activeMultiplayerMode];
+            if (!m || !m.isSimul) return false;
+            try {
+                const c = state.controllers || {};
+                for (const k in c) { if (c[k] === 'remote') return false; }
+            } catch (e) {}
+            return true;
+        }
+        window._isSimulMode = _isSimulMode;
 
         /* Mystery Dungeon persistent progress (independent of the campaign and
            account wallets — mirrors how the challenge saves keep to themselves). */

@@ -4,7 +4,109 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## Spell shapes / new statuses / gravity fields / fall-damage fix (2026-07-17b, LATEST) — data.js, state.js, battle.js, ui.js, hud.js, ai.js, three-renderer.js
+## SIMUL MODE — simultaneous WeGo turns, EXPERIMENTAL (2026-07-17g, LATEST) — state.js, battle.js, ui.js, hud.js, ai.js, map.js, match-select.js, playtest.js, index.html
+
+New game mode `simul` ("Simul", ♟️, EXPERIMENTAL tag): chess × Pokémon.
+TDM ruleset (most kills in 12 rounds, wipeout, respawns, sudden death), but
+the TURN SYSTEM is replaced: each turn BOTH sides secretly commit one order
+(ANY living unit + up to 2 AP of steps), then the orders resolve together.
+**VS-CPU / local only** — `_isSimulMode()` (state.js, next to `_isStrikeRT`)
+returns false when any controller is `'remote'`, so online silently falls
+back to standard blitz (the Strike Mode precedent). RULE #2 satisfied by
+exclusion; no new relay/serialize plumbing.
+
+### The ruleset
+- A ROUND = `max(aliveP1, aliveP2)` turns (recomputed each round), then the
+  UNTOUCHED blitz end-of-round sequence runs (statuses, hazards, regen,
+  respawns, round++, win checks). Rounds/cooldowns/zodiac all tick normally.
+- Any unit may be ordered every turn (2 AP per activation, damaging action
+  still ends the activation) — sneak one assassin all round, or spread out.
+- Resolution order: **priority → SPD → initiative token**. Priority: Guard 3,
+  stationary non-damaging spell/item 2, everything else 0; a plan's priority
+  is its LOWEST step (adding a move forfeits priority — "priority applies
+  only to stationary defensive orders"). Initiative alternates every turn
+  (`(round + turn) % 2`), shown in the log, breaks exact ties.
+- **Retarget-or-whiff**: at resolution every step re-validates from the
+  unit's REAL position. Dead/displaced targets re-acquire via
+  `_getAttackValidTargets` / `_getSpellValidTargets` (nearest, tie → lowest
+  HP, taunt/fog/LOS-aware); tile-targeted spells shift to the nearest
+  in-range tile; blocked moves adapt to the closest reachable tile toward
+  the intent (only if strictly closer than standing still); line beams
+  re-aim via ai.js `_reaimLineSpell`. Nothing valid → 💨 WHIFF (AP + MP
+  burned — commitment has teeth). Acting unit dead before its slot → whole
+  plan cancelled ("falls before their order resolves").
+- **Press turns are disabled**: `applyPressTurn` caps the refund at 0 in
+  simul, so every WEAK/CRIT vents through the existing entropy-overflow
+  branch (`ENTROPY_PTS.pressOverflowAP`). Weakness-hitting still pays — in
+  gauge. Entropy Strike is plannable (queued, resolves in speed order).
+- Guard+Overwatch is the star interaction: Guard resolves FIRST (priority),
+  so the overwatch shot can interrupt the enemy's move mid-resolution.
+
+### Implementation map (battle.js `SimulEngine`, right above maybeAdvanceTurn)
+- **Integration contract**: units sit at 0 AP between activations (AP granted
+  per-plan by `_armActivation`), so `getNextBlitzUnit()` → null and the stock
+  EOR path fires whenever SimulEngine lets `maybeAdvanceTurn` fall through
+  (`_simulPhase === null`). Three hooks: (1) `maybeAdvanceTurn` top —
+  `SimulEngine.interceptAdvance()` swallows every stray advance while a
+  plan/resolve is in flight; (2) `_continueBlitzWithUnit` — match-start boot
+  AND every post-EOR restart redirect to `SimulEngine.beginRound()`;
+  (3) `maybeTriggerComputerTurn` — early-returns in simul (aiTakeTurn never
+  fires). `startMatch` + the find-next-match reset block clear the `_simul*`
+  state fields (a stale phase would deadlock the next boot).
+- **Planning = ghost projection**: plan-phase interceptors at the head of
+  doMove/doJump/doAttack/doSpell/doItem/doBuildAction/doEntropyStrike route
+  into `SimulEngine.queueStep`. A queued move/jump ACTUALLY sets unit.x/y/z
+  (no doMove → no traps/overwatch/hex procs) so every existing range oracle,
+  highlight and menu is truthful from the planned position; commit snaps the
+  unit back to `plan.origin` and the real verbs replay during resolution
+  (triggers fire then, for both sides equally). `selectUnit` (battle.js) has
+  a plan-phase branch: clicking ANY own living unit makes it the planning
+  unit (previous plan rolled back + "Order redrawn"); enemies stay
+  inspect-only. queueStep clears `state._actionExecuting` (the click path's
+  8s watchdog latch would otherwise freeze the planning UI).
+- **Commit**: ui.js `triggerEndTurn` = COMMIT ORDER (hud.js crown relabels;
+  empty plan = legal pass); auto-commits 500ms after AP hits 0 (damaging
+  action / 2 moves / guard). `doSkipTurn` also commits. Blocked in plan
+  phase (with "(yet)" messages): combo, trade, inspect, detonate, recall,
+  ward, flair, skyThrow + teleport kinds (two-phase click flows don't queue).
+- **CPU planner**: ai.js exports `window._aiPlanCandidates(unit)` (resets the
+  per-turn module state, runs buildVision+gatherCandidates, sorts by score —
+  executes NOTHING) + `window._aiReaimLineSpell`. `_buildAiPlanFor(player)`
+  arms each unit temporarily, takes the top candidate (move → ghosts the
+  move and plans a follow-up at ×0.9), picks the best unit (0.85 repeat
+  penalty + small jitter), returns `{unitId, steps}`. Self-play: if seat 1
+  isn't a local human (devAutoSim), it's planned the same way — AI-vs-AI
+  simul works out of the box.
+- **Resolution**: `_resolvePlans` reveals both orders in the log ("ORDERS
+  REVEALED", then "X acts first (priority/speed/initiative)"), then executes
+  plan A fully (showTurnBanner beat, steps chained on returned delays,
+  `_waitForAnimationsThen` between plans), then plan B with re-validation.
+  `_finishSimulTurn` → next turn or phase=null + maybeAdvanceTurn (=EOR).
+- **HUD**: `#simulPhasePill` (fixed top-center DOM pill w/ janitor interval)
+  shows PLAN turn x/n / RESOLVING; scoreboard turn chips rank by SPD in
+  simul (= resolution order) instead of blitz finished-dimming
+  (`_scoreboardTurnData` branch).
+- Registry: state.js MULTIPLAYER_MODES.simul (`isSimul: true`), map.js
+  MS_GAME_MODES row, match-select.js ModeCard now renders `tag` badges
+  (BETA/NEW/EXPERIMENTAL — previously legacy-menu-only), playtest.js
+  MODE_LABELS.simul.
+
+### Known v1 limits / deliberate scope cuts
+- Fog scouting leak: planning a ghost move computes vision from the ghost
+  tile — you can peek fog then redraw the order. VS-CPU only, acceptable.
+- The orders-revealed log + turn banner show the CPU's unit even if fogged
+  (the Pokémon reveal moment — design choice).
+- Item plans are shallow-validated at queue time (menus already gate
+  usability); deep validation happens at resolution (failure just logs).
+- WASD 2-tile move funnels through clickTile→doMove → queues fine, but the
+  pre-commit WASD preview visuals weren't tuned for plan phase.
+- No per-spell `priority` field yet (data.js) — priority is kind-derived
+  (guard/support). Adding `spell.priority` later: fold into `_stepPriority`.
+- Online simul needs: plan submission relay (both clients → host), host
+  resolution, guest mirror of the reveal/pill — the SimulEngine state is
+  already id/coords-only plain data, so it serializes when that day comes.
+
+## Spell shapes / new statuses / gravity fields / fall-damage fix (2026-07-17b) — data.js, state.js, battle.js, ui.js, hud.js, ai.js, three-renderer.js
 
 - **New AoE shapes** (params on existing kinds — NO new kind, so
   SPELL_KIND_META/spellTileTeam/online needed nothing):

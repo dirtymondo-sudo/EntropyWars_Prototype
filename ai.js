@@ -5320,5 +5320,37 @@
         return getSquareArea(cx, cy, r);
     }
 
+    /* ── SIMUL MODE planner exports (battle.js SimulEngine) ──────────────
+       Simul mode needs the AI's PLANNING half without its EXECUTION half:
+       score one unit's candidate actions from the current board without
+       touching state, so both sides' orders can be committed blind and then
+       resolved together. gatherCandidates is already pure — this wrapper
+       just resets the per-turn module state that aiTakeTurn normally resets
+       on its first loop (failed-action memory, skip flags, action log) so a
+       planning pass never inherits stale bookkeeping from a previous unit. */
+    window._aiPlanCandidates = function (unit) {
+        if (!unit || unit.dead) return [];
+        _failedSpells = new Set();
+        _failedCombos = new Set();
+        _skipAttack = false;
+        _skipTowerAttack = false;
+        _skipMove = false;
+        _failedNexus = false;
+        _aiLastRecallFailed = false;
+        _failedItems = new Set();
+        _turnActionLog = [];
+        try {
+            const vision = buildVision(unit);
+            const cands = gatherCandidates(unit, vision) || [];
+            return cands.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
+        } catch (e) {
+            console.warn('[AI] _aiPlanCandidates failed:', e);
+            return [];
+        }
+    };
+    /* Line beams re-aim from the caster's current position at cast time —
+       SimulEngine reuses this for displaced casters/targets at resolution. */
+    window._aiReaimLineSpell = _reaimLineSpell;
+
     console.log('[AI] Entropy Wars strategic AI v3 loaded (action memory + context gates + centipawn normalization).');
 })();

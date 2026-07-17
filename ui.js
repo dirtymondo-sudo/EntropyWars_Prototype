@@ -4655,6 +4655,14 @@
         }
 
         function doGuard(unit) {
+            /* SIMUL plan phase: Guard becomes a queued PRIORITY order — it
+               resolves before speed-ordered actions (the "protect" of the
+               simultaneous ruleset). */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving && window.SimulEngine) {
+                window.SimulEngine.queueStep(unit, { type: 'guard' });
+                return;
+            }
             if (!unit || unit.dead || (unit.ap || 0) < 2) {
                 addLog('Guard requires 2 AP.');
                 return;
@@ -4691,6 +4699,14 @@
         }
 
         function doRecall(unit) {
+            /* SIMUL: recall teleports immediately — it can't be queued and
+               must not execute during the secret planning phase. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                addLog('🔵 Recall is not available in Simul mode (yet).');
+                playErrorSfx();
+                return;
+            }
             if (!unit || unit.dead) return;
             const apCost = typeof RECALL_AP_COST !== 'undefined' ? RECALL_AP_COST : 2;
             const cdRounds = typeof RECALL_COOLDOWN_ROUNDS !== 'undefined' ? RECALL_COOLDOWN_ROUNDS : 5;
@@ -4777,6 +4793,13 @@
         }
 
         function triggerEndTurn() {
+            /* SIMUL plan phase: END TURN = COMMIT the queued order (an empty
+               plan is a legal pass — sometimes holding is the play). */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving && window.SimulEngine) {
+                window.SimulEngine.commitLocalPlan();
+                return;
+            }
             const unit = getSelectedUnit();
             if (!unit) {
                 addLog('Select a unit first.', typeof getViewerPlayer === 'function' ? getViewerPlayer() : 0);
@@ -4808,6 +4831,13 @@
         }
 
         function doSkipTurn(unit) {
+            /* SIMUL plan phase: "delay" has no meaning in a WeGo turn —
+               treat it as committing the current (possibly empty) order. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving && window.SimulEngine) {
+                window.SimulEngine.commitLocalPlan();
+                return;
+            }
             if (!unit || unit.dead || (unit.ap || 0) <= 0) {
                 addLog('That unit cannot act.');
                 return;
@@ -5227,6 +5257,13 @@
         }
 
         function doFlair(unit, x, y) {
+            /* SIMUL: flairs execute instantly — not plannable yet. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                addLog('🎇 Flairs are not available in Simul mode (yet).');
+                playErrorSfx();
+                return;
+            }
             if (!unit || !canUnitAct(unit)) {
                 addLog('That unit cannot act.');
                 return;
@@ -5298,6 +5335,13 @@
         }
 
         function doWard(unit, x, y) {
+            /* SIMUL: wards execute instantly — not plannable yet. */
+            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
+                && state._simulPhase === 'plan' && !state._simulResolving) {
+                addLog('👁 Wards are not available in Simul mode (yet).');
+                playErrorSfx();
+                return;
+            }
             if (!unit || !canUnitAct(unit)) {
                 addLog('That unit cannot act.');
                 return;

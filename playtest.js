@@ -13,7 +13,8 @@ const fs = require('fs');
 
 const MODE = (process.argv[2] || 'tdm').toLowerCase();
 const MODE_LABELS = { arena: 'arena', tdm: 'death\\s*match', ffa: 'free\\s*for\\s*all',
-  domination: 'domination', hotspot: 'hotspot|restpot', ctf: 'capture\\s*the\\s*flag' };
+  domination: 'domination', hotspot: 'hotspot|restpot', ctf: 'capture\\s*the\\s*flag',
+  simul: 'simul' };
 const MODE_RE = MODE_LABELS[MODE] || MODE_LABELS.tdm;
 const SHOTS = __dirname + '/shots';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
