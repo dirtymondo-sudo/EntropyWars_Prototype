@@ -2704,7 +2704,10 @@ function _hrlgTargetBlades(unit, st, mode) {
     // spell is being aimed (not the caster's types), STAB factored out so
     // "super effective" always means the actual weak/resist matchup.
     let superEff = false, typeAdv = '';
-    if (tUnit && isOffensive && typeof getTypeDamageMultiplier === 'function'
+    // Matchup markers only make sense for casts that actually DEAL damage —
+    // a pure debuff/utility can't be "super effective".
+    if (tUnit && isOffensive && (mode === 'attack' || (spell && spellDealsDamage(spell)))
+        && typeof getTypeDamageMultiplier === 'function'
         && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)) {
       const _spType = spell ? (spell.spellType || null) : null;
       const _stab = (_spType && (unit.types || []).includes(_spType))
@@ -4090,7 +4093,10 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         moveTile: canCast ? null : spMoveTile,
         preview: dmgEstimate ? { type: 'damage', amount: dmgEstimate } : null,
         powerLabel: powerLabel,
-        typeNote: typeof getTypeCombatNote === 'function' ? getTypeCombatNote(actingUnit, targetUnit, sp.spellType) : '',
+        // Matchup note only for damaging casts — a debuff can't be
+        // "super effective" (no damage), so no green ! / ▼ on those rows.
+        typeNote: (spellDealsDamage(sp) && typeof getTypeCombatNote === 'function')
+          ? getTypeCombatNote(actingUnit, targetUnit, sp.spellType) : '',
         available: true,
         spell: sp,
       });

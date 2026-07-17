@@ -33930,7 +33930,10 @@
             // vetoes the press). Spells don't roll crit/evade, so only the type
             // tier matters. Consumed in finishAction, after damage has landed.
             _pressDamageCollector = null;
-            if (_PRESS_SPELL_KINDS.has(spell.kind)) {
+            // Damaging terrain casts (Wall of Fire, floods with dmg…) hit
+            // through applyDamageToUnit like any nuke, so they press too.
+            if (_PRESS_SPELL_KINDS.has(spell.kind)
+                || (spell.kind === 'terrainCreate' && (spell.dmg || 0) > 0)) {
                 _armPressCollector(unit);
             }
 
