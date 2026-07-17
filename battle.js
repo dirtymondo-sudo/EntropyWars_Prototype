@@ -16958,7 +16958,7 @@
                 if (menuView === 'spells') return _promptBarHtml('Select an ability to cast.', 'ESC back');
                 if (menuView === 'items')  return _promptBarHtml('Select an item to use.', 'ESC back');
                 if (menuView === 'pings')  return _promptBarHtml('Select a ping type, then click a tile.', 'ESC back');
-                if (menuView === 'more')   return _promptBarHtml('Select an option.', 'ESC back');
+                if (menuView === 'switch') return _promptBarHtml('Select a reserve to switch in.', 'ESC back');
                 return _promptBarHtml('<strong>' + esc(unitDisplayName(unit)) + '</strong> is up — select an action.', 'SPACE ends turn');
             } catch (err) {
                 return null; // a broken prompt must never take the game down
@@ -31593,7 +31593,7 @@
             state._enemyActionTargetId = null;
             if (!unitFinished(unit) && !unit.dead) {
                 state.actionMode = null;
-                state.actionMenuView = 'more';
+                state.actionMenuView = 'root';
             } else {
                 state.actionMode = null;
                 state.actionMenuView = 'root';
@@ -31912,7 +31912,7 @@
             state._enemyActionTargetId = null;
             if (!unitFinished(unit) && !unit.dead) {
                 state.actionMode = null;
-                state.actionMenuView = 'more';
+                state.actionMenuView = 'root';
             } else {
                 state.actionMode = null;
                 state.actionMenuView = 'root';
@@ -32022,7 +32022,7 @@
             state._enemyActionTargetId = null;
             if (!unitFinished(unit) && !unit.dead) {
                 state.actionMode = null;
-                state.actionMenuView = 'more';
+                state.actionMenuView = 'root';
             } else {
                 state.actionMode = null;
                 state.actionMenuView = 'root';
@@ -32692,7 +32692,7 @@
             state._enemyActionTargetId = null;
             if (!unitFinished(unit) && !unit.dead) {
                 state.actionMode = null;
-                state.actionMenuView = 'more';
+                state.actionMenuView = 'root';
             } else {
                 state.actionMode = null;
                 state.actionMenuView = 'root';

@@ -3742,9 +3742,9 @@
         }
 
         var _lastHoverPanelFP = '';
-        // Portrait art for the INSPECT card — dedicated face art when the race
-        // has it (sprites.js RACE_PORTRAITS), else the unit's map sprite. Same
-        // fallback chain the Horologe's view tab uses (_hrlgPortraitData).
+        // Portrait art for the INFO stat card — dedicated face art when the
+        // race has it (sprites.js RACE_PORTRAITS), else the unit's map sprite.
+        // Same fallback chain the Horologe's view tab uses (_hrlgPortraitData).
         function renderUnitPortrait(unit) {
             let url = typeof getUnitPortraitUrl === 'function' ? getUnitPortraitUrl(unit) : null;
             const isFace = !!url;
@@ -9872,7 +9872,7 @@
                 if (typeof cycleCameraMode === 'function') cycleCameraMode();
                 return;
             }
-            // I toggles the unit INSPECT card — stats + attack range for the
+            // I toggles the unit INFO stat card — stats + attack range for the
             // focused (clicked) unit, falling back to the selected unit.
             if (key === 'i' && !event.ctrlKey && !event.metaKey && !event.altKey) {
                 event.preventDefault();

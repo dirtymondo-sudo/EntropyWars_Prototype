@@ -1419,7 +1419,7 @@ const HRLG_MAP = 'M28,32 L46,22 L72,20 L88,26 L84,34 L70,38 L66,50 L54,58 L46,72
 // The watch itself. `api` is a plain object the parent owns; the hub fills
 // it with imperative hand controls (aim / rest / strike / wind) so blade
 // hover/click handlers can drive the hands without re-rendering the SVG.
-function HorologeHub({ factionKey, api, portraitUrl, unitKey, burning, poisoned }) {
+function HorologeHub({ factionKey, api, portraitUrl, portraitIsFace, portraitTitle, onPortraitClick, unitKey, burning, poisoned }) {
   const minRef = useRef(null), hourRef = useRef(null), secRef = useRef(null);
   const ticksRef = useRef(null), chimeARef = useRef(null), chimeBRef = useRef(null);
   const hitRef = useRef(null);
@@ -1608,10 +1608,23 @@ function HorologeHub({ factionKey, api, portraitUrl, unitKey, burning, poisoned 
       // renders on the local player's turn, so the face on the clock is
       // always YOUR unit — never the enemy's). Status flashes tint the disc:
       // red while burning, purple while poisoned, a white blink on hits.
-      h('g', { clipPath: 'url(#hrlgMapClip)' },
+      // The disc doubles as a BUTTON: clicking it re-centers the camera on
+      // this unit (the same selectUnit pan a scoreboard chip click does).
+      h('g', {
+        clipPath: 'url(#hrlgMapClip)',
+        onClick: onPortraitClick || undefined,
+        style: onPortraitClick ? { cursor: 'pointer' } : undefined,
+      },
+        onPortraitClick && h('title', null, portraitTitle || 'Center the camera on this unit'),
+        // invisible hit target so the disc stays clickable even with no art
+        // (the flash circles below are pointer-events:none)
+        onPortraitClick && h('circle', { cx: 100, cy: 100, r: 56.5, fill: '#000', opacity: 0 }),
         portraitUrl && h('image', {
           href: portraitUrl, x: 44, y: 44, width: 112, height: 112,
-          preserveAspectRatio: 'xMidYMid slice', opacity: 0.94,
+          // dedicated face art fills the disc edge to edge; a map-sprite
+          // fallback fits whole so heads/feet don't get cropped away
+          preserveAspectRatio: portraitIsFace === false ? 'xMidYMid meet' : 'xMidYMid slice',
+          opacity: 0.94,
           style: { imageRendering: 'pixelated' },
         }),
         portraitUrl && h('circle', { cx: 100, cy: 100, r: 56.5, fill: 'url(#hrlgPortraitVig)' }),
@@ -1864,7 +1877,7 @@ function _hrlgStatusChips(unit) {
   return chips;
 }
 
-function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, portraitUrl, unitKey, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
+function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, portraitUrl, portraitIsFace, onPortraitClick, infoOpen, onInfo, unitKey, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
   const listRef = useRef(null);
@@ -2156,7 +2169,13 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
         ),
       ),
       h('div', { className: 'hrlg-hubwrap' },
-        h(HorologeHub, { factionKey: factionKey, api: clockApi, portraitUrl: portraitUrl, unitKey: unitKey, burning: burning, poisoned: poisoned }),
+        h(HorologeHub, {
+          factionKey: factionKey, api: clockApi,
+          portraitUrl: portraitUrl, portraitIsFace: portraitIsFace,
+          portraitTitle: 'Center the camera on ' + unitName,
+          onPortraitClick: onPortraitClick,
+          unitKey: unitKey, burning: burning, poisoned: poisoned,
+        }),
       ),
       /* status / stat-change chips — right under the watch portrait, the
          same read as the unit's nameplate badge row */
@@ -2171,6 +2190,14 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
       h('div', { className: 'hrlg-core' },
         h('span', { className: 'hrlg-roman' }, roman + ' · '),
         h('span', { className: 'hrlg-name' }, unitName),
+        /* ⓘ INFO — the full stat card (ATK/DEF/MDEF/INT + attack reach).
+           Used to be an "Inspect" blade inside the action menu; it's a free
+           look, not an action, so it lives with the portrait now. */
+        onInfo && h('span', {
+          className: 'hrlg-infobtn' + (infoOpen ? ' on' : ''),
+          title: infoOpen ? 'Close the stat card (I)' : ('Info — ' + unitName + '’s full stat card (I)'),
+          onClick: (e) => { e.stopPropagation(); onInfo(); },
+        }, 'ⓘ'),
       ),
       /* identity sub-line — Lv · race · job, in real type, in flow */
       subLine ? h('div', { className: 'hrlg-core-sub' }, subLine) : null,
@@ -2574,22 +2601,6 @@ function _hrlgBuildBlades(unit, st) {
   return blades;
 }
 
-// The More list items keep their existing "emoji label" convention —
-// split the leading glyph off so it lands in the blade's icon slot.
-function _hrlgMoreBlade(item, i, am) {
-  const m = /^(\S+)\s+(.*)$/.exec(item.label || '');
-  return {
-    id: 'more:' + i + ':' + (item.label || ''),
-    icon: m ? m[1] : '·',
-    label: m ? m[2] : (item.label || ''),
-    available: !item.dim,
-    selected: !!item.active,
-    sub: item.dim ? (item.sub || 'Unavailable') : null,
-    hint: !item.dim ? item.sub : null,
-    fire: item.onClick,
-  };
-}
-
 function _hrlgSwitchBlades(unit, st) {
   const reserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player) : [];
   const switchCost = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode()?.switchApCost) || 2;
@@ -2917,130 +2928,6 @@ function _hrlgComboBlades(unit, st) {
   };
 }
 
-function _hrlgMoreBlades(unit, st) {
-  const am = st.actionMode;
-  const moreItems = [];
-
-  if ((unit.ap || 0) >= 2) {
-    // Guard = defensive stance + Overwatch: one reaction shot at the first
-    // enemy that finishes a move inside this unit's attack range (battle.js
-    // checkOverwatchTriggers).
-    moreItems.push({ label: '🛡 Guard 👁 Overwatch', sub: '2 AP', onClick: () => { if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); } });
-  }
-
-  if (typeof _isGauntlet === 'function' && _isGauntlet()) {
-    const reserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player) : [];
-    const switchCost = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode()?.switchApCost) || 2;
-    const canSwitch = reserves.length > 0 && (unit.ap || 0) >= switchCost;
-    moreItems.push({
-      label: '🔄 Switch',
-      sub: reserves.length === 0 ? 'No reserves' : `${switchCost} AP`,
-      dim: !canSwitch,
-      onClick: () => { if (canSwitch && typeof chooseActionMenu === 'function') chooseActionMenu('switch'); },
-    });
-  }
-
-  const apc = typeof getActionPanelCache === 'function' ? getActionPanelCache(unit) : {};
-  if (apc.hasInspect) {
-    moreItems.push({ label: '🔍 Inspect', onClick: () => { if (typeof setActionMode === 'function') setActionMode('inspect'); }, active: am === 'inspect' });
-  }
-  if (apc.hasInspect && (unit.ap || 0) >= 1) {
-    moreItems.push({ label: '🔍 Inspect Here', sub: '1 AP', onClick: () => { if (typeof doInspect === 'function' && typeof getSelectedUnit === 'function') doInspect(getSelectedUnit(), unit.x, unit.y); } });
-  }
-
-  if (apc.canTrade) {
-    moreItems.push({ label: '🔄 Trade', onClick: () => { if (typeof setActionMode === 'function') setActionMode('trade'); }, active: am === 'trade' });
-  }
-
-  if (typeof unitHasWard === 'function' && unitHasWard(unit) && !unit._usedWard) {
-    moreItems.push({ label: '👁 Ward', onClick: () => { if (typeof setActionMode === 'function') setActionMode('ward'); }, active: am === 'ward' });
-  }
-
-  moreItems.push({ label: '📍 Ping', onClick: () => { if (typeof chooseActionMenu === 'function') chooseActionMenu('pings'); } });
-
-  if (typeof canFly === 'function' && canFly(unit)) {
-    if (typeof canChangeAltitude === 'function') {
-      const _groundZ = typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0;
-      const _unitZ = unit.z ?? 0;
-      const _isAirborne = _unitZ > _groundZ;
-      if (_isAirborne) {
-        const canDesc = canChangeAltitude(unit, 'descend');
-        if (canDesc.ok) moreItems.push({ label: '⬇ Land', sub: '1 AP', onClick: () => { if (typeof doAltitudeChange === 'function' && typeof getSelectedUnit === 'function') doAltitudeChange(getSelectedUnit(), 'land'); } });
-      } else {
-        const canAsc = canChangeAltitude(unit, 'ascend');
-        if (canAsc.ok) moreItems.push({ label: '⬆ Take Off', sub: '1 AP', onClick: () => { if (typeof doAltitudeChange === 'function' && typeof getSelectedUnit === 'function') doAltitudeChange(getSelectedUnit(), 'ascend'); } });
-      }
-    }
-  }
-
-  /* ⚒ Build — the universal place/dig verb (lives on the bezel as its own
-     pusher now; listed here too so the More menu stays a complete verb
-     index). Replaces the old Raise/Lower self-tile reshape rows. */
-  if (typeof _buildActionProblem === 'function') {
-    const _bp = _buildActionProblem(unit);
-    moreItems.push({
-      label: '⚒ Build',
-      sub: _bp || '1 AP/block',
-      dim: !!_bp,
-      active: am === 'build',
-      onClick: () => { if (!_bp && typeof setActionMode === 'function') setActionMode('build'); },
-    });
-  }
-
-  if (st.bombs && st.bombs.some(b => b.ownerUnitId === unit.id)) {
-    moreItems.push({ label: '💣 Detonate', onClick: () => { if (typeof doDetonate === 'function' && typeof getSelectedUnit === 'function') doDetonate(getSelectedUnit()); } });
-  }
-
-  if (typeof getNexusAtUnit === 'function') {
-    const nex = getNexusAtUnit(unit);
-    if (nex && (!nex.nexus.owner || nex.nexus.owner !== unit.player) && (unit.ap || 0) >= (typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1)) {
-      moreItems.push({ label: '⬡ Channel', sub: '1 AP', onClick: () => { if (typeof channelNexus === 'function' && typeof getSelectedUnit === 'function') channelNexus(getSelectedUnit()); } });
-    }
-  }
-
-  /* 🛗 Enter Building: standing beside a building rides its lift — ends the
-     turn, unit hides inside and emerges on the roof next turn. */
-  if (typeof getEnterableBuilding === 'function') {
-    const ent = getEnterableBuilding(unit);
-    if (ent) {
-      const enoughAp = (unit.ap || 0) >= (typeof BUILDING_ENTER_AP_COST !== 'undefined' ? BUILDING_ENTER_AP_COST : 1);
-      moreItems.push({
-        label: '🛗 Enter Building',
-        sub: enoughAp ? 'Ends turn' : 'No AP',
-        dim: !enoughAp,
-        onClick: () => {
-          if (!enoughAp) return;
-          if (typeof doEnterBuilding === 'function' && typeof getSelectedUnit === 'function') doEnterBuilding(getSelectedUnit());
-        }
-      });
-    }
-  }
-
-  /* Recall: teleport back to spawn zone */
-  if (typeof RECALL_AP_COST !== 'undefined' && typeof RECALL_COOLDOWN_ROUNDS !== 'undefined') {
-    const spotted = typeof isUnitSeenByAnyEnemy === 'function' && isUnitSeenByAnyEnemy(unit);
-    const canRecall = (unit.ap || 0) >= RECALL_AP_COST && (unit._recallCooldown || 0) <= 0 && !spotted;
-    const cdLeft = unit._recallCooldown || 0;
-    const sub = cdLeft > 0 ? `CD: ${cdLeft}` : (spotted ? 'Spotted' : `${RECALL_AP_COST} AP`);
-    moreItems.push({
-      label: '🔵 Recall',
-      sub,
-      dim: !canRecall,
-      onClick: () => {
-        if (!canRecall) return;
-        if (typeof doRecall === 'function' && typeof getSelectedUnit === 'function') doRecall(getSelectedUnit());
-      }
-    });
-  }
-
-  if (!unit._skippedTurn && !st._skippedUnit && (unit.ap || 0) >= (typeof getUnitMaxAP === 'function' ? getUnitMaxAP(unit) : 2)) {
-    moreItems.push({ label: '⏭ Skip', onClick: () => { if (typeof doSkipTurn === 'function' && typeof getSelectedUnit === 'function') doSkipTurn(getSelectedUnit()); } });
-  }
-
-  const blades = moreItems.map((it, i) => _hrlgMoreBlade(it, i, am));
-  if (!blades.length) blades.push({ id: 'none', icon: '…', label: 'Nothing else here', available: false });
-  return { title: { icon: '…', text: 'More', count: moreItems.length + '' }, blades };
-}
 
 function ActionMenu({ st, hidden }) {
   if (!st || st.phase !== 'battle') return null;
@@ -3218,20 +3105,47 @@ function ActionMenu({ st, hidden }) {
     },
   };
 
-  const moreAction = {
-    id: 'more', label: 'More', icon: '…', cost: null,
-    available: true,
-    selected: menuView === 'more',
+  // 🛡 GUARD — defensive stance + Overwatch (one reaction shot at the first
+  // enemy that stops inside attack range). Promoted from the retired More
+  // menu to a root verb: it's a core "spend the rest of my turn" play.
+  const _guardOk = (unit.ap || 0) >= 2 && typeof doGuard === 'function';
+  const guardAction = {
+    id: 'guard', label: 'Guard', icon: '🛡', cost: 2,
+    available: _guardOk,
+    sub: _guardOk ? null : 'No AP',
   };
 
   // Canonical verb order, top to bottom: Move › Attack › Abilities › Combo ›
-  // Items › More (END TURN docks at the very bottom of the ladder; Build
-  // rides the bezel as its own pusher).
-  const actions = [moveAction, attackAction, abilAction, comboAction, itemsAction, moreAction];
+  // Items › Guard (END TURN docks at the very bottom of the ladder; Build
+  // rides the bezel as its own pusher). The old More drawer is GONE — its
+  // contents live on the tool rows, the root ladder, and the tile/ally
+  // quick menus (click a tile / unit to reach Inspect, Ward, Ping, Trade,
+  // Recall, Enter Building…).
+  const actions = [moveAction, attackAction, abilAction, comboAction, itemsAction, guardAction];
+
+  // ⇄ SWITCH — gauntlet modes only: swap in a benched reserve.
+  if (typeof _isGauntlet === 'function' && _isGauntlet()) {
+    const _swReserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player) : [];
+    const _swCost = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode()?.switchApCost) || 2;
+    const _swOk = _swReserves.length > 0 && (unit.ap || 0) >= _swCost;
+    actions.push({
+      id: 'switch', label: 'Switch', icon: '⇄', cost: _swCost,
+      available: _swOk,
+      selected: menuView === 'switch',
+      sub: _swOk ? null : (_swReserves.length === 0 ? 'No reserves' : 'No AP'),
+    });
+  }
+
+  // ⏭ SKIP — bank this unit for later in the round. Only offered while the
+  // unit hasn't acted yet (full AP), exactly like the old More entry.
+  if (!unit._skippedTurn && !st._skippedUnit && typeof doSkipTurn === 'function'
+      && (unit.ap || 0) >= maxAP) {
+    actions.push({ id: 'skip', label: 'Skip', icon: '⏭', cost: null, available: true });
+  }
 
   // ── special-action pushers: situational one-shots surfaced as extra
-  // stopwatch buttons on the bezel (they also stay listed under More).
-  // Only built when usable right now — presence == opportunity.
+  // stopwatch buttons on the bezel (the tile quick menu mirrors most of
+  // them). Only built when usable right now — presence == opportunity.
   const pushers = [];
   // ⚛ Full Entropy Gauge → the team attack is live on ANY of your units.
   if (typeof window.canUseEntropyStrike === 'function' && window.canUseEntropyStrike(unit)) {
@@ -3319,8 +3233,9 @@ function ActionMenu({ st, hidden }) {
       case 'abil': if (typeof chooseActionMenu === 'function') chooseActionMenu('spells'); break;
       case 'combo': if (typeof setActionMode === 'function') setActionMode('combo'); break;
       case 'items': if (typeof chooseActionMenu === 'function') chooseActionMenu('items'); break;
-      case 'more': if (typeof chooseActionMenu === 'function') chooseActionMenu('more'); break;
-      case 'info': if (typeof toggleUnitInfo === 'function') toggleUnitInfo(); break;
+      case 'guard': if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); break;
+      case 'switch': if (typeof chooseActionMenu === 'function') chooseActionMenu('switch'); break;
+      case 'skip': if (typeof doSkipTurn === 'function' && typeof getSelectedUnit === 'function') doSkipTurn(getSelectedUnit()); break;
     }
   }
 
@@ -3349,13 +3264,8 @@ function ActionMenu({ st, hidden }) {
   // root verbs are short words → the root panel is narrow; the grey-out
   // reason renders UNDER the name (subBelow) instead of as a right-side tag
   const rootBlades = actions.map(a => ({ ...a, subBelow: true }));   // declared order IS the menu order
-  // ⓘ INSPECT — free look at any unit's full stat card (ATK/DEF/MDEF/INT…)
-  // plus its attack reach on the board. Costs nothing, never greys out.
-  rootBlades.push({
-    id: 'info', label: 'Inspect', icon: 'ⓘ', available: true,
-    selected: !!st.showUnitInfo,
-    hint: (window.EWInput && window.EWInput.device === 'pad') ? null : 'I',
-  });
+  // (The old ⓘ Inspect blade is gone — the unit stat card is the INFO
+  // button riding beside the name under the clock now, not an action.)
   rootBlades.push({ id: 'end', label: 'END TURN', icon: '■', available: true, danger: true, hint: _hintKey('endTurn', 'SPACE') });
   const rootPanel = { key: 'root', title: null, blades: rootBlades };
   const _mkPanel = (key, built, extra) => ({
@@ -3438,14 +3348,9 @@ function ActionMenu({ st, hidden }) {
     panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st))); view = 'sub';
   } else if (menuView === 'items') {
     panels.push(_mkPanel('items', _hrlgItemBlades(unit, st))); view = 'sub';
-  } else if (menuView === 'more') {
-    panels.push(_mkPanel('more', _hrlgMoreBlades(unit, st))); view = 'sub';
   } else if (menuView === 'switch') {
-    // reached through More — keep the More panel in the cascade
-    panels.push(_mkPanel('more', _hrlgMoreBlades(unit, st)));
     panels.push(_mkPanel('switch', _hrlgSwitchBlades(unit, st))); view = 'sub';
   } else if (menuView === 'pings') {
-    panels.push(_mkPanel('more', _hrlgMoreBlades(unit, st)));
     panels.push(_mkPanel('pings', _hrlgPingBlades())); view = 'sub';
   } else if (menuView === 'spellOrientation') {
     panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));
@@ -3536,12 +3441,33 @@ function ActionMenu({ st, hidden }) {
     + (_raceLbl && _raceLbl !== unitName ? ' · ' + String(_raceLbl).toUpperCase() : '')
     + (_jobLbl ? ' · ' + String(_jobLbl).toUpperCase() : '');
 
+  // Clock-face art: dedicated face portrait when the race has one, else the
+  // unit's map sprite — the disc must never sit empty (races without a
+  // RACE_PORTRAITS entry used to silently fall back to the etched map,
+  // which read as "my portrait disappeared").
+  let _portUrl = typeof getUnitPortraitUrl === 'function' ? getUnitPortraitUrl(unit) : null;
+  const _portIsFace = !!_portUrl;
+  if (!_portUrl && typeof getBattleMapSpriteUrl === 'function') _portUrl = getBattleMapSpriteUrl(unit);
+  if (!_portUrl && typeof getUnitSprite === 'function') _portUrl = getUnitSprite(unit.cls, unit.player, unit);
+
   return h(HorologeMenu, {
     view: view, panels: panels, fc: fc,
     factionKey: (typeof getUnitFaction === 'function' ? getUnitFaction(unit) : null) || 'space',
     roman: roman, unitName: unitName, unitKey: unit.id,
     subLine: subLine,
-    portraitUrl: typeof getUnitPortraitUrl === 'function' ? getUnitPortraitUrl(unit) : null,
+    portraitUrl: _portUrl,
+    portraitIsFace: _portIsFace,
+    // clicking the clock portrait re-centers the camera on the unit — the
+    // same selectUnit pan a scoreboard chip click performs
+    onPortraitClick: () => { if (typeof selectUnit === 'function') selectUnit(unit.id); },
+    infoOpen: !!st.showUnitInfo && ((st.focusedUnitId || st.selectedUnitId) === unit.id),
+    onInfo: () => {
+      // toggle rules: closed → open on THIS unit; open on this unit →
+      // close; open on some other unit → retarget to this unit.
+      const _wasOpenHere = !!state.showUnitInfo && ((state.focusedUnitId || state.selectedUnitId) === unit.id);
+      if (typeof focusUnitPanel === 'function') focusUnitPanel(unit.id);
+      if (_wasOpenHere || !state.showUnitInfo) { if (typeof toggleUnitInfo === 'function') toggleUnitInfo(); }
+    },
     burning: typeof unitHasStatus === 'function' && unitHasStatus(unit, 'burn'),
     poisoned: typeof unitHasStatus === 'function' && unitHasStatus(unit, 'poison'),
     statusChips: _hrlgStatusChips(unit),
@@ -4975,18 +4901,9 @@ function _hrlgEnemyBlades(actingUnit, st) {
   });
   if (!blades.length) blades.push({ id: 'none', icon: '⚔', label: 'No actions available', available: false });
 
-  // ⓘ INSPECT — the clicked enemy's full stat card (DEF/MDEF/INT…) + its
-  // attack reach, so you can judge physical-vs-magic before committing.
-  blades.push({
-    id: 'einfo', icon: 'ⓘ', label: 'Inspect', available: true,
-    selected: !!st.showUnitInfo,
-    fire: () => {
-      if (typeof focusUnitPanel === 'function') focusUnitPanel(targetUnit.id);
-      if (typeof toggleUnitInfo === 'function') toggleUnitInfo();
-    },
-  });
-
   // The clicked enemy's face rides the view tab — instant "who am I on".
+  // The ⓘ INFO button next to the name opens their full stat card
+  // (DEF/MDEF/INT + attack reach) — judge physical-vs-magic before committing.
   const tabPort = _hrlgPortraitData(targetUnit, actingUnit);
   const title = { node: h(React.Fragment, null,
     tabPort
@@ -4996,10 +4913,28 @@ function _hrlgEnemyBlades(actingUnit, st) {
         })
       : h('span', { className: 'hrlg-view-tab-icon', style: { color: EW.bad } }, '⌖'),
     h('span', { className: 'hrlg-view-tab-text' }, targetName),
+    _hrlgTabInfoBtn(targetUnit, targetName, st),
     h('span', { className: 'hrlg-view-tab-count', style: { color: hpPct <= 30 ? EW.bad : EW.good } }, hpPct + '%'),
     h('span', { className: 'hrlg-view-tab-count' }, dist + 't'),
   ) };
   return { title, blades };
+}
+
+// ⓘ INFO button riding a quick-menu view tab, right after the target's
+// name: opens/closes that unit's full stat card (same card the clock-side
+// INFO button shows for the active unit).
+function _hrlgTabInfoBtn(targetUnit, targetName, st) {
+  const openHere = !!st.showUnitInfo && st.focusedUnitId === targetUnit.id;
+  return h('span', {
+    className: 'hrlg-infobtn tab' + (openHere ? ' on' : ''),
+    title: openHere ? 'Close the stat card' : ('Info — ' + targetName + '’s full stat card'),
+    onClick: (e) => {
+      e.stopPropagation();
+      const _wasOpenHere = !!state.showUnitInfo && state.focusedUnitId === targetUnit.id;
+      if (typeof focusUnitPanel === 'function') focusUnitPanel(targetUnit.id);
+      if (_wasOpenHere || !state.showUnitInfo) { if (typeof toggleUnitInfo === 'function') toggleUnitInfo(); }
+    },
+  }, 'ⓘ');
 }
 
 /* ── ALLY QUICK-CAST ─────────────────────────────────────────────────
@@ -5253,16 +5188,8 @@ function _hrlgAllyBlades(actingUnit, st) {
   });
   if (!blades.length) blades.push({ id: 'none', icon: '♥', label: 'Nothing to cast on this ally', available: false });
 
-  // ⓘ INSPECT — the ally's full stat card, same as the enemy quick menu.
-  blades.push({
-    id: 'ainfo', icon: 'ⓘ', label: 'Inspect', available: true,
-    selected: !!st.showUnitInfo,
-    fire: () => {
-      if (typeof focusUnitPanel === 'function') focusUnitPanel(targetUnit.id);
-      if (typeof toggleUnitInfo === 'function') toggleUnitInfo();
-    },
-  });
-
+  // The ally's face + ⓘ INFO button ride the view tab, same as the enemy
+  // quick menu — the stat card is a header button, not an action row.
   const tabPort = _hrlgPortraitData(targetUnit, actingUnit);
   const mpTxt = (targetUnit.maxMp || 0) > 0 ? Math.round(targetUnit.mp || 0) + 'MP' : null;
   const title = { node: h(React.Fragment, null,
@@ -5273,6 +5200,7 @@ function _hrlgAllyBlades(actingUnit, st) {
         })
       : h('span', { className: 'hrlg-view-tab-icon', style: { color: '#57d97e' } }, '♥'),
     h('span', { className: 'hrlg-view-tab-text' }, targetName),
+    _hrlgTabInfoBtn(targetUnit, targetName, st),
     h('span', { className: 'hrlg-view-tab-count', style: { color: hpPct <= 30 ? EW.bad : EW.good } }, hpPct + '%'),
     mpTxt ? h('span', { className: 'hrlg-view-tab-count', style: { color: '#5fd6ff' } }, mpTxt) : null,
     h('span', { className: 'hrlg-view-tab-count' }, dist + 't'),
@@ -5776,6 +5704,24 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
         },
       });
     }
+  }
+
+  /* 🔵 Recall — teleport home from your OWN tile (clicking your own unit
+     opens this menu, so self-verbs live here; moved from the retired More
+     menu). Greyed with the real reason while on cooldown or spotted. */
+  if (onSelf && typeof RECALL_AP_COST !== 'undefined' && typeof doRecall === 'function') {
+    const _rcSpotted = typeof isUnitSeenByAnyEnemy === 'function' && isUnitSeenByAnyEnemy(actingUnit);
+    const _rcCd = actingUnit._recallCooldown || 0;
+    const _rcOk = unitAP >= RECALL_AP_COST && _rcCd <= 0 && !_rcSpotted;
+    actions.push({
+      id: 'recall', label: 'Recall to Spawn', icon: '🔵', category: 'actions',
+      apCost: RECALL_AP_COST, available: _rcOk,
+      reason: _rcOk ? '' : (_rcCd > 0 ? '⏳ CD ' + _rcCd : (_rcSpotted ? 'Spotted' : 'No AP')),
+      handler: _rcOk ? () => {
+        state._tileActionTarget = null;
+        doRecall(actingUnit);
+      } : null,
+    });
   }
 
   actions.push({
@@ -6760,6 +6706,29 @@ function _injectHudHideStyles() {
       pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       margin-top: -4px;
     }
+    /* ⓘ INFO — the little stat-card button beside the unit name on the
+       clock column, and next to the target's name on quick-cast tabs */
+    .hrlg-infobtn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 19px; height: 19px; margin-left: 7px; flex: none;
+      border-radius: 50%; border: 1px solid var(--hfc-soft);
+      background: rgba(0,0,0,0.55); color: var(--hfc);
+      font-size: 12px; line-height: 1; cursor: pointer; pointer-events: auto;
+      vertical-align: -3px;
+      transition: transform 0.1s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+    }
+    .hrlg-infobtn:hover { border-color: var(--hfc); box-shadow: 0 0 9px var(--hfc-soft); transform: scale(1.12); }
+    .hrlg-infobtn:active { transform: scale(0.94); }
+    .hrlg-infobtn.on {
+      background: var(--hfc); color: #0d0d0b; border-color: var(--hfc);
+      box-shadow: 0 0 10px var(--hfc-soft);
+    }
+    /* on the skewed view tab the button is a direct child, so it inherits
+       the un-skew — re-enable clicks (the tab is pointer-events:none so it
+       never blocks board clicks) and keep the un-skew through hover/press */
+    .hrlg-view-tab .hrlg-infobtn { pointer-events: auto; transform: skewX(8deg); }
+    .hrlg-view-tab .hrlg-infobtn:hover { transform: skewX(8deg) scale(1.12); }
+    .hrlg-view-tab .hrlg-infobtn:active { transform: skewX(8deg) scale(0.94); }
     /* HP/MP vitals right under the portrait — the numbers are the POINT
        here, so they get real size instead of fine print. */
     .hrlg-vitals {

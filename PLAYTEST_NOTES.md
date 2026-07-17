@@ -4,7 +4,35 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## AI SCHEMA 12: weight prune + intent layer + CPU difficulty (2026-07-16, LATEST) — ai.js, ainew.js, battle.js, ui.js, map.js, index.html
+## Horologe refactor: INFO button, More menu retired (2026-07-17, LATEST) — hud.js, battle.js, ui.js, online.js
+
+- **"Inspect" name collision resolved**: the free stat-card look is now
+  **INFO** — a little round ⓘ button (`.hrlg-infobtn`) beside the unit name
+  under the clock, and beside the target's name on the enemy/ally quick-menu
+  view tabs (`_hrlgTabInfoBtn`). The old ⓘ root blade + `einfo`/`ainfo`
+  quick-menu rows are gone. "Inspect" now exclusively means the 1-AP
+  hourglass tile scan (tile quick menu row, `doInspect`). The `I` hotkey
+  still toggles the card. Toggle rules: closed→open on that unit; open on
+  that unit→close; open elsewhere→retarget without closing.
+- **More menu is GONE** (`_hrlgMoreBlades`/`_hrlgMoreBlade` deleted, no
+  `menuView === 'more'`). Its verbs relocated: Guard → root blade (2 AP);
+  Switch → root blade in gauntlet modes (opens the switch panel); Skip →
+  root blade while the unit still has full AP; Recall → tile quick menu on
+  the unit's OWN tile (click your own unit); Inspect/Ward/Ping/Build/Enter
+  Building were already on the tile quick menu; Land/Take Off, Channel,
+  Detonate, Entropy already ride the identity-column tool rows. battle.js
+  post-action returns that set `actionMenuView = 'more'` now set `'root'`.
+- **Clock portrait fixes**: the face disc now falls back to the unit's map
+  sprite when the race has no RACE_PORTRAITS art (that was the "portrait
+  sometimes disappears" bug — `xMidYMid meet` for sprites so they aren't
+  cropped), and clicking the disc re-centers the camera on the unit via
+  `selectUnit(unit.id)` — same pan as clicking a scoreboard chip.
+- **Online parity**: added guest→host engine relays for `doSkipTurn`,
+  `doInspect`, `doWard`, `doDetonate` (wrappers next to `doGuard`'s in
+  online.js + cases in the `'engine'` relay dispatcher). These used to run
+  guest-locally and roll back on the next state-sync.
+
+## AI SCHEMA 12: weight prune + intent layer + CPU difficulty (2026-07-16) — ai.js, ainew.js, battle.js, ui.js, map.js, index.html
 
 Audit of the gen-100 training export (5652 matches, champion WR 49% = no
 measurable gain) found most of the 45-weight table untrainable, so the AI got
