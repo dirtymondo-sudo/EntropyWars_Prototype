@@ -1946,6 +1946,10 @@
                     if (typeof animateDisplacement === 'function') {
                         animateDisplacement(unit, fromX, fromY, c.x, c.y, 200);
                     }
+                    // 🧱 Blown onto a debris pile → scooped on landing.
+                    if (window.GAME && typeof window.GAME.collectMatDropsAt === 'function') {
+                        window.GAME.collectMatDropsAt(unit, c.x, c.y);
+                    }
                     return {
                         pushed: true,
                         fromX,
@@ -1954,6 +1958,46 @@
                         toY: c.y
                     };
                 }
+            }
+
+            // 💥 Crash-through (2026-07-17 breach pass): before conceding the
+            // slam, try to SMASH the primary obstacle — a wall weaker than the
+            // hurled body (battle.js hardness rules) gets a hole punched
+            // through it and the throw carries into the breach.
+            const _bc = candidates[0];
+            if (window.GAME && typeof window.GAME._tryCrashThrough === 'function'
+                && isInside(_bc.x, _bc.y) && !unitAt(_bc.x, _bc.y)
+                && window.GAME._tryCrashThrough(unit, _bc.x, _bc.y)
+                && unitCanTraverse(unit, _bc.x, _bc.y)) {
+                const fromZ = unit.z ?? 0;
+                unit.x = _bc.x;
+                unit.y = _bc.y;
+                if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(_bc.x, _bc.y, unit.z);
+                const prefix = logPrefix || '';
+                addLog(`${prefix}${unitDisplayName(unit)} is blasted THROUGH the barrier to ${coordLabel(_bc.x, _bc.y)}!`);
+                if (BLOWBACK_DAMAGE > 0) {
+                    applyDamageToUnit(unit, BLOWBACK_DAMAGE, `Blowback impact: `, {
+                        ignoreArmor: true,
+                        scaleByTargetLevel: true
+                    });
+                }
+                applyFallDamage(unit, fromZ, unit.z ?? 0, prefix, { byEnemy: true });
+                if (typeof _fanFlamesAlongPush === 'function') {
+                    _fanFlamesAlongPush(unit, [{ x: _bc.x, y: _bc.y }], _bc.x - fromX, _bc.y - fromY, null);
+                }
+                if (typeof animateDisplacement === 'function') {
+                    animateDisplacement(unit, fromX, fromY, _bc.x, _bc.y, 200);
+                }
+                if (window.GAME && typeof window.GAME.collectMatDropsAt === 'function') {
+                    window.GAME.collectMatDropsAt(unit, _bc.x, _bc.y);
+                }
+                return {
+                    pushed: true,
+                    fromX,
+                    fromY,
+                    toX: _bc.x,
+                    toY: _bc.y
+                };
             }
 
             addLog(`${logPrefix || ''}${unitDisplayName(unit)} is slammed against an obstacle!`);

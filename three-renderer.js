@@ -7266,6 +7266,124 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* ── 🧱 Material drop cubes (state.matDrops) ──────────────────────────
+       Minecraft-style debris: violently destroyed blocks scatter mini cubes
+       textured with the smashed material (battle.js spawnMaterialDrops).
+       Each pile bobs and slow-spins on its tile, pops in with a little toss
+       arc from the break tile, and vanishes when a unit scoops it
+       (collectMatDropsAt bumps state._matDropVersion — the ONLY dirty
+       signal, so this stays in lockstep on the online guest too, whose
+       state arrives via the full-state broadcast). qty>1 renders as a tight
+       cluster of up to three cubes. Fog-gated like the MD pickups above. */
+    var _matDropGroup = null;
+    var _matDropEntries = [];
+    var _lastMatDropVersion = -1;
+    var _matDropTsBuilt = 0;
+    var _matDropGeo = null, _matDropGeoSide = 0;
+
+    function _getMatDropGeo(side) {
+        if (_matDropGeo && _matDropGeoSide === side) return _matDropGeo;
+        if (_matDropGeo) _matDropGeo.dispose();
+        _matDropGeo = new THREE.BoxGeometry(side, side, side);
+        _matDropGeo._ew_shared = true;
+        _matDropGeoSide = side;
+        return _matDropGeo;
+    }
+
+    function rebuildMatDrops() {
+        var ver = state._matDropVersion || 0;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        if (ver === _lastMatDropVersion && ts === _matDropTsBuilt) return;
+        _lastMatDropVersion = ver;
+        _matDropTsBuilt = ts;
+        if (!_matDropGroup) {
+            _matDropGroup = new THREE.Group();
+            _matDropGroup.name = 'matDrops';
+            if (scene) scene.add(_matDropGroup);
+        }
+        /* keep per-drop spawn clocks across rebuilds so surviving cubes
+           don't replay their toss-in every time a sibling pile changes */
+        var prevBorn = {};
+        for (var p = 0; p < _matDropEntries.length; p++) prevBorn[_matDropEntries[p].id] = _matDropEntries[p].born;
+        _clearGroup(_matDropGroup);
+        _matDropEntries.length = 0;
+        var drops = state.matDrops;
+        if (!drops || !drops.length) return;
+        var now = performance.now() / 1000;
+        var side = ts * 0.17;
+        var geo = _getMatDropGeo(side);
+        /* cluster offsets for piles (fractions of a tile) */
+        var CLUSTER = [[0, 0], [0.17, -0.09], [-0.14, 0.13]];
+        for (var i = 0; i < drops.length; i++) {
+            var d = drops[i];
+            var topY = (typeof tileTopY === 'function') ? tileTopY(d.x, d.y) : 0;
+            var tex = d.tex || 'cobblestone';
+            var sideKey = (typeof TERRAIN_SIDE_SPRITES !== 'undefined') ? TERRAIN_SIDE_SPRITES[tex] : null;
+            var mats = buildBoxMaterials(tex, sideKey);
+            var grp = new THREE.Group();
+            var n = Math.max(1, Math.min(3, d.qty || 1));
+            var cubes = [];
+            for (var c = 0; c < n; c++) {
+                var cube = new THREE.Mesh(geo, mats);
+                var s = 1 - c * 0.18;                       // trailing cubes shrink a touch
+                cube.scale.setScalar(s);
+                cube.position.set(CLUSTER[c][0] * ts, (side * s) / 2 + c * 1.5, CLUSTER[c][1] * ts);
+                cube.rotation.y = (d.x * 5 + d.y * 3 + c * 2) % 6;
+                cube.castShadow = false;
+                cube.receiveShadow = false;
+                cubes.push(cube);
+                grp.add(cube);
+            }
+            _matDropGroup.add(grp);
+            var born = prevBorn[d.id] != null ? prevBorn[d.id] : now;
+            var fromTopY = (d.ox != null && typeof tileTopY === 'function') ? tileTopY(d.ox, d.oy) : topY;
+            var e = {
+                id: d.id, grp: grp, cubes: cubes,
+                x: d.x, y: d.y,
+                toX: d.x * ts + ts / 2, toZ: d.y * ts + ts / 2,
+                toY: topY + ts * 0.06,
+                fromX: (d.ox != null ? d.ox : d.x) * ts + ts / 2,
+                fromZ: (d.oy != null ? d.oy : d.y) * ts + ts / 2,
+                fromY: fromTopY + ts * 0.3,
+                born: born,
+                phase: ((d.x * 7 + d.y * 13) % 63) / 10,
+            };
+            grp.position.set(e.toX, e.toY, e.toZ);
+            _matDropEntries.push(e);
+        }
+    }
+
+    function _updateMatDrops() {
+        if (!_matDropEntries.length) return;
+        var t = performance.now() / 1000;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        for (var i = 0; i < _matDropEntries.length; i++) {
+            var e = _matDropEntries[i];
+            var vis = !state.fogOfWar || (_fogVisibleSet && _fogVisibleSet.has(e.x + ',' + e.y));
+            e.grp.visible = !!vis;
+            if (!vis) continue;
+            var age = t - e.born;
+            var TOSS = 0.45;
+            if (age < TOSS) {
+                /* toss arc from the break tile: lerp + parabola + grow-in */
+                var k = age / TOSS;
+                e.grp.position.set(
+                    e.fromX + (e.toX - e.fromX) * k,
+                    e.fromY + (e.toY - e.fromY) * k + Math.sin(k * Math.PI) * ts * 0.45,
+                    e.fromZ + (e.toZ - e.fromZ) * k
+                );
+                e.grp.scale.setScalar(0.25 + 0.75 * k);
+            } else {
+                /* settle into the idle bob */
+                e.grp.position.set(e.toX, e.toY + (0.5 + 0.5 * Math.sin(t * 2.1 + e.phase)) * ts * 0.05, e.toZ);
+                e.grp.scale.setScalar(1);
+            }
+            for (var c = 0; c < e.cubes.length; c++) {
+                e.cubes[c].rotation.y = t * (0.9 + 0.25 * c) + e.phase;
+            }
+        }
+    }
+
     function _updateNexusWallPulse() {
         if (_nexusWallMats.length === 0) return;
         var t = performance.now() / 1000;
@@ -21197,9 +21315,11 @@ const ThreeRenderer = (function () {
         rebuildSpawnZoneOverlays();
         rebuildSanctuaryWalls();
         rebuildMdItemPickups();
+        rebuildMatDrops();
         _updateSpawnZonePulse();
         _updateSanctuaryWallPulse();
         _updateMdItemPulse();
+        _updateMatDrops();
         _updateDmgPreviewPlates();
         var uSer = _computeUnitSerial();
         if (uSer !== _lastUnitSerial) {

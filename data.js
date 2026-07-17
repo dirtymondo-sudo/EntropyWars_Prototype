@@ -57,6 +57,37 @@ const BUILD_MATERIALS = {
     metal: { terrain: 'metal',       icon: '⚙️', label: 'Steel' },
 };
 
+/* ── 💥 Breach & debris (2026-07-17 breach pass) ──────────────────────────
+   Every BLOCK has a hardness tier (battle.js getTerrainHardness, keyed by
+   the block's terrain):
+     1 = brittle (wood family / ice / crystal)      2 = packed earth (plain
+     terrain)      3 = masonry (stone family)       4 = plate (metal family)
+     Infinity = the map-border 'wall' (indestructible).
+   Impact power is tested against hardness; power ≥ hardness breaks the
+   block and scatters collectible debris cubes (MAT_DROP_CONFIG below):
+     · a hurled / knocked-back BODY → its weight class (bodyPower table)
+     · a deliberate CHARGE (dash kinds) → weight class + dashPowerBonus
+     · a BEAM (line kinds) → floor(spell.dmg / beamDmgPerPower), overridable
+       per-spell with an explicit `breachPower` field. */
+const BREACH_CONFIG = {
+    bodyPower: { feather: 0, light: 1, medium: 1, heavy: 3, colossal: 4 },
+    dashPowerBonus: 1,      // a deliberate charge rams harder than a tossed body
+    beamDmgPerPower: 60,    // beam breach power = floor(spell.dmg / this)
+    beamMaxBores: 2,        // walls one beam can drill through per cast
+};
+
+/* 🧱 Mini material cubes (Minecraft-style debris). Violently destroyed
+   blocks scatter these onto nearby walkable tiles; ANY grounded unit that
+   walks over / lands on / stands under the scatter banks the pile for its
+   team (gainMaterial). Deliberate BUILD-dig / tree-chop salvage still
+   banks instantly — the worker is standing right there. */
+const MAT_DROP_CONFIG = {
+    scatterRadius: 2,    // how far debris can bounce from the break tile
+    maxPerTile: 5,       // qty cap per cube pile (same-material piles merge)
+    maxOnBoard: 80,      // oldest piles crumble beyond this
+    deformDropCap: 10,   // one crater/nuke can't carpet the map in cubes
+};
+
 const FLYING_ALTITUDE_CONFIG = {
     apCost: 1,
     maxPerTurn: 3,

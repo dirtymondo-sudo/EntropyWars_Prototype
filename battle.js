@@ -2843,6 +2843,8 @@
             // Shoved/pulled onto a hidden trap → it springs. "Drag them into
             // the snare" is exactly the play the trap arsenal wants to reward.
             if (typeof checkTrapTrigger === 'function') checkTrapTrigger(unit);
+            // 🧱 Hurled onto a debris pile → the landing body scoops it up.
+            collectMatDropsAt(unit, unit.x, unit.y);
         }
 
         // 🌊 Water finds its level (2026-07-07): whenever ground is LOWERED next
@@ -3056,37 +3058,31 @@
             return d;
         }
 
-        // 💥 Crash-through (2026-07-07): a unit knocked INTO a low obstacle no
-        // longer just stops — weak barriers break. Trees get flattened, and a
-        // 1-high lip of wood / ice / crystal shatters so the shove continues
-        // (stone and metal hold). Weight classes (RACE_PHYSIQUE) refine this:
-        // feather units bounce off instead of breaking, heavy units also punch
-        // through stone. Returns true when the obstacle broke.
+        // 💥 Crash-through (2026-07-07, generalized 2026-07-17): a unit knocked
+        // INTO an obstacle no longer just stops — barriers weaker than the
+        // impact break. Trees get flattened; a wall gets a 2-high hole punched
+        // clean through at body height (a taller wall keeps its upper blocks
+        // as a lintel — a genuine tunnel units can walk through later). Impact
+        // power comes from the body's weight class (BREACH_CONFIG.bodyPower;
+        // feather units bounce, heavy bodies smash masonry) and is tested per
+        // block against getTerrainHardness. Broken blocks scatter collectible
+        // debris cubes. Returns true when the obstacle broke.
         const CRASH_THROUGH_DMG = 12;
-
-        function _crashBreakables(unit) {
-            const wc = (typeof getUnitWeightClass === 'function') ? getUnitWeightClass(unit) : 'medium';
-            if (wc === 'feather') return null;                       // too light to break anything
-            const soft = (t) => !!t && (getTerrainMaterial(t) === 'wood' || t === 'ice' || t === 'crystal');
-            if (wc === 'heavy' || wc === 'colossal') {
-                return (t) => soft(t) || getTerrainMaterial(t) === 'stone';
-            }
-            return soft;
-        }
 
         function _tryCrashThrough(unit, nx, ny, opts = {}) {
             if (!unit || unit.dead) return false;
             if (!isInside(nx, ny)) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             if (unitAt(nx, ny)) return false;                        // bodies don't break
-            const canBreak = _crashBreakables(unit);
-            if (!canBreak) return false;
+            const power = opts.power ?? unitBreachPower(unit, opts);
+            if (power <= 0) return false;                            // feather-light — bounces off
             const byUnit = opts.byUnit || null;
 
-            // A standing tree in the flight path gets flattened (pusher's team
-            // banks the wood — they did the work).
+            // A standing tree in the flight path gets flattened; the timber
+            // scatters as debris cubes where it fell.
             if (typeof _tileHasTree === 'function' && _tileHasTree(nx, ny)) {
-                if (_fellTreeAt(nx, ny, byUnit, { credit: !!byUnit })) {
+                if (power >= getTerrainHardness('tree') && _fellTreeAt(nx, ny, byUnit, { credit: false })) {
+                    spawnMaterialDrops(nx, ny, [{ terrain: 'tree' }], { log: false });
                     applyDamageToUnit(unit, CRASH_THROUGH_DMG, `${unitDisplayName(unit)} crashes through the tree: `, {
                         ignoreArmor: true, consumeMarked: false
                     });
@@ -3097,23 +3093,24 @@
                 return false;
             }
 
-            // A 1-high lip of breakable material shatters under the impact.
+            // A wall in the way: every block in the body-height window must be
+            // weaker than the impact — then the body punches a hole through.
             const unitZ = unit.z ?? getBaseHeightAt(unit.x, unit.y);
-            const colH = getBaseHeightAt(nx, ny);
-            if (colH !== unitZ + 1) return false;
-            const t = getTerrainAt(nx, ny);
-            if (!canBreak(t)) return false;
-            removeBlockAt(nx, ny, colH);
-            _invalidateBoardGrid();
-            if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
-            scheduleBoardRender();
-            const _crashLabel = t === 'ice' ? 'ice' : t === 'crystal' ? 'crystal' : (getTerrainMaterial(t) === 'stone' ? 'stone' : 'timber');
-            applyDamageToUnit(unit, CRASH_THROUGH_DMG, `${unitDisplayName(unit)} crashes through the ${_crashLabel}: `, {
+            const check = _breachWindowCheck(nx, ny, unitZ, power);
+            if (!check) return false;
+            const removed = _breachWallAt(nx, ny, unitZ, check, { byUnit: byUnit || unit });
+            if (!removed.length) return false;
+            const _lead = removed[0].terrain;
+            const _crashLabel = _lead === 'ice' ? 'ice' : _lead === 'crystal' ? 'crystal'
+                : (getTerrainMaterial(_lead) === 'metal' ? 'steel'
+                    : getTerrainMaterial(_lead) === 'stone' ? 'stone'
+                    : getTerrainMaterial(_lead) === 'wood' ? 'timber' : 'earthen');
+            applyDamageToUnit(unit, CRASH_THROUGH_DMG, `${unitDisplayName(unit)} crashes through the ${_crashLabel} wall: `, {
                 ignoreArmor: true, consumeMarked: false
             });
-            addLog(`💥 ${unitDisplayName(unit)} is knocked THROUGH the ${_crashLabel} block — debris everywhere!`);
+            addLog(`💥 ${unitDisplayName(unit)} smashes a hole clean through the ${_crashLabel} wall — debris everywhere!`);
             showFloatingTextForUnit(unit, '💥 CRASH!', 'damage', { durationMs: 900 });
-            settleWaterAround([{ x: nx, y: ny }]);
+            if (typeof shakeBoard === 'function') shakeBoard('normal');
             return true;
         }
 
@@ -3187,6 +3184,244 @@
                 t.indexOf('tilefloor') === 0 ||
                 t === 'cave_wall' || t === 'obsidian' || t === 'ruins' || t === 'cliff') return 'stone';
             return null;
+        }
+
+        // ── 💥 Hardness & breach power (2026-07-17 breach pass) ──────────────
+        // How tough a BLOCK is, by its terrain key. Tested against impact
+        // power (a body's weight class, or a beam's damage) — power ≥
+        // hardness breaks the block, which scatters debris cubes instead of
+        // silently crediting the bank. Tier table lives in BREACH_CONFIG
+        // (data.js) alongside the power sources.
+        function getTerrainHardness(t) {
+            if (!t) return 2;
+            if (t === 'wall') return Infinity;         // map border — never breaks
+            if (t === 'ice' || t === 'crystal') return 1;
+            const mat = getTerrainMaterial(t);
+            if (mat === 'wood') return 1;
+            if (mat === 'stone') return 3;
+            if (mat === 'metal') return 4;
+            return 2;                                   // plain packed earth
+        }
+
+        function unitBreachPower(unit, opts = {}) {
+            const cfg = (typeof BREACH_CONFIG !== 'undefined') ? BREACH_CONFIG : null;
+            const table = (cfg && cfg.bodyPower) || { feather: 0, light: 1, medium: 1, heavy: 3, colossal: 4 };
+            const p = table[getUnitWeightClass(unit)] ?? 1;
+            return p + (opts.charging ? ((cfg && cfg.dashPowerBonus) || 1) : 0);
+        }
+
+        function spellBreachPower(spell) {
+            if (!spell) return 0;
+            if (spell.breachPower != null) return spell.breachPower;
+            const per = (typeof BREACH_CONFIG !== 'undefined' && BREACH_CONFIG.beamDmgPerPower) || 60;
+            return Math.floor((spell.dmg || 0) / per);
+        }
+
+        // ── 🧱 Material drops — Minecraft-style debris cubes ─────────────────
+        // Blocks destroyed by VIOLENCE (craters, smashes, breaches, building
+        // collapses, wrecked turrets) no longer teleport their salvage into
+        // the team bank — they scatter little bobbing material cubes
+        // (state.matDrops) that sit on the ground until someone walks over,
+        // lands on, or is standing under the scatter. Deliberate harvesting
+        // (BUILD dig / tree chop) still banks instantly. state.matDrops rides
+        // the online full-state broadcast untouched; _matDropVersion tells
+        // three-renderer (both clients) to rebuild the cube meshes.
+        function _matDropCfg() {
+            return (typeof MAT_DROP_CONFIG !== 'undefined') ? MAT_DROP_CONFIG
+                : { scatterRadius: 2, maxPerTile: 5, maxOnBoard: 80, deformDropCap: 10 };
+        }
+
+        function _matDrops() {
+            if (!state.matDrops) state.matDrops = [];
+            return state.matDrops;
+        }
+
+        function _bumpMatDropVersion() {
+            state._matDropVersion = (state._matDropVersion || 0) + 1;
+        }
+
+        // The texture a debris cube wears: the actual smashed terrain when its
+        // family matches and a sprite exists (a bricks wall drops bricks
+        // cubes), else the material family's default block.
+        function _matDropTexture(mat, sourceTerrain) {
+            const fallback = { wood: 'wood_planks', stone: 'cobblestone', metal: 'metal' };
+            if (sourceTerrain && getTerrainMaterial(sourceTerrain) === mat
+                && typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[sourceTerrain]) {
+                return sourceTerrain;
+            }
+            return fallback[mat] || 'cobblestone';
+        }
+
+        function _matDropTileOk(x, y) {
+            if (!isInside(x, y)) return false;
+            if (!isTerrainPassable(x, y)) return false;
+            const t = getTerrainAt(x, y);
+            if (t === 'lava' || t === 'deep_water' || t === 'chasm' || t === 'void') return false;
+            if (typeof getBuildingAt === 'function' && getBuildingAt(x, y)) return false;
+            return true;
+        }
+
+        /* Scatter debris cubes near (ox,oy). entries: [{terrain, qty}] — one
+           entry per destroyed block (or salvage lot). Non-material blocks
+           (plain earth, ice, crystal) leave nothing. Cubes merge into
+           per-tile piles; debris landing at a standing unit's feet is scooped
+           on the spot for that unit's team. */
+        function spawnMaterialDrops(ox, oy, entries, opts = {}) {
+            if (!entries || !entries.length || state.phase !== 'battle') return;
+            const cfg = _matDropCfg();
+            const drops = _matDrops();
+            // Candidate tiles: break tile first, then shuffled rings outward.
+            const cand = [];
+            const R = opts.scatterRadius ?? cfg.scatterRadius;
+            for (let r = 0; r <= R; r++) {
+                const ring = [];
+                for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+                    if (_matDropTileOk(ox + dx, oy + dy)) ring.push({ x: ox + dx, y: oy + dy });
+                }
+                for (let i = ring.length - 1; i > 0; i--) {
+                    const j = randInt(i + 1); const tmp = ring[i]; ring[i] = ring[j]; ring[j] = tmp;
+                }
+                cand.push(...ring);
+            }
+            if (!cand.length) return;
+            let cursor = 0, spawnedAny = false;
+            const scooped = {};                    // mat → qty grabbed by standers
+            let scoopedBy = null;
+            for (const e of entries) {
+                const mat = getTerrainMaterial(e && e.terrain);
+                if (!mat) continue;
+                const qty = Math.max(1, (e && e.qty) || 1);
+                for (let k = 0; k < cand.length; k++) {
+                    const c = cand[(cursor + k) % cand.length];
+                    const stander = unitAt(c.x, c.y);
+                    if (stander && !stander.dead
+                        && !(typeof isUnitAirborne === 'function' && isUnitAirborne(stander))) {
+                        // Lands at someone's feet — scooped instantly.
+                        gainMaterial(stander.player, mat, qty, { log: false });
+                        scooped[mat] = (scooped[mat] || 0) + qty;
+                        scoopedBy = stander;
+                        cursor = (cursor + k + 1) % cand.length;
+                        break;
+                    }
+                    const pile = drops.find(d => d.x === c.x && d.y === c.y && d.mat === mat);
+                    if (pile) {
+                        if (pile.qty >= cfg.maxPerTile) continue;   // full pile — bounce on
+                        pile.qty = Math.min(cfg.maxPerTile, pile.qty + qty);
+                    } else {
+                        drops.push({
+                            id: 'md' + (state._matDropSeq = (state._matDropSeq || 0) + 1),
+                            x: c.x, y: c.y,
+                            z: (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(c.x, c.y) : 0,
+                            mat, tex: _matDropTexture(mat, e.terrain), qty,
+                            ox, oy,                 // break tile — the renderer tosses the cube from here
+                        });
+                    }
+                    spawnedAny = true;
+                    cursor = (cursor + k + 1) % cand.length;
+                    break;
+                }
+            }
+            // Oldest piles crumble when the board is saturated.
+            while (drops.length > cfg.maxOnBoard) drops.shift();
+            if (spawnedAny) {
+                _bumpMatDropVersion();
+                if (opts.log !== false) addLog(`🧱 Debris scatters around ${coordLabel(ox, oy)} — walk over it to salvage.`);
+            }
+            if (scoopedBy) {
+                const label = Object.keys(scooped).map(m => `+${scooped[m]} ${MAT_ICONS[m] || m}`).join('  ');
+                addLog(`🧱 Debris lands at ${unitDisplayName(scoopedBy)}'s feet: ${label}.`);
+                showFloatingTextForUnit(scoopedBy, label, 'pickup', { durationMs: 1000 });
+            }
+        }
+
+        /* Walk-over / land-on collection: a living grounded unit banks every
+           pile on its tile for its team. Called per move-path step, on move
+           arrival, on knockback/throw landings and on jump landings. */
+        function collectMatDropsAt(unit, x, y) {
+            if (!unit || unit.dead || unit._dying) return;
+            if (!state.matDrops || !state.matDrops.length) return;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
+            let took = false;
+            const parts = [];
+            for (let i = state.matDrops.length - 1; i >= 0; i--) {
+                const d = state.matDrops[i];
+                if (d.x !== x || d.y !== y) continue;
+                state.matDrops.splice(i, 1);
+                gainMaterial(unit.player, d.mat, d.qty, { log: false });
+                parts.push(`+${d.qty} ${MAT_ICONS[d.mat] || d.mat}`);
+                took = true;
+            }
+            if (!took) return;
+            _bumpMatDropVersion();
+            const label = parts.join('  ');
+            addLog(`🧱 ${unitDisplayName(unit)} scoops up the debris: ${label}.`);
+            showFloatingTextAtTile(x, y, label, 'pickup', { durationMs: 1000 });
+            if (!state.devAutoSim) { try { playSfx('uiConfirm'); } catch (e) {} }
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+        }
+
+        /* Can a body/beam at bodyZ punch through the column at (x,y)?
+           Checks every block in the 2-high body window [bodyZ+1, bodyZ+2]
+           (or the surface terrain when the obstacle carries no window
+           blocks) against `power`. Returns false, or the list of blocks
+           that would break. */
+        function _breachWindowCheck(x, y, bodyZ, power) {
+            const colH = getBaseHeightAt(x, y);
+            const zTop = Math.min(colH, bodyZ + 2);
+            const blocks = [];
+            for (let z = bodyZ + 1; z <= zTop; z++) {
+                const b = (typeof getBlockAt === 'function') ? getBlockAt(x, y, z) : null;
+                if (!b) continue;
+                if (getTerrainHardness(b.terrain) > power) return false;
+                blocks.push({ z, terrain: b.terrain });
+            }
+            if (!blocks.length) {
+                // Flat obstacle (no wall blocks at body height) — only a
+                // genuinely impassable SOLID surface (cave_wall, cliff, a tree
+                // object's tile…) can be smashed into rubble; open ground and
+                // liquids are never "breached".
+                const t = getTerrainAt(x, y);
+                const rule = (typeof getTerrainRule === 'function') ? getTerrainRule(t) : null;
+                if (!rule || rule.passable !== false) return false;
+                if (t === 'water' || t === 'deep_water' || t === 'lava' || t === 'chasm' || t === 'void') return false;
+                if (getTerrainHardness(t) > power) return false;
+                return { flat: true, terrain: t };
+            }
+            return { flat: false, blocks };
+        }
+
+        /* 💥 Punch the hole: removes the checked window blocks (a taller wall
+           keeps its upper blocks as a lintel — a genuine tunnel), paves an
+           impassable floor block with rubble so the gap is walkable, floods
+           it if water sits next door, and scatters the debris as cubes. */
+        function _breachWallAt(x, y, bodyZ, check, opts = {}) {
+            const removed = [];
+            if (check.flat) {
+                setTerrainAt(x, y, `rubble_${1 + randInt(4)}`);
+                removed.push({ terrain: check.terrain });
+            } else {
+                for (const b of check.blocks) {
+                    removeBlockAt(x, y, b.z);
+                    removed.push({ terrain: b.terrain });
+                }
+                // A floor block whose terrain rule is impassable (cave_wall &
+                // co) would still refuse entry into the fresh tunnel — pave it.
+                const floor = (typeof getBlockAt === 'function') ? getBlockAt(x, y, bodyZ) : null;
+                if (floor && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[floor.terrain]
+                    && TERRAIN_RULES[floor.terrain].passable === false) {
+                    setBlockAt(x, y, bodyZ, `rubble_${1 + randInt(4)}`);
+                }
+            }
+            if (opts.byUnit) addEntropy(opts.byUnit.player, ENTROPY_PTS.destructTerrain, 'terrain', null);
+            settleWaterAround([{ x, y }]);
+            spawnMaterialDrops(x, y, removed, { log: false });
+            _invalidateBoardGrid();
+            state._terrainVersion = (state._terrainVersion || 0) + 1;
+            if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            scheduleBoardRender();
+            return removed;
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -3771,10 +4006,40 @@
             const hitTargets = [];
             const _lineCells = [];
             const _lnHitBldgs = new Set();   // 🏢 one structure hit per building per cast
+            // 💥 Beam boring: a hot enough beam BLASTS through the wall in its
+            // path — the blocks at the caster's body height shatter into
+            // debris cubes and the beam carries on (BREACH_CONFIG caps how
+            // many walls one cast can drill).
+            const _boreMax = (typeof BREACH_CONFIG !== 'undefined' && BREACH_CONFIG.beamMaxBores) || 2;
+            const _borePow = spellBreachPower(spell);
+            const _boreZ = unit.z ?? getBaseHeightAt(unit.x, unit.y);
+            let _bores = 0;
             let cx = unit.x + dx, cy = unit.y + dy;
             for (let i = 0; i < lineRange; i++) {
                 if (!isInside(cx, cy)) break;
-                if (!isTerrainPassable(cx, cy) && !spell.destroysObstacles) break;
+                if (!isTerrainPassable(cx, cy) && !spell.destroysObstacles) {
+                    let _bored = false;
+                    if (_bores < _boreMax && _borePow > 0 && !unitAt(cx, cy)) {
+                        if (typeof _tileHasTree === 'function' && _tileHasTree(cx, cy)) {
+                            if (_borePow >= getTerrainHardness('tree') && _fellTreeAt(cx, cy, unit, { credit: false })) {
+                                spawnMaterialDrops(cx, cy, [{ terrain: 'tree' }], { log: false });
+                                addLog(`💥 ${spell.name} blasts the tree at ${coordLabel(cx, cy)} to splinters and carries on!`);
+                                showFloatingTextAtTile(cx, cy, '💥 BREACH!', 'damage', { durationMs: 900 });
+                                _bored = true;
+                            }
+                        } else {
+                            const _bChk = _breachWindowCheck(cx, cy, _boreZ, _borePow);
+                            if (_bChk && _breachWallAt(cx, cy, _boreZ, _bChk, { byUnit: unit }).length) {
+                                addLog(`💥 ${spell.name} bores a hole clean through the wall at ${coordLabel(cx, cy)}!`);
+                                showFloatingTextAtTile(cx, cy, '💥 BREACH!', 'damage', { durationMs: 900 });
+                                if (typeof shakeBoard === 'function') shakeBoard('normal');
+                                _bored = true;
+                            }
+                        }
+                        if (_bored) _bores++;
+                    }
+                    if (!_bored) break;
+                }
                 _lineCells.push({ x: cx, y: cy });
                 const hit = unitAt(cx, cy);
                 if (hit && hit.player !== unit.player && !hit.dead) {
@@ -14764,8 +15029,11 @@
                     : `🔧 ${turret.auraDebuff ? '5G Tower' : turret.spellId === 'siegeTurret' ? 'Siege Turret' : 'Turret'} at ${coordLabel(x, y)} has been destroyed!`);
                 state.turrets = state.turrets.filter(t => t !== turret);
                 if (attackerUnit) addEntropy(attackerUnit.player, ENTROPY_PTS.destructTurret, 'turret', attackerUnit);
-                // Wrecked machinery is a metal mine for the wrecker's team (meat isn't).
-                if (attackerUnit && !turret.zombie) gainMaterial(attackerUnit.player, 'metal', 2);
+                // 🧱 Wrecked machinery is a metal mine (meat isn't) — the
+                // scrap scatters as debris cubes around the wreck.
+                if (!turret.zombie) {
+                    spawnMaterialDrops(x, y, [{ terrain: 'metal' }, { terrain: 'metal' }], { log: false });
+                }
                 scheduleBoardRender();
             }
             return true;
@@ -15164,11 +15432,12 @@
             setObjectAt(b.x, b.y, 'ruins');
 
             addLog(`🏚 ${label} at ${coordLabel(b.x, b.y)} COLLAPSES${attackerUnit ? ` under ${unitDisplayName(attackerUnit)}'s assault` : ''}! Rubble covers the ground.`);
-            // A felled building is a quarry: masonry + fittings for the wrecker.
-            if (attackerUnit) {
-                gainMaterial(attackerUnit.player, 'stone', 2);
-                gainMaterial(attackerUnit.player, 'metal', 1);
-            }
+            // 🧱 A felled building is a quarry: its masonry and fittings
+            // scatter over the rubble field as debris cubes for whoever
+            // walks the site.
+            spawnMaterialDrops(b.x, b.y, [
+                { terrain: 'cobblestone' }, { terrain: 'cobblestone' }, { terrain: 'metal' }
+            ], { log: false });
             showFloatingTextAtTile(b.x, b.y, '🏚 COLLAPSE!', 'damage', { durationMs: 1200 });
             if (typeof shakeBoard === 'function') shakeBoard('normal');
             playSfx('damage');
@@ -15870,6 +16139,8 @@
             _procHexedOnAction(unit, 'moves');
 
             if (!_wasAirborne) {
+                // 🧱 Debris cubes on the arrival tile are banked on the spot.
+                collectMatDropsAt(unit, x, y);
                 // Walking into ground fire hurts NOW (and sets you burning).
                 if (_tileIsBurning(x, y)) {
                     _burnUnitOnTile(unit, BURNING_ENTER_DAMAGE,
@@ -16438,6 +16709,8 @@
             state.plantedTrees = [];
             state.lumber = { 1: 0, 2: 0 };
             state.matBank = null;   // material bank re-seeds with the starting stock
+            state.matDrops = null;  // debris cubes don't survive into the next match
+            state._matDropVersion = 0;
             state.traps = [];       // placeTrap charges never leak between matches
             state.warpRunes = [];
             state.pixieDust = [];
@@ -21937,6 +22210,8 @@
             state.plantedTrees = [];
             state.lumber = { 1: 0, 2: 0 };
             state.matBank = null;   // material bank re-seeds with the starting stock
+            state.matDrops = null;  // debris cubes don't survive into the next match
+            state._matDropVersion = 0;
             state.traps = [];       // placeTrap charges never leak between matches
             state.warpRunes = [];
             state.pixieDust = [];
@@ -22378,6 +22653,8 @@
             state.plantedTrees = [];
             state.lumber = { 1: 0, 2: 0 };
             state.matBank = null;   // material bank re-seeds with the starting stock
+            state.matDrops = null;  // debris cubes don't survive into the next match
+            state._matDropVersion = 0;
             state.traps = [];       // placeTrap charges never leak between matches
             state.warpRunes = [];
             state.pixieDust = [];
@@ -22594,6 +22871,8 @@
             state.plantedTrees = [];
             state.lumber = { 1: 0, 2: 0 };
             state.matBank = null;   // material bank re-seeds with the starting stock
+            state.matDrops = null;  // debris cubes don't survive into the next match
+            state._matDropVersion = 0;
             state.traps = [];       // placeTrap charges never leak between matches
             state.warpRunes = [];
             state.pixieDust = [];
@@ -27922,6 +28201,10 @@
             // 🪵🪨⚙️ salvage economy (materials fund placeBlock/buildStructure)
             getMaterials, gainMaterial, spendMaterials, canAffordMaterials,
             materialCostLabel, getTerrainMaterial,
+            // 💥 breach & debris (2026-07-17): hardness vs impact power, plus
+            // the Minecraft-style collectible debris cubes (state.matDrops)
+            getTerrainHardness, unitBreachPower, spellBreachPower,
+            spawnMaterialDrops, collectMatDropsAt, _tryCrashThrough,
             // placement validity (shared by menus / previews / AI)
             _placeBlockProblem, _placeTrapProblem, _structurePlanFor,
             // 🧱 BUILD action (universal place/dig verb, 2026-07-10)
@@ -28769,12 +29052,10 @@
             const smashedTerrain = getTerrainAt(x, y);
             removeBlockAt(x, y, oldH);
             if (attacker) addEntropy(attacker.player, ENTROPY_PTS.destructTerrain, 'terrain', null);
-            // Salvage: smashing a wood/stone/metal block banks its material for
-            // the smasher's team (plain earth yields nothing).
-            if (attacker) {
-                const mat = getTerrainMaterial(smashedTerrain);
-                if (mat) gainMaterial(attacker.player, mat, 1);
-            }
+            // 🧱 Salvage: the smashed block bursts into collectible debris
+            // cubes on the ground (plain earth yields nothing) — whoever walks
+            // the site banks them.
+            spawnMaterialDrops(x, y, [{ terrain: smashedTerrain }], { log: false });
             // Knocking the block out below a neighboring waterline lets the water in.
             settleWaterAround([{ x, y }]);
             // Safety: anyone somehow standing in the column drops with it.
@@ -30892,6 +31173,8 @@
                 /* Mystery Dungeon loot is scooped in passing — walking OVER an
                    item collects it without stopping the move. */
                 if (typeof _mdCollectItemsOnTile === 'function') _mdCollectItemsOnTile(unit, step.x, step.y);
+                /* 🧱 Debris cubes are scooped the same way — in passing. */
+                collectMatDropsAt(unit, step.x, step.y);
 
                 const event = getPathPickupEvent(unit, step.x, step.y);
                 if (!event) continue;
@@ -32241,6 +32524,8 @@
 
             if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX, fromY });
             if (typeof checkPixieDustPickup === 'function') checkPixieDustPickup(unit);
+            // 🧱 Landing on a debris pile banks it.
+            collectMatDropsAt(unit, x, y);
             addLog(`${unitDisplayName(unit)} jumps from ${coordLabel(fromX, fromY)} to ${coordLabel(x, y)}!`);
             playSfx('moveStep');
             checkStealthReveals(unit);
@@ -33918,6 +34203,7 @@
             if (cDelta === 0 && eDelta === 0) return;
 
             const modified = [];
+            const _excavated = [];   // material-bearing blocks the blast tore out
 
             for (let dy = -radius; dy <= radius; dy++) {
                 for (let dx = -radius; dx <= radius; dx++) {
@@ -33959,6 +34245,12 @@
                     } else {
 
                         for (let z = oldH; z > newH; z--) {
+                            // 🧱 Blasted-out blocks scatter as debris cubes —
+                            // remember what each one was made of before it goes.
+                            const _exBlk = (typeof getBlockAt === 'function') ? getBlockAt(tx, ty, z) : null;
+                            if (_exBlk && getTerrainMaterial(_exBlk.terrain)) {
+                                _excavated.push({ terrain: _exBlk.terrain });
+                            }
                             removeBlockAt(tx, ty, z);
                         }
                     }
@@ -33981,6 +34273,14 @@
             // sea become pools; a fissure dug along a lake becomes a moat).
             const _tdLowered = modified.filter(m => m.newH < m.oldH);
             if (_tdLowered.length && typeof settleWaterAround === 'function') settleWaterAround(_tdLowered);
+
+            // 🧱 The blast scatters the torn-out masonry/timber/plate as
+            // collectible debris cubes around the crater (capped so one nuke
+            // can't carpet the map).
+            if (_excavated.length) {
+                const _dCap = _matDropCfg().deformDropCap || 10;
+                spawnMaterialDrops(cx, cy, _excavated.slice(0, _dCap));
+            }
 
             state._terrainVersion = (state._terrainVersion || 0) + 1;
             if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
@@ -38854,7 +39154,23 @@
                 unit.mp -= effectiveSpellCost;
 
                 const dashPath = getLinePoints(unit.x, unit.y, x, y);
-                // Enemies caught mid-path take the lighter `dashDamage`, while the
+
+                // 💥 CHARGE breach: a dash is a deliberate ram — any breakable
+                // obstacle crossed mid-path (tree, weak wall) gets smashed
+                // through at charging power (weight class + dash bonus),
+                // scattering debris cubes. Unbreakable obstacles behave as
+                // before (the dash passes over). The landing tile itself is
+                // never demolished — it was validated passable above.
+                const _chargeZ = unit.z ?? getBaseHeightAt(unit.x, unit.y);
+                for (const _cp of dashPath) {
+                    if (_cp.x === x && _cp.y === y) continue;                       // landing tile
+                    if (_cp.x === unit.x && _cp.y === unit.y) continue;             // launch tile
+                    const _cpBlocked = !isTerrainPassable(_cp.x, _cp.y)
+                        || getBaseHeightAt(_cp.x, _cp.y) > _chargeZ + (typeof MAX_CLIMB_HEIGHT !== 'undefined' ? MAX_CLIMB_HEIGHT : 1);
+                    if (!_cpBlocked) continue;
+                    _tryCrashThrough(unit, _cp.x, _cp.y, { byUnit: unit, charging: true });
+                }
+
                 // primary target (the tile we land on) takes the spell's full `dmg`
                 // — that's what the tooltip ("DMG …" + "Path DMG …") and the spell
                 // descriptions ("path enemies take N … full damage to primary
