@@ -252,7 +252,7 @@
                 compatibleMaps: [],   // generated below from the MapForge roster
             },
             /* SIMULTANEOUS turns (WeGo) — chess meets Pokémon. Each "turn" BOTH
-               sides secretly commit one order (ANY living unit + up to 2 AP of
+               sides secretly commit one order (ANY living unit + up to 3 AP of
                moves/actions — the same unit may be ordered again next turn),
                then the two orders resolve together: higher priority first
                (Guard/defensive), then higher SPD, initiative token breaks ties.
@@ -267,7 +267,7 @@
                 id: 'simul',
                 label: 'Simul',
                 icon: '♟️',
-                desc: 'SIMULTANEOUS turns — both sides secretly order one unit (any unit, 2 AP), then the orders play out together: priority first, then speed. Displaced targets are re-acquired or the action whiffs. Most kills in 12 rounds wins.',
+                desc: 'SIMULTANEOUS turns — both sides secretly order one unit (any unit, 3 AP), then the orders play out together: priority first, then speed. Displaced targets are re-acquired or the action whiffs. Most kills in 12 rounds wins.',
                 roundLimit: 12,
                 timeLimitSec: 0,
                 hasTowers: false,

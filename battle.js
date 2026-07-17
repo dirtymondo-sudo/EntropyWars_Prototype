@@ -12482,7 +12482,7 @@
                 u.dead = false; u._dying = false;
                 u.hp = u.maxHp; u.mp = u.maxMp; u.shield = 0;
                 u.status = { spawnGuard: 1 };
-                u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 2;
+                u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 3;
                 u._rtCd = {}; u._rtAtkAt = 0; u._rtGcdAt = 0; u._rtHurtAt = 0;
                 u._respawnIn = null;
                 const t = _spawnTile(u);
@@ -12830,7 +12830,7 @@
                    at 0 AP and stray legacy paths can zero it — keep it topped. */
                 for (const u of _units()) {
                     if (!_alive(u)) continue;
-                    if ((u.ap || 0) <= 0) u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 2;
+                    if ((u.ap || 0) <= 0) u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 3;
                     if ((u.mp || 0) < (u.maxMp || 0)) {
                         u._rtMpAcc = (u._rtMpAcc || 0) + (u.maxMp || 0) * MP_REGEN_FRAC * dt;
                         if (u._rtMpAcc >= 1) { const g = Math.floor(u._rtMpAcc); u._rtMpAcc -= g; u.mp = Math.min(u.maxMp, (u.mp || 0) + g); }
@@ -12887,7 +12887,7 @@
                 pendingFx = []; zones = []; deadTimers.clear(); bots.clear();
                 _descCache.clear();
                 for (const u of _units()) {
-                    u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 2;
+                    u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 3;
                     u._rtCd = {}; u._rtGcdAt = 0; u._rtAtkAt = 0; u._rtHurtAt = 0;
                     u._rtHpAcc = 0; u._rtMpAcc = 0;
                     if (u.id !== playerUid && !u.dead) bots.set(u.id, _mkBot(u));
@@ -15822,7 +15822,10 @@
             if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX: _originX, fromY: _originY });
             unit.movesThisTurn = (unit.movesThisTurn || 0) + 1;
             updateTerrainStay(unit);
-            spendAP(unit, AP_COST_ACTION);
+            // Second move of the turn consumes ALL remaining AP — moving
+            // twice IS the whole turn (first move stays 1 AP).
+            if ((unit.movesThisTurn || 0) >= UNIT_MAX_MOVES) spendAllAP(unit);
+            else spendAP(unit, AP_COST_ACTION);
 
             const _postMoveCanMove = canUnitMove(unit);
             const _postMoveCanJump = !_postMoveCanMove && (unit.ap || 0) > 0
@@ -17258,7 +17261,7 @@
             return state.units.find(u => u.id === (state.focusedUnitId || state.selectedUnitId)) || null;
         }
 
-        const UNIT_MAX_AP = 2;
+        const UNIT_MAX_AP = 3;
         const AP_COST_SPELL = 2;
         const AP_COST_ACTION = 1;
         const UNIT_MAX_MOVES = 2;
@@ -17266,16 +17269,20 @@
         const COMBO_AP_COST_PARTNER = 1;
 
         /* ─── Press Turn (AP-based) ──────────────────────────────────────────
-           SMT-style "press" mapped onto the per-unit AP pool. Units get 2 AP
-           per turn and any attack / spell cast ENDS the turn (spendAllAP —
-           it consumes ALL remaining AP). The ONLY way to keep acting is a
-           press: the turn's FIRST weakness hit or crit hands back +2 AP at
-           once (a full fresh action); every press AFTER that vents into the
-           team's Entropy Gauge instead — so a unit can attack at most TWICE
-           in one turn. Only unit.ap mutates → online-safe (host
-           authoritative) and undo-safe (ap is in every pushUndoSnapshot).
-           See PRESS_OUTCOME / applyPressTurn below; turn termination stays
-           owned by unitFinished/endUnitIfDone. */
+           SMT-style "press" mapped onto the per-unit AP pool. Units get 3 AP
+           per turn and any DAMAGING attack / spell cast ENDS the turn
+           (spendAllAP — it consumes ALL remaining AP). Moves: the first move
+           costs 1 AP, the SECOND move consumes everything left (moving twice
+           is a full turn). So a turn is either move+move, or move + support
+           actions + one damaging action (e.g. move → 1-AP buff → attack).
+           The ONLY way to keep acting after damage is a press: the turn's
+           FIRST weakness hit or crit hands back +2 AP at once (a full fresh
+           action); every press AFTER that vents into the team's Entropy
+           Gauge instead — so a unit can attack at most TWICE in one turn.
+           Only unit.ap mutates → online-safe (host authoritative) and
+           undo-safe (ap is in every pushUndoSnapshot). See PRESS_OUTCOME /
+           applyPressTurn below; turn termination stays owned by
+           unitFinished/endUnitIfDone. */
         const PRESS_REFUND_AP       = 2;   // AP granted by the turn's first press (weak/crit)
         const PRESS_MISS_PENALTY_AP = 1;   // extra AP drained on miss/dodge (post-press swings)
         const PRESS_MAX_BONUS_AP    = 2;   // total press AP per unit per turn → ONE +2 press; extras vent to entropy
@@ -17746,7 +17753,7 @@
 
         function getSpellApCost(spell) {
             const cost = (spell && spell.apCost != null) ? spell.apCost : AP_COST_SPELL;
-            // No ability may cost more than a full 2-AP turn — a 3+ AP spell
+            // No ability may cost more than a full turn's AP — a pricier spell
             // would be permanently uncastable. Clamp instead of trusting data.
             return Math.min(cost, UNIT_MAX_AP);
         }
@@ -24203,7 +24210,7 @@
         /* ═══════════════════════════════════════════════════════════════════
            SIMUL MODE — simultaneous WeGo turns (chess × Pokémon).
            Each turn BOTH sides secretly commit ONE order — any living unit
-           plus up to 2 AP of steps (moves + one action). The same unit may be
+           plus up to 3 AP of steps (moves + one action). The same unit may be
            ordered again next turn. Orders then resolve together:
              priority (Guard 3 > stationary support 2 > everything else 0,
              a plan's priority = its LOWEST step so adding a move forfeits it)
@@ -24293,7 +24300,7 @@
                 el.style.display = '';
                 if (text) { el.innerHTML = text; return; }
                 if (state._simulPhase === 'plan') {
-                    el.innerHTML = `♟️ PLAN — TURN ${state._simulTurn}/${state._simulTurnsTotal} · order ANY unit (2 AP) · END TURN commits`;
+                    el.innerHTML = `♟️ PLAN — TURN ${state._simulTurn}/${state._simulTurnsTotal} · order ANY unit (3 AP) · END TURN commits`;
                 } else {
                     el.innerHTML = '⚔ RESOLVING ORDERS…';
                 }
@@ -24566,7 +24573,9 @@
                 unit.z = (dest.z != null) ? dest.z
                     : ((typeof nearestWalkableZ === 'function') ? nearestWalkableZ(dest.x, dest.y, unit.z ?? 0) : (unit.z ?? 0));
                 unit.movesThisTurn = (unit.movesThisTurn || 0) + 1;
-                spendAP(unit, AP_COST_ACTION);
+                // Mirror finishMoveAt: a second planned move eats the rest of the AP
+                if ((unit.movesThisTurn || 0) >= UNIT_MAX_MOVES) spendAllAP(unit);
+                else spendAP(unit, AP_COST_ACTION);
                 _showPlanGhost(unit);
                 showFloatingTextForUnit(unit, '👣 PLANNED', 'buff', { durationMs: 900 });
                 playSfx('uiCursorMove');
@@ -24675,7 +24684,7 @@
             }
 
             function _queueGuard(unit, plan) {
-                if ((unit.ap || 0) < 2) { addLog('Guard requires a full 2 AP order.'); return 0; }
+                if ((unit.ap || 0) < 1) { addLog('No AP left to plan a Guard.'); return 0; }
                 plan.steps.push({ type: 'guard' });
                 spendAllAP(unit);
                 showFloatingTextForUnit(unit, '🛡 ORDER LOCKED', 'buff', { durationMs: 1100 });
@@ -24977,7 +24986,7 @@
                     case 'spell': return _execSpell(unit, step);
                     case 'item': return _execItem(unit, step);
                     case 'guard':
-                        if ((unit.ap || 0) >= 2 && typeof window.doGuard === 'function') {
+                        if ((unit.ap || 0) >= 1 && typeof window.doGuard === 'function') {
                             window.doGuard(unit);
                             return 700;
                         }
@@ -30228,8 +30237,9 @@
 
                             actingUnit.movesThisTurn = (actingUnit.movesThisTurn || 0) + 2;
                             actingUnit._trackTilesMoved = (actingUnit._trackTilesMoved || 0) + combinedPath.length;
+                            // walk+walk = the whole turn: first leg 1 AP, second leg all the rest
                             spendAP(actingUnit, AP_COST_ACTION);
-                            spendAP(actingUnit, AP_COST_ACTION);
+                            spendAllAP(actingUnit);
                             playSfx('moveStep');
                             addLog(`${unitDisplayName(actingUnit)} moves to ${coordLabel(x, y)}.`, actingUnit.player);
 

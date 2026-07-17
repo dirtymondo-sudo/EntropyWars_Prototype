@@ -4663,8 +4663,8 @@
                 window.SimulEngine.queueStep(unit, { type: 'guard' });
                 return;
             }
-            if (!unit || unit.dead || (unit.ap || 0) < 2) {
-                addLog('Guard requires 2 AP.');
+            if (!unit || unit.dead || (unit.ap || 0) < 1) {
+                addLog('Guard requires at least 1 AP.');
                 return;
             }
             pushUndoSnapshot(true);
@@ -4681,7 +4681,10 @@
             showFloatingTextForUnit(unit, '🛡 GUARD', 'buff', { durationMs: 1200 });
             playSfx('uiConfirm');
 
-            unit.ap = Math.max(0, (unit.ap || 0) - 2);
+            // Guard is a full defensive commit: it ends the turn no matter how
+            // much AP is left — which also makes it the natural "dump my last
+            // AP" play instead of a dead End Turn click.
+            unit.ap = 0;
             state.actionMode = null;
 
             if (unit.ap <= 0 || unit.dead) state.actionMenuView = 'root';
@@ -9728,8 +9731,9 @@
                 unit.x = destX;
                 unit.y = destY;
                 updateTerrainStay(unit);
+                // double move = whole turn: first leg 1 AP, second leg the rest
                 spendAP(unit, AP_COST_ACTION);
-                spendAP(unit, AP_COST_ACTION);
+                spendAllAP(unit);
                 state.actionMode = null;
                 state.actionMenuView = 'root';
                 state.selectedTool = null;

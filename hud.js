@@ -2063,7 +2063,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
 
   const pips = [];
   const shown = Math.min(maxAP, 8);
-  const baseAP = 2;   // UNIT_MAX_AP — pips past this are level-up bonus AP
+  const baseAP = 3;   // UNIT_MAX_AP — pips past this are level-up bonus AP
   for (let i = 0; i < shown; i++) {
     const on = i < ap;
     const spend = on && hoverCost > 0 && i >= ap - hoverCost;
@@ -2968,7 +2968,7 @@ function ActionMenu({ st, hidden }) {
   if (st.battleDialogueQueue && st.battleDialogueQueue.length > 0) return null;
 
   const fc = getFactionColor(unit);
-  const maxAP = typeof getUnitMaxAP === 'function' ? getUnitMaxAP(unit) : 2;
+  const maxAP = typeof getUnitMaxAP === 'function' ? getUnitMaxAP(unit) : 3;
   const slot = unit._partySlot || unit.slot || 1;
   const roman = ['I','II','III','IV','V','VI','VII','VIII'][slot - 1] || slot;
   const unitName = typeof unitDisplayName === 'function' ? unitDisplayName(unit) : (unit.name || unit.cls);
@@ -3002,7 +3002,11 @@ function ActionMenu({ st, hidden }) {
       : 'No landing';
     moveAction = { id: 'jump', label: 'Jump', icon: '↑', cost: 1, available: jumpOk, sub: jumpSub };
   } else if (apc.canMove) {
-    moveAction = { id: 'move', label: 'Move', icon: '↑', cost: 1, available: true };
+    // Second move of the turn consumes ALL remaining AP (moving twice = the
+    // whole turn) — show the real price on the pips.
+    const _mvCost = movesUsed >= 1 ? Math.max(1, unit.ap || 0) : 1;
+    moveAction = { id: 'move', label: 'Move', icon: '↑', cost: _mvCost, available: true,
+      sub: movesUsed >= 1 ? 'Ends turn' : null };
   } else {
     const mvReason = (unit.ap || 0) < 1 ? 'No AP'
       : (typeof UNIT_MAX_MOVES !== 'undefined' && movesUsed >= UNIT_MAX_MOVES) ? 'Max moves' : 'Blocked';
@@ -3127,11 +3131,13 @@ function ActionMenu({ st, hidden }) {
   // 🛡 GUARD — defensive stance + Overwatch (one reaction shot at the first
   // enemy that stops inside attack range). Promoted from the retired More
   // menu to a root verb: it's a core "spend the rest of my turn" play.
-  const _guardOk = (unit.ap || 0) >= 2 && typeof doGuard === 'function';
+  // Guard ends the turn whatever AP is left — it needs only 1 AP, so it's
+  // always a live way to spend a leftover point.
+  const _guardOk = (unit.ap || 0) >= 1 && typeof doGuard === 'function';
   const guardAction = {
-    id: 'guard', label: 'Guard', icon: '🛡', cost: 2,
+    id: 'guard', label: 'Guard', icon: '🛡', cost: Math.max(1, unit.ap || 0),
     available: _guardOk,
-    sub: _guardOk ? null : 'No AP',
+    sub: _guardOk ? 'Ends turn' : 'No AP',
   };
 
   // Canonical verb order, top to bottom: Move › Attack › Abilities › Combo ›
@@ -4653,9 +4659,16 @@ function _predictMoveTowardsPath(actingUnit, targetUnit, firstStep) {
     steps.push(step);
     actingUnit.x = step.x; actingUnit.y = step.y;
     if (step.z !== undefined && step.z !== null) actingUnit.z = step.z;
-    actingUnit.ap = Math.max(0, (actingUnit.ap || 0) - apCost);
-    if (step._jump) actingUnit._jumpedThisTurn = true;
-    else actingUnit.movesThisTurn = (actingUnit.movesThisTurn || 0) + 1;
+    if (step._jump) {
+      actingUnit._jumpedThisTurn = true;
+      actingUnit.ap = Math.max(0, (actingUnit.ap || 0) - apCost);
+    } else {
+      actingUnit.movesThisTurn = (actingUnit.movesThisTurn || 0) + 1;
+      // Mirror finishMoveAt: the second move of a turn drains ALL remaining AP
+      const maxMoves = (window.GAME && window.GAME.UNIT_MAX_MOVES) || 2;
+      if ((actingUnit.movesThisTurn || 0) >= maxMoves) actingUnit.ap = 0;
+      else actingUnit.ap = Math.max(0, (actingUnit.ap || 0) - apCost);
+    }
   };
   try {
     if (firstStep) _apply(firstStep);
