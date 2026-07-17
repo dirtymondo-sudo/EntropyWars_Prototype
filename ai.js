@@ -20,6 +20,77 @@
             : (spell.range || 0);
     }
 
+    // ── CPU DIFFICULTY (schema 12) ───────────────────────────────────────
+    // Difficulty changes HOW WELL the AI executes decisions, never its stats
+    // (the XCOM model: below Normal remove capabilities, never add cheats).
+    //  easy   — samples softmax-randomly among the top few candidates (human-
+    //           looking "good but not best" picks), never combos, ignores
+    //           press-refund lines, and ainew.js's focus-fire/CC overlay is
+    //           bypassed entirely (stock AI only).
+    //  normal — the trained champion + ainew overlay, unchanged argmax.
+    //  hard   — same execution as normal, plus an "objective persona":
+    //           tower/hourglass/nexus/flag intents ×1.3, so it presses win
+    //           conditions instead of trading kills forever.
+    // AI-vs-AI harnesses (training / strength test / balance lab run under
+    // devAutoSim) are pinned to 'normal' so measurements stay comparable.
+    const AI_DIFFICULTY_PROFILES = {
+        easy:   { pickTopN: 3, softmaxT: 22, combos: false, press: false, objectiveMult: 1.0 },
+        normal: { pickTopN: 1, softmaxT: 0,  combos: true,  press: true,  objectiveMult: 1.0 },
+        hard:   { pickTopN: 1, softmaxT: 0,  combos: true,  press: true,  objectiveMult: 1.3 },
+    };
+    function _aiDifficultyKey() {
+        try {
+            const g = G();
+            if (g && g.state && g.state.devAutoSim) return 'normal';
+            const k = window.EW_AI_DIFFICULTY;
+            if (AI_DIFFICULTY_PROFILES[k]) return k;
+        } catch (e) {}
+        return 'normal';
+    }
+    function _aiDiff() { return AI_DIFFICULTY_PROFILES[_aiDifficultyKey()]; }
+    window._ewGetAiDifficulty = _aiDifficultyKey;
+    window._ewSetAiDifficulty = function (k) {
+        if (!AI_DIFFICULTY_PROFILES[k]) k = 'normal';
+        window.EW_AI_DIFFICULTY = k;
+        try { localStorage.setItem('ew-ai-difficulty-v1', k); } catch (e) {}
+    };
+    try {
+        const _saved = localStorage.getItem('ew-ai-difficulty-v1');
+        if (AI_DIFFICULTY_PROFILES[_saved]) window.EW_AI_DIFFICULTY = _saved;
+    } catch (e) {}
+
+    // ── Retired schema-12 weights, frozen as constants ───────────────────
+    // The gen-100 A/B run (5652 matches) showed each of these either pinned
+    // against a range edge, statistically flat across every experiment, or
+    // (the jump family / enemySpawnZonePenalty) referenced by no code at all.
+    // Their trained values are hardcoded here so the trainer spends its
+    // matches on the ~16 weights that actually move win rate. Hand-tune
+    // freely — these are design knobs now, not learned parameters.
+    const AI_TUNE = {
+        markedTargetBonus: 5,        // trainer pinned at min 2 = imperceptible; raised to matter
+        hourglassTargetBonus: 20,
+        whiffRiskPenalty: 0,         // two experiments said "feature off wins"
+        hgCarrierFleeAdv: -0.23,
+        safeAllyProximity: 1,
+        towerLowHpPush: 25,
+        towerMidHpPush: 30.5,
+        towerClearBonus: 29.75,
+        levelAggressionMod: 0.006,   // progression modes only (PvP is level-normalized)
+        nearLevelUpBonus: 1.75,      // progression modes only
+        recallBonus: 8,
+        mpPotionPriority: 280,       // sat at range max through 8 experiments
+        earlyExploreBonus: 15.75,
+        reshapeRangedRaise: 15.25,
+        reshapePerEnemy: 6.5,
+        reshapeDefensive: 3.6,
+        moveHighGroundRanged: 0.6,
+        moveHighGroundMelee: 2.0,
+        moveRetreatHeight: 2.1,
+        landToChannelBonus: 17.25,
+        flyEscapeMeleeBonus: 6.7,
+        flyRangedHeightBonus: 14.1,
+    };
+
     // ── Job tendencies (2026-07-10) ──────────────────────────────────────
     // A light, general behavior bias per job so units "play their role":
     // White Mages put healing first, Black Mages hang back and cast instead
@@ -340,12 +411,31 @@
             }
         } else if (boardScore > 40) {
             for (const c of candidates) {
-                if (c.type === 'tower_attack') c.score += 10;
+                // (was 'tower_attack' — a type that doesn't exist, so the
+                // "winning big → press the tower" bonus never fired)
+                if (c.type === 'attack_tower') c.score += 10;
             }
         }
 
         candidates.sort((a, b) => b.score - a.score);
         let best = candidates[0];
+
+        // Easy CPU: sample softmax-randomly among the top few viable
+        // candidates instead of always taking the argmax. Mistakes look like
+        // impatience ("took the good shot, not the best one"), not dice.
+        const _diffPick = _aiDiff();
+        if (_diffPick.pickTopN > 1 && best && best.score > 0) {
+            const pool = candidates.slice(0, _diffPick.pickTopN).filter(c => c.score > 0);
+            if (pool.length > 1) {
+                const t = Math.max(1, _diffPick.softmaxT);
+                const w = pool.map(c => Math.exp((c.score - pool[0].score) / t));
+                let r = Math.random() * w.reduce((a, b) => a + b, 0);
+                for (let i = 0; i < pool.length; i++) {
+                    r -= w[i];
+                    if (r <= 0) { best = pool[i]; break; }
+                }
+            }
+        }
 
         if (!best || best.score <= 0) {
             if (!_skipMove && g.canUnitMove(unit)) {
@@ -795,8 +885,9 @@
     function _pressScoreAdj(attacker, defender, opts = {}) {
         const g = G();
         if (!defender) return { add: 0, sub: 0 };
-        const refundVal = g.getAIWeight('pressRefundValue_v1');
-        const whiffPen = g.getAIWeight('whiffRiskPenalty_v1');
+        // Easy difficulty doesn't hunt press-refund lines at all.
+        const refundVal = _aiDiff().press ? g.getAIWeight('pressRefundValue_v1') : 0;
+        const whiffPen = AI_TUNE.whiffRiskPenalty;
         const evadeP = (opts.canMiss && typeof g.getEvasionChance === 'function')
             ? (g.getEvasionChance(defender) || 0) : 0;
         const landP = 1 - evadeP;
@@ -827,7 +918,7 @@
         else if (cls === 'Warrior') priority += 5;
         else if (cls === 'Freelancer') priority += 8;
 
-        if ((target.hourglasses || 0) > 0) priority += g.getAIWeight('hourglassTargetBonus_v1') + (target.hourglasses * 10);
+        if ((target.hourglasses || 0) > 0) priority += AI_TUNE.hourglassTargetBonus + (target.hourglasses * 10);
 
         // Focus fire: damage the TEAM already invested in a target this round is
         // worthless unless someone finishes the job — weight wounded-by-us
@@ -912,7 +1003,7 @@
         const advantage = Math.max(-1, Math.min(1, raw));
         const shouldEngage = nearEnemies.length === 0 || advantage > g.getAIWeight('engageAdvantage_v1');
 
-        const hgCarrierFlee = (unit.hourglasses || 0) > 0 && advantage < g.getAIWeight('hgCarrierFleeAdv_v1');
+        const hgCarrierFlee = (unit.hourglasses || 0) > 0 && advantage < AI_TUNE.hgCarrierFleeAdv;
 
         const isRanged = g.getEffectiveRange(unit) >= 2;
         const nearestMeleeThreat = nearEnemies.find(e => g.getEffectiveRange(e) <= 1);
@@ -1012,7 +1103,7 @@
                 }
                 const mpPct = ally.mp / ally.maxMp;
 
-                let score = g.getAIWeight('mpPotionPriority_v1') + (1.0 - mpPct) * 160;
+                let score = AI_TUNE.mpPotionPriority + (1.0 - mpPct) * 160;
 
                 if (bestSpellValue > 0) {
                     score += bestSpellValue * 1.2 + unlockedCount * 20;
@@ -1225,7 +1316,7 @@
 
             if (_aiKillHp(tgt, unit) <= estDmg * typeMult + 32) score += g.getAIWeight('killBonusScore_v1') + 120;
 
-            if (g.unitHasStatus(tgt, 'marked')) score += g.getAIWeight('markedTargetBonus_v1');
+            if (g.unitHasStatus(tgt, 'marked')) score += AI_TUNE.markedTargetBonus;
 
             if (unit.cls === 'White Mage') score *= 0.25;
             if (unit.cls === 'Harbinger') score *= 0.5;
@@ -1268,13 +1359,19 @@
                 score *= v.tactical.shouldEngage ? 1.0 + Math.max(0, v.tactical.advantage) * 0.5 : 0.6;
             }
 
-            const unitLevel = unit.level || 1;
-            score *= 1.0 + (unitLevel - 1) * g.getAIWeight('levelAggressionMod_v1');
-
-            if (typeof g.xpForLevel === 'function' && unitLevel < 5) {
-                const nextXp = g.xpForLevel(unitLevel + 1);
-                const curXp = unit.xp || 0;
-                if (nextXp > 0 && curXp >= nextXp * 0.7) score += g.getAIWeight('nearLevelUpBonus_v1');
+            // Level weights only fire in progression modes (MD/Challenge/
+            // campaign) — PvP units are all at LEVEL_CAP, where "per-level
+            // aggression" would just be a constant multiplier the trainer
+            // can't see. (This block used to read unit.level / g.xpForLevel,
+            // neither of which exists — it was dead code since day one.)
+            if (typeof g.xpProgressionActive === 'function' && g.xpProgressionActive()
+                && typeof g.getUnitLevel === 'function') {
+                const unitLevel = g.getUnitLevel(unit);
+                score *= 1.0 + (unitLevel - 1) * AI_TUNE.levelAggressionMod;
+                if (unitLevel < (g.XP_MAX_LEVEL || 100) && typeof g.getXPProgressPct === 'function'
+                    && g.getXPProgressPct(unit) >= 70) {
+                    score += AI_TUNE.nearLevelUpBonus;
+                }
             }
 
             const _pa = _pressScoreAdj(unit, tgt, { canMiss: true, canCrit: true });
@@ -1319,13 +1416,13 @@
 
         let score = estDmg + g.getAIWeight('towerBaseBonus_v1');
 
-        if (tower.hp <= estDmg * 3) score += g.getAIWeight('towerLowHpPush_v1');
-        else if (tower.hp <= tower.maxHp * 0.5) score += g.getAIWeight('towerMidHpPush_v1');
+        if (tower.hp <= estDmg * 3) score += AI_TUNE.towerLowHpPush;
+        else if (tower.hp <= tower.maxHp * 0.5) score += AI_TUNE.towerMidHpPush;
 
         const groundEnemies = v.visibleEnemies.filter(e =>
             Math.abs(e.x - tower.x) + Math.abs(e.y - tower.y) <= 6
         );
-        if (groundEnemies.length === 0) score += g.getAIWeight('towerClearBonus_v1');
+        if (groundEnemies.length === 0) score += AI_TUNE.towerClearBonus;
         else if (groundEnemies.length === 1) score += 160;
 
         const ws = v.winState;
@@ -2429,6 +2526,7 @@
 
     function scoreCombos(unit, v, out) {
         const g = G();
+        if (!_aiDiff().combos) return;   // Easy CPU never coordinates combos
         if ((unit.ap || 0) < g.COMBO_AP_COST_INITIATOR) return;
 
         const partners = g.getComboPartners(unit);
@@ -2642,7 +2740,7 @@
             score -= threat.count * 4;
 
             for (const a of v.allies) {
-                if (Math.abs(tile.x - a.x) + Math.abs(tile.y - a.y) <= 4) score += g.getAIWeight('safeAllyProximity_v1');
+                if (Math.abs(tile.x - a.x) + Math.abs(tile.y - a.y) <= 4) score += AI_TUNE.safeAllyProximity;
             }
             if ((unit._aiRecentTiles || []).includes(g.posKey(tile.x, tile.y))) score += g.getAIWeight('antiOscillationPen_v1');
 
@@ -2654,9 +2752,29 @@
         }
     }
 
+    // Intents whose score the Hard-difficulty "objective persona" multiplies:
+    // everything that scores points or progresses a win condition, nothing
+    // that is pure combat. One knob turns a kill-trader into an objective
+    // player without touching any trained weight.
+    const _OBJECTIVE_INTENTS = new Set([
+        'ctf_carry_home', 'ctf_intercept_carrier', 'ctf_return_flag', 'ctf_grab_flag',
+        'hotspot_nexus', 'domination_nexus', 'arena_nexus_deny', 'arena_nexus',
+        'approach_nexus', 'grab_hg', 'approach_hg', 'siege_tower',
+        'siege_tower_opportunistic', 'default_siege',
+    ]);
+
+    // ── INTENT LAYER (schema 12) ─────────────────────────────────────────
+    // This used to be a first-match-wins if/return ladder: branch ORDER
+    // silently decided priority, and a branch's score was only ever compared
+    // against non-move candidates. Now every applicable intent is pushed as
+    // a scored candidate and the argmax wins (the XCOM shape: pick an intent,
+    // then execute it). Conditions and scores are otherwise carried over
+    // 1:1, with two deliberate behavior changes flagged inline (domination
+    // objective play, TDM retreat-at-disadvantage).
     function pickMoveGoal(unit, v) {
         const g = G();
         const ws = v.winState;
+        const goals = [];
 
         const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
         const modeId = mpMode ? mpMode.id : 'arena';
@@ -2671,7 +2789,7 @@
                 if (sanct) {
 
                     const fx = unit.player === 1 ? Math.min(sanct.churchX + 1, g.bw() - 1) : Math.max(sanct.churchX - 1, 0);
-                    return { x: fx, y: sanct.churchY, score: 80, reason: 'ctf_carry_home' };
+                    goals.push({ x: fx, y: sanct.churchY, score: 80, reason: 'ctf_carry_home' });
                 }
             }
 
@@ -2680,7 +2798,7 @@
                 if (carrier) {
                     const d = Math.abs(unit.x - carrier.x) + Math.abs(unit.y - carrier.y);
                     if (d <= 12) {
-                        return { x: carrier.x, y: carrier.y, score: 65, reason: 'ctf_intercept_carrier' };
+                        goals.push({ x: carrier.x, y: carrier.y, score: 65, reason: 'ctf_intercept_carrier' });
                     }
                 }
             }
@@ -2688,12 +2806,12 @@
             if (ownFlag && !ownFlag.atBase && !ownFlag.carriedBy) {
                 const d = Math.abs(unit.x - ownFlag.x) + Math.abs(unit.y - ownFlag.y);
                 if (d <= 10) {
-                    return { x: ownFlag.x, y: ownFlag.y, score: 55, reason: 'ctf_return_flag' };
+                    goals.push({ x: ownFlag.x, y: ownFlag.y, score: 55, reason: 'ctf_return_flag' });
                 }
             }
 
             if (enemyFlag && !enemyFlag.carriedBy) {
-                return { x: enemyFlag.x, y: enemyFlag.y, score: 45, reason: 'ctf_grab_flag' };
+                goals.push({ x: enemyFlag.x, y: enemyFlag.y, score: 45, reason: 'ctf_grab_flag' });
             }
         }
 
@@ -2711,10 +2829,14 @@
                 Math.abs(u.x - cx) + Math.abs(u.y - cy) <= 4
             ).length;
             if (alliesNearNexus >= 2) s -= 20;
-            if (s > 0) return { x: cx, y: cy, score: s, reason: 'hotspot_nexus' };
+            if (s > 0) goals.push({ x: cx, y: cy, score: s, reason: 'hotspot_nexus' });
         }
 
-        if (modeId === 'domination' && g.state.nexusPoints && v.visibleEnemies.length === 0) {
+        // BEHAVIOR CHANGE (schema 12): this used to be gated on "no enemies
+        // visible", so in Domination the AI stopped playing the objective the
+        // moment a fight started — but zones pay 10 pts/round and kills pay
+        // nothing. Zones now stay a candidate mid-fight, just discounted.
+        if (modeId === 'domination' && g.state.nexusPoints) {
             let bestNex = null, bestNexDist = Infinity, bestNexCenter = null;
             for (const key of Object.keys(g.state.nexusPoints)) {
                 const nex = g.state.nexusPoints[key];
@@ -2730,7 +2852,8 @@
                     g.state.nexusPoints[f]?.owner === unit.player
                 ).length;
                 if (ownedCount === 0) s += 15;
-                return { x: bestNexCenter.x, y: bestNexCenter.y, score: s, reason: 'domination_nexus' };
+                if (v.visibleEnemies.length > 0) s -= 15;
+                goals.push({ x: bestNexCenter.x, y: bestNexCenter.y, score: s, reason: 'domination_nexus' });
             }
         }
 
@@ -2750,7 +2873,7 @@
                     const d = Math.abs(unit.x - ncx) + Math.abs(unit.y - ncy);
                     if (d < bestD) { bestD = d; best = nex; bestC = { x: ncx, y: ncy }; }
                 }
-                if (best) return { x: bestC.x, y: bestC.y, score: 75, reason: 'arena_nexus_deny' };
+                if (best) goals.push({ x: bestC.x, y: bestC.y, score: 75, reason: 'arena_nexus_deny' });
             }
         }
 
@@ -2763,17 +2886,22 @@
                     const p = getTargetPriority(e, unit, v);
                     if (p > bestPriority + 5) { bestPriority = p; bestTarget = e; }
                 }
-                return { x: bestTarget.x, y: bestTarget.y, score: 30, reason: 'tdm_hunt' };
+                // BEHAVIOR CHANGE (schema 12): the hunt used to preempt the
+                // retreat branch unconditionally, so outnumbered units fed
+                // kills (= points for the enemy). At a disadvantage the hunt
+                // now scores below retreat (16 < 20) and the unit backs off.
+                const huntScore = v.tactical.shouldEngage ? 30 : 16;
+                goals.push({ x: bestTarget.x, y: bestTarget.y, score: huntScore, reason: 'tdm_hunt' });
+            } else {
+                const cx = Math.floor(g.bw() / 2);
+                const cy = Math.floor(g.bh() / 2);
+                goals.push({ x: cx, y: cy, score: 15, reason: 'tdm_advance' });
             }
-
-            const cx = Math.floor(g.bw() / 2);
-            const cy = Math.floor(g.bh() / 2);
-            return { x: cx, y: cy, score: 15, reason: 'tdm_advance' };
         }
 
         const round = g.state.round || 0;
         if (round <= 3 && v.visibleEnemies.length === 0 && v.visibleHourglasses.length === 0) {
-            const exploreBonus = g.getAIWeight('earlyExploreBonus_v1');
+            const exploreBonus = AI_TUNE.earlyExploreBonus;
             if (exploreBonus > 0 && g.canUnitMove(unit)) {
                 const moveTiles = g.getMoveTiles(unit);
                 if (moveTiles.length > 0) {
@@ -2796,7 +2924,7 @@
                         if (val > bestVal) { bestVal = val; bestTile = t; }
                     }
                     if (bestTile) {
-                        return { x: bestTile.x, y: bestTile.y, score: exploreBonus + Math.min(bestVal, 10), reason: 'early_explore' };
+                        goals.push({ x: bestTile.x, y: bestTile.y, score: exploreBonus + Math.min(bestVal, 10), reason: 'early_explore' });
                     }
                 }
             }
@@ -2817,7 +2945,7 @@
 
                 const currentHG = unit.hourglasses || 0;
                 s += currentHG * 5;
-                return { x: reachable[0].x, y: reachable[0].y, score: s, reason: 'grab_hg' };
+                goals.push({ x: reachable[0].x, y: reachable[0].y, score: s, reason: 'grab_hg' });
             }
         }
 
@@ -2831,7 +2959,7 @@
                 if (myDist > closestThreat + 1 && myDist > 3) {
                     let s = g.getAIWeight('towerDefendBonus_v1');
                     if (ws.phase === 'tower_defend') s += 20;
-                    return { x: v.ownTower.x, y: v.ownTower.y, score: s, reason: 'defend_tower' };
+                    goals.push({ x: v.ownTower.x, y: v.ownTower.y, score: s, reason: 'defend_tower' });
                 }
             }
         }
@@ -2866,12 +2994,15 @@
                         Math.abs(u.x - bestC.x) + Math.abs(u.y - bestC.y) <= 3
                     ).length;
                     if (alliesNear >= 2) s -= 18;
-                    if (s > 0) return { x: bestC.x, y: bestC.y, score: s, reason: 'arena_nexus' };
+                    if (s > 0) goals.push({ x: bestC.x, y: bestC.y, score: s, reason: 'arena_nexus' });
                 }
             }
         }
 
-        if (g.state.nexusPoints && v.visibleEnemies.length === 0) {
+        // Generic nexus approach for modes without a dedicated block above
+        // (arena and domination handle their own zones).
+        if (g.state.nexusPoints && v.visibleEnemies.length === 0
+            && modeId !== 'arena' && modeId !== 'domination') {
             let bestNex = null, bestNexDist = Infinity, bestNexCenter = null;
             for (const key of Object.keys(g.state.nexusPoints)) {
                 const nex = g.state.nexusPoints[key];
@@ -2889,7 +3020,7 @@
                 s += ownedCount * 5;
                 if (ownedCount === 0) s += 8;
                 if (v.enemyTower && v.enemyTower.hp < v.enemyTower.maxHp * 0.3) s -= 15;
-                if (s > 0) return { x: bestNexCenter.x, y: bestNexCenter.y, score: s, reason: 'approach_nexus' };
+                if (s > 0) goals.push({ x: bestNexCenter.x, y: bestNexCenter.y, score: s, reason: 'approach_nexus' });
             }
         }
 
@@ -2932,11 +3063,9 @@
 
                 if (unit.cls === 'White Mage') s *= 0.6;
 
-                return { x: v.enemyTower.x, y: v.enemyTower.y, score: s, reason: 'siege_tower' };
-            }
-
-            if (towerDist <= 8 && v.closestEnemyDist > 3) {
-                return { x: v.enemyTower.x, y: v.enemyTower.y, score: 22, reason: 'siege_tower_opportunistic' };
+                goals.push({ x: v.enemyTower.x, y: v.enemyTower.y, score: s, reason: 'siege_tower' });
+            } else if (towerDist <= 8 && v.closestEnemyDist > 3) {
+                goals.push({ x: v.enemyTower.x, y: v.enemyTower.y, score: 22, reason: 'siege_tower_opportunistic' });
             }
         }
 
@@ -2945,7 +3074,7 @@
             const mapCenterY = Math.floor((g.state.mapRows || 8) / 2);
             const distToMid = Math.abs(unit.x - mapCenterX) + Math.abs(unit.y - mapCenterY);
             if (distToMid > 3) {
-                return { x: mapCenterX, y: mapCenterY, score: 18, reason: 'advance_to_mid' };
+                goals.push({ x: mapCenterX, y: mapCenterY, score: 18, reason: 'advance_to_mid' });
             }
         }
 
@@ -2955,7 +3084,7 @@
                     Math.abs(e.x - v.ownTower.x) + Math.abs(e.y - v.ownTower.y) <= 5
                 );
             if (!enemiesNearOwnTower) {
-                return { retreat: true, score: 20, reason: 'retreat' };
+                goals.push({ retreat: true, score: 20, reason: 'retreat' });
             }
 
         }
@@ -2977,9 +3106,13 @@
                 const eDist = Math.abs(bestTarget.x - v.enemyTower.x) + Math.abs(bestTarget.y - v.enemyTower.y);
                 if (eDist <= 4) s += 12;
             }
-            return { x: bestTarget.x, y: bestTarget.y, score: s, reason: 'approach_enemy' };
+            goals.push({ x: bestTarget.x, y: bestTarget.y, score: s, reason: 'approach_enemy' });
         }
 
+        // Loose hourglasses are a win condition (collect all = instant win,
+        // 35 composite pts each at the horn) — in the old ladder this branch
+        // sat below approach_enemy, so hgSeekPriority_v1 was unreachable
+        // whenever the unit wanted to fight. Now it competes on score.
         if (v.visibleHourglasses.length > 0) {
             const nearest = v.visibleHourglasses.sort((a, b) =>
                 (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) -
@@ -2989,16 +3122,34 @@
             let s = 25 + g.getAIWeight('hgSeekPriority_v1');
             if (hgDist <= 4) s += 10;
             if (ws.phase === 'hg_losing') s += 15;
-            return { x: nearest.x, y: nearest.y, score: s, reason: 'approach_hg' };
+            goals.push({ x: nearest.x, y: nearest.y, score: s, reason: 'approach_hg' });
         }
 
         if (v.enemyTower && v.enemyTower.hp > 0) {
-            return { x: v.enemyTower.x, y: v.enemyTower.y, score: 14, reason: 'default_siege' };
+            goals.push({ x: v.enemyTower.x, y: v.enemyTower.y, score: 14, reason: 'default_siege' });
         }
 
-        const cx = Math.floor(g.bw() / 2);
-        const cy = Math.floor(g.bh() / 2);
-        return { x: cx, y: cy, score: 8, reason: 'explore' };
+        goals.push({
+            x: Math.floor(g.bw() / 2),
+            y: Math.floor(g.bh() / 2),
+            score: 8, reason: 'explore',
+        });
+
+        // Hard difficulty's objective persona: scale win-condition intents so
+        // pressing towers/zones/flags/hourglasses outbids another kill-trade.
+        const _om = _aiDiff().objectiveMult;
+        if (_om !== 1) {
+            for (const c of goals) {
+                if (_OBJECTIVE_INTENTS.has(c.reason)) c.score *= _om;
+            }
+        }
+
+        let best = goals[0];
+        for (const c of goals) {
+            if (c.score > best.score) best = c;
+        }
+        unit._aiLastIntent = best.reason;   // debug: shows up in unit dumps
+        return best;
     }
 
     let _pathCache = {};
@@ -3192,7 +3343,7 @@
 
                 if (typeof g.getHeightAt === 'function') {
                     const tileH = tile.z ?? g.getHeightAt(tile.x, tile.y);
-                    score += Math.min(tileH, 4) * g.getAIWeight('moveRetreatHeight_v1');
+                    score += Math.min(tileH, 4) * AI_TUNE.moveRetreatHeight;
                 }
 
                 const threat = getThreatAt(v.threatMap, tile.x, tile.y);
@@ -3243,9 +3394,9 @@
             if (typeof g.getHeightAt === 'function') {
                 const tileH = tile.z ?? g.getHeightAt(tile.x, tile.y);
                 if (isRanged) {
-                    score += Math.min(tileH, 4) * g.getAIWeight('moveHighGroundRanged_v1');
+                    score += Math.min(tileH, 4) * AI_TUNE.moveHighGroundRanged;
                 } else {
-                    score += Math.min(tileH, 4) * g.getAIWeight('moveHighGroundMelee_v1');
+                    score += Math.min(tileH, 4) * AI_TUNE.moveHighGroundMelee;
                 }
             }
 
@@ -3341,9 +3492,9 @@
         const effRange = g.getEffectiveRange(unit);
         const isRanged = effRange >= 2;
 
-        const wRangedRaise = g.getAIWeight('reshapeRangedRaise_v1');
-        const wPerEnemy = g.getAIWeight('reshapePerEnemy_v1');
-        const wDefensive = g.getAIWeight('reshapeDefensive_v1');
+        const wRangedRaise = AI_TUNE.reshapeRangedRaise;
+        const wPerEnemy = AI_TUNE.reshapePerEnemy;
+        const wDefensive = AI_TUNE.reshapeDefensive;
 
         if (canRaise.ok) {
             let raiseScore = 0;
@@ -3439,9 +3590,9 @@
             if (g.canAffordMaterials(unit.player, { [k]: 1 })) { placeTool = k; break; }
         }
 
-        const wRangedRaise = g.getAIWeight('reshapeRangedRaise_v1');
-        const wPerEnemy = g.getAIWeight('reshapePerEnemy_v1');
-        const wDefensive = g.getAIWeight('reshapeDefensive_v1');
+        const wRangedRaise = AI_TUNE.reshapeRangedRaise;
+        const wPerEnemy = AI_TUNE.reshapePerEnemy;
+        const wDefensive = AI_TUNE.reshapeDefensive;
 
         // (a) pillar under self — the old reshape-raise play, now 1 block
         if (placeTool && !g._buildProblem(unit, placeTool, unit.x, unit.y)) {
@@ -3540,16 +3691,16 @@
                     if (myZ - eZ < 3) advantageGain++;
                 }
                 if (advantageGain > 0) {
-                    ascendScore += g.getAIWeight('flyRangedHeightBonus_v1') + advantageGain * 3;
+                    ascendScore += AI_TUNE.flyRangedHeightBonus + advantageGain * 3;
                 }
             }
 
             if (v.closestEnemyDist <= 2 && altAboveGround < 3) {
-                ascendScore = Math.max(ascendScore, g.getAIWeight('flyEscapeMeleeBonus_v1'));
+                ascendScore = Math.max(ascendScore, AI_TUNE.flyEscapeMeleeBonus);
             }
 
             if (!isAirborne && isRanged && v.visibleEnemies.length > 0 && v.closestEnemyDist <= 4) {
-                ascendScore = Math.max(ascendScore, g.getAIWeight('flyEscapeMeleeBonus_v1') * 0.7);
+                ascendScore = Math.max(ascendScore, AI_TUNE.flyEscapeMeleeBonus * 0.7);
             }
 
             const ws = v.winState;
@@ -3662,7 +3813,7 @@
                 const channelCost = typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1;
                 const landCost = g.FLYING_ALTITUDE_CONFIG?.apCost || 1;
                 if ((unit.ap || 0) < landCost + channelCost) return 0;
-                return g.getAIWeight('landToChannelBonus_v1');
+                return AI_TUNE.landToChannelBonus;
             };
             let landScore = 0;
             for (const nexKey of Object.keys(g.state.nexusPoints)) {
@@ -3806,7 +3957,7 @@
            while spotted (doRecall would refuse anyway). */
         if (typeof isUnitSeenByAnyEnemy === 'function' && isUnitSeenByAnyEnemy(unit)) return;
 
-        let score = g.getAIWeight('recallBonus_v1') + (1 - hpPct) * 25;
+        let score = AI_TUNE.recallBonus + (1 - hpPct) * 25;
         if (mpPct < 0.2) score += 10;
 
         /* Penalty if enemies are near (don't recall in the middle of a fight unless desperate) */
