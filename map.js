@@ -2514,6 +2514,36 @@
         function getBaseHeightAt(x, y) {
             return state.boardHeights?.[y]?.[x] ?? 0;
         }
+
+        /* ── 🪜 STAIRS COUNT AS HALF A LEVEL (2026-07-17) ────────────────
+           A barrier_passage staircase bridges exactly one elevation level and
+           a unit on it stands mid-slope (the renderer already lifts it there
+           via _stairStandLift). Combat height agrees: this returns +0.5 on a
+           stair tile and getUnitStandingHeight applies it, so high-ground
+           damage/soak, height-gated spells (leap strike), AI positioning and
+           the HUD forecast all see the climber halfway between the floors.
+           Movement/pathing still read the integer boardHeights — only the
+           STANDING height is lifted. Detection mirrors the renderer's
+           _isStairTile: explicit editor stairDir, or a legacy auto passage
+           with a strictly higher neighbour. */
+        function getStairLiftAt(x, y) {
+            const col = state.boardColumns?.[y]?.[x];
+            if (!col || !col.length) return 0;
+            const top = col[col.length - 1];
+            const rule = (typeof TERRAIN_RULES !== 'undefined') ? TERRAIN_RULES[top.terrain] : null;
+            if (top.terrain !== 'barrier_passage' && !(rule && rule.isBarrierPassage)) return 0;
+            if (top.stairDir) return 0.5;
+            const ht = state.boardHeights?.[y]?.[x] ?? 0;
+            const W = bw(), H = bh();
+            const nbrH = (nx, ny) => {
+                if (nx < 0 || ny < 0 || nx >= W || ny >= H) return ht;
+                const nc = state.boardColumns?.[ny]?.[nx];
+                if (nc && nc.length && nc[nc.length - 1].terrain === 'void') return ht;
+                return state.boardHeights?.[ny]?.[nx] ?? 0;
+            };
+            const maxNbr = Math.max(nbrH(x, y - 1), nbrH(x, y + 1), nbrH(x - 1, y), nbrH(x + 1, y));
+            return maxNbr > ht ? 0.5 : 0;
+        }
         function setHeightAt(x, y, h) {
             if (state.boardHeights?.[y]) {
                 state.boardHeights[y][x] = h;
@@ -2639,9 +2669,13 @@
                         if (oSpr && oSpr._gameHeight > 0) h += oSpr._gameHeight;
                     }
                 }
+                /* stairs = +0.5, but only for a unit standing ON the tile
+                   surface — a flyer above (or a walker beneath a bridge
+                   floor) keeps its own z */
+                if (unit.z === getBaseHeightAt(unit.x, unit.y)) h += getStairLiftAt(unit.x, unit.y);
                 return h;
             }
-            return getHeightAt(unit.x, unit.y);
+            return getHeightAt(unit.x, unit.y) + getStairLiftAt(unit.x, unit.y);
         }
 
         function getObjectAt(x, y) {

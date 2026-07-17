@@ -2073,16 +2073,22 @@ const ThreeRenderer = (function () {
         return { highDir: highDir, lowH: lowH, highH: highH };
     }
 
-    /* Standing-surface lift for a unit/tile that is a staircase: +0.5 of the
-       (one-level) rise so a climber stands mid-slope rather than at the foot. */
-    function _stairStandLift(x, y) {
+    /* Stair info for a tile, tolerant of missing board state (null = not a
+       stair). One-stop lookup for the stand lift AND the highlight slant. */
+    function _stairInfoAt(x, y) {
         try {
             var _bw = (typeof bw === 'function') ? bw() : 0;
             var _bh = (typeof bh === 'function') ? bh() : 0;
             var ht = (state.boardHeights && state.boardHeights[y]) ? (state.boardHeights[y][x] || 0) : 0;
-            var si = _isStairTile(x, y, ht, _bw, _bh);
-            if (si) { var ts = CONFIG.tileSize || BASE_TILE; return (si.highH - si.lowH) * 0.5 * ts * ELEV_STEP_RATIO; }
-        } catch (e) {}
+            return _isStairTile(x, y, ht, _bw, _bh);
+        } catch (e) { return null; }
+    }
+
+    /* Standing-surface lift for a unit/tile that is a staircase: +0.5 of the
+       (one-level) rise so a climber stands mid-slope rather than at the foot. */
+    function _stairStandLift(x, y) {
+        var si = _stairInfoAt(x, y);
+        if (si) { var ts = CONFIG.tileSize || BASE_TILE; return (si.highH - si.lowH) * 0.5 * ts * ELEV_STEP_RATIO; }
         return 0;
     }
 
@@ -10222,13 +10228,22 @@ const ThreeRenderer = (function () {
         var cx = hx * ts + ts / 2, cz = hy * ts + ts / 2;
         /* natural tiles: drape over the smooth sloped landform; beveled tiles:
            follow the organic swell; everything else: flat (classic decal). */
-        var nat = _isNaturalRenderTile(hx, hy);
+        /* Staircase tiles: a flat decal at the mid-slope stand height sliced
+           through the steps. Slant the quad along the stair's rise instead
+           (45° with cube voxels). The slope is built in LOCAL coords rising
+           toward +z and the caller applies the SAME rotY mapping the stair
+           mesh uses (geo._ew_rotY), so the highlight always lies along the
+           rendered staircase. +1 step of lift rides it on the step noses
+           rather than cutting through the treads. */
+        var stair = _stairInfoAt(hx, hy);
+        var nat = !stair && _isNaturalRenderTile(hx, hy);
         var elevStep = ts * ELEV_STEP_RATIO;
         var _bw = (typeof bw === 'function') ? bw() : 16;
         var _bh = (typeof bh === 'function') ? bh() : 8;
         var natCenter = nat ? _naturalSurfaceY(hx, hy) : 0;
         var liftC = _tileSurfaceLift(hx, hy);
-        var doLift = (BEVEL.amp > 0 && _tileIsBeveled(hx, hy));
+        var doLift = (!stair && BEVEL.amp > 0 && _tileIsBeveled(hx, hy));
+        var stairRise = stair ? (stair.highH - stair.lowH) * elevStep : 0;
         var pos = [], uv = [], idx = [], grid = [];
         for (var gj = 0; gj <= segs; gj++) {
             grid[gj] = [];
@@ -10236,7 +10251,11 @@ const ThreeRenderer = (function () {
                 var lx = -half + (gi / segs) * s;
                 var lz = -half + (gj / segs) * s;
                 var y;
-                if (nat) {
+                if (stair) {
+                    /* mesh origin sits mid-slope (tileTopY includes the +0.5
+                       _stairStandLift), so offsets run ±rise/2 around it */
+                    y = (lz / ts) * stairRise + stairRise / STAIR_STEPS;
+                } else if (nat) {
                     var lu = 0.5 + lx / ts, lv = 0.5 + lz / ts;
                     y = _naturalSurfaceYLocal(hx, hy, lu, lv, _bw, _bh, elevStep) - natCenter;
                 } else {
@@ -10258,6 +10277,10 @@ const ThreeRenderer = (function () {
         geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
         geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
         geo.setIndex(idx);
+        /* identical highDir → rotY mapping to _buildStairMesh */
+        if (stair) geo._ew_rotY = (stair.highDir === 'S') ? 0
+                                : (stair.highDir === 'N') ? Math.PI
+                                : (stair.highDir === 'E') ? -Math.PI / 2 : Math.PI / 2;
         return geo;
     }
     function _makeHlTile(hx, hy, mat, frac, yOff, z) {
@@ -10301,6 +10324,7 @@ const ThreeRenderer = (function () {
             }
         }
         var mesh = new THREE.Mesh(_buildDrapeGeo(hx, hy, ts, frac), mat);
+        if (mesh.geometry._ew_rotY !== undefined) mesh.rotation.y = mesh.geometry._ew_rotY;
         /* On a walkable roof, tileTopY is the roof-standing height but the roof
            mesh itself is drawn a hair above it, so lift the highlight clear of
            the roof plane — otherwise the (depth-tested) overlay is occluded by
@@ -11169,8 +11193,16 @@ const ThreeRenderer = (function () {
            so "where am I pointing" is always a one-glance read. */
         var hMat = _makeHlMaterial(0xffd83d, 0.9, 0.25, 0, { fill: 0.06, brackets: 1.0 });
         if (_hvSub) hMat.depthTest = false;
-        hoverMesh = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), hMat);
-        hoverMesh.rotation.x = -Math.PI / 2;
+        /* Staircase tiles get the slanted drape (45° along the rise) so the
+           cursor lies along the steps instead of clipping through them. */
+        var _hvStair = _hvSub ? null : _stairInfoAt(tx, ty);
+        if (_hvStair) {
+            hoverMesh = new THREE.Mesh(_buildDrapeGeo(tx, ty, ts, 0.95), hMat);
+            hoverMesh.rotation.y = hoverMesh.geometry._ew_rotY || 0;
+        } else {
+            hoverMesh = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.95, ts * 0.95), hMat);
+            hoverMesh.rotation.x = -Math.PI / 2;
+        }
         if (_hvSub) hoverMesh.renderOrder = 2;
         hoverMesh.position.set(tx*ts+ts/2, topY, ty*ts+ts/2);
         highlightGroup.add(hoverMesh);
@@ -11194,8 +11226,14 @@ const ThreeRenderer = (function () {
         if (tx < 0 || ty < 0) return;
         var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(tx, ty) + 0.7;
         var uMat = _makeHlMaterial(0x37e0ff, 0.38, 0.9, 0, { fill: 0.10 });
-        underfootMesh = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.98, ts * 0.98), uMat);
-        underfootMesh.rotation.x = -Math.PI / 2;
+        if (_stairInfoAt(tx, ty)) {
+            /* stairs: slanted drape along the rise, not a flat mid-height quad */
+            underfootMesh = new THREE.Mesh(_buildDrapeGeo(tx, ty, ts, 0.98), uMat);
+            underfootMesh.rotation.y = underfootMesh.geometry._ew_rotY || 0;
+        } else {
+            underfootMesh = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.98, ts * 0.98), uMat);
+            underfootMesh.rotation.x = -Math.PI / 2;
+        }
         underfootMesh.position.set(tx * ts + ts / 2, topY, ty * ts + ts / 2);
         highlightGroup.add(underfootMesh);
     }
