@@ -4,7 +4,7 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## SIMUL MODE — simultaneous WeGo turns, EXPERIMENTAL (2026-07-17g, LATEST) — state.js, battle.js, ui.js, hud.js, ai.js, map.js, match-select.js, playtest.js, index.html
+## SIMUL MODE — simultaneous WeGo turns, EXPERIMENTAL (2026-07-17h, LATEST) — state.js, battle.js, ui.js, hud.js, ai.js, map.js, match-select.js, playtest.js, index.html
 
 New game mode `simul` ("Simul", ♟️, EXPERIMENTAL tag): chess × Pokémon.
 TDM ruleset (most kills in 12 rounds, wipeout, respawns, sudden death), but
@@ -64,6 +64,34 @@ exclusion; no new relay/serialize plumbing.
   unit (previous plan rolled back + "Order redrawn"); enemies stay
   inspect-only. queueStep clears `state._actionExecuting` (the click path's
   8s watchdog latch would otherwise freeze the planning UI).
+- **2026-07-17h: projection is now logic-only — the MESH stays home.** The
+  renderer draws the planning unit on its ORIGIN tile (`_simulPlanDrawOrigin`
+  in three-renderer.js: coord-swap around `_buildUnitEntry`+`_createPlate` in
+  `rebuildUnits`, and in `_unitRestPos`), and a cyan hologram
+  (`showGhostUnit` tag `'simulPlan'`, shown by `_showPlanGhost` after every
+  queued move/jump) marks the planned tile. So the unit no longer teleports
+  out and snaps back around commit — the only real motion is the resolution
+  walk. Fog: `computeVisibleTiles` (map.js) substitutes `plan.origin` for the
+  planning unit in every unit-vision source, so a ghost move can NO LONGER
+  scout fog (the old "peek then redraw" leak is closed; the cached key in
+  state.js still keys off live x/y — same result, just a recompute).
+- **2026-07-17h: plan-turn camera**: `beginTurnPlanning` settles the camera
+  on the last-ordered (else first) living P1 unit every plan turn — same
+  focusBoardCameraOnTiles recipe as the blitz activation pan.
+- **2026-07-17h: anti-stall hardening**: (1) SimulEngine watchdog (3s
+  interval, armed by beginRound) force-closes a sealed/resolving turn that
+  makes no progress for 20s (`_noteProgress` breadcrumbs across commit →
+  resolve → each step → finish); (2) `_commitAndResolve` try/catches into
+  `_finishSimulTurn` so a planner/resolver exception can't strand
+  `_simulResolving=true` (which intercepts ALL advances = hard soft-lock);
+  (3) `_continueBlitzWithUnit` checks simul BEFORE its `!nextUnit` early
+  return (a null next unit after the EOR used to skip beginRound entirely —
+  match dead); (4) `beginRound` ignores duplicate boots while a plan/resolve
+  is in flight (stray post-EOR advances could re-boot mid-plan and orphan the
+  ghost projection); (5) `_scheduleAutoCommit` is bound to the plan it was
+  armed for + re-checks AP (redrawing the order within the 500ms window used
+  to commit the NEW unit's empty plan — turn thrown away); (6)
+  `beginTurnPlanning` rolls back any orphaned `_simulPlan` before starting.
 - **Commit**: ui.js `triggerEndTurn` = COMMIT ORDER (hud.js crown relabels;
   empty plan = legal pass); auto-commits 500ms after AP hits 0 (damaging
   action / 2 moves / guard). `doSkipTurn` also commits. Blocked in plan
@@ -92,8 +120,9 @@ exclusion; no new relay/serialize plumbing.
   MODE_LABELS.simul.
 
 ### Known v1 limits / deliberate scope cuts
-- Fog scouting leak: planning a ghost move computes vision from the ghost
-  tile — you can peek fog then redraw the order. VS-CPU only, acceptable.
+- ~~Fog scouting leak~~ FIXED 2026-07-17h (vision comes from plan.origin, see
+  above). The 2D DOM fallback board still draws the planning unit at the
+  projected tile (only the 3D renderer got the draw-at-origin treatment).
 - The orders-revealed log + turn banner show the CPU's unit even if fogged
   (the Pokémon reveal moment — design choice).
 - Item plans are shallow-validated at queue time (menus already gate

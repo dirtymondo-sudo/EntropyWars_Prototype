@@ -9422,10 +9422,19 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < state.units.length; i++) {
             var unit = state.units[i];
             if (unit.dead || unit._dying) continue;
+            /* Simul plan ghost-projection: build the mesh/plate from the
+               ORIGIN tile (see _simulPlanDrawOrigin) — swap, build, restore. */
+            var _sgo = _simulPlanDrawOrigin(unit);
+            var _sgx, _sgy, _sgz;
+            if (_sgo) {
+                _sgx = unit.x; _sgy = unit.y; _sgz = unit.z;
+                unit.x = _sgo.x; unit.y = _sgo.y; unit.z = _sgo.z;
+            }
             var entry = _buildUnitEntry(unit);
             unitGroup.add(entry.group);
             unitEntries.set(unit.id, entry);
             _createPlate(unit);
+            if (_sgo) { unit.x = _sgx; unit.y = _sgy; unit.z = _sgz; }
         }
         _lastUnitSerial = _computeUnitSerial();
         _lastStructuralSerial = _computeUnitStructuralSerial();
@@ -13093,8 +13102,29 @@ const ThreeRenderer = (function () {
         return unitEntries.get(unitId) || null;
     }
 
+    /* SIMUL plan phase: the planning unit is logically ghost-projected to its
+       planned tile (unit.x/y mutated so every range oracle stays truthful),
+       but its MESH must keep standing on the ORIGIN tile — the holographic
+       plan ghost (showGhostUnit tag 'simulPlan') marks the planned spot.
+       Returns the origin to draw at, or null for normal rendering. */
+    function _simulPlanDrawOrigin(unit) {
+        var sp = (typeof state !== 'undefined') ? state._simulPlan : null;
+        return (sp && sp.origin && sp.unitId === unit.id && state._simulPhase === 'plan')
+            ? sp.origin : null;
+    }
+
     function _unitRestPos(unit) {
         var ts = CONFIG.tileSize || BASE_TILE;
+        var o = _simulPlanDrawOrigin(unit);
+        if (o) {
+            var rx = unit.x, ry = unit.y, rz = unit.z;
+            unit.x = o.x; unit.y = o.y; unit.z = o.z;
+            var sy0 = unitSurfaceY(unit);
+            var sink0 = _getSubmersionDepth(unit) * (ts * UNIT_SPRITE_SIZE_RATIO);
+            var pos = { x: unit.x * ts + ts / 2, y: sy0 - sink0, z: unit.y * ts + ts / 2 };
+            unit.x = rx; unit.y = ry; unit.z = rz;
+            return pos;
+        }
         var sy = unitSurfaceY(unit);
         var sink = _getSubmersionDepth(unit) * (ts * UNIT_SPRITE_SIZE_RATIO);
         return { x: unit.x * ts + ts / 2, y: sy - sink, z: unit.y * ts + ts / 2 };

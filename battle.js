@@ -24303,12 +24303,79 @@
                 if (el) el.style.display = 'none';
             }
 
+            /* ── Plan ghost hologram ────────────────────────────────────────
+               The planning unit's MESH stays on its origin tile (the renderer
+               reads _simulPlan.origin — see _simulPlanDrawOrigin in
+               three-renderer.js); this hologram is the only thing standing on
+               the planned tile. Shown after every queued move/jump, cleared on
+               rollback/commit/new turn. */
+            function _showPlanGhost(unit) {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()
+                    || !ThreeRenderer.showGhostUnit) return;
+                const plan = state._simulPlan;
+                if (!plan || !plan.origin) return;
+                if (unit.x === plan.origin.x && unit.y === plan.origin.y) {
+                    ThreeRenderer.clearGhostUnit('simulPlan');
+                    return;
+                }
+                const surfY = (typeof ThreeRenderer.tileTopY === 'function')
+                    ? ThreeRenderer.tileTopY(unit.x, unit.y) : null;
+                ThreeRenderer.showGhostUnit(unit, unit.x, unit.y, surfY,
+                    { tag: 'simulPlan', color: 0x66ddff, opacity: 0.55 });
+            }
+            function _clearPlanGhost() {
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.clearGhostUnit) {
+                    ThreeRenderer.clearGhostUnit('simulPlan');
+                }
+            }
+
+            /* ── Stall watchdog ─────────────────────────────────────────────
+               Commit → resolve → next turn is a long async chain of timers and
+               animation waits; if any link dies (exception in a do* verb, an
+               animation flag that never clears, a swallowed callback) the mode
+               would soft-lock with _simulResolving stuck true and every input
+               intercepted. Track forward progress and, if a sealed/resolving
+               turn makes none for 20s, force the turn closed. */
+            let _lastProgressTs = 0;
+            let _watchdogId = null;
+            let _lastPlannedUnitId = null;
+            function _noteProgress() { _lastProgressTs = Date.now(); }
+            function _ensureWatchdog() {
+                if (_watchdogId) return;
+                _watchdogId = window.setInterval(() => {
+                    if (!_isSimul() || state.phase !== 'battle' || state.winner) return;
+                    if (!state._simulResolving && state._simulPhase !== 'resolve') return;
+                    if (Date.now() - _lastProgressTs < 20000) return;
+                    console.warn('[SIMUL] watchdog: turn made no progress for 20s — forcing it closed.');
+                    addLog('⚠️ Orders stalled — forcing the next turn.');
+                    _noteProgress();
+                    try {
+                        _finishSimulTurn();
+                    } catch (e) {
+                        console.error('[SIMUL] watchdog recovery failed', e);
+                        state._simulPhase = null;
+                        state._simulResolving = false;
+                        state._simulPlans = null;
+                        state._simulPlan = null;
+                        state._blitzActiveUnitId = null;
+                        maybeAdvanceTurn();
+                    }
+                }, 3000);
+            }
+
             /* ── Round / turn lifecycle ─────────────────────────────────── */
 
             function beginRound() {
                 if (state.winner || state.phase !== 'battle') return;
+                /* Duplicate-boot guard: stray post-EOR advances can queue a
+                   second beginRound behind _waitForAnimationsThen; re-booting
+                   mid-plan would reset the turn counter and orphan a ghost-
+                   projected planning unit at its planned tile. */
+                if (state._simulPhase === 'plan' || state._simulPhase === 'resolve'
+                    || state._simulResolving) return;
                 hideTurnBanner();
                 hidePlayerTurnAnnounce();
+                _ensureWatchdog();
                 for (const u of state.units) { if (!u.dead) u.ap = 0; }
                 state._simulTurnsTotal = Math.max(1, _aliveFor(1).length, _aliveFor(2).length);
                 state._simulTurn = 1;
@@ -24317,6 +24384,13 @@
 
             function beginTurnPlanning() {
                 if (state.winner || state.phase !== 'battle') return;
+                _noteProgress();
+                hideTurnBanner();
+                hidePlayerTurnAnnounce();
+                /* Never leak a ghost projection into the new turn: if an
+                   uncommitted plan somehow survived, snap its unit home. */
+                if (state._simulPlan) _rollbackLocalPlan();
+                _clearPlanGhost();
                 state._simulPhase = 'plan';
                 state._simulResolving = false;
                 state._simulPlan = null;
@@ -24343,9 +24417,37 @@
                 _updatePill();
                 scheduleBoardRender();
 
+                const humanSeat = state.controllers?.[1] === CTRL.LOCAL && !state.devAutoSim;
+
+                /* Settle the camera on one of the player's units for the new
+                   plan turn (prefer the one they ordered last) — resolution
+                   leaves it wherever the last action beat pointed it. */
+                if (humanSeat && !state.cameraDisabled) {
+                    const camU = (_lastPlannedUnitId
+                        && _aliveFor(1).find(u => u.id === _lastPlannedUnitId))
+                        || _aliveFor(1)[0];
+                    if (camU) {
+                        const baseZoom = getUserZoomScale();
+                        const zoom = isUserZoomEngaged() ? baseZoom : getDefaultZoom();
+                        const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
+                        const _retYaw = getTurnStartCamYaw(camU,
+                            camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
+                        camera._preCineView = null;
+                        camera._releaseCineSubject(actionMs(850));
+                        focusBoardCameraOnTiles([{ x: camU.x, y: camU.y }], {
+                            zoom,
+                            tilt: _retTilt,
+                            yaw: _retYaw,
+                            holdMs: 99999,
+                            persist: true,
+                            transitionMs: 750,
+                            _fogAllowed: true
+                        });
+                    }
+                }
+
                 /* No human in seat 1 (dev auto-sim / AI training)? Self-play:
                    plan seat 1 with the same planner the CPU uses. */
-                const humanSeat = state.controllers?.[1] === CTRL.LOCAL && !state.devAutoSim;
                 if (!humanSeat) {
                     window.setTimeout(() => {
                         if (state.winner || state._simulPhase !== 'plan' || state._simulResolving) return;
@@ -24388,6 +24490,7 @@
                 }
                 state._simulPlan = null;
                 state._blitzActiveUnitId = null;
+                _clearPlanGhost();
                 scheduleBoardRender();
             }
 
@@ -24427,10 +24530,16 @@
             }
 
             function _scheduleAutoCommit() {
+                /* Bind the timer to THIS plan: if the player redraws the order
+                   (clicks another unit) before it fires, committing would seal
+                   the fresh — possibly empty — plan and throw the turn away. */
+                const planUnitId = state._simulPlan ? state._simulPlan.unitId : null;
                 window.setTimeout(() => {
-                    if (state._simulPhase === 'plan' && !state._simulResolving && state._simulPlan) {
-                        commitLocalPlan();
-                    }
+                    if (state._simulPhase !== 'plan' || state._simulResolving) return;
+                    if (!state._simulPlan || state._simulPlan.unitId !== planUnitId) return;
+                    const u = state.units.find(x => x.id === planUnitId);
+                    if (u && (u.ap || 0) > 0) return;   // order was redrawn/re-armed
+                    commitLocalPlan();
                 }, 500);
             }
 
@@ -24458,6 +24567,7 @@
                     : ((typeof nearestWalkableZ === 'function') ? nearestWalkableZ(dest.x, dest.y, unit.z ?? 0) : (unit.z ?? 0));
                 unit.movesThisTurn = (unit.movesThisTurn || 0) + 1;
                 spendAP(unit, AP_COST_ACTION);
+                _showPlanGhost(unit);
                 showFloatingTextForUnit(unit, '👣 PLANNED', 'buff', { durationMs: 900 });
                 playSfx('uiCursorMove');
                 state.actionMode = null;
@@ -24484,6 +24594,7 @@
                 if (z != null) unit.z = z;
                 unit._jumpedThisTurn = true;
                 spendAP(unit, AP_COST_ACTION);
+                _showPlanGhost(unit);
                 showFloatingTextForUnit(unit, '⬆ PLANNED', 'buff', { durationMs: 900 });
                 playSfx('uiCursorMove');
                 state.actionMode = null;
@@ -24600,14 +24711,18 @@
             function commitLocalPlan() {
                 if (!_isSimul() || state._simulPhase !== 'plan' || state._simulResolving) return;
                 state._simulResolving = true;   // seal against double-commits
+                _noteProgress();
+                _clearPlanGhost();
                 const plan = state._simulPlan;
                 if (plan) {
                     const u = state.units.find(x => x.id === plan.unitId);
                     if (u) {
-                        /* Snap the ghost back — the REAL move replays in resolution. */
+                        /* Snap the ghost back — the REAL move replays in resolution.
+                           (Invisible: the mesh was rendered at the origin all along.) */
                         if (plan.origin) { u.x = plan.origin.x; u.y = plan.origin.y; u.z = plan.origin.z; }
                         _disarmUnit(u);
                     }
+                    if (plan.unitId) _lastPlannedUnitId = plan.unitId;
                 }
                 state._simulPlans = {
                     1: (plan && plan.steps.length)
@@ -24635,10 +24750,19 @@
 
             function _commitAndResolve() {
                 if (state.winner || state.phase !== 'battle') return;
-                if (!state._simulPlans) state._simulPlans = {};
-                if (!state._simulPlans[1]) state._simulPlans[1] = { unitId: null, steps: [] };
-                if (!state._simulPlans[2]) state._simulPlans[2] = _buildAiPlanFor(2);
-                _resolvePlans();
+                _noteProgress();
+                try {
+                    if (!state._simulPlans) state._simulPlans = {};
+                    if (!state._simulPlans[1]) state._simulPlans[1] = { unitId: null, steps: [] };
+                    if (!state._simulPlans[2]) state._simulPlans[2] = _buildAiPlanFor(2);
+                    _resolvePlans();
+                } catch (e) {
+                    /* A commit that dies here would leave _simulResolving stuck
+                       true with every advance intercepted — close the turn. */
+                    console.error('[SIMUL] commit/resolve failed — skipping turn', e);
+                    addLog('⚠️ Orders could not resolve — skipping to the next turn.');
+                    _finishSimulTurn();
+                }
             }
 
             /* ── CPU planner: reuse the strategic AI's candidate scorer with a
@@ -24762,6 +24886,7 @@
             function _resolvePlans() {
                 state._simulPhase = 'resolve';
                 state._simulResolving = true;
+                _noteProgress();
                 _updatePill();
                 const entries = [1, 2].map(p => {
                     const plan = state._simulPlans ? state._simulPlans[p] : null;
@@ -24798,12 +24923,14 @@
                     return;
                 }
                 _armActivation(unit);
+                _noteProgress();
                 state.activePlayer = entry.player;
                 state._blitzActiveUnitId = unit.id;
                 state._fogCameraAllowed = false;
                 try { showTurnBanner(entry.player, state.round, false, unit); } catch (e) {}
                 const steps = plan.steps.slice();
                 const runNext = () => {
+                    _noteProgress();
                     if (state.winner || !steps.length || unit.dead || unit._dying) {
                         _endPlanExec(unit, done);
                         return;
@@ -25054,6 +25181,8 @@
             }
 
             function _finishSimulTurn() {
+                _noteProgress();
+                _clearPlanGhost();
                 state._simulResolving = false;
                 state._blitzActiveUnitId = null;
                 state._simulPlans = null;
@@ -25473,19 +25602,23 @@
         }
 
         function _continueBlitzWithUnit(nextUnit) {
-                if (!nextUnit) return;
                 if (state.winner) return;
 
                 /* SIMUL MODE: both the match-start boot and every post-EOR
                    restart funnel through here — redirect them into the
                    simultaneous plan/resolve loop instead of a single-unit
-                   blitz activation. */
+                   blitz activation. Checked BEFORE the null guard: in simul a
+                   null nextUnit (every unit staggered/stunned to 0 AP after
+                   the EOR) is survivable — beginRound arms its own AP — but
+                   returning early here soft-locked the match with nothing
+                   left driving the loop. */
                 if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                     && state.phase === 'battle') {
                     _waitForAnimationsThen(() => SimulEngine.beginRound());
                     return;
                 }
 
+                if (!nextUnit) return;
                 _waitForAnimationsThen(() => _continueBlitzWithUnit_impl(nextUnit));
         }
 

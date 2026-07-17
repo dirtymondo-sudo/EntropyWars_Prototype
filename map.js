@@ -4077,6 +4077,17 @@
             const visible = new Set();
             const size = bw(), sizeH = bh();
 
+            /* SIMUL plan phase: the local planning unit is ghost-projected to
+               its PLANNED tile (unit.x/y mutated so range oracles stay
+               truthful), but vision must still come from the tile it really
+               occupies — otherwise planning a move scouts fog the order hasn't
+               earned yet, and a redrawn order keeps the peek. */
+            const _sgPlan = (state._simulPhase === 'plan' && state._simulPlan
+                && state._simulPlan.origin) ? state._simulPlan : null;
+            const _vx = u => (_sgPlan && u.id === _sgPlan.unitId) ? _sgPlan.origin.x : u.x;
+            const _vy = u => (_sgPlan && u.id === _sgPlan.unitId) ? _sgPlan.origin.y : u.y;
+            const _vz = u => (_sgPlan && u.id === _sgPlan.unitId) ? (_sgPlan.origin.z ?? null) : (u.z ?? null);
+
             function addVisibleFrom(sx, sy, visionRange, sourceZ, wallVision, losOnly) {
                 /* losOnly (units): sweep the WHOLE board and let line-of-sight
                    decide — distance no longer limits a unit's vision. Otherwise
@@ -4100,14 +4111,14 @@
             if (state.squadLeaderMode && player === 1 && !state.teamVision) {
                 const leader = state.squadLeaderUnitId ? state.units.find(u => u.id === state.squadLeaderUnitId && isAlive(u)) : null;
                 if (leader) {
-                    addVisibleFrom(leader.x, leader.y, getUnitVisionRange(leader), leader.z ?? null, leader.wallVision, LOS_ONLY_VISION);
+                    addVisibleFrom(_vx(leader), _vy(leader), getUnitVisionRange(leader), _vz(leader), leader.wallVision, LOS_ONLY_VISION);
                     if (state._fogRevealTiles) {
                         for (const pk of state._fogRevealTiles) visible.add(pk);
                     }
                     if (unitHasWalkieTalkie(leader)) {
                         const allies = state.units.filter(u => isAlive(u) && u.id !== leader.id && unitHasWalkieTalkie(u));
                         for (const ally of allies) {
-                            addVisibleFrom(ally.x, ally.y, getUnitVisionRange(ally), ally.z ?? null, ally.wallVision, LOS_ONLY_VISION);
+                            addVisibleFrom(_vx(ally), _vy(ally), getUnitVisionRange(ally), _vz(ally), ally.wallVision, LOS_ONLY_VISION);
                         }
                     }
                     return visible;
@@ -4117,7 +4128,7 @@
             if (state.teamVision) {
                 const allies = state.units.filter(isAlive);
                 for (const ally of allies) {
-                    addVisibleFrom(ally.x, ally.y, getUnitVisionRange(ally), ally.z ?? null, ally.wallVision, LOS_ONLY_VISION);
+                    addVisibleFrom(_vx(ally), _vy(ally), getUnitVisionRange(ally), _vz(ally), ally.wallVision, LOS_ONLY_VISION);
                 }
             } else {
                 let unit;
@@ -4138,7 +4149,7 @@
                     }
                 }
                 if (!unit) return visible;
-                addVisibleFrom(unit.x, unit.y, getUnitVisionRange(unit), unit.z ?? null, unit.wallVision, LOS_ONLY_VISION);
+                addVisibleFrom(_vx(unit), _vy(unit), getUnitVisionRange(unit), _vz(unit), unit.wallVision, LOS_ONLY_VISION);
             }
 
             if (state._fogRevealTiles) {
@@ -4155,7 +4166,7 @@
                 if (selectedUnit && unitHasWalkieTalkie(selectedUnit)) {
                     const allies = state.units.filter(u => isAlive(u) && u.id !== selectedUnit.id && unitHasWalkieTalkie(u));
                     for (const ally of allies) {
-                        addVisibleFrom(ally.x, ally.y, getUnitVisionRange(ally), ally.z ?? null, ally.wallVision, LOS_ONLY_VISION);
+                        addVisibleFrom(_vx(ally), _vy(ally), getUnitVisionRange(ally), _vz(ally), ally.wallVision, LOS_ONLY_VISION);
                     }
                 }
             }
