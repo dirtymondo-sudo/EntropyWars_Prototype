@@ -5501,16 +5501,17 @@
             const sp1 = (typeof SPAWNS !== 'undefined' && Array.isArray(SPAWNS[1])) ? SPAWNS[1] : [];
             const sp2 = (typeof SPAWNS !== 'undefined' && Array.isArray(SPAWNS[2])) ? SPAWNS[2] : [];
 
-            /* Mystery Dungeon: spawns are authored by the hub/floor generator
-               (party in the spawn room, enemies deep in the maze). The edge-row
-               relocation below would drag everyone to the border AND flatten/
-               carve those tiles — defacing the maze walls. Use the authored
-               spawn tiles verbatim. */
+            /* Mystery Dungeon: NO spawn zones at all. The dungeon has no
+               respawns, no CTF, no reinforcements — the only things zones did
+               there were harmful: pulsing overlays that leak enemy positions
+               through the maze, free 15%/turn regen for monsters idling on
+               their spawn tiles, and 35%-maxHP scorch on random corridor
+               tiles the party walks over. Every consumer null-guards
+               state.spawnZones, so dropping them removes the whole system.
+               (The old edge-row relocation/flatten pass below would also
+               deface the maze walls — doubly not wanted.) */
             if (typeof _isDungeonMode === 'function' && _isDungeonMode()) {
-                state.spawnZones = {
-                    1: sp1.map(p => ({ x: p.x, y: p.y })),
-                    2: sp2.map(p => ({ x: p.x, y: p.y })),
-                };
+                state.spawnZones = null;
                 return;
             }
 

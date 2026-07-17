@@ -5947,3 +5947,51 @@ Token bumped `20260716d` → `20260716e`. NOT playtested (per RULE #1c) — synt
 - GOTCHA: `_updateUnitAuras` builds a fresh id→unit map each frame — on guests
   `state.units` is REPLACED by every state-sync, and `_unitById` only refreshes
   on STRUCTURAL rebuilds, so caching unit refs there would go stale.
+
+## MYSTERY DUNGEON v3 — ROAM/CHASE AI, GROUND LOOT, SILENT ENEMY TURNS, NO SPAWN ZONES, L5 START (2026-07-17) — data.js, battle.js, map.js, three-renderer.js, index.html
+
+Difficulty + pacing pass ("couldn't get past floor 5, enemy turns too slow"):
+
+- **Roam/chase enemy AI (battle.js, MD runtime block):** every P2 unit on a floor
+  wakes with `u._mdAlerted=false` and `u._mdHomeRoom` (its spawn room rect from
+  `entry._mdRooms`, emitted by generateMdFloor; corridor spawns get a ±2 pseudo-
+  room). `_mdEnemyRoam(unit)` is a pre-step in `runComputerTurn` (before
+  aiTakeTurn, same contract as `_mdGuardRegroup`): unalerted monsters amble to a
+  random `getMoveTiles` tile INSIDE their home room (65%) or idle, `ap=0`, done —
+  they never attack/cast/leave the room. Alert triggers (checked at the top of
+  their turn): took any damage (`hp<maxHp`), a party member inside their home
+  room, or party member within `getEffectiveAwr` AND `isInVision` (walls block).
+  Alert is permanent, ripples to same-room packmates, and logs "👁 spotted" +
+  '❗' float ONLY when the monster is screen-visible. Alerted = stock unit AI.
+- **Silent hidden enemy turns:** `_mdHiddenEnemyTurn(u)` = MD floor && P2 &&
+  `!_shouldCameraFollowUnit(u)` (fog screen-truth). When true:
+  `_continueBlitzWithUnit_impl` skips showTurnBanner + showPlayerTurnAnnounce and
+  drops its 650ms delay to 60ms; `maybeTriggerComputerTurn`'s 350ms
+  runComputerTurn delay → 60ms. Fog-hidden walks already skip the walk anim, so
+  a far-room monster turn now resolves in ~0.2s with zero UI noise.
+- **Spawn zones GONE in MD:** `autoGenerateSpawnZones` (map.js) MD branch now
+  sets `state.spawnZones = null` (was: authored-spawns-verbatim copy) and
+  `_mdOnBattlePrepared` re-nulls it. Kills the pulsing overlays (which leaked
+  enemy spawn positions through fog + on the minimap), the 15%/turn friendly-
+  zone regen monsters got by idling home, and the 35%-maxHP enemy-zone scorch
+  on random maze tiles. All consumers null-guard (verified: end-of-round
+  regen/scorch, recall, CTF, intro cine (MD-ineligible anyway), tower gen,
+  three-renderer overlays/walls/minimap).
+- **Level 5 start:** `_mdLoadFloor` run level = `max(5, floor)` (MD_START_LEVEL).
+  Enemy levels unchanged (floor-matched, a step behind) → floors 1-4 are now a
+  real on-ramp. Enemy count softened in generateMdFloor:
+  `1 + floor/3 + (partySize-1)`, cap 7 (was `1 + floor/2 + partySize`, cap 8).
+- **Ground item pickups:** generateMdFloor scatters 3-5 items on plain room
+  tiles (skips stairs/spawns/spring/vein/pool; 30% healPotion, 20% manaPotion,
+  12% entropyGrenade, 10% panacea, 8% adrenalStim, 20% bane) → `entry._mdItems`
+  → live-copied to `state._mdItems` in `_mdOnBattlePrepared`.
+  `_mdCollectItemsOnTile(unit,x,y)` (battle.js) grants to P1 non-NPC units,
+  respects `getItemCapForClass` + `unitItemsFull` (over-cap finds stay on the
+  floor), logs + '📦 +1' float + uiConfirm sfx. Hooked per path step in
+  `resolveMovePath` (walk-OVER collects without stopping) and at the top of
+  `_mdCheckStairs` (covers jump landings). Rendered by
+  `rebuildMdItemPickups`/`_updateMdItemPulse` (three-renderer.js, next to the
+  spawn-zone overlay calls): bobbing THREE.Sprite emoji (canvas texture of
+  ITEM_META icon) over a pulsing glow disc, per-frame `visible` gated on
+  `_fogVisibleSet` so fogged loot stays hidden; serial includes tileSize.
+- Floor-start log now mentions loot count + the roam/sneak mechanic.

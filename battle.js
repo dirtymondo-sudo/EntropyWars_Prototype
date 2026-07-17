@@ -20521,6 +20521,11 @@
            board (hub or floor). */
         function _mdOnBattlePrepared() {
             _mdStopFreeRoam();   // never carry a stale controller across boards
+            /* No spawn zones in the dungeon: the regen/scorch auras and the
+               pulsing overlays are a PvP mechanic — in a maze they leak enemy
+               positions and turn random corridor tiles into 35%-maxHP scorch
+               traps. autoGenerateSpawnZones (map.js) also skips MD boards. */
+            state.spawnZones = null;
             if (state._mdPhase === 'hub') {
                 /* No enemies in the hub — drop the CPU team, seat the roster. */
                 state.units = state.units.filter(u => u.player !== 2);
@@ -20529,10 +20534,26 @@
                 const hub = (typeof PREBUILT_MAPS !== 'undefined') ? PREBUILT_MAPS.md_hub : null;
                 state._mdEntrance = (hub && hub._mdEntrance) ? hub._mdEntrance.map(p => ({ x: p.x, y: p.y })) : [];
                 state._mdEnded = false;
+                state._mdItems = [];
             } else if (state._mdPhase === 'floor' && state._mdRun) {
                 const pb = (typeof PREBUILT_MAPS !== 'undefined') ? PREBUILT_MAPS.md_floor : null;
                 state._mdStairs = (pb && pb._mdStairs) ? { x: pb._mdStairs.x, y: pb._mdStairs.y } : null;
                 state._mdEntrance = [];
+                /* loose floor loot (see generateMdFloor) — live copy the party
+                   depletes as it scoops items up */
+                state._mdItems = (pb && Array.isArray(pb._mdItems))
+                    ? pb._mdItems.map(it => ({ x: it.x, y: it.y, type: it.type })) : [];
+                /* Roam/chase AI: every enemy wakes UNALERTED, homed to the room
+                   it spawned in (corridor spawns get a small pseudo-room). It
+                   wanders there until it spots the party — see _mdEnemyRoam. */
+                const _mdRoomRects = (pb && pb._mdRooms) || [];
+                for (const u of state.units) {
+                    if (u.player !== 2 || u.dead) continue;
+                    u._mdAlerted = false;
+                    u._mdHomeRoom = _mdRoomRects.find(r =>
+                        u.x >= r.x0 && u.x <= r.x1 && u.y >= r.y0 && u.y <= r.y1)
+                        || { x0: u.x - 2, y0: u.y - 2, x1: u.x + 2, y1: u.y + 2 };
+                }
                 /* carry HP/MP from the previous floor */
                 const carry = state._mdRun.partyState;
                 if (carry) {
@@ -20599,6 +20620,8 @@
             if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return;
             if (!unit || unit.player !== 1 || unit._mdNpc || unit.dead || unit._dying) return;
             if (state._mdTransitioning || state._mdEnded) return;
+            /* arriving anywhere (walk stop, jump landing) scoops floor loot */
+            if (typeof _mdCollectItemsOnTile === 'function') _mdCollectItemsOnTile(unit, unit.x, unit.y);
             if (state._mdPhase === 'hub') {
                 const ent = state._mdEntrance || [];
                 if (ent.some(p => p.x === unit.x && p.y === unit.y)) _mdOpenPartySelect();
@@ -20711,6 +20734,136 @@
             const animDelay = (typeof moveResult === 'number' && moveResult > 1) ? moveResult : 0;
             window.setTimeout(() => finishComputerAction(), Math.max(animDelay, 60));
             return true;
+        }
+
+        /* ── ROAM / CHASE enemy behavior ───────────────────────────────────
+           Dungeon monsters spawn UNALERTED: they idle around the room they
+           spawned in (PMD-style) and never leave it. They flip to CHASE —
+           the stock unit AI, permanently — the moment they take any damage
+           or actually SEE a party member (engine line-of-sight within
+           awareness range, or the party walking into their room). An alert
+           also ripples to packmates standing in the same room. */
+        function _mdRoomContains(r, x, y) {
+            return !!r && x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1;
+        }
+
+        function _mdEnemyAlertNow(unit, why) {
+            if (!unit || unit._mdAlerted) return;
+            unit._mdAlerted = true;
+            /* only announce sightings the player can actually see — a hidden
+               monster waking up silently is fog working as intended */
+            if (typeof _shouldCameraFollowUnit === 'function' && _shouldCameraFollowUnit(unit)) {
+                addLog(`👁 ${unitDisplayName(unit)} has spotted the party — it's coming!`);
+                try { showFloatingTextForUnit(unit, '❗', 'pickup', { durationMs: 900 }); } catch (e) {}
+            }
+        }
+
+        function _mdEnemyShouldAlert(unit) {
+            if (unit.hp < unit.maxHp) return 'hurt';
+            const party = state.units.filter(u => u.player === 1 && !u._mdNpc && !u.dead && !u._dying);
+            for (const p of party) {
+                if (_mdRoomContains(unit._mdHomeRoom, p.x, p.y)) return 'room';
+                const d = Math.abs(p.x - unit.x) + Math.abs(p.y - unit.y);
+                const awr = (typeof getEffectiveAwr === 'function' ? getEffectiveAwr(unit) : unit.awr) || 3;
+                if (d <= Math.max(2, awr) && typeof isInVision === 'function' && isInVision(unit, p.x, p.y)) return 'sight';
+            }
+            return null;
+        }
+
+        /* Pre-step run before aiTakeTurn for every player-2 unit on a dungeon
+           floor. Returns true when it consumed the turn (roam step / idle). */
+        function _mdEnemyRoam(unit) {
+            if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return false;
+            if (state._mdPhase !== 'floor' || !state._mdRun) return false;
+            if (!unit || unit.player !== 2 || unit.dead) return false;
+            if (unit._mdAlerted) return false;
+            const why = _mdEnemyShouldAlert(unit);
+            if (why) {
+                _mdEnemyAlertNow(unit, why);
+                /* pack aggro: same-room monsters wake together */
+                for (const ally of state.units) {
+                    if (ally.player === 2 && !ally.dead && !ally._mdAlerted
+                        && _mdRoomContains(unit._mdHomeRoom, ally.x, ally.y)) {
+                        _mdEnemyAlertNow(ally, 'pack');
+                    }
+                }
+                return false;   // alerted — the stock AI hunts from this very turn
+            }
+            /* still oblivious: amble to a random tile of the home room (or just
+               idle), then end the turn — roamers never attack, cast or leave */
+            let best = null;
+            const room = unit._mdHomeRoom;
+            if (room && Math.random() < 0.65) {
+                try {
+                    const opts = getMoveTiles(unit).filter(t =>
+                        !t._jump && !t._takeoff
+                        && _mdRoomContains(room, t.x, t.y)
+                        && !unitAt(t.x, t.y));
+                    if (opts.length) best = opts[randInt(opts.length)];
+                } catch (e) {}
+            }
+            if (best) {
+                state.actionMode = 'move';
+                const mv = doMove(unit, best.x, best.y, best.z);
+                if (mv === false || mv === 0) {
+                    state.actionMode = null;
+                } else {
+                    unit.ap = 0;   // one amble per turn — never chain roam moves
+                    const animDelay = (typeof mv === 'number' && mv > 1) ? mv : 0;
+                    window.setTimeout(() => finishComputerAction(), Math.max(animDelay, 60));
+                    return true;
+                }
+            }
+            unit.ap = 0;
+            finishComputerAction();
+            return true;
+        }
+
+        /* True when the acting unit is a dungeon monster the player can't
+           currently see (fog-of-war screen truth). Its turn resolves
+           SILENTLY — no turn banner, no handoff sweep, near-zero delays:
+           watching the fog "think" for seconds per hidden monster in a far
+           room was pure dead air. */
+        function _mdHiddenEnemyTurn(u) {
+            if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return false;
+            if (state._mdPhase !== 'floor' || !state._mdRun) return false;
+            if (!u || u.player !== 2 || u.dead) return false;
+            return !_shouldCameraFollowUnit(u);
+        }
+
+        /* ── Ground item pickups ───────────────────────────────────────────
+           Floors scatter loose consumables (state._mdItems). Any party unit
+           that steps on OR walks over one scoops it up on the spot; over-cap
+           finds stay on the floor for a teammate. Called per path step from
+           resolveMovePath and on every landing via _mdCheckStairs. */
+        function _mdCollectItemsOnTile(unit, x, y) {
+            if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return;
+            if (state._mdPhase !== 'floor' || !state._mdRun) return;
+            if (!unit || unit.player !== 1 || unit._mdNpc || unit.dead || unit._dying) return;
+            const items = state._mdItems;
+            if (!items || !items.length) return;
+            for (let i = items.length - 1; i >= 0; i--) {
+                const it = items[i];
+                if (it.x !== x || it.y !== y) continue;
+                const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[it.type] : null;
+                const name = (rule && rule.name) || it.type;
+                unit.items = unit.items || {};
+                const cap = (typeof getItemCapForClass === 'function')
+                    ? getItemCapForClass(unit.cls, it.type) : ((rule && rule.max) || 1);
+                const bagFull = (typeof unitItemsFull === 'function') && unitItemsFull(unit);
+                if ((unit.items[it.type] || 0) >= cap || bagFull) {
+                    addLog(`🎒 ${unitDisplayName(unit)} steps over a ${name} — pockets full, it stays on the floor.`);
+                    continue;
+                }
+                items.splice(i, 1);
+                unit.items[it.type] = (unit.items[it.type] || 0) + 1;
+                const icon = (typeof ITEM_META !== 'undefined' && ITEM_META[it.type] && ITEM_META[it.type].icon) || '📦';
+                addLog(`${icon} ${unitDisplayName(unit)} picks up a ${name}!`);
+                try { showFloatingTextForUnit(unit, `${icon} +1`, 'pickup', { durationMs: 1000 }); } catch (e) {}
+                if (!state.devAutoSim) { try { playSfx('uiConfirm'); } catch (e) {} }
+                markDirty('board', 'selectedUnit', 'hud');
+                scheduleBoardRender();
+            }
         }
 
         /* ── Stairs → next floor: an explicit CHOICE with real buttons ─────
@@ -20899,8 +21052,12 @@
                the createUnit gate also accepts _mdRun). A 10-floor dungeon
                spans L1–10; a deeper/harder dungeon can set levelPerFloor to
                climb the 100-level curve faster. */
+            /* The party never delves below level 5: floor 1 used to field a
+               level-1 squad against a full maze, which is why runs kept dying
+               around floor 4-5. Floors 6+ keep the floor-matched curve. */
+            const MD_START_LEVEL = 5;
             const runLvl = Math.min((typeof XP_MAX_LEVEL !== 'undefined') ? XP_MAX_LEVEL : 100,
-                Math.max(1, Math.round(run.floor * ((D && D.levelPerFloor) || 1))));
+                Math.max(MD_START_LEVEL, Math.round(run.floor * ((D && D.levelPerFloor) || 1))));
             (state.partyMeta[1] || []).forEach(m => { if (m) m._campaignLevel = runLvl; });
             const partySize = Math.max(1, (state.partyBuilds[1] || []).length);
             let entry;
@@ -23789,6 +23946,10 @@
                     const foes = state.units.filter(u => u.player === 2 && !u.dead).length;
                     addLog(`🗝️ Floor ${state._mdRun.floor} — find the stairs and step onto them! ${foes} enem${foes === 1 ? 'y' : 'ies'} lurk${foes === 1 ? 's' : ''} in the dark. No respawns!`);
                     addLog('💧 Healing springs restore HP and 💎 crystal veins restore MP — end a turn standing on them.');
+                    if (state._mdItems && state._mdItems.length) {
+                        addLog(`🎁 ${state._mdItems.length} loose item${state._mdItems.length === 1 ? '' : 's'} glint${state._mdItems.length === 1 ? 's' : ''} on this floor — walk over them to scoop them up.`);
+                    }
+                    addLog('🤫 Monsters roam their own rooms until they SEE you — strike first, or sneak past to the stairs.');
                     const _mdPartyN = state.units.filter(u => u.player === 1 && !u._mdNpc && !u.dead).length;
                     if (_mdPartyN > 1) addLog('📋 Companions fight on AUTO — tap their chip on the floor badge (top) to switch ⚔ Auto / 🛡 Stay Close / 🎮 Manual.');
                 }
@@ -25647,16 +25808,21 @@
 
                 state._fogCameraAllowed = (state.autoPlayers?.[nextUnit.player] && _shouldCameraFollowUnit(nextUnit)) || false;
 
+                /* Mystery Dungeon: a fogged monster's turn resolves silently —
+                   no banner, no handoff sweep, minimal delay. The player only
+                   "sees" enemy turns they can actually see. */
+                const _mdSilent = (typeof _mdHiddenEnemyTurn === 'function') && _mdHiddenEnemyTurn(nextUnit);
+
                 renderTurnClock();
 
                 const allAliveHaveAp = state.units.filter(u => !u.dead && !u._skippedTurn).every(u => (u.ap || 0) > 0 || u.id === nextUnit.id);
                 const isNewRound = allAliveHaveAp;
-                showTurnBanner(nextUnit.player, state.round, isNewRound, nextUnit);
+                if (!_mdSilent) showTurnBanner(nextUnit.player, state.round, isNewRound, nextUnit);
 
                 // Announce the handoff back to the local player ONLY when an enemy
                 // (or CPU) unit just finished — staying quiet while the player
                 // chains several of their own units in a row.
-                if (_prevActivePlayer != null && _prevActivePlayer !== nextUnit.player) {
+                if (!_mdSilent && _prevActivePlayer != null && _prevActivePlayer !== nextUnit.player) {
                     showPlayerTurnAnnounce(nextUnit);
                 }
 
@@ -25733,7 +25899,7 @@
                     }
                 }
 
-                const delay = state.devAutoSim ? scaleDevSimDelay(400, 4) : 650;
+                const delay = state.devAutoSim ? scaleDevSimDelay(400, 4) : (_mdSilent ? 60 : 650);
 
                 const _tookDmgRecently = !state.devAutoSim && !state.autoPlayers?.[nextUnit.player] && nextUnit._tookDamageThisRound;
                 const humanDelay = state.devAutoSim ? scaleDevSimDelay(400, 4) : (_tookDmgRecently ? 900 : 280);
@@ -25968,12 +26134,16 @@
 
             if (state._runComputerTurnTimer) clearTimeout(state._runComputerTurnTimer);
             const _rctGen = _blitzTurnGen;
+            /* Hidden dungeon monsters "think" instantly — no reason to make
+               the player wait 350ms per fogged enemy in a far-away room. */
+            const _rctHidden = typeof _mdHiddenEnemyTurn === 'function' && state._blitzActiveUnitId
+                && _mdHiddenEnemyTurn(state.units.find(u => u.id === state._blitzActiveUnitId));
             state._runComputerTurnTimer = setTimeout(() => {
                 state._runComputerTurnTimer = null;
 
                 if (_blitzTurnGen !== _rctGen) { state.aiThinking = false; return; }
                 runComputerTurn();
-            }, state.devAutoSim ? scaleDevSimDelay(35, 2) : 350);
+            }, state.devAutoSim ? scaleDevSimDelay(35, 2) : (_rctHidden ? 60 : 350));
         }
 
         /* Schema 12 — the great prune (2026-07-16):
@@ -27653,6 +27823,13 @@
                before letting the stock AI fight. */
             if (_mdAuto && typeof _mdUnitTactic === 'function' && _mdUnitTactic(unit) === 'guard') {
                 try { if (_mdGuardRegroup(unit)) return; } catch (e) { console.error('[MD] guard regroup failed:', e); }
+            }
+
+            /* Mystery Dungeon roam/chase: an UNALERTED monster only ambles
+               around its home room — the stock hunting AI takes over the
+               moment it spots the party (or gets hurt). */
+            if (unit.player === 2 && typeof _mdEnemyRoam === 'function') {
+                try { if (_mdEnemyRoam(unit)) return; } catch (e) { console.error('[MD] enemy roam failed:', e); }
             }
 
             if (false) {
@@ -30712,6 +30889,10 @@
                         return;
                     }
                 }
+                /* Mystery Dungeon loot is scooped in passing — walking OVER an
+                   item collects it without stopping the move. */
+                if (typeof _mdCollectItemsOnTile === 'function') _mdCollectItemsOnTile(unit, step.x, step.y);
+
                 const event = getPathPickupEvent(unit, step.x, step.y);
                 if (!event) continue;
 

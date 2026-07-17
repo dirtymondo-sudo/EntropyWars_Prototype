@@ -11331,9 +11331,12 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
     /* 6) enemies: distributed across the non-spawn rooms, densest far away.
        Count scales with the PLAYER party size (a solo delver meets far fewer
        foes than a full squad) and with depth. */
+    /* Softer curve than the original (1 + floor/2 + partySize, cap 8): the
+       roam/chase AI means every enemy eventually finds you, so raw counts
+       were the main difficulty knob pushing runs to die around floor 4-5. */
     const enemyCount = isBossFloor
         ? Math.min(2 + partySize, 6)
-        : Math.max(2, Math.min(1 + Math.floor(floor / 2) + partySize, 8));
+        : Math.max(2, Math.min(1 + Math.floor(floor / 3) + Math.max(1, partySize - 1), 7));
     const enemyRooms = rooms.filter(r => r !== spawnRoom);
     const spawns2 = [];
     let guard = 0;
@@ -11352,6 +11355,7 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
        the PMD "oasis" beat: end a turn standing on them to recover. Placed
        LAST so the stairs / spawn stamps above can't overwrite them; corners
        that collide with those tiles are skipped. */
+    const groundItems = [];
     {
         const reserved = [stairs].concat(spawns1, spawns2);
         const free = c => isFloorTile(c.x, c.y)
@@ -11389,6 +11393,40 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
                 M.clearObj(vx2, vein.y);
             }
         }
+
+        /* ── Loose item pickups (PMD floor loot) — scattered on plain room
+           tiles, scooped up by walking onto/over them (battle.js
+           _mdCollectItemsOnTile; drawn by three-renderer's mdItemPickups).
+           Skips stairs/spawns/spring/vein tiles and the pool. */
+        const itemSpots = [];
+        for (const r of rooms) {
+            for (let y = r.y0; y <= r.y1; y++) for (let x = r.x0; x <= r.x1; x++) {
+                const c = { x, y };
+                if (!free(c)) continue;
+                if (spring && spring.x === x && spring.y === y) continue;
+                const tk = M.tk(x, y);
+                if (tk === D.poolTerrain || tk === 'crystal' || tk === 'healing_spring' || tk === 'barrier_passage') continue;
+                if (itemSpots.some(p => p.x === x && p.y === y)) continue;
+                itemSpots.push(c);
+            }
+        }
+        for (let i = itemSpots.length - 1; i > 0; i--) { const j = ri(i + 1); [itemSpots[i], itemSpots[j]] = [itemSpots[j], itemSpots[i]]; }
+        const rollFloorItem = () => {
+            const r = rng();
+            if (r < 0.30) return 'healPotion';
+            if (r < 0.50) return 'manaPotion';
+            if (r < 0.62) return 'entropyGrenade';
+            if (r < 0.72) return 'panacea';
+            if (r < 0.80) return 'adrenalStim';
+            const banes = ['unholyBane', 'alienBane', 'anomalyBane', 'humanBane'];
+            return banes[ri(banes.length)];
+        };
+        const itemCount = Math.min(itemSpots.length, 3 + ri(2) + (partySize > 2 ? 1 : 0));
+        for (let i = 0; i < itemCount; i++) {
+            const spot = itemSpots[i];
+            M.clearObj(spot.x, spot.y);
+            groundItems.push({ x: spot.x, y: spot.y, type: rollFloorItem() });
+        }
     }
 
     const entry = M.finish();
@@ -11405,6 +11443,10 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
     entry._mdStairs = stairs;
     entry._mdFloor = floor;
     entry._mdDungeonId = D.id;
+    /* room rectangles (roam/chase AI homes each enemy to its spawn room)
+       and the floor's loose item pickups */
+    entry._mdRooms = rooms.map(r => ({ x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1 }));
+    entry._mdItems = groundItems;
     /* enemy levels shadow the delver's run level (= current floor × the
        dungeon's optional levelPerFloor, applied in _mdLoadFloor), staying a
        step behind so depth stays winnable solo. Capped at LEVEL_CAP so deep

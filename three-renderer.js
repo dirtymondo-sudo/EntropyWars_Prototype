@@ -7165,6 +7165,107 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* ── Mystery Dungeon ground-item pickups ──────────────────────────────
+       state._mdItems = [{x, y, type}] (owned by battle.js — items vanish
+       from the array as the party scoops them up). Each renders as a
+       bobbing camera-facing emoji sprite over a soft pulsing glow disc.
+       Hidden under fog until the tile is screen-visible (same
+       _fogVisibleSet the fog renderer draws). */
+    var _mdItemGroup = null;
+    var _mdItemEntries = [];
+    var _lastMdItemSerial = -1;
+    var _mdItemTexCache = {};
+
+    function _mdItemIconTexture(icon) {
+        var tex = _mdItemTexCache[icon];
+        if (tex) return tex;
+        var c = document.createElement('canvas');
+        c.width = 64; c.height = 64;
+        var ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, 64, 64);
+        ctx.font = '46px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(icon, 32, 36);
+        tex = new THREE.CanvasTexture(c);
+        _mdItemTexCache[icon] = tex;
+        return tex;
+    }
+
+    function _computeMdItemSerial() {
+        var items = state._mdItems;
+        if (!items || !items.length) return 0;
+        var h = _hashInt(41, CONFIG.tileSize || BASE_TILE);
+        for (var i = 0; i < items.length; i++) {
+            h = _hashInt(h, items[i].x);
+            h = _hashInt(h, items[i].y);
+            var t = String(items[i].type || '');
+            for (var k = 0; k < t.length; k++) h = _hashInt(h, t.charCodeAt(k));
+        }
+        return h;
+    }
+
+    function rebuildMdItemPickups() {
+        var ser = _computeMdItemSerial();
+        if (ser === _lastMdItemSerial) return;
+        _lastMdItemSerial = ser;
+        if (!_mdItemGroup) {
+            _mdItemGroup = new THREE.Group();
+            _mdItemGroup.name = 'mdItemPickups';
+            if (scene) scene.add(_mdItemGroup);
+        }
+        _clearGroup(_mdItemGroup);
+        _mdItemEntries.length = 0;
+        var items = state._mdItems;
+        if (!items || !items.length) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            var topY = (typeof tileTopY === 'function') ? tileTopY(it.x, it.y) : 0;
+            var icon = (typeof ITEM_META !== 'undefined' && ITEM_META[it.type] && ITEM_META[it.type].icon) || '📦';
+            var grp = new THREE.Group();
+            grp.position.set(it.x * ts + ts / 2, topY, it.y * ts + ts / 2);
+            /* soft glow disc flat on the tile top */
+            var discMat = new THREE.MeshBasicMaterial({
+                color: 0xffd966, transparent: true, opacity: 0.2, depthWrite: false,
+                polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+                side: THREE.DoubleSide
+            });
+            var disc = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.55, ts * 0.55), discMat);
+            disc.rotation.x = -Math.PI / 2;
+            disc.position.y = ts * 0.015;
+            grp.add(disc);
+            /* the item icon — THREE.Sprite always faces the camera */
+            var sprMat = new THREE.SpriteMaterial({
+                map: _mdItemIconTexture(icon), transparent: true, depthWrite: false
+            });
+            var spr = new THREE.Sprite(sprMat);
+            spr.scale.set(ts * 0.38, ts * 0.38, 1);
+            spr.position.y = ts * 0.28;
+            grp.add(spr);
+            _mdItemGroup.add(grp);
+            _mdItemEntries.push({
+                grp: grp, spr: spr, discMat: discMat,
+                x: it.x, y: it.y, baseY: ts * 0.28,
+                phase: ((it.x * 7 + it.y * 13) % 63) / 10,
+            });
+        }
+    }
+
+    function _updateMdItemPulse() {
+        if (!_mdItemEntries.length) return;
+        var t = performance.now() / 1000;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        for (var i = 0; i < _mdItemEntries.length; i++) {
+            var e = _mdItemEntries[i];
+            var vis = !state.fogOfWar || (_fogVisibleSet && _fogVisibleSet.has(e.x + ',' + e.y));
+            e.grp.visible = !!vis;
+            if (!vis) continue;
+            e.spr.position.y = e.baseY + Math.sin(t * 2 + e.phase) * ts * 0.05;
+            e.discMat.opacity = 0.14 + 0.1 * (0.5 + 0.5 * Math.sin(t * 2.4 + e.phase));
+        }
+    }
+
     function _updateNexusWallPulse() {
         if (_nexusWallMats.length === 0) return;
         var t = performance.now() / 1000;
@@ -21095,8 +21196,10 @@ const ThreeRenderer = (function () {
         if (nSer !== _lastNexusSerial) { rebuildNexusWalls(); _shadowsDirty = true; }
         rebuildSpawnZoneOverlays();
         rebuildSanctuaryWalls();
+        rebuildMdItemPickups();
         _updateSpawnZonePulse();
         _updateSanctuaryWallPulse();
+        _updateMdItemPulse();
         _updateDmgPreviewPlates();
         var uSer = _computeUnitSerial();
         if (uSer !== _lastUnitSerial) {
