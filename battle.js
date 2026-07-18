@@ -6496,7 +6496,7 @@
             if (!unit || unit.dead) return 0;
             let base = 0.12;
             if (unit.cls === 'Swordmaster') base = 0.35;   // Riposte passive
-            else if (unit.cls === 'Warrior') base = 0.30;
+            else if (unit.cls === 'Warrior' || unit.cls === 'Tank') base = 0.30;
             else if ((unit.def || 0) >= 12) base = 0.20;
 
             if (unit._guardCounterBonus) base += unit._guardCounterBonus;
@@ -12454,6 +12454,8 @@
                 let dmg = Math.max(24, Math.floor((att.atk || 0) * 0.65) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
                 // Brute Force (Raider passive): basic attacks land +20% harder.
                 if (att.cls === 'Raider') dmg = Math.floor(dmg * 1.2);
+                // Warpath (Warrior passive): basic attacks hit +15% harder.
+                else if (att.cls === 'Warrior') dmg = Math.floor(dmg * 1.15);
                 let isCrit = false;
                 try {
                     if (typeof rollCrit === 'function' && rollCrit(att)) {
@@ -14483,9 +14485,9 @@
             // level to stay proportional against the now-scaled incoming damage.
             const _defLs = (typeof levelScale === 'function') ? levelScale(getUnitLevel(target)) : 1;
             const hourglassReduction = opts.ignoreArmor ? 0 : Math.round(getHourglassDamageReduction(target) * _defLs);
-            // Bulwark (Warrior passive): a flat 8 shaved off every hit that
+            // Bulwark (Tank passive): a flat 8 shaved off every hit that
             // respects armor — the tank shrugs off chip damage.
-            const _bulwarkSoak = (!opts.ignoreArmor && target.cls === 'Warrior') ? Math.round(8 * _defLs) : 0;
+            const _bulwarkSoak = (!opts.ignoreArmor && target.cls === 'Tank') ? Math.round(8 * _defLs) : 0;
             const effectiveArmor = opts.ignoreArmor ? 0 : Math.round(getEffectiveArmor(target, damageType) * _defLs);
             if (effectiveArmor > 0) finalDamage = Math.max(1, finalDamage - effectiveArmor);
             if (_heightSoak > 0) finalDamage = Math.max(1, finalDamage - _heightSoak);
@@ -16729,7 +16731,8 @@
                         'Gunslinger': ['telescope', 'binoculars'],
                         'Black Mage': ['flair', 'binoculars'],
                         'White Mage': ['walkie_talkie', 'ward'],
-                        'Warrior': ['ward', 'flair'],
+                        'Warrior': ['flair', 'ward'],
+                        'Tank': ['ward', 'flair'],
                         'Swordmaster': ['flair', 'ward'],
                         'Psychic': ['walkie_talkie', 'ward'],
                         'Harvester': ['masons_gauntlets', 'ward'],
@@ -16753,14 +16756,15 @@
                         'Agent': ['assassinate', 'shadowLunge', 'placeBomb', 'sneakSlash', 'pistolWhip', 'poisonDart', 'knifeThrow'],
                         'Black Mage': ['meteor', 'wallOfFire', 'thunder1', 'fire1', 'thunderstorm'],
                         'White Mage': ['healAll', 'revive1', 'heal1', 'protect1', 'exorcism'],
-                        'Warrior': ['judgment', 'dragonSlash', 'warCry', 'provoke', 'guardSlash', 'shieldBash', 'fortify'],
-                        'Swordmaster': ['zantetsuken', 'lungingStrike', 'bladeWaltz', 'parryStance', 'swordBeam', 'crossSlash'],
+                        'Warrior': ['judgment', 'groundSlam', 'warCry', 'guardSlash'],
+                        'Tank': ['rampart', 'shieldBash', 'provoke', 'fortify'],
+                        'Swordmaster': ['zantetsuken', 'dragonSlash', 'lungingStrike', 'bladeWaltz', 'parryStance', 'swordBeam', 'crossSlash'],
                         'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'crossfire'],
                         'Psychic': ['mindShatter', 'psychosis', 'teleport', 'glare', 'warpRune'],
                         'Harvester': ['overgrowth', 'lifeDrain', 'wildwood', 'timberStrike', 'leechSeed', 'healingSeed', 'poisonSeed'],
                         'Engineer': ['fiveGTower', 'overclock', 'empBurst', 'magnetMine', 'repair', 'freeEnergy', 'plasmaGun', 'deployTurret'],
                         'Harbinger': ['requiem', 'encore', 'fermata', 'sonicCharge', 'discordance', 'lullaby'],
-                        'Raider': ['rampage', 'groundSlam', 'skullCrack', 'haymaker', 'ironGrip'],
+                        'Raider': ['rampage', 'skullCrack', 'haymaker', 'ironGrip'],
                         'Sniper': ['headshot', 'precisionShot', 'spotter', 'camouflage'],
                         'Freelancer': ['jackOfAll', 'improvise', 'reallyGoodPunch']
                     } [cls] || [];
@@ -16817,7 +16821,7 @@
                             remaining -= 1;
                         }
 
-                        const healFirst = ['Warrior', 'White Mage', 'Harvester'].includes(cls);
+                        const healFirst = ['Warrior', 'Tank', 'White Mage', 'Harvester'].includes(cls);
                         if (healFirst) {
                             const healAdd = Math.min(remaining, Math.ceil(remaining * 0.6));
                             loadout.items.healPotion = (loadout.items.healPotion || 0) + healAdd;
@@ -17710,10 +17714,10 @@
             const teamSecondaryJobs = new Set(team.map(u => u._secondaryJob).filter(Boolean));
 
             const healers = ['White Mage', 'Harvester'];
-            const tanks = ['Warrior', 'Engineer'];
+            const tanks = ['Tank', 'Engineer'];
             const ranged = ['Gunslinger', 'Sniper', 'Black Mage'];
             const support = ['Harbinger', 'Psychic', 'White Mage'];
-            const melee = ['Warrior', 'Raider', 'Agent', 'Freelancer', 'Swordmaster'];
+            const melee = ['Warrior', 'Tank', 'Raider', 'Agent', 'Freelancer', 'Swordmaster'];
 
             const scores = eligible.map(job => {
                 let score = 10;
@@ -32779,6 +32783,8 @@
             let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getPlantedTreeBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
             // Brute Force (Raider passive): basic attacks land +20% harder.
             if (unit.cls === 'Raider') damage = Math.floor(damage * 1.2);
+            // Warpath (Warrior passive): basic attacks hit +15% harder.
+            else if (unit.cls === 'Warrior') damage = Math.floor(damage * 1.15);
             if (isCrit) {
                 damage = Math.floor(damage * getCritMultiplier(unit));
                 unit._matchCrits = (unit._matchCrits || 0) + 1;

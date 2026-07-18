@@ -170,6 +170,8 @@ function getAvailableGendersForRace(race) {
 
 const JOB_FOLDER_MAP = {
   'Warrior': 'knight',
+  // The Tank split off the old Warrior job (2026-07-18) — same armored art.
+  'Tank': 'knight',
   'Agent': 'agent',
   'Black Mage': 'blackmage',
   'White Mage': 'whitemage',
@@ -511,6 +513,14 @@ function classifySpellAnimKind(spell) {
   if (!spell) return 'melee';
   const text = ((spell.id || '') + ' ' + (spell.name || '') + ' '
               + (spell.projectileOverride || '')).toLowerCase();
+  // Charge-to-target gap closers (Brave Charge, Zombie Rush…) sprint in and
+  // strike on arrival — always a melee swing, whatever the listed range.
+  if (spell.chargeToTarget) return 'melee';
+  // Kill Mode (robot, was Chassis Slam — id raceChassisSlan would otherwise
+  // hit the slam bucket below): a 360° weapons-free barrage reads as gunfire.
+  if (/kill.?mode/.test(text)) return 'ranged';
+  // The zombie stampede: the caster calls the horde down — charged AOE cast.
+  if (/horde|stampede/.test(text)) return 'aoe';
   // Potions / consumables (battle.js item use fires a synthetic spell) —
   // UAL2 Consume swig via castConsume.
   if (/potion|elixir|panacea|stim\b|consume|drink/.test(text)) return 'consume';
@@ -518,9 +528,9 @@ function classifySpellAnimKind(spell) {
   // Fixing_Kneeling via castTrap). Runes (warpRune…) intentionally DON'T
   // match — they stay magic-cast flavored.
   if (/trap|snare|\bmine\b|contraption|deploy|sentry/.test(text)) return 'deploy';
-  // Ramparts, every "…Slam" and stomps (Tremor/Cataclysm Stomp) — two-hand
-  // charged ground slam.
-  if (/rampart|slam\b|slan\b|stomp/.test(text)) return 'slam';   // raceChassisSlan typo is real
+  // Ramparts, every "…Slam" and stomps (Tremor/Cataclysm Stomp, the giant's
+  // Fee Fi Fo Fum) — two-hand charged ground slam.
+  if (/rampart|slam\b|slan\b|stomp|fee.?fi.?fo/.test(text)) return 'slam';   // raceChassisSlan typo is real
   // Seed/planting spells (Healing Seed, Poison Seed, Leech Seed…) kneel and
   // plant — the animation library's Farm_PlantSeed via the castPlant slot.
   if (/seed|sapling|sprout|plant(?!ation)/.test(text)) return 'plant';
@@ -534,7 +544,7 @@ function classifySpellAnimKind(spell) {
   // Punches (UAL1 Punch_Cross) — jabs/hooks/uppercuts/fists read as a strike
   // whatever the damage type ("Rocket Fist", "Hydraulic Punch", "Robo Punch",
   // "Dragon Fist"…). 'hook' deliberately excluded (Harvest Hook is a pull).
-  if (/punch|\bjab\b|uppercut|fist|knuckle|pummel|haymaker/.test(text)) return 'punch';
+  if (/punch|\bjab\b|uppercut|fist|knuckle|pummel|haymaker|hydraulic/.test(text)) return 'punch';
   // Claws / bites / scratches (UAL2 Zombie_Scratch rake) — bestial strikes
   // ("Demonic Claw", "Venom Fang", "Ninefold Scratch", "Pounce", bites…).
   if (/claw|scratch|\bbite\b|fang|talon|maul|pounce/.test(text)) return 'claw';

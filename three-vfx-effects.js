@@ -1366,6 +1366,17 @@ SPELL_MAP['ironGrip']   = { impact: '_heavyPunch_impact' };
 SPELL_MAP['skullCrack'] = { impact: 'skullCrack_impact' };
 SPELL_MAP['pistolWhip'] = { impact: '_heavyPunch_impact' };
 
+/* ── 2026-07-18 Warrior/Tank split + race spell pass ─────────────────────
+   • rampart — the Tank's new class spell reuses the shared race Rampart's
+     rising-wall tile effect.
+   • raceShamblingHorde — no longer a decoy deploy: the horde STAMPEDES the
+     target 3×3, so it tramples with the tremor-stomp dust per tile (the
+     sprinting-dead signature runners fire from _spell3DGeometry on top).
+   raceChassisSlan (now Kill Mode) keeps its baked aoe mapping — the 360°
+   bullet/laser storm is layered on via its _spell3DGeometry signature. */
+SPELL_MAP['rampart'] = { wall: 'sharedRampart_tile' };
+SPELL_MAP['raceShamblingHorde'] = { aoe: 'raceTremorStomp_aoe', impact: 'raceTremorStomp_impact_tile' };
+
 /* ─── NORDIC ALIEN REWORK (2026-07-10) — light-tech Federation kit ────────
    Every offensive piece now has a bespoke cinematic:
      • Aurora Ray      — ranged 3×3 sky-strike: telegraph, then a waving 3D
@@ -12305,8 +12316,193 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigFleshMound3D(tx, ty, { scale: 1.1, holdMs: 1100 });
             _sigMagicCircle3D(tx, ty, { color: 0x66ff88, radiusPx: (_cfg().tileSize || 128) * 1.2, holdMs: 1000, spin: 0.002 });
         },
-        raceShamblingHorde: function(tx, ty) {
-            _sigFleshMound3D(tx, ty, { scale: 0.8, holdMs: 700 });
+        /* ── SHAMBLING HORDE (2026-07-18 rework) — no longer a decoy: a wall
+           of sprinting dead stampedes THROUGH the target area. Eight rag-doll
+           runners (flesh-textured, zombie-green) charge across the 3×3 from a
+           random side, arms out, kicking up dust; a trample shockwave and a
+           sickly miasma land when the wave crosses the center. ── */
+        raceShamblingHorde: function(tx, ty, r) {
+            var wp = _worldPos(tx, ty);
+            var ts0 = wp.ts;
+            var radius = (r != null ? r : 1);
+            var span = (radius + 1.7) * ts0;              /* run-up + overshoot */
+            var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+            var d = dirs[Math.floor(Math.random() * 4)];
+            var yaw = Math.atan2(-d[1], d[0]);            /* +X → (dx, dz) */
+
+            var g = new THREE.Group();
+            g.position.set(wp.x, wp.y, wp.z);
+            g.rotation.y = yaw;
+
+            var fleshTexes = ['flesh.png', 'skin.png', 'flesh_2.png'];
+            var tints = [0x8fae6a, 0x9aa06a, 0x7a9a5a, 0xa8b07a];
+            var runners = [];
+            for (var i = 0; i < 8; i++) {
+                var holder = new THREE.Group();
+                var mat = new THREE.MeshBasicMaterial({
+                    map: _sigTerrainTex(fleshTexes[i % 3], 1, 1),
+                    color: new THREE.Color(tints[i % 4]),
+                    transparent: true, opacity: 0, depthWrite: true,
+                });
+                /* runner built facing +X: hunched torso, lolling head, both
+                   arms locked straight out ahead — the classic hungry sprint */
+                var torso = new THREE.Mesh(new THREE.BoxGeometry(ts0 * 0.18, ts0 * 0.46, ts0 * 0.2), mat);
+                torso.position.y = ts0 * 0.5;
+                torso.rotation.z = -0.4;
+                holder.add(torso);
+                var head = new THREE.Mesh(new THREE.SphereGeometry(ts0 * 0.1, 7, 6), mat);
+                head.position.set(ts0 * 0.14, ts0 * 0.82, 0);
+                holder.add(head);
+                for (var s = -1; s <= 1; s += 2) {
+                    var arm = new THREE.Mesh(new THREE.BoxGeometry(ts0 * 0.34, ts0 * 0.06, ts0 * 0.06), mat);
+                    arm.position.set(ts0 * 0.28, ts0 * 0.68, s * ts0 * 0.09);
+                    holder.add(arm);
+                }
+                for (var s2 = -1; s2 <= 1; s2 += 2) {
+                    var leg = new THREE.Mesh(new THREE.BoxGeometry(ts0 * 0.07, ts0 * 0.3, ts0 * 0.07), mat);
+                    leg.position.set(0, ts0 * 0.16, s2 * ts0 * 0.06);
+                    holder.add(leg);
+                }
+                /* 3 lanes across the strip, staggered launch, per-runner gait */
+                holder.position.z = (i % 3 - 1) * ts0 * 0.62 + rn(-8, 8) * (ts0 / 128);
+                g.add(holder);
+                runners.push({
+                    node: holder, mat: mat,
+                    delay: i * 70 + rn(0, 50),
+                    runMs: 620 + rn(-60, 80),
+                    gait: 5 + (i % 3),
+                });
+            }
+
+            var totalMs = 1250;
+            var trampled = false;
+            _sigRun(g, totalMs, function (el) {
+                for (var j = 0; j < runners.length; j++) {
+                    var R2 = runners[j];
+                    var t = (el - R2.delay) / R2.runMs;
+                    if (t <= 0) { R2.mat.opacity = 0; continue; }
+                    if (t >= 1) { R2.mat.opacity = 0; continue; }
+                    R2.node.position.x = -span + 2 * span * t;
+                    R2.node.position.y = Math.abs(Math.sin(t * Math.PI * R2.gait)) * ts0 * 0.07;
+                    var fade = t < 0.15 ? t / 0.15 : (t > 0.82 ? (1 - t) / 0.18 : 1);
+                    R2.mat.opacity = fade;
+                    if (t > 0.42 && t < 0.58 && !trampled) {
+                        trampled = true;
+                        _sigShake('normal');
+                        _sigShockRing3D(tx, ty, { color: 0x88aa55, r1: ts0 * (radius + 0.8), ms: 420 });
+                        _sigSparks(tx, ty, 'dust-puff', 14, { vxy: 170, vz0: 15, vz1: 80, gravity: 60 });
+                    }
+                }
+            });
+            /* the dust the horde kicks up + graveyard stench rolling with it */
+            _sigSparks(tx - d[0], ty - d[1], 'dust-puff', 8, { vxy: 120, vz0: 10, vz1: 60, gravity: 50 });
+            _sigGasCloud3D(tx, ty, {
+                color: 0x88aa33, coreColor: 0xa8bb55, gentle: true,
+                radiusTiles: radius + 0.4, count: 8, ms: 1300,
+            });
+        },
+
+        /* ── ZOMBIE RUSH (2026-07-18) — the gap-closer's arrival: a burst of
+           feral speed lines, grave dust and a first ravenous swipe. ── */
+        raceZombieRush: function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigSpeedBurst3D(tx, ty, { color: 0x9fdc6a });
+            _sigShockRing3D(tx, ty, { color: 0x88cc55, r1: ts0 * 1.2, ms: 320 });
+            _sigSparks(tx, ty, 'blood-splat', 8, { vxy: 160, vz0: 30, vz1: 150 });
+            _sigSparks(tx, ty, 'dust-puff', 8, { vxy: 120, vz0: 10, vz1: 60, gravity: 60 });
+            _sigScreenFlash('#ccffaa', 90, 0.10);
+            _sigShake('normal');
+        },
+
+        /* ── KILL MODE (robot, 2026-07-18 — was Chassis Slam) — every weapon
+           system fires at once: three staggered 360° waves (red combat
+           lasers → cyan plasma sweep → cannon volley) lance from the chassis
+           to the ring of surrounding tiles, with muzzle storm, shock rings
+           and a casing/smoke vent at the end. ── */
+        raceChassisSlan: function(tx, ty, r) {
+            var ts0 = _cfg().tileSize || 128;
+            var R = Math.max(1, r != null ? r : 2);
+            _sigScreenFlash('#ffddaa', 140, 0.18);
+            _sigShake('hard');
+            _sigSpeedBurst3D(tx, ty, { color: 0xffcc66 });
+            /* muzzle storm right at the chassis */
+            _sigSparks(tx, ty, 'muzzle-flash', 10, { vxy: 90, vz0: 60, vz1: 200, z: ts0 * 0.4 });
+            _sigSparks(tx, ty, 'steel-spark', 26, { vxy: 480, vz0: 20, vz1: 160, gravity: 300 });
+            var wave = function (count, phase, core, glow, thick, delay) {
+                window.setTimeout(function () {
+                    if (typeof state !== 'undefined' && state.devAutoSim && !state._devSimShowAnims) return;
+                    for (var i = 0; i < count; i++) {
+                        var a = phase + i * (Math.PI * 2 / count);
+                        var ex = tx + Math.round(Math.cos(a) * R);
+                        var ey = ty + Math.round(Math.sin(a) * R);
+                        if (ex === tx && ey === ty) continue;
+                        _spawnLaserBeam3D(tx, ty, ex, ey, { core: core, glow: glow, beamMs: 300, thickness: thick });
+                    }
+                    _sigShockRing3D(tx, ty, { color: glow, r1: ts0 * (0.9 + R), ms: 420 });
+                }, delay);
+            };
+            wave(8, 0,            0xffffff, 0xff3344, 0.8, 0);    /* red combat lasers */
+            wave(8, Math.PI / 8,  0xd6fff4, 0x2fe6c0, 0.7, 170);  /* cyan plasma sweep */
+            wave(8, Math.PI / 16, 0xfff2cc, 0xffaa33, 1.0, 340);  /* cannon volley */
+            /* spent casings + heat venting once the guns wind down */
+            window.setTimeout(function () {
+                if (typeof state !== 'undefined' && state.devAutoSim && !state._devSimShowAnims) return;
+                _sigSparks(tx, ty, 'steel-spark', 18, { vxy: 420, vz0: 30, vz1: 140, gravity: 320 });
+                _sigSparks(tx, ty, 'smoke', 8, { vxy: 60, vz0: 20, vz1: 80, gravity: -20 });
+                _sigScreenFlash('#aaffee', 120, 0.14);
+            }, 400);
+        },
+
+        /* ── HYDRAULIC CRUSH (robot, 2026-07-18) — an industrial press rig
+           drops out of nowhere, slams the target flat, quivers while it
+           squeezes, then retracts. ── */
+        raceHydraulicCrush: function(tx, ty) {
+            var wp = _worldPos(tx, ty);
+            var ts0 = wp.ts;
+            var g = new THREE.Group();
+            g.position.set(wp.x, wp.y, wp.z);
+            var metalTex = _sigTerrainTex('metal.png', 1, 1);
+            var rodMat = new THREE.MeshBasicMaterial({
+                map: metalTex, color: new THREE.Color(0x9fb4c8),
+                transparent: true, opacity: 0, depthWrite: true,
+            });
+            var rod = new THREE.Mesh(new THREE.CylinderGeometry(ts0 * 0.11, ts0 * 0.11, ts0 * 2.2, 10), rodMat);
+            rod.renderOrder = 158;
+            g.add(rod);
+            var plateMat = new THREE.MeshBasicMaterial({
+                map: metalTex, color: new THREE.Color(0xc8d6e0),
+                transparent: true, opacity: 0, depthWrite: true,
+            });
+            var plate = new THREE.Mesh(new THREE.BoxGeometry(ts0 * 0.92, ts0 * 0.22, ts0 * 0.92), plateMat);
+            plate.renderOrder = 159;
+            g.add(plate);
+            var dropMs = 170, holdMs = 420, riseMs = 260;
+            var startY = ts0 * 3.2, hitY = ts0 * 0.16;
+            var slammed = false;
+            _sigRun(g, dropMs + holdMs + riseMs, function (el) {
+                var y;
+                if (el < dropMs) {
+                    var t = el / dropMs;
+                    y = startY + (hitY - startY) * t * t * t;
+                    rodMat.opacity = plateMat.opacity = Math.min(1, t * 3);
+                } else if (el < dropMs + holdMs) {
+                    y = hitY + Math.sin(el * 0.09) * 1.5;   /* hydraulic quiver */
+                    if (!slammed) {
+                        slammed = true;
+                        _sigShake('hard');
+                        _sigScreenFlash('#cfe0ff', 110, 0.16);
+                        _sigShockRing3D(tx, ty, { color: 0x9fd0ff, r1: ts0 * 1.5, ms: 380 });
+                        _sigSparks(tx, ty, 'steel-spark', 22, { vxy: 300, vz0: 40, vz1: 220 });
+                        _sigSparks(tx, ty, 'dust-puff', 10, { vxy: 140, vz0: 10, vz1: 60, gravity: 60 });
+                    }
+                } else {
+                    var t2 = (el - dropMs - holdMs) / riseMs;
+                    y = hitY + (startY - hitY) * t2 * t2;
+                    rodMat.opacity = plateMat.opacity = 1 - t2;
+                }
+                plate.position.y = y;
+                rod.position.y = y + ts0 * 1.21;
+            });
         },
 
         /* ── DIVINATION — the fortune teller consults the orb ── */

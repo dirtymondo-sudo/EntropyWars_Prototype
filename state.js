@@ -86,8 +86,8 @@
                     2: [{x:11,y:4},{x:10,y:4},{x:11,y:5},{x:11,y:6},{x:10,y:6},{x:11,y:7}]
                 },
                 defaultBuilds: {
-                    1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Gunslinger'],
-                    2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Warrior']
+                    1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Tank'],
+                    2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Tank']
                 }
             },
             xlarge: {
@@ -112,8 +112,8 @@
                     2: [{x:17,y:7},{x:16,y:7},{x:17,y:8},{x:16,y:8},{x:17,y:11},{x:16,y:11},{x:17,y:12},{x:16,y:12}]
                 },
                 defaultBuilds: {
-                    1: ['Warrior', 'Warrior', 'Gunslinger', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Agent'],
-                    2: ['Warrior', 'Warrior', 'Gunslinger', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Agent']
+                    1: ['Warrior', 'Tank', 'Gunslinger', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Agent'],
+                    2: ['Warrior', 'Tank', 'Gunslinger', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Agent']
                 }
             },
             huge: {
@@ -139,8 +139,8 @@
                     2: [{x:33,y:11},{x:34,y:12},{x:33,y:12},{x:34,y:13},{x:33,y:13},{x:34,y:14},{x:33,y:14},{x:34,y:15},{x:33,y:15},{x:34,y:16}]
                 },
                 defaultBuilds: {
-                    1: ['Warrior','Warrior','Gunslinger','Gunslinger','Black Mage','Black Mage','White Mage','White Mage','Agent','Agent'],
-                    2: ['Warrior','Warrior','Gunslinger','Gunslinger','Black Mage','Black Mage','White Mage','White Mage','Agent','Agent']
+                    1: ['Warrior','Tank','Gunslinger','Gunslinger','Black Mage','Black Mage','White Mage','White Mage','Agent','Agent'],
+                    2: ['Warrior','Tank','Gunslinger','Gunslinger','Black Mage','Black Mage','White Mage','White Mage','Agent','Agent']
                 }
             },
             prebuilt_custommap: {
@@ -150,7 +150,7 @@
                 hasTowers: false, isPrebuilt: true,
                 terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
                 spawns: { 1: [{x:7,y:19},{x:8,y:19},{x:9,y:19},{x:10,y:19},{x:11,y:19},{x:12,y:19}], 2: [{x:7,y:0},{x:8,y:0},{x:9,y:0},{x:10,y:0},{x:11,y:0},{x:12,y:0}] },
-                defaultBuilds: { 1: ["Warrior","Gunslinger","Black Mage","White Mage","Agent","Warrior"], 2: ["Warrior","Gunslinger","Black Mage","White Mage","Agent","Warrior"] }
+                defaultBuilds: { 1: ["Warrior","Gunslinger","Black Mage","White Mage","Agent","Tank"], 2: ["Warrior","Gunslinger","Black Mage","White Mage","Agent","Tank"] }
             },
         };
 
@@ -161,7 +161,7 @@
            hand-written entry above. */
         (function _generatePrebuiltGameModes() {
             if (typeof EW_MAP_META === 'undefined' || typeof PREBUILT_MAPS === 'undefined') return;
-            const JOBS = ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent'];
+            const JOBS = ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage', 'Agent', 'Tank'];
             EW_MAP_META.forEach(meta => {
                 const pb = PREBUILT_MAPS[meta.id];
                 if (!pb || !pb.spawns) return;
@@ -3066,7 +3066,7 @@
         // MDEF in, anything else (e.g. 'dot', 'none') adds no defense-stat soak
         // so callers that only want gear/status armor can pass 'none'.
         // DEF/MDEF axis split: DEF-axis statuses & stages (Glare, Guard Break,
-        // Inspired, Phalanx…) only soak physical hits; MDEF-axis statuses &
+        // Inspired, Iron Dome…) only soak physical hits; MDEF-axis statuses &
         // stages (Veil of Light, Tin Foil Hat, Psychosis, 5G Tower…) only soak
         // magic. Gear armor and everything else stays universal.
         function getEffectiveArmor(unit, damageType) {

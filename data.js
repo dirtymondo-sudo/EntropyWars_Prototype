@@ -1840,6 +1840,16 @@ const JOB_ARCHETYPES = {
         weatherPreference: 'none'
     },
     'Warrior': {
+        race: 'knight',
+        faction: 'time',
+        types: ['human'],
+        gender: 'other',
+        zodiac: 'aries',
+        sleepPreference: 'none',
+        terrainPreference: 'grass',
+        weatherPreference: 'none'
+    },
+    'Tank': {
         race: 'giant',
         faction: 'time',
         types: ['human'],
@@ -2463,9 +2473,10 @@ const RACE_PROFILES = {
 const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher'];
 
 const RACE_DEFAULT_JOBS = {
-    // NOTE (2026-07-13): 'Warrior' displays as "Tank" and 'Agent' as
-    // "Assassin" (JOB_DISPLAY_NAMES) — the internal ids here are unchanged.
-    'giant': 'Warrior',
+    // NOTE (2026-07-18): 'Warrior' and 'Tank' are now SEPARATE jobs (the old
+    // single 'Warrior' job used to display as "Tank"). 'Agent' still displays
+    // as "Assassin" and 'Raider' as "Bruiser" (JOB_DISPLAY_NAMES).
+    'giant': 'Tank',
     'skeleton': 'Swordmaster',
     'robot': 'Warrior',
     'nordic': 'Harbinger',
@@ -2540,15 +2551,15 @@ const RACE_DEFAULT_JOBS = {
     'gnome': 'Engineer',
     'kaiju': 'Raider',
     'kraken': 'Harbinger',
-    'loch ness monster': 'Warrior',
+    'loch ness monster': 'Tank',
     'yeti': 'Harvester',
 
     'barbarella': 'Agent',
     'black goo': 'Psychic',
-    'golem': 'Warrior',
+    'golem': 'Tank',
     'honda civic': 'Engineer',
     'ice queen': 'Black Mage',
-    'juggernaut': 'Warrior',
+    'juggernaut': 'Tank',
     'ki fighter': 'Raider',
     'king arthur': 'Swordmaster',
     'king kong': 'Harvester',
@@ -2944,13 +2955,30 @@ const RACE_PHYSIQUE = {
 };
 
 const JOB_MODIFIERS = {
+    // 2026-07-18: the old Warrior/Tank hybrid split into two jobs. 'Warrior'
+    // is now the offensive front-liner (Judgment / Brave Charge / War Cry /
+    // Ground Slam); 'Tank' inherits the wall kit (Fortify / Rampart /
+    // Provoke / Iron Dome) and the Bulwark passive.
     'Warrior': {
-        hp: 120,
-        mp: -15,
-        atk: 24,
-        def: 22,
-        mdef: 12,
+        hp: 80,
+        mp: -10,
+        atk: 30,
+        def: 14,
+        mdef: 8,
         move: 1,
+        awr: 0,
+        int: -5,
+        spd: 0,
+        range: 1,
+        inspect: 1
+    },
+    'Tank': {
+        hp: 160,
+        mp: -20,
+        atk: 12,
+        def: 30,
+        mdef: 16,
+        move: 0,
         awr: -1,
         int: -10,
         spd: 0,
@@ -3189,16 +3217,30 @@ const CLASS_TEMPLATES = {
     Warrior: {
         cls: 'Warrior',
         job: 'Warrior',
-        hp: 670,
-        mp: 105,
-        atk: 80,
-        def: 60,
-        mdef: 21,
+        hp: 620,
+        mp: 110,
+        atk: 92,
+        def: 45,
+        mdef: 22,
+        range: 1,
+        move: 3,
+        inspect: 1,
+        awr: 2,
+        int: 20
+    },
+    Tank: {
+        cls: 'Tank',
+        job: 'Tank',
+        hp: 720,
+        mp: 100,
+        atk: 64,
+        def: 65,
+        mdef: 26,
         range: 1,
         move: 2,
         inspect: 1,
         awr: 2,
-        int: 20
+        int: 18
     },
     'Black Mage': {
         cls: 'Black Mage',
@@ -3576,7 +3618,8 @@ const ITEM_META = {
 // (Freelancer). `id` lets combat code branch on a passive without matching text.
 const JOB_PASSIVES = {
     Gunslinger:  { id: 'deadeye',        name: 'Deadeye',         desc: '+1 SPD. Always ready to draw first.' },
-    Warrior:     { id: 'bulwark',        name: 'Bulwark',         desc: 'Reduces incoming damage by 8. Fortify shields cap at 25% max HP.' },
+    Warrior:     { id: 'warpath',        name: 'Warpath',         desc: 'Basic attacks hit +15% harder, and the Warrior counterattacks at a hardened 30% rate. Born for the front line.' },
+    Tank:        { id: 'bulwark',        name: 'Bulwark',         desc: 'Reduces incoming damage by 8. Fortify shields cap at 25% max HP.' },
     'Black Mage':{ id: 'arcaneSurge',    name: 'Arcane Surge',    desc: '+8 spell damage on every cast.' },
     'White Mage':{ id: 'grace',          name: 'Grace',           desc: 'Heal and revive spells gain +2 range and +24 healing power.' },
     Agent:       { id: 'fieldOperative', name: 'Field Operative', desc: 'Can equip up to 2 scanners and has longer inspect reach.' },
@@ -3596,13 +3639,14 @@ const CLASS_PASSIVES = Object.fromEntries(
 function getJobPassive(job) { return JOB_PASSIVES[job] || null; }
 
 const JOB_DISPLAY_NAMES = {
-    // Display-only renames (2026-07-13). Internal ids ('Warrior', 'Agent',
-    // 'Raider') are load-bearing — saves, the online protocol, AI role tables
-    // and battle.js cls checks all key on them — so renames happen HERE, the
-    // same way Raider→Bruiser did. Everything player-facing routes through
+    // Display-only renames (2026-07-13). Internal ids ('Agent', 'Raider') are
+    // load-bearing — saves, the online protocol, AI role tables and battle.js
+    // cls checks all key on them — so renames happen HERE, the same way
+    // Raider→Bruiser did. Everything player-facing routes through
     // getJobDisplayName().
+    // 2026-07-18: the 'Warrior'→"Tank" display rename is GONE — Warrior and
+    // Tank are two real jobs now.
     'Raider': 'Bruiser',
-    'Warrior': 'Tank',
     'Agent': 'Assassin'
 };
 function getJobDisplayName(job) { return JOB_DISPLAY_NAMES[job] || job; }
@@ -3635,12 +3679,37 @@ const SPELL_LIBRARY = [
         range: 2,
         kind: 'shield',
         tier: 'I',
-        school: 'Warrior',
-        classRestriction: 'Warrior',
-        jobPreference: ['Warrior'],
+        school: 'Tank',
+        classRestriction: 'Tank',
+        jobPreference: ['Tank'],
         shield: 96,
         shieldCapPct: 0.25,
         desc: 'Grant yourself or an ally a shield, capped at 25% of max HP.'
+    },
+    {
+        /* 2026-07-18 Warrior/Tank split: the Tank raises real fortifications.
+           Class-spell twin of the SHARED_RAMPART race ability. */
+        id: 'rampart',
+        spellType: 'human',
+        element: 'earth',
+        name: 'Rampart',
+        type: 'utility',
+        cost: 30,
+        equipCost: 15,
+        apCost: 1,
+        range: 3,
+        kind: 'terrainCreate',
+        terrainType: 'mountain',
+        tileCount: 3,
+        orientable: true,
+        dmg: 60,
+        damageType: 'physical',
+        terrainDeform: { centerDelta: 2, edgeDelta: 0 },
+        tier: 'II',
+        school: 'Tank',
+        classRestriction: 'Tank',
+        jobPreference: ['Tank'],
+        desc: 'Raise a 3-tile wall of impassable mountain terrain. Enemies on targeted tiles take damage and are pushed aside. Hold the line — build the line.'
     },
     {
         id: 'mark1',
@@ -3716,14 +3785,16 @@ const SPELL_LIBRARY = [
         tier: 'I',
         school: 'Warrior',
         classRestriction: 'Warrior',
+        jobPreference: ['Warrior'],
         chargeToTarget: true,
         statusEffects: [],
         desc: 'Charge at an enemy up to 3 tiles away, dealing damage and landing adjacent to them.'
     },
     {
+        /* 2026-07-18: renamed Phalanx → Iron Dome (Warrior/Tank split). */
         id: 'shieldBash',
         spellType: 'human',
-        name: 'Phalanx',
+        name: 'Iron Dome',
         type: 'buff',
         cost: 45,
         equipCost: 15,
@@ -3732,13 +3803,15 @@ const SPELL_LIBRARY = [
         range: 0,
         kind: 'healAll',
         tier: 'II',
-        school: 'Warrior',
-        classRestriction: 'Warrior',
-        jobPreference: ['Warrior'],
+        school: 'Tank',
+        classRestriction: 'Tank',
+        jobPreference: ['Tank'],
         statStageBoost: { def: 1 },
-        desc: 'Bellow the old legion drill — SHIELDS UP! Your entire team locks formation, gaining +1 DEF for 3 turns.'
+        desc: 'Bellow the old legion drill — SHIELDS UP! An iron dome of interlocked shields snaps shut over your entire team: +1 DEF for 3 turns.'
     },
     {
+        /* 2026-07-18: moved from the old Warrior/Tank kit to Swordmaster —
+           the armor-cleaving greatslash belongs with the duelists. */
         id: 'dragonSlash',
         spellType: 'unholy',
         name: 'Dragon Slash',
@@ -3751,8 +3824,9 @@ const SPELL_LIBRARY = [
         damageType: 'physical',
         ignoreArmor: true,
         tier: 'II',
-        school: 'Warrior',
-        classRestriction: 'Warrior',
+        school: 'Swordmaster',
+        classRestriction: 'Swordmaster',
+        jobPreference: ['Swordmaster'],
         bonusVsStatus: { status: 'burn', mult: 1.5 },
         desc: 'A devastating melee strike that cleaves through armor. Massive single-target damage. COMBO: ×1.5 damage against Burned targets.'
     },
@@ -4425,7 +4499,7 @@ const SPELL_LIBRARY = [
         classRestriction: 'Warrior',
         jobPreference: ['Warrior'],
         auraRadius: 3,
-        desc: 'Rally all allies within 3 tiles: +2 ATK/+1 DEF stages each. The Tank himself gains +1 ATK stage.'
+        desc: 'Rally all allies within 3 tiles: +2 ATK/+1 DEF stages each. The Warrior himself gains +1 ATK stage.'
     },
     {
         /* NEW 2026-07-17: the Tank finally tanks. Taunt is enforced by the
@@ -4442,9 +4516,9 @@ const SPELL_LIBRARY = [
         range: 3,
         kind: 'debuff',
         tier: 'I',
-        school: 'Warrior',
-        classRestriction: 'Warrior',
-        jobPreference: ['Warrior'],
+        school: 'Tank',
+        classRestriction: 'Tank',
+        jobPreference: ['Tank'],
         statusEffects: [{
             id: 'taunt',
             duration: 2
@@ -4567,9 +4641,10 @@ const SPELL_LIBRARY = [
         kind: 'aoe',
         damageType: 'physical',
         tier: 'II',
-        school: 'Raider',
-        classRestriction: 'Raider',
-        jobPreference: ['Raider'],
+        /* 2026-07-18: moved Raider → Warrior (Warrior/Tank split). */
+        school: 'Warrior',
+        classRestriction: 'Warrior',
+        jobPreference: ['Warrior'],
         selfCenter: true,
         terrainDeform: { centerDelta: -1, edgeDelta: 0 },
         statusEffects: [{ id: 'slow', duration: 2 }],
@@ -4791,7 +4866,7 @@ const SPELL_LIBRARY = [
     {
         /* 2026-07-17 shape pass: was a 3×3 like every other slam. Now a
            literal CROSS of light — 3 tiles down each cardinal arm — so the
-           Tank ult reads on the board like nothing else in the game. */
+           Warrior ult reads on the board like nothing else in the game. */
         id: 'judgment',
         spellType: 'divine',
         element: 'light',
@@ -5583,8 +5658,8 @@ const STRUCTURE_TEMPLATES = {
     }
 };
 
-/* Earth-titan race variant of the Engineer's Bulwark Ring (golem / giant /
-   minotaur) — same prefab, race-flavored. */
+/* Earth-titan race variant of the Engineer's Bulwark Ring (golem / minotaur;
+   the giant lost his 2026-07-18) — same prefab, race-flavored. */
 const SHARED_BULWARK_RING = {
     id: 'sharedBulwarkRing', spellType: 'human', element: 'earth', name: 'Bulwark Ring',
     type: 'utility', cost: 55, apCost: 2, range: 3,
@@ -5944,6 +6019,9 @@ const RACE_ABILITIES = {
           desc: 'Devastating close-range life drain. 160 damage, heals 60%. Come closer, darling.' },
         SHARED_POISON_SWAMP,
     ],
+    /* 2026-07-18 zombie kit rework: Poison Swamp / Scorched Earth / Undying
+       Grip are GONE. Shambling Horde is now an AoE stampede (the horde
+       tramples the target area), and Zombie Rush is the new gap closer. */
     'zombie': [
         { id: 'raceInfectiousBite', spellType: 'unholy', name: 'Infectious Bite',
           type: 'damage', cost: 20, dmg: 128, range: 1,
@@ -5951,18 +6029,13 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'poison', duration: 3 }],
           desc: 'Savage melee bite. Poisons for 3 turns.' },
         { id: 'raceShamblingHorde', spellType: 'unholy', name: 'Shambling Horde',
-          type: 'utility', cost: 25, range: 2, apCost: 1,
-          kind: 'deployObject', objectHp: 2, blocksMovement: true,
-          maxActivePerCaster: 1,
-          drawsRangedAttack: true, drawsMeleeAttack: true,
-          desc: 'Summon a zombie decoy. Blocks movement, absorbs 2 hits. They just keep coming.' },
-        { id: 'raceUndyingGrip', spellType: 'unholy', name: 'Undying Grip',
-          type: 'damage', cost: 20, dmg: 64, range: 3,
-          kind: 'pull', damageType: 'physical', pullDistance: 2, lineOfSight: true,
-          statusEffects: [{ id: 'slow', duration: 1 }],
-          desc: 'Reach out and drag an enemy 2 tiles toward you. Slows on arrival. Braaains...' },
-        SHARED_POISON_SWAMP,
-        SHARED_SCORCHED_EARTH
+          type: 'damage', cost: 30, dmg: 96, range: 3, apCost: 1,
+          kind: 'aoe', damageType: 'physical', aoeRadius: 1,
+          desc: 'Call the horde — a wall of sprinting dead stampedes through the target area, trampling everything in a 3x3. They just keep coming.' },
+        { id: 'raceZombieRush', spellType: 'unholy', name: 'Zombie Rush',
+          type: 'damage', cost: 20, dmg: 116, range: 3,
+          kind: 'damage', damageType: 'physical', chargeToTarget: true,
+          desc: 'Break into a dead sprint — charge an enemy up to 3 tiles away, landing beside them and tearing in. Braaains... fast brains.' },
     ],
     'anubis': [
         { id: 'raceWeighTheHeart', spellType: 'unholy', name: 'Weigh the Heart',
@@ -6240,12 +6313,18 @@ const RACE_ABILITIES = {
           bonusVsDebuffed: 0.50,
           desc: 'While (alive) { suffer(); } — 80 damage, +50% bonus if target already has a debuff.' },
     ],
+    /* 2026-07-18: Chassis Slam reworked into Kill Mode (360° weapons-free
+       barrage) + new Hydraulic Crush — the robot fights like a Warrior now. */
     'robot': [
-        { id: 'raceChassisSlan', spellType: 'tech', name: 'Chassis Slam',
-          type: 'damage', cost: 25, dmg: 96, range: 0,
-          kind: 'aoe', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
-          pushDistance: 1,
-          desc: 'Full-body slam. 3x3 around self, damages and pushes enemies 1 tile outward.' },
+        { id: 'raceChassisSlan', spellType: 'tech', element: 'metal', name: 'Kill Mode',
+          type: 'damage', cost: 35, dmg: 96, range: 0,
+          kind: 'aoe', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
+          desc: 'KILL MODE ENGAGED. Every weapon system fires at once — bullets, lasers and cannon fire rake EVERYTHING within 2 tiles in a full 360° storm.' },
+        { id: 'raceHydraulicCrush', spellType: 'tech', element: 'metal', name: 'Hydraulic Crush',
+          type: 'damage', cost: 25, dmg: 150, range: 1,
+          kind: 'damage', damageType: 'physical',
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Seize the target in an industrial hydraulic press and CRUSH. Heavy damage and staggers them (lose 1 AP). Warranty void.' },
         { id: 'raceIronGuard', spellType: 'tech', name: 'Iron Guard',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff', statusEffects: [{ id: 'protect', duration: 2 }],
@@ -6275,24 +6354,27 @@ const RACE_ABILITIES = {
         SHARED_SMOKE_SCREEN,
     ],
 
+    /* 2026-07-18: Bulwark Ring deleted from the giant kit (the golem/minotaur
+       keep theirs) and Titan Step renamed Fee Fi Fo Fum — the giant is the
+       Tank job's flagship race now. */
     'giant': [
-        SHARED_BULWARK_RING,
-        { id: 'raceTitanStep', spellType: 'human', element: 'earth', name: 'Titan Step',
+        { id: 'raceTitanStep', spellType: 'human', element: 'earth', name: 'Fee Fi Fo Fum',
           type: 'damage', cost: 30, dmg: 132, range: 0,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Stomp the ground with titanic force. 3x3 AoE, damages and staggers enemies.' },
+          desc: 'FEE! FI! FO! FUM! Stomp the ground with titanic force — a 3x3 quake that damages and staggers every enemy around you. Smell the blood and start counting.' },
         { id: 'raceBoulderHurl', spellType: 'human', element: 'earth', name: 'Boulder Hurl',
           type: 'damage', cost: 30, dmg: 140, range: 5,
           kind: 'damage', damageType: 'physical', ignoresLineOfSight: true,
-          desc: 'Hurl a massive boulder. Ignores line of sight (arcing projectile). Fee fi fo fum.' },
+          desc: 'Hurl a massive boulder. Ignores line of sight (arcing projectile).' },
         { id: 'raceEarthenGrasp', spellType: 'human', element: 'earth', name: 'Earthen Grasp',
           type: 'damage', cost: 20, dmg: 84, range: 3,
           kind: 'pull', damageType: 'physical', pullDistance: 2, lineOfSight: true,
           groundsFlyers: true,
           statusEffects: [{ id: 'root', duration: 1 }],
           desc: 'Reach out and yank an enemy 2 tiles toward you, pinning them in place for 1 turn — flyers get dragged all the way to the ground. Come down here.' },
-        SHARED_RAMPART,
+        /* SHARED_RAMPART removed 2026-07-18 — the giant's default Tank job
+           now carries the class-spell Rampart; the race copy was a duplicate. */
     ],
     'catgirl': [
         { id: 'raceNinefoldScratch', spellType: 'human', element: 'metal', name: 'Ninefold Scratch',
@@ -11753,7 +11835,8 @@ function getRaceXpYield(race) {
 const CLASS_SPELL_LEARN_ORDER = {
 
     'Gunslinger':  ['crossfire', 'doubleShot', 'ricochet1', 'shootout', 'deadEye'],
-    'Warrior':      ['fortify', 'provoke', 'guardSlash', 'warCry', 'shieldBash', 'dragonSlash', 'judgment'],
+    'Warrior':     ['guardSlash', 'warCry', 'groundSlam', 'judgment'],
+    'Tank':        ['fortify', 'provoke', 'shieldBash', 'rampart'],
     'Black Mage':  ['fire1', 'thunder1', 'wallOfFire', 'frostMine', 'meteor', 'thunderstorm'],
     'White Mage':  ['heal1', 'radiantBolt', 'veilOfLight', 'cleanse', 'exorcism', 'healAll'],
     'Agent':       ['knifeThrow', 'pistolWhip', 'placeBomb', 'snareTrap', 'poisonDart', 'sneakSlash', 'shadowLunge', 'assassinate'],
@@ -11762,9 +11845,9 @@ const CLASS_SPELL_LEARN_ORDER = {
     'Engineer':    ['plasmaGun', 'deployTurret', 'repair', 'fieldBridge', 'watchtower', 'tremorCharge', 'freeEnergy', 'fiveGTower', 'bulwarkRing', 'overclock', 'magnetMine', 'empBurst'],
     'Harbinger':   ['lullaby', 'sonicCharge', 'discordance', 'fermata', 'encore', 'requiem'],
     'Freelancer':  ['improvise', 'jackOfAll', 'reallyGoodPunch'],
-    'Raider':      ['haymaker', 'ironGrip', 'skullCrack', 'groundSlam', 'rampage'],
+    'Raider':      ['haymaker', 'ironGrip', 'skullCrack', 'rampage'],
     'Sniper':      ['kneecapShot', 'spotter', 'steadyAim', 'precisionShot', 'headshot'],
-    'Swordmaster': ['crossSlash', 'swordBeam', 'parryStance', 'bladeWaltz', 'lungingStrike', 'zantetsuken'],
+    'Swordmaster': ['crossSlash', 'swordBeam', 'parryStance', 'dragonSlash', 'bladeWaltz', 'lungingStrike', 'zantetsuken'],
 };
 
 const SPELL_SHOP_PRICES = {

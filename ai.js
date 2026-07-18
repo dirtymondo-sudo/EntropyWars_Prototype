@@ -107,6 +107,7 @@
         'Engineer':   { support: 1.1 },
         'Gunslinger': { spellDmg: 1.15 },
         'Warrior':    { frontline: true },
+        'Tank':       { frontline: true, support: 1.1 },
         'Raider':     { frontline: true },
         'Agent':      { frontline: true },
         'Swordmaster':{ frontline: true },
@@ -915,7 +916,8 @@
         else if (cls === 'Raider') priority += 12;
         else if (cls === 'Harvester') priority += 10;
         else if (cls === 'Agent') priority += 10;
-        else if (cls === 'Warrior') priority += 5;
+        else if (cls === 'Warrior') priority += 10;
+        else if (cls === 'Tank') priority += 5;
         else if (cls === 'Freelancer') priority += 8;
 
         if ((target.hourglasses || 0) > 0) priority += AI_TUNE.hourglassTargetBonus + (target.hourglasses * 10);
@@ -1740,7 +1742,7 @@
             const total = allies.reduce((s, a) => s + Math.min(hBase, a.maxHp - a.hp), 0);
             let s = total * (hurt.length >= 2 ? 1.5 : 0.5);
             if (unit.cls === 'White Mage') s *= 2.0;
-            // Team-wide stat buffs (Phalanx, Veil of Light): worth casting once
+            // Team-wide stat buffs (Iron Dome, Veil of Light): worth casting once
             // enemies are in sight, but don't re-stack while a buff is live.
             if (spell.statStageBoost && v.visibleEnemies.length > 0 && !g.unitHasStatus(unit, 'statUp')) {
                 const stages = Object.values(spell.statStageBoost).reduce((n, st) => n + Math.abs(st || 0), 0);
@@ -3824,7 +3826,8 @@
             score = 12;
         }
 
-        if (unit.cls === 'Warrior') score += 10;
+        if (unit.cls === 'Tank') score += 10;
+        else if (unit.cls === 'Warrior') score += 5;
         if ((unit.def || 0) >= 10) score += 5;
         if ((unit.mdef || 0) >= 10) score += 3;
 

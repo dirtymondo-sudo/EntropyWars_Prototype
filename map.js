@@ -404,7 +404,7 @@
         let _cccRace = 'homosapien';
 
         const _CCC_JOB_NAMES = {
-            'Freelancer': 'Wanderer', 'Warrior': 'Sentinel', 'Black Mage': 'Arcanist',
+            'Freelancer': 'Wanderer', 'Warrior': 'Vanguard', 'Tank': 'Sentinel', 'Black Mage': 'Arcanist',
             'White Mage': 'Cleric', 'Gunslinger': 'Ranger', 'Agent': 'Shadow',
             'Psychic': 'Psion', 'Harvester': 'Warden', 'Engineer': 'Tinker',
             'Harbinger': 'Herald', 'Raider': 'Corsair', 'Sniper': 'Hawk',
@@ -6236,7 +6236,7 @@
                 awr: stats.awr,
                 intStat: stats.int,
                 spd: stats.spd + (template.cls === 'Gunslinger' ? 1 : 0),
-                armor: template.cls === 'Warrior' ? 5 : 0,
+                armor: (template.cls === 'Warrior' || template.cls === 'Tank') ? 5 : 0,
                 spellPower: template.cls === 'Black Mage' ? 8 : 0,
                 healBonus: template.cls === 'White Mage' ? 24 : 0,
                 items: Object.fromEntries(Object.keys(ITEM_RULES).map(k => [k, loadout.items?.[k] || 0])),

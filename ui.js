@@ -5871,7 +5871,7 @@
                 const eligible = allJobs.filter(j => j !== mainJob);
 
                 const jobIcons = {
-                    'Warrior': '🛡', 'Gunslinger': '🔫', 'Black Mage': '🔥', 'White Mage': '✝',
+                    'Warrior': '⚔', 'Tank': '🛡', 'Gunslinger': '🔫', 'Black Mage': '🔥', 'White Mage': '✝',
                     'Agent': '🗡', 'Psychic': '🔮', 'Harvester': '🌿', 'Engineer': '🔧',
                     'Harbinger': '🎵', 'Freelancer': '🃏', 'Raider': '☠', 'Sniper': '🎯',
                     'Swordmaster': '⚔'
@@ -8743,8 +8743,8 @@
                 const armor = getEffectiveArmor(target, spell.damageType);
                 if (armor > 0) baseDmg = Math.max(1, baseDmg - armor);
                 if (heightSoak > 0) baseDmg = Math.max(1, baseDmg - heightSoak);
-                // Bulwark (Warrior passive): flat 8 soak on armor-respecting hits.
-                if (target.cls === 'Warrior') baseDmg = Math.max(1, baseDmg - 8);
+                // Bulwark (Tank passive): flat 8 soak on armor-respecting hits.
+                if (target.cls === 'Tank') baseDmg = Math.max(1, baseDmg - 8);
                 const hgRed = getHourglassDamageReduction(target);
                 if (hgRed > 0) baseDmg = Math.max(1, baseDmg - hgRed);
             }
@@ -8783,6 +8783,8 @@
                 + getHourglassPower(attacker));
             // Brute Force (Raider passive): basic attacks land +20% harder.
             if (attacker.cls === 'Raider') dmg = Math.floor(dmg * 1.2);
+            // Warpath (Warrior passive): basic attacks hit +15% harder.
+            else if (attacker.cls === 'Warrior') dmg = Math.floor(dmg * 1.15);
             let heightSoak = 0;
             if (isEnemyUnit(attacker, target)) {
                 dmg += getEffectiveAttackBonus(attacker, 'physical');
@@ -8807,8 +8809,8 @@
             const armor = getEffectiveArmor(target, 'physical');
             if (armor > 0) dmg = Math.max(1, dmg - armor);
             if (heightSoak > 0) dmg = Math.max(1, dmg - heightSoak);
-            // Bulwark (Warrior passive): flat 8 soak on armor-respecting hits.
-            if (target.cls === 'Warrior') dmg = Math.max(1, dmg - 8);
+            // Bulwark (Tank passive): flat 8 soak on armor-respecting hits.
+            if (target.cls === 'Tank') dmg = Math.max(1, dmg - 8);
             const hgRed = getHourglassDamageReduction(target);
             if (hgRed > 0) dmg = Math.max(1, dmg - hgRed);
             return Math.max(1, dmg);
