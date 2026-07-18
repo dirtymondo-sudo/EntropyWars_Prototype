@@ -27,10 +27,6 @@
             if (_skipVisuals()) return;
             if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireLevelUp) ThreeVFXEffects.fireLevelUp(tx, ty);
         }
-        function _vfxDeath(tx, ty) {
-            if (_skipVisuals()) return;
-            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireDeath) ThreeVFXEffects.fireDeath(tx, ty);
-        }
         function _vfxBlood(tx, ty, tier, opts) {
             if (_skipVisuals()) return;
             if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireBlood) ThreeVFXEffects.fireBlood(tx, ty, tier, opts);
@@ -244,7 +240,9 @@
         }
 
         function checkOpportunityAttack(unit, fromX, fromY) {
-            if (!unit || unit.dead || _skipVisuals()) return;
+            /* Gameplay must not depend on the animations toggle (host-side rules
+               drift online) — only the presentation below is visual-gated. */
+            if (!unit || unit.dead) return;
             const enemies = aliveUnitsFor(enemyOf(unit.player));
             for (const enemy of enemies) {
 
@@ -270,9 +268,11 @@
                     damageType: 'physical'
                 });
                 addLog(`⚔️ ${unitDisplayName(enemy)} lands an opportunity attack on ${unitDisplayName(unit)} for ${dmg} damage!`, enemy.player);
-                showCombatBanner(`⚔️ Opportunity Attack!`, `${unitDisplayName(enemy)} punishes ${unitDisplayName(unit)}'s retreat`, 'opp-attack');
-                playSfx('physicalAttack');
-                flashUnit(unit.id, 'damage');
+                if (!_skipVisuals()) {
+                    showCombatBanner(`⚔️ Opportunity Attack!`, `${unitDisplayName(enemy)} punishes ${unitDisplayName(unit)}'s retreat`, 'opp-attack');
+                    playSfx('physicalAttack');
+                    flashUnit(unit.id, 'damage');
+                }
 
                 break;
             }
@@ -3660,7 +3660,7 @@
                     if (idx === 1 && unitHasStatus(target, 'marked')) {
                         bonus += spell.markedSecondHitBonus || 0;
                     }
-                    const dmg = base + bonus;
+                    const dmg = base + bonus + Math.floor((spellPower || 0) / hits.length);
                     applyDamageToUnit(target, dmg,
                         idx === 0
                             ? `${unitDisplayName(unit)} casts ${spell.name}: `
@@ -3715,9 +3715,9 @@
             });
             if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${dmg}`, false);
 
-            // Bounce to secondary target
+            // Bounce to secondary target (fires even if the primary died —
+            // the projectile still ricochets off the body).
             window.setTimeout(() => {
-                if (first.dead && first._dying) return;
                 const others = state.units.filter(u =>
                     !u.dead && u.player !== unit.player && u.id !== first.id
                     && Math.abs(u.x - first.x) + Math.abs(u.y - first.y)
@@ -4595,10 +4595,6 @@
             return getStatusEntries(unit).map(entry => entry.text.replace(/\s+\d+$/, ''));
         }
 
-        function getStatusChips(unit) {
-            return getStatusEntries(unit).map(entry => renderStatusIcon(entry.key, 'sm', entry.text));
-        }
-
         function iconBadge(key, text = '') {
             const meta = STATUS_META[key] || {
                 icon: '•',
@@ -5466,11 +5462,13 @@
         const SEED_LEECH_ALLY_PCT = 0.04; // leech seed: % max HP healed for allies on it
 
         function _seedRainAt(x, y) {
-            const weatherHere = getWeatherAtTile(x, y);
-            return weatherHere.some(w => {
-                const wObj = (state.activeWeather || []).find(aw => aw.tiles.some(t => t.x === x && t.y === y));
-                const wDef = wObj ? WEATHER_REGISTRY[wObj.type] : null;
-                return wDef && (wDef.seedTerrain === 'water' || wObj.type === 'thunderstorm' || wObj.type === 'hurricane');
+            /* Check every weather system covering the tile — not just the first
+               one found (overlapping systems used to hide rain). */
+            return (state.activeWeather || []).some(aw => {
+                if (!aw.tiles.some(t => t.x === x && t.y === y)) return false;
+                const wDef = WEATHER_REGISTRY[aw.type];
+                return !!(wDef && (wDef.seedTerrain === 'water'
+                    || aw.type === 'thunderstorm' || aw.type === 'hurricane'));
             });
         }
 
@@ -5571,35 +5569,40 @@
         function applySeedTileEffects_endOfRound(player, events) {
             if (!state.plantedSeeds) return;
 
-            state.plantedSeeds = state.plantedSeeds.filter(seed => {
-                if (seed.type === 'poison') return true;
-                const t = getTerrainAt(seed.x, seed.y);
-                return t === 'grass';
-            });
+            /* Pruning + duration tick are round-scoped, not player-scoped — this
+               function runs once per player each round, so only tick on the
+               first call or seeds expire at double speed. */
+            if (player === 1) {
+                state.plantedSeeds = state.plantedSeeds.filter(seed => {
+                    if (seed.type === 'poison') return true;
+                    const t = getTerrainAt(seed.x, seed.y);
+                    return t === 'grass';
+                });
 
-            if (state.activeWeather && state.activeWeather.length > 0) {
-                const droughtTiles = new Set();
-                for (const w of state.activeWeather) {
-                    if (w.type === 'drought') {
-                        for (const t of w.tiles) droughtTiles.add(posKey(t.x, t.y));
+                if (state.activeWeather && state.activeWeather.length > 0) {
+                    const droughtTiles = new Set();
+                    for (const w of state.activeWeather) {
+                        if (w.type === 'drought') {
+                            for (const t of w.tiles) droughtTiles.add(posKey(t.x, t.y));
+                        }
+                    }
+                    if (droughtTiles.size > 0) {
+                        state.plantedSeeds = state.plantedSeeds.filter(seed => {
+                            if (droughtTiles.has(posKey(seed.x, seed.y))) {
+                                addLog(`☀ The Drought scorches a ${seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : 'Leech'} Seed at ${coordLabel(seed.x, seed.y)}!`);
+                                return false;
+                            }
+                            return true;
+                        });
                     }
                 }
-                if (droughtTiles.size > 0) {
-                    state.plantedSeeds = state.plantedSeeds.filter(seed => {
-                        if (droughtTiles.has(posKey(seed.x, seed.y))) {
-                            addLog(`☀ The Drought scorches a ${seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : 'Leech'} Seed at ${coordLabel(seed.x, seed.y)}!`);
-                            return false;
-                        }
-                        return true;
-                    });
+
+                for (const seed of state.plantedSeeds) {
+                    if (seed.duration !== undefined && seed.duration !== null) seed.duration--;
                 }
-            }
 
-            for (const seed of state.plantedSeeds) {
-                if (seed.duration !== undefined && seed.duration !== null) seed.duration--;
+                state.plantedSeeds = state.plantedSeeds.filter(s => s.duration === undefined || s.duration === null || s.duration > 0);
             }
-
-            state.plantedSeeds = state.plantedSeeds.filter(s => s.duration === undefined || s.duration === null || s.duration > 0);
 
             for (const unit of aliveUnitsFor(player)) {
 
@@ -10075,24 +10078,6 @@
         function resetBoardCamera(immediate) { camera.reset(immediate); }
         function _softResetCameraToUnit(unit, opts) { camera.softResetToUnit(unit, opts); }
         function focusBoardCameraOnTiles(points, opts) { camera.focusOnTiles(points, opts); }
-        function _saveCameraState() { camera.save(); }
-        function _popSavedCameraState() { const s = camera._savedState; camera._savedState = null; return s; }
-
-        function animateBoardCamera3D(from, to, opts = {}) {
-            if (state.cameraDisabled) return;
-            if (camera._fogBlocked(opts._fogAllowed)) return;
-
-            camera.x = from.x; camera.y = from.y; camera.zoom = from.zoom;
-            camera.tilt = from.tilt; camera.yaw = from.yaw; camera.camZ = from.camZ;
-            camera.moveTo({
-                x: to.x, y: to.y, zoom: to.zoom,
-                tilt: to.tilt, yaw: to.yaw, camZ: to.camZ,
-                duration: opts.duration ?? 600,
-                easing: 'easeInOut',
-                _fogAllowed: opts._fogAllowed
-            });
-        }
-
         function animateBoardCameraPath(fromPoint, toPoint, opts = {}) {
             if (!fromPoint || !toPoint || state.phase !== 'battle') return;
             if (camera._fogBlocked(opts._fogAllowed)) return;
@@ -10261,9 +10246,7 @@
             return Math.max(0.15, Math.min(10.0, getDefaultZoom() * TURN_FRAMING_ZOOM_MULT));
         }
         function getCloseZoom()      { return _getBattleZoom(); }
-        function getMediumZoom()     { return _getBattleZoom(); }
         function getWideZoom()       { return _getBattleZoom(); }
-        function getCinematicZoom()  { return _getBattleZoom(); }
         function getFullMapZoom() {
             const ts = CONFIG.tileSize || BASE_TILE, gap = CONFIG.tileGap ?? 0, pad = CONFIG.boardPadding ?? 2;
             const rows = bh() || 10, cols = bw() || 10;
@@ -14825,10 +14808,6 @@
         function moveTowers() {
         }
 
-        function towerAutoAttack(player) {
-
-        }
-
         // ═══════════════════════════════════════════════════════════════════
         // processTurretVolleys() — end-of-round turret fire (all owners).
         // Turrets work like the Headshot laser mark now: all round long each
@@ -16020,11 +15999,6 @@
             return null;
         }
 
-        function revealGroundPickupsForUnit(unit, x, y) {
-
-            return { revealedHourglasses: 0, revealedItems: 0 };
-        }
-
         /* ── Smoke Screen entry/exit cloaking ──────────────────────────────
            Stepping INTO a friendly smoke zone cloaks you on the spot — not
            just the units that happened to be inside at cast time or at the
@@ -16291,22 +16265,6 @@
             return looted;
         }
 
-        function getLoadoutValidation(loadout, cls, race) {
-            const slotBudget = typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : 8;
-            const pointsUsed = getLoadoutPoints(loadout, cls, race);
-            const totalItems = Object.values(loadout.items || {}).reduce((a, b) => a + b, 0);
-            const crossClassCount = countCrossClassSpells(loadout.spells || [], cls);
-            return {
-                pointsUsed,
-                pointsRemaining: slotBudget - pointsUsed,
-                totalItems,
-                itemSlotsRemaining: CONFIG.unitItemSlots - totalItems,
-                scannerCap: getItemCapForClass(cls, 'scanner'),
-                crossClassCount,
-                valid: pointsUsed <= slotBudget && totalItems <= CONFIG.unitItemSlots && (loadout.items.scanner || 0) <= getItemCapForClass(cls, 'scanner') && crossClassCount <= CONFIG.maxCrossClassSpells
-            };
-        }
-
         function syncPartyBuildsFromInputs() {
             repairPartyBuilderState();
 
@@ -16341,22 +16299,6 @@
 
         function canPlaceHourglassAt(x, y) {
             return !state.hourglasses.some(h => h.carriedBy === null && Math.max(Math.abs(h.x - x), Math.abs(h.y - y)) <= 2);
-        }
-
-        function canPlaceHiddenItemAt(x, y, floor) {
-            const f = floor || 'ground';
-            if (state.hourglasses.some(h => h.carriedBy === null && h.x === x && h.y === y)) return false;
-            return !state.hiddenItems.some(item => item.collectedBy === null && item.x === x && item.y === y);
-        }
-
-        function rollHiddenItemType() {
-            const roll = Math.random();
-            if (roll < 0.35) return 'healPotion';
-            if (roll < 0.70) return 'manaPotion';
-            if (roll < 0.82) return 'scanner';
-
-            const baneTypes = ['humanBane', 'divineBane', 'unholyBane', 'techBane', 'anomalyBane', 'alienBane'];
-            return baneTypes[randInt(baneTypes.length)];
         }
 
         function _spawnHiddenItemsOnly() {
@@ -16519,11 +16461,7 @@
 
         function isBossUnit() { return false; }
         function getBossOccupiedTiles(unit) { return [{ x: unit.x, y: unit.y }]; }
-        function isTileOccupiedByBoss() { return null; }
-        function getBossSpriteUrl() { return ''; }
         function checkBossSpawns() {}
-        function processBossPassiveAbility() {}
-        function processBossTurn() {}
         function handleBossKill() {}
 
         function makeUnitsFromBuilds() {
@@ -16915,128 +16853,6 @@
             state.units = makeUnitsFromBuilds();
             state.teamLockedIn = false;
             addLog(isOnlineMatch() ? `Player ${getLocalPlayer()}'s loadouts randomized.` : 'Both parties randomized with fresh loadouts.');
-            render();
-        }
-
-        function autoFillUnitLoadout(player, idx) {
-            if (isOnlineMatch() && player !== getLocalPlayer()) {
-                addLog("You can only auto-fill your own team.");
-                return;
-            }
-            syncPartyBuildsFromInputs();
-            const cls = state.partyBuilds[player][idx];
-            const race = state.partyMeta?.[player]?.[idx]?.race || '';
-            const loadout = state.loadouts[player][idx] || emptyLoadout();
-
-            if (!loadout.equipment) loadout.equipment = emptyEquipment();
-            const accPrefs2 = ({
-                'Agent': ['binoculars', 'telescope'],
-                'Gunslinger': ['telescope', 'binoculars'],
-                'Black Mage': ['flair', 'binoculars'],
-                'White Mage': ['walkie_talkie', 'ward'],
-                'Warrior': ['ward', 'flair'],
-                        'Swordmaster': ['flair', 'ward'],
-                'Psychic': ['walkie_talkie', 'ward'],
-                'Harvester': ['ward', 'walkie_talkie']
-            } [cls] || ['ward', 'binoculars']).slice();
-            for (const accSlot of ['accessory1', 'accessory2']) {
-                if (!loadout.equipment[accSlot]) {
-                    const pick = accPrefs2.find(a => a !== loadout.equipment.accessory1 && a !== loadout.equipment.accessory2);
-                    if (pick) {
-                        loadout.equipment[accSlot] = pick;
-                        accPrefs2.splice(accPrefs2.indexOf(pick), 1);
-                    }
-                }
-            }
-            const existingSpells = (loadout.spells || []).slice();
-            let crossClassCount = countCrossClassSpells(existingSpells, cls);
-            const usedSpellIds = new Set(existingSpells.filter(Boolean));
-
-            const preferred = {
-                'Agent': ['assassinate', 'shadowLunge', 'placeBomb', 'sneakSlash', 'pistolWhip', 'poisonDart', 'knifeThrow'],
-                'Black Mage': ['meteor', 'wallOfFire', 'thunder1', 'fire1', 'thunderstorm'],
-                'White Mage': ['healAll', 'revive1', 'heal1', 'protect1', 'exorcism'],
-                'Warrior': ['judgment', 'dragonSlash', 'warCry', 'provoke', 'guardSlash', 'shieldBash', 'fortify'],
-                        'Swordmaster': ['zantetsuken', 'lungingStrike', 'bladeWaltz', 'parryStance', 'swordBeam', 'crossSlash'],
-                'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'crossfire'],
-                'Psychic': ['mindShatter', 'psychosis', 'teleport', 'glare', 'warpRune'],
-                'Harvester': ['overgrowth', 'lifeDrain', 'wildwood', 'timberStrike', 'leechSeed', 'healingSeed', 'poisonSeed'],
-                'Engineer': ['fiveGTower', 'overclock', 'empBurst', 'magnetMine', 'repair', 'freeEnergy', 'plasmaGun', 'deployTurret'],
-                'Harbinger': ['requiem', 'encore', 'fermata', 'sonicCharge', 'discordance', 'lullaby'],
-                'Raider': ['rampage', 'groundSlam', 'skullCrack', 'haymaker', 'ironGrip'],
-                'Sniper': ['headshot', 'precisionShot', 'spotter', 'camouflage'],
-                'Freelancer': ['jackOfAll', 'improvise', 'reallyGoodPunch']
-            } [cls] || [];
-            const eligible = getEligibleSpellsForClass(cls, race);
-            const candidateIds = [...preferred, ...eligible.map(s => s.id)];
-            const seen = new Set();
-            const uniqueCandidates = candidateIds.filter(id => {
-                if (seen.has(id) || usedSpellIds.has(id)) return false;
-                seen.add(id);
-                return true;
-            });
-
-            const _slotBudget2 = typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : CONFIG.unitSkillSlots;
-            let _slotsUsed2 = existingSpells.reduce((t, id) => {
-                const sp = id ? getSpellById(id) : null;
-                return t + (sp ? getEffectiveEquipCost(sp, cls, race) : 0);
-            }, 0);
-            for (let s = 0; s < CONFIG.unitSkillSlots; s++) {
-                if (existingSpells[s]) continue;
-                if (_slotsUsed2 >= _slotBudget2) break;
-                for (let c = 0; c < uniqueCandidates.length; c++) {
-                    const spellId = uniqueCandidates[c];
-                    const spell = getSpellById(spellId);
-                    if (!spell) continue;
-                    const isCross = !isSpellNativeToClass(spell, cls);
-                    if (isCross && crossClassCount >= CONFIG.maxCrossClassSpells) continue;
-                    const sc = getEffectiveEquipCost(spell, cls, race);
-                    if (_slotsUsed2 + sc > _slotBudget2) continue;
-                    existingSpells[s] = spellId;
-                    _slotsUsed2 += sc;
-                    if (isCross) crossClassCount++;
-                    uniqueCandidates.splice(c, 1);
-                    break;
-                }
-            }
-            loadout.spells = existingSpells;
-
-            const totalItems = Object.values(loadout.items || {}).reduce((a, b) => a + b, 0);
-            let remaining = CONFIG.unitItemSlots - totalItems;
-            if (remaining > 0) {
-                const scannerCap = getItemCapForClass(cls, 'scanner');
-                if ((loadout.items.scanner || 0) < scannerCap && (cls === 'Agent' || cls === 'Gunslinger') && remaining > 0) {
-                    const toAdd = Math.min(remaining, scannerCap - (loadout.items.scanner || 0));
-                    loadout.items.scanner = (loadout.items.scanner || 0) + toAdd;
-                    remaining -= toAdd;
-                }
-
-                const _hasBane2 = Object.keys(ITEM_RULES).some(k => ITEM_RULES[k].baneType && (loadout.items[k] || 0) > 0);
-                if (!_hasBane2 && remaining > 0) {
-                    const _bKeys2 = Object.keys(ITEM_RULES).filter(k => ITEM_RULES[k].baneType);
-                    const _pick2 = _bKeys2[Math.floor(Math.random() * _bKeys2.length)];
-                    loadout.items[_pick2] = 1;
-                    remaining -= 1;
-                }
-                const healFirst = ['Warrior', 'White Mage', 'Harvester'].includes(cls);
-                if (healFirst) {
-                    const healAdd = Math.min(remaining, Math.ceil(remaining * 0.6));
-                    loadout.items.healPotion = (loadout.items.healPotion || 0) + healAdd;
-                    remaining -= healAdd;
-                    loadout.items.manaPotion = (loadout.items.manaPotion || 0) + remaining;
-                } else {
-                    const manaAdd = Math.min(remaining, Math.ceil(remaining * 0.6));
-                    loadout.items.manaPotion = (loadout.items.manaPotion || 0) + manaAdd;
-                    remaining -= manaAdd;
-                    loadout.items.healPotion = (loadout.items.healPotion || 0) + remaining;
-                }
-            }
-
-            state.loadouts[player][idx] = normalizeLoadoutForClass(loadout, cls);
-            const fallback = getDefaultUnitName(cls);
-            state.partyNames[player][idx] = sanitizeUnitName(state.partyNames[player][idx], fallback);
-            addLog(`Auto-filled empty slots for Player ${player} Slot ${idx + 1} (${cls}).`);
-            state.teamLockedIn = false;
             render();
         }
 
@@ -17711,12 +17527,6 @@
             unit.ap = UNIT_MAX_AP + (unit._xpBonusAP || 0);
         }
 
-        function getXPForNextLevel(unit) {
-            const lvl = getUnitLevel(unit);
-            if (lvl >= XP_MAX_LEVEL) return null;
-            return XP_THRESHOLDS[lvl];
-        }
-
         function getXPProgressPct(unit) {
             const lvl = getUnitLevel(unit);
             if (lvl >= XP_MAX_LEVEL) return 100;
@@ -18351,11 +18161,6 @@
         function _gauntletReservesAlive(player) {
             return _gauntletReserves(player).length;
         }
-        function _gauntletPlayerHasUnits(player) {
-            const onBoard = state.units.filter(u => u.player === player && !u.dead && !u._dying).length;
-            return onBoard + _gauntletReservesAlive(player);
-        }
-
         /* Pokémon rule: stat changes wipe on switch-out, status conditions persist.
            In this engine buff/debuff *categories* are the stat modifiers; the
            'status' category (burn, poison, stun, …) is the lingering conditions. */
@@ -19815,22 +19620,6 @@
                 return unit.cls || unit.name || 'Unit';
             }
             return unit.name || unit.cls || 'Unit';
-        }
-
-        function getNametagText(unit) {
-            if (!unit) return '';
-            const lvl = typeof getUnitLevel === 'function' ? getUnitLevel(unit) : 1;
-            const lvlStr = `Lv${lvl}`;
-            const mode = state.nametagMode || 'name';
-            if (mode === 'none') return lvlStr;
-            let label = '';
-            if (mode === 'job') label = getJobDisplayName(unit.cls) || unit.name || '';
-            else if (mode === 'race') label = unit.race
-                ? (typeof getRaceLabel === 'function' ? getRaceLabel(unit.race, unit.gender)
-                    : unit.race.charAt(0).toUpperCase() + unit.race.slice(1))
-                : (unit.name || '');
-            else label = unit.name || unit.cls || '';
-            return label ? `${lvlStr} ${label}` : lvlStr;
         }
 
         function getDevSimSpeedMultiplier() {
@@ -21596,8 +21385,6 @@
             window.backToMainMenu();
         };
 
-        function _campaignCalcStars() { return 1; }
-
         function finalizeCampaignBattle() {
             const save = state.campaignSave;
             if (!save) return null;
@@ -23167,6 +22954,7 @@
 
             /* ── Build the card ── */
             let overlay;
+            let hintTimer = null, progTimer = null;
             try {
                 overlay = document.createElement('div');
                 overlay.className = 'ls-overlay';
@@ -23260,7 +23048,7 @@
                     hintIdx++;
                 };
                 setHint();
-                const hintTimer = setInterval(() => {
+                hintTimer = setInterval(() => {
                     hintBox.classList.add('ls-hint-fade');
                     setTimeout(() => {
                         setHint();
@@ -23296,7 +23084,7 @@
                     statusCount.textContent = String(done).padStart(2, '0') + ' / ' + String(total).padStart(2, '0');
                 };
                 paintProgress();
-                const progTimer = setInterval(paintProgress, 180);
+                progTimer = setInterval(paintProgress, 180);
 
                 /* ── Gate + dismissal ── */
                 let ready = false;
@@ -23341,6 +23129,8 @@
             } catch (err) {
                 // Never let presentation kill a match start.
                 console.warn('[LoadingScreen] failed, continuing without it:', err);
+                if (hintTimer) clearInterval(hintTimer);
+                if (progTimer) clearInterval(progTimer);
                 try { if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay); } catch (_e) {}
                 finish();
             }
@@ -24713,6 +24503,7 @@
             }
 
             /* ── Phase pill (self-contained DOM, shot-clock-pill pattern) ── */
+            let _pillJanitorArmed = false;
             function _updatePill(text) {
                 let el = document.getElementById('simulPhasePill');
                 if (!_isSimul() || state.phase !== 'battle' || state.winner) {
@@ -24728,14 +24519,19 @@
                         + 'font-family:"Cinzel",serif;font-size:13px;letter-spacing:0.12em;'
                         + 'padding:5px 16px;text-shadow:0 0 8px rgba(190,150,255,0.6);white-space:nowrap;';
                     document.body.appendChild(el);
-                    /* Janitor: the pill must never survive into menus/other modes. */
-                    window.setInterval(() => {
-                        const p = document.getElementById('simulPhasePill');
-                        if (p && p.style.display !== 'none'
-                            && (!_isSimul() || state.phase !== 'battle' || state.winner)) {
-                            p.style.display = 'none';
-                        }
-                    }, 1500);
+                    /* Janitor: the pill must never survive into menus/other modes.
+                       One interval for the page's life — never re-armed if the
+                       pill is recreated (was stacking a new interval per rebuild). */
+                    if (!_pillJanitorArmed) {
+                        _pillJanitorArmed = true;
+                        window.setInterval(() => {
+                            const p = document.getElementById('simulPhasePill');
+                            if (p && p.style.display !== 'none'
+                                && (!_isSimul() || state.phase !== 'battle' || state.winner)) {
+                                p.style.display = 'none';
+                            }
+                        }, 1500);
+                    }
                 }
                 el.style.display = '';
                 if (text) { el.innerHTML = text; return; }
@@ -30911,51 +30707,6 @@
                     }
                 }
             }
-        }
-
-        function openPickupDecisionDialog(unit, event, onPickUp, onLeave) {
-            const kindLabel = event.kind === 'hiddenHourglass' ? 'Hidden Hourglass' : 'Hidden Pickup';
-            const badgeLabel = event.kind === 'hiddenHourglass' ?
-                '⏳ Something important was uncovered' :
-                '📦 Something hidden was found';
-            if (state.autoPlayers?.[unit.player] || state.devAutoSim) {
-                state.uiDialog = null;
-                if (typeof onPickUp === 'function') onPickUp();
-                return;
-            }
-
-            if (ONLINE_RULES.active && unit.player !== getViewerPlayer()) {
-
-                state._pendingRemotePickup = {
-                    onPickUp,
-                    onLeave,
-                    unitId: unit.id
-                };
-                _emit('relay', {
-                    type: 'pickup-dialog',
-                    unitId: unit.id,
-                    event: {
-                        kind: event.kind,
-                        x: event.x,
-                        y: event.y
-                    },
-                    kindLabel,
-                    badgeLabel
-                });
-
-                return;
-            }
-            state.uiDialog = {
-                type: 'pickupDecision',
-                unitId: unit.id,
-                event,
-                kindLabel,
-                badgeLabel,
-                onConfirm: onPickUp,
-                onCancel: onLeave
-            };
-            markDirty('board', 'dialog', 'status');
-            renderIfDirty();
         }
 
         /* ── Pixie Dust Trail — fairy racial PASSIVE (2026-07-07 balance pass)
@@ -39346,7 +39097,8 @@
                     }
                     const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
                     addLog(`${unitDisplayName(unit)} drops ${unitDisplayName(target)} from above for ${totalDmg} damage!${deltaLabel}`);
-                    showFloatingTextForUnit(target, `-${totalDmg}`, 'damage', { durationMs: 900 });
+                    /* applyDamageToUnit already floats the real post-mitigation
+                       number — no second (pre-armor) float. */
 
                     if (spell.terrainDeform) {
                         applyTerrainDeform(target.x, target.y, 0, spell.terrainDeform);
@@ -39451,8 +39203,9 @@
                                 spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
                             });
                             addLog(`${unitDisplayName(throwTarget)} is hurled into ${unitDisplayName(collisionTarget)}! Collision!`);
-                            showFloatingTextForUnit(throwTarget, `-${totalDmg + colBonus}`, 'damage', { durationMs: 900 });
-                            showFloatingTextForUnit(collisionTarget, `COLLISION! -${colBonus}`, 'streak', { durationMs: 900 });
+                            /* damage floats come from applyDamageToUnit; keep only
+                               the flavor callout on the struck bystander */
+                            showFloatingTextForUnit(collisionTarget, `COLLISION!`, 'streak', { durationMs: 900 });
                             applyStatusEffects(throwTarget, spell.statusEffects, `${spell.name}: `, unit);
 
                             const pushDirs = [
@@ -39481,7 +39234,6 @@
                             throwTarget.x = x;
                             throwTarget.y = y;
                             if (typeof nearestWalkableZ === 'function') throwTarget.z = nearestWalkableZ(x, y, throwTarget.z);
-                            showFloatingTextForUnit(throwTarget, `-${totalDmg}`, 'damage', { durationMs: 900 });
                         }
                         const deltaLabel = elevDelta > 0 ? ` (${elevDelta}-level drop!)` : '';
                         addLog(`${unitDisplayName(unit)} hurls ${unitDisplayName(throwTarget)} ${throwDist} tiles!${deltaLabel}`);

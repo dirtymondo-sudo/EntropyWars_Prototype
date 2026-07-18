@@ -8208,6 +8208,9 @@ const ThreeRenderer = (function () {
             if (!tex || !tex.image) return;
             var geo = _buildSpriteShellGeometry(tex.image, sprW, sprH, depth);
             if (!geo) return;
+            /* Shared across rebuilds — _disposeR must not dispose the cached
+               geometry or every rebuild re-uploads all shell VRAM. */
+            geo._ew_shared = true;
             _spriteShellGeoCache.set(key, geo);
             attach(geo);
         });

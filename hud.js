@@ -2958,7 +2958,12 @@ function ActionMenu({ st, hidden }) {
   if (!unit || unit.dead) return null;
 
   const humanTurn = !st.autoPlayers?.[st.activePlayer];
+  /* Viewer gate: online, both seats are human — without this the drum renders
+     the OPPONENT's active unit (spell list, vitals) on the idle client and
+     lets the host click verbs on the guest's unit. Hotseat is unaffected:
+     getViewerPlayer() returns st.activePlayer when both controllers are local. */
   const canControl = humanTurn && unit.player === st.activePlayer
+    && st.activePlayer === viewer
     && (typeof canUnitAct === 'function' ? canUnitAct(unit) : true)
     && !st.winner;
   if (!canControl) return null;
