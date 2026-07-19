@@ -1953,9 +1953,39 @@
         // solid when hit by frost. See the combo layer in applyDamageToUnit.
         const WET_ROUNDS = 2;
 
+        // 🔥→💧 Doused: burn cannot coexist with being soaked. Called from
+        // every soak path (wading in, knocked into water, rain-type weather,
+        // the round-end wet tick) so standing in water or rain puts the fire
+        // out the moment the water reaches the unit.
+        function _douseBurnOnUnit(u, label) {
+            if (!u || u.dead || u._dying) return false;
+            if (!(u.status && u.status.burn)) return false;
+            clearStatus(u, 'burn');
+            addLog(`💧 ${label || 'The water'} douses the flames on ${unitDisplayName(u)}!`);
+            showFloatingTextForUnit(u, '💧 Doused', 'heal', { durationMs: 1000 });
+            return true;
+        }
+        window._douseBurnOnUnit = _douseBurnOnUnit;
+
+        // 🌧️ True when rain-type weather (any def.soaks system: hurricane,
+        // thunderstorm, blood rain) is falling on the unit's tile. Airborne
+        // flyers ride above the soak, same rule as the weather tick itself.
+        function _unitInRain(u) {
+            if (!u || !state.activeWeather || !state.activeWeather.length) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            for (const w of state.activeWeather) {
+                const def = (typeof WEATHER_REGISTRY !== 'undefined') ? WEATHER_REGISTRY[w.type] : null;
+                if (!def || !def.soaks) continue;
+                if ((w.tiles || []).some(t => t.x === u.x && t.y === u.y)) return true;
+            }
+            return false;
+        }
+        window._unitInRain = _unitInRain;
+
         function _soakUnit(u, opts = {}) {
             if (!u || u.dead || u._dying) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            _douseBurnOnUnit(u, opts.douseLabel);
             const status = ensureUnitStatus(u);
             const wasWet = Number(status.wet || 0) > 0;
             status.wet = Math.max(Number(status.wet || 0), WET_ROUNDS);
@@ -2797,12 +2827,7 @@
             // doused the instant a unit is shoved into the drink — and
             // leaves them Soaked (conductive to the next lightning bolt).
             if (terr === 'water' || terr === 'deep_water' || _isWetTile(unit.x, unit.y)) {
-                if (unit.status && unit.status.burn) {
-                    clearStatus(unit, 'burn');
-                    addLog(`💧 The water douses the flames on ${unitDisplayName(unit)}!`);
-                    showFloatingTextForUnit(unit, '💧 Doused', 'heal', { durationMs: 1000 });
-                }
-                _soakUnit(unit);
+                _soakUnit(unit);   // douses burn + applies Soaked
             }
             if (_isLavaTile(unit.x, unit.y)) {
                 if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit)) return;
@@ -4687,8 +4712,12 @@
             }
             // 💧 A soaked unit can't catch fire — the water flashes to steam
             // instead. (Fire hits DO dry them out — see the combo layer — so
-            // the second fireball burns as usual.)
-            if (payload.id === 'burn' && unitHasStatus(target, 'wet')) {
+            // the second fireball burns as usual.) Standing IN water or under
+            // rain-type weather counts even without the Soaked status: you
+            // can't ignite someone who is being rained on / waist-deep.
+            if (payload.id === 'burn' && (unitHasStatus(target, 'wet')
+                || (typeof _unitIsSoaked === 'function' && _unitIsSoaked(target))
+                || (typeof _unitInRain === 'function' && _unitInRain(target)))) {
                 addLog(`💧 ${unitDisplayName(target)} is too soaked to catch fire!`);
                 showFloatingTextForUnit(target, '💧 STEAM', 'heal', { durationMs: 900 });
                 return false;
@@ -4796,6 +4825,16 @@
                         checkWin();
                     }, 400);
                 }
+            }
+
+            // ⛓️ Rooted binds to the EARTH — an airborne flyer is yanked
+            // straight out of the sky the moment the root lands. (Checked
+            // after the Censer purge above so a purged root doesn't ground.
+            // forceGroundUnit no-ops for grounded units and non-flyers, and
+            // canChangeAltitude already refuses ascend while move-blocked.)
+            if (payload.id === 'root' && unitHasStatus(target, 'root')
+                && typeof forceGroundUnit === 'function') {
+                forceGroundUnit(target, { byLabel: 'by the roots' });
             }
 
             // 💫 Stagger takes its AP the moment it lands. If the target already
@@ -16275,12 +16314,7 @@
                 // you (dive in the lake to stop burning; just don't stand in
                 // the pool when a bolt comes down).
                 if (_isWaterTile(x, y)) {
-                    if (unit.status && unit.status.burn) {
-                        clearStatus(unit, 'burn');
-                        addLog(`💧 The water douses the flames on ${unitDisplayName(unit)}!`);
-                        showFloatingTextForUnit(unit, '💧 Doused', 'heal', { durationMs: 1000 });
-                    }
-                    _soakUnit(unit);
+                    _soakUnit(unit);   // douses burn + applies Soaked
                 }
                 const bombIndex = state.bombs.findIndex(b => b.x === x && b.y === y && b.owner !== unit.player);
                 if (bombIndex >= 0) {
@@ -36639,16 +36673,27 @@
                 if (dx === 0 && dy === 0) { addLog('Invalid line direction.'); completionDelay = 200; }
                 else {
                     const lineRange = Math.max(bw(), bh());
-                    let _lineFirstHit = null;
+                    // Preview the WHOLE route (same walk as _applyLineDamage,
+                    // minus breach boring) and collect every enemy skewered —
+                    // beat 2 of the action shot frames the full kebab via
+                    // frameTiles, not just the first victim, and the duel
+                    // cinematic gets every extra defender.
+                    const _lineHits = [];
                     for (let i = 1; i <= lineRange; i++) {
                         const tx = unit.x + dx * i, ty = unit.y + dy * i;
                         if (!isInside(tx, ty)) break;
+                        if (!isTerrainPassable(tx, ty) && !spell.destroysObstacles) break;
                         const _lu = unitAt(tx, ty);
-                        if (_lu && _lu.player !== unit.player && !_lu.dead) { _lineFirstHit = _lu; break; }
+                        if (_lu && _lu.player !== unit.player && !_lu.dead) _lineHits.push(_lu);
                     }
+                    const _lineFirstHit = _lineHits[0] || null;
                     const _lineCamTarget = _lineFirstHit || { x: unit.x + dx * Math.min(lineRange, 3), y: unit.y + dy * Math.min(lineRange, 3) };
                     const cam = playOffensiveActionCamera(unit, _lineCamTarget, {
-                        sourceHold: 1100, targetHold: 900, attackName: spell.name
+                        sourceHold: 1100, targetHold: 900, attackName: spell.name,
+                        extraTargets: _lineHits.length > 1 ? _lineHits.slice(1) : undefined,
+                        frameTiles: _lineHits.length > 1
+                            ? _lineHits.map(h => ({ x: h.x, y: h.y }))
+                            : undefined
                     });
                     const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
                     completionDelay = Math.max(impactDelay + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
@@ -37126,10 +37171,21 @@
                     return 0;
                 }
                 playSfx(spellLaunchSfx(spell));
+                // Predict the split victims (same filter the impact resolution
+                // uses) so beat 2 frames the whole cluster, not just the
+                // primary target.
+                const _sbNearby = aliveUnitsFor(enemyOf(unit.player)).filter(e =>
+                    e.id !== target.id && !e.dead &&
+                    Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= (spell.splitRadius || 2)
+                ).sort((a, b) => a.hp - b.hp).slice(0, spell.splitCount || 2);
                 const cam = playOffensiveActionCamera(unit, target, {
                     sourceHold: 1100,
                     targetHold: 900,
-                    attackName: spell.name
+                    attackName: spell.name,
+                    extraTargets: _sbNearby.length > 0 ? _sbNearby : undefined,
+                    frameTiles: _sbNearby.length > 0
+                        ? [{ x: target.x, y: target.y }, ..._sbNearby.map(e => ({ x: e.x, y: e.y }))]
+                        : undefined
                 });
                 const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
                 unit.mp -= effectiveSpellCost;

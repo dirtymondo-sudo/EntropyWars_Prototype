@@ -8613,6 +8613,13 @@ const STATUS_DEFS = {
         spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/burn.png',
         iconSrc: createStatusIconDataUri('🔥', '#4a1f16', '#ffd3a8', '#ff7b4d'),
         onRoundEnd(unit) {
+            // 💧 Standing in water or under rain-type weather puts the fire
+            // out INSTEAD of ticking — belt-and-braces for any burn that
+            // slipped past the soak/application gates mid-round.
+            if ((typeof _unitIsSoaked === 'function' && _unitIsSoaked(unit))
+                || (typeof _unitInRain === 'function' && _unitInRain(unit))) {
+                if (typeof _douseBurnOnUnit === 'function' && _douseBurnOnUnit(unit)) return;
+            }
             // One burn status for everything. A burn picked up from lava
             // escalates with the rounds spent standing in it (_lavaBurnStacks,
             // set by the lava terrain endTurn); a spell burn ticks flat 24.

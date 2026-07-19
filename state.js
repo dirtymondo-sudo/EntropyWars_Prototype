@@ -2245,8 +2245,10 @@
                 for (const unit of units) {
                     if (unit.dead || !tileSet.has(posKey(unit.x, unit.y))) continue;
                     // 🌧️ Rain-type weather soaks whoever stands in it (wet =
-                    // conducts lightning, resists fire, flash-freezable).
+                    // conducts lightning, resists fire, flash-freezable) —
+                    // and the downpour puts out any fire on them on the spot.
                     if (def.soaks && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
+                        if (typeof _douseBurnOnUnit === 'function') _douseBurnOnUnit(unit, `The ${def.label.toLowerCase()}`);
                         const _wPrev = Number((unit.status && unit.status.wet) || 0);
                         if (_wPrev > 0) unit.status.wet = Math.max(_wPrev, 2);
                         else applyStatusPayload(unit, { id: 'wet', duration: 2 }, `${def.icon} ${def.label}: `, null);
@@ -2454,8 +2456,10 @@
                         if (!v || v.dead) continue;
                         // 🌧️ Rain-bearing vortices (hurricane, thunderstorm)
                         // drench whoever they sweep over — BEFORE the strike,
-                        // so a thunderstorm fries its own soaked victims.
+                        // so a thunderstorm fries its own soaked victims. The
+                        // drenching also douses any burn on the spot.
                         if (def.soaks && !(typeof isUnitAirborne === 'function' && isUnitAirborne(v))) {
+                            if (typeof _douseBurnOnUnit === 'function') _douseBurnOnUnit(v, `The ${def.label.toLowerCase()}`);
                             const _wPrev = Number((v.status && v.status.wet) || 0);
                             if (_wPrev > 0) v.status.wet = Math.max(_wPrev, 2);
                             else applyStatusPayload(v, { id: 'wet', duration: 2 }, `${def.icon} ${def.label}: `, null);

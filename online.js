@@ -878,6 +878,17 @@
                        EVERY relayed attack replay as a full cinematic. */
                     if (opts.noActionCam) camEvt.noActionCam = true;
                     if (opts._noCinematic) camEvt._noCinematic = true;
+                    /* Multi-target shots (line skewers, AoE blasts, split
+                       beams): without these the guest's beat 2 framed only
+                       the first victim while the host got the wide group cut. */
+                    if (opts.frameTiles && opts.frameTiles.length) {
+                        camEvt.frameTiles = opts.frameTiles.map(function(t) { return { x: t.x, y: t.y }; });
+                    }
+                    if (opts.extraTargets && opts.extraTargets.length) {
+                        camEvt.extraTargetIds = opts.extraTargets
+                            .map(function(u) { return u && u.id; })
+                            .filter(function(id) { return id != null; });
+                    }
                 }
                 if (state._remoteAction) {
 
@@ -2492,6 +2503,16 @@
                                 if (camEvt.targetHold) camOpts.targetHold = camEvt.targetHold;
                                 if (camEvt.noActionCam) camOpts.noActionCam = true;
                                 if (camEvt._noCinematic) camOpts._noCinematic = true;
+                                if (camEvt.frameTiles && camEvt.frameTiles.length) camOpts.frameTiles = camEvt.frameTiles;
+                                if (camEvt.extraTargetIds && camEvt.extraTargetIds.length
+                                    && typeof window.unitFromId === 'function') {
+                                    var _ets = [];
+                                    for (var ei = 0; ei < camEvt.extraTargetIds.length; ei++) {
+                                        var _eu = window.unitFromId(camEvt.extraTargetIds[ei]);
+                                        if (_eu) _ets.push(_eu);
+                                    }
+                                    if (_ets.length) camOpts.extraTargets = _ets;
+                                }
                                 if (typeof window.playOffensiveActionCamera === 'function') {
                                     window.playOffensiveActionCamera(src, tgt, camOpts);
                                 }
