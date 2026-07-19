@@ -5198,24 +5198,20 @@
                             if (cleansedAny) _szCleanseUnits++;
                         }
                     } else {
-                        /* Enemy in opponent's spawn zone: 35% maxHP damage */
+                        /* Enemy in opponent's spawn zone: 35% maxHP damage.
+                           Routed through applyDamageToUnit so a death here is
+                           a real kill: credit (XP/gold/assists/matchKills)
+                           falls back to the last enemy who damaged the victim,
+                           not an arbitrary zone-owner unit. */
                         const dmgAmt = Math.max(1, Math.floor(unit.maxHp * SPAWN_ZONE_ENEMY_DMG_PCT));
                         const hpBefore = unit.hp;
-                        unit.hp = Math.max(0, unit.hp - dmgAmt);
-                        const dealt = hpBefore - unit.hp;
+                        applyDamageToUnit(unit, dmgAmt, 'Spawn zone: ', { ignoreArmor: true });
+                        const dealt = hpBefore - Math.max(0, unit.hp);
 
                         let evt = events.find(e => e.unit === unit);
                         if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
                         evt.msgs.push(`<span class="dlg-damage">⚡ Spawn zone scorches ${unitDisplayName(unit)} for ${dealt} damage!</span>`);
-                        evt.floats.push({ text: `-${dealt}`, type: 'damage' });
                         addLog(`Enemy spawn zone deals ${dealt} damage to ${unitDisplayName(unit)}.`);
-
-                        if (unit.hp <= 0) {
-                            /* Find the zone owner's nearest unit as "killer" for credit */
-                            const zoneOwnerUnits = state.units.filter(u => !u.dead && u.player === zoneOwner);
-                            const killer = zoneOwnerUnits.length > 0 ? zoneOwnerUnits[0] : null;
-                            defeatUnit(unit, killer);
-                        }
                     }
                 }
                 if (_szRegenUnits > 0 || _szCleanseUnits > 0) {
@@ -14994,11 +14990,10 @@
 
             if (target.hp <= 0) {
 
-                // Kill-credit fallback expires: chip damage from >2 rounds ago
-                // doesn't earn credit for an environmental/DoT death.
-                const _ldsFresh = target._lastDamageSource &&
-                    ((state.round || 0) - (target._lastDamageSourceRound || 0)) <= 2;
-                const killer = sourceUnit || (_ldsFresh ? target._lastDamageSource : null) || null;
+                // Environmental deaths (spawn zone, weather, fall damage,
+                // hazards, DoT) credit the LAST unit that damaged the victim,
+                // no matter how long ago — chip damage always earns the kill.
+                const killer = sourceUnit || target._lastDamageSource || null;
                 if (typeof _balTrackKill === 'function') _balTrackKill(killer, target);
                 // Balance Lab per-cast telemetry: credit the resolving spell.
                 if (_balSpellCollector && killer && killer.id === _balSpellCollector.casterId

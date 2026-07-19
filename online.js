@@ -564,22 +564,11 @@
             window.doGuard = doGuard;
         }
 
-        /* Skip / Inspect / Ward / Detonate — the remaining engine verbs the
+        /* Inspect / Ward / Detonate — the remaining engine verbs the
            root ladder and the tile quick menu fire directly (they used to
            live in the retired More menu). Same routing as doGuard: the host
            runs-and-syncs, the guest only emits — running them guest-locally
            mutated AP/turn state and rolled back on the next state-sync. */
-        const _origDoSkipTurn = (typeof doSkipTurn === 'function') ? doSkipTurn : null;
-        if (_origDoSkipTurn) {
-            doSkipTurn = function(unit) {
-                if (!_isOnline() || state._remoteAction) return _origDoSkipTurn(unit);
-                if (_isHost()) return _hostRunAndSync(_origDoSkipTurn, [unit]);
-                if (!_guestOwnsAction(unit)) return;
-                playSfx('uiConfirm');
-                _emit('game-action', { type: 'engine', fn: 'doSkipTurn', unitId: unit.id });
-            };
-            window.doSkipTurn = doSkipTurn;
-        }
         const _origDoInspect = (typeof doInspect === 'function') ? doInspect : null;
         if (_origDoInspect) {
             doInspect = function(unit, x, y) {
@@ -1195,9 +1184,6 @@
                                 break;
                             case 'doGuard':
                                 if (typeof doGuard === 'function') doGuard(engUnit);
-                                break;
-                            case 'doSkipTurn':
-                                if (typeof doSkipTurn === 'function') doSkipTurn(engUnit);
                                 break;
                             case 'doInspect':
                                 if (typeof doInspect === 'function') doInspect(engUnit, data.x, data.y);

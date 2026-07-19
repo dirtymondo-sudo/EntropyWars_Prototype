@@ -4770,41 +4770,6 @@
             maybeAdvanceTurn();
         }
 
-        function doSkipTurn(unit) {
-            /* SIMUL plan phase: "delay" has no meaning in a WeGo turn —
-               treat it as committing the current (possibly empty) order. */
-            if (typeof window._isSimulMode === 'function' && window._isSimulMode()
-                && state._simulPhase === 'plan' && !state._simulResolving && window.SimulEngine) {
-                window.SimulEngine.commitLocalPlan();
-                return;
-            }
-            if (!unit || unit.dead || (unit.ap || 0) <= 0) {
-                addLog('That unit cannot act.');
-                return;
-            }
-
-            if (state._skippedUnit && state._skippedUnit.id !== unit.id) {
-                addLog('Another unit is already banked. Use or end their turn first.');
-                return;
-            }
-            pushUndoSnapshot(true);
-
-            unit._skippedTurn = true;
-            state._skippedUnit = unit;
-            addLog(`${unitDisplayName(unit)} delays their turn! They can act during the next ally's turn.`);
-            showFloatingTextForUnit(unit, '⏭ SKIP', 'buff', { durationMs: 1000 });
-            playSfx('uiConfirm');
-
-            state.actionMode = null;
-            state.actionMenuView = 'root';
-            state.pendingTarget = null;
-            state.selectedUnitId = null;
-            state.focusedUnitId = null;
-            state.hoverUnitId = null;
-
-            maybeAdvanceTurn();
-        }
-
         function getNexusAtUnit(unit) {
             if (!unit) return null;
 

@@ -3166,13 +3166,6 @@ function ActionMenu({ st, hidden }) {
     });
   }
 
-  // ⏭ SKIP — bank this unit for later in the round. Only offered while the
-  // unit hasn't acted yet (full AP), exactly like the old More entry.
-  if (!unit._skippedTurn && !st._skippedUnit && typeof doSkipTurn === 'function'
-      && (unit.ap || 0) >= maxAP) {
-    actions.push({ id: 'skip', label: 'Skip', icon: '⏭', cost: null, available: true });
-  }
-
   // ── special-action pushers: situational one-shots surfaced as extra
   // stopwatch buttons on the bezel (the tile quick menu mirrors most of
   // them). Only built when usable right now — presence == opportunity.
@@ -3265,7 +3258,6 @@ function ActionMenu({ st, hidden }) {
       case 'items': if (typeof chooseActionMenu === 'function') chooseActionMenu('items'); break;
       case 'guard': if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); break;
       case 'switch': if (typeof chooseActionMenu === 'function') chooseActionMenu('switch'); break;
-      case 'skip': if (typeof doSkipTurn === 'function' && typeof getSelectedUnit === 'function') doSkipTurn(getSelectedUnit()); break;
     }
   }
 
