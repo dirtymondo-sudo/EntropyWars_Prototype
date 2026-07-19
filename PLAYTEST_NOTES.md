@@ -3116,6 +3116,12 @@ verify visually after upload) — syntax-checked only.
   mind-rip impact. Those were the ONLY race abilities of this batch missing
   VFX (verified by parsing _EFX_DATA.S) — everything else was already mapped.
   fire() is the online-wrapped entry point → guests replay it, fog-gated.
+- **UNLOCKS**: all batch races added to ACCT_STARTER_UNITS in BOTH data.js
+  and server.js (server unions the list into existing accounts on login;
+  local profiles union on load). Also fixed two pre-existing holes: 'priest'
+  was never actually in either list (stale comment claimed it was), and
+  server.js was missing the whole 2026-07-13 batch (swordfighter/zombie/
+  fallen angel — client-only until now). Both lists are 55 entries, in sync.
 
 ## Rigged 3D unit models (2026-07-05 — 17 characters + animation categories)
 - **SHARED ANIMATION LIBRARY (2026-07-10 — supersedes per-character clips)**:

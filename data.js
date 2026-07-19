@@ -9228,12 +9228,20 @@ const ACCT_STARTER_UNITS = [
   'swordfighter',   // Swordmaster (3D — female only, 2026-07-13 batch)
   'zombie',         // Raider (3D — female only, 2026-07-13 batch)
   'fallen angel',   // Harbinger (3D — female only, 2026-07-13 batch)
-  // 'priest' + 'marksman' were already starters — their female models
-  // shipping in this same batch is what unlocks them via the 3D-only gate.
+  'priest',         // White Mage (3D — nun, female only; was never actually
+                    // listed here despite the old comment — fixed 2026-07-19)
+  // 2026-07-19 batch (sprites.js RACE_MODELS_3D):
+  'yeti',           // bruiser (3D — frost cryptid, male only)
+  'skeleton',       // undead (3D — male only)
+  'kaiju',          // city-stomper (3D — male only)
+  'superhero',      // flying bruiser (3D — female only)
+  'demon princess', // flying hex-caster (3D — female only)
+  'voidweaver',     // giant spider (3D — quadruped rig, male only)
+  'honda civic',    // the transformer (3D — sedan + robot forms)
   // NOTE: every race with a rigged 3D model in sprites.js RACE_MODELS_3D is a
-  // starter. 'marksman'/'priest' above have NO 3D model yet, so the 3D-only
-  // gate in isUnitUnlocked() keeps them locked until their models ship —
-  // they stay listed here so they auto-unlock the moment they're wired.
+  // starter, and the 3D-only gate in isUnitUnlocked() keeps anything listed
+  // here shelved until its model ships. Keep server.js ACCT_STARTER_UNITS in
+  // sync — the server unions this list into existing accounts on login.
 ];
 
 // PvP modes that bank account gold. Gauntlet/Challenge route through their own
