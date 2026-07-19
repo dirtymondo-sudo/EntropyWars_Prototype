@@ -8257,7 +8257,7 @@ const ThreeRenderer = (function () {
         // night. Pure intensity — the hit-flash tween owns .color, so the two
         // never fight.
         var _pulseUid = (state && state.phase === 'battle') ? state._blitzActiveUnitId : null;
-        var _pulse = 0.10 + 0.08 * Math.sin(performance.now() * 0.005);
+        var _pulse = 0.24 + 0.18 * Math.sin(performance.now() * 0.005);
         unitEntries.forEach(function (entry, uid) {
             var spr = entry.sprite;
             var hasModel = entry.modelMats && entry.modelMats.length;
@@ -9672,7 +9672,8 @@ const ThreeRenderer = (function () {
 
         _hoverGlowMesh = null; _hoveredUnitId = null;
 
-        _selChevronMesh = null; _selChevronUnitId = null;
+        _selChevronMesh = null; _selChevronUnitId = null; _selChevronColor = null;
+        _turnBeaconGroup = null; _turnBeaconUnitId = null; _turnBeaconColor = null;
         _lastActivePlateId = null;
         _clearGroup(unitGroup);
         unitEntries.clear();
@@ -11612,52 +11613,131 @@ const ThreeRenderer = (function () {
 
     var _selChevronMesh = null;
     var _selChevronUnitId = null;
+    var _selChevronColor = null;
     var _chevronVec = new THREE.Vector3();
 
-    function _buildSelectionChevron(ts) {
+    /* Turn-indicator colors: gold when it's YOUR unit acting, red when the
+       enemy's unit is up. Shared by the chevron and the foot beacon. */
+    var TURN_COLOR_OWN   = 0xffd83d;
+    var TURN_COLOR_ENEMY = 0xff4455;
 
-        var w = ts * 0.32;
-        var h = ts * 0.18;
-        var t = ts * 0.05;
-        var shape = new THREE.Shape();
+    /* Whose turn indicator do we draw? The blitz-active unit is the source
+       of truth during battle ("whose turn IS it"); outside blitz (placement,
+       simul plan) fall back to the plain selection. */
+    function _turnIndicatorUnitId() {
+        if (state.phase === 'battle' && state._blitzActiveUnitId) return state._blitzActiveUnitId;
+        return state.selectedUnitId || null;
+    }
 
-        shape.moveTo(-w, h);
-        shape.lineTo(0, 0);
-        shape.lineTo(w, h);
+    function _chevGeometry(w, h, t) {
+        /* Bold solid V (arrowhead pointing DOWN at the unit's head). Outer V
+           down to the tip, back up along the inner edge — a thick stroke,
+           not the old hairline. */
+        var s = new THREE.Shape();
+        s.moveTo(-w, h);
+        s.lineTo(0, 0);
+        s.lineTo(w, h);
+        s.lineTo(w, h + t);
+        s.lineTo(0, t * 1.15);
+        s.lineTo(-w, h + t);
+        s.closePath();
+        return new THREE.ShapeGeometry(s);
+    }
 
-        shape.lineTo(w - t, h);
-        shape.lineTo(0, t);
-        shape.lineTo(-w + t, h);
-        shape.closePath();
-        var geom = new THREE.ShapeGeometry(shape);
-        var mat = new THREE.MeshBasicMaterial({
-            color: 0xffcc00, transparent: true, opacity: 0.95,
-            side: THREE.DoubleSide, depthWrite: false
+    function _buildSelectionChevron(ts, colorHex) {
+        var col = (colorHex != null) ? colorHex : TURN_COLOR_OWN;
+        var w = ts * 0.30;
+        var h = ts * 0.26;
+        var t = ts * 0.13;
+
+        var grp = new THREE.Group();
+        grp._ew_billboard = true;
+        grp._ew_mats = [];       // solid chevrons (opacity pulsed each frame)
+        grp._ew_glowMats = [];   // additive halos (pulsed at lower strength)
+
+        var mainGeo = _chevGeometry(w, h, t);
+        /* Second, smaller chevron stacked above — the classic double-chevron
+           "you are HERE" marker; reads at a glance even on a busy board. */
+        var stackGeo = _chevGeometry(w * 0.72, h * 0.72, t * 0.85);
+
+        function _mkSolid(geo, y) {
+            var mat = new THREE.MeshBasicMaterial({
+                color: col, transparent: true, opacity: 0.95,
+                side: THREE.DoubleSide, depthWrite: false, depthTest: false
+            });
+            var m = new THREE.Mesh(geo, mat);
+            m.position.y = y;
+            m.renderOrder = 10000;   // always readable, never buried in terrain
+            m.raycast = function () {};
+            grp._ew_mats.push(mat);
+            grp.add(m);
+            return m;
+        }
+        function _mkGlow(geo, y, scale) {
+            var mat = new THREE.MeshBasicMaterial({
+                color: col, transparent: true, opacity: 0.30,
+                side: THREE.DoubleSide, depthWrite: false, depthTest: false,
+                blending: THREE.AdditiveBlending
+            });
+            var m = new THREE.Mesh(geo, mat);
+            m.position.y = y;
+            m.scale.setScalar(scale);
+            m.renderOrder = 9999;
+            m.raycast = function () {};
+            grp._ew_glowMats.push(mat);
+            grp.add(m);
+            return m;
+        }
+
+        _mkGlow(mainGeo, -h * 0.18, 1.45);
+        _mkGlow(stackGeo, h + t * 1.4, 1.45);
+        _mkSolid(mainGeo, 0);
+        _mkSolid(stackGeo, h + t * 1.6);
+        return grp;
+    }
+
+    function _disposeSelectionChevron() {
+        if (!_selChevronMesh) return;
+        if (_selChevronMesh.parent) _selChevronMesh.parent.remove(_selChevronMesh);
+        var seenGeo = [];
+        _selChevronMesh.traverse(function (o) {
+            if (o.geometry && seenGeo.indexOf(o.geometry) < 0) seenGeo.push(o.geometry);
+            if (o.material && o.material.dispose) o.material.dispose();
         });
-        var mesh = new THREE.Mesh(geom, mat);
-        mesh._ew_billboard = true;
-        return mesh;
+        for (var i = 0; i < seenGeo.length; i++) seenGeo[i].dispose();
+        _selChevronMesh = null;
+        _selChevronUnitId = null;
+        _selChevronColor = null;
     }
 
     function _syncSelectionIndicator() {
-        var selId = state.selectedUnitId;
+        var selId = _turnIndicatorUnitId();
         var ue = selId != null ? unitEntries.get(selId) : null;
+        var unit = selId != null ? _findUnit(selId) : null;
+        if (unit && (unit.dead || unit._dying)) { unit = null; ue = null; }
+        var col = (unit && unit.player === _viewerPlayerNum()) ? TURN_COLOR_OWN : TURN_COLOR_ENEMY;
 
-        if (_selChevronMesh && (_selChevronUnitId !== selId || !ue)) {
-            if (_selChevronMesh.parent) _selChevronMesh.parent.remove(_selChevronMesh);
-            if (_selChevronMesh.geometry) _selChevronMesh.geometry.dispose();
-            if (_selChevronMesh.material) _selChevronMesh.material.dispose();
-            _selChevronMesh = null;
-            _selChevronUnitId = null;
+        if (_selChevronMesh && (_selChevronUnitId !== selId || !ue || _selChevronColor !== col)) {
+            _disposeSelectionChevron();
         }
 
-        if (!ue || selId == null) return;
+        if (!ue || selId == null || !unit) return;
 
         if (!_selChevronMesh) {
             var ts = CONFIG.tileSize || BASE_TILE;
-            _selChevronMesh = _buildSelectionChevron(ts);
+            _selChevronMesh = _buildSelectionChevron(ts, col);
             _selChevronUnitId = selId;
+            _selChevronColor = col;
             ue.group.add(_selChevronMesh);
+            /* Face the camera immediately — the billboard pass early-outs
+               while the camera is still, which would leave a fresh chevron
+               edge-on until the next orbit. */
+            var cam0 = ThreeCamera.getCamera();
+            if (cam0) {
+                _selChevronMesh.rotation.y = Math.atan2(
+                    cam0.position.x - ue.group.position.x,
+                    cam0.position.z - ue.group.position.z);
+            }
         }
 
         if (_selChevronMesh.parent !== ue.group) {
@@ -11666,7 +11746,7 @@ const ThreeRenderer = (function () {
         }
 
         var topY = ue.group._ew_spriteTopY ? (ue.group._ew_spriteTopY - ue.group.position.y) : ((CONFIG.tileSize || BASE_TILE) * 0.85);
-        var bobOffset = Math.sin(performance.now() * 0.003) * 4;
+        var bobOffset = Math.sin(performance.now() * 0.003) * 6;
 
         /* Plate anchor is at topY + 12 in local coords; plate grows upward ~75px
            in screen space (fixed size due to MIN_PLATE_SCALE clamping).
@@ -11689,8 +11769,101 @@ const ThreeRenderer = (function () {
         }
         _selChevronMesh.position.y = chevY + bobOffset;
 
-        var pulse = 0.7 + 0.3 * Math.sin(performance.now() * 0.004);
-        _selChevronMesh.material.opacity = pulse;
+        var pulse = 0.75 + 0.25 * Math.sin(performance.now() * 0.004);
+        var i;
+        for (i = 0; i < _selChevronMesh._ew_mats.length; i++) {
+            _selChevronMesh._ew_mats[i].opacity = pulse;
+        }
+        for (i = 0; i < _selChevronMesh._ew_glowMats.length; i++) {
+            _selChevronMesh._ew_glowMats[i].opacity = 0.18 + 0.22 * (pulse - 0.5);
+        }
+    }
+
+    /* ── Turn beacon ─────────────────────────────────────────────────────
+       Foot-level "whose turn is it" marker on the blitz-active unit: two
+       sonar-style rings that expand outward and fade, over a steady bright
+       base ring. Rides the unit group, so walks/knockbacks carry it and
+       fog-hidden enemies keep it hidden (group.visible gates everything). */
+    var _turnBeaconGroup = null;
+    var _turnBeaconUnitId = null;
+    var _turnBeaconColor = null;
+
+    function _buildTurnBeacon(ts, colorHex) {
+        var grp = new THREE.Group();
+        grp._ew_pings = [];
+
+        var baseMat = new THREE.MeshBasicMaterial({
+            color: colorHex, transparent: true, opacity: 0.65,
+            side: THREE.DoubleSide, depthWrite: false
+        });
+        var base = new THREE.Mesh(new THREE.RingGeometry(ts * 0.46, ts * 0.55, 40), baseMat);
+        base.rotation.x = -Math.PI / 2;
+        base.position.y = SELECTED_RING_OFFSET + 0.55;
+        base.raycast = function () {};
+        grp._ew_baseMat = baseMat;
+        grp.add(base);
+
+        for (var i = 0; i < 2; i++) {
+            var pingMat = new THREE.MeshBasicMaterial({
+                color: colorHex, transparent: true, opacity: 0.0,
+                side: THREE.DoubleSide, depthWrite: false,
+                blending: THREE.AdditiveBlending
+            });
+            var ping = new THREE.Mesh(new THREE.RingGeometry(ts * 0.50, ts * 0.58, 40), pingMat);
+            ping.rotation.x = -Math.PI / 2;
+            ping.position.y = SELECTED_RING_OFFSET + 0.50 - i * 0.02;
+            ping.raycast = function () {};
+            grp._ew_pings.push({ mesh: ping, mat: pingMat, phase: i * 0.5 });
+            grp.add(ping);
+        }
+        return grp;
+    }
+
+    function _disposeTurnBeacon() {
+        if (!_turnBeaconGroup) return;
+        if (_turnBeaconGroup.parent) _turnBeaconGroup.parent.remove(_turnBeaconGroup);
+        _turnBeaconGroup.traverse(function (o) {
+            if (o.geometry) o.geometry.dispose();
+            if (o.material && o.material.dispose) o.material.dispose();
+        });
+        _turnBeaconGroup = null;
+        _turnBeaconUnitId = null;
+        _turnBeaconColor = null;
+    }
+
+    function _syncTurnBeacon() {
+        var uid = (state.phase === 'battle') ? (state._blitzActiveUnitId || null) : null;
+        var ue = uid != null ? unitEntries.get(uid) : null;
+        var unit = uid != null ? _findUnit(uid) : null;
+        if (unit && (unit.dead || unit._dying)) { unit = null; ue = null; }
+        var col = (unit && unit.player === _viewerPlayerNum()) ? TURN_COLOR_OWN : TURN_COLOR_ENEMY;
+
+        if (_turnBeaconGroup && (_turnBeaconUnitId !== uid || !ue || _turnBeaconColor !== col)) {
+            _disposeTurnBeacon();
+        }
+        if (!ue || uid == null || !unit) return;
+
+        if (!_turnBeaconGroup) {
+            var ts = CONFIG.tileSize || BASE_TILE;
+            _turnBeaconGroup = _buildTurnBeacon(ts, col);
+            _turnBeaconUnitId = uid;
+            _turnBeaconColor = col;
+            ue.group.add(_turnBeaconGroup);
+        }
+        if (_turnBeaconGroup.parent !== ue.group) {
+            if (_turnBeaconGroup.parent) _turnBeaconGroup.parent.remove(_turnBeaconGroup);
+            ue.group.add(_turnBeaconGroup);
+        }
+
+        var now = performance.now();
+        _turnBeaconGroup._ew_baseMat.opacity = 0.5 + 0.25 * Math.sin(now * 0.004);
+        for (var i = 0; i < _turnBeaconGroup._ew_pings.length; i++) {
+            var p = _turnBeaconGroup._ew_pings[i];
+            var t = ((now * 0.00055) + p.phase) % 1;
+            var s = 1.0 + t * 1.15;
+            p.mesh.scale.set(s, s, 1);
+            p.mat.opacity = 0.5 * (1 - t) * (1 - t);
+        }
     }
 
     var _lastActivePlateId = null;
@@ -21438,6 +21611,7 @@ const ThreeRenderer = (function () {
         _syncNexusBars();
         _updateUnitHoverPulse();
         _syncSelectionIndicator();
+        _syncTurnBeacon();
         _syncActivePlateClass();
         _updateExhaustedRingDim();
 
