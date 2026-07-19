@@ -5253,43 +5253,6 @@ const SPELL_LIBRARY = [
         classRestriction: 'Engineer',
         desc: 'Raise a 2-high stone lookout with a climbing step on your side (2 🪨). The peak counts as a mountain top: +1 attack range. Instant sniper nest — until someone smashes the base.'
     },
-    {
-        id: 'timberSteps',
-        spellType: 'human',
-        element: 'earth',
-        name: 'Timber Steps',
-        type: 'utility',
-        cost: 15,
-        equipCost: 10,
-        apCost: 1,
-        range: 2,
-        kind: 'buildStructure',
-        structure: 'stairway',
-        materialCost: { wood: 1 },
-        tier: 'I',
-        school: 'Harvester',
-        classRestrictions: ['Harvester', 'Engineer'],
-        desc: 'Build +1/+2 wooden steps climbing away from you (1 🪵) — a walkable path onto ledges, walls and high ground that would otherwise need a jump.'
-    },
-    {
-        id: 'bulwarkRing',
-        spellType: 'tech',
-        element: 'earth',
-        name: 'Bulwark Ring',
-        type: 'utility',
-        cost: 45,
-        equipCost: 25,
-        apCost: 1,
-        range: 3,
-        kind: 'buildStructure',
-        structure: 'fortRing',
-        materialCost: { stone: 4 },
-        cooldownRounds: 3,
-        tier: 'III',
-        school: 'Engineer',
-        classRestriction: 'Engineer',
-        desc: 'Slam a ring of 2-high castle wall out of the earth around the target tile (4 🪨). Box a boss in or bunker your carrier — tiles with units stay open, so the ring is only as tight as the battlefield lets it be.'
-    },
 
     /* ── Terraforming pass: trap arsenal ──────────────────────────────────
        kind 'placeTrap' hides a charge on an empty tile (visible only to
@@ -5572,38 +5535,6 @@ const STRUCTURE_TEMPLATES = {
             { dx: -1, dy: 0, dz: 1, terrain: 'cobblestone' }   // climbing step, caster side
         ]
     },
-    stairway: {
-        name: 'Timber Steps',
-        kind: 'blocks',
-        blocks: [
-            { dx: 0, dy: 0, dz: 1, terrain: 'wood_planks' },
-            { dx: 1, dy: 0, dz: 2, terrain: 'wood_planks' }    // rises away from the caster
-        ]
-    },
-    fortRing: {
-        name: 'Bulwark Ring',
-        kind: 'blocks',
-        blocks: [
-            { dx: -1, dy: -1, dz: 2, terrain: 'castle_wall' },
-            { dx:  0, dy: -1, dz: 2, terrain: 'castle_wall' },
-            { dx:  1, dy: -1, dz: 2, terrain: 'castle_wall' },
-            { dx: -1, dy:  0, dz: 2, terrain: 'castle_wall' },
-            { dx:  1, dy:  0, dz: 2, terrain: 'castle_wall' },
-            { dx: -1, dy:  1, dz: 2, terrain: 'castle_wall' },
-            { dx:  0, dy:  1, dz: 2, terrain: 'castle_wall' },
-            { dx:  1, dy:  1, dz: 2, terrain: 'castle_wall' }
-        ]
-    }
-};
-
-/* Earth-titan race variant of the Engineer's Bulwark Ring (golem / minotaur;
-   the giant lost his 2026-07-18) — same prefab, race-flavored. */
-const SHARED_BULWARK_RING = {
-    id: 'sharedBulwarkRing', spellType: 'human', element: 'earth', name: 'Bulwark Ring',
-    type: 'utility', cost: 55, apCost: 2, range: 3,
-    kind: 'buildStructure', structure: 'fortRing',
-    materialCost: { stone: 4 }, cooldownRounds: 3,
-    desc: 'Slam a ring of 2-high castle wall out of the earth around the target tile (4 🪨). Tiles with units stay open.'
 };
 
 const SHARED_FLASH_FREEZE = {
@@ -5726,9 +5657,17 @@ const SHARED_SCORCHED_EARTH = {
 const SHARED_POISON_SWAMP = {
     id: 'sharedPoisonSwamp', spellType: 'unholy', element: 'poison', name: 'Poison Swamp',
     type: 'damage', cost: 25, dmg: 80, range: 3, apCost: 1,
-    kind: 'terrainCreate', terrainType: 'poison', tileCount: 3, orientable: true,
+    kind: 'terrainCreate', terrainType: 'poison', squareFlood: true, aoeRadius: 1,
     damageType: 'magic',
-    desc: 'Spread 3 poison tiles in a line. Enemies caught take damage. Toxic terrain poisons anyone who walks through.'
+    desc: 'Flood a 3x3 area with poison terrain. Enemies caught take damage. Toxic terrain poisons anyone who walks through.'
+};
+
+const SHARED_INFECTIOUS_BITE = {
+    id: 'raceInfectiousBite', spellType: 'unholy', name: 'Infectious Bite',
+    type: 'damage', cost: 20, dmg: 128, range: 1,
+    kind: 'damage', damageType: 'physical',
+    statusEffects: [{ id: 'poison', duration: 3 }],
+    desc: 'Savage melee bite. Poisons for 3 turns.'
 };
 
 const SHARED_TERRAFORM = {
@@ -5961,11 +5900,7 @@ const RACE_ABILITIES = {
        Grip are GONE. Shambling Horde is now an AoE stampede (the horde
        tramples the target area), and Zombie Rush is the new gap closer. */
     'zombie': [
-        { id: 'raceInfectiousBite', spellType: 'unholy', name: 'Infectious Bite',
-          type: 'damage', cost: 20, dmg: 128, range: 1,
-          kind: 'damage', damageType: 'physical',
-          statusEffects: [{ id: 'poison', duration: 3 }],
-          desc: 'Savage melee bite. Poisons for 3 turns.' },
+        SHARED_INFECTIOUS_BITE,
         { id: 'raceShamblingHorde', spellType: 'unholy', name: 'Shambling Horde',
           type: 'damage', cost: 30, dmg: 96, range: 3, apCost: 1,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
@@ -6142,7 +6077,7 @@ const RACE_ABILITIES = {
           statStageBoost: { atk: 1 },
           desc: 'Release attack pheromones. All allies within 2 tiles gain +1 ATK stage.' },
         SHARED_POISON_SWAMP,
-        SHARED_RAMPART
+        SHARED_INFECTIOUS_BITE
     ],
     'scarecrow': [
         { id: 'raceHarvestHook', spellType: 'anomaly', name: 'Harvest Hook',
@@ -6430,12 +6365,6 @@ const RACE_ABILITIES = {
           type: 'heal', cost: 25, range: 3, apCost: 1,
           kind: 'heal', healAmt: 160, cleanse: 2,
           desc: 'Apply ancient plant medicine. Heal 160 HP and cleanse 2 debuffs from an ally.' },
-        { id: 'raceTotemDrop', spellType: 'anomaly', element: 'nature', name: 'Totem Drop',
-          type: 'utility', cost: 25, apCost: 1, range: 2,
-          kind: 'deployObject',
-          objectHp: 90, maxActivePerCaster: 1,
-          auraHeal: 55, auraRadius: 2,
-          desc: 'Place a spirit totem. Allies within 2 tiles regenerate 55 HP per turn. Lasts until destroyed.' },
         { id: 'raceAyahuascaRetreat', spellType: 'anomaly', element: 'nature', name: 'Ayahuasca Retreat',
           type: 'buff', cost: 35, apCost: 2, range: 0,
           kind: 'buff',
@@ -7515,7 +7444,6 @@ const RACE_ABILITIES = {
     ],
 
     'golem': [
-        SHARED_BULWARK_RING,
         { id: 'raceBoulderHurl', spellType: 'human', name: 'Boulder Hurl',
           type: 'damage', cost: 25, dmg: 130, range: 3,
           kind: 'damage', damageType: 'physical',
@@ -7706,7 +7634,6 @@ const RACE_ABILITIES = {
     ],
 
     'minotaur': [
-        SHARED_BULWARK_RING,
         { id: 'raceBullRush', spellType: 'human', name: 'Bull Rush',
           type: 'damage', cost: 25, dmg: 140, range: 4,
           kind: 'dash', damageType: 'physical',
@@ -7723,11 +7650,6 @@ const RACE_ABILITIES = {
           kind: 'barrage', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'discord', duration: 2 }],
           desc: 'Terrifying roar echoing through the labyrinth. All enemies within 2 tiles confused 2 turns.' },
-        { id: 'raceMazeWard', spellType: 'human', name: 'Maze Ward',
-          type: 'utility', cost: 25, range: 3, apCost: 1,
-          kind: 'terrainCreate', terrainType: 'mountain', tileCount: 3, orientable: true,
-          dmg: 50, damageType: 'physical',
-          desc: 'Raise labyrinth walls. 3 impassable mountain tiles. Enemies on them take damage.' },
         { id: 'raceHornToss', spellType: 'human', name: 'Horn Toss',
           type: 'damage', cost: 25, dmg: 90, range: 1,
           kind: 'displacement', damageType: 'physical', pushDistance: 3,
@@ -11778,8 +11700,8 @@ const CLASS_SPELL_LEARN_ORDER = {
     'White Mage':  ['heal1', 'radiantBolt', 'veilOfLight', 'cleanse', 'exorcism', 'healAll'],
     'Agent':       ['knifeThrow', 'pistolWhip', 'placeBomb', 'snareTrap', 'poisonDart', 'sneakSlash', 'shadowLunge', 'assassinate'],
     'Psychic':     ['kineticHurl', 'glare', 'warpRune', 'psychosis', 'mindShatter'],
-    'Harvester':   ['lifeDrain', 'healingSeed', 'poisonSeed', 'timberSteps', 'trunkThrow', 'leechSeed'],
-    'Engineer':    ['plasmaGun', 'deployTurret', 'repair', 'fieldBridge', 'watchtower', 'tremorCharge', 'freeEnergy', 'fiveGTower', 'bulwarkRing', 'overclock', 'magnetMine', 'empBurst'],
+    'Harvester':   ['lifeDrain', 'healingSeed', 'poisonSeed', 'trunkThrow', 'leechSeed'],
+    'Engineer':    ['plasmaGun', 'deployTurret', 'repair', 'fieldBridge', 'watchtower', 'tremorCharge', 'freeEnergy', 'fiveGTower', 'overclock', 'magnetMine', 'empBurst'],
     'Harbinger':   ['lullaby', 'sonicCharge', 'discordance', 'fermata', 'encore', 'requiem'],
     'Freelancer':  ['improvise', 'jackOfAll', 'reallyGoodPunch'],
     'Raider':      ['haymaker', 'ironGrip', 'skullCrack', 'rampage'],

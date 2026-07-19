@@ -1947,10 +1947,6 @@
                 !g.canAffordMaterials(unit.player, spell.materialCost)) return 0;
             const nearE = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 3).length;
             let s = 8 + nearE * 5;
-            if (spell.structure === 'fortRing') {
-                const boxed = v.visibleEnemies.find(e => e.x === target.x && e.y === target.y);
-                if (boxed) s += 25 + getTargetPriority(boxed, unit, v) * 0.3;
-            }
             if (spell.structure === 'watchtower' && ['Sniper', 'Gunslinger', 'Engineer'].includes(unit.cls)) s += 10;
             return s;
         }
@@ -4419,11 +4415,6 @@
 
         if (kind === 'buildStructure') {
             const R = _effRange(unit, spell) || 3;
-            if (spell.structure === 'fortRing') {
-                // Box the juiciest enemy in range.
-                const inR = v.visibleEnemies.filter(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= R);
-                return inR.sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v))[0] || null;
-            }
             if (spell.structure === 'bridgeSpan') {
                 // Needs a gap: nearest water/chasm tile in range.
                 for (let d = 1; d <= R; d++) {
