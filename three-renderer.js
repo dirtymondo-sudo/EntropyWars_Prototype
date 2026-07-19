@@ -9738,13 +9738,19 @@ const ThreeRenderer = (function () {
                 '  transition: opacity 0.22s ease, filter 0.22s ease;',
                 '}',
 
+                /* Name sits INSIDE the plate block, on the same strip as the
+                   floating HP number: left-aligned, pulled down over the HP
+                   bar's reserved label margin (negative margin-bottom), with
+                   right padding so a long name never collides with the
+                   right-aligned HP number. */
                 '.tp-wrap .tp-name {',
-                '  display: flex; align-items: center; justify-content: center;',
-                '  height: 20px; font-size: 13px; font-weight: 700;',
+                '  display: flex; align-items: center; justify-content: flex-start;',
+                '  height: 14px; margin-bottom: -14px; position: relative; z-index: 1;',
+                '  font-size: 13px; font-weight: 700;',
                 '  color: #e8e8f0; text-shadow: 0 1px 3px #000, 0 0 6px rgba(0,0,0,0.8);',
                 '  letter-spacing: 0.06em; text-transform: uppercase;',
                 '  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;',
-                '  padding: 0 4px;',
+                '  padding: 0 52px 0 2px;',
                 '}',
                 '.tp-wrap .tp-lvl {',
                 '  color: #ffd866; margin-right: 5px; font-size: 11px; flex-shrink: 0;',
@@ -9766,13 +9772,11 @@ const ThreeRenderer = (function () {
                 '  transform: rotate(-30deg); box-shadow: 0 0 3px rgba(0,0,0,0.9);',
                 '}',
 
-                /* Body = the single black panel holding the type badge column
-                   (left) and the HP/MP bars (right) as one cohesive unit. */
+                /* Body = transparent layout shell for the type badge column
+                   (left) + HP/MP bars (right). No backing panel — the bars
+                   and badges carry their own dark fills. */
                 '.tp-wrap .tp-body {',
                 '  display: flex; align-items: stretch; gap: 3px;',
-                '  background: rgba(0,0,0,0.7); border-radius: 4px;',
-                '  padding: 3px 4px; border: 1px solid rgba(255,255,255,0.12);',
-                '  box-shadow: 0 2px 8px rgba(0,0,0,0.8);',
                 '}',
 
                 '.tp-wrap .tp-bars {',
@@ -9785,7 +9789,7 @@ const ThreeRenderer = (function () {
                    via margin-top and must NOT clip (overflow visible lets the
                    number escape upward). */
                 '.tp-wrap .tp-bar {',
-                '  position: relative; width: 100%; height: 5px; margin-top: 12px;',
+                '  position: relative; width: 100%; height: 5px; margin-top: 14px;',
                 '  background: rgba(0,0,0,0.6); border-radius: 2px;',
                 '}',
 
@@ -9848,12 +9852,12 @@ const ThreeRenderer = (function () {
                    type the lone badge stretches (flex:1) to span the full height
                    of both the HP and MP bars; with two types each badge lines up
                    with one bar. */
-                /* margin-top skips the HP number strip so the badge column
-                   tops out level with the HP bar, not the floating numbers. */
+                /* margin-top skips the name/HP-number strip so the badge column
+                   tops out level with the HP bar, not the floating text. */
                 '.tp-wrap .tp-types {',
                 '  flex: 0 0 auto;',
                 '  display: flex; flex-direction: column; gap: 2px;',
-                '  margin-top: 12px;',
+                '  margin-top: 14px;',
                 '}',
                 '.tp-wrap .tp-type { min-height: 9px; }',
                 /* Canonical type badge — same cut-corner chip used everywhere
@@ -9876,19 +9880,6 @@ const ThreeRenderer = (function () {
                 '.tp-wrap .tp-type-anomaly { color:#ff5e98; background: linear-gradient(#dc3c8222,#dc3c8222), rgba(9,11,17,0.82); border-color:#dc3c82aa; }',
                 '.tp-wrap .tp-type-alien   { color:#56d178; background: linear-gradient(#32aa5022,#32aa5022), rgba(9,11,17,0.82); border-color:#32aa50aa; }',
 
-                '.tp-wrap.tp-p1 .tp-body {',
-                '  border-color: rgba(90,170,255,0.45);',
-                '}',
-                '.tp-wrap.tp-p2 .tp-body {',
-                '  border-color: rgba(255,90,90,0.45);',
-                '}',
-                'body.is-p2-viewer .tp-wrap.tp-p1 .tp-body {',
-                '  border-color: rgba(255,90,90,0.45);',
-                '}',
-                'body.is-p2-viewer .tp-wrap.tp-p2 .tp-body {',
-                '  border-color: rgba(90,170,255,0.45);',
-                '}',
-
                 '.tp-wrap.tp-p1 .tp-name {',
                 '  color: #5aafff;',
                 '}',
@@ -9907,8 +9898,10 @@ const ThreeRenderer = (function () {
                 '  color: #ffd866 !important;',
                 '  text-shadow: 0 0 8px rgba(255,200,0,0.9), 0 0 3px rgba(255,200,0,0.5), 0 1px 3px #000;',
                 '}',
-                '.tp-wrap.tp-active .tp-body {',
-                '  border-color: rgba(255,200,0,0.55) !important;',
+                /* Active unit: gold glow rides the HP bar now that the panel
+                   border is gone. */
+                '.tp-wrap.tp-active .tp-bar:not(.tp-bar-mp) {',
+                '  box-shadow: 0 0 8px rgba(255,200,0,0.45);',
                 '}',
 
                 /* ---- Visual hierarchy ----------------------------------------
@@ -9924,12 +9917,11 @@ const ThreeRenderer = (function () {
                 '.tp-wrap.tp-active, .tp-wrap.tp-hovered, .tp-wrap.tp-targeted {',
                 '  opacity: 1 !important; filter: none !important;',
                 '}',
-                /* Engaging an enemy (hover or target) pops its plate with a red
-                   accent so the player clearly sees what they are aiming at. */
-                '.tp-wrap.tp-enemy.tp-hovered .tp-body,',
-                '.tp-wrap.tp-enemy.tp-targeted .tp-body {',
-                '  border-color: rgba(255,90,90,0.9) !important;',
-                '  box-shadow: 0 0 11px rgba(255,60,60,0.5), 0 2px 8px rgba(0,0,0,0.8);',
+                /* Engaging an enemy (hover or target) pops its HP bar with a
+                   red glow so the player clearly sees what they are aiming at. */
+                '.tp-wrap.tp-enemy.tp-hovered .tp-bar:not(.tp-bar-mp),',
+                '.tp-wrap.tp-enemy.tp-targeted .tp-bar:not(.tp-bar-mp) {',
+                '  box-shadow: 0 0 11px rgba(255,60,60,0.55);',
                 '}',
                 '.tp-wrap.tp-targeted .tp-name {',
                 '  text-shadow: 0 0 9px rgba(255,120,120,0.8), 0 1px 3px #000;',
@@ -10015,7 +10007,7 @@ const ThreeRenderer = (function () {
                 '.tp-wrap.tp-far .tp-types, .tp-wrap.tp-far .tp-bar-mp,',
                 '.tp-wrap.tp-far .tp-status-row, .tp-wrap.tp-far .tp-eye,',
                 '.tp-wrap.tp-far .tp-zodiac, .tp-wrap.tp-far .tp-skyev { display: none !important; }',
-                '.tp-wrap.tp-far .tp-name { font-size: 14px; height: 21px; justify-content: flex-start; }',
+                '.tp-wrap.tp-far .tp-name { font-size: 14px; height: 21px; margin-bottom: -15px; padding-right: 58px; }',
                 '.tp-wrap.tp-far .tp-bar { height: 8px; margin-top: 15px; }',
                 '.tp-wrap.tp-far .tp-bar-num { font-size: 12px; }'
             ].join('\n');
