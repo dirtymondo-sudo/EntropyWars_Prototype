@@ -2063,7 +2063,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
 
   const pips = [];
   const shown = Math.min(maxAP, 8);
-  const baseAP = 3;   // UNIT_MAX_AP — pips past this are level-up bonus AP
+  const baseAP = (typeof UNIT_MAX_AP !== 'undefined') ? UNIT_MAX_AP : 2;   // pips past this are level-up bonus AP
   for (let i = 0; i < shown; i++) {
     const on = i < ap;
     const spend = on && hoverCost > 0 && i >= ap - hoverCost;
@@ -2973,7 +2973,7 @@ function ActionMenu({ st, hidden }) {
   if (st.battleDialogueQueue && st.battleDialogueQueue.length > 0) return null;
 
   const fc = getFactionColor(unit);
-  const maxAP = typeof getUnitMaxAP === 'function' ? getUnitMaxAP(unit) : 3;
+  const maxAP = typeof getUnitMaxAP === 'function' ? getUnitMaxAP(unit) : 2;
   const slot = unit._partySlot || unit.slot || 1;
   const roman = ['I','II','III','IV','V','VI','VII','VIII'][slot - 1] || slot;
   const unitName = typeof unitDisplayName === 'function' ? unitDisplayName(unit) : (unit.name || unit.cls);
@@ -3785,8 +3785,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
     // Jump counts as movement for the range approach too (1 AP, exactly like
     // a step): a leap over the gap/ledge that blocks the walk ring can be
-    // what puts the target in range. Preferred over the 2-step walk below —
-    // it's cheaper.
+    // what puts the target in range.
     if (!bestTile && apAfter1Move >= actionApCost
         && typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
       for (const t of getJumpTiles(actingUnit)) {
@@ -3802,31 +3801,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       }
     }
 
-    if (!bestTile && movesLeft >= 2 && unitAP - 2 >= actionApCost) {
-      const savedX = actingUnit.x, savedY = actingUnit.y, savedZ = actingUnit.z;
-      for (const t1 of ring1) {
-        // Skip via tiles that are occupied at this z
-        if (typeof unitAt === 'function' && unitAt(t1.x, t1.y, t1.z)) continue;
-
-        actingUnit.x = t1.x; actingUnit.y = t1.y; actingUnit.z = t1.z ?? savedZ;
-        const r2 = getMoveTiles(actingUnit);
-        for (const t2 of r2) {
-          // Skip destination tiles that are occupied at this z
-          if (typeof unitAt === 'function' && unitAt(t2.x, t2.y, t2.z)) continue;
-
-          const dFromTile = _dm(t2.x, t2.y, t2.z);
-          if (dFromTile >= 1 && dFromTile <= requiredRange) {
-            if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(t2.x, t2.y, tx, ty, t2.z)) continue;
-
-            if (!bestTile || dFromTile > bestDist) {
-              bestTile = { moveCost: 2, x: t2.x, y: t2.y, z: t2.z ?? savedZ, via: { x: t1.x, y: t1.y, z: t1.z ?? savedZ } };
-              bestDist = dFromTile;
-            }
-          }
-        }
-      }
-      actingUnit.x = savedX; actingUnit.y = savedY; actingUnit.z = savedZ;
-    }
+    // NO two-step (move+move) approach: the second move of a turn drains ALL
+    // remaining AP (finishMove), so a move+move+act plan could never act.
 
     return bestTile;
   };
@@ -3937,7 +3913,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       if (seedGround === 'mountain' || seedGround === 'lava') continue;
     }
 
-    const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 2;
+    const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
     const mpPenalty = typeof getStatusMpCostDelta === 'function' ? getStatusMpCostDelta(actingUnit) : 0;
     const mpCost = (typeof getSpellMpCostFor === 'function')
       ? getSpellMpCostFor(actingUnit, sp) : (sp.cost || 0) + mpPenalty;
@@ -5455,7 +5431,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
 
   for (const sp of allSpells) {
     if (!movementKinds.has(sp.kind)) continue;
-    const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 2;
+    const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
     const mpCost = (typeof getSpellMpCostFor === 'function')
       ? getSpellMpCostFor(actingUnit, sp) : (sp.cost || 0) + mpPenalty;
     const canAfford = unitAP >= spellApCost && actingUnit.mp >= mpCost && !isSilenced
@@ -5541,7 +5517,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       if (_tt === 'enemy' && _occAlly && _tileOcc.id !== actingUnit.id) continue;
       if (_tt === 'ally' && _occEnemy) continue;
     }
-    const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 2;
+    const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
     const mpCost = (sp.cost || 0) + mpPenalty;
     // Full engine gate — AP, MP, silence, tier, COOLDOWN and MATERIALS — so a
     // spell this menu offers can never bounce off doSpell's own checks.
@@ -5871,7 +5847,7 @@ function _renderSpellDescBar() {
   if (sp.aoeRadius) details.push('AOE ' + sp.aoeRadius);
   if (sp.teleportDistance) details.push('Leap ' + sp.teleportDistance);
   const cost = sp.cost || 0;
-  const apCost = sp.apCost != null ? sp.apCost : 2;
+  const apCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
   details.push(cost + ' MP · ' + apCost + ' AP');
   if (sp.tier) details.push('T·' + sp.tier);
 

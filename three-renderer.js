@@ -524,20 +524,21 @@ const ThreeRenderer = (function () {
 
     const HL_COLORS = {
         /* Move-tile colour system — five intuitive colours, nothing more:
-             blue    → you can walk here (pip dots = AP cost: 1 or 2)
+             blue    → you can walk here with THIS move (1 AP — the move
+                       overlay never shows multi-AP reach; a second move is
+                       its own deliberate action)
              teal    → jump / takeoff tile
              gold    → 'strike': you can hit a visible enemy from here
              crimson → 'hazard': ending here hurts you
              green   → 'benefit': healing terrain
-           AP cost is conveyed ONLY by the pip dots; tactical tokens (appended
-           by ui.js) recolour the fill. Enemy reach is no longer striped onto
-           move tiles — hovering/clicking an enemy shows its range in red
+           The AP-cost pip dots are GONE (every move tile costs the same
+           1 AP now); tactical tokens (appended by ui.js) recolour the
+           fill. Enemy reach is no longer striped onto move tiles —
+           hovering/clicking an enemy shows its range in red
            (battle.js updateEnemyRangePreview → 'enemyRange' overlay). */
         'move':            0x4da6ff,
         'move-jump':       0x35d0c0,
         'move-takeoff':    0x35d0c0,
-        'move-2ap':        0x4da6ff,
-        'move-3ap':        0x4da6ff,
         'move-edge':       0xcc2222,
         /* Tactical move-tile overlays (appended as tokens by ui.js): */
         'strike':          0xffcc33,   /* gold   — can attack/cast a visible enemy from here */
@@ -598,25 +599,18 @@ const ThreeRenderer = (function () {
         'spell-range-dmg': 0.50,
         'heal-range':      0.48,
         'spell-damage':    0.72,
-        'move-2ap':        0.62,
-        'move-3ap':        0.58,
         'attack enemy':    0.75
     };
 
-    const HL_DOT_COUNT = {
-        'move':       1,
-        'move-jump':  1,
-        'move-2ap':   2,
-        'move-3ap':   3,
-        'move-takeoff': 2
-    };
+    /* AP-cost pip dots removed — every move tile is the same 1-AP move now,
+       so no tile carries a dot count. (The uDots shader path stays; it just
+       never receives a non-zero count.) */
+    const HL_DOT_COUNT = {};
 
     const HL_EDGE_GLOW = {
         'move':         1.0,
         'move-jump':    1.05,
         'move-takeoff': 1.0,
-        'move-2ap':     0.8,
-        'move-3ap':     0.7,
         'move-edge':    0.55,
         'attack':       1.1,
         'attack enemy': 1.3,
@@ -10636,22 +10630,21 @@ const ThreeRenderer = (function () {
         var color, opacity, edgeGlow, dotCount, style;
         var baseTok = hlType.split(' ')[0];
 
-        /* Tactical move highlight: base token (move / move-2ap / move-jump …)
-           still drives the AP-cost pip dots; the appended tactical token drives
-           the COLOUR. Priority for the (mutually-exclusive) base fill:
-           strike > hazard > benefit > neutral — offence pops loudest. Plain
-           2-AP tiles recede below 1-AP tiles so cost also reads at a glance. */
+        /* Tactical move highlight: the base token (move / move-jump /
+           move-takeoff) picks the base colour; the appended tactical token
+           drives the COLOUR override. Priority for the (mutually-exclusive)
+           base fill: strike > hazard > benefit > neutral — offence pops
+           loudest. No AP pip dots — every move tile is the same 1-AP move. */
         if (baseTok.indexOf('move') === 0 && baseTok !== 'move-edge') {
-            dotCount = HL_DOT_COUNT[baseTok] || 0;
+            dotCount = 0;
             if (hlType.indexOf(' strike') !== -1)       { color = HL_COLORS['strike'];  opacity = 0.66; edgeGlow = 1.2;  style = { fill: 0.36 }; }
             else if (hlType.indexOf(' hazard') !== -1)  { color = HL_COLORS['hazard'];  opacity = 0.62; edgeGlow = 1.1;  style = { fill: 0.30 }; }
             else if (hlType.indexOf(' benefit') !== -1) { color = HL_COLORS['benefit']; opacity = 0.60; edgeGlow = 1.0;  style = { fill: 0.32 }; }
             else {
                 color = HL_COLORS[baseTok] || HL_COLORS['move'];
-                var _far = (baseTok === 'move-2ap' || baseTok === 'move-3ap');
-                opacity = _far ? 0.34 : 0.5;
-                edgeGlow = _far ? 0.6 : 0.95;
-                style = { fill: _far ? 0.22 : 0.28 };
+                opacity = 0.5;
+                edgeGlow = 0.95;
+                style = { fill: 0.28 };
             }
         } else {
             color = _getHlColor(matKey);

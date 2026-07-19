@@ -10636,9 +10636,9 @@
              free-roam walker drives the model in float coordinates with real
              walk/run clips, camera-relative to the mouse-look yaw. The
              turn-based economy is preserved by FENCING the walk to the unit's
-             reachable move tiles (ui.js _initWasdState rings) and letting the
-             stock provisional-move commit bill 1 or 2 AP for wherever the
-             player actually stopped when they cast / attack / end the turn.
+             reachable move tiles (ui.js _initWasdState ring 1 — one move
+             action) and letting the stock provisional-move commit bill 1 AP
+             for wherever the player stopped when they cast / attack / end.
            - Aiming: a fixed reticle above screen centre; every frame it runs
              the renderer's real hover pipeline (range/AoE previews track it),
              and LMB runs the real click pipeline at the reticle. 1-9 arm
@@ -11397,7 +11397,7 @@
                unit's reachable move tiles. The unit walks in float coords with
                real walk/run clips; every tile crossing updates unit.x/y as a
                PROVISIONAL move (exactly what ui.js's tile-stepper did), and the
-               stock _commitWasdMove bills 1 or 2 AP for wherever the player
+               stock _commitWasdMove bills 1 AP for wherever the player
                actually stands when they cast, attack or end the turn. ── */
             function _roamActive() {
                 try {
@@ -16232,26 +16232,15 @@
             if ((unit.movesThisTurn || 0) >= UNIT_MAX_MOVES) spendAllAP(unit);
             else spendAP(unit, AP_COST_ACTION);
 
-            const _postMoveCanMove = canUnitMove(unit);
-            const _postMoveCanJump = !_postMoveCanMove && (unit.ap || 0) > 0
-                && typeof getJumpTiles === 'function' && !(canFly(unit) && isUnitAirborne(unit))
-                && getJumpTiles(unit).length > 0;
-            if (_postMoveCanMove) {
-
-                state.actionMode = 'move';
-                state.pendingTarget = null;
-            } else if (_postMoveCanJump) {
-
-                state.actionMode = 'jump';
-                state.pendingTarget = null;
-            } else {
-                state.actionMode = null;
-                state.actionMenuView = 'root';
-                state.selectedTool = null;
-                state.pendingTarget = null;
-                state._tileActionTarget = null;
-                state._enemyActionTargetId = null;
-            }
+            /* Every move drops the unit back into the ROOT action menu — no
+               lingering in move mode. A second move is a fresh, deliberate
+               Move pick (and it ends the turn: see the spendAllAP above). */
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state._tileActionTarget = null;
+            state._enemyActionTargetId = null;
             addLog(`${unitDisplayName(unit)} moves to ${moveLabel}.`, unit.player);
 
             // Fairy passive: shed pixie dust on the tile she left; anyone
@@ -17513,24 +17502,27 @@
             return state.units.find(u => u.id === (state.focusedUnitId || state.selectedUnitId)) || null;
         }
 
-        const UNIT_MAX_AP = 3;
-        const AP_COST_SPELL = 2;
+        const UNIT_MAX_AP = 2;
+        const AP_COST_SPELL = 1;
         const AP_COST_ACTION = 1;
         const UNIT_MAX_MOVES = 2;
         const COMBO_AP_COST_INITIATOR = 2;
         const COMBO_AP_COST_PARTNER = 1;
 
         /* ─── Press Turn (AP-based) ──────────────────────────────────────────
-           SMT-style "press" mapped onto the per-unit AP pool. Units get 3 AP
-           per turn and any DAMAGING attack / spell cast ENDS the turn
-           (spendAllAP — it consumes ALL remaining AP). Moves: the first move
-           costs 1 AP, the SECOND move consumes everything left (moving twice
-           is a full turn). So a turn is either move+move, or move + support
-           actions + one damaging action (e.g. move → 1-AP buff → attack).
-           The ONLY way to keep acting after damage is a press: the turn's
-           FIRST weakness hit or crit hands back +2 AP at once (a full fresh
-           action); every press AFTER that vents into the team's Entropy
-           Gauge instead — so a unit can attack at most TWICE in one turn.
+           SMT-style "press" mapped onto the per-unit AP pool. Units get 2 AP
+           per turn and EVERY action costs 1 AP, so ANY two actions exhaust
+           the turn (move+move, move+cast, buff+attack…). Any DAMAGING
+           attack / spell cast still ENDS the turn outright (spendAllAP — it
+           consumes ALL remaining AP). Moves: the first move costs 1 AP and
+           returns the unit to the action menu; the SECOND move consumes
+           everything left (moving twice is a full turn). A unit may cast
+           only ONE spell/ability per turn (the '1 spell/turn' gate in
+           getSpellBlockReason). The ONLY way to keep acting after damage —
+           or to cast a second spell — is a press: the turn's FIRST weakness
+           hit or crit hands back +2 AP at once (a full fresh action); every
+           press AFTER that vents into the team's Entropy Gauge instead — so
+           a unit can attack at most TWICE in one turn.
            Only unit.ap mutates → online-safe (host authoritative) and
            undo-safe (ap is in every pushUndoSnapshot). See PRESS_OUTCOME /
            applyPressTurn below; turn termination stays owned by
@@ -17999,10 +17991,16 @@
 
         function getSpellApCost(spell) {
             const cost = (spell && spell.apCost != null) ? spell.apCost : AP_COST_SPELL;
-            // No ability may cost more than a full turn's AP — a pricier spell
-            // would be permanently uncastable. Clamp instead of trusting data.
-            return Math.min(cost, UNIT_MAX_AP);
+            // Every action costs 1 AP under the two-action turn: legacy
+            // per-spell apCost:2 entries in data.js are clamped down so
+            // move-then-cast stays affordable. Spell "heaviness" is enforced
+            // by the 1-spell-per-turn gate instead (getSpellBlockReason).
+            return Math.min(cost, AP_COST_SPELL);
         }
+        // hud.js reads this for every AP-cost pip/tooltip — without the export
+        // its `typeof getSpellApCost === 'function'` guards silently fall back
+        // to stale hardcoded defaults.
+        window.getSpellApCost = getSpellApCost;
 
         // Spell cooldowns: a spell with cooldownRounds > 0 stamps the round it
         // becomes castable again into unit._spellCooldowns[spell.id] on cast.
@@ -18034,6 +18032,17 @@
             if (cdLeft > 0) return '⏳ CD ' + cdLeft;
             // Universal once-per-turn lock (see _markSpellUsedThisTurn).
             if (spellUsedThisTurn(unit, spell)) return 'Used this turn';
+            // ONE spell/ability per turn — ANY spell, not just a repeat of the
+            // same one. _spellsUsedThisTurn doubles as the cast counter (every
+            // committed cast marks exactly one key). The only exemption: a
+            // press refund (weakness/crit) hands back a full fresh action,
+            // which may be a second cast.
+            {
+                const _castsUsed = unit._spellsUsedThisTurn
+                    ? Object.keys(unit._spellsUsedThisTurn).length : 0;
+                const _castsAllowed = 1 + ((unit._pressGainedThisTurn || 0) > 0 ? 1 : 0);
+                if (_castsUsed >= _castsAllowed) return '1 spell/turn';
+            }
             // Berserker's Brand / Archon's Focus choice lock: each life the
             // unit is bound to the FIRST spell it casts. doSpell already
             // rejects other casts — this surfaces the lock in every menu.
@@ -18689,13 +18698,16 @@
         // "reachable cast" so the ability menu keeps such spells enabled
         // (instead of greying them) and a board click on an out-of-range enemy
         // walks the unit into range and then casts. They deliberately mirror
-        // the quick-action menu's findMoveIntoRange (hud.js): up to the unit's
-        // remaining move budget (1–2 steps), requiring enough AP left AFTER
+        // the quick-action menu's findMoveIntoRange (hud.js): ONE move step max
+        // (moving twice ends the turn), requiring enough AP left AFTER
         // moving to pay the spell's AP cost. Probing temporarily relocates the
         // unit so we reuse the REAL range/LOS logic (getSpellRangeTiles /
         // hasSpellTargetInRange), restoring its position in a finally block.
 
         // Max move steps the unit can take this turn and still afford the cast.
+        // HARD-CAPPED at ONE: the second move of a turn consumes ALL remaining
+        // AP (finishMove), so a move+move+cast plan can never actually cast —
+        // the finder must never offer it.
         function _spellMoveBudget(unit, spell) {
             if (!unit || !spell) return 0;
             if (typeof canUnitMove !== 'function' || !canUnitMove(unit)) return 0;
@@ -18705,7 +18717,7 @@
             // Each move step spends 1 AP (spendAP(unit, AP_COST_ACTION) in finishMove);
             // we must keep apCost AP for the spell itself.
             const apSteps = (unit.ap || 0) - apCost;
-            return Math.max(0, Math.min(movesLeft, apSteps));
+            return Math.max(0, Math.min(movesLeft, apSteps, 1));
         }
 
         // Jump destinations the unit could leap to and still afford the cast. A jump is
@@ -18774,7 +18786,8 @@
                     if (hasSpellTargetInRange(unit, spell)) return true;
                     unit.x = sx; unit.y = sy; unit.z = sz;
                 }
-                // Walk approach (1–2 steps).
+                // Walk approach (ONE step — moving twice ends the turn, so a
+                // second leg could never cast).
                 const steps = _spellMoveBudget(unit, spell);
                 if (steps > 0) {
                     const ring1 = getMoveTiles(unit);
@@ -18784,19 +18797,6 @@
                         if (hasSpellTargetInRange(unit, spell)) return true;
                     }
                     unit.x = sx; unit.y = sy; unit.z = sz;
-                    if (steps >= 2) {
-                        for (const t1 of ring1) {
-                            if (unitAt(t1.x, t1.y, t1.z)) continue;
-                            unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? sz;
-                            const r2 = getMoveTiles(unit);
-                            for (const t2 of r2) {
-                                if (unitAt(t2.x, t2.y, t2.z)) continue;
-                                unit.x = t2.x; unit.y = t2.y; unit.z = t2.z ?? sz;
-                                if (hasSpellTargetInRange(unit, spell)) return true;
-                            }
-                            unit.x = sx; unit.y = sy; unit.z = sz;
-                        }
-                    }
                 }
                 // Height approach: take off / land / raise terrain in place, then cast.
                 // Independent of the walk budget (its own AP action), so a unit that
@@ -18813,16 +18813,17 @@
         }
 
         // Best tile the unit can reach this turn from which `spell` can hit the
-        // target at (tx,ty); null if none. Prefers 1 step over 2, then the tile
-        // FARTHEST from the target that still has it in range (kite/safety) —
-        // matching the quick-action menu's findMoveIntoRange.
+        // target at (tx,ty); null if none. ONE walk step max (moving twice ends
+        // the turn), preferring the tile FARTHEST from the target that still
+        // has it in range (kite/safety) — matching the quick-action menu's
+        // findMoveIntoRange.
         function findSpellApproachTile(unit, spell, tx, ty, tz) {
             const steps = _spellMoveBudget(unit, spell);
             const sx = unit.x, sy = unit.y, sz = unit.z;
             const _hitsTarget = () => getSpellRangeTiles(unit, spell).some(t => t.x === tx && t.y === ty);
             let best = null, bestScore = -1;
             try {
-                // Walk approach (1–2 steps). Jump / take-off tiles that getMoveTiles folds
+                // Walk approach (ONE step). Jump / take-off tiles that getMoveTiles folds
                 // into the walk set are SKIPPED here — they aren't reachable by a plain
                 // doMove; the dedicated jump / height approaches below execute them with
                 // the right verb (doJump / doAltitudeChange).
@@ -18838,28 +18839,6 @@
                 }
                 unit.x = sx; unit.y = sy; unit.z = sz;
                 if (best) return best;
-                if (steps >= 2) {
-                    for (const t1 of ring1) {
-                        if (t1._jump || t1._takeoff) continue;
-                        if (unitAt(t1.x, t1.y, t1.z)) continue;
-                        unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? sz;
-                        const r2 = getMoveTiles(unit);
-                        for (const t2 of r2) {
-                            if (t2._jump || t2._takeoff) continue;
-                            if (unitAt(t2.x, t2.y, t2.z)) continue;
-                            unit.x = t2.x; unit.y = t2.y; unit.z = t2.z ?? sz;
-                            if (_hitsTarget()) {
-                                const d = Math.abs(t2.x - tx) + Math.abs(t2.y - ty);
-                                if (d > bestScore) {
-                                    best = { x: t2.x, y: t2.y, z: t2.z ?? sz, moveCost: 2, via: { x: t1.x, y: t1.y, z: t1.z ?? sz } };
-                                    bestScore = d;
-                                }
-                            }
-                        }
-                        unit.x = sx; unit.y = sy; unit.z = sz;
-                    }
-                    if (best) return best;
-                }
                 // Jump approach — leap to high ground / over a gap, then cast (e.g. an
                 // elevation-gated spell that needs high ground a walk can't climb to).
                 // A single deliberate leap, so no via chaining.
@@ -18890,7 +18869,7 @@
             return best;
         }
 
-        // Walk `unit` to `approach` (1 or 2 steps) then cast the selected spell
+        // Walk `unit` to `approach` (one step) then cast the selected spell
         // on (tx,ty). Sequencing mirrors the quick-action menu's executor: each
         // doMove animates, we wait its walk delay, then issue the next step /
         // the cast. doSpell reads state.selectedTool, and a move resets
@@ -19026,6 +19005,8 @@
         // (no jump), matching the quick-action menu's findMoveIntoRange.
 
         // Max walk steps the unit can take this turn and still afford the attack.
+        // HARD-CAPPED at ONE: the second move of a turn consumes ALL remaining
+        // AP (finishMove), so a move+move+attack plan can never actually swing.
         function _attackMoveBudget(unit) {
             if (!unit) return 0;
             if (typeof canUnitMove !== 'function' || !canUnitMove(unit)) return 0;
@@ -19034,7 +19015,7 @@
             // Each move step spends 1 AP (AP_COST_ACTION in finishMove); keep
             // AP_COST_ACTION AP for the attack swing itself.
             const apSteps = (unit.ap || 0) - AP_COST_ACTION;
-            return Math.max(0, Math.min(movesLeft, apSteps));
+            return Math.max(0, Math.min(movesLeft, apSteps, 1));
         }
 
         // True when the unit could step into range this turn and attack SOME
@@ -19056,19 +19037,6 @@
                     if (_getAttackValidTargets(unit, opts).length > 0) return true;
                 }
                 unit.x = sx; unit.y = sy; unit.z = sz;
-                if (steps >= 2) {
-                    for (const t1 of ring1) {
-                        if (unitAt(t1.x, t1.y, t1.z)) continue;
-                        unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? sz;
-                        const r2 = getMoveTiles(unit);
-                        for (const t2 of r2) {
-                            if (unitAt(t2.x, t2.y, t2.z)) continue;
-                            unit.x = t2.x; unit.y = t2.y; unit.z = t2.z ?? sz;
-                            if (_getAttackValidTargets(unit, opts).length > 0) return true;
-                        }
-                        unit.x = sx; unit.y = sy; unit.z = sz;
-                    }
-                }
             } finally {
                 unit.x = sx; unit.y = sy; unit.z = sz;
             }
@@ -19076,9 +19044,10 @@
         }
 
         // Best tile the unit can reach this turn from which it can attack the
-        // target at (tx,ty); null if none. Prefers 1 step over 2, then the tile
-        // FARTHEST from the target that still has it in range (kite/safety) —
-        // matching findSpellApproachTile and the quick-action menu.
+        // target at (tx,ty); null if none. ONE walk step max (moving twice ends
+        // the turn), preferring the tile FARTHEST from the target that still
+        // has it in range (kite/safety) — matching findSpellApproachTile and
+        // the quick-action menu.
         function findAttackApproachTile(unit, tx, ty) {
             const steps = _attackMoveBudget(unit);
             if (steps <= 0) return null;
@@ -19096,33 +19065,13 @@
                     }
                 }
                 unit.x = sx; unit.y = sy; unit.z = sz;
-                if (best) return best;
-                if (steps >= 2) {
-                    for (const t1 of ring1) {
-                        if (unitAt(t1.x, t1.y, t1.z)) continue;
-                        unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? sz;
-                        const r2 = getMoveTiles(unit);
-                        for (const t2 of r2) {
-                            if (unitAt(t2.x, t2.y, t2.z)) continue;
-                            unit.x = t2.x; unit.y = t2.y; unit.z = t2.z ?? sz;
-                            if (_hitsTarget()) {
-                                const d = Math.abs(t2.x - tx) + Math.abs(t2.y - ty);
-                                if (d > bestScore) {
-                                    best = { x: t2.x, y: t2.y, z: t2.z ?? sz, moveCost: 2, via: { x: t1.x, y: t1.y, z: t1.z ?? sz } };
-                                    bestScore = d;
-                                }
-                            }
-                        }
-                        unit.x = sx; unit.y = sy; unit.z = sz;
-                    }
-                }
             } finally {
                 unit.x = sx; unit.y = sy; unit.z = sz;
             }
             return best;
         }
 
-        // Walk `unit` to `approach` (1 or 2 steps) then attack (tx,ty). Mirrors
+        // Walk `unit` to `approach` (one step) then attack (tx,ty). Mirrors
         // _moveThenCast: each doMove animates, we wait its walk delay, then issue
         // the next step / the swing. A move resets actionMode/selectedTool
         // (resolveMovePath), so we re-assert attack mode right before swinging.
@@ -19210,11 +19159,11 @@
 
         // ───────────────────────────────────────────────────────────────────
         // Move-towards: clicking an OUT-OF-RANGE tile while Move is selected
-        // walks the unit as far toward that tile as the turn allows — the
-        // movement analogue of _tryMoveThenAttack. Walk-only (1 or 2 move
-        // actions), reserving no AP for a swing. Returns the reachable,
-        // unoccupied tile CLOSEST to (tx,ty) that actually makes progress, or
-        // null if the unit can't get any nearer.
+        // walks the unit ONE move action toward that tile — the movement
+        // analogue of _tryMoveThenAttack. Each move is a deliberate action
+        // that returns to the menu, so no auto walk+walk chaining. Returns
+        // the reachable, unoccupied tile CLOSEST to (tx,ty) that actually
+        // makes progress, or null if the unit can't get any nearer.
         function _moveTowardsBudget(unit) {
             if (!unit) return 0;
             if (typeof canUnitMove !== 'function' || !canUnitMove(unit)) return 0;
@@ -19223,7 +19172,7 @@
             // Each move action spends AP_COST_ACTION AP (finishMove). Unlike the
             // attack approach we keep NO reserve — every step can go to walking.
             const apSteps = Math.floor((unit.ap || 0) / AP_COST_ACTION);
-            return Math.max(0, Math.min(movesLeft, apSteps));
+            return Math.max(0, Math.min(movesLeft, apSteps, 1));
         }
 
         function findMoveTowardsTile(unit, tx, ty) {
@@ -19248,22 +19197,6 @@
                     const d = Math.abs(t.x - tx) + Math.abs(t.y - ty);
                     _consider({ x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1 }, d, 1);
                 }
-                if (steps >= 2) {
-                    for (const t1 of ring1) {
-                        if (t1._jump || t1._takeoff) continue;
-                        if (unitAt(t1.x, t1.y, t1.z)) continue;
-                        unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? sz;
-                        const r2 = getMoveTiles(unit);
-                        for (const t2 of r2) {
-                            if (t2._jump || t2._takeoff) continue;
-                            if (unitAt(t2.x, t2.y, t2.z)) continue;
-                            const d = Math.abs(t2.x - tx) + Math.abs(t2.y - ty);
-                            _consider({ x: t2.x, y: t2.y, z: t2.z ?? sz, moveCost: 2,
-                                via: { x: t1.x, y: t1.y, z: t1.z ?? sz } }, d, 2);
-                        }
-                        unit.x = sx; unit.y = sy; unit.z = sz;
-                    }
-                }
             } finally {
                 unit.x = sx; unit.y = sy; unit.z = sz;
             }
@@ -19271,7 +19204,7 @@
             return (best && bestDist < startDist) ? best : null;
         }
 
-        // Walk `unit` toward the clicked tile via `approach` (1 or 2 legs) — no
+        // Walk `unit` toward the clicked tile via `approach` (one leg) — no
         // attack afterward. Mirrors _moveThenAttack's animated step chain.
         function _moveTowards(unit, approach) {
             _clearMoveHoverPreview();
@@ -19319,7 +19252,7 @@
 
         // Hover preview for the move-then-attack — reuses the spell approach
         // visuals (move arrow + ghost + target highlight). Dedups on the hovered
-        // tile so the 1–2 step probe only recomputes when the cursor changes.
+        // tile so the one-step probe only recomputes when the cursor changes.
         function _attackApproachHoverPreview(unit, x, y) {
             if (!unit || state.actionMode !== 'attack') { _clearSpellApproachPreview(); return false; }
             const k = 'atk|' + x + ',' + y;
@@ -19471,7 +19404,7 @@
         }
 
         // Returns true while showing an approach preview for hovering (x,y) with a
-        // spell selected. Dedups on the hovered tile + selected tool so the 1–2
+        // spell selected. Dedups on the hovered tile + selected tool so the one-
         // move probe only recomputes when the cursor changes tiles.
         function _spellApproachHoverPreview(unit, x, y) {
             if (!unit || state.actionMode !== 'spell') { _clearSpellApproachPreview(); return false; }
@@ -19648,54 +19581,11 @@
                     }
                 }
 
-                // 3) Two-action walk+walk destination (needs 2 AP + both moves left) —
-                //    mirrors the clickTile executor's cheapest-intermediate search.
-                if (state.actionMode === 'move' && canUnitMove(unit)
-                    && (unit.movesThisTurn || 0) + 1 < UNIT_MAX_MOVES
-                    && (unit.ap || 0) >= AP_COST_ACTION * 2) {
-                    const r1 = getMoveTiles(unit);
-                    const savedX = unit.x, savedY = unit.y, savedZ = unit.z;
-                    /* Multi-floor: pick the intermediate whose ring-2 reaches the
-                       HOVERED surface (exact floor beats cost), and remember the
-                       actual destination tile so the second path leg targets a
-                       genuinely reachable z — same rule as the click executor. */
-                    let best = null, bestDest = null, bestScore = Infinity;
-                    const _zRef2 = (_hovZ !== undefined && _hovZ !== null) ? _hovZ : (savedZ ?? 0);
-                    for (const t1 of r1) {
-                        if (t1._jump || t1._takeoff) continue;
-                        unit.x = t1.x; unit.y = t1.y; unit.z = t1.z ?? savedZ;
-                        const r2 = getMoveTiles(unit);
-                        // Plain walks only, both legs — mirrors the executor.
-                        const m2 = r2.filter(t2 => t2.x === x && t2.y === y && !t2._jump && !t2._takeoff);
-                        if (m2.length) {
-                            m2.sort((a, b) => Math.abs((a.z ?? 0) - _zRef2) - Math.abs((b.z ?? 0) - _zRef2));
-                            const exact = (_hovZ === undefined || _hovZ === null) || (m2[0].z ?? 0) === _hovZ;
-                            const score = (exact ? 0 : 1e6) + (t1.cost || 0);
-                            if (score < bestScore) {
-                                bestScore = score;
-                                best = t1;
-                                bestDest = m2[0];
-                            }
-                        }
-                    }
-                    unit.x = savedX; unit.y = savedY; unit.z = savedZ;
-                    if (best) {
-                        const path1 = findMovePath(unit, best.x, best.y, best.z ?? savedZ);
-                        unit.x = best.x; unit.y = best.y; unit.z = best.z ?? savedZ;
-                        const path2 = findMovePath(unit, x, y, bestDest ? bestDest.z : undefined);
-                        unit.x = savedX; unit.y = savedY; unit.z = savedZ;
-                        const wps = [{ x: savedX, y: savedY, yOverride: actingY }];
-                        for (const p of path1) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y, p.z) });
-                        for (const p of path2) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y, p.z) });
-                        if (wps.length >= 2) {
-                            ThreeRenderer.drawPathArrow3D(wps, 0xffcc44);
-                            _showDest(0xffcc44, best, bestDest ? bestDest.z : undefined);
-                            return;
-                        }
-                    }
-                }
+                // (Two-action walk+walk previews were removed with the 2-AP
+                // double-move executor: Move shows the 1-AP ring only, and a
+                // second move is its own deliberate action.)
 
-                // 4) Out of reach this turn → "Move Towards": ghost + arrow on the
+                // 3) Out of reach this turn → "Move Towards": ghost + arrow on the
                 //    tile the unit WOULD stop at (closest reachable step toward the
                 //    hovered tile), with a dim marker on the unreachable goal so the
                 //    player sees where the click will actually take them.
@@ -25055,7 +24945,7 @@
                 });
                 _markSpellUsedThisTurn(unit, spell);
                 if (dmg) spendAllAP(unit);
-                else spendAP(unit, (spell.apCost != null) ? spell.apCost : AP_COST_SPELL);
+                else spendAP(unit, getSpellApCost(spell));
                 showFloatingTextForUnit(unit, `📜 ${spell.name}`, 'buff', { durationMs: 1100 });
                 playSfx('uiConfirm');
                 state.actionMode = null;
@@ -25373,7 +25263,7 @@
                 /* The cast was committed — burn the MP and the action. */
                 unit.mp = Math.max(0, (unit.mp || 0) - getSpellMpCostFor(unit, spell));
                 if (spellDealsDamage(spell)) spendAllAP(unit);
-                else spendAP(unit, (spell.apCost != null) ? spell.apCost : AP_COST_SPELL);
+                else spendAP(unit, getSpellApCost(spell));
                 _whiff(unit, spell.name);
             }
 
@@ -30534,10 +30424,8 @@
                     return _execMove(() => doMove(actingUnit, x, y, _r1Match.z));
                 }
 
-                /* 1-AP standalone jump takes precedence over the 2-AP walk+walk
-                   fallback below: a tile highlighted as a jump (1 pip) must never
-                   be consumed as a double move. Resolve the landing z from the
-                   jump tile list — the raw clicked z can point at a different
+                /* 1-AP standalone jump: resolve the landing z from the jump
+                   tile list — the raw clicked z can point at a different
                    surface of the same column, which doJump would reject. */
                 if (typeof getJumpTiles === 'function' && !(canFly(actingUnit) && isUnitAirborne(actingUnit))) {
                     const _jMatches = getJumpTiles(actingUnit).filter(t => t.x === x && t.y === y);
@@ -30549,168 +30437,13 @@
                     }
                 }
 
-                if (canUnitMove(actingUnit) && (actingUnit.movesThisTurn || 0) + 1 < UNIT_MAX_MOVES
-                    && (actingUnit.ap || 0) >= AP_COST_ACTION * 2) {
-
-                    const savedX = actingUnit.x, savedY = actingUnit.y, savedZ = actingUnit.z;
-                    /* Multi-floor: pick the intermediate whose ring-2 reaches the
-                       CLICKED surface (exact floor beats cost) and remember the
-                       actual reachable destination tile — the old code took the
-                       clicked z on faith, which could teleport the unit onto a
-                       floor the walk never reached (or under the map). Mirrors
-                       the hover preview's selection exactly. */
-                    let bestInterm = null;
-                    let bestDest = null;
-                    let bestScore = Infinity;
-                    const _zRef2 = (state._clickedZ !== undefined && state._clickedZ !== null)
-                        ? state._clickedZ : (savedZ ?? 0);
-                    for (const t1 of _r1Tiles) {
-                        /* Intermediates must be plain walks — mirrors the ring-2
-                           highlight in ui.js, which skips jump/takeoff legs. */
-                        if (t1._jump || t1._takeoff) continue;
-                        actingUnit.x = t1.x; actingUnit.y = t1.y; actingUnit.z = t1.z ?? savedZ;
-                        const r2 = getMoveTiles(actingUnit);
-                        /* Both legs must be plain walks: a _jump/_takeoff tile in
-                           ring 2 is NOT reachable by this walk+walk executor —
-                           taking one on faith slid flyers to altitude without
-                           paying (or animating) the takeoff. */
-                        const m2 = r2.filter(t2 => t2.x === x && t2.y === y && !t2._jump && !t2._takeoff);
-                        if (m2.length) {
-                            m2.sort((a, b) => Math.abs((a.z ?? 0) - _zRef2) - Math.abs((b.z ?? 0) - _zRef2));
-                            const _exactZ = (state._clickedZ === undefined || state._clickedZ === null)
-                                || (m2[0].z ?? 0) === state._clickedZ;
-                            const score = (_exactZ ? 0 : 1e6) + (t1.cost || 0);
-                            if (score < bestScore) {
-                                bestScore = score;
-                                bestInterm = t1;
-                                bestDest = m2[0];
-                            }
-                        }
-                    }
-                    actingUnit.x = savedX; actingUnit.y = savedY; actingUnit.z = savedZ;
-                    if (bestInterm) {
-
-                        const path1 = findMovePath(actingUnit, bestInterm.x, bestInterm.y, bestInterm.z ?? savedZ);
-
-                        actingUnit.x = bestInterm.x; actingUnit.y = bestInterm.y;
-                        actingUnit.z = bestInterm.z ?? savedZ;
-
-                        let destZ;
-                        if (canFly(actingUnit) && isUnitAirborne(actingUnit)) {
-                            const _flyMinZ2 = getMinFlyingZ(x, y);
-                            const _flyMaxZ2 = getMaxFlyingZ(x, y);
-                            const _r2CurGnd = getHeightAt(actingUnit.x, actingUnit.y);
-                            const _r2Clr = (actingUnit.z ?? 0) - _r2CurGnd;
-                            const _r2DestGnd = getHeightAt(x, y);
-                            destZ = Math.max(_flyMinZ2, Math.min(_flyMaxZ2, _r2DestGnd + _r2Clr));
-                        } else {
-                            /* The z of the tile the ring-2 walk ACTUALLY reaches —
-                               never the raw clicked z on faith. */
-                            destZ = bestDest ? bestDest.z
-                                : (typeof nearestWalkableZ === 'function' ? nearestWalkableZ(x, y, actingUnit.z) : 0);
-                        }
-                        const path2 = findMovePath(actingUnit, x, y, destZ);
-                        actingUnit.x = savedX; actingUnit.y = savedY; actingUnit.z = savedZ;
-
-                        /* Final collision guard: the ring-2 tile list is z-agnostic
-                           and the airborne destZ is re-derived here, so make sure
-                           nobody already occupies the exact landing spot before
-                           committing the move — never stack two units. */
-                        const _dstOcc = unitAt(x, y, destZ);
-                        if (_dstOcc && _dstOcc.id !== actingUnit.id) {
-                            state._actionExecuting = false;
-                            addLog('That tile is occupied.', actingUnit.player);
-                            playErrorSfx();
-                            markDirty('board', 'hud');
-                            renderIfDirty();
-                            return;
-                        }
-
-                        const combinedPath = [...path1, ...path2];
-                        if (combinedPath.length > 0) {
-                            const isHuman = !state.autoPlayers?.[actingUnit.player];
-                            const _skipAnim = state._wasdMoveSkipAnim;
-                            if (_skipAnim) state._wasdMoveSkipAnim = false;
-                            if (isHuman && !_skipAnim && !state.cameraDisabled) {
-                                animateWalkPath(actingUnit, combinedPath);
-
-                                const stepMs = Math.max(80, Math.min(160, 140 - combinedPath.length * 8));
-                                const walkDurationMs = combinedPath.length * stepMs;
-                                // Fog gate: when this click is a REPLAYED remote
-                                // action the local viewer is the opponent — only
-                                // trail the walk if some part of it is visible.
-                                if (_fogCamTilesVisible({ x: savedX, y: savedY }, { x, y })) {
-                                    animateBoardCameraPath(
-                                        { x: savedX, y: savedY },
-                                        { x: x, y: y },
-                                        { duration: walkDurationMs, zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
-                                    );
-                                }
-                            }
-                            pushUndoSnapshot(false);
-
-                            actingUnit.x = x; actingUnit.y = y;
-                            actingUnit.z = destZ;
-
-                            actingUnit.movesThisTurn = (actingUnit.movesThisTurn || 0) + 2;
-                            actingUnit._trackTilesMoved = (actingUnit._trackTilesMoved || 0) + combinedPath.length;
-                            // walk+walk = the whole turn: first leg 1 AP, second leg all the rest
-                            spendAP(actingUnit, AP_COST_ACTION);
-                            spendAllAP(actingUnit);
-                            playSfx('moveStep');
-                            addLog(`${unitDisplayName(actingUnit)} moves to ${coordLabel(x, y)}.`, actingUnit.player);
-
-                            checkOpportunityAttack(actingUnit, savedX, savedY);
-                            updateTerrainStay(actingUnit);
-
-                            const _inlineAirborne = typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit);
-                            if (!_inlineAirborne && state.bombs) {
-                                const bombIdx = state.bombs.findIndex(b => b.x === x && b.y === y && b.owner !== actingUnit.player);
-                                if (bombIdx >= 0) {
-                                    const bomb = state.bombs.splice(bombIdx, 1)[0];
-                                    detonateBomb(bomb, `Bomb trap detonates at ${coordLabel(x, y)}.`);
-                                }
-                            }
-                            if (!_inlineAirborne) checkTrapTrigger(actingUnit);
-                            if (!_inlineAirborne) checkWarpRuneTrigger(actingUnit);
-                            if (!_inlineAirborne) checkSeedStepTrigger(actingUnit);
-
-                            if (!_inlineAirborne && destZ < savedZ && typeof applyFallDamage === 'function') {
-                                applyFallDamage(actingUnit, savedZ, destZ, 'Fall: ');
-                            }
-
-                            state._actionExecuting = false;
-
-                            const _2apCanJump = (actingUnit.ap || 0) > 0
-                                && typeof getJumpTiles === 'function' && !(canFly(actingUnit) && isUnitAirborne(actingUnit))
-                                && getJumpTiles(actingUnit).length > 0;
-                            if (_2apCanJump) {
-                                state.actionMode = 'jump';
-                                state.pendingTarget = null;
-                            } else {
-                                state.actionMode = null;
-                                state.actionMenuView = 'root';
-                                state.selectedTool = null;
-                                state.pendingTarget = null;
-                                state._tileActionTarget = null;
-                                state._enemyActionTargetId = null;
-                            }
-                            checkWin();
-                            endUnitIfDone(actingUnit);
-                            markDirty('board', 'selectedUnit', 'hud');
-                            renderIfDirty();
-                            return true;
-                        }
-                    }
-                }
-
                 // (Takeoff tiles are handled by the _r1Match branch above —
                 // doMove performs the ascend internally.)
 
                 // Jump is a deliberate, first-class action — not a one-click
-                // walk+jump combo. Standalone jump tiles were already resolved
-                // ABOVE (before the 2-AP walk+walk fallback, so a 1-AP jump is
-                // never consumed as a 2-AP double move). To move-then-jump,
+                // walk+jump combo. (The 2-AP walk+walk executor is gone too:
+                // Move offers the 1-AP ring only, and a second move is its own
+                // deliberate action that ends the turn.) To move-then-jump,
                 // walk first, then pick the jump — each leg animates cleanly.
 
                 state._actionExecuting = false;
@@ -30718,9 +30451,9 @@
                     return;
                 }
 
-                // Out of reach this turn → "Move Towards": walk as far toward the
-                // clicked tile as the unit's remaining moves/AP allow (the
-                // movement analogue of the move-then-attack approach). Only when
+                // Out of reach this turn → "Move Towards": walk ONE move action
+                // toward the clicked tile (the movement analogue of the
+                // move-then-attack approach). Only when
                 // the tile is empty — a click on a unit above already routed to
                 // its menu. Falls through to doMove (which reports the miss) when
                 // no progress toward the tile is possible.
@@ -35682,6 +35415,8 @@
             if (!canAffordSpell(unit, spell)) {
                 if (spell.materialCost && !canAffordMaterials(unit.player, spell.materialCost)) {
                     addLog(`Not enough materials — ${spell.name} needs ${materialCostLabel(spell.materialCost)}. Salvage more by chopping trees, smashing rock and wrecking machines.`);
+                } else if (getSpellBlockReason(unit, spell) === '1 spell/turn') {
+                    addLog('Only one spell or ability per turn — a press refund (weakness/crit) earns another.');
                 } else {
                     const needed = getSpellApCost(spell);
                     addLog(`Not enough action points to cast that spell (requires ${needed} AP).`);

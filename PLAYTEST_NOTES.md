@@ -4,6 +4,33 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## TWO-ACTION TURNS — AP model rework (2026-07-19, LATEST) — battle.js, ui.js, hud.js, three-renderer.js
+
+- `UNIT_MAX_AP` 3 → **2**, `AP_COST_SPELL` 2 → **1**: EVERY action costs 1 AP,
+  so ANY two actions exhaust the turn (move+move, move+cast, buff+attack…).
+  `getSpellApCost` clamps legacy per-spell `apCost: 2` data entries to 1 (it is
+  now window-exported; hud fallbacks updated 2→1). Damaging attack/cast still
+  `spendAllAP`; second move still `spendAllAP` (moving twice = whole turn).
+- **One spell/ability per turn** (any spell, not just repeats): gate lives in
+  `getSpellBlockReason` ('1 spell/turn'), counted via
+  `Object.keys(unit._spellsUsedThisTurn)` — no new turn flag needed. Exemption:
+  a press refund (`unit._pressGainedThisTurn > 0`) allows ONE more cast.
+  doSpell surfaces a proper log line for this reject.
+- **Move = 1-AP ring only, then back to the ROOT action menu** (finishMoveAt no
+  longer chains move→move/jump modes). Removed everywhere: ring-2/ring-3
+  `move-2ap`/`move-3ap` highlights (ui.js), the AP pip dots on move tiles
+  (three-renderer.js `HL_DOT_COUNT` now empty), the one-click 2-AP walk+walk
+  executor + its hover preview (battle.js clickTile), WASD ring-2 roam
+  (`_initWasdState` fences to ring 1; `_commitWasdMove` always 1 move).
+- **Move-then-act finders are capped at ONE move**: `_spellMoveBudget`,
+  `_attackMoveBudget`, `_moveTowardsBudget` all `Math.min(..., 1)` and their
+  ring-2 probe loops are deleted (battle.js `spellHasReachableTarget`,
+  `findSpellApproachTile`, `attackHasReachableTarget`, `findAttackApproachTile`,
+  `findMoveTowardsTile`; hud.js `findMoveIntoRange`). Rationale: the engine's
+  second move drains all AP, so a move+move+act plan could never act.
+- `threerenderer.js` (no dash) and `styles-base.css .move-2ap` are stale legacy
+  copies/selectors — not loaded / never applied; left untouched.
+
 ## SIMUL MODE — simultaneous WeGo turns, EXPERIMENTAL (2026-07-17h, LATEST) — state.js, battle.js, ui.js, hud.js, ai.js, map.js, match-select.js, playtest.js, index.html
 
 New game mode `simul` ("Simul", ♟️, EXPERIMENTAL tag): chess × Pokémon.

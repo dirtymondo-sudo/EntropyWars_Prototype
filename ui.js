@@ -2492,55 +2492,10 @@
             }
           }
 
-          let _ring2Set = null;
-          let _ring3Set = null;
-          if (_wasdOrigin && _wasdMoveTiles2 && _wasdMoveTiles2.size > 0) {
-            _ring2Set = _wasdMoveTiles2;
-          } else if (!_wasdOrigin) {
-
-            /* A second move costs a second AP — after e.g. a 2-AP spell leaves
-               1 AP, ring-2 tiles must NOT light up (2 pips) as reachable. */
-            const _canMove2 = (_selectedForHl.movesThisTurn || 0) + 1 < UNIT_MAX_MOVES
-              && (_selectedForHl.ap || 0) >= (typeof AP_COST_ACTION !== 'undefined' ? AP_COST_ACTION * 2 : 2);
-            if (_canMove2) {
-              _ring2Set = new Set();
-              const _r1Set = new Set();
-              for (const t of _cachedMoveTiles) _r1Set.add(posKey(t.x, t.y));
-              const _savedX2 = _selectedForHl.x, _savedY2 = _selectedForHl.y, _savedZ2 = _selectedForHl.z;
-              const _originPk = posKey(_savedX2, _savedY2);
-
-              // Ring 2 = the two-walk (move+move) destinations, which the 2-AP move
-              // executor in clickTile() can reach in a single click. (3-AP walk+jump
-              // combos were retired — jump is a deliberate action now — so we no longer
-              // track per-tile reach paths for a Ring 3.)
-              for (const t of _cachedMoveTiles) {
-
-                if (t._jump || t._takeoff) continue;
-                _selectedForHl.x = t.x; _selectedForHl.y = t.y; _selectedForHl.z = t.z ?? _savedZ2;
-                const r2 = getMoveTiles(_selectedForHl);
-                for (const t2 of r2) {
-
-                  if (t2._jump || t2._takeoff) continue;
-                  const pk = posKey(t2.x, t2.y);
-                  if (!_r1Set.has(pk) && pk !== _originPk) {
-                    _ring2Set.add(pk);
-                  }
-                }
-              }
-
-              // Jump is a deliberate action now (no auto walk+jump combo executor), so we
-              // no longer highlight move+jump / jump+move 2-AP destinations here — doing so
-              // would light up tiles a single click can't actually reach. Standalone jump
-              // tiles from the current position are still shown (added to _cachedMoveTiles
-              // above); to jump after moving, walk first then pick the jump.
-              _selectedForHl.x = _savedX2; _selectedForHl.y = _savedY2; _selectedForHl.z = _savedZ2;
-
-              // Ring 3 (3-AP move+move+jump / jump+move+move) highlighting was removed
-              // alongside the one-click combo executors. Those destinations are now reached
-              // as separate deliberate actions (walk, then jump), so there is no single-click
-              // 3-AP jump tile to highlight. _ring3Set stays null and is skipped downstream.
-            }
-          }
+          /* Ring-2 (move+move) highlighting is GONE: Move shows only where
+             ONE move action (1 AP) can reach. A second move is a fresh,
+             deliberate Move pick from the action menu — and it ends the
+             turn (finishMove drains all remaining AP). */
           if (_wasdOrigin) {
             _selectedForHl.x = _wasdSavedX;
             _selectedForHl.y = _wasdSavedY;
@@ -2579,24 +2534,6 @@
             _moveSet.add(pk);
           }
 
-          if (_ring2Set) {
-            for (const pk of _ring2Set) {
-              if (!_moveSet.has(pk)) {
-                _hlCache.set(pk, 'move-2ap');
-                _moveSet.add(pk);
-              }
-            }
-          }
-
-          if (_ring3Set) {
-            for (const pk of _ring3Set) {
-              if (!_moveSet.has(pk)) {
-                _hlCache.set(pk, 'move-3ap');
-                _moveSet.add(pk);
-              }
-            }
-          }
-
           const _unitKey = posKey(_selectedForHl.x, _selectedForHl.y);
           _moveSet.add(_unitKey);
           const _edgeChecked = new Set();
@@ -2617,7 +2554,7 @@
 
           /* ─────────────────────────────────────────────────────────────────
              TACTICAL TILE COLOURING — deliberately minimal:
-               blue   → reachable tile (pip dots = AP cost)
+               blue   → reachable with this move (1 AP; no pip dots)
                teal   → jump / takeoff tile
                gold   → 'strike': you can attack/cast a visible enemy from here
                crimson→ 'hazard': ending here damages you / applies a bad status
@@ -2685,7 +2622,7 @@
               return false;
             };
 
-            const _MOVE_BASE = { 'move':1, 'move-2ap':1, 'move-3ap':1, 'move-jump':1, 'move-takeoff':1 };
+            const _MOVE_BASE = { 'move':1, 'move-jump':1, 'move-takeoff':1 };
             for (const [_pk, _cls] of _hlCache) {
               if (!_MOVE_BASE[_cls]) continue; // skip move-edge & any non-move classes
               const _c = _pk.indexOf(',');
@@ -3222,7 +3159,7 @@
               if (_thl === 'spell-range' || _thl === 'spell-range-bg' || _thl === 'spell-range-dmg'
                   || _thl === 'heal-range' || _thl === 'spell-damage' || _thl === 'attack' || _thl === 'selected') continue;
 
-              if (_thl === 'move' || _thl === 'move-jump' || _thl === 'move-takeoff' || _thl === 'move-2ap' || _thl === 'move-3ap' || _thl === 'move-edge') continue;
+              if (_thl === 'move' || _thl === 'move-jump' || _thl === 'move-takeoff' || _thl === 'move-edge') continue;
 
               _targetSet.add(_tu.id);
             }
@@ -9648,34 +9585,11 @@
             const ring1 = getMoveTiles(unit);
             for (const t of ring1) _wasdMoveTiles1.add(posKey(t.x, t.y));
 
+            /* Ring 2 is retired: a provisional WASD walk is fenced to the ONE
+               1-AP move ring — a second move is its own deliberate action.
+               The empty set keeps the _wasdRingSets() API shape for
+               ShooterControls (battle.js). */
             _wasdMoveTiles2 = new Set();
-            const canMove2 = (unit.movesThisTurn || 0) + 1 < UNIT_MAX_MOVES
-              && (unit.ap || 0) >= (typeof AP_COST_ACTION !== 'undefined' ? AP_COST_ACTION * 2 : 2);
-            if (canMove2) {
-                const savedX = unit.x, savedY = unit.y;
-
-                const ring1Tiles = ring1;
-                const checkedOrigins = new Set();
-                for (const t of ring1Tiles) {
-
-                    if (t._jump) continue;
-                    const tk = posKey(t.x, t.y);
-                    if (checkedOrigins.has(tk)) continue;
-                    checkedOrigins.add(tk);
-
-                    unit.x = t.x; unit.y = t.y;
-                    const ring2FromHere = getMoveTiles(unit);
-                    for (const t2 of ring2FromHere) {
-
-                        if (t2._jump) continue;
-                        const pk = posKey(t2.x, t2.y);
-                        if (!_wasdMoveTiles1.has(pk) && pk !== posKey(savedX, savedY)) {
-                            _wasdMoveTiles2.add(pk);
-                        }
-                    }
-                }
-                unit.x = savedX; unit.y = savedY;
-            }
         }
 
         function _clearWasdState(restorePosition) {
@@ -9707,53 +9621,17 @@
                 return;
             }
 
-            const inRing1 = _wasdMoveTiles1 && _wasdMoveTiles1.has(posKey(destX, destY));
-            const movesToSpend = inRing1 ? 1 : 2;
-
+            /* The WASD roam is fenced to ring 1 (one move action), so a commit
+               is always a single 1-AP move through the standard clickTile →
+               doMove path (which returns the unit to the action menu). */
             unit.x = _wasdOrigin.x;
             unit.y = _wasdOrigin.y;
             state._wasdMoveSkipAnim = true;
-            const savedOrigin = { ..._wasdOrigin };
             _clearWasdState(false);
 
-            if (movesToSpend === 1) {
-
-                state.actionMode = 'move';
-                state._clickedUnitId = null;
-                clickTile(destX, destY);
-            } else {
-
-                pushUndoSnapshot(false);
-                unit.x = savedOrigin.x;
-                unit.y = savedOrigin.y;
-
-                unit.movesThisTurn = (unit.movesThisTurn || 0) + 2;
-                unit._trackTilesMoved = (unit._trackTilesMoved || 0) + Math.abs(destX - savedOrigin.x) + Math.abs(destY - savedOrigin.y);
-                playSfx('moveStep');
-                unit.x = destX;
-                unit.y = destY;
-                updateTerrainStay(unit);
-                // double move = whole turn: first leg 1 AP, second leg the rest
-                spendAP(unit, AP_COST_ACTION);
-                spendAllAP(unit);
-                state.actionMode = null;
-                state.actionMenuView = 'root';
-                state.selectedTool = null;
-                state.pendingTarget = null;
-                addLog(`${unitDisplayName(unit)} moves to ${coordLabel(destX, destY)}.`, unit.player);
-
-                const _wasdAirborne = typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
-                if (!_wasdAirborne) {
-                    const bombIdx = state.bombs.findIndex(b => b.x === destX && b.y === destY && b.owner !== unit.player);
-                    if (bombIdx >= 0) {
-                        const bomb = state.bombs.splice(bombIdx, 1)[0];
-                        detonateBomb(bomb, `Bomb trap detonates at ${coordLabel(destX, destY)}.`);
-                    }
-                }
-                if (!_wasdAirborne) checkWarpRuneTrigger(unit);
-                markDirty('board', 'selectedUnit', 'hud');
-                renderIfDirty();
-            }
+            state.actionMode = 'move';
+            state._clickedUnitId = null;
+            clickTile(destX, destY);
         }
         window._commitWasdMove = _commitWasdMove;
         window._isWasdActive = _isWasdActive;
@@ -9917,8 +9795,7 @@
 
                 const destKey = posKey(nx, ny);
                 const inRing1 = _wasdMoveTiles1 && _wasdMoveTiles1.has(destKey);
-                const inRing2 = _wasdMoveTiles2 && _wasdMoveTiles2.has(destKey);
-                if (!inRing1 && !inRing2) { playErrorSfx(); return; }
+                if (!inRing1) { playErrorSfx(); return; }
 
                 const currentInRing1 = _wasdMoveTiles1 && _wasdMoveTiles1.has(posKey(unit.x, unit.y));
                 const originKey = posKey(_wasdOrigin.x, _wasdOrigin.y);
