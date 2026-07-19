@@ -8392,17 +8392,30 @@ const ThreeRenderer = (function () {
             var def = (typeof getRace3DModel === 'function')
                 ? getRace3DModel(u.race, u.gender || 'male') : null;
             if (!def || !def.model) return;
-            var list = [def.model];
-            if (_animLibActive(def)) {
-                // Shared animation library: one or two GLBs cover every
-                // character's clips — skip the per-character clip downloads
-                // entirely (they stay wired as a lazy fallback if the bake
-                // fails mid-match).
-                _libUrls(def).forEach(function (u) { if (u) list.push(u); });
-            } else {
-                var clips = def.clips || {};
-                for (var k in clips) { if (clips[k]) list.push(clips[k]); }
+            // Alternate 3D forms (honda civic car ↔ robot) must warm too, or
+            // the first transform of the match pops a placeholder slab while
+            // the other form's GLB downloads.
+            var defs = [def];
+            if (def.overrideForms) {
+                for (var fk in def.overrideForms) {
+                    var fd = def.overrideForms[fk];
+                    if (fd && fd.model && defs.indexOf(fd) < 0) defs.push(fd);
+                }
             }
+            var list = [];
+            defs.forEach(function (d) {
+                list.push(d.model);
+                if (_animLibActive(d)) {
+                    // Shared animation library: one or two GLBs cover every
+                    // character's clips — skip the per-character clip downloads
+                    // entirely (they stay wired as a lazy fallback if the bake
+                    // fails mid-match).
+                    _libUrls(d).forEach(function (u) { if (u) list.push(u); });
+                } else {
+                    var clips = d.clips || {};
+                    for (var k in clips) { if (clips[k]) list.push(clips[k]); }
+                }
+            });
             for (var i = 0; i < list.length; i++) {
                 var url = list[i];
                 if (seen[url]) continue;
@@ -8917,6 +8930,18 @@ const ThreeRenderer = (function () {
             _disposeModelRig(_rig);
             _unitModelRigs.delete(unit.id);
             _rig = null;
+            /* Transformation flourish — def-gated (transformFx on both honda
+               civic forms) so werewolf day/night rebuilds stay silent. Runs
+               locally on host AND guest (the swap itself is driven by the
+               synced _spriteOverride), so no relay is needed. */
+            if (def.transformFx && !(state && state.devAutoSim)
+                && typeof window !== 'undefined' && window.ThreeVFXEffects
+                && window.ThreeVFXEffects.sigShockRing3D) {
+                try {
+                    window.ThreeVFXEffects.sigShockRing3D(unit.x, unit.y,
+                        { r0: ts * 0.15, r1: ts * 0.95, ms: 340 });
+                } catch (_e) {}
+            }
         }
         if (_rig) {
             entry._ew_modelAttached = true;
@@ -9353,9 +9378,17 @@ const ThreeRenderer = (function () {
         // sprite pipeline below is skipped entirely; on the very first build
         // the sprite slab still goes up as a loading placeholder and
         // _attachUnitModel swaps it out when the model arrives.
-        var _m3dDef = (!unit._spriteOverride && typeof getRace3DModel === 'function'
+        var _m3dDef = (typeof getRace3DModel === 'function'
                        && typeof THREE.GLTFLoader === 'function')
             ? getRace3DModel(unit.race, unit.gender || 'male') : null;
+        /* Sprite-override state (transform sprites, sentai color swaps…):
+           a def may map override URLs to alternate 3D FORMS — the honda
+           civic's def.overrideForms swaps the sedan for the rigged robot on
+           combat overrides (sprites.js). Any override the def doesn't map
+           falls back to the classic 2D sprite path, exactly as before. */
+        if (_m3dDef && unit._spriteOverride) {
+            _m3dDef = (_m3dDef.overrideForms && _m3dDef.overrideForms[unit._spriteOverride]) || null;
+        }
         var _m3dReady = _m3dDef && _unitModelReady(_m3dDef);
 
         if (_isVampireBatForm(unit)) {

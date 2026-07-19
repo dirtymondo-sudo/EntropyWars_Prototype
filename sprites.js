@@ -753,6 +753,7 @@ function _mkUAL(folder, prefix, opts) {
 // ("Rigged 3D unit models"). Slots not listed for a character below simply
 // don't exist in its R2 folder yet — fallback chains cover them.
 const _PSY_3D = `${_S}/Races/Homosapien/Female/psychic`;
+const _VOID_3D = `${_S}/Races/voidweaver/male`;
 const RACE_MODELS_3D = {
   // ── Homosapien sub-races (Races/Homosapien/<Gender>/<job folder>/) ──
   'fortune teller': {
@@ -819,6 +820,12 @@ const RACE_MODELS_3D = {
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
       castSupport: 'mage_soell_cast',
     }, { heightRatio: 0.94, basicAttackKind: 'magic' }),
+    // Male Black Mage (Wizard) — "wizard_realistic" (2026-07-19 batch),
+    // library-animated. Arcane zaps, never sword swings.
+    male: _mkUAL('Homosapien/Male/blackmage', 'wizard_realistic', {
+      heightRatio: 1.0,
+      basicAttackKind: 'magic',
+    }),
   },
   // Female Shaman (Harvester) — "beautiful_attractive_" (note the doubled
   // underscore in her file stem …_attractive__biped_… → the _mk3d prefix keeps a
@@ -950,16 +957,17 @@ const RACE_MODELS_3D = {
          basicAttackKind: 'claw',   // basic attacks rake with talons (castClaw)
          lib: { castMelee: { clip: 'Sword_Heavy_Combo', lib: 1, ts: 3.5 } } }),
   },
-  // Half-Demon (Assassin, melee) — "hot_attractive_rich_f". No magic exports;
-  // her strikes are brawler clips (uppercut / kick). Left_Uppercut is the
-  // generic + melee cast. Imposing demonic woman → a hair taller than a plain
-  // human female.
+  // Half-Demon (Assassin, melee) — REMODELED 2026-07-19: the new
+  // "hot_fancy_rich_girl_w" Character_output replaces the old
+  // hot_attractive_rich_f set. The old per-character clips CANNOT ride along
+  // (they bake the OLD rig's bone transforms — the sprites.js HARD RULE), so
+  // she is library-animated now; the Melee_Hook override keeps her brawler
+  // strikes. Statuesque demonic woman → a hair taller than a plain human female.
   'halfdemon': {
-    female: _mk3d('halfdemon/female', 'hot_attractive_rich_f', {
-      idle: 'Idle_7', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
-      death: 'Dead', cast: 'Left_Uppercut_from_Guard', castMelee: 'Left_Uppercut_from_Guard',
-    }, { castTimeScale: 2.2, heightRatio: 0.98,      // statuesque half-demon
-         lib: { castMelee: { clip: 'Melee_Hook', lib: 1, ts: 0.45 } } }),
+    female: _mkUAL('halfdemon/female', 'hot_fancy_rich_girl_w', {
+      heightRatio: 0.98,
+      lib: { castMelee: { clip: 'Melee_Hook', lib: 1, ts: 0.45 } },
+    }),
   },
   'fairy': {
     female: _mk3d('Fairy/female', 'young_fairy', {
@@ -1260,6 +1268,113 @@ const RACE_MODELS_3D = {
       heightRatio: 1.0,
       basicAttackKind: 'magic',
     }),
+  },
+
+  // ── 2026-07-19 batch (user upload — HEAD-verified on R2, rigs parsed) ─────
+  // Yeti (bruiser) — towering frost cryptid, bigfoot's cousin: brawler sway,
+  // raking ice claws. Avalanche Slam classifies to castSlam; Avalanche Dive
+  // rides the leapStrike dive arc + its new landing VFX.
+  'yeti': {
+    male: _mkUAL('yeti/male', 'yeti', {
+      heightRatio: 1.38,
+      basicAttackKind: 'claw',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },   // brawler sway
+    }),
+  },
+  // Skeleton (undead) — shambles with the zombie gait, rakes with bone claws.
+  'skeleton': {
+    male: _mkUAL('skeleton/male', 'skeleton', {
+      heightRatio: 1.0,
+      basicAttackKind: 'claw',
+      lib: { idle: { clip: 'Zombie_Idle_Loop', lib: 1 },
+             walk: { clip: 'Zombie_Walk_Fwd_Loop', lib: 1, ts: 2.5 },
+             castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } },
+    }),
+  },
+  // Kaiju — "retro_1990_s_japan_cy" (retro tokusatsu city-stomper). Nearly
+  // giant-sized (giant is 1.7); stomps classify to castSlam, Skyscraper Toss
+  // to castThrow, Atomic Breath fires its mapped beam. ⚠ the GLB is 71MB —
+  // consider a lower-res re-export if match-start preload feels slow.
+  'kaiju': {
+    male: _mkUAL('kaiju/male', 'retro_1990_s_japan_cy', {
+      heightRatio: 1.6,
+      basicAttackKind: 'claw',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
+    }),
+  },
+  // Superhero (flying bruiser) — leads with superhuman haymakers.
+  'superhero': {
+    // Prefix ends with '_' — the Meshy prompt truncation doubled the
+    // underscore in …superhero__biped_… (same pattern as the psychics).
+    female: _mkUAL('superhero/female', 'hot_girl_superhero_', {
+      heightRatio: 0.97,
+      basicAttackKind: 'punch',
+    }),
+  },
+  // Demon Princess (flying hex-caster) — royal cruelty, magic zaps.
+  'demon princess': {
+    female: _mkUAL('demonprincess/female', 'hot_girl_hell_princ', {
+      heightRatio: 1.0,
+      basicAttackKind: 'magic',
+    }),
+  },
+  // Voidweaver — giant spider on a QUADRUPED Meshy rig (tail/backleg/head
+  // bones): the biped animation libraries cannot retarget onto it, so no
+  // animLib fields. Its one per-character export is the custom Walking clip —
+  // note the `_quadruped_model_Animation_` stem (not the biped
+  // `_biped_Animation_` convention), hence explicit URLs instead of _mk3d.
+  // Idle = static rest pose; casts/hits fall back to the engine lunge/glow
+  // tweens, and its projectiles already fly as spiders (UNIT_ANIM_OVERRIDES).
+  'voidweaver': {
+    male: {
+      model: `${_VOID_3D}/Meshy_AI_giant_spider_realisti_quadruped_Character_output.glb`,
+      clips: {
+        walk: `${_VOID_3D}/Meshy_AI_giant_spider_realisti_quadruped_model_Animation_Walking_withSkin.glb`,
+      },
+      heightRatio: 0.85,     // low-slung — the legspan spreads well past a tile
+      yawOffset: 0,          // head sits +Z of the tail at rest, like the bipeds
+      moveTimeScale: 2.0,    // Walking 1.0s → ~0.5s/cycle at board pace
+      castTimeScale: 2.0,
+      deathTimeScale: 1.9,
+      hitTimeScale: 2.8,
+      jumpTimeScale: 3.2,
+    },
+  },
+  // Honda Civic — the transformer. TWO models: the boneless sedan
+  // (texture-stage GLB — a static mesh is exactly right for a parked car)
+  // idles and drives, and the rigged robot ("1990s_sedan_transform", a
+  // standard Meshy biped → library-animated) takes over for combat actions.
+  // The swap rides the existing 2D transform state machine: battle.js
+  // UNIT_ANIM_OVERRIDES['honda civic'] sets unit._spriteOverride to the
+  // combat/moving sprite URLs around casts/attacks/moves, and the renderer
+  // resolves def.overrideForms[_spriteOverride] to pick the 3D form — so the
+  // robot appears for exactly the frames the 2D transformer sprite used to,
+  // then reverts (revertAfter) back to the car. transformFx pops a ground
+  // ring at each morph. If the sedan drives tail-first, flip yawOffset sign.
+  'honda civic': {
+    male: (function () {
+      const car = {
+        model: `${_S}/Races/hondacivic/Meshy_AI_1990s_sedan_0719015525_texture.glb`,
+        clips: {},
+        heightRatio: 0.55,        // roofline ~chest-high → ~1.7 tiles bumper-to-bumper
+        yawOffset: -Math.PI / 2,  // export's long axis is X — swing the nose to +Z
+        transformFx: true,
+        moveTimeScale: 1, castTimeScale: 1,
+        deathTimeScale: 1.9, hitTimeScale: 2.8, jumpTimeScale: 3.2,
+      };
+      const robot = _mkUAL('hondacivic', '1990s_sedan_transform', {
+        heightRatio: 1.45,        // 3.2m bipedal combat platform (mech is 1.5)
+        basicAttackKind: 'punch', // "it stood up and punched a building"
+        transformFx: true,
+        lib: { idle: { clip: 'Idle_10', lib: 2 } },
+      });
+      car.overrideForms = {};
+      if (typeof HONDA_CIVIC_SPRITES !== 'undefined') {
+        car.overrideForms[HONDA_CIVIC_SPRITES.combat] = robot;
+        car.overrideForms[HONDA_CIVIC_SPRITES.moving] = car;   // stays the car while driving
+      }
+      return car;
+    })(),
   },
 };
 

@@ -39457,6 +39457,20 @@
                 _vfxDash(unit.x, unit.y, x, y);
 
                 const _lsApplyLanding = (useAnim) => {
+                    /* Per-spell landing VFX (Seismic Leap crater, Avalanche
+                       Dive ice burst…). .fire() is the online-wrapped entry
+                       point, so guests replay it; the generic shock ring in
+                       the arc's onImpact stays as the no-mapping fallback. */
+                    try {
+                        const _lsVFX = window.ThreeVFXEffects;
+                        if (_lsVFX && state.phase === 'battle' && !_skipVisuals()) {
+                            if (_lsVFX.hasMapping(spell.id, 'aoe')) {
+                                _lsVFX.fire('aoe', spell.id, { tx: x, ty: y, aoeRadius: spell.aoeRadius || 1 });
+                            } else if (_lsVFX.hasMapping(spell.id, 'impact')) {
+                                _lsVFX.fire('impact', spell.id, { tx: x, ty: y });
+                            }
+                        }
+                    } catch (e) {}
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',

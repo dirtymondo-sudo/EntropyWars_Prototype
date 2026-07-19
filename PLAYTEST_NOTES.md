@@ -3080,6 +3080,43 @@ verify visually after upload) — syntax-checked only.
   individual withSkin files on R2 stay (the sniper's model URL points at
   Idle_5's), but are no longer fetched as clips by anyone.
 
+## 3D batch 2026-07-19 (yeti/wizard/skeleton/kaiju/superhero/demonprincess/halfdemon/voidweaver/hondacivic)
+- All wired in sprites.js RACE_MODELS_3D, library-animated except the two
+  special cases below. GLBs parsed offline: every biped is a standard 24-joint
+  Meshy rig (library retargets fine). Halfdemon female REMODELED to
+  `hot_fancy_rich_girl_w` (old hot_attractive_rich_f files still on R2 but
+  unwired — its per-character clips bake the old rig, HARD RULE). Priest
+  female (sexy_nun_girl_realis) was already wired 07-11e — no change.
+  ⚠ kaiju GLB is 71MB (biggest unit asset by far) — consider re-export.
+- **VOIDWEAVER = QUADRUPED**: spider rig has its own bone names (tail/backleg/
+  headend, 27 joints) — biped libraries CANNOT retarget onto it, so the def
+  has no animLib and explicit URLs (its files use `_quadruped_Character_output`
+  / `_quadruped_model_Animation_Walking_withSkin` stems, not the `_biped_`
+  convention `_mk3d` assumes). Only clip: custom Walking (1.0s, clip name
+  "Armature|Unreal Take|baselayer" — irrelevant, renderer takes clips[0]).
+  Idle = static rest pose; casts/hits fall back to lunge/glow tweens.
+- **HONDA CIVIC = TWO MODELS (`overrideForms`)**: base def is the BONELESS
+  sedan texture-GLB (static mesh — renderer's no-rig path renders it fine;
+  long axis is X in the export → yawOffset -π/2; flip sign if it drives
+  tail-first). def.overrideForms maps unit._spriteOverride URLs → alternate
+  3D form defs: combat sprite → rigged transformer biped (library-animated,
+  punches), moving sprite → the car itself. Rides the existing 2D
+  UNIT_ANIM_OVERRIDES state machine in battle.js + the structural serial
+  (which already hashes _spriteOverride), so the robot swaps in exactly for
+  cast/attack frames and reverts after. three-renderer changes: override
+  resolution no longer bails to sprites when a form matches,
+  preloadUnitModels warms overrideForms models too, and a def-gated
+  `transformFx` ground ring pops at each morph (local on host+guest — the
+  swap is driven by the synced _spriteOverride). Any race WITHOUT
+  overrideForms keeps the old behavior (override → 2D sprite path).
+- **leapStrike landing VFX (battle.js `_lsApplyLanding`)**: now fires the
+  spell's mapped 'aoe' (with spell.aoeRadius) or 'impact' ThreeVFXEffects
+  entry on landing — raceSeismicLeap (1-radius earth crater) and
+  raceAvalancheDive (ice burst) got mappings; raceSpellsteal got an arcane
+  mind-rip impact. Those were the ONLY race abilities of this batch missing
+  VFX (verified by parsing _EFX_DATA.S) — everything else was already mapped.
+  fire() is the online-wrapped entry point → guests replay it, fog-gated.
+
 ## Rigged 3D unit models (2026-07-05 — 17 characters + animation categories)
 - **SHARED ANIMATION LIBRARY (2026-07-10 — supersedes per-character clips)**:
   the Quaternius Universal Animation Library (CC0, 43 clips, UE5-style rig,
