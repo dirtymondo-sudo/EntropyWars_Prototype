@@ -1357,7 +1357,7 @@ const RACE_MODELS_3D = {
         model: `${_S}/Races/hondacivic/Meshy_AI_1990s_sedan_0719015525_texture.glb`,
         clips: {},
         heightRatio: 0.55,        // roofline ~chest-high → ~1.7 tiles bumper-to-bumper
-        yawOffset: -Math.PI / 2,  // export's long axis is X — swing the nose to +Z
+        yawOffset: Math.PI / 2,   // export's long axis is X — swing the nose to +Z (sign flipped 2026-07-19: it drove tail-first)
         transformFx: true,
         moveTimeScale: 1, castTimeScale: 1,
         deathTimeScale: 1.9, hitTimeScale: 2.8, jumpTimeScale: 3.2,

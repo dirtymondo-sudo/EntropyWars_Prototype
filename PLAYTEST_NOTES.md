@@ -3717,17 +3717,22 @@ and a hover path-arrow + destination hologram. **All 3 files → R2 together.**
   watchdog on that path). Move-mode returns are wrapped in `_execMove` now.
   The 2-AP intermediate scan also skips `_jump/_takeoff` legs (matches the
   ring-2 highlight, which always did).
-- **Enemy range on hover/click (battle.js `updateEnemyRangePreview`):**
-  hovering an enemy sprite — or click-pinning one (quick-action menu,
-  `_enemyActionTargetId`) — paints an 'enemyRange' overlay: bright red 0.5 =
-  getAttackTiles (real LOS) from where it stands, faint red 0.22 = danger
-  zone (Manhattan attack diamond from every getMoveTiles destination).
-  Driven by `_syncEnemyRangePreview` in three-renderer's renderFrame — a
-  per-frame SIGNATURE check (hovered id + pinned id + target x,y,z,hp) so
-  every set/clear site of `_enemyActionTargetId` is covered without hooks;
+- **Unit attack range on hover (battle.js `updateEnemyRangePreview`):**
+  reworked 2026-07-19 (the 07-11 full threat-range version was removed as
+  noise). Hovering ANY living unit paints an 'enemyRange' overlay of its
+  getAttackTiles (real LOS + elevation) from where it stands — red 0.5 for
+  enemies, blue for the viewer's own units. SUPPRESSED whenever a targeting
+  mode is armed (`state.actionMode` truthy, or actionMenuView attackTargets/
+  spellTargets) so it never blends into the red damage/target highlights.
+  Click-pinning no longer paints — hover only. Driven by
+  `_syncEnemyRangePreview` in three-renderer's renderFrame — a per-frame
+  SIGNATURE check (hovered id + pinned id + actionMode + actionMenuView +
+  target x,y,z,hp), so arming/leaving a mode mid-hover clears/restores it;
   it also drops a stale move-hover arrow if actionMode changed under it.
-  Fog: preview refuses enemies outside computeVisibleTiles(viewer) — probes
-  must set `state.fogOfWar=false` (or pick a visible enemy) before asserting.
+  Fog: preview refuses enemies outside computeVisibleTiles(viewer) (screen-
+  true `_isTileVisibleToViewer` + `isUnitConcealedFrom`) — probes must set
+  `state.fogOfWar=false` (or pick a visible enemy) before asserting.
+  Viewer-local UI on both host and guest; nothing relayed.
 - **Move/Jump hover preview (battle.js `_updateMoveHoverPreview`):** wired in
   updateHoveredTarget (move/jump modes return early with a preview instead of
   confirm-target logic). Reachable tile → `drawPathArrow3D` through the REAL

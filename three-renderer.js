@@ -21239,7 +21239,10 @@ const ThreeRenderer = (function () {
         var hovId = _hoveredUnitId != null ? _hoveredUnitId : '';
         var pinId = state._enemyActionTargetId || '';
         var sig = hovId + '|' + pinId + '|' + (state.phase || '') + '|'
-                + (state.activePlayer || 0) + '|' + (state.round || 0);
+                + (state.activePlayer || 0) + '|' + (state.round || 0)
+                /* targeting mode suppresses the hover range wash — arming or
+                   leaving a mode mid-hover must re-fire the preview */
+                + '|' + (state.actionMode || '') + '|' + (state.actionMenuView || '');
         var tgt = null;
         if (hovId !== '') tgt = _unitById.get(hovId) || null;
         if (!tgt && pinId !== '') tgt = _unitById.get(pinId) || null;

@@ -19669,11 +19669,17 @@
             } catch (e) { /* preview is cosmetic — never let it break hover */ }
         }
 
-        // ── Enemy threat-range preview (REMOVED 2026-07-11, user request) ──
-        // Hover/click used to paint the enemy's reach in red hatched tiles;
-        // that read as noise, so the painting is gone. The function stays
-        // because the renderer's hover loop and the quick menus still call it
-        // — it now only sweeps away any overlay left behind.
+        // ── Hover attack-range preview (2026-07-19, user request) ──────────
+        // Hovering any unit paints the tiles it can basic-attack from where it
+        // stands (getAttackTiles — real LOS + elevation): red for enemies,
+        // blue for the viewer's own units. Suppressed whenever an action
+        // targeting mode is armed (attack/spell/item/build/move…) — the red
+        // damage/target highlights own the board then and the range wash
+        // would blend into them. Driven per-frame by _syncEnemyRangePreview
+        // in three-renderer (signature includes actionMode/actionMenuView so
+        // arming a mode mid-hover clears the overlay immediately).
+        // Purely viewer-local UI: computed from local hover on both host and
+        // guest, nothing is relayed.
         function _clearEnemyRangePreview() {
             if (!state._enemyRangeActive) return;
             state._enemyRangeActive = false;
@@ -19686,6 +19692,30 @@
 
         function updateEnemyRangePreview(hoveredUnitId) {
             _clearEnemyRangePreview();
+            try {
+                if (hoveredUnitId == null) return;
+                if (state.phase !== 'battle' || state.winner) return;
+                if (state.actionMode) return;                       // targeting armed → suppress
+                if (state.actionMenuView === 'attackTargets'
+                    || state.actionMenuView === 'spellTargets') return;
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+                const unit = (state.units || []).find(u => u.id === hoveredUnitId && !u.dead);
+                if (!unit) return;
+                const viewer = getViewerPlayer();
+                if (unit.player !== viewer) {
+                    // Screen-true fog gate: never trace a unit the viewer's
+                    // screen doesn't actually show (fog OR concealment).
+                    if (typeof isUnitConcealedFrom === 'function'
+                        && isUnitConcealedFrom(unit, viewer)) return;
+                    if (!_isTileVisibleToViewer(unit.x, unit.y)) return;
+                }
+                const tiles = getAttackTiles(unit) || [];
+                if (!tiles.length) return;
+                const color = unit.player === viewer ? 0x5aa8ff : 0xff4545;
+                ThreeRenderer.setOverlay('enemyRange',
+                    tiles.map(t => ({ x: t.x, y: t.y })), color, 0.5);
+                state._enemyRangeActive = true;
+            } catch (e) { /* preview is cosmetic — never break the hover loop */ }
         }
         window.updateEnemyRangePreview = updateEnemyRangePreview;
 
@@ -22923,7 +22953,7 @@
             { t: 'FIELD MANUAL', q: 'Ping the field. A marked tile speaks louder than a typed apology.' },
             { t: 'FIELD MANUAL', q: 'Victory pays gold, and gold buys new vessels in the shop. Defeat pays considerably less.' },
             { t: 'FIELD MANUAL', q: 'Cinematics can be skipped with a tap. So can this screen — once the data is in.' },
-            { t: 'INTEL FRAGMENT', q: '“It parallel parked itself. Then it stood up and punched a building.”', s: 'Civilian witness ████ — file: HONDA CIVIC' },
+            { t: 'INTEL FRAGMENT', q: '“It parallel parked itself. Then it stood up and punched a building.”', s: 'Civilian witness ████ — file: SEDAN' },
             { t: 'INTEL FRAGMENT', q: '“He knew about the classified operation. He knew everyone’s names. He gave Agent ████ socks. They were the right size.”', s: 'December incident report' },
             { t: 'INTEL FRAGMENT', q: '“They posed. In the middle of the battle. It shouldn’t have worked. It worked.”', s: 'After-action review — SUPER SENTAI' },
             { t: 'INTEL FRAGMENT', q: '“We built it a maze. It solved it in four minutes. We built a bigger maze. It solved it in three.”', s: 'Containment team report — MINOTAUR' },

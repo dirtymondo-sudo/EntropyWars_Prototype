@@ -2385,7 +2385,7 @@ const RACE_PROFILES = {
         types: ['human', 'divine']
     },
     'honda civic': {
-        label: 'Honda Civic',
+        label: 'Sedan',
         faction: 'space',
         types: ['tech']
     },
