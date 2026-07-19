@@ -8747,6 +8747,45 @@
         let _dmgPreviewCacheKey = '';
         let _dmgPreviewCacheVal = null;
         function getPendingDamagePreview() {
+            // ── Spell-row hover forecast (quick-cast menus) ──
+            // While the player hovers a castable row with a target unit
+            // selected (the arrows preview, hud.js _showMoveArrowPreview),
+            // forecast THAT row's action on the target's HP bar: damage as
+            // the classic white slice off the fill's leading edge, heals as
+            // a white slice GROWING from it ({heal} instead of {dmg} — the
+            // nameplate painter branches on it). Takes precedence over the
+            // armed pendingTarget forecast; cleared with the arrows.
+            const hov = window._hoverActionForecast;
+            if (hov && !state._actionExecuting && !state.devAutoSim) {
+                const attacker = state.units.find(u => u.id === hov.attackerId && !u.dead);
+                const target = state.units.find(u => u.id === hov.targetId && !u.dead);
+                if (attacker && target) {
+                    let spell = null;
+                    if (hov.spellName) {
+                        spell = (attacker.spells || []).find(s => s.name === hov.spellName)
+                            || (attacker._raceAbilities || []).find(s => s.name === hov.spellName);
+                    }
+                    const key = ['hov', attacker.id, target.id,
+                        (spell && spell.name) || (hov.isAttack ? 'atk' : ''),
+                        target.hp, target.shield || 0,
+                        attacker.x, attacker.y, attacker.z ?? 0].join('|');
+                    if (key === _dmgPreviewCacheKey) return _dmgPreviewCacheVal;
+                    let val = null;
+                    if (spell && !isEnemyUnit(attacker, target)) {
+                        // Ally (or self) cast → projected heal, clamped to the
+                        // missing HP by _estimateSpellHeal (full HP = no flash).
+                        const heal = _estimateSpellHeal(attacker, target, spell);
+                        if (heal > 0) val = { unitId: target.id, heal: heal };
+                    } else if ((spell || hov.isAttack) && target.id !== attacker.id) {
+                        const dmg = predictDamageToUnit(attacker, target, spell);
+                        if (dmg > 0) val = { unitId: target.id, dmg: dmg, lethal: dmg >= (target.hp || 0) };
+                    }
+                    _dmgPreviewCacheKey = key;
+                    _dmgPreviewCacheVal = val;
+                    return val;
+                }
+                return null;
+            }
             const pt = state.pendingTarget;
             if (!pt || state._actionExecuting || state.devAutoSim) return null;
             const mode = pt.mode || state.actionMode;

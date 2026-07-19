@@ -1837,8 +1837,8 @@
                 return actionMs(600);
             }
 
-            // Camera: standard static third-person action shot behind the
-            // caster's launch spot (holds while they charge through frame), or
+            // Camera: follow the charger down the path (the camera glides with
+            // the unit from launch to landing, animateDashActionCamera), or
             // the plain top-down path pan if it declines — mirrors the dash kind.
             if (!state.cameraDisabled && _fogCamTilesVisible({ x: fromX, y: fromY }, { x: landTile.x, y: landTile.y })) {
                 stopBoardCameraAnimation();
@@ -9684,6 +9684,11 @@
                     if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
                     if (this._rafId || this._busy || this._cineShotId != null) return;
                     if (state._userPanning || state._fullMapOverview) return;
+                    // End-of-round tour in progress: its beats (overview, status
+                    // dives, detonations…) own the camera — a leftover settle
+                    // firing in a quiet gap between beats re-centred/zoomed onto
+                    // the LAST acting unit mid-tour. Stay out of it.
+                    if (typeof _roundAdvanceInProgress !== 'undefined' && _roundAdvanceInProgress) return;
                     // Under a contextual TPS hold, "level" means the resting
                     // over-the-shoulder pitch, keeping the current heading —
                     // not the tactical overhead.
@@ -14235,11 +14240,15 @@
         // ═══════════════════════════════════════════════════════════════════
         // animateDashActionCamera() — camera for dash / charge / rush moves.
         //
-        // Deliberately TACTICAL: the over-the-shoulder shot these used to get
-        // ended the move parked in the target's face and read wrong for a
-        // traversal move. Dashes now keep the player's board view and simply
-        // pan/frame so the WHOLE travel line (launch and landing) is in shot
-        // for the duration — the drama stays with damaging casts.
+        // The camera FOLLOWS the dasher: it keeps the player's board view
+        // (zoom/tilt/yaw untouched — no over-the-shoulder swing, no zoom
+        // change) and glides the focal point with the unit from launch to
+        // landing, in lockstep with the dash tween. The camera normally
+        // already sits on the caster (it's their turn), so the glide reads
+        // as riding alongside the dash; a short settle tail lets the camera
+        // land WITH the unit instead of parking ahead of it. Dashes onto
+        // higher/lower ground get the focal height for free — moveTo with no
+        // elevZ eases the height onto the landing tile's natural elevation.
         //
         // Returns true if it took the camera; false if it declined (the caller
         // then falls back to the plain path pan).
@@ -14248,10 +14257,13 @@
             if (!fromPoint || !toPoint || state.phase !== 'battle') return false;
             if (state.cameraDisabled || _skipVisuals()) return false;
             if (camera._fogBlocked(opts._fogAllowed)) return false;
-            focusBoardCameraOnTiles([
-                { x: fromPoint.x, y: fromPoint.y },
-                { x: toPoint.x, y: toPoint.y }
-            ], { persist: true, transitionMs: actionMs(380), _fogAllowed: opts._fogAllowed });
+            const ms = Math.max(actionMs(200), opts.duration ?? actionMs(400));
+            camera.moveTo({
+                x: toPoint.x, y: toPoint.y,
+                duration: ms + actionMs(140),
+                easing: 'easeInOut',
+                _fogAllowed: opts._fogAllowed
+            });
             return true;
         }
 
@@ -34973,7 +34985,17 @@
                         && state.actionMenuView === 'items' && anyUsableItemNow(unit)) ? 'items' : 'root';
                     state.selectedTool = null;
                     state.pendingTarget = null;
-                    if (!unit.dead) _softResetCameraToUnit(unit);
+                    // Same guard as doSpell/doAttack: if the throw finished the
+                    // unit's turn, the next activation pan / EOR overview owns
+                    // the camera — restoring here just adds a zoom that gets
+                    // yanked away a beat later.
+                    if (!unit.dead && !unitFinished(unit)) {
+                        _softResetCameraToUnit(unit);
+                    } else {
+                        camera._savedState = null;
+                        camera._cineShotId = null;
+                        camera._releaseCineSubject(actionMs(700));
+                    }
                     checkWin();
                     endUnitIfDone(unit);
                     renderBattleUpdate();
@@ -35632,7 +35654,23 @@
                 // the next cast re-uses it (see the matching doAttack guard).
                 const _rqNext = state._repeatQueue;
                 const _rqChained = _rqNext && _rqNext.unitId === unit.id && _rqNext.queued > 0;
-                if (!unit.dead && !_rqChained) _softResetCameraToUnit(unit);
+                if (!unit.dead && !_rqChained && !unitFinished(unit)) {
+                    _softResetCameraToUnit(unit);
+                } else if (!_rqChained) {
+                    // Unit finished (damaging casts end the turn) → the turn is
+                    // moving on RIGHT NOW: the next unit's activation pan or the
+                    // end-of-round overview owns the camera from here. Restoring
+                    // the pre-cast view first zoomed back onto the caster for a
+                    // beat and immediately got yanked away — the "unnecessary
+                    // zoom after every spell / at the start of end of round"
+                    // jank. Drop the stale camera bookkeeping instead (mirrors
+                    // doAttack's turn-moved-on guard); _preCineView is KEPT so
+                    // whichever pan takes over folds the un-tilt into its own
+                    // motion.
+                    camera._savedState = null;
+                    camera._cineShotId = null;
+                    camera._releaseCineSubject(actionMs(700));
+                }
                 checkWin();
                 endUnitIfDone(unit);
                 markDirty('board', 'selectedUnit', 'hud');
@@ -38846,10 +38884,9 @@
                 if (!state.cameraDisabled && _fogCamTilesVisible({ x: casterStartX, y: casterStartY }, { x, y })) {
                     stopBoardCameraAnimation();
                     if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                    // With the cinematic action camera on, take the standard
-                    // static third-person action shot behind the caster's launch
-                    // spot — it holds while the unit dashes through frame (same
-                    // shot as every other offensive cast, no path chasing);
+                    // With the cinematic action camera on, FOLLOW the dasher —
+                    // the camera glides with the unit from launch to landing in
+                    // lockstep with the dash tween (animateDashActionCamera);
                     // otherwise keep the plain top-down path pan.
                     const _dashFollowed = state.cinematicActionCam && animateDashActionCamera(
                         { x: casterStartX, y: casterStartY },

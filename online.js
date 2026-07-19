@@ -987,6 +987,29 @@
         };
         window.followUnitFall = followUnitFall;
 
+        /* Dash/charge follow camera (battle.js animateDashActionCamera): the
+           camera rides with the dasher from launch to landing. Engine-side
+           (runs inside doSpell's dash/chargeToTarget), so online it only ever
+           fires on the HOST — relay the glide so the guest's camera follows
+           too. The guest handler fog-gates both endpoints on ITS OWN fog set
+           before replaying (a hidden enemy's dash must never trace its path). */
+        const _origAnimateDashActionCamera = animateDashActionCamera;
+        animateDashActionCamera = function(fromPoint, toPoint, opts) {
+            var result = _origAnimateDashActionCamera(fromPoint, toPoint, opts);
+            var _netOn = window._NET && window._NET.online;
+            if (_netOn && _isHost() && fromPoint && toPoint && state.phase === 'battle') {
+                _emit('relay', {
+                    type: 'dash-cam-follow',
+                    fromX: fromPoint.x, fromY: fromPoint.y,
+                    toX: toPoint.x, toY: toPoint.y,
+                    duration: (opts && opts.duration) || 0,
+                    casterId: (opts && opts.casterId) || null
+                });
+            }
+            return result;
+        };
+        window.animateDashActionCamera = animateDashActionCamera;
+
         _postRenderHook = function() {
             _injectTurnBanner();
             _fixPerspectiveLabels();
@@ -2561,6 +2584,34 @@
                             ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
                         if (_fallU && typeof window.followUnitFall === 'function') {
                             window.followUnitFall(_fallU, data.duration ? { duration: data.duration } : {});
+                        }
+                    }
+
+                    if (data.type === 'dash-cam-follow' && NET.role === 'guest') {
+                        /* Dash/charge follow camera: glide with the dasher from
+                           launch to landing. Fog gate on the GUEST's own fog
+                           set — both endpoints must be screen-visible, or the
+                           pan would trace a hidden unit's dash through the fog. */
+                        var _dashVisible = true;
+                        if (st && st.fogOfWar && typeof window._isTileVisibleToViewer === 'function') {
+                            _dashVisible = window._isTileVisibleToViewer(data.fromX, data.fromY)
+                                && window._isTileVisibleToViewer(data.toX, data.toY);
+                        }
+                        /* Concealment (Invisible / smoke) applies with fog OFF
+                           too — never chase a cloaked enemy dasher. */
+                        var _dashCaster = (data.casterId != null && st && st.units)
+                            ? st.units.find(function(u) { return u.id === data.casterId; }) : null;
+                        if (_dashVisible && _dashCaster && _dashCaster.player !== NET.myPlayer
+                            && typeof window.isUnitConcealedFrom === 'function'
+                            && window.isUnitConcealedFrom(_dashCaster, NET.myPlayer)) {
+                            _dashVisible = false;
+                        }
+                        if (_dashVisible && typeof window.animateDashActionCamera === 'function') {
+                            window.animateDashActionCamera(
+                                { x: data.fromX, y: data.fromY },
+                                { x: data.toX, y: data.toY },
+                                { duration: data.duration || 0, _fogAllowed: true }
+                            );
                         }
                     }
 

@@ -4372,6 +4372,8 @@ function _actionPlanArrowColor(action) {
 }
 
 function _clearMoveArrowPreview() {
+  // Hover forecast off with the arrows (see _showMoveArrowPreview).
+  window._hoverActionForecast = null;
   if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
   ThreeRenderer.clearArrows3D();
   ThreeRenderer.clearGhostUnit();
@@ -4432,6 +4434,19 @@ function _showQuickActionRange(actingUnit, castX, castY, action) {
 
 function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
   _clearMoveArrowPreview();
+  // Hover forecast: while this row's arrows are up, the hovered action's
+  // projected damage (or heal) blinks white on the target's nameplate HP
+  // bar — same channel as the confirm-step forecast (ui.js
+  // getPendingDamagePreview reads it; three-renderer paints it). Cleared
+  // with the arrows in _clearMoveArrowPreview.
+  if (actingUnit && targetUnit && targetUnit.id != null) {
+    window._hoverActionForecast = {
+      attackerId: actingUnit.id,
+      targetId: targetUnit.id,
+      spellName: (action && action.spell) ? action.spell.name : null,
+      isAttack: !!(action && (action.id === 'attack' || action.id === 'combo')),
+    };
+  }
   if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
   const tx = targetUnit.x, ty = targetUnit.y;
 

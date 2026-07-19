@@ -7841,11 +7841,22 @@ const ThreeRenderer = (function () {
         }
         var maxHp = u.maxHp || 1;
         var hpPct = Math.max(0, Math.min(100, 100 * (u.hp || 0) / maxHp));
-        var lossPct = Math.max(0, Math.min(hpPct, 100 * info.dmg / maxHp));
-        el.style.left = (hpPct - lossPct) + '%';
-        el.style.width = lossPct + '%';
-        if (info.lethal) el.classList.add('dmg-preview-lethal');
-        else el.classList.remove('dmg-preview-lethal');
+        if (info.heal > 0) {
+            /* Heal forecast: the slice GROWS from the fill's edge toward full
+               (already clamped to missing HP upstream). */
+            var gainPct = Math.max(0, Math.min(100 - hpPct, 100 * info.heal / maxHp));
+            el.style.left = hpPct + '%';
+            el.style.width = gainPct + '%';
+            el.classList.add('dmg-preview-heal');
+            el.classList.remove('dmg-preview-lethal');
+        } else {
+            var lossPct = Math.max(0, Math.min(hpPct, 100 * (info.dmg || 0) / maxHp));
+            el.style.left = (hpPct - lossPct) + '%';
+            el.style.width = lossPct + '%';
+            el.classList.remove('dmg-preview-heal');
+            if (info.lethal) el.classList.add('dmg-preview-lethal');
+            else el.classList.remove('dmg-preview-lethal');
+        }
         _dmgPrevUnitId = info.unitId;
     }
 

@@ -667,6 +667,13 @@
             background: #ffb3bc;
         }
 
+        /* Heal forecast (spell-row hover on an ally): the projected regain
+           blinks as a white-green slice growing from the fill's edge. */
+        .tp-dmg-preview.dmg-preview-heal,
+        .hrlg-thp-preview.dmg-preview-heal {
+            background: #d9ffe9;
+        }
+
         @keyframes dmgPreviewBlink {
             0%, 100% { opacity: 0.25; }
             50% { opacity: 0.95; }
