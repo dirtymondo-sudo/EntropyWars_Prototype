@@ -9777,12 +9777,16 @@ const ThreeRenderer = (function () {
 
                 '.tp-wrap .tp-bars {',
                 '  flex: 1 1 auto; min-width: 0;',
-                '  display: flex; flex-direction: column; gap: 2px;',
+                '  display: flex; flex-direction: column;',
                 '}',
 
+                /* Slim bars — the numbers ride ABOVE each bar (right-aligned)
+                   instead of inside it, so each bar reserves its label strip
+                   via margin-top and must NOT clip (overflow visible lets the
+                   number escape upward). */
                 '.tp-wrap .tp-bar {',
-                '  position: relative; width: 100%; height: 14px;',
-                '  background: rgba(0,0,0,0.6); border-radius: 2px; overflow: hidden;',
+                '  position: relative; width: 100%; height: 5px; margin-top: 12px;',
+                '  background: rgba(0,0,0,0.6); border-radius: 2px;',
                 '}',
 
                 '.tp-wrap .tp-hp-fill {',
@@ -9814,16 +9818,15 @@ const ThreeRenderer = (function () {
                 '  background: linear-gradient(180deg, #6090ff 0%, #3060d0 50%, #2040a0 100%);',
                 '  transition: width 0.25s ease-out;',
                 '}',
-                '.tp-wrap .tp-bar-mp { height: 9px; }',
+                '.tp-wrap .tp-bar-mp { height: 4px; margin-top: 11px; }',
 
                 '.tp-wrap .tp-bar-num {',
-                '  position: absolute; top: 0; left: 0; width: 100%; height: 100%;',
-                '  display: flex; align-items: center; justify-content: center;',
-                '  font-size: 11px; font-weight: 700; color: #fff;',
+                '  position: absolute; right: 1px; bottom: calc(100% + 1px);',
+                '  font-size: 10px; font-weight: 700; color: #fff;',
                 '  text-shadow: 0 0 3px #000, 0 1px 1px #000;',
-                '  letter-spacing: 0.04em; line-height: 1;',
+                '  letter-spacing: 0.04em; line-height: 1; white-space: nowrap;',
                 '}',
-                '.tp-wrap .tp-bar-mp .tp-bar-num { font-size: 8px; }',
+                '.tp-wrap .tp-bar-mp .tp-bar-num { font-size: 9px; color: #aebfff; }',
 
                 '.tp-wrap .tp-status-row {',
                 '  display: flex; flex-wrap: wrap; gap: 1px; padding: 1px 0 0;',
@@ -9845,10 +9848,14 @@ const ThreeRenderer = (function () {
                    type the lone badge stretches (flex:1) to span the full height
                    of both the HP and MP bars; with two types each badge lines up
                    with one bar. */
+                /* margin-top skips the HP number strip so the badge column
+                   tops out level with the HP bar, not the floating numbers. */
                 '.tp-wrap .tp-types {',
                 '  flex: 0 0 auto;',
                 '  display: flex; flex-direction: column; gap: 2px;',
+                '  margin-top: 12px;',
                 '}',
+                '.tp-wrap .tp-type { min-height: 9px; }',
                 /* Canonical type badge — same cut-corner chip used everywhere
                    else (action menu, roster, codex). Bright colored text on a
                    tinted-over-dark fill reads cleanly over the 3D scene. */
@@ -10009,7 +10016,7 @@ const ThreeRenderer = (function () {
                 '.tp-wrap.tp-far .tp-status-row, .tp-wrap.tp-far .tp-eye,',
                 '.tp-wrap.tp-far .tp-zodiac, .tp-wrap.tp-far .tp-skyev { display: none !important; }',
                 '.tp-wrap.tp-far .tp-name { font-size: 14px; height: 21px; justify-content: flex-start; }',
-                '.tp-wrap.tp-far .tp-bar { height: 17px; }',
+                '.tp-wrap.tp-far .tp-bar { height: 8px; margin-top: 15px; }',
                 '.tp-wrap.tp-far .tp-bar-num { font-size: 12px; }'
             ].join('\n');
             document.head.appendChild(s);
