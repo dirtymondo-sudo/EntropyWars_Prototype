@@ -389,7 +389,6 @@
             seedHeal:     { minRange: 0, offensive: false, tileTargeted: true },
             seedPoison:   { minRange: 0, offensive: false, tileTargeted: true },
             leechSeed:    { minRange: 0, offensive: false, tileTargeted: true },
-            plantTree:    { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
 
             // ── Utility / vision ──
             utility:      { minRange: 0, offensive: false, tileTargeted: true },
@@ -1197,18 +1196,6 @@
                 sfx: null,
                 postEffects: [],
             },
-            plantTree: {
-                casterAnim: 'cast',
-                camera: 'focus',
-                travel: 'auto',
-                impact: 'none',
-                hitResponse: 'none',
-                bloodTier: 'none',
-                screenShake: 'none',
-                sfx: null,
-                postEffects: [],
-            },
-
             // ── Utility / vision ──
             utility: {
                 casterAnim: 'cast',
@@ -2025,7 +2012,7 @@
         const _ZODIAC_EARTH_SIGNS = new Set(['taurus', 'virgo', 'capricorn']);
         const EARTH_RESONANCE_COST_MULT = 0.75;
         const EARTH_RESONANCE_FALL_MULT = 1.5;
-        const _TERRAFORM_SPELL_KINDS = new Set(['terrainCreate', 'placeBlock', 'buildStructure', 'plantTree']);
+        const _TERRAFORM_SPELL_KINDS = new Set(['terrainCreate', 'placeBlock', 'buildStructure']);
 
         function isEarthZodiacActive() {
             return _ZODIAC_EARTH_SIGNS.has(state.activeZodiac);
@@ -2113,13 +2100,15 @@
         // ── Tree / lumber economy (Harvester) ─────────────────────────────────
         // Trees are no longer just cosmetic LOS/movement blockers:
         //  • ANY unit can chop a tree down with a basic attack. A deliberate chop
-        //    banks one "lumber" for the chopper's team.
+        //    banks one "lumber" (🪵 build material) for the chopper's team.
         //  • Fire (and now lightning) burns connected forest to scorched ground.
-        //  • Harvesters can PLANT living trees (Wildwood). Each tree a Harvester
-        //    plants grants THAT Harvester (not the team) +ATK / +spell power — so
-        //    enemies are incentivised to cut or burn its trees down.
-        //  • Harvesters can spend a lumber-scaling nuke (Timber Strike) whose
-        //    damage grows for every tree the team has felled.
+        //  • Harvesters can PLANT living trees (Wildwood), and their seeds
+        //    (Healing/Poison/Leech) GROW into aura trees after 1-2 rounds. Each
+        //    tree a Harvester plants grants THAT Harvester (not the team)
+        //    +ATK / +spell power — so enemies are incentivised to cut or burn
+        //    its trees down.
+        //  • Harvesters can spend a grove-scaling nuke (Trunk Throw) whose
+        //    damage grows for every living tree the caster has planted.
         const PLANTED_TREE_STAT_PER = 7;   // atk & spellPower granted per living planted tree
         const PLANTED_TREE_STAT_CAP = 6;   // …counting at most this many trees
 
@@ -2144,14 +2133,15 @@
             return n * PLANTED_TREE_STAT_PER;
         }
 
-        // Bonus spell power for a lumber-scaling spell (Timber Strike): grows with
-        // the number of trees the caster's team has cut down this match.
-        function getLumberBonus(unit, spell) {
-            if (!unit || !spell || !spell.lumberScale) return 0;
-            const felled = (state.lumber && state.lumber[unit.player]) || 0;
-            const per = spell.lumberPerTree || 30;
-            const cap = spell.lumberCap || 300;
-            return Math.min(cap, felled * per);
+        // Bonus spell power for a grove-scaling spell (Trunk Throw): grows with
+        // the number of living trees the CASTER has personally planted on the
+        // map (Wildwood plants + grown seeds) — NOT with trees the team felled.
+        function getTreeThrowBonus(unit, spell) {
+            if (!unit || !spell || !spell.treeScale) return 0;
+            const grove = getOwnPlantedTreeCount(unit);
+            const per = spell.treePerTree || 30;
+            const cap = spell.treeCap || 300;
+            return Math.min(cap, grove * per);
         }
 
         // Remove any planted-tree record at (x,y) so a burned/cut planted tree stops
@@ -3120,8 +3110,8 @@
         // team, and the build spells (kind placeBlock / buildStructure) spend
         // them. Per-team bank: state.matBank = { player: {wood,stone,metal} }.
         // Teams start with a small stock so build spells work on turn 1; the
-        // Harvester-only state.lumber tally is untouched (still powers Timber
-        // Strike).
+        // state.lumber tally remains as a per-team felled-tree counter (Trunk
+        // Throw now scales with PLANTED trees instead — see getTreeThrowBonus).
         const MAT_KINDS = ['wood', 'stone', 'metal'];
         const MAT_ICONS = { wood: '🪵', stone: '🪨', metal: '⚙️' };
         const MAT_START_STOCK = { wood: 3, stone: 3, metal: 1 };
@@ -5450,16 +5440,28 @@
             }, _eqCamLead);
         }
 
-        // ── Seed effect core ───────────────────────────────────────────────────
-        // One source of truth for what a planted seed does to a unit standing on
-        // it. Used by (1) the end-of-round tick, (2) planting a seed on an
-        // occupied tile (fires immediately), and (3) units stepping onto a seed
-        // mid-round. Amounts scale with max HP so seeds stay relevant whether the
+        // ── Seed → aura-tree core ─────────────────────────────────────────────
+        // While planted, a seed affects the unit STANDING on its tile exactly
+        // like it always has (heal ally / poison enemy / leech both ways).
+        // After surviving 2 end-of-round ticks (1 tick if the tile is beside
+        // water or being rained on) the seed GROWS into a living tree on its
+        // tile. The grown tree then pulses an AOE aura every round until it is
+        // chopped or burned down:
+        //   heal   → normal tree,        heals the owner's allies in the area
+        //   poison → purple-leaf tree,   poisons enemies in the area
+        //   leech  → crimson-leaf tree,  drains enemies, feeds the weakest ally
+        // Amounts scale with max HP so seeds/trees stay relevant whether the
         // unit has 450 HP or 1000.
         const SEED_HEAL_PCT = 0.08;       // healing seed: % max HP per proc (doubled in rain)
         const SEED_POISON_PCT = 0.06;     // poison seed: % max HP per proc (+ poison status)
         const SEED_LEECH_PCT = 0.05;      // leech seed: % max HP drained from enemies
         const SEED_LEECH_ALLY_PCT = 0.04; // leech seed: % max HP healed for allies on it
+        const TREE_AURA_RADIUS = 1;            // Chebyshev radius (3×3 area)
+        const TREE_AURA_HEAL_PCT = 0.07;       // healing tree: % max HP per pulse (doubled in rain)
+        const TREE_AURA_POISON_PCT = 0.05;     // poison tree: % max HP per pulse (+ poison status)
+        const TREE_AURA_LEECH_PCT = 0.04;      // leech tree: % max HP drained from enemies
+        const SEED_GROW_ROUNDS = 2;            // end-of-round ticks a seed needs to grow
+        const SEED_GROW_ROUNDS_WET = 1;        // …when beside water or rained on
 
         function _seedRainAt(x, y) {
             /* Check every weather system covering the tile — not just the first
@@ -5472,6 +5474,21 @@
             });
         }
 
+        // Watered check: adjacent (8-neighbourhood) water speeds growth up.
+        function _seedBesideWater(x, y) {
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    if (!dx && !dy) continue;
+                    const t = isInside(x + dx, y + dy) ? getTerrainAt(x + dx, y + dy) : null;
+                    if (t === 'water' || t === 'deep_water' || t === 'healing_spring') return true;
+                }
+            }
+            return false;
+        }
+
+        // What an ungrown seed does to the unit standing on its tile. Used by
+        // (1) the end-of-round tick, (2) planting a seed on an occupied tile
+        // (fires immediately), and (3) units stepping onto a seed mid-round.
         function applySeedEffectToUnit(seed, unit, events = null) {
             if (!seed || !unit || unit.dead) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
@@ -5566,13 +5583,174 @@
             }
         }
 
-        function applySeedTileEffects_endOfRound(player, events) {
-            if (!state.plantedSeeds) return;
+        // Board-object payload for each grown seed type. Poison/leech trees ride
+        // the map editor's per-placement leaf-texture mechanism (entry.leaf) so
+        // the 3D renderer retextures their canopy — no new assets needed.
+        function _auraTreeObjectFor(type) {
+            if (type === 'poison') return [{ key: 'tree', alignX: 'center', alignY: 'bottom', rot: 0, flipX: false, flipY: false, leaf: 'purple_grass' }];
+            if (type === 'leech') return [{ key: 'tree', alignX: 'center', alignY: 'bottom', rot: 0, flipX: false, flipY: false, leaf: 'mars' }];
+            return 'tree';
+        }
 
-            /* Pruning + duration tick are round-scoped, not player-scoped — this
+        function _auraTreeName(type) {
+            return type === 'poison' ? 'Toxin Tree' : type === 'leech' ? 'Leech Tree' : 'Healing Tree';
+        }
+
+        // A tile the grown tree can stand on: empty, unblocked, fertile ground.
+        function _treeCanGrowAt(x, y) {
+            if (!isInside(x, y)) return false;
+            if (unitAt(x, y)) return false;
+            if (getObjectAt(x, y)) return false;
+            if (state.plantedSeeds && state.plantedSeeds.some(s => s.x === x && s.y === y)) return false;
+            const t = getTerrainAt(x, y);
+            return !['mountain', 'lava', 'water', 'deep_water', 'void', 'chasm'].includes(t);
+        }
+
+        // A seed's growth completed: put the tree on the board. If a unit is
+        // standing on the seed it gets nudged to an adjacent free tile; if it
+        // has nowhere to go the tree sprouts on the closest valid tile instead.
+        // Expanding-ring search for the closest tile a tree can sprout on.
+        function _nearestTreeGrowTile(cx, cy) {
+            for (let r = 1; r <= 3; r++) {
+                for (let dy = -r; dy <= r; dy++) {
+                    for (let dx = -r; dx <= r; dx++) {
+                        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+                        if (_treeCanGrowAt(cx + dx, cy + dy)) return { x: cx + dx, y: cy + dy };
+                    }
+                }
+            }
+            return null;
+        }
+
+        function _growSeedIntoTree(seed, events = null) {
+            let gx = seed.x, gy = seed.y;
+            const occupant = unitAt(gx, gy);
+            if (occupant && !getObjectAt(gx, gy)) {
+                // Try to shove the occupant one tile aside (orthogonals first).
+                const shoves = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+                for (const [dx, dy] of shoves) {
+                    const nx = gx + dx, ny = gy + dy;
+                    if (!isInside(nx, ny) || unitAt(nx, ny) || !canOccupy(nx, ny)) continue;
+                    occupant.x = nx; occupant.y = ny;
+                    occupant.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(nx, ny, occupant.z ?? 999) : getHeightAt(nx, ny);
+                    addLog(`🌳 The sprouting ${_auraTreeName(seed.type)} pushes ${unitDisplayName(occupant)} to ${coordLabel(nx, ny)}.`);
+                    if (events) {
+                        let evt = events.find(e => e.unit === occupant);
+                        if (!evt) { evt = { unit: occupant, msgs: [], floats: [] }; events.push(evt); }
+                        evt.msgs.push(`<span class="dlg-heal">🌳 A ${_auraTreeName(seed.type)} sprouts under ${unitDisplayName(occupant)} — shoved aside!</span>`);
+                    }
+                    break;
+                }
+            }
+            // Tile must be clear NOW (occupant may be boxed in, or an object /
+            // hazard claimed the tile since planting) — otherwise the tree
+            // sprouts on the closest valid tile instead.
+            if (!_treeCanGrowAt(gx, gy)) {
+                const found = _nearestTreeGrowTile(gx, gy);
+                if (!found) {
+                    addLog(`🌱 The ${_auraTreeName(seed.type)} at ${coordLabel(gx, gy)} finds no room to grow and withers.`);
+                    return;
+                }
+                gx = found.x; gy = found.y;
+            }
+
+            _ensureTreeState();
+            if (getTerrainAt(gx, gy) !== 'grass') setTerrainAt(gx, gy, 'grass');
+            setObjectAt(gx, gy, _auraTreeObjectFor(seed.type));
+            state.plantedTrees.push({ x: gx, y: gy, owner: seed.owner, casterUnitId: seed.casterUnitId, aura: seed.type });
+            _invalidateBoardGrid();
+            state._treeTick = (state._treeTick || 0) + 1;
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            const caster = unitFromId(seed.casterUnitId);
+            addLog(`🌳 A ${_auraTreeName(seed.type)} grows at ${coordLabel(gx, gy)}${caster ? ` — ${unitDisplayName(caster)}'s grove strengthens` : ''}! Its aura pulses every round until it is destroyed.`);
+            if (state.phase === 'battle' && !_skipVisuals()) {
+                showFloatingTextAtTile(gx, gy, '🌳', 'heal', { durationMs: 1000 });
+                /* Reuse the Overgrowth signature grow-in (fired through the
+                   VFX3D channel so online guests replay it too). */
+                if (typeof window !== 'undefined' && window.VFX3D && window.VFX3D.hasMapping
+                    && window.VFX3D.hasMapping('overgrowth', 'impact')) {
+                    window.VFX3D.fire('impact', 'overgrowth', { tx: gx, ty: gy });
+                }
+            }
+            scheduleBoardRender();
+        }
+
+        // What a grown aura tree does to one unit inside its radius each round.
+        function applyAuraTreeEffectToUnit(tree, unit, events = null) {
+            if (!tree || !tree.aura || !unit || unit.dead) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            const pushEvt = (u, msg, float) => {
+                if (!events) return;
+                let evt = events.find(e => e.unit === u);
+                if (!evt) { evt = { unit: u, msgs: [], floats: [] }; events.push(evt); }
+                if (msg) evt.msgs.push(msg);
+                if (float) evt.floats.push(float);
+            };
+
+            if (tree.aura === 'heal' && unit.player === tree.owner) {
+                const isRaining = _seedRainAt(unit.x, unit.y);
+                const healAmt = Math.max(12, Math.round(unit.maxHp * TREE_AURA_HEAL_PCT)) * (isRaining ? 2 : 1);
+                const healed = applyHealingToUnit(unit, healAmt, null);
+                if (healed > 0) {
+                    pushEvt(unit, `<span class="dlg-heal">🌳 Healing Tree ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}</span>`, { text: `+${healed}`, type: 'heal' });
+                    addLog(`🌳 Healing Tree ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}.`);
+                }
+                return healed > 0;
+            }
+
+            if (tree.aura === 'poison' && unit.player !== tree.owner) {
+                const caster = unitFromId(tree.casterUnitId);
+                const hpBefore = unit.hp;
+                const dmgAmt = Math.max(14, Math.round(unit.maxHp * TREE_AURA_POISON_PCT));
+                applyDamageToUnit(unit, dmgAmt, `🌳 Toxin Tree sickens ${unitDisplayName(unit)}: `, {
+                    ignoreArmor: true,
+                    damageType: 'dot',
+                    consumeMarked: false
+                });
+                const dmg = hpBefore - unit.hp;
+                if (!unit.dead) {
+                    applyStatusPayload(unit, { id: 'poison', duration: 2 }, '🌳 Toxin Tree: ', caster);
+                }
+                if (unit.dead) {
+                    pushEvt(unit, `<span class="dlg-damage">🌳 Toxin Tree claims ${unitDisplayName(unit)}</span>`, null);
+                } else if (dmg > 0) {
+                    pushEvt(unit, `<span class="dlg-damage">🌳 Toxin Tree sickens ${unitDisplayName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
+                }
+                return true;
+            }
+
+            if (tree.aura === 'leech' && unit.player !== tree.owner) {
+                const hpBefore = unit.hp;
+                const drainAmt = Math.max(12, Math.round(unit.maxHp * TREE_AURA_LEECH_PCT));
+                applyDamageToUnit(unit, drainAmt, `🌳 Leech Tree saps ${unitDisplayName(unit)}: `, {
+                    ignoreArmor: true,
+                    damageType: 'dot',
+                    consumeMarked: false
+                });
+                const dmg = hpBefore - unit.hp;
+                if (dmg > 0) {
+                    pushEvt(unit, `<span class="dlg-damage">🌳 Leech Tree saps ${unitDisplayName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
+                }
+                // Everything drained is channeled to the owner's weakest ally.
+                const ownerAllies = aliveUnitsFor(tree.owner);
+                if (dmg > 0 && ownerAllies.length > 0) {
+                    const target = ownerAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
+                    const healed = applyHealingToUnit(target, dmg, null);
+                    if (healed > 0) {
+                        pushEvt(target, `<span class="dlg-heal">🌳 Leech Tree channels ${healed} HP to ${unitDisplayName(target)}</span>`, { text: `+${healed}`, type: 'heal' });
+                        addLog(`🌳 Leech Tree channels ${healed} HP to ${unitDisplayName(target)}.`);
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+
+        function applySeedTileEffects_endOfRound(player, events) {
+            /* Growth + pruning are round-scoped, not player-scoped — this
                function runs once per player each round, so only tick on the
-               first call or seeds expire at double speed. */
-            if (player === 1) {
+               first call or seeds would grow at double speed. */
+            if (player === 1 && state.plantedSeeds && state.plantedSeeds.length) {
                 state.plantedSeeds = state.plantedSeeds.filter(seed => {
                     if (seed.type === 'poison') return true;
                     const t = getTerrainAt(seed.x, seed.y);
@@ -5597,19 +5775,38 @@
                     }
                 }
 
+                /* Growth tick: wet seeds (beside water, or rained on right now)
+                   sprout after 1 round; everything else takes 2. */
+                const sprouting = [];
                 for (const seed of state.plantedSeeds) {
-                    if (seed.duration !== undefined && seed.duration !== null) seed.duration--;
+                    const wet = _seedRainAt(seed.x, seed.y) || _seedBesideWater(seed.x, seed.y);
+                    seed.growth = (seed.growth || 0) + 1;
+                    if (seed.growth >= (wet ? SEED_GROW_ROUNDS_WET : SEED_GROW_ROUNDS)) sprouting.push(seed);
                 }
-
-                state.plantedSeeds = state.plantedSeeds.filter(s => s.duration === undefined || s.duration === null || s.duration > 0);
+                if (sprouting.length) {
+                    state.plantedSeeds = state.plantedSeeds.filter(s => !sprouting.includes(s));
+                    for (const seed of sprouting) _growSeedIntoTree(seed, events);
+                }
             }
 
+            /* Standing tick: ungrown seeds affect the unit camping their tile,
+               exactly like before the growth rework. */
+            const _seedsLeft = state.plantedSeeds && state.plantedSeeds.length ? state.plantedSeeds : null;
+            /* Aura pulse: every grown aura tree affects this player's units
+               inside its radius. */
+            const auraTrees = (state.plantedTrees || []).filter(t => t.aura);
+            if (!_seedsLeft && !auraTrees.length) return;
             for (const unit of aliveUnitsFor(player)) {
-
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
-                const seedsHere = state.plantedSeeds.filter(s => s.x === unit.x && s.y === unit.y);
-                for (const seed of seedsHere) {
-                    applySeedEffectToUnit(seed, unit, events);
+                if (_seedsLeft) {
+                    const seedsHere = _seedsLeft.filter(s => s.x === unit.x && s.y === unit.y);
+                    for (const seed of seedsHere) {
+                        applySeedEffectToUnit(seed, unit, events);
+                    }
+                }
+                for (const tree of auraTrees) {
+                    if (Math.max(Math.abs(unit.x - tree.x), Math.abs(unit.y - tree.y)) > TREE_AURA_RADIUS) continue;
+                    applyAuraTreeEffectToUnit(tree, unit, events);
                 }
             }
         }
@@ -11890,7 +12087,7 @@
                 else if (kind === 'deployTurret') cat = 'turret';
                 else if (kind === 'aoe' || kind === 'bomb' || kind === 'line' || kind === 'linePush' || kind === 'cross'
                     || kind === 'barrage' || kind === 'terrainCreate' || kind === 'summonWeather' || kind === 'placeTrap'
-                    || kind === 'warpRune' || kind === 'buildStructure' || kind === 'plantTree' || kind === 'seedPoison'
+                    || kind === 'warpRune' || kind === 'buildStructure' || kind === 'seedPoison'
                     || kind === 'leechSeed') cat = 'ground';
                 else if ((type === 'debuff' || kind === 'debuff') && !sp.dmg) cat = 'debuff';
                 else if (type === 'utility' && !sp.dmg && !sp.heal) cat = 'selfUtility';
@@ -11915,7 +12112,7 @@
                     shield: sp.shield || 0,
                     statuses: (sp.statusEffects && sp.statusEffects.length) ? sp.statusEffects : null,
                     statStage: sp.statStageBoost || null,
-                    zone: (kind === 'terrainCreate' || kind === 'summonWeather' || kind === 'seedPoison' || kind === 'leechSeed' || kind === 'plantTree' || kind === 'buildStructure'),
+                    zone: (kind === 'terrainCreate' || kind === 'summonWeather' || kind === 'seedPoison' || kind === 'leechSeed' || kind === 'buildStructure'),
                     trap: (kind === 'placeTrap' || kind === 'warpRune' || kind === 'bomb'),
                     dashDist: sp.displaceDistance || sp.teleportDistance || 3,
                     blink: (kind === 'teleport'),
@@ -11927,7 +12124,7 @@
             function _castSlots(sp) {
                 const k = sp.kind || '';
                 if (k === 'deployTurret' || k === 'placeTrap' || k === 'bomb' || k === 'warpRune') return ['castTrap', 'castSupport', 'cast'];
-                if (k === 'plantTree' || k === 'seedPoison' || k === 'leechSeed' || k === 'seedHeal') return ['castPlant', 'castSupport', 'cast'];
+                if (k === 'seedPoison' || k === 'leechSeed' || k === 'seedHeal') return ['castPlant', 'castSupport', 'cast'];
                 if (sp.damageType === 'physical') return ['castRanged', 'castMelee', 'cast'];
                 if (k === 'heal' || k === 'healAll' || k === 'revive') return ['castHeal', 'castSupport', 'cast'];
                 if (sp.type === 'buff' || k === 'cleanse' || k === 'encore') return ['castSupport', 'castMagic', 'cast'];
@@ -15558,47 +15755,10 @@
         }
 
         function applySeedTileEffects(player) {
-            if (!state.plantedSeeds) return;
-
-            state.plantedSeeds = state.plantedSeeds.filter(seed => {
-                if (seed.type === 'poison') return true;
-                const t = getTerrainAt(seed.x, seed.y);
-                return t === 'grass';
-            });
-
-            if (state.activeWeather && state.activeWeather.length > 0) {
-                const droughtTiles = new Set();
-                for (const w of state.activeWeather) {
-                    if (w.type === 'drought') {
-                        for (const t of w.tiles) droughtTiles.add(posKey(t.x, t.y));
-                    }
-                }
-                if (droughtTiles.size > 0) {
-                    const before = state.plantedSeeds.length;
-                    state.plantedSeeds = state.plantedSeeds.filter(seed => {
-                        if (droughtTiles.has(posKey(seed.x, seed.y))) {
-                            addLog(`☀ The Drought scorches a ${seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : 'Leech'} Seed at ${coordLabel(seed.x, seed.y)}!`);
-                            return false;
-                        }
-                        return true;
-                    });
-                }
-            }
-
-            for (const seed of state.plantedSeeds) {
-                if (seed.duration !== undefined && seed.duration !== null) seed.duration--;
-            }
-
-            const expiring = state.plantedSeeds.filter(s => s.duration !== undefined && s.duration !== null && s.duration <= 0);
-            state.plantedSeeds = state.plantedSeeds.filter(s => s.duration === undefined || s.duration === null || s.duration > 0);
-            for (const unit of aliveUnitsFor(player)) {
-
-                if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
-                const seedsHere = state.plantedSeeds.filter(s => s.x === unit.x && s.y === unit.y);
-                for (const seed of seedsHere) {
-                    applySeedEffectToUnit(seed, unit);
-                }
-            }
+            /* Legacy entry point (GAME bridge / sim harnesses): same growth +
+               aura pipeline as the end-of-round tick, without the camera-pan
+               event collection. */
+            applySeedTileEffects_endOfRound(player, null);
         }
 
         function unitFromId(id) {
@@ -16761,7 +16921,7 @@
                         'Swordmaster': ['zantetsuken', 'dragonSlash', 'lungingStrike', 'bladeWaltz', 'parryStance', 'swordBeam', 'crossSlash'],
                         'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'crossfire'],
                         'Psychic': ['mindShatter', 'psychosis', 'teleport', 'glare', 'warpRune'],
-                        'Harvester': ['overgrowth', 'lifeDrain', 'wildwood', 'timberStrike', 'leechSeed', 'healingSeed', 'poisonSeed'],
+                        'Harvester': ['lifeDrain', 'trunkThrow', 'leechSeed', 'healingSeed', 'poisonSeed'],
                         'Engineer': ['fiveGTower', 'overclock', 'empBurst', 'magnetMine', 'repair', 'freeEnergy', 'plasmaGun', 'deployTurret'],
                         'Harbinger': ['requiem', 'encore', 'fermata', 'sonicCharge', 'discordance', 'lullaby'],
                         'Raider': ['rampage', 'skullCrack', 'haymaker', 'ironGrip'],
@@ -17099,7 +17259,6 @@
                 case 'deployTurret':  return nm + ': select a tile to deploy on.';
                 case 'buildBridge':   return nm + ': select where to build.';
                 case 'terrainCreate': return nm + ': select a tile to reshape.';
-                case 'plantTree':     return nm + ': select a tile to plant on.';
                 case 'line':
                 case 'linePush':
                 case 'splitBeam':     return nm + ': select a tile to aim at — the beam fires in that direction.';
@@ -32692,9 +32851,9 @@
                 if (!_unitAttacksWithClip(unit)) animateStrikeLeap(unit, x, y);
                 triggerAttackAnim(unit, x, y, 'chop');   // rigged models swing the axe (no leap)
                 _fellTreeAt(x, y, unit);
-                // Only Harvesters can spend lumber (Timber Strike), so only they
-                // see the running lumber tally; for everyone else it's just clearing
-                // cover.
+                // Harvesters live and die by the tree economy, so only they see
+                // the running lumber tally; for everyone else it's just clearing
+                // cover (and banking 🪵 build material).
                 const _lumberNote = unit.cls === 'Harvester' ? ` (Lumber felled: ${state.lumber[unit.player] || 0})` : '';
                 addLog(`🪓 ${unitDisplayName(unit)} chops down a ${wasPlanted ? 'planted ' : ''}tree at ${coordLabel(x, y)}!${_lumberNote}`);
                 showFloatingTextAtTile(x, y, '🪓 TIMBER!', 'damage', { durationMs: 1100 });
@@ -35614,7 +35773,7 @@
             }
 
             const spellPower = (unit.spellPower || 0) + getHourglassPower(unit) + getSpellStatBonus(unit, spell)
-                + getPlantedTreeBonus(unit) + getLumberBonus(unit, spell) + getJobPassiveSpellBonus(unit);
+                + getPlantedTreeBonus(unit) + getTreeThrowBonus(unit, spell) + getJobPassiveSpellBonus(unit);
             let panelFocusTarget = null;
             let completionDelay = 0;
             const spellApCost = getSpellApCost(spell);
@@ -35761,7 +35920,7 @@
                     window.setTimeout(() => {
                         _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
                     }, impactDelay);
-                } else if (spell.id === 'raceTrunkThrow') {
+                } else if (spell.id === 'trunkThrow' || spell.id === 'raceTrunkThrow') {
                     // ── Trunk Throw: hurl an actual tree on a tumbling parabolic arc. ──
                     focusUnitPanel(target.id);
                     playSfx(spellLaunchSfx(spell));
@@ -38345,11 +38504,12 @@
                         z,
                         type: 'heal',
                         owner: unit.player,
-                        casterUnitId: unit.id
+                        casterUnitId: unit.id,
+                        growth: 0
                     };
                     state.plantedSeeds.push(_newSeed);
-                    addLog(`${unitDisplayName(unit)} plants a Healing Seed at ${coordLabel(x, y)}. It will persist until destroyed.`);
-
+                    const _wetNow = _seedRainAt(x, y) || _seedBesideWater(x, y);
+                    addLog(`${unitDisplayName(unit)} plants a Healing Seed at ${coordLabel(x, y)}. It will grow into a Healing Tree in ${_wetNow ? 1 : 2} round${_wetNow ? '' : 's'}${_wetNow ? ' (well watered!)' : ''} — unless it is destroyed first.`);
                     // Planting under an ally's feet works right away — no waiting
                     // a round for the first tick (rain still doubles the heal).
                     const _occupant = unitAt(x, y);
@@ -38405,10 +38565,12 @@
                         z,
                         type: 'poison',
                         owner: unit.player,
-                        casterUnitId: unit.id
+                        casterUnitId: unit.id,
+                        growth: 0
                     };
                     state.plantedSeeds.push(_newSeed);
-                    addLog(`${unitDisplayName(unit)} plants a Poison Seed at ${coordLabel(x, y)}. It will persist until destroyed.`);
+                    const _wetNowP = _seedRainAt(x, y) || _seedBesideWater(x, y);
+                    addLog(`${unitDisplayName(unit)} plants a Poison Seed at ${coordLabel(x, y)}. It will grow into a Toxin Tree in ${_wetNowP ? 1 : 2} round${_wetNowP ? '' : 's'}${_wetNowP ? ' (well watered!)' : ''} — unless it is destroyed first.`);
                     // Planting under an enemy's feet stings immediately.
                     const _occupant = unitAt(x, y);
                     if (_occupant && applySeedEffectToUnit(_newSeed, _occupant)) {
@@ -38422,7 +38584,7 @@
             else if (spell.kind === 'lifeDrain') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
                 if (!target || isAllyUnit(target, unit)) {
-                    addLog('Choose an enemy target for Life Drain.');
+                    addLog(`Choose an enemy target for ${spell.name}.`);
                     playErrorSfx();
                     return 0;
                 }
@@ -38523,65 +38685,18 @@
                         z,
                         type: 'leech',
                         owner: unit.player,
-                        casterUnitId: unit.id
+                        casterUnitId: unit.id,
+                        growth: 0
                     };
                     state.plantedSeeds.push(_newSeed);
-                    addLog(`${unitDisplayName(unit)} plants Leech Seed at ${coordLabel(x, y)}. Enemies will be drained, allies nourished. Persists until destroyed.`);
+                    const _wetNowL = _seedRainAt(x, y) || _seedBesideWater(x, y);
+                    addLog(`${unitDisplayName(unit)} plants a Leech Seed at ${coordLabel(x, y)}. It will grow into a Leech Tree in ${_wetNowL ? 1 : 2} round${_wetNowL ? '' : 's'}${_wetNowL ? ' (well watered!)' : ''} — unless it is destroyed first.`);
                     // Planting under someone's feet works immediately — drain an
                     // enemy or nourish an ally standing there right now.
                     const _occupant = unitAt(x, y);
                     if (_occupant && applySeedEffectToUnit(_newSeed, _occupant)) {
                         _newSeed._procs = { [_occupant.id]: state.round || 0 };
                     }
-                    scheduleBoardRender();
-                }, actionMs(200) + flyMs + actionMs(60));
-                completionDelay = actionMs(200) + flyMs + actionMs(500);
-            }
-
-            else if (spell.kind === 'plantTree') {
-                _ensureTreeState();
-                const terrain = getTerrainAt(x, y);
-                if (['mountain', 'lava', 'water', 'deep_water', 'void', 'chasm'].includes(terrain)) {
-                    addLog(`Wildwood needs fertile ground — cannot plant on ${terrain}.`);
-                    playErrorSfx();
-                    return 0;
-                }
-                if (unitAt(x, y)) {
-                    addLog('Cannot grow a tree on an occupied tile.');
-                    playErrorSfx();
-                    return 0;
-                }
-                if (getObjectAt(x, y)) {
-                    addLog('That tile is already blocked by an object.');
-                    playErrorSfx();
-                    return 0;
-                }
-                // Cap trees per caster; the oldest withers to make room (no lumber).
-                const owned = state.plantedTrees.filter(t => t.casterUnitId === unit.id);
-                if (owned.length >= (spell.maxActivePerCaster || 4)) {
-                    const oldest = owned[0];
-                    _fellTreeAt(oldest.x, oldest.y, null, { credit: false });
-                    addLog(`Oldest planted tree at ${coordLabel(oldest.x, oldest.y)} withers to make room.`);
-                }
-                playSfx('healRegen');
-                unit.mp -= effectiveSpellCost;
-                focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }, { x, y }], {
-                    zoom: getWideZoom(),
-                    holdMs: 1200
-                });
-                const flyMs = actionMs(420);
-                window.setTimeout(() => playProjectile(unit.x, unit.y, x, y, 'heal', flyMs, spell.spellType, null, spell), actionMs(200));
-                window.setTimeout(() => {
-                    // Trees root into grass so the trunk always has fertile ground.
-                    if (getTerrainAt(x, y) !== 'grass') setTerrainAt(x, y, 'grass');
-                    setObjectAt(x, y, 'tree');
-                    state.plantedTrees.push({ x, y, owner: unit.player, casterUnitId: unit.id });
-                    _invalidateBoardGrid();
-                    state._treeTick = (state._treeTick || 0) + 1;
-                    if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
-                    showFloatingTextAtTile(x, y, '🌳', 'heal', { durationMs: 1000 });
-                    const buff = getPlantedTreeBonus(unit);
-                    addLog(`${unitDisplayName(unit)} grows a tree at ${coordLabel(x, y)} — its grove empowers ${unitDisplayName(unit)} (+${buff} ATK & spell power). Enemies must cut or burn it down.`);
                     scheduleBoardRender();
                 }, actionMs(200) + flyMs + actionMs(60));
                 completionDelay = actionMs(200) + flyMs + actionMs(500);

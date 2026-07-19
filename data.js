@@ -3624,7 +3624,7 @@ const JOB_PASSIVES = {
     'White Mage':{ id: 'grace',          name: 'Grace',           desc: 'Heal and revive spells gain +2 range and +24 healing power.' },
     Agent:       { id: 'fieldOperative', name: 'Field Operative', desc: 'Can equip up to 2 scanners and has longer inspect reach.' },
     Psychic:     { id: 'thirdEye',       name: 'Third Eye',       desc: 'Debuff statuses this unit applies last +1 turn. Teleport costs 1 less MP.' },
-    Harvester:   { id: 'greenThumb',     name: 'Green Thumb',     desc: 'Trees this unit plants buff its ATK & spell power (+7 each, up to 6 living trees), and felled lumber powers Timber Strike. Life Drain heals 20% more. Enemies can chop or burn the forest to shut it down.' },
+    Harvester:   { id: 'greenThumb',     name: 'Green Thumb',     desc: 'Trees grown from this unit\'s seeds buff its ATK & spell power (+7 each, up to 6 living trees) and fuel Trunk Throw (+30 damage each). Life Sap heals 20% more. Enemies can chop or burn the forest to shut it down.' },
     Engineer:    { id: 'tinker',         name: 'Tinker',          desc: 'Turrets have +1 range and Repair heals 20% more.' },
     Harbinger:   { id: 'crescendo',      name: 'Crescendo',       desc: "This unit's buffs last +1 turn. Lullaby has +1 range." },
     Freelancer:  { id: 'adaptable',      name: 'Adaptable',       desc: 'No school restrictions — can learn and equip spells from ANY job pool. A blank slate that borrows every playstyle.' },
@@ -4162,7 +4162,7 @@ const SPELL_LIBRARY = [
         school: 'Harvester',
         classRestriction: 'Harvester',
         jobPreference: ['Harvester'],
-        desc: 'Plant a restorative seed; it grows its own grass tile underneath. Heals allies standing on it each turn. Blooms instantly in rain. Persists until destroyed by enemy attack or drought.'
+        desc: 'Plant a restorative seed that heals allies standing on it each round (doubled in rain). After 2 rounds (1 if beside water or rained on) it grows into a living Healing Tree that heals all nearby allies every round until it is destroyed.'
     },
 
     {
@@ -4180,7 +4180,7 @@ const SPELL_LIBRARY = [
         school: 'Harvester',
         classRestriction: 'Harvester',
         jobPreference: ['Harvester'],
-        desc: 'Plant a toxic seed; it grows its own grass tile underneath. Damages enemies standing on it each turn. Persists until destroyed by enemy attack or drought.'
+        desc: 'Plant a toxic seed that poisons enemies standing on it each round. After 2 rounds (1 if beside water or rained on) it grows into a purple-leafed Toxin Tree that poisons all nearby enemies every round until it is destroyed.'
     },
 
     {
@@ -4237,7 +4237,7 @@ const SPELL_LIBRARY = [
         id: 'lifeDrain',
         spellType: 'unholy',
         element: 'shadow',
-        name: 'Life Drain',
+        name: 'Life Sap',
         type: 'damage',
         cost: 30,
         equipCost: 20,
@@ -4249,7 +4249,7 @@ const SPELL_LIBRARY = [
         classRestriction: 'Harvester',
         drainPct: 0.70,
         bonusVsStatus: { status: 'poison', mult: 1.5 },
-        desc: 'Siphon life force from an enemy. Heals self for 70% of damage dealt. Harvesters heal 20% more. COMBO: ×1.5 damage against Poisoned targets — tainted blood flows freely.'
+        desc: 'Tap an enemy like a maple and drink the sap of their life force. Heals self for 70% of damage dealt. Harvesters heal 20% more. COMBO: ×1.5 damage against Poisoned targets — tainted blood flows freely.'
     },
     {
         id: 'leechSeed',
@@ -4264,65 +4264,28 @@ const SPELL_LIBRARY = [
         tier: 'II',
         school: 'Harvester',
         classRestriction: 'Harvester',
-        desc: 'Infest a tile with parasitic roots; it grows its own grass tile underneath. Enemies crossing it take damage; allies crossing it are healed. Persists until destroyed by enemy attack or drought.'
+        desc: 'Plant a parasitic seed that drains enemies standing on it (feeding your weakest ally) and nourishes allies standing on it. After 2 rounds (1 if beside water or rained on) it grows into a crimson-leafed Leech Tree that drains all nearby enemies every round until it is destroyed.'
     },
     {
-        id: 'wildGrowth',
-        spellType: 'divine',
-        element: 'water',
-        name: 'Healing Spring',
-        type: 'utility',
-        cost: 25,
-        equipCost: 15,
-        apCost: 1,
-        range: 3,
-        kind: 'terrainCreate',
-        terrainType: 'healing_spring',
-        tileCount: 3,
-        orientable: true,
-        tier: 'I',
-        school: 'Harvester',
-        classRestriction: 'Harvester',
-        desc: 'Convert terrain into a 3-tile healing spring in a line (horizontal or vertical). Any unit standing on the spring recovers HP each turn.'
-    },
-    {
-        id: 'wildwood',
-        spellType: 'divine',
-        element: 'nature',
-        name: 'Wildwood',
-        type: 'utility',
-        cost: 30,
-        equipCost: 20,
-        apCost: 1,
-        range: 3,
-        kind: 'plantTree',
-        maxActivePerCaster: 4,
-        tier: 'II',
-        school: 'Harvester',
-        classRestriction: 'Harvester',
-        jobPreference: ['Harvester'],
-        desc: 'Grow a living tree on fertile ground. Each tree you keep alive grants this unit +7 ATK & spell power (up to 6 trees). Enemies must chop or burn your grove down to shut it off.'
-    },
-    {
-        id: 'timberStrike',
+        id: 'trunkThrow',
         spellType: 'anomaly',
         element: 'nature',
-        name: 'Timber Strike',
+        name: 'Trunk Throw',
         type: 'damage',
-        cost: 40,
-        equipCost: 25,
-        dmg: 120,
-        range: 3,
+        cost: 30,
+        equipCost: 20,
+        dmg: 110,
+        range: 4,
         kind: 'damage',
         damageType: 'physical',
-        lumberScale: true,
-        lumberPerTree: 30,
-        lumberCap: 120,
+        treeScale: true,
+        treePerTree: 30,
+        treeCap: 180,
         tier: 'II',
         school: 'Harvester',
         classRestriction: 'Harvester',
         jobPreference: ['Harvester'],
-        desc: 'Hurl a felled trunk at an enemy. Damage grows by +30 for every tree your team has chopped down this match (up to +120). Chop the forest, then swing it.'
+        desc: 'Rip a tree from the ground and hurl it at an enemy. Damage grows by +30 for every living tree you have planted on the map (up to +180). Grow the grove, then throw it.'
     },
 
     {
@@ -4998,31 +4961,6 @@ const SPELL_LIBRARY = [
     },
 
     {
-        id: 'overgrowth',
-        spellType: 'anomaly',
-        element: 'nature',
-        name: 'Overgrowth',
-        type: 'damage',
-        cost: 50,
-        equipCost: 25,
-        dmg: 168,
-        range: 3,
-        kind: 'aoe',
-        damageType: 'magic',
-        tier: 'III',
-        school: 'Harvester',
-        classRestriction: 'Harvester',
-        aoeRadius: 1,
-        leaveTerrain: 'dark_woods',
-        statusEffects: [{
-            id: 'slow',
-            duration: 2
-        }],
-        desc: 'Erupt thorny vines in a 3x3 area. Damages and slows all enemies caught for 2 turns. Leaves dark woods in its wake.'
-    },
-
-
-    {
         id: 'fiveGTower',
         spellType: 'tech',
         element: 'lightning',
@@ -5373,7 +5311,7 @@ const SPELL_LIBRARY = [
         maxActivePerCaster: 2,
         tier: 'I',
         school: 'Agent',
-        classRestrictions: ['Agent', 'Harvester'],
+        classRestrictions: ['Agent'],
         desc: 'Hide a spring-loaded spike snare on any EMPTY tile in range (max 2 active). The first enemy to step on it takes damage and is ROOTED in place for 2 turns — right where you want them.'
     },
     {
@@ -6237,11 +6175,10 @@ const RACE_ABILITIES = {
           kind: 'buff', cleanse: 99,
           statusEffects: [{ id: 'invisible', duration: 2 }],
           desc: 'Every photo of you comes out blurry — even fate can\'t focus. Cleanse all debuffs and turn invisible for 2 turns.' },
-        { id: 'raceTrunkThrow', spellType: 'anomaly', element: 'nature', name: 'Trunk Throw',
-          type: 'damage', cost: 25, dmg: 130, range: 4,
+        { id: 'raceBigKick', spellType: 'anomaly', element: 'earth', name: 'Big Kick',
+          type: 'damage', cost: 20, dmg: 140, range: 1,
           kind: 'damage', damageType: 'physical',
-          desc: 'Rip a tree from the ground and hurl it. Heavy physical damage to a single target.' },
-        SHARED_RAMPART
+          desc: 'Wind up and boot the target with a size-22 foot. Massive point-blank physical damage.' }
     ],
     'siren': [
         { id: 'raceSonicBreaker', spellType: 'anomaly', name: 'Sonic Breaker',
@@ -8281,7 +8218,7 @@ function computeSpellManaCost(s){
     // Status-combo spells (bonusVsStatus) hit ×mult against an ailment the
     // team set up — conditional, so the extra counts at half weight.
     if (s.bonusVsStatus) dmg += (s.dmg || 0) * ((s.bonusVsStatus.mult || 1.5) - 1) * 0.5;
-    if (s.lumberScale) dmg += (s.lumberCap || 0) * 0.25;
+    if (s.treeScale) dmg += (s.treeCap || 0) * 0.25;
     let dmgMod = 1;
     if (s.ignoreArmor || s.piercing || s.bounceShieldIgnore) dmgMod *= 1.25;
     if (s.guaranteedCrit) dmgMod *= 1.6;
@@ -8405,7 +8342,7 @@ function computeSpellManaCost(s){
 // them based on its power — the derived mana cost above is the power proxy.
 // So a build is "8 cheap tricks" or "a few premium bombs", never both.
 // 3-slot territory is reserved for the marquee spell(s) of each type
-// (Nuke, Meteor, EMP Burst, Judgment, Overgrowth, Dragonfire...).
+// (Nuke, Meteor, EMP Burst, Judgment, Dragonfire...).
 // An explicit spell.slotCost (1-3) overrides the derivation.
 const SLOT_COST_2_MIN_MANA = 35;
 const SLOT_COST_3_MIN_MANA = 60;
@@ -11841,7 +11778,7 @@ const CLASS_SPELL_LEARN_ORDER = {
     'White Mage':  ['heal1', 'radiantBolt', 'veilOfLight', 'cleanse', 'exorcism', 'healAll'],
     'Agent':       ['knifeThrow', 'pistolWhip', 'placeBomb', 'snareTrap', 'poisonDart', 'sneakSlash', 'shadowLunge', 'assassinate'],
     'Psychic':     ['kineticHurl', 'glare', 'warpRune', 'psychosis', 'mindShatter'],
-    'Harvester':   ['lifeDrain', 'healingSeed', 'poisonSeed', 'wildwood', 'timberSteps', 'timberStrike', 'leechSeed', 'overgrowth'],
+    'Harvester':   ['lifeDrain', 'healingSeed', 'poisonSeed', 'timberSteps', 'trunkThrow', 'leechSeed'],
     'Engineer':    ['plasmaGun', 'deployTurret', 'repair', 'fieldBridge', 'watchtower', 'tremorCharge', 'freeEnergy', 'fiveGTower', 'bulwarkRing', 'overclock', 'magnetMine', 'empBurst'],
     'Harbinger':   ['lullaby', 'sonicCharge', 'discordance', 'fermata', 'encore', 'requiem'],
     'Freelancer':  ['improvise', 'jackOfAll', 'reallyGoodPunch'],

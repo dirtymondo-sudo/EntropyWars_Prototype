@@ -1788,9 +1788,13 @@
         }
 
         if (['seedHeal', 'seedPoison', 'leechSeed'].includes(kind)) {
-            const nearEnemy = v.visibleEnemies.some(e => Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= 5);
-            if (!nearEnemy && kind !== 'seedHeal') return 0;
-            return kind === 'seedHeal' ? 12 : kind === 'leechSeed' ? 16 : 12;
+            // Seeds are an investment: they grow into aura trees after 1-2
+            // rounds, and every grown tree also feeds the Harvester's Green
+            // Thumb buff + Trunk Throw scaling — so planting early pays twice.
+            let s = kind === 'leechSeed' ? 16 : kind === 'seedPoison' ? 13 : 14;
+            if ((g.state.round || 1) <= 3) s += 6;
+            if (unit.cls === 'Harvester') s += 4;
+            return s;
         }
 
         if (kind === 'buff' && target) {
@@ -4284,6 +4288,11 @@
         if (['seedHeal', 'seedPoison', 'leechSeed'].includes(kind)) {
             const terrain = g.getTerrainAt(unit.x, unit.y);
             if (terrain === 'mountain' || terrain === 'lava') return null;
+            // The engine rejects duplicate seeds per tile, and a tile that
+            // already grew a tree is blocked — pick clean ground or skip.
+            const _stype = kind === 'seedHeal' ? 'heal' : kind === 'seedPoison' ? 'poison' : 'leech';
+            if (g.state.plantedSeeds?.some(s2 => s2.x === unit.x && s2.y === unit.y && s2.type === _stype)) return null;
+            if (g.state.plantedTrees?.some(t2 => t2.x === unit.x && t2.y === unit.y)) return null;
             return { x: unit.x, y: unit.y };
         }
 
