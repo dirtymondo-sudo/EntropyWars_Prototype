@@ -4138,13 +4138,21 @@ const ThreeRenderer = (function () {
     }
     /* Per-instance clone of the aluminium/metal terrain sprite (own tiling,
        shared <img>) — like _turretMetalTex, but a load re-flags OBJECTS dirty
-       so the first-ever placement rebuilds textured instead of staying blank. */
+       so the first-ever placement rebuilds textured instead of staying blank.
+       The dirty callback is queued ONLY while the shared image is still
+       downloading: getTexture fires its onLoad even for cached-complete
+       textures, so passing it unconditionally re-flagged _objectsDirty on
+       every rebuild — the whole objects layer then rebuilt every frame for
+       as long as a traffic light existed on the map. */
     function _tlMetalTex(repX, repY) {
         var key = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES.aluminium) ? 'aluminium' : 'metal';
         var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[key]) ? TERRAIN_SPRITES[key][0] : null;
         if (!url) return null;
-        var base = getTexture(url, function () { _objectsDirty = true; });
+        var base = getTexture(url);
         if (!base) return null;
+        if (!base.image || !base.image.complete) {
+            getTexture(url, function () { _objectsDirty = true; });
+        }
         var tex = base.clone();
         tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
         tex.repeat.set(repX, repY);
@@ -4215,6 +4223,11 @@ const ThreeRenderer = (function () {
         var order = ['red', 'yellow', 'green'];
         var lampR = ts * 0.052;
         var lampMats = {}, glows = {};
+        /* the lamp glows register breathing entries in _hzGlowPulse; remember
+           where ours start so _updateTrafficLights can unregister them when
+           this light is torn down (otherwise every rebuild left 6 dead
+           entries animating disposed materials forever) */
+        var pulseStart = (typeof _hzGlowPulse !== 'undefined') ? _hzGlowPulse.length : -1;
         for (var li = 0; li < order.length; li++) {
             var cn = order[li];
             var ly = headY + headH * (0.30 - 0.30 * li);
@@ -4261,7 +4274,8 @@ const ThreeRenderer = (function () {
 
         /* register for the per-round lamp cycling (self-cleaning: entries
            whose root left the scene are dropped by _updateTrafficLights) */
-        _trafficLights.push({ root: g, lampMats: lampMats, glows: glows, lit: '' });
+        var pulses = (pulseStart >= 0) ? _hzGlowPulse.slice(pulseStart) : [];
+        _trafficLights.push({ root: g, lampMats: lampMats, glows: glows, lit: '', pulses: pulses });
         return g;
     }
 
@@ -4274,7 +4288,18 @@ const ThreeRenderer = (function () {
         var alive = [];
         for (var i = 0; i < _trafficLights.length; i++) {
             var e = _trafficLights[i];
-            if (!e.root.parent) continue;
+            if (!e.root.parent) {
+                /* torn down (objects layer rebuilt / prop erased): also drop
+                   its glow-breathe entries so _animateFloaters stops touching
+                   the disposed materials */
+                if (e.pulses && typeof _hzGlowPulse !== 'undefined') {
+                    for (var pi = 0; pi < e.pulses.length; pi++) {
+                        var px = _hzGlowPulse.indexOf(e.pulses[pi]);
+                        if (px !== -1) _hzGlowPulse.splice(px, 1);
+                    }
+                }
+                continue;
+            }
             alive.push(e);
             if (e.lit === lit) continue;
             e.lit = lit;
