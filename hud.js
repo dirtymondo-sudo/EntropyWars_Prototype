@@ -1914,6 +1914,71 @@ function _hrlgStatusChips(unit) {
   return chips;
 }
 
+// ── Quick-menu header vitals ────────────────────────────────────────
+// The clicked unit's real HP/MP bars ride the quick-menu header, right
+// under the name tab (the panel key carries the unit: 'enemy|<id>' /
+// 'ally|<id>'). Hovering an action row blinks that action's forecast on
+// the HP fill — damage as a white slice off the leading edge (lethal
+// warms to kill-red), heals growing from it — plus a ±N chip naming the
+// number. Reads getPendingDamagePreview (ui.js): the SAME channel the 3D
+// nameplates paint, so hover and confirm forecasts stay in lock-step.
+// Rendered inside HorologeMenu (not baked into the title element) so the
+// hover re-render actually refreshes the slice. Viewer-local by
+// construction — the forecast globals never sync online.
+function _hrlgQuickVitals(panelKey) {
+  const m = /^(enemy|ally)\|(.+)$/.exec(panelKey || '');
+  if (!m) return null;
+  const u = ((typeof state !== 'undefined' && state.units) || []).find(x => String(x.id) === m[2] && !x.dead);
+  if (!u || !(u.maxHp > 0)) return null;
+  const ally = m[1] === 'ally';
+  const hpPct = Math.max(0, Math.min(100, (u.hp / u.maxHp) * 100));
+  const shPct = (u.shield > 0) ? Math.min(100, Math.round((u.shield / u.maxHp) * 100)) : 0;
+  // Hovered-row (or armed-confirm) forecast aimed at THIS unit.
+  let dmg = 0, heal = 0, lethal = false;
+  const fc = (typeof getPendingDamagePreview === 'function') ? getPendingDamagePreview() : null;
+  if (fc && fc.unitId === u.id) {
+    if (fc.dmg > 0) { dmg = fc.dmg; lethal = !!fc.lethal; }
+    else if (fc.heal > 0) heal = fc.heal;
+  }
+  const dmgPct = dmg > 0 ? Math.max(0, Math.min(hpPct, (dmg / u.maxHp) * 100)) : 0;
+  const healPct = heal > 0 ? Math.max(0, Math.min(100 - hpPct, (heal / u.maxHp) * 100)) : 0;
+  return h('div', { key: 'qv', className: 'hrlg-qvitals' + (ally ? ' ally' : ' enemy') },
+    h('div', { className: 'hrlg-qv-row' },
+      h('span', { className: 'hrlg-qv-lbl' }, 'HP'),
+      h('span', { className: 'hrlg-thp' },
+        h('span', { className: 'hrlg-thp-fill', style: {
+          width: hpPct + '%',
+          background: ally ? HP_ALLY_FILL : HP_ENEMY_FILL,
+          boxShadow: ally ? HP_ALLY_GLOW : HP_ENEMY_GLOW,
+        }}),
+        dmgPct > 0 && h('span', {
+          className: 'hrlg-thp-preview' + (lethal ? ' dmg-preview-lethal' : ''),
+          style: { left: (hpPct - dmgPct) + '%', width: dmgPct + '%' },
+        }),
+        healPct > 0 && h('span', {
+          className: 'hrlg-thp-preview dmg-preview-heal',
+          style: { left: hpPct + '%', width: healPct + '%' },
+        }),
+        shPct > 0 && h('span', { className: 'hrlg-thp-shield', style: { width: shPct + '%' } }),
+      ),
+      h('span', { className: 'hrlg-qv-num' }, Math.max(0, Math.round(u.hp)) + '/' + u.maxHp),
+      dmg > 0 && h('span', { className: 'hrlg-qv-fc dmg' + (lethal ? ' lethal' : '') },
+        (lethal ? '💀 ' : '') + '−' + dmg),
+      heal > 0 && h('span', { className: 'hrlg-qv-fc heal' }, '+' + heal),
+    ),
+    (u.maxMp > 0) && h('div', { className: 'hrlg-qv-row' },
+      h('span', { className: 'hrlg-qv-lbl mp' }, 'MP'),
+      h('span', { className: 'hrlg-thp mp' },
+        h('span', { className: 'hrlg-thp-fill', style: {
+          width: Math.max(0, Math.min(100, (u.mp / u.maxMp) * 100)) + '%',
+          background: MP_FILL, boxShadow: MP_GLOW,
+        }}),
+      ),
+      h('span', { className: 'hrlg-qv-num mp' }, Math.max(0, Math.round(u.mp)) + '/' + u.maxMp),
+    ),
+  );
+}
+
 function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, portraitUrl, portraitIsFace, onPortraitClick, infoOpen, onInfo, unitKey, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
@@ -2362,6 +2427,10 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
               p.title.count && h('span', { className: 'hrlg-view-tab-count' }, p.title.count),
             ),
           ),
+          /* clicked unit's live HP/MP + hover forecast under the name tab —
+             built HERE (not in the prebuilt title node) so the hover-driven
+             re-render refreshes the blinking damage slice */
+          _hrlgQuickVitals(p.key),
           h('div', { className: 'hrlg-list', ref: isOn ? listRef : undefined },
             p.blades.map((b, i) => h(HorologeBlade, {
               key: b.id, b: b, idx: i,
@@ -5002,7 +5071,6 @@ function _hrlgEnemyBlades(actingUnit, st) {
   const actions = _computeEnemyActions(actingUnit, targetUnit);
   const dist = Math.abs(actingUnit.x - targetUnit.x) + Math.abs(actingUnit.y - targetUnit.y);
   const targetName = typeof unitDisplayName === 'function' ? unitDisplayName(targetUnit) : (targetUnit.name || targetUnit.cls);
-  const hpPct = targetUnit.maxHp > 0 ? Math.max(0, Math.round((targetUnit.hp / targetUnit.maxHp) * 100)) : 0;
 
   const blades = actions.map((a, i) => {
     const isMove = !!a.moveTile;
@@ -5069,7 +5137,8 @@ function _hrlgEnemyBlades(actingUnit, st) {
       : h('span', { className: 'hrlg-view-tab-icon', style: { color: EW.bad } }, '⌖'),
     h('span', { className: 'hrlg-view-tab-text' }, targetName),
     _hrlgTabInfoBtn(targetUnit, targetName, st),
-    h('span', { className: 'hrlg-view-tab-count', style: { color: HP_ENEMY } }, hpPct + '%'),
+    /* HP%/MP text chips retired — the header vitals bars under this tab
+       (_hrlgQuickVitals) carry the live numbers now */
     h('span', { className: 'hrlg-view-tab-count' }, dist + 't'),
   ) };
   return { title, blades };
@@ -5294,7 +5363,6 @@ function _hrlgAllyBlades(actingUnit, st) {
   const actions = _computeAllyActions(actingUnit, targetUnit);
   const dist = Math.abs(actingUnit.x - targetUnit.x) + Math.abs(actingUnit.y - targetUnit.y);
   const targetName = typeof unitDisplayName === 'function' ? unitDisplayName(targetUnit) : (targetUnit.name || targetUnit.cls);
-  const hpPct = targetUnit.maxHp > 0 ? Math.max(0, Math.round((targetUnit.hp / targetUnit.maxHp) * 100)) : 0;
 
   const blades = actions.map((a, i) => {
     const isMove = !!a.moveTile;
@@ -5346,7 +5414,6 @@ function _hrlgAllyBlades(actingUnit, st) {
   // The ally's face + ⓘ INFO button ride the view tab, same as the enemy
   // quick menu — the stat card is a header button, not an action row.
   const tabPort = _hrlgPortraitData(targetUnit, actingUnit);
-  const mpTxt = (targetUnit.maxMp || 0) > 0 ? Math.round(targetUnit.mp || 0) + 'MP' : null;
   const title = { node: h(React.Fragment, null,
     tabPort
       ? h('span', {
@@ -5356,8 +5423,8 @@ function _hrlgAllyBlades(actingUnit, st) {
       : h('span', { className: 'hrlg-view-tab-icon', style: { color: '#57d97e' } }, '♥'),
     h('span', { className: 'hrlg-view-tab-text' }, targetName),
     _hrlgTabInfoBtn(targetUnit, targetName, st),
-    h('span', { className: 'hrlg-view-tab-count', style: { color: HP_ALLY } }, hpPct + '%'),
-    mpTxt ? h('span', { className: 'hrlg-view-tab-count', style: { color: MP_BLUE } }, mpTxt) : null,
+    /* HP%/MP text chips retired — the header vitals bars under this tab
+       (_hrlgQuickVitals) carry the live numbers now */
     h('span', { className: 'hrlg-view-tab-count' }, dist + 't'),
   ) };
   return { title, blades };
@@ -7037,6 +7104,43 @@ function _injectHudHideStyles() {
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
     }
     .hrlg-view-tab-count { font-size: 11px; letter-spacing: 0.1em; color: #979181; flex: none; white-space: nowrap; margin-left: auto; }
+    /* ── clicked unit's vitals riding the quick-menu header ──
+       Same blade material as the view tab; HP/MP bars reuse the canonical
+       .hrlg-thp bar, forecast slices reuse .hrlg-thp-preview (blink
+       keyframes live in styles-animations.css). */
+    .hrlg-qvitals {
+      position: relative; margin: -1px 7px 0 5px; padding: 6px 18px 6px 13px; flex: none;
+      display: flex; flex-direction: column; gap: 4px;
+      background: linear-gradient(100deg, var(--hfc-faint), rgba(11,11,10,0.55)), #101010;
+      border: 1px solid var(--hfc-soft); border-left: 4px solid var(--hfc);
+      clip-path: polygon(8px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+      transform: skewX(-8deg);
+      pointer-events: none; z-index: 2;
+    }
+    .hrlg-qvitals > * { transform: skewX(8deg); }
+    .hrlg-qvitals.enemy { border-left-color: #ff4a56; }
+    .hrlg-qvitals.ally  { border-left-color: #2ed158; }
+    .hrlg-qv-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .hrlg-qv-row .hrlg-thp { flex: 1 1 auto; min-width: 60px; }
+    .hrlg-qv-lbl {
+      flex: none; width: 18px; font-size: 9px; font-weight: 700;
+      letter-spacing: 0.12em; color: #cfc9b8;
+    }
+    .hrlg-qv-lbl.mp { color: #9fc6ef; }
+    .hrlg-qv-num {
+      flex: none; font-size: 10px; line-height: 1; color: #fff;
+      text-shadow: 0 1px 1px #000, 0 0 3px rgba(0,0,0,0.85);
+    }
+    .hrlg-qv-num.mp { font-size: 9px; color: #aebfff; }
+    /* forecast chip: the hovered action's projected ±HP, blinking in step
+       with the bar slice */
+    .hrlg-qv-fc {
+      flex: none; font-size: 11px; font-weight: 900; letter-spacing: 0.04em;
+      line-height: 1; animation: dmgPreviewBlink 0.85s ease-in-out infinite;
+    }
+    .hrlg-qv-fc.dmg { color: #ff8d97; text-shadow: 0 0 6px rgba(255,74,86,0.7), 0 1px 2px #000; }
+    .hrlg-qv-fc.dmg.lethal { color: #ffd0d5; }
+    .hrlg-qv-fc.heal { color: #7df0a5; text-shadow: 0 0 6px rgba(46,209,88,0.7), 0 1px 2px #000; }
     /* aiming-state instruction ("MOVING — CLICK A TILE") */
     .hrlg-mode {
       position: relative; margin: 0 7px 0 5px; padding: 6px 14px; flex: none;

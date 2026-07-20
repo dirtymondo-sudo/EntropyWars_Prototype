@@ -11931,6 +11931,28 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* A CLICKED unit's plate must never sit faded: the quick-menu target
+       (state._enemyActionTargetId — enemy OR ally), the plain selection
+       (state.selectedUnitId) and the armed confirm target (pendingTarget)
+       all wear tp-targeted, which the visual-hierarchy CSS lifts to full
+       opacity. Toggled by membership every frame so plate rebuilds
+       (nametag mode change, HP redraws) can never drop the class. All
+       three fields are viewer-local UI state, so this is fog/online-safe. */
+    function _syncTargetedPlateClass() {
+        var ids = {};
+        if (state._enemyActionTargetId != null) ids[state._enemyActionTargetId] = 1;
+        if (state.selectedUnitId != null) ids[state.selectedUnitId] = 1;
+        var pt = state.pendingTarget;
+        if (pt && typeof unitAt === 'function') {
+            var ptu = (pt.z !== undefined && pt.z !== null ? unitAt(pt.x, pt.y, pt.z) : null)
+                || unitAt(pt.x, pt.y);
+            if (ptu) ids[ptu.id] = 1;
+        }
+        _plateObjs.forEach(function (po, uid) {
+            if (po && po.el) po.el.classList.toggle('tp-targeted', !!ids[uid]);
+        });
+    }
+
     var _lastActivePlateId = null;
 
     function _syncActivePlateClass() {
@@ -21703,6 +21725,7 @@ const ThreeRenderer = (function () {
         _syncSelectionIndicator();
         _syncTurnBeacon();
         _syncActivePlateClass();
+        _syncTargetedPlateClass();
         _updateExhaustedRingDim();
 
         _hlGlobalTime.value = performance.now() / 1000.0;
