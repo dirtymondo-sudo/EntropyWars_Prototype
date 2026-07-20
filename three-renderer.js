@@ -8921,6 +8921,18 @@ const ThreeRenderer = (function () {
         // wrapper instead of re-cloning the GLB — this is what removes the
         // frame hitch after every walk/spell (see _unitModelRigs above).
         var _rig = _unitModelRigs.get(unit.id);
+        // The model's fit scale is baked into the cached clone at build time
+        // from the tile size THEN current. CONFIG.tileSize flips between the
+        // menu (MENU_TILE) and battle (BASE_TILE) values, and match start can
+        // rebuild units once while the menu size is still in effect — reusing
+        // such a rig on the battle board rendered every unit at ~45% size
+        // (second game onward, once the GLBs resolve synchronously from
+        // cache). A rig baked for a different tile size is stale: re-bake.
+        if (_rig && _rig.ts !== ts) {
+            _disposeModelRig(_rig);
+            _unitModelRigs.delete(unit.id);
+            _rig = null;
+        }
         if (_rig && _rig.url !== def.model) {
             // Character swapped model (sprite override cleared, race morph…)
             _disposeModelRig(_rig);
@@ -9051,7 +9063,7 @@ const ThreeRenderer = (function () {
             // Register the rig cache record now; mixer/actions attach below
             // (they stay null for unrigged static models).
             var _rigRec = {
-                url: def.model, inner: inner, mixer: null, actions: null,
+                url: def.model, ts: ts, inner: inner, mixer: null, actions: null,
                 modelMats: entry.modelMats, silMats: entry.modelSilMats
             };
             _unitModelRigs.set(unit.id, _rigRec);
@@ -20180,6 +20192,31 @@ const ThreeRenderer = (function () {
            (renderer.shadowMap.needsUpdate) instead of every frame. */
         renderer.shadowMap.autoUpdate = false;
         renderer.shadowMap.needsUpdate = true;
+
+        /* ── WebGL context loss/restore ──
+           A GPU reset mid-battle (driver hiccup under a heavy VFX burst)
+           otherwise leaves the canvas permanently black: three.js rebuilds
+           its GL state on restore, but our gated shadow pass and every
+           "already built" serial never notice, so nothing forces a fresh
+           draw. Re-arm the lazily-gated systems the moment the context
+           comes back, and log both events so a black screen is diagnosable
+           from the console. */
+        canvas.addEventListener('webglcontextlost', function (e) {
+            e.preventDefault();   // opt in to restoration
+            console.warn('[ThreeRenderer] WebGL context LOST — waiting for the browser to restore it');
+        }, false);
+        canvas.addEventListener('webglcontextrestored', function () {
+            console.warn('[ThreeRenderer] WebGL context restored — re-priming scene state');
+            try {
+                renderer.shadowMap.autoUpdate = false;
+                renderer.shadowMap.needsUpdate = true;
+            } catch (e) {}
+            _shadowsDirty = true;
+            /* re-upload/recompile everything lazily gated behind serials */
+            _lastTerrainVersion = -1; _lastHeightVersion = -1; _lastVoxelVersion = -1;
+            _lastTerrainDecoSerial = ''; _lastObjectSerial = ''; _objectsDirty = true;
+            invalidateUnits();
+        }, false);
 
         css2dRenderer = new THREE.CSS2DRenderer();
         css2dRenderer.setSize(w, h);

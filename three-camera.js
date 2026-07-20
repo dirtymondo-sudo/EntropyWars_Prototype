@@ -77,12 +77,17 @@ const ThreeCamera = (function () {
         const tx = Math.floor(wx / tileSize);
         const tz = Math.floor(wz / tileSize);
         if (typeof window !== 'undefined' && typeof window._camGroundPx === 'function') {
-            try { return Math.max(0, window._camGroundPx(tx, tz)); } catch (e) {}
+            /* Math.max(0, NaN) is NaN — a poisoned height field must not
+               reach the camera, so only trust a finite answer. */
+            try {
+                const g = window._camGroundPx(tx, tz);
+                if (Number.isFinite(g)) return Math.max(0, g);
+            } catch (e) {}
         }
         if (typeof getHeightAt !== 'function') return 0;
         let h = 0;
         try { h = getHeightAt(tx, tz); } catch (e) { h = 0; }
-        return (h > 0 ? h : 0) * tileSize * ELEV_STEP_RATIO;
+        return (Number.isFinite(h) && h > 0 ? h : 0) * tileSize * ELEV_STEP_RATIO;
     }
 
     function sync(cam) {
@@ -226,6 +231,9 @@ const ThreeCamera = (function () {
             const nowFp = performance.now() / 1000;
             const dtFp = _lastSyncTime > 0 ? Math.min(nowFp - _lastSyncTime, 0.05) : 0.016;
             _lastSyncTime = nowFp;
+            /* ── NaN firewall (see the main branch below) ── */
+            if (!isFinite(targetPosX + targetPosY + targetPosZ + targetLookX + targetLookY + targetLookZ)) return;
+            if (_initialized && !isFinite(_smoothPosX + _smoothPosY + _smoothPosZ + _smoothLookX + _smoothLookY + _smoothLookZ)) _initialized = false;
             if (!_initialized) {
                 _smoothPosX = targetPosX; _smoothPosY = targetPosY; _smoothPosZ = targetPosZ;
                 _smoothLookX = targetLookX; _smoothLookY = targetLookY; _smoothLookZ = targetLookZ;
@@ -370,6 +378,17 @@ const ThreeCamera = (function () {
         const now = performance.now() / 1000;
         const dt = _lastSyncTime > 0 ? Math.min(now - _lastSyncTime, 0.05) : 0.016;
         _lastSyncTime = now;
+
+        /* ── NaN firewall ── _damp() can never recover from a non-finite
+           input: NaN carries through `current + (target-current)*factor`
+           on every later frame, the view matrix goes NaN, and the whole
+           scene renders as black until a reload. If any target went
+           non-finite this frame (bad zoom/tilt, poisoned height field…),
+           HOLD the last good frame instead of damping toward it; if the
+           smoothed state itself is already poisoned, drop _initialized so
+           the branch below re-snaps it to the (verified finite) target. */
+        if (!isFinite(targetPosX + targetPosY + targetPosZ + targetLookX + targetLookY + targetLookZ)) return;
+        if (_initialized && !isFinite(_smoothPosX + _smoothPosY + _smoothPosZ + _smoothLookX + _smoothLookY + _smoothLookZ)) _initialized = false;
 
         if (!_initialized) {
 

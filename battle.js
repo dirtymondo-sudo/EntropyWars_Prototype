@@ -22268,6 +22268,16 @@
             if (typeof ensureUnitZCoords === 'function') ensureUnitZCoords();
             beginPlacement();
             transitionTo(GS.BATTLE);
+            // beginPlacement()'s trailing render() ran with the phase still
+            // 'setup', so renderBoard reset CONFIG.tileSize back to the menu
+            // scale (MENU_TILE) — undoing the battle size set above and letting
+            // the already-running 3D renderer bake one whole rebuild (terrain +
+            // unit rigs) at menu scale before the first battle render corrects
+            // it. Now that the phase is BATTLE, re-assert the battle size so
+            // everything the renderer builds from here on is right first time.
+            if (typeof computeBattleTileSize === 'function') {
+                CONFIG.tileSize = computeBattleTileSize();
+            }
             state.round = 1;
             _roundAdvanceInProgress = false;
             state.startingPlayer = Math.random() < 0.5 ? 1 : 2;
