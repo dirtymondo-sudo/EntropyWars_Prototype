@@ -16131,14 +16131,9 @@
                         }
                         if (_deployBlocks) continue;
 
-                        let _pathElevCost = 0;
-                        if (!_pathIsAirborne && _hd > 0) {
-                            const _nTerr = _has3D ? getTerrainAt3D(nx, ny, nz) : getTerrainAt(nx, ny);
-                            const _nObj = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
-                            const _ramp = _nTerr === 'barrier_passage' || _nObj === 'stairs' || _nObj === 'stairs_2';
-                            _pathElevCost = _ramp ? _hd * 0.25 : _hd * 0.5;
-                        }
-                        const nextCost = cur.cost + getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined) + _pathElevCost + ((dx !== 0 && dy !== 0) ? 0.001 : 0);
+                        /* Elevation is free — mirrors getMoveTiles (jump and
+                           movement are the same thing; no height surcharge). */
+                        const nextCost = cur.cost + getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined) + ((dx !== 0 && dy !== 0) ? 0.001 : 0);
                         if (nextCost > maxMove) continue;
                         const nKey = _has3D ? posKey3(nx, ny, nz) : posKey(nx, ny);
                         if (nextCost >= (costs.get(nKey) ?? Infinity)) continue;
@@ -18754,6 +18749,10 @@
             if (typeof canUnitMove !== 'function' || !canUnitMove(unit)) return 0;
             const movesLeft = UNIT_MAX_MOVES - (unit.movesThisTurn || 0);
             if (movesLeft <= 0) return 0;
+            // The SECOND move of a turn drains ALL remaining AP (finishMoveAt),
+            // so once the unit has moved, a move-then-cast plan can never cast —
+            // offering it just walks the unit and errors "Not enough AP".
+            if ((unit.movesThisTurn || 0) >= 1) return 0;
             const apCost = getSpellApCost(spell);
             // Each move step spends 1 AP (spendAP(unit, AP_COST_ACTION) in finishMove);
             // we must keep apCost AP for the spell itself.
@@ -18833,6 +18832,11 @@
                 if (steps > 0) {
                     const ring1 = getMoveTiles(unit);
                     for (const t of ring1) {
+                        // Parity with findSpellApproachTile: jump/takeoff legs are
+                        // probed by their own approaches above/below — counting
+                        // them here as 1-AP walks lit the button for plans the
+                        // finder (and the AP budget) would then refuse.
+                        if (t._jump || t._takeoff) continue;
                         if (unitAt(t.x, t.y, t.z)) continue;
                         unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
                         if (hasSpellTargetInRange(unit, spell)) return true;
@@ -19053,6 +19057,9 @@
             if (typeof canUnitMove !== 'function' || !canUnitMove(unit)) return 0;
             const movesLeft = UNIT_MAX_MOVES - (unit.movesThisTurn || 0);
             if (movesLeft <= 0) return 0;
+            // Second move drains ALL AP (finishMoveAt) — a move-then-attack
+            // plan after the first move can never swing. Never offer it.
+            if ((unit.movesThisTurn || 0) >= 1) return 0;
             // Each move step spends 1 AP (AP_COST_ACTION in finishMove); keep
             // AP_COST_ACTION AP for the attack swing itself.
             const apSteps = (unit.ap || 0) - AP_COST_ACTION;
@@ -19070,9 +19077,13 @@
             const steps = _attackMoveBudget(unit);
             if (steps <= 0) return false;
             const sx = unit.x, sy = unit.y, sz = unit.z;
+            const _ahAltAp = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined' && FLYING_ALTITUDE_CONFIG.apCost) || 1;
             try {
                 const ring1 = getMoveTiles(unit);
                 for (const t of ring1) {
+                    // A _takeoff tile really costs takeoff AP + move AP before
+                    // the swing — skip it unless the unit can pay all three.
+                    if (t._takeoff && (unit.ap || 0) < _ahAltAp + AP_COST_ACTION + AP_COST_ACTION) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
                     unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
                     if (_getAttackValidTargets(unit, opts).length > 0) return true;
@@ -19094,10 +19105,13 @@
             if (steps <= 0) return null;
             const sx = unit.x, sy = unit.y, sz = unit.z;
             const _hitsTarget = () => _getAttackValidTargets(unit).some(t => t.x === tx && t.y === ty);
+            const _faAltAp = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined' && FLYING_ALTITUDE_CONFIG.apCost) || 1;
             let best = null, bestScore = -1;
             try {
                 const ring1 = getMoveTiles(unit);
                 for (const t of ring1) {
+                    // Mirror attackHasReachableTarget: takeoff+move+swing = 3 AP.
+                    if (t._takeoff && (unit.ap || 0) < _faAltAp + AP_COST_ACTION + AP_COST_ACTION) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
                     unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
                     if (_hitsTarget()) {
@@ -40390,15 +40404,14 @@
                             if (_siegeBlocks) { continue; }
                         }
 
-                        let _elevCost = 0;
-                        if (!_isAirborne && _hDiff > 0) {
-                            const _nxtTerrain = _has3D ? getTerrainAt3D(nx, ny, nz) : getTerrainAt(nx, ny);
-                            const _nxtObj = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
-                            const _onRamp = _nxtTerrain === 'barrier_passage' || _nxtObj === 'stairs' || _nxtObj === 'stairs_2';
-                            _elevCost = _onRamp ? _hDiff * 0.25 : _hDiff * 0.5;
-                        }
-
-                        const nextCost = cur.cost + getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined) + _elevCost + ((dx !== 0 && dy !== 0) ? 0.001 : 0);
+                        /* Jump and movement are the same thing: climbing or
+                           leaping a height difference consumes NO extra move
+                           budget — a tile within flat movement range is
+                           reachable as ONE move action, jump legs included.
+                           (The old 0.5/level surcharge pushed high tiles out
+                           of the move set and forced a move + separate 1-AP
+                           Jump to reach them.) */
+                        const nextCost = cur.cost + getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined) + ((dx !== 0 && dy !== 0) ? 0.001 : 0);
                         if (nextCost > maxCost) { continue; }
 
                         const nKey = _has3D ? posKey3(nx, ny, nz) : posKey(nx, ny);

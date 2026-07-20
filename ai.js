@@ -3324,18 +3324,9 @@
                 }
                 const ni = nx + ny * W;
 
-                let moveCost = (dx !== 0 && dy !== 0) ? 1.41 : 1;
-                if (_hasHeight && !_canFly) {
-                    const curH = g.getHeightAt(cur.x, cur.y);
-                    const nxH = g.getHeightAt(nx, ny);
-                    const hDiff = Math.abs(curH - nxH);
-                    if (hDiff > _maxClimb) {
-
-                        moveCost += 2;
-                    } else if (hDiff > 0) {
-                        moveCost += hDiff * 0.5;
-                    }
-                }
+                // Elevation is free (engine parity: getMoveTiles/findMovePath
+                // no longer surcharge climbs — jump and movement are the same).
+                const moveCost = (dx !== 0 && dy !== 0) ? 1.41 : 1;
                 const tentG = gScore[ci] + moveCost;
                 if (tentG >= gScore[ni]) continue;
                 gScore[ni] = tentG;

@@ -3263,16 +3263,36 @@
             );
             if (!requireEnemyInRange) return partners;
 
+            /* Target-availability filter — MUST mirror what doComboAttack and
+               the combo target drum (_hrlgComboBlades) actually validate, or
+               the Combo button lights up for a pair that dead-ends at "No
+               enemy in combo range". That means: range measured from the
+               INITIATOR only (doComboAttack never checks the partner's
+               distance), 3D combatDist (elevation counts), default range 3
+               (not 1), line of sight clear, and — with fog on — the target
+               actually visible to the initiator. Support combos (heal/buff
+               kinds) aim at ALLIES instead, so they check ally reach. */
             const enemies = aliveUnitsOnFloor(unit.player === 1 ? 2 : 1);
+            const allies = aliveUnitsOnFloor(unit.player).filter(a => a.id !== unit.id);
+            const _cpDist = (u) => (typeof combatDist === 'function')
+                ? combatDist(unit.x, unit.y, unit.z ?? 0, u.x, u.y, u.z ?? 0)
+                : Math.abs(unit.x - u.x) + Math.abs(unit.y - u.y);
+            const _cpFogSees = (u) => !state.fogOfWar || !!state.autoPlayers?.[unit.player]
+                || typeof isInVision !== 'function' || isInVision(unit, u.x, u.y);
             return partners.filter(partner => {
                 const combo = getComboForUnits(unit, partner);
                 if (!combo) return false;
-                const comboRange = combo.range || 1;
-
-                return enemies.some(e => {
-                    const d1 = Math.abs(unit.x - e.x) + Math.abs(unit.y - e.y);
-                    const d2 = Math.abs(partner.x - e.x) + Math.abs(partner.y - e.y);
-                    return d1 <= comboRange || d2 <= comboRange;
+                const comboRange = combo.range || 3;
+                const isOffensive = ['damage', 'multiHit', 'aoe'].includes(combo.kind);
+                const pool = isOffensive ? enemies : allies;
+                return pool.some(t => {
+                    const d = _cpDist(t);
+                    if (d < 1 || d > comboRange) return false;
+                    if (isOffensive && !_cpFogSees(t)) return false;
+                    if (typeof isRangeBlockedByTerrain === 'function'
+                        && (Math.abs(unit.x - t.x) + Math.abs(unit.y - t.y)) >= 1
+                        && isRangeBlockedByTerrain(unit.x, unit.y, t.x, t.y, unit.z)) return false;
+                    return true;
                 });
             });
         }

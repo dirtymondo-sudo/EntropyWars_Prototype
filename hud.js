@@ -2910,6 +2910,11 @@ function _hrlgComboBlades(unit, st) {
     .filter(t => !(typeof isRangeBlockedByTerrain === 'function'
       && (Math.abs(unit.x - t.u.x) + Math.abs(unit.y - t.u.y)) >= 1
       && isRangeBlockedByTerrain(unit.x, unit.y, t.u.x, t.u.y, unit.z)))
+    // Fog parity with getComboPartners / the engine's vision gates: an enemy
+    // the initiator can't see must not be listed (it would leak positions and
+    // the board-click path could never have picked it anyway).
+    .filter(t => !isOffensive || !state.fogOfWar || !!state.autoPlayers?.[unit.player]
+      || typeof isInVision !== 'function' || isInVision(unit, t.u.x, t.u.y))
     .sort((a, b) => a.d - b.d);
 
   const blades = targets.map(t => {
@@ -3088,13 +3093,20 @@ function ActionMenu({ st, hidden }) {
 
   let comboSub = null;
   if (!apc.hasCombo) {
+    const _cbCdLeft = (typeof COMBO_COOLDOWN_ROUNDS !== 'undefined')
+      ? COMBO_COOLDOWN_ROUNDS - ((st.round || 0) - (unit._lastComboRound || -99)) : 0;
     if (typeof unitCanCombo === 'function' && !unitCanCombo(unit)) {
       const lvl = typeof getUnitLevel === 'function' ? getUnitLevel(unit) : 1;
       comboSub = 'Lv' + lvl + '/7';
     } else if ((unit.ap || 0) < (typeof COMBO_AP_COST_INITIATOR !== 'undefined' ? COMBO_AP_COST_INITIATOR : 2)) {
       comboSub = 'No AP';
+    } else if (_cbCdLeft > 0) {
+      comboSub = '⏳ CD ' + _cbCdLeft;
+    } else if (typeof getComboPartners === 'function' && getComboPartners(unit, false).length === 0) {
+      comboSub = 'No partner';
     } else {
-      comboSub = 'Unavailable';
+      // Partners exist but none of their combos can reach anything from here.
+      comboSub = 'No target';
     }
   }
   const comboAction = {
@@ -3752,11 +3764,19 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     let bestTile = null;
     let bestDist = -1;
 
-    const apAfter1Move = unitAP - 1;
+    // AP after the walk leg. The SECOND move of a turn consumes ALL remaining
+    // AP (finishMoveAt) — once the unit has moved, no move-then-act plan can
+    // ever act, so the walk budget drops to zero. (The jump branch below keeps
+    // its own gate: a jump is always a flat 1 AP, move counter or not.)
+    const _mirAltAp = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined' && FLYING_ALTITUDE_CONFIG.apCost) || 1;
+    const apAfter1Move = (actingUnit.movesThisTurn || 0) >= 1 ? -999 : unitAP - 1;
     if (apAfter1Move >= actionApCost) {
       for (const t of ring1) {
         // Double-check tile is actually vacant at this z (ground+air dual occupancy guard)
         if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
+        // Takeoff-and-glide tiles cost takeoff AP + move AP, not 1 — skip them
+        // unless the unit can pay that AND the action afterward.
+        if (t._takeoff && (unitAP - (_mirAltAp + 1)) < actionApCost) continue;
 
         const dFromTile = _dm(t.x, t.y, t.z);
         if (dFromTile >= 1 && dFromTile <= requiredRange) {
@@ -3768,7 +3788,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
           if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(t.x, t.y, tx, ty, t.z)) continue;
 
           if (!bestTile || dFromTile > bestDist) {
-            bestTile = { moveCost: 1, x: t.x, y: t.y, z: t.z };
+            bestTile = { moveCost: t._takeoff ? (_mirAltAp + 1) : 1, x: t.x, y: t.y, z: t.z };
             bestDist = dFromTile;
           }
         }
@@ -3777,8 +3797,9 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
     // Jump counts as movement for the range approach too (1 AP, exactly like
     // a step): a leap over the gap/ledge that blocks the walk ring can be
-    // what puts the target in range.
-    if (!bestTile && apAfter1Move >= actionApCost
+    // what puts the target in range. Unlike a second WALK, a jump stays a
+    // flat 1 AP even after the unit has moved, so it gets its own AP gate.
+    if (!bestTile && (unitAP - 1) >= actionApCost
         && typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
       for (const t of getJumpTiles(actingUnit)) {
         if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
@@ -4034,11 +4055,18 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         // beams were previously never offered as MOVE→CAST at all.
         spMoveTile = null;
         if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function'
-            && canUnitMove(actingUnit) && (unitAP - 1) >= spellApCost) {
+            && (unitAP - 1) >= spellApCost) {
           const cand = [];
-          try { cand.push(...getMoveTiles(actingUnit)); } catch (e) {}
+          // Walk legs only BEFORE the first move: the second move of a turn
+          // drains ALL AP (finishMoveAt), so a walk-then-beam after moving
+          // could never cast. Takeoff tiles cost 2 AP — excluded outright.
+          if (canUnitMove(actingUnit) && (actingUnit.movesThisTurn || 0) < 1) {
+            try { cand.push(...getMoveTiles(actingUnit).filter(t => !t._takeoff)); } catch (e) {}
+          }
           if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
-            try { cand.push(...getJumpTiles(actingUnit)); } catch (e) {}
+            // Tag leap candidates so the executor fires doJump — a raw jump
+            // tile is not a legal doMove destination and would just "Block!".
+            try { cand.push(...getJumpTiles(actingUnit).map(t => ({ x: t.x, y: t.y, z: t.z, _jumpVerb: true }))); } catch (e) {}
           }
           let best = null, bestD = Infinity;
           for (const t of cand) {
@@ -4046,7 +4074,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
             if (t.x === tx && t.y === ty) continue;
             if (!beamRayHits(t.x, t.y)) continue;
             const d = Math.abs(t.x - actingUnit.x) + Math.abs(t.y - actingUnit.y);
-            if (d < bestD) { bestD = d; best = { moveCost: 1, x: t.x, y: t.y, z: t.z }; }
+            if (d < bestD) { bestD = d; best = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb }; }
           }
           spMoveTile = best;
         }
@@ -4118,13 +4146,25 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
   if (typeof unitCanCombo === 'function' && unitCanCombo(actingUnit) && typeof getComboPartners === 'function') {
     const comboApCost = G.COMBO_AP_COST_INITIATOR || 2;
-    const comboRange = effRange;
-    const inComboRange = dist >= 1 && dist <= comboRange && !losBlocked;
-    const canCombo = inComboRange && unitAP >= comboApCost && getComboPartners(actingUnit).length > 0;
     const onCooldown = typeof COMBO_COOLDOWN_ROUNDS !== 'undefined' &&
       ((state.round || 0) - (actingUnit._lastComboRound || -99)) < COMBO_COOLDOWN_ROUNDS;
 
-    if (canCombo && !onCooldown) {
+    // The row is only real if SOME partner's combo can reach THIS enemy from
+    // where the initiator stands — doComboAttack validates the initiator's
+    // range with the COMBO's own range (default 3), not the unit's attack
+    // range, so measuring with effRange here let dead-on-arrival combos
+    // through ("Combo target is out of range").
+    let comboOk = false;
+    if (!onCooldown && unitAP >= comboApCost && !losBlocked && _fogSees) {
+      for (const p of getComboPartners(actingUnit)) {
+        const pCombo = typeof getComboForUnits === 'function' ? getComboForUnits(actingUnit, p) : null;
+        if (!pCombo || !['damage', 'multiHit', 'aoe'].includes(pCombo.kind)) continue;
+        const pRange = pCombo.range || 3;
+        if (dist >= 1 && dist <= pRange) { comboOk = true; break; }
+      }
+    }
+
+    if (comboOk) {
       actions.push({
         id: 'combo',
         label: 'Combo',
@@ -4799,10 +4839,25 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
     } else if (actionId === 'combo') {
       if (typeof setActionMode === 'function') setActionMode('combo');
 
+      // Fire with a partner whose combo actually REACHES the clicked tile —
+      // partners[0] could hold a shorter-range combo than the one the row's
+      // availability check found, and doComboAttack validates the initiator's
+      // distance against that specific combo's range.
       const partners = typeof getComboPartners === 'function' ? getComboPartners(actingUnit) : [];
-      if (partners.length > 0) {
-        state.comboPartner = partners[0];
-        if (typeof doComboAttack === 'function') _run(() => doComboAttack(actingUnit, partners[0], tx, ty, tz));
+      const _gg = window.GAME;
+      const _cDist = (_gg && typeof _gg.combatDist === 'function')
+        ? _gg.combatDist(actingUnit.x, actingUnit.y, actingUnit.z ?? 0, tx, ty, tz ?? 0)
+        : Math.abs(actingUnit.x - tx) + Math.abs(actingUnit.y - ty);
+      let _cbPick = null;
+      for (const p of partners) {
+        const pCombo = typeof getComboForUnits === 'function' ? getComboForUnits(actingUnit, p) : null;
+        if (!pCombo || !['damage', 'multiHit', 'aoe'].includes(pCombo.kind)) continue;
+        if (_cDist >= 1 && _cDist <= (pCombo.range || 3)) { _cbPick = p; break; }
+      }
+      if (!_cbPick && partners.length > 0) _cbPick = partners[0];
+      if (_cbPick) {
+        state.comboPartner = _cbPick;
+        if (typeof doComboAttack === 'function') _run(() => doComboAttack(actingUnit, _cbPick, tx, ty, tz));
       }
     }
 
