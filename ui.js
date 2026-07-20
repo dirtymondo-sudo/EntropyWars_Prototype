@@ -3817,7 +3817,7 @@
               <div class="ins-sub"><span class="ins-side ${isAlly ? 'ally' : 'enemy'}">${isAlly ? 'ALLY' : 'ENEMY'}</span></div>
             </div>
           </div>
-          <div class="ins-vital"><span class="ins-stat-label">HP</span><span class="selected-bar-track ins-vital-track"><span class="selected-bar-fill hp${hpPct <= 30 ? ' low' : ''}" style="width:${hpPct}%"></span>${unit.shield > 0 ? `<span class="selected-bar-fill shield" style="left:${hpPct}%;width:${(unit.shield / unit.maxHp) * 100}%"></span>` : ''}${buildPreviewSegment(unit.hp, unit.maxHp, preview?.type === 'damage' || preview?.type === 'heal' ? preview : null)}</span><span class="ins-vital-num">${unit.hp}/${unit.maxHp}</span></div>
+          <div class="ins-vital"><span class="ins-stat-label">HP</span><span class="selected-bar-track ins-vital-track"><span class="selected-bar-fill hp${isAlly ? '' : ' enemy'}" style="width:${hpPct}%"></span>${unit.shield > 0 ? `<span class="selected-bar-fill shield" style="left:${hpPct}%;width:${(unit.shield / unit.maxHp) * 100}%"></span>` : ''}${buildPreviewSegment(unit.hp, unit.maxHp, preview?.type === 'damage' || preview?.type === 'heal' ? preview : null)}</span><span class="ins-vital-num">${unit.hp}/${unit.maxHp}</span></div>
           <div class="ins-vital"><span class="ins-stat-label">MP</span><span class="selected-bar-track ins-vital-track"><span class="selected-bar-fill mp" style="width:${mpPct}%"></span>${buildPreviewSegment(unit.mp, unit.maxMp, preview?.type === 'mp' ? preview : null)}</span><span class="ins-vital-num">${unit.mp}/${unit.maxMp}</span></div>
           ${forecastNote ? `<div class="ins-note">${forecastNote}</div>` : ''}
           <div class="ins-stats">${statBars}</div>
@@ -3952,7 +3952,7 @@
                 <div class="roster-sub">${u.race || '?'} · ${u.cls} · ${coordLabel(u.x, u.y)}</div>
                 <div class="type-badges-block">${renderTypeBadges(u.types || [])}${u.faction ? `<span style="font-size:8px;color:var(--muted);margin-left:2px">${u.faction}</span>` : ''}</div>
                 ${renderAccessoryBadges(u)}
-                <div class="mini-track"><div class="mini-fill-hp${hpPct <= 30 ? ' low' : ''}" style="width:${hpPct}%"></div></div>
+                <div class="mini-track"><div class="mini-fill-hp${u.player === getViewerPlayer() ? '' : ' enemy'}" style="width:${hpPct}%"></div></div>
                 <div class="mini-track"><div class="mini-fill-mp" style="width:${mpPct}%"></div></div>
                 <div class="roster-stats">
                   <span>${u.hp}/${u.maxHp} HP</span>

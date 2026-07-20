@@ -491,19 +491,6 @@ const ThreeRenderer = (function () {
         return player === viewerP;
     }
 
-    /* Build HTML tick marks inside an HP bar — one line per 100 HP */
-    function _buildHpTicks(maxHp) {
-        if (maxHp <= 100) return '';
-        var ticks = [];
-        var count = Math.floor(maxHp / 100);
-        for (var i = 1; i <= count; i++) {
-            var pct = (i * 100 / maxHp) * 100;
-            if (pct >= 100) break;
-            ticks.push('<div class="tp-hp-tick" style="left:' + pct.toFixed(1) + '%"></div>');
-        }
-        return ticks.join('');
-    }
-
     const UNIT_SPRITE_SIZE_RATIO = 1.0;
     const SELECTED_RING_OFFSET = 0.8;
 
@@ -4197,7 +4184,6 @@ const ThreeRenderer = (function () {
         var maxHp = tw ? (tw.maxHp || 1) : 1;
         var hpPct = Math.max(0, Math.round(100 * hp / maxHp));
         var allyCls = _isAllyPlayer(owner) ? 'tp-hp-ally' : 'tp-hp-enemy';
-        var ticksHtml = _buildHpTicks(maxHp);
 
         var pCls = owner === 1 ? 'tp-p1' : 'tp-p2';
         /* Wrap in a 0×0 .tp-plate-outer just like unit plates do. Passing the
@@ -4214,7 +4200,6 @@ const ThreeRenderer = (function () {
                 '<div class="tp-bars">' +
                     '<div class="tp-bar ' + allyCls + '">' +
                         '<div class="tp-hp-fill" style="width:' + hpPct + '%"></div>' +
-                        ticksHtml +
                         '<span class="tp-bar-num">' + hp + '/' + maxHp + '</span>' +
                     '</div>' +
                 '</div>' +
@@ -9789,38 +9774,35 @@ const ThreeRenderer = (function () {
                    instead of inside it, so each bar reserves its label strip
                    via margin-top and must NOT clip (overflow visible lets the
                    number escape upward). */
+                /* ── Canonical vital bar (shared design language with the
+                   Horologe vitals, target drum and inspect card): flat
+                   rectangle, dark track, fill fading to a pale tip at its
+                   leading edge. Ally HP is ALWAYS green, enemy HP is ALWAYS
+                   red (no low-health hue swap), MP is always the same blue. */
                 '.tp-wrap .tp-bar {',
                 '  position: relative; width: 100%; height: 5px; margin-top: 14px;',
-                '  background: rgba(0,0,0,0.6); border-radius: 2px;',
+                '  background: rgba(0,0,0,0.62);',
                 '}',
 
                 '.tp-wrap .tp-hp-fill {',
-                '  position: absolute; top: 0; left: 0; height: 100%; border-radius: 2px;',
+                '  position: absolute; top: 0; left: 0; height: 100%;',
                 '  transition: width 0.25s ease-out;',
                 '}',
                 '.tp-wrap .tp-hp-ally .tp-hp-fill {',
-                '  background: linear-gradient(180deg, #5eea7a 0%, #2eb850 50%, #1d8a3a 100%);',
-                '  box-shadow: 0 0 4px rgba(80,230,100,0.4);',
+                '  background: linear-gradient(90deg, #2ed158 0%, #2ed158 55%, #d9ffe6 100%);',
                 '}',
                 '.tp-wrap .tp-hp-enemy .tp-hp-fill {',
-                '  background: linear-gradient(180deg, #ff5050 0%, #d42020 50%, #a01010 100%);',
-                '  box-shadow: 0 0 4px rgba(255,60,60,0.5);',
-                '}',
-
-                '.tp-wrap .tp-hp-tick {',
-                '  position: absolute; top: 1px; bottom: 1px; width: 1px;',
-                '  background: rgba(0,0,0,0.55); pointer-events: none; z-index: 1;',
+                '  background: linear-gradient(90deg, #ff4a56 0%, #ff4a56 55%, #ffdfe2 100%);',
                 '}',
 
                 '.tp-wrap .tp-shield {',
                 '  position: absolute; top: 0; right: 0; height: 100%;',
-                '  background: linear-gradient(180deg, rgba(120,200,255,0.7) 0%, rgba(60,140,220,0.5) 100%);',
-                '  border-radius: 2px;',
+                '  background: rgba(130,200,255,0.6);',
                 '}',
 
                 '.tp-wrap .tp-mp-fill {',
-                '  position: absolute; top: 0; left: 0; height: 100%; border-radius: 2px;',
-                '  background: linear-gradient(180deg, #6090ff 0%, #3060d0 50%, #2040a0 100%);',
+                '  position: absolute; top: 0; left: 0; height: 100%;',
+                '  background: linear-gradient(90deg, #2f9dff 0%, #2f9dff 55%, #dbeeff 100%);',
                 '  transition: width 0.25s ease-out;',
                 '}',
                 '.tp-wrap .tp-bar-mp { height: 4px; margin-top: 11px; }',
@@ -10149,7 +10131,6 @@ const ThreeRenderer = (function () {
         var hpStartPct = _lastHpPctById.has(unit.id) ? _lastHpPctById.get(unit.id) : hpPct;
         var mpStartPct = _lastMpPctById.has(unit.id) ? _lastMpPctById.get(unit.id) : mpPct;
         var allyCls = _isAllyPlayer(unit.player) ? 'tp-hp-ally' : 'tp-hp-enemy';
-        var ticksHtml = _buildHpTicks(unit.maxHp || 1);
 
         var shieldAmt = unit.shield || 0;
         var shieldPct = shieldAmt > 0 ? Math.round((shieldAmt / (unit.maxHp || 1)) * 100) : 0;
@@ -10198,7 +10179,6 @@ const ThreeRenderer = (function () {
                 '<div class="tp-bars">' +
                     '<div class="tp-bar ' + allyCls + '">' +
                         '<div class="tp-hp-fill" style="width:' + hpStartPct + '%"></div>' +
-                        ticksHtml +
                         shieldHtml +
                         '<span class="tp-bar-num">' + unit.hp + '/' + unit.maxHp + '</span>' +
                     '</div>' +
@@ -10268,7 +10248,6 @@ const ThreeRenderer = (function () {
 
         var maxHp = su.maxHp || 1, maxMp = su.maxMp || 0;
         var allyCls = _isAllyPlayer(ownerPlayer) ? 'tp-hp-ally' : 'tp-hp-enemy';
-        var ticksHtml = _buildHpTicks(maxHp);
 
         var typeHtml = '';
         if (su.types && su.types.length) {
@@ -10297,7 +10276,6 @@ const ThreeRenderer = (function () {
                 '<div class="tp-bars">' +
                     '<div class="tp-bar ' + allyCls + '">' +
                         '<div class="tp-hp-fill" style="width:100%"></div>' +
-                        ticksHtml +
                         '<span class="tp-bar-num">' + maxHp + '/' + maxHp + '</span>' +
                     '</div>' +
                     '<div class="tp-bar tp-bar-mp">' +

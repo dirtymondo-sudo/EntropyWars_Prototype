@@ -25,6 +25,17 @@ const EW = {
   warn:     '#f2c468',
 };
 
+// ── Canonical vital-bar palette (shared with the 3D nameplates in
+// three-renderer.js and the inspect card in styles-base.css): ally HP is
+// ALWAYS green, enemy HP is ALWAYS red — no low-health hue swap — and MP
+// is always the same blue. Fills fade to a pale tip at the leading edge.
+const HP_ALLY = '#2ed158';
+const HP_ENEMY = '#ff4a56';
+const MP_BLUE = '#2f9dff';
+const HP_ALLY_FILL = 'linear-gradient(90deg, #2ed158 0%, #2ed158 55%, #d9ffe6 100%)';
+const HP_ENEMY_FILL = 'linear-gradient(90deg, #ff4a56 0%, #ff4a56 55%, #ffdfe2 100%)';
+const MP_FILL = 'linear-gradient(90deg, #2f9dff 0%, #2f9dff 55%, #dbeeff 100%)';
+
 const FACTION_COLORS = { space: EW.space, time: EW.time, chaos: EW.chaos };
 const TYPE_COLORS = { human: EW.human, alien: EW.alien, divine: EW.divine, unholy: EW.unholy, anomaly: EW.anomaly, tech: EW.tech };
 // Brightened text colors for the canonical type badge (legible over any background).
@@ -550,7 +561,6 @@ function TurnChip({ entry, size }) {
   const friendly = u.player === viewer;
   const hpPct = u.maxHp > 0 ? Math.max(0, Math.min(100, (u.hp / u.maxHp) * 100)) : 0;
   const mpPct = u.maxMp > 0 ? Math.max(0, Math.min(100, (u.mp / u.maxMp) * 100)) : 0;
-  const hpColor = hpPct <= 30 ? EW.bad : (hpPct <= 55 ? EW.warn : EW.good);
   const name = typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls);
 
   return h('div', {
@@ -586,8 +596,8 @@ function TurnChip({ entry, size }) {
       }},
         h('div', { style: {
           position: 'absolute', top: 0, left: 0, bottom: 0, width: hpPct + '%',
-          background: 'linear-gradient(90deg, ' + hpColor + ', ' + hpColor + 'aa)',
-          boxShadow: '0 0 4px ' + hpColor + '66', transition: 'width 0.35s ease-out',
+          background: friendly ? HP_ALLY_FILL : HP_ENEMY_FILL,
+          transition: 'width 0.35s ease-out',
         }}),
       ),
       u.maxMp > 0 && h('div', { style: {
@@ -595,7 +605,7 @@ function TurnChip({ entry, size }) {
       }},
         h('div', { style: {
           position: 'absolute', top: 0, left: 0, bottom: 0, width: mpPct + '%',
-          background: EW.space, opacity: 0.75, transition: 'width 0.35s ease-out',
+          background: MP_FILL, transition: 'width 0.35s ease-out',
         }}),
       ),
     ),
@@ -664,7 +674,8 @@ function ScoreSideColumn({ st, mode, player, side, color }) {
   const towerHp = player === 1 ? mode.p1TowerHp : mode.p2TowerHp;
   const towerMax = player === 1 ? mode.p1TowerMax : mode.p2TowerMax;
   const towerPct = towerMax > 0 ? (towerHp / towerMax) * 100 : 0;
-  const towerColor = towerPct > 50 ? EW.good : towerPct > 25 ? EW.warn : EW.bad;
+  const _towerViewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+  const towerColor = player === _towerViewer ? HP_ALLY : HP_ENEMY;
 
   return h('div', { style: {
     display: 'flex', flexDirection: 'column', gap: 5,
@@ -698,7 +709,7 @@ function ScoreSideColumn({ st, mode, player, side, color }) {
         h('div', { style: {
           position: 'absolute', top: 0, bottom: 0, [isRight ? 'left' : 'right']: 0,
           width: towerPct + '%',
-          background: 'linear-gradient(90deg, ' + towerColor + ', ' + towerColor + '88)',
+          background: player === _towerViewer ? HP_ALLY_FILL : HP_ENEMY_FILL,
           boxShadow: '0 0 6px ' + towerColor + '55',
         }}),
       ),
@@ -1326,7 +1337,7 @@ function PartyRoster({ st }) {
             h('div', { style: { width: 22, height: 3, background: 'rgba(255,255,255,0.12)' }},
               h('div', { style: {
                 width: hpPct + '%', height: '100%',
-                background: hpPct <= 30 ? EW.bad : EW.good,
+                background: HP_ALLY_FILL,
               }}),
             ),
           );
@@ -1393,7 +1404,7 @@ function GauntletReplaceModal({ st }) {
             ),
             h('span', { style: {
               fontFamily: '"DotGothic16", monospace', fontSize: 11,
-              color: hpPct <= 30 ? EW.bad : EW.good, fontWeight: 600,
+              color: HP_ALLY, fontWeight: 600,
             }}, hpPct + '%'),
           );
         }),
@@ -1720,7 +1731,6 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   let portCol = null;
   if (port) {
     const hpPct = port.maxHp > 0 ? Math.max(0, Math.min(100, (port.hp / port.maxHp) * 100)) : 0;
-    const hpCol = hpPct <= 30 ? EW.bad : hpPct <= 55 ? EW.warn : EW.good;
     const shPct = (port.maxHp > 0 && port.shield > 0)
       ? Math.min(100, Math.round((port.shield / port.maxHp) * 100)) : 0;
     // Confirm forecast: the slice of HP the armed action would take blinks
@@ -1731,9 +1741,9 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
       h('span', { className: 'hrlg-blabel', style: { flex: '0 0 auto' } }, b.label),
       h('span', { className: 'hrlg-thp' },
         h('span', { className: 'hrlg-thp-fill', style: {
-          // flat fill — exact same #6ee2a8/#f2c468/#ff7a8a as the nameplates
+          // canonical fill — ally green / enemy red, same as the nameplates
           width: hpPct + '%',
-          background: hpCol,
+          background: port.ally ? HP_ALLY_FILL : HP_ENEMY_FILL,
         }}),
         prevPct > 0 && h('span', {
           className: 'hrlg-thp-preview' + (b.previewDmg >= port.hp ? ' dmg-preview-lethal' : ''),
@@ -1745,7 +1755,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
       port.showMp && port.maxMp > 0 && h('span', { className: 'hrlg-thp mp' },
         h('span', { className: 'hrlg-thp-fill', style: {
           width: Math.max(0, Math.min(100, (port.mp / port.maxMp) * 100)) + '%',
-          background: '#5fd6ff',   // exact nameplate MP blue, full opacity
+          background: MP_FILL,   // canonical MP blue, same as the nameplates
         }}),
         h('span', { className: 'hrlg-thp-num' }, port.mp + '/' + port.maxMp),
       ),
@@ -2222,10 +2232,9 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
       maxHp > 0 && h('div', { className: 'hrlg-vitals' },
         (() => {
           const hpPct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
-          // exact nameplate palette + thresholds (.hp-fill / .hp-mid / .hp-low)
-          const hpCol = hpPct <= 30 ? '#ff7a8a' : hpPct <= 60 ? '#f2c468' : '#6ee2a8';
+          // canonical ally green — the Horologe always shows YOUR unit
           return h('div', { className: 'hrlg-vbar' },
-            h('span', { className: 'hrlg-vfill', style: { width: hpPct + '%', background: hpCol } }),
+            h('span', { className: 'hrlg-vfill', style: { width: hpPct + '%', background: HP_ALLY_FILL } }),
             h('span', { className: 'hrlg-vlbl' }, 'HP'),
             h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(hp)) + '/' + maxHp),
           );
@@ -2233,7 +2242,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
         maxMp > 0 && (() => {
           const mpPct = Math.max(0, Math.min(100, (mp / maxMp) * 100));
           return h('div', { className: 'hrlg-vbar mp' },
-            h('span', { className: 'hrlg-vfill', style: { width: mpPct + '%', background: '#5fd6ff' } }),
+            h('span', { className: 'hrlg-vfill', style: { width: mpPct + '%', background: MP_FILL } }),
             h('span', { className: 'hrlg-vlbl' }, 'MP'),
             h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(mp)) + '/' + maxMp),
           );
@@ -2629,7 +2638,7 @@ function _hrlgSwitchBlades(unit, st) {
       label: typeof unitDisplayName === 'function' ? unitDisplayName(r) : (r.name || r.cls),
       available: canPay,
       cost: switchCost,
-      meta: { text: hpPct + '%', color: hpPct <= 30 ? EW.bad : EW.good },
+      meta: { text: hpPct + '%', color: HP_ALLY },
       sub: canPay ? null : 'No AP',
       fire: () => { if (canPay && typeof doSwitch === 'function') doSwitch(unit, r.id); },
     };
@@ -2739,10 +2748,12 @@ function _hrlgTargetBlades(unit, st, mode) {
     // structures keep the old hp% text since they have no face art.
     const portrait = tUnit ? _hrlgPortraitData(tUnit, unit) : null;
 
-    // Confirm forecast: the armed (✓) target's HP bar blinks the projected
-    // damage in white (predictDamageToUnit, ui.js — mid estimate IF it
-    // lands; dodge/counter/crit stay a gamble).
-    const previewDmg = (isPending && tUnit && isOffensive
+    // Damage forecast: EVERY offensive unit row blinks the projected damage
+    // in white on its HP bar — same read as the nameplate forecast — so the
+    // player sees the outcome while browsing targets, not only after arming
+    // (predictDamageToUnit, ui.js — mid estimate IF it lands; dodge/counter/
+    // crit stay a gamble).
+    const previewDmg = (tUnit && isOffensive
         && typeof predictDamageToUnit === 'function'
         && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
       ? predictDamageToUnit(unit, tUnit, spell || null) : 0;
@@ -2761,7 +2772,7 @@ function _hrlgTargetBlades(unit, st, mode) {
       portrait: portrait,
       meta: portrait
         ? { text: t.dist + 't' }
-        : { text: (hpPct != null ? hpPct + '% · ' : '') + t.dist + 't', color: hpPct != null && hpPct <= 30 ? EW.bad : undefined },
+        : { text: (hpPct != null ? hpPct + '% · ' : '') + t.dist + 't' },
       // Pass the target's own elevation so an airborne unit (or the upper
       // unit of a stack) is hit — not whoever stands on the ground below.
       // Second (confirming) click fires the action → hide the menus NOW.
@@ -5045,7 +5056,7 @@ function _hrlgEnemyBlades(actingUnit, st) {
       : h('span', { className: 'hrlg-view-tab-icon', style: { color: EW.bad } }, '⌖'),
     h('span', { className: 'hrlg-view-tab-text' }, targetName),
     _hrlgTabInfoBtn(targetUnit, targetName, st),
-    h('span', { className: 'hrlg-view-tab-count', style: { color: hpPct <= 30 ? EW.bad : EW.good } }, hpPct + '%'),
+    h('span', { className: 'hrlg-view-tab-count', style: { color: HP_ENEMY } }, hpPct + '%'),
     h('span', { className: 'hrlg-view-tab-count' }, dist + 't'),
   ) };
   return { title, blades };
@@ -5332,8 +5343,8 @@ function _hrlgAllyBlades(actingUnit, st) {
       : h('span', { className: 'hrlg-view-tab-icon', style: { color: '#57d97e' } }, '♥'),
     h('span', { className: 'hrlg-view-tab-text' }, targetName),
     _hrlgTabInfoBtn(targetUnit, targetName, st),
-    h('span', { className: 'hrlg-view-tab-count', style: { color: hpPct <= 30 ? EW.bad : EW.good } }, hpPct + '%'),
-    mpTxt ? h('span', { className: 'hrlg-view-tab-count', style: { color: '#5fd6ff' } }, mpTxt) : null,
+    h('span', { className: 'hrlg-view-tab-count', style: { color: HP_ALLY } }, hpPct + '%'),
+    mpTxt ? h('span', { className: 'hrlg-view-tab-count', style: { color: MP_BLUE } }, mpTxt) : null,
     h('span', { className: 'hrlg-view-tab-count' }, dist + 't'),
   ) };
   return { title, blades };
@@ -6630,9 +6641,9 @@ function _injectHudHideStyles() {
       padding-bottom: 1px !important;
     }
     .hp-bar, .mp-bar {
-      border-radius: 2px !important;
-      background: rgba(0,0,0,0.65) !important;
-      border: 1px solid rgba(255,255,255,0.08) !important;
+      border-radius: 0 !important;
+      background: rgba(0,0,0,0.62) !important;
+      border: 1px solid rgba(255,255,255,0.13) !important;
       overflow: hidden !important;
       position: relative !important;
     }
@@ -6642,10 +6653,13 @@ function _injectHudHideStyles() {
     .mp-bar {
       height: 9px !important;
     }
-    .hp-fill { background: #6ee2a8 !important; border-radius: 0 !important; }
-    .hp-fill.hp-mid { background: #f2c468 !important; }
-    .hp-fill.hp-low { background: #ff7a8a !important; }
-    .mp-fill { background: #5fd6ff !important; border-radius: 0 !important; }
+    /* canonical fills: ally green / enemy red, no low-health hue swap */
+    .hp-fill { background: linear-gradient(90deg, #2ed158 0%, #2ed158 55%, #d9ffe6 100%) !important; border-radius: 0 !important; }
+    .hp-fill.hp-mid, .hp-fill.hp-low { background: linear-gradient(90deg, #2ed158 0%, #2ed158 55%, #d9ffe6 100%) !important; }
+    .p2 > .unit-plate .hp-fill { background: linear-gradient(90deg, #ff4a56 0%, #ff4a56 55%, #ffdfe2 100%) !important; }
+    body.is-p2-viewer .p1 > .unit-plate .hp-fill { background: linear-gradient(90deg, #ff4a56 0%, #ff4a56 55%, #ffdfe2 100%) !important; }
+    body.is-p2-viewer .p2 > .unit-plate .hp-fill { background: linear-gradient(90deg, #2ed158 0%, #2ed158 55%, #d9ffe6 100%) !important; }
+    .mp-fill { background: linear-gradient(90deg, #2f9dff 0%, #2f9dff 55%, #dbeeff 100%) !important; border-radius: 0 !important; }
 
     /* HP/MP numbers: centered inside their bar */
     .hp-bar .bar-num, .mp-bar .bar-num {
@@ -6866,9 +6880,8 @@ function _injectHudHideStyles() {
       display: flex; flex-direction: column; gap: 4px; pointer-events: none;
     }
     .hrlg-vbar {
-      position: relative; height: 20px; background: rgba(0,0,0,0.72);
-      border: 1px solid rgba(255,255,255,0.14); overflow: hidden;
-      clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%);
+      position: relative; height: 20px; background: rgba(0,0,0,0.62);
+      border: 1px solid rgba(255,255,255,0.13); overflow: hidden;
       display: flex; align-items: center;
     }
     .hrlg-vbar.mp { height: 16px; }
@@ -7088,8 +7101,7 @@ function _injectHudHideStyles() {
     .hrlg-tcol .hrlg-blabel { font-size: 13px; }
     .hrlg-thp {
       position: relative; height: 13px; overflow: hidden;
-      background: rgba(0,0,0,0.62); border: 1px solid rgba(255,255,255,0.14);
-      clip-path: polygon(2px 0, 100% 0, calc(100% - 2px) 100%, 0 100%);
+      background: rgba(0,0,0,0.62); border: 1px solid rgba(255,255,255,0.13);
     }
     .hrlg-thp.mp { height: 10px; }
     .hrlg-thp-fill {
