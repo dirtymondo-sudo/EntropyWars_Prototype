@@ -2932,32 +2932,10 @@
             return flooded;
         }
 
-        // 🏞️ Minecraft-style runoff (2026-07-10): conjured water doesn't perch
-        // on a slope or a ledge as a lone floating cube — it slides downhill,
-        // steepest cardinal drop first, until it reaches a local low point or
-        // merges into standing water below. Used by the terrainCreate water
-        // spells at paint time.
-        function _waterRunoffDest(sx, sy) {
-            let cx = sx, cy = sy, fell = 0;
-            for (let guard = 0; guard < 24; guard++) {
-                const h = getBaseHeightAt(cx, cy);
-                let best = null, bestH = h, bestWet = false;
-                const nbrs = [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]];
-                for (const n of nbrs) {
-                    if (!isInside(n[0], n[1])) continue;
-                    const t = getTerrainAt(n[0], n[1]);
-                    const wet = (t === 'water' || t === 'deep_water');
-                    if (!wet && !_tileCanFlood(n[0], n[1])) continue;
-                    const nh = getBaseHeightAt(n[0], n[1]);
-                    if (nh < bestH) { bestH = nh; best = n; bestWet = wet; }
-                }
-                if (!best) break;
-                fell += getBaseHeightAt(cx, cy) - bestH;
-                cx = best[0]; cy = best[1];
-                if (bestWet) break;   // joined a standing pool below
-            }
-            return { x: cx, y: cy, fell };
-        }
+        /* _waterRunoffDest removed 2026-07-20: conjured liquid no longer
+           relocates downhill at paint time — the painted tile is a liquid
+           SPRING and the derived flow system (map.js getLiquidFlowAt) pours
+           it off ledges with cascade resets + rendered waterfalls instead. */
 
         // 🌊 Basin fill (2026-07-10) — shared by the Flood-spell handler and its
         // ghost preview. Water poured onto (x,y) behaves like a liquid with
@@ -37784,7 +37762,7 @@
                         const topH = state.boardHeights?.[ty]?.[tx] ?? 0;
                         return (pz < topH) ? pz : undefined;
                     };
-                    const _paintTile = (tx, ty, current, tt, pz) => {
+                    const _paintTile = (tx, ty, current, tt, pz, spring) => {
                         let t = tt || terrainType;
                         if (_isWaterPaint && current === 'lava') {
                             t = 'obsidian';
@@ -37792,34 +37770,34 @@
                         }
                         if (current === t) return false;
                         setTerrainAt(tx, ty, t, pz);
+                        /* 🌊 Spell-conjured liquid is a SPRING (map.js liquid
+                           spread): overfull, so it overflows one tile onto
+                           level ground and runs downhill — a lone poison cube
+                           with no flow can't happen. Basin fills
+                           (elevationFlood) and interior-floor paints are
+                           settled pools instead and don't pass the flag. */
+                        if (spring && typeof liquidFamilyOf === 'function' && liquidFamilyOf(t)) {
+                            state.liquidSprings = state.liquidSprings || {};
+                            state.liquidSprings[tx + ',' + ty] = 1;
+                        }
                         if (_isWaterPaint && t !== 'obsidian' && typeof extinguishTile === 'function') extinguishTile(tx, ty);
                         return true;
                     };
-                    // Paint one spell tile, letting conjured water RUN DOWNHILL
-                    // (Minecraft-style) instead of perching on slopes/ledges as
-                    // a lone floating cube. Water that slides 2+ levels lands as
-                    // deep water; water reaching an existing pool just merges.
-                    // Interior-floor paints (pz defined) skip the runoff model —
-                    // it is built on column-top heights, which are the ROOF from
-                    // down there — and wet their own floor tile in place.
+                    // Paint one spell tile IN PLACE. Conjured liquid on a
+                    // slope/ledge no longer relocates downhill at paint time
+                    // (the old _waterRunoffDest hop) — the painted tile is a
+                    // SPRING now, so the liquid-spread system pours it off the
+                    // ledge itself: cascade resets per drop (map.js) and
+                    // three-renderer bridges tall drops with waterfall
+                    // columns. The source stays where the player aimed, which
+                    // keeps targeting predictable.
                     const _paintSpellTile = (tx, ty) => {
                         const pz = _paintZAt(tx, ty);
                         const current = (pz !== undefined && typeof getTerrainAt3D === 'function')
                             ? getTerrainAt3D(tx, ty, pz) : getTerrainAt(tx, ty);
                         if (current === 'wall') return;
                         _pushAffected(tx, ty);
-                        if (_isWaterPaint && pz === undefined) {
-                            const dest = _waterRunoffDest(tx, ty);
-                            if (dest.x !== tx || dest.y !== ty) {
-                                _pushAffected(dest.x, dest.y);
-                                const dCur = getTerrainAt(dest.x, dest.y);
-                                if (dCur === 'water' || dCur === 'deep_water') return;   // merged into the pool below
-                                const tt = (dest.fell >= 2 && terrainType === 'water') ? 'deep_water' : terrainType;
-                                if (_paintTile(dest.x, dest.y, dCur, tt)) convertedTiles.push({ x: dest.x, y: dest.y });
-                                return;
-                            }
-                        }
-                        if (_paintTile(tx, ty, current, undefined, pz)) convertedTiles.push({ x: tx, y: ty });
+                        if (_paintTile(tx, ty, current, undefined, pz, pz === undefined)) convertedTiles.push({ x: tx, y: ty });
                     };
                     if (spell.elevationFlood) {
                         // 🌊 Basin-aware flood (2026-07-10 rework): water pours
@@ -37891,6 +37869,25 @@
 
                     _invalidateBoardGrid();
                     scheduleBoardRender();
+
+                    /* 🌊 Fresh liquid claims everything it SPREADS over, not
+                       just the painted source tiles: pull the first ring of
+                       derived flow (the spring's level-ground halo and/or the
+                       runoff pouring off a ledge) into affectedTiles so the
+                       spell's damage/status pass covers the whole splash. Flow
+                       is already recomputed lazily off the terrain bump above. */
+                    if (typeof liquidFamilyOf === 'function' && typeof getLiquidFlowAt === 'function'
+                        && liquidFamilyOf(terrainType)) {
+                        const _liqFam = liquidFamilyOf(terrainType);
+                        for (const ct of convertedTiles.slice()) {
+                            for (const [_fdx, _fdy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                                const _fnx = ct.x + _fdx, _fny = ct.y + _fdy;
+                                if (!isInside(_fnx, _fny)) continue;
+                                const _fl = getLiquidFlowAt(_fnx, _fny);
+                                if (_fl && _fl.t === _liqFam && _fl.d === 1) _pushAffected(_fnx, _fny);
+                            }
+                        }
+                    }
 
                     if (_useVfx3dWall && affectedTiles.length > 0) {
                         if (state.phase === 'battle' && !_skipVisuals()) {

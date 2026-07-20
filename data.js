@@ -5621,10 +5621,9 @@ const SHARED_WALLS_OF_CAMELOT = {
 const SHARED_MAELSTROM = {
     id: 'sharedMaelstrom', spellType: 'anomaly', element: 'water', name: 'Maelstrom',
     type: 'damage', cost: 35, dmg: 80, range: 4, apCost: 2,
-    kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 5, orientable: false,
-    aoeRadius: 1,
+    kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 1, orientable: false,
     damageType: 'magic',
-    desc: 'Flood a 3×3 area with deep water. Enemies caught take damage and risk drowning.'
+    desc: 'Tear open a deep-water maelstrom on one tile. The water overflows the surrounding ground and pours downhill. Enemies caught in the surge take damage and risk drowning.'
 };
 
 const SHARED_RAMPART = {
@@ -5657,9 +5656,9 @@ const SHARED_SCORCHED_EARTH = {
 const SHARED_POISON_SWAMP = {
     id: 'sharedPoisonSwamp', spellType: 'unholy', element: 'poison', name: 'Poison Swamp',
     type: 'damage', cost: 25, dmg: 80, range: 3, apCost: 1,
-    kind: 'terrainCreate', terrainType: 'poison', squareFlood: true, aoeRadius: 1,
+    kind: 'terrainCreate', terrainType: 'poison', tileCount: 1,
     damageType: 'magic',
-    desc: 'Flood a 3x3 area with poison terrain. Enemies caught take damage. Toxic terrain poisons anyone who walks through.'
+    desc: 'Conjure a poison spring on one tile. The toxin overflows onto the surrounding ground and runs downhill. Enemies caught in the spreading poison take damage; the terrain poisons anyone who wades through.'
 };
 
 const SHARED_INFECTIOUS_BITE = {
@@ -6122,9 +6121,9 @@ const RACE_ABILITIES = {
           desc: 'Piercing soundwave in a line. Damages and pushes enemies 2 tiles back.' },
         { id: 'raceCallOfTheDeep', spellType: 'anomaly', name: 'Call of the Deep',
           type: 'damage', cost: 25, dmg: 80, range: 3, apCost: 2,
-          kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 3, orientable: true,
+          kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 1,
           damageType: 'magic',
-          desc: 'Drown 3 tiles in a line under deep water, damaging enemies caught in the flood.' },
+          desc: 'Call the deep up through one tile. The water overflows the ground around it and runs downhill, damaging enemies caught in the surge.' },
         { id: 'raceDeafeningWail', spellType: 'anomaly', name: 'Deafening Wail',
           type: 'damage', cost: 30, dmg: 70, range: 0,
           kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
@@ -6286,9 +6285,9 @@ const RACE_ABILITIES = {
           desc: 'Fire a heavy iron cannonball that explodes on impact. Damages all enemies in a 3×3 blast and sets them ablaze.' },
         { id: 'raceWalkThePlank', spellType: 'human', element: 'water', name: 'Walk the Plank',
           type: 'damage', cost: 35, dmg: 90, range: 3, apCost: 2,
-          kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 9, orientable: false,
-          aoeRadius: 1, squareFlood: true, damageType: 'physical', executePct: 0.25,
-          desc: 'Force enemies overboard. Floods a 3×3 area with deep water, drowning all caught. Executes any enemy below 25% HP.' },
+          kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 1, orientable: false,
+          damageType: 'physical', executePct: 0.25,
+          desc: 'Force enemies overboard. Deep water erupts on one tile, overflowing the ground around it and drowning all caught in the spread. Executes any enemy below 25% HP.' },
         { id: 'racePlunder', spellType: 'human', element: 'metal', name: 'Plunder',
           type: 'utility', cost: 18, dmg: 70, apCost: 1, range: 1,
           kind: 'utility', damageType: 'physical',
@@ -6550,9 +6549,9 @@ const RACE_ABILITIES = {
           desc: 'The tripod\'s heat ray — a weapon, not a spell. Scales with ATK. Damages all units in a straight line and scorches the ground.' },
         { id: 'raceBlackSmoke', spellType: 'alien', element: 'poison', name: 'Black Smoke',
           type: 'damage', cost: 30, dmg: 80, range: 4,
-          kind: 'terrainCreate', terrainType: 'poison', tileCount: 3, orientable: true,
+          kind: 'terrainCreate', terrainType: 'poison', tileCount: 1,
           damageType: 'magic',
-          desc: 'Vent the black smoke — the war machine\'s chemical weapon. Damages enemies in a 3-tile line and leaves a toxic bank that poisons anyone who crosses it.' },
+          desc: 'Vent the black smoke — the war machine\'s chemical weapon. It condenses into a poison spring that seeps outward and downhill, damaging enemies caught in the toxic spread.' },
         { id: 'raceWarOfTheWorlds', spellType: 'alien', element: 'metal', name: 'War of the Worlds',
           type: 'utility', cost: 35, range: 2, apCost: 1,
           kind: 'deployTurret', turretDmg: 120, turretRange: 3, turretHp: 140,
@@ -7432,9 +7431,9 @@ const RACE_ABILITIES = {
           desc: 'Split and reform. Regen for 2 turns as mass redistributes.' },
         { id: 'raceOozeTrail', spellType: 'unholy', name: 'Ooze Trail',
           type: 'utility', cost: 25, range: 4, apCost: 1,
-          kind: 'terrainCreate', terrainType: 'swamp', tileCount: 3, orientable: true,
+          kind: 'terrainCreate', terrainType: 'swamp', tileCount: 1,
           statusEffects: [{ id: 'slow', duration: 1 }],
-          desc: 'Leave a trail of toxic ooze. 3 tiles become swamp. Enemies caught are slowed.' },
+          desc: 'Spit a glob of black ooze onto one tile. It oozes outward over the ground and downhill. Enemies caught in the slick are slowed.' },
         SHARED_POISON_SWAMP,
         { id: 'raceToxicNova', spellType: 'unholy', name: 'Toxic Nova',
           type: 'damage', cost: 35, dmg: 70, range: 0, apCost: 2,

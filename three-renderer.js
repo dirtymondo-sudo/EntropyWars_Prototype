@@ -1082,6 +1082,12 @@ const ThreeRenderer = (function () {
 
     /* 🌊 Liquid-spread flow slabs (Minecraft-style) — rebuilt with the terrain */
     var _liquidFlowGroup = null;
+    /* 💦 Waterfall columns (2026-07-20): vertical falling-liquid boxes bridging
+       2+-level ledges between fluid tiles. Each carries a CLONED base texture
+       whose offset scrolls downward per-frame (_updateFluidWaves); entries are
+       {tex, base, off, speed}. Rebuilt (and old clones disposed) with the flow
+       group. */
+    var _waterfallTexList = [];
 
     /* Terrain decorations — rock clusters, crystal clusters spawned per-terrain */
     var _terrainDecoGroup = null;
@@ -2593,6 +2599,11 @@ const ThreeRenderer = (function () {
             _clearGroup(_liquidFlowGroup);
             _liquidFlowGroup = null;
         }
+        /* dispose per-waterfall texture clones (_disposeR skips .map textures) */
+        for (var _wfd = 0; _wfd < _waterfallTexList.length; _wfd++) {
+            if (_waterfallTexList[_wfd].tex) _waterfallTexList[_wfd].tex.dispose();
+        }
+        _waterfallTexList = [];
         if (typeof getLiquidFlowAt === 'function') {
             var _flowGroup = new THREE.Group();
             var _FLOW_TERRAIN_FOR = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava' };
@@ -2676,6 +2687,86 @@ const ThreeRenderer = (function () {
                     _fMesh.raycast = _noRaycast;   // clicks land on the ground tile below
                     _fMesh._ew_liquidFlow = true;
                     _flowGroup.add(_fMesh);
+                }
+            }
+            /* ── 💦 WATERFALL COLUMNS (2026-07-20) ──────────────────────────
+               Minecraft's falling liquid: wherever fluid pours over a ledge of
+               2+ levels (the slanted flow sheet only bridges ~1.3), erect a
+               thin vertical fluid box on the LOWER tile's side of the shared
+               edge, running from the upper tile's liquid surface down to the
+               lower tile's top (where the landing slab catches it). Works for
+               every fluid pairing — source over flow (spring on a tall stack),
+               flow over flow (multi-terrace cascades), source over source
+               (stacked natural pools). The column's texture is a per-mesh
+               CLONE of the family's base map so its offset can scroll
+               downward independently (shared textures would drag every fluid
+               side face along). */
+            var _fallFluidAt = function(x, y) {
+                if (x < 0 || y < 0 || x >= _bw || y >= _bh) return null;
+                var fam = _FLOW_FAM_OF[getTerrainAt(x, y)] || null;
+                if (!fam) { var fl2 = getLiquidFlowAt(x, y); fam = fl2 ? fl2.t : null; }
+                if (!fam) return null;
+                return { fam: fam, surf: _flowSurfY(x, y, fam), top: tileTopY(x, y) };
+            };
+            var _mkFallMat = function(fam) {
+                var terr = _FLOW_TERRAIN_FOR[fam] || 'water';
+                var style = _LIQUID_STYLES[terr] || null;
+                var base = getTerrainTexture(style ? style.base : terr);
+                var tex = base ? base.clone() : null;
+                if (tex) {
+                    tex.wrapS = THREE.RepeatWrapping;
+                    tex.wrapT = THREE.RepeatWrapping;
+                    tex.needsUpdate = true;
+                }
+                var opts = {};
+                if (fam === 'lava') {
+                    opts.emissive = new THREE.Color(0xff4411);
+                    opts.emissiveIntensity = 0.45;
+                }
+                if (tex) opts.map = tex;
+                else opts.color = new THREE.Color(fam === 'lava' ? 0x661100 : 0x443322);
+                if (style) opts.color = new THREE.Color(style.tint);
+                var m = new THREE.MeshLambertMaterial(opts);
+                m._ew_fallTexBase = base || null;
+                return m;
+            };
+            for (var wy = 0; wy < _bh; wy++) {
+                for (var wx = 0; wx < _bw; wx++) {
+                    var _fB = _fallFluidAt(wx, wy);
+                    if (!_fB) continue;
+                    for (var wd = 0; wd < 4; wd++) {
+                        var wdx = [1, -1, 0, 0][wd], wdy = [0, 0, 1, -1][wd];
+                        var _fA = _fallFluidAt(wx + wdx, wy + wdy);
+                        if (!_fA || _fA.fam !== _fB.fam) continue;
+                        /* a real ledge, not the normal 1-level ramp */
+                        if (_fA.top - _fB.top < elevStep * 1.6) continue;
+                        var _wTop = _fA.surf, _wBot = _fB.top;
+                        var _wHgt = _wTop - _wBot;
+                        if (_wHgt <= 0) continue;
+                        var _wThick = ts * 0.14, _wSpan = ts * 0.94;
+                        var _wGeo = new THREE.BoxGeometry(
+                            wdx !== 0 ? _wThick : _wSpan, _wHgt,
+                            wdy !== 0 ? _wThick : _wSpan);
+                        var _wMat = _mkFallMat(_fB.fam);
+                        if (_wMat.map) _wMat.map.repeat.set(1, Math.max(1, Math.round(_wHgt / ts)));
+                        var _wMesh = new THREE.Mesh(_wGeo, _wMat);
+                        var _wCx = wx * ts + ts / 2, _wCz = wy * ts + ts / 2;
+                        if (wdx === 1) _wCx = (wx + 1) * ts - _wThick / 2;
+                        else if (wdx === -1) _wCx = wx * ts + _wThick / 2;
+                        if (wdy === 1) _wCz = (wy + 1) * ts - _wThick / 2;
+                        else if (wdy === -1) _wCz = wy * ts + _wThick / 2;
+                        _wMesh.position.set(_wCx, _wBot + _wHgt / 2, _wCz);
+                        _wMesh.raycast = _noRaycast;
+                        _wMesh._ew_liquidFlow = true;
+                        _flowGroup.add(_wMesh);
+                        if (_wMat.map) {
+                            _waterfallTexList.push({
+                                tex: _wMat.map, base: _wMat._ew_fallTexBase,
+                                off: _wMat.map.offset,
+                                speed: _fB.fam === 'lava' ? 0.15 : 0.85
+                            });
+                        }
+                    }
                 }
             }
             if (_flowGroup.children.length) {
@@ -20513,6 +20604,10 @@ const ThreeRenderer = (function () {
         _clearAnimations();
         _fluidTimeSec = 0;
         _fluidTextures = {};
+        for (var _wfd2 = 0; _wfd2 < _waterfallTexList.length; _wfd2++) {
+            if (_waterfallTexList[_wfd2].tex) _waterfallTexList[_wfd2].tex.dispose();
+        }
+        _waterfallTexList = [];
 
         /* Clean up tower cube CSS2D plates before clearing */
         for (var ti = 0; ti < _towerCubes.length; ti++) {
@@ -20644,6 +20739,17 @@ const ThreeRenderer = (function () {
                 off2.x = (drift.l2dx * t) % 1.0;
                 off2.y = (drift.l2dy * t) % 1.0;
             }
+        }
+        /* 💦 Waterfall columns: scroll each column's cloned texture downward.
+           A clone made before its base map finished loading has no image —
+           adopt the base's image as soon as it arrives. */
+        for (var wfi = 0; wfi < _waterfallTexList.length; wfi++) {
+            var wf = _waterfallTexList[wfi];
+            if (!wf.tex.image && wf.base && wf.base.image) {
+                wf.tex.image = wf.base.image;
+                wf.tex.needsUpdate = true;
+            }
+            wf.off.y = (wf.speed * t) % 1.0;
         }
     }
 

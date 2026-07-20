@@ -2493,6 +2493,13 @@
 
             if (typeof _terrainChunkCache !== 'undefined') _terrainChunkCache.clear();
 
+            /* 🌊 A tile that stops being liquid stops being a spring (terraform
+               purge, obsidian quench, rubble…) — keep the overflow registry in
+               lockstep with the terrain it annotates. */
+            if (state.liquidSprings && !liquidFamilyOf(terrain)) {
+                delete state.liquidSprings[x + ',' + y];
+            }
+
             state._terrainVersion = (state._terrainVersion || 0) + 1;
         }
 
@@ -2553,18 +2560,32 @@
             }
         }
 
-        /* ── 🌊 LIQUID SPREAD — Minecraft-style flow (2026-07-14) ────────────
-           A liquid tile only spreads DOWNHILL: neighbours must sit STRICTLY
-           BELOW the source block's level (a pool level with its surroundings
-           is contained by its basin — existing flat lakes/lava rivers do NOT
-           grow flow, matching how they already read with the shoreline
-           inset). Once the runoff has dropped a level it fans out across the
-           lower ground, up to LIQUID_SPREAD_RANGE tiles from the source
-           (Minecraft does 7; our boards are small so we do 3) — but it never
-           climbs back up. The flow is DERIVED state:
+        /* ── 🌊 LIQUID SPREAD — Minecraft-style flow (2026-07-14, springs
+           2026-07-20) ─────────────────────────────────────────────────────
+           Two kinds of liquid tile, one predictable rule set:
+           • NATURAL pools (map-generated lakes / lava rivers) are SETTLED:
+             their surface sits inset below the tile top (that's how they
+             render), so they only spread where the ground actually DROPS —
+             neighbours strictly below the source's level. A flat lake stays
+             in its basin and never grows a fringe.
+           • SPRINGS (spell-conjured liquid — state.liquidSprings, keyed
+             "x,y", synced to the guest like any state field) are OVERFULL:
+             fresh liquid poured onto the ground. A spring additionally
+             overflows exactly ONE tile onto LEVEL ground (a puddle halo
+             around the source), and from there keeps running wherever the
+             ground drops, like everything else.
+           In both cases runoff fans out up to LIQUID_SPREAD_RANGE tiles per
+           terrace (Minecraft does 7; our boards are small so we do 3) — and it
+           NEVER climbs back up. Pouring off a LEDGE resets the range: the
+           landing tile behaves like a fresh spring at its own level
+           (Minecraft's falling-water rule), so liquid on a tall stack
+           cascades all the way down and spreads out at the bottom;
+           three-renderer bridges each 2+-level drop with an animated
+           waterfall column. The flow is DERIVED state:
            recomputed lazily whenever terrain / heights change, never written
            into boardTerrain — so both online clients derive the identical flow
-           from the synced terrain for free. three-renderer draws flow tiles as
+           from the synced terrain (+ synced liquidSprings) for free.
+           three-renderer draws flow tiles as
            thin animated fluid slabs (~1/3 block at the source edge, thinning
            with distance). Gameplay hooks: water-family flow soaks units and
            conducts lightning (battle.js _isWetTile), oil-family flow detonates
@@ -2612,12 +2633,14 @@
             // multi-source BFS; queue order keeps d nondecreasing, so the first
             // assignment a tile gets is its minimal distance (nearest source wins)
             const queue = [];
+            const springs = state.liquidSprings || {};
             for (let y = 0; y < H; y++) {
                 for (let x = 0; x < W; x++) {
                     const fam = liquidFamilyOf(getTerrainAt(x, y));
                     if (fam && _LIQUID_SPREADS[fam]) {
                         const sh = getBaseHeightAt(x, y);
-                        queue.push({ x, y, d: 0, fam, srcH: sh, h: sh });
+                        queue.push({ x, y, d: 0, fam, srcH: sh, h: sh,
+                                     spring: !!springs[x + ',' + y] });
                     }
                 }
             }
@@ -2629,18 +2652,37 @@
                     const nx = c.x + dx, ny = c.y + dy;
                     if (!_liquidFlowCanEnter(nx, ny)) continue;
                     const nh = getBaseHeightAt(nx, ny);
-                    // DOWNHILL ONLY: the runoff must end up strictly below the
-                    // source block's level (level ground = contained pool, no
-                    // flow) — and it can never climb back up along the path.
-                    if (nh >= c.srcH) continue;
+                    // Never climbs back up along the path.
                     if (nh > c.h) continue;
+                    // DOWNHILL rule: runoff must end up strictly below the
+                    // source block's level (level ground = contained pool).
+                    // EXCEPTION — a SPRING source (spell-conjured, overfull)
+                    // overflows exactly one tile onto LEVEL ground: the level
+                    // step is only allowed directly off the spring itself
+                    // (d === 0), so the flat halo is 1 tile wide and any
+                    // further travel must genuinely drop.
+                    if (nh >= c.srcH && !(c.spring && c.d === 0 && nh === c.srcH)) continue;
                     const k = nx + ',' + ny;
                     const prev = _liquidFlowMap[k];
                     if (prev && prev.d <= c.d + 1) continue;
                     _liquidFlowMap[k] = { t: c.fam, d: c.d + 1 };
-                    // carry the LOWEST height seen along the path so a flow that
-                    // ran downhill can't creep back up a ledge
-                    queue.push({ x: nx, y: ny, d: c.d + 1, fam: c.fam, srcH: c.srcH, h: Math.min(c.h, nh) });
+                    if (nh < c.h) {
+                        // 🌊 WATERFALL LANDING (2026-07-20): pouring off a ledge
+                        // RESETS the spread — like Minecraft, fallen liquid
+                        // starts over where it lands. The landing tile acts as
+                        // a fresh spring at its own level: full spread range
+                        // downhill again plus the 1-tile level-ground halo, so
+                        // liquid placed on a tall stack cascades to the ground
+                        // and fans out there instead of dying on the cliff.
+                        // Terminates: every reset is strictly lower than the
+                        // last, and flat steps still burn the d budget.
+                        queue.push({ x: nx, y: ny, d: 0, fam: c.fam, srcH: nh, h: nh, spring: true });
+                    } else {
+                        // level step (spring halo): carry the source level so
+                        // the runoff can never creep back up a ledge
+                        queue.push({ x: nx, y: ny, d: c.d + 1, fam: c.fam, srcH: c.srcH,
+                                     h: Math.min(c.h, nh), spring: false });
+                    }
                 }
             }
         }
@@ -3221,6 +3263,8 @@
 
             function _initHeightGrid() {
                 state.boardHeights = Array.from({ length: h }, () => Array(w).fill(0));
+                /* 🌊 fresh board ⇒ no leftover spell-conjured liquid springs */
+                state.liquidSprings = {};
             }
 
             /* ── 2×2 building footprints ──────────────────────────────────
