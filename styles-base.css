@@ -967,17 +967,20 @@
 
         .mini-fill-hp {
             height: 100%;
-            background: linear-gradient(90deg, #2ed158 0%, #2ed158 55%, #d9ffe6 100%);
+            background: linear-gradient(90deg, #1fae4b 0%, #2ed158 60%, #7df0a5 100%);
+            box-shadow: 0 0 6px rgba(46, 209, 88, 0.45);
             transition: width 0.35s ease-out;
         }
 
         .mini-fill-hp.enemy {
-            background: linear-gradient(90deg, #ff4a56 0%, #ff4a56 55%, #ffdfe2 100%);
+            background: linear-gradient(90deg, #d92f3c 0%, #ff4a56 60%, #ff96a0 100%);
+            box-shadow: 0 0 6px rgba(255, 74, 86, 0.45);
         }
 
         .mini-fill-mp {
             height: 100%;
-            background: linear-gradient(90deg, #2f9dff 0%, #2f9dff 55%, #dbeeff 100%);
+            background: linear-gradient(90deg, #1f7fd6 0%, #2f9dff 60%, #8fd0ff 100%);
+            box-shadow: 0 0 6px rgba(47, 157, 255, 0.4);
             transition: width 0.35s ease-out;
         }
 
@@ -1658,15 +1661,18 @@
         }
 
         .selected-bar-fill.hp {
-            background: linear-gradient(90deg, #2ed158 0%, #2ed158 55%, #d9ffe6 100%);
+            background: linear-gradient(90deg, #1fae4b 0%, #2ed158 60%, #7df0a5 100%);
+            box-shadow: 0 0 6px rgba(46, 209, 88, 0.45);
         }
 
         .selected-bar-fill.hp.enemy {
-            background: linear-gradient(90deg, #ff4a56 0%, #ff4a56 55%, #ffdfe2 100%);
+            background: linear-gradient(90deg, #d92f3c 0%, #ff4a56 60%, #ff96a0 100%);
+            box-shadow: 0 0 6px rgba(255, 74, 86, 0.45);
         }
 
         .selected-bar-fill.mp {
-            background: linear-gradient(90deg, #2f9dff 0%, #2f9dff 55%, #dbeeff 100%);
+            background: linear-gradient(90deg, #1f7fd6 0%, #2f9dff 60%, #8fd0ff 100%);
+            box-shadow: 0 0 6px rgba(47, 157, 255, 0.4);
         }
 
         .selected-bar-fill.shield {
@@ -1809,16 +1815,23 @@
             image-rendering: pixelated;
         }
 
-        /* ── vitals: HP / MP bars with the number at the end ── */
+        /* ── vitals: label + numbers ride the strip ABOVE the bar (identity
+           left, numbers right) — same layout as the 3D nameplates ── */
         .ins-vital {
+            display: block;
+            margin-top: 6px;
+        }
+
+        .ins-vital-top {
             display: flex;
-            align-items: center;
+            align-items: baseline;
+            justify-content: space-between;
             gap: 6px;
-            margin-top: 4px;
+            margin-bottom: 2px;
         }
 
         .ins-vital-track {
-            flex: 1 1 auto;
+            width: 100%;
             display: block;
         }
 
@@ -1829,10 +1842,9 @@
 
         .ins-vital-num {
             flex: 0 0 auto;
-            min-width: 66px;
             text-align: right;
             font-size: 11px;
-            color: #cfd6ea;
+            color: #fff;
             white-space: nowrap;
         }
 

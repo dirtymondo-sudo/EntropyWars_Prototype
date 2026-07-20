@@ -3287,8 +3287,7 @@
 
         .hud-tab-bar {
             height: 3px;
-            border-radius: 2px;
-            background: rgba(0,0,0,0.4);
+            background: rgba(0,0,0,0.62);
             overflow: hidden;
         }
 

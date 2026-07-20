@@ -3156,10 +3156,15 @@
               var _thl = _hlCache.get(_tpk);
               if (!_thl) continue;
 
-              if (_thl === 'spell-range' || _thl === 'spell-range-bg' || _thl === 'spell-range-dmg'
-                  || _thl === 'heal-range' || _thl === 'spell-damage' || _thl === 'attack' || _thl === 'selected') continue;
-
-              if (_thl === 'move' || _thl === 'move-jump' || _thl === 'move-takeoff' || _thl === 'move-edge') continue;
+              // Any action-relevant highlight keeps the unit's plate up:
+              // range wash, AoE splash ('spell-damage'), heal reach and
+              // direct-target classes all mean "this unit matters to the
+              // action being aimed". Skipping the wash classes here used to
+              // hide EVERY enemy health bar while aiming tile-targeted
+              // spells (Meteor etc.) — only movement-preview tiles and the
+              // caster's own marker are irrelevant.
+              if (_thl === 'move' || _thl === 'move-jump' || _thl === 'move-takeoff' || _thl === 'move-edge'
+                  || _thl === 'selected' || _thl === 'spell-range-bg') continue;
 
               _targetSet.add(_tu.id);
             }
@@ -3817,8 +3822,8 @@
               <div class="ins-sub"><span class="ins-side ${isAlly ? 'ally' : 'enemy'}">${isAlly ? 'ALLY' : 'ENEMY'}</span></div>
             </div>
           </div>
-          <div class="ins-vital"><span class="ins-stat-label">HP</span><span class="selected-bar-track ins-vital-track"><span class="selected-bar-fill hp${isAlly ? '' : ' enemy'}" style="width:${hpPct}%"></span>${unit.shield > 0 ? `<span class="selected-bar-fill shield" style="left:${hpPct}%;width:${(unit.shield / unit.maxHp) * 100}%"></span>` : ''}${buildPreviewSegment(unit.hp, unit.maxHp, preview?.type === 'damage' || preview?.type === 'heal' ? preview : null)}</span><span class="ins-vital-num">${unit.hp}/${unit.maxHp}</span></div>
-          <div class="ins-vital"><span class="ins-stat-label">MP</span><span class="selected-bar-track ins-vital-track"><span class="selected-bar-fill mp" style="width:${mpPct}%"></span>${buildPreviewSegment(unit.mp, unit.maxMp, preview?.type === 'mp' ? preview : null)}</span><span class="ins-vital-num">${unit.mp}/${unit.maxMp}</span></div>
+          <div class="ins-vital"><div class="ins-vital-top"><span class="ins-stat-label">HP</span><span class="ins-vital-num">${unit.hp}/${unit.maxHp}</span></div><span class="selected-bar-track ins-vital-track"><span class="selected-bar-fill hp${isAlly ? '' : ' enemy'}" style="width:${hpPct}%"></span>${unit.shield > 0 ? `<span class="selected-bar-fill shield" style="left:${hpPct}%;width:${(unit.shield / unit.maxHp) * 100}%"></span>` : ''}${buildPreviewSegment(unit.hp, unit.maxHp, preview?.type === 'damage' || preview?.type === 'heal' ? preview : null)}</span></div>
+          <div class="ins-vital"><div class="ins-vital-top"><span class="ins-stat-label">MP</span><span class="ins-vital-num">${unit.mp}/${unit.maxMp}</span></div><span class="selected-bar-track ins-vital-track"><span class="selected-bar-fill mp" style="width:${mpPct}%"></span>${buildPreviewSegment(unit.mp, unit.maxMp, preview?.type === 'mp' ? preview : null)}</span></div>
           ${forecastNote ? `<div class="ins-note">${forecastNote}</div>` : ''}
           <div class="ins-stats">${statBars}</div>
           ${statusPills}

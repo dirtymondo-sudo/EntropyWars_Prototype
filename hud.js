@@ -32,9 +32,12 @@ const EW = {
 const HP_ALLY = '#2ed158';
 const HP_ENEMY = '#ff4a56';
 const MP_BLUE = '#2f9dff';
-const HP_ALLY_FILL = 'linear-gradient(90deg, #2ed158 0%, #2ed158 55%, #d9ffe6 100%)';
-const HP_ENEMY_FILL = 'linear-gradient(90deg, #ff4a56 0%, #ff4a56 55%, #ffdfe2 100%)';
-const MP_FILL = 'linear-gradient(90deg, #2f9dff 0%, #2f9dff 55%, #dbeeff 100%)';
+const HP_ALLY_FILL = 'linear-gradient(90deg, #1fae4b 0%, #2ed158 60%, #7df0a5 100%)';
+const HP_ENEMY_FILL = 'linear-gradient(90deg, #d92f3c 0%, #ff4a56 60%, #ff96a0 100%)';
+const MP_FILL = 'linear-gradient(90deg, #1f7fd6 0%, #2f9dff 60%, #8fd0ff 100%)';
+const HP_ALLY_GLOW = '0 0 6px rgba(46,209,88,0.45)';
+const HP_ENEMY_GLOW = '0 0 6px rgba(255,74,86,0.45)';
+const MP_GLOW = '0 0 6px rgba(47,157,255,0.4)';
 
 const FACTION_COLORS = { space: EW.space, time: EW.time, chaos: EW.chaos };
 const TYPE_COLORS = { human: EW.human, alien: EW.alien, divine: EW.divine, unholy: EW.unholy, anomaly: EW.anomaly, tech: EW.tech };
@@ -597,6 +600,7 @@ function TurnChip({ entry, size }) {
         h('div', { style: {
           position: 'absolute', top: 0, left: 0, bottom: 0, width: hpPct + '%',
           background: friendly ? HP_ALLY_FILL : HP_ENEMY_FILL,
+          boxShadow: friendly ? HP_ALLY_GLOW : HP_ENEMY_GLOW,
           transition: 'width 0.35s ease-out',
         }}),
       ),
@@ -605,7 +609,7 @@ function TurnChip({ entry, size }) {
       }},
         h('div', { style: {
           position: 'absolute', top: 0, left: 0, bottom: 0, width: mpPct + '%',
-          background: MP_FILL, transition: 'width 0.35s ease-out',
+          background: MP_FILL, boxShadow: MP_GLOW, transition: 'width 0.35s ease-out',
         }}),
       ),
     ),
@@ -1337,7 +1341,7 @@ function PartyRoster({ st }) {
             h('div', { style: { width: 22, height: 3, background: 'rgba(255,255,255,0.12)' }},
               h('div', { style: {
                 width: hpPct + '%', height: '100%',
-                background: HP_ALLY_FILL,
+                background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW,
               }}),
             ),
           );
@@ -1737,27 +1741,36 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     // white at the leading edge of the fill (lethal → the whole fill blinks).
     const prevPct = (b.previewDmg > 0 && port.maxHp > 0)
       ? Math.max(0, Math.min(hpPct, (b.previewDmg / port.maxHp) * 100)) : 0;
+    // Numbers ride the strip ABOVE the bar — identity left, numbers right —
+    // the exact same layout as the 3D nameplates; the bar itself stays clean.
     portCol = h('span', { className: 'hrlg-tcol' },
-      h('span', { className: 'hrlg-blabel', style: { flex: '0 0 auto' } }, b.label),
+      h('span', { className: 'hrlg-trow-top' },
+        h('span', { className: 'hrlg-blabel' }, b.label),
+        h('span', { className: 'hrlg-thp-num' }, port.hp + '/' + port.maxHp),
+      ),
       h('span', { className: 'hrlg-thp' },
         h('span', { className: 'hrlg-thp-fill', style: {
           // canonical fill — ally green / enemy red, same as the nameplates
           width: hpPct + '%',
           background: port.ally ? HP_ALLY_FILL : HP_ENEMY_FILL,
+          boxShadow: port.ally ? HP_ALLY_GLOW : HP_ENEMY_GLOW,
         }}),
         prevPct > 0 && h('span', {
           className: 'hrlg-thp-preview' + (b.previewDmg >= port.hp ? ' dmg-preview-lethal' : ''),
           style: { left: (hpPct - prevPct) + '%', width: prevPct + '%' },
         }),
         shPct > 0 && h('span', { className: 'hrlg-thp-shield', style: { width: shPct + '%' } }),
-        h('span', { className: 'hrlg-thp-num' }, port.hp + '/' + port.maxHp),
       ),
-      port.showMp && port.maxMp > 0 && h('span', { className: 'hrlg-thp mp' },
-        h('span', { className: 'hrlg-thp-fill', style: {
-          width: Math.max(0, Math.min(100, (port.mp / port.maxMp) * 100)) + '%',
-          background: MP_FILL,   // canonical MP blue, same as the nameplates
-        }}),
-        h('span', { className: 'hrlg-thp-num' }, port.mp + '/' + port.maxMp),
+      port.showMp && port.maxMp > 0 && h(React.Fragment, null,
+        h('span', { className: 'hrlg-trow-top mp' },
+          h('span', { className: 'hrlg-thp-num' }, port.mp + '/' + port.maxMp),
+        ),
+        h('span', { className: 'hrlg-thp mp' },
+          h('span', { className: 'hrlg-thp-fill', style: {
+            width: Math.max(0, Math.min(100, (port.mp / port.maxMp) * 100)) + '%',
+            background: MP_FILL, boxShadow: MP_GLOW,
+          }}),
+        ),
       ),
     );
   }
@@ -1772,7 +1785,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     className: 'hrlg-blade'
       + (dead ? ' dead' : '')
       + (ghost && !dead ? ' ghost' : '')
-      + (port ? ' trow' : '')
+      + (port ? ' trow' + (port.showMp && port.maxMp > 0 ? ' has-mp' : '') : '')
       + (badgeRow && !port ? ' two' : '')
       + (sel ? ' sel' : '')
       + (muted ? ' muted' : '')
@@ -2234,7 +2247,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
           const hpPct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
           // canonical ally green — the Horologe always shows YOUR unit
           return h('div', { className: 'hrlg-vbar' },
-            h('span', { className: 'hrlg-vfill', style: { width: hpPct + '%', background: HP_ALLY_FILL } }),
+            h('span', { className: 'hrlg-vfill', style: { width: hpPct + '%', background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW } }),
             h('span', { className: 'hrlg-vlbl' }, 'HP'),
             h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(hp)) + '/' + maxHp),
           );
@@ -2242,7 +2255,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
         maxMp > 0 && (() => {
           const mpPct = Math.max(0, Math.min(100, (mp / maxMp) * 100));
           return h('div', { className: 'hrlg-vbar mp' },
-            h('span', { className: 'hrlg-vfill', style: { width: mpPct + '%', background: MP_FILL } }),
+            h('span', { className: 'hrlg-vfill', style: { width: mpPct + '%', background: MP_FILL, boxShadow: MP_GLOW } }),
             h('span', { className: 'hrlg-vlbl' }, 'MP'),
             h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(mp)) + '/' + maxMp),
           );
@@ -6654,12 +6667,12 @@ function _injectHudHideStyles() {
       height: 9px !important;
     }
     /* canonical fills: ally green / enemy red, no low-health hue swap */
-    .hp-fill { background: linear-gradient(90deg, #2ed158 0%, #2ed158 55%, #d9ffe6 100%) !important; border-radius: 0 !important; }
-    .hp-fill.hp-mid, .hp-fill.hp-low { background: linear-gradient(90deg, #2ed158 0%, #2ed158 55%, #d9ffe6 100%) !important; }
-    .p2 > .unit-plate .hp-fill { background: linear-gradient(90deg, #ff4a56 0%, #ff4a56 55%, #ffdfe2 100%) !important; }
-    body.is-p2-viewer .p1 > .unit-plate .hp-fill { background: linear-gradient(90deg, #ff4a56 0%, #ff4a56 55%, #ffdfe2 100%) !important; }
-    body.is-p2-viewer .p2 > .unit-plate .hp-fill { background: linear-gradient(90deg, #2ed158 0%, #2ed158 55%, #d9ffe6 100%) !important; }
-    .mp-fill { background: linear-gradient(90deg, #2f9dff 0%, #2f9dff 55%, #dbeeff 100%) !important; border-radius: 0 !important; }
+    .hp-fill { background: linear-gradient(90deg, #1fae4b 0%, #2ed158 60%, #7df0a5 100%) !important; border-radius: 0 !important; box-shadow: 0 0 6px rgba(46,209,88,0.45) !important; }
+    .hp-fill.hp-mid, .hp-fill.hp-low { background: linear-gradient(90deg, #1fae4b 0%, #2ed158 60%, #7df0a5 100%) !important; }
+    .p2 > .unit-plate .hp-fill { background: linear-gradient(90deg, #d92f3c 0%, #ff4a56 60%, #ff96a0 100%) !important; box-shadow: 0 0 6px rgba(255,74,86,0.45) !important; }
+    body.is-p2-viewer .p1 > .unit-plate .hp-fill { background: linear-gradient(90deg, #d92f3c 0%, #ff4a56 60%, #ff96a0 100%) !important; box-shadow: 0 0 6px rgba(255,74,86,0.45) !important; }
+    body.is-p2-viewer .p2 > .unit-plate .hp-fill { background: linear-gradient(90deg, #1fae4b 0%, #2ed158 60%, #7df0a5 100%) !important; box-shadow: 0 0 6px rgba(46,209,88,0.45) !important; }
+    .mp-fill { background: linear-gradient(90deg, #1f7fd6 0%, #2f9dff 60%, #8fd0ff 100%) !important; border-radius: 0 !important; box-shadow: 0 0 6px rgba(47,157,255,0.4) !important; }
 
     /* HP/MP numbers: centered inside their bar */
     .hp-bar .bar-num, .mp-bar .bar-num {
@@ -6875,26 +6888,30 @@ function _injectHudHideStyles() {
     .hrlg-view-tab .hrlg-infobtn:hover { transform: skewX(8deg) scale(1.12); }
     .hrlg-view-tab .hrlg-infobtn:active { transform: skewX(8deg) scale(0.94); }
     /* HP/MP vitals right under the portrait — the numbers are the POINT
-       here, so they get real size instead of fine print. */
+       here, so they get real size instead of fine print. Label + numbers
+       ride the strip ABOVE the bar (identity left, numbers right), the
+       same layout as the nameplates and target rows; the bar stays clean. */
     .hrlg-vitals {
-      display: flex; flex-direction: column; gap: 4px; pointer-events: none;
+      display: flex; flex-direction: column; gap: 5px; pointer-events: none;
     }
     .hrlg-vbar {
-      position: relative; height: 20px; background: rgba(0,0,0,0.62);
-      border: 1px solid rgba(255,255,255,0.13); overflow: hidden;
-      display: flex; align-items: center;
+      position: relative; height: 12px; margin-top: 15px;
+      background: rgba(0,0,0,0.62);
+      border: 1px solid rgba(255,255,255,0.13);
     }
-    .hrlg-vbar.mp { height: 16px; }
+    .hrlg-vbar.mp { height: 10px; }
     .hrlg-vfill {
       position: absolute; left: 0; top: 0; bottom: 0;
       transition: width 0.35s cubic-bezier(0.22,1,0.36,1);
     }
     .hrlg-vlbl {
-      position: relative; font-size: 10px; letter-spacing: 0.18em; margin-left: 6px;
+      position: absolute; left: 1px; bottom: calc(100% + 3px);
+      font-size: 10px; letter-spacing: 0.18em; line-height: 1;
       color: rgba(255,255,255,0.85); text-shadow: 0 1px 1px rgba(0,0,0,0.9);
     }
     .hrlg-vnum {
-      position: relative; margin-left: auto; margin-right: 6px; font-size: 13px; line-height: 1;
+      position: absolute; right: 1px; bottom: calc(100% + 2px);
+      font-size: 13px; line-height: 1;
       color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.95), 0 0 4px rgba(0,0,0,0.8);
     }
     .hrlg-vbar.mp .hrlg-vnum { font-size: 11px; }
@@ -7044,6 +7061,10 @@ function _injectHudHideStyles() {
     }
     /* portrait target row: face chip + name over a real HP bar (JRPG style) */
     .hrlg-blade.trow { height: 54px; }
+    .hrlg-blade.trow.has-mp { height: 70px; }
+    /* the armed (✓) row grows a CONFIRM seal — drop the dist chip there so
+       the name + HP bar never get crowded out */
+    .hrlg-blade.trow.pend .hrlg-meta { display: none; }
     .hrlg-body {
       position: relative; height: 100%; flex: 1; min-width: 0;
       display: flex; align-items: center; gap: 8px; padding: 0 13px 0 12px;
@@ -7094,31 +7115,39 @@ function _injectHudHideStyles() {
     .hrlg-tport.ally  { border-color: rgba(90,170,255,0.75); }
     .hrlg-tport.enemy { border-color: rgba(255,90,90,0.75); }
     .hrlg-tport.ko { filter: grayscale(1) brightness(0.65); }
+    /* min-width guarantees the HP bar NEVER collapses when the right-hand
+       chips (forecast / dist / CONFIRM) crowd the row. */
     .hrlg-tcol {
-      flex: 1 1 auto; min-width: 0;
-      display: flex; flex-direction: column; gap: 3px; justify-content: center;
+      flex: 1 1 auto; min-width: 92px;
+      display: flex; flex-direction: column; gap: 2px; justify-content: center;
     }
     .hrlg-tcol .hrlg-blabel { font-size: 13px; }
+    /* the strip above each bar: identity left, numbers right — same layout
+       as the 3D nameplates */
+    .hrlg-trow-top {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 6px; min-width: 0;
+    }
+    .hrlg-trow-top.mp { justify-content: flex-end; }
     .hrlg-thp {
-      position: relative; height: 13px; overflow: hidden;
+      position: relative; height: 10px;
       background: rgba(0,0,0,0.62); border: 1px solid rgba(255,255,255,0.13);
     }
-    .hrlg-thp.mp { height: 10px; }
+    .hrlg-thp.mp { height: 8px; }
     .hrlg-thp-fill {
       position: absolute; left: 0; top: 0; bottom: 0;
       transition: width 0.3s ease-out;
     }
     .hrlg-thp-shield {
       position: absolute; top: 0; right: 0; bottom: 0;
-      background: linear-gradient(180deg, rgba(120,200,255,0.7), rgba(60,140,220,0.5));
+      background: rgba(130,200,255,0.6);
     }
     .hrlg-thp-num {
-      position: absolute; inset: 0; display: flex; align-items: center;
-      justify-content: flex-end; padding-right: 4px;
+      flex: none;
       font-size: 10px; line-height: 1; color: #fff;
       text-shadow: 0 1px 1px #000, 0 0 3px rgba(0,0,0,0.85);
     }
-    .hrlg-thp.mp .hrlg-thp-num { font-size: 9px; }
+    .hrlg-trow-top.mp .hrlg-thp-num { font-size: 9px; }
     /* type badges NEVER clip — they're the matchup intel; the name
        ellipsizes first instead (see the flex settings on hrlg-blabel) */
     .hrlg-badges { display: flex; align-items: center; gap: 5px; flex: none; }
