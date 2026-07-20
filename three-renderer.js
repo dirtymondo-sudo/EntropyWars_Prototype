@@ -9705,8 +9705,8 @@ const ThreeRenderer = (function () {
         var ringCol = _viewerPlayerColor(unit.player);
 
         var innerRing = new THREE.Mesh(
-            new THREE.RingGeometry(ts * 0.28, ts * 0.40, 32),
-            new THREE.MeshBasicMaterial({ color: ringCol, transparent: true, opacity: 0.78, side: THREE.DoubleSide, depthWrite: false })
+            new THREE.RingGeometry(ts * 0.35, ts * 0.40, 48),
+            new THREE.MeshBasicMaterial({ color: ringCol, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false })
         );
         innerRing.rotation.x = -Math.PI / 2;
         innerRing.position.y = SELECTED_RING_OFFSET;
@@ -9719,8 +9719,8 @@ const ThreeRenderer = (function () {
         group.add(innerRing);
 
         var outerRing = new THREE.Mesh(
-            new THREE.RingGeometry(ts * 0.40, ts * 0.50, 32),
-            new THREE.MeshBasicMaterial({ color: ringCol, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false })
+            new THREE.RingGeometry(ts * 0.43, ts * 0.455, 48),
+            new THREE.MeshBasicMaterial({ color: ringCol, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false })
         );
         outerRing.rotation.x = -Math.PI / 2;
         outerRing.position.y = SELECTED_RING_OFFSET - 0.1;
@@ -9753,7 +9753,7 @@ const ThreeRenderer = (function () {
 
         if (state.selectedUnitId === unit.id) {
             var selGlow = new THREE.Mesh(
-                new THREE.RingGeometry(ts * 0.42, ts * 0.56, 32),
+                new THREE.RingGeometry(ts * 0.46, ts * 0.53, 48),
                 _makeRingMaterial(0xffcc00, 1.0, 0.0)
             );
             selGlow.rotation.x = -Math.PI / 2;
@@ -9762,8 +9762,8 @@ const ThreeRenderer = (function () {
             group.add(selGlow);
 
             var selHalo = new THREE.Mesh(
-                new THREE.RingGeometry(ts * 0.56, ts * 0.64, 32),
-                new THREE.MeshBasicMaterial({ color: 0xffcc00, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false })
+                new THREE.RingGeometry(ts * 0.56, ts * 0.585, 48),
+                new THREE.MeshBasicMaterial({ color: 0xffcc00, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
             );
             selHalo.rotation.x = -Math.PI / 2;
             selHalo.position.y = SELECTED_RING_OFFSET + 0.2;
@@ -11839,8 +11839,8 @@ const ThreeRenderer = (function () {
         if (!entry || !entry.group) return;
         var ts = CONFIG.tileSize || BASE_TILE;
         _hoverGlowMesh = new THREE.Mesh(
-            new THREE.RingGeometry(ts * 0.42, ts * 0.56, 32),
-            _makeRingMaterial(0xffffff, 0.9, 0.0)
+            new THREE.RingGeometry(ts * 0.46, ts * 0.53, 48),
+            _makeRingMaterial(0xffffff, 0.95, 0.0)
         );
         _hoverGlowMesh.rotation.x = -Math.PI / 2;
         _hoverGlowMesh.position.y = SELECTED_RING_OFFSET + 0.4;
@@ -12048,10 +12048,10 @@ const ThreeRenderer = (function () {
         grp._ew_pings = [];
 
         var baseMat = new THREE.MeshBasicMaterial({
-            color: colorHex, transparent: true, opacity: 0.65,
+            color: colorHex, transparent: true, opacity: 0.9,
             side: THREE.DoubleSide, depthWrite: false
         });
-        var base = new THREE.Mesh(new THREE.RingGeometry(ts * 0.46, ts * 0.55, 40), baseMat);
+        var base = new THREE.Mesh(new THREE.RingGeometry(ts * 0.50, ts * 0.545, 48), baseMat);
         base.rotation.x = -Math.PI / 2;
         base.position.y = SELECTED_RING_OFFSET + 0.55;
         base.raycast = function () {};
@@ -12064,7 +12064,7 @@ const ThreeRenderer = (function () {
                 side: THREE.DoubleSide, depthWrite: false,
                 blending: THREE.AdditiveBlending
             });
-            var ping = new THREE.Mesh(new THREE.RingGeometry(ts * 0.50, ts * 0.58, 40), pingMat);
+            var ping = new THREE.Mesh(new THREE.RingGeometry(ts * 0.53, ts * 0.57, 48), pingMat);
             ping.rotation.x = -Math.PI / 2;
             ping.position.y = SELECTED_RING_OFFSET + 0.50 - i * 0.02;
             ping.raycast = function () {};
@@ -12111,7 +12111,7 @@ const ThreeRenderer = (function () {
         }
 
         var now = performance.now();
-        _turnBeaconGroup._ew_baseMat.opacity = 0.5 + 0.25 * Math.sin(now * 0.004);
+        _turnBeaconGroup._ew_baseMat.opacity = 0.72 + 0.2 * Math.sin(now * 0.004);
         for (var i = 0; i < _turnBeaconGroup._ew_pings.length; i++) {
             var p = _turnBeaconGroup._ew_pings[i];
             var t = ((now * 0.00055) + p.phase) % 1;
