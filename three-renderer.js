@@ -2572,13 +2572,18 @@ const ThreeRenderer = (function () {
             }
         }
 
-        /* ── 🌊 Liquid-spread flow slabs (2026-07-14) ───────────────────────
+        /* ── 🌊 Liquid-spread flow slabs (2026-07-14, slanted 2026-07-20) ───
            Minecraft-style flow: map.js getLiquidFlowAt derives which dry tiles
            a neighbouring liquid spreads onto (up to 3 tiles, level-or-lower
-           ground). Each flow tile gets a thin animated fluid box laid on its
-           surface — ~1/3 of a block at the source's edge, thinning with
-           distance — using the same fluid materials as the source (water /
-           purple bog water / black ooze / glowing lava). Rebuilt with the terrain
+           ground). Each flow tile gets an animated fluid slab whose TOP is
+           slanted per-corner (Minecraft fluid corner heights): the nominal
+           surface starts at the source's own water line and ramps down
+           LINEARLY with spread distance — equal drop per tile — and every
+           corner averages the surface of the fluid tiles that meet there, so
+           the whole spread reads as one continuous slanted sheet instead of
+           stepped flat boxes, thinning to a tapered fringe at the outer rim.
+           Uses the same fluid materials as the source (water / purple bog
+           water / black ooze / glowing lava). Rebuilt with the terrain
            (terrain or height changes recompute the flow), excluded from the
            static merge (fluid materials), and transparent to tile picking. */
         /* rebuildTerrain is INCREMENTAL — always drop the previous flow group
@@ -2591,16 +2596,83 @@ const ThreeRenderer = (function () {
         if (typeof getLiquidFlowAt === 'function') {
             var _flowGroup = new THREE.Group();
             var _FLOW_TERRAIN_FOR = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava' };
+            /* mirrors of map.js liquidFamilyOf / _LIQUID_SPREADS — keep in sync */
+            var _FLOW_FAM_OF = { water: 'water', deep_water: 'water', poison: 'poison',
+                                 poison_bog: 'poison', purple_bog: 'poison',
+                                 swamp: 'oil', oil: 'oil', lava: 'lava' };
+            var _FLOW_RANGE = { water: 3, poison: 3, oil: 3, lava: 2 };
             var _noRaycast = function() {};
+            /* Nominal ABSOLUTE surface Y of this family's liquid at a tile's
+               centre, or null if the tile holds none. A source sits at its own
+               water line (block top, minus the shoreline inset for non-lava);
+               a flow tile ramps down linearly with spread distance so every
+               tile of the spread drops the SAME amount, from the source's
+               surface down to nothing past the last tile. */
+            var _flowSurfY = function(x, y, fam) {
+                if (x < 0 || y < 0 || x >= _bw || y >= _bh) return null;
+                var srcFam = _FLOW_FAM_OF[getTerrainAt(x, y)] || null;
+                if (srcFam === fam) return tileTopY(x, y) - (fam === 'lava' ? 0 : elevStep * WATER_TOP_INSET);
+                var fl = getLiquidFlowAt(x, y);
+                if (fl && fl.t === fam) {
+                    var R = _FLOW_RANGE[fam] || 3;
+                    var topFrac = (fam === 'lava') ? 1.0 : (1 - WATER_TOP_INSET);
+                    return tileTopY(x, y) + elevStep * topFrac * (R - fl.d + 0.5) / R;
+                }
+                return null;
+            };
+            /* Minecraft-style fluid corner height: average the nominal surface
+               over the (up to 4) same-family fluid tiles meeting at a corner
+               grid point, so the sheet stays continuous across tile seams. */
+            var _flowCornerY = function(cx, cy, fam) {
+                var sum = 0, n = 0;
+                for (var oy = -1; oy <= 0; oy++) {
+                    for (var ox = -1; ox <= 0; ox++) {
+                        var s = _flowSurfY(cx + ox, cy + oy, fam);
+                        if (s !== null) { sum += s; n++; }
+                    }
+                }
+                return n ? { y: sum / n, n: n } : null;
+            };
             for (var fy = 0; fy < _bh; fy++) {
                 for (var fx = 0; fx < _bw; fx++) {
                     var _fl = getLiquidFlowAt(fx, fy);
                     if (!_fl) continue;
-                    /* d=1 → ~1/3 step, d=2 → ~1/4, d=3 → ~1/7 */
-                    var _fh = elevStep * Math.max(0.12, 0.42 - 0.09 * _fl.d);
+                    var _fTop = tileTopY(fx, fy);
+                    var _hMin = elevStep * 0.05, _hMax = elevStep * 1.3;
+                    /* per-corner slab thickness above THIS tile's top —
+                       index (z+ ? 2 : 0) + (x+ ? 1 : 0) */
+                    var _cH = [];
+                    for (var ci = 0; ci < 4; ci++) {
+                        var _cc = _flowCornerY(fx + (ci & 1), fy + (ci >> 1), _fl.t);
+                        var _ch = _cc ? Math.min(_hMax, Math.max(_hMin, _cc.y - _fTop)) : _hMin;
+                        /* outer rim (corner touched by no other fluid tile):
+                           pull toward zero so the fringe tapers to a thin edge */
+                        if (_cc && _cc.n === 1) _ch = _hMin + (_ch - _hMin) * 0.3;
+                        _cH[ci] = _ch;
+                    }
                     var _fMats = buildFluidBoxMaterials(_FLOW_TERRAIN_FOR[_fl.t] || 'water', null);
-                    var _fMesh = new THREE.Mesh(_getBoxGeo(ts, _fh), _fMats);
-                    _fMesh.position.set(fx * ts + ts / 2, tileTopY(fx, fy) + _fh / 2, fy * ts + ts / 2);
+                    var _fGeo = new THREE.BoxGeometry(ts, 1, ts);
+                    _fGeo.translate(0, 0.5, 0);
+                    var _pos = _fGeo.getAttribute('position');
+                    var _fUv = _fGeo.getAttribute('uv');
+                    for (var vi = 0; vi < _pos.count; vi++) {
+                        if (_pos.getY(vi) < 0.5) continue;   // bottom ring stays at the tile top
+                        var _cIdx = (_pos.getZ(vi) > 0 ? 2 : 0) + (_pos.getX(vi) > 0 ? 1 : 0);
+                        _pos.setY(vi, _cH[_cIdx]);
+                        /* side faces keep the slab UV convention (top-edge V =
+                           height/ts, see _fixSlabSideUVs) so the water texture
+                           isn't stretched on thin edges */
+                        if ((vi < 8 || vi >= 16) && _fUv.getY(vi) > 0.5) _fUv.setY(vi, _cH[_cIdx] / ts);
+                    }
+                    /* slanted top face needs a matching normal for lighting */
+                    var _fNrm = _fGeo.getAttribute('normal');
+                    var _dhx = ((_cH[1] + _cH[3]) - (_cH[0] + _cH[2])) / (2 * ts);
+                    var _dhz = ((_cH[2] + _cH[3]) - (_cH[0] + _cH[1])) / (2 * ts);
+                    var _nl = Math.sqrt(_dhx * _dhx + _dhz * _dhz + 1);
+                    for (var ni = 8; ni < 12; ni++) _fNrm.setXYZ(ni, -_dhx / _nl, 1 / _nl, -_dhz / _nl);
+                    _pos.needsUpdate = true; _fUv.needsUpdate = true; _fNrm.needsUpdate = true;
+                    var _fMesh = new THREE.Mesh(_fGeo, _fMats);
+                    _fMesh.position.set(fx * ts + ts / 2, _fTop, fy * ts + ts / 2);
                     _fMesh.raycast = _noRaycast;   // clicks land on the ground tile below
                     _fMesh._ew_liquidFlow = true;
                     _flowGroup.add(_fMesh);
