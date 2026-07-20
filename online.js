@@ -412,7 +412,7 @@
                     playSfx('moveStep');
                     if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.showGhostUnit) {
                         var tint = unit.player === 1 ? 0x4da3ff : 0xff5a5a;
-                        ThreeRenderer.showGhostUnit(unit, x, y, undefined, { tag: 'netPending', color: tint, opacity: 0.45 });
+                        ThreeRenderer.showGhostUnit(unit, x, y, undefined, { tag: 'netPending', color: tint, opacity: 0.75 });
                     }
                 } else if (kind === 'item') {
                     playSfx('itemThrow');

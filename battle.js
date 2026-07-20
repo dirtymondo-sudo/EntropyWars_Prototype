@@ -19383,9 +19383,10 @@
                 if (!spell || !target) return;
                 const shove = _predictSpellApproachShove(spell, target, castX, castY);
                 if (!shove) return;
-                const shoveColor = shove.mode === 'pull' ? 0x66ccff : 0xff66cc;
+                // Arrow palette: purple = target being force-moved (push AND pull).
+                const shoveColor = 0xbb66ff;
                 const shY = ThreeRenderer.tileTopY(shove.x, shove.y);
-                ThreeRenderer.showGhostUnit(target, shove.x, shove.y, shY, { tag: 'target', color: shoveColor, opacity: 0.5 });
+                ThreeRenderer.showGhostUnit(target, shove.x, shove.y, shY, { tag: 'target', color: shoveColor, opacity: 0.8 });
                 ThreeRenderer.drawArrow3D(target.x, target.y, shove.x, shove.y, shoveColor, false, targetY, shY,
                     { arc: shove.mode === 'pull' ? 0.18 : 0.3, flow: true });
                 ThreeRenderer.setOverlay('spellApproachShove', [{ x: shove.x, y: shove.y, color: shoveColor, opacity: 0.4 }], shoveColor, 0.4);
@@ -19410,7 +19411,7 @@
                 // In-place height approach (take off / land / raise) — casts from the
                 // caster's own tile, so there's no move arrow/ghost, just aim the target.
                 if (approach._heightApproach) {
-                    ThreeRenderer.drawArrow3D(unit.x, unit.y, tx, ty, 0xff4444, false, actingY, targetY, { arc: 0.35, flow: true });
+                    ThreeRenderer.drawArrow3D(unit.x, unit.y, tx, ty, 0xff3333, false, actingY, targetY, { arc: 0.35, flow: true });
                     ThreeRenderer.setOverlay('spellApproachTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
                     _drawSpellApproachShove(_spell, _target, unit.x, unit.y, targetY);
                     state._spellApproachActive = true;
@@ -19431,7 +19432,8 @@
                     destY = ThreeRenderer.tileTopY(approach.x, approach.y);
                 }
 
-                const routeColor = approach._jump ? 0x66ffcc : 0xffcc44;
+                // Arrow palette: blue = your own movement (walk AND jump legs).
+                const routeColor = 0x3399ff;
                 if (approach.via) {
                     const viaY = ThreeRenderer.tileTopY(approach.via.x, approach.via.y);
                     ThreeRenderer.drawPathArrow3D([
@@ -19450,8 +19452,8 @@
                     ], routeColor);
                     ThreeRenderer.setOverlay('spellApproachMove', [{ x: approach.x, y: approach.y, color: routeColor, opacity: 0.45 }], routeColor, 0.45);
                 }
-                ThreeRenderer.showGhostUnit(unit, approach.x, approach.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.55 });
-                ThreeRenderer.drawArrow3D(approach.x, approach.y, tx, ty, 0xff4444, false, destY, targetY, { arc: 0.35, flow: true });
+                ThreeRenderer.showGhostUnit(unit, approach.x, approach.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.85 });
+                ThreeRenderer.drawArrow3D(approach.x, approach.y, tx, ty, 0xff3333, false, destY, targetY, { arc: 0.35, flow: true });
                 ThreeRenderer.setOverlay('spellApproachTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
                 _drawSpellApproachShove(_spell, _target, approach.x, approach.y, targetY);
                 state._spellApproachActive = true;
@@ -19558,7 +19560,7 @@
                     if (viaTile) marks.push({ x: viaTile.x, y: viaTile.y, color: routeColor, opacity: 0.3 });
                     marks.push({ x: x, y: y, color: routeColor, opacity: 0.45 });
                     ThreeRenderer.setOverlay('moveHoverDest', marks, routeColor, 0.45);
-                    ThreeRenderer.showGhostUnit(unit, x, y, _wpY(x, y, destZ), { tag: 'caster', color: ghostTint, opacity: 0.55 });
+                    ThreeRenderer.showGhostUnit(unit, x, y, _wpY(x, y, destZ), { tag: 'caster', color: ghostTint, opacity: 0.85 });
                     state._moveHoverActive = true;
                     scheduleBoardRender();
                 };
@@ -19580,7 +19582,8 @@
                     const matches = getMoveTiles(unit).filter(t => t.x === x && t.y === y);
                     if (matches.length) {
                         const dest = _pickByZ(matches);
-                        const routeColor = (dest._jump || dest._takeoff) ? 0x66ffcc : 0xffcc44;
+                        // Arrow palette: blue = your own movement (walk/jump/takeoff alike).
+                        const routeColor = 0x3399ff;
 
                         /* Takeoff+move (grounded flyer, teal tile): route the
                            preview through the SAME simulated takeoff the tile
@@ -19607,7 +19610,7 @@
                                 if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, routeColor);
                                 ThreeRenderer.setOverlay('moveHoverDest',
                                     [{ x: x, y: y, color: routeColor, opacity: 0.45 }], routeColor, 0.45);
-                                ThreeRenderer.showGhostUnit(unit, x, y, _flyY(dest.z), { tag: 'caster', color: ghostTint, opacity: 0.55 });
+                                ThreeRenderer.showGhostUnit(unit, x, y, _flyY(dest.z), { tag: 'caster', color: ghostTint, opacity: 0.85 });
                                 state._moveHoverActive = true;
                                 scheduleBoardRender();
                                 return;
@@ -19629,9 +19632,9 @@
                     const jm = getJumpTiles(unit).filter(t => t.x === x && t.y === y);
                     if (jm.length) {
                         const jDest = _pickByZ(jm);
-                        ThreeRenderer.drawArrow3D(unit.x, unit.y, x, y, 0x66ffcc, false, actingY,
+                        ThreeRenderer.drawArrow3D(unit.x, unit.y, x, y, 0x3399ff, false, actingY,
                             _wpY(x, y, jDest.z), { arc: 0.45, flow: true });
-                        _showDest(0x66ffcc, null, jDest.z);
+                        _showDest(0x3399ff, null, jDest.z);
                         return;
                     }
                 }
@@ -19648,7 +19651,7 @@
                     && typeof findMoveTowardsTile === 'function') {
                     const approach = findMoveTowardsTile(unit, x, y);
                     if (approach) {
-                        const towardsColor = 0xffaa33;
+                        const towardsColor = 0x3399ff; // movement = blue (dim goal marker keeps the "towards" read)
                         const savedX = unit.x, savedY = unit.y, savedZ = unit.z;
                         const wps = [{ x: savedX, y: savedY, yOverride: actingY }];
                         if (approach.via) {
@@ -19674,7 +19677,7 @@
                         }
                         ThreeRenderer.setOverlay('moveHoverDest', marks, towardsColor, 0.45);
                         ThreeRenderer.showGhostUnit(unit, approach.x, approach.y,
-                            _wpY(approach.x, approach.y, approach.z), { tag: 'caster', color: ghostTint, opacity: 0.55 });
+                            _wpY(approach.x, approach.y, approach.z), { tag: 'caster', color: ghostTint, opacity: 0.85 });
                         state._moveHoverActive = true;
                         scheduleBoardRender();
                         return;
@@ -24772,7 +24775,7 @@
                 const surfY = (typeof ThreeRenderer.tileTopY === 'function')
                     ? ThreeRenderer.tileTopY(unit.x, unit.y) : null;
                 ThreeRenderer.showGhostUnit(unit, unit.x, unit.y, surfY,
-                    { tag: 'simulPlan', color: 0x66ddff, opacity: 0.55 });
+                    { tag: 'simulPlan', color: 0x66ddff, opacity: 0.85 });
             }
             function _clearPlanGhost() {
                 if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.clearGhostUnit) {

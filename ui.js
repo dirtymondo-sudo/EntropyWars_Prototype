@@ -8986,13 +8986,16 @@
             if (!projectileLayerEl) return;
             const ts = CONFIG.tileSize || BASE_TILE;
 
-            // Shared colours (match the quick-action menu): push = magenta,
-            // pull = cyan, dash = green, teleport = violet, swap = ice-blue.
-            const PUSH = '#ff66cc', PUSH_H = 0xff66cc;
-            const PULL = '#66ccff', PULL_H = 0x66ccff;
-            const DASH = '#55ff88', DASH_H = 0x55ff88;
-            const TELE = '#bb88ff', TELE_H = 0xbb88ff;
-            const SWAP = '#66ddff', SWAP_H = 0x66ddff;
+            // Simple arrow palette (matches the quick-action menu / hover
+            // previews): blue = the caster itself moving (dash / teleport /
+            // swap / grapple-self), purple = a target being force-moved
+            // (push AND pull). Red damage / green heal live on the strike
+            // arrows — displacement is always one of these two.
+            const PUSH = '#bb66ff', PUSH_H = 0xbb66ff;
+            const PULL = '#bb66ff', PULL_H = 0xbb66ff;
+            const DASH = '#3399ff', DASH_H = 0x3399ff;
+            const TELE = '#3399ff', TELE_H = 0x3399ff;
+            const SWAP = '#3399ff', SWAP_H = 0x3399ff;
 
             if (kind === 'pull') {
                 const target = unitAt(tx, ty);
@@ -9152,7 +9155,7 @@
             if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
             var surfY = ThreeRenderer.tileTopY(x, y);
             var tag = 'disp:' + (unit.id != null ? unit.id : (x + ',' + y));
-            ThreeRenderer.showGhostUnit(unit, x, y, surfY, { tag: tag, color: hexColor, opacity: 0.5 });
+            ThreeRenderer.showGhostUnit(unit, x, y, surfY, { tag: tag, color: hexColor, opacity: 0.8 });
         }
 
         function _drawArrowBetweenTiles(fromX, fromY, toX, toY, color, dashed, dotted, opts) {

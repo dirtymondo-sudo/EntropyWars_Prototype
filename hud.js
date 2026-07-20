@@ -4491,17 +4491,17 @@ function _predictTargetShove(spell, target, castX, castY) {
   return { x: px, y: py, mode };
 }
 
+// Simple, consistent arrow palette (2026-07-20 — was per-spell-type
+// TYPE_COLORS, which read as random): red = it damages the target, green =
+// it heals/helps, blue = movement, purple = the target being force-moved,
+// white = neutral utility.
 function _actionPlanArrowColor(action) {
-  if (!action) return 0xff4444;
-  if (action.id === 'attack' || action.id === 'combo') return 0xff4444;
-
-  const spType = (action.spellType || '').toLowerCase();
-  const cssColor = TYPE_COLORS[spType] || '';
-  if (cssColor) {
-
-    return parseInt(cssColor.replace('#', ''), 16) || 0xff4444;
-  }
-  return 0xff4444;
+  if (!action) return 0xff3333;
+  if (action.id === 'attack' || action.id === 'combo') return 0xff3333;
+  const k = action.spell ? action.spell.kind : null;
+  if (k && _QA_SUP_KINDS[k]) return 0x33dd66;   // heal / support → green
+  if (k && !_QA_DMG_KINDS[k]) return 0xeeeeee;  // neutral utility → white
+  return 0xff3333;                              // damage → red
 }
 
 function _clearMoveArrowPreview() {
@@ -4518,8 +4518,8 @@ function _clearMoveArrowPreview() {
 }
 
 // Kind buckets for the quick-cast range wash: red = the spell damages what it
-// lands on, green = it helps allies, blue = neutral utility. Basic attack /
-// combo reach is gold, matching the attack blade + 'strike' move tiles.
+// lands on, green = it helps allies, white = neutral utility. Basic attack /
+// combo reach is red too — same "this hurts" palette as the strike arrows.
 const _QA_DMG_KINDS = { damage:1, aoe:1, barrage:1, multiHit:1, ricochet:1,
   splitBeam:1, bomb:1, delayed:1, cross:1, leapStrike:1, lifeDrain:1,
   zoneDebuff:1, debuff:1, seedPoison:1, leechSeed:1, pull:1, aoePull:1,
@@ -4535,7 +4535,7 @@ const _QA_SUP_KINDS = { heal:1, healAll:1, selfHeal:1, seedHeal:1, revive:1,
 function _showQuickActionRange(actingUnit, castX, castY, action) {
   if (!action || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
   const sp = action.spell;
-  let r = 0, color = 0xffcc33;
+  let r = 0, color = 0xff3333; // basic attack reach = damage red (same palette as the arrows)
   if (action.id === 'attack' || action.id === 'combo') {
     r = (typeof getEffectiveRange === 'function') ? (getEffectiveRange(actingUnit) || 1) : (actingUnit.range || 1);
   } else if (sp) {
@@ -4543,7 +4543,7 @@ function _showQuickActionRange(actingUnit, castX, castY, action) {
     // strike arrow + swept footprint — a range field would just paint the map.
     if (sp.kind === 'line' || sp.kind === 'linePush') return;
     r = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(actingUnit, sp) : (sp.range || 0);
-    color = _QA_DMG_KINDS[sp.kind] ? 0xff4444 : _QA_SUP_KINDS[sp.kind] ? 0x33cc55 : 0x66aaff;
+    color = _QA_DMG_KINDS[sp.kind] ? 0xff3333 : _QA_SUP_KINDS[sp.kind] ? 0x33dd66 : 0xeeeeee;
   } else {
     return;
   }
@@ -4620,13 +4620,13 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
     };
     const wps = [{ x: actingUnit.x, y: actingUnit.y, yOverride: actingY }];
     for (const s of steps) wps.push({ x: s.x, y: s.y, yOverride: _stepY(s) });
-    const routeColor = steps.some(s => s._jump) ? 0x66ffcc : 0xffcc44;
+    const routeColor = 0x3399ff; // movement = blue
     ThreeRenderer.drawPathArrow3D(wps, routeColor);
     // Intermediate tiles faint, the ACTUAL destination bright.
     ThreeRenderer.setOverlay('movePreview',
       steps.map((s, i) => ({ x: s.x, y: s.y, color: routeColor, opacity: i === steps.length - 1 ? 0.6 : 0.25 })),
       routeColor, 0.45);
-    ThreeRenderer.showGhostUnit(actingUnit, dest.x, dest.y, _stepY(dest), { tag: 'caster', color: ghostTint, opacity: 0.55 });
+    ThreeRenderer.showGhostUnit(actingUnit, dest.x, dest.y, _stepY(dest), { tag: 'caster', color: ghostTint, opacity: 0.85 });
     ThreeRenderer.setOverlay('actionPlanTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
     return;
   }
@@ -4654,7 +4654,7 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
 
     // One continuous bending walk-route arrow through any waypoint, plus tile
     // markers so the destination reads even head-on.
-    const routeColor = mt._jump ? 0x66ffcc : 0xffcc44;
+    const routeColor = 0x3399ff; // movement = blue (walk and jump legs alike)
     if (mt.via) {
       const viaY = ThreeRenderer.tileTopY(mt.via.x, mt.via.y);
       ThreeRenderer.drawPathArrow3D([
@@ -4677,7 +4677,7 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
     }
 
     // Hologram of the caster standing where it will end up.
-    ThreeRenderer.showGhostUnit(actingUnit, mt.x, mt.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.55 });
+    ThreeRenderer.showGhostUnit(actingUnit, mt.x, mt.y, destY, { tag: 'caster', color: ghostTint, opacity: 0.85 });
 
     // Arced strike arrow lobbing from the move destination onto the target.
     ThreeRenderer.drawArrow3D(mt.x, mt.y, tx, ty, arrowColor, false, destY, targetY, { arc: 0.35, flow: true });
@@ -4687,8 +4687,8 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
     ThreeRenderer.drawArrow3D(actingUnit.x, actingUnit.y, tx, ty, arrowColor, false, actingY, targetY, { arc: 0.35, flow: true });
   }
 
-  // Quiet reach field under the loud target/AoE layer (gold attack / red
-  // damage / green support), measured from the actual cast tile.
+  // Quiet reach field under the loud target/AoE layer (red damage / green
+  // support / white utility), measured from the actual cast tile.
   _showQuickActionRange(actingUnit, castX, castY, action);
 
   ThreeRenderer.setOverlay('actionPlanTarget', [{ x: tx, y: ty, color: 0xff3333, opacity: 0.4 }], 0xff3333, 0.4);
@@ -4716,9 +4716,10 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
   if (action && action.spell) {
     const shove = _predictTargetShove(action.spell, targetUnit, castX, castY);
     if (shove) {
-      const shoveColor = shove.mode === 'pull' ? 0x66ccff : 0xff66cc;
+      // Arrow palette: purple = target being force-moved (push AND pull).
+      const shoveColor = 0xbb66ff;
       const shY = ThreeRenderer.tileTopY(shove.x, shove.y);
-      ThreeRenderer.showGhostUnit(targetUnit, shove.x, shove.y, shY, { tag: 'target', color: shoveColor, opacity: 0.5 });
+      ThreeRenderer.showGhostUnit(targetUnit, shove.x, shove.y, shY, { tag: 'target', color: shoveColor, opacity: 0.8 });
       ThreeRenderer.drawArrow3D(tx, ty, shove.x, shove.y, shoveColor, false, targetY, shY,
         { arc: shove.mode === 'pull' ? 0.18 : 0.3, flow: true });
       ThreeRenderer.setOverlay('actionPlanShove', [{ x: shove.x, y: shove.y, color: shoveColor, opacity: 0.4 }], shoveColor, 0.4);

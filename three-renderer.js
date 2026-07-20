@@ -11155,7 +11155,7 @@ const ThreeRenderer = (function () {
             : tileTopY(tileX, tileY) + 1.0;
 
         var tintColor = (opts.color !== undefined && opts.color !== null) ? opts.color : 0x66ddff;
-        var baseOpacity = (opts.opacity !== undefined) ? opts.opacity : 0.5;
+        var baseOpacity = (opts.opacity !== undefined) ? opts.opacity : 0.8;
 
         var group = new THREE.Group();
         group.name = 'actionPlanGhost:' + tag;
@@ -11167,7 +11167,78 @@ const ThreeRenderer = (function () {
         group.add(ringInfo.mesh);
 
         var mat = null;
-        var spriteUrl = (typeof getBattleMapSpriteUrl === 'function')
+        var mats = [];            // every hologram material (pulsed together)
+        var bonePairs = null;     // [ [liveBone, ghostBone], ... ] for model ghosts
+        var syncSrc = null, syncDst = null;
+
+        // ── Rigged 3D model unit → the ghost is a translucent tinted CLONE of
+        // the actual model, bone-synced to the live rig every frame (see
+        // _updateActionPlanPulse) so the hologram idles in the unit's real
+        // animated pose instead of a flat sprite cutout. Falls back to the
+        // sprite billboard whenever the model isn't attached (still loading,
+        // EW_DISABLE_3D_UNITS, sprite-only race) or anything throws.
+        var _builtFromModel = false;
+        try {
+            var _uEntry = (typeof unitEntries !== 'undefined' && unitEntries && unitEntries.get)
+                ? unitEntries.get(unit.id) : null;
+            var _srcWrap = (_uEntry && _uEntry._ew_modelAttached && _uEntry.model) ? _uEntry.model : null;
+            if (_srcWrap) {
+                var gclone = _cloneUnitModel(_srcWrap);
+                // Pair bones by parallel traversal BEFORE any pruning — the
+                // clone preserves hierarchy order, and _ew_* flags don't
+                // survive clone() so index pairing is the reliable map.
+                var _pairsS = [], _pairsD = [];
+                _srcWrap.traverse(function (n) { _pairsS.push(n); });
+                gclone.traverse(function (n) { _pairsD.push(n); });
+                bonePairs = [];
+                if (_pairsS.length === _pairsD.length) {
+                    for (var bi = 0; bi < _pairsS.length; bi++) {
+                        if (_pairsS[bi].isBone) bonePairs.push([_pairsS[bi], _pairsD[bi]]);
+                    }
+                }
+                // Materials ARE shared by the clone, so they identify what each
+                // mesh is: real model skin = MeshLambertMaterial (keep, re-mat
+                // as hologram); pick pillar (invisible Basic) and x-ray twins
+                // (GreaterDepth Shader) = drop.
+                var _tcM = new THREE.Color(tintColor);
+                _tcM.lerp(new THREE.Color(0xffffff), 0.35);
+                var _drop = [], _kept = 0;
+                gclone.traverse(function (n) {
+                    if (!n.isMesh) return;
+                    var sm = Array.isArray(n.material) ? n.material[0] : n.material;
+                    if (!sm || !sm.isMeshLambertMaterial) { _drop.push(n); return; }
+                    var gm = new THREE.MeshBasicMaterial({
+                        map: sm.map || null, color: _tcM,
+                        transparent: true, opacity: baseOpacity, depthWrite: false
+                    });
+                    if (n.isSkinnedMesh) gm.skinning = true;
+                    n.material = gm;
+                    mats.push(gm);
+                    n.castShadow = false;
+                    n.receiveShadow = false;
+                    n.frustumCulled = false;
+                    n.raycast = function () {};   // never block unit/tile picking
+                    _kept++;
+                });
+                for (var di = 0; di < _drop.length; di++) {
+                    if (_drop[di].parent) _drop[di].parent.remove(_drop[di]);
+                }
+                if (_kept > 0) {
+                    gclone.rotation.copy(_srcWrap.rotation);   // keep facing + lean
+                    group.add(gclone);
+                    syncSrc = _srcWrap;
+                    syncDst = gclone;
+                    _builtFromModel = true;
+                } else {
+                    bonePairs = null;
+                }
+            }
+        } catch (e) {
+            _builtFromModel = false; bonePairs = null; syncSrc = null; syncDst = null;
+            mats.length = 0;
+        }
+
+        var spriteUrl = _builtFromModel ? null : (typeof getBattleMapSpriteUrl === 'function')
             ? getBattleMapSpriteUrl(unit)
             : ((typeof getR2RaceSpriteUrl === 'function')
                ? getR2RaceSpriteUrl(unit.race, unit.gender, unit.cls) : null);
@@ -11190,14 +11261,17 @@ const ThreeRenderer = (function () {
             var sprH = nh * _nativeScale;
 
             // Tint toward the plan colour but blend to white so the silhouette
-            // stays legible; additive blend gives the projected-hologram glow.
+            // stays legible. Normal alpha blend (NOT additive): additive washed
+            // out to near-invisible over bright terrain — the #1 "can barely
+            // see the ghost" complaint.
             var _tc = new THREE.Color(tintColor);
-            _tc.lerp(new THREE.Color(0xffffff), 0.5);
+            _tc.lerp(new THREE.Color(0xffffff), 0.35);
             mat = new THREE.MeshBasicMaterial({
                 map: spriteTex, transparent: true, alphaTest: 0.03,
                 side: THREE.DoubleSide, depthWrite: false,
-                opacity: baseOpacity, color: _tc, blending: THREE.AdditiveBlending
+                opacity: baseOpacity, color: _tc
             });
+            mats.push(mat);
 
             var spriteMesh = new THREE.Mesh(new THREE.PlaneGeometry(sprW, sprH), mat);
             var bottomShift = 0;
@@ -11211,8 +11285,9 @@ const ThreeRenderer = (function () {
 
         highlightGroup.add(group);
         _ghostGroups.push({
-            group: group, mat: mat, ringMat: ringInfo.mat, ring: ringInfo.mesh,
-            tag: tag, baseOpacity: baseOpacity
+            group: group, mat: mat, mats: mats, ringMat: ringInfo.mat, ring: ringInfo.mesh,
+            tag: tag, baseOpacity: baseOpacity,
+            syncSrc: syncSrc, syncDst: syncDst, bonePairs: bonePairs
         });
         if (tag === 'caster') { _ghostGroup = group; _ghostMat = mat; }
 
@@ -11227,8 +11302,10 @@ const ThreeRenderer = (function () {
             if (tag && e.tag !== tag) continue;
             if (highlightGroup) highlightGroup.remove(e.group);
             e.group.traverse(function(child) {
-                if (child.geometry) child.geometry.dispose();
-                if (child.material) child.material.dispose();
+                // Model-ghost geometry is the GLB's shared geometry (_ew_shared,
+                // still used by the live unit) — dispose only what's ours.
+                if (child.geometry && !child.geometry._ew_shared) child.geometry.dispose();
+                if (child.material && !child.material._ew_shared) child.material.dispose();
             });
             _ghostGroups.splice(i, 1);
         }
@@ -11237,17 +11314,39 @@ const ThreeRenderer = (function () {
 
     function _updateActionPlanPulse() {
         var t = performance.now() / 1000.0;
-        var flicker = 0.85 + 0.15 * Math.sin(t * 11.0); // subtle hologram scanline shimmer
+        // Gentle shimmer only — the old wide breathe (×0.7) + flicker (×0.85)
+        // combo dropped ghosts to ~40% of their base opacity, which is why
+        // they were near-invisible half the time.
+        var flicker = 0.94 + 0.06 * Math.sin(t * 11.0);
 
-        // Holographic ghosts: breathe the sprite opacity and pulse the footprint ring.
+        // Holographic ghosts: breathe the hologram opacity and pulse the footprint ring.
         for (var gi = 0; gi < _ghostGroups.length; gi++) {
             var e = _ghostGroups[gi];
-            var breathe = 0.7 + 0.45 * Math.abs(Math.sin(t * 2.5));
-            if (e.mat) e.mat.opacity = (e.baseOpacity || 0.5) * breathe * flicker;
-            if (e.ringMat) e.ringMat.opacity = 0.32 + 0.4 * Math.abs(Math.sin(t * 2.5 + 1.0));
+            var breathe = 0.88 + 0.12 * Math.abs(Math.sin(t * 2.5));
+            var op = (e.baseOpacity || 0.8) * breathe * flicker;
+            if (e.mat) e.mat.opacity = op;
+            if (e.mats) {
+                for (var mi = 0; mi < e.mats.length; mi++) e.mats[mi].opacity = op;
+            }
+            if (e.ringMat) e.ringMat.opacity = 0.4 + 0.35 * Math.abs(Math.sin(t * 2.5 + 1.0));
             if (e.ring) {
                 var rs = 1.0 + 0.12 * Math.sin(t * 3.0);
                 e.ring.scale.set(rs, rs, rs);
+            }
+            // Model ghost: mirror the live rig's pose (facing/lean + every bone)
+            // so the hologram plays the unit's actual idle animation in place.
+            if (e.syncSrc && e.syncDst) {
+                try {
+                    e.syncDst.rotation.copy(e.syncSrc.rotation);
+                    var bp = e.bonePairs;
+                    if (bp) {
+                        for (var b = 0; b < bp.length; b++) {
+                            bp[b][1].position.copy(bp[b][0].position);
+                            bp[b][1].quaternion.copy(bp[b][0].quaternion);
+                            bp[b][1].scale.copy(bp[b][0].scale);
+                        }
+                    }
+                } catch (_se) { e.syncSrc = null; e.syncDst = null; e.bonePairs = null; }
             }
         }
 
