@@ -17474,7 +17474,10 @@ const ThreeRenderer = (function () {
         // (Use TextureBake.png — the baked sandstone diffuse; BakedPyramid.png in
         // that folder is an all-black map and renders the pyramid pure black.)
         var tex = _miscTex(_R2_MISC + 'Pyramid/Textures/TextureBake.png');
-        if (tex && tex.flipY !== false) { tex.flipY = false; tex.needsUpdate = true; }
+        /* needsUpdate only once pixel data exists — the loader's completion
+           handler triggers the upload itself (with flipY already false), and
+           flagging an image-less texture warns every frame + renders black. */
+        if (tex && tex.flipY !== false) { tex.flipY = false; if (tex.image) tex.needsUpdate = true; }
         var g = _miscModelInstance(_R2_MISC + 'Pyramid/Pyramid.glb', true, h, {
             matPick: function () {
                 return new THREE.MeshBasicMaterial({ map: tex, side: THREE.FrontSide, fog: false });
@@ -22355,7 +22358,10 @@ const ThreeRenderer = (function () {
                    when it lands (clone() copies the empty image reference). */
                 tex = srcTex.clone();
                 tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-                tex.needsUpdate = true;
+                /* Flag the upload only when pixel data exists — needsUpdate on
+                   an image-less clone makes the renderer warn every frame and
+                   draw the prop black until the download lands. */
+                if (srcTex.image) tex.needsUpdate = true;
                 if ((!srcTex.image || !srcTex.image.complete)
                     && typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[tKey]) {
                     getTexture(TERRAIN_SPRITES[tKey][0], function (loaded) {

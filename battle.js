@@ -23045,7 +23045,7 @@
 
             /* ── Asset warmers — fire these even when visuals are skipped, so
                dev-sim and animations-off matches still get a hot cache. ── */
-            const prog = { model: [0, 0], img: [0, 0], music: [0, 1] };
+            const prog = { model: [0, 0], img: [0, 0], tex: [0, 0], music: [0, 1] };
             const warmers = [];
 
             // Rigged GLBs: the actual 2D→3D pop-in killer (§3.1).
@@ -23082,6 +23082,66 @@
                 warmers.push(Promise.all(imgList.map(u => new Promise(res => {
                     const im = new Image();
                     const step = () => { imgDone++; prog.img = [imgDone, imgList.length]; res(); };
+                    im.onload = step;
+                    im.onerror = step;
+                    im.src = u;
+                }))));
+            }
+
+            // Terrain slabs + lazily-fetched prop/VFX textures (§3.3): the 3D
+            // renderer's TextureLoader pulls these from the CDN on FIRST USE,
+            // which mid-battle means the mesh renders BLACK until the download
+            // lands. Warm the browser cache here: every terrain key actually on
+            // the board, plus the fixed cladding set used by procedural props
+            // and VFX (tree bark/leaves, rock/crystal clusters, tesla metals,
+            // signature-object materials, boulder/ice projectiles, fluid waves).
+            const texUrls = new Set();
+            try {
+                const terrKeys = new Set();
+                if (state.boardTerrain) {
+                    for (const row of state.boardTerrain) {
+                        if (!row) continue;
+                        for (const k of row) if (k) terrKeys.add(k);
+                    }
+                }
+                if (state.boardColumns) {
+                    for (const row of state.boardColumns) {
+                        if (!row) continue;
+                        for (const col of row) {
+                            if (!col) continue;
+                            for (const seg of col) if (seg && seg.terrain) terrKeys.add(seg.terrain);
+                        }
+                    }
+                }
+                if (typeof TERRAIN_SPRITES !== 'undefined') {
+                    for (const k of terrKeys) {
+                        if (TERRAIN_SPRITES[k] && TERRAIN_SPRITES[k][0]) texUrls.add(TERRAIN_SPRITES[k][0]);
+                    }
+                }
+            } catch (_e) {}
+            const _lsTerrBase = 'https://cdn.entropywars.net/Assets/Sprites/terrain/';
+            [
+                // 3D trees / rock & crystal clusters / bone piles / flowers
+                'wood.png', 'leaves.png', 'rock.png', 'crystal.png', 'enamel.png',
+                'objects/flower.png', 'objects/flower_2.png', 'objects/flower_3.png', 'objects/flower_4.png',
+                // tesla coil + signature-object cladding
+                'gunmetal.png', 'copper.png', 'aluminium.png', 'gold.png', 'metal.png',
+                'wood_planks.png', 'obsidian.png', 'leather.png', 'parchment.png', 'marble_light.png',
+                // boulder / ice / forest VFX projectiles + fluid wave overlay
+                'rocks_4.png', 'ice.png', 'forest.png', 'waves_1.png',
+            ].forEach(f => texUrls.add(_lsTerrBase + f));
+            texUrls.add('https://cdn.entropywars.net/Assets/Sprites/projectiles/bullet.png');
+            const texList = Array.from(texUrls).filter(u => !sprUrls.has(u));
+            prog.tex = [0, texList.length];
+            if (texList.length) {
+                let texDone = 0;
+                warmers.push(Promise.all(texList.map(u => new Promise(res => {
+                    const im = new Image();
+                    /* Must match textureLoader.setCrossOrigin('anonymous') —
+                       a no-cors warm isn't reusable for the renderer's CORS
+                       fetch, so the battle would re-download anyway. */
+                    im.crossOrigin = 'anonymous';
+                    const step = () => { texDone++; prog.tex = [texDone, texList.length]; res(); };
                     im.onload = step;
                     im.onerror = step;
                     im.src = u;
@@ -23225,8 +23285,8 @@
 
                 let maxPct = 0;   // monotonic — totals can grow as warmers report in
                 const paintProgress = () => {
-                    const done = prog.model[0] + prog.img[0] + prog.music[0];
-                    const total = Math.max(1, prog.model[1] + prog.img[1] + prog.music[1]);
+                    const done = prog.model[0] + prog.img[0] + prog.tex[0] + prog.music[0];
+                    const total = Math.max(1, prog.model[1] + prog.img[1] + prog.tex[1] + prog.music[1]);
                     maxPct = Math.max(maxPct, Math.min(100, Math.round((done / total) * 100)));
                     fill.style.width = maxPct + '%';
                     statusCount.textContent = String(done).padStart(2, '0') + ' / ' + String(total).padStart(2, '0');
