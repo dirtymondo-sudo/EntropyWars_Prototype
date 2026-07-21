@@ -4775,23 +4775,30 @@
             maybeAdvanceTurn();
         }
 
+        /* One containment test for every nexus shape: square zones use the
+           zoneX/zoneY/zoneSize rect; Arena spawn nexuses carry an explicit
+           `tiles` footprint (spawn zones are tile lists, not squares). */
+        function nexusZoneContains(nex, x, y) {
+            if (!nex) return false;
+            if (Array.isArray(nex.tiles)) return nex.tiles.some(t => t.x === x && t.y === y);
+            return x >= nex.zoneX && x < nex.zoneX + nex.zoneSize &&
+                   y >= nex.zoneY && y < nex.zoneY + nex.zoneSize;
+        }
+        window.nexusZoneContains = nexusZoneContains;
+
         function getNexusAtUnit(unit) {
             if (!unit) return null;
 
             if (state.roamingNexus) {
                 const rn = state.roamingNexus;
-                const inRoaming = unit.x >= rn.zoneX && unit.x < rn.zoneX + rn.zoneSize &&
-                                  unit.y >= rn.zoneY && unit.y < rn.zoneY + rn.zoneSize;
-                if (inRoaming) return { section: 'roaming', nexus: rn };
+                if (nexusZoneContains(rn, unit.x, unit.y)) return { section: 'roaming', nexus: rn };
             }
             if (!state.nexusPoints) return null;
 
             for (const key of Object.keys(state.nexusPoints)) {
                 const nex = state.nexusPoints[key];
                 if (!nex) continue;
-                const inZone = unit.x >= nex.zoneX && unit.x < nex.zoneX + nex.zoneSize &&
-                               unit.y >= nex.zoneY && unit.y < nex.zoneY + nex.zoneSize;
-                if (inZone) return { section: key, nexus: nex };
+                if (nexusZoneContains(nex, unit.x, unit.y)) return { section: key, nexus: nex };
             }
             return null;
         }
@@ -4800,17 +4807,11 @@
             if (!state.nexusPoints) return false;
 
             if (sectionKey) {
-                const nex = state.nexusPoints[sectionKey];
-                if (!nex) return false;
-                return x >= nex.zoneX && x < nex.zoneX + nex.zoneSize &&
-                       y >= nex.zoneY && y < nex.zoneY + nex.zoneSize;
+                return nexusZoneContains(state.nexusPoints[sectionKey], x, y);
             }
 
             for (const key of Object.keys(state.nexusPoints)) {
-                const nex = state.nexusPoints[key];
-                if (!nex) continue;
-                if (x >= nex.zoneX && x < nex.zoneX + nex.zoneSize &&
-                    y >= nex.zoneY && y < nex.zoneY + nex.zoneSize) return true;
+                if (nexusZoneContains(state.nexusPoints[key], x, y)) return true;
             }
             return false;
         }

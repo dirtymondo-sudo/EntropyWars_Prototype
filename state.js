@@ -188,7 +188,7 @@
                 id: 'arena',
                 label: 'Arena',
                 icon: '🏰',
-                desc: 'Destroy the tower, collect hourglasses, or wipe out the enemy. 15-round limit with composite scoring fallback.',
+                desc: 'Destroy the tower, collect hourglasses, wipe out the enemy — or hold all 3 Nexus zones (center + both spawns; yours starts captured). 15-round limit with composite scoring fallback.',
                 roundLimit: 15,
                 timeLimitSec: 0,
                 hasTowers: true,

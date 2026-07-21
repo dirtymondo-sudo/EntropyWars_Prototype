@@ -9151,6 +9151,7 @@ window.NEXUS_LABELS = {
     earth: 'Central', nw: 'Northern', se: 'Southern',
     west: 'Western', east: 'Eastern', north: 'Northern', south: 'Southern',
     above: 'Sky', below: 'Cave', roaming: 'Hotspot',
+    spawn1: 'P1 Spawn', spawn2: 'P2 Spawn',
 };
 
 window.ARENA_PTS = {

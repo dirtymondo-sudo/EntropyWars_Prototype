@@ -3402,10 +3402,20 @@ place now: **`window.ARENA_PTS`** (data.js, next to the NEXUS_ constants) — ki
 tower dmg 1/10HP **capped at 150 pts**, hourglass 35, nexus-control round 6. Nexus
 control accrual **doubles in the last 5 rounds** ("⬡ NEXUS SURGE", tickMatchClock) —
 the comeback lever. Tower poking can no longer outscore objective play.
-- **Nexus zones** spawn on a **diagonal line**: `earth` (Central) always dead-center,
-  `nw` + `se` toward opposite corners (all 3 map.js placement paths; keys are generic
-  now — NEVER hardcode earth/above/below; iterate `Object.keys(state.nexusPoints)`;
-  display names in `window.NEXUS_LABELS`).
+- **Nexus zones — ARENA (since 2026-07-21): spawn zones ARE nexuses.** Every Arena
+  map has exactly 3 zones: ONE placed nexus dead-center (`earth`) + `spawn1`/`spawn2`
+  — the spawn zones themselves, registered as nexuses by `_initArenaSpawnNexuses`
+  (map.js, called at the end of `autoGenerateSpawnZones`). Each side STARTS with its
+  own spawn nexus captured (owner preset, progress ±threshold); stealing the enemy's
+  means standing in their spawn eating the 35%-maxHP/round scorch while the bar flips.
+  Spawn nexus entries carry `tiles: [{x,y}...]` (spawn zones are strips, not squares),
+  `zoneSize: 1`, `zoneX/zoneY` = middle tile, `isSpawn: true`. Containment MUST go
+  through `nexusZoneContains(nex,x,y)` (ui.js, tiles-aware; AI mirror `_aiNexContains`)
+  — never raw zoneX/zoneSize rect math. Spawn walls recolor to the current nexus owner
+  (three-renderer `rebuildSanctuaryWalls`); no gold nexus box is drawn over spawns.
+  **Domination is unchanged** — diagonal line: `earth` dead-center, `nw` + `se` only on
+  16×16+ maps. Keys are generic — NEVER hardcode earth/above/below; iterate
+  `Object.keys(state.nexusPoints)`; display names in `window.NEXUS_LABELS`.
 - **Capture = presence** (processNexusIncome, round end): only-your-team standing in
   a zone ticks progress +1 (2+ units: +2) toward you; standing in an enemy zone
   neutralizes it first. Both teams in zone = CONTESTED (frozen, no gold). Empty

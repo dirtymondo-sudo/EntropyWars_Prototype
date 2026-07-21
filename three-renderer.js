@@ -7008,7 +7008,9 @@ const ThreeRenderer = (function () {
         if (state.nexusPoints) {
             for (var key in state.nexusPoints) {
                 var n = state.nexusPoints[key];
-                if (n) zones.push(n);
+                /* Arena spawn nexuses reuse the sanctuary walls (recolored by
+                   owner in rebuildSanctuaryWalls) — no gold nexus box on top. */
+                if (n && !n.isSpawn) zones.push(n);
             }
         }
         if (state.roamingNexus) zones.push(state.roamingNexus);
@@ -7204,7 +7206,14 @@ const ThreeRenderer = (function () {
     var _lastSanctuaryWallSerial = '';
 
     function _computeSanctuaryWallSerial() {
-        return _computeSpawnZoneSerial();
+        var h = _computeSpawnZoneSerial();
+        /* Arena: spawn walls recolor when a spawn nexus changes hands. */
+        if (state.nexusPoints) {
+            var s1 = state.nexusPoints.spawn1, s2 = state.nexusPoints.spawn2;
+            h = _hashInt(h, s1 ? ((s1.owner || 0) + 1) : 0);
+            h = _hashInt(h, s2 ? ((s2.owner || 0) + 1) : 0);
+        }
+        return h;
     }
 
     function rebuildSanctuaryWalls() {
@@ -7233,7 +7242,11 @@ const ThreeRenderer = (function () {
             var zone = state.spawnZones[p];
             if (!zone || zone.length === 0) continue;
 
-            var color = (p === 1) ? _viewerPlayerColor(1) : _viewerPlayerColor(2);
+            /* Arena: the spawn zone doubles as a nexus — walls show the CURRENT
+               nexus owner (gold when neutralized), not just the home team. */
+            var _spNex = state.nexusPoints && state.nexusPoints['spawn' + p];
+            var _spOwner = _spNex ? (_spNex.owner || 0) : p;
+            var color = _spOwner === 0 ? 0xddaa33 : _viewerPlayerColor(_spOwner);
 
             /* Build a Set of zone tile keys for fast neighbor lookup */
             var zoneSet = {};
@@ -7760,6 +7773,7 @@ const ThreeRenderer = (function () {
 
         var modeLabel = 'NEXUS';
         if (key === 'roaming' || (state.roamingNexus && nex === state.roamingNexus)) modeLabel = 'HOTSPOT';
+        if (nex.isSpawn) modeLabel = 'SPAWN NEXUS';
 
         wrap.innerHTML =
             '<div class="' + ownerCls + '">' + ownerText + '</div>' +
@@ -7773,16 +7787,29 @@ const ThreeRenderer = (function () {
         var css2d = new THREE.CSS2DObject(wrap);
         var zs = nex.zoneSize || 2;
 
-        var maxH = 0;
-        for (var dy = 0; dy < zs; dy++) {
-            for (var dx = 0; dx < zs; dx++) {
-                var h = (typeof getHeightAt === 'function') ? getHeightAt(nex.zoneX + dx, nex.zoneY + dy) : 0;
-                if (h > maxH) maxH = h;
+        var maxH = 0, cx, cz;
+        if (Array.isArray(nex.tiles) && nex.tiles.length) {
+            /* Arena spawn nexus: footprint is the spawn-zone tile list — hang
+               the bar over the middle of the strip. */
+            var sumX = 0, sumY = 0;
+            for (var ti = 0; ti < nex.tiles.length; ti++) {
+                var tt = nex.tiles[ti];
+                sumX += tt.x; sumY += tt.y;
+                var th = (typeof getHeightAt === 'function') ? getHeightAt(tt.x, tt.y) : 0;
+                if (th > maxH) maxH = th;
             }
+            cx = (sumX / nex.tiles.length + 0.5) * ts;
+            cz = (sumY / nex.tiles.length + 0.5) * ts;
+        } else {
+            for (var dy = 0; dy < zs; dy++) {
+                for (var dx = 0; dx < zs; dx++) {
+                    var h = (typeof getHeightAt === 'function') ? getHeightAt(nex.zoneX + dx, nex.zoneY + dy) : 0;
+                    if (h > maxH) maxH = h;
+                }
+            }
+            cx = nex.zoneX * ts + (zs * ts) / 2;
+            cz = nex.zoneY * ts + (zs * ts) / 2;
         }
-
-        var cx = nex.zoneX * ts + (zs * ts) / 2;
-        var cz = nex.zoneY * ts + (zs * ts) / 2;
         var cy = maxH * elevStep + 2.5 * elevStep;
 
         css2d.position.set(cx, cy, cz);
@@ -7818,11 +7845,17 @@ const ThreeRenderer = (function () {
                 if (key === 'roaming') nex = state.roamingNexus;
                 else if (state.nexusPoints) nex = state.nexusPoints[key];
                 if (!nex) { no.css2d.visible = false; continue; }
-                var zs = nex.zoneSize || 2;
                 var anyVisible = false;
-                for (var fdy = 0; fdy < zs && !anyVisible; fdy++) {
-                    for (var fdx = 0; fdx < zs && !anyVisible; fdx++) {
-                        if (_fogVisibleSet.has((nex.zoneX + fdx) + ',' + (nex.zoneY + fdy))) anyVisible = true;
+                if (Array.isArray(nex.tiles) && nex.tiles.length) {
+                    for (var fti = 0; fti < nex.tiles.length && !anyVisible; fti++) {
+                        if (_fogVisibleSet.has(nex.tiles[fti].x + ',' + nex.tiles[fti].y)) anyVisible = true;
+                    }
+                } else {
+                    var zs = nex.zoneSize || 2;
+                    for (var fdy = 0; fdy < zs && !anyVisible; fdy++) {
+                        for (var fdx = 0; fdx < zs && !anyVisible; fdx++) {
+                            if (_fogVisibleSet.has((nex.zoneX + fdx) + ',' + (nex.zoneY + fdy))) anyVisible = true;
+                        }
                     }
                 }
                 no.css2d.visible = anyVisible;
@@ -21670,15 +21703,27 @@ const ThreeRenderer = (function () {
                 for (var nki = 0; nki < nkeys.length; nki++) {
                     var nex = state.nexusPoints[nkeys[nki]];
                     if (!nex) continue;
-                    var nzs = nex.zoneSize || 1;
-                    var nx = (nex.zoneX || 0) * cell, ny = (nex.zoneY || 0) * cell;
-                    var nw = nzs * cell, nh = nzs * cell;
                     var base = nex.owner === 1 ? 'rgba(60,150,255,'
                              : nex.owner === 2 ? 'rgba(255,70,70,'
                              : 'rgba(255,210,80,';
+                    var lw = Math.max(1.5, cell * 0.16);
+                    if (Array.isArray(nex.tiles) && nex.tiles.length) {
+                        /* Arena spawn nexus — outline each footprint tile. */
+                        ctx.fillStyle = base + '0.26)';
+                        ctx.lineWidth = lw;
+                        ctx.strokeStyle = base + '0.95)';
+                        for (var nti = 0; nti < nex.tiles.length; nti++) {
+                            var ntl = nex.tiles[nti];
+                            ctx.fillRect(ntl.x * cell, ntl.y * cell, cell, cell);
+                            ctx.strokeRect(ntl.x * cell + lw / 2, ntl.y * cell + lw / 2, cell - lw, cell - lw);
+                        }
+                        continue;
+                    }
+                    var nzs = nex.zoneSize || 1;
+                    var nx = (nex.zoneX || 0) * cell, ny = (nex.zoneY || 0) * cell;
+                    var nw = nzs * cell, nh = nzs * cell;
                     ctx.fillStyle = base + '0.26)';
                     ctx.fillRect(nx, ny, nw, nh);
-                    var lw = Math.max(1.5, cell * 0.16);
                     ctx.lineWidth = lw;
                     ctx.strokeStyle = base + '0.95)';
                     ctx.strokeRect(nx + lw / 2, ny + lw / 2, nw - lw, nh - lw);

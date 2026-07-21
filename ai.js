@@ -3846,6 +3846,15 @@
         if (score > 0) out.push({ type: 'guard', score });
     }
 
+    /* Arena spawn nexuses carry a `tiles` footprint instead of a square rect —
+       mirror ui.js nexusZoneContains so the AI stands on the right tiles. */
+    function _aiNexContains(nex, x, y) {
+        if (!nex) return false;
+        if (Array.isArray(nex.tiles)) return nex.tiles.some(t => t.x === x && t.y === y);
+        return x >= nex.zoneX && x < nex.zoneX + nex.zoneSize &&
+               y >= nex.zoneY && y < nex.zoneY + nex.zoneSize;
+    }
+
     function scoreNexusChannel(unit, v, out) {
         const g = G();
         if (_failedNexus) return;
@@ -3857,8 +3866,7 @@
 
             const _checkNexusLand = (nex) => {
                 if (!nex || !nex.zoneSize || nex.owner === unit.player) return 0;
-                const inZone = unit.x >= nex.zoneX && unit.x < nex.zoneX + nex.zoneSize &&
-                               unit.y >= nex.zoneY && unit.y < nex.zoneY + nex.zoneSize;
+                const inZone = _aiNexContains(nex, unit.x, unit.y);
                 if (!inZone) return 0;
 
                 const channelCost = typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1;
@@ -3919,8 +3927,7 @@
 
         const ownedCount = Object.values(g.state.nexusPoints).filter(n => n?.owner === unit.player).length;
 
-        const inZone = unit.x >= nex.zoneX && unit.x < nex.zoneX + nex.zoneSize &&
-                       unit.y >= nex.zoneY && unit.y < nex.zoneY + nex.zoneSize;
+        const inZone = _aiNexContains(nex, unit.x, unit.y);
         const zoneCenterX = nex.zoneX + Math.floor(nex.zoneSize / 2);
         const zoneCenterY = nex.zoneY + Math.floor(nex.zoneSize / 2);
         const distToCenter = Math.abs(unit.x - zoneCenterX) + Math.abs(unit.y - zoneCenterY);

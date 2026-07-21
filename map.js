@@ -1273,7 +1273,7 @@
         };
 
         const MS_GAME_MODES = [
-            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the tower, wipe out the enemy, collect every hourglass — or hold ALL 3 Nexus zones at once for an instant win. 15 rounds; Arena score decides otherwise.', tag: null, locked: false },
+            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the tower, wipe out the enemy, collect every hourglass — or hold ALL 3 Nexus zones at once for an instant win: the center Nexus plus BOTH spawn zones (yours starts captured — steal theirs by surviving inside their spawn). 15 rounds; Arena score decides otherwise.', tag: null, locked: false },
             { id: 'tdm', icon: '💀', label: 'Team Deathmatch', desc: 'Most kills in 12 rounds wins. Wipeout also wins instantly. Sudden Death if tied.', tag: null, locked: false },
             { id: 'shooter', icon: '🎯', label: 'Strike Mode', desc: 'REAL-TIME third-person shooter deathmatch — no turns, everyone fights at once. WASD runs, mouse aims, LMB shoots/casts, every spell on a cooldown. First to 25 kills or best score in 8:00. Controller supported.', tag: 'BETA', locked: false },
             { id: 'simul', icon: '♟️', label: 'Simul', desc: 'SIMULTANEOUS turns — both sides secretly order one unit (any unit, 2 AP), then the orders play out together: priority first, then speed. Displaced targets are re-acquired or the action whiffs. Most kills in 12 rounds wins.', tag: 'EXPERIMENTAL', locked: false },
@@ -3553,7 +3553,12 @@
                 if (!needsNexus) return;
 
                 const existingCount = state.nexusPoints ? Object.keys(state.nexusPoints).length : 0;
-                const isLargeMap = (w >= 16 && h >= 16);
+                /* Arena: the map only ever gets ONE placed nexus (dead center) —
+                   the other two zones are the spawn zones themselves, added as
+                   auto-captured nexuses by _initArenaSpawnNexuses (called from
+                   autoGenerateSpawnZones once the zones exist). */
+                const arenaSpawnNexus = mpMode && mpMode.id === 'arena';
+                const isLargeMap = (w >= 16 && h >= 16) && !arenaSpawnNexus;
 
                 if (!isLargeMap && existingCount > 0) return;
 
@@ -3860,8 +3865,10 @@
                 state.nexusPoints = {};
                 const gNexX = eMidX - nzHalf, gNexY = eMidY - nzHalf;
                 _hugeStamp('earth', gNexX, gNexY);
+                /* Arena: center nexus only — the spawn zones become the other two
+                   zones (auto-captured), via _initArenaSpawnNexuses. */
                 const _hugeOff = Math.floor(Math.min(w, h) / 4);
-                if (_hugeOff >= NEXUS_ZONE_SIZE + 1) {
+                if (_hugeOff >= NEXUS_ZONE_SIZE + 1 && !(_hugeMpMode && _hugeMpMode.id === 'arena')) {
                     _hugeStamp('nw', gNexX - _hugeOff, gNexY - _hugeOff);
                     _hugeStamp('se', gNexX + _hugeOff, gNexY + _hugeOff);
                 }
@@ -3946,8 +3953,10 @@
             const gNexY = earthMidY - Math.floor(effectiveNexusSize / 2);
             _stampZone('earth', gNexX, gNexY);
 
+            /* Arena: center nexus only — the spawn zones become the other two
+               zones (auto-captured), via _initArenaSpawnNexuses. */
             const diagOff = Math.floor(Math.min(w, bandH) / 4);
-            if (diagOff >= effectiveNexusSize + 1) {
+            if (diagOff >= effectiveNexusSize + 1 && !(mpMode && mpMode.id === 'arena')) {
                 _stampZone('nw', gNexX - diagOff, gNexY - diagOff);
                 _stampZone('se', gNexX + diagOff, gNexY + diagOff);
             }
@@ -5585,6 +5594,7 @@
                     }
                 }
                 console.log('[SpawnZones] custom map — authored spawns used verbatim (no terrain rewrite)');
+                _initArenaSpawnNexuses();
                 return;
             }
 
@@ -5704,6 +5714,35 @@
 
             console.log('[SpawnZones] P1:', JSON.stringify(state.spawnZones[1]),
                         'P2:', JSON.stringify(state.spawnZones[2]));
+            _initArenaSpawnNexuses();
+        }
+
+        /* ── Arena: SPAWN ZONES ARE NEXUSES ─────────────────────────────────
+           Every Arena map has 3 nexus zones: the placed center nexus plus BOTH
+           spawn zones. Each side starts with its own spawn nexus already
+           captured; stealing the enemy's means standing inside their spawn
+           zone — eating its 35%-maxHP scorch every round — until the capture
+           bar flips. Spawn nexuses carry a `tiles` footprint (spawn zones are
+           tile lists, not squares); zoneX/zoneY point at the middle tile so
+           rect-based consumers (AI pathing, capture bars) aim at the center. */
+        function _initArenaSpawnNexuses() {
+            const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
+            if (!mpMode || mpMode.id !== 'arena') return;
+            if (!state.spawnZones) return;
+            if (!state.nexusPoints) state.nexusPoints = {};
+            const thr = (typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined') ? NEXUS_CAPTURE_THRESHOLD : 6;
+            for (const p of [1, 2]) {
+                const tiles = state.spawnZones[p];
+                if (!tiles || tiles.length === 0) continue;
+                const mid = tiles[Math.floor(tiles.length / 2)];
+                state.nexusPoints['spawn' + p] = {
+                    zoneX: mid.x, zoneY: mid.y, zoneSize: 1,
+                    tiles: tiles.map(t => ({ x: t.x, y: t.y })),
+                    owner: p, progress: p === 1 ? thr : -thr,
+                    isSpawn: true,
+                };
+            }
+            console.log('[Arena] spawn zones registered as nexuses (auto-captured by their owners)');
         }
 
         function _clearSpawnZoneTiles(zoneTiles, targetH = 0) {
@@ -7726,8 +7765,8 @@
                    zone, nexus walls (taller, gold) around each nexus zone. */
                 _addLightWalls(az.p1, 0x4488ff, 1.3);
                 _addLightWalls(az.p2, 0xff4444, 1.3);
-                if (az.p1.length) addZoneLabel(az.p1[Math.floor(az.p1.length / 2)].x, az.p1[Math.floor(az.p1.length / 2)].y, az.p1Auto ? 'P1 SPAWN (auto strip)' : 'P1 SPAWN (your tiles)', 'rgba(48,100,220,0.9)');
-                if (az.p2.length) addZoneLabel(az.p2[Math.floor(az.p2.length / 2)].x, az.p2[Math.floor(az.p2.length / 2)].y, az.p2Auto ? 'P2 SPAWN (auto strip)' : 'P2 SPAWN (your tiles)', 'rgba(210,50,50,0.9)');
+                if (az.p1.length) addZoneLabel(az.p1[Math.floor(az.p1.length / 2)].x, az.p1[Math.floor(az.p1.length / 2)].y, (az.p1Auto ? 'P1 SPAWN (auto strip)' : 'P1 SPAWN (your tiles)') + ' · ◈ Arena Nexus', 'rgba(48,100,220,0.9)');
+                if (az.p2.length) addZoneLabel(az.p2[Math.floor(az.p2.length / 2)].x, az.p2[Math.floor(az.p2.length / 2)].y, (az.p2Auto ? 'P2 SPAWN (auto strip)' : 'P2 SPAWN (your tiles)') + ' · ◈ Arena Nexus', 'rgba(210,50,50,0.9)');
                 const nzSz = az.nexusSize || 2;
                 for (const nz of az.nexus) {
                     const nTiles = [];
@@ -7738,11 +7777,12 @@
                     _addLightWalls(nTiles, 0xffd24a, 2.0);
                     addZoneLabel(nz.x, nz.y, nz.label, 'rgba(190,140,20,0.92)');
                 }
-                /* Nexus-count rule, spelled out where the author is looking:
-                   maps below 16×16 only ever get ONE nexus. */
+                /* Nexus-count rules, spelled out where the author is looking:
+                   Arena always plays center nexus + both spawn zones as the 3
+                   zones; Domination only gets the NW/SE diagonal at 16×16+. */
                 if (az.nexus.length === 1) {
                     addZoneLabel(Math.floor(bw / 2), Math.min(bh - 1, Math.floor(bh / 2) + 2),
-                        `${bw}×${bh} map → 1 nexus · reach 16×16 for 3`, 'rgba(80,60,20,0.88)');
+                        `Arena: 3 zones (center + spawns) · Domination: ${bw}×${bh} → 1 nexus, 16×16 for 3`, 'rgba(80,60,20,0.88)');
                 }
                 for (const fl of az.flags) {
                     addZoneLabel(fl.x, fl.y, '⚑ CTF FLAG P' + fl.player, fl.player === 1 ? 'rgba(48,100,220,0.9)' : 'rgba(210,50,50,0.9)');
@@ -7803,10 +7843,10 @@
             if (w >= 16 && h >= 16) {
                 const off = Math.floor(Math.min(w, h) / 4);
                 nexus.push({ x: cx, y: cy, label: '◈ NEXUS (CENTER)' });
-                nexus.push({ x: cx - off, y: cy - off, label: '◈ NEXUS (NW)' });
-                nexus.push({ x: cx + off, y: cy + off, label: '◈ NEXUS (SE)' });
+                nexus.push({ x: cx - off, y: cy - off, label: '◈ NEXUS (NW · Domination only)' });
+                nexus.push({ x: cx + off, y: cy + off, label: '◈ NEXUS (SE · Domination only)' });
             } else {
-                nexus.push({ x: cx, y: cy, label: '◈ NEXUS ZONE' });
+                nexus.push({ x: cx, y: cy, label: '◈ NEXUS (CENTER)' });
             }
 
             const flags = [];
@@ -7840,7 +7880,7 @@
                 `<b>Spawns:</b> ${(s1 && s2)
                     ? `your placed tiles are used verbatim (P1: ${s1} · P2: ${s2})`
                     : `auto 4×1 strips on opposite edges, like the built-in maps — place P1/P2 spawn tiles to override`}.<br>` +
-                `<b>Nexus:</b> ${_meW}×${_meH} map → <b>${nx} zone${nx > 1 ? 's' : ''}</b>` +
+                `<b>Nexus:</b> <b>Arena</b> always plays 3 zones — the center Nexus plus <b>both spawn zones</b> (each side starts owning its own; the enemy's scorches you while you steal it). <b>Domination:</b> ${_meW}×${_meH} map → <b>${nx} zone${nx > 1 ? 's' : ''}</b>` +
                 (nx === 1 ? ' — grow the map to <b>16×16 or bigger</b> to get all 3 (center + NW + SE).' : ' on the center diagonal (center + NW + SE).');
         }
 
