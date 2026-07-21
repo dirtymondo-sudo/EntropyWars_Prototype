@@ -4,7 +4,42 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## MULTI-FLOOR WYSIWYG PASS 4: roof clicks can no longer reroute INTO the building (2026-07-21, LATEST) — battle.js
+## MULTI-FLOOR WYSIWYG PASS 5: finishMoveAt landed walks on the WRONG FLOOR (2026-07-21, LATEST) — battle.js
+Token `20260721m` → `20260721n`. User retest: "it still drops me inside the
+building instead of leaving me on the roof". THE core engine bug of the
+whole saga, hiding one level below everything fixed so far:
+- **`finishMoveAt` discarded the path's destination surface**: it re-derived
+  the landing as `unit.z = nearestWalkableZ(x, y, unit.z)` — nearest surface
+  to the unit's PRE-move z. findMovePath is a full 3D A* whose nodes carry
+  the exact surface z of every step, and doMove validates the clicked
+  surface... then finishMoveAt (the ONLY place a walk actually commits
+  unit.x/y/z) snapped the z to whichever floor of the destination column was
+  closest to where the unit STARTED. Walk from ground level (z 0) legally up
+  onto a hollow building's roof (surfaces [0=interior, 2=roof]): |0-0| <
+  |2-0| → unit deposited at z 0, INSIDE the building. Harmless on
+  single-surface columns (only one answer), which is why it survived every
+  earlier pass; catastrophic on multi-floor columns, in BOTH directions
+  (walking in through the door from a wall-top start snapped you ONTO the
+  roof). Click resolution, highlights, traversal legality were all already
+  correct — the final commit step undid them.
+- FIX: thread the validated surface through the whole completion chain:
+  `doMove` passes its validated `z` → `resolveMovePath(..., destZ)` →
+  `completeMoveAlongPath(..., stopZ)` → `finishMoveAt` new `opts.z`.
+  Mid-path stops (laser death, pickup events) pass their step node's
+  `step.z`. finishMoveAt trusts opts.z if it's still a real surface at the
+  tile (getWalkableSurfaces guard vs mid-move terrain deform), else
+  nearest-to-INTENDED (not nearest-to-old). Airborne branch (clearance
+  clamp) unchanged and takes precedence; z-less callers keep the old
+  nearest-to-old-z fallback (2D maps: single surface, identical result).
+- doJump was already exact (`unit.z = z`); AI + online replay call the same
+  doMove → same fix applies everywhere, no relay change (unit.z serialized).
+- NOT playtested (RULE #1c). Live checks: (1) walk-click an intact roof you
+  can legally reach (stairs/adjacent wall-top) → unit ENDS ON THE ROOF;
+  (2) walk in through the door → ends INSIDE at floor z (never pops onto
+  the roof); (3) trap/pickup interrupting a climb mid-path → unit stands at
+  that step's real floor; (4) flyers unaffected.
+
+## MULTI-FLOOR WYSIWYG PASS 4: roof clicks can no longer reroute INTO the building (2026-07-21) — battle.js
 Token `20260721l` → `20260721m`. User retest after PASS 3: "clicking onto a
 roof STILL puts me inside the building". PASS 2/3 made the CLICK RESOLUTION
 exact-surface, but both of its fall-through paths were still z-blind, so a

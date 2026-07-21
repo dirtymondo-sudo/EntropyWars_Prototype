@@ -16278,6 +16278,25 @@
                 const minZ = getMinFlyingZ(x, y);
                 const maxZ = getMaxFlyingZ(x, y);
                 unit.z = Math.max(minZ, Math.min(maxZ, _fmNewGround + _fmClearance));
+            } else if (opts.z !== undefined && opts.z !== null) {
+                /* Multi-floor (2026-07-21): the caller knows the exact SURFACE
+                   the validated path ends on (findMovePath nodes carry z).
+                   Re-deriving it as "walkable surface nearest the unit's
+                   PRE-move z" put the unit on the WRONG FLOOR of any
+                   multi-surface column: walk from the ground onto a hollow
+                   building's roof (surfaces [interior 0, roof 2], old z 0)
+                   and the snap picked 0 — the unit visibly dropped THROUGH
+                   the roof into the room. Trust the path's surface; fall back
+                   to nearest-to-INTENDED only if that surface vanished
+                   mid-move (terrain deform). */
+                if (typeof getWalkableSurfaces === 'function'
+                    && state.boardColumns?.length
+                    && getWalkableSurfaces(x, y).indexOf(opts.z) === -1
+                    && typeof nearestWalkableZ === 'function') {
+                    unit.z = nearestWalkableZ(x, y, opts.z);
+                } else {
+                    unit.z = opts.z;
+                }
             } else if (typeof nearestWalkableZ === 'function') {
                 unit.z = nearestWalkableZ(x, y, unit.z);
             }
@@ -30841,13 +30860,15 @@
             checkWin();
         }
 
-        function completeMoveAlongPath(unit, stopX, stopY, stopKind, fallbackX = stopX, fallbackY = stopY) {
+        function completeMoveAlongPath(unit, stopX, stopY, stopKind, fallbackX = stopX, fallbackY = stopY, stopZ) {
             state._actionExecuting = false;
             state._tileActionTarget = null;
             state._enemyActionTargetId = null;
             finishMoveAt(unit, stopX, stopY, {
                 stopReason: stopKind || null,
-                destinationLabel: coordLabel(stopX, stopY)
+                destinationLabel: coordLabel(stopX, stopY),
+                /* exact surface the path stops on (multi-floor columns) */
+                z: stopZ
             });
 
             checkStealthReveals(unit);
@@ -31088,7 +31109,7 @@
             scheduleBoardRender();
         }
 
-        function resolveMovePath(unit, path, destinationX, destinationY, startIndex = 0) {
+        function resolveMovePath(unit, path, destinationX, destinationY, startIndex = 0, destZ) {
             // Machine Elves' laser beams sear anything that walks across them
             // (once per move; airborne units pass over untouched).
             const _laserNet = _enemyBeamTilesFor(unit);
@@ -31100,7 +31121,7 @@
                     _applyLaserWalkHit(unit, step.x, step.y, _laserNet.tileOwner.get(step.x + ',' + step.y));
                     if (unit.dead || unit._dying) {
                         // Died crossing the beam — finalize the move on that tile.
-                        completeMoveAlongPath(unit, step.x, step.y, null, destinationX, destinationY);
+                        completeMoveAlongPath(unit, step.x, step.y, null, destinationX, destinationY, step.z);
                         return;
                     }
                 }
@@ -31113,10 +31134,13 @@
                 const event = getPathPickupEvent(unit, step.x, step.y);
                 if (!event) continue;
 
-                completeMoveAlongPath(unit, event.x, event.y, event.kind, destinationX, destinationY);
+                completeMoveAlongPath(unit, event.x, event.y, event.kind, destinationX, destinationY,
+                    (event.x === step.x && event.y === step.y) ? step.z : undefined);
                 return;
             }
-            completeMoveAlongPath(unit, destinationX, destinationY, null);
+            completeMoveAlongPath(unit, destinationX, destinationY, null, destinationX, destinationY,
+                (destZ !== undefined && destZ !== null) ? destZ
+                    : (path.length ? path[path.length - 1].z : undefined));
         }
 
         let _walkAnimActive = false;
@@ -32207,7 +32231,7 @@
                 setUnitFacing(unit, x - startX, y - startY);
             }
 
-            resolveMovePath(unit, path, x, y);
+            resolveMovePath(unit, path, x, y, 0, z);
 
             checkTrapTrigger(unit);
             checkWarpRuneTrigger(unit);
