@@ -2915,6 +2915,8 @@ const ThreeRenderer = (function () {
         for (var j = 0; j < _mergedHiddenTiles.length; j++) {
             var tm = _mergedHiddenTiles[j];
             tm._ew_mergedHidden = false;
+            tm._ew_mergeSlices = null;
+            tm._ew_mergeCarved = false;
             /* Under fog the fog pass owns visibility — let it re-apply. */
             if (!state || !state.fogOfWar) tm.visible = true;
         }
@@ -3019,6 +3021,11 @@ const ThreeRenderer = (function () {
         tileMeshes.forEach(function (root) {
             if (!_tileMergeable(root)) return;
             var merged = false;
+            /* Remember which vertex ranges of which bucket this tile baked
+               into, so the action-cam occlusion fade can carve the tile back
+               OUT of the batch (degenerate its triangles) and fade the
+               per-tile original instead of leaving an opaque merged copy. */
+            var slices = [];
             root.traverse(function (o) {
                 if (!o.isMesh) return;
                 var geo = o.geometry;
@@ -3038,13 +3045,18 @@ const ThreeRenderer = (function () {
                         buckets.set(key, b);
                     }
                     var cnt = (gr.count === Infinity) ? (total - gr.start) : gr.count;
+                    var vStart = b.pos.length / 3;
                     _mergeAppend(b, geo, gr.start, Math.min(cnt, total - gr.start), relMat, nm);
+                    var vCount = b.pos.length / 3 - vStart;
+                    if (vCount > 0) slices.push({ key: key, start: vStart, count: vCount, mesh: null, saved: null });
                 }
                 merged = true;
             });
             if (merged) {
                 root.visible = false;
                 root._ew_mergedHidden = true;
+                root._ew_mergeSlices = slices;
+                root._ew_mergeCarved = false;
                 _mergedHiddenTiles.push(root);
             }
         });
@@ -3065,7 +3077,17 @@ const ThreeRenderer = (function () {
             mesh.raycast = function () {};   // picking uses the hidden per-tile originals
             terrainGroup.add(mesh);
             _mergedTerrainMeshes.push(mesh);
+            b.mesh = mesh;
         });
+        // Resolve each tile's recorded slices to the final bucket meshes.
+        for (var _ht = 0; _ht < _mergedHiddenTiles.length; _ht++) {
+            var _sl = _mergedHiddenTiles[_ht]._ew_mergeSlices;
+            if (!_sl) continue;
+            for (var _si = 0; _si < _sl.length; _si++) {
+                var _bk = buckets.get(_sl[_si].key);
+                _sl[_si].mesh = (_bk && _bk.mesh) ? _bk.mesh : null;
+            }
+        }
         _shadowsDirty = true;
     }
 
@@ -13110,6 +13132,49 @@ const ThreeRenderer = (function () {
         return arr;
     }
 
+    /* Batched-terrain support: a tile that was baked into a merged draw-call
+       batch can't fade by material swap — its per-tile original is invisible
+       and the batch mesh stays opaque, which used to leave the caster/target
+       depth-occluded (showing only their x-ray holograms) during action-cam
+       shots. Carving degenerates the tile's vertex range inside the batch
+       (zero-area triangles render nothing) and un-hides the per-tile original
+       so the normal clone-material fade applies to it. Restored on fade-out. */
+    function _mergedCarveTile(root) {
+        if (root._ew_mergeCarved || !root._ew_mergeSlices) return;
+        var slices = root._ew_mergeSlices;
+        for (var i = 0; i < slices.length; i++) {
+            var s = slices[i];
+            if (!s.mesh || !s.mesh.parent || !s.mesh.geometry) continue;
+            var attr = s.mesh.geometry.attributes.position;
+            var a = attr.array, o0 = s.start * 3, o1 = Math.min((s.start + s.count) * 3, a.length);
+            s.saved = a.slice(o0, o1);
+            for (var v = o0; v < o1; v++) a[v] = 0;
+            attr.needsUpdate = true;
+        }
+        root._ew_mergeCarved = true;
+        root._ew_mergedHidden = false;   // fog visibility sweeps treat it as individual again
+        root.visible = true;
+        _shadowsDirty = true;
+    }
+    function _mergedRestoreTile(root) {
+        if (!root._ew_mergeCarved) return;
+        var slices = root._ew_mergeSlices || [];
+        for (var i = 0; i < slices.length; i++) {
+            var s = slices[i];
+            if (!s.saved) continue;
+            if (s.mesh && s.mesh.parent && s.mesh.geometry) {
+                var attr = s.mesh.geometry.attributes.position;
+                attr.array.set(s.saved, s.start * 3);
+                attr.needsUpdate = true;
+            }
+            s.saved = null;
+        }
+        root._ew_mergeCarved = false;
+        root._ew_mergedHidden = true;
+        root.visible = false;
+        _shadowsDirty = true;
+    }
+
     /* Roots that block the line of sight to the caster or target this frame. */
     function _occComputeBlockers(cam, cineActive, selUnit) {
         var roots = new Set();
@@ -13183,12 +13248,39 @@ const ThreeRenderer = (function () {
         return roots;
     }
 
+    /* During a cinematic shot the occluder FADE keeps the caster and target
+       readable as their real, fully-lit selves — so their x-ray hologram
+       silhouettes are suppressed for the shot's duration (a hologram flashing
+       over the subjects while a wall fades out reads as a glitch). Everyone
+       else keeps holograms as usual; restored the moment the shot ends. */
+    var _cineSilHidden = new Set();
+    function _setUnitSilVisible(uid, vis) {
+        var e = unitEntries.get(uid);
+        if (!e || !e.group) return;
+        e.group.traverse(function (o) { if (o._ew_silhouette) o.visible = vis; });
+    }
+    function _updateCineSilhouetteGate(a, b) {
+        if (_cineSilHidden.size) {
+            _cineSilHidden.forEach(function (uid) {
+                if (uid !== a && uid !== b) { _setUnitSilVisible(uid, true); _cineSilHidden.delete(uid); }
+            });
+        }
+        if (a != null && !_cineSilHidden.has(a)) { _setUnitSilVisible(a, false); _cineSilHidden.add(a); }
+        if (b != null && b !== a && !_cineSilHidden.has(b)) { _setUnitSilVisible(b, false); _cineSilHidden.add(b); }
+    }
+
     function _updateActionCamOcclusion() {
         var cam = (typeof ThreeCamera !== 'undefined') ? ThreeCamera.getCamera() : null;
         var inBattle = !!(cam && typeof state !== 'undefined' && state.phase === 'battle'
             && typeof THREE !== 'undefined');
         var cineActive = !!(inBattle && typeof camera !== 'undefined' && camera
             && camera._cineShotId != null && state.cinematicActionCam);
+
+        _updateCineSilhouetteGate(
+            cineActive ? camera._cineShotUnitId : null,
+            (cineActive && camera._cineShotTarget && camera._cineShotTarget.id != null)
+                ? camera._cineShotTarget.id : null
+        );
 
         // Outside of a cinematic shot, keep the currently-selected unit (the one
         // whose turn it is) visible while the player drags the camera around by
@@ -13233,6 +13325,9 @@ const ThreeRenderer = (function () {
         if (want) {
             want.forEach(function (root) {
                 if (_occFaded.has(root)) return;
+                /* Tile baked into a merged terrain batch: pull it out of the
+                   batch first so the per-tile fade below is actually visible. */
+                if (root._ew_mergedHidden && root._ew_mergeSlices) _mergedCarveTile(root);
                 var meshes = _occCollect(root);
                 for (var i = 0; i < meshes.length; i++) _occApplyFade(meshes[i]);
                 _occFaded.set(root, { meshes: meshes, op: 1.0 });
@@ -13254,6 +13349,7 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < rec.meshes.length; i++) _occSetOpacity(rec.meshes[i], rec.op);
             if (!blocking && rec.op >= 0.999) {
                 for (var j2 = 0; j2 < rec.meshes.length; j2++) _occRestore(rec.meshes[j2]);
+                _mergedRestoreTile(root);   // fold carved tiles back into the terrain batch
                 done.push(root);
             }
         });
