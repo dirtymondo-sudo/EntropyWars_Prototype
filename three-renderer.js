@@ -1003,6 +1003,10 @@ const ThreeRenderer = (function () {
 
     var tileMeshes = new Map();
     var _lastTerrainVersion = -1, _lastHeightVersion = -1, _lastVoxelVersion = -1;
+    /* Authored edge walls (state.edgeWalls / state._wallVersion) */
+    var _lastWallVersion = -1;
+    var wallGroup = null;
+    var _wallClonedTexes = [];
     var _lastBoardW = 0, _lastBoardH = 0;
     // Tile size the terrain mesh was last built at. CONFIG.tileSize is the menu
     // value (MENU_TILE) while a menu is open and the battle value (BASE_TILE)
@@ -2293,6 +2297,19 @@ const ThreeRenderer = (function () {
                     var _mcap = state._monumentTiles.get(x + ',' + y);
                     if (_mcap !== undefined) col = col.filter(function (b) { return b.z <= _mcap; });
                 }
+                /* Roof slabs (map editor "Walls & Roofs"): roof-flagged blocks
+                   render as THIN slabs at the top of their cell, not full
+                   cubes. Pull them out of the column here so the normal
+                   cube/run pipeline never sees them; they're re-added as slab
+                   meshes (canopy-tagged for the cutaway) after the tile mesh
+                   is built. */
+                var _roofBlks = null;
+                if (col && col.length) {
+                    for (var _rbi = 0; _rbi < col.length; _rbi++) {
+                        if (col[_rbi].roof) { (_roofBlks = _roofBlks || []).push(col[_rbi]); }
+                    }
+                    if (_roofBlks) col = col.filter(function (b) { return !b.roof; });
+                }
                 if (col && col.length) {
                     tKey = col[col.length - 1].terrain || 'grass';
                     ht = col[col.length - 1].z;
@@ -2307,6 +2324,11 @@ const ThreeRenderer = (function () {
                 var colFp = '';
                 if (col && col.length > 1) {
                     for (var ci = 0; ci < col.length; ci++) colFp += col[ci].z + ':' + col[ci].terrain + ',';
+                }
+                if (_roofBlks) {
+                    for (var _rfi = 0; _rfi < _roofBlks.length; _rfi++) {
+                        colFp += '|rf' + _roofBlks[_rfi].z + ':' + _roofBlks[_rfi].terrain;
+                    }
                 }
                 if (_naturalTerrainActive() && tKey && tKey.indexOf('void') !== 0 && tKey !== 'lava' && !_FLUID_TERRAIN_SET[tKey]) {
                     /* neighbour heights weld our corners → fingerprint them so an
@@ -2353,7 +2375,7 @@ const ThreeRenderer = (function () {
                     continue;
                 }
                 if (ex) { terrainGroup.remove(ex); _disposeR(ex); tileMeshes.delete(k); }
-                if (sKey === null && tKey.startsWith('void')) continue;
+                if (sKey === null && tKey.startsWith('void') && !_roofBlks) continue;
 
                 var isLava = (tKey === 'lava');
                 if (isLava) lavaTiles.push({ x: x, y: y });
@@ -2362,7 +2384,10 @@ const ThreeRenderer = (function () {
                 var natural = _naturalTerrainActive() && tKey && tKey.indexOf('void') !== 0
                             && !isLava && !_FLUID_TERRAIN_SET[tKey];
                 var m;
-                if (natural) {
+                if (_roofBlks && (!col || !col.length)) {
+                    /* floating roof over a void hole — only the slab(s) draw */
+                    m = new THREE.Group();
+                } else if (natural) {
                     /* one continuous sloped landform; ignores voxel stacking */
                     m = _buildNaturalTileMesh(x, y, ts, elevStep, _bw, _bh, tKey, sKey);
                     m.position.set(x * ts + ts / 2, 0, y * ts + ts / 2);
@@ -2570,6 +2595,33 @@ const ThreeRenderer = (function () {
                     } else {
                         m.position.set(x * ts + ts / 2, (boxH - fluidDrop) / 2, y * ts + ts / 2);
                     }
+                }
+                /* Roof slabs: wrap whatever the tile built in an outer group
+                   (children of the column group are in LOCAL coords — the
+                   wrapper lets slabs use plain world coords) and add one thin
+                   canopy-tagged slab per roof block, flush with the top of its
+                   cell so it sits exactly on same-height wall tops. */
+                if (_roofBlks) {
+                    var gWrap = new THREE.Group();
+                    if (m) {
+                        gWrap.add(m);
+                        if (m._ew_hasLava) gWrap._ew_hasLava = true;
+                        if (m._ew_isStair) gWrap._ew_isStair = true;
+                    }
+                    var slabT = Math.max(2, elevStep * 0.16);
+                    for (var _rsi = 0; _rsi < _roofBlks.length; _rsi++) {
+                        var rb = _roofBlks[_rsi];
+                        var rbSKey = (typeof TERRAIN_SIDE_SPRITES !== 'undefined') ? (TERRAIN_SIDE_SPRITES[rb.terrain] ?? null) : null;
+                        var slab = new THREE.Mesh(_getBoxGeo(ts, slabT), buildBoxMaterials(rb.terrain || 'wood_planks', rbSKey));
+                        slab.position.set(x * ts + ts / 2, rb.z * elevStep - slabT / 2, y * ts + ts / 2);
+                        slab._ew_canopy = true;
+                        slab._ew_canopyBottomZ = rb.z - 1;
+                        slab._ew_cTileX = x;
+                        slab._ew_cTileY = y;
+                        gWrap.add(slab);
+                    }
+                    gWrap._ew_hasCanopy = true;
+                    m = gWrap;
                 }
                 m._ew_terrain = tKey; m._ew_height = ht; m._ew_tileX = x; m._ew_tileY = y;
                 m._ew_colFp = colFp;
@@ -6993,6 +7045,184 @@ const ThreeRenderer = (function () {
     function _nexusOwnerColor(owner) {
         if (owner === 0 || !owner) return 0xddaa33;
         return _viewerPlayerColor(owner);
+    }
+
+    /* ══════════ Authored edge walls (map editor "Walls & Roofs") ══════════
+       state.edgeWalls: "x,y,N"/"x,y,W" → { z0, h, tex, texIn, cap, see, low,
+       flip }. Each wall is a thin textured box standing ON the tile edge:
+       outer and inner faces can carry different terrain textures, tops can
+       grow crenellations and/or an overhang lip, `see` renders a chain-link
+       lattice, `low` renders a half-height parapet. Rebuilt whole whenever
+       state._wallVersion bumps (edits are author-time, counts are small). */
+    var _chainlinkTex = null;
+    function _getChainlinkTexture() {
+        if (_chainlinkTex) return _chainlinkTex;
+        var c = document.createElement('canvas');
+        c.width = 64; c.height = 64;
+        var g = c.getContext('2d');
+        g.clearRect(0, 0, 64, 64);
+        g.strokeStyle = 'rgba(196,205,214,0.95)';
+        g.lineWidth = 3;
+        for (var i = -64; i <= 64; i += 16) {
+            g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 64, 64); g.stroke();
+            g.beginPath(); g.moveTo(i, 64); g.lineTo(i + 64, 0); g.stroke();
+        }
+        g.fillStyle = 'rgba(160,168,178,1)';
+        g.fillRect(0, 0, 64, 4);
+        g.fillRect(0, 60, 64, 4);
+        var tex = new THREE.CanvasTexture(c);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+        _chainlinkTex = tex;
+        return tex;
+    }
+
+    /* Per-wall texture clones (repeat counts differ per wall) — tracked so a
+       rebuild can dispose the GPU copies (the cache originals stay shared). */
+    function _wallTexClone(texKey, repX, repY) {
+        var base = getTerrainTexture(texKey);
+        if (!base) return null;
+        var t2 = base.clone();
+        t2.needsUpdate = true;
+        t2.wrapS = THREE.RepeatWrapping;
+        t2.wrapT = THREE.RepeatWrapping;
+        t2.repeat.set(Math.max(0.05, repX), Math.max(0.05, repY));
+        t2.magFilter = THREE.NearestFilter;
+        t2.minFilter = THREE.NearestFilter;
+        _wallClonedTexes.push(t2);
+        return t2;
+    }
+
+    function _wallFaceMat(texKey, repX, repY, bright) {
+        var tex = _wallTexClone(texKey, repX, repY);
+        var m = tex ? new THREE.MeshLambertMaterial({ map: tex })
+                    : new THREE.MeshLambertMaterial({ color: new THREE.Color(0x8d8d94) });
+        if (bright && bright !== 1 && m.color) m.color.multiplyScalar(bright);
+        return m;
+    }
+
+    function rebuildWalls() {
+        if (!wallGroup) return;
+        for (var di = 0; di < _wallClonedTexes.length; di++) _wallClonedTexes[di].dispose();
+        _wallClonedTexes.length = 0;
+        _clearGroup(wallGroup);
+
+        var walls = (typeof state !== 'undefined' && state) ? state.edgeWalls : null;
+        if (!walls) return;
+        var keys = Object.keys(walls);
+        if (!keys.length) return;
+
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var elevStep = ts * ELEV_STEP_RATIO;
+        var t = Math.max(3, ts * 0.12);          // wall thickness
+        var len = ts + t;                        // overlap closes corner joints
+
+        for (var ki = 0; ki < keys.length; ki++) {
+            var key = keys[ki];
+            var w = walls[key];
+            if (!w) continue;
+            var parts = key.split(',');
+            var wx = +parts[0], wy = +parts[1];
+            var side = parts[2];
+            if (!isFinite(wx) || !isFinite(wy) || (side !== 'N' && side !== 'W')) continue;
+
+            var isN = (side === 'N');
+            var h = Math.max(1, w.h || 1);
+            var baseY = ((w.z0 || 0) - 1) * elevStep;          // cell z spans [(z-1)·step, z·step]
+            var H = w.low ? ((h - 1) + 0.55) * elevStep : h * elevStep;
+            var topY = baseY + H;
+            /* edge midpoint: N edge runs along X at worldZ wy*ts; W edge runs
+               along Z at worldX wx*ts */
+            var cx = isN ? (wx * ts + ts / 2) : (wx * ts);
+            var cz = isN ? (wy * ts) : (wy * ts + ts / 2);
+
+            var holder = new THREE.Group();
+            holder._ew_wallKey = key;
+            /* the two tiles this edge touches (fog gating) */
+            holder._ew_wtA = isN ? (wx + ',' + (wy - 1)) : ((wx - 1) + ',' + wy);
+            holder._ew_wtB = wx + ',' + wy;
+
+            var texOut = w.tex || 'bricks_2';
+            var texIn = w.texIn || texOut;
+            if (w.flip) { var _sw = texOut; texOut = texIn; texIn = _sw; }
+
+            if (w.see) {
+                /* see-through lattice: a single double-sided cutout plane */
+                var clTex = _getChainlinkTexture().clone();
+                clTex.needsUpdate = true;
+                clTex.wrapS = THREE.RepeatWrapping; clTex.wrapT = THREE.RepeatWrapping;
+                clTex.repeat.set(len / ts, Math.max(1, h));
+                _wallClonedTexes.push(clTex);
+                var clMat = new THREE.MeshLambertMaterial({
+                    map: clTex, transparent: true, alphaTest: 0.15,
+                    side: THREE.DoubleSide
+                });
+                var plGeo = new THREE.PlaneGeometry(len, H);
+                var pl = new THREE.Mesh(plGeo, clMat);
+                if (!isN) pl.rotateY(Math.PI / 2);
+                pl.position.set(cx, baseY + H / 2, cz);
+                holder.add(pl);
+                /* slim posts at both ends ground the lattice visually */
+                var postGeo = new THREE.BoxGeometry(t * 0.6, H, t * 0.6);
+                var postMat = new THREE.MeshLambertMaterial({ color: new THREE.Color(0x7d848c) });
+                for (var pi2 = 0; pi2 < 2; pi2++) {
+                    var post = new THREE.Mesh(postGeo, postMat);
+                    var po = (pi2 === 0 ? -1 : 1) * (ts / 2);
+                    post.position.set(cx + (isN ? po : 0), baseY + H / 2, cz + (isN ? 0 : po));
+                    holder.add(post);
+                }
+            } else {
+                var vRep = w.low ? Math.max(1, h) - 0.45 : h;
+                var mOut = _wallFaceMat(texOut, 1, vRep, 1.0);
+                var mIn = _wallFaceMat(texIn, 1, vRep, 0.82);      // interior reads darker
+                var mEdge = _wallFaceMat(texOut, t / ts, vRep, 0.7); // slim ends
+                var mTop = _wallFaceMat(texOut, 1, t / ts, 0.92);
+                /* box material order: [+x, -x, +y(top), -y, +z, -z]
+                   N wall (along X): -z faces NORTH (outer), +z SOUTH (inner)
+                   W wall (along Z): -x faces WEST (outer), +x EAST (inner) */
+                var mats = isN
+                    ? [mEdge, mEdge, mTop, mTop, mIn, mOut]
+                    : [mIn, mOut, mTop, mTop, mEdge, mEdge];
+                var bGeo = isN ? new THREE.BoxGeometry(len, H, t) : new THREE.BoxGeometry(t, H, len);
+                var bm = new THREE.Mesh(bGeo, mats);
+                bm.position.set(cx, baseY + H / 2, cz);
+                holder.add(bm);
+            }
+
+            /* ── caps ─────────────────────────────────────────────── */
+            var cap = w.cap || null;
+            var capBaseY = topY;
+            var capT = t;
+            if (!w.see && (cap === 'overhang' || cap === 'both')) {
+                var ohH = elevStep * 0.2;
+                capT = t * 2.2;
+                var ohLen = len + t * 1.2;
+                var ohMat = _wallFaceMat(texOut, 1, 0.3, 0.8);
+                var ohGeo = isN ? new THREE.BoxGeometry(ohLen, ohH, capT) : new THREE.BoxGeometry(capT, ohH, ohLen);
+                var oh = new THREE.Mesh(ohGeo, [ohMat, ohMat, ohMat, ohMat, ohMat, ohMat]);
+                oh.position.set(cx, capBaseY + ohH / 2, cz);
+                holder.add(oh);
+                capBaseY += ohH;
+            }
+            if (!w.see && (cap === 'crenel' || cap === 'both')) {
+                var mw = ts / 7;                     // 4 merlons + 3 gaps
+                var mh = elevStep * 0.38;
+                var crMat = _wallFaceMat(texOut, 0.15, 0.4, 0.95);
+                var crMats = [crMat, crMat, crMat, crMat, crMat, crMat];
+                var crGeo = isN ? new THREE.BoxGeometry(mw, mh, capT) : new THREE.BoxGeometry(capT, mh, mw);
+                for (var mi = 0; mi < 4; mi++) {
+                    var off = (mi * 2 - 3) * mw;
+                    var mm = new THREE.Mesh(crGeo, crMats);
+                    mm.position.set(cx + (isN ? off : 0), capBaseY + mh / 2, cz + (isN ? 0 : off));
+                    holder.add(mm);
+                }
+            }
+
+            wallGroup.add(holder);
+        }
+        _applyShadowFlags(wallGroup);
     }
 
     function rebuildNexusWalls() {
@@ -13058,6 +13288,7 @@ const ThreeRenderer = (function () {
         }
         var inBattle = typeof state !== 'undefined' && state && state.phase === 'battle';
         var subject = null;
+        var subjects = [];   // {u, r} — every unit that should punch a cutaway hole
         if (inBattle) {
             var cineActive = (typeof camera !== 'undefined' && camera
                 && camera._cineShotId != null && state.cinematicActionCam);
@@ -13067,8 +13298,23 @@ const ThreeRenderer = (function () {
                 var su = _unitById.get(sid);
                 if (su && !su.dead) subject = su;
             }
+            if (subject) subjects.push({ u: subject, r: (typeof window !== 'undefined' && window.EW_CANOPY_CUT_RADIUS) || 2.9 });
+            /* Roof occlusion (map-editor roofs & canopies): any unit the VIEWER
+               can actually see that stands under overhead architecture opens a
+               tight hole over itself — own units always, enemies only while
+               fog-visible. So a spotted enemy inside a building is never hidden
+               by its own roof. */
+            var _vpC = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
+            var _unitsC = state.units || [];
+            for (var _ui = 0; _ui < _unitsC.length; _ui++) {
+                var _cu = _unitsC[_ui];
+                if (!_cu || _cu.dead || _cu === subject || _cu._insideBuildingId) continue;
+                var _seen = (_cu.player === _vpC) || !state.fogOfWar
+                    || (_fogVisibleSet && _fogVisibleSet.has(_cu.x + ',' + _cu.y));
+                if (_seen) subjects.push({ u: _cu, r: 1.45 });
+            }
         }
-        if (!subject && _canopyFaded.size === 0 && _canopyHiddenObjs.size === 0) return;
+        if (!subjects.length && _canopyFaded.size === 0 && _canopyHiddenObjs.size === 0) return;
 
         var now = performance.now() / 1000;
         var dt = _canopyLastTime > 0 ? Math.min(now - _canopyLastTime, 0.05) : 0.016;
@@ -13076,19 +13322,23 @@ const ThreeRenderer = (function () {
 
         // throttled wanted-set recompute (the opacity lerp below runs every frame)
         var want;
-        if (subject) {
+        if (subjects.length) {
             if (_canopyWant === null || (now - _canopyWantTime) >= CANOPY_RECOMPUTE_DT) {
                 want = new Set();
-                var subZ = (subject.z !== undefined && subject.z !== null) ? subject.z
-                         : ((typeof getHeightAt === 'function') ? getHeightAt(subject.x, subject.y) : 0);
-                var R = (typeof window !== 'undefined' && window.EW_CANOPY_CUT_RADIUS) || 2.9;
                 var list = _canopyMeshes();
-                for (var i = 0; i < list.length; i++) {
-                    var cm = list[i];
-                    if (cm._ew_canopyBottomZ < subZ + 1) continue;   // at/below the unit — its own floor, a lower deck
-                    var ddx = cm._ew_cTileX - subject.x, ddy = cm._ew_cTileY - subject.y;
-                    if (ddx * ddx + ddy * ddy > R * R) continue;      // beyond the cut circle
-                    want.add(cm);
+                for (var si = 0; si < subjects.length; si++) {
+                    var sub = subjects[si].u;
+                    var R = subjects[si].r;
+                    var subZ = (sub.z !== undefined && sub.z !== null) ? sub.z
+                             : ((typeof getHeightAt === 'function') ? getHeightAt(sub.x, sub.y) : 0);
+                    for (var i = 0; i < list.length; i++) {
+                        var cm = list[i];
+                        if (want.has(cm)) continue;
+                        if (cm._ew_canopyBottomZ < subZ + 1) continue;   // at/below the unit — its own floor, a lower deck
+                        var ddx = cm._ew_cTileX - sub.x, ddy = cm._ew_cTileY - sub.y;
+                        if (ddx * ddx + ddy * ddy > R * R) continue;      // beyond the cut circle
+                        want.add(cm);
+                    }
                 }
                 _canopyWant = want;
                 _canopyWantTime = now;
@@ -13167,6 +13417,7 @@ const ThreeRenderer = (function () {
                mesh is their visual (§4.1 terrain batching). */
             tileMeshes.forEach(function(mesh) { mesh.visible = !mesh._ew_mergedHidden; });
             objectMeshes.forEach(function(mesh) { mesh.visible = true; });
+            if (wallGroup) { for (var wfi = 0; wfi < wallGroup.children.length; wfi++) wallGroup.children[wfi].visible = true; }
             unitEntries.forEach(function(entry) { entry.group.visible = true; });
             deployableMeshes.forEach(function(mesh) { mesh.visible = true; });
             turretMeshes.forEach(function(mesh) { mesh.visible = true; });
@@ -13188,6 +13439,7 @@ const ThreeRenderer = (function () {
         if (!_fogGridWanted()) {
             tileMeshes.forEach(function(mesh) { mesh.visible = !mesh._ew_mergedHidden; });
             objectMeshes.forEach(function(mesh) { mesh.visible = true; });
+            if (wallGroup) { for (var wgi = 0; wgi < wallGroup.children.length; wgi++) wallGroup.children[wgi].visible = true; }
             if (_terrainDecoGroup) {
                 for (var gdi = 0; gdi < _terrainDecoGroup.children.length; gdi++) {
                     _terrainDecoGroup.children[gdi].visible = true;
@@ -13228,6 +13480,15 @@ const ThreeRenderer = (function () {
                     if (dRec && dRec.swapped) continue;
                     deco.visible = visible.has(deco._ew_decoX + ',' + deco._ew_decoY);
                 }
+            }
+        }
+
+        /* Edge walls: an edge is visible when EITHER tile it touches is —
+           standing outside a building you still see its near wall. */
+        if (wallGroup) {
+            for (var wvi = 0; wvi < wallGroup.children.length; wvi++) {
+                var wmesh = wallGroup.children[wvi];
+                wmesh.visible = visible.has(wmesh._ew_wtA) || visible.has(wmesh._ew_wtB);
             }
         }
 
@@ -20582,8 +20843,10 @@ const ThreeRenderer = (function () {
         _nexusWallGroup = new THREE.Group();
         _nexusWallGroup.renderOrder = 3;
 
+        wallGroup = new THREE.Group();   // authored edge walls (map editor)
+
         _nexusBarGroup = new THREE.Group();
-        scene.add(terrainGroup, highlightGroup, objectGroup, _nexusWallGroup, unitGroup, fogGroup, weatherGroup, projectileGroup, floatTextGroup, hitFxGroup, _nexusBarGroup);
+        scene.add(terrainGroup, highlightGroup, objectGroup, wallGroup, _nexusWallGroup, unitGroup, fogGroup, weatherGroup, projectileGroup, floatTextGroup, hitFxGroup, _nexusBarGroup);
 
         ThreeCamera.create(w, h);
         ThreeCamera.setBaseDist(Math.sqrt(w*w+h*h) * 1.2);
@@ -21898,6 +22161,7 @@ const ThreeRenderer = (function () {
         if (_lastBuiltTileSize !== -1 && _curTileSize !== _lastBuiltTileSize) {
             _lastBoardW = 0; _lastBoardH = 0;
             _lastTerrainVersion = -1; _lastHeightVersion = -1; _lastVoxelVersion = -1;
+            _lastWallVersion = -1;
             _lastTerrainDecoSerial = '';
             _lastObjectSerial = ''; _objectsDirty = true;
             _lastTurretSerial = ''; _lastDeployableSerial = ''; _lastNexusSerial = '';
@@ -21907,6 +22171,8 @@ const ThreeRenderer = (function () {
 
         var tv = state._terrainVersion || 0, hv = state._heightVersion || 0, vv = state._voxelVersion || 0;
         if (tv !== _lastTerrainVersion || hv !== _lastHeightVersion || vv !== _lastVoxelVersion) rebuildTerrain();
+        var wv = state._wallVersion || 0;
+        if (wv !== _lastWallVersion) { rebuildWalls(); _lastWallVersion = wv; _shadowsDirty = true; }
         var tdSer = _computeTerrainDecoSerial();
         if (tdSer !== _lastTerrainDecoSerial) { rebuildTerrainDecorations(); _shadowsDirty = true; }
         var _objDirty = false;
@@ -22146,7 +22412,9 @@ const ThreeRenderer = (function () {
         var hit = ThreeCamera.screenToTile(clientX, clientY, canvas, terrainGroup, objectGroup);
         if (hit) { _stashPick(hit); return hit; }
         if (typeof state !== 'undefined' && state.phase === 'editor' && ThreeCamera.screenToTilePlane) {
-            return ThreeCamera.screenToTilePlane(clientX, clientY, canvas, 0);
+            var ph = ThreeCamera.screenToTilePlane(clientX, clientY, canvas, 0);
+            if (ph) _stashPick(ph);   // frac/face fields ride along for the wall tool
+            return ph;
         }
         return hit;
     }

@@ -2168,6 +2168,7 @@
                     const sorted = voxels.map(v => {
                         var entry = { z: v.z, terrain: v.terrain || 'grass' };
                         if (v.stairDir) entry.stairDir = v.stairDir;
+                        if (v.roof) entry.roof = true;   // thin roof slab (renderer + cutaway)
                         return entry;
                     }).sort((a, b) => a.z - b.z);
 
@@ -2798,11 +2799,166 @@
             const dx = toX - fromX;
             const dy = toY - fromY;
 
+            /* Authored edge walls block the crossing (height-aware via the
+               columns' standing surfaces). Every pathfinder — getMoveTiles,
+               the AI A*, UI move highlights — routes through here already. */
+            if (state.edgeWalls && wallBlocksStep(fromX, fromY, toX, toY)) return true;
+
             if (_edgeBlocksDirection(fromX, fromY, dx, dy)) return true;
 
             if (_edgeBlocksDirection(toX, toY, -dx, -dy)) return true;
             return false;
         }
+
+        /* ══════════════════ EDGE WALLS (authored thin walls) ══════════════════
+           state.edgeWalls is a flat map of edge-key → wall record:
+             key:  "x,y,N" (edge between (x,y-1) and (x,y)) or
+                   "x,y,W" (edge between (x-1,y) and (x,y))
+             wall: { z0, h, tex, texIn, cap, see, low, flip }
+               z0  — first occupied CELL (same z-space as voxel blocks; a wall
+                     sitting on a ground block at z=0 has z0=1, exactly like a
+                     unit's feet standing there)
+               h   — height in cells (stackable; occupies [z0, z0+h-1])
+               tex — outer face terrain key; texIn — inner face (null = same)
+               cap — null | 'crenel' | 'overhang' | 'both' (render-only)
+               see — see-through (chain-link): blocks movement, never sight
+               low — half wall / parapet: blocks movement, never sight
+               flip— swaps which face counts as "outer" (render-only)
+           Movement: ALL walls block a step whose feet/body cross them.
+           Sight & ranged: only full solid walls (!see && !low) block.
+           Jump: 1-cell walls and low walls can be vaulted; taller ones can't. */
+        function _ewWallKey(x, y, side) { return x + ',' + y + ',' + side; }
+
+        function getEdgeWall(x, y, dir) {
+            const w = state.edgeWalls;
+            if (!w) return null;
+            if (dir === 'N') return w[_ewWallKey(x, y, 'N')] || null;
+            if (dir === 'W') return w[_ewWallKey(x, y, 'W')] || null;
+            if (dir === 'S') return w[_ewWallKey(x, y + 1, 'N')] || null;
+            if (dir === 'E') return w[_ewWallKey(x + 1, y, 'W')] || null;
+            return null;
+        }
+
+        /* Wall between two CARDINALLY adjacent tiles (any type), else null. */
+        function _ewWallBetween(xa, ya, xb, yb) {
+            if (!state.edgeWalls) return null;
+            const dx = xb - xa, dy = yb - ya;
+            if (dx === 1 && dy === 0) return getEdgeWall(xa, ya, 'E');
+            if (dx === -1 && dy === 0) return getEdgeWall(xa, ya, 'W');
+            if (dy === 1 && dx === 0) return getEdgeWall(xa, ya, 'S');
+            if (dy === -1 && dx === 0) return getEdgeWall(xa, ya, 'N');
+            return null;
+        }
+
+        function _ewTopCell(w) { return w.z0 + Math.max(1, w.h || 1) - 1; }
+        function _ewBlocksSight(w) { return !!w && !w.see && !w.low; }
+
+        /* Column-top standing z (ignores units; void = air). Used when a caller
+           has no exact z for a step — matches the surface a walker would use on
+           single-surface columns (the overwhelmingly common case). */
+        function _ewColTopZ(x, y) {
+            const col = getColumn(x, y).filter(b => !b.terrain || b.terrain.indexOf('void') !== 0);
+            return col.length ? col[col.length - 1].z : 0;
+        }
+
+        /* Does a SOLID wall on the edge between cardinal neighbours (xa,ya)
+           and (xb,yb) cover the cell the sight ray crosses at (float zc)? */
+        function _ewSightEdgeBlocked(xa, ya, xb, yb, zc) {
+            const w = _ewWallBetween(xa, ya, xb, yb);
+            if (!_ewBlocksSight(w)) return false;
+            const cell = Math.floor(zc);
+            return cell >= w.z0 && cell <= _ewTopCell(w);
+        }
+
+        /* Ray passes exactly through the vertical corner line while stepping
+           diagonally from cell (px,py) by (sx,sy). Walls are thin planes that
+           join at posts: if 2+ of the 4 edges meeting that corner carry a
+           solid wall at this height, the corner is sealed. Grazing the end of
+           a single wall segment stays lenient (not blocked). */
+        function _ewCornerSightBlocked(px, py, sx, sy, zc) {
+            if (!state.edgeWalls) return false;
+            const cell = Math.floor(zc);
+            const covers = (w) => _ewBlocksSight(w) && cell >= w.z0 && cell <= _ewTopCell(w);
+            let n = 0;
+            if (covers(_ewWallBetween(px, py, px + sx, py))) n++;
+            if (covers(_ewWallBetween(px, py + sy, px + sx, py + sy))) n++;
+            if (covers(_ewWallBetween(px, py, px, py + sy))) n++;
+            if (covers(_ewWallBetween(px + sx, py, px + sx, py + sy))) n++;
+            return n >= 2;
+        }
+
+        /* Point-blank (Chebyshev d<=1) sight/ranged check — the DDA raycast
+           never runs for neighbours, so walls must be tested here or units
+           see (and melee) straight through a wall they're standing against. */
+        function wallBlocksAdjacentSight(x1, y1, z1, x2, y2, z2) {
+            if (!state.edgeWalls) return false;
+            const sz = (z1 != null) ? z1 : _ewColTopZ(x1, y1);
+            const tz = (z2 != null) ? z2 : _ewColTopZ(x2, y2);
+            const EYE = 1.8;
+            const zc = ((sz + EYE) + (tz + EYE)) / 2;
+            const dx = x2 - x1, dy = y2 - y1;
+            if (dx === 0 && dy === 0) return false;
+            if (dx === 0 || dy === 0) return _ewSightEdgeBlocked(x1, y1, x2, y2, zc);
+            return _ewCornerSightBlocked(x1, y1, dx, dy, zc);
+        }
+
+        /* Movement: does any wall block a walk step between adjacent tiles?
+           A wall blocks when its cells intersect the mover's body span
+           [min feet, max feet + 1(head)]. Wall entirely below both feet
+           (a stepped-past parapet) or above the head (an overhead arch rail)
+           never blocks. Diagonal steps stay open while at least one of the
+           two L-shaped go-around paths is wall-free (corner-post rule). */
+        function _ewStepEdgeBlocked(xa, ya, xb, yb, lo, hi) {
+            const w = _ewWallBetween(xa, ya, xb, yb);
+            if (!w) return false;
+            return _ewTopCell(w) >= lo && w.z0 <= hi;
+        }
+
+        function wallBlocksStep(fromX, fromY, toX, toY, fromZ, toZ) {
+            if (!state.edgeWalls) return false;
+            const fz = (fromZ != null) ? fromZ : _ewColTopZ(fromX, fromY);
+            const tz = (toZ != null) ? toZ : _ewColTopZ(toX, toY);
+            const fa = fz + 1, fb = tz + 1;
+            const lo = Math.min(fa, fb), hi = Math.max(fa, fb) + 1;
+            const dx = toX - fromX, dy = toY - fromY;
+            if (dx === 0 && dy === 0) return false;
+            if (dx === 0 || dy === 0) return _ewStepEdgeBlocked(fromX, fromY, toX, toY, lo, hi);
+            /* Diagonal: blocked only if BOTH L-paths are blocked. */
+            const lPathBlocked = (cx, cy) =>
+                !isInside(cx, cy)
+                || _ewStepEdgeBlocked(fromX, fromY, cx, cy, lo, hi)
+                || _ewStepEdgeBlocked(cx, cy, toX, toY, lo, hi);
+            return lPathBlocked(toX, fromY) && lPathBlocked(fromX, toY);
+        }
+
+        /* Jump (adjacent ring): a 1-cell wall at foot level — or a low parapet
+           — is vaultable; anything reaching a full cell above the lower stand
+           height stops the leap (it can't be phased through). */
+        function _ewJumpEdgeBlocked(xa, ya, xb, yb, minFeet, hi) {
+            const w = _ewWallBetween(xa, ya, xb, yb);
+            if (!w || w.low) return false;
+            return _ewTopCell(w) >= minFeet + 1 && w.z0 <= hi;
+        }
+
+        function wallBlocksJump(fromX, fromY, fromZ, toX, toY, toZ) {
+            if (!state.edgeWalls) return false;
+            const fz = (fromZ != null) ? fromZ : _ewColTopZ(fromX, fromY);
+            const tz = (toZ != null) ? toZ : _ewColTopZ(toX, toY);
+            const fa = fz + 1, fb = tz + 1;
+            const minFeet = Math.min(fa, fb), hi = Math.max(fa, fb) + 1;
+            const dx = toX - fromX, dy = toY - fromY;
+            if (dx === 0 && dy === 0) return false;
+            if (dx === 0 || dy === 0) return _ewJumpEdgeBlocked(fromX, fromY, toX, toY, minFeet, hi);
+            const lBlocked = (cx, cy) =>
+                !isInside(cx, cy)
+                || _ewJumpEdgeBlocked(fromX, fromY, cx, cy, minFeet, hi)
+                || _ewJumpEdgeBlocked(cx, cy, toX, toY, minFeet, hi);
+            return lBlocked(toX, fromY) && lBlocked(fromX, toY);
+        }
+        window.getEdgeWall = getEdgeWall;
+        window.wallBlocksStep = wallBlocksStep;
+        window.wallBlocksJump = wallBlocksJump;
+        window.wallBlocksAdjacentSight = wallBlocksAdjacentSight;
 
         function _edgeBlocksDirection(x, y, dx, dy) {
             const stack = getObjectStack(x, y);
@@ -3252,6 +3408,11 @@
             const w = bw(), h = bh();
             const board = fullBoard;
             state.monuments = null;   // default; prebuilt maps may set it below
+            /* Authored edge walls exist only on custom/community maps (the
+               branch below installs them) — every other mode starts clean so
+               a previous custom match's walls never leak into the next map. */
+            state.edgeWalls = {};
+            state._wallVersion = (state._wallVersion || 0) + 1;
 
             function _initObjectGrid() {
                 state.boardObjects = Array.from({ length: h }, () => Array(w).fill(null));
@@ -3652,6 +3813,12 @@
                     state._voxelVersion = (state._voxelVersion || 0) + 1;
                     fillVoxelsDown();
                 }
+                /* Authored edge walls (thin modular walls on tile edges). */
+                if (window._customEditorWalls) {
+                    state.edgeWalls = window._customEditorWalls;
+                    delete window._customEditorWalls;
+                    state._wallVersion = (state._wallVersion || 0) + 1;
+                }
                 if (window._customEditorObjects) {
                     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
                         const cell = window._customEditorObjects[y]?.[x];
@@ -4031,9 +4198,12 @@
         function isVisionBlockedByTerrain(x1, y1, x2, y2, sourceZ) {
             // Diagonal neighbours are point-blank too (CHEBYSHEV) — you can always
             // see the tile right beside you, diagonal or cardinal, so neither is
-            // ever vision-blocked by terrain.
+            // ever vision-blocked by terrain... unless a solid edge wall stands
+            // between you (walls occlude even point-blank).
             const d = Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
-            if (d <= 1) return false;
+            if (d <= 1) {
+                return !!state.edgeWalls && wallBlocksAdjacentSight(x1, y1, sourceZ, x2, y2, null);
+            }
 
             if (sourceZ != null && state.boardColumns?.length > 0) {
                 const tz = _inferStandingZ(x2, y2);
@@ -5039,10 +5209,14 @@
             // corner raycast and gets falsely blocked while the cardinal tile
             // right next to it is allowed.
             const d = Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
-            if (d <= 1) return false;
 
             const _srcUnit = state.units?.find(u => !u.dead && u.x === x1 && u.y === y1 && u.wallVision);
             if (_srcUnit) return false;
+
+            /* Point-blank: only an authored solid edge wall can block. */
+            if (d <= 1) {
+                return !!state.edgeWalls && wallBlocksAdjacentSight(x1, y1, sourceZ, x2, y2, targetZ);
+            }
 
             if (state.boardColumns?.length > 0) {
 
@@ -5098,9 +5272,16 @@
             const col = state.boardColumns?.[iy]?.[ix];
             if (!col || !col.length) return false;
 
+            /* Authored 'void' blocks are AIR (the gap fill between voxels on
+               editor/community maps) — transparent to sight, exactly like
+               getWalkableSurfaces treats them for standing. Without this, the
+               open space under a bridge — or inside a roofed room — blocked
+               line-of-sight even though units can walk and stand there. */
+            const _solid = (b) => !b.terrain || b.terrain.indexOf('void') !== 0;
+
             if (col.length <= 8) {
                 for (let i = 0; i < col.length; i++) {
-                    if (col[i].z === iz) return true;
+                    if (col[i].z === iz) return _solid(col[i]);
                     if (col[i].z > iz) return false;
                 }
                 return false;
@@ -5109,7 +5290,7 @@
             let lo = 0, hi = col.length - 1;
             while (lo <= hi) {
                 const mid = (lo + hi) >> 1;
-                if (col[mid].z === iz) return true;
+                if (col[mid].z === iz) return _solid(col[mid]);
                 if (col[mid].z < iz) lo = mid + 1;
                 else hi = mid - 1;
             }
@@ -5167,10 +5348,26 @@
                    enters. */
                 const tMin = Math.min(tMaxX, tMaxY, tMaxZ);
                 if (tMin > 1.0) break;
-                if (tMaxX - tMin < TIE_EPS) { ix += stepX; tMaxX += tDeltaX; }
-                if (tMaxY - tMin < TIE_EPS) { iy += stepY; tMaxY += tDeltaY; }
+                const _px = ix, _py = iy;
+                let _steppedX = false, _steppedY = false;
+                if (tMaxX - tMin < TIE_EPS) { ix += stepX; tMaxX += tDeltaX; _steppedX = true; }
+                if (tMaxY - tMin < TIE_EPS) { iy += stepY; tMaxY += tDeltaY; _steppedY = true; }
                 if (tMaxZ - tMin < TIE_EPS) { iz += stepZ; tMaxZ += tDeltaZ; }
                 steps++;
+
+                /* Authored edge walls: crossing a tile boundary through a solid
+                   wall panel blocks the ray at the height it crosses. A corner
+                   crossing (both axes tie) uses the 2-of-4 corner-post rule. */
+                if (state.edgeWalls && (_steppedX || _steppedY)) {
+                    const _zc = oz + tMin * dz;   // ray height at the crossing
+                    if (_steppedX && _steppedY) {
+                        if (_ewCornerSightBlocked(_px, _py, stepX, stepY, _zc)) return true;
+                    } else if (_steppedX) {
+                        if (_ewSightEdgeBlocked(_px, iy, ix, iy, _zc)) return true;
+                    } else {
+                        if (_ewSightEdgeBlocked(ix, _py, ix, iy, _zc)) return true;
+                    }
+                }
 
                 if (ix === ixEnd && iy === iyEnd && iz === izEnd) continue;
 
@@ -6885,6 +7082,19 @@
         let _meSelectedHeight = 1;
         let _meMouseDown = false;
         let _mePaletteTab = 'terrain';
+        /* ── Walls & Roofs (edge-wall builder) ─────────────────────────────
+           _meWalls uses the RUNTIME shape directly (state.edgeWalls keys +
+           records, texture keys as strings) so save/playtest/community all
+           pass it through untouched. */
+        let _meWalls = {};
+        let _meWallH = 2;                 // wall height in cells (1–6)
+        let _meWallCap = 'none';          // 'none' | 'crenel' | 'overhang' | 'both'
+        let _meWallTex = 'bricks_2';      // outer face texture (terrain key)
+        let _meWallTexIn = '';            // inner face ('' = same as outer)
+        let _meWallSee = false;           // see-through (chain-link) style
+        let _meWallLow = false;           // half wall / parapet
+        let _meWallFlip = false;          // swap outer/inner faces
+        let _meRoofTex = 'wood_planks';   // roof slab texture (terrain key)
         /* Per-terrain colour tints chosen with the editor's colour wheel:
            { terrainKey: '#rrggbb' }. Multiplied onto that terrain's sprites by
            three-renderer (_evTintMat reads state.terrainTints). */
@@ -7081,8 +7291,10 @@
                 voxels: _meVoxels ? _meVoxels.map(row => row.map(col => col.map(b => {
                     var e = { z: b.z, tid: b.tid };
                     if (b.sd) e.sd = b.sd;
+                    if (b.rf) e.rf = 1;
                     return e;
                 }))) : null,
+                walls: Object.assign({}, _meWalls),
                 objects: _meObjects ? _meObjects.map(row => row.map(cell =>
                     Array.isArray(cell) ? cell.map(o => ({ ...o })) : []
                 )) : null,
@@ -7106,8 +7318,10 @@
             _meVoxels = snap.voxels ? snap.voxels.map(row => row.map(col => col.map(b => {
                 var e = { z: b.z, tid: b.tid };
                 if (b.sd) e.sd = b.sd;
+                if (b.rf) e.rf = 1;
                 return e;
             }))) : null;
+            _meWalls = snap.walls ? JSON.parse(JSON.stringify(snap.walls)) : {};
             _meObjects = snap.objects ? snap.objects.map(row => row.map(cell =>
                 Array.isArray(cell) ? cell.map(o => ({ ...o })) : []
             )) : null;
@@ -7179,6 +7393,9 @@
             const idx = col.findIndex(b => b.z === z);
             if (idx >= 0) {
                 col[idx].tid = tid;
+                /* Painting a normal block over a roof slab makes it solid again
+                   (the roof tool re-flags right after its own _meSetVoxel). */
+                if (col[idx].rf) delete col[idx].rf;
             } else {
                 col.push({ z, tid });
                 col.sort((a, b) => a.z - b.z);
@@ -7366,6 +7583,7 @@
                             vRow.push(col.map(b => {
                                 const e = { z: b.z, terrain: ME_TERRAIN_IDS[b.tid] || 'grass' };
                                 if (b.sd) e.stairDir = b.sd;
+                                if (b.rf) e.roof = true;
                                 return e;
                             }));
                         } else {
@@ -7453,6 +7671,10 @@
                 console.log('[MapEditor] boardColumns built:', state.boardColumns.length + 'x' + (state.boardColumns[0]?.length || 0),
                     'sample[0][0]:', JSON.stringify(_sampleCol));
             }
+
+            /* Edge walls preview live in the editor (renderer watches _wallVersion). */
+            state.edgeWalls = JSON.parse(JSON.stringify(_meWalls || {}));
+            state._wallVersion = (state._wallVersion || 0) + 1;
 
             state._terrainVersion = (state._terrainVersion || 0) + 1;
         }
@@ -8597,7 +8819,7 @@
                     <button class="me-btn me-btn-danger me-btn-icon" onclick="window._meDeleteSaved()" title="Delete the selected saved map">🗑️</button>
                 </div>
 
-                <div class="me-help-bar">Click to place · drag to paint · right-click a tile to inspect · <b>B</b>rush <b>O</b>bject <b>V</b>select <b>E</b>rase · <b>R</b> rotate · <b>[ ]</b> Z layer · <b>L</b> Z-lock · Ctrl+Z/Y undo</div>
+                <div class="me-help-bar">Click to place · drag to paint · right-click a tile to inspect · <b>B</b>rush <b>O</b>bject <b>V</b>select <b>E</b>rase <b>W</b>all · <b>R</b> rotate · <b>[ ]</b> Z layer · <b>L</b> Z-lock · Ctrl+Z/Y undo</div>
 
                 <div class="me-section collapsed" id="meSec-size">
                     <button type="button" class="me-section-label" onclick="window._meToggleSection('meSec-size')"><span class="me-sec-caret">▾</span> Canvas Size · <span id="meSizeSummary">${_meW}×${_meH}</span></button>
@@ -8657,6 +8879,53 @@
                     </div>
                 </div>
 
+                <div class="me-section collapsed" id="meSec-walls">
+                    <button type="button" class="me-section-label" onclick="window._meToggleSection('meSec-walls')"><span class="me-sec-caret">▾</span> Walls &amp; Roofs</button>
+                    <div class="me-section-body">
+                    <div class="me-tool-row">
+                        <button class="me-tool" id="meTool-wall" onclick="window._meSetTool('wall')" title="Place a thin wall on the tile edge nearest your click — or click a block's SIDE face to hug that face. Walls stack, block movement, and (solid ones) block line of sight (W)">🧱 Wall<kbd>W</kbd></button>
+                        <button class="me-tool" id="meTool-roof" onclick="window._meSetTool('roof')" title="Place a thin roof slab over this tile. Auto-snaps flush to adjacent wall tops (Z-lock for exact layer). Walk on top; hides itself when you see a unit underneath">⛺ Roof</button>
+                        <button class="me-tool" id="meTool-eraseWall" onclick="window._meSetTool('eraseWall')" title="Remove the wall on the tile edge nearest your click (roofs are removed with the normal Erase tool)">🚫 Erase Wall</button>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <span class="me-z-label">Height</span>
+                        <button class="me-z-btn" onclick="window._meWallAdjH(-1)">−</button>
+                        <span class="me-z-value" id="meWallHVal">${_meWallH}</span>
+                        <button class="me-z-btn" onclick="window._meWallAdjH(1)">+</button>
+                        <span class="me-z-hint">cells tall (2 = room height)</span>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <span class="me-z-label">Top</span>
+                        <select class="me-load-select" id="meWallCapSel" onchange="window._meWallSetCap(this.value)" style="flex:1">
+                            <option value="none">— flat top —</option>
+                            <option value="crenel">🏰 Crenellations (battlements)</option>
+                            <option value="overhang">🪨 Overhang lip (corbel)</option>
+                            <option value="both">🏰+🪨 Crenellations on an overhang</option>
+                        </select>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <button class="me-z-btn" id="meWallLowBtn" onclick="window._meWallToggleLow()" title="Half-height parapet: blocks walking across, but units see and shoot over it">▂ Low wall</button>
+                        <button class="me-z-btn" id="meWallSeeBtn" onclick="window._meWallToggleSee()" title="See-through (chain-link fence): blocks walking, never blocks sight or shots">🕸 See-through</button>
+                        <button class="me-z-btn" id="meWallFlipBtn" onclick="window._meWallToggleFlip()" title="Swap which side counts as the OUTER face (outer/inner textures trade places)">⇄ Flip in/out</button>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <span class="me-z-label">Outer</span>
+                        <select class="me-load-select" id="meWallTexSel" onchange="window._meWallSetTex(this.value)" style="flex:1"></select>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <span class="me-z-label">Inner</span>
+                        <select class="me-load-select" id="meWallTexInSel" onchange="window._meWallSetTexIn(this.value)" style="flex:1"></select>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <span class="me-z-label">Roof</span>
+                        <select class="me-load-select" id="meRoofTexSel" onchange="window._meWallSetRoofTex(this.value)" style="flex:1"></select>
+                    </div>
+                    <div style="padding:6px 2px 0;font-size:10px;color:var(--muted);line-height:1.45">
+                        Click near a tile's edge to place the wall on that edge (or click a block's side face). Same edge again repaints with the current options. Battlement recipe: raise a block platform, then run a 1-cell <b>Low</b> wall with <b>Crenellations</b> around its top edges.
+                    </div>
+                    </div>
+                </div>
+
                 <div class="me-section me-section-palette" id="meSec-palette">
                     <button type="button" class="me-section-label" onclick="window._meToggleSection('meSec-palette')"><span class="me-sec-caret">▾</span> Tiles, Objects &amp; Monuments</button>
                     <div class="me-section-body">
@@ -8677,6 +8946,10 @@
             `;
 
             mapRow.appendChild(hud);
+            _meWallPopulateTexSelects();
+            const _capSel = document.getElementById('meWallCapSel');
+            if (_capSel) _capSel.value = _meWallCap;
+            _meWallStyleBtns();
 
             /* Drag the grip between board and panel to resize the panel; the
                chosen width sticks (localStorage) across sessions. It lives as
@@ -8861,6 +9134,7 @@
                         else if (k === 'v') { e.preventDefault(); window._meSetTool('select'); }
                         else if (k === 'e') { e.preventDefault(); window._meSetTool('erase'); }
                         else if (k === 'x') { e.preventDefault(); window._meSetTool('eraseObj'); }
+                        else if (k === 'w') { e.preventDefault(); window._meSetTool('wall'); }
                         else if (k === 'l') { e.preventDefault(); window._meToggleZLock(); }
                         else if (k === 'g') { e.preventDefault(); window._meToggleZonePreview(); }
                         else if (k === '[') { e.preventDefault(); window._meAdjustZ(-1); }
@@ -9648,8 +9922,106 @@
             _meRenderPalette();   // settle: rebuild palette so all controls re-sync
         };
 
+        /* ── Walls & Roofs option handlers ──────────────────────────────── */
+        const ME_WALL_TEXES = [
+            'bricks_1','bricks_2','bricks_3','castle_wall','cobblestone','cobblestone_2',
+            'rock_wall_1','rock_wall_2','wood','wood_planks','dark_woods',
+            'metal','metal_2','metal_3','gunmetal','gunmetal_2','drywall','concrete',
+            'sandstone','marble','obsidian','ice'
+        ];
+        function _meWallTexOptions(includeSame) {
+            const avail = (typeof TERRAIN_SPRITES !== 'undefined')
+                ? ME_WALL_TEXES.filter(k => TERRAIN_SPRITES[k])
+                : ME_WALL_TEXES;
+            /* Any painted terrain works as a wall skin too — offer the full
+               terrain list below the curated wall set. */
+            let html = includeSame ? '<option value="">— same as outer —</option>' : '';
+            html += avail.map(k => `<option value="${k}">${(TERRAIN_RULES[k]?.label) || k}</option>`).join('');
+            return html;
+        }
+        function _meWallPopulateTexSelects() {
+            const o = document.getElementById('meWallTexSel');
+            const i = document.getElementById('meWallTexInSel');
+            const r = document.getElementById('meRoofTexSel');
+            if (o) { o.innerHTML = _meWallTexOptions(false); o.value = _meWallTex; if (!o.value) { _meWallTex = o.options[0]?.value || 'bricks_2'; o.value = _meWallTex; } }
+            if (i) { i.innerHTML = _meWallTexOptions(true); i.value = _meWallTexIn; }
+            if (r) { r.innerHTML = _meWallTexOptions(false); r.value = _meRoofTex; if (!r.value) { _meRoofTex = r.options[0]?.value || 'wood_planks'; r.value = _meRoofTex; } }
+        }
+        window._meWallAdjH = function(d) {
+            _meWallH = Math.max(1, Math.min(6, _meWallH + d));
+            const v = document.getElementById('meWallHVal');
+            if (v) v.textContent = _meWallH;
+            _meSfx('uiCursorMove');
+        };
+        window._meWallSetCap = function(c) { _meWallCap = c || 'none'; _meSfx('uiButtonConfirm'); };
+        window._meWallSetTex = function(t) { if (t) _meWallTex = t; _meSfx('uiButtonConfirm'); };
+        window._meWallSetTexIn = function(t) { _meWallTexIn = t || ''; _meSfx('uiButtonConfirm'); };
+        window._meWallSetRoofTex = function(t) { if (t) _meRoofTex = t; _meSfx('uiButtonConfirm'); };
+        function _meWallStyleBtns() {
+            const l = document.getElementById('meWallLowBtn');
+            const s = document.getElementById('meWallSeeBtn');
+            const f = document.getElementById('meWallFlipBtn');
+            if (l) l.classList.toggle('active', _meWallLow);
+            if (s) s.classList.toggle('active', _meWallSee);
+            if (f) f.classList.toggle('active', _meWallFlip);
+        }
+        window._meWallToggleLow = function() { _meWallLow = !_meWallLow; if (_meWallLow) _meWallSee = false; _meWallStyleBtns(); _meSfx('uiButtonConfirm'); };
+        window._meWallToggleSee = function() { _meWallSee = !_meWallSee; if (_meWallSee) _meWallLow = false; _meWallStyleBtns(); _meSfx('uiButtonConfirm'); };
+        window._meWallToggleFlip = function() { _meWallFlip = !_meWallFlip; _meWallStyleBtns(); _meSfx('uiButtonConfirm'); };
+
+        /* Remove walls whose edge no longer touches an in-bounds tile. */
+        function _meWallsClip(w, h) {
+            if (!_meWalls) return;
+            for (const key of Object.keys(_meWalls)) {
+                const [sx, sy, side] = key.split(',');
+                const x = +sx, y = +sy;
+                const ok = (side === 'N')
+                    ? (x >= 0 && x < w && y >= 0 && y <= h)
+                    : (y >= 0 && y < h && x >= 0 && x <= w);
+                if (!ok) delete _meWalls[key];
+            }
+        }
+
+        /* Resolve WHICH edge of tile (x,y) a wall click means, from the last 3D
+           pick: a side-face click hugs that face (wall between the block and
+           the open tile in front, based at the open tile's floor); a top-face
+           click takes the edge nearest the hit point. Returns the canonical
+           wall key plus the tile whose surface the wall should sit on. */
+        function _meWallPickEdge(x, y) {
+            const pick = (typeof window !== 'undefined') ? window._ewLastPick : null;
+            let side = null, baseX = x, baseY = y;
+            if (pick && pick.tileX === x && pick.tileY === y) {
+                if (pick.isSideFace && pick.sideTileX != null
+                    && pick.sideTileX >= 0 && pick.sideTileY >= 0
+                    && pick.sideTileX < _meW && pick.sideTileY < _meH) {
+                    const dx = pick.sideTileX - x, dy = pick.sideTileY - y;
+                    if (dx === 1 && dy === 0) side = 'E';
+                    else if (dx === -1 && dy === 0) side = 'W';
+                    else if (dy === 1 && dx === 0) side = 'S';
+                    else if (dy === -1 && dx === 0) side = 'N';
+                    if (side) { baseX = pick.sideTileX; baseY = pick.sideTileY; }
+                }
+                if (!side && pick.fracX != null) {
+                    const fx = pick.fracX, fy = pick.fracY;
+                    const dN = fy, dS = 1 - fy, dW = fx, dE = 1 - fx;
+                    const m = Math.min(dN, dS, dW, dE);
+                    side = (m === dW) ? 'W' : (m === dE) ? 'E' : (m === dN) ? 'N' : 'S';
+                }
+            }
+            if (!side) side = 'N';
+            let wx = x, wy = y;
+            if (side === 'S') { wy = y + 1; side = 'N'; }
+            else if (side === 'E') { wx = x + 1; side = 'W'; }
+            return { key: wx + ',' + wy + ',' + side, baseX, baseY };
+        }
+
+        function _meColTopZ(x, y) {
+            const col = _meGetColumn(x, y);
+            return col.length ? col[col.length - 1].z : -1;
+        }
+
         function _meUpdateToolButtons() {
-            ['paint','object','select','erase','eraseObj','spawn1','spawn2','elevUp','elevDown','elevSet'].forEach(t => {
+            ['paint','object','select','erase','eraseObj','spawn1','spawn2','elevUp','elevDown','elevSet','wall','roof','eraseWall'].forEach(t => {
                 const btn = document.getElementById('meTool-' + t);
                 if (btn) btn.classList.toggle('active', _meTool === t);
             });
@@ -9680,6 +10052,8 @@
             const lockTxt = _meZLock ? ' · locked' : '';
             if (_meTool === 'paint') hint.textContent = `Paint at Z=${_meActiveZ}${lockTxt}`;
             else if (_meTool === 'erase') hint.textContent = `Erase at Z=${_meActiveZ}${lockTxt}`;
+            else if (_meTool === 'wall') hint.textContent = _meZLock ? `Wall base at Z=${_meActiveZ} · locked` : 'Wall sits on the clicked surface';
+            else if (_meTool === 'roof') hint.textContent = _meZLock ? `Roof at Z=${_meActiveZ} · locked` : 'Roof snaps to wall tops (or +3)';
             else if (_meZLock) hint.textContent = `Z-Lock on (Z=${_meActiveZ})`;
             else hint.textContent = '';
         }
@@ -10483,6 +10857,53 @@
                     col.push({ z, tid: existingTid });
                 }
                 _meSyncVoxelsToLegacy();
+            } else if (_meTool === 'wall') {
+                /* Thin modular wall on the edge nearest the click (or hugging
+                   the clicked block side face). Same edge again repaints with
+                   the current options — Erase Wall removes. */
+                const pe = _meWallPickEdge(x, y);
+                const z0 = _meZLock ? _meActiveZ : (_meColTopZ(pe.baseX, pe.baseY) + 1);
+                const rec = { z0: Math.max(0, Math.min(ME_MAX_Z, z0)), h: _meWallH, tex: _meWallTex };
+                if (_meWallTexIn) rec.texIn = _meWallTexIn;
+                if (_meWallCap && _meWallCap !== 'none') rec.cap = _meWallCap;
+                if (_meWallSee) rec.see = true;
+                if (_meWallLow) rec.low = true;
+                if (_meWallFlip) rec.flip = true;
+                _meWalls[pe.key] = rec;
+                _meSfx('itemThrow');
+            } else if (_meTool === 'eraseWall') {
+                const pe = _meWallPickEdge(x, y);
+                if (_meWalls[pe.key]) {
+                    delete _meWalls[pe.key];
+                    _meSfx('block');
+                } else {
+                    /* Forgiving erase: no wall on the nearest edge — clear any
+                       wall on this tile's four edges (single click feel). */
+                    for (const k of [x + ',' + y + ',N', x + ',' + (y + 1) + ',N', x + ',' + y + ',W', (x + 1) + ',' + y + ',W']) {
+                        if (_meWalls[k]) { delete _meWalls[k]; _meSfx('block'); break; }
+                    }
+                }
+            } else if (_meTool === 'roof') {
+                /* Thin roof slab voxel. Auto mode: sit flush on the tallest
+                   wall touching this tile (wallTop+1), else float 3 cells over
+                   the floor (2 cells of headroom). Z-lock places exactly. */
+                let rz;
+                if (_meZLock) {
+                    rz = _meActiveZ;
+                } else {
+                    let wallTop = -1;
+                    for (const k of [x + ',' + y + ',N', x + ',' + (y + 1) + ',N', x + ',' + y + ',W', (x + 1) + ',' + y + ',W']) {
+                        const wRec = _meWalls[k];
+                        if (wRec) wallTop = Math.max(wallTop, wRec.z0 + Math.max(1, wRec.h || 1) - 1);
+                    }
+                    rz = (wallTop >= 0) ? wallTop + 1 : _meColTopZ(x, y) + 3;
+                }
+                rz = Math.max(0, Math.min(ME_MAX_Z, rz));
+                const rtid = ME_TERRAIN_TO_ID[_meRoofTex] || 1;
+                _meSetVoxel(x, y, rz, rtid);
+                const rb = _meGetVoxel(x, y, rz);
+                if (rb) rb.rf = 1;
+                _meSfx('itemThrow');
             }
             _meRenderGrid();
             if (_refreshObjs3D) _meRefreshObjects3D();
@@ -10645,6 +11066,7 @@
                 }
                 _meSpawns[1] = _meSpawns[1].filter(s => s.x < nw);
                 _meSpawns[2] = _meSpawns[2].filter(s => s.x < nw);
+                _meWallsClip(nw, _meH);
             }
             _meW = nw;
             _meRenderGrid();
@@ -10669,6 +11091,7 @@
                 if (_meVoxels) _meVoxels.length = nh;
                 _meSpawns[1] = _meSpawns[1].filter(s => s.y < nh);
                 _meSpawns[2] = _meSpawns[2].filter(s => s.y < nh);
+                _meWallsClip(_meW, nh);
             }
             _meH = nh;
             _meRenderGrid();
@@ -10691,6 +11114,7 @@
             /* Real z0 blocks for the grass floor — an empty voxel grid would be
                zeroed back into the grid by the next _meSyncVoxelsToLegacy. */
             _meBuildVoxelsFromLegacy();
+            _meWalls = {};
             _meActiveZ = 0;
             const zVal = document.getElementById('meActiveZVal');
             if (zVal) zVal.textContent = _meActiveZ;
@@ -10811,6 +11235,7 @@
             } else {
                 _meBuildVoxelsFromLegacy();
             }
+            _meWalls = m.walls ? JSON.parse(JSON.stringify(m.walls)) : {};
             if (!(m.fmt >= 2)) _meFillEmptyWithGrass();   // pre-hole-era save
             _meActiveZ = 0;
             const zVal = document.getElementById('meActiveZVal');
@@ -10842,6 +11267,7 @@
                 sanctuaryZones: _meSanctuaryZones,
                 heights: _meHeights,
                 voxels: _meVoxels,
+                walls: _meWalls,
                 monuments: _meMonuments || [],
                 terrainTints: _meTerrainTints,
                 env: _meEnv ? JSON.parse(JSON.stringify(_meEnv)) : null,
@@ -10881,6 +11307,7 @@
                 } else {
                     _meBuildVoxelsFromLegacy();
                 }
+                _meWalls = data.walls ? JSON.parse(JSON.stringify(data.walls)) : {};
                 if (!(data.fmt >= 2)) _meFillEmptyWithGrass();   // pre-hole-era map
                 _meActiveZ = 0;
                 if (data.name) document.getElementById('meMapName').value = data.name;
@@ -11106,6 +11533,7 @@
             _meSpawns = { 1: [], 2: [] };
             _meSanctuaryZones = _meEmptySanctuaryGrid(H, W);
             _meHeights = _meEmptyHeightGrid(H, W);
+            _meWalls = {};
 
             const { zones } = numBiomes > 1
                 ? _meBuildZoneMap(W, H, numBiomes)
@@ -11529,6 +11957,7 @@
 
             window._customEditorHeights = walkHeights;
             window._customEditorTints = Object.assign({}, _meTerrainTints);
+            window._customEditorWalls = JSON.parse(JSON.stringify(_meWalls || {}));
 
             if (_meVoxels) {
                 window._customEditorVoxels = [];
@@ -11550,6 +11979,7 @@
                                 terrain: ME_TERRAIN_IDS[b.tid] || 'grass'
                             };
                             if (b.sd) entry.stairDir = b.sd;
+                            if (b.rf) entry.roof = true;
                             return entry;
                         }));
                     }

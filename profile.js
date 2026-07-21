@@ -1892,10 +1892,15 @@ window._mePlayCommunityMap = function(mapData) {
           return (col || []).map(function(b) {
             var entry = { z: b.z, terrain: (typeof ME_TERRAIN_IDS !== 'undefined' && ME_TERRAIN_IDS[b.tid]) || 'grass' };
             if (b.sd) entry.stairDir = b.sd;
+            if (b.rf) entry.roof = true;
             return entry;
           });
         });
       });
+    }
+    /* Authored edge walls (thin modular walls) ride along with the map. */
+    if (mapData.walls) {
+      window._customEditorWalls = JSON.parse(JSON.stringify(mapData.walls));
     }
     if (mapData.sanctuaryZones) {
       window._customEditorSanctuaryZones = mapData.sanctuaryZones.map(function(r) { return r.slice(); });

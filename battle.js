@@ -32099,6 +32099,11 @@
                     const surfaces = has3D ? getWalkableSurfaces(nx, ny) : [0];
                     for (const nz of surfaces) {
                         if (!unitCanTraverse(unit, nx, ny, nz)) continue;
+                        /* Authored edge walls: an adjacent-ring leap can vault a
+                           1-cell wall or a low parapet, but never phases through
+                           a taller wall panel. Longer jumps arc clear over. */
+                        if (adx <= 1 && ady <= 1 && typeof wallBlocksJump === 'function'
+                            && wallBlocksJump(unit.x, unit.y, unitZ, nx, ny, nz)) continue;
                         const hDiff = nz - unitZ;
 
                         /* 🏢 Building roofs can't be jumped onto (that bypass ignored

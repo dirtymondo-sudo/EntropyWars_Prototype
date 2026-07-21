@@ -3838,6 +3838,10 @@
             boardHeights: [],
             boardColumns: [],
             boardObjects: [],
+            /* Authored thin walls on tile edges (map editor "Walls & Roofs"):
+               "x,y,N"/"x,y,W" → {z0,h,tex,texIn,cap,see,low,flip}. Serialized
+               to online guests with the rest of the board state. */
+            edgeWalls: {},
             hourglasses: [],
             hourglassBuffs: {
                 1: 0,

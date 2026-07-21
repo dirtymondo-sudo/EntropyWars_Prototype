@@ -490,9 +490,15 @@ const ThreeCamera = (function () {
             nx = n.x; ny = n.y; nz = n.z;
         }
         const eps = ts * 0.01;
+        const _ax = (p.x - nx * eps) / ts;
+        const _ay = (p.z - nz * eps) / ts;
         const res = {
-            tileX: Math.floor((p.x - nx * eps) / ts),
-            tileY: Math.floor((p.z - nz * eps) / ts),
+            tileX: Math.floor(_ax),
+            tileY: Math.floor(_ay),
+            /* fractional position of the hit WITHIN the tile (0..1 each axis) —
+               lets the map editor's wall tool pick the nearest tile EDGE. */
+            fracX: _ax - Math.floor(_ax),
+            fracY: _ay - Math.floor(_ay),
             faceNX: nx, faceNY: ny, faceNZ: nz,
             /* world-space height of the hit point — lets multi-floor callers
                resolve WHICH surface of the column was actually clicked */
@@ -540,9 +546,18 @@ const ThreeCamera = (function () {
         if (!raycaster.ray.intersectPlane(plane, pt)) return null;
 
         const ts = tileSize;
+        const _px = pt.x / ts, _py = pt.z / ts;
         return {
-            tileX: Math.floor(pt.x / ts),
-            tileY: Math.floor(pt.z / ts)
+            tileX: Math.floor(_px),
+            tileY: Math.floor(_py),
+            /* same fields as screenToTile so editor edge-picking (wall tool)
+               works over empty/void tiles too */
+            fracX: _px - Math.floor(_px),
+            fracY: _py - Math.floor(_py),
+            faceNX: 0, faceNY: 1, faceNZ: 0,
+            hitY: pt.y,
+            isTerrainHit: true,
+            isSideFace: false, sideTileX: null, sideTileY: null
         };
     }
 
