@@ -7095,6 +7095,8 @@
         let _meWallLow = false;           // half wall / parapet
         let _meWallFlip = false;          // swap outer/inner faces
         let _meRoofTex = 'wood_planks';   // roof slab texture (terrain key)
+        /* Last-placed wall — R rotates it around its anchor tile's 4 edges. */
+        let _meSelectedWallRef = null;    // { x, y, dir: 'N'|'E'|'S'|'W' }
         /* Per-terrain colour tints chosen with the editor's colour wheel:
            { terrainKey: '#rrggbb' }. Multiplied onto that terrain's sprites by
            three-renderer (_evTintMat reads state.terrainTints). */
@@ -8380,6 +8382,8 @@
                 .me-editor-hud .me-z-btn:hover { background: rgba(90,76,140,0.95); }
                 .me-editor-hud .me-z-lock { width: auto; padding: 0 8px; font-size: 10px; white-space: nowrap; }
                 .me-editor-hud .me-z-lock.active { background: linear-gradient(180deg,#8c64ff,#6c46e1); border-color: rgba(190,170,255,0.9); color: #fff; box-shadow: 0 0 0 1px rgba(190,170,255,0.5); }
+                .me-editor-hud .me-wall-btn { width: auto; height: 24px; padding: 0 9px; font-size: 10px; white-space: nowrap; line-height: 22px; }
+                .me-editor-hud .me-wall-btn.active { background: linear-gradient(180deg,#8c64ff,#6c46e1); border-color: rgba(190,170,255,0.9); color: #fff; box-shadow: 0 0 0 1px rgba(190,170,255,0.5); }
                 .me-editor-hud .me-size-val, .me-editor-hud .me-z-value { min-width: 22px; text-align: center; font-weight: 700; color: #fff; }
                 .me-editor-hud .me-label, .me-editor-hud .me-z-label, .me-editor-hud .me-elev-label { font-size: 11px; color: rgba(210,205,235,0.85); }
                 .me-editor-hud .me-z-hint { font-size: 10px; color: rgba(170,255,210,0.8); margin-left: auto; }
@@ -8904,9 +8908,9 @@
                         </select>
                     </div>
                     <div class="me-z-cursor-wrap" style="margin-top:6px">
-                        <button class="me-z-btn" id="meWallLowBtn" onclick="window._meWallToggleLow()" title="Half-height parapet: blocks walking across, but units see and shoot over it">▂ Low wall</button>
-                        <button class="me-z-btn" id="meWallSeeBtn" onclick="window._meWallToggleSee()" title="See-through (chain-link fence): blocks walking, never blocks sight or shots">🕸 See-through</button>
-                        <button class="me-z-btn" id="meWallFlipBtn" onclick="window._meWallToggleFlip()" title="Swap which side counts as the OUTER face (outer/inner textures trade places)">⇄ Flip in/out</button>
+                        <button class="me-z-btn me-wall-btn" id="meWallLowBtn" onclick="window._meWallToggleLow()" title="Half-height parapet: blocks walking across, but units see and shoot over it">▂ Low wall</button>
+                        <button class="me-z-btn me-wall-btn" id="meWallSeeBtn" onclick="window._meWallToggleSee()" title="See-through (chain-link fence): blocks walking, never blocks sight or shots">🕸 See-through</button>
+                        <button class="me-z-btn me-wall-btn" id="meWallFlipBtn" onclick="window._meWallToggleFlip()" title="Swap which side counts as the OUTER face (outer/inner textures trade places)">⇄ Flip in/out</button>
                     </div>
                     <div class="me-z-cursor-wrap" style="margin-top:6px">
                         <span class="me-z-label">Outer</span>
@@ -8921,7 +8925,7 @@
                         <select class="me-load-select" id="meRoofTexSel" onchange="window._meWallSetRoofTex(this.value)" style="flex:1"></select>
                     </div>
                     <div style="padding:6px 2px 0;font-size:10px;color:var(--muted);line-height:1.45">
-                        Click near a tile's edge to place the wall on that edge (or click a block's side face). Same edge again repaints with the current options. Battlement recipe: raise a block platform, then run a 1-cell <b>Low</b> wall with <b>Crenellations</b> around its top edges.
+                        Click near a tile's edge to place the wall on that edge (or click a block's side face). Same edge again repaints with the current options. Press <b>R</b> to spin the last-placed wall around its tile (Shift+R reverse). Battlement recipe: raise a block platform, then run a 1-cell <b>Low</b> wall with <b>Crenellations</b> around its top edges.
                     </div>
                     </div>
                 </div>
@@ -9125,6 +9129,9 @@
                     else if (e.key === 'r' || e.key === 'R') {
                         const kind = _meSelectedMonEntry() ? 'mon' : (_meSelectedObjEntry() ? 'obj' : null);
                         if (kind) { e.preventDefault(); window._meRotateSelBy(kind, e.shiftKey ? -45 : 45); }
+                        /* No object/monument selected: R spins the last-placed
+                           wall around its tile's four edges instead. */
+                        else if (_meSelectedWallRef) { e.preventDefault(); window._meRotateSelectedWall(e.shiftKey ? -1 : 1); }
                     }
                     /* Pro-editor single-key tool shortcuts (no modifiers). */
                     else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -10009,11 +10016,35 @@
                 }
             }
             if (!side) side = 'N';
-            let wx = x, wy = y;
-            if (side === 'S') { wy = y + 1; side = 'N'; }
-            else if (side === 'E') { wx = x + 1; side = 'W'; }
-            return { key: wx + ',' + wy + ',' + side, baseX, baseY };
+            return { key: _meWallKeyFor(x, y, side), dir: side, baseX, baseY };
         }
+
+        /* Canonical wall key for tile (x,y)'s edge `dir` (S/E fold onto the
+           neighbour's N/W edge — each physical edge is stored exactly once). */
+        function _meWallKeyFor(x, y, dir) {
+            let wx = x, wy = y, side = dir;
+            if (dir === 'S') { wy = y + 1; side = 'N'; }
+            else if (dir === 'E') { wx = x + 1; side = 'W'; }
+            return wx + ',' + wy + ',' + side;
+        }
+
+        /* R / Shift+R: walk the last-placed wall around its anchor tile's
+           edges (N→E→S→W clockwise), carrying its record along. */
+        window._meRotateSelectedWall = function(delta) {
+            const r = _meSelectedWallRef;
+            if (!r) return;
+            const oldKey = _meWallKeyFor(r.x, r.y, r.dir);
+            const rec = _meWalls[oldKey];
+            if (!rec) { _meSelectedWallRef = null; return; }
+            _mePushUndo();
+            const order = ['N', 'E', 'S', 'W'];
+            const nd = order[(order.indexOf(r.dir) + (delta > 0 ? 1 : 3)) % 4];
+            delete _meWalls[oldKey];
+            _meWalls[_meWallKeyFor(r.x, r.y, nd)] = rec;
+            r.dir = nd;
+            _meSfx('uiCursorMove');
+            _meRefreshEditorView();
+        };
 
         function _meColTopZ(x, y) {
             const col = _meGetColumn(x, y);
@@ -10870,9 +10901,16 @@
                 if (_meWallLow) rec.low = true;
                 if (_meWallFlip) rec.flip = true;
                 _meWalls[pe.key] = rec;
+                /* Remember it so R / Shift+R can spin it to another edge —
+                   and drop any object/monument selection so R targets the
+                   wall, not a previously placed prop. */
+                _meSelectedWallRef = { x, y, dir: pe.dir };
+                _meSelectedObjRef = null;
+                _meSelectedMonRef = null;
                 _meSfx('itemThrow');
             } else if (_meTool === 'eraseWall') {
                 const pe = _meWallPickEdge(x, y);
+                _meSelectedWallRef = null;
                 if (_meWalls[pe.key]) {
                     delete _meWalls[pe.key];
                     _meSfx('block');
