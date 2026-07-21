@@ -1992,13 +1992,20 @@
             const col = getColumn(x, y).filter(b => !b.terrain || b.terrain.indexOf('void') !== 0);
             if (!col.length) return [0];
             const zSet = new Set(col.map(b => b.z));
+            /* Thin roof slabs hug the very TOP of their cell, so the space
+               under them is real headroom — a roof flush on 2-cell walls still
+               leaves a standable room (head brushes the ceiling). The roof
+               still blocks the "covered directly above" check (zSet), so you
+               can never stand in a zero-gap sandwich, and its own top stays a
+               normal standable surface. */
+            const hrSet = new Set(col.filter(b => !b.roof).map(b => b.z));
             const surfaces = [];
             for (const block of col) {
 
                 if (zSet.has(block.z + 1)) continue;
 
                 const standZ = block.z + 1;
-                const headroomOk = !zSet.has(standZ) && !zSet.has(standZ + 1);
+                const headroomOk = !hrSet.has(standZ) && !hrSet.has(standZ + 1);
                 if (headroomOk) {
                     surfaces.push(block.z);
                 }
@@ -10084,7 +10091,7 @@
             if (_meTool === 'paint') hint.textContent = `Paint at Z=${_meActiveZ}${lockTxt}`;
             else if (_meTool === 'erase') hint.textContent = `Erase at Z=${_meActiveZ}${lockTxt}`;
             else if (_meTool === 'wall') hint.textContent = _meZLock ? `Wall base at Z=${_meActiveZ} · locked` : 'Wall sits on the clicked surface';
-            else if (_meTool === 'roof') hint.textContent = _meZLock ? `Roof at Z=${_meActiveZ} · locked` : 'Roof snaps to wall tops (or +3)';
+            else if (_meTool === 'roof') hint.textContent = _meZLock ? `Roof at Z=${_meActiveZ} · locked` : 'Roof snaps flush to wall tops (or +2)';
             else if (_meZLock) hint.textContent = `Z-Lock on (Z=${_meActiveZ})`;
             else hint.textContent = '';
         }
@@ -10922,9 +10929,10 @@
                     }
                 }
             } else if (_meTool === 'roof') {
-                /* Thin roof slab voxel. Auto mode: sit flush on the tallest
-                   wall touching this tile (wallTop+1), else float 3 cells over
-                   the floor (2 cells of headroom). Z-lock places exactly. */
+                /* Thin roof slab voxel. The slab renders flush with the TOP of
+                   its cell, so auto mode places it IN the tallest adjacent
+                   wall's top cell — dead flush, no gap. No walls → 2 cells
+                   over the floor (room-height ceiling). Z-lock places exactly. */
                 let rz;
                 if (_meZLock) {
                     rz = _meActiveZ;
@@ -10934,7 +10942,7 @@
                         const wRec = _meWalls[k];
                         if (wRec) wallTop = Math.max(wallTop, wRec.z0 + Math.max(1, wRec.h || 1) - 1);
                     }
-                    rz = (wallTop >= 0) ? wallTop + 1 : _meColTopZ(x, y) + 3;
+                    rz = (wallTop >= 0) ? wallTop : _meColTopZ(x, y) + 2;
                 }
                 rz = Math.max(0, Math.min(ME_MAX_Z, rz));
                 const rtid = ME_TERRAIN_TO_ID[_meRoofTex] || 1;

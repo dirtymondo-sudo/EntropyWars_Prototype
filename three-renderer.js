@@ -7080,9 +7080,15 @@ const ThreeRenderer = (function () {
     }
 
     /* Per-wall texture clones (repeat counts differ per wall) — tracked so a
-       rebuild can dispose the GPU copies (the cache originals stay shared). */
+       rebuild can dispose the GPU copies (the cache originals stay shared).
+       A clone taken while the source is still DOWNLOADING copies a null
+       image and never hears about the load — the first wall ever placed with
+       a texture rendered black. Register on the loader's callback and feed
+       the clone the image when it lands. */
     function _wallTexClone(texKey, repX, repY) {
-        var base = getTerrainTexture(texKey);
+        var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[texKey]) ? TERRAIN_SPRITES[texKey][0] : null;
+        if (!url) return null;
+        var base = getTexture(url);
         if (!base) return null;
         var t2 = base.clone();
         t2.needsUpdate = true;
@@ -7091,6 +7097,12 @@ const ThreeRenderer = (function () {
         t2.repeat.set(Math.max(0.05, repX), Math.max(0.05, repY));
         t2.magFilter = THREE.NearestFilter;
         t2.minFilter = THREE.NearestFilter;
+        if (!base.image || (base.image.complete === false)) {
+            getTexture(url, function (loaded) {
+                t2.image = loaded.image;
+                t2.needsUpdate = true;
+            });
+        }
         _wallClonedTexes.push(t2);
         return t2;
     }
