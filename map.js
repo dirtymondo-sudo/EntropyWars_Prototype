@@ -2802,14 +2802,19 @@
             return rule ? !!rule.blocksLanding : false;
         }
 
-        function objectBlocksEdge(fromX, fromY, toX, toY) {
+        function objectBlocksEdge(fromX, fromY, toX, toY, skipWalls) {
             const dx = toX - fromX;
             const dy = toY - fromY;
 
             /* Authored edge walls block the crossing (height-aware via the
                columns' standing surfaces). Every pathfinder — getMoveTiles,
-               the AI A*, UI move highlights — routes through here already. */
-            if (state.edgeWalls && wallBlocksStep(fromX, fromY, toX, toY)) return true;
+               the AI A*, UI move highlights — routes through here already.
+               The engine pathfinders (getMoveTiles/findMovePath) pass
+               skipWalls=true and run their own z-exact wallStepInfo check
+               inside the per-surface loop instead — this fallback guesses
+               the column-top z, which is wrong on multi-surface columns
+               and for airborne flyers. */
+            if (!skipWalls && state.edgeWalls && wallBlocksStep(fromX, fromY, toX, toY)) return true;
 
             if (_edgeBlocksDirection(fromX, fromY, dx, dy)) return true;
 
@@ -2938,34 +2943,109 @@
             return lPathBlocked(toX, fromY) && lPathBlocked(fromX, toY);
         }
 
-        /* Jump (adjacent ring): a 1-cell wall at foot level — or a low parapet
-           — is vaultable; anything reaching a full cell above the lower stand
-           height stops the leap (it can't be phased through). */
-        function _ewJumpEdgeBlocked(xa, ya, xb, yb, minFeet, hi) {
-            const w = _ewWallBetween(xa, ya, xb, yb);
-            if (!w || w.low) return false;
-            return _ewTopCell(w) >= minFeet + 1 && w.z0 <= hi;
+        /* Jump: vault rules now live in wallStepInfo below (jump-stat-aware,
+           roof-aware). This wrapper keeps the old call signature alive. */
+        function wallBlocksJump(fromX, fromY, fromZ, toX, toY, toZ, jumpClimb) {
+            /* Delegates to wallStepInfo so the Jump action and in-move vaults
+               obey ONE rule: vault height scales with the unit's jump climb,
+               and a roof over either tile kills the arc. Legacy callers that
+               pass no jumpClimb get the baseline 2 (= JUMP_HEIGHT). */
+            return wallStepInfo(fromX, fromY, toX, toY, fromZ, toZ,
+                (jumpClimb == null) ? 2 : jumpClimb).v === 2;
         }
 
-        function wallBlocksJump(fromX, fromY, fromZ, toX, toY, toZ) {
-            if (!state.edgeWalls) return false;
+        /* ══════════ VERTICAL LANE CLEARANCE (roofs / ceilings) ══════════
+           Can a body travel vertically through a column between stand
+           heights lowZ and highZ? Standing at z occupies cells z+1 (feet)
+           and z+2 (head, allowed to brush a thin roof slab hugging the top
+           of its cell). Any solid block inside the lane — or a roof slab
+           the body would have to pass THROUGH (roofs hug the top of their
+           cell, so a roof at the destination head cell is brushable, one
+           below it is not) — seals the lane. Used by every jump leg so a
+           unit can never leap up through its own ceiling, or drop into a
+           roofed room through the roof. 'void' blocks are authored air. */
+        function columnLaneClear(x, y, lowZ, highZ) {
+            if (highZ <= lowZ) return true;
+            const col = getColumn(x, y);
+            for (const b of col) {
+                if (b.terrain && b.terrain.indexOf('void') === 0) continue;
+                if (b.roof) {
+                    if (b.z > lowZ + 1 && b.z <= highZ + 1) return false;
+                } else {
+                    if (b.z > lowZ + 2 && b.z <= highZ + 2) return false;
+                }
+            }
+            return true;
+        }
+
+        /* Classify the wall on ONE edge against a step's body span.
+           null = no wall in the way; -1 = wall too tall to vault;
+           >=0 = vaultable, value is the wall's top cell. */
+        function _ewEdgeVaultTop(xa, ya, xb, yb, lo, hi, minStand, jc) {
+            const w = _ewWallBetween(xa, ya, xb, yb);
+            if (!w) return null;
+            const top = _ewTopCell(w);
+            if (!(top >= lo && w.z0 <= hi)) return null;   // outside the body span
+            if (jc > 0 && top <= minStand + jc) return top;
+            return -1;
+        }
+
+        /* ══════════ WALL-AWARE STEP CLASSIFIER (movement + jumps) ══════════
+           The one source of truth for "can a step cross this tile edge, and
+           does it need a jump arc?". Returns { v, top }:
+             v: 0 = clear walk, 1 = VAULT (jump arc over a wall, top = the
+                wall's top cell the arc must clear), 2 = blocked.
+           jumpClimb is the unit's vertical jump power (getUnitJumpClimb, 2-3;
+           pass 0 for no vaulting — e.g. airborne flyers, who instead clear
+           walls entirely below their true feet). A wall is vaultable when its
+           top rises no more than jumpClimb cells above the lower stand height
+           AND the arc has open air (no roof/ceiling) over BOTH columns up to
+           the wall top — you cannot vault a wall through the roof above it.
+           Diagonals: passable if either L-shaped go-around is clear or
+           vaultable (corner-post rule, vault-aware). */
+        function wallStepInfo(fromX, fromY, toX, toY, fromZ, toZ, jumpClimb) {
+            if (!state.edgeWalls) return { v: 0, top: null };
             const fz = (fromZ != null) ? fromZ : _ewColTopZ(fromX, fromY);
             const tz = (toZ != null) ? toZ : _ewColTopZ(toX, toY);
             const fa = fz + 1, fb = tz + 1;
-            const minFeet = Math.min(fa, fb), hi = Math.max(fa, fb) + 1;
+            const lo = Math.min(fa, fb), hi = Math.max(fa, fb) + 1;
+            const minStand = Math.min(fz, tz);
+            const jc = jumpClimb || 0;
             const dx = toX - fromX, dy = toY - fromY;
-            if (dx === 0 && dy === 0) return false;
-            if (dx === 0 || dy === 0) return _ewJumpEdgeBlocked(fromX, fromY, toX, toY, minFeet, hi);
-            const lBlocked = (cx, cy) =>
-                !isInside(cx, cy)
-                || _ewJumpEdgeBlocked(fromX, fromY, cx, cy, minFeet, hi)
-                || _ewJumpEdgeBlocked(cx, cy, toX, toY, minFeet, hi);
-            return lBlocked(toX, fromY) && lBlocked(fromX, toY);
+            if (dx === 0 && dy === 0) return { v: 0, top: null };
+            let vaultTop = null;
+            if (dx === 0 || dy === 0) {
+                const t = _ewEdgeVaultTop(fromX, fromY, toX, toY, lo, hi, minStand, jc);
+                if (t === null) return { v: 0, top: null };
+                if (t < 0) return { v: 2, top: null };
+                vaultTop = t;
+            } else {
+                const lPath = (cx, cy) => {
+                    if (!isInside(cx, cy)) return -1;
+                    const t1 = _ewEdgeVaultTop(fromX, fromY, cx, cy, lo, hi, minStand, jc);
+                    if (t1 === -1) return -1;
+                    const t2 = _ewEdgeVaultTop(cx, cy, toX, toY, lo, hi, minStand, jc);
+                    if (t2 === -1) return -1;
+                    if (t1 === null && t2 === null) return null;   // fully clear L
+                    return Math.max(t1 == null ? -Infinity : t1, t2 == null ? -Infinity : t2);
+                };
+                const a = lPath(toX, fromY), b = lPath(fromX, toY);
+                if (a === null || b === null) return { v: 0, top: null };
+                if (a === -1 && b === -1) return { v: 2, top: null };
+                vaultTop = (a === -1) ? b : (b === -1) ? a : Math.min(a, b);
+            }
+            /* Roofless requirement: the vault arc needs open air on BOTH
+               columns up to the wall top. */
+            if (!columnLaneClear(fromX, fromY, fz, vaultTop)
+                || !columnLaneClear(toX, toY, tz, vaultTop)) return { v: 2, top: null };
+            return { v: 1, top: vaultTop };
         }
         window.getEdgeWall = getEdgeWall;
         window.wallBlocksStep = wallBlocksStep;
         window.wallBlocksJump = wallBlocksJump;
         window.wallBlocksAdjacentSight = wallBlocksAdjacentSight;
+        window.wallStepInfo = wallStepInfo;
+        window.columnLaneClear = columnLaneClear;
 
         function _edgeBlocksDirection(x, y, dx, dy) {
             const stack = getObjectStack(x, y);

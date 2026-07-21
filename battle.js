@@ -6476,7 +6476,15 @@
             if (canFly(unit) && isUnitAirborne(unit)) {
 
                 const unitZ = unit.z ?? 0;
-                return unitZ !== 0 && (typeof window._getElevationPx === 'function') ? window._getElevationPx(unitZ) : 0;
+                /* Visual hover sink (logic untouched): flyers render ~0.65
+                   levels below their true z, floored at 1.35 levels over
+                   their own ground — just enough to clear one standing unit
+                   and its nameplate instead of hanging two full tiles up.
+                   Keep in sync with _flyVisualY in three-renderer.js. */
+                const _gZ = (typeof getHeightAt === 'function') ? getHeightAt(unit.x, unit.y) : 0;
+                const _clr = unitZ - _gZ;
+                const _visZ = _clr > 0 ? _gZ + Math.max(Math.min(_clr, 1.35), _clr - 0.65) : unitZ;
+                return _visZ !== 0 && (typeof window._getElevationPx === 'function') ? window._getElevationPx(_visZ) : 0;
             }
             /* Multi-floor: grounded on a surface BELOW the column top (cave
                floor, building storey) → anchor at the unit's own floor, not
@@ -16054,7 +16062,9 @@
                     const nx = cur.x + dx;
                     const ny = cur.y + dy;
                     if (!isInside(nx, ny)) continue;
-                    if (objectBlocksEdge(cur.x, cur.y, nx, ny)) continue;
+                    /* skipWalls=true — walls are checked z-exactly per surface
+                       below via wallStepInfo (mirrors getMoveTiles). */
+                    if (objectBlocksEdge(cur.x, cur.y, nx, ny, true)) continue;
 
                     const _pathIsAirborne = _pathFlies && isUnitAirborne(unit);
                     let neighborSurfaces;
@@ -16079,6 +16089,15 @@
                             if (!canPassX && !canPassY) continue;
                         }
                         const _hd = Math.abs(cur.z - nz);
+
+                        /* Authored edge walls, z-exact (mirrors getMoveTiles):
+                           blocked steps drop, vaults pass — the walk animation
+                           reads the wall again and arcs over it. */
+                        if (typeof wallStepInfo === 'function') {
+                            if (wallStepInfo(cur.x, cur.y, nx, ny, cur.z, nz,
+                                _pathIsAirborne ? 0 : getUnitJumpClimb(unit)).v === 2) continue;
+                        }
+
                         if (!_pathIsAirborne && _hd > MAX_CLIMB_HEIGHT) {
                             const _ct = getTerrainAt(cur.x, cur.y);
                             const _nt = _has3D ? getTerrainAt3D(nx, ny, nz) : getTerrainAt(nx, ny);
@@ -16095,7 +16114,13 @@
                                 // Gravity fields bend the mid-move hop ceiling
                                 // (super: no hop, weak: +2) — keyed on the tile
                                 // being climbed onto. Mirrors getMoveTiles.
-                                if (_signedHd > _climbCeilingAt(nx, ny, JUMP_HEIGHT)) continue;
+                                if (_signedHd > _climbCeilingAt(nx, ny, getUnitJumpClimb(unit))) continue;
+                                /* Roof/ceiling lanes — no jumping up through a
+                                   roof, no falling into a roofed room. */
+                                if (typeof columnLaneClear === 'function') {
+                                    if (_signedHd > 0 && !columnLaneClear(cur.x, cur.y, cur.z, nz)) continue;
+                                    if (_signedHd < 0 && !columnLaneClear(nx, ny, nz, cur.z)) continue;
+                                }
                             }
                         }
 
@@ -31148,7 +31173,13 @@
                 const _stepZ = (pt.z !== undefined && pt.z !== null) ? pt.z
                     : ((typeof getHeightAt === 'function') ? getHeightAt(pt.x, pt.y) : 0);
                 const _stepHDiff = Math.abs(_stepZ - _prevZ);
-                const _isJumpStep = _stepHDiff > MAX_CLIMB_HEIGHT && !_isFlying;
+                /* A step that vaults an edge wall is a jump too, even when the
+                   two stand heights match — never walk THROUGH the wall. */
+                let _stepVault = false;
+                if (!_isFlying && typeof wallStepInfo === 'function') {
+                    _stepVault = wallStepInfo(prevPt.x, prevPt.y, pt.x, pt.y, _prevZ, _stepZ, 99).v === 1;
+                }
+                const _isJumpStep = (_stepHDiff > MAX_CLIMB_HEIGHT || _stepVault) && !_isFlying;
 
                 if (_isJumpStep && typeof animateJumpArc === 'function' && !_skipVisuals()) {
 
@@ -32101,12 +32132,21 @@
                     const surfaces = has3D ? getWalkableSurfaces(nx, ny) : [0];
                     for (const nz of surfaces) {
                         if (!unitCanTraverse(unit, nx, ny, nz)) continue;
-                        /* Authored edge walls: an adjacent-ring leap can vault a
-                           1-cell wall or a low parapet, but never phases through
-                           a taller wall panel. Longer jumps arc clear over. */
+                        /* Authored edge walls: an adjacent-ring leap vaults any
+                           roofless wall the unit's jump climb clears, but never
+                           phases through a taller panel or a roofed one.
+                           Longer jumps arc clear over. */
                         if (adx <= 1 && ady <= 1 && typeof wallBlocksJump === 'function'
-                            && wallBlocksJump(unit.x, unit.y, unitZ, nx, ny, nz)) continue;
+                            && wallBlocksJump(unit.x, unit.y, unitZ, nx, ny, nz, climb)) continue;
                         const hDiff = nz - unitZ;
+                        /* No teleporting through roofs: rising needs open air
+                           above the takeoff column, and any landing entered
+                           from above needs an open fall lane down the landing
+                           column (mirrors the move-path jump legs). */
+                        if (typeof columnLaneClear === 'function') {
+                            if (hDiff > 0 && !columnLaneClear(unit.x, unit.y, unitZ, nz)) continue;
+                            if (hDiff < 0 && !columnLaneClear(nx, ny, nz, unitZ)) continue;
+                        }
 
                         /* 🏢 Building roofs can't be jumped onto (that bypass ignored
                            unit jump heights entirely) — the Enter Building lift is
@@ -40390,7 +40430,10 @@
                     const ny = cur.y + dy;
                     if (!isInside(nx, ny)) continue;
 
-                    if (objectBlocksEdge(cur.x, cur.y, nx, ny)) { continue; }
+                    /* skipWalls=true: authored edge walls are checked z-exactly
+                       per landing surface below (wallStepInfo), not with the
+                       column-top guess objectBlocksEdge would use. */
+                    if (objectBlocksEdge(cur.x, cur.y, nx, ny, true)) { continue; }
 
                     const _isAirborne = _unitFlies && isUnitAirborne(unit);
                     let neighborSurfaces;
@@ -40424,6 +40467,18 @@
                         const curZ = cur.z;
                         const _hDiff = Math.abs(curZ - nz);
 
+                        /* Authored edge walls, z-exact: blocked, clear, or a
+                           VAULT (jump arc over a roofless wall the unit's jump
+                           stat can clear). Airborne flyers never vault (jc=0)
+                           but sail clean over walls below their true feet. */
+                        let _wallVault = false;
+                        if (typeof wallStepInfo === 'function') {
+                            const _wsi = wallStepInfo(cur.x, cur.y, nx, ny, curZ, nz,
+                                _isAirborne ? 0 : getUnitJumpClimb(unit));
+                            if (_wsi.v === 2) { continue; }
+                            if (_wsi.v === 1) _wallVault = true;
+                        }
+
                         if (!_isAirborne && _hDiff > MAX_CLIMB_HEIGHT) {
 
                             const _curTerrain = getTerrainAt(cur.x, cur.y);
@@ -40446,13 +40501,25 @@
                             if (!_isStairs && !_hasStairObj) {
                                 // Gravity fields bend the hop ceiling (super:
                                 // no hop, weak: +2) — mirrors findMovePath.
-                                if (_signedHDiff > _climbCeilingAt(nx, ny, JUMP_HEIGHT)) {
+                                // Jump-stat units (getUnitJumpClimb: 2-3) hop
+                                // their own ceiling, not the flat JUMP_HEIGHT.
+                                if (_signedHDiff > _climbCeilingAt(nx, ny, getUnitJumpClimb(unit))) {
                                     continue;
+                                }
+                                /* No teleporting through terrain: a rising leap
+                                   needs open air above the TAKEOFF column (a
+                                   roof over your head stops the jump), a big
+                                   drop needs an open fall lane down the LANDING
+                                   column (you can't fall into a roofed room
+                                   through its roof). Mirrors findMovePath. */
+                                if (typeof columnLaneClear === 'function') {
+                                    if (_signedHDiff > 0 && !columnLaneClear(cur.x, cur.y, curZ, nz)) { continue; }
+                                    if (_signedHDiff < 0 && !columnLaneClear(nx, ny, nz, curZ)) { continue; }
                                 }
                             }
                         }
 
-                        const _thisStepIsJump = !_isAirborne && _hDiff > MAX_CLIMB_HEIGHT;
+                        const _thisStepIsJump = !_isAirborne && (_hDiff > MAX_CLIMB_HEIGHT || _wallVault);
                         const _nodeViaJump = cur._viaJump || _thisStepIsJump;
 
                         let _occupant;

@@ -503,6 +503,21 @@ const ThreeRenderer = (function () {
     const FLY_BOB_AMP = 4;
     const FLY_BOB_SPEED = 1.8;
 
+    /* Airborne units render LOWER than their logical z (visual only — combat,
+       collision and altitude rules read unit.z untouched). Min clearance 2 is
+       two full cube-voxel tiles, which floats flyers absurdly high; sinking
+       the sprite 0.65 levels — floored at 1.35 levels over the flyer's own
+       ground — leaves just enough air to clear one standing unit plus its
+       nameplate. Keep in sync with unitElevationZ in battle.js. */
+    const FLY_VISUAL_SINK = 0.65;
+    const FLY_MIN_VISUAL_CLR = 1.35;
+    function _flyVisualY(z, groundZ, ts) {
+        var clr = z - groundZ;
+        if (clr <= 0) return z * ts * ELEV_STEP_RATIO;
+        var vis = Math.max(Math.min(clr, FLY_MIN_VISUAL_CLR), clr - FLY_VISUAL_SINK);
+        return (groundZ + vis) * ts * ELEV_STEP_RATIO;
+    }
+
     const SUBMERSION_DEPTH = {
         water:      0.22,
         deep_water: 0.45,
@@ -1969,7 +1984,8 @@ const ThreeRenderer = (function () {
         if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)
             && !(_introGroundSet && _introGroundSet.size && _introGroundSet.has(unit.id))) {
             var h = unit.z || 0;
-            return h * ts * ELEV_STEP_RATIO;
+            var gH = (typeof getHeightAt === 'function') ? getHeightAt(ux, uy) : 0;
+            return _flyVisualY(h, gH, ts);
         }
 
         /* Roof-walkable building tiles only expose the ROOF as a standing surface
@@ -14182,12 +14198,45 @@ const ThreeRenderer = (function () {
         var totalMs = perTile * segs;
         var _isFlying = (typeof canFly === 'function' && typeof isUnitAirborne === 'function')
             ? (canFly(unit) && isUnitAirborne(unit)) : false;
+
+        /* Per-segment jump arcs: a leg that climbs/drops beyond the walk limit,
+           or VAULTS an authored edge wall, gets a parabolic hop whose peak
+           actually clears the obstacle (wall top plane / higher ledge) instead
+           of the sprite lerping straight through the geometry. segArcs[i] is
+           the parabola boost (px) added at mid-segment; 0 = flat walk. */
+        var ts0 = CONFIG.tileSize || BASE_TILE;
+        var segArcs = null;
+        if (!_isFlying) {
+            var _maxClimb = (window.GAME && window.GAME.MAX_CLIMB_HEIGHT) || 1;
+            for (var si = 0; si < segs; si++) {
+                var pa = fullPath[si], pb = fullPath[si + 1];
+                var az = pa.z || 0, bz = pb.z || 0;
+                var aY = az * ts0 * ELEV_STEP_RATIO, bY = bz * ts0 * ELEV_STEP_RATIO;
+                var peakY = null;
+                if (typeof window.wallStepInfo === 'function') {
+                    var wsi = window.wallStepInfo(pa.x, pa.y, pb.x, pb.y, az, bz, 99);
+                    if (wsi && wsi.v === 1 && wsi.top != null) {
+                        /* feet clear the wall's top plane with a little air */
+                        peakY = wsi.top * ts0 * ELEV_STEP_RATIO + ts0 * 0.3;
+                    }
+                }
+                if (peakY === null && Math.abs(bz - az) > _maxClimb) {
+                    peakY = Math.max(aY, bY) + ts0 * 0.35;
+                }
+                if (peakY !== null) {
+                    if (!segArcs) { segArcs = []; for (var zi = 0; zi < segs; zi++) segArcs.push(0); }
+                    segArcs[si] = Math.max(ts0 * 0.3, peakY - (aY + bY) / 2);
+                }
+            }
+        }
+
         _walkTweens.set(unit.id, {
             path: fullPath,
             segs: segs,
             startTime: _animNow(),
             totalMs: totalMs,
             isFlying: _isFlying,
+            segArcs: segArcs,
             onDone: onDone || null
         });
 
@@ -14217,12 +14266,27 @@ const ThreeRenderer = (function () {
 
             var from = tw.path[stepIdx];
             var to = tw.path[stepIdx + 1];
-            var fromY = _tileSurfaceY(from.x, from.y, from.z);
-            var toY = _tileSurfaceY(to.x, to.y, to.z);
+            var fromY, toY;
+            if (tw.isFlying && typeof getHeightAt === 'function') {
+                /* Same visual hover sink as unitSurfaceY, per path node — no
+                   pop at glide start/end. Grounded nodes (takeoff/landing
+                   legs) resolve to their true surface. */
+                fromY = _flyVisualY(from.z || 0, getHeightAt(from.x, from.y), ts);
+                toY = _flyVisualY(to.z || 0, getHeightAt(to.x, to.y), ts);
+            } else {
+                fromY = _tileSurfaceY(from.x, from.y, from.z);
+                toY = _tileSurfaceY(to.x, to.y, to.z);
+            }
 
             var wx = (from.x + (to.x - from.x) * ease) * ts + ts / 2;
             var wy = fromY + (toY - fromY) * ease;
             var wz = (from.y + (to.y - from.y) * ease) * ts + ts / 2;
+
+            /* Jump/vault legs arc: parabolic boost peaking mid-segment, high
+               enough to clear the wall or ledge this leg crosses. */
+            if (tw.segArcs && tw.segArcs[stepIdx]) {
+                wy += tw.segArcs[stepIdx] * 4 * ease * (1 - ease);
+            }
 
             if (tw.isFlying) wy += Math.sin(now * 0.003) * 3;
 
@@ -14252,7 +14316,9 @@ const ThreeRenderer = (function () {
             if (gt >= 1) {
                 var final = tw.path[tw.path.length - 1];
                 if (ue && ue.group) {
-                    var fy = _tileSurfaceY(final.x, final.y, final.z);
+                    var fy = (tw.isFlying && typeof getHeightAt === 'function')
+                        ? _flyVisualY(final.z || 0, getHeightAt(final.x, final.y), ts)
+                        : _tileSurfaceY(final.x, final.y, final.z);
                     var fSink = ue.group._ew_subSink || 0;
                     ue.group.position.set(final.x * ts + ts / 2, fy - fSink, final.y * ts + ts / 2);
                     ue.group._ew_spriteTopY = fy + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
@@ -14400,6 +14466,16 @@ const ThreeRenderer = (function () {
         var dist = Math.abs(toX - fromX) + Math.abs(toY - fromY);
         var hDelta = Math.abs((toZ || 0) - (fromZ || 0));
         var arcPeak = Math.max(ts * 0.6, ts * 0.35 * dist + hDelta * 12);
+        /* Vaulting an edge wall: raise the arc so the feet visibly clear the
+           wall's top plane instead of clipping through the panel. */
+        if (Math.max(Math.abs(toX - fromX), Math.abs(toY - fromY)) === 1
+            && typeof window.wallStepInfo === 'function') {
+            var _jwsi = window.wallStepInfo(fromX, fromY, toX, toY, fromZ || 0, toZ || 0, 99);
+            if (_jwsi && _jwsi.v === 1 && _jwsi.top != null) {
+                var _jAvgY = (((fromZ || 0) + (toZ || 0)) / 2) * ts * ELEV_STEP_RATIO;
+                arcPeak = Math.max(arcPeak, _jwsi.top * ts * ELEV_STEP_RATIO + ts * 0.3 - _jAvgY);
+            }
+        }
         _jumpTweens.set(unit.id, {
             fromX: fromX, fromY: fromY, fromZ: fromZ || 0,
             toX: toX, toY: toY, toZ: toZ || 0,
