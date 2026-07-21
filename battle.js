@@ -28711,11 +28711,11 @@
                         camera._releaseCineSubject(420);
                         const range = spell?.range || 3;
                         const rangeRows = range * 2 + 1;
-                        // wider of "fits the range rings" and the preset's
-                        // tactical distance — same rule as the Move framing
-                        const zoom = Math.min(
-                            clampAutoZoom(computeZoomForVisibleTiles(rangeRows + 2)),
-                            getDefaultZoom());
+                        // Fit the spell's range rings and nothing more; only
+                        // zoom OUT if the current view doesn't already show
+                        // them — same rule as the Move framing.
+                        const _fitZ = clampAutoZoom(computeZoomForVisibleTiles(rangeRows + 2));
+                        const zoom = Math.min(camera.zoom || _fitZ, Math.max(_fitZ, getDefaultZoom()));
                         camera.moveTo({
                             x: unit.x, y: unit.y, zoom,
                             // Same over-the-map overhead as the Move framing.
@@ -29555,12 +29555,14 @@
                 camera._releaseCineSubject(420);
                 const _mvRange = mode === 'build' ? 2 : Math.max(2, (typeof getEffectiveMove === 'function'
                     ? (getEffectiveMove(unit) || 0) : 0) || 4);
-                // The WIDER of "fits the whole move range" and the preset's
-                // tactical distance — the tactical view is always a genuine
-                // pulled-back board read, never a close-up.
-                const _mvZoom = Math.min(
-                    clampAutoZoom(computeZoomForVisibleTiles(_mvRange * 2 + 4)),
-                    getDefaultZoom());
+                // Fit the whole move range and nothing more; only zoom OUT
+                // when the current view doesn't already show it. The old
+                // Math.min(fit, getDefaultZoom()) always pulled out to at
+                // least the full-board view, so arming Move meant re-zooming
+                // in by hand every single time.
+                const _mvFitZ = clampAutoZoom(computeZoomForVisibleTiles(_mvRange * 2 + 4));
+                const _mvZoom = Math.min(camera.zoom || _mvFitZ,
+                    Math.max(_mvFitZ, getDefaultZoom()));
                 camera.moveTo({
                     x: unit.x, y: unit.y,
                     // Over-the-map overhead. The old getTacticalTilt() was the
