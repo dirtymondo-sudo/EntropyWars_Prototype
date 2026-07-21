@@ -6770,7 +6770,9 @@ function _injectHudHideStyles() {
        nothing absolutely positioned against magic offsets, so nothing
        can overlap. */
     .hrlg-rig {
-      position: absolute; left: 10px; bottom: 10px;
+      /* lifted so the bottom-center spell description bar has the floor
+         to itself — bar is ~62px tall and scales with --ew-ui-scale */
+      position: absolute; left: 10px; bottom: calc(14px + 66px * var(--ew-ui-scale, 1));
       display: flex; align-items: flex-end; gap: 12px;
       z-index: 12; pointer-events: none; font-family: 'DotGothic16', monospace;
       transform: scale(var(--ew-ui-scale, 1));
@@ -7470,13 +7472,14 @@ function _injectHudHideStyles() {
        One long, thin black bar pinned bottom-center. Gold/holo-blue
        hairline edges that fade out toward the ends; the black fill fades
        too. Describes the drum's selected (or hovered) ability. */
-    /* Anchored bottom-RIGHT so it can never sit on top of the Horologe's
-       command panels (which own the bottom-left of the screen). */
+    /* Anchored bottom-CENTER, spanning the width of the screen like a classic
+       SMT help strip. The Horologe rig is lifted above it (see .hrlg-rig)
+       so the two never overlap. */
     #ew-spell-descbar {
-      position: fixed; right: 14px; bottom: 12px; z-index: 60;
-      width: min(720px, 44vw);
-      transform: scale(var(--ew-ui-scale, 1));
-      transform-origin: 100% 100%;
+      position: fixed; left: 50%; bottom: 10px; z-index: 60;
+      width: min(1100px, 92vw);
+      transform: translateX(-50%) scale(var(--ew-ui-scale, 1));
+      transform-origin: 50% 100%;
       pointer-events: none; opacity: 0;
       transition: opacity 0.16s ease;
       font-family: 'DotGothic16', monospace;
@@ -7494,7 +7497,7 @@ function _injectHudHideStyles() {
     #ew-spell-descbar::after  { bottom: 0; }
     .ew-descbar-inner {
       min-height: 46px; padding: 8px 30px;
-      display: flex; align-items: center; justify-content: flex-start;
+      display: flex; align-items: center; justify-content: center;
       gap: 14px; flex-wrap: wrap; row-gap: 4px;
       background: linear-gradient(90deg,
         rgba(7,7,6,0) 0%, rgba(7,7,6,0.9) 6%,
