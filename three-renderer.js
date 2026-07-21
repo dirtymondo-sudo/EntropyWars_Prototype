@@ -13418,6 +13418,13 @@ const ThreeRenderer = (function () {
          architecture still reads on the map.
        - A unit standing ON a platform never cuts its own floor (only blocks
          starting above its feet are candidates).
+       - ONLY a unit actually UNDERNEATH the architecture (canopy hanging
+         over its OWN tile) opens a hole (2026-07-21). A unit standing
+         OUTSIDE next to a building never peels its roof open — the old
+         radius-only test x-rayed interiors the player has no sight of,
+         floated move/jump highlights at roof level over the missing roof,
+         and let clicks fall through the hole onto interior floors (read as
+         "clicked the roof, walked through the wall into the building").
        Props riding a hidden canopy tile (trees etc. anchor to the column
        top) vanish with their floor. Units standing on a hidden floor stay
        visible and simply float, XCOM-style.
@@ -13472,13 +13479,21 @@ const ThreeRenderer = (function () {
                 var su = _unitById.get(sid);
                 if (su && !su.dead) subject = su;
             }
-            if (subject) subjects.push({ u: subject, r: (typeof window !== 'undefined' && window.EW_CANOPY_CUT_RADIUS) || 2.9 });
+            var _vpC = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
+            if (subject) {
+                /* Fog gate: an ENEMY subject (AI blitz turn, enemy cine shot)
+                   the viewer cannot see must not open roofs — a hole punched
+                   over an unseen unit leaks "someone is in there" through
+                   walls the viewer has no sight past. */
+                var _sSeen = (subject.player === _vpC) || !state.fogOfWar
+                    || (_fogVisibleSet && _fogVisibleSet.has(subject.x + ',' + subject.y));
+                if (_sSeen) subjects.push({ u: subject, r: (typeof window !== 'undefined' && window.EW_CANOPY_CUT_RADIUS) || 2.9 });
+            }
             /* Roof occlusion (map-editor roofs & canopies): any unit the VIEWER
                can actually see that stands under overhead architecture opens a
                tight hole over itself — own units always, enemies only while
                fog-visible. So a spotted enemy inside a building is never hidden
                by its own roof. */
-            var _vpC = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
             var _unitsC = state.units || [];
             for (var _ui = 0; _ui < _unitsC.length; _ui++) {
                 var _cu = _unitsC[_ui];
@@ -13505,6 +13520,17 @@ const ThreeRenderer = (function () {
                     var R = subjects[si].r;
                     var subZ = (sub.z !== undefined && sub.z !== null) ? sub.z
                              : ((typeof getHeightAt === 'function') ? getHeightAt(sub.x, sub.y) : 0);
+                    /* WYSIWYG gate: only a unit ACTUALLY UNDER overhead
+                       architecture (canopy above its OWN tile) opens a hole.
+                       Standing outside next to a building must never cut its
+                       roof open — you can't see into a room you're not in. */
+                    var covered = false;
+                    for (var pi = 0; pi < list.length; pi++) {
+                        var pc = list[pi];
+                        if (pc._ew_cTileX === sub.x && pc._ew_cTileY === sub.y
+                            && pc._ew_canopyBottomZ >= subZ + 1) { covered = true; break; }
+                    }
+                    if (!covered) continue;
                     for (var i = 0; i < list.length; i++) {
                         var cm = list[i];
                         if (want.has(cm)) continue;

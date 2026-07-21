@@ -4,7 +4,46 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## MULTI-FLOOR WYSIWYG PASS 2: no x-ray highlights, no cross-floor click reroute, real jump arcs (2026-07-21, LATEST) — three-renderer.js, battle.js, map.js
+## MULTI-FLOOR WYSIWYG PASS 3: cutaway only when UNDER the roof, camera anchors at the interior floor (2026-07-21, LATEST) — three-renderer.js, battle.js
+Token `20260721k` → `20260721l`. User bug batch: "I'm OUTSIDE a building and
+the roof is cut open — how can I see inside?", "move highlights float on the
+roof; clicking them clips me through the wall into the building", "cast a
+spell inside a building → camera framed me as if I stood on the roof".
+ROOT CAUSE (all three are ONE bug + one camera bug):
+- **Canopy cutaway opened for units merely NEAR a roof** (`_updateCanopyCutaway`,
+  three-renderer.js): the wanted-set test was radius-only (2.9 tiles) +
+  "bottom above the unit's z" — no check that the unit is actually UNDERNEATH
+  anything. Standing outside beside a building satisfied both → the roof vanished
+  for a couple tiles (x-ray into the interior). Cascade: the hidden roof stops
+  writing depth AND stops raycasting, so (a) depth-tested interior floor
+  highlights showed through the hole, (b) a legit roof-top jump highlight
+  floated at roof level over the hole, and (c) a click aimed at "the roof"
+  sailed through the hole, resolved to the INTERIOR floor (door-reachable, so
+  engine-legal) and the unit walked in — read as "clipped through the wall".
+  Engine traversal was never wrong (PASS 2 harness still holds).
+  FIX — covered gate: a subject only punches a hole when some canopy mesh
+  hangs over its OWN tile (`_ew_cTileX/_ew_cTileY === sub.x/sub.y` with
+  `_ew_canopyBottomZ >= subZ+1`). Applies to the active-unit hole (r 2.9) and
+  the per-unit holes (r 1.45). Also NEW fog gate on the active-subject hole:
+  an enemy subject (AI blitz / enemy cine shot) not in `_fogVisibleSet` opens
+  nothing — a roof hole over an unseen unit leaked "someone is in there".
+- **`window._camGroundPx` returned the COLUMN TOP** (battle.js ~6505): the
+  cine/TPS pivot (`ThreeCamera._groundYWorld` → subj tile) and the beat-cut
+  `elevZ` anchors all sat at ROOF height when the subject stood on an interior
+  floor. FIX: if a grounded unit at (tx,ty) stands BELOW the column top
+  (`u.z < boardHeights` — same rule as `unitElevationZ`), return px of ITS
+  floor; airborne flyers and empty tiles keep the column top (flyer lift is
+  layered on separately via `_tpsShoulderLift`, unchanged).
+- Nothing engine/relay-side changed → online parity automatic (render-local).
+- NOT playtested (RULE #1c). First live checks: (1) stand OUTSIDE next to a
+  roofed building → roof stays intact, no interior highlights, clicking the
+  roof either jumps ON TOP (if jump-legal) or walks toward the building —
+  never inside; (2) walk in through the door → roof opens over you, interior
+  reads normally; (3) cast a spell while inside → action cam frames you at
+  FLOOR level under the open roof, not at roof height; (4) enemy AI unit
+  hiding in a roofed building under fog → roof stays shut on your screen.
+
+## MULTI-FLOOR WYSIWYG PASS 2: no x-ray highlights, no cross-floor click reroute, real jump arcs (2026-07-21) — three-renderer.js, battle.js, map.js
 Token `20260721i` → `20260721j`. User bug batch: "on a roof, every tile inside
 the building shows clickable", "can't pick between two floors of a column —
 the game reads the column, not the mouse", "jumps clip through walls/roofs",

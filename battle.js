@@ -6501,9 +6501,27 @@
            roofs, i.e. the surface units actually stand on. ThreeCamera's
            collision/pivot maths uses this instead of the bare terrain height
            so a shot on a unit standing on a structure doesn't anchor at the
-           dirt underneath the building. */
+           dirt underneath the building.
+           Multi-floor: a GROUNDED unit standing on a surface BELOW its column
+           top (building interior, cave floor) anchors at ITS floor — using
+           the column top here parked every cine/TPS spell shot at ROOF height
+           while the subject fought inside the building. Airborne flyers keep
+           the column top: their altitude is layered on separately
+           (unitElevationZ / _tpsShoulderLift). */
         window._camGroundPx = function (tx, ty) {
-            try { return Math.max(0, tileElevationZ(tx, ty)); } catch (e) { return 0; }
+            try {
+                const u = unitAt(tx, ty);
+                if (u && !u.dead && u.z !== undefined && u.z !== null
+                    && state.boardColumns?.length
+                    && !(canFly(u) && isUnitAirborne(u))) {
+                    const _topH = state.boardHeights?.[ty]?.[tx] ?? 0;
+                    if (u.z < _topH) {
+                        return (u.z > 0 && typeof window._getElevationPx === 'function')
+                            ? Math.max(0, window._getElevationPx(u.z)) : 0;
+                    }
+                }
+                return Math.max(0, tileElevationZ(tx, ty));
+            } catch (e) { return 0; }
         };
 
         function dioramaUnitZBoost() {
