@@ -32139,11 +32139,24 @@
                         if (adx <= 1 && ady <= 1 && typeof wallBlocksJump === 'function'
                             && wallBlocksJump(unit.x, unit.y, unitZ, nx, ny, nz, climb)) continue;
                         const hDiff = nz - unitZ;
-                        /* No teleporting through roofs: rising needs open air
-                           above the takeoff column, and any landing entered
-                           from above needs an open fall lane down the landing
-                           column (mirrors the move-path jump legs). */
-                        if (typeof columnLaneClear === 'function') {
+                        if (adx <= 1 && ady <= 1) {
+                            /* Adjacent hop: rising needs open air above the
+                               takeoff column, any drop needs an open fall lane
+                               down the landing column (mirrors move-path jump
+                               legs; walls already handled by wallBlocksJump). */
+                            if (typeof columnLaneClear === 'function') {
+                                if (hDiff > 0 && !columnLaneClear(unit.x, unit.y, unitZ, nz)) continue;
+                                if (hDiff < 0 && !columnLaneClear(nx, ny, nz, unitZ)) continue;
+                            }
+                        } else if (typeof jumpArcClear === 'function') {
+                            /* Reach-2+ leap: REAL arc physics (jumpArcClear,
+                               map.js) — the arc must clear every column, edge
+                               wall and roof it flies over, within this unit's
+                               jump climb. This is what stops leaping over a
+                               roofed wall into (or across) a building: go
+                               around, or in through the door. */
+                            if (!jumpArcClear(unit.x, unit.y, unitZ, nx, ny, nz, climb)) continue;
+                        } else if (typeof columnLaneClear === 'function') {
                             if (hDiff > 0 && !columnLaneClear(unit.x, unit.y, unitZ, nz)) continue;
                             if (hDiff < 0 && !columnLaneClear(nx, ny, nz, unitZ)) continue;
                         }

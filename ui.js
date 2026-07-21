@@ -2515,7 +2515,11 @@
             const _tHasZ = (t.z !== undefined && t.z !== null);
             if (_moveSet.has(pk) && _tHasZ) {
               const _prevZ = _hlZCache.get(pk);
-              if (_prevZ !== undefined && t.z !== _prevZ) {
+              /* First entry for this column carried no z (legacy edge case):
+                 adopt this surface's z as the primary instead of silently
+                 dropping every later surface of the column. */
+              if (_prevZ === undefined) { _hlZCache.set(pk, t.z); continue; }
+              if (t.z !== _prevZ) {
                 const list = _hlZExtra.get(pk) || [];
                 if (Math.abs(t.z - _selZForHl) < Math.abs(_prevZ - _selZForHl)) {
                   // this surface becomes the primary; demote the old one

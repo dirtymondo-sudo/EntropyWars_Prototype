@@ -3040,12 +3040,102 @@
                 || !columnLaneClear(toX, toY, tz, vaultTop)) return { v: 2, top: null };
             return { v: 1, top: vaultTop };
         }
+        /* ══════════ JUMP ARC CLEARANCE (multi-tile leaps) ══════════
+           A reach-2+ jump is a real physical arc, not a teleport: it must
+           clear everything it flies over. Legal iff there EXISTS one apex
+           height H (feet level at the top of the arc) with:
+             - H within the unit's jump power (H - z0 <= climb) and H >= both
+               stand heights;
+             - open air over every intermediate column at the crossing band
+               (cells H+1..H+2 free of solid blocks; a roof slab hugging the
+               top of cell H+2 may brush the head, same as standing headroom);
+             - every edge wall the arc crosses either tops out at/below H
+               (vaulted) or starts entirely above the body (passes under);
+             - a clear vertical lane on the TAKEOFF column from z0 up to H (a
+               roof over your head stops the leap) and on the LANDING column
+               from z1 up to H (you cannot drop into a roofed room through
+               its roof).
+           Low apexes are tried first, so a flat hop under a high bridge
+           stays legal while a vault over a roofed wall never is. Diagonal
+           line crossings route through the LOWER of the two corner columns
+           (the arc shades over the easier corner). */
+        function _colTopSolidZ(x, y) {
+            const col = getColumn(x, y).filter(b => !b.terrain || b.terrain.indexOf('void') !== 0);
+            if (!col.length) return state.boardHeights?.[y]?.[x] ?? 0;
+            let top = -Infinity;
+            for (const b of col) if (b.z > top) top = b.z;
+            return top;
+        }
+        function _colBandBlocked(x, y, H) {
+            // Is the body band (cells H+1, H+2) obstructed while arcing over?
+            const col = getColumn(x, y);
+            for (const b of col) {
+                if (b.terrain && b.terrain.indexOf('void') === 0) continue;
+                if (b.roof) {
+                    if (b.z === H + 1) return true;           // roof slab at chest height
+                } else if (b.z === H + 1 || b.z === H + 2) return true;
+            }
+            return false;
+        }
+        function jumpArcClear(x0, y0, z0, x1, y1, z1, climb) {
+            /* Tiles the arc passes over, start → landing, sampled finely so
+               no crossed column or edge is skipped. */
+            const seq = [{ x: x0, y: y0 }];
+            const fx0 = x0 + 0.5, fy0 = y0 + 0.5;
+            const dxf = (x1 + 0.5) - fx0, dyf = (y1 + 0.5) - fy0;
+            const steps = Math.max(2, Math.ceil(Math.max(Math.abs(dxf), Math.abs(dyf)) * 4));
+            let px = x0, py = y0;
+            for (let i = 1; i <= steps; i++) {
+                const t = i / steps;
+                const cx = Math.floor(fx0 + dxf * t);
+                const cy = Math.floor(fy0 + dyf * t);
+                if (cx === px && cy === py) continue;
+                if (cx !== px && cy !== py) {
+                    // corner crossing: shade over the lower corner column
+                    const tA = isInside(cx, py) ? _colTopSolidZ(cx, py) : Infinity;
+                    const tB = isInside(px, cy) ? _colTopSolidZ(px, cy) : Infinity;
+                    seq.push(tA <= tB ? { x: cx, y: py } : { x: px, y: cy });
+                }
+                seq.push({ x: cx, y: cy });
+                px = cx; py = cy;
+            }
+            // Crossed edges (cardinal by construction) and intermediate columns
+            const walls = [];
+            for (let i = 1; i < seq.length; i++) {
+                const a = seq[i - 1], b = seq[i];
+                const w = _ewWallBetween(a.x, a.y, b.x, b.y);
+                if (w) walls.push(w);
+            }
+            const mids = seq.slice(1, -1);
+
+            const hMin = Math.max(z0, z1);
+            const hMax = z0 + (climb || 0);
+            if (hMax < hMin) return false;
+            for (let H = hMin; H <= hMax; H++) {
+                let ok = true;
+                for (const m of mids) {
+                    if (!isInside(m.x, m.y)) continue;
+                    if (_colTopSolidZ(m.x, m.y) > H || _colBandBlocked(m.x, m.y, H)) { ok = false; break; }
+                }
+                if (ok) for (const w of walls) {
+                    const top = _ewTopCell(w);
+                    if (top > H && w.z0 <= H + 2) { ok = false; break; }   // in the body's way
+                }
+                if (!ok) continue;
+                if (!columnLaneClear(x0, y0, z0, H)) return false;   // roof over takeoff: no higher apex will ever clear it
+                if (!columnLaneClear(x1, y1, z1, H)) continue;       // landing lane sealed at this apex; a lower one was already tried
+                return true;
+            }
+            return false;
+        }
+
         window.getEdgeWall = getEdgeWall;
         window.wallBlocksStep = wallBlocksStep;
         window.wallBlocksJump = wallBlocksJump;
         window.wallBlocksAdjacentSight = wallBlocksAdjacentSight;
         window.wallStepInfo = wallStepInfo;
         window.columnLaneClear = columnLaneClear;
+        window.jumpArcClear = jumpArcClear;
 
         function _edgeBlocksDirection(x, y, dx, dy) {
             const stack = getObjectStack(x, y);

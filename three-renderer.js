@@ -13073,8 +13073,9 @@ const ThreeRenderer = (function () {
         return (o && o.parent && _occIsContainer(o.parent)) ? o : null;
     }
 
-    /* World point we want kept clear for a unit: roughly its torso (midway
-       between the ground and the top of the sprite). */
+    /* Subject descriptor for the occlusion rays: P is the torso point the
+       rays aim at; feetY / tx / ty identify the subject's FOOTING so the
+       hit filter can refuse to fade the ground the subject stands on. */
     function _occUnitPoint(unit) {
         if (!unit) return null;
         var ue = unitEntries.get(unit.id);
@@ -13082,18 +13083,49 @@ const ThreeRenderer = (function () {
             ue.group.getWorldPosition(_occVecA);
             var ts = CONFIG.tileSize || BASE_TILE;
             var topY = (ue.group._ew_spriteTopY != null) ? ue.group._ew_spriteTopY : (_occVecA.y + ts * 0.85);
-            return _occVecB.set(_occVecA.x, (_occVecA.y + topY) * 0.5, _occVecA.z).clone();
+            return {
+                P: _occVecB.set(_occVecA.x, (_occVecA.y + topY) * 0.5, _occVecA.z).clone(),
+                feetY: _occVecA.y,
+                tx: Math.round(unit.x), ty: Math.round(unit.y)
+            };
         }
         return _occTilePoint(unit.x, unit.y);
     }
     function _occTilePoint(tx, ty) {
         var ts = CONFIG.tileSize || BASE_TILE;
-        var y = ts * 0.6;
+        var y = ts * 0.6, feetY = 0;
         if (typeof getHeightAt === 'function' && typeof window._getElevationPx === 'function') {
             var h = getHeightAt(Math.round(tx), Math.round(ty));
-            if (h > 0) y = window._getElevationPx(h) + ts * 0.6;
+            if (h > 0) { feetY = window._getElevationPx(h); y = feetY + ts * 0.6; }
         }
-        return new THREE.Vector3(tx * ts + ts / 2, y, ty * ts + ts / 2);
+        return {
+            P: new THREE.Vector3(tx * ts + ts / 2, y, ty * ts + ts / 2),
+            feetY: feetY,
+            tx: Math.round(tx), ty: Math.round(ty)
+        };
+    }
+
+    /* A terrain column may only fade when it can actually HIDE the subject:
+       never the subject's own tile, and never a column whose top sits at or
+       below the subject's feet (the ground you stand on / lower decks can't
+       be "in the way" — they were getting faded because the sight line to
+       the raised torso grazes the top of the supporting blocks). */
+    function _occHitFadeable(root, sub) {
+        if (root._ew_tileX == null) {
+            /* Props/objects carry no tile tag — derive it from the root's
+               position so the structure the subject STANDS ON (a walkable
+               building roof, a turret base) never fades under its own unit. */
+            var pts = CONFIG.tileSize || BASE_TILE;
+            var ptx = Math.floor((root.position ? root.position.x : -1e9) / pts);
+            var pty = Math.floor((root.position ? root.position.z : -1e9) / pts);
+            return !(ptx === sub.tx && pty === sub.ty);
+        }
+        if (root._ew_tileX === sub.tx && root._ew_tileY === sub.ty) return false;
+        var ht = root._ew_height || 0;
+        var topY = (typeof window._getElevationPx === 'function')
+            ? window._getElevationPx(Math.max(0, ht)) : ht * ((CONFIG.tileSize || BASE_TILE) * 0.5);
+        var eps = (CONFIG.tileSize || BASE_TILE) * 0.1;
+        return topY > sub.feetY + eps;
     }
 
     function _occCloneMat(m) {
@@ -13183,7 +13215,7 @@ const ThreeRenderer = (function () {
         if (objectGroup) groups.push(objectGroup);
         if (!groups.length) return roots;
 
-        var subs = [];
+        var subs = [];   // [{P, feetY, tx, ty}] — see _occUnitPoint/_occTilePoint
         if (cineActive) {
             var caster = _unitById.get(camera._cineShotUnitId);
             if (caster) { var cp = _occUnitPoint(caster); if (cp) subs.push(cp); }
@@ -13222,7 +13254,8 @@ const ThreeRenderer = (function () {
         var nearClear = ts * 0.5;      // stop short of the subject so its own tile isn't faded
 
         for (var s = 0; s < subs.length; s++) {
-            var P = subs[s];
+            var sub = subs[s];
+            var P = sub.P;
             for (var q = 0; q < 5; q++) {
                 // centre ray + four spread around the subject in screen space
                 _occVecA.copy(P);
@@ -13241,7 +13274,7 @@ const ThreeRenderer = (function () {
                 var hits = _occRaycaster.intersectObjects(groups, true);
                 for (var hi = 0; hi < hits.length; hi++) {
                     var r = _occRootOf(hits[hi].object);
-                    if (r) roots.add(r);
+                    if (r && _occHitFadeable(r, sub)) roots.add(r);
                 }
             }
         }
@@ -22619,11 +22652,33 @@ const ThreeRenderer = (function () {
        how multi-floor picks decide WHICH floor the pointer is on (the cloud
        platform's top face vs the ground visible beneath it). */
     function _surfaceZFromHitY(tx, ty, hitY) {
-        if (hitY === undefined || hitY === null || typeof getWalkableSurfaces !== 'function'
+        if (typeof getWalkableSurfaces !== 'function'
             || !state.boardColumns || !state.boardColumns.length) return undefined;
         var surf = getWalkableSurfaces(tx, ty);
         if (!surf.length) return undefined;
+        /* WYSIWYG destination picks: while an action's highlights are up,
+           resolve only among the surfaces of this column that are actually
+           HIGHLIGHTED (the primary zMap entry + every zExtra surface). The
+           raycast can graze a wall face or the roof above a lit interior
+           floor — snapping to the nearest LEGAL surface guarantees the tile
+           you click is the tile the move executes to. Columns with exactly
+           one lit surface resolve to it unconditionally. */
+        var cache = window._ewHlCache;
+        if (cache && cache.map && cache.zMap) {
+            var pk = tx + ',' + ty;
+            if (cache.map.has(pk)) {
+                var legal = [];
+                if (cache.zMap.has(pk)) legal.push(cache.zMap.get(pk));
+                var ex = (cache.zExtra && cache.zExtra.get) ? cache.zExtra.get(pk) : null;
+                if (ex) for (var e2 = 0; e2 < ex.length; e2++) {
+                    if (legal.indexOf(ex[e2].z) < 0) legal.push(ex[e2].z);
+                }
+                if (legal.length === 1) return legal[0];
+                if (legal.length > 1) surf = legal;
+            }
+        }
         if (surf.length === 1) return surf[0];
+        if (hitY === undefined || hitY === null) return undefined;
         var ts = CONFIG.tileSize || BASE_TILE;
         var best = surf[0], bestD = Infinity;
         for (var i = 0; i < surf.length; i++) {
