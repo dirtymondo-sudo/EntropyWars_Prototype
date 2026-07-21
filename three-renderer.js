@@ -11107,9 +11107,13 @@ const ThreeRenderer = (function () {
            column top (the ocean floor under a cloud platform, the ground under
            a bridge) must sit at ITS OWN floor — draping it over the roof above
            made every under-platform move tile render on the platform instead.
-           Drawn depth-free (XCOM-style x-ray) and slightly dimmer so it stays
-           readable through the platform from a top-down camera while still
-           reading as "beneath". */
+           DEPTH-TESTED on purpose (2026-07-21, user bug): the old x-ray draw
+           made every door-reachable interior tile glow THROUGH the roof while
+           standing on it, which read as "the game says I can click through the
+           roof". Depth-tested, the highlight shows exactly when the floor
+           itself is visible — through the doorway, from a low angle under a
+           bridge, or through the canopy-cutaway hole (hidden roofs don't write
+           depth) — and never through solid architecture. */
         if (z !== undefined && z !== null) {
             var _subTopZ = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(hx, hy)
                      : (state.boardHeights && state.boardHeights[hy]) ? (state.boardHeights[hy][hx] || 0) : 0;
@@ -11121,17 +11125,12 @@ const ThreeRenderer = (function () {
                         /* clone() deep-copies uniforms — re-share the global
                            clock or the shader animation freezes on the clone */
                         if (v.uniforms) v.uniforms.uTime = _hlGlobalTime;
-                        v.depthTest = false;
-                        v.depthWrite = false;
                         if (v.uniforms && v.uniforms.uOpacity) v.uniforms.uOpacity.value *= 0.85;
                         v._ew_shared = true;
                         v._ew_baseOpacity = (mat._ew_baseOpacity !== undefined) ? mat._ew_baseOpacity * 0.85 : undefined;
                         mat._ew_subFloorVariant = v;
                     }
                     subMat = mat._ew_subFloorVariant;
-                } else {
-                    mat.depthTest = false;
-                    mat.depthWrite = false;
                 }
                 var subGeo = (frac === 0.92) ? _getSharedHlGeo(ts) : new THREE.PlaneGeometry(ts * frac, ts * frac);
                 var sub = new THREE.Mesh(subGeo, subMat);
@@ -11909,11 +11908,28 @@ const ThreeRenderer = (function () {
 
         var arc = opts.arc || 0;
         var pts;
-        if (arc > 0) {
+        if (arc > 0 || (opts.apexY !== undefined && opts.apexY !== null)) {
             var flatLen = Math.sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az));
-            var lift = Math.min(ts * 2.6, flatLen * arc) + ts * 0.3;
-            var mid = new THREE.Vector3((ax + bx) / 2, Math.max(ay, by) + lift, (az + bz) / 2);
-            pts = [start, mid, end];
+            var lift = Math.min(ts * 2.6, flatLen * (arc || 0.45)) + ts * 0.3;
+            var peakY = Math.max(ay, by) + lift;
+            /* opts.apexY (world Y): the obstacle height this arc must clear —
+               jump previews pass the jumpArcApex the RULES validated, so the
+               drawn arch is the legal arc, not a lob through the wall. */
+            if (opts.apexY !== undefined && opts.apexY !== null) {
+                peakY = Math.max(peakY, opts.apexY + ts * 0.35);
+            }
+            /* A real arch: sample the parabola instead of bending a 3-point
+               spline (whose midpoint hump used to dip into whatever stood
+               between the endpoints). */
+            var hLob = peakY - (ay + by) / 2;
+            pts = [];
+            for (var sA = 0; sA <= 8; sA++) {
+                var tA = sA / 8;
+                pts.push(new THREE.Vector3(
+                    ax + (bx - ax) * tA,
+                    ay + (by - ay) * tA + hLob * 4 * tA * (1 - tA),
+                    az + (bz - az) * tA));
+            }
         } else {
             pts = [start, end];
         }
@@ -12101,8 +12117,10 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(tx, ty) + 0.5;
         /* Multi-floor: the cursor sits on the surface the POINTER is on (hz,
            resolved from the raycast hit height) — falling back to the tile's
-           primary highlighted surface. Below-roof floors draw x-ray so the
-           cursor stays visible through the platform above. */
+           primary highlighted surface. Depth-tested like the range highlights
+           (2026-07-21): the pointer can only rest on a floor it can SEE, so
+           an x-ray cursor could only ever show through geometry when the pick
+           was wrong — WYSIWYG both ways. */
         var _hvZ = (hz !== undefined && hz !== null) ? hz
                  : ((window._ewHlCache && window._ewHlCache.zMap) ? window._ewHlCache.zMap.get(tx + ',' + ty) : undefined);
         var _hvTop = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(tx, ty)
@@ -12113,7 +12131,6 @@ const ThreeRenderer = (function () {
            tile on the board that wears brackets (plus the AoE impact tile),
            so "where am I pointing" is always a one-glance read. */
         var hMat = _makeHlMaterial(0xffd83d, 0.9, 0.25, 0, { fill: 0.06, brackets: 1.0 });
-        if (_hvSub) hMat.depthTest = false;
         /* Staircase tiles get the slanted drape (45° along the rise) so the
            cursor lies along the steps instead of clipping through them. */
         var _hvStair = _hvSub ? null : _stairInfoAt(tx, ty);
@@ -14603,6 +14620,19 @@ const ThreeRenderer = (function () {
             if (_jwsi && _jwsi.v === 1 && _jwsi.top != null) {
                 var _jAvgY = (((fromZ || 0) + (toZ || 0)) / 2) * ts * ELEV_STEP_RATIO;
                 arcPeak = Math.max(arcPeak, _jwsi.top * ts * ELEV_STEP_RATIO + ts * 0.3 - _jAvgY);
+            }
+        }
+        /* Real arc physics for EVERY leap (2026-07-21): jumpArcApex (map.js)
+           returns the lowest apex the rules validated — the tween peaks at
+           least that high, so mounting a roof or leaping a wall never drags
+           the sprite through the architecture the engine arced it over.
+           climb 99: the move is already legal; we only want the apex. */
+        if (typeof window.jumpArcApex === 'function') {
+            var _jaH = window.jumpArcApex(fromX, fromY, fromZ || 0, toX, toY, toZ || 0, 99);
+            if (_jaH !== null && _jaH !== undefined) {
+                var _jaMidY = (_tileSurfaceY(fromX, fromY, fromZ || 0)
+                             + _tileSurfaceY(toX, toY, toZ || 0)) / 2;
+                arcPeak = Math.max(arcPeak, _jaH * ts * ELEV_STEP_RATIO + ts * 0.3 - _jaMidY);
             }
         }
         _jumpTweens.set(unit.id, {
@@ -22648,44 +22678,61 @@ const ThreeRenderer = (function () {
         }
     }
 
-    /* Nearest walkable surface of column (tx,ty) to a raycast hit's world Y —
-       how multi-floor picks decide WHICH floor the pointer is on (the cloud
-       platform's top face vs the ground visible beneath it). */
-    function _surfaceZFromHitY(tx, ty, hitY) {
+    /* Which walkable surface of column (tx,ty) is the pointer ON?
+       WYSIWYG rule (2026-07-21, user bug): a hit on a TOP face resolves to
+       the surface that face physically belongs to (nearest rendered surface
+       Y to the hit point) — NEVER silently rerouted to some other floor of
+       the column. The old "snap to the nearest HIGHLIGHTED surface" made a
+       click on an intact roof execute a move to the hidden interior floor
+       beneath it (the infamous teleport-into-the-building), and made
+       choosing between two lit floors of one column impossible: the roof
+       always won. Pointing at a floor now requires actually seeing it —
+       through the doorway, from the side, or through the canopy-cutaway
+       hole (hidden roofs are already skipped by screenToTile).
+       Side-face grazes (faceNY ~ horizontal: wall faces, cliff sides) keep
+       the legal-surface snap: a click on the face of a ledge means the lit
+       surface beside it, not a surface the wall itself owns. */
+    function _surfaceZFromHitY(tx, ty, hitY, faceNY) {
         if (typeof getWalkableSurfaces !== 'function'
             || !state.boardColumns || !state.boardColumns.length) return undefined;
         var surf = getWalkableSurfaces(tx, ty);
         if (!surf.length) return undefined;
-        /* WYSIWYG destination picks: while an action's highlights are up,
-           resolve only among the surfaces of this column that are actually
-           HIGHLIGHTED (the primary zMap entry + every zExtra surface). The
-           raycast can graze a wall face or the roof above a lit interior
-           floor — snapping to the nearest LEGAL surface guarantees the tile
-           you click is the tile the move executes to. Columns with exactly
-           one lit surface resolve to it unconditionally. */
-        var cache = window._ewHlCache;
-        if (cache && cache.map && cache.zMap) {
-            var pk = tx + ',' + ty;
-            if (cache.map.has(pk)) {
-                var legal = [];
-                if (cache.zMap.has(pk)) legal.push(cache.zMap.get(pk));
-                var ex = (cache.zExtra && cache.zExtra.get) ? cache.zExtra.get(pk) : null;
-                if (ex) for (var e2 = 0; e2 < ex.length; e2++) {
-                    if (legal.indexOf(ex[e2].z) < 0) legal.push(ex[e2].z);
+        if (surf.length === 1) return surf[0];
+        var _surfY = function (z) {
+            return (typeof surfaceYAt === 'function')
+                ? surfaceYAt(tx, ty, z)
+                : z * (CONFIG.tileSize || BASE_TILE) * ELEV_STEP_RATIO;
+        };
+        var _nearest = function (list) {
+            var best = list[0], bestD = Infinity;
+            for (var i = 0; i < list.length; i++) {
+                var d = Math.abs(_surfY(list[i]) - hitY);
+                if (d < bestD) { bestD = d; best = list[i]; }
+            }
+            return best;
+        };
+        var _sideFace = (faceNY !== undefined && faceNY !== null && Math.abs(faceNY) < 0.5);
+        if (_sideFace) {
+            /* Wall graze → snap among the column's lit surfaces (if any). */
+            var cache = window._ewHlCache;
+            if (cache && cache.map && cache.zMap) {
+                var pk = tx + ',' + ty;
+                if (cache.map.has(pk)) {
+                    var legal = [];
+                    if (cache.zMap.has(pk)) legal.push(cache.zMap.get(pk));
+                    var ex = (cache.zExtra && cache.zExtra.get) ? cache.zExtra.get(pk) : null;
+                    if (ex) for (var e2 = 0; e2 < ex.length; e2++) {
+                        if (legal.indexOf(ex[e2].z) < 0) legal.push(ex[e2].z);
+                    }
+                    if (legal.length === 1) return legal[0];
+                    if (legal.length > 1) {
+                        return (hitY === undefined || hitY === null) ? legal[0] : _nearest(legal);
+                    }
                 }
-                if (legal.length === 1) return legal[0];
-                if (legal.length > 1) surf = legal;
             }
         }
-        if (surf.length === 1) return surf[0];
         if (hitY === undefined || hitY === null) return undefined;
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var best = surf[0], bestD = Infinity;
-        for (var i = 0; i < surf.length; i++) {
-            var d = Math.abs(surf[i] * ts * ELEV_STEP_RATIO - hitY);
-            if (d < bestD) { bestD = d; best = surf[i]; }
-        }
-        return best;
+        return _nearest(surf);
     }
 
     /* Resolve what the pointer at (clientX, clientY) is over and update all
@@ -22705,7 +22752,7 @@ const ThreeRenderer = (function () {
         }
         if (hit) {
             var tx = hit.tileX, ty = hit.tileY;
-            var hz = _surfaceZFromHitY(tx, ty, hit.hitY);
+            var hz = _surfaceZFromHitY(tx, ty, hit.hitY, hit.faceNY);
             /* Publish WHICH floor of the column the pointer is on, so the move
                preview / click resolution in battle.js target the same surface
                the highlight shows (multi-floor maps: cave floor vs the roof). */
@@ -22814,7 +22861,7 @@ const ThreeRenderer = (function () {
            raycast hit's world height — the cloud-platform top face targets the
            platform, the ground seen under/next to it targets the ground. */
         if (clickZ === undefined && hit) {
-            clickZ = _surfaceZFromHitY(tx, ty, hit.hitY);
+            clickZ = _surfaceZFromHitY(tx, ty, hit.hitY, hit.faceNY);
         }
         if (clickZ === undefined && typeof nearestWalkableZ === 'function' && typeof state !== 'undefined' && state.selectedUnitId != null) {
             var _actU = _unitById.get(state.selectedUnitId) || null;
@@ -23358,6 +23405,10 @@ const ThreeRenderer = (function () {
         showTerrainGhost, clearTerrainGhost,
 
         unitSurfaceY, tileTopY, surfaceYAt,
+
+        /* Raw voxel-z → world-Y (no smoothing/stair lifts) — jump previews
+           convert jumpArcApex heights with this. */
+        elevY: function (z) { return z * (CONFIG.tileSize || BASE_TILE) * ELEV_STEP_RATIO; },
 
         showIntentBadges, clearIntentBadges, worldToScreen,
 

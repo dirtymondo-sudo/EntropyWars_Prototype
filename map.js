@@ -3077,7 +3077,12 @@
             }
             return false;
         }
-        function jumpArcClear(x0, y0, z0, x1, y1, z1, climb) {
+        /* Lowest legal apex (feet height at the top of the arc) for a leap
+           from (x0,y0,z0) to (x1,y1,z1), or null when no apex clears. The
+           found H is what the arc PHYSICS validated — jump previews and the
+           jump tween use it so the drawn/animated arc is the same arc the
+           rules checked, instead of a guess that clips through walls. */
+        function jumpArcApex(x0, y0, z0, x1, y1, z1, climb) {
             /* Tiles the arc passes over, start → landing, sampled finely so
                no crossed column or edge is skipped. */
             const seq = [{ x: x0, y: y0 }];
@@ -3110,7 +3115,7 @@
 
             const hMin = Math.max(z0, z1);
             const hMax = z0 + (climb || 0);
-            if (hMax < hMin) return false;
+            if (hMax < hMin) return null;
             for (let H = hMin; H <= hMax; H++) {
                 let ok = true;
                 for (const m of mids) {
@@ -3122,11 +3127,14 @@
                     if (top > H && w.z0 <= H + 2) { ok = false; break; }   // in the body's way
                 }
                 if (!ok) continue;
-                if (!columnLaneClear(x0, y0, z0, H)) return false;   // roof over takeoff: no higher apex will ever clear it
+                if (!columnLaneClear(x0, y0, z0, H)) return null;    // roof over takeoff: no higher apex will ever clear it
                 if (!columnLaneClear(x1, y1, z1, H)) continue;       // landing lane sealed at this apex; a lower one was already tried
-                return true;
+                return H;
             }
-            return false;
+            return null;
+        }
+        function jumpArcClear(x0, y0, z0, x1, y1, z1, climb) {
+            return jumpArcApex(x0, y0, z0, x1, y1, z1, climb) !== null;
         }
 
         window.getEdgeWall = getEdgeWall;
@@ -3136,6 +3144,7 @@
         window.wallStepInfo = wallStepInfo;
         window.columnLaneClear = columnLaneClear;
         window.jumpArcClear = jumpArcClear;
+        window.jumpArcApex = jumpArcApex;
 
         function _edgeBlocksDirection(x, y, dx, dy) {
             const stack = getObjectStack(x, y);

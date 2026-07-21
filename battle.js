@@ -19560,31 +19560,80 @@
                 };
                 const _showDest = (routeColor, viaTile, destZ) => {
                     const marks = [];
-                    if (viaTile) marks.push({ x: viaTile.x, y: viaTile.y, color: routeColor, opacity: 0.3 });
-                    marks.push({ x: x, y: y, color: routeColor, opacity: 0.45 });
+                    if (viaTile) marks.push({ x: viaTile.x, y: viaTile.y, color: routeColor, opacity: 0.3, z: viaTile.z });
+                    /* carry the landing SURFACE so a sub-roof destination
+                       marker draws on its own floor, not on the roof above */
+                    marks.push({ x: x, y: y, color: routeColor, opacity: 0.45, z: destZ });
                     ThreeRenderer.setOverlay('moveHoverDest', marks, routeColor, 0.45);
                     ThreeRenderer.showGhostUnit(unit, x, y, _wpY(x, y, destZ), { tag: 'caster', color: ghostTint, opacity: 0.85 });
                     state._moveHoverActive = true;
                     scheduleBoardRender();
                 };
-                /* Shared multi-floor tie-break: the surface the pointer is on
-                   wins outright; otherwise the reachable surface closest to it
-                   (or to the unit's own floor when no hover z is known). The
-                   click handler resolves with the SAME rule, so the previewed
-                   ghost is always where the unit will actually end up. */
+                /* Shared multi-floor rule (2026-07-21, WYSIWYG): the surface
+                   the pointer is on wins outright. If the pointer is on a
+                   KNOWN surface that is NOT a legal landing (an intact roof
+                   over a reachable interior, an unreachable floor of the
+                   column), the preview must NOT silently reroute to a
+                   different floor — that reroute is what made clicks on a
+                   roof teleport units inside buildings. Return null and let
+                   the caller fall through to the honest "move towards"
+                   preview. Airborne/takeoff destinations live at flight z
+                   (never a walkable surface), so they keep the nearest-z
+                   pick; so do hovers with no resolved surface (2D maps,
+                   sprite hits). The click handler resolves with the SAME
+                   rule, so the ghost is always where the unit will end up. */
                 const _pickByZ = (matches) => {
-                    const ref = (_hovZ !== undefined && _hovZ !== null) ? _hovZ : (unit.z ?? 0);
-                    const exact = (_hovZ !== undefined && _hovZ !== null)
-                        ? matches.find(t => (t.z ?? 0) === _hovZ) : null;
-                    if (exact) return exact;
+                    const _zKnown = (_hovZ !== undefined && _hovZ !== null);
+                    if (_zKnown) {
+                        const exact = matches.find(t => (t.z ?? 0) === _hovZ);
+                        if (exact) return exact;
+                        const _airish = _isAir || matches.some(t => t._takeoff);
+                        if (!_airish) return null;
+                    }
+                    const ref = _zKnown ? _hovZ : (unit.z ?? 0);
                     return matches.slice().sort((a, b) => Math.abs((a.z ?? 0) - ref) - Math.abs((b.z ?? 0) - ref))[0];
+                };
+
+                /* Jump legs draw as ARCS: apex from the same physics the rules
+                   validated (jumpArcApex), so the route arrow arches over the
+                   wall/roof instead of stabbing through it. Returns the apex
+                   waypoint to splice between two path nodes, or null for a
+                   flat leg. */
+                const _legApexWp = (a, b) => {
+                    if (_isAir) return null;
+                    const az0 = a.z ?? 0, bz0 = b.z ?? 0;
+                    let vault = false;
+                    if (typeof wallStepInfo === 'function') {
+                        vault = wallStepInfo(a.x, a.y, b.x, b.y, az0, bz0, 99).v === 1;
+                    }
+                    if (Math.abs(bz0 - az0) <= MAX_CLIMB_HEIGHT && !vault) return null;
+                    const ts0 = CONFIG.tileSize || BASE_TILE;
+                    let apexY = Math.max(_wpY(a.x, a.y, a.z), _wpY(b.x, b.y, b.z));
+                    if (typeof window.jumpArcApex === 'function'
+                        && typeof ThreeRenderer.elevY === 'function') {
+                        const H = window.jumpArcApex(a.x, a.y, az0, b.x, b.y, bz0, 99);
+                        if (H !== null && H !== undefined) apexY = Math.max(apexY, ThreeRenderer.elevY(H));
+                    }
+                    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, yOverride: apexY + ts0 * 0.4 };
+                };
+                /* Append a path's waypoints (arc apexes spliced into jump
+                   legs) and return the last node for chaining. */
+                const _pushPathWps = (wps, fromNode, pathArr) => {
+                    let prev = fromNode;
+                    for (const p of pathArr) {
+                        const apex = _legApexWp(prev, p);
+                        if (apex) wps.push(apex);
+                        wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y, p.z) });
+                        prev = p;
+                    }
+                    return prev;
                 };
 
                 // 1) Reachable in one move → bending route arrow through the real path.
                 if (state.actionMode === 'move' && canUnitMove(unit)) {
                     const matches = getMoveTiles(unit).filter(t => t.x === x && t.y === y);
-                    if (matches.length) {
-                        const dest = _pickByZ(matches);
+                    const dest = matches.length ? _pickByZ(matches) : null;
+                    if (dest) {
                         // Arrow palette: blue = your own movement (walk/jump/takeoff alike).
                         const routeColor = 0x3399ff;
 
@@ -19622,7 +19671,7 @@
 
                         const path = findMovePath(unit, x, y, dest.z);
                         const wps = [{ x: unit.x, y: unit.y, yOverride: actingY }];
-                        for (const p of path) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y, p.z) });
+                        _pushPathWps(wps, { x: unit.x, y: unit.y, z: unit.z ?? 0 }, path);
                         if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, routeColor);
                         else ThreeRenderer.drawArrow3D(unit.x, unit.y, x, y, routeColor, false, actingY, _wpY(x, y, dest.z), { flow: true });
                         _showDest(routeColor, null, dest.z);
@@ -19633,10 +19682,18 @@
                 // 2) Standalone jump tile (shown in the move overlay too) → arcing leap arrow.
                 if (!_isAir && typeof getJumpTiles === 'function' && canUnitAct(unit)) {
                     const jm = getJumpTiles(unit).filter(t => t.x === x && t.y === y);
-                    if (jm.length) {
-                        const jDest = _pickByZ(jm);
+                    const jDest = jm.length ? _pickByZ(jm) : null;
+                    if (jDest) {
+                        /* Real arch: peak pinned above the tallest thing the
+                           validated arc crosses (jumpArcApex), not a fixed lob. */
+                        let _jApexY = null;
+                        if (typeof window.jumpArcApex === 'function'
+                            && typeof ThreeRenderer.elevY === 'function') {
+                            const _jH = window.jumpArcApex(unit.x, unit.y, unit.z ?? 0, x, y, jDest.z ?? 0, 99);
+                            if (_jH !== null && _jH !== undefined) _jApexY = ThreeRenderer.elevY(_jH);
+                        }
                         ThreeRenderer.drawArrow3D(unit.x, unit.y, x, y, 0x3399ff, false, actingY,
-                            _wpY(x, y, jDest.z), { arc: 0.45, flow: true });
+                            _wpY(x, y, jDest.z), { arc: 0.45, flow: true, apexY: _jApexY });
                         _showDest(0x3399ff, null, jDest.z);
                         return;
                     }
@@ -19657,16 +19714,17 @@
                         const towardsColor = 0x3399ff; // movement = blue (dim goal marker keeps the "towards" read)
                         const savedX = unit.x, savedY = unit.y, savedZ = unit.z;
                         const wps = [{ x: savedX, y: savedY, yOverride: actingY }];
+                        const _startNode = { x: savedX, y: savedY, z: savedZ ?? 0 };
                         if (approach.via) {
                             const pathA = findMovePath(unit, approach.via.x, approach.via.y, approach.via.z ?? savedZ);
-                            for (const p of pathA) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y, p.z) });
+                            const _viaEnd = _pushPathWps(wps, _startNode, pathA);
                             unit.x = approach.via.x; unit.y = approach.via.y; unit.z = approach.via.z ?? savedZ;
                             const pathB = findMovePath(unit, approach.x, approach.y, approach.z ?? savedZ);
-                            for (const p of pathB) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y, p.z) });
+                            _pushPathWps(wps, _viaEnd, pathB);
                             unit.x = savedX; unit.y = savedY; unit.z = savedZ;
                         } else {
                             const pathA = findMovePath(unit, approach.x, approach.y, approach.z ?? savedZ);
-                            for (const p of pathA) wps.push({ x: p.x, y: p.y, yOverride: _wpY(p.x, p.y, p.z) });
+                            _pushPathWps(wps, _startNode, pathA);
                         }
                         if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, towardsColor);
                         else ThreeRenderer.drawArrow3D(savedX, savedY, approach.x, approach.y, towardsColor,
@@ -30563,20 +30621,33 @@
                 };
 
                 const _r1Tiles = getMoveTiles(actingUnit);
-                /* Multi-floor: prefer the tile entry on the SURFACE the player
-                   clicked (cloud top vs the floor beneath); when that exact
-                   floor isn't reachable, take the reachable surface CLOSEST to
-                   the clicked one — never an arbitrary first-found floor. The
-                   hover preview resolves with the same rule, so the ghost the
-                   player saw is where the unit actually goes. */
+                /* Multi-floor WYSIWYG (2026-07-21): the click executes on the
+                   SURFACE the pointer was on — exactly. The old "closest
+                   reachable floor" fallback silently rerouted a click on an
+                   intact roof to the hidden interior floor beneath it (the
+                   teleport-into-the-building bug) and made picking between
+                   two lit floors of a column impossible. If the pointed
+                   surface isn't a legal landing, this is NOT a match — fall
+                   through to jump / move-towards for an honest response.
+                   Nearest-z survives only where a surface literally can't
+                   match: airborne/takeoff destinations (flight z) and clicks
+                   with no resolved surface (2D maps, unit-sprite hits). */
                 let _r1Match = null;
                 {
                     const _r1All = _r1Tiles.filter(t => t.x === x && t.y === y);
                     if (_r1All.length) {
-                        const _zRef = (state._clickedZ !== undefined && state._clickedZ !== null)
-                            ? state._clickedZ : (actingUnit.z ?? 0);
-                        _r1Match = _r1All.find(t => (t.z ?? 0) === _zRef)
-                            || _r1All.slice().sort((a, b) => Math.abs((a.z ?? 0) - _zRef) - Math.abs((b.z ?? 0) - _zRef))[0];
+                        const _zKnown = (state._clickedZ !== undefined && state._clickedZ !== null);
+                        const _zRef = _zKnown ? state._clickedZ : (actingUnit.z ?? 0);
+                        _r1Match = _r1All.find(t => (t.z ?? 0) === _zRef) || null;
+                        if (!_r1Match) {
+                            const _airish = (canFly(actingUnit)
+                                && typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit))
+                                || _r1All.some(t => t._takeoff);
+                            if (!_zKnown || _airish) {
+                                _r1Match = _r1All.slice().sort((a, b) =>
+                                    Math.abs((a.z ?? 0) - _zRef) - Math.abs((b.z ?? 0) - _zRef))[0];
+                            }
+                        }
                     }
                 }
                 if (_r1Match) {
@@ -30587,16 +30658,25 @@
                     return _execMove(() => doMove(actingUnit, x, y, _r1Match.z));
                 }
 
-                /* 1-AP standalone jump: resolve the landing z from the jump
-                   tile list — the raw clicked z can point at a different
-                   surface of the same column, which doJump would reject. */
+                /* 1-AP standalone jump — same WYSIWYG rule as the walk match:
+                   the clicked SURFACE must itself be a legal landing. Only a
+                   z-less click (2D map, sprite hit) takes the nearest-z pick;
+                   a click on some other floor of the column falls through so
+                   it can't leap to a surface the player wasn't pointing at. */
                 if (typeof getJumpTiles === 'function' && !(canFly(actingUnit) && isUnitAirborne(actingUnit))) {
                     const _jMatches = getJumpTiles(actingUnit).filter(t => t.x === x && t.y === y);
                     if (_jMatches.length > 0) {
-                        const _jzRef = state._clickedZ ?? (actingUnit.z ?? 0);
-                        _jMatches.sort((a, b) => Math.abs((a.z ?? 0) - _jzRef) - Math.abs((b.z ?? 0) - _jzRef));
-                        state.actionMode = 'jump';
-                        return _execMove(() => doJump(actingUnit, x, y, _jMatches[0].z));
+                        const _jzKnown = (state._clickedZ !== undefined && state._clickedZ !== null);
+                        const _jzRef = _jzKnown ? state._clickedZ : (actingUnit.z ?? 0);
+                        let _jPick = _jMatches.find(t => (t.z ?? 0) === _jzRef) || null;
+                        if (!_jPick && !_jzKnown) {
+                            _jMatches.sort((a, b) => Math.abs((a.z ?? 0) - _jzRef) - Math.abs((b.z ?? 0) - _jzRef));
+                            _jPick = _jMatches[0];
+                        }
+                        if (_jPick) {
+                            state.actionMode = 'jump';
+                            return _execMove(() => doJump(actingUnit, x, y, _jPick.z));
+                        }
                     }
                 }
 

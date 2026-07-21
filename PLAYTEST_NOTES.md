@@ -4,7 +4,76 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## TWO-ACTION TURNS — AP model rework (2026-07-19, LATEST) — battle.js, ui.js, hud.js, three-renderer.js
+## MULTI-FLOOR WYSIWYG PASS 2: no x-ray highlights, no cross-floor click reroute, real jump arcs (2026-07-21, LATEST) — three-renderer.js, battle.js, map.js
+Token `20260721i` → `20260721j`. User bug batch: "on a roof, every tile inside
+the building shows clickable", "can't pick between two floors of a column —
+the game reads the column, not the mouse", "jumps clip through walls/roofs",
+"jump arrow should be an arch". KEY FINDING (headless-verified, see below):
+the ENGINE'S traversal legality is CORRECT — columnLaneClear/wallStepInfo/
+jumpArcClear block every direct through-roof drop, through-wall vault and
+up-through-slab jump; interiors are only ever reachable via genuine door
+routes. Every reported "wall clip" was UI: x-ray sub-floor highlights, the
+click resolver silently rerouting to a hidden floor, and straight-line jump
+visuals. Fixes (all viewer-local; nothing engine/relay-side changed → online
+parity automatic):
+- **Sub-top-floor highlights + hover cursor are now DEPTH-TESTED**
+  (`_makeHlTile` sub branch, `updateHoverHighlight`): a floor's highlight
+  shows exactly when the floor itself is visible — through a doorway, from a
+  low angle under a bridge/platform, or through the canopy-cutaway hole
+  (hidden roofs don't write depth). Standing on a roof no longer shows the
+  door-reachable interior glowing through it. The old XCOM x-ray (2026-07-11)
+  is gone deliberately.
+- **`_surfaceZFromHitY(tx,ty,hitY,faceNY)` (three-renderer ~22665) is
+  physical-first**: a TOP-face hit resolves to the surface the ray actually
+  struck (nearest `surfaceYAt` to hitY) and is NEVER snapped to a different
+  highlighted floor — that snap is what teleported roof-clicks into
+  buildings. Side-face grazes (|faceNY|<0.5 — wall faces) keep the
+  legal-surface snap. Both callers pass `hit.faceNY` now.
+- **clickTile move/jump matches + `_updateMoveHoverPreview._pickByZ` are
+  exact-surface**: when `_clickedZ`/`_hoverZ` is known and that surface isn't
+  a legal landing, there is NO nearest-z reroute — the click/hover falls
+  through to jump matching → move-towards ("honest response"). Nearest-z
+  survives only for airborne/`_takeoff` tiles (flight z is never a walkable
+  surface) and z-less clicks (2D maps, unit-sprite hits). doMove/doJump keep
+  their own internal tolerance (AI + online replay callers).
+- **`jumpArcApex(x0,y0,z0,x1,y1,z1,climb)` (map.js, window-exported)**: the
+  old jumpArcClear body, returning the lowest LEGAL apex H (or null);
+  jumpArcClear is now a `!== null` wrapper. Probed: flat hop→0, mount z2
+  ledge→2, vault h2 wall→2, leap over 2-high column→2.
+- **Jump visuals use that apex**: `startJumpTween` raises `arcPeak` to clear
+  `jumpArcApex(...,99)` (99 = "move already validated, just give me the
+  apex"), so doJump/auto-jump tweens never drag the sprite through the wall
+  being mounted. `drawArrow3D` gained `opts.apexY` and renders arcs as an
+  8-sample parabola (the old 3-point CatmullRom hump could dip into
+  geometry); the standalone-jump hover arrow passes the apex. Walk-route
+  previews (`drawPathArrow3D` callers) splice an apex waypoint into every
+  jump/vault leg via `_legApexWp`/`_pushPathWps` (battle.js hover preview) —
+  new exported `ThreeRenderer.elevY(z)` converts apex z → world Y.
+  (`startWalkTween` already arced its legs — untouched.)
+- `_showDest` dest/via markers now carry `z` so a sub-roof landing marker
+  draws on its floor, not on the roof.
+- **Headless legality harness** (scratchpad `harness.js`, pattern worth
+  recreating): brace-extracts the REAL getMoveTiles/getJumpTiles/findMovePath
+  + map.js step rules into a vm sandbox with a stubbed `state`, builds voxel
+  buildings (block walls + roof slabs, edge-wall + roof, solid non-flag
+  ceilings, two-storey slabs, door gaps), asserts direct entries blocked and
+  door routes open. ALL PASS pre- and post-refactor. Legit-but-surprising
+  results to remember: interiors ARE reachable from a roof within move
+  budget (hop off above the door, walk back in — correct, and now the
+  highlight only shows where visible); diagonal entry THROUGH an open door
+  edge is legal (corner-post rule); with jump 3 you can mount a 3-high wall
+  top or roof from outside — by design.
+- NOT playtested (RULE #1c). First live checks: (1) stand on a roof in move
+  mode — interior tiles must NOT glow through the roof; the same tiles show
+  when viewed through the door at a low angle; (2) two lit floors in one
+  column — pointing at the top face picks the top, pointing at the visible
+  lower floor picks it, ghost matches on both; (3) click an intact roof
+  whose only reachable floor is inside → unit walks TOWARD the building
+  (never teleports in); (4) jump onto a wall/roof — arrow is an arch peaking
+  above the wall, sprite tween clears it; (5) flyers: takeoff (teal) tiles
+  still click-through (nearest-z kept for flight z).
+
+## TWO-ACTION TURNS — AP model rework (2026-07-19) — battle.js, ui.js, hud.js, three-renderer.js
 
 - `UNIT_MAX_AP` 3 → **2**, `AP_COST_SPELL` 2 → **1**: EVERY action costs 1 AP,
   so ANY two actions exhaust the turn (move+move, move+cast, buff+attack…).
