@@ -19251,11 +19251,12 @@
             return Math.max(0, Math.min(movesLeft, apSteps, 1));
         }
 
-        function findMoveTowardsTile(unit, tx, ty) {
+        function findMoveTowardsTile(unit, tx, ty, tz) {
             const steps = _moveTowardsBudget(unit);
             if (steps <= 0) return null;
             const sx = unit.x, sy = unit.y, sz = unit.z;
             const startDist = Math.abs(sx - tx) + Math.abs(sy - ty);
+            const _tzKnown = (tz !== undefined && tz !== null);
             let best = null, bestDist = startDist, bestCost = Infinity;
             const _consider = (cand, dist, cost) => {
                 // Strictly closer wins; equal distance → cheaper (fewer steps).
@@ -19270,6 +19271,16 @@
                     // deliberate verbs), and never step onto an occupied tile.
                     if (t._jump || t._takeoff) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
+                    /* WYSIWYG (2026-07-21): "towards" must never LAND on the
+                       clicked COLUMN at a floor the pointer wasn't on. A click
+                       on an intact roof fell through to here, found the
+                       door-reachable interior floor of that same column at
+                       distance 0, and walked the unit INTO the building —
+                       "clicked the roof, clipped through the wall". When the
+                       pointed surface z is known, the destination column only
+                       counts at exactly that z; approach tiles on OTHER
+                       columns are unaffected. */
+                    if (_tzKnown && t.x === tx && t.y === ty && (t.z ?? 0) !== tz) continue;
                     const d = Math.abs(t.x - tx) + Math.abs(t.y - ty);
                     _consider({ x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1 }, d, 1);
                 }
@@ -19320,7 +19331,7 @@
         function _tryMoveTowards(actingUnit, x, y) {
             if (!actingUnit || state.actionMode !== 'move') return false;
             if (typeof canUnitMove === 'function' && !canUnitMove(actingUnit)) return false;
-            const approach = findMoveTowardsTile(actingUnit, x, y);
+            const approach = findMoveTowardsTile(actingUnit, x, y, state._clickedZ);
             if (!approach) return false;
             _moveTowards(actingUnit, approach);
             return true;
@@ -19727,7 +19738,7 @@
                 //    player sees where the click will actually take them.
                 if (state.actionMode === 'move' && canUnitMove(unit)
                     && typeof findMoveTowardsTile === 'function') {
-                    const approach = findMoveTowardsTile(unit, x, y);
+                    const approach = findMoveTowardsTile(unit, x, y, _hovZ);
                     if (approach) {
                         const towardsColor = 0x3399ff; // movement = blue (dim goal marker keeps the "towards" read)
                         const savedX = unit.x, savedY = unit.y, savedZ = unit.z;
@@ -30719,6 +30730,21 @@
                 // its menu. Falls through to doMove (which reports the miss) when
                 // no progress toward the tile is possible.
                 if (!clickedUnit && _tryMoveTowards(actingUnit, x, y)) return;
+
+                /* WYSIWYG guard (2026-07-21): the click resolved a SPECIFIC
+                   surface and it is NOT a legal landing, but ANOTHER floor of
+                   this column is. doMove's nearest-z tolerance (kept for the
+                   AI and online replay callers) would silently reroute the
+                   move onto that other floor — a click on an intact roof
+                   walked the unit through the door INTO the building while
+                   the player stood outside. An unreachable surface is an
+                   honest miss, same feedback as any illegal move. */
+                if (state._clickedZ !== undefined && state._clickedZ !== null
+                    && _r1Tiles.some(t => t.x === x && t.y === y)) {
+                    addLog('No route onto that surface this turn.', actingUnit.player);
+                    playErrorSfx();
+                    return false;
+                }
 
                 return doMove(actingUnit, x, y, state._clickedZ);
             }

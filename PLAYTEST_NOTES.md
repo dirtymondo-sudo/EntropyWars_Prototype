@@ -4,7 +4,41 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## MULTI-FLOOR WYSIWYG PASS 3: cutaway only when UNDER the roof, camera anchors at the interior floor (2026-07-21, LATEST) — three-renderer.js, battle.js
+## MULTI-FLOOR WYSIWYG PASS 4: roof clicks can no longer reroute INTO the building (2026-07-21, LATEST) — battle.js
+Token `20260721l` → `20260721m`. User retest after PASS 3: "clicking onto a
+roof STILL puts me inside the building". PASS 2/3 made the CLICK RESOLUTION
+exact-surface, but both of its fall-through paths were still z-blind, so a
+click on an intact roof top (not a legal landing) rerouted to the interior
+floor of the SAME column whenever that floor was door-reachable in 1 move:
+- **`findMoveTowardsTile` picked the clicked column at ANY z**: the interior
+  floor at (tx,ty) is Manhattan distance 0 — it beat every honest approach
+  tile, so "Move Towards" walked the unit in through the door (fast tween =
+  reads as clipping through the wall). FIX: new 4th param `tz` (the pointed
+  surface z); when known, a candidate ON the destination column only counts
+  at exactly that z. Approach tiles on other columns unaffected. Wired from
+  `_tryMoveTowards` (passes `state._clickedZ`) and the hover move-towards
+  preview (passes `_hovZ` — ghost and click now agree; `_hovZ` was already
+  in the preview's dedup cache key, so the ghost refreshes per surface).
+- **clickTile's final `doMove(x, y, _clickedZ)` fallback hit doMove's
+  nearest-z tolerance** (battle.js ~32011, kept for AI/online-replay
+  callers): with the unit standing ADJACENT to the wall, move-towards finds
+  no closer tile → returns false → doMove snapped clickedZ (roof) to the
+  interior floor and executed the walk-in. FIX: strict-miss guard before
+  that call — z known + some move tile exists at (x,y) at a DIFFERENT z ⇒
+  `addLog('No route onto that surface this turn.')` + error sfx, return
+  false. doMove itself untouched (AI/online replay keep tolerance; they
+  always pass engine-computed z).
+- `doJump` audited: already strict (exact z required when given) — no change.
+- Engine/relay untouched → online parity automatic.
+- NOT playtested (RULE #1c). Live checks: click an intact roof (a) from 2+
+  tiles away → unit walks TOWARD the building and stops OUTSIDE (ghost
+  previews exactly that); (b) standing adjacent to the wall → error log "No
+  route onto that surface this turn", unit does NOT enter; (c) roof top
+  genuinely jump-reachable → still jumps ON TOP; (d) clicking the interior
+  floor THROUGH the door sightline (visible highlight) still walks in via
+  the door.
+
+## MULTI-FLOOR WYSIWYG PASS 3: cutaway only when UNDER the roof, camera anchors at the interior floor (2026-07-21) — three-renderer.js, battle.js
 Token `20260721k` → `20260721l`. User bug batch: "I'm OUTSIDE a building and
 the roof is cut open — how can I see inside?", "move highlights float on the
 roof; clicking them clips me through the wall into the building", "cast a
