@@ -11407,6 +11407,7 @@
                 sanctuaryZones: _meSanctuaryZones ? _meSanctuaryZones.map(row => [...row]) : null,
                 heights: _meHeights ? _meHeights.map(row => [...row]) : null,
                 voxels: _meVoxels ? _meVoxels.map(row => row.map(col => col.map(b => ({...b})))) : null,
+                walls: _meWalls ? JSON.parse(JSON.stringify(_meWalls)) : {},
                 monuments: _meMonuments ? _meMonuments.map(m => ({...m})) : [],
                 terrainTints: Object.assign({}, _meTerrainTints),
                 env: _meEnv ? JSON.parse(JSON.stringify(_meEnv)) : null,
