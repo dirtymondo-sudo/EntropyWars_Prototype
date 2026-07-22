@@ -10191,118 +10191,85 @@ _MF_BUILDERS.prebuilt_cyberpunk = function () {
     return M;
 };
 
-/* CAMELOT — 24×24 8v8. Dark-fantasy castle siege: curtain walls, twin
-   gatehouses, courtyard objective, moat crossings, graveyard woods. */
+/* CAMELOT — 16×16 6v6. "Castle walls": the moat-cut western lowland climbs
+   two stair terraces into the walled eastern ward — thin brick curtain
+   walls, parapet walks and the twin keep braziers. Hand-authored in the map
+   editor (2026-07-22) and baked here verbatim, replacing the old 24×24
+   procedural siege. */
 _MF_BUILDERS.prebuilt_camelot = function () {
-    /* CAMELOT — 24×24 8v8, rebuilt 2026-07-22 on the editor's Walls & Roofs
-       tech: THIN edge walls (M.wall) + thin walkable roof slabs (M.roof) for
-       the halls and crenel parapets, hollow-voxel lintels only for the gate
-       arches, engine stairs for the ascents. XCOM-style siege:
-       a river runs W–E under the curtain walls through two water-gate arches;
-       inside, a feast hall and a chapel (real roofed rooms, 2-3 arched doors
-       each) flank the gate-to-gate corridor; a full battlement LOOP rides at
-       z6 (quay stairs → z5 wall-walk → z6 hall roofs → the arch over each
-       gate → down the far stairs). Outside: hedgerow fields, graveyard woods,
-       an orchard, a lake, and the round-table dais on an isle mid-river.
-       Every space has 2+ ways in/out; 180°-rotation symmetric for TDM. */
-    const M = _mfNew({
-        name: 'Camelot', w: 24, h: 24, base: 'grass_2', baseH: 3, seed: 9901,
-        strata: ['lava', 'cave_floor', 'dirt'], underTop: 'bricks_2',
-        tints: { grass_2: '#7a9c6a', bricks_2: '#9a9aa8', rock_wall_2: '#8a8a9a',
-                 dark_woods: '#5a7a5a', wood: '#6b4a32', wood_planks: '#8a6a48', leaves: '#4a6a3e' },
-    });
-    // the king's road N–S, gate to gate (castle floors repaint their stretch)
-    M.rect(11, 0, 12, 23, 'road');
-    // ── NW graveyard woods: dim ground, ruin cover, a raised mausoleum mound
-    M.rect(0, 3, 4, 7, 'dark_woods');
-    M.rect(1, 4, 3, 6, 'ruins');
-    M.rect(2, 4, 3, 5, 'ruins', 4);                       // mausoleum mound (+1 vantage)
-    M.obj(0, 4, 'tree_5'); M.obj(4, 3, 'tree_6'); M.obj(1, 7, 'tree_5');
-    M.obj(1, 4, 'gravestone'); M.obj(1, 5, 'gravestone'); M.obj(3, 6, 'gravestone');
-    // ── NE orchard: dense woods around a rocky rise
-    M.rect(19, 2, 23, 8, 'forest_2');
-    M.rect(20, 4, 21, 5, 'grass_rocky', 4);               // rocky rise (+1 vantage)
-    M.obj(19, 3, 'tree_2'); M.obj(22, 3, 'tree_3'); M.obj(19, 6, 'tree_4');
-    M.obj(21, 7, 'tree_2'); M.obj(23, 5, 'tree_3'); M.obj(22, 8, 'tree_4');
-    // ── village green by each spawn: fences, torch posts, a well
-    M.fence(5, 2, 7, 2, 'barrier_2'); M.fence(15, 2, 16, 2, 'barrier_2');
-    M.obj(7, 1, 'torch'); M.obj(16, 1, 'torch'); M.obj(6, 1, 'well');
-    // ── approach fields: hedge walls, forework stubs and ruin scatter break LoS
-    M.rect(5, 4, 7, 4, 'leaves', 5);                      // hedgerows (tall, vault-2)
-    M.rect(16, 4, 18, 4, 'leaves', 5);
-    M.rect(9, 5, 10, 5, 'rock_wall_2', 4);                // crumbled forework (half cover)
-    M.rect(13, 5, 14, 5, 'rock_wall_2', 4);
-    M.rect(4, 5, 5, 6, 'ruins'); M.rect(18, 5, 18, 6, 'ruins');
-    // ── the river: full W–E channel under the walls; lake NW, pond NE
-    M.rect(0, 11, 23, 11, 'water', 2);
-    M.rect(0, 9, 3, 10, 'water', 2);
-    M.rect(0, 9, 1, 10, 'deep_water', 2);                 // the lake's dark heart
-    M.rect(20, 9, 21, 10, 'water', 2);
-    M.t(2, 11, 'bridge'); M.h(2, 11, 3);                  // west span (mirror completes both rows)
-    M.t(21, 11, 'bridge'); M.h(21, 11, 3);                // east span
-    // ── CURTAIN WALLS: walkable rampart columns (h6 where the halls back
-    //    onto them, h5 walk elsewhere) — these stay solid because the wall-
-    //    walk stands ON them; everything room-shaped below uses THIN walls
-    M.rect(5, 6, 18, 6, 'rock_wall_2', 6);                // north wall
-    M.rect(5, 7, 5, 9, 'rock_wall_2', 6); M.rect(18, 7, 18, 9, 'rock_wall_2', 6);
-    M.t(5, 10, 'rock_wall_2'); M.h(5, 10, 5); M.t(18, 10, 'rock_wall_2'); M.h(18, 10, 5);
-    [[5, 6], [18, 6], [10, 6], [13, 6]].forEach(p => { M.t(p[0], p[1], 'rock_wall_2'); M.h(p[0], p[1], 7); }); // towers
-    M.rect(11, 6, 12, 6, 'cobblestone', 3);               // north gate passage…
-    M.lintel(11, 6, 6, 'rock_wall_2'); M.lintel(12, 6, 6, 'rock_wall_2'); // …under its arch
-    // crenellated THIN parapets ride the rampart's outer lip (Walls & Roofs
-    // tech: cover + castle silhouette without a full voxel cube)
-    [6, 7, 8, 9, 11, 12, 14, 15, 16, 17].forEach(px =>
-        M.wall(px, 6, 'N', { z0: 7, h: 1, low: true, cap: 'crenel', tex: 'rock_wall_2' }));
-    M.wall(5, 7, 'W', { z0: 7, h: 1, low: true, cap: 'crenel', tex: 'rock_wall_2' });
-    M.wall(5, 9, 'W', { z0: 7, h: 1, low: true, cap: 'crenel', tex: 'rock_wall_2' });
-    M.wall(5, 10, 'W', { z0: 6, h: 1, low: true, cap: 'crenel', tex: 'rock_wall_2' });
-    M.wall(18, 7, 'E', { z0: 7, h: 1, low: true, cap: 'crenel', tex: 'rock_wall_2' });
-    M.wall(18, 9, 'E', { z0: 7, h: 1, low: true, cap: 'crenel', tex: 'rock_wall_2' });
-    M.wall(18, 10, 'E', { z0: 6, h: 1, low: true, cap: 'crenel', tex: 'rock_wall_2' });
-    M.t(5, 8, 'rubble_2'); M.h(5, 8, 3);                  // west breach → feast hall
-    M.t(18, 8, 'rubble_2'); M.h(18, 8, 3);                // east breach → chapel
-    M.t(5, 11, 'water'); M.h(5, 11, 2); M.lintel(5, 11, 6, 'rock_wall_2');    // water gates:
-    M.t(18, 11, 'water'); M.h(18, 11, 2); M.lintel(18, 11, 6, 'rock_wall_2'); // wade under, walk over
-    // ── interior: cobbled ward; the feast hall & chapel are REAL rooms built
-    //    from the editor's THIN edge walls + thin walkable roof slabs — door
-    //    gaps in the wall runs ARE the doorways (no cube-and-lintel hacks)
-    M.rect(6, 7, 17, 10, 'cobblestone', 3);
-    M.rect(6, 7, 10, 8, 'wood_planks', 3);                // feast hall floor
-    M.rect(13, 7, 17, 8, 'checkerboard', 3);              // chapel floor
-    // corridor-facing walls (z cells 4-6, flush under the roof); the y8 edge
-    // is left open = the arched door onto the king's road corridor
-    M.wall(10, 7, 'E', { z0: 4, h: 3, tex: 'bricks_2' });
-    M.wall(13, 7, 'W', { z0: 4, h: 3, tex: 'bricks_2' });
-    // south walls, door gaps at x7 (feast hall) and x16 (chapel)
-    for (let wx = 6; wx <= 10; wx++) if (wx !== 7) M.wall(wx, 8, 'S', { z0: 4, h: 3, tex: 'bricks_2' });
-    for (let wx = 13; wx <= 17; wx++) if (wx !== 16) M.wall(wx, 8, 'S', { z0: 4, h: 3, tex: 'bricks_2' });
-    // THIN timber roof slabs (top of cell 6): flush with the h6 curtain tops,
-    // walkable battlement deck above, true standable room beneath
-    for (let rx = 6; rx <= 10; rx++) for (let ry = 7; ry <= 8; ry++) M.roof(rx, ry, 6, 'wood_planks');
-    for (let rx = 13; rx <= 17; rx++) for (let ry = 7; ry <= 8; ry++) M.roof(rx, ry, 6, 'wood_planks');
-    // floating balcony slabs over the courtyard corner bridge the west/east
-    // wall-walk onto the hall roofs (keeps the z6 battlement LOOP connected;
-    // the courtyard below stays walkable underneath)
-    M.roof(6, 9, 6, 'wood_planks'); M.roof(17, 9, 6, 'wood_planks');
-    // quay stairs up to the wall-walk (z3 quay → z4 stair → z5 wall)
-    M.stair(6, 10, 'E', 4); M.stair(17, 10, 'W', 4);
-    // the round-table dais, an isle in the river (mirror completes the 2×2)
-    M.rect(11, 11, 12, 11, 'gold', 4);
-    // battlement torches
-    M.obj(10, 6, 'torch'); M.obj(13, 6, 'torch'); M.obj(5, 10, 'torch');
-    M.sym180();
-    // village cottages (solid 2×2 cover screening each spawn)
-    M.buildingSym(3, 1, 'building_2'); M.buildingSym(17, 1, 'building_3');
-    // the sword in the stone on the dais; knights along the road; dragon
-    // bones in the graveyard; a standing stone deep in the orchard
-    M.mon('excalibur', 12, 11, 1, 3, { rot: 30, solid: false });  // whosoever pulleth
-    M.monSym('colossus', 9, 3, 2, 3, { rot: 180 });
-    M.monSym('colossus', 14, 3, 2, 3, { rot: 180 });
-    M.monSym('dragonskull', 2, 6, 2, 2, { rot: 160, solid: false });
-    M.monSym('monolith', 22, 6, 1, 2, {});
-    M.spawnEdges('s', 8);
-    M.finishSpawns('grass_2');
-    return M;
+    /* Editor tids (MF_TID / map.js ME_TERRAIN_IDS): 3 deep_water (the moat),
+       35 barrier_passage (E-facing engine stairs), 48 wasteland, 54 bricks_2.
+       Voxel columns reconstruct the editor's export exactly: z0-3 strata
+       (lava / cave_floor / road / dirt), wasteland fill at z4, bricks_2 fill
+       at z5, the surface tid capping at the walk height. */
+    const W = 16, H = 16;
+    const _rA = [48, 48, 3, 3, 48, 48, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54];
+    const _rB = [48, 48, 3, 3, 48, 48, 54, 54, 54, 35, 54, 54, 54, 54, 54, 54];
+    const _rC = [48, 3, 3, 48, 48, 35, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54];
+    const _rD = [3, 3, 3, 48, 48, 48, 54, 54, 54, 54, 54, 54, 54, 54, 54, 54];
+    const grid = [_rA, _rB, _rB, _rA, _rC, _rC, _rD, _rD, _rD, _rD, _rC, _rC, _rA, _rB, _rB, _rA]
+        .map(r => r.slice());
+    const _hA = [4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6];
+    const _hB = [4, 4, 4, 4, 4, 4, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6];
+    const heightMap = [_hA, _hA, _hA, _hA, _hA, _hA, _hB, _hB, _hB, _hB, _hA, _hA, _hA, _hA, _hA, _hA]
+        .map(r => r.slice());
+    const voxels = [];
+    for (let y = 0; y < H; y++) {
+        const row = [];
+        for (let x = 0; x < W; x++) {
+            const top = heightMap[y][x];
+            const col = [{ z: 0, tid: 10 }, { z: 1, tid: 19 }, { z: 2, tid: 13 }, { z: 3, tid: 8 }];
+            for (let z = 4; z < top; z++) col.push({ z, tid: z === 4 ? 48 : 54 });
+            const cap = { z: top, tid: grid[y][x] };
+            if (cap.tid === 35) cap.sd = 'E';        // engine stair, low side E
+            col.push(cap);
+            row.push(col);
+        }
+        voxels.push(row);
+    }
+    const objects = [];
+    for (let y = 0; y < H; y++) { const r = []; for (let x = 0; x < W; x++) r.push([]); objects.push(r); }
+    const _ob = (x, y, oid, rot, leaf) => {
+        const e = { oid, alignX: 'center', alignY: 'bottom', rot: rot || 0, flipX: false, flipY: false };
+        if (leaf) e.leaf = leaf;
+        objects[y][x].push(e);
+    };
+    // oid 1 = tree (leaves flavor); 47 / 52 = the editor's wall-prop pieces
+    [[5, 0], [1, 2], [1, 3], [3, 6], [4, 7], [5, 7], [3, 8], [5, 8], [3, 9], [4, 9], [1, 12], [1, 13], [5, 15]]
+        .forEach(p => _ob(p[0], p[1], 1, 0, 'leaves'));
+    [[9, 1], [9, 2], [5, 4], [5, 5], [5, 10], [5, 11], [9, 13], [9, 14]].forEach(p => _ob(p[0], p[1], 47, 90));
+    _ob(9, 4, 52, 90, 'wall'); _ob(9, 11, 52, 90, 'wall');
+    const edgeWalls = {};
+    const _ew = (k, z0, h) => { edgeWalls[k] = { z0, h, tex: 'bricks_2', cap: 'both' }; };
+    ['6,0,W', '6,1,W', '6,2,W', '6,3,W', '6,12,W', '6,13,W', '6,14,W', '6,15,W']
+        .forEach(k => _ew(k, 5, 1));                 // low terrace wall, N + S wings
+    ['6,6,W', '6,7,W', '6,8,W', '6,9,W'].forEach(k => _ew(k, 5, 3));   // tall mid rampart
+    ['10,0,N', '11,0,N', '12,0,N', '13,0,N', '14,0,N',
+     '10,16,N', '11,16,N', '12,16,N', '13,16,N', '14,16,N', '15,16,N', '10,3,W']
+        .forEach(k => _ew(k, 7, 1));                 // keep parapets on the board edge
+    ['15,0,N', '10,3,N', '11,3,N', '12,3,N', '13,3,N', '15,3,N',
+     '10,6,N', '12,6,N', '13,6,N', '14,6,N', '15,6,N',
+     '10,10,N', '12,10,N', '13,10,N', '14,10,N', '15,10,N',
+     '10,13,N', '11,13,N', '12,13,N', '13,13,N', '15,13,N']
+        .forEach(k => _ew(k, 7, 2));                 // keep hall walls (door gaps at x11 / x14)
+    for (let i = 0; i < 16; i++) _ew('16,' + i + ',W', 7, 2);          // east boundary curtain
+    ['10,0,W', '10,4,W', '10,5,W', '10,10,W', '10,11,W', '10,12,W', '10,15,W',
+     '6,6,N', '7,6,N', '8,6,N', '9,6,N', '6,10,N', '7,10,N', '8,10,N', '9,10,N']
+        .forEach(k => _ew(k, 6, 2));                 // mid-terrace walls
+    /* the export shipped no spawns: seat both teams inside the keep, one ward
+       each (map is mirror-symmetric N–S, so this is TDM-fair) */
+    const spawns = { 1: [], 2: [] };
+    for (let i = 10; i <= 15; i++) { spawns[1].push({ x: i, y: H - 1 }); spawns[2].push({ x: i, y: 0 }); }
+    const entry = {
+        name: 'Camelot', w: W, h: H,
+        grid, heightMap, objects, voxels, spawns,
+        edgeWalls,
+        monuments: [
+            { kind: 'brazier', x: 5, y: 3, rot: 0, foot: 1, maxH: 2, seed: 21357 },
+            { kind: 'brazier', x: 5, y: 12, rot: 0, foot: 1, maxH: 2, seed: 93830 },
+        ],
+    };
+    return { finish: () => entry };
 };
 
 /* FOOTBALL STADIUM — 16×28 8v8. Full gridiron under the void lights:
@@ -11120,9 +11087,9 @@ const EW_MAP_META = [
       biomes: ['neon_city', 'urban'], deltaPad: 'urban_street',
       desc: '24×24 prebuilt, 8v8 — rain-slick neon grid: fast avenues, walkable rooftops, holo-plaza, alley chokes & parked hovercars',
       env: { tint: 0x1a0f33, tintAmt: 0.50, stars: 0.7, nebula: 1.3, fog: { color: 0x8a2fd0, amount: 0.5, top: 0.10, band: 0.55 }, scenery: 'city' } },
-    { id: 'prebuilt_camelot', label: 'Camelot', w: 24, h: 24, teamSize: 8, tier: 1, base: 'grass_2',
-      biomes: ['arthurian', 'gothic'], deltaPad: 'cobblestone', deltaX: 7, deltaY: 7,
-      desc: '24×24 prebuilt, 8v8 — the castle over the river: roofed halls, a z6 battlement loop, arched gates & water-gate wades, hedgerow fields & the round-table isle',
+    { id: 'prebuilt_camelot', label: 'Camelot', w: 16, h: 16, teamSize: 6, tier: 1, base: 'bricks_2',
+      biomes: ['arthurian', 'gothic'], deltaPad: 'bricks_2',
+      desc: '16×16 prebuilt, 6v6 — the castle walls: a moat-cut lowland climbing stair terraces into the walled keep, parapet walks & the twin ward braziers',
       env: { tint: 0x1c2030, tintAmt: 0.45, stars: 0.8, nebula: 0.7, fog: { color: 0x39415a, amount: 0.6, top: 0.07, band: 0.55 }, scenery: 'dark' } },
     { id: 'prebuilt_stadium', label: 'Football Stadium', w: 16, h: 28, teamSize: 8, tier: 1, base: 'grass_2', streetLamps: true,
       biomes: ['stadium', 'urban'], deltaPad: 'grass_2',
