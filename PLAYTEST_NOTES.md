@@ -4,7 +4,42 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## CAMELOT REBUILT as the first hollow-voxel castle map (2026-07-22, LATEST) — data.js
+## CAMELOT on THIN Walls & Roofs + prebuilt pipeline support (2026-07-22, LATEST) — data.js, map.js
+Token `20260722e` → `20260722f`. User: the rebuild below used full voxel
+cubes, not the editor's new thin walls/roofs. Root cause: the MapForge
+prebuilt pipeline had ZERO thin-wall support — no forge helpers, no export,
+and map.js's prebuilt loader never installed `edgeWalls` and dropped roof
+(`rf`) flags. All fixed; ANY prebuilt map can now use the tech:
+- **New forge helpers** (data.js `_mfNew`): `M.wall(x,y,side,opts)` — thin
+  edge wall, runtime `state.edgeWalls` record shape ({z0,h,tex,texIn,cap,
+  see,low,flip}), side N/S/E/W (S/E normalize to neighbour N/W keys);
+  `M.roof(x,y,z,key)` — THIN walkable slab (editor `rf` flag), hugs top of
+  cell z, sets hollow. `sym180()` mirrors both (N edge (x,y)→N (W-1-x,H-y);
+  W edge (x,y)→W (W-x,H-1-y)); `finish()` exports `entry.edgeWalls` + rf
+  voxels; `_mfDelta` crops + re-mirrors walls (roof voxels ride the column
+  copy). Loader (map.js prebuilt branch): deep-copies `_pb.edgeWalls` into
+  `state.edgeWalls` (+_wallVersion bump), maps `_b.rf` → `.roof`.
+- **Camelot rework**: feast hall/chapel are now rooms of THIN bricks_2
+  walls (z0 4, h3, flush under the roof) with DOOR GAPS as doorways
+  (corridor door y8 edge, south door x7/x16, breach = 3rd entry); thin
+  wood_planks roof slabs at z6 (walkable deck, real interior beneath);
+  crenel `low` parapets on the rampart/gate outer lips (z0 7 on h6, z0 6 on
+  h5). Curtain walls stay walkable COLUMNS on purpose (the wall-walk stands
+  on them); gate/water-gate arches stay lintels. Halls widened to include
+  the old door-pillar tiles (feast x6-10, chapel x13-17, y7-8).
+- **Gotcha found by BFS**: the old row-9 wall cubes doubled as the z6
+  walkway; removing them severed the battlement loop. Fix: floating roof
+  slabs at (6,9)/(17,9) z6 = balconies bridging wall-walk → hall roofs
+  (courtyard below stays walkable underneath).
+- Node-validated: 52 walls/40+4 roofs on the full map, 180° wall symmetry
+  exact, door gaps open both halves, wall-aware BFS reaches all 19 key
+  points, z≥5 battlement loop CONNECTED both halves; Δ (deltaX/Y 7) carries
+  14 walls/24 roofs, Δ-arena 24/36. NOT playtested (RULE #1c). Live checks:
+  thin walls render + crenels; enter halls through each door gap; parapet
+  blocks rampart-edge step but not sight; roof cutaway inside halls; vault
+  into a roofed hall stays blocked; online guest parity.
+
+## CAMELOT REBUILT as the first hollow-voxel castle map (2026-07-22) — data.js
 Token `20260722d` → `20260722e`. `prebuilt_camelot` (24×24 8v8) rebuilt
 XCOM-2-style on the walls/roofs tech — the FIRST launch map to use
 `M.lintel()` (hollowVoxels) and the new `M.stair()` forge helper.

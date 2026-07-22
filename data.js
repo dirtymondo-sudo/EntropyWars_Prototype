@@ -9552,6 +9552,8 @@ function _mfNew(cfg) {
         tints: cfg.tints || null,
         hollow: !!cfg.hollow,
         lintels: [],            // {x,y,z,t} authored ceiling/overhang blocks (needs hollow)
+        roofs: [],              // {x,y,z,t} THIN walkable roof slabs (editor Walls & Roofs tech)
+        walls: {},              // "x,y,N|W" → edge-wall record (runtime state.edgeWalls shape)
         stairs: [],             // {x,y,sd} engine 1×1×1 staircases (sd = LOW-side direction)
         spawnsList: null,
     };
@@ -9606,6 +9608,37 @@ function _mfNew(cfg) {
         if (!M.in(x, y)) return;
         M.lintels.push({ x, y, z, t: MF_TID[key] || MF_TID.bricks_1 });
         M.hollow = true;
+    };
+    /* ── THIN edge walls + roof slabs (the map editor's Walls & Roofs tech) ──
+       M.wall(x,y,side,opts): a thin modular wall standing ON the tile edge —
+       NOT a full voxel cube. side 'N'|'S'|'E'|'W' of tile (x,y) (S/E normalize
+       to the neighbour's N/W key). Record shape = runtime state.edgeWalls:
+         z0 (first occupied CELL; default = standing on (x,y)'s surface),
+         h (cells, default 2), tex / texIn (terrain keys), cap (null|'crenel'|
+         'overhang'|'both'), see (chain-link), low (parapet), flip.
+       M.roof(x,y,z,key): a THIN walkable slab hugging the TOP of cell z —
+       flush with a wall whose top cell is z; real headroom beneath, its own
+       top is a normal standable surface (multi-floor WYSIWYG). */
+    M.wallKey = (x, y, side) => {
+        if (side === 'S') { y += 1; side = 'N'; }
+        if (side === 'E') { x += 1; side = 'W'; }
+        return x + ',' + y + ',' + side;
+    };
+    M.wall = (x, y, side, o) => {
+        o = o || {};
+        M.walls[M.wallKey(x, y, side)] = {
+            z0: (o.z0 != null) ? o.z0 : M.hget(x, y) + 1,
+            h: (o.h != null) ? o.h : 2,
+            tex: o.tex || 'bricks_2',
+            texIn: o.texIn || null,
+            cap: o.cap || null,
+            see: !!o.see, low: !!o.low, flip: !!o.flip,
+        };
+    };
+    M.roof = (x, y, z, key) => {
+        if (!M.in(x, y)) return;
+        M.roofs.push({ x, y, z, t: MF_TID[key] || MF_TID.wood_planks });
+        M.hollow = true;                             // keep the room's air gap hollow
     };
     /* Engine staircase (the same 1×1×1 3D stairs the Mystery Dungeon exit
        uses): a barrier_passage tile whose top voxel carries an explicit
@@ -9668,6 +9701,18 @@ function _mfNew(cfg) {
         });
         M.lintels.slice().forEach(L => {
             if (L.y < half) M.lintels.push({ x: W - 1 - L.x, y: H - 1 - L.y, z: L.z, t: L.t });
+        });
+        M.roofs.slice().forEach(R => {
+            if (R.y < half) M.roofs.push({ x: W - 1 - R.x, y: H - 1 - R.y, z: R.z, t: R.t });
+        });
+        /* thin edge walls: N edge of (x,y) rotates to the N edge of
+           (W-1-x, H-y); W edge of (x,y) to the W edge of (W-x, H-1-y) */
+        Object.keys(M.walls).forEach(k => {
+            const p = k.split(','), x = +p[0], y = +p[1], side = p[2];
+            if (y >= half) return;                   // author from the top half
+            const mk = (side === 'N') ? ((W - 1 - x) + ',' + (H - y) + ',N')
+                                      : ((W - x) + ',' + (H - 1 - y) + ',W');
+            if (!M.walls[mk]) M.walls[mk] = Object.assign({}, M.walls[k]);
         });
         const _sdFlip = { N: 'S', S: 'N', E: 'W', W: 'E' };
         M.stairs.slice().forEach(s => {
@@ -9755,6 +9800,9 @@ function _mfNew(cfg) {
             if (st && st.length) st[st.length - 1].sd = s.sd;
         });
         M.lintels.forEach(L => { if (M.in(L.x, L.y)) voxels[L.y][L.x].push({ z: L.z, tid: L.t }); });
+        /* thin roof slabs ride in the voxel column with the editor's rf flag
+           (map.js prebuilt loader maps rf → roof, same as community maps) */
+        M.roofs.forEach(R => { if (M.in(R.x, R.y)) voxels[R.y][R.x].push({ z: R.z, tid: R.t, rf: 1 }); });
         const entry = {
             name: M.cfg.name, w: W, h: H,
             grid: M.ter.map(r => r.slice()),
@@ -9764,6 +9812,7 @@ function _mfNew(cfg) {
             spawns: M.spawnsList,
         };
         if (M.mons.length) entry.monuments = M.mons;
+        if (Object.keys(M.walls).length) entry.edgeWalls = M.walls;
         if (M.hollow) entry.hollowVoxels = true;
         if (M.tints) entry.terrainTints = M.tints;
         return entry;
@@ -9848,6 +9897,27 @@ function _mfDelta(full, meta, S) {
     };
     if (full.hollowVoxels) entry.hollowVoxels = true;
     if (full.terrainTints) entry.terrainTints = Object.assign({}, full.terrainTints);
+    /* thin edge walls: crop into the window, then re-enforce 180° symmetry
+       from the top half (same rotation rule as the builder's sym180) */
+    if (full.edgeWalls) {
+        const ew = {};
+        Object.keys(full.edgeWalls).forEach(k => {
+            const p = k.split(','), x = +p[0] - x0, y = +p[1] - y0, side = p[2];
+            if (side === 'N') { if (x < 0 || x > S - 1 || y < 0 || y > S) return; }
+            else { if (x < 0 || x > S || y < 0 || y > S - 1) return; }
+            ew[x + ',' + y + ',' + side] = Object.assign({}, full.edgeWalls[k]);
+        });
+        const out = {};
+        Object.keys(ew).forEach(k => {
+            const p = k.split(','), x = +p[0], y = +p[1], side = p[2];
+            if (side === 'N' ? (y > S / 2) : (y >= S / 2)) return;   // top half authors
+            out[k] = ew[k];
+            const mk = (side === 'N') ? ((S - 1 - x) + ',' + (S - y) + ',N')
+                                      : ((S - x) + ',' + (S - 1 - y) + ',W');
+            if (!out[mk]) out[mk] = Object.assign({}, ew[k]);
+        });
+        if (Object.keys(out).length) entry.edgeWalls = out;
+    }
     return entry;
 }
 
@@ -10119,8 +10189,10 @@ _MF_BUILDERS.prebuilt_cyberpunk = function () {
 /* CAMELOT — 24×24 8v8. Dark-fantasy castle siege: curtain walls, twin
    gatehouses, courtyard objective, moat crossings, graveyard woods. */
 _MF_BUILDERS.prebuilt_camelot = function () {
-    /* CAMELOT — 24×24 8v8, rebuilt 2026-07-22 on the hollow-voxel walls/roofs
-       tech (first map to use lintels + engine stairs). XCOM-style siege:
+    /* CAMELOT — 24×24 8v8, rebuilt 2026-07-22 on the editor's Walls & Roofs
+       tech: THIN edge walls (M.wall) + thin walkable roof slabs (M.roof) for
+       the halls and crenel parapets, hollow-voxel lintels only for the gate
+       arches, engine stairs for the ascents. XCOM-style siege:
        a river runs W–E under the curtain walls through two water-gate arches;
        inside, a feast hall and a chapel (real roofed rooms, 2-3 arched doors
        each) flank the gate-to-gate corridor; a full battlement LOOP rides at
@@ -10163,31 +10235,50 @@ _MF_BUILDERS.prebuilt_camelot = function () {
     M.rect(20, 9, 21, 10, 'water', 2);
     M.t(2, 11, 'bridge'); M.h(2, 11, 3);                  // west span (mirror completes both rows)
     M.t(21, 11, 'bridge'); M.h(21, 11, 3);                // east span
-    // ── CURTAIN WALLS: h6 where the halls back onto them, h5 walk elsewhere
+    // ── CURTAIN WALLS: walkable rampart columns (h6 where the halls back
+    //    onto them, h5 walk elsewhere) — these stay solid because the wall-
+    //    walk stands ON them; everything room-shaped below uses THIN walls
     M.rect(5, 6, 18, 6, 'rock_wall_2', 6);                // north wall
     M.rect(5, 7, 5, 9, 'rock_wall_2', 6); M.rect(18, 7, 18, 9, 'rock_wall_2', 6);
     M.t(5, 10, 'rock_wall_2'); M.h(5, 10, 5); M.t(18, 10, 'rock_wall_2'); M.h(18, 10, 5);
     [[5, 6], [18, 6], [10, 6], [13, 6]].forEach(p => { M.t(p[0], p[1], 'rock_wall_2'); M.h(p[0], p[1], 7); }); // towers
     M.rect(11, 6, 12, 6, 'cobblestone', 3);               // north gate passage…
     M.lintel(11, 6, 6, 'rock_wall_2'); M.lintel(12, 6, 6, 'rock_wall_2'); // …under its arch
+    // crenellated THIN parapets ride the rampart's outer lip (Walls & Roofs
+    // tech: cover + castle silhouette without a full voxel cube)
+    [6, 7, 8, 9, 11, 12, 14, 15, 16, 17].forEach(px =>
+        M.wall(px, 6, 'N', { z0: 7, h: 1, low: true, cap: 'crenel', tex: 'rock_wall_2' }));
+    M.wall(5, 7, 'W', { z0: 7, h: 1, low: true, cap: 'crenel', tex: 'rock_wall_2' });
+    M.wall(5, 9, 'W', { z0: 7, h: 1, low: true, cap: 'crenel', tex: 'rock_wall_2' });
+    M.wall(5, 10, 'W', { z0: 6, h: 1, low: true, cap: 'crenel', tex: 'rock_wall_2' });
+    M.wall(18, 7, 'E', { z0: 7, h: 1, low: true, cap: 'crenel', tex: 'rock_wall_2' });
+    M.wall(18, 9, 'E', { z0: 7, h: 1, low: true, cap: 'crenel', tex: 'rock_wall_2' });
+    M.wall(18, 10, 'E', { z0: 6, h: 1, low: true, cap: 'crenel', tex: 'rock_wall_2' });
     M.t(5, 8, 'rubble_2'); M.h(5, 8, 3);                  // west breach → feast hall
     M.t(18, 8, 'rubble_2'); M.h(18, 8, 3);                // east breach → chapel
     M.t(5, 11, 'water'); M.h(5, 11, 2); M.lintel(5, 11, 6, 'rock_wall_2');    // water gates:
     M.t(18, 11, 'water'); M.h(18, 11, 2); M.lintel(18, 11, 6, 'rock_wall_2'); // wade under, walk over
-    // ── interior: cobbled ward, then the two roofed halls flanking the corridor
+    // ── interior: cobbled ward; the feast hall & chapel are REAL rooms built
+    //    from the editor's THIN edge walls + thin walkable roof slabs — door
+    //    gaps in the wall runs ARE the doorways (no cube-and-lintel hacks)
     M.rect(6, 7, 17, 10, 'cobblestone', 3);
-    M.rect(6, 7, 9, 8, 'wood_planks', 3);                 // feast hall floor
-    M.rect(14, 7, 17, 8, 'checkerboard', 3);              // chapel floor
-    M.rect(10, 7, 10, 9, 'bricks_2', 6); M.rect(13, 7, 13, 9, 'bricks_2', 6); // corridor walls
-    M.rect(6, 9, 9, 9, 'bricks_2', 6); M.rect(14, 9, 17, 9, 'bricks_2', 6);   // hall south walls
-    // doorways — floor-level arches (lintel above), 2-3 per room
-    M.t(10, 8, 'wood_planks'); M.h(10, 8, 3); M.lintel(10, 8, 6, 'bricks_2');
-    M.t(13, 8, 'checkerboard'); M.h(13, 8, 3); M.lintel(13, 8, 6, 'bricks_2');
-    M.t(7, 9, 'wood_planks'); M.h(7, 9, 3); M.lintel(7, 9, 6, 'bricks_2');
-    M.t(16, 9, 'checkerboard'); M.h(16, 9, 3); M.lintel(16, 9, 6, 'bricks_2');
-    // timber roofs (z6): walkable battlements, flush with the wall tops
-    for (let rx = 6; rx <= 9; rx++) for (let ry = 7; ry <= 8; ry++) M.lintel(rx, ry, 6, 'wood');
-    for (let rx = 14; rx <= 17; rx++) for (let ry = 7; ry <= 8; ry++) M.lintel(rx, ry, 6, 'wood');
+    M.rect(6, 7, 10, 8, 'wood_planks', 3);                // feast hall floor
+    M.rect(13, 7, 17, 8, 'checkerboard', 3);              // chapel floor
+    // corridor-facing walls (z cells 4-6, flush under the roof); the y8 edge
+    // is left open = the arched door onto the king's road corridor
+    M.wall(10, 7, 'E', { z0: 4, h: 3, tex: 'bricks_2' });
+    M.wall(13, 7, 'W', { z0: 4, h: 3, tex: 'bricks_2' });
+    // south walls, door gaps at x7 (feast hall) and x16 (chapel)
+    for (let wx = 6; wx <= 10; wx++) if (wx !== 7) M.wall(wx, 8, 'S', { z0: 4, h: 3, tex: 'bricks_2' });
+    for (let wx = 13; wx <= 17; wx++) if (wx !== 16) M.wall(wx, 8, 'S', { z0: 4, h: 3, tex: 'bricks_2' });
+    // THIN timber roof slabs (top of cell 6): flush with the h6 curtain tops,
+    // walkable battlement deck above, true standable room beneath
+    for (let rx = 6; rx <= 10; rx++) for (let ry = 7; ry <= 8; ry++) M.roof(rx, ry, 6, 'wood_planks');
+    for (let rx = 13; rx <= 17; rx++) for (let ry = 7; ry <= 8; ry++) M.roof(rx, ry, 6, 'wood_planks');
+    // floating balcony slabs over the courtyard corner bridge the west/east
+    // wall-walk onto the hall roofs (keeps the z6 battlement LOOP connected;
+    // the courtyard below stays walkable underneath)
+    M.roof(6, 9, 6, 'wood_planks'); M.roof(17, 9, 6, 'wood_planks');
     // quay stairs up to the wall-walk (z3 quay → z4 stair → z5 wall)
     M.stair(6, 10, 'E', 4); M.stair(17, 10, 'W', 4);
     // the round-table dais, an isle in the river (mirror completes the 2×2)

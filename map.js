@@ -4061,6 +4061,14 @@
                 /* Opt this map into hollow voxel columns (preserve authored gaps
                    for walk-under arches / overhangs). Default: solid. */
                 state._hollowVoxels = !!_pb.hollowVoxels;
+                /* Authored THIN edge walls shipped with a prebuilt map
+                   (MapForge M.wall — same record shape as the editor's
+                   Walls & Roofs tool / community maps). Deep-copied so a
+                   match never mutates the registry entry. */
+                if (_pb.edgeWalls) {
+                    state.edgeWalls = JSON.parse(JSON.stringify(_pb.edgeWalls));
+                    state._wallVersion = (state._wallVersion || 0) + 1;
+                }
                 /* On-board monuments (reused esoteric 3D geometry). */
                 state.monuments = Array.isArray(_pb.monuments) ? _pb.monuments : null;
                 if (_pb.heightMap) {
@@ -4116,6 +4124,7 @@
                                     terrain: ME_TERRAIN_IDS[_b.tid] || 'grass'
                                 };
                                 if (_b.sd) entry.stairDir = _b.sd;
+                                if (_b.rf) entry.roof = true;   // thin roof slab
                                 return entry;
                             }));
                         }
