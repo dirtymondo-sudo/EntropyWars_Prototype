@@ -9441,6 +9441,13 @@
         }
 
         function onFogToggle(e) {
+            // Clash: fog is always off — the toggle can't turn it on.
+            if (typeof _isClashMode === 'function' && _isClashMode()) {
+                e.target.checked = false;
+                state.fogOfWar = false;
+                syncFogCheckboxes();
+                return;
+            }
             if (ONLINE_RULES.fogEnforced) {
                 e.target.checked = true;
                 state.fogOfWar = true;
@@ -10047,6 +10054,8 @@
                 return isHumanControlled(1) && isHumanControlled(2);
             },
             get fogEnforced() {
+                // Clash never runs fog — both formations are always visible.
+                if (typeof _isClashMode === 'function' && _isClashMode()) return false;
                 return isOnlineMatch();
             },
             get competitiveLog() {

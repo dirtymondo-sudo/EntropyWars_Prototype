@@ -528,6 +528,8 @@ function buildDefaultCustomSpells(race, cls, secJob) {
   let used = 0;
   const tryAdd = (sid) => {
     if (!sid || seen.has(sid)) return;
+    const _sp = typeof window.getSpellById === 'function' ? window.getSpellById(sid) : null;
+    if (_sp && !clashSpellOk(_sp)) return;
     const c = spellIdSlotCost(sid);
     if (used + c > slotCap) return;
     picks.push(sid);
@@ -536,7 +538,7 @@ function buildDefaultCustomSpells(race, cls, secJob) {
   };
 
   const ra = (typeof window.RACE_ABILITIES !== 'undefined' && window.RACE_ABILITIES[race])
-    ? window.RACE_ABILITIES[race].filter(a => (!a.jobRequirement || a.jobRequirement === cls) && a.id)
+    ? window.RACE_ABILITIES[race].filter(a => (!a.jobRequirement || a.jobRequirement === cls) && a.id && clashSpellOk(a))
     : [];
   for (const a of ra) {
     if (used >= slotCap) break;
@@ -570,6 +572,13 @@ function buildDefaultCustomSpells(race, cls, secJob) {
     }
   }
   return picks;
+}
+/* Clash (classic JRPG battle): movement/positioning spells can't be equipped —
+   there is nothing for them to do on a formation stage. Mirrors the battle-side
+   strip in createUnit so the builder never offers what the match would drop. */
+function clashSpellOk(sp) {
+  return !(sp && typeof window._isClashMode === 'function' && window._isClashMode()
+    && typeof window._clashSpellAllowed === 'function' && !window._clashSpellAllowed(sp));
 }
 function sfx(key) { if (typeof window.playSfx === 'function') window.playSfx(key); }
 function getCodexLore(race) { return CODEX_LORE[race] || window.RACE_PROFILES?.[race]?.lore || 'No intelligence available. File pending \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588 review.'; }
@@ -1248,9 +1257,9 @@ function PartyBuilder() {
     const secOptions = allJobs.filter(j => j && j !== mainJob && j !== 'Freelancer');
     if (secOptions.length > 0) { st.partyMeta[player][slot].secondaryJob = secOptions[Math.floor(Math.random()*secOptions.length)]; }
     const curSecJob = st.partyMeta[player][slot].secondaryJob || '';
-    const raIds=raceAbilities.filter(a=>a.id).map(a=>a.id);
+    const raIds=raceAbilities.filter(a=>a.id&&clashSpellOk(a)).map(a=>a.id);
 
-    const freshPool = []; if (typeof window.SPELL_LIBRARY!=='undefined'&&typeof window.isSpellNativeToClass==='function') { for (const sp of Object.values(window.SPELL_LIBRARY)){if(!sp||sp.kind==='basicAttack')continue;const isM=window.isSpellNativeToClass(sp,mainJob);const isS=curSecJob&&window.isSpellNativeToClass(sp,curSecJob)&&sp.tier!=='III';if(isM||isS){freshPool.push(sp);}}}
+    const freshPool = []; if (typeof window.SPELL_LIBRARY!=='undefined'&&typeof window.isSpellNativeToClass==='function') { for (const sp of Object.values(window.SPELL_LIBRARY)){if(!sp||sp.kind==='basicAttack'||!clashSpellOk(sp))continue;const isM=window.isSpellNativeToClass(sp,mainJob);const isS=curSecJob&&window.isSpellNativeToClass(sp,curSecJob)&&sp.tier!=='III';if(isM||isS){freshPool.push(sp);}}}
     const pool=[...raIds,...freshPool.map(e=>e.id)],shuffled=pool.slice(); for(let i=shuffled.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];}
     const rndPicks=[]; let rndUsed=0; for(const sid of shuffled){const c=spellIdSlotCost(sid); if(rndUsed+c>slotCap)continue; rndPicks.push(sid); rndUsed+=c; if(rndUsed>=slotCap)break;}
     st.partyMeta[player][slot].customSpells=rndPicks; st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
@@ -1286,12 +1295,13 @@ function PartyBuilder() {
 
   const mpMode = typeof window.getActiveMultiplayerMode === 'function' ? window.getActiveMultiplayerMode() : null;
   const isArena = false;
-  const spellPool = React.useMemo(() => { if (typeof window.SPELL_LIBRARY==='undefined') return []; const mainJob=clsName,secJ=secJob,pool=[]; for (const sp of Object.values(window.SPELL_LIBRARY)){if(!sp||sp.kind==='basicAttack')continue;const isM=typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,mainJob);const isS=secJ&&typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,secJ)&&sp.tier!=='III';if(isM||isS){pool.push(sp);}} return pool; }, [clsName, secJob, _]);
+  const spellPool = React.useMemo(() => { if (typeof window.SPELL_LIBRARY==='undefined') return []; const mainJob=clsName,secJ=secJob,pool=[]; for (const sp of Object.values(window.SPELL_LIBRARY)){if(!sp||sp.kind==='basicAttack'||!clashSpellOk(sp))continue;const isM=typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,mainJob);const isS=secJ&&typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,secJ)&&sp.tier!=='III';if(isM||isS){pool.push(sp);}} return pool; }, [clsName, secJob, _]);
 
   const numerals = ['I','II','III','IV','V','VI','VII','VIII'];
   const unitName = resolveUnitName(player, slot, clsName);
   const allAccIds = typeof window.EQUIP_DEFS!=='undefined' ? Object.keys(window.EQUIP_DEFS).filter(id=>{const d=window.EQUIP_DEFS[id];return d&&(d.slot==='accessory1'||d.slot==='accessory2');}) : [];
-  const allItemKeys = typeof window.ITEM_RULES!=='undefined' ? Object.keys(window.ITEM_RULES) : [];
+  const allItemKeys = (typeof window.ITEM_RULES!=='undefined' ? Object.keys(window.ITEM_RULES) : [])
+    .filter(k => k !== 'warpStone' || !(typeof window._isClashMode === 'function' && window._isClashMode()));
   const itemSlotMax = window.CONFIG?.unitItemSlots || 3;
   const totalItemsUsed = Object.values(unitItems).reduce((s,v)=>s+(v||0),0);
   // Item counts expanded into per-slot units for the RPG-style slot squares.

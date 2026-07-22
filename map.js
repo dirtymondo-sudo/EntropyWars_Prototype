@@ -6901,6 +6901,7 @@
                 && typeof window._clashSpellAllowed === 'function') {
                 newUnit.spells = (newUnit.spells || []).filter(window._clashSpellAllowed);
                 newUnit._raceAbilities = (newUnit._raceAbilities || []).filter(window._clashSpellAllowed);
+                if (newUnit.items) newUnit.items.warpStone = 0;   // movement item
             }
 
             return newUnit;
@@ -6947,6 +6948,13 @@
                 for (const rs of raceSpells) {
                     if (!ids.has(rs.id)) spells.push(rs);
                 }
+            }
+            /* Clash: movement/positioning spells aren't eligible at all —
+               keeps random CPU loadouts and every list built from this in
+               step with the createUnit strip. */
+            if (typeof _isClashMode === 'function' && _isClashMode()
+                && typeof window._clashSpellAllowed === 'function') {
+                return spells.filter(window._clashSpellAllowed);
             }
             return spells;
         }

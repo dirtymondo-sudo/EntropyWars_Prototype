@@ -16821,6 +16821,8 @@
 
             while (remainingItems > 0) {
                 const pick = allItemKeys[Math.floor(Math.random() * allItemKeys.length)];
+                // Clash: warp stones are dead weight (movement item) — reroll.
+                if (pick === 'warpStone' && typeof _isClashMode === 'function' && _isClashMode()) continue;
                 const cap = getItemCapForClass(cls, pick);
                 if ((loadout.items[pick] || 0) >= cap) continue;
                 loadout.items[pick] = (loadout.items[pick] || 0) + 1;
@@ -29850,6 +29852,13 @@
             if (state.activePlayer === state.aiPlayer) return;
             playSfx('uiConfirm');
             state._enemyActionTargetId = null;
+            /* Clash: movement/build modes can't even be armed (covers the
+               keyboard shortcuts — the drum no longer offers the verbs). */
+            if ((mode === 'move' || mode === 'build')
+                && typeof _isClashMode === 'function' && _isClashMode()) {
+                addLog('No moving in a Clash formation battle.');
+                return;
+            }
             const unit = getSelectedUnit();
             if (!unit) {
                 addLog('Select one of your units first.');
@@ -33293,7 +33302,12 @@
             renderIfDirty();
 
             const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(1150));
-            const _isMeleeStrike = d <= 1;
+            /* Clash: a melee-class attacker (base range 1) covers the gap with
+               the strike leap — dash in, hit, return to formation — instead of
+               lobbing a projectile across the battlefield. */
+            const _clashLeap = d > 1 && (unit.range || 1) <= 1
+                && typeof _isClashMode === 'function' && _isClashMode();
+            const _isMeleeStrike = d <= 1 || _clashLeap;
             const lungeLeadMs = _isMeleeStrike ? 0 : actionMs(150);
             let impactDelay;
             if (_isMeleeStrike) {
@@ -33309,8 +33323,10 @@
                 window.setTimeout(() => {
                     // 2026-07-11d: rigged models play their basic-attack clip
                     // in place (punch/slash/claw/zap per basicAttackKind);
-                    // the strike leap survives only for sprite units.
-                    if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, target.x, target.y);
+                    // the strike leap survives only for sprite units — except
+                    // the Clash gap-closer, where everyone leaps (in-place
+                    // clips read as air-swings from 7 tiles away).
+                    if (_unitAttacksWithClip(unit) && !_clashLeap) triggerAttackAnim(unit, target.x, target.y);
                     else animateStrikeLeap(unit, target.x, target.y);
                     playSfx('basicAttack');
                 }, projectileDelay);
@@ -33443,7 +33459,9 @@
                 state.selectedTool = null;
                 state.pendingTarget = null;
 
-                if (!evaded && !target.dead && !target._dying && d === 1 && _atkArc !== 'back' && rollCounter(target)) {
+                /* Clash: the melee gap-closer counts as a melee exchange — the
+                   defender's riposte stays live (counters are a JRPG staple). */
+                if (!evaded && !target.dead && !target._dying && (d === 1 || _clashLeap) && _atkArc !== 'back' && rollCounter(target)) {
                     const counterDmg = getCounterDamage(target);
                     target._matchCounters = (target._matchCounters || 0) + 1;
 
@@ -33462,9 +33480,10 @@
                         if (_activeCinematic?.showCounter) _activeCinematic.showCounter();
                         _showPressFeedback(_counterAttacker, _counterPressRes);
                         // Rigged models throw the riposte swing (castMelee) —
-                        // counters are always d===1 melee, so the kind tag is
-                        // right by construction.
-                        triggerAttackAnim(_counterTarget, _counterAttacker.x, _counterAttacker.y);
+                        // counters are d===1 melee (or the Clash gap-closer,
+                        // where the riposte leaps back across the field).
+                        if (_clashLeap) animateStrikeLeap(_counterTarget, _counterAttacker.x, _counterAttacker.y);
+                        else triggerAttackAnim(_counterTarget, _counterAttacker.x, _counterAttacker.y);
                         applyDamageToUnit(_counterAttacker, counterDmg, `${unitDisplayName(_counterTarget)} counter-attacks: `, {
                             sourceUnit: _counterTarget,
                             ignoreArmor: false,

@@ -555,6 +555,8 @@ function MatchSelect() {
     });
 
     if (mpMode.roundLimit) setRounds(mpMode.roundLimit);
+    // Clash is locked to 4v4 — snap the stepper so the display matches launch.
+    if (mpMode.isClash) setTeamSize(4);
   }, [gmIdx, mapIdx]);
 
   const compatibleMapIndices = useMemo(() => {
