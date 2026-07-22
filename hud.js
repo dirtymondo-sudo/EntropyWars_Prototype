@@ -738,10 +738,12 @@ function ScoreSideColumn({ st, mode, player, side, color, nextId }) {
         h('span', { style: {
           fontFamily: mono, fontSize: 12, letterSpacing: '0.12em',
           color: EW.ink, fontWeight: 600, whiteSpace: 'nowrap',
+          textShadow: '0 1px 3px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.6)',
         }}, name),
       ),
       sub != null && !showTower && h('span', { style: {
         fontFamily: mono, fontSize: 9, color: EW.inkMute, letterSpacing: '0.08em', whiteSpace: 'nowrap',
+        textShadow: '0 1px 3px rgba(0,0,0,0.95)',
       }}, sub + (mode.subLabel ? ' ' + mode.subLabel : '')),
       showTower && towerMax > 0 && h('div', { style: {
         width: 74, display: 'flex', flexDirection: 'column', gap: 2,
@@ -757,6 +759,7 @@ function ScoreSideColumn({ st, mode, player, side, color, nextId }) {
         ),
         h('span', { style: {
           fontFamily: mono, fontSize: 8, color: EW.inkMute, letterSpacing: '0.08em',
+          textShadow: '0 1px 3px rgba(0,0,0,0.95)',
         }}, '🏰 ' + towerHp + '/' + towerMax),
       ),
     ),
@@ -782,12 +785,13 @@ function EntropyWing({ st, player, side }) {
   const left = side === 'left';
   const mono = '"DotGothic16", monospace';
 
-  /* blade silhouette: tall at the scoreboard edge, tapering outward */
-  const vesselClip = left
-    ? 'polygon(0 50%, 16px 6%, 100% 0, 100% 100%, 16px 94%)'
-    : 'polygon(0 0, calc(100% - 16px) 6%, 100% 50%, calc(100% - 16px) 94%, 0 100%)';
-  /* fill anchors to the INNER edge (beside the panel) and grows toward the tip */
+  /* long sleek PS1 energy line: a thin skewed groove that DISSOLVES toward
+     the outer tip (mask fade — no hard cut), growing out of a bright
+     team-colored socket at the inner end, ⚛ + tiny caps label riding above. */
   const innerEdge = left ? 'right' : 'left';
+  const fadeDir = left ? 'to left' : 'to right';
+  const skew = left ? 'skewX(20deg)' : 'skewX(-20deg)';
+  const tailMask = 'linear-gradient(' + fadeDir + ', black 58%, rgba(0,0,0,0.5) 84%, transparent 99%)';
   const fillGrad = full
     ? 'linear-gradient(' + (left ? 270 : 90) + 'deg, #5c33a8, #a36cff 45%, #e8dcff 80%, #ffffff)'
     : 'linear-gradient(' + (left ? 270 : 90) + 'deg, ' + team + '59, #6a3fd0 40%, #a36cff 78%, #d9c2ff)';
@@ -798,56 +802,75 @@ function EntropyWing({ st, player, side }) {
     title: 'ENTROPY GAUGE — P' + player + ': ' + Math.round(val) + '/' + max +
       (full ? '  ⚛ TEAM ATTACK READY!' : '  (press-turn overflow, kills, bounties and destruction charge it)'),
     style: {
-      position: 'relative', width: 'clamp(120px, 15vw, 190px)', height: 24, flexShrink: 0,
-      display: 'flex', alignItems: 'center', flexDirection: left ? 'row' : 'row-reverse',
+      position: 'relative', width: 'clamp(180px, 22vw, 320px)', flexShrink: 0,
+      display: 'flex', flexDirection: 'column', justifyContent: 'center',
+      alignItems: left ? 'flex-end' : 'flex-start',
     },
   },
-    /* ⚛ core glyph at the outer tip — slow idle spin, wild spin when ready */
-    h('span', {
-      className: full ? 'ew-entropy-glyph-ready' : 'ew-entropy-glyph-idle',
-      style: {
-        fontFamily: mono, fontSize: 16, lineHeight: 1, flexShrink: 0,
-        color: full ? '#f0e8ff' : '#c9a5ff',
-        textShadow: '0 0 8px rgba(163,108,255,0.9), 0 0 16px rgba(120,70,220,0.5)',
-        [left ? 'marginRight' : 'marginLeft']: 5,
-      },
-    }, '⚛'),
 
-    h('div', { className: 'ew-entropy-vessel', style: {
-      position: 'relative', flex: 1, height: '100%', overflow: 'hidden',
-      clipPath: vesselClip,
-      background: 'linear-gradient(180deg, rgba(10,5,22,0.94), rgba(30,16,56,0.9) 55%, rgba(8,4,18,0.95))',
-      border: '1px solid ' + (full ? '#c9a5ff' : 'rgba(130,105,190,0.45)'),
-      boxShadow: full
-        ? 'inset 0 0 12px rgba(163,108,255,0.5)'
-        : 'inset 0 2px 6px rgba(0,0,0,0.7), inset 0 0 8px rgba(90,60,160,0.25)',
+    /* ⚛ + tiny caps label above the line, hugging the inner end */
+    h('div', { style: {
+      display: 'flex', alignItems: 'center', gap: 4, lineHeight: 1, marginBottom: 3,
+      flexDirection: left ? 'row' : 'row-reverse',
+      [left ? 'paddingRight' : 'paddingLeft']: 8,
     }},
-      /* flowing plasma fill */
+      h('span', {
+        className: full ? 'ew-entropy-glyph-ready' : 'ew-entropy-glyph-idle',
+        style: {
+          fontFamily: mono, fontSize: 11, lineHeight: 1, flexShrink: 0,
+          color: full ? '#f0e8ff' : '#c9a5ff',
+          textShadow: '0 0 7px rgba(163,108,255,0.9), 0 1px 3px rgba(0,0,0,0.9)',
+        },
+      }, '⚛'),
+      h('span', {
+        className: full ? 'ew-entropy-ready-label' : undefined,
+        style: {
+          fontFamily: mono, fontSize: 7, fontWeight: 700, letterSpacing: '0.34em',
+          textIndent: left ? 0 : '0.34em',
+          color: full ? '#ffffff' : 'rgba(190,170,235,0.8)',
+          textShadow: full
+            ? '0 0 6px #c9a5ff, 0 0 12px #a36cff, 0 1px 3px rgba(0,0,0,0.9)'
+            : '0 0 6px rgba(120,80,220,0.55), 0 1px 3px rgba(0,0,0,0.9)',
+        },
+      }, full ? 'READY' : 'ENTROPY'),
+    ),
+
+    /* the line itself — thin skewed groove, hairline top/bottom edges,
+       fading out toward the battlefield edge of the screen */
+    h('div', { className: 'ew-entropy-vessel', style: {
+      position: 'relative', width: '100%', height: 8, overflow: 'hidden',
+      transform: skew,
+      background: 'linear-gradient(180deg, rgba(14,8,30,0.78), rgba(34,20,64,0.72) 55%, rgba(10,5,22,0.82))',
+      borderTop: '1px solid ' + (full ? 'rgba(201,165,255,0.9)' : 'rgba(150,120,220,0.5)'),
+      borderBottom: '1px solid ' + (full ? 'rgba(201,165,255,0.9)' : 'rgba(150,120,220,0.5)'),
+      boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.7)',
+      WebkitMaskImage: tailMask, maskImage: tailMask,
+    }},
+      /* flowing plasma fill (grows inner → outer) */
       h('div', {
         className: 'ew-entropy-fill ' + (left ? 'ew-entropy-flow-l' : 'ew-entropy-flow-r') + (full ? ' ew-entropy-full' : ''),
         style: {
           position: 'absolute', top: 0, bottom: 0, [innerEdge]: 0,
           width: pct + '%', overflow: 'hidden',
           background: fillGrad,
-          boxShadow: full ? '0 0 16px rgba(201,165,255,1)' : '0 0 9px rgba(163,108,255,0.6)',
+          boxShadow: full ? '0 0 14px rgba(201,165,255,1)' : '0 0 8px rgba(163,108,255,0.6)',
           transition: 'width 0.45s ease',
         },
       }),
       /* leading-edge flare riding the fill front */
       !full && pct > 3 && h('div', { className: 'ew-entropy-tip', style: {
-        [innerEdge]: 'calc(' + pct + '% - 7px)',
+        [innerEdge]: 'calc(' + pct + '% - 6px)',
       }}),
       /* quarter ticks (measured from the inner edge, like the fill) */
       [25, 50, 75].map(t => h('div', { key: t, style: {
-        position: 'absolute', top: 2, bottom: 2, [innerEdge]: t + '%',
+        position: 'absolute', top: 1, bottom: 1, [innerEdge]: t + '%',
         width: 1, background: 'rgba(0,0,0,0.55)',
       }})),
-      full && h('div', { className: 'ew-entropy-ready-label', style: {
-        position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        [left ? 'paddingLeft' : 'paddingRight']: 10,
-        fontFamily: mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.4em', textIndent: '0.4em',
-        color: '#ffffff', textShadow: '0 0 6px #c9a5ff, 0 0 12px #a36cff', pointerEvents: 'none',
-      }}, 'READY'),
+      /* bright team-colored socket cap at the inner end */
+      h('div', { style: {
+        position: 'absolute', top: 0, bottom: 0, [innerEdge]: 0, width: 2,
+        background: team, boxShadow: '0 0 8px ' + team,
+      }}),
     ),
   );
 }
@@ -1050,30 +1073,35 @@ function Scoreboard({ st }) {
     },
   },
 
-    /* ⚛ ENTROPY WINGS — blade gauges flanking the strip (P1 left, P2 right) */
+    /* ⚛ ENTROPY WINGS — long sleek energy lines flanking the strip */
     h(EntropyWing, { st, player: 1, side: 'left' }),
 
+    /* No panel box — the strip floats straight over the battlefield; each
+       element carries its own contrast (chip frames, text shadows, a soft
+       scrim behind the centre score only). */
     h('div', { style: {
-      position: 'relative', display: 'flex', alignItems: 'stretch',
-      background: EW.panel, border: '1px solid ' + EW.panelEdge,
-      boxShadow: '0 6px 28px rgba(0,0,0,0.5)',
-      clipPath: 'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px)',
+      position: 'relative', display: 'flex', alignItems: 'center',
+      filter: 'drop-shadow(0 2px 5px rgba(0,0,0,0.65))',
     }},
-
-      h('div', { className: 'ew-scoreboard-sheen', style: {
-        position: 'absolute', top: 0, left: 12, right: 12, height: 1, pointerEvents: 'none',
-        background: 'linear-gradient(90deg, transparent, ' + EW.space + '66, ' + EW.chaos + '66, transparent)',
-      }}),
 
       h(ScoreSideColumn, { st, mode, player: 1, side: 'left', color: EW.space, nextId }),
 
-      /* centre cluster — three thin lines: mode / score / caption·time·round */
+      /* centre cluster — three thin lines: mode / score / caption·time·round,
+         on a side-fading scrim with hairline top/bottom edges (PS1 help-strip
+         style) instead of a boxed panel. */
       h('div', { style: {
-        padding: '5px 14px', display: 'flex', flexDirection: 'column',
+        position: 'relative', padding: '6px 18px', display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center', gap: 3, minWidth: 116,
-        borderLeft: '1px solid ' + EW.panelEdge, borderRight: '1px solid ' + EW.panelEdge,
-        background: 'linear-gradient(180deg, rgba(0,0,0,0.42), rgba(0,0,0,0.16))',
+        background: 'linear-gradient(90deg, rgba(7,7,6,0), rgba(7,7,6,0.68) 16%, rgba(7,7,6,0.68) 84%, rgba(7,7,6,0))',
       }},
+        h('div', { className: 'ew-scoreboard-sheen', style: {
+          position: 'absolute', top: 0, left: 0, right: 0, height: 1, pointerEvents: 'none',
+          background: 'linear-gradient(90deg, transparent, ' + EW.space + '88 30%, ' + EW.chaos + '88 70%, transparent)',
+        }}),
+        h('div', { style: {
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, pointerEvents: 'none',
+          background: 'linear-gradient(90deg, transparent, rgba(200,192,165,0.4) 30%, rgba(200,192,165,0.4) 70%, transparent)',
+        }}),
 
         h('span', { className: isSuddenDeath ? 'ew-sudden-death' : undefined, style: {
           fontFamily: mono, fontSize: 8, letterSpacing: '0.2em', lineHeight: 1,

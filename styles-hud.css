@@ -4225,9 +4225,9 @@
 /* leading-edge flare riding the fill front */
 .ew-entropy-tip {
     position: absolute;
-    top: -4px;
-    bottom: -4px;
-    width: 14px;
+    top: -2px;
+    bottom: -2px;
+    width: 11px;
     pointer-events: none;
     background: radial-gradient(closest-side,
         rgba(255, 255, 255, 0.95),
