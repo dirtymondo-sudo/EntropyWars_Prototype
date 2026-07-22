@@ -3243,7 +3243,8 @@ function ActionMenu({ st, hidden }) {
         const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(unit, sp) : true;
         if (!tierOk) continue; // locked by level — never the headline reason
         const apOk = (unit.ap || 0) >= (typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1);
-        const mpOk = (unit.mp || 0) >= (sp.cost || 0);
+        const mpOk = (unit.mp || 0) >= (typeof getSpellMpCostFor === 'function'
+      ? getSpellMpCostFor(unit, sp) : (sp.cost || 0));
         const tgt = (typeof hasSpellTargetInRange === 'function' ? hasSpellTargetInRange(unit, sp) : true)
                  || (typeof spellHasReachableTarget === 'function' && spellHasReachableTarget(unit, sp));
         // canAffordSpell folds in cooldown/materials/hard locks — without it a
@@ -4297,7 +4298,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         icon: '✦',
         spellType: sp.spellType || '',
         apCost: spellApCost,
-        mpCost: sp.cost || 0,
+        mpCost: mpCost,
         moveTile: canCast ? null : spMoveTile,
         preview: dmgEstimate ? { type: 'damage', amount: dmgEstimate } : null,
         powerLabel: powerLabel,
@@ -4316,7 +4317,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         icon: '✦',
         spellType: sp.spellType || '',
         apCost: spellApCost,
-        mpCost: sp.cost || 0,
+        mpCost: mpCost,
         moveTile: null,
         preview: dmgEstimate ? { type: 'damage', amount: dmgEstimate } : null,
         powerLabel: powerLabel,
@@ -5388,7 +5389,7 @@ function _computeAllyActions(actingUnit, targetUnit) {
       icon: (typeof _HRLG_CAT !== 'undefined' && _HRLG_CAT[cls]) ? _HRLG_CAT[cls].icon : '✦',
       spellType: sp.spellType || '',
       apCost: spellApCost,
-      mpCost: sp.cost || 0,
+      mpCost: mpCost,
       moveTile: validHere ? null : moveTile,
       preview: healAmt ? { type: 'heal', amount: healAmt } : null,
       powerLabel: typeof getSpellPowerLabel === 'function' ? getSpellPowerLabel(sp) : '',
@@ -5786,7 +5787,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
 
     actions.push({
       id: 'spell:' + sp.name, label: sp.name, icon: '✦', category: 'movement',
-      spellType: sp.spellType || '', apCost: spellApCost, mpCost: sp.cost || 0,
+      spellType: sp.spellType || '', apCost: spellApCost, mpCost: mpCost,
       available: canCast, reason: canCast ? '' : reason, spell: sp,
       handler: canCast ? () => {
         state._tileActionTarget = null;
@@ -5836,7 +5837,8 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       if (_tt === 'ally' && _occEnemy) continue;
     }
     const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
-    const mpCost = (sp.cost || 0) + mpPenalty;
+    const mpCost = (typeof getSpellMpCostFor === 'function')
+      ? getSpellMpCostFor(actingUnit, sp) : (sp.cost || 0) + mpPenalty;
     // Full engine gate — AP, MP, silence, tier, COOLDOWN and MATERIALS — so a
     // spell this menu offers can never bounce off doSpell's own checks.
     const engineOk = typeof canAffordSpell === 'function' ? canAffordSpell(actingUnit, sp) : true;
@@ -5884,7 +5886,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
 
     actions.push({
       id: 'spell:' + sp.name, label: sp.name, icon: '✦', category: 'spells',
-      spellType: sp.spellType || '', apCost: spellApCost, mpCost: sp.cost || 0,
+      spellType: sp.spellType || '', apCost: spellApCost, mpCost: mpCost,
       available: canCast, reason: canCast ? '' : reason, spell: sp,
       powerLabel: typeof getSpellPowerLabel === 'function' ? getSpellPowerLabel(sp) : '',
       handler: canCast ? () => {

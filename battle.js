@@ -11283,7 +11283,8 @@
             }
             function _spellUsable(u, sp) {
                 if (typeof canAffordSpell === 'function' && !canAffordSpell(u, sp)) return false;
-                if ((sp.cost || 0) > (u.mp || 0)) return false;
+                if ((typeof getSpellMpCostFor === 'function'
+                    ? getSpellMpCostFor(u, sp) : (sp.cost || 0)) > (u.mp || 0)) return false;
                 return true;
             }
             /* Can this spell actually FIRE from the tile the player stands on
