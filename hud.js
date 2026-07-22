@@ -385,27 +385,21 @@ function _getModeInfo(st) {
   const p1Wins = st.record ? (st.record[1] || 0) : 0;
   const p2Wins = st.record ? (st.record[2] || 0) : 0;
 
+  /* No "N/M ALIVE" text for kill modes — dead units stay in the turn-clock
+     flank as skull chips, which says the same thing without a text row. */
   if (id === 'tdm' || id === 'ffa') {
     return {
       id, label: mpMode.label,
       p1Score: p1Kills, p2Score: p2Kills,
       scoreLabel: 'KILLS',
-      p1Sub: p1Alive + '/' + p1Total, p2Sub: p2Alive + '/' + p2Total,
-      subLabel: 'ALIVE',
       p1Wins, p2Wins,
     };
   }
   if (id === 'gauntlet') {
-    const r1 = typeof _gauntletReservesAlive === 'function' ? _gauntletReservesAlive(1) : 0;
-    const r2 = typeof _gauntletReservesAlive === 'function' ? _gauntletReservesAlive(2) : 0;
-    const b1 = (st.bench && st.bench[1]) ? st.bench[1].length : 0;
-    const b2 = (st.bench && st.bench[2]) ? st.bench[2].length : 0;
     return {
       id, label: mpMode.label,
       p1Score: p1Kills, p2Score: p2Kills,
       scoreLabel: 'KILLS',
-      p1Sub: (p1Alive + r1) + '/' + (p1Total + b1), p2Sub: (p2Alive + r2) + '/' + (p2Total + b2),
-      subLabel: 'ALIVE',
       p1Wins, p2Wins,
     };
   }
@@ -521,6 +515,13 @@ function _getModeInfo(st) {
 function _scoreboardTurnData(st) {
   const units = (st.units || []).filter(u => !u.dead);
   const activeId = st._blitzActiveUnitId;
+  /* Dead units stay on the clock as greyed skull chips pinned to the outer
+     edge of each flank — that IS the alive-count readout (replaces the old
+     "3/4 ALIVE" text row). */
+  const DEAD_KEY = 9999 * 3;
+  const deadChips = (st.units || []).filter(u => u.dead).map(u => ({
+    id: u.id, unit: u, active: false, finished: false, dead: true, sortKey: DEAD_KEY,
+  }));
   /* SIMUL mode: units idle at 0 AP between orders, so the blitz "finished"
      dimming would grey the whole roster. Nobody is ever spent (any unit can
      be ordered every turn) — rank the flanks by SPD instead, which IS the
@@ -532,7 +533,7 @@ function _scoreboardTurnData(st) {
       active: u.id === activeId,
       finished: false,
       sortKey: u.id === activeId ? -1 : (1000 - (u.spd || 0)),
-    }));
+    })).concat(deadChips);
   }
   const G = window.GAME;
   const orderIds = (G && G.blitzTurnOrderIds) ? G.blitzTurnOrderIds : null;
@@ -548,7 +549,7 @@ function _scoreboardTurnData(st) {
     let ti = idx[u.id]; if (ti == null) ti = BIG;
     const sortKey = active ? -1 : (finished ? BIG * 2 + ti : ti);
     return { id: u.id, unit: u, active, finished, sortKey };
-  });
+  }).concat(deadChips);
 }
 
 /* One unit in a flank: sprite + tiny HP/MP bars. The unit acting soonest on
@@ -565,6 +566,31 @@ function TurnChip({ entry, size }) {
   const hpPct = u.maxHp > 0 ? Math.max(0, Math.min(100, (u.hp / u.maxHp) * 100)) : 0;
   const mpPct = u.maxMp > 0 ? Math.max(0, Math.min(100, (u.mp / u.maxMp) * 100)) : 0;
   const name = typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls);
+
+  /* Dead: greyed portrait with a skull stamped over it — the flank's silent
+     alive-counter. No bars, no click, no labels. */
+  if (entry.dead) {
+    return h('div', {
+      className: 'ew-turn-chip ew-turn-chip-dead',
+      title: name + ' — DOWN',
+      style: {
+        position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+        opacity: 0.5, filter: 'saturate(0.08) brightness(0.8)', padding: '0 1px',
+      },
+    },
+      h('div', { style: { width: size, height: 2, background: ac, opacity: 0.3 }}),
+      h('div', { style: { position: 'relative' }},
+        h(UnitSprite, { unit: u, size }),
+        h('div', { style: {
+          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: Math.max(11, Math.round(size * 0.62)), lineHeight: 1, color: '#e8e4d8',
+          textShadow: '0 0 4px #000, 0 1px 2px #000', background: 'rgba(0,0,0,0.45)',
+          pointerEvents: 'none',
+        }}, '☠'),
+      ),
+      h('div', { style: { height: 6 }}),
+    );
+  }
 
   return h('div', {
     className: active ? 'ew-turn-chip ew-turn-chip-active' : 'ew-turn-chip',
@@ -615,18 +641,27 @@ function TurnChip({ entry, size }) {
     ),
 
     h('div', { style: { height: 9, display: 'flex', alignItems: 'center' }},
-      active && h('span', { style: {
-        fontFamily: '"Cinzel", serif', fontStyle: 'italic', fontSize: 8, lineHeight: 1,
-        color: ac, letterSpacing: '0.04em', textShadow: '0 0 6px ' + ac + '88',
-      }}, 'NOW'),
+      active
+        ? h('span', { style: {
+            fontFamily: '"Cinzel", serif', fontStyle: 'italic', fontSize: 8, lineHeight: 1,
+            color: ac, letterSpacing: '0.04em', textShadow: '0 0 6px ' + ac + '88',
+          }}, 'NOW')
+        : entry.next
+          ? h('span', { style: {
+              fontFamily: '"Cinzel", serif', fontStyle: 'italic', fontSize: 8, lineHeight: 1,
+              color: EW.ink, letterSpacing: '0.04em', opacity: 0.8,
+              textShadow: '0 0 5px rgba(236,234,221,0.45)',
+            }}, 'NEXT')
+          : null,
     ),
   );
 }
 
-function TurnFlank({ st, player, side }) {
+function TurnFlank({ st, player, side, nextId }) {
   const data = _scoreboardTurnData(st).filter(e => e.unit.player === player);
   data.sort((a, b) => (a.sortKey - b.sortKey) || ((b.unit.spd || 0) - (a.unit.spd || 0)));
   if (data.length === 0) return null;
+  data.forEach(e => { e.next = !!nextId && e.id === nextId; });
 
   // Show every unit up to a hard cap; beyond that, summarise the tail (acting
   // last) as a "+N" tile so the bar never grows unbounded.
@@ -642,7 +677,7 @@ function TurnFlank({ st, player, side }) {
 
   // `visible` runs inner→outer (soonest first). chips carry their size.
   const chips = visible.map((e, i) => ({
-    e, size: e.active ? active : (i === 0 ? inner : small),
+    e, size: e.active ? active : (i === 0 && !e.dead ? inner : small),
   }));
 
   let nodes = chips.map(({ e, size }) => h(TurnChip, { key: e.id, entry: e, size }));
@@ -667,9 +702,10 @@ function TurnFlank({ st, player, side }) {
   }}, display);
 }
 
-/* One team's column: name + live status on top, the turn-ordered portrait
-   flank below (soonest-to-act nearest the centre score). */
-function ScoreSideColumn({ st, mode, player, side, color }) {
+/* One team's side of the strip: a slim stacked name block (dot + name, plus
+   tower HP / kills sub when the mode has one) sitting BESIDE the turn-ordered
+   portrait flank — everything vertically centred in one thin row. */
+function ScoreSideColumn({ st, mode, player, side, color, nextId }) {
   const isRight = side === 'right';
   const mono = '"DotGothic16", monospace';
   const name = (st._teamNames && st._teamNames[player]) || ('P' + player);
@@ -682,103 +718,137 @@ function ScoreSideColumn({ st, mode, player, side, color }) {
   const towerColor = player === _towerViewer ? HP_ALLY : HP_ENEMY;
 
   return h('div', { style: {
-    display: 'flex', flexDirection: 'column', gap: 5,
-    padding: '7px 11px 6px', minWidth: 92,
-    justifyContent: 'center',
-    alignItems: isRight ? 'flex-start' : 'flex-end',
+    display: 'flex', alignItems: 'center', gap: 9,
+    flexDirection: isRight ? 'row' : 'row-reverse',
+    padding: '5px 10px', minWidth: 92, justifyContent: 'flex-end',
   }},
 
     h('div', { style: {
-      display: 'flex', alignItems: 'center', gap: 6,
-      flexDirection: isRight ? 'row' : 'row-reverse',
-    }},
-      h('span', { style: {
-        width: 5, height: 5, background: color, borderRadius: '50%',
-        boxShadow: '0 0 7px ' + color, flexShrink: 0,
-      }}),
-      h('span', { style: {
-        fontFamily: mono, fontSize: 13, letterSpacing: '0.14em',
-        color: EW.ink, fontWeight: 600, whiteSpace: 'nowrap',
-      }}, name),
-      sub != null && !showTower && h('span', { style: {
-        fontFamily: mono, fontSize: 11, color: EW.inkMute, letterSpacing: '0.06em', whiteSpace: 'nowrap',
-      }}, sub + (mode.subLabel ? ' ' + mode.subLabel : '')),
-    ),
-
-    showTower && towerMax > 0 && h('div', { style: {
-      width: '100%', display: 'flex', flexDirection: 'column', gap: 2,
+      display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 118,
       alignItems: isRight ? 'flex-start' : 'flex-end',
     }},
-      h('div', { style: { width: '100%', height: 3, background: 'rgba(255,255,255,0.06)', position: 'relative' }},
-        h('div', { style: {
-          position: 'absolute', top: 0, bottom: 0, [isRight ? 'left' : 'right']: 0,
-          width: towerPct + '%',
-          background: player === _towerViewer ? HP_ALLY_FILL : HP_ENEMY_FILL,
-          boxShadow: '0 0 6px ' + towerColor + '55',
+      h('div', { style: {
+        display: 'flex', alignItems: 'center', gap: 5,
+        flexDirection: isRight ? 'row' : 'row-reverse',
+      }},
+        h('span', { style: {
+          width: 5, height: 5, background: color, borderRadius: '50%',
+          boxShadow: '0 0 7px ' + color, flexShrink: 0,
         }}),
+        h('span', { style: {
+          fontFamily: mono, fontSize: 12, letterSpacing: '0.12em',
+          color: EW.ink, fontWeight: 600, whiteSpace: 'nowrap',
+        }}, name),
       ),
-      h('span', { style: {
-        fontFamily: mono, fontSize: 9, color: EW.inkMute, letterSpacing: '0.08em',
-      }}, '🏰 ' + towerHp + '/' + towerMax),
+      sub != null && !showTower && h('span', { style: {
+        fontFamily: mono, fontSize: 9, color: EW.inkMute, letterSpacing: '0.08em', whiteSpace: 'nowrap',
+      }}, sub + (mode.subLabel ? ' ' + mode.subLabel : '')),
+      showTower && towerMax > 0 && h('div', { style: {
+        width: 74, display: 'flex', flexDirection: 'column', gap: 2,
+        alignItems: isRight ? 'flex-start' : 'flex-end',
+      }},
+        h('div', { style: { width: '100%', height: 3, background: 'rgba(255,255,255,0.06)', position: 'relative' }},
+          h('div', { style: {
+            position: 'absolute', top: 0, bottom: 0, [isRight ? 'left' : 'right']: 0,
+            width: towerPct + '%',
+            background: player === _towerViewer ? HP_ALLY_FILL : HP_ENEMY_FILL,
+            boxShadow: '0 0 6px ' + towerColor + '55',
+          }}),
+        ),
+        h('span', { style: {
+          fontFamily: mono, fontSize: 8, color: EW.inkMute, letterSpacing: '0.08em',
+        }}, '🏰 ' + towerHp + '/' + towerMax),
+      ),
     ),
 
-    h(TurnFlank, { st, player, side }),
+    h(TurnFlank, { st, player, side, nextId }),
   );
 }
 
-/* ⚛ Entropy Gauge meter — one per team, a big charged strip along the BOTTOM
-   of the scoreboard (P1 fills left→centre, P2 centre←right). Fed by battle.js
-   addEntropy via glowing orbs (_entropyOrbsFly below); shimmers while
-   charging, blazes violet with a READY label when the team attack is up. */
-function EntropyMeter({ st, player }) {
+/* ⚛ ENTROPY WINGS — one blade-shaped gauge per team FLANKING the scoreboard
+   (P1 left, P2 right), tapering to a point outward with the ⚛ core glyph at
+   the tip. The fill charges from the scoreboard outward as flowing violet
+   plasma (animated gradient + shimmer sweep + pulsing leading-edge flare);
+   past 70% the whole blade starts to bloom, and at full it blazes with a
+   READY label + spinning glyph. Fed by battle.js addEntropy via glowing orbs
+   (_entropyOrbsFly below — ids ewEntropyMeterP1/2 unchanged). */
+function EntropyWing({ st, player, side }) {
   const max = window.ENTROPY_GAUGE_MAX || 100;
   const val = (st.entropyGauge && st.entropyGauge[player]) || 0;
   const pct = Math.max(0, Math.min(100, (val / max) * 100));
   const full = val >= max;
+  const surging = !full && pct >= 70;
   const team = player === 1 ? EW.space : EW.chaos;
-  const p2 = player === 2;
+  const left = side === 'left';
   const mono = '"DotGothic16", monospace';
+
+  /* blade silhouette: tall at the scoreboard edge, tapering outward */
+  const vesselClip = left
+    ? 'polygon(0 50%, 16px 6%, 100% 0, 100% 100%, 16px 94%)'
+    : 'polygon(0 0, calc(100% - 16px) 6%, 100% 50%, calc(100% - 16px) 94%, 0 100%)';
+  /* fill anchors to the INNER edge (beside the panel) and grows toward the tip */
+  const innerEdge = left ? 'right' : 'left';
+  const fillGrad = full
+    ? 'linear-gradient(' + (left ? 270 : 90) + 'deg, #5c33a8, #a36cff 45%, #e8dcff 80%, #ffffff)'
+    : 'linear-gradient(' + (left ? 270 : 90) + 'deg, ' + team + '59, #6a3fd0 40%, #a36cff 78%, #d9c2ff)';
+
   return h('div', {
     id: 'ewEntropyMeterP' + player,
+    className: 'ew-entropy-wing' + (full ? ' ew-entropy-wing-full' : (surging ? ' ew-entropy-wing-surge' : '')),
     title: 'ENTROPY GAUGE — P' + player + ': ' + Math.round(val) + '/' + max +
       (full ? '  ⚛ TEAM ATTACK READY!' : '  (press-turn overflow, kills, bounties and destruction charge it)'),
     style: {
-      flex: 1, height: 11, position: 'relative',
-      background: 'linear-gradient(180deg, rgba(8,4,18,0.92), rgba(26,14,48,0.88))',
-      border: '1px solid ' + (full ? '#c9a5ff' : 'rgba(130,105,190,0.4)'),
-      boxShadow: full
-        ? '0 0 16px rgba(163,108,255,0.9), inset 0 0 10px rgba(163,108,255,0.45)'
-        : 'inset 0 1px 4px rgba(0,0,0,0.65), 0 0 5px rgba(90,60,160,0.3)',
-      transition: 'filter 0.25s ease, box-shadow 0.4s ease',
-      clipPath: p2
-        ? 'polygon(0 0, 100% 0, 100% 100%, 6px 100%, 0 calc(100% - 6px))'
-        : 'polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%)',
+      position: 'relative', width: 'clamp(120px, 15vw, 190px)', height: 24, flexShrink: 0,
+      display: 'flex', alignItems: 'center', flexDirection: left ? 'row' : 'row-reverse',
     },
   },
-    h('div', {
-      className: full ? 'ew-entropy-fill ew-entropy-full' : 'ew-entropy-fill',
+    /* ⚛ core glyph at the outer tip — slow idle spin, wild spin when ready */
+    h('span', {
+      className: full ? 'ew-entropy-glyph-ready' : 'ew-entropy-glyph-idle',
       style: {
-        position: 'absolute', top: 0, bottom: 0,
-        [p2 ? 'right' : 'left']: 0,
-        width: pct + '%',
-        overflow: 'hidden',
-        background: full
-          ? 'linear-gradient(90deg, #5c33a8, #a36cff, #e8dcff)'
-          : 'linear-gradient(90deg, ' + team + '66, #7a4fd6cc, #a36cff)',
-        boxShadow: full ? '0 0 14px rgba(201,165,255,1)' : '0 0 8px rgba(163,108,255,0.55)',
-        transition: 'width 0.45s ease',
+        fontFamily: mono, fontSize: 16, lineHeight: 1, flexShrink: 0,
+        color: full ? '#f0e8ff' : '#c9a5ff',
+        textShadow: '0 0 8px rgba(163,108,255,0.9), 0 0 16px rgba(120,70,220,0.5)',
+        [left ? 'marginRight' : 'marginLeft']: 5,
       },
-    }),
-    /* quarter ticks */
-    [25, 50, 75].map(t => h('div', { key: t, style: {
-      position: 'absolute', top: 1, bottom: 1, [p2 ? 'right' : 'left']: t + '%',
-      width: 1, background: 'rgba(0,0,0,0.5)',
-    }})),
-    full && h('div', { className: 'ew-entropy-ready-label', style: {
-      position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: mono, fontSize: 8, fontWeight: 700, letterSpacing: '0.42em', textIndent: '0.42em',
-      color: '#ffffff', textShadow: '0 0 6px #c9a5ff, 0 0 12px #a36cff', pointerEvents: 'none',
-    }}, 'READY'),
+    }, '⚛'),
+
+    h('div', { className: 'ew-entropy-vessel', style: {
+      position: 'relative', flex: 1, height: '100%', overflow: 'hidden',
+      clipPath: vesselClip,
+      background: 'linear-gradient(180deg, rgba(10,5,22,0.94), rgba(30,16,56,0.9) 55%, rgba(8,4,18,0.95))',
+      border: '1px solid ' + (full ? '#c9a5ff' : 'rgba(130,105,190,0.45)'),
+      boxShadow: full
+        ? 'inset 0 0 12px rgba(163,108,255,0.5)'
+        : 'inset 0 2px 6px rgba(0,0,0,0.7), inset 0 0 8px rgba(90,60,160,0.25)',
+    }},
+      /* flowing plasma fill */
+      h('div', {
+        className: 'ew-entropy-fill ' + (left ? 'ew-entropy-flow-l' : 'ew-entropy-flow-r') + (full ? ' ew-entropy-full' : ''),
+        style: {
+          position: 'absolute', top: 0, bottom: 0, [innerEdge]: 0,
+          width: pct + '%', overflow: 'hidden',
+          background: fillGrad,
+          boxShadow: full ? '0 0 16px rgba(201,165,255,1)' : '0 0 9px rgba(163,108,255,0.6)',
+          transition: 'width 0.45s ease',
+        },
+      }),
+      /* leading-edge flare riding the fill front */
+      !full && pct > 3 && h('div', { className: 'ew-entropy-tip', style: {
+        [innerEdge]: 'calc(' + pct + '% - 7px)',
+      }}),
+      /* quarter ticks (measured from the inner edge, like the fill) */
+      [25, 50, 75].map(t => h('div', { key: t, style: {
+        position: 'absolute', top: 2, bottom: 2, [innerEdge]: t + '%',
+        width: 1, background: 'rgba(0,0,0,0.55)',
+      }})),
+      full && h('div', { className: 'ew-entropy-ready-label', style: {
+        position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        [left ? 'paddingLeft' : 'paddingRight']: 10,
+        fontFamily: mono, fontSize: 9, fontWeight: 700, letterSpacing: '0.4em', textIndent: '0.4em',
+        color: '#ffffff', textShadow: '0 0 6px #c9a5ff, 0 0 12px #a36cff', pointerEvents: 'none',
+      }}, 'READY'),
+    ),
   );
 }
 
@@ -961,124 +1031,118 @@ function Scoreboard({ st }) {
   const mono = '"DotGothic16", monospace';
   const serif = '"Cinzel", serif';
 
+  /* Global NEXT unit — the pending (not active, not spent, not dead) entry
+     with the lowest queue key across BOTH teams; its chip gets the NEXT tag. */
+  let nextId = null, _bestKey = Infinity, _bestSpd = -1;
+  for (const e of _scoreboardTurnData(st)) {
+    if (e.active || e.finished || e.dead) continue;
+    const spd = e.unit.spd || 0;
+    if (e.sortKey < _bestKey || (e.sortKey === _bestKey && spd > _bestSpd)) {
+      _bestKey = e.sortKey; _bestSpd = spd; nextId = e.id;
+    }
+  }
+
   return h('div', {
     className: 'ew-scoreboard',
     style: {
       position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
-      display: 'flex', alignItems: 'stretch', zIndex: 10,
-      background: EW.panel, border: '1px solid ' + EW.panelEdge,
-      boxShadow: '0 6px 28px rgba(0,0,0,0.5)',
-      paddingBottom: 15,
-      clipPath: 'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px)',
+      display: 'flex', alignItems: 'center', gap: 8, zIndex: 10,
     },
   },
 
-    /* ⚛ ENTROPY GAUGES — full-width strip along the scoreboard's bottom edge:
-       P1 fills left→centre, P2 centre←right, ⚛ pivot between. */
-    h('div', { style: {
-      position: 'absolute', left: 14, right: 14, bottom: 3, zIndex: 3,
-      display: 'flex', alignItems: 'center', gap: 7, lineHeight: 1,
-    }},
-      h(EntropyMeter, { st, player: 1 }),
-      h('span', {
-        className: ((st.entropyGauge && (st.entropyGauge[1] >= (window.ENTROPY_GAUGE_MAX || 100) || st.entropyGauge[2] >= (window.ENTROPY_GAUGE_MAX || 100))) ? 'ew-entropy-glyph-ready' : undefined),
-        style: { fontFamily: mono, fontSize: 14, color: '#c9a5ff', textShadow: '0 0 8px rgba(163,108,255,0.85)' },
-        title: 'ENTROPY GAUGE — full = your whole team strikes every visible enemy',
-      }, '⚛'),
-      h(EntropyMeter, { st, player: 2 }),
-    ),
-
-    h('div', { className: 'ew-scoreboard-sheen', style: {
-      position: 'absolute', top: 0, left: 12, right: 12, height: 1, pointerEvents: 'none',
-      background: 'linear-gradient(90deg, transparent, ' + EW.space + '66, ' + EW.chaos + '66, transparent)',
-    }}),
-
-    h(ScoreSideColumn, { st, mode, player: 1, side: 'left', color: EW.space }),
+    /* ⚛ ENTROPY WINGS — blade gauges flanking the strip (P1 left, P2 right) */
+    h(EntropyWing, { st, player: 1, side: 'left' }),
 
     h('div', { style: {
-      padding: '6px 16px 7px', display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 134,
-      borderLeft: '1px solid ' + EW.panelEdge, borderRight: '1px solid ' + EW.panelEdge,
-      background: 'linear-gradient(180deg, rgba(0,0,0,0.42), rgba(0,0,0,0.16))',
+      position: 'relative', display: 'flex', alignItems: 'stretch',
+      background: EW.panel, border: '1px solid ' + EW.panelEdge,
+      boxShadow: '0 6px 28px rgba(0,0,0,0.5)',
+      clipPath: 'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px)',
     }},
 
-      h('span', { style: {
-        fontFamily: mono, fontSize: 10, letterSpacing: '0.18em', color: EW.inkMute,
-        textTransform: 'uppercase', lineHeight: 1,
-      }}, mode.label || ''),
+      h('div', { className: 'ew-scoreboard-sheen', style: {
+        position: 'absolute', top: 0, left: 12, right: 12, height: 1, pointerEvents: 'none',
+        background: 'linear-gradient(90deg, transparent, ' + EW.space + '66, ' + EW.chaos + '66, transparent)',
+      }}),
 
-      h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 8 }},
-        h('span', { style: {
-          fontFamily: serif, fontSize: 30, fontWeight: 400, lineHeight: 1,
-          color: EW.ink, textShadow: '0 0 14px ' + EW.space + '66',
-          minWidth: 22, textAlign: 'right',
-        }}, mode.p1Score),
-        h('span', { style: {
-          fontFamily: serif, fontSize: 16, color: EW.inkDim, fontStyle: 'italic', lineHeight: 1,
-        }}, '–'),
-        h('span', { style: {
-          fontFamily: serif, fontSize: 30, fontWeight: 400, lineHeight: 1,
-          color: EW.ink, textShadow: '0 0 14px ' + EW.chaos + '66',
-          minWidth: 22, textAlign: 'left',
-        }}, mode.p2Score),
-      ),
+      h(ScoreSideColumn, { st, mode, player: 1, side: 'left', color: EW.space, nextId }),
 
-      h('span', { className: isSuddenDeath ? 'ew-sudden-death' : undefined, style: {
-        fontFamily: mono, fontSize: 10, letterSpacing: '0.2em', lineHeight: 1,
-        color: isSuddenDeath ? EW.bad : EW.inkMute,
-        textShadow: isSuddenDeath ? '0 0 8px ' + EW.bad : 'none',
-      }}, isSuddenDeath ? '⚡ SUDDEN DEATH' : scoreCaption),
-
-      /* Nexus zone control pips (Arena) — cave/earth/sky ownership at a
-         glance; pulses red-hot when a team is ONE zone from an instant win. */
-      mode.nexusPips && h('div', { style: {
-        display: 'flex', alignItems: 'center', gap: 7, marginTop: 2, lineHeight: 1,
-      }},
-        mode.nexusPips.map(z => {
-          const zColor = z.owner === 1 ? EW.space : z.owner === 2 ? EW.chaos : 'rgba(255,255,255,0.28)';
-          const contested = z.owner === 0 && z.progress !== 0;
-          return h('span', {
-            key: z.key,
-            title: z.name + ' Nexus — ' + (z.owner ? 'Player ' + z.owner : contested ? 'contested' : 'unclaimed'),
-            className: mode.nexusAlertPlayer && z.owner === mode.nexusAlertPlayer ? 'ew-sudden-death' : undefined,
-            style: {
-              fontFamily: mono, fontSize: 12, color: zColor,
-              textShadow: z.owner ? '0 0 7px ' + zColor : 'none',
-            },
-          }, z.owner ? '⬢' : '⬡');
-        }),
-        mode.nexusAlertPlayer > 0 && h('span', { className: 'ew-sudden-death', style: {
-          fontFamily: mono, fontSize: 8, letterSpacing: '0.14em', color: EW.bad,
-          textShadow: '0 0 8px ' + EW.bad,
-        }}, 'P' + mode.nexusAlertPlayer + ' NEEDS 1 NEXUS!'),
-      ),
-
+      /* centre cluster — three thin lines: mode / score / caption·time·round */
       h('div', { style: {
-        display: 'flex', alignItems: 'center', gap: 12, marginTop: 3,
-        paddingTop: 4, borderTop: '1px solid ' + EW.panelEdge,
-        width: '100%', justifyContent: 'center',
+        padding: '5px 14px', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 3, minWidth: 116,
+        borderLeft: '1px solid ' + EW.panelEdge, borderRight: '1px solid ' + EW.panelEdge,
+        background: 'linear-gradient(180deg, rgba(0,0,0,0.42), rgba(0,0,0,0.16))',
       }},
-        h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, lineHeight: 1 }},
-          h('span', { style: { fontFamily: mono, fontSize: 8, letterSpacing: '0.2em', color: EW.inkMute }}, 'TIME'),
-          h('span', { style: { fontFamily: mono, fontSize: 16, fontWeight: 700, color: EW.ink }}, mins + ':' + secs),
+
+        h('span', { className: isSuddenDeath ? 'ew-sudden-death' : undefined, style: {
+          fontFamily: mono, fontSize: 8, letterSpacing: '0.2em', lineHeight: 1,
+          color: isSuddenDeath ? EW.bad : EW.inkMute, textTransform: 'uppercase',
+          textShadow: isSuddenDeath ? '0 0 8px ' + EW.bad : 'none', whiteSpace: 'nowrap',
+        }}, isSuddenDeath ? '⚡ SUDDEN DEATH' : (mode.label || '')),
+
+        h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 7 }},
+          h('span', { style: {
+            fontFamily: serif, fontSize: 23, fontWeight: 400, lineHeight: 1,
+            color: EW.ink, textShadow: '0 0 14px ' + EW.space + '66',
+            minWidth: 18, textAlign: 'right',
+          }}, mode.p1Score),
+          h('span', { style: {
+            fontFamily: serif, fontSize: 13, color: EW.inkDim, fontStyle: 'italic', lineHeight: 1,
+          }}, '–'),
+          h('span', { style: {
+            fontFamily: serif, fontSize: 23, fontWeight: 400, lineHeight: 1,
+            color: EW.ink, textShadow: '0 0 14px ' + EW.chaos + '66',
+            minWidth: 18, textAlign: 'left',
+          }}, mode.p2Score),
         ),
-        h('span', { style: { width: 1, height: 24, background: EW.panelEdge }}),
-        h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, lineHeight: 1 }},
-          h('span', { style: { fontFamily: mono, fontSize: 8, letterSpacing: '0.2em', color: EW.inkMute }}, 'ROUND'),
-          h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 1 }},
-            h('span', { style: {
-              fontFamily: serif, fontSize: 20, fontWeight: 600, color: EW.time, lineHeight: 1,
-              textShadow: '0 0 10px ' + EW.time + '55',
+
+        h('div', { style: {
+          display: 'flex', alignItems: 'baseline', gap: 6, lineHeight: 1, whiteSpace: 'nowrap',
+          fontFamily: mono, fontSize: 9, letterSpacing: '0.1em', color: EW.inkMute,
+        }},
+          scoreCaption && h('span', { style: { color: EW.inkDim, letterSpacing: '0.16em' }}, scoreCaption),
+          scoreCaption && h('span', { style: { color: EW.inkDim }}, '·'),
+          h('span', { style: { fontWeight: 700, color: EW.ink }}, mins + ':' + secs),
+          h('span', { style: { color: EW.inkDim }}, '·'),
+          h('span', null,
+            'R', h('span', { style: {
+              fontFamily: serif, fontSize: 12, fontWeight: 600, color: EW.time,
+              textShadow: '0 0 8px ' + EW.time + '55',
             }}, round),
-            roundLimit > 0 && h('span', { style: {
-              fontFamily: mono, fontSize: 11, color: EW.inkMute,
-            }}, '/' + roundLimit),
+            roundLimit > 0 ? '/' + roundLimit : '',
           ),
         ),
+
+        /* Nexus zone control pips (Arena) — cave/earth/sky ownership at a
+           glance; pulses red-hot when a team is ONE zone from an instant win. */
+        mode.nexusPips && h('div', { style: {
+          display: 'flex', alignItems: 'center', gap: 7, lineHeight: 1,
+        }},
+          mode.nexusPips.map(z => {
+            const zColor = z.owner === 1 ? EW.space : z.owner === 2 ? EW.chaos : 'rgba(255,255,255,0.28)';
+            const contested = z.owner === 0 && z.progress !== 0;
+            return h('span', {
+              key: z.key,
+              title: z.name + ' Nexus — ' + (z.owner ? 'Player ' + z.owner : contested ? 'contested' : 'unclaimed'),
+              className: mode.nexusAlertPlayer && z.owner === mode.nexusAlertPlayer ? 'ew-sudden-death' : undefined,
+              style: {
+                fontFamily: mono, fontSize: 11, color: zColor,
+                textShadow: z.owner ? '0 0 7px ' + zColor : 'none',
+              },
+            }, z.owner ? '⬢' : '⬡');
+          }),
+          mode.nexusAlertPlayer > 0 && h('span', { className: 'ew-sudden-death', style: {
+            fontFamily: mono, fontSize: 8, letterSpacing: '0.14em', color: EW.bad,
+            textShadow: '0 0 8px ' + EW.bad,
+          }}, 'P' + mode.nexusAlertPlayer + ' NEEDS 1 NEXUS!'),
+        ),
       ),
+
+      h(ScoreSideColumn, { st, mode, player: 2, side: 'right', color: EW.chaos, nextId }),
     ),
 
-    h(ScoreSideColumn, { st, mode, player: 2, side: 'right', color: EW.chaos }),
+    h(EntropyWing, { st, player: 2, side: 'right' }),
   );
 }
 
@@ -6503,7 +6567,7 @@ function _injectHudHideStyles() {
       box-shadow: 0 1px 2px rgba(0,0,0,0.6);
     }
     .ew-hints-bar {
-      position: absolute; top: calc(8px + 132px * var(--ew-hud-scale, 1));
+      position: absolute; top: calc(8px + 94px * var(--ew-hud-scale, 1));
       left: 50%; transform: translateX(-50%);
       display: flex; gap: 15px; align-items: center; z-index: 58;
       pointer-events: none;
@@ -6693,6 +6757,7 @@ function _injectHudHideStyles() {
       transition: opacity .3s ease, filter .3s ease, transform .18s cubic-bezier(.22,1,.36,1);
     }
     .ew-turn-chip:hover { transform: translateY(-2px); filter: brightness(1.18) !important; }
+    .ew-turn-chip-dead:hover { transform: none; filter: saturate(0.08) brightness(0.8) !important; }
     .ew-turn-chip-active { animation: ewTurnActive 1.7s ease-in-out infinite; }
     @keyframes ewTurnActive {
       0%, 100% { filter: brightness(1.0); }
@@ -7598,7 +7663,7 @@ function _injectHudHideStyles() {
        never cover the command panels at the bottom of the screen. */
     .battle-subtitle-bar {
       bottom: auto !important;
-      top: calc(14px + 150px * var(--ew-hud-scale, 1)) !important;
+      top: calc(14px + 104px * var(--ew-hud-scale, 1)) !important;
       align-items: flex-start !important;
     }
   `;

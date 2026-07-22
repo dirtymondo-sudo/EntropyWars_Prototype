@@ -4164,7 +4164,30 @@
     animation: apPressPulse 0.85s ease-out;
 }
 
-/* ── ⚛ ENTROPY GAUGE (scoreboard centre, hud.js EntropyMeter) ─────────── */
+/* ── ⚛ ENTROPY WINGS (blade gauges flanking the scoreboard, hud.js
+   EntropyWing) — layered VFX: whole-blade silhouette glow that swells with
+   charge, flowing plasma fill (animated gradient), diagonal shimmer sweep,
+   pulsing leading-edge flare, spinning ⚛ core at the tip. ─────────────── */
+.ew-entropy-wing {
+    filter: drop-shadow(0 0 5px rgba(120, 80, 200, 0.35));
+    transition: filter 0.4s ease;
+}
+/* past 70%: the blade starts to bloom */
+.ew-entropy-wing-surge {
+    animation: ewEntropyWingSurge 1.8s ease-in-out infinite;
+}
+@keyframes ewEntropyWingSurge {
+    0%, 100% { filter: drop-shadow(0 0 6px rgba(140, 95, 225, 0.5)); }
+    50%      { filter: drop-shadow(0 0 11px rgba(163, 108, 255, 0.75)); }
+}
+/* full: the whole wing blazes */
+.ew-entropy-wing-full {
+    animation: ewEntropyWingFull 1.1s ease-in-out infinite;
+}
+@keyframes ewEntropyWingFull {
+    0%, 100% { filter: drop-shadow(0 0 8px rgba(163, 108, 255, 0.75)); }
+    50%      { filter: drop-shadow(0 0 16px rgba(201, 165, 255, 1)) drop-shadow(0 0 30px rgba(163, 108, 255, 0.55)); }
+}
 @keyframes ewEntropyFullPulse {
     0%   { filter: brightness(1);    }
     50%  { filter: brightness(1.65); }
@@ -4172,6 +4195,59 @@
 }
 .ew-entropy-fill.ew-entropy-full {
     animation: ewEntropyFullPulse 0.9s ease-in-out infinite;
+}
+/* plasma flow — two seamless repeating-gradient bands stream across the fill
+   toward the blade tip (period == translate distance, so the loop never
+   jumps): a slow wide surge (::before) under the fast thin shimmer (::after,
+   defined below with the legacy shimmer block). Direction flips per side. */
+.ew-entropy-fill::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    left: -64px;
+    right: -64px;
+    pointer-events: none;
+    background: repeating-linear-gradient(90deg,
+        rgba(233, 213, 255, 0) 0 20px,
+        rgba(233, 213, 255, 0.30) 30px 36px,
+        rgba(233, 213, 255, 0) 46px 64px);
+    animation: ewEntropyShimmerR 2.4s linear infinite;
+}
+.ew-entropy-flow-l::before { animation-name: ewEntropyShimmerL64; }
+@keyframes ewEntropyShimmerR {
+    from { transform: translateX(-64px); }
+    to   { transform: translateX(0); }
+}
+@keyframes ewEntropyShimmerL64 {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-64px); }
+}
+/* leading-edge flare riding the fill front */
+.ew-entropy-tip {
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    width: 14px;
+    pointer-events: none;
+    background: radial-gradient(closest-side,
+        rgba(255, 255, 255, 0.95),
+        rgba(201, 165, 255, 0.6) 45%,
+        rgba(163, 108, 255, 0) 78%);
+    filter: blur(0.5px);
+    animation: ewEntropyTip 1.3s ease-in-out infinite;
+    transition: left 0.45s ease, right 0.45s ease;
+}
+@keyframes ewEntropyTip {
+    0%, 100% { opacity: 0.6; transform: scaleY(0.85); }
+    50%      { opacity: 1;   transform: scaleY(1.2); }
+}
+/* ⚛ core glyph: slow idle spin → wild spin when the team attack is up */
+.ew-entropy-glyph-idle {
+    display: inline-block;
+    animation: ewEntropyGlyphIdle 7s linear infinite;
+}
+@keyframes ewEntropyGlyphIdle {
+    to { transform: rotate(360deg); }
 }
 @keyframes ewEntropyGlyphReady {
     0%   { transform: scale(1) rotate(0deg);     text-shadow: 0 0 7px rgba(163, 108, 255, 0.8); }
@@ -4194,10 +4270,14 @@
     animation: ewOnFireFlicker 0.7s ease-in-out infinite;
 }
 
-/* charging shimmer sweeping across the gauge fill */
+/* fast thin shimmer sweeping across the gauge fill (direction per side) */
 @keyframes ewEntropyShimmer {
     from { transform: translateX(-22px); }
     to   { transform: translateX(0); }
+}
+@keyframes ewEntropyShimmerL {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-22px); }
 }
 .ew-entropy-fill { position: absolute; }
 .ew-entropy-fill::after {
@@ -4205,11 +4285,13 @@
     position: absolute;
     inset: 0;
     left: -22px;
+    right: -22px;
     background: repeating-linear-gradient(115deg,
         rgba(255, 255, 255, 0.16) 0 5px, transparent 5px 11px);
     animation: ewEntropyShimmer 1.05s linear infinite;
     pointer-events: none;
 }
+.ew-entropy-flow-l::after { animation-name: ewEntropyShimmerL; }
 /* orb-arrival kick */
 .ew-entropy-hit {
     filter: brightness(1.9);

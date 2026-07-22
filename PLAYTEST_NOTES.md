@@ -2859,7 +2859,18 @@ opted to verify the combat flows live in-game).
 - **Round 2 feedback pass (same day, token → `20260706n`)**: gauges moved to a
   BIG full-width strip along the scoreboard's BOTTOM edge (11px, quarter
   ticks, shimmer sweep, pulsing READY label; root gets paddingBottom:15;
-  meters have ids `ewEntropyMeterP1/2`). "⚛ +N ENTROPY" floating text REMOVED —
+  meters have ids `ewEntropyMeterP1/2`). **2026-07-22 (`20260722b`): SUPERSEDED
+  — scoreboard rebuilt as ONE THIN ROW** (hud.js Scoreboard/ScoreSideColumn:
+  name block BESIDE the turn flank, compact 3-line centre: mode / score /
+  caption·time·round). Entropy gauges are now blade-shaped **WINGS flanking
+  the strip** (hud.js `EntropyWing`, same `ewEntropyMeterP1/2` ids so orb
+  flight still works; CSS in styles-hud.css "ENTROPY WINGS" block — plasma
+  flow layers on `.ew-entropy-fill::before/::after`, `.ew-entropy-tip` flare,
+  wing-level drop-shadow bloom at ≥70% + full). Turn clock: dead units stay
+  in the flank as greyed ☠ chips (replaces the "3/4 ALIVE" text row, removed
+  from `_getModeInfo` for tdm/ffa/gauntlet) and the globally next-to-act unit
+  gets a NEXT tag under its chip (nextId computed in Scoreboard from
+  `_scoreboardTurnData`). "⚛ +N ENTROPY" floating text REMOVED —
   replaced by `window._entropyOrbsFly(player, amt, srcUnit)` (hud.js): 1-8
   glowing motes pop at the earning unit's screen position (THREE.Vector3
   .project via bare `ThreeCamera.getCamera()` + `CONFIG.tileSize`; falls back
