@@ -3349,7 +3349,12 @@ function ActionMenu({ st, hidden }) {
   // contents live on the tool rows, the root ladder, and the tile/ally
   // quick menus (click a tile / unit to reach Inspect, Ward, Ping, Trade,
   // Recall, Enter Building…).
-  const actions = [moveAction, attackAction, abilAction, comboAction, itemsAction, guardAction];
+  // Clash (classic JRPG battle): there is no Move verb at all — the ladder
+  // reads Attack › Abilities › Combo › Items › Guard, like a proper JRPG
+  // command menu.
+  const actions = (typeof _isClashMode === 'function' && _isClashMode())
+    ? [attackAction, abilAction, comboAction, itemsAction, guardAction]
+    : [moveAction, attackAction, abilAction, comboAction, itemsAction, guardAction];
 
   // ⇄ SWITCH — gauntlet modes only: swap in a benched reserve.
   if (typeof _isGauntlet === 'function' && _isGauntlet()) {

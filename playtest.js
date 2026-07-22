@@ -1,6 +1,6 @@
 // Entropy Wars automated playtest harness.
 // Usage:  node playtest.js <mode>        e.g. node playtest.js tdm
-//   modes: arena | tdm | ffa | domination | hotspot | ctf
+//   modes: arena | tdm | clash | simul | gauntlet
 //
 // Drives Player 1 against the CPU with simple tactics (cast offensive spell on
 // the weakest enemy in range, else basic-attack, else advance), casting real
@@ -12,9 +12,8 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 
 const MODE = (process.argv[2] || 'tdm').toLowerCase();
-const MODE_LABELS = { arena: 'arena', tdm: 'death\\s*match', ffa: 'free\\s*for\\s*all',
-  domination: 'domination', hotspot: 'hotspot|restpot', ctf: 'capture\\s*the\\s*flag',
-  simul: 'simul' };
+const MODE_LABELS = { arena: 'arena', tdm: 'death\\s*match', clash: 'clash',
+  simul: 'simul', gauntlet: 'gauntlet' };
 const MODE_RE = MODE_LABELS[MODE] || MODE_LABELS.tdm;
 const SHOTS = __dirname + '/shots';
 const sleep = ms => new Promise(r => setTimeout(r, ms));

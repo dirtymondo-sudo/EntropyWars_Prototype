@@ -33,7 +33,7 @@ const ACCT_UNIT_PRICE     = 5000;
 const ACCT_STARTING_GOLD  = 0;
 const ACCT_FREE_TOKENS    = 1;
 const ACCT_MATCH_GOLD_CAP = 5000;
-const ACCT_PVP_MODES = new Set(['arena', 'tdm', 'ffa', 'domination', 'hotspot', 'ctf']);
+const ACCT_PVP_MODES = new Set(['arena', 'tdm', 'clash']);
 const ACCT_STARTER_UNITS = [
     'men in black', 'wizard', 'werewolf', 'mad scientist', 'homosapien', 'catgirl',
     'fortune teller', 'bigfoot', 'grey', 'marksman', 'knight', 'fairy',
@@ -396,10 +396,11 @@ setInterval(() => {
                     matched.add(i);
                     matched.add(j);
 
-                    const actualTeamSize = a.teamSize || parseInt(queueKey);
                     const rankedMode = a.rankedMode || 'arena';
+                    // Clash always plays 4v4 on its fixed JRPG stage.
+                    const actualTeamSize = rankedMode === 'clash' ? 4 : (a.teamSize || parseInt(queueKey));
                     const code = generateCode();
-                    const map = pickRandomMap(actualTeamSize);
+                    const map = rankedMode === 'clash' ? { modeId: 'clash_stage' } : pickRandomMap(actualTeamSize);
 
                     let host = a, guest = b;
                     if (b.elo > a.elo || (b.elo === a.elo && Math.random() > 0.5)) {

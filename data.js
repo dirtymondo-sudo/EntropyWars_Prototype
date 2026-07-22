@@ -9251,7 +9251,7 @@ const ACCT_STARTER_UNITS = [
 
 // PvP modes that bank account gold. Gauntlet/Challenge route through their own
 // campaign economy and are intentionally excluded here.
-const ACCT_PVP_MODES = ['arena', 'tdm', 'ffa', 'domination', 'hotspot', 'ctf'];
+const ACCT_PVP_MODES = ['arena', 'tdm', 'clash'];
 
 // One ownership check everything routes through. View-layer only — purchasing is
 // always server-authoritative; this just decides what shows as owned/selectable.
@@ -11288,6 +11288,39 @@ function _mdBuildHub() {
     ];
     return entry;
 }
+
+/* ── The Clash stage ───────────────────────────────────────────────────────
+   The fixed battlefield for Clash (classic JRPG battle, MULTIPLAYER_MODES.
+   clash in state.js). 12×6, perfectly flat at the MapForge surface baseline:
+   two facing formation rows of 4 stone pads (x=2 and x=9, y=1..4) with a
+   7-tile grass field between them so spell cinematics have room to play.
+   Registered by hand like the Guild Hub — it must NOT be in EW_MAP_META
+   (no Δ variants, no standard map-picker card). */
+(function _registerClashStage() {
+    const W = 12, H = 6, PAD = 13 /* road */, GRASS = 1;
+    const grid = [];
+    for (let y = 0; y < H; y++) {
+        const row = new Array(W).fill(GRASS);
+        if (y >= 1 && y <= 4) { row[2] = PAD; row[9] = PAD; }
+        grid.push(row);
+    }
+    PREBUILT_MAPS.clash_stage = {
+        name: 'Clash Stage', w: W, h: H,
+        grid,
+        heightMap: Array.from({ length: H }, () => new Array(W).fill(3)),
+        objects: Array.from({ length: H }, () => Array.from({ length: W }, () => [])),
+        spawns: {
+            1: [{ x: 2, y: 1 }, { x: 2, y: 2 }, { x: 2, y: 3 }, { x: 2, y: 4 }],
+            2: [{ x: 9, y: 1 }, { x: 9, y: 2 }, { x: 9, y: 3 }, { x: 9, y: 4 }],
+        },
+    };
+    MAP_LAYOUT_PRESETS.clash_stage = {
+        sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: H - 1, label: 'Earth', baseTerrain: 'grass_2' }, buffer2: null, below: null },
+        barrierRows: [], barrierOpeningsX: [], hasFloors: false,
+        env: { tint: 0x2a1f4a, tintAmt: 0.35, stars: 1.1, nebula: 0.8, fog: { color: 0x3a2f5a, amount: 0.4, top: 0.05, band: 0.5 }, scenery: 'crystals' },
+        streetLamps: false,
+    };
+})();
 
 (function _mdRegisterHub() {
     try {

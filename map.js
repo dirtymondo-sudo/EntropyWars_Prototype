@@ -1196,15 +1196,13 @@
                             <select class="pm-nametag-select" id="mmTrainMode" style="flex:1">
                                 <option value="arena" selected>Arena</option>
                                 <option value="tdm">Team Deathmatch</option>
-                                <option value="domination">Domination</option>
-                                <option value="hotspot">Hotspot</option>
                             </select>
                         </div>
                         <div class="pm-set-row" style="margin-bottom:8px;align-items:center;gap:8px">
                             <span class="pm-vol-label">Map</span>
                             <select class="pm-nametag-select" id="mmTrainMap" style="flex:1">
                                 <option value="rotate" selected>Rotate (all sizes)</option>
-                                <option value="medium">Clash (8×8)</option>
+                                <option value="medium">Medium (8×8)</option>
                                 <option value="large">Siege (12×12)</option>
                                 <option value="xlarge">Conquest (18×20)</option>
                             </select>
@@ -1275,12 +1273,8 @@
         const MS_GAME_MODES = [
             { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the tower, wipe out the enemy, collect every hourglass — or hold ALL 3 Nexus zones at once for an instant win: the center Nexus plus BOTH spawn zones (yours starts captured — steal theirs by surviving inside their spawn). 15 rounds; Arena score decides otherwise.', tag: null, locked: false },
             { id: 'tdm', icon: '💀', label: 'Team Deathmatch', desc: 'Most kills in 12 rounds wins. Wipeout also wins instantly. Sudden Death if tied.', tag: null, locked: false },
-            { id: 'shooter', icon: '🎯', label: 'Strike Mode', desc: 'REAL-TIME third-person shooter deathmatch — no turns, everyone fights at once. WASD runs, mouse aims, LMB shoots/casts, every spell on a cooldown. First to 25 kills or best score in 8:00. Controller supported.', tag: 'BETA', locked: false },
+            { id: 'clash', icon: '🎴', label: 'Clash', desc: 'Classic JRPG battle — 4v4 on a fixed stage, no movement. Two parties face off across the field: attack, cast, use an item, or Guard, then the next unit steps up. Wipe out the enemy party to win.', tag: 'NEW', locked: false },
             { id: 'simul', icon: '♟️', label: 'Simul', desc: 'SIMULTANEOUS turns — both sides secretly order one unit (any unit, 2 AP), then the orders play out together: priority first, then speed. Displaced targets are re-acquired or the action whiffs. Most kills in 12 rounds wins.', tag: 'EXPERIMENTAL', locked: false },
-            { id: 'ffa', icon: '👤', label: 'Free For All', desc: 'Every player for themselves. Most kills in 15 rounds. No teams.', tag: null, locked: false },
-            { id: 'domination', icon: '🚩', label: 'Domination', desc: 'Capture and hold Nexus points to earn points every round. Most points in 15 rounds wins.', tag: null, locked: false },
-            { id: 'hotspot', icon: '🔥', label: 'Hotspot', desc: 'One Nexus spawns at a time. Capture it to score — then it teleports somewhere new. 15 rounds.', tag: null, locked: false },
-            { id: 'ctf', icon: '🏳️', label: 'Capture the Flag', desc: 'Steal the enemy flag from their base and return it to your sanctuary to score. First to 3 or most in 15 rounds.', tag: null, locked: false },
             { id: 'gauntlet', icon: '⚔️', label: 'Gauntlet', desc: 'Pokémon-style. Roster of 8, deploy 4 at a time. No respawns, no round limit. Switch a reserve in for 2 AP. Wipe out the enemy team to win.', tag: 'NEW', locked: false },
         ];
 
@@ -1296,6 +1290,9 @@
                 list.push({ modeId: m.id, name: m.label, size: m.w + '×' + m.h, team: m.teamSize, floors: false, w: m.w, h: m.h, isPrebuilt: true, tier: m.tier, biomes: m.biomes });
             });
             list.push({ modeId: 'prebuilt_custommap', name: 'Custom Map', size: '20×20', team: 6, floors: false, w: 20, h: 20, isPrebuilt: true });
+            /* Clash's fixed JRPG stage — only ever offered when the Clash mode
+               is selected (it's the mode's sole compatible map). */
+            list.push({ modeId: 'clash_stage', name: 'Clash Stage', size: '12×6', team: 4, floors: false, w: 12, h: 6, isPrebuilt: true });
             // Only the 8×8 Δ appears in the picker; the 12×12 Arena Δ is a
             // hidden sibling that _msConfirm swaps in when the mode is Arena.
             meta.filter(m => m.isDelta && !m.isDeltaArena).forEach(m => {
@@ -1323,8 +1320,8 @@
 
             const gm = MS_GAME_MODES[_msSelectedGM];
             const mpMode = gm ? MULTIPLAYER_MODES[gm.id] : null;
-            if (mpMode && mpMode.isFFA && mpMode.maxPlayers) {
-                cap = Math.min(mpMode.maxPlayers, cap);
+            if (mpMode && mpMode.isClash) {
+                cap = Math.min(cap, mode.spawns[1].length);
             }
             return cap;
         }
@@ -1584,6 +1581,12 @@
                 && typeof GAME_MODES !== 'undefined' && GAME_MODES[mp.modeId + '_arena']) {
                 launchModeId = mp.modeId + '_arena';
             }
+            /* Clash always plays 4v4 on its fixed JRPG stage — whatever map
+               card or team size happened to be selected doesn't apply. */
+            if (gm && gm.id === 'clash') {
+                launchModeId = 'clash_stage';
+                _msSelectedTeamSize = 4;
+            }
             applyGameMode(launchModeId);
 
             const customTeam = _msSelectedTeamSize;
@@ -1637,50 +1640,6 @@
             activeMultiplayerMode = gm.id;
 
             const mpMode = MULTIPLAYER_MODES[gm.id];
-            if (mpMode && mpMode.isFFA) {
-                const totalPlayers = _msSelectedTeamSize;
-                const mode = GAME_MODES[launchModeId];
-                CONFIG.teamSize = 1;
-
-                const allSpawns = [...(mode.spawns[1] || []), ...(mode.spawns[2] || [])];
-
-                const w = mode.boardWidth || mode.boardSize || 16;
-                const h = mode.boardHeight || mode.boardSize || 16;
-                while (allSpawns.length < totalPlayers) {
-                    const margin = 2;
-                    allSpawns.push({
-                        x: margin + Math.floor(Math.random() * (w - margin * 2)),
-                        y: margin + Math.floor(Math.random() * (h - margin * 2))
-                    });
-                }
-                SPAWNS[1] = allSpawns.slice(0, 1);
-                SPAWNS[2] = allSpawns.slice(1, totalPlayers);
-
-                DEFAULT_BUILDS[1] = ['Warrior'];
-                DEFAULT_BUILDS[2] = [];
-                const classNames = Object.keys(CLASS_TEMPLATES);
-                for (let i = 0; i < totalPlayers - 1; i++) {
-                    DEFAULT_BUILDS[2].push(classNames[Math.floor(Math.random() * classNames.length)]);
-                }
-
-                state.partyBuilds[1] = [state.partyBuilds[1]?.[0] || 'Warrior'];
-                state.partyNames[1] = [state.partyNames[1]?.[0] || getDefaultUnitName(state.partyBuilds[1][0])];
-                state.loadouts[1] = [state.loadouts[1]?.[0] || emptyLoadout()];
-                if (!state.partyMeta[1]) state.partyMeta[1] = [];
-                state.partyMeta[1].length = 1;
-
-                state.partyBuilds[2] = DEFAULT_BUILDS[2].slice();
-                state.partyNames[2] = state.partyBuilds[2].map(cls => getDefaultUnitName(cls));
-                state.loadouts[2] = state.partyBuilds[2].map((cls, idx) =>
-                    typeof optimizeLoadoutForClass === 'function'
-                        ? optimizeLoadoutForClass(cls, '')
-                        : emptyLoadout()
-                );
-                if (!state.partyMeta[2]) state.partyMeta[2] = [];
-                state.partyMeta[2] = state.partyBuilds[2].map(() => ({}));
-
-                state._ffaPlayerCount = totalPlayers;
-            }
 
             /* Gauntlet (Pokémon-style): roster of 8 per side, only 4 deploy on the
                board, the other 4 wait on the bench. CONFIG.teamSize drives the party
@@ -5396,6 +5355,9 @@
         }
 
         function isRangeBlockedByTerrain(x1, y1, x2, y2, sourceZ, targetZ, forVision) {
+            /* Clash: line-of-sight is waived along with range — the stage is
+               flat and every combatant can always be reached. */
+            if (typeof _isClashMode === 'function' && _isClashMode()) return false;
 
             // All 8 neighbours (cardinal AND diagonal) are point-blank and are
             // never blocked by terrain line-of-sight. A diagonal neighbour is
@@ -5956,6 +5918,16 @@
                (The old edge-row relocation/flatten pass below would also
                deface the maze walls — doubly not wanted.) */
             if (typeof _isDungeonMode === 'function' && _isDungeonMode()) {
+                state.spawnZones = null;
+                return;
+            }
+
+            /* Clash: NO spawn zones either. The authored formation tiles ARE
+               where units stand for the entire match — the edge-row relocation
+               pass below would tear the two facing rows apart, and spawn-zone
+               perks (15%/turn idle regen, pulsing overlays) would be permanent
+               for everyone since nobody ever moves. No respawns, no zones. */
+            if (typeof _isClashMode === 'function' && _isClashMode()) {
                 state.spawnZones = null;
                 return;
             }
@@ -6920,6 +6892,15 @@
                     if (!Array.isArray(newUnit.spells)) newUnit.spells = [];
                     newUnit.spells.push({ ..._grapple, cost: 12 });
                 }
+            }
+
+            /* Clash: strip movement/positioning spells from the kit — the one
+               place that keeps the menus, the AI and the online mirror in
+               agreement without per-site checks. */
+            if (typeof _isClashMode === 'function' && _isClashMode()
+                && typeof window._clashSpellAllowed === 'function') {
+                newUnit.spells = (newUnit.spells || []).filter(window._clashSpellAllowed);
+                newUnit._raceAbilities = (newUnit._raceAbilities || []).filter(window._clashSpellAllowed);
             }
 
             return newUnit;

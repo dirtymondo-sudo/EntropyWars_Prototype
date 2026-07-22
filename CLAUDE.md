@@ -76,7 +76,7 @@ PLAYTEST_NOTES.md. There is a ready-made harness — don't rebuild it:
 npm install && npm start            # server on :3000 (background it)
 # first time only:
 npm install playwright && npx playwright install chromium --with-deps
-node playtest.js tdm                # arena | tdm | ffa | domination | hotspot | ctf
+node playtest.js tdm                # arena | tdm | clash | simul | gauntlet
 ```
 
 It drives the real menus → starts a VS-CPU match → plays P1 with real tactics and

@@ -1875,11 +1875,24 @@
                     var rd = document.getElementById('friendlyRoundDisplay');
                     if (rd) rd.textContent = _friendlyRounds;
                 }
+                /* Clash is locked to 4v4 on its fixed stage with no round
+                   limit — fight to the wipeout. */
+                if (mpMode && mpMode.isClash) {
+                    _friendlySize = 4;
+                    var sbtns = document.querySelectorAll('#friendlySizeChips .ranked-size-btn');
+                    sbtns.forEach(function(b) { b.classList.toggle('active', parseInt(b.getAttribute('data-size')) === 4); });
+                    _friendlyRounds = 0;
+                    var rd2 = document.getElementById('friendlyRoundDisplay');
+                    if (rd2) rd2.textContent = '∞';
+                }
                 _friendlyRefreshMaps();
                 _friendlyEmitConfig();
             };
 
             window.friendlySetSize = function(size) {
+                // Clash is 4v4 only.
+                if (size !== 4 && typeof MULTIPLAYER_MODES !== 'undefined'
+                    && MULTIPLAYER_MODES[_friendlyMode] && MULTIPLAYER_MODES[_friendlyMode].isClash) return;
                 _friendlySize = size;
                 var btns = document.querySelectorAll('#friendlySizeChips .ranked-size-btn');
                 btns.forEach(function(b) { b.classList.toggle('active', parseInt(b.getAttribute('data-size')) === size); });
@@ -1893,6 +1906,9 @@
             };
 
             window.friendlyStepRounds = function(delta) {
+                // Clash has no round limit — the stepper is inert.
+                if (typeof MULTIPLAYER_MODES !== 'undefined'
+                    && MULTIPLAYER_MODES[_friendlyMode] && MULTIPLAYER_MODES[_friendlyMode].isClash) return;
                 _friendlyRounds = Math.max(5, Math.min(99, _friendlyRounds + delta));
                 var rd = document.getElementById('friendlyRoundDisplay');
                 if (rd) rd.textContent = _friendlyRounds;
@@ -1927,6 +1943,10 @@
                 btns.forEach(function(b) {
                     b.classList.toggle('active', b.getAttribute('data-mode') === mode);
                 });
+                // Clash queues are 4v4 only — snap the size chips to match.
+                if (mode === 'clash' && typeof window.lobbySetQueueSize === 'function') {
+                    window.lobbySetQueueSize(4);
+                }
             };
 
             window.lobbyCreateRoom = function() {
@@ -1985,6 +2005,8 @@
             window.lobbyShowRankedQueue = window.lobbyShowQuickPlay;
 
             window.lobbySetQueueSize = function(size) {
+                // Clash is locked to 4v4.
+                if (size !== 4 && _queueMode === 'clash') return;
                 _queueTeamSize = size;
                 var btns = document.querySelectorAll('.ranked-size-btn');
                 btns.forEach(function(b) {

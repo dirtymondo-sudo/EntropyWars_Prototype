@@ -528,6 +528,9 @@ function MatchSelect() {
   const gm = gameModes[gmIdx] || { id: 'arena', icon: '🏰', label: 'Arena', desc: '' };
   const mpMode = multiplayerModes[gm.id] || {};
   const isFFA = !!mpMode.isFFA;
+  /* A mode pinned to a single map (Clash) always shows that map — the Δ /
+     size filters would otherwise hide it and empty the map grid. */
+  const pinnedMap = !!(mpMode.compatibleMaps && mpMode.compatibleMaps.length === 1);
 
   const maxTeamForMap = useCallback((mi) => {
     const mp = mapList[mi];
@@ -537,7 +540,7 @@ function MatchSelect() {
     const spawnCount = mode.spawns[1].length;
     const areaCap = Math.floor(((mp.w || 8) * (mp.h || 8)) / 4);
     let cap = Math.min(Math.max(spawnCount, areaCap), 16);
-    if (isFFA && mpMode.maxPlayers) cap = Math.min(mpMode.maxPlayers, cap);
+    if (mpMode.isClash) cap = Math.min(cap, spawnCount);
     return cap;
   }, [gmIdx, isFFA]);
 
@@ -560,6 +563,7 @@ function MatchSelect() {
   }, [gmIdx]);
 
   const filteredMaps = useMemo(() => {
+    if (pinnedMap) return compatibleMapIndices;
     return compatibleMapIndices.filter(i => {
       const m = mapList[i];
       if (!m) return false;
@@ -571,7 +575,7 @@ function MatchSelect() {
       if (query && !m.name.toLowerCase().includes(query.toLowerCase())) return false;
       return true;
     });
-  }, [compatibleMapIndices, sizeFilter, deltaOnly, query]);
+  }, [compatibleMapIndices, sizeFilter, deltaOnly, query, pinnedMap]);
 
   // When the Δ toggle flips, keep the selection valid: if the current map is
   // filtered out, jump to the first map that still matches.
@@ -606,10 +610,9 @@ function MatchSelect() {
     ? '12×12 Δ' : (mp.size || (mp.w + '×' + mp.h));
   const maxT = maxTeamForMap(mapIdx);
   const teamDisplay = isFFA ? '' + teamSize : teamSize + 'v' + teamSize;
-  const winLabel = mpMode.hasTowers ? 'Tower/Elim' :
-    mpMode.scoringType === 'kills' ? 'Most Kills' :
-    mpMode.scoringType === 'domination' || mpMode.scoringType === 'hotspot' ? 'Most Pts' :
-    mpMode.scoringType === 'ctf' ? 'Captures' : 'Composite';
+  const winLabel = mpMode.isClash ? 'Wipeout' :
+    mpMode.hasTowers ? 'Tower/Elim' :
+    mpMode.scoringType === 'kills' ? 'Most Kills' : 'Composite';
 
   function handleConfirm() {
     if (typeof window._msConfirm === 'function') window._msConfirm();

@@ -280,6 +280,9 @@
 
         function getEffectiveRange(unit) {
             if (!unit) return 1;
+            /* Clash: range is waived — any combatant can strike any other
+               across the battlefield, exactly like a menu-driven JRPG. */
+            if (typeof _isClashMode === 'function' && _isClashMode()) return 99;
             const weatherMod = getWeatherStatMod(unit).rng || 0;
             const mountainBonus = (isOnMountain(unit) && unitHasClimbingBoots(unit)) ? 1 : 0;
             const overclockRangeBonus = (unitHasStatus(unit, 'overclock') && unit.types && unit.types.includes('tech')) ? 1 : 0;
@@ -1730,7 +1733,10 @@
         // the spell definition and animation profile.
         // ═══════════════════════════════════════════════════════════════════
         function _runPostEffects(unit, spell, target) {
-            if (spell.chargeToTarget && !unit.dead) {
+            /* Clash: the charge-in hop and the swap-through are repositioning —
+               the strike itself already landed, formation holds. */
+            const _clashPinned = typeof _isClashMode === 'function' && _isClashMode();
+            if (spell.chargeToTarget && !unit.dead && !_clashPinned) {
                 // Skip the charge-in HOP when the caster already charged across
                 // the gap up front (the third-person follow-cam path in
                 // _runChargeToTargetSpell moved them and struck on arrival); the
@@ -3042,6 +3048,10 @@
         // colossal units simply do not budge. Every push path funnels through
         // this so spells, previews and the AI agree.
         function getUnitPushDistance(unit, baseDist) {
+            /* Clash: knockback never budges anyone — damage lands, formation
+               holds. Every push path funnels through here, so one gate no-ops
+               push/displacement/linePush across the whole engine. */
+            if (typeof _isClashMode === 'function' && _isClashMode()) return 0;
             const d = Math.max(0, baseDist || 0);
             if (!d || !unit) return d;
             const wc = (typeof getUnitWeightClass === 'function') ? getUnitWeightClass(unit) : 'medium';
@@ -3803,8 +3813,10 @@
                         if (_crSteps.length > 0) _fanFlamesAlongPush(target, _crSteps, pdx, pdy, unit);
                     }
 
-                    // AoePull-style pull toward center
-                    if (!target.dead && spell.pullToCenter && opts.pullCenter) {
+                    // AoePull-style pull toward center (Clash: damage only —
+                    // nobody leaves their formation tile)
+                    if (!target.dead && spell.pullToCenter && opts.pullCenter
+                        && !(typeof _isClashMode === 'function' && _isClashMode())) {
                         const pdx = Math.sign(opts.pullCenter.x - target.x), pdy = Math.sign(opts.pullCenter.y - target.y);
                         const nx = target.x + pdx, ny = target.y + pdy;
                         const _apOldX = target.x, _apOldY = target.y;
@@ -4283,6 +4295,9 @@
 
         function getEffectiveSpellRange(unit, spell) {
             if (!unit || !spell) return spell?.range || 0;
+            /* Clash: every ranged spell reaches the whole battlefield. Range-0
+               (self-cast) spells keep their shape. */
+            if ((spell.range || 0) > 0 && typeof _isClashMode === 'function' && _isClashMode()) return 99;
             let range = spell.range || 0;
 
             if (HIGH_GROUND_RANGE_BONUS && range >= 2) {
@@ -15987,7 +16002,10 @@
                 if (!unit.status) return false;
                 return Object.keys(unit.status).some(k => STATUS_DEFS[k]?.kind === 'debuff');
             }
-            if (itemKey === 'warpStone') return true;
+            if (itemKey === 'warpStone') {
+                // Clash: warp stones are movement — there is nowhere to go.
+                return !(typeof _isClashMode === 'function' && _isClashMode());
+            }
             return true;
         }
 
@@ -18017,6 +18035,10 @@
         }
 
         function canUnitMove(unit) {
+            /* Clash (classic JRPG battle): nobody ever moves — units hold
+               their formation tiles for the whole match. This single gate
+               blocks doMove (engine + online replay) and both AIs. */
+            if (typeof _isClashMode === 'function' && _isClashMode()) return false;
             if (!canUnitAct(unit)) return false;
             if ((unit.movesThisTurn || 0) >= UNIT_MAX_MOVES) return false;
 
@@ -18029,6 +18051,13 @@
         }
 
         function spendAP(unit, cost) {
+            /* Clash: one action per turn, period — attack, spell, item or
+               Guard all pass the baton (the SMT-style press refund can still
+               hand it back). Zero-cost freebies (inspect) stay free. */
+            if (cost > 0 && typeof _isClashMode === 'function' && _isClashMode()) {
+                unit.ap = 0;
+                return;
+            }
             unit.ap = Math.max(0, (unit.ap || 0) - cost);
         }
 
@@ -20268,7 +20297,7 @@
                 const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
                 const modeId = mpMode && mpMode.id;
                 const pvpModes = (typeof ACCT_PVP_MODES !== 'undefined' && Array.isArray(ACCT_PVP_MODES))
-                    ? ACCT_PVP_MODES : ['arena', 'tdm', 'ffa', 'domination', 'hotspot', 'ctf'];
+                    ? ACCT_PVP_MODES : ['arena', 'tdm', 'clash'];
                 if (!modeId || pvpModes.indexOf(modeId) === -1) return;
 
                 const PS = window.ProfileSystem;
@@ -22345,6 +22374,13 @@
             _finalizing = false;
             _invalidateBoardGrid();
 
+            /* Clash: no fog of war, ever — both formations are always in full
+               view (covers online's fog default and the user's VS-CPU fog
+               toggle alike; the host syncs this to the guest). */
+            if (typeof _isClashMode === 'function' && _isClashMode()) {
+                state.fogOfWar = false;
+            }
+
             if (!(state.devAutoSim && state.cameraDisabled)) {
                 state.userZoomScale = 0;
             }
@@ -22366,6 +22402,18 @@
                 // from the previous match must not leak into the next one (the
                 // turn-start framing and the Move/free-aim framing both honor it).
                 camera._restTilt = Math.min(getCameraPreset().tilt, REST_TILT_MAX);
+                /* Clash: rest on a low, near-horizon cinematic pitch so the two
+                   formation rows read like a classic JRPG battle screen. Every
+                   turn-start framing and action-cam return honors _restTilt,
+                   so the whole match keeps this pose without further gating
+                   (62 = REST_TILT_MAX, the lowest the rest pitch may sit). */
+                if (typeof _isClashMode === 'function' && _isClashMode()) {
+                    const _clashTilt = Math.min(58, REST_TILT_MAX);
+                    camera.tilt = _clashTilt;
+                    camera._smoothTilt = _clashTilt;
+                    camera._restTilt = _clashTilt;
+                    state.dioramaTiltDeg = _clashTilt;
+                }
             }
             // When the match is started from a menu, CONFIG.tileSize is still the
             // menu value (MENU_TILE). The 3D renderer runs continuously, so the
@@ -32440,6 +32488,8 @@
 
         function getJumpTiles(unit) {
             if (!unit || unit.dead) return [];
+            // Clash: jumping is movement — formation tiles are forever.
+            if (typeof _isClashMode === 'function' && _isClashMode()) return [];
             // AIRBORNE flyers glide with Move — no jumping mid-air. A flyer
             // standing on the ground leaps like anyone else (a 1-AP hop up a
             // ledge should never force a 2-AP takeoff-and-hover).
@@ -33714,6 +33764,10 @@
 
         function canChangeAltitude(unit, mode) {
             if (!unit || unit.dead || unit._dying) return { ok: false, reason: 'Unit is dead.' };
+            /* Clash: taking off is movement — wings stay folded in formation. */
+            if (typeof _isClashMode === 'function' && _isClashMode()) {
+                return { ok: false, reason: 'No flying in a Clash formation battle.' };
+            }
             if (!canFly(unit)) return { ok: false, reason: 'Only flying units can change altitude.' };
             const cfg = FLYING_ALTITUDE_CONFIG;
             if ((unit.ap || 0) < cfg.apCost) return { ok: false, reason: 'Not enough AP.' };
@@ -34123,6 +34177,8 @@
         // blade greying. Per-tile validity lives in _buildProblem.
         function _buildActionProblem(unit) {
             if (!unit || unit.dead || unit._dying) return 'No unit';
+            // Clash: no terraforming on the formation stage.
+            if (typeof _isClashMode === 'function' && _isClashMode()) return 'Not in Clash';
             if (typeof isUnitAirborne === 'function' && typeof canFly === 'function'
                 && canFly(unit) && isUnitAirborne(unit)) return 'Land first';
             if (unit.status && getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove || STATUS_DEFS[k]?.blockAction)) {
@@ -35772,6 +35828,14 @@
                 return 0;
             }
             const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+            /* Clash final authority: movement/positioning spells can never
+               fire, whatever path armed them (kits are already stripped —
+               this catches stale online/AI edge cases). */
+            if (spell && typeof _isClashMode === 'function' && _isClashMode()
+                && typeof window._clashSpellAllowed === 'function' && !window._clashSpellAllowed(spell)) {
+                addLog(`${spell.name} has no place in a Clash formation battle.`);
+                return 0;
+            }
             if (!spell) {
                 addLog('No spell selected.');
                 state._teleportingUnit = null;
@@ -36243,6 +36307,7 @@
                     }, impactDelay);
                 } else if (spell.chargeToTarget && state.cinematicActionCam && !_skipVisuals()
                         && target && target.id !== unit.id
+                        && !(typeof _isClashMode === 'function' && _isClashMode())
                         && (Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y) > 1)
                         && !(state.fogOfWar && typeof getViewerPlayer === 'function'
                              && state.activePlayer !== getViewerPlayer())) {
@@ -37332,6 +37397,9 @@
                 }
                 unit.mp -= effectiveSpellCost;
                 let pullDist = spell.pullDistance || 3;
+                // Clash: the yank lands (tether, damage, log) but nobody is
+                // dragged off their formation tile.
+                if (typeof _isClashMode === 'function' && _isClashMode()) pullDist = 0;
                 if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(target) === 'colossal') {
                     pullDist = 0;
                     addLog(`${unitDisplayName(target)} is far too heavy to drag!`);
@@ -40701,6 +40769,9 @@
         }
 
         function getMoveTiles(unit) {
+            /* Clash: no movement — empty set greys the Move button
+               (getActionPanelCache) and kills every range overlay/preview. */
+            if (typeof _isClashMode === 'function' && _isClashMode()) return [];
             const maxCost = getEffectiveMove(unit);
             const tiles = [];
             const tileSet = new Set();

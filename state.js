@@ -220,37 +220,6 @@
                 suddenDeath: true,
                 compatibleMaps: [],   // generated below from the MapForge roster
             },
-            /* FULL REAL-TIME third-person shooter Team Deathmatch. No turns,
-               no AP: everyone moves and acts simultaneously; spells fire on
-               timed cooldowns auto-derived from their turn-based costs, and
-               the round-based ambience (zodiac / celestial events / weather /
-               status ticks) runs on real-time clocks instead of rounds.
-               isShooter drives battle.js's ShooterControls camera+input layer;
-               isRealtime drives the StrikeEngine (real-time combat loop, bots,
-               respawns, match clock). scoringType 'kills' keeps the stock
-               score/win plumbing working. The turn-based game is untouched —
-               every real-time branch gates on _isStrikeRT(). */
-            shooter: {
-                id: 'shooter',
-                label: 'Strike Mode',
-                icon: '🎯',
-                desc: 'REAL-TIME third-person shooter deathmatch. WASD runs, mouse looks, LMB shoots/casts at the reticle, 1-9 / wheel picks abilities — every spell on a timed cooldown. First team to the score limit (or most kills at the horn) wins. Respawns are on.',
-                roundLimit: 0,            // no rounds — StrikeEngine owns the match clock
-                timeLimitSec: 480,        // 8:00 of real time
-                scoreLimit: 25,           // first team to 25 kills wins instantly
-                hasTowers: false,
-                hasNexus: false,
-                hasHourglasses: false,
-                hasFlags: false,
-                respawns: true,
-                winConditions: ['most_kills'],
-                tiebreaker: 'sudden_death_kill',
-                scoringType: 'kills',
-                suddenDeath: true,
-                isShooter: true,
-                isRealtime: true,
-                compatibleMaps: [],   // generated below from the MapForge roster
-            },
             /* SIMULTANEOUS turns (WeGo) — chess meets Pokémon. Each "turn" BOTH
                sides secretly commit one order (ANY living unit + up to 3 AP of
                moves/actions — the same unit may be ordered again next turn),
@@ -282,82 +251,33 @@
                 isSimul: true,
                 compatibleMaps: [],   // generated below from the MapForge roster
             },
-            ffa: {
-                id: 'ffa',
-                label: 'Free For All',
-                icon: '👤',
-                desc: 'Every player for themselves. Most kills in 15 rounds wins. No teams.',
-                roundLimit: 15,
+            /* CLASSIC JRPG battle — no tactical movement. Both parties stand on
+               fixed formation rows facing each other across the battlefield
+               (FF / SMT / Pokémon style). A unit's turn is: attack, cast a
+               spell, use an item, Guard, or pass — never move. Range and
+               line-of-sight are waived (any combatant can reach any other),
+               displacement effects deal their damage but never shove anyone
+               off their formation tile, and the camera holds a locked
+               cinematic side view. isClash gates every branch via
+               _isClashMode() so the tactical game stays untouched. */
+            clash: {
+                id: 'clash',
+                label: 'Clash',
+                icon: '🎴',
+                desc: 'Classic JRPG battle — 4v4, no movement. Two parties face off across the field: attack, cast, use an item, or Guard, then the next unit steps up. Wipe out the enemy party to win.',
+                roundLimit: 0,
                 timeLimitSec: 0,
                 hasTowers: false,
                 hasNexus: false,
                 hasHourglasses: false,
                 hasFlags: false,
-                respawns: true,
-                winConditions: ['most_kills', 'wipeout'],
-                tiebreaker: 'sudden_death_kill',
+                respawns: false,
+                winConditions: ['wipeout'],
+                tiebreaker: null,
                 scoringType: 'kills',
-                suddenDeath: true,
-                isFFA: true,
-                maxPlayers: 10,
-                compatibleMaps: [],   // generated below from the MapForge roster
-            },
-            domination: {
-                id: 'domination',
-                label: 'Domination',
-                icon: '🚩',
-                desc: 'Capture and hold Nexus points to earn points every round. Most points in 15 rounds wins.',
-                roundLimit: 15,
-                timeLimitSec: 0,
-                hasTowers: false,
-                hasNexus: true,
-                hasHourglasses: false,
-                hasFlags: false,
-                respawns: true,
-                winConditions: ['most_points'],
-                tiebreaker: 'sudden_death_nexus',
-                scoringType: 'domination',
-                suddenDeath: true,
-                pointsPerNexusPerRound: 10,
-                compatibleMaps: [],   // generated below from the MapForge roster
-            },
-            hotspot: {
-                id: 'hotspot',
-                label: 'Hotspot',
-                icon: '🔥',
-                desc: 'One Nexus spawns at a time. Capture it to score — then it teleports somewhere new. 15-round limit.',
-                roundLimit: 15,
-                timeLimitSec: 0,
-                hasTowers: false,
-                hasNexus: false,
-                hasRoamingNexus: true,
-                hasHourglasses: false,
-                hasFlags: false,
-                respawns: true,
-                winConditions: ['most_points'],
-                tiebreaker: 'sudden_death_nexus',
-                scoringType: 'hotspot',
-                suddenDeath: true,
-                pointsPerCapture: 50,
-                compatibleMaps: [],   // generated below from the MapForge roster
-            },
-            ctf: {
-                id: 'ctf',
-                label: 'Capture the Flag',
-                icon: '🏳️',
-                desc: 'Steal the enemy flag and return it to your sanctuary to score. First to 3 or most in 15 rounds.',
-                roundLimit: 15,
-                timeLimitSec: 0,
-                hasTowers: false,
-                hasNexus: false,
-                hasHourglasses: false,
-                hasFlags: true,
-                respawns: true,
-                winConditions: ['most_captures'],
-                tiebreaker: 'sudden_death_flag',
-                scoringType: 'ctf',
-                suddenDeath: true,
-                compatibleMaps: [],   // generated below from the MapForge roster
+                suddenDeath: false,
+                isClash: true,
+                compatibleMaps: [],   // pinned to the Clash stage below
             },
             gauntlet: {
                 id: 'gauntlet',
@@ -413,10 +333,33 @@
             Object.keys(MULTIPLAYER_MODES).forEach(k => { MULTIPLAYER_MODES[k].compatibleMaps = all.slice(); });
             MULTIPLAYER_MODES.tdm.compatibleMaps = ['normal'].concat(all);
             MULTIPLAYER_MODES.gauntlet.compatibleMaps = ['medium', 'large', 'xlarge'].concat(fulls, ['prebuilt_custommap']);
+            /* Clash always plays on its fixed JRPG stage — no map picking. */
+            MULTIPLAYER_MODES.clash.compatibleMaps = ['clash_stage'];
             /* Mystery Dungeon never appears in the PvP map picker — its hub and
                generated floors are loaded directly by the MD runtime. */
             MULTIPLAYER_MODES.dungeon.compatibleMaps = [];
         })();
+
+        /* ── Clash stage board registration ──────────────────────────────────
+           The Clash battlefield is a real prebuilt map (built in data.js) that
+           must NOT be in EW_MAP_META (no Δ variants, no picker card), so its
+           GAME_MODES entry is written here by hand — same as the Guild Hub. */
+        GAME_MODES.clash_stage = {
+            id: 'clash_stage', label: 'Clash Stage',
+            desc: '12×6 flat stage — two formation rows of 4 facing each other across the battlefield',
+            boardSize: 12, boardWidth: 12, boardHeight: 6, teamSize: 4,
+            winHourglasses: 0, hiddenItemSpawns: 0,
+            blitzMode: true, hasTowers: false, isPrebuilt: true,
+            terrainPatches: { water: [0, 0, 0], desert: [0, 0, 0], mountain: [0, 0, 0] },
+            spawns: {
+                1: [{ x: 2, y: 1 }, { x: 2, y: 2 }, { x: 2, y: 3 }, { x: 2, y: 4 }],
+                2: [{ x: 9, y: 1 }, { x: 9, y: 2 }, { x: 9, y: 3 }, { x: 9, y: 4 }],
+            },
+            defaultBuilds: {
+                1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'],
+                2: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'],
+            },
+        };
 
         /* ── Mystery Dungeon board registrations ──────────────────────────────
            The Guild Hub is a real prebuilt map (built in data.js) that must NOT
@@ -443,6 +386,35 @@
             return typeof activeMultiplayerMode !== 'undefined' && activeMultiplayerMode === 'dungeon';
         }
         window._isDungeonMode = _isDungeonMode;
+
+        /* Clash (classic JRPG battle): no movement, formation rows, waived
+           range/LoS, locked cinematic camera. Every engine/UI branch that
+           adapts the game to the classic JRPG flow gates on THIS helper so
+           the tactical game stays 100% intact. */
+        function _isClashMode() {
+            return typeof activeMultiplayerMode !== 'undefined'
+                && !!(MULTIPLAYER_MODES[activeMultiplayerMode] && MULTIPLAYER_MODES[activeMultiplayerMode].isClash);
+        }
+        window._isClashMode = _isClashMode;
+
+        /* Clash: spells whose whole point is moving somebody across the board
+           don't exist in a formation battle. Kits are stripped of these at
+           unit build time (createUnit) and doSpell hard-rejects them, so the
+           UI, the AI and the online mirror can never disagree. Damaging
+           spells that merely CARRY a push/pull side-effect stay legal — their
+           displacement is separately no-op'd in the engine. */
+        const _CLASH_BANNED_SPELL_KINDS = {
+            teleport: 1, dash: 1, warpRune: 1, swap: 1, rallyPull: 1,
+            escape: 1, skyDrop: 1, skyThrow: 1, leapStrike: 1, placeTrap: 1,
+        };
+        const _CLASH_BANNED_SPELL_IDS = { grapple: 1, raceGrapple: 1 };
+        function _clashSpellAllowed(spell) {
+            if (!spell) return false;
+            if (_CLASH_BANNED_SPELL_KINDS[spell.kind]) return false;
+            if (_CLASH_BANNED_SPELL_IDS[spell.id]) return false;
+            return true;
+        }
+        window._clashSpellAllowed = _clashSpellAllowed;
 
         /* Third-person "shooter controls" experiment — the flag on the
            MULTIPLAYER_MODES entry drives battle.js's ShooterControls layer
