@@ -4,7 +4,46 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## MULTI-FLOOR WYSIWYG PASS 5: finishMoveAt landed walks on the WRONG FLOOR (2026-07-21, LATEST) — battle.js
+## CAMELOT REBUILT as the first hollow-voxel castle map (2026-07-22, LATEST) — data.js
+Token `20260722d` → `20260722e`. `prebuilt_camelot` (24×24 8v8) rebuilt
+XCOM-2-style on the walls/roofs tech — the FIRST launch map to use
+`M.lintel()` (hollowVoxels) and the new `M.stair()` forge helper.
+- **Layout**: river (z2 water) runs W–E through rows 11-12, under two
+  water-gate arches in the curtain walls; gold round-table dais (z4, with
+  excalibur) is an isle mid-river. Castle x5-18/y6-17: feast hall (wood
+  planks) + chapel (checkerboard) per half, REAL roofed rooms — h6 walls,
+  z6 timber lintel roofs, arched doorways (floor z3 + lintel z6). A
+  gate-to-gate corridor (x11-12) splits them. Quay stairs (z4) → z5
+  wall-walk → z6 hall roofs/curtain tops → the arch OVER each gate → down
+  the far stairs: a complete battlement LOOP at z5-z7, verified connected
+  without descending. Wall breaches (rubble z3) give each hall a 3rd
+  entrance; every room/space has 2+ ways in/out. Outside: hedgerows
+  (leaves h5), knight colossi, forework stubs, graveyard woods + mausoleum
+  mound (z4), orchard + rocky rise (z4), NW/SE lake with deep_water
+  hearts, 2-tile bridges at x2/x21. 180°-rotation symmetric.
+- **New forge helper `M.stair(x, y, sd, z)`** (data.js `_mfNew`): paints
+  `barrier_passage`, sets height, records the stair; `finish()` stamps
+  `sd` on the SURFACE voxel (before lintels ride above), `sym180()`
+  mirrors stairs with flipped sd. sd = LOW-side direction
+  (three-renderer `_isStairTile`: highDir = opposite). Loader maps
+  `_b.sd` → stairDir (map.js prebuilt path) — same 1×1×1 engine stairs
+  the Mystery Dungeon exit uses. Any future map can now use it.
+- **Roof/headroom recipe** (prebuilt maps have NO thin-roof flag — lintels
+  are full blocks needing 2 clear voxels): floor z3 → lintel z6 minimum.
+  h6 walls sit flush with z6 roofs (no slit); h5 curtain segments meet the
+  z6 arch tops as a +1 step. Water gates: water z2 + lintel z6 = wade
+  under / walk over.
+- Validated in node (scratchpad harness evals the forge slice of data.js):
+  grid/height/voxel 180° symmetry exact; BFS over walkable surfaces
+  (|dz|≤1) from spawn reaches halls, dais, roofs, tower tops (z7), wades,
+  bridges, both gates; z6-only BFS proves the battlement loop; spawns
+  8+8 safe. NOT playtested (RULE #1c). Live checks: (1) walk into a hall
+  through each arch — roof opens (cutaway) over you; (2) stair → wall-walk
+  → roof → gate-arch battlement circuit on foot; (3) wade under a water
+  gate while an enemy stands on its arch; (4) guest parity of all of the
+  above online; (5) Δ crops (deltaX/Y 7) still open/scrubbed sanely.
+
+## MULTI-FLOOR WYSIWYG PASS 5: finishMoveAt landed walks on the WRONG FLOOR (2026-07-21) — battle.js
 Token `20260721m` → `20260721n`. User retest: "it still drops me inside the
 building instead of leaving me on the roof". THE core engine bug of the
 whole saga, hiding one level below everything fixed so far:
