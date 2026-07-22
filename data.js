@@ -9238,6 +9238,11 @@ const ACCT_STARTER_UNITS = [
   'demon princess', // flying hex-caster (3D — female only)
   'voidweaver',     // giant spider (3D — quadruped rig, male only)
   'honda civic',    // the transformer (3D — sedan + robot forms)
+  // 2026-07-22 batch (sprites.js RACE_MODELS_3D — divine host wave):
+  'valkraye',       // Swordmaster (3D — female only)
+  'angel',          // White Mage (3D — female only)
+  'ghost',          // White Mage (3D — female only)
+  'nephilim',       // Warrior (3D — male only)
   // NOTE: every race with a rigged 3D model in sprites.js RACE_MODELS_3D is a
   // starter, and the 3D-only gate in isUnitUnlocked() keeps anything listed
   // here shelved until its model ships. Keep server.js ACCT_STARTER_UNITS in

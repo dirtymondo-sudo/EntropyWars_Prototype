@@ -4,7 +4,39 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## SKY-THROW GRAB HOLD + DEST GHOST + UFO CARRY (2026-07-22, LATEST) — battle.js, three-renderer.js, three-vfx-effects.js, online.js
+## DIVINE HOST BATCH: valkraye/angel/ghost/nephilim 3D + VFX + unlock (2026-07-22, LATEST) — sprites.js, data.js, server.js, three-vfx-effects.js
+Token `20260722h` → `20260722i`. User uploaded four rigged Character_output
+GLBs (paths given verbatim; CDN egress is blocked in the remote-session
+environment, so NOT HEAD-verified — if a model 404s, check the file stem
+first): `Races/valkraye/` (hot_girl_valkraye_ — doubled underscore →
+trailing-`_` prefix), `Races/angel/female/` (beautiful_angel_girl_, same),
+`Races/ghost/female/` (ghost_realistic_hot), `Races/nephilim/male/`
+(nephilim_realistic).
+- **RACE_MODELS_3D**: valkraye female 0.98 (Sword_Idle + Sword_Regular_Combo
+  castMelee, like swordfighter); angel female 1.0 magic; ghost female 0.97
+  magic; nephilim male 1.5 punch + Idle_10 brawler sway (2.8m per data.js
+  sizes). All library-animated (_mkUAL), no per-character clips.
+- **Unlocked**: all four appended to ACCT_STARTER_UNITS in BOTH data.js and
+  server.js (login unions into existing accounts). They were already in
+  server AVAILABLE_RACES; the 3D-only gate now passes.
+- **Spell VFX**: every spell in the 4 kits already had particle mappings
+  EXCEPT raceWrathOfTheWatchers (cross, radius 2) — new `aoe` mapping
+  (shape:'cross', reuses raceDivineSmite_impact per arm tile). New
+  `_spell3DGeometry` signatures (PS1-summon tier, all hook intents that
+  already fire → vfx3d relay/online parity free): raceSanctuary (armillary +
+  pillar + circle), raceDivineSmite (sky rings + judgment column),
+  raceWingsOfMercy (spotlight + rising sparkles), raceColdSpot (grave-mist
+  gas cloud + witch ring), racePossession (spectral skull + rune sphere),
+  raceWrathOfTheWatchers (sky rings + pillars marching down each cross arm),
+  raceDivineSwoop (speed burst + crescent + shock ring), raceChooserOfSlain
+  (whiteout + armillary + pale pillar), raceShieldMaiden (shield ring).
+  Already wired before: raceValkyrieSpear spear prison, raceNordicWarcry
+  power aura, raceHolyBulwark dome, raceSmite blazing cross,
+  raceSpectralPassage portal teleport.
+- No portraits uploaded for the new four (valkraye already had a
+  RACE_PORTRAITS entry pointing at character_portraits/female/valkraye.png).
+
+## SKY-THROW GRAB HOLD + DEST GHOST + UFO CARRY (2026-07-22) — battle.js, three-renderer.js, three-vfx-effects.js, online.js
 The skyThrow family (Rocket Toss / Infernal Hurl / Dragon Toss / Abduction
 Beam) now reads as an actual carry instead of a ground-bound aim step:
 - **Grab phase lifts for real**: `ThreeRenderer.startCarryHoldTween`

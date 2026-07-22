@@ -1911,6 +1911,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     if (SPELL_MAP['raceToxicNova'] && !SPELL_MAP['raceToxicNova'].aura)
         SPELL_MAP['raceToxicNova'].aura = 'raceToxicNova_aoe';
 
+    /* ── DIVINE HOST WIRING (2026-07-22: valkraye / angel / ghost / nephilim
+       3D model batch) — every spell in the four kits already had a particle
+       mapping EXCEPT Wrath of the Watchers, whose cross AOE fell back to the
+       generic flash. Route it through the aoe pipeline (cross footprint,
+       divine impact particles per arm tile) so the sky-fire signature in
+       _spell3DGeometry below fires with it. */
+    EFFECTS['raceWrathOfTheWatchers_aoe'] = { aoeRadius: 2, shape: 'cross',
+        impactTileEffect: 'raceDivineSmite_impact', shake: 'hard' };
+    SPELL_MAP['raceWrathOfTheWatchers'] = { aoe: 'raceWrathOfTheWatchers_aoe' };
+
     if (typeof window !== 'undefined') {
         window.VFX3D_EFFECTS = EFFECTS;
         window.VFX3D_SPELL_MAP = SPELL_MAP;
@@ -12753,6 +12763,116 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigSparks(tx, ty, 'ice-shard', 14, { vxy: 180 });
             _sigSparks(tx, ty, 'divine-sparkle', 10, { vxy: 120, vz0: 40, vz1: 200 });
             _sigScreenFlash('#cfeaff', 130, 0.14);
+        },
+
+        /* ── DIVINE HOST (2026-07-22 batch: valkraye / angel / ghost /
+           nephilim 3D models) — classic PS1-JRPG summon-tier light shows.
+           Every entry hooks an intent that already fires for the spell
+           (aura / impact / the new Wrath aoe mapping), so host-relay online
+           parity comes for free. ─────────────────────────────────────── */
+
+        /* ANGEL — Sanctuary: consecrated ground. The armillary opens over
+           the zone, a soft pillar holds while the ward settles. */
+        raceSanctuary: function(tx, ty, r) {
+            _sigSacredRings3D(tx, ty, { holdMs: 1100, radiusTiles: 0.9 + (r != null ? r : 1) * 0.25 });
+            _sigLightPillar3D(tx, ty, { color: 0xfff2c8, ms: 1200, height: 560 });
+            _sigMagicCircle3D(tx, ty, {
+                color: 0xffe9a8, radiusPx: (_cfg().tileSize || 128) * (1.0 + (r != null ? r : 1) * 0.4),
+                holdMs: 1100, spin: 0.0016, opacity: 0.6, rise: 30,
+            });
+        },
+        /* ANGEL — Divine Smite: heaven opens in the sky and a column of
+           judgment falls on the stricken tile. */
+        raceDivineSmite: function(tx, ty) {
+            _sigSacredRings3D(tx, ty, { sky: true, holdMs: 1000, radiusTiles: 1.0 });
+            _sigLightPillar3D(tx, ty, { color: 0xffedb0, ms: 900, height: 760 });
+            _sigShockRing3D(tx, ty, { color: 0xffdd88, r1: (_cfg().tileSize || 128) * 1.6, ms: 420 });
+            _sigScreenFlash('#ffeebb', 140, 0.18);
+        },
+        /* ANGEL — Wings of Mercy: a feather-soft spotlight holds on the
+           rescued ally while sparkles drift upward. */
+        raceWingsOfMercy: function(tx, ty) {
+            _sigSpotlight3D(tx, ty, { color: 0xfff4d8, count: 1 });
+            _sigMagicCircle3D(tx, ty, {
+                color: 0xffe9a8, radiusPx: (_cfg().tileSize || 128) * 0.95,
+                holdMs: 800, spin: 0.002, opacity: 0.55, rise: 36,
+            });
+            _sigSparks(tx, ty, 'divine-sparkle', 14, { vxy: 90, vz0: 40, vz1: 160, gravity: -40 });
+        },
+
+        /* GHOST — Cold Spot: the haunt made visible — pale grave-mist
+           churning inside a counter-spinning witch-ring. */
+        raceColdSpot: function(tx, ty, r) {
+            _sigGasCloud3D(tx, ty, {
+                color: 0x9fd8e8, coreColor: 0xdff4ff, gentle: true,
+                radiusTiles: (r != null ? r : 1) + 0.5, count: 14, ms: 1700,
+            });
+            _sigMagicCircle3D(tx, ty, {
+                color: 0x88ccee, radiusPx: (_cfg().tileSize || 128) * 1.25,
+                holdMs: 1200, spin: -0.0024, opacity: 0.55,
+            });
+        },
+        /* GHOST — Possession: a spectral death's-head dives into the victim
+           while curse-runes seal them inside the sphere. */
+        racePossession: function(tx, ty) {
+            _sigSkull3D(tx, ty, { eyeColor: 0x88eeff, boneColor: 0xd8ecf2, holdMs: 850 });
+            _sigRuneSphere3D(tx, ty, {
+                color: 0x66bbdd, runeColor: 0x99e6ff,
+                radiusTiles: 0.8, holdMs: 900, spin: 0.003,
+            });
+        },
+
+        /* NEPHILIM — Wrath of the Watchers: the sky opens over the cross
+           and burns it end to end, arm by arm. */
+        raceWrathOfTheWatchers: function(tx, ty, r) {
+            var ts0 = _cfg().tileSize || 128;
+            var reach = (r != null ? r : 2);
+            _sigSacredRings3D(tx, ty, { sky: true, holdMs: 1200, radiusTiles: 1.2 });
+            _sigLightPillar3D(tx, ty, { color: 0xffdf9a, ms: 1000, height: 780 });
+            var arms = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+            for (var ai = 0; ai < arms.length; ai++) {
+                (function (dx, dy, idx) {
+                    window.setTimeout(function () {
+                        if (_suppressed()) return;
+                        for (var d = 1; d <= reach; d++) {
+                            _sigLightPillar3D(tx + dx * d, ty + dy * d, {
+                                color: 0xffd070, ms: 700, height: 420, radius: ts0 * 0.26,
+                            });
+                        }
+                    }, 140 + idx * 70);
+                })(arms[ai][0], arms[ai][1], ai);
+            }
+            _sigShockRing3D(tx, ty, { color: 0xffcc66, r1: ts0 * (reach + 0.8), ms: 520 });
+            _sigScreenFlash('#ffddaa', 170, 0.2);
+            _sigSparks(tx, ty, 'ember', 18, { vxy: 200, vz0: 60, vz1: 240 });
+        },
+
+        /* VALKRAYE — Divine Swoop: the dive lands in a burst of speed and
+           a silver crescent arc. (Valkyrie Spear keeps its spear prison.) */
+        raceDivineSwoop: function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigSpeedBurst3D(tx, ty, { color: 0xcfe4ff });
+            _sigCrescentSlash3D(tx, ty, { color: 0xbbddff, yaw: rn(0, Math.PI * 2), dir: 1, ms: 260, size: ts0 * 1.5 });
+            _sigShockRing3D(tx, ty, { color: 0x99ccff, r1: ts0 * 1.5, ms: 380 });
+            _sigScreenFlash('#cfe4ff', 110, 0.14);
+        },
+        /* VALKRAYE — Chooser of the Slain: Valhalla reaches down. Whiteout,
+           the armillary, a long pale pillar — and the soul walks back. */
+        raceChooserOfSlain: function(tx, ty) {
+            _sigWhiteout3D(tx, ty, { color: 0xeaf2ff, peak: 0.4, shake: 'normal' });
+            _sigSacredRings3D(tx, ty, { holdMs: 1300, radiusTiles: 1.0 });
+            _sigLightPillar3D(tx, ty, { color: 0xf2f6ff, ms: 1400, height: 720 });
+            _sigMagicCircle3D(tx, ty, {
+                color: 0xcfe4ff, radiusPx: (_cfg().tileSize || 128) * 1.15,
+                holdMs: 1300, spin: 0.0018, opacity: 0.65, rise: 34,
+            });
+        },
+        /* VALKRAYE — Shield Maiden: spectral tower shields ring the ward. */
+        raceShieldMaiden: function(tx, ty, r) {
+            _sigShieldRing3D(tx, ty, {
+                glowColor: 0xbfd8ff, count: 4, holdMs: 800,
+                radiusTiles: 0.65 + (r != null ? r : 0) * 0.3,
+            });
         },
     };
 

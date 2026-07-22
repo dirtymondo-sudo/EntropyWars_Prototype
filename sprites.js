@@ -1376,6 +1376,46 @@ const RACE_MODELS_3D = {
       return car;
     })(),
   },
+
+  // ── 2026-07-22 batch (user upload — divine host wave; paths taken
+  // verbatim from the drop, CDN egress blocked in-session so not
+  // HEAD-verified) ──────────────────────────────────────────────────────
+  // Valkraye (Swordmaster, bruiser) — Odin's chooser: fencer ready stance,
+  // real sword combos for her spear/blade strikes. Note the doubled
+  // underscore in the file stem (…valkraye__biped_…) → prefix keeps a
+  // trailing '_' (same pattern as the psychics/superhero).
+  'valkraye': {
+    female: _mkUAL('valkraye', 'hot_girl_valkraye_', {
+      heightRatio: 0.98,
+      lib: { idle: { clip: 'Sword_Idle' },
+             castMelee: { clip: 'Sword_Regular_Combo', lib: 1, ts: 2.4 } },
+    }),
+  },
+  // Angel (White Mage, healer) — grace incarnate, holy zaps; heals get the
+  // castHeal staff wave from the shared slots. Doubled underscore in
+  // …angel_girl__biped_… → trailing '_' prefix.
+  'angel': {
+    female: _mkUAL('angel/female', 'beautiful_angel_girl_', {
+      heightRatio: 1.0,
+      basicAttackKind: 'magic',
+    }),
+  },
+  // Ghost (White Mage, healer) — the drifting dead, spectral zaps.
+  'ghost': {
+    female: _mkUAL('ghost/female', 'ghost_realistic_hot', {
+      heightRatio: 0.97,
+      basicAttackKind: 'magic',
+    }),
+  },
+  // Nephilim (Warrior, tank) — 2.8m half-angel colossus (data.js sizes;
+  // mech is 1.5, giant 1.7): brawler sway, giant-blooded haymakers.
+  'nephilim': {
+    male: _mkUAL('nephilim/male', 'nephilim_realistic', {
+      heightRatio: 1.5,
+      basicAttackKind: 'punch',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },
+    }),
+  },
 };
 
 // ── Gendered library defaults (2026-07-11) ─────────────────────────────────
