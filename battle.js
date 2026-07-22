@@ -3797,7 +3797,8 @@
                             target.x = nx; target.y = ny; if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z); _crSteps.push({ x: nx, y: ny });
                         }
                         if (typeof applyFallDamage === 'function') applyFallDamage(target, _crFromZ, target.z ?? 0, `${spell.name}: `, { byEnemy: true });
-                        if (_crSteps.length > 0) animateDisplacementPath(target, _crFromX, _crFromY, _crSteps, 120);
+                        // impact → beat → knockback (see linePush)
+                        if (_crSteps.length > 0) animateDisplacementPath(target, _crFromX, _crFromY, _crSteps, 120, { delayMs: actionMs(320) });
                         if (_crSteps.length > 0) _applyKnockbackHazard(target);
                         if (_crSteps.length > 0) _fanFlamesAlongPush(target, _crSteps, pdx, pdy, unit);
                     }
@@ -3807,7 +3808,7 @@
                         const pdx = Math.sign(opts.pullCenter.x - target.x), pdy = Math.sign(opts.pullCenter.y - target.y);
                         const nx = target.x + pdx, ny = target.y + pdy;
                         const _apOldX = target.x, _apOldY = target.y;
-                        if (isInside(nx, ny) && canOccupy(nx, ny)) { target.x = nx; target.y = ny; if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z); animateDisplacement(target, _apOldX, _apOldY, nx, ny, 180); _applyKnockbackHazard(target); }
+                        if (isInside(nx, ny) && canOccupy(nx, ny)) { target.x = nx; target.y = ny; if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z); animateDisplacement(target, _apOldX, _apOldY, nx, ny, 180, { delayMs: actionMs(320) }); _applyKnockbackHazard(target); }
                     }
 
                     // Ground airborne units
@@ -3995,7 +3996,9 @@
         // hitting enemies, turrets, objects. Returns hitTargets array.
         // ═══════════════════════════════════════════════════════════════════
         function _applyLineDamage(unit, spell, dx, dy, baseDmg, spellPower) {
-            const lineRange = Math.max(bw(), bh());
+            // Beams are capped at the spell's range (3-5 tiles) — they no longer
+            // sweep the whole map. Matches the aimed-hover preview (spell.range || 4).
+            const lineRange = spell.range || 4;
             const hitTargets = [];
             const _lineCells = [];
             const _lnHitBldgs = new Set();   // 🏢 one structure hit per building per cast
@@ -4089,7 +4092,9 @@
                         hit.x = nx; hit.y = ny; if (typeof nearestWalkableZ === 'function') hit.z = nearestWalkableZ(nx, ny, hit.z); _lpSteps.push({ x: nx, y: ny });
                     }
                     if (typeof applyFallDamage === 'function') applyFallDamage(hit, _lpFromZ, hit.z ?? 0, `${spell.name}: `, { byEnemy: true });
-                    if (_lpSteps.length > 0) animateDisplacementPath(hit, _lpFromX, _lpFromY, _lpSteps, 120);
+                    // Hit lands first, THEN the shove: the slide waits a beat past
+                    // the impact frame so the sequence reads impact → knockback.
+                    if (_lpSteps.length > 0) animateDisplacementPath(hit, _lpFromX, _lpFromY, _lpSteps, 120, { delayMs: actionMs(320) });
                     if (_lpSteps.length > 0) _applyKnockbackHazard(hit);
                     if (_lpSteps.length > 0) _fanFlamesAlongPush(hit, _lpSteps, dx, dy, unit);
                 }
@@ -18041,6 +18046,10 @@
         // spellIsPureStatus / _PRESS_SPELL_KINDS).
         function spellDealsDamage(spell) {
             if (!spell) return false;
+            // Deployables (Place Bomb) carry a dmg value but detonate LATER —
+            // placing one is a 1-AP support action, not a damaging cast, so it
+            // must NOT end the turn via spendAllAP.
+            if (spell.kind === 'bomb') return false;
             if (spell.dmg || spell.hitDamages || spell.dotDamage || spell.dashDamage) return true;
             return _PRESS_SPELL_KINDS.has(spell.kind);
         }
@@ -31423,11 +31432,12 @@
             }
         }
 
-        function animateDisplacement(unit, fromX, fromY, toX, toY, durationMs) {
+        function animateDisplacement(unit, fromX, fromY, toX, toY, durationMs, opts) {
             _relatchCorpseTile(unit, toX, toY);
 
             if (window.ThreeAnim && window.ThreeAnim.isActive()) {
-                window.ThreeAnim.displace(unit, fromX, fromY, toX, toY, durationMs);
+                window.ThreeAnim.displace(unit, fromX, fromY, toX, toY, durationMs,
+                    { delayMs: (opts && opts.delayMs) || 0 });
                 return;
             }
             if (!boardEl || _skipVisuals()) return;
@@ -31438,6 +31448,7 @@
             const gap = CONFIG.tileGap ?? 0;
             const pad = CONFIG.boardPadding ?? 2;
             const ms = durationMs || 220;
+            const _dispDelay = (opts && opts.delayMs) || 0;
 
             _displaceAnimUnitIds.add(unit.id);
             scheduleBoardRender();
@@ -31472,7 +31483,7 @@
                 ghost.style.transform = _dioGhostTransform(tiltDeg, yawDeg, elevPx);
             boardEl.appendChild(ghost);
 
-            requestAnimationFrame(() => {
+            const _startSlide = () => requestAnimationFrame(() => {
                 ghost.style.left = (pad + toX * (tileSize + gap)) + 'px';
                 ghost.style.top = (pad + toY * (tileSize + gap)) + 'px';
 
@@ -31482,13 +31493,14 @@
                     const elevPx = (toH > 0 && typeof window._getElevationPx === 'function') ? window._getElevationPx(toH) : 0;
                     ghost.style.transform = _dioGhostTransform(tiltDeg, yawDeg, elevPx);
             });
+            if (_dispDelay > 0) setTimeout(_startSlide, _dispDelay); else _startSlide();
 
             setTimeout(() => {
                 ghost.remove();
                 _displaceAnimUnitIds.delete(unit.id);
                 markDirty('board');
                 renderIfDirty();
-            }, ms + 40);
+            }, ms + 40 + _dispDelay);
         }
 
         function animateDisplacementPath(unit, fromX, fromY, steps, perStepMs, opts) {
@@ -36299,12 +36311,8 @@
                 scheduleBoardRender();
                 completionDelay = actionMs(900);
             } else if (spell.kind === 'bomb') {
-                const _bombOccupant = (unitAt(x, y, z) || unitAt(x, y));
-                if (_bombOccupant && _bombOccupant.player === unit.player) {
-                    addLog('Cannot place a bomb on a friendly unit.');
-                    playErrorSfx();
-                    return 0;
-                }
+                // Allies may stand on a bomb tile — only the caster's own bombs
+                // are safe to share a tile with (enemy bombs still trigger on step).
                 const ownedBombs = state.bombs.filter(b => b.ownerUnitId === unit.id);
                 if (ownedBombs.length >= (spell.maxActivePerCaster || 2)) state.bombs = state.bombs.filter(b => b !== ownedBombs[0]);
                 if (state.bombs.some(b => b.x === x && b.y === y)) {
@@ -36968,7 +36976,8 @@
                             animateJumpArc(target, _displaceFromX, _displaceFromY, target.x, target.y,
                                 _displaceFromZ, target.z ?? 0, flingAnimMs);
                         } else {
-                            animateDisplacementPath(target, _displaceFromX, _displaceFromY, _displaceSteps, 120);
+                            // impact → beat → fling (see linePush)
+                            animateDisplacementPath(target, _displaceFromX, _displaceFromY, _displaceSteps, 120, { delayMs: actionMs(320) });
                         }
 
                         // The camera FOLLOWS the flung body: the live action
@@ -37008,7 +37017,7 @@
 
                 if (dx === 0 && dy === 0) { addLog('Invalid line direction.'); completionDelay = 200; }
                 else {
-                    const lineRange = Math.max(bw(), bh());
+                    const lineRange = spell.range || 4;   // capped beam — must match _applyLineDamage
                     // Preview the WHOLE route (same walk as _applyLineDamage,
                     // minus breach boring) and collect every enemy skewered —
                     // beat 2 of the action shot frames the full kebab via

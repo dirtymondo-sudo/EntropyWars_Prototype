@@ -6120,7 +6120,7 @@ const ThreeRenderer = (function () {
     }
     function _buildBombMesh(x, y) {
         var ts = CONFIG.tileSize || BASE_TILE;
-        var g = _makeBombProp(ts * 0.22, { spark: true });
+        var g = _makeBombProp(ts * 0.15, { spark: true });
         g.position.set(x * ts + ts / 2, tileTopY(x, y), y * ts + ts / 2);
         /* deterministic per-tile yaw so a bomb line doesn't look stamped */
         g.rotation.y = ((x * 7 + y * 13) % 8) * (Math.PI / 4);
@@ -15154,10 +15154,10 @@ const ThreeRenderer = (function () {
         if (!mesh && (projClass === 'proj-bomb' || projClass === 'proj-grenade')) {
             var bombR, bombProp;
             if (projClass === 'proj-grenade') {
-                bombR = ts * 0.14;
+                bombR = ts * 0.10;
                 bombProp = _makeGrenadeProp(bombR);
             } else {
-                bombR = ts * 0.16;
+                bombR = ts * 0.115;
                 bombProp = _makeBombProp(bombR, { spark: true });
             }
             bombProp.position.y = -bombR;      /* center the body on the flight path */

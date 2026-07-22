@@ -4517,6 +4517,49 @@ function _clearMoveArrowPreview() {
   ThreeRenderer.clearOverlay('actionPlanRange');
 }
 
+/* ── TILE-MENU "MOVE TOWARDS" HOVER (2026-07-22) ──────────────────────
+   Hovering the tile quick menu's Move Towards blade shows the unit's
+   whole walkable range (blue wash), the route arrow to the approach
+   tile the chase will actually stop on, a ghost there, and a dim
+   marker on the clicked goal tile. Mirrors the in-move-mode hover
+   preview in battle.js; cleared by _clearMoveArrowPreview. */
+function _showTileMoveTowardsPreview(actingUnit, action) {
+  _clearMoveArrowPreview();
+  if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+  const approach = action.moveTile;
+  const goal = action._towardGoal;
+  if (!actingUnit || !approach || !goal) return;
+  try {
+    const towardsColor = 0x3399ff; // movement = blue
+    // Movement range wash: every tile the unit can walk to right now.
+    if (typeof getMoveTiles === 'function') {
+      const mts = getMoveTiles(actingUnit).filter(t => !t._takeoff);
+      if (mts.length) ThreeRenderer.setOverlay('movePreview',
+        mts.map(t => ({ x: t.x, y: t.y, opacity: 0.22 })), towardsColor, 0.22);
+    }
+    const actingY = ThreeRenderer.unitSurfaceY(actingUnit);
+    const wps = [{ x: actingUnit.x, y: actingUnit.y, yOverride: actingY }];
+    if (typeof findMovePath === 'function') {
+      const path = findMovePath(actingUnit, approach.x, approach.y, approach.z) || [];
+      for (const s of path) wps.push({ x: s.x, y: s.y, yOverride: ThreeRenderer.tileTopY(s.x, s.y) });
+    }
+    if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, towardsColor);
+    else ThreeRenderer.drawArrow3D(actingUnit.x, actingUnit.y, approach.x, approach.y,
+      towardsColor, false, actingY, ThreeRenderer.tileTopY(approach.x, approach.y), { flow: true });
+    // Bright stop tile + dim marker on the clicked goal.
+    const marks = [{ x: approach.x, y: approach.y, opacity: 0.6 }];
+    if (!(goal.x === approach.x && goal.y === approach.y)) {
+      marks.push({ x: goal.x, y: goal.y, opacity: 0.25 });
+    }
+    ThreeRenderer.setOverlay('actionPlanTarget', marks, towardsColor, 0.5);
+    const ghostTint = (typeof getFactionColor === 'function')
+      ? (parseInt(String(getFactionColor(actingUnit) || '#66ddff').replace('#', ''), 16) || 0x66ddff)
+      : 0x66ddff;
+    ThreeRenderer.showGhostUnit(actingUnit, approach.x, approach.y,
+      ThreeRenderer.tileTopY(approach.x, approach.y), { tag: 'caster', color: ghostTint, opacity: 0.85 });
+  } catch (e) { /* preview is cosmetic — never let it break hover */ }
+}
+
 // Kind buckets for the quick-cast range wash: red = the spell damages what it
 // lands on, green = it helps allies, white = neutral utility. Basic attack /
 // combo reach is red too — same "this hurts" palette as the strike arrows.
@@ -5466,9 +5509,19 @@ function _hrlgTileBlades(actingUnit, st) {
     mp: a.mpCost || null,
     cost: a.available && a.apCost ? a.apCost : null,
     sub: !a.available ? (a.reason || 'Unavailable') : null,
-    fire: () => { hideSpellTooltip(); if (a.available && a.handler) a.handler(); },
-    hoverIn: (e) => { if (a.spell) showSpellTooltip(a.spell, e); },
-    hoverOut: () => hideSpellTooltip(),
+    fire: () => {
+      hideSpellTooltip();
+      if (a.id === 'moveTowards') _clearMoveArrowPreview();
+      if (a.available && a.handler) a.handler();
+    },
+    hoverIn: (e) => {
+      if (a.spell) showSpellTooltip(a.spell, e);
+      if (a.id === 'moveTowards' && a.available) _showTileMoveTowardsPreview(actingUnit, a);
+    },
+    hoverOut: () => {
+      hideSpellTooltip();
+      if (a.id === 'moveTowards') _clearMoveArrowPreview();
+    },
   }));
   if (!blades.length) blades.push({ id: 'none', icon: '⬚', label: 'Nothing to do here', available: false });
 
@@ -5544,6 +5597,25 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
             state._tileActionTarget = null;
             if (typeof setActionMode === 'function') setActionMode('move');
             if (typeof doMove === 'function') doMove(actingUnit, tx, ty, moveTile.z);
+          },
+        });
+      }
+    } else if (typeof findMoveTowardsTile === 'function') {
+      // Tile beyond this turn's reach → offer the chase: walk the reachable
+      // step that gets closest (same engine path as clicking far ground in
+      // move mode). Hovering the blade previews range + route (see
+      // _showTileMoveTowardsPreview).
+      const _twApproach = findMoveTowardsTile(actingUnit, tx, ty, tz);
+      if (_twApproach) {
+        actions.push({
+          id: 'moveTowards', label: 'Move towards', icon: '➜', category: 'movement',
+          apCost: 1, available: true,
+          moveTile: _twApproach, _towardGoal: { x: tx, y: ty, z: tz },
+          handler: () => {
+            state._tileActionTarget = null;
+            if (typeof setActionMode === 'function') setActionMode('move');
+            if (typeof _moveTowards === 'function') _moveTowards(actingUnit, _twApproach);
+            else if (typeof doMove === 'function') doMove(actingUnit, _twApproach.x, _twApproach.y, _twApproach.z);
           },
         });
       }

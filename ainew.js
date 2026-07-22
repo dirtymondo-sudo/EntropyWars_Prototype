@@ -389,7 +389,7 @@
                 // real rays instead and value every enemy the beam crosses.
                 if (sp.kind === 'line' || sp.kind === 'linePush') {
                     const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
-                    const len = Math.max(g.bw ? g.bw() : 20, g.bh ? g.bh() : 20);
+                    const len = sp.range || 4;   // beams are range-capped (matches _applyLineDamage)
                     for (const [ddx, ddy] of dirs) {
                         let rayTargets = [], first = null;
                         for (let i = 1; i <= len; i++) {

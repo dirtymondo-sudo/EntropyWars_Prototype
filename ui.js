@@ -2953,7 +2953,7 @@
               }
             } else if (spell.kind === 'line' || spell.kind === 'linePush') {
 
-              const _lineRange = Math.max(bw(), bh());
+              const _lineRange = spell.range || 4;   // beams are range-capped (matches _applyLineDamage)
               const _lineDirs = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1},{dx:1,dy:1},{dx:1,dy:-1},{dx:-1,dy:1},{dx:-1,dy:-1}];
               for (const dir of _lineDirs) {
                 for (let i = 1; i <= _lineRange; i++) {

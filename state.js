@@ -1944,7 +1944,8 @@
                     }
 
                     if (typeof animateDisplacement === 'function') {
-                        animateDisplacement(unit, fromX, fromY, c.x, c.y, 200);
+                        // blast lands first, THEN the body is thrown (post-impact beat)
+                        animateDisplacement(unit, fromX, fromY, c.x, c.y, 200, { delayMs: 300 });
                     }
                     // 🧱 Blown onto a debris pile → scooped on landing.
                     if (window.GAME && typeof window.GAME.collectMatDropsAt === 'function') {
@@ -1986,7 +1987,8 @@
                     _fanFlamesAlongPush(unit, [{ x: _bc.x, y: _bc.y }], _bc.x - fromX, _bc.y - fromY, null);
                 }
                 if (typeof animateDisplacement === 'function') {
-                    animateDisplacement(unit, fromX, fromY, _bc.x, _bc.y, 200);
+                    // blast lands first, THEN the body is blasted through (post-impact beat)
+                    animateDisplacement(unit, fromX, fromY, _bc.x, _bc.y, 200, { delayMs: 300 });
                 }
                 if (window.GAME && typeof window.GAME.collectMatDropsAt === 'function') {
                     window.GAME.collectMatDropsAt(unit, _bc.x, _bc.y);

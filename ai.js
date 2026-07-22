@@ -1995,7 +1995,7 @@
             if (!aligned) return 0;
             const dx = Math.sign(target.x - unit.x);
             const dy = Math.sign(target.y - unit.y);
-            const _lineBoardLen = Math.max(g.bw(), g.bh());
+            const _lineBoardLen = spell.range || 4;   // beams are range-capped (matches _applyLineDamage)
             let hits = 0, reachedTarget = false;
             for (let i = 1; i <= _lineBoardLen; i++) {
                 const tx = unit.x + dx * i, ty = unit.y + dy * i;
@@ -4083,7 +4083,7 @@
         if (!g) return null;
         const dirs = [{ dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
                       { dx: 1, dy: 1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: -1, dy: -1 }];
-        const len = Math.max(g.bw(), g.bh());
+        const len = spell.range || 4;   // beams are range-capped (matches _applyLineDamage)
         const enemies = g.getHostileUnits(unit.player).filter(e => !e.dead &&
             !(g.unitHasStatus(e, 'invisible') && !g.unitHasStatus(e, 'marked')));
         let best = null;
@@ -4507,7 +4507,7 @@
 
             const dirs = [{ dx: 1, dy: 0 }, { dx: -1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 0, dy: -1 },
                           { dx: 1, dy: 1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: -1, dy: -1 }];
-            const _lineBoardLen = Math.max(g.bw(), g.bh());
+            const _lineBoardLen = spell.range || 4;   // beams are range-capped (matches _applyLineDamage)
             let bestDir = null, bestHits = 0, bestTarget = null;
             for (const dir of dirs) {
                 let hits = 0, firstEnemy = null;
