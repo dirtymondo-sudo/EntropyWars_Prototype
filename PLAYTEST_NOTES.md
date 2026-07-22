@@ -4,7 +4,36 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## CAMELOT on THIN Walls & Roofs + prebuilt pipeline support (2026-07-22, LATEST) — data.js, map.js
+## SKY-THROW GRAB HOLD + DEST GHOST + UFO CARRY (2026-07-22, LATEST) — battle.js, three-renderer.js, three-vfx-effects.js, online.js
+The skyThrow family (Rocket Toss / Infernal Hurl / Dragon Toss / Abduction
+Beam) now reads as an actual carry instead of a ground-bound aim step:
+- **Grab phase lifts for real**: `ThreeRenderer.startCarryHoldTween`
+  (`ThreeAnim.carryHold`) hauls the victim up to the spell's carry height and
+  HOLDS them flailing in the air while the thrower aims. No explicit release
+  wiring on cancel paths — a per-frame watchdog auto-drops the body when no
+  living unit still has `_skyThrowGrab` pointing at it (420ms grace so the
+  grab→throw handoff and online sync ordering never flicker). Fog-gated like
+  throw tweens. `startThrowArcTween` steals an active hold and credits the
+  lift time, so the fling starts from the air with no re-lift/pop.
+- **Phase-2 hover preview** (`_drawSkyThrowDestPreview`, battle.js): hovering
+  a valid drop tile shows the victim's ghost (model-aware `showGhostUnit`,
+  tag `skyThrowDest`) on the destination + an arrow from the airborne body
+  down to the ground. Keyed by `state._skyThrowDestKey` (UI-only → serializer
+  skip list + `_guestUIKeys`).
+- **Abduction Beam is a true abduction**: new persistent saucer
+  `ThreeVFXEffects.sigUFOHold3D(tx,ty,opts)` → returns `{release(o)}`; parks
+  overhead with the tractor beam on for the whole aim phase (victim dangles in
+  the beam), then `release({delayMs,path,pathMs,holdMs})` glides it to the
+  drop tile. The victim's fling uses the new `carry: true` throwArc mode:
+  level glide at carry height (62% of flingMs, easeInOut — the UFO paces it
+  exactly), then a straight accelerating drop on the destination tile.
+- **Online parity**: grab + throw visuals routed through new globals
+  `window.playSkyGrabFx` / `window.playSkyThrowFx` (argument-pure), wrapped in
+  online.js → host relays `sky-grab-fx` / `sky-throw-fx` (spell display params
+  ride in the payload); guest replays fog-gated with cosmetic-only impact.
+  Guest's hold auto-drops off synced `_skyThrowGrab` state on cancels.
+
+## CAMELOT on THIN Walls & Roofs + prebuilt pipeline support (2026-07-22) — data.js, map.js
 Token `20260722e` → `20260722f`. User: the rebuild below used full voxel
 cubes, not the editor's new thin walls/roofs. Root cause: the MapForge
 prebuilt pipeline had ZERO thin-wall support — no forge helpers, no export,

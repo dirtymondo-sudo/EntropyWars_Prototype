@@ -14866,6 +14866,144 @@ const ThreeRenderer = (function () {
 
     var _throwTweens = new Map();
 
+    /* ── Carry hold: the skyThrow grab phase. The victim is hauled straight up
+       off its tile and HELD hanging at the carry height while the thrower aims
+       the throw (phase 2). startThrowArcTween() steals an active hold so the
+       fling starts from the air with no re-lift; if the grab evaporates instead
+       (cancel, undo, grabber death — every cancel path just nulls
+       _skyThrowGrab), a watchdog auto-releases the hold and the body drops
+       back onto its tile. ── */
+    var _carryHolds = new Map();
+
+    function startCarryHoldTween(unit, opts) {
+        if (!unit) return false;
+        opts = opts || {};
+        var ts = CONFIG.tileSize || BASE_TILE;
+        _carryHolds.set(unit.id, {
+            fromX: unit.x, fromY: unit.y,
+            fromSY: _tileSurfaceY(unit.x, unit.y, unit.z),
+            startTime: _animNow(),
+            liftMs: opts.liftMs || 480,
+            liftPx: opts.liftPx != null ? opts.liftPx : ts * 2.2,
+            curH: 0,
+            orphanSince: 0,
+            dropping: false, dropStart: 0, dropMs: opts.dropMs || 300, dropFromH: 0,
+            onRelease: opts.onRelease || null
+        });
+        var entry = _getUnitEntry(unit.id);
+        if (entry && entry.group) entry.group.visible = true;
+        return true;
+    }
+
+    function hasCarryHold(unitId) { return _carryHolds.has(unitId); }
+
+    function endCarryHold(unitId, opts) {
+        var hold = _carryHolds.get(unitId);
+        if (!hold) return;
+        if (opts && opts.instant) { _carryHolds.delete(unitId); return; }
+        if (!hold.dropping) {
+            hold.dropping = true;
+            hold.dropStart = _animNow();
+            hold.dropFromH = hold.curH;
+            if (hold.onRelease) {
+                var cb = hold.onRelease; hold.onRelease = null;
+                try { cb(); } catch (e) {}
+            }
+        }
+    }
+
+    function _updateCarryHolds() {
+        if (_carryHolds.size === 0) return;
+        var now = _animNow();
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var toRemove = [];
+        var _chVp = (state.fogOfWar && typeof getViewerPlayer === 'function') ? getViewerPlayer() : 0;
+        for (var entry of _carryHolds) {
+            var uid = entry[0], hold = entry[1];
+            // A throw tween owns the body now → the hold handed off cleanly.
+            if (_throwTweens.has(uid)) { toRemove.push(uid); continue; }
+            var unitRef = _unitById.get(uid) || _findUnit(uid);
+            var ue = _getUnitEntry(uid);
+
+            /* Watchdog: the hold is only legit while some living unit still has
+               this body grabbed. A small grace window keeps the grab→throw
+               handoff and online state-sync ordering from flickering a drop. */
+            if (!hold.dropping) {
+                var owner = null;
+                var us = (state.units || []);
+                for (var i = 0; i < us.length; i++) {
+                    var u = us[i];
+                    if (u && !u.dead && u._skyThrowGrab && u._skyThrowGrab.id === uid) { owner = u; break; }
+                }
+                if (!owner || (unitRef && unitRef.dead)) {
+                    if (!hold.orphanSince) hold.orphanSince = now;
+                    if ((unitRef && unitRef.dead) || now - hold.orphanSince > 420) {
+                        endCarryHold(uid);
+                    }
+                } else {
+                    hold.orphanSince = 0;
+                }
+            }
+
+            /* fog: an enemy body hanging in fogged air must not leak its tile */
+            if (ue && ue.group && _chVp && _fogVisibleSet && unitRef && unitRef.player !== _chVp) {
+                ue.group.visible = _fogVisibleSet.has(hold.fromX + ',' + hold.fromY);
+            }
+
+            var elapsed = now - hold.startTime;
+            var wx = hold.fromX * ts + ts / 2;
+            var wz = hold.fromY * ts + ts / 2;
+            var wy;
+            if (hold.dropping) {
+                /* ── RELEASED: accelerating drop back onto the tile ── */
+                var dt = Math.min((now - hold.dropStart) / Math.max(1, hold.dropMs), 1);
+                wy = hold.fromSY + hold.dropFromH * (1 - dt * dt);
+                var sq = 1 - dt;
+                if (ue && ue.sprite) ue.sprite.scale.set(1 - 0.08 * sq, 1 + 0.12 * sq, 1);
+                if (ue && ue.model) ue.model.scale.set(1 - 0.04 * sq, 1 + 0.06 * sq, 1 - 0.04 * sq);
+                if (dt >= 1) {
+                    if (ue && ue.sprite) ue.sprite.scale.set(1, 1, 1);
+                    if (ue && ue.model) ue.model.scale.set(1, 1, 1);
+                    if (ue && ue.group) {
+                        var rest = unitRef ? _unitRestPos(unitRef) : null;
+                        if (rest) {
+                            ue.group.position.set(rest.x, rest.y, rest.z);
+                            ue.group._ew_spriteTopY = rest.y + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
+                        }
+                        if (ue.group.visible) _spawnGroundPuff(hold.fromX, hold.fromY, 6, { vxy: 120 });
+                    }
+                    toRemove.push(uid);
+                    continue;
+                }
+            } else if (elapsed < hold.liftMs) {
+                /* ── LIFT: hauled straight up, stretched taut (same feel as
+                   the throw arc's lift phase) ── */
+                var lt = _easeInOut(elapsed / hold.liftMs);
+                hold.curH = hold.liftPx * lt;
+                wy = hold.fromSY + hold.curH;
+                if (ue && ue.sprite) ue.sprite.scale.set(1 - 0.12 * lt, 1 + 0.18 * lt, 1);
+                if (ue && ue.model) ue.model.scale.set(1 - 0.06 * lt, 1 + 0.10 * lt, 1 - 0.06 * lt);
+            } else {
+                /* ── HELD: suspended at carry height, struggling, until the
+                   thrower picks a tile (or lets go) ── */
+                var ht = elapsed - hold.liftMs;
+                wx += Math.sin(ht * 0.014) * ts * 0.05;
+                wz += Math.cos(ht * 0.011) * ts * 0.05;
+                hold.curH = hold.liftPx + Math.sin(ht * 0.008) * ts * 0.06;
+                wy = hold.fromSY + hold.curH;
+                var flail = 1 + 0.06 * Math.sin(ht * 0.02);
+                if (ue && ue.sprite) ue.sprite.scale.set(0.9 * flail, 1.16 / flail, 1);
+                if (ue && ue.model) ue.model.scale.set(0.95 * flail, 1.08 / flail, 0.95 * flail);
+            }
+
+            if (ue && ue.group) {
+                ue.group.position.set(wx, wy, wz);
+                ue.group._ew_spriteTopY = wy + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
+            }
+        }
+        for (var r = 0; r < toRemove.length; r++) _carryHolds.delete(toRemove[r]);
+    }
+
     /* Aerial throw/drop arc — the skyThrow/skyDrop/skySlam family. The body is
        yanked straight UP off its tile (lift), hangs flailing at the carry
        height (hang), then is flung down a fast ballistic arc into the landing
@@ -14896,11 +15034,22 @@ const ThreeRenderer = (function () {
             totalMs: liftMs + hangMs + flingMs,
             liftPx: liftPx,
             drop: !!opts.drop,
+            carry: !!opts.carry,
             liftFired: false, impactFired: false,
             impactPos: null, settleStart: 0,
             onLift: opts.onLift || null,
             onImpact: opts.onImpact || null
         });
+        /* Grab-phase handoff: the body is already hanging at the carry height
+           (carry hold) — credit the time it already spent lifting so the arc
+           resumes from the air instead of popping back to the ground. */
+        var _hold = _carryHolds.get(unit.id);
+        if (_hold) {
+            _carryHolds.delete(unit.id);
+            var _htw = _throwTweens.get(unit.id);
+            var _heldMs = Math.min(_animNow() - _hold.startTime, liftMs);
+            _htw.startTime = _animNow() - _heldMs;
+        }
         var entry = _getUnitEntry(unit.id);
         if (entry && entry.group) entry.group.visible = true;
     }
@@ -14950,15 +15099,38 @@ const ThreeRenderer = (function () {
                 if (ue && ue.sprite) ue.sprite.scale.set(0.9 * flail, 1.16 / flail, 1);
                 if (ue && ue.model) ue.model.scale.set(0.95 * flail, 1.08 / flail, 0.95 * flail);
             } else if (elapsed < tw.totalMs) {
-                /* ── FLING: accelerating ballistic slam into the landing tile ── */
                 var ft = (elapsed - tw.liftMs - tw.hangMs) / tw.flingMs;
-                var horiz = ft * ft;                       // accelerate outward
-                var bump = tw.drop ? 0 : ts * 0.35 * 4 * ft * (1 - ft);
-                wx = (tw.fromX + (tw.toX - tw.fromX) * horiz) * ts + ts / 2;
-                wz = (tw.fromY + (tw.toY - tw.fromY) * horiz) * ts + ts / 2;
-                wy = apexY + (tw.toSY - apexY) * (ft * ft) + bump;
-                if (ue && ue.sprite) ue.sprite.scale.set(0.88, 1.2, 1);
-                if (ue && ue.model) ue.model.scale.set(0.94, 1.1, 0.94);
+                if (tw.carry) {
+                    /* ── CARRY (tractor beam): glide LEVEL at the carry height
+                       to the destination column, then a straight accelerating
+                       drop onto the tile — the UFO abduction ride. ── */
+                    var _cSplit = 0.62;
+                    if (ft < _cSplit) {
+                        var gt = _easeInOut(ft / _cSplit);
+                        wx = (tw.fromX + (tw.toX - tw.fromX) * gt) * ts + ts / 2;
+                        wz = (tw.fromY + (tw.toY - tw.fromY) * gt) * ts + ts / 2;
+                        wy = apexY + Math.sin(elapsed * 0.008) * ts * 0.05;
+                        var cfl = 1 + 0.05 * Math.sin(elapsed * 0.02);
+                        if (ue && ue.sprite) ue.sprite.scale.set(0.9 * cfl, 1.16 / cfl, 1);
+                        if (ue && ue.model) ue.model.scale.set(0.95 * cfl, 1.08 / cfl, 0.95 * cfl);
+                    } else {
+                        var dt2 = (ft - _cSplit) / (1 - _cSplit);
+                        wx = tw.toX * ts + ts / 2;
+                        wz = tw.toY * ts + ts / 2;
+                        wy = apexY + (tw.toSY - apexY) * (dt2 * dt2);
+                        if (ue && ue.sprite) ue.sprite.scale.set(0.88, 1.2, 1);
+                        if (ue && ue.model) ue.model.scale.set(0.94, 1.1, 0.94);
+                    }
+                } else {
+                    /* ── FLING: accelerating ballistic slam into the landing tile ── */
+                    var horiz = ft * ft;                       // accelerate outward
+                    var bump = tw.drop ? 0 : ts * 0.35 * 4 * ft * (1 - ft);
+                    wx = (tw.fromX + (tw.toX - tw.fromX) * horiz) * ts + ts / 2;
+                    wz = (tw.fromY + (tw.toY - tw.fromY) * horiz) * ts + ts / 2;
+                    wy = apexY + (tw.toSY - apexY) * (ft * ft) + bump;
+                    if (ue && ue.sprite) ue.sprite.scale.set(0.88, 1.2, 1);
+                    if (ue && ue.model) ue.model.scale.set(0.94, 1.1, 0.94);
+                }
             } else if (!tw.impactFired) {
                 /* ── IMPACT: touchdown frame ── */
                 tw.impactFired = true;
@@ -16877,6 +17049,7 @@ const ThreeRenderer = (function () {
         _updateDisplaceTweens();
         _updateJumpTweens();
         _updateStrikeTweens();
+        _updateCarryHolds();
         _updateThrowTweens();
         _updateDeathTweens();
         _updateProjectileTweens();
@@ -23454,6 +23627,7 @@ const ThreeRenderer = (function () {
         showIntentBadges, clearIntentBadges, worldToScreen,
 
         startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startThrowArcTween, startDeathTween,
+        startCarryHoldTween, endCarryHold, hasCarryHold,
         setTimeWarp,
 
         /* Opening cinematic (battle.js playOpeningCinematic) */
@@ -23609,6 +23783,22 @@ window.ThreeAnim = {
         if (!ThreeRenderer.isActive()) return false;
         ThreeRenderer.startThrowArcTween(unit, fromX, fromY, toX, toY, opts);
         return true;
+    },
+
+    /* skyThrow grab phase: lift the victim and HOLD them hanging in the air
+       until the throw hands off (throwArc) or the grab is canceled (auto-drop).
+       Returns true when the 3D hold took the visual. */
+    carryHold: function(unit, opts) {
+        if (!ThreeRenderer.isActive()) return false;
+        return ThreeRenderer.startCarryHoldTween(unit, opts);
+    },
+
+    carryRelease: function(unitId, opts) {
+        if (ThreeRenderer.isActive()) ThreeRenderer.endCarryHold(unitId, opts);
+    },
+
+    hasCarryHold: function(unitId) {
+        return ThreeRenderer.isActive() && ThreeRenderer.hasCarryHold(unitId);
     },
 
     death: function(unitId) {

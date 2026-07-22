@@ -10087,6 +10087,141 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
+    /* ── Persistent tractor-beam saucer for the Abduction Beam grab phase:
+       flies in, then HOLDS over the anchor tile with the beam on for as long
+       as the thrower is aiming. release(o) ends the hold — optionally gliding
+       along o.path (tile coords) over o.pathMs first (the throw carry, paced
+       with the same ease as the victim's carry tween), hovering o.holdMs more
+       with the beam on (the drop), then blasting off. Returns { release } or
+       null when the 3D scene isn't available. ── */
+    function _sigUFOHold3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var R = opts.radiusPx != null ? opts.radiusPx : ts * 1.05;
+        var hoverH = opts.hoverH != null ? opts.hoverH : ts * 2.9;
+        var enterMs = opts.enterMs != null ? opts.enterMs : 320;
+        var exitMs = opts.exitMs != null ? opts.exitMs : 480;
+        /* hard safety cap — a leaked handle can't hover a saucer forever */
+        var maxMs = opts.maxMs != null ? opts.maxMs : 10 * 60 * 1000;
+
+        var ufo = _sigBuildUFO(R);
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+        group.add(ufo.group);
+
+        var beamMat = _sigMat(opts.beamColor != null ? opts.beamColor : 0x55ff99);
+        var beam = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 1, 1, 24, 1, true), beamMat);
+        beam.renderOrder = 157;
+        group.add(beam);
+
+        var enterDir = rn(0, Math.PI * 2);
+        var exitDir = enterDir + Math.PI + rn(-0.8, 0.8);
+        var enterDist = ts * 9;
+
+        function _holdEase(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+
+        var lastEl = 0;
+        var rel = null;          // { el, path:[{x,z}], pathMs, holdMs }
+        var exitFrom = null;     // offsets captured on the first exit frame
+        var entry = null;
+
+        entry = _sigRun(group, maxMs, function (el) {
+            lastEl = el;
+            for (var i = 0; i < ufo.lights.length; i++) {
+                ufo.lights[i].opacity = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(el * 0.006 - i * 0.63));
+            }
+            ufo.group.rotation.y = el * 0.0022;
+            ufo.group.scale.set(R, R, R);
+            var fade = 1;
+            var offX = 0, offZ = 0, beamOp = 0;
+            var exiting = false;
+
+            if (el < enterMs) {
+                var t = el / enterMs, e = _sigEaseOutCubic(t);
+                var d = enterDist * (1 - e);
+                ufo.group.position.set(
+                    Math.cos(enterDir) * d,
+                    hoverH + (1 - e) * ts * 2.2,
+                    Math.sin(enterDir) * d);
+                ufo.group.rotation.z = 0.30 * (1 - e) * Math.cos(enterDir);
+                ufo.group.rotation.x = -0.30 * (1 - e) * Math.sin(enterDir);
+            } else {
+                var relT = rel ? el - rel.el : -1;
+                if (rel && relT >= 0) {
+                    if (rel.path && rel.path.length > 1) {
+                        var pt = rel.pathMs > 0 ? Math.min(1, relT / rel.pathMs) : 1;
+                        var pf = _holdEase(pt) * (rel.path.length - 1);
+                        var pi0 = Math.floor(pf), pi1 = Math.min(rel.path.length - 1, pi0 + 1);
+                        var pft = pf - pi0;
+                        offX = rel.path[pi0].x + (rel.path[pi1].x - rel.path[pi0].x) * pft;
+                        offZ = rel.path[pi0].z + (rel.path[pi1].z - rel.path[pi0].z) * pft;
+                    }
+                    if (relT > rel.pathMs + rel.holdMs) exiting = true;
+                    else beamOp = 1;
+                } else {
+                    /* pre-release (or release still delayed) — parked, beam on */
+                    beamOp = Math.min(1, (el - enterMs) / 300);
+                }
+
+                if (exiting) {
+                    if (!exitFrom) exitFrom = { x: offX, z: offZ, at: el };
+                    var t3 = Math.min(1, (el - exitFrom.at) / exitMs), e3 = _sigEaseInCubic(t3);
+                    var d3 = enterDist * 1.2 * e3;
+                    ufo.group.position.set(
+                        exitFrom.x + Math.cos(exitDir) * d3,
+                        hoverH + e3 * ts * 3,
+                        exitFrom.z + Math.sin(exitDir) * d3);
+                    ufo.group.rotation.z = -0.4 * e3 * Math.cos(exitDir);
+                    ufo.group.scale.set(R * (1 + e3 * 0.6), R * (1 - e3 * 0.3), R * (1 + e3 * 0.6));
+                    fade = 1 - Math.max(0, (t3 - 0.55) / 0.45);
+                    beamOp = 0;
+                    if (t3 >= 1 && entry) { entry.finish(); return; }
+                } else {
+                    ufo.group.position.set(
+                        offX + Math.sin(el * 0.003) * 4,
+                        hoverH + Math.sin(el * 0.004) * 7,
+                        offZ + Math.cos(el * 0.0025) * 4);
+                    ufo.group.rotation.z = 0;
+                    ufo.group.rotation.x = 0;
+                }
+            }
+
+            var bh = hoverH - R * 0.16;
+            beam.position.set(offX, bh / 2, offZ);
+            beam.scale.set(R * 0.85, bh, R * 0.85);
+            beamMat.opacity = 0.22 * (0.75 + 0.25 * Math.sin(el * 0.02)) * beamOp;
+
+            ufo.hullMat.opacity = fade;
+            ufo.rimMat.opacity = 0.5 * fade;
+            ufo.domeMat.opacity = 0.4 * fade;
+            ufo.glowMat.opacity = (0.5 + 0.2 * Math.sin(el * 0.01)) * fade;
+        });
+        if (!entry) return null;
+
+        return {
+            release: function (o) {
+                if (rel || !entry || entry.done) return;
+                o = o || {};
+                var pathPts = null;
+                if (o.path && o.path.length > 1) {
+                    pathPts = [];
+                    for (var pi = 0; pi < o.path.length; pi++) {
+                        var pw = _worldPos(o.path[pi].x, o.path[pi].y);
+                        pathPts.push({ x: pw.x - wp.x, z: pw.z - wp.z });
+                    }
+                }
+                rel = {
+                    el: Math.max(lastEl + (o.delayMs || 0), enterMs),
+                    path: pathPts,
+                    pathMs: pathPts ? (o.pathMs || 0) : 0,
+                    holdMs: o.holdMs || 0
+                };
+            }
+        };
+    }
+
     /* ── storm strike: rune circle in the sky, then shock ring + flash when
        the lightning lands (delayMs = the spell's descentMs) ─────────────── */
     function _sigStormStrike3D(tx, ty, opts) {
@@ -12891,6 +13026,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigGunRig3D: _sigGunRig3D,
         sigTeslaCoil3D: _sigTeslaCoil3D,
         sigUFO3D: _sigUFO3D,
+        sigUFOHold3D: _sigUFOHold3D,
         sigStormStrike3D: _sigStormStrike3D,
         sigScreenFlash: _sigScreenFlash,
         sigAuroraCurtain3D: _sigAuroraCurtain3D,

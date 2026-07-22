@@ -19454,6 +19454,173 @@
             } catch (e) { /* cosmetic */ }
         }
 
+        // World-px carry height for a skyThrow lift — shared by the grab-phase
+        // hold, the throw arc, and the phase-2 destination preview so the body
+        // hangs at the exact height the arrow starts from.
+        function _skyThrowLiftPx(spell) {
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const carryH = (spell && spell.carryHeight) || 4;
+            return (typeof window._getElevationPx === 'function')
+                ? Math.max(ts * 1.6, window._getElevationPx(Math.max(2, carryH)))
+                : ts * 2.2;
+        }
+
+        // Grab/beam accent color per skyThrow flavor (matches the grab pillar).
+        function _skyThrowFxColor(spell) {
+            if (spell && spell.id === 'raceAbductionBeam') return 0x55ff99;
+            return (spell && spell.spellType === 'unholy') ? 0xbb66ff : 0xaad4ff;
+        }
+
+        /* ── Sky-throw phase-2 destination preview: while the victim hangs in
+           the air over the grab tile, hovering a throw tile holograms them at
+           the landing spot with an arrow from the airborne body down to the
+           ground. Purely viewer-local (hover UI). ── */
+        function _clearSkyThrowDestPreview() {
+            if (!state._skyThrowDestKey) return;
+            state._skyThrowDestKey = null;
+            try {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+                ThreeRenderer.clearGhostUnit('skyThrowDest');
+                ThreeRenderer.clearArrows3D();
+            } catch (e) { /* cosmetic */ }
+        }
+
+        function _drawSkyThrowDestPreview(caster, hl, x, y) {
+            const key = `${hl.cx},${hl.cy}>${x},${y}`;
+            if (state._skyThrowDestKey === key) return;
+            try {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+                const grab = caster._skyThrowGrab;
+                const victim = grab && (state.units || []).find(u => u.id === grab.id && !u.dead);
+                if (!victim) return;
+                const spell = (caster.spells || []).find(s => s.id === grab.spellId)
+                    || (caster._raceAbilities || []).find(s => s.id === grab.spellId);
+                const col = _skyThrowFxColor(spell);
+                const airY = ThreeRenderer.tileTopY(hl.cx, hl.cy) + _skyThrowLiftPx(spell);
+                const destY = ThreeRenderer.tileTopY(x, y);
+                ThreeRenderer.clearArrows3D();
+                ThreeRenderer.showGhostUnit(victim, x, y, destY, { tag: 'skyThrowDest', color: col, opacity: 0.8 });
+                ThreeRenderer.drawArrow3D(hl.cx, hl.cy, x, y, col, false, airY, destY, { arc: 0.3, flow: true });
+                state._skyThrowDestKey = key;
+            } catch (e) { /* cosmetic */ }
+        }
+
+        /* ── Sky-throw grab visuals (phase 1): lock-on pillar + the victim
+           hauled up and HELD at the carry height while the thrower aims; the
+           grey Abduction Beam parks its saucer overhead with the tractor beam
+           on, victim dangling inside it. Global + argument-pure so online.js
+           can wrap it and replay it on the guest (RULE #2). ── */
+        window._ewSkyGrabUfo = window._ewSkyGrabUfo || {};
+
+        window.playSkyGrabFx = function (caster, target, spell) {
+            if (!target || !spell || _skipVisuals()) return;
+            try {
+                const ts = CONFIG.tileSize || BASE_TILE;
+                const col = _skyThrowFxColor(spell);
+                const liftPx = _skyThrowLiftPx(spell);
+                if (window.ThreeVFXEffects && typeof window.ThreeVFXEffects.sigLightPillar3D === 'function') {
+                    window.ThreeVFXEffects.sigLightPillar3D(target.x, target.y, {
+                        color: col, coreColor: 0xffffff, ms: actionMs(900),
+                        height: ts * 2.6, radius: ts * 0.3,
+                    });
+                }
+                if (window.ThreeAnim && window.ThreeAnim.isActive() && window.ThreeAnim.carryHold) {
+                    window.ThreeAnim.carryHold(target, {
+                        liftMs: actionMs(480), liftPx: liftPx,
+                        // Fired only when the hold ends WITHOUT a throw handoff
+                        // (cancel/undo/auto-drop) — send the saucer away too.
+                        onRelease: () => { if (window.releaseSkyGrabFx) window.releaseSkyGrabFx(target.id); }
+                    });
+                }
+                if (spell.id === 'raceAbductionBeam' && window.ThreeVFXEffects
+                    && typeof window.ThreeVFXEffects.sigUFOHold3D === 'function') {
+                    const stale = window._ewSkyGrabUfo[target.id];
+                    if (stale) { delete window._ewSkyGrabUfo[target.id]; try { stale.release(); } catch (e) {} }
+                    const h = window.ThreeVFXEffects.sigUFOHold3D(target.x, target.y, {
+                        enterMs: 300, beam: true, beamColor: 0x55ff99,
+                        hoverH: liftPx + ts * 1.0,
+                    });
+                    if (h) window._ewSkyGrabUfo[target.id] = h;
+                }
+            } catch (e) { /* visuals only */ }
+        };
+
+        window.releaseSkyGrabFx = function (targetId, opts) {
+            try {
+                const h = window._ewSkyGrabUfo && window._ewSkyGrabUfo[targetId];
+                if (h) { delete window._ewSkyGrabUfo[targetId]; h.release(opts || {}); }
+            } catch (e) { /* visuals only */ }
+        };
+
+        /* ── Sky-throw fling visuals (phase 2): the airborne victim rides to
+           the landing tile — ballistic fling for claws/rockets, a level
+           beam-carry-then-drop under the saucer for Abduction Beam (the UFO
+           glides with them and drops them on the destination). Returns timing
+           info; opts.onImpact (host: damage/landing) fires at touchdown.
+           Global + argument-pure for the online relay (guest replays it with
+           a cosmetic onImpact). ── */
+        window.playSkyThrowFx = function (target, fromX, fromY, toX, toY, spell, opts) {
+            opts = opts || {};
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const isUfo = spell && spell.id === 'raceAbductionBeam';
+            const liftPx = _skyThrowLiftPx(spell);
+            const throwDist = Math.abs(toX - fromX) + Math.abs(toY - fromY);
+            // If the grab hold is live the body is already at carry height —
+            // the arc credits the lift, so timing starts at the hang.
+            const preHeld = !!(window.ThreeAnim && window.ThreeAnim.hasCarryHold
+                && window.ThreeAnim.hasCarryHold(target.id));
+            const liftMs = preHeld ? 0 : actionMs(480);
+            const hangMs = actionMs(300);
+            const flingMs = isUfo ? actionMs(Math.max(620, 320 + 200 * throwDist)) : actionMs(320);
+            const usedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
+                && window.ThreeAnim.throwArc && !_skipVisuals()
+                && window.ThreeAnim.throwArc(target, fromX, fromY, toX, toY, {
+                    liftMs: actionMs(480), hangMs: hangMs, flingMs: flingMs,
+                    liftPx: liftPx, carry: isUfo,
+                    onImpact: () => {
+                        if (opts.onImpact) try { opts.onImpact(); } catch (e) {}
+                        try {
+                            const VFX = window.ThreeVFXEffects;
+                            if (VFX && VFX.sigShockRing3D && !_skipVisuals()) {
+                                VFX.sigShockRing3D(toX, toY, { r0: ts * 0.2, r1: ts * 1.5, ms: 420 });
+                            }
+                        } catch (e) {}
+                    }
+                }));
+            const carryMs = (usedArc ? liftMs : 0) + hangMs;
+            if (usedArc && isUfo && !_skipVisuals()) {
+                /* the saucer paces the beam-carry to the drop tile, hangs for
+                   the drop, then bolts */
+                const glideMs = Math.round(flingMs * 0.62);
+                const h = window._ewSkyGrabUfo && window._ewSkyGrabUfo[target.id];
+                if (h) {
+                    delete window._ewSkyGrabUfo[target.id];
+                    try {
+                        h.release({
+                            delayMs: carryMs,
+                            path: [{ x: fromX, y: fromY }, { x: toX, y: toY }],
+                            pathMs: glideMs,
+                            holdMs: (flingMs - glideMs) + 250,
+                        });
+                    } catch (e) {}
+                } else if (window.ThreeVFXEffects && typeof window.ThreeVFXEffects.sigUFO3D === 'function') {
+                    // No live saucer (joined mid-grab / effect cap) — one-shot flyover.
+                    window.ThreeVFXEffects.sigUFO3D(fromX, fromY, {
+                        enterMs: 300, hoverMs: carryMs + flingMs + 250, exitMs: 480,
+                        beam: true, beamColor: 0x55ff99, hoverH: liftPx + ts * 1.0,
+                        path: [
+                            { x: fromX, y: fromY }, { x: fromX, y: fromY },
+                            { x: fromX, y: fromY }, { x: toX, y: toY }
+                        ],
+                        pathMs: carryMs + flingMs,
+                    });
+                }
+            } else if (isUfo) {
+                window.releaseSkyGrabFx(target.id);
+            }
+            return { usedArc: usedArc, carryMs: carryMs, flingMs: flingMs };
+        };
+
         function _drawSpellApproachPreview(unit, approach, tx, ty) {
             try {
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
@@ -28673,6 +28840,7 @@
             if (state._skyThrowHighlight) { state._skyThrowHighlight = null; }
             const _prevSel = state.units && state.units.find(u => u._skyThrowGrab);
             if (_prevSel) { _prevSel._skyThrowGrab = null; }
+            _clearSkyThrowDestPreview();
             clearSpellRangePreview();
             clearAttackRangePreview();
 
@@ -29669,6 +29837,7 @@
 
             if (unit._skyThrowGrab) { unit._skyThrowGrab = null; }
             if (state._skyThrowHighlight) { state._skyThrowHighlight = null; }
+            _clearSkyThrowDestPreview();
             clearAoePreview();
             clearSpellRangePreview();
             clearAttackRangePreview();
@@ -30047,7 +30216,10 @@
             if (_stHoverGrab) {
                 const hl = state._skyThrowHighlight;
                 const throwDist = Math.abs(x - hl.cx) + Math.abs(y - hl.cy);
-                if (throwDist < 1 || throwDist > hl.range || !isInside(x, y)) return false;
+                if (throwDist < 1 || throwDist > hl.range || !isInside(x, y)) {
+                    _clearSkyThrowDestPreview();
+                    return false;
+                }
             } else if (state.actionMenuView === 'attackTargets' || state.actionMenuView === 'spellTargets') {
                 const unit = getSelectedUnit();
                 if (!unit) return false;
@@ -30123,11 +30295,20 @@
                 state.pendingTarget = next;
                 updateAoePreview(x, y);
             }
+            if (_stHoverGrab && changed) {
+                /* Valid drop tile → hologram the victim at the landing spot +
+                   arrow from the airborne body down to the ground. Drawn AFTER
+                   updateAoePreview — its clearIntentPreview() wipes all arrows
+                   and ghosts, and would eat the hologram otherwise. */
+                state._skyThrowDestKey = null;
+                _drawSkyThrowDestPreview(_stHoverUnit, state._skyThrowHighlight, x, y);
+            }
             return changed;
         }
 
         function clearHoveredTarget(x = null, y = null) {
             if (state._moveHoverKey || state._moveHoverActive) _clearMoveHoverPreview();
+            if (state._skyThrowDestKey) _clearSkyThrowDestPreview();
             if (state.actionMode === 'build' && _buildGhostKey) _clearBuildHoverPreview();
             const current = state.pendingTarget;
             if (!current?.viaHover) return false;
@@ -39516,59 +39697,30 @@
                         scheduleBoardRender();
                     };
 
-                    /* ── 3D throw arc: the victim is visibly hauled UP into the
-                       carry height, hangs flailing, then is FLUNG down into the
-                       landing tile — damage and the tile change land exactly on
-                       the impact frame instead of teleporting at cast. ── */
-                    const _thTs = CONFIG.tileSize || BASE_TILE;
-                    const _thLiftPx = (typeof window._getElevationPx === 'function')
-                        ? Math.max(_thTs * 1.6, window._getElevationPx(Math.max(2, carryH)))
-                        : _thTs * 2.2;
-                    const _thLiftMs = actionMs(480), _thHangMs = actionMs(300), _thFlingMs = actionMs(320);
-                    const _thUsedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
-                        && window.ThreeAnim.throwArc && !_skipVisuals()
-                        && window.ThreeAnim.throwArc(throwTarget, fromX, fromY, x, y, {
-                            liftMs: _thLiftMs, hangMs: _thHangMs, flingMs: _thFlingMs,
-                            liftPx: _thLiftPx,
-                            onImpact: () => {
-                                _applyThrowLanding();
-                                if (typeof shakeBoard === 'function') shakeBoard(elevDelta >= 4 ? 'hard' : 'normal');
-                                try {
-                                    const VFX = window.ThreeVFXEffects;
-                                    if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(x, y, { r0: _thTs * 0.2, r1: _thTs * 1.5, ms: 420 });
-                                } catch (e) {}
-                            }
-                        }));
-
-                    if (_thUsedArc) {
-                        /* UFO overwatch for the grey tractor-beam throw: the
-                           craft hangs over the victim with its beam on through
-                           the lift, then paces the fling to the landing tile. */
-                        if (spell.id === 'raceAbductionBeam' && !_skipVisuals()
-                            && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.sigUFO3D === 'function') {
-                            const _thCarryMs = _thLiftMs + _thHangMs;
-                            window.ThreeVFXEffects.sigUFO3D(fromX, fromY, {
-                                enterMs: 300,
-                                hoverMs: _thCarryMs + _thFlingMs + 250,
-                                exitMs: 480,
-                                beam: true, beamColor: 0x55ff99,
-                                hoverH: _thTs * 3.1,
-                                path: [
-                                    { x: fromX, y: fromY }, { x: fromX, y: fromY },
-                                    { x: fromX, y: fromY }, { x: x, y: y }
-                                ],
-                                pathMs: _thCarryMs + _thFlingMs,
-                            });
+                    /* ── 3D throw: the victim (already hanging at carry height
+                       from the grab hold) rides to the landing tile — ballistic
+                       fling for claws/rockets, level saucer-carry-then-drop for
+                       Abduction Beam. Damage and the tile change land exactly
+                       on the impact frame. Relayed to the guest by the
+                       online.js wrapper around playSkyThrowFx. ── */
+                    _clearSkyThrowDestPreview();
+                    const _thFx = window.playSkyThrowFx(throwTarget, fromX, fromY, x, y, spell, {
+                        onImpact: () => {
+                            _applyThrowLanding();
+                            if (typeof shakeBoard === 'function') shakeBoard(elevDelta >= 4 ? 'hard' : 'normal');
                         }
+                    });
+
+                    if (_thFx && _thFx.usedArc) {
                         // Ride the fling: once the carry ends, the live action
                         // shot glides WITH the thrown body down to its landing
                         // tile so the impact happens on camera.
                         window.setTimeout(() => {
                             _cineRetargetShot({ x, y }, throwTarget,
-                                { duration: _thFlingMs + actionMs(160) });
-                        }, _thLiftMs + _thHangMs);
+                                { duration: _thFx.flingMs + actionMs(160) });
+                        }, _thFx.carryMs);
                         completionDelay = Math.max(
-                            _thLiftMs + _thHangMs + _thFlingMs + actionMs(500),
+                            _thFx.carryMs + _thFx.flingMs + actionMs(500),
                             (_thCam?.totalMs ?? 0) + actionMs(120));
                     } else {
                         window.setTimeout(() => {
@@ -39607,20 +39759,13 @@
                     addLog(`${unitDisplayName(unit)} grabs ${unitDisplayName(target)}! Choose where to throw them.`);
                     showFloatingTextForUnit(target, 'GRABBED!', 'streak', { durationMs: 1000 });
 
-                    /* Lock-on flavor while the thrower aims: a tractor/grab
-                       pillar pins the victim (green federation light for the
-                       grey saucer, violet for unholy talons, sky-blue rest). */
-                    if (!_skipVisuals() && window.ThreeVFXEffects
-                        && typeof window.ThreeVFXEffects.sigLightPillar3D === 'function') {
-                        try {
-                            const _gpTs = CONFIG.tileSize || BASE_TILE;
-                            const _gpCol = spell.id === 'raceAbductionBeam' ? 0x55ff99
-                                : (spell.spellType === 'unholy' ? 0xbb66ff : 0xaad4ff);
-                            window.ThreeVFXEffects.sigLightPillar3D(target.x, target.y, {
-                                color: _gpCol, coreColor: 0xffffff, ms: actionMs(900),
-                                height: _gpTs * 2.6, radius: _gpTs * 0.3,
-                            });
-                        } catch (e) {}
+                    /* Grab visuals: lock-on pillar + the victim hauled up and
+                       HELD at the carry height while the thrower aims (the
+                       grey saucer parks overhead with its tractor beam on and
+                       the victim dangling in it). Relayed to the guest by the
+                       online.js wrapper. */
+                    if (typeof window.playSkyGrabFx === 'function') {
+                        window.playSkyGrabFx(unit, target, spell);
                     }
 
                     if (typeof state !== 'undefined') {

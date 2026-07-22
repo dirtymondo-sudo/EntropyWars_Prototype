@@ -1010,6 +1010,49 @@
         };
         window.animateDashActionCamera = animateDashActionCamera;
 
+        /* Sky-throw visuals (battle.js playSkyGrabFx / playSkyThrowFx): the
+           victim hauled up and HELD aloft on grab (the grey saucer parks
+           overhead with its beam on), then flung / beam-carried to the landing
+           tile. Both run inside doSpell — HOST-only online — so relay them;
+           the guest replays them fog-gated with a cosmetic-only impact. The
+           spell's display params ride in the relay so the guest never has to
+           resolve the def. */
+        if (typeof window.playSkyGrabFx === 'function') {
+            const _origPlaySkyGrabFx = window.playSkyGrabFx;
+            window.playSkyGrabFx = function(caster, target, spell) {
+                _origPlaySkyGrabFx(caster, target, spell);
+                var _netOn = window._NET && window._NET.online;
+                if (_netOn && _isHost() && target && spell && state.phase === 'battle') {
+                    _emit('relay', {
+                        type: 'sky-grab-fx',
+                        casterId: caster ? caster.id : null,
+                        targetId: target.id,
+                        spellId: spell.id,
+                        spellType: spell.spellType || null,
+                        carryHeight: spell.carryHeight || 4
+                    });
+                }
+            };
+        }
+        if (typeof window.playSkyThrowFx === 'function') {
+            const _origPlaySkyThrowFx = window.playSkyThrowFx;
+            window.playSkyThrowFx = function(target, fromX, fromY, toX, toY, spell, opts) {
+                var result = _origPlaySkyThrowFx(target, fromX, fromY, toX, toY, spell, opts);
+                var _netOn = window._NET && window._NET.online;
+                if (_netOn && _isHost() && target && spell && state.phase === 'battle') {
+                    _emit('relay', {
+                        type: 'sky-throw-fx',
+                        targetId: target.id,
+                        fromX: fromX, fromY: fromY, toX: toX, toY: toY,
+                        spellId: spell.id,
+                        spellType: spell.spellType || null,
+                        carryHeight: spell.carryHeight || 4
+                    });
+                }
+                return result;
+            };
+        }
+
         _postRenderHook = function() {
             _injectTurnBanner();
             _fixPerspectiveLabels();
@@ -2757,6 +2800,41 @@
                         }
                     }
 
+                    /* Sky-throw grab: replay the lift-and-hold (+ saucer for the
+                       grey beam) on the guest. Fog gate on the VICTIM's tile —
+                       a hidden enemy's grab must not telegraph its position. */
+                    if (data.type === 'sky-grab-fx' && NET.role === 'guest') {
+                        var _sgT = st && st.units ? st.units.find(function(u) { return u.id === data.targetId; }) : null;
+                        var _sgVis = _sgT && (!st.fogOfWar || typeof window._isTileVisibleToViewer !== 'function'
+                            || window._isTileVisibleToViewer(_sgT.x, _sgT.y));
+                        if (_sgT && _sgVis && typeof window.playSkyGrabFx === 'function') {
+                            var _sgC = st.units.find(function(u) { return u.id === data.casterId; }) || null;
+                            window.playSkyGrabFx(_sgC, _sgT, {
+                                id: data.spellId, spellType: data.spellType, carryHeight: data.carryHeight
+                            });
+                        }
+                    }
+
+                    /* Sky-throw fling / beam-carry: replay the flight so the
+                       guest sees the body travel instead of a sync teleport.
+                       Cosmetic impact only — positions/damage arrive via
+                       state-sync. Visible if either endpoint is in view. */
+                    if (data.type === 'sky-throw-fx' && NET.role === 'guest') {
+                        var _stT = st && st.units ? st.units.find(function(u) { return u.id === data.targetId; }) : null;
+                        var _stVis = !st || !st.fogOfWar || typeof window._isTileVisibleToViewer !== 'function'
+                            || window._isTileVisibleToViewer(data.fromX, data.fromY)
+                            || window._isTileVisibleToViewer(data.toX, data.toY);
+                        if (_stT && _stVis && typeof window.playSkyThrowFx === 'function') {
+                            window.playSkyThrowFx(_stT, data.fromX, data.fromY, data.toX, data.toY, {
+                                id: data.spellId, spellType: data.spellType, carryHeight: data.carryHeight
+                            }, {
+                                onImpact: function() {
+                                    if (typeof window.shakeBoard === 'function') window.shakeBoard('normal');
+                                }
+                            });
+                        }
+                    }
+
                     if (data.type === 'vfx3d' && NET.role === 'guest') {
                         // Fog gate: skip spell VFX whose every anchor point is
                         // hidden in the fog (a fireball flashing inside the fog
@@ -2851,6 +2929,7 @@
                        the guest's open quick menu on every heartbeat */
                     _enemyActionTargetId: 1,
                     _tileActionTarget: 1,
+                    _skyThrowDestKey: 1,
 
                     aiPlayer: 1,
                     aiThinking: 1,
@@ -3020,7 +3099,9 @@
                 'showUnitInfo',
                 // quick-menu anchors (enemy/ally card, tile card) — guest-local
                 // too, or the handoff heartbeat closes the guest's open card
-                '_enemyActionTargetId', '_tileActionTarget'
+                '_enemyActionTargetId', '_tileActionTarget',
+                // sky-throw destination hover preview — per-viewer hover UI
+                '_skyThrowDestKey'
             ];
 
             function _applyRemoteState(data) {
