@@ -7268,7 +7268,11 @@ const ThreeRenderer = (function () {
                     mm.position.set(cx + (isN ? off : 0), capBaseY + mh / 2, cz + (isN ? 0 : off));
                     holder.add(mm);
                 }
+                capBaseY += mh;
             }
+            /* full top incl. caps — the action-cam occlusion fade uses this to
+               decide whether the wall can actually hide a subject */
+            holder._ew_wallTopY = capBaseY;
 
             wallGroup.add(holder);
         }
@@ -13082,7 +13086,7 @@ const ThreeRenderer = (function () {
        (so a whole tree fades together, but only the ONE blocking decoration
        fades — not every grass tuft on the board). */
     function _occIsContainer(o) {
-        return o === terrainGroup || o === objectGroup || o === _terrainDecoGroup;
+        return o === terrainGroup || o === objectGroup || o === _terrainDecoGroup || o === wallGroup;
     }
     function _occRootOf(obj) {
         var o = obj;
@@ -13128,6 +13132,16 @@ const ThreeRenderer = (function () {
        be "in the way" — they were getting faded because the sight line to
        the raised torso grazes the top of the supporting blocks). */
     function _occHitFadeable(root, sub) {
+        if (root._ew_wallKey != null) {
+            /* Authored edge walls: a thin slab standing ON a tile edge is
+               never the ground the subject stands on, so it may fade whenever
+               its top actually rises above the subject's feet. (Wall holders
+               sit at origin with world-positioned meshes, so the generic
+               position-derived tile check below would misattribute them.) */
+            var wTop = root._ew_wallTopY;
+            if (wTop == null) return true;
+            return wTop > sub.feetY + (CONFIG.tileSize || BASE_TILE) * 0.1;
+        }
         if (root._ew_tileX == null) {
             /* Props/objects carry no tile tag — derive it from the root's
                position so the structure the subject STANDS ON (a walkable
@@ -13230,6 +13244,7 @@ const ThreeRenderer = (function () {
         var groups = [];
         if (terrainGroup) groups.push(terrainGroup);
         if (objectGroup) groups.push(objectGroup);
+        if (wallGroup) groups.push(wallGroup);
         if (!groups.length) return roots;
 
         var subs = [];   // [{P, feetY, tx, ty}] — see _occUnitPoint/_occTilePoint
