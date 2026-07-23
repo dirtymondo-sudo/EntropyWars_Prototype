@@ -8796,6 +8796,18 @@
             return Math.min(dmg, Math.max(0, target.hp));
         }
 
+        /* Projected Healing Potion restore on a target — mirrors doItem's
+           formula (ITEM_RULES.healPotion.healPct of max HP × terrain heal
+           multiplier), clamped to the missing HP so a full bar previews 0. */
+        function _estimateHealPotionHeal(target) {
+            if (!target || target.dead || !(target.maxHp > 0)) return 0;
+            const pct = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES.healPotion && ITEM_RULES.healPotion.healPct) || 0.30;
+            const mult = (typeof getTerrainHealMultiplier === 'function')
+                ? getTerrainHealMultiplier(target.x, target.y) : 1;
+            const raw = Math.max(1, Math.round(target.maxHp * pct * mult));
+            return Math.min(raw, Math.max(0, target.maxHp - target.hp));
+        }
+
         /* Resolve the currently ARMED action into {unitId, dmg, lethal} — or
            null when nothing damaging is armed. Called per frame by the 3D
            nameplate pass, so it memoizes on the action/target fingerprint. */
@@ -8821,12 +8833,18 @@
                             || (attacker._raceAbilities || []).find(s => s.name === hov.spellName);
                     }
                     const key = ['hov', attacker.id, target.id,
-                        (spell && spell.name) || (hov.isAttack ? 'atk' : ''),
+                        (spell && spell.name) || (hov.isAttack ? 'atk' : '') || (hov.itemKey || ''),
                         target.hp, target.shield || 0,
                         attacker.x, attacker.y, attacker.z ?? 0].join('|');
                     if (key === _dmgPreviewCacheKey) return _dmgPreviewCacheVal;
                     let val = null;
-                    if (spell && !isEnemyUnit(attacker, target)) {
+                    if (hov.itemKey === 'healPotion' && !isEnemyUnit(attacker, target)) {
+                        // Healing Potion row hover → projected potion heal on the
+                        // ally's HP bar (percent-of-max × terrain, clamped to the
+                        // missing HP — mirrors doItem's formula).
+                        const heal = _estimateHealPotionHeal(target);
+                        if (heal > 0) val = { unitId: target.id, heal: heal };
+                    } else if (spell && !isEnemyUnit(attacker, target)) {
                         // Ally (or self) cast → projected heal, clamped to the
                         // missing HP by _estimateSpellHeal (full HP = no flash).
                         const heal = _estimateSpellHeal(attacker, target, spell);
@@ -8844,30 +8862,47 @@
             const pt = state.pendingTarget;
             if (!pt || state._actionExecuting || state.devAutoSim) return null;
             const mode = pt.mode || state.actionMode;
-            if (mode !== 'attack' && mode !== 'spell') return null;
+            if (mode !== 'attack' && mode !== 'spell' && mode !== 'item') return null;
             const attacker = typeof getSelectedUnit === 'function' ? getSelectedUnit() : null;
             if (!attacker || attacker.dead) return null;
             const target = (pt.z !== undefined && pt.z !== null)
                 ? (unitAt(pt.x, pt.y, pt.z) || unitAt(pt.x, pt.y))
                 : unitAt(pt.x, pt.y);
-            if (!target || target.dead || target.id === attacker.id) return null;
-            let spell = null;
-            if (mode === 'spell') {
+            if (!target || target.dead) return null;
+            // Self-target: only support casts make sense (a heal on yourself
+            // previews; you can't arm an attack on yourself).
+            if (target.id === attacker.id && mode === 'attack') return null;
+            let spell = null, itemKey = null;
+            if (mode === 'item') {
+                itemKey = pt.tool || state.selectedTool;
+                if (itemKey !== 'healPotion') return null;
+            } else if (mode === 'spell') {
                 const toolName = pt.tool || state.selectedTool;
                 spell = (attacker.spells || []).find(s => s.name === toolName)
                     || (attacker._raceAbilities || []).find(s => s.name === toolName);
                 if (!spell) return null;
-                const _damaging = spell.dmg || (spell.hitDamages && spell.hitDamages.length) || spell.dotDamage;
-                if (!_damaging) return null;
             }
-            const key = [attacker.id, target.id, mode, (spell && spell.name) || '',
+            const key = [attacker.id, target.id, mode, (spell && spell.name) || itemKey || '',
                 target.hp, target.shield || 0, attacker.x, attacker.y, attacker.z ?? 0].join('|');
             if (key === _dmgPreviewCacheKey) return _dmgPreviewCacheVal;
-            const dmg = predictDamageToUnit(attacker, target, spell);
+            let val = null;
+            if (itemKey === 'healPotion') {
+                // Armed Healing Potion → projected restore grows green off the
+                // ally's fill, exactly like heal spells.
+                if (!isEnemyUnit(attacker, target)) {
+                    const heal = _estimateHealPotionHeal(target);
+                    if (heal > 0) val = { unitId: target.id, heal: heal };
+                }
+            } else if (spell && !isEnemyUnit(attacker, target)) {
+                // Armed support cast (heal / self-heal) on an ally or self.
+                const heal = _estimateSpellHeal(attacker, target, spell);
+                if (heal > 0) val = { unitId: target.id, heal: heal };
+            } else if (target.id !== attacker.id) {
+                const dmg = predictDamageToUnit(attacker, target, spell);
+                if (dmg > 0) val = { unitId: target.id, dmg: dmg, lethal: dmg >= (target.hp || 0) };
+            }
             _dmgPreviewCacheKey = key;
-            _dmgPreviewCacheVal = dmg > 0
-                ? { unitId: target.id, dmg: dmg, lethal: dmg >= (target.hp || 0) }
-                : null;
+            _dmgPreviewCacheVal = val;
             return _dmgPreviewCacheVal;
         }
         window.getPendingDamagePreview = getPendingDamagePreview;

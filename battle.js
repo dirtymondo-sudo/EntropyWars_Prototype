@@ -18513,6 +18513,18 @@
             // Machine Elves: Pulse/Tune need prisms already on the board.
             const _mirrorWhy = _mirrorSpellBlockReason(unit, spell);
             if (_mirrorWhy) return _mirrorWhy;
+            // Flight-gated casts (Sky Drop / Sky Throw / Sky Slam): a grounded
+            // caster that cannot actually get airborne — not a flyer, too
+            // wounded to swoop-takeoff (below 25% HP), or pinned by super
+            // gravity — would only bounce off doSpell AFTER walking into
+            // position. Grey the row everywhere with the real reason instead.
+            if (spell.requiresFlight
+                && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
+                if (typeof canFly === 'function' && !canFly(unit)) return 'Flyers only';
+                if (typeof isFlightCrippled === 'function' && isFlightCrippled(unit)) return 'Too wounded to fly';
+                if (typeof getGravityFieldAt === 'function'
+                    && getGravityFieldAt(unit.x, unit.y) === 'super') return '🕳 Pinned by gravity';
+            }
             // MP is deliberately checked LAST: canAffordSpell() treats a bare
             // 'No MP' as passable (its callers gate MP themselves), so no
             // other block may hide behind it.
@@ -32964,6 +32976,7 @@
             const pct = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined' && FLYING_ALTITUDE_CONFIG.woundedGroundPct) || 0.25;
             return (unit.hp || 0) < Math.ceil((unit.maxHp || 1) * pct);
         }
+        window.isFlightCrippled = isFlightCrippled;
 
         function forceGroundUnit(unit, opts = {}) {
             if (!unit || unit.dead || unit._dying) return false;
@@ -40353,6 +40366,15 @@
                     playErrorSfx();
                     return 0;
                 }
+                // 🕳 Super gravity pins grounded flyers — the swoop-takeoff
+                // would silently fail and the "sky" move would fire from the
+                // dirt. Reject cleanly (menus grey this via getSpellBlockReason).
+                if (spell.requiresFlight && getGravityFieldAt(unit.x, unit.y) === 'super'
+                    && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
+                    addLog(`🕳 ${unitDisplayName(unit)} can't take off — the crushing gravity pins them to the ground!`);
+                    playErrorSfx();
+                    return 0;
+                }
                 pushUndoSnapshot(true);
                 if (spell.requiresFlight) _skySwoopTakeoff(unit);
                 playSfx(spellLaunchSfx(spell));
@@ -40578,6 +40600,21 @@
                         playErrorSfx();
                         return 0;
                     }
+                    // Parity with Sky Drop / Sky Slam: a grounded flyer that
+                    // can't actually take off (wounded below 25% HP, or pinned
+                    // by super gravity) must not grab from the dirt.
+                    if (spell.requiresFlight && typeof isFlightCrippled === 'function' && isFlightCrippled(unit)
+                        && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
+                        addLog('Too wounded to fly! (below 25% HP)');
+                        playErrorSfx();
+                        return 0;
+                    }
+                    if (spell.requiresFlight && getGravityFieldAt(unit.x, unit.y) === 'super'
+                        && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
+                        addLog(`🕳 ${unitDisplayName(unit)} can't take off — the crushing gravity pins them to the ground!`);
+                        playErrorSfx();
+                        return 0;
+                    }
                     if (spell.requiresFlight) _skySwoopTakeoff(unit);
 
                     unit.mp -= effectiveSpellCost;
@@ -40637,6 +40674,15 @@
                 if (spell.requiresFlight && typeof isFlightCrippled === 'function' && isFlightCrippled(unit)
                     && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
                     addLog('Too wounded to fly! (below 25% HP)');
+                    playErrorSfx();
+                    return 0;
+                }
+                // 🕳 Super gravity pins grounded flyers — the swoop-takeoff
+                // would silently fail and the "sky" move would fire from the
+                // dirt. Reject cleanly (menus grey this via getSpellBlockReason).
+                if (spell.requiresFlight && getGravityFieldAt(unit.x, unit.y) === 'super'
+                    && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
+                    addLog(`🕳 ${unitDisplayName(unit)} can't take off — the crushing gravity pins them to the ground!`);
                     playErrorSfx();
                     return 0;
                 }

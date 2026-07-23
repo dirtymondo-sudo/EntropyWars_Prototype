@@ -7226,7 +7226,7 @@ const RACE_ABILITIES = {
           type: 'heal', cost: 30, range: 3, apCost: 1,
           kind: 'zoneHeal', aoeRadius: 1, zoneDuration: 2, healPerTurn: 80,
           desc: 'Creates a zone that heals allies standing inside it each turn.' },
-        { id: 'raceRiptide', spellType: 'anomaly', element: 'water', name: 'Riptide',
+        { id: 'raceRiptide', spellType: 'anomaly', element: 'water', name: 'Whirlpool',
           type: 'damage', cost: 30, dmg: 160, range: 4,
           kind: 'aoePull', damageType: 'magic', aoeRadius: 1, pullToCenter: true,
           statusEffects: [{ id: 'slow', duration: 1 }],

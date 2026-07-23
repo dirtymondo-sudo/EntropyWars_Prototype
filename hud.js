@@ -1833,6 +1833,10 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     // white at the leading edge of the fill (lethal → the whole fill blinks).
     const prevPct = (b.previewDmg > 0 && port.maxHp > 0)
       ? Math.max(0, Math.min(hpPct, (b.previewDmg / port.maxHp) * 100)) : 0;
+    // Heal forecast: projected restore grows green FROM the fill's edge —
+    // heals/potions browsing the target drum show the outcome, not just "♥".
+    const healPct = (b.previewHeal > 0 && port.maxHp > 0)
+      ? Math.max(0, Math.min(100 - hpPct, (b.previewHeal / port.maxHp) * 100)) : 0;
     // Numbers ride the strip ABOVE the bar — identity left, numbers right —
     // the exact same layout as the 3D nameplates; the bar itself stays clean.
     portCol = h('span', { className: 'hrlg-tcol' },
@@ -1850,6 +1854,10 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
         prevPct > 0 && h('span', {
           className: 'hrlg-thp-preview' + (b.previewDmg >= port.hp ? ' dmg-preview-lethal' : ''),
           style: { left: (hpPct - prevPct) + '%', width: prevPct + '%' },
+        }),
+        healPct > 0 && h('span', {
+          className: 'hrlg-thp-preview dmg-preview-heal',
+          style: { left: hpPct + '%', width: healPct + '%' },
         }),
         shPct > 0 && h('span', { className: 'hrlg-thp-shield', style: { width: shPct + '%' } }),
       ),
@@ -2412,10 +2420,32 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
         })(),
         maxMp > 0 && (() => {
           const mpPct = Math.max(0, Math.min(100, (mp / maxMp) * 100));
+          // Projected MP spend: while the cursor sits on a castable ability
+          // row (hover IS selection) — or while a spell is armed and aiming —
+          // the cost blinks as a bright slice off the fill's leading edge,
+          // with a −N chip on the number. Same read as the HP damage forecast.
+          let mpSpend = 0;
+          if (selBlade && (selBlade.available || selBlade.check)
+              && typeof selBlade.mp === 'number' && selBlade.mp > 0) {
+            mpSpend = selBlade.mp;
+          } else if (am === 'spell' && typeof state !== 'undefined' && state.selectedTool
+              && typeof getSelectedUnit === 'function') {
+            const _su = getSelectedUnit();
+            const _sp = _su && [...(_su.spells || []), ...(_su._raceAbilities || [])]
+              .filter(Boolean).find(s => s.name === state.selectedTool);
+            if (_sp) mpSpend = (typeof getSpellMpCostFor === 'function')
+              ? getSpellMpCostFor(_su, _sp) : (_sp.cost || 0);
+          }
+          const spendPct = mpSpend > 0 ? Math.max(0, Math.min(mpPct, (mpSpend / maxMp) * 100)) : 0;
           return h('div', { className: 'hrlg-vbar mp' },
             h('span', { className: 'hrlg-vfill', style: { width: mpPct + '%', background: MP_FILL, boxShadow: MP_GLOW } }),
+            spendPct > 0 && h('span', {
+              className: 'hrlg-vspend' + (mpSpend > mp ? ' short' : ''),
+              style: { left: (mpPct - spendPct) + '%', width: spendPct + '%' },
+            }),
             h('span', { className: 'hrlg-vlbl' }, 'MP'),
-            h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(mp)) + '/' + maxMp),
+            h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(mp)) + '/' + maxMp,
+              mpSpend > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' −' + mpSpend) : null),
           );
         })(),
       ),
@@ -2932,6 +2962,12 @@ function _hrlgTargetBlades(unit, st, mode) {
         && typeof predictDamageToUnit === 'function'
         && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
       ? predictDamageToUnit(unit, tUnit, spell || null) : 0;
+    // Heal forecast: support casts on allies show the projected restore in
+    // green on the row's HP bar (same estimator as the nameplate forecast).
+    const previewHeal = (tUnit && !isOffensive && spell
+        && typeof _estimateSpellHeal === 'function'
+        && !(typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)))
+      ? _estimateSpellHeal(unit, tUnit, spell) : 0;
 
     return {
       id: 'tg:' + i + ':' + t.x + ',' + t.y,
@@ -2942,8 +2978,10 @@ function _hrlgTargetBlades(unit, st, mode) {
       check: !!isPending,
       superEff: superEff,
       previewDmg: previewDmg,
-      // Forecast chip on the armed row: "≈−34" (reuses the power chip slot).
-      power: previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad } : undefined,
+      previewHeal: previewHeal,
+      // Forecast chip on the armed row: "≈−34" / "≈+34" (reuses the power chip slot).
+      power: previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
+        : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' } : undefined,
       portrait: portrait,
       meta: portrait
         ? { text: t.dist + 't' }
@@ -3007,6 +3045,10 @@ function _hrlgItemTargetBlades(unit, st) {
     else if (isMana && !(u.maxMp > 0)) { available = false; sub = 'No MP pool'; }
     else if (isMana && u.mp >= u.maxMp) { available = false; sub = 'Full MP'; }
     const baneHit = isBane && (u.types || []).includes(rule.baneType);
+    // Healing Potion rows: projected restore in green on the row's HP bar
+    // (percent-of-max × terrain, clamped — mirrors doItem via ui.js).
+    const previewHeal = (isHeal && available && typeof _estimateHealPotionHeal === 'function')
+      ? _estimateHealPotionHeal(u) : 0;
     const portrait = _hrlgPortraitData(u, unit);
     if (portrait && isMana) {
       portrait.showMp = true;
@@ -3023,6 +3065,8 @@ function _hrlgItemTargetBlades(unit, st) {
       sub: sub,
       check: !!isPending,
       portrait: portrait,
+      previewHeal: previewHeal,
+      power: previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' } : undefined,
       meta: { text: t.dist + 't' },
       fire: () => {
         if (isPending && typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
@@ -4035,7 +4079,37 @@ function _computeEnemyActions(actingUnit, targetUnit) {
   if (!canAttack) {
     atkMoveTile = findMoveIntoRange(effRange, G.AP_COST_ACTION || 1);
   }
-  if (canAttack || atkMoveTile) {
+
+  // 🗯 Provoke: while the challenger is attackable from here, doAttack refuses
+  // every other target — grey the row with the real reason instead of letting
+  // the click (or the move-then-attack) bounce off the engine.
+  let atkTauntLock = null;
+  if (typeof getTauntTargeter === 'function') {
+    const _aT = getTauntTargeter(actingUnit);
+    if (_aT && _aT.id !== targetUnit.id) {
+      const _aTd = (typeof combatDist === 'function')
+        ? combatDist(actingUnit.x, actingUnit.y, actingUnit.z ?? 0, _aT.x, _aT.y, _aT.z ?? 0)
+        : Math.abs(actingUnit.x - _aT.x) + Math.abs(actingUnit.y - _aT.y);
+      if (_aTd >= 1 && _aTd <= effRange
+          && !(typeof isRangeBlockedByTerrain === 'function'
+            && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, _aT.x, _aT.y, actingUnit.z))) {
+        atkTauntLock = _aT;
+      }
+    }
+  }
+  if (atkTauntLock) {
+    actions.push({
+      id: 'attack',
+      label: 'Attack',
+      icon: '⚔',
+      apCost: G.AP_COST_ACTION || 1,
+      moveTile: null,
+      preview: null,
+      typeNote: '',
+      available: false,
+      reason: '🗯 Provoked — attack ' + (typeof unitDisplayName === 'function' ? unitDisplayName(atkTauntLock) : 'the challenger'),
+    });
+  } else if (canAttack || atkMoveTile) {
 
     let moveAtkPreview = atkPreview;
     if (atkMoveTile && !canAttack) {
@@ -4112,6 +4186,17 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     if (nonEnemyTargetKinds.has(sp.kind)) continue;
     // Flight-gated grabs (Sky Drop / Sky Throw) are dead rows for grounded casters.
     if (sp.requiresFlight && !(typeof canFly === 'function' && canFly(actingUnit))) continue;
+    // …and for flyers that can't actually get airborne right now: too wounded
+    // to swoop-takeoff (below 25% HP) or pinned by super gravity. doSpell
+    // rejects both AFTER the approach move — never offer the row.
+    if (sp.requiresFlight && !(typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit))
+        && ((typeof isFlightCrippled === 'function' && isFlightCrippled(actingUnit))
+          || (typeof getGravityFieldAt === 'function' && getGravityFieldAt(actingUnit.x, actingUnit.y) === 'super'))) continue;
+    // Pure-status casts that would do NOTHING on this target (it already
+    // carries every status the spell applies) — doSpell rejects them with
+    // "would have no effect"; drop the dead row instead.
+    if (targetUnit && typeof spellIsPureStatus === 'function' && spellIsPureStatus(sp)
+        && typeof spellTargetUsableOn === 'function' && !spellTargetUsableOn(actingUnit, sp, targetUnit)) continue;
     // Seeds can't root on mountain/lava — the engine rejects the plant outright.
     if ((sp.kind === 'seedPoison' || sp.kind === 'leechSeed') && typeof getTerrainAt === 'function') {
       const seedGround = getTerrainAt(tx, ty);
@@ -4140,6 +4225,30 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
     const spRange = typeof getEffectiveSpellRange === 'function' ? getEffectiveSpellRange(actingUnit, sp) : (sp.range || 1);
     const spLos = typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty);
+
+    // 🗯 Provoke: a taunted caster's UNIT-targeted offensive casts are locked
+    // to the challenger while the challenger is castable-at — doSpell rejects
+    // any other enemy (after the approach move, too). Mirror its gate and drop
+    // the row instead of letting the click bounce.
+    if (targetUnit && typeof getTauntTargeter === 'function' && typeof _kindMeta === 'function') {
+      const _qTaunter = getTauntTargeter(actingUnit);
+      if (_qTaunter && _qTaunter.id !== targetUnit.id) {
+        const _tm = _kindMeta(sp);
+        if (_tm.offensive && !_tm.tileTargeted && !_tm.directional) {
+          const _tLong = (typeof isLongRangeSpell === 'function') && isLongRangeSpell(sp);
+          const _td = (typeof combatReach === 'function')
+            ? combatReach(actingUnit.x, actingUnit.y, actingUnit.z ?? 0,
+                _qTaunter.x, _qTaunter.y, _qTaunter.z ?? 0, _tLong)
+            : Math.abs(actingUnit.x - _qTaunter.x) + Math.abs(actingUnit.y - _qTaunter.y);
+          const _tVis = !state.fogOfWar
+            || (typeof isInVision === 'function' && isInVision(actingUnit, _qTaunter.x, _qTaunter.y));
+          if (_td >= (_tm.minRange ?? 1) && _td <= spRange && _tVis
+              && (sp.ignoresLineOfSight
+                || !(typeof isRangeBlockedByTerrain === 'function'
+                  && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, _qTaunter.x, _qTaunter.y, actingUnit.z ?? 0)))) continue;
+        }
+      }
+    }
 
     // Distance with the long-range downward-gravity rule applied for THIS spell,
     // so casting down onto a lower target isn't blocked by the vertical gap.
@@ -4720,6 +4829,8 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
       targetId: targetUnit.id,
       spellName: (action && action.spell) ? action.spell.name : null,
       isAttack: !!(action && (action.id === 'attack' || action.id === 'combo')),
+      // Potion rows (ally quick menu): forecast the item's heal the same way.
+      itemKey: (action && action.itemKey) || null,
     };
   }
   if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
@@ -7158,6 +7269,20 @@ function _injectHudHideStyles() {
       color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.95), 0 0 4px rgba(0,0,0,0.8);
     }
     .hrlg-vbar.mp .hrlg-vnum { font-size: 11px; }
+    /* Projected MP spend: the hovered/armed spell's cost blinks as a bright
+       slice off the MP fill's leading edge (same read as the HP forecast;
+       dmgPreviewBlink keyframes live in styles-animations.css). */
+    .hrlg-vspend {
+      position: absolute; top: 0; bottom: 0;
+      background: #cfe9ff; pointer-events: none;
+      animation: dmgPreviewBlink 0.85s ease-in-out infinite;
+    }
+    .hrlg-vspend.short { background: #ffb3bc; }
+    .hrlg-vspendnum {
+      color: #8fd0ff; font-weight: 900;
+      text-shadow: 0 0 6px rgba(120,190,255,0.7), 0 1px 2px #000;
+      animation: dmgPreviewBlink 0.85s ease-in-out infinite;
+    }
     /* AP row — under the vitals, sized to be READ, not squinted at */
     .hrlg-ap {
       display: flex; align-items: center; justify-content: center; gap: 6px;
