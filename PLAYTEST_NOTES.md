@@ -1216,6 +1216,39 @@ Token `20260712m` → `20260713a`.
   Sword_Regular_Combo), fallen angel (magic basics). All three races added to
   ACCT_STARTER_UNITS (3D-only gate unlocks them).
 
+## 50→1000 HP level curve (2026-07-23) — data.js/battle.js/state.js/ui.js
+Token `20260723h` → `20260723i`. Owner request: ~50 HP at level 1, ~1000 at
+level 100 (Mystery Dungeon units were starting with full classic base HP,
+~450–660 at level 1). The dormant `levelScale()` chokepoint plumbing (kept
+guarded everywhere since the ×24 rollback) now does the work, as a
+DOWN-scaler:
+- **`levelScale(L)` = `EW_SCALE × (EW_L1_FRAC + (1−EW_L1_FRAC)×((L−1)/99)^1.35)`**
+  — 0.05 at level 1, exactly 1 at level 100. PvP (level-normalized to cap)
+  resolves byte-identical to before.
+- **Max HP** = `(baseHp + 360) × levelScale(L)` (`levelStatGains(level, baseHp)`
+  — the HP "gain" is a NEGATIVE delta at low levels; `_recomputeStatsForLevel`
+  passes `_baseStats.maxHp` and still preserves flat equip/sec-job bonuses).
+  L1 ≈ 40–51 HP, L5 ≈ 50–64, L100 ≈ 805–1020 (unchanged). MP/atk/def/mdef/int
+  keep the classic additive growth (MP costs are flat, so MP pools must NOT
+  compress; atk/def stay base-magnitude — resolution scaling handles it).
+- **Damage/heal/shield chokepoints re-armed**: the `_srcLvl > 1` guards in
+  `applyDamageToUnit`/`applyHealingToUnit` became `>= 1` (levelScale(1) is
+  0.05 now, level-1 casters MUST scale). Same-level combat deals the same %
+  of HP at every level.
+- **MP restores un-scaled** (supercharge +25, shrine mpAmount) — pools aren't
+  compressed. Potions already percent-based (untouched engine-side).
+- **Flat floors brought into level band**: burn/poison/drowning ticks got
+  `scaleByTargetLevel: true` (data.js STATUS_DEFS); seed/tree-aura minimums
+  (10–16) and building-collapse minimums (40) scale via `_lvlScaledMin`/
+  inline levelScale. Fall damage was already pure percent.
+- **Previews now truthful at low level**: `getPreviewEffect`,
+  `_estimateSpellDamage/Heal`, `_estimateBasicAttackDamage` (ui.js) mirror
+  the engine's caster-level damage / target-level mitigation scaling; potion
+  previews fixed from stale flat 96/40 to the real percent amounts.
+- ai.js `_aiKillHp` / ainew.js already divide by attacker levelScale —
+  direction-agnostic, no change needed. Towers via `_towerLevelScale`
+  (MD/campaign = party level) also inherit the compression automatically.
+
 ## Level 100 REBALANCE — classic magnitude restored (2026-07-12) — data.js/battle.js
 Token `20260712l` → `20260712m`. Owner rollback of the ×24 magnitude: MP was
 effectively free in PvP (pools ×24, spell costs flat) and spell cards showed

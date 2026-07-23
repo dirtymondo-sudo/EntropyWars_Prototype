@@ -8652,6 +8652,9 @@ const STATUS_DEFS = {
                 ignoreArmor: true,
                 damageType: 'dot',
                 consumeMarked: false,
+                // 50→1000 HP curve: source-less ticks scale by the victim's
+                // level so a flat 24 doesn't gut a ~50-HP dungeon rookie.
+                scaleByTargetLevel: true,
                 flashColor: 'burn',
                 // Burn is fire-element (2026-07-23): a healedByElement:'fire'
                 // passive (Thermal Regen) turns any stray tick into healing.
@@ -8677,6 +8680,7 @@ const STATUS_DEFS = {
                 ignoreArmor: true,
                 damageType: 'dot',
                 consumeMarked: false,
+                scaleByTargetLevel: true,
                 flashColor: 'poison'
             });
         }
@@ -8808,6 +8812,7 @@ const STATUS_DEFS = {
                 ignoreArmor: true,
                 damageType: 'dot',
                 consumeMarked: false,
+                scaleByTargetLevel: true,
                 flashColor: 'drowning'
             });
         }
@@ -11888,41 +11893,52 @@ const SPELL_SLOT_MAX = 8;
 
 // ============================================================================
 // Level 100 scaling — single source of truth.
-// REBALANCED back to the classic magnitude (owner request, 2026-07-12): spell/
-// attack/heal/shield/DoT numbers are WYSIWYG — the number a spell card shows is
-// the damage it deals, at EVERY level, and MP costs stay flat against an MP
-// pool that only grows modestly. EW_SCALE = 1 turns the resolution-time
-// levelScale() multiplier (still guarded at every damage/heal chokepoint in
-// battle.js/ai.js/state.js/map.js) into an exact no-op everywhere.
-// Leveling instead grows unit STATS additively, exactly like the classic
-// Lv1→10 game: LEVEL_TOTAL_STAT_GAINS is the column sum of the old per-level
-// gains table stretched across levels 1→100, so a level-100 unit has the old
-// level-10 statline (~1000 HP). Because HP/MP only grow ~1.6–2× from level 1
-// to 100, flat spell damage and MP costs stay balanced at every level — same
-// property the classic game had.
+// HP CURVE (owner request, 2026-07-23): a level-1 unit has ~50 HP and grows to
+// ~1000 HP at level 100 (the classic level-10 statline). levelScale(L) is the
+// fraction of the level-100 magnitude a level-L unit operates at: EW_L1_FRAC
+// (5%) at level 1, ramping to EW_SCALE (×1, WYSIWYG) at the cap. It multiplies
+// BOTH max HP and every flat damage/heal/shield/DoT amount at the resolution
+// chokepoints (battle.js/ai.js/state.js/map.js), so same-level combat deals
+// the same PROPORTION of HP at every level — a level-5 fight and a level-100
+// fight both feel like today's game, just with smaller numbers early.
+// PvP is untouched: levelScale(100) == 1 exactly, so level-cap-normalized
+// modes resolve byte-identical to before.
+// MP is deliberately NOT compressed (spell MP costs are flat), so low-level
+// units can still cast; MP grows modestly via the classic additive gains.
+// atk/def/mdef/int also stay at classic magnitude — the engine scales the
+// damage they PRODUCE (and the mitigation they provide) at resolution time.
 // ============================================================================
 const LEVEL_CAP = 100;
-// Resolution-time magnitude multiplier. 1 = WYSIWYG (displayed spell damage ==
-// dealt damage at all levels). Do NOT raise this without also scaling spell
-// cards, MP costs, and every flat table — see the 2026-07 level-100 rollback.
+// Level-100 magnitude multiplier. 1 = WYSIWYG at the cap (displayed spell
+// damage == dealt damage for level-100 units). Do NOT raise this without also
+// scaling spell cards, MP costs, and every flat table.
 const EW_SCALE = 1;
+// Fraction of level-100 magnitude a level-1 unit has: 0.05 → a unit whose
+// level-100 statline is ~1000 HP starts Mystery Dungeon at ~50 HP.
+const EW_L1_FRAC = 0.05;
 // Curve exponent — keeps early levels gentle, late levels meaningful.
 const LEVEL_SCALE_EXP = 1.35;
 function levelScale(level) {
-    if (LEVEL_CAP <= 1) return 1;
+    if (LEVEL_CAP <= 1) return EW_SCALE;
     const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
-    return 1 + (EW_SCALE - 1) * Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_SCALE_EXP);
+    const t = Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_SCALE_EXP);
+    return EW_SCALE * (EW_L1_FRAC + (1 - EW_L1_FRAC) * t);
 }
 
-// Additive stat growth, classic scale. Totals are the exact column sums of the
-// retired Lv2–10 LEVEL_UP_GAINS table, so level 100 == the old level 10.
-// The ramp follows the same gentle curve exponent as levelScale.
+// Stat growth. MP/atk/def/mdef/int grow additively at classic scale (totals =
+// the exact column sums of the retired Lv2–10 LEVEL_UP_GAINS table, so level
+// 100 == the old level 10). HP instead follows the 50→1000 curve: the gain is
+// whatever delta brings maxHp to (baseHp + total) × levelScale(L) — NEGATIVE
+// below the level where the curve crosses the race's base HP, which is what
+// compresses a fresh Mystery Dungeon unit down to ~50 HP.
 const LEVEL_TOTAL_STAT_GAINS = { hp: 360, mp: 108, atk: 58, def: 52, mdef: 43, int: 43 };
-function levelStatGains(level) {
+function levelStatGains(level, baseHp) {
     const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
     const t = LEVEL_CAP <= 1 ? 1 : Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_SCALE_EXP);
     const out = {};
     for (const k in LEVEL_TOTAL_STAT_GAINS) out[k] = Math.round(LEVEL_TOTAL_STAT_GAINS[k] * t);
+    const b = Math.max(1, Number(baseHp) || 550);
+    out.hp = Math.round((b + LEVEL_TOTAL_STAT_GAINS.hp) * levelScale(L)) - b;
     return out;
 }
 
@@ -12145,7 +12161,7 @@ Object.assign(window, {
   DEFAULT_BUILDS, ITEM_RULES, SPELL_LIBRARY, SPELL_SLOT_MAX,
   getSpellSlotCost, getSpellIdsSlotCost, trimSpellIdsToSlotBudget,
   CLASS_SPELL_LEARN_ORDER, RACE_ABILITIES, CAMPAIGN_REGION_THEMES,
-  LEVEL_CAP, EW_SCALE, LEVEL_SCALE_EXP, levelScale,
+  LEVEL_CAP, EW_SCALE, EW_L1_FRAC, LEVEL_SCALE_EXP, levelScale,
   LEVEL_TOTAL_STAT_GAINS, levelStatGains,
   getSpellUnlockLevel, SPELL_SHOP_LEVEL, SECONDARY_JOB_LEVEL, AP_BONUS_LEVELS,
   MODE_LEVEL_RULES, isProgressionMode, RACE_XP_YIELD_OVERRIDES, getRaceXpYield,

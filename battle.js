@@ -5682,7 +5682,7 @@
 
             if (seed.type === 'heal' && unit.player === seed.owner) {
                 const isRaining = _seedRainAt(unit.x, unit.y);
-                const healAmt = Math.max(12, Math.round(unit.maxHp * SEED_HEAL_PCT)) * (isRaining ? 2 : 1);
+                const healAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * SEED_HEAL_PCT)) * (isRaining ? 2 : 1);
                 const healed = applyHealingToUnit(unit, healAmt, null);
                 if (healed > 0) {
                     pushEvt(unit, `<span class="dlg-heal">🌱 Healing Seed ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}</span>`, { text: `+${healed}`, type: 'heal' });
@@ -5694,7 +5694,7 @@
             if (seed.type === 'poison' && unit.player !== seed.owner) {
                 const caster = unitFromId(seed.casterUnitId);
                 const hpBefore = unit.hp;
-                const dmgAmt = Math.max(16, Math.round(unit.maxHp * SEED_POISON_PCT));
+                const dmgAmt = Math.max(_lvlScaledMin(16, unit), Math.round(unit.maxHp * SEED_POISON_PCT));
                 applyDamageToUnit(unit, dmgAmt, `🌿 Poison Seed stings ${unitDisplayName(unit)}: `, {
                     ignoreArmor: true,
                     damageType: 'dot',
@@ -5715,7 +5715,7 @@
             if (seed.type === 'leech') {
                 if (unit.player !== seed.owner) {
                     const hpBefore = unit.hp;
-                    const drainAmt = Math.max(12, Math.round(unit.maxHp * SEED_LEECH_PCT));
+                    const drainAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * SEED_LEECH_PCT));
                     applyDamageToUnit(unit, drainAmt, `🌿 Leech Seed drains ${unitDisplayName(unit)}: `, {
                         ignoreArmor: true,
                         damageType: 'dot',
@@ -5737,7 +5737,7 @@
                     }
                     return true;
                 }
-                const healed = applyHealingToUnit(unit, Math.max(10, Math.round(unit.maxHp * SEED_LEECH_ALLY_PCT)), null);
+                const healed = applyHealingToUnit(unit, Math.max(_lvlScaledMin(10, unit), Math.round(unit.maxHp * SEED_LEECH_ALLY_PCT)), null);
                 if (healed > 0) {
                     pushEvt(unit, `<span class="dlg-heal">🌿 Leech Seed nourishes ${unitDisplayName(unit)} for ${healed} HP</span>`, { text: `+${healed}`, type: 'heal' });
                     addLog(`🌿 Leech Seed nourishes ${unitDisplayName(unit)} for ${healed} HP.`);
@@ -5869,7 +5869,7 @@
 
             if (tree.aura === 'heal' && unit.player === tree.owner) {
                 const isRaining = _seedRainAt(unit.x, unit.y);
-                const healAmt = Math.max(12, Math.round(unit.maxHp * TREE_AURA_HEAL_PCT)) * (isRaining ? 2 : 1);
+                const healAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * TREE_AURA_HEAL_PCT)) * (isRaining ? 2 : 1);
                 const healed = applyHealingToUnit(unit, healAmt, null);
                 if (healed > 0) {
                     pushEvt(unit, `<span class="dlg-heal">🌳 Healing Tree ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${unitDisplayName(unit)}</span>`, { text: `+${healed}`, type: 'heal' });
@@ -5881,7 +5881,7 @@
             if (tree.aura === 'poison' && unit.player !== tree.owner) {
                 const caster = unitFromId(tree.casterUnitId);
                 const hpBefore = unit.hp;
-                const dmgAmt = Math.max(14, Math.round(unit.maxHp * TREE_AURA_POISON_PCT));
+                const dmgAmt = Math.max(_lvlScaledMin(14, unit), Math.round(unit.maxHp * TREE_AURA_POISON_PCT));
                 applyDamageToUnit(unit, dmgAmt, `🌳 Toxin Tree sickens ${unitDisplayName(unit)}: `, {
                     ignoreArmor: true,
                     damageType: 'dot',
@@ -5901,7 +5901,7 @@
 
             if (tree.aura === 'leech' && unit.player !== tree.owner) {
                 const hpBefore = unit.hp;
-                const drainAmt = Math.max(12, Math.round(unit.maxHp * TREE_AURA_LEECH_PCT));
+                const drainAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * TREE_AURA_LEECH_PCT));
                 applyDamageToUnit(unit, drainAmt, `🌳 Leech Tree saps ${unitDisplayName(unit)}: `, {
                     ignoreArmor: true,
                     damageType: 'dot',
@@ -6798,6 +6798,14 @@
             }, 1200);
         }
 
+        // Flat minimum for a percent-of-maxHp effect, brought into the unit's
+        // level band (50→1000 HP curve): a "min 12 HP" floor tuned for ~1000-HP
+        // units becomes ~1 HP for a level-1 dungeon rookie. ×1 at the cap.
+        function _lvlScaledMin(n, unit) {
+            const ls = (typeof levelScale === 'function' && unit) ? levelScale(getUnitLevel(unit)) : 1;
+            return Math.max(1, Math.round(n * ls));
+        }
+
         function applyHealingToUnit(target, amount, sourceUnit = null, opts = {}) {
             if (!target || target.dead || target._dying) return 0;
             // Level 100: flat heals scale by the healer's level (same curve as
@@ -6807,7 +6815,9 @@
             if (!opts.preScaled && typeof levelScale === 'function') {
                 const _srcLvl = sourceUnit ? getUnitLevel(sourceUnit)
                     : (opts.scaleByTargetLevel ? getUnitLevel(target) : 0);
-                if (_srcLvl > 1) _amt = _amt * levelScale(_srcLvl);
+                // >= 1, not > 1: levelScale(1) < 1 now (50→1000 HP curve), so
+                // level-1 casters MUST be scaled or they'd heal 20× too hard.
+                if (_srcLvl >= 1) _amt = _amt * levelScale(_srcLvl);
             }
             const rawAmount = Math.max(0, Math.round(_amt));
             const actual = Math.min(rawAmount, Math.max(0, target.maxHp - target.hp));
@@ -15073,7 +15083,10 @@
             if (!opts.preScaled && typeof levelScale === 'function') {
                 const _srcLvl = sourceUnit ? getUnitLevel(sourceUnit)
                     : (opts.scaleByTargetLevel ? getUnitLevel(target) : 0);
-                if (_srcLvl > 1) finalDamage = Math.max(1, Math.round(finalDamage * levelScale(_srcLvl)));
+                // >= 1, not > 1: levelScale(1) < 1 now (50→1000 HP curve), so
+                // level-1 attackers MUST be scaled or flat spell damage would
+                // one-shot the ~50-HP units of early Mystery Dungeon floors.
+                if (_srcLvl >= 1) finalDamage = Math.max(1, Math.round(finalDamage * levelScale(_srcLvl)));
             }
             // Mitigation is stored in base magnitude, so scale it by the target's
             // level to stay proportional against the now-scaled incoming damage.
@@ -15287,9 +15300,9 @@
                     // ⚙️ SUPERCHARGED: the jolt overclocks the machine (+ATK,
                     // +1 move, tech range bonus) and tops up its capacitors.
                     applyStatusPayload(target, { id: 'overclock', duration: 2 }, '⚙️ Supercharged: ', null);
-                    const _scLs = (typeof levelScale === 'function' && typeof getUnitLevel === 'function')
-                        ? levelScale(getUnitLevel(target)) : 1;
-                    const _mpGain = Math.min(Math.round(25 * _scLs), Math.max(0, (target.maxMp || 0) - (target.mp || 0)));
+                    // MP pools are NOT level-compressed (spell MP costs are
+                    // flat), so the capacitor top-up stays flat too.
+                    const _mpGain = Math.min(25, Math.max(0, (target.maxMp || 0) - (target.mp || 0)));
                     if (_mpGain > 0) {
                         target.mp += _mpGain;
                         showFloatingTextForUnit(target, `+${_mpGain} MP`, 'mp');
@@ -16030,7 +16043,12 @@
                 const toZ = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(u.x, u.y, 0) : 0;
                 u.z = toZ;
                 const drop = Math.max(1, fromZ - toZ);
-                const dmg = Math.max(BUILDING_COLLAPSE_MIN_DMG,
+                // The percent core is scale-safe; the flat MIN floor scales by
+                // the victim's level (50→1000 HP curve) or it would be near-
+                // lethal to a ~50-HP dungeon rookie.
+                const _clMin = Math.max(1, Math.round(BUILDING_COLLAPSE_MIN_DMG
+                    * ((typeof levelScale === 'function') ? levelScale(getUnitLevel(u)) : 1)));
+                const dmg = Math.max(_clMin,
                     Math.round(u.maxHp * Math.max(BUILDING_COLLAPSE_PCT, FALL_DAMAGE_PCT_PER_LEVEL * drop)));
                 applyDamageToUnit(u, dmg, '🏚 Collapsing roof: ', { ignoreArmor: true, sourceUnit: attackerUnit || undefined, preScaled: true });
                 if (!u.dead) _settleUnitAfterCollapse(u, tiles);
@@ -16043,7 +16061,9 @@
                 u._insideBuildingTurns = 0;
                 const toZ = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(u.x, u.y, 0) : 0;
                 u.z = toZ;
-                const dmg = Math.max(BUILDING_COLLAPSE_MIN_DMG, Math.round(u.maxHp * BUILDING_CRUSH_PCT));
+                const _crMin = Math.max(1, Math.round(BUILDING_COLLAPSE_MIN_DMG
+                    * ((typeof levelScale === 'function') ? levelScale(getUnitLevel(u)) : 1)));
+                const dmg = Math.max(_crMin, Math.round(u.maxHp * BUILDING_CRUSH_PCT));
                 applyDamageToUnit(u, dmg, '🏚 Crushed in the collapse: ', { ignoreArmor: true, sourceUnit: attackerUnit || undefined, preScaled: true });
                 if (!u.dead) {
                     addLog(`💥 ${unitDisplayName(u)} crawls out of the rubble!`);
@@ -18090,18 +18110,25 @@
             return lvl;
         }
 
-        // Classic-scale leveling: stats grow ADDITIVELY with level (data.js
-        // levelStatGains — level 100 equals the old level-10 totals, ~1000 HP).
-        // Gains are applied as a DELTA from the last level applied to this unit,
-        // so flat equipment / secondary-job / shop bonuses already sitting on
-        // the live stats survive re-leveling untouched. Damage/heal numbers are
-        // no longer level-scaled (EW_SCALE = 1 makes levelScale() ≡ 1): what a
-        // spell card shows is what it deals. Heals the HP/MP delta like a
-        // level-up.
+        // Leveling: MP/atk/def/mdef/int grow ADDITIVELY at classic scale, while
+        // max HP follows the 50→1000 curve — (baseHp + 360) × levelScale(L),
+        // ~50 HP at level 1 up to the old level-10 statline (~1000) at the cap
+        // (data.js levelStatGains). Gains are applied as a DELTA from the last
+        // level applied to this unit, so flat equipment / secondary-job / shop
+        // bonuses already sitting on the live stats survive re-leveling
+        // untouched. The HP delta is NEGATIVE at low levels — that's what
+        // compresses a fresh Mystery Dungeon unit below its race base HP.
+        // Flat damage/heal numbers are level-scaled to match at the resolution
+        // chokepoints (levelScale(100) = 1, so the cap stays WYSIWYG). Heals
+        // the HP/MP delta like a level-up.
         function _recomputeStatsForLevel(unit, level) {
             if (!unit || typeof levelStatGains !== 'function') return;
-            const g = levelStatGains(level);
             const prev = unit._lvlStatGains || { hp: 0, mp: 0, atk: 0, def: 0, mdef: 0, int: 0 };
+            // Level-1 base HP: the build-time snapshot, or reconstruct it by
+            // backing out the gains already applied to the live stat.
+            const baseHp = (unit._baseStats && unit._baseStats.maxHp)
+                || Math.max(1, (unit.maxHp || 0) - (prev.hp || 0));
+            const g = levelStatGains(level, baseHp);
             const dHp = (g.hp || 0) - (prev.hp || 0);
             const dMp = (g.mp || 0) - (prev.mp || 0);
             unit.maxHp = Math.max(1, (unit.maxHp || 0) + dHp);

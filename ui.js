@@ -3271,6 +3271,17 @@
             const y = state.pendingTarget.y;
             if (target.x !== x || target.y !== y) return null;
 
+            // 50→1000 HP curve: the engine scales flat damage/heal/shield
+            // amounts by the ACTOR's level and mitigation by the TARGET's level
+            // at resolution (levelScale(100) = 1, so PvP previews are
+            // unchanged). Mirror both here so low-level Mystery Dungeon
+            // previews don't overstate hits ~20×.
+            const _pvLs = (typeof levelScale === 'function' && typeof getUnitLevel === 'function')
+                ? levelScale(getUnitLevel(unit)) : 1;
+            const _pvLsT = (typeof levelScale === 'function' && typeof getUnitLevel === 'function')
+                ? levelScale(getUnitLevel(target)) : 1;
+            const _pvSc = n => Math.max(1, Math.round(n * _pvLs));
+
             if (state.pendingTarget.mode === 'attack') {
                 if (target.dead || isAllyUnit(target, unit)) return null;
                 const minRoll = -2;
@@ -3281,7 +3292,9 @@
                     minDamage += 3;
                     maxDamage += 3;
                 }
-                const effectiveArmor = getEffectiveArmor(target);
+                minDamage = _pvSc(minDamage);
+                maxDamage = _pvSc(maxDamage);
+                const effectiveArmor = Math.round(getEffectiveArmor(target) * _pvLsT);
                 if (effectiveArmor) {
                     minDamage = Math.max(1, minDamage - effectiveArmor);
                     maxDamage = Math.max(1, maxDamage - effectiveArmor);
@@ -3303,7 +3316,11 @@
             if (state.pendingTarget.mode === 'item') {
                 if (state.selectedTool === 'healPotion') {
                     if (target.dead || isEnemyUnit(target, unit)) return null;
-                    const healBase = 96;
+                    // Potions are percent-of-max (battle.js doUseItem) — the
+                    // old flat 96/40 previews were stale. No level scaling:
+                    // percent amounts resolve preScaled.
+                    const _healPct = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES.healPotion && ITEM_RULES.healPotion.healPct) || 0.30;
+                    const healBase = Math.max(1, Math.round(target.maxHp * _healPct * (typeof getTerrainHealMultiplier === 'function' ? getTerrainHealMultiplier(target.x, target.y) : 1)));
                     const amount = Math.min(healBase, target.maxHp - target.hp);
                     return amount > 0 ? {
                         type: 'heal',
@@ -3313,7 +3330,8 @@
                 }
                 if (state.selectedTool === 'manaPotion') {
                     if (target.dead || isEnemyUnit(target, unit) || target.maxMp <= 0) return null;
-                    const amount = Math.min(40, target.maxMp - target.mp);
+                    const _mpPct = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES.manaPotion && ITEM_RULES.manaPotion.mpPct) || 0.35;
+                    const amount = Math.min(Math.max(1, Math.round(target.maxMp * _mpPct)), target.maxMp - target.mp);
                     return amount > 0 ? {
                         type: 'mp',
                         amount,
@@ -3328,9 +3346,9 @@
                     const _dist = Math.max(Math.abs(unit.x - target.x), Math.abs(unit.y - target.y));
                     if (_dist > baneRange) return null;
                     const isEffective = (target.types || []).includes(_baneRule.baneType);
-                    let dmg = _baneRule.baseDmg + (isEffective ? _baneRule.baneDmg : 0);
+                    let dmg = _pvSc(_baneRule.baseDmg + (isEffective ? _baneRule.baneDmg : 0));
                     // Banes deal magic damage → mitigated by magic defense (MDEF).
-                    dmg = Math.max(1, dmg - getEffectiveArmor(target, 'magic'));
+                    dmg = Math.max(1, dmg - Math.round(getEffectiveArmor(target, 'magic') * _pvLsT));
                     return {
                         type: 'damage',
                         amount: dmg,
@@ -3350,13 +3368,13 @@
                 const healBonus = getEffectiveHealBonus(unit, spell.heal || 0, target);
                 if (spell.kind === 'damage') {
                     if (target.dead || isAllyUnit(target, unit)) return null;
-                    let maxDamage = Math.max(32, (spell.dmg || 0) + spellPower + 16);
-                    if (!spell.ignoreArmor && getEffectiveArmor(target, spell.damageType)) maxDamage = Math.max(1, maxDamage - getEffectiveArmor(target, spell.damageType));
+                    let maxDamage = _pvSc(Math.max(32, (spell.dmg || 0) + spellPower + 16));
+                    if (!spell.ignoreArmor && getEffectiveArmor(target, spell.damageType)) maxDamage = Math.max(1, maxDamage - Math.round(getEffectiveArmor(target, spell.damageType) * _pvLsT));
                     if (target.shield > 0) maxDamage = Math.max(0, maxDamage - target.shield);
                     return {
                         type: 'damage',
                         amount: maxDamage,
-                        min: Math.max(32, (spell.dmg || 0) + spellPower - 16),
+                        min: _pvSc(Math.max(32, (spell.dmg || 0) + spellPower - 16)),
                         max: maxDamage,
                         after: Math.max(0, target.hp - maxDamage),
                         label: spell.name,
@@ -3365,13 +3383,13 @@
                 }
                 if (spell.kind === 'ricochet') {
                     if (target.dead || isAllyUnit(target, unit)) return null;
-                    let maxDamage = Math.max(32, (spell.dmg || 0) + spellPower + 16);
-                    if (getEffectiveArmor(target, spell.damageType)) maxDamage = Math.max(1, maxDamage - getEffectiveArmor(target, spell.damageType));
+                    let maxDamage = _pvSc(Math.max(32, (spell.dmg || 0) + spellPower + 16));
+                    if (getEffectiveArmor(target, spell.damageType)) maxDamage = Math.max(1, maxDamage - Math.round(getEffectiveArmor(target, spell.damageType) * _pvLsT));
                     if (target.shield > 0) maxDamage = Math.max(0, maxDamage - target.shield);
                     return {
                         type: 'damage',
                         amount: maxDamage,
-                        min: Math.max(32, (spell.dmg || 0) + spellPower - 16),
+                        min: _pvSc(Math.max(32, (spell.dmg || 0) + spellPower - 16)),
                         max: maxDamage,
                         after: Math.max(0, target.hp - maxDamage),
                         label: spell.name,
@@ -3380,7 +3398,8 @@
                 }
                 if (spell.kind === 'debuff') {
                     if (target.dead || isAllyUnit(target, unit)) return null;
-                    const amount = Math.max(0, (spell.dmg || 0) + spellPower);
+                    const _rawDebuff = Math.max(0, (spell.dmg || 0) + spellPower);
+                    const amount = _rawDebuff > 0 ? _pvSc(_rawDebuff) : 0;
                     return amount > 0 ? {
                         type: 'damage',
                         amount,
@@ -3396,7 +3415,7 @@
                 }
                 if (spell.kind === 'multiHit') {
                     if (target.dead || isAllyUnit(target, unit)) return null;
-                    const total = (spell.hitDamages || []).reduce((sum, value) => sum + value, 0);
+                    const total = _pvSc((spell.hitDamages || []).reduce((sum, value) => sum + value, 0));
                     return {
                         type: 'damage',
                         amount: total,
@@ -3408,7 +3427,8 @@
                 }
                 if (spell.kind === 'heal' || spell.kind === 'revive') {
                     if (isEnemyUnit(target, unit)) return null;
-                    const amount = Math.max(0, (spell.heal || 0) + healBonus);
+                    const _rawHeal = Math.max(0, (spell.heal || 0) + healBonus);
+                    const amount = _rawHeal > 0 ? _pvSc(_rawHeal) : 0;
                     const currentHp = target.dead ? 0 : target.hp;
                     const applied = Math.min(amount, target.maxHp - currentHp);
                     return {
@@ -3420,12 +3440,13 @@
                 }
                 if (spell.kind === 'shield') {
                     if (target.dead || isEnemyUnit(target, unit)) return null;
+                    const _shAmt = spell.shield ? _pvSc(spell.shield) : 0;
                     return {
                         type: 'heal',
-                        amount: spell.shield || 0,
+                        amount: _shAmt,
                         after: target.hp,
                         label: spell.name,
-                        text: `+${spell.shield || 0} shield`
+                        text: `+${_shAmt} shield`
                     };
                 }
                 if (spell.kind === 'buff') {
@@ -3438,13 +3459,13 @@
                 }
                 if (spell.kind === 'lifeDrain') {
                     if (target.dead || isAllyUnit(target, unit)) return null;
-                    let maxDamage = Math.max(32, (spell.dmg || 0) + spellPower + 16);
-                    if (getEffectiveArmor(target, spell.damageType)) maxDamage = Math.max(1, maxDamage - getEffectiveArmor(target, spell.damageType));
+                    let maxDamage = _pvSc(Math.max(32, (spell.dmg || 0) + spellPower + 16));
+                    if (getEffectiveArmor(target, spell.damageType)) maxDamage = Math.max(1, maxDamage - Math.round(getEffectiveArmor(target, spell.damageType) * _pvLsT));
                     if (target.shield > 0) maxDamage = Math.max(0, maxDamage - target.shield);
                     return {
                         type: 'damage',
                         amount: maxDamage,
-                        min: Math.max(32, (spell.dmg || 0) + spellPower - 16),
+                        min: _pvSc(Math.max(32, (spell.dmg || 0) + spellPower - 16)),
                         max: maxDamage,
                         after: Math.max(0, target.hp - maxDamage),
                         label: spell.name + ' (drains)',
@@ -3465,7 +3486,7 @@
                     const _comboStatBonus = Math.floor(((unit[_comboStatKey] || 0) + (partner[_comboStatKey] || 0)) * 0.5 * 0.35);
                     const combinedPower = (unit.spellPower || 0) + (partner.spellPower || 0) + getHourglassPower(unit) + getHourglassPower(partner) + _comboStatBonus;
                     if (combo.kind === 'multiHit' && combo.hitDamages) {
-                        const totalDmg = Math.max(1, Math.round(combo.hitDamages.reduce((a, b) => a + b, 0) * synergy.mult));
+                        const totalDmg = _pvSc(Math.max(1, Math.round(combo.hitDamages.reduce((a, b) => a + b, 0) * synergy.mult)));
                         return {
                             type: 'damage',
                             amount: totalDmg,
@@ -3477,7 +3498,7 @@
                         };
                     }
                     const baseDmg = (combo.dmg || 160) + combinedPower;
-                    const totalDmg = Math.max(1, Math.round(baseDmg * synergy.mult));
+                    const totalDmg = _pvSc(Math.max(1, Math.round(baseDmg * synergy.mult)));
                     return {
                         type: 'damage',
                         amount: totalDmg,
@@ -3490,7 +3511,7 @@
                 }
 
                 if (combo.kind === 'healAll' && isAllyUnit(target, unit)) {
-                    const healAmt = Math.round((combo.heal || 20) * getComboTypeSynergy(unit, partner).mult);
+                    const healAmt = _pvSc(Math.round((combo.heal || 20) * getComboTypeSynergy(unit, partner).mult));
                     const applied = Math.min(healAmt, target.maxHp - target.hp);
                     return applied > 0 ? {
                         type: 'heal',
@@ -3500,7 +3521,7 @@
                     } : null;
                 }
                 if (combo.kind === 'shield' && isAllyUnit(target, unit)) {
-                    const shieldAmt = Math.round((combo.shield || 16) * getComboTypeSynergy(unit, partner).mult);
+                    const shieldAmt = _pvSc(Math.round((combo.shield || 16) * getComboTypeSynergy(unit, partner).mult));
                     return {
                         type: 'heal',
                         amount: shieldAmt,
@@ -8654,12 +8675,19 @@
                 + (typeof getJobPassiveSpellBonus === 'function' ? getJobPassiveSpellBonus(caster) : 0);
             let baseDmg = 0;
 
+            // 50→1000 HP curve: mirror the engine's resolution-time scaling —
+            // flat damage × levelScale(caster), mitigation × levelScale(target).
+            // Both are exactly 1 at the level cap, so PvP forecasts unchanged.
+            const _esLs = (typeof levelScale === 'function') ? levelScale(getUnitLevel(caster)) : 1;
+            const _esLsT = (typeof levelScale === 'function') ? levelScale(getUnitLevel(target)) : 1;
+
             if (spell.dmg) {
                 baseDmg = Math.max(16, (spell.dmg || 0) + spellPower);
             } else if (spell.hitDamages && spell.hitDamages.length) {
                 baseDmg = spell.hitDamages.reduce((s, v) => s + Math.max(16, v + spellPower), 0);
             } else if (spell.dotDamage) {
-                return spell.dotDamage;
+                // DoTs resolve scaled by the TARGET's level (scaleByTargetLevel).
+                return Math.max(1, Math.round(spell.dotDamage * _esLsT));
             }
             if (baseDmg <= 0) return 0;
 
@@ -8695,14 +8723,19 @@
                 baseDmg += target.markBonus ?? 40;
             }
 
+            // Engine order: scale the accumulated flat damage by the caster's
+            // level, THEN subtract target-level-scaled mitigation.
+            baseDmg = Math.max(1, Math.round(baseDmg * _esLs));
+
             const ignoreArmor = spell.ignoreArmor || false;
             if (!ignoreArmor) {
-                const armor = getEffectiveArmor(target, spell.damageType);
+                const armor = Math.round(getEffectiveArmor(target, spell.damageType) * _esLsT);
                 if (armor > 0) baseDmg = Math.max(1, baseDmg - armor);
-                if (heightSoak > 0) baseDmg = Math.max(1, baseDmg - heightSoak);
+                const _hs = Math.round(heightSoak * _esLsT);
+                if (_hs > 0) baseDmg = Math.max(1, baseDmg - _hs);
                 // Bulwark (Tank passive): flat 8 soak on armor-respecting hits.
-                if (target.cls === 'Tank') baseDmg = Math.max(1, baseDmg - 8);
-                const hgRed = getHourglassDamageReduction(target);
+                if (target.cls === 'Tank') baseDmg = Math.max(1, baseDmg - Math.round(8 * _esLsT));
+                const hgRed = Math.round(getHourglassDamageReduction(target) * _esLsT);
                 if (hgRed > 0) baseDmg = Math.max(1, baseDmg - hgRed);
             }
 
@@ -8713,7 +8746,9 @@
             if (!caster || !spell) return 0;
             if (spell.heal) {
                 const bonus = typeof getEffectiveHealBonus === 'function' ? getEffectiveHealBonus(caster, spell.heal, target) : 0;
-                const raw = spell.heal + (caster.spellPower || 0) + getHourglassPower(caster) + bonus;
+                // Flat heals resolve scaled by the healer's level (×1 at cap).
+                const _hLs = (typeof levelScale === 'function') ? levelScale(getUnitLevel(caster)) : 1;
+                const raw = Math.max(1, Math.round((spell.heal + (caster.spellPower || 0) + getHourglassPower(caster) + bonus) * _hLs));
                 if (target) return Math.min(raw, Math.max(0, target.maxHp - target.hp));
                 return raw;
             }
@@ -8763,12 +8798,18 @@
                 dmg = Math.max(1, Math.round(dmg * offMult));
                 if (unitHasStatus(target, 'marked')) dmg += target.markBonus ?? 40;
             }
-            const armor = getEffectiveArmor(target, 'physical');
+            // 50→1000 HP curve: mirror the engine — damage × levelScale of the
+            // attacker, mitigation × levelScale of the target (both 1 at cap).
+            const _baLs = (typeof levelScale === 'function') ? levelScale(getUnitLevel(attacker)) : 1;
+            const _baLsT = (typeof levelScale === 'function') ? levelScale(getUnitLevel(target)) : 1;
+            dmg = Math.max(1, Math.round(dmg * _baLs));
+            const armor = Math.round(getEffectiveArmor(target, 'physical') * _baLsT);
             if (armor > 0) dmg = Math.max(1, dmg - armor);
-            if (heightSoak > 0) dmg = Math.max(1, dmg - heightSoak);
+            const _bhs = Math.round(heightSoak * _baLsT);
+            if (_bhs > 0) dmg = Math.max(1, dmg - _bhs);
             // Bulwark (Tank passive): flat 8 soak on armor-respecting hits.
-            if (target.cls === 'Tank') dmg = Math.max(1, dmg - 8);
-            const hgRed = getHourglassDamageReduction(target);
+            if (target.cls === 'Tank') dmg = Math.max(1, dmg - Math.round(8 * _baLsT));
+            const hgRed = Math.round(getHourglassDamageReduction(target) * _baLsT);
             if (hgRed > 0) dmg = Math.max(1, dmg - hgRed);
             return Math.max(1, dmg);
         }
