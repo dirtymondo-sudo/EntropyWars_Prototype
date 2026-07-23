@@ -4,7 +4,51 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## PASSIVE REGISTRY + JUMP-1 REWORK + SPELL DEDUP (2026-07-23, LATEST) — data.js, battle.js, map.js, ai.js, ainew.js, party-builder.js
+## YETI REWORK: FROZEN + BLIND STATUSES, ICE SLIDING, STATUS LIBRARY (2026-07-23, LATEST) — data.js, battle.js, state.js, ui.js, hud.js, three-renderer.js, ainew.js, three-vfx-effects.js, sprites.js
+Token `20260723d` → `20260723e`.
+- **DELETED spells**: Avalanche Slam, Avalanche Dive, Whiteout (yeti inlines),
+  and `SHARED_GLACIAL_TOMB` everywhere (yeti + dreameater + mothman + ice
+  queen pools, const, VFX registry entries + `_spawnGlacialTombShard3D`).
+  Flash Freeze removed from YETI only (const + other races keep it).
+  `raceAvalancheDive_impact` VFX geometry renamed → `raceAvalancheStrike_impact`.
+- **New yeti pool** (data.js 'yeti'): racePermafrost (terrainCreate,
+  squareFlood 3×3 → ice, dmg 40 magic, `witherTrees:true`, freezes enemies),
+  raceAvalancheStrike (leapStrike phys 110 +20/level, staggers),
+  raceIceSlide (dash 90/path 50, `leaveTerrain:'ice'`), raceFrozenPunch
+  (melee 90 phys, `bonusVsStatus:{status:'frozen',mult:2}` — pre-existing
+  engine support), + SHARED_SUMMON_BLIZZARD kept.
+- **FROZEN status** (STATUS_DEFS): blockMove + NEW `blockAction:true` — gates
+  added in doAttack/doSpell, and getNextBlitzUnit (state.js) skips frozen
+  units' whole activation (`_skippedTurn`). Thaw-outs: on/adjacent lava or
+  drought weather (`_checkFrozenThaws`, round tick), any fire-element hit
+  (combo layer in applyDamageToUnit), ward placed adjacent
+  (`_thawFrozenAdjacentTo` in doWard, ui.js). Resist base 0.84.
+- **BLIND status**: attacker whiffs 50% of basic attacks (doAttack, works
+  even from back arc). Blizzard weather now `blinds:2` — applied in the
+  homing-strike loop (state.js applyStrikes) to whoever it batters; blizzard
+  `homingDamage` deals ~double to frozen victims. Both statuses in
+  `_STATUS_EFFECT_IDS`, `_HRLG_SB_COLORS`, `_TP_SB_COLORS`, ainew HARD_CC.
+- **⛸ ICE SLIDING** (`_resolveIceSlide`, battle.js, called from doMove after
+  resolveMovePath): landing a walk on ice slides the unit in its facing
+  direction tile-by-tile until it exits the ice / hits a blocker / would go
+  uphill or off a >1 drop; lands with `_applyKnockbackHazard`. Deterministic
+  → online guests replay doMove in sync. Units with `terrainPreference:
+  'ice'` (yeti) never slide.
+- **🌋 Lava melts ice**: `meltIceNearLava()` round tick — any ice tile with
+  an 8-neighbor lava tile → water.
+- **Yeti terrain preference** now 'ice' (was mountain): +8 atk +5 armor
+  +1 move on ice (state.js getTerrainPreferenceModifier).
+- **witherTrees** (terrainCreate handler): living tree objects → dead
+  variants (tree→tree_5, tree_2→tree_5, tree_3→tree_6, tree_4→tree_6) and
+  plantedSeeds/traps/bombs/wards on footprint tiles destroyed.
+- **Dash leaveTerrain**: dash handler now paints `spell.leaveTerrain` over
+  the dash path (skips the landing tile so the caster doesn't insta-slide).
+- **📖 Status Effect Library**: new "Statuses" pause-menu tab (ui.js
+  `_buildPauseStatusLibrary`) rendering STATUS_DEFS + new
+  `STATUS_LIBRARY_DESCS` map (data.js, after STATUS_META) — add a desc there
+  whenever a new status ships or it won't show in the library.
+
+## PASSIVE REGISTRY + JUMP-1 REWORK + SPELL DEDUP (2026-07-23) — data.js, battle.js, map.js, ai.js, ainew.js, party-builder.js
 Token `20260723b` → `20260723c`.
 - **UNIT PASSIVE REGISTRY** (data.js, right after RACE_PROFILES):
   `PASSIVE_DEFS` (id → {icon,name,desc,+hook flags}), `RACE_PASSIVES`

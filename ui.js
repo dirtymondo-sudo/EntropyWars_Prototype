@@ -5323,6 +5323,9 @@
             if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});
             playSfx('uiConfirm');
             addLog(`👁 ${unitDisplayName(unit)} plants a Vision Ward at ${coordLabel(x, y)}. It reveals a 3-tile radius until destroyed.`, unit.player);
+            // 🔥🧊 The ward's torch throws enough heat to thaw any Frozen
+            // unit on an adjacent tile (see _thawFrozenUnit, battle.js).
+            if (typeof _thawFrozenAdjacentTo === 'function') _thawFrozenAdjacentTo(x, y, "The ward's torchlight");
             spendAP(unit, AP_COST_ACTION);
             state.actionMode = null;
             state._actionExecuting = false;
@@ -6296,6 +6299,8 @@
                 tabContent = _buildPauseVideo();
             } else if (_pauseTab === 'controls') {
                 tabContent = _buildPauseControls();
+            } else if (_pauseTab === 'library') {
+                tabContent = _buildPauseStatusLibrary();
             }
 
             const _pauseRl = state.matchClock && state.matchClock.roundLimit ? state.matchClock.roundLimit : 0;
@@ -6318,6 +6323,7 @@
                     <button class="pause-tab${_pauseTab === 'audio' ? ' active' : ''}" onclick="window._setPauseTab('audio')">Audio</button>
                     <button class="pause-tab${_pauseTab === 'video' ? ' active' : ''}" onclick="window._setPauseTab('video')">Video</button>
                     <button class="pause-tab${_pauseTab === 'controls' ? ' active' : ''}" onclick="window._setPauseTab('controls')">Controls</button>
+                    <button class="pause-tab${_pauseTab === 'library' ? ' active' : ''}" onclick="window._setPauseTab('library')">Statuses</button>
                 </div>
                 <div class="pause-tab-body">
                     ${tabContent}
@@ -6335,6 +6341,45 @@
             _pauseTab = tab;
             _renderPauseMenu();
         };
+
+        /* 📖 Status Effect Library (2026-07-23) — player-facing reference of
+           every status in the game, grouped by kind. Content comes straight
+           from STATUS_DEFS + STATUS_LIBRARY_DESCS (data.js), so it stays the
+           single source of truth for what's actually implemented. */
+        function _buildPauseStatusLibrary() {
+            if (typeof STATUS_DEFS === 'undefined') return '<div style="opacity:.7">Status data unavailable.</div>';
+            const descs = (typeof STATUS_LIBRARY_DESCS !== 'undefined') ? STATUS_LIBRARY_DESCS : {};
+            const groups = [
+                { title: 'Ailments & Debuffs', match: d => d.kind === 'debuff' },
+                { title: 'Buffs & Blessings',  match: d => d.kind === 'buff' },
+                { title: 'Markers & Other',    match: d => d.kind !== 'debuff' && d.kind !== 'buff' }
+            ];
+            let html = '<div class="pause-status-lib" style="max-height:52vh;overflow-y:auto;text-align:left;padding-right:6px;">';
+            for (const g of groups) {
+                const rows = Object.entries(STATUS_DEFS).filter(([id, d]) => d && g.match(d) && descs[id]);
+                if (!rows.length) continue;
+                html += `<div style="font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:11px;opacity:.65;margin:10px 2px 6px;">${g.title}</div>`;
+                for (const [id, d] of rows) {
+                    const color = (typeof _HRLG_SB_COLORS !== 'undefined' && _HRLG_SB_COLORS[id]) || '#8fa3b5';
+                    const icon = d.iconSrc
+                        ? `<img src="${d.iconSrc}" style="width:22px;height:22px;image-rendering:pixelated;flex:0 0 auto;margin-top:2px;" alt="">`
+                        : `<span style="font-size:18px;flex:0 0 auto;">${d.glyph || d.icon || '•'}</span>`;
+                    html += `
+                    <div style="display:flex;gap:10px;align-items:flex-start;padding:6px 2px;border-bottom:1px solid rgba(255,255,255,.06);">
+                        ${icon}
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:baseline;gap:8px;">
+                                <span style="font-weight:600;">${d.label || id}</span>
+                                <span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;background:${color}33;color:${color};border:1px solid ${color}66;">${d.short || ''}</span>
+                            </div>
+                            <div style="font-size:12px;opacity:.8;line-height:1.35;">${descs[id]}</div>
+                        </div>
+                    </div>`;
+                }
+            }
+            html += '</div>';
+            return html;
+        }
 
         function _buildPauseScoreboard() {
             const allUnits = state.units || [];

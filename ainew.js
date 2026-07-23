@@ -89,7 +89,7 @@
     // Hard CC status ids (blockMove / no-cast / lose-control) — worth an action
     // to deny an enemy its turn. Soft debuffs are left to the stock AI.
     const HARD_CC = new Set(['stun', 'root', 'silence', 'jammed', 'charm', 'sleep',
-        'freeze', 'sirenSong']);
+        'freeze', 'frozen', 'sirenSong']);
     // Used for TARGET prioritization (kill enemy support first) and focus selection.
     const HEALERS = new Set(['White Mage', 'Psychic', 'Harvester']);
     // Classes we let the stock AI fully drive (genuine back-line support: it weighs

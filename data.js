@@ -5588,14 +5588,6 @@ const SHARED_TIDAL_SURGE = {
     desc: 'Deals WEAK magic damage to All Enemies in a line and pushes them back. Applies Slow. Leaves water tiles behind.'
 };
 
-const SHARED_GLACIAL_TOMB = {
-    id: 'sharedGlacialTomb', spellType: 'anomaly', element: 'ice', name: 'Glacial Tomb',
-    type: 'debuff', cost: 30, range: 3, apCost: 1,
-    kind: 'debuff',
-    statusEffects: [{ id: 'stun', duration: 1 }],
-    desc: 'Weakens a Single Enemy. Applies Stun.'
-};
-
 /* ── 2026-07-17 spell/status pass: new shared kits ──────────────────────
    Shrink Ray (mad scientist / martian) — the classic B-movie beam; applies
    `minimize` (-2 ATK stages + the model physically shrinks).
@@ -5733,7 +5725,7 @@ const SHARED_SUMMON_BLIZZARD = {
     weatherType: 'blizzard',
     weatherDuration: [3, 4],
     weatherTiles: [4, 6],
-    desc: 'Summons blizzard weather over the battlefield.'
+    desc: 'Summons blizzard weather that chases units, BLINDING those it batters. Frozen victims take extra damage.'
 };
 
 const SHARED_SUMMON_SANDSTORM = {
@@ -6912,8 +6904,7 @@ const RACE_ABILITIES = {
           detonateOnStep: true, blastRadius: 0, blastDmg: 0,
           maxActivePerCaster: 1,
           statusEffects: [{ id: 'stun', duration: 1 }],
-          desc: 'Place a dream snare. First enemy to step on it is stunned 1 turn. You\'re still dreaming.' },
-        SHARED_GLACIAL_TOMB
+          desc: 'Place a dream snare. First enemy to step on it is stunned 1 turn. You\'re still dreaming.' }
     ],
     'fallen angel': [
         { id: 'raceFallenGrace', spellType: 'divine', name: 'Fallen Grace',
@@ -7397,35 +7388,33 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'invisible', duration: 2 }],
           desc: 'Was it real? The photo\'s blurry... Teleport 2 tiles, invisible 2 turns.' },
         SHARED_FLASH_FREEZE,
-        SHARED_TIDAL_SURGE,
-        SHARED_GLACIAL_TOMB
+        SHARED_TIDAL_SURGE
     ],
+    /* Yeti (reworked 2026-07-23) — full frost kit built around the new Frozen
+       status and slippery ice terrain. */
     'yeti': [
-        { id: 'raceAvalancheSlam', spellType: 'anomaly', name: 'Avalanche Slam',
-          type: 'damage', cost: 30, dmg: 120, range: 0, apCost: 2,
-          kind: 'aoe', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
-          statusEffects: [{ id: 'slow', duration: 2 }],
-          terrainDeform: { centerDelta: -1, edgeDelta: -1 },
-          desc: 'Deals MEDIUM physical damage to All Enemies around the caster (AOE). Applies Slow. Reshapes the ground on impact.' },
-        { id: 'racePermafrost', spellType: 'anomaly', name: 'Permafrost',
-          type: 'debuff', cost: 25, range: 3, apCost: 1,
-          kind: 'debuff',
-          statusEffects: [{ id: 'stun', duration: 1 }],
-          desc: 'Weakens a Single Enemy. Applies Stun.' },
-        { id: 'raceWhiteout', spellType: 'anomaly', name: 'Whiteout',
-          type: 'utility', cost: 30, range: 3, apCost: 1,
-          kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
-          statusEffects: [{ id: 'discord', duration: 2 }],
-          desc: 'Blinding snow over 3×3 for 2 turns. Enemies inside lose all sense of direction.' },
-        SHARED_FLASH_FREEZE,
-        SHARED_SUMMON_BLIZZARD,
-        SHARED_GLACIAL_TOMB,
-        { id: 'raceAvalancheDive', spellType: 'anomaly', name: 'Avalanche Dive',
-          type: 'damage', cost: 25, dmg: 80, range: 2, apCost: 1,
+        { id: 'racePermafrost', spellType: 'anomaly', element: 'ice', name: 'Permafrost',
+          type: 'damage', cost: 35, dmg: 40, range: 3, apCost: 2,
+          kind: 'terrainCreate', terrainType: 'ice', squareFlood: true, aoeRadius: 1,
+          damageType: 'magic', witherTrees: true,
+          statusEffects: [{ id: 'frozen', duration: 2 }],
+          desc: 'Deep-freezes a 3×3 area into ice terrain. Enemies caught take WEAK magic damage and are FROZEN solid. Seeds and deployables in the area are destroyed; living trees die on the spot.' },
+        { id: 'raceAvalancheStrike', spellType: 'anomaly', element: 'ice', name: 'Avalanche Strike',
+          type: 'damage', cost: 25, dmg: 110, range: 2, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 20,
-          statusEffects: [{ id: 'slow', duration: 2 }],
-          terrainDeform: { centerDelta: -1, edgeDelta: 0 },
-          desc: 'Leaps onto a Single Enemy, dealing WEAK physical damage. Applies Slow. Reshapes the ground on impact.' }
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Crashes down from high ground onto a Single Enemy, dealing HEAVY physical damage that grows with the drop. Staggers the target. Must be above the target.' },
+        { id: 'raceIceSlide', spellType: 'anomaly', element: 'ice', name: 'Ice Slide',
+          type: 'damage', cost: 20, dmg: 90, range: 4, apCost: 1,
+          kind: 'dash', damageType: 'physical', dashDamage: 50,
+          leaveTerrain: 'ice',
+          desc: 'Skates at a Single Enemy, dealing MEDIUM physical damage. Enemies along the path also take damage. Leaves slippery ice terrain in the wake.' },
+        { id: 'raceFrozenPunch', spellType: 'anomaly', element: 'ice', name: 'Frozen Punch',
+          type: 'damage', cost: 15, dmg: 90, range: 1, apCost: 1,
+          kind: 'damage', damageType: 'physical',
+          bonusVsStatus: { status: 'frozen', mult: 2 },
+          desc: 'A frostbitten haymaker on a Single Enemy — MEDIUM physical damage, DOUBLED against Frozen targets.' },
+        SHARED_SUMMON_BLIZZARD
     ],
 
     'barbarella': [
@@ -7548,7 +7537,6 @@ const RACE_ABILITIES = {
           leaveTerrain: 'ice',
           desc: 'Deals WEAK magic damage to All Enemies in a diamond-shaped AOE. Applies Slow. Leaves ice tiles behind.' },
         SHARED_FLASH_FREEZE,
-        SHARED_GLACIAL_TOMB,
         SHARED_SUMMON_BLIZZARD,
         { id: 'raceAbsoluteZero', spellType: 'anomaly', name: 'Absolute Zero',
           type: 'damage', cost: 40, dmg: 160, range: 3, apCost: 2,
@@ -8096,8 +8084,8 @@ const MANA_FORMULA = {
     MAX_TARGETS: 4.0,   // a spell never realistically hits more than ~4 of 6 enemies
 };
 
-const _MF_HARD_CC = { stun:13, freeze:13, sleep:13, charm:13, silence:12, jammed:11, drowning:10, hourglass:11, sirenSong:11 };
-const _MF_SOFT_CC = { slow:6, stagger:6, root:6, blockMove:6, snare:6 };
+const _MF_HARD_CC = { stun:13, freeze:13, frozen:14, sleep:13, charm:13, silence:12, jammed:11, drowning:10, hourglass:11, sirenSong:11 };
+const _MF_SOFT_CC = { slow:6, stagger:6, root:6, blockMove:6, snare:6, blind:7 };
 const _MF_DOT     = { burn:7, poison:7, bleed:7 };
 const _MF_DEBUFF  = { marked:5, discord:6, vulnerable:5, weak:5 };
 const _MF_BUFF    = { protect:20, invulnerable:15, invisible:12, untargetable:12, regen:6,
@@ -9159,9 +9147,80 @@ const STATUS_DEFS = {
         category: 'status',
         stack: 'max',
         iconSrc: createStatusIconDataUri('🕯️', '#241a2e', '#f0dcff', '#b06ad3')
+    },
+    frozen: {
+        icon: '🧊',
+        glyph: '🧊',
+        short: 'FRZ',
+        label: 'Frozen',
+        colorText: 'frozen solid',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'max',
+        blockMove: true,
+        blockAction: true,
+        iconSrc: createStatusIconDataUri('🧊', '#16303e', '#e0f6ff', '#7fd7ff')
+        // Thawing is handled engine-side (battle.js _thawFrozenUnit /
+        // _checkFrozenThaws): standing on/next to lava, taking a fire-element
+        // hit, an adjacent ward (torch) being placed, or drought weather all
+        // clear it early.
+    },
+    blind: {
+        icon: '🌫️',
+        glyph: '🌫️',
+        short: 'BLD',
+        label: 'Blind',
+        colorText: 'blinded',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'max',
+        iconSrc: createStatusIconDataUri('🌫️', '#2a2e33', '#eef2f6', '#9aa8b5')
+        // Attack accuracy penalty is rolled in doAttack (battle.js): a blind
+        // attacker misses 50% of the time.
     }
 };
 const STATUS_META = STATUS_DEFS;
+
+/* Player-facing descriptions for the pause-menu Status Effect Library
+   (ui.js _buildPauseStatusLibrary). Kept in one map so it doubles as the
+   design-side inventory of every status in the game. */
+const STATUS_LIBRARY_DESCS = {
+    burn:      'Takes fire damage at the end of every round. Standing in water or getting soaked puts it out.',
+    poison:    'Takes poison damage at the end of every round.',
+    silence:   'Cannot cast spells.',
+    stun:      'Cannot move, change altitude, or reshape terrain. Evasion drops to zero.',
+    root:      'Cannot move and is dragged to the ground. Evasion drops to zero.',
+    stagger:   'Immediately loses 1 AP (or starts the next round with 1 less AP).',
+    marked:    'The next hit against this unit consumes the mark for bonus damage.',
+    lasered:   'Painted by a targeting laser — incoming fire is more accurate and hits harder.',
+    jammed:    'Tech systems scrambled — abilities and targeting are disrupted.',
+    drowning:  'Struggling in deep water: takes damage each round and can barely act.',
+    wet:       'Soaked through. Immune to burn, but vulnerable to lightning and cold.',
+    protect:   'Shielded — incoming damage is greatly reduced.',
+    spawnGuard:'Fresh off a respawn: briefly protected from damage.',
+    discord:   'Sowed with confusion — stats are lowered while it lasts.',
+    slow:      'Movement reduced by 2 while it lasts.',
+    overclock: 'Systems running hot: bonus stats and movement.',
+    regen:     'Recovers HP at the end of every round.',
+    guarding:  'Braced for impact — bonus defense until the next turn.',
+    statUp:    'One or more stats are raised (see the unit panel arrows).',
+    statDown:  'One or more stats are lowered (see the unit panel arrows).',
+    shield:    'A damage-absorbing barrier soaks incoming hits until it breaks.',
+    hourglass: 'Time-locked by hourglass magic.',
+    scanner:   'Scanned — this unit is revealed and tracked.',
+    jackOfAll: 'A little bit of everything: minor boosts across the board.',
+    invisible: 'Cannot be seen or directly targeted by enemies until it acts.',
+    steadyAim: 'Locked in: the next ranged attack gains accuracy and punch.',
+    charm:     'Beguiled — cannot move against the charmer.',
+    sirenSong: 'Lured by the song: compelled to move toward the siren.',
+    contract:  'Bound by an infernal contract.',
+    taunt:     'Provoked — must direct attacks at the taunter.',
+    minimize:  'Shrunk down to toy size: weaker, but much harder to hit.',
+    statLock:  'Stats are locked and cannot be raised or lowered.',
+    hexed:     'Cursed — every action taken feeds the hex and hurts.',
+    frozen:    'Encased in ice: cannot move or act. Thaws early on or next to lava, when hit by fire, when a ward (torch) is placed adjacent, or in drought weather.',
+    blind:     'Vision whited out — attacks miss 50% of the time.'
+};
 
 const GOLD_PER_KILL = 10;
 const GOLD_PER_ASSIST = 5;

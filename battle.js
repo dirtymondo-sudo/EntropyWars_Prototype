@@ -2837,6 +2837,115 @@
             return null;
         }
 
+        // ❄️ FROZEN status (2026-07-23) — hard CC applied by the yeti kit
+        // (Permafrost) and blizzard synergies. A frozen unit can't move OR act
+        // (blockMove + blockAction in STATUS_DEFS) and its blitz activation is
+        // skipped outright (getNextBlitzUnit, state.js). Four thaw-outs end it
+        // early: standing on/next to lava, taking a fire-element hit (combo
+        // layer in applyDamageToUnit), a ward/torch placed adjacent (doWard,
+        // ui.js), or active drought weather.
+        function _thawFrozenUnit(unit, why) {
+            if (!unit || unit.dead || !unitHasStatus(unit, 'frozen')) return false;
+            clearStatus(unit, 'frozen');
+            showFloatingTextForUnit(unit, '💧 THAWED!', 'buff', { durationMs: 1100 });
+            addLog(`💧 ${why} thaws ${unitDisplayName(unit)} out of the ice!`);
+            return true;
+        }
+
+        function _thawFrozenAdjacentTo(x, y, why) {
+            let thawed = 0;
+            for (const u of state.units) {
+                if (u.dead || !unitHasStatus(u, 'frozen')) continue;
+                if (Math.max(Math.abs(u.x - x), Math.abs(u.y - y)) <= 1) {
+                    if (_thawFrozenUnit(u, why)) thawed++;
+                }
+            }
+            return thawed;
+        }
+
+        // Round-tick thaw scan: lava heat and drought weather free the frozen.
+        function _checkFrozenThaws() {
+            const droughtActive = (state.activeWeather || []).some(w => w && w.type === 'drought');
+            for (const u of state.units) {
+                if (u.dead || !unitHasStatus(u, 'frozen')) continue;
+                if (droughtActive) { _thawFrozenUnit(u, 'The scorching drought'); continue; }
+                let hot = false;
+                for (let dy = -1; dy <= 1 && !hot; dy++) for (let dx = -1; dx <= 1; dx++) {
+                    const nx = u.x + dx, ny = u.y + dy;
+                    if (isInside(nx, ny) && _isLavaTile(nx, ny)) { hot = true; break; }
+                }
+                if (hot) _thawFrozenUnit(u, 'The nearby lava');
+            }
+        }
+
+        // 🌋❄️ Lava radiates: any ice tile bordering lava (8-neighborhood)
+        // melts to water on the round tick — ice sheets can't hug lava flows.
+        function meltIceNearLava() {
+            if (state.phase !== 'battle') return;
+            let melted = 0;
+            const W = bw(), H = bh();
+            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+                if (!_isIceTile(x, y)) continue;
+                let hot = false;
+                for (let dy = -1; dy <= 1 && !hot; dy++) for (let dx = -1; dx <= 1; dx++) {
+                    if (!dx && !dy) continue;
+                    const nx = x + dx, ny = y + dy;
+                    if (isInside(nx, ny) && _isLavaTile(nx, ny)) { hot = true; break; }
+                }
+                if (hot) { setTerrainAt(x, y, 'water'); melted++; }
+            }
+            if (melted) {
+                addLog(`🌋 Lava melts ${melted} adjacent ice tile${melted !== 1 ? 's' : ''} into water.`);
+                if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
+                scheduleBoardRender();
+            }
+        }
+
+        // ⛸ ICE SLIDING (2026-07-23) — Pokémon-gym rules: end a walk on an ice
+        // tile and momentum carries you onward in the direction you were
+        // facing, tile after tile, until the slide leaves the ice (you come to
+        // rest on the first non-ice tile) or something blocks the way. Called
+        // from doMove after the path resolves; deterministic (no RNG) so the
+        // online guest's doMove replay stays in sync. Units whose terrain
+        // preference is ice (yeti) are sure-footed and never slide.
+        function _resolveIceSlide(unit) {
+            if (!unit || unit.dead || unit._dying) return false;
+            if (state.phase !== 'battle') return false;
+            if (typeof canFly === 'function' && canFly(unit)
+                && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            if (!_isIceTile(unit.x, unit.y)) return false;
+            if (unit.terrainPreference === 'ice') return false;
+            const f = (typeof getUnitFacing === 'function') ? getUnitFacing(unit) : null;
+            if (!f) return false;
+            const dx = Math.sign(f.dx || 0), dy = Math.sign(f.dy || 0);
+            if (!dx && !dy) return false;
+            const fromX = unit.x, fromY = unit.y;
+            let cx = fromX, cy = fromY, guard = 0;
+            const steps = [];
+            while (_isIceTile(cx, cy) && guard++ < 64) {
+                const nx = cx + dx, ny = cy + dy;
+                if (!isInside(nx, ny)) break;
+                if (!isTerrainPassable(nx, ny)) break;
+                if (unitAt(nx, ny)) break;
+                // No sliding uphill, no launching off cliffs — the surface has
+                // to stay level (or dip at most one step) to keep the glide.
+                const dh = getHeightAt(nx, ny) - getHeightAt(cx, cy);
+                if (dh > 0.01 || dh < -1.01) break;
+                cx = nx; cy = ny;
+                steps.push({ x: cx, y: cy });
+            }
+            if (!steps.length) return false;
+            unit.x = cx;
+            unit.y = cy;
+            if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(cx, cy, unit.z);
+            animateDisplacementPath(unit, fromX, fromY, steps, 90);
+            showFloatingTextForUnit(unit, '⛸ SLIDES!', 'debuff', { durationMs: 1000 });
+            addLog(`⛸ ${unitDisplayName(unit)} hits the ice at ${coordLabel(fromX, fromY)} and slides to ${coordLabel(cx, cy)}!`);
+            if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX, fromY });
+            _applyKnockbackHazard(unit);
+            return true;
+        }
+
         // 🌋 Knockback into hazards — element-agnostic. When a spell shoves or
         // drags a unit onto lava or deep water, the terrain bites immediately
         // instead of waiting for end of round. Flyers / terrain-adapted units are
@@ -15197,6 +15306,10 @@
                     clearStatus(target, 'wet');
                     showFloatingTextForUnit(target, '♨️ Dried out', 'debuff', { durationMs: 900 });
                 }
+                // 🔥🧊 Fire cracks the ice: any fire-element hit thaws a
+                // Frozen target on the spot (yes, that means a fireball is
+                // also a rescue tool for your own frozen bruiser).
+                if (_comboEl === 'fire') _thawFrozenUnit(target, 'The burst of fire');
             }
 
             if (sourceUnit && state.plantedSeeds && !target.dead) {
@@ -26357,6 +26470,8 @@
                     tickWeather();
                     tickBurningTiles();
                     tickWetUnits();
+                    meltIceNearLava();
+                    _checkFrozenThaws();
                     state.round += 1;
                     tickMatchClock();
                     checkZodiacRotation();
@@ -32708,6 +32823,11 @@
 
             resolveMovePath(unit, path, x, y, 0, z);
 
+            // ⛸ Landing on ice sends the unit skidding onward in its facing
+            // direction (see _resolveIceSlide) — traps/seeds/overwatch below
+            // then fire against wherever the slide actually deposited them.
+            _resolveIceSlide(unit);
+
             checkTrapTrigger(unit);
             checkWarpRuneTrigger(unit);
             checkSeedStepTrigger(unit);
@@ -33112,6 +33232,11 @@
                 addLog('That unit already acted this round.');
                 return 0;
             }
+            if (getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockAction)) {
+                addLog(`${unitDisplayName(unit)} is frozen solid and cannot act!`);
+                playErrorSfx();
+                return 0;
+            }
             // Balance Lab: a basic attack must never be attributed to a spell
             // whose cast fizzled earlier without reaching finishAction.
             _balSpellCollector = null;
@@ -33492,7 +33617,14 @@
             const _atkArc = getAttackArc(unit, target);
             const _facingMult = getFacingDamageMult(_atkArc);
 
-            const evaded = _atkArc === 'back' ? false : rollEvasion(target);
+            // 🌫️ Blind: a blinded attacker swings wide half the time — even
+            // from the back arc, where normal evasion can't save the target.
+            const _blindMiss = unitHasStatus(unit, 'blind') && Math.random() < 0.5;
+            if (_blindMiss) {
+                addLog(`🌫️ ${unitDisplayName(unit)} swings blind — and misses!`);
+                showFloatingTextForUnit(unit, '🌫️ BLIND!', 'debuff', { durationMs: 900 });
+            }
+            const evaded = _blindMiss ? true : (_atkArc === 'back' ? false : rollEvasion(target));
 
             const isCrit = !evaded && rollCrit(unit);
 
@@ -36396,6 +36528,11 @@
                 addLog('That unit already acted this round.');
                 return 0;
             }
+            if (getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockAction)) {
+                addLog(`${unitDisplayName(unit)} is frozen solid and cannot act!`);
+                playErrorSfx();
+                return 0;
+            }
             const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
             /* Clash final authority: movement/positioning spells can never
                fire, whatever path armed them (kits are already stripped —
@@ -38972,6 +39109,37 @@
                             }
                         }
                     }
+                    // 🥶 PERMAFROST-style deep freeze (spell.witherTrees): the
+                    // cold kills everything rooted in the footprint — living
+                    // trees wither to their dead variants (tree_5/tree_6, the
+                    // same mapping the underworld fossilization uses), and
+                    // planted seeds, traps, bombs and wards are destroyed.
+                    if (spell.witherTrees && affectedTiles.length > 0) {
+                        const _wtDead = { tree: 'tree_5', tree_2: 'tree_5', tree_3: 'tree_6', tree_4: 'tree_6' };
+                        let _wtWithered = 0, _wtCleared = 0, _wtWardGone = false;
+                        for (const at of affectedTiles) {
+                            const _wtObj = (typeof getObjectAt === 'function') ? getObjectAt(at.x, at.y) : null;
+                            if (_wtObj && _wtDead[_wtObj]) { setObjectAt(at.x, at.y, _wtDead[_wtObj]); _wtWithered++; }
+                            if (typeof _removePlantedTreeAt === 'function' && _removePlantedTreeAt(at.x, at.y)) _wtWithered++;
+                            for (const _wtKey of ['plantedSeeds', 'traps', 'bombs', 'wards']) {
+                                const _wtArr = state[_wtKey];
+                                if (!Array.isArray(_wtArr)) continue;
+                                for (let _wtI = _wtArr.length - 1; _wtI >= 0; _wtI--) {
+                                    if (_wtArr[_wtI] && _wtArr[_wtI].x === at.x && _wtArr[_wtI].y === at.y) {
+                                        _wtArr.splice(_wtI, 1);
+                                        _wtCleared++;
+                                        if (_wtKey === 'wards') _wtWardGone = true;
+                                        showFloatingTextAtTile(at.x, at.y, 'DESTROYED', 'damage');
+                                    }
+                                }
+                            }
+                        }
+                        if (_wtWithered) addLog(`🥶 The deep freeze withers ${_wtWithered} tree${_wtWithered !== 1 ? 's' : ''} to dead wood.`);
+                        if (_wtCleared) addLog(`🥶 ${_wtCleared} deployable${_wtCleared !== 1 ? 's' : ''} shatter${_wtCleared === 1 ? 's' : ''} in the freeze.`);
+                        if (_wtWardGone && window.RenderBus) window.RenderBus.emit('fog:dirty', {});
+                        if (_wtWithered || _wtCleared) markDirty('board');
+                    }
+
                     addLog(`${unitDisplayName(unit)} uses ${spell.name}! Converted ${convertedTiles.length} tile${convertedTiles.length !== 1 ? 's' : ''} to ${terrainType}.`);
 
                     // 🔥 Fire terrain-walls IGNITE what they touch: the wall
@@ -40131,6 +40299,27 @@
                 if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(x, y, unit.z);
                 unit._trackTilesMoved = (unit._trackTilesMoved || 0) + dist;
 
+                // ⛸ Ice Slide & co.: a dash that declares leaveTerrain paints
+                // its wake — every crossed tile except the landing tile (so
+                // the caster doesn't immediately skid off their own sheet).
+                // Mirrors the leaveTerrain guard used by the AoE postEffect.
+                if (spell.leaveTerrain) {
+                    let _dlPainted = 0;
+                    for (const dp of dashPath) {
+                        if (dp.x === x && dp.y === y) continue;
+                        if (!isInside(dp.x, dp.y) || !isTerrainPassable(dp.x, dp.y)) continue;
+                        const _dlCur = getTerrainAt(dp.x, dp.y);
+                        if (_dlCur === 'wall' || _dlCur === spell.leaveTerrain) continue;
+                        setTerrainAt(dp.x, dp.y, spell.leaveTerrain);
+                        _dlPainted++;
+                    }
+                    if (_dlPainted) {
+                        addLog(`❄️ ${spell.name} leaves ${_dlPainted} tile${_dlPainted !== 1 ? 's' : ''} of ${spell.leaveTerrain} in the wake!`);
+                        if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
+                        scheduleBoardRender();
+                    }
+                }
+
                 animateDisplacement(unit, casterStartX, casterStartY, x, y, dashAnimMs);
                 if (dashHitCount > 0) {
                     addLog(`${unitDisplayName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}, hitting ${dashHitCount} ${dashHitCount === 1 ? 'enemy' : 'enemies'}!`);
@@ -40606,7 +40795,7 @@
 
                 const _lsApplyLanding = (useAnim) => {
                     /* Per-spell landing VFX (Seismic Leap crater, Avalanche
-                       Dive ice burst…). .fire() is the online-wrapped entry
+                       Strike ice burst…). .fire() is the online-wrapped entry
                        point, so guests replay it; the generic shock ring in
                        the arc's onImpact stays as the no-mapping fallback. */
                     try {

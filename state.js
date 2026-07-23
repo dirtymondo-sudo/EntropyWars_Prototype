@@ -9,7 +9,10 @@
         const _STATUS_EFFECT_IDS = new Set(['burn','poison','silence','stun','stagger','marked','lasered','jammed','drowning','protect','regen','charm',
             // 2026-07-17 spell/status pass: taunt (Provoke), minimize (Shrink
             // Ray), statLock (Fermata), hexed (Hex of Toil).
-            'taunt','minimize','statLock','hexed']);
+            'taunt','minimize','statLock','hexed',
+            // 2026-07-23 yeti rework: frozen (hard CC with thaw-outs), blind
+            // (attack accuracy loss from blizzards).
+            'frozen','blind']);
 
         const GAME_MODES = {
             normal: {
@@ -562,6 +565,13 @@
                 if (u.dead || u._dying) continue;
                 if (unitFinished(u)) continue;
                 if (u._skippedTurn) continue;
+                // 🧊 Frozen units lose their whole activation — the ice keeps
+                // them out of the rotation until it melts or is thawed.
+                if (u.status && (u.status.frozen | 0) > 0) {
+                    u._skippedTurn = true;
+                    if (typeof addLog === 'function') addLog(`🧊 ${unitDisplayName(u)} is frozen solid — turn skipped!`);
+                    continue;
+                }
                 _blitzTurnIndex = i;
                 return u;
             }
@@ -1594,18 +1604,26 @@
                 homing: true,
                 homingSpeed: 2,
                 duration: [3, 4],
-                desc: 'Chases the nearest unit (up to 2 tiles/round), freezing a trail of ice; batters non-Anomaly units it catches — soaked victims freeze solid. -8 DEF on the eye.',
+                desc: 'Chases the nearest unit (up to 2 tiles/round), freezing a trail of ice; batters and BLINDS non-Anomaly units it catches — Frozen victims take extra damage, soaked victims freeze solid. -8 DEF on the eye.',
                 element: 'cold',
                 statMod: {
                     def: -8
                 },
                 convertTerrain: 'ice',
+                blinds: 2,
                 homingDamage(unit) {
                     const isAnomaly = (unit.types || []).includes('anomaly');
-                    if (!isAnomaly) return {
-                        amount: randInt(10) + 15,
-                        text: `${unitDisplayName(unit)} is battered by the Blizzard for`
-                    };
+                    if (!isAnomaly) {
+                        // 🧊 A Frozen victim can't brace or shelter — the
+                        // whiteout batters them roughly twice as hard.
+                        const frozenSolid = !!(unit.status && (unit.status.frozen | 0) > 0);
+                        return {
+                            amount: (randInt(10) + 15) + (frozenSolid ? randInt(10) + 15 : 0),
+                            text: frozenSolid
+                                ? `${unitDisplayName(unit)} is frozen helpless as the Blizzard batters them for`
+                                : `${unitDisplayName(unit)} is battered by the Blizzard for`
+                        };
+                    }
                     return null;
                 }
             },
@@ -2439,6 +2457,13 @@
                             else applyStatusPayload(v, { id: 'wet', duration: 2 }, `${def.icon} ${def.label}: `, null);
                         }
                         const hit = def.homingDamage ? def.homingDamage(v) : null;
+                        // 🌫️ Blinding storms (blizzard): whoever the eye
+                        // batters staggers out snow-blind — attacks whiff 50%
+                        // while it lasts. Rides the same immunity as the
+                        // damage roll (anomaly units shrug the whiteout off).
+                        if (hit && hit.amount > 0 && def.blinds) {
+                            applyStatusPayload(v, { id: 'blind', duration: def.blinds }, `${def.icon} ${def.label}: `, null);
+                        }
                         if (hit && hit.amount > 0) {
                             actedVisibly = true;
                             applyDamageToUnit(v, hit.amount, `${hit.text}`, {
@@ -2717,7 +2742,7 @@
             if (r === 'kaiju') return 'wasteland';
             if (r === 'kraken') return 'deep_water';
             if (r === 'loch ness monster') return 'deep_water';
-            if (r === 'yeti') return 'mountain';
+            if (r === 'yeti') return 'ice';
 
             return 'none';
         }
@@ -2942,6 +2967,16 @@
                 armor: 5,
                 int: 0,
                 awr: 1,
+                move: 1,
+                label
+            };
+            // ❄️ Ice affinity (yeti): at home on the frozen sheet — and
+            // sure-footed on it, so it never ice-slides (_resolveIceSlide).
+            if (terrain === 'ice') return {
+                atk: 8,
+                armor: 5,
+                int: 0,
+                awr: 0,
                 move: 1,
                 label
             };
@@ -3183,6 +3218,8 @@
                 charm: 0.8,
                 sleep: 0.82,
                 freeze: 0.84,
+                frozen: 0.84,
+                blind: 0.9,
                 sirenSong: 0.8,
                 stagger: 0.9,
                 slow: 0.9,

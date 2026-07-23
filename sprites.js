@@ -1272,8 +1272,8 @@ const RACE_MODELS_3D = {
 
   // ── 2026-07-19 batch (user upload — HEAD-verified on R2, rigs parsed) ─────
   // Yeti (bruiser) — towering frost cryptid, bigfoot's cousin: brawler sway,
-  // raking ice claws. Avalanche Slam classifies to castSlam; Avalanche Dive
-  // rides the leapStrike dive arc + its new landing VFX.
+  // raking ice claws. Avalanche Strike rides the leapStrike dive arc + its
+  // landing VFX; Frozen Punch classifies to the claw/strike basics.
   'yeti': {
     male: _mkUAL('yeti/male', 'yeti', {
       heightRatio: 1.38,
