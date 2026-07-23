@@ -1474,7 +1474,6 @@ SPELL_MAP['raceNordicAccord']     = { aura: '_buff_divine_aura' };
 /* New / renamed race spells. */
 SPELL_MAP['raceBite']       = { impact: '_slashMelee_impact', drainHop: 'lifeDrain_drainHop' };
 SPELL_MAP['raceBadTrip']    = { bolt: '_bolt_psi', impact: '_psychic_dark_impact' };
-SPELL_MAP['raceBlackSmoke'] = { wall: 'sharedPoisonSwamp_tile' };
 SPELL_MAP['repair']         = { aura: '_selfHeal_tech_aura' };
 SPELL_MAP['raceTinFoilHat'] = { aura: '_buff_tech_aura' };
 SPELL_MAP['raceSuppressingFire'] = { impact: '_rangedShot_impact', bolt: '_bolt_bullet' };
@@ -1571,7 +1570,7 @@ EFFECTS['refractBeam_beam'] = {
     impactTileEffect: 'refractBeam_impact_tile',
     layers: []
 };
-SPELL_MAP['raceRefractBeam'] = { beam: 'refractBeam_beam' };
+/* (raceRefractBeam CUT 2026-07-23 — beam de-duplication pass.) */
 
 /* Pulse Lattice — one thick coloured laser per beam segment, chosen by the
    lattice's current frequency (battle.js appends the freq key to the id). */
@@ -1757,7 +1756,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ricochet1:       '_bolt_elec',
 
         /* TIER 1 — Race abilities: energy bolts */
-        raceDivineSmite:      '_bolt_divine',
+        raceSmite:            '_bolt_divine',
         raceCrashLoop:        '_bolt_tech',
         raceRecursiveLoop:    '_bolt_tech',
         raceTaserBolt:        '_bolt_elec',
@@ -1838,9 +1837,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceHighNoon:         '_bolt_bullet',
         raceHeadshot:         '_bolt_bullet',
         raceClassifiedWeapon: '_bolt_bullet',
-        racePrecisionShot:    '_bolt_arrow',
         raceSplittingArrow:   '_bolt_arrow',
         sentaiGreenArrow:     '_bolt_arrow',
+        raceFireArrow:        '_bolt_fire',
+        racePoisonArrow:      '_bolt_poison',
+        raceBombArrow:        '_bolt_arrow',
+        raceBoo:              '_bolt_psi',
+        raceSleepParalysis:   '_bolt_curse',
         raceBoneToss:         '_bolt_bone',
         raceBoulderHurl:      '_bolt_rock',
         raceBoulderThrow:     '_bolt_rock',
@@ -1920,6 +1923,22 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     EFFECTS['raceWrathOfTheWatchers_aoe'] = { aoeRadius: 2, shape: 'cross',
         impactTileEffect: 'raceDivineSmite_impact', shake: 'hard' };
     SPELL_MAP['raceWrathOfTheWatchers'] = { aoe: 'raceWrathOfTheWatchers_aoe' };
+
+    /* ── 2026-07-23 SPELL/JOB/RACE FIXES — new-spell wiring ───────────────
+       • Boo (ghost) / Sleep Paralysis (succubus): bolt wiring above, plus a
+         dark psychic burst on the victim.
+       • Bomb Arrow: rides the spectral-longbow bolt, then detonates — reuse
+         the fire1 explosion on every splash tile.
+       • Wing Attack reuses raceWingGust's full aoe VFX (same id).
+       • Smite consolidation: the shared raceSmite keeps its signature
+         geometry; raceDivineSmite is gone from the game. */
+    SPELL_MAP['raceBoo'] = Object.assign(SPELL_MAP['raceBoo'] || {},
+        { impact: '_psychic_dark_impact' });
+    SPELL_MAP['raceSleepParalysis'] = Object.assign(SPELL_MAP['raceSleepParalysis'] || {},
+        { impact: '_psychic_dark_impact' });
+    EFFECTS['raceBombArrow_aoe'] = { aoeRadius: 1, impactTileEffect: 'fire1_impact', shake: 'normal' };
+    SPELL_MAP['raceBombArrow'] = Object.assign(SPELL_MAP['raceBombArrow'] || {},
+        { aoe: 'raceBombArrow_aoe' });
 
     if (typeof window !== 'undefined') {
         window.VFX3D_EFFECTS = EFFECTS;
@@ -8520,8 +8539,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* which arrow spells summon the spectral longbow + real arrow GLB
        (see _fireBoltMapped). sentaiGreenArrow keeps its own bespoke rig. */
     var _SIG_BOW_FOR = {
-        racePrecisionShot: 1,
         raceSplittingArrow: 1,
+        raceFireArrow: 1,
+        racePoisonArrow: 1,
+        raceBombArrow: 1,
     };
 
     /* world-space vector → the coordinate frame _spawn() expects */

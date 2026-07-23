@@ -933,6 +933,14 @@ const RACE_TRAITS = {
     { icon: '😈', name: 'Dual Heritage', desc: 'Counts as both Human and Unholy in type matchups.' },                 // CODED (types)
     { icon: '🔥', name: 'Infernal Blood', desc: 'Burns on her end 1 turn sooner.' },                                  // DESIGN
   ],
+  'ghost': [
+    { icon: '👻', name: 'Spectral Passage', desc: 'Phases through walls, enemies and barricades while moving — only needs a real tile to stop on.' }, // CODED (battle.js pathing)
+    { icon: '☠️', name: 'Beyond Poison', desc: 'Immune to poison terrain.' },                                          // CODED (map.js)
+  ],
+  'kaiju': [
+    { icon: '🔥', name: 'Thermal Regen', desc: 'Immune to Burn. Fire damage and fire spells HEAL him instead of hurting.' }, // CODED (battle.js)
+    { icon: '⛰️', name: 'Mountain Traverser', desc: 'Mountains cost only 1 MOV to climb.' },                           // CODED
+  ],
 };
 if (typeof window !== 'undefined') window.RACE_TRAITS = RACE_TRAITS;
 

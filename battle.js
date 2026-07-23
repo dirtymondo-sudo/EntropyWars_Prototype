@@ -4720,6 +4720,12 @@
                 showFloatingTextForUnit(target, '💧 STEAM', 'heal', { durationMs: 900 });
                 return false;
             }
+            // 🔥 Thermal Regen (Kaiju race passive, 2026-07-23): immune to Burn.
+            if (payload.id === 'burn' && target.race === 'kaiju') {
+                addLog(`🔥 ${unitDisplayName(target)}'s Thermal Regen shrugs off the burn!`);
+                showFloatingTextForUnit(target, '🔥 IMMUNE', 'heal', { durationMs: 900 });
+                return false;
+            }
             const status = ensureUnitStatus(target);
             const meta = STATUS_DEFS[payload.id];
             // 🔏 Fermata (statLock): statuses that carry a stageMod (Discord,
@@ -14690,6 +14696,22 @@
                 return false;
             }
 
+            // ── 🔥 Thermal Regen (Kaiju race passive, 2026-07-23) ──────────
+            // The reactor feeds on heat: ANY fire-element hit (spells, burn
+            // ticks, fire weather) heals the kaiju instead of hurting him.
+            // (Burn itself also can't be applied — see applyStatusPayload.)
+            if (target.race === 'kaiju' && opts.element === 'fire' && damage > 0) {
+                const _regen = Math.max(1, Math.round(damage));
+                target.hp = Math.min(target.maxHp, (target.hp || 0) + _regen);
+                addLog(`🔥 ${unitDisplayName(target)}'s Thermal Regen drinks the flames — restores ${_regen} HP!`);
+                if (!_skipVisuals()) {
+                    showFloatingTextForUnit(target, `🔥 +${_regen}`, 'heal', { durationMs: 1200 });
+                    flashUnit(target.id, 'heal');
+                }
+                if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
+                return false;
+            }
+
             let finalDamage = Math.max(0, damage);
             const sourceUnit = opts.sourceUnit || null;
             const damageType = opts.damageType || 'physical';
@@ -16243,6 +16265,8 @@
                 cost: 0
             }];
             const _pathFlies = canFly(unit);
+            /* 👻 Spectral Passage (Ghost passive) — mirrors getMoveTiles. */
+            const _pathPhasing = typeof unitIsPhasing === 'function' && unitIsPhasing(unit);
             const maxMove = getEffectiveMove(unit);
             while (open.length) {
                 let minI = 0;
@@ -16264,7 +16288,7 @@
                     if (!isInside(nx, ny)) continue;
                     /* skipWalls=true — walls are checked z-exactly per surface
                        below via wallStepInfo (mirrors getMoveTiles). */
-                    if (objectBlocksEdge(cur.x, cur.y, nx, ny, true)) continue;
+                    if (!_pathPhasing && objectBlocksEdge(cur.x, cur.y, nx, ny, true)) continue;
 
                     const _pathIsAirborne = _pathFlies && isUnitAirborne(unit);
                     let neighborSurfaces;
@@ -16293,7 +16317,7 @@
                         /* Authored edge walls, z-exact (mirrors getMoveTiles):
                            blocked steps drop, vaults pass — the walk animation
                            reads the wall again and arcs over it. */
-                        if (typeof wallStepInfo === 'function') {
+                        if (!_pathPhasing && typeof wallStepInfo === 'function') {
                             if (wallStepInfo(cur.x, cur.y, nx, ny, cur.z, nz,
                                 _pathIsAirborne ? 0 : getUnitJumpClimb(unit)).v === 2) continue;
                         }
@@ -16325,9 +16349,9 @@
                         }
 
                         const _pathBlocker = _has3D ? unitAt(nx, ny, nz) : unitAt(nx, ny);
-                        if ((nx !== destX || ny !== destY || nz !== destZ) && _pathBlocker && _pathBlocker.player !== unit.player) continue;
+                        if (!_pathPhasing && (nx !== destX || ny !== destY || nz !== destZ) && _pathBlocker && _pathBlocker.player !== unit.player) continue;
                         let _deployBlocks = false;
-                        if (state._deployedObjects) {
+                        if (!_pathPhasing && state._deployedObjects) {
                             for (const dObj of state._deployedObjects) {
                                 if (dObj.x === nx && dObj.y === ny && dObj.hp > 0 && (dObj.isDecoy || dObj.blocksMovement)) { _deployBlocks = true; break; }
                             }
@@ -17164,14 +17188,14 @@
                     const preferred = {
                         'Agent': ['assassinate', 'shadowLunge', 'placeBomb', 'sneakSlash', 'pistolWhip', 'poisonDart', 'knifeThrow'],
                         'Black Mage': ['meteor', 'wallOfFire', 'thunder1', 'fire1', 'thunderstorm'],
-                        'White Mage': ['healAll', 'revive1', 'heal1', 'protect1', 'exorcism'],
+                        'White Mage': ['healAll', 'revive1', 'heal1', 'protect1'],
                         'Warrior': ['judgment', 'groundSlam', 'warCry', 'guardSlash'],
                         'Tank': ['rampart', 'shieldBash', 'provoke', 'fortify'],
                         'Swordmaster': ['zantetsuken', 'dragonSlash', 'lungingStrike', 'bladeWaltz', 'parryStance', 'swordBeam', 'crossSlash'],
                         'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'crossfire'],
                         'Psychic': ['mindShatter', 'psychosis', 'teleport', 'glare', 'warpRune'],
                         'Harvester': ['lifeDrain', 'trunkThrow', 'leechSeed', 'healingSeed', 'poisonSeed'],
-                        'Engineer': ['fiveGTower', 'overclock', 'empBurst', 'magnetMine', 'repair', 'freeEnergy', 'plasmaGun', 'deployTurret'],
+                        'Engineer': ['fiveGTower', 'overclock', 'empBurst', 'repair', 'plasmaGun', 'deployTurret'],
                         'Harbinger': ['requiem', 'encore', 'fermata', 'sonicCharge', 'discordance', 'lullaby'],
                         'Raider': ['rampage', 'skullCrack', 'haymaker', 'ironGrip'],
                         'Sniper': ['headshot', 'precisionShot', 'spotter', 'camouflage'],
@@ -41231,6 +41255,9 @@
             const _has3D = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
             const unitZ = unit.z ?? 0;
 
+            /* 👻 Spectral Passage (Ghost passive): phase through edge walls,
+               enemy units and deployed barricades while pathing. */
+            const _phasing = typeof unitIsPhasing === 'function' && unitIsPhasing(unit);
             const startKey = _has3D ? posKey3(unit.x, unit.y, unitZ) : posKey(unit.x, unit.y);
             const bestCost = new Map([
                 [startKey, 0]
@@ -41272,7 +41299,7 @@
                     /* skipWalls=true: authored edge walls are checked z-exactly
                        per landing surface below (wallStepInfo), not with the
                        column-top guess objectBlocksEdge would use. */
-                    if (objectBlocksEdge(cur.x, cur.y, nx, ny, true)) { continue; }
+                    if (!_phasing && objectBlocksEdge(cur.x, cur.y, nx, ny, true)) { continue; }
 
                     const _isAirborne = _unitFlies && isUnitAirborne(unit);
                     let neighborSurfaces;
@@ -41311,7 +41338,7 @@
                            stat can clear). Airborne flyers never vault (jc=0)
                            but sail clean over walls below their true feet. */
                         let _wallVault = false;
-                        if (typeof wallStepInfo === 'function') {
+                        if (!_phasing && typeof wallStepInfo === 'function') {
                             const _wsi = wallStepInfo(cur.x, cur.y, nx, ny, curZ, nz,
                                 _isAirborne ? 0 : getUnitJumpClimb(unit));
                             if (_wsi.v === 2) { continue; }
@@ -41367,11 +41394,11 @@
                         } else {
                             _occupant = _has3D ? unitAt(nx, ny, nz) : unitAt(nx, ny);
                         }
-                        if (_occupant && _occupant.player !== unit.player) { continue; }
+                        if (!_phasing && _occupant && _occupant.player !== unit.player) { continue; }
 
                         if (!_isAirborne) {
                             let _decoyBlocks = false;
-                            if (state._deployedObjects) {
+                            if (!_phasing && state._deployedObjects) {
                                 for (const obj of state._deployedObjects) {
                                     if (obj.x === nx && obj.y === ny && obj.hp > 0 && (obj.isDecoy || obj.blocksMovement)) { _decoyBlocks = true; break; }
                                 }

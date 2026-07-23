@@ -2080,7 +2080,7 @@ const RACE_PROFILES = {
     ghost: {
         label: 'Ghost',
         faction: 'time',
-        types: ['human', 'divine']
+        types: ['human', 'anomaly']
     },
     zombie: {
         label: 'Zombie',
@@ -2352,7 +2352,7 @@ const RACE_PROFILES = {
     'priest': {
         label: 'Priest',
         labelMale: 'Priest',
-        labelFemale: 'Priestess',
+        labelFemale: 'Nun',
         faction: 'time',
         types: ['human', 'divine']
     },
@@ -2482,7 +2482,7 @@ const RACE_DEFAULT_JOBS = {
     'nordic': 'Harbinger',
     'angel': 'White Mage',
     'fairy': 'White Mage',
-    'ghost': 'White Mage',
+    'ghost': 'Psychic',
     'seraphim': 'Black Mage',
     'djinn': 'Black Mage',
     'demon': 'Black Mage',
@@ -2552,7 +2552,7 @@ const RACE_DEFAULT_JOBS = {
     'kaiju': 'Raider',
     'kraken': 'Harbinger',
     'loch ness monster': 'Tank',
-    'yeti': 'Harvester',
+    'yeti': 'Raider',
 
     'barbarella': 'Agent',
     'black goo': 'Psychic',
@@ -2568,7 +2568,7 @@ const RACE_DEFAULT_JOBS = {
     'occulus': 'Harbinger',
     'quarterback': 'Sniper',
     'robinhood': 'Sniper',
-    'santa clause': 'White Mage',
+    'santa clause': 'Tank',
     'super sentai': 'Freelancer',
     'symbiote': 'Agent',
     'valkraye': 'Swordmaster',
@@ -2588,7 +2588,7 @@ const RACE_CLASS = {
     'antperson': 'bruiser',
     'werewolf': 'bruiser',
     'angel': 'healer',
-    'ghost': 'healer',
+    'ghost': 'caster',
     'nordic': 'support',
     'fairy': 'support',
     'scarecrow': 'support',
@@ -2668,7 +2668,7 @@ const RACE_CLASS = {
     'occulus': 'support',
     'quarterback': 'ranged',
     'robinhood': 'ranged',
-    'santa clause': 'support',
+    'santa clause': 'tank',
     'super sentai': 'tank',
     'symbiote': 'assassin',
     'valkraye': 'bruiser',
@@ -2839,7 +2839,7 @@ const RACE_BASE_STATS = {
     'occulus':       { hp: 466, mp: 180, atk: 20, def: 24, mdef: 38, move: 3, awr: 5, int: 50, spd: 7 },
     'quarterback':   { hp: 538, mp: 118, atk: 54, def: 30, mdef: 22, move: 3, awr: 3, int: 22, spd: 7 },
     'robinhood':     { hp: 535, mp: 122, atk: 66, def: 26, mdef: 25, move: 3, awr: 4, int: 28, spd: 9 },
-    'santa clause':  { hp: 510, mp: 185, atk: 22, def: 32, mdef: 36, move: 2, awr: 4, int: 48, spd: 5 },
+    'santa clause':  { hp: 645, mp: 140, atk: 30, def: 38, mdef: 36, move: 2, awr: 4, int: 30, spd: 4 },
     'super sentai':  { hp: 620, mp: 90,  atk: 46, def: 44, mdef: 20, move: 2, awr: 3, int: 18, spd: 4 },
     'symbiote':      { hp: 520, mp: 120, atk: 64, def: 26, mdef: 25, move: 3, awr: 3, int: 28, spd: 8 },
     'valkraye':      { hp: 560, mp: 110, atk: 56, def: 34, mdef: 27, move: 3, awr: 3, int: 30, spd: 7 },
@@ -4393,6 +4393,10 @@ const SPELL_LIBRARY = [
         desc: 'Empowers a Single Ally. Applies Overclock.'
     },
     {
+        /* 2026-07-23 beam de-duplication: was one of FOUR identical 1-wide
+           line beams (with Railgun / Heat Ray / Refract Beam). Now a plasma
+           BURST — the bolt detonates in a 3×3 splash. Railgun keeps the
+           piercing line identity. */
         id: 'plasmaGun',
         spellType: 'alien',
         element: 'lightning',
@@ -4400,15 +4404,15 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 30,
         equipCost: 15,
-        dmg: 120,
+        dmg: 100,
         range: 4,
-        kind: 'line',
+        kind: 'aoe',
         damageType: 'magic',
-        lineWidth: 1,
+        aoeRadius: 1,
         tier: 'I',
         school: 'Engineer',
         classRestriction: 'Engineer',
-        desc: 'Deals MEDIUM magic damage to All Enemies in a line.'
+        desc: 'Fires a plasma bolt that detonates on impact. Deals MEDIUM magic damage to All Enemies in an AOE.'
     },
     {
         id: 'railgun',
@@ -4429,22 +4433,8 @@ const SPELL_LIBRARY = [
         classRestriction: 'Engineer',
         desc: 'Deals SEVERE physical damage to All Enemies in a line. Ignores DEF.'
     },
-    {
-        id: 'freeEnergy',
-        spellType: 'divine',
-        element: 'lightning',
-        name: 'Free Energy',
-        type: 'heal',
-        cost: 40,
-        equipCost: 20,
-        mpRestore: 35,
-        range: 0,
-        kind: 'manaRestoreAll',
-        tier: 'II',
-        school: 'Engineer',
-        classRestriction: 'Engineer',
-        desc: 'Restores MP to All Allies.'
-    },
+    /* freeEnergy moved to the Mad Scientist RACE kit (2026-07-23) — only he
+       cracked zero-point energy. See RACE_ABILITIES['mad scientist']. */
 
     {
         id: 'warCry',
@@ -5126,25 +5116,9 @@ const SPELL_LIBRARY = [
         desc: 'Removes harmful status effects from a Single Ally.'
     },
 
-    {
-        id: 'exorcism',
-        spellType: 'divine',
-        element: 'light',
-        name: 'Exorcism',
-        type: 'damage',
-        cost: 35,
-        equipCost: 20,
-        dmg: 160,
-        range: 3,
-        kind: 'damage',
-        damageType: 'magic',
-        tier: 'III',
-        school: 'White Mage',
-        classRestriction: 'White Mage',
-        unholyBonus: 80,
-        bonusVsStatus: { status: 'discord', mult: 1.5 },
-        desc: 'Deals HEAVY magic damage to a Single Enemy. Deals bonus damage to targets with Discord. Deals bonus damage to Unholy targets.'
-    },
+    /* exorcism moved to the Priest/Nun RACE kit (2026-07-23) — the rite of
+       exorcism belongs to the clergy, not the whole White Mage school. See
+       RACE_ABILITIES['priest']. */
 
     {
         id: 'kneecapShot',
@@ -5214,45 +5188,9 @@ const SPELL_LIBRARY = [
        Only multi-block prefab structures remain spells. */
 
     /* ── Terraforming pass: prebuilt voxel structures ─────────────────────
-       kind 'buildStructure' stamps a STRUCTURE_TEMPLATES prefab oriented by
-       the caster→target direction. The ghost preview shows the exact
-       blocks before you click. */
-    {
-        id: 'fieldBridge',
-        spellType: 'tech',
-        element: 'earth',
-        name: 'Field Bridge',
-        type: 'utility',
-        cost: 20,
-        equipCost: 12,
-        apCost: 1,
-        range: 3,
-        kind: 'buildStructure',
-        structure: 'bridgeSpan',
-        materialCost: { wood: 2 },
-        tier: 'I',
-        school: 'Engineer',
-        classRestriction: 'Engineer',
-        desc: 'Span water or a chasm with a timber deck up to 4 tiles long (2 🪵). Aim at the gap — the bridge runs away from you at your standing height until it finds the far shore.'
-    },
-    {
-        id: 'watchtower',
-        spellType: 'tech',
-        element: 'earth',
-        name: 'Watchtower',
-        type: 'utility',
-        cost: 30,
-        equipCost: 15,
-        apCost: 1,
-        range: 2,
-        kind: 'buildStructure',
-        structure: 'watchtower',
-        materialCost: { stone: 2 },
-        tier: 'II',
-        school: 'Engineer',
-        classRestriction: 'Engineer',
-        desc: 'Raise a 2-high stone lookout with a climbing step on your side (2 🪨). The peak counts as a mountain top: +1 attack range. Instant sniper nest — until someone smashes the base.'
-    },
+       (fieldBridge and watchtower were CUT 2026-07-23 — free-build voxel
+       placement covers bridge/tower construction now. STRUCTURE_TEMPLATES
+       stays for map prefabs.) */
 
     /* ── Terraforming pass: trap arsenal ──────────────────────────────────
        kind 'placeTrap' hides a charge on an empty tile (visible only to
@@ -5296,45 +5234,8 @@ const SPELL_LIBRARY = [
         classRestriction: 'Black Mage',
         desc: 'Bury a freezing charge in any EMPTY tile in range (max 2 active). The triggering enemy takes damage and is stunned a turn while the surrounding 3×3 flash-freezes to slick ice — shatter it, slide on it, or melt it later.'
     },
-    {
-        id: 'tremorCharge',
-        spellType: 'tech',
-        element: 'earth',
-        name: 'Tremor Charge',
-        type: 'utility',
-        cost: 25,
-        equipCost: 12,
-        apCost: 1,
-        range: 2,
-        kind: 'placeTrap',
-        trapType: 'tremor',
-        dmg: 50,
-        maxActivePerCaster: 2,
-        tier: 'II',
-        school: 'Engineer',
-        classRestriction: 'Engineer',
-        desc: 'Plant a seismic charge in any EMPTY tile in range (max 2 active). When an enemy steps on it the ground COLLAPSES 2 levels under their feet — blast damage plus the fall, and adjacent water floods the fresh pit.'
-    },
-    {
-        id: 'magnetMine',
-        spellType: 'tech',
-        element: 'lightning',
-        name: 'Magnet Mine',
-        type: 'utility',
-        cost: 30,
-        equipCost: 15,
-        apCost: 1,
-        range: 2,
-        kind: 'placeTrap',
-        trapType: 'magnet',
-        dmg: 55,
-        maxActivePerCaster: 2,
-        tier: 'II',
-        // 2026-07-13: tech gadget — Engineer-only now (was shared with Agent).
-        school: 'Engineer',
-        classRestrictions: ['Engineer'],
-        desc: 'Conceal a magnetic pulse charge in any EMPTY tile in range (max 2 active). The trigger shocks its victim and DRAGS every unit within 2 tiles one step toward the mine — bunch them up, then drop the follow-up on the pile.'
-    },
+    /* (tremorCharge and magnetMine were CUT 2026-07-23 — the Engineer trap
+       arsenal is retired.) */
 
     /* ── Assassin (job id 'Agent') kit fillers (2026-07-13) — replace the two
        tech spells (EMP Burst / Magnet Mine) that moved to Engineer. ── */
@@ -5669,12 +5570,28 @@ const SHARED_INFECTIOUS_BITE = {
     desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Poison.'
 };
 
-const SHARED_TERRAFORM = {
-    id: 'sharedTerraform', spellType: 'divine', element: 'nature', name: 'Terraform',
-    type: 'utility', cost: 15, range: 3, apCost: 1,
-    kind: 'terrainCreate', terrainType: 'grass', tileCount: 3, orientable: true,
-    dmg: 0, damageType: 'magic',
-    desc: 'Purify 3 tiles in a line, converting hazard terrain (lava, poison, scorched) into grass.'
+/* (SHARED_TERRAFORM was CUT 2026-07-23 — terrain purification is gone from
+   the game; hazard tiles stay until something else overwrites them.) */
+
+/* Universal wing buffet (2026-07-23) shared by every winged race. Keeps the
+   old raceWingGust id so the existing 3D gust VFX fires unchanged. */
+const SHARED_WING_ATTACK = {
+    id: 'raceWingGust', spellType: 'anomaly', element: 'wind', name: 'Wing Attack',
+    type: 'damage', cost: 25, dmg: 80, range: 0, apCost: 1,
+    kind: 'aoe', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
+    pushDistance: 2,
+    desc: 'A sweeping blow with both wings. Deals WEAK physical damage to All Enemies around the caster (AOE) and knocks them back.'
+};
+
+/* THE one Smite (2026-07-23). Divine Smite and the two duplicate race
+   Smites were consolidated into this single shared spell (priest / angel /
+   nephilim). */
+const SHARED_SMITE = {
+    id: 'raceSmite', spellType: 'divine', element: 'light', name: 'Smite',
+    type: 'damage', cost: 25, dmg: 120, range: 3,
+    kind: 'damage', damageType: 'magic',
+    bonusVsUnholy: 0.50,
+    desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to Unholy targets.'
 };
 
 const SHARED_SUMMON_BLIZZARD = {
@@ -5776,7 +5693,6 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statusEffects: [{ id: 'protect', duration: 1 }],
           desc: 'Empowers a Single Ally. Applies Protect. Cooldown: 2 rounds.' },
-        SHARED_TERRAFORM,
     ],
     'orb of light': [
         { id: 'racePrismBurst', spellType: 'divine', name: 'Prism Burst',
@@ -5792,41 +5708,42 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 30, dmg: 80, range: 0,
           kind: 'barrage', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
           desc: 'Deals WEAK magic damage to All Enemies around the caster (AOE).' },
-        SHARED_TERRAFORM,
     ],
+    /* 2026-07-23 ghost rework: Human+Anomaly Psychic now. Spectral Passage
+       stopped being a spell and became the race PASSIVE (ghosts phase through
+       walls, enemies and barricades while moving — see unitIsPhasing in
+       map.js + the getMoveTiles/findMovePath hooks in battle.js). Boo is the
+       new jump-scare nuke. */
     'ghost': [
-        { id: 'raceColdSpot', spellType: 'divine', name: 'Cold Spot',
+        { id: 'raceBoo', spellType: 'anomaly', element: 'psychic', name: 'Boo',
+          type: 'damage', cost: 25, dmg: 120, range: 2,
+          kind: 'damage', damageType: 'magic',
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Materialize with a shriek. Deals MEDIUM magic damage to a Single Enemy. Applies Stagger.' },
+        { id: 'raceColdSpot', spellType: 'anomaly', name: 'Cold Spot',
           type: 'utility', cost: 30, range: 4, apCost: 1,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Haunt a 3x3 area for 2 turns. Enemies inside are slowed and cannot counterattack.' },
-        { id: 'racePossession', spellType: 'divine', name: 'Possession',
+        { id: 'racePossession', spellType: 'anomaly', name: 'Possession',
           type: 'debuff', cost: 35, range: 3, apCost: 2,
           kind: 'debuff',
           statusEffects: [{ id: 'jammed', duration: 2 }],
           desc: 'Weakens a Single Enemy. Applies Jammed.' },
-        { id: 'raceSpectralPassage', spellType: 'divine', name: 'Spectral Passage',
-          type: 'utility', cost: 20, range: 5, apCost: 1,
-          kind: 'teleport', teleportDistance: 5, requiresLineOfSight: false,
-          desc: 'Phase through walls and terrain up to 5 tiles. Walls mean nothing to the dead.' },
-        SHARED_FLASH_FREEZE,
-        SHARED_TERRAFORM
+        SHARED_FLASH_FREEZE
     ],
     'angel': [
         { id: 'raceSanctuary', spellType: 'divine', name: 'Sanctuary',
           type: 'utility', cost: 35, range: 3, apCost: 1,
           kind: 'zoneHeal', aoeRadius: 1, zoneDuration: 2, healPerTurn: 48,
           desc: 'Consecrate a 3x3 area for 2 turns. Allies standing in it heal each round.' },
-        { id: 'raceDivineSmite', spellType: 'divine', name: 'Divine Smite',
-          type: 'damage', cost: 30, dmg: 120, range: 3,
-          kind: 'damage', damageType: 'magic',
-          chargeToTarget: true,
-          desc: 'Deals MEDIUM magic damage to a Single Enemy.' },
-        { id: 'raceWingsOfMercy', spellType: 'divine', name: 'Wings of Mercy',
+        SHARED_SMITE,
+        /* 2026-07-23: renamed from Wings of Mercy (id kept for VFX/saves). */
+        { id: 'raceWingsOfMercy', spellType: 'divine', name: 'Miracle',
           type: 'utility', cost: 20, range: 4, apCost: 1,
           kind: 'swap', allyOnly: true, healOnSwap: 60,
           desc: 'Swaps positions with the target unit. The ally heals on arrival.' },
-        SHARED_TERRAFORM,
+        SHARED_WING_ATTACK,
     ],
     'gargoyle': [
         { id: 'racePerchForm', spellType: 'unholy', name: 'Perch Form',
@@ -5852,7 +5769,8 @@ const RACE_ABILITIES = {
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           desc: 'Grab an adjacent enemy and release them from above. Damage scales with elevation delta. Staggers on landing.' },
         SHARED_RAMPART,
-        SHARED_FISSURE
+        SHARED_FISSURE,
+        SHARED_WING_ATTACK
     ],
 
     'demon': [
@@ -5876,7 +5794,8 @@ const RACE_ABILITIES = {
           requiresFlight: true,
           desc: 'Seize an adjacent enemy, lift them skyward, and hurl them up to 3 tiles. Collision damage if they hit another unit.' },
         SHARED_SCORCHED_EARTH,
-        SHARED_SUMMON_BLOOD_RAIN
+        SHARED_SUMMON_BLOOD_RAIN,
+        SHARED_WING_ATTACK
     ],
     'succubus': [
         { id: 'raceSoulSuck', spellType: 'unholy', name: 'Soul Suck',
@@ -5893,7 +5812,13 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 35, dmg: 160, range: 1, apCost: 2,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.60,
           desc: 'Deals HEAVY magic damage to a Single Enemy. Heals the caster for part of the damage dealt.' },
-        SHARED_POISON_SWAMP,
+        /* 2026-07-23: Poison Swamp out, Sleep Paralysis in — she sits on
+           your chest and you cannot move. */
+        { id: 'raceSleepParalysis', spellType: 'unholy', element: 'shadow', name: 'Sleep Paralysis',
+          type: 'damage', cost: 30, dmg: 80, range: 3,
+          kind: 'damage', damageType: 'magic',
+          statusEffects: [{ id: 'root', duration: 2 }],
+          desc: 'Deals WEAK magic damage to a Single Enemy. Applies Rooted — you wake, but you cannot move.' },
     ],
     /* 2026-07-18 zombie kit rework: Poison Swamp / Scorched Earth / Undying
        Grip are GONE. Shambling Horde is now an AoE stampede (the horde
@@ -5964,7 +5889,8 @@ const RACE_ABILITIES = {
           requiresFlight: true,
           statusEffects: [{ id: 'discord', duration: 2 }],
           desc: 'Snatch an adjacent enemy into the sky and release them. Damage scales with height. They never speak of what they saw up there.' },
-        SHARED_SUMMON_SANDSTORM
+        SHARED_SUMMON_SANDSTORM,
+        SHARED_WING_ATTACK
     ],
     'shadow entity': [
         { id: 'racePhaseShift', spellType: 'anomaly', name: 'Phase Shift',
@@ -6400,7 +6326,13 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'burn', duration: 2 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Burn.' },
-        SHARED_SHRINK_RAY
+        SHARED_SHRINK_RAY,
+        /* 2026-07-23: Free Energy left the Engineer school — only the Mad
+           Scientist cracked zero-point energy. (Same id: VFX/saves intact.) */
+        { id: 'freeEnergy', spellType: 'divine', element: 'lightning', name: 'Free Energy',
+          type: 'heal', cost: 40, mpRestore: 35, range: 0,
+          kind: 'manaRestoreAll',
+          desc: 'Restores MP to All Allies.' }
     ],
     'cowboy': [
         { id: 'raceFanTheHammer', spellType: 'human', element: 'metal', name: 'Fan the Hammer',
@@ -6491,11 +6423,15 @@ const RACE_ABILITIES = {
           kind: 'warCry', auraRadius: 2,
           healAmt: 60,
           desc: 'Create a sanctified zone. All allies within 2 tiles are healed 60 HP.' },
-        { id: 'raceSmite', spellType: 'divine', name: 'Smite',
-          type: 'damage', cost: 25, dmg: 120, range: 3,
+        SHARED_SMITE,
+        /* 2026-07-23: Exorcism is Priest/Nun-only now (was White Mage school).
+           Same id — VFX, sounds and old loadouts keep working. */
+        { id: 'exorcism', spellType: 'divine', element: 'light', name: 'Exorcism',
+          type: 'damage', cost: 35, dmg: 160, range: 3,
           kind: 'damage', damageType: 'magic',
-          bonusVsUnholy: 0.50,
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Stun.' },
+          unholyBonus: 80,
+          bonusVsStatus: { status: 'discord', mult: 1.5 },
+          desc: 'Deals HEAVY magic damage to a Single Enemy. Deals bonus damage to targets with Discord. Deals bonus damage to Unholy targets.' },
     ],
     'wizard': [
         /* 2026-07-17 shape pass: was the 16th identical 3×3 nuke. Now the
@@ -6542,16 +6478,13 @@ const RACE_ABILITIES = {
     ],
 
     'martian': [
+        /* 2026-07-23 beam de-duplication: no longer the 4th identical line
+           spell — now a focused single-target death ray that burns. */
         { id: 'raceHeatRay', spellType: 'alien', element: 'fire', name: 'Heat Ray',
-          type: 'damage', cost: 30, dmg: 120, range: 5,
-          kind: 'line', damageType: 'physical', lineWidth: 1,
-          leaveTerrain: 'scorched',
-          desc: 'Deals MEDIUM physical damage to All Enemies in a line. Leaves scorched tiles behind.' },
-        { id: 'raceBlackSmoke', spellType: 'alien', element: 'poison', name: 'Black Smoke',
-          type: 'damage', cost: 30, dmg: 80, range: 4,
-          kind: 'terrainCreate', terrainType: 'poison', tileCount: 1,
-          damageType: 'magic',
-          desc: 'Vent the black smoke — the war machine\'s chemical weapon. It condenses into a poison spring that seeps outward and downhill, damaging enemies caught in the toxic spread.' },
+          type: 'damage', cost: 30, dmg: 160, range: 5,
+          kind: 'damage', damageType: 'physical',
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'Focus the war machine\'s death ray on a Single Enemy. Deals HEAVY physical damage. Applies Burn.' },
         { id: 'raceWarOfTheWorlds', spellType: 'alien', element: 'metal', name: 'War of the Worlds',
           type: 'utility', cost: 35, range: 2, apCost: 1,
           kind: 'deployTurret', turretDmg: 120, turretRange: 3, turretHp: 140,
@@ -6715,11 +6648,8 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 30, range: 0, apCost: 2, cooldownRounds: 2,
           kind: 'pulseLattice',
           desc: 'Discharge the lattice (needs 3+ prisms): every enemy caught on a beam takes a burst in the current frequency. 4+ prisms across 2+ elevations enclose a 3-D volume — everyone inside is hit and the burst is amplified. 8 prisms in a perfect rectangular prism unleash a massive detonation through the whole volume.' },
-        { id: 'raceRefractBeam', spellType: 'tech', element: 'fire', name: 'Refract Beam',
-          type: 'damage', cost: 26, dmg: 160, range: 5,
-          kind: 'line', damageType: 'magic', lineWidth: 1,
-          statusEffects: [{ id: 'burn', duration: 1 }],
-          desc: 'Deals HEAVY magic damage to All Enemies in a line. Applies Burn.' },
+        /* (Refract Beam was CUT 2026-07-23 in the beam de-duplication pass —
+           the prism lattice already IS the machine elves' laser identity.) */
         { id: 'raceMirrorBlink', spellType: 'alien', element: 'arcane', name: 'Mirror Blink',
           type: 'utility', cost: 16, range: 4, apCost: 1,
           kind: 'teleport',
@@ -6863,7 +6793,7 @@ const RACE_ABILITIES = {
           desc: 'Slams down from the sky, dealing WEAK magic damage in an AOE. Applies Burn. Usable only while flying. Reshapes the ground on impact.' },
         SHARED_SUMMON_BLOOD_RAIN,
         SHARED_SCORCHED_EARTH,
-        SHARED_TERRAFORM
+        SHARED_WING_ATTACK
     ],
     'goatman': [
         { id: 'raceGoreCharge', spellType: 'unholy', name: 'Gore Charge',
@@ -6936,18 +6866,15 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 25, apCost: 1, range: 3,
           kind: 'aoeShield', aoeRadius: 1, shieldHp: 160,
           desc: 'Grants a damage-absorbing shield to All Allies in an AOE.' },
-        { id: 'raceSmite', spellType: 'human', name: 'Smite',
-          type: 'damage', cost: 30, dmg: 120, range: 2,
-          kind: 'damage', damageType: 'physical',
-          statusEffects: [{ id: 'stun', duration: 1 }],
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Stun.' },
+        SHARED_SMITE,
         { id: 'raceWrathOfTheWatchers', spellType: 'divine', name: 'Wrath of the Watchers',
           type: 'damage', cost: 35, dmg: 120, range: 4,
           kind: 'cross', damageType: 'magic', crossRadius: 2,
           statusEffects: [{ id: 'burn', duration: 1 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in a cross-shaped AOE. Applies Burn.' },
         SHARED_RAMPART,
-        SHARED_FISSURE
+        SHARED_FISSURE,
+        SHARED_WING_ATTACK
     ],
     'vampire': [
         { id: 'raceLifetap', spellType: 'unholy', element: 'blood', name: 'Lifetap',
@@ -7162,7 +7089,6 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statusEffects: [{ id: 'overclock', duration: 1 }],
           desc: 'Empowers the caster. Applies Overclock.' },
-        SHARED_TERRAFORM
     ],
     'politician': [
         { id: 'raceExecutiveOrder', spellType: 'human', name: 'Executive Order',
@@ -7238,11 +7164,7 @@ const RACE_ABILITIES = {
           leaveTerrain: 'lava',
           statusEffects: [{ id: 'burn', duration: 2 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in a line. Applies Burn. Leaves lava tiles behind.' },
-        { id: 'raceWingGust', spellType: 'anomaly', name: 'Wing Gust',
-          type: 'damage', cost: 25, dmg: 80, range: 0, apCost: 1,
-          kind: 'aoe', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
-          pushDistance: 2,
-          desc: 'Deals WEAK physical damage to All Enemies around the caster (AOE).' },
+        SHARED_WING_ATTACK,
         { id: 'raceDragonfear', spellType: 'unholy', name: 'Dragonfear',
           type: 'debuff', cost: 25, range: 0, apCost: 1,
           kind: 'barrage', aoeRadius: 3, aoeOriginSelf: true,
@@ -7316,8 +7238,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stagger', duration: 1 }],
           terrainDeform: { centerDelta: -1, edgeDelta: -1 },
           desc: 'Leaps onto a Single Enemy, dealing WEAK physical damage. Applies Stagger. Nearby enemies take splash damage. Reshapes the ground on impact.' },
-        SHARED_FISSURE,
-        SHARED_NUKE
+        SHARED_FISSURE
+        /* (SHARED_NUKE removed 2026-07-23 — Thermal Regen made him the
+           anti-fire monster, not the nuke platform.) */
     ],
     'kraken': [
         { id: 'raceTentacleLash', spellType: 'anomaly', name: 'Tentacle Lash',
@@ -7714,6 +7637,7 @@ const RACE_ABILITIES = {
           kind: 'terrainCreate', terrainType: 'crystal', tileCount: 3, orientable: true,
           dmg: 0, damageType: 'magic',
           desc: 'Sing 3 crystal tiles into being in a line. Crystal terrain boosts DEF and blocks ranged. The all-seeing eye draws the pattern.' },
+        SHARED_WING_ATTACK,
     ],
 
     'quarterback': [
@@ -7751,12 +7675,23 @@ const RACE_ABILITIES = {
           desc: 'Empowers the caster. Raises ATK by 2 stages and DEF by 1 stage.' }
     ],
 
+    /* 2026-07-23: racePrecisionShot CUT (duplicate of the Sniper-school
+       precisionShot). In its place: a proper trick-arrow quiver. */
     'robinhood': [
-        { id: 'racePrecisionShot', spellType: 'human', name: 'Precision Shot',
-          type: 'damage', cost: 20, dmg: 120, range: 5,
+        { id: 'raceBombArrow', spellType: 'human', element: 'fire', name: 'Bomb Arrow',
+          type: 'damage', cost: 30, dmg: 80, range: 4,
+          kind: 'aoe', damageType: 'physical', aoeRadius: 1,
+          desc: 'An arrow with a powder charge lashed to the head. Deals WEAK physical damage to All Enemies in an AOE.' },
+        { id: 'raceFireArrow', spellType: 'human', element: 'fire', name: 'Fire Arrow',
+          type: 'damage', cost: 25, dmg: 80, range: 5,
           kind: 'damage', damageType: 'physical',
-          statStageBoost: { def: -1 },
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Lowers the target\'s DEF by 1 stage.' },
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'Deals WEAK physical damage to a Single Enemy. Applies Burn.' },
+        { id: 'racePoisonArrow', spellType: 'human', element: 'poison', name: 'Poison Arrow',
+          type: 'damage', cost: 25, dmg: 80, range: 5,
+          kind: 'damage', damageType: 'physical',
+          statusEffects: [{ id: 'poison', duration: 3 }],
+          desc: 'Deals WEAK physical damage to a Single Enemy. Applies Poison.' },
         { id: 'raceArrowRain', spellType: 'human', name: 'Arrow Rain',
           type: 'damage', cost: 30, dmg: 80, range: 4, apCost: 1,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
@@ -7901,6 +7836,7 @@ const RACE_ABILITIES = {
           kind: 'warCry', aoeRadius: 2,
           statStageBoost: { atk: 2, def: 2 },
           desc: 'Empowers All Allies nearby. Raises ATK by 2 stages and DEF by 2 stages.' },
+        SHARED_WING_ATTACK,
     ],
 
     'watcher': [
@@ -7926,6 +7862,7 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'aoeShield', aoeRadius: 1, shieldHp: 90,
           desc: 'Grants a damage-absorbing shield to All Allies in an AOE.' },
+        SHARED_WING_ATTACK,
     ]
 };
 
@@ -11878,11 +11815,11 @@ const CLASS_SPELL_LEARN_ORDER = {
     'Warrior':     ['guardSlash', 'warCry', 'groundSlam', 'judgment'],
     'Tank':        ['fortify', 'provoke', 'shieldBash', 'rampart'],
     'Black Mage':  ['fire1', 'thunder1', 'wallOfFire', 'frostMine', 'meteor', 'thunderstorm'],
-    'White Mage':  ['heal1', 'radiantBolt', 'veilOfLight', 'cleanse', 'exorcism', 'healAll'],
+    'White Mage':  ['heal1', 'radiantBolt', 'veilOfLight', 'cleanse', 'healAll'],
     'Agent':       ['knifeThrow', 'pistolWhip', 'placeBomb', 'snareTrap', 'poisonDart', 'sneakSlash', 'shadowLunge', 'assassinate'],
     'Psychic':     ['kineticHurl', 'glare', 'warpRune', 'psychosis', 'mindShatter'],
     'Harvester':   ['lifeDrain', 'healingSeed', 'poisonSeed', 'trunkThrow', 'leechSeed'],
-    'Engineer':    ['plasmaGun', 'deployTurret', 'repair', 'fieldBridge', 'watchtower', 'tremorCharge', 'freeEnergy', 'fiveGTower', 'overclock', 'magnetMine', 'empBurst'],
+    'Engineer':    ['plasmaGun', 'deployTurret', 'repair', 'fiveGTower', 'overclock', 'empBurst'],
     'Harbinger':   ['lullaby', 'sonicCharge', 'discordance', 'fermata', 'encore', 'requiem'],
     'Freelancer':  ['improvise', 'jackOfAll', 'reallyGoodPunch'],
     'Raider':      ['haymaker', 'ironGrip', 'skullCrack', 'rampage'],

@@ -1947,7 +1947,6 @@
                 !g.canAffordMaterials(unit.player, spell.materialCost)) return 0;
             const nearE = v.visibleEnemies.filter(e => Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 3).length;
             let s = 8 + nearE * 5;
-            if (spell.structure === 'watchtower' && ['Sniper', 'Gunslinger', 'Engineer'].includes(unit.cls)) s += 10;
             return s;
         }
 

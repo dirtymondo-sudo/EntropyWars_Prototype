@@ -4641,6 +4641,15 @@
             return r === 'giant' || r === 'cyclops' || r === 'gargoyle' || r === 'gnome' || r === 'yeti' || r === 'dragon' || r === 'kaiju';
         }
 
+        /* 👻 Spectral Passage (Ghost race PASSIVE, 2026-07-23 — replaces the
+           old teleport spell of the same name): while moving, ghosts phase
+           straight through edge walls, enemy units and deployed barricades.
+           They still need a real tile to STOP on — consumed by the
+           getMoveTiles/findMovePath hooks in battle.js. */
+        function unitIsPhasing(unit) {
+            return !!unit && unit.race === 'ghost';
+        }
+
         function unitIsIceStable(unit) {
             if (!unit) return false;
             const r = unit.race;
