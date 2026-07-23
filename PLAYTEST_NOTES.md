@@ -6403,3 +6403,49 @@ Difficulty + pacing pass ("couldn't get past floor 5, enemy turns too slow"):
   ITEM_META icon) over a pulsing glow disc, per-frame `visible` gated on
   `_fogVisibleSet` so fogged loot stays hidden; serial includes tileSize.
 - Floor-start log now mentions loot count + the roam/sneak mechanic.
+
+## 2026-07-23 — Dual-tech cut-in cinematics (Combos + Entropy Strike) + per-combo impact VFX
+- **ccin-\* cut-in system** (styles-cinematic.css end; builder `_ccinShowCutin`
+  in battle.js next to `_ewsShowBanner`): manga-panel caster showcase — angled
+  skewed panels w/ animated speed-lines, CRT scanlines, type-accent ribbon,
+  portrait (`getUnitPortraitUrl` face art, else `getBattleMapSpriteUrl` body,
+  pixelated), unit name, slam-in/sheen/shatter-out anims, center `.ccin-name`
+  slam + `.ccin-flash` whiteout. Two layouts: `ccin-combo` (2 big panels,
+  initiator top-left / partner bottom-right, panel 1 slides from right via
+  `ccin-from-r`) and `ccin-team` (4 small edge panels, ES). Overlay id
+  `comboCutinOverlay`, z 5150, pointer-events none, self-dismissing.
+  `opts.mute` suppresses its sfx (guest replays). Panels reveal IDENTITY only
+  (roster public via VS splash/logs), never positions.
+- **Combos**: presentation extracted to `_comboPlayPresentation(initiator,
+  partner, target, combo, T)` (battle.js, above doComboAttack; exported on
+  window). T = host-decided clock {ccOK, sourceHold, launchAt, hitAt, hitGap,
+  projMs, hits, mute, remote}. When `ccOK` (cinematicActionCam, no 2D duel
+  up, offline additionally `_ccinEligible` fog check) doComboAttack stretches
+  beat 1 (sourceHold 1750, `_noCinematic:true` so the 2D duel cutscene never
+  doubles) and the presentation plays: cut-in page + per-caster casting
+  circles/pillars (fog-gated `_shouldCameraFollowUnit`), type-tinted converge
+  streams (`fireCombo` now takes typeA/typeB → sprite per type, + comet head;
+  `_vfxCombo` forwards), one-two strike clips, then at hitAt: hard shake,
+  `triggerHitstop(130)`, and a **per-variant signature recipe** from
+  `_COMBO_IMPACT_FX` (battle.js, keyed by combo.name, all 21 registry combos;
+  fallback = type-colored shockring+flash; beam recipes collapse fog-hidden
+  caster anchors onto the target tile). multiHit visuals (alt strike clips,
+  projectiles, crescent arcs, gold finisher) also live in the presentation;
+  doComboAttack keeps damage only.
+- **Entropy Strike**: cinematic extracted to `_ewsPlayCinematic(unit, targets,
+  allies, hooks{applyHit,mute,remote})` (returns totalMs; doEntropyStrike
+  passes applyHit). Adds: up to 4 ally cut-in panels during charge (shatter at
+  sky-tear), `ThreeAnim.slowMo(0.45)` breath before annihilation, fog gates on
+  the caster camera dive + per-ally casting circles (hidden enemy channelers
+  no longer leak).
+- **ONLINE (the big one)**: engine fns run HOST-ONLY (`_hostRunAndSync`), so
+  guests previously saw NO ES cinematic and only cam+chrome for combos.
+  online.js now wraps `_ewsPlayCinematic` / `_comboPlayPresentation` (bare
+  identifier rebind, same pattern as animateStrikeLeap) → host emits
+  `relay {type:'entropy-cine'|'combo-cine'}` (ids + T clock); guest handlers
+  (dispatcher, after 'vfx3d') resolve units, look up the combo from their own
+  registry, and replay via window.* with `{mute:true, remote:true}` — mute
+  because ALL playSfx is already relayed ('sfx'), remote skips
+  animateStrikeLeap (covered by 'strike-leap' relay). Guests re-decide panel
+  visibility for their own fog view inside the presentation. Damage never
+  rides the relay (state-sync authoritative).

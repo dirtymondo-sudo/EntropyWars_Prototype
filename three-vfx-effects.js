@@ -2363,9 +2363,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _fireUtility(effectId, { tx: centerTx, ty: centerTy });
     }
 
-    function fireCombo(unitATx, unitATy, unitBTx, unitBTy, targetTx, targetTy) {
+    /* Each caster's converge stream is drawn in that caster's TYPE flavor
+       (2026-07-23 — the streams used to be generic embers regardless of who
+       was comboing). battle.js passes the two primary types through. */
+    var _COMBO_STREAM_SPRITES = {
+        divine: 'divine-sparkle', unholy: 'void-mist', anomaly: 'spark-pink',
+        tech: 'spark-blue', human: 'steel-spark', alien: 'psi-pulse'
+    };
+    function fireCombo(unitATx, unitATy, unitBTx, unitBTy, targetTx, targetTy, typeA, typeB) {
         if (_suppressed() || _catOff('combos')) return;
-        var _spawnConverge = function(fromTx, fromTy, delayMs) {
+        var _spawnConverge = function(fromTx, fromTy, delayMs, sprite) {
             window.setTimeout(function() {
                 var fromPx = tilePx(fromTx, fromTy);
                 var toPx   = tilePx(targetTx, targetTy);
@@ -2373,7 +2380,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var dist = Math.sqrt(dx * dx + dy * dy) || 1;
                 var speed = 400;
                 var travelMs = (dist / speed) * 1000;
-                for (var i = 0; i < 10; i++) {
+                /* comet head: one big leading particle the tail chases */
+                _spawn({
+                    x: fromPx.x, y: fromPx.y,
+                    z: unitSurfaceZ(fromTx, fromTy) + unitZBoost(),
+                    vx: (dx / dist) * speed, vy: (dy / dist) * speed,
+                    vz: 14,
+                    ml: travelMs * 0.95,
+                    drag: 0.2,
+                    mode: 'billboard', sprite: sprite,
+                    size0: rn(16, 20), size1: 6,
+                    opacity0: 1, opacity1: 0.2,
+                });
+                for (var i = 0; i < 13; i++) {
                     (function(idx) {
                         window.setTimeout(function() {
                             _spawn({
@@ -2384,17 +2403,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                                 vz: rn(-10, 30),
                                 ml: travelMs * 0.9,
                                 drag: 0.2,
-                                mode: 'billboard', sprite: 'ember',
+                                mode: 'billboard', sprite: sprite,
                                 size0: rn(6, 12), size1: 2,
                                 opacity0: 1, opacity1: 0,
                             });
-                        }, idx * 30);
+                        }, idx * 26);
                     })(i);
                 }
             }, delayMs);
         };
-        _spawnConverge(unitATx, unitATy, 0);
-        _spawnConverge(unitBTx, unitBTy, 60);
+        _spawnConverge(unitATx, unitATy, 0, _COMBO_STREAM_SPRITES[typeA] || 'ember');
+        _spawnConverge(unitBTx, unitBTy, 60, _COMBO_STREAM_SPRITES[typeB] || 'ember');
 
         var fromPxA = tilePx(unitATx, unitATy);
         var toPx = tilePx(targetTx, targetTy);

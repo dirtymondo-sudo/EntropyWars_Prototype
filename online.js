@@ -1628,6 +1628,57 @@
         };
         window.playSfx = playSfx;
 
+        /* Entropy Strike cinematic: the presentation runs host-side inside
+           doEntropyStrike (engine relay = host-only), so without this the
+           guest got HP drops and relayed sfx but NO banner/panels/sigils.
+           Relay the cinematic by id; the guest replays it with no applyHit
+           (damage arrives via state-sync) and muted sfx (the 'sfx' relay
+           already carries those). */
+        const _origEwsPlayCinematic = (typeof _ewsPlayCinematic === 'function') ? _ewsPlayCinematic : null;
+        if (_origEwsPlayCinematic) {
+            _ewsPlayCinematic = function(unit, targets, allies, hooks) {
+                var _netOn = window._NET && window._NET.online;
+                if (_netOn && _isHost() && unit && !(hooks && hooks.remote)) {
+                    _emit('relay', {
+                        type: 'entropy-cine',
+                        unitId: unit.id,
+                        targetIds: (targets || []).map(function(t) { return t && t.id; }),
+                        allyIds: (allies || []).map(function(a) { return a && a.id; })
+                    });
+                }
+                return _origEwsPlayCinematic(unit, targets, allies, hooks);
+            };
+            window._ewsPlayCinematic = _ewsPlayCinematic;
+        }
+
+        /* Combo dual-tech cinematic: same deal — doComboAttack runs host-only,
+           so the cut-in page / converge streams / impact signature are
+           relayed with the host's exact beat timings. The guest re-decides
+           panel visibility for its own fog view inside the presentation. */
+        const _origComboPlayPresentation = (typeof _comboPlayPresentation === 'function') ? _comboPlayPresentation : null;
+        if (_origComboPlayPresentation) {
+            _comboPlayPresentation = function(initiator, partner, target, combo, T) {
+                var _netOn = window._NET && window._NET.online;
+                if (_netOn && _isHost() && initiator && partner && target && !(T && T.remote)) {
+                    _emit('relay', {
+                        type: 'combo-cine',
+                        initiatorId: initiator.id, partnerId: partner.id, targetId: target.id,
+                        T: {
+                            ccOK: !!(T && T.ccOK),
+                            sourceHold: T ? T.sourceHold : 0,
+                            launchAt: T ? T.launchAt : 0,
+                            hitAt: T ? T.hitAt : 0,
+                            hitGap: T ? T.hitGap : 0,
+                            projMs: T ? T.projMs : 0,
+                            hits: (T && T.hits) || 1
+                        }
+                    });
+                }
+                return _origComboPlayPresentation(initiator, partner, target, combo, T);
+            };
+            window._comboPlayPresentation = _comboPlayPresentation;
+        }
+
         if (typeof VFX3D !== 'undefined' && VFX3D.fire) {
             const _origVFX3Dfire = VFX3D.fire;
             VFX3D.fire = function(phase, spellId, params) {
@@ -2882,6 +2933,61 @@
                                 VFX3D.fire(data.phase, data.spellId, data.params || {});
                             } catch (e) {  }
                         }
+                    }
+
+                    /* Entropy Strike: replay the FULL team-attack cinematic
+                       (banner, caster cut-in panels, sigils, per-enemy
+                       strikes, whiteout) on the guest. Cosmetic only — no
+                       applyHit, damage arrives via state-sync; sfx muted
+                       because the host's 'sfx' relay already carries them.
+                       Fog gating happens inside _ewsPlayCinematic per
+                       anchor, against THIS viewer's visible-tile set. */
+                    if (data.type === 'entropy-cine' && NET.role === 'guest') {
+                        try {
+                            var _ecFind = function(id) {
+                                return (st && st.units) ? st.units.find(function(u) { return u.id === id; }) : null;
+                            };
+                            var _ecUnit = _ecFind(data.unitId);
+                            var _ecTargets = (data.targetIds || []).map(_ecFind).filter(Boolean);
+                            var _ecAllies = (data.allyIds || []).map(_ecFind).filter(Boolean);
+                            if (_ecUnit && !st.winner && typeof window._ewsPlayCinematic === 'function') {
+                                window._ewsPlayCinematic(_ecUnit, _ecTargets, _ecAllies, {
+                                    applyHit: null, mute: true, remote: true
+                                });
+                            }
+                        } catch (e) { /* cosmetic replay must never break the sync */ }
+                    }
+
+                    /* Combo dual-tech cinematic: replay the manga cut-in
+                       page + converge streams + impact signature with the
+                       host's beat timings. The combo def is looked up from
+                       the guest's own registry (same data.js); panels and
+                       every 3D anchor are fog-gated viewer-side inside the
+                       presentation. Damage/floaters arrive via sync. */
+                    if (data.type === 'combo-cine' && NET.role === 'guest') {
+                        try {
+                            var _cchFind = function(id) {
+                                return (st && st.units) ? st.units.find(function(u) { return u.id === id; }) : null;
+                            };
+                            var _cchI = _cchFind(data.initiatorId);
+                            var _cchP = _cchFind(data.partnerId);
+                            var _cchT = _cchFind(data.targetId);
+                            var _cchLookup = (typeof getComboForUnits === 'function') ? getComboForUnits
+                                : ((window.GAME && window.GAME.getComboForUnits) || window.getComboForUnits || null);
+                            var _cchCombo = (_cchI && _cchP && _cchLookup) ? _cchLookup(_cchI, _cchP) : null;
+                            if (_cchI && _cchP && _cchT && _cchCombo && !st.winner
+                                && typeof window._comboPlayPresentation === 'function') {
+                                var _cchTim = data.T || {};
+                                window._comboPlayPresentation(_cchI, _cchP, _cchT, _cchCombo, {
+                                    ccOK: !!_cchTim.ccOK,
+                                    sourceHold: _cchTim.sourceHold,
+                                    launchAt: _cchTim.launchAt, hitAt: _cchTim.hitAt,
+                                    hitGap: _cchTim.hitGap, projMs: _cchTim.projMs,
+                                    hits: _cchTim.hits || 1,
+                                    mute: true, remote: true
+                                });
+                            }
+                        } catch (e) { /* cosmetic replay must never break the sync */ }
                     }
 
                     if (data.type === 'pickup-dialog' && NET.role === 'guest') {

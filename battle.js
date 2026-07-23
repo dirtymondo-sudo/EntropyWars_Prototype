@@ -43,9 +43,9 @@
             if (_skipVisuals()) return;
             if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireZone) ThreeVFXEffects.fireZone(centerTx, centerTy, radius, type);
         }
-        function _vfxCombo(unitATx, unitATy, unitBTx, unitBTy, targetTx, targetTy) {
+        function _vfxCombo(unitATx, unitATy, unitBTx, unitBTy, targetTx, targetTy, typeA, typeB) {
             if (_skipVisuals()) return;
-            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireCombo) ThreeVFXEffects.fireCombo(unitATx, unitATy, unitBTx, unitBTy, targetTx, targetTy);
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireCombo) ThreeVFXEffects.fireCombo(unitATx, unitATy, unitBTx, unitBTy, targetTx, targetTy, typeA, typeB);
         }
         function _vfxProjectile(fromX, fromY, toX, toY, spellType, spellId, spellName, fromZ, toZ, flyMs) {
             if (_skipVisuals()) return;
@@ -7230,6 +7230,110 @@
             window.setTimeout(() => el.remove(), totalMs + 400);
         }
 
+        /* ── TEAM-TECH CUT-INS (ccin-* in styles-cinematic.css) ─────────────
+           Manga-panel caster showcase shared by Combos (two big angled
+           panels) and the Entropy Strike (up to four small edge panels).
+           Pure DOM chrome over the live 3D shot: pointer-events none,
+           self-dismissing, and best-effort — the damage path never waits
+           on it. Guests replay the same engine call, so the panels render
+           on both screens from each viewer's own fog perspective. */
+        const _CCIN_TYPE_COLORS = {
+            divine: '#dcaa1e', unholy: '#9632b4', anomaly: '#dc3c82',
+            tech: '#28a0be', human: '#a0a0c3', alien: '#32aa50'
+        };
+        function _ccinColor(type) { return _CCIN_TYPE_COLORS[(type || '').toLowerCase()] || '#c9a5ff'; }
+        function _ccinHex(type) { return parseInt(_ccinColor(type).slice(1), 16); }
+        function _ccinEsc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        function _ccinPortrait(u) {
+            let url = null, face = false;
+            try {
+                if (typeof getUnitPortraitUrl === 'function') { url = getUnitPortraitUrl(u); face = !!url; }
+            } catch (err) { /* portrait art is optional */ }
+            if (!url) { try { url = getBattleMapSpriteUrl(u); } catch (err) { url = null; } }
+            return { url, face };
+        }
+        /* Cut-ins only make sense when the viewer can actually watch the
+           moment: skip under dev-sim / camera-off, while the 2D duel
+           cinematic owns the screen, and for enemy actions that are fully
+           swallowed by fog (screen-true visibility, never awr radius). */
+        function _ccinEligible(units) {
+            if (_skipVisuals() || state.cameraDisabled) return false;
+            if (!state.cinematicActionCam) return false;
+            try { if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return false; } catch (err) {}
+            try {
+                if (state.fogOfWar && state.activePlayer !== getViewerPlayer()) {
+                    if (!(units || []).some(u => u && typeof _shouldCameraFollowUnit === 'function' && _shouldCameraFollowUnit(u))) return false;
+                }
+            } catch (err) {}
+            return true;
+        }
+        /* casters: [{unit, accent}] (max 4). opts: mode 'combo'|'team',
+           name/sub (center slam), accent, startAt/staggerMs (panel slams),
+           nameAt, outAt (shatter), totalMs (overlay removal). */
+        function _ccinShowCutin(casters, opts) {
+            opts = opts || {};
+            const old = document.getElementById('comboCutinOverlay');
+            if (old) old.remove();
+            const el = document.createElement('div');
+            el.id = 'comboCutinOverlay';
+            el.className = 'ccin-overlay ' + (opts.mode === 'team' ? 'ccin-team' : 'ccin-combo');
+            const parts = [];
+            (casters || []).slice(0, 4).forEach((c, i) => {
+                const u = c.unit || c;
+                if (!u) return;
+                const accent = c.accent || _ccinColor((u.types || [])[0]);
+                const p = _ccinPortrait(u);
+                const fromR = (i % 2 === 1); // odd panels slide in from the right
+                parts.push(
+                    `<div class="ccin-panel ccin-pos-${i}${fromR ? ' ccin-from-r' : ''}" style="--ccin-accent:${accent}">`
+                    + '<div class="ccin-speed"></div>'
+                    + '<div class="ccin-ribbon"></div>'
+                    + (p.url ? `<img class="ccin-port ${p.face ? 'face' : 'body'}" src="${p.url}" alt="">` : '')
+                    + '<div class="ccin-scan"></div>'
+                    + `<div class="ccin-nm">${_ccinEsc(unitDisplayName(u))}<small>${_ccinEsc(u.cls || '')}</small></div>`
+                    + '</div>');
+            });
+            if (opts.name) {
+                parts.push(
+                    `<div class="ccin-name-wrap" style="--ccin-accent:${opts.accent || '#c9a5ff'}">`
+                    + `<div class="ccin-name">${_ccinEsc(opts.name)}</div>`
+                    + (opts.sub ? `<div class="ccin-name-sub">${_ccinEsc(opts.sub)}</div>` : '')
+                    + '</div>');
+            }
+            parts.push('<div class="ccin-flash"></div>');
+            el.innerHTML = parts.join('');
+            document.body.appendChild(el);
+            const panels = Array.from(el.querySelectorAll('.ccin-panel'));
+            const startAt = opts.startAt || 0;
+            const stagger = (opts.staggerMs != null) ? opts.staggerMs : actionMs(300);
+            panels.forEach((pEl, i) => {
+                window.setTimeout(() => {
+                    pEl.classList.add('in');
+                    // guest replays arrive muted — the host's sfx relay
+                    // already carries the sound (see online.js 'sfx')
+                    if (!opts.mute && i < 2) playSfx(i === 0 ? 'buff' : 'spellDamage');
+                }, startAt + i * stagger);
+            });
+            const nameEl = el.querySelector('.ccin-name-wrap');
+            if (nameEl && opts.nameAt != null) {
+                window.setTimeout(() => { nameEl.classList.add('in'); if (!opts.mute) playSfx('fireball'); }, opts.nameAt);
+            }
+            const totalMs = opts.totalMs || actionMs(1600);
+            const outAt = (opts.outAt != null) ? opts.outAt : Math.max(0, totalMs - actionMs(260));
+            window.setTimeout(() => {
+                panels.forEach(p2 => p2.classList.add('out'));
+                if (nameEl) nameEl.classList.add('out');
+                const fl = el.querySelector('.ccin-flash');
+                if (fl) fl.classList.add('pop');
+            }, outAt);
+            window.setTimeout(() => el.remove(), totalMs + 500);
+            return el;
+        }
+
         function doEntropyStrike(unit) {
             /* SIMUL plan phase: queue the strike instead of executing. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
@@ -7288,7 +7392,33 @@
                 return actionMs(350);
             }
 
-            /* ── The cinematic ────────────────────────────────────────────── */
+            /* ── The cinematic — extracted into _ewsPlayCinematic so the
+               GUEST can replay the identical presentation via the
+               'entropy-cine' relay (online.js) with hooks {mute, remote}
+               and NO applyHit (damage is host-authoritative, arrives via
+               state-sync). ────────────────────────────────────────────── */
+            const totalMs = _ewsPlayCinematic(unit, targets, allies, { applyHit });
+            finish(totalMs);
+            return totalMs + actionMs(200);
+        }
+        window.doEntropyStrike = doEntropyStrike;
+
+        /* The full Entropy Strike presentation (banner, caster panels,
+           camera, sigils, per-enemy strikes, whiteout). hooks:
+           - applyHit(enemy): damage callback, host only — null on guests.
+           - mute: suppress local sfx (the host's 'sfx' relay carries them).
+           - remote: this is a guest replay of a relayed cinematic.
+           Enemy-side anchors are fog-gated with screen-true visibility
+           (_shouldCameraFollowUnit) so a hidden team's positions never
+           leak through the spectacle. Returns totalMs. */
+        function _ewsPlayCinematic(unit, targets, allies, hooks) {
+            hooks = hooks || {};
+            const applyHit = (typeof hooks.applyHit === 'function') ? hooks.applyHit : null;
+            const _snd = hooks.mute ? function () {} : function (k) { playSfx(k); };
+            const _see = (u) => {
+                try { return typeof _shouldCameraFollowUnit !== 'function' || !u || _shouldCameraFollowUnit(u); }
+                catch (err) { return true; }
+            };
             const ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 64;
             const CHARGE_MS  = actionMs(1700);              // banner + ally circles
             const STAGGER_MS = actionMs(340);               // between enemy strikes
@@ -7299,28 +7429,54 @@
 
             // Banner + siren + letterbox
             _ewsShowBanner(unit.player, totalMs);
-            playSfx('nukeAlarm');
+            _snd('nukeAlarm');
             shakeBoard('normal');
 
-            // Camera: dive to the catalyst, then crane out to frame every target.
+            // Caster showcase: up to four allies slam in as manga cut-in
+            // panels along the screen edges while the team channels — each
+            // ignition synced to that ally's casting circle below — then the
+            // whole page shatters as the sky tears open. Panels reveal
+            // IDENTITY only (roster is public via VS splash + logs), never
+            // positions, so they show through fog on both screens.
+            _ewsSafe(() => {
+                _ccinShowCutin(
+                    allies.slice(0, 4).map(a => ({
+                        unit: a, accent: _ccinColor((a.types || [])[0])
+                    })),
+                    {
+                        mode: 'team', mute: !!hooks.mute,
+                        startAt: actionMs(280), staggerMs: actionMs(150),
+                        outAt: Math.max(actionMs(600), CHARGE_MS - actionMs(520)),
+                        totalMs: CHARGE_MS
+                    });
+            });
+
+            // Camera: dive to the catalyst, then crane out to frame every
+            // target. The dive is skipped when the catalyst is fog-hidden
+            // from THIS viewer (an enemy strike from the dark must not
+            // pinpoint its trigger unit).
             if (camera.save) camera.save();
-            camera.moveTo({ x: unit.x, y: unit.y, zoom: (typeof getCloseZoom === 'function' ? getCloseZoom() : 1.4), duration: actionMs(520), _fogAllowed: true });
+            if (_see(unit)) {
+                camera.moveTo({ x: unit.x, y: unit.y, zoom: (typeof getCloseZoom === 'function' ? getCloseZoom() : 1.4), duration: actionMs(520), _fogAllowed: true });
+            }
             window.setTimeout(() => {
                 _ewsSafe(() => {
-                    const pts = targets.map(t => ({ x: t.x, y: t.y })).concat([{ x: unit.x, y: unit.y }]);
-                    if (camera.focusOnTiles) camera.focusOnTiles(pts, { duration: actionMs(750) });
+                    const pts = targets.filter(t => _see(t)).map(t => ({ x: t.x, y: t.y }))
+                        .concat(_see(unit) ? [{ x: unit.x, y: unit.y }] : []);
+                    if (pts.length && camera.focusOnTiles) camera.focusOnTiles(pts, { duration: actionMs(750) });
                 });
             }, actionMs(700));
 
-            // Charge phase: every ally ignites in a casting circle + thin pillar.
+            // Charge phase: every ally ignites in a casting circle + thin
+            // pillar (fog-gated per ally — hidden channelers stay hidden).
             allies.forEach((a, i) => {
                 window.setTimeout(() => _ewsSafe(() => {
-                    if (!VFX) return;
+                    if (!VFX || !_see(a)) return;
                     if (VFX.sigMagicCircle3D) VFX.sigMagicCircle3D(a.x, a.y, { radiusPx: ts * 0.95, growMs: 240, holdMs: CHARGE_MS + strikesMs, fadeMs: 420, spin: true });
                     if (VFX.sigLightPillar3D) VFX.sigLightPillar3D(a.x, a.y, { height: 300, radius: ts * 0.22, ms: 1100, color: 0x9fd8ff, coreColor: 0xffffff });
                 }), actionMs(240 + i * 130));
             });
-            window.setTimeout(() => playSfx('buff'), actionMs(300));
+            window.setTimeout(() => _snd('buff'), actionMs(300));
 
             // Bloom swells while the team channels; restored during resolve.
             _ewsSafe(() => _ewsTweenBloom(
@@ -7334,7 +7490,10 @@
                 const cx = Math.round((bw() - 1) / 2), cy = Math.round((bh() - 1) / 2);
                 if (VFX && VFX.sigMagicCircle3D) VFX.sigMagicCircle3D(cx, cy, { radiusPx: ts * (Math.max(bw(), bh()) * 0.42), growMs: 500, holdMs: strikesMs + 700, fadeMs: 600, spin: true, height: 560 });
                 if (VFX && VFX.sigScreenFlash) VFX.sigScreenFlash('#b48cff', 420, 0.45);
-                playSfx('spellDamage');
+                // Beat of held breath before the annihilation: brief slow-mo
+                // on every combat rig while the sigil finishes opening.
+                if (window.ThreeAnim && window.ThreeAnim.slowMo) window.ThreeAnim.slowMo(0.45, actionMs(520));
+                _snd('spellDamage');
             }), CHARGE_MS - actionMs(600));
 
             // Annihilation: staggered per-enemy strikes, three rotating flavors.
@@ -7357,9 +7516,9 @@
                         }
                         if (VFX && VFX.sigScreenFlash && (i % 2 === 0)) VFX.sigScreenFlash('#e8dcff', 180, 0.28);
                     });
-                    playSfx(i % 3 === 0 ? 'explosion' : 'spellDamage');
+                    _snd(i % 3 === 0 ? 'explosion' : 'spellDamage');
                     shakeBoard('hard');
-                    applyHit(enemy);
+                    if (applyHit) applyHit(enemy);
                     scheduleBoardRender();
                 }, at);
             });
@@ -7369,7 +7528,7 @@
                 if (VFX && VFX.sigScreenFlash) VFX.sigScreenFlash('#ffffff', 620, 0.85);
                 const cx = Math.round((bw() - 1) / 2), cy = Math.round((bh() - 1) / 2);
                 if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(cx, cy, { r0: ts * 0.5, r1: ts * Math.max(bw(), bh()), ms: 800 });
-                playSfx('explosion');
+                _snd('explosion');
                 shakeBoard('hard');
             }), CHARGE_MS + strikesMs + actionMs(150));
 
@@ -7378,10 +7537,9 @@
                 else if (typeof camera.softResetToUnit === 'function') camera.softResetToUnit(unit);
             }, CHARGE_MS + strikesMs + actionMs(650));
 
-            finish(totalMs);
-            return totalMs + actionMs(200);
+            return totalMs;
         }
-        window.doEntropyStrike = doEntropyStrike;
+        window._ewsPlayCinematic = _ewsPlayCinematic;
 
         function awardAssists(victim, killer) {
             if (!killer || !victim) return;
@@ -34859,6 +35017,284 @@
             return actionMs(600);
         }
 
+        /* ── PER-COMBO IMPACT SIGNATURES ────────────────────────────────────
+           Every COMBO_REGISTRY variant lands with its own composed signature
+           moment (Entropy-Strike-grade sig* effects) instead of the old
+           generic ember burst. Keyed by combo.name so data.js stays
+           untouched; unknown combos fall back to a type-colored shockwave.
+           Each recipe gets (V=ThreeVFXEffects, ts, t={x,y}, a=initiator,
+           b=partner) and is fired inside _ewsSafe — visuals stay
+           best-effort, never load-bearing. */
+        const _COMBO_IMPACT_FX = {
+            'Celestial Chorus': (V, ts, t) => {
+                if (V.sigLightPillar3D) V.sigLightPillar3D(t.x, t.y, { height: 640, radius: ts * 0.38, ms: 820, color: 0xffd76a, coreColor: 0xffffff });
+                if (V.radiantBurst3D) V.radiantBurst3D(t.x, t.y, {});
+                if (V.sigShockRing3D) V.sigShockRing3D(t.x, t.y, { r0: ts * 0.3, r1: ts * 2.4, ms: 600, color: 0xffd76a });
+                if (V.sigScreenFlash) V.sigScreenFlash('#ffe9a8', 300, 0.35);
+            },
+            'Abyssal Pact': (V, ts, t, a, b) => {
+                if (V.sigLightPillar3D) V.sigLightPillar3D(t.x, t.y, { height: 560, radius: ts * 0.4, ms: 780, color: 0x8a2be2, coreColor: 0xd9b3ff });
+                // the pact drains: spiral streams run FROM the victim BACK to both casters
+                if (V.sigSpiralBeam3D) {
+                    V.sigSpiralBeam3D(t.x, t.y, a.x, a.y, { ms: 900, color: 0xb03060 });
+                    V.sigSpiralBeam3D(t.x, t.y, b.x, b.y, { ms: 900, color: 0xb03060 });
+                }
+                if (V.sigScreenFlash) V.sigScreenFlash('#c22850', 280, 0.30);
+            },
+            'Reality Fracture': (V, ts, t) => {
+                if (V.sigRuneSphere3D) V.sigRuneSphere3D(t.x, t.y, { radiusTiles: 1.0, color: 0xdc3c82 });
+                if (V.sigStormStrike3D) V.sigStormStrike3D(t.x, t.y, { delayMs: 90, color: 0xdc3c82 });
+                if (V.sigScreenFlash) V.sigScreenFlash('#ff9ad2', 260, 0.32);
+            },
+            'System Override': (V, ts, t, a, b) => {
+                if (V.laserBeam3D) {
+                    V.laserBeam3D(a.x, a.y, t.x, t.y, { color: 0x66ccff });
+                    V.laserBeam3D(b.x, b.y, t.x, t.y, { color: 0x99ddff });
+                }
+                if (V.sigTeslaCoil3D) V.sigTeslaCoil3D(t.x, t.y);
+            },
+            'Combined Arms': (V, ts, t) => {
+                if (V.sigSlashCombo3D) V.sigSlashCombo3D(t.x, t.y, { glowColor: 0xffe2a8 });
+                if (V.sigSonicBoom3D) V.sigSonicBoom3D(t.x, t.y, { rings: 2, radiusTiles: 1.5 });
+                if (V.sigScreenFlash) V.sigScreenFlash('#fff2cc', 220, 0.30);
+            },
+            'Cosmic Convergence': (V, ts, t, a, b) => {
+                if (V.sigSpiralBeam3D) {
+                    V.sigSpiralBeam3D(a.x, a.y, t.x, t.y, { ms: 700, color: 0x32aa50 });
+                    V.sigSpiralBeam3D(b.x, b.y, t.x, t.y, { ms: 700, color: 0x7de6a0 });
+                }
+                if (V.sigShockRing3D) V.sigShockRing3D(t.x, t.y, { r0: ts * 0.25, r1: ts * 2.2, ms: 540, color: 0x32aa50, torus: true });
+                if (V.sigScreenFlash) V.sigScreenFlash('#a8ffc4', 260, 0.30);
+            },
+            'Twilight Reckoning': (V, ts, t) => {
+                if (V.sigLightPillar3D) {
+                    V.sigLightPillar3D(t.x, t.y, { height: 700, radius: ts * 0.42, ms: 760, color: 0xdcaa1e, coreColor: 0xffffff });
+                    V.sigLightPillar3D(t.x, t.y, { height: 560, radius: ts * 0.26, ms: 900, color: 0x9632b4, coreColor: 0xe8ccff });
+                }
+                if (typeof ThreeLightning !== 'undefined' && ThreeLightning.strikeFromSky) ThreeLightning.strikeFromSky(t.x, t.y, { durationMs: 300 });
+                if (V.sigScreenFlash) V.sigScreenFlash('#e8dcff', 340, 0.42);
+            },
+            'Purifying Pulse': (V, ts, t) => {
+                if (V.sigShockRing3D) V.sigShockRing3D(t.x, t.y, { r0: ts * 0.2, r1: ts * 2.6, ms: 620, color: 0xffffff });
+                if (V.sigRegenPulse3D) V.sigRegenPulse3D(t.x, t.y, { radiusPx: ts * 1.6 });
+                if (V.sigScreenFlash) V.sigScreenFlash('#ffffff', 260, 0.30);
+            },
+            'Holy Ordnance': (V, ts, t, a) => {
+                if (V.sigCannonShot3D) V.sigCannonShot3D(a.x, a.y, t.x, t.y, {});
+                if (V.sigLightPillar3D) V.sigLightPillar3D(t.x, t.y, { height: 520, radius: ts * 0.34, ms: 720, color: 0xffd76a, coreColor: 0xffffff });
+                if (V.sigScreenFlash) V.sigScreenFlash('#ffe9a8', 260, 0.32);
+            },
+            "Crusader's Charge": (V, ts, t) => {
+                if (V.sigCrescentSlash3D) V.sigCrescentSlash3D(t.x, t.y, { color: 0xffd76a });
+                if (V.sigShockRing3D) V.sigShockRing3D(t.x, t.y, { r0: ts * 0.25, r1: ts * 1.8, ms: 480, color: 0xdcaa1e });
+                if (V.sigScreenFlash) V.sigScreenFlash('#ffe9a8', 220, 0.28);
+            },
+            'Astral Judgment': (V, ts, t) => {
+                if (typeof ThreeLightning !== 'undefined' && ThreeLightning.strikeFromSky) ThreeLightning.strikeFromSky(t.x, t.y, { durationMs: 320 });
+                if (V.sigLightPillar3D) V.sigLightPillar3D(t.x, t.y, { height: 620, radius: ts * 0.36, ms: 760, color: 0x32aa50, coreColor: 0xffffff });
+                if (V.sigShockRing3D) V.sigShockRing3D(t.x, t.y, { r0: ts * 0.3, r1: ts * 2.2, ms: 560, color: 0x32aa50 });
+            },
+            'Chaos Eruption': (V, ts, t) => {
+                if (V.sigStormStrike3D) V.sigStormStrike3D(t.x, t.y, { delayMs: 60, color: 0x9632b4 });
+                if (V.sigSonicBoom3D) V.sigSonicBoom3D(t.x, t.y, { rings: 3, radiusTiles: 2.0, color: 0xc77dff });
+                if (V.sigScreenFlash) V.sigScreenFlash('#c77dff', 280, 0.34);
+            },
+            'Dark Protocol': (V, ts, t) => {
+                if (V.sigTeslaCoil3D) V.sigTeslaCoil3D(t.x, t.y);
+                if (V.sigGasCloud3D) V.sigGasCloud3D(t.x, t.y);
+                if (V.sigScreenFlash) V.sigScreenFlash('#9632b4', 260, 0.28);
+            },
+            'Blood Pact': (V, ts, t) => {
+                if (V.sigSlashCombo3D) V.sigSlashCombo3D(t.x, t.y, { glowColor: 0xff5566 });
+                if (V.sigShockRing3D) V.sigShockRing3D(t.x, t.y, { r0: ts * 0.25, r1: ts * 2.0, ms: 500, color: 0xc22850 });
+                if (V.sigScreenFlash) V.sigScreenFlash('#ff4455', 300, 0.40);
+            },
+            'Void Rift': (V, ts, t) => {
+                if (V.sigRuneSphere3D) V.sigRuneSphere3D(t.x, t.y, { radiusTiles: 0.9, color: 0x9632b4 });
+                if (V.sigWhiteout3D) V.sigWhiteout3D(t.x, t.y, { color: 0xb48cff, ms: 420, peak: 0.40, sizeTiles: 2.6 });
+            },
+            'Glitch Bomb': (V, ts, t) => {
+                if (V.sigSonicBoom3D) V.sigSonicBoom3D(t.x, t.y, { rings: 2, radiusTiles: 1.8, color: 0xdc3c82 });
+                if (V.sigStormStrike3D) V.sigStormStrike3D(t.x, t.y, { delayMs: 80, color: 0xdc3c82 });
+            },
+            'Primal Surge': (V, ts, t) => {
+                if (V.sigSonicBoom3D) V.sigSonicBoom3D(t.x, t.y, { rings: 3, radiusTiles: 1.7 });
+                if (V.sigShockRing3D) V.sigShockRing3D(t.x, t.y, { r0: ts * 0.3, r1: ts * 2.0, ms: 500, color: 0xffcc66 });
+                if (V.sigScreenFlash) V.sigScreenFlash('#ffd9a0', 220, 0.28);
+            },
+            'Dimensional Tear': (V, ts, t, a) => {
+                if (V.sigSpiralBeam3D) V.sigSpiralBeam3D(a.x, a.y, t.x, t.y, { ms: 760, color: 0x32aa50 });
+                if (V.sigRuneSphere3D) V.sigRuneSphere3D(t.x, t.y, { radiusTiles: 0.95, color: 0x32aa50 });
+                if (V.sigScreenFlash) V.sigScreenFlash('#a8ffc4', 240, 0.30);
+            },
+            'Tactical Strike': (V, ts, t, a, b) => {
+                if (V.sigCannonShot3D) V.sigCannonShot3D(a.x, a.y, t.x, t.y, {});
+                if (V.laserBeam3D) V.laserBeam3D(b.x, b.y, t.x, t.y, { color: 0xffd27a });
+                if (V.sigScreenFlash) V.sigScreenFlash('#ffd27a', 240, 0.30);
+            },
+            'Plasma Cascade': (V, ts, t, a, b) => {
+                if (V.laserBeam3D) {
+                    V.laserBeam3D(a.x, a.y, t.x, t.y, { color: 0x66ffee });
+                    V.laserBeam3D(b.x, b.y, t.x, t.y, { color: 0x28a0be });
+                }
+                if (V.sigTeslaCoil3D) V.sigTeslaCoil3D(t.x, t.y);
+                if (V.sigScreenFlash) V.sigScreenFlash('#aaffff', 240, 0.30);
+            },
+            'Hybrid Assault': (V, ts, t) => {
+                if (V.sigSlashCombo3D) V.sigSlashCombo3D(t.x, t.y, { glowColor: 0xa0a0c3 });
+                if (V.sigSonicBoom3D) V.sigSonicBoom3D(t.x, t.y, { rings: 2, radiusTiles: 1.4, color: 0x7de6a0 });
+            }
+        };
+
+        function _comboImpactFx(combo, a, b, target) {
+            if (_skipVisuals()) return;
+            const V = (typeof ThreeVFXEffects !== 'undefined') ? ThreeVFXEffects : null;
+            if (!V || !combo || !target) return;
+            const ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 64;
+            const t = { x: target._dyingX ?? target.x, y: target._dyingY ?? target.y };
+            // Beam-style recipes anchor on the casters. A caster fog-hidden
+            // from THIS viewer collapses to the impact tile (zero-length
+            // beam ≈ invisible) so the spectacle never leaks positions.
+            const _vis = (u) => {
+                try { return typeof _shouldCameraFollowUnit !== 'function' || !u || _shouldCameraFollowUnit(u); }
+                catch (err) { return true; }
+            };
+            const pa = (a && _vis(a)) ? { x: a.x, y: a.y } : t;
+            const pb = (b && _vis(b)) ? { x: b.x, y: b.y } : t;
+            const fn = _COMBO_IMPACT_FX[combo.name];
+            if (fn) { fn(V, ts, t, pa, pb); return; }
+            const key = combo.spellType || ((a && a.types) || [])[0];
+            if (V.sigShockRing3D) V.sigShockRing3D(t.x, t.y, { r0: ts * 0.25, r1: ts * 1.8, ms: 480, color: _ccinHex(key) });
+            if (V.sigScreenFlash) V.sigScreenFlash(_ccinColor(key), 240, 0.30);
+        }
+
+        /* ── COMBO PRESENTATION ─────────────────────────────────────────────
+           Everything the player SEES when an offensive combo fires: the
+           manga cut-in page (both casters + name slam) over beat 1, casting
+           circles under the pair, the strike anims + type-tinted converge
+           streams at launch, and the per-variant signature impact with a
+           hitstop frame at the hit. Runs host-side inside doComboAttack and
+           is replayed on the GUEST via the 'combo-cine' relay (online.js).
+           Damage NEVER lives here. T (timings decided host-side so both
+           screens share one clock): { ccOK, sourceHold, launchAt, hitAt,
+           hitGap, projMs, hits, mute, remote }. */
+        function _comboPlayPresentation(initiator, partner, target, combo, T) {
+            if (_skipVisuals() || !initiator || !partner || !target || !combo) return;
+            T = T || {};
+            const mute = !!T.mute;
+            const remote = !!T.remote;
+            const _see = (u) => {
+                try { return typeof _shouldCameraFollowUnit !== 'function' || !u || _shouldCameraFollowUnit(u); }
+                catch (err) { return true; }
+            };
+
+            // Manga cut-in page — the viewer-relative call: each screen
+            // re-decides panel visibility for its OWN fog view.
+            if (T.ccOK && _ccinEligible([initiator, partner, target])) _ewsSafe(() => {
+                let subLabel = '';
+                try {
+                    const syn = (typeof getComboTypeSynergyVsTarget === 'function')
+                        ? getComboTypeSynergyVsTarget(initiator, partner, target)
+                        : getComboTypeSynergy(initiator, partner);
+                    subLabel = (syn && syn.label ? syn.label : '').replace(/!+$/, '').toUpperCase();
+                } catch (err) {}
+                const srcHold = T.sourceHold || actionMs(1750);
+                _ccinShowCutin([
+                    { unit: initiator, accent: _ccinColor((initiator.types || [])[0]) },
+                    { unit: partner, accent: _ccinColor((partner.types || [])[0]) }
+                ], {
+                    mode: 'combo', mute,
+                    name: combo.name,
+                    sub: subLabel || 'DUAL TECH',
+                    accent: _ccinColor(combo.spellType || (initiator.types || [])[0]),
+                    startAt: actionMs(120), staggerMs: actionMs(300),
+                    nameAt: actionMs(780),
+                    outAt: Math.max(actionMs(900), srcHold - actionMs(160)),
+                    totalMs: srcHold + actionMs(200)
+                });
+                // Both casters ignite under their panels while they charge
+                // (fog-gated per caster).
+                const V = (typeof ThreeVFXEffects !== 'undefined') ? ThreeVFXEffects : null;
+                const _cts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 64;
+                if (V && V.sigMagicCircle3D) {
+                    [[initiator, actionMs(200)], [partner, actionMs(480)]].forEach(([u, at]) => {
+                        window.setTimeout(() => _ewsSafe(() => {
+                            if (u.dead || !_see(u)) return;
+                            const hex = _ccinHex((u.types || [])[0]);
+                            V.sigMagicCircle3D(u.x, u.y, { radiusPx: _cts * 0.85, growMs: 220, holdMs: Math.max(300, srcHold - 560), fadeMs: 380, spin: true, color: hex });
+                            if (V.sigLightPillar3D) V.sigLightPillar3D(u.x, u.y, { height: 240, radius: _cts * 0.18, ms: 900, color: hex, coreColor: 0xffffff });
+                        }), at);
+                    });
+                }
+            });
+
+            // Strike anim: rigged units swing their attack clip, sprite
+            // units keep the classic leap. On guest replays the sprite leap
+            // is skipped — the host's 'strike-leap' relay already carries it.
+            const _presStrike = (u) => {
+                if (!u || u.dead || !_see(u)) return;
+                if (_unitAttacksWithClip(u)) triggerAttackAnim(u, target.x, target.y);
+                else if (!remote) animateStrikeLeap(u, target.x, target.y);
+            };
+
+            // Launch: type-tinted converge streams + the one-two strike.
+            const _launchFx = () => {
+                if (!mute) playSfx('fireball');
+                const comboTypeA = (initiator.types || [])[0] || 'human';
+                const comboTypeB = (partner.types || [])[0] || 'human';
+                // fog-hidden caster streams collapse to the target tile
+                const ax = _see(initiator) ? initiator.x : target.x, ay = _see(initiator) ? initiator.y : target.y;
+                const bx = _see(partner) ? partner.x : target.x, by = _see(partner) ? partner.y : target.y;
+                _vfxCombo(ax, ay, bx, by, target.x, target.y, comboTypeA, comboTypeB);
+                _presStrike(initiator);
+                window.setTimeout(() => _presStrike(partner), actionMs(180));
+            };
+            if (T.launchAt > 0) window.setTimeout(_launchFx, T.launchAt);
+            else _launchFx();
+
+            // Impact: hard kick + per-variant signature + a hitstop frame.
+            window.setTimeout(() => {
+                shakeBoard(T.ccOK ? 'hard' : 'normal');
+                if (_see(target)) _ewsSafe(() => _comboImpactFx(combo, initiator, partner, target));
+                if (T.ccOK && typeof triggerHitstop === 'function') _ewsSafe(() => triggerHitstop(actionMs(130)));
+            }, T.hitAt || 0);
+
+            // multiHit cadence: alternating strike clips, projectiles timed
+            // to ARRIVE on each hit, and a crescent arc per hit (gold flare
+            // on the finisher). Damage stays in doComboAttack on this same
+            // clock.
+            if (combo.kind === 'multiHit' && (T.hits || 0) > 1) {
+                const gap = T.hitGap || actionMs(420);
+                const projMs = T.projMs || actionMs(280);
+                for (let idx = 1; idx < T.hits; idx++) {
+                    window.setTimeout(() => {
+                        if (target.dead) return;
+                        let striker = (idx % 2 === 1) ? partner : initiator;
+                        if (!striker || striker.dead) striker = !initiator.dead ? initiator : partner;
+                        if (!striker || striker.dead) return;
+                        _presStrike(striker);
+                        if (_see(striker) || _see(target)) playProjectileToUnit(striker, target, 'damage', projMs, combo.spellType);
+                        if (!mute) playSfx('fireball');
+                    }, Math.max(0, (T.hitAt || 0) + idx * gap - projMs));
+                }
+                for (let idx = 0; idx < T.hits; idx++) {
+                    window.setTimeout(() => {
+                        if (target.dead || !_see(target)) return;
+                        _ewsSafe(() => {
+                            const V = (typeof ThreeVFXEffects !== 'undefined') ? ThreeVFXEffects : null;
+                            if (V && V.sigCrescentSlash3D) {
+                                V.sigCrescentSlash3D(target.x, target.y, {
+                                    yaw: (idx % 2 ? 1.15 : -1.15),
+                                    color: idx === T.hits - 1 ? 0xffe2a8 : 0xcfd6ff
+                                });
+                            }
+                        });
+                    }, (T.hitAt || 0) + idx * gap);
+                }
+            }
+        }
+        window._comboPlayPresentation = _comboPlayPresentation;
+
         function doComboAttack(initiator, partner, targetX, targetY, targetZ) {
             /* SIMUL: combos span TWO units' budgets — they don't fit the
                one-unit-per-order planning model yet. */
@@ -34957,12 +35393,33 @@
             // DMG readout). Leaps/VFX launch as beat 1 ends and the damage
             // itself lands after the cut to the victim, so the strikes read
             // inside the shot instead of resolving before the camera arrives.
-            // Support combos (healAll/shield/buff) stay understated: the
-            // self-cast hero shot with name-only chrome.
+            // 2026-07-23 DUAL-TECH CINEMATIC: when the shot can be watched,
+            // beat 1 is stretched and dressed as a manga page — both casters
+            // slam in as angled cut-in panels over the live 3D caster shot
+            // (initiator top-left, partner bottom-right), the combo name
+            // slams dead center, then the page shatters in a whiteout
+            // exactly on the hard cut to the victim. The 2D duel cutscene is
+            // suppressed for that path (_noCinematic) — the cut-ins ARE the
+            // cinematic. All of it lives in _comboPlayPresentation, which
+            // online.js relays to the guest ('combo-cine') on this same
+            // clock. Support combos (healAll/shield/buff) stay understated:
+            // the self-cast hero shot with name-only chrome.
             let cam = null;
+            let _ccOK = false;
             if (isOffensive && target) {
+                // Timing decision is host-side and single: online, always
+                // grant the stretched shot (the acting side can always see
+                // its own casters; each screen re-decides PANELS for its own
+                // fog view). Offline, don't stretch beat 1 for an enemy
+                // combo the viewer can't see at all.
+                _ccOK = !_skipVisuals() && !state.cameraDisabled && state.cinematicActionCam
+                    && !(typeof isCinematicPresent === 'function' && isCinematicPresent());
+                if (_ccOK && !(window._NET && window._NET.online)) {
+                    _ccOK = _ccinEligible([initiator, partner, target]);
+                }
                 cam = playOffensiveActionCamera(initiator, target, {
-                    sourceHold: 1100, targetHold: 1050, attackName: combo.name
+                    sourceHold: _ccOK ? 1750 : 1100, targetHold: _ccOK ? 1150 : 1050,
+                    attackName: combo.name, _noCinematic: _ccOK
                 });
             } else if (typeof _playSelfCastHeroShot === 'function') {
                 _playSelfCastHeroShot(initiator, { spellName: combo.name });
@@ -34970,29 +35427,15 @@
             const _launchAt = cam ? Math.max(0, cam.sourceHold - actionMs(150)) : 0;
             const _hitAt = cam ? cam.sourceHold + cam.travelMs : actionMs(200);
 
-            // 2026-07-12: combos now play the attackers' rigged attack clips
-            // (punch/slash/claw/zap per basicAttackKind) instead of the bare
-            // positional lunge — same _unitAttacksWithClip branch basic attacks
-            // use; sprite-rendered units keep the classic strike leap. The
-            // partner swings a beat after the initiator so the two wind-ups
-            // read as a one-two instead of a single blurred motion.
-            const _comboStrike = (u) => {
-                if (!u || u.dead || !target) return;
-                if (_unitAttacksWithClip(u)) triggerAttackAnim(u, target.x, target.y);
-                else animateStrikeLeap(u, target.x, target.y);
-            };
-            const _comboLaunchFx = () => {
-                playSfx('fireball');
-                if (target) {
-                    const comboTypeA = (initiator.types || [])[0] || 'human';
-                    const comboTypeB = (partner.types || [])[0] || 'human';
-                    _vfxCombo(initiator.x, initiator.y, partner.x, partner.y, target.x, target.y, comboTypeA, comboTypeB);
-                    _comboStrike(initiator);
-                    window.setTimeout(() => _comboStrike(partner), actionMs(180));
-                }
-            };
-            if (_launchAt > 0) window.setTimeout(_comboLaunchFx, _launchAt);
-            else _comboLaunchFx();
+            if (isOffensive && target) {
+                _comboPlayPresentation(initiator, partner, target, combo, {
+                    ccOK: _ccOK,
+                    sourceHold: cam ? cam.sourceHold : actionMs(1100),
+                    launchAt: _launchAt, hitAt: _hitAt,
+                    hitGap: actionMs(420), projMs: actionMs(280),
+                    hits: (combo.kind === 'multiHit') ? (combo.hitDamages || [combo.dmg || 10]).length : 1
+                });
+            }
             addLog(`${unitDisplayName(initiator)} & ${unitDisplayName(partner)} perform ${combo.name}!${synergyLabel}`);
 
             initiator._matchCombos = (initiator._matchCombos || 0) + 1;
@@ -35002,7 +35445,9 @@
             grantXP(partner, XP_COMBO, 'combo');
             const playerCombos = state.units.filter(u => u.player === initiator.player).reduce((s, u) => s + (u._matchCombos || 0), 0);
             if (playerCombos >= 3) checkAchievement('comboKing', initiator);
-            window.setTimeout(() => shakeBoard('normal'), _hitAt);
+            // Impact shake/VFX/hitstop are scheduled by _comboPlayPresentation
+            // on the same _hitAt clock; support combos keep the old kick.
+            if (!isOffensive || !target) window.setTimeout(() => shakeBoard('normal'), _hitAt);
 
             let completionDelay = actionMs(800);
             if (cam) completionDelay = Math.max(completionDelay, cam.totalMs);
@@ -35035,24 +35480,12 @@
                 const hits = combo.hitDamages || [combo.dmg || 10];
                 // 2026-07-12: gap 300→420ms — hits blurred together and the
                 // 350ms attack-anim window meant a rig clip could never
-                // re-trigger between them. Each follow-up hit now alternates
-                // initiator/partner, plays that attacker's strike clip, and
-                // fires its projectile early enough to ARRIVE at the hit
-                // instead of launching on it.
+                // re-trigger between them. 2026-07-23: the per-hit VISUALS
+                // (alternating strike clips, projectiles, crescent arcs)
+                // moved into _comboPlayPresentation on this same clock —
+                // only the damage lives here.
                 const comboHitGap = actionMs(420);
-                const _comboProjMs = actionMs(280);
                 hits.forEach((hitDmg, idx) => {
-                    if (idx > 0) {
-                        window.setTimeout(() => {
-                            if (target.dead) return;
-                            let striker = (idx % 2 === 1) ? partner : initiator;
-                            if (!striker || striker.dead) striker = !initiator.dead ? initiator : partner;
-                            if (!striker || striker.dead) return;
-                            _comboStrike(striker);
-                            playProjectileToUnit(striker, target, 'damage', _comboProjMs, combo.spellType);
-                            playSfx('fireball');
-                        }, Math.max(0, _hitAt + idx * comboHitGap - _comboProjMs));
-                    }
                     window.setTimeout(() => {
                         if (target.dead) return;
                         const totalHit = Math.max(1, Math.round((hitDmg + Math.floor(combinedPower / hits.length)) * synergyMult));
