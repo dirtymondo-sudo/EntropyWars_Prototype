@@ -16586,6 +16586,12 @@
             // 🕯 Hex of Toil: moving feeds the curse.
             _procHexedOnAction(unit, 'moves');
 
+            // 💧 A flyer whose move ends AT ground level has landed — landing
+            // in water soaks it and douses any burn (same rule as wading in).
+            if (_wasAirborne && typeof isUnitAirborne === 'function' && !isUnitAirborne(unit)) {
+                _onFlyerLanded(unit);
+            }
+
             if (!_wasAirborne) {
                 // 🧱 Debris cubes on the arrival tile are banked on the spot.
                 collectMatDropsAt(unit, x, y);
@@ -32871,6 +32877,8 @@
                     opts.byLabel ? `Slammed down ${opts.byLabel}: ` : 'Slammed down: ',
                     { byEnemy: true, forced: true });
             }
+            // 💧 Slammed down into water → soaked, burn doused.
+            _onFlyerLanded(unit);
             playSfx('debuff');
             scheduleBoardRender();
             return true;
@@ -32910,6 +32918,22 @@
                 flashColor: 'poison'
             });
             if (typeof checkWin === 'function') checkWin();
+        }
+
+        /* 💧 Landing hazards (2026-07-23): every path that puts a flyer back
+           on the dirt funnels through this. Touching down in water (or the
+           shallow spread-flow at a pool's edge) soaks the lander — which
+           douses any burn it was carrying, exactly like wading in on foot.
+           clearStatus emits unit:statusChanged, so the nameplate chip clears
+           the same frame. Callers: doAltitudeChange (land), forceGroundUnit
+           (slams/wounded crash), finishMoveAt (a glide that ends at ground
+           level). */
+        function _onFlyerLanded(unit) {
+            if (!unit || unit.dead || unit._dying) return;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
+            if (typeof _isWetTile === 'function' && _isWetTile(unit.x, unit.y)) {
+                _soakUnit(unit, { douseLabel: 'The landing splash' });
+            }
         }
 
         function _skySwoopTakeoff(unit) {
@@ -34261,6 +34285,8 @@
                 playSfx('moveStep');
                 showFloatingTextForUnit(unit, '⬇ LAND', 'neutral', { durationMs: 900 });
                 addLog(`${unitDisplayName(unit)} lands on the ground! (Z ${oldZ} → ${_finalZ})`);
+                // 💧 Touching down in water soaks the lander & douses burn.
+                _onFlyerLanded(unit);
             }
 
             unit._altitudeChangesThisTurn = (unit._altitudeChangesThisTurn || 0) + 1;
