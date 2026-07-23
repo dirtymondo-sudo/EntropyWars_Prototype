@@ -1800,6 +1800,20 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   if (!dead && !b.sub && b.hint) right.push(h('span', { key: 'hn', className: 'hrlg-cfree' }, b.hint));
   if (!dead && b.note) right.push(h('span', { key: 'nt', className: 'hrlg-note' }, b.note));
   if (b.sub && !b.subBelow) right.push(h('span', { key: 'sb', className: 'hrlg-tag' }, b.sub));
+  // ⤵ DROP chip (Mystery Dungeon item rows): its own click target — the row
+  // click still USES the item; stopPropagation keeps the two apart.
+  if (b.drop) right.push(h('span', {
+    key: 'dr',
+    title: b.drop.title || 'Drop on the floor',
+    style: {
+      cursor: 'pointer', pointerEvents: 'auto', flex: 'none',
+      fontFamily: '"DotGothic16", monospace', fontSize: 9, fontWeight: 700,
+      letterSpacing: '0.08em', lineHeight: 1.2, padding: '2px 6px',
+      color: '#f2c468', border: '1px solid #f2c46888',
+      background: 'rgba(242,196,104,0.12)',
+    },
+    onClick: (e) => { e.stopPropagation(); b.drop.fire(); },
+  }, b.drop.label || '⤵ DROP'));
   // Green !-circle: this action is SUPER EFFECTIVE against its target. Leads
   // the right-hand chips so it reads first on quick-menu and target rows.
   if (b.superEff) right.unshift(h('span', {
@@ -2080,7 +2094,7 @@ function _hrlgQuickVitals(panelKey) {
   );
 }
 
-function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, portraitUrl, portraitIsFace, onPortraitClick, infoOpen, onInfo, unitKey, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
+function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, portraitUrl, portraitIsFace, onPortraitClick, infoOpen, onInfo, unitKey, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, xp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
   const listRef = useRef(null);
@@ -2448,6 +2462,21 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
               mpSpend > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' −' + mpSpend) : null),
           );
         })(),
+        /* XP to next level — progression modes only (Mystery Dungeon /
+           Challenge / campaign); PvP passes xp:null and shows nothing */
+        xp && (() => {
+          const xpPct = Math.max(0, Math.min(100, xp.pct || 0));
+          return h('div', { className: 'hrlg-vbar mp', style: { height: 7 } },
+            h('span', { className: 'hrlg-vfill', style: {
+              width: xpPct + '%',
+              background: 'linear-gradient(90deg, #b98a1e 0%, #f2c468 60%, #ffe9b0 100%)',
+              boxShadow: '0 0 6px rgba(242,196,104,0.45)',
+            } }),
+            h('span', { className: 'hrlg-vlbl', style: { color: '#f2c468' } }, 'XP'),
+            h('span', { className: 'hrlg-vnum', style: { fontSize: 10, color: '#f2c468' } },
+              xp.max ? 'MAX' : (Math.floor(xpPct) + '%')),
+          );
+        })(),
       ),
       h('div', { className: 'hrlg-ap' },
         h('span', { className: 'hrlg-ap-lbl' }, 'AP'),
@@ -2767,6 +2796,10 @@ function _hrlgItemBlades(unit, st) {
   if (typeof canUseItemNow === 'function') {
     heldKeys.sort((a, b) => (canUseItemNow(unit, a) ? 0 : 1) - (canUseItemNow(unit, b) ? 0 : 1));
   }
+  // Mystery Dungeon floors: every row grows a ⤵ DROP chip — one click puts
+  // the item on the unit's tile (state._mdItems) for a teammate to scoop up.
+  const mdFloor = typeof window._isDungeonMode === 'function' && window._isDungeonMode()
+    && st._mdPhase === 'floor' && !!st._mdRun;
   const blades = heldKeys.map(itemKey => {
     const count = unit.items?.[itemKey] || 0;
     const rules = typeof ITEM_RULES !== 'undefined' ? ITEM_RULES[itemKey] : null;
@@ -2786,9 +2819,16 @@ function _hrlgItemBlades(unit, st) {
       catColor: isHealItem ? '#57d97e' : undefined,
       label: rules?.name || itemKey,
       available: canUse,
+      // dungeon rows stay clickable even when unusable — the DROP chip works
+      forceLive: mdFloor && !canUse,
       selected: am === 'item' && st.selectedTool === itemKey,
       count: '×' + count,
       sub: reason || null,
+      drop: mdFloor ? {
+        label: '⤵ DROP',
+        title: 'Drop one ' + (rules?.name || itemKey) + ' on this tile — walk over it later to pick it back up',
+        fire: () => { if (typeof window._mdDropItem === 'function') window._mdDropItem(unit.id, itemKey); },
+      } : null,
       fire: () => { if (canUse && typeof chooseItemAction === 'function') chooseItemAction(itemKey); },
     };
   });
@@ -3192,6 +3232,10 @@ function ActionMenu({ st, hidden }) {
   const unit = (st.units || []).find(u => u.id === activeId);
   if (!unit || unit.dead) return null;
 
+  /* Mystery Dungeon: an AUTO/GUARD companion's turn belongs to the AI —
+     rendering the command menu for it read as "the game wants my input". */
+  if (typeof _mdUnitAuto === 'function' && _mdUnitAuto(unit)) return null;
+
   const humanTurn = !st.autoPlayers?.[st.activePlayer];
   /* Viewer gate: online, both seats are human — without this the drum renders
      the OPPONENT's active unit (spell list, vitals) on the idle client and
@@ -3353,11 +3397,16 @@ function ActionMenu({ st, hidden }) {
     ? Object.keys(ITEM_RULES).filter(k => (unit.items?.[k] || 0) > 0) : [];
   const _anyItemUsable = typeof canUseItemNow === 'function'
     ? _heldItemKeys.some(k => canUseItemNow(unit, k)) : _heldItemKeys.length > 0;
+  // Mystery Dungeon floors: a non-empty bag always opens — even when nothing
+  // is USABLE right now, every row still offers its ⤵ DROP chip.
+  const _mdItemMenu = _heldItemKeys.length > 0
+    && typeof window._isDungeonMode === 'function' && window._isDungeonMode()
+    && st._mdPhase === 'floor' && !!st._mdRun;
   const itemsAction = {
     id: 'items', label: 'Items', icon: '❖', cost: null,
-    available: !!apc.hasAnyItem && _anyItemUsable,
+    available: (!!apc.hasAnyItem && _anyItemUsable) || _mdItemMenu,
     selected: menuView === 'items',
-    sub: !apc.hasAnyItem ? 'Empty' : (_anyItemUsable ? null : 'Nothing usable'),
+    sub: !apc.hasAnyItem ? 'Empty' : ((_anyItemUsable || _mdItemMenu) ? null : 'Nothing usable'),
   };
 
   // 🧱 Build — the universal place/dig block verb (1 AP per block; Mason's
@@ -3742,6 +3791,12 @@ function ActionMenu({ st, hidden }) {
     poisoned: typeof unitHasStatus === 'function' && unitHasStatus(unit, 'poison'),
     statusChips: _hrlgStatusChips(unit),
     ap: unit.ap || 0, maxAP: maxAP,
+    // XP readout — progression modes only (PvP is level-normalized, XP inert)
+    xp: (typeof xpProgressionActive === 'function' && xpProgressionActive()
+      && typeof getXPProgressPct === 'function')
+      ? { pct: getXPProgressPct(unit), lvl: _lvl,
+          max: typeof XP_MAX_LEVEL !== 'undefined' ? _lvl >= XP_MAX_LEVEL : false }
+      : null,
     mats: (typeof getMaterials === 'function' && typeof BUILD_MATERIALS !== 'undefined')
       ? (() => { const _m = getMaterials(unit.player); return Object.keys(BUILD_MATERIALS).map(k => ({ k, icon: BUILD_MATERIALS[k].icon, n: _m[k] || 0 })); })()
       : null,
@@ -6428,7 +6483,9 @@ function ControlHints({ st }) {
 
   const humanTurn = !st.autoPlayers?.[st.activePlayer];
   const myTurn = humanTurn
-    && (typeof getViewerPlayer !== 'function' || st.activePlayer === getViewerPlayer());
+    && (typeof getViewerPlayer !== 'function' || st.activePlayer === getViewerPlayer())
+    /* MD auto-companion turns are the AI's — no MENU/SELECT hints */
+    && !(typeof _mdAutoTurnActive === 'function' && _mdAutoTurnActive());
   const aiming = !!(st.actionMode || st.selectedTool);
   // (camera mode buttons removed — the camera is contextual now, battle.js)
 

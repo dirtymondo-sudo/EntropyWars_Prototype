@@ -4,7 +4,52 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## YETI REWORK: FROZEN + BLIND STATUSES, ICE SLIDING, STATUS LIBRARY (2026-07-23, LATEST) — data.js, battle.js, state.js, ui.js, hud.js, three-renderer.js, ainew.js, three-vfx-effects.js, sprites.js
+## MYSTERY DUNGEON round 5: recruitment, drop items, bigger bags, stairs block, XP/level-up UI (2026-07-23, LATEST) — battle.js, hud.js, index.html
+Token `20260723g` → `20260723h`.
+- **Enemies can't stand on stairs**: `_mdEnemyStairsBlocked(unit,x,y)` (battle.js,
+  MD runtime block) — player-2 units on MD floors get the stairs tile filtered
+  out of BOTH `getMoveTiles` and `getJumpTiles` final returns. An enemy parked
+  on the stairs used to make descent impossible (unitAt blocks the tile).
+  Spawns already excluded it (generateMdFloor `roomTiles(r, [stairs])`).
+- **PMD recruitment**: `_mdMaybeOfferRecruit(victim,killer)` — called in the
+  `target.hp <= 0` death block (before `defeatUnit`), MD floors only, non-boss,
+  22% (`MD_RECRUIT_CHANCE`). 1.2s later (death anim, with floor/run re-checks)
+  `_mdRecruitNow` creates a player-1 unit at the victim's tile (or a free
+  neighbour): id `'1-'+slot` where slot = partyBuilds[1].length (must be < 4),
+  race's default job, `optimizeLoadoutForClass` kit, run level via
+  `_campaignLevel` meta (createUnit's campaign pipeline gates on
+  `state._mdRun` too), 70% HP, ap=0 (fights from NEXT round —
+  buildBlitzTurnOrder rebuilds per round), tactic AUTO. Extends
+  partyBuilds/Names/loadouts/partyMeta[1] so floor carry + tactics work. The
+  race also joins `sv.unlockedRaces` (hub roster) even when the party is full.
+- **Bigger dungeon bags**: `getUnitItemSlots()` — 8 total slots in dungeon mode
+  (`MD_ITEM_SLOTS`) vs CONFIG.unitItemSlots (3) elsewhere; `unitItemsFull` uses
+  it, and `getItemCapForClass` doubles per-item caps (+1 scanner) in MD. NOTE:
+  battle.js's declarations override state.js's same-named ones (load order),
+  so ui.js/map.js callers get the MD-aware caps for free.
+- **Drop items**: `window._mdDropItem(unitId,itemKey)` (battle.js) pushes
+  {x,y,type} onto `state._mdItems` at the unit's tile (walk over later to
+  re-scoop). hud.js `_hrlgItemBlades` adds a gold ⤵ DROP chip per row on MD
+  floors (own onClick + stopPropagation, rendered in HorologeBlade via
+  `b.drop`); unusable rows get `forceLive` so DROP still works, and the Items
+  root verb stays available with a non-empty bag on MD floors.
+- **Auto-companion turns show no menu**: ActionMenu (hud.js) returns null when
+  `_mdUnitAuto(unit)` — the command drum rendering during AUTO/GUARD ally
+  turns read as "waiting for input". ControlHints' myTurn also gates on
+  `_mdAutoTurnActive()`. (Input was already frozen via clickTile; this fixes
+  the visual.)
+- **XP/level-up UI (progression modes)**: gold XP bar under HP/MP on the
+  Horologe (`xp` prop, `getXPProgressPct`, only when `xpProgressionActive()`);
+  `+N XP` gold float on kills/assists for the viewer's units (grantXP);
+  level-ups now show ONE consolidated JRPG stat card (name — LEVEL N!, HP/MP/
+  ATK/DEF/MDEF/INT gains measured before→after, + spells learned) via
+  showBattleDialogue; `unit._lvlDlgSuppress` keeps applyLevelUpRewards'
+  per-level popup quiet during the batch (milestones still addLog).
+- Spell damage does NOT need per-level scaling: numbers are flat (EW_SCALE=1)
+  but ride ATK/INT stat growth (`levelStatGains`) + tier unlocks, so spells
+  scale with level automatically.
+
+## YETI REWORK: FROZEN + BLIND STATUSES, ICE SLIDING, STATUS LIBRARY (2026-07-23) — data.js, battle.js, state.js, ui.js, hud.js, three-renderer.js, ainew.js, three-vfx-effects.js, sprites.js
 Token `20260723d` → `20260723e`.
 - **DELETED spells**: Avalanche Slam, Avalanche Dive, Whiteout (yeti inlines),
   and `SHARED_GLACIAL_TOMB` everywhere (yeti + dreameater + mothman + ice

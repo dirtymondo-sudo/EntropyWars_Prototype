@@ -15391,6 +15391,9 @@
                 if (target._isBoss) {
                     handleBossKill(target, killer);
                 }
+                // Mystery Dungeon: a felled monster may rise and JOIN the
+                // party (PMD recruitment) — rolled after the death resolves.
+                if (typeof _mdMaybeOfferRecruit === 'function') _mdMaybeOfferRecruit(target, killer);
                 defeatUnit(target, killer);
 
                 target._damageContributors = {};
@@ -16303,9 +16306,21 @@
             return total;
         }
 
+        /* Mystery Dungeon: delvers carry a real adventuring bag — total slots
+           jump from CONFIG.unitItemSlots (3) to 8 and per-item caps double,
+           so floor loot is worth scooping instead of "pockets full" spam. */
+        const MD_ITEM_SLOTS = 8;
+
+        function getUnitItemSlots() {
+            if (typeof _isDungeonMode === 'function' && _isDungeonMode()) return MD_ITEM_SLOTS;
+            return CONFIG.unitItemSlots;
+        }
+
         function getItemCapForClass(cls, itemKey) {
-            if (itemKey === 'scanner') return cls === 'Agent' ? 2 : 1;
-            return ITEM_RULES[itemKey].max;
+            const _mdBag = typeof _isDungeonMode === 'function' && _isDungeonMode();
+            if (itemKey === 'scanner') return (cls === 'Agent' ? 2 : 1) + (_mdBag ? 1 : 0);
+            const base = ITEM_RULES[itemKey].max;
+            return _mdBag ? base * 2 : base;
         }
 
         function getTotalItemCount(unit) {
@@ -16313,7 +16328,7 @@
         }
 
         function unitItemsFull(unit) {
-            return getTotalItemCount(unit) >= CONFIG.unitItemSlots;
+            return getTotalItemCount(unit) >= getUnitItemSlots();
         }
 
         function canUseItemNow(unit, itemKey) {
@@ -18145,14 +18160,50 @@
             unit._xp = (unit._xp || 0) + amt;
             const newLevel = getUnitLevel(unit);
 
+            // The classic JRPG payoff pop: kills/assists float their XP over
+            // the earner (trickle XP stays silent — it would spam every turn).
+            if ((reason === 'kill' || reason === 'assist') && !_skipVisuals()
+                && unit.player === (typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1)) {
+                try { showFloatingTextForUnit(unit, `+${amt} XP`, 'levelup', { durationMs: 1400 }); } catch (e) {}
+            }
+
             if (newLevel > prevLevel) {
+                // Snapshot stats so the level-up card can show REAL gains.
+                const _b = {
+                    hp: unit.maxHp || 0, mp: unit.maxMp || 0, atk: unit.atk || 0,
+                    def: unit.def || 0, mdef: unit.mdef || 0, int: unit.intStat || 0,
+                };
+                const _spellsBefore = (unit.spells || []).filter(Boolean).map(s => s.name);
+                unit._lvlDlgSuppress = true;   // one consolidated card below, not one per level
                 for (let lvl = prevLevel + 1; lvl <= newLevel; lvl++) {
                     applyLevelUpRewards(unit, lvl);
                 }
+                unit._lvlDlgSuppress = false;
                 // Grow max HP/MP to the new level (stats are recompute-from-base).
                 _recomputeStatsForLevel(unit, newLevel);
                 playSfx('levelUp');
                 if (!unit.dead) _vfxLevelUp(unit.x, unit.y);
+
+                // ── Standard JRPG level-up card: LEVEL N! + the stat gains ──
+                if (!_skipVisuals() && state.phase === 'battle'
+                    && unit.player === (typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1)) {
+                    try { showFloatingTextForUnit(unit, `⬆ LEVEL ${newLevel}!`, 'levelup', { durationMs: 1800 }); } catch (e) {}
+                    const _gain = (v) => (v > 0 ? '+' + v : '±0');
+                    const dHp = (unit.maxHp || 0) - _b.hp, dMp = (unit.maxMp || 0) - _b.mp;
+                    const dAtk = (unit.atk || 0) - _b.atk, dDef = (unit.def || 0) - _b.def;
+                    const dMdef = (unit.mdef || 0) - _b.mdef, dInt = (unit.intStat || 0) - _b.int;
+                    const dlgLines = [
+                        `<span class="dlg-levelup">⬆ ${escapeHtml(unitDisplayName(unit))} — LEVEL ${newLevel}!</span>`,
+                        `<span class="dlg-levelup" style="font-size:15px">HP ${_gain(dHp)} · MP ${_gain(dMp)}</span>`,
+                        `<span class="dlg-levelup" style="font-size:15px">ATK ${_gain(dAtk)} · DEF ${_gain(dDef)} · M.DEF ${_gain(dMdef)} · INT ${_gain(dInt)}</span>`,
+                    ];
+                    const _newSpells = (unit.spells || []).filter(Boolean)
+                        .map(s => s.name).filter(n => !_spellsBefore.includes(n));
+                    for (const n of _newSpells) {
+                        dlgLines.push(`<span class="dlg-spell-learn">✨ Learned ${escapeHtml(n)}!</span>`);
+                    }
+                    showBattleDialogue(dlgLines, 2600 + _newSpells.length * 400);
+                }
             }
         }
 
@@ -18209,7 +18260,8 @@
             // spell learns, milestones, or every 5th level (avoids 99 popups when
             // a unit is pre-leveled at build time — that runs outside battle).
             const _worthShowing = spellsToLearn.length > 0 || milestoneMsg || (level % 5 === 0);
-            if (level > 1 && _worthShowing && !_skipVisuals() && state.phase === 'battle') {
+            if (level > 1 && _worthShowing && !_skipVisuals() && state.phase === 'battle'
+                && !unit._lvlDlgSuppress /* grantXP shows ONE consolidated stat card instead */) {
                 showFloatingTextForUnit(unit, `⬆ LEVEL ${level}!`, 'levelup', { durationMs: 1800 });
                 playSfx('uiButtonConfirm');
 
@@ -21696,6 +21748,131 @@
             if (!u || u.player !== 2 || u.dead) return false;
             return !_shouldCameraFollowUnit(u);
         }
+
+        /* Monsters never STAND on the stairs tile: an enemy parked there made
+           the exit unwalkable for the leader (unitAt blocks the tile), which
+           soft-locked the descent. getMoveTiles AND getJumpTiles filter
+           through this, so the AI can't end any move on the stairs. */
+        function _mdEnemyStairsBlocked(unit, x, y) {
+            if (!unit || unit.player !== 2) return false;
+            if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return false;
+            if (state._mdPhase !== 'floor' || !state._mdRun) return false;
+            const s = state._mdStairs;
+            return !!(s && s.x === x && s.y === y);
+        }
+
+        /* ── PMD-style recruitment ─────────────────────────────────────────
+           Every non-boss monster felled on a dungeon floor rolls a recruit
+           chance. On success it rises at its tile as a PARTY member (open
+           slot required, 4 max) with the run's level, AUTO tactics and the
+           job's stock kit — and its race joins the Guild Hub roster for
+           future runs. With a full party the race still joins the roster. */
+        const MD_RECRUIT_CHANCE = 0.22;
+        function _mdMaybeOfferRecruit(victim, killer) {
+            if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return;
+            if (state._mdPhase !== 'floor' || !state._mdRun) return;
+            if (state._mdEnded || state._mdTransitioning || state.winner) return;
+            if (!victim || victim.player !== 2 || victim._mdBoss || victim._isBoss) return;
+            if (!victim.race) return;
+            if (Math.random() >= MD_RECRUIT_CHANCE) return;
+            const runFloor = state._mdRun.floor;
+            const spot = { x: victim.x, y: victim.y };
+            const race = victim.race;
+            const gender = victim.gender || 'male';
+            /* wait out the death animation, then re-check the world state —
+               the floor may have changed or the run ended in the meantime */
+            setTimeout(() => {
+                if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return;
+                if (state._mdPhase !== 'floor' || !state._mdRun) return;
+                if (state._mdRun.floor !== runFloor) return;
+                if (state._mdEnded || state._mdTransitioning || state.winner || state.phase !== 'battle') return;
+                _mdRecruitNow(race, gender, spot);
+            }, 1200);
+        }
+
+        function _mdRecruitNow(race, gender, spot) {
+            const label = _mdRaceLabelB(race);
+            /* always add the race to the persistent hub roster */
+            let newToRoster = false;
+            try {
+                const sv = loadMdSave();
+                if (!(sv.unlockedRaces || []).includes(race)) {
+                    sv.unlockedRaces = (sv.unlockedRaces || []).concat([race]);
+                    saveMdSave(sv);
+                    newToRoster = true;
+                }
+            } catch (e) {}
+            const slot = (state.partyBuilds[1] || []).length;
+            if (slot >= 4) {
+                addLog(`🤝 The defeated ${label} wants to join — the party is full, so they head for the Guild Hub instead.`);
+                return;
+            }
+            /* land on the fallen monster's tile, or the nearest free neighbour */
+            let tx = spot.x, ty = spot.y;
+            if (unitAt(tx, ty)) {
+                const near = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+                    .map(([dx, dy]) => ({ x: tx + dx, y: ty + dy }))
+                    .find(p => isInside(p.x, p.y) && !unitAt(p.x, p.y)
+                        && (typeof isTerrainPassable !== 'function' || isTerrainPassable(p.x, p.y)));
+                if (!near) return;
+                tx = near.x; ty = near.y;
+            }
+            const job = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || 'Freelancer';
+            const template = CLASS_TEMPLATES[job] || CLASS_TEMPLATES[Object.keys(CLASS_TEMPLATES)[0]];
+            const D = _mdActiveDungeon();
+            const runLvl = Math.min((typeof XP_MAX_LEVEL !== 'undefined') ? XP_MAX_LEVEL : 100,
+                Math.max(5, Math.round(state._mdRun.floor * ((D && D.levelPerFloor) || 1))));
+            const loadout = (typeof optimizeLoadoutForClass === 'function')
+                ? optimizeLoadoutForClass(job, race) : emptyLoadout();
+            if (loadout) loadout.equipment = { accessory1: null, accessory2: null };
+            let recruit;
+            try {
+                recruit = createUnit('1-' + slot, 1, tx, ty, template, loadout || emptyLoadout(),
+                    { race, gender, _campaignLevel: runLvl });
+            } catch (e) { console.error('[MD] recruit spawn failed:', race, e); return; }
+            recruit.hp = Math.max(1, Math.round(recruit.maxHp * 0.7));
+            recruit.ap = 0;   // joins mid-round, first turn next round
+            state.units.push(recruit);
+            /* extend the party arrays so floor carries (_mdAdvanceFloor) and
+               tactics (partyMeta._mdTactic) see the new member */
+            state.partyBuilds[1][slot] = job;
+            state.partyNames[1][slot] = label;
+            state.loadouts[1][slot] = loadout || emptyLoadout();
+            if (!state.partyMeta[1]) state.partyMeta[1] = [];
+            state.partyMeta[1][slot] = { race, gender, _campaignLevel: runLvl, _mdTactic: 'auto' };
+            addLog(`🤝 The defeated ${label} rises and JOINS the party! (Lv.${runLvl} ${job} — AUTO tactics)`
+                + (newToRoster ? ` ${label} is now part of the Guild Hub roster.` : ''));
+            try { showFloatingTextForUnit(recruit, '🤝 RECRUITED!', 'levelup', { durationMs: 1800 }); } catch (e) {}
+            if (typeof showCombatBanner === 'function') showCombatBanner('🤝 ' + label + ' joins!', 'A defeated foe changes sides', 'neutral');
+            try { _vfxLevelUp(recruit.x, recruit.y); } catch (e) {}
+            if (!state.devAutoSim) { try { playSfx('levelUp'); } catch (e) {} }
+            markDirty('board', 'hud', 'selectedUnit');
+            scheduleBoardRender();
+            renderIfDirty();
+        }
+
+        /* ── Drop an item from the bag onto the floor tile ─────────────────
+           Fired from the Items submenu's ⤵ DROP chip (hud.js). The dropped
+           item joins state._mdItems, so any party member can walk over it
+           later to scoop it back up — the PMD inventory-juggling loop. */
+        window._mdDropItem = function (unitId, itemKey) {
+            if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return;
+            if (state._mdPhase !== 'floor' || !state._mdRun) return;
+            if (state.phase !== 'battle' || state.winner) return;
+            const u = state.units.find(x => x.id === unitId && x.player === 1 && !x._mdNpc && !x.dead && !x._dying);
+            if (!u || (u.items?.[itemKey] || 0) <= 0) return;
+            u.items[itemKey] -= 1;
+            if (!state._mdItems) state._mdItems = [];
+            state._mdItems.push({ x: u.x, y: u.y, type: itemKey });
+            const rule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[itemKey] : null;
+            const icon = (rule && rule.icon) || '📦';
+            addLog(`⤵ ${unitDisplayName(u)} drops a ${(rule && rule.name) || itemKey} on the floor.`);
+            try { showFloatingTextForUnit(u, `${icon} ⤵`, 'pickup', { durationMs: 900 }); } catch (e) {}
+            playSfx('uiCursorMove');
+            markDirty('board', 'hud', 'selectedUnit');
+            scheduleBoardRender();
+            renderIfDirty();
+        };
 
         /* ── Ground item pickups ───────────────────────────────────────────
            Floors scatter loose consumables (state._mdItems). Any party unit
@@ -32944,6 +33121,10 @@
                     }
                 }
             }
+            /* Mystery Dungeon: monsters can't leap onto the stairs tile either. */
+            if (typeof _mdEnemyStairsBlocked === 'function') {
+                return tiles.filter(t => !_mdEnemyStairsBlocked(unit, t.x, t.y));
+            }
             return tiles;
         }
 
@@ -41840,6 +42021,11 @@
                 }
             }
 
+            /* Mystery Dungeon: monsters never END a move on the stairs tile —
+               a parked enemy made the exit unwalkable for the leader. */
+            if (typeof _mdEnemyStairsBlocked === 'function') {
+                return tiles.filter(t => !_mdEnemyStairsBlocked(unit, t.x, t.y));
+            }
             return tiles;
         }
 
