@@ -1547,6 +1547,18 @@
         const g = G();
         const kind = spell.kind;
 
+        // 🔥 Element-drinking passives (Thermal Regen): fire "damage" on a
+        // fire-drinking target HEALS it — worse than a wasted turn. Hard veto
+        // for any single-target damage kind aimed at such a unit (AOEs still
+        // score off the crowd; the drinker just isn't a payoff).
+        if (target && target.race && typeof window !== 'undefined'
+            && typeof window.unitPassiveValue === 'function'
+            && typeof window.classifySpellElement === 'function'
+            && ['damage', 'ricochet', 'multiHit', 'dash'].includes(kind)) {
+            const _drink = window.unitPassiveValue(target, 'healedByElement');
+            if (_drink && window.classifySpellElement(spell) === _drink) return -999;
+        }
+
         if (['damage', 'ricochet', 'multiHit'].includes(kind)) {
             // Elemental tile cast: the target is a TILE, not a unit — score it
             // flat (the fallback picker only returns tiles the reaction makes
@@ -3261,7 +3273,12 @@
         const _hasHeight = typeof g.getHeightAt === 'function';
         const _canFly = typeof g.canFly === 'function' && g.canFly(unit);
         const _maxClimb = g.MAX_CLIMB_HEIGHT ?? 1;
-        const _jumpH = g.JUMP_HEIGHT ?? 2;
+        // Per-unit climb (2026-07-23): most units are jump 1 now — a kaiju
+        // still models its 3-high stride. Falls back to the flat baseline.
+        const _jumpH = (typeof g.getUnitJumpClimb === 'function')
+            ? g.getUnitJumpClimb(unit) : (g.JUMP_HEIGHT ?? 1);
+        // 👻 Spectral Passage: phasing units slide through blocking edges.
+        const _phase = typeof unitIsPhasing === 'function' && unitIsPhasing(unit);
 
         const open = [{ x: unit.x, y: unit.y, f: Math.abs(unit.x - goalX) + Math.abs(unit.y - goalY) }];
         const DIRS = [[1,0],[0,1],[-1,0],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
@@ -3301,7 +3318,7 @@
 
                 if (!g.unitCanTraverse(unit, nx, ny)) continue;
 
-                if (g.objectBlocksEdge && g.objectBlocksEdge(cur.x, cur.y, nx, ny)) continue;
+                if (!_phase && g.objectBlocksEdge && g.objectBlocksEdge(cur.x, cur.y, nx, ny)) continue;
 
                 if (dx !== 0 && dy !== 0) {
                     const canX = g.isInside(cur.x + dx, cur.y) && g.unitCanTraverse(unit, cur.x + dx, cur.y);
@@ -3347,7 +3364,8 @@
         const maxY = Math.max(unit.y, goalY);
         const _hasHeight = typeof g.getHeightAt === 'function';
         const _canFly = typeof g.canFly === 'function' && g.canFly(unit);
-        const _jumpH = g.JUMP_HEIGHT ?? 2;
+        const _jumpH = (typeof g.getUnitJumpClimb === 'function')
+            ? g.getUnitJumpClimb(unit) : (g.JUMP_HEIGHT ?? 1);
 
         for (let y = Math.max(0, minY - 1); y <= Math.min(g.bh() - 1, maxY + 1); y++) {
             for (let x = Math.max(0, minX - 1); x <= Math.min(g.bw() - 1, maxX + 1); x++) {

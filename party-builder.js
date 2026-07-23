@@ -843,11 +843,11 @@ const RACE_TRAITS = {
   'telepath': [
     { icon: '🪽', name: 'Levitation', desc: 'Airborne — floats over hazards and rough ground. Grounded below 25% HP.' },  // CODED
     { icon: '🌙', name: 'Nocturnal', desc: '+ATK/DEF/INT at night; penalized in daylight.' },                         // CODED
-    { icon: '🧠', name: 'Unquiet Mind', desc: 'Immune to sleep and charm.' },                                         // DESIGN
+    { icon: '🧠', name: 'Unquiet Mind', desc: 'A mind already crowded with voices — immune to Charm and Siren Song.' }, // CODED (PASSIVE_DEFS)
   ],
   'vampire': [
     { icon: '🪽', name: 'Flight', desc: 'Airborne — crosses chasms, lava and deep water unharmed. Grounded below 25% HP.' },  // CODED
-    { icon: '🩸', name: 'Hemophage', desc: 'Basic attacks drain a portion of the damage as HP.' },                    // DESIGN
+    { icon: '🩸', name: 'Hemophage', desc: 'Basic attacks drink deep — restores 25% of the damage dealt as HP.' },    // CODED (PASSIVE_DEFS)
     { icon: '🌙', name: 'Creature of the Night', desc: 'Stronger at night; weakened at high noon.' },                 // DESIGN
   ],
   'demon': [
@@ -878,7 +878,7 @@ const RACE_TRAITS = {
     { icon: '👁️', name: 'Night Vision', desc: 'Vision is not reduced at night.' },                                    // DESIGN
   ],
   'knight': [
-    { icon: '🛡️', name: 'Man-at-Arms', desc: 'Heavy plate — immune to stagger.' },                                    // DESIGN
+    { icon: '🛡️', name: 'Man-at-Arms', desc: 'Heavy plate and drilled footing — immune to Stagger.' },                // CODED (PASSIVE_DEFS)
     { icon: '⚜️', name: 'Oath of the Shield', desc: 'Adjacent allies take 10% less damage.' },                        // DESIGN
   ],
   'shaman': [
@@ -918,7 +918,7 @@ const RACE_TRAITS = {
     { icon: '🎯', name: 'Deadeye', desc: '+15% damage to targets at maximum range.' },                                // DESIGN
   ],
   'machine elves': [
-    { icon: '🌀', name: 'Fractal Mind', desc: 'Immune to psychic debuffs — charm and confusion.' },                   // DESIGN
+    { icon: '🌀', name: 'Fractal Mind', desc: 'Self-similar at every scale — immune to Charm and Siren Song.' },      // CODED (PASSIVE_DEFS)
     { icon: '⚙️', name: 'Self-Assembling', desc: 'Repairs 3% of max HP every round.' },                               // DESIGN
   ],
   'martian': [
@@ -927,7 +927,7 @@ const RACE_TRAITS = {
   ],
   'nordic': [
     { icon: '🛸', name: 'Federation Envoy', desc: 'A Tall Blonde of the Galactic Federation — light-tech beams, stasis and psychic calm.' }, // LORE
-    { icon: '🛡️', name: 'Serene Mind', desc: 'Immune to fear and charm.' },                                           // DESIGN
+    { icon: '🛡️', name: 'Serene Mind', desc: 'Federation discipline — immune to Charm and Siren Song.' },             // CODED (PASSIVE_DEFS)
   ],
   'halfdemon': [
     { icon: '😈', name: 'Dual Heritage', desc: 'Counts as both Human and Unholy in type matchups.' },                 // CODED (types)
@@ -938,10 +938,27 @@ const RACE_TRAITS = {
     { icon: '☠️', name: 'Beyond Poison', desc: 'Immune to poison terrain.' },                                          // CODED (map.js)
   ],
   'kaiju': [
-    { icon: '🔥', name: 'Thermal Regen', desc: 'Immune to Burn. Fire damage and fire spells HEAL him instead of hurting.' }, // CODED (battle.js)
+    { icon: '🔥', name: 'Thermal Regen', desc: 'Immune to Burn. Fire damage HEALS him — and a lava bath knits his wounds.' }, // CODED (PASSIVE_DEFS)
     { icon: '⛰️', name: 'Mountain Traverser', desc: 'Mountains cost only 1 MOV to climb.' },                           // CODED
   ],
 };
+/* Keep this display table honest: overlay the LIVE combat-passive registry
+   (data.js PASSIVE_DEFS / RACE_PASSIVES) on top. A registry passive replaces
+   a same-named hand-written row (so descs can never drift from the engine)
+   and is prepended if the row was forgotten entirely. Terrain/lore rows
+   (Mountain Traverser, Daywalker…) stay hand-authored. */
+if (typeof window !== 'undefined' && window.RACE_PASSIVES && window.PASSIVE_DEFS) {
+  for (const [race, ids] of Object.entries(window.RACE_PASSIVES)) {
+    const rows = RACE_TRAITS[race] || (RACE_TRAITS[race] = []);
+    for (const id of [...ids].reverse()) {
+      const def = window.PASSIVE_DEFS[id];
+      if (!def) continue;
+      const row = { icon: def.icon, name: def.name, desc: def.desc };
+      const at = rows.findIndex(t => t.name === def.name);
+      if (at >= 0) rows[at] = row; else rows.unshift(row);
+    }
+  }
+}
 if (typeof window !== 'undefined') window.RACE_TRAITS = RACE_TRAITS;
 
 // Compact tactical diamond: MOV and RNG each get their own footprint.

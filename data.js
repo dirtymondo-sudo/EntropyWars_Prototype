@@ -378,6 +378,16 @@ const TERRAIN_RULES = {
                 return null;
             }
 
+            // 🔥 Thermal Regen (PASSIVE_DEFS healedByElement:'fire'): lava is
+            // a hot spring — a kaiju wading in HEALS instead of stacking burn.
+            // (2026-07-23: lava is fire-element now, matching the fire→heal
+            // rule in the damage pipeline.)
+            if (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'healedByElement') === 'fire') {
+                unit._lavaBurnStacks = 0;
+                if (unit.hp >= unit.maxHp) return null;
+                return { type: 'heal', amount: 40, text: `🔥 ${unitDisplayName(unit)}'s Thermal Regen basks in the lava for` };
+            }
+
             if (canFly(unit)) return null;
 
             // Lava applies the ONE burn status (there is no separate "lava
@@ -2469,6 +2479,128 @@ const RACE_PROFILES = {
         types: ['divine', 'anomaly']
     }
 };
+
+/* ══════════ UNIT PASSIVE REGISTRY (2026-07-23) ══════════
+   Single source of truth for combat passives. Replaces the pile of one-off
+   `race === 'kaiju'` checks that used to live in battle.js — the engine now
+   reads HOOK FLAGS off these defs instead of matching race strings, so the
+   next passive is a data entry, not an engine patch.
+
+   Hook flags the engine understands today:
+     healedByElement: 'fire'     damage of that element HEALS instead of hurts
+                                 (applyDamageToUnit, battle.js)
+     immuneStatus: ['stagger']   these statuses simply never land
+                                 (applyStatusPayload, battle.js)
+     phasing: true               moves through walls/enemies/barricades
+                                 (unitIsPhasing, map.js → getMoveTiles/findMovePath)
+     basicAttackLifesteal: 0.25  basic attacks drain this fraction of damage
+                                 dealt as HP (performBasicAttack, battle.js)
+   `flying` has no flag — being a SKY_RACE (canFly/isUnitAirborne, map.js) IS
+   the hook; the registry entry exists so flight shows up, and counts, as a
+   passive.
+
+   RULES: a unit has AT MOST MAX_UNIT_PASSIVES (2). Flying units get `flying`
+   automatically and it always occupies one of the two slots. While airborne a
+   flyer is untouchable by anything ground-bound: terrain tick effects, terrain
+   spells/deforms, seeds, traps — and it cannot channel a Nexus (all enforced
+   engine-side via isUnitAirborne gates).
+
+   party-builder.js RACE_TRAITS is DISPLAY ONLY — it merges these registry
+   entries in at render time, so this table can never drift from the UI. */
+const MAX_UNIT_PASSIVES = 2;
+
+const PASSIVE_DEFS = {
+    flying: {
+        id: 'flying', icon: '🕊️', name: 'Flying',
+        desc: 'Airborne — crosses chasms, lava and deep water. While flying: immune to terrain effects, terrain spells and deforms, seeds and traps, but cannot channel a Nexus. Grounded below 25% HP.',
+    },
+    thermalRegen: {
+        id: 'thermalRegen', icon: '🔥', name: 'Thermal Regen',
+        healedByElement: 'fire',
+        immuneStatus: ['burn'],
+        desc: 'Fire feeds it: fire damage heals instead of harming, Burn never takes hold, and a lava bath knits its wounds.',
+    },
+    spectralPassage: {
+        id: 'spectralPassage', icon: '👻', name: 'Spectral Passage',
+        phasing: true,
+        desc: 'Moves through walls, enemies and barricades as if they were not there (must still stop on an open tile).',
+    },
+    manAtArms: {
+        id: 'manAtArms', icon: '🛡️', name: 'Man-at-Arms',
+        immuneStatus: ['stagger'],
+        desc: 'Heavy plate and drilled footing — immune to Stagger.',
+    },
+    unquietMind: {
+        id: 'unquietMind', icon: '🧠', name: 'Unquiet Mind',
+        immuneStatus: ['charm', 'sirenSong'],
+        desc: 'A mind already crowded with voices — immune to Charm and Siren Song.',
+    },
+    fractalMind: {
+        id: 'fractalMind', icon: '🔮', name: 'Fractal Mind',
+        immuneStatus: ['charm', 'sirenSong'],
+        desc: 'Self-similar at every scale — psychic lures find no single self to seduce. Immune to Charm and Siren Song.',
+    },
+    sereneMind: {
+        id: 'sereneMind', icon: '❄️', name: 'Serene Mind',
+        immuneStatus: ['charm', 'sirenSong'],
+        desc: 'Federation discipline — immune to Charm and Siren Song.',
+    },
+    hemophage: {
+        id: 'hemophage', icon: '🩸', name: 'Hemophage',
+        basicAttackLifesteal: 0.25,
+        desc: 'Basic attacks drink deep — restores 25% of the damage dealt as HP.',
+    },
+};
+
+/* race → up to 2 passive ids. For SKY_RACES `flying` is inserted
+   automatically as the FIRST passive (do not list it here) — so a flying
+   race gets at most ONE entry from this table. */
+const RACE_PASSIVES = {
+    'kaiju':         ['thermalRegen'],
+    'ghost':         ['spectralPassage'],     // ghost also flies → slots full
+    'knight':        ['manAtArms'],
+    'telepath':      ['unquietMind'],         // telepath levitates → slots full
+    'machine elves': ['fractalMind'],
+    'nordic':        ['sereneMind'],
+    'vampire':       ['hemophage'],           // vampire also flies → slots full
+};
+
+function getUnitPassives(unit) {
+    if (!unit) return [];
+    const out = [];
+    const flies = (typeof window !== 'undefined' && typeof window.canFly === 'function')
+        ? window.canFly(unit) : false;
+    if (flies) out.push(PASSIVE_DEFS.flying);
+    for (const id of (RACE_PASSIVES[unit.race] || [])) {
+        if (out.length >= MAX_UNIT_PASSIVES) break;
+        const def = PASSIVE_DEFS[id];
+        if (def && out.indexOf(def) === -1) out.push(def);
+    }
+    return out;
+}
+
+function unitHasPassive(unit, id) {
+    const list = getUnitPassives(unit);
+    for (const p of list) if (p.id === id) return true;
+    return false;
+}
+
+/* First defined value of `key` across the unit's passives (undefined if none).
+   e.g. unitPassiveValue(u, 'basicAttackLifesteal') → 0.25 for vampires. */
+function unitPassiveValue(unit, key) {
+    const list = getUnitPassives(unit);
+    for (const p of list) if (p[key] !== undefined) return p[key];
+    return undefined;
+}
+
+/* Does any of the unit's passives grant immunity to this status id? */
+function unitPassiveBlocksStatus(unit, statusId) {
+    const list = getUnitPassives(unit);
+    for (const p of list) {
+        if (p.immuneStatus && p.immuneStatus.indexOf(statusId) !== -1) return p;
+    }
+    return null;
+}
 
 const AVAILABLE_RACES = ['homosapien', 'pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher'];
 
@@ -5675,6 +5807,54 @@ const SHARED_VORTEX_SLAM = {
     desc: 'Deals WEAK magic damage to All Enemies in an AOE and pulls them toward the center. Applies Slow.'
 };
 
+/* ══════════ SHARED SPELL ARCHETYPES (2026-07-23 dedup pass) ══════════
+   Same treatment as the beams/SHARED_SMITE: near-identical race spells now
+   draw their NUMBERS from one shared stat block, while keeping their own
+   id/name/element/desc (VFX maps key on ids; flavor stays per-race). A
+   balance pass edits ONE line here instead of hunting six copies.
+
+   ── Blinks: seven "teleport N tiles" spells → THREE flavors ──
+     short  — 3 tiles, LoS, 15 MP           (the cheap reposition)
+     shadow — 4 tiles, ignores LoS, 20 MP,  2-round cooldown (the wall-cheat)
+     long   — 5 tiles, LoS, 25 MP           (the map-crosser)
+   (warpRune keeps its own kind; Grave Passage is a deployPair gate — both
+   are genuinely different mechanics and stay untouched.) */
+const _BLINK_ARCHETYPES = {
+    short:  { type: 'utility', cost: 15, range: 3, apCost: 1,
+              kind: 'teleport', teleportDistance: 3 },
+    shadow: { type: 'utility', cost: 20, range: 4, apCost: 1, cooldownRounds: 2,
+              kind: 'teleport', teleportDistance: 4, requiresLineOfSight: false },
+    long:   { type: 'utility', cost: 25, range: 5, apCost: 1,
+              kind: 'teleport', teleportDistance: 5 },
+};
+const _mkBlink = (arch, over) => Object.assign({}, _BLINK_ARCHETYPES[arch], over);
+
+/* ── Single-target debuff bolts ("Weakens a Single Enemy, applies X") ──
+   One stat block per status; per-race identity via _mkBolt overrides. */
+const _JAM_BOLT = {
+    type: 'debuff', cost: 30, range: 3, apCost: 1,
+    kind: 'debuff', statusEffects: [{ id: 'jammed', duration: 2 }],
+    desc: 'Weakens a Single Enemy. Applies Jammed.'
+};
+const _DISCORD_BOLT = {
+    type: 'debuff', cost: 25, range: 3, apCost: 1,
+    kind: 'debuff', statusEffects: [{ id: 'discord', duration: 2 }],
+    desc: 'Weakens a Single Enemy. Applies Discord.'
+};
+const _mkBolt = (base, over) => Object.assign({}, base, over);
+
+/* ── Charges: the "rush a Single Enemy" family shares ONE base ──
+   Default: 120 physical, range 3, 25 MP, kind 'damage' + chargeToTarget.
+   Variants override only what makes them distinct (dash kind, stagger,
+   dmg tier, swap/poison/bonus riders) — descs stay explicit per spell. */
+const _mkCharge = (over) => Object.assign({
+    spellType: 'human',
+    type: 'damage', cost: 25, dmg: 120, range: 3,
+    kind: 'damage', damageType: 'physical', chargeToTarget: true,
+    desc: 'Deals MEDIUM physical damage to a Single Enemy.'
+}, over);
+const _STAGGER_1 = [{ id: 'stagger', duration: 1 }];
+
 const RACE_ABILITIES = {
 
     'seraphim': [
@@ -5725,11 +5905,7 @@ const RACE_ABILITIES = {
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Haunt a 3x3 area for 2 turns. Enemies inside are slowed and cannot counterattack.' },
-        { id: 'racePossession', spellType: 'anomaly', name: 'Possession',
-          type: 'debuff', cost: 35, range: 3, apCost: 2,
-          kind: 'debuff',
-          statusEffects: [{ id: 'jammed', duration: 2 }],
-          desc: 'Weakens a Single Enemy. Applies Jammed.' },
+        _mkBolt(_JAM_BOLT, { id: 'racePossession', spellType: 'anomaly', name: 'Possession' }),
         SHARED_FLASH_FREEZE
     ],
     'angel': [
@@ -5829,10 +6005,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 30, dmg: 80, range: 3, apCost: 1,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           desc: 'Deals WEAK physical damage to All Enemies in an AOE.' },
-        { id: 'raceZombieRush', spellType: 'unholy', name: 'Zombie Rush',
-          type: 'damage', cost: 20, dmg: 120, range: 3,
-          kind: 'damage', damageType: 'physical', chargeToTarget: true,
-          desc: 'Deals MEDIUM physical damage to a Single Enemy.' },
+        _mkCharge({ id: 'raceZombieRush', spellType: 'unholy', name: 'Zombie Rush' }),
     ],
     'anubis': [
         { id: 'raceWeighTheHeart', spellType: 'unholy', name: 'Weigh the Heart',
@@ -5843,11 +6016,7 @@ const RACE_ABILITIES = {
           type: 'utility', cost: 30, range: 4, apCost: 1,
           kind: 'deployPair', maxActivePerCaster: 1,
           desc: 'Place paired tomb-gate tiles. Allies can teleport between them once each.' },
-        { id: 'raceCanopicCurse', spellType: 'unholy', name: 'Canopic Curse',
-          type: 'debuff', cost: 30, range: 4, apCost: 1,
-          kind: 'debuff',
-          statusEffects: [{ id: 'jammed', duration: 2 }],
-          desc: 'Weakens a Single Enemy. Applies Jammed.' },
+        _mkBolt(_JAM_BOLT, { id: 'raceCanopicCurse', spellType: 'unholy', name: 'Canopic Curse' }),
         SHARED_SUMMON_SANDSTORM,
         SHARED_FISSURE
     ],
@@ -5902,28 +6071,20 @@ const RACE_ABILITIES = {
           kind: 'debuff',
           statusEffects: [{ id: 'slow', duration: 2 }],
           desc: 'Weakens a Single Enemy. Applies Slow.' },
-        { id: 'raceVoidStep', spellType: 'anomaly', name: 'Void Step',
-          type: 'utility', cost: 15, range: 4, apCost: 1,
-          kind: 'teleport', teleportDistance: 4, requiresLineOfSight: false,
-          desc: 'Cheapest teleport in the game. It doesn\'t walk. It simply isn\'t, then is.' },
+        _mkBlink('shadow', { id: 'raceVoidStep', spellType: 'anomaly', name: 'Void Step',
+          desc: 'It doesn\'t walk. It simply isn\'t, then is — blink 4 tiles through anything, no line of sight needed. (2-round cooldown.)' }),
         SHARED_SMOKE_SCREEN,
     ],
     'werewolf': [
-        { id: 'racePounce', spellType: 'human', element: 'nature', name: 'Pounce',
-          type: 'damage', cost: 25, dmg: 120, range: 3,
-          kind: 'damage', damageType: 'physical',
-          chargeToTarget: true,
-          desc: 'Deals MEDIUM physical damage to a Single Enemy.' },
+        _mkCharge({ id: 'racePounce', spellType: 'human', element: 'nature', name: 'Pounce' }),
         { id: 'raceHowl', spellType: 'human', element: 'sonic', name: 'Howl',
           type: 'buff', cost: 20, range: 0, apCost: 1,
           kind: 'buff',
           statStageBoost: { atk: 2 },
           desc: 'Empowers the caster. Raises ATK by 2 stages.' },
-        { id: 'raceBloodFrenzy', spellType: 'unholy', element: 'blood', name: 'Blood Frenzy',
-          type: 'damage', cost: 20, apCost: 2, range: 6,
-          kind: 'damage', damageType: 'physical', dmg: 120,
-          chargeToTarget: true, autoTargetLowestHp: true,
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Automatically strikes the visible enemy with the lowest HP.' },
+        _mkCharge({ id: 'raceBloodFrenzy', spellType: 'unholy', element: 'blood', name: 'Blood Frenzy',
+          cost: 20, apCost: 2, range: 6, autoTargetLowestHp: true,
+          desc: 'Deals MEDIUM physical damage to a Single Enemy. Automatically strikes the visible enemy with the lowest HP.' }),
         { id: 'raceBite', spellType: 'human', element: 'blood', name: 'Bite',
           type: 'damage', cost: 30, dmg: 120, range: 1,
           kind: 'lifeDrain', damageType: 'physical', drainPct: 0.30,
@@ -6223,11 +6384,9 @@ const RACE_ABILITIES = {
           kind: 'healAll', healAmt: 130, cleanse: 2,
           statStageBoost: { atk: 1, int: -1 },
           desc: 'Restores a MEDIUM amount of HP to All Allies. Lowers INT by 1 stage. Raises ATK by 1 stage.' },
-        { id: 'raceBoardingRush', spellType: 'human', element: 'metal', name: 'Land Ho',
-          type: 'damage', cost: 25, dmg: 120, range: 3,
-          kind: 'damage', damageType: 'physical',
-          chargeToTarget: true, swapOnHit: true,
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Swaps positions with the target on hit.' },
+        _mkCharge({ id: 'raceBoardingRush', spellType: 'human', element: 'metal', name: 'Land Ho',
+          swapOnHit: true,
+          desc: 'Deals MEDIUM physical damage to a Single Enemy. Swaps positions with the target on hit.' }),
         { id: 'raceAnchor', spellType: 'human', element: 'metal', name: 'Anchor',
           type: 'debuff', cost: 25, range: 3, apCost: 1,
           kind: 'debuff',
@@ -6358,11 +6517,7 @@ const RACE_ABILITIES = {
           desc: 'Dodge-roll 2 tiles in any direction. Quick repositioning.' },
     ],
     'men in black': [
-        { id: 'raceDeneuralizer', spellType: 'tech', element: 'psychic', name: 'Deneuralizer',
-          type: 'debuff', cost: 30, range: 3, apCost: 1,
-          kind: 'debuff',
-          statusEffects: [{ id: 'jammed', duration: 2 }],
-          desc: 'Weakens a Single Enemy. Applies Jammed.' },
+        _mkBolt(_JAM_BOLT, { id: 'raceDeneuralizer', spellType: 'tech', element: 'psychic', name: 'Deneuralizer' }),
         { id: 'raceClassifiedWeapon', spellType: 'alien', element: 'lightning', name: 'Classified Weapon',
           type: 'damage', cost: 35, dmg: 120, range: 4,
           kind: 'damage', damageType: 'magic',
@@ -6390,11 +6545,7 @@ const RACE_ABILITIES = {
           kind: 'buff',
           shield: 150,
           desc: 'Project a telekinetic shield onto an ally. Absorbs 150 damage before breaking.' },
-        { id: 'raceBrainwash', spellType: 'anomaly', element: 'psychic', name: 'Brainwash',
-          type: 'debuff', cost: 35, range: 3, apCost: 1,
-          kind: 'debuff',
-          statusEffects: [{ id: 'discord', duration: 2 }],
-          desc: 'Weakens a Single Enemy. Applies Discord.' },
+        _mkBolt(_DISCORD_BOLT, { id: 'raceBrainwash', spellType: 'anomaly', element: 'psychic', name: 'Brainwash' }),
     ],
     'marksman': [
         { id: 'raceSuppressiveFire', spellType: 'human', element: 'metal', name: 'Bullet Skewer',
@@ -6596,11 +6747,7 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statStageBoost: { def: 2 },
           desc: 'Empowers the caster. Raises DEF by 2 stages.' },
-        { id: 'raceAmbushLunge', spellType: 'alien', name: 'Ambush Lunge',
-          type: 'damage', cost: 25, dmg: 120, range: 3,
-          kind: 'damage', damageType: 'physical',
-          chargeToTarget: true,
-          desc: 'Deals MEDIUM physical damage to a Single Enemy.' },
+        _mkCharge({ id: 'raceAmbushLunge', spellType: 'alien', name: 'Ambush Lunge' }),
         { id: 'raceFractalNeedle', spellType: 'alien', element: 'arcane', name: 'Fractal Needle',
           type: 'damage', cost: 35, dmg: 120, range: 4,
           kind: 'splitBeam', damageType: 'magic',
@@ -6650,10 +6797,8 @@ const RACE_ABILITIES = {
           desc: 'Discharge the lattice (needs 3+ prisms): every enemy caught on a beam takes a burst in the current frequency. 4+ prisms across 2+ elevations enclose a 3-D volume — everyone inside is hit and the burst is amplified. 8 prisms in a perfect rectangular prism unleash a massive detonation through the whole volume.' },
         /* (Refract Beam was CUT 2026-07-23 in the beam de-duplication pass —
            the prism lattice already IS the machine elves' laser identity.) */
-        { id: 'raceMirrorBlink', spellType: 'alien', element: 'arcane', name: 'Mirror Blink',
-          type: 'utility', cost: 16, range: 4, apCost: 1,
-          kind: 'teleport',
-          desc: 'Fold through the light and blink to any tile within 4 — reposition inside your own lattice, or slip out of a collapsing trap.' },
+        _mkBlink('short', { id: 'raceMirrorBlink', spellType: 'alien', element: 'arcane', name: 'Mirror Blink',
+          desc: 'Fold through the light and blink to any tile within 3 — reposition inside your own lattice, or slip out of a collapsing trap.' }),
     ],
     'cyclops': [
         { id: 'raceBalefulGaze', spellType: 'alien', name: 'Baleful Gaze',
@@ -6796,22 +6941,15 @@ const RACE_ABILITIES = {
         SHARED_WING_ATTACK
     ],
     'goatman': [
-        { id: 'raceGoreCharge', spellType: 'unholy', name: 'Gore Charge',
-          type: 'damage', cost: 30, dmg: 120, range: 3,
-          kind: 'damage', damageType: 'physical',
-          chargeToTarget: true,
-          statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Stagger.' },
+        _mkCharge({ id: 'raceGoreCharge', spellType: 'unholy', name: 'Gore Charge',
+          cost: 30, statusEffects: _STAGGER_1,
+          desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Stagger.' }),
         { id: 'raceBloodRitual', spellType: 'anomaly', name: 'Blood Ritual',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff', selfDamagePct: 0.10,
           statStageBoost: { atk: 2 },
           desc: 'Empowers the caster. Raises ATK by 2 stages. Costs a portion of your HP.' },
-        { id: 'raceBlackPhillipsGaze', spellType: 'unholy', name: 'Black Phillip\'s Gaze',
-          type: 'debuff', cost: 25, range: 3, apCost: 1,
-          kind: 'debuff',
-          statusEffects: [{ id: 'discord', duration: 2 }],
-          desc: 'Weakens a Single Enemy. Applies Discord.' },
+        _mkBolt(_DISCORD_BOLT, { id: 'raceBlackPhillipsGaze', spellType: 'unholy', name: 'Black Phillip\'s Gaze' }),
         { id: 'raceCliffCharge', spellType: 'unholy', name: 'Cliff Charge',
           type: 'damage', cost: 25, dmg: 80, range: 2, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 20,
@@ -6819,21 +6957,16 @@ const RACE_ABILITIES = {
           desc: 'Leaps onto a Single Enemy, dealing WEAK physical damage. Applies Stagger.' }
     ],
     'halfdemon': [
-        { id: 'raceShadowStep', spellType: 'unholy', element: 'shadow', name: 'Shadow Step',
-          type: 'utility', cost: 20, range: 4, apCost: 1, cooldownRounds: 2,
-          kind: 'teleport', teleportDistance: 4, requiresLineOfSight: false,
-          desc: 'Blink through shadow up to 4 tiles. Ignores line of sight. Needs 2 rounds to gather shadow between blinks.' },
+        _mkBlink('shadow', { id: 'raceShadowStep', spellType: 'unholy', element: 'shadow', name: 'Shadow Step',
+          desc: 'Blink through shadow up to 4 tiles. Ignores line of sight. Needs 2 rounds to gather shadow between blinks.' }),
         { id: 'raceDemonicClaw', spellType: 'human', element: 'shadow', name: 'Demonic Claw',
           type: 'damage', cost: 25, dmg: 120, range: 1,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 30 }],
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Marked.' },
-        { id: 'raceShadowInfiltration', spellType: 'unholy', element: 'shadow', name: 'Shadow Infiltration',
-          type: 'damage', cost: 25, dmg: 120, range: 3, apCost: 2,
-          kind: 'dash', damageType: 'physical',
-          chargeToTarget: true,
-          statusEffects: [{ id: 'poison', duration: 3 }],
-          desc: 'Charges at a Single Enemy, dealing MEDIUM physical damage. Applies Poison.' },
+        _mkCharge({ id: 'raceShadowInfiltration', spellType: 'unholy', element: 'shadow', name: 'Shadow Infiltration',
+          kind: 'dash', apCost: 2, statusEffects: [{ id: 'poison', duration: 3 }],
+          desc: 'Charges at a Single Enemy, dealing MEDIUM physical damage. Applies Poison.' }),
         { id: 'raceInnerDemon', spellType: 'unholy', element: 'shadow', name: 'Inner Demon',
           type: 'buff', cost: 25, apCost: 1, range: 0, cooldownRounds: 2,
           kind: 'buff', selfDamagePct: 0.20,
@@ -6933,10 +7066,8 @@ const RACE_ABILITIES = {
           kind: 'line', damageType: 'magic', lineWidth: 1,
           statStageBoost: { def: -1 },
           desc: 'Deals MEDIUM magic damage to All Enemies in a line. Lowers the target\'s DEF by 1 stage.' },
-        { id: 'racePhaseWalk', spellType: 'tech', name: 'Phase Walk',
-          type: 'utility', cost: 20, range: 3, apCost: 1,
-          kind: 'teleport', teleportDistance: 3,
-          desc: 'Phase through reality up to 3 tiles. Repositioning tool.' },
+        _mkBlink('short', { id: 'racePhaseWalk', spellType: 'tech', name: 'Phase Walk',
+          desc: 'Phase through reality up to 3 tiles. Repositioning tool.' }),
         { id: 'raceHeatDeath', spellType: 'alien', name: 'Heat Death',
           type: 'utility', cost: 35, range: 4, apCost: 2,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
@@ -6946,11 +7077,7 @@ const RACE_ABILITIES = {
         SHARED_SUMMON_BLIZZARD
     ],
     'superhero': [
-        { id: 'raceHeroicLeap', spellType: 'human', name: 'Heroic Leap',
-          type: 'damage', cost: 25, dmg: 120, range: 3,
-          kind: 'damage', damageType: 'physical',
-          chargeToTarget: true,
-          desc: 'Deals MEDIUM physical damage to a Single Enemy.' },
+        _mkCharge({ id: 'raceHeroicLeap', spellType: 'human', name: 'Heroic Leap' }),
         { id: 'raceLaserBeam', spellType: 'alien', name: 'Laser Beam',
           type: 'damage', cost: 35, dmg: 120, range: 5,
           kind: 'line', damageType: 'magic', lineWidth: 1,
@@ -7017,12 +7144,9 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statusEffects: [{ id: 'overclock', duration: 1 }],
           desc: 'Empowers the caster. Applies Overclock.' },
-        { id: 'raceDarkJustice', spellType: 'human', name: 'Dark Justice',
-          type: 'damage', cost: 30, dmg: 120, range: 3,
-          kind: 'damage', damageType: 'physical',
-          chargeToTarget: true,
-          bonusVsDebuffed: 0.40,
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Deals bonus damage to debuffed targets.' },
+        _mkCharge({ id: 'raceDarkJustice', spellType: 'human', name: 'Dark Justice',
+          cost: 30, bonusVsDebuffed: 0.40,
+          desc: 'Deals MEDIUM physical damage to a Single Enemy. Deals bonus damage to debuffed targets.' }),
     ],
     'conspiracy theorist': [
         { id: 'raceVOXBroadcast', spellType: 'human', name: 'VOX Broadcast',
@@ -7078,12 +7202,9 @@ const RACE_ABILITIES = {
           blocksMovement: false,
           drawsRangedAttack: true, drawsMeleeAttack: true,
           desc: 'Conjure an illusory double at target tile. Draws enemy attention.' },
-        { id: 'raceDarkFeather', spellType: 'unholy', name: 'Dark Feather',
-          type: 'damage', cost: 30, dmg: 120, range: 3, apCost: 2,
-          kind: 'dash', damageType: 'physical',
-          chargeToTarget: true,
-          statusEffects: [{ id: 'poison', duration: 3 }],
-          desc: 'Charges at a Single Enemy, dealing MEDIUM physical damage. Applies Poison.' },
+        _mkCharge({ id: 'raceDarkFeather', spellType: 'unholy', name: 'Dark Feather',
+          kind: 'dash', cost: 30, apCost: 2, statusEffects: [{ id: 'poison', duration: 3 }],
+          desc: 'Charges at a Single Enemy, dealing MEDIUM physical damage. Applies Poison.' }),
         { id: 'raceProphecyFulfilled', spellType: 'divine', name: 'Prophecy Fulfilled',
           type: 'buff', cost: 30, apCost: 2, range: 0,
           kind: 'buff',
@@ -7134,12 +7255,9 @@ const RACE_ABILITIES = {
         SHARED_TIDAL_SURGE,
     ],
     'dinosaur': [
-        { id: 'raceApexCharge', spellType: 'anomaly', name: 'Apex Charge',
-          type: 'damage', cost: 30, dmg: 120, range: 3, apCost: 2,
-          kind: 'dash', damageType: 'physical',
-          chargeToTarget: true,
-          statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Charges at a Single Enemy, dealing MEDIUM physical damage. Applies Stagger.' },
+        _mkCharge({ id: 'raceApexCharge', spellType: 'anomaly', name: 'Apex Charge',
+          kind: 'dash', cost: 30, apCost: 2, statusEffects: _STAGGER_1,
+          desc: 'Charges at a Single Enemy, dealing MEDIUM physical damage. Applies Stagger.' }),
         { id: 'racePrimalRoar', spellType: 'anomaly', name: 'Primal Roar',
           type: 'debuff', cost: 20, range: 0, apCost: 1,
           kind: 'aoe', aoeRadius: 1, aoeOriginSelf: true,
@@ -7321,15 +7439,9 @@ const RACE_ABILITIES = {
           kind: 'barrage', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'discord', duration: 1 }],
           desc: 'Deals WEAK magic damage to All Enemies around the caster (AOE). Applies Discord.' },
-        { id: 'raceGravityBoots', spellType: 'tech', name: 'Gravity Boots',
-          type: 'utility', cost: 15, range: 4, apCost: 1,
-          kind: 'teleport', teleportDistance: 4,
-          desc: 'Activate anti-gravity boots to reposition up to 4 tiles. Far out.' },
-        { id: 'raceCharmBeam', spellType: 'anomaly', name: 'Charm Beam',
-          type: 'debuff', cost: 25, range: 3, apCost: 1,
-          kind: 'debuff',
-          statusEffects: [{ id: 'discord', duration: 2 }],
-          desc: 'Weakens a Single Enemy. Applies Discord.' },
+        _mkBlink('short', { id: 'raceGravityBoots', spellType: 'tech', name: 'Gravity Boots',
+          desc: 'Activate anti-gravity boots to reposition up to 3 tiles. Far out.' }),
+        _mkBolt(_DISCORD_BOLT, { id: 'raceCharmBeam', spellType: 'anomaly', name: 'Charm Beam' }),
         { id: 'racePlasmaWhip', spellType: 'tech', name: 'Plasma Whip',
           type: 'damage', cost: 30, dmg: 120, range: 2,
           kind: 'damage', damageType: 'physical',
@@ -7392,12 +7504,9 @@ const RACE_ABILITIES = {
     ],
 
     'honda civic': [
-        { id: 'raceRamCharge', spellType: 'tech', name: 'Ram Charge',
-          type: 'damage', cost: 25, dmg: 120, range: 3,
-          kind: 'dash', damageType: 'physical',
-          chargeToTarget: true,
-          statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Charges at a Single Enemy, dealing MEDIUM physical damage. Applies Stagger.' },
+        _mkCharge({ id: 'raceRamCharge', spellType: 'tech', name: 'Ram Charge',
+          kind: 'dash', statusEffects: _STAGGER_1,
+          desc: 'Charges at a Single Enemy, dealing MEDIUM physical damage. Applies Stagger.' }),
         { id: 'raceExhaustCloud', spellType: 'tech', name: 'Exhaust Cloud',
           type: 'utility', cost: 20, range: 0, apCost: 1,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2, aoeOriginSelf: true,
@@ -7449,12 +7558,9 @@ const RACE_ABILITIES = {
     ],
 
     'juggernaut': [
-        { id: 'raceUnstoppableCharge', spellType: 'unholy', name: 'Unstoppable Charge',
-          type: 'damage', cost: 25, dmg: 160, range: 4,
-          kind: 'dash', damageType: 'physical',
-          chargeToTarget: true,
-          statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Charges at a Single Enemy, dealing HEAVY physical damage. Applies Stagger.' },
+        _mkCharge({ id: 'raceUnstoppableCharge', spellType: 'unholy', name: 'Unstoppable Charge',
+          kind: 'dash', dmg: 160, range: 4, statusEffects: _STAGGER_1,
+          desc: 'Charges at a Single Enemy, dealing HEAVY physical damage. Applies Stagger.' }),
         { id: 'raceBrutalSlam', spellType: 'human', name: 'Brutal Slam',
           type: 'damage', cost: 30, dmg: 80, range: 0, apCost: 1,
           kind: 'barrage', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
@@ -7496,16 +7602,11 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 35, dmg: 160, range: 5, apCost: 2,
           kind: 'line', damageType: 'magic', lineWidth: 1,
           desc: 'Deals HEAVY magic damage to All Enemies in a line.' },
-        { id: 'raceDragonFist', spellType: 'human', element: 'fire', name: 'Dragon Fist',
-          type: 'damage', cost: 30, dmg: 160, range: 2,
-          kind: 'damage', damageType: 'physical',
-          chargeToTarget: true,
-          statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Stagger.' },
-        { id: 'raceInstantTransmission', spellType: 'anomaly', element: 'arcane', name: 'Instant Transmission',
-          type: 'utility', cost: 15, range: 5, apCost: 1,
-          kind: 'teleport', teleportDistance: 5,
-          desc: 'Lock onto a ki signature and teleport up to 5 tiles instantly.' }
+        _mkCharge({ id: 'raceDragonFist', spellType: 'human', element: 'fire', name: 'Dragon Fist',
+          cost: 30, dmg: 160, range: 2, statusEffects: _STAGGER_1,
+          desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Stagger.' }),
+        _mkBlink('long', { id: 'raceInstantTransmission', spellType: 'anomaly', element: 'arcane', name: 'Instant Transmission',
+          desc: 'Lock onto a ki signature and teleport up to 5 tiles instantly.' })
     ],
 
     'king arthur': [
@@ -7556,12 +7657,9 @@ const RACE_ABILITIES = {
     ],
 
     'minotaur': [
-        { id: 'raceBullRush', spellType: 'human', name: 'Bull Rush',
-          type: 'damage', cost: 25, dmg: 120, range: 4,
-          kind: 'dash', damageType: 'physical',
-          chargeToTarget: true,
-          statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Charges at a Single Enemy, dealing MEDIUM physical damage. Applies Stagger.' },
+        _mkCharge({ id: 'raceBullRush', spellType: 'human', name: 'Bull Rush',
+          kind: 'dash', range: 4, statusEffects: _STAGGER_1,
+          desc: 'Charges at a Single Enemy, dealing MEDIUM physical damage. Applies Stagger.' }),
         { id: 'raceGore', spellType: 'unholy', name: 'Gore',
           type: 'damage', cost: 20, dmg: 120, range: 1,
           kind: 'damage', damageType: 'physical',
@@ -7651,12 +7749,9 @@ const RACE_ABILITIES = {
           kind: 'line', damageType: 'physical', lineWidth: 1,
           projectileOverride: 'proj-football',
           desc: 'Deals WEAK physical damage to All Enemies in a line.' },
-        { id: 'raceBlitz', spellType: 'human', element: 'earth', name: 'Blitz',
-          type: 'damage', cost: 25, dmg: 80, range: 3,
-          kind: 'dash', damageType: 'physical',
-          chargeToTarget: true,
-          statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Charges at a Single Enemy, dealing WEAK physical damage. Applies Stagger.' },
+        _mkCharge({ id: 'raceBlitz', spellType: 'human', element: 'earth', name: 'Blitz',
+          kind: 'dash', dmg: 80, statusEffects: _STAGGER_1,
+          desc: 'Charges at a Single Enemy, dealing WEAK physical damage. Applies Stagger.' }),
         { id: 'raceAudible', spellType: 'human', element: 'sonic', name: 'Audible',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'warCry', aoeRadius: 2,
@@ -8569,7 +8664,10 @@ const STATUS_DEFS = {
                 ignoreArmor: true,
                 damageType: 'dot',
                 consumeMarked: false,
-                flashColor: 'burn'
+                flashColor: 'burn',
+                // Burn is fire-element (2026-07-23): a healedByElement:'fire'
+                // passive (Thermal Regen) turns any stray tick into healing.
+                element: 'fire'
             });
         }
     },
@@ -11981,6 +12079,8 @@ const CAMPAIGN_REGION_THEMES = {
 
 Object.assign(window, {
   CONFIG, EQUIP_DEFS, RACE_PROFILES, AVAILABLE_RACES, RACE_DEFAULT_JOBS,
+  MAX_UNIT_PASSIVES, PASSIVE_DEFS, RACE_PASSIVES,
+  getUnitPassives, unitHasPassive, unitPassiveValue, unitPassiveBlocksStatus,
   AVAILABLE_ZODIACS, ZODIAC_ICONS, JOB_MODIFIERS, CLASS_TEMPLATES,
   JOB_PASSIVES, CLASS_PASSIVES, getJobPassive,
   DEFAULT_BUILDS, ITEM_RULES, SPELL_LIBRARY, SPELL_SLOT_MAX,

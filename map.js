@@ -2228,8 +2228,9 @@
              obelisk          → a tall thin solid (impassable, blocks sight)
              colossus         → a low platform you can clamber onto
              tpillar          → EXACTLY 2 voxels of hard cover: blocks sight at
-                                ground level, and since JUMP_HEIGHT = 2 a unit
-                                can JUMP onto the T-head (never stand inside it)
+                                ground level; only jump-stat-2+ units can JUMP
+                                onto the T-head (never stand inside it) — for
+                                jump-1 units (most, since 2026-07-23) it's a wall
              monolith/ankh/greytube → full-height solid masses (capped by the
                                 placement's maxH — an h2 monolith is a jumpable
                                 block, an h3 one is a true wall)
@@ -2908,9 +2909,10 @@
             /* Delegates to wallStepInfo so the Jump action and in-move vaults
                obey ONE rule: vault height scales with the unit's jump climb,
                and a roof over either tile kills the arc. Legacy callers that
-               pass no jumpClimb get the baseline 2 (= JUMP_HEIGHT). */
+               pass no jumpClimb get the baseline 1 (= JUMP_HEIGHT — 2026-07-23:
+               most units are jump 1 now, 2-high walls are real walls). */
             return wallStepInfo(fromX, fromY, toX, toY, fromZ, toZ,
-                (jumpClimb == null) ? 2 : jumpClimb).v === 2;
+                (jumpClimb == null) ? 1 : jumpClimb).v === 2;
         }
 
         /* ══════════ VERTICAL LANE CLEARANCE (roofs / ceilings) ══════════
@@ -2954,7 +2956,7 @@
            does it need a jump arc?". Returns { v, top }:
              v: 0 = clear walk, 1 = VAULT (jump arc over a wall, top = the
                 wall's top cell the arc must clear), 2 = blocked.
-           jumpClimb is the unit's vertical jump power (getUnitJumpClimb, 2-3;
+           jumpClimb is the unit's vertical jump power (getUnitJumpClimb, 1-3;
            pass 0 for no vaulting — e.g. airborne flyers, who instead clear
            walls entirely below their true feet). A wall is vaultable when its
            top rises no more than jumpClimb cells above the lower stand height
@@ -4642,12 +4644,16 @@
         }
 
         /* 👻 Spectral Passage (Ghost race PASSIVE, 2026-07-23 — replaces the
-           old teleport spell of the same name): while moving, ghosts phase
-           straight through edge walls, enemy units and deployed barricades.
-           They still need a real tile to STOP on — consumed by the
-           getMoveTiles/findMovePath hooks in battle.js. */
+           old teleport spell of the same name): while moving, phasing units
+           slide straight through edge walls, enemy units and deployed
+           barricades. They still need a real tile to STOP on — consumed by
+           the getMoveTiles/findMovePath hooks in battle.js. Driven by the
+           `phasing` hook flag in data.js PASSIVE_DEFS (ghost race today),
+           with the old race check as fallback if data.js hasn't loaded. */
         function unitIsPhasing(unit) {
-            return !!unit && unit.race === 'ghost';
+            if (!unit) return false;
+            if (typeof unitPassiveValue === 'function') return unitPassiveValue(unit, 'phasing') === true;
+            return unit.race === 'ghost';
         }
 
         function unitIsIceStable(unit) {

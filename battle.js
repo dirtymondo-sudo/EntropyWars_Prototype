@@ -75,7 +75,12 @@
         // ~20% off a 1000-HP giant instead of a meaningless flat 8/level).
         const FALL_DAMAGE_PCT_PER_LEVEL = 0.05;
         const FALL_DAMAGE_MIN = 24;
-        const JUMP_HEIGHT = 2;
+        // Baseline vertical hop (2026-07-23: was 2). Dropped to 1 so authored
+        // 2-tile-high walls actually wall most units out — only jump-stat-2+
+        // races (see RACE_JUMP_OVERRIDE) scale them. Horizontal gap-crossing
+        // is a separate floor: getUnitJumpReach never drops below 2, so every
+        // unit can still leap a 1-wide gap.
+        const JUMP_HEIGHT = 1;
 
         // ── Buildings ──────────────────────────────────────────────────────────
         // Every roofWalkable 2×2 building is a destructible structure with HP
@@ -138,13 +143,15 @@
         const SPELL_DMG_VARIANCE = 8;
 
         // ── Jump stat ──────────────────────────────────────────────────────────
-        // Horizontal jump reach (in tiles). For most units it's derived from agility
-        // (spd) so we don't have to hand-author every race. 1 = adjacent-only (the 8
-        // surrounding tiles), 2 = clear a 1-wide gap, 3 = clear a 2-wide chasm / reach
-        // distant high ground. Flyers don't jump (they fly).
+        // The jump stat is a unit's VERTICAL hop power (max height climbed in one
+        // leap — and the ceiling for jump legs during a normal Move). 2026-07-23
+        // rework: most units are jump 1, so a 2-tile-high wall is a real wall.
+        // Horizontal reach is derived separately (getUnitJumpReach): max(2, stat),
+        // so even a jump-1 unit still clears a 1-wide gap/chasm; jump-3 colossi
+        // clear a 2-wide one. Flyers don't jump (they fly).
         //
         // HUGE races are the exception: a giant or a kaiju isn't "agile" (low spd), but
-        // sheer size means one stride covers ground and clears rooftops a nimble unit
+        // sheer size means one stride covers ground and clears walls a nimble unit
         // would have to scramble up. So size overrides the spd derivation for them.
         // Resolution order: explicit unit.jump → race size override → spd derivation.
         const RACE_JUMP_OVERRIDE = {
@@ -162,15 +169,22 @@
             const sizeJump = RACE_JUMP_OVERRIDE[unit.race]; // huge bodies out-leap their spd
             if (sizeJump != null) return sizeJump;
             const spd = unit.spd ?? 6;
-            if (spd <= 5) return 1;   // heavies: mechs, knights, zombies…
-            if (spd <= 8) return 2;   // the broad middle
-            return 3;                 // nimble: beasts, rogues, assassins
+            if (spd <= 8) return 1;   // the broad majority: 2-high walls stop them
+            return 2;                 // truly nimble (spd 9+): beasts, rogues, assassins
         }
-        // Max height a unit can hop UP in a single jump. Baseline stays at 2 so every
-        // existing height-2 roof/ledge remains reachable; a jump-3 unit can mount a
-        // 3-high ledge. Drops are unlimited (fall damage still applies on landing).
+        // Max height a unit can hop UP in a single jump (and during a Move's jump
+        // legs). 2026-07-23: no more flat JUMP_HEIGHT=2 floor — the jump stat IS
+        // the climb, so most units (jump 1) cannot mount a 2-high ledge; jump-2/3
+        // races can. Drops are unlimited (fall damage still applies on landing).
         function getUnitJumpClimb(unit) {
             return Math.max(JUMP_HEIGHT, getUnitJumpStat(unit));
+        }
+        // Horizontal jump reach in tiles (the Jump action's landing ring). Floored
+        // at 2 so EVERY ground unit can leap a 1-wide gap — vertical power and
+        // gap-crossing are decoupled on purpose (jump-1 units cross gaps, they
+        // just can't climb walls doing it).
+        function getUnitJumpReach(unit) {
+            return Math.max(2, getUnitJumpStat(unit));
         }
 
         /* ── Gravity fields (2026-07-17: Gravity Crush / Low Gravity) ─────────
@@ -1917,6 +1931,10 @@
             if (_ELEMENT_REGEX.cold.test(text)) return 'cold';
             return null;
         }
+        // Exported (2026-07-23) so the AI can ask "what element is this spell?"
+        // with the ENGINE's classifier — e.g. never nuke a Thermal Regen kaiju
+        // with fire it will drink (ai.js / ainew.js damage estimators).
+        window.classifySpellElement = classifySpellElement;
 
         function _isWaterTile(x, y) {
             const t = getTerrainAt(x, y);
@@ -2685,7 +2703,7 @@
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
             if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(u)) return false;
             applyDamageToUnit(u, dmg, msg || `${unitDisplayName(u)} is scorched by the burning ground: `, {
-                ignoreArmor: true, damageType: 'dot', consumeMarked: false, flashColor: 'burn'
+                ignoreArmor: true, damageType: 'dot', consumeMarked: false, flashColor: 'burn', element: 'fire'
             });
             if (!u.dead && typeof applyStatusPayload === 'function') {
                 applyStatusPayload(u, { id: 'burn', duration: 2 }, 'Ground fire: ', null);
@@ -2837,11 +2855,19 @@
             }
             if (_isLavaTile(unit.x, unit.y)) {
                 if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit)) return;
-                ensureUnitStatus(unit).burn = 3;
-                unit._lavaBurnStacks = (unit._lavaBurnStacks || 0) + 1;
+                /* Lava is fire-element (2026-07-23): the splash damage rides the
+                   pipeline with element:'fire', so a Thermal Regen kaiju HEALS
+                   from the dunk instead — and skips the burn stacks. */
+                const _lavaDrinker = (typeof unitPassiveValue === 'function')
+                    && unitPassiveValue(unit, 'healedByElement') === 'fire';
+                if (!_lavaDrinker) {
+                    ensureUnitStatus(unit).burn = 3;
+                    unit._lavaBurnStacks = (unit._lavaBurnStacks || 0) + 1;
+                }
                 applyDamageToUnit(unit, 60, `${unitDisplayName(unit)} is hurled into molten lava: `, {
-                    ignoreArmor: true, damageType: 'dot', consumeMarked: false, flashColor: 'burn'
+                    ignoreArmor: true, damageType: 'dot', consumeMarked: false, flashColor: 'burn', element: 'fire'
                 });
+                if (_lavaDrinker) return;
                 addLog(`🌋 ${unitDisplayName(unit)} is knocked into the lava — and bursts into flame!`);
                 showFloatingTextForUnit(unit, '🌋 LAVA!', 'damage', { durationMs: 1200 });
                 if (typeof playSfx === 'function') playSfx('burningDamage');
@@ -4720,10 +4746,16 @@
                 showFloatingTextForUnit(target, '💧 STEAM', 'heal', { durationMs: 900 });
                 return false;
             }
-            // 🔥 Thermal Regen (Kaiju race passive, 2026-07-23): immune to Burn.
-            if (payload.id === 'burn' && target.race === 'kaiju') {
-                addLog(`🔥 ${unitDisplayName(target)}'s Thermal Regen shrugs off the burn!`);
-                showFloatingTextForUnit(target, '🔥 IMMUNE', 'heal', { durationMs: 900 });
+            /* 🛡 Passive status immunities (2026-07-23, data.js PASSIVE_DEFS):
+               any passive whose immuneStatus list names this status bounces it
+               outright — Thermal Regen vs Burn, Man-at-Arms vs Stagger,
+               Unquiet/Fractal/Serene Mind vs Charm & Siren Song. One check,
+               every current and future immunity passive. */
+            const _immPassive = (typeof unitPassiveBlocksStatus === 'function')
+                ? unitPassiveBlocksStatus(target, payload.id) : null;
+            if (_immPassive) {
+                addLog(`${_immPassive.icon} ${unitDisplayName(target)}'s ${_immPassive.name} shrugs off ${(STATUS_DEFS[payload.id]?.label) || payload.id}!`);
+                showFloatingTextForUnit(target, `${_immPassive.icon} IMMUNE`, 'heal', { durationMs: 900 });
                 return false;
             }
             const status = ensureUnitStatus(target);
@@ -14696,11 +14728,15 @@
                 return false;
             }
 
-            // ── 🔥 Thermal Regen (Kaiju race passive, 2026-07-23) ──────────
-            // The reactor feeds on heat: ANY fire-element hit (spells, burn
-            // ticks, fire weather) heals the kaiju instead of hurting him.
-            // (Burn itself also can't be applied — see applyStatusPayload.)
-            if (target.race === 'kaiju' && opts.element === 'fire' && damage > 0) {
+            // ── 🔥 Element-drinking passives (Thermal Regen, 2026-07-23) ───
+            // Driven by the healedByElement hook flag in data.js PASSIVE_DEFS:
+            // ANY hit of that element (spells, burn ticks, lava, fire weather)
+            // heals the unit instead of hurting it. Kaiju/fire today; the next
+            // "healed by X" passive is a data entry, not an engine patch.
+            // (The matching status DoT is also blocked — see applyStatusPayload.)
+            const _drinkEl = (typeof unitPassiveValue === 'function')
+                ? unitPassiveValue(target, 'healedByElement') : undefined;
+            if (_drinkEl && opts.element === _drinkEl && damage > 0) {
                 const _regen = Math.max(1, Math.round(damage));
                 target.hp = Math.min(target.maxHp, (target.hp || 0) + _regen);
                 addLog(`🔥 ${unitDisplayName(target)}'s Thermal Regen drinks the flames — restores ${_regen} HP!`);
@@ -28688,7 +28724,7 @@
             canAffordSpell, getSpellApCost, getSpellCooldownRemaining,
             getCritChance, getEvasionChance,
             getMoveTiles, getAttackTiles, getInspectTiles, getSpellRangeTiles,
-            getJumpTiles, canJump, getUnitJumpStat, getUnitJumpClimb,
+            getJumpTiles, canJump, getUnitJumpStat, getUnitJumpClimb, getUnitJumpReach,
             isRangeBlockedByTerrain, getLinePoints,
             unitHasStatus, unitHasFlair, unitHasWard,
             isUnitConcealedFrom, isUnitSeenByAnyEnemy, isUnitSeenByTeam, checkStealthReveals,
@@ -32694,7 +32730,7 @@
             const tiles = [];
             const tileSet = new Set();
             const _gravBonus = _jumpGrav === 'weak' ? 2 : 0;
-            const reach = getUnitJumpStat(unit) + _gravBonus;   // horizontal reach in tiles
+            const reach = getUnitJumpReach(unit) + _gravBonus;  // horizontal reach in tiles (min 2 = crosses a 1-wide gap)
             const climb = getUnitJumpClimb(unit) + _gravBonus;  // max height we can hop up
             const has3D = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
             for (let dy = -reach; dy <= reach; dy++) {
@@ -33574,6 +33610,26 @@
                         sourceUnit: unit,
                         isCrit
                     });
+
+                    /* 🩸 Hemophage (vampire race passive, data.js PASSIVE_DEFS):
+                       basic attacks drain a fraction of the HP actually removed
+                       (post-armor/shield, measured off the target's HP bar) back
+                       to the attacker. Keys off the hook flag, not the race. */
+                    const _hemoPct = (typeof unitPassiveValue === 'function')
+                        ? unitPassiveValue(unit, 'basicAttackLifesteal') : undefined;
+                    if (_hemoPct && !unit.dead) {
+                        const _hpLost = Math.max(0, preHp - Math.max(0, target.hp || 0));
+                        const _drain = Math.round(_hpLost * _hemoPct);
+                        if (_drain > 0 && unit.hp < unit.maxHp) {
+                            unit.hp = Math.min(unit.maxHp, (unit.hp || 0) + _drain);
+                            addLog(`🩸 ${unitDisplayName(unit)}'s Hemophage drinks ${_drain} HP!`);
+                            if (!_skipVisuals()) {
+                                showFloatingTextForUnit(unit, `🩸 +${_drain}`, 'heal', { durationMs: 1100 });
+                                flashUnit(unit.id, 'heal');
+                            }
+                            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+                        }
+                    }
 
                     if (killed) {
                         const matchOver = checkWinConditionOnly();
@@ -34708,7 +34764,18 @@
             for (const m of modified) {
                 const u = unitAt(m.x, m.y);
                 if (u && !u.dead) {
-                    u.z = m.newH;
+                    /* 🕊️ Flying passive: an AIRBORNE flyer hovers above the
+                       tile — reshaping the ground never yanks it down (or up)
+                       to the new surface. It only rises if the new ground
+                       would swallow its hover height. Grounded units (flyers
+                       included) ride the terrain like always. */
+                    const _dAir = (typeof isUnitAirborne === 'function') && isUnitAirborne(u);
+                    if (_dAir) {
+                        if ((u.z ?? 0) < m.newH) u.z = m.newH;
+                        else continue;
+                    } else {
+                        u.z = m.newH;
+                    }
                     if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: u, fromX: m.x, fromY: m.y });
                 }
             }
@@ -37896,7 +37963,9 @@
                     if (spell.pullThroughHazards) {
                         const terrain = getTerrainAt(nx, ny);
                         if (terrain === 'lava' || terrain === 'poison') {
-                            applyDamageToUnit(target, 24, `Dragged through ${terrain}: `, { sourceUnit: unit, damageType: 'magic', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null });
+                            // Lava drags are fire-element (2026-07-23) so Thermal
+                            // Regen units heal from the trip through the melt.
+                            applyDamageToUnit(target, 24, `Dragged through ${terrain}: `, { sourceUnit: unit, damageType: 'magic', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, element: terrain === 'lava' ? 'fire' : null });
                         }
                     }
                     target.x = nx;

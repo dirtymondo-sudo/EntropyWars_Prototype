@@ -261,6 +261,13 @@
 
     function estDamage(g, unit, tg, sp, fromX, fromY, fromH) {
         let raw, dmgType = 'physical', ignoreArmor = false;
+        // 🔥 Element-drinking passives (Thermal Regen): a spell whose element
+        // the target HEALS from is worth zero — never "damage" a kaiju with
+        // fire. Uses the engine's own element classifier + passive registry.
+        if (sp && typeof unitPassiveValue === 'function' && typeof classifySpellElement === 'function') {
+            const _drink = unitPassiveValue(tg, 'healedByElement');
+            if (_drink && classifySpellElement(sp) === _drink) return 0;
+        }
         if (sp) {
             raw = baseSpellDmg(sp) + (unit.spellPower || 0);
             dmgType = sp.damageType === 'magic' ? 'magic' : 'physical';

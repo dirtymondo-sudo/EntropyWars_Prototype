@@ -4,7 +4,66 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## DIVINE HOST BATCH: valkraye/angel/ghost/nephilim 3D + VFX + unlock (2026-07-22, LATEST) — sprites.js, data.js, server.js, three-vfx-effects.js
+## PASSIVE REGISTRY + JUMP-1 REWORK + SPELL DEDUP (2026-07-23, LATEST) — data.js, battle.js, map.js, ai.js, ainew.js, party-builder.js
+Token `20260723b` → `20260723c`.
+- **UNIT PASSIVE REGISTRY** (data.js, right after RACE_PROFILES):
+  `PASSIVE_DEFS` (id → {icon,name,desc,+hook flags}), `RACE_PASSIVES`
+  (race → up to 2 ids), `MAX_UNIT_PASSIVES = 2`. Helpers on window:
+  `getUnitPassives(unit)` (Flying auto-inserted FIRST for canFly units, list
+  hard-capped at 2), `unitHasPassive(u,id)`, `unitPassiveValue(u,key)`,
+  `unitPassiveBlocksStatus(u,statusId)`. Hook flags the engine reads:
+  `healedByElement:'fire'` (applyDamageToUnit converts the hit to healing),
+  `immuneStatus:[...]` (applyStatusPayload bounces with an IMMUNE float),
+  `phasing:true` (map.js unitIsPhasing → getMoveTiles/findMovePath),
+  `basicAttackLifesteal:0.25` (doAttack drains % of HP actually removed).
+  Wired: kaiju thermalRegen, ghost spectralPassage, knight manAtArms
+  (stagger-immune), telepath unquietMind + machine elves fractalMind +
+  nordic sereneMind (charm+sirenSong-immune), vampire hemophage. Ghost/
+  vampire/telepath fly, so their slots are full (flying + 1). Adding the
+  next passive = one PASSIVE_DEFS entry + one RACE_PASSIVES id. party-
+  builder RACE_TRAITS now OVERLAYS the registry at load (same-name rows
+  replaced, missing rows prepended) so the hero-sheet display can't drift.
+- **Thermal Regen ⇄ lava**: lava is fire-element end to end — lava terrain
+  endTurn heals a fire-drinker +40/turn (and zeroes _lavaBurnStacks),
+  knockback-into-lava splash, dragged-through-lava and _burnUnitOnTile all
+  pass `element:'fire'`, and the burn DoT tick itself is element:'fire'.
+  `classifySpellElement` is now exported on window for the AI.
+- **JUMP REWORK** (battle.js:~78-190): `JUMP_HEIGHT` 2→1; spd-derived jump
+  stat is 1 for spd≤8, 2 for 9+ (RACE_JUMP_OVERRIDE unchanged: kaiju-class
+  3, cyclops/yeti/mech-class 2). `getUnitJumpClimb` = the stat (no more
+  flat-2 floor) → 2-high walls now actually wall out jump-1 units (Move
+  climb legs, edge-wall vaults AND the Jump verb all obey it). NEW
+  `getUnitJumpReach` = max(2, stat) is the Jump action's horizontal ring —
+  every ground unit still clears a 1-wide gap. Jump already cost 1 AP
+  (AP_COST_ACTION in doJump) — unchanged. wallBlocksJump legacy default
+  jumpClimb 2→1 (map.js). ai.js heuristic A*/corridor now uses
+  g.getUnitJumpClimb(unit) (falls back to JUMP_HEIGHT) and skips
+  objectBlocksEdge for phasing units.
+- **FLYING while airborne** (already engine-enforced, kept): skips terrain
+  endTurn ticks, traps, seeds, laser tiles, can't channel nexus. NEW:
+  applyTerrainDeform no longer snaps an AIRBORNE flyer's z to the reshaped
+  surface (only pushes up if the new ground would swallow it).
+- **AI**: ainew.js estDamage returns 0 and ai.js scoreSpell returns -999
+  for damage/ricochet/multiHit/dash spells whose classifySpellElement
+  matches the target's healedByElement (no more Dragonfire healing kaiju).
+- **SPELL DEDUP** (data.js, consts just above RACE_ABILITIES): blink
+  archetypes `_BLINK_ARCHETYPES` {short: 3-tile LoS 15MP, shadow: 4-tile
+  noLoS 20MP cd2, long: 5-tile 25MP} via `_mkBlink` — VoidStep/ShadowStep
+  =shadow, MirrorBlink/PhaseWalk/GravityBoots=short (were 4 tiles, now 3),
+  InstantTransmission=long. `_JAM_BOLT`/`_DISCORD_BOLT` + `_mkBolt` —
+  Possession/CanopicCurse/Deneuralizer, Brainwash/BlackPhillipsGaze/
+  CharmBeam. `_mkCharge` base (120 phys, r3, 25MP, chargeToTarget) — all 16
+  race charges (dash/stagger/poison/dmg-tier via overrides). Per-race
+  ids/names/descs KEPT (three-vfx-effects.js keys VFX on ids: raceMirror-
+  Blink 1617, racePossession 1799/12857, raceCanopicCurse 1806,
+  raceDeneuralizer 1817). Note the load-time [ManaEconomy] pass re-derives
+  final MP costs anyway. warpRune (own kind, 6-file wiring) and Grave
+  Passage (deployPair) deliberately untouched.
+- Online parity: no new banners/cameras/state fields; all new effects are
+  host-engine HP/status/log changes that ride the existing state-sync
+  (state.logEntries is synced), and move/jump previews are shared code.
+
+## DIVINE HOST BATCH: valkraye/angel/ghost/nephilim 3D + VFX + unlock (2026-07-22) — sprites.js, data.js, server.js, three-vfx-effects.js
 Token `20260722h` → `20260722i`. User uploaded four rigged Character_output
 GLBs (paths given verbatim; CDN egress is blocked in the remote-session
 environment, so NOT HEAD-verified — if a model 404s, check the file stem
