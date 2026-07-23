@@ -3281,7 +3281,9 @@
         const _phase = typeof unitIsPhasing === 'function' && unitIsPhasing(unit);
 
         const open = [{ x: unit.x, y: unit.y, f: Math.abs(unit.x - goalX) + Math.abs(unit.y - goalY) }];
-        const DIRS = [[1,0],[0,1],[-1,0],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+        // Movement is 4-directional (cardinal only) — engine parity with
+        // getMoveTiles/findMovePath, which dropped diagonal steps.
+        const DIRS = [[1,0],[0,1],[-1,0],[0,-1]];
 
         while (open.length) {
 
@@ -3320,12 +3322,6 @@
 
                 if (!_phase && g.objectBlocksEdge && g.objectBlocksEdge(cur.x, cur.y, nx, ny)) continue;
 
-                if (dx !== 0 && dy !== 0) {
-                    const canX = g.isInside(cur.x + dx, cur.y) && g.unitCanTraverse(unit, cur.x + dx, cur.y);
-                    const canY = g.isInside(cur.x, cur.y + dy) && g.unitCanTraverse(unit, cur.x, cur.y + dy);
-                    if (!canX && !canY) continue;
-                }
-
                 if (_hasHeight && !_canFly) {
                     const curH = g.getHeightAt(cur.x, cur.y);
                     const nxH = g.getHeightAt(nx, ny);
@@ -3342,8 +3338,7 @@
 
                 // Elevation is free (engine parity: getMoveTiles/findMovePath
                 // no longer surcharge climbs — jump and movement are the same).
-                const moveCost = (dx !== 0 && dy !== 0) ? 1.41 : 1;
-                const tentG = gScore[ci] + moveCost;
+                const tentG = gScore[ci] + 1;
                 if (tentG >= gScore[ni]) continue;
                 gScore[ni] = tentG;
                 from[ni] = ci;

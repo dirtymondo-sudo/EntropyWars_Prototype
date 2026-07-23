@@ -16428,9 +16428,11 @@
                 const curKey = _has3D ? posKey3(cur.x, cur.y, cur.z) : posKey(cur.x, cur.y);
                 if (curKey === goalKey) break;
                 if (cur.cost > (costs.get(curKey) ?? Infinity)) continue;
+                /* Movement is 4-directional (cardinal only) — diagonal steps
+                   let units clip through wall corners instead of walking
+                   around them. Mirrors getMoveTiles. */
                 for (const [dx, dy] of [
-                        [1, 0], [-1, 0], [0, 1], [0, -1],
-                        [1, 1], [1, -1], [-1, 1], [-1, -1]
+                        [1, 0], [-1, 0], [0, 1], [0, -1]
                     ]) {
                     const nx = cur.x + dx;
                     const ny = cur.y + dy;
@@ -16456,11 +16458,6 @@
 
                         if (!unitCanTraverse(unit, nx, ny, _has3D ? nz : undefined)) continue;
 
-                        if (dx !== 0 && dy !== 0) {
-                            const canPassX = isInside(cur.x + dx, cur.y) && unitCanTraverse(unit, cur.x + dx, cur.y, _has3D ? cur.z : undefined);
-                            const canPassY = isInside(cur.x, cur.y + dy) && unitCanTraverse(unit, cur.x, cur.y + dy, _has3D ? cur.z : undefined);
-                            if (!canPassX && !canPassY) continue;
-                        }
                         const _hd = Math.abs(cur.z - nz);
 
                         /* Authored edge walls, z-exact (mirrors getMoveTiles):
@@ -16509,7 +16506,7 @@
 
                         /* Elevation is free — mirrors getMoveTiles (jump and
                            movement are the same thing; no height surcharge). */
-                        const nextCost = cur.cost + getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined) + ((dx !== 0 && dy !== 0) ? 0.001 : 0);
+                        const nextCost = cur.cost + getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined);
                         if (nextCost > maxMove) continue;
                         const nKey = _has3D ? posKey3(nx, ny, nz) : posKey(nx, ny);
                         if (nextCost >= (costs.get(nKey) ?? Infinity)) continue;
@@ -41612,15 +41609,14 @@
                 const curKey = _has3D ? posKey3(cur.x, cur.y, cur.z) : posKey(cur.x, cur.y);
                 if (cur.cost > (bestCost.get(curKey) ?? Infinity)) continue;
 
+                /* Movement is 4-directional (cardinal only) — diagonal steps
+                   let units clip through wall corners instead of walking
+                   around them. Mirrors findMovePath. */
                 for (const [dx, dy] of [
                         [1, 0],
                         [-1, 0],
                         [0, 1],
-                        [0, -1],
-                        [1, 1],
-                        [1, -1],
-                        [-1, 1],
-                        [-1, -1]
+                        [0, -1]
                     ]) {
                     const nx = cur.x + dx;
                     const ny = cur.y + dy;
@@ -41652,12 +41648,6 @@
                         if (!unitCanTraverse(unit, nx, ny, _has3D ? nz : undefined)) {
 
                             continue;
-                        }
-
-                        if (dx !== 0 && dy !== 0) {
-                            const canPassX = isInside(cur.x + dx, cur.y) && unitCanTraverse(unit, cur.x + dx, cur.y, _has3D ? cur.z : undefined);
-                            const canPassY = isInside(cur.x, cur.y + dy) && unitCanTraverse(unit, cur.x, cur.y + dy, _has3D ? cur.z : undefined);
-                            if (!canPassX && !canPassY) { continue; }
                         }
 
                         const curZ = cur.z;
@@ -41751,7 +41741,7 @@
                            (The old 0.5/level surcharge pushed high tiles out
                            of the move set and forced a move + separate 1-AP
                            Jump to reach them.) */
-                        const nextCost = cur.cost + getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined) + ((dx !== 0 && dy !== 0) ? 0.001 : 0);
+                        const nextCost = cur.cost + getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined);
                         if (nextCost > maxCost) { continue; }
 
                         const nKey = _has3D ? posKey3(nx, ny, nz) : posKey(nx, ny);
