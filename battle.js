@@ -18508,11 +18508,11 @@
             return _PRESS_SPELL_KINDS.has(spell.kind);
         }
 
-        /* Setup placements (Place Bomb, Prism Mirror) are FREE actions: they
-           cost 0 AP and never consume the one-spell-per-turn slot, so a unit
-           can lay several in one turn and STILL Detonate / Pulse Lattice /
-           attack / move. MP cost and maxActivePerCaster stay the real
-           limiters (and the turn still ends normally once AP actions run out). */
+        /* Setup placements (Place Bomb, Prism Mirror) cost their normal 1 AP
+           but never consume the one-spell-per-turn slot or the same-spell
+           repeat lock — placing one must NOT spend the rest of the turn. So
+           with 2 AP a unit can place two, or place one and still Detonate /
+           Pulse Lattice / attack / move. */
         function spellIsSetupPlacement(spell) {
             return !!spell && (spell.kind === 'bomb' || spell.kind === 'placeMirror');
         }
@@ -18536,7 +18536,8 @@
            cast path rejects it. Basic attacks are exempt. */
         function _markSpellUsedThisTurn(unit, spell) {
             if (!unit || !spell) return;
-            // Free setup placements never lock the spell slot — repeat away.
+            // Setup placements never lock the spell slot — repeat away
+            // (each still costs its 1 AP).
             if (spellIsSetupPlacement(spell)) return;
             const key = spell.id || spell.name;
             if (!key) return;
@@ -18550,9 +18551,6 @@
         window.spellUsedThisTurn = spellUsedThisTurn;
 
         function getSpellApCost(spell) {
-            // Setup placements (bombs, prisms) are free actions — see
-            // spellIsSetupPlacement above.
-            if (spellIsSetupPlacement(spell)) return 0;
             const cost = (spell && spell.apCost != null) ? spell.apCost : AP_COST_SPELL;
             // Every action costs 1 AP under the two-action turn: legacy
             // per-spell apCost:2 entries in data.js are clamped down so
@@ -18600,9 +18598,9 @@
             // committed cast marks exactly one key). The only exemption: a
             // press refund (weakness/crit) hands back a full fresh action,
             // which may be a second cast.
-            // Free setup placements (bombs, prisms) are exempt from the
-            // per-turn cast cap — they neither count toward it nor get
-            // blocked by it (see spellIsSetupPlacement).
+            // Setup placements (bombs, prisms) are exempt from the per-turn
+            // cast cap — they neither count toward it nor get blocked by it
+            // (see spellIsSetupPlacement); AP is their only limiter.
             if (!spellIsSetupPlacement(spell)) {
                 const _castsUsed = unit._spellsUsedThisTurn
                     ? Object.keys(unit._spellsUsedThisTurn).length : 0;
