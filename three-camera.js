@@ -310,6 +310,28 @@ const ThreeCamera = (function () {
              and force-lifting a wall-adjacent eye onto the top of that wall
              was the "camera standing on the clifftop staring at dirt
              instead of my unit" bug. */
+        /* ── Hand-held / subject-framing free look (gates the sky-gaze lift
+           and the past-horizon aim below) ──
+           handHeld: the PLAYER owns the camera — a live hand drag
+           (state._userPanning) or the post-drag height latch
+           (cam._panElevLatch, battle.js; cleared by the next programmatic
+           move). A hand-held camera pivots in place like a head turning;
+           it must never be auto-craned 9 tiles into the air just because
+           the gaze pitched up — that lift is a CINEMATIC framing device
+           (intro map-name crane, zodiac/celestial shot), not a free-look
+           behavior.
+           subjectLook: the focal itself hangs well above the ground under
+           it — an airborne flyer the controller's focal height is
+           tracking. Looking up at that subject must behave like a normal
+           orbit camera: eye stays low, gaze stays ON the subject, the
+           flyer reads against the sky. The empty-sky crane response only
+           fits a GROUND-level focal (the cinematics'), which the height
+           test preserves exactly. */
+        const handHeld = !!((typeof state !== 'undefined' && state && state._userPanning)
+            || (cam._panElevLatch !== null && cam._panElevLatch !== undefined));
+        const subjectLook = !isTps && !cam._cineKeepSubject
+            && (focalY - _groundYWorld(focalX, focalZ)) > ts * 0.85;
+
         if (dirY > 1e-4 || !(isTps || cam._cineKeepSubject)) {
             const eg = _groundYWorld(eyeX, eyeZ) + clear;
             if (eyeY < eg) eyeY = eg;
@@ -327,7 +349,7 @@ const ThreeCamera = (function () {
                the dirt at 90° and popping back up. Subject-framing modes
                (TPS, keep-subject cine shots) keep their own dolly response —
                they WANT to stay at the character's shoulder. */
-            if (!isTps && !cam._cineKeepSubject && dirY > -0.35) {
+            if (!isTps && !cam._cineKeepSubject && !handHeld && !subjectLook && dirY > -0.35) {
                 const t01 = Math.min(1, (dirY + 0.35) / 0.8);
                 const skyF = t01 * t01 * (3 - 2 * t01);
                 const skyBase = Math.max(_groundYWorld(eyeX, eyeZ), focalY);
@@ -354,17 +376,40 @@ const ThreeCamera = (function () {
             targetLookY = pivY + dirY * ahead;
             targetLookZ = pivZ + dirZ * ahead;
         } else if (dirY > 1e-4 && !cam._cineKeepSubject) {
-            /* Board free-look / cinematic SKY gaze: aim along the view
-               direction FROM THE CLAMPED EYE, not from the ground pivot.
-               With the sky-gaze lift above, an aim point derived from the
-               (ground-level) pivot could land BELOW the raised eye and pitch
-               the camera back down at the terrain — aiming from the eye
-               keeps the gaze direction exactly (dirX,dirY,dirZ) no matter
-               how far the floor lifted it, so the sky subject stays framed. */
-            const ahead = ts * 6;
-            targetLookX = eyeX + dirX * ahead;
-            targetLookY = eyeY + dirY * ahead;
-            targetLookZ = eyeZ + dirZ * ahead;
+            if (subjectLook) {
+                /* Raised focal (airborne flyer): NORMAL ORBIT past the
+                   horizon — the eye is floored near the ground and the gaze
+                   stays pinned to the subject, so craning up frames the
+                   flyer against the sky instead of whipping past it into
+                   empty firmament. Continuous with the level/down branch
+                   below (both aim at the focal). */
+                targetLookX = focalX;
+                targetLookY = focalY;
+                targetLookZ = focalZ;
+            } else {
+                /* Board free-look / cinematic SKY gaze: aim along the view
+                   direction FROM THE CLAMPED EYE, not from the ground pivot.
+                   With the sky-gaze lift above, an aim point derived from the
+                   (ground-level) pivot could land BELOW the raised eye and pitch
+                   the camera back down at the terrain — aiming from the eye
+                   keeps the gaze direction exactly (dirX,dirY,dirZ) no matter
+                   how far the floor lifted it, so the sky subject stays framed.
+                   BLENDED in from the focal-aim the level branch uses: the old
+                   hard switch at 90° flicked the gaze from "at the focal" to
+                   "level into the sky" in ONE frame whenever the floor had
+                   lifted the eye off the orbit ray — the visible snap when a
+                   hand crane crossed the horizon. Fully sky-aimed by ~100°,
+                   so the cinematic cranes (tilt 164+) are bit-identical. */
+                const ahead = ts * 6;
+                const bl = Math.min(1, dirY / 0.18);
+                const bs = bl * bl * (3 - 2 * bl);
+                const sx = eyeX + dirX * ahead;
+                const sy = eyeY + dirY * ahead;
+                const sz = eyeZ + dirZ * ahead;
+                targetLookX = focalX + (sx - focalX) * bs;
+                targetLookY = focalY + (sy - focalY) * bs;
+                targetLookZ = focalZ + (sz - focalZ) * bs;
+            }
         } else {
             /* Level/downward gaze (and keep-subject cine shots): classic
                orbit — the focal stays dead-centred. When the ground clamp
