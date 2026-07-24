@@ -2,27 +2,31 @@ const h = React.createElement;
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 const EW = {
-  // Neutral bone-on-black base — the old navy/gold "hologram" chrome is
-  // gone; color now means something (faction, spell job, danger).
-  bg:       '#070706',
-  panel:    'rgba(10,10,9,0.85)',
-  panelEdge:'rgba(200,192,165,0.16)',
-  panelEdgeHi:'rgba(228,220,196,0.32)',
-  ink:      '#eceadd',
-  inkMute:  '#979181',
-  inkDim:   '#6a665a',
-  space:    '#5fd6ff',
-  time:     '#f2c468',
-  chaos:    '#e168c8',
-  human:    '#a0a0c3',
-  alien:    '#32aa50',
-  divine:   '#dcaa1e',
-  unholy:   '#9632b4',
-  anomaly:  '#dc3c82',
-  tech:     '#28a0be',
+  // PS1-era esoteric tactical chrome: near-black violet-tinted panels with
+  // thin dusty-purple hairlines, warm bone ink, mono data labels. Color
+  // still MEANS something (faction, spell job, danger) — the chrome itself
+  // stays quiet so those colors read.
+  bg:       '#060509',
+  panel:    'rgba(8,7,12,0.88)',
+  panelEdge:'#3a3548',
+  panelEdgeHi:'#55506a',
+  ink:      '#e8e4d8',
+  body:     '#c9c4b4',
+  inkMute:  '#7a7490',
+  inkDim:   '#5e5875',
+  gold:     '#f0d060',
+  space:    '#4fd8ff',
+  time:     '#f0d060',
+  chaos:    '#ff4fa3',
+  human:    '#d8cfa8',
+  alien:    '#58d858',
+  divine:   '#f0c860',
+  unholy:   '#a06bff',
+  anomaly:  '#ff4fa3',
+  tech:     '#4fd8ff',
   good:     '#6ee2a8',
   bad:      '#ff7a8a',
-  warn:     '#f2c468',
+  warn:     '#f0d060',
 };
 
 // ── Canonical vital-bar palette (shared with the 3D nameplates in
@@ -42,25 +46,24 @@ const MP_GLOW = '0 0 6px rgba(47,157,255,0.4)';
 const FACTION_COLORS = { space: EW.space, time: EW.time, chaos: EW.chaos };
 const TYPE_COLORS = { human: EW.human, alien: EW.alien, divine: EW.divine, unholy: EW.unholy, anomaly: EW.anomaly, tech: EW.tech };
 // Brightened text colors for the canonical type badge (legible over any background).
-const TYPE_TEXT_COLORS = { human: '#c8c8e4', divine: '#f2c63c', unholy: '#c566e2', tech: '#4ecbe2', anomaly: '#ff5e98', alien: '#56d178' };
+const TYPE_TEXT_COLORS = { human: '#d8cfa8', divine: '#f0c860', unholy: '#a06bff', tech: '#4fd8ff', anomaly: '#ff4fa3', alien: '#58d858' };
 
 // ── THE single, canonical type/kind badge used EVERYWHERE ──
-// Cut-corner chip: bright colored text on a tinted-over-dark fill + colored
-// border. `base` drives the tint/border; pass a type key to `typeBadgeStyle`
-// via opts.text for the brightened reading color. Non-type kinds (ATTACK,
-// COMBO, …) just pass their own color as base and reuse the same shape.
+// PS1 outline chip: a thin 1px frame in the type's color around small
+// letterspaced mono caps of the same color, over near-black. No fill wash,
+// no cut corners — the color IS the badge. Non-type kinds (ATTACK, COMBO, …)
+// pass their own color as base and reuse the same shape.
 function typeBadgeStyle(base, opts) {
   opts = opts || {};
   return {
     display: 'inline-flex', alignItems: 'center', flexShrink: 0,
-    fontFamily: '"DotGothic16", monospace', fontSize: opts.fontSize || 9, fontWeight: 700,
-    letterSpacing: '0.12em', textTransform: 'uppercase', lineHeight: 1.3,
+    fontFamily: '"IBM Plex Mono", monospace', fontSize: opts.fontSize || 9, fontWeight: 500,
+    letterSpacing: '0.14em', textTransform: 'uppercase', lineHeight: 1.3,
     color: opts.text || base,
-    background: 'linear-gradient(' + base + '22,' + base + '22), rgba(10,10,9,0.82)',
-    border: '1px solid ' + base + 'aa',
-    padding: opts.padding || '2px 7px',
+    background: 'rgba(8,7,12,0.72)',
+    border: '1px solid ' + base,
+    padding: opts.padding || '1px 6px',
     textShadow: '0 1px 2px rgba(0,0,0,0.85)',
-    clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)',
   };
 }
 function typeBadgeStyleFor(typeKey, opts) {
@@ -69,7 +72,7 @@ function typeBadgeStyleFor(typeKey, opts) {
   return typeBadgeStyle(base, Object.assign({ text: TYPE_TEXT_COLORS[k] || base }, opts || {}));
 }
 
-const ALLY_COLOR  = '#4a9eff';
+const ALLY_COLOR  = '#4fd8ff';
 const ENEMY_COLOR = '#ff4a5a';
 
 function getAllianceColor(unit) {
@@ -245,13 +248,14 @@ function useMenusHidden(st) {
 }
 
 function ClipPanel({ children, style, factionColor, corner = 14, ...props }) {
+  // PS1 data-plate: a plain hairline rectangle — no cut corners. The
+  // faction accent survives as the 2px left spine.
   const fc = factionColor || EW.space;
   return h('div', {
     style: {
       position: 'relative',
       background: EW.panel,
       border: '1px solid ' + EW.panelEdge,
-      clipPath: `polygon(0 0, 100% 0, 100% calc(100% - ${corner}px), calc(100% - ${corner}px) 100%, 0 100%)`,
       ...style,
     },
     ...props,
@@ -271,7 +275,7 @@ function HudBar({ label, val, max, color, pip, small, pressFlash }) {
   const barH = small ? 3 : 5;
   return h('div', { className: pressFlash ? 'hud-ap-press' : undefined, style: { display: 'flex', alignItems: 'center', gap: small ? 4 : 6 }},
     h('span', { style: {
-      fontFamily: '"DotGothic16", monospace', fontSize: fontSize,
+      fontFamily: '"IBM Plex Mono", monospace', fontSize: fontSize,
       color: EW.inkDim, letterSpacing: '0.16em', width: small ? 10 : 14,
     }}, label),
     pip
@@ -296,7 +300,7 @@ function HudBar({ label, val, max, color, pip, small, pressFlash }) {
           }})
         ),
     !small && h('span', { style: {
-      fontFamily: '"DotGothic16", monospace', fontSize: small ? 8 : 10,
+      fontFamily: '"IBM Plex Mono", monospace', fontSize: small ? 8 : 10,
       color: EW.ink, fontWeight: 600, width: 62, textAlign: 'right',
     }}, val + '/' + max)
   );
@@ -643,14 +647,14 @@ function TurnChip({ entry, size }) {
     h('div', { style: { height: 9, display: 'flex', alignItems: 'center' }},
       active
         ? h('span', { style: {
-            fontFamily: '"Cinzel", serif', fontStyle: 'italic', fontSize: 8, lineHeight: 1,
-            color: ac, letterSpacing: '0.04em', textShadow: '0 0 6px ' + ac + '88',
+            fontFamily: '"IBM Plex Mono", monospace', fontSize: 8, lineHeight: 1,
+            color: ac, letterSpacing: '0.22em', textShadow: '0 0 6px ' + ac + '88',
           }}, 'NOW')
         : entry.next
           ? h('span', { style: {
-              fontFamily: '"Cinzel", serif', fontStyle: 'italic', fontSize: 8, lineHeight: 1,
-              color: EW.ink, letterSpacing: '0.04em', opacity: 0.8,
-              textShadow: '0 0 5px rgba(236,234,221,0.45)',
+              fontFamily: '"IBM Plex Mono", monospace', fontSize: 8, lineHeight: 1,
+              color: EW.inkMute, letterSpacing: '0.22em', opacity: 0.9,
+              textShadow: '0 0 5px rgba(232,228,216,0.35)',
             }}, 'NEXT')
           : null,
     ),
@@ -686,7 +690,7 @@ function TurnFlank({ st, player, side, nextId }) {
       key: 'overflow',
       title: overflow + ' more',
       style: {
-        alignSelf: 'center', fontFamily: '"DotGothic16", monospace', fontSize: 9,
+        alignSelf: 'center', fontFamily: '"IBM Plex Mono", monospace', fontSize: 9,
         color: EW.inkMute, letterSpacing: '0.04em', padding: '0 3px',
         border: '1px solid ' + EW.panelEdge, background: 'rgba(0,0,0,0.3)',
         minWidth: small, height: small, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -707,7 +711,7 @@ function TurnFlank({ st, player, side, nextId }) {
    portrait flank — everything vertically centred in one thin row. */
 function ScoreSideColumn({ st, mode, player, side, color, nextId }) {
   const isRight = side === 'right';
-  const mono = '"DotGothic16", monospace';
+  const mono = '"IBM Plex Mono", monospace';
   const name = (st._teamNames && st._teamNames[player]) || ('P' + player);
   const sub = player === 1 ? mode.p1Sub : mode.p2Sub;
   const showTower = mode.showTowerHp;
@@ -783,7 +787,7 @@ function EntropyWing({ st, player, side }) {
   const surging = !full && pct >= 70;
   const team = player === 1 ? EW.space : EW.chaos;
   const left = side === 'left';
-  const mono = '"DotGothic16", monospace';
+  const mono = '"IBM Plex Mono", monospace';
 
   /* long sleek PS1 energy line: a thin skewed groove that DISSOLVES toward
      the outer tip (mask fade — no hard cut), growing out of a bright
@@ -959,8 +963,8 @@ function Scoreboard({ st }) {
     const mdD = (typeof MD_DUNGEONS !== 'undefined' && st._mdRun.dungeonId && MD_DUNGEONS[st._mdRun.dungeonId]) || null;
     const mdTotal = mdD ? mdD.floors : 10;
     const mdAlive = (st.units || []).filter(u => u.player === 2 && !u.dead && !u._dying).length;
-    const mdMono = '"DotGothic16", monospace';
-    const mdSerif = '"Cinzel", serif';
+    const mdMono = '"IBM Plex Mono", monospace';
+    const mdSerif = '"Cormorant SC", serif';
 
     /* party in slot order — slot 0 (or the first survivor) is the leader */
     const mdParty = (st.units || [])
@@ -989,7 +993,7 @@ function Scoreboard({ st }) {
           display: 'flex', alignItems: 'center', gap: 14,
           background: EW.panel, border: '1px solid ' + EW.panelEdge,
           boxShadow: '0 6px 28px rgba(0,0,0,0.5)', padding: '7px 20px 8px',
-          clipPath: 'polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px)',
+          /* square PS1 plate — no cut corners */
         },
       },
         h('span', { style: { fontFamily: mdMono, fontSize: 10, letterSpacing: '0.18em', color: EW.inkMute, textTransform: 'uppercase' } },
@@ -1051,8 +1055,8 @@ function Scoreboard({ st }) {
     scoreCaption = 'SCORE';
   }
 
-  const mono = '"DotGothic16", monospace';
-  const serif = '"Cinzel", serif';
+  const mono = '"IBM Plex Mono", monospace';
+  const serif = '"Cormorant SC", serif';
 
   /* Global NEXT unit — the pending (not active, not spent, not dead) entry
      with the lowest queue key across BOTH teams; its chip gets the NEXT tag. */
@@ -1086,40 +1090,38 @@ function Scoreboard({ st }) {
 
       h(ScoreSideColumn, { st, mode, player: 1, side: 'left', color: EW.space, nextId }),
 
-      /* centre cluster — three thin lines: mode / score / caption·time·round,
-         on a side-fading scrim with hairline top/bottom edges (PS1 help-strip
-         style) instead of a boxed panel. */
+      /* centre cluster — the mockup's score box: a bordered PS1 data-plate
+         with the mode name over a hairline divider, the big serif score,
+         and the caption·time·round mono line under it. */
       h('div', { style: {
-        position: 'relative', padding: '6px 18px', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 3, minWidth: 116,
-        background: 'linear-gradient(90deg, rgba(7,7,6,0), rgba(7,7,6,0.68) 16%, rgba(7,7,6,0.68) 84%, rgba(7,7,6,0))',
+        position: 'relative', padding: '5px 20px 7px', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 3, minWidth: 150,
+        background: EW.panel, border: '1px solid ' + EW.panelEdge,
       }},
         h('div', { className: 'ew-scoreboard-sheen', style: {
-          position: 'absolute', top: 0, left: 0, right: 0, height: 1, pointerEvents: 'none',
+          position: 'absolute', top: -1, left: -1, right: -1, height: 1, pointerEvents: 'none',
           background: 'linear-gradient(90deg, transparent, ' + EW.space + '88 30%, ' + EW.chaos + '88 70%, transparent)',
-        }}),
-        h('div', { style: {
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, pointerEvents: 'none',
-          background: 'linear-gradient(90deg, transparent, rgba(200,192,165,0.4) 30%, rgba(200,192,165,0.4) 70%, transparent)',
         }}),
 
         h('span', { className: isSuddenDeath ? 'ew-sudden-death' : undefined, style: {
-          fontFamily: mono, fontSize: 8, letterSpacing: '0.2em', lineHeight: 1,
+          fontFamily: mono, fontSize: 8, letterSpacing: '0.32em', lineHeight: 1,
           color: isSuddenDeath ? EW.bad : EW.inkMute, textTransform: 'uppercase',
           textShadow: isSuddenDeath ? '0 0 8px ' + EW.bad : 'none', whiteSpace: 'nowrap',
+          alignSelf: 'stretch', textAlign: 'center',
+          borderBottom: '1px solid #262233', paddingBottom: 4, marginBottom: 1,
         }}, isSuddenDeath ? '⚡ SUDDEN DEATH' : (mode.label || '')),
 
-        h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 7 }},
+        h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 8 }},
           h('span', { style: {
-            fontFamily: serif, fontSize: 23, fontWeight: 400, lineHeight: 1,
+            fontFamily: mono, fontSize: 22, fontWeight: 500, lineHeight: 1, letterSpacing: '0.08em',
             color: EW.ink, textShadow: '0 0 14px ' + EW.space + '66',
             minWidth: 18, textAlign: 'right',
           }}, mode.p1Score),
           h('span', { style: {
-            fontFamily: serif, fontSize: 13, color: EW.inkDim, fontStyle: 'italic', lineHeight: 1,
+            fontFamily: mono, fontSize: 13, color: EW.inkDim, lineHeight: 1,
           }}, '–'),
           h('span', { style: {
-            fontFamily: serif, fontSize: 23, fontWeight: 400, lineHeight: 1,
+            fontFamily: mono, fontSize: 22, fontWeight: 500, lineHeight: 1, letterSpacing: '0.08em',
             color: EW.ink, textShadow: '0 0 14px ' + EW.chaos + '66',
             minWidth: 18, textAlign: 'left',
           }}, mode.p2Score),
@@ -1205,7 +1207,7 @@ function MatchMeta({ st }) {
     alignItems: 'flex-end', zIndex: 10,
   }},
     mapName && h('div', { style: {
-      fontFamily: '"Cinzel", serif', fontSize: 13, fontWeight: 600,
+      fontFamily: '"Cormorant SC", serif', fontSize: 13, fontWeight: 600,
       letterSpacing: '0.18em', lineHeight: 1, color: EW.ink,
       textShadow: '0 0 12px rgba(214,178,255,0.35), 0 1px 3px rgba(0,0,0,0.8)',
       padding: '2px 2px 0 0', pointerEvents: 'none',
@@ -1214,18 +1216,17 @@ function MatchMeta({ st }) {
       display: 'flex', alignItems: 'center', gap: 10,
       background: EW.panel, border: '1px solid ' + EW.panelEdge,
       padding: '6px 12px',
-      fontFamily: '"DotGothic16", monospace', fontSize: 11,
+      fontFamily: '"IBM Plex Mono", monospace', fontSize: 11,
       letterSpacing: '0.12em', color: EW.inkMute,
-      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
     }},
       h('span', { style: { color: EW.ink }}, weatherText),
       h('span', { style: { width: 1, height: 10, background: EW.panelEdge }}),
       h('span', { style: { display: 'flex', alignItems: 'center', gap: 4 },
         title: zodiacBlessed ? zodiacLabel + ' reigns — matching units gain +10%' : zodiacLabel + ' reigns' },
         h('span', { className: zodiacBlessed ? 'ew-zodiac-blessed' : undefined, style: {
-          fontFamily: '"Cinzel", serif', fontStyle: 'italic',
-          fontSize: 15, color: zodiacBlessed ? '#ffd866' : EW.time,
-          textShadow: zodiacBlessed ? '0 0 8px rgba(255,200,80,0.9), 0 0 16px rgba(255,170,40,0.5)' : undefined,
+          fontFamily: '"Cormorant SC", serif', fontStyle: 'italic',
+          fontSize: 15, color: zodiacBlessed ? '#f0d060' : EW.time,
+          textShadow: zodiacBlessed ? '0 0 8px rgba(240,208,96,0.9), 0 0 16px rgba(240,208,96,0.5)' : undefined,
         }}, zodiacIcon),
         h('span', { style: { color: EW.ink }}, zodiacLabel),
       ),
@@ -1316,7 +1317,7 @@ function CombatLog({ st }) {
     },
   },
     h('span', { style: {
-      fontFamily: '"DotGothic16", monospace', fontSize: 9,
+      fontFamily: '"IBM Plex Mono", monospace', fontSize: 9,
       letterSpacing: '0.22em', color: EW.inkMute,
     }}, 'COMBAT LOG'),
     h('div', { style: {
@@ -1332,10 +1333,10 @@ function CombatLog({ st }) {
 
   return h('div', { className: 'ew-combatlog', style: {
     position: 'absolute', right: 90, top: 140, width: 280,
-    padding: '8px 12px 0', background: 'rgba(8,10,18,0.55)',
+    padding: '8px 12px 0', background: 'rgba(8,7,12,0.55)',
     borderLeft: '2px solid ' + EW.panelEdge,
     display: 'flex', flexDirection: 'column',
-    fontFamily: '"DotGothic16", monospace', fontSize: 10,
+    fontFamily: '"IBM Plex Mono", monospace', fontSize: 10,
     zIndex: 8, pointerEvents: 'auto',
   }},
     header,
@@ -1408,14 +1409,13 @@ function PartyRoster({ st }) {
       return h('div', { style: {
         display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end',
         background: EW.panel, border: '1px solid ' + EW.panelEdge, padding: '5px 8px',
-        clipPath: 'polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px)',
       }},
         h('span', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 7, color: EW.inkMute,
+          fontFamily: '"IBM Plex Mono", monospace', fontSize: 7, color: EW.inkMute,
           letterSpacing: '0.14em', marginRight: 2,
         }}, 'RESERVES'),
         reserves.length === 0 && h('span', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 8, color: EW.inkDim,
+          fontFamily: '"IBM Plex Mono", monospace', fontSize: 8, color: EW.inkDim,
         }}, '—'),
         reserves.map(r => {
           const fc = getFactionColor(r);
@@ -1466,10 +1466,10 @@ function GauntletReplaceModal({ st }) {
         background: 'linear-gradient(180deg, ' + fc + '18, transparent)',
       }},
         h('div', { style: {
-          fontFamily: '"Cinzel", serif', fontSize: 16, color: EW.ink, letterSpacing: '0.04em',
+          fontFamily: '"Cormorant SC", serif', fontSize: 16, color: EW.ink, letterSpacing: '0.04em',
         }}, '⚔️ Unit Down — Send In a Reserve'),
         h('div', { style: {
-          fontFamily: '"DotGothic16", monospace', fontSize: 8, color: EW.inkMute,
+          fontFamily: '"IBM Plex Mono", monospace', fontSize: 8, color: EW.inkMute,
           letterSpacing: '0.1em', marginTop: 3,
         }}, 'No respawns. Choose who enters the fray.'),
       ),
@@ -1490,16 +1490,16 @@ function GauntletReplaceModal({ st }) {
             h(UnitSprite, { unit: r, size: 30 }),
             h('div', { style: { flex: 1, minWidth: 0 }},
               h('div', { style: {
-                fontFamily: '"Cinzel", serif', fontSize: 14, color: EW.ink,
+                fontFamily: '"Cormorant SC", serif', fontSize: 14, color: EW.ink,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}, typeof unitDisplayName === 'function' ? unitDisplayName(r) : (r.name || r.cls)),
               h('div', { style: {
-                fontFamily: '"DotGothic16", monospace', fontSize: 8,
+                fontFamily: '"IBM Plex Mono", monospace', fontSize: 8,
                 color: EW.inkMute, letterSpacing: '0.06em', marginTop: 2,
               }}, (r.cls || '').toUpperCase() + (statusKeys.length ? ' · ' + statusKeys.map(k => STATUS_DEFS[k]?.short || k).join(' ') : '')),
             ),
             h('span', { style: {
-              fontFamily: '"DotGothic16", monospace', fontSize: 11,
+              fontFamily: '"IBM Plex Mono", monospace', fontSize: 11,
               color: HP_ALLY, fontWeight: 600,
             }}, hpPct + '%'),
           );
@@ -1652,7 +1652,7 @@ function HorologeHub({ factionKey, api, portraitUrl, portraitIsFace, portraitTit
         const [x, y] = _hrlgPol(76, hr * 30);
         numerals.push(h('text', {
           key: hr, x, y: y + 5, textAnchor: 'middle',
-          fontFamily: '"Cinzel", serif', fontWeight: 700, fontSize: 13.5,
+          fontFamily: '"Cormorant SC", serif', fontWeight: 700, fontSize: 13.5,
           fill: EW.ink, opacity: 0.92,
         }, ROM[hr]));
       } else {
@@ -1677,14 +1677,14 @@ function HorologeHub({ factionKey, api, portraitUrl, portraitIsFace, portraitTit
     return h(React.Fragment, null,
       h('defs', null,
         h('radialGradient', { id: 'hrlgFaceG', cx: '42%', cy: '36%' },
-          h('stop', { offset: '0%', stopColor: '#131311' }),
-          h('stop', { offset: '70%', stopColor: '#0b0b09' }),
-          h('stop', { offset: '100%', stopColor: '#070706' }),
+          h('stop', { offset: '0%', stopColor: '#161225' }),
+          h('stop', { offset: '70%', stopColor: '#0c0a14' }),
+          h('stop', { offset: '100%', stopColor: '#08070f' }),
         ),
         h('radialGradient', { id: 'hrlgPortraitVig', cx: '50%', cy: '50%', r: '50%' },
-          h('stop', { offset: '0%', stopColor: '#070706', stopOpacity: 0 }),
-          h('stop', { offset: '70%', stopColor: '#070706', stopOpacity: 0.06 }),
-          h('stop', { offset: '100%', stopColor: '#070706', stopOpacity: 0.8 }),
+          h('stop', { offset: '0%', stopColor: '#08070f', stopOpacity: 0 }),
+          h('stop', { offset: '70%', stopColor: '#08070f', stopOpacity: 0.06 }),
+          h('stop', { offset: '100%', stopColor: '#08070f', stopOpacity: 0.8 }),
         ),
         h('clipPath', { id: 'hrlgMapClip' }, h('circle', { cx: 100, cy: 100, r: 56 })),
       ),
@@ -1712,17 +1712,17 @@ function HorologeHub({ factionKey, api, portraitUrl, portraitIsFace, portraitTit
       plate,
       h('g', { ref: hourRef, className: 'hrlg-hour' },
         h('path', { d: 'M100,111 L96.9,100 L98.9,62 L100,56 L101.1,62 L103.1,100 Z', fill: 'var(--hfc)', stroke: 'rgba(255,255,255,0.5)', strokeWidth: 0.5 }),
-        h('path', { d: 'M99.3,96 L99.3,68 L100.7,68 L100.7,96 Z', fill: '#080807', opacity: 0.8 }),
+        h('path', { d: 'M99.3,96 L99.3,68 L100.7,68 L100.7,96 Z', fill: '#0a0812', opacity: 0.8 }),
       ),
       h('g', { ref: minRef, className: 'hrlg-min' },
         h('path', { d: 'M100,113 L97.8,100 L99.4,30 L100,24 L100.6,30 L102.2,100 Z', fill: EW.ink, stroke: 'rgba(255,255,255,0.35)', strokeWidth: 0.4 }),
-        h('path', { d: 'M99.4,95 L99.4,38 L100.6,38 L100.6,95 Z', fill: '#080807', opacity: 0.8 }),
+        h('path', { d: 'M99.4,95 L99.4,38 L100.6,38 L100.6,95 Z', fill: '#0a0812', opacity: 0.8 }),
       ),
       h('g', { ref: secRef, className: 'hrlg-sec' },
         h('line', { x1: 100, y1: 118, x2: 100, y2: 18, stroke: EW.bad, strokeWidth: 1.1 }),
         h('circle', { cx: 100, cy: 113, r: 3.2, fill: 'none', stroke: EW.bad, strokeWidth: 1.1 }),
       ),
-      h('circle', { cx: 100, cy: 100, r: 4.6, fill: '#0c0c0a', stroke: 'var(--hfc)', strokeWidth: 1.3 }),
+      h('circle', { cx: 100, cy: 100, r: 4.6, fill: '#0d0b15', stroke: 'var(--hfc)', strokeWidth: 1.3 }),
       h('circle', { cx: 100, cy: 100, r: 1.7, fill: 'var(--hfc)' }),
       // The ACTIVE UNIT'S PORTRAIT rides ON TOP of the hands (this menu only
       // renders on the local player's turn, so the face on the clock is
@@ -1807,7 +1807,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     title: b.drop.title || 'Drop on the floor',
     style: {
       cursor: 'pointer', pointerEvents: 'auto', flex: 'none',
-      fontFamily: '"DotGothic16", monospace', fontSize: 9, fontWeight: 700,
+      fontFamily: '"IBM Plex Mono", monospace', fontSize: 9, fontWeight: 700,
       letterSpacing: '0.08em', lineHeight: 1.2, padding: '2px 6px',
       color: '#f2c468', border: '1px solid #f2c46888',
       background: 'rgba(242,196,104,0.12)',
@@ -1893,7 +1893,9 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   const catVars = (b.catColor && !dead && !ghost) ? {
     '--bc': b.catColor, '--bc-soft': b.catColor + '88',
     '--bc-faint': b.catColor + '2a',
-    '--bc-hi': b.catColor + '5c', '--bc-lo': b.catColor + '30',
+    // quiet PS1 wash: the 3px edge + glyph carry the function color; the
+    // row fill only whispers it so the panel stays near-black
+    '--bc-hi': b.catColor + '2e', '--bc-lo': b.catColor + '12',
   } : null;
   return h('div', {
     className: 'hrlg-blade'
@@ -2359,7 +2361,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
     toolRows.push(h('div', {
       key: 'build',
       className: 'hrlg-push' + (build.available ? ' live' : ' off') + (build.active ? ' armed' : ''),
-      style: { '--pc': '#c9a24b', '--pc-soft': '#c9a24b88', '--pc-faint': '#c9a24b22' },
+      style: { '--pc': '#f0d060', '--pc-soft': '#f0d06088', '--pc-faint': '#f0d06022' },
       title: build.available
         ? 'Build — dig / place blocks (' + (build.hint || 'B') + ')'
         : 'Build — ' + (build.sub || 'Unavailable'),
@@ -2678,12 +2680,14 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
    crown/ESC to back out). Rich spell detail lives in the hover
    tooltip, not a side panel. */
 
+// Function colors — what the ability DOES (red hurts, green heals…). The
+// row's edge/tint wears THIS; the school/type badge is separate intel.
 const _HRLG_CAT = {
-  damage: { icon: '⚔', color: '#ff5340' },
-  heal:   { icon: '♥', color: '#57d97e' },
-  buff:   { icon: '▲', color: '#4aa8ff' },
-  debuff: { icon: '▼', color: '#b06ae0' },
-  utility:{ icon: '◎', color: '#c9a24b' },
+  damage: { icon: '⚔', color: '#ff5f5f' },
+  heal:   { icon: '♥', color: '#58d858' },
+  buff:   { icon: '▲', color: '#5cb2ff' },
+  debuff: { icon: '▼', color: '#a06bff' },
+  utility:{ icon: '◎', color: '#f0d060' },
 };
 
 // The TYPE badge (HUMAN/TECH/…) rides the name row — it's the matchup
@@ -2698,7 +2702,7 @@ const _HRLG_TYPE_PAD = '2px 7px';
 // confusion with the terraforming spells.
 function spellTargetChip(sp) {
   if (typeof isSpellSelfCast === 'function' && isSpellSelfCast(sp)) {
-    return { label: '⟳ SELF', color: '#9aa4b0', title: 'Casts on/around the caster — no aiming needed' };
+    return { label: '⟳ SELF', color: '#9a94ab', title: 'Casts on/around the caster — no aiming needed' };
   }
   const k = sp.kind || '';
   if (k === 'raiseDead') {
@@ -3181,11 +3185,11 @@ function _hrlgComboBlades(unit, st) {
       const syn = typeof getComboTypeSynergy === 'function' ? getComboTypeSynergy(unit, p) : { label: null };
       return {
         id: 'cp:' + p.id,
-        icon: '◆', iconColor: '#ffd23e',
+        icon: '◆', iconColor: '#f0d060',
         label: typeof unitDisplayName === 'function' ? unitDisplayName(p) : (p.name || p.cls),
         available: true,
         portrait: _hrlgPortraitData(p, unit),
-        meta: combo ? { text: combo.name, color: '#ffd23e' } : null,
+        meta: combo ? { text: combo.name, color: '#f0d060' } : null,
         hint: syn.label ? '×1.3 SYNERGY' : null,
         fire: () => {
           state.comboPartner = p;
@@ -3235,7 +3239,7 @@ function _hrlgComboBlades(unit, st) {
     return {
       id: 'ct:' + t.u.id,
       icon: typeAdv || '◆',
-      iconColor: typeAdv === '▲' ? EW.good : typeAdv === '▼' ? EW.bad : '#ffd23e',
+      iconColor: typeAdv === '▲' ? EW.good : typeAdv === '▼' ? EW.bad : '#f0d060',
       label: typeof unitDisplayName === 'function' ? unitDisplayName(t.u) : (t.u.name || t.u.cls),
       available: true,
       portrait: _hrlgPortraitData(t.u, unit),
@@ -6400,10 +6404,9 @@ function _renderSpellDescBar() {
 
   const badge = sp.spellType
     ? '<span style="display:inline-flex;align-items:center;flex:none;' +
-      'font-family:DotGothic16,monospace;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;' +
-      'color:' + tcText + ';background:linear-gradient(' + tc + '22,' + tc + '22),rgba(10,10,9,0.82);' +
-      'border:1px solid ' + tc + 'aa;padding:2px 8px;text-shadow:0 1px 2px rgba(0,0,0,0.85);' +
-      'clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px);">' +
+      "font-family:'IBM Plex Mono',monospace;" + 'font-size:10px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;' +
+      'color:' + tcText + ';background:rgba(8,7,12,0.72);' +
+      'border:1px solid ' + tc + ';padding:1px 7px;text-shadow:0 1px 2px rgba(0,0,0,0.85);">' +
       sp.spellType.toUpperCase() + '</span>'
     : '';
 
@@ -6412,10 +6415,9 @@ function _renderSpellDescBar() {
   // the bar is the single place to read a spell's fine print.
   const _chip = (label, color, title) =>
     '<span style="display:inline-flex;align-items:center;flex:none;' +
-    'font-family:DotGothic16,monospace;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;' +
-    'color:' + color + ';background:rgba(10,10,9,0.82);border:1px solid ' + color + '66;padding:2px 7px;' +
-    'text-shadow:0 1px 2px rgba(0,0,0,0.85);white-space:nowrap;' +
-    'clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px);"' +
+    "font-family:'IBM Plex Mono',monospace;" + 'font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;' +
+    'color:' + color + ';background:rgba(8,7,12,0.72);border:1px solid ' + color + 'aa;padding:1px 7px;' +
+    'text-shadow:0 1px 2px rgba(0,0,0,0.85);white-space:nowrap;"' +
     (title ? ' title="' + String(title).replace(/"/g, '&quot;') + '"' : '') + '>' + label + '</span>';
   let chips = '';
   try {
@@ -6570,7 +6572,7 @@ function ReactHUD() {
     style: {
       position: 'absolute', inset: 0,
       pointerEvents: 'none', zIndex: 50,
-      fontFamily: 'Inter, system-ui, sans-serif',
+      fontFamily: '"IBM Plex Mono", monospace',
       color: EW.ink,
     },
   },
@@ -6800,10 +6802,10 @@ function _injectHudHideStyles() {
     .ew-padbtn-inline { margin-left: 7px; transform: scale(0.92); vertical-align: middle; }
     .ew-keycap {
       display: inline-flex; align-items: center; justify-content: center;
-      min-width: 16px; height: 16px; padding: 0 5px; border-radius: 3px;
-      font-family: Inter, system-ui, sans-serif; font-size: 9px; font-weight: 700;
-      color: #dbe3f8; background: linear-gradient(180deg, #2a3148, #171c2c);
-      border: 1px solid rgba(140, 160, 220, 0.4); line-height: 1;
+      min-width: 16px; height: 16px; padding: 0 5px; border-radius: 2px;
+      font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 600;
+      color: #c9c4b4; background: linear-gradient(180deg, #2a2638, #17141f);
+      border: 1px solid #55506a; line-height: 1;
       box-shadow: 0 1px 2px rgba(0,0,0,0.6);
     }
     .ew-hints-bar {
@@ -6811,56 +6813,54 @@ function _injectHudHideStyles() {
       left: 50%; transform: translateX(-50%);
       display: flex; gap: 15px; align-items: center; z-index: 58;
       pointer-events: none;
-      font-family: DotGothic16, monospace; font-size: 10px; letter-spacing: 0.13em;
-      color: rgba(198, 208, 235, 0.8);
-      background: rgba(8, 10, 18, 0.6);
-      border: 1px solid rgba(120, 140, 180, 0.18);
+      font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.18em;
+      color: #7a7490;
+      background: rgba(8, 7, 12, 0.7);
+      border: 1px solid #3a3548;
       padding: 4px 13px; white-space: nowrap;
-      clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
     }
     .ew-hint { display: inline-flex; align-items: center; gap: 5px; }
     .ew-hint-lbl { padding-top: 1px; }
     .ew-hint.cam { pointer-events: auto; cursor: pointer; }
-    .ew-hint.cam:hover .ew-hint-lbl { color: #ffe9b8; }
+    .ew-hint.cam:hover .ew-hint-lbl { color: #e8e4d8; }
     @media (max-width: 1150px) { .ew-hints-bar { display: none; } }
     /* controller focus ring for the DOM-nav contexts (pause menu, settings) */
     body[data-input-device="pad"] .pause-card :focus,
     body[data-input-device="pad"] #mmSettingsBody :focus {
-      outline: 2px solid rgba(255, 214, 128, 0.9) !important; outline-offset: 2px;
+      outline: 2px solid rgba(232, 228, 216, 0.9) !important; outline-offset: 2px;
     }
 
     /* ── React HUD hover states ── */
-    /* Action-menu rows now share the warm-gold "bloom" focus the spell/ability
-       cards use: a brighter gold wash, a warm rim light + soft bloom, a warm
-       left-edge accent and a gentle scale pop that pulses while hovered. */
+    /* Focus is BONE, not gold: a pale parchment frame + faint violet bloom.
+       Quiet chrome — the row's own function color stays the loud part. */
     .rhud-row {
       transition: background 0.16s ease, box-shadow 0.18s ease,
                   transform 0.16s cubic-bezier(0.22,1,0.36,1), filter 0.08s ease;
-      border-radius: 3px;
+      border-radius: 0;
     }
     .rhud-row:hover:not(.rhud-disabled) {
-      background: linear-gradient(90deg, rgba(255,214,128,0.16), rgba(255,176,64,0.03)) !important;
+      background: rgba(232,228,216,0.07) !important;
       transform: scale(1.02);
       animation: rhudRowGlow 1.5s ease-in-out infinite;
     }
     .rhud-row:hover:not(.rhud-disabled) .rhud-row-icon {
-      color: #ffcf7a !important;
+      color: #e8e4d8 !important;
     }
     .rhud-row:hover:not(.rhud-disabled) .rhud-row-label {
-      color: #fff6e6 !important;
+      color: #f5f2e8 !important;
     }
     @keyframes rhudRowGlow {
       0%, 100% {
-        box-shadow: inset 0 0 0 1px rgba(255,236,176,0.55),
-                    inset 3px 0 0 0 rgba(255,207,122,0.95),
-                    0 0 6px rgba(255,242,206,0.45),
-                    0 0 13px rgba(255,206,108,0.30);
+        box-shadow: inset 0 0 0 1px rgba(232,228,216,0.55),
+                    inset 3px 0 0 0 rgba(232,228,216,0.9),
+                    0 0 6px rgba(160,140,200,0.30),
+                    0 0 13px rgba(160,107,255,0.18);
       }
       50% {
-        box-shadow: inset 0 0 0 1px rgba(255,244,206,0.70),
-                    inset 3px 0 0 0 rgba(255,224,150,1),
-                    0 0 9px rgba(255,248,222,0.60),
-                    0 0 19px rgba(255,214,120,0.42);
+        box-shadow: inset 0 0 0 1px rgba(240,237,226,0.75),
+                    inset 3px 0 0 0 rgba(240,237,226,1),
+                    0 0 9px rgba(180,160,220,0.42),
+                    0 0 19px rgba(160,107,255,0.28);
       }
     }
     /* ── Move cards (ability buttons) ── */
@@ -6878,10 +6878,10 @@ function _injectHudHideStyles() {
       border-radius: 18px; opacity: 0; transform: scale(0.86);
       background:
         radial-gradient(58% 76% at 50% 46%,
-          rgba(255,248,224,0.62) 0%,
-          rgba(255,214,128,0.46) 34%,
-          rgba(255,186,78,0.26) 58%,
-          rgba(255,176,64,0) 78%);
+          rgba(240,237,226,0.5) 0%,
+          rgba(180,160,220,0.4) 34%,
+          rgba(160,107,255,0.22) 58%,
+          rgba(160,107,255,0) 78%);
       filter: blur(11px);
       transition: opacity 0.22s ease, transform 0.22s ease;
       will-change: opacity, transform;
@@ -6903,7 +6903,7 @@ function _injectHudHideStyles() {
     }
     .rhud-move-slot:not(.is-disabled):hover .rhud-move-card,
     .rhud-move-card-active {
-      border-color: rgba(255,236,176,0.98) !important;
+      border-color: rgba(232,228,216,0.95) !important;
       transform: scale(1.025);
       animation: rhudRimPulse 1.5s ease-in-out infinite;
     }
@@ -6914,16 +6914,16 @@ function _injectHudHideStyles() {
       0%, 100% {
         filter:
           brightness(1.08)
-          drop-shadow(0 0 1px rgba(255,255,255,0.95))
-          drop-shadow(0 0 6px rgba(255,242,206,0.9))
-          drop-shadow(0 0 13px rgba(255,206,108,0.7));
+          drop-shadow(0 0 1px rgba(255,255,255,0.9))
+          drop-shadow(0 0 6px rgba(232,228,216,0.7))
+          drop-shadow(0 0 13px rgba(160,107,255,0.5));
       }
       50% {
         filter:
           brightness(1.14)
           drop-shadow(0 0 2px rgba(255,255,255,1))
-          drop-shadow(0 0 10px rgba(255,248,222,1))
-          drop-shadow(0 0 20px rgba(255,214,120,0.85));
+          drop-shadow(0 0 10px rgba(240,237,226,0.85))
+          drop-shadow(0 0 20px rgba(160,107,255,0.65));
       }
     }
     /* End turn keeps its red danger identity but matches the bloom feel:
@@ -6949,22 +6949,22 @@ function _injectHudHideStyles() {
       border-radius: 3px;
     }
     .rhud-target:hover {
-      background: linear-gradient(90deg, rgba(255,214,128,0.18), rgba(255,176,64,0.03)) !important;
+      background: rgba(232,228,216,0.08) !important;
       transform: scale(1.02);
       animation: rhudRowGlow 1.5s ease-in-out infinite;
     }
     .rhud-target:hover .rhud-target-name {
-      color: #fff6e6 !important;
+      color: #f5f2e8 !important;
     }
     .rhud-back {
       transition: color 0.1s ease, box-shadow 0.18s ease, filter 0.08s ease;
-      border-radius: 3px;
+      border-radius: 0;
     }
     .rhud-back:hover {
-      color: #fff6e6 !important;
-      box-shadow: inset 0 0 0 1px rgba(255,236,176,0.40),
-                  inset 3px 0 0 0 rgba(255,207,122,0.85),
-                  0 0 8px rgba(255,214,120,0.25);
+      color: #f5f2e8 !important;
+      box-shadow: inset 0 0 0 1px rgba(232,228,216,0.40),
+                  inset 3px 0 0 0 rgba(232,228,216,0.8),
+                  0 0 8px rgba(160,107,255,0.25);
     }
 
     /* ── Click juice: instant press states + burst layer animations ── */
@@ -7016,14 +7016,14 @@ function _injectHudHideStyles() {
     /* Hide Sky Shader debug GUI */
     .lil-gui.root { display: none !important; }
 
-    /* ── Restyle unit nameplates on the board to match Codex design ── */
+    /* ── Restyle unit nameplates on the board: PS1 data-plate ── */
     .unit-plate {
-      background: rgba(8,10,18,0.4) !important;
+      background: rgba(8,7,12,0.82) !important;
       border-radius: 0 !important;
-      clip-path: polygon(0 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%) !important;
+      clip-path: none !important;
       padding: 0 !important;
       min-width: 86px !important;
-      border: none !important;
+      border: 1px solid #33303f !important;
       box-shadow: none !important;
       overflow: visible !important;
     }
@@ -7044,10 +7044,10 @@ function _injectHudHideStyles() {
       width: 2px !important;
       z-index: 1 !important;
     }
-    .p1 > .unit-plate::before { background: #f2c468 !important; box-shadow: 0 0 6px #f2c468 !important; }
-    .p2 > .unit-plate::before { background: #ff7a8a !important; box-shadow: 0 0 6px #ff7a8a !important; }
-    body.is-p2-viewer .p1 > .unit-plate::before { background: #ff7a8a !important; box-shadow: 0 0 6px #ff7a8a !important; }
-    body.is-p2-viewer .p2 > .unit-plate::before { background: #f2c468 !important; box-shadow: 0 0 6px #f2c468 !important; }
+    .p1 > .unit-plate::before { background: #4fd8ff !important; box-shadow: 0 0 6px rgba(79,216,255,0.6) !important; }
+    .p2 > .unit-plate::before { background: #ff4fa3 !important; box-shadow: 0 0 6px rgba(255,79,163,0.6) !important; }
+    body.is-p2-viewer .p1 > .unit-plate::before { background: #ff4fa3 !important; box-shadow: 0 0 6px rgba(255,79,163,0.6) !important; }
+    body.is-p2-viewer .p2 > .unit-plate::before { background: #4fd8ff !important; box-shadow: 0 0 6px rgba(79,216,255,0.6) !important; }
 
     .plate-header {
       background: transparent !important;
@@ -7055,34 +7055,35 @@ function _injectHudHideStyles() {
       display: flex !important;
       align-items: center !important;
       gap: 4px !important;
-      border-bottom: 1px solid rgba(120,140,180,0.12) !important;
+      border-bottom: 1px solid #232030 !important;
     }
     .plate-level {
-      font-family: 'DotGothic16', monospace !important;
+      font-family: 'IBM Plex Mono', monospace !important;
       font-size: 9px !important;
-      font-weight: 700 !important;
+      font-weight: 600 !important;
       min-width: 14px !important;
       text-align: center !important;
       padding: 1px 3px !important;
       border-radius: 0 !important;
       line-height: 1.2 !important;
     }
-    .p1 > .unit-plate .plate-level { background: rgba(242,196,104,0.2) !important; color: #f2c468 !important; border: none !important; }
-    .p2 > .unit-plate .plate-level { background: rgba(255,122,138,0.2) !important; color: #ff7a8a !important; border: none !important; }
-    body.is-p2-viewer .p1 > .unit-plate .plate-level { background: rgba(255,122,138,0.2) !important; color: #ff7a8a !important; }
-    body.is-p2-viewer .p2 > .unit-plate .plate-level { background: rgba(242,196,104,0.2) !important; color: #f2c468 !important; }
+    .p1 > .unit-plate .plate-level { background: rgba(79,216,255,0.14) !important; color: #8fd0e8 !important; border: none !important; }
+    .p2 > .unit-plate .plate-level { background: rgba(255,79,163,0.14) !important; color: #e88fb8 !important; border: none !important; }
+    body.is-p2-viewer .p1 > .unit-plate .plate-level { background: rgba(255,79,163,0.14) !important; color: #e88fb8 !important; }
+    body.is-p2-viewer .p2 > .unit-plate .plate-level { background: rgba(79,216,255,0.14) !important; color: #8fd0e8 !important; }
 
     .plate-name {
-      font-family: 'Cinzel', serif !important;
-      font-size: 12px !important;
-      font-weight: 500 !important;
-      letter-spacing: 0.02em !important;
-      text-shadow: none !important;
+      font-family: 'Cormorant SC', serif !important;
+      font-size: 13px !important;
+      font-weight: 600 !important;
+      letter-spacing: 0.08em !important;
+      color: #e8e4d8 !important;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.9) !important;
     }
-    .p1 > .unit-plate .plate-name { color: #4ea8ff !important; }
-    .p2 > .unit-plate .plate-name { color: #ff4c4c !important; }
-    body.is-p2-viewer .p1 > .unit-plate .plate-name { color: #ff4c4c !important; }
-    body.is-p2-viewer .p2 > .unit-plate .plate-name { color: #4ea8ff !important; }
+    .p1 > .unit-plate .plate-name { color: #e8e4d8 !important; }
+    .p2 > .unit-plate .plate-name { color: #e8e4d8 !important; }
+    body.is-p2-viewer .p1 > .unit-plate .plate-name { color: #e8e4d8 !important; }
+    body.is-p2-viewer .p2 > .unit-plate .plate-name { color: #e8e4d8 !important; }
 
     .plate-stats {
       padding: 2px 6px 3px 8px !important;
@@ -7101,9 +7102,16 @@ function _injectHudHideStyles() {
     .hp-bar, .mp-bar {
       border-radius: 0 !important;
       background: rgba(0,0,0,0.62) !important;
-      border: 1px solid rgba(255,255,255,0.13) !important;
+      border: 1px solid #2b2838 !important;
       overflow: hidden !important;
       position: relative !important;
+    }
+    /* PS1 segmented-LED read: dark notches over every fill */
+    .hp-fill::after, .mp-fill::after {
+      content: '' !important;
+      position: absolute !important; inset: 0 !important;
+      background: repeating-linear-gradient(90deg, transparent 0px, transparent 4px, rgba(0,0,0,0.4) 4px, rgba(0,0,0,0.4) 5px) !important;
+      pointer-events: none !important;
     }
     .hp-bar {
       height: 10px !important;
@@ -7121,7 +7129,7 @@ function _injectHudHideStyles() {
 
     /* HP/MP numbers: centered inside their bar */
     .hp-bar .bar-num, .mp-bar .bar-num {
-      font-family: 'DotGothic16', monospace !important;
+      font-family: 'IBM Plex Mono', monospace !important;
       font-size: 7px !important;
       letter-spacing: 0.04em !important;
       color: #fff !important;
@@ -7133,11 +7141,30 @@ function _injectHudHideStyles() {
 
     /* Settings panel restyle */
     .float-settings-panel {
-      background: rgba(8,10,18,0.92) !important;
-      border: 1px solid rgba(120,140,180,0.16) !important;
+      background: rgba(8,7,12,0.92) !important;
+      border: 1px solid #3a3548 !important;
       border-radius: 0 !important;
     }
     .float-settings-panel .nine-slice-bg { display: none !important; }
+
+    /* ══════════ CRT VEIL — scanlines + vignette over the battle ══════════
+       Pure chrome, pointer-transparent, battle-only (this stylesheet mounts
+       with the React HUD). Kill switch: window.EW_DISABLE_CRT = true before
+       battle, or body.ew-no-crt. */
+    body:not(.ew-no-crt)::after {
+      content: ''; position: fixed; inset: 0; z-index: 9990;
+      pointer-events: none;
+      background: repeating-linear-gradient(0deg,
+        rgba(0,0,0,0.22) 0px, rgba(0,0,0,0.22) 1px,
+        transparent 1px, transparent 3px);
+      opacity: 0.55;
+      mix-blend-mode: multiply;
+    }
+    body:not(.ew-no-crt)::before {
+      content: ''; position: fixed; inset: 0; z-index: 9989;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,0.42) 100%);
+    }
 
     /* ══════════════ THE HOROLOGE — clock + command panels ══════════════ */
     /* The whole instrument scales with --ew-ui-scale (set by _applyUIScale
@@ -7151,15 +7178,34 @@ function _injectHudHideStyles() {
          to itself — bar is ~62px tall and scales with --ew-ui-scale */
       position: absolute; left: 10px; bottom: calc(14px + 66px * var(--ew-ui-scale, 1));
       display: flex; align-items: flex-end; gap: 12px;
-      z-index: 12; pointer-events: none; font-family: 'DotGothic16', monospace;
+      z-index: 12; pointer-events: none; font-family: 'IBM Plex Mono', monospace;
       transform: scale(var(--ew-ui-scale, 1));
       transform-origin: 0 100%;
     }
-    /* ── the IDENTITY COLUMN ── */
+    /* ── the IDENTITY COLUMN — the mockup's boxed ENTITY DATA plate ── */
     .hrlg-side {
-      position: relative; width: 206px; z-index: 10;
+      position: relative; width: 216px; z-index: 10;
       display: flex; flex-direction: column; gap: 7px;
       pointer-events: auto;
+      background: rgba(8,7,12,0.88);
+      border: 1px solid #3a3548;
+      padding: 24px 10px 10px;
+    }
+    .hrlg-side::before {
+      content: 'ENTITY DATA'; position: absolute; top: 0; left: 0; right: 0;
+      height: 19px; display: flex; align-items: center; padding: 0 10px;
+      font-size: 9px; letter-spacing: 0.38em; color: #7a7490;
+      border-bottom: 1px solid #262233; pointer-events: none;
+    }
+    .hrlg-side::after {
+      content: '▮ ACTIVE'; position: absolute; top: 0; right: 0;
+      height: 19px; display: flex; align-items: center; padding: 0 10px;
+      font-size: 9px; letter-spacing: 0.14em; color: #58d858;
+      animation: hrlgActiveBlink 2s steps(1) infinite; pointer-events: none;
+    }
+    @keyframes hrlgActiveBlink {
+      0%, 60% { opacity: 1; }
+      61%, 100% { opacity: 0.3; }
     }
     .hrlg-hubwrap { display: flex; justify-content: center; padding-top: 2px; }
     /* the watch — smaller now; the command panels are the star */
@@ -7210,16 +7256,15 @@ function _injectHudHideStyles() {
       position: relative; width: 100%; height: 34px; flex: none;
       display: flex; align-items: center; gap: 9px; padding: 0 13px;
       cursor: pointer; pointer-events: auto;
-      background: linear-gradient(100deg, var(--pc-faint), rgba(10,10,9,0.6)), #0c0c0a;
-      border: 1px solid var(--pc-soft); border-left: 3px solid var(--pc);
-      clip-path: polygon(7px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+      background: linear-gradient(100deg, var(--pc-faint), rgba(8,7,12,0.6)), #0b0a12;
+      border: 1px solid #2b2838; border-left: 3px solid var(--pc);
       transition: transform 0.1s ease, box-shadow 0.12s ease, filter 0.1s ease;
       animation: hrlgRowIn 0.16s cubic-bezier(0.2,1,0.3,1) backwards;
     }
     .hrlg-push-glyph { font-size: 16px; line-height: 1; color: var(--pc); text-shadow: 0 0 8px var(--pc-soft); flex: none; }
-    .hrlg-push-lbl { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; line-height: 1; color: #eceadd; white-space: nowrap; }
+    .hrlg-push-lbl { font-size: 11px; font-weight: 600; letter-spacing: 0.24em; line-height: 1; color: #e8e4d8; white-space: nowrap; }
     .hrlg-push-sub {
-      margin-left: auto; font-size: 9px; letter-spacing: 0.08em; color: #979181;
+      margin-left: auto; font-size: 9px; letter-spacing: 0.08em; color: #7a7490;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .hrlg-push.live:hover  { transform: translateX(3px); filter: brightness(1.3); box-shadow: 0 0 14px var(--pc-soft); }
@@ -7241,9 +7286,9 @@ function _injectHudHideStyles() {
       margin-top: -4px; pointer-events: auto;
     }
     .hrlg-schip {
-      font-size: 9px; font-weight: 700; letter-spacing: 0.06em; line-height: 1;
-      padding: 3px 5px; border-radius: 3px; color: #fff; white-space: nowrap;
-      background: #555; border: 1px solid rgba(255,255,255,0.22);
+      font-size: 9px; font-weight: 600; letter-spacing: 0.1em; line-height: 1;
+      padding: 3px 5px; border-radius: 0; color: #fff; white-space: nowrap;
+      background: #3a3548; border: 1px solid #55506a;
       text-shadow: 0 1px 1px rgba(0,0,0,0.85); box-shadow: 0 1px 3px rgba(0,0,0,0.6);
       animation: hrlgChipIn 0.22s cubic-bezier(0.2,1.4,0.36,1) both;
     }
@@ -7258,11 +7303,11 @@ function _injectHudHideStyles() {
       text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       line-height: 1.15; pointer-events: none; margin-top: -2px;
     }
-    .hrlg-roman { font-family: 'Cinzel', serif; font-style: italic; font-size: 12px; color: var(--hfc); }
-    .hrlg-name  { font-family: 'Cinzel', serif; font-size: 16px; letter-spacing: 0.08em; color: #eceadd; }
+    .hrlg-roman { font-family: 'Cormorant SC', serif; font-style: italic; font-size: 12px; color: var(--hfc); }
+    .hrlg-name  { font-family: 'Cormorant SC', serif; font-weight: 700; font-size: 18px; letter-spacing: 0.1em; color: #e8e4d8; }
     /* Lv · race · job identity line */
     .hrlg-core-sub {
-      text-align: center; font-size: 10px; letter-spacing: 0.14em; color: #a49e8c;
+      text-align: center; font-size: 10px; letter-spacing: 0.18em; color: #7a7490;
       pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       margin-top: -4px;
     }
@@ -7280,7 +7325,7 @@ function _injectHudHideStyles() {
     .hrlg-infobtn:hover { border-color: var(--hfc); box-shadow: 0 0 9px var(--hfc-soft); transform: scale(1.12); }
     .hrlg-infobtn:active { transform: scale(0.94); }
     .hrlg-infobtn.on {
-      background: var(--hfc); color: #0d0d0b; border-color: var(--hfc);
+      background: var(--hfc); color: #0a0910; border-color: var(--hfc);
       box-shadow: 0 0 10px var(--hfc-soft);
     }
     /* HP/MP vitals right under the portrait — the numbers are the POINT
@@ -7293,17 +7338,22 @@ function _injectHudHideStyles() {
     .hrlg-vbar {
       position: relative; height: 12px; margin-top: 15px;
       background: rgba(0,0,0,0.62);
-      border: 1px solid rgba(255,255,255,0.13);
+      border: 1px solid #2b2838;
     }
     .hrlg-vbar.mp { height: 10px; }
     .hrlg-vfill {
       position: absolute; left: 0; top: 0; bottom: 0;
       transition: width 0.35s cubic-bezier(0.22,1,0.36,1);
     }
+    /* PS1 segmented-LED notches over the fill */
+    .hrlg-vfill::after {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: repeating-linear-gradient(90deg, transparent 0px, transparent 4px, rgba(0,0,0,0.4) 4px, rgba(0,0,0,0.4) 5px);
+    }
     .hrlg-vlbl {
       position: absolute; left: 1px; bottom: calc(100% + 3px);
-      font-size: 10px; letter-spacing: 0.18em; line-height: 1;
-      color: rgba(255,255,255,0.85); text-shadow: 0 1px 1px rgba(0,0,0,0.9);
+      font-size: 10px; letter-spacing: 0.22em; line-height: 1;
+      color: #7a7490; text-shadow: 0 1px 1px rgba(0,0,0,0.9);
     }
     .hrlg-vnum {
       position: absolute; right: 1px; bottom: calc(100% + 2px);
@@ -7330,8 +7380,8 @@ function _injectHudHideStyles() {
       display: flex; align-items: center; justify-content: center; gap: 6px;
       pointer-events: none;
     }
-    .hrlg-ap-lbl { font-size: 12px; letter-spacing: 0.24em; color: #85816f; }
-    .hrlg-ap-num { font-size: 14px; letter-spacing: 0.1em; color: #e4dfd0; margin-left: 3px; }
+    .hrlg-ap-lbl { font-size: 12px; letter-spacing: 0.24em; color: #7a7490; }
+    .hrlg-ap-num { font-size: 14px; letter-spacing: 0.1em; color: #c9c4b4; margin-left: 3px; }
     .hrlg-ap-num + .hrlg-ap-num { margin-left: 0; }
     /* bonus (level-up) AP reads GREEN — both the extra pips and the /4, /5 max */
     .hrlg-ap-num.bonus { color: #6ee2a8; text-shadow: 0 0 7px rgba(110,226,168,0.55); }
@@ -7340,9 +7390,9 @@ function _injectHudHideStyles() {
       background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
     }
     /* AP diamonds — ALWAYS yellow/gold, never the faction tint */
-    .hrlg-pip.on { background: #ffd23e; border-color: #ffd23e; box-shadow: 0 0 8px rgba(255,210,62,0.75); }
-    .hrlg-pip.bonus { border-color: rgba(255,210,62,0.5); }
-    .hrlg-pip.bonus.on { background: #ffd23e; border-color: #ffd23e; box-shadow: 0 0 9px rgba(255,210,62,0.8); }
+    .hrlg-pip.on { background: #f0d060; border-color: #f0d060; box-shadow: 0 0 8px rgba(240,208,96,0.75); }
+    .hrlg-pip.bonus { border-color: rgba(240,208,96,0.5); }
+    .hrlg-pip.bonus.on { background: #f0d060; border-color: #f0d060; box-shadow: 0 0 9px rgba(240,208,96,0.8); }
     .hrlg-pip.spend { animation: hrlgSpend 0.7s ease-in-out infinite; }
     @keyframes hrlgSpend { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
     /* ── 3 item slots — one-click item use, big enough to hit ── */
@@ -7353,8 +7403,7 @@ function _injectHudHideStyles() {
     .hrlg-item-slot {
       position: relative; width: 48px; height: 48px; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      background: rgba(0,0,0,0.66); border: 1px solid var(--hfc-soft);
-      clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+      background: #100e17; border: 1px solid #33303f;
       transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
     }
     .hrlg-item-slot:hover:not(.empty):not(.off) {
@@ -7369,17 +7418,17 @@ function _injectHudHideStyles() {
     .hrlg-item-slot.empty { cursor: default; opacity: 0.28; border-style: dashed; }
     .hrlg-item-glyph { font-size: 22px; line-height: 1; }
     .hrlg-item-count {
-      position: absolute; right: 3px; bottom: 1px; font-size: 11px; color: #e4dfd0;
+      position: absolute; right: 3px; bottom: 1px; font-size: 11px; color: #c9c4b4;
       text-shadow: 0 1px 2px #000, 0 0 3px #000; letter-spacing: 0.04em;
     }
     /* Team material bank strip (🪵🪨⚙️) — build affordability at a glance */
     .hrlg-mats {
       display: flex; align-items: center; justify-content: center; gap: 9px;
-      font-size: 11px; letter-spacing: 0.06em; color: #d4cfc0;
+      font-size: 11px; letter-spacing: 0.06em; color: #c9c4b4;
       pointer-events: auto; white-space: nowrap;
     }
-    .hrlg-mats-lbl { font-size: 9px; letter-spacing: 0.24em; color: #6a665a; }
-    .hrlg-mat.none { color: #5a564a; opacity: 0.75; }
+    .hrlg-mats-lbl { font-size: 9px; letter-spacing: 0.24em; color: #7a7490; }
+    .hrlg-mat.none { color: #5e5875; opacity: 0.75; }
     .hrlg-mat.free { color: #6ee2a8; text-shadow: 0 0 7px rgba(110,226,168,0.55); animation: hrlgSpend 1.4s ease-in-out infinite; }
 
     /* ── the CASCADING COMMAND PANELS ─────────────────────────────
@@ -7415,6 +7464,12 @@ function _injectHudHideStyles() {
     /* the root verb panel: short words, narrow blades — the reason a verb is
        greyed out reads UNDER its name (hrlg-subline), not as a side tag */
     .hrlg-panel.root { width: 224px; }
+    /* root VERBS read as the mockup's command column: uppercase mono,
+       wide tracking — ability/target NAMES stay serif (Cormorant SC) */
+    .hrlg-panel.root .hrlg-blabel {
+      font-family: 'IBM Plex Mono', monospace; font-weight: 600;
+      font-size: 12px; letter-spacing: 0.26em; text-transform: uppercase;
+    }
     /* the ARMED verb in a dimmed parent panel grows TALL and keeps its full
        color, so "which sub-menu am I in" is answered at a glance */
     .hrlg-panel.bg .hrlg-blade.active { height: 58px; }
@@ -7426,7 +7481,7 @@ function _injectHudHideStyles() {
     .hrlg-panel.bg .hrlg-blade.active .hrlg-blabel { color: #fff; font-size: 16px; }
     .hrlg-panel.bg .hrlg-blade.active .hrlg-glyph { font-size: 18px; }
     .hrlg-list {
-      display: flex; flex-direction: column; gap: 0;
+      display: flex; flex-direction: column; gap: 3px;
       max-height: 400px; overflow-y: auto; overflow-x: hidden;
       padding: 5px 12px 5px 6px;
       scrollbar-width: thin; scrollbar-color: var(--hfc-soft) rgba(255,255,255,0.05);
@@ -7442,29 +7497,27 @@ function _injectHudHideStyles() {
     .hrlg-thead {
       position: relative; margin: 0 7px 0 5px; flex: none;
       display: flex; flex-direction: column;
-      background: linear-gradient(100deg, var(--hfc-faint), rgba(11,11,10,0.55)), #101010;
-      border: 1px solid var(--hfc-soft); border-left: 4px solid var(--hfc);
-      clip-path: polygon(8px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
-      transform: skewX(-8deg);
-      box-shadow: -2px 0 18px var(--hfc-faint);
+      background: rgba(8,7,12,0.88);
+      border: 1px solid #3a3548; border-left: 3px solid var(--hfc);
+      box-shadow: 0 0 18px rgba(0,0,0,0.45);
       pointer-events: none; z-index: 2;
     }
-    .hrlg-thead > * { transform: skewX(8deg); }
     .hrlg-thead.enemy { border-left-color: #ff4a56; }
     .hrlg-thead.ally  { border-left-color: #2ed158; }
     /* the name row inside the header blade */
     .hrlg-view-tab {
       position: relative; height: 40px; flex: none;
-      display: flex; align-items: center; gap: 9px; padding: 0 18px 0 13px;
+      display: flex; align-items: center; gap: 9px; padding: 0 14px 0 12px;
+      border-bottom: 1px solid #262233;
       pointer-events: none;
     }
     .hrlg-view-tab-icon { color: var(--hfc); font-size: 16px; flex: none; text-shadow: 0 0 8px var(--hfc-soft); }
     .hrlg-view-tab-text {
-      font-family: 'Cinzel', serif; font-weight: 700; font-size: 16px;
-      letter-spacing: 0.14em; text-transform: uppercase; color: #f2efe4;
+      font-family: 'Cormorant SC', serif; font-weight: 600; font-size: 18px;
+      letter-spacing: 0.22em; text-transform: uppercase; color: #e8e4d8;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
     }
-    .hrlg-view-tab-count { font-size: 11px; letter-spacing: 0.1em; color: #979181; flex: none; white-space: nowrap; margin-left: auto; }
+    .hrlg-view-tab-count { font-size: 11px; letter-spacing: 0.1em; color: #7a7490; flex: none; white-space: nowrap; margin-left: auto; }
     /* ── clicked unit's vitals inside the header blade ──
        HP/MP bars reuse the canonical .hrlg-thp bar, forecast slices
        reuse .hrlg-thp-preview (blink keyframes live in
@@ -7478,7 +7531,7 @@ function _injectHudHideStyles() {
     .hrlg-qv-row .hrlg-thp { flex: 1 1 auto; min-width: 60px; }
     .hrlg-qv-lbl {
       flex: none; width: 18px; font-size: 9px; font-weight: 700;
-      letter-spacing: 0.12em; color: #cfc9b8;
+      letter-spacing: 0.12em; color: #c9c4b4;
     }
     .hrlg-qv-lbl.mp { color: #9fc6ef; }
     .hrlg-qv-num {
@@ -7507,20 +7560,20 @@ function _injectHudHideStyles() {
     .hrlg-qstat { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
     .hrlg-qstat-lbl {
       flex: none; width: 34px; font-size: 9px; font-weight: 700;
-      letter-spacing: 0.12em; color: #979181;
+      letter-spacing: 0.12em; color: #7a7490;
     }
     .hrlg-qstat-val {
-      font-size: 12px; line-height: 1.3; font-weight: 700; color: #eceadd;
+      font-size: 12px; line-height: 1.3; font-weight: 700; color: #e8e4d8;
       text-shadow: 0 1px 1px #000; font-variant-numeric: tabular-nums;
     }
     .hrlg-qstat.up .hrlg-qstat-val { color: #7df0a5; }
     .hrlg-qstat.dn .hrlg-qstat-val { color: #ff8d97; }
     /* aiming-state instruction ("MOVING — CLICK A TILE") */
     .hrlg-mode {
-      position: relative; margin: 0 7px 0 5px; padding: 6px 14px; flex: none;
-      text-align: center; font-size: 11px; letter-spacing: 0.16em; color: #ffd9a8;
-      background: rgba(22,15,6,0.9); border: 1px solid rgba(255,204,110,0.45);
-      clip-path: polygon(7px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+      position: relative; margin: 0 7px 0 5px; padding: 7px 16px; flex: none;
+      text-align: center; font-size: 11px; letter-spacing: 0.28em; color: #e8e4d8;
+      background: rgba(8,7,12,0.9); border: 1px solid #3a3548;
+      border-left: 3px solid #f0d060;
       text-shadow: 0 1px 2px rgba(0,0,0,0.9); pointer-events: none;
     }
     .hrlg-mode.lone { min-width: 250px; margin: 0; }
@@ -7545,15 +7598,11 @@ function _injectHudHideStyles() {
     .hrlg-blade.trow.pend .hrlg-meta { display: none; }
     .hrlg-body {
       position: relative; height: 100%; flex: 1; min-width: 0;
-      display: flex; align-items: center; gap: 8px; padding: 0 13px 0 12px;
-      background: linear-gradient(100deg, var(--bc-hi, var(--hfc-faint)) 0%, var(--bc-lo, rgba(255,255,255,0.03)) 100%), #0d0d0b;
-      border: 1px solid var(--bc-soft, var(--hfc-soft)); border-left: 3px solid var(--bc, var(--hfc));
-      clip-path: polygon(8px 0, 100% 0, calc(100% - 11px) 100%, 0 100%);
-      transform: skewX(-8deg);
-      transform-origin: 0 50%;
+      display: flex; align-items: center; gap: 8px; padding: 0 12px;
+      background: linear-gradient(100deg, var(--bc-hi, var(--hfc-faint)) 0%, var(--bc-lo, rgba(255,255,255,0.02)) 100%), rgba(12,10,18,0.85);
+      border: 1px solid #2b2838; border-left: 3px solid var(--bc, var(--hfc));
       transition: transform 0.09s ease, box-shadow 0.1s ease, filter 0.09s ease, border-color 0.09s ease;
     }
-    .hrlg-body > * { transform: skewX(8deg); }
     /* danger rows (END TURN / CANCEL) wear red the same way */
     .hrlg-body.danger {
       --bc: #ff4a3c; --bc-soft: #ff4a3c88; --bc-faint: #ff4a3c22;
@@ -7566,21 +7615,21 @@ function _injectHudHideStyles() {
     }
     .hrlg-body.danger .hrlg-glyph { color: #ff4a3c; text-shadow: 0 0 10px rgba(255,74,60,0.4); }
     .hrlg-blabel {
-      flex: 1; min-width: 0; font-family: 'Cinzel', serif; font-weight: 700; font-size: 14px;
-      letter-spacing: 0.05em; color: #f0ede0; line-height: 1;
+      flex: 1; min-width: 0; font-family: 'Cormorant SC', serif; font-weight: 600; font-size: 16px;
+      letter-spacing: 0.1em; color: #e8e4d8; line-height: 1;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       text-shadow: 0 1px 2px rgba(0,0,0,0.7);
     }
     /* ── the classic yellow JRPG cursor leading the selected row ── */
     .hrlg-cursor {
       flex: none; margin: 0 -2px 0 -5px;
-      font-size: 14px; line-height: 1; color: #ffd23e; pointer-events: none;
-      text-shadow: 2px 2px 0 #000, 0 0 9px rgba(255,210,62,0.85);
+      font-size: 13px; line-height: 1; color: #f0d060; pointer-events: none;
+      text-shadow: 2px 2px 0 #000, 0 0 9px rgba(240,208,96,0.85);
       animation: hrlgCursorBob 0.55s steps(2, jump-none) infinite;
     }
     @keyframes hrlgCursorBob {
-      0%, 100% { transform: skewX(8deg) translateX(0); }
-      50%      { transform: skewX(8deg) translateX(-4px); }
+      0%, 100% { transform: translateX(0); }
+      50%      { transform: translateX(-4px); }
     }
     .hrlg-tport {
       flex: none; width: 42px; height: 42px;
@@ -7609,12 +7658,16 @@ function _injectHudHideStyles() {
     .hrlg-trow-top.mp { justify-content: flex-end; }
     .hrlg-thp {
       position: relative; height: 10px;
-      background: rgba(0,0,0,0.62); border: 1px solid rgba(255,255,255,0.13);
+      background: rgba(0,0,0,0.62); border: 1px solid #2b2838;
     }
     .hrlg-thp.mp { height: 8px; }
     .hrlg-thp-fill {
       position: absolute; left: 0; top: 0; bottom: 0;
       transition: width 0.3s ease-out;
+    }
+    .hrlg-thp-fill::after {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: repeating-linear-gradient(90deg, transparent 0px, transparent 4px, rgba(0,0,0,0.4) 4px, rgba(0,0,0,0.4) 5px);
     }
     .hrlg-thp-shield {
       position: absolute; top: 0; right: 0; bottom: 0;
@@ -7645,51 +7698,64 @@ function _injectHudHideStyles() {
     .hrlg-spacer { flex: 1 1 6px; min-width: 6px; }
     .hrlg-cost { display: flex; gap: 3px; align-items: center; flex: none; }
     /* AP cost diamonds — always gold, matching the big AP row */
-    .hrlg-cpip { width: 7px; height: 7px; transform: rotate(45deg); background: #ffd23e; opacity: 0.95; box-shadow: 0 0 5px rgba(255,210,62,0.6); }
-    .hrlg-cfree { font-size: 9px; letter-spacing: 0.16em; color: #a8a391; flex: none; white-space: nowrap; }
+    .hrlg-cpip { width: 7px; height: 7px; transform: rotate(45deg); background: #f0d060; opacity: 0.95; box-shadow: 0 0 5px rgba(240,208,96,0.6); }
+    .hrlg-cfree { font-size: 9px; letter-spacing: 0.16em; color: #7a7490; flex: none; white-space: nowrap; }
     .hrlg-tag {
       flex: none; font-size: 8px; letter-spacing: 0.14em; color: #ff8a97;
-      border: 1px solid rgba(255,122,138,0.55); padding: 1px 4px;
-      background: rgba(20,4,6,0.75); white-space: nowrap;
+      border: 1px solid rgba(255,95,95,0.55); padding: 1px 4px;
+      background: rgba(8,7,12,0.75); white-space: nowrap;
     }
     /* right-side detail chips shared by every row */
     .hrlg-pw   { flex: none; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
     .hrlg-chip {
-      flex: none; font-size: 9px; letter-spacing: 0.08em; color: #a5dcf2;
-      border: 1px solid rgba(95,214,255,0.4); background: rgba(8,20,26,0.7);
+      flex: none; font-size: 9px; letter-spacing: 0.08em; color: #8fd0e8;
+      border: 1px solid rgba(79,216,255,0.45); background: rgba(8,7,12,0.7);
       padding: 1px 5px; white-space: nowrap;
     }
-    .hrlg-meta { flex: none; font-size: 10px; letter-spacing: 0.06em; color: #cdc8b8; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+    .hrlg-meta { flex: none; font-size: 10px; letter-spacing: 0.06em; color: #c9c4b4; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
     .hrlg-note {
       flex: none; font-size: 7px; font-weight: 700; letter-spacing: 0.1em;
-      color: #1a1206; background: #ffcc44; padding: 1px 5px; white-space: nowrap;
-      box-shadow: 0 0 6px rgba(255,204,68,0.4);
+      color: #0a0910; background: #f0d060; padding: 1px 5px; white-space: nowrap;
+      box-shadow: 0 0 6px rgba(240,208,96,0.4);
     }
     .hrlg-check {
       flex: none; font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
       color: #0d1a10; background: #57d98a; padding: 2px 6px; white-space: nowrap;
       box-shadow: 0 0 10px rgba(87,217,138,0.6);
     }
-    /* SELECTED (cursor) row + hover: it GLOWS, GROWS and juts toward the
-       player — in ITS OWN color, never a generic wash. */
+    /* SELECTED (cursor) row + hover: a bone frame + soft category glow,
+       plus a psychedelic spectrum hairline running under the row. */
     .hrlg-blade.sel .hrlg-body,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body {
       /* grow in place — no sideways shove, so the row's right edge (badges,
          chips) is never pushed out of the panel and clipped */
-      transform: skewX(-8deg) scaleY(1.05);
-      border-color: rgba(255,255,255,0.85); border-left-color: var(--bc, var(--hfc));
-      box-shadow: 0 0 18px var(--bc-soft, var(--hfc-soft)), inset 0 0 16px var(--bc-faint, var(--hfc-faint)), inset 3px 0 0 var(--bc, var(--hfc));
+      transform: scaleY(1.04);
+      background: linear-gradient(100deg, var(--bc-hi, var(--hfc-faint)) 0%, var(--bc-lo, rgba(255,255,255,0.02)) 100%), rgba(232,228,216,0.05);
+      border-color: rgba(232,228,216,0.9); border-left-color: var(--bc, var(--hfc));
+      box-shadow: 0 0 16px var(--bc-faint, var(--hfc-faint)), inset 3px 0 0 var(--bc, var(--hfc));
       z-index: 3;
     }
     .hrlg-blade.sel .hrlg-body { animation: hrlgSelGlow 1.4s ease-in-out infinite; }
     @keyframes hrlgSelGlow {
-      0%, 100% { filter: brightness(1.18) saturate(1.1); }
-      50%      { filter: brightness(1.42) saturate(1.2); }
+      0%, 100% { filter: brightness(1.1) saturate(1.05); }
+      50%      { filter: brightness(1.28) saturate(1.12); }
     }
-    .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body { filter: brightness(1.3) saturate(1.15); }
+    /* spectrum shimmer hairline under the selected row */
+    .hrlg-blade.sel::after {
+      content: ''; position: absolute; left: 2px; right: 2px; bottom: -1px; height: 2px;
+      background: linear-gradient(90deg, #ff5f5f, #f0d060, #58d858, #4fd8ff, #a06bff, #ff4fa3, #ff5f5f);
+      background-size: 200% 100%;
+      animation: hrlgShimmer 3s linear infinite;
+      opacity: 0.85; pointer-events: none; z-index: 4;
+    }
+    @keyframes hrlgShimmer {
+      0%   { background-position: 0% 50%; }
+      100% { background-position: 200% 50%; }
+    }
+    .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body { filter: brightness(1.25) saturate(1.1); }
     .hrlg-blade.sel .hrlg-blabel,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel { color: #fff; text-shadow: 0 0 10px var(--bc-soft, var(--hfc-soft)); }
-    .hrlg-blade:active:not(.dead):not(.muted) .hrlg-body { transform: skewX(-8deg) scale(0.985); }
+    .hrlg-blade:active:not(.dead):not(.muted) .hrlg-body { transform: scale(0.985); }
     /* armed verb keeps pulsing while aiming */
     .hrlg-blade.active .hrlg-body { border-color: var(--bc, var(--hfc)); animation: hrlgActive 1.5s ease-in-out infinite; }
     @keyframes hrlgActive {
@@ -7713,12 +7779,12 @@ function _injectHudHideStyles() {
        DASHED-edged and carry a red reason tag — categorically different
        from live rows, which always keep their color. */
     .hrlg-blade.dead .hrlg-body, .hrlg-blade.ghost .hrlg-body {
-      background: #0a0a09; border-color: rgba(200,192,165,0.12);
-      border-left: 3px dashed #55524a;
+      background: #0a0910; border-color: #232030;
+      border-left: 3px dashed #3a3548;
       filter: grayscale(1); opacity: 0.55;
     }
     .hrlg-blade.dead .hrlg-glyph, .hrlg-blade.dead .hrlg-blabel,
-    .hrlg-blade.ghost .hrlg-glyph, .hrlg-blade.ghost .hrlg-blabel { color: #6a665a; text-shadow: none; }
+    .hrlg-blade.ghost .hrlg-glyph, .hrlg-blade.ghost .hrlg-blabel { color: #5e5875; text-shadow: none; }
     /* the red reason tag/subline stays readable even inside the washed-out row */
     .hrlg-blade.dead .hrlg-tag, .hrlg-blade.ghost .hrlg-tag,
     .hrlg-blade.dead .hrlg-subline, .hrlg-blade.ghost .hrlg-subline { filter: none; opacity: 1; color: #ff8a97; }
@@ -7740,15 +7806,12 @@ function _injectHudHideStyles() {
       position: relative; margin: 0 7px 0 5px; height: 46px; flex: none;
       display: flex; align-items: center; gap: 10px; padding: 0 22px 0 14px;
       pointer-events: auto; cursor: pointer; z-index: 3;
-      background: linear-gradient(100deg, #123720 0%, #0c2414 100%);
-      border: 1px solid #57d98a; border-left: 4px solid #57d98a;
-      clip-path: polygon(9px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
-      transform: skewX(-8deg);
+      background: linear-gradient(100deg, #10301c 0%, #0a1f12 100%);
+      border: 1px solid #57d98a; border-left: 3px solid #57d98a;
       animation: hrlgConfirmPulse 1.1s ease-in-out infinite;
     }
-    .hrlg-confirm > * { transform: skewX(8deg); }
     .hrlg-confirm:hover { animation: none; filter: brightness(1.35); }
-    .hrlg-confirm:active { transform: skewX(-8deg) translateY(2px); }
+    .hrlg-confirm:active { transform: translateY(2px); }
     @keyframes hrlgConfirmPulse {
       0%, 100% { box-shadow: -2px 0 14px rgba(87,217,138,0.35); }
       50%      { box-shadow: -2px 0 30px rgba(87,217,138,0.8); }
@@ -7760,8 +7823,8 @@ function _injectHudHideStyles() {
       box-shadow: 0 0 12px rgba(87,217,138,0.8);
     }
     .hrlg-confirm-lbl {
-      font-family: 'Cinzel', serif; font-weight: 700; font-size: 14px;
-      letter-spacing: 0.12em; color: #b8f5d0; white-space: nowrap;
+      font-family: 'Cormorant SC', serif; font-weight: 700; font-size: 15px;
+      letter-spacing: 0.16em; color: #b8f5d0; white-space: nowrap;
       text-shadow: 0 0 12px rgba(87,217,138,0.6);
       overflow: hidden; text-overflow: ellipsis; max-width: 260px;
     }
@@ -7775,9 +7838,8 @@ function _injectHudHideStyles() {
       height: 26px; padding: 0 10px; margin-right: 2px;
       cursor: pointer; pointer-events: auto;
       font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: #b8f5d0;
-      background: linear-gradient(100deg, #123720 0%, #0c2414 100%);
+      background: linear-gradient(100deg, #10301c 0%, #0a1f12 100%);
       border: 1px solid #57d98a;
-      clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
       text-shadow: 0 0 8px rgba(87,217,138,0.6); white-space: nowrap;
       animation: hrlgConfirmPulse 1.1s ease-in-out infinite;
     }
@@ -7797,10 +7859,9 @@ function _injectHudHideStyles() {
       height: 24px; padding: 0 10px;
       cursor: pointer; pointer-events: auto; z-index: 3;
       font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: #ff9184;
-      background: rgba(26,8,7,0.88);
-      border: 1px solid rgba(255,74,60,0.55);
-      clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
-      text-shadow: 0 0 8px rgba(255,74,60,0.5);
+      background: rgba(8,7,12,0.88);
+      border: 1px solid rgba(255,95,95,0.55);
+      text-shadow: 0 0 8px rgba(255,95,95,0.5);
       transition: filter 0.1s ease, transform 0.1s ease;
     }
     .hrlg-backchip:hover { filter: brightness(1.45); transform: translateX(-2px); }
@@ -7856,16 +7917,16 @@ function _injectHudHideStyles() {
       transform-origin: 50% 100%;
       pointer-events: none; opacity: 0;
       transition: opacity 0.16s ease;
-      font-family: 'DotGothic16', monospace;
+      font-family: 'IBM Plex Mono', monospace;
     }
     #ew-spell-descbar.show { opacity: 1; }
     #ew-spell-descbar::before, #ew-spell-descbar::after {
       content: ''; position: absolute; left: 0; right: 0; height: 1px; z-index: 1;
       background: linear-gradient(90deg,
-        rgba(216,210,190,0) 0%, rgba(216,210,190,0.65) 16%,
-        rgba(255,74,60,0.9) 50%,
-        rgba(216,210,190,0.65) 84%, rgba(216,210,190,0) 100%);
-      filter: drop-shadow(0 0 5px rgba(255,74,60,0.35));
+        rgba(58,53,72,0) 0%, rgba(58,53,72,0.9) 12%,
+        rgba(160,107,255,0.8) 38%, rgba(79,216,255,0.8) 50%, rgba(255,79,163,0.8) 62%,
+        rgba(58,53,72,0.9) 88%, rgba(58,53,72,0) 100%);
+      filter: drop-shadow(0 0 5px rgba(160,107,255,0.3));
     }
     #ew-spell-descbar::before { top: 0; }
     #ew-spell-descbar::after  { bottom: 0; }
@@ -7874,21 +7935,21 @@ function _injectHudHideStyles() {
       display: flex; align-items: center; justify-content: center;
       gap: 14px; flex-wrap: wrap; row-gap: 4px;
       background: linear-gradient(90deg,
-        rgba(7,7,6,0) 0%, rgba(7,7,6,0.9) 6%,
-        rgba(7,7,6,0.94) 94%, rgba(7,7,6,0) 100%);
+        rgba(6,5,9,0) 0%, rgba(6,5,9,0.92) 6%,
+        rgba(6,5,9,0.95) 94%, rgba(6,5,9,0) 100%);
     }
     .ew-descbar-name {
-      font-family: 'Cinzel', serif; font-size: 16px; font-weight: 700;
-      color: #eceadd; letter-spacing: 0.06em; white-space: nowrap;
-      text-shadow: 0 0 10px rgba(255,74,60,0.3), 0 1px 2px rgba(0,0,0,0.9);
+      font-family: 'Cormorant SC', serif; font-size: 19px; font-weight: 700;
+      color: #e8e4d8; letter-spacing: 0.1em; white-space: nowrap;
+      text-shadow: 0 0 10px rgba(160,107,255,0.3), 0 1px 2px rgba(0,0,0,0.9);
     }
     .ew-descbar-desc {
-      font-size: 12px; line-height: 1.45; color: #d9d5c6;
+      font-size: 12px; line-height: 1.45; color: #c9c4b4;
       text-shadow: 0 1px 2px rgba(0,0,0,0.85);
       max-width: 52%;
     }
     .ew-descbar-stats {
-      font-size: 10px; letter-spacing: 0.08em; color: #979181; white-space: nowrap;
+      font-size: 10px; letter-spacing: 0.08em; color: #7a7490; white-space: nowrap;
     }
     .ew-descbar-status { font-size: 10px; color: #c89ee0; white-space: nowrap; }
     @media (max-width: 760px) {
@@ -7908,6 +7969,8 @@ function _injectHudHideStyles() {
     }
   `;
   document.head.appendChild(style);
+  // CRT veil kill switch (console: window.EW_DISABLE_CRT = true, then re-enter battle)
+  document.body.classList.toggle('ew-no-crt', !!window.EW_DISABLE_CRT);
 }
 
 function _removeHudHideStyles() {
