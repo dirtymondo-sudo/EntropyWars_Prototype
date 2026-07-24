@@ -4260,7 +4260,7 @@ const SPELL_LIBRARY = [
         classRestriction: 'Agent',
         maxActivePerCaster: 3,
         blastRadius: 1,
-        desc: 'Places a bomb. Detonate it to deal MEDIUM magic damage in an AOE.'
+        desc: 'Places a bomb — a FREE action (no AP, costs MP only), so you can place several and still Detonate, move or attack. Detonate them to deal MEDIUM magic damage in an AOE.'
     },
     {
         id: 'glare',
@@ -6778,7 +6778,7 @@ const RACE_ABILITIES = {
         { id: 'racePrismMirror', spellType: 'tech', element: 'arcane', name: 'Prism Mirror',
           type: 'utility', cost: 16, range: 4, apCost: 1,
           kind: 'placeMirror', maxActivePerCaster: 8, mirrorHp: 2,
-          desc: 'Fold a laser-reflecting prism into being on an empty tile (up to 8) for just 1 AP. Beams auto-connect any of your prisms that share a row or column — enemies that path through a beam are seared, and enemies still standing in one at end of round take burn damage. A prism is sturdy glass: it takes two hits to shatter.' },
+          desc: 'Fold a laser-reflecting prism into being on an empty tile (up to 8) — a FREE action (no AP, costs MP only), so you can fold several and still Pulse Lattice, move or attack. Beams auto-connect any of your prisms that share a row or column — enemies that path through a beam are seared, and enemies still standing in one at end of round take burn damage. A prism is sturdy glass: it takes two hits to shatter.' },
         { id: 'raceTuneFrequency', spellType: 'tech', element: 'arcane', name: 'Tune Frequency',
           type: 'utility', cost: 8, range: 0, apCost: 1, cooldownRounds: 1,
           kind: 'tuneFrequency',

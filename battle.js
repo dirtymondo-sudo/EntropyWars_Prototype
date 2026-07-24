@@ -15762,7 +15762,7 @@
                 const net = computeMirrorNetwork(p);
                 if (!net.segments.length) continue;
                 const color = _mirrorFreqFor(p).color;
-                for (const s of net.segments) out.push({ ax: s.ax, ay: s.ay, bx: s.bx, by: s.by, color: color });
+                for (const s of net.segments) out.push({ ax: s.ax, ay: s.ay, bx: s.bx, by: s.by, color: color, owner: p });
             }
             return out;
         }
@@ -18508,6 +18508,25 @@
             return _PRESS_SPELL_KINDS.has(spell.kind);
         }
 
+        /* Setup placements (Place Bomb, Prism Mirror) are FREE actions: they
+           cost 0 AP and never consume the one-spell-per-turn slot, so a unit
+           can lay several in one turn and STILL Detonate / Pulse Lattice /
+           attack / move. MP cost and maxActivePerCaster stay the real
+           limiters (and the turn still ends normally once AP actions run out). */
+        function spellIsSetupPlacement(spell) {
+            return !!spell && (spell.kind === 'bomb' || spell.kind === 'placeMirror');
+        }
+        // Any spell that grants Protect ends the caster's turn outright —
+        // shielding up IS the whole turn (no protect-then-act / protect-then-move).
+        function spellGrantsProtect(spell) {
+            return !!spell && Array.isArray(spell.statusEffects)
+                && spell.statusEffects.some(e => e && e.id === 'protect');
+        }
+        // Casts that consume the REST of the turn (spendAllAP): damage, or Protect.
+        function spellEndsTurn(spell) {
+            return spellDealsDamage(spell) || spellGrantsProtect(spell);
+        }
+
         /* Once-per-turn ability lock: EVERY spell/ability has an implicit
            1-turn cooldown — a unit may not repeat the same one within a
            single activation (no double heal, no re-buff, no recasting the
@@ -18517,6 +18536,8 @@
            cast path rejects it. Basic attacks are exempt. */
         function _markSpellUsedThisTurn(unit, spell) {
             if (!unit || !spell) return;
+            // Free setup placements never lock the spell slot — repeat away.
+            if (spellIsSetupPlacement(spell)) return;
             const key = spell.id || spell.name;
             if (!key) return;
             if (!unit._spellsUsedThisTurn) unit._spellsUsedThisTurn = {};
@@ -18529,6 +18550,9 @@
         window.spellUsedThisTurn = spellUsedThisTurn;
 
         function getSpellApCost(spell) {
+            // Setup placements (bombs, prisms) are free actions — see
+            // spellIsSetupPlacement above.
+            if (spellIsSetupPlacement(spell)) return 0;
             const cost = (spell && spell.apCost != null) ? spell.apCost : AP_COST_SPELL;
             // Every action costs 1 AP under the two-action turn: legacy
             // per-spell apCost:2 entries in data.js are clamped down so
@@ -18576,7 +18600,10 @@
             // committed cast marks exactly one key). The only exemption: a
             // press refund (weakness/crit) hands back a full fresh action,
             // which may be a second cast.
-            {
+            // Free setup placements (bombs, prisms) are exempt from the
+            // per-turn cast cap — they neither count toward it nor get
+            // blocked by it (see spellIsSetupPlacement).
+            if (!spellIsSetupPlacement(spell)) {
                 const _castsUsed = unit._spellsUsedThisTurn
                     ? Object.keys(unit._spellsUsedThisTurn).length : 0;
                 const _castsAllowed = 1 + ((unit._pressGainedThisTurn || 0) > 0 ? 1 : 0);
@@ -25997,7 +26024,7 @@
                     targetId: (tgt && tgt.id !== unit.id) ? tgt.id : null, dmg,
                 });
                 _markSpellUsedThisTurn(unit, spell);
-                if (dmg) spendAllAP(unit);
+                if (spellEndsTurn(spell)) spendAllAP(unit);
                 else spendAP(unit, getSpellApCost(spell));
                 showFloatingTextForUnit(unit, `📜 ${spell.name}`, 'buff', { durationMs: 1100 });
                 playSfx('uiConfirm');
@@ -26315,7 +26342,7 @@
             function _spellWhiff(unit, spell) {
                 /* The cast was committed — burn the MP and the action. */
                 unit.mp = Math.max(0, (unit.mp || 0) - getSpellMpCostFor(unit, spell));
-                if (spellDealsDamage(spell)) spendAllAP(unit);
+                if (spellEndsTurn(spell)) spendAllAP(unit);
                 else spendAP(unit, getSpellApCost(spell));
                 _whiff(unit, spell.name);
             }
@@ -37110,9 +37137,10 @@
 
                 state._lastSpellCast = { spellId: spell.id, caster: unit.id, player: unit.player };
                 _markSpellUsedThisTurn(unit, spell);
-                // Damaging casts end the turn (only a press hands AP back);
-                // support casts spend their AP cost and leave the turn alive.
-                if (spellDealsDamage(spell)) spendAllAP(unit);
+                // Damaging casts — and Protect-granting casts — end the turn
+                // (only a press hands AP back); other support casts spend
+                // their AP cost and leave the turn alive.
+                if (spellEndsTurn(spell)) spendAllAP(unit);
                 else spendAP(unit, spellApCost);
                 const _spellPressRes = _consumePressCollector(unit, spellApCost);
                 _showPressFeedback(unit, _spellPressRes);

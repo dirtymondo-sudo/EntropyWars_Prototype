@@ -6696,6 +6696,7 @@ const ThreeRenderer = (function () {
         g.position.set(mirror.x * ts + ts / 2, topY, mirror.y * ts + ts / 2);
         g._ew_deployable = true;
         g._ew_depX = mirror.x; g._ew_depY = mirror.y;
+        g._ew_depOwner = mirror.owner;
         return g;
     }
     // A glowing beam cylinder between two prism tiles (respecting elevation).
@@ -6774,6 +6775,7 @@ const ThreeRenderer = (function () {
                 if (m) {
                     var key = 'dep_' + (idx++);
                     m._ew_depX = b.x; m._ew_depY = b.y;
+                    m._ew_depOwner = b.owner;
                     objectGroup.add(m);
                     deployableMeshes.set(key, m);
                 }
@@ -6797,6 +6799,7 @@ const ThreeRenderer = (function () {
                 for (var bi2 = 0; bi2 < segs.length; bi2++) {
                     var beamMesh = _buildMirrorBeam(segs[bi2]);
                     if (beamMesh) {
+                        beamMesh._ew_depOwner = segs[bi2].owner;
                         var bKey = 'dep_' + (idx++);
                         objectGroup.add(beamMesh);
                         deployableMeshes.set(bKey, beamMesh);
@@ -13721,6 +13724,15 @@ const ThreeRenderer = (function () {
 
         var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : (state.activePlayer || 1);
         deployableMeshes.forEach(function(mesh) {
+            /* Your OWN deployables (bombs, prism mirrors, their laser beams…)
+               are always visible to you — you placed them. Fog-gating them by
+               tile made a player's own lattice flicker in and out as their
+               units moved and vision shifted. Enemy deployables stay
+               vision-gated per tile as before. */
+            if (mesh._ew_depOwner !== undefined && mesh._ew_depOwner === vp) {
+                mesh.visible = true;
+                return;
+            }
             var dx = mesh._ew_depX, dy = mesh._ew_depY;
             if (dx !== undefined && dy !== undefined) {
                 mesh.visible = visible.has(dx + ',' + dy);
