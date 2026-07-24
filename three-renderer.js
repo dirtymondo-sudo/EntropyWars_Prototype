@@ -5212,6 +5212,15 @@ const ThreeRenderer = (function () {
         return new THREE.Color(hex).lerp(new THREE.Color(0xffffff), t).getHex();
     }
 
+    /* unit ids are strings ("1-0", "2-3", "turret_...") — arithmetic on them
+       yields NaN, which silently NaN-poisons every per-frame aura value
+       (scale/opacity/light) and renders NOTHING. Hash to a stable number. */
+    function _auraSeed(id) {
+        var s = String(id), n = 0;
+        for (var i = 0; i < s.length; i++) n = (n * 31 + s.charCodeAt(i)) % 997;
+        return n % 100;
+    }
+
     /* The two persistent palettes. Spell bursts derive theirs from one base
        color (see _powerAuraBurst) unless the caller specifies every stop. */
     var _AURA_KINDS = {
@@ -5307,7 +5316,7 @@ const ThreeRenderer = (function () {
         return {
             kind: kindKey, group: g, mats: mats, ring: ring, ringMat: ringMat,
             glow: glow, streaks: streaks, light: light, pal: pal,
-            h: h, r: r, fade: 0, seed: (unit.id * 13) % 100,
+            h: h, r: r, fade: 0, seed: _auraSeed(unit.id),
             nextSpark: performance.now() + 300 + Math.random() * 700
         };
     }

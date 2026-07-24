@@ -6536,6 +6536,14 @@ Token bumped `20260716d` → `20260716e`. NOT playtested (per RULE #1c) — synt
 - GOTCHA: `_updateUnitAuras` builds a fresh id→unit map each frame — on guests
   `state.units` is REPLACED by every state-sync, and `_unitById` only refreshes
   on STRUCTURAL rebuilds, so caching unit refs there would go stale.
+- **BUGFIX (2026-07-24, token `20260724c`): auras NEVER showed since shipping.**
+  Root cause: `_buildPowerAuraEntry` seeded flicker with `(unit.id * 13) % 100`
+  — but unit ids are STRINGS (`"1-0"` from makeUnitsFromBuilds/createUnit), so
+  seed = NaN → every per-frame value (group scale, shader uOpacity, ring/glow/
+  streak opacity, light intensity) NaN-poisoned → subtree rendered as nothing,
+  no exception, totally silent. Fixed with `_auraSeed(id)` string hash.
+  LESSON: never do arithmetic on `unit.id`; hash it (NaN in a transform/opacity
+  fails invisibly — check for NaN when a whole VFX subtree "doesn't exist").
 
 ## MYSTERY DUNGEON v3 — ROAM/CHASE AI, GROUND LOOT, SILENT ENEMY TURNS, NO SPAWN ZONES, L5 START (2026-07-17) — data.js, battle.js, map.js, three-renderer.js, index.html
 
