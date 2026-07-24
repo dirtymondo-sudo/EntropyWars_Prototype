@@ -10015,21 +10015,30 @@
             _autoSettleTimer: null,
             // opts.pullBack (with optional opts.x/opts.y): the settle ALSO
             // restores the tactical zoom (and re-centres) instead of only
-            // levelling pitch/yaw. Used by the post-KILL path — the action
-            // shot is parked zoomed-in on the victim's remains (gravestone /
-            // pile of bones) and nothing else pulls the zoom back out on an
-            // auto side, so a pitch-only settle left the camera stuck in a
-            // close-up of the corpse.
+            // levelling pitch/yaw. Used by every path that KEEPS an action
+            // shot's framing afterwards — that framing is beat 2's close-up
+            // parked on the VICTIM/target tile, so a pitch-only settle left
+            // the camera zoomed in on the target (a corpse, an empty tile a
+            // support/terrain spell aimed at) instead of on the unit whose
+            // turn it still is.
+            // opts.ownerUnitId: the settle belongs to THAT unit's turn. If the
+            // blitz turn has moved on by the time it fires, the next unit's
+            // activation pan owns the camera — dropping the settle here is
+            // what keeps a re-centring pull-back from yanking the view back
+            // to the previous actor.
             _armLevelSettle(delayMs, opts) {
                 if (this._autoSettleTimer) clearTimeout(this._autoSettleTimer);
                 const _pull = !!(opts && opts.pullBack);
                 const _px = opts ? opts.x : undefined;
                 const _py = opts ? opts.y : undefined;
+                const _owner = opts ? opts.ownerUnitId : undefined;
                 this._autoSettleTimer = setTimeout(() => {
                     this._autoSettleTimer = null;
                     if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
                     if (this._rafId || this._busy || this._cineShotId != null) return;
                     if (state._userPanning || state._fullMapOverview) return;
+                    if (_owner != null && state._blitzActiveUnitId != null
+                        && state._blitzActiveUnitId !== _owner) return;
                     // End-of-round tour in progress: its beats (overview, status
                     // dives, detonations…) own the camera — a leftover settle
                     // firing in a quiet gap between beats re-centred/zoomed onto
@@ -10349,33 +10358,30 @@
                     //
                     // Arm a DEBOUNCED settle: if no new shot takes over within a
                     // short window (i.e. the streak has genuinely ended), ease the
-                    // PITCH/YAW back to the resting board orientation — keeping the
-                    // current focal position and zoom, so there's no positional
-                    // bounce, just the camera levelling out to a normal view. Every
-                    // action re-arms the timer, so a rapid multi-attack streak
-                    // never settles mid-way; it only levels out after the LAST
-                    // action. The fire-time guard skips it if another shot is
-                    // playing, a move is already animating, the player is
-                    // hand-panning, or the pitch is already level. _fogAllowed lets
-                    // it run on an AI fog turn (a non-viewer camera move is
-                    // otherwise blocked).
+                    // camera back to the resting board framing. Every action
+                    // re-arms the timer, so a rapid multi-attack streak never
+                    // settles mid-way; it only comes back after the LAST action.
+                    // The fire-time guard skips it if another shot is playing, a
+                    // move is already animating, or the player is hand-panning.
+                    // _fogAllowed lets it run on an AI fog turn (a non-viewer
+                    // camera move is otherwise blocked).
                     //
-                    // …EXCEPT when the shot's victim just DIED: the framing being
-                    // kept is beat 2's close-up parked on the target — a zoomed-in
-                    // shot of a gravestone / pile of bones — and a pitch-only
-                    // settle left the camera stuck in that close-up until the next
-                    // unit's activation pan (the "camera zooms in on the remains
-                    // and never resets" bug on AI kills). Pull the zoom back out
-                    // to the tactical framing too, re-centred on the actor when it
-                    // survives. A follow-up shot in the streak still re-arms this
-                    // before it fires, so mid-streak kills stay cinematic.
-                    const _autoVictim = (this._cineShotTarget && this._cineShotTarget.id != null)
-                        ? (state.units || []).find(u => u.id === this._cineShotTarget.id) : null;
-                    const _autoVictimGone = !!(_autoVictim && (_autoVictim.dead || _autoVictim._dying));
-                    this._armLevelSettle(actionMs(600), _autoVictimGone ? {
-                        pullBack: true,
-                        ...(targetUnit && !targetUnit.dead ? { x: targetUnit.x, y: targetUnit.y } : {})
-                    } : undefined);
+                    // The settle PULLS BACK (zoom + re-centre on the actor), not
+                    // just levels the pitch: the framing being kept is beat 2's
+                    // close-up parked on the TARGET — a gravestone, a living
+                    // victim, or the bare tile a terrain/deploy spell aimed at —
+                    // and a pitch-only settle left the camera zoomed in on that
+                    // tile until the next unit's activation pan. That was the
+                    // "random little zoom-in that ends up on the target instead
+                    // of the actor" bug (loudest on kills and on tile-targeted
+                    // spells). ownerUnitId drops the settle outright once the
+                    // blitz turn has moved on, so the pull-back can never yank
+                    // the view back off the newly-activated unit.
+                    armActionCamSettle(
+                        targetUnit ? targetUnit.id : null,
+                        targetUnit && !targetUnit.dead ? targetUnit.x : undefined,
+                        targetUnit && !targetUnit.dead ? targetUnit.y : undefined,
+                        actionMs(600));
                     return;
                 }
                 // ── Turn-ownership guard (the "camera isn't on my unit at the
@@ -10433,14 +10439,20 @@
                     if (this._cineSubjectReleaseTimer) { clearTimeout(this._cineSubjectReleaseTimer); this._cineSubjectReleaseTimer = null; }
                     this._busy = false;
                     if (this._busyTimer) { clearTimeout(this._busyTimer); this._busyTimer = null; }
-                    // Holding the action framing is fine — holding the craned
-                    // PITCH is not: if the player doesn't chain another action
-                    // shortly, level the camera back to the resting angle
-                    // (position/zoom stay; _preCineView remains pending so the
-                    // real return still lands on the player's own framing).
-                    // Without this, a spell cast at a higher target left the
-                    // camera staring up at the sky for the rest of the turn.
-                    this._armLevelSettle(actionMs(900));
+                    // Holding the action framing is fine for a moment — LIVING
+                    // in it is not. The framing being held is beat 2's close-up
+                    // parked on the TARGET, so if the player doesn't chain
+                    // another action shortly they were left zoomed in on the
+                    // victim (or, for a tile-targeted spell, on a bare patch of
+                    // ground) with the action menu open and their own caster
+                    // off-frame — the "little zoom-in that snaps back but stays
+                    // on the target instead of the caster" bug. Debounced
+                    // pull-back: re-centre on the CASTER at the resting angle
+                    // and zoom if no follow-up action takes the camera first
+                    // (a chained cast/attack re-arms it, so fast chains still
+                    // stay in the shot). _preCineView remains pending so the
+                    // real return still lands on the player's own framing.
+                    armActionCamSettle(targetUnit.id, targetUnit.x, targetUnit.y, actionMs(700));
                     return;
                 }
                 ++boardCameraSequenceId;
@@ -10642,6 +10654,49 @@
                 return { x: Math.floor(bw() / 2), y: Math.floor(bh() / 2) };
             }
         };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // armActionCamSettle() — "come home from the action shot".
+        //
+        // Every path that KEEPS a cinematic action shot's framing after the
+        // action (the acting side is auto, or the player's unit still has AP)
+        // is holding beat 2's CLOSE-UP OF THE TARGET. Left alone that reads as
+        // a little zoom-in that never leaves: the camera sits on the victim —
+        // or, for a tile-targeted spell, on a bare patch of ground — while the
+        // caster is off-frame with its menu open. This arms the debounced
+        // return: if nothing else takes the camera first, ease back to the
+        // ACTOR at the resting angle and zoom.
+        //
+        // Global (and online-relayed) because the GUEST replays the cinematic
+        // shot but never runs the engine's post-action soft reset — nothing
+        // mirror-side ever ended the shot, so the guest's camera stayed parked
+        // on the target for the rest of the turn. endShot=true (guest replay)
+        // clears the stale shot ownership first, since _armLevelSettle refuses
+        // to fire while a shot still owns the camera.
+        //
+        // Fog: re-centring is keyed to a unit, so it gates on screen-true
+        // visibility — a hidden enemy actor settles the angle/zoom in place
+        // rather than panning the viewer onto its tile.
+        // ═══════════════════════════════════════════════════════════════════
+        function armActionCamSettle(unitId, x, y, delayMs, endShot) {
+            if (state.cameraDisabled || state.phase !== 'battle' || state.winner) return;
+            if (endShot) {
+                camera._cineShotId = null;
+                camera._savedState = null;
+                camera._releaseCineSubject(actionMs(950));
+            }
+            let _cx = x, _cy = y;
+            if (unitId != null) {
+                const actor = (state.units || []).find(u => u.id === unitId);
+                if (actor && !_shouldCameraFollowUnit(actor)) { _cx = undefined; _cy = undefined; }
+            }
+            camera._armLevelSettle(delayMs || actionMs(700), {
+                pullBack: true,
+                ...(unitId != null ? { ownerUnitId: unitId } : {}),
+                ...(Number.isFinite(_cx) && Number.isFinite(_cy) ? { x: _cx, y: _cy } : {})
+            });
+        }
+        window._armActionCamSettle = armActionCamSettle;
 
         function stopBoardCameraAnimation() { camera._stop(); }
         function setBoardCameraFocusPoint(x, y, opts = {}) {

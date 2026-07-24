@@ -987,6 +987,34 @@
         };
         window.followUnitFall = followUnitFall;
 
+        /* Post-action camera settle (battle.js armActionCamSettle): the
+           debounced "come home from the action shot" return that pulls the
+           camera off beat 2's close-up of the target and back onto the ACTOR.
+           It runs inside the engine's post-action soft reset, so online it
+           only ever fires on the HOST — without the relay the guest replayed
+           the cinematic shot and then sat parked, zoomed in on the victim (or
+           on the bare tile a terrain/deploy spell aimed at) for the rest of
+           the turn. endShot=true on the guest: nothing mirror-side ever ends a
+           relayed shot, and the settle refuses to fire while one owns the
+           camera. The function itself fog-gates the re-centre on the GUEST's
+           own viewer, so a hidden enemy actor settles in place. */
+        if (typeof window._armActionCamSettle === 'function') {
+            const _origArmActionCamSettle = window._armActionCamSettle;
+            window._armActionCamSettle = function(unitId, x, y, delayMs, endShot) {
+                _origArmActionCamSettle(unitId, x, y, delayMs, endShot);
+                var _netOn = window._NET && window._NET.online;
+                if (_netOn && _isHost() && state.phase === 'battle') {
+                    _emit('relay', {
+                        type: 'cam-action-settle',
+                        unitId: unitId != null ? unitId : null,
+                        x: Number.isFinite(x) ? x : null,
+                        y: Number.isFinite(y) ? y : null,
+                        delay: delayMs || 0
+                    });
+                }
+            };
+        }
+
         /* Dash/charge follow camera (battle.js animateDashActionCamera): the
            camera rides with the dasher from launch to landing. Engine-side
            (runs inside doSpell's dash/chargeToTarget), so online it only ever
@@ -2730,6 +2758,20 @@
                             ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
                         if (_fallU && typeof window.followUnitFall === 'function') {
                             window.followUnitFall(_fallU, data.duration ? { duration: data.duration } : {});
+                        }
+                    }
+
+                    if (data.type === 'cam-action-settle' && NET.role === 'guest') {
+                        /* End the relayed cinematic shot on the mirror and ease
+                           back to the actor at the resting framing. The helper
+                           fog-gates the re-centre itself (hidden enemy actor →
+                           angle/zoom settle in place, no pan onto its tile). */
+                        if (typeof window._armActionCamSettle === 'function') {
+                            window._armActionCamSettle(
+                                data.unitId != null ? data.unitId : null,
+                                data.x != null ? data.x : undefined,
+                                data.y != null ? data.y : undefined,
+                                data.delay || 0, true);
                         }
                     }
 
