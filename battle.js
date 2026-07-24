@@ -2079,20 +2079,18 @@
         // THE one MP-cost formula. The charge site, every menu-greying check
         // and the hover/move-then-cast probes all read this, so the UI and the
         // engine can never disagree about affordability: base cost, −25% for
-        // terraform spells under an earth sign, plus status deltas (Discord),
-        // all compressed by the caster's levelScale — MP pools shrink to ~5%
-        // at level 1 (data.js levelStatGains), so costs must shrink with them
-        // or nothing is castable early. levelScale(100) = 1 keeps PvP exact.
+        // terraform spells under an earth sign, plus status deltas (Discord).
+        // Costs are FLAT AT ALL LEVELS — classic FF/DQ/SMT: Fire costs the
+        // same at level 1 and 99. Leveling grows the POOL instead (data.js
+        // levelStatGains, 20% floor), so casts-per-pool rises with level.
+        // NEVER level-scale this — 1-MP spells are not a JRPG thing.
         function getSpellMpCostFor(unit, spell) {
             let base = Number((spell && spell.cost) || 0);
             if (base > 0 && isEarthZodiacActive() && isTerraformSpell(spell)) {
                 base = Math.max(1, Math.round(base * EARTH_RESONANCE_COST_MULT));
             }
             const delta = (unit && typeof getStatusMpCostDelta === 'function') ? getStatusMpCostDelta(unit) : 0;
-            const total = base + delta;
-            if (total <= 0) return 0;
-            const ls = (unit && typeof levelScale === 'function') ? levelScale(getUnitLevel(unit)) : 1;
-            return Math.max(1, Math.round(total * ls));
+            return Math.max(0, base + delta);
         }
         window.getSpellMpCostFor = getSpellMpCostFor;
 
@@ -7760,7 +7758,7 @@
 
         function processOverkill(killer, target, overkillAmount) {
             if (!killer || killer.dead || overkillAmount < target.maxHp * 0.5) return;
-            const mpGain = Math.min(Math.max(1, Math.round(6 * ((typeof levelScale === 'function') ? levelScale(getUnitLevel(killer)) : 1))), Math.floor(overkillAmount / 4));
+            const mpGain = Math.min(6, Math.floor(overkillAmount / 4));
             if (mpGain > 0 && killer.maxMp > 0) {
                 const actual = Math.min(mpGain, killer.maxMp - killer.mp);
                 if (actual > 0) {
@@ -12855,7 +12853,7 @@
                     const ap2 = _posOf(a);
                     if (Math.hypot(ap2.fx - cp.fx, ap2.fy - cp.fy) > radius + 0.4) continue;
                     if (d.cat === 'manaAll' || sp.kind === 'manaRestoreAll') {
-                        a.mp = Math.min(a.maxMp || 0, (a.mp || 0) + Math.max(Math.max(1, Math.round(20 * ((typeof levelScale === 'function') ? levelScale(getUnitLevel(a)) : 1))), Math.round((a.maxMp || 0) * 0.3)));
+                        a.mp = Math.min(a.maxMp || 0, (a.mp || 0) + Math.max(20, Math.round((a.maxMp || 0) * 0.3)));
                         try { showFloatingTextForUnit(a, '+MP', 'mana', { durationMs: 900 }); } catch (e) {}
                     } else {
                         _healUnit(caster, sp, d, a);
@@ -15306,10 +15304,9 @@
                     // ⚙️ SUPERCHARGED: the jolt overclocks the machine (+ATK,
                     // +1 move, tech range bonus) and tops up its capacitors.
                     applyStatusPayload(target, { id: 'overclock', duration: 2 }, '⚙️ Supercharged: ', null);
-                    // MP pools compress with level, so the capacitor top-up
-                    // compresses too (levelScale(100) = 1 keeps PvP exact).
-                    const _scMp = Math.max(1, Math.round(25 * ((typeof levelScale === 'function') ? levelScale(getUnitLevel(target)) : 1)));
-                    const _mpGain = Math.min(_scMp, Math.max(0, (target.maxMp || 0) - (target.mp || 0)));
+                    // Spell costs are flat at all levels, so flat MP restores
+                    // stay flat too (an Ether is huge early, modest late).
+                    const _mpGain = Math.min(25, Math.max(0, (target.maxMp || 0) - (target.mp || 0)));
                     if (_mpGain > 0) {
                         target.mp += _mpGain;
                         showFloatingTextForUnit(target, `+${_mpGain} MP`, 'mp');
@@ -18118,17 +18115,18 @@
         }
 
         // Leveling: atk/def/mdef/int grow ADDITIVELY at classic scale, while
-        // max HP AND max MP follow the 5%→100% curve — (base + total gains)
-        // × levelScale(L), ~50 HP / ~10 MP at level 1 up to the old level-10
-        // statline at the cap (data.js levelStatGains). Gains are applied as a
+        // max HP follows the 5%→100% curve and max MP the same curve with a
+        // 20% floor — ~50 HP and ~1/5 of the mana pool at level 1, up to the
+        // old level-10 statline at the cap (data.js levelStatGains). Spell MP
+        // costs stay FLAT (classic JRPG), which is why MP's floor is higher:
+        // a fresh unit must afford its starter spells. Gains are applied as a
         // DELTA from the last level applied to this unit, so flat equipment /
         // secondary-job / shop bonuses already sitting on the live stats
         // survive re-leveling untouched. The HP/MP deltas are NEGATIVE at low
         // levels — that's what compresses a fresh Mystery Dungeon unit below
-        // its race base. Spell MP costs compress on the same curve
-        // (getSpellMpCostFor), and flat damage/heal numbers are level-scaled
-        // at the resolution chokepoints (levelScale(100) = 1, so the cap
-        // stays WYSIWYG). Heals the HP/MP delta like a level-up.
+        // its race base. Flat damage/heal numbers are level-scaled at the
+        // resolution chokepoints (levelScale(100) = 1, so the cap stays
+        // WYSIWYG). Heals the HP/MP delta like a level-up.
         function _recomputeStatsForLevel(unit, level) {
             if (!unit || typeof levelStatGains !== 'function') return;
             const prev = unit._lvlStatGains || { hp: 0, mp: 0, atk: 0, def: 0, mdef: 0, int: 0 };
@@ -31771,10 +31769,11 @@
             state.pixieDust.splice(idx, 1);
             markDirty('board');
             if (unit.player === mote.owner) {
-                // HP/MP pools compress with level — the dust motes must too.
+                // HP compresses with level so the heal scales; MP restores
+                // stay FLAT like spell costs (classic JRPG Ether behavior).
                 const _pdLs = (typeof levelScale === 'function') ? levelScale(getUnitLevel(unit)) : 1;
                 const _pdHeal = Math.max(1, Math.round(PIXIE_DUST_HEAL * _pdLs));
-                const _pdMana = Math.max(1, Math.round(PIXIE_DUST_MANA * _pdLs));
+                const _pdMana = PIXIE_DUST_MANA;
                 const healed = Math.min(_pdHeal, Math.max(0, (unit.maxHp || 0) - (unit.hp || 0)));
                 unit.hp = Math.min(unit.maxHp, (unit.hp || 0) + _pdHeal);
                 unit.mp = Math.min(unit.maxMp || unit.mp + _pdMana, (unit.mp || 0) + _pdMana);
@@ -37939,8 +37938,7 @@
                     // The caster never restores their own MP — otherwise the spell
                     // partially refunds itself and becomes a team-wide mana printer.
                     if (ally.id === unit.id) continue;
-                    const _mpRestoreScaled = Math.max(1, Math.round((spell.mpRestore || 40) * ((typeof levelScale === 'function') ? levelScale(getUnitLevel(unit)) : 1)));
-                    const restoreAmount = Math.min(_mpRestoreScaled, ally.maxMp - ally.mp);
+                    const restoreAmount = Math.min(spell.mpRestore || 40, ally.maxMp - ally.mp);
                     if (restoreAmount > 0) {
                         ally.mp += restoreAmount;
                         totalRestored += restoreAmount;

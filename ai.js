@@ -1107,8 +1107,8 @@
                 for (const spell of allSpells) {
                     if (!spell || !spell.cost || spell.cost <= 0) continue;
                     if (spell.kind === 'scan') continue;
-                    // Costs are level-compressed — never compare raw spell.cost
-                    // to a compressed MP pool (it undervalues the potion).
+                    // Real cost, not raw spell.cost — folds in the earth-sign
+                    // terraform discount and status deltas (Discord).
                     const _mc = (typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(ally, spell) : spell.cost;
                     const cantNow = ally.mp < _mc;
                     const canAfter = mpAfter >= _mc;

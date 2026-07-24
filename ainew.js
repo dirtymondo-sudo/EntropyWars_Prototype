@@ -258,10 +258,10 @@
         }
         return levelScale(lvl || 1);
     }
-    // Spell MP costs are level-compressed at the engine chokepoint
-    // (battle.js getSpellMpCostFor). Affordability checks must use the same
-    // formula — comparing raw sp.cost to a compressed MP pool makes the AI
-    // think it can't cast anything at low levels.
+    // Affordability must use the engine's cost formula (battle.js
+    // getSpellMpCostFor) — raw sp.cost misses the earth-sign terraform
+    // discount and status cost deltas (Discord), so the AI would misjudge
+    // what it can actually cast.
     function _aiMpCost(u, sp) {
         if (typeof getSpellMpCostFor === 'function') return getSpellMpCostFor(u, sp);
         return (sp && sp.cost) || 0;

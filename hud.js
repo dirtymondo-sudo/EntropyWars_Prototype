@@ -6330,8 +6330,10 @@ function _renderSpellDescBar() {
   const tcText = TYPE_TEXT_COLORS[(sp.spellType || '').toLowerCase()] || tc;
 
   // The bar describes the acting (blitz-active) unit's blade. Damage/heal/
-  // shield/MP numbers are level-compressed at the engine chokepoints, so the
-  // bar scales them by the same curve — what it shows is what actually lands.
+  // shield numbers are level-compressed at the engine chokepoints, so the
+  // bar scales them by the same curve — what it shows is what actually
+  // lands. MP cost is flat at all levels (getSpellMpCostFor only folds in
+  // zodiac/status modifiers, never level).
   let _dbUnit = null;
   try {
     if (typeof state !== 'undefined' && state && state.units && state._blitzActiveUnitId != null) {
