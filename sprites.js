@@ -1416,6 +1416,25 @@ const RACE_MODELS_3D = {
       lib: { idle: { clip: 'Idle_10', lib: 2 } },
     }),
   },
+  // ── 2026-07-24 batch ──
+  // Djinn (Black Mage) — 2.3m bound elemental (data.js physique), smoke below
+  // the waist: folded-arms genie idle, arcane bolts instead of sword swings.
+  'djinn': {
+    male: _mkUAL('djinn/male', 'djinn_genie_realist', {
+      heightRatio: 1.25,
+      basicAttackKind: 'magic',
+      lib: { idle: { clip: 'Idle_FoldArms_Loop', lib: 1 } },
+    }),
+  },
+  // Orb of Light (Harbinger) — sentient light in a petite humanoid shell.
+  // Her physique entry is 0.6m, but that's the luminous core, not the render
+  // height; she stands a touch under a human female so she stays clickable.
+  'orb of light': {
+    female: _mkUAL('orboflight/female', 'hot_girl_sentient_li', {
+      heightRatio: 0.9,
+      basicAttackKind: 'magic',
+    }),
+  },
 };
 
 // ── Gendered library defaults (2026-07-11) ─────────────────────────────────
