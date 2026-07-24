@@ -963,13 +963,38 @@
         }
 
         /* canonical vital bars, roster-mini flavor: flat rectangle, dark
-           track, ally green / enemy red fill with a pale leading tip */
+           track, ally green / enemy red fill with a pale leading tip.
+           One row per vital — tag left, bar, nnn/nnn off the right end. */
+        .mini-vital {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 3px;
+        }
+
+        .mini-lbl {
+            flex: 0 0 auto;
+            font-size: 9px;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+        }
+
+        .mini-lbl.mp { color: #9fc6ef; }
+
+        .mini-num {
+            flex: 0 0 auto;
+            font-size: 10px;
+            color: #fff;
+            white-space: nowrap;
+        }
+
         .mini-track {
+            flex: 1 1 auto;
+            min-width: 0;
             height: 6px;
             background: rgba(0, 0, 0, 0.62);
             border: 1px solid rgba(255, 255, 255, 0.13);
             overflow: hidden;
-            margin-bottom: 4px;
         }
 
         .mini-fill-hp {
@@ -1819,23 +1844,22 @@
             image-rendering: pixelated;
         }
 
-        /* ── vitals: label + numbers ride the strip ABOVE the bar (identity
-           left, numbers right) — same layout as the 3D nameplates ── */
+        /* ── vitals: ONE row — HP/MP tag left, bar, nnn/nnn off the bar's
+           right end — same layout as the 3D nameplates and Horologe ── */
         .ins-vital {
-            display: block;
-            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
         }
 
-        .ins-vital-top {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            gap: 6px;
-            margin-bottom: 2px;
+        .ins-vital > .ins-stat-label {
+            flex: 0 0 auto;
         }
 
         .ins-vital-track {
-            width: 100%;
+            flex: 1 1 auto;
+            min-width: 0;
             display: block;
         }
 

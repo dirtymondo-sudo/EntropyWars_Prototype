@@ -1536,6 +1536,177 @@ const HRLG_MAP = 'M28,32 L46,22 L72,20 L88,26 L84,34 L70,38 L66,50 L54,58 L46,72
   + ' M232,74 L242,72 L246,80 L236,82 Z M250,84 L260,82 L262,90 L252,92 Z'
   + ' M252,102 L272,98 L284,108 L276,120 L258,118 Z';
 
+/* ── VitalWave — the active unit's life trace ─────────────────────────────
+   The big HP bar in the Horologe is a heart monitor. Under the trace the
+   plain straight bar is still the truth (fill width == HP%); the canvas
+   only draws the pulse ON it, clipped to the filled span so the line goes
+   flat the instant the bar runs out.
+
+   Idle signal: a low sine pair + a little value noise, with an ECG complex
+   (P / QRS / T, built from gaussians) scrolling right-to-left. The rate
+   climbs as the unit is worn down — ~62bpm at full health, ~120 at death's
+   door — so a hurt unit reads as hurt before you parse the number.
+
+   Impulses: HP down, HP up and MP spent each launch a spike that sweeps
+   across the trace once and decays. They're detected by comparing render to
+   render (hp/mp props), so nothing in the engine has to call us — which
+   also means this is viewer-local by construction and needs no online
+   relay: every client draws its own trace from its own state. */
+const _VW_BEAT = [
+  /* [center, width, amplitude] — P, Q, R, S, T */
+  [0.140, 0.030,  0.16],
+  [0.286, 0.011, -0.24],
+  [0.310, 0.012,  1.00],
+  [0.340, 0.017, -0.32],
+  [0.495, 0.052,  0.26],
+];
+function _vwBeat(ph) {
+  let v = 0;
+  for (let i = 0; i < _VW_BEAT.length; i++) {
+    const d = (ph - _VW_BEAT[i][0]) / _VW_BEAT[i][1];
+    if (d > -6 && d < 6) v += _VW_BEAT[i][2] * Math.exp(-d * d);
+  }
+  return v;
+}
+/* cheap deterministic value noise — smooth, no allocation, no Math.random
+   in the draw loop (so the trace is stable frame to frame) */
+function _vwNoise(x) {
+  const i = Math.floor(x), f = x - i;
+  const r = (n) => { const s = Math.sin(n * 127.1) * 43758.5453; return (s - Math.floor(s)) * 2 - 1; };
+  const u = f * f * (3 - 2 * f);
+  return r(i) * (1 - u) + r(i + 1) * u;
+}
+
+function VitalWave({ pct, hp, maxHp, mp, unitKey }) {
+  const cvRef = useRef(null);
+  const live = useRef({});
+  live.current.pct = pct;
+  live.current.hp = hp;
+  live.current.maxHp = maxHp;
+  live.current.mp = mp;
+  live.current.unitKey = unitKey;
+
+  useEffect(() => {
+    const cv = cvRef.current;
+    if (!cv) return;
+    const ctx = cv.getContext('2d');
+    if (!ctx) return;
+
+    let raf = 0, cw = 0, ch = 0, dpr = 1;
+    let last = performance.now(), phase = 0;
+    let prevHp = live.current.hp, prevMp = live.current.mp, prevKey = live.current.unitKey;
+    const spikes = [];   // { t, dur, mag, tint }
+
+    const draw = (now) => {
+      raf = requestAnimationFrame(draw);
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+
+      const L = live.current;
+      const ratio = L.maxHp > 0 ? Math.max(0, Math.min(1, L.hp / L.maxHp)) : 0;
+
+      /* Swapping to another unit re-baselines instead of firing a bogus
+         "took 400 damage" spike. */
+      if (L.unitKey !== prevKey) { prevKey = L.unitKey; prevHp = L.hp; prevMp = L.mp; spikes.length = 0; }
+      if (L.hp !== prevHp) {
+        const d = (L.hp - prevHp) / Math.max(1, L.maxHp);
+        spikes.push({
+          t: 0, dur: 0.62,
+          mag: Math.max(0.35, Math.min(1.9, Math.abs(d) * 5.5)) * (d < 0 ? -1 : 1),
+          tint: d < 0 ? '#ffd2d6' : '#c8ffdc',
+        });
+        prevHp = L.hp;
+      }
+      if (L.mp !== prevMp) {
+        if (L.mp < prevMp) {
+          spikes.push({ t: 0, dur: 0.5, mag: 0.55, tint: '#bcdcff' });
+        }
+        prevMp = L.mp;
+      }
+
+      /* resize to the bar's live box (UI scale / window resize) */
+      const w = cv.clientWidth, hgt = cv.clientHeight;
+      const d2 = Math.min(2, window.devicePixelRatio || 1);
+      if (w !== cw || hgt !== ch || d2 !== dpr) {
+        cw = w; ch = hgt; dpr = d2;
+        cv.width = Math.max(1, Math.round(cw * dpr));
+        cv.height = Math.max(1, Math.round(ch * dpr));
+      }
+      if (cw <= 0 || ch <= 0) return;
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, cw, ch);
+
+      /* rate: calm at full HP, racing when nearly dead */
+      const bpm = 62 + 60 * (1 - ratio);
+      phase = (phase + dt * (bpm / 60)) % 1;
+
+      for (let i = spikes.length - 1; i >= 0; i--) {
+        spikes[i].t += dt;
+        if (spikes[i].t > spikes[i].dur) spikes.splice(i, 1);
+      }
+
+      const mid = ch / 2;
+      const edge = cw * (Math.max(0, Math.min(100, L.pct)) / 100);
+      const beatAmp = ch * 0.30 * (0.55 + 0.45 * ratio);
+      const jitter = ch * 0.045 * (0.6 + 0.8 * (1 - ratio));
+      const t = now / 1000;
+
+      /* leading tint borrowed from the newest spike, so damage flashes the
+         line pale-red, a heal pale-green, a cast pale-blue */
+      let tint = null, tintA = 0;
+      for (let i = 0; i < spikes.length; i++) {
+        const k = 1 - spikes[i].t / spikes[i].dur;
+        if (k > tintA) { tintA = k; tint = spikes[i].tint; }
+      }
+
+      ctx.beginPath();
+      const step = 1.5;
+      for (let x = 0; x <= cw; x += step) {
+        /* alive only over the filled span — flatline past the HP edge */
+        const gate = edge <= 0 ? 0 : Math.max(0, Math.min(1, (edge - x) / 7));
+        let v = 0;
+        if (gate > 0) {
+          const ph = (phase + (cw - x) / cw * 1.35) % 1;
+          v = _vwBeat(ph) * beatAmp;
+          v += Math.sin(x * 0.085 - t * 2.6) * jitter * 0.9;
+          v += Math.sin(x * 0.21 + t * 1.6) * jitter * 0.45;
+          v += _vwNoise(x * 0.35 + t * 5.5) * jitter;
+          for (let i = 0; i < spikes.length; i++) {
+            const s = spikes[i];
+            const k = s.t / s.dur;
+            const sx = -cw * 0.08 + k * cw * 1.16;      // sweeps left → right
+            const dx = (x - sx) / (cw * 0.055 + 4);
+            if (dx > -5 && dx < 5) {
+              v += s.mag * ch * 0.46 * Math.exp(-dx * dx) * (1 - k) * (1 - k);
+            }
+          }
+          v *= gate;
+        }
+        const y = mid - v;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+
+      const base = ratio > 0.28 ? '#eafff2' : '#ffe3e6';
+      ctx.lineWidth = 1.4;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = tint ? tint : base;
+      ctx.globalAlpha = 0.5 + 0.35 * Math.min(1, tintA + 0.5);
+      ctx.shadowBlur = 5;
+      ctx.shadowColor = tint ? tint : 'rgba(150,255,190,0.75)';
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    };
+
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return h('canvas', { className: 'hrlg-wave', ref: cvRef });
+}
+
 // The watch itself. `api` is a plain object the parent owns; the hub fills
 // it with imperative hand controls (aim / rest / strike / wind) so blade
 // hover/click handlers can drive the hands without re-rendering the SVG.
@@ -1851,13 +2022,14 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     // heals/potions browsing the target drum show the outcome, not just "♥".
     const healPct = (b.previewHeal > 0 && port.maxHp > 0)
       ? Math.max(0, Math.min(100 - hpPct, (b.previewHeal / port.maxHp) * 100)) : 0;
-    // Numbers ride the strip ABOVE the bar — identity left, numbers right —
-    // the exact same layout as the 3D nameplates; the bar itself stays clean.
+    // Name on its own line, then one row per bar with nnn/nnn hanging off
+    // the bar's right end — the same layout as the 3D nameplates and the
+    // quick-vitals, so HP and MP can stack tight.
     portCol = h('span', { className: 'hrlg-tcol' },
       h('span', { className: 'hrlg-trow-top' },
         h('span', { className: 'hrlg-blabel' }, b.label),
-        h('span', { className: 'hrlg-thp-num' }, port.hp + '/' + port.maxHp),
       ),
+      h('span', { className: 'hrlg-trow' },
       h('span', { className: 'hrlg-thp' },
         h('span', { className: 'hrlg-thp-fill', style: {
           // canonical fill — ally green / enemy red, same as the nameplates
@@ -1875,16 +2047,16 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
         }),
         shPct > 0 && h('span', { className: 'hrlg-thp-shield', style: { width: shPct + '%' } }),
       ),
-      port.showMp && port.maxMp > 0 && h(React.Fragment, null,
-        h('span', { className: 'hrlg-trow-top mp' },
-          h('span', { className: 'hrlg-thp-num' }, port.mp + '/' + port.maxMp),
-        ),
+        h('span', { className: 'hrlg-thp-num' }, port.hp + '/' + port.maxHp),
+      ),
+      port.showMp && port.maxMp > 0 && h('span', { className: 'hrlg-trow mp' },
         h('span', { className: 'hrlg-thp mp' },
           h('span', { className: 'hrlg-thp-fill', style: {
             width: Math.max(0, Math.min(100, (port.mp / port.maxMp) * 100)) + '%',
             background: MP_FILL, boxShadow: MP_GLOW,
           }}),
         ),
+        h('span', { className: 'hrlg-thp-num' }, port.mp + '/' + port.maxMp),
       ),
     );
   }
@@ -2458,9 +2630,13 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
         (() => {
           const hpPct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
           // canonical ally green — the Horologe always shows YOUR unit
-          return h('div', { className: 'hrlg-vbar' },
-            h('span', { className: 'hrlg-vfill', style: { width: hpPct + '%', background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW } }),
+          return h('div', { className: 'hrlg-vrow hp' },
             h('span', { className: 'hrlg-vlbl' }, 'HP'),
+            h('span', { className: 'hrlg-vbar' },
+              h('span', { className: 'hrlg-vfill', style: { width: hpPct + '%', background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW } }),
+              /* the heartbeat trace rides on top of the bar */
+              h(VitalWave, { pct: hpPct, hp: hp, maxHp: maxHp, mp: mp, unitKey: unitKey }),
+            ),
             h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(hp)) + '/' + maxHp),
           );
         })(),
@@ -2483,13 +2659,15 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
               ? getSpellMpCostFor(_su, _sp) : (_sp.cost || 0);
           }
           const spendPct = mpSpend > 0 ? Math.max(0, Math.min(mpPct, (mpSpend / maxMp) * 100)) : 0;
-          return h('div', { className: 'hrlg-vbar mp' },
-            h('span', { className: 'hrlg-vfill', style: { width: mpPct + '%', background: MP_FILL, boxShadow: MP_GLOW } }),
-            spendPct > 0 && h('span', {
-              className: 'hrlg-vspend' + (mpSpend > mp ? ' short' : ''),
-              style: { left: (mpPct - spendPct) + '%', width: spendPct + '%' },
-            }),
+          return h('div', { className: 'hrlg-vrow mp' },
             h('span', { className: 'hrlg-vlbl' }, 'MP'),
+            h('span', { className: 'hrlg-vbar mp' },
+              h('span', { className: 'hrlg-vfill', style: { width: mpPct + '%', background: MP_FILL, boxShadow: MP_GLOW } }),
+              spendPct > 0 && h('span', {
+                className: 'hrlg-vspend' + (mpSpend > mp ? ' short' : ''),
+                style: { left: (mpPct - spendPct) + '%', width: spendPct + '%' },
+              }),
+            ),
             h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(mp)) + '/' + maxMp,
               mpSpend > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' −' + mpSpend) : null),
           );
@@ -2498,13 +2676,15 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
            Challenge / campaign); PvP passes xp:null and shows nothing */
         xp && (() => {
           const xpPct = Math.max(0, Math.min(100, xp.pct || 0));
-          return h('div', { className: 'hrlg-vbar mp', style: { height: 7 } },
-            h('span', { className: 'hrlg-vfill', style: {
-              width: xpPct + '%',
-              background: 'linear-gradient(90deg, #b98a1e 0%, #f2c468 60%, #ffe9b0 100%)',
-              boxShadow: '0 0 6px rgba(242,196,104,0.45)',
-            } }),
+          return h('div', { className: 'hrlg-vrow mp' },
             h('span', { className: 'hrlg-vlbl', style: { color: '#f2c468' } }, 'XP'),
+            h('span', { className: 'hrlg-vbar mp', style: { height: 7 } },
+              h('span', { className: 'hrlg-vfill', style: {
+                width: xpPct + '%',
+                background: 'linear-gradient(90deg, #b98a1e 0%, #f2c468 60%, #ffe9b0 100%)',
+                boxShadow: '0 0 6px rgba(242,196,104,0.45)',
+              } }),
+            ),
             h('span', { className: 'hrlg-vnum', style: { fontSize: 10, color: '#f2c468' } },
               xp.max ? 'MAX' : (Math.floor(xpPct) + '%')),
           );
@@ -7106,13 +7286,7 @@ function _injectHudHideStyles() {
       overflow: hidden !important;
       position: relative !important;
     }
-    /* PS1 segmented-LED read: dark notches over every fill */
-    .hp-fill::after, .mp-fill::after {
-      content: '' !important;
-      position: absolute !important; inset: 0 !important;
-      background: repeating-linear-gradient(90deg, transparent 0px, transparent 4px, rgba(0,0,0,0.4) 4px, rgba(0,0,0,0.4) 5px) !important;
-      pointer-events: none !important;
-    }
+    /* Fills are SOLID — the old segmented-LED notch overlay is gone. */
     .hp-bar {
       height: 10px !important;
     }
@@ -7328,15 +7502,19 @@ function _injectHudHideStyles() {
       background: var(--hfc); color: #0a0910; border-color: var(--hfc);
       box-shadow: 0 0 10px var(--hfc-soft);
     }
-    /* HP/MP vitals right under the portrait — the numbers are the POINT
-       here, so they get real size instead of fine print. Label + numbers
-       ride the strip ABOVE the bar (identity left, numbers right), the
-       same layout as the nameplates and target rows; the bar stays clean. */
+    /* HP/MP vitals right under the portrait. ONE row per vital: the HP/MP
+       tag on the left, the bar in the middle, nnn/nnn hanging off the right
+       end — so the rows stack tight instead of each reserving a label strip
+       above itself. Same reading order as the quick-vitals and target rows. */
     .hrlg-vitals {
-      display: flex; flex-direction: column; gap: 5px; pointer-events: none;
+      display: flex; flex-direction: column; gap: 4px; pointer-events: none;
     }
+    .hrlg-vrow { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    /* The HP row's trace escapes the bar vertically, so its row must not
+       clip and needs a little headroom of its own. */
+    .hrlg-vrow.hp { margin: 5px 0 3px; }
     .hrlg-vbar {
-      position: relative; height: 12px; margin-top: 15px;
+      position: relative; flex: 1 1 auto; min-width: 0; height: 12px;
       background: rgba(0,0,0,0.62);
       border: 1px solid #2b2838;
     }
@@ -7345,22 +7523,29 @@ function _injectHudHideStyles() {
       position: absolute; left: 0; top: 0; bottom: 0;
       transition: width 0.35s cubic-bezier(0.22,1,0.36,1);
     }
-    /* PS1 segmented-LED notches over the fill */
-    .hrlg-vfill::after {
-      content: ''; position: absolute; inset: 0; pointer-events: none;
-      background: repeating-linear-gradient(90deg, transparent 0px, transparent 4px, rgba(0,0,0,0.4) 4px, rgba(0,0,0,0.4) 5px);
-    }
     .hrlg-vlbl {
-      position: absolute; left: 1px; bottom: calc(100% + 3px);
-      font-size: 10px; letter-spacing: 0.22em; line-height: 1;
+      flex: none; width: 20px;
+      font-size: 10px; letter-spacing: 0.16em; line-height: 1;
       color: #7a7490; text-shadow: 0 1px 1px rgba(0,0,0,0.9);
     }
+    /* fixed gutter so the HP / MP / XP bars all end on the same x */
     .hrlg-vnum {
-      position: absolute; right: 1px; bottom: calc(100% + 2px);
+      flex: none; min-width: 58px; text-align: right; white-space: nowrap;
       font-size: 13px; line-height: 1;
       color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,0.95), 0 0 4px rgba(0,0,0,0.8);
     }
-    .hrlg-vbar.mp .hrlg-vnum { font-size: 11px; }
+    .hrlg-vrow.mp .hrlg-vnum { font-size: 11px; }
+    /* ── The active unit's life trace ────────────────────────────────────
+       A heartbeat/oscilloscope line riding ON the HP bar: a controlled
+       sine+noise idle that beats faster as the unit is worn down, and an
+       impulse spike that sweeps the trace when it takes damage, is healed,
+       or spends mana. The straight bar underneath is still the real read —
+       the trace is the pulse on top of it. Drawn by VitalWave (canvas). */
+    .hrlg-wave {
+      position: absolute; left: 0; top: 50%; width: 100%; height: 34px;
+      transform: translateY(-50%);
+      pointer-events: none; z-index: 3;
+    }
     /* Projected MP spend: the hovered/armed spell's cost blinks as a bright
        slice off the MP fill's leading edge (same read as the HP forecast;
        dmgPreviewBlink keyframes live in styles-animations.css). */
@@ -7649,13 +7834,14 @@ function _injectHudHideStyles() {
       display: flex; flex-direction: column; gap: 2px; justify-content: center;
     }
     .hrlg-tcol .hrlg-blabel { font-size: 13px; }
-    /* the strip above each bar: identity left, numbers right — same layout
-       as the 3D nameplates */
+    /* target name strip, then one flex row per bar: bar + nnn/nnn at its
+       right end — same layout as the 3D nameplates and quick-vitals */
     .hrlg-trow-top {
       display: flex; align-items: baseline; justify-content: space-between;
       gap: 6px; min-width: 0;
     }
-    .hrlg-trow-top.mp { justify-content: flex-end; }
+    .hrlg-trow { display: flex; align-items: center; gap: 5px; min-width: 0; }
+    .hrlg-trow .hrlg-thp { flex: 1 1 auto; min-width: 0; }
     .hrlg-thp {
       position: relative; height: 10px;
       background: rgba(0,0,0,0.62); border: 1px solid #2b2838;
@@ -7665,20 +7851,16 @@ function _injectHudHideStyles() {
       position: absolute; left: 0; top: 0; bottom: 0;
       transition: width 0.3s ease-out;
     }
-    .hrlg-thp-fill::after {
-      content: ''; position: absolute; inset: 0; pointer-events: none;
-      background: repeating-linear-gradient(90deg, transparent 0px, transparent 4px, rgba(0,0,0,0.4) 4px, rgba(0,0,0,0.4) 5px);
-    }
     .hrlg-thp-shield {
       position: absolute; top: 0; right: 0; bottom: 0;
       background: rgba(130,200,255,0.6);
     }
     .hrlg-thp-num {
-      flex: none;
+      flex: none; white-space: nowrap;
       font-size: 10px; line-height: 1; color: #fff;
       text-shadow: 0 1px 1px #000, 0 0 3px rgba(0,0,0,0.85);
     }
-    .hrlg-trow-top.mp .hrlg-thp-num { font-size: 9px; }
+    .hrlg-trow.mp .hrlg-thp-num { font-size: 9px; color: #aebfff; }
     /* type badges NEVER clip — they're the matchup intel; the name
        ellipsizes first instead (see the flex settings on hrlg-blabel) */
     .hrlg-badges { display: flex; align-items: center; gap: 5px; flex: none; }

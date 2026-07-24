@@ -494,6 +494,13 @@ const ThreeRenderer = (function () {
     const UNIT_SPRITE_SIZE_RATIO = 1.0;
     const SELECTED_RING_OFFSET = 0.8;
 
+    /* Team ring color. The old 0x3399ff sat low enough in saturation that,
+       once the post chain's tone-map pulled it down, the friendly ring read
+       grey-blue against the board. This is a purer, brighter azure that
+       balances the enemy red. ONE ring per unit — see _buildUnitEntry. */
+    const TEAM_RING_ALLY_COLOR  = 0x14b4ff;
+    const TEAM_RING_ENEMY_COLOR = 0xff3355;
+
     const BAT_COUNT = 8;
     const BAT_SPRITE_SIZE = 0.25;
     const BAT_SPREAD = 0.35;
@@ -4473,7 +4480,7 @@ const ThreeRenderer = (function () {
         var wrap = document.createElement('div');
         wrap.className = 'tp-wrap ' + pCls + ' tp-tower-plate';
         wrap.innerHTML =
-            '<div class="tp-name"><span class="tp-lvl">⬡</span>Cube</div>' +
+            '<div class="tp-name"><span class="tp-lvl">⬡</span><span class="tp-nm">Cube</span></div>' +
             '<div class="tp-body">' +
                 '<div class="tp-bars">' +
                     '<div class="tp-bar ' + allyCls + '">' +
@@ -10069,30 +10076,26 @@ const ThreeRenderer = (function () {
             }
         }
 
-        var ringCol = _viewerPlayerColor(unit.player);
+        var ringCol = _isAllyPlayer(unit.player) ? TEAM_RING_ALLY_COLOR : TEAM_RING_ENEMY_COLOR;
 
+        /* ONE team ring per unit. There used to be an inner + outer pair here
+           and a selection glow + halo below, which — stacked with the turn
+           beacon's base ring — put four concentric circles under the active
+           unit. The foot is now: this single ring, the tile-under highlight,
+           and the beacon's one expanding pulse. */
         var innerRing = new THREE.Mesh(
-            new THREE.RingGeometry(ts * 0.35, ts * 0.40, 48),
-            new THREE.MeshBasicMaterial({ color: ringCol, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false })
+            new THREE.RingGeometry(ts * 0.40, ts * 0.455, 48),
+            new THREE.MeshBasicMaterial({ color: ringCol, transparent: true, opacity: 1.0, side: THREE.DoubleSide, depthWrite: false })
         );
         innerRing.rotation.x = -Math.PI / 2;
         innerRing.position.y = SELECTED_RING_OFFSET;
-        /* Team rings / facing wedge / selection halo are decoration, not the
-           unit: they're wide horizontal discs at foot level, and from an
-           angled camera an ELEVATED unit's discs project down over the tile
-           at the base of its column — eating clicks aimed at a unit standing
-           beneath. Same no-op raycast guard as silhouettes/shadow proxies. */
+        /* Team ring / facing wedge are decoration, not the unit: they're wide
+           horizontal discs at foot level, and from an angled camera an
+           ELEVATED unit's discs project down over the tile at the base of its
+           column — eating clicks aimed at a unit standing beneath. Same no-op
+           raycast guard as silhouettes/shadow proxies. */
         innerRing.raycast = function () {};
         group.add(innerRing);
-
-        var outerRing = new THREE.Mesh(
-            new THREE.RingGeometry(ts * 0.43, ts * 0.455, 48),
-            new THREE.MeshBasicMaterial({ color: ringCol, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false })
-        );
-        outerRing.rotation.x = -Math.PI / 2;
-        outerRing.position.y = SELECTED_RING_OFFSET - 0.1;
-        outerRing.raycast = function () {};
-        group.add(outerRing);
 
         // Facing indicator: a wedge on the team ring pointing the way the
         // unit faces — read enemy wedges to line up flank/back attacks. The
@@ -10119,24 +10122,6 @@ const ThreeRenderer = (function () {
         group.add(facingGroup);
 
         if (state.selectedUnitId === unit.id) {
-            var selGlow = new THREE.Mesh(
-                new THREE.RingGeometry(ts * 0.46, ts * 0.53, 48),
-                _makeRingMaterial(0xffcc00, 1.0, 0.0)
-            );
-            selGlow.rotation.x = -Math.PI / 2;
-            selGlow.position.y = SELECTED_RING_OFFSET + 0.3;
-            selGlow.raycast = function () {};
-            group.add(selGlow);
-
-            var selHalo = new THREE.Mesh(
-                new THREE.RingGeometry(ts * 0.56, ts * 0.585, 48),
-                new THREE.MeshBasicMaterial({ color: 0xffcc00, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
-            );
-            selHalo.rotation.x = -Math.PI / 2;
-            selHalo.position.y = SELECTED_RING_OFFSET + 0.2;
-            selHalo.raycast = function () {};
-            group.add(selHalo);
-
             /* The tile UNDER the current unit: a white glowing outline, near-
                empty body — the default "this is who's acting" marker. Rides
                the unit group so walks/knockbacks carry it automatically. */
@@ -10257,7 +10242,10 @@ const ThreeRenderer = (function () {
                 '}',
                 '.tp-wrap {',
                 '  pointer-events: none;',
-                '  width: 150px;',
+                /* wider than before: the nnn/nnn numbers moved from above the
+                   bars to a gutter at their right end, so the row needs the
+                   extra horizontal room (PLATE_BASE_W tracks this). */
+                '  width: 172px;',
                 '  font-family: "IBM Plex Mono", monospace;',
                 '  position: absolute;',
                 '  left: 0; bottom: 0;',
@@ -10266,27 +10254,33 @@ const ThreeRenderer = (function () {
                 '  transition: opacity 0.22s ease, filter 0.22s ease;',
                 '}',
 
-                /* Name sits INSIDE the plate block, on the same strip as the
-                   floating HP number: left-aligned, pulled down over the HP
-                   bar's reserved label margin (negative margin-bottom), with
-                   right padding so a long name never collides with the
-                   right-aligned HP number. */
+                /* Name owns its own strip now. The HP/MP numbers used to float
+                   above their bars and the name was pulled down over them with
+                   a negative margin — which is exactly why long names and HP
+                   numbers collided. Numbers moved to the END of each bar, so
+                   the name simply sits on its own line. */
                 '.tp-wrap .tp-name {',
                 '  display: flex; align-items: center; justify-content: flex-start;',
-                '  height: 14px; margin-bottom: -14px; position: relative; z-index: 1;',
+                '  height: 15px; margin-bottom: 1px; position: relative; z-index: 1;',
                 '  font-family: "Cormorant SC", serif; font-size: 14px; font-weight: 700;',
                 '  color: #e8e4d8; text-shadow: 0 1px 3px #000, 0 0 6px rgba(0,0,0,0.8);',
                 '  letter-spacing: 0.1em; text-transform: uppercase;',
-                '  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;',
-                '  padding: 0 52px 0 2px;',
+                '  white-space: nowrap; min-width: 0; padding: 0 2px;',
+                '}',
+                /* Only the LABEL shrinks/ellipsizes — the level chip, vision
+                   eye and celestial badges are flex:none and keep their space,
+                   so nothing can ride on top of the letters. */
+                '.tp-wrap .tp-nm {',
+                '  flex: 0 1 auto; min-width: 0;',
+                '  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;',
                 '}',
                 '.tp-wrap .tp-lvl {',
                 '  font-family: "IBM Plex Mono", monospace;',
-                '  color: #7a7490; margin-right: 5px; font-size: 10px; flex-shrink: 0;',
+                '  color: #7a7490; margin-right: 5px; font-size: 10px; flex: none;',
                 '}',
                 /* Vision eye: open = an enemy can see you; slashed/dim = hidden. */
                 '.tp-wrap .tp-eye {',
-                '  margin-left: 5px; font-size: 12px; line-height: 1; flex-shrink: 0;',
+                '  margin-left: 5px; font-size: 12px; line-height: 1; flex: none;',
                 '  position: relative; color: #f0d060;',
                 '  text-shadow: 0 0 4px rgba(255,180,80,0.7), 0 1px 2px #000;',
                 '}',
@@ -10308,33 +10302,29 @@ const ThreeRenderer = (function () {
                 '  display: flex; align-items: stretch; gap: 3px;',
                 '}',
 
+                /* The right padding is the gutter the nnn/nnn numbers live in
+                   (they hang off the END of each bar now, not above it), which
+                   is what lets HP and MP stack tight against each other. */
                 '.tp-wrap .tp-bars {',
                 '  flex: 1 1 auto; min-width: 0;',
-                '  display: flex; flex-direction: column;',
+                '  display: flex; flex-direction: column; gap: 3px;',
+                '  padding-right: 42px;',
                 '}',
 
-                /* Slim bars — the numbers ride ABOVE each bar (right-aligned)
-                   instead of inside it, so each bar reserves its label strip
-                   via margin-top and must NOT clip (overflow visible lets the
-                   number escape upward). */
                 /* ── Canonical vital bar (shared design language with the
-                   Horologe vitals, target drum and inspect card): flat
+                   Horologe vitals, target drum and inspect card): SOLID flat
                    rectangle, dark track, fill fading to a pale tip at its
-                   leading edge. Ally HP is ALWAYS green, enemy HP is ALWAYS
-                   red (no low-health hue swap), MP is always the same blue. */
+                   leading edge — no segment notches. Ally HP is ALWAYS green,
+                   enemy HP is ALWAYS red (no low-health hue swap), MP is
+                   always the same blue. */
                 '.tp-wrap .tp-bar {',
-                '  position: relative; width: 100%; height: 5px; margin-top: 14px;',
+                '  position: relative; width: 100%; height: 5px;',
                 '  background: rgba(0,0,0,0.62);',
                 '}',
 
                 '.tp-wrap .tp-hp-fill {',
                 '  position: absolute; top: 0; left: 0; height: 100%;',
                 '  transition: width 0.25s ease-out;',
-                '}',
-                /* PS1 segmented-LED notches over every fill */
-                '.tp-wrap .tp-hp-fill::after, .tp-wrap .tp-mp-fill::after {',
-                '  content: ""; position: absolute; inset: 0; pointer-events: none;',
-                '  background: repeating-linear-gradient(90deg, transparent 0px, transparent 4px, rgba(0,0,0,0.4) 4px, rgba(0,0,0,0.4) 5px);',
                 '}',
                 '.tp-wrap .tp-hp-ally .tp-hp-fill {',
                 '  background: linear-gradient(90deg, #1fae4b 0%, #2ed158 60%, #7df0a5 100%);',
@@ -10356,10 +10346,13 @@ const ThreeRenderer = (function () {
                 '  box-shadow: 0 0 6px rgba(47,157,255,0.4);',
                 '  transition: width 0.25s ease-out;',
                 '}',
-                '.tp-wrap .tp-bar-mp { height: 4px; margin-top: 11px; }',
+                '.tp-wrap .tp-bar-mp { height: 4px; }',
 
+                /* nnn/nnn hangs off the RIGHT END of its own bar, vertically
+                   centred on it, inside the .tp-bars right gutter. */
                 '.tp-wrap .tp-bar-num {',
-                '  position: absolute; right: 1px; bottom: calc(100% + 1px);',
+                '  position: absolute; left: 100%; top: 50%; margin-left: 4px;',
+                '  transform: translateY(-50%);',
                 '  font-size: 10px; font-weight: 700; color: #fff;',
                 '  text-shadow: 0 0 3px #000, 0 1px 1px #000;',
                 '  letter-spacing: 0.04em; line-height: 1; white-space: nowrap;',
@@ -10386,12 +10379,9 @@ const ThreeRenderer = (function () {
                    type the lone badge stretches (flex:1) to span the full height
                    of both the HP and MP bars; with two types each badge lines up
                    with one bar. */
-                /* margin-top skips the name/HP-number strip so the badge column
-                   tops out level with the HP bar, not the floating text. */
                 '.tp-wrap .tp-types {',
                 '  flex: 0 0 auto;',
-                '  display: flex; flex-direction: column; gap: 2px;',
-                '  margin-top: 14px;',
+                '  display: flex; flex-direction: column; gap: 3px;',
                 '}',
                 '.tp-wrap .tp-type { min-height: 9px; }',
                 /* Canonical type badge — same cut-corner chip used everywhere
@@ -10518,7 +10508,7 @@ const ThreeRenderer = (function () {
                    with hysteresis so it never flickers at the boundary. */
                 '.tp-wrap .tp-portrait { display: none; }',
                 '.tp-wrap .tp-main { flex: 1 1 auto; min-width: 0; }',
-                '.tp-wrap.tp-far { width: 168px; display: flex; align-items: flex-end; gap: 5px; }',
+                '.tp-wrap.tp-far { width: 190px; display: flex; align-items: flex-end; gap: 5px; }',
                 '.tp-wrap.tp-far .tp-portrait {',
                 '  display: block; flex: none; width: 46px; height: 46px;',
                 '  background-size: cover; background-position: center;',
@@ -10541,8 +10531,9 @@ const ThreeRenderer = (function () {
                 '.tp-wrap.tp-far .tp-types, .tp-wrap.tp-far .tp-bar-mp,',
                 '.tp-wrap.tp-far .tp-status-row, .tp-wrap.tp-far .tp-eye,',
                 '.tp-wrap.tp-far .tp-zodiac, .tp-wrap.tp-far .tp-skyev { display: none !important; }',
-                '.tp-wrap.tp-far .tp-name { font-size: 14px; height: 21px; margin-bottom: -15px; padding-right: 58px; }',
-                '.tp-wrap.tp-far .tp-bar { height: 8px; margin-top: 15px; }',
+                '.tp-wrap.tp-far .tp-name { font-size: 14px; height: 19px; margin-bottom: 1px; }',
+                '.tp-wrap.tp-far .tp-bars { padding-right: 48px; }',
+                '.tp-wrap.tp-far .tp-bar { height: 8px; }',
                 '.tp-wrap.tp-far .tp-bar-num { font-size: 12px; }'
             ].join('\n');
             document.head.appendChild(s);
@@ -10719,9 +10710,13 @@ const ThreeRenderer = (function () {
         wrap.innerHTML =
             _platePortraitHtml(unit) +
             '<div class="tp-main">' +
+            /* The label is wrapped in its own span so it — and only it —
+               ellipsizes. As a bare text node it was an anonymous flex item
+               that could not shrink, so a long name shoved the vision eye and
+               the sky badges out of the row (they overlapped the letters). */
             '<div class="tp-name">' +
                 '<span class="tp-lvl">' + lvl + '</span>' +
-                _escHtml(label) +
+                '<span class="tp-nm">' + _escHtml(label) + '</span>' +
                 eyeHtml +
                 _plateSkyBadgesHtml(unit) +
             '</div>' +
@@ -10819,7 +10814,7 @@ const ThreeRenderer = (function () {
             '<div class="tp-main">' +
             '<div class="tp-name">' +
                 '<span class="tp-lvl">' + lvl + '</span>' +
-                _escHtml(label) +
+                '<span class="tp-nm">' + _escHtml(label) + '</span>' +
                 _plateSkyBadgesHtml(su) +
             '</div>' +
             '<div class="tp-body">' +
@@ -10847,7 +10842,7 @@ const ThreeRenderer = (function () {
 
     /* ── Per-frame plate scaling: match plate width to projected sprite width ── */
     var _scalePlateVec = new THREE.Vector3();
-    var PLATE_BASE_W = 150;
+    var PLATE_BASE_W = 172;
     var MIN_PLATE_SCALE = 1.0;
     var MAX_PLATE_SCALE = 3.0;
     /* Far-zoom portrait mode: below FAR_ENTER projected-tile-px the plate is
@@ -12425,10 +12420,13 @@ const ThreeRenderer = (function () {
     }
 
     /* ── Turn beacon ─────────────────────────────────────────────────────
-       Foot-level "whose turn is it" marker on the blitz-active unit: two
-       sonar-style rings that expand outward and fade, over a steady bright
-       base ring. Rides the unit group, so walks/knockbacks carry it and
-       fog-hidden enemies keep it hidden (group.visible gates everything). */
+       Foot-level "whose turn is it" marker on the blitz-active unit: ONE
+       sonar-style ring that expands outward and fades. The steady base ring
+       that used to sit under it is gone — it doubled the team ring and made
+       the foot read as a pile of circles; the head chevron already carries
+       the steady "this unit is up" signal, so the beacon is pure pulse now.
+       Rides the unit group, so walks/knockbacks carry it and fog-hidden
+       enemies keep it hidden (group.visible gates everything). */
     var _turnBeaconGroup = null;
     var _turnBeaconUnitId = null;
     var _turnBeaconColor = null;
@@ -12437,30 +12435,17 @@ const ThreeRenderer = (function () {
         var grp = new THREE.Group();
         grp._ew_pings = [];
 
-        var baseMat = new THREE.MeshBasicMaterial({
-            color: colorHex, transparent: true, opacity: 0.9,
-            side: THREE.DoubleSide, depthWrite: false
+        var pingMat = new THREE.MeshBasicMaterial({
+            color: colorHex, transparent: true, opacity: 0.0,
+            side: THREE.DoubleSide, depthWrite: false,
+            blending: THREE.AdditiveBlending
         });
-        var base = new THREE.Mesh(new THREE.RingGeometry(ts * 0.50, ts * 0.545, 48), baseMat);
-        base.rotation.x = -Math.PI / 2;
-        base.position.y = SELECTED_RING_OFFSET + 0.55;
-        base.raycast = function () {};
-        grp._ew_baseMat = baseMat;
-        grp.add(base);
-
-        for (var i = 0; i < 2; i++) {
-            var pingMat = new THREE.MeshBasicMaterial({
-                color: colorHex, transparent: true, opacity: 0.0,
-                side: THREE.DoubleSide, depthWrite: false,
-                blending: THREE.AdditiveBlending
-            });
-            var ping = new THREE.Mesh(new THREE.RingGeometry(ts * 0.53, ts * 0.57, 48), pingMat);
-            ping.rotation.x = -Math.PI / 2;
-            ping.position.y = SELECTED_RING_OFFSET + 0.50 - i * 0.02;
-            ping.raycast = function () {};
-            grp._ew_pings.push({ mesh: ping, mat: pingMat, phase: i * 0.5 });
-            grp.add(ping);
-        }
+        var ping = new THREE.Mesh(new THREE.RingGeometry(ts * 0.47, ts * 0.515, 48), pingMat);
+        ping.rotation.x = -Math.PI / 2;
+        ping.position.y = SELECTED_RING_OFFSET + 0.50;
+        ping.raycast = function () {};
+        grp._ew_pings.push({ mesh: ping, mat: pingMat, phase: 0 });
+        grp.add(ping);
         return grp;
     }
 
@@ -12501,13 +12486,12 @@ const ThreeRenderer = (function () {
         }
 
         var now = performance.now();
-        _turnBeaconGroup._ew_baseMat.opacity = 0.72 + 0.2 * Math.sin(now * 0.004);
         for (var i = 0; i < _turnBeaconGroup._ew_pings.length; i++) {
             var p = _turnBeaconGroup._ew_pings[i];
             var t = ((now * 0.00055) + p.phase) % 1;
             var s = 1.0 + t * 1.15;
             p.mesh.scale.set(s, s, 1);
-            p.mat.opacity = 0.5 * (1 - t) * (1 - t);
+            p.mat.opacity = 0.72 * (1 - t) * (1 - t);
         }
     }
 
