@@ -124,6 +124,58 @@ const ThreePost = (function () {
         var f = 1 - t;
         return _bloomPulseAmt * f * f;         // ease-out decay
     }
+    // ── DRAMATIC DIM ─────────────────────────────────────────────────────
+    // "The world drops away for the big spell." A TIMED BEAT (never a
+    // setting) that ramps the existing night grade — colour drain, cool
+    // tint, crushed blacks, closing vignette — and pulls tone-mapping
+    // exposure down underneath it. The additive spell VFX and the bloom
+    // pass are untouched, so the effect is that the battlefield goes dark
+    // and the SPELL becomes the only light source in the frame. That's the
+    // Persona / SMT "everything else stops existing" read.
+    //
+    // Reuses uNightGrade rather than adding a pass: zero extra GPU cost,
+    // and it composes correctly with an actual night (max of the two).
+    // Scaled by the user's Impact FX slider like bloomPulse, so players who
+    // turned the juice down don't get flash-banged.
+    //
+    //   ThreePost.dramaDim(0.7, 900)                 → ramp, hold 900ms, release
+    //   ThreePost.dramaDim(0.7, 900, {riseMs, fallMs})
+    //   ThreePost.dramaClear()                       → drop it instantly
+    var _drama = { peak: 0, t0: 0, riseMs: 180, holdMs: 0, fallMs: 460 };
+
+    function dramaDim(amount, holdMs, opts) {
+        if (_impactFx <= 0) return;
+        var a = parseFloat(amount);
+        if (isNaN(a) || a <= 0) return;
+        a = Math.min(1, a) * Math.min(1, _impactFx);
+        var now = performance.now();
+        // Overlapping beats: a smaller dim never cuts a bigger one short.
+        if (a < _dramaCurrent(now)) return;
+        opts = opts || {};
+        _drama.peak = a;
+        _drama.t0 = now;
+        _drama.riseMs = Math.max(40, opts.riseMs || 180);
+        _drama.holdMs = Math.max(0, holdMs || 400);
+        _drama.fallMs = Math.max(90, opts.fallMs || 460);
+    }
+    function _dramaCurrent(now) {
+        if (_drama.peak <= 0) return 0;
+        var t = now - _drama.t0;
+        if (t < 0) return 0;
+        if (t < _drama.riseMs) return _drama.peak * (t / _drama.riseMs);
+        t -= _drama.riseMs;
+        if (t < _drama.holdMs) return _drama.peak;
+        t -= _drama.holdMs;
+        if (t < _drama.fallMs) {
+            var f = 1 - t / _drama.fallMs;
+            return _drama.peak * f * f;            // ease-out release
+        }
+        _drama.peak = 0;
+        return 0;
+    }
+    function dramaClear() { _drama.peak = 0; }
+    function getDramaDim() { return _dramaCurrent(performance.now()); }
+
     function setImpactFx(v) {
         var s = parseFloat(v);
         if (isNaN(s)) return;
@@ -1388,10 +1440,22 @@ const ThreePost = (function () {
         // Night grade — per-frame: the eased night factor × the Night Mood
         // slider. The cinematic pass must run whenever the grade is live,
         // even with CRT + vignette both off.
+        // Dramatic dim rides ON TOP of the night grade (max of the two, so a
+        // spell beat can't make an actual night brighter) and pulls exposure
+        // down beneath it — see dramaDim().
+        var _dim = _dramaCurrent(performance.now());
         if (_cinematicPass) {
             var _ng = _nightF * _nightMood * 0.85;
+            if (_dim > 0) _ng = Math.max(_ng, _dim * 0.92);
             _cinematicPass.material.uniforms['uNightGrade'].value = _ng;
             _cinematicPass.enabled = !!(_cin.crt || _cin.vignette || _ng > 0.001);
+        }
+        if (_renderer && _dim > 0) {
+            // Written AFTER syncLighting() (which owns the steady value) so
+            // the beat wins for its duration and restores itself on release.
+            _renderer.toneMappingExposure =
+                _cur.exposure * _exposureUser * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0)
+                * (1 - 0.5 * _dim);
         }
 
         // Impact flash — decaying bloom kick over the steady user strength.
@@ -1724,6 +1788,9 @@ const ThreePost = (function () {
         setNightMood: setNightMood,
         getNightMood: getNightMood,
         bloomPulse: bloomPulse,
+        dramaDim: dramaDim,
+        dramaClear: dramaClear,
+        getDramaDim: getDramaDim,
         setImpactFx: setImpactFx,
         getImpactFx: getImpactFx,
         getImpactFxMax: getImpactFxMax,

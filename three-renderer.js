@@ -5399,10 +5399,22 @@ const ThreeRenderer = (function () {
                 var cur = _unitAuras.get(uid);
                 /* orphaned by a rebuild (its meshes are already disposed), the
                    kind flipped, or a new spell burst swapped the palette —
-                   drop and rebuild fresh below */
-                if (cur && (!cur.group.parent || cur.kind !== kindKey ||
+                   drop and rebuild fresh below.
+
+                   ORPHAN TEST: compare against the LIVE entry group, never
+                   `!cur.group.parent`. rebuildUnits() removes the old unit
+                   group from unitGroup and _disposeR()s it, but _disposeR
+                   only frees geometry/materials — it never detaches children.
+                   So after a rebuild the aura's .parent still points at the
+                   detached, already-disposed group: truthy, kind unchanged,
+                   so the old check re-adopted a corpse and the aura went
+                   invisible FOREVER (it "shows for a moment then goes away"
+                   — the moment being however long until the unit's next
+                   structural rebuild). Identity against entry.group catches
+                   it every time. */
+                if (cur && (cur.group.parent !== entry.group || cur.kind !== kindKey ||
                             (kindKey === 'spell' && cur.pal !== pal))) {
-                    if (cur.group.parent) _disposeAuraEntry(cur);
+                    _disposeAuraEntry(cur);
                     _unitAuras.delete(uid);
                     cur = null;
                 }

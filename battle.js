@@ -4338,6 +4338,154 @@
         }
 
         // ═══════════════════════════════════════════════════════════════════
+        // SPELL STAGING BRIDGE
+        // ═══════════════════════════════════════════════════════════════════
+        // three-vfx-effects.js resolves every spell to a { weight, archetype }
+        // from its own data (cost / tier / damage / kind / element) — see the
+        // SPELL STAGING block there. battle.js reads that ONE answer and uses
+        // it for three things that used to be decided independently (and so
+        // routinely disagreed): how long the camera holds, which shot it
+        // picks, and how loud the VFX beats are.
+        //
+        // Adding a spell requires nothing here. It is staged, paced and shot
+        // automatically from its data.js entry.
+        // ═══════════════════════════════════════════════════════════════════
+        const _STAGE_PACE = {
+            //          camera holds        cinematic chrome
+            light:    { source: 0.72, target: 0.80, shot: 'ots'     },
+            standard: { source: 1.00, target: 1.00, shot: 'ots'     },
+            heavy:    { source: 1.34, target: 1.30, shot: 'lowHero' },
+            ultimate: { source: 1.62, target: 1.55, shot: 'lowHero' },
+        };
+        const _STAGE_FALLBACK = { weight: 'standard', archetype: 'arcane' };
+
+        function _spellStageInfo(spell) {
+            if (!spell || !spell.id) return _STAGE_FALLBACK;
+            const V = (typeof window !== 'undefined') ? window.ThreeVFXEffects : null;
+            if (V && typeof V.stageInfo === 'function') {
+                try { return V.stageInfo(spell.id) || _STAGE_FALLBACK; } catch (e) {}
+            }
+            return _STAGE_FALLBACK;
+        }
+
+        // Which camera shot a spell earns. Descent/sky spells always take the
+        // sky shot regardless of weight — the payload is overhead, so framing
+        // it at shoulder height points the lens at nothing.
+        function _spellShotKind(spell, travel) {
+            if (travel === 'descent') return 'sky';
+            const k = spell && spell.kind;
+            if (k === 'skyDrop' || k === 'skyThrow' || k === 'skySlam') return 'sky';
+            const st = _spellStageInfo(spell);
+            return (_STAGE_PACE[st.weight] || _STAGE_PACE.standard).shot;
+        }
+
+        // Fire one staging beat. Always via VFX3D.fire — that is the function
+        // online.js wraps for the host→guest relay, so staging a spell costs
+        // zero online work (RULE #2).
+        function _fireStageBeat(phase, spell, params) {
+            if (!spell || !spell.id) return;
+            if (state.phase !== 'battle' || _skipVisuals()) return;
+            if (typeof window === 'undefined' || !window.VFX3D
+                || typeof window.VFX3D.fire !== 'function') return;
+            try { window.VFX3D.fire(phase, spell.id, params); } catch (e) {}
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // _stageSpellCast() — THE universal staging entry point.
+        //
+        // Called once from doSpell the moment a cast commits (right next to
+        // triggerCastAnim), so it covers EVERY spell kind — not just the
+        // three that route through executeSpellAnimation. That's deliberate:
+        // the kinds that most needed presentation help (dash, pull, skyDrop,
+        // skyThrow, skySlam, placeTrap, leapStrike — ~60 spells with no VFX
+        // entry at all) each have their own bespoke branch in doSpell's kind
+        // switch and would never have been reached from the unified pipeline.
+        //
+        // The burst is scheduled on an ESTIMATE of the impact frame, derived
+        // from the same pace table the camera uses so the two agree by
+        // construction. Paths that know their real impact time refine it via
+        // _stageRetimeBurst() before the estimate fires.
+        // ═══════════════════════════════════════════════════════════════════
+        // Host-local timing bookkeeping ONLY. Deliberately kept OFF the unit
+        // object: units are serialized wholesale into state-sync, so a field
+        // here would ride to the guest on every cast, churn the sync dedup,
+        // and mean nothing on the other end (the guest replays relayed beats,
+        // it never schedules them).
+        let _stageSeq = 0;
+        const _stageLive = new Map();      // seq   -> { timers, tx, ty, fired, burst }
+        const _stageByUnit = new Map();    // unitId -> seq
+
+        function _stageSpellCast(unit, spell, tx, ty) {
+            if (!unit || !spell || !spell.id) return;
+            if (state.phase !== 'battle' || _skipVisuals()) return;
+            if (state.cameraDisabled && state.devAutoSim) return;
+
+            const st = _spellStageInfo(spell);
+            const pace = _STAGE_PACE[st.weight] || _STAGE_PACE.standard;
+            const profile = _animProfile(spell);
+
+            // Where the payload lands. Self-cast and ally-support spells stage
+            // on the caster; everything else on the clicked tile.
+            const selfish = (typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell))
+                || profile.camera !== 'offensive';
+            const stx = selfish ? unit.x : (tx != null ? tx : unit.x);
+            const sty = selfish ? unit.y : (ty != null ? ty : unit.y);
+
+            // Impact estimate. Offensive kinds ride the two-beat camera
+            // (source hold + travel); self/ally casts resolve almost at once.
+            const sourceHold = actionMs(Math.round(1250 * pace.source));
+            const impactMs = profile.camera === 'offensive'
+                ? sourceHold + actionMs(360)
+                : actionMs(280);
+
+            // Drop any staging still in flight for this unit (fast re-cast,
+            // encore, an interrupted turn) so a stale burst can't land on top
+            // of the new cast.
+            const prevSeq = _stageByUnit.get(unit.id);
+            if (prevSeq && _stageLive.has(prevSeq)) {
+                for (const t of _stageLive.get(prevSeq).timers) clearTimeout(t);
+                _stageLive.delete(prevSeq);
+            }
+
+            const seq = ++_stageSeq;
+            const rec = { timers: [], unitId: unit.id, tx: stx, ty: sty, fired: false };
+            _stageLive.set(seq, rec);
+            _stageByUnit.set(unit.id, seq);
+
+            _fireStageBeat('windup', spell, {
+                sx: unit.x, sy: unit.y, tx: stx, ty: sty,
+                holdMs: Math.max(240, impactMs)
+            });
+
+            const burst = () => {
+                if (rec.fired) return;
+                rec.fired = true;
+                _fireStageBeat('burst', spell, { tx: rec.tx, ty: rec.ty, sx: unit.x, sy: unit.y });
+                rec.timers.push(window.setTimeout(() => {
+                    _fireStageBeat('finish', spell, { tx: rec.tx, ty: rec.ty });
+                    _stageLive.delete(seq);
+                    if (_stageByUnit.get(unit.id) === seq) _stageByUnit.delete(unit.id);
+                }, actionMs(520)));
+            };
+            rec.burst = burst;
+            rec.timers.push(window.setTimeout(burst, impactMs));
+        }
+
+        // A kind that knows its REAL impact frame corrects the estimate. Only
+        // ever moves the burst LATER (an early burst is a miss; a late one
+        // still lands on the hit) and only while it hasn't fired yet.
+        function _stageRetimeBurst(unit, spell, tile, impactDelay, completionDelay) {
+            const seq = unit && _stageByUnit.get(unit.id);
+            if (!seq) return;
+            const rec = _stageLive.get(seq);
+            if (!rec || rec.fired) return;
+            if (tile && tile.x != null) { rec.tx = tile.x; rec.ty = tile.y; }
+            for (const t of rec.timers) clearTimeout(t);
+            rec.timers.length = 0;
+            rec.timers.push(window.setTimeout(rec.burst, Math.max(0, impactDelay)));
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
         // executeSpellAnimation() — unified spell animation pipeline.
         // Phase 4: handles offensive single-target spells.
         // Reads the kind's animation profile, resolves travel type,
@@ -4365,7 +4513,21 @@
             // (castMagic/castAOE/etc.) need ~1.2s of wind-up to read; the old
             // hold cut away from the caster mid-swing. targetHold nudged up so
             // the impact still gets its full beat after the later cut.
-            const camOpts = opts.cameraOpts || { sourceHold: 1250, targetHold: 1000 };
+            //
+            // 2026-07-24: those holds are now SCALED BY SPELL WEIGHT rather
+            // than being one number for the whole library. Every spell used to
+            // get the identical ~2.8s two-beat shot, which made cheap pokes
+            // feel sluggish AND made ultimates feel rushed — the single most
+            // common "the animations are too fast to read" complaint. A light
+            // utility now clears in ~2.1s while an ultimate gets ~4.3s to
+            // breathe. The weight comes from the staging layer so pacing,
+            // VFX intensity and camera choice can never disagree.
+            const _stage = _spellStageInfo(spell);
+            const _pace = _STAGE_PACE[_stage.weight] || _STAGE_PACE.standard;
+            const camOpts = opts.cameraOpts || {
+                sourceHold: Math.round(1250 * _pace.source),
+                targetHold: Math.round(1000 * _pace.target)
+            };
             if (profile.camera === 'offensive' && target) {
                 const _VFX = window.ThreeVFXEffects;
                 // Timing data only — descent spells keep the standard two-beat
@@ -4377,7 +4539,8 @@
                 cam = playOffensiveActionCamera(unit, target, {
                     ...camOpts,
                     attackName: spell.name,
-                    descentCam: _descentCam
+                    descentCam: _descentCam,
+                    shotKind: _spellShotKind(spell, travel)
                 });
             } else if (profile.camera === 'focus') {
                 _spellFocusCamera(unit, tileXY.x, tileXY.y, { spellName: spell.name });
@@ -4414,6 +4577,13 @@
 
             // Deduct MP
             unit.mp -= effectiveSpellCost;
+
+            // Staging beats are NOT fired here — doSpell stages every cast at
+            // its universal commit point (see _stageSpellCast), so all ~60
+            // spell kinds get the treatment, not just the three that reach
+            // this pipeline. Re-add the timing hint so the burst lands on
+            // this path's real impact frame rather than the estimate.
+            _stageRetimeBurst(unit, spell, target || tileXY, impactDelay, completionDelay);
 
             // Phase 4–6: Impact + damage + post-effects (scheduled at impactDelay)
             if (opts.damageResolver) {
@@ -13371,6 +13541,9 @@
                 u.dead = false; u._dying = false;
                 u.hp = u.maxHp; u.mp = u.maxMp; u.shield = 0;
                 u.status = { spawnGuard: 1 };
+                /* fresh life → drop Last Stand / kill-streak so the respawn
+                   doesn't wear the crimson or golden aura (see map.js) */
+                if (typeof resetUnitPowerState === 'function') resetUnitPowerState(u);
                 u.ap = (typeof getUnitMaxAP === 'function') ? getUnitMaxAP(u) : 3;
                 u._rtCd = {}; u._rtAtkAt = 0; u._rtGcdAt = 0; u._rtHurtAt = 0;
                 u._respawnIn = null;
@@ -14339,13 +14512,52 @@
                 // ── BEAT 1 — THE CAST: swoop around and face the caster while
                 // they wind up. The camera eye sits toward the TARGET's side of
                 // the line looking back, so the cut to beat 2 reverses cleanly.
+                //
+                // 2026-07-24 — SHOT VARIANTS. Beat 1 used to be one framing for
+                // the entire spell library, so a 12 MP hex and a screen-clearing
+                // ultimate were shot identically. shotOpts.shotKind (resolved
+                // from the staging weight — see _spellShotKind) now picks:
+                //
+                //   'ots'      the standard over-the-shoulder hero framing
+                //   'lowHero'  camera drops toward the ground and looks UP at
+                //              the caster while they charge — the anime power
+                //              shot. Heavy + ultimate spells.
+                //   'sky'      cranes UP off the caster to reveal the airspace
+                //              the payload is about to fall out of, so meteors
+                //              and sky-drops aren't framed at shoulder height
+                //              pointing at empty ground.
+                //
+                // Only the beat-1 numbers move — the beat-2 reverse cut, the
+                // TPS rig and the dolly are shared, so every variant still
+                // reads as the same camera language.
+                const _shot = shotOpts.shotKind || 'ots';
                 const yawFace = yawFwd + 180 - CINE_CAM_YAW_OFFSET;
+                let _faceTilt = CINE_FACE_TILT;
+                let _faceDist = CINE_FACE_DIST_TILES;
+                let _faceRise = CINE_FOCAL_RISE;
+                let _faceMs   = 420;
+                if (_shot === 'lowHero') {
+                    // Sit low and look up the caster's body. In this engine a
+                    // HIGHER tilt number is a more level / upward lens, so the
+                    // low angle is +degrees, not -.
+                    _faceTilt = CINE_FACE_TILT + 16;
+                    _faceDist = CINE_FACE_DIST_TILES - 0.5;   // step in closer
+                    _faceRise = CINE_FOCAL_RISE * 0.35;       // aim at the chest
+                    _faceMs   = 520;                          // slower swoop
+                } else if (_shot === 'sky') {
+                    // Crane up and back so the caster sits low in frame with a
+                    // lot of air above them — the payload arrives INTO the shot.
+                    _faceTilt = CINE_FACE_TILT + 26;
+                    _faceDist = CINE_FACE_DIST_TILES + 1.6;
+                    _faceRise = CINE_FOCAL_RISE * 2.4;
+                    _faceMs   = 560;
+                }
                 _cineBeatMove({
                     x: sx + dirx * 0.1, y: sy + diry * 0.1,
-                    zoom: _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES),
-                    tilt: CINE_FACE_TILT, yaw: yawFace,
-                    elevZ: casterPx + ts * CINE_FOCAL_RISE,
-                    duration: actionMs(420), easing: 'easeInOut',
+                    zoom: _tpsZoomForBoomTiles(_faceDist),
+                    tilt: _faceTilt, yaw: yawFace,
+                    elevZ: casterPx + ts * _faceRise,
+                    duration: actionMs(_faceMs), easing: 'easeInOut',
                     _allowZoomChange: true, _bypassCap: true,
                     _fogAllowed: fogAllowed || undefined
                 });
@@ -14778,7 +14990,8 @@
                 showActionCamChrome({ name: opts.attackName || '',
                     heavy: true, totalMs: timings.totalMs });
                 _playCineActionShot(sourceUnit, target, timings, _fogPassthrough, sequenceId,
-                    { impactMs: _impactMs, frameTiles: opts.frameTiles });
+                    { impactMs: _impactMs, frameTiles: opts.frameTiles,
+                      shotKind: opts.shotKind });
             } else {
 
                 const focusX = (sourceUnit.x + target.x) / 2;
@@ -23317,6 +23530,7 @@
                     u.dead = false;
                     u._dying = false;
                     u._respawnIn = null;
+                    if (typeof resetUnitPowerState === 'function') resetUnitPowerState(u);
                 }
             }
 
@@ -36271,6 +36485,13 @@
                 const heal = Math.max(1, Math.round(target.maxHp * _healPct * getTerrainHealMultiplier(target.x, target.y)));
                 // The HP lands as the drink goes down — on camera.
                 window.setTimeout(() => {
+                    // Rising-green restore VFX. Routed through VFX3D.fire so
+                    // online.js's relay wrapper carries it to the guest.
+                    if (state.phase === 'battle' && !target.dead && !_skipVisuals()
+                        && typeof window !== 'undefined' && window.VFX3D
+                        && typeof window.VFX3D.fire === 'function') {
+                        window.VFX3D.fire('aura', 'consumeHealPotion', { tx: target.x, ty: target.y });
+                    }
                     const healed = applyHealingToUnit(target, heal, unit, { preScaled: true });
                     flashSelectedUnitPanel('heal');
                     addLog(`${unitDisplayName(unit)} uses Healing Potion on ${unitDisplayName(target)}, restoring ${healed} HP.`);
@@ -36348,6 +36569,11 @@
                 const restore = Math.max(1, Math.round(target.maxMp * _mpPct));
                 window.setTimeout(() => {
                     if (target.dead) return;
+                    if (state.phase === 'battle' && !_skipVisuals()
+                        && typeof window !== 'undefined' && window.VFX3D
+                        && typeof window.VFX3D.fire === 'function') {
+                        window.VFX3D.fire('aura', 'consumeManaPotion', { tx: target.x, ty: target.y });
+                    }
                     const mpGain = Math.min(restore, Math.max(0, target.maxMp - target.mp));
                     target.mp = Math.min(target.maxMp, target.mp + restore);
                     flashSelectedUnitPanel('heal');
@@ -37133,6 +37359,12 @@
 
             triggerCastAnim(unit, spell);
 
+            /* Cinematic staging (wind-up → burst → exhale). Fired HERE, at the
+               universal cast-commit point, so every one of the ~60 spell kinds
+               gets presented — including the dashes, grabs, sky-drops and traps
+               that have their own branches below and no VFX entry at all. */
+            _stageSpellCast(unit, spell, x, y);
+
             /* Unit animation override: race-specific cast sprite */
             if (_applySpriteOverride(unit, spell, 'castSprite')) {
                 scheduleBoardRender();
@@ -37551,6 +37783,9 @@
                 target.hp = Math.max(1, Math.round(target.maxHp * getEffectiveRevivePct(unit, spell.revivePct || 0.35)));
                 target.shield = 0;
                 target.reviveLocked = !!spell.oneRevivePerUnitPerMatch;
+                /* a revive is a new life too — don't carry the dead unit's
+                   Last Stand shroud / kill streak back onto the board */
+                if (typeof resetUnitPowerState === 'function') resetUnitPowerState(target);
                 removeDebuffs(target);
                 flashHeal(target);
 

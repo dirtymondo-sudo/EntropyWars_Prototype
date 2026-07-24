@@ -1092,6 +1092,90 @@ EFFECTS['_debuff_burst'] = {
     ]
 };
 
+/* ═══ CONSUMABLE ITEMS — potions had NO VFX AT ALL ══════════════════════
+   The potion path in doItem played an SFX, threw a bottle, ran a drink
+   animation… and then the HP number simply changed. No restore effect
+   whatsoever. Standard JRPG grammar for a restore is GREEN and RISING, so
+   this is the full read: uncork pop → expanding ground rings → THREE
+   staggered waves of motes floating UP (negative gravity, so they
+   accelerate skyward instead of arcing back down like damage sparks) →
+   a halo that lifts off the crown as the drink goes down.
+
+   Deliberately spread over ~1.1s: the point is that healing READS as
+   happening over the drink, not as a single frame-one pop.
+
+   Wired as the 'aura' intent on the synthetic item ids battle.js already
+   uses for the drink animation (consumeHealPotion / consumeManaPotion), so
+   doItem fires it through VFX3D.fire — which is the function online.js
+   wraps, so the guest gets it via the existing relay for free. ══════════ */
+EFFECTS['_itemHealPotion_burst'] = {
+    layers: [
+        /* uncork: a soft green pop at the bottle, not a combat flash */
+        { sprite: 'heal-glow', ml: 420, z: 6, size0: 26, size1: 150, opacity0: 0.9 },
+        { sprite: 'flash', ml: 190, z: 8, size0: 60, size1: 16, opacity0: 0.55 },
+        /* calm expanding rings on the ground — three, slow, fading */
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring-green', ml: 620, z: 2,
+          size0: 24, size1: 132, opacity0: 0.8 },
+        { delayMs: 280, anchor: 'floor', mode: 'world', sprite: 'target-ring-green', ml: 620, z: 2,
+          size0: 24, size1: 132, opacity0: 0.62 },
+        { delayMs: 560, anchor: 'floor', mode: 'world', sprite: 'target-ring-green', ml: 620, z: 2,
+          size0: 24, size1: 132, opacity0: 0.45 },
+        /* ── THE RISE ── three waves of crosses climbing the body. Negative
+           gravity + low drag = they keep accelerating up and out of frame
+           instead of arcing; that upward pull is the whole read. */
+        { count: 18, anchor: 'floor', sprite: 'heal-cross', ml: [620, 1000], offsetXY: 20,
+          z: [0, 18], vxRange: 14, vyRange: 14, vzRange: [70, 130], gravity: -40, drag: 0.35,
+          size0: [8, 14], size1: 2, opacity0: 0.95 },
+        { count: 14, delayMs: 260, anchor: 'floor', sprite: 'heal-cross', ml: [560, 900], offsetXY: 22,
+          z: [0, 18], vxRange: 14, vyRange: 14, vzRange: [70, 130], gravity: -40, drag: 0.35,
+          size0: [7, 12], size1: 2, opacity0: 0.9 },
+        { count: 12, delayMs: 540, anchor: 'floor', sprite: 'heal-cross', ml: [520, 860], offsetXY: 22,
+          z: [0, 18], vxRange: 14, vyRange: 14, vzRange: [70, 130], gravity: -40, drag: 0.35,
+          size0: [6, 11], size1: 2, opacity0: 0.85 },
+        /* fine sparkle dust riding the same updraft, faster and thinner */
+        { count: 16, delayMs: 90, anchor: 'floor', sprite: 'divine-sparkle', ml: [500, 850], offsetXY: 26,
+          z: [0, 30], vxRange: 26, vyRange: 26, vzRange: [90, 175], gravity: -55, drag: 0.5,
+          size0: [4, 8], size1: 1, opacity0: 0.9 },
+        /* warm restorative glow held at the torso through the drink */
+        { delayMs: 120, sprite: 'heal-glow', ml: 780, z: 4, size0: 120, size1: 54, opacity0: 0.6 },
+        /* halo lifting off the crown as the HP lands */
+        { delayMs: 420, sprite: 'halo-ring', ml: 620, z: 46, size0: 54, size1: 110, opacity0: 0.75 },
+    ]
+};
+EFFECTS['_itemHealPotion_aura'] = {
+    aoeRadius: 0,
+    impactCenterEffect: '_itemHealPotion_burst'
+};
+SPELL_MAP['consumeHealPotion'] = { aura: '_itemHealPotion_aura' };
+
+/* Mana potion: same staging, cool blue — so the two items read as siblings
+   at a glance but are never mistaken for one another. */
+EFFECTS['_itemManaPotion_burst'] = {
+    layers: [
+        { sprite: 'plasma', ml: 420, z: 6, size0: 24, size1: 140, opacity0: 0.85 },
+        { sprite: 'flash', ml: 190, z: 8, size0: 58, size1: 16, opacity0: 0.5 },
+        { anchor: 'floor', mode: 'world', sprite: 'target-ring-blue', ml: 620, z: 2,
+          size0: 24, size1: 128, opacity0: 0.78 },
+        { delayMs: 300, anchor: 'floor', mode: 'world', sprite: 'target-ring-blue', ml: 620, z: 2,
+          size0: 24, size1: 128, opacity0: 0.55 },
+        { count: 18, anchor: 'floor', sprite: 'spark-blue', ml: [600, 980], offsetXY: 20,
+          z: [0, 18], vxRange: 16, vyRange: 16, vzRange: [75, 135], gravity: -40, drag: 0.35,
+          size0: [6, 11], size1: 2, opacity0: 0.95 },
+        { count: 14, delayMs: 280, anchor: 'floor', sprite: 'spark-blue', ml: [540, 880], offsetXY: 22,
+          z: [0, 18], vxRange: 16, vyRange: 16, vzRange: [75, 135], gravity: -40, drag: 0.35,
+          size0: [5, 10], size1: 2, opacity0: 0.9 },
+        { count: 14, delayMs: 90, anchor: 'floor', sprite: 'sparkle', ml: [500, 840], offsetXY: 26,
+          z: [0, 30], vxRange: 26, vyRange: 26, vzRange: [95, 180], gravity: -55, drag: 0.5,
+          size0: [4, 8], size1: 1, opacity0: 0.9 },
+        { delayMs: 120, sprite: 'psi-pulse', ml: 720, z: 4, size0: 96, size1: 44, opacity0: 0.5 },
+    ]
+};
+EFFECTS['_itemManaPotion_aura'] = {
+    aoeRadius: 0,
+    impactCenterEffect: '_itemManaPotion_burst'
+};
+SPELL_MAP['consumeManaPotion'] = { aura: '_itemManaPotion_aura' };
+
 /* ─── DISCORD STATUS — jarring magenta "off-key" pop the moment the status
    lands. discord had NO _statusEffectMap entry (and battle.js's
    vfxStatusMap gate skipped it), so the game's most common debuff was
@@ -2041,6 +2125,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     function fire(intent, spellId, params) {
         if (_suppressed()) return;
+        /* Staging beats are resolved from spell DATA, not from SPELL_MAP —
+           that's the whole point (a spell with no VFX entry still stages).
+           So they're handled before the hasMapping gate, and because they
+           ride fire(), online.js's relay wrapper carries them to the guest
+           with no extra plumbing. */
+        if (intent === 'windup' || intent === 'burst' || intent === 'finish') {
+            _fireStage(intent, spellId, params || {});
+            return;
+        }
         if (!hasMapping(spellId, intent)) return;
         var effectId = SPELL_MAP[spellId][intent];
         var effectDef = EFFECTS[effectId];
@@ -2512,20 +2605,36 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var fo = descentDef.flyover;
             var targetPx = tilePx(tx, ty);
             var targetZ = tileZ(tx, ty);
-            var flyZ = targetZ + (fo.altitude || 400);
+            var _pad0 = cfg2.boardPadding || 2;
+            /* Altitude that actually lands in frame (upper third) rather than
+               a flat 400px that a zoomed-in action cam crops away. */
+            var flyZ = targetZ + _framedRise(
+                targetPx.x - _pad0, targetPx.y - _pad0, targetZ,
+                { ndcY: 0.46, fallback: fo.altitude || 400,
+                  min: ts * 1.1, max: ts * 6 });
             var flyMs = fo.durationMs || 900;
             var spriteW = fo.w || 256;
             var spriteH = fo.h || 256;
             var flyRight = Math.random() < 0.5;
-            var dirX = flyRight ? 1 : -1;
+            var dirSign = flyRight ? 1 : -1;
+            /* Cross the SCREEN, not world-X: the camera orbits, so a fixed
+               world axis routinely pointed straight into (or out of) the lens
+               and the "flyover" never crossed the picture. */
+            var _rt = _camRightBoardDir();
+            var _dvx = _rt.x * dirSign, _dvy = _rt.y * dirSign;
             var bwFn = (typeof bw === 'function') ? bw() : 16;
             var boardW = bwFn * (ts + (cfg2.tileGap || 0));
-            var traverseDist = boardW * 1.6;
-            var startX = targetPx.x - dirX * traverseDist * 0.5;
-            var startY = targetPx.y;
+            /* Size the run to the VISIBLE span at the craft's depth so most of
+               the flight is on camera; fall back to board width when the
+               camera can't be read. */
+            var _span = _camWorldSpanAt(targetPx.x - _pad0, flyZ, targetPx.y - _pad0);
+            var traverseDist = _span ? Math.max(ts * 8, _span.w * 1.45) : boardW * 1.6;
+            var startX = targetPx.x - _dvx * traverseDist * 0.5;
+            var startY = targetPx.y - _dvy * traverseDist * 0.5;
             var speed = traverseDist / (flyMs / 1000);
-            var fVx = dirX * speed;
-            var spriteRotDeg = flyRight ? 90 : -90;
+            var fVx = _dvx * speed;
+            var fVy = _dvy * speed;
+            var spriteRotDeg = Math.atan2(_dvy, _dvx) * 180 / Math.PI + 90;
             var flyDelay = fo.delayMs != null ? fo.delayMs : Math.max(0, telegraphMs * 0.15);
             window.setTimeout(function() {
                 if (_suppressed()) return;
@@ -2538,7 +2647,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     var pad2 = cfg2.boardPadding || 2;
                     var jg = new THREE.Group();                 /* position + heading */
                     jg.position.set(startX - pad2, flyZ, startY - pad2);
-                    jg.rotation.y = Math.atan2(dirX, 0);        /* nose along +X travel */
+                    /* model's nose is local +Z (wpn def axis 'z') — aim it
+                       down the actual travel vector, not a hardcoded ±X */
+                    jg.rotation.y = Math.atan2(_dvx, _dvy);
                     var roll = new THREE.Group();               /* bank around the nose axis */
                     roll.add(jet.group);
                     jg.add(roll);
@@ -2553,6 +2664,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     }
                     _sigRun(jg, flyMs, function (elJ) {
                         jg.position.x = (startX - pad2) + fVx * (elJ / 1000);
+                        jg.position.z = (startY - pad2) + fVy * (elJ / 1000);
                         roll.rotation.z = 0.20 * Math.sin(elJ * 0.004);   /* gentle bank */
                         var lifeT = elJ / flyMs;
                         var opJ = lifeT > 0.78 ? Math.max(0, 1 - (lifeT - 0.78) / 0.22) : 1;
@@ -2562,7 +2674,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 } else {
                     _spawn({
                         x: startX, y: startY, z: flyZ,
-                        vx: fVx, vy: 0, vz: 0,
+                        vx: fVx, vy: fVy, vz: 0,
                         mode: 'world',
                         sprite: fo.sprite || 'f22',
                         ml: flyMs,
@@ -2582,8 +2694,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                                 if (_suppressed()) return;
                                 var elapsed = (idx * trailInterval) / 1000;
                                 var jx = startX + fVx * elapsed;
+                                var jy = startY + fVy * elapsed;
                                 _spawn({
-                                    x: jx + rn(-6, 6), y: startY + rn(-6, 6), z: flyZ - rn(5, 15),
+                                    x: jx + rn(-6, 6), y: jy + rn(-6, 6), z: flyZ - rn(5, 15),
                                     mode: 'billboard', sprite: 'smoke',
                                     ml: rn(500, 800),
                                     size0: rn(18, 28), size1: rn(50, 80),
@@ -2786,11 +2899,25 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         var cfg2 = _cfg();
         var ts = cfg2.tileSize || 128;
-        var fromX = params.fromX | 0;
-        var fromY = params.fromY | 0;
+        /* Two call spellings reach here: the line-kind path passes
+           fromX/fromY + dx/dy + range; the generic travel handler in
+           battle.js passes sx/sy (source) + tx/ty (target). Accept both —
+           the old code read only the first spelling, so a damage-kind spell
+           with a beam mapping fired a zero-length beam out of tile 0,0. */
+        var fromX = (params.fromX != null ? params.fromX : params.sx) | 0;
+        var fromY = (params.fromY != null ? params.fromY : params.sy) | 0;
         var dx = params.dx | 0;
         var dy = params.dy | 0;
         var range = params.range | 0;
+        if (!dx && !dy && params.tx != null && params.ty != null) {
+            var _ddx = params.tx - fromX, _ddy = params.ty - fromY;
+            var _steps = Math.max(Math.abs(_ddx), Math.abs(_ddy));
+            if (_steps > 0) {
+                dx = Math.round(_ddx / _steps);
+                dy = Math.round(_ddy / _steps);
+                if (!range) range = _steps;
+            }
+        }
 
         var hitTiles = params.hitTiles;
         if (!hitTiles || !hitTiles.length) {
@@ -3578,6 +3705,100 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _getVFXScene() {
         return window.ThreeVFX && window.ThreeVFX._getScene
             ? window.ThreeVFX._getScene() : null;
+    }
+
+    /* ═══════════════ CINEMATIC PROP FRAMING ═══════════════════════════════
+       Flying set-pieces (the F-22 flyover, the grey saucer) used to be aimed
+       in WORLD space: the jet always ran along ±world-X, the saucer entered
+       on a fully random world heading — both at a fixed altitude above the
+       target tile. But the action camera ORBITS. Line the camera up with
+       world-X and the "flyover" flies straight at (or away from) the lens
+       instead of across the frame; at a tight cinematic zoom a prop parked a
+       flat 400px overhead simply sits above the top of frame. Between the two
+       that's the "can't see the UFO or the jet half the time" report.
+
+       These three helpers re-aim props at the LIVE CAMERA instead, and they
+       are the intended way to place any future flying set-piece:
+
+         _camRightBoardDir()  screen-RIGHT as a board-px direction {x,y}.
+                              Travel along it ⇒ the prop always crosses the
+                              frame left↔right, whatever the yaw.
+         _framedRise(...)     height above a ground point that lands the prop
+                              at a chosen NDC height (0 = centre, 1 = top of
+                              frame). Closed-form, exact, one shot.
+         _camWorldSpanAt(...) how wide/tall the world is on screen at that
+                              depth — size a traverse from this so the craft
+                              spends its flight IN frame instead of covering
+                              1.6 board-widths mostly off it. ═══════════ */
+    var _cpMat = null, _cpDir = null;
+    function _camObj() {
+        try {
+            return (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera)
+                ? ThreeCamera.getCamera() : null;
+        } catch (e) { return null; }
+    }
+    function _cpClamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+    /* world screen-right = normalize(cross(viewForward, worldUp)) = (-f.z, 0, f.x).
+       Board px-space is world XZ plus a constant pad, so the direction carries
+       over unchanged: {x along px-x, y along px-y}. */
+    function _camRightBoardDir() {
+        var cam = _camObj();
+        if (!cam || typeof THREE === 'undefined') return { x: 1, y: 0 };
+        try {
+            if (!_cpDir) _cpDir = new THREE.Vector3();
+            cam.getWorldDirection(_cpDir);
+            var rx = -_cpDir.z, rz = _cpDir.x;
+            var L = Math.hypot(rx, rz);
+            if (!(L > 1e-6)) return { x: 1, y: 0 };
+            return { x: rx / L, y: rz / L };
+        } catch (e) { return { x: 1, y: 0 }; }
+    }
+
+    /* Height above (wx, baseY, wz) whose projection sits at NDC y = opts.ndcY.
+       clip.y and clip.w are both AFFINE in the rise h, so:
+           ndcY = (ay + h*by) / (aw + h*bw)  ⇒  h = (ndcY*aw - ay)/(by - ndcY*bw)
+       — exact in one step, no iteration. Falls back to opts.fallback whenever
+       the camera is absent or the solve degenerates (point behind the lens). */
+    function _framedRise(wx, wz, baseY, opts) {
+        opts = opts || {};
+        var want     = opts.ndcY     != null ? opts.ndcY     : 0.42;
+        var fallback = opts.fallback != null ? opts.fallback : 400;
+        var minH     = opts.min      != null ? opts.min      : 0;
+        var maxH     = opts.max      != null ? opts.max      : 1e7;
+        var cam = _camObj();
+        if (!cam || typeof THREE === 'undefined') return _cpClamp(fallback, minH, maxH);
+        try {
+            cam.updateMatrixWorld();
+            if (!_cpMat) _cpMat = new THREE.Matrix4();
+            _cpMat.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+            var e = _cpMat.elements;              /* column-major */
+            var ay = e[1] * wx + e[5] * baseY + e[9] * wz + e[13];
+            var aw = e[3] * wx + e[7] * baseY + e[11] * wz + e[15];
+            var by = e[5], bw = e[7];             /* rows applied to (0,1,0,0) */
+            var den = by - want * bw;
+            if (!isFinite(den) || Math.abs(den) < 1e-9) return _cpClamp(fallback, minH, maxH);
+            var h = (want * aw - ay) / den;
+            if (!isFinite(h)) return _cpClamp(fallback, minH, maxH);
+            if (aw + h * bw <= 1e-6) return _cpClamp(fallback, minH, maxH);  /* behind camera */
+            return _cpClamp(h, minH, maxH);
+        } catch (err) { return _cpClamp(fallback, minH, maxH); }
+    }
+
+    /* Visible world width/height at the depth of a point (perspective cam). */
+    function _camWorldSpanAt(wx, wy, wz) {
+        var cam = _camObj();
+        if (!cam || typeof THREE === 'undefined') return null;
+        try {
+            cam.updateMatrixWorld();
+            if (!_cpDir) _cpDir = new THREE.Vector3();
+            cam.getWorldDirection(_cpDir);
+            var cp = cam.position;
+            var d = (wx - cp.x) * _cpDir.x + (wy - cp.y) * _cpDir.y + (wz - cp.z) * _cpDir.z;
+            if (!(d > 1)) return null;
+            var vh = 2 * d * Math.tan((cam.fov || 45) * Math.PI / 360);
+            return { w: vh * (cam.aspect || 1.6), h: vh, dist: d };
+        } catch (e) { return null; }
     }
 
     function _worldPos(tx, ty) {
@@ -5914,7 +6135,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ts = wp.ts;
         var boost = unitZBoost();
 
-        var hoverY = wp.y + ts * 2.7;       // saucer centre hover height
+        // Saucer centre hover height, framed against the live camera so the
+        // probe craft can't sit above the top of a zoomed-in action shot.
+        var hoverY = wp.y + _framedRise(wp.x, wp.z, wp.y, {
+            ndcY: 0.34, fallback: ts * 2.7, min: ts * 1.5, max: ts * 4.4
+        });
         var bodyR = ts * 0.55;
         var bodyH = ts * 0.22;
         var pierceY = wp.y + ts * 0.25;     // where the needle tip ends up (in the target)
@@ -9925,7 +10150,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
         var R = opts.radiusPx != null ? opts.radiusPx : ts * 1.05;
-        var hoverH = opts.hoverH != null ? opts.hoverH : ts * 2.7;
+        /* Hover where the CAMERA can see it. A flat ts*2.7 sat above the top
+           of frame whenever the action cam was zoomed in on the ground
+           target — half the reason the saucer "doesn't show up". */
+        var hoverH = _framedRise(wp.x, wp.z, wp.y, {
+            ndcY: 0.34,
+            fallback: opts.hoverH != null ? opts.hoverH : ts * 2.7,
+            min: ts * 1.5, max: ts * 4.6
+        });
         var enterMs = opts.enterMs != null ? opts.enterMs : 420;
         var hoverMs = opts.hoverMs != null ? opts.hoverMs : 1200;
         var exitMs = opts.exitMs != null ? opts.exitMs : 480;
@@ -9950,8 +10182,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var pathMs = opts.pathMs != null ? opts.pathMs : hoverMs;
         var endOff = pathPts ? pathPts[pathPts.length - 1] : { x: 0, z: 0 };
 
-        var enterDir = rn(0, Math.PI * 2);
-        var exitDir = enterDir + Math.PI + rn(-0.8, 0.8);
+        /* Swoop in ACROSS the frame. The old rn(0, 2π) world heading meant
+           the saucer regularly flew in from directly behind the lens (never
+           seen) or straight down the view axis (a dot that grows). Screen-
+           left or screen-right, jittered so it still feels loose, and exit
+           out the far side. */
+        var _uRt = _camRightBoardDir();
+        var _uBase = Math.atan2(_uRt.y, _uRt.x);
+        var enterDir = _uBase + (Math.random() < 0.5 ? 0 : Math.PI) + rn(-0.42, 0.42);
+        var exitDir = enterDir + Math.PI + rn(-0.5, 0.5);
         var enterDist = ts * 9;
 
         var beamMat = null, beam = null;
@@ -10036,7 +10275,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
         var R = opts.radiusPx != null ? opts.radiusPx : ts * 1.05;
-        var hoverH = opts.hoverH != null ? opts.hoverH : ts * 2.9;
+        /* framed hover height — see _sigUFO3D */
+        var hoverH = _framedRise(wp.x, wp.z, wp.y, {
+            ndcY: 0.34,
+            fallback: opts.hoverH != null ? opts.hoverH : ts * 2.9,
+            min: ts * 1.5, max: ts * 4.6
+        });
         var enterMs = opts.enterMs != null ? opts.enterMs : 320;
         var exitMs = opts.exitMs != null ? opts.exitMs : 480;
         /* hard safety cap — a leaked handle can't hover a saucer forever */
@@ -10052,8 +10296,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         beam.renderOrder = 157;
         group.add(beam);
 
-        var enterDir = rn(0, Math.PI * 2);
-        var exitDir = enterDir + Math.PI + rn(-0.8, 0.8);
+        /* Swoop in ACROSS the frame. The old rn(0, 2π) world heading meant
+           the saucer regularly flew in from directly behind the lens (never
+           seen) or straight down the view axis (a dot that grows). Screen-
+           left or screen-right, jittered so it still feels loose, and exit
+           out the far side. */
+        var _uRt = _camRightBoardDir();
+        var _uBase = Math.atan2(_uRt.y, _uRt.x);
+        var enterDir = _uBase + (Math.random() < 0.5 ? 0 : Math.PI) + rn(-0.42, 0.42);
+        var exitDir = enterDir + Math.PI + rn(-0.5, 0.5);
         var enterDist = ts * 9;
 
         function _holdEase(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
@@ -12882,8 +13133,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!teleEffectId) return;
         var teleDef = EFFECTS[teleEffectId];
         if (!teleDef) return;
-        var fromX = params.fromX, fromY = params.fromY;
-        var toX = params.toX, toY = params.toY;
+        /* accept both spellings: fromX/toX (teleport path) and sx/tx (the
+           generic travel handler) — the second used to bail out silently */
+        var fromX = params.fromX != null ? params.fromX : params.sx;
+        var fromY = params.fromY != null ? params.fromY : params.sy;
+        var toX = params.toX != null ? params.toX : params.tx;
+        var toY = params.toY != null ? params.toY : params.ty;
         if (fromX == null || fromY == null || toX == null || toY == null) return;
 
         var arrivalDelayMs = teleDef.arrivalDelayMs != null ? teleDef.arrivalDelayMs : 200;
@@ -13007,7 +13262,448 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _sigEntries.length = 0;
         _fxKillAllTickers();
         if (window.ThreeVFX && window.ThreeVFX.clear) window.ThreeVFX.clear();
+        try { if (window.ThreePost && window.ThreePost.dramaClear) window.ThreePost.dramaClear(); } catch (e) {}
         } finally { _clearingAll = false; }
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+       SPELL STAGING — the cinematic grammar layer
+       ════════════════════════════════════════════════════════════════════
+       WHY THIS EXISTS
+       The EFFECTS/SPELL_MAP tables answer "what does this spell look like
+       when it lands". They say nothing about STAGING — the wind-up, the
+       world going dark, the rush lines, the flash on the frame the hit
+       registers. So every spell read as: caster twitches, particles appear,
+       number pops. Big spells and small spells got the same presentation,
+       ~87% of the library had SOME impact VFX and the other ~13% (dashes,
+       grabs, sky-drops, traps) had literally nothing, and adding a spell
+       meant hand-authoring particles or shipping it invisible.
+
+       This layer is the missing half. It gives EVERY spell — including ones
+       with no bespoke VFX at all — a three-beat presentation:
+
+         windup  (on the CASTER, at cast)    charge orb swelling into the
+                                             hands, ground glyph, motes
+                                             sucked inward, world dims
+         burst   (on the TARGET, at impact)  flash, rush lines, shock ring,
+                                             slash, sparks, bloom kick
+         finish  (on the TARGET, at the end) residual glow, drifting embers,
+                                             the world coming back up
+
+       HOW A SPELL PICKS ITS LOOK (first match wins)
+         1. SPELL_STAGE_MAP[id]     explicit override — the one-line hook
+         2. _STAGE_BY_KIND[kind]    mechanical family (dash, pull, skyDrop…)
+         3. spell.element / theme   fire, ice, divine, unholy, tech…
+         4. 'arcane'                the default
+
+       …and its INTENSITY from _stageWeight(): mp cost, tier, damage and
+       aoe radius roll up to light | standard | heavy | ultimate. Only
+       heavy and ultimate get the world-dim and the rush lines, so a 12 MP
+       poke stays snappy and an ultimate takes the room. A spell can force
+       it with `vfxWeight: 'ultimate'` in its data.js entry.
+
+       ADDING A NEW SPELL: nothing. It gets staged automatically from its
+       kind + element. To make it special, one line:
+           SPELL_STAGE_MAP.myNewSpell = { archetype: 'fire', weight: 'heavy' };
+       or a full custom archetype in _STAGE_ARCHETYPES.
+
+       ONLINE PARITY: these run as three new fire() intents, and fire() is
+       the function online.js wraps for the host→guest relay. Staging a new
+       spell therefore costs zero online work — same as impact VFX. */
+
+    /* Per-archetype palette + flavour. `orb`/`ring`/`flash` are hexes; the
+       string knobs pick which primitive shapes the beat. Keep entries
+       small — the weight tier scales counts, sizes and timings. */
+    var _STAGE_ARCHETYPES = {
+        arcane:   { orb: 0x9a7cff, ring: 0xb69cff, flash: '#c9b8ff', mote: 'psi-pulse',      glyph: true,  slash: false, lineColor: '#c0a8ff' },
+        fire:     { orb: 0xff7a22, ring: 0xffa544, flash: '#ffcf90', mote: 'ember',          glyph: true,  slash: false, lineColor: '#ffb066' },
+        ice:      { orb: 0x8fd8ff, ring: 0xbfeaff, flash: '#dff2ff', mote: 'frost-crystal',  glyph: true,  slash: false, lineColor: '#cfeeff' },
+        lightning:{ orb: 0xaaddff, ring: 0xffffff, flash: '#e8f6ff', mote: 'spark-elec',     glyph: false, slash: false, lineColor: '#ddf2ff', bolt: true },
+        divine:   { orb: 0xffe9a8, ring: 0xfff4cc, flash: '#fff6d8', mote: 'holy-light',     glyph: true,  slash: false, lineColor: '#ffeec0', pillar: true },
+        unholy:   { orb: 0xb066ff, ring: 0x8833cc, flash: '#d9a8ff', mote: 'void-mist',      glyph: true,  slash: false, lineColor: '#c68cff' },
+        tech:     { orb: 0x66e8ff, ring: 0x33bbdd, flash: '#c8f6ff', mote: 'spark-blue',     glyph: false, slash: false, lineColor: '#a8ecff' },
+        alien:    { orb: 0x86ff7a, ring: 0x55dd66, flash: '#c8ffbe', mote: 'acid-green',     glyph: false, slash: false, lineColor: '#b6ffa8' },
+        anomaly:  { orb: 0xff77dd, ring: 0xcc44aa, flash: '#ffc0f0', mote: 'laser-pink',     glyph: true,  slash: false, lineColor: '#ffb0ee' },
+        poison:   { orb: 0x9dff5e, ring: 0x66bb33, flash: '#d8ffb0', mote: 'poison-bubble',  glyph: false, slash: false, lineColor: '#c4ff90' },
+        heal:     { orb: 0xa8ffc4, ring: 0x66dd99, flash: '#d8ffe8', mote: 'heal-cross',     glyph: true,  slash: false, lineColor: '#b8ffd4', gentle: true },
+        human:    { orb: 0xffd9a0, ring: 0xffc880, flash: '#ffe8c8', mote: 'dust-puff',      glyph: false, slash: false, lineColor: '#ffdcb0' },
+        /* ── mechanical families that had NO visuals at all ── */
+        kinetic:  { orb: 0xffd9a0, ring: 0xffe0b0, flash: '#fff0d8', mote: 'dust-puff',      glyph: false, slash: true,  lineColor: '#ffe4bc', groundRush: true },
+        grapple:  { orb: 0xcaa070, ring: 0xb98850, flash: '#ffe0b8', mote: 'debris',         glyph: false, slash: false, lineColor: '#ffd8a8', groundRush: true },
+        skyfall:  { orb: 0xffb060, ring: 0xff8844, flash: '#ffe0b0', mote: 'rock-debris',    glyph: false, slash: false, lineColor: '#ffcc99', heavyLand: true },
+        rig:      { orb: 0x9ad8ff, ring: 0x7ab8e0, flash: '#d0eeff', mote: 'steel-spark',    glyph: false, slash: false, lineColor: '#bfe6ff', gentle: true },
+        mind:     { orb: 0xd08cff, ring: 0xa060e0, flash: '#e8c8ff', mote: 'psi-pulse',      glyph: true,  slash: false, lineColor: '#dcb0ff', gentle: true },
+    };
+
+    /* Mechanical kind → archetype. This is what finally covers the ~60
+       spells that shipped with no VFX entry: every dash, pull, sky-drop,
+       sky-throw, sky-slam, trap and leap now has a look derived from what
+       it DOES, not from whether someone hand-authored particles for it. */
+    var _STAGE_BY_KIND = {
+        dash: 'kinetic', leapStrike: 'kinetic', displacement: 'kinetic',
+        linePush: 'kinetic', charge: 'kinetic',
+        pull: 'grapple', aoePull: 'grapple', rallyPull: 'grapple',
+        swap: 'grapple',
+        skyDrop: 'skyfall', skyThrow: 'skyfall', skySlam: 'skyfall',
+        bomb: 'skyfall',
+        placeTrap: 'rig', deployObject: 'rig', deployTurret: 'rig',
+        deployPair: 'rig', terrainCreate: 'rig', warpRune: 'rig',
+        remoteView: 'mind', scan: 'mind', trickRoom: 'mind',
+        encore: 'mind', tuneFrequency: 'mind', pulseLattice: 'mind',
+        guard: 'rig',
+        heal: 'heal', healAll: 'heal', selfHeal: 'heal', seedHeal: 'heal',
+        zoneHeal: 'heal', revive: 'divine', cleanse: 'divine',
+        leechSeed: 'poison', seedPoison: 'poison',
+    };
+
+    /* Explicit per-spell overrides. THIS is the extension point — one line
+       per spell, no particle authoring required. Left mostly empty on
+       purpose: the resolver should be right by default, and anything that
+       needs more than a tier bump deserves a real EFFECTS entry instead. */
+    var SPELL_STAGE_MAP = {
+        /* the marquee nukes earn the full room-clearing treatment */
+        nuke:        { weight: 'ultimate' },
+        sharedNuke:  { weight: 'ultimate' },
+        meteor:      { archetype: 'skyfall', weight: 'ultimate' },
+        thunderstorm:{ archetype: 'lightning', weight: 'heavy' },
+        railgun:     { archetype: 'tech', weight: 'heavy' },
+        assassinate: { archetype: 'kinetic', weight: 'heavy' },
+        /* consumables read calm, never as an attack */
+        consumeHealPotion: { archetype: 'heal', weight: 'light' },
+        consumeManaPotion: { archetype: 'tech', weight: 'light' },
+    };
+
+    var _STAGE_TIERS = {
+        light:    { orbScale: 0.55, ringScale: 0.75, flashPeak: 0.10, sparks: 5,  dim: 0,    lines: 0,  shake: null,     bloom: 0.15, glyph: false, motes: 5  },
+        standard: { orbScale: 0.85, ringScale: 1.00, flashPeak: 0.20, sparks: 12, dim: 0,    lines: 0,  shake: null,     bloom: 0.30, glyph: true,  motes: 10 },
+        heavy:    { orbScale: 1.20, ringScale: 1.35, flashPeak: 0.34, sparks: 22, dim: 0.45, lines: 26, shake: 'normal', bloom: 0.55, glyph: true,  motes: 16 },
+        ultimate: { orbScale: 1.65, ringScale: 1.80, flashPeak: 0.50, sparks: 34, dim: 0.72, lines: 40, shake: 'hard',   bloom: 0.85, glyph: true,  motes: 24 },
+    };
+    var _TIER_ORDER = { light: 0, standard: 1, heavy: 2, ultimate: 3 };
+
+    /* ── How LOUD should this spell be? ──────────────────────────────────
+       Raw score from the numbers a spell actually carries, then classified
+       against CUT POINTS MEASURED FROM THE LIVE LIBRARY rather than against
+       hardcoded thresholds.
+
+       That matters here specifically. Fixed thresholds mis-rank this data
+       badly: MP cost runs 10–100 with a median of 30 (so any "expensive
+       means big" constant is wrong for three quarters of the library), and
+       384 of the 468 spells — every race ability — carry no `tier` field at
+       all, so a tier-weighted score silently pushes all of them to the
+       bottom. Percentiles sidestep both problems, and they keep working as
+       the library grows: add fifty spells tomorrow and the tiers stay
+       meaningfully spread instead of drifting toward whatever the new
+       numbers happen to be. Target mix ≈ 20% light / 50% standard /
+       24% heavy / 6% ultimate. */
+    function _stageRawScore(def) {
+        if (!def) return 0;
+        var s = 0;
+        var cost = def.cost || def.mp || 0;
+        s += Math.min(4, cost / 18);                        /* 0–4, smooth */
+        var tier = String(def.tier || '').toUpperCase();
+        if (tier === 'IV' || tier === 'V') s += 3;
+        else if (tier === 'III') s += 2.2;
+        else if (tier === 'II') s += 1.2;
+        else if (tier === 'I') s += 0.4;
+        var pow = Math.max(def.dmg || 0, def.heal || def.healAmt || 0);
+        s += Math.min(2.5, pow / 70);                       /* 0–2.5 */
+        s += Math.min(2, (def.aoeRadius || 0) * 0.9);
+        if (def.range >= 6) s += 0.4;                       /* reach = spectacle */
+        if (def.oneRevivePerUnitPerMatch || def.cooldown || def.cd) s += 1.2;
+        if (def.ultimate || def.isUltimate || def.limitBreak) s += 3;
+        return s;
+    }
+
+    var _stageCuts = null;
+    function _stageEnsureCuts() {
+        if (_stageCuts) return _stageCuts;
+        var scores = [];
+        try {
+            if (typeof SPELL_BY_ID !== 'undefined') {
+                for (var k in SPELL_BY_ID) {
+                    if (SPELL_BY_ID[k]) scores.push(_stageRawScore(SPELL_BY_ID[k]));
+                }
+            }
+        } catch (e) {}
+        if (scores.length < 24) {
+            /* registry not up yet (or a stripped build) — sane absolutes */
+            _stageCuts = { standard: 1.8, heavy: 3.6, ultimate: 5.6, n: 0 };
+            return _stageCuts;
+        }
+        scores.sort(function (a, b) { return a - b; });
+        function pct(p) { return scores[Math.min(scores.length - 1, Math.floor((scores.length - 1) * p))]; }
+        _stageCuts = {
+            standard: pct(0.20),      /* below this = light   */
+            heavy:    pct(0.70),      /* below this = standard */
+            ultimate: pct(0.94),      /* at/above  = ultimate  */
+            n: scores.length
+        };
+        return _stageCuts;
+    }
+
+    function _stageWeight(spellId, def) {
+        var ov = SPELL_STAGE_MAP[spellId] && SPELL_STAGE_MAP[spellId].weight;
+        if (ov) return ov;
+        if (def && def.vfxWeight) return def.vfxWeight;
+        if (!def) return 'standard';
+        var c = _stageEnsureCuts();
+        var s = _stageRawScore(def);
+        if (s >= c.ultimate) return 'ultimate';
+        if (s >= c.heavy) return 'heavy';
+        if (s >= c.standard) return 'standard';
+        return 'light';
+    }
+
+    function _stageArchetype(spellId, def) {
+        var ov = SPELL_STAGE_MAP[spellId] && SPELL_STAGE_MAP[spellId].archetype;
+        if (ov && _STAGE_ARCHETYPES[ov]) return ov;
+        if (def && def.vfxArchetype && _STAGE_ARCHETYPES[def.vfxArchetype]) return def.vfxArchetype;
+        if (def && def.kind && _STAGE_BY_KIND[def.kind]) return _STAGE_BY_KIND[def.kind];
+        if (def && def.element && _ELEMENT_THEME[def.element]
+            && _STAGE_ARCHETYPES[_ELEMENT_THEME[def.element]]) return _ELEMENT_THEME[def.element];
+        /* fall back to the same name-regex the projectile themes use so
+           "Fire Arrow" stages hot even without an element tag */
+        var s = ((spellId || '') + ' ' + ((def && def.name) || '')).toLowerCase();
+        if (/fire|flame|inferno|burn|blaze|scorch|ember|magma|lava|solar/.test(s)) return 'fire';
+        if (/ice|frost|blizzard|freeze|cryo|cold|glacial|frozen|chill/.test(s)) return 'ice';
+        if (/lightning|thunder|bolt|shock|electr|static|spark|emp|tesla/.test(s)) return 'lightning';
+        if (/poison|toxic|venom|acid|plague|spore/.test(s)) return 'poison';
+        if (/heal|restore|mend|rejuv|cure|regen/.test(s)) return 'heal';
+        if (/holy|divine|light|angel|sacred|bless|judg/.test(s)) return 'divine';
+        if (/dark|shadow|void|demon|curse|hex|blood|soul/.test(s)) return 'unholy';
+        if (/laser|plasma|robot|mech|cyber|nano|rocket|missile|drone/.test(s)) return 'tech';
+        if (/alien|ufo|abduct|probe|grey|saucer/.test(s)) return 'alien';
+        if (def && def.spellType && _STAGE_ARCHETYPES[def.spellType]) return def.spellType;
+        return 'arcane';
+    }
+
+    /* Public read-only resolution — battle.js uses this to pace the camera
+       and pick a shot without duplicating any of the logic above. */
+    var _stageInfoCache = {};
+    function stageInfo(spellId) {
+        if (_stageInfoCache[spellId]) return _stageInfoCache[spellId];
+        var def = _spellDefFor(spellId);
+        var weight = _stageWeight(spellId, def);
+        var archetype = _stageArchetype(spellId, def);
+        var info = {
+            weight: weight,
+            archetype: archetype,
+            tier: _STAGE_TIERS[weight] || _STAGE_TIERS.standard,
+            palette: _STAGE_ARCHETYPES[archetype] || _STAGE_ARCHETYPES.arcane
+        };
+        _stageInfoCache[spellId] = info;
+        return info;
+    }
+
+    function _stageOK() {
+        if (_suppressed()) return false;
+        if (_catOff('spells')) return false;
+        if (window.EW_DISABLE_SPELL_STAGING) return false;
+        return true;
+    }
+    function _post() {
+        return (typeof window !== 'undefined' && window.ThreePost) ? window.ThreePost : null;
+    }
+
+    /* ── BEAT 1: WIND-UP (caster tile) ───────────────────────────────────
+       Power gathers BEFORE it is thrown. A charge orb swells at the hands,
+       a glyph bites into the ground, ambient motes are pulled INWARD (the
+       giveaway that something is charging rather than dissipating), and on
+       the big ones the battlefield starts to go dark. */
+    function _stageWindup(spellId, params) {
+        if (!_stageOK() || !_canSpawn()) return;
+        var tx = params.sx != null ? params.sx : params.tx;
+        var ty = params.sy != null ? params.sy : params.ty;
+        if (tx == null || ty == null) return;
+        var info = stageInfo(spellId);
+        var T = info.tier, P = info.palette;
+        var cfg2 = _cfg(), ts = cfg2.tileSize || 128;
+        var holdMs = params.holdMs || 700;
+
+        try {
+            _sigMagicOrb3D(tx, ty, {
+                color: P.orb,
+                r0: ts * 0.10 * T.orbScale,
+                r1: ts * 0.52 * T.orbScale,
+                ms: Math.max(260, holdMs * 0.85),
+                rise: ts * 0.30,
+                height: ts * 0.50
+            });
+        } catch (e) {}
+
+        if (P.glyph && T.glyph) {
+            try {
+                _sigMagicCircle3D(tx, ty, {
+                    radiusPx: ts * (0.85 + 0.30 * T.orbScale),
+                    growMs: 200,
+                    holdMs: Math.max(200, holdMs * 0.7),
+                    fadeMs: 240,
+                    opacity: 0.42 + 0.20 * T.orbScale,
+                    color: P.ring
+                });
+            } catch (e) {}
+        }
+
+        /* motes converging INWARD — spawned out on a ring, aimed back at
+           the caster, so the charge reads as gathering, not venting */
+        var c = tilePx(tx, ty);
+        var zf = unitSurfaceZ(tx, ty);
+        var n = T.motes;
+        for (var i = 0; i < n; i++) {
+            var a = (i / n) * Math.PI * 2 + rn(-0.3, 0.3);
+            var rad = ts * rn(0.55, 1.15);
+            var sp = rad / 0.55;                    /* arrive in ~0.55s */
+            _spawn({
+                x: c.x + Math.cos(a) * rad,
+                y: c.y + Math.sin(a) * rad,
+                z: zf + rn(4, ts * 0.55),
+                vx: -Math.cos(a) * sp,
+                vy: -Math.sin(a) * sp,
+                vz: rn(10, 45),
+                mode: 'billboard', sprite: P.mote,
+                ml: rn(420, 620),
+                size0: rn(4, 9) * (0.8 + 0.4 * T.orbScale), size1: 1,
+                opacity0: 0.9, opacity1: 0,
+                gravity: -20, drag: 0.2
+            });
+        }
+
+        /* the room starts to go quiet on the big ones */
+        if (T.dim > 0) {
+            var p = _post();
+            if (p && p.dramaDim) p.dramaDim(T.dim * 0.7, holdMs + 260, { riseMs: 240, fallMs: 520 });
+        }
+    }
+
+    /* ── BEAT 2: BURST (target tile) ─────────────────────────────────────
+       The frame the hit registers. Flash → rush lines → shock ring →
+       slash/sparks → bloom kick → shake. Everything here is ONE frame's
+       worth of impact; the lingering part is beat 3. */
+    function _stageBurst(spellId, params) {
+        if (!_stageOK()) return;
+        var tx = params.tx, ty = params.ty;
+        if (tx == null || ty == null) return;
+        var info = stageInfo(spellId);
+        var T = info.tier, P = info.palette;
+        var cfg2 = _cfg(), ts = cfg2.tileSize || 128;
+        var p = _post();
+
+        /* full-viewport kiss of light — small on pokes, a real hit on ults */
+        try { _sigScreenFlash(P.flash, T.flashPeak > 0.3 ? 190 : 130, T.flashPeak); } catch (e) {}
+
+        /* anime rush lines: the "nothing else exists right now" backdrop.
+           Heavy and up only — on every cheap spell it would be noise. */
+        if (T.lines > 0) {
+            try {
+                _sigSpeedLinesFx({
+                    count: T.lines, color: P.lineColor,
+                    ms: T.lines >= 40 ? 460 : 340,
+                    peak: T.lines >= 40 ? 0.55 : 0.38
+                });
+            } catch (e) {}
+        }
+
+        if (_canSpawn()) {
+            try {
+                _sigShockRing3D(tx, ty, {
+                    color: P.ring,
+                    r0: ts * 0.16,
+                    r1: ts * 1.35 * T.ringScale,
+                    ms: 340 + 90 * T.ringScale,
+                    height: P.heavyLand ? 4 : 8
+                });
+            } catch (e) {}
+
+            /* kinetic archetypes carve a slash instead of blooming a ring —
+               a dash or a leap should read as a CUT through the target */
+            if (P.slash) {
+                try {
+                    _sigCrescentSlash3D(tx, ty, {
+                        color: P.ring,
+                        size: ts * (1.25 + 0.5 * T.ringScale),
+                        ms: 240,
+                        yaw: _sigYawToward(tx, ty),
+                        height: ts * 0.5
+                    });
+                } catch (e) {}
+            }
+
+            try {
+                _sigSparks(tx, ty, P.mote, T.sparks, {
+                    vxy: P.gentle ? 90 : 200,
+                    vz0: P.gentle ? 40 : 70,
+                    vz1: P.gentle ? 150 : 300,
+                    gravity: P.gentle ? -40 : 420,
+                    z: 8
+                });
+            } catch (e) {}
+
+            /* sky-drops kick a dust skirt outward along the ground */
+            if (P.heavyLand) {
+                var cc = tilePx(tx, ty), zz = unitSurfaceZ(tx, ty);
+                for (var k = 0; k < T.sparks; k++) {
+                    var ka = rn(0, Math.PI * 2), kv = rn(140, 320);
+                    _spawn({
+                        x: cc.x, y: cc.y, z: zz + rn(2, 14),
+                        vx: Math.cos(ka) * kv, vy: Math.sin(ka) * kv, vz: rn(10, 60),
+                        mode: 'billboard', sprite: 'dust-puff',
+                        ml: rn(500, 900), size0: rn(14, 26), size1: rn(40, 70),
+                        opacity0: 0.6, opacity1: 0, gravity: 60, drag: 1.1
+                    });
+                }
+            }
+
+            /* a light pillar sells divine hits without any new assets */
+            if (P.pillar && _TIER_ORDER[info.weight] >= 2) {
+                try { _sigLightPillar3D(tx, ty, { color: P.orb, height: ts * 5.5, radius: ts * 0.38, ms: 720 }); } catch (e) {}
+            }
+        }
+
+        if (p && p.bloomPulse) p.bloomPulse(T.bloom, T.bloom > 0.5 ? 420 : 260);
+        if (T.dim > 0 && p && p.dramaDim) p.dramaDim(T.dim, 260, { riseMs: 70, fallMs: 620 });
+        if (T.shake && typeof window.shakeBoard === 'function') window.shakeBoard(T.shake);
+    }
+
+    /* ── BEAT 3: FINISH (target tile) ────────────────────────────────────
+       The exhale. Residual glow, a few motes drifting off the impact, and
+       an explicit release of the dim so the board never stays dark if a
+       later beat is skipped (a kill, a cancelled turn, a disconnect). */
+    function _stageFinish(spellId, params) {
+        if (!_stageOK() || !_canSpawn()) return;
+        var tx = params.tx, ty = params.ty;
+        if (tx == null || ty == null) return;
+        var info = stageInfo(spellId);
+        var T = info.tier, P = info.palette;
+        if (_TIER_ORDER[info.weight] < 1) return;          /* light spells just end */
+        var cfg2 = _cfg(), ts = cfg2.tileSize || 128;
+        var c = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
+        var n = Math.round(T.motes * 0.5);
+        for (var i = 0; i < n; i++) {
+            _spawn({
+                x: c.x + rn(-ts * 0.35, ts * 0.35),
+                y: c.y + rn(-ts * 0.35, ts * 0.35),
+                z: zf + rn(6, ts * 0.5),
+                vx: rn(-18, 18), vy: rn(-18, 18), vz: rn(25, 70),
+                mode: 'billboard', sprite: P.mote,
+                ml: rn(700, 1200),
+                size0: rn(3, 7), size1: 1,
+                opacity0: 0.55, opacity1: 0,
+                gravity: -25, drag: 0.35
+            });
+        }
+    }
+
+    function _fireStage(phase, spellId, params) {
+        if (!params) return;
+        if (phase === 'windup') { _stageWindup(spellId, params); return; }
+        if (phase === 'burst')  { _stageBurst(spellId, params);  return; }
+        if (phase === 'finish') { _stageFinish(spellId, params); return; }
+    }
+
+    if (typeof window !== 'undefined') {
+        window.VFX3D_SPELL_STAGE_MAP = SPELL_STAGE_MAP;
+        window.VFX3D_STAGE_ARCHETYPES = _STAGE_ARCHETYPES;
     }
 
     return {
@@ -13030,6 +13726,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         fireBoltDirect: fireBoltDirect,
         fireGeometry: fireGeometry,
         hasMapping: hasMapping,
+
+        /* spell staging (cinematic grammar) — see the big block above */
+        stageInfo: stageInfo,
+        SPELL_STAGE_MAP: SPELL_STAGE_MAP,
+        STAGE_ARCHETYPES: _STAGE_ARCHETYPES,
 
         laserBeam3D: _spawnLaserBeam3D,
         radiantBurst3D: _spawnRadiantBurst3D,

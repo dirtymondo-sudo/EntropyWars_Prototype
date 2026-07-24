@@ -1746,10 +1746,17 @@
 
                     var safeParams = {};
                     if (params) {
-                        ['tx', 'ty', 'tz', 'fromX', 'fromY', 'dx', 'dy', 'range',
+                        /* sx/sy are the SOURCE tile spelling used by the
+                           battle.js travel handlers (beam / teleport) and by
+                           the staging intents — without them on this list the
+                           guest replayed beams from tile 0,0 with range 0 and
+                           dropped teleport/staging effects entirely. */
+                        ['tx', 'ty', 'tz', 'sx', 'sy', 'fromX', 'fromY', 'dx', 'dy', 'range',
                          'spellType', 'casterX', 'casterY', 'aoeRadius', 'cx', 'cy',
                          'toX', 'toY', 'fromZ', 'toZ', 'flyMs', 'headGlow',
-                         'staggerMs', 'includePrimary'].forEach(function(k) {
+                         'staggerMs', 'includePrimary',
+                         /* staging (cinematic grammar) beat params */
+                         'weight', 'archetype', 'dimMs', 'holdMs'].forEach(function(k) {
                             if (params[k] !== undefined) safeParams[k] = params[k];
                         });
                         if (params.hitTiles) {

@@ -6411,6 +6411,24 @@
             }, MAP_DEATH_DURATION);
         }
 
+        /* ── New life = clean slate for the "power" flags the renderer draws
+           auras from. _lastStandTriggered and _killStreak are LIFETIME flags
+           (checkLastStand sets the first exactly once and never clears it),
+           so without this a unit that died in Last Stand — or on a 3+ kill
+           streak — walked back out of the respawn at FULL HP still wearing
+           the crimson / golden shroud, and still carrying its +ATK bonuses.
+           That's the "aura randomly shows when a unit respawns" bug: not
+           random, just whoever was hot or nearly dead when they fell.
+           Called from EVERY path that flips unit.dead back to false. ── */
+        function resetUnitPowerState(unit) {
+            if (!unit) return;
+            unit._lastStandTriggered = false;
+            unit._lastStandAtkBonus = 0;
+            unit._killStreak = 0;
+            unit._streakAtkBonus = 0;
+            unit._turnKills = 0;
+        }
+
         function processRespawns() {
             for (const unit of state.units) {
                 if (!unit.dead) continue;
@@ -6457,6 +6475,7 @@
                         unit._respawnIn = null;
                         unit._justRespawned = true;
                         unit._showRespawnBanner = true;
+                        resetUnitPowerState(unit);
                         addLog(`🔄 ${unitDisplayName(unit)} has respawned! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
 
                         if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
@@ -6501,6 +6520,7 @@
                                 unit._respawnIn = null;
                                 unit._justRespawned = true;
                                 unit._showRespawnBanner = true;
+                                resetUnitPowerState(unit);
                                 addLog(`🔄 ${unitDisplayName(unit)} has respawned at spawn zone! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
                                 if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
                                 continue;
@@ -6548,6 +6568,7 @@
                     unit._respawnIn = null;
                     unit._justRespawned = true;
                     unit._showRespawnBanner = true;
+                    resetUnitPowerState(unit);
                     addLog(`🔄 ${unitDisplayName(unit)} has respawned at spawn zone! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
 
                     if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
