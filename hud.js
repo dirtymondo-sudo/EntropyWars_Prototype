@@ -7789,10 +7789,10 @@ function _injectHudHideStyles() {
       background: #57d98a; color: #06130a; font-size: 10px; font-weight: 700;
       box-shadow: 0 0 8px rgba(87,217,138,0.8);
     }
-    /* ↩ BACK chip — RIGHT-aligned above the panel content (and above the
+    /* ↩ BACK chip — LEFT-aligned above the panel content (and above the
        aim-mode blade) + the input glyph (right-click mouse / pad B) */
     .hrlg-backchip {
-      align-self: flex-end; margin: 0 9px 2px 0; flex: none;
+      align-self: flex-start; margin: 0 0 2px 6px; flex: none;
       display: inline-flex; align-items: center; gap: 6px;
       height: 24px; padding: 0 10px;
       cursor: pointer; pointer-events: auto; z-index: 3;
@@ -7813,7 +7813,7 @@ function _injectHudHideStyles() {
     .hrlg-backchip-lbl { line-height: 1; padding-top: 1px; }
     .hrlg-backchip svg { color: #ffb3a8; }
     .hrlg-backchip .ew-padbtn { transform: scale(0.85); }
-    .hrlg-backchip.lone { align-self: flex-end; margin: 0 0 4px 0; }
+    .hrlg-backchip.lone { align-self: flex-start; margin: 0 0 4px 0; }
     /* panel-less aim states (move/jump): mode label + back chip column */
     .hrlg-lone { display: flex; flex-direction: column; align-items: stretch; pointer-events: auto; }
     /* root verbs: name + grey-out reason stacked inside one blade */

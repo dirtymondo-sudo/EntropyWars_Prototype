@@ -5,13 +5,13 @@ rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
 ## Action-menu polish: crown retired, JRPG panel overlap, bottom subtitles (2026-07-24, LATEST) — hud.js, battle.js, styles-hud.css, index.html
-Token `20260724f` → `20260724g`.
+Token `20260724f` → `20260724h`.
 - **END TURN crown bar DELETED** (hud.js HorologeMenu render + all `.hrlg-crown*`
   CSS): redundant with the root panel's END TURN blade + SPACE/pad B. The pad
   crown() hook still maps B → back/end-turn. Simul-mode's "COMMIT ORDER" label
   moved onto the root `end` blade (`_endLabel`).
-- **BACK chip right-aligned + above the mode blade**: base `.hrlg-backchip` is
-  now `align-self:flex-end; margin:0 9px 2px 0`, and in the panel render the
+- **BACK chip left-aligned + above the mode blade**: base `.hrlg-backchip` is
+  now left-aligned (`align-self:flex-start`, `.lone` too), and in the panel render the
   chip moved BEFORE the `.hrlg-mode` label so it sits above "MOVING — CLICK A
   TILE" in every state (the `.lone` move/jump case already was flex-end).
 - **Inline CONFIRM crop fix**: `.hrlg-confirm-inline` margin-right −4px → +2px;
