@@ -6879,12 +6879,14 @@
         _realPlayHitEffect = _realPlayHitEffect_impl;
         _realTriggerHitstop = _realTriggerHitstop_impl;
 
+        /* CRT/EVA are official, player-visible stats. The formula lives ONCE
+           in data.js (critChanceFromStats / evasionChanceFromStats) so the
+           quick menu, INFO card, party builder and these combat rolls can
+           never drift apart. These wrappers only feed in the unit's LIVE
+           effective stats (buffs, terrain, weather, zodiac) + status gates. */
         function getCritChance(unit) {
             if (!unit) return 0;
-            const baseChance = 0.08;
-            const awrBonus = Math.min(0.12, (getEffectiveAwr(unit) || 0) * 0.015);
-            const intBonus = Math.min(0.06, (getEffectiveInt(unit) || 0) * 0.004);
-            return Math.min(0.30, baseChance + awrBonus + intBonus);
+            return critChanceFromStats(getEffectiveAwr(unit) || 0, getEffectiveInt(unit) || 0);
         }
 
         function getCritMultiplier(unit) {
@@ -6898,11 +6900,9 @@
 
         function getEvasionChance(unit) {
             if (!unit) return 0;
-            const baseChance = 0.06;
-            const moveBonus = Math.min(0.10, (getEffectiveMove(unit) || 0) * 0.018);
             const stunned = getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove);
             if (stunned) return 0;
-            return Math.min(0.25, baseChance + moveBonus);
+            return evasionChanceFromStats(getEffectiveMove(unit) || 0);
         }
 
         function rollEvasion(target) {

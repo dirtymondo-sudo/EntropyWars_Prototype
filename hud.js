@@ -2094,6 +2094,49 @@ function _hrlgQuickVitals(panelKey) {
   );
 }
 
+// ── Quick-menu header stats ─────────────────────────────────────────
+// The clicked unit's full effective stat sheet rides the SAME header
+// blade as the name + HP/MP bars — plain numbers, two columns, no bars
+// (the old ⓘ stat-card button is gone; this replaces it). Values are
+// LIVE (buffs/statuses/terrain/zodiac folded in) and tint green/red
+// when they differ from the unit's base. CRT/EVA are the official
+// crit/evasion stats — same data.js formula the combat dice roll —
+// with the full math spelled out in their hover tooltip (STAT_HELP).
+function _hrlgQuickStats(panelKey) {
+  const m = /^(enemy|ally)\|(.+)$/.exec(panelKey || '');
+  if (!m) return null;
+  const u = ((typeof state !== 'undefined' && state.units) || []).find(x => String(x.id) === m[2] && !x.dead);
+  if (!u) return null;
+  const atk  = (u.atk || 0) + (typeof getEffectiveAttackBonus === 'function' ? getEffectiveAttackBonus(u) : 0);
+  const def  = (u.def || 0) + (typeof getEffectiveArmor === 'function' ? getEffectiveArmor(u, 'none') : 0);
+  const mdef = (u.mdef || 0) + (typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(u) : 0);
+  const intV = typeof getEffectiveInt === 'function' ? getEffectiveInt(u) : (u.intStat || 0);
+  const mov  = typeof getEffectiveMove === 'function' ? getEffectiveMove(u) : (u.move || 0);
+  const rng  = typeof getEffectiveRange === 'function' ? getEffectiveRange(u) : (u.range || 0);
+  const crt  = Math.round((typeof getCritChance === 'function' ? getCritChance(u) : 0) * 100);
+  const eva  = Math.round((typeof getEvasionChance === 'function' ? getEvasionChance(u) : 0) * 100);
+  const HELP = (typeof window !== 'undefined' && window.STAT_HELP) || {};
+  const cells = [
+    { k: 'ATK',  v: atk,        base: u.atk || 0 },
+    { k: 'DEF',  v: def,        base: u.def || 0 },
+    { k: 'MDEF', v: mdef,       base: u.mdef || 0 },
+    { k: 'INT',  v: intV,       base: u.intStat || 0 },
+    { k: 'MOV',  v: mov,        base: u.move || 0 },
+    { k: 'RNG',  v: rng,        base: u.range || 0 },
+    { k: 'CRT',  v: crt + '%',  tip: HELP.crt },
+    { k: 'EVA',  v: eva + '%',  tip: HELP.eva },
+  ];
+  return h('div', { key: 'qs', className: 'hrlg-qstats' },
+    cells.map(c => {
+      const cls = (typeof c.v === 'number' && c.base != null)
+        ? (c.v > c.base ? ' up' : c.v < c.base ? ' dn' : '') : '';
+      return h('span', { key: c.k, className: 'hrlg-qstat' + cls, title: c.tip || undefined },
+        h('span', { className: 'hrlg-qstat-lbl' }, c.k),
+        h('span', { className: 'hrlg-qstat-val' }, String(c.v)));
+    }),
+  );
+}
+
 function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, portraitUrl, portraitIsFace, onPortraitClick, infoOpen, onInfo, unitKey, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, xp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
@@ -2571,18 +2614,27 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
               ? h('span', { className: 'ew-padbtn ew-padbtn-face' }, _hintKey('cancel', ''))
               : h(_HrlgRmbIcon),
           ),
-          /* panel header: names the open menu in the same blade material */
-          p.title && h('div', { className: 'hrlg-view-tab' },
-            p.title.node || h(React.Fragment, null,
-              p.title.icon && h('span', { className: 'hrlg-view-tab-icon' }, p.title.icon),
-              h('span', { className: 'hrlg-view-tab-text' }, p.title.text),
-              p.title.count && h('span', { className: 'hrlg-view-tab-count' }, p.title.count),
-            ),
-          ),
-          /* clicked unit's live HP/MP + hover forecast under the name tab —
-             built HERE (not in the prebuilt title node) so the hover-driven
-             re-render refreshes the blinking damage slice */
-          _hrlgQuickVitals(p.key),
+          /* panel header: ONE cohesive blade — the menu name, and for a
+             clicked unit its live HP/MP bars + full stat readout, all in
+             the same parallelogram of blade material. Vitals/stats are
+             built HERE (not in the prebuilt title node) so the hover-
+             driven re-render refreshes the blinking forecast slice. */
+          (() => {
+            const _qv = _hrlgQuickVitals(p.key);
+            if (!p.title && !_qv) return null;
+            const _side = /^(enemy|ally)\|/.exec(p.key || '');
+            return h('div', { className: 'hrlg-thead' + (_side ? ' ' + _side[1] : '') },
+              p.title && h('div', { className: 'hrlg-view-tab' },
+                p.title.node || h(React.Fragment, null,
+                  p.title.icon && h('span', { className: 'hrlg-view-tab-icon' }, p.title.icon),
+                  h('span', { className: 'hrlg-view-tab-text' }, p.title.text),
+                  p.title.count && h('span', { className: 'hrlg-view-tab-count' }, p.title.count),
+                ),
+              ),
+              _qv,
+              _qv && _hrlgQuickStats(p.key),
+            );
+          })(),
           h('div', { className: 'hrlg-list', ref: isOn ? listRef : undefined },
             p.blades.map((b, i) => h(HorologeBlade, {
               key: b.id, b: b, idx: i,
@@ -5445,29 +5497,11 @@ function _hrlgEnemyBlades(actingUnit, st) {
         })
       : h('span', { className: 'hrlg-view-tab-icon', style: { color: EW.bad } }, '⌖'),
     h('span', { className: 'hrlg-view-tab-text' }, targetName),
-    _hrlgTabInfoBtn(targetUnit, targetName, st),
-    /* HP%/MP text chips retired — the header vitals bars under this tab
-       (_hrlgQuickVitals) carry the live numbers now */
+    /* the old ⓘ stat-card button is gone — the target's full stat
+       readout now rides this same header blade (_hrlgQuickStats) */
     h('span', { className: 'hrlg-view-tab-count' }, dist + 't'),
   ) };
   return { title, blades };
-}
-
-// ⓘ INFO button riding a quick-menu view tab, right after the target's
-// name: opens/closes that unit's full stat card (same card the clock-side
-// INFO button shows for the active unit).
-function _hrlgTabInfoBtn(targetUnit, targetName, st) {
-  const openHere = !!st.showUnitInfo && st.focusedUnitId === targetUnit.id;
-  return h('span', {
-    className: 'hrlg-infobtn tab' + (openHere ? ' on' : ''),
-    title: openHere ? 'Close the stat card' : ('Info — ' + targetName + '’s full stat card'),
-    onClick: (e) => {
-      e.stopPropagation();
-      const _wasOpenHere = !!state.showUnitInfo && state.focusedUnitId === targetUnit.id;
-      if (typeof focusUnitPanel === 'function') focusUnitPanel(targetUnit.id);
-      if (_wasOpenHere || !state.showUnitInfo) { if (typeof toggleUnitInfo === 'function') toggleUnitInfo(); }
-    },
-  }, 'ⓘ');
 }
 
 /* ── ALLY QUICK-CAST ─────────────────────────────────────────────────
@@ -5720,8 +5754,8 @@ function _hrlgAllyBlades(actingUnit, st) {
   });
   if (!blades.length) blades.push({ id: 'none', icon: '♥', label: 'Nothing to cast on this ally', available: false });
 
-  // The ally's face + ⓘ INFO button ride the view tab, same as the enemy
-  // quick menu — the stat card is a header button, not an action row.
+  // The ally's face rides the view tab, same as the enemy quick menu —
+  // vitals + the full stat readout share this header blade below it.
   const tabPort = _hrlgPortraitData(targetUnit, actingUnit);
   const title = { node: h(React.Fragment, null,
     tabPort
@@ -5731,9 +5765,6 @@ function _hrlgAllyBlades(actingUnit, st) {
         })
       : h('span', { className: 'hrlg-view-tab-icon', style: { color: '#57d97e' } }, '♥'),
     h('span', { className: 'hrlg-view-tab-text' }, targetName),
-    _hrlgTabInfoBtn(targetUnit, targetName, st),
-    /* HP%/MP text chips retired — the header vitals bars under this tab
-       (_hrlgQuickVitals) carry the live numbers now */
     h('span', { className: 'hrlg-view-tab-count' }, dist + 't'),
   ) };
   return { title, blades };
@@ -7306,12 +7337,6 @@ function _injectHudHideStyles() {
       background: var(--hfc); color: #0d0d0b; border-color: var(--hfc);
       box-shadow: 0 0 10px var(--hfc-soft);
     }
-    /* on the skewed view tab the button is a direct child, so it inherits
-       the un-skew — re-enable clicks (the tab is pointer-events:none so it
-       never blocks board clicks) and keep the un-skew through hover/press */
-    .hrlg-view-tab .hrlg-infobtn { pointer-events: auto; transform: skewX(8deg); }
-    .hrlg-view-tab .hrlg-infobtn:hover { transform: skewX(8deg) scale(1.12); }
-    .hrlg-view-tab .hrlg-infobtn:active { transform: skewX(8deg) scale(0.94); }
     /* HP/MP vitals right under the portrait — the numbers are the POINT
        here, so they get real size instead of fine print. Label + numbers
        ride the strip ABOVE the bar (identity left, numbers right), the
@@ -7457,10 +7482,13 @@ function _injectHudHideStyles() {
     .hrlg-list::-webkit-scrollbar { width: 5px; }
     .hrlg-list::-webkit-scrollbar-thumb { background: var(--hfc-soft); }
     .hrlg-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
-    /* panel header: names the open menu, in the same blade material */
-    .hrlg-view-tab {
-      position: relative; height: 40px; margin: 0 7px 0 5px; flex: none;
-      display: flex; align-items: center; gap: 9px; padding: 0 18px 0 13px;
+    /* ── panel header: ONE cohesive blade ──
+       The menu name and, for a clicked unit, its HP/MP bars + stat
+       readout all live inside this single parallelogram of blade
+       material — no more separate name tab / vitals strip. */
+    .hrlg-thead {
+      position: relative; margin: 0 7px 0 5px; flex: none;
+      display: flex; flex-direction: column;
       background: linear-gradient(100deg, var(--hfc-faint), rgba(11,11,10,0.55)), #101010;
       border: 1px solid var(--hfc-soft); border-left: 4px solid var(--hfc);
       clip-path: polygon(8px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
@@ -7468,7 +7496,15 @@ function _injectHudHideStyles() {
       box-shadow: -2px 0 18px var(--hfc-faint);
       pointer-events: none; z-index: 2;
     }
-    .hrlg-view-tab > * { transform: skewX(8deg); }
+    .hrlg-thead > * { transform: skewX(8deg); }
+    .hrlg-thead.enemy { border-left-color: #ff4a56; }
+    .hrlg-thead.ally  { border-left-color: #2ed158; }
+    /* the name row inside the header blade */
+    .hrlg-view-tab {
+      position: relative; height: 40px; flex: none;
+      display: flex; align-items: center; gap: 9px; padding: 0 18px 0 13px;
+      pointer-events: none;
+    }
     .hrlg-view-tab-icon { color: var(--hfc); font-size: 16px; flex: none; text-shadow: 0 0 8px var(--hfc-soft); }
     .hrlg-view-tab-text {
       font-family: 'Cinzel', serif; font-weight: 700; font-size: 16px;
@@ -7476,22 +7512,15 @@ function _injectHudHideStyles() {
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
     }
     .hrlg-view-tab-count { font-size: 11px; letter-spacing: 0.1em; color: #979181; flex: none; white-space: nowrap; margin-left: auto; }
-    /* ── clicked unit's vitals riding the quick-menu header ──
-       Same blade material as the view tab; HP/MP bars reuse the canonical
-       .hrlg-thp bar, forecast slices reuse .hrlg-thp-preview (blink
-       keyframes live in styles-animations.css). */
+    /* ── clicked unit's vitals inside the header blade ──
+       HP/MP bars reuse the canonical .hrlg-thp bar, forecast slices
+       reuse .hrlg-thp-preview (blink keyframes live in
+       styles-animations.css). Material/skew comes from .hrlg-thead. */
     .hrlg-qvitals {
-      position: relative; margin: -1px 7px 0 5px; padding: 6px 18px 6px 13px; flex: none;
+      position: relative; padding: 2px 18px 6px 13px; flex: none;
       display: flex; flex-direction: column; gap: 4px;
-      background: linear-gradient(100deg, var(--hfc-faint), rgba(11,11,10,0.55)), #101010;
-      border: 1px solid var(--hfc-soft); border-left: 4px solid var(--hfc);
-      clip-path: polygon(8px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
-      transform: skewX(-8deg);
-      pointer-events: none; z-index: 2;
+      pointer-events: none;
     }
-    .hrlg-qvitals > * { transform: skewX(8deg); }
-    .hrlg-qvitals.enemy { border-left-color: #ff4a56; }
-    .hrlg-qvitals.ally  { border-left-color: #2ed158; }
     .hrlg-qv-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
     .hrlg-qv-row .hrlg-thp { flex: 1 1 auto; min-width: 60px; }
     .hrlg-qv-lbl {
@@ -7513,6 +7542,26 @@ function _injectHudHideStyles() {
     .hrlg-qv-fc.dmg { color: #ff8d97; text-shadow: 0 0 6px rgba(255,74,86,0.7), 0 1px 2px #000; }
     .hrlg-qv-fc.dmg.lethal { color: #ffd0d5; }
     .hrlg-qv-fc.heal { color: #7df0a5; text-shadow: 0 0 6px rgba(46,209,88,0.7), 0 1px 2px #000; }
+    /* ── clicked unit's stat readout: plain numbers, two columns, no
+       bars — the last section of the header blade (replaced the ⓘ
+       stat-card button). CRT/EVA tooltips carry the full formula. */
+    .hrlg-qstats {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1px 16px;
+      padding: 4px 18px 7px 13px; margin-top: 1px;
+      border-top: 1px solid var(--hfc-faint);
+      pointer-events: auto;
+    }
+    .hrlg-qstat { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+    .hrlg-qstat-lbl {
+      flex: none; width: 34px; font-size: 9px; font-weight: 700;
+      letter-spacing: 0.12em; color: #979181;
+    }
+    .hrlg-qstat-val {
+      font-size: 12px; line-height: 1.3; font-weight: 700; color: #eceadd;
+      text-shadow: 0 1px 1px #000; font-variant-numeric: tabular-nums;
+    }
+    .hrlg-qstat.up .hrlg-qstat-val { color: #7df0a5; }
+    .hrlg-qstat.dn .hrlg-qstat-val { color: #ff8d97; }
     /* aiming-state instruction ("MOVING — CLICK A TILE") */
     .hrlg-mode {
       position: relative; margin: 0 7px 0 5px; padding: 6px 14px; flex: none;

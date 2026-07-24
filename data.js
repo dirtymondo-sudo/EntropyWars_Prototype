@@ -12169,7 +12169,34 @@ const CAMPAIGN_REGION_THEMES = {
   5: { name: 'The Instrument Refuses',   color: '#2a1a4e', levels: [81, 100] },
 };
 
+/* ── CRT / EVA — official stats, one canonical formula ──────────────
+   Critical-hit and evasion chance used to be buried inside battle.js;
+   they are now first-class visible stats. This is the ONLY place the
+   math lives — battle.js (combat rolls), the target quick menu, the
+   INFO stat card and the party builder / codex all read these two
+   functions, so the number the player sees is the number the dice use.
+   Both derive from stats the player already builds around:
+     CRT = 8% + 1.5%/AWR (max +12%) + 0.4%/INT (max +6%), cap 30%
+     EVA = 6% + 1.8%/MOV (max +10%), cap 25%
+   Combat context on top (battle.js): a crit deals ×1.8 damage
+   (Gunslinger ×2.0); back-arc attacks can't be dodged; a blinded
+   attacker always misses; hard CC (stun/freeze/root) sets EVA to 0;
+   spells never crit and can't be dodged. */
+function critChanceFromStats(awr, intStat) {
+  return Math.min(0.30, 0.08
+    + Math.min(0.12, (awr || 0) * 0.015)
+    + Math.min(0.06, (intStat || 0) * 0.004));
+}
+function evasionChanceFromStats(move) {
+  return Math.min(0.25, 0.06 + Math.min(0.10, (move || 0) * 0.018));
+}
+const STAT_HELP = {
+  crt: 'CRT — critical hit chance on basic attacks. 8% base + 1.5% per AWR (max +12%) + 0.4% per INT (max +6%), capped at 30%. A crit deals ×1.8 damage (Gunslinger passive: ×2.0). Spells never crit.',
+  eva: 'EVA — chance to dodge a basic attack. 6% base + 1.8% per MOV (max +10%), capped at 25%. Back-arc attacks can’t be dodged, a blinded attacker always misses, and hard CC (stun/freeze/root) drops EVA to 0. Spells can’t be dodged.',
+};
+
 Object.assign(window, {
+  critChanceFromStats, evasionChanceFromStats, STAT_HELP,
   CONFIG, EQUIP_DEFS, RACE_PROFILES, AVAILABLE_RACES, RACE_DEFAULT_JOBS,
   MAX_UNIT_PASSIVES, PASSIVE_DEFS, RACE_PASSIVES,
   getUnitPassives, unitHasPassive, unitPassiveValue, unitPassiveBlocksStatus,

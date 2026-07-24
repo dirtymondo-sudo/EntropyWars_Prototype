@@ -4,7 +4,34 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## MYSTERY DUNGEON round 5: recruitment, drop items, bigger bags, stairs block, XP/level-up UI (2026-07-23, LATEST) — battle.js, hud.js, index.html
+## Quick-menu one-blade header + CRT/EVA are official stats (2026-07-24, LATEST) — hud.js, ui.js, battle.js, data.js, party-builder.js, index.html
+Token `20260724c` → `20260724d`.
+- **One cohesive header blade**: the enemy/ally quick menu's name tab, HP/MP
+  bars and a NEW plain-number stat readout now render inside a single
+  `.hrlg-thead` parallelogram (HorologeMenu wraps `.hrlg-view-tab` +
+  `_hrlgQuickVitals` + `_hrlgQuickStats`; the tab/vitals lost their own blade
+  material/skew — `.hrlg-thead > *` un-skews). Enemy/ally left-edge color
+  (`.hrlg-thead.enemy/.ally`) moved up from `.hrlg-qvitals`.
+- **`_hrlgQuickStats(panelKey)`** (hud.js, next to `_hrlgQuickVitals`): 2-col
+  grid, no bars — ATK/DEF/MDEF/INT/MOV/RNG live-effective (same math as the
+  ui.js ins-card) + CRT/EVA %, green/red tint vs base. Viewer-local read of
+  synced state → no online relay needed.
+- **ⓘ tab INFO button REMOVED** (`_hrlgTabInfoBtn` deleted, both quick menus);
+  the clock-side INFO button for the ACTIVE unit still exists.
+- **CRT/EVA are official stats now**: canonical formula lives ONCE in data.js —
+  `critChanceFromStats(awr,int)` = 8% +1.5%/AWR (cap +12%) +0.4%/INT (cap +6%),
+  max 30%; `evasionChanceFromStats(move)` = 6% +1.8%/MOV (cap +10%), max 25%.
+  battle.js `getCritChance`/`getEvasionChance` delegate (keeping the effective-
+  stat feed + hard-CC → EVA 0 gate). Crit mult ×1.8 (Gunslinger ×2.0); back-arc
+  can't dodge; blind attacker auto-misses; spells never crit/dodge.
+  `window.STAT_HELP.crt/.eva` holds the player-facing formula text (tooltips in
+  quick menu, ins-card, party builder).
+- **Party builder / codex**: STAT_KEYS += CRT, EVA (STAT_MAP crt/eva,
+  STAT_MAX_PB 30/25, STAT_PCT % render); computeStats/computeFullStats append
+  crt/eva via `_withCritEva` so gear/sub-job AWR/INT/MOV shifts show a ±%
+  delta, and the roster sort dropdown gained CRT/EVA automatically.
+
+## MYSTERY DUNGEON round 5: recruitment, drop items, bigger bags, stairs block, XP/level-up UI (2026-07-23) — battle.js, hud.js, index.html
 Token `20260723g` → `20260723h`.
 - **Enemies can't stand on stairs**: `_mdEnemyStairsBlocked(unit,x,y)` (battle.js,
   MD runtime block) — player-2 units on MD floors get the stairs tile filtered

@@ -352,9 +352,19 @@ const FACTION_C = { space: EW.space, time: EW.time, chaos: EW.chaos };
 const TYPE_C = { human:EW.human, alien:EW.alien, divine:EW.divine, unholy:EW.unholy, anomaly:EW.anomaly, tech:EW.tech };
 // Brightened text for the canonical type badge (legible over any background).
 const TYPE_TEXT_C = { human:'#c8c8e4', divine:'#f2c63c', unholy:'#c566e2', tech:'#4ecbe2', anomaly:'#ff5e98', alien:'#56d178' };
-const STAT_KEYS = ['HP','MP','ATK','DEF','MDEF','INT','SPD','RNG','MOV'];
-const STAT_MAX_PB = { HP:900, MP:300, ATK:110, DEF:75, MDEF:75, INT:100, SPD:11, RNG:6, MOV:6 };
-const STAT_MAP = { HP:'hp', MP:'mp', ATK:'atk', DEF:'def', MDEF:'mdef', INT:'int', SPD:'spd', RNG:'range', MOV:'move' };
+/* CRT/EVA are official stats (canonical formula in data.js — the same one
+   the in-battle dice roll): CRT derives from AWR+INT, EVA from MOV. They
+   show and sort like every other stat; hover them for the full math. */
+const STAT_KEYS = ['HP','MP','ATK','DEF','MDEF','INT','SPD','RNG','MOV','CRT','EVA'];
+const STAT_MAX_PB = { HP:900, MP:300, ATK:110, DEF:75, MDEF:75, INT:100, SPD:11, RNG:6, MOV:6, CRT:30, EVA:25 };
+const STAT_MAP = { HP:'hp', MP:'mp', ATK:'atk', DEF:'def', MDEF:'mdef', INT:'int', SPD:'spd', RNG:'range', MOV:'move', CRT:'crt', EVA:'eva' };
+const STAT_PCT = { CRT:true, EVA:true };   // rendered as a % chance
+function _withCritEva(s) {
+  if (!s) return s;
+  if (typeof window.critChanceFromStats === 'function') s.crt = Math.round(window.critChanceFromStats(s.awr || 0, s.int || 0) * 100);
+  if (typeof window.evasionChanceFromStats === 'function') s.eva = Math.round(window.evasionChanceFromStats(s.move || 0) * 100);
+  return s;
+}
 const CODEX_CLASS_LABELS = { tank:'HEAVY ARMOR', bruiser:'ASSAULT', healer:'MEDICAL', support:'SUPPORT OPS', assassin:'BLACK OPS', caster:'PSI-OPS', ranged:'LONG RANGE', specialist:'SPECIALIST', hybrid:'MULTI-ROLE' };
 
 const ACC_ICONS = {
@@ -478,8 +488,10 @@ function getSpriteUrl(race, gender, cls) {
 }
 function getJobDisplay(job) { return typeof window.getJobDisplayName === 'function' ? window.getJobDisplayName(job) : job; }
 function computeStats(race, cls) {
-  if (typeof window.computeUnitStats === 'function') return window.computeUnitStats(race || 'homosapien', cls);
-  return window.CLASS_TEMPLATES?.[cls] || window.CLASS_TEMPLATES?.Warrior || {};
+  const s = (typeof window.computeUnitStats === 'function')
+    ? window.computeUnitStats(race || 'homosapien', cls)
+    : (window.CLASS_TEMPLATES?.[cls] || window.CLASS_TEMPLATES?.Warrior || {});
+  return _withCritEva({ ...s });
 }
 function computeFullStats(race, cls, secJob, equipment) {
   const base = computeStats(race, cls);
@@ -497,6 +509,11 @@ function computeFullStats(race, cls, secJob, equipment) {
   final.inspect = base.inspect || 1;
   delta.range = 0;
   delta.inspect = 0;
+  // CRT/EVA follow the stats they derive from, so gear/sub-job AWR/INT/MOV
+  // changes surface as a visible ± delta on the percent too.
+  _withCritEva(final);
+  delta.crt = (final.crt || 0) - (base.crt || 0);
+  delta.eva = (final.eva || 0) - (base.eva || 0);
   return { final, delta };
 }
 function getRaceAbilities(race, cls) {
@@ -608,20 +625,20 @@ function TypeChip({ type, size }) {
   const fs = size || 10;
   return h('span', { style: { display:'inline-flex', alignItems:'center', fontFamily:'DotGothic16, monospace', fontSize:fs, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', lineHeight:1.3, color:text, padding: fs >= 11 ? '3px 10px' : '2px 8px', border:`1px solid ${c}aa`, background:`linear-gradient(${c}22,${c}22), rgba(9,11,17,0.82)`, textShadow:'0 1px 2px rgba(0,0,0,0.85)', clipPath:'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}, type);
 }
-function StatBar({ label, val, max, compact, zodiacMod, delta }) {
+function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip }) {
   const pct = Math.min(100, (val / max) * 100);
   const tone = pct >= 70 ? EW.good : pct >= 40 ? EW.warn : EW.bad;
   let barColor = tone, labelColor = EW.inkMute, valColor = EW.ink;
   if (zodiacMod === 'up') { barColor = EW.good; labelColor = EW.good; valColor = EW.good; }
   if (zodiacMod === 'dn') { barColor = EW.bad; labelColor = EW.bad; valColor = EW.bad; }
   const deltaNum = delta || 0;
-  return h('div', { style:{ display:'flex', alignItems:'center', gap:4, fontFamily:'DotGothic16, monospace', fontSize:11 } },
+  return h('div', { title: tip || undefined, style:{ display:'flex', alignItems:'center', gap:4, fontFamily:'DotGothic16, monospace', fontSize:11 } },
     h('span', { style:{ width:30, color:labelColor, letterSpacing:'0.04em', fontSize:10 } }, label,
       zodiacMod === 'up' ? h('span', { style:{color:EW.good, fontSize:'0.7em'} }, ' \u25B2') : null,
       zodiacMod === 'dn' ? h('span', { style:{color:EW.bad, fontSize:'0.7em'} }, ' \u25BC') : null),
     h('div', { style:{ flex:1, position:'relative', height: compact?5:7, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(150,130,190,0.08)' } },
       h('div', { style:{ position:'absolute', inset:0, width:`${pct}%`, background:`linear-gradient(90deg, ${barColor}, ${barColor}aa)` } })),
-    h('span', { style:{ width:32, textAlign:'right', color:valColor, fontWeight:600, fontSize:11 } }, val),
+    h('span', { style:{ width:32, textAlign:'right', color:valColor, fontWeight:600, fontSize:11 } }, val + (suffix || '')),
     deltaNum !== 0 ? h('span', { style:{ width:28, textAlign:'right', fontSize:9, fontWeight:700, color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+'+deltaNum : ''+deltaNum) : h('span', { style:{ width:28 } }));
 }
 function StarField() {
@@ -1453,7 +1470,8 @@ function PartyBuilder() {
                         const d = statDeltas[mapped]??statDeltas[k]??statDeltas[k.toLowerCase()]??0;
                         let zMod = null;
                         if (zodiacNature && mapped !== 'range' && mapped !== 'move') { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
-                        return h(StatBar, { key:k, label:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod, delta:d });
+                        return h(StatBar, { key:k, label:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod, delta:d,
+                          suffix: STAT_PCT[k] ? '%' : '', tip: STAT_PCT[k] ? window.STAT_HELP?.[mapped] : null });
                       })),
                     h('div', { style:{ flex:1, display:'flex', gap:14, justifyContent:'center', alignItems:'flex-start', paddingTop:2 } },
                       h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)' }),

@@ -3807,13 +3807,13 @@
             // FFT-style horizontal stat bar: length reads at a glance, exact
             // number at the end. Buffed/debuffed values tint green/red with a
             // white tick marking the unbuffed base on the bar.
-            function statBar(label, val, base, cap, color, isPct) {
+            function statBar(label, val, base, cap, color, isPct, tip) {
                 const diff = val - base;
                 const cls = diff > 0 ? 'up' : diff < 0 ? 'down' : '';
                 const scale = Math.max(cap, val, base, 1);
                 const w = Math.max(2, Math.min(100, (Math.max(0, val) / scale) * 100));
                 const baseW = Math.max(0, Math.min(100, (Math.max(0, base) / scale) * 100));
-                return `<div class="ins-stat">` +
+                return `<div class="ins-stat"${tip ? ` title="${escapeHtml(tip)}"` : ''}>` +
                     `<span class="ins-stat-label">${label}</span>` +
                     `<span class="ins-stat-track"><span class="ins-stat-fill ${cls}" style="width:${w}%;background:${color}"></span>${diff !== 0 ? `<span class="ins-stat-base" style="left:${baseW}%"></span>` : ''}</span>` +
                     `<span class="ins-stat-val ${cls}">${val}${isPct ? '%' : ''}</span>` +
@@ -3827,8 +3827,10 @@
                 statBar('INT', effInt, unit.intStat || 0, 200, '#62c4c9') +
                 statBar('MOV', effMov, unit.move, 8, '#86c47e') +
                 statBar('RNG', effRng, unit.range, 8, '#e0b45a') +
-                statBar('CRIT', Math.round(getCritChance(unit) * 100), Math.round(getCritChance(unit) * 100), 100, '#d9c06a', true) +
-                statBar('EVA', Math.round(getEvasionChance(unit) * 100), Math.round(getEvasionChance(unit) * 100), 100, '#b9bfd4', true);
+                // CRT/EVA are official stats (data.js formula, shared with the
+                // combat rolls) — hover the row for the full math.
+                statBar('CRT', Math.round(getCritChance(unit) * 100), Math.round(getCritChance(unit) * 100), 100, '#d9c06a', true, window.STAT_HELP?.crt) +
+                statBar('EVA', Math.round(getEvasionChance(unit) * 100), Math.round(getEvasionChance(unit) * 100), 100, '#b9bfd4', true, window.STAT_HELP?.eva);
 
             const isAlly = unit.player === getViewerPlayer();
             const forecastNote = hpPreviewText || mpPreviewText;
