@@ -5261,7 +5261,7 @@ const SPELL_LIBRARY = [
         cost: 32,
         equipCost: 15,
         dmg: 80,
-        range: 6,
+        range: 5,
         kind: 'damage',
         damageType: 'physical',
         projectileOverride: 'proj-bullet',

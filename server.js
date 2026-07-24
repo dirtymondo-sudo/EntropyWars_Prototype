@@ -262,6 +262,168 @@ function maybeReplaySnapshot(room, data) {
     if (matchEnd) replayFlush(room);
 }
 
+// ── SERVER-AUTHORITATIVE RANKED OUTCOME ────────────────────────────────────
+// ELO used to be recorded purely on the host's say-so: a 'ranked-result'
+// event with a host-chosen winnerId. Now the winner is DERIVED from the
+// host's mirrored state-sync stream (the same state the guest renders from):
+//  • the first battle-phase sync stamps the battle start (server-side match
+//    duration — the host's durationMs claim is no longer trusted),
+//  • a sync carrying winner 1|2 is what actually records the ELO,
+//  • 'ranked-result' is accepted only when it AGREES with that mirror,
+//  • a disconnect-forfeit records ELO for the remaining player, and
+//  • a stall watchdog (turn timer) forfeits a side that holds the turn
+//    forever or a host that mutes its sync stream.
+const MIN_RANKED_MATCH_MS = 30000;
+const TURN_STALL_MS = 5 * 60 * 1000;   // one side holding the turn this long forfeits
+const SYNC_SILENCE_MS = 2 * 60 * 1000; // host sync stream dead during guest's turn
+
+async function applyRankedElo(room, code, winnerPlayerNum, reason) {
+    if (!room.ranked || room._resultProcessed) return;
+    if (winnerPlayerNum !== 1 && winnerPlayerNum !== 2) return;
+    room._resultProcessed = true;
+    room._matchEnded = true;
+
+    // Duration is measured server-side from the first battle-phase sync.
+    const durationMs = room._battleStartAt ? Date.now() - room._battleStartAt : 0;
+    replayWrite(room, {
+        t: Date.now(), e: 'ranked-result', reason,
+        winner: winnerPlayerNum, durationMs,
+    });
+    replayFlush(room);
+
+    if (durationMs < MIN_RANKED_MATCH_MS) {
+        console.warn(`[ELO] Rejected fast match (${durationMs}ms, ${reason}) in room ${code}`);
+        return;
+    }
+    if (!d1.isConfigured()) {
+        console.warn('[ELO] D1 not configured — skipping server-side ELO');
+        return;
+    }
+
+    // Auth snapshots taken at match-started survive the socket teardown a
+    // disconnect-forfeit implies (authenticatedSockets drops on disconnect).
+    const hostAuth = authenticatedSockets.get(room.host) || room._hostAuth;
+    const guestAuth = authenticatedSockets.get(room.guest) || room._guestAuth;
+    if (!hostAuth || !guestAuth) {
+        console.warn(`[ELO] Unauthenticated players in room ${code} — skipping`);
+        return;
+    }
+
+    const hostPlayerId = hostAuth.playerId;
+    const guestPlayerId = guestAuth.playerId;
+    const actualWinnerId = winnerPlayerNum === 1 ? hostPlayerId : guestPlayerId;
+    const actualLoserId = winnerPlayerNum === 1 ? guestPlayerId : hostPlayerId;
+    const teamSize = room.teamSize || 4;
+    const mapModeId = room.mapModeId || null;
+
+    try {
+        const winner = await d1.getOne('SELECT id, elo, total_games FROM players WHERE id = ?1', [actualWinnerId]);
+        const loser = await d1.getOne('SELECT id, elo, total_games FROM players WHERE id = ?1', [actualLoserId]);
+        if (!winner || !loser) {
+            console.warn('[ELO] Player not found in DB');
+            return;
+        }
+
+        const winnerK = winner.total_games < 10 ? 40 : winner.total_games < 30 ? 32 : 24;
+        const loserK = loser.total_games < 10 ? 40 : loser.total_games < 30 ? 32 : 24;
+
+        const expectedWinner = 1 / (1 + Math.pow(10, (loser.elo - winner.elo) / 400));
+        const expectedLoser = 1 / (1 + Math.pow(10, (winner.elo - loser.elo) / 400));
+
+        const winnerDelta = Math.round(winnerK * (1 - expectedWinner));
+        const loserDelta = Math.round(loserK * (0 - expectedLoser));
+
+        const newWinnerElo = winner.elo + winnerDelta;
+        const newLoserElo = Math.max(100, loser.elo + loserDelta);
+
+        await d1.execute(
+            `UPDATE players SET elo = ?1, peak_elo = MAX(peak_elo, ?1), wins = wins + 1,
+             total_games = total_games + 1, last_seen = datetime('now') WHERE id = ?2`,
+            [newWinnerElo, actualWinnerId]
+        );
+        await d1.execute(
+            `UPDATE players SET elo = ?1, losses = losses + 1,
+             total_games = total_games + 1, last_seen = datetime('now') WHERE id = ?2`,
+            [newLoserElo, actualLoserId]
+        );
+
+        const matchId = uuid();
+        await d1.execute(
+            `INSERT INTO matches (id, winner_id, loser_id, winner_elo_before, winner_elo_after,
+             loser_elo_before, loser_elo_after, team_size, map_mode_id, duration_ms)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
+            [matchId, actualWinnerId, actualLoserId, winner.elo, newWinnerElo,
+             loser.elo, newLoserElo, teamSize, mapModeId, durationMs]
+        );
+
+        console.log(`[ELO] ${hostAuth.username} vs ${guestAuth.username} (${reason}): winner=${actualWinnerId === hostPlayerId ? hostAuth.username : guestAuth.username} (${winner.elo}→${newWinnerElo}), loser=(${loser.elo}→${newLoserElo})`);
+
+        // Refresh cached ratings (live socket entry AND the match snapshot).
+        const isHostWinner = actualWinnerId === hostPlayerId;
+        for (const [auth, won] of [[hostAuth, isHostWinner], [guestAuth, !isHostWinner]]) {
+            auth.elo = won ? newWinnerElo : newLoserElo;
+        }
+        const liveHost = authenticatedSockets.get(room.host);
+        const liveGuest = authenticatedSockets.get(room.guest);
+        if (liveHost) liveHost.elo = isHostWinner ? newWinnerElo : newLoserElo;
+        if (liveGuest) liveGuest.elo = isHostWinner ? newLoserElo : newWinnerElo;
+
+        const hostSocket = io.sockets.sockets.get(room.host);
+        const guestSocket = io.sockets.sockets.get(room.guest);
+        if (hostSocket) {
+            hostSocket.emit('elo-update', {
+                myNewElo: isHostWinner ? newWinnerElo : newLoserElo,
+                myEloDelta: isHostWinner ? winnerDelta : loserDelta,
+                opponentNewElo: isHostWinner ? newLoserElo : newWinnerElo,
+            });
+        }
+        if (guestSocket) {
+            const isGuestWinner = !isHostWinner;
+            guestSocket.emit('elo-update', {
+                myNewElo: isGuestWinner ? newWinnerElo : newLoserElo,
+                myEloDelta: isGuestWinner ? winnerDelta : loserDelta,
+                opponentNewElo: isGuestWinner ? newLoserElo : newWinnerElo,
+            });
+        }
+    } catch (err) {
+        console.error('[ELO] Error calculating ELO:', err.message);
+    }
+}
+
+// ── RANKED TURN TIMER / STALL WATCHDOG ─────────────────────────────────────
+// A player who simply stops playing used to be able to hold a ranked match
+// hostage forever (the client shot clock is host-enforced, so a modified
+// host just disables it). Server-side: forfeit whichever side has held the
+// turn past TURN_STALL_MS, or a host whose sync stream goes dead during the
+// guest's turn (the 1.2s handoff heartbeat makes real silence impossible).
+setInterval(() => {
+    const now = Date.now();
+    for (const [code, room] of rooms) {
+        if (!room.ranked || !room._matchStarted || room._matchEnded || room._resultProcessed) continue;
+        if (room._disconnected) continue;   // rejoin window has its own 90s timer
+        if (!room._battleStartAt) continue; // battle not underway yet
+        const ls = room._lastState;
+        let stalled = 0, why = '';
+        if (ls && ls.activePlayer === 2 && room._lastSyncAt && now - room._lastSyncAt > SYNC_SILENCE_MS) {
+            stalled = 1; why = 'host sync stream silent';
+        } else if (room._turnMark && (room._turnMark.activePlayer === 1 || room._turnMark.activePlayer === 2)
+                   && now - room._turnMark.at > TURN_STALL_MS) {
+            stalled = room._turnMark.activePlayer;
+            why = `turn held ${Math.round((now - room._turnMark.at) / 1000)}s`;
+        }
+        if (!stalled) continue;
+        console.warn(`[GUARD] room ${code}: P${stalled} forfeits on turn timer (${why})`);
+        io.to(code).emit('match-forfeit', {
+            forfeitPlayer: stalled,
+            role: stalled === 1 ? 'host' : 'guest',
+            reason: 'turn-timer',
+        });
+        applyRankedElo(room, code, stalled === 1 ? 2 : 1, 'stall-forfeit');
+        replayEnd(room, 'stall-forfeit', { forfeitPlayer: stalled });
+        rooms.delete(code);
+    }
+}, 15000);
+
 const queues = {};
 
 // ── 2026-07 map overhaul: ranked pool mirrors the MapForge roster in
@@ -1347,6 +1509,17 @@ io.on('connection', (socket) => {
             return;
         }
 
+        // Ownership hardening: forfeit/toggleAuto act on the SENDER, and in
+        // this protocol only the guest (player 2) emits game-action — pin the
+        // player field so a forged payload can't forfeit the host or flip the
+        // host onto auto-play. (The host re-derives the sender too.)
+        if (data && (data.type === 'forfeit' || data.type === 'toggleAuto')) {
+            if (data.player !== 2) {
+                console.warn(`[GUARD] '${data.type}' with forged player=${data.player} from guest in room ${code} — pinned to 2`);
+            }
+            data.player = 2;
+        }
+
         replayWrite(room, { t: Date.now(), e: 'action', from: 'guest', data });
         socket.to(code).emit('game-action', data);
     });
@@ -1371,6 +1544,8 @@ io.on('connection', (socket) => {
             if (room._matchEnded && !data.winner && data.phase) {
                 room._matchEnded = false;
                 room._resultProcessed = false;
+                room._battleStartAt = null;
+                room._turnMark = null;
                 replayWrite(room, { t: Date.now(), e: 'rematch' });
                 if (room._replay) room._replay.hasBaseline = false;
             }
@@ -1380,16 +1555,68 @@ io.on('connection', (socket) => {
                 winner: data.winner ?? null,
                 round: data.round,
             };
+            room._lastSyncAt = Date.now();
+            // Battle-start stamp: server-side match duration + stall watchdog
+            // arming both key off this, never off host-reported numbers.
+            if (data.phase === 'battle' && !room._battleStartAt) {
+                room._battleStartAt = Date.now();
+            }
+            // Turn timer bookkeeping: the mark refreshes whenever the active
+            // player or round advances; a mark that never refreshes is a stall.
+            if (data.phase === 'battle' && !data.winner) {
+                const tm = room._turnMark;
+                if (!tm || tm.activePlayer !== data.activePlayer || tm.round !== data.round) {
+                    room._turnMark = { activePlayer: data.activePlayer, round: data.round, at: Date.now() };
+                }
+            }
             maybeReplaySnapshot(room, data);
+            // Ranked outcome is DERIVED from this mirrored stream — the same
+            // state the guest renders — not from the host's ranked-result claim.
+            if (room.ranked && room._matchStarted && !room._resultProcessed
+                && (data.winner === 1 || data.winner === 2)) {
+                applyRankedElo(room, code, data.winner, 'state-sync');
+            }
         }
         socket.to(code).emit('state-sync', data);
     });
 
-    socket.on('party-config', (data) => {
+    socket.on('party-config', async (data) => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
         const { room } = found;
         if (!allowEvent(socket.id, 'party-config')) return;
+
+        // Ranked guest parties get server-side validation before relay: clamp
+        // every array to the match team size (a modified client could field
+        // extra units) and verify the account actually OWNS each race it
+        // fields — the client-side shop check is trivially bypassed.
+        if (room.ranked && room.guest === socket.id && data && typeof data === 'object') {
+            const ts = room.teamSize || 4;
+            if (Array.isArray(data.builds) && data.builds.length > ts) data.builds = data.builds.slice(0, ts);
+            if (Array.isArray(data.loadouts) && data.loadouts.length > ts) data.loadouts = data.loadouts.slice(0, ts);
+            if (Array.isArray(data.meta) && data.meta.length > ts) data.meta = data.meta.slice(0, ts);
+
+            const auth = authenticatedSockets.get(socket.id);
+            if (auth && d1.isConfigured() && Array.isArray(data.meta)) {
+                try {
+                    const row = await d1.getOne('SELECT unlocked_units FROM players WHERE id = ?1', [auth.playerId]);
+                    if (row) {
+                        // Starters are an account floor even before backfill runs.
+                        const owned = new Set(parseUnlocked(row.unlocked_units).concat(ACCT_STARTER_UNITS));
+                        const illegal = data.meta
+                            .map(m => m && m.race)
+                            .filter(r => r && !owned.has(r));
+                        if (illegal.length > 0) {
+                            console.warn(`[GUARD] party-config with unowned units (${illegal.join(', ')}) from ${auth.username} in room ${found.code} — dropped`);
+                            replayWrite(room, { t: Date.now(), e: 'blocked', from: 'guest', reason: 'unowned-units', races: illegal });
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[GUARD] party ownership check failed:', e.message);
+                }
+            }
+        }
 
         // Loadouts are needed to reconstruct a match; they usually arrive
         // before match-started, so stash them until the replay file opens.
@@ -1425,132 +1652,44 @@ io.on('connection', (socket) => {
         socket.to(found.code).emit('relay', data);
     });
 
-    socket.on('ranked-result', async (data) => {
+    socket.on('ranked-result', (data) => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
         const { room, code } = found;
 
         if (room.host !== socket.id) return;
-
         if (!room.ranked) return;
-
         if (room._resultProcessed) return;
-        room._resultProcessed = true;
-        room._matchEnded = true;
-        replayWrite(room, {
-            t: Date.now(), e: 'ranked-result',
-            winnerId: data.winnerId, loserId: data.loserId,
-            durationMs: data.durationMs || 0,
-        });
-        replayFlush(room);
+        if (!data || (data.winnerId !== 1 && data.winnerId !== 2)) return;
 
-        const winnerId = data.winnerId;
-        const loserId = data.loserId;
-        const durationMs = data.durationMs || 0;
-        const teamSize = room.teamSize || 4;
-        const mapModeId = room.mapModeId || null;
-
-        if (durationMs < 30000) {
-            console.warn(`[ELO] Rejected fast match (${durationMs}ms) in room ${code}`);
-            return;
-        }
-
-        if (!d1.isConfigured()) {
-            console.warn('[ELO] D1 not configured — skipping server-side ELO');
-            return;
-        }
-
-        const hostAuth = authenticatedSockets.get(room.host);
-        const guestAuth = authenticatedSockets.get(room.guest);
-        if (!hostAuth || !guestAuth) {
-            console.warn(`[ELO] Unauthenticated players in room ${code} — skipping`);
-            return;
-        }
-
-        const hostPlayerId = hostAuth.playerId;
-        const guestPlayerId = guestAuth.playerId;
-
-        const actualWinnerId = winnerId === 1 ? hostPlayerId : guestPlayerId;
-        const actualLoserId = loserId === 1 ? hostPlayerId : guestPlayerId;
-
-        try {
-            const winner = await d1.getOne('SELECT id, elo, total_games FROM players WHERE id = ?1', [actualWinnerId]);
-            const loser = await d1.getOne('SELECT id, elo, total_games FROM players WHERE id = ?1', [actualLoserId]);
-            if (!winner || !loser) {
-                console.warn('[ELO] Player not found in DB');
-                return;
-            }
-
-            const winnerK = winner.total_games < 10 ? 40 : winner.total_games < 30 ? 32 : 24;
-            const loserK = loser.total_games < 10 ? 40 : loser.total_games < 30 ? 32 : 24;
-
-            const expectedWinner = 1 / (1 + Math.pow(10, (loser.elo - winner.elo) / 400));
-            const expectedLoser = 1 / (1 + Math.pow(10, (winner.elo - loser.elo) / 400));
-
-            const winnerDelta = Math.round(winnerK * (1 - expectedWinner));
-            const loserDelta = Math.round(loserK * (0 - expectedLoser));
-
-            const newWinnerElo = winner.elo + winnerDelta;
-            const newLoserElo = Math.max(100, loser.elo + loserDelta);
-
-            await d1.execute(
-                `UPDATE players SET elo = ?1, peak_elo = MAX(peak_elo, ?1), wins = wins + 1,
-                 total_games = total_games + 1, last_seen = datetime('now') WHERE id = ?2`,
-                [newWinnerElo, actualWinnerId]
-            );
-            await d1.execute(
-                `UPDATE players SET elo = ?1, losses = losses + 1,
-                 total_games = total_games + 1, last_seen = datetime('now') WHERE id = ?2`,
-                [newLoserElo, actualLoserId]
-            );
-
-            const matchId = uuid();
-            await d1.execute(
-                `INSERT INTO matches (id, winner_id, loser_id, winner_elo_before, winner_elo_after,
-                 loser_elo_before, loser_elo_after, team_size, map_mode_id, duration_ms)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
-                [matchId, actualWinnerId, actualLoserId, winner.elo, newWinnerElo,
-                 loser.elo, newLoserElo, teamSize, mapModeId, durationMs]
-            );
-
-            console.log(`[ELO] ${hostAuth.username} vs ${guestAuth.username}: winner=${actualWinnerId === hostPlayerId ? hostAuth.username : guestAuth.username} (${winner.elo}→${newWinnerElo}), loser=(${loser.elo}→${newLoserElo})`);
-
-            if (actualWinnerId === hostPlayerId) {
-                hostAuth.elo = newWinnerElo;
-                guestAuth.elo = newLoserElo;
-            } else {
-                guestAuth.elo = newLoserElo;
-                hostAuth.elo = newWinnerElo;
-            }
-
-            const hostSocket = io.sockets.sockets.get(room.host);
-            const guestSocket = io.sockets.sockets.get(room.guest);
-
-            if (hostSocket) {
-                const isHostWinner = actualWinnerId === hostPlayerId;
-                hostSocket.emit('elo-update', {
-                    myNewElo: isHostWinner ? newWinnerElo : newLoserElo,
-                    myEloDelta: isHostWinner ? winnerDelta : loserDelta,
-                    opponentNewElo: isHostWinner ? newLoserElo : newWinnerElo,
+        // The host's claim must AGREE with the winner its own mirrored
+        // state-sync stream reported. No mirrored winner yet → the
+        // winner-carrying sync is still in flight; the state-sync handler
+        // will record the ELO from the mirror, so nothing is lost by
+        // ignoring the claim here. A contradicting claim is a forged result.
+        const mirrored = room._lastState ? room._lastState.winner : null;
+        if (mirrored !== data.winnerId) {
+            if (mirrored === 1 || mirrored === 2) {
+                console.warn(`[GUARD] ranked-result winner=${data.winnerId} contradicts mirrored state winner=${mirrored} in room ${code} — dropped`);
+                replayWrite(room, {
+                    t: Date.now(), e: 'blocked', from: 'host',
+                    reason: 'result-mismatch', claimed: data.winnerId, mirrored,
                 });
             }
-            if (guestSocket) {
-                const isGuestWinner = actualWinnerId === guestPlayerId;
-                guestSocket.emit('elo-update', {
-                    myNewElo: isGuestWinner ? newWinnerElo : newLoserElo,
-                    myEloDelta: isGuestWinner ? winnerDelta : loserDelta,
-                    opponentNewElo: isGuestWinner ? newLoserElo : newWinnerElo,
-                });
-            }
-        } catch (err) {
-            console.error('[ELO] Error calculating ELO:', err.message);
+            return;
         }
+        applyRankedElo(room, code, data.winnerId, 'ranked-result');
     });
 
     socket.on('match-started', () => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
         found.room._matchStarted = true;
+        // Snapshot both players' auth now: a disconnect-forfeit needs the
+        // leaver's identity for ELO, but authenticatedSockets drops it the
+        // moment the socket disconnects.
+        if (!found.room._hostAuth) found.room._hostAuth = authenticatedSockets.get(found.room.host) || null;
+        if (!found.room._guestAuth) found.room._guestAuth = authenticatedSockets.get(found.room.guest) || null;
         replayInit(found.room, found.code);
         console.log(`[IO] Room ${found.code} match started`);
     });
@@ -1638,6 +1777,9 @@ io.on('connection', (socket) => {
                 console.log(`[IO] ${role} failed to rejoin room ${code} — forfeit`);
                 const forfeitPlayer = role === 'host' ? 1 : 2;
                 io.to(code).emit('match-forfeit', { forfeitPlayer: forfeitPlayer, role: role });
+                // A disconnect-forfeit is a real loss: record the ELO for the
+                // remaining player instead of letting the leaver escape rating-free.
+                applyRankedElo(room, code, forfeitPlayer === 1 ? 2 : 1, 'disconnect-forfeit');
                 replayEnd(room, 'forfeit', { forfeitPlayer });
                 rooms.delete(code);
             }, 90 * 1000)

@@ -1190,8 +1190,12 @@
                         useRosterItemButton(data.unitId, data.itemKey);
                         break;
                     case 'forfeit':
-                        state.winner = data.player === 2 ? 1 : 2;
-                        addLog('Player ' + data.player + ' forfeits the match.');
+                        /* Ownership: a remote client can only forfeit ITSELF —
+                           the sender's player number is authoritative, never
+                           the payload (a hacked guest sent player:1 to make
+                           the HOST forfeit and win instantly). */
+                        state.winner = remoteP === 2 ? 1 : 2;
+                        addLog('Player ' + remoteP + ' forfeits the match.');
                         checkWin();
                         break;
                     case 'recall': {
@@ -1200,7 +1204,10 @@
                         break;
                     }
                     case 'toggleAuto':
-                        if (data.player >= 1 && data.player <= 2) {
+                        /* Ownership: only the sender's OWN auto flag — a guest
+                           payload naming player 1 could flip the host onto AI
+                           control mid-match. */
+                        if (data.player === remoteP) {
                             state.autoPlayers[data.player] = !state.autoPlayers[data.player];
                             addLog('Player ' + data.player + ' auto mode ' + (state.autoPlayers[data.player] ? 'enabled' : 'disabled') + '.');
                             render();
@@ -1521,9 +1528,32 @@
 
         window._applyRemotePartyConfig = function(data) {
             if (!data) return;
+            /* Anti-cheat (host-side): clamp the guest's party to the match
+               team size and refuse configs naming unknown races — a modified
+               client could otherwise field extra slots or invented units.
+               Spell loadouts are re-validated at unit build time
+               (trimSpellIdsToSlotBudget), and true account-unlock ownership
+               is enforced server-side where the DB lives. */
+            var _ts = (typeof CONFIG !== 'undefined' && CONFIG.teamSize) ? CONFIG.teamSize : 4;
+            if (Array.isArray(data.builds)) data.builds = data.builds.slice(0, _ts);
+            if (Array.isArray(data.loadouts)) data.loadouts = data.loadouts.slice(0, _ts);
+            if (Array.isArray(data.meta)) {
+                data.meta = data.meta.slice(0, _ts);
+                var _raceReg = (typeof RACE_PROFILES !== 'undefined') ? RACE_PROFILES : (window.RACE_PROFILES || null);
+                if (_raceReg) {
+                    for (var _mi = 0; _mi < data.meta.length; _mi++) {
+                        var _mEntry = data.meta[_mi];
+                        if (_mEntry && _mEntry.race && !_raceReg[_mEntry.race]) {
+                            addLog('⚠️ Rejected opponent party config: unknown unit "' + _mEntry.race + '".');
+                            console.warn('[NET GUARD] party-config rejected — unknown race:', _mEntry.race);
+                            return;
+                        }
+                    }
+                }
+            }
             if (data.builds) state.partyBuilds[2] = data.builds;
             if (data.loadouts) state.loadouts[2] = data.loadouts;
-            if (data.name && state.partyNames) state.partyNames[2] = data.name;
+            if (data.name && state.partyNames) state.partyNames[2] = String(data.name).slice(0, 24);
             if (data.meta && state.partyMeta) state.partyMeta[2] = data.meta;
 
             const lock = window._NET._lockState;

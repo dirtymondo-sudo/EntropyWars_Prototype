@@ -3223,6 +3223,7 @@
                 sirenSong: 0.8,
                 stagger: 0.9,
                 slow: 0.9,
+                root: 0.86,
                 discord: 0.9,
                 // 2026-07-17: new debuffs. Taunt sticks often (a Tank whose
                 // Provoke whiffs does nothing all round); minimize/hexed

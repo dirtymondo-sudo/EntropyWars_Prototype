@@ -7233,6 +7233,9 @@
             }
 
             if (state.suddenDeathActive) {
+                // killer is pre-gated on isEnemyUnit(killer, target) at the
+                // death-resolution site, so a team-kill can never reach this
+                // instant-win — the check there is the guard for this path.
                 const mpMode = getActiveMultiplayerMode();
                 if (mpMode.tiebreaker === 'sudden_death_kill' || mpMode.id === 'arena') {
                     state.winner = killer.player;
@@ -15376,7 +15379,13 @@
                 // Environmental deaths (spawn zone, weather, fall damage,
                 // hazards, DoT) credit the LAST unit that damaged the victim,
                 // no matter how long ago — chip damage always earns the kill.
-                const killer = sourceUnit || target._lastDamageSource || null;
+                // Credit only flows to a true ENEMY of the victim: a same-team
+                // finisher (friendly fire) earns no XP/gold/streaks, no
+                // matchKills score, and can never trigger the sudden-death win.
+                const _lastHitter = sourceUnit || target._lastDamageSource || null;
+                const killer = (_lastHitter && (typeof isEnemyUnit === 'function'
+                    ? isEnemyUnit(_lastHitter, target)
+                    : _lastHitter.player !== target.player)) ? _lastHitter : null;
                 if (typeof _balTrackKill === 'function') _balTrackKill(killer, target);
                 // Balance Lab per-cast telemetry: credit the resolving spell.
                 if (_balSpellCollector && killer && killer.id === _balSpellCollector.casterId
@@ -38937,7 +38946,11 @@
                     if (state.phase === 'battle' && !_skipVisuals()) VFX.fire('aura', spell.id, { tx: x, ty: y, aoeRadius: spell.aoeRadius != null ? spell.aoeRadius : 1 });
                 }
                 for (const ally of allies) {
-                    ally.shield = (ally.shield || 0) + shieldPerAlly;
+                    // Clamp like the other shield paths (_buffUnit): stacked
+                    // casts cap at shieldCapPct of maxHp (default 50%), but a
+                    // single grant always lands in full.
+                    const _shCap = Math.max(shieldPerAlly, Math.floor((ally.maxHp || 0) * (spell.shieldCapPct || 0.5)));
+                    ally.shield = Math.min((ally.shield || 0) + shieldPerAlly, _shCap);
                     showFloatingTextForUnit(ally, `+${shieldPerAlly} 🛡`, 'heal');
                     if (!VFX || !VFX.hasMapping(spell.id, 'aura')) _vfxBuff(ally.x, ally.y);
                 }
