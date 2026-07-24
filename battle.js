@@ -17843,11 +17843,14 @@
         }
 
         let _lastDialogueHtml = '';
-        let _dlgLogKey = '';        // identity of the newest dialogue-worthy log line
+        let _dlgLogKey = '';        // identity of the log line currently owning the bar
         let _dlgLogShownAt = 0;     // when that line first hit the bar
         let _dlgLogConsumed = false;// true once a prompt has reclaimed the bar from it
-        let _dlgSwapTimer = null;   // pending log→prompt handoff
+        let _dlgSwapTimer = null;   // pending end-of-beat re-render
         let _dlgLastPromptHtml = null;
+        let _dlgSeenLogLen = -1;    // logEntries.length after the previous render —
+                                    // entries below this index are OLD NEWS and can
+                                    // never (re)claim the bar
         const DLG_LOG_HOLD_MS = 2600;
         function _renderDialogueBox(col) {
 
@@ -17867,53 +17870,64 @@
             }
 
             const entries = state.logEntries || [];
-            let lastEntry = null;
+            // Battle start / log reset (new match, trimmed log): everything
+            // already in the log is old news — only lines appended from here
+            // on may claim the bar.
+            if (_dlgSeenLogLen < 0 || _dlgSeenLogLen > entries.length) _dlgSeenLogLen = entries.length;
+
+            let lastEntry = null, lastIdx = -1;
             for (let i = entries.length - 1; i >= 0; i--) {
                 const e = entries[i];
                 if (_logVisible(e) && _isDialogueWorthy(e)) {
                     lastEntry = e;
+                    lastIdx = i;
                     break;
                 }
             }
 
-            // Priority: fresh combat-log lines get a Pokemon-style beat on the
-            // bar ("X takes 45 damage!"), then the player prompt reclaims it.
-            // A prompt that changes while the log stays put is a direct answer
-            // to player input (opened a menu, picked a spell, cycled a target)
-            // and takes the bar immediately.
+            // Pokemon-text-box rule: a combat-log line gets ONE short beat on
+            // the bar, AT THE MOMENT it is appended ("X takes 45 damage!"),
+            // then the player prompt (or nothing) takes over. A line that
+            // merely RE-SURFACES later — the prompt went away during a move,
+            // a fog flip revealed an old entry — is stale narration and must
+            // never re-claim the bar; that's how "the enemy charged" kept
+            // showing up mid-move.
             const now = Date.now();
             const rawMsg = lastEntry ? _logMsg(lastEntry).replace(/<[^>]+>/g, '') : '';
-            const logKey = lastEntry ? entries.length + '|' + rawMsg : '';
-            const logChanged = logKey !== _dlgLogKey;
-            if (logChanged) {
+            const logKey = lastEntry ? lastIdx + '|' + rawMsg : '';
+            const logIsFresh = !!lastEntry && lastIdx >= _dlgSeenLogLen;
+            _dlgSeenLogLen = entries.length;
+            if (logIsFresh && logKey !== _dlgLogKey) {
                 _dlgLogKey = logKey;
-                _dlgLogShownAt = lastEntry ? now : 0;
+                _dlgLogShownAt = now;
                 _dlgLogConsumed = false;
             }
+            const logCurrent = !!lastEntry && logKey === _dlgLogKey && _dlgLogShownAt > 0;
 
+            // A prompt that changes while no new log line arrived is a direct
+            // answer to player input (opened a menu, picked a spell, cycled a
+            // target) and takes the bar immediately.
             const promptHtml = _computePlayerPrompt();
             const promptChanged = promptHtml !== _dlgLastPromptHtml;
-            if (promptHtml && _dlgLastPromptHtml && promptChanged && !logChanged) {
+            if (promptHtml && _dlgLastPromptHtml && promptChanged && !logIsFresh) {
                 _dlgLogConsumed = true;
             }
             _dlgLastPromptHtml = promptHtml;
 
             const logAge = now - _dlgLogShownAt;
-            const showLog = !!lastEntry
-                && (!promptHtml || (!_dlgLogConsumed && logAge < DLG_LOG_HOLD_MS));
+            const showLog = logCurrent && !_dlgLogConsumed && logAge < DLG_LOG_HOLD_MS;
 
             if (_dlgSwapTimer) { clearTimeout(_dlgSwapTimer); _dlgSwapTimer = null; }
 
             let html = '';
             if (showLog) {
                 html = formatCombatLogLine(rawMsg);
-                if (promptHtml) {
-                    // hand the bar to the prompt once the log line's beat is over
-                    _dlgSwapTimer = setTimeout(() => {
-                        _dlgSwapTimer = null;
-                        _renderDialogueBox(null);
-                    }, Math.max(80, DLG_LOG_HOLD_MS - logAge + 40));
-                }
+                // the beat ends on its own clock even with no prompt waiting —
+                // the box must never sit on old news
+                _dlgSwapTimer = setTimeout(() => {
+                    _dlgSwapTimer = null;
+                    _renderDialogueBox(null);
+                }, Math.max(80, DLG_LOG_HOLD_MS - logAge + 40));
             } else if (promptHtml) {
                 html = promptHtml;
             }

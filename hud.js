@@ -2415,21 +2415,8 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
        AP, item slots, materials, tool rows — one straight stack, nothing
        absolute, nothing overlapping. */
     h('div', { className: 'hrlg-side' },
-      h('div', {
-        className: 'hrlg-crown live endturn' + (ap <= 1 ? ' lastap' : ''),
-        title: inputDev === 'pad' ? 'End Turn (' + _hintKey('endTurn', 'SPACE') + ' twice)' : 'End Turn (SPACE)',
-        onClick: pressEndTurn,
-      },
-        h('span', { className: 'hrlg-crown-cap' },
-          h('span', { className: 'hrlg-crown-arrow' }, '■'),
-          h('span', { className: 'hrlg-crown-text' },
-            (typeof window._isSimulMode === 'function' && window._isSimulMode()
-              && window.GAME?.state?._simulPhase === 'plan') ? 'COMMIT ORDER' : 'END TURN'),
-          inputDev === 'pad' && window.EWPad ? h('span', {
-            className: 'ew-padbtn ew-padbtn-face ew-padbtn-inline',
-          }, _hintKey('endTurn', '')) : null,
-        ),
-      ),
+      /* (the old END TURN crown bar lived here — retired: the root panel's
+         END TURN blade + SPACE / pad B cover it, the bar was redundant) */
       h('div', { className: 'hrlg-hubwrap' },
         h(HorologeHub, {
           factionKey: factionKey, api: clockApi,
@@ -2597,10 +2584,9 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
             h('span', { className: 'hrlg-confirm-lbl' },
               'CONFIRM', confirm.label ? h('span', { className: 'hrlg-confirm-tgt' }, ' — ' + confirm.label) : null),
           ),
-          isOn && modeLabel && h('div', { className: 'hrlg-mode' }, modeLabel),
-          /* ↩ BACK chip — corner of every sub-menu: arrow pointing at the
-             (dimmed) parent to the left + the input that triggers it
-             (right-click, or B on a pad). */
+          /* ↩ BACK chip — right-aligned ABOVE the panel content (and above
+             the "MOVING — CLICK A TILE" mode blade) on every sub-menu, with
+             the input that triggers it (right-click, or B on a pad). */
           isOn && backable && h('div', {
             className: 'hrlg-backchip',
             title: inputDev === 'pad'
@@ -2614,6 +2600,7 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
               ? h('span', { className: 'ew-padbtn ew-padbtn-face' }, _hintKey('cancel', ''))
               : h(_HrlgRmbIcon),
           ),
+          isOn && modeLabel && h('div', { className: 'hrlg-mode' }, modeLabel),
           /* panel header: ONE cohesive blade — the menu name, and for a
              clicked unit its live HP/MP bars + full stat readout, all in
              the same parallelogram of blade material. Vitals/stats are
@@ -3637,7 +3624,11 @@ function ActionMenu({ st, hidden }) {
   const rootBlades = actions.map(a => ({ ...a, subBelow: true }));   // declared order IS the menu order
   // (The old ⓘ Inspect blade is gone — the unit stat card is the INFO
   // button riding beside the name under the clock now, not an action.)
-  rootBlades.push({ id: 'end', label: 'END TURN', icon: '■', available: true, danger: true, hint: _hintKey('endTurn', 'SPACE') });
+  // simul planning phase: ending the turn COMMITS the queued order — say so
+  // (this label used to live on the retired END TURN crown bar)
+  const _endLabel = (typeof window._isSimulMode === 'function' && window._isSimulMode()
+    && window.GAME?.state?._simulPhase === 'plan') ? 'COMMIT ORDER' : 'END TURN';
+  rootBlades.push({ id: 'end', label: _endLabel, icon: '■', available: true, danger: true, hint: _hintKey('endTurn', 'SPACE') });
   const rootPanel = { key: 'root', title: null, blades: rootBlades };
   const _mkPanel = (key, built, extra) => ({
     key, title: built.title || null,
@@ -7212,51 +7203,6 @@ function _injectHudHideStyles() {
       0%   { opacity: 0.8; transform: scale(0.4); }
       100% { opacity: 0;   transform: scale(1.3); }
     }
-    /* the crown — ONE full-width bar on top of the column: the universal
-       BACK control (END TURN at the root, where there's nothing to back
-       out of). Big, labelled, impossible to miss. */
-    .hrlg-crown {
-      position: relative; width: 100%; height: 40px;
-      pointer-events: none; opacity: 0.25; cursor: default;
-      transition: opacity 0.15s ease, transform 0.12s cubic-bezier(0.3,1.5,0.4,1);
-    }
-    .hrlg-crown-cap {
-      width: 100%; height: 100%;
-      background: linear-gradient(180deg, #3a120c, #140605);
-      border: 1px solid #ff4a3c;
-      clip-path: polygon(9px 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
-      box-shadow: 0 0 12px rgba(255,74,60,0.35), inset 0 1px 0 rgba(255,255,255,0.16);
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-    }
-    .hrlg-crown-arrow {
-      font-size: 14px; line-height: 1; color: #ff9184;
-      text-shadow: 0 0 8px rgba(255,74,60,0.8);
-    }
-    .hrlg-crown-text {
-      font-size: 13px; font-weight: 700; letter-spacing: 0.2em; line-height: 1;
-      color: #ffb3a8; text-shadow: 0 0 10px rgba(255,74,60,0.7); white-space: nowrap;
-    }
-    .hrlg-crown.live {
-      opacity: 1; pointer-events: auto; cursor: pointer;
-      animation: hrlgCrownPulse 1.6s ease-in-out infinite;
-    }
-    @keyframes hrlgCrownPulse {
-      0%, 100% { filter: brightness(1); }
-      50%      { filter: brightness(1.45); }
-    }
-    .hrlg-crown.live:hover  { transform: translateY(-2px) scale(1.03); }
-    .hrlg-crown.live:active { transform: translateY(2px); }
-    /* root view: nothing to back out of → the crown is END TURN instead.
-       Calm by default; when the unit is down to its LAST AP it pulses hard
-       so "wrap it up" is impossible to miss. */
-    .hrlg-crown.endturn { animation: none; }
-    .hrlg-crown.endturn.lastap { animation: hrlgCrownLastAP 0.9s ease-in-out infinite; }
-    @keyframes hrlgCrownLastAP {
-      0%, 100% { filter: brightness(1);   transform: scale(1); }
-      50%      { filter: brightness(1.6); transform: scale(1.04); }
-    }
-    .hrlg-crown.endturn.lastap:hover  { animation: none; transform: translateY(-2px) scale(1.03); }
-    .hrlg-crown.endturn.lastap:active { animation: none; transform: translateY(2px); }
     /* ── tool rows: ⚒ BUILD + situational one-shots (CHANNEL / DETONATE /
        ENTROPY…) — full-width rows at the bottom of the column. They used to
        be tiny overlapping bezel studs; now they're real buttons. */
@@ -7440,7 +7386,14 @@ function _injectHudHideStyles() {
        Plain vertical lists of full-color rows. The ACTIVE panel is lit;
        parent panels stay on screen to its left, dimmed — click one to
        back up to it. Long lists scroll inside their panel. */
-    .hrlg-panels { position: relative; display: flex; align-items: flex-end; gap: 10px; pointer-events: none; }
+    .hrlg-panels { position: relative; display: flex; align-items: flex-end; gap: 0; pointer-events: none; }
+    /* JRPG cascade: the child panel is NUDGED LEFT so it covers roughly the
+       RIGHT HALF of its dimmed parent (classic FF command stacking) — the
+       stack stays compact and the bottom-center of the screen stays free
+       for the subtitle box. The parent's visible left half is still a
+       click target for backing up. */
+    .hrlg-panel.bg + .hrlg-panel { margin-left: -158px; }
+    .hrlg-panel.bg.root + .hrlg-panel { margin-left: -112px; }
     .hrlg-panel {
       position: relative; width: 316px; flex: none;
       display: flex; flex-direction: column; gap: 6px;
@@ -7816,7 +7769,10 @@ function _injectHudHideStyles() {
     /* inline CONFIRM — the green seal at the END of the pending (✓) row */
     .hrlg-confirm-inline {
       flex: none; display: inline-flex; align-items: center; gap: 6px;
-      height: 26px; padding: 0 10px; margin-right: -4px;
+      /* positive right margin: the row body's clip-path + skew slice off
+         anything that rides the very end of the blade — keep the seal
+         clear of the corner cut so it never gets cropped */
+      height: 26px; padding: 0 10px; margin-right: 2px;
       cursor: pointer; pointer-events: auto;
       font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: #b8f5d0;
       background: linear-gradient(100deg, #123720 0%, #0c2414 100%);
@@ -7833,10 +7789,10 @@ function _injectHudHideStyles() {
       background: #57d98a; color: #06130a; font-size: 10px; font-weight: 700;
       box-shadow: 0 0 8px rgba(87,217,138,0.8);
     }
-    /* ↩ BACK chip — corner of every sub-menu: ◀ pointing at the dimmed
-       parent + the input glyph (right-click mouse / pad B) */
+    /* ↩ BACK chip — RIGHT-aligned above the panel content (and above the
+       aim-mode blade) + the input glyph (right-click mouse / pad B) */
     .hrlg-backchip {
-      align-self: flex-start; margin: 0 0 2px 6px; flex: none;
+      align-self: flex-end; margin: 0 9px 2px 0; flex: none;
       display: inline-flex; align-items: center; gap: 6px;
       height: 24px; padding: 0 10px;
       cursor: pointer; pointer-events: auto; z-index: 3;
@@ -7940,12 +7896,15 @@ function _injectHudHideStyles() {
       .ew-descbar-desc { max-width: 100%; }
     }
 
-    /* ── Combat subtitles: lifted to the TOP (under the scoreboard) so they
-       never cover the command panels at the bottom of the screen. */
+    /* ── Combat subtitles: classic JRPG text box at the BOTTOM of the
+       screen, riding just above the spell description bar (which is pinned
+       bottom-center, ~62px tall and scales with --ew-ui-scale). The
+       overlap-cascading command panels stay compact on the left, so the
+       bottom-center is free for it. */
     .battle-subtitle-bar {
-      bottom: auto !important;
-      top: calc(14px + 104px * var(--ew-hud-scale, 1)) !important;
-      align-items: flex-start !important;
+      top: auto !important;
+      bottom: calc(20px + 66px * var(--ew-ui-scale, 1)) !important;
+      align-items: flex-end !important;
     }
   `;
   document.head.appendChild(style);

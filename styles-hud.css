@@ -3300,7 +3300,10 @@
         /* ── Subtitle-style dialogue (floating above HUD, no box) ── */
         .battle-subtitle-bar {
             position: absolute;
-            bottom: 110px; left: 0; right: 0;
+            /* JRPG text box: bottom-center, just above the spell
+               description bar (the hud.js battle styles use the same
+               formula) */
+            bottom: calc(20px + 66px * var(--ew-ui-scale, 1)); left: 0; right: 0;
             z-index: 59;
             display: flex;
             justify-content: center;

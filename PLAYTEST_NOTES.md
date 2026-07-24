@@ -4,7 +4,36 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## Quick-menu one-blade header + CRT/EVA are official stats (2026-07-24, LATEST) — hud.js, ui.js, battle.js, data.js, party-builder.js, index.html
+## Action-menu polish: crown retired, JRPG panel overlap, bottom subtitles (2026-07-24, LATEST) — hud.js, battle.js, styles-hud.css, index.html
+Token `20260724f` → `20260724g`.
+- **END TURN crown bar DELETED** (hud.js HorologeMenu render + all `.hrlg-crown*`
+  CSS): redundant with the root panel's END TURN blade + SPACE/pad B. The pad
+  crown() hook still maps B → back/end-turn. Simul-mode's "COMMIT ORDER" label
+  moved onto the root `end` blade (`_endLabel`).
+- **BACK chip right-aligned + above the mode blade**: base `.hrlg-backchip` is
+  now `align-self:flex-end; margin:0 9px 2px 0`, and in the panel render the
+  chip moved BEFORE the `.hrlg-mode` label so it sits above "MOVING — CLICK A
+  TILE" in every state (the `.lone` move/jump case already was flex-end).
+- **Inline CONFIRM crop fix**: `.hrlg-confirm-inline` margin-right −4px → +2px;
+  the row body's clip-path corner cut + skew were slicing the green seal at
+  blade ends.
+- **JRPG cascade overlap**: `.hrlg-panels` gap 10px → 0; the active panel now
+  covers the RIGHT HALF of its dimmed parent (`.hrlg-panel.bg + .hrlg-panel
+  { margin-left:-158px }`, `-112px` off the 224px root). Parent's visible left
+  half is still the click-to-back target.
+- **Subtitles back at the BOTTOM**: the hud.js battle override that pinned
+  `.battle-subtitle-bar` under the scoreboard now anchors it
+  `bottom: calc(20px + 66px * --ew-ui-scale)` — just above the spell
+  description bar (styles-hud.css base matches).
+- **Pokemon-text-box freshness gate** (battle.js `_renderDialogueBox`): new
+  local `_dlgSeenLogLen`; a combat-log line may claim the bar ONLY at the
+  moment it's appended (index >= seen length), one 2.6s beat, self-clearing
+  timer even with no prompt waiting. Stale lines that merely re-surface (prompt
+  vanished during a move, fog flip revealed an old entry) can never re-claim
+  the bar — that was the "enemy charged to a tile during my movement" bug.
+  Viewer-local logic only — nothing new to relay/serialize for online.
+
+## Quick-menu one-blade header + CRT/EVA are official stats (2026-07-24) — hud.js, ui.js, battle.js, data.js, party-builder.js, index.html
 Token `20260724c` → `20260724d`.
 - **One cohesive header blade**: the enemy/ally quick menu's name tab, HP/MP
   bars and a NEW plain-number stat readout now render inside a single
