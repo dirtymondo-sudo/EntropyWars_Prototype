@@ -3741,7 +3741,10 @@
         if (!canAscend.ok && !canDescend.ok) return;
 
         const myZ = unit.z ?? 0;
-        const groundZ = g.getHeightAt(unit.x, unit.y);
+        /* Air-gap aware: under a bridge / inside a building the reference floor
+           is the one beneath THIS unit, not the top of the column. */
+        const groundZ = (typeof g.getFloorBelowZ === 'function')
+            ? g.getFloorBelowZ(unit.x, unit.y, myZ) : g.getHeightAt(unit.x, unit.y);
         const altAboveGround = myZ - groundZ;
         const effRange = g.getEffectiveRange(unit);
         const isRanged = effRange >= 2;

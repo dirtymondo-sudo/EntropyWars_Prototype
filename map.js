@@ -2825,6 +2825,102 @@
         function _ewTopCell(w) { return w.z0 + Math.max(1, w.h || 1) - 1; }
         function _ewBlocksSight(w) { return !!w && !w.see && !w.low; }
 
+        /* ══════════ WALL OPENINGS — doorways & windows (2026-07-24) ══════════
+           Before this, the only way to make a doorway was to leave a whole edge
+           wall-less, which on a tall building meant a full-height slot from
+           floor to roof. A wall record may now carry:
+             door:1  → a walk-through doorway starting at the wall's BASE cell,
+                       `doorH` cells tall (default 2). Bodies AND sight pass;
+                       the masonry above the lintel still stands.
+             win:1   → a window `winH` cells tall (default 1) starting `winZ`
+                       cells above the base (default 1). Sight and shots pass
+                       through it, bodies do not.
+           Both may be set on one wall (doorway below, window band above).
+           wallOpeningRects is also what the renderer carves the geometry from,
+           so what blocks is exactly what you see. */
+        const WALL_DOOR_WIDTH = 0.56;   // opening width as a fraction of a tile
+        const WALL_WIN_WIDTH = 0.5;
+
+        function wallOpeningRects(w) {
+            /* Parapets and chain-link are already permeable / half height —
+               carving them serves nothing and would look broken. */
+            if (!w || w.see || w.low) return [];
+            const hasOps = Array.isArray(w.ops) && w.ops.length;
+            if (!hasOps && !w.door && !w.win) return [];
+            const out = [];
+            const z0 = w.z0 || 0;
+            const top = _ewTopCell(w);
+            /* `ops` = explicit opening list in ABSOLUTE cells, which is how a
+               single tall wall carries a doorway at the bottom and one window
+               band per storey above it. (state.edgeWalls holds exactly one
+               record per edge, so stacking a second wall over a door was never
+               possible — carving the tall wall is.) */
+            if (hasOps) {
+                for (const o of w.ops) {
+                    if (!o) continue;
+                    const oz = Math.max(z0, o.z | 0);
+                    const oh = Math.min(Math.max(1, o.h || 1), top - oz + 1);
+                    if (oh <= 0) continue;
+                    out.push({
+                        z0: oz, h: oh,
+                        wid: o.w || (o.kind === 'win' ? WALL_WIN_WIDTH : WALL_DOOR_WIDTH),
+                        kind: o.kind || 'door'
+                    });
+                }
+            }
+            if (w.door) {
+                const dh = Math.max(1, w.doorH || 2);
+                out.push({ z0, h: Math.min(dh, top - z0 + 1), wid: WALL_DOOR_WIDTH, kind: 'door' });
+            }
+            if (w.win) {
+                const wz = z0 + ((w.winZ != null) ? w.winZ : 1);
+                const wh = Math.max(1, w.winH || 1);
+                if (wz <= top) out.push({ z0: wz, h: Math.min(wh, top - wz + 1), wid: WALL_WIN_WIDTH, kind: 'win' });
+            }
+            return out;
+        }
+
+        /* Is cell `c` inside an opening of this wall?
+           mode 'walk'  → doorways only (a window is too small to climb through)
+           mode 'sight' → doorways AND windows */
+        function _ewOpenAtCell(w, c, mode) {
+            if (!w) return false;
+            if (Array.isArray(w.ops)) {
+                for (const o of w.ops) {
+                    if (!o) continue;
+                    if (mode !== 'sight' && o.kind === 'win') continue;
+                    if (c >= (o.z | 0) && c < (o.z | 0) + Math.max(1, o.h || 1)) return true;
+                }
+            }
+            if (w.door) {
+                const dh = Math.max(1, w.doorH || 2);
+                if (c >= w.z0 && c < w.z0 + dh) return true;
+            }
+            if (mode === 'sight' && w.win) {
+                const wz = w.z0 + ((w.winZ != null) ? w.winZ : 1);
+                const wh = Math.max(1, w.winH || 1);
+                if (c >= wz && c < wz + wh) return true;
+            }
+            return false;
+        }
+
+        /* Does this wall carry any doorway at all? (`ops` or the flag.) */
+        function _ewHasDoorway(w) {
+            if (!w) return false;
+            if (w.door) return true;
+            return Array.isArray(w.ops) && w.ops.some(o => o && o.kind !== 'win');
+        }
+
+        /* Does a body spanning cells [lo, hi] fit entirely through this wall's
+           doorway? Only then may it walk across. */
+        function _ewBodyFitsDoorway(w, lo, hi) {
+            if (!_ewHasDoorway(w)) return false;
+            for (let c = lo; c <= hi; c++) {
+                if (!_ewOpenAtCell(w, c, 'walk')) return false;
+            }
+            return true;
+        }
+
         /* Column-top standing z (ignores units; void = air). Used when a caller
            has no exact z for a step — matches the surface a walker would use on
            single-surface columns (the overwhelmingly common case). */
@@ -2839,7 +2935,9 @@
             const w = _ewWallBetween(xa, ya, xb, yb);
             if (!_ewBlocksSight(w)) return false;
             const cell = Math.floor(zc);
-            return cell >= w.z0 && cell <= _ewTopCell(w);
+            if (!(cell >= w.z0 && cell <= _ewTopCell(w))) return false;
+            /* Doorways and windows are holes — sight and shots go through. */
+            return !_ewOpenAtCell(w, cell, 'sight');
         }
 
         /* Ray passes exactly through the vertical corner line while stepping
@@ -2850,7 +2948,8 @@
         function _ewCornerSightBlocked(px, py, sx, sy, zc) {
             if (!state.edgeWalls) return false;
             const cell = Math.floor(zc);
-            const covers = (w) => _ewBlocksSight(w) && cell >= w.z0 && cell <= _ewTopCell(w);
+            const covers = (w) => _ewBlocksSight(w) && cell >= w.z0 && cell <= _ewTopCell(w)
+                && !_ewOpenAtCell(w, cell, 'sight');
             let n = 0;
             if (covers(_ewWallBetween(px, py, px + sx, py))) n++;
             if (covers(_ewWallBetween(px, py + sy, px + sx, py + sy))) n++;
@@ -2874,6 +2973,38 @@
             return _ewCornerSightBlocked(x1, y1, dx, dy, zc);
         }
 
+        /* ══════════ POINT-BLANK VERTICAL OCCLUSION (2026-07-24) ══════════
+           All 8 neighbours (and the unit's own column) skip the DDA raycast as
+           "point blank" — correct on flat ground, catastrophic on multi-floor
+           maps: a unit standing ON a roof and one INSIDE the room directly
+           below were mutually visible and shootable straight THROUGH the roof
+           slab. This tests the one thing the point-blank exemption must still
+           honour: a solid slab lying between the two eye lines.
+           Only blocks ABOVE each end's own standing surface count — the floor
+           you are standing on (and everything buried under it) is never an
+           occluder, so ordinary cliffs, hills and solid columns behave exactly
+           as before. Cell c occupies world [c-1, c]; eyes sit at z + 1.8. */
+        function verticalSightBlocked(x1, y1, z1, x2, y2, z2) {
+            if (z1 == null || z2 == null) return false;
+            if (!state.boardColumns?.length) return false;
+            const EYE = 1.8;
+            const e1 = z1 + EYE, e2 = z2 + EYE;
+            const lo = Math.min(e1, e2), hi = Math.max(e1, e2);
+            if (hi - lo < 0.5) return false;      // same level — nothing vertical between them
+            const scan = (cx, cy, ownZ) => {
+                if (!isInside(cx, cy)) return false;
+                for (const b of getColumn(cx, cy)) {
+                    if (b.terrain && b.terrain.indexOf('void') === 0) continue;
+                    if (b.z <= ownZ) continue;    // own floor / buried strata
+                    if (b.z > lo && (b.z - 1) < hi) return true;
+                }
+                return false;
+            };
+            if (scan(x1, y1, z1)) return true;
+            if (x2 !== x1 || y2 !== y1) { if (scan(x2, y2, z2)) return true; }
+            return false;
+        }
+
         /* Movement: does any wall block a walk step between adjacent tiles?
            A wall blocks when its cells intersect the mover's body span
            [min feet, max feet + 1(head)]. Wall entirely below both feet
@@ -2883,7 +3014,10 @@
         function _ewStepEdgeBlocked(xa, ya, xb, yb, lo, hi) {
             const w = _ewWallBetween(xa, ya, xb, yb);
             if (!w) return false;
-            return _ewTopCell(w) >= lo && w.z0 <= hi;
+            if (!(_ewTopCell(w) >= lo && w.z0 <= hi)) return false;
+            /* A doorway the whole body fits through is a hole, not a wall. */
+            if (_ewBodyFitsDoorway(w, lo, hi)) return false;
+            return true;
         }
 
         function wallBlocksStep(fromX, fromY, toX, toY, fromZ, toZ) {
@@ -2947,6 +3081,7 @@
             if (!w) return null;
             const top = _ewTopCell(w);
             if (!(top >= lo && w.z0 <= hi)) return null;   // outside the body span
+            if (_ewBodyFitsDoorway(w, lo, hi)) return null; // walk straight through the doorway
             if (jc > 0 && top <= minStand + jc) return top;
             return -1;
         }
@@ -3201,20 +3336,137 @@
             return unitHasJetpack(unit);
         }
 
+        /* ══════════ AIR POCKETS — local floor / ceiling (2026-07-24) ══════════
+           getHeightAt returns the COLUMN TOP, which is the wrong reference on
+           any map with air gaps. A flyer hovering under a bridge is above the
+           WATER, not above the deck; a unit on the ground floor of a building
+           is under a ceiling, not standing on the roof. Every flight rule used
+           to key off getHeightAt, which is why flyers could not slip under a
+           bridge (min clearance shoved them up through the deck) and were not
+           even considered "airborne" while doing it. These resolve the floor
+           and ceiling of the AIR POCKET containing a given z, so flight,
+           altitude, landing and the move preview all work per-pocket.
+           'void' blocks are authored air and never count as solid. */
+        /* Highest solid block index at or below z — the surface a body at z
+           rests on. Counts a roofWalkable building's roof (getHeightAt does
+           too) and falls back to the world floor. */
+        function getFloorBelowZ(x, y, z) {
+            if (!isInside(x, y)) return 0;
+            /* Hot path (isUnitAirborne runs per unit per frame in places) — walk
+               the column in place instead of allocating a filtered copy. */
+            const col = getColumn(x, y);
+            let best = -1;
+            for (let i = 0; i < col.length; i++) {
+                const b = col[i];
+                if (b.terrain && b.terrain.indexOf('void') === 0) continue;
+                if (b.z <= z && b.z > best) best = b.z;
+            }
+            const obj = (typeof getObjectAt === 'function') ? getObjectAt(x, y) : null;
+            if (obj) {
+                const rule = getObjectRule(obj);
+                if (rule && rule.roofWalkable) {
+                    const oSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[obj] : null;
+                    if (oSpr && oSpr._gameHeight > 0) {
+                        const roofZ = (state.boardHeights?.[y]?.[x] ?? 0) + oSpr._gameHeight;
+                        if (roofZ <= z && roofZ > best) best = roofZ;
+                    }
+                }
+            }
+            return (best < 0) ? 0 : best;
+        }
+
+        /* Lowest solid block index strictly above z (Infinity = open sky). */
+        function getCeilingAboveZ(x, y, z) {
+            if (!isInside(x, y)) return Infinity;
+            const col = getColumn(x, y);
+            let best = Infinity;
+            for (let i = 0; i < col.length; i++) {
+                const b = col[i];
+                if (b.terrain && b.terrain.indexOf('void') === 0) continue;
+                if (b.z > z && b.z < best) best = b.z;
+            }
+            return best;
+        }
+
+        /* Can a body hover at stand-height z here? Feet occupy cell z+1 and the
+           head cell z+2; a thin roof slab hugs the TOP of its cell, so brushing
+           one with your head is allowed (mirrors columnLaneClear). */
+        function airBodyFreeAt(x, y, z) {
+            if (!isInside(x, y) || z < 0) return false;
+            for (const b of getColumn(x, y)) {
+                if (b.terrain && b.terrain.indexOf('void') === 0) continue;
+                if (b.roof) { if (b.z === z + 1) return false; }
+                else if (b.z === z + 1 || b.z === z + 2) return false;
+            }
+            return true;
+        }
+
+        /* Legal hover altitudes in this column near prefZ, nearest-first.
+           Empty = the flyer cannot be airborne in this column at that height
+           band (solid rock, or a gap too tight for a body). */
+        function getFlightZChoices(x, y, prefZ, span, limit) {
+            const cfg = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined') ? FLYING_ALTITUDE_CONFIG
+                : { minClearance: 2, maxAltitudeAboveGround: 8 };
+            const out = [];
+            if (!isInside(x, y)) return out;
+            const S = (span == null) ? 2 : span;
+            const p = prefZ | 0;
+            for (let z = Math.max(0, p - S); z <= p + S; z++) {
+                const floor = getFloorBelowZ(x, y, z);
+                if (z <= floor) continue;                              // that's the ground, not flight
+                if (z - floor > cfg.maxAltitudeAboveGround) continue;  // altitude cap
+                if (!airBodyFreeAt(x, y, z)) continue;                 // solid block / roof in the way
+                if (z - floor < cfg.minClearance) {
+                    /* Below the normal hover clearance is only allowed inside a
+                       TIGHT pocket — threading the gap under a bridge is fine,
+                       skimming an open field at altitude 1 is not. */
+                    const ceil = getCeilingAboveZ(x, y, floor);
+                    if (ceil === Infinity || (ceil - floor) > cfg.minClearance + 2) continue;
+                }
+                out.push(z);
+            }
+            out.sort((a, b) => Math.abs(a - p) - Math.abs(b - p) || a - b);
+            const cap = (limit == null) ? 3 : limit;
+            return (out.length > cap) ? out.slice(0, cap) : out;
+        }
+
         function isUnitAirborne(unit) {
             if (!unit || !canFly(unit)) return false;
-            const groundZ = getHeightAt(unit.x, unit.y);
-            return (unit.z ?? 0) > groundZ;
+            const z = unit.z ?? 0;
+            /* Air-gap aware: the reference is the floor of the pocket the unit
+               is IN (the water under a bridge), not the column top (the deck).
+               On solid columns getFloorBelowZ(top) === top, so nothing changes
+               for ordinary maps. */
+            return z > getFloorBelowZ(unit.x, unit.y, z);
         }
 
-        function getMinFlyingZ(x, y) {
-            const cfg = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined') ? FLYING_ALTITUDE_CONFIG : { minClearance: 2 };
-            return getHeightAt(x, y) + cfg.minClearance;
+        /* refZ (optional): resolve against the air pocket around that height
+           instead of the column top. Callers that know where the flyer
+           actually is should always pass it. */
+        function getMinFlyingZ(x, y, refZ) {
+            const cfg = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined') ? FLYING_ALTITUDE_CONFIG : { minClearance: 2, maxAltitudeAboveGround: 8 };
+            if (refZ === undefined || refZ === null) return getHeightAt(x, y) + cfg.minClearance;
+            const floor = getFloorBelowZ(x, y, refZ);
+            let z = floor + cfg.minClearance;
+            const top = getMaxFlyingZ(x, y, refZ);
+            /* Under a low ceiling the hover clearance shrinks to whatever the
+               pocket actually fits — never below 1 level off the floor. */
+            if (z > top) z = Math.max(floor + 1, top);
+            return z;
         }
 
-        function getMaxFlyingZ(x, y) {
-            const cfg = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined') ? FLYING_ALTITUDE_CONFIG : { maxAltitudeAboveGround: 8 };
-            return getHeightAt(x, y) + cfg.maxAltitudeAboveGround;
+        function getMaxFlyingZ(x, y, refZ) {
+            const cfg = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined') ? FLYING_ALTITUDE_CONFIG : { minClearance: 2, maxAltitudeAboveGround: 8 };
+            if (refZ === undefined || refZ === null) return getHeightAt(x, y) + cfg.maxAltitudeAboveGround;
+            const floor = getFloorBelowZ(x, y, refZ);
+            const ceil = getCeilingAboveZ(x, y, floor);
+            let top = floor + cfg.maxAltitudeAboveGround;
+            /* Clamp to THIS pocket first — without it the scan sailed straight
+               past the bridge deck and reported the open sky above it as the
+               ceiling of the space underneath. */
+            if (ceil !== Infinity) top = Math.min(top, ceil - 1);
+            while (top > floor && !airBodyFreeAt(x, y, top)) top--;
+            return top;
         }
 
         function getSectionBuffs(unit) {
@@ -3703,18 +3955,39 @@
                     return;
                 }
 
+                /* Author-placed nexus zones may live on a STOREY (2026-07-24):
+                   the editor records a z per zone, and the zone terrain is
+                   stamped into that voxel layer instead of flattening the
+                   column's top block. Without this, a nexus authored inside a
+                   closed room repainted the ROOF and every capture/spawn
+                   consumer aimed at the roof surface. */
+                const _isCustom = (typeof activeGameMode !== 'undefined'
+                    && (activeGameMode === '_custom_editor' || activeGameMode === '_custom_community'));
+                const _authoredZ = (_isCustom && typeof window !== 'undefined' && window._customEditorNexusZ) || null;
                 state.nexusPoints = {};
                 for (const n of nexuses) {
-                    state.nexusPoints[n.key] = {
+                    const az = _authoredZ ? _authoredZ[n.x + ',' + n.y] : undefined;
+                    const rec = {
                         zoneX: n.x, zoneY: n.y,
                         zoneSize: NEXUS_ZONE_SIZE,
                         owner: 0, progress: 0
                     };
+                    if (az !== undefined && az !== null) rec.z = az;
+                    state.nexusPoints[n.key] = rec;
 
                     for (let dy = 0; dy < NEXUS_ZONE_SIZE; dy++) {
                         for (let dx = 0; dx < NEXUS_ZONE_SIZE; dx++) {
                             const nx = n.x + dx, ny = n.y + dy;
-                            if (ny >= 0 && ny < h && nx >= 0 && nx < w) {
+                            if (ny < 0 || ny >= h || nx < 0 || nx >= w) continue;
+                            if (rec.z !== undefined && state.boardVoxels?.[ny]?.[nx]) {
+                                /* Paint the zone into the authored layer only —
+                                   the storeys above and below are left alone. */
+                                const col = state.boardVoxels[ny][nx];
+                                const blk = col.find(b => b.z === rec.z);
+                                if (blk) blk.terrain = n.terrain;
+                                else { col.push({ z: rec.z, terrain: n.terrain }); col.sort((a, b) => a.z - b.z); }
+                                if ((state.boardHeights?.[ny]?.[nx] ?? 0) === rec.z) state.boardTerrain[ny][nx] = n.terrain;
+                            } else {
                                 state.boardTerrain[ny][nx] = n.terrain;
                             }
                         }
@@ -4351,21 +4624,23 @@
             return Math.max(2, base + bonus);
         }
 
-        function isVisionBlockedByTerrain(x1, y1, x2, y2, sourceZ) {
+        function isVisionBlockedByTerrain(x1, y1, x2, y2, sourceZ, targetZ) {
             // Diagonal neighbours are point-blank too (CHEBYSHEV) — you can always
             // see the tile right beside you, diagonal or cardinal, so neither is
             // ever vision-blocked by terrain... unless a solid edge wall stands
-            // between you (walls occlude even point-blank).
+            // between you (walls occlude even point-blank), or a roof/floor slab
+            // separates the two heights (see verticalSightBlocked).
             const d = Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
+            const _tz = (targetZ != null) ? targetZ : _inferStandingZ(x2, y2);
             if (d <= 1) {
-                return !!state.edgeWalls && wallBlocksAdjacentSight(x1, y1, sourceZ, x2, y2, null);
+                if (state.edgeWalls && wallBlocksAdjacentSight(x1, y1, sourceZ, x2, y2, _tz)) return true;
+                return verticalSightBlocked(x1, y1, (sourceZ != null) ? sourceZ : _inferStandingZ(x1, y1), x2, y2, _tz);
             }
 
             if (sourceZ != null && state.boardColumns?.length > 0) {
-                const tz = _inferStandingZ(x2, y2);
-                return _isRayBlocked3D(x1, y1, sourceZ, x2, y2, tz, true);
+                return _isRayBlocked3D(x1, y1, sourceZ, x2, y2, _tz, true);
             }
-            return isRangeBlockedByTerrain(x1, y1, x2, y2, null, null, true);
+            return isRangeBlockedByTerrain(x1, y1, x2, y2, null, targetZ, true);
         }
 
         function isInVision(unit, tx, ty) {
@@ -5385,9 +5660,14 @@
             const _srcUnit = state.units?.find(u => !u.dead && u.x === x1 && u.y === y1 && u.wallVision);
             if (_srcUnit) return false;
 
-            /* Point-blank: only an authored solid edge wall can block. */
+            /* Point-blank: an authored solid edge wall blocks — and so does a
+               roof/floor slab lying between the two eye lines (you cannot shoot
+               a unit standing on the roof over your head through the roof). */
             if (d <= 1) {
-                return !!state.edgeWalls && wallBlocksAdjacentSight(x1, y1, sourceZ, x2, y2, targetZ);
+                if (state.edgeWalls && wallBlocksAdjacentSight(x1, y1, sourceZ, x2, y2, targetZ)) return true;
+                const _pbTz = (targetZ != null) ? targetZ : _inferStandingZ(x2, y2);
+                const _pbSz = (sourceZ != null) ? sourceZ : _inferStandingZ(x1, y1);
+                return verticalSightBlocked(x1, y1, _pbSz, x2, y2, _pbTz);
             }
 
             if (state.boardColumns?.length > 0) {
@@ -5543,21 +5823,35 @@
 
                 if (ix === ixEnd && iy === iyEnd && iz === izEnd) continue;
 
-                if (ix === x1 && iy === y1) continue;
-
-                if (ix === x2 && iy === y2) continue;
+                /* Endpoint columns: the surface a unit stands on (and every
+                   buried stratum below it) must never occlude its own sight —
+                   but architecture ABOVE it must (2026-07-24). Skipping the
+                   whole column at every height is how units saw, and shot,
+                   straight up through their own ceiling. The eye sits in cell
+                   z+1, so everything at or below that is "self". */
+                if (ix === x1 && iy === y1) { if (iz <= z1 + 1) continue; }
+                else if (ix === x2 && iy === y2) { if (iz <= z2 + 1) continue; }
 
                 if (_hasBlockAt(ix, iy, iz)) return true;
 
                 if (iz >= 0 && ix >= 0 && iy >= 0 && ix < bw() && iy < bh()) {
-                    const rule = getTerrainRule(getTerrainAt(ix, iy));
-                    if (rule.blocksRanged) return true;
+                    /* Sight-blocking TERRAIN (walls, thickets…) occludes the two
+                       cells directly above whichever surface carries it — not the
+                       entire column at every height. The old flat test read the
+                       column TOP terrain and blocked the ray at any z, so a flyer
+                       could not see over a wall and the open span under a bridge
+                       inherited the deck's occlusion. */
+                    const _srfZ = getFloorBelowZ(ix, iy, iz);
+                    if (iz >= _srfZ + 1 && iz <= _srfZ + 2) {
+                        const _srfTerr = getTerrainAt3D(ix, iy, _srfZ);
+                        if (getTerrainRule(_srfTerr).blocksRanged) return true;
+                    }
                     /* Check object blocksRanged with game height */
                     const obj = getObjectAt(ix, iy);
                     if (obj) {
                         const oRule = getObjectRule(obj);
                         if (oRule && oRule.blocksRanged) {
-                            const objBaseZ = _inferStandingZ(ix, iy);
+                            const objBaseZ = _srfZ;
                             const objTopZ = objBaseZ + (oRule.gameHeight || 1);
                             if (iz >= objBaseZ && iz < objTopZ) return true;
                         } else if (forVision && oRule && oRule.roofWalkable) {
@@ -5957,8 +6251,8 @@
                 && (activeGameMode === '_custom_editor' || activeGameMode === '_custom_community')
                 && sp1.length > 0 && sp2.length > 0) {
                 state.spawnZones = {
-                    1: sp1.map(p => ({ x: p.x, y: p.y })),
-                    2: sp2.map(p => ({ x: p.x, y: p.y })),
+                    1: sp1.map(p => ({ x: p.x, y: p.y, z: p.z })),
+                    2: sp2.map(p => ({ x: p.x, y: p.y, z: p.z })),
                 };
                 for (const unit of state.units) {
                     const zoneArr = state.spawnZones[unit.player];
@@ -5969,7 +6263,10 @@
                         const tile = zoneArr[unit._spawnIndex] || zoneArr[0];
                         unit.x = tile.x;
                         unit.y = tile.y;
-                        if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(tile.x, tile.y);
+                        /* Deploy on the AUTHORED storey (tile.z) — nearestWalkableZ
+                           with no reference returns the column TOP, which is how
+                           spawns inside a closed room ended up on the roof. */
+                        if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(tile.x, tile.y, tile.z);
                     }
                 }
                 console.log('[SpawnZones] custom map — authored spawns used verbatim (no terrain rewrite)');
@@ -6073,10 +6370,10 @@
 
             /* Sync SPAWNS to match spawn zones so units actually spawn inside sanctuary walls */
             if (state.spawnZones[1] && state.spawnZones[1].length > 0) {
-                SPAWNS[1] = state.spawnZones[1].map(t => ({ x: t.x, y: t.y }));
+                SPAWNS[1] = state.spawnZones[1].map(t => ({ x: t.x, y: t.y, z: t.z }));
             }
             if (state.spawnZones[2] && state.spawnZones[2].length > 0) {
-                SPAWNS[2] = state.spawnZones[2].map(t => ({ x: t.x, y: t.y }));
+                SPAWNS[2] = state.spawnZones[2].map(t => ({ x: t.x, y: t.y, z: t.z }));
             }
 
             /* Relocate existing units into their spawn zone tiles (units are created before map init) */
@@ -6088,7 +6385,7 @@
                 const tile = zoneArr[idx] || zoneArr[0];
                 unit.x = tile.x;
                 unit.y = tile.y;
-                if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(tile.x, tile.y);
+                if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(tile.x, tile.y, tile.z);
             }
 
             console.log('[SpawnZones] P1:', JSON.stringify(state.spawnZones[1]),
@@ -6501,7 +6798,7 @@
                                     if (!state.units.some(u => !u.dead && u.x === zt.x && u.y === zt.y)) {
                                         unit.x = zt.x;
                                         unit.y = zt.y;
-                                        unit.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(zt.x, zt.y) : 0;
+                                        unit.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(zt.x, zt.y, zt.z) : 0;
                                         placed = true;
                                         break;
                                     }
@@ -6529,7 +6826,7 @@
 
                         unit.x = zoneTile.x;
                         unit.y = zoneTile.y;
-                        unit.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(zoneTile.x, zoneTile.y) : 0;
+                        unit.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(zoneTile.x, zoneTile.y, zoneTile.z) : 0;
                     } else {
                         /* Fallback: spiral from tower if no zone */
                         const tower = getTower(unit.player);
@@ -7315,6 +7612,32 @@
         let _meWallLow = false;           // half wall / parapet
         let _meWallFlip = false;          // swap outer/inner faces
         let _meRoofTex = 'wood_planks';   // roof slab texture (terrain key)
+        let _meFloorTex = 'wood_planks';  // upper-floor slab texture (terrain key)
+        /* ── Slab (roof / floor) placement, 2026-07-24 ──
+           _meSlabH = 0 → auto (flush with the tallest adjacent wall top, or 2
+           cells over the floor). >0 → that many cells above the tile's GROUND
+           floor, which is what makes storey 1 / 2 / 3 controllable. */
+        let _meSlabH = 0;
+        /* Wall openings — a doorway you can walk through with masonry above it,
+           and a window band that sight and shots pass but bodies don't. */
+        let _meWallDoor = false;
+        let _meWallWin = false;
+        let _meDoorH = 2;
+        /* ── One-click building placer ── */
+        let _meBldW = 4;                  // footprint width (tiles)
+        let _meBldD = 4;                  // footprint depth (tiles)
+        let _meBldStorey = 3;             // cells per storey (min 2 = room height)
+        let _meBldFloors = 2;             // number of storeys
+        let _meBldRoof = true;
+        let _meBldWindows = true;
+        let _meBldDoorSide = 'S';
+        let _meBldWallTex = 'bricks_2';
+        let _meBldFloorTex = 'wood_planks';
+        let _meBldRoofTex = 'wood_planks';
+        /* Authored nexus zones: "x,y" → z (the storey the zone belongs to), so a
+           nexus inside a closed room stays inside it instead of defaulting to
+           whatever surface happens to be on top of the column. */
+        let _meNexusZ = {};
         /* Last-placed wall — R rotates it around its anchor tile's 4 edges. */
         let _meSelectedWallRef = null;    // { x, y, dir: 'N'|'E'|'S'|'W' }
         /* Per-terrain colour tints chosen with the editor's colour wheel:
@@ -7521,9 +7844,10 @@
                     Array.isArray(cell) ? cell.map(o => ({ ...o })) : []
                 )) : null,
                 spawns: {
-                    1: (_meSpawns[1] || []).map(s => ({ x: s.x, y: s.y })),
-                    2: (_meSpawns[2] || []).map(s => ({ x: s.x, y: s.y }))
+                    1: (_meSpawns[1] || []).map(s => ({ x: s.x, y: s.y, z: s.z })),
+                    2: (_meSpawns[2] || []).map(s => ({ x: s.x, y: s.y, z: s.z }))
                 },
+                nexusZ: Object.assign({}, _meNexusZ),
                 sanctuaryZones: _meSanctuaryZones ? _meSanctuaryZones.map(row => [...row]) : null,
                 monuments: _meMonuments ? _meMonuments.map(m => ({ ...m })) : [],
                 terrainTints: Object.assign({}, _meTerrainTints),
@@ -7548,9 +7872,10 @@
                 Array.isArray(cell) ? cell.map(o => ({ ...o })) : []
             )) : null;
             _meSpawns = {
-                1: (snap.spawns[1] || []).map(s => ({ x: s.x, y: s.y })),
-                2: (snap.spawns[2] || []).map(s => ({ x: s.x, y: s.y }))
+                1: (snap.spawns[1] || []).map(s => ({ x: s.x, y: s.y, z: s.z })),
+                2: (snap.spawns[2] || []).map(s => ({ x: s.x, y: s.y, z: s.z }))
             };
+            _meNexusZ = snap.nexusZ ? Object.assign({}, snap.nexusZ) : {};
             _meSanctuaryZones = snap.sanctuaryZones ? snap.sanctuaryZones.map(row => [...row]) : null;
             _meSyncVoxelsToLegacy();
         }
@@ -9074,8 +9399,11 @@
                         <button class="me-tool" id="meTool-eraseObj" onclick="window._meSetTool('eraseObj')" title="Erase the top object on this tile (X)">✖ Erase Obj<kbd>X</kbd></button>
                     </div>
                     <div class="me-tool-row">
-                        <button class="me-tool me-tool-p1" id="meTool-spawn1" onclick="window._meSetTool('spawn1')" title="Place a Player 1 spawn">🔵 P1 Spawn</button>
-                        <button class="me-tool me-tool-p2" id="meTool-spawn2" onclick="window._meSetTool('spawn2')" title="Place a Player 2 spawn">🔴 P2 Spawn</button>
+                        <button class="me-tool me-tool-p1" id="meTool-spawn1" onclick="window._meSetTool('spawn1')" title="Place a Player 1 spawn. The spawn remembers the STOREY you place it on — turn on Z-Lock to pin an exact layer so a spawn inside a closed room doesn't deploy onto the roof">🔵 P1 Spawn</button>
+                        <button class="me-tool me-tool-p2" id="meTool-spawn2" onclick="window._meSetTool('spawn2')" title="Place a Player 2 spawn. The spawn remembers the STOREY you place it on — turn on Z-Lock to pin an exact layer so a spawn inside a closed room doesn't deploy onto the roof">🔴 P2 Spawn</button>
+                    </div>
+                    <div class="me-tool-row">
+                        <button class="me-tool" id="meTool-nexus" onclick="window._meSetTool('nexus')" title="Place (or remove) a nexus capture zone. Like spawns it remembers the storey — Z-Lock pins it to an exact layer so an indoor nexus stays indoors">💠 Nexus Zone</button>
                     </div>
                     </div>
                 </div>
@@ -9108,15 +9436,42 @@
                     <div class="me-section-body">
                     <div class="me-tool-row">
                         <button class="me-tool" id="meTool-wall" onclick="window._meSetTool('wall')" title="Place a thin wall on the tile edge nearest your click — or click a block's SIDE face to hug that face. Walls stack, block movement, and (solid ones) block line of sight (W)">🧱 Wall<kbd>W</kbd></button>
-                        <button class="me-tool" id="meTool-roof" onclick="window._meSetTool('roof')" title="Place a thin roof slab over this tile. Auto-snaps flush to adjacent wall tops (Z-lock for exact layer). Walk on top; hides itself when you see a unit underneath">⛺ Roof</button>
-                        <button class="me-tool" id="meTool-eraseWall" onclick="window._meSetTool('eraseWall')" title="Remove the wall on the tile edge nearest your click (roofs are removed with the normal Erase tool)">🚫 Erase Wall</button>
+                        <button class="me-tool" id="meTool-eraseWall" onclick="window._meSetTool('eraseWall')" title="Remove the wall on the tile edge nearest your click">🚫 Erase Wall</button>
+                    </div>
+                    <div class="me-tool-row">
+                        <button class="me-tool" id="meTool-door" onclick="window._meSetTool('door')" title="Click a wall edge to cut a DOORWAY into it. Unlike a missing wall, the masonry above the lintel stays — so tall buildings no longer need a full-height slot just to have a door. Click again to close it">🚪 Doorway</button>
+                        <button class="me-tool" id="meTool-window" onclick="window._meSetTool('window')" title="Click a wall edge to cut a WINDOW into it: line of sight and ranged attacks pass through, bodies do not. Click again to close it">🪟 Window</button>
+                    </div>
+                    <div class="me-tool-row">
+                        <button class="me-tool" id="meTool-roof" onclick="window._meSetTool('roof')" title="Place a thin roof slab over this tile. Auto-snaps flush to adjacent wall tops, or use the Slab Height stepper for an exact storey (Z-Lock for an exact layer). Walk on top; it opens up when a unit is underneath">⛺ Roof</button>
+                        <button class="me-tool" id="meTool-floor" onclick="window._meSetTool('floor')" title="Same as Roof but with the FLOOR texture — this is how you add an upper storey you can walk on while the room below keeps its headroom">🪵 Floor</button>
+                        <button class="me-tool" id="meTool-eraseRoof" onclick="window._meSetTool('eraseRoof')" title="Delete a roof/floor slab. Removes the HIGHEST slab in the column, or exactly the active layer with Z-Lock on">🧹 Erase Slab</button>
+                    </div>
+                    <div class="me-tool-row">
+                        <button class="me-tool" id="meTool-roofFill" onclick="window._meSetTool('roofFill')" title="Roof over a whole ROOM in one click: floods the walled-in area under your click and lays a roof slab across it. Warns if the area isn't sealed">⬛ Fill Roof</button>
+                        <button class="me-tool" id="meTool-floorFill" onclick="window._meSetTool('floorFill')" title="Same flood fill with the floor texture — one click lays a whole upper storey inside the walls">⬜ Fill Floor</button>
                     </div>
                     <div class="me-z-cursor-wrap" style="margin-top:6px">
-                        <span class="me-z-label">Height</span>
+                        <span class="me-z-label">Wall H</span>
                         <button class="me-z-btn" onclick="window._meWallAdjH(-1)">−</button>
                         <span class="me-z-value" id="meWallHVal">${_meWallH}</span>
                         <button class="me-z-btn" onclick="window._meWallAdjH(1)">+</button>
                         <span class="me-z-hint">cells tall (2 = room height)</span>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <span class="me-z-label">Slab H</span>
+                        <button class="me-z-btn" onclick="window._meSlabAdjH(-1)">−</button>
+                        <span class="me-z-value" id="meSlabHVal">${_meSlabH === 0 ? 'auto' : _meSlabH}</span>
+                        <button class="me-z-btn" onclick="window._meSlabAdjH(1)">+</button>
+                        <span class="me-z-hint">roof/floor cells above the ground floor (auto = wall tops)</span>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <span class="me-z-label">Door H</span>
+                        <button class="me-z-btn" onclick="window._meDoorAdjH(-1)">−</button>
+                        <span class="me-z-value" id="meDoorHVal">${_meDoorH}</span>
+                        <button class="me-z-btn" onclick="window._meDoorAdjH(1)">+</button>
+                        <button class="me-z-btn me-wall-btn" id="meWallDoorBtn" onclick="window._meWallToggleDoor()" title="New walls placed with the Wall tool get a doorway at their base">🚪 Wall w/ door</button>
+                        <button class="me-z-btn me-wall-btn" id="meWallWinBtn" onclick="window._meWallToggleWin()" title="New walls placed with the Wall tool get a window band">🪟 Wall w/ window</button>
                     </div>
                     <div class="me-z-cursor-wrap" style="margin-top:6px">
                         <span class="me-z-label">Top</span>
@@ -9144,8 +9499,72 @@
                         <span class="me-z-label">Roof</span>
                         <select class="me-load-select" id="meRoofTexSel" onchange="window._meWallSetRoofTex(this.value)" style="flex:1"></select>
                     </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <span class="me-z-label">Floor</span>
+                        <select class="me-load-select" id="meFloorTexSel" onchange="window._meWallSetFloorTex(this.value)" style="flex:1"></select>
+                    </div>
                     <div style="padding:6px 2px 0;font-size:10px;color:var(--muted);line-height:1.45">
-                        Click near a tile's edge to place the wall on that edge (or click a block's side face). Same edge again repaints with the current options. Press <b>R</b> to spin the last-placed wall around its tile (Shift+R reverse). Battlement recipe: raise a block platform, then run a 1-cell <b>Low</b> wall with <b>Crenellations</b> around its top edges.
+                        Click near a tile's edge to place the wall on that edge (or click a block's side face). Same edge again repaints with the current options. Press <b>R</b> to spin the last-placed wall around its tile (Shift+R reverse). Battlement recipe: raise a block platform, then run a 1-cell <b>Low</b> wall with <b>Crenellations</b> around its top edges.<br>
+                        <b>Multi-storey recipe:</b> run walls of height 3 → set <b>Slab H</b> to 3 → <b>Fill Floor</b> inside the room (that's storey 2's floor and storey 1's ceiling) → run the next ring of walls with Z-Lock at that layer → <b>Slab H</b> 6 → <b>Fill Roof</b>. Use <b>Doorway</b> instead of leaving a wall out, so the masonry above the door stays put.
+                    </div>
+                    </div>
+                </div>
+
+                <div class="me-section collapsed" id="meSec-bldg">
+                    <button type="button" class="me-section-label" onclick="window._meToggleSection('meSec-bldg')"><span class="me-sec-caret">▾</span> Building Placer</button>
+                    <div class="me-section-body">
+                    <div class="me-tool-row">
+                        <button class="me-tool" id="meTool-building" onclick="window._meSetTool('building')" title="Stamp a whole building in one click: perimeter walls per storey, a centred doorway on the chosen face, window bays, a floor slab per upper storey and a roof cap. The click point is the NW corner">🏗️ Place Building</button>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <span class="me-z-label">Size</span>
+                        <button class="me-z-btn" onclick="window._meBldAdj('w',-1)">−</button>
+                        <span class="me-z-value" id="meBldWVal">${_meBldW}</span>
+                        <button class="me-z-btn" onclick="window._meBldAdj('w',1)">+</button>
+                        <span class="me-z-label" style="margin-left:6px">×</span>
+                        <button class="me-z-btn" onclick="window._meBldAdj('d',-1)">−</button>
+                        <span class="me-z-value" id="meBldDVal">${_meBldD}</span>
+                        <button class="me-z-btn" onclick="window._meBldAdj('d',1)">+</button>
+                        <span class="me-z-hint">tiles (W × D)</span>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <span class="me-z-label">Storeys</span>
+                        <button class="me-z-btn" onclick="window._meBldAdj('floors',-1)">−</button>
+                        <span class="me-z-value" id="meBldFloorsVal">${_meBldFloors}</span>
+                        <button class="me-z-btn" onclick="window._meBldAdj('floors',1)">+</button>
+                        <span class="me-z-label" style="margin-left:6px">Height</span>
+                        <button class="me-z-btn" onclick="window._meBldAdj('storey',-1)">−</button>
+                        <span class="me-z-value" id="meBldStoreyVal">${_meBldStorey}</span>
+                        <button class="me-z-btn" onclick="window._meBldAdj('storey',1)">+</button>
+                        <span class="me-z-hint">cells per storey (min 2)</span>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <span class="me-z-label">Door</span>
+                        <select class="me-load-select" id="meBldDoorSel" onchange="window._meBldSetDoorSide(this.value)" style="flex:1">
+                            <option value="S">🚪 South face</option>
+                            <option value="N">🚪 North face</option>
+                            <option value="W">🚪 West face</option>
+                            <option value="E">🚪 East face</option>
+                        </select>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <button class="me-z-btn me-wall-btn" id="meBldRoofBtn" onclick="window._meBldToggle('roof')" title="Cap the building with a roof slab">⛺ Roof cap</button>
+                        <button class="me-z-btn me-wall-btn" id="meBldWinBtn" onclick="window._meBldToggle('windows')" title="Punch window bays into every storey">🪟 Windows</button>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <span class="me-z-label">Walls</span>
+                        <select class="me-load-select" id="meBldWallTexSel" onchange="window._meBldSetTex('wall',this.value)" style="flex:1"></select>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <span class="me-z-label">Floors</span>
+                        <select class="me-load-select" id="meBldFloorTexSel" onchange="window._meBldSetTex('floor',this.value)" style="flex:1"></select>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <span class="me-z-label">Roof</span>
+                        <select class="me-load-select" id="meBldRoofTexSel" onchange="window._meBldSetTex('roof',this.value)" style="flex:1"></select>
+                    </div>
+                    <div style="padding:6px 2px 0;font-size:10px;color:var(--muted);line-height:1.45">
+                        The footprint is levelled to the clicked tile's ground height first, so the walls sit flush. Storeys of 3 cells give a comfortable room; 2 is the tight minimum. Everything it stamps is ordinary walls and slabs — edit any of it afterwards with the tools above.
                     </div>
                     </div>
                 </div>
@@ -10173,7 +10592,62 @@
             if (o) { o.innerHTML = _meWallTexOptions(false); o.value = _meWallTex; if (!o.value) { _meWallTex = o.options[0]?.value || 'bricks_2'; o.value = _meWallTex; } }
             if (i) { i.innerHTML = _meWallTexOptions(true); i.value = _meWallTexIn; }
             if (r) { r.innerHTML = _meWallTexOptions(false); r.value = _meRoofTex; if (!r.value) { _meRoofTex = r.options[0]?.value || 'wood_planks'; r.value = _meRoofTex; } }
+            const f2 = document.getElementById('meFloorTexSel');
+            if (f2) { f2.innerHTML = _meWallTexOptions(false); f2.value = _meFloorTex; if (!f2.value) { _meFloorTex = f2.options[0]?.value || 'wood_planks'; f2.value = _meFloorTex; } }
+            const bw2 = document.getElementById('meBldWallTexSel');
+            if (bw2) { bw2.innerHTML = _meWallTexOptions(false); bw2.value = _meBldWallTex; if (!bw2.value) { _meBldWallTex = bw2.options[0]?.value || 'bricks_2'; bw2.value = _meBldWallTex; } }
+            const bf2 = document.getElementById('meBldFloorTexSel');
+            if (bf2) { bf2.innerHTML = _meWallTexOptions(false); bf2.value = _meBldFloorTex; if (!bf2.value) { _meBldFloorTex = bf2.options[0]?.value || 'wood_planks'; bf2.value = _meBldFloorTex; } }
+            const br2 = document.getElementById('meBldRoofTexSel');
+            if (br2) { br2.innerHTML = _meWallTexOptions(false); br2.value = _meBldRoofTex; if (!br2.value) { _meBldRoofTex = br2.options[0]?.value || 'wood_planks'; br2.value = _meBldRoofTex; } }
+            const bd = document.getElementById('meBldDoorSel');
+            if (bd) bd.value = _meBldDoorSide;
         }
+
+        /* ── Slab (roof / floor) height, doorway height, building options ── */
+        window._meSlabAdjH = function(d) {
+            _meSlabH = Math.max(0, Math.min(ME_MAX_Z, _meSlabH + d));
+            const v = document.getElementById('meSlabHVal');
+            if (v) v.textContent = _meSlabH === 0 ? 'auto' : _meSlabH;
+            _meUpdateZHint();
+            _meSfx('uiCursorMove');
+        };
+        window._meDoorAdjH = function(d) {
+            _meDoorH = Math.max(1, Math.min(6, _meDoorH + d));
+            const v = document.getElementById('meDoorHVal');
+            if (v) v.textContent = _meDoorH;
+            _meUpdateZHint();
+            _meSfx('uiCursorMove');
+        };
+        window._meWallSetFloorTex = function(t) { if (t) _meFloorTex = t; _meSfx('uiButtonConfirm'); };
+        window._meWallToggleDoor = function() { _meWallDoor = !_meWallDoor; _meWallStyleBtns(); _meSfx('uiButtonConfirm'); };
+        window._meWallToggleWin = function() { _meWallWin = !_meWallWin; _meWallStyleBtns(); _meSfx('uiButtonConfirm'); };
+        window._meBldAdj = function(what, d) {
+            if (what === 'w') _meBldW = Math.max(1, Math.min(24, _meBldW + d));
+            else if (what === 'd') _meBldD = Math.max(1, Math.min(24, _meBldD + d));
+            else if (what === 'floors') _meBldFloors = Math.max(1, Math.min(6, _meBldFloors + d));
+            else if (what === 'storey') _meBldStorey = Math.max(2, Math.min(8, _meBldStorey + d));
+            const ids = { w: 'meBldWVal', d: 'meBldDVal', floors: 'meBldFloorsVal', storey: 'meBldStoreyVal' };
+            const vals = { w: _meBldW, d: _meBldD, floors: _meBldFloors, storey: _meBldStorey };
+            const el = document.getElementById(ids[what]);
+            if (el) el.textContent = vals[what];
+            _meUpdateZHint();
+            _meSfx('uiCursorMove');
+        };
+        window._meBldSetDoorSide = function(s) { _meBldDoorSide = s || 'S'; _meUpdateZHint(); _meSfx('uiButtonConfirm'); };
+        window._meBldSetTex = function(which, t) {
+            if (!t) return;
+            if (which === 'wall') _meBldWallTex = t;
+            else if (which === 'floor') _meBldFloorTex = t;
+            else if (which === 'roof') _meBldRoofTex = t;
+            _meSfx('uiButtonConfirm');
+        };
+        window._meBldToggle = function(what) {
+            if (what === 'roof') _meBldRoof = !_meBldRoof;
+            else if (what === 'windows') _meBldWindows = !_meBldWindows;
+            _meWallStyleBtns();
+            _meSfx('uiButtonConfirm');
+        };
         window._meWallAdjH = function(d) {
             _meWallH = Math.max(1, Math.min(6, _meWallH + d));
             const v = document.getElementById('meWallHVal');
@@ -10191,6 +10665,14 @@
             if (l) l.classList.toggle('active', _meWallLow);
             if (s) s.classList.toggle('active', _meWallSee);
             if (f) f.classList.toggle('active', _meWallFlip);
+            const dr = document.getElementById('meWallDoorBtn');
+            const wn = document.getElementById('meWallWinBtn');
+            if (dr) dr.classList.toggle('active', _meWallDoor);
+            if (wn) wn.classList.toggle('active', _meWallWin);
+            const br = document.getElementById('meBldRoofBtn');
+            const bw = document.getElementById('meBldWinBtn');
+            if (br) br.classList.toggle('active', _meBldRoof);
+            if (bw) bw.classList.toggle('active', _meBldWindows);
         }
         window._meWallToggleLow = function() { _meWallLow = !_meWallLow; if (_meWallLow) _meWallSee = false; _meWallStyleBtns(); _meSfx('uiButtonConfirm'); };
         window._meWallToggleSee = function() { _meWallSee = !_meWallSee; if (_meWallSee) _meWallLow = false; _meWallStyleBtns(); _meSfx('uiButtonConfirm'); };
@@ -10271,13 +10753,244 @@
             return col.length ? col[col.length - 1].z : -1;
         }
 
+        /* ══════════ MULTI-STOREY BUILD HELPERS (2026-07-24) ══════════
+           Roofs/floors used to be a single auto-snapping slab with no height
+           control, no eraser and no fill, which made anything past a one-room
+           hut a hand-placed slog. Everything below drives the new Roof/Floor/
+           Fill/Erase-slab tools, the doorway & window wall options, and the
+           one-click Building placer. */
+
+        /* GROUND surface of a column: the top of the contiguous run that starts
+           at the bottom. Anything floating over an air gap (roof slabs, upper
+           storeys) is skipped, so "3 cells above the floor" keeps meaning the
+           same thing after you have already stacked two storeys on the tile. */
+        function _meColFloorZ(x, y) {
+            const col = _meGetColumn(x, y);
+            if (!col.length) return 0;
+            let z = col[0].z;
+            for (let i = 1; i < col.length; i++) {
+                if (col[i].z === z + 1 && !col[i].rf) z = col[i].z; else break;
+            }
+            return z;
+        }
+
+        /* Where a slab placed on this tile should land.
+             Z-lock            → exactly the active layer
+             explicit height   → floor + _meSlabH cells (storey control)
+             auto (_meSlabH=0) → flush with the tallest adjacent wall top, or
+                                 2 cells over the floor when there are no walls */
+        function _meSlabZFor(x, y) {
+            if (_meZLock) return _meActiveZ;
+            if (_meSlabH > 0) return _meColFloorZ(x, y) + _meSlabH;
+            const top = _meNearestWallTop(x, y, 8);
+            return (top >= 0) ? top : _meColFloorZ(x, y) + 2;
+        }
+
+        /* Top cell of the NEAREST wall to this tile, searched ring by ring.
+           Roofing the middle of a room used to fall back to "floor + 2" because
+           an interior tile has no walls on its OWN four edges — so a fill in a
+           3-cell-high room laid the slab a level too low. Rings keep it local:
+           a wall two tiles away in another building never wins over this room's
+           own wall. */
+        function _meNearestWallTop(x, y, maxR) {
+            const topAt = (tx, ty) => {
+                let t = -1;
+                for (const d of ['N', 'S', 'W', 'E']) {
+                    const w = _meWalls[_meWallKeyFor(tx, ty, d)];
+                    if (w) t = Math.max(t, w.z0 + Math.max(1, w.h || 1) - 1);
+                }
+                return t;
+            };
+            for (let r = 0; r <= (maxR || 8); r++) {
+                let best = -1;
+                for (let dy = -r; dy <= r; dy++) {
+                    for (let dx = -r; dx <= r; dx++) {
+                        if (r > 0 && Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+                        const nx = x + dx, ny = y + dy;
+                        if (nx < 0 || ny < 0 || nx >= _meW || ny >= _meH) continue;
+                        best = Math.max(best, topAt(nx, ny));
+                    }
+                }
+                if (best >= 0) return best;
+            }
+            return -1;
+        }
+
+        /* Stamp one thin slab (roof / floor — mechanically identical: you walk
+           on top and the room underneath keeps its headroom). */
+        function _meStampSlab(x, y, z, texKey) {
+            const rz = Math.max(0, Math.min(ME_MAX_Z, z));
+            const tid = ME_TERRAIN_TO_ID[texKey] || 1;
+            const wasLock = _meZLock;
+            _meZLock = true;          // never auto-inject a z0 floor under a slab
+            _meSetVoxel(x, y, rz, tid);
+            _meZLock = wasLock;
+            const rb = _meGetVoxel(x, y, rz);
+            if (rb) rb.rf = 1;
+            return rz;
+        }
+
+        /* Remove the slab the user means: the one at the active layer under
+           Z-lock, else the HIGHEST roof/floor slab in the column. Returns the z
+           removed, or -1 when the column carries no slab. */
+        function _meRemoveSlabAt(x, y) {
+            const col = _meGetColumn(x, y);
+            if (!col.length) return -1;
+            if (_meZLock) {
+                const b = _meGetVoxel(x, y, _meActiveZ);
+                if (!b) return -1;
+                _meRemoveVoxel(x, y, _meActiveZ);
+                return _meActiveZ;
+            }
+            for (let i = col.length - 1; i >= 0; i--) {
+                if (col[i].rf) { const z = col[i].z; _meRemoveVoxel(x, y, z); return z; }
+            }
+            /* No flagged slab — fall back to the top block if it floats over a
+               gap (hand-built floors made with the paint brush). */
+            const top = col[col.length - 1];
+            const below = col.find(b => b.z === top.z - 1);
+            if (!below && top.z > 0) { _meRemoveVoxel(x, y, top.z); return top.z; }
+            return -1;
+        }
+
+        /* Does the wall on tile (x,y)'s `dir` edge seal a slab at level rz?
+           A slab sits IN the top cell of the wall that carries it, so a wall
+           covering rz OR rz-1 counts as the room's boundary. */
+        function _meWallSealsAt(x, y, dir, rz) {
+            const w = _meWalls[_meWallKeyFor(x, y, dir)];
+            if (!w) return false;
+            const top = w.z0 + Math.max(1, w.h || 1) - 1;
+            return w.z0 <= rz && top >= rz - 1;
+        }
+
+        /* Flood the enclosed area at slab level rz, starting at (sx,sy).
+           Walls (and the map edge) stop the spread. `open` reports that the
+           area leaked — the caller warns instead of carpeting the whole map. */
+        function _meFloodEnclosed(sx, sy, rz, limit) {
+            const cap = limit || 400;
+            const seen = new Set([sx + ',' + sy]);
+            const tiles = [{ x: sx, y: sy }];
+            const q = [{ x: sx, y: sy }];
+            let open = false;
+            const dirs = [[0, -1, 'N'], [0, 1, 'S'], [-1, 0, 'W'], [1, 0, 'E']];
+            while (q.length) {
+                const c = q.shift();
+                for (const [dx, dy, dir] of dirs) {
+                    if (_meWallSealsAt(c.x, c.y, dir, rz)) continue;
+                    const nx = c.x + dx, ny = c.y + dy;
+                    if (nx < 0 || ny < 0 || nx >= _meW || ny >= _meH) { open = true; continue; }
+                    const k = nx + ',' + ny;
+                    if (seen.has(k)) continue;
+                    seen.add(k);
+                    if (tiles.length >= cap) { open = true; continue; }
+                    tiles.push({ x: nx, y: ny });
+                    q.push({ x: nx, y: ny });
+                }
+            }
+            return { tiles, open };
+        }
+
+        /* ══════════ ONE-CLICK BUILDING PLACER ══════════
+           Stamps a whole structure: perimeter walls per storey (with a doorway
+           on the chosen side at ground level and a window band on every storey),
+           a floor slab per upper storey, and an optional roof. The click point
+           is the building's NW corner. */
+        function _meStampBuilding(ox, oy) {
+            const W = Math.max(1, _meBldW), D = Math.max(1, _meBldD);
+            const SH = Math.max(2, _meBldStorey);      // cells per storey (2 = room height)
+            const N = Math.max(1, _meBldFloors);
+            const baseZ = _meColFloorZ(ox, oy);
+            const x1 = Math.min(_meW - 1, ox + W - 1), y1 = Math.min(_meH - 1, oy + D - 1);
+
+            /* 1. Level the footprint to the anchor's floor so the walls sit flush. */
+            const gTid = ME_TERRAIN_TO_ID[_meBldFloorTex] || ME_TERRAIN_TO_ID['grass'] || 1;
+            for (let y = oy; y <= y1; y++) {
+                for (let x = ox; x <= x1; x++) {
+                    if (x < 0 || y < 0) continue;
+                    const col = _meVoxels?.[y]?.[x];
+                    if (col) for (let i = col.length - 1; i >= 0; i--) { if (col[i].z > baseZ) col.splice(i, 1); }
+                    for (let z = 0; z <= baseZ; z++) {
+                        if (!_meGetVoxel(x, y, z)) {
+                            const wasLock = _meZLock; _meZLock = true;
+                            _meSetVoxel(x, y, z, gTid);
+                            _meZLock = wasLock;
+                        }
+                    }
+                    if (baseZ >= 0) { const b = _meGetVoxel(x, y, baseZ); if (b) { b.tid = gTid; delete b.rf; } }
+                }
+            }
+
+            /* 2. Perimeter walls. state.edgeWalls holds ONE record per edge, so
+               a multi-storey facade is a single tall wall carrying an explicit
+               list of openings (`ops`) — a centred doorway at ground level and
+               one window per storey — rather than a stack of records that would
+               simply overwrite each other. */
+            const doorSide = _meBldDoorSide;
+            const midX = ox + Math.floor(W / 2), midY = oy + Math.floor(D / 2);
+            const edges = [];
+            for (let x = ox; x <= x1; x++) { edges.push({ x, y: oy, dir: 'N' }); edges.push({ x, y: y1, dir: 'S' }); }
+            for (let y = oy; y <= y1; y++) { edges.push({ x: ox, y, dir: 'W' }); edges.push({ x: x1, y, dir: 'E' }); }
+
+            const wallZ0 = Math.min(ME_MAX_Z, baseZ + 1);
+            const wallH = Math.max(1, Math.min(ME_MAX_Z, N * SH));
+            for (const e of edges) {
+                if (e.x < 0 || e.y < 0 || e.x >= _meW || e.y >= _meH) continue;
+                const rec = { z0: wallZ0, h: wallH, tex: _meBldWallTex };
+                if (_meWallTexIn) rec.texIn = _meWallTexIn;
+                const ops = [];
+                const onDoorBay = e.dir === doorSide
+                    && ((doorSide === 'N' || doorSide === 'S') ? e.x === midX : e.y === midY);
+                if (onDoorBay) ops.push({ z: wallZ0, h: Math.min(2, SH), kind: 'door' });
+                if (_meBldWindows && SH >= 2) {
+                    /* Windows on alternating bays so the facade reads as a
+                       building rather than a colander — and never in the bay
+                       that carries the door on the ground storey. */
+                    const idx = (e.dir === 'N' || e.dir === 'S') ? e.x : e.y;
+                    if (idx % 2 === 0) {
+                        for (let s = 0; s < N; s++) {
+                            if (s === 0 && onDoorBay) continue;
+                            ops.push({ z: wallZ0 + s * SH + (SH - 2), h: 1, kind: 'win' });
+                        }
+                    }
+                }
+                if (ops.length) rec.ops = ops;
+                _meWalls[_meWallKeyFor(e.x, e.y, e.dir)] = rec;
+            }
+
+            /* 3. One floor slab per upper storey (each is also the ceiling of
+               the storey below — that's what gives the lower room its roof). */
+            for (let s = 1; s < N; s++) {
+                const fz = baseZ + s * SH;
+                for (let y = oy; y <= y1; y++) for (let x = ox; x <= x1; x++) {
+                    if (x >= 0 && y >= 0 && x < _meW && y < _meH) _meStampSlab(x, y, fz, _meBldFloorTex);
+                }
+            }
+
+            /* 4. Roof cap. */
+            if (_meBldRoof) {
+                const rz = baseZ + N * SH;
+                for (let y = oy; y <= y1; y++) for (let x = ox; x <= x1; x++) {
+                    if (x >= 0 && y >= 0 && x < _meW && y < _meH) _meStampSlab(x, y, rz, _meBldRoofTex);
+                }
+            }
+            _meSyncVoxelsToLegacy();
+        }
+
         function _meUpdateToolButtons() {
-            ['paint','object','select','erase','eraseObj','spawn1','spawn2','elevUp','elevDown','elevSet','wall','roof','eraseWall'].forEach(t => {
+            ['paint','object','select','erase','eraseObj','spawn1','spawn2','nexus','elevUp','elevDown','elevSet',
+             'wall','roof','floor','roofFill','floorFill','eraseRoof','eraseWall','door','window','building'].forEach(t => {
                 const btn = document.getElementById('meTool-' + t);
                 if (btn) btn.classList.toggle('active', _meTool === t);
             });
             const monBtn = document.getElementById('meTool-monument');
             if (monBtn) monBtn.classList.toggle('active', _meTool === 'monument');
+        }
+
+        /* One-line feedback under the Z row — "filled 12 tiles", "area isn't
+           sealed", "doorway removed". Cleared by the next tool switch. */
+        function _meSetHint(msg) {
+            const hint = document.getElementById('meZHint');
+            if (hint) hint.textContent = msg || '';
         }
 
         window._meSetTool = function(t) {
@@ -10301,10 +11014,17 @@
             const hint = document.getElementById('meZHint');
             if (!hint) return;
             const lockTxt = _meZLock ? ' · locked' : '';
+            const slabTxt = _meSlabH > 0 ? `${_meSlabH} cells above the floor` : 'flush with wall tops (or +2)';
             if (_meTool === 'paint') hint.textContent = `Paint at Z=${_meActiveZ}${lockTxt}`;
             else if (_meTool === 'erase') hint.textContent = `Erase at Z=${_meActiveZ}${lockTxt}`;
             else if (_meTool === 'wall') hint.textContent = _meZLock ? `Wall base at Z=${_meActiveZ} · locked` : 'Wall sits on the clicked surface';
-            else if (_meTool === 'roof') hint.textContent = _meZLock ? `Roof at Z=${_meActiveZ} · locked` : 'Roof snaps flush to wall tops (or +2)';
+            else if (_meTool === 'roof' || _meTool === 'floor') hint.textContent = _meZLock ? `Slab at Z=${_meActiveZ} · locked` : `Slab ${slabTxt}`;
+            else if (_meTool === 'roofFill' || _meTool === 'floorFill') hint.textContent = _meZLock ? `Fill the sealed room at Z=${_meActiveZ}` : `Fill the sealed room · ${slabTxt}`;
+            else if (_meTool === 'eraseRoof') hint.textContent = _meZLock ? `Remove the slab at Z=${_meActiveZ}` : 'Removes the highest roof/floor slab';
+            else if (_meTool === 'door') hint.textContent = `Click a wall edge — doorway ${_meDoorH} cells tall, masonry stays above`;
+            else if (_meTool === 'window') hint.textContent = 'Click a wall edge — window: sight through, no walking through';
+            else if (_meTool === 'building') hint.textContent = `Click = NW corner · ${_meBldW}×${_meBldD}, ${_meBldFloors}×${_meBldStorey} cells`;
+            else if (_meTool === 'nexus') hint.textContent = _meZLock ? `Nexus zone at Z=${_meActiveZ} · locked` : 'Nexus zone on the clicked surface';
             else if (_meZLock) hint.textContent = `Z-Lock on (Z=${_meActiveZ})`;
             else hint.textContent = '';
         }
@@ -11075,7 +11795,14 @@
 
                     const otherP = p === 1 ? 2 : 1;
                     _meSpawns[otherP] = _meSpawns[otherP].filter(s => !(s.x === x && s.y === y));
-                    _meSpawns[p].push({ x, y });
+                    /* Spawn points carry the STOREY they belong to (2026-07-24).
+                       Without a z the match placed everyone on the column's top
+                       surface, so a spawn authored inside a closed room deployed
+                       the whole team onto its roof. Z-lock pins an exact layer;
+                       otherwise the clicked column's top is used, as before. */
+                    const sz = _meZLock ? _meActiveZ : Math.max(0, _meColTopZ(x, y));
+                    _meSpawns[p].push({ x, y, z: sz });
+                    _meSetHint(`P${p} spawn at Z${sz}.`);
 
                     if (_meGrid[y][x] === 0) _meSetVoxel(x, y, 0, 1);
                 }
@@ -11120,6 +11847,11 @@
                 if (_meWallSee) rec.see = true;
                 if (_meWallLow) rec.low = true;
                 if (_meWallFlip) rec.flip = true;
+                /* Openings: a doorway keeps the masonry above it (no more
+                   full-height slot just to get a door), a window band lets
+                   sight and shots through without letting bodies through. */
+                if (_meWallDoor && !_meWallSee && !_meWallLow) { rec.door = 1; rec.doorH = Math.max(1, Math.min(_meDoorH, _meWallH)); }
+                if (_meWallWin && !_meWallSee && !_meWallLow) { rec.win = 1; rec.winZ = Math.max(0, (_meWallDoor ? Math.max(1, Math.min(_meDoorH, _meWallH)) : 1)); rec.winH = 1; }
                 _meWalls[pe.key] = rec;
                 /* Remember it so R / Shift+R can spin it to another edge —
                    and drop any object/monument selection so R targets the
@@ -11141,28 +11873,104 @@
                         if (_meWalls[k]) { delete _meWalls[k]; _meSfx('block'); break; }
                     }
                 }
-            } else if (_meTool === 'roof') {
-                /* Thin roof slab voxel. The slab renders flush with the TOP of
-                   its cell, so auto mode places it IN the tallest adjacent
-                   wall's top cell — dead flush, no gap. No walls → 2 cells
-                   over the floor (room-height ceiling). Z-lock places exactly. */
-                let rz;
-                if (_meZLock) {
-                    rz = _meActiveZ;
-                } else {
-                    let wallTop = -1;
-                    for (const k of [x + ',' + y + ',N', x + ',' + (y + 1) + ',N', x + ',' + y + ',W', (x + 1) + ',' + y + ',W']) {
-                        const wRec = _meWalls[k];
-                        if (wRec) wallTop = Math.max(wallTop, wRec.z0 + Math.max(1, wRec.h || 1) - 1);
-                    }
-                    rz = (wallTop >= 0) ? wallTop : _meColTopZ(x, y) + 2;
-                }
-                rz = Math.max(0, Math.min(ME_MAX_Z, rz));
-                const rtid = ME_TERRAIN_TO_ID[_meRoofTex] || 1;
-                _meSetVoxel(x, y, rz, rtid);
-                const rb = _meGetVoxel(x, y, rz);
-                if (rb) rb.rf = 1;
+            } else if (_meTool === 'roof' || _meTool === 'floor') {
+                /* Thin roof / floor slab voxel. The slab renders flush with the
+                   TOP of its cell, so auto mode places it IN the tallest
+                   adjacent wall's top cell — dead flush, no gap. No walls →
+                   2 cells over the floor (room-height ceiling). The Height
+                   stepper (_meSlabH) overrides with an exact storey; Z-lock
+                   places at exactly the active layer. Roof and Floor differ
+                   only in which texture they carry. */
+                _meStampSlab(x, y, _meSlabZFor(x, y), _meTool === 'floor' ? _meFloorTex : _meRoofTex);
                 _meSfx('itemThrow');
+            } else if (_meTool === 'roofFill' || _meTool === 'floorFill') {
+                /* Fill the walled-in area under the click with one slab layer —
+                   the "roof over this room" button. Leaks are reported instead
+                   of carpeting the whole map. */
+                const rz = Math.max(0, Math.min(ME_MAX_Z, _meSlabZFor(x, y)));
+                const flood = _meFloodEnclosed(x, y, rz, 400);
+                const tex = _meTool === 'floorFill' ? _meFloorTex : _meRoofTex;
+                for (const t of flood.tiles) _meStampSlab(t.x, t.y, rz, tex);
+                _meSyncVoxelsToLegacy();
+                _meSfx(flood.open ? 'uiError' : 'itemThrow');
+                _meSetHint(flood.open
+                    ? `⚠ Area isn't sealed at Z${rz} — filled ${flood.tiles.length} tiles up to the cap. Close the walls first.`
+                    : `Filled ${flood.tiles.length} tiles at Z${rz}.`);
+            } else if (_meTool === 'eraseRoof') {
+                const gone = _meRemoveSlabAt(x, y);
+                if (gone >= 0) { _meSfx('block'); _meSetHint(`Removed slab at Z${gone}.`); }
+                else _meSetHint('No roof/floor slab on this tile.');
+            } else if (_meTool === 'door' || _meTool === 'window') {
+                /* Cut (or close) an opening in the wall nearest the click. No
+                   wall there yet? Build one at the current wall settings first,
+                   so a single click turns a bare edge into a doorway.
+                   Openings live in an `ops` list of ABSOLUTE cells, so one tall
+                   facade can carry a door at the bottom and a window on every
+                   storey — Z-Lock picks which storey you're cutting. */
+                const isDoor = (_meTool === 'door');
+                const pe = _meWallPickEdge(x, y);
+                let rec = _meWalls[pe.key];
+                if (!rec) {
+                    const z0 = _meZLock ? _meActiveZ : (_meColTopZ(pe.baseX, pe.baseY) + 1);
+                    rec = {
+                        z0: Math.max(0, Math.min(ME_MAX_Z, z0)),
+                        h: Math.max(_meWallH, isDoor ? _meDoorH : 2),
+                        tex: _meWallTex
+                    };
+                    if (_meWallTexIn) rec.texIn = _meWallTexIn;
+                    _meWalls[pe.key] = rec;
+                }
+                delete rec.see; delete rec.low;          // openings need a solid wall
+                const wTop = rec.z0 + Math.max(1, rec.h || 1) - 1;
+                const oz = _meZLock
+                    ? Math.max(rec.z0, Math.min(wTop, _meActiveZ))
+                    : (isDoor ? rec.z0 : Math.min(wTop, rec.z0 + 1));
+                const oh = isDoor ? Math.max(1, Math.min(_meDoorH, wTop - oz + 1)) : 1;
+                if (!Array.isArray(rec.ops)) {
+                    /* Migrate any legacy flag form into the list. */
+                    rec.ops = [];
+                    if (rec.door) { rec.ops.push({ z: rec.z0, h: Math.max(1, rec.doorH || 2), kind: 'door' }); delete rec.door; delete rec.doorH; }
+                    if (rec.win) { rec.ops.push({ z: rec.z0 + ((rec.winZ != null) ? rec.winZ : 1), h: Math.max(1, rec.winH || 1), kind: 'win' }); delete rec.win; delete rec.winZ; delete rec.winH; }
+                }
+                const hitIdx = rec.ops.findIndex(o => o && oz >= (o.z | 0) && oz < (o.z | 0) + Math.max(1, o.h || 1));
+                if (hitIdx >= 0) {
+                    rec.ops.splice(hitIdx, 1);
+                    _meSetHint(isDoor ? 'Doorway closed.' : 'Window closed.');
+                    _meSfx('block');
+                } else {
+                    rec.ops.push({ z: oz, h: oh, kind: isDoor ? 'door' : 'win' });
+                    _meSetHint(isDoor
+                        ? `Doorway at Z${oz}, ${oh} cells tall — the wall above it stays.`
+                        : `Window at Z${oz} — sight and shots pass, bodies do not.`);
+                    _meSfx('itemThrow');
+                }
+                if (!rec.ops.length) delete rec.ops;
+                _meSelectedWallRef = { x, y, dir: pe.dir };
+            } else if (_meTool === 'building') {
+                _meStampBuilding(x, y);
+                _meSfx('itemThrow');
+                _meSetHint(`Building ${_meBldW}×${_meBldD}, ${_meBldFloors} storey(s) of ${_meBldStorey} cells — door on the ${_meBldDoorSide} face.`);
+            } else if (_meTool === 'nexus') {
+                /* Nexus zone anchored to a STOREY. Without the z it defaulted to
+                   whatever sat on top of the column, so a nexus authored inside a
+                   closed room ended up on its roof. */
+                const nk = x + ',' + y;
+                const stk = Array.isArray(_meObjects[y][x]) ? _meObjects[y][x] : (_meObjects[y][x] = []);
+                const nOid = ME_OBJECT_TO_ID['nexus'];
+                const have = stk.findIndex(e => e.oid === nOid);
+                if (have >= 0) {
+                    stk.splice(have, 1);
+                    delete _meNexusZ[nk];
+                    _meSfx('block');
+                    _meSetHint('Nexus zone removed.');
+                } else if (nOid) {
+                    stk.push(_meObjEntry(nOid, 'center', 'bottom', 0, false, false, null));
+                    _meNexusZ[nk] = _meZLock ? _meActiveZ : Math.max(0, _meColTopZ(x, y));
+                    if (_meGrid[y][x] === 0) _meGrid[y][x] = 1;
+                    _meSfx('itemThrow');
+                    _meSetHint(`Nexus zone at Z${_meNexusZ[nk]} (${NEXUS_ZONE_SIZE || 2}×${NEXUS_ZONE_SIZE || 2} from here).`);
+                }
+                _refreshObjs3D = true;
             }
             _meRenderGrid();
             if (_refreshObjs3D) _meRefreshObjects3D();
@@ -11442,6 +12250,7 @@
                 heights: _meHeights ? _meHeights.map(row => [...row]) : null,
                 voxels: _meVoxels ? _meVoxels.map(row => row.map(col => col.map(b => ({...b})))) : null,
                 walls: _meWalls ? JSON.parse(JSON.stringify(_meWalls)) : {},
+                nexusZ: Object.assign({}, _meNexusZ),
                 monuments: _meMonuments ? _meMonuments.map(m => ({...m})) : [],
                 terrainTints: Object.assign({}, _meTerrainTints),
                 env: _meEnv ? JSON.parse(JSON.stringify(_meEnv)) : null,
@@ -11496,6 +12305,7 @@
                 _meBuildVoxelsFromLegacy();
             }
             _meWalls = m.walls ? JSON.parse(JSON.stringify(m.walls)) : {};
+            _meNexusZ = m.nexusZ ? Object.assign({}, m.nexusZ) : {};
             if (!(m.fmt >= 2)) _meFillEmptyWithGrass();   // pre-hole-era save
             _meActiveZ = 0;
             const zVal = document.getElementById('meActiveZVal');
@@ -11528,6 +12338,7 @@
                 heights: _meHeights,
                 voxels: _meVoxels,
                 walls: _meWalls,
+                nexusZ: _meNexusZ,
                 monuments: _meMonuments || [],
                 terrainTints: _meTerrainTints,
                 env: _meEnv ? JSON.parse(JSON.stringify(_meEnv)) : null,
@@ -11568,6 +12379,7 @@
                     _meBuildVoxelsFromLegacy();
                 }
                 _meWalls = data.walls ? JSON.parse(JSON.stringify(data.walls)) : {};
+                _meNexusZ = data.nexusZ ? Object.assign({}, data.nexusZ) : {};
                 if (!(data.fmt >= 2)) _meFillEmptyWithGrass();   // pre-hole-era map
                 _meActiveZ = 0;
                 if (data.name) document.getElementById('meMapName').value = data.name;
@@ -12200,8 +13012,11 @@
                 hasTowers: false,
                 terrainPatches: { water: [0,0,0], desert: [0,0,0], mountain: [0,0,0] },
                 spawns: {
-                    1: _meSpawns[1].map(s => ({ x: s.x, y: s.y })),
-                    2: _meSpawns[2].map(s => ({ x: s.x, y: s.y }))
+                    /* z = the STOREY the author placed the spawn on. Without it
+                       deployment fell back to the column's top surface, which put
+                       a team authored inside a closed room onto its roof. */
+                    1: _meSpawns[1].map(s => ({ x: s.x, y: s.y, z: s.z })),
+                    2: _meSpawns[2].map(s => ({ x: s.x, y: s.y, z: s.z }))
                 },
                 defaultBuilds: {
                     1: Array(teamSize).fill('Warrior'),
@@ -12218,6 +13033,9 @@
             window._customEditorHeights = walkHeights;
             window._customEditorTints = Object.assign({}, _meTerrainTints);
             window._customEditorWalls = JSON.parse(JSON.stringify(_meWalls || {}));
+            /* "x,y" → storey z for author-placed nexus zones (see
+               _initNexusFromObjects) — keeps an indoor nexus indoors. */
+            window._customEditorNexusZ = Object.assign({}, _meNexusZ);
 
             if (_meVoxels) {
                 window._customEditorVoxels = [];

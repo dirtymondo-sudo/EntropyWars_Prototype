@@ -6694,3 +6694,108 @@ Difficulty + pacing pass ("couldn't get past floor 5, enemy turns too slow"):
   animateStrikeLeap (covered by 'strike-leap' relay). Guests re-decide panel
   visibility for their own fog view inside the presentation. Damage never
   rides the relay (state-sync authoritative).
+
+---
+
+## 3D AIR-GAP MAPS — bridges, storeys, roofs (2026-07-24)
+
+Custom maps with air gaps kept breaking because most of the engine still keyed
+off `getHeightAt(x,y)`, which returns the **column TOP**. On an air-gap map that
+is the bridge deck / the roof — not the surface under the unit. This pass moved
+every affected system onto **air pockets**.
+
+### New primitives (map.js, exported on `window.GAME`)
+- `getFloorBelowZ(x,y,z)` — highest solid block at/below z (counts roofWalkable
+  building roofs). The surface a body at z rests on.
+- `getCeilingAboveZ(x,y,z)` — lowest solid block above z, `Infinity` = open sky.
+- `airBodyFreeAt(x,y,z)` — can a body hover at stand-height z? Feet occupy cell
+  `z+1`, head `z+2`; a `roof` slab hugs the top of its cell so brushing one with
+  your head is legal (mirrors `columnLaneClear`).
+- `getFlightZChoices(x,y,prefZ,span,limit)` — legal hover altitudes near prefZ,
+  nearest-first. Min clearance relaxes below `FLYING_ALTITUDE_CONFIG.minClearance`
+  **only inside a tight pocket**, so flyers thread under a bridge but never skim
+  an open field at altitude 1.
+- `verticalSightBlocked(x1,y1,z1,x2,y2,z2)` — the vertical half of point-blank
+  LoS. Blocks ABOVE each end's own standing surface count; the floor you stand on
+  never occludes you, so hills/cliffs behave exactly as before.
+- `wallOpeningRects(w)` — doorway/window rects for an edge wall (renderer + rules
+  read the same function).
+
+### What changed
+- `isUnitAirborne` / `getMinFlyingZ` / `getMaxFlyingZ` take an optional `refZ`
+  and resolve against the pocket. **2-arg calls keep the old column-top
+  behaviour** — pass the unit's z at every new call site.
+- `getMoveTiles` / `findMovePath`: airborne neighbours now sample
+  `getFlightZChoices(nx,ny,cur.z,FLY_STEP_ALT_SPAN)` (span 2, capped 3) instead
+  of one column-top-derived altitude. Output is collapsed to the nearest-z entry
+  per column so the move overlay isn't three highlights deep.
+- Airborne wall test uses the **destination-altitude** body span
+  (`wallStepInfo(...,nz,nz,0)`). The old merged from/to span is exactly why a
+  flyer next to a bridge could reach neither under it nor over it: the forced
+  climb to `deckTop+2` stretched its body through the deck's parapet.
+- `finishMoveAt` trusts the path's altitude for airborne movers instead of
+  re-deriving it (the re-derive flung a flyer that had just gone under a bridge
+  up onto the deck).
+- `doAltitudeChange` lands on `getFloorBelowZ`, not the column top.
+
+### Edge walls: doorways & windows
+`state.edgeWalls` holds **exactly one record per edge** — walls do not stack. A
+multi-storey facade is therefore ONE tall wall carrying `ops`:
+```js
+{ z0, h, tex, ops: [ {z:1,h:2,kind:'door'}, {z:5,h:1,kind:'win'} ] }
+```
+`ops` cells are ABSOLUTE. Legacy `door/doorH` + `win/winZ/winH` flags still work
+and are migrated into `ops` the first time a door/window tool touches the wall.
+Doors pass bodies + sight; windows pass sight/shots only.
+
+### Fog / LoS
+- Point-blank (Chebyshev ≤1, incl. same column) now runs `verticalSightBlocked`
+  — a unit on the roof directly above you is no longer visible/shootable.
+- `_isRayBlocked3D` no longer skips the WHOLE source/target column: it skips only
+  cells at/below `z+1` (the eye), so your own ceiling occludes you.
+- Sight-blocking TERRAIN occludes the 2 cells above the surface carrying it, not
+  the whole column — flyers see over walls, the span under a bridge stays clear.
+- `_isUnitVisibleToViewer`'s awareness radius now REQUIRES line of sight (it was
+  pure x-ray). `wallVision` units keep theirs.
+- three-renderer `_unitLosSeen()` refines the 2D `_fogVisibleSet` with a z-exact
+  probe (150ms cache). Strictly subtractive — it can hide a unit the tile set
+  allowed, never reveal one.
+
+### Rendering
+- Water inset (`WATER_TOP_INSET`) applies whenever the fluid surface is **exposed
+  to air**, not only when it's the column's last run — placing a block above a
+  water tile used to pop the pond up by the inset.
+- Canopy cutaway peels only the **first ceiling above the subject**
+  (`ceilZ … ceilZ + window.EW_CANOPY_CUT_BAND` , default band 1). It used to
+  vaporise every canopy above the unit, i.e. the whole column on multi-floor
+  buildings.
+- `rebuildWalls` emits a wall as full-width bands + flanking pillars around each
+  opening rect instead of one box.
+
+### Craters
+`applyTerrainDeform` → `_settleArchitectureAfterDeform(modified)`: a wall that
+lost one level of support slumps onto the new ground, a wall whose footing is
+gone collapses, and roof slabs with no wall / column / neighbour carrying them
+come down (3 relaxation passes). Bumps `_wallVersion` / `_voxelVersion`.
+
+### Map editor
+- Tools: **Doorway**, **Window**, **Floor**, **Fill Roof**, **Fill Floor**,
+  **Erase Slab**, **Place Building**, **Nexus Zone**.
+- `_meSlabH` (Slab H stepper): 0 = auto (nearest wall top via
+  `_meNearestWallTop`, ring search — interior tiles used to fall back to
+  floor+2 and lay the slab a level low), >0 = cells above `_meColFloorZ`.
+- `_meFloodEnclosed(sx,sy,rz,cap)` powers the fills; reports `open` when the
+  room leaks so the fill warns instead of carpeting the map.
+- `_meStampBuilding(ox,oy)`: levels the footprint, one tall wall per perimeter
+  edge with `ops` (centred door + a window per storey on alternating bays), a
+  floor slab per upper storey, optional roof cap. Click = NW corner.
+- Spawns carry `z`; nexus zones carry `z` (`_meNexusZ`, exported as
+  `window._customEditorNexusZ`). `_initNexusFromObjects` paints the zone terrain
+  into that voxel LAYER instead of the column top, and `nexusZoneContains` takes
+  an optional z (±1 tolerance) so a unit on the roof isn't "in" the room's nexus.
+- Multi-storey recipe (also in the panel's help text): walls h=3 → Slab H 3 →
+  Fill Floor → next wall ring with Z-Lock at that layer → Slab H 6 → Fill Roof.
+
+### Console kill-switches
+`window.EW_CANOPY_CUT_RADIUS`, `window.EW_CANOPY_CUT_BAND`,
+`window.EW_DISABLE_CANOPY_CUTAWAY`.

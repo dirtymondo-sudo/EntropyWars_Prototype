@@ -68,6 +68,13 @@
 
         const MAX_CLIMB_HEIGHT = 1;
 
+        /* How many levels of altitude a FLYING unit may gain or shed per tile of
+           horizontal movement. Airborne pathing samples every legal hover height
+           in this band inside each neighbouring column's air pocket, which is
+           what lets a flyer hold level under a bridge or lift over its parapet
+           mid-move instead of being locked to one column-top-derived altitude. */
+        const FLY_STEP_ALT_SPAN = 2;
+
         const FALL_DAMAGE_THRESHOLD = 3;
         const FALL_DAMAGE_PER_LEVEL = 8;            // legacy flat fallback (kept for exports)
         // Falls now hurt in proportion to the faller: each level of drop past the
@@ -6188,18 +6195,29 @@
                 }
             }
 
+            /* The awareness radius is a RADIUS, not x-ray vision (2026-07-24).
+               It used to grant sight of any enemy within `awr` tiles regardless
+               of what stood between — which on multi-floor maps meant units
+               spotted (and shot) each other through walls, floors and roofs.
+               The radius still gates the range; true 3D line of sight decides
+               whether the spot lands. wallVision units keep their x-ray. */
+            const _losOk = (sx, sy, sz) => {
+                if (typeof isVisionBlockedByTerrain !== 'function') return true;
+                return !isVisionBlockedByTerrain(sx, sy, unit.x, unit.y, sz, unit.z ?? null);
+            };
             const friendlies = state.units.filter(u => !u.dead && u.player === viewer);
             for (const f of friendlies) {
                 const dist = Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y);
                 const awr = f.awr || 3;
-                if (dist <= awr) return true;
+                if (dist > awr) continue;
+                if (f.wallVision || _losOk(f.x, f.y, f.z ?? null)) return true;
             }
 
             if (state._visionWards?.length) {
                 for (const w of state._visionWards) {
                     if (w.player === viewer) {
                         const dist = Math.abs(w.x - unit.x) + Math.abs(w.y - unit.y);
-                        if (dist <= (w.radius || 3)) return true;
+                        if (dist <= (w.radius || 3) && _losOk(w.x, w.y, w.z ?? null)) return true;
                     }
                 }
             }
@@ -16707,12 +16725,19 @@
 
             if (destZ === undefined || destZ === null) {
                 if (canFly(unit) && isUnitAirborne(unit)) {
-                    const _fpMinZ = getMinFlyingZ(destX, destY);
-                    const _fpMaxZ = getMaxFlyingZ(destX, destY);
-                    const _fpCurGround = getHeightAt(unit.x, unit.y);
-                    const _fpClearance = unitZ - _fpCurGround;
-                    const _fpDestGround = getHeightAt(destX, destY);
-                    destZ = Math.max(_fpMinZ, Math.min(_fpMaxZ, _fpDestGround + _fpClearance));
+                    /* Air-pocket aware: prefer holding the current altitude, then
+                       the nearest legal hover height in the destination column. */
+                    const _fpChoices = getFlightZChoices(destX, destY, unitZ, 4, 1);
+                    if (_fpChoices.length) {
+                        destZ = _fpChoices[0];
+                    } else {
+                        const _fpMinZ = getMinFlyingZ(destX, destY, unitZ);
+                        const _fpMaxZ = getMaxFlyingZ(destX, destY, unitZ);
+                        const _fpCurGround = getFloorBelowZ(unit.x, unit.y, unitZ);
+                        const _fpClearance = unitZ - _fpCurGround;
+                        const _fpDestGround = getFloorBelowZ(destX, destY, unitZ);
+                        destZ = Math.max(_fpMinZ, Math.min(_fpMaxZ, _fpDestGround + _fpClearance));
+                    }
                 } else {
                     destZ = _has3D ? (typeof nearestWalkableZ === 'function' ? nearestWalkableZ(destX, destY, unitZ) : 0) : 0;
                 }
@@ -16760,13 +16785,10 @@
                     const _pathIsAirborne = _pathFlies && isUnitAirborne(unit);
                     let neighborSurfaces;
                     if (_pathIsAirborne) {
-                        const _fpMinZ = getMinFlyingZ(nx, ny);
-                        const _fpMaxZ = getMaxFlyingZ(nx, ny);
-                        const _fpCurGnd = getHeightAt(cur.x, cur.y);
-                        const _fpClr = cur.z - _fpCurGnd;
-                        const _fpNbrGnd = getHeightAt(nx, ny);
-                        const _fpZ = Math.max(_fpMinZ, Math.min(_fpMaxZ, _fpNbrGnd + _fpClr));
-                        neighborSurfaces = [_fpZ];
+                        /* Mirrors getMoveTiles: air-pocket aware candidates so the
+                           executed path can actually reach the previewed tile
+                           (under a bridge as readily as over it). */
+                        neighborSurfaces = getFlightZChoices(nx, ny, cur.z, FLY_STEP_ALT_SPAN);
                     } else {
                         neighborSurfaces = _has3D ? getWalkableSurfaces(nx, ny) : [getHeightAt(nx, ny)];
                     }
@@ -16780,8 +16802,12 @@
                            blocked steps drop, vaults pass — the walk animation
                            reads the wall again and arcs over it. */
                         if (!_pathPhasing && typeof wallStepInfo === 'function') {
-                            if (wallStepInfo(cur.x, cur.y, nx, ny, cur.z, nz,
-                                _pathIsAirborne ? 0 : getUnitJumpClimb(unit)).v === 2) continue;
+                            /* Airborne: destination-altitude body span only
+                               (mirrors getMoveTiles). */
+                            const _wsiP = _pathIsAirborne
+                                ? wallStepInfo(cur.x, cur.y, nx, ny, nz, nz, 0)
+                                : wallStepInfo(cur.x, cur.y, nx, ny, cur.z, nz, getUnitJumpClimb(unit));
+                            if (_wsiP.v === 2) continue;
                         }
 
                         if (!_pathIsAirborne && _hd > MAX_CLIMB_HEIGHT) {
@@ -16939,13 +16965,32 @@
             unit.y = y;
 
             if (_wasAirborne) {
-
-                const _fmOldGround = getHeightAt(_originX, _originY);
-                const _fmClearance = (unit.z ?? 0) - _fmOldGround;
-                const _fmNewGround = getHeightAt(x, y);
-                const minZ = getMinFlyingZ(x, y);
-                const maxZ = getMaxFlyingZ(x, y);
-                unit.z = Math.max(minZ, Math.min(maxZ, _fmNewGround + _fmClearance));
+                /* Trust the altitude the validated path landed on (the pathfinder
+                   already proved that hover height is legal AND wall-clear) —
+                   re-deriving it from getHeightAt used to override the plan with
+                   columnTop + clearance, which on air-gap maps flung a flyer that
+                   had just threaded UNDER a bridge straight up onto the deck.
+                   Only fall back when the requested altitude is no longer legal. */
+                const _fmLegal = (opts.z !== undefined && opts.z !== null
+                    && typeof airBodyFreeAt === 'function' && airBodyFreeAt(x, y, opts.z)
+                    && opts.z > getFloorBelowZ(x, y, opts.z));
+                if (_fmLegal) {
+                    unit.z = opts.z;
+                } else {
+                    const _fmRef = (opts.z !== undefined && opts.z !== null) ? opts.z : (unit.z ?? 0);
+                    const _fmChoices = (typeof getFlightZChoices === 'function')
+                        ? getFlightZChoices(x, y, _fmRef, 4, 1) : [];
+                    if (_fmChoices.length) {
+                        unit.z = _fmChoices[0];
+                    } else {
+                        const _fmOldGround = getFloorBelowZ(_originX, _originY, unit.z ?? 0);
+                        const _fmClearance = (unit.z ?? 0) - _fmOldGround;
+                        const _fmNewGround = getFloorBelowZ(x, y, _fmRef);
+                        const minZ = getMinFlyingZ(x, y, _fmRef);
+                        const maxZ = getMaxFlyingZ(x, y, _fmRef);
+                        unit.z = Math.max(minZ, Math.min(maxZ, _fmNewGround + _fmClearance));
+                    }
+                }
             } else if (opts.z !== undefined && opts.z !== null) {
                 /* Multi-floor (2026-07-21): the caller knows the exact SURFACE
                    the validated path ends on (findMovePath nodes carry z).
@@ -19621,11 +19666,11 @@
                 if (typeof canChangeAltitude !== 'function' || typeof FLYING_ALTITUDE_CONFIG === 'undefined') return out;
                 const altAp = FLYING_ALTITUDE_CONFIG.apCost;
                 if ((unit.ap || 0) < altAp + spellAp) return out;
-                const groundZ = getHeightAt(unit.x, unit.y);
+                const groundZ = getFloorBelowZ(unit.x, unit.y, unit.z ?? 0);
                 const airborne = (typeof isUnitAirborne === 'function') ? isUnitAirborne(unit) : ((unit.z ?? 0) > groundZ);
                 if (!airborne && canChangeAltitude(unit, 'ascend').ok) {
-                    const minZ = getMinFlyingZ(unit.x, unit.y);
-                    const maxZ = getMaxFlyingZ(unit.x, unit.y);
+                    const minZ = getMinFlyingZ(unit.x, unit.y, unit.z ?? 0);
+                    const maxZ = getMaxFlyingZ(unit.x, unit.y, unit.z ?? 0);
                     let z = ((unit.z ?? 0) <= groundZ) ? minZ : (unit.z ?? 0) + 1;
                     z = Math.min(z, maxZ);
                     out.push({ mode: 'takeoff', z, apCost: altAp });
@@ -29361,6 +29406,9 @@
             bw, bh, posKey, posKey3, isInside,
 
             getColumn, getBlockAt, setBlockAt, removeBlockAt,
+            /* air-gap helpers (bridges, upper storeys, roofed rooms) */
+            getFloorBelowZ, getCeilingAboveZ, airBodyFreeAt, getFlightZChoices,
+            wallOpeningRects, verticalSightBlocked,
             getWalkableSurfaces, nearestWalkableZ, canOccupy3D,
             unitAt3D, unitsAtColumn, getTerrainAt3D, dist3D, distXY, combatDist, combatReach,
             buildColumnsFromLegacy, buildColumnsFromVoxels, ensureUnitZCoords,
@@ -33618,8 +33666,9 @@
                 return false;
             }
             if (typeof getMinFlyingZ !== 'function') return false;
-            const maxZ = (typeof getMaxFlyingZ === 'function') ? getMaxFlyingZ(unit.x, unit.y) : ((unit.z ?? 0) + 8);
-            let newZ = Math.max(getMinFlyingZ(unit.x, unit.y), (unit.z ?? 0) + 1);
+            const _atoRef = unit.z ?? 0;
+            const maxZ = (typeof getMaxFlyingZ === 'function') ? getMaxFlyingZ(unit.x, unit.y, _atoRef) : (_atoRef + 8);
+            let newZ = Math.max(getMinFlyingZ(unit.x, unit.y, _atoRef), _atoRef + 1);
             // Collision guard: don't stack on another airborne unit in this column.
             while (newZ <= maxZ && state.units.some(u =>
                 u !== unit && !u.dead && !u._dying &&
@@ -34710,18 +34759,25 @@
            computed from the SAME altitude the real takeoff will use — any
            drift between the two is how players get betrayed by the preview. */
         function _resolveTakeoffZ(unit) {
-            const groundZ = getHeightAt(unit.x, unit.y);
-            const maxZ = getMaxFlyingZ(unit.x, unit.y);
             const oldZ = unit.z ?? 0;
+            /* Air-pocket aware: a unit taking off on the ground floor of a
+               building (or under a bridge) climbs inside ITS OWN pocket and
+               stops under the ceiling — it does not teleport to
+               columnTop + clearance, which used to punt it onto the roof. */
+            const groundZ = getFloorBelowZ(unit.x, unit.y, oldZ);
+            const maxZ = getMaxFlyingZ(unit.x, unit.y, oldZ);
             let newZ = oldZ + 1;
-            if (oldZ <= groundZ) newZ = getMinFlyingZ(unit.x, unit.y);
+            if (oldZ <= groundZ) newZ = getMinFlyingZ(unit.x, unit.y, oldZ);
             newZ = Math.min(newZ, maxZ);
             while (newZ <= maxZ && state.units.some(u =>
                 u !== unit && !u.dead && !u._dying &&
                 u.x === unit.x && u.y === unit.y && (u.z ?? 0) === newZ)) {
                 newZ++;
             }
-            return (newZ > maxZ) ? null : newZ;
+            if (newZ > maxZ) return null;
+            /* A pocket only 1 level deep has no room for a body at all. */
+            if (typeof airBodyFreeAt === 'function' && !airBodyFreeAt(unit.x, unit.y, newZ)) return null;
+            return newZ;
         }
 
         function canChangeAltitude(unit, mode) {
@@ -34744,13 +34800,15 @@
             }
 
             const unitZ = unit.z ?? 0;
-            const groundZ = getHeightAt(unit.x, unit.y);
-            const minZ = getMinFlyingZ(unit.x, unit.y);
-            const maxZ = getMaxFlyingZ(unit.x, unit.y);
+            /* Air-pocket aware (2026-07-24): the ceiling that matters is the one
+               over THIS unit, not the top of the whole column. */
+            const groundZ = getFloorBelowZ(unit.x, unit.y, unitZ);
+            const minZ = getMinFlyingZ(unit.x, unit.y, unitZ);
+            const maxZ = getMaxFlyingZ(unit.x, unit.y, unitZ);
 
             if (mode === 'ascend') {
                 if (unitZ >= maxZ) {
-                    return { ok: false, reason: 'Already at maximum altitude.' };
+                    return { ok: false, reason: 'No headroom to climb — the ceiling is right above.' };
                 }
                 if (typeof isFlightCrippled === 'function' && isFlightCrippled(unit)) {
                     return { ok: false, reason: 'Too wounded to fly (below 25% HP). Heal up to take off again.' };
@@ -34909,9 +34967,11 @@
             pushUndoSnapshot(true);
 
             const oldZ = unit.z ?? 0;
-            const groundZ = getHeightAt(unit.x, unit.y);
-            const minZ = getMinFlyingZ(unit.x, unit.y);
-            const maxZ = getMaxFlyingZ(unit.x, unit.y);
+            /* Land on the floor of the pocket the flyer is IN — under a bridge
+               that is the water/ground beneath it, not the deck overhead. */
+            const groundZ = getFloorBelowZ(unit.x, unit.y, oldZ);
+            const minZ = getMinFlyingZ(unit.x, unit.y, oldZ);
+            const maxZ = getMaxFlyingZ(unit.x, unit.y, oldZ);
 
             if (mode === 'ascend') {
                 // Shared with getMoveTiles' takeoff fan-out (collision-climb
@@ -35500,9 +35560,131 @@
                 spawnMaterialDrops(cx, cy, _excavated.slice(0, _dCap));
             }
 
+            // 🧱 Authored architecture that lost its footing comes down with it.
+            _settleArchitectureAfterDeform(modified);
+
             state._terrainVersion = (state._terrainVersion || 0) + 1;
             if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+        }
+
+        /* ── 💥 STRUCTURAL SETTLE AFTER A CRATER (2026-07-24) ─────────────────
+           applyTerrainDeform only ever touched voxels, so a meteor that scooped
+           the ground out from under a building left its edge walls and roof
+           slabs hanging in mid-air. Now, over the blast footprint:
+             • a wall that lost ONE level of support SINKS onto the new ground
+               (a mild crater slumps the masonry, it doesn't level it);
+             • a wall whose footing dropped further COLLAPSES outright;
+             • a roof slab left with no wall carrying it, no column under it and
+               no neighbouring roof to span from collapses too (relaxed over a
+               few passes so a whole unsupported span comes down together).
+           Rising ground simply buries a wall — nothing to do there. */
+        function _settleArchitectureAfterDeform(modified) {
+            if (!modified || !modified.length) return;
+            const lowered = modified.filter(m => m.newH < m.oldH);
+            if (!lowered.length) return;
+
+            const touched = new Set();
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            for (const m of lowered) {
+                touched.add(m.x + ',' + m.y);
+                if (m.x < minX) minX = m.x;
+                if (m.x > maxX) maxX = m.x;
+                if (m.y < minY) minY = m.y;
+                if (m.y > maxY) maxY = m.y;
+            }
+            /* Walls sit ON edges, so a wall between a cratered tile and an
+               intact one is in play too — widen by one ring. */
+            minX--; maxX++; minY--; maxY++;
+
+            const colTop = (x, y) => {
+                if (!isInside(x, y)) return -1;
+                const col = (typeof getColumn === 'function') ? getColumn(x, y) : null;
+                if (!col || !col.length) return -1;
+                let t = -1;
+                for (const b of col) {
+                    if (b.terrain && b.terrain.indexOf('void') === 0) continue;
+                    if (b.z > t) t = b.z;
+                }
+                return t;
+            };
+
+            let wallsChanged = false;
+            const walls = state.edgeWalls;
+            if (walls) {
+                for (const key of Object.keys(walls)) {
+                    const w = walls[key];
+                    if (!w) continue;
+                    const parts = key.split(',');
+                    const wx = +parts[0], wy = +parts[1], side = parts[2];
+                    if (!isFinite(wx) || !isFinite(wy)) continue;
+                    const ax = (side === 'N') ? wx : wx - 1;
+                    const ay = (side === 'N') ? wy - 1 : wy;
+                    if (!touched.has(wx + ',' + wy) && !touched.has(ax + ',' + ay)) continue;
+                    const sup = Math.max(colTop(wx, wy), colTop(ax, ay));
+                    const foot = (w.z0 || 0) - 1;          // the block the wall stands on
+                    if (sup >= foot) continue;             // still supported (or buried)
+                    if (foot - sup === 1 && sup >= 0) {
+                        w.z0 = sup + 1;                    // slump onto the new ground
+                    } else {
+                        delete walls[key];                 // footing gone — collapse
+                    }
+                    wallsChanged = true;
+                }
+            }
+
+            /* Roof slabs: relax a few passes so an entire unsupported span
+               (each tile propping up the next) comes down in one go. */
+            let roofsChanged = false;
+            for (let pass = 0; pass < 3; pass++) {
+                let removedThisPass = false;
+                for (let y = minY; y <= maxY; y++) {
+                    for (let x = minX; x <= maxX; x++) {
+                        if (!isInside(x, y)) continue;
+                        const col = (typeof getColumn === 'function') ? getColumn(x, y) : null;
+                        if (!col || !col.length) continue;
+                        for (const b of col.slice()) {
+                            if (!b.roof) continue;
+                            const z = b.z;
+                            /* propped from below? */
+                            let held = false;
+                            for (const nb of col) {
+                                if (nb === b) continue;
+                                if (nb.terrain && nb.terrain.indexOf('void') === 0) continue;
+                                if (nb.z === z - 1) { held = true; break; }
+                            }
+                            /* carried by a wall on any of the four edges? */
+                            if (!held && walls) {
+                                for (const k of [x + ',' + y + ',N', x + ',' + (y + 1) + ',N',
+                                                 x + ',' + y + ',W', (x + 1) + ',' + y + ',W']) {
+                                    const wr = walls[k];
+                                    if (wr && wr.z0 <= z && (wr.z0 + Math.max(1, wr.h || 1) - 1) >= z - 1) { held = true; break; }
+                                }
+                            }
+                            /* spanning from a neighbouring tile that still has
+                               something solid at this level? */
+                            if (!held) {
+                                for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                                    const nx = x + dx, ny = y + dy;
+                                    if (!isInside(nx, ny)) continue;
+                                    const ncol = getColumn(nx, ny);
+                                    if (!ncol) continue;
+                                    if (ncol.some(nb => nb.z === z && !(nb.terrain && nb.terrain.indexOf('void') === 0) && !nb.roof)) { held = true; break; }
+                                }
+                            }
+                            if (!held) {
+                                removeBlockAt(x, y, z);
+                                roofsChanged = true;
+                                removedThisPass = true;
+                            }
+                        }
+                    }
+                }
+                if (!removedThisPass) break;
+            }
+
+            if (wallsChanged) state._wallVersion = (state._wallVersion || 0) + 1;
+            if (roofsChanged) state._voxelVersion = (state._voxelVersion || 0) + 1;
         }
 
         // ── Prebuilt structure spells (2026-07-07 terraforming pass) ─────────
@@ -42195,14 +42377,18 @@
                     const _isAirborne = _unitFlies && isUnitAirborne(unit);
                     let neighborSurfaces;
                     if (_isAirborne) {
-
-                        const _curGround = getHeightAt(cur.x, cur.y);
-                        const _clearance = cur.z - _curGround;
-                        const _nbrGround = getHeightAt(nx, ny);
-                        const _flyMinZ = getMinFlyingZ(nx, ny);
-                        const _flyMaxZ = getMaxFlyingZ(nx, ny);
-                        const _flyZ = Math.max(_flyMinZ, Math.min(_flyMaxZ, _nbrGround + _clearance));
-                        neighborSurfaces = [_flyZ];
+                        /* AIR-POCKET FLIGHT (2026-07-24). The old rule derived a
+                           SINGLE altitude per neighbour from getHeightAt — the
+                           column TOP — so a flyer approaching a bridge was yanked
+                           up to deck+minClearance whether it wanted to pass over
+                           or under. On air-gap maps that made bridges impassable
+                           in both directions (the forced climb also dragged the
+                           flyer's body through the deck's parapet, which the wall
+                           test then refused). Now every legal hover height in the
+                           neighbour's air pocket near the flyer's current altitude
+                           is a candidate, so it can hold level and slip UNDERNEATH,
+                           or rise a level and cross OVER. */
+                        neighborSurfaces = getFlightZChoices(nx, ny, cur.z, FLY_STEP_ALT_SPAN);
                     } else {
                         neighborSurfaces = _has3D ? getWalkableSurfaces(nx, ny) : [getHeightAt(nx, ny)];
                     }
@@ -42224,8 +42410,14 @@
                            but sail clean over walls below their true feet. */
                         let _wallVault = false;
                         if (!_phasing && typeof wallStepInfo === 'function') {
-                            const _wsi = wallStepInfo(cur.x, cur.y, nx, ny, curZ, nz,
-                                _isAirborne ? 0 : getUnitJumpClimb(unit));
+                            /* Airborne: a flyer is not a walker crossing an edge —
+                               it arrives at the destination ALTITUDE, so only the
+                               body span there matters. Merging the two ends' spans
+                               (the walker rule) meant any altitude change near a
+                               parapet clipped it and the step was refused. */
+                            const _wsi = _isAirborne
+                                ? wallStepInfo(cur.x, cur.y, nx, ny, nz, nz, 0)
+                                : wallStepInfo(cur.x, cur.y, nx, ny, curZ, nz, getUnitJumpClimb(unit));
                             if (_wsi.v === 2) { continue; }
                             if (_wsi.v === 1) _wallVault = true;
                         }
@@ -42367,6 +42559,27 @@
                         });
                     }
                 }
+            }
+
+            /* Airborne pathing now samples several altitudes per column (air
+               pockets), which is right for ROUTING but would litter the move
+               overlay with two or three highlights stacked in one column. Keep
+               only the altitude closest to the flyer's current one per column —
+               that is also the one a player means when they click ("hold level
+               and slip under the bridge"); going over instead is an explicit
+               Ascend first. */
+            if (_unitFlies && isUnitAirborne(unit) && tiles.length) {
+                const _byCol = new Map();
+                for (const t of tiles) {
+                    const pk = posKey(t.x, t.y);
+                    const prev = _byCol.get(pk);
+                    if (!prev || Math.abs(t.z - unitZ) < Math.abs(prev.z - unitZ)
+                        || (Math.abs(t.z - unitZ) === Math.abs(prev.z - unitZ) && t.cost < prev.cost)) {
+                        _byCol.set(pk, t);
+                    }
+                }
+                tiles.length = 0;
+                _byCol.forEach(t => tiles.push(t));
             }
 
             /* ── Grounded flyer: TAKE OFF + MOVE fan-out (teal tiles) ────────

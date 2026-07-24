@@ -2543,9 +2543,27 @@ const ThreeRenderer = (function () {
                             if (ri > 0 && run.fromZ > runs[ri - 1].toZ + 1) _sawGapBelow = true;
                             var rBottomY = run.fromZ * elevStep;
                             var rTopY = (run.toZ + 1) * elevStep;
-                            /* water tops dip below the block line → shoreline ridge */
-                            if (ri === runs.length - 1 && _FLUID_TERRAIN_SET[run.terrain] && run.terrain !== 'lava') {
-                                rTopY -= elevStep * WATER_TOP_INSET;
+                            /* Water tops dip below the block line → shoreline ridge.
+                               The dip applies whenever the surface is EXPOSED TO AIR,
+                               not only when the run happens to be the column's last:
+                               painting a bridge / ceiling several levels above a water
+                               tile pushed the water run out of last place and the pond
+                               visibly popped back up by the inset ("water raises a
+                               little when a block is placed above it"). A run that is
+                               genuinely buried (solid terrain directly on top of it)
+                               still renders brim-full — it's underground. */
+                            if (_FLUID_TERRAIN_SET[run.terrain] && run.terrain !== 'lava') {
+                                var _fluidOpen = (ri === runs.length - 1);
+                                if (!_fluidOpen) {
+                                    var _aboveZ = run.toZ + 1;
+                                    if (!Object.prototype.hasOwnProperty.call(zTerrainMap, _aboveZ)) {
+                                        _fluidOpen = true;
+                                    } else {
+                                        var _aboveT = zTerrainMap[_aboveZ] || '';
+                                        _fluidOpen = (_aboveT.indexOf('void') === 0);
+                                    }
+                                }
+                                if (_fluidOpen) rTopY -= elevStep * WATER_TOP_INSET;
                             }
                             var rH = rTopY - rBottomY;
                             if (rH < 0.5) continue;
@@ -7255,21 +7273,66 @@ const ThreeRenderer = (function () {
                     holder.add(post);
                 }
             } else {
-                var vRep = w.low ? Math.max(1, h) - 0.45 : h;
-                var mOut = _wallFaceMat(texOut, 1, vRep, 1.0);
-                var mIn = _wallFaceMat(texIn, 1, vRep, 0.82);      // interior reads darker
-                var mEdge = _wallFaceMat(texOut, t / ts, vRep, 0.7); // slim ends
-                var mTop = _wallFaceMat(texOut, 1, t / ts, 0.92);
-                /* box material order: [+x, -x, +y(top), -y, +z, -z]
-                   N wall (along X): -z faces NORTH (outer), +z SOUTH (inner)
-                   W wall (along Z): -x faces WEST (outer), +x EAST (inner) */
-                var mats = isN
-                    ? [mEdge, mEdge, mTop, mTop, mIn, mOut]
-                    : [mIn, mOut, mTop, mTop, mEdge, mEdge];
-                var bGeo = isN ? new THREE.BoxGeometry(len, H, t) : new THREE.BoxGeometry(t, H, len);
-                var bm = new THREE.Mesh(bGeo, mats);
-                bm.position.set(cx, baseY + H / 2, cz);
-                holder.add(bm);
+                /* ── Openings: doorways & windows (2026-07-24) ───────────────
+                   A wall with `door` / `win` is no longer one solid slab: the
+                   opening is carved out and the masonry ABOVE it still renders,
+                   so a tall building can have a real doorway instead of a
+                   full-height gap in the wall run. Pieces are emitted as
+                   separate boxes — full-width bands between openings, plus a
+                   flanking pillar on each side of every opening. */
+                var _ops = (typeof wallOpeningRects === 'function') ? wallOpeningRects(w) : [];
+                var _pieces = [];
+                if (!_ops.length) {
+                    _pieces.push({ y0: baseY, y1: topY, off: 0, len: len });
+                } else {
+                    var _rects = [];
+                    for (var oi = 0; oi < _ops.length; oi++) {
+                        var op = _ops[oi];
+                        var oy0 = Math.max(baseY, (op.z0 - 1) * elevStep);
+                        var oy1 = Math.min(topY, (op.z0 + op.h - 1) * elevStep);
+                        if (oy1 - oy0 > 0.5) _rects.push({ y0: oy0, y1: oy1, w: op.wid });
+                    }
+                    _rects.sort(function (a, b) { return a.y0 - b.y0; });
+                    var _cursor = baseY;
+                    for (var ri2 = 0; ri2 < _rects.length; ri2++) {
+                        var rc = _rects[ri2];
+                        if (rc.y1 <= _cursor) continue;
+                        if (rc.y0 > _cursor + 0.5) _pieces.push({ y0: _cursor, y1: rc.y0, off: 0, len: len });
+                        var ow = ts * rc.w;
+                        var fw = (len - ow) / 2;
+                        if (fw > 0.5) {
+                            _pieces.push({ y0: Math.max(rc.y0, _cursor), y1: rc.y1, off: -(ow + fw) / 2, len: fw });
+                            _pieces.push({ y0: Math.max(rc.y0, _cursor), y1: rc.y1, off: (ow + fw) / 2, len: fw });
+                        }
+                        _cursor = rc.y1;
+                    }
+                    if (topY > _cursor + 0.5) _pieces.push({ y0: _cursor, y1: topY, off: 0, len: len });
+                }
+
+                for (var pj = 0; pj < _pieces.length; pj++) {
+                    var pc2 = _pieces[pj];
+                    var pH = pc2.y1 - pc2.y0;
+                    if (pH < 0.5 || pc2.len < 0.5) continue;
+                    /* Texture repeat tracks the piece's real height in cells —
+                       for a full wall that's h, for a low parapet h-0.45, which
+                       is exactly what the single-box version used. */
+                    var vRep = Math.max(0.15, pH / elevStep);
+                    var hRep = Math.max(0.05, pc2.len / ts);
+                    var mOut = _wallFaceMat(texOut, hRep, vRep, 1.0);
+                    var mIn = _wallFaceMat(texIn, hRep, vRep, 0.82);      // interior reads darker
+                    var mEdge = _wallFaceMat(texOut, t / ts, vRep, 0.7);  // slim ends / jambs
+                    var mTop = _wallFaceMat(texOut, hRep, t / ts, 0.92);
+                    /* box material order: [+x, -x, +y(top), -y, +z, -z]
+                       N wall (along X): -z faces NORTH (outer), +z SOUTH (inner)
+                       W wall (along Z): -x faces WEST (outer), +x EAST (inner) */
+                    var mats = isN
+                        ? [mEdge, mEdge, mTop, mTop, mIn, mOut]
+                        : [mIn, mOut, mTop, mTop, mEdge, mEdge];
+                    var bGeo = isN ? new THREE.BoxGeometry(pc2.len, pH, t) : new THREE.BoxGeometry(t, pH, pc2.len);
+                    var bm = new THREE.Mesh(bGeo, mats);
+                    bm.position.set(cx + (isN ? pc2.off : 0), pc2.y0 + pH / 2, cz + (isN ? 0 : pc2.off));
+                    holder.add(bm);
+                }
             }
 
             /* ── caps ─────────────────────────────────────────────── */
@@ -13023,6 +13086,50 @@ const ThreeRenderer = (function () {
             }
         });
     }
+    /* ── Z-EXACT UNIT FOG (2026-07-24) ─────────────────────────────────────
+       _fogVisibleSet is a 2D tile set, so a roofed room whose ROOF is in plain
+       sight marked the tile visible — and the unit standing INSIDE the room
+       rendered right through its own floor ("I see them shooting through walls
+       and ceilings"). This refines the tile test with a real 3D line-of-sight
+       probe (map.js isVisionBlockedByTerrain — voxels, edge walls, roof slabs,
+       doorways and windows all honoured) against the unit's ACTUAL z.
+       Strictly subtractive: it can only hide a unit the tile set already
+       allowed, never reveal one. Cached + throttled — a handful of raycasts
+       every 150ms, not per frame. */
+    var _uFogCache = new Map();
+    var _uFogStamp = 0;
+    function _unitLosSeen(unit, vp) {
+        if (typeof isVisionBlockedByTerrain !== 'function') return true;
+        if (typeof state === 'undefined' || !state.units) return true;
+        var now = performance.now();
+        if (now - _uFogStamp > 150) { _uFogCache.clear(); _uFogStamp = now; }
+        var key = unit.id + '|' + vp + '|' + unit.x + ',' + unit.y + ',' + (unit.z || 0);
+        if (_uFogCache.has(key)) return _uFogCache.get(key);
+        var uz = (unit.z == null) ? null : unit.z;
+        var seen = false;
+        for (var i = 0; i < state.units.length; i++) {
+            var f = state.units[i];
+            if (!f || f.dead || f._dying || f.player !== vp) continue;
+            if (f.wallVision) { seen = true; break; }
+            if (!isVisionBlockedByTerrain(f.x, f.y, unit.x, unit.y, (f.z == null) ? null : f.z, uz)) { seen = true; break; }
+        }
+        /* Scan reveals and vision wards grant sight without eyes on — they live
+           in the tile set only, so trust it for those. */
+        var pk = unit.x + ',' + unit.y;
+        if (!seen && state._fogRevealTiles) {
+            var fr = state._fogRevealTiles;
+            if (fr.has ? fr.has(pk) : (fr.indexOf && fr.indexOf(pk) >= 0)) seen = true;
+        }
+        if (!seen && state._visionWards && state._visionWards.length) {
+            for (var wi = 0; wi < state._visionWards.length; wi++) {
+                var wd = state._visionWards[wi];
+                if (wd && wd.player === vp && wd.tiles && wd.tiles.indexOf && wd.tiles.indexOf(pk) >= 0) { seen = true; break; }
+            }
+        }
+        _uFogCache.set(key, seen);
+        return seen;
+    }
+
     function _updateEnemyConcealment() {
         if (typeof state === 'undefined' || state.phase !== 'battle') return;
         var vp = _viewerPlayerNum();
@@ -13051,12 +13158,14 @@ const ThreeRenderer = (function () {
                 return;
             }
             var base = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
+            if (base && fog) base = _unitLosSeen(unit, vp);
             entry.group.visible = base && !_isConcealedFromViewer(unit, vp);
         });
         _plateObjs.forEach(function(po, uid) {
             var unit = _unitById.get(uid) || null;
             if (!unit || unit.dead || unit.player === vp) return;
             var base = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
+            if (base && fog) base = _unitLosSeen(unit, vp);
             po.css2d.visible = base && !_isConcealedFromViewer(unit, vp);
         });
     }
@@ -13554,17 +13663,32 @@ const ThreeRenderer = (function () {
                        architecture (canopy above its OWN tile) opens a hole.
                        Standing outside next to a building must never cut its
                        roof open — you can't see into a room you're not in. */
-                    var covered = false;
+                    /* ONE STOREY ONLY (2026-07-24): find the LOWEST canopy band
+                       hanging over the subject's own tile — that is the ceiling
+                       of the room/deck it is actually standing in. Cutting every
+                       canopy above the unit (the old rule) vaporised the entire
+                       column on multi-floor buildings and bridge stacks, so the
+                       player looked straight down past floors 2/3 to the bottom
+                       z layer. Only the band around that first ceiling opens;
+                       storeys above it stay solid. */
+                    var ceilZ = Infinity;
                     for (var pi = 0; pi < list.length; pi++) {
                         var pc = list[pi];
                         if (pc._ew_cTileX === sub.x && pc._ew_cTileY === sub.y
-                            && pc._ew_canopyBottomZ >= subZ + 1) { covered = true; break; }
+                            && pc._ew_canopyBottomZ >= subZ + 1
+                            && pc._ew_canopyBottomZ < ceilZ) ceilZ = pc._ew_canopyBottomZ;
                     }
-                    if (!covered) continue;
+                    if (ceilZ === Infinity) continue;   // not under anything — never peel
+                    /* Slack absorbs a ceiling that steps a level across the room
+                       (a slab at z4 on one tile, z5 on the next). */
+                    var band = (typeof window !== 'undefined' && window.EW_CANOPY_CUT_BAND != null)
+                        ? window.EW_CANOPY_CUT_BAND : 1;
+                    var ceilTop = ceilZ + band;
                     for (var i = 0; i < list.length; i++) {
                         var cm = list[i];
                         if (want.has(cm)) continue;
                         if (cm._ew_canopyBottomZ < subZ + 1) continue;   // at/below the unit — its own floor, a lower deck
+                        if (cm._ew_canopyBottomZ > ceilTop) continue;    // an upper storey — not this room's ceiling
                         var ddx = cm._ew_cTileX - sub.x, ddy = cm._ew_cTileY - sub.y;
                         if (ddx * ddx + ddy * ddy > R * R) continue;      // beyond the cut circle
                         want.add(cm);

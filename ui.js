@@ -4802,8 +4802,16 @@
         /* One containment test for every nexus shape: square zones use the
            zoneX/zoneY/zoneSize rect; Arena spawn nexuses carry an explicit
            `tiles` footprint (spawn zones are tile lists, not squares). */
-        function nexusZoneContains(nex, x, y) {
+        function nexusZoneContains(nex, x, y, z) {
             if (!nex) return false;
+            /* Authored zones may live on a STOREY (nex.z, set by the map editor).
+               A unit standing on the roof directly above an indoor nexus is not
+               in it — the column footprint alone can't tell the two apart, so
+               gate on the level when the zone declares one. Callers with no z
+               (overlays, tile queries) keep the flat 2D footprint. */
+            if (nex.z !== undefined && nex.z !== null && z !== undefined && z !== null) {
+                if (Math.abs(z - nex.z) > 1) return false;
+            }
             if (Array.isArray(nex.tiles)) return nex.tiles.some(t => t.x === x && t.y === y);
             return x >= nex.zoneX && x < nex.zoneX + nex.zoneSize &&
                    y >= nex.zoneY && y < nex.zoneY + nex.zoneSize;
@@ -4815,27 +4823,27 @@
 
             if (state.roamingNexus) {
                 const rn = state.roamingNexus;
-                if (nexusZoneContains(rn, unit.x, unit.y)) return { section: 'roaming', nexus: rn };
+                if (nexusZoneContains(rn, unit.x, unit.y, unit.z)) return { section: 'roaming', nexus: rn };
             }
             if (!state.nexusPoints) return null;
 
             for (const key of Object.keys(state.nexusPoints)) {
                 const nex = state.nexusPoints[key];
                 if (!nex) continue;
-                if (nexusZoneContains(nex, unit.x, unit.y)) return { section: key, nexus: nex };
+                if (nexusZoneContains(nex, unit.x, unit.y, unit.z)) return { section: key, nexus: nex };
             }
             return null;
         }
 
-        function isInNexusZone(x, y, sectionKey) {
+        function isInNexusZone(x, y, sectionKey, z) {
             if (!state.nexusPoints) return false;
 
             if (sectionKey) {
-                return nexusZoneContains(state.nexusPoints[sectionKey], x, y);
+                return nexusZoneContains(state.nexusPoints[sectionKey], x, y, z);
             }
 
             for (const key of Object.keys(state.nexusPoints)) {
-                if (nexusZoneContains(state.nexusPoints[key], x, y)) return true;
+                if (nexusZoneContains(state.nexusPoints[key], x, y, z)) return true;
             }
             return false;
         }
@@ -5000,7 +5008,7 @@
                 // ground you aren't visibly standing on.
                 const _inZone = p => state.units.filter(u => !u.dead && u.player === p &&
                     !(typeof unitHasStatus === 'function' && unitHasStatus(u, 'invisible')) &&
-                    isInNexusZone(u.x, u.y, section));
+                    isInNexusZone(u.x, u.y, section, u.z));
                 const p1Units = _inZone(1), p2Units = _inZone(2);
                 const contested = p1Units.length > 0 && p2Units.length > 0;
 

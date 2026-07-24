@@ -6144,7 +6144,9 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       const _isFlying = typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit);
       let landZ;
       if (_isFlying && typeof getMinFlyingZ === 'function') {
-        landZ = getMinFlyingZ(tx, ty);
+        /* Pass the flyer's own altitude so the clearance resolves inside its
+           air pocket (under a bridge) rather than off the column top. */
+        landZ = getMinFlyingZ(tx, ty, actingUnit.z ?? null);
       } else {
         landZ = typeof getHeightAt === 'function' ? getHeightAt(tx, ty) : 0;
       }
