@@ -2273,9 +2273,10 @@
                     } else if (eff.type === 'heal') {
                         if (eff.hpAmount) applyHealingToUnit(unit, eff.hpAmount, null, { scaleByTargetLevel: true });
                         if (eff.mpAmount) {
-                            // MP pools are NOT level-compressed (spell MP costs
-                            // are flat), so MP restores stay flat too.
-                            const mpGain = Math.min(Math.round(eff.mpAmount), Math.max(0, unit.maxMp - unit.mp));
+                            // MP pools compress with level (data.js
+                            // levelStatGains), so flat MP restores must too.
+                            const _mpLs = (typeof levelScale === 'function' && typeof getUnitLevel === 'function') ? levelScale(getUnitLevel(unit)) : 1;
+                            const mpGain = Math.min(Math.max(1, Math.round(eff.mpAmount * _mpLs)), Math.max(0, unit.maxMp - unit.mp));
                             if (mpGain > 0) {
                                 unit.mp = Math.min(unit.maxMp, unit.mp + mpGain);
                                 showFloatingTextForUnit(unit, `+${mpGain} MP`, 'mp');

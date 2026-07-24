@@ -11903,9 +11903,13 @@ const SPELL_SLOT_MAX = 8;
 // fight both feel like today's game, just with smaller numbers early.
 // PvP is untouched: levelScale(100) == 1 exactly, so level-cap-normalized
 // modes resolve byte-identical to before.
-// MP is deliberately NOT compressed (spell MP costs are flat), so low-level
-// units can still cast; MP grows modestly via the classic additive gains.
-// atk/def/mdef/int also stay at classic magnitude — the engine scales the
+// MP follows the SAME curve (owner request, 2026-07-24 — "standard JRPG
+// leveling"): the pool compresses to ~5% at level 1 and spell MP costs are
+// scaled to match at the single chokepoint (battle.js getSpellMpCostFor), so
+// castability is identical at every level — small numbers early, big late.
+// Flat MP restores (Mana Rain, Supercharge, overkill, pixie dust, shrines)
+// scale the same way; %-of-maxMp effects (potions, regen) scale for free.
+// atk/def/mdef/int stay at classic magnitude — the engine scales the
 // damage they PRODUCE (and the mitigation they provide) at resolution time.
 // ============================================================================
 const LEVEL_CAP = 100;
@@ -11925,20 +11929,27 @@ function levelScale(level) {
     return EW_SCALE * (EW_L1_FRAC + (1 - EW_L1_FRAC) * t);
 }
 
-// Stat growth. MP/atk/def/mdef/int grow additively at classic scale (totals =
+// Stat growth. atk/def/mdef/int grow additively at classic scale (totals =
 // the exact column sums of the retired Lv2–10 LEVEL_UP_GAINS table, so level
-// 100 == the old level 10). HP instead follows the 50→1000 curve: the gain is
-// whatever delta brings maxHp to (baseHp + total) × levelScale(L) — NEGATIVE
-// below the level where the curve crosses the race's base HP, which is what
-// compresses a fresh Mystery Dungeon unit down to ~50 HP.
+// 100 == the old level 10). HP AND MP instead follow the 5%→100% curve: the
+// gain is whatever delta brings the stat to (base + total) × levelScale(L) —
+// NEGATIVE below the level where the curve crosses the race's base, which is
+// what compresses a fresh Mystery Dungeon unit down to ~50 HP / ~10 MP.
+// Spell MP costs compress on the same curve (battle.js getSpellMpCostFor),
+// so a unit can afford the same casts at every level.
 const LEVEL_TOTAL_STAT_GAINS = { hp: 360, mp: 108, atk: 58, def: 52, mdef: 43, int: 43 };
-function levelStatGains(level, baseHp) {
+function levelStatGains(level, baseHp, baseMp) {
     const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
     const t = LEVEL_CAP <= 1 ? 1 : Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_SCALE_EXP);
     const out = {};
     for (const k in LEVEL_TOTAL_STAT_GAINS) out[k] = Math.round(LEVEL_TOTAL_STAT_GAINS[k] * t);
     const b = Math.max(1, Number(baseHp) || 550);
     out.hp = Math.round((b + LEVEL_TOTAL_STAT_GAINS.hp) * levelScale(L)) - b;
+    const bm = Number(baseMp);
+    if (isFinite(bm)) {
+        const m = Math.max(0, bm);
+        out.mp = Math.round((m + LEVEL_TOTAL_STAT_GAINS.mp) * levelScale(L)) - m;
+    }
     return out;
 }
 

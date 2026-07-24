@@ -2691,7 +2691,7 @@ function _hrlgSpellBlades(unit, st) {
   const tierOrder = { 'I': 1, 'II': 2, 'III': 3 };
 
   const _isAvail = (sp) => {
-    const cost = sp.cost || 0;
+    const cost = (typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(unit, sp) : (sp.cost || 0);
     const canAfford = unit.mp >= (cost + mpPenalty) && (typeof canAffordSpell === 'function' ? canAffordSpell(unit, sp) : true);
     if (!canAfford) return false;
     const hasTarget = typeof hasSpellTargetInRange === 'function' ? hasSpellTargetInRange(unit, sp) : true;
@@ -2722,7 +2722,7 @@ function _hrlgSpellBlades(unit, st) {
 
   let castableCount = 0;
   const blades = spells.map((sp, i) => {
-    const cost = sp.cost || 0;
+    const cost = (typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(unit, sp) : (sp.cost || 0);
     const apCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
     const isSilenced = mpPenalty > 0;
     const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(unit, sp) : true;
@@ -6329,16 +6329,28 @@ function _renderSpellDescBar() {
   const tc = TYPE_COLORS[(sp.spellType || '').toLowerCase()] || EW.inkMute;
   const tcText = TYPE_TEXT_COLORS[(sp.spellType || '').toLowerCase()] || tc;
 
+  // The bar describes the acting (blitz-active) unit's blade. Damage/heal/
+  // shield/MP numbers are level-compressed at the engine chokepoints, so the
+  // bar scales them by the same curve — what it shows is what actually lands.
+  let _dbUnit = null;
+  try {
+    if (typeof state !== 'undefined' && state && state.units && state._blitzActiveUnitId != null) {
+      _dbUnit = state.units.find(u => u && u.id === state._blitzActiveUnitId) || null;
+    }
+  } catch (e) {}
+  const _dbLs = (_dbUnit && typeof levelScale === 'function' && typeof getUnitLevel === 'function')
+    ? levelScale(getUnitLevel(_dbUnit)) : 1;
+  const _dbNum = (n) => Math.max(1, Math.round(n * _dbLs));
   const details = [];
-  if (sp.dmg) details.push('DMG ' + sp.dmg);
-  if (sp.dashDamage) details.push('Path DMG ' + sp.dashDamage);
-  if (sp.heal) details.push('Heal ' + sp.heal);
-  if (sp.shield) details.push('Shield ' + sp.shield);
+  if (sp.dmg) details.push('DMG ' + _dbNum(sp.dmg));
+  if (sp.dashDamage) details.push('Path DMG ' + _dbNum(sp.dashDamage));
+  if (sp.heal) details.push('Heal ' + _dbNum(sp.heal));
+  if (sp.shield) details.push('Shield ' + _dbNum(sp.shield));
   const rng = sp.range || 0;
   details.push(rng > 0 ? 'Range ' + rng : 'Self-cast');
   if (sp.aoeRadius) details.push('AOE ' + sp.aoeRadius);
   if (sp.teleportDistance) details.push('Leap ' + sp.teleportDistance);
-  const cost = sp.cost || 0;
+  const cost = (_dbUnit && typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(_dbUnit, sp) : (sp.cost || 0);
   const apCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
   details.push(cost + ' MP · ' + apCost + ' AP');
   if (sp.tier) details.push('T·' + sp.tier);

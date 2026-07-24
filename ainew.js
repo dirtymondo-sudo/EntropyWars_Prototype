@@ -159,7 +159,7 @@
         if (!g.unitHasStatus(atk, 'silence')) {
             for (const sp of (atk.spells || [])) {
                 if (!DMG_KINDS.has(sp.kind)) continue;
-                if ((atk.mp || 0) < (sp.cost || 0)) continue;
+                if ((atk.mp || 0) < _aiMpCost(atk, sp)) continue;
                 const d2 = estDamage(g, atk, def, sp);
                 if (d2 > bd) bd = d2;
             }
@@ -257,6 +257,14 @@
             for (let L = XP_THRESHOLDS.length; L >= 2; L--) { if (xp >= XP_THRESHOLDS[L - 1]) { lvl = L; break; } }
         }
         return levelScale(lvl || 1);
+    }
+    // Spell MP costs are level-compressed at the engine chokepoint
+    // (battle.js getSpellMpCostFor). Affordability checks must use the same
+    // formula — comparing raw sp.cost to a compressed MP pool makes the AI
+    // think it can't cast anything at low levels.
+    function _aiMpCost(u, sp) {
+        if (typeof getSpellMpCostFor === 'function') return getSpellMpCostFor(u, sp);
+        return (sp && sp.cost) || 0;
     }
 
     function estDamage(g, unit, tg, sp, fromX, fromY, fromH) {
@@ -385,7 +393,7 @@
                     (sp.statusEffects || []).some(f => f && HARD_CC.has(f.id));
                 if (!isDmg && !isCC) continue;
                 if (!g.canAffordSpell(unit, sp)) continue;
-                if ((unit.mp || 0) < (sp.cost || 0)) continue;
+                if ((unit.mp || 0) < _aiMpCost(unit, sp)) continue;
 
                 // Line beams fire along the 8 rays from the caster and hit ONLY
                 // enemies exactly on the ray (engine walks sign(target-caster)
@@ -576,7 +584,7 @@
             if (!g.unitHasStatus(e, 'silence')) {
                 for (const sp of (e.spells || [])) {
                     if (!DMG_KINDS.has(sp.kind)) continue;
-                    if ((e.mp || 0) < (sp.cost || 0)) continue;
+                    if ((e.mp || 0) < _aiMpCost(e, sp)) continue;
                     const d2 = estDamage(g, e, unit, sp);
                     if (d2 > dmg) dmg = d2;
                     if ((sp.range || 1) > bestR) bestR = sp.range || 1;
@@ -624,7 +632,7 @@
             for (const sp of (unit.spells || [])) {
                 if (!DMG_KINDS.has(sp.kind)) continue;
                 if (!g.canAffordSpell(unit, sp)) continue;
-                if ((unit.mp || 0) < (sp.cost || 0)) continue;
+                if ((unit.mp || 0) < _aiMpCost(unit, sp)) continue;
                 let er = sp.range || 0;
                 try { if (g.getEffectiveSpellRange) er = g.getEffectiveSpellRange(unit, sp); } catch (e) {}
                 if (er > r) r = er;
@@ -660,7 +668,7 @@
             for (const sp of (unit.spells || [])) {
                 if (!DMG_KINDS.has(sp.kind)) continue;
                 if (!g.canAffordSpell(unit, sp)) continue;
-                if ((unit.mp || 0) < (sp.cost || 0)) continue;
+                if ((unit.mp || 0) < _aiMpCost(unit, sp)) continue;
                 dmgSpells.push(sp);
             }
         }

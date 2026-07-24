@@ -1091,13 +1091,14 @@
         }
 
         if (unit.items?.manaPotion > 0) {
-            const mpRestore = 40;
             const allies = g.aliveUnitsFor(unit.player);
             let bestTarget = null;
             let bestScore = -1;
             for (const ally of allies) {
                 if (ally.dead || (ally.maxMp || 0) <= 0) continue;
                 if (ally.mp >= ally.maxMp) continue;
+                // Mana Potion restores 35% of maxMp (ITEM_RULES.manaPotion.mpPct).
+                const mpRestore = Math.max(1, Math.floor((ally.maxMp || 0) * 0.35));
                 const mpAfter = Math.min(ally.maxMp, ally.mp + mpRestore);
 
                 const allSpells = (ally.spells || []);
@@ -1106,8 +1107,11 @@
                 for (const spell of allSpells) {
                     if (!spell || !spell.cost || spell.cost <= 0) continue;
                     if (spell.kind === 'scan') continue;
-                    const cantNow = ally.mp < spell.cost;
-                    const canAfter = mpAfter >= spell.cost;
+                    // Costs are level-compressed — never compare raw spell.cost
+                    // to a compressed MP pool (it undervalues the potion).
+                    const _mc = (typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(ally, spell) : spell.cost;
+                    const cantNow = ally.mp < _mc;
+                    const canAfter = mpAfter >= _mc;
                     if (cantNow && canAfter) {
 
                         const val = spell.dmg || (spell.kind === 'heal' ? 96 : 80);
@@ -1340,7 +1344,7 @@
             // a real damage spell, the basic attack shouldn't outbid it.
             if (JOB_TENDENCIES[unit.cls]?.preferSpells &&
                 (unit.spells || []).some(sp => sp && DMG_KINDS_T.includes(sp.kind)
-                    && g.canAffordSpell(unit, sp) && unit.mp >= sp.cost)) {
+                    && g.canAffordSpell(unit, sp) && unit.mp >= ((typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(unit, sp) : sp.cost))) {
                 score *= 0.6;
             }
 
@@ -1477,7 +1481,7 @@
         let _healDuty = false;
         if (_tend && _tend.healFirst) {
             const _canHeal = (unit.spells || []).some(sp => sp && ['heal', 'healAll'].includes(sp.kind)
-                && g.canAffordSpell(unit, sp) && unit.mp >= sp.cost && ap >= g.getSpellApCost(sp));
+                && g.canAffordSpell(unit, sp) && unit.mp >= ((typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(unit, sp) : sp.cost) && ap >= g.getSpellApCost(sp));
             _healDuty = _canHeal && [unit, ...v.allies].some(a => !a.dead && a.hp < a.maxHp * 0.6);
         }
 
@@ -1486,7 +1490,7 @@
             if (!spell) continue;
             if (_failedSpells.has(spell.name)) continue;
             const apCost = g.getSpellApCost(spell);
-            if (ap < apCost || !g.canAffordSpell(unit, spell) || unit.mp < spell.cost) continue;
+            if (ap < apCost || !g.canAffordSpell(unit, spell) || unit.mp < ((typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(unit, spell) : spell.cost)) continue;
 
             const target = findSpellTarget(unit, spell, v);
             const noTargetKinds = ['healAll', 'manaRestoreAll', 'barrage', 'warCry', 'encore', 'deployTurret', 'utility',
