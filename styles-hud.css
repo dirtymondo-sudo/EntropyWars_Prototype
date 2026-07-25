@@ -4171,8 +4171,9 @@
 
 /* ── ⚛ ENTROPY WINGS (blade gauges flanking the scoreboard, hud.js
    EntropyWing) — layered VFX: whole-blade silhouette glow that swells with
-   charge, flowing plasma fill (animated gradient), diagonal shimmer sweep,
-   pulsing leading-edge flare, spinning ⚛ core at the tip. ─────────────── */
+   charge, a canvas oscilloscope trace riding the fill (EntropyTrace — the
+   VitalWave HP monitor's sibling), pulsing leading-edge flare, gain bloom
+   pulse, spinning ⚛ core at the tip. ─────────────────────────────────── */
 .ew-entropy-wing {
     filter: drop-shadow(0 0 5px rgba(120, 80, 200, 0.35));
     transition: filter 0.4s ease;
@@ -4201,31 +4202,27 @@
 .ew-entropy-fill.ew-entropy-full {
     animation: ewEntropyFullPulse 0.9s ease-in-out infinite;
 }
-/* plasma flow — two seamless repeating-gradient bands stream across the fill
-   toward the blade tip (period == translate distance, so the loop never
-   jumps): a slow wide surge (::before) under the fast thin shimmer (::after,
-   defined below with the legacy shimmer block). Direction flips per side. */
-.ew-entropy-fill::before {
-    content: '';
+/* the waveform canvas riding the vessel (hud.js EntropyTrace) — sized by
+   its positioning wrapper; peaks intentionally overflow the 8px groove */
+.ew-entropy-trace {
     position: absolute;
     inset: 0;
-    left: -64px;
-    right: -64px;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
-    background: repeating-linear-gradient(90deg,
-        rgba(233, 213, 255, 0) 0 20px,
-        rgba(233, 213, 255, 0.30) 30px 36px,
-        rgba(233, 213, 255, 0) 46px 64px);
-    animation: ewEntropyShimmerR 2.4s linear infinite;
+    z-index: 3;
 }
-.ew-entropy-flow-l::before { animation-name: ewEntropyShimmerL64; }
-@keyframes ewEntropyShimmerR {
-    from { transform: translateX(-64px); }
-    to   { transform: translateX(0); }
+/* ⚡ gain bloom — added by EntropyTrace the instant the gauge value rises
+   (viewer-local diff, host and guest alike): the vessel flashes white-violet
+   and breathes one bright pulse outward. Lives on the vessel, not the wing
+   root, so it never fights the surge/full drop-shadow animations there. */
+@keyframes ewEntropyGainPulse {
+    0%   { filter: brightness(2.1); box-shadow: 0 0 4px rgba(233, 213, 255, 0.95), 0 0 10px rgba(163, 108, 255, 0.9); }
+    40%  { filter: brightness(1.55); box-shadow: 0 0 9px rgba(201, 165, 255, 0.85), 0 0 22px rgba(163, 108, 255, 0.6); }
+    100% { filter: brightness(1); box-shadow: 0 0 0 rgba(163, 108, 255, 0); }
 }
-@keyframes ewEntropyShimmerL64 {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-64px); }
+.ew-entropy-gain .ew-entropy-vessel {
+    animation: ewEntropyGainPulse 0.7s ease-out;
 }
 /* leading-edge flare riding the fill front */
 .ew-entropy-tip {
@@ -4275,28 +4272,7 @@
     animation: ewOnFireFlicker 0.7s ease-in-out infinite;
 }
 
-/* fast thin shimmer sweeping across the gauge fill (direction per side) */
-@keyframes ewEntropyShimmer {
-    from { transform: translateX(-22px); }
-    to   { transform: translateX(0); }
-}
-@keyframes ewEntropyShimmerL {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-22px); }
-}
 .ew-entropy-fill { position: absolute; }
-.ew-entropy-fill::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    left: -22px;
-    right: -22px;
-    background: repeating-linear-gradient(115deg,
-        rgba(255, 255, 255, 0.16) 0 5px, transparent 5px 11px);
-    animation: ewEntropyShimmer 1.05s linear infinite;
-    pointer-events: none;
-}
-.ew-entropy-flow-l::after { animation-name: ewEntropyShimmerL; }
 /* orb-arrival kick */
 .ew-entropy-hit {
     filter: brightness(1.9);

@@ -773,12 +773,145 @@ function ScoreSideColumn({ st, mode, player, side, color, nextId }) {
 }
 
 /* ⚛ ENTROPY WINGS — one blade-shaped gauge per team FLANKING the scoreboard
-   (P1 left, P2 right), tapering to a point outward with the ⚛ core glyph at
-   the tip. The fill charges from the scoreboard outward as flowing violet
-   plasma (animated gradient + shimmer sweep + pulsing leading-edge flare);
-   past 70% the whole blade starts to bloom, and at full it blazes with a
-   READY label + spinning glyph. Fed by battle.js addEntropy via glowing orbs
-   (_entropyOrbsFly below — ids ewEntropyMeterP1/2 unchanged). */
+   (P1 left, P2 right). Same design language as the VitalWave HP oscilloscope:
+   the straight fill underneath is still the truth (width == charge%), and a
+   canvas waveform rides ON it — a violet signal that grows louder and faster
+   as the gauge charges, flatlining past the fill edge, with a chromatic
+   ghost-echo stroke for that PS1 phosphor look. Every entropy gain fires a
+   spike that sweeps the trace outward plus a bloom pulse on the vessel
+   (detected render-to-render off state.entropyGauge, so it needs no engine
+   hook and works identically for host and guest online). At full the wave
+   goes white-hot and slowly cycles hue. Fed by battle.js addEntropy via
+   glowing orbs (_entropyOrbsFly below — ids ewEntropyMeterP1/2 unchanged). */
+function EntropyTrace({ pct, full, left, player }) {
+  const cvRef = useRef(null);
+  const live = useRef({});
+  live.current.pct = pct;
+  live.current.full = full;
+  live.current.left = left;
+  live.current.player = player;
+
+  useEffect(() => {
+    const cv = cvRef.current;
+    if (!cv) return;
+    const ctx = cv.getContext('2d');
+    if (!ctx) return;
+
+    let raf = 0, cw = 0, ch = 0, dpr = 1;
+    let last = performance.now();
+    let prevPct = live.current.pct;
+    let gainTimer = 0;
+    const spikes = [];   // { t, dur, mag } — sweep inner edge → tip
+
+    const draw = (now) => {
+      raf = requestAnimationFrame(draw);
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+
+      const L = live.current;
+      const q = Math.max(0, Math.min(1, L.pct / 100));
+
+      /* ⚡ gain pulse — charge went UP: launch a spike down the trace and
+         bloom the vessel. Drains/resets just re-baseline silently. */
+      if (L.pct > prevPct + 0.25) {
+        const d = (L.pct - prevPct) / 100;
+        spikes.push({ t: 0, dur: 0.7, mag: Math.max(0.5, Math.min(1.8, d * 9)) });
+        const m = document.getElementById('ewEntropyMeterP' + L.player);
+        if (m) {
+          m.classList.remove('ew-entropy-gain');
+          void m.offsetWidth;   // restart the CSS animation
+          m.classList.add('ew-entropy-gain');
+          clearTimeout(gainTimer);
+          gainTimer = setTimeout(() => m.classList.remove('ew-entropy-gain'), 750);
+        }
+      }
+      prevPct = L.pct;
+
+      const w = cv.clientWidth, hgt = cv.clientHeight;
+      const d2 = Math.min(2, window.devicePixelRatio || 1);
+      if (w !== cw || hgt !== ch || d2 !== dpr) {
+        cw = w; ch = hgt; dpr = d2;
+        cv.width = Math.max(1, Math.round(cw * dpr));
+        cv.height = Math.max(1, Math.round(ch * dpr));
+      }
+      if (cw <= 0 || ch <= 0) return;
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, cw, ch);
+
+      for (let i = spikes.length - 1; i >= 0; i--) {
+        spikes[i].t += dt;
+        if (spikes[i].t > spikes[i].dur) spikes.splice(i, 1);
+      }
+
+      const mid = ch / 2;
+      const edgePx = cw * q;                     // filled span, from inner edge
+      const t = now / 1000;
+      const tempo = 0.8 + 1.6 * q + (L.full ? 1.2 : 0);
+      const amp = ch * 0.30 * (0.30 + 0.70 * q) * (L.full ? 1.25 : 1);
+      const flow = L.left ? -1 : 1;              // signal streams inner → tip
+
+      /* one pass of the signal; xOff/alpha vary per stroke for the echo */
+      const trace = (xOff) => {
+        ctx.beginPath();
+        const step = 1.5;
+        for (let x = 0; x <= cw; x += step) {
+          const dIn = L.left ? (cw - x) : x;     // distance from inner edge
+          const gate = edgePx <= 0 ? 0 : Math.max(0, Math.min(1, (edgePx - dIn) / 7));
+          let v = 0;
+          if (gate > 0) {
+            const xs = (x + xOff) * flow;
+            v = Math.sin(xs * 0.055 - t * 3.1 * tempo) * amp * 0.62;
+            v += Math.sin(xs * 0.13 + t * 2.2 * tempo) * amp * 0.30;
+            v += _vwNoise(xs * 0.32 + t * (4.5 + 3 * q)) * amp * 0.34;
+            if (L.full) v += Math.sin(xs * 0.24 - t * 9) * amp * 0.28;
+            for (let i = 0; i < spikes.length; i++) {
+              const s = spikes[i];
+              const k = s.t / s.dur;
+              const sd = k * (edgePx + cw * 0.1);          // inner edge → tip
+              const dx = (dIn - sd) / (cw * 0.05 + 4);
+              if (dx > -5 && dx < 5) {
+                v += s.mag * ch * 0.44 * Math.exp(-dx * dx) * (1 - k) * (1 - k);
+              }
+            }
+            v *= gate;
+          }
+          const y = mid - v;
+          if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+      };
+
+      /* chromatic ghost-echo underneath (offset + cool tint, PS1 phosphor) */
+      trace(3.5);
+      ctx.lineWidth = 1.2;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = L.full ? '#8fe8ff' : '#7fb0ff';
+      ctx.globalAlpha = 0.28;
+      ctx.stroke();
+
+      /* main line: violet phosphor, white-hot + slow hue cycle at full */
+      trace(0);
+      const spikeHeat = spikes.length ? Math.max(...spikes.map(s => 1 - s.t / s.dur)) : 0;
+      const hue = L.full ? (270 + Math.sin(t * 0.9) * 60) : 268;
+      const lit = L.full ? 88 : 72 + 14 * spikeHeat;
+      ctx.strokeStyle = 'hsl(' + hue + ', 100%, ' + lit + '%)';
+      ctx.lineWidth = 1.4;
+      ctx.globalAlpha = 0.55 + 0.35 * Math.max(q, spikeHeat);
+      ctx.shadowBlur = L.full ? 7 : 5;
+      ctx.shadowColor = L.full ? 'hsla(' + hue + ', 100%, 80%, 0.95)' : 'rgba(163, 108, 255, 0.85)';
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    };
+
+    raf = requestAnimationFrame(draw);
+    return () => { cancelAnimationFrame(raf); clearTimeout(gainTimer); };
+  }, []);
+
+  return h('canvas', { className: 'ew-entropy-trace', ref: cvRef });
+}
+
 function EntropyWing({ st, player, side }) {
   const max = window.ENTROPY_GAUGE_MAX || 100;
   const val = (st.entropyGauge && st.entropyGauge[player]) || 0;
@@ -840,41 +973,53 @@ function EntropyWing({ st, player, side }) {
     ),
 
     /* the line itself — thin skewed groove, hairline top/bottom edges,
-       fading out toward the battlefield edge of the screen */
-    h('div', { className: 'ew-entropy-vessel', style: {
-      position: 'relative', width: '100%', height: 8, overflow: 'hidden',
-      transform: skew,
-      background: 'linear-gradient(180deg, rgba(14,8,30,0.78), rgba(34,20,64,0.72) 55%, rgba(10,5,22,0.82))',
-      borderTop: '1px solid ' + (full ? 'rgba(201,165,255,0.9)' : 'rgba(150,120,220,0.5)'),
-      borderBottom: '1px solid ' + (full ? 'rgba(201,165,255,0.9)' : 'rgba(150,120,220,0.5)'),
-      boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.7)',
-      WebkitMaskImage: tailMask, maskImage: tailMask,
-    }},
-      /* flowing plasma fill (grows inner → outer) */
-      h('div', {
-        className: 'ew-entropy-fill ' + (left ? 'ew-entropy-flow-l' : 'ew-entropy-flow-r') + (full ? ' ew-entropy-full' : ''),
-        style: {
-          position: 'absolute', top: 0, bottom: 0, [innerEdge]: 0,
-          width: pct + '%', overflow: 'hidden',
-          background: fillGrad,
-          boxShadow: full ? '0 0 14px rgba(201,165,255,1)' : '0 0 8px rgba(163,108,255,0.6)',
-          transition: 'width 0.45s ease',
-        },
-      }),
-      /* leading-edge flare riding the fill front */
-      !full && pct > 3 && h('div', { className: 'ew-entropy-tip', style: {
-        [innerEdge]: 'calc(' + pct + '% - 6px)',
-      }}),
-      /* quarter ticks (measured from the inner edge, like the fill) */
-      [25, 50, 75].map(t => h('div', { key: t, style: {
-        position: 'absolute', top: 1, bottom: 1, [innerEdge]: t + '%',
-        width: 1, background: 'rgba(0,0,0,0.55)',
-      }})),
-      /* bright team-colored socket cap at the inner end */
+       fading out toward the battlefield edge of the screen. The waveform
+       canvas overlays it taller than the groove so peaks breathe past the
+       hairlines, sharing the skew + tail mask so everything stays aligned. */
+    h('div', { style: { position: 'relative', width: '100%', height: 8 } },
+      h('div', { className: 'ew-entropy-vessel', style: {
+        position: 'absolute', inset: 0, overflow: 'hidden',
+        transform: skew,
+        background: 'linear-gradient(180deg, rgba(14,8,30,0.78), rgba(34,20,64,0.72) 55%, rgba(10,5,22,0.82))',
+        borderTop: '1px solid ' + (full ? 'rgba(201,165,255,0.9)' : 'rgba(150,120,220,0.5)'),
+        borderBottom: '1px solid ' + (full ? 'rgba(201,165,255,0.9)' : 'rgba(150,120,220,0.5)'),
+        boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.7)',
+        WebkitMaskImage: tailMask, maskImage: tailMask,
+      }},
+        /* the truth: straight fill under the trace (grows inner → outer) */
+        h('div', {
+          className: 'ew-entropy-fill' + (full ? ' ew-entropy-full' : ''),
+          style: {
+            position: 'absolute', top: 0, bottom: 0, [innerEdge]: 0,
+            width: pct + '%', overflow: 'hidden',
+            background: fillGrad,
+            boxShadow: full ? '0 0 14px rgba(201,165,255,1)' : '0 0 8px rgba(163,108,255,0.6)',
+            transition: 'width 0.45s ease',
+          },
+        }),
+        /* leading-edge flare riding the fill front */
+        !full && pct > 3 && h('div', { className: 'ew-entropy-tip', style: {
+          [innerEdge]: 'calc(' + pct + '% - 6px)',
+        }}),
+        /* quarter ticks (measured from the inner edge, like the fill) */
+        [25, 50, 75].map(t => h('div', { key: t, style: {
+          position: 'absolute', top: 1, bottom: 1, [innerEdge]: t + '%',
+          width: 1, background: 'rgba(0,0,0,0.55)',
+        }})),
+        /* bright team-colored socket cap at the inner end */
+        h('div', { style: {
+          position: 'absolute', top: 0, bottom: 0, [innerEdge]: 0, width: 2,
+          background: team, boxShadow: '0 0 8px ' + team,
+        }}),
+      ),
+      /* ⚛ the signal — oscilloscope trace riding the gauge (VitalWave kin) */
       h('div', { style: {
-        position: 'absolute', top: 0, bottom: 0, [innerEdge]: 0, width: 2,
-        background: team, boxShadow: '0 0 8px ' + team,
-      }}),
+        position: 'absolute', left: 0, right: 0, top: '50%', height: 26,
+        transform: 'translateY(-50%) ' + skew, pointerEvents: 'none',
+        WebkitMaskImage: tailMask, maskImage: tailMask,
+      }},
+        h(EntropyTrace, { pct, full, left, player }),
+      ),
     ),
   );
 }
