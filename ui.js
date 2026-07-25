@@ -3236,6 +3236,13 @@
 
         function handleTileDragEnter(x, y) {
 
+            /* Map editor hover: the Building Placer draws a ghost of the whole
+               structure (footprint, doors, passages, stairs) on the tile under
+               the cursor. No-op for every other tool. */
+            if (state.phase === 'editor' && typeof window._meBldHoverTile === 'function') {
+                window._meBldHoverTile(x, y);
+            }
+
             if (_editorDragPainting && state.phase === 'editor') {
                 if (typeof window._meEditorClickTile === 'function') {
                     window._meEditorClickTile(x, y);

@@ -6786,15 +6786,66 @@ come down (3 relaxation passes). Bumps `_wallVersion` / `_voxelVersion`.
   floor+2 and lay the slab a level low), >0 = cells above `_meColFloorZ`.
 - `_meFloodEnclosed(sx,sy,rz,cap)` powers the fills; reports `open` when the
   room leaks so the fill warns instead of carpeting the map.
-- `_meStampBuilding(ox,oy)`: levels the footprint, one tall wall per perimeter
-  edge with `ops` (centred door + a window per storey on alternating bays), a
-  floor slab per upper storey, optional roof cap. Click = NW corner.
+- `_meStampBuilding(ox,oy)` = `_meBldPlan(ox,oy)` (pure, no side effects) +
+  `_meBldApply(plan)`. Splitting it is what lets the HOVER GHOST draw the exact
+  structure that a click will stamp (see below). Click/hover = NW corner anchor.
+
 - Spawns carry `z`; nexus zones carry `z` (`_meNexusZ`, exported as
   `window._customEditorNexusZ`). `_initNexusFromObjects` paints the zone terrain
   into that voxel LAYER instead of the column top, and `nexusZoneContains` takes
   an optional z (±1 tolerance) so a unit on the roof isn't "in" the room's nexus.
 - Multi-storey recipe (also in the panel's help text): walls h=3 → Slab H 3 →
   Fill Floor → next wall ring with Z-Lock at that layer → Slab H 6 → Fill Roof.
+
+### Building Placer v2 (2026-07-25) — map.js, ui.js
+Everything is decided in `_meBldPlan` and rendered twice: once as the ghost,
+once as the stamp. Reading the plan object is the fastest way to debug it.
+- **Hover ghost** — `window._meBldHoverTile(x,y)` (called from ui.js
+  `handleTileDragEnter`, and from `#meGrid`'s pointermove on the legacy flat
+  editor). Builds a scene-root THREE group `bldGhost`: footprint pad, per-edge
+  wall silhouette at true height, doorways green, passages cyan, stair steps
+  amber, plus a CSS2D summary tag; `_meBldGhost2D` tints the flat board the
+  same way. Cleared on tool change, on stamp, on editor exit, and by a
+  document-level pointermove when the cursor leaves the board. It is added to
+  the SCENE ROOT, not terrainGroup/objectGroup, so it never intercepts picks.
+- **Two entrances, always** — `_meBldEntrances`: chosen face + "Door 2"
+  (default = opposite face), centre bay first then outward, never on a passage
+  bay and never on a face flush with the map edge (that door opens into the
+  void). Doorway ops are `h = min(2, SH)` because `_ewBodyFitsDoorway` needs
+  BOTH body cells (feet z+1 and head z+2) open.
+- **Auto-connect** (🔗 toggle, `_meBldConnect`) — `_meBldSnapOut` slides a
+  footprint that would overlap a tracked room out until they only TOUCH (share
+  one wall line, least-movement axis, ≤8 passes), then `_meBldPassages` finds
+  every contiguous run of PRE-EXISTING wall on the new perimeter and cuts a
+  `ME_BLD_PASSAGE`(=2)-tile passage centred on it. One record per edge, so
+  cutting it opens both sides at once. Works against hand-drawn walls too.
+  `_meBldApply` MERGES a shared edge (max height, both op sets, deduped)
+  instead of overwriting — a 1-storey annexe used to truncate its neighbour's
+  3-storey facade.
+- **Rooms are tracked** — `_meBldRooms = [{x0,y0,x1,y1}]`, in the undo
+  snapshot and in save / load / export / import as `bldRooms` (absent = []),
+  so snapping still works on a reloaded map. `ME_BLD_MIN`(=4) is the size
+  stepper's floor: 4×4 is the smallest room that fits a 2-wide passage AND a
+  stair run without sealing itself.
+- **Stairs** (🪜 toggle) — `_meBldStairPlan`: one flight per storey change plus
+  a rooftop hatch when capped and ≥2 storeys. A flight is `SH-1` one-cell steps
+  along the interior ring (`_meBldRing`, consecutive entries are always cardinal
+  neighbours so a flight can turn a corner), then one step up onto the slab —
+  every rise is exactly `MAX_CLIMB_HEIGHT`, so climbing is an ordinary walk, no
+  `stairs` object needed. The slab above the top 2 steps is NOT laid (that hole
+  is the stairwell; without it `getWalkableSurfaces` rejects the top step
+  because `zSet.has(z+1)`). Holes are per SLAB LEVEL, and only the flight
+  DIRECTLY below blocks the next one — blocking every past hole starved 6-storey
+  4×4s of anywhere to put the upper flights.
+- **Wall style** (🏰 toggle, `_meBldUseWallStyle`) — the Walls & Roofs panel's
+  cap (crenellations / overhang), inner texture and flip now apply to the
+  building. `see`/`low` only apply to a SINGLE-storey building (they can't hold
+  a floor and `wallOpeningRects` refuses openings on them); there the doors are
+  stamped as real GAPS in the ring instead of ops, or the building would be a
+  sealed box.
+- One building per pointer-down (`_meBldStrokeDone`): the paint pipeline
+  re-fires the active tool for every tile the pointer crosses, which used to
+  stamp a whole terrace from one twitchy click.
 
 ### Console kill-switches
 `window.EW_CANOPY_CUT_RADIUS`, `window.EW_CANOPY_CUT_BAND`,

@@ -7624,6 +7624,8 @@
         let _meWallWin = false;
         let _meDoorH = 2;
         /* ── One-click building placer ── */
+        const ME_BLD_MIN = 4;             // minimum room size (tiles) — 4×4
+        const ME_BLD_PASSAGE = 2;         // minimum passage width (tiles)
         let _meBldW = 4;                  // footprint width (tiles)
         let _meBldD = 4;                  // footprint depth (tiles)
         let _meBldStorey = 3;             // cells per storey (min 2 = room height)
@@ -7631,9 +7633,17 @@
         let _meBldRoof = true;
         let _meBldWindows = true;
         let _meBldDoorSide = 'S';
+        let _meBldDoor2Side = 'auto';     // 2nd entrance ('auto' = opposite face)
+        let _meBldConnect = true;         // snap onto / cut passages into neighbours
+        let _meBldStairs = true;          // stair run per storey (+ roof hatch)
+        let _meBldUseWallStyle = true;    // inherit the Walls & Roofs style options
         let _meBldWallTex = 'bricks_2';
         let _meBldFloorTex = 'wood_planks';
         let _meBldRoofTex = 'wood_planks';
+        /* Footprints of every building stamped on this map: [{x0,y0,x1,y1}].
+           Saved with the map so a reloaded map still snaps/connects instead of
+           dropping a new building straight through an old one's wall. */
+        let _meBldRooms = [];
         /* Authored nexus zones: "x,y" → z (the storey the zone belongs to), so a
            nexus inside a closed room stays inside it instead of defaulting to
            whatever surface happens to be on top of the column. */
@@ -7851,6 +7861,7 @@
                 sanctuaryZones: _meSanctuaryZones ? _meSanctuaryZones.map(row => [...row]) : null,
                 monuments: _meMonuments ? _meMonuments.map(m => ({ ...m })) : [],
                 terrainTints: Object.assign({}, _meTerrainTints),
+                bldRooms: (_meBldRooms || []).map(r => ({ ...r })),
                 w: _meW, h: _meH
             };
         }
@@ -7877,6 +7888,7 @@
             };
             _meNexusZ = snap.nexusZ ? Object.assign({}, snap.nexusZ) : {};
             _meSanctuaryZones = snap.sanctuaryZones ? snap.sanctuaryZones.map(row => [...row]) : null;
+            _meBldRooms = Array.isArray(snap.bldRooms) ? snap.bldRooms.map(r => ({ ...r })) : [];
             _meSyncVoxelsToLegacy();
         }
         function _mePushUndo() {
@@ -8227,6 +8239,10 @@
         }
 
         let _meEditorDragging = false;
+        /* One building per pointer-down: the paint pipeline re-fires the active
+           tool for every tile the pointer crosses, which turned a twitchy click
+           into a whole terrace of stamped buildings. */
+        let _meBldStrokeDone = false;
 
         window._meEditorClickTile = function(x, y) {
             if (x < 0 || y < 0 || x >= _meW || y >= _meH) return;
@@ -8249,6 +8265,7 @@
         window._meEditorDragStart = function() {
             if (!_meEditorDragging) _mePushUndo();
             _meEditorDragging = true;
+            _meBldStrokeDone = false;
         };
         window._meEditorDragEnd = function() { _meEditorDragging = false; };
 
@@ -9514,7 +9531,7 @@
                     <button type="button" class="me-section-label" onclick="window._meToggleSection('meSec-bldg')"><span class="me-sec-caret">▾</span> Building Placer</button>
                     <div class="me-section-body">
                     <div class="me-tool-row">
-                        <button class="me-tool" id="meTool-building" onclick="window._meSetTool('building')" title="Stamp a whole building in one click: perimeter walls per storey, a centred doorway on the chosen face, window bays, a floor slab per upper storey and a roof cap. The click point is the NW corner">🏗️ Place Building</button>
+                        <button class="me-tool" id="meTool-building" onclick="window._meSetTool('building')" title="Stamp a whole building in one click: perimeter walls, TWO entrances, window bays, a floor slab and a stair flight per storey, and a roof cap. Hover to preview exactly where it lands — overlapping an existing building snaps the footprint against it and cuts a 2-wide passage so the two become one structure">🏗️ Place Building</button>
                     </div>
                     <div class="me-z-cursor-wrap" style="margin-top:6px">
                         <span class="me-z-label">Size</span>
@@ -9525,7 +9542,7 @@
                         <button class="me-z-btn" onclick="window._meBldAdj('d',-1)">−</button>
                         <span class="me-z-value" id="meBldDVal">${_meBldD}</span>
                         <button class="me-z-btn" onclick="window._meBldAdj('d',1)">+</button>
-                        <span class="me-z-hint">tiles (W × D)</span>
+                        <span class="me-z-hint">tiles (W × D, min ${ME_BLD_MIN}×${ME_BLD_MIN})</span>
                     </div>
                     <div class="me-z-cursor-wrap" style="margin-top:6px">
                         <span class="me-z-label">Storeys</span>
@@ -9548,8 +9565,25 @@
                         </select>
                     </div>
                     <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <span class="me-z-label">Door 2</span>
+                        <select class="me-load-select" id="meBldDoor2Sel" onchange="window._meBldSetDoor2Side(this.value)" style="flex:1" title="Every room gets a SECOND way out — one door is a dead end for whoever gets cornered in there">
+                            <option value="auto">🚪 Opposite face (auto)</option>
+                            <option value="S">🚪 South face</option>
+                            <option value="N">🚪 North face</option>
+                            <option value="W">🚪 West face</option>
+                            <option value="E">🚪 East face</option>
+                        </select>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
                         <button class="me-z-btn me-wall-btn" id="meBldRoofBtn" onclick="window._meBldToggle('roof')" title="Cap the building with a roof slab">⛺ Roof cap</button>
                         <button class="me-z-btn me-wall-btn" id="meBldWinBtn" onclick="window._meBldToggle('windows')" title="Punch window bays into every storey">🪟 Windows</button>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <button class="me-z-btn me-wall-btn" id="meBldConnectBtn" onclick="window._meBldToggle('connect')" title="Auto-connect: a footprint dropped on top of an existing building snaps against it so they SHARE a wall, and every shared stretch of wall gets a 2-tile-wide passage cut through it — two buildings become one structure. Off = stamp exactly where you click">🔗 Auto-connect</button>
+                        <button class="me-z-btn me-wall-btn" id="meBldStairBtn" onclick="window._meBldToggle('stairs')" title="Build a walkable stair flight up to every storey (and a rooftop hatch) — one-cell steps hugging the walls, with the stairwell opening cut out of the floor above">🪜 Stairs</button>
+                    </div>
+                    <div class="me-z-cursor-wrap" style="margin-top:6px">
+                        <button class="me-z-btn me-wall-btn" id="meBldStyleBtn" onclick="window._meBldToggle('wallstyle')" title="Use the Walls &amp; Roofs style options above for this building too: crenellations / overhang, the inner-face texture, flip, and (single-storey only) low or see-through walls">🏰 Wall style</button>
                     </div>
                     <div class="me-z-cursor-wrap" style="margin-top:6px">
                         <span class="me-z-label">Walls</span>
@@ -9564,7 +9598,7 @@
                         <select class="me-load-select" id="meBldRoofTexSel" onchange="window._meBldSetTex('roof',this.value)" style="flex:1"></select>
                     </div>
                     <div style="padding:6px 2px 0;font-size:10px;color:var(--muted);line-height:1.45">
-                        The footprint is levelled to the clicked tile's ground height first, so the walls sit flush. Storeys of 3 cells give a comfortable room; 2 is the tight minimum. Everything it stamps is ordinary walls and slabs — edit any of it afterwards with the tools above.
+                        <b>Hover first:</b> the ghost shows the exact footprint, the wall line, the two doorways (green), any passage it will cut into a neighbour (cyan) and the stair flights (amber). The footprint is levelled to the anchor tile's ground height so the walls sit flush. Storeys of 3 cells give a comfortable room; 2 is the tight minimum. Rooms are never smaller than ${ME_BLD_MIN}×${ME_BLD_MIN} and passages never narrower than ${ME_BLD_PASSAGE} tiles, so a unit can always get through. Everything it stamps is ordinary walls and slabs — edit any of it afterwards with the tools above.
                     </div>
                     </div>
                 </div>
@@ -9797,6 +9831,7 @@
 
             _meHideEditorHUD();
 
+            _meBldClearGhost();
             _meClearEditorOverlays3D();
 
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
@@ -10602,6 +10637,8 @@
             if (br2) { br2.innerHTML = _meWallTexOptions(false); br2.value = _meBldRoofTex; if (!br2.value) { _meBldRoofTex = br2.options[0]?.value || 'wood_planks'; br2.value = _meBldRoofTex; } }
             const bd = document.getElementById('meBldDoorSel');
             if (bd) bd.value = _meBldDoorSide;
+            const bd2 = document.getElementById('meBldDoor2Sel');
+            if (bd2) bd2.value = _meBldDoor2Side;
         }
 
         /* ── Slab (roof / floor) height, doorway height, building options ── */
@@ -10623,8 +10660,11 @@
         window._meWallToggleDoor = function() { _meWallDoor = !_meWallDoor; _meWallStyleBtns(); _meSfx('uiButtonConfirm'); };
         window._meWallToggleWin = function() { _meWallWin = !_meWallWin; _meWallStyleBtns(); _meSfx('uiButtonConfirm'); };
         window._meBldAdj = function(what, d) {
-            if (what === 'w') _meBldW = Math.max(1, Math.min(24, _meBldW + d));
-            else if (what === 'd') _meBldD = Math.max(1, Math.min(24, _meBldD + d));
+            /* ME_BLD_MIN is a floor, not a suggestion — a 4×4 room is the
+               smallest one that still takes a 2-wide passage AND a stair run
+               without sealing itself off. */
+            if (what === 'w') _meBldW = Math.max(ME_BLD_MIN, Math.min(24, _meBldW + d));
+            else if (what === 'd') _meBldD = Math.max(ME_BLD_MIN, Math.min(24, _meBldD + d));
             else if (what === 'floors') _meBldFloors = Math.max(1, Math.min(6, _meBldFloors + d));
             else if (what === 'storey') _meBldStorey = Math.max(2, Math.min(8, _meBldStorey + d));
             const ids = { w: 'meBldWVal', d: 'meBldDVal', floors: 'meBldFloorsVal', storey: 'meBldStoreyVal' };
@@ -10632,9 +10672,11 @@
             const el = document.getElementById(ids[what]);
             if (el) el.textContent = vals[what];
             _meUpdateZHint();
+            _meBldRefreshGhost();
             _meSfx('uiCursorMove');
         };
-        window._meBldSetDoorSide = function(s) { _meBldDoorSide = s || 'S'; _meUpdateZHint(); _meSfx('uiButtonConfirm'); };
+        window._meBldSetDoorSide = function(s) { _meBldDoorSide = s || 'S'; _meUpdateZHint(); _meBldRefreshGhost(); _meSfx('uiButtonConfirm'); };
+        window._meBldSetDoor2Side = function(s) { _meBldDoor2Side = s || 'auto'; _meUpdateZHint(); _meBldRefreshGhost(); _meSfx('uiButtonConfirm'); };
         window._meBldSetTex = function(which, t) {
             if (!t) return;
             if (which === 'wall') _meBldWallTex = t;
@@ -10645,7 +10687,11 @@
         window._meBldToggle = function(what) {
             if (what === 'roof') _meBldRoof = !_meBldRoof;
             else if (what === 'windows') _meBldWindows = !_meBldWindows;
+            else if (what === 'connect') _meBldConnect = !_meBldConnect;
+            else if (what === 'stairs') _meBldStairs = !_meBldStairs;
+            else if (what === 'wallstyle') _meBldUseWallStyle = !_meBldUseWallStyle;
             _meWallStyleBtns();
+            _meBldRefreshGhost();
             _meSfx('uiButtonConfirm');
         };
         window._meWallAdjH = function(d) {
@@ -10654,9 +10700,9 @@
             if (v) v.textContent = _meWallH;
             _meSfx('uiCursorMove');
         };
-        window._meWallSetCap = function(c) { _meWallCap = c || 'none'; _meSfx('uiButtonConfirm'); };
+        window._meWallSetCap = function(c) { _meWallCap = c || 'none'; _meBldRefreshGhost(); _meSfx('uiButtonConfirm'); };
         window._meWallSetTex = function(t) { if (t) _meWallTex = t; _meSfx('uiButtonConfirm'); };
-        window._meWallSetTexIn = function(t) { _meWallTexIn = t || ''; _meSfx('uiButtonConfirm'); };
+        window._meWallSetTexIn = function(t) { _meWallTexIn = t || ''; _meBldRefreshGhost(); _meSfx('uiButtonConfirm'); };
         window._meWallSetRoofTex = function(t) { if (t) _meRoofTex = t; _meSfx('uiButtonConfirm'); };
         function _meWallStyleBtns() {
             const l = document.getElementById('meWallLowBtn');
@@ -10673,10 +10719,16 @@
             const bw = document.getElementById('meBldWinBtn');
             if (br) br.classList.toggle('active', _meBldRoof);
             if (bw) bw.classList.toggle('active', _meBldWindows);
+            const bc = document.getElementById('meBldConnectBtn');
+            const bs = document.getElementById('meBldStairBtn');
+            const bst = document.getElementById('meBldStyleBtn');
+            if (bc) bc.classList.toggle('active', _meBldConnect);
+            if (bs) bs.classList.toggle('active', _meBldStairs);
+            if (bst) bst.classList.toggle('active', _meBldUseWallStyle);
         }
-        window._meWallToggleLow = function() { _meWallLow = !_meWallLow; if (_meWallLow) _meWallSee = false; _meWallStyleBtns(); _meSfx('uiButtonConfirm'); };
-        window._meWallToggleSee = function() { _meWallSee = !_meWallSee; if (_meWallSee) _meWallLow = false; _meWallStyleBtns(); _meSfx('uiButtonConfirm'); };
-        window._meWallToggleFlip = function() { _meWallFlip = !_meWallFlip; _meWallStyleBtns(); _meSfx('uiButtonConfirm'); };
+        window._meWallToggleLow = function() { _meWallLow = !_meWallLow; if (_meWallLow) _meWallSee = false; _meWallStyleBtns(); _meBldRefreshGhost(); _meSfx('uiButtonConfirm'); };
+        window._meWallToggleSee = function() { _meWallSee = !_meWallSee; if (_meWallSee) _meWallLow = false; _meWallStyleBtns(); _meBldRefreshGhost(); _meSfx('uiButtonConfirm'); };
+        window._meWallToggleFlip = function() { _meWallFlip = !_meWallFlip; _meWallStyleBtns(); _meBldRefreshGhost(); _meSfx('uiButtonConfirm'); };
 
         /* Remove walls whose edge no longer touches an in-bounds tile. */
         function _meWallsClip(w, h) {
@@ -10891,21 +10943,324 @@
         }
 
         /* ══════════ ONE-CLICK BUILDING PLACER ══════════
-           Stamps a whole structure: perimeter walls per storey (with a doorway
-           on the chosen side at ground level and a window band on every storey),
-           a floor slab per upper storey, and an optional roof. The click point
-           is the building's NW corner. */
-        function _meStampBuilding(ox, oy) {
-            const W = Math.max(1, _meBldW), D = Math.max(1, _meBldD);
+           Everything the placer is about to do is worked out FIRST, by
+           _meBldPlan — a pure function of the hovered tile plus the panel
+           settings that touches nothing. The hover ghost draws that plan and
+           the click stamps that same plan, so what floats under the cursor is
+           exactly what lands. The plan carries:
+             · the footprint, pushed OUT of any building it would overlap so
+               neighbours SHARE a wall line instead of interpenetrating (every
+               room stays at least ME_BLD_MIN×ME_BLD_MIN);
+             · passages — each stretch of the new perimeter that lands on
+               masonry that is already there gets a ME_BLD_PASSAGE-tile-wide
+               opening cut through it, which is what welds two buildings into
+               one structure (one record per edge, so cutting it opens BOTH
+               sides at once);
+             · two entrances per room — the chosen face and (by default) the
+               opposite one, stepped aside from passages, because a room with
+               a single door is a dead end;
+             · a stair flight per storey (plus a roof hatch), each on a
+               different stretch of wall from the one below so a flight always
+               rests on solid floor and the stairwell hole above it is clear;
+             · the Walls & Roofs style options (crenellations, overhang,
+               inner face, flip, see-through / low) so a building matches the
+               walls you have been drawing by hand. */
+        const ME_BLD_OPP = { N: 'S', S: 'N', W: 'E', E: 'W' };
+
+        function _meBldSideTiles(r, dir) {
+            const out = [];
+            if (dir === 'N') for (let x = r.x0; x <= r.x1; x++) out.push({ x, y: r.y0 });
+            else if (dir === 'S') for (let x = r.x0; x <= r.x1; x++) out.push({ x, y: r.y1 });
+            else if (dir === 'W') for (let y = r.y0; y <= r.y1; y++) out.push({ x: r.x0, y });
+            else for (let y = r.y0; y <= r.y1; y++) out.push({ x: r.x1, y });
+            return out;
+        }
+        function _meBldOutside(t, dir) {
+            return {
+                x: t.x + (dir === 'W' ? -1 : dir === 'E' ? 1 : 0),
+                y: t.y + (dir === 'N' ? -1 : dir === 'S' ? 1 : 0)
+            };
+        }
+        function _meRectsHit(a, b) { return a.x0 <= b.x1 && b.x0 <= a.x1 && a.y0 <= b.y1 && b.y0 <= a.y1; }
+        function _meWallTopCell(w) { return (w.z0 | 0) + Math.max(1, w.h || 1) - 1; }
+        /* Normalise a wall's openings (list form + the legacy door/win flags)
+           into one `ops` array — used when a new facade absorbs the wall it
+           shares with an older building instead of overwriting its doorways. */
+        function _meWallOpsOf(w) {
+            const out = [];
+            if (!w) return out;
+            if (Array.isArray(w.ops)) for (const o of w.ops) { if (o) out.push({ z: o.z | 0, h: Math.max(1, o.h || 1), kind: o.kind || 'door' }); }
+            if (w.door) out.push({ z: w.z0 | 0, h: Math.max(1, w.doorH || 2), kind: 'door' });
+            if (w.win) out.push({ z: (w.z0 | 0) + ((w.winZ != null) ? w.winZ : 1), h: Math.max(1, w.winH || 1), kind: 'win' });
+            return out;
+        }
+
+        /* Slide a footprint out of every building it overlaps until it only
+           TOUCHES them (shared wall line). Rooms keep their authored size —
+           shrinking one to dodge a neighbour would break the 4×4 minimum. */
+        function _meBldSnapOut(rect, W, D) {
+            const cur = { x0: rect.x0, y0: rect.y0, x1: rect.x1, y1: rect.y1 };
+            let snapped = false;
+            for (let pass = 0; pass < 8; pass++) {
+                const hit = (_meBldRooms || []).find(r => r && _meRectsHit(cur, r));
+                if (!hit) break;
+                /* Four ways out — pick the one that moves the building least. */
+                const cands = [
+                    { ax: 'x', v: hit.x0 - W }, { ax: 'x', v: hit.x1 + 1 },
+                    { ax: 'y', v: hit.y0 - D }, { ax: 'y', v: hit.y1 + 1 }
+                ];
+                let best = null, bestD = Infinity;
+                for (const c of cands) {
+                    if (c.ax === 'x') { if (c.v < 0 || c.v + W > _meW) continue; }
+                    else if (c.v < 0 || c.v + D > _meH) continue;
+                    const d = Math.abs(c.v - (c.ax === 'x' ? cur.x0 : cur.y0));
+                    if (d < bestD) { bestD = d; best = c; }
+                }
+                if (!best) break;                      // boxed in — stamp where asked
+                if (best.ax === 'x') { cur.x0 = best.v; cur.x1 = best.v + W - 1; }
+                else { cur.y0 = best.v; cur.y1 = best.v + D - 1; }
+                snapped = true;
+            }
+            return { rect: cur, snapped };
+        }
+
+        /* Shared-wall runs on the new perimeter → one passage each,
+           ME_BLD_PASSAGE tiles wide and centred on the run. */
+        function _meBldPassages(rect) {
+            const out = [];
+            if (!_meBldConnect) return out;
+            for (const dir of ['N', 'S', 'W', 'E']) {
+                let run = [];
+                const flush = () => {
+                    if (run.length >= ME_BLD_PASSAGE) {
+                        const start = Math.floor((run.length - ME_BLD_PASSAGE) / 2);
+                        out.push({ dir, tiles: run.slice(start, start + ME_BLD_PASSAGE) });
+                    }
+                    run = [];
+                };
+                for (const t of _meBldSideTiles(rect, dir)) {
+                    const o = _meBldOutside(t, dir);
+                    const onMap = o.x >= 0 && o.y >= 0 && o.x < _meW && o.y < _meH;
+                    if (onMap && _meWalls[_meWallKeyFor(t.x, t.y, dir)]) run.push(t);
+                    else flush();
+                }
+                flush();
+            }
+            return out;
+        }
+
+        /* Two entrances, never on a passage bay: the chosen face first, then
+           the second face (default = opposite), then whatever is left. */
+        function _meBldEntrances(rect, passages) {
+            const taken = new Set();
+            for (const p of passages) for (const t of p.tiles) taken.add(p.dir + ':' + t.x + ',' + t.y);
+            const primary = ME_BLD_OPP[_meBldDoorSide] ? _meBldDoorSide : 'S';
+            const second = (_meBldDoor2Side && _meBldDoor2Side !== 'auto') ? _meBldDoor2Side : ME_BLD_OPP[primary];
+            const order = [primary];
+            if (second !== primary) order.push(second);
+            for (const d of ['S', 'N', 'W', 'E']) if (!order.includes(d)) order.push(d);
+            /* A face that already carries a passage into the neighbour is a
+               poor place for a door — it would just widen the same hole. Keep
+               the chosen order, but let the free faces go first. */
+            const passSides = new Set(passages.map(p => p.dir));
+            order.sort((a, b) => (passSides.has(a) ? 1 : 0) - (passSides.has(b) ? 1 : 0));
+
+            const doors = [];
+            for (const dir of order) {
+                if (doors.length >= 2) break;
+                if (doors.some(d => d.dir === dir)) continue;
+                const list = _meBldSideTiles(rect, dir);
+                const mid = Math.floor((list.length - 1) / 2);
+                /* centre bay first, then outward — a corner door reads badly */
+                const idxs = list.map((t, i) => i).sort((a, b) => Math.abs(a - mid) - Math.abs(b - mid));
+                for (const i of idxs) {
+                    const t = list[i];
+                    if (taken.has(dir + ':' + t.x + ',' + t.y)) continue;
+                    /* A door on a face flush with the map edge opens onto the
+                       void — no one can ever use it, so try another face. */
+                    const o = _meBldOutside(t, dir);
+                    if (o.x < 0 || o.y < 0 || o.x >= _meW || o.y >= _meH) continue;
+                    doors.push({ dir, x: t.x, y: t.y });
+                    taken.add(dir + ':' + t.x + ',' + t.y);
+                    break;
+                }
+            }
+            return doors;
+        }
+
+        /* Interior perimeter ring, walked clockwise — consecutive entries are
+           always cardinal neighbours, so a stair flight can turn a corner
+           instead of running out of room in a small building. */
+        function _meBldRing(r) {
+            const ring = [];
+            for (let x = r.x0; x <= r.x1; x++) ring.push({ x, y: r.y0 });
+            for (let y = r.y0 + 1; y <= r.y1; y++) ring.push({ x: r.x1, y });
+            for (let x = r.x1 - 1; x >= r.x0; x--) ring.push({ x, y: r.y1 });
+            for (let y = r.y1 - 1; y > r.y0; y--) ring.push({ x: r.x0, y });
+            return ring;
+        }
+
+        /* First stretch of `len` ring tiles (wrapping) that is clear of doors,
+           passages and earlier stairwell holes — and whose approach tile (the
+           step you climb ON from) is solid floor. */
+        function _meBldPickRun(ring, len, blocked, holes, startAt) {
+            const n = ring.length;
+            if (!n || len > n) return [];
+            for (let s = 0; s < n; s++) {
+                const i0 = (startAt + s) % n;
+                const prev = ring[(i0 - 1 + n) % n];
+                if (holes.has(prev.x + ',' + prev.y)) continue;
+                const run = [];
+                let ok = true;
+                for (let k = 0; k < len; k++) {
+                    const t = ring[(i0 + k) % n];
+                    if (blocked.has(t.x + ',' + t.y)) { ok = false; break; }
+                    run.push(t);
+                }
+                if (ok) return run;
+            }
+            return [];
+        }
+
+        /* One flight per floor change: SH-1 one-cell steps hugging a wall, then
+           a single step up onto the slab. The slab is left OUT over the top of
+           each flight — that hole is the stairwell, and without it the climber
+           would be standing inside the ceiling. */
+        function _meBldStairPlan(rect, baseZ, SH, N, blockedTiles) {
+            const flights = [];
+            if (!_meBldStairs) return flights;
+            const levels = [];
+            for (let s = 1; s < N; s++) levels.push(baseZ + s * SH);
+            if (_meBldRoof && N >= 2) levels.push(baseZ + N * SH);   // rooftop hatch
+            if (!levels.length) return flights;
+            const ring = _meBldRing(rect);
+            if (ring.length < 3) return flights;
+            const base = new Set(blockedTiles.map(t => t.x + ',' + t.y));
+            /* Only the flight DIRECTLY below matters: its stairwell hole is the
+               missing floor the next flight would have stood on. Holes further
+               down are cut in slabs this flight never touches, so carrying them
+               forever just starved tall buildings of somewhere to put a flight. */
+            let prevHoles = new Set();
+            const len = Math.max(1, SH - 1);
+            for (let i = 0; i < levels.length; i++) {
+                const top = levels[i];
+                const from = top - SH;
+                const blocked = new Set(base);
+                for (const k of prevHoles) blocked.add(k);
+                /* Alternate around the ring so consecutive flights land on
+                   opposite walls rather than stacking into one shaft. */
+                const startAt = (i % 2) ? Math.floor(ring.length * 0.5) : 0;
+                const run = _meBldPickRun(ring, len, blocked, prevHoles, startAt);
+                if (!run.length) continue;
+                const steps = run.map((t, k) => ({ x: t.x, y: t.y, z: from + k + 1 }));
+                const hole = steps.filter(s2 => s2.z >= top - 2).map(s2 => ({ x: s2.x, y: s2.y }));
+                prevHoles = new Set(hole.map(h => h.x + ',' + h.y));
+                flights.push({ from, top, steps, hole });
+            }
+            return flights;
+        }
+
+        /* The whole placement, resolved and inspectable — no side effects. */
+        function _meBldPlan(ox, oy) {
+            const W = Math.max(ME_BLD_MIN, _meBldW), D = Math.max(ME_BLD_MIN, _meBldD);
             const SH = Math.max(2, _meBldStorey);      // cells per storey (2 = room height)
             const N = Math.max(1, _meBldFloors);
-            const baseZ = _meColFloorZ(ox, oy);
-            const x1 = Math.min(_meW - 1, ox + W - 1), y1 = Math.min(_meH - 1, oy + D - 1);
+            if (W > _meW || D > _meH) return null;     // bigger than the map
+            /* The click is the NW corner, but a footprint hanging off the E/S
+               edge slides back instead of being clipped into a stub room. */
+            let rect = { x0: Math.max(0, Math.min(ox, _meW - W)), y0: Math.max(0, Math.min(oy, _meH - D)) };
+            rect.x1 = rect.x0 + W - 1; rect.y1 = rect.y0 + D - 1;
+            let snapped = false;
+            if (_meBldConnect) { const s = _meBldSnapOut(rect, W, D); rect = s.rect; snapped = s.snapped; }
+
+            const baseZ = _meColFloorZ(rect.x0, rect.y0);
+            const wallZ0 = Math.min(ME_MAX_Z, baseZ + 1);
+            const wallH = Math.max(1, Math.min(ME_MAX_Z - wallZ0 + 1, N * SH));
+            const doorH = Math.min(2, SH);
+
+            /* Style from the Walls & Roofs panel. See-through / low walls can't
+               carry openings (wallOpeningRects refuses them) and can't hold up
+               a floor, so they only apply to a single-storey enclosure — and
+               there the doors become real GAPS in the ring instead of ops. */
+            const style = {
+                cap: _meBldUseWallStyle && _meWallCap !== 'none' ? _meWallCap : null,
+                texIn: _meBldUseWallStyle ? (_meWallTexIn || '') : '',
+                flip: _meBldUseWallStyle && _meWallFlip,
+                see: _meBldUseWallStyle && _meWallSee && N === 1,
+                low: _meBldUseWallStyle && _meWallLow && N === 1
+            };
+            const openStyle = style.see || style.low;   // openings must be gaps
+
+            const passages = _meBldPassages(rect);
+            const doors = _meBldEntrances(rect, passages);
+
+            const doorKey = new Set(doors.map(d => d.dir + ':' + d.x + ',' + d.y));
+            const passKey = new Set();
+            for (const p of passages) for (const t of p.tiles) passKey.add(p.dir + ':' + t.x + ',' + t.y);
+
+            const edges = [];
+            for (const dir of ['N', 'S', 'W', 'E']) {
+                for (const t of _meBldSideTiles(rect, dir)) {
+                    if (t.x < 0 || t.y < 0 || t.x >= _meW || t.y >= _meH) continue;
+                    const k = dir + ':' + t.x + ',' + t.y;
+                    const isDoor = doorKey.has(k), isPass = passKey.has(k);
+                    const ops = [];
+                    if (!openStyle) {
+                        if (isDoor || isPass) ops.push({ z: wallZ0, h: doorH, kind: 'door' });
+                        if (_meBldWindows && SH >= 2) {
+                            /* Alternating bays so the facade reads as a building
+                               and not a colander — never over a door/passage. */
+                            const idx = (dir === 'N' || dir === 'S') ? t.x : t.y;
+                            if (idx % 2 === 0) {
+                                for (let s = 0; s < N; s++) {
+                                    if (s === 0 && (isDoor || isPass)) continue;
+                                    ops.push({ z: wallZ0 + s * SH + (SH - 2), h: 1, kind: 'win' });
+                                }
+                            }
+                        }
+                    }
+                    edges.push({
+                        x: t.x, y: t.y, dir, key: _meWallKeyFor(t.x, t.y, dir),
+                        door: isDoor, pass: isPass, ops,
+                        gap: openStyle && (isDoor || isPass)
+                    });
+                }
+            }
+
+            /* Stairs steer clear of every entrance bay AND the floor tile just
+               inside it, so a flight can never wall off its own front door. */
+            const keepClear = [];
+            for (const d of doors) keepClear.push({ x: d.x, y: d.y });
+            for (const p of passages) for (const t of p.tiles) keepClear.push({ x: t.x, y: t.y });
+            const flights = _meBldStairPlan(rect, baseZ, SH, N, keepClear);
+
+            /* Stairwell holes are per SLAB LEVEL — the opening a flight needs
+               in the floor it climbs to, and nowhere else (punching the same
+               tile on every level would bore an atrium through the building
+               and leave a hole in the roof). */
+            const holesAt = {};
+            for (const f of flights) {
+                const set = holesAt[f.top] || (holesAt[f.top] = new Set());
+                for (const h of f.hole) set.add(h.x + ',' + h.y);
+            }
+            const holeAt = (z, x, y) => !!(holesAt[z] && holesAt[z].has(x + ',' + y));
+
+            return {
+                x0: rect.x0, y0: rect.y0, x1: rect.x1, y1: rect.y1, W, D, SH, N,
+                baseZ, wallZ0, wallH, doorH, style, openStyle,
+                edges, doors, passages, flights, holesAt, holeAt, snapped,
+                roof: _meBldRoof, roofZ: baseZ + N * SH
+            };
+        }
+
+        function _meBldApply(plan) {
+            if (!plan) return;
+            const { x0, y0, x1, y1, baseZ, SH, N } = plan;
 
             /* 1. Level the footprint to the anchor's floor so the walls sit flush. */
             const gTid = ME_TERRAIN_TO_ID[_meBldFloorTex] || ME_TERRAIN_TO_ID['grass'] || 1;
-            for (let y = oy; y <= y1; y++) {
-                for (let x = ox; x <= x1; x++) {
+            for (let y = y0; y <= y1; y++) {
+                for (let x = x0; x <= x1; x++) {
                     if (x < 0 || y < 0) continue;
                     const col = _meVoxels?.[y]?.[x];
                     if (col) for (let i = col.length - 1; i >= 0; i--) { if (col[i].z > baseZ) col.splice(i, 1); }
@@ -10922,59 +11277,305 @@
 
             /* 2. Perimeter walls. state.edgeWalls holds ONE record per edge, so
                a multi-storey facade is a single tall wall carrying an explicit
-               list of openings (`ops`) — a centred doorway at ground level and
-               one window per storey — rather than a stack of records that would
-               simply overwrite each other. */
-            const doorSide = _meBldDoorSide;
-            const midX = ox + Math.floor(W / 2), midY = oy + Math.floor(D / 2);
-            const edges = [];
-            for (let x = ox; x <= x1; x++) { edges.push({ x, y: oy, dir: 'N' }); edges.push({ x, y: y1, dir: 'S' }); }
-            for (let y = oy; y <= y1; y++) { edges.push({ x: ox, y, dir: 'W' }); edges.push({ x: x1, y, dir: 'E' }); }
-
-            const wallZ0 = Math.min(ME_MAX_Z, baseZ + 1);
-            const wallH = Math.max(1, Math.min(ME_MAX_Z, N * SH));
-            for (const e of edges) {
-                if (e.x < 0 || e.y < 0 || e.x >= _meW || e.y >= _meH) continue;
-                const rec = { z0: wallZ0, h: wallH, tex: _meBldWallTex };
-                if (_meWallTexIn) rec.texIn = _meWallTexIn;
-                const ops = [];
-                const onDoorBay = e.dir === doorSide
-                    && ((doorSide === 'N' || doorSide === 'S') ? e.x === midX : e.y === midY);
-                if (onDoorBay) ops.push({ z: wallZ0, h: Math.min(2, SH), kind: 'door' });
-                if (_meBldWindows && SH >= 2) {
-                    /* Windows on alternating bays so the facade reads as a
-                       building rather than a colander — and never in the bay
-                       that carries the door on the ground storey. */
-                    const idx = (e.dir === 'N' || e.dir === 'S') ? e.x : e.y;
-                    if (idx % 2 === 0) {
-                        for (let s = 0; s < N; s++) {
-                            if (s === 0 && onDoorBay) continue;
-                            ops.push({ z: wallZ0 + s * SH + (SH - 2), h: 1, kind: 'win' });
-                        }
+               list of openings (`ops`) — doorways at ground level, one window
+               band per storey — rather than a stack of records that would
+               simply overwrite each other. A wall SHARED with an older
+               building absorbs that wall (tallest of the two, both sets of
+               openings) instead of truncating its facade. */
+            for (const e of plan.edges) {
+                const old = _meWalls[e.key];
+                if (e.gap) { if (old) delete _meWalls[e.key]; continue; }
+                const rec = { z0: plan.wallZ0, h: plan.wallH, tex: _meBldWallTex };
+                if (plan.style.texIn) rec.texIn = plan.style.texIn;
+                if (plan.style.cap) rec.cap = plan.style.cap;
+                if (plan.style.flip) rec.flip = true;
+                if (plan.style.see) rec.see = true;
+                else if (plan.style.low) rec.low = true;
+                let ops = e.ops.slice();
+                if (old) {
+                    /* This edge belongs to both buildings now: never shorten
+                       the neighbour's facade (a 1-storey annexe overwriting a
+                       3-storey wall would leave its upper floors open to the
+                       sky) and never lose the openings already cut in it. */
+                    const z0 = Math.min(old.z0 | 0, rec.z0);
+                    const top = Math.max(_meWallTopCell(old), rec.z0 + rec.h - 1);
+                    rec.z0 = z0; rec.h = Math.min(ME_MAX_Z, top - z0 + 1);
+                    const seen = new Set(ops.map(o => o.z + ':' + o.h + ':' + o.kind));
+                    for (const o of _meWallOpsOf(old)) {
+                        const k = o.z + ':' + o.h + ':' + o.kind;
+                        if (seen.has(k)) continue;      // re-stamping must not stack duplicates
+                        seen.add(k); ops.push(o);
                     }
                 }
-                if (ops.length) rec.ops = ops;
-                _meWalls[_meWallKeyFor(e.x, e.y, e.dir)] = rec;
+                if (ops.length && !rec.see && !rec.low) rec.ops = ops;
+                _meWalls[e.key] = rec;
             }
 
             /* 3. One floor slab per upper storey (each is also the ceiling of
-               the storey below — that's what gives the lower room its roof). */
+               the storey below), minus the stairwell holes. */
             for (let s = 1; s < N; s++) {
                 const fz = baseZ + s * SH;
-                for (let y = oy; y <= y1; y++) for (let x = ox; x <= x1; x++) {
-                    if (x >= 0 && y >= 0 && x < _meW && y < _meH) _meStampSlab(x, y, fz, _meBldFloorTex);
+                for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+                    if (x < 0 || y < 0 || x >= _meW || y >= _meH) continue;
+                    if (plan.holeAt(fz, x, y)) continue;
+                    _meStampSlab(x, y, fz, _meBldFloorTex);
                 }
             }
 
-            /* 4. Roof cap. */
-            if (_meBldRoof) {
-                const rz = baseZ + N * SH;
-                for (let y = oy; y <= y1; y++) for (let x = ox; x <= x1; x++) {
-                    if (x >= 0 && y >= 0 && x < _meW && y < _meH) _meStampSlab(x, y, rz, _meBldRoofTex);
+            /* 4. Roof cap (the rooftop hatch is a hole here too). */
+            if (plan.roof) {
+                const rz = plan.roofZ;
+                for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+                    if (x < 0 || y < 0 || x >= _meW || y >= _meH) continue;
+                    if (plan.holeAt(rz, x, y)) continue;
+                    _meStampSlab(x, y, rz, _meBldRoofTex);
                 }
+            }
+
+            /* 5. Stairs — a solid one-cell step per tile, so climbing them is
+               an ordinary walk (every rise is exactly MAX_CLIMB_HEIGHT). */
+            const sTid = ME_TERRAIN_TO_ID[_meBldFloorTex] || ME_TERRAIN_TO_ID['stone'] || gTid;
+            for (const f of plan.flights) {
+                for (const st of f.steps) {
+                    if (st.x < 0 || st.y < 0 || st.x >= _meW || st.y >= _meH) continue;
+                    for (let z = f.from + 1; z <= st.z; z++) {
+                        if (z > ME_MAX_Z) break;
+                        const wasLock = _meZLock; _meZLock = true;
+                        _meSetVoxel(st.x, st.y, z, sTid);
+                        _meZLock = wasLock;
+                        const b = _meGetVoxel(st.x, st.y, z);
+                        if (b) delete b.rf;            // steps are solid, not slabs
+                    }
+                }
+            }
+
+            /* 6. Remember the footprint so the NEXT building snaps against it
+                  instead of dropping straight through this one's wall. */
+            if (!Array.isArray(_meBldRooms)) _meBldRooms = [];
+            if (!_meBldRooms.some(r => r.x0 === x0 && r.y0 === y0 && r.x1 === x1 && r.y1 === y1)) {
+                _meBldRooms.push({ x0, y0, x1, y1 });
             }
             _meSyncVoxelsToLegacy();
         }
+
+        function _meStampBuilding(ox, oy) {
+            const plan = _meBldPlan(ox, oy);
+            if (!plan) return null;
+            _meBldApply(plan);
+            return plan;
+        }
+
+        /* ══════════ BUILDING HOVER GHOST ══════════
+           Placing a 4×4×3-storey structure blind — from a single "click = NW
+           corner" hint — meant undoing half the buildings you placed. The
+           ghost draws the RESOLVED plan under the cursor: footprint, wall
+           silhouette at its true height, doorways (green), passages into the
+           neighbour it will weld onto (cyan), stair flights (amber) and the
+           roof line. Snapping shows up as the ghost sliding off the tile you
+           are pointing at — which is the point: you see the snap before you
+           commit to it. */
+        let _meBldGhostGroup = null;
+        let _meBldGhostLabel = null;
+        let _meBldGhostTile = null;
+
+        function _meBldClearGhost2D() {
+            const els = document.querySelectorAll('.me-bld-ghost');
+            for (let i = 0; i < els.length; i++) els[i].remove();
+        }
+
+        function _meBldClearGhost() {
+            if (_meBldGhostGroup) {
+                if (_meBldGhostGroup.parent) _meBldGhostGroup.parent.remove(_meBldGhostGroup);
+                _meBldGhostGroup.traverse(ch => {
+                    if (ch.geometry) ch.geometry.dispose();
+                    if (ch.material) {
+                        const ms = Array.isArray(ch.material) ? ch.material : [ch.material];
+                        ms.forEach(m => { if (m.map) m.map.dispose(); m.dispose(); });
+                    }
+                });
+                _meBldGhostGroup = null;
+            }
+            if (_meBldGhostLabel) {
+                if (_meBldGhostLabel.parent) _meBldGhostLabel.parent.remove(_meBldGhostLabel);
+                const el = _meBldGhostLabel.element;
+                if (el && el.parentNode) el.parentNode.removeChild(el);
+                _meBldGhostLabel = null;
+            }
+            _meBldClearGhost2D();
+            _meBldGhostTile = null;
+        }
+
+        /* Flat fallback for the 2D board / the DOM grid: tint the footprint,
+           mark the door + passage bays. Same information, no meshes. */
+        function _meBldGhost2D(plan) {
+            _meBldClearGhost2D();
+            const mark = (host, kind) => {
+                if (!host) return;
+                const d = document.createElement('div');
+                d.className = 'me-bld-ghost';
+                const col = kind === 'door' ? 'rgba(80,235,140,0.55)'
+                    : kind === 'pass' ? 'rgba(80,215,255,0.55)'
+                    : kind === 'stair' ? 'rgba(255,200,70,0.5)'
+                    : 'rgba(255,215,110,0.28)';
+                d.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:60;background:' + col
+                    + (kind === 'foot' ? ';box-shadow:inset 0 0 0 1px rgba(255,225,140,0.75)' : '');
+                /* inset:0 needs a positioned host — resolved ONCE per element,
+                   not once per hover tile (a 24×24 footprint would otherwise
+                   force hundreds of style recalcs on every mouse move). */
+                if (!host._meBldPosOk) {
+                    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+                    host._meBldPosOk = true;
+                }
+                host.appendChild(d);
+            };
+            const hosts = {};
+            const boardEl = document.getElementById('board');
+            if (boardEl) {
+                for (let ci = 0; ci < boardEl.children.length; ci++) {
+                    const ch = boardEl.children[ci];
+                    if (typeof ch._tileX === 'number' && typeof ch._tileY === 'number') hosts[ch._tileX + ',' + ch._tileY] = ch;
+                }
+            }
+            const grid = document.getElementById('meGrid');
+            if (grid) {
+                const cells = grid.querySelectorAll('.me-cell');
+                for (let i = 0; i < cells.length; i++) hosts[cells[i].dataset.x + ',' + cells[i].dataset.y] = cells[i];
+            }
+            for (let y = plan.y0; y <= plan.y1; y++) for (let x = plan.x0; x <= plan.x1; x++) mark(hosts[x + ',' + y], 'foot');
+            for (const f of plan.flights) for (const st of f.steps) mark(hosts[st.x + ',' + st.y], 'stair');
+            for (const d of plan.doors) mark(hosts[d.x + ',' + d.y], 'door');
+            for (const p of plan.passages) for (const t of p.tiles) mark(hosts[t.x + ',' + t.y], 'pass');
+        }
+
+        function _meBldGhostSummary(plan) {
+            const bits = [`${plan.W}×${plan.D}`,
+                `${plan.N} storey${plan.N > 1 ? 's' : ''} × ${plan.SH}`,
+                `${plan.doors.length} door${plan.doors.length === 1 ? '' : 's'}`];
+            if (plan.passages.length) bits.push(`🔗 ${plan.passages.length} passage${plan.passages.length === 1 ? '' : 's'} (${ME_BLD_PASSAGE} wide)`);
+            if (plan.flights.length) bits.push(`🪜 ${plan.flights.length} flight${plan.flights.length === 1 ? '' : 's'}`);
+            if (plan.snapped) bits.push('⇥ snapped to fit');
+            return bits.join(' · ');
+        }
+
+        function _meBldBuildGhost(plan) {
+            if (typeof THREE === 'undefined' || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return false;
+            const scene = ThreeRenderer._scene || (typeof window._threeScene !== 'undefined' ? window._threeScene : null);
+            if (!scene) return false;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const zY = (z) => z * ts;                      // surface z → world Y
+            const g = new THREE.Group();
+            g.name = 'bldGhost';
+
+            const mkMat = (color, opacity) => new THREE.MeshBasicMaterial({
+                color, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide
+            });
+            const wallMat = mkMat(0xffd88a, 0.30);
+            const doorMat = mkMat(0x54ef91, 0.55);
+            const passMat = mkMat(0x54d7ff, 0.55);
+            const stairMat = mkMat(0xffc247, 0.55);
+            const footMat = mkMat(0xffe08a, 0.16);
+            const roofMat = mkMat(0xbfd9ff, 0.16);
+
+            const W = plan.x1 - plan.x0 + 1, D = plan.y1 - plan.y0 + 1;
+            const cxw = (plan.x0 + W / 2) * ts, czw = (plan.y0 + D / 2) * ts;
+
+            /* Footprint pad + roof plane (the two horizontal reads). */
+            const pad = new THREE.Mesh(new THREE.PlaneGeometry(W * ts, D * ts), footMat);
+            pad.rotation.x = -Math.PI / 2;
+            pad.position.set(cxw, zY(plan.baseZ) + 0.6, czw);
+            pad.renderOrder = 30;
+            g.add(pad);
+            if (plan.roof) {
+                const cap = new THREE.Mesh(new THREE.PlaneGeometry(W * ts, D * ts), roofMat);
+                cap.rotation.x = -Math.PI / 2;
+                cap.position.set(cxw, zY(plan.roofZ) + 0.6, czw);
+                cap.renderOrder = 30;
+                g.add(cap);
+            }
+
+            /* Wall silhouette — one slab per perimeter edge, door and passage
+               bays cut down to the opening so you can read the way in. */
+            const thick = Math.max(2, ts * 0.1);
+            const wallBase = zY(plan.wallZ0 - 1);
+            const fullH = plan.wallH * ts;
+            const openH = plan.doorH * ts;
+            for (const e of plan.edges) {
+                const isN = (e.dir === 'N' || e.dir === 'S');
+                const mat = e.pass ? passMat : (e.door ? doorMat : wallMat);
+                const h = (e.pass || e.door) ? openH : fullH;
+                const geo = new THREE.BoxGeometry(isN ? ts : thick, h, isN ? thick : ts);
+                const m = new THREE.Mesh(geo, mat);
+                const ex = e.x * ts + ts / 2 + (e.dir === 'E' ? ts / 2 : e.dir === 'W' ? -ts / 2 : 0);
+                const ez = e.y * ts + ts / 2 + (e.dir === 'S' ? ts / 2 : e.dir === 'N' ? -ts / 2 : 0);
+                m.position.set(ex, wallBase + h / 2, ez);
+                m.renderOrder = 31;
+                g.add(m);
+            }
+
+            /* Stair flights — each step drawn at the height it will really be. */
+            for (const f of plan.flights) {
+                for (const st of f.steps) {
+                    const h = (st.z - f.from) * ts;
+                    const m = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.8, h, ts * 0.8), stairMat);
+                    m.position.set(st.x * ts + ts / 2, zY(f.from) + h / 2, st.y * ts + ts / 2);
+                    m.renderOrder = 32;
+                    g.add(m);
+                }
+            }
+
+            const el = document.createElement('div');
+            el.className = 'me-3d-label me-3d-bld-label';
+            el.textContent = '🏗️ ' + _meBldGhostSummary(plan);
+            el.style.cssText = 'font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;pointer-events:none;'
+                + 'background:rgba(20,26,38,0.92);color:#ffe1a0;font-family:DotGothic16,monospace;white-space:nowrap;'
+                + 'box-shadow:0 1px 4px rgba(0,0,0,0.55);border:1px solid rgba(255,210,120,0.5)';
+            const lbl = new THREE.CSS2DObject(el);
+            lbl.position.set(cxw, zY(plan.roof ? plan.roofZ : plan.baseZ + plan.N * plan.SH) + ts * 0.5, czw);
+            g.add(lbl);
+            _meBldGhostLabel = lbl;
+
+            scene.add(g);
+            _meBldGhostGroup = g;
+            return true;
+        }
+
+        /* Called on every hover-tile change (ui.js handleTileDragEnter) and
+           whenever a placer setting changes. x < 0 clears. */
+        window._meBldHoverTile = function(x, y) {
+            /* Callers are editor-only (board hover + the flat grid), so the tool
+               is the whole gate — the legacy flat editor screen doesn't set
+               state.phase to 'editor' and would otherwise never get a ghost. */
+            if (_meTool !== 'building') { if (_meBldGhostGroup || _meBldGhostTile) _meBldClearGhost(); return; }
+            if (x == null || y == null || x < 0 || y < 0 || x >= _meW || y >= _meH) { _meBldClearGhost(); return; }
+            if (_meBldGhostTile && _meBldGhostTile.x === x && _meBldGhostTile.y === y && _meBldGhostGroup) return;
+            const plan = _meBldPlan(x, y);
+            _meBldClearGhost();
+            if (!plan) { _meSetHint(`⚠ ${Math.max(ME_BLD_MIN, _meBldW)}×${Math.max(ME_BLD_MIN, _meBldD)} doesn't fit on a ${_meW}×${_meH} map.`); return; }
+            _meBldGhostTile = { x, y };
+            _meBldBuildGhost(plan);      // 3D silhouette (no-op when the 2D board is up)
+            _meBldGhost2D(plan);         // flat tint (no-op when there are no tile elements)
+            _meSetHint(_meBldGhostSummary(plan));
+        };
+
+        /* Re-draw the ghost in place after a size / storey / door / style
+           change so the preview always shows the CURRENT settings. */
+        function _meBldRefreshGhost() {
+            if (_meTool !== 'building') return;
+            const t = _meBldGhostTile;
+            if (!t) return;
+            _meBldGhostTile = null;
+            window._meBldHoverTile(t.x, t.y);
+        }
+
+        /* Pointer left the board (onto the editor panel, the HUD, anywhere) —
+           drop the ghost instead of leaving it stranded on the last tile. */
+        document.addEventListener('pointermove', (ev) => {
+            if (!_meBldGhostTile || _meTool !== 'building') return;
+            const t = ev.target;
+            if (!t || !t.closest) return;
+            if (t.tagName === 'CANVAS' || t.closest('#board') || t.closest('#meGrid')) return;
+            _meBldClearGhost();
+        }, true);
 
         function _meUpdateToolButtons() {
             ['paint','object','select','erase','eraseObj','spawn1','spawn2','nexus','elevUp','elevDown','elevSet',
@@ -10997,6 +11598,7 @@
             _meSfx('uiButtonConfirm');
             _meTool = t;
             _meUpdateToolButtons();
+            if (t !== 'building') _meBldClearGhost();
 
             /* Keep the palette in sync with the tool: elevation tools show the
                elevation guide, everything else shows the terrain/object swatches
@@ -11023,7 +11625,7 @@
             else if (_meTool === 'eraseRoof') hint.textContent = _meZLock ? `Remove the slab at Z=${_meActiveZ}` : 'Removes the highest roof/floor slab';
             else if (_meTool === 'door') hint.textContent = `Click a wall edge — doorway ${_meDoorH} cells tall, masonry stays above`;
             else if (_meTool === 'window') hint.textContent = 'Click a wall edge — window: sight through, no walking through';
-            else if (_meTool === 'building') hint.textContent = `Click = NW corner · ${_meBldW}×${_meBldD}, ${_meBldFloors}×${_meBldStorey} cells`;
+            else if (_meTool === 'building') hint.textContent = `Hover to preview · anchor = NW corner · ${_meBldW}×${_meBldD}, ${_meBldFloors}×${_meBldStorey} cells`;
             else if (_meTool === 'nexus') hint.textContent = _meZLock ? `Nexus zone at Z=${_meActiveZ} · locked` : 'Nexus zone on the clicked surface';
             else if (_meZLock) hint.textContent = `Z-Lock on (Z=${_meActiveZ})`;
             else hint.textContent = '';
@@ -11443,14 +12045,18 @@
                 if (!cell) return;
                 _mePushUndo();
                 _meMouseDown = true;
+                _meBldStrokeDone = false;
                 grid.setPointerCapture(e.pointerId);
                 _mePaintCell(cell);
             };
             grid.onpointermove = (e) => {
-                if (!_meMouseDown) return;
-
                 const el = document.elementFromPoint(e.clientX, e.clientY);
                 const cell = el?.closest?.('.me-cell');
+                if (!_meMouseDown) {
+                    /* Building ghost follows the cursor on the flat grid too. */
+                    if (_meTool === 'building' && cell) window._meBldHoverTile(+cell.dataset.x, +cell.dataset.y);
+                    return;
+                }
                 if (cell) _mePaintCell(cell);
             };
             grid.onpointerup = (e) => {
@@ -11947,9 +12553,27 @@
                 if (!rec.ops.length) delete rec.ops;
                 _meSelectedWallRef = { x, y, dir: pe.dir };
             } else if (_meTool === 'building') {
-                _meStampBuilding(x, y);
+                /* One building per click — the editor's paint pipeline keeps
+                   firing this while the pointer is down, which used to stamp a
+                   whole terrace when you so much as twitched the mouse. */
+                if (_meBldStrokeDone) return;
+                _meBldStrokeDone = true;
+                const plan = _meStampBuilding(x, y);
+                /* Re-arm the ghost on the same tile: it now shows where the
+                   NEXT one would land — which, thanks to the snap, is beside
+                   the one just placed rather than through it. */
+                _meBldClearGhost();
+                window._meBldHoverTile(x, y);
                 _meSfx('itemThrow');
-                _meSetHint(`Building ${_meBldW}×${_meBldD}, ${_meBldFloors} storey(s) of ${_meBldStorey} cells — door on the ${_meBldDoorSide} face.`);
+                if (!plan) {
+                    _meSetHint(`⚠ ${Math.max(ME_BLD_MIN, _meBldW)}×${Math.max(ME_BLD_MIN, _meBldD)} doesn't fit on a ${_meW}×${_meH} map.`);
+                } else {
+                    const doorTxt = plan.doors.map(d => d.dir).join('+') || '—';
+                    const passTxt = plan.passages.length ? ` · 🔗 ${plan.passages.length} passage${plan.passages.length === 1 ? '' : 's'} into the neighbour` : '';
+                    const stairTxt = plan.flights.length ? ` · 🪜 ${plan.flights.length} flight${plan.flights.length === 1 ? '' : 's'}` : '';
+                    const snapTxt = plan.snapped ? ' · ⇥ snapped clear of an existing building' : '';
+                    _meSetHint(`Building ${plan.W}×${plan.D} at (${plan.x0},${plan.y0}) · ${plan.N} storey(s) of ${plan.SH} · doors ${doorTxt}${passTxt}${stairTxt}${snapTxt}`);
+                }
             } else if (_meTool === 'nexus') {
                 /* Nexus zone anchored to a STOREY. Without the z it defaulted to
                    whatever sat on top of the column, so a nexus authored inside a
@@ -12182,6 +12806,7 @@
                zeroed back into the grid by the next _meSyncVoxelsToLegacy. */
             _meBuildVoxelsFromLegacy();
             _meWalls = {};
+            _meBldRooms = [];
             _meActiveZ = 0;
             const zVal = document.getElementById('meActiveZVal');
             if (zVal) zVal.textContent = _meActiveZ;
@@ -12250,6 +12875,9 @@
                 heights: _meHeights ? _meHeights.map(row => [...row]) : null,
                 voxels: _meVoxels ? _meVoxels.map(row => row.map(col => col.map(b => ({...b})))) : null,
                 walls: _meWalls ? JSON.parse(JSON.stringify(_meWalls)) : {},
+                /* Building footprints — kept so a reloaded map still snaps and
+                   connects new buildings against the ones already on it. */
+                bldRooms: (_meBldRooms || []).map(r => ({ ...r })),
                 nexusZ: Object.assign({}, _meNexusZ),
                 monuments: _meMonuments ? _meMonuments.map(m => ({...m})) : [],
                 terrainTints: Object.assign({}, _meTerrainTints),
@@ -12305,6 +12933,7 @@
                 _meBuildVoxelsFromLegacy();
             }
             _meWalls = m.walls ? JSON.parse(JSON.stringify(m.walls)) : {};
+            _meBldRooms = Array.isArray(m.bldRooms) ? m.bldRooms.map(r => ({ ...r })) : [];
             _meNexusZ = m.nexusZ ? Object.assign({}, m.nexusZ) : {};
             if (!(m.fmt >= 2)) _meFillEmptyWithGrass();   // pre-hole-era save
             _meActiveZ = 0;
@@ -12338,6 +12967,7 @@
                 heights: _meHeights,
                 voxels: _meVoxels,
                 walls: _meWalls,
+                bldRooms: (_meBldRooms || []).map(r => ({ ...r })),
                 nexusZ: _meNexusZ,
                 monuments: _meMonuments || [],
                 terrainTints: _meTerrainTints,
@@ -12379,6 +13009,7 @@
                     _meBuildVoxelsFromLegacy();
                 }
                 _meWalls = data.walls ? JSON.parse(JSON.stringify(data.walls)) : {};
+                _meBldRooms = Array.isArray(data.bldRooms) ? data.bldRooms.map(r => ({ ...r })) : [];
                 _meNexusZ = data.nexusZ ? Object.assign({}, data.nexusZ) : {};
                 if (!(data.fmt >= 2)) _meFillEmptyWithGrass();   // pre-hole-era map
                 _meActiveZ = 0;
@@ -12606,6 +13237,7 @@
             _meSanctuaryZones = _meEmptySanctuaryGrid(H, W);
             _meHeights = _meEmptyHeightGrid(H, W);
             _meWalls = {};
+            _meBldRooms = [];
 
             const { zones } = numBiomes > 1
                 ? _meBuildZoneMap(W, H, numBiomes)
@@ -12942,6 +13574,7 @@
             }
 
             _meHideEditorHUD();
+            _meBldClearGhost();
             _meClearEditorOverlays3D();
             document.querySelectorAll('.me-diorama-overlay').forEach(el => el.remove());
 
