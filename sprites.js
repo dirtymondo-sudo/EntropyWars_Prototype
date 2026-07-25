@@ -969,6 +969,14 @@ const RACE_MODELS_3D = {
       heightRatio: 0.98,
       lib: { castMelee: { clip: 'Melee_Hook', lib: 1, ts: 0.45 } },
     }),
+    // Male (2026-07-25 batch) — "rich_business_man_wit": the devil in a
+    // bespoke suit. Same brawler hook as his counterpart; Demonic Claw rakes
+    // via the claw basics. 1.9m (data.js physique) → a hair over human male.
+    male: _mkUAL('halfdemon/male', 'rich_business_man_wit', {
+      heightRatio: 1.05,
+      basicAttackKind: 'claw',
+      lib: { castMelee: { clip: 'Melee_Hook', lib: 1, ts: 0.45 } },
+    }),
   },
   'fairy': {
     female: _mk3d('Fairy/female', 'young_fairy', {
@@ -1291,12 +1299,13 @@ const RACE_MODELS_3D = {
              castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } },
     }),
   },
-  // Kaiju — "retro_1990_s_japan_cy" (retro tokusatsu city-stomper). Nearly
+  // Kaiju — REMODELED 2026-07-25: the new "kaiju_realistic" Character_output
+  // replaces the old retro_1990_s_japan_cy tokusatsu suit (which was also a
+  // 71MB preload hog). Library-animated, so the swap is prefix-only. Nearly
   // giant-sized (giant is 1.7); stomps classify to castSlam, Skyscraper Toss
-  // to castThrow, Atomic Breath fires its mapped beam. ⚠ the GLB is 71MB —
-  // consider a lower-res re-export if match-start preload feels slow.
+  // to castThrow, Atomic Breath fires its mapped beam.
   'kaiju': {
-    male: _mkUAL('kaiju/male', 'retro_1990_s_japan_cy', {
+    male: _mkUAL('kaiju/male', 'kaiju_realistic', {
       heightRatio: 1.6,
       basicAttackKind: 'claw',
       lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
@@ -1433,6 +1442,75 @@ const RACE_MODELS_3D = {
     female: _mkUAL('orboflight/female', 'hot_girl_sentient_li', {
       heightRatio: 0.9,
       basicAttackKind: 'magic',
+    }),
+  },
+
+  // ── 2026-07-25 batch (user upload — monsters & main-character wave; also
+  // remodels kaiju + adds the halfdemon male above) ─────────────────────────
+  // Gnome (Engineer, specialist) — garden gnome tinkerer, 0.9m (data.js
+  // physique): knee-high deployable spammer; turret/mine plants ride the
+  // shared castTrap kneel.
+  'gnome': {
+    male: _mkUAL('gnome/male', 'garden_gnome_realist', {
+      heightRatio: 0.65,
+    }),
+  },
+  // King Kong (Harvester, bruiser) — "evil_gorilla_monster_": the 15m
+  // colossal ape rendered just under the giant (1.7)/kaiju (1.6) tier.
+  // Brawler sway, haymaker basics; Primal Smash/Ground Slam classify to the
+  // punch/slam slots. Doubled underscore in …monster__biped_… → the prefix
+  // keeps a trailing '_' (same pattern as the psychics/superhero).
+  'king kong': {
+    male: _mkUAL('kingkong', 'evil_gorilla_monster_', {
+      heightRatio: 1.65,
+      basicAttackKind: 'punch',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
+    }),
+  },
+  // Goatman (Raider, bruiser) — 2.0m cryptid: brawler sway, raking hooves.
+  // Gore/Cliff Charge ride the dash/leapStrike arcs + their impact VFX.
+  'goatman': {
+    male: _mkUAL('goatman/male', 'goatman_realistic', {
+      heightRatio: 1.15,
+      basicAttackKind: 'claw',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },   // brawler sway
+    }),
+  },
+  // Kraken (Harbinger, support) — 12m deep-sea horror surfaced on legs;
+  // rendered in the colossal tier under kong/kaiju. Tentacle strikes rake
+  // via the claw basics; Tidal Surge/Maelstrom fire their mapped water VFX.
+  'kraken': {
+    male: _mkUAL('kraken/male', 'kraken_realistic', {
+      heightRatio: 1.55,
+      basicAttackKind: 'claw',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
+    }),
+  },
+  // Politician (Freelancer, support) — the President himself. Plain human
+  // stature; his kit is all orders/budgets/filibusters → magic zaps for
+  // basics so he never throws a fist on camera.
+  'politician': {
+    male: _mkUAL('politician', 'politician_realisti', {
+      heightRatio: 1.0,
+      basicAttackKind: 'magic',
+    }),
+  },
+  // Conspiracy Theorist (Harbinger, support) — Harlan Vox, late-night radio
+  // host: broadcasts, dead air and tinfoil → magic zap basics.
+  'conspiracy theorist': {
+    male: _mkUAL('conspiracytheorist', 'radio_host_realisti', {
+      heightRatio: 1.0,
+      basicAttackKind: 'magic',
+    }),
+  },
+  // Overlord (Warrior, bruiser) — Kael, 2.4m underworld sovereign (djinn
+  // 2.3m → 1.25): decrees and hellfire → magic basics despite the Warrior
+  // chassis. Doubled underscore in …overlord__biped_… → trailing '_' prefix.
+  'overlord': {
+    male: _mkUAL('overlord', 'underworld_overlord_', {
+      heightRatio: 1.3,
+      basicAttackKind: 'magic',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },   // brawler sway
     }),
   },
 };
