@@ -4,7 +4,105 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## MYSTERY DUNGEON vertical slice: floors are BUILT, walls are absolute (2026-07-25, LATEST) — data.js, map.js, battle.js, online.js, index.html
+## MYSTERY DUNGEON: LOCKSTEP CLOCK + WALL TORCHES + VECTOR SCANNER (2026-07-25, LATEST) — battle.js, data.js, three-renderer.js, hud.js, ui.js, online.js, index.html
+Token `20260725e` → `20260725f`.
+
+### 1. The floor runs a LOCKSTEP CLOCK, not the blitz turn order (battle.js)
+"THE WORLD MOVES WHEN YOU DO". You drive ONE character (the leader = lowest
+living party slot); every step, swing or cast is one **beat**, and on that beat
+every other creature on the floor — companions AND monsters — takes its own
+action in the SAME frame, so all the walks/swings overlap instead of queueing.
+Block: `LOCKSTEP CLOCK — the Mystery Dungeon turn model` in the MD runtime.
+- `_mdLockstepActive()` — dungeon + `_mdPhase==='floor'` + a human in seat 1 +
+  not devAutoSim. Exposed as `window._mdLockstepActive` (ui.js/hud.js read it).
+  The hub, every PvP mode and the dev sims keep the untouched blitz engine.
+- **Hooks (4, all one-liners):** `endUnitIfDone` top → `_mdOnActionDone` (the
+  BEAT hook: the leader's completion starts the beat, everyone else's is
+  swallowed); `maybeAdvanceTurn` after the simul intercept → `_mdLockIntercept`
+  (swallows every advance, boots the clock at match start, and is the safety
+  net for verbs that end the turn their own way — doGuard, triggerEndTurn);
+  `_continueBlitzWithUnit` top → `_mdLockBoot`; `maybeTriggerComputerTurn` →
+  early return (the stock AI never activates anybody on a floor).
+- **AP model:** the leader is re-armed with a FULL bar every beat (`_mdArm`) and
+  whatever is left is zeroed the instant it acts → one beat = one action,
+  whether it cost 1 AP or 3. Expensive spells stay castable; a cheap attack
+  never buys a second action.
+- **Actors** (`_mdActorBeat`): unalerted monsters amble one tile inside their
+  home room (`_mdRoamBeat`); alerted ones and companions run the STOCK
+  strategic scorer (`window._aiPlanCandidates`, the same one SimulEngine uses)
+  and execute its top candidate — attack / spell / guard — or **one tile** of
+  its move candidate (`_mdStepToward`, which walks `findMovePath`'s first node).
+  The scorer only runs within `MD_PLANNER_RANGE` (8 tiles) — a whole floor of
+  units scoring on every player step is the perf trap here. Idle companions
+  walk with the leader instead of hunting off on their own.
+- **Rounds still exist:** every `MD_TICKS_PER_ROUND` (4) beats the clock lets
+  exactly ONE advance through (`state._mdEorPending`) so the stock end-of-round
+  sequence runs (statuses, hazards, regen, round++); it ends in
+  `_continueBlitzWithUnit` → `_mdLockBoot`. `showRoundBanner` and
+  `showEndOfRoundOverview` early-out under the lockstep — a ROUND N card and an
+  establishing crane every few steps is not a dungeon crawl. **This constant is
+  the balance knob**: everything measured in rounds (status durations,
+  cooldowns, regen, passive XP) is paced by it.
+- **Click-to-move = TRAVEL** (`state._mdTravel`): the leader walks the clicked
+  route one tile per beat, and breaks off when a new monster comes into view,
+  something bites, a monster gets within 2, or a dialog opens. WASD/arrows step
+  one tile per press (`window._mdLockstepStep`, wired in ui.js ahead of the
+  provisional WASD roam). SPACE (END TURN ×2) = wait one beat.
+- **Camera:** `_mdCamMuted()` mutes `animateBoardCameraPath` and
+  `completeMoveAlongPath`'s re-centre while a beat resolves — the view belongs
+  to the player's unit, not to whichever of six monsters moved last. The beat
+  ends with a short re-focus on the leader.
+- **Companions are always AI** under the clock (`_mdUnitAuto` returns true for
+  every non-leader), the tactic chips cycle AUTO↔STAY CLOSE only, and the
+  leader's chip refuses to cycle at all.
+- **Safety:** `state._mdTickBusy` seals the beat (and sets `_actionExecuting`,
+  so input is blocked mid-beat); a 3s watchdog resumes a beat that stalls >9s
+  and hands the floor back if the leader sits spent for >5s (e.g. the delver
+  you were driving fell and the crown passed).
+- Dungeon is VS-CPU/local only, so no relay work (RULE #2 by exclusion); the
+  clock's bookkeeping fields (`_mdTickBusy`/`_mdTickTs`/`_mdTravel`/
+  `_mdInnerMove`/`_mdEorPending`) are still added to `_serializeState`'s skip
+  list in online.js so they can never ride a snapshot.
+
+### 2. Wall torches (data.js `generateMdFloor` step 6b, three-renderer.js)
+Random scattered floor torches are gone. Every contiguous run of facade now
+carries a sconce every 3 tiles, hung off the masonry:
+`M.obj(x,y,'torch',{leaf:'wall',rot})` (rot 0/90/180/270 = N/E/S/W = the side
+the wall is on). ~25 per floor, capped at 30. Validated headless over 120
+floors: every torch sits on an interior tile, faces bedrock, and has a real
+`edgeWalls` record behind it.
+- `_buildTorch3D` now reads `getEdgeWall()` for the mount height (the thin
+  facade has no raised neighbour tile to measure, which is why wall torches
+  used to sit at ankle height in the dungeon) and lifts the cap to 1.15 tiles
+  on edge walls only — other maps' 1-block ledges are untouched.
+- **Dungeon torch light pool** (`_mdTorchPoolSync`): 30 sconces are far past
+  the point-light budget and "the first 20 built get a light" lit whatever
+  corner the object pass walked first. Floors instead park a FIXED pool of 10
+  PointLights in the scene and, 5×/s, move them onto the torches nearest the
+  camera's focal point. Constant light count = the lit shaders compile once.
+  Torches built while the pool is up skip their own light.
+
+### 3. The vector SCANNER minimap (three-renderer.js, hud.js)
+The old hidden `#battleMinimap` is reused: on a dungeon floor it flips into
+`_drawMdScanner` — an Asteroids-style phosphor vector display (no terrain
+fills, no textures, NO rotation) that charts only what the party has seen.
+- Reveal: walking into a chamber lights the whole chamber (rooms come from
+  `_mdRooms`), corridors light tile-by-tile off the fog renderer's own
+  `_fogVisibleSet`. Discovery is a Set keyed to dungeon+floor and wiped when
+  either changes; the traced layout is cached to an offscreen canvas and only
+  repainted when something new is learned.
+- Structure comes from `entry._mdCells` — the generator now stamps its interior
+  mask ('0' bedrock / '1' hall / '2' room) onto the floor entry, because room
+  slabs and outside accents share terrain keys and can't be told apart from
+  `boardTerrain`. Walls are drawn as one stroke per discovered-floor↔rock edge,
+  so doorways and hall mouths read as gaps.
+- Blips: party = filled vector ships (leader brighter), monsters = hollow rock
+  polygons drawn ONLY when fog says they're genuinely visible, loot = small
+  diamonds, the stairs = a ⌄ glyph once discovered.
+- CSS: `#battleMinimap:not(.md-scanner){display:none!important}` in hud.js —
+  the minimap stays off everywhere else.
+
+## MYSTERY DUNGEON vertical slice: floors are BUILT, walls are absolute (2026-07-25) — data.js, map.js, battle.js, online.js, index.html
 Token `20260725d` → `20260725e`.
 
 **Floors are architecture now, not a carved rock block.** `generateMdFloor`

@@ -10906,6 +10906,9 @@
         function focusBoardCameraOnTiles(points, opts) { camera.focusOnTiles(points, opts); }
         function animateBoardCameraPath(fromPoint, toPoint, opts = {}) {
             if (!fromPoint || !toPoint || state.phase !== 'battle') return;
+            /* Mystery Dungeon beat: half a dozen creatures walk at once — the
+               camera follows none of them (it belongs to the player's unit). */
+            if (typeof _mdCamMuted === 'function' && _mdCamMuted()) return;
             if (camera._fogBlocked(opts._fogAllowed)) return;
             camera.moveTo({
                 x: toPoint.x, y: toPoint.y,
@@ -14038,6 +14041,10 @@
         const EOR_OVERVIEW_MARGIN = 0.92;
         function showEndOfRoundOverview() {
             if (_skipVisuals() || state.cameraDisabled) return;
+            /* Mystery Dungeon: the camera never leaves the party — an
+               establishing crane over the maze every six steps would both
+               spoil the layout and break the crawl's rhythm. */
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return;
             // The pull-back is bounded by the same cap as every other auto
             // move (getMaxAutoZoomOut): on a small map the fit-to-board zoom
             // wins (stays close), on a big map the cap wins — the EOR beats
@@ -21846,11 +21853,22 @@
                 state.units = state.units.filter(u => u.player !== 2);
                 _mdSpawnHubNpcs();
                 state._mdStairs = null;
+                /* the lockstep clock is a FLOOR thing — the hub is free-roam */
+                state._mdTickBusy = false;
+                state._mdEorPending = false;
+                state._mdTravel = null;
+                state._mdInnerMove = false;
                 const hub = (typeof PREBUILT_MAPS !== 'undefined') ? PREBUILT_MAPS.md_hub : null;
                 state._mdEntrance = (hub && hub._mdEntrance) ? hub._mdEntrance.map(p => ({ x: p.x, y: p.y })) : [];
                 state._mdEnded = false;
                 state._mdItems = [];
             } else if (state._mdPhase === 'floor' && state._mdRun) {
+                /* the lockstep clock restarts with every floor */
+                state._mdTickN = 0;
+                state._mdTickBusy = false;
+                state._mdEorPending = false;
+                state._mdTravel = null;
+                state._mdInnerMove = false;
                 const pb = (typeof PREBUILT_MAPS !== 'undefined') ? PREBUILT_MAPS.md_floor : null;
                 state._mdStairs = (pb && pb._mdStairs) ? { x: pb._mdStairs.x, y: pb._mdStairs.y } : null;
                 state._mdEntrance = [];
@@ -21986,6 +22004,12 @@
             if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return false;
             if (state._mdPhase !== 'floor' || !state._mdRun) return false;
             if (!u || u.player !== 1 || u._mdNpc || u.dead) return false;
+            /* Under the lockstep clock you drive ONE character — the whole
+               floor moves on your beat, so there is no room to hand-play a
+               second unit. Every companion fights for itself. */
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) {
+                return u.id !== _mdLeaderId();
+            }
             const t = _mdUnitTactic(u);
             return t === 'auto' || t === 'guard';
         }
@@ -21998,12 +22022,24 @@
         window._mdCycleTactic = function (unitId) {
             const u = state.units.find(x => x.id === unitId && x.player === 1 && !x._mdNpc && !x.dead);
             if (!u) return;
+            /* The lockstep clock hands you exactly one character: the leader is
+               always yours, and never switches to AI tactics. */
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive() && u.id === _mdLeaderId()) {
+                addLog(`🎮 ${unitDisplayName(u)} is your delver — the rest of the party fights on its own.`);
+                playSfx('uiCursorMove');
+                return;
+            }
             const idx = parseInt(String(u.id).split('-')[1], 10);
             if (!Number.isFinite(idx)) return;
             if (!state.partyMeta[1]) state.partyMeta[1] = [];
             if (!state.partyMeta[1][idx]) state.partyMeta[1][idx] = {};
-            const order = ['manual', 'auto', 'guard'];
-            const next = order[(order.indexOf(_mdUnitTactic(u)) + 1) % order.length];
+            /* MANUAL is off the menu on a dungeon floor: the lockstep clock
+               gives you one character to drive (the hub//legacy blitz path
+               still offers all three). */
+            const order = (typeof _mdLockstepActive === 'function' && _mdLockstepActive())
+                ? ['auto', 'guard'] : ['manual', 'auto', 'guard'];
+            const _cur = order.indexOf(_mdUnitTactic(u));
+            const next = order[(_cur < 0 ? 0 : (_cur + 1) % order.length)];
             state.partyMeta[1][idx]._mdTactic = next;
             const label = next === 'manual' ? '🎮 MANUAL — you control them'
                 : next === 'auto' ? '⚔ AUTO — fights on their own'
@@ -22157,6 +22193,636 @@
             const s = state._mdStairs;
             return !!(s && s.x === x && s.y === y);
         }
+
+        /* ═══════════ LOCKSTEP CLOCK — the Mystery Dungeon turn model ═══════════
+           A dungeon floor does NOT run the blitz turn order. It runs the
+           genuine roguelike clock: THE WORLD MOVES WHEN YOU DO. You drive one
+           character (the leader); every step you take, every swing, every cast
+           is one BEAT, and on that beat every other creature on the floor —
+           your companions and every monster — takes its own action at the same
+           time. Nobody queues behind a turn banner; the dungeon simply breathes
+           in time with you.
+
+           How it hangs off the existing engine:
+             · The leader is the permanent `_blitzActiveUnitId`. It is re-armed
+               with a full AP bar at the start of every beat, and the beat hook
+               (_mdOnActionDone, called from endUnitIfDone) zeroes whatever is
+               left the instant it acts — so one beat = one action, whether that
+               action cost 1 AP or 3.
+             · maybeAdvanceTurn is intercepted (_mdLockIntercept): the blitz
+               loop never activates anybody. It is also the safety net — a verb
+               that ends the turn its own way (doGuard, triggerEndTurn) lands
+               there and starts the beat.
+             · The beat itself (_mdWorldTick) fires EVERY other actor in the
+               same frame, so their walks/swings overlap the leader's instead of
+               playing one after another. Each actor gets one action from the
+               stock strategic scorer (window._aiPlanCandidates) — attack, cast,
+               guard — or a single step toward wherever that scorer wanted to
+               go: movement is one tile per beat for everyone, the leader
+               included, which is what makes the floor a lockstep grid.
+             · Every MD_TICKS_PER_ROUND beats the clock hands one round to the
+               stock end-of-round sequence (statuses, hazards, regen, round++)
+               by letting a single advance through (_mdEorPending); the sequence
+               ends in _continueBlitzWithUnit, which boots the next round of
+               beats. The round banner and the overview crane stay quiet — an
+               establishing shot every few steps is not a dungeon crawl.
+             · Click-to-move becomes a TRAVEL: the leader walks the route one
+               tile per beat (state._mdTravel), and the run breaks off the
+               moment a monster comes into view, something bites, or a dialog
+               opens — the roguelike "you were interrupted" rule.
+           Everything here is dungeon-floor-only; the hub, every PvP mode and
+           the dev sims keep the untouched blitz engine.                      */
+        /* Beats per engine ROUND. Everything measured in rounds (status
+           durations, cooldowns, regen, passive XP) is paced by this number: at
+           6 a 2-round stun cost the player twelve steps, which in a crawl is an
+           eternity. 4 keeps statuses meaningful without making the round
+           upkeep's ~0.4s hand-off a constant interruption. */
+        const MD_TICKS_PER_ROUND = 4;
+        const MD_TRAVEL_MAX_STEPS = 64;
+
+        function _mdLockstepActive() {
+            if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return false;
+            if (state._mdPhase !== 'floor' || !state._mdRun) return false;
+            if (state.phase !== 'battle' || state.winner) return false;
+            if (state._mdEnded || state._mdTransitioning) return false;
+            if (state.devAutoSim) return false;                 // dev sims keep the blitz loop
+            if (state.autoPlayers && state.autoPlayers[1]) return false;
+            return true;
+        }
+        window._mdLockstepActive = _mdLockstepActive;
+
+        /* One beat's worth of budget for a unit (mirrors the blitz round reset
+           for a single unit — the lockstep grants it per beat instead). */
+        function _mdArm(u) {
+            if (!u || u.dead || u._dying) return;
+            u.ap = getUnitMaxAP(u);
+            u.movesThisTurn = 0;
+            u._spellsUsedThisTurn = null;
+            u._reshapeThisTurn = 0;
+            u._buildCharges = 0;
+            u._altitudeChangesThisTurn = 0;
+            u._jumpedThisTurn = false;
+            u._pressGainedThisTurn = 0;
+            u._pressPenaltiesThisTurn = 0;
+            u._skippedTurn = false;
+            u._aiFailedSpells = null;
+            u._aiFailedCombos = null;
+            u._aiSkipAttack = false;
+            u._aiLoopCount = 0;
+        }
+        function _mdDisarm(u) {
+            if (!u) return;
+            u.ap = 0;
+            u.movesThisTurn = 0;
+            u._spellsUsedThisTurn = null;
+            u._jumpedThisTurn = false;
+        }
+
+        /* True while the beat is resolving — camera pans that would chase a
+           monster across the floor are muted (the view belongs to the leader).
+           doMove's AI walk-follow and completeMoveAlongPath's re-centre both
+           gate on this. */
+        function _mdCamMuted() {
+            return !!(state._mdTickBusy && _mdLockstepActive());
+        }
+        window._mdCamMuted = _mdCamMuted;
+
+        /* ── Beat entry points ─────────────────────────────────────────── */
+
+        /* Called at the top of endUnitIfDone. Returns true when the lockstep
+           has taken ownership of this completion. */
+        function _mdOnActionDone(unit) {
+            if (!_mdLockstepActive()) return false;
+            if (state._mdTickBusy) return true;          // the beat owns the loop
+            const lead = _mdLeaderUnit();
+            if (!unit || !lead || unit.id !== lead.id) return true;
+            if (unit.dead || unit._dying) {
+                /* The delver you were driving just fell: let the death play,
+                   then hand the floor to whoever now leads the party (a party
+                   wipe never gets here — _mdCheckWin ends the run). */
+                window.setTimeout(() => {
+                    if (_mdLockstepActive() && !state._mdTickBusy && !state._mdEorPending) _mdHandBack();
+                }, 900);
+                return true;
+            }
+            _mdBeginTick();
+            return true;
+        }
+
+        /* Swallow every blitz advance while the dungeon clock is running; the
+           ONE exception is the round hand-off we asked for ourselves. Doubles
+           as the safety net for verbs that end the turn their own way. */
+        function _mdLockIntercept() {
+            if (!_mdLockstepActive()) return false;
+            if (state._mdEorPending) return false;       // let the round through
+            if (state._mdTickBusy) return true;
+            const lead = _mdLeaderUnit();
+            if (!lead) return true;
+            /* Nobody holds the floor yet — this is the match boot (startMatch's
+               round banner hands off here) or the crown just passed to another
+               delver. Start the clock. */
+            if (state._blitzActiveUnitId !== lead.id) { _mdLockBoot(); return true; }
+            if ((lead.ap || 0) <= 0) { _mdBeginTick(); return true; }
+            return true;
+        }
+
+        /* Schedule the beat. Deferred by a frame so the verb that triggered it
+           (doMove's trap/overwatch tail, an attack's damage chain) finishes
+           unwinding first — but far sooner than the walk animation ends, so
+           the world visibly moves WITH the player, not after them. */
+        function _mdBeginTick() {
+            if (state._mdTickBusy) return;
+            state._mdTickBusy = true;
+            state._actionExecuting = true;
+            state._mdTickTs = Date.now();
+            const lead = _mdLeaderUnit();
+            if (lead) _mdDisarm(lead);
+            state._repeatQueue = null;
+            _mdEnsureWatchdog();
+            window.setTimeout(_mdWorldTick, 30);
+        }
+
+        /* ── The beat ──────────────────────────────────────────────────── */
+
+        function _mdWorldTick() {
+            if (!_mdLockstepActive()) { state._mdTickBusy = false; state._actionExecuting = false; return; }
+            state._mdTickTs = Date.now();
+            state._mdTickN = (state._mdTickN || 0) + 1;
+            const leadId = _mdLeaderId();
+
+            /* Companions first (they react to what you just did), monsters
+               after — but all of them inside this one frame, so every walk
+               tween and swing starts together. */
+            const actors = state.units.filter(u =>
+                u && !u.dead && !u._dying && !u._mdNpc && u.id !== leadId);
+            actors.sort((a, b) => (a.player === b.player) ? 0 : (a.player === 1 ? -1 : 1));
+
+            let longest = 0;
+            for (const u of actors) {
+                let ms = 0;
+                /* Every engine system that asks "whose action is this?" reads
+                   the active-unit id — point it at the actor for the length of
+                   its beat, exactly like the simul resolver does. */
+                state._blitzActiveUnitId = u.id;
+                state.activePlayer = u.player;
+                try { ms = _mdActorBeat(u) || 0; }
+                catch (e) { console.error('[MD] actor beat failed:', u && u.id, e); }
+                if (typeof ms === 'number' && ms > longest) longest = ms;
+            }
+            const _leadBack = _mdLeaderUnit();
+            state._blitzActiveUnitId = _leadBack ? _leadBack.id : null;
+            state.activePlayer = 1;
+
+            checkWin();
+            markDirty('board', 'hud', 'selectedUnit');
+            scheduleBoardRender();
+            renderIfDirty();
+
+            _mdSettleTick(longest, _mdEndTick);
+        }
+
+        /* Wait just long enough for the beat's animations, then hand control
+           back. Anything heavy (a death, a banner, a cinematic) falls back to
+           the engine's own animation gate so nothing is cut off. */
+        function _mdSettleTick(ms, done) {
+            /* The beat's actions all STARTED together and the player's own walk
+               is running alongside them, so the clock only has to wait out the
+               overlap — not the full tail of the slowest animation. Anything
+               that really needs its full run (a death, a cast cinematic) is
+               caught by the heavy check below. */
+            const wait = Math.max(100, Math.min(520, (ms || 0) * 0.65));
+            window.setTimeout(() => {
+                if (!_mdLockstepActive()) { state._mdTickBusy = false; state._actionExecuting = false; return; }
+                const heavy = state.units.some(u => u._dying)
+                    || (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy())
+                    || (typeof isCinematicPresent === 'function' && isCinematicPresent());
+                if (heavy) { _waitForAnimationsThen(done); return; }
+                done();
+            }, wait);
+        }
+
+        function _mdEndTick() {
+            state._mdTickBusy = false;
+            state._actionExecuting = false;
+            if (!_mdLockstepActive()) return;
+            if ((state._mdTickN % MD_TICKS_PER_ROUND) === 0) { _mdRunRoundUpkeep(); return; }
+            _mdHandBack();
+        }
+
+        /* Hand the floor's clock to the stock end-of-round sequence for one
+           pass (statuses, hazards, regen, round++). It ends by calling
+           _continueBlitzWithUnit, which boots the next run of beats. */
+        function _mdRunRoundUpkeep() {
+            state._mdEorPending = true;
+            for (const u of state.units) { if (!u.dead) u.ap = 0; }
+            state._blitzActiveUnitId = null;
+            try { maybeAdvanceTurn(); }
+            catch (e) {
+                console.error('[MD] round upkeep failed — resuming the clock', e);
+                state._mdEorPending = false;
+                _mdHandBack();
+            }
+        }
+
+        /* Booted by _continueBlitzWithUnit for every dungeon-floor activation:
+           match start, and the tail of every round upkeep. */
+        function _mdLockBoot() {
+            state._mdEorPending = false;
+            state._mdTickBusy = false;
+            state._actionExecuting = false;
+            hideTurnBanner();
+            hidePlayerTurnAnnounce();
+            _mdEnsureWatchdog();
+            _mdHandBack(true);
+        }
+
+        /* Re-arm the leader and give the player the drum back. */
+        function _mdHandBack(isBoot) {
+            if (!_mdLockstepActive()) return;
+            const lead = _mdLeaderUnit();
+            if (!lead) return;                       // wipe — _mdCheckWin owns it
+            for (const u of state.units) {
+                if (u.dead || u._mdNpc) continue;
+                if (u.id !== lead.id) _mdDisarm(u);
+            }
+            _mdArm(lead);
+            state.activePlayer = 1;
+            state._prevBlitzActivePlayer = 1;
+            state._blitzActiveUnitId = lead.id;
+            state.selectedUnitId = lead.id;
+            state.focusedUnitId = lead.id;
+            state._fogAnchorUnitId = lead.id;
+            state._fogCameraAllowed = true;
+            state.aiThinking = false;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            state.comboPartner = null;
+            state._actionExecuting = false;
+            state._repeatQueue = null;
+            state._enemyActionTargetId = null;
+            state._tileActionTarget = null;
+            clearAiSafetyTimer();
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            clearSpellRangePreview();
+            clearAttackRangePreview();
+
+            if (!state.cameraDisabled) {
+                const baseZoom = getUserZoomScale();
+                const zoom = isUserZoomEngaged() ? baseZoom : getDefaultZoom();
+                focusBoardCameraOnTiles([{ x: lead.x, y: lead.y }], {
+                    zoom, holdMs: 99999, persist: true,
+                    transitionMs: isBoot ? 600 : 200, _fogAllowed: true
+                });
+            }
+            renderBattleSelectionUI({ includeBoard: false });
+            scheduleBoardRender();
+            if (typeof renderHudActions === 'function') renderHudActions(lead);
+            markDirty('board', 'hud', 'selectedUnit');
+            renderIfDirty();
+
+            /* keep walking a click-to-travel route unless something broke it */
+            if (state._mdTravel) {
+                if (_mdTravelBroken(lead)) _mdCancelTravel(null);
+                else window.setTimeout(_mdTravelStep, 45);
+            }
+        }
+
+        /* Nothing should be able to freeze the clock: if a beat makes no
+           progress the leader gets the floor back. */
+        let _mdWatchdogId = null;
+        function _mdEnsureWatchdog() {
+            if (_mdWatchdogId) return;
+            _mdWatchdogId = window.setInterval(() => {
+                if (!_mdLockstepActive()) return;
+                if (!state._mdTickBusy && !state._mdEorPending) {
+                    /* Idle stall: the leader is spent but nothing is driving a
+                       beat (their action died mid-flight, or the leader fell
+                       and the crown passed). Give the floor back. */
+                    const lead = _mdLeaderUnit();
+                    if (lead && (lead.ap || 0) <= 0 && !state.uiDialog
+                        && Date.now() - (state._mdTickTs || 0) > 5000) {
+                        state._mdTickTs = Date.now();
+                        _mdHandBack();
+                    }
+                    return;
+                }
+                if (Date.now() - (state._mdTickTs || 0) < 9000) return;
+                console.warn('[MD] lockstep watchdog: beat stalled — resuming.');
+                state._mdTickTs = Date.now();
+                state._mdEorPending = false;
+                state._mdTickBusy = false;
+                state._actionExecuting = false;
+                _mdCancelTravel(null);
+                _mdHandBack();
+            }, 3000);
+        }
+
+        /* ── One actor's action on the beat ────────────────────────────── */
+
+        function _mdActorBeat(u) {
+            if (!u || u.dead || u._dying) return 0;
+            if (u.status && getActiveStatusKeys(u).some(k => STATUS_DEFS[k]?.blockMove
+                && (k === 'stun' || k === 'frozen'))) return 0;
+            _mdArm(u);
+            let ms = 0;
+            try {
+                ms = (u.player === 2) ? _mdMonsterBeat(u) : _mdAllyBeat(u);
+            } finally {
+                _mdDisarm(u);
+            }
+            return ms;
+        }
+
+        /* Monsters: asleep in their chamber until they see you, then the stock
+           scorer hunts — one action, or one tile, per beat. */
+        function _mdMonsterBeat(u) {
+            if (!u._mdAlerted) {
+                const why = _mdEnemyShouldAlert(u);
+                if (!why) return _mdRoamBeat(u);
+                _mdEnemyAlertNow(u, why);
+                for (const ally of state.units) {
+                    if (ally.player === 2 && !ally.dead && !ally._mdAlerted
+                        && _mdRoomContains(u._mdHomeRoom, ally.x, ally.y)) _mdEnemyAlertNow(ally, 'pack');
+                }
+                /* it wakes AND lunges on the same beat — no free turn */
+            }
+            return _mdHuntBeat(u);
+        }
+
+        /* Companions: 'guard' hangs back near the leader, everyone else hunts.
+           (Under the lockstep every companion is AI-driven — you have your
+           hands full driving one character.) */
+        function _mdAllyBeat(u) {
+            const lead = _mdLeaderUnit();
+            if (lead) {
+                const toLead = Math.abs(u.x - lead.x) + Math.abs(u.y - lead.y);
+                const foeD = _mdNearestFoeDist(u);
+                /* Nothing to fight in reach → walk with the party. Companions
+                   that go monster-hunting on their own strand the delver, which
+                   is the fastest way to lose a run. */
+                if (foeD > MD_PLANNER_RANGE) return (toLead > 2) ? _mdStepToward(u, lead.x, lead.y) : 0;
+                /* 🛡 STAY CLOSE: regroup before joining a fight that has not
+                   reached the leader yet. */
+                if (_mdUnitTactic(u) === 'guard' && toLead > 2 && foeD > 3) {
+                    return _mdStepToward(u, lead.x, lead.y);
+                }
+            }
+            return _mdHuntBeat(u);
+        }
+
+        /* An unalerted monster ambles one tile around the chamber it lives in
+           (or stands still) — it never attacks, casts or leaves the room. */
+        function _mdRoamBeat(u) {
+            const room = u._mdHomeRoom;
+            if (!room || Math.random() > 0.45) return 0;
+            let opts = [];
+            try {
+                opts = getMoveTiles(u).filter(t => !t._jump && !t._takeoff
+                    && Math.abs(t.x - u.x) + Math.abs(t.y - u.y) === 1
+                    && _mdRoomContains(room, t.x, t.y) && !unitAt(t.x, t.y));
+            } catch (e) { return 0; }
+            if (!opts.length) return 0;
+            return _mdRunMove(u, opts[randInt(opts.length)]);
+        }
+
+        /* Distance to the nearest thing this unit would fight. */
+        function _mdNearestFoeDist(u) {
+            let best = Infinity;
+            for (const e of state.units) {
+                if (!e || e.dead || e._dying || e._mdNpc) continue;
+                if (e.player === u.player || e.player === 0) continue;
+                const d = Math.abs(e.x - u.x) + Math.abs(e.y - u.y);
+                if (d < best) best = d;
+            }
+            return best;
+        }
+
+        /* The full strategic scorer runs for a whole floor's worth of actors on
+           EVERY step the player takes, so it is spent only where it changes the
+           outcome: within striking distance. Anything still crossing the maze
+           just walks — and walking is all it could do anyway. */
+        const MD_PLANNER_RANGE = 8;
+
+        /* The stock strategic scorer picks ONE thing; movement is truncated to
+           a single tile so the whole floor advances at the same pace. */
+        function _mdHuntBeat(u) {
+            if (_mdNearestFoeDist(u) > MD_PLANNER_RANGE) return _mdStepTowardNearestFoe(u);
+            let top = null;
+            try {
+                const cands = (typeof window._aiPlanCandidates === 'function'
+                    ? window._aiPlanCandidates(u) : []).filter(_mdBeatCandidateOk);
+                top = cands[0] || null;
+            } catch (e) { console.warn('[MD] beat planning failed for', u && u.name, e); }
+            if (!top) return _mdStepTowardNearestFoe(u);
+            if (top.type === 'move') return _mdStepToward(u, top.x, top.y, top.z);
+            return _mdExecBeatAction(u, top);
+        }
+
+        function _mdBeatCandidateOk(c) {
+            if (!c || (c.score || 0) <= 0) return false;
+            if (c.type === 'attack' || c.type === 'move' || c.type === 'guard') return true;
+            if (c.type === 'spell') {
+                if (!c.spell) return false;
+                if (c.spell.kind === 'skyThrow' || c.spell.kind === 'teleport') return false;
+                return !!c.target || (typeof isSpellSelfCast === 'function' && isSpellSelfCast(c.spell));
+            }
+            return false;
+        }
+
+        function _mdExecBeatAction(u, c) {
+            let ms = 0;
+            try {
+                if (c.type === 'attack' && c.target) {
+                    state.actionMode = 'attack';
+                    ms = doAttack(u, c.target.x, c.target.y, c.target.z);
+                } else if (c.type === 'spell' && c.spell) {
+                    const tx = c.target ? c.target.x : u.x;
+                    const ty = c.target ? c.target.y : u.y;
+                    const tz = c.target ? c.target.z : u.z;
+                    state.selectedTool = c.spell.name;
+                    state.actionMode = 'spell';
+                    ms = doSpell(u, tx, ty, tz);
+                } else if (c.type === 'guard' && typeof window.doGuard === 'function') {
+                    window.doGuard(u);
+                    ms = 300;
+                }
+            } catch (e) {
+                console.error('[MD] beat action failed:', c && c.type, e);
+            }
+            state.actionMode = null;
+            state.selectedTool = null;
+            state.pendingTarget = null;
+            return (typeof ms === 'number' && ms > 1) ? ms : 420;
+        }
+
+        /* Fallback when the scorer has nothing (no visible target): drift one
+           tile toward the closest opposing unit it knows about. */
+        function _mdStepTowardNearestFoe(u) {
+            const foes = state.units.filter(e => !e.dead && !e._dying && !e._mdNpc
+                && e.player !== u.player && e.player !== 0);
+            if (!foes.length) return 0;
+            let best = foes[0], bestD = Infinity;
+            for (const e of foes) {
+                const d = Math.abs(e.x - u.x) + Math.abs(e.y - u.y);
+                if (d < bestD) { bestD = d; best = e; }
+            }
+            if (bestD <= 1) return 0;
+            return _mdStepToward(u, best.x, best.y);
+        }
+
+        /* ONE tile toward (tx,ty). The engine's own pathfinder draws the route
+           (walls, doorways, climbs and all) and we walk exactly its first node;
+           if the destination is out of this unit's reach, the best adjacent
+           tile that closes the distance is used instead. */
+        function _mdStepToward(u, tx, ty, tz) {
+            if (!canUnitMove(u)) return 0;
+            let step = null;
+            try {
+                const path = findMovePath(u, tx, ty, (tz === undefined || tz === null) ? undefined : tz);
+                if (path && path.length) step = path[0];
+            } catch (e) {}
+            if (step && unitAt(step.x, step.y)) step = null;
+            if (!step) {
+                /* out of reach (or the route's first node is blocked): take the
+                   adjacent tile that closes the most distance, if any does */
+                let bestD = Math.abs(u.x - tx) + Math.abs(u.y - ty);
+                try {
+                    for (const t of getMoveTiles(u)) {
+                        if (t._jump || t._takeoff) continue;
+                        if (Math.abs(t.x - u.x) + Math.abs(t.y - u.y) !== 1) continue;
+                        if (unitAt(t.x, t.y)) continue;
+                        const d = Math.abs(t.x - tx) + Math.abs(t.y - ty);
+                        if (d < bestD) { bestD = d; step = t; }
+                    }
+                } catch (e) {}
+            }
+            if (!step) return 0;
+            return _mdRunMove(u, step);
+        }
+
+        function _mdRunMove(u, tile) {
+            state.actionMode = 'move';
+            let mv = 0;
+            try { mv = doMove(u, tile.x, tile.y, tile.z); }
+            catch (e) { console.error('[MD] beat move failed:', u && u.id, e); }
+            state.actionMode = null;
+            if (mv === false) return 0;
+            return (typeof mv === 'number' && mv > 1) ? mv : 200;
+        }
+
+        /* ── Click-to-travel (the leader's multi-tile walk) ─────────────── */
+
+        /* doMove intercept for the player's own unit: a route longer than one
+           tile becomes a TRAVEL that spends one beat per tile. Returns null to
+           let the stock doMove run (single steps, other units). */
+        function _mdPlayerTravelIntercept(unit, x, y, z) {
+            if (!_mdLockstepActive()) return null;
+            if (state._mdInnerMove || state._mdTickBusy) return null;
+            const lead = _mdLeaderUnit();
+            if (!lead || !unit || unit.id !== lead.id) return null;
+            let path = null;
+            try { path = findMovePath(unit, x, y, z); } catch (e) { return null; }
+            if (!path || path.length <= 1) { state._mdTravel = null; return null; }
+            state._mdTravel = {
+                x, y, z: (z === undefined ? null : z),
+                steps: 0,
+                hp: unit.hp,
+                seen: _mdVisibleFoeCount(),
+            };
+            return _mdTravelStep();
+        }
+
+        function _mdVisibleFoeCount() {
+            let n = 0;
+            for (const e of state.units) {
+                if (!e || e.dead || e._dying || e.player !== 2) continue;
+                if (typeof _shouldCameraFollowUnit === 'function' && !_shouldCameraFollowUnit(e)) continue;
+                n++;
+            }
+            return n;
+        }
+
+        /* The roguelike interrupt: a new monster in sight, a hit taken, a
+           dialog, a monster in your face — the run stops there. */
+        function _mdTravelBroken(lead) {
+            const t = state._mdTravel;
+            if (!t) return true;
+            if (!lead || lead.dead || lead._dying) return true;
+            if (state.uiDialog) return true;
+            if (t.steps >= MD_TRAVEL_MAX_STEPS) return true;
+            if (lead.hp < t.hp) return true;
+            if (lead.x === t.x && lead.y === t.y) return true;
+            const seen = _mdVisibleFoeCount();
+            if (seen > t.seen) return true;
+            for (const e of state.units) {
+                if (!e || e.dead || e._dying || e.player !== 2) continue;
+                if (Math.abs(e.x - lead.x) + Math.abs(e.y - lead.y) > 2) continue;
+                if (typeof _shouldCameraFollowUnit === 'function' && !_shouldCameraFollowUnit(e)) continue;
+                return true;
+            }
+            return false;
+        }
+
+        function _mdCancelTravel(reason) {
+            if (state._mdTravel && reason) addLog(reason);
+            state._mdTravel = null;
+        }
+        window._mdCancelTravel = _mdCancelTravel;
+
+        function _mdTravelStep() {
+            const t = state._mdTravel;
+            const lead = _mdLeaderUnit();
+            if (!t || !lead || !_mdLockstepActive()) { state._mdTravel = null; return 0; }
+            if (state._mdTickBusy) return 0;
+            if (_mdTravelBroken(lead)) {
+                const hostile = _mdVisibleFoeCount() > t.seen;
+                _mdCancelTravel(hostile ? '👁 Something moves in the dark — you stop short.' : null);
+                return 0;
+            }
+            let path = null;
+            try { path = findMovePath(lead, t.x, t.y, t.z === null ? undefined : t.z); } catch (e) {}
+            if (!path || !path.length) { state._mdTravel = null; return 0; }
+            const step = path[0];
+            t.steps++;
+            t.hp = lead.hp;
+            state._mdInnerMove = true;
+            let mv = 0;
+            try {
+                state.actionMode = 'move';
+                mv = doMove(lead, step.x, step.y, step.z);
+            } catch (e) {
+                console.error('[MD] travel step failed', e);
+            } finally {
+                state._mdInnerMove = false;
+            }
+            if (mv === false || mv === 0) { state._mdTravel = null; return 0; }
+            return (typeof mv === 'number' && mv > 1) ? mv : true;
+        }
+
+        /* WASD / arrow stepping (ui.js): one press = one tile = one beat. */
+        window._mdLockstepStep = function (dx, dy) {
+            if (!_mdLockstepActive() || state._mdTickBusy) return false;
+            const lead = _mdLeaderUnit();
+            if (!lead || !canUnitMove(lead)) return false;
+            _mdCancelTravel(null);
+            const nx = lead.x + dx, ny = lead.y + dy;
+            if (!isInside(nx, ny)) return false;
+            let tile = null;
+            try {
+                tile = getMoveTiles(lead).find(t => t.x === nx && t.y === ny && !t._jump && !t._takeoff);
+            } catch (e) {}
+            if (!tile || unitAt(nx, ny)) { playErrorSfx(); return true; }
+            state._mdInnerMove = true;
+            try {
+                state.actionMode = 'move';
+                doMove(lead, tile.x, tile.y, tile.z);
+            } finally {
+                state._mdInnerMove = false;
+            }
+            return true;
+        };
 
         /* ── PMD-style recruitment ─────────────────────────────────────────
            Every non-boss monster felled on a dungeon floor rolls a recruit
@@ -25950,6 +26616,13 @@
             // their own labels as they play).
             _eorPhaseLabelHide();
             if (_skipVisuals()) { if (onDone) onDone(); return; }
+            /* Mystery Dungeon: a "round" is just six steps of the lockstep
+               clock — a full-screen ROUND N card every six steps would be the
+               loudest thing in the dungeon. Skip straight through. */
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) {
+                if (onDone) window.setTimeout(onDone, 0);
+                return;
+            }
             let overlay = document.getElementById('roundBannerOverlay');
             if (!overlay) {
                 overlay = document.createElement('div');
@@ -27031,6 +27704,13 @@
                hands the new round back to SimulEngine.beginRound(). ── */
             if (SimulEngine.interceptAdvance()) return;
 
+            /* ── MYSTERY DUNGEON lockstep: the dungeon clock owns the loop.
+               Every stray advance is swallowed; a leader who has spent its
+               beat starts the next one here (doGuard / END TURN reach the
+               engine this way). The single advance we DO let through is the
+               round upkeep the clock asked for (_mdEorPending). ── */
+            if (typeof _mdLockIntercept === 'function' && _mdLockIntercept()) return;
+
             const mode = getActiveGameMode();
             if (mode.blitzMode) {
                 if (state.winner) return;
@@ -27405,6 +28085,14 @@
                     return;
                 }
 
+                /* MYSTERY DUNGEON: a floor runs the lockstep clock, not the
+                   blitz activation order. Both the match boot and the tail of
+                   every round upkeep land here — hand them to the clock. */
+                if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) {
+                    _waitForAnimationsThen(() => _mdLockBoot());
+                    return;
+                }
+
                 if (!nextUnit) return;
                 _waitForAnimationsThen(() => _continueBlitzWithUnit_impl(nextUnit));
         }
@@ -27695,6 +28383,9 @@
                planned by SimulEngine._buildAiPlanFor and executed by the
                resolution pass. aiTakeTurn must never fire. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()) return;
+            /* Mystery Dungeon lockstep: companions and monsters act on the
+               beat (_mdWorldTick), never through a blitz activation. */
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return;
             if (state.phase !== 'battle' || state.winner || state.aiThinking) return;
             if (_gauntletAwaitingHumanReplace()) return;
 
@@ -29746,6 +30437,12 @@
             if (!unit) return;
 
             enforceUnitSeparation('endUnitIfDone:' + (unit.name || unit.id));
+
+            /* MYSTERY DUNGEON lockstep: this is the BEAT hook. The leader's
+               action — whatever it cost — closes their beat and sets the whole
+               floor moving; every other unit's completion is the clock's own
+               business and never touches the blitz loop. */
+            if (typeof _mdOnActionDone === 'function' && _mdOnActionDone(unit)) return;
 
             // Queued repeats: extra clicks on the same target while the swing/
             // cast was still animating queued more of the same action — fire
@@ -32135,7 +32832,11 @@
             endUnitIfDone(unit);
             renderAfterMove();
 
-            if (!state.cameraDisabled && !unit.dead) {
+            /* Mystery Dungeon lockstep: the whole floor steps at once — the
+               view stays with the player instead of being yanked onto every
+               monster that moved on this beat. */
+            if (!state.cameraDisabled && !unit.dead
+                && !(typeof _mdCamMuted === 'function' && _mdCamMuted())) {
                 const baseZoom = getUserZoomScale();
                 const zoom = isUserZoomEngaged() ? baseZoom : getDefaultZoom();
                 focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
@@ -33284,6 +33985,13 @@
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving) {
                 return SimulEngine.queueStep(unit, { type: 'move', x, y, z });
+            }
+            /* MYSTERY DUNGEON lockstep: the player's own unit never crosses a
+               room in one action — a longer route becomes a travel that spends
+               one beat per tile (and breaks off the moment something moves). */
+            if (typeof _mdPlayerTravelIntercept === 'function') {
+                const _mdTrav = _mdPlayerTravelIntercept(unit, x, y, z);
+                if (_mdTrav !== null && _mdTrav !== undefined) return _mdTrav;
             }
             if (!canUnitMove(unit)) {
                 if (!state.autoPlayers?.[unit.player]) {

@@ -11719,18 +11719,74 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
             else if (rr < 0.14) M.rock(x, y);
             continue;
         }
-        if (c === HALL) {
-            /* halls stay clear; a torch on the wall line is the only dressing */
-            if (touchesRock(x, y) && rng() < 0.12) M.obj(x, y, 'torch');
-            continue;
-        }
+        if (c === HALL) continue;      /* halls stay clear (torches hang below) */
         const blockedSpot = nextToHall(x, y);
         const roll = rng();
         if (roll < 0.07) M.t(x, y, pick(D.accentTerrains));
         else if (roll < 0.10 && !blockedSpot) M.t(x, y, 'crystal');
         else if (roll < 0.12 && !blockedSpot) M.t(x, y, 'mushroom');
-        else if (roll < 0.17 && touchesRock(x, y) && !blockedSpot) M.obj(x, y, 'torch');
+        /* columns keep the range the old random-torch branch shared with them:
+           torches have moved onto the walls (step 6b), so the chamber floor is
+           free for pillars */
         else if (roll < 0.19 && !blockedSpot && !touchesRock(x, y)) M.obj(x, y, 'column_1');
+    }
+
+    /* ── 6b) WALL TORCHES — evenly spaced sconces along every masonry run ──
+       The dungeon is lit by fire, not by a random scattering: every stretch
+       of facade (a contiguous run of tiles carrying a wall on the SAME side)
+       gets a torch every TORCH_GAP tiles, hung Minecraft-style off that wall
+       ({leaf:'wall', rot} → _buildTorch3D in three-renderer.js, which reads
+       the edge wall's real height to seat the sconce at mid-face).
+       Torches are `passable, cosmetic` objects — they never block a tile, so
+       they can stand in halls and doorway mouths too. The renderer lights the
+       nearest handful of them with real point lights (see the dungeon torch
+       light pool) and leaves the rest as flame + halo.                     */
+    {
+        const TORCH_GAP = 3;             // tiles between sconces along a run
+        const TORCH_MAX = 30;            // hard cap per floor (draw-call budget)
+        const ROT_OF = { N: 0, E: 90, S: 180, W: 270 };
+        /* Group every wall slot into runs: N/S runs travel along X on one row,
+           W/E runs travel along Y on one column. */
+        const runs = new Map();
+        for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+            if (cell[y][x] === OUT) continue;
+            for (const [dir, dx, dy] of SIDES) {
+                const nx = x + dx, ny = y + dy;
+                if (M.in(nx, ny) && cell[ny][nx] !== OUT) continue;   // interior↔interior: no wall
+                const key = (dir === 'N' || dir === 'S') ? dir + ':r' + y : dir + ':c' + x;
+                if (!runs.has(key)) runs.set(key, []);
+                runs.get(key).push({ x, y, dir, along: (dir === 'N' || dir === 'S') ? x : y });
+            }
+        }
+        const torchSpots = [];
+        const runKeys = Array.from(runs.keys()).sort();
+        for (const key of runKeys) {
+            const slots = runs.get(key).sort((a, b) => a.along - b.along);
+            /* split into CONTIGUOUS stretches so two separate walls on the same
+               row don't share one spacing rhythm */
+            let stretch = [];
+            const flush = () => {
+                if (!stretch.length) return;
+                const off = ri(Math.min(TORCH_GAP, stretch.length));
+                for (let i = off; i < stretch.length; i += TORCH_GAP) torchSpots.push(stretch[i]);
+                stretch = [];
+            };
+            for (const s of slots) {
+                if (stretch.length && s.along !== stretch[stretch.length - 1].along + 1) flush();
+                stretch.push(s);
+            }
+            flush();
+        }
+        /* deterministic shuffle, then cap — an even spread rather than "all the
+           torches sit in the first room the loop happened to walk" */
+        for (let i = torchSpots.length - 1; i > 0; i--) { const j = ri(i + 1); [torchSpots[i], torchSpots[j]] = [torchSpots[j], torchSpots[i]]; }
+        let lit = 0;
+        for (const s of torchSpots) {
+            if (lit >= TORCH_MAX) break;
+            if (M.objs[s.y][s.x].length) continue;         // never stack on a prop
+            M.obj(s.x, s.y, 'torch', { leaf: 'wall', rot: ROT_OF[s.dir] });
+            lit++;
+        }
     }
     if (!isBossFloor && rooms.length > 2 && rng() < 0.6) {
         const pr = rooms[1 + ri(rooms.length - 1)];
@@ -11902,6 +11958,11 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
        and the floor's loose item pickups */
     entry._mdRooms = rooms.map(r => ({ x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1 }));
     entry._mdItems = groundItems;
+    /* The interior mask, one string per row ('0' bedrock, '1' hall, '2' room)
+       — the vector SCANNER minimap (three-renderer _drawMdScanner) traces the
+       layout straight off this instead of guessing structure from terrain
+       keys (room slabs and outside accents share terrains). */
+    entry._mdCells = cell.map(row => row.join(''));
     /* enemy levels shadow the delver's run level (= current floor × the
        dungeon's optional levelPerFloor, applied in _mdLoadFloor), staying a
        step behind so depth stays winnable solo. Capped at LEVEL_CAP so deep

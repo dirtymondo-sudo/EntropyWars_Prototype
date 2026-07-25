@@ -5029,8 +5029,25 @@ const ThreeRenderer = (function () {
                 var nTop = tileTopY(nx, ny);
                 if (nTop > topY) wallH = nTop - topY;
             }
+            /* THIN edge wall (state.edgeWalls — Mystery Dungeon facades, the
+               map editor's Walls & Roofs tech) instead of a raised neighbour
+               tile: the masonry is on the EDGE, so the neighbour's top gives
+               nothing. Read the wall record and seat the sconce on its face. */
+            var _onEdgeWall = false;
+            try {
+                var _ewRec = (typeof getEdgeWall === 'function')
+                    ? getEdgeWall(x, y, ['N', 'E', 'S', 'W'][d4]) : null;
+                if (_ewRec) {
+                    var _ewStep = ts * ELEV_STEP_RATIO;
+                    var _ewTop = (((_ewRec.z0 || 1) - 1) + Math.max(1, _ewRec.h || 1)) * _ewStep;
+                    if (_ewTop - topY > 0) { wallH = _ewTop - topY; _onEdgeWall = true; }
+                }
+            } catch (e) {}
             parts.model.position.z = -ts * 0.38;
-            parts.model.position.y = Math.min(wallH * 0.45, ts * 0.55);
+            /* Mid-face, but never so high the flame floats off a short block.
+               A thin masonry facade (dungeon) is tall enough to carry the
+               sconce at real sconce height; a 1-block ledge is not. */
+            parts.model.position.y = Math.min(wallH * 0.45, ts * (_onEdgeWall ? 1.15 : 0.55));
             parts.model.rotation.x = 0.42;                       /* ~24° lean away from the wall */
         } else {
             /* floor torch — rotation is cosmetically irrelevant but honored */
@@ -5043,7 +5060,10 @@ const ThreeRenderer = (function () {
         _torchRegisterFlame(entry);
         var litCount = 0;
         for (var li = 0; li < _torchFlames.length; li++) { if (_torchFlames[li].light) litCount++; }
-        if (litCount < TORCH_MAX_LIGHTS) {
+        /* Dungeon floors light their sconces from the roaming pool instead
+           (see _mdTorchPoolSync) — a per-torch light here would blow the
+           budget on whichever corner got built first. */
+        if (litCount < TORCH_MAX_LIGHTS && !_mdTorchPoolWanted()) {
             var pl = new THREE.PointLight(TORCH_LIGHT_COLOR_DAY, TORCH_LIGHT_INT_DAY, TORCH_LIGHT_DISTANCE, TORCH_LIGHT_DECAY);
             pl.position.set(0, parts.flameY + ts * 0.10, 0);
             parts.model.add(pl);
@@ -5088,10 +5108,116 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    /* ── Mystery Dungeon torch light pool ────────────────────────────────
+       A generated dungeon floor carries ~30 wall sconces — far past the
+       point-light budget, and "the first 20 built get a light" lights
+       whichever corner the object pass happened to walk first, leaving the
+       party's own room black. The dungeon instead parks a FIXED pool of
+       MD_TORCH_LIGHTS lights in the scene and, a few times a second, moves
+       them onto the torches NEAREST THE CAMERA. The light count never
+       changes while the pool is up, so the lit shaders compile exactly once
+       (a light appearing/disappearing recompiles every lit material).
+       Torches built while the pool is active skip their own point light.  */
+    var MD_TORCH_LIGHTS = 10;
+    var _mdTorchPool = [];
+    var _mdTorchPoolTs = 0;
+
+    /* Effectively on screen? Fog hides objects by flipping the visibility of
+       the per-tile object mesh ABOVE the torch, so the torch's own flag says
+       nothing — walk the chain. Keeps the pool from lighting a chamber the
+       party has not discovered (light leaking through masonry). */
+    function _mdTorchOnScreen(o) {
+        for (var n = o; n; n = n.parent) { if (n.visible === false) return false; }
+        return true;
+    }
+
+    function _mdTorchPoolWanted() {
+        try {
+            if (typeof window._isDungeonMode !== 'function' || !window._isDungeonMode()) return false;
+            if (typeof state === 'undefined' || !state) return false;
+            return state._mdPhase === 'floor';
+        } catch (e) { return false; }
+    }
+
+    function _mdTorchPoolTeardown() {
+        for (var i = 0; i < _mdTorchPool.length; i++) {
+            var L = _mdTorchPool[i];
+            if (L.parent) L.parent.remove(L);
+        }
+        _mdTorchPool.length = 0;
+    }
+
+    function _mdTorchPoolSync(now, baseInt, isNight) {
+        if (!_mdTorchPoolWanted()) {
+            if (_mdTorchPool.length) _mdTorchPoolTeardown();
+            return;
+        }
+        if (!_mdTorchPool.length) {
+            for (var i = 0; i < MD_TORCH_LIGHTS; i++) {
+                var pl = new THREE.PointLight(TORCH_LIGHT_COLOR_NIGHT, 0, TORCH_LIGHT_DISTANCE * 1.15, TORCH_LIGHT_DECAY);
+                pl.position.set(0, -9999, 0);
+                scene.add(pl);
+                _mdTorchPool.push(pl);
+            }
+            _mdTorchPoolTs = 0;
+        }
+        /* re-target a few times a second — the party walks one tile at a time */
+        if (now - _mdTorchPoolTs > 0.18) {
+            _mdTorchPoolTs = now;
+/* the camera's live look-at point = where the player is standing */
+            var focus = null;
+            try {
+                focus = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getFocalWorld)
+                    ? ThreeCamera.getFocalWorld() : null;
+            } catch (e) {}
+            if (!focus) {
+                var _c3 = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+                if (_c3 && _c3.position) focus = _c3.position;
+            }
+            var lit = [];
+            for (var t = 0; t < _torchFlames.length; t++) {
+                var e = _torchFlames[t];
+                if (!e.root.parent || !e.flame) continue;
+                if (!_mdTorchOnScreen(e.root)) continue;
+                if (!e.wpos) {
+                    try {
+                        e.flame.updateWorldMatrix(true, false);
+                        e.wpos = e.flame.getWorldPosition(new THREE.Vector3());
+                    } catch (err) { continue; }
+                }
+                var d = focus
+                    ? ((e.wpos.x - focus.x) * (e.wpos.x - focus.x) + (e.wpos.z - focus.z) * (e.wpos.z - focus.z))
+                    : t;
+                lit.push({ p: e.wpos, d: d, seed: e.seed });
+            }
+            lit.sort(function (a, b) { return a.d - b.d; });
+            for (var li = 0; li < _mdTorchPool.length; li++) {
+                var slot = lit[li];
+                var L = _mdTorchPool[li];
+                if (!slot) { L.intensity = 0; L.position.set(0, -9999, 0); continue; }
+                L.position.set(slot.p.x, slot.p.y + (CONFIG.tileSize || BASE_TILE) * 0.10, slot.p.z);
+                L._ew_seed = slot.seed;
+            }
+        }
+        /* flicker every frame — same multi-sine as the flames themselves */
+        for (var fi = 0; fi < _mdTorchPool.length; fi++) {
+            var LP = _mdTorchPool[fi];
+            if (LP.position.y < -100) continue;
+            var s = LP._ew_seed || fi * 7;
+            var f = 1.0 + 0.10 * Math.sin(now * 6.3 + s * 1.7) + 0.06 * Math.sin(now * 13.1 + s * 3.2);
+            /* dungeons are pitch black — the sconces carry the whole room */
+            LP.intensity = Math.max(TORCH_LIGHT_INT_NIGHT, baseInt) * 1.35 * f;
+            LP.color.set(isNight ? TORCH_LIGHT_COLOR_NIGHT : TORCH_LIGHT_COLOR_DAY);
+        }
+    }
+
     /* Per-frame flame flutter + light flicker, day/night aware (mirrors the
        ward-light flicker in three-post.js). */
     function _updateTorchFlames() {
-        if (!_torchFlames.length) return;
+        if (!_torchFlames.length) {
+            if (_mdTorchPool.length) _mdTorchPoolTeardown();
+            return;
+        }
         var cycle = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
         var isNight = (cycle === 'night');
         var baseInt = isNight ? TORCH_LIGHT_INT_NIGHT : TORCH_LIGHT_INT_DAY;
@@ -5117,6 +5243,7 @@ const ThreeRenderer = (function () {
             }
         }
         _torchFlames = alive;
+        _mdTorchPoolSync(now, baseInt, isNight);
     }
 
     /* ═══════════════ ANIME POWER AURA (Flow State / Last Stand) ═══════════════
@@ -21633,6 +21760,7 @@ const ThreeRenderer = (function () {
         }
         _towerCubes.length = 0;
         _torchFlames.length = 0;
+        _mdTorchPoolTeardown();          /* the roaming dungeon sconce lights */
         if (_terrainDecoGroup && objectGroup) {
             objectGroup.remove(_terrainDecoGroup);
             _disposeR(_terrainDecoGroup);
@@ -21659,7 +21787,8 @@ const ThreeRenderer = (function () {
         _lastWeatherVfxKey = '';
         if (renderer) renderer.setAnimationLoop(null);
         if (_fpsEl) _fpsEl.style.display = 'none';
-        if (_miniWrap) _miniWrap.style.display = 'none';
+        if (_miniWrap) { _miniWrap.style.display = 'none'; _miniWrap.classList.remove('md-scanner'); }
+        _mdMiniKey = '';                 /* next floor charts itself from scratch */
         if (canvas) canvas.style.display = 'none';
         if (css2dRenderer) css2dRenderer.domElement.style.display = 'none';
         _clearFloatTextTweens();
@@ -22495,7 +22624,7 @@ const ThreeRenderer = (function () {
      * "cubes" (bases) and visible units. The viewer's currently-active unit
      * gets a white arrow that points the way the camera is facing.
      * ──────────────────────────────────────────────────────────────────── */
-    var _miniWrap = null, _miniCanvas = null, _miniCtx = null;
+    var _miniWrap = null, _miniCanvas = null, _miniCtx = null, _miniLabelEl = null;
     var MINI_BOX = 188;          /* max wrapper size in CSS px */
     var _miniLastW = -1, _miniLastH = -1;
     var _MINI_TERRAIN_FALLBACK = {
@@ -22523,6 +22652,7 @@ const ThreeRenderer = (function () {
             'clip-path:polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)'
         ].join(';');
         var _miniLabel = document.createElement('div');
+        _miniLabelEl = _miniLabel;
         _miniLabel.textContent = 'TACTICAL';
         _miniLabel.style.cssText = [
             'font-family:"DotGothic16", monospace', 'font-size:9px',
@@ -22593,10 +22723,323 @@ const ThreeRenderer = (function () {
         ctx.fill(); ctx.stroke();
     }
 
+    /* ══════════════ MYSTERY DUNGEON SCANNER (vector minimap) ══════════════
+       The dungeon's own minimap: a 1979-arcade vector display. No terrain
+       fills, no textures, no rotation — just phosphor line-work on black,
+       the way Asteroids drew everything. It maps ONLY what the party has
+       actually seen: walking into a chamber reveals that whole chamber
+       (PMD-style), corridors light up tile by tile as they come into view
+       (the fog renderer's own visible set feeds it), and the layout it has
+       traced persists for the rest of the floor.
+         · walls  — line segments on every edge where a discovered floor tile
+                    meets rock, so doorways and hall mouths read as gaps
+         · party  — filled vector ships pointing the way they face
+         · foes   — hollow rock-polygons, only while genuinely visible (fog)
+         · stairs — the ⌄ exit glyph, once discovered
+       Discovery is keyed to dungeon+floor and wiped when either changes, so
+       a new floor always starts dark.                                     */
+    var MD_MINI_BOX = 196;
+    var _mdMiniKey = '';
+    var _mdMiniSeen = null;
+    var _mdMiniLayer = null, _mdMiniLayerCtx = null;
+    var _mdMiniLayerDirty = true;
+    var _mdMiniPosSig = '';
+    var MD_MINI_INK = '#7dffb0';        /* phosphor green */
+    var MD_MINI_INK_DIM = 'rgba(125,255,176,0.30)';
+
+    function _mdScannerActive() {
+        try {
+            if (typeof window._isDungeonMode !== 'function' || !window._isDungeonMode()) return false;
+            return !!(state && state._mdPhase === 'floor' && state._mdRun);
+        } catch (e) { return false; }
+    }
+
+    function _mdFloorEntry() {
+        try {
+            return (typeof PREBUILT_MAPS !== 'undefined') ? PREBUILT_MAPS.md_floor : null;
+        } catch (e) { return null; }
+    }
+
+    /* '0' bedrock · '1' hall · '2' room (stamped by generateMdFloor) */
+    function _mdCellAt(cells, x, y) {
+        if (!cells || y < 0 || y >= cells.length) return '0';
+        var row = cells[y];
+        if (!row || x < 0 || x >= row.length) return '0';
+        return row.charAt(x);
+    }
+
+    /* Fold everything the party can currently see into the discovered set.
+       Returns true when something NEW was learned (→ redraw the layer). */
+    function _mdScannerDiscover(entry, cells) {
+        var units = (state.units || []).filter(function (u) {
+            return u && u.player === 1 && !u.dead && !u._dying && !u._mdNpc;
+        });
+        if (!units.length) return false;
+        var sig = units.map(function (u) { return u.x + ',' + u.y; }).join('|')
+            + '#' + (_fogVisibleSet ? _fogVisibleSet.size : -1);
+        if (sig === _mdMiniPosSig) return false;
+        _mdMiniPosSig = sig;
+
+        var rooms = (entry && entry._mdRooms) || [];
+        var grew = false;
+        var mark = function (x, y) {
+            var k = x + ',' + y;
+            if (_mdMiniSeen.has(k)) return;
+            _mdMiniSeen.add(k);
+            grew = true;
+        };
+        for (var i = 0; i < units.length; i++) {
+            var u = units[i];
+            /* stepping into a chamber lights up the whole chamber */
+            for (var r = 0; r < rooms.length; r++) {
+                var rc = rooms[r];
+                if (u.x < rc.x0 || u.x > rc.x1 || u.y < rc.y0 || u.y > rc.y1) continue;
+                for (var ry = rc.y0; ry <= rc.y1; ry++)
+                    for (var rx = rc.x0; rx <= rc.x1; rx++) mark(rx, ry);
+            }
+            /* plus the tiles immediately around them (corridor crawling) */
+            for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+                if (_mdCellAt(cells, u.x + dx, u.y + dy) !== '0') mark(u.x + dx, u.y + dy);
+            }
+        }
+        /* everything the fog says is genuinely in sight */
+        if (_fogVisibleSet) {
+            _fogVisibleSet.forEach(function (k) {
+                var p = k.split(',');
+                var vx = +p[0], vy = +p[1];
+                if (_mdCellAt(cells, vx, vy) !== '0') mark(vx, vy);
+            });
+        }
+        return grew;
+    }
+
+    /* The static half — walls, stairs — painted once per discovery change. */
+    function _mdScannerPaintLayer(cells, entry, W, H, cell, dpr) {
+        if (!_mdMiniLayer) {
+            _mdMiniLayer = document.createElement('canvas');
+            _mdMiniLayerCtx = _mdMiniLayer.getContext('2d');
+        }
+        var pw = Math.round(W * cell * dpr), ph = Math.round(H * cell * dpr);
+        if (_mdMiniLayer.width !== pw || _mdMiniLayer.height !== ph) {
+            _mdMiniLayer.width = pw; _mdMiniLayer.height = ph;
+        }
+        var g = _mdMiniLayerCtx;
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        g.clearRect(0, 0, W * cell, H * cell);
+
+        var seen = function (x, y) { return _mdMiniSeen.has(x + ',' + y); };
+        var solid = function (x, y) { return _mdCellAt(cells, x, y) === '0'; };
+
+        /* floor wash — barely there, just enough to read as "mapped ground" */
+        g.fillStyle = 'rgba(125,255,176,0.055)';
+        _mdMiniSeen.forEach(function (k) {
+            var p = k.split(',');
+            g.fillRect((+p[0]) * cell, (+p[1]) * cell, cell, cell);
+        });
+
+        /* walls: one stroke per discovered-floor↔rock edge */
+        g.strokeStyle = MD_MINI_INK;
+        g.lineWidth = Math.max(1, cell * 0.16);
+        g.lineCap = 'square';
+        g.shadowColor = 'rgba(125,255,176,0.85)';
+        g.shadowBlur = Math.max(2, cell * 0.5);
+        g.beginPath();
+        _mdMiniSeen.forEach(function (k) {
+            var p = k.split(',');
+            var x = +p[0], y = +p[1];
+            var px = x * cell, py = y * cell;
+            if (solid(x, y - 1)) { g.moveTo(px, py); g.lineTo(px + cell, py); }
+            if (solid(x, y + 1)) { g.moveTo(px, py + cell); g.lineTo(px + cell, py + cell); }
+            if (solid(x - 1, y)) { g.moveTo(px, py); g.lineTo(px, py + cell); }
+            if (solid(x + 1, y)) { g.moveTo(px + cell, py); g.lineTo(px + cell, py + cell); }
+        });
+        g.stroke();
+
+        /* frontier: the edge of the mapped region, dashed — "unexplored" */
+        g.shadowBlur = 0;
+        g.strokeStyle = MD_MINI_INK_DIM;
+        g.lineWidth = Math.max(1, cell * 0.1);
+        g.beginPath();
+        _mdMiniSeen.forEach(function (k) {
+            var p = k.split(',');
+            var x = +p[0], y = +p[1];
+            var px = x * cell, py = y * cell;
+            if (!solid(x, y - 1) && !seen(x, y - 1)) { g.moveTo(px + cell * 0.2, py); g.lineTo(px + cell * 0.8, py); }
+            if (!solid(x, y + 1) && !seen(x, y + 1)) { g.moveTo(px + cell * 0.2, py + cell); g.lineTo(px + cell * 0.8, py + cell); }
+            if (!solid(x - 1, y) && !seen(x - 1, y)) { g.moveTo(px, py + cell * 0.2); g.lineTo(px, py + cell * 0.8); }
+            if (!solid(x + 1, y) && !seen(x + 1, y)) { g.moveTo(px + cell, py + cell * 0.2); g.lineTo(px + cell, py + cell * 0.8); }
+        });
+        g.stroke();
+
+        /* the exit — a vector ⌄ inside a hollow box, once it's been seen */
+        var st = state._mdStairs || (entry && entry._mdStairs);
+        if (st && seen(st.x, st.y)) {
+            var sx = st.x * cell, sy = st.y * cell;
+            g.strokeStyle = '#ffffff';
+            g.shadowColor = 'rgba(255,255,255,0.9)';
+            g.shadowBlur = Math.max(2, cell * 0.6);
+            g.lineWidth = Math.max(1, cell * 0.13);
+            g.strokeRect(sx + cell * 0.18, sy + cell * 0.18, cell * 0.64, cell * 0.64);
+            g.beginPath();
+            g.moveTo(sx + cell * 0.33, sy + cell * 0.40);
+            g.lineTo(sx + cell * 0.50, sy + cell * 0.66);
+            g.lineTo(sx + cell * 0.67, sy + cell * 0.40);
+            g.stroke();
+            g.shadowBlur = 0;
+        }
+    }
+
+    /* Asteroids ship: a filled dart pointing along (fx,fy). */
+    function _mdMiniShip(ctx, cx, cy, fx, fy, r, color, hollow) {
+        var px = -fy, py = fx;
+        ctx.beginPath();
+        ctx.moveTo(cx + fx * r, cy + fy * r);
+        ctx.lineTo(cx - fx * r * 0.75 + px * r * 0.7, cy - fy * r * 0.75 + py * r * 0.7);
+        ctx.lineTo(cx - fx * r * 0.35, cy - fy * r * 0.35);
+        ctx.lineTo(cx - fx * r * 0.75 - px * r * 0.7, cy - fy * r * 0.75 - py * r * 0.7);
+        ctx.closePath();
+        ctx.lineWidth = Math.max(1, r * 0.38);
+        ctx.strokeStyle = color;
+        if (hollow) { ctx.stroke(); return; }
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.stroke();
+    }
+
+    /* Asteroids rock: an irregular hollow heptagon (deterministic per unit). */
+    function _mdMiniRock(ctx, cx, cy, r, seed, color) {
+        ctx.beginPath();
+        for (var i = 0; i < 7; i++) {
+            var a = (i / 7) * Math.PI * 2;
+            var wob = 0.72 + 0.42 * (((seed * (i + 3) * 2654435761) >>> 0) % 1000) / 1000;
+            var px = cx + Math.cos(a) * r * wob;
+            var py = cy + Math.sin(a) * r * wob;
+            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.lineWidth = Math.max(1, r * 0.34);
+        ctx.strokeStyle = color;
+        ctx.stroke();
+    }
+
+    function _drawMdScanner() {
+        var entry = _mdFloorEntry();
+        var cells = entry && entry._mdCells;
+        if (!cells || !cells.length) { if (_miniWrap) _miniWrap.style.display = 'none'; return; }
+
+        var W = (typeof bw === 'function') ? bw() : (cells[0] ? cells[0].length : 0);
+        var H = (typeof bh === 'function') ? bh() : cells.length;
+        if (!W || !H) { if (_miniWrap) _miniWrap.style.display = 'none'; return; }
+
+        /* new floor (or a fresh run) → wipe the chart */
+        var key = (state._mdRun ? (state._mdRun.dungeonId + ':' + state._mdRun.floor) : '?') + ':' + W + 'x' + H;
+        if (key !== _mdMiniKey) {
+            _mdMiniKey = key;
+            _mdMiniSeen = new Set();
+            _mdMiniPosSig = '';
+            _mdMiniLayerDirty = true;
+        }
+        if (!_mdMiniSeen) _mdMiniSeen = new Set();
+
+        _ensureMinimap();
+        _miniWrap.style.display = 'block';
+        _miniWrap.classList.add('md-scanner');
+        if (_miniLabelEl) _miniLabelEl.textContent = 'Scanner · B' + (state._mdRun ? state._mdRun.floor : 1);
+
+        var cell = Math.max(3, Math.floor(Math.min(MD_MINI_BOX / W, MD_MINI_BOX / H)));
+        var drawW = cell * W, drawH = cell * H;
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        if (_miniLastW !== drawW || _miniLastH !== drawH) {
+            _miniCanvas.width = Math.round(drawW * dpr);
+            _miniCanvas.height = Math.round(drawH * dpr);
+            _miniCanvas.style.width = drawW + 'px';
+            _miniCanvas.style.height = drawH + 'px';
+            _miniLastW = drawW; _miniLastH = drawH;
+            _mdMiniLayerDirty = true;
+        }
+
+        if (_mdScannerDiscover(entry, cells)) _mdMiniLayerDirty = true;
+        if (_mdMiniLayerDirty) {
+            _mdScannerPaintLayer(cells, entry, W, H, cell, dpr);
+            _mdMiniLayerDirty = false;
+        }
+
+        var ctx = _miniCtx;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, drawW, drawH);
+        ctx.fillStyle = '#02060a';
+        ctx.fillRect(0, 0, drawW, drawH);
+        if (_mdMiniLayer) ctx.drawImage(_mdMiniLayer, 0, 0, drawW, drawH);
+
+        /* ── live blips ────────────────────────────────────────────────── */
+        var leadId = (typeof window._mdLeaderId === 'function') ? window._mdLeaderId() : null;
+        var units = state.units || [];
+        for (var i = 0; i < units.length; i++) {
+            var u = units[i];
+            if (!u || u.dead || u._dying || u._mdNpc) continue;
+            var ucx = (u.x + 0.5) * cell, ucy = (u.y + 0.5) * cell;
+            if (u.player === 1) {
+                var fx = 0, fy = -1;
+                var fc = u.facing;
+                if (fc === 'E' || fc === 'right') { fx = 1; fy = 0; }
+                else if (fc === 'W' || fc === 'left') { fx = -1; fy = 0; }
+                else if (fc === 'S' || fc === 'down') { fx = 0; fy = 1; }
+                else if (fc && typeof fc === 'object' && (fc.dx || fc.dy)) {
+                    var m = Math.hypot(fc.dx || 0, fc.dy || 0) || 1;
+                    fx = (fc.dx || 0) / m; fy = (fc.dy || 0) / m;
+                }
+                var isLead = (u.id === leadId);
+                ctx.shadowColor = 'rgba(255,255,255,0.9)';
+                ctx.shadowBlur = isLead ? Math.max(3, cell * 0.7) : 0;
+                _mdMiniShip(ctx, ucx, ucy, fx, fy, cell * (isLead ? 0.46 : 0.36),
+                    isLead ? '#ffffff' : MD_MINI_INK, !isLead);
+                ctx.shadowBlur = 0;
+                continue;
+            }
+            /* enemies: fog-true only — the scanner never leaks a hidden monster */
+            if (state.fogOfWar && _fogVisibleSet && !_fogVisibleSet.has(u.x + ',' + u.y)) continue;
+            if (!_mdMiniSeen.has(u.x + ',' + u.y)) continue;
+            ctx.shadowColor = 'rgba(255,90,90,0.85)';
+            ctx.shadowBlur = Math.max(2, cell * 0.45);
+            _mdMiniRock(ctx, ucx, ucy, cell * 0.40,
+                (parseInt(String(u.id).replace(/\D/g, ''), 10) || 3) + 1,
+                u._mdBoss ? '#ffd45a' : '#ff5a5a');
+            ctx.shadowBlur = 0;
+        }
+
+        /* loose loot — small vector diamonds on mapped ground */
+        var items = state._mdItems || [];
+        ctx.strokeStyle = '#8ad4ff';
+        ctx.lineWidth = Math.max(1, cell * 0.12);
+        for (var ii = 0; ii < items.length; ii++) {
+            var it = items[ii];
+            if (!_mdMiniSeen.has(it.x + ',' + it.y)) continue;
+            var ix = (it.x + 0.5) * cell, iy = (it.y + 0.5) * cell, ir = cell * 0.22;
+            ctx.beginPath();
+            ctx.moveTo(ix, iy - ir); ctx.lineTo(ix + ir, iy);
+            ctx.lineTo(ix, iy + ir); ctx.lineTo(ix - ir, iy);
+            ctx.closePath(); ctx.stroke();
+        }
+
+        /* frame */
+        ctx.shadowBlur = 0;
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(125,255,176,0.35)';
+        ctx.strokeRect(0.5, 0.5, drawW - 1, drawH - 1);
+    }
+
     function _updateMinimap() {
         try {
             if (!active || typeof state === 'undefined' || !state || !state.boardTerrain) {
                 if (_miniWrap) _miniWrap.style.display = 'none';
+                return;
+            }
+            /* Mystery Dungeon floors get the vector SCANNER instead. */
+            if (_mdScannerActive()) { _drawMdScanner(); return; }
+            if (_miniWrap && _miniWrap.classList.contains('md-scanner')) {
+                _miniWrap.classList.remove('md-scanner');
+                _miniWrap.style.display = 'none';
+                _mdMiniKey = '';
                 return;
             }
             var W = (typeof bw === 'function') ? bw() :

@@ -9904,6 +9904,18 @@
                         dy = -tmp;
                     }
                 }
+                /* ── MYSTERY DUNGEON lockstep: one press = one tile = one beat.
+                   The provisional WASD roam (walk around, then commit the whole
+                   route as one action) is exactly what the dungeon clock is
+                   not: there, every single step must move the whole floor. ── */
+                if (typeof window._mdLockstepActive === 'function' && window._mdLockstepActive()) {
+                    if (_wasdOrigin) _clearWasdState(true);
+                    if (window._mdLockstepStep && window._mdLockstepStep(dx, dy)) {
+                        scheduleBoardRender();
+                    }
+                    return;
+                }
+
                 const unit = getSelectedUnit();
                 if (!unit || !canUnitAct(unit)) return;
                 const bw = CONFIG.boardWidth || 16;

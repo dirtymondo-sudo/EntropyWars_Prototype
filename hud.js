@@ -976,9 +976,9 @@ function Scoreboard({ st }) {
       && !st._mdTransitioning && !st._mdEnded);
 
     const TACTIC_META = {
-      manual: { icon: '🎮', label: 'MANUAL', hint: 'You control this unit. Click to switch to ⚔ Auto.' },
-      auto:   { icon: '⚔', label: 'AUTO',   hint: 'The AI fights for this unit. Click to switch to 🛡 Stay Close.' },
-      guard:  { icon: '🛡', label: 'CLOSE',  hint: 'Auto, but regroups toward the leader. Click to switch to 🎮 Manual.' },
+      manual: { icon: '🎮', label: 'MANUAL', hint: 'You control this unit — the whole floor moves on its every step.' },
+      auto:   { icon: '⚔', label: 'AUTO',   hint: 'Fights on its own, one action per turn. Click to switch to 🛡 Stay Close.' },
+      guard:  { icon: '🛡', label: 'CLOSE',  hint: 'Fights on its own but sticks near the leader. Click to switch to ⚔ Auto.' },
     };
 
     return h('div', {
@@ -1007,6 +1007,12 @@ function Scoreboard({ st }) {
         h('span', { style: { width: 1, height: 22, background: EW.panelEdge } }),
         h('span', { style: { fontFamily: mdMono, fontSize: 11, color: mdAlive ? EW.chaos : '#7fdc9a' } },
           mdAlive ? ('☠ ' + mdAlive + ' foe' + (mdAlive === 1 ? '' : 's')) : '✓ floor clear'),
+        /* Lockstep clock readout: the whole floor moves on YOUR beat, so the
+           turn counter only ever ticks when the player does something. */
+        (typeof window._mdLockstepActive === 'function' && window._mdLockstepActive()) && h('span', {
+          title: 'The dungeon moves when you move — every step or action is one turn for everyone.',
+          style: { fontFamily: mdMono, fontSize: 10, letterSpacing: '0.14em', color: st._mdTickBusy ? EW.chaos : EW.inkMute },
+        }, (st._mdTickBusy ? '⧗ WORLD MOVES' : '⧗ TURN ' + (st._mdTickN || 0))),
         mdOnStairs
           ? h('button', {
               className: 'md-descend-btn',
@@ -6766,7 +6772,8 @@ function ReactHUD() {
       h(MatchMeta, { st }),
     ),
     // Combat log, control-hints strip, and minimap are hidden from the HUD
-    // (minimap suppressed via CSS on #battleMinimap in the injected styles).
+    // (minimap suppressed via CSS on #battleMinimap in the injected styles —
+    // except on Mystery Dungeon floors, where it becomes the vector SCANNER).
     // ONE menu system: the Horologe drum renders the root verbs, every
     // submenu, the target pickers, and the enemy/tile quick menus.
     h('div', { style: { pointerEvents: 'auto' }},
@@ -8084,7 +8091,21 @@ function _injectHudHideStyles() {
     .ew-scoreboard { transform: translateX(-50%) scale(var(--ew-hud-scale, 1)) !important; transform-origin: 50% 0; }
     .ew-matchmeta  { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 100% 0; }
     .ew-combatlog  { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 100% 0; }
-    #battleMinimap { display: none !important; }
+    /* The tactical minimap stays off in every PvP mode. Mystery Dungeon
+       floors are the exception: there the renderer flips it into the vector
+       SCANNER (three-renderer _drawMdScanner) — a 1979-arcade phosphor
+       display that charts the maze as the party discovers it. */
+    #battleMinimap:not(.md-scanner) { display: none !important; }
+    #battleMinimap.md-scanner {
+      background: rgba(2,6,10,0.90) !important;
+      border: 1px solid rgba(125,255,176,0.35) !important;
+      box-shadow: 0 0 18px rgba(125,255,176,0.10), inset 0 0 24px rgba(125,255,176,0.05);
+      transform: scale(var(--ew-hud-scale, 1)); transform-origin: 100% 100%;
+    }
+    #battleMinimap.md-scanner > div:first-child {
+      color: #7dffb0 !important;
+      text-shadow: 0 0 6px rgba(125,255,176,0.7);
+    }
     .battle-subtitle-text { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 50% 100%; }
 
     /* ══════════ SPELL DESCRIPTION BAR — SMT-style HELP strip ══════════

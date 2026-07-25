@@ -3155,6 +3155,14 @@
                        recomputed per floor by _mdInsideTiles) — never synced. */
                     _mdInside: 1,
                     _mdInsideFloor: 1,
+                    /* Mystery Dungeon lockstep clock (battle.js) — the dungeon
+                       is VS-CPU/local only, but these are pure local turn-loop
+                       bookkeeping and must never ride a snapshot. */
+                    _mdTickBusy: 1,
+                    _mdTickTs: 1,
+                    _mdTravel: 1,
+                    _mdInnerMove: 1,
+                    _mdEorPending: 1,
 
                     showPlayer2Builder: 1,
 
