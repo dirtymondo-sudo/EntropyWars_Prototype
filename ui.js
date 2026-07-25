@@ -6866,6 +6866,10 @@
             const grainPct = Math.max(0, Math.min(100, Math.round((retroState.grain/0.12)*100)));
             const fogPct = Math.max(0, Math.min(100, Math.round((retroFogDensity/0.0008)*100)));
             const ditherPct = Math.round(retroState.ditherStrength*100);
+            // Pixelate scope — 'models' (default) chunks only the 3D GLB models
+            // (units + Meshy props); the terrain/trees/turrets are pixel-art
+            // sprites already and look wrong double-pixelated.
+            const pixModelsOnly = (retroState.pixelScope || 'models') !== 'screen';
             const tintPct = Math.round(retroState.tintAmount*100);
             const retroPresetBtns = retroPresets.map(p=>`<button class="pm-seg-btn${retroPreset===p.key?' active':''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroPreset)ThreePost.setRetroPreset('${p.key}');_renderPauseMenu();">${p.label}</button>`).join('');
 
@@ -7046,6 +7050,9 @@
                             <span class="pm-setting-label">Pixelate</span>
                             <input type="range" min="1" max="6" step="1" value="${Math.round(retroState.pixelSize)}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroParam)ThreePost.setRetroParam('pixelSize',this.value);this.nextElementSibling.textContent=(this.value=='1'?'off':this.value+'x');">
                             <span class="pm-vol-val">${Math.round(retroState.pixelSize)==1?'off':Math.round(retroState.pixelSize)+'x'}</span>
+                        </div>
+                        <div class="pm-set-toggles" style="margin-top:6px">
+                            <label class="pm-toggle"><input type="checkbox" ${pixModelsOnly ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroPixelScope)ThreePost.setRetroPixelScope(this.checked?'models':'screen');"><span class="pm-toggle-label">Models Only</span><span class="pm-toggle-hint">chunk the 3D units, not the sprite terrain</span></label>
                         </div>
                         <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                             <span class="pm-setting-label">Dither</span>

@@ -7383,6 +7383,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var mats = [];
         m.traverse(function (n) {
             if (!n.isMesh) return;
+            // Meshy bake, not pixel-art sprite art — so it rides along with the
+            // unit models when the retro filter's "Models Only" pixelation is on
+            // (ThreePost._renderPixelMask picks the flag up).
+            n._ew_pixelate = true;
             n.material = Array.isArray(n.material)
                 ? n.material.map(function (mm) { var c = mm.clone(); mats.push(c); return c; })
                 : (function () { var c = n.material.clone(); mats.push(c); return c; })();

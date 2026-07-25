@@ -397,6 +397,12 @@ const ThreePost = (function () {
         enabled:        false,
         preset:         'teal',
         pixelSize:      1.0,    // 1 = off (game is already pixel-art); >1 = chunkier blocks
+        // WHAT the pixelation applies to. 'models' (default) = only the 3D GLB
+        // models (units, Meshy props) get the chunky UV-snap; the terrain,
+        // trees, turrets and stairs are already hand-pixelled sprite art, so
+        // re-pixelating them just smears the tile grid. 'screen' = the old
+        // whole-frame behaviour. See _renderPixelMask.
+        pixelScope:     'models',
         ditherStrength: 0.6,
         ditherScale:    1.0,    // size of a dither cell in source pixels (bigger = coarser weave)
         grain:          0.04,
@@ -422,6 +428,7 @@ const ThreePost = (function () {
             var _rs = JSON.parse(_retroSaved);
             if (_rs && typeof _rs === 'object') {
                 if (typeof _rs.preset === 'string' && RETRO_PRESETS[_rs.preset]) _retro.preset = _rs.preset;
+                if (_rs.pixelScope === 'models' || _rs.pixelScope === 'screen') _retro.pixelScope = _rs.pixelScope;
                 ['enabled','fogEnabled'].forEach(function (k) { if (typeof _rs[k] === 'boolean') _retro[k] = _rs[k]; });
                 ['pixelSize','ditherStrength','ditherScale','grain','levels','tintAmount','fogDensity','fogHorizon'].forEach(function (k) {
                     if (typeof _rs[k] === 'number' && !isNaN(_rs[k])) _retro[k] = _rs[k];
@@ -449,7 +456,11 @@ const ThreePost = (function () {
             'uTintAmount':    { value: 0.55 },
             'uSaturation':    { value: 0.82 },
             'uLevelsInOut':   { value: new THREE.Vector2(0.03, 0.95) },
-            'uGrain':         { value: 0.04 }
+            'uGrain':         { value: 0.04 },
+            // Models-only pixelation: silhouette mask of the 3D GLB meshes
+            // (white = model). uMaskMode 0 = pixelate the whole frame.
+            'tMask':          { value: null },
+            'uMaskMode':      { value: 0.0 }
         },
         vertexShader: [
             'varying vec2 vUv;',
@@ -471,6 +482,8 @@ const ThreePost = (function () {
             'uniform float uSaturation;',
             'uniform vec2 uLevelsInOut;',
             'uniform float uGrain;',
+            'uniform sampler2D tMask;',
+            'uniform float uMaskMode;',
             'varying vec2 vUv;',
             '',
             '// 4x4 ordered Bayer matrix, 0..15 (unrolled — no dynamic array indexing for WebGL1)',
@@ -502,11 +515,22 @@ const ThreePost = (function () {
             '}',
             '',
             'void main() {',
-            '  // 1. optional chunky pixelation (UV-snap downscale)',
+            '  // 1. optional chunky pixelation (UV-snap downscale). In models-only',
+            '  //    mode the snap happens ONLY where the model mask is lit, so the',
+            '  //    already-pixel-art terrain sprites stay at native resolution.',
+            '  //    The mask is read at BOTH the block centre and the exact pixel:',
+            '  //    centre fills a block solid, exact catches the silhouette edge,',
+            '  //    so partly-covered blocks still snap (that is the chunky look).',
             '  vec2 uv = vUv;',
             '  if (uPixelSize > 1.0) {',
             '    vec2 cells = uResolution / uPixelSize;',
-            '    uv = (floor(vUv * cells) + 0.5) / cells;',
+            '    vec2 snapped = (floor(vUv * cells) + 0.5) / cells;',
+            '    if (uMaskMode > 0.5) {',
+            '      float m = max(texture2D(tMask, snapped).r, texture2D(tMask, vUv).r);',
+            '      uv = mix(vUv, snapped, step(0.35, m));',
+            '    } else {',
+            '      uv = snapped;',
+            '    }',
             '  }',
             '  vec3 c = texture2D(tDiffuse, uv).rgb;',
             '',
@@ -530,6 +554,114 @@ const ThreePost = (function () {
             '}'
         ].join('\n')
     };
+
+    // ── Models-only pixelation mask ─────────────────────────────────────
+    // The board is hand-pixelled sprite art already (terrain, trees, turrets,
+    // stairs all sample the R2 /Assets/Sprites/terrain textures at NearestFilter),
+    // so the retro UV-snap double-pixelates it and dissolves the tile grid. The
+    // things that DO need it are the smooth-shaded GLB models — rigged unit
+    // characters and the Meshy weapon/prop bakes. This renders a cheap white
+    // silhouette of exactly those meshes into a half-res target; the retro
+    // shader snaps UVs only where that mask is lit.
+    //
+    // Meshes opt in through flags the renderers already set: _ew_modelSkin (unit
+    // GLB meshes, three-renderer) or _ew_pixelate (weapon/prop GLBs, three-vfx-
+    // effects). The scan tags them onto two dedicated camera layers — skinned and
+    // static — because one scene.overrideMaterial can't serve both: r128 needs
+    // material.skinning to match the mesh type or the shader reads attributes the
+    // geometry doesn't have.
+    var PIX_LAYER_SKIN = 7, PIX_LAYER_STATIC = 8;
+    var PIX_SCAN_MS = 400;      // re-tag newly spawned models a few times a second
+    var _maskRT = null, _maskMatSkin = null, _maskMatStatic = null;
+    var _maskW = 0, _maskH = 0, _maskScanAt = 0, _maskVec = null, _maskClearCol = null;
+
+    function _scanPixelMaskTargets() {
+        if (!_scene) return;
+        _scene.traverse(function (n) {
+            if (!n.isMesh || n._ew_pixelTagged) return;
+            // Silhouette/x-ray twins share the model's geometry but are a UI
+            // read-through, not the model itself — never mask them.
+            if (n._ew_silhouette) return;
+            if (!(n._ew_modelSkin || n._ew_pixelate)) return;
+            n._ew_pixelTagged = true;
+            n.layers.enable(n.isSkinnedMesh ? PIX_LAYER_SKIN : PIX_LAYER_STATIC);
+        });
+    }
+
+    // Renders the mask for this frame. Returns true when tMask is usable.
+    // Deliberately has NO terrain in it: an occluder pass would cost a second
+    // full scene render, and a unit hidden behind a cliff only ever means a few
+    // background blocks get snapped (invisible on flat sprite texture) — while
+    // its x-ray hologram twin, which DOES show through, reads as part of the
+    // model anyway.
+    function _renderPixelMask(cam) {
+        if (!_renderer || !_scene || !cam || typeof THREE === 'undefined') return false;
+        try {
+            var now = performance.now();
+            if (now - _maskScanAt > PIX_SCAN_MS) { _maskScanAt = now; _scanPixelMaskTargets(); }
+
+            if (!_maskVec) _maskVec = new THREE.Vector2();
+            _renderer.getDrawingBufferSize(_maskVec);
+            var w = Math.max(2, Math.round(_maskVec.x * 0.5));
+            var h = Math.max(2, Math.round(_maskVec.y * 0.5));
+            if (!_maskRT) {
+                _maskRT = new THREE.WebGLRenderTarget(w, h, {
+                    minFilter: THREE.NearestFilter,
+                    magFilter: THREE.NearestFilter,
+                    format: THREE.RGBAFormat,
+                    stencilBuffer: false
+                });
+                _maskW = w; _maskH = h;
+            } else if (w !== _maskW || h !== _maskH) {
+                _maskRT.setSize(w, h); _maskW = w; _maskH = h;
+            }
+            if (!_maskMatSkin) {
+                // toneMapped/fog off so the mask stays a hard 1.0 no matter what
+                // the exposure grade or the retro scene fog is doing.
+                _maskMatSkin = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false });
+                _maskMatSkin.toneMapped = false;
+                _maskMatSkin.skinning = true;
+                _maskMatStatic = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false });
+                _maskMatStatic.toneMapped = false;
+            }
+
+            var prevTarget    = _renderer.getRenderTarget();
+            var prevOverride  = _scene.overrideMaterial;
+            var prevLayers    = cam.layers.mask;
+            var prevAutoClear = _renderer.autoClear;
+            // Shadows are manually driven (autoUpdate off + needsUpdate pulses);
+            // these extra renders must not eat the pulse before the real frame.
+            var prevShadowNeeds = _renderer.shadowMap ? _renderer.shadowMap.needsUpdate : false;
+            var prevAlpha = _renderer.getClearAlpha();
+            if (!_maskClearCol) _maskClearCol = new THREE.Color();
+            try { _renderer.getClearColor(_maskClearCol); } catch (e) { _maskClearCol.setHex(0x000000); }
+
+            _renderer.setRenderTarget(_maskRT);
+            _renderer.autoClear = false;
+            if (_renderer.shadowMap) _renderer.shadowMap.needsUpdate = false;
+            _renderer.setClearColor(0x000000, 1);
+            _renderer.clear(true, true, false);
+
+            cam.layers.set(PIX_LAYER_SKIN);
+            _scene.overrideMaterial = _maskMatSkin;
+            _renderer.render(_scene, cam);
+
+            cam.layers.set(PIX_LAYER_STATIC);
+            _scene.overrideMaterial = _maskMatStatic;
+            _renderer.render(_scene, cam);
+
+            _scene.overrideMaterial = prevOverride;
+            cam.layers.mask = prevLayers;
+            _renderer.setRenderTarget(prevTarget);
+            _renderer.setClearColor(_maskClearCol, prevAlpha);
+            _renderer.autoClear = prevAutoClear;
+            if (_renderer.shadowMap) _renderer.shadowMap.needsUpdate = prevShadowNeeds;
+            return true;
+        } catch (e) {
+            try { console.warn('[ThreePost] pixel mask pass failed — falling back to full-screen pixelate', e); } catch (e2) {}
+            return false;
+        }
+    }
 
     // Push the full _retro state (including the active preset's tint/sat/contrast)
     // into the live shader uniforms.
@@ -1470,6 +1602,12 @@ const ThreePost = (function () {
 
         if (_retroPass && _retroPass.enabled) {
             _retroPass.material.uniforms['uTime'].value = performance.now() * 0.001;
+            // Models-only pixelation needs its silhouette mask refreshed before
+            // the composer runs. Only when the snap is actually doing something.
+            var _wantMask = (_retro.pixelScope !== 'screen') && _retro.pixelSize > 1.0 && cam;
+            var _maskOk = _wantMask ? _renderPixelMask(cam) : false;
+            _retroPass.material.uniforms['tMask'].value = _maskOk ? _maskRT.texture : null;
+            _retroPass.material.uniforms['uMaskMode'].value = _maskOk ? 1.0 : 0.0;
         }
 
         if (!_ready || !_composer || !cam) {
@@ -1634,6 +1772,15 @@ const ThreePost = (function () {
             if (_composer.renderTarget1) _composer.renderTarget1.dispose();
             if (_composer.renderTarget2) _composer.renderTarget2.dispose();
         }
+        if (_maskRT) { _maskRT.dispose(); _maskRT = null; _maskW = _maskH = 0; }
+        if (_maskMatSkin) { _maskMatSkin.dispose(); _maskMatSkin = null; }
+        if (_maskMatStatic) { _maskMatStatic.dispose(); _maskMatStatic = null; }
+        if (_retroPass) {
+            _retroPass.material.uniforms['tMask'].value = null;
+            _retroPass.material.uniforms['uMaskMode'].value = 0.0;
+        }
+        _maskScanAt = 0;
+
         _composer = null;
         _bloomPass = null;
         _fxaaPass = null;
@@ -1729,6 +1876,17 @@ const ThreePost = (function () {
         _saveRetro();
     }
     function getRetroParam(key) { return _retro[key]; }
+    /* 'models' = pixelate only the 3D GLB models (units + Meshy props), leaving
+       the pixel-art terrain sprites untouched. 'screen' = the whole frame. */
+    function setRetroPixelScope(scope) {
+        _retro.pixelScope = (scope === 'screen') ? 'screen' : 'models';
+        if (_retroPass && _retro.pixelScope === 'screen') {
+            _retroPass.material.uniforms['tMask'].value = null;
+            _retroPass.material.uniforms['uMaskMode'].value = 0.0;
+        }
+        _saveRetro();
+    }
+    function getRetroPixelScope() { return _retro.pixelScope; }
     function getRetroState() {
         var out = {};
         for (var k in _retro) out[k] = _retro[k];
@@ -1814,6 +1972,8 @@ const ThreePost = (function () {
         getRetroPresets: getRetroPresets,
         setRetroParam: setRetroParam,
         getRetroParam: getRetroParam,
+        setRetroPixelScope: setRetroPixelScope,
+        getRetroPixelScope: getRetroPixelScope,
         getRetroState: getRetroState,
         setRetroFog: setRetroFog,
         isRetroFogEnabled: isRetroFogEnabled,
