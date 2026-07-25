@@ -875,19 +875,20 @@ const RACE_MODELS_3D = {
          lib: { idle: { clip: 'Sword_Idle' },        // fencer ready stance
                 castMelee: { clip: 'Sword_Regular_Combo', lib: 1, ts: 2.4 } } })
   },
-  // Female Pirate — flintlock = quick-draw. (Same files are duplicated in
+  // Female Pirate — flintlock = quick-draw; standard idle (no gun stance).
+  // (Same files are duplicated in
   // …/Female/raider; the pirate/ copies are wired.)
   'pirate': {
     female: _mk3d('Homosapien/Female/pirate', 'hot_female_pirate', {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 0.95, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),
+    }, { castTimeScale: 5.0, heightRatio: 0.95 }),
     // "Dashingly handsome swashbuckler" — same file set mirrored in
     // …/Male/raider.
     male: _mk3d('Homosapien/Male/pirate', 'dashingly_handsome_sw', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 1.02, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),
+    }, { castTimeScale: 5.0, heightRatio: 1.02 }),
   },
   // Homosapien (Freelancer) — also the werewolf's DAY form: getRace3DModel()
   // returns this male entry for any werewolf while getCurrentCyclePhase() is
@@ -943,7 +944,7 @@ const RACE_MODELS_3D = {
       castSupport: 'mage_soell_cast_3',
       // spare on R2: Walking, Knock_Down
     }, { castTimeScale: 5.0, castTimeScales: { castMagic: 2.0, castSupport: 2.0 },
-         heightRatio: 1.35, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),   // towering Sumerian god
+         heightRatio: 1.35 }),   // towering Sumerian god (mage-sniper: plain idle, no gun stance)
   },
   // Demon (Black Mage, bruiser) — "red_demon". Charged_Spell_Cast covers the
   // generic + magic cast. MALE ONLY so far — the female demon has no model
@@ -1015,14 +1016,13 @@ const RACE_MODELS_3D = {
          basicAttackKind: 'throw',  // he just throws — footballs ARE his basic attack
          lib: { idle: { clip: 'Idle_10', lib: 2 } } }),                // brawler sway
   },
-  // Female Atlantean — Swim_Idle as her resting loop (aquatic flavor).
+  // Female Atlantean — standard idle (the swim loop read as floating on land).
   'atlantean': {
     female: _mk3d('atlantean/female', 'hot_attractive_atlant', {
-      idle: 'Swim_Idle', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
+      walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
     }, { heightRatio: 0.98,      // statuesque sea-dweller
-         basicAttackKind: 'magic',  // tide-caller — basic attacks surge, no blades
-         lib: { idle: { clip: 'Swim_Idle_Loop' } } }),
+         basicAttackKind: 'magic' }),  // tide-caller — basic attacks surge, no blades
   },
   // Werewolf NIGHT form (the beast). The DAY form is the Homosapien Freelancer
   // male model — see getRace3DModel(), which swaps this out for the human model
@@ -1033,7 +1033,7 @@ const RACE_MODELS_3D = {
       death: 'Dead', cast: 'Right_Hand_Sword_Slash', castMelee: 'Right_Hand_Sword_Slash',
       // spare on R2: Idle_11, Knock_Down
     }, { castTimeScale: 2.2, heightRatio: 1.3,      // large hulking beast
-         lib: { idle: { clip: 'Zombie_Idle_Loop', lib: 1 },        // feral sway
+         lib: { idle: { clip: 'Idle_10', lib: 2 },        // feral sway
                 walk: { clip: 'Zombie_Walk_Fwd_Loop', lib: 1, ts: 2.5 },
                 castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } } }),
   },
@@ -1100,7 +1100,7 @@ const RACE_MODELS_3D = {
     male: _mkUAL('scarecrow/male', 'scarecrow', {
       heightRatio: 1.12,          // lanky, on a frame
       basicAttackKind: 'claw',
-      lib: { idle: { clip: 'Zombie_Idle_Loop', lib: 1 },
+      lib: { idle: { clip: 'Idle_10', lib: 2 },
              castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } },
     }),
   },
@@ -1248,7 +1248,7 @@ const RACE_MODELS_3D = {
     female: _mkUAL('zombie/female', 'female_zombie_pretty', {
       heightRatio: 0.96,
       basicAttackKind: 'claw',
-      lib: { idle: { clip: 'Zombie_Idle_Loop', lib: 1 },
+      lib: { idle: { clip: 'Idle_10', lib: 2 },
              walk: { clip: 'Zombie_Walk_Fwd_Loop', lib: 1, ts: 2.5 },
              castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } },
     }),
@@ -1286,7 +1286,7 @@ const RACE_MODELS_3D = {
     male: _mkUAL('skeleton/male', 'skeleton', {
       heightRatio: 1.0,
       basicAttackKind: 'claw',
-      lib: { idle: { clip: 'Zombie_Idle_Loop', lib: 1 },
+      lib: { idle: { clip: 'Idle_10', lib: 2 },
              walk: { clip: 'Zombie_Walk_Fwd_Loop', lib: 1, ts: 2.5 },
              castMelee: { clip: 'Zombie_Scratch', lib: 1, ts: 1.5 } },
     }),
@@ -1440,7 +1440,7 @@ const RACE_MODELS_3D = {
 // ── Gendered library defaults (2026-07-11) ─────────────────────────────────
 // Every `female:` def idles/walks with the female Meshy clips (Idle_11 /
 // Walking_Woman) unless the character claimed the slot itself via opts.lib
-// (agent/cowgirl Pistol_Idle_Loop, vampire folded arms, atlantean swim…).
+// (agent/cowgirl Pistol_Idle_Loop, vampire folded arms, mermaid swim…).
 (function _applyFemaleSlotDefaults() {
   for (const race in RACE_MODELS_3D) {
     const def = RACE_MODELS_3D[race] && RACE_MODELS_3D[race].female;
