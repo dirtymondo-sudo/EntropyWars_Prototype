@@ -4,7 +4,42 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## MYSTERY DUNGEON VERTICAL SLICE: PMD-ification pass (2026-07-25, LATEST) — battle.js, state.js, hud.js, ui.js, map.js, index.html
+## ABILITY TARGET DRUM = QUICK-MENU MIRROR: MOVE→CAST rows (2026-07-25, LATEST) — battle.js, hud.js
+Token `20260725o` → `20260725p`. Recurring desync, root-caused: the spell
+target drum was built ONLY from `_getSpellValidTargets` (castable from where
+the caster STANDS), while the enemy/ally quick menus and board clicks offer
+MOVE→CAST via `findSpellApproachTile`. So the ability row lit up (its probe
+`spellHasReachableTarget` IS move-then-cast aware) but the drum you landed in
+said "No targets in range". Any future targeting change must feed BOTH paths
+or this regresses again. Fix:
+- **battle.js `_getSpellApproachTargets(unit, spell, haveSet)`** (right after
+  `_getSpellValidTargets`): units NOT castable now but reachable via the
+  engine's own `findSpellApproachTile` (walk/jump/takeoff/land/raise). Mirrors
+  the drum's filters (team, tileTargeted team, `spellTargetUsableOn`, fog
+  vision, dead-target revive/raiseDead rules, taunt collapse incl. a
+  castable-now challenger via `haveSet`) and the quick menu's affordability
+  gate (silence/tier/`canAffordSpell`/MP, and `ap - approach.moveCost >=
+  spellApCost`). Returns `{x,y,dist,unit,_approach}`.
+- **battle.js `setTool`**: both the unit-target branch and the free-aim
+  ('spells') branch concat approach targets into `_spellCycleTargets`, so
+  cycling + the pre-armed first pick match the drum. (The lone-self auto-cast
+  check now sees the combined list, so it won't insta-fire when approach
+  targets exist.)
+- **battle.js `selectTargetFromMenu`** (spell confirm): if the confirmed tile
+  is NOT in `getSpellRangeTiles` right now, recompute
+  `findSpellApproachTile` FRESH (never trust stale menu data) and run
+  `_moveThenCast`; else direct `doSpell` as before. Beams/direction casts fall
+  through safely (both probes are getSpellRangeTiles-based → null → doSpell).
+- **hud.js `_hrlgTargetBlades`** (spell mode): concat
+  `_getSpellApproachTargets` after the valid list; approach rows carry
+  `note: 'MOVE→CAST'` (same amber chip as ability rows / quick menus) and keep
+  portraits + damage/heal forecasts.
+- **hud.js `_listUnits` gate** (free-aim spells view): opens the unit list
+  when ONLY approach targets exist (was: bare "click the board" aim panel).
+Online-parity: pure UI + reuse of the existing `_moveThenCast` executor (the
+same one board clicks / quick menus already run), so no new relay surface.
+
+## MYSTERY DUNGEON VERTICAL SLICE: PMD-ification pass (2026-07-25) — battle.js, state.js, hud.js, ui.js, map.js, index.html
 Token `20260725n` → `20260725o`. Owner request: make MD floors play like Pokémon
 Mystery Dungeon. Everything below is gated on `_mdLockstepActive()` (or
 `_isDungeonMode()` + floor) — hub, PvP, dev sims untouched.

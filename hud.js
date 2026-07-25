@@ -3330,6 +3330,15 @@ function _hrlgTargetBlades(unit, st, mode) {
   } else {
     spell = (unit.spells || []).find(s => s.name === st.selectedTool) || (unit._raceAbilities || []).find(s => s.name === st.selectedTool);
     targets = spell && typeof _getSpellValidTargets === 'function' ? _getSpellValidTargets(unit, spell) : [];
+    // Quick-menu parity: the enemy/ally quick menus offer MOVE→CAST rows for
+    // units the spell reaches only after an approach step — this drum MUST
+    // list the same units (amber MOVE→CAST chip) or the two menus drift out
+    // of sync. Confirming one routes through the engine's approach executor
+    // (selectTargetFromMenu → findSpellApproachTile → _moveThenCast).
+    if (spell && typeof _getSpellApproachTargets === 'function') {
+      const _have = new Set(targets.map(t => t.unit && t.unit.id).filter(v => v != null));
+      try { targets = targets.concat(_getSpellApproachTargets(unit, spell, _have)); } catch (e) {}
+    }
     titleText = st.selectedTool || 'Spell'; titleIcon = '✦';
   }
   const isOffensive = mode === 'attack' || (spell && !['heal', 'shield', 'buff', 'scan'].includes(spell.kind));
@@ -3396,6 +3405,9 @@ function _hrlgTargetBlades(unit, st, mode) {
       label: label,
       available: true,
       check: !!isPending,
+      // Amber chip on approach targets — same read as the ability rows and
+      // the quick menus: this pick walks/jumps into range first, then casts.
+      note: t._approach ? 'MOVE→CAST' : null,
       superEff: superEff,
       previewDmg: previewDmg,
       previewHeal: previewHeal,
@@ -4025,8 +4037,13 @@ function ActionMenu({ st, hidden }) {
       'deployObject', 'deployPair', 'deployTurret', 'warpRune', 'summonWeather', 'placeMirror',
       'teleport', 'dash', 'escape', 'leechSeed', 'seedHeal', 'seedPoison'];
     const _listUnits = _aimSp && !_tileOnlyKinds.includes(_aimSp.kind || '')
-      && typeof _getSpellValidTargets === 'function'
-      && _getSpellValidTargets(unit, _aimSp).length > 0;
+      && ((typeof _getSpellValidTargets === 'function'
+          && _getSpellValidTargets(unit, _aimSp).length > 0)
+        // MOVE→CAST-only situations still get the unit list — the drum shows
+        // the same approach targets the quick menus would, instead of a bare
+        // "click the board" aim panel that hides them.
+        || (typeof _getSpellApproachTargets === 'function'
+          && _getSpellApproachTargets(unit, _aimSp).length > 0));
     view = 'aim';
     panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));
     if (_listUnits) {

@@ -31017,7 +31017,15 @@
                 }
                 if (spell && !isSpellTileTargeted(spell) && !isSpellSelfCast(spell)) {
 
-                    const targets = _getSpellValidTargets(unit, spell);
+                    let targets = _getSpellValidTargets(unit, spell);
+                    // Quick-menu parity: fold in MOVE→CAST targets (reachable
+                    // after the engine's approach step) so the drum, the cycle
+                    // list and the pre-armed pick all match what the quick
+                    // menus offer for this same spell.
+                    {
+                        const _have = new Set(targets.map(t => t.unit && t.unit.id).filter(v => v != null));
+                        targets = targets.concat(_getSpellApproachTargets(unit, spell, _have));
+                    }
 
                     if (targets.length === 1 && targets[0].unit && targets[0].unit.id === unit.id) {
                         state._actionExecuting = true;
@@ -31053,7 +31061,13 @@
 
                     state.actionMenuView = 'spells';
                     if (spell) {
-                        const targets = _getSpellValidTargets(unit, spell);
+                        let targets = _getSpellValidTargets(unit, spell);
+                        // Same MOVE→CAST fold as the unit-target branch, so the
+                        // free-aim drum's suggestions match the quick menus.
+                        {
+                            const _have = new Set(targets.map(t => t.unit && t.unit.id).filter(v => v != null));
+                            targets = targets.concat(_getSpellApproachTargets(unit, spell, _have));
+                        }
                         state._spellCycleTargets = targets;
                         state._spellCycleIndex = 0;
                         if (targets.length > 0) {
@@ -31181,6 +31195,72 @@
                 }
             }
             return targets;
+        }
+
+        /* MOVE→CAST companions for the target drum: units the spell can NOT
+           reach from where the caster stands, but CAN reach after the engine's
+           own approach step (walk / jump / take-off / land / raise — the exact
+           findSpellApproachTile the enemy/ally quick menus and board clicks
+           use). Keeping the drum on _getSpellValidTargets alone is how it kept
+           drifting behind the quick menus: the ability row lights via
+           spellHasReachableTarget (move-then-cast aware), the quick menu
+           offers the MOVE→CAST row, but the drum said "No targets in range".
+           Same filters as the drum (team, fog, per-target usability, taunt);
+           affordability mirrors the quick menu's gate (AP for approach + cast,
+           MP, tier, silence, cooldown). haveSet = unit ids already listed as
+           castable-now, so nothing shows twice. */
+        function _getSpellApproachTargets(unit, spell, haveSet) {
+            if (!unit || !spell) return [];
+            if (isSpellSelfCast(spell)) return [];
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return [];
+            if (unitHasStatus(unit, 'silence')) return [];
+            if (typeof unitMeetsSpellTierReq === 'function' && !unitMeetsSpellTierReq(unit, spell)) return [];
+            if (typeof canAffordSpell === 'function' && !canAffordSpell(unit, spell)) return [];
+            if ((unit.mp || 0) < getSpellMpCostFor(unit, spell)) return [];
+            const apCost = getSpellApCost(spell);
+            const _skm = _kindMeta(spell);
+            const isOffensive = !!_skm.offensive;
+            const fogLimit = state.fogOfWar && !state.autoPlayers?.[unit.player];
+            const out = [];
+            for (const u of state.units) {
+                // Dead-target rules mirror the drum: revive walks to its own
+                // fallen ally's grave, raiseDead to any unconsumed remains.
+                if (u.dead) {
+                    if (spell.kind === 'raiseDead') {
+                        if (u._corpseConsumed) continue;
+                    } else if (spell.kind !== 'revive' || u.player !== unit.player || u.reviveLocked) continue;
+                }
+                if (!u.dead && spell.kind === 'raiseDead') continue;
+                if (haveSet && u.id != null && haveSet.has(u.id)) continue;
+                if (isOffensive && isAllyUnit(u, unit)) continue;
+                if (!isOffensive && _skm.allyOnly && !isAllyUnit(u, unit)) continue;
+                if (_skm.tileTargeted) {
+                    const _tt = spellTileTeam(spell);
+                    if (_tt === 'ally' && !isAllyUnit(u, unit)) continue;
+                    if (_tt === 'enemy' && isAllyUnit(u, unit)) continue;
+                }
+                if (!spellTargetUsableOn(unit, spell, u)) continue;
+                // Fog: never promise a walk toward a unit the caster can't see.
+                if (fogLimit && !_skm.fogExempt && !isInVision(unit, u.x, u.y)) continue;
+                const approach = findSpellApproachTile(unit, spell, u.x, u.y, u.z);
+                if (!approach) continue;
+                // Quick-menu parity: the approach AND the cast must both be payable.
+                if (((unit.ap || 0) - (approach.moveCost || 1)) < apCost) continue;
+                const d = Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y);
+                out.push({ x: u.x, y: u.y, dist: d, unit: u, _approach: approach });
+            }
+            out.sort((a, b) => a.dist - b.dist);
+            // 🗯 Provoke: offensive unit-target casts collapse to the challenger
+            // whenever the challenger is on offer (castable now OR via approach)
+            // — mirrors the drum's and doSpell's gate.
+            if (isOffensive && !_skm.tileTargeted && !_skm.directional) {
+                const _taunter = getTauntTargeter(unit);
+                if (_taunter && (out.some(t => t.unit && t.unit.id === _taunter.id)
+                    || (haveSet && haveSet.has(_taunter.id)))) {
+                    return out.filter(t => !t.unit || !isEnemyUnit(unit, t.unit) || t.unit.id === _taunter.id);
+                }
+            }
+            return out;
         }
 
         /* Team gate for free-aim ('spells' view) hover/click: an ally-only spell
@@ -31693,7 +31773,27 @@
                     // first swing rejected → don't leave pre-loaded repeats armed
                     if ((_atkR === 0 || _atkR === false) && state._repeatQueue) state._repeatQueue.queued = 0;
                 }
-                else if (state.actionMode === 'spell') { _execAction(() => doSpell(unit, x, y, execZ)); }
+                else if (state.actionMode === 'spell') {
+                    // MOVE→CAST rows in the target drum pick units that are OUT
+                    // of range from where the caster stands — doSpell alone
+                    // would just bounce them. Recompute the approach fresh
+                    // (never trust a stale menu) and run the engine's own
+                    // walk/jump/height-then-cast executor, exactly like a board
+                    // click on that unit would.
+                    const _mtcSp = (unit.spells || []).find(s => s.name === state.selectedTool)
+                        || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                    let _mtcApproach = null;
+                    if (_mtcSp && !isSpellSelfCast(_mtcSp)
+                        && !unitHasStatus(unit, 'silence')
+                        && (typeof unitMeetsSpellTierReq !== 'function' || unitMeetsSpellTierReq(unit, _mtcSp))
+                        && (unit.mp || 0) >= getSpellMpCostFor(unit, _mtcSp)
+                        && !(typeof getSpellRangeTiles === 'function'
+                            && getSpellRangeTiles(unit, _mtcSp).some(t => t.x === x && t.y === y))) {
+                        _mtcApproach = findSpellApproachTile(unit, _mtcSp, x, y, execZ);
+                    }
+                    if (_mtcApproach) { _moveThenCast(unit, _mtcApproach, _mtcSp.name, x, y, execZ); }
+                    else { _execAction(() => doSpell(unit, x, y, execZ)); }
+                }
                 else if (state.actionMode === 'item') {
                     // Items don't own the executing latch the way attacks/spells
                     // do (board clicks call doItem directly) — release it here.
