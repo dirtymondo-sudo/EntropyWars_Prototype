@@ -140,6 +140,35 @@ const ThreeVFX = (function () {
         return _spriteMap[key] || { r: 1.0, g: 1.0, b: 1.0, blend: 'add' };
     }
 
+    // Tint normalization: accepts 0xRRGGBB, '#rrggbb' or {r,g,b} (0–1) and
+    // returns an {r,g,b} multiplier whose brightest channel is ~1.12. Raw
+    // multiplication by a colour always DARKENS (every channel <= 1), which
+    // would make tinted particles read as dull rather than coloured — the
+    // renormalize keeps the particle just as bright, only hued.
+    var _tintCache = {};
+    function _normTint(t) {
+        if (t == null) return null;
+        var key = (typeof t === 'object') ? null : String(t);
+        if (key && _tintCache[key]) return _tintCache[key];
+        var r, g, b;
+        if (typeof t === 'number') {
+            r = ((t >> 16) & 255) / 255; g = ((t >> 8) & 255) / 255; b = (t & 255) / 255;
+        } else if (typeof t === 'string') {
+            var h = t.charAt(0) === '#' ? t.slice(1) : t;
+            if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+            var n = parseInt(h, 16);
+            if (isNaN(n)) return null;
+            r = ((n >> 16) & 255) / 255; g = ((n >> 8) & 255) / 255; b = (n & 255) / 255;
+        } else {
+            r = t.r != null ? t.r : 1; g = t.g != null ? t.g : 1; b = t.b != null ? t.b : 1;
+        }
+        var mx = Math.max(r, g, b);
+        if (mx > 0.001) { var k = 1.12 / mx; r *= k; g *= k; b *= k; }
+        var out = { r: r, g: g, b: b };
+        if (key) _tintCache[key] = out;
+        return out;
+    }
+
     var _ringSprites = { 'target-ring': 1, 'target-ring-gold': 1, 'target-ring-blue': 1,
                          'target-ring-green': 1, 'shockwave': 1, 'halo-ring': 1, 'stun-ring': 1 };
 
@@ -863,6 +892,7 @@ const ThreeVFX = (function () {
                 trail: null,
                 sprite: 'ember', mode: 'billboard',
                 _color: { r: 1, g: 1, b: 1 },
+                _tint: null,
                 _blend: 'add',
                 onComplete: null,
                 _trackHeading: false, _headingOffset: 0,
@@ -913,6 +943,7 @@ const ThreeVFX = (function () {
         p._zone = false;
         p.trail = null; p.onComplete = null; p.descent = false; p._ease = null;
         p._beamYawDeg = null; p._trackHeading = false; p._uvRect = null;
+        p._tint = null;
         p.poolType = null; p.slotIdx = -1;
         _aliveCount = Math.max(0, _aliveCount - 1);
     }
@@ -991,6 +1022,13 @@ const ThreeVFX = (function () {
         p.gravity = opts.gravity || 0;
         p.drag    = opts.drag    || 0;
         p.sprite = sprite; p.mode = mode; p._color = sc; p._blend = sc.blend;
+        // Per-particle TINT. The pool hands every particle its own material,
+        // so a colour multiplier costs nothing and finally lets one sprite
+        // shape serve many spells: `flash` is a warm-white blob until a
+        // psychic spell tints it magenta and an ice spell tints it cyan.
+        // Normalized to a peak channel of ~1.12 (see _normTint) so tinting
+        // recolours a particle instead of just dimming it.
+        p._tint = opts.tint != null ? _normTint(opts.tint) : null;
         p._spriteRot = opts.spriteRot || 0;
         p._uvRect = _getUvRect(sprite);
 
@@ -1145,7 +1183,9 @@ const ThreeVFX = (function () {
         entry.material.opacity = op;
 
         var hasAtlasShape = !!(_gradientDefs[p.sprite] || _imageDefs[p.sprite]);
-        if (hasAtlasShape) {
+        if (p._tint) {
+            entry.material.color.setRGB(p._tint.r, p._tint.g, p._tint.b);
+        } else if (hasAtlasShape) {
             entry.material.color.setRGB(1, 1, 1);
         } else {
             entry.material.color.setRGB(p._color.r, p._color.g, p._color.b);
@@ -1184,7 +1224,9 @@ const ThreeVFX = (function () {
         entry.material.opacity = op;
 
         var hasAtlasShape = !!(_gradientDefs[p.sprite] || _imageDefs[p.sprite]);
-        if (hasAtlasShape) {
+        if (p._tint) {
+            entry.material.color.setRGB(p._tint.r, p._tint.g, p._tint.b);
+        } else if (hasAtlasShape) {
             entry.material.color.setRGB(1, 1, 1);
         } else {
             entry.material.color.setRGB(p._color.r, p._color.g, p._color.b);
@@ -1239,7 +1281,9 @@ const ThreeVFX = (function () {
         entry.material.opacity = op;
 
         var hasAtlasShape = !!(_gradientDefs[p.sprite] || _imageDefs[p.sprite]);
-        if (hasAtlasShape) {
+        if (p._tint) {
+            entry.material.color.setRGB(p._tint.r, p._tint.g, p._tint.b);
+        } else if (hasAtlasShape) {
             entry.material.color.setRGB(1, 1, 1);
         } else {
             entry.material.color.setRGB(p._color.r, p._color.g, p._color.b);

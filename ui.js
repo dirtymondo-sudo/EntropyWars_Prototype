@@ -6852,6 +6852,10 @@
             const impactFxMax = (typeof ThreePost!=='undefined'&&ThreePost.getImpactFxMax)?ThreePost.getImpactFxMax():1.5;
             const impactFxPct = Math.round(impactFx*100);
             const impactFxMaxPct = Math.round(impactFxMax*100);
+            // Spell Cinematics = the shader beat on big casts (world-dim +
+            // spotlight on caster/target, hue cycling, chromatic aberration).
+            // Stored as the INVERSE of the kill-switch the VFX layer reads.
+            const spellGradeOn = !window.EW_DISABLE_SPELL_GRADE;
 
             // Retro / Haunted-PS1 filter state
             const _TP = (typeof ThreePost!=='undefined') ? ThreePost : null;
@@ -6961,6 +6965,9 @@
                     </div>
                     <div class="pm-set-row" style="margin-top:2px">
                         <span class="pm-toggle-hint">bloom kick when spells and projectiles land</span>
+                    </div>
+                    <div class="pm-set-toggles" style="margin-top:8px">
+                        <label class="pm-toggle"><input type="checkbox" ${spellGradeOn ? 'checked' : ''} onchange="window.EW_DISABLE_SPELL_GRADE=!this.checked;if(!this.checked&&typeof ThreePost!=='undefined'&&ThreePost.spellGradeClear)ThreePost.spellGradeClear();try{localStorage.setItem('ew_spellGrade',this.checked?'1':'0');}catch(e){}"><span class="pm-toggle-label">Spell Cinematics</span><span class="pm-toggle-hint">big spells black out the board around the caster and target, cycle colour and split the RGB</span></label>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Pixel Ratio</span>

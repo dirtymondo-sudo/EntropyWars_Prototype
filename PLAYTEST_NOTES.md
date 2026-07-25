@@ -7133,6 +7133,113 @@ leaks), ~700 pool particles spawned. Every r128 API used was confirmed present
 `Color.setHSL`). NOT playtested in-browser (RULE #1c) — the R2 upload has to
 happen first.
 
+## SPELL GRADE — shader post-FX for spell beats (2026-07-25) — three-post.js, three-vfx.js, three-vfx-effects.js, ui.js, index.html
+
+**Ask.** "Can we use shaders for spell animations — make the map and background
+go dark except the caster, the VFX and the target; more chromatic aberration
+and cycling colours like Bad Trip; and a lot of spells just look like white
+blobs of light." Target look: cult-classic PS1-era esoteric psychedelic JRPG.
+
+### 1. `ThreePost.spellGrade()` — the shader layer (three-post.js)
+A timed beat (rise → hold → ease-out fall) driven through the **existing
+cinematic pass** — no new fullscreen pass, so it costs nothing when idle. New
+uniforms on `_CinematicShader`:
+
+| uniform | what it does |
+|---|---|
+| `uSpotDim` + `uSpotA`/`uSpotB` (vec3 `uv.x, uv.y, radius`) | pools of light on the caster + target; everything else darkens and desaturates |
+| `uSpotSoft` / `uSpotLift` | pool feather; how much of the night grade the pool lifts back out |
+| `uTrip` + `uHue` | hue rotation about the (1,1,1) grey axis (Rodrigues) + saturation blowout |
+| `uWarp` | UV wobble — the frame breathes/melts (two beat frequencies per axis) |
+| `uChromaRadial` | radial RGB split in px, R/B pulled along the radius and G along the perpendicular. INDEPENDENT of the CRT filter's own `uChromaShift`, so it reads with CRT off |
+| `uGradeTint` / `uGradeTintAmt` | per-archetype colour push |
+
+**The spotlight does not hide the spell.** Pixels are exempted from the dim by
+LUMINANCE (`smoothstep(0.45, 0.95, lum)`), so additive VFX and their bloom keep
+burning anywhere on screen — the battlefield goes black, the spell stays lit.
+
+**Focus points are WORLD-space**, projected per frame in `render(cam)` via
+`Vector3.project`; the radius is measured by projecting a second point pushed
+along the camera's right axis (`matrixWorld.elements[0..2]`) and taking the
+screen gap, expressed in units of screen HEIGHT so the pool stays round at any
+aspect. Pools therefore track through camera pans/orbits for free.
+
+API: `spellGrade(opts)`, `spellGradeFocus(points)`, `spellGradeKick(px, ms)`
+(short additive aberration snap for the impact frame), `spellGradeClear()`,
+`isSpellGradeActive()`. Overlap rule matches `dramaDim`: a weaker beat never
+cuts a stronger one short. Scaled by the Impact FX slider; killable with
+`window.EW_DISABLE_SPELL_GRADE = true` or the new **Spell Cinematics** toggle
+in the pause menu (persisted as `ew_spellGrade`, default on).
+
+**Exposure caveat:** `dramaDim` pulls `toneMappingExposure` down globally.
+While a SPOTLIT beat runs that is skipped — a global exposure drop would take
+the caster and target down with everything else.
+
+### 2. Per-particle tint (three-vfx.js) — killing the white blobs
+252 of the 609 effect recipes build their core out of the warm-white `flash`
+gradient and ~40 more out of `shockwave`; that is *why* so many spells read as
+the same white blob. The pool hands every particle its own `SpriteMaterial`,
+so a colour multiplier was free: `spawn({ tint })` accepts `0xRRGGBB`,
+`'#rrggbb'` or `{r,g,b}`, normalized to peak ~1.12 (raw multiplication always
+DARKENS, which would read as dull rather than coloured).
+
+`_emitLayer` passes `layer.tint` through, and `fire()` hands `_spawnEffect` an
+**auto-tint** resolved from the spell's staging archetype which applies only to
+the two neutral sprites (`_NEUTRAL_SPRITES`). Explicit `layer.tint` always
+wins. Measured: **136 of the 204 spells with impact particles now emit tinted
+particles**, across **16 distinct flash colours**, with zero recipe edits.
+
+### 3. Archetype grade profiles (three-vfx-effects.js)
+`_STAGE_GRADES` gives each of the 17 staging archetypes a tint/chroma/trip/
+warp/hueRate profile, fired from the existing `windup` / `burst` / `finish`
+beats via `_stageGrade()`:
+- **light** — nothing on windup, a small aberration kick on the burst
+- **standard** — colour push + kick, no world-dim
+- **heavy / ultimate** — the full beat: spotlight the caster + target, drain
+  the rest of the board, archetype tint, trip/warp/chroma per profile
+  (`_STAGE_TIERS.dim` raised to 0.58 / 0.80 now that it is spotlit, not global)
+
+Live spread over the 468-spell registry: 88 light / 234 standard / 119 heavy /
+27 ultimate — so ~146 spells get the world-drop treatment.
+
+New **`mind`** archetype resolution runs FIRST in the name regex (`psych|mind|
+hypno|halluc|nightmare|dream|trance|…`) — it would otherwise be swallowed by
+the `unholy` test on words like "nightmare". 14 spells land there: Psychosis,
+Mind Shatter, Bad Trip, Nightmare Pulse, Psychic Beam, Dream Siphon, Hypnotic
+Pulse, Trick Room, Remote View, Omni-Vision, Cosmic Sight, Encore, Tune
+Frequency, Pulse Lattice. Per-spell overrides go in `SPELL_STAGE_MAP[id].grade`
+— that is the one-line hook to make any spell trip.
+
+### 4. `_sigPsychedelicTint` is now a real shader
+It used to set a CSS `filter: hue-rotate(...)` on `#threeCanvas`, which drags
+the whole canvas's compositing around, can't do aberration, and can't spare the
+caster/target. It now delegates to `spellGrade` and keeps the DOM version only
+as a fallback for a build where the post stack failed to init.
+
+### 5. Two bespoke signatures
+- **`_sigPsychosis3D`** — the world COLLAPSES INWARD (vs Bad Trip's outward
+  hallucination): hexagonal fractal tunnel, mandala, a rune cage spinning the
+  wrong way, 26 spectrum-tinted motes spiralling IN, one silent skull, and the
+  trip grade with the victim spotlit.
+- **`_sigMindShatter3D`** — a wireframe icosahedron (the intact mind) snaps
+  shut and tightens while the aberration winds up, then BREAKS at 34%: every
+  bar flies outward spinning, spectrum shards scatter, `spellGradeKick(14)`
+  tears the frame on that exact frame.
+
+### Online parity (RULE #2)
+Zero new plumbing. Everything rides the `windup`/`burst`/`finish` and `impact`
+intents, which already go through `VFX3D.fire` — the function online.js wraps
+for the host→guest relay — and `sx/sy/tx/ty` are already on the relay
+whitelist. The guest grades its own frame from the same beat, fog-gated by the
+existing `_isTileVisibleToViewer` check in the relay handler.
+
+### Verification
+`node --check` on all four JS files, plus a `vm` sandbox harness that loads
+data.js + three-vfx-effects.js with stubbed globals and drives `fire('windup'
+| 'burst' | 'impact', …)` for the whole 468-spell registry: confirmed the
+archetype/weight spread above, the grade payloads per weight tier, and the
+auto-tint counts. NOT playtested in-browser (RULE #1c).
+
 ## LEVEL COMBAT MATH rework (2026-07-25) — data.js, state.js, battle.js, ai.js, ui.js, hud.js
 
 **Symptom.** Challenge Battle 1, player unit level 1 vs a level-1 enemy: both

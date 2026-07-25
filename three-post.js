@@ -176,6 +176,186 @@ const ThreePost = (function () {
     function dramaClear() { _drama.peak = 0; }
     function getDramaDim() { return _dramaCurrent(performance.now()); }
 
+    // ── SPELL GRADE ──────────────────────────────────────────────────────
+    // "The world drops away for the big spell" — the SHADER half. dramaDim
+    // above darkens the whole frame uniformly; this is the version that
+    // keeps the CASTER and the TARGET standing in pools of light while the
+    // map, the props and the backdrop fall into the dark, and that can push
+    // the whole frame through a psychedelic grade on the way.
+    //
+    // Five knobs, all riding ONE timed envelope (rise → hold → fall), all
+    // driven through the existing cinematic pass (no extra fullscreen pass,
+    // so a beat costs nothing when it isn't running):
+    //
+    //   dim      how dark the world goes OUTSIDE the pools of light. Hot
+    //            pixels (additive spell VFX, bloom) are exempted by
+    //            luminance, so the spell itself stays the light source.
+    //   focus    WORLD-space points (the caster tile, the target tile) that
+    //            get the pools. Re-projected every frame, so the pools track
+    //            through camera pans/orbits for free.
+    //   trip     hue-cycling + saturation blowout — the Bad Trip grade, now
+    //            a real shader instead of a CSS filter on the canvas.
+    //   chroma   radial chromatic aberration in px (RGB pulls apart toward
+    //            the corners). Independent of the CRT filter's own chroma,
+    //            so it reads with the CRT toggle off.
+    //   warp     UV wobble — the frame breathes/melts.
+    //   tint     per-archetype colour push (fire runs hot, ice runs cold,
+    //            unholy runs violet) so spells stop grading identically.
+    //
+    // Scaled by the pause-menu Impact FX slider like bloomPulse/dramaDim,
+    // and killable outright with window.EW_DISABLE_SPELL_GRADE = true.
+    //
+    //   ThreePost.spellGrade({ dim: 0.8, trip: 0.7, chroma: 4, warp: 0.004,
+    //                          focus: [{x,y,z,r}], holdMs: 700 })
+    //   ThreePost.spellGradeFocus([{x,y,z,r}, …])   → move the pools
+    //   ThreePost.spellGradeKick(6, 220)            → aberration snap
+    //   ThreePost.spellGradeClear()
+    //
+    // The pause-menu "Spell Cinematics" toggle persists as the INVERSE of
+    // the kill-switch, so the default — no saved key — is ON.
+    try {
+        var _sgSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_spellGrade') : null;
+        if (_sgSaved === '0' && typeof window !== 'undefined') window.EW_DISABLE_SPELL_GRADE = true;
+    } catch (e) {}
+
+    var _grade = {
+        live: false,
+        t0: 0, riseMs: 200, holdMs: 400, fallMs: 520,
+        dim: 0, spotSoft: 0.75, spotLift: 0.9,
+        trip: 0, hueRate: 0, warp: 0, chroma: 0,
+        tint: [1, 1, 1], tintAmt: 0,
+        focus: [],
+        hue: 0, lastT: 0
+    };
+    var _gradeKick = { amt: 0, t0: 0, ms: 220 };
+    var _gv1 = null, _gv2 = null;                  // projection scratch
+
+    function _gradeIntensity(g) {
+        return Math.max(g.dim, g.trip, g.chroma / 8, g.tintAmt * 0.6, g.warp * 60);
+    }
+    function _gradeCurrent(now) {
+        if (!_grade.live) return 0;
+        var t = now - _grade.t0;
+        if (t < 0) return 0;
+        if (t < _grade.riseMs) return t / _grade.riseMs;
+        t -= _grade.riseMs;
+        if (t < _grade.holdMs) return 1;
+        t -= _grade.holdMs;
+        if (t < _grade.fallMs) {
+            var f = 1 - t / _grade.fallMs;
+            return f * f;                          // ease-out release
+        }
+        _grade.live = false;
+        _grade.focus.length = 0;
+        return 0;
+    }
+
+    function spellGrade(opts) {
+        if (!opts) return;
+        if (typeof window !== 'undefined' && window.EW_DISABLE_SPELL_GRADE) return;
+        if (_impactFx <= 0) return;
+        var scale = Math.min(1, _impactFx);
+        var next = {
+            dim:      Math.max(0, Math.min(1, (opts.dim || 0))) * scale,
+            trip:     Math.max(0, Math.min(1, (opts.trip || 0))) * scale,
+            chroma:   Math.max(0, Math.min(24, (opts.chroma || 0))) * scale,
+            warp:     Math.max(0, Math.min(0.05, (opts.warp || 0))) * scale,
+            tintAmt:  Math.max(0, Math.min(1, (opts.tintAmt || 0))) * scale,
+            hueRate:  opts.hueRate || 0
+        };
+        var now = performance.now();
+        // A weaker beat never cuts a stronger one short (same rule as
+        // dramaDim) — spell chains and multi-hits would otherwise strobe.
+        var liveK = _gradeCurrent(now);
+        if (liveK > 0 && _gradeIntensity(next) < _gradeIntensity(_grade) * liveK) {
+            if (opts.focus) spellGradeFocus(opts.focus);
+            return;
+        }
+        _grade.live = true;
+        _grade.t0 = now;
+        _grade.lastT = now;
+        _grade.riseMs = Math.max(40, opts.riseMs || 200);
+        _grade.holdMs = Math.max(0, opts.holdMs != null ? opts.holdMs : 400);
+        _grade.fallMs = Math.max(90, opts.fallMs || 520);
+        _grade.dim = next.dim;
+        _grade.trip = next.trip;
+        _grade.chroma = next.chroma;
+        _grade.warp = next.warp;
+        _grade.tintAmt = next.tintAmt;
+        _grade.hueRate = next.hueRate;
+        _grade.spotSoft = opts.spotSoft != null ? Math.max(0.05, opts.spotSoft) : 0.75;
+        _grade.spotLift = opts.spotLift != null ? Math.max(0, Math.min(1, opts.spotLift)) : 0.9;
+        if (opts.tint) {
+            _grade.tint[0] = opts.tint[0]; _grade.tint[1] = opts.tint[1]; _grade.tint[2] = opts.tint[2];
+        } else {
+            _grade.tint[0] = _grade.tint[1] = _grade.tint[2] = 1;
+        }
+        if (!opts.keepHue) _grade.hue = 0;
+        spellGradeFocus(opts.focus || []);
+    }
+
+    // Move / replace the pools of light. Points are WORLD-space with an
+    // optional world-unit radius `r` (defaults to ~1.5 tiles' worth).
+    function spellGradeFocus(points) {
+        _grade.focus.length = 0;
+        if (!points || !points.length) return;
+        for (var i = 0; i < points.length && i < 2; i++) {
+            var p = points[i];
+            if (!p || p.x == null) continue;
+            _grade.focus.push({ x: p.x, y: p.y || 0, z: p.z || 0, r: p.r > 0 ? p.r : 190 });
+        }
+    }
+
+    // Short additive aberration snap — the frame the hit registers. Rides on
+    // top of whatever grade is live (or on nothing at all).
+    function spellGradeKick(px, ms) {
+        if (typeof window !== 'undefined' && window.EW_DISABLE_SPELL_GRADE) return;
+        if (_impactFx <= 0) return;
+        var a = Math.max(0, Math.min(24, parseFloat(px) || 0)) * Math.min(1, _impactFx);
+        if (a <= 0) return;
+        var now = performance.now();
+        if (a > _gradeKickCurrent(now)) {
+            _gradeKick.amt = a;
+            _gradeKick.t0 = now;
+            _gradeKick.ms = Math.max(60, Math.min(900, ms || 220));
+        }
+    }
+    function _gradeKickCurrent(now) {
+        if (_gradeKick.amt <= 0) return 0;
+        var t = (now - _gradeKick.t0) / _gradeKick.ms;
+        if (t >= 1) { _gradeKick.amt = 0; return 0; }
+        var f = 1 - t;
+        return _gradeKick.amt * f * f;
+    }
+
+    function spellGradeClear() {
+        _grade.live = false;
+        _grade.focus.length = 0;
+        _gradeKick.amt = 0;
+    }
+    function isSpellGradeActive() {
+        return _gradeCurrent(performance.now()) > 0.001 || _gradeKickCurrent(performance.now()) > 0.01;
+    }
+
+    // Project the world-space pools into screen UV + a screen radius measured
+    // in units of SCREEN HEIGHT (so the mask stays circular at any aspect).
+    function _writeSpotUniform(u, name, pt, cam, w, h) {
+        var v = u[name].value;
+        if (!pt || !cam) { v.set(0.5, 0.5, 0.0); return; }
+        if (!_gv1) { _gv1 = new THREE.Vector3(); _gv2 = new THREE.Vector3(); }
+        _gv1.set(pt.x, pt.y, pt.z);
+        _gv1.project(cam);
+        if (_gv1.z > 1) { v.set(0.5, 0.5, 0.0); return; }   // behind the camera
+        // A second point pushed along the camera's RIGHT axis by the pool
+        // radius — the screen-space gap between the two IS the radius.
+        var m = cam.matrixWorld.elements;
+        _gv2.set(pt.x + m[0] * pt.r, pt.y + m[1] * pt.r, pt.z + m[2] * pt.r);
+        _gv2.project(cam);
+        var aspect = (h > 0) ? (w / h) : 1.0;
+        var r = Math.abs(_gv2.x - _gv1.x) * 0.5 * aspect;
+        v.set(_gv1.x * 0.5 + 0.5, _gv1.y * 0.5 + 0.5, Math.max(0.02, Math.min(2.0, r)));
+    }
+
     function setImpactFx(v) {
         var s = parseFloat(v);
         if (isNaN(s)) return;
@@ -283,7 +463,19 @@ const ThreePost = (function () {
             'uCrtAmount':     { value: 0.0 },
             'uCurvature':     { value: 0.0 },
             'uNightGrade':    { value: 0.0 },
-            'uNightTint':     { value: new THREE.Vector3(0.68, 0.78, 1.08) }
+            'uNightTint':     { value: new THREE.Vector3(0.68, 0.78, 1.08) },
+            // ── spell grade (see spellGrade() above) ──
+            'uSpotDim':       { value: 0.0 },
+            'uSpotA':         { value: new THREE.Vector3(0.5, 0.5, 0.0) },
+            'uSpotB':         { value: new THREE.Vector3(0.5, 0.5, 0.0) },
+            'uSpotSoft':      { value: 0.75 },
+            'uSpotLift':      { value: 0.9 },
+            'uTrip':          { value: 0.0 },
+            'uHue':           { value: 0.0 },
+            'uWarp':          { value: 0.0 },
+            'uChromaRadial':  { value: 0.0 },
+            'uGradeTint':     { value: new THREE.Vector3(1.0, 1.0, 1.0) },
+            'uGradeTintAmt':  { value: 0.0 }
         },
         vertexShader: [
             'varying vec2 vUv;',
@@ -306,7 +498,35 @@ const ThreePost = (function () {
             'uniform float uCurvature;',
             'uniform float uNightGrade;',
             'uniform vec3 uNightTint;',
+            'uniform float uSpotDim;',
+            'uniform vec3 uSpotA;',
+            'uniform vec3 uSpotB;',
+            'uniform float uSpotSoft;',
+            'uniform float uSpotLift;',
+            'uniform float uTrip;',
+            'uniform float uHue;',
+            'uniform float uWarp;',
+            'uniform float uChromaRadial;',
+            'uniform vec3 uGradeTint;',
+            'uniform float uGradeTintAmt;',
             'varying vec2 vUv;',
+            '',
+            '// pool of light: 1 at the focus point, 0 past the feathered rim.',
+            '// Distances are aspect-corrected so the pool stays round.',
+            'float spotMask(vec2 uv, vec3 s, vec2 asp) {',
+            '  if (s.z <= 0.0) return 0.0;',
+            '  float d = length((uv - s.xy) * asp);',
+            '  return 1.0 - smoothstep(s.z, s.z * (1.0 + uSpotSoft), d);',
+            '}',
+            '',
+            '// hue rotation about the (1,1,1) grey axis (Rodrigues) — the',
+            '// colour-cycling that makes a psychedelic beat read as a TRIP',
+            '// rather than as a flat purple wash.',
+            'vec3 hueRotate(vec3 c, float a) {',
+            '  const vec3 k = vec3(0.57735027);',
+            '  float ca = cos(a), sa = sin(a);',
+            '  return c * ca + cross(k, c) * sa + k * dot(k, c) * (1.0 - ca);',
+            '}',
             '',
             'vec2 curveUV(vec2 uv) {',
             '  if (uCurvature < 0.001 || uCrtAmount < 0.001) return uv;',
@@ -323,17 +543,58 @@ const ThreePost = (function () {
             'void main() {',
             '  vec2 uv = curveUV(vUv);',
             '',
+            '  // ── spell warp: the frame breathes/melts (two beat frequencies',
+            '  // per axis so it never reads as a clean sine). ──',
+            '  if (uWarp > 0.00001) {',
+            '    float wt = uTime * 2.1;',
+            '    uv += vec2(',
+            '      sin(uv.y * 11.0 + wt) * 0.65 + sin(uv.y * 27.0 - wt * 1.7) * 0.35,',
+            '      cos(uv.x * 13.0 - wt * 1.3) * 0.65 + cos(uv.x * 21.0 + wt * 2.2) * 0.35',
+            '    ) * uWarp;',
+            '    uv = clamp(uv, vec2(0.0005), vec2(0.9995));',
+            '  }',
+            '',
             '  if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {',
             '    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);',
             '    return;',
             '  }',
             '',
             '  // ── CRT look (chroma + scanlines + flicker), scaled by uCrtAmount ──',
+            '  // uChromaRadial adds the SPELL aberration on top: a radial pull that',
+            '  // grows toward the corners, so a hit visibly tears the image apart',
+            '  // even with the CRT filter switched off.',
             '  float px = (uChromaShift * uCrtAmount) / uResolution.x;',
-            '  float r = texture2D(tDiffuse, vec2(uv.x - px, uv.y)).r;',
+            '  vec2 ab = (uv - 0.5) * (uChromaRadial * 2.0 / uResolution.x);',
+            '  float r = texture2D(tDiffuse, vec2(uv.x - px, uv.y) - ab).r;',
             '  vec4 center = texture2D(tDiffuse, uv);',
-            '  float b = texture2D(tDiffuse, vec2(uv.x + px, uv.y)).b;',
-            '  vec4 col = vec4(r, center.g, b, center.a);',
+            '  float b = texture2D(tDiffuse, vec2(uv.x + px, uv.y) + ab).b;',
+            '  float g = center.g;',
+            '  if (uChromaRadial > 0.01) {',
+            '    // green rides the PERPENDICULAR so the split fans instead of',
+            '    // smearing along one line — reads far more like a bad signal',
+            '    g = texture2D(tDiffuse, uv + vec2(-ab.y, ab.x) * 0.6).g;',
+            '  }',
+            '  vec4 col = vec4(r, g, b, center.a);',
+            '',
+            '  // ── psychedelic grade: cycling hue + saturation blowout ──',
+            '  if (uTrip > 0.001) {',
+            '    vec3 hc = hueRotate(col.rgb, uHue * 6.2831853);',
+            '    float tl = dot(hc, vec3(0.299, 0.587, 0.114));',
+            '    hc = mix(vec3(tl), hc, 1.0 + 1.3 * uTrip);          // oversaturate',
+            '    hc = mix(hc, hc * hc * 2.0, 0.18 * uTrip);          // push the highs',
+            '    col.rgb = mix(col.rgb, hc, uTrip);',
+            '  }',
+            '',
+            '  // ── archetype colour push (fire hot, ice cold, unholy violet) ──',
+            '  if (uGradeTintAmt > 0.001) {',
+            '    col.rgb = mix(col.rgb, col.rgb * uGradeTint, uGradeTintAmt);',
+            '  }',
+            '',
+            '  // pools of light around the caster and the target — computed',
+            '  // here because the night grade below is LIFTED inside them.',
+            '  vec2 asp = vec2(uResolution.x / max(uResolution.y, 1.0), 1.0);',
+            '  float spot = 0.0;',
+            '  if (uSpotDim > 0.001) spot = max(spotMask(uv, uSpotA, asp), spotMask(uv, uSpotB, asp));',
             '',
             '  float scanY = uv.y * uResolution.y * uScanlineScale;',
             '  float scanline = sin(scanY * 3.14159) * 0.5 + 0.5;',
@@ -348,6 +609,7 @@ const ThreePost = (function () {
             '  // so nights read moody instead of "slightly blue day".',
             '  if (uNightGrade > 0.001) {',
             '    float ng = clamp(uNightGrade, 0.0, 1.0);',
+            '    ng *= (1.0 - uSpotLift * spot);      // the pools stay lit',
             '    float lum = dot(col.rgb, vec3(0.299, 0.587, 0.114));',
             '    col.rgb = mix(col.rgb, vec3(lum), 0.35 * ng);          // drain colour',
             '    col.rgb *= mix(vec3(1.0), uNightTint, ng);             // moonlight tint',
@@ -362,6 +624,19 @@ const ThreePost = (function () {
             '  float vignette = smoothstep(uVignetteSize, uVignetteSize - uVignetteSoft, vDist);',
             '  float vigAmt = clamp(uVignetteAmount + 0.35 * uNightGrade, 0.0, 1.0);',
             '  col.rgb *= mix(1.0, vignette, vigAmt);',
+            '',
+            '  // ── the world drops away, the spell does not ────────────────',
+            '  // Everything outside the pools is darkened and drained. HOT',
+            '  // pixels are exempted by luminance, so the additive spell VFX',
+            '  // (and the bloom off them) keep burning wherever they land —',
+            '  // the battlefield goes black and the SPELL lights the frame.',
+            '  if (uSpotDim > 0.001) {',
+            '    float slum = dot(col.rgb, vec3(0.299, 0.587, 0.114));',
+            '    float hot = smoothstep(0.45, 0.95, slum);',
+            '    float keep = max(spot, hot);',
+            '    col.rgb = mix(vec3(slum), col.rgb, mix(1.0 - 0.45 * uSpotDim, 1.0, keep));',
+            '    col.rgb *= mix(1.0 - uSpotDim, 1.0, keep);',
+            '  }',
             '',
             '  gl_FragColor = col;',
             '}'
@@ -1575,14 +1850,59 @@ const ThreePost = (function () {
         // Dramatic dim rides ON TOP of the night grade (max of the two, so a
         // spell beat can't make an actual night brighter) and pulls exposure
         // down beneath it — see dramaDim().
-        var _dim = _dramaCurrent(performance.now());
+        var _nowMs = performance.now();
+        var _dim = _dramaCurrent(_nowMs);
+        // ── spell grade beat (spotlight / trip / aberration / warp) ──
+        var _gk = _gradeCurrent(_nowMs);
+        var _kick = _gradeKickCurrent(_nowMs);
+        var _spotOn = false;
+        if (_cinematicPass) {
+            var _gu = _cinematicPass.material.uniforms;
+            if (_gk > 0.001 || _kick > 0.01) {
+                var _dt = Math.min(0.1, Math.max(0, (_nowMs - _grade.lastT) / 1000));
+                _grade.lastT = _nowMs;
+                _grade.hue += _dt * _grade.hueRate * _gk;
+                if (_grade.hue > 64) _grade.hue -= 64;
+                var _spotDim = _grade.dim * _gk;
+                _spotOn = _spotDim > 0.001 && _grade.focus.length > 0;
+                var _w = _gu['uResolution'].value.x, _h = _gu['uResolution'].value.y;
+                _writeSpotUniform(_gu, 'uSpotA', _grade.focus[0], cam, _w, _h);
+                _writeSpotUniform(_gu, 'uSpotB', _grade.focus[1] || _grade.focus[0], cam, _w, _h);
+                _gu['uSpotDim'].value      = _spotOn ? _spotDim : 0.0;
+                _gu['uSpotSoft'].value     = _grade.spotSoft;
+                _gu['uSpotLift'].value     = _grade.spotLift;
+                _gu['uTrip'].value         = _grade.trip * _gk;
+                _gu['uHue'].value          = _grade.hue;
+                _gu['uWarp'].value         = _grade.warp * _gk;
+                _gu['uChromaRadial'].value = _grade.chroma * _gk + _kick;
+                _gu['uGradeTint'].value.set(_grade.tint[0], _grade.tint[1], _grade.tint[2]);
+                _gu['uGradeTintAmt'].value = _grade.tintAmt * _gk;
+            } else if (_gu['uSpotDim'].value !== 0.0 || _gu['uTrip'].value !== 0.0
+                       || _gu['uChromaRadial'].value !== 0.0 || _gu['uWarp'].value !== 0.0
+                       || _gu['uGradeTintAmt'].value !== 0.0) {
+                _gu['uSpotDim'].value = 0.0;
+                _gu['uTrip'].value = 0.0;
+                _gu['uWarp'].value = 0.0;
+                _gu['uChromaRadial'].value = 0.0;
+                _gu['uGradeTintAmt'].value = 0.0;
+                _grade.lastT = _nowMs;
+            }
+        }
         if (_cinematicPass) {
             var _ng = _nightF * _nightMood * 0.85;
             if (_dim > 0) _ng = Math.max(_ng, _dim * 0.92);
+            // A spotlit beat carries its own darkness in the grade (the pools
+            // lift out of it), so it feeds the night grade too — that's what
+            // drains and crushes the world OUTSIDE the pools.
+            if (_spotOn) _ng = Math.max(_ng, _grade.dim * _gk * 0.85);
             _cinematicPass.material.uniforms['uNightGrade'].value = _ng;
-            _cinematicPass.enabled = !!(_cin.crt || _cin.vignette || _ng > 0.001);
+            _cinematicPass.enabled = !!(_cin.crt || _cin.vignette || _ng > 0.001
+                || _gk > 0.001 || _kick > 0.01);
         }
-        if (_renderer && _dim > 0) {
+        // Exposure is pulled down for a plain dramaDim, but NOT while a
+        // spotlight beat is running: exposure is global, and dimming the
+        // whole render would take the caster and target down with it.
+        if (_renderer && _dim > 0 && !_spotOn) {
             // Written AFTER syncLighting() (which owns the steady value) so
             // the beat wins for its duration and restores itself on release.
             _renderer.toneMappingExposure =
@@ -1949,6 +2269,11 @@ const ThreePost = (function () {
         dramaDim: dramaDim,
         dramaClear: dramaClear,
         getDramaDim: getDramaDim,
+        spellGrade: spellGrade,
+        spellGradeFocus: spellGradeFocus,
+        spellGradeKick: spellGradeKick,
+        spellGradeClear: spellGradeClear,
+        isSpellGradeActive: isSpellGradeActive,
         setImpactFx: setImpactFx,
         getImpactFx: getImpactFx,
         getImpactFxMax: getImpactFxMax,

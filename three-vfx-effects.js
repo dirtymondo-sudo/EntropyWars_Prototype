@@ -2039,7 +2039,22 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return v;
     }
 
-    function _spawnEffect(effectDef, anchor) {
+    /* ── AUTOMATIC COLOUR VARIETY ────────────────────────────────────────
+       252 of the 609 effect recipes build their core out of the `flash`
+       sprite and ~40 more out of `shockwave` — both warm-WHITE gradients.
+       That is why so many spells read as "a white blob of light" no matter
+       what element they are: the shape carried the identity and the colour
+       carried nothing.
+
+       Rather than hand-recolour hundreds of recipes, the two generic
+       sprites now take a DEFAULT TINT resolved from the spell's staging
+       archetype (see _STAGE_ARCHETYPES) at fire() time. A psychic spell
+       flashes magenta, an ice spell flashes cyan, a poison spell flashes
+       acid green — same recipe, same cost, no new assets. Any layer that
+       sets its own `tint` wins; explicit art always beats the default. */
+    var _NEUTRAL_SPRITES = { 'flash': 1, 'shockwave': 1 };
+
+    function _spawnEffect(effectDef, anchor, autoTint) {
         if (!effectDef) return;
         if (!_canSpawn()) return;
         if (!effectDef.layers) {
@@ -2063,11 +2078,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 layer.anchor !== 'torso') continue;
             var count = layer.count || 1;
             if (layer.delayMs && layer.delayMs > 0) {
-                (function(l, c, cpx, zf, zt) {
-                    window.setTimeout(function() { _emitLayer(l, c, cpx, zf, zt); }, l.delayMs);
-                })(layer, count, centerPx, baseZFloor, baseZTorso);
+                (function(l, c, cpx, zf, zt, at) {
+                    window.setTimeout(function() { _emitLayer(l, c, cpx, zf, zt, at); }, l.delayMs);
+                })(layer, count, centerPx, baseZFloor, baseZTorso, autoTint);
             } else {
-                _emitLayer(layer, count, centerPx, baseZFloor, baseZTorso);
+                _emitLayer(layer, count, centerPx, baseZFloor, baseZTorso, autoTint);
             }
         }
 
@@ -2076,8 +2091,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
     }
 
-    function _emitLayer(layer, count, centerPx, baseZFloor, baseZTorso) {
+    function _emitLayer(layer, count, centerPx, baseZFloor, baseZTorso, autoTint) {
         var baseZ = (layer.anchor === 'torso') ? baseZTorso : baseZFloor;
+        var tint = layer.tint != null ? layer.tint
+                 : ((autoTint != null && _NEUTRAL_SPRITES[layer.sprite]) ? autoTint : null);
         for (var i = 0; i < count; i++) {
             var offXY = layer.offsetXY || 0;
             var ox = offXY ? rn(-offXY, offXY) : 0;
@@ -2114,6 +2131,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 opts.size1 = _rangePick(layer.size1 != null ? layer.size1 : opts.size0);
             }
 
+            if (tint != null) opts.tint = tint;
             if (layer._descent) opts.descent = layer._descent;
             if (layer.spriteRot != null) opts.spriteRot = layer.spriteRot;
             if (layer.stretch) opts.stretch = true;
@@ -2149,7 +2167,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (intent === 'teleport') { _fireTeleport(spellId, params); return; }
 
         if (_catOff('spells')) return;
-        _spawnEffect(effectDef, { tx: params.tx, ty: params.ty });
+        _spawnEffect(effectDef, { tx: params.tx, ty: params.ty }, _autoTintFor(spellId));
 
         /* Descent-mapped spells already fire their bespoke 3D geometry from
            the descent pipeline — don't double-fire it on the impact intent. */
@@ -6972,6 +6990,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 drag: 1.2,
                 mode: 'billboard',
                 sprite: sprite || 'steel-spark',
+                tint: opts.tint != null ? opts.tint : null,
                 ml: rn(280, 620),
                 size0: rn(6, 13), size1: 2,
                 opacity0: 1, opacity1: 0,
@@ -12496,6 +12515,32 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (_catOff('spells')) return;
             if (typeof state !== 'undefined' && state.devAutoSim && !state._devSimShowAnims) return;
             if (_sigTripActive) return;
+
+            /* SHADER PATH (preferred). The CSS-filter version below predates
+               ThreePost.spellGrade: it hue-rotates the whole canvas element,
+               which means it also drags the HUD's compositing around, can't
+               do chromatic aberration, and can't spare the caster/target
+               from the wash. The real grade does all three inside the
+               cinematic pass. The DOM version stays as the fallback for a
+               build where the post stack failed to initialize. */
+            var _tp = _post();
+            if (_tp && _tp.spellGrade && !window.EW_DISABLE_SPELL_GRADE) {
+                var _in = opts.inMs != null ? opts.inMs : 220;
+                var _hold = opts.holdMs != null ? opts.holdMs : 900;
+                var _out = opts.outMs != null ? opts.outMs : 420;
+                _tp.spellGrade({
+                    trip: opts.trip != null ? opts.trip : 0.92,
+                    hueRate: opts.hueRate != null ? opts.hueRate : (opts.spin != null ? opts.spin / 360 * 1000 : 0.55),
+                    warp: opts.warp != null ? opts.warp : 0.0032,
+                    chroma: opts.chroma != null ? opts.chroma : 7.5,
+                    tint: opts.tint || [1.16, 0.72, 1.22], tintAmt: opts.tintAmt != null ? opts.tintAmt : 0.45,
+                    dim: opts.dim || 0, focus: opts.focus || null,
+                    spotSoft: 0.8, spotLift: 0.95,
+                    riseMs: _in, holdMs: _hold, fallMs: _out
+                });
+                return;
+            }
+
             var cv = document.getElementById('threeCanvas');
             if (!cv) return;
             _sigTripActive = true;
@@ -12849,7 +12894,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ts = _cfg().tileSize || 128;
         var ms = opts.ms != null ? opts.ms : 1550;
 
-        _sigPsychedelicTint({ inMs: 200, holdMs: ms - 620, outMs: 420 });
+        /* the victim is the only lit thing left on the board while this runs */
+        var _btFocus = null;
+        try {
+            var _btw = _worldPos(tx, ty);
+            _btFocus = [{ x: _btw.x, y: _btw.y + ts * 0.55, z: _btw.z, r: ts * 1.35 }];
+        } catch (e) {}
+        _sigPsychedelicTint({
+            inMs: 200, holdMs: ms - 620, outMs: 420,
+            trip: 0.95, hueRate: 0.72, warp: 0.004, chroma: 8,
+            dim: 0.8, focus: _btFocus
+        });
         _sigKaleidoscope3D(tx, ty, { ms: ms, radiusPx: ts * 1.75, ceilingH: 2.0 });
         _sigNeonGrid3D(tx, ty, { ms: ms, radiusPx: ts * 2.0, divisions: 10, hue: 0.78 });
         _sigFractalTunnel3D(tx, ty, { ms: ms, sides: 3, rings: 9, radiusPx: ts * 0.9, height: ts * 3.0 });
@@ -12882,6 +12937,198 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try {
             if (typeof ThreePost !== 'undefined' && ThreePost.bloomPulse) ThreePost.bloomPulse(0.4, 380);
         } catch (e) {}
+    }
+
+    /* ── PSYCHOSIS — the mind eating itself ──────────────────────────────
+       Bad Trip is a hallucination happening TO the victim: skulls circling,
+       the world going technicolour. Psychosis is the opposite motion — the
+       world COLLAPSES INWARD on them. A rune cage locks around the head, a
+       fractal tunnel drills up through them, and every mote in the tile
+       spirals in rather than out. The grade spotlights the victim and drops
+       everything else to black, so the frame reads as "there is nothing
+       else left in the world but this person and what's in their head". ── */
+    function _sigPsychosis3D(tx, ty, opts) {
+        opts = opts || {};
+        if (_catOff('spells')) return;
+        if (_suppressed()) return;
+        var ts = _cfg().tileSize || 128;
+        var ms = opts.ms != null ? opts.ms : 1450;
+
+        /* the grade: spotlight the victim, cycle the hue, melt the frame */
+        var focus = null;
+        try {
+            var wp0 = _worldPos(tx, ty);
+            focus = [{ x: wp0.x, y: wp0.y + ts * 0.55, z: wp0.z, r: ts * 1.25 }];
+        } catch (e) {}
+        _sigPsychedelicTint({
+            inMs: 220, holdMs: ms - 640, outMs: 420,
+            trip: 0.88, hueRate: 0.62, warp: 0.0034, chroma: 8.5,
+            tint: [1.20, 0.62, 1.24], tintAmt: 0.5,
+            dim: 0.82, focus: focus
+        });
+
+        /* the tunnel drilling up through them, and a mandala overhead —
+           hexagonal + slower than Bad Trip's triangles so the two spells
+           never read as the same effect */
+        _sigFractalTunnel3D(tx, ty, { sides: 6, rings: 11, ms: ms,
+                                      radiusPx: ts * 0.72, height: ts * 3.4, speed: 1.1 });
+        _sigKaleidoscope3D(tx, ty, { ms: ms * 0.85, radiusPx: ts * 1.25, ceilingH: 2.4 });
+
+        /* the cage: runes locked around the head, spinning the wrong way */
+        _sigRuneSphere3D(tx, ty, {
+            color: 0xcc55ff, runeColor: 0xff88ff,
+            radiusTiles: 0.62, holdMs: Math.max(320, ms * 0.6), spin: -0.0042,
+        });
+
+        /* motes SPIRALLING IN — the giveaway that this is a collapse, not a
+           detonation. Spectrum-tinted so the swarm reads as a colour wheel. */
+        var c = tilePx(tx, ty);
+        var zf = unitSurfaceZ(tx, ty);
+        for (var i = 0; i < 26; i++) {
+            var a = (i / 26) * Math.PI * 2 * 3;                 /* 3 turns of spiral */
+            var rad = ts * (1.55 - (i / 26) * 0.95);
+            var sp = rad / 0.62;
+            _spawn({
+                x: c.x + Math.cos(a) * rad, y: c.y + Math.sin(a) * rad,
+                z: zf + rn(6, ts * 0.9),
+                vx: -Math.cos(a) * sp - Math.sin(a) * sp * 0.55,
+                vy: -Math.sin(a) * sp + Math.cos(a) * sp * 0.55,
+                vz: rn(-10, 40),
+                mode: 'billboard', sprite: 'psi-pulse',
+                tint: _SIG_SPECTRUM[i % _SIG_SPECTRUM.length],
+                ml: rn(520, 760), size0: rn(5, 11), size1: 1,
+                opacity0: 0.95, opacity1: 0, gravity: -12, drag: 0.15
+            });
+        }
+
+        /* one skull, close and silent — Bad Trip gets three, laughing */
+        try {
+            _sigSkull3D(tx, ty, {
+                laugh: false, scale: 0.72, hover: 1.35, holdMs: Math.max(400, ms * 0.55),
+                eyeColor: 0xff2fd0, boneColor: 0xe8d8ff, yaw: 0.15,
+            });
+        } catch (e) {}
+
+        _sigSparks(tx, ty, 'void-mist', 10, { vxy: 60, vz0: 20, vz1: 90, gravity: -25, z: 10,
+                                              tint: 0x9a3cff });
+        _sigScreenFlash('#d24dff', 200, 0.2);
+        _sigShake('soft');
+    }
+
+    /* ── MIND SHATTER — the psyche cracks like glass ─────────────────────
+       A wireframe icosahedron (the intact mind) snaps shut around the
+       victim, tightens for a beat while the hue winds up, then BREAKS: every
+       bar flies outward spinning, the spectrum scatters, and the frame takes
+       a hard chromatic-aberration snap on the exact frame it goes. ─────── */
+    function _sigMindShatter3D(tx, ty, opts) {
+        opts = opts || {};
+        if (_catOff('spells')) return;
+        if (_suppressed()) return;
+        var scene = _getVFXScene(); if (!scene) return null;
+        var ts = _cfg().tileSize || 128;
+        var ms = opts.ms != null ? opts.ms : 1050;
+        var breakAt = opts.breakAt != null ? opts.breakAt : 0.34;   /* fraction of ms */
+        var wp = _worldPos(tx, ty);
+
+        /* grade: spotlight + a violent aberration build that SNAPS at the
+           break. No hue cycling — this is a crack, not a trip. */
+        var p = _post();
+        if (p && p.spellGrade && !window.EW_DISABLE_SPELL_GRADE) {
+            p.spellGrade({
+                dim: 0.78,
+                focus: [{ x: wp.x, y: wp.y + ts * 0.55, z: wp.z, r: ts * 1.3 }],
+                spotSoft: 0.65, spotLift: 0.95,
+                tint: [1.10, 0.72, 1.28], tintAmt: 0.5,
+                trip: 0.22, hueRate: 0.12, warp: 0.0016, chroma: 5.0,
+                riseMs: Math.max(80, ms * breakAt * 0.8), holdMs: 260, fallMs: 560
+            });
+        }
+
+        var geo = new THREE.IcosahedronGeometry(ts * 0.62, 0);
+        var cage = _sigWireframe3D(geo, { color: 0xdd88ff, radius: Math.max(1.2, ts * 0.012),
+                                          joints: true, renderOrder: 208 });
+        geo.dispose();
+        var mat = cage.userData.wireMat;
+        cage.position.set(wp.x, wp.y + ts * 0.62, wp.z);
+        cage.scale.setScalar(0.01);
+
+        /* per-bar shatter vectors, seeded from where the bar sits on the cage */
+        var bars = [];
+        for (var i = 0; i < cage.children.length; i++) {
+            var ch = cage.children[i];
+            var d = ch.position.clone();
+            if (d.lengthSq() < 1e-6) d.set(rn(-1, 1), rn(-1, 1), rn(-1, 1));
+            d.normalize();
+            bars.push({
+                mesh: ch, p0: ch.position.clone(), dir: d,
+                spin: rn(-9, 9), spin2: rn(-7, 7), speed: rn(0.9, 2.1)
+            });
+        }
+
+        var broke = false;
+        var col = new THREE.Color();
+        var run = _sigRun(cage, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+
+            if (t < breakAt) {
+                /* the cage slams shut and TIGHTENS — the wind-up */
+                var k = t / breakAt;
+                cage.scale.setScalar(_sigEaseOutBack(Math.min(1, k * 1.15)) * (1.12 - 0.16 * k));
+                cage.rotation.y = k * 2.4;
+                cage.rotation.x = Math.sin(k * 7.0) * 0.10 * k;
+                col.setHSL(0.78 + 0.08 * Math.sin(k * 12.0), 1, 0.62 + 0.2 * k);
+                mat.color.copy(col);
+                mat.opacity = Math.min(1, k * 2.2) * 0.95;
+                return;
+            }
+
+            if (!broke) {
+                broke = true;
+                /* the snap: aberration kick, flash, spectrum shards */
+                try { if (p && p.spellGradeKick) p.spellGradeKick(14, 260); } catch (e) {}
+                _sigScreenFlash('#f0c8ff', 150, 0.32);
+                _sigShake('hard');
+                try { if (p && p.bloomPulse) p.bloomPulse(0.7, 380); } catch (e) {}
+                var cpx = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
+                for (var s = 0; s < 30; s++) {
+                    var sa = rn(0, Math.PI * 2), sv = rn(180, 420);
+                    _spawn({
+                        x: cpx.x, y: cpx.y, z: zf + ts * 0.55 + rn(-14, 14),
+                        vx: Math.cos(sa) * sv, vy: Math.sin(sa) * sv, vz: rn(40, 260),
+                        mode: 'billboard', sprite: 'ice-shard',
+                        tint: _SIG_SPECTRUM[s % _SIG_SPECTRUM.length],
+                        ml: rn(380, 760), size0: rn(7, 15), size1: 1,
+                        opacity0: 1, opacity1: 0, gravity: 300, drag: 1.1
+                    });
+                }
+                _sigShockRing3D(tx, ty, { color: 0xcc66ff, r1: ts * 2.0, ms: 420 });
+                _sigSpeedBurst3D(tx, ty, { color: 0xff9cff });
+            }
+
+            /* the pieces fly */
+            var b = (t - breakAt) / (1 - breakAt);
+            var ease = 1 - Math.pow(1 - b, 2);
+            cage.scale.setScalar(1);
+            for (var j = 0; j < bars.length; j++) {
+                var br = bars[j];
+                br.mesh.position.copy(br.p0).addScaledVector(br.dir, ease * ts * 2.4 * br.speed);
+                br.mesh.rotateX(br.spin * 0.016);
+                br.mesh.rotateZ(br.spin2 * 0.016);
+            }
+            col.setHSL((0.74 + b * 0.22) % 1, 1, 0.66);
+            mat.color.copy(col);
+            mat.opacity = Math.max(0, 1 - b * b) * 0.95;
+        });
+        /* _sigRun refuses when the concurrent-signature cap is hit — the cage
+           was already built by then, so dispose it rather than leak one bar
+           geometry per edge on a spell-spam turn. */
+        if (!run) {
+            try {
+                cage.traverse(function (o) { if (o.geometry) o.geometry.dispose(); });
+                mat.dispose();
+            } catch (e) {}
+        }
+        return run;
     }
 
     /* ─── PRISM BURST + BAD TRIP WIRING (2026-07-25) ─────────────────────
@@ -13438,12 +13685,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 radiusTiles: 0.8, holdMs: 850, spin: 0.0028,
             });
         },
-        mindShatter: function(tx, ty) {
-            var ts0 = _cfg().tileSize || 128;
-            _sigShockRing3D(tx, ty, { color: 0xcc66ff, r1: ts0 * 1.8 });
-            _sigSpeedBurst3D(tx, ty, { color: 0xdd99ff });
-            _sigScreenFlash('#cc88ff', 150, 0.2);
-        },
+        /* was: a purple shock ring + a speed burst + a lilac flash, i.e. the
+           generic psi impact with the tint turned up. Now the psyche is an
+           actual object on screen that actually breaks. */
+        mindShatter: function(tx, ty) { _sigMindShatter3D(tx, ty); },
+        psychosis:   function(tx, ty) { _sigPsychosis3D(tx, ty); },
         fire2: function(tx, ty) {
             var ts0 = _cfg().tileSize || 128;
             _sigShockRing3D(tx, ty, { color: 0xffaa44, r1: ts0 * 1.5, ms: 360 });
@@ -14151,6 +14397,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _fxKillAllTickers();
         if (window.ThreeVFX && window.ThreeVFX.clear) window.ThreeVFX.clear();
         try { if (window.ThreePost && window.ThreePost.dramaClear) window.ThreePost.dramaClear(); } catch (e) {}
+        try { if (window.ThreePost && window.ThreePost.spellGradeClear) window.ThreePost.spellGradeClear(); } catch (e) {}
         } finally { _clearingAll = false; }
     }
 
@@ -14203,7 +14450,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        string knobs pick which primitive shapes the beat. Keep entries
        small — the weight tier scales counts, sizes and timings. */
     var _STAGE_ARCHETYPES = {
-        arcane:   { orb: 0x9a7cff, ring: 0xb69cff, flash: '#c9b8ff', mote: 'psi-pulse',      glyph: true,  slash: false, lineColor: '#c0a8ff' },
+        arcane:   { orb: 0x9a7cff, ring: 0xb69cff, flash: '#c9b8ff', mote: 'psi-pulse',      glyph: true,  slash: false, lineColor: '#c0a8ff', moteTint: 0x9a8cff },
         fire:     { orb: 0xff7a22, ring: 0xffa544, flash: '#ffcf90', mote: 'ember',          glyph: true,  slash: false, lineColor: '#ffb066' },
         ice:      { orb: 0x8fd8ff, ring: 0xbfeaff, flash: '#dff2ff', mote: 'frost-crystal',  glyph: true,  slash: false, lineColor: '#cfeeff' },
         lightning:{ orb: 0xaaddff, ring: 0xffffff, flash: '#e8f6ff', mote: 'spark-elec',     glyph: false, slash: false, lineColor: '#ddf2ff', bolt: true },
@@ -14217,10 +14464,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         human:    { orb: 0xffd9a0, ring: 0xffc880, flash: '#ffe8c8', mote: 'dust-puff',      glyph: false, slash: false, lineColor: '#ffdcb0' },
         /* ── mechanical families that had NO visuals at all ── */
         kinetic:  { orb: 0xffd9a0, ring: 0xffe0b0, flash: '#fff0d8', mote: 'dust-puff',      glyph: false, slash: true,  lineColor: '#ffe4bc', groundRush: true },
-        grapple:  { orb: 0xcaa070, ring: 0xb98850, flash: '#ffe0b8', mote: 'debris',         glyph: false, slash: false, lineColor: '#ffd8a8', groundRush: true },
+        grapple:  { orb: 0xcaa070, ring: 0xb98850, flash: '#ffe0b8', mote: 'debris',         glyph: false, slash: false, lineColor: '#ffd8a8', groundRush: true, moteTint: 0xd8b080 },
         skyfall:  { orb: 0xffb060, ring: 0xff8844, flash: '#ffe0b0', mote: 'rock-debris',    glyph: false, slash: false, lineColor: '#ffcc99', heavyLand: true },
-        rig:      { orb: 0x9ad8ff, ring: 0x7ab8e0, flash: '#d0eeff', mote: 'steel-spark',    glyph: false, slash: false, lineColor: '#bfe6ff', gentle: true },
-        mind:     { orb: 0xd08cff, ring: 0xa060e0, flash: '#e8c8ff', mote: 'psi-pulse',      glyph: true,  slash: false, lineColor: '#dcb0ff', gentle: true },
+        rig:      { orb: 0x9ad8ff, ring: 0x7ab8e0, flash: '#d0eeff', mote: 'steel-spark',    glyph: false, slash: false, lineColor: '#bfe6ff', gentle: true, moteTint: 0x9ad8ff },
+        mind:     { orb: 0xd08cff, ring: 0xa060e0, flash: '#e8c8ff', mote: 'psi-pulse',      glyph: true,  slash: false, lineColor: '#dcb0ff', gentle: true, moteTint: 0xff70e0 },
     };
 
     /* Mechanical kind → archetype. This is what finally covers the ~60
@@ -14259,15 +14506,202 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* consumables read calm, never as an attack */
         consumeHealPotion: { archetype: 'heal', weight: 'light' },
         consumeManaPotion: { archetype: 'tech', weight: 'light' },
+
+        /* ── the psychedelic bench (2026-07-25) ──────────────────────────
+           These four are the spells the grade was built for: the world goes
+           black around the victim, the hue wheel spins, the frame melts and
+           the RGB pulls apart. `grade` overrides the archetype profile
+           per-spell — that's the one-line hook for making any spell trip. */
+        psychosis:   { archetype: 'mind', weight: 'heavy',
+                       grade: { trip: 0.9, warp: 0.0036, chroma: 9, hueRate: 0.62,
+                                tint: [1.22, 0.60, 1.26], tintAmt: 0.55 } },
+        mindShatter: { archetype: 'mind', weight: 'heavy',
+                       grade: { trip: 0.3, warp: 0.0018, chroma: 10, hueRate: 0.16,
+                                tint: [1.10, 0.70, 1.30], tintAmt: 0.52 } },
+        raceBadTrip: { archetype: 'mind', weight: 'heavy',
+                       grade: { trip: 0.95, warp: 0.0040, chroma: 8, hueRate: 0.72,
+                                tint: [1.24, 0.66, 1.20], tintAmt: 0.5 } },
+        racePrismBurst: { archetype: 'divine', weight: 'heavy',
+                       grade: { trip: 0.45, warp: 0.0012, chroma: 11, hueRate: 0.5,
+                                tint: [1.15, 1.10, 1.15], tintAmt: 0.3 } },
     };
 
     var _STAGE_TIERS = {
         light:    { orbScale: 0.55, ringScale: 0.75, flashPeak: 0.10, sparks: 5,  dim: 0,    lines: 0,  shake: null,     bloom: 0.15, glyph: false, motes: 5  },
         standard: { orbScale: 0.85, ringScale: 1.00, flashPeak: 0.20, sparks: 12, dim: 0,    lines: 0,  shake: null,     bloom: 0.30, glyph: true,  motes: 10 },
-        heavy:    { orbScale: 1.20, ringScale: 1.35, flashPeak: 0.34, sparks: 22, dim: 0.45, lines: 26, shake: 'normal', bloom: 0.55, glyph: true,  motes: 16 },
-        ultimate: { orbScale: 1.65, ringScale: 1.80, flashPeak: 0.50, sparks: 34, dim: 0.72, lines: 40, shake: 'hard',   bloom: 0.85, glyph: true,  motes: 24 },
+        heavy:    { orbScale: 1.20, ringScale: 1.35, flashPeak: 0.34, sparks: 22, dim: 0.58, lines: 26, shake: 'normal', bloom: 0.55, glyph: true,  motes: 16 },
+        ultimate: { orbScale: 1.65, ringScale: 1.80, flashPeak: 0.50, sparks: 34, dim: 0.80, lines: 40, shake: 'hard',   bloom: 0.85, glyph: true,  motes: 24 },
     };
     var _TIER_ORDER = { light: 0, standard: 1, heavy: 2, ultimate: 3 };
+
+    /* ════════════════════════════════════════════════════════════════════
+       SPELL GRADE — the SHADER half of the staging grammar (2026-07-25)
+       ════════════════════════════════════════════════════════════════════
+       Particles say what a spell IS. The grade says what it DOES to the
+       world. Every archetype now carries a post-processing profile that
+       ThreePost.spellGrade() runs through the cinematic pass:
+
+         tint     a colour push on the whole frame (fire runs hot, ice runs
+                  cold, unholy runs violet) — the cheapest way to stop two
+                  spells with the same particle shapes grading identically
+         chroma   radial chromatic aberration in px. Tech/anomaly spells
+                  tear the signal apart; a heal barely registers.
+         trip     hue-cycling + saturation blowout — the Bad Trip grade
+         warp     UV wobble; the frame melts
+         hueRate  how fast the hue wheel spins during a trip (turns/sec)
+
+       On heavy and ultimate casts the grade also SPOTLIGHTS: the caster and
+       the target keep pools of light while the rest of the battlefield
+       drains to black. Hot additive pixels are exempt in the shader, so the
+       spell VFX still blaze wherever they land — the map goes away, the
+       spell does not. That's the PS1-JRPG "everything else stops existing"
+       frame, and it's one uniform set, not a new pass.
+
+       ONLINE PARITY (RULE #2): this rides inside the windup/burst/finish
+       beats, which are already relayed host→guest through VFX3D.fire, so
+       the guest grades the frame from the same beat with no new plumbing. */
+    var _STAGE_GRADES = {
+        arcane:   { tint: [0.92, 0.86, 1.20], tintAmt: 0.38, chroma: 2.5 },
+        fire:     { tint: [1.22, 0.84, 0.58], tintAmt: 0.42, chroma: 2.5 },
+        ice:      { tint: [0.70, 0.96, 1.28], tintAmt: 0.44, chroma: 2.0 },
+        lightning:{ tint: [0.88, 1.00, 1.28], tintAmt: 0.34, chroma: 5.5 },
+        divine:   { tint: [1.22, 1.10, 0.78], tintAmt: 0.36, chroma: 1.5 },
+        unholy:   { tint: [1.06, 0.58, 1.22], tintAmt: 0.52, chroma: 4.0, trip: 0.20, hueRate: 0.10 },
+        tech:     { tint: [0.66, 1.06, 1.24], tintAmt: 0.44, chroma: 6.0 },
+        alien:    { tint: [0.70, 1.24, 0.82], tintAmt: 0.46, chroma: 3.5, trip: 0.22, hueRate: 0.16 },
+        anomaly:  { tint: [1.22, 0.66, 1.18], tintAmt: 0.48, chroma: 6.5, trip: 0.55, warp: 0.0024, hueRate: 0.38 },
+        poison:   { tint: [0.84, 1.22, 0.58], tintAmt: 0.46, chroma: 2.5 },
+        heal:     { tint: [0.84, 1.16, 0.98], tintAmt: 0.30, chroma: 0.0 },
+        human:    { tint: [1.10, 1.02, 0.90], tintAmt: 0.22, chroma: 1.5 },
+        kinetic:  { tint: [1.12, 1.02, 0.86], tintAmt: 0.26, chroma: 4.0 },
+        grapple:  { tint: [1.10, 0.98, 0.82], tintAmt: 0.26, chroma: 3.0 },
+        skyfall:  { tint: [1.16, 0.94, 0.72], tintAmt: 0.34, chroma: 4.5 },
+        rig:      { tint: [0.82, 1.02, 1.18], tintAmt: 0.28, chroma: 2.0 },
+        mind:     { tint: [1.14, 0.68, 1.26], tintAmt: 0.52, chroma: 5.5, trip: 0.62, warp: 0.0028, hueRate: 0.46 },
+    };
+    var _GRADE_FALLBACK = { tint: [1, 1, 1], tintAmt: 0.2, chroma: 1.5 };
+
+    function _gradeProfile(spellId) {
+        var ov = SPELL_STAGE_MAP[spellId] && SPELL_STAGE_MAP[spellId].grade;
+        var base = _STAGE_GRADES[stageInfo(spellId).archetype] || _GRADE_FALLBACK;
+        if (!ov) return base;
+        var out = {};
+        for (var k in base) out[k] = base[k];
+        for (var j in ov) out[j] = ov[j];
+        return out;
+    }
+
+    /* The default tint handed to `flash` / `shockwave` layers so generic
+       recipes take their spell's colour instead of reading white. */
+    var _autoTintCache = {};
+    function _autoTintFor(spellId) {
+        if (!spellId) return null;
+        if (_autoTintCache[spellId] !== undefined) return _autoTintCache[spellId];
+        var t = null;
+        try {
+            var P = stageInfo(spellId).palette;
+            if (P && P.flash) t = P.flash;
+        } catch (e) {}
+        _autoTintCache[spellId] = t;
+        return t;
+    }
+
+    /* Caster + target as WORLD-space pools of light for the spotlight. The
+       pool sits at torso height so it frames the unit, not their shadow. */
+    function _stageFocus(params) {
+        var pts = [], ts = (_cfg().tileSize || 128);
+        function add(x, y) {
+            if (x == null || y == null) return;
+            try {
+                var w = _worldPos(x, y);
+                pts.push({ x: w.x, y: w.y + ts * 0.55, z: w.z, r: ts * 1.45 });
+            } catch (e) {}
+        }
+        add(params.tx, params.ty);
+        if (params.sx != null && (params.sx !== params.tx || params.sy !== params.ty)) {
+            add(params.sx, params.sy);
+        }
+        return pts;
+    }
+
+    /* One entry point for every graded beat. Falls back to the old uniform
+       dramaDim when the build's ThreePost predates spellGrade(). */
+    function _stageGrade(spellId, phase, params, info) {
+        if (window.EW_DISABLE_SPELL_GRADE) return;
+        var p = _post();
+        if (!p) return;
+        var T = info.tier;
+        var G = _gradeProfile(spellId);
+        var rank = _TIER_ORDER[info.weight] || 0;
+        if (!p.spellGrade) {
+            /* legacy path — uniform dim only, no spotlight/trip */
+            if (T.dim > 0 && p.dramaDim) {
+                if (phase === 'windup') p.dramaDim(T.dim * 0.7, (params.holdMs || 700) + 260, { riseMs: 240, fallMs: 520 });
+                else if (phase === 'burst') p.dramaDim(T.dim, 260, { riseMs: 70, fallMs: 620 });
+            }
+            return;
+        }
+
+        if (phase === 'windup') {
+            if (rank < 2) {
+                /* light/standard: no world-dim, but the charge still colours
+                   the frame for a beat so small spells read as THEIR element */
+                if (rank >= 1) {
+                    p.spellGrade({
+                        tint: G.tint, tintAmt: G.tintAmt * 0.45,
+                        trip: (G.trip || 0) * 0.35, hueRate: G.hueRate || 0,
+                        warp: (G.warp || 0) * 0.4, chroma: (G.chroma || 0) * 0.3,
+                        riseMs: 200, holdMs: Math.max(200, (params.holdMs || 600) * 0.6), fallMs: 380
+                    });
+                }
+                return;
+            }
+            /* heavy/ultimate: the room goes quiet and the pools come up */
+            p.spellGrade({
+                dim: T.dim * 0.72,
+                focus: _stageFocus(params),
+                spotSoft: 0.85, spotLift: 0.95,
+                tint: G.tint, tintAmt: G.tintAmt * 0.6,
+                trip: (G.trip || 0) * 0.7, hueRate: G.hueRate || 0,
+                warp: (G.warp || 0) * 0.7, chroma: (G.chroma || 0) * 0.45,
+                riseMs: 260, holdMs: (params.holdMs || 700) + 200, fallMs: 460
+            });
+            return;
+        }
+
+        if (phase === 'burst') {
+            /* the aberration SNAP on the frame the hit registers — always,
+               at every weight, because this is the beat that reads */
+            /* capped: the generic staging snap should never out-shout a
+               bespoke one (mindShatter asks for 14 explicitly) */
+            p.spellGradeKick(Math.min(11, Math.max(2.5, (G.chroma || 2) * (0.9 + 0.35 * rank))),
+                             200 + 60 * rank);
+            if (rank < 2) {
+                p.spellGrade({
+                    tint: G.tint, tintAmt: G.tintAmt * (rank >= 1 ? 0.8 : 0.5),
+                    trip: (G.trip || 0) * 0.6, hueRate: G.hueRate || 0,
+                    warp: (G.warp || 0) * 0.6, chroma: (G.chroma || 0) * 0.5,
+                    riseMs: 60, holdMs: 140 + 80 * rank, fallMs: 420
+                });
+                return;
+            }
+            p.spellGrade({
+                dim: T.dim,
+                focus: _stageFocus(params),
+                spotSoft: 0.7, spotLift: 0.95,
+                tint: G.tint, tintAmt: G.tintAmt,
+                trip: G.trip || 0, hueRate: G.hueRate || 0,
+                warp: G.warp || 0, chroma: G.chroma || 0,
+                riseMs: 70, holdMs: 300 + 140 * (rank - 2), fallMs: 620
+            });
+            return;
+        }
+
+        /* No explicit release on 'finish': the grade envelope self-terminates
+           (hold + ease-out fall), so a skipped beat — a kill, a cancelled
+           turn, a disconnect — can never strand the board in the dark. The
+           hard reset lives in clearAll() for match end / renderer reset. */
+    }
 
     /* ── How LOUD should this spell be? ──────────────────────────────────
        Raw score from the numbers a spell actually carries, then classified
@@ -14353,6 +14787,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* fall back to the same name-regex the projectile themes use so
            "Fire Arrow" stages hot even without an element tag */
         var s = ((spellId || '') + ' ' + ((def && def.name) || '')).toLowerCase();
+        /* Tested FIRST: the psychedelic family is the one that most needs its
+           own grade (hue-cycling, warp, hard aberration), and half of it
+           would otherwise be swallowed by the 'unholy' regex below on words
+           like nightmare/dread. */
+        if (/psych|psion|psi\b|mind|hypno|mesmer|trance|halluc|delus|insan|madness|nightmare|dream|telepath|confus|lucid|trip\b/.test(s)) return 'mind';
         if (/fire|flame|inferno|burn|blaze|scorch|ember|magma|lava|solar/.test(s)) return 'fire';
         if (/ice|frost|blizzard|freeze|cryo|cold|glacial|frozen|chill/.test(s)) return 'ice';
         if (/lightning|thunder|bolt|shock|electr|static|spark|emp|tesla/.test(s)) return 'lightning';
@@ -14450,6 +14889,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 vy: -Math.sin(a) * sp,
                 vz: rn(10, 45),
                 mode: 'billboard', sprite: P.mote,
+                tint: P.moteTint || null,
                 ml: rn(420, 620),
                 size0: rn(4, 9) * (0.8 + 0.4 * T.orbScale), size1: 1,
                 opacity0: 0.9, opacity1: 0,
@@ -14457,11 +14897,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             });
         }
 
-        /* the room starts to go quiet on the big ones */
-        if (T.dim > 0) {
-            var p = _post();
-            if (p && p.dramaDim) p.dramaDim(T.dim * 0.7, holdMs + 260, { riseMs: 240, fallMs: 520 });
-        }
+        /* the room starts to go quiet on the big ones — and the caster is
+           the only thing still lit while it does */
+        _stageGrade(spellId, 'windup', {
+            /* focus BOTH ends of the cast: params.tx/ty is where it lands,
+               params.sx/sy is the caster (tx/ty above is already collapsed
+               to the caster for self-casts) */
+            tx: params.tx != null ? params.tx : tx, ty: params.ty != null ? params.ty : ty,
+            sx: params.sx != null ? params.sx : tx, sy: params.sy != null ? params.sy : ty,
+            holdMs: holdMs
+        }, info);
     }
 
     /* ── BEAT 2: BURST (target tile) ─────────────────────────────────────
@@ -14523,7 +14968,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     vz0: P.gentle ? 40 : 70,
                     vz1: P.gentle ? 150 : 300,
                     gravity: P.gentle ? -40 : 420,
-                    z: 8
+                    z: 8, tint: P.moteTint || null
                 });
             } catch (e) {}
 
@@ -14549,7 +14994,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
 
         if (p && p.bloomPulse) p.bloomPulse(T.bloom, T.bloom > 0.5 ? 420 : 260);
-        if (T.dim > 0 && p && p.dramaDim) p.dramaDim(T.dim, 260, { riseMs: 70, fallMs: 620 });
+        _stageGrade(spellId, 'burst', params, info);
         if (T.shake && typeof window.shakeBoard === 'function') window.shakeBoard(T.shake);
     }
 
@@ -14574,6 +15019,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 z: zf + rn(6, ts * 0.5),
                 vx: rn(-18, 18), vy: rn(-18, 18), vz: rn(25, 70),
                 mode: 'billboard', sprite: P.mote,
+                tint: P.moteTint || null,
                 ml: rn(700, 1200),
                 size0: rn(3, 7), size1: 1,
                 opacity0: 0.55, opacity1: 0,
