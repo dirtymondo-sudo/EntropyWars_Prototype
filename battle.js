@@ -41013,6 +41013,12 @@
                 }
                 playSfx('manaRegen');
                 _spellFocusCamera(unit, x, y);
+                // The scrying card hangs over the far tile while the fog
+                // peels back (2026-07-25 tarot GLB; no-op when unregistered).
+                if (!_skipVisuals() && typeof ThreeVFXEffects !== 'undefined'
+                    && typeof ThreeVFXEffects.fireGeometry === 'function') {
+                    try { ThreeVFXEffects.fireGeometry('remoteView', x, y, 2); } catch (e) {}
+                }
                 unit.mp -= effectiveSpellCost;
                 const wardRadius = 2;
                 const wardTiles = new Set();
@@ -41745,10 +41751,13 @@
                 playSfx(spellLaunchSfx(spell));
                 _vfxDash(unit.x, unit.y, x, y);
                 // Spell-specific dash signature (Sleigh Dash snowburst…) —
-                // keyed '<id>:dash' in the _spell3DGeometry registry.
+                // keyed '<id>:dash' in the _spell3DGeometry registry. The
+                // extra bag carries the LAUNCH tile so travel cinematics
+                // (the 2026-07-25 sleigh GLB ride) can fly the whole line.
                 if (!_skipVisuals() && typeof ThreeVFXEffects !== 'undefined'
                     && typeof ThreeVFXEffects.fireGeometry === 'function') {
-                    try { ThreeVFXEffects.fireGeometry(spell.id + ':dash', x, y, dist); } catch (e) {}
+                    try { ThreeVFXEffects.fireGeometry(spell.id + ':dash', x, y, dist,
+                        { fromX: unit.x, fromY: unit.y }); } catch (e) {}
                 }
                 unit.mp -= effectiveSpellCost;
 

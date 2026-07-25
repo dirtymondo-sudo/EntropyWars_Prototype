@@ -4,7 +4,62 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## MYSTERY DUNGEON: LOCKSTEP CLOCK + WALL TORCHES + VECTOR SCANNER (2026-07-25, LATEST) — battle.js, data.js, three-renderer.js, hud.js, ui.js, online.js, index.html
+## WEAPON GLB BATCH 2: candles/bones/tarot/cross/sleigh/fist/ordnance + hex & sanctuary dedup (2026-07-25, LATEST) — three-vfx-effects.js, three-renderer.js, battle.js, data.js, index.html
+Token `20260725m` → `20260725n-weapons2`. Sixteen new Meshy GLBs the owner
+uploaded to R2 `Assets/weapons/` are wired as real spell props. All bboxes
+were measured from the actual GLB scene graphs before wiring (CDN was
+reachable this session), so the baked orientations are informed, not guessed
+— but a live look is still worth it; fix any flipped model from the console
+via `window.EW_WPN_TWEAK = { sleigh: { ry: Math.PI } }` etc.
+- **_WPN_MODELS additions** (three-vfx-effects.js): bullet, missile, shotgun,
+  sniper (both muzzle-backward like every Meshy gun → baked `ry` flip), fist,
+  sleigh, femur, ulna, skull, candle, candleLine, candleRing, tarot, tarot2,
+  tarotDeck, cross. Pre-warm now loads combat models in one burst and DRIPS
+  the big cinematic props one per 700ms from ~8s so boot bandwidth survives.
+- **Guns finished**: shotgun + sniper GLBs joined `GLB_GUN_LEN` — the whole
+  spectral arsenal (Double Pump, Headshot, Precision/Kneecap Shot…) is real
+  models now. `_PROJ_MODELS['proj-bullet']` (three-renderer.js) flies the
+  bullet GLB with a 22 rad/s rifling roll on every gun tracer.
+- **Ordnance**: Mortar Salvo's box barrage flies missile GLBs on the same
+  ballistic arcs (nose glued to velocity, exhaust glow, sprite fallback);
+  nuke / sharedNuke / raceArtilleryStrike descents drop the REAL warhead
+  nose-first (`_sigMissileDrop3D`), with the def's missile sprite layers
+  filtered out per-cast so it never doubles.
+- **Candle occultism** (`_sigCandleProp3D`): Family Curse = ritual circle +
+  ancestral skull (violet); merged Hex = candleLine + death's-head (green);
+  Death Pact = single blood-red taper + laughing skull; Raise the Dead = the
+  full graveside rite (candle ring + `_sigBoneBurst3D` REAL bones erupting +
+  flesh mound); Sanctuary = warm candlelit vigil ring on top of its rings/
+  pillar. Bone Barrage now hails GLB femur/ulna/skulls (`_wpnBonePiece`).
+- **Tarot**: Tarot Draw = deck + 3-card fan in augury colors that rockets
+  skyward; Star Crossed = one card descending and FLIPPING REVERSED (new
+  `impact` mapping); Remote View = scrying card + burning eye over the far
+  tile (new fireGeometry call in battle.js).
+- **Crosses**: Wrath of the Watchers plants the wooden cross amid its cross
+  of light; Fallen Grace drops it INVERTED and BURNING. Judgment / Divine
+  Judgment deliberately KEEP their gold-sword descents (bespoke > generic).
+- **Sleigh Dash**: the sleigh GLB skims the whole dash line (frost wake, gold
+  runner streaks, brake flare) — `fireGeometry` grew an `extra` 5th param and
+  battle.js passes `{fromX, fromY}` on the `:dash` key; the landing burst
+  waits for the runners to arrive.
+- **A Really Good Punch / Haymaker**: `_sigGlbFist3D` — the Meshy fist cocks
+  back in the sky and drives the target into the dirt (stone-golem fist
+  stays as the streaming fallback).
+- **Grave props** (three-renderer.js): enemy remains = scattered femur/ulna
+  GLBs + skull GLB (`_boneGlbClone` over the misc-model cache, materials
+  flagged _ew_shared so deployable rebuilds don't dispose them); the unholy
+  wastes' colossal grinning skull hazard is the giant GLB skull sunk to the
+  cheekbones over a pulsing hellglow pool. Procedural builds remain as
+  cold-cache fallbacks — a later rebuild upgrades the prop.
+- **DATA DEDUP (data.js)**: "Hex of Toil" + demon princess "Hex of Agony"
+  merged into ONE shared hex — id kept `sharedHexOfToil`, name "Hex of
+  Agony", hexed(3) + poison(3), cost 30. `raceHexOfAgony` id is GONE.
+  Sanctuary: angel zoneHeal / priest warCry (which COLLIDED on the id
+  raceSanctuary) / fallen-angel "Corrupted Sanctuary" are now one
+  `SHARED_SANCTUARY` (zoneHeal 48/turn); `raceCorruptedSanctuary` id is
+  GONE. Saved parties holding the dead ids just drop those slots.
+
+## MYSTERY DUNGEON: LOCKSTEP CLOCK + WALL TORCHES + VECTOR SCANNER (2026-07-25) — battle.js, data.js, three-renderer.js, hud.js, ui.js, online.js, index.html
 Token `20260725e` → `20260725f`.
 
 ### 1. The floor runs a LOCKSTEP CLOCK, not the blitz turn order (battle.js)

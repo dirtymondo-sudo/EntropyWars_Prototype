@@ -1343,6 +1343,12 @@ const ThreeRenderer = (function () {
             url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_american_football_0713030210_texture.glb',
             lenTiles: 0.42, spin: 9.0,
         },
+        /* 2026-07-25: every gun spell's tracer is a real spinning round now
+           (rifling roll around the flight axis). Sprite = loading fallback. */
+        'proj-bullet': {
+            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_bullet_realistic_0725070829_texture.glb',
+            lenTiles: 0.30, spin: 22.0,
+        },
     };
     /* warm the projectile GLBs shortly after boot (tiny next to unit models) */
     window.setTimeout(function () {
@@ -6454,8 +6460,111 @@ const ThreeRenderer = (function () {
         };
     }
 
-    /* Enemy remains: a scattered pile of bones + a skull, enamel-textured. */
+    /* ── Real bone GLBs for the graves (2026-07-25, R2 Assets/weapons) —
+       femur / ulna / skull replace the procedural knuckle-cylinders and the
+       sphere-skull wherever remains are shown. Loaded through the shared
+       misc-model cache; the procedural builds stay as the cold-cache
+       fallback (a rebuild upgrades the prop once the GLB lands). */
+    var _BONE_GLB_URLS = {
+        femur: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_femur_bone_realistic_0725070208_texture.glb',
+        ulna:  'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_ulna_bone_realistic_0725070052_texture.glb',
+        skull: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_skull_realistic_0725070330_texture.glb',
+    };
+    window.setTimeout(function () {
+        if (window.EW_DISABLE_WEAPON_GLB) return;
+        for (var bk in _BONE_GLB_URLS) {
+            try { _loadMiscModel(_BONE_GLB_URLS[bk], true, function () {}); } catch (e) {}
+        }
+    }, 6000);
+
+    /* Synchronous normalized clone of a cached bone GLB, or null while it
+       streams. Center origin; longest axis scaled to targetLen and (when
+       normalize:'x') swung onto +X so bones lie flat with a yaw spin.
+       Geometry is already _ew_shared; the cached materials get flagged on
+       first use so the deployable rebuild's disposer leaves them alone. */
+    function _boneGlbClone(key, targetLen, normalize) {
+        if (window.EW_DISABLE_WEAPON_GLB) return null;
+        var url = _BONE_GLB_URLS[key];
+        var e = _miscModelCache[url];
+        if (!e || !e.root || !e.root._ew_bbox) {
+            try { _loadMiscModel(url, true, function () {}); } catch (e2) {}
+            return null;
+        }
+        var root = e.root, bb = root._ew_bbox;
+        if (!root._ew_matsShared) {
+            root._ew_matsShared = true;
+            root.traverse(function (n) {
+                if (!n.isMesh || !n.material) return;
+                var ms = Array.isArray(n.material) ? n.material : [n.material];
+                for (var mi = 0; mi < ms.length; mi++) ms[mi]._ew_shared = true;
+            });
+        }
+        var ex = (bb.max.x - bb.min.x) || 1;
+        var ey = (bb.max.y - bb.min.y) || 1;
+        var ez = (bb.max.z - bb.min.z) || 1;
+        var longest = Math.max(ex, ey, ez);
+        var s = (targetLen || 32) / longest;
+        var m = root.clone(true);
+        m.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });
+        m.scale.setScalar(s);
+        m.position.set(
+            -((bb.min.x + bb.max.x) * 0.5) * s,
+            -((bb.min.y + bb.max.y) * 0.5) * s,
+            -((bb.min.z + bb.max.z) * 0.5) * s);
+        var wrap = new THREE.Group();
+        wrap.add(m);
+        if (normalize === 'x') {
+            if (ey === longest) wrap.rotation.z = -Math.PI / 2;
+            else if (ez === longest) wrap.rotation.y = Math.PI / 2;
+        }
+        var out = new THREE.Group();
+        out.add(wrap);
+        out._ew_sizeY = ey * s;
+        out._ew_girth = Math.min(ex, ey, ez) * s;
+        return out;
+    }
+
+    /* Enemy remains: a scattered pile of REAL bones — femur/ulna GLBs laid
+       flat around the skull GLB. Falls through to the procedural enamel
+       build while the models stream. */
     function _buildBonePile3D(x, y, seed) {
+        var tsG = CONFIG.tileSize || BASE_TILE;
+        var rngG = _graveRng(seed);
+        var skullG = _boneGlbClone('skull', tsG * 0.30);
+        var femurOk = !!(_miscModelCache[_BONE_GLB_URLS.femur] || {}).root;
+        var ulnaOk = !!(_miscModelCache[_BONE_GLB_URLS.ulna] || {}).root;
+        if (skullG && (femurOk || ulnaOk)) {
+            var g2 = new THREE.Group();
+            var boneN = 4 + Math.floor(rngG() * 3);
+            for (var bi = 0; bi < boneN; bi++) {
+                var key = (bi % 2 === 0 && femurOk) || !ulnaOk ? 'femur' : 'ulna';
+                var len = tsG * (0.30 + rngG() * 0.16);
+                var bone = _boneGlbClone(key, len, 'x');
+                if (!bone) continue;
+                bone.rotation.y = rngG() * Math.PI * 2;
+                bone.rotation.z = (rngG() - 0.5) * 0.22;      /* half-sunk tumble */
+                bone.position.set(
+                    (rngG() - 0.5) * tsG * 0.55,
+                    bone._ew_girth * 0.42 + rngG() * tsG * 0.02,
+                    (rngG() - 0.5) * tsG * 0.55);
+                g2.add(bone);
+            }
+            skullG.rotation.y = rngG() * Math.PI * 2;
+            skullG.rotation.z = (rngG() - 0.5) * 0.5;
+            skullG.position.set(
+                (rngG() - 0.5) * tsG * 0.3,
+                skullG._ew_sizeY * 0.46,
+                (rngG() - 0.5) * tsG * 0.3);
+            g2.add(skullG);
+            g2.position.set(x * tsG + tsG / 2, tileTopY(x, y), y * tsG + tsG / 2);
+            g2._ew_deployable = true;
+            return g2;
+        }
+        return _buildBonePileProcedural3D(x, y, seed);
+    }
+
+    /* The pre-2026-07-25 procedural pile — kept as the streaming fallback. */
+    function _buildBonePileProcedural3D(x, y, seed) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
         var rng = _graveRng(seed);
@@ -20656,8 +20765,29 @@ const ThreeRenderer = (function () {
     }
 
     // ── Unholy wastes: a colossal half-buried skull, grinning or screaming ──
+    // 2026-07-25: when the real skull GLB is cached it IS the monument —
+    // sunk to the cheekbones, hellglow pooling under the jaw. The
+    // procedural sphere-and-teeth build below is the streaming fallback.
     function _hzGrinSkull(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
+        var Rg = ts * (1.4 + rng() * 0.9);
+        var glbSkull = _boneGlbClone('skull', Rg * 2.6);
+        if (glbSkull) {
+            var gg = new THREE.Group();
+            var Hy = glbSkull._ew_sizeY;
+            glbSkull.position.y = Hy * 0.5 - Hy * (0.38 + rng() * 0.14);  // buried
+            glbSkull.rotation.y = rng() * Math.PI * 2;
+            glbSkull.rotation.z = (rng() - 0.5) * 0.24;
+            gg.add(glbSkull);
+            /* hellglow seeping out of the earth around the jawline */
+            var poolMat = _hzGlowMat(rng() < 0.5 ? 0xffb84a : 0xff4433, 0.5);
+            var pool = new THREE.Mesh(new THREE.CircleGeometry(Rg * 1.15, 20), poolMat);
+            pool.rotation.x = -Math.PI / 2;
+            pool.position.y = 2;
+            gg.add(pool);
+            _hzPulse(poolMat, pool, 0.32, 0.14, 0.8);
+            return gg;
+        }
         var g = new THREE.Group();
         var bone = function (c) { return _hzGeoMat(_hzTex('enamel') || _hzTex('drywall'), c || 0xd8cdb4); };
         var R = ts * (1.4 + rng() * 0.9);                        // cranium radius

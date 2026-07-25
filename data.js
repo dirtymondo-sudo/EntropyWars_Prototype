@@ -5591,8 +5591,12 @@ const SHARED_TIDAL_SURGE = {
 /* ── 2026-07-17 spell/status pass: new shared kits ──────────────────────
    Shrink Ray (mad scientist / martian) — the classic B-movie beam; applies
    `minimize` (-2 ATK stages + the model physically shrinks).
-   Hex of Toil (shaman / fortune teller / scarecrow) — punish-action curse:
-   the victim takes damage every time they MOVE or CAST while hexed.
+   Hex of Agony (shaman / fortune teller / scarecrow / demon princess) —
+   punish-action curse: the victim takes damage every time they MOVE or CAST
+   while hexed, AND rots under Poison. 2026-07-25: the old separate "Hex of
+   Toil" (hexed only) and demon-princess "Hex of Agony" (poison only) were
+   two halves of the same curse — merged into this single shared hex (id
+   kept as sharedHexOfToil so saves/AI wiring survive).
    Gravity fields (annunaki / grey / martian) — persistent physics zones:
    super gravity kills jumps+flight and triples fall damage; low gravity
    grants +2 jump and erases fall damage. Both are indiscriminate — they
@@ -5606,11 +5610,24 @@ const SHARED_SHRINK_RAY = {
 };
 
 const SHARED_HEX_OF_TOIL = {
-    id: 'sharedHexOfToil', spellType: 'anomaly', element: 'shadow', name: 'Hex of Toil',
-    type: 'debuff', cost: 25, range: 4, apCost: 1,
+    id: 'sharedHexOfToil', spellType: 'anomaly', element: 'shadow', name: 'Hex of Agony',
+    type: 'debuff', cost: 30, range: 4, apCost: 1,
     kind: 'debuff',
-    statusEffects: [{ id: 'hexed', duration: 3 }],
-    desc: 'Weakens a Single Enemy. Applies Hexed.'
+    statusEffects: [{ id: 'hexed', duration: 3 }, { id: 'poison', duration: 3 }],
+    desc: 'Weakens a Single Enemy. Applies Hexed (they suffer every time they move or cast) and Poison.'
+};
+
+/* One sanctuary, one name (2026-07-25): the angel's healing zone, the
+   priest's war-cry variant and the fallen angel's "Corrupted Sanctuary"
+   were three copies of the same idea — and two of them even SHARED the id
+   raceSanctuary (a SPELL_BY_ID collision, same bug as the old Walls of
+   Camelot). Single shared zoneHeal object now; Corrupted Sanctuary is
+   deleted everywhere. */
+const SHARED_SANCTUARY = {
+    id: 'raceSanctuary', spellType: 'divine', name: 'Sanctuary',
+    type: 'utility', cost: 35, range: 3, apCost: 1,
+    kind: 'zoneHeal', aoeRadius: 1, zoneDuration: 2, healPerTurn: 48,
+    desc: 'Consecrate a 3x3 area for 2 turns. Allies standing in it heal each round.'
 };
 
 const SHARED_GRAVITY_CRUSH = {
@@ -5901,10 +5918,7 @@ const RACE_ABILITIES = {
         SHARED_FLASH_FREEZE
     ],
     'angel': [
-        { id: 'raceSanctuary', spellType: 'divine', name: 'Sanctuary',
-          type: 'utility', cost: 35, range: 3, apCost: 1,
-          kind: 'zoneHeal', aoeRadius: 1, zoneDuration: 2, healPerTurn: 48,
-          desc: 'Consecrate a 3x3 area for 2 turns. Allies standing in it heal each round.' },
+        SHARED_SANCTUARY,
         SHARED_SMITE,
         /* 2026-07-23: renamed from Wings of Mercy (id kept for VFX/saves). */
         { id: 'raceWingsOfMercy', spellType: 'divine', name: 'Miracle',
@@ -6561,11 +6575,7 @@ const RACE_ABILITIES = {
           type: 'heal', cost: 30, range: 3, apCost: 1,
           kind: 'heal', healAmt: 80, cleanse: 99,
           desc: 'Restores a SMALL amount of HP to a Single Ally.' },
-        { id: 'raceSanctuary', spellType: 'divine', name: 'Sanctuary',
-          type: 'buff', cost: 30, range: 0, apCost: 1,
-          kind: 'warCry', auraRadius: 2,
-          healAmt: 60,
-          desc: 'Create a sanctified zone. All allies within 2 tiles are healed 60 HP.' },
+        SHARED_SANCTUARY,
         SHARED_SMITE,
         /* 2026-07-23: Exorcism is Priest/Nun-only now (was White Mage school).
            Same id — VFX, sounds and old loadouts keep working. */
@@ -6871,10 +6881,7 @@ const RACE_ABILITIES = {
         SHARED_SUMMON_BLOOD_RAIN
     ],
     'demon princess': [
-        { id: 'raceHexOfAgony', spellType: 'unholy', name: 'Hex of Agony',
-          type: 'debuff', cost: 30, range: 4, apCost: 1,
-          kind: 'debuff', statusEffects: [{ id: 'poison', duration: 3 }],
-          desc: 'Weakens a Single Enemy. Applies Poison.' },
+        SHARED_HEX_OF_TOIL,
         { id: 'raceDarkLullaby', spellType: 'unholy', name: 'Dark Lullaby',
           type: 'damage', cost: 35, dmg: 80, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -6916,10 +6923,7 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff', statusEffects: [{ id: 'protect', duration: 1 }],
           desc: 'Empowers the caster. Applies Protect. Cooldown: 2 rounds.' },
-        { id: 'raceCorruptedSanctuary', spellType: 'unholy', name: 'Corrupted Sanctuary',
-          type: 'utility', cost: 30, range: 3, apCost: 1,
-          kind: 'zoneHeal', aoeRadius: 1, zoneDuration: 2, healPerTurn: 30,
-          desc: 'Creates a zone that heals allies standing inside it each turn.' },
+        SHARED_SANCTUARY,
         { id: 'raceDescendingWrath', spellType: 'unholy', name: 'Descending Wrath',
           type: 'damage', cost: 35, dmg: 80, range: 1, apCost: 2,
           kind: 'skySlam', damageType: 'magic', carryHeight: 5, dmgPerLevel: 25,

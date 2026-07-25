@@ -1459,6 +1459,12 @@ SPELL_MAP['pistolWhip'] = { impact: '_heavyPunch_impact' };
    raceChassisSlan (now Kill Mode) keeps its baked aoe mapping — the 360°
    bullet/laser storm is layered on via its _spell3DGeometry signature. */
 SPELL_MAP['rampart'] = { wall: 'sharedRampart_tile' };
+
+/* ── 2026-07-25 weapon-GLB batch 2: intent hooks for the new signature
+   cinematics (candles / tarot / crosses — the geometry itself lives in
+   _spell3DGeometry; these mappings make the impact intent fire at all). */
+SPELL_MAP['sharedHexOfToil'] = { impact: '_dark_debuff_impact' };
+SPELL_MAP['raceStarCrossed'] = { impact: '_psychic_dark_impact' };
 SPELL_MAP['raceShamblingHorde'] = { aoe: 'raceTremorStomp_aoe', impact: 'raceTremorStomp_impact_tile' };
 
 /* ─── NORDIC ALIEN REWORK (2026-07-10) — light-tech Federation kit ────────
@@ -1891,7 +1897,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceShadowBind:       '_bolt_curse',
         raceRedEyes:          '_bolt_curse',
         raceBlackPhillipsGaze:'_bolt_curse',
-        raceHexOfAgony:       '_bolt_curse',
+        sharedHexOfToil:      '_bolt_curse',   /* the merged Hex of Agony */
         raceCurseOfDecay:     '_bolt_curse',
         raceCurseOfMisfortune:'_bolt_curse',
         raceSirenSong:        '_bolt_psi',
@@ -2232,11 +2238,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        detonation pipeline for spells that have a signature apparition but no
        descent/impact mapping (Crystal Ball's orb, Prophecy's vision).
        Returns true when something was spawned. */
-    function fireGeometry(spellId, tx, ty, aoeRadius) {
+    function fireGeometry(spellId, tx, ty, aoeRadius, extra) {
         if (_suppressed()) return false;
         var fn = _spell3DGeometry[spellId];
         if (typeof fn !== 'function') return false;
-        try { fn(tx, ty, aoeRadius); } catch (e) { return false; }
+        /* extra: optional context bag (e.g. the dash kind passes
+           { fromX, fromY } so travel cinematics know the launch tile) */
+        try { fn(tx, ty, aoeRadius, extra); } catch (e) { return false; }
         return true;
     }
 
@@ -2730,7 +2738,31 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         window.setTimeout(function() {
             if (_suppressed()) return;
-            _spawnEffect(descentDef, { tx: tx, ty: ty });
+            /* 2026-07-25: when the missile GLB is cached, the falling
+               warhead is the REAL model plunging nose-first onto the strike
+               tile, timed to touch down exactly when the impact bursts
+               fire — so the 'missile'/'nuclear-missile' sprite layers are
+               filtered out of the effect def for this cast (they stay in
+               the def as the cold-cache fallback). */
+            var defToSpawn = descentDef;
+            var wantsWarhead = false;
+            if (descentDef.layers && _wpnReady('missile')) {
+                for (var wi = 0; wi < descentDef.layers.length; wi++) {
+                    var lsp = descentDef.layers[wi].sprite;
+                    if (lsp === 'missile' || lsp === 'nuclear-missile') { wantsWarhead = true; break; }
+                }
+            }
+            if (wantsWarhead) {
+                defToSpawn = Object.assign({}, descentDef);
+                defToSpawn.layers = descentDef.layers.filter(function (ly) {
+                    return ly.sprite !== 'missile' && ly.sprite !== 'nuclear-missile';
+                });
+                _sigMissileDrop3D(tx, ty, {
+                    ms: descentMs,
+                    scale: (spellId === 'nuke' || spellId === 'sharedNuke') ? 1.35 : 0.95,
+                });
+            }
+            _spawnEffect(defToSpawn, { tx: tx, ty: ty });
 
             if (spellId === 'meteor' && _spell3DGeometry.meteor) {
                 _spell3DGeometry.meteor(tx, ty, aoeRadius, descentMs, telegraphMs);
@@ -3486,7 +3518,40 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         var startZ = casterZ + 40;
                         var endZ = targetElev + 10;
                         var vzInit = (endZ - startZ + 0.5 * gravMs * tSec * tSec) / tSec + arcZ / tSec;
-                        _spawn({
+                        /* 2026-07-25: real missile GLB on the same ballistic
+                           arc, nose glued to the velocity vector, slow
+                           rifling roll — the old billboard sprite is only
+                           the loading fallback. Mortar Salvo's whole box
+                           barrage flies as actual ordnance. */
+                        var glbShell = null;
+                        if ((m.sprite || 'missile') === 'missile' && _wpnReady('missile')) {
+                            glbShell = _wpnInstance('missile', ts * 0.6);
+                        }
+                        if (glbShell) {
+                            var padG = cfg2.boardPadding || 2;
+                            var mg = new THREE.Group();
+                            mg.rotation.order = 'YXZ';
+                            mg.add(glbShell.group);
+                            glbShell.setFade(1);
+                            var exMat2 = _sigMat(0xffcc88, { map: _sigGlowTex() });
+                            var ex2 = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.26, ts * 0.26), exMat2);
+                            ex2.position.z = -glbShell.len * 0.55;
+                            ex2.renderOrder = 164;
+                            mg.add(ex2);
+                            mg.rotation.y = Math.atan2(vxMs, vyMs);
+                            var horizV = Math.sqrt(vxMs * vxMs + vyMs * vyMs) || 1;
+                            _sigRun(mg, flyMs, function (elM) {
+                                var tM = elM / 1000;
+                                mg.position.set(
+                                    casterPx.x + vxMs * tM - padG,
+                                    startZ + vzInit * tM - 0.5 * gravMs * tM * tM,
+                                    casterPx.y + vyMs * tM - padG);
+                                mg.rotation.x = -Math.atan2(vzInit - gravMs * tM, horizV);
+                                glbShell.group.rotation.z = elM * 0.012;
+                                exMat2.opacity = 0.5 + 0.35 * Math.sin(elM * 0.06);
+                            });
+                        }
+                        if (!glbShell) _spawn({
                             x: casterPx.x, y: casterPx.y, z: startZ,
                             vx: vxMs, vy: vyMs, vz: vzInit,
                             mode: 'billboard',
@@ -7346,6 +7411,32 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            assumes (Excalibur/iai flip/lay it themselves from there) */
         sword:       { file: 'Meshy_AI_master_sword_0713025949_texture.glb',      axis: 'y',
                        tweak: { rx: Math.PI } },
+
+        /* ── 2026-07-25 batch — measured straight from the GLB scene graphs
+           before wiring (bbox x/y/z noted where it matters). Guns come in
+           muzzle-BACKWARD like every other Meshy firearm (baked ry flip);
+           the long props are X-long and swing onto +Z automatically. */
+        bullet:      { file: 'Meshy_AI_bullet_realistic_0725070829_texture.glb',            axis: 'z' },
+        missile:     { file: 'Meshy_AI_missle_0725070818_texture.glb',                      axis: 'z' },
+        shotgun:     { file: 'Meshy_AI_shotgun_realistic_0725070540_texture.glb',           axis: 'z',
+                       tweak: { ry: Math.PI } },
+        sniper:      { file: 'Meshy_AI_sniper_rifle_realist_0725070547_texture.glb',        axis: 'z',
+                       tweak: { ry: Math.PI } },
+        fist:        { file: 'Meshy_AI_closed_fist_realisti_0725070236_texture.glb',        axis: 'y' },
+        sleigh:      { file: 'Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb',           axis: 'z' },
+        femur:       { file: 'Meshy_AI_femur_bone_realistic_0725070208_texture.glb',        axis: 'z' },
+        ulna:        { file: 'Meshy_AI_ulna_bone_realistic_0725070052_texture.glb',         axis: 'z' },
+        skull:       { file: 'Meshy_AI_skull_realistic_0725070330_texture.glb',             axis: 'y' },
+        /* candle props: bbox says flames included — single 1.23w×1.91h,
+           line 1.76w×1.91h, ritual circle 1.91⌀×1.19h (ring radius ≈ 0.8×
+           its height once axis-'y' normalized — size rings by that ratio) */
+        candle:      { file: 'Meshy_AI_single_lit_candle_realistic_0725065958_texture.glb', axis: 'y' },
+        candleLine:  { file: 'Meshy_AI_line_of_lit_candles_realisti_0725065822_texture.glb', axis: 'y' },
+        candleRing:  { file: 'Meshy_AI_lit_candles_ritual_circle__0725065829_texture.glb',  axis: 'y' },
+        tarot:       { file: 'Meshy_AI_tarot_card_realistic_0725071149_texture.glb',        axis: 'y' },
+        tarot2:      { file: 'Meshy_AI_tarot_card_realistic_0725071340_texture.glb',        axis: 'y' },
+        tarotDeck:   { file: 'Meshy_AI_tarot_card_deck_real_0725070146_texture.glb',        axis: 'y' },
+        cross:       { file: 'Meshy_AI_wooden_cross_realist_0725070928_texture.glb',        axis: 'y' },
     };
     var _wpnCache = {};   /* key → { root, size, center, loading, failed } */
 
@@ -7452,11 +7543,699 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
 
     /* warm the cache shortly after boot so the FIRST cast already has its
-       model (the loads are tiny next to the unit GLBs) */
+       model. 2026-07-25: the library is ~25 props now (a lot of megabytes of
+       GLB) — warm the high-frequency combat models in one burst like before,
+       then drip the big cinematic props in one at a time so boot bandwidth
+       isn't saturated while unit models are still streaming. */
     window.setTimeout(function () {
         if (_wpnGlbOff()) return;
-        for (var k in _WPN_MODELS) _wpnLoad(k);
+        var first = ['bullet', 'missile', 'revolver', 'pistol', 'plasma',
+                     'shotgun', 'sniper', 'jet', 'arrow', 'sword',
+                     'football', 'cauldron', 'crystalBall'];
+        for (var i = 0; i < first.length; i++) _wpnLoad(first[i]);
+        var rest = [];
+        for (var k in _WPN_MODELS) {
+            if (first.indexOf(k) < 0) rest.push(k);
+        }
+        for (var j = 0; j < rest.length; j++) {
+            (function (key, idx) {
+                window.setTimeout(function () { _wpnLoad(key); }, 4500 + idx * 700);
+            })(rest[j], j);
+        }
     }, 3500);
+
+    /* ═══════════ 2026-07-25 WEAPON GLB BATCH 2 — candles, bones, tarot,
+       cross, sleigh, fist, bullet, missile, shotgun, sniper. Every helper
+       below is GLB-first with a graceful degrade (procedural or particle-
+       only) while the model streams in, and every caller routes through
+       _spell3DGeometry / SPELL_MAP intents that already relay online, so
+       the guest gets the full show for free. ═══════════════════════════ */
+
+    /* ── RITUAL CANDLES — the occult workhorse. model: 'candle' (a single
+       fat taper), 'candleLine' (a row of them), 'candleRing' (the full
+       ritual circle). The prop rises out of the earth like it was always
+       buried there, its flames BREATHE (ember motes seeded across the wax),
+       a slow witch-ring spins underneath, and it sinks back into the dark.
+       Séance-grade PS1 occultism, not particle spam. */
+    function _sigCandleProp3D(tx, ty, opts) {
+        opts = opts || {};
+        if (!_canSpawn()) return false;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var key = opts.model || 'candleRing';
+        var h = opts.heightPx != null ? opts.heightPx : ts * 0.75;
+        var riseMs = opts.riseMs != null ? opts.riseMs : 340;
+        var holdMs = opts.holdMs != null ? opts.holdMs : 1100;
+        var fadeMs = opts.fadeMs != null ? opts.fadeMs : 420;
+        var total = riseMs + holdMs + fadeMs;
+        var flame = opts.flameColor != null ? opts.flameColor : 0xffb454;
+
+        if (opts.circleColor !== false) {
+            _sigMagicCircle3D(tx, ty, {
+                color: opts.circleColor != null ? opts.circleColor : 0x9a66ff,
+                radiusPx: opts.circleRadiusPx != null ? opts.circleRadiusPx : ts * 1.05,
+                growMs: riseMs, holdMs: holdMs, fadeMs: fadeMs,
+                spin: opts.spin != null ? opts.spin : 0.0022,
+                opacity: 0.6,
+            });
+        }
+
+        /* flame-breath embers over the prop's footprint — these fire GLB or
+           not, so the cast never reads as bare even on a cold cache */
+        var footR = opts.flameRadiusPx != null ? opts.flameRadiusPx
+                  : (key === 'candle' ? ts * 0.10
+                   : key === 'candleLine' ? ts * 0.45 : h * 0.8);
+        var c = tilePx(tx, ty);
+        var bz = tileZ(tx, ty);
+        var puffs = Math.max(3, Math.round(total / 240));
+        for (var i = 0; i < puffs; i++) {
+            (function (idx) {
+                window.setTimeout(function () {
+                    if (_suppressed()) return;
+                    var na = Math.random() * Math.PI * 2;
+                    var nr = key === 'candleRing' ? footR * (0.82 + Math.random() * 0.18)
+                                                  : Math.random() * footR;
+                    _spawn({
+                        x: c.x + Math.cos(na) * nr, y: c.y + Math.sin(na) * nr,
+                        z: bz + h * (key === 'candle' ? 0.95 : 0.6),
+                        mode: 'billboard', sprite: 'ember',
+                        ml: rn(260, 480), size0: rn(5, 10), size1: 2,
+                        vz: rn(18, 46), drag: 0.6, opacity0: 0.95, opacity1: 0,
+                    });
+                }, 120 + idx * 220 + Math.random() * 120);
+            })(i);
+        }
+
+        var inst = _wpnReady(key) ? _wpnInstance(key, h, { tint: opts.tint }) : null;
+        if (!inst) return false;   /* ring + embers still played */
+
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        g.rotation.y = opts.yaw != null ? opts.yaw : Math.random() * Math.PI * 2;
+        var lift = new THREE.Group();          /* rises out of the ground —
+            the terrain geometry clips whatever is still below the surface */
+        lift.add(inst.group);
+        inst.group.position.y = inst.len * 0.5;   /* bottom on the floor */
+        g.add(lift);
+
+        /* one warm glow plane breathing over the flames */
+        var glowMat = _sigMat(flame, { map: _sigGlowTex() });
+        var glowSz = Math.max(footR * 2.2, ts * 0.5);
+        var glow = new THREE.Mesh(new THREE.PlaneGeometry(glowSz, glowSz), glowMat);
+        glow.rotation.x = -Math.PI / 2;
+        glow.position.y = h * (key === 'candle' ? 1.0 : 0.72);
+        glow.renderOrder = 163;
+        g.add(glow);
+
+        _sigRun(g, total, function (el) {
+            var f;
+            if (el < riseMs) {
+                var t = _sigEaseOutCubic(el / riseMs);
+                f = Math.min(1, t * 1.6);
+                lift.position.y = -h * 0.4 * (1 - t);
+            } else if (el < riseMs + holdMs) {
+                f = 1;
+                lift.position.y = 0;
+            } else {
+                f = Math.max(0, 1 - (el - riseMs - holdMs) / fadeMs);
+                lift.position.y = -h * 0.3 * (1 - f);
+            }
+            inst.setFade(f);
+            glowMat.opacity = f * (0.28 + 0.15 * Math.sin(el * 0.017)
+                                        + 0.08 * Math.sin(el * 0.041));
+        });
+        return true;
+    }
+
+    /* one normalized bone/skull GLB piece; null while the models stream */
+    function _wpnBonePiece(ts, wantSkull) {
+        if (wantSkull && _wpnReady('skull')) {
+            return _wpnInstance('skull', ts * (0.16 + Math.random() * 0.08));
+        }
+        var key = Math.random() < 0.5 ? 'femur' : 'ulna';
+        if (!_wpnReady(key)) key = key === 'femur' ? 'ulna' : 'femur';
+        if (!_wpnReady(key)) return null;
+        return _wpnInstance(key, ts * (0.28 + Math.random() * 0.18));
+    }
+
+    /* ── BONE ERUPTION — real femur/ulna/skull GLBs blast out of the grave
+       dirt in tumbling arcs and clatter to rest around the tile. The
+       necromancer's Raise the Dead beat (and anything else exhuming). */
+    function _sigBoneBurst3D(tx, ty, opts) {
+        opts = opts || {};
+        if (!_canSpawn()) return false;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var n = opts.count != null ? opts.count : 8;
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        var pieces = [];
+        for (var i = 0; i < n; i++) {
+            var inst = _wpnBonePiece(ts, i === 0);
+            if (!inst) continue;
+            var holder = new THREE.Group();
+            holder.add(inst.group);
+            var ang = Math.random() * Math.PI * 2;
+            var range = ts * (0.18 + Math.random() * 0.45);
+            pieces.push({
+                h: holder, inst: inst,
+                vx: Math.cos(ang) * range, vz: Math.sin(ang) * range,
+                peak: ts * (0.55 + Math.random() * 0.6),
+                delay: Math.random() * 160,
+                flyMs: 380 + Math.random() * 200,
+                spinX: (Math.random() - 0.5) * 0.30,
+                spinZ: (Math.random() - 0.5) * 0.30,
+                restY: ts * (0.03 + Math.random() * 0.04),
+                yaw: Math.random() * Math.PI * 2,
+            });
+            holder.visible = false;
+            holder.rotation.y = pieces[pieces.length - 1].yaw;
+            g.add(holder);
+        }
+        if (!pieces.length) {
+            /* models cold — dirt burst still sells the exhumation */
+            _sigSparks(tx, ty, 'smoke', 8, { vxy: 90, vz0: 40, vz1: 150 });
+            return false;
+        }
+        /* grave dirt kicked up with the bones */
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty);
+        for (var d = 0; d < 10; d++) {
+            _spawn({
+                x: c.x + rn(-14, 14), y: c.y + rn(-14, 14), z: bz + 6,
+                mode: 'billboard', sprite: 'smoke',
+                ml: rn(420, 700), size0: rn(12, 22), size1: rn(30, 46),
+                vz: rn(50, 130), gravity: 160, drag: 0.7,
+                opacity0: 0.6, opacity1: 0,
+            });
+        }
+        var holdMs = opts.holdMs != null ? opts.holdMs : 900;
+        var fadeMs = 420;
+        var settle = 640;
+        var total = settle + holdMs + fadeMs;
+        _sigRun(g, total, function (el) {
+            var op = el > settle + holdMs
+                ? Math.max(0, 1 - (el - settle - holdMs) / fadeMs) : 1;
+            for (var j = 0; j < pieces.length; j++) {
+                var p = pieces[j];
+                p.inst.setFade(op);
+                var t = (el - p.delay) / p.flyMs;
+                if (t < 0) { p.h.visible = false; continue; }
+                p.h.visible = true;
+                if (t < 1) {
+                    /* ballistic arc out of the dirt, tumbling */
+                    p.h.position.set(p.vx * t,
+                        p.restY + Math.sin(Math.PI * Math.min(1, t)) * p.peak,
+                        p.vz * t);
+                    p.h.rotation.x += p.spinX;
+                    p.h.rotation.z += p.spinZ;
+                } else if (t < 1.3) {
+                    var bt = (t - 1) / 0.3;      /* one clattering bounce */
+                    p.h.position.set(p.vx, p.restY + Math.sin(bt * Math.PI) * p.peak * 0.07, p.vz);
+                } else {
+                    p.h.position.set(p.vx, p.restY, p.vz);
+                }
+            }
+        });
+        return true;
+    }
+
+    /* ── THE CROSS — a weathered wooden cross descends out of the sky and
+       PLANTS itself in the earth. Divine casts drop it in a column of gold;
+       unholy casts drop it INVERTED and set it on fire. The Warrior's
+       Judgment, the seraphim host, and the fallen angel all route here. */
+    function _sigCrossDescent3D(tx, ty, opts) {
+        opts = opts || {};
+        if (!_canSpawn()) return false;
+        var ts = _cfg().tileSize || 128;
+        var burning = !!opts.burning;
+        if (!_wpnReady('cross')) {
+            _sigLightPillar3D(tx, ty, {
+                color: burning ? 0xff7744 : 0xffedb0, ms: 900, height: 700 });
+            return false;
+        }
+        var wp = _worldPos(tx, ty);
+        var h = ts * 1.9 * (opts.scale != null ? opts.scale : 1.2);
+        var inst = _wpnInstance('cross', h, { tint: opts.tint });
+        if (!inst) return false;
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        g.rotation.y = opts.yaw != null ? opts.yaw : (Math.random() - 0.5) * 0.9;
+        var carrier = new THREE.Group();
+        carrier.add(inst.group);
+        if (burning) inst.group.rotation.z = Math.PI;   /* the inverted rite */
+        g.add(carrier);
+
+        var dropMs = opts.ms != null ? opts.ms : 700;
+        var fromY = ts * 6.5;
+        var sink = h * 0.14;                 /* driven into the soil */
+        var holdMs = opts.holdMs != null ? opts.holdMs : 1050;
+        var fadeMs = 420;
+        var total = dropMs + holdMs + fadeMs;
+        var landed = false;
+
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty);
+        /* burning: flames crawl the upright + the arms the whole hold */
+        if (burning) {
+            var licks = Math.round((holdMs + dropMs) / 90);
+            for (var fi = 0; fi < licks; fi++) {
+                (function (idx) {
+                    window.setTimeout(function () {
+                        if (_suppressed()) return;
+                        var onArm = Math.random() < 0.4;
+                        var fx2 = onArm ? rn(-h * 0.26, h * 0.26) : rn(-h * 0.05, h * 0.05);
+                        var fz2 = onArm ? h * 0.62 + rn(-h * 0.04, h * 0.04)
+                                        : rn(h * 0.08, h * 0.92) - sink;
+                        _spawn({
+                            x: c.x + fx2, y: c.y + rn(-6, 6), z: bz + fz2,
+                            mode: 'billboard', sprite: Math.random() < 0.65 ? 'flame' : 'dark-flame',
+                            ml: rn(260, 460), size0: rn(10, 20), size1: rn(3, 6),
+                            vz: rn(30, 80), drag: 0.5, opacity0: 0.95, opacity1: 0,
+                        });
+                    }, dropMs + idx * 90 + Math.random() * 60);
+                })(fi);
+            }
+        }
+
+        _sigRun(g, total, function (el) {
+            var f = el > dropMs + holdMs
+                ? Math.max(0, 1 - (el - dropMs - holdMs) / fadeMs) : 1;
+            inst.setFade(f);
+            if (el < dropMs) {
+                var t = el / dropMs;
+                carrier.position.y = (h * 0.5 - sink) + (fromY - h * 0.5 + sink) * (1 - t * t);
+                carrier.rotation.y = 0.5 * (1 - t);      /* slow ceremonial turn */
+            } else {
+                if (!landed) {
+                    landed = true;
+                    _sigShockRing3D(tx, ty, {
+                        color: burning ? 0xff5522 : 0xffdd88,
+                        r1: ts * 1.5, ms: 420 });
+                    _sigSparks(tx, ty, burning ? 'ember' : 'divine-sparkle', 14,
+                        { vxy: 140, vz0: 40, vz1: 190 });
+                    _sigScreenFlash(burning ? '#ff9455' : '#ffeebb', 130, 0.14);
+                    try {
+                        if (typeof ThreePost !== 'undefined' && ThreePost.bloomPulse) {
+                            ThreePost.bloomPulse(0.35, 300);
+                        }
+                        if (typeof window.shakeBoard === 'function') window.shakeBoard('normal');
+                    } catch (e2) {}
+                }
+                carrier.position.y = h * 0.5 - sink;
+                carrier.rotation.y = 0;
+            }
+        });
+        return true;
+    }
+
+    /* ── A REALLY GOOD PUNCH — the Meshy fist, three units tall, cocks back
+       in the sky and drives the target into the dirt. Speed lines, shock
+       ring, dust, one frame of white. Falls back to the stone-golem fist
+       while the GLB streams. */
+    function _sigGlbFist3D(tx, ty, opts) {
+        opts = opts || {};
+        if (!_canSpawn()) return;
+        if (!_wpnReady('fist')) { _sigStandFist3D(tx, ty, opts); return; }
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var h = ts * 1.05 * (opts.scale != null ? opts.scale : 1);
+        var inst = _wpnInstance('fist', h, { tint: opts.tint });
+        if (!inst) { _sigStandFist3D(tx, ty, opts); return; }
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        g.rotation.y = Math.random() * Math.PI * 2;
+        var arm = new THREE.Group();
+        arm.add(inst.group);
+        inst.group.rotation.x = Math.PI;     /* knuckles to the earth */
+        g.add(arm);
+
+        var cockMs = 240, beatMs = 90, slamMs = 130, pressMs = 200, springMs = 300;
+        var total = cockMs + beatMs + slamMs + pressMs + springMs;
+        var hiY = ts * 2.5, cockY = ts * 3.1, restY = h * 0.42;
+        var slammed = false;
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty);
+
+        _sigMagicCircle3D(tx, ty, {
+            color: opts.circleColor != null ? opts.circleColor : 0xffc866,
+            radiusPx: ts * 0.9, growMs: cockMs, holdMs: beatMs + slamMs + pressMs,
+            fadeMs: 260, spin: 0.005, opacity: 0.7,
+        });
+
+        _sigRun(g, total, function (el) {
+            var f = 1;
+            if (el < cockMs) {
+                var t = _sigEaseOutCubic(el / cockMs);
+                f = Math.min(1, t * 2.2);
+                arm.position.y = hiY + (cockY - hiY) * t;
+                arm.rotation.z = -0.28 * t;
+            } else if (el < cockMs + beatMs) {
+                arm.position.y = cockY;                    /* the held breath */
+            } else if (el < cockMs + beatMs + slamMs) {
+                var t2 = (el - cockMs - beatMs) / slamMs;
+                arm.position.y = cockY + (restY - cockY) * t2 * t2;
+                arm.rotation.z = -0.28 * (1 - t2);
+                if (!slammed && t2 > 0.94) {
+                    slammed = true;
+                    _sigShockRing3D(tx, ty, { color: 0xffe2b0, r1: ts * 1.8, ms: 420 });
+                    _sigSparks(tx, ty, 'ember', 16, { vxy: 200, vz0: 30, vz1: 160 });
+                    for (var s2 = 0; s2 < 8; s2++) {
+                        _spawn({
+                            x: c.x + rn(-20, 20), y: c.y + rn(-20, 20), z: bz + 4,
+                            mode: 'billboard', sprite: 'smoke',
+                            ml: rn(380, 620), size0: rn(14, 24), size1: rn(38, 58),
+                            vz: rn(40, 110), drag: 0.7, opacity0: 0.55, opacity1: 0,
+                        });
+                    }
+                    _sigScreenFlash('#fff2dd', 90, 0.22);
+                    try {
+                        if (typeof ThreePost !== 'undefined' && ThreePost.bloomPulse) {
+                            ThreePost.bloomPulse(0.5, 300);
+                        }
+                        if (typeof window.shakeBoard === 'function') window.shakeBoard('heavy');
+                    } catch (e3) {}
+                }
+            } else if (el < cockMs + beatMs + slamMs + pressMs) {
+                arm.position.y = restY;                    /* pressed in */
+            } else {
+                var t3 = (el - cockMs - beatMs - slamMs - pressMs) / springMs;
+                arm.position.y = restY + ts * 1.6 * t3 * t3;
+                f = 1 - t3;
+            }
+            inst.setFade(f);
+        });
+    }
+
+    /* ── TAROT DRAW — the deck floats up, three cards rise off the top and
+       fan out over the caster, each burning a different augury color, then
+       the spread rockets skyward and bursts into sparkles. */
+    function _sigTarotDraw3D(tx, ty, opts) {
+        opts = opts || {};
+        if (!_canSpawn()) return false;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        _sigMagicCircle3D(tx, ty, {
+            color: 0xcaa5ff, radiusPx: ts * 1.05, growMs: 200, holdMs: 1250,
+            fadeMs: 320, spin: 0.0032, opacity: 0.65, rise: 24,
+        });
+        if (!(_wpnReady('tarot') && _wpnReady('tarot2') && _wpnReady('tarotDeck'))) {
+            _sigSparks(tx, ty, 'divine-sparkle', 14, { vxy: 90, vz0: 60, vz1: 190, gravity: -50 });
+            return false;
+        }
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        g.rotation.y = _sigYawToward(tx, ty);
+
+        var deck = _wpnInstance('tarotDeck', ts * 0.14);
+        deck.group.position.y = ts * 0.55;
+        g.add(deck.group);
+
+        var AUGURY = [0xffd27a, 0xa5e8ff, 0xe8a5ff];       /* gold / ice / violet */
+        var cards = [];
+        for (var i = 0; i < 3; i++) {
+            var ci = _wpnInstance(i === 1 ? 'tarot2' : 'tarot', ts * 0.52);
+            var pivot = new THREE.Group();
+            pivot.add(ci.group);
+            ci.group.position.y = ts * 0.55;               /* starts in the deck */
+            var glowMat = _sigMat(AUGURY[i], { map: _sigGlowTex() });
+            var glow = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.5, ts * 0.7), glowMat);
+            glow.position.set(0, ts * 0.55, -ts * 0.02);
+            glow.renderOrder = 158;
+            pivot.add(glow);
+            g.add(pivot);
+            cards.push({
+                pivot: pivot, inst: ci, glowMat: glowMat, glow: glow,
+                delay: 160 + i * 150,
+                fanX: (i - 1) * ts * 0.42,
+                fanY: ts * (1.05 + (i === 1 ? 0.14 : 0)),
+                lean: (i - 1) * 0.5,
+            });
+            ci.setFade(0);
+        }
+
+        var riseMs = 300, holdMs = 950, exitMs = 300;
+        var total = 160 + 2 * 150 + riseMs + holdMs + exitMs;
+        var exitAt = total - exitMs;
+        var burst = false;
+        _sigRun(g, total, function (el) {
+            deck.setFade(el < exitAt ? Math.min(1, el / 160) : Math.max(0, 1 - (el - exitAt) / 200));
+            deck.group.rotation.y += 0.01;
+            deck.group.position.y = ts * 0.55 + Math.sin(el * 0.004) * ts * 0.03;
+            for (var j = 0; j < cards.length; j++) {
+                var cd = cards[j];
+                var t = _sigClamp01((el - cd.delay) / riseMs);
+                var e = _sigEaseOutCubic(t);
+                var gx = cd.fanX * e, gy = ts * 0.55 + (cd.fanY - ts * 0.55) * e;
+                if (el > exitAt) {
+                    var xt = (el - exitAt) / exitMs;
+                    gy += ts * 1.7 * xt * xt;
+                    cd.inst.setFade(1 - xt);
+                    cd.glowMat.opacity = 0.4 * (1 - xt);
+                    if (!burst && xt > 0.8) {
+                        burst = true;
+                        _sigSparks(tx, ty, 'divine-sparkle', 18,
+                            { vxy: 110, vz0: 120, vz1: 260, gravity: -40 });
+                        _sigScreenFlash('#e6ccff', 120, 0.12);
+                    }
+                } else {
+                    cd.inst.setFade(e);
+                    cd.glowMat.opacity = e * (0.30 + 0.14 * Math.sin(el * 0.012 + j * 2.1));
+                }
+                cd.pivot.position.set(gx, gy - ts * 0.55, 0);
+                cd.pivot.rotation.z = cd.lean * e;
+                cd.pivot.rotation.y = Math.sin(el * 0.0035 + j) * 0.16;
+            }
+        });
+        return true;
+    }
+
+    /* ── THE REVERSED CARD — Star Crossed. One tarot card descends over the
+       victim, turns UPSIDE-DOWN (the reversed draw — misfortune), flares
+       violet and burns out. */
+    function _sigTarotReversed3D(tx, ty, opts) {
+        opts = opts || {};
+        if (!_canSpawn()) return false;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        _sigMagicCircle3D(tx, ty, {
+            color: 0x8a55cc, radiusPx: ts * 0.95, growMs: 180, holdMs: 900,
+            fadeMs: 300, spin: -0.0028, opacity: 0.6,
+        });
+        if (!_wpnReady('tarot2')) {
+            _sigSparks(tx, ty, 'psi-pulse', 12, { vxy: 70, vz0: 30, vz1: 120 });
+            return false;
+        }
+        var inst = _wpnInstance('tarot2', ts * 0.6);
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        g.rotation.y = _sigYawToward(tx, ty);
+        var pivot = new THREE.Group();
+        pivot.add(inst.group);
+        g.add(pivot);
+        var glowMat = _sigMat(0xbb77ff, { map: _sigGlowTex() });
+        var glow = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.62, ts * 0.85), glowMat);
+        glow.position.z = -ts * 0.02;
+        glow.renderOrder = 158;
+        pivot.add(glow);
+
+        var inMs = 260, flipMs = 330, holdMs = 620, outMs = 260;
+        var total = inMs + flipMs + holdMs + outMs;
+        var flared = false;
+        _sigRun(g, total, function (el) {
+            var f = 1;
+            var y;
+            if (el < inMs) {
+                var t = _sigEaseOutCubic(el / inMs);
+                f = t;
+                y = ts * 1.9 - (ts * 0.85) * t;
+            } else if (el < inMs + flipMs) {
+                var t2 = (el - inMs) / flipMs;
+                y = ts * 1.05;
+                pivot.rotation.z = Math.PI * _sigEaseOutCubic(t2);   /* the reversal */
+                if (!flared && t2 > 0.85) {
+                    flared = true;
+                    _sigScreenFlash('#a570e6', 130, 0.14);
+                    _sigSparks(tx, ty, 'psi-pulse', 12, { vxy: 90, vz0: -40, vz1: 40, gravity: 90 });
+                }
+            } else if (el < inMs + flipMs + holdMs) {
+                y = ts * 1.05 + Math.sin((el - inMs - flipMs) * 0.006) * ts * 0.03;
+                pivot.rotation.z = Math.PI;
+            } else {
+                var t3 = (el - inMs - flipMs - holdMs) / outMs;
+                f = 1 - t3;
+                y = ts * 1.05 - ts * 0.3 * t3;
+                pivot.rotation.z = Math.PI;
+            }
+            pivot.position.y = y;
+            inst.setFade(f);
+            glowMat.opacity = f * (0.30 + 0.14 * Math.sin(el * 0.013));
+        });
+        return true;
+    }
+
+    /* ── REMOTE VIEW — the scrying card hangs over the far tile, an eye of
+       light burning through it while the fog peels back. */
+    function _sigTarotScry3D(tx, ty, r) {
+        var ts = _cfg().tileSize || 128;
+        _sigMagicCircle3D(tx, ty, {
+            color: 0x9fd8ff, radiusPx: ts * (1.0 + (r != null ? r : 2) * 0.35),
+            growMs: 260, holdMs: 1400, fadeMs: 420, spin: 0.0018, opacity: 0.55, rise: 18,
+        });
+        if (_wpnReady('tarot') && _canSpawn()) {
+            var wp = _worldPos(tx, ty);
+            var inst = _wpnInstance('tarot', ts * 0.55);
+            var g = new THREE.Group();
+            g.position.set(wp.x, wp.y, wp.z);
+            g.rotation.y = _sigYawToward(tx, ty);
+            var pivot = new THREE.Group();
+            pivot.add(inst.group);
+            g.add(pivot);
+            var eyeMat = _sigMat(0xbfe8ff, { map: _sigGlowTex() });
+            var eye = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.3, ts * 0.3), eyeMat);
+            eye.position.set(0, 0, ts * 0.045);
+            eye.renderOrder = 163;
+            pivot.add(eye);
+            var inMs = 300, holdMs = 1150, outMs = 320;
+            var total = inMs + holdMs + outMs;
+            _sigRun(g, total, function (el) {
+                var f = el < inMs ? _sigEaseOutCubic(el / inMs)
+                      : el > inMs + holdMs ? Math.max(0, 1 - (el - inMs - holdMs) / outMs) : 1;
+                pivot.position.y = ts * (0.95 + 0.06 * Math.sin(el * 0.004));
+                pivot.rotation.y = Math.sin(el * 0.0022) * 0.35;
+                inst.setFade(f);
+                eyeMat.opacity = f * (0.5 + 0.3 * Math.sin(el * 0.02));
+            });
+        }
+        _sigSparks(tx, ty, 'divine-sparkle', 8, { vxy: 60, vz0: 30, vz1: 110, gravity: -30 });
+    }
+
+    /* ── SLEIGH RIDE — Santa's ram raid. The golden-red sleigh materializes
+       under the dasher, skims the whole dash line on a cushion of frost,
+       banks, and vanishes in the landing burst. Returns the ride's duration
+       so the caller can time the arrival beat (0 = model not ready). */
+    function _sigSleighRide3D(fx, fy, tx, ty, opts) {
+        opts = opts || {};
+        if (!_canSpawn() || !_wpnReady('sleigh')) return 0;
+        var fw = _worldPos(fx, fy);
+        var tw = _worldPos(tx, ty);
+        var ts = fw.ts;
+        var inst = _wpnInstance('sleigh', ts * 1.5);
+        if (!inst) return 0;
+        var dx = tw.x - fw.x, dz = tw.z - fw.z, dy = tw.y - fw.y;
+        var dist = Math.sqrt(dx * dx + dz * dz) || 1;
+        var rideMs = Math.max(280, Math.min(680, 90 * (dist / ts) + 200));
+
+        var g = new THREE.Group();
+        g.position.set(fw.x, fw.y, fw.z);
+        g.rotation.y = Math.atan2(dx, dz);      /* nose down the dash line */
+        var hull = new THREE.Group();
+        hull.add(inst.group);
+        g.add(hull);
+        var hover = ts * 0.22;
+
+        /* runner glow — twin gold streaks under the skids */
+        var runMat = _sigMat(0xffd27a, { map: _sigGlowTex() });
+        for (var rI = 0; rI < 2; rI++) {
+            var streak = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.16, inst.len * 0.9), runMat);
+            streak.rotation.x = -Math.PI / 2;
+            streak.position.set((rI === 0 ? 1 : -1) * ts * 0.16, -inst.len * 0.16, 0);
+            streak.renderOrder = 158;
+            hull.add(streak);
+        }
+
+        /* frost wake sprayed along the path */
+        var c0 = tilePx(fx, fy), c1 = tilePx(tx, ty);
+        var bz0 = tileZ(fx, fy), bz1 = tileZ(tx, ty);
+        var wakeN = Math.round(rideMs / 34);
+        for (var wI = 0; wI < wakeN; wI++) {
+            (function (idx) {
+                window.setTimeout(function () {
+                    if (_suppressed()) return;
+                    var t = idx / wakeN;
+                    _spawn({
+                        x: c0.x + (c1.x - c0.x) * t + rn(-10, 10),
+                        y: c0.y + (c1.y - c0.y) * t + rn(-10, 10),
+                        z: bz0 + (bz1 - bz0) * t + 8,
+                        mode: 'billboard',
+                        sprite: Math.random() < 0.6 ? 'ice-shard' : 'divine-sparkle',
+                        ml: rn(280, 520), size0: rn(6, 12), size1: 2,
+                        vx: rn(-30, 30), vy: rn(-30, 30), vz: rn(30, 90),
+                        gravity: 120, drag: 0.6, opacity0: 0.9, opacity1: 0,
+                    });
+                }, idx * 34);
+            })(wI);
+        }
+
+        _sigRun(g, rideMs + 140, function (el) {
+            var t = _sigClamp01(el / rideMs);
+            var f = el < 90 ? el / 90
+                  : el > rideMs ? Math.max(0, 1 - (el - rideMs) / 140) : 1;
+            inst.setFade(f);
+            runMat.opacity = f * 0.5;
+            g.position.set(fw.x + dx * t, fw.y + dy * t, fw.z + dz * t);
+            hull.position.y = hover + Math.sin(el * 0.02) * ts * 0.035;
+            hull.rotation.z = Math.sin(el * 0.013) * 0.07;              /* bank */
+            hull.rotation.x = t > 0.82 ? 0.20 * ((t - 0.82) / 0.18)     /* brake flare */
+                                       : -0.06;
+        });
+        return rideMs;
+    }
+
+    /* ── WARHEAD PLUNGE — the real missile GLB drops nose-first onto the
+       strike tile, exhaust screaming, and disappears into its own
+       explosion. Rides the descent pipeline for nuke / artillery, and the
+       Mortar Salvo lobs fly the same model on ballistic arcs. */
+    function _sigMissileDrop3D(tx, ty, opts) {
+        opts = opts || {};
+        if (!_canSpawn() || !_wpnReady('missile')) return false;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var len = ts * (opts.scale != null ? opts.scale : 1.15);
+        var inst = _wpnInstance('missile', len);
+        if (!inst) return false;
+        var ms = opts.ms != null ? opts.ms : 700;
+        var fromY = opts.fromZ != null ? opts.fromZ : ts * 7;
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        g.rotation.y = Math.random() * Math.PI * 2;
+        var body = new THREE.Group();
+        body.add(inst.group);
+        body.rotation.x = Math.PI / 2;          /* nose (+Z) to the earth */
+        g.add(body);
+        inst.setFade(1);
+
+        /* exhaust flare riding the tail (local -Z = straight up while diving) */
+        var exMat = _sigMat(0xffcc88, { map: _sigGlowTex() });
+        var ex = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.42, ts * 0.42), exMat);
+        ex.position.z = -inst.len * 0.58;
+        ex.renderOrder = 164;
+        inst.group.add(ex);
+
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty);
+        var trailN = Math.round(ms / 30);
+        for (var tI = 0; tI < trailN; tI++) {
+            (function (idx) {
+                window.setTimeout(function () {
+                    if (_suppressed()) return;
+                    var t = idx / trailN;
+                    _spawn({
+                        x: c.x + rn(-6, 6), y: c.y + rn(-6, 6),
+                        z: bz + fromY * (1 - t * t) + rn(0, 20),
+                        mode: 'billboard', sprite: 'smoke',
+                        ml: rn(400, 700), size0: rn(10, 18), size1: rn(30, 50),
+                        vz: rn(10, 40), drag: 0.4, opacity0: 0.5, opacity1: 0,
+                    });
+                }, idx * 30);
+            })(tI);
+        }
+
+        _sigRun(g, ms + 40, function (el) {
+            var t = _sigClamp01(el / ms);
+            body.position.y = fromY * (1 - t * t) + len * 0.5;
+            inst.group.rotation.z = el * 0.004;             /* slow rifling roll */
+            exMat.opacity = 0.55 + 0.35 * Math.sin(el * 0.05);
+            if (t >= 1) inst.setFade(0);                     /* explosion takes over */
+        });
+        return true;
+    }
 
     /* ── 3D greatsword builder — origin at the blade TIP, blade grows +Y ──
        v2 "apocalyptic anime greatsword": long distal taper with a swelling
@@ -8680,8 +9459,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
 
     /* which spectral firearm each gun spell summons (see _fireBoltMapped).
-       revolver / pistol / plasma are real Meshy GLBs since 2026-07-13;
-       shotgun + sniper stay procedural. */
+       ALL five are real Meshy GLBs now — revolver / pistol / plasma since
+       2026-07-13, shotgun + sniper rifle since 2026-07-25. */
     var _SIG_GUN_FOR = {
         deadEye: 'revolver',
         ricochet1: 'revolver',
@@ -8945,12 +9724,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _sigGunRigs = {};
 
     function _sigBuildGun(kind, ts) {
-        /* Meshy GLB firearms (2026-07-13): revolver / pistol / plasma render
-           as the real models; the sniper (and shotgun) keeps the procedural
-           build for now, per the owner. Muzzle sits at the +Z tip like the
+        /* Meshy GLB firearms: revolver / pistol / plasma (2026-07-13), and
+           since 2026-07-25 the shotgun + sniper rifle are real models too —
+           the full spectral arsenal. Muzzle sits at the +Z tip like the
            procedural guns, so the rig's recoil/flash/tracer code is
            unchanged. Falls through to procedural while the GLB loads. */
-        var GLB_GUN_LEN = { revolver: 0.85, pistol: 0.75, plasma: 1.05 };
+        var GLB_GUN_LEN = { revolver: 0.85, pistol: 0.75, plasma: 1.05,
+                            shotgun: 1.15, sniper: 1.45 };
         if (GLB_GUN_LEN[kind] && _wpnReady(kind)) {
             var inst = _wpnInstance(kind, ts * GLB_GUN_LEN[kind]);
             if (inst) {
@@ -10677,11 +11457,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         g.position.set(wp.x, wp.y, wp.z);
 
         var pieces = [];
+        var glbInsts = [];
         var n = opts.count != null ? opts.count : 14;
         var skulls = opts.skulls != null ? opts.skulls : 3;
         for (var i = 0; i < n; i++) {
             var piece = new THREE.Group();
-            if (i < skulls) {
+            /* 2026-07-25: hail the REAL femur/ulna/skull GLBs when they're
+               cached; the procedural knuckle-rods below are the fallback */
+            var glbBone = _wpnBonePiece(ts, i < skulls);
+            if (glbBone) {
+                piece.add(glbBone.group);
+                glbInsts.push(glbBone);
+            } else if (i < skulls) {
                 /* mini skull: cranium + jaw + eye sockets */
                 var sR = ts * (0.09 + Math.random() * 0.05);
                 piece.add(new THREE.Mesh(new THREE.SphereGeometry(sR, 8, 6), boneMat));
@@ -10732,6 +11519,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 ? 1 - (el - settleMs - holdMs) / fadeMs : 1;
             boneMat.opacity = op * 0.95;
             sockMat.opacity = op * 0.95;
+            for (var gi2 = 0; gi2 < glbInsts.length; gi2++) glbInsts[gi2].setFade(op);
             for (var j = 0; j < pieces.length; j++) {
                 var p2 = pieces[j];
                 var t = (el - p2.delay) / p2.fallMs;
@@ -13426,7 +14214,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }); },
 
         /* ORA — spectral giant fist */
-        reallyGoodPunch: function(tx, ty) { _sigStandFist3D(tx, ty, { color: 0xffd24a }); },
+        /* (reallyGoodPunch moved to the 2026-07-25 GLB-fist entry below) */
 
         /* KNIGHT / WARRIOR — tower shields */
         shieldBash: function(tx, ty) { _sigShieldBash3D(tx, ty, { glowColor: 0xffd875 }); },
@@ -13736,12 +14524,64 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             /* real 3D bones + skulls hail down over the 3×3 */
             _sigBoneRain3D(tx, ty, { radiusTiles: r || 1 });
         },
+        /* DEATH PACT — the contract is signed by candlelight: one fat black
+           taper burns blood-red before the necromancer while the skull
+           witness laughs. */
         raceDeathPact: function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigCandleProp3D(tx, ty, {
+                model: 'candle', heightPx: ts0 * 0.62,
+                flameColor: 0xff5544, circleColor: 0xaa3333,
+                circleRadiusPx: ts0 * 1.0, holdMs: 950, spin: 0.003,
+            });
             _sigSkull3D(tx, ty, { laugh: true, eyeColor: 0xff5544, boneColor: 0xe6d8d2, scale: 0.85, hover: 1.6 });
-            _sigMagicCircle3D(tx, ty, { color: 0xaa3333, radiusPx: (_cfg().tileSize || 128) * 1.0, holdMs: 700, spin: 0.003 });
         },
-        raceHexOfAgony: function(tx, ty) {
+        /* HEX OF AGONY (the 2026-07-25 merged hex) — a LINE of lit candles
+           snuffs itself out across the victim's path while the death's-head
+           watches: every step they take now feeds the flame. */
+        sharedHexOfToil: function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigCandleProp3D(tx, ty, {
+                model: 'candleLine', heightPx: ts0 * 0.85,
+                flameColor: 0x88ff66, circleColor: 0x55aa33,
+                circleRadiusPx: ts0 * 0.95, holdMs: 1100, spin: -0.0024,
+                yaw: _sigYawToward(tx, ty),
+            });
             _sigSkull3D(tx, ty, { eyeColor: 0xff8833, boneColor: 0xe0d6c4, scale: 0.9 });
+        },
+        /* FAMILY CURSE — the whole bloodline gets the séance: the full
+           ritual candle circle closes around the victim, violet flames,
+           and a quiet ancestral skull looming over the crown. */
+        raceCurseOfMisfortune: function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigCandleProp3D(tx, ty, {
+                model: 'candleRing', heightPx: ts0 * 0.9,
+                tint: 0xd8c8ff, flameColor: 0xbb77ff, circleColor: 0x8844cc,
+                circleRadiusPx: ts0 * 0.95, holdMs: 1300, spin: -0.0026,
+            });
+            _sigSkull3D(tx, ty, { eyeColor: 0xbb66ff, boneColor: 0xd9cfe8, scale: 0.8, hover: 1.5, holdMs: 780 });
+            _sigScreenFlash('#b88cff', 150, 0.10);
+        },
+        /* STAR CROSSED — the reversed card. */
+        raceStarCrossed: function(tx, ty) { _sigTarotReversed3D(tx, ty); },
+        /* TAROT DRAW — the full spread. */
+        raceTarotDraw: function(tx, ty) { _sigTarotDraw3D(tx, ty); },
+        /* REMOTE VIEW — the scrying card over the far tile. */
+        remoteView: function(tx, ty, r) { _sigTarotScry3D(tx, ty, r); },
+        /* A REALLY GOOD PUNCH — it is. */
+        /* A REALLY GOOD PUNCH — the real Meshy fist (stone-golem fist while
+           it streams; the gold knuckle look rides the fallback). */
+        reallyGoodPunch: function(tx, ty) { _sigGlbFist3D(tx, ty, { color: 0xffd24a }); },
+        haymaker: function(tx, ty) { _sigGlbFist3D(tx, ty, { scale: 0.8, circleColor: 0xff9944, color: 0xffb066 }); },
+        /* THE BURNING CROSS — Fallen Grace drops the wooden cross INVERTED
+           and alight: the fallen angel's whole theology in one prop.
+           (Judgment / Divine Judgment keep their gold-sword descents; the
+           upright wooden cross joins Wrath of the Watchers below.) */
+        raceFallenGrace: function(tx, ty) {
+            _sigCrossDescent3D(tx, ty, {
+                ms: 700, scale: 1.3, burning: true,
+                tint: 0x8a6a5a, holdMs: 1300,
+            });
         },
 
         /* ── FLESH — the necromancer / zombie ground kits raise living meat ── */
@@ -13754,8 +14594,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             });
         },
         raceRaiseDead: function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            /* the full graveside rite (2026-07-25): ritual candles close
+               around the corpse, the REAL bones burst out of the dirt, and
+               the flesh abomination heaves up through the middle of it */
+            _sigCandleProp3D(tx, ty, {
+                model: 'candleRing', heightPx: ts0 * 1.0,
+                tint: 0xd6ffe0, flameColor: 0x77ff88, circleColor: 0x66ff88,
+                circleRadiusPx: ts0 * 1.2, holdMs: 1350, spin: 0.002,
+            });
+            _sigBoneBurst3D(tx, ty, { count: 8, holdMs: 1000 });
             _sigFleshMound3D(tx, ty, { scale: 1.1, holdMs: 1100 });
-            _sigMagicCircle3D(tx, ty, { color: 0x66ff88, radiusPx: (_cfg().tileSize || 128) * 1.2, holdMs: 1000, spin: 0.002 });
         },
         /* ── SHAMBLING HORDE (2026-07-18 rework) — no longer a decoy: a wall
            of sprinting dead stampedes THROUGH the target area. Eight rag-doll
@@ -14052,13 +14901,28 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         /* ── SANTA CLAUSE (2026-07-13 rework) ── */
         raceNaughtyList: function(tx, ty) { _sigNaughtyList3D(tx, ty); },
-        'raceSleighDash:dash': function(tx, ty) {
+        /* 2026-07-25: the REAL golden-red sleigh now skims the whole dash
+           line (extra carries the launch tile through fireGeometry); the
+           frost burst holds until the runners actually arrive. Sprite-era
+           behavior (instant burst) is the fallback while the GLB streams. */
+        'raceSleighDash:dash': function(tx, ty, dist, extra) {
             var ts0 = _cfg().tileSize || 128;
-            _sigSpeedBurst3D(tx, ty, { color: 0xbfe6ff });
-            _sigShockRing3D(tx, ty, { color: 0x99ddff, r1: ts0 * 1.3, ms: 380 });
-            _sigSparks(tx, ty, 'ice-shard', 14, { vxy: 180 });
-            _sigSparks(tx, ty, 'divine-sparkle', 10, { vxy: 120, vz0: 40, vz1: 200 });
-            _sigScreenFlash('#cfeaff', 130, 0.14);
+            var burst = function() {
+                _sigSpeedBurst3D(tx, ty, { color: 0xbfe6ff });
+                _sigShockRing3D(tx, ty, { color: 0x99ddff, r1: ts0 * 1.3, ms: 380 });
+                _sigSparks(tx, ty, 'ice-shard', 14, { vxy: 180 });
+                _sigSparks(tx, ty, 'divine-sparkle', 10, { vxy: 120, vz0: 40, vz1: 200 });
+                _sigScreenFlash('#cfeaff', 130, 0.14);
+            };
+            var rideMs = 0;
+            if (extra && extra.fromX != null) {
+                rideMs = _sigSleighRide3D(extra.fromX, extra.fromY, tx, ty);
+            }
+            if (rideMs > 0) {
+                window.setTimeout(function () { if (!_suppressed()) burst(); }, rideMs * 0.9);
+            } else {
+                burst();
+            }
         },
 
         /* ── DIVINE HOST (2026-07-22 batch: valkraye / angel / ghost /
@@ -14072,9 +14936,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceSanctuary: function(tx, ty, r) {
             _sigSacredRings3D(tx, ty, { holdMs: 1100, radiusTiles: 0.9 + (r != null ? r : 1) * 0.25 });
             _sigLightPillar3D(tx, ty, { color: 0xfff2c8, ms: 1200, height: 560 });
-            _sigMagicCircle3D(tx, ty, {
-                color: 0xffe9a8, radiusPx: (_cfg().tileSize || 128) * (1.0 + (r != null ? r : 1) * 0.4),
-                holdMs: 1100, spin: 0.0016, opacity: 0.6, rise: 30,
+            /* 2026-07-25: the consecration is candlelit now — the ritual
+               circle rings the whole healing zone in warm vigil flames
+               (the shared spell also covers what Corrupted Sanctuary was) */
+            _sigCandleProp3D(tx, ty, {
+                model: 'candleRing',
+                heightPx: (_cfg().tileSize || 128) * (0.85 + (r != null ? r : 1) * 0.3),
+                tint: 0xfff2d0, flameColor: 0xffcf7a,
+                circleColor: 0xffe9a8,
+                circleRadiusPx: (_cfg().tileSize || 128) * (1.0 + (r != null ? r : 1) * 0.4),
+                holdMs: 1200, spin: 0.0016, riseMs: 420,
             });
         },
         /* ANGEL — Divine Smite: heaven opens in the sky and a column of
@@ -14125,6 +14996,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var reach = (r != null ? r : 2);
             _sigSacredRings3D(tx, ty, { sky: true, holdMs: 1200, radiusTiles: 1.2 });
             _sigLightPillar3D(tx, ty, { color: 0xffdf9a, ms: 1000, height: 780 });
+            /* 2026-07-25: the Watchers plant the REAL wooden cross at the
+               heart of the cross of light — touchdown at descentMs 700 */
+            _sigCrossDescent3D(tx, ty, { ms: 700, scale: 1.45, tint: 0xffe8b0, holdMs: 1150 });
             var arms = [[1, 0], [-1, 0], [0, 1], [0, -1]];
             for (var ai = 0; ai < arms.length; ai++) {
                 (function (dx, dy, idx) {
