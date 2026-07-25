@@ -2113,7 +2113,10 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
   if (b.check && !confirmBtn) right.push(h('span', { key: 'ck', className: 'hrlg-check' }, '✓ TARGET'));
   if (!dead && b.power) right.push(h('span', { key: 'pw', className: 'hrlg-pw', style: { color: b.power.color } }, b.power.v));
   if (!dead && b.mp) right.push(h('span', { key: 'mp', className: 'hrlg-chip' }, b.mp + ' MP'));
-  if (!dead && typeof b.cost === 'number' && !b.sub) {
+  // Mystery Dungeon lockstep: AP is gone from the player's vocabulary — no
+  // cost pips on any blade (one beat = one action, whatever it "costs").
+  if (!dead && typeof b.cost === 'number' && !b.sub
+      && !(typeof window._mdLockstepActive === 'function' && window._mdLockstepActive())) {
     const pips = []; for (let i = 0; i < b.cost; i++) pips.push(h('span', { key: i, className: 'hrlg-cpip' }));
     right.push(h('span', { key: 'ap', className: 'hrlg-cost' }, pips));
   }
@@ -2841,7 +2844,10 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
           );
         })(),
       ),
-      h('div', { className: 'hrlg-ap' },
+      /* Mystery Dungeon lockstep: NO AP economy on screen — one beat is one
+         action, so the pip row would only ever read "spent". Hidden. */
+      !(typeof window._mdLockstepActive === 'function' && window._mdLockstepActive())
+      && h('div', { className: 'hrlg-ap' },
         h('span', { className: 'hrlg-ap-lbl' }, 'AP'),
         pips,
         h('span', { className: 'hrlg-ap-num' }, ap + '/'),
@@ -3820,7 +3826,12 @@ function ActionMenu({ st, hidden }) {
   // Clash (classic JRPG battle): there is no Move verb at all — the ladder
   // reads Attack › Abilities › Combo › Items › Guard, like a proper JRPG
   // command menu.
-  const actions = (typeof _isClashMode === 'function' && _isClashMode())
+  // Mystery Dungeon lockstep: NO Move blade — walking IS the free verb
+  // (WASD / arrows step, clicking a tile travels), so the ladder reads
+  // Attack › Abilities › Combo › Items › Guard like a proper crawler.
+  const _mdLock = typeof window._mdLockstepActive === 'function' && window._mdLockstepActive();
+  if (_mdLock) guardAction.sub = _guardOk ? 'Hold & brace' : guardAction.sub;
+  const actions = ((typeof _isClashMode === 'function' && _isClashMode()) || _mdLock)
     ? [attackAction, abilAction, comboAction, itemsAction, guardAction]
     : [moveAction, attackAction, abilAction, comboAction, itemsAction, guardAction];
 
@@ -4418,6 +4429,9 @@ function _computeEnemyActions(actingUnit, targetUnit) {
   const distFrom = (fx, fy, fz) => _distFromTo(fx, fy, fz);
 
   const findMoveIntoRange = (requiredRange, actionApCost, longRange) => {
+    // Mystery Dungeon lockstep: one beat = one action — never offer a
+    // move-into-range (or jump-into-range) plan from the quick menu.
+    if (typeof window._mdLockstepActive === 'function' && window._mdLockstepActive()) return null;
     if (typeof getMoveTiles !== 'function' || typeof canUnitMove !== 'function') return null;
     if (!canUnitMove(actingUnit)) return null;
     const movesLeft = (typeof G.UNIT_MAX_MOVES !== 'undefined' ? G.UNIT_MAX_MOVES : 2) - (actingUnit.movesThisTurn || 0);

@@ -5104,6 +5104,17 @@
         }
 
         function getCurrentCyclePhase() {
+            /* Mystery Dungeon: day/night is a PER-FLOOR fact, not a per-round
+               cycle — odd floors are day, even floors are night, and it never
+               flips mid-floor (the lockstep's per-step upkeep advances
+               state.round every beat, which would strobe the cycle). The
+               Guild Hub always basks in daylight. */
+            if (typeof window._isDungeonMode === 'function' && window._isDungeonMode()) {
+                if (state._mdPhase === 'floor' && state._mdRun) {
+                    return (state._mdRun.floor % 2 === 1) ? 'day' : 'night';
+                }
+                return 'day';
+            }
             if (!state.round || state.phase !== 'battle') return 'day';
             return state.round % 2 === 1 ? 'day' : 'night';
         }

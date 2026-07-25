@@ -4,7 +4,76 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## WEAPON GLB BATCH 2: candles/bones/tarot/cross/sleigh/fist/ordnance + hex & sanctuary dedup (2026-07-25, LATEST) — three-vfx-effects.js, three-renderer.js, battle.js, data.js, index.html
+## MYSTERY DUNGEON VERTICAL SLICE: PMD-ification pass (2026-07-25, LATEST) — battle.js, state.js, hud.js, ui.js, map.js, index.html
+Token `20260725n` → `20260725o`. Owner request: make MD floors play like Pokémon
+Mystery Dungeon. Everything below is gated on `_mdLockstepActive()` (or
+`_isDungeonMode()` + floor) — hub, PvP, dev sims untouched.
+
+### 1. END-OF-ROUND SEQUENCE IS GONE from floors — per-step upkeep (battle.js)
+`_mdEndTick` no longer hands off to `maybeAdvanceTurn` every 4 beats. Instead
+EVERY beat runs `_mdBeatUpkeep()` inline: `state.round++` (so ONE BEAT = ONE
+ROUND — cooldowns, status durations, zone lifetimes and delayed-spell fuses
+all pace per STEP now), then each unit's DoT `onRoundEnd` (burn/poison/
+drowning/regen) fires with full floating text but ZERO camera work, then
+`_tickAllStatusDurations()`. Zones/seeds/totems + turret volleys + the stock
+HP/MP regen trickle (every `MD_REGEN_EVERY_STEPS`=4 beats to keep the old
+healing pace) run under `state._mdQuietUpkeep = true`, which `_skipVisuals()`
+now reads → all those processors take their synchronous no-camera fast paths.
+Delayed spells detonate per step WITH visuals; their camera dive alone is
+muted (gate in state.js `processDelayedSpellDetonations`). `_mdRunRoundUpkeep`
+deleted; `_mdEorPending` is a permanently-false relic. NOTE: statuses now
+expire per step (a 2-round burn = 2 steps, total damage unchanged); buffs are
+correspondingly snappy — flag if it feels too short in playtest.
+
+### 2. Ambience is PER FLOOR, frozen (battle.js `_mdRollFloorAmbience`, map.js)
+Zodiac: already re-rolled by every floor's startMatch, and nothing rotates it
+mid-floor anymore. Day/night: `getCurrentCyclePhase` (map.js) now returns
+floor parity on MD floors (odd = day, even = night; hub always day) — it used
+to strobe with round parity. Weather/celestial: `_mdRollFloorAmbience` (600ms
+after floor load) gives each floor one 35% weather roll (non-instant,
+non-homing systems only, `remaining: 999` — startMatch clears it next floor)
+and one 18% sky-event roll, each announced with a single combat banner, no
+EOR announcer. Runs 900ms after floor load. `spawnWeather`/`checkNewSkyEvent`
+were unusable here (round-gated for PvP pacing).
+
+### 3. No AP / no press-turn on floors (battle.js, hud.js)
+`applyPressTurn` returns the neutral result immediately under the lockstep —
+no refunds, no miss/resist penalties, no "+2 AP!"/"WASTED!" feedback, no press
+entropy. HUD: the whole `hrlg-ap` pip row is hidden, and `HorologeBlade`
+skips AP cost pips on every blade. AP still exists ENGINE-side (the beat
+armer/disarmer uses it) — it's just gone from the player's vocabulary.
+
+### 4. One action per beat, honestly (battle.js, hud.js)
+All move-then-act planning is dead on floors: `_spellMoveBudget`,
+`_attackMoveBudget` return 0 and `spellHasReachableTarget` returns false
+under the lockstep, so Attack/ability blades grey out unless a target is in
+range RIGHT NOW (no more "MOVE→ATK"/"MOVE→CAST" notes); the enemy quick
+menu's `findMoveIntoRange` (hud.js) returns null likewise.
+
+### 5. Move blade removed (hud.js ActionMenu)
+Floors show Attack › Abilities › Combo › Items › Guard (same shape as Clash).
+Walking is WASD/arrows or click-to-travel; Guard reads "Hold & brace" (it's
+the PMD "pass a turn in place" verb).
+
+### 6. DIAGONAL MOVEMENT on floors (battle.js, ui.js)
+`getMoveTiles` + `findMovePath` expand 8 directions when `_mdDiagonalsOn()`
+(dungeon floor only) with the PMD no-corner-cut rule: `_mdDiagStepOk` demands
+BOTH flanking cardinal tiles be walkable within MAX_CLIMB of the mover's z
+(units on flanking tiles do NOT block, matching PMD). `wallStepInfo` already
+handles diagonal deltas (L-path check), and `combatDist` already counts all 8
+neighbours as range 1, so diagonal melee Just Works. Keyboard: ui.js tracks
+physically-held movement keys (`_mdHeldMoveKeys`, capture-phase listeners) —
+hold W, tap/hold D → NE steps; opposite keys cancel. Click-travel paths
+diagonal automatically via findMovePath.
+
+### 7. Recruitment is an ACCEPT/DECLINE choice (battle.js)
+`_mdMaybeOfferRecruit`'s roll now opens `_mdOfferRecruitDialog` — a generic
+'confirm' uiDialog ("X wants to join!") with Welcome them / Turn them away.
+Accept → `_mdRecruitNow` (party join or, when full, hub-roster send — the
+dialog says which before you click). Decline → nothing, not even the roster
+unlock. If another dialog is up it retries 4×900ms then lets the moment pass.
+
+## WEAPON GLB BATCH 2: candles/bones/tarot/cross/sleigh/fist/ordnance + hex & sanctuary dedup (2026-07-25) — three-vfx-effects.js, three-renderer.js, battle.js, data.js, index.html
 Token `20260725m` → `20260725n-weapons2`. Sixteen new Meshy GLBs the owner
 uploaded to R2 `Assets/weapons/` are wired as real spell props. All bboxes
 were measured from the actual GLB scene graphs before wiring (CDN was

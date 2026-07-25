@@ -825,7 +825,10 @@
                    wide for the blast. Falls back to the classic tactical dive
                    when ineligible (2D renderer, toggle off, marked shots). ── */
                 let _cine = null;
-                if (isVisible && !state.cameraDisabled && typeof camera !== 'undefined') {
+                /* Mystery Dungeon lockstep: the camera belongs to the leader —
+                   the blast's VFX/damage still play, but no detonation dive. */
+                const _mdNoDetCam = typeof window._mdLockstepActive === 'function' && window._mdLockstepActive();
+                if (isVisible && !state.cameraDisabled && !_mdNoDetCam && typeof camera !== 'undefined') {
                     if (typeof _eorPhaseLabel === 'function') _eorPhaseLabel('End of Round — Detonations');
                     if (!ds.markedUnitId && typeof window !== 'undefined'
                         && typeof window.playDetonationCinematic === 'function') {

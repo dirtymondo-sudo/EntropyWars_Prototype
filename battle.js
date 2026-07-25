@@ -1,4 +1,7 @@
         function _skipVisuals() {
+            // Mystery Dungeon per-step upkeep: zone/regen mechanics apply, the
+            // end-of-round camera + dialogue theatre stays muted (_mdBeatUpkeep).
+            if (state._mdQuietUpkeep) return true;
             if (state.devAutoSim) return !state._devSimShowAnims;
             return !!state.animationsDisabled;
         }
@@ -16748,6 +16751,35 @@
             return true;
         }
 
+        /* ── Mystery Dungeon diagonal movement (PMD-style) ──────────────────
+           On dungeon floors every creature moves in 8 directions. The one
+           rule PMD enforces — and we mirror — is NO CORNER CUTTING: a
+           diagonal step is legal only when BOTH flanking cardinal tiles are
+           walkable at (roughly) the mover's height, so nobody slides through
+           the corner of a wall. Units standing on a flanking tile do NOT
+           block the diagonal (matching PMD). Everywhere outside dungeon
+           floors movement stays strictly 4-directional. */
+        function _mdDiagonalsOn() {
+            return typeof _isDungeonMode === 'function' && _isDungeonMode()
+                && state._mdPhase === 'floor' && !!state._mdRun;
+        }
+        const _MD_STEP_DIRS_CARDINAL = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+        const _MD_STEP_DIRS_8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+        function _mdStepDirs() {
+            return _mdDiagonalsOn() ? _MD_STEP_DIRS_8 : _MD_STEP_DIRS_CARDINAL;
+        }
+        function _mdDiagStepOk(unit, cx, cy, cz, dx, dy) {
+            const _has3D = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
+            const _ok = (x, y) => {
+                if (!isInside(x, y)) return false;
+                if (typeof objectBlocksEdge === 'function' && objectBlocksEdge(cx, cy, x, y, true)) return false;
+                const surfs = _has3D ? getWalkableSurfaces(x, y) : [getHeightAt(x, y)];
+                return surfs.some(z => Math.abs(z - (cz || 0)) <= MAX_CLIMB_HEIGHT
+                    && unitCanTraverse(unit, x, y, _has3D ? z : undefined));
+            };
+            return _ok(cx + dx, cy) && _ok(cx, cy + dy);
+        }
+
         function findMovePath(unit, destX, destY, destZ) {
             if (!unit || !isInside(destX, destY)) return [];
             const _has3D = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
@@ -16801,13 +16833,14 @@
                 if (cur.cost > (costs.get(curKey) ?? Infinity)) continue;
                 /* Movement is 4-directional (cardinal only) — diagonal steps
                    let units clip through wall corners instead of walking
-                   around them. Mirrors getMoveTiles. */
-                for (const [dx, dy] of [
-                        [1, 0], [-1, 0], [0, 1], [0, -1]
-                    ]) {
+                   around them. EXCEPTION: Mystery Dungeon floors move in 8
+                   directions with the PMD no-corner-cut rule (_mdDiagStepOk).
+                   Mirrors getMoveTiles. */
+                for (const [dx, dy] of _mdStepDirs()) {
                     const nx = cur.x + dx;
                     const ny = cur.y + dy;
                     if (!isInside(nx, ny)) continue;
+                    if (dx !== 0 && dy !== 0 && !_mdDiagStepOk(unit, cur.x, cur.y, cur.z, dx, dy)) continue;
                     /* skipWalls=true — walls are checked z-exactly per surface
                        below via wallStepInfo (mirrors getMoveTiles). */
                     if (!_pathPhasing && objectBlocksEdge(cur.x, cur.y, nx, ny, true)) continue;
@@ -19123,6 +19156,13 @@
             const result = { outcome, apDelta: 0, pressed: false, penalty: false };
             if (!unit) return result;
 
+            /* Mystery Dungeon floors: NO press-turn system. One beat is one
+               action for everyone — refunds are meaningless, penalties would
+               only punish the roguelike clock, and neither should flash
+               "+AP!"/"WASTED!" at the player. Type effectiveness still shows
+               through the normal damage feedback. */
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return result;
+
             // A dodge/miss OR a "not very effective" hit both waste momentum and
             // drain an extra AP (turn cut short). Each mistake ALSO permanently
             // shrinks this turn's press-refund cap (see below): a turn that
@@ -19652,6 +19692,10 @@
         // the finder must never offer it.
         function _spellMoveBudget(unit, spell) {
             if (!unit || !spell) return 0;
+            /* Mystery Dungeon lockstep: one beat = one action. There is no
+               move-then-cast — a spell with no target in range RIGHT NOW greys
+               out instead of offering a plan the clock can't honor. */
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return 0;
             if (typeof canUnitMove !== 'function' || !canUnitMove(unit)) return 0;
             const movesLeft = UNIT_MAX_MOVES - (unit.movesThisTurn || 0);
             if (movesLeft <= 0) return 0;
@@ -19721,6 +19765,9 @@
         // True when the unit could step into range this turn and cast `spell`
         // on SOME valid target (used to keep the ability-menu entry enabled).
         function spellHasReachableTarget(unit, spell) {
+            /* Mystery Dungeon lockstep: any move/jump/height-then-cast plan is
+               two beats' worth of action — never light a blade for it. */
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return false;
             const sx = unit.x, sy = unit.y, sz = unit.z;
             try {
                 // Jump approach first: leap to a tile (often high ground) from which the
@@ -19960,6 +20007,9 @@
         // AP (finishMove), so a move+move+attack plan can never actually swing.
         function _attackMoveBudget(unit) {
             if (!unit) return 0;
+            /* Mystery Dungeon lockstep: no move-then-attack — one beat, one
+               verb. Attack lights only when something is in reach RIGHT NOW. */
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return 0;
             if (typeof canUnitMove !== 'function' || !canUnitMove(unit)) return 0;
             const movesLeft = UNIT_MAX_MOVES - (unit.movesThisTurn || 0);
             if (movesLeft <= 0) return 0;
@@ -21892,6 +21942,14 @@
                 state._mdEorPending = false;
                 state._mdTravel = null;
                 state._mdInnerMove = false;
+                /* ── PER-FLOOR AMBIENCE ──────────────────────────────────────
+                   The whole sky is rolled ONCE as the floor loads and then
+                   FROZEN: startMatch already re-rolled the zodiac, day/night
+                   comes from the floor number (getCurrentCyclePhase), and
+                   weather / celestial events get their one spawn chance here.
+                   The per-step upkeep (_mdBeatUpkeep) never ticks or re-rolls
+                   any of it — the next staircase is the next sky. */
+                window.setTimeout(_mdRollFloorAmbience, 900);
                 const pb = (typeof PREBUILT_MAPS !== 'undefined') ? PREBUILT_MAPS.md_floor : null;
                 state._mdStairs = (pb && pb._mdStairs) ? { x: pb._mdStairs.x, y: pb._mdStairs.y } : null;
                 state._mdEntrance = [];
@@ -22243,24 +22301,27 @@
                guard — or a single step toward wherever that scorer wanted to
                go: movement is one tile per beat for everyone, the leader
                included, which is what makes the floor a lockstep grid.
-             · Every MD_TICKS_PER_ROUND beats the clock hands one round to the
-               stock end-of-round sequence (statuses, hazards, regen, round++)
-               by letting a single advance through (_mdEorPending); the sequence
-               ends in _continueBlitzWithUnit, which boots the next round of
-               beats. The round banner and the overview crane stay quiet — an
-               establishing shot every few steps is not a dungeon crawl.
+             · There is NO end-of-round sequence on a floor anymore. Every
+               beat runs _mdBeatUpkeep inline instead: round++ (so cooldowns,
+               durations, fuses and zones all pace per STEP), DoTs tick with
+               full visuals, everything camera-free. The ambience layer
+               (zodiac / weather / celestial / day-night) is rolled once per
+               floor (_mdRollFloorAmbience + getCurrentCyclePhase) and frozen.
+               _mdEorPending is now a permanently-false relic kept only so the
+               intercepts stay simple.
              · Click-to-move becomes a TRAVEL: the leader walks the route one
                tile per beat (state._mdTravel), and the run breaks off the
                moment a monster comes into view, something bites, or a dialog
                opens — the roguelike "you were interrupted" rule.
            Everything here is dungeon-floor-only; the hub, every PvP mode and
            the dev sims keep the untouched blitz engine.                      */
-        /* Beats per engine ROUND. Everything measured in rounds (status
-           durations, cooldowns, regen, passive XP) is paced by this number: at
-           6 a 2-round stun cost the player twelve steps, which in a crawl is an
-           eternity. 4 keeps statuses meaningful without making the round
-           upkeep's ~0.4s hand-off a constant interruption. */
-        const MD_TICKS_PER_ROUND = 4;
+        /* PMD rule: ONE BEAT = ONE ROUND. DoTs bite on every step, statuses
+           wear off per step, cooldowns and delayed spells pace per step — the
+           whole batched end-of-round ceremony is gone from dungeon floors
+           (_mdBeatUpkeep replaces it, inline and camera-free). Only the
+           natural HP/MP regen trickle keeps a slower cadence so corridor
+           pacing doesn't trivialise fights. */
+        const MD_REGEN_EVERY_STEPS = 4;
         const MD_TRAVEL_MAX_STEPS = 64;
 
         function _mdLockstepActive() {
@@ -22428,23 +22489,61 @@
             state._mdTickBusy = false;
             state._actionExecuting = false;
             if (!_mdLockstepActive()) return;
-            if ((state._mdTickN % MD_TICKS_PER_ROUND) === 0) { _mdRunRoundUpkeep(); return; }
+            _mdBeatUpkeep();
+            if (!_mdLockstepActive()) return;   // upkeep can end the run (DoT wipe)
             _mdHandBack();
         }
 
-        /* Hand the floor's clock to the stock end-of-round sequence for one
-           pass (statuses, hazards, regen, round++). It ends by calling
-           _continueBlitzWithUnit, which boots the next run of beats. */
-        function _mdRunRoundUpkeep() {
-            state._mdEorPending = true;
-            for (const u of state.units) { if (!u.dead) u.ap = 0; }
-            state._blitzActiveUnitId = null;
-            try { maybeAdvanceTurn(); }
-            catch (e) {
-                console.error('[MD] round upkeep failed — resuming the clock', e);
-                state._mdEorPending = false;
-                _mdHandBack();
+        /* ── PMD per-step upkeep — the end-of-round sequence is GONE ────────
+           Runs synchronously on every beat. One beat advances the engine
+           "round" by one, so everything measured in rounds (status durations,
+           spell/combo cooldowns, delayed-spell fuses, zone lifetimes) paces
+           per STEP. DoTs tick inline with their floating damage text — no
+           establishing shot, no camera dives, no round banner. The ambience
+           layer (zodiac / weather / celestial events / day-night) is
+           deliberately NEVER advanced here: it is rolled once per floor
+           (_mdOnBattlePrepared + getCurrentCyclePhase's floor-parity day/
+           night) and stays frozen until the stairs. */
+        function _mdBeatUpkeep() {
+            if (!_mdLockstepActive()) return;
+            state.round = (state.round || 1) + 1;
+            /* DoT hits every step: burn / poison / drowning / regen statuses
+               resolve their onRoundEnd right here, full visuals, no camera. */
+            for (const u of state.units.slice()) {
+                if (!u || u.dead || u._dying || u._mdNpc || !u.status) continue;
+                for (const k of [...getActiveStatusKeys(u)]) {
+                    const def = STATUS_DEFS[k];
+                    if (!def || typeof def.onRoundEnd !== 'function') continue;
+                    try { def.onRoundEnd(u); } catch (e) {}
+                    if (u.dead) break;
+                }
             }
+            try { _tickAllStatusDurations(); } catch (e) {}
+            /* Zones, seeds, totem auras (and the slower regen trickle) apply
+               their MECHANICS synchronously; the EOR camera/dialogue theatre
+               is muted via the _mdQuietUpkeep flag (read by _skipVisuals). */
+            state._mdQuietUpkeep = true;
+            try {
+                processEndOfRoundZonesAndSeeds(function () {});
+                if ((state._mdTickN % MD_REGEN_EVERY_STEPS) === 0) {
+                    processEndOfRoundRegen(function () {});
+                }
+                if (typeof processTurretVolleys === 'function') processTurretVolleys(function () {});
+                /* terrain bookkeeping the old EOR owned: burning tiles cool,
+                   soaked units dry, frozen units get their thaw roll. (The
+                   AMBIENCE tickers — tickWeather/tickSkyEvent — are on
+                   purpose absent: the floor's sky is frozen.) */
+                if (typeof tickBurningTiles === 'function') tickBurningTiles();
+                if (typeof tickWetUnits === 'function') tickWetUnits();
+                if (typeof meltIceNearLava === 'function') meltIceNearLava();
+                if (typeof _checkFrozenThaws === 'function') _checkFrozenThaws();
+            } catch (e) { console.warn('[MD] step upkeep failed', e); }
+            finally { state._mdQuietUpkeep = false; }
+            /* fuses burn one step per step — the blast plays with full visuals */
+            try { if (typeof processDelayedSpellDetonations === 'function') processDelayedSpellDetonations(function () {}); } catch (e) {}
+            try { checkWin(); } catch (e) {}
+            markDirty('board', 'hud', 'selectedUnit');
+            scheduleBoardRender();
         }
 
         /* Booted by _continueBlitzWithUnit for every dungeon-floor activation:
@@ -22714,7 +22813,8 @@
                 try {
                     for (const t of getMoveTiles(u)) {
                         if (t._jump || t._takeoff) continue;
-                        if (Math.abs(t.x - u.x) + Math.abs(t.y - u.y) !== 1) continue;
+                        /* one step only — diagonal neighbours count on floors */
+                        if (Math.max(Math.abs(t.x - u.x), Math.abs(t.y - u.y)) !== 1) continue;
                         if (unitAt(t.x, t.y)) continue;
                         const d = Math.abs(t.x - tx) + Math.abs(t.y - ty);
                         if (d < bestD) { bestD = d; step = t; }
@@ -22872,8 +22972,50 @@
                 if (state._mdPhase !== 'floor' || !state._mdRun) return;
                 if (state._mdRun.floor !== runFloor) return;
                 if (state._mdEnded || state._mdTransitioning || state.winner || state.phase !== 'battle') return;
-                _mdRecruitNow(race, gender, spot);
+                _mdOfferRecruitDialog(race, gender, spot, runFloor, 0);
             }, 1200);
+        }
+
+        /* PMD-faithful: recruitment is a CHOICE. The fallen monster asks to
+           join and the player accepts or declines with real buttons (the
+           generic 'confirm' uiDialog — see renderUiDialog in ui.js). If some
+           other dialog is up (stairs prompt), retry briefly, then let the
+           moment pass. */
+        function _mdOfferRecruitDialog(race, gender, spot, runFloor, attempt) {
+            if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return;
+            if (state._mdPhase !== 'floor' || !state._mdRun || state._mdRun.floor !== runFloor) return;
+            if (state._mdEnded || state._mdTransitioning || state.winner || state.phase !== 'battle') return;
+            if (state.uiDialog) {
+                if ((attempt || 0) < 4) setTimeout(() => _mdOfferRecruitDialog(race, gender, spot, runFloor, (attempt || 0) + 1), 900);
+                return;
+            }
+            const label = _mdRaceLabelB(race);
+            const partyFull = ((state.partyBuilds[1] || []).length) >= 4;
+            state.uiDialog = {
+                type: 'confirm',
+                icon: '🤝',
+                title: label + ' wants to join!',
+                text: partyFull
+                    ? 'The defeated ' + label + ' asks to join you — but your party is full (4 max). Accepting sends them to the Guild Hub roster for future runs.'
+                    : 'The defeated ' + label + ' rises and asks to join your party. They’ll fight beside you for the rest of the run — and join the Guild Hub roster.',
+                confirmIcon: '🤝',
+                confirmLabel: partyFull ? 'Send to the Guild' : 'Welcome them',
+                confirmSub: partyFull ? 'Joins the hub roster' : 'Joins the party now',
+                cancelLabel: 'Turn them away',
+                cancelSub: 'They slink back into the dark',
+                onConfirm: () => {
+                    if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return;
+                    if (state._mdPhase !== 'floor' || !state._mdRun || state._mdRun.floor !== runFloor) return;
+                    if (state._mdEnded || state._mdTransitioning || state.winner || state.phase !== 'battle') return;
+                    _mdRecruitNow(race, gender, spot);
+                },
+                onCancel: () => {
+                    addLog('💨 The ' + label + ' slinks back into the dark, rejected.');
+                },
+            };
+            try { playSfx('uiCursorFocus'); } catch (e) {}
+            markDirty('dialog');
+            renderIfDirty();
         }
 
         function _mdRecruitNow(race, gender, spot) {
@@ -23271,6 +23413,62 @@
         function _mdNoFlight() {
             return !!(typeof _isDungeonMode === 'function' && _isDungeonMode()
                 && state._mdPhase === 'floor');
+        }
+
+        /* ── Per-floor ambience roll ────────────────────────────────────────
+           Each floor gets ONE sky, decided as it loads and frozen until the
+           stairs: the zodiac startMatch already re-rolled, day/night from the
+           floor number (getCurrentCyclePhase), plus one chance each at a
+           static weather system and a celestial event. spawnWeather /
+           checkNewSkyEvent are round-gated for PvP pacing, so the floor rolls
+           its own — instant (earthquake) and homing (storm) weathers are
+           excluded: their payoff lives in EOR phases a dungeon never runs. */
+        const MD_FLOOR_WEATHER_CHANCE = 0.35;
+        const MD_FLOOR_SKY_EVENT_CHANCE = 0.18;
+        function _mdRollFloorAmbience() {
+            if (state._mdPhase !== 'floor' || !state._mdRun || state.phase !== 'battle') return;
+            try {
+                if (typeof WEATHER_REGISTRY !== 'undefined' && typeof WEATHER_KEYS !== 'undefined'
+                    && typeof rollWeatherTiles === 'function' && Math.random() < MD_FLOOR_WEATHER_CHANCE) {
+                    const _wKeys = WEATHER_KEYS.filter(k => {
+                        const d = WEATHER_REGISTRY[k];
+                        return d && !d.instant && !d.homing;
+                    });
+                    if (_wKeys.length) {
+                        const _wType = _wKeys[randInt(_wKeys.length)];
+                        const _wDef = WEATHER_REGISTRY[_wType];
+                        const _wTiles = rollWeatherTiles(_wDef.tiles, _wDef.preferredTerrain || null, _wDef.ignoresTerrain);
+                        if (_wTiles && _wTiles.length) {
+                            if (!state.activeWeather) state.activeWeather = [];
+                            state.activeWeather.push({
+                                type: _wType, tiles: _wTiles, direction: null,
+                                remaining: 999,   // frozen — cleared by the next floor's startMatch
+                                id: 'w_md_' + state._mdRun.floor + '_' + randInt(9999),
+                                _casterUnitId: null,
+                            });
+                            addLog(`${_wDef.icon} ${_wDef.label} hangs over this floor. ${_wDef.desc}`);
+                            if (typeof showCombatBanner === 'function') {
+                                showCombatBanner(_wDef.icon + ' ' + String(_wDef.label).toUpperCase(), 'This floor has its own sky — it holds until the stairs.', 'neutral');
+                            }
+                        }
+                    }
+                }
+            } catch (e) { console.warn('[MD] floor weather roll failed', e); }
+            try {
+                if (typeof SKY_EVENTS !== 'undefined' && typeof SKY_EVENT_KEYS !== 'undefined'
+                    && !state.skyEvent && Math.random() < MD_FLOOR_SKY_EVENT_CHANCE) {
+                    const _sType = SKY_EVENT_KEYS[randInt(SKY_EVENT_KEYS.length)];
+                    state.skyEvent = { type: _sType, remaining: 999 };   // frozen for the floor
+                    const _sMeta = SKY_EVENTS[_sType];
+                    addLog(`A ${_sMeta.label} ${_sMeta.icon} hangs over this floor. ${_sMeta.desc}.`);
+                    if (typeof showCombatBanner === 'function') {
+                        showCombatBanner(_sMeta.icon + ' ' + String(_sMeta.label).toUpperCase(), 'A celestial event rules this floor.', 'neutral');
+                    }
+                }
+            } catch (e) { console.warn('[MD] floor sky roll failed', e); }
+            state.announcementQueue = [];
+            markDirty('board', 'hud');
+            scheduleBoardRender();
         }
 
         function _mdCheckWin() {
@@ -43193,16 +43391,14 @@
 
                 /* Movement is 4-directional (cardinal only) — diagonal steps
                    let units clip through wall corners instead of walking
-                   around them. Mirrors findMovePath. */
-                for (const [dx, dy] of [
-                        [1, 0],
-                        [-1, 0],
-                        [0, 1],
-                        [0, -1]
-                    ]) {
+                   around them. EXCEPTION: Mystery Dungeon floors move in 8
+                   directions with the PMD no-corner-cut rule (_mdDiagStepOk).
+                   Mirrors findMovePath. */
+                for (const [dx, dy] of _mdStepDirs()) {
                     const nx = cur.x + dx;
                     const ny = cur.y + dy;
                     if (!isInside(nx, ny)) continue;
+                    if (dx !== 0 && dy !== 0 && !_mdDiagStepOk(unit, cur.x, cur.y, cur.z, dx, dy)) continue;
 
                     /* skipWalls=true: authored edge walls are checked z-exactly
                        per landing surface below (wallStepInfo), not with the

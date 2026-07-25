@@ -9886,6 +9886,26 @@
             });
         }
 
+        /* ── Mystery Dungeon diagonal input ─────────────────────────────────
+           Which movement keys are physically held RIGHT NOW. On dungeon
+           floors a held cardinal + a perpendicular press combine into one
+           PMD diagonal step (hold W, tap D → north-east; key-repeat on the
+           second key keeps stepping diagonally). Tracked independently of
+           the main handler so keyups are never missed. */
+        const _mdHeldMoveKeys = new Set();
+        {
+            const _mdMoveKeySet = { 'w': 1, 'a': 1, 's': 1, 'd': 1, 'arrowup': 1, 'arrowdown': 1, 'arrowleft': 1, 'arrowright': 1 };
+            document.addEventListener('keydown', (e) => {
+                const k = (e.key || '').toLowerCase();
+                if (_mdMoveKeySet[k]) _mdHeldMoveKeys.add(k);
+            }, true);
+            document.addEventListener('keyup', (e) => {
+                const k = (e.key || '').toLowerCase();
+                _mdHeldMoveKeys.delete(k);
+            }, true);
+            window.addEventListener('blur', () => _mdHeldMoveKeys.clear());
+        }
+
         document.addEventListener('keydown', (event) => {
             if (state.phase !== 'battle' || state.winner) return;
             if (state.uiDialog) return;
@@ -9913,6 +9933,21 @@
             if (dirs[key]) {
                 event.preventDefault();
                 let [dx, dy] = dirs[key];
+
+                /* MD floors: combine the pressed key with any OTHER held
+                   movement key into a diagonal (clamped to one tile). Opposite
+                   keys cancel back to the pressed key's own direction. */
+                if (typeof window._mdLockstepActive === 'function' && window._mdLockstepActive()) {
+                    let cdx = dx, cdy = dy;
+                    for (const hk of _mdHeldMoveKeys) {
+                        if (hk === key || !dirs[hk]) continue;
+                        cdx += dirs[hk][0];
+                        cdy += dirs[hk][1];
+                    }
+                    cdx = Math.max(-1, Math.min(1, cdx));
+                    cdy = Math.max(-1, Math.min(1, cdy));
+                    if (cdx !== 0 || cdy !== 0) { dx = cdx; dy = cdy; }
+                }
 
                 {
                     // dioramaYawDeg is the ACTUAL live camera yaw — it already
