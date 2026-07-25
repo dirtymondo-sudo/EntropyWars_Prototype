@@ -13317,6 +13317,27 @@ const ThreeRenderer = (function () {
         var ht = root._ew_height || 0;
         var topY = (typeof window._getElevationPx === 'function')
             ? window._getElevationPx(Math.max(0, ht)) : ht * ((CONFIG.tileSize || BASE_TILE) * 0.5);
+        /* _ew_height is the GROUND height of the column, which says nothing
+           about overhead architecture: a roof slab or an upper-storey floor
+           hanging over a z0 tile reports height 0, so the "can this actually
+           hide the subject?" test below rejected it and the roof stayed opaque
+           while the unit under/behind it showed as a hologram. Use the real
+           top of the column's canopy blocks instead. Cached per root — roots
+           are rebuilt (and the cache discarded with them) on terrain change. */
+        if (root._ew_hasCanopy) {
+            if (root._ew_occCanopyTopY == null) {
+                var maxY = -Infinity;
+                root.traverse(function (o) {
+                    if (!o._ew_canopy || !o.geometry) return;
+                    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+                    var t = o.position.y + o.geometry.boundingBox.max.y;
+                    if (t > maxY) maxY = t;
+                });
+                /* local → world: solid columns are shifted down one elevStep */
+                root._ew_occCanopyTopY = (maxY === -Infinity) ? -Infinity : maxY + (root.position ? root.position.y : 0);
+            }
+            if (root._ew_occCanopyTopY > topY) topY = root._ew_occCanopyTopY;
+        }
         var eps = (CONFIG.tileSize || BASE_TILE) * 0.1;
         return topY > sub.feetY + eps;
     }
@@ -13351,9 +13372,21 @@ const ThreeRenderer = (function () {
     }
     function _occCollect(root) {
         var arr = [];
-        /* canopy blocks belong to the canopy cutaway (fully hidden, not
-           ghosted) — the column's BASE still hologram-fades as before */
-        root.traverse(function (o) { if (o.isMesh && o.material && !o._ew_canopy) arr.push(o); });
+        root.traverse(function (o) {
+            if (!o.isMesh || !o.material) return;
+            /* Canopy blocks (roof slabs, upper-storey floors) used to be
+               excluded here and left entirely to the canopy cutaway. But the
+               cutaway only peels the ceiling of the room the unit is actually
+               STANDING IN — so any OTHER roof/floor that merely sits between
+               the camera and the active unit (a neighbouring building's roof,
+               the deck of the storey above, a ceiling just outside the cut
+               radius) stayed fully opaque, and the unit read only as its
+               red/blue x-ray hologram. Those blocks now fade with the rest of
+               their column. A mesh the cutaway is already animating is skipped
+               so the two systems never fight over the same material. */
+            if (o._ew_canopy && _canopyFaded.has(o)) return;
+            arr.push(o);
+        });
         return arr;
     }
 
@@ -13503,12 +13536,6 @@ const ThreeRenderer = (function () {
         var cineActive = !!(inBattle && typeof camera !== 'undefined' && camera
             && camera._cineShotId != null && state.cinematicActionCam);
 
-        _updateCineSilhouetteGate(
-            cineActive ? camera._cineShotUnitId : null,
-            (cineActive && camera._cineShotTarget && camera._cineShotTarget.id != null)
-                ? camera._cineShotTarget.id : null
-        );
-
         // Outside of a cinematic shot, keep the currently-selected unit (the one
         // whose turn it is) visible while the player drags the camera around by
         // hand — fading whatever terrain / props sit between the camera and that
@@ -13521,6 +13548,20 @@ const ThreeRenderer = (function () {
                 if (su && !su.dead) selUnit = su;
             }
         }
+
+        /* Hologram gate. During a cine shot the caster/target never hologram.
+           In normal play the ACTIVE unit is the same deal: the moment anything
+           is being faded out of its way, the fade (depthWrite:false clones)
+           already shows the unit's real, fully-lit self, so the x-ray ghost is
+           pure noise on top of it. Gated on there actually being live fades, so
+           a unit hidden by something the fade genuinely can't reach still falls
+           back to its hologram instead of vanishing. */
+        _updateCineSilhouetteGate(
+            cineActive ? camera._cineShotUnitId
+                       : ((selUnit && _occFaded.size > 0) ? selUnit.id : null),
+            (cineActive && camera._cineShotTarget && camera._cineShotTarget.id != null)
+                ? camera._cineShotTarget.id : null
+        );
 
         var active = cineActive || !!selUnit;
 
@@ -13746,6 +13787,12 @@ const ThreeRenderer = (function () {
         if (want) {
             want.forEach(function (m) {
                 if (_canopyFaded.has(m)) return;
+                /* The occlusion fade already ghosted this slab (it blocks the
+                   camera's view of the active unit) and owns its material
+                   swap — leave it be. It is already see-through and
+                   depth-transparent, so the unit reads through it; the cutaway
+                   picks it up on a later recompute once the fade releases it. */
+                if (m._ew_occOrig) return;
                 _occApplyFade(m);
                 _canopyFaded.set(m, { op: 1.0 });
             });
