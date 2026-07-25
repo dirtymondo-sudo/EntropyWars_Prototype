@@ -3151,6 +3151,11 @@
                     _fogAnchorUnitId: 1,
                     _fogRevealTiles: 1,
 
+                    /* Mystery Dungeon interior flood-fill cache (a Set, and
+                       recomputed per floor by _mdInsideTiles) — never synced. */
+                    _mdInside: 1,
+                    _mdInsideFloor: 1,
+
                     showPlayer2Builder: 1,
 
                     uiDialog: 1,

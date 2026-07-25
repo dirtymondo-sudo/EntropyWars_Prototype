@@ -11347,6 +11347,17 @@ const MD_DUNGEONS = {
         baseMapId: 'prebuilt_agartha',      // aesthetic source (tints)
         floorTerrain: 'cave_floor',
         wallTerrain: 'cave_wall',
+        /* ── Building-placer architecture (see generateMdFloor) ──
+           bedrockTerrain = the sealed-off rock outside the structure;
+           roomFloors/wallTex = the slab + facade palette a chamber picks from
+           (one per room, so no two chambers look alike); hallTerrain /
+           hallWallTex dress the 2-wide hallways between them. */
+        bedrockTerrain: 'rocks_dark_fantasy',
+        roomFloors: ['marble', 'dungeon', 'dungeon_2', 'cobblestone', 'bricks_1'],
+        wallTex: ['bricks_2', 'rock_wall_1', 'dungeon_3', 'marble_2', 'bricks_3'],
+        wallTexIn: 'bricks_1',
+        hallTerrain: 'cobblestone_2',
+        hallWallTex: 'rock_wall_1',
         accentTerrains: ['dirt_3', 'rocks_1', 'marble'],
         poolTerrain: 'water',
         enemyRaces: ['reptilian', 'antperson', 'skeleton', 'goatman', 'annunaki', 'demon'],
@@ -11438,109 +11449,288 @@ function _mdBuildHub() {
 })();
 
 /* ── The floor generator ───────────────────────────────────────────────────
-   Classic Mystery-Dungeon layout: solid rock, carve 4-7 rooms, connect them
-   with 1-wide L-corridors (spanning chain + one loop), then punch a few
-   dead-end stubs so the maze reads as a maze. Non-square boards, sizes grow
-   with depth. Deterministic per (dungeon, seed, floor).
-   partySize controls how many team-1 spawn tiles are emitted.             */
+   BUILT, not carved (2026-07-25). Floors used to be a solid block of
+   height-6 voxel cubes with rooms and 1-wide corridors chiselled out of it —
+   cheap, but it read as a block of rock, and every room was a cube pit.
+   A floor is now ARCHITECTURE, assembled the way the map editor's one-click
+   building placer assembles a building:
+     · the ground stays flat at the MapForge baseline (no cube walls at all);
+     · chambers are ROOMS of varying size, each with its own floor slab and
+       its own facade of THIN edge walls (M.wall → state.edgeWalls, the exact
+       records the editor's placer writes);
+     · rooms are linked by HALLS a full 2 tiles wide, so a party never has to
+       file through a 1-tile pipe and two units can pass each other;
+     · every wall is derived from the interior mask — masonry stands on every
+       edge where the built floor meets bedrock — so the structure is
+       watertight by construction, and where a hall meets a room there is
+       simply no wall: that gap IS the 2-wide doorway.
+   Outside the shell is untouched bedrock: walkable in principle, sealed off
+   in practice, and it is what the dungeon reads as "solid rock" now.
+   Jumping and flying over the masonry is refused in dungeon mode — see
+   _ewAbsolute in map.js — so these thin walls are as final as the old cubes.
+   Deterministic per (dungeon, seed, floor). partySize controls how many
+   team-1 spawn tiles are emitted.                                         */
 function generateMdFloor(dungeonId, floor, seed, partySize) {
     const D = MD_DUNGEONS[dungeonId] || MD_DUNGEONS.agartha_depths;
     partySize = Math.max(1, partySize || 4);
     const isBossFloor = floor >= D.floors;
-    const W = Math.min(12 + floor, 20);
-    const H = Math.min(9 + Math.floor(floor * 0.7), 15);
-    const FLOOR_H = 3, WALL_H = 6;
+    /* Room-and-hall architecture needs more board than the old carved maze:
+       a 2-wide hall between two rooms costs real tiles. */
+    const W = Math.min(16 + floor, 23);
+    const H = Math.min(12 + Math.floor(floor * 0.7), 18);
+    const FLOOR_Z = 3;                 // the MapForge surface baseline
+    const HALL_W = 2;                  // hallway width, in tiles
+    const ROOM_GAP = HALL_W;           // bedrock between two rooms = a hall's width
     const M = _mfNew({
-        name: D.label + ' — F' + floor, w: W, h: H, base: D.wallTerrain, baseH: 3,
+        name: D.label + ' — F' + floor, w: W, h: H,
+        base: D.bedrockTerrain || D.wallTerrain, baseH: FLOOR_Z,
         seed: (((seed | 0) || 1) * 31 + floor * 7919) | 0,
         underTop: 'dirt', strata: ['lava', 'cave_floor', 'cave_floor'],
     });
     const rng = M.rng;
     const ri = n => Math.floor(rng() * n);
+    const pick = a => a[ri(a.length)];
 
-    /* start solid: everything is wall */
-    M.rect(0, 0, W - 1, H - 1, D.wallTerrain, WALL_H);
+    const ROOM_FLOORS = D.roomFloors || ['marble', 'dungeon', 'cobblestone'];
+    const WALL_TEX = D.wallTex || ['bricks_2'];
+    const HALL_TER = D.hallTerrain || 'cobblestone_2';
+    const HALL_WALL = D.hallWallTex || 'rock_wall_1';
 
-    const isFloorTile = (x, y) => M.in(x, y) && M.hget(x, y) === FLOOR_H;
-    const carveTile = (x, y) => { if (x >= 1 && y >= 1 && x <= W - 2 && y <= H - 2) { M.t(x, y, D.floorTerrain); M.h(x, y, FLOOR_H); } };
+    /* The interior mask — 0 bedrock, 1 hall, 2 room. Everything downstream
+       (walls, spawns, loot, the AI's room homes) reads it. A 1-tile bedrock
+       rim is reserved all round so no facade ever stands on the board edge
+       (a wall there would have no outside face to render against). */
+    const OUT = 0, HALL = 1, ROOM = 2;
+    const cell = [];
+    for (let y = 0; y < H; y++) cell.push(new Array(W).fill(OUT));
+    const inShell = (x, y) => x >= 1 && y >= 1 && x <= W - 2 && y <= H - 2;
+    const isFloorTile = (x, y) => M.in(x, y) && cell[y][x] !== OUT;
 
-    /* 1) rooms */
+    /* 1) rooms — placed like building footprints: assorted sizes, never
+       touching, always at least ROOM_GAP tiles of rock apart, which is exactly
+       the width a hall needs to run between them. */
     const rooms = [];
-    const targetRooms = isBossFloor ? 3 : Math.min(4 + Math.floor(floor / 3), 7);
-    if (isBossFloor) {
-        /* boss arena: one big central hall + two antechambers */
-        const bw2 = Math.min(9, W - 6), bh2 = Math.min(7, H - 6);
-        const bx = Math.floor((W - bw2) / 2), by = Math.floor((H - bh2) / 2);
-        for (let y = by; y < by + bh2; y++) for (let x = bx; x < bx + bw2; x++) carveTile(x, y);
-        rooms.push({ x0: bx, y0: by, x1: bx + bw2 - 1, y1: by + bh2 - 1, cx: bx + (bw2 >> 1), cy: by + (bh2 >> 1) });
-    }
-    let attempts = 0;
-    while (rooms.length < targetRooms && attempts < 80) {
-        attempts++;
-        const rw = 3 + ri(4), rh = 3 + ri(3);
-        const rx = 1 + ri(Math.max(1, W - rw - 2));
-        const ry = 1 + ri(Math.max(1, H - rh - 2));
-        /* keep a 1-tile wall gap between rooms so they don't fuse */
-        let clash = false;
-        for (const r of rooms) {
-            if (rx <= r.x1 + 1 && rx + rw - 1 >= r.x0 - 1 && ry <= r.y1 + 1 && ry + rh - 1 >= r.y0 - 1) { clash = true; break; }
+    const roomOf = [];
+    for (let y = 0; y < H; y++) roomOf.push(new Array(W).fill(null));
+    const addRoom = (rx, ry, rw, rh) => {
+        const r = {
+            x0: rx, y0: ry, x1: rx + rw - 1, y1: ry + rh - 1,
+            cx: rx + (rw >> 1), cy: ry + (rh >> 1),
+            floorTex: pick(ROOM_FLOORS), wallTex: pick(WALL_TEX),
+            wallH: 3 + (rng() < 0.35 ? 1 : 0),
+        };
+        for (let y = r.y0; y <= r.y1; y++) for (let x = r.x0; x <= r.x1; x++) {
+            cell[y][x] = ROOM; roomOf[y][x] = r;
         }
-        if (clash) continue;
-        for (let y = ry; y < ry + rh; y++) for (let x = rx; x < rx + rw; x++) carveTile(x, y);
-        rooms.push({ x0: rx, y0: ry, x1: rx + rw - 1, y1: ry + rh - 1, cx: rx + (rw >> 1), cy: ry + (rh >> 1) });
-    }
-    /* degenerate safety: if placement starved, carve a fallback hall */
-    if (rooms.length < 2) {
-        const rx = 1, ry = 1, rw = Math.max(3, W - 2), rh = Math.max(3, H - 2);
-        for (let y = ry; y < ry + rh; y++) for (let x = rx; x < rx + rw; x++) carveTile(x, y);
-        rooms.length = 0;
-        rooms.push({ x0: rx, y0: ry, x1: rx + rw - 1, y1: ry + rh - 1, cx: rx + (rw >> 1), cy: ry + (rh >> 1) });
-        rooms.push(rooms[0]);
-    }
-
-    /* 2) corridors: chain the rooms in placement order (already random), then
-       add one loop connection so the maze isn't a pure tree */
-    const carveCorridor = (x0, y0, x1, y1) => {
-        let x = x0, y = y0;
-        const xFirst = rng() < 0.5;
-        const stepX = () => { while (x !== x1) { x += (x1 > x) ? 1 : -1; carveTile(x, y); } };
-        const stepY = () => { while (y !== y1) { y += (y1 > y) ? 1 : -1; carveTile(x, y); } };
-        carveTile(x, y);
-        if (xFirst) { stepX(); stepY(); } else { stepY(); stepX(); }
+        rooms.push(r);
+        return r;
     };
-    for (let i = 0; i + 1 < rooms.length; i++) carveCorridor(rooms[i].cx, rooms[i].cy, rooms[i + 1].cx, rooms[i + 1].cy);
-    if (rooms.length > 3) {
-        const a = rooms[ri(rooms.length)], b = rooms[(rooms.indexOf(a) + 2) % rooms.length];
-        carveCorridor(a.cx, a.cy, b.cx, b.cy);
+    const fits = (rx, ry, rw, rh) => {
+        if (rx < 1 || ry < 1 || rx + rw > W - 1 || ry + rh > H - 1) return false;
+        for (const r of rooms) {
+            if (rx <= r.x1 + ROOM_GAP && rx + rw - 1 >= r.x0 - ROOM_GAP
+                && ry <= r.y1 + ROOM_GAP && ry + rh - 1 >= r.y0 - ROOM_GAP) return false;
+        }
+        return true;
+    };
+    const MIN_R = 3;                   // smallest chamber (tiles)
+    if (isBossFloor) {
+        /* The throne hall: one big chamber dead centre, with antechambers
+           tucked into the corners the hall leaves free. */
+        const bw2 = Math.max(6, Math.min(9, W - 8)), bh2 = Math.max(5, Math.min(7, H - 8));
+        addRoom(Math.floor((W - bw2) / 2), Math.floor((H - bh2) / 2), bw2, bh2);
+        const corners = [[1, 1], [W - 5, 1], [1, H - 5], [W - 5, H - 5]];
+        for (let i = corners.length - 1; i > 0; i--) { const j = ri(i + 1); [corners[i], corners[j]] = [corners[j], corners[i]]; }
+        for (const [cx0, cy0] of corners) {
+            if (rooms.length >= 3) break;
+            /* narrower fallbacks: on a tight board the hall's gutter leaves a
+               corner too shallow for a 4×4, and an antechamber-less boss floor
+               is a bare arena */
+            for (const [aw, ah] of [[4, 4], [3, 4], [4, 3], [3, 3]]) {
+                if (!fits(cx0, cy0, aw, ah)) continue;
+                addRoom(cx0, cy0, aw, ah);
+                break;
+            }
+        }
+    } else {
+        /* Footprints are laid out on a coarse partition of the board rather
+           than by rejection sampling: one chamber per grid cell, sized and
+           offset at random INSIDE its cell, with a 2-tile bedrock gutter kept
+           BETWEEN cells — that gutter is the room a hall needs to run in.
+           Unlike blind sampling this never starves (blind sampling was landing
+           2 rooms out of a target of 6). A cell may also annex the neighbour
+           next door, which is where the big halls come from — chambers end up
+           anywhere from 3×3 to ~10×7. */
+        const gx = ((W - 2) >= 18) ? 3 : 2;
+        const gy = ((H - 2) >= 15) ? 3 : 2;
+        /* Cell boundaries (rounded, so the partition spans the WHOLE shell —
+           a floor-divided grid left the far side of the board as dead rock). */
+        const colAt = i => 1 + Math.round(i * (W - 2) / gx);
+        const rowAt = j => 1 + Math.round(j * (H - 2) / gy);
+        const used = [];
+        for (let j = 0; j < gy; j++) used.push(new Array(gx).fill(false));
+        const order = [];
+        for (let j = 0; j < gy; j++) for (let i = 0; i < gx; i++) order.push({ i, j });
+        for (let i = order.length - 1; i > 0; i--) { const j = ri(i + 1); [order[i], order[j]] = [order[j], order[i]]; }
+        /* One cell short of the partition, so there is always something left
+           to annex — a floor of nothing but identical cell-sized boxes is the
+           failure mode here. */
+        const targetRooms = Math.min(Math.max(3, order.length - 1),
+            Math.max(4, Math.min(4 + Math.floor(floor / 3), 7)));
+        let freeCells = order.length;
+        for (const c of order) {
+            if (rooms.length >= targetRooms) break;
+            if (used[c.j][c.i]) continue;
+            let i1 = c.i, j1 = c.j;
+            /* Annex a neighbouring cell now and then → a genuinely big hall.
+               Never at the cost of the room count: the cells left over must
+               still cover the chambers this floor owes. */
+            const canAnnex = (freeCells - 2) >= (targetRooms - rooms.length - 1);
+            if (canAnnex && rng() < 0.35) {
+                const opts = [];
+                if (c.i + 1 < gx && !used[c.j][c.i + 1]) opts.push([1, 0]);
+                if (c.j + 1 < gy && !used[c.j + 1][c.i]) opts.push([0, 1]);
+                if (opts.length) { const d = pick(opts); i1 += d[0]; j1 += d[1]; }
+            }
+            for (let j = c.j; j <= j1; j++) for (let i = c.i; i <= i1; i++) { used[j][i] = true; freeCells--; }
+            /* The gutter is only needed between cells: a footprint in the last
+               column/row may run right up to the shell rim. */
+            const bx0 = colAt(c.i), by0 = rowAt(c.j);
+            const bx1 = colAt(i1 + 1) - 1 - (i1 === gx - 1 ? 0 : ROOM_GAP);
+            const by1 = rowAt(j1 + 1) - 1 - (j1 === gy - 1 ? 0 : ROOM_GAP);
+            const availW = bx1 - bx0 + 1, availH = by1 - by0 + 1;
+            if (availW < MIN_R || availH < MIN_R) continue;
+            const rw = MIN_R + ri(availW - MIN_R + 1);
+            const rh = MIN_R + ri(availH - MIN_R + 1);
+            const rx = bx0 + ri(availW - rw + 1);
+            const ry = by0 + ri(availH - rh + 1);
+            if (!fits(rx, ry, rw, rh)) continue;
+            addRoom(rx, ry, rw, rh);
+        }
     }
+    /* degenerate safety: a board that starved placement still gets one hall */
+    if (!rooms.length) addRoom(1, 1, Math.max(4, W - 2), Math.max(4, H - 2));
 
-    /* 3) dead-end stubs off random corridor/room tiles */
-    const stubCount = isBossFloor ? 1 : 2 + (floor % 2);
-    for (let s = 0; s < stubCount; s++) {
-        let sx = 1 + ri(W - 2), sy = 1 + ri(H - 2), tries = 0;
-        while (!isFloorTile(sx, sy) && tries++ < 40) { sx = 1 + ri(W - 2); sy = 1 + ri(H - 2); }
-        if (!isFloorTile(sx, sy)) continue;
-        const dir = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }][ri(4)];
-        const len = 2 + ri(3);
-        for (let k = 1; k <= len; k++) {
-            const nx = sx + dir.x * k, ny = sy + dir.y * k;
-            if (nx < 1 || ny < 1 || nx > W - 2 || ny > H - 2) break;
-            carveTile(nx, ny);
+    /* 2) halls — 2 tiles wide, L-shaped, chaining the rooms in placement
+       order (already random) plus one loop so the floor is not a pure tree.
+       Each leg is drawn one tile PAST its end so the elbow where they meet
+       stays a full 2×2 (an L of two 2-wide bands that only touched at a
+       corner would pinch the hall to a diagonal), and the run starts INSIDE
+       each room, which is what punches the 2-wide doorway through its
+       facade. */
+    const clampX = v => Math.max(1, Math.min(v, W - 1 - HALL_W));
+    const clampY = v => Math.max(1, Math.min(v, H - 1 - HALL_W));
+    const paint = (x, y) => { if (inShell(x, y) && cell[y][x] === OUT) cell[y][x] = HALL; };
+    const digHall = (a, b) => {
+        const ax = clampX(a.cx), ay = clampY(a.cy);
+        const bx = clampX(b.cx), by = clampY(b.cy);
+        const runX = (row, xa, xb) => {
+            const lo = Math.min(xa, xb), hi = Math.max(xa, xb) + HALL_W - 1;
+            for (let x = lo; x <= hi; x++) for (let d = 0; d < HALL_W; d++) paint(x, row + d);
+        };
+        const runY = (col, ya, yb) => {
+            const lo = Math.min(ya, yb), hi = Math.max(ya, yb) + HALL_W - 1;
+            for (let y = lo; y <= hi; y++) for (let d = 0; d < HALL_W; d++) paint(col + d, y);
+        };
+        if (rng() < 0.5) { runX(ay, ax, bx); runY(bx, ay, by); }
+        else { runY(ax, ay, by); runX(by, ax, bx); }
+    };
+    for (let i = 0; i + 1 < rooms.length; i++) digHall(rooms[i], rooms[i + 1]);
+    if (rooms.length > 3) digHall(rooms[0], rooms[rooms.length - 2]);
+
+    /* 3) connectivity guarantee — flood the shell from room 0 and drive a
+       fresh hall to anything the chain somehow missed. */
+    {
+        const seen = [];
+        for (let y = 0; y < H; y++) seen.push(new Array(W).fill(false));
+        const flood = () => {
+            for (let y = 0; y < H; y++) seen[y].fill(false);
+            const st = [{ x: rooms[0].cx, y: rooms[0].cy }];
+            seen[rooms[0].cy][rooms[0].cx] = true;
+            while (st.length) {
+                const p = st.pop();
+                for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                    const nx = p.x + dx, ny = p.y + dy;
+                    if (!M.in(nx, ny) || seen[ny][nx] || cell[ny][nx] === OUT) continue;
+                    seen[ny][nx] = true; st.push({ x: nx, y: ny });
+                }
+            }
+        };
+        flood();
+        for (let i = 1; i < rooms.length; i++) {
+            if (seen[rooms[i].cy][rooms[i].cx]) continue;
+            digHall(rooms[0], rooms[i]);
+            flood();
         }
     }
 
-    /* 4) theming: accent patches, crystals, mushroom cover, a pool, a spring,
-       torches near walls. All cosmetic/soft — never blocks the maze. */
+    /* 4) the slabs: every room lays its own floor, halls are paved, and the
+       whole shell sits perfectly flat (a step inside a doorway would be a
+       body-span trap for the wall openings). */
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if (cell[y][x] === OUT) continue;
+        M.h(x, y, FLOOR_Z);
+        M.t(x, y, cell[y][x] === ROOM ? roomOf[y][x].floorTex : HALL_TER);
+    }
+
+    /* 5) the facades — the building placer's own output: one thin wall record
+       per edge where the built floor meets bedrock, standing on that tile's
+       surface. Rooms get crenellated masonry (and their own texture), halls
+       get plain rock. Interior↔interior edges get nothing at all, which is
+       what leaves the 2-wide hall mouths open. */
+    const SIDES = [['N', 0, -1], ['S', 0, 1], ['W', -1, 0], ['E', 1, 0]];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if (cell[y][x] === OUT) continue;
+        const own = roomOf[y][x];
+        for (const [dir, dx, dy] of SIDES) {
+            const nx = x + dx, ny = y + dy;
+            if (M.in(nx, ny) && cell[ny][nx] !== OUT) continue;
+            M.wall(x, y, dir, {
+                z0: FLOOR_Z + 1,
+                h: own ? own.wallH : 3,
+                tex: own ? own.wallTex : HALL_WALL,
+                texIn: D.wallTexIn || null,
+                cap: own ? 'crenel' : null,
+            });
+        }
+    }
+
+    /* 6) theming: accent slabs, crystal veins, mushrooms and wall torches
+       inside the chambers; loose rock out on the bedrock so the sealed-off
+       ground outside the shell reads as living cave. Nothing that blocks a
+       tile is ever placed in a hall or in a doorway mouth — a 2-wide hall
+       with a boulder in it is a 1-wide hall. */
+    const nextToHall = (x, y) => SIDES.some(([, dx, dy]) => {
+        const nx = x + dx, ny = y + dy;
+        return M.in(nx, ny) && cell[ny][nx] === HALL;
+    });
+    const touchesRock = (x, y) => SIDES.some(([, dx, dy]) => {
+        const nx = x + dx, ny = y + dy;
+        return !M.in(nx, ny) || cell[ny][nx] === OUT;
+    });
     for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
-        if (!isFloorTile(x, y)) continue;
+        const c = cell[y][x];
+        if (c === OUT) {
+            /* Bedrock dressing — outside the shell, purely scenic. No crystal
+               veins or springs out here: a recovery tile nobody can walk to is
+               only a tease. */
+            const rr = rng();
+            if (rr < 0.10) M.t(x, y, pick(D.accentTerrains));
+            else if (rr < 0.14) M.rock(x, y);
+            continue;
+        }
+        if (c === HALL) {
+            /* halls stay clear; a torch on the wall line is the only dressing */
+            if (touchesRock(x, y) && rng() < 0.12) M.obj(x, y, 'torch');
+            continue;
+        }
+        const blockedSpot = nextToHall(x, y);
         const roll = rng();
-        if (roll < 0.07) M.t(x, y, D.accentTerrains[ri(D.accentTerrains.length)]);
-        else if (roll < 0.095) M.t(x, y, 'crystal');
-        else if (roll < 0.115) M.t(x, y, 'mushroom');
-        else if (roll < 0.145 && (
-            !isFloorTile(x + 1, y) || !isFloorTile(x - 1, y) || !isFloorTile(x, y + 1) || !isFloorTile(x, y - 1)
-        )) M.obj(x, y, 'torch');
-        else if (roll < 0.16) M.rock(x, y);
+        if (roll < 0.07) M.t(x, y, pick(D.accentTerrains));
+        else if (roll < 0.10 && !blockedSpot) M.t(x, y, 'crystal');
+        else if (roll < 0.12 && !blockedSpot) M.t(x, y, 'mushroom');
+        else if (roll < 0.17 && touchesRock(x, y) && !blockedSpot) M.obj(x, y, 'torch');
+        else if (roll < 0.19 && !blockedSpot && !touchesRock(x, y)) M.obj(x, y, 'column_1');
     }
     if (!isBossFloor && rooms.length > 2 && rng() < 0.6) {
         const pr = rooms[1 + ri(rooms.length - 1)];
@@ -11548,7 +11738,6 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
             M.t(pr.cx, pr.cy, D.poolTerrain); M.t(pr.cx + 1, pr.cy, D.poolTerrain);
         }
     }
-
     /* 5) spawn room (first placed) + stairs in the farthest room */
     const spawnRoom = rooms[0];
     let stairsRoom = rooms[0], bestD = -1;
@@ -11569,9 +11758,18 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
        map uses): a barrier_passage tile whose top voxel carries an explicit
        stairDir — see _isStairTile/_buildStairMesh in three-renderer. No new
        geometry, no object sprite. */
-    const stairs = { x: stairsRoom.cx, y: stairsRoom.cy };
+    /* Set against the chamber's back wall rather than dumped in the middle
+       of the room: a flight of stairs leaning on masonry reads as a way OUT,
+       and the sd stamp at the bottom of this function then has a real wall to
+       face. Never on a doorway mouth (a hall tile next to it would swallow
+       the flight). */
+    const stairs = (() => {
+        const cands = roomTiles(stairsRoom).filter(p =>
+            touchesRock(p.x, p.y) && !nextToHall(p.x, p.y));
+        return cands.length ? cands[ri(cands.length)] : { x: stairsRoom.cx, y: stairsRoom.cy };
+    })();
     M.t(stairs.x, stairs.y, 'barrier_passage');
-    M.h(stairs.x, stairs.y, FLOOR_H);
+    M.h(stairs.x, stairs.y, FLOOR_Z);
     M.clearObj(stairs.x, stairs.y);
 
     const p1Tiles = roomTiles(spawnRoom, [stairs]);
@@ -11581,7 +11779,9 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
         (Math.abs(b.x - spawnRoom.cx) + Math.abs(b.y - spawnRoom.cy)));
     const spawns1 = p1Tiles.slice(0, partySize);
     while (spawns1.length < partySize) spawns1.push(spawns1[0] || { x: spawnRoom.cx, y: spawnRoom.cy });
-    spawns1.forEach(p => { M.t(p.x, p.y, D.floorTerrain); M.clearObj(p.x, p.y); });
+    /* Clear the pads only — the room's own floor slab stays (repainting them
+       cave_floor punched a hole in the chamber's masonry look). */
+    spawns1.forEach(p => M.clearObj(p.x, p.y));
 
     /* 6) enemies: distributed across the non-spawn rooms, densest far away.
        Count scales with the PLAYER party size (a solo delver meets far fewer

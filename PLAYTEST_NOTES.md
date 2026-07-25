@@ -4,7 +4,65 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## Action-menu polish: crown retired, JRPG panel overlap, bottom subtitles (2026-07-24, LATEST) — hud.js, battle.js, styles-hud.css, index.html
+## MYSTERY DUNGEON vertical slice: floors are BUILT, walls are absolute (2026-07-25, LATEST) — data.js, map.js, battle.js, online.js, index.html
+Token `20260725d` → `20260725e`.
+
+**Floors are architecture now, not a carved rock block.** `generateMdFloor`
+(data.js) used to fill the board with height-6 `cave_wall` voxel cubes and
+chisel rooms + 1-wide corridors out of it. It now BUILDS the floor the way the
+map editor's one-click building placer builds a building — thin **edge walls**
+(`M.wall` → `entry.edgeWalls` → `state.edgeWalls`, the same records the editor's
+`_meBldPlan`/stamp writes), flat ground, no cubes anywhere:
+- **Interior mask** (`cell[][]`: 0 bedrock / 1 hall / 2 room) is the single
+  source of truth. Walls are DERIVED from it — masonry on every edge where the
+  built floor meets bedrock — so the shell is watertight by construction and an
+  interior↔interior edge gets no wall at all: **that gap is the doorway**.
+- **Rooms** are laid out on a coarse partition of the board (2×2 / 3×2 / 3×3
+  cells, a 2-tile bedrock gutter between cells, random size+offset inside each
+  cell, 35% chance a cell annexes its neighbour for a big hall). Rejection
+  sampling was tried first and starved — 2 rooms out of a target of 6. Counts:
+  F1–3 → 3 rooms, F4–8 → 5–6, F9 → 7, boss floor → throne hall + 2
+  antechambers. Each room picks its own floor slab + facade texture from
+  `MD_DUNGEONS[x].roomFloors` / `wallTex` (plus `bedrockTerrain`, `hallTerrain`,
+  `hallWallTex`, `wallTexIn`), so no two chambers look alike.
+- **Halls are 2 tiles wide** (`HALL_W`), L-shaped, each leg drawn one tile past
+  its end so the elbow stays a full 2×2. They start inside a room centre, which
+  is what punches the 2-wide doorway through that room's facade. Chain + one
+  loop, then a flood-fill guarantee digs a hall to anything missed.
+- **Boards grew**: `W = min(16+floor, 23)`, `H = min(12+floor*0.7, 18)`.
+- Floors stay perfectly FLAT (`FLOOR_Z = 3`). Don't add a step at a doorway:
+  wall openings are body-span checks, and a 1-cell rise makes a 2-cell doorway
+  fail to fit.
+- Nothing that blocks a tile is placed in a hall or in a doorway mouth (a
+  2-wide hall with a boulder in it is a 1-wide hall). Stairs are set against a
+  chamber's back wall, never on a hall mouth.
+- The sealed bedrock OUTSIDE the shell is ordinary flat rock, dressed with
+  accent terrain + rocks. No springs/crystal veins out there — an unreachable
+  recovery tile is only a tease.
+
+**Jumping/flying over dungeon walls is off** — `_ewAbsolute()` (map.js, in the
+edge-wall block): in dungeon mode masonry runs floor-to-ceiling. It short-
+circuits `_ewStepEdgeBlocked` (blocks the step at ANY body height — that is what
+stops flyers), `_ewEdgeVaultTop` (no vaulting at any jump stat),
+`jumpArcApex` (a leap that crosses a wall has no legal apex) and the sight
+checks (`_ewSightEdgeBlocked` / `_ewCornerSightBlocked` — no seeing over it).
+Every other mode keeps the exact z-span rules. On top of that `_mdNoFlight()`
+(battle.js) blocks TAKEOFF on a dungeon floor (`_resolveTakeoffZ` returns null,
+`canChangeAltitude('ascend')` refuses) — with absolute walls an airborne unit
+could only hover in the room it left the ground in, and an AI monster that took
+off would sit there for the rest of the run.
+
+**Stranded-body guard** — `_mdRescueStranded()` / `_mdInsideTiles()` (battle.js,
+called from `_mdCheckWin`): the engine's displacement paths (linePush, pull,
+displacement, throws) test the destination TILE, not the wall edge they cross,
+so a shove can still put a body in the sealed bedrock — where absolute masonry
+means it can never walk back. The interior is flood-filled once per floor
+(cached on `state._mdInside`, keyed floor+seed+exit; skipped in online.js
+`_serializeState`) and anyone outside it is set back on the nearest interior
+tile. If a future pass fixes displacement to respect wall edges, this becomes
+belt-and-braces rather than the only guard.
+
+## Action-menu polish: crown retired, JRPG panel overlap, bottom subtitles (2026-07-24) — hud.js, battle.js, styles-hud.css, index.html
 Token `20260724f` → `20260724h`.
 - **END TURN crown bar DELETED** (hud.js HorologeMenu render + all `.hrlg-crown*`
   CSS): redundant with the root panel's END TURN blade + SPACE/pad B. The pad

@@ -2843,6 +2843,24 @@
         function _ewTopCell(w) { return w.z0 + Math.max(1, w.h || 1) - 1; }
         function _ewBlocksSight(w) { return !!w && !w.see && !w.low; }
 
+        /* ══════════ ABSOLUTE MASONRY — Mystery Dungeon (2026-07-25) ══════════
+           A dungeon floor is a sealed structure: its rooms and halls are built
+           out of the map editor's thin edge walls (data.js generateMdFloor),
+           and the ONLY way between two chambers is a doorway or a hall mouth.
+           Everywhere else a wall is exactly as tall as its `h` says, which
+           means a jump-2 race vaults a 2-cell facade and any flyer simply
+           hovers over the whole dungeon — the floor stops being a maze.
+           In dungeon mode masonry therefore runs floor-to-ceiling: a wall on
+           the edge blocks the step (and the sight line) whatever height the
+           body is at, and the only hole in it is a doorway the body fits
+           through. Nothing else in the game sees this — every other mode keeps
+           the exact z-span rules. See also: vaults are refused outright in
+           _ewEdgeVaultTop / jumpArcApex below. */
+        function _ewAbsolute() {
+            return !!(state.edgeWalls
+                && typeof window._isDungeonMode === 'function' && window._isDungeonMode());
+        }
+
         /* ══════════ WALL OPENINGS — doorways & windows (2026-07-24) ══════════
            Before this, the only way to make a doorway was to leave a whole edge
            wall-less, which on a tall building meant a full-height slot from
@@ -2953,7 +2971,8 @@
             const w = _ewWallBetween(xa, ya, xb, yb);
             if (!_ewBlocksSight(w)) return false;
             const cell = Math.floor(zc);
-            if (!(cell >= w.z0 && cell <= _ewTopCell(w))) return false;
+            /* Dungeon masonry reaches the ceiling — no seeing over it. */
+            if (!(cell >= w.z0 && cell <= _ewTopCell(w)) && !_ewAbsolute()) return false;
             /* Doorways and windows are holes — sight and shots go through. */
             return !_ewOpenAtCell(w, cell, 'sight');
         }
@@ -2966,7 +2985,8 @@
         function _ewCornerSightBlocked(px, py, sx, sy, zc) {
             if (!state.edgeWalls) return false;
             const cell = Math.floor(zc);
-            const covers = (w) => _ewBlocksSight(w) && cell >= w.z0 && cell <= _ewTopCell(w)
+            const abs = _ewAbsolute();
+            const covers = (w) => _ewBlocksSight(w) && (abs || (cell >= w.z0 && cell <= _ewTopCell(w)))
                 && !_ewOpenAtCell(w, cell, 'sight');
             let n = 0;
             if (covers(_ewWallBetween(px, py, px + sx, py))) n++;
@@ -3032,6 +3052,9 @@
         function _ewStepEdgeBlocked(xa, ya, xb, yb, lo, hi) {
             const w = _ewWallBetween(xa, ya, xb, yb);
             if (!w) return false;
+            /* Dungeon masonry is floor-to-ceiling: a flyer cruising above the
+               parapet still hits it. Doorways stay the one way through. */
+            if (_ewAbsolute()) return !_ewBodyFitsDoorway(w, lo, hi);
             if (!(_ewTopCell(w) >= lo && w.z0 <= hi)) return false;
             /* A doorway the whole body fits through is a hole, not a wall. */
             if (_ewBodyFitsDoorway(w, lo, hi)) return false;
@@ -3098,6 +3121,8 @@
             const w = _ewWallBetween(xa, ya, xb, yb);
             if (!w) return null;
             const top = _ewTopCell(w);
+            /* Mystery Dungeon: nobody vaults dungeon masonry, at any jump stat. */
+            if (_ewAbsolute()) return _ewBodyFitsDoorway(w, lo, hi) ? null : -1;
             if (!(top >= lo && w.z0 <= hi)) return null;   // outside the body span
             if (_ewBodyFitsDoorway(w, lo, hi)) return null; // walk straight through the doorway
             if (jc > 0 && top <= minStand + jc) return top;
@@ -3226,6 +3251,10 @@
                 if (w) walls.push(w);
             }
             const mids = seq.slice(1, -1);
+
+            /* Mystery Dungeon: a leap never clears masonry, however high the
+               apex — walk to a doorway like everyone else. */
+            if (walls.length && _ewAbsolute()) return null;
 
             const hMin = Math.max(z0, z1);
             const hMax = z0 + (climb || 0);

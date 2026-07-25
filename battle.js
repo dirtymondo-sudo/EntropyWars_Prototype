@@ -22576,11 +22576,83 @@
         }
 
         /* Called by checkWin's dungeon branch after every death/action. */
+        /* True on a dungeon FLOOR (not the open-air Guild Hub): no takeoff, so
+           nothing ever hovers over the masonry. Lives here with the rest of
+           the MD runtime; used by _resolveTakeoffZ / canChangeAltitude. */
+        function _mdNoFlight() {
+            return !!(typeof _isDungeonMode === 'function' && _isDungeonMode()
+                && state._mdPhase === 'floor');
+        }
+
         function _mdCheckWin() {
             if (state._mdEnded || state._mdTransitioning) return;
             if (state._mdPhase !== 'floor' || !state._mdRun) return;
+            _mdRescueStranded();
             const p1Alive = state.units.filter(u => u.player === 1 && !u.dead && !u._dying && !u._mdNpc).length;
             if (p1Alive === 0) _mdEndRun(false);
+        }
+
+        /* ══════════ STRANDED-BODY GUARD (2026-07-25) ══════════
+           Floors are BUILT now, not carved: rooms and 2-wide halls are made of
+           the map editor's thin edge walls (data.js generateMdFloor) and the
+           rock outside that shell is ordinary flat ground which simply has no
+           door — that sealed negative space IS the maze. The one way a body
+           gets out there is a shove / pull / teleport, because the engine's
+           displacement paths test the destination TILE and not the wall edge
+           they cross; and since dungeon masonry is absolute (map.js
+           _ewAbsolute) it could never walk back in. So the built interior is
+           flood-filled once per floor and anyone found outside it is set back
+           on the nearest interior tile — cheap insurance against a run
+           soft-locking behind a wall. */
+        function _mdInsideTiles() {
+            const run = state._mdRun;
+            if (!run) return null;
+            const s = state._mdStairs;
+            if (!s || typeof wallBlocksStep !== 'function') return null;
+            /* keyed on the floor AND its seed/exit, so a fresh run's floor 1
+               never reuses the previous run's floor 1 */
+            const key = run.floor + ':' + run.seed + ':' + s.x + ',' + s.y;
+            if (state._mdInside && state._mdInsideFloor === key) return state._mdInside;
+            const seen = new Set([s.x + ',' + s.y]);
+            const stack = [{ x: s.x, y: s.y }];
+            while (stack.length) {
+                const p = stack.pop();
+                for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                    const nx = p.x + dx, ny = p.y + dy;
+                    if (!isInside(nx, ny)) continue;
+                    const k = nx + ',' + ny;
+                    if (seen.has(k)) continue;
+                    if (wallBlocksStep(p.x, p.y, nx, ny)) continue;
+                    seen.add(k);
+                    stack.push({ x: nx, y: ny });
+                }
+            }
+            state._mdInside = seen;
+            state._mdInsideFloor = key;
+            return seen;
+        }
+
+        function _mdRescueStranded() {
+            if (typeof _isDungeonMode !== 'function' || !_isDungeonMode()) return;
+            if (state._mdPhase !== 'floor' || !state._mdRun) return;
+            const inside = _mdInsideTiles();
+            if (!inside || inside.size < 4) return;
+            for (const u of state.units) {
+                if (!u || u.dead || u._dying) continue;
+                if (inside.has(u.x + ',' + u.y)) continue;
+                let best = null, bestD = Infinity;
+                for (const k of inside) {
+                    const c = k.split(','), x = +c[0], y = +c[1];
+                    const d = Math.abs(x - u.x) + Math.abs(y - u.y);
+                    if (d >= bestD) continue;
+                    if (typeof unitAt === 'function' && unitAt(x, y)) continue;
+                    bestD = d; best = { x, y };
+                }
+                if (!best) continue;
+                u.x = best.x; u.y = best.y;
+                if (typeof nearestWalkableZ === 'function') u.z = nearestWalkableZ(best.x, best.y, u.z);
+                if (typeof addLog === 'function') addLog(`🧱 ${unitDisplayName(u)} slipped back inside the ruins.`);
+            }
         }
 
         function _mdEndRun(victory) {
@@ -34759,6 +34831,15 @@
            computed from the SAME altitude the real takeoff will use — any
            drift between the two is how players get betrayed by the preview. */
         function _resolveTakeoffZ(unit) {
+            /* Mystery Dungeon: wings stay folded underground. The floor is a
+               sealed structure of thin walls (data.js generateMdFloor) and
+               those walls are absolute in dungeon mode (map.js _ewAbsolute),
+               so an airborne unit could not cross a wall anyway — it would
+               just hover in the room it took off in, and an AI monster that
+               did it would sit there for the rest of the run. Blocking takeoff
+               outright is what "no flying over dungeon walls" means in
+               practice; every other mode is untouched. */
+            if (_mdNoFlight()) return null;
             const oldZ = unit.z ?? 0;
             /* Air-pocket aware: a unit taking off on the ground floor of a
                building (or under a bridge) climbs inside ITS OWN pocket and
@@ -34787,6 +34868,10 @@
                 return { ok: false, reason: 'No flying in a Clash formation battle.' };
             }
             if (!canFly(unit)) return { ok: false, reason: 'Only flying units can change altitude.' };
+            /* Mystery Dungeon floors are indoors — see _resolveTakeoffZ. */
+            if (_mdNoFlight() && mode === 'ascend') {
+                return { ok: false, reason: 'No room to fly — the dungeon ceiling is right overhead.' };
+            }
             const cfg = FLYING_ALTITUDE_CONFIG;
             if ((unit.ap || 0) < cfg.apCost) return { ok: false, reason: 'Not enough AP.' };
 
