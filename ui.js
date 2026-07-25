@@ -3278,23 +3278,27 @@
             const y = state.pendingTarget.y;
             if (target.x !== x || target.y !== y) return null;
 
-            // 50→1000 HP curve: the engine scales flat damage/heal/shield
-            // amounts by the ACTOR's level and mitigation by the TARGET's level
-            // at resolution (levelScale(100) = 1, so PvP previews are
-            // unchanged). Mirror both here so low-level Mystery Dungeon
-            // previews don't overstate hits ~20×.
-            const _pvLs = (typeof levelScale === 'function' && typeof getUnitLevel === 'function')
-                ? levelScale(getUnitLevel(unit)) : 1;
-            const _pvLsT = (typeof levelScale === 'function' && typeof getUnitLevel === 'function')
-                ? levelScale(getUnitLevel(target)) : 1;
+            // Mirror the engine's resolution-time scaling (data.js "LEVEL
+            // COMBAT MATH"): DAMAGE rides offenseScale (victim magnitude ×
+            // combat pace × level gap), MITIGATION rides defenseScale, and
+            // heals/shields ride supportScale (HP space — no pace, no gap).
+            // All three are the identity at the level cap, so PvP previews are
+            // byte-identical apart from the shared EW_COMBAT_PACE dial.
+            const _pvUL = (typeof getUnitLevel === 'function') ? getUnitLevel(unit) : 0;
+            const _pvTL = (typeof getUnitLevel === 'function') ? getUnitLevel(target) : 0;
+            const _pvLs = (typeof offenseScale === 'function') ? offenseScale(_pvUL, _pvTL) : 1;
+            const _pvLsT = (typeof defenseScale === 'function') ? defenseScale(_pvTL) : 1;
+            const _pvLsS = (typeof supportScale === 'function') ? supportScale(_pvTL, _pvUL) : 1;
             const _pvSc = n => Math.max(1, Math.round(n * _pvLs));
+            const _pvScS = n => Math.max(1, Math.round(n * _pvLsS));
 
             if (state.pendingTarget.mode === 'attack') {
                 if (target.dead || isAllyUnit(target, unit)) return null;
                 const minRoll = -2;
                 const maxRoll = 2;
-                let minDamage = Math.max(24, Math.floor(unit.atk * 0.65) + minRoll);
-                let maxDamage = Math.max(24, Math.floor(unit.atk * 0.65) + maxRoll);
+                const _pvAtk = (typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'atk') : (unit.atk || 0);
+                let minDamage = Math.max(24, Math.floor(_pvAtk * 0.65) + minRoll);
+                let maxDamage = Math.max(24, Math.floor(_pvAtk * 0.65) + maxRoll);
                 if (unitHasStatus(target, 'marked')) {
                     minDamage += 3;
                     maxDamage += 3;
@@ -3435,7 +3439,7 @@
                 if (spell.kind === 'heal' || spell.kind === 'revive') {
                     if (isEnemyUnit(target, unit)) return null;
                     const _rawHeal = Math.max(0, (spell.heal || 0) + healBonus);
-                    const amount = _rawHeal > 0 ? _pvSc(_rawHeal) : 0;
+                    const amount = _rawHeal > 0 ? _pvScS(_rawHeal) : 0;
                     const currentHp = target.dead ? 0 : target.hp;
                     const applied = Math.min(amount, target.maxHp - currentHp);
                     return {
@@ -3447,7 +3451,7 @@
                 }
                 if (spell.kind === 'shield') {
                     if (target.dead || isEnemyUnit(target, unit)) return null;
-                    const _shAmt = spell.shield ? _pvSc(spell.shield) : 0;
+                    const _shAmt = spell.shield ? _pvScS(spell.shield) : 0;
                     return {
                         type: 'heal',
                         amount: _shAmt,
@@ -3518,7 +3522,7 @@
                 }
 
                 if (combo.kind === 'healAll' && isAllyUnit(target, unit)) {
-                    const healAmt = _pvSc(Math.round((combo.heal || 20) * getComboTypeSynergy(unit, partner).mult));
+                    const healAmt = _pvScS(Math.round((combo.heal || 20) * getComboTypeSynergy(unit, partner).mult));
                     const applied = Math.min(healAmt, target.maxHp - target.hp);
                     return applied > 0 ? {
                         type: 'heal',
@@ -3528,7 +3532,7 @@
                     } : null;
                 }
                 if (combo.kind === 'shield' && isAllyUnit(target, unit)) {
-                    const shieldAmt = _pvSc(Math.round((combo.shield || 16) * getComboTypeSynergy(unit, partner).mult));
+                    const shieldAmt = _pvScS(Math.round((combo.shield || 16) * getComboTypeSynergy(unit, partner).mult));
                     return {
                         type: 'heal',
                         amount: shieldAmt,
@@ -8689,11 +8693,16 @@
                 + (typeof getJobPassiveSpellBonus === 'function' ? getJobPassiveSpellBonus(caster) : 0);
             let baseDmg = 0;
 
-            // 50→1000 HP curve: mirror the engine's resolution-time scaling —
-            // flat damage × levelScale(caster), mitigation × levelScale(target).
-            // Both are exactly 1 at the level cap, so PvP forecasts unchanged.
-            const _esLs = (typeof levelScale === 'function') ? levelScale(getUnitLevel(caster)) : 1;
-            const _esLsT = (typeof levelScale === 'function') ? levelScale(getUnitLevel(target)) : 1;
+            // Mirror the engine's resolution-time scaling (data.js "LEVEL
+            // COMBAT MATH"): damage × offenseScale(caster → target), mitigation
+            // × defenseScale(target). Identity at the cap apart from the shared
+            // EW_COMBAT_PACE dial, so PvP forecasts track PvP resolution.
+            const _esCL = getUnitLevel(caster), _esTL = getUnitLevel(target);
+            const _esLs = (typeof offenseScale === 'function') ? offenseScale(_esCL, _esTL) : 1;
+            const _esLsT = (typeof defenseScale === 'function') ? defenseScale(_esTL) : 1;
+            // A DoT has no source level at resolution — it ticks at gap 1
+            // against its victim (applyDamageToUnit opts.scaleByTargetLevel).
+            const _esLsDot = (typeof offenseScale === 'function') ? offenseScale(_esTL, _esTL) : 1;
 
             if (spell.dmg) {
                 baseDmg = Math.max(16, (spell.dmg || 0) + spellPower);
@@ -8701,7 +8710,7 @@
                 baseDmg = spell.hitDamages.reduce((s, v) => s + Math.max(16, v + spellPower), 0);
             } else if (spell.dotDamage) {
                 // DoTs resolve scaled by the TARGET's level (scaleByTargetLevel).
-                return Math.max(1, Math.round(spell.dotDamage * _esLsT));
+                return Math.max(1, Math.round(spell.dotDamage * _esLsDot));
             }
             if (baseDmg <= 0) return 0;
 
@@ -8760,8 +8769,10 @@
             if (!caster || !spell) return 0;
             if (spell.heal) {
                 const bonus = typeof getEffectiveHealBonus === 'function' ? getEffectiveHealBonus(caster, spell.heal, target) : 0;
-                // Flat heals resolve scaled by the healer's level (×1 at cap).
-                const _hLs = (typeof levelScale === 'function') ? levelScale(getUnitLevel(caster)) : 1;
+                // Flat heals are HP-space: they resolve in the RECIPIENT's
+                // magnitude (supportScale — no combat pace, no level gap).
+                const _hLs = (typeof supportScale === 'function')
+                    ? supportScale(getUnitLevel(target || caster), getUnitLevel(caster)) : 1;
                 const raw = Math.max(1, Math.round((spell.heal + (caster.spellPower || 0) + getHourglassPower(caster) + bonus) * _hLs));
                 if (target) return Math.min(raw, Math.max(0, target.maxHp - target.hp));
                 return raw;
@@ -8784,7 +8795,7 @@
         function _estimateBasicAttackDamage(attacker, target) {
             if (!attacker || !target) return 0;
             // Mirrors doAttack's roll (battle.js): symmetric ±variance, 0 mid.
-            let dmg = Math.max(24, Math.floor((attacker.atk || 0) * 0.65)
+            let dmg = Math.max(24, Math.floor(((typeof levelPowerStat === 'function') ? levelPowerStat(attacker, 'atk') : (attacker.atk || 0)) * 0.65)
                 + (typeof getPlantedTreeBonus === 'function' ? getPlantedTreeBonus(attacker) : 0)
                 + getHourglassPower(attacker));
             // Brute Force (Raider passive): basic attacks land +20% harder.
@@ -8812,10 +8823,11 @@
                 dmg = Math.max(1, Math.round(dmg * offMult));
                 if (unitHasStatus(target, 'marked')) dmg += target.markBonus ?? 40;
             }
-            // 50→1000 HP curve: mirror the engine — damage × levelScale of the
-            // attacker, mitigation × levelScale of the target (both 1 at cap).
-            const _baLs = (typeof levelScale === 'function') ? levelScale(getUnitLevel(attacker)) : 1;
-            const _baLsT = (typeof levelScale === 'function') ? levelScale(getUnitLevel(target)) : 1;
+            // Mirror the engine — damage × offenseScale(attacker → target),
+            // mitigation × defenseScale(target). See data.js "LEVEL COMBAT MATH".
+            const _baAL = getUnitLevel(attacker), _baTL = getUnitLevel(target);
+            const _baLs = (typeof offenseScale === 'function') ? offenseScale(_baAL, _baTL) : 1;
+            const _baLsT = (typeof defenseScale === 'function') ? defenseScale(_baTL) : 1;
             dmg = Math.max(1, Math.round(dmg * _baLs));
             const armor = Math.round(getEffectiveArmor(target, 'physical') * _baLsT);
             if (armor > 0) dmg = Math.max(1, dmg - armor);

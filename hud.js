@@ -4403,9 +4403,16 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     if (atkMoveTile && !canAttack) {
 
       const minRoll = -2, maxRoll = 2;
-      let minDmg = Math.max(24, Math.floor(actingUnit.atk * 0.65) + minRoll);
-      let maxDmg = Math.max(24, Math.floor(actingUnit.atk * 0.65) + maxRoll);
-      const effectiveArmor = typeof getEffectiveArmor === 'function' ? getEffectiveArmor(targetUnit) : 0;
+      // Same level math the engine resolves with (data.js "LEVEL COMBAT MATH"):
+      // cap-equivalent ATK, damage × offenseScale, armour × defenseScale.
+      const _maAtk = (typeof levelPowerStat === 'function') ? levelPowerStat(actingUnit, 'atk') : (actingUnit.atk || 0);
+      const _maAL = (typeof getUnitLevel === 'function') ? getUnitLevel(actingUnit) : 0;
+      const _maTL = (typeof getUnitLevel === 'function') ? getUnitLevel(targetUnit) : 0;
+      const _maOff = (typeof offenseScale === 'function') ? offenseScale(_maAL, _maTL) : 1;
+      const _maDef = (typeof defenseScale === 'function') ? defenseScale(_maTL) : 1;
+      let minDmg = Math.max(1, Math.round(Math.max(24, Math.floor(_maAtk * 0.65) + minRoll) * _maOff));
+      let maxDmg = Math.max(1, Math.round(Math.max(24, Math.floor(_maAtk * 0.65) + maxRoll) * _maOff));
+      const effectiveArmor = Math.round((typeof getEffectiveArmor === 'function' ? getEffectiveArmor(targetUnit) : 0) * _maDef);
       if (effectiveArmor) { minDmg = Math.max(1, minDmg - effectiveArmor); maxDmg = Math.max(1, maxDmg - effectiveArmor); }
       if (targetUnit.shield > 0) { minDmg = Math.max(0, minDmg - targetUnit.shield); maxDmg = Math.max(0, maxDmg - targetUnit.shield); }
       moveAtkPreview = { type: 'damage', min: minDmg, max: maxDmg };
@@ -4781,7 +4788,13 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
       const isBaneEffective = (targetUnit.types || []).includes(bRule.baneType);
       let baneDmg = (bRule.baseDmg || 48) + (isBaneEffective ? (bRule.baneDmg || 120) : 0);
-      baneDmg = Math.max(1, baneDmg - (typeof getEffectiveArmor === 'function' ? getEffectiveArmor(targetUnit, 'magic') : 0));
+      // Thrown items resolve through applyDamageToUnit like any hit — quote them
+      // in the victim's magnitude (data.js "LEVEL COMBAT MATH").
+      const _bnAL = (typeof getUnitLevel === 'function') ? getUnitLevel(actingUnit) : 0;
+      const _bnTL = (typeof getUnitLevel === 'function') ? getUnitLevel(targetUnit) : 0;
+      baneDmg = Math.round(baneDmg * ((typeof offenseScale === 'function') ? offenseScale(_bnAL, _bnTL) : 1));
+      baneDmg = Math.max(1, baneDmg - Math.round((typeof getEffectiveArmor === 'function' ? getEffectiveArmor(targetUnit, 'magic') : 0)
+        * ((typeof defenseScale === 'function') ? defenseScale(_bnTL) : 1)));
 
       let bMoveTile = null;
       if (!canThrow && unitAP >= itemApCost) {
@@ -6554,14 +6567,20 @@ function _renderSpellDescBar() {
       _dbUnit = state.units.find(u => u && u.id === state._blitzActiveUnitId) || null;
     }
   } catch (e) {}
-  const _dbLs = (_dbUnit && typeof levelScale === 'function' && typeof getUnitLevel === 'function')
-    ? levelScale(getUnitLevel(_dbUnit)) : 1;
+  // Quoted against a SAME-LEVEL target (gap 1) — the card can't know who you
+  // will aim at, and a same-level quote is the honest baseline. Damage rides
+  // offenseScale (magnitude × combat pace), heals/shields ride supportScale
+  // (HP space — no pace). See data.js "LEVEL COMBAT MATH".
+  const _dbL = (_dbUnit && typeof getUnitLevel === 'function') ? getUnitLevel(_dbUnit) : 0;
+  const _dbLs = (_dbL && typeof offenseScale === 'function') ? offenseScale(_dbL, _dbL) : 1;
+  const _dbLsS = (_dbL && typeof supportScale === 'function') ? supportScale(_dbL, _dbL) : 1;
   const _dbNum = (n) => Math.max(1, Math.round(n * _dbLs));
+  const _dbNumS = (n) => Math.max(1, Math.round(n * _dbLsS));
   const details = [];
   if (sp.dmg) details.push('DMG ' + _dbNum(sp.dmg));
   if (sp.dashDamage) details.push('Path DMG ' + _dbNum(sp.dashDamage));
-  if (sp.heal) details.push('Heal ' + _dbNum(sp.heal));
-  if (sp.shield) details.push('Shield ' + _dbNum(sp.shield));
+  if (sp.heal) details.push('Heal ' + _dbNumS(sp.heal));
+  if (sp.shield) details.push('Shield ' + _dbNumS(sp.shield));
   const rng = sp.range || 0;
   details.push(rng > 0 ? 'Range ' + rng : 'Self-cast');
   if (sp.aoeRadius) details.push('AOE ' + sp.aoeRadius);

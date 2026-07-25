@@ -7132,3 +7132,99 @@ leaks), ~700 pool particles spawned. Every r128 API used was confirmed present
 `Matrix4.makeBasis`, `Vector3.fromBufferAttribute`, `setDrawRange`,
 `Color.setHSL`). NOT playtested in-browser (RULE #1c) — the R2 upload has to
 happen first.
+
+## LEVEL COMBAT MATH rework (2026-07-25) — data.js, state.js, battle.js, ai.js, ui.js, hud.js
+
+**Symptom.** Challenge Battle 1, player unit level 1 vs a level-1 enemy: both
+sides chipped for 1–3 HP a swing, abilities barely better, and the match ran
+past 12 rounds. The same disease existed at every level, just less visibly.
+
+**Root cause (measured, not guessed).** Flat damage used to be scaled by the
+ATTACKER's `levelScale()` and mitigation by the DEFENDER's. That reads as
+"proportional" but isn't, because `atk/def/mdef/int` grow **additively** on top
+of the race base (`LEVEL_TOTAL_STAT_GAINS`) while HP is a pure multiple of the
+level curve. So a level-1 unit swung with 82 of its eventual 140 ATK into a
+fully compressed HP bar. Measured same-level numbers *before* the fix
+(homosapien, `?v=20260725g`):
+
+| lvl | HP | basic attack | Fire |
+|---|---|---|---|
+| 1 | 49 | 2 (4.1%, **25 hits**) | 7 (14.3%, 8 casts) |
+| 100 | 985 | 67 (6.8%, 15 hits) | 134 (13.6%, 8 casts) |
+
+Two compounding factors: (a) level 1 was ~2× *proportionally* weaker than the
+cap, and (b) the cap itself needed 8 casts / 15 hits for one kill with a
+1-action-per-turn turn model. Plus MP: `EW_MP_L1_FRAC = 0.20` gave a level-1
+Black Mage 63 MP against a **flat** 30-MP Fire — 2 casts for the whole battle,
+with 3%-of-pool regen refunding 2 MP a round. After those 2 casts the only move
+left was a 2-damage punch. That is the twelve rounds.
+
+**Fix — three knobs, all in the `LEVEL COMBAT MATH` block of `data.js`.**
+
+1. **`levelPowerStat(unit, key)`** — every damage/armour formula now reads ATK /
+   INT / DEF / MDEF at its **level-cap equivalent** (current stat + growth not
+   yet earned; exact when the unit carries `_lvlStatGains`, which everything
+   built through `setUnitLevel` does). Race and job differences are untouched —
+   only the *level* component is flattened, because level advantage is (3)'s
+   job. Adds exactly **0** at the cap. Read through `pwrAtk()`/`pwrInt()` in
+   battle.js and `_aiAtk()` in ai.js — never `unit.atk` directly in a damage roll.
+2. **`EW_COMBAT_PACE = 1.75`** — a single time-to-kill dial applied to flat
+   damage **and** flat mitigation alike, so every relative ratio (class, race,
+   spell, armour's share of a hit) is preserved exactly and only the round count
+   moves. Set it to `1` to restore pre-2026-07-25 magnitudes byte-for-byte.
+3. **`levelGapMult()`** — `1.08^(attackerLevel − defenderLevel)`, clamped
+   `[0.30, 3.50]`. This is the classic-JRPG level gap, and unlike the implicit
+   one that (1) removed it is **consistent**: +10 levels means the same thing at
+   level 5 and at level 80. Inert in PvP (all units level 100 ⇒ gap 0).
+
+Plus `EW_MP_L1_FRAC 0.20 → 0.42` — a fresh caster gets 4–5 casts of a starter
+spell instead of 2. Spell MP **costs stay flat at every level**; only the pool moves.
+
+**The three resolution-time scales** (use these, don't hand-roll `levelScale`):
+
+| helper | for | formula |
+|---|---|---|
+| `offenseScale(src, tgt)` | flat DAMAGE | `levelScale(tgt) × EW_COMBAT_PACE × levelGapMult(src, tgt)` |
+| `defenseScale(tgt)` | flat MITIGATION (armour, bulwark, hourglass, height soak) | `levelScale(tgt) × EW_COMBAT_PACE` |
+| `supportScale(tgt, src)` | flat HP-SPACE (heals, shields, %-HP floors) | `levelScale(tgt)` — no pace, no gap |
+
+Damage resolves in the **victim's** magnitude space (it's their HP bar it has to
+eat through), which is why `offenseScale` takes the target's level, not the
+source's. Source-less hazards (DoT ticks, turret blasts) keep
+`opts.scaleByTargetLevel: true` and resolve at gap 1.
+
+**Result — same-level time-to-kill is now flat from level 1 to 100:**
+
+| lvl | HP | MP | basic attack | Fire | Fire casts on a full pool |
+|---|---|---|---|---|---|
+| 1 | 49 | 133 | 6 (12.2%, 9 hits) | 11 (22.4%, **5 casts**) | 4 |
+| 10 | 86 | 140 | 10 (11.6%, 9) | 21 (24.4%, 5) | 4 |
+| 20 | 150 | 152 | 18 (12.0%, 9) | 36 (24.0%, 5) | 5 |
+| 50 | 411 | 204 | 49 (11.9%, 9) | 98 (23.8%, 5) | 6 |
+| 100 | 985 | 316 | 117 (11.9%, 9) | 235 (23.9%, 5) | 10 |
+
+**And the level gap now bites (basic attacks vs a level-20 defender):**
+
+| attacker | hits to kill the L20 | hits it survives from the L20 | gap |
+|---|---|---|---|
+| L10 | 30 | 4 | ×0.46 |
+| L17 | 12 | 7 | ×0.79 |
+| L20 | 9 | 9 | ×1.00 |
+| L23 | 6 | 12 | ×1.26 |
+| L30 | 4 | 33 | ×2.16 |
+
+A 2–3 level deficit is a ~25% swing — recoverable with a type advantage (×1.30
+effect × ×1.25 STAB), a flank, high ground or a crit. Ten levels is a rout.
+
+**Invariants to preserve when touching this.**
+- `levelPowerStat` adds 0, `levelGapMult` is 1 and `levelScale` is 1 at the cap,
+  so **PvP/Arena differs from the old game only by `EW_COMBAT_PACE`.**
+- Any NEW damage roll built from ATK/INT must go through `pwrAtk`/`pwrInt`
+  (`_aiAtk` in ai.js), or it silently under-hits at low level again.
+- Any NEW flat damage/heal/shield must pick the right scale from the table
+  above. Heals and shields are HP-space — pacing them would cancel the pace.
+- The damage previews mirror the engine (`_pvLs`/`_pvLsT`/`_pvLsS` in ui.js
+  `predictTargetOutcome`, `_esLs`/`_esLsT`/`_esLsDot`, `_baLs`/`_baLsT`, and
+  `_dbNum`/`_dbNumS` on the hud.js spell card). Change the engine, change these.
+- ai.js `_aiKillHp(target, attacker)` de-scales through `offenseScale` — that's
+  what makes the AI respect the level gap when it asks "can I kill this?".

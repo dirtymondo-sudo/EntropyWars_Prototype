@@ -3114,10 +3114,19 @@
             armor = Math.max(0, Math.round(armor * getZodiacBonus(unit).mult));
 
             // Fold the relevant defense stat into the flat damage soak.
+            // levelPowerStat reads the stat at its LEVEL-CAP equivalent (data.js
+            // "LEVEL COMBAT MATH"): DEF/MDEF grow additively while HP rides the
+            // level curve, so raw def made armour a rounding error at low level
+            // (a level-1 46-DEF unit soaked 1 point of a 9-point hit). Flattening
+            // the level component keeps armour worth the same share of a hit at
+            // every level; the level ADVANTAGE is levelGapMult's job instead.
+            // Adds exactly 0 at the cap, so PvP armour is unchanged.
             if (dt === 'physical') {
-                armor += Math.floor((unit?.def || 0) * DEFENSE_DAMAGE_REDUCTION);
+                const _pDef = (typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'def') : (unit?.def || 0);
+                armor += Math.floor(_pDef * DEFENSE_DAMAGE_REDUCTION);
             } else if (dt === 'magic') {
-                armor += Math.floor((unit?.mdef || 0) * DEFENSE_DAMAGE_REDUCTION);
+                const _pMdef = (typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'mdef') : (unit?.mdef || 0);
+                armor += Math.floor(_pMdef * DEFENSE_DAMAGE_REDUCTION);
             }
             return Math.max(0, armor);
         }

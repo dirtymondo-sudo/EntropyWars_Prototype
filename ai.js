@@ -482,7 +482,7 @@
         logAction(best);
 
         if (best.type === 'attack' && best.target) {
-            const estDmg = Math.max(24, Math.floor(unit.atk * 0.65) + g.getEffectiveAttackBonus(unit));
+            const estDmg = Math.max(24, Math.floor(_aiAtk(unit) * 0.65) + g.getEffectiveAttackBonus(unit));
             recordTeamDamage(best.target.id, estDmg);
         }
         if (best.type === 'spell' && best.target && ['damage', 'ricochet', 'multiHit', 'lifeDrain', 'line', 'linePush', 'cross', 'pull', 'displacement', 'splitBeam', 'aoePull', 'skyDrop', 'skyThrow', 'skySlam', 'leapStrike'].includes(best.spell?.kind)) {
@@ -725,7 +725,7 @@
 
                 const isUnacted = unactedEnemyIds.has(e.id);
                 if (canReach) {
-                    const eDmg = Math.max(5, Math.floor((e.atk || 5) * 0.65));
+                    const eDmg = Math.max(5, Math.floor(Math.max(_aiAtk(e), 5) * 0.65));
 
                     incomingDmg += isUnacted ? eDmg : Math.floor(eDmg * 0.6);
                     threatCount++;
@@ -764,7 +764,7 @@
         for (const e of visibleEnemies) {
             const eRange = g.getEffectiveRange(e);
             const eMove = e.move || 3;
-            const eDmg = Math.max(3, Math.floor((e.atk || 5) * 0.65));
+            const eDmg = Math.max(3, Math.floor(Math.max(_aiAtk(e), 5) * 0.65));
 
             const reach = eMove + eRange;
             for (let dy = -reach; dy <= reach; dy++) {
@@ -1277,24 +1277,33 @@
         }
     }
 
+    // Damage estimates must read ATK at its LEVEL-CAP equivalent, exactly like
+    // the engine's damage formulas do (data.js levelPowerStat / battle.js
+    // pwrAtk) — otherwise the AI under-rates every low-level unit's swing.
+    function _aiAtk(u) {
+        return (typeof levelPowerStat === 'function') ? levelPowerStat(u, 'atk') : ((u && u.atk) || 0);
+    }
+
     // Level 100: this AI scores in BASE damage magnitude (spell.dmg, atk*0.65),
     // but unit HP is scaled ~24× by the level curve. For lethality checks that
     // compare a base-magnitude damage estimate to target.hp, bring the HP back
     // into base space with _aiKillHp() so "can I kill this?" stays correct.
     // (Damage read from the team damage log is already in scaled space — don't
     // de-scale those comparisons.)
-    function _aiLevelScale(u) {
-        if (typeof levelScale !== 'function') return 1;
-        let lvl = (u && u._lvlCache) || 0;
-        if (!lvl && typeof XP_THRESHOLDS !== 'undefined') {
-            const xp = (u && u._xp) || 0;
-            lvl = 1;
-            for (let L = XP_THRESHOLDS.length; L >= 2; L--) { if (xp >= XP_THRESHOLDS[L - 1]) { lvl = L; break; } }
-        }
-        return levelScale(lvl || 1);
+    function _aiLevel(u) {
+        return (typeof ewUnitLevel === 'function') ? ewUnitLevel(u) : ((u && u._lvlCache) || 1);
+    }
+    // The scale a flat damage estimate by `attacker` actually resolves at
+    // against `target` — magnitude, combat pace and level gap all included
+    // (data.js offenseScale). Mirroring the engine here is what keeps the AI's
+    // "can I kill this?" honest now that levels swing damage both ways: a
+    // level-20 unit really does hit a level-10 for ~2× what the card says.
+    function _aiOffenseScale(attacker, target) {
+        if (typeof offenseScale !== 'function') return 1;
+        return offenseScale(_aiLevel(attacker), _aiLevel(target));
     }
     function _aiKillHp(target, attacker) {
-        const s = _aiLevelScale(attacker);
+        const s = _aiOffenseScale(attacker, target);
         return s > 0 ? (target.hp / s) : target.hp;
     }
 
@@ -1302,7 +1311,7 @@
         const g = G();
         if ((unit.ap || 0) < g.AP_COST_ACTION || _skipAttack) return;
 
-        const estDmg = Math.max(24, Math.floor(unit.atk * 0.65) + g.getEffectiveAttackBonus(unit) + g.getHourglassPower(unit));
+        const estDmg = Math.max(24, Math.floor(_aiAtk(unit) * 0.65) + g.getEffectiveAttackBonus(unit) + g.getHourglassPower(unit));
 
         for (const tgt of v.attackTargets) {
             let score = estDmg;
@@ -1430,7 +1439,7 @@
         if (tDist < 1 || tDist > effRange) return;
         if (g.isRangeBlockedByTerrain(unit.x, unit.y, tower.x, tower.y)) return;
 
-        const estDmg = Math.max(24, Math.floor(unit.atk * 0.65) + g.getEffectiveAttackBonus(unit) + g.getHourglassPower(unit));
+        const estDmg = Math.max(24, Math.floor(_aiAtk(unit) * 0.65) + g.getEffectiveAttackBonus(unit) + g.getHourglassPower(unit));
 
         let score = estDmg + g.getAIWeight('towerBaseBonus_v1');
 
@@ -1472,7 +1481,7 @@
         const silenced = g.unitHasStatus(unit, 'silence');
         if (silenced) return;
 
-        const estDmg = Math.max(24, Math.floor(unit.atk * 0.65) + g.getEffectiveAttackBonus(unit));
+        const estDmg = Math.max(24, Math.floor(_aiAtk(unit) * 0.65) + g.getEffectiveAttackBonus(unit));
 
         // Healer discipline: while an ally is genuinely hurt AND this unit can
         // afford a heal, a healFirst job discounts its damage options so the
@@ -2707,7 +2716,7 @@
         const g = G();
         const results = [];
         const effRange = g.getEffectiveRange(unit);
-        const estDmg = Math.max(24, Math.floor(unit.atk * 0.65) + g.getEffectiveAttackBonus(unit));
+        const estDmg = Math.max(24, Math.floor(_aiAtk(unit) * 0.65) + g.getEffectiveAttackBonus(unit));
 
         for (const tile of moveTiles) {
             let tileScore = 0;

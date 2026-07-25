@@ -149,6 +149,24 @@
         // seasoning, never the meal).
         const SPELL_DMG_VARIANCE = 8;
 
+        // ── Level-cap-equivalent stats for damage formulas ─────────────────
+        // Every roll built from ATK or INT reads the stat through these, NOT
+        // through unit.atk / unit.intStat directly. atk/def/mdef/int grow
+        // ADDITIVELY with level while HP rides levelScale()'s curve, so a raw
+        // read made a level-1 unit swing at ~58% of its eventual strength into
+        // a fully-compressed HP bar — that is why two level-1 units chipped
+        // each other for 2 HP a round. levelPowerStat() adds back the growth
+        // not yet earned (data.js "LEVEL COMBAT MATH"), which flattens the
+        // LEVEL component only — race and job differences are untouched, and
+        // level ADVANTAGE is carried by levelGapMult() at the chokepoint
+        // instead. Adds exactly 0 at the cap ⇒ PvP rolls are unchanged.
+        function pwrAtk(u) {
+            return (typeof levelPowerStat === 'function') ? levelPowerStat(u, 'atk') : ((u && u.atk) || 0);
+        }
+        function pwrInt(u) {
+            return (typeof levelPowerStat === 'function') ? levelPowerStat(u, 'int') : ((u && u.intStat) || 0);
+        }
+
         // ── Jump stat ──────────────────────────────────────────────────────────
         // The jump stat is a unit's VERTICAL hop power (max height climbed in one
         // leap — and the ceiling for jump legs during a normal Move). 2026-07-23
@@ -281,7 +299,7 @@
                 const chance = Math.min(0.70, Math.max(0.10, 0.30 + spdDiff * 0.03 + awrDiff * 0.02));
                 if (Math.random() >= chance) continue;
 
-                const baseDmg = Math.max(1, Math.round((enemy.atk || 20) * 0.5));
+                const baseDmg = Math.max(1, Math.round(pwrAtk(enemy) * 0.5));
                 const armor = getEffectiveArmor(unit);
                 const dmg = Math.max(1, baseDmg - armor);
                 applyDamageToUnit(unit, dmg, `${unitDisplayName(enemy)} strikes ${unitDisplayName(unit)} while retreating! `, {
@@ -5136,7 +5154,7 @@
                 addLog(`⚱️ ${unitDisplayName(target)}'s Censer of Purity burns away ${meta.label}!`);
                 showFloatingTextForUnit(target, '⚱️ PURGED', 'buff', { durationMs: 1100 });
                 if (sourceUnit && !sourceUnit.dead && !sourceUnit._dying) {
-                    const _censerDmg = Math.max(10, Math.floor((target.atk || 0) * 0.4));
+                    const _censerDmg = Math.max(10, Math.floor(pwrAtk(target) * 0.4));
                     const _censerSrc = sourceUnit, _censerBearer = target;
                     window.setTimeout(() => {
                         if (_censerSrc.dead || _censerSrc._dying || state.winner) return;
@@ -7000,16 +7018,17 @@
 
         function applyHealingToUnit(target, amount, sourceUnit = null, opts = {}) {
             if (!target || target.dead || target._dying) return 0;
-            // Level 100: flat heals scale by the healer's level (same curve as
-            // damage) so a spell that restores ~30% today still restores ~30% at
-            // level 100. Percent-of-max-HP heals pass opts.preScaled to opt out.
+            // Flat heals are HP-SPACE numbers: they resolve in the RECIPIENT's
+            // magnitude (supportScale — no combat pace, no level gap), so a
+            // spell that restores ~30% of a bar restores ~30% at every level.
+            // Percent-of-max-HP heals pass opts.preScaled to opt out.
             let _amt = Number(amount) || 0;
-            if (!opts.preScaled && typeof levelScale === 'function') {
-                const _srcLvl = sourceUnit ? getUnitLevel(sourceUnit)
-                    : (opts.scaleByTargetLevel ? getUnitLevel(target) : 0);
-                // >= 1, not > 1: levelScale(1) < 1 now (50→1000 HP curve), so
-                // level-1 casters MUST be scaled or they'd heal 20× too hard.
-                if (_srcLvl >= 1) _amt = _amt * levelScale(_srcLvl);
+            if (!opts.preScaled && typeof supportScale === 'function') {
+                const _srcLvl = sourceUnit ? getUnitLevel(sourceUnit) : 0;
+                const _tgtLvl = getUnitLevel(target);
+                if (_srcLvl >= 1 || opts.scaleByTargetLevel || _tgtLvl >= 1) {
+                    _amt = _amt * supportScale(_tgtLvl, _srcLvl);
+                }
             }
             const rawAmount = Math.max(0, Math.round(_amt));
             const actual = Math.min(rawAmount, Math.max(0, target.maxHp - target.hp));
@@ -7116,7 +7135,7 @@
         function getCounterDamage(unit) {
             // Riposte passive: Swordmaster counters swing at full sword strength.
             const atkPct = unit && unit.cls === 'Swordmaster' ? 0.6 : 0.4;
-            return Math.max(24, Math.floor((unit.atk || 0) * atkPct) + randInt(24));
+            return Math.max(24, Math.floor(pwrAtk(unit) * atkPct) + randInt(24));
         }
 
         /* ── Unit Facing ─────────────────────────────────────────────────
@@ -13281,7 +13300,7 @@
                 }
             }
             function _hitBasic(att, tgt) {
-                let dmg = Math.max(24, Math.floor((att.atk || 0) * 0.65) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
+                let dmg = Math.max(24, Math.floor(pwrAtk(att) * 0.65) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
                 // Brute Force (Raider passive): basic attacks land +20% harder.
                 if (att.cls === 'Raider') dmg = Math.floor(dmg * 1.2);
                 // Warpath (Warrior passive): basic attacks hit +15% harder.
@@ -15374,23 +15393,27 @@
                 addLog(`${unitDisplayName(target)} was marked, so the hit deals extra damage.`);
             }
 
-            // ── Level 100 magnitude ────────────────────────────────────────
-            // Scale the accumulated flat damage (base + attack buffs + mark) by
-            // the SOURCE unit's level so flat spell/attack numbers keep today's
-            // proportions against HP that has grown up to ~20×. Percent-of-max-HP
-            // and already-stat-derived callers pass opts.preScaled to opt out.
-            // opts.scaleByTargetLevel handles source-less hazards (e.g. DoT).
-            if (!opts.preScaled && typeof levelScale === 'function') {
+            // ── Level magnitude ────────────────────────────────────────────
+            // THE damage chokepoint. offenseScale() (data.js "LEVEL COMBAT
+            // MATH") resolves the accumulated flat damage in the VICTIM's
+            // magnitude space, applies the global time-to-kill pace, and then
+            // the classic-JRPG level-gap multiplier. Percent-of-max-HP and
+            // already-scaled callers pass opts.preScaled to opt out;
+            // opts.scaleByTargetLevel handles source-less hazards (e.g. DoT),
+            // which resolve at gap 1 against their victim.
+            const _tgtLvl = getUnitLevel(target);
+            if (!opts.preScaled && typeof offenseScale === 'function') {
                 const _srcLvl = sourceUnit ? getUnitLevel(sourceUnit)
-                    : (opts.scaleByTargetLevel ? getUnitLevel(target) : 0);
-                // >= 1, not > 1: levelScale(1) < 1 now (50→1000 HP curve), so
-                // level-1 attackers MUST be scaled or flat spell damage would
-                // one-shot the ~50-HP units of early Mystery Dungeon floors.
-                if (_srcLvl >= 1) finalDamage = Math.max(1, Math.round(finalDamage * levelScale(_srcLvl)));
+                    : (opts.scaleByTargetLevel ? _tgtLvl : 0);
+                if (_srcLvl >= 1) {
+                    finalDamage = Math.max(1, Math.round(finalDamage * offenseScale(_srcLvl, _tgtLvl)));
+                }
             }
-            // Mitigation is stored in base magnitude, so scale it by the target's
-            // level to stay proportional against the now-scaled incoming damage.
-            const _defLs = (typeof levelScale === 'function') ? levelScale(getUnitLevel(target)) : 1;
+            // Mitigation is stored in base magnitude, so bring it into the
+            // target's magnitude space at the SAME pace as the damage above —
+            // armour keeps exactly the share of a hit it always had.
+            const _defLs = (typeof defenseScale === 'function') ? defenseScale(_tgtLvl)
+                : ((typeof levelScale === 'function') ? levelScale(_tgtLvl) : 1);
             const hourglassReduction = opts.ignoreArmor ? 0 : Math.round(getHourglassDamageReduction(target) * _defLs);
             // Bulwark (Tank passive): a flat 8 shaved off every hit that
             // respects armor — the tank shrugs off chip damage.
@@ -34728,12 +34751,18 @@
                 pushUndoSnapshot(true);
                 if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
                 else animateStrikeLeap(unit, x, y);
-                let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
+                let damage = Math.max(24, Math.floor(pwrAtk(unit) * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
 
                 // Level 100: towers live in the same magnitude space as unit HP
                 // (map.js scales TOWER_MAX_HP/TOWER_DEF by the match level), so
                 // the attack roll scales by the attacker's level to match.
-                if (typeof levelScale === 'function') {
+                // Towers carry no level, so they resolve at the attacker's own
+                // magnitude and gap 1 — and they take the same EW_COMBAT_PACE
+                // as units, or they'd have become disproportionately tanky.
+                if (typeof offenseScale === 'function') {
+                    const _twLvl = getUnitLevel(unit);
+                    damage = Math.round(damage * offenseScale(_twLvl, _twLvl));
+                } else if (typeof levelScale === 'function') {
                     damage = Math.round(damage * levelScale(getUnitLevel(unit)));
                 }
                 damage = Math.max(1, damage - (tw.def || 0));
@@ -34842,7 +34871,7 @@
                     pushUndoSnapshot(true);
                     if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
                     else animateStrikeLeap(unit, x, y);
-                    let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
+                    let damage = Math.max(24, Math.floor(pwrAtk(unit) * 0.65) + getEffectiveAttackBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
                     damageTurretAt(x, y, damage, unit);
                     playSfx('damage');
                     spendAllAP(unit);   // attacking ends the turn
@@ -35021,7 +35050,7 @@
             // flows into applyDamageToUnit, which adds it for every enemy hit.
             // Adding it in both places double-counted chaos/killstreak/terrain
             // attack bonuses for basic attacks (spells only ever got it once).
-            let damage = Math.max(24, Math.floor(unit.atk * 0.65) + getPlantedTreeBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
+            let damage = Math.max(24, Math.floor(pwrAtk(unit) * 0.65) + getPlantedTreeBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
             // Brute Force (Raider passive): basic attacks land +20% harder.
             if (unit.cls === 'Raider') damage = Math.floor(damage * 1.2);
             // Warpath (Warrior passive): basic attacks hit +15% harder.
@@ -35295,7 +35324,7 @@
                                 if (state.winner || _fuTarget.dead || _fuTarget._dying || _fuAlly.dead) return;
                                 animateStrikeLeap(_fuAlly, _fuTarget.x, _fuTarget.y);
                                 playSfx('basicAttack');
-                                const _fuDmg = Math.max(24, Math.floor((_fuAlly.atk || 0) * 0.4) + randInt(24));
+                                const _fuDmg = Math.max(24, Math.floor(pwrAtk(_fuAlly) * 0.4) + randInt(24));
                                 _fuAlly._matchFollowUps = (_fuAlly._matchFollowUps || 0) + 1;
                                 grantXP(_fuAlly, XP_FOLLOWUP, 'followUp');
                                 addLog(`🤝 ${unitDisplayName(_fuAlly)} follows up from the far side for ${_fuDmg} damage!`);
@@ -37832,10 +37861,10 @@
         function getSpellStatBonus(unit, spell) {
             if (!unit || !spell) return 0;
             if (spell.damageType === 'physical') {
-                return Math.floor((unit.atk || 0) * 0.35);
+                return Math.floor(pwrAtk(unit) * 0.35);
             }
 
-            return Math.floor(((unit.intStat || 0) + getNecroDeathPower(unit)) * 0.35);
+            return Math.floor((pwrInt(unit) + getNecroDeathPower(unit)) * 0.35);
         }
 
         // Arcane Surge (Black Mage passive, data.js JOB_PASSIVES): +8 spell
@@ -38602,7 +38631,11 @@
                 panelFocusTarget = _shResult.target;
                 const _st = _shResult.target;
                 const shieldCap = Math.ceil(_st.maxHp * (spell.shieldCapPct || 0.5));
-                const _shBase = (typeof levelScale === 'function') ? Math.round(((spell.shield || 0) + getHourglassPower(unit)) * levelScale(getUnitLevel(unit))) : ((spell.shield || 0) + getHourglassPower(unit));
+                // Shields are HP-space (they absorb raw damage), so they scale
+                // in the RECIPIENT's magnitude — supportScale, never the pace.
+                const _shBase = (typeof supportScale === 'function')
+                    ? Math.round(((spell.shield || 0) + getHourglassPower(unit)) * supportScale(getUnitLevel(_st), getUnitLevel(unit)))
+                    : ((spell.shield || 0) + getHourglassPower(unit));
                 const shieldGain = Math.min(_shBase, Math.max(0, shieldCap - _st.shield));
                 _st.shield += shieldGain;
                 addLog(`${unitDisplayName(unit)} grants ${unitDisplayName(_st)} a ${shieldGain} HP shield.`);
@@ -40781,7 +40814,7 @@
                                 followUnitFall(target);   // camera rides the drop
                             }
 
-                            const grappleDmg = Math.max(16, Math.floor(unit.atk * 0.3) + spellPower);
+                            const grappleDmg = Math.max(16, Math.floor(pwrAtk(unit) * 0.3) + spellPower);
                             applyDamageToUnit(target, grappleDmg, `${unitDisplayName(unit)} grapples: `, { sourceUnit: unit, damageType: 'physical', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null });
                             if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${grappleDmg}`, false);
                             addLog(`${unitDisplayName(unit)} grapples ${unitDisplayName(target)}, pulling them ${pulled} tile${pulled !== 1 ? 's' : ''} closer and dealing ${grappleDmg} damage.`);

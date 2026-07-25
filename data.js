@@ -12205,7 +12205,14 @@ function levelScale(level) {
 // (base + total) × curve(L) — NEGATIVE below the level where the curve
 // crosses the race's base, which is what compresses a fresh Mystery Dungeon
 // unit down to ~50 HP and a fraction of its mana.
-const EW_MP_L1_FRAC = 0.20;
+// 2026-07-25: raised 0.20 → 0.42. At 20% a level-1 Black Mage held 63 MP
+// against a flat 30-MP Fire — TWO casts for the whole battle, after which the
+// only option left was a basic attack, and 3%-of-pool regen refunded 2 MP a
+// round. That is the single biggest reason challenge Battle 1 ran past twelve
+// rounds. 42% gives a fresh unit 4–5 casts of a starter spell (plus regen),
+// which is the classic JRPG budget: enough to open with magic, not enough to
+// spam it. Costs stay FLAT at every level — only the pool moves.
+const EW_MP_L1_FRAC = 0.42;
 const LEVEL_TOTAL_STAT_GAINS = { hp: 360, mp: 108, atk: 58, def: 52, mdef: 43, int: 43 };
 function levelStatGains(level, baseHp, baseMp) {
     const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
@@ -12221,6 +12228,124 @@ function levelStatGains(level, baseHp, baseMp) {
         out.mp = Math.round((m + LEVEL_TOTAL_STAT_GAINS.mp) * mpScale) - m;
     }
     return out;
+}
+
+// ============================================================================
+// LEVEL COMBAT MATH (2026-07-25 rework) — why this exists.
+//
+// THE BUG. Before this pass, a flat damage number was scaled by the ATTACKER's
+// levelScale() and mitigation by the DEFENDER's. That reads as "proportional",
+// but it isn't, because atk/def/mdef/int grow ADDITIVELY on top of the race
+// base while HP is a pure multiple of the curve. A level-1 unit therefore
+// swings with only its race base ATK (82 of an eventual 140) into a fully
+// compressed HP bar, so a level-1 duel needed ~2× as many hits as a level-100
+// one: basic attacks landed for 2 HP out of 49, abilities for 7. Twelve rounds
+// later nobody was dead. Three fixes, each with one knob:
+//
+//   1. levelPowerStat() — damage/armor formulas read a unit's stat at its
+//      LEVEL-CAP equivalent (current stat + growth not yet earned). Now a
+//      same-level fight resolves to the SAME percentage of HP at level 1, 20
+//      and 100. Level advantage is expressed by (3), not by stat drift.
+//   2. EW_COMBAT_PACE — a flat time-to-kill dial applied to damage AND armor
+//      alike, so every relative balance ratio (class, race, spell, armor's
+//      share of a hit) is preserved exactly; only the number of rounds moves.
+//      A same-level nuke went from ~14% of an HP bar to ~24% (8 casts → 4).
+//   3. levelGapMult() — the explicit, classic-JRPG level gap. It replaces the
+//      implicit gap that (1) removed, and unlike that one it is CONSISTENT:
+//      +10 levels is the same crushing multiplier at level 5 and level 80.
+//
+// PvP/Arena is level-normalized to the cap, where levelPowerStat adds 0 and
+// levelGapMult is 1 — the only difference there is EW_COMBAT_PACE. Set it to
+// 1 to restore pre-2026-07-25 PvP magnitudes byte-for-byte.
+// ============================================================================
+
+// Time-to-kill dial. 1 = the old pace. 1.75 ≈ "a good spell takes a quarter of
+// an HP bar, a basic attack an eighth" — a 1v1 resolves in ~5 rounds instead of
+// ~13. Applied to flat damage and to flat mitigation, so armor keeps exactly
+// the same share of every hit it had before.
+const EW_COMBAT_PACE = 1.75;
+
+// Level gap. Damage is multiplied by STEP^(attackerLevel − defenderLevel):
+// +5 → ×1.47, +10 → ×2.16, −10 → ×0.46. Ten levels up means you kill in a
+// third of the hits and take a fifth of the damage — the gap is felt. Three
+// or four levels up is a ~25% swing, which type advantage (×1.5), a flank,
+// high ground or a crit can all out-play. Clamped so a runaway gap never
+// becomes a literal one-shot (or a literal zero).
+const EW_LEVEL_GAP_STEP = 1.08;
+const EW_LEVEL_GAP_MAX  = 3.5;
+const EW_LEVEL_GAP_MIN  = 0.30;
+
+// Level of a unit without needing battle.js's getUnitLevel (data.js loads
+// first, and ai.js/ui.js/hud.js can't always see it). getUnitLevel keeps
+// _lvlCache fresh on every damage event, so this is a hit in practice; the
+// fallback mirrors battle.js XP_THRESHOLDS = round(12 × (L−1)^1.9).
+function ewUnitLevel(unit) {
+    if (!unit) return 0;
+    const xp = unit._xp || 0;
+    if (unit._lvlCache && unit._lvlCacheXp === xp) return unit._lvlCache;
+    for (let L = LEVEL_CAP; L >= 2; L--) {
+        if (xp >= Math.round(12 * Math.pow(L - 1, 1.9))) return L;
+    }
+    return 1;
+}
+
+// Fraction of the additive stat growth a level-L unit has NOT earned yet.
+// 1 at level 1, 0 at the cap — the same curve HP rides.
+function levelGrowthDeficit(level) {
+    if (LEVEL_CAP <= 1) return 0;
+    const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
+    return 1 - Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_SCALE_EXP);
+}
+
+// A unit's stat as the DAMAGE/ARMOR formulas should see it: its level-cap
+// equivalent. Race and job differences survive untouched (they live in the
+// base); only the level component is flattened, because level advantage is
+// levelGapMult's job. `key` is a LEVEL_TOTAL_STAT_GAINS key ('atk', 'def',
+// 'mdef', 'int'); 'int' reads unit.intStat. Exact when the unit carries
+// _lvlStatGains (everything built through setUnitLevel does).
+function levelPowerStat(unit, key) {
+    if (!unit) return 0;
+    const raw = (key === 'int' ? unit.intStat : unit[key]) || 0;
+    const total = LEVEL_TOTAL_STAT_GAINS[key] || 0;
+    if (!total) return raw;
+    const earned = unit._lvlStatGains
+        ? (unit._lvlStatGains[key] || 0)
+        : Math.round(total * (1 - levelGrowthDeficit(ewUnitLevel(unit))));
+    return Math.max(0, raw + Math.max(0, total - earned));
+}
+
+// Classic-JRPG level gap multiplier on a hit. 1 when either side has no level
+// context (towers, hazards) or the levels match — so PvP is inert.
+function levelGapMult(attackerLevel, defenderLevel) {
+    const a = attackerLevel | 0, d = defenderLevel | 0;
+    if (!a || !d || a === d) return 1;
+    return Math.max(EW_LEVEL_GAP_MIN,
+        Math.min(EW_LEVEL_GAP_MAX, Math.pow(EW_LEVEL_GAP_STEP, a - d)));
+}
+
+// ── THE THREE RESOLUTION-TIME SCALES ────────────────────────────────────────
+// offenseScale: a flat DAMAGE number leaving a level-`src` attacker and landing
+//   on a level-`tgt` victim. Resolved in the VICTIM's magnitude space (that's
+//   whose HP bar it has to eat through), paced, then multiplied by the gap.
+function offenseScale(srcLevel, tgtLevel) {
+    const magL = (tgtLevel | 0) || (srcLevel | 0);
+    if (!magL) return 1;
+    return levelScale(magL) * EW_COMBAT_PACE * levelGapMult(srcLevel, tgtLevel);
+}
+// defenseScale: flat MITIGATION (armor, bulwark, hourglass soak, height soak)
+//   held by a level-`tgt` unit. Same pace as offense → armor's share of a hit
+//   is identical to the pre-pace game.
+function defenseScale(tgtLevel) {
+    const L = tgtLevel | 0;
+    return L ? levelScale(L) * EW_COMBAT_PACE : 1;
+}
+// supportScale: flat HP-SPACE numbers — heals, shields, %-of-max-HP floors.
+//   These restore or absorb HP, and HP is NOT paced, so neither are they.
+//   Resolved in the RECIPIENT's magnitude space; no gap (helping an ally is
+//   not a contest of levels).
+function supportScale(tgtLevel, srcLevel) {
+    const L = (tgtLevel | 0) || (srcLevel | 0);
+    return L ? levelScale(L) : 1;
 }
 
 // Spell-unlock levels mapped onto CLASS_SPELL_LEARN_ORDER indices. The engine
@@ -12470,7 +12595,10 @@ Object.assign(window, {
   getSpellSlotCost, getSpellIdsSlotCost, trimSpellIdsToSlotBudget,
   CLASS_SPELL_LEARN_ORDER, RACE_ABILITIES, CAMPAIGN_REGION_THEMES,
   LEVEL_CAP, EW_SCALE, EW_L1_FRAC, LEVEL_SCALE_EXP, levelScale,
-  LEVEL_TOTAL_STAT_GAINS, levelStatGains,
+  LEVEL_TOTAL_STAT_GAINS, levelStatGains, EW_MP_L1_FRAC,
+  EW_COMBAT_PACE, EW_LEVEL_GAP_STEP, EW_LEVEL_GAP_MAX, EW_LEVEL_GAP_MIN,
+  ewUnitLevel, levelGrowthDeficit, levelPowerStat, levelGapMult,
+  offenseScale, defenseScale, supportScale,
   getSpellUnlockLevel, SPELL_SHOP_LEVEL, SECONDARY_JOB_LEVEL, AP_BONUS_LEVELS,
   MODE_LEVEL_RULES, isProgressionMode, RACE_XP_YIELD_OVERRIDES, getRaceXpYield,
   getRaceLabel, GAUNTLET_MAX_LEVEL, getGauntletRetryCost,
