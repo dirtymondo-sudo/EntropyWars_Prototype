@@ -127,6 +127,10 @@ const ThreeVFX = (function () {
         'tess-square':       { r: 0.55, g: 1.00, b: 0.86, blend: 'add' },
         'tess-splash':       { r: 0.75, g: 1.00, b: 0.92, blend: 'add' },
 
+        /* gun lock-on reticle — colours are baked into the drawn texture
+           (white core + red glow), so the material multiplier stays white */
+        'crosshair':         { r: 1.00, g: 1.00, b: 1.00, blend: 'add' },
+
         'target-ring':       { r: 1.00, g: 0.30, b: 0.30, blend: 'world' },
         'target-ring-gold':  { r: 1.00, g: 0.85, b: 0.30, blend: 'world' },
         'target-ring-blue':  { r: 0.30, g: 0.60, b: 1.00, blend: 'world' },
@@ -432,7 +436,67 @@ const ThreeVFX = (function () {
         ctx.restore();
     }
 
+    /* ── Procedural gun crosshair sprite ─────────────────────────────────
+       Lock-on reticle painted on gun / gun-adjacent spell targets during
+       the cast wind-up (see _stageGunCrosshair in three-vfx-effects.js).
+       Drawn, not loaded: outer ring, cardinal ticks crossing it, inner
+       ticks with a centre gap, hot centre dot. Two stroke passes — a wide
+       dim red for glow and a thin near-white core — so the additive blend
+       reads as a lit HUD element rather than a flat red shape. */
+    function _drawCrosshairCell(ctx, cx, cy, sz) {
+        var half = sz / 2, mx = cx + half, my = cy + half;
+        ctx.save();
+        ctx.clearRect(cx, cy, sz, sz);
+        ctx.lineCap = 'round';
+        var passes = [
+            { w: sz * 0.070, col: 'rgba(255,55,25,0.50)' },
+            { w: sz * 0.026, col: 'rgba(255,225,210,0.95)' }
+        ];
+        for (var pi = 0; pi < passes.length; pi++) {
+            ctx.strokeStyle = passes[pi].col;
+            ctx.lineWidth = passes[pi].w;
+            ctx.beginPath();
+            ctx.arc(mx, my, half * 0.64, 0, Math.PI * 2);
+            ctx.stroke();
+            for (var i = 0; i < 4; i++) {
+                var a = i * Math.PI / 2;
+                var ux = Math.cos(a), uy = Math.sin(a);
+                /* cardinal tick crossing the ring */
+                ctx.beginPath();
+                ctx.moveTo(mx + ux * half * 0.48, my + uy * half * 0.48);
+                ctx.lineTo(mx + ux * half * 0.92, my + uy * half * 0.92);
+                ctx.stroke();
+                /* inner tick, stopping short of the centre */
+                ctx.beginPath();
+                ctx.moveTo(mx + ux * half * 0.15, my + uy * half * 0.15);
+                ctx.lineTo(mx + ux * half * 0.34, my + uy * half * 0.34);
+                ctx.stroke();
+            }
+        }
+        var dot = ctx.createRadialGradient(mx, my, 0, mx, my, half * 0.10);
+        dot.addColorStop(0.00, 'rgba(255,255,255,1)');
+        dot.addColorStop(0.50, 'rgba(255,120,80,0.9)');
+        dot.addColorStop(1.00, 'rgba(255,55,25,0)');
+        ctx.beginPath();
+        ctx.arc(mx, my, half * 0.10, 0, Math.PI * 2);
+        ctx.fillStyle = dot;
+        ctx.fill();
+        ctx.restore();
+    }
+
     function _buildProceduralHiRes() {
+        /* crisp 128px crosshair — billboard particles pick the hi-res
+           texture over the 64px atlas cell when one exists */
+        var xCvs = document.createElement('canvas');
+        xCvs.width = _WAVE_HIRES; xCvs.height = _WAVE_HIRES;
+        _drawCrosshairCell(xCvs.getContext('2d'), 0, 0, _WAVE_HIRES);
+        var xTex = new THREE.CanvasTexture(xCvs);
+        xTex.premultiplyAlpha = false;
+        xTex.magFilter = THREE.LinearFilter;
+        xTex.minFilter = THREE.LinearFilter;
+        xTex.needsUpdate = true;
+        _hiResTextures['crosshair'] = xTex;
+
         for (var key in _proceduralDefs) {
             var cvs = document.createElement('canvas');
             cvs.width = _WAVE_HIRES; cvs.height = _WAVE_HIRES;
@@ -474,6 +538,8 @@ const ThreeVFX = (function () {
                 _drawGradientCell(ctx, cx, cy, ATLAS_CELL, gdef);
             } else if (_proceduralDefs[allKeys[i]] != null) {
                 _drawWaveFrame(ctx, cx, cy, ATLAS_CELL, _proceduralDefs[allKeys[i]]);
+            } else if (allKeys[i] === 'crosshair') {
+                _drawCrosshairCell(ctx, cx, cy, ATLAS_CELL);
             } else if (!_imageDefs[allKeys[i]]) {
                 var sc = _spriteMap[allKeys[i]];
                 if (sc) _drawSoftCircle(ctx, cx, cy, ATLAS_CELL, sc.r, sc.g, sc.b);

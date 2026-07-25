@@ -14833,6 +14833,58 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return (typeof window !== 'undefined' && window.ThreePost) ? window.ThreePost : null;
     }
 
+    /* ── Gun lock-on crosshair ───────────────────────────────────────────
+       Gun and gun-adjacent spells paint a red reticle on the target tile
+       for the whole aim window: it snaps in from wide to locked while the
+       shooter winds up, then holds on the victim until the shot lands.
+       Detection is data-driven — anything that fires the bullet sprite
+       (projectileOverride: 'proj-bullet') plus the energy guns that don't.
+       ONLINE PARITY (RULE #2): this rides inside the relayed 'windup'
+       beat, so the guest paints the same reticle with no new plumbing. */
+    var _GUN_XHAIR_EXTRA = { railgun: 1, plasmaGun: 1 };
+    function _isGunSpell(spellId) {
+        if (_GUN_XHAIR_EXTRA[spellId]) return true;
+        var def = _spellDefFor(spellId);
+        return !!(def && def.projectileOverride === 'proj-bullet');
+    }
+
+    function _stageGunCrosshair(tx, ty, holdMs) {
+        var ts = _cfg().tileSize || 128;
+        var c = tilePx(tx, ty);
+        var z = unitSurfaceZ(tx, ty) + ts * 0.55;      /* torso height */
+        var lockMs = Math.min(360, Math.max(220, holdMs * 0.35));
+        var heldMs = Math.max(200, holdMs - lockMs + 140);
+
+        /* beat 1: the reticle snaps in from wide to locked */
+        _spawn({
+            x: c.x, y: c.y, z: z,
+            mode: 'billboard', sprite: 'crosshair',
+            ml: lockMs,
+            size0: ts * 2.3, size1: ts * 0.92,
+            opacity0: 0.30, opacity1: 0.95
+        });
+
+        /* beat 2: locked — held on the victim until the shot lands */
+        window.setTimeout(function() {
+            if (_suppressed() || !_canSpawn()) return;
+            _spawn({
+                x: c.x, y: c.y, z: z,
+                mode: 'billboard', sprite: 'crosshair',
+                ml: heldMs,
+                size0: ts * 0.92, size1: ts * 0.86,
+                opacity0: 0.95, opacity1: 0.55
+            });
+            /* lock-confirm blink behind the reticle */
+            _spawn({
+                x: c.x, y: c.y, z: z,
+                mode: 'billboard', sprite: 'flash', tint: 0xff5040,
+                ml: 170,
+                size0: ts * 0.55, size1: ts * 0.20,
+                opacity0: 0.45, opacity1: 0
+            });
+        }, lockMs);
+    }
+
     /* ── BEAT 1: WIND-UP (caster tile) ───────────────────────────────────
        Power gathers BEFORE it is thrown. A charge orb swells at the hands,
        a glyph bites into the ground, ambient motes are pulled INWARD (the
@@ -14895,6 +14947,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 opacity0: 0.9, opacity1: 0,
                 gravity: -20, drag: 0.2
             });
+        }
+
+        /* gun & gun-adjacent casts paint a lock-on crosshair on the target
+           for the whole aim window. params.tx/ty is where the shot lands
+           (the tx/ty locals above are collapsed to the CASTER); skip
+           self-origin sprays (Crossfire) — a reticle on yourself reads
+           wrong. */
+        if (_isGunSpell(spellId) && params.tx != null && params.ty != null
+            && !(params.tx === tx && params.ty === ty)) {
+            try { _stageGunCrosshair(params.tx, params.ty, holdMs); } catch (e) {}
         }
 
         /* the room starts to go quiet on the big ones — and the caster is
