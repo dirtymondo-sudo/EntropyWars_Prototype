@@ -2502,14 +2502,29 @@
            STANDING height is lifted. Detection mirrors the renderer's
            _isStairTile: explicit editor stairDir, or a legacy auto passage
            with a strictly higher neighbour. */
-        function getStairLiftAt(x, y) {
+        function getStairLiftAt(x, y, z) {
             const col = state.boardColumns?.[y]?.[x];
             if (!col || !col.length) return 0;
-            const top = col[col.length - 1];
+            /* INDOOR flights (map-editor buildings) sit mid-column with the
+               storey slabs stacked above them, so "top block" is not the
+               staircase. Read the block at the level the unit is standing on
+               when we know it; otherwise the highest non-slab block. */
+            let top = null;
+            if (z !== undefined && z !== null) top = col.find(b => b.z === z) || null;
+            if (!top) {
+                for (let i = col.length - 1; i >= 0; i--) {
+                    if (col[i].roof) continue;
+                    if (col[i].terrain && col[i].terrain.indexOf('void') === 0) continue;
+                    top = col[i]; break;
+                }
+            }
+            if (!top) return 0;
             const rule = (typeof TERRAIN_RULES !== 'undefined') ? TERRAIN_RULES[top.terrain] : null;
             if (top.terrain !== 'barrier_passage' && !(rule && rule.isBarrierPassage)) return 0;
             if (top.stairDir) return 0.5;
             const ht = state.boardHeights?.[y]?.[x] ?? 0;
+            /* Legacy auto-passage: only the GROUND surface ramps. */
+            if (top.z !== ht) return 0;
             const W = bw(), H = bh();
             const nbrH = (nx, ny) => {
                 if (nx < 0 || ny < 0 || nx >= W || ny >= H) return ht;
@@ -2683,7 +2698,10 @@
                 /* stairs = +0.5, but only for a unit standing ON the tile
                    surface — a flyer above (or a walker beneath a bridge
                    floor) keeps its own z */
-                if (unit.z === getBaseHeightAt(unit.x, unit.y)) h += getStairLiftAt(unit.x, unit.y);
+                /* z-exact: a staircase INSIDE a building lifts the climber the
+                   same half level a ground-floor one does, but a unit on the
+                   slab above it (or a flyer over it) keeps its own z. */
+                h += getStairLiftAt(unit.x, unit.y, unit.z);
                 return h;
             }
             return getHeightAt(unit.x, unit.y) + getStairLiftAt(unit.x, unit.y);
@@ -9579,8 +9597,8 @@
                         <button class="me-z-btn me-wall-btn" id="meBldWinBtn" onclick="window._meBldToggle('windows')" title="Punch window bays into every storey">🪟 Windows</button>
                     </div>
                     <div class="me-z-cursor-wrap" style="margin-top:6px">
-                        <button class="me-z-btn me-wall-btn" id="meBldConnectBtn" onclick="window._meBldToggle('connect')" title="Auto-connect: a footprint dropped on top of an existing building snaps against it so they SHARE a wall, and every shared stretch of wall gets a 2-tile-wide passage cut through it — two buildings become one structure. Off = stamp exactly where you click">🔗 Auto-connect</button>
-                        <button class="me-z-btn me-wall-btn" id="meBldStairBtn" onclick="window._meBldToggle('stairs')" title="Build a walkable stair flight up to every storey (and a rooftop hatch) — one-cell steps hugging the walls, with the stairwell opening cut out of the floor above">🪜 Stairs</button>
+                        <button class="me-z-btn me-wall-btn" id="meBldConnectBtn" onclick="window._meBldToggle('connect')" title="Auto-connect: drop a footprint ACROSS an existing building and the two MERGE into one structure — the new wing takes that building's floor level and storey height, every wall buried inside the merged outline comes down (lay a bar across a bar and you get a cross you can walk end to end), and a footprint that merely touches a neighbour gets a 2-tile-wide passage cut through the shared wall. Off = stamp exactly where you click">🔗 Auto-connect</button>
+                        <button class="me-z-btn me-wall-btn" id="meBldStairBtn" onclick="window._meBldToggle('stairs')" title="Build a stair flight up to every storey (and a rooftop hatch) out of the game's own 1×1×1 staircases, hugging the walls — the floor above the whole flight is left open as the stairwell so a climber has headroom on every step">🪜 Stairs</button>
                     </div>
                     <div class="me-z-cursor-wrap" style="margin-top:6px">
                         <button class="me-z-btn me-wall-btn" id="meBldStyleBtn" onclick="window._meBldToggle('wallstyle')" title="Use the Walls &amp; Roofs style options above for this building too: crenellations / overhang, the inner-face texture, flip, and (single-storey only) low or see-through walls">🏰 Wall style</button>
@@ -9598,7 +9616,7 @@
                         <select class="me-load-select" id="meBldRoofTexSel" onchange="window._meBldSetTex('roof',this.value)" style="flex:1"></select>
                     </div>
                     <div style="padding:6px 2px 0;font-size:10px;color:var(--muted);line-height:1.45">
-                        <b>Hover first:</b> the ghost shows the exact footprint, the wall line, the two doorways (green), any passage it will cut into a neighbour (cyan) and the stair flights (amber). The footprint is levelled to the anchor tile's ground height so the walls sit flush. Storeys of 3 cells give a comfortable room; 2 is the tight minimum. Rooms are never smaller than ${ME_BLD_MIN}×${ME_BLD_MIN} and passages never narrower than ${ME_BLD_PASSAGE} tiles, so a unit can always get through. Everything it stamps is ordinary walls and slabs — edit any of it afterwards with the tools above.
+                        <b>Hover first:</b> the ghost shows the exact footprint, the wall line, the two doorways (green), any passage it will cut into a neighbour (cyan), the tiles it will merge with an existing building (violet) and the stair flights (amber). The footprint is levelled to the anchor tile's ground height so the walls sit flush — unless it overlaps a building, in which case it joins that one's floor level and storey height. Flights are the game's real staircases and the floor above each one is left open so units have headroom climbing it. Storeys of 3 cells give a comfortable room; 2 is the tight minimum. Rooms are never smaller than ${ME_BLD_MIN}×${ME_BLD_MIN} and passages never narrower than ${ME_BLD_PASSAGE} tiles, so a unit can always get through. Everything it stamps is ordinary walls and slabs — edit any of it afterwards with the tools above.
                     </div>
                     </div>
                 </div>
@@ -10995,38 +11013,9 @@
             return out;
         }
 
-        /* Slide a footprint out of every building it overlaps until it only
-           TOUCHES them (shared wall line). Rooms keep their authored size —
-           shrinking one to dodge a neighbour would break the 4×4 minimum. */
-        function _meBldSnapOut(rect, W, D) {
-            const cur = { x0: rect.x0, y0: rect.y0, x1: rect.x1, y1: rect.y1 };
-            let snapped = false;
-            for (let pass = 0; pass < 8; pass++) {
-                const hit = (_meBldRooms || []).find(r => r && _meRectsHit(cur, r));
-                if (!hit) break;
-                /* Four ways out — pick the one that moves the building least. */
-                const cands = [
-                    { ax: 'x', v: hit.x0 - W }, { ax: 'x', v: hit.x1 + 1 },
-                    { ax: 'y', v: hit.y0 - D }, { ax: 'y', v: hit.y1 + 1 }
-                ];
-                let best = null, bestD = Infinity;
-                for (const c of cands) {
-                    if (c.ax === 'x') { if (c.v < 0 || c.v + W > _meW) continue; }
-                    else if (c.v < 0 || c.v + D > _meH) continue;
-                    const d = Math.abs(c.v - (c.ax === 'x' ? cur.x0 : cur.y0));
-                    if (d < bestD) { bestD = d; best = c; }
-                }
-                if (!best) break;                      // boxed in — stamp where asked
-                if (best.ax === 'x') { cur.x0 = best.v; cur.x1 = best.v + W - 1; }
-                else { cur.y0 = best.v; cur.y1 = best.v + D - 1; }
-                snapped = true;
-            }
-            return { rect: cur, snapped };
-        }
-
         /* Shared-wall runs on the new perimeter → one passage each,
            ME_BLD_PASSAGE tiles wide and centred on the run. */
-        function _meBldPassages(rect) {
+        function _meBldPassages(rect, isInternal) {
             const out = [];
             if (!_meBldConnect) return out;
             for (const dir of ['N', 'S', 'W', 'E']) {
@@ -11041,6 +11030,11 @@
                 for (const t of _meBldSideTiles(rect, dir)) {
                     const o = _meBldOutside(t, dir);
                     const onMap = o.x >= 0 && o.y >= 0 && o.x < _meW && o.y < _meH;
+                    /* An internal edge (the far side is a building we are
+                       merging INTO) is already coming down wholesale — cutting
+                       a 2-tile passage through it would be a hole in a wall
+                       that no longer exists. */
+                    if (isInternal && isInternal(t, dir)) { flush(); continue; }
                     if (onMap && _meWalls[_meWallKeyFor(t.x, t.y, dir)]) run.push(t);
                     else flush();
                 }
@@ -11051,7 +11045,7 @@
 
         /* Two entrances, never on a passage bay: the chosen face first, then
            the second face (default = opposite), then whatever is left. */
-        function _meBldEntrances(rect, passages) {
+        function _meBldEntrances(rect, passages, isInternal) {
             const taken = new Set();
             for (const p of passages) for (const t of p.tiles) taken.add(p.dir + ':' + t.x + ',' + t.y);
             const primary = ME_BLD_OPP[_meBldDoorSide] ? _meBldDoorSide : 'S';
@@ -11076,6 +11070,9 @@
                 for (const i of idxs) {
                     const t = list[i];
                     if (taken.has(dir + ':' + t.x + ',' + t.y)) continue;
+                    /* No door on an edge that opens straight into the wing we
+                       are merging with — that side is open floor, not outdoors. */
+                    if (isInternal && isInternal(t, dir)) continue;
                     /* A door on a face flush with the map edge opens onto the
                        void — no one can ever use it, so try another face. */
                     const o = _meBldOutside(t, dir);
@@ -11105,7 +11102,7 @@
            step you climb ON from) is solid floor. */
         function _meBldPickRun(ring, len, blocked, holes, startAt) {
             const n = ring.length;
-            if (!n || len > n) return [];
+            if (!n || len > n) return null;
             for (let s = 0; s < n; s++) {
                 const i0 = (startAt + s) % n;
                 const prev = ring[(i0 - 1 + n) % n];
@@ -11117,15 +11114,34 @@
                     if (blocked.has(t.x + ',' + t.y)) { ok = false; break; }
                     run.push(t);
                 }
-                if (ok) return run;
+                /* The approach tile comes back with the run: the first step of
+                   the flight faces DOWN-slope toward it, which is how the
+                   staircase knows which way round to stand. */
+                if (ok) return { tiles: run, prev };
             }
-            return [];
+            return null;
         }
 
-        /* One flight per floor change: SH-1 one-cell steps hugging a wall, then
-           a single step up onto the slab. The slab is left OUT over the top of
-           each flight — that hole is the stairwell, and without it the climber
-           would be standing inside the ceiling. */
+        /* Cardinal direction from `t` toward its neighbour `o` — the value the
+           engine stores as stairDir (it points at the LOW side of the step). */
+        function _meBldDirTo(t, o) {
+            if (o.y === t.y - 1) return 'N';
+            if (o.y === t.y + 1) return 'S';
+            if (o.x === t.x - 1) return 'W';
+            return 'E';
+        }
+
+        /* One flight per floor change, built from the game's OWN staircases:
+           every step is a barrier_passage voxel carrying an explicit stairDir,
+           which is exactly what the engine and three-renderer read as a 1×1×1
+           staircase (climbs one level, unit stands mid-slope on the 3D stair
+           mesh). A flight is SH steps hugging a wall — the first sits flush
+           with the floor it leaves, each next one a level higher, so the run
+           lands on the slab above with no bare cube anywhere in it.
+           The slab above the WHOLE run is left out: that hole is the stairwell
+           and it is what gives a climber headroom on EVERY step (holing only
+           the top of the flight left units walking into the ceiling halfway
+           up). */
         function _meBldStairPlan(rect, baseZ, SH, N, blockedTiles) {
             const flights = [];
             if (!_meBldStairs) return flights;
@@ -11141,7 +11157,7 @@
                down are cut in slabs this flight never touches, so carrying them
                forever just starved tall buildings of somewhere to put a flight. */
             let prevHoles = new Set();
-            const len = Math.max(1, SH - 1);
+            const len = Math.max(2, SH);          // SH stairs climb SH levels
             for (let i = 0; i < levels.length; i++) {
                 const top = levels[i];
                 const from = top - SH;
@@ -11150,10 +11166,16 @@
                 /* Alternate around the ring so consecutive flights land on
                    opposite walls rather than stacking into one shaft. */
                 const startAt = (i % 2) ? Math.floor(ring.length * 0.5) : 0;
-                const run = _meBldPickRun(ring, len, blocked, prevHoles, startAt);
-                if (!run.length) continue;
-                const steps = run.map((t, k) => ({ x: t.x, y: t.y, z: from + k + 1 }));
-                const hole = steps.filter(s2 => s2.z >= top - 2).map(s2 => ({ x: s2.x, y: s2.y }));
+                const pick = _meBldPickRun(ring, len, blocked, prevHoles, startAt);
+                if (!pick) continue;
+                const run = pick.tiles;
+                const steps = run.map((t, k) => ({
+                    x: t.x, y: t.y, z: from + k,
+                    sd: _meBldDirTo(t, k === 0 ? pick.prev : run[k - 1])
+                }));
+                /* Whole run open above = a real stairwell, and headroom on
+                   every tread. */
+                const hole = steps.map(s2 => ({ x: s2.x, y: s2.y }));
                 prevHoles = new Set(hole.map(h => h.x + ',' + h.y));
                 flights.push({ from, top, steps, hole });
             }
@@ -11163,17 +11185,34 @@
         /* The whole placement, resolved and inspectable — no side effects. */
         function _meBldPlan(ox, oy) {
             const W = Math.max(ME_BLD_MIN, _meBldW), D = Math.max(ME_BLD_MIN, _meBldD);
-            const SH = Math.max(2, _meBldStorey);      // cells per storey (2 = room height)
             const N = Math.max(1, _meBldFloors);
             if (W > _meW || D > _meH) return null;     // bigger than the map
             /* The click is the NW corner, but a footprint hanging off the E/S
                edge slides back instead of being clipped into a stub room. */
-            let rect = { x0: Math.max(0, Math.min(ox, _meW - W)), y0: Math.max(0, Math.min(oy, _meH - D)) };
+            const rect = { x0: Math.max(0, Math.min(ox, _meW - W)), y0: Math.max(0, Math.min(oy, _meH - D)) };
             rect.x1 = rect.x0 + W - 1; rect.y1 = rect.y0 + D - 1;
-            let snapped = false;
-            if (_meBldConnect) { const s = _meBldSnapOut(rect, W, D); rect = s.rect; snapped = s.snapped; }
 
-            const baseZ = _meColFloorZ(rect.x0, rect.y0);
+            /* Overlapping footprints MERGE instead of being pushed apart: lay a
+               second bar across the first and the two become one cross-shaped
+               shell you can walk end to end. Every wall that ends up inside the
+               merged outline comes down (including the older building's own
+               facade where the new wing crosses it), the shared tiles keep the
+               structure that is already there, and the new wing adopts the
+               floor level + storey height of the building it joins so the two
+               sets of slabs line up. */
+            const merges = [];
+            if (_meBldConnect) {
+                for (const r of (_meBldRooms || [])) if (r && _meRectsHit(rect, r)) merges.push(r);
+            }
+            const olap = (r) => Math.max(0, Math.min(rect.x1, r.x1) - Math.max(rect.x0, r.x0) + 1)
+                              * Math.max(0, Math.min(rect.y1, r.y1) - Math.max(rect.y0, r.y0) + 1);
+            const host = merges.length ? merges.reduce((a, b) => (olap(b) > olap(a) ? b : a)) : null;
+            const inMerged = (x, y) => merges.some(r => x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1);
+            const inRect = (x, y) => x >= rect.x0 && x <= rect.x1 && y >= rect.y0 && y <= rect.y1;
+            const inUnion = (x, y) => inRect(x, y) || inMerged(x, y);
+
+            const SH = (host && host.SH > 1) ? (host.SH | 0) : Math.max(2, _meBldStorey);
+            const baseZ = (host && Number.isFinite(host.baseZ)) ? (host.baseZ | 0) : _meColFloorZ(rect.x0, rect.y0);
             const wallZ0 = Math.min(ME_MAX_Z, baseZ + 1);
             const wallH = Math.max(1, Math.min(ME_MAX_Z - wallZ0 + 1, N * SH));
             const doorH = Math.min(2, SH);
@@ -11191,8 +11230,18 @@
             };
             const openStyle = style.see || style.low;   // openings must be gaps
 
-            const passages = _meBldPassages(rect);
-            const doors = _meBldEntrances(rect, passages);
+            /* An edge whose far side is inside a building we are merging with
+               is INTERNAL — it is not a facade at all, so it never gets a wall,
+               a door or a window; it is simply where the two shells open into
+               each other. */
+            const isInternal = (t, dir) => {
+                if (!merges.length) return false;
+                const o = _meBldOutside(t, dir);
+                return inMerged(o.x, o.y);
+            };
+
+            const passages = _meBldPassages(rect, isInternal);
+            const doors = _meBldEntrances(rect, passages, isInternal);
 
             const doorKey = new Set(doors.map(d => d.dir + ':' + d.x + ',' + d.y));
             const passKey = new Set();
@@ -11202,6 +11251,10 @@
             for (const dir of ['N', 'S', 'W', 'E']) {
                 for (const t of _meBldSideTiles(rect, dir)) {
                     if (t.x < 0 || t.y < 0 || t.x >= _meW || t.y >= _meH) continue;
+                    if (isInternal(t, dir)) {
+                        edges.push({ x: t.x, y: t.y, dir, key: _meWallKeyFor(t.x, t.y, dir), internal: true, ops: [] });
+                        continue;
+                    }
                     const k = dir + ':' + t.x + ',' + t.y;
                     const isDoor = doorKey.has(k), isPass = passKey.has(k);
                     const ops = [];
@@ -11227,6 +11280,27 @@
                 }
             }
 
+            /* Every wall that ends up buried INSIDE the merged shell comes
+               down — the new wing's own internal edges above, plus whatever the
+               older building had standing where the wing crosses it. Wall keys
+               are per-EDGE, so one delete opens both sides at once. */
+            const demolish = [];
+            if (merges.length) {
+                const seenK = new Set();
+                for (let y = rect.y0; y <= rect.y1; y++) {
+                    for (let x = rect.x0; x <= rect.x1; x++) {
+                        for (const dir of ['N', 'S', 'W', 'E']) {
+                            const o = _meBldOutside({ x, y }, dir);
+                            if (!inUnion(o.x, o.y)) continue;
+                            const k = _meWallKeyFor(x, y, dir);
+                            if (seenK.has(k)) continue;
+                            seenK.add(k);
+                            if (_meWalls[k]) demolish.push(k);
+                        }
+                    }
+                }
+            }
+
             /* Stairs steer clear of every entrance bay AND the floor tile just
                inside it, so a flight can never wall off its own front door. */
             const keepClear = [];
@@ -11248,7 +11322,8 @@
             return {
                 x0: rect.x0, y0: rect.y0, x1: rect.x1, y1: rect.y1, W, D, SH, N,
                 baseZ, wallZ0, wallH, doorH, style, openStyle,
-                edges, doors, passages, flights, holesAt, holeAt, snapped,
+                edges, doors, passages, flights, holesAt, holeAt,
+                merges, demolish,
                 roof: _meBldRoof, roofZ: baseZ + N * SH
             };
         }
@@ -11256,12 +11331,26 @@
         function _meBldApply(plan) {
             if (!plan) return;
             const { x0, y0, x1, y1, baseZ, SH, N } = plan;
+            const merges = plan.merges || [];
+            /* Tiles shared with a building we are merging into: their columns
+               are that building's structure (its upper floors, its stairwells)
+               and must survive the new wing being stamped over them. */
+            const shared = (x, y) => merges.some(r => x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1);
+            const mergedHoles = new Set();
+            let mergedRoofZ = -1;
+            for (const r of merges) {
+                if (Number.isFinite(r.roofZ)) mergedRoofZ = Math.max(mergedRoofZ, r.roofZ | 0);
+                if (!r.holes) continue;
+                for (const z in r.holes) for (const k of (r.holes[z] || [])) mergedHoles.add(z + ':' + k);
+            }
+            const keptHole = (z, x, y) => mergedHoles.has(z + ':' + x + ',' + y);
 
             /* 1. Level the footprint to the anchor's floor so the walls sit flush. */
             const gTid = ME_TERRAIN_TO_ID[_meBldFloorTex] || ME_TERRAIN_TO_ID['grass'] || 1;
             for (let y = y0; y <= y1; y++) {
                 for (let x = x0; x <= x1; x++) {
                     if (x < 0 || y < 0) continue;
+                    if (shared(x, y)) continue;        // already this building's floor
                     const col = _meVoxels?.[y]?.[x];
                     if (col) for (let i = col.length - 1; i >= 0; i--) { if (col[i].z > baseZ) col.splice(i, 1); }
                     for (let z = 0; z <= baseZ; z++) {
@@ -11275,6 +11364,10 @@
                 }
             }
 
+            /* 1b. Merged shell: every wall now buried inside the union comes
+               down, so the two footprints read as one connected structure. */
+            for (const k of (plan.demolish || [])) delete _meWalls[k];
+
             /* 2. Perimeter walls. state.edgeWalls holds ONE record per edge, so
                a multi-storey facade is a single tall wall carrying an explicit
                list of openings (`ops`) — doorways at ground level, one window
@@ -11284,7 +11377,7 @@
                openings) instead of truncating its facade. */
             for (const e of plan.edges) {
                 const old = _meWalls[e.key];
-                if (e.gap) { if (old) delete _meWalls[e.key]; continue; }
+                if (e.internal || e.gap) { if (old) delete _meWalls[e.key]; continue; }
                 const rec = { z0: plan.wallZ0, h: plan.wallH, tex: _meBldWallTex };
                 if (plan.style.texIn) rec.texIn = plan.style.texIn;
                 if (plan.style.cap) rec.cap = plan.style.cap;
@@ -11318,43 +11411,74 @@
                 for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
                     if (x < 0 || y < 0 || x >= _meW || y >= _meH) continue;
                     if (plan.holeAt(fz, x, y)) continue;
+                    /* Never floor over the stairwell of the building we merged
+                       with — that would seal its own flights in. */
+                    if (keptHole(fz, x, y)) continue;
                     _meStampSlab(x, y, fz, _meBldFloorTex);
                 }
             }
 
-            /* 4. Roof cap (the rooftop hatch is a hole here too). */
+            /* 4. Roof cap (the rooftop hatch is a hole here too). Where the wing
+               runs into a TALLER building the cap is skipped: a roof slab there
+               would be a ceiling dropped into the middle of that room. */
             if (plan.roof) {
                 const rz = plan.roofZ;
                 for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
                     if (x < 0 || y < 0 || x >= _meW || y >= _meH) continue;
                     if (plan.holeAt(rz, x, y)) continue;
+                    if (keptHole(rz, x, y)) continue;
+                    if (mergedRoofZ > rz && shared(x, y)) continue;
                     _meStampSlab(x, y, rz, _meBldRoofTex);
                 }
             }
 
-            /* 5. Stairs — a solid one-cell step per tile, so climbing them is
-               an ordinary walk (every rise is exactly MAX_CLIMB_HEIGHT). */
+            /* 5. Stairs — the game's own staircase on every tread. The cells
+               UNDER a step are filled solid (that is the masonry the flight
+               rests on) and the step itself is a barrier_passage block with a
+               stairDir, so the engine climbs it like any other staircase and
+               the renderer draws the real 3D stair mesh instead of a cube. */
             const sTid = ME_TERRAIN_TO_ID[_meBldFloorTex] || ME_TERRAIN_TO_ID['stone'] || gTid;
+            const bpTid = ME_TERRAIN_TO_ID['barrier_passage'] || sTid;
             for (const f of plan.flights) {
                 for (const st of f.steps) {
                     if (st.x < 0 || st.y < 0 || st.x >= _meW || st.y >= _meH) continue;
-                    for (let z = f.from + 1; z <= st.z; z++) {
+                    if (st.z > ME_MAX_Z) continue;
+                    for (let z = f.from + 1; z < st.z; z++) {
                         if (z > ME_MAX_Z) break;
                         const wasLock = _meZLock; _meZLock = true;
                         _meSetVoxel(st.x, st.y, z, sTid);
                         _meZLock = wasLock;
                         const b = _meGetVoxel(st.x, st.y, z);
-                        if (b) delete b.rf;            // steps are solid, not slabs
+                        if (b) delete b.rf;            // supports are solid, not slabs
                     }
+                    const wasLock2 = _meZLock; _meZLock = true;
+                    _meSetVoxel(st.x, st.y, st.z, bpTid);
+                    _meZLock = wasLock2;
+                    const sb = _meGetVoxel(st.x, st.y, st.z);
+                    /* rf off: a tread is a stair block, not a floor slab — the
+                       renderer only reads stairDir off a NON-slab block. */
+                    if (sb) { delete sb.rf; sb.sd = st.sd; }
                 }
             }
 
-            /* 6. Remember the footprint so the NEXT building snaps against it
-                  instead of dropping straight through this one's wall. */
+            /* 6. Remember the footprint AND how it was built — floor level,
+                  storey height, roof line and the stairwell holes — so the next
+                  building that overlaps it can merge into it: line its slabs up,
+                  keep its stairwells open and demolish the walls between. */
             if (!Array.isArray(_meBldRooms)) _meBldRooms = [];
-            if (!_meBldRooms.some(r => r.x0 === x0 && r.y0 === y0 && r.x1 === x1 && r.y1 === y1)) {
-                _meBldRooms.push({ x0, y0, x1, y1 });
+            const holes = {};
+            for (const z in plan.holesAt) holes[z] = Array.from(plan.holesAt[z]);
+            for (const r of merges) {
+                if (!r.holes) continue;
+                for (const z in r.holes) {
+                    const inSelf = (holes[z] || []);
+                    for (const k of r.holes[z]) if (inSelf.indexOf(k) < 0) inSelf.push(k);
+                    holes[z] = inSelf;
+                }
             }
+            const rec = { x0, y0, x1, y1, baseZ, SH, N, roofZ: plan.roofZ, holes };
+            const dup = _meBldRooms.findIndex(r => r.x0 === x0 && r.y0 === y0 && r.x1 === x1 && r.y1 === y1);
+            if (dup >= 0) _meBldRooms[dup] = rec; else _meBldRooms.push(rec);
             _meSyncVoxelsToLegacy();
         }
 
@@ -11416,6 +11540,7 @@
                 const col = kind === 'door' ? 'rgba(80,235,140,0.55)'
                     : kind === 'pass' ? 'rgba(80,215,255,0.55)'
                     : kind === 'stair' ? 'rgba(255,200,70,0.5)'
+                    : kind === 'merge' ? 'rgba(190,130,255,0.45)'
                     : 'rgba(255,215,110,0.28)';
                 d.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:60;background:' + col
                     + (kind === 'foot' ? ';box-shadow:inset 0 0 0 1px rgba(255,225,140,0.75)' : '');
@@ -11442,6 +11567,13 @@
                 for (let i = 0; i < cells.length; i++) hosts[cells[i].dataset.x + ',' + cells[i].dataset.y] = cells[i];
             }
             for (let y = plan.y0; y <= plan.y1; y++) for (let x = plan.x0; x <= plan.x1; x++) mark(hosts[x + ',' + y], 'foot');
+            /* Violet = the tiles where the new wing runs INTO an existing
+               building and the two shells are welded open. */
+            for (const r of (plan.merges || [])) {
+                for (let y = Math.max(plan.y0, r.y0); y <= Math.min(plan.y1, r.y1); y++) {
+                    for (let x = Math.max(plan.x0, r.x0); x <= Math.min(plan.x1, r.x1); x++) mark(hosts[x + ',' + y], 'merge');
+                }
+            }
             for (const f of plan.flights) for (const st of f.steps) mark(hosts[st.x + ',' + st.y], 'stair');
             for (const d of plan.doors) mark(hosts[d.x + ',' + d.y], 'door');
             for (const p of plan.passages) for (const t of p.tiles) mark(hosts[t.x + ',' + t.y], 'pass');
@@ -11452,8 +11584,8 @@
                 `${plan.N} storey${plan.N > 1 ? 's' : ''} × ${plan.SH}`,
                 `${plan.doors.length} door${plan.doors.length === 1 ? '' : 's'}`];
             if (plan.passages.length) bits.push(`🔗 ${plan.passages.length} passage${plan.passages.length === 1 ? '' : 's'} (${ME_BLD_PASSAGE} wide)`);
-            if (plan.flights.length) bits.push(`🪜 ${plan.flights.length} flight${plan.flights.length === 1 ? '' : 's'}`);
-            if (plan.snapped) bits.push('⇥ snapped to fit');
+            if (plan.flights.length) bits.push(`🪜 ${plan.flights.length} stair flight${plan.flights.length === 1 ? '' : 's'}`);
+            if (plan.merges && plan.merges.length) bits.push(`⛓ merged into ${plan.merges.length} building${plan.merges.length === 1 ? '' : 's'}`);
             return bits.join(' · ');
         }
 
@@ -11500,6 +11632,7 @@
             const fullH = plan.wallH * ts;
             const openH = plan.doorH * ts;
             for (const e of plan.edges) {
+                if (e.internal) continue;      // welded open into the neighbour
                 const isN = (e.dir === 'N' || e.dir === 'S');
                 const mat = e.pass ? passMat : (e.door ? doorMat : wallMat);
                 const h = (e.pass || e.door) ? openH : fullH;
@@ -11515,7 +11648,10 @@
             /* Stair flights — each step drawn at the height it will really be. */
             for (const f of plan.flights) {
                 for (const st of f.steps) {
-                    const h = (st.z - f.from) * ts;
+                    /* A tread's block top is st.z and its staircase climbs one
+                       more level, so the marker spans from..st.z+1 — the first
+                       step sits flush with the floor and still draws. */
+                    const h = (st.z + 1 - f.from) * ts;
                     const m = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.8, h, ts * 0.8), stairMat);
                     m.position.set(st.x * ts + ts / 2, zY(f.from) + h / 2, st.y * ts + ts / 2);
                     m.renderOrder = 32;
@@ -12559,9 +12695,9 @@
                 if (_meBldStrokeDone) return;
                 _meBldStrokeDone = true;
                 const plan = _meStampBuilding(x, y);
-                /* Re-arm the ghost on the same tile: it now shows where the
-                   NEXT one would land — which, thanks to the snap, is beside
-                   the one just placed rather than through it. */
+                /* Re-arm the ghost on the same tile: it now shows what the NEXT
+                   one would do here — which, on top of the one just placed, is
+                   a merge rather than a fresh shell. */
                 _meBldClearGhost();
                 window._meBldHoverTile(x, y);
                 _meSfx('itemThrow');
@@ -12570,9 +12706,10 @@
                 } else {
                     const doorTxt = plan.doors.map(d => d.dir).join('+') || '—';
                     const passTxt = plan.passages.length ? ` · 🔗 ${plan.passages.length} passage${plan.passages.length === 1 ? '' : 's'} into the neighbour` : '';
-                    const stairTxt = plan.flights.length ? ` · 🪜 ${plan.flights.length} flight${plan.flights.length === 1 ? '' : 's'}` : '';
-                    const snapTxt = plan.snapped ? ' · ⇥ snapped clear of an existing building' : '';
-                    _meSetHint(`Building ${plan.W}×${plan.D} at (${plan.x0},${plan.y0}) · ${plan.N} storey(s) of ${plan.SH} · doors ${doorTxt}${passTxt}${stairTxt}${snapTxt}`);
+                    const stairTxt = plan.flights.length ? ` · 🪜 ${plan.flights.length} stair flight${plan.flights.length === 1 ? '' : 's'}` : '';
+                    const mergeTxt = (plan.merges && plan.merges.length)
+                        ? ` · ⛓ merged into ${plan.merges.length} existing building${plan.merges.length === 1 ? '' : 's'}` : '';
+                    _meSetHint(`Building ${plan.W}×${plan.D} at (${plan.x0},${plan.y0}) · ${plan.N} storey(s) of ${plan.SH} · doors ${doorTxt}${passTxt}${stairTxt}${mergeTxt}`);
                 }
             } else if (_meTool === 'nexus') {
                 /* Nexus zone anchored to a STOREY. Without the z it defaulted to

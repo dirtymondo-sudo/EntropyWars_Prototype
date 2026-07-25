@@ -2054,11 +2054,22 @@ const ThreeRenderer = (function () {
 
         var terrain;
         var explicitDir = null;
+        var stairZ = ht;
         var col = state.boardColumns[y] && state.boardColumns[y][x];
         if (col && col.length) {
+            /* Roof/floor SLABS are not the surface a staircase stands on: an
+               indoor flight (map-editor buildings) sits mid-column with the
+               storeys above it, so read the highest NON-slab block — the same
+               block rebuildTerrain treats as this tile's top. */
             var topBlock = col[col.length - 1];
+            for (var _si = col.length - 1; _si >= 0; _si--) {
+                if (col[_si].roof) continue;
+                if (col[_si].terrain && col[_si].terrain.indexOf('void') === 0) continue;
+                topBlock = col[_si];
+                break;
+            }
             terrain = topBlock.terrain;
-            if (topBlock.stairDir) explicitDir = topBlock.stairDir;
+            if (topBlock.stairDir) { explicitDir = topBlock.stairDir; stairZ = topBlock.z; }
         } else {
             terrain = '';
         }
@@ -2089,7 +2100,7 @@ const ThreeRenderer = (function () {
            the user spun them. */
         if (explicitDir) {
             var opposite = { N: 'S', S: 'N', E: 'W', W: 'E' };
-            return { highDir: opposite[explicitDir] || 'N', lowH: ht, highH: ht + 1 };
+            return { highDir: opposite[explicitDir] || 'N', lowH: stairZ, highH: stairZ + 1 };
         }
 
         /* Legacy auto barrier_passage: only ramp where a neighbour is actually
@@ -2333,6 +2344,22 @@ const ThreeRenderer = (function () {
                     }
                     if (_roofBlks) col = col.filter(function (b) { return !b.roof; });
                 }
+                /* INDOOR STAIRCASE: a map-editor building's flight sits mid
+                   column — the storey slabs came out above (roof blocks) and
+                   what is left on top is the 'void' fill of the room's air. If
+                   the first real block under that air is a staircase, the tile
+                   renders as that staircase (masonry below it, open above), the
+                   same as a staircase standing outdoors. */
+                if (col && col.length) {
+                    var _topB = col[col.length - 1];
+                    if (_topB.terrain && _topB.terrain.indexOf('void') === 0) {
+                        for (var _vi = col.length - 1; _vi >= 0; _vi--) {
+                            if (col[_vi].terrain && col[_vi].terrain.indexOf('void') === 0) continue;
+                            if (col[_vi].stairDir) col = col.slice(0, _vi + 1);
+                            break;
+                        }
+                    }
+                }
                 if (col && col.length) {
                     tKey = col[col.length - 1].terrain || 'grass';
                     ht = col[col.length - 1].z;
@@ -2425,7 +2452,18 @@ const ThreeRenderer = (function () {
                        by the terrain beneath it (so the support reads as ground,
                        not as a stray passage cube). */
                     if (col && col.length > 1 && col[col.length - 1].stairDir) {
-                        var supBelowT = col[col.length - 2].terrain || 'grass';
+                        /* Nearest REAL terrain below the tread, not just the next
+                           block down: an indoor flight's first tread replaces a
+                           floor slab, so the cell under it is the room's air —
+                           substituting 'void' there drew nothing and left a hole
+                           in the floor at the foot of the stairs. */
+                        var supBelowT = col[col.length - 1].terrain || 'grass';
+                        for (var _sbj = col.length - 2; _sbj >= 0; _sbj--) {
+                            var _sbt = col[_sbj].terrain;
+                            if (_sbt && _sbt.indexOf('void') === 0) continue;
+                            supBelowT = _sbt || 'grass';
+                            break;
+                        }
                         var supRuns = [];
                         var supStart = -1, supPrevZ = -1, supTerr = null;
                         for (var sbi = 0; sbi < col.length; sbi++) {
