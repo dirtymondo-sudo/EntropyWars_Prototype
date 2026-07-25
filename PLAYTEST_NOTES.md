@@ -7006,3 +7006,129 @@ once as the stamp. Reading the plan object is the fastest way to debug it.
 ### Console kill-switches
 `window.EW_CANOPY_CUT_RADIUS`, `window.EW_CANOPY_CUT_BAND`,
 `window.EW_DISABLE_CANOPY_CUTAWAY`.
+
+## Prismatic / psychedelic VFX kit (2026-07-25) — three-vfx-effects.js, index.html
+Prism Burst and Bad Trip both shipped on shared element defaults (a generic
+divine bolt and a generic psi bolt + `_psychic_dark_impact`). They now have
+bespoke shows, and — more usefully — the shows are built out of **seven new
+general-purpose primitives** that any future spell can reuse. Everything lives
+in the "PRISMATIC / PSYCHEDELIC SIGNATURE KIT" block just above
+`_spell3DGeometry`, and every primitive is exported on `window.ThreeVFXEffects`.
+
+### New reusable primitives (all `sig*` on `ThreeVFXEffects`)
+- **`sigWireframe3D(geo, opts)`** — the big one. Takes ANY three.js geometry
+  and returns a Group of thick, glowing neon wire bars: one open cylinder per
+  unique edge (via `EdgesGeometry`), optional `joints:true` spheres so corners
+  don't gap. Exists because `LineBasicMaterial.linewidth` is ignored on every
+  desktop GL backend — a 1px wireframe is invisible at battle zoom. All bars
+  SHARE one material, so the caller animates colour/opacity in one assignment
+  (`group.userData.wireMat`). opts: `{material|color, radius, radialSegments,
+  joints, renderOrder, thresholdDeg}`. Verified edge counts: 3-sided cylinder
+  (triangular prism) = 9 edges, octahedron detail 0 = 12.
+- **`sigPrismRefraction3D(fromTx, fromTy, toTx, toTy, opts)`** — Dark Side of
+  the Moon as an attack. A white wireframe triangular prism folds out of
+  nowhere on the caster→target line, a hard white beam lances into its face,
+  and seven ROYGBIV tubes fan out of the far face and converge on the victim,
+  ARRIVING AT `opts.flyMs` (so it drops straight into any travel handler).
+  Fires `sigSpectrumBurst3D` + the spell's mapped `impact` layers on arrival —
+  it is a COMPLETE bolt replacement. opts: `{flyMs, spellId, prismAt,
+  prismLift, prismSize, spread, wireColor, linger}`.
+- **`sigSpectrumBurst3D(tx, ty, opts)`** — rainbow detonation: white core,
+  seven phase-offset spectrum shock rings stacked a hair apart in Z, seven
+  light lances splayed up and AWAY from the caster (`_sigYawToward`), plus
+  spectrum-ordered pool motes, flash, shake and a bloom pulse.
+- **`sigNeonGrid3D(tx, ty, opts)`** — vaporwave floor grid (`LineSegments`) +
+  a breathing octahedral wire cage over the victim + pulse rings racing
+  outward, the whole thing hue-cycling. opts: `{radiusPx, divisions, rings,
+  cageDetail, hue, hueRate, ms}`.
+- **`sigFractalTunnel3D(tx, ty, opts)`** — nested wireframe polygons scrolling
+  upward and widening, one hue per ring: the DMT tunnel. `opts.sides` picks the
+  shape (3 = triangles, 6 = hex…).
+- **`sigKaleidoscope3D(tx, ty, opts)`** — counter-spinning mandala discs on the
+  ground AND overhead, hue-cycling through the wheel. Texture is
+  `_sigKaleidoTex()`: a cached 12-fold mirrored motif with nested fractal
+  triangles at the core, drawn pure white and tinted per use.
+- **`sigPsychedelicTint(opts)`** — full-screen rolling `hue-rotate` +
+  saturation crush on `#threeCanvas` with a colour-dodge wash on top. Same
+  shape as `_sigFlashbackTint` (one at a time, self-cleaning, no-ops on the 2D
+  renderer) with a `setTimeout` belt-and-braces cleanup — `clearAll()` killing
+  the ticker mid-wash would otherwise leave the battlefield stuck under a
+  filter.
+- **`sigBadTrip3D(tx, ty)`** — the four above composed + three staggered
+  laughing skulls + spectrum sparks + magenta flash. Use it as the worked
+  example of how to stack primitives into one set-piece.
+- **`SIG_SPECTRUM`** — the ROYGBIV int array every prismatic effect refracts
+  into. Its pool counterpart is `_SIG_SPECTRUM_SPRITES` = `laser-red, ember,
+  steel-spark, acid-green, spark-blue, plasma, psi-pulse` — the closest ROYGBIV
+  run available from the procedural mote sprites. **Do NOT use `ring-1..7` for
+  this**: they look like a rainbow in `_spriteMap` but they are R2 ring-shaped
+  DECAL PNGs, so at mote size they read as invisible specks.
+- `sigSkull3D` now takes `dx` / `dz` (px offsets off tile centre) and `yaw`, so
+  a caller can hang a whole crowd of cackling skulls around one victim instead
+  of stacking them all on the tile centre. Also newly exported.
+
+### Two new BOLT behaviours (engine-level, reusable)
+The bolt intent is the only hook that knows BOTH caster and target, so it is
+where travel-shaped signatures belong. Two opt-in flags on a bolt def:
+- **`boltPrism: true`** — `_fireBoltMapped` intercepts and hands the whole
+  travel to `sigPrismRefraction3D` instead of drawing a bolt (same pattern as
+  `raceCannonball` → `_sigCannonShot3D`). `boltPrismColor` tints the wire.
+- **`boltGeometry: true`** — the bolt still flies, and fires the spell's
+  `_spell3DGeometry` signature when it LANDS. This closes a real gap: bolt
+  spells previously could not carry a 3D apparition at all, because
+  `playProjectileToUnit` returns right after firing the bolt and the `impact`
+  intent (the only thing that runs `_spell3DGeometry`) never executes. Any bolt
+  spell that wants an arrival set-piece now just sets this flag.
+
+### Wiring
+- `racePrismBurst` → `{ bolt: '_bolt_prism', impact: 'prismBurst_impact' }`,
+  `_spell3DGeometry.racePrismBurst` = spectrum burst. Its old
+  `_BOLT_WIRING` entry (`_bolt_divine`) was removed — `_BOLT_WIRING` is applied
+  at ~line 1941 and would be OVERWRITTEN by the later block anyway, but a stale
+  entry is a trap for the next reader.
+- `raceBadTrip` → `{ bolt: '_bolt_psychedelic', impact: 'badTrip_impact' }`,
+  `_spell3DGeometry.raceBadTrip` = the full hallucination.
+
+### Online parity (RULE #2)
+Both spells ride the **bolt intent**, which goes through `VFX3D.fire()` —
+already wrapped by online.js's host→guest relay, and `fromX/fromY/toX/toY/
+fromZ/toZ/flyMs` are all on the relay's param whitelist. So the guest replays
+the identical show with zero new plumbing. **The ricochet bounce comes free
+too**: `_applyRicochetDamage` re-enters `playProjectile` with the same
+`spellMeta`, so the bolt mapping fires again and the prism refracts a second
+time from the first victim to the second — no battle.js change needed.
+
+### Gotchas learned
+- `TubeGeometry` is INDEXED and its indices run in path order, so
+  `geometry.setDrawRange(0, n)` is a clean, free "extend the beam" animation —
+  no per-frame geometry rebuild. Round `n` down to a multiple of 3. (A 44-seg
+  tube has 1320 indices.)
+- To stand a triangular prism up the way the album cover does, don't chain
+  Euler angles — build the basis directly: `Matrix4.makeBasis(x, perp, up)`
+  with `perp = (-dir.z, 0, dir.x)`, then `Quaternion.setFromRotationMatrix`.
+  Cylinder local +Y is the extrusion axis, local +Z is the first vertex.
+- A group whose children are laid out in ABSOLUTE world coordinates must sit at
+  the origin with identity rotation; put the one rotated thing (the prism) in a
+  child sub-group. Rotating the root warps every beam.
+- `_sigRun`'s cleanup disposes each mesh's material as it traverses, so a
+  shared material gets `dispose()`d N times — harmless (it only dispatches an
+  event), but geometry must NOT be shared unless flagged `_ew_shared`. Give
+  every ring/lance its own geometry (or `.clone()` a template and dispose the
+  template).
+- Module-scope `new THREE.Vector3()` in this file is a hazard: if the THREE CDN
+  is slow the whole IIFE throws and EVERY effect definition is lost. Build
+  shared vectors lazily (`_sigUp()`).
+- Don't let a composed effect double-shake: `sigBadTrip3D` calls `_sigShake`
+  itself, so `badTrip_impact` deliberately has NO `shake` key.
+
+### Verification
+Headless harness (`scratchpad/smoke.js`): loads real three.js **r128** plus
+`three-vfx-effects.js` in a `vm` context with the game globals stubbed
+(CONFIG / state / ThreeVFX / ThreePost / canvas 2D / img), then drives every
+primitive and both `fire('bolt', …)` end-to-end paths through their full
+timelines on a fake clock. All 22 checks pass, scene children return to 0 (no
+leaks), ~700 pool particles spawned. Every r128 API used was confirmed present
+(`EdgesGeometry`, `OctahedronGeometry`, `TubeGeometry`, `CatmullRomCurve3`,
+`Matrix4.makeBasis`, `Vector3.fromBufferAttribute`, `setDrawRange`,
+`Color.setHSL`). NOT playtested in-browser (RULE #1c) — the R2 upload has to
+happen first.

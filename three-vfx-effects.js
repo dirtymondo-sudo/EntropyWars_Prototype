@@ -1557,7 +1557,6 @@ SPELL_MAP['raceNordicAccord']     = { aura: '_buff_divine_aura' };
 
 /* New / renamed race spells. */
 SPELL_MAP['raceBite']       = { impact: '_slashMelee_impact', drainHop: 'lifeDrain_drainHop' };
-SPELL_MAP['raceBadTrip']    = { bolt: '_bolt_psi', impact: '_psychic_dark_impact' };
 SPELL_MAP['repair']         = { aura: '_selfHeal_tech_aura' };
 SPELL_MAP['raceTinFoilHat'] = { aura: '_buff_tech_aura' };
 SPELL_MAP['raceSuppressingFire'] = { impact: '_rangedShot_impact', bolt: '_bolt_bullet' };
@@ -1849,7 +1848,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceKiBlast:          '_bolt_ki',
         raceIceSpear:         '_bolt_ice',
         raceAbsoluteZero:     '_bolt_ice',
-        racePrismBurst:       '_bolt_divine',
+        /* racePrismBurst moved to '_bolt_prism' — see the prismatic block
+           further down; it intercepts the bolt with the refraction rig. */
         raceDeathGaze:        '_bolt_psi',
         raceHypnoticPulse:    '_bolt_psi',
         raceMjolnirsEcho:     '_bolt_elec',
@@ -3093,6 +3093,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 return;
             } catch (e) { /* fall through to the generic bolt */ }
         }
+        /* Prism Burst refracts INSTEAD of firing a bolt: the prism apparition
+           owns the whole travel (white beam in → rainbow fan out → arrival
+           burst), so it replaces the projectile the way the cannon does. It
+           rides the bolt intent, so the ricochet bounce (which re-enters
+           playProjectile with the same spellMeta) refracts again for free —
+           and online.js's fire() wrapper relays it to the guest unchanged. */
+        if (boltDef.boltPrism) {
+            try {
+                _sigPrismRefraction3D(fromTx, fromTy, toTx, toTy, {
+                    flyMs: params.flyMs, spellId: spellId,
+                    wireColor: boltDef.boltPrismColor,
+                });
+                return;
+            } catch (e) { /* fall through to the generic bolt */ }
+        }
         if (_SIG_GUN_FOR[spellId]) {
             try { _sigGunRig3D(_SIG_GUN_FOR[spellId], fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs }); } catch (e) {}
         }
@@ -3170,6 +3185,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             headGlow: headGlow,
             shake: shake,
             radiant: radiant,
+            /* opt-in: fire the spell's _spell3DGeometry signature when the bolt
+               lands. Bolt spells previously couldn't carry one at all — the
+               bolt path returns before the impact intent ever runs — so any
+               bolt spell that wants a 3D apparition on arrival sets
+               boltGeometry: true on its bolt def. */
+            geom: !!boltDef.boltGeometry,
             spawnAcc: 0,
             ts: ts,
             toTx: toTx,
@@ -3385,6 +3406,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     if (impDef) {
                         _spawnEffect(impDef, { tx: e.toTx, ty: e.toTy });
                     }
+                }
+
+                /* …and its bespoke 3D signature, when the bolt def opted in */
+                if (e.geom && _spell3DGeometry[e.spellId] && e.toTx != null) {
+                    try { _spell3DGeometry[e.spellId](e.toTx, e.toTy); } catch (gErr) {}
                 }
             }
 
@@ -10531,7 +10557,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
         var g = new THREE.Group();
         var hoverY = wp.y + ts * (opts.hover != null ? opts.hover : 1.35);
-        g.position.set(wp.x, hoverY + ts * 1.2, wp.z);
+        /* dx/dz nudge the skull off the tile centre (in px) and yaw turns it —
+           lets a caller hang a whole crowd of them around one victim. */
+        g.position.set(wp.x + (opts.dx || 0), hoverY + ts * 1.2, wp.z + (opts.dz || 0));
+        if (opts.yaw) g.rotation.y = opts.yaw;
 
         var cranium = new THREE.Mesh(new THREE.SphereGeometry(R, 12, 9), boneMat);
         cranium.scale.set(1, 0.94, 1.06);
@@ -12091,6 +12120,847 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         } catch (e) {}
     }
 
+    /* ═══════════════════════════════════════════════════════════════════════
+       PRISMATIC / PSYCHEDELIC SIGNATURE KIT (2026-07-25)
+
+       Built for Prism Burst (orb of light) and Bad Trip (shaman), but every
+       piece below is a GENERAL-PURPOSE primitive — see the catalogue in
+       PLAYTEST_NOTES.md ("Prismatic / psychedelic VFX kit"). Nothing here is
+       spell-specific; the two spells are just the first customers.
+
+         _sigWireframe3D(geo, opts)        any THREE geometry → thick glowing
+                                           neon wire cage (tube per edge)
+         _sigPrismRefraction3D(a→b, opts)  Dark-Side-of-the-Moon prism: white
+                                           beam in, ROYGBIV fan out, lands on
+                                           the target at opts.flyMs
+         _sigSpectrumBurst3D(tx, ty)       rainbow starburst — stacked spectrum
+                                           shock rings + splayed light lances
+         _sigNeonGrid3D(tx, ty)            pulsing neon floor grid + breathing
+                                           wireframe cage, hue-cycling
+         _sigFractalTunnel3D(tx, ty)       nested wireframe polygons scrolling
+                                           upward — the DMT tunnel
+         _sigKaleidoscope3D(tx, ty)        counter-spinning mandala discs above
+                                           and below the victim
+         _sigPsychedelicTint(opts)         full-screen hue-rotate/saturate wash
+         _sigBadTrip3D(tx, ty)             the whole bad trip, composed
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    /* ROYGBIV — the reference spectrum every prismatic effect refracts into. */
+    var _SIG_SPECTRUM = [0xff1744, 0xff8f00, 0xffea00, 0x00e676, 0x00b0ff, 0x2962ff, 0xaa00ff];
+    /* Their counterparts in the additive particle pool — the closest ROYGBIV
+       run available from the procedural mote sprites (three-vfx.js
+       _spriteGradients). Lets a pool burst read as "rainbow" even though the
+       pool has no per-particle tint channel. */
+    var _SIG_SPECTRUM_SPRITES = ['laser-red', 'ember', 'steel-spark', 'acid-green',
+                                 'spark-blue', 'plasma', 'psi-pulse'];
+
+    /* lazily built — this file must still parse and register every effect if
+       the THREE CDN is slow or missing */
+    var _sigUpVec = null;
+    function _sigUp() {
+        if (!_sigUpVec) _sigUpVec = new THREE.Vector3(0, 1, 0);
+        return _sigUpVec;
+    }
+
+    /* ── WIREFRAME BUILDER — turn ANY geometry into a thick, glowing neon
+       cage. THREE's LineBasicMaterial ignores linewidth on every desktop GL
+       backend, so a real "wireframe" that reads at battle zoom has to be
+       built from tubes: one thin cylinder per unique edge (+ optional joint
+       spheres so corners don't gap). All bars share ONE material, so the
+       caller animates colour/opacity in a single assignment.
+       Returns a Group; the shared material is on group.userData.wireMat. ── */
+    function _sigWireframe3D(geo, opts) {
+        opts = opts || {};
+        var group = new THREE.Group();
+        var mat = opts.material || _sigMat(opts.color != null ? opts.color : 0xffffff);
+        group.userData.wireMat = mat;
+        if (!geo) return group;
+        var radius = opts.radius != null ? opts.radius : 2;
+        var seg = opts.radialSegments != null ? opts.radialSegments : 4;
+        var order = opts.renderOrder != null ? opts.renderOrder : 205;
+        var eg;
+        try { eg = new THREE.EdgesGeometry(geo, opts.thresholdDeg != null ? opts.thresholdDeg : 1); }
+        catch (e) { return group; }
+        var pos = eg.attributes && eg.attributes.position;
+        if (!pos) { eg.dispose(); return group; }
+        var a = new THREE.Vector3(), b = new THREE.Vector3(), d = new THREE.Vector3();
+        for (var i = 0; i + 1 < pos.count; i += 2) {
+            a.fromBufferAttribute(pos, i);
+            b.fromBufferAttribute(pos, i + 1);
+            d.subVectors(b, a);
+            var len = d.length();
+            if (!(len > 1e-4)) continue;
+            var bar = new THREE.Mesh(
+                new THREE.CylinderGeometry(radius, radius, len, seg, 1, true), mat);
+            bar.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+            bar.quaternion.setFromUnitVectors(_sigUp(), d.normalize());
+            bar.renderOrder = order;
+            group.add(bar);
+            if (opts.joints) {
+                var j = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.6, 6, 5), mat);
+                j.position.copy(b);
+                j.renderOrder = order;
+                group.add(j);
+            }
+        }
+        eg.dispose();
+        return group;
+    }
+
+    /* ── KALEIDOSCOPE TEXTURE — a 12-fold mirrored motif with nested fractal
+       triangles at the core, faded off at the rim. Cached; recoloured per use
+       by tinting the material (it's drawn pure white). ─────────────────── */
+    function _sigKaleidoTex() {
+        return _sigTex('sig-kaleido', 512, function (ctx, S) {
+            var c = S / 2, rnd = _sigRand(0x5EEDF00D);
+            ctx.clearRect(0, 0, S, S);
+            ctx.strokeStyle = '#ffffff';
+            ctx.fillStyle = '#ffffff';
+            ctx.lineCap = 'round';
+            /* one wedge of motif, mirrored and rotated 12× = kaleidoscope */
+            var motif = [];
+            for (var m = 0; m < 10; m++) {
+                motif.push({
+                    r0: 26 + rnd() * 150, a0: (rnd() - 0.5) * 0.44,
+                    r1: 62 + rnd() * 180, a1: (rnd() - 0.5) * 0.44,
+                    w: 1.5 + rnd() * 4.5, al: 0.32 + rnd() * 0.6,
+                });
+            }
+            var SEGS = 12;
+            for (var k = 0; k < SEGS; k++) {
+                for (var mir = 0; mir < 2; mir++) {
+                    ctx.save();
+                    ctx.translate(c, c);
+                    ctx.rotate(k * Math.PI * 2 / SEGS);
+                    if (mir) ctx.scale(1, -1);
+                    for (var j = 0; j < motif.length; j++) {
+                        var mo = motif[j];
+                        ctx.globalAlpha = mo.al;
+                        ctx.lineWidth = mo.w;
+                        var am = (mo.a0 + mo.a1) / 2, rm = (mo.r0 + mo.r1) * 0.62;
+                        ctx.beginPath();
+                        ctx.moveTo(Math.cos(mo.a0) * mo.r0, Math.sin(mo.a0) * mo.r0);
+                        ctx.quadraticCurveTo(Math.cos(am) * rm, Math.sin(am) * rm,
+                                             Math.cos(mo.a1) * mo.r1, Math.sin(mo.a1) * mo.r1);
+                        ctx.stroke();
+                    }
+                    /* a bead at the wedge tip */
+                    ctx.globalAlpha = 0.8;
+                    ctx.beginPath();
+                    ctx.arc(206, 0, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+            /* nested fractal triangles spiralling out of the core */
+            for (var d = 0; d < 6; d++) {
+                var rr = 34 + d * 38;
+                ctx.globalAlpha = Math.max(0.08, 0.55 - d * 0.07);
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                for (var v = 0; v <= 3; v++) {
+                    var ang = v * Math.PI * 2 / 3 - Math.PI / 2 + d * 0.34;
+                    var x = c + Math.cos(ang) * rr, y = c + Math.sin(ang) * rr;
+                    if (v === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+            /* soft radial cut-off so the disc has no hard square edge */
+            var g = ctx.createRadialGradient(c, c, S * 0.33, c, c, S * 0.5);
+            g.addColorStop(0, 'rgba(0,0,0,0)');
+            g.addColorStop(1, 'rgba(0,0,0,1)');
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, S, S);
+            ctx.globalCompositeOperation = 'source-over';
+        });
+    }
+
+    /* ── PULSING NEON GRID — a vaporwave floor grid under the victim plus a
+       breathing wireframe cage over them, both hue-cycling, with pulse rings
+       racing outward along the grid. Real line/tube geometry, additive, so
+       the bloom pass does the neon for us. ─────────────────────────────── */
+    function _sigNeonGrid3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var R = opts.radiusPx != null ? opts.radiusPx : ts * 2.1;
+        var div = opts.divisions != null ? opts.divisions : 10;
+        var ms = opts.ms != null ? opts.ms : 1500;
+        var hue0 = opts.hue != null ? opts.hue : 0.78;
+        var hueRate = opts.hueRate != null ? opts.hueRate : 0.0009;
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y + 3, wp.z);
+
+        /* flat neon floor grid */
+        var pts = [];
+        var step = (R * 2) / div;
+        for (var i = 0; i <= div; i++) {
+            var o = -R + i * step;
+            pts.push(-R, 0, o, R, 0, o);
+            pts.push(o, 0, -R, o, 0, R);
+        }
+        var gGeo = new THREE.BufferGeometry();
+        gGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+        var gMat = new THREE.LineBasicMaterial({
+            color: new THREE.Color(0xffffff), transparent: true, opacity: 0,
+            blending: THREE.AdditiveBlending, depthWrite: false,
+        });
+        var grid = new THREE.LineSegments(gGeo, gMat);
+        grid.renderOrder = 202;
+        group.add(grid);
+
+        /* breathing wireframe cage over the victim */
+        var cageGeo = new THREE.OctahedronGeometry(R * 0.46, opts.cageDetail != null ? opts.cageDetail : 0);
+        var cageMat = _sigMat(0xffffff);
+        var cage = _sigWireframe3D(cageGeo, {
+            material: cageMat, radius: Math.max(1.2, ts * 0.012),
+            joints: true, renderOrder: 206,
+        });
+        cageGeo.dispose();
+        cage.position.y = R * 0.46;
+        group.add(cage);
+
+        /* pulse rings racing outward across the grid */
+        var rings = [];
+        var RN = opts.rings != null ? opts.rings : 3;
+        for (var r = 0; r < RN; r++) {
+            var rm = _sigMat(0xffffff, { map: _sigRingTex() });
+            var rmesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), rm);
+            rmesh.rotation.x = -Math.PI / 2;
+            rmesh.position.y = 1.5;
+            rmesh.renderOrder = 203;
+            group.add(rmesh);
+            rings.push({ mesh: rmesh, mat: rm, off: r / RN });
+        }
+
+        var col = new THREE.Color();
+        return _sigRun(group, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            var env = t < 0.12 ? (t / 0.12) : (t > 0.72 ? 1 - (t - 0.72) / 0.28 : 1);
+            var pulse = 0.62 + 0.38 * Math.sin(el * 0.012);
+
+            col.setHSL((hue0 + el * hueRate) % 1, 1, 0.6);
+            gMat.color.copy(col);
+            gMat.opacity = 0.8 * env * pulse;
+            var breath = 1 + 0.06 * Math.sin(el * 0.009);
+            grid.scale.set(breath, 1, breath);
+
+            col.setHSL((hue0 + 0.45 + el * hueRate * 1.7) % 1, 1, 0.68);
+            cageMat.color.copy(col);
+            cageMat.opacity = 0.9 * env * (0.6 + 0.4 * Math.sin(el * 0.018));
+            cage.rotation.y = el * 0.0016;
+            cage.rotation.x = Math.sin(el * 0.001) * 0.34;
+            var cs = 1 + 0.12 * Math.sin(el * 0.011);
+            cage.scale.set(cs, cs, cs);
+
+            for (var k = 0; k < rings.length; k++) {
+                var f = (t * 2.2 + rings[k].off) % 1;
+                var rr = R * (0.15 + 0.95 * f);
+                rings[k].mesh.scale.set(rr, rr, rr);
+                col.setHSL((hue0 + 0.2 + f * 0.6) % 1, 1, 0.62);
+                rings[k].mat.color.copy(col);
+                rings[k].mat.opacity = 0.5 * env * (1 - f);
+            }
+        });
+    }
+
+    /* ── FRACTAL TUNNEL — nested wireframe polygons scrolling upward and
+       widening, each ring a different hue: the classic hallucinated tunnel.
+       opts.sides picks the shape (3 = triangles, 6 = hex, …). ─────────── */
+    function _sigFractalTunnel3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var ms = opts.ms != null ? opts.ms : 1500;
+        var sides = opts.sides != null ? opts.sides : 3;
+        var count = opts.rings != null ? opts.rings : 9;
+        var R = opts.radiusPx != null ? opts.radiusPx : ts * 0.9;
+        var H = opts.height != null ? opts.height : ts * 3.0;
+        var speed = opts.speed != null ? opts.speed : 1.6;
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y + (opts.baseY != null ? opts.baseY : ts * 0.12), wp.z);
+
+        var loopPts = [];
+        for (var s = 0; s <= sides; s++) {
+            var ang = (s / sides) * Math.PI * 2 - Math.PI / 2;
+            loopPts.push(Math.cos(ang), 0, Math.sin(ang));
+        }
+
+        var rings = [];
+        for (var i = 0; i < count; i++) {
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(loopPts.slice(), 3));
+            var m = new THREE.LineBasicMaterial({
+                color: new THREE.Color(0xffffff), transparent: true, opacity: 0,
+                blending: THREE.AdditiveBlending, depthWrite: false,
+            });
+            var line = new THREE.Line(geo, m);
+            line.renderOrder = 204;
+            group.add(line);
+            rings.push({ mesh: line, mat: m, off: i / count });
+        }
+
+        var col = new THREE.Color();
+        return _sigRun(group, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            var env = t < 0.1 ? t / 0.1 : (t > 0.74 ? 1 - (t - 0.74) / 0.26 : 1);
+            for (var i2 = 0; i2 < rings.length; i2++) {
+                var rg = rings[i2];
+                var f = (t * speed + rg.off) % 1;         /* 0 = floor, 1 = ceiling */
+                rg.mesh.position.y = f * H;
+                var sc = R * (0.22 + f * 1.55);
+                rg.mesh.scale.set(sc, 1, sc);
+                rg.mesh.rotation.y = f * Math.PI * 1.4 + el * 0.002;
+                col.setHSL((f * 0.85 + el * 0.0006) % 1, 1, 0.62);
+                rg.mat.color.copy(col);
+                rg.mat.opacity = env * 0.95 * Math.sin(f * Math.PI);
+            }
+        });
+    }
+
+    /* ── KALEIDOSCOPE — counter-spinning mandala discs on the ground and
+       overhead, hue-cycling through the whole wheel. ───────────────────── */
+    function _sigKaleidoscope3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var ms = opts.ms != null ? opts.ms : 1500;
+        var R = opts.radiusPx != null ? opts.radiusPx : ts * 1.7;
+        var tex = _sigKaleidoTex();
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y + 4, wp.z);
+
+        function disc(y, flip, order) {
+            var m = _sigMat(0xffffff, { map: tex });
+            var mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), m);
+            mesh.rotation.x = flip ? Math.PI / 2 : -Math.PI / 2;
+            mesh.position.y = y;
+            mesh.renderOrder = order;
+            group.add(mesh);
+            return { mesh: mesh, mat: m };
+        }
+        var floorA = disc(0, false, 200);
+        var floorB = disc(3, false, 201);
+        var ceil = disc(ts * (opts.ceilingH != null ? opts.ceilingH : 2.0), true, 201);
+
+        var col = new THREE.Color();
+        return _sigRun(group, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            var env = t < 0.1 ? t / 0.1 : (t > 0.7 ? 1 - (t - 0.7) / 0.3 : 1);
+            var breathe = 1 + 0.09 * Math.sin(el * 0.008);
+
+            floorA.mesh.rotation.z = el * 0.0018;
+            var sA = R * breathe;
+            floorA.mesh.scale.set(sA, sA, sA);
+            col.setHSL((el * 0.0011) % 1, 1, 0.6);
+            floorA.mat.color.copy(col);
+            floorA.mat.opacity = 0.75 * env;
+
+            floorB.mesh.rotation.z = -el * 0.0029;
+            var sB = R * 0.62 / breathe;
+            floorB.mesh.scale.set(sB, sB, sB);
+            col.setHSL((0.5 + el * 0.0016) % 1, 1, 0.65);
+            floorB.mat.color.copy(col);
+            floorB.mat.opacity = 0.7 * env;
+
+            ceil.mesh.rotation.z = el * 0.0022;
+            var sC = R * 0.85 * breathe;
+            ceil.mesh.scale.set(sC, sC, sC);
+            col.setHSL((0.25 + el * 0.0013) % 1, 1, 0.62);
+            ceil.mat.color.copy(col);
+            ceil.mat.opacity = 0.55 * env;
+        });
+    }
+
+    /* ── PSYCHEDELIC TINT — the whole battlefield melts: the 3D canvas gets a
+       rolling hue-rotate + saturation crush, with a colour-dodge wash over
+       the top. Same shape as _sigFlashbackTint (one at a time, self-cleaning,
+       no-ops on the 2D renderer), just the opposite mood. ──────────────── */
+    var _sigTripActive = false;
+    function _sigPsychedelicTint(opts) {
+        opts = opts || {};
+        try {
+            if (typeof document === 'undefined') return;
+            if (_catOff('spells')) return;
+            if (typeof state !== 'undefined' && state.devAutoSim && !state._devSimShowAnims) return;
+            if (_sigTripActive) return;
+            var cv = document.getElementById('threeCanvas');
+            if (!cv) return;
+            _sigTripActive = true;
+            var inMs = opts.inMs != null ? opts.inMs : 220;
+            var holdMs = opts.holdMs != null ? opts.holdMs : 900;
+            var outMs = opts.outMs != null ? opts.outMs : 420;
+            var total = inMs + holdMs + outMs;
+            var spin = opts.spin != null ? opts.spin : 0.34;     /* hue degrees per ms */
+            var sat = opts.saturate != null ? opts.saturate : 2.4;
+            var wash = document.createElement('div');
+            wash.style.cssText = 'position:fixed;left:0;top:0;right:0;bottom:0;pointer-events:none;'
+                + 'z-index:8997;opacity:0;mix-blend-mode:color-dodge;'
+                + 'background:radial-gradient(circle at 50% 50%, rgba(255,0,190,0.30) 0%,'
+                + ' rgba(0,255,220,0.16) 42%, rgba(255,220,0,0.22) 70%, rgba(120,0,255,0.30) 100%);';
+            document.body.appendChild(wash);
+            var done = false;
+            function cleanup() {
+                if (done) return;
+                done = true;
+                cv.style.filter = '';
+                if (wash.parentNode) wash.parentNode.removeChild(wash);
+                _sigTripActive = false;
+            }
+            var t0 = performance.now();
+            _fxSchedule(function () {
+                if (done) return false;
+                var el = performance.now() - t0;
+                if (el >= total) { cleanup(); return false; }
+                var k = el < inMs ? _sigEaseOutCubic(el / inMs)
+                      : (el < inMs + holdMs ? 1 : 1 - (el - inMs - holdMs) / outMs);
+                var hue = (el * spin) % 360;
+                var wob = 1 + Math.sin(el * 0.011) * 0.06 * k;
+                cv.style.filter = 'hue-rotate(' + hue.toFixed(1) + 'deg) saturate('
+                    + (1 + (sat - 1) * k).toFixed(2) + ') contrast('
+                    + (1 + 0.22 * k).toFixed(2) + ') brightness(' + wob.toFixed(3) + ')';
+                wash.style.opacity = (k * 0.5).toFixed(3);
+                return true;
+            });
+            /* belt-and-braces: clearAll() can kill the ticker mid-wash, and a
+               battlefield stuck under a hue-rotate filter is unplayable */
+            window.setTimeout(cleanup, total + 400);
+        } catch (e) { _sigTripActive = false; }
+    }
+
+    /* ── SPECTRUM BURST — the rainbow detonation: a white core, seven
+       phase-offset spectrum shock rings stacked a hair apart in Z, and seven
+       light lances splayed up and away from the caster. Reusable as the
+       impact half of any prismatic / light-refraction spell. ───────────── */
+    function _sigSpectrumBurst3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        if (_catOff('spells')) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var R = opts.radiusPx != null ? opts.radiusPx : ts * 1.6;
+        var ms = opts.ms != null ? opts.ms : 760;
+        var N = _SIG_SPECTRUM.length;
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y + 5, wp.z);
+
+        /* white-hot core */
+        var coreMat = _sigMat(0xffffff, { map: _sigGlowTex() });
+        var core = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), coreMat);
+        core.rotation.x = -Math.PI / 2;
+        core.renderOrder = 216;
+        group.add(core);
+
+        /* stacked spectrum shock rings */
+        var rings = [];
+        for (var i = 0; i < N; i++) {
+            var m = _sigMat(_SIG_SPECTRUM[i], { map: _sigRingTex() });
+            var mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), m);
+            mesh.rotation.x = -Math.PI / 2;
+            mesh.position.y = i * 1.3;
+            mesh.renderOrder = 206 + i;
+            group.add(mesh);
+            rings.push({ mesh: mesh, mat: m, off: i / N });
+        }
+
+        /* the splay — seven lances thrown out of the hit, away from the caster */
+        var yaw0 = _sigYawToward(tx, ty);          /* caster → target heading */
+        var fanRad = opts.fanRad != null ? opts.fanRad : 1.15;
+        var baseGeo = new THREE.CylinderGeometry(
+            Math.max(1.1, ts * 0.014), Math.max(0.4, ts * 0.004), 1, 5, 1, true);
+        var lances = [];
+        for (var j = 0; j < N; j++) {
+            var frac = (N === 1) ? 0.5 : j / (N - 1);
+            var ang = yaw0 + (frac - 0.5) * fanRad;
+            var pitch = 0.30 + frac * 0.62;
+            var d = new THREE.Vector3(
+                Math.sin(ang) * Math.cos(pitch), Math.sin(pitch), Math.cos(ang) * Math.cos(pitch)
+            ).normalize();
+            var lm = _sigMat(_SIG_SPECTRUM[j]);
+            var lmesh = new THREE.Mesh(baseGeo.clone(), lm);
+            lmesh.quaternion.setFromUnitVectors(_sigUp(), d);
+            lmesh.renderOrder = 214;
+            group.add(lmesh);
+            lances.push({ mesh: lmesh, mat: lm, dir: d, len: R * (1.05 + frac * 0.4), off: j / N });
+        }
+        baseGeo.dispose();
+
+        /* pool bursts in spectrum order + the white pop */
+        if (_canSpawn()) {
+            for (var s = 0; s < _SIG_SPECTRUM_SPRITES.length; s++) {
+                _sigSparks(tx, ty, _SIG_SPECTRUM_SPRITES[s], 5, {
+                    vxy: 150 + s * 22, vz0: 50, vz1: 240, gravity: 60, z: 10,
+                });
+            }
+        }
+        _sigScreenFlash(opts.flashColor || '#ffffff', opts.flashMs || 150, opts.flashPeak != null ? opts.flashPeak : 0.22);
+        if (opts.shake !== false) _sigShake(opts.shake || 'soft');
+        try {
+            if (typeof ThreePost !== 'undefined' && ThreePost.bloomPulse) ThreePost.bloomPulse(0.45, 320);
+        } catch (e) {}
+
+        return _sigRun(group, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+
+            var cs = R * (0.25 + _sigEaseOutCubic(t) * 1.3);
+            core.scale.set(cs, cs, cs);
+            coreMat.opacity = 0.9 * Math.max(0, 1 - t * 1.9);
+
+            for (var i2 = 0; i2 < rings.length; i2++) {
+                var rg = rings[i2];
+                var rt = _sigClamp01((t - rg.off * 0.22) / (1 - rg.off * 0.22));
+                var rr = R * (0.16 + _sigEaseOutCubic(rt) * 1.25);
+                rg.mesh.scale.set(rr, rr, rr);
+                rg.mat.opacity = rt > 0 ? 0.9 * (1 - rt) : 0;
+            }
+
+            for (var k = 0; k < lances.length; k++) {
+                var lc = lances[k];
+                var lt = _sigClamp01((t - lc.off * 0.14) / 0.55);
+                var cur = Math.max(0.01, lc.len * _sigEaseOutCubic(lt));
+                lc.mesh.scale.set(1, cur, 1);
+                lc.mesh.position.copy(lc.dir).multiplyScalar(cur * 0.5);
+                lc.mat.opacity = 0.95 * lt * Math.max(0, 1 - Math.max(0, t - 0.35) / 0.65);
+            }
+        });
+    }
+
+    /* ── PRISM REFRACTION — Dark Side of the Moon as a JRPG attack. A white
+       wireframe triangular prism folds into being on the caster→target line,
+       a hard white beam lances into its face, and seven ROYGBIV bands fan out
+       of the far face and converge on the victim, arriving at opts.flyMs.
+       Fires the spectrum burst + the spell's mapped impact layers on arrival,
+       so it is a COMPLETE bolt replacement (see _fireBoltMapped). ──────── */
+    function _sigPrismRefraction3D(fromTx, fromTy, toTx, toTy, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        if (_catOff('spells')) return null;
+
+        var a = _worldTorso(fromTx, fromTy);
+        var b = _worldTorso(toTx, toTy);
+        var ts = a.ts || (_cfg().tileSize || 128);
+
+        var start = new THREE.Vector3(a.x, a.y, a.z);
+        var end = new THREE.Vector3(b.x, b.y, b.z);
+        var toTarget = new THREE.Vector3().subVectors(end, start);
+        var span = toTarget.length() || 1;
+        var dir = toTarget.clone().normalize();
+        var perp = new THREE.Vector3(-dir.z, 0, dir.x);
+        if (perp.lengthSq() < 1e-6) perp.set(1, 0, 0);
+        perp.normalize();
+
+        var flyMs = (opts.flyMs > 0) ? opts.flyMs : 480;
+        var prismInMs = Math.max(90, Math.min(240, flyMs * 0.42));
+        /* the fan never leaves before the prism has finished folding out */
+        var fanStart = Math.max(prismInMs * 0.92, flyMs * 0.40);
+        var fanMs = Math.max(90, flyMs - fanStart);
+        var totalMs = flyMs + (opts.linger != null ? opts.linger : 640);
+
+        /* root sits at the world origin so every beam can be laid out in
+           absolute world coordinates; only the prism itself is a rotated
+           sub-group. */
+        var root = new THREE.Group();
+
+        var prismPos = start.clone().addScaledVector(dir, span * (opts.prismAt != null ? opts.prismAt : 0.30));
+        prismPos.y += ts * (opts.prismLift != null ? opts.prismLift : 0.72);
+
+        var PR = ts * (opts.prismSize != null ? opts.prismSize : 0.40);   /* triangle circumradius */
+        var PD = PR * 1.2;                                                /* extrusion depth */
+
+        var pgroup = new THREE.Group();
+        pgroup.position.copy(prismPos);
+        /* basis: cylinder axis (local +Y) runs across the shot, first vertex
+           (local +Z) points straight up ⇒ a triangle standing on its base,
+           extruded sideways — the album silhouette. */
+        var yA = perp.clone();
+        var zA = new THREE.Vector3(0, 1, 0);
+        var xA = new THREE.Vector3().crossVectors(yA, zA).normalize();
+        zA.crossVectors(xA, yA).normalize();
+        var baseQ = new THREE.Quaternion().setFromRotationMatrix(
+            new THREE.Matrix4().makeBasis(xA, yA, zA));
+        pgroup.quaternion.copy(baseQ);
+        root.add(pgroup);
+
+        var prismGeo = new THREE.CylinderGeometry(PR, PR, PD, 3, 1, false);
+        var glassMat = _sigMat(0xffffff);
+        var glass = new THREE.Mesh(prismGeo, glassMat);
+        glass.renderOrder = 204;
+        pgroup.add(glass);
+        var wireMat = _sigMat(opts.wireColor != null ? opts.wireColor : 0xffffff);
+        var wire = _sigWireframe3D(prismGeo, {
+            material: wireMat, radius: Math.max(1.4, ts * 0.015),
+            joints: true, renderOrder: 213,
+        });
+        pgroup.add(wire);
+
+        /* the incoming white beam, caster torso → prism face */
+        var entryVec = new THREE.Vector3().subVectors(prismPos, start);
+        var entryLen = entryVec.length() || 1;
+        var entryDir = entryVec.clone().normalize();
+        var entryMat = _sigMat(0xffffff);
+        var entry = new THREE.Mesh(
+            new THREE.CylinderGeometry(Math.max(1.2, ts * 0.018), Math.max(1.2, ts * 0.018), 1, 8, 1, true),
+            entryMat);
+        entry.quaternion.setFromUnitVectors(_sigUp(), entryDir);
+        entry.renderOrder = 209;
+        root.add(entry);
+        var entryGlowMat = _sigMat(0xdfe8ff);
+        var entryGlow = new THREE.Mesh(
+            new THREE.CylinderGeometry(Math.max(2.4, ts * 0.045), Math.max(2.4, ts * 0.045), 1, 8, 1, true),
+            entryGlowMat);
+        entryGlow.quaternion.copy(entry.quaternion);
+        entryGlow.renderOrder = 208;
+        root.add(entryGlow);
+
+        /* the refracted fan — one tube per spectrum band, splayed vertically
+           out of the exit face and converging back onto the victim */
+        var N = _SIG_SPECTRUM.length;
+        var exitPt = prismPos.clone().addScaledVector(dir, PR * 0.4);
+        var spread = ts * (opts.spread != null ? opts.spread : 0.6);
+        var bands = [];
+        for (var i = 0; i < N; i++) {
+            var f = (i / (N - 1)) - 0.5;                         /* -0.5 … 0.5 */
+            var lateral = perp.clone().multiplyScalar(f * spread * 0.5);
+            var vertical = new THREE.Vector3(0, -f * spread * 1.25, 0);
+            var p1 = exitPt.clone().addScaledVector(dir, span * 0.16).add(lateral).add(vertical);
+            var p2 = exitPt.clone().addScaledVector(dir, span * 0.46)
+                .add(lateral.clone().multiplyScalar(0.55))
+                .add(vertical.clone().multiplyScalar(0.6));
+            var curve = new THREE.CatmullRomCurve3([exitPt.clone(), p1, p2, end.clone()]);
+            var geoT = new THREE.TubeGeometry(curve, 44, Math.max(1.1, ts * 0.017), 5, false);
+            var matT = _sigMat(_SIG_SPECTRUM[i]);
+            var tube = new THREE.Mesh(geoT, matT);
+            tube.renderOrder = 210 + i;
+            root.add(tube);
+            bands.push({
+                mesh: tube, mat: matT, off: i / N,
+                idxCount: (geoT.index ? geoT.index.count : 0),
+            });
+            if (geoT.index) geoT.setDrawRange(0, 0);
+        }
+
+        /* charge flare at the caster */
+        if (_canSpawn()) {
+            var mp = tilePx(fromTx, fromTy);
+            var mz = unitSurfaceZ(fromTx, fromTy) + unitZBoost();
+            _spawn({
+                x: mp.x, y: mp.y, z: mz, mode: 'billboard', sprite: 'flash',
+                ml: 240, size0: ts * 0.42, size1: ts * 0.06, opacity0: 1, opacity1: 0,
+            });
+        }
+
+        var fired = false, splitPopped = false;
+        var wobbleQ = new THREE.Quaternion();
+        return _sigRun(root, totalMs, function (el) {
+            var outFade = el > flyMs + 160 ? Math.max(0, 1 - (el - flyMs - 160) / 420) : 1;
+
+            /* prism folds out of nowhere and hangs, breathing */
+            var pin = _sigClamp01(el / prismInMs);
+            var pop = Math.max(0.01, _sigEaseOutBack(pin));
+            pgroup.scale.set(pop, pop, pop);
+            wobbleQ.setFromAxisAngle(perp, Math.sin(el * 0.006) * 0.13);
+            pgroup.quaternion.copy(wobbleQ).multiply(baseQ);
+            pgroup.position.y = prismPos.y + Math.sin(el * 0.008) * ts * 0.03;
+            wireMat.opacity = 0.98 * pin * outFade;
+            glassMat.opacity = 0.15 * pin * outFade;
+
+            /* white light drives into the face */
+            var eT = _sigClamp01((el - prismInMs * 0.35) / Math.max(1, fanStart - prismInMs * 0.35));
+            var eLen = Math.max(0.01, entryLen * eT);
+            entry.scale.set(1, eLen, 1);
+            entry.position.copy(start).addScaledVector(entryDir, eLen * 0.5);
+            entryMat.opacity = 0.95 * eT * outFade;
+            entryGlow.scale.set(1, eLen, 1);
+            entryGlow.position.copy(entry.position);
+            entryGlowMat.opacity = 0.3 * eT * outFade;
+
+            /* …and comes apart on the far side: a white pop at the prism and
+               a spray of spectrum motes off the exit face. Board-px coords
+               (world XZ + boardPadding) so the pool lands them mid-air. */
+            if (!splitPopped && el >= fanStart) {
+                splitPopped = true;
+                if (_canSpawn()) {
+                    var pad = (_cfg().boardPadding || 2);
+                    var bx = prismPos.x + pad, by = prismPos.z + pad, bz = prismPos.y;
+                    _spawn({
+                        x: bx, y: by, z: bz, mode: 'billboard', sprite: 'flash',
+                        ml: 260, size0: ts * 0.5, size1: ts * 0.1, opacity0: 1, opacity1: 0,
+                    });
+                    for (var sp = 0; sp < _SIG_SPECTRUM_SPRITES.length; sp++) {
+                        var sa = rn(0, 6.28);
+                        _spawn({
+                            x: bx, y: by, z: bz,
+                            vx: Math.cos(sa) * rn(40, 130), vy: Math.sin(sa) * rn(40, 130),
+                            vz: rn(-30, 90),
+                            mode: 'billboard', sprite: _SIG_SPECTRUM_SPRITES[sp],
+                            ml: 320 + rn(0, 280), size0: ts * 0.07, size1: 0,
+                            opacity0: 0.95, opacity1: 0, drag: 1.6, gravity: 60,
+                        });
+                    }
+                }
+            }
+
+            for (var i2 = 0; i2 < bands.length; i2++) {
+                var bd = bands[i2];
+                var stag = bd.off * fanMs * 0.22;
+                var bt = _sigClamp01((el - fanStart - stag) / Math.max(1, fanMs - stag));
+                if (bd.idxCount) {
+                    var n = Math.max(0, Math.floor(bd.idxCount * bt / 3) * 3);
+                    bd.mesh.geometry.setDrawRange(0, n);
+                }
+                var bandFade = el > flyMs + 60 ? Math.max(0, 1 - (el - flyMs - 60) / 460) : 1;
+                bd.mat.opacity = (bt > 0 ? 0.95 : 0) * bandFade * (0.86 + 0.14 * Math.sin(el * 0.03 + i2));
+            }
+
+            /* arrival */
+            if (!fired && el >= flyMs) {
+                fired = true;
+                try { _sigSpectrumBurst3D(toTx, toTy, { radiusPx: ts * 1.7 }); } catch (e) {}
+                try {
+                    var impId = SPELL_MAP[opts.spellId] && SPELL_MAP[opts.spellId].impact;
+                    var impDef = impId ? EFFECTS[impId] : null;
+                    if (impDef) _spawnEffect(impDef, { tx: toTx, ty: toTy });
+                } catch (e2) {}
+            }
+        });
+    }
+
+    /* ── BAD TRIP — the full hallucination, composed from the primitives
+       above: the world melts (hue wash), a mandala opens under the victim, a
+       neon grid snaps in with a wireframe cage, a fractal tunnel scrolls up
+       through them, and three skulls hang in the air cackling. ─────────── */
+    function _sigBadTrip3D(tx, ty, opts) {
+        opts = opts || {};
+        if (_catOff('spells')) return;
+        if (_suppressed()) return;
+        var ts = _cfg().tileSize || 128;
+        var ms = opts.ms != null ? opts.ms : 1550;
+
+        _sigPsychedelicTint({ inMs: 200, holdMs: ms - 620, outMs: 420 });
+        _sigKaleidoscope3D(tx, ty, { ms: ms, radiusPx: ts * 1.75, ceilingH: 2.0 });
+        _sigNeonGrid3D(tx, ty, { ms: ms, radiusPx: ts * 2.0, divisions: 10, hue: 0.78 });
+        _sigFractalTunnel3D(tx, ty, { ms: ms, sides: 3, rings: 9, radiusPx: ts * 0.9, height: ts * 3.0 });
+
+        /* three laughing skulls, staggered, circling the victim's head */
+        var skulls = [
+            { dx: -0.62, dz: -0.22, scale: 0.60, hover: 1.55, eye: 0x66ff88, bone: 0xffc8ff, yaw: 0.55, at: 0 },
+            { dx: 0.58, dz: -0.34, scale: 0.52, hover: 1.90, eye: 0xff4de0, bone: 0xd8f4ff, yaw: -0.6, at: 150 },
+            { dx: 0.06, dz: 0.55, scale: 0.68, hover: 1.28, eye: 0x66e0ff, bone: 0xfff0b0, yaw: 3.0, at: 300 },
+        ];
+        for (var i = 0; i < skulls.length; i++) {
+            (function (s) {
+                var go = function () {
+                    if (_suppressed() || _catOff('spells')) return;
+                    _sigSkull3D(tx, ty, {
+                        laugh: true, scale: s.scale, hover: s.hover, holdMs: 780,
+                        eyeColor: s.eye, boneColor: s.bone, yaw: s.yaw,
+                        dx: ts * s.dx, dz: ts * s.dz,
+                    });
+                };
+                if (s.at) window.setTimeout(go, s.at); else go();
+            })(skulls[i]);
+        }
+
+        _sigSparks(tx, ty, 'psi-pulse', 14, { vxy: 170, vz0: 40, vz1: 200, gravity: 40, z: 12 });
+        _sigSparks(tx, ty, 'spark-pink', 10, { vxy: 210, vz0: 60, vz1: 240, gravity: 30, z: 14 });
+        _sigSparks(tx, ty, 'acid-green', 8, { vxy: 140, vz0: 30, vz1: 170, gravity: 20, z: 10 });
+        _sigScreenFlash('#ff4de0', 230, 0.24);
+        _sigShake('soft');
+        try {
+            if (typeof ThreePost !== 'undefined' && ThreePost.bloomPulse) ThreePost.bloomPulse(0.4, 380);
+        } catch (e) {}
+    }
+
+    /* ─── PRISM BURST + BAD TRIP WIRING (2026-07-25) ─────────────────────
+       Both spells were falling through to shared element defaults — Prism
+       Burst borrowed the generic divine bolt, Bad Trip the generic psi bolt
+       plus `_psychic_dark_impact`. Neither read as its own thing. They now
+       own the two new bolt behaviours:
+         • boltPrism    — the bolt is REPLACED by the prism refraction rig.
+         • boltGeometry — the bolt keeps flying, and fires the spell's
+                          _spell3DGeometry signature when it lands.
+       Both ride the bolt intent, so online.js's fire() wrapper relays them
+       to the guest with no extra plumbing. ─────────────────────────────── */
+
+    /* Prism Burst: the bolt def only gates the refraction rig (and stands in
+       if it ever throws — a white sparkle lance is the closest fallback). */
+    EFFECTS['_bolt_prism'] = {
+        boltPrism: true, boltPrismColor: 0xffffff,
+        boltCore: 'divine-sparkle', boltTrail: 'holy-light', boltBurst: 'divine-sparkle',
+        boltRing: 'halo-ring', boltCoreSize: 0.30, boltTrailSize: 0.10,
+        boltTrailRate: 5, boltBurstCount: 34,
+    };
+    /* the rainbow scatter the refraction fan lands with */
+    EFFECTS['prismBurst_impact'] = {
+        layers: [
+            { sprite: 'flash', ml: 220, z: 6, size0: 84, size1: 26, opacity0: 1, opacity1: 0 },
+            { count: 14, sprite: 'divine-sparkle', ml: [380, 680], offsetXY: 7,
+              vxRange: 170, vyRange: 170, vzRange: [50, 190], gravity: 100, drag: 1.3,
+              size0: [8, 14], size1: 1 },
+            /* one mote layer per spectrum band, released in ROYGBIV order so
+               the scatter visibly separates into colours */
+            { count: 3, sprite: 'laser-red', ml: [420, 700], offsetXY: 9, vxRange: 140, vyRange: 140,
+              vzRange: [40, 170], gravity: 70, drag: 1.2, size0: [8, 14], size1: 1, opacity0: 0.95 },
+            { count: 3, delayMs: 25, sprite: 'ember', ml: [420, 700], offsetXY: 9, vxRange: 150, vyRange: 150,
+              vzRange: [40, 175], gravity: 70, drag: 1.2, size0: [8, 14], size1: 1, opacity0: 0.95 },
+            { count: 3, delayMs: 50, sprite: 'steel-spark', ml: [420, 700], offsetXY: 9, vxRange: 155, vyRange: 155,
+              vzRange: [40, 178], gravity: 70, drag: 1.2, size0: [8, 14], size1: 1, opacity0: 0.95 },
+            { count: 3, delayMs: 75, sprite: 'acid-green', ml: [420, 700], offsetXY: 9, vxRange: 162, vyRange: 162,
+              vzRange: [40, 182], gravity: 70, drag: 1.2, size0: [8, 14], size1: 1, opacity0: 0.95 },
+            { count: 3, delayMs: 100, sprite: 'spark-blue', ml: [420, 700], offsetXY: 9, vxRange: 170, vyRange: 170,
+              vzRange: [40, 186], gravity: 70, drag: 1.2, size0: [8, 14], size1: 1, opacity0: 0.95 },
+            { count: 3, delayMs: 125, sprite: 'plasma', ml: [420, 700], offsetXY: 9, vxRange: 176, vyRange: 176,
+              vzRange: [40, 190], gravity: 70, drag: 1.2, size0: [8, 14], size1: 1, opacity0: 0.95 },
+            { count: 3, delayMs: 150, sprite: 'psi-pulse', ml: [420, 700], offsetXY: 9, vxRange: 182, vyRange: 182,
+              vzRange: [40, 194], gravity: 70, drag: 1.2, size0: [8, 14], size1: 1, opacity0: 0.95 },
+            { count: 5, delayMs: 70, sprite: 'holy-light', ml: [700, 1100], offsetXY: 10, z: 6,
+              vxRange: 40, vyRange: 40, vzRange: [60, 140], gravity: -40, drag: 0.8,
+              size0: [7, 12], size1: 1, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 720, z: 2,
+              size0: 40, size1: 190, opacity0: 0.8, opacity1: 0 },
+        ]
+    };
+    SPELL_MAP['racePrismBurst'] = { bolt: '_bolt_prism', impact: 'prismBurst_impact' };
+
+    /* Bad Trip: a melting psi bolt that detonates into the hallucination. */
+    EFFECTS['_bolt_psychedelic'] = {
+        boltCore: 'psi-pulse', boltTrail: 'spark-pink', boltBurst: 'laser-pink',
+        boltRing: 'target-ring', boltCoreSize: 0.28, boltTrailSize: 0.10,
+        boltTrailRate: 5, boltBurstCount: 30,
+        boltGeometry: true,
+    };
+    EFFECTS['badTrip_impact'] = {
+        /* no `shake` here — _sigBadTrip3D kicks the board itself, and two
+           shakes on the same frame just cancel into mush */
+        layers: [
+            { sprite: 'psi-pulse', ml: 340, size0: 70, size1: 140, opacity0: 0.7, opacity1: 0 },
+            { count: 9, sprite: 'void-mist', ml: [500, 950], offsetXY: 9,
+              vxRange: 45, vyRange: 45, vzRange: [25, 90], gravity: -18, drag: 0.35,
+              size0: [14, 24], size1: [30, 52], opacity0: 0.5 },
+            { count: 8, delayMs: 30, sprite: 'spark-pink', ml: [340, 640], offsetXY: 7,
+              vxRange: 120, vyRange: 120, vzRange: [40, 150], gravity: -20, drag: 0.6,
+              size0: [6, 11], size1: 1, opacity0: 0.9 },
+            { count: 6, delayMs: 90, sprite: 'acid-green', ml: [320, 600], offsetXY: 8,
+              vxRange: 100, vyRange: 100, vzRange: [30, 120], gravity: -10, drag: 0.6,
+              size0: [5, 10], size1: 1, opacity0: 0.85 },
+            { count: 5, delayMs: 150, sprite: 'laser-pink', ml: [380, 700], offsetXY: 10,
+              vxRange: 90, vyRange: 90, vzRange: [30, 110], gravity: 20, drag: 0.8,
+              size0: [7, 13], size1: 1, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 800, z: 2,
+              size0: 36, size1: 210, opacity0: 0.65, opacity1: 0 },
+        ]
+    };
+    SPELL_MAP['raceBadTrip'] = { bolt: '_bolt_psychedelic', impact: 'badTrip_impact' };
+
     var _spell3DGeometry = {
 
         /* Nordic Federation kit (2026-07-10 rework) — see the SPELL_MAP
@@ -13050,6 +13920,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 radiusTiles: 0.65 + (r != null ? r : 0) * 0.3,
             });
         },
+
+        /* ORB OF LIGHT — Prism Burst: the refraction rig owns the travel (see
+           _bolt_prism), and this is what it detonates into on arrival. It is
+           registered here too so the ricochet bounce / any non-bolt caller
+           still gets the rainbow burst. */
+        racePrismBurst: function(tx, ty) {
+            _sigSpectrumBurst3D(tx, ty, { radiusPx: (_cfg().tileSize || 128) * 1.7 });
+        },
+        /* SHAMAN — Bad Trip: the whole hallucination (mandala + neon grid +
+           fractal tunnel + cackling skulls + hue wash). Fired by the bolt on
+           arrival via `boltGeometry: true` on _bolt_psychedelic. */
+        raceBadTrip: function(tx, ty) {
+            _sigBadTrip3D(tx, ty);
+        },
     };
 
     /* ── Anime power-aura bursts (three-renderer EWPowerAura) ─────────────
@@ -13778,6 +14662,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigAuroraCurtain3D: _sigAuroraCurtain3D,
         sigSpiralBeam3D: _sigSpiralBeam3D,
         sigRegenPulse3D: _sigRegenPulse3D,
+
+        /* prismatic / psychedelic kit (2026-07-25) — general-purpose, see the
+           catalogue block above their definitions */
+        sigWireframe3D: _sigWireframe3D,
+        sigPrismRefraction3D: _sigPrismRefraction3D,
+        sigSpectrumBurst3D: _sigSpectrumBurst3D,
+        sigNeonGrid3D: _sigNeonGrid3D,
+        sigFractalTunnel3D: _sigFractalTunnel3D,
+        sigKaleidoscope3D: _sigKaleidoscope3D,
+        sigPsychedelicTint: _sigPsychedelicTint,
+        sigBadTrip3D: _sigBadTrip3D,
+        sigSkull3D: _sigSkull3D,
+        SIG_SPECTRUM: _SIG_SPECTRUM,
 
         getDescentTotalMs: getDescentTotalMs,
         getDescentTelegraphMs: getDescentTelegraphMs,
