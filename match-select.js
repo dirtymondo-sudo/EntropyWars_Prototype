@@ -8,42 +8,60 @@ if (!document.getElementById('ms-hover-css')) {
   const _css = document.createElement('style');
   _css.id = 'ms-hover-css';
   _css.textContent = `
-    /* ── Match Select hover feedback ── */
+    /* ── Match Select hover feedback — black/minimal (void-menu dialect) ── */
     .ms-btn {
       transition: background 0.12s, border-color 0.15s, color 0.12s,
                   box-shadow 0.15s, transform 0.1s, filter 0.12s !important;
     }
     .ms-btn:hover {
       filter: brightness(1.25);
-      box-shadow: 0 0 10px rgba(201,180,240,0.12);
+      box-shadow: 0 0 10px rgba(255,255,255,0.1);
     }
     .ms-btn:active {
       transform: scale(0.97);
       filter: brightness(0.9);
     }
 
-    /* Ghost outline buttons (BACK, RANDOMIZE) */
+    /* Ghost outline buttons (RANDOMIZE) */
     .ms-btn-ghost {
       transition: background 0.12s, border-color 0.15s, color 0.12s,
                   box-shadow 0.15s, transform 0.1s !important;
     }
     .ms-btn-ghost:hover {
-      background: rgba(201,180,240,0.08) !important;
-      border-color: rgba(201,180,240,0.35) !important;
-      color: #e6e9f2 !important;
+      background: rgba(255,255,255,0.07) !important;
+      border-color: rgba(255,255,255,0.4) !important;
+      color: #fff !important;
     }
     .ms-btn-ghost:active {
       transform: scale(0.96);
-      background: rgba(201,180,240,0.14) !important;
+      background: rgba(255,255,255,0.12) !important;
     }
 
-    /* Primary CTA (CONFIRM) */
+    /* BACK button (red) */
+    .ms-btn-back {
+      transition: background 0.12s, border-color 0.15s, color 0.12s,
+                  box-shadow 0.15s, transform 0.1s !important;
+    }
+    .ms-btn-back:hover {
+      background: rgba(255,92,92,0.1) !important;
+      border-color: #ff5c5c !important;
+      color: #ff8a8a !important;
+      box-shadow: 0 0 12px rgba(255,92,92,0.15);
+    }
+    .ms-btn-back:active {
+      transform: scale(0.96);
+      background: rgba(255,92,92,0.16) !important;
+    }
+
+    /* Primary CTA (CONFIRM — green) */
     .ms-btn-primary {
-      transition: box-shadow 0.15s, transform 0.1s, filter 0.12s !important;
+      transition: box-shadow 0.15s, transform 0.1s, filter 0.12s,
+                  background 0.12s !important;
     }
     .ms-btn-primary:hover {
-      filter: brightness(1.15) saturate(1.1);
-      box-shadow: 0 0 40px rgba(201,165,255,0.35), 0 2px 12px rgba(201,165,255,0.25) !important;
+      filter: brightness(1.15);
+      background: rgba(61,220,132,0.16) !important;
+      box-shadow: 0 0 40px rgba(61,220,132,0.3), 0 2px 12px rgba(61,220,132,0.22) !important;
       transform: translateY(-1px);
     }
     .ms-btn-primary:active {
@@ -57,16 +75,16 @@ if (!document.getElementById('ms-hover-css')) {
                   transform 0.12s !important;
     }
     .ms-mode-card:hover {
-      background: linear-gradient(180deg, rgba(201,165,255,0.1), rgba(0,0,0,0.4)) !important;
-      border-color: rgba(201,165,255,0.4) !important;
-      box-shadow: 0 0 14px rgba(201,165,255,0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.4)) !important;
+      border-color: rgba(255,255,255,0.4) !important;
+      box-shadow: 0 0 14px rgba(255,255,255,0.06);
       transform: translateX(2px);
     }
     .ms-mode-card:active {
       transform: translateX(2px) scale(0.99);
     }
     .ms-mode-card.selected:hover {
-      box-shadow: 0 0 20px rgba(201,165,255,0.15);
+      box-shadow: 0 0 20px rgba(255,255,255,0.12);
       transform: none;
     }
 
@@ -76,8 +94,8 @@ if (!document.getElementById('ms-hover-css')) {
                   transform 0.12s !important;
     }
     .ms-map-card:hover {
-      border-color: rgba(201,180,240,0.4) !important;
-      box-shadow: 0 0 14px rgba(201,180,240,0.08);
+      border-color: rgba(255,255,255,0.4) !important;
+      box-shadow: 0 0 14px rgba(255,255,255,0.06);
       transform: translateY(-1px);
     }
     .ms-map-card:active {
@@ -89,8 +107,8 @@ if (!document.getElementById('ms-hover-css')) {
       transition: background 0.12s, color 0.12s, border-color 0.12s !important;
     }
     .ms-seg-opt:hover {
-      background: linear-gradient(180deg, rgba(201,165,255,0.12), transparent) !important;
-      color: #e6e9f2 !important;
+      background: linear-gradient(180deg, rgba(255,255,255,0.1), transparent) !important;
+      color: #fff !important;
     }
 
     /* Chip buttons (size filters, team size picks) */
@@ -99,10 +117,10 @@ if (!document.getElementById('ms-hover-css')) {
                   box-shadow 0.12s, transform 0.1s !important;
     }
     .ms-chip:hover {
-      border-color: rgba(201,165,255,0.5) !important;
-      color: #c9a5ff !important;
-      background: rgba(201,165,255,0.1) !important;
-      box-shadow: 0 0 8px rgba(201,165,255,0.1);
+      border-color: rgba(255,255,255,0.55) !important;
+      color: #fff !important;
+      background: rgba(255,255,255,0.08) !important;
+      box-shadow: 0 0 8px rgba(255,255,255,0.08);
     }
     .ms-chip:active {
       transform: scale(0.95);
@@ -113,28 +131,33 @@ if (!document.getElementById('ms-hover-css')) {
       transition: background 0.1s, border-color 0.12s, color 0.1s, transform 0.08s !important;
     }
     .ms-stepper-btn:hover {
-      background: rgba(201,180,240,0.1) !important;
-      border-color: rgba(201,180,240,0.35) !important;
-      color: #e6e9f2 !important;
+      background: rgba(255,255,255,0.08) !important;
+      border-color: rgba(255,255,255,0.4) !important;
+      color: #fff !important;
     }
     .ms-stepper-btn:active {
       transform: scale(0.9);
-      background: rgba(201,180,240,0.18) !important;
+      background: rgba(255,255,255,0.15) !important;
     }
   `;
   document.head.appendChild(_css);
 }
 
+/* Black/minimal palette — matches the title screen / main menu / loading
+   screen: pure black, white text, white hairline borders. Green is reserved
+   for confirm/go, red for back/danger. The old accent keys (space/time/chaos)
+   stay as named slots but now resolve to neutral white so every selected
+   state reads as "white on black" instead of purple. */
 const EW = {
-  bg: '#070510', bg2: '#0d0a16', bg3: '#141021',
-  panel: 'rgba(22,18,36,0.72)',
-  panelEdge: 'rgba(150,130,190,0.18)',
-  panelEdgeHi: 'rgba(201,165,255,0.35)',
-  ink: '#e9e6f2', inkMute: '#8f88a8', inkDim: '#5c5570',
-  grid: 'rgba(150,130,190,0.06)',
-  space: '#5fd6ff', time: '#c9a5ff', chaos: '#e168c8',
-  good: '#6ee2a8', bad: '#ff7a8a', warn: '#c9a5ff',
-  unholy: '#b88cff',
+  bg: '#000000', bg2: '#050505', bg3: '#0a0a0a',
+  panel: 'rgba(0,0,0,0.6)',
+  panelEdge: 'rgba(255,255,255,0.14)',
+  panelEdgeHi: 'rgba(255,255,255,0.38)',
+  ink: '#f2f2f2', inkMute: '#9c9c9c', inkDim: '#5c5c5c',
+  grid: 'rgba(255,255,255,0.04)',
+  space: '#e8e8e8', time: '#e8e8e8', chaos: '#e8e8e8',
+  good: '#3ddc84', bad: '#ff5c5c', warn: '#e8e8e8',
+  unholy: '#e8e8e8',
 };
 
 const LORE = {
@@ -196,25 +219,11 @@ const _TERRAIN_COLORS_FALLBACK = {
 const TERRAIN_COLORS = Object.assign({}, _TERRAIN_COLORS_FALLBACK,
   (typeof window !== 'undefined' && window.EW_TERRAIN_COLORS) || {});
 
+/* Minimal dialect: chrome accents are monochrome. Per-map color identity was
+   the old behaviour — the terrain minimap + spawn dots still carry the color;
+   panel chrome stays white-on-black. */
 function accentForMap(mp) {
-  const name = (mp.name || '').toLowerCase();
-  if (name.includes('caldera') || name.includes('inferno')) return '#ff7a4a';
-  if (name.includes('cathedral') || name.includes('bastion') || name.includes('lattice') || name.includes('pyramid')) return '#f4d36b';
-  if (name.includes('tower') || name.includes('drift') || name.includes('nexus')) return '#5fd6ff';
-  if (name.includes('necropolis') || name.includes('crypt') || name.includes('rift') || name.includes('dreamscape')) return '#b88cff';
-  if (name.includes('garden') || name.includes('bloom') || name.includes('highlands') || name.includes('battlefield')) return '#6ee2a8';
-  if (name.includes('workshop') || name.includes('forge') || name.includes('kill')) return '#ff7a8a';
-  if (name.includes('archive') || name.includes('codex') || name.includes('palimpsest')) return '#c9a5ff';
-  if (name.includes('wasteland') || name.includes('ruin') || name.includes('suburb')) return '#d9c39a';
-  if (name.includes('cavern') || name.includes('bunker') || name.includes('cave')) return '#8a93a8';
-  if (name.includes('apocalypse')) return '#e168c8';
-
-  const w = mp.w || 8;
-  if (w >= 20) return '#ff7a8a';
-  if (w >= 16) return '#b88cff';
-  if (w >= 12) return '#6ee2a8';
-  if (w >= 8) return '#5fd6ff';
-  return '#c9a5ff';
+  return '#e8e8e8';
 }
 
 function StarField() {
@@ -318,7 +327,7 @@ function MapPreview({ mp, size, mini }) {
       viewBox: '0 0 ' + size + ' ' + size,
       style: { display: 'block' },
     },
-      h('rect', { width: size, height: size, fill: '#04060c' }),
+      h('rect', { width: size, height: size, fill: '#050505' }),
       ...rects,
       !mini && h('g', { opacity: 0.6 },
         h('text', {
@@ -480,7 +489,7 @@ function ChipBtn({ on, color, onClick, children }) {
     onClick: onClick,
     className: 'ms-chip',
     style: {
-      background: on ? (color ? color + '22' : 'rgba(201,165,255,0.14)') : 'rgba(0,0,0,0.3)',
+      background: on ? (color ? color + '22' : 'rgba(255,255,255,0.12)') : 'rgba(0,0,0,0.3)',
       border: '1px solid ' + (on ? (color || EW.time) : EW.panelEdge),
       color: on ? (color || EW.time) : EW.inkMute,
       padding: '4px 9px',
@@ -648,7 +657,7 @@ function MatchSelect() {
 
   return h('div', { style: {
     width: '100%', height: '100%', position: 'relative', overflow: 'hidden',
-    background: 'radial-gradient(ellipse 1200px 800px at 50% 30%, #120e1e 0%, ' + EW.bg + ' 60%, #000 100%)',
+    background: 'radial-gradient(ellipse 1200px 800px at 50% 30%, #0c0c0c 0%, ' + EW.bg + ' 60%, #000 100%)',
     color: EW.ink, fontFamily: '"DotGothic16", monospace',
   }},
     h(StarField),
@@ -657,11 +666,11 @@ function MatchSelect() {
       position: 'absolute', top: 0, left: 0, right: 0, height: 64, zIndex: 2,
       display: 'flex', alignItems: 'center', padding: '0 28px', gap: 24,
       borderBottom: '1px solid ' + EW.panelEdge,
-      background: 'linear-gradient(180deg, rgba(15,18,32,0.85), rgba(15,18,32,0))',
+      background: 'linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0))',
     }},
-      h('button', { onClick: handleBack, className: 'ms-btn-ghost', style: {
-        background: 'transparent', color: EW.inkMute,
-        border: '1px solid ' + EW.panelEdge, padding: '10px 16px',
+      h('button', { onClick: handleBack, className: 'ms-btn-back', style: {
+        background: 'rgba(0,0,0,0.5)', color: '#ff5c5c',
+        border: '1px solid rgba(255,92,92,0.5)', padding: '10px 16px',
         fontFamily: '"DotGothic16", monospace', fontSize: 10,
         letterSpacing: '0.22em', cursor: 'pointer',
       }}, '← BACK'),
@@ -736,7 +745,7 @@ function MatchSelect() {
 
         h('div', { style: {
           position: 'relative',
-          background: 'linear-gradient(180deg, rgba(20,24,40,0.6), rgba(8,10,18,0.85)), radial-gradient(ellipse at 50% 30%, ' + accent + '22, transparent 60%)',
+          background: 'linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.85)), radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.05), transparent 60%)',
           border: '1px solid ' + EW.panelEdge,
           padding: '18px 22px', display: 'flex', gap: 24, minHeight: 280,
         }},
@@ -770,7 +779,7 @@ function MatchSelect() {
               h('span', { style: {
                 fontFamily: '"DotGothic16", monospace', fontSize: 10,
                 letterSpacing: '0.3em', color: EW.inkMute,
-              }}, 'MAP · ' + (mp.modeId || '').toUpperCase()),
+              }}, 'MAP DOSSIER'),
               h('div', { style: {
                 flex: 1, height: 1,
                 background: 'linear-gradient(90deg, ' + EW.panelEdge + ', transparent)',
@@ -894,7 +903,7 @@ function MatchSelect() {
       ),
 
       h('div', { style: {
-        background: 'rgba(8,10,18,0.55)', border: '1px solid ' + EW.panelEdge,
+        background: 'rgba(0,0,0,0.55)', border: '1px solid ' + EW.panelEdge,
         padding: '18px 18px', display: 'flex', flexDirection: 'column',
         gap: 14, minHeight: 0,
         clipPath: 'polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px)',
@@ -1028,7 +1037,7 @@ function MatchSelect() {
       position: 'absolute', bottom: 0, left: 0, right: 0, height: 96, zIndex: 2,
       display: 'flex', alignItems: 'center', padding: '0 28px', gap: 18,
       borderTop: '1px solid ' + EW.panelEdge,
-      background: 'linear-gradient(0deg, rgba(8,10,18,0.85), rgba(8,10,18,0.2))',
+      background: 'linear-gradient(0deg, rgba(0,0,0,0.9), rgba(0,0,0,0.2))',
     }},
 
       h('div', { style: { display: 'flex', flexDirection: 'column', gap: 3 } },
@@ -1074,10 +1083,10 @@ function MatchSelect() {
         onClick: handleConfirm,
         className: 'ms-btn-primary',
         style: {
-          background: 'linear-gradient(180deg, ' + EW.time + ', #9a6ae0)',
-          color: '#16091f', border: '1px solid ' + EW.time,
+          background: 'rgba(61,220,132,0.1)',
+          color: EW.good, border: '1px solid ' + EW.good,
           padding: '18px 40px', display: 'flex', alignItems: 'center', gap: 16,
-          cursor: 'pointer', boxShadow: '0 0 32px ' + EW.time + '44',
+          cursor: 'pointer', boxShadow: '0 0 28px rgba(61,220,132,0.2)',
         },
       },
         h('span', { style: {
