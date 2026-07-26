@@ -433,9 +433,18 @@ const ThreeVFXEffects = (function () {
     var _zoneSpawnAcc = 0;
     var _ZONE_RATE_MS = 33;
 
+    /* Smoke Screen bookkeeping: zones we've already burst-filled, so a fresh
+       smoke bomb POPS into a full cloud instead of trickling in over seconds.
+       Keys are pruned every tick once the zone disappears. */
+    var _smokeZoneInit = {};
+
     function _tickPersistentZones(dt) {
         if (!_canSpawn()) return;
-        if (typeof state === 'undefined' || !state._activeZones || !state._activeZones.length) return;
+        if (typeof state === 'undefined' || !state._activeZones || !state._activeZones.length) {
+            /* no zones at all → drop burst markers so re-casts pop full */
+            for (var smk0 in _smokeZoneInit) delete _smokeZoneInit[smk0];
+            return;
+        }
         if (state.devAutoSim || state.animationsDisabled) return;
         if (_catOff('zones')) return;
 
@@ -455,31 +464,74 @@ const ThreeVFXEffects = (function () {
                 var R = ((zone.radius || 1) + 0.5) * (ts + gap);
                 var isHeal = zone.type === 'heal';
 
-                /* ── Smoke Screen: one big, soft, slow smoke cloud filling the
-                   whole zone (think a CoD smoke grenade) — NOT a fountain of
-                   little puffs. We keep only a small population (~20) of huge,
-                   soft, near-static, long-lived puffs; the radial-gradient 'smoke'
-                   sprite makes them overlap into a single solid bank that covers
-                   the entire zone and lingers for the zone's full duration. ── */
+                /* ── Smoke Screen: one rolling, layered grey cloud (think a CoD
+                   smoke grenade). Three layers on the softer 'smoke-soft'
+                   sprite: a churning CORE BANK of huge long-lived puffs that
+                   wander instead of drifting in straight lines, slow RIM WISPS
+                   orbiting the cloud's edge so the boundary boils, and rare
+                   CROWN CURLS shearing off the top. Warm/cool hue tints break
+                   up the flat grey so overlaps read as volume. A fresh zone is
+                   burst-filled so the bomb pops into a full cloud at once. ── */
                 if (zone.smokeConcealment) {
-                    if (Math.random() < 0.2) {
+                    var smKey = zone.x + ',' + zone.y + ':' + (zone.spellName || 'smoke');
+                    var burst = !_smokeZoneInit[smKey];
+                    _smokeZoneInit[smKey] = 2;      // ttl, re-armed every tick
+                    var puffN = burst ? 14 : (Math.random() < 0.14 ? 1 : 0);
+                    for (var pi = 0; pi < puffN; pi++) {
                         var sAng = rn(0, 6.2832);
-                        var sRad = Math.sqrt(Math.random()) * R;   // fill the whole disc, edges included
+                        var sRad = Math.sqrt(Math.random()) * R * 0.92;
                         _spawn({
                             _zone: true,
                             x: center.x + Math.cos(sAng) * sRad,
                             y: center.y + Math.sin(sAng) * sRad,
-                            z: baseZ + rn(0, ts * 0.6),
-                            vx: rn(-1, 1),
-                            vy: rn(-1, 1),
-                            vz: rn(0, 3),
-                            mode: 'billboard', sprite: 'smoke',
-                            ml: 2800 + rn(0, 1600),
-                            size0: ts * 1.1 + rn(0, ts * 0.6),
-                            size1: ts * 1.9 + rn(0, ts * 0.6),
-                            opacity0: 0.4 + rn(0, 0.2), opacity1: 0,
-                            drag: 2.0,
-                            gravity: -0.5,
+                            z: baseZ + rn(4, ts * 0.55),
+                            vx: rn(-1.5, 1.5), vy: rn(-1.5, 1.5), vz: rn(0.5, 3),
+                            mode: 'billboard', sprite: 'smoke-soft',
+                            /* subtle warm/cool split — hue survives tinting */
+                            tint: Math.random() < 0.5 ? 0xbdb4a6 : 0xa9adb4,
+                            wander: { amp: rn(4, 9), freq: rn(0.15, 0.35) },
+                            ml: 3600 + rn(0, 2600),
+                            size0: ts * (0.9 + rn(0, 0.7)),
+                            size1: ts * (1.6 + rn(0, 0.8)),
+                            opacity0: 0.5 + rn(0, 0.18), opacity1: 0,
+                            drag: 2.2,
+                            gravity: -0.4,
+                        });
+                    }
+                    /* rim wisps: slow curls orbiting the cloud's boundary */
+                    if (burst || Math.random() < 0.09) {
+                        _spawn({
+                            _zone: true,
+                            x: center.x, y: center.y, z: baseZ + rn(6, ts * 0.4),
+                            mode: 'billboard', sprite: 'smoke-soft',
+                            tint: 0xb3aca1,
+                            orbit: { x: center.x, y: center.y, z: baseZ + rn(8, ts * 0.5),
+                                     r0: R * rn(0.72, 0.92), r1: R * rn(0.98, 1.1),
+                                     degPerSec: rn(6, 16) * (Math.random() < 0.5 ? -1 : 1),
+                                     bobAmp: rn(2, 6), bobHz: rn(0.2, 0.5) },
+                            ml: 2600 + rn(0, 1800),
+                            size0: ts * (0.45 + rn(0, 0.3)),
+                            size1: ts * (0.8 + rn(0, 0.4)),
+                            opacity0: 0.3 + rn(0, 0.15), opacity1: 0,
+                        });
+                    }
+                    /* crown curls: small puffs rising off the bank and fading */
+                    if (Math.random() < 0.05) {
+                        var cAng = rn(0, 6.2832);
+                        _spawn({
+                            _zone: true,
+                            x: center.x + Math.cos(cAng) * R * rn(0, 0.6),
+                            y: center.y + Math.sin(cAng) * R * rn(0, 0.6),
+                            z: baseZ + ts * rn(0.55, 0.85),
+                            vx: rn(-3, 3), vy: rn(-3, 3), vz: rn(4, 9),
+                            mode: 'billboard', sprite: 'smoke-soft',
+                            tint: 0xcac2b6,
+                            wander: { amp: rn(8, 14), freq: rn(0.3, 0.6) },
+                            ml: 1800 + rn(0, 1200),
+                            size0: ts * (0.35 + rn(0, 0.25)),
+                            size1: ts * (0.15 + rn(0, 0.1)),
+                            opacity0: 0.28, opacity1: 0,
+                            drag: 0.8, gravity: -2,
                         });
                     }
                     continue;
@@ -570,6 +622,12 @@ const ThreeVFXEffects = (function () {
                     }
                 }
             }
+        }
+
+        /* prune burst-fill markers for smoke zones that have expired, so a
+           re-cast at the same spot pops full again instead of trickling */
+        for (var smk in _smokeZoneInit) {
+            if (--_smokeZoneInit[smk] <= 0) delete _smokeZoneInit[smk];
         }
     }
 

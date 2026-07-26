@@ -8423,15 +8423,23 @@ const ThreeRenderer = (function () {
     }
 
     function _updateZoneBorderPulse() {
-        if (_zoneBorderMats.length === 0) return;
+        if (_zoneBorderMeshes.length === 0) return;
         var t = performance.now() / 1000;
 
-        var pulse = 0.75 + 0.25 * Math.sin(t * 1.8);
         for (var i = 0; i < _zoneBorderMats.length; i++) {
             var m = _zoneBorderMats[i];
 
             if (m._baseOp === undefined) m._baseOp = m.opacity;
-            m.opacity = m._baseOp * pulse;
+            /* delayed-blast telegraphs carry a faster _pulseSpeed (urgent blink) */
+            m.opacity = m._baseOp * (0.75 + 0.25 * Math.sin(t * (m._pulseSpeed || 1.8)));
+        }
+
+        /* zone intent icons breathe gently instead of pulsing opacity */
+        for (var j = 0; j < _zoneBorderMeshes.length; j++) {
+            var ic = _zoneBorderMeshes[j]._ew_zoneIcon;
+            if (!ic) continue;
+            var s = 1 + 0.07 * Math.sin(t * 2.4 + ic.phase);
+            _zoneBorderMeshes[j].scale.set(s, s, 1);
         }
     }
 
@@ -22405,9 +22413,40 @@ const ThreeRenderer = (function () {
         return { tiles: tiles, edges: edges };
     }
 
-    function _renderZoneBorderGroup(info, color) {
-        var ts = CONFIG.tileSize || BASE_TILE;
+    /* Shared vertical gradient (bright top → transparent bottom) used by the
+       border "skirts" that run down cliff faces where the zone crosses an
+       elevation step, so the outline hugs the terrain cubes instead of
+       floating on the top surface only. Tinted per-zone via material color. */
+    var _zoneSkirtTex = null;
+    function _getZoneSkirtTex() {
+        if (_zoneSkirtTex) return _zoneSkirtTex;
+        var c = document.createElement('canvas');
+        c.width = 8; c.height = 64;
+        var g = c.getContext('2d');
+        var gr = g.createLinearGradient(0, 0, 0, 64);
+        gr.addColorStop(0.00, 'rgba(255,255,255,0.95)');
+        gr.addColorStop(0.30, 'rgba(255,255,255,0.50)');
+        gr.addColorStop(1.00, 'rgba(255,255,255,0)');
+        g.fillStyle = gr;
+        g.fillRect(0, 0, 8, 64);
+        _zoneSkirtTex = new THREE.CanvasTexture(c);
+        return _zoneSkirtTex;
+    }
 
+    function _renderZoneBorderGroup(info, color, opts) {
+        opts = opts || {};
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var pulseSpeed = opts.pulseSpeed || 0;
+
+        function _zPush(mesh, mat) {
+            mesh._ew_overlay = 'zone';
+            if (pulseSpeed) mat._pulseSpeed = pulseSpeed;
+            highlightGroup.add(mesh);
+            _zoneBorderMeshes.push(mesh);
+            _zoneBorderMats.push(mat);
+        }
+
+        /* soft per-tile floor wash — each tile sits on its OWN surface height */
         for (var fi = 0; fi < info.tiles.length; fi++) {
             var ft = info.tiles[fi];
             var ftY = tileTopY(ft.x, ft.y) + 0.15;
@@ -22416,41 +22455,32 @@ const ThreeRenderer = (function () {
                 depthWrite: false, side: THREE.DoubleSide
             });
             var fillPlane = new THREE.Mesh(
-                new THREE.PlaneGeometry(ts * 0.96, ts * 0.96), fillMat
+                new THREE.PlaneGeometry(ts * 0.98, ts * 0.98), fillMat
             );
             fillPlane.rotation.x = -Math.PI / 2;
             fillPlane.position.set(ft.x * ts + ts / 2, ftY, ft.y * ts + ts / 2);
-            fillPlane._ew_overlay = 'zone';
-            highlightGroup.add(fillPlane);
-            _zoneBorderMeshes.push(fillPlane);
-            _zoneBorderMats.push(fillMat);
+            _zPush(fillPlane, fillMat);
         }
 
-        var lineThickness = ts * 0.04;
+        var lineThickness = ts * 0.035;
         var lineHeight = 0.35;
         for (var ei = 0; ei < info.edges.length; ei++) {
             var e = info.edges[ei];
-            var eTopY = tileTopY(e.x, e.y) + lineHeight;
+            var yIn = tileTopY(e.x, e.y);
+            var eTopY = yIn + lineHeight;
             var bx = e.x * ts;
             var bz = e.y * ts;
 
-            var segW, segH, posX, posZ;
-            if (e.dir === 'n') {
-                segW = ts; segH = lineThickness;
-                posX = bx + ts / 2; posZ = bz;
-            } else if (e.dir === 's') {
-                segW = ts; segH = lineThickness;
-                posX = bx + ts / 2; posZ = bz + ts;
-            } else if (e.dir === 'w') {
-                segW = lineThickness; segH = ts;
-                posX = bx; posZ = bz + ts / 2;
-            } else {
-                segW = lineThickness; segH = ts;
-                posX = bx + ts; posZ = bz + ts / 2;
-            }
+            var horiz = (e.dir === 'n' || e.dir === 's');
+            /* extend each segment by one thickness so perpendicular lines
+               overlap and corners read as clean joints (no dots needed) */
+            var segW = horiz ? ts + lineThickness : lineThickness;
+            var segH = horiz ? lineThickness : ts + lineThickness;
+            var posX = (e.dir === 'w') ? bx : (e.dir === 'e') ? bx + ts : bx + ts / 2;
+            var posZ = (e.dir === 'n') ? bz : (e.dir === 's') ? bz + ts : bz + ts / 2;
 
             var lineMat = new THREE.MeshBasicMaterial({
-                color: color, transparent: true, opacity: 0.85,
+                color: color, transparent: true, opacity: 0.9,
                 depthWrite: false, side: THREE.DoubleSide
             });
             var lineMesh = new THREE.Mesh(
@@ -22458,59 +22488,124 @@ const ThreeRenderer = (function () {
             );
             lineMesh.rotation.x = -Math.PI / 2;
             lineMesh.position.set(posX, eTopY, posZ);
-            lineMesh._ew_overlay = 'zone';
-            highlightGroup.add(lineMesh);
-            _zoneBorderMeshes.push(lineMesh);
-            _zoneBorderMats.push(lineMat);
+            _zPush(lineMesh, lineMat);
 
-            var glowW = (e.dir === 'n' || e.dir === 's') ? ts * 1.02 : lineThickness * 5;
-            var glowH = (e.dir === 'n' || e.dir === 's') ? lineThickness * 5 : ts * 1.02;
+            /* soft halo hugging the line (subtler than the old fat glow) */
             var glowMat = new THREE.MeshBasicMaterial({
-                color: color, transparent: true, opacity: 0.22,
+                color: color, transparent: true, opacity: 0.15,
                 depthWrite: false, side: THREE.DoubleSide
             });
             var glowMesh = new THREE.Mesh(
-                new THREE.PlaneGeometry(glowW, glowH), glowMat
+                new THREE.PlaneGeometry(
+                    horiz ? ts * 1.04 : lineThickness * 4.5,
+                    horiz ? lineThickness * 4.5 : ts * 1.04), glowMat
             );
             glowMesh.rotation.x = -Math.PI / 2;
-            glowMesh.position.set(posX, eTopY - 0.1, posZ);
-            glowMesh._ew_overlay = 'zone';
-            highlightGroup.add(glowMesh);
-            _zoneBorderMeshes.push(glowMesh);
-            _zoneBorderMats.push(glowMat);
-        }
+            glowMesh.position.set(posX, eTopY - 0.08, posZ);
+            _zPush(glowMesh, glowMat);
 
-        var cornerSet = {};
-        for (var ci = 0; ci < info.edges.length; ci++) {
-            var ce = info.edges[ci];
-            var cx0 = ce.x * ts, cz0 = ce.y * ts;
-            var corners;
-            if (ce.dir === 'n') corners = [[cx0, cz0], [cx0 + ts, cz0]];
-            else if (ce.dir === 's') corners = [[cx0, cz0 + ts], [cx0 + ts, cz0 + ts]];
-            else if (ce.dir === 'w') corners = [[cx0, cz0], [cx0, cz0 + ts]];
-            else corners = [[cx0 + ts, cz0], [cx0 + ts, cz0 + ts]];
-            for (var cci = 0; cci < corners.length; cci++) {
-                var ck = corners[cci][0] + ',' + corners[cci][1];
-                if (!cornerSet[ck]) {
-                    cornerSet[ck] = true;
-                    var dotSize = lineThickness * 2.5;
-                    var dotMat = new THREE.MeshBasicMaterial({
-                        color: color, transparent: true, opacity: 0.9,
+            /* Terrain-following skirt: when the ground steps up or down across
+               this border edge, hang a gradient curtain over the cube face so
+               the outline stays connected down the cliff instead of floating
+               at the top with a visual gap below it. */
+            var nx = e.x + (e.dir === 'w' ? -1 : e.dir === 'e' ? 1 : 0);
+            var ny = e.y + (e.dir === 'n' ? -1 : e.dir === 's' ? 1 : 0);
+            var offBoard = (typeof bw === 'function' && typeof bh === 'function')
+                ? (nx < 0 || ny < 0 || nx >= bw() || ny >= bh()) : true;
+            if (!offBoard) {
+                var yOut = tileTopY(nx, ny);
+                if (Math.abs(yIn - yOut) > 1.5) {
+                    var skTop = Math.max(yIn, yOut) + lineHeight * 0.5;
+                    var skBot = Math.min(yIn, yOut) + 0.1;
+                    var skirtMat = new THREE.MeshBasicMaterial({
+                        color: color, transparent: true, opacity: 0.55,
+                        map: _getZoneSkirtTex(),
                         depthWrite: false, side: THREE.DoubleSide
                     });
-                    var dotMesh = new THREE.Mesh(
-                        new THREE.PlaneGeometry(dotSize, dotSize), dotMat
+                    var skirt = new THREE.Mesh(
+                        new THREE.PlaneGeometry(ts, skTop - skBot), skirtMat
                     );
-                    var cornerTopY = tileTopY(ce.x, ce.y) + lineHeight + 0.05;
-                    dotMesh.rotation.x = -Math.PI / 2;
-                    dotMesh.position.set(corners[cci][0], cornerTopY, corners[cci][1]);
-                    dotMesh._ew_overlay = 'zone';
-                    highlightGroup.add(dotMesh);
-                    _zoneBorderMeshes.push(dotMesh);
-                    _zoneBorderMats.push(dotMat);
+                    if (!horiz) skirt.rotation.y = Math.PI / 2;
+                    /* gradient's bright end sits at the zone tile's own line:
+                       flip it when the wall rises on the OUTSIDE of the zone */
+                    if (yIn < yOut) skirt.scale.y = -1;
+                    skirt.position.set(posX, (skTop + skBot) / 2, posZ);
+                    _zPush(skirt, skirtMat);
                 }
             }
         }
+    }
+
+    /* ── Zone intent icons (2026-07-26) ────────────────────────────────
+       A flat marker decal on the zone's center tile so intent reads at a
+       glance: red warning triangle w/ exclamation for anything that hurts
+       (nuke telegraphs, debuff clouds), green medic cross for heal zones.
+       Textures are canvas-drawn once and cached; meshes ride the normal
+       _zoneBorderMeshes lifecycle so cleanup is automatic. */
+    var _zoneIconTexCache = {};
+    function _getZoneIconTex(kind) {
+        if (_zoneIconTexCache[kind]) return _zoneIconTexCache[kind];
+        var c = document.createElement('canvas');
+        c.width = 128; c.height = 128;
+        var g = c.getContext('2d');
+        g.lineJoin = 'round';
+        if (kind === 'danger') {
+            /* red rounded triangle, white inner border, white "!" */
+            g.beginPath();
+            g.moveTo(64, 12); g.lineTo(120, 110); g.lineTo(8, 110);
+            g.closePath();
+            g.strokeStyle = 'rgba(60,0,0,0.85)';
+            g.lineWidth = 22; g.stroke();
+            g.strokeStyle = '#e8362a';
+            g.lineWidth = 14; g.stroke();
+            g.fillStyle = '#e8362a'; g.fill();
+            g.beginPath();
+            g.moveTo(64, 30); g.lineTo(105, 102); g.lineTo(23, 102);
+            g.closePath();
+            g.strokeStyle = 'rgba(255,255,255,0.95)';
+            g.lineWidth = 5; g.stroke();
+            /* tapered exclamation bar + dot */
+            g.fillStyle = '#fff';
+            g.beginPath();
+            g.moveTo(56, 47); g.lineTo(72, 47); g.lineTo(68, 81); g.lineTo(60, 81);
+            g.closePath(); g.fill();
+            g.beginPath(); g.arc(64, 93, 7, 0, Math.PI * 2); g.fill();
+        } else {
+            /* green disc, white ring, bold white medic cross */
+            g.beginPath(); g.arc(64, 64, 54, 0, Math.PI * 2);
+            g.fillStyle = '#1fb35b';
+            g.strokeStyle = 'rgba(0,60,25,0.85)';
+            g.lineWidth = 12; g.stroke(); g.fill();
+            g.beginPath(); g.arc(64, 64, 47, 0, Math.PI * 2);
+            g.strokeStyle = 'rgba(255,255,255,0.95)';
+            g.lineWidth = 5; g.stroke();
+            g.fillStyle = '#fff';
+            g.fillRect(52, 32, 24, 64);
+            g.fillRect(32, 52, 64, 24);
+        }
+        var tex = new THREE.CanvasTexture(c);
+        _zoneIconTexCache[kind] = tex;
+        return tex;
+    }
+
+    function _renderZoneIcon(cx, cy, kind, small) {
+        if (!highlightGroup) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var size = ts * (small ? 0.32 : 0.44);
+        var iconMat = new THREE.MeshBasicMaterial({
+            map: _getZoneIconTex(kind), transparent: true, opacity: 0.92,
+            depthWrite: false, side: THREE.DoubleSide
+        });
+        var icon = new THREE.Mesh(new THREE.PlaneGeometry(size, size), iconMat);
+        icon.rotation.x = -Math.PI / 2;
+        icon.position.set(cx * ts + ts / 2, tileTopY(cx, cy) + 0.6, cy * ts + ts / 2);
+        icon.renderOrder = 6;
+        icon._ew_overlay = 'zone';
+        icon._ew_zoneIcon = { phase: (cx * 3.1 + cy * 1.7) % 6.28 };
+        highlightGroup.add(icon);
+        /* meshes list only — icons keep a steady opacity (no border pulse)
+           but still get disposed with the rest of the zone overlay */
+        _zoneBorderMeshes.push(icon);
     }
 
     var _spiderwebZoneTex = null;
@@ -22619,14 +22714,28 @@ const ThreeRenderer = (function () {
                 }
             }
         }
+        /* heights folded into the cache key: the border skirts drape over
+           elevation steps, so a Reshape under/next to a zone must rebuild it */
+        function _zHeightSig(cx, cy, r) {
+            if (typeof getHeightAt !== 'function') return 0;
+            var sig = 0;
+            for (var dy = -r - 1; dy <= r + 1; dy++) {
+                for (var dx = -r - 1; dx <= r + 1; dx++) {
+                    sig = ((sig * 31) + (getHeightAt(cx + dx, cy + dy) | 0) + 1) | 0;
+                }
+            }
+            return sig;
+        }
         var zKey = '';
         for (var zi = 0; zi < zones.length; zi++) {
             var z = zones[zi];
-            zKey += (z.spellName || z.type) + ':' + z.x + ',' + z.y + ':' + (z.radius || 1) + '|';
+            zKey += (z.spellName || z.type) + ':' + z.x + ',' + z.y + ':' + (z.radius || 1)
+                 + ':' + _zHeightSig(z.x, z.y, z.radius || 1) + '|';
         }
         for (var di = 0; di < delayed.length; di++) {
             var d = delayed[di];
-            zKey += 'D:' + (d.spellName || 'del') + ':' + d.x + ',' + d.y + ':' + (d.aoeRadius || 1) + '|';
+            zKey += 'D:' + (d.spellName || 'del') + ':' + d.x + ',' + d.y + ':' + (d.aoeRadius || 1)
+                 + ':' + _zHeightSig(d.x, d.y, d.markedUnitId ? 0 : (d.aoeRadius || 1)) + '|';
         }
         if (zKey !== _lastZoneOverlayKey) {
             _lastZoneOverlayKey = zKey;
@@ -22652,13 +22761,25 @@ const ThreeRenderer = (function () {
                 if (zz.spellName === 'Dimensional Web' || zz.spellName === 'Web Snare') {
                     _renderSpiderwebZoneOverlay(zInfo.tiles);
                 }
+
+                /* intent icon on the center tile: green cross for heal zones,
+                   warning triangle for hostile fields (smoke stays unmarked —
+                   it's an ally cloak, not a hazard) */
+                if (zz.type === 'heal') {
+                    _renderZoneIcon(zz.x, zz.y, 'heal');
+                } else if (!zz.smokeConcealment
+                        && ((zz.statusEffects && zz.statusEffects.length) || zz.gravityField === 'super')) {
+                    _renderZoneIcon(zz.x, zz.y, 'danger');
+                }
             }
 
             for (var ddi = 0; ddi < delayed.length; ddi++) {
                 var dd = delayed[ddi];
                 var dr = dd.markedUnitId ? 0 : (dd.aoeRadius || 1);
                 var dInfo = _buildZoneBorderEdges(dd.x, dd.y, dr);
-                _renderZoneBorderGroup(dInfo, dd.markedUnitId ? 0xff2020 : 0xdd4444);
+                /* delayed blasts (Nuke etc.) blink faster — they're a countdown */
+                _renderZoneBorderGroup(dInfo, dd.markedUnitId ? 0xff2020 : 0xdd4444, { pulseSpeed: 3.4 });
+                _renderZoneIcon(dd.x, dd.y, 'danger', !!dd.markedUnitId);
             }
         }
     }
