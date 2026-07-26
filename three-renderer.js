@@ -41,7 +41,7 @@ const ThreeRenderer = (function () {
         scatter: true  // light natural boulder scatter on open ground
     };
     /* ── COSMETIC GRASS ────────────────────────────────────────────────────
-       Little blocky billboard grass blades, textured with grass_2.png, scattered
+       Thin curved billboard grass blades, textured with grass_2.png, scattered
        on open grassy ground across EVERY map (autoScatter), plus available as the
        editor-placeable 'grass_tuft' object. Purely visual: no collision, no
        gameplay, no pathing effect. Tweak freely — flip enabled:false to remove,
@@ -51,14 +51,15 @@ const ThreeRenderer = (function () {
         autoScatter: true, // auto-sprinkle on grassy tiles of every map (false = editor-placed only)
         texture: 'grass_2.png', // R2 /Assets/Sprites/terrain sprite wrapped on each blade
         coverage: 150,   // 0-255 hash cutoff — ~ (this/255) of grass tiles get an auto tuft (~59%)
-        bladesMin: 9,    // blades per tuft (lower bound)
-        bladesMax: 16,   // blades per tuft (upper bound)
-        heightMin: 0.13, // blade height as × tile (128px tile → ~17px)
-        heightMax: 0.20, // (~26px)
-        width:     0.022,// blade base half-width × tile (~3px) — blocky/billboard
-        spread:    0.40, // how far across the tile blades scatter (× tile)
-        rootShade: 0.55, // texture brightness multiplier at the blade base (darker)
-        tipShade:  1.0   // texture brightness multiplier at the blade tip (full)
+        bladesMin: 11,   // blades per tuft (lower bound)
+        bladesMax: 19,   // blades per tuft (upper bound)
+        heightMin: 0.11, // blade height as × tile (128px tile → ~14px)
+        heightMax: 0.27, // (~35px) — tall outliers, most blades stay short (pow curve)
+        width:     0.013,// blade base half-width × tile (~1.7px) — thin, not blocky
+        spread:    0.44, // how far across the tile blades scatter (× tile)
+        rootShade: 0.50, // texture brightness multiplier at the blade base (darker)
+        tipShade:  1.0,  // texture brightness multiplier at the blade tip (full)
+        windAmp:   0.16  // tip sway distance as × blade height (0 = wind off; vertex-shader only, ~free)
     };
     /* terrains that STAY hard cubes (man-made / structured) */
     var _CUBE_TERRAIN_SET = { bricks_1: 1, bricks_2: 1, bricks_3: 1, bricks: 1, castle_wall: 1, road: 1, road_2: 1, metal: 1, metal_floor: 1 };
@@ -4732,17 +4733,24 @@ const ThreeRenderer = (function () {
     }
 
     /* ── Rock Cluster: 2-4 noisy icosahedrons with rock texture ── */
-    /* ── Grass Tuft: a cluster of thin tapered billboard blades ───────────
-       Each blade is a single double-sided tapered quad (wide-ish at the root,
-       pinched at the tip) wrapped with the grass_2.png terrain sprite (so the
-       blades read in the same pixel style as the board) and shaded by a vertex
-       brightness ramp — darker at the root, full-bright at the tip. Each blade
-       samples a random sub-region of the texture for variety. Blades scatter
-       across the tile at random yaw with a slight lean so the tuft reads as
-       grassy from any camera angle. One shared MeshBasicMaterial per tuft →
+    /* ── Grass Tuft: a cluster of thin curved billboard blades ────────────
+       Each blade is a two-segment tapered strip (wide root → narrow mid →
+       pinched tip) that bows toward a random azimuth, wrapped with the
+       grass_2.png terrain sprite (so the blades read in the same pixel style
+       as the board) and shaded by a vertex brightness ramp — darker at the
+       root, full-bright at the tip — plus a subtle per-blade hue drift
+       (dry-yellow ↔ cool-green). Each blade samples a random sub-region of
+       the texture for variety. One shared MeshBasicMaterial for ALL tufts →
        cheap. Used by the all-map cosmetic scatter AND the editor-placed
-       'grass_tuft' object. Cosmetic only: no collision. */
+       'grass_tuft' object. Cosmetic only: no collision.
+       WIND: every vertex carries an 'aBend' weight (0 at the root, up to
+       tip-travel-in-world-px at the tip); the material's vertex shader offsets
+       vertices sideways by two world-position-phased sine octaves, so gusts
+       roll across the field instead of the whole board rocking in sync.
+       Vertex-shader only — no extra draw calls, no fill cost. Kill switch:
+       window.EW_DISABLE_GRASS_WIND = true (time stops advancing). */
     var _grassBladeMat = null;
+    var _grassWindTime = { value: 0 };   // shared uniform, advanced in renderFrame
     function _getGrassMat() {
         if (!_grassBladeMat) {
             /* grass_2.png from the R2 /Assets/Sprites/terrain folder, pixel-filtered
@@ -4751,6 +4759,22 @@ const ThreeRenderer = (function () {
             _grassBladeMat = new THREE.MeshBasicMaterial({
                 map: tex, vertexColors: true, side: THREE.DoubleSide, depthWrite: true
             });
+            _grassBladeMat.onBeforeCompile = function (shader) {
+                shader.uniforms.uEwGrassT = _grassWindTime;
+                shader.vertexShader = shader.vertexShader
+                    .replace('#include <common>',
+                        '#include <common>\nuniform float uEwGrassT;\nattribute float aBend;')
+                    .replace('#include <begin_vertex>',
+                        '#include <begin_vertex>\n' +
+                        'vec4 ewGp = modelMatrix * vec4( position, 1.0 );\n' +
+                        'float ewPh = ewGp.x * 0.013 + ewGp.z * 0.021;\n' +
+                        'float ewSw = sin( uEwGrassT * 1.6 + ewPh ) * 0.65 + sin( uEwGrassT * 3.3 + ewPh * 2.7 + 1.57 ) * 0.35;\n' +
+                        'transformed.x += ewSw * aBend;\n' +
+                        'transformed.z += ( sin( uEwGrassT * 1.1 + ewPh * 1.7 + 0.8 ) * 0.6 + sin( uEwGrassT * 2.6 + ewPh ) * 0.4 ) * 0.6 * aBend;');
+            };
+            /* onBeforeCompile.toString() is the default cache key — pin a stable
+               one so every grass mesh shares a single compiled program. */
+            _grassBladeMat.customProgramCacheKey = function () { return 'ew_grass_wind'; };
             /* shared across every tuft — keep it alive across deco rebuilds */
             _grassBladeMat._ew_shared = true;
         }
@@ -4761,64 +4785,86 @@ const ThreeRenderer = (function () {
         var topY = tileTopY(x, y);
         var g = new THREE.Group();
 
-        /* Seed-based pseudo-random for a consistent tuft per tile */
-        var seed = (x * 911 + y * 1607 + 53) & 0xFFFF;
-        var _sr = function() { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return (seed & 0xFFFF) / 0xFFFF; };
+        /* Seed via a real 2-D hash (the old linear x*911+y*1607 seed left
+           neighbouring tiles visibly correlated), then LCG; sample the LCG's
+           MID bits — its low bits barely change between steps. */
+        var seed = (Math.floor(_ewValHash(x * 5.9 + 1.37, y * 7.3 + 2.19) * 0x7FFF0000) | 1) & 0x7FFFFFFF;
+        var _sr = function() { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
 
         var rootS = GRASS.rootShade, tipS = GRASS.tipShade;
+        var midS = rootS + (tipS - rootS) * 0.62;
         var n = GRASS.bladesMin + Math.floor(_sr() * (GRASS.bladesMax - GRASS.bladesMin + 1));
+        var windAmp = GRASS.windAmp || 0;
 
-        /* Build one merged BufferGeometry for the whole tuft (2 triangles/blade). */
+        /* Build one merged BufferGeometry for the whole tuft (4 triangles/blade:
+           a lower quad root→mid and an upper quad mid→tip, bowed sideways). */
         var verts = [];   // x,y,z per vertex
-        var cols  = [];   // r,g,b per vertex (brightness ramp, multiplies the texture)
+        var cols  = [];   // r,g,b per vertex (brightness ramp + hue drift, multiplies the texture)
         var uvs   = [];   // u,v per vertex (random sub-region of grass_2.png per blade)
+        var bend  = [];   // wind weight per vertex (world px of tip travel; 0 at the root)
         for (var bi = 0; bi < n; bi++) {
-            var h  = ts * (GRASS.heightMin + _sr() * (GRASS.heightMax - GRASS.heightMin));
-            var hw = ts * GRASS.width * (0.7 + _sr() * 0.6);  // base half-width
+            /* pow curve: most blades short, a few tall stragglers */
+            var h  = ts * (GRASS.heightMin + Math.pow(_sr(), 1.5) * (GRASS.heightMax - GRASS.heightMin));
+            var hw = ts * GRASS.width * (0.75 + _sr() * 0.5);  // base half-width
             var ox = (_sr() - 0.5) * ts * GRASS.spread;
             var oz = (_sr() - 0.5) * ts * GRASS.spread;
             var yaw = _sr() * Math.PI * 2;
             var cy = Math.cos(yaw), sy = Math.sin(yaw);
-            /* slight lean so blades aren't all bolt-upright */
-            var leanX = (_sr() - 0.5) * hw * 1.6;
-            var leanZ = (_sr() - 0.5) * hw * 1.6;
+            /* natural bow: the blade arcs toward a random azimuth — the mid
+               ring takes ~40% of the offset, the tip the full amount */
+            var bAz = _sr() * Math.PI * 2;
+            var bMag = h * (0.08 + _sr() * 0.34);
+            var bx = Math.cos(bAz) * bMag, bz = Math.sin(bAz) * bMag;
             /* per-blade brightness jitter so the field isn't flat */
             var j = 0.85 + _sr() * 0.3;
+            /* subtle per-blade hue drift: dry-yellow ↔ cool-green */
+            var tt = _sr();
+            var tintR = 0.92 + 0.24 * tt, tintB = 0.90 + 0.20 * (1 - tt);
             /* MASK a blade-sized window out of the 128² grass_2 texture (the tile
                texture maps 0..1 over ts world-px, so texels are ~1:1 with world-px).
                Sizing the UV window to the blade's own footprint keeps that 1:1
                density — no stretching — like a small masked cutout in Photoshop.
                The window is positioned randomly per blade for variety. NearestFilter
                on the texture keeps the few sampled texels crisp/blocky. */
-            var tipHw = hw * 0.18;
+            var midW = hw * 0.55, tipW = hw * 0.12;
+            var midH = h * 0.55;
             var uSpan = Math.min(0.95, (2 * hw) / ts);   // base width as a tex fraction
             var vSpan = Math.min(0.95, h / ts);          // blade height as a tex fraction
             var uMin = _sr() * (1 - uSpan), vMin = _sr() * (1 - vSpan);
             var uC = uMin + uSpan / 2;
-            var vBase = vMin, vTip = vMin + vSpan;
-            var uBL = uMin, uBR = uMin + uSpan;                  // base edges
-            var uTL = uC - tipHw / ts, uTR = uC + tipHw / ts;    // pinched tip edges (narrower slice)
+            var vB = vMin, vM = vMin + vSpan * 0.55, vT = vMin + vSpan;
+            /* taller blades sway farther: bake tip travel (world px) per vertex */
+            var wTip = h * windAmp, wMid = wTip * 0.38;
 
-            /* local blade points (before yaw): base-left, base-right, tip */
-            function _push(lx, ly, lz, top, u, v) {
-                var wx = ox + (lx * cy - lz * sy) + (top ? leanX : 0);
-                var wz = oz + (lx * sy + lz * cy) + (top ? leanZ : 0);
-                verts.push(wx, ly, wz);
-                var s = (top ? tipS : rootS) * j;
-                cols.push(s, s, s);
+            /* local blade points (before yaw); bf = bow fraction 0→1 root→tip */
+            function _push(lx, ly, bf, s, u, v, w) {
+                verts.push(ox + lx * cy + bx * bf, ly, oz + lx * sy + bz * bf);
+                var b = s * j;
+                cols.push(b * tintR, b, b * tintB);
                 uvs.push(u, v);
+                bend.push(w);
             }
-            /* quad as two triangles: (bl, br, tr) + (bl, tr, tl), tip pinched */
-            // tri 1: base-left, base-right, tip-right
-            _push(-hw, 0, 0, false, uBL, vBase); _push(hw, 0, 0, false, uBR, vBase); _push(tipHw, h, 0, true, uTR, vTip);
-            // tri 2: base-left, tip-right, tip-left
-            _push(-hw, 0, 0, false, uBL, vBase); _push(tipHw, h, 0, true, uTR, vTip); _push(-tipHw, h, 0, true, uTL, vTip);
+            /* lower quad: base-left, base-right → mid-right, mid-left */
+            _push(-hw,   0,    0,   rootS, uC - hw / ts,   vB, 0);
+            _push( hw,   0,    0,   rootS, uC + hw / ts,   vB, 0);
+            _push( midW, midH, 0.4, midS,  uC + midW / ts, vM, wMid);
+            _push(-hw,   0,    0,   rootS, uC - hw / ts,   vB, 0);
+            _push( midW, midH, 0.4, midS,  uC + midW / ts, vM, wMid);
+            _push(-midW, midH, 0.4, midS,  uC - midW / ts, vM, wMid);
+            /* upper quad: mid-left, mid-right → pinched tip */
+            _push(-midW, midH, 0.4, midS,  uC - midW / ts, vM, wMid);
+            _push( midW, midH, 0.4, midS,  uC + midW / ts, vM, wMid);
+            _push( tipW, h,    1,   tipS,  uC + tipW / ts, vT, wTip);
+            _push(-midW, midH, 0.4, midS,  uC - midW / ts, vM, wMid);
+            _push( tipW, h,    1,   tipS,  uC + tipW / ts, vT, wTip);
+            _push(-tipW, h,    1,   tipS,  uC - tipW / ts, vT, wTip);
         }
 
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
         geo.setAttribute('color',    new THREE.Float32BufferAttribute(cols, 3));
         geo.setAttribute('uv',       new THREE.Float32BufferAttribute(uvs, 2));
+        geo.setAttribute('aBend',    new THREE.Float32BufferAttribute(bend, 1));
         /* MeshBasicMaterial is unlit — no normals needed. */
 
         var mesh = new THREE.Mesh(geo, _getGrassMat());
@@ -5930,18 +5976,20 @@ const ThreeRenderer = (function () {
          • every decoration is excluded from raycasting (they're cosmetic —
            the tile beneath resolves the pick) and from shadow casting. */
     var _noopRaycast = function () {};
-    function _decoAppendTuftWorld(g, verts, cols, uvs) {
+    function _decoAppendTuftWorld(g, verts, cols, uvs, bends) {
         /* bake a tuft group's local geometry into world-space arrays */
         var mesh = g.children && g.children[0];
         if (!mesh || !mesh.geometry) return;
         var pos = mesh.geometry.getAttribute('position');
         var col = mesh.geometry.getAttribute('color');
         var uv = mesh.geometry.getAttribute('uv');
+        var bnd = mesh.geometry.getAttribute('aBend');
         var ox = g.position.x, oy = g.position.y, oz = g.position.z;
         for (var i = 0; i < pos.count; i++) {
             verts.push(pos.getX(i) + ox, pos.getY(i) + oy, pos.getZ(i) + oz);
             cols.push(col.getX(i), col.getY(i), col.getZ(i));
             uvs.push(uv.getX(i), uv.getY(i));
+            bends.push(bnd ? bnd.getX(i) : 0);
         }
         mesh.geometry.dispose();
     }
@@ -5968,7 +6016,8 @@ const ThreeRenderer = (function () {
            terrain batcher. Fog matches keep per-tile tufts (still no shadows,
            no raycast); everything else gets the one-draw-call merge. */
         var _mergeGrass = !(state.fogOfWar && typeof _fogGridWanted === 'function' && _fogGridWanted());
-        var _gVerts = [], _gCols = [], _gUvs = [];
+        var _gVerts = [], _gCols = [], _gUvs = [], _gBend = [];
+        var _monTiles = state._monumentTiles || null;
 
         for (var dy = 0; dy < _bh; dy++) {
             for (var dx = 0; dx < _bw; dx++) {
@@ -5979,15 +6028,25 @@ const ThreeRenderer = (function () {
                 var existingObj = (typeof getObjectAt === 'function') ? getObjectAt(dx, dy) : null;
                 if (existingObj) continue;
 
+                /* Monument collision stamps its voxels as 'grass' (map.js
+                   _stampMonumentCollision), so the column top reads as grassy
+                   ground here — skip those tiles or tufts/boulders sprout on
+                   T-pillar heads, monolith tops and other landmark roofs. */
+                if (_monTiles && _monTiles.has(dx + ',' + dy)) continue;
+
                 /* COSMETIC GRASS (all maps) — its own dense pass, run before the
                    sparse rock-decoration gate so most grassy tiles get a tuft.
                    Coexists fine with the boulder scatter below. */
                 if (GRASS.enabled && GRASS.autoScatter && _GRASS_TERRAIN_SET[terrain]) {
-                    var gHash = (dx * 263 + dy * 521 + 91) & 0xFF;
+                    /* real 2-D hash — the old (dx*263 + dy*521 + 91) & 0xFF
+                       collapses to (7·dx + 9·dy + 91) mod 256, a diagonal
+                       GRADIENT that bunched every tuft into one corner/band of
+                       hand-painted grass floors instead of speckling evenly. */
+                    var gHash = Math.floor(_ewValHash(dx + 37.73, dy + 91.31) * 256) & 0xFF;
                     if (gHash < _cov) {
                         var gt = _buildGrassTuft3D(dx, dy);
                         if (gt) {
-                            if (_mergeGrass) _decoAppendTuftWorld(gt, _gVerts, _gCols, _gUvs);
+                            if (_mergeGrass) _decoAppendTuftWorld(gt, _gVerts, _gCols, _gUvs, _gBend);
                             else _terrainDecoGroup.add(gt);
                         }
                     }
@@ -6019,6 +6078,7 @@ const ThreeRenderer = (function () {
             mgGeo.setAttribute('position', new THREE.Float32BufferAttribute(_gVerts, 3));
             mgGeo.setAttribute('color',    new THREE.Float32BufferAttribute(_gCols, 3));
             mgGeo.setAttribute('uv',       new THREE.Float32BufferAttribute(_gUvs, 2));
+            mgGeo.setAttribute('aBend',    new THREE.Float32BufferAttribute(_gBend, 1));
             var mgMesh = new THREE.Mesh(mgGeo, _getGrassMat());
             mgMesh.matrixAutoUpdate = false;
             _terrainDecoGroup.add(mgMesh);
@@ -23795,6 +23855,8 @@ const ThreeRenderer = (function () {
         _updateExhaustedRingDim();
 
         _hlGlobalTime.value = performance.now() / 1000.0;
+        /* grass wind (vertex shader sway) — freezing the clock stills the field */
+        if (!window.EW_DISABLE_GRASS_WIND) _grassWindTime.value = _hlGlobalTime.value;
         _updateLavaEmissive();
 
         var _fNow = performance.now();
