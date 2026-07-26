@@ -5738,13 +5738,11 @@ const SHARED_BLACK_HOLE = {
 };
 
 const SHARED_NEBULA = {
-    id: 'sharedNebula', spellType: 'alien', element: 'arcane', name: 'Nebula',
-    type: 'utility', cost: 25, range: 4, apCost: 1,
-    kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 3,
-    smokeConcealment: true,
-    statusEffects: [{ id: 'slow', duration: 1 }],
-    allyStatusEffects: [{ id: 'invisible', duration: 1 }],
-    desc: 'Unfurl a newborn nebula over a 3×3 area for 3 rounds. Allies inside vanish into the stardust (invisible while they stay in the cloud); enemies wade through it Slowed.'
+    id: 'sharedNebula', spellType: 'alien', element: 'light', name: 'Nebula',
+    type: 'damage', cost: 50, dmg: 160, range: 4, apCost: 2, cooldownRounds: 2,
+    kind: 'aoe', aoeRadius: 2, damageType: 'magic',
+    statusEffects: [{ id: 'burn', duration: 2 }],
+    desc: 'Birth a star over the battlefield and detonate it. The newborn sun swells, collapses, and goes SUPERNOVA — HEAVY magic damage to All Enemies in a 5×5 blast and Burns everything the starfire touches. The nebula left hanging in the air is what remains of them. Cooldown: 2 rounds.'
 };
 
 // 2026-07-13: EMP Burst left the shared Assassin spell pool (data: empBurst is
@@ -5908,9 +5906,8 @@ const RACE_ABILITIES = {
         { id: 'raceCalcify', spellType: 'unholy', element: 'earth', name: 'Calcify',
           type: 'debuff', cost: 25, range: 3, apCost: 1,
           kind: 'debuff',
-          statStageBoost: { int: -2, spd: -1 },
-          statusEffects: [{ id: 'slow', duration: 2 }],
-          desc: 'Turn the target\'s thoughts to stone. Grey creeps up from their feet as their mind petrifies — lowers INT by 2 stages and SPD by 1 stage, and Slows them for 2 turns as the joints harden.' },
+          statStageBoost: { int: -3 },
+          desc: 'Turn the target\'s thoughts to stone. Grey creeps up from their skull as the mind petrifies — lowers INT by 3 stages.' },
         SHARED_RAMPART,
         SHARED_FISSURE,
         SHARED_WING_ATTACK

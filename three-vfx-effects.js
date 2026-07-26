@@ -14335,7 +14335,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                                spaghettified streaks, then the collapse flash
          _sigLavaLampAura3D    rising/falling neon globs over a zone (the lit
                                blood-glob pool, recoloured; negative gravity)
-         _sigNebulaAura3D      a newborn star nursery: tinted dust, twinkles
+         _sigSupernova3D       a star is born, collapses, and goes supernova
+                               over the whole blast — the drifting dust left
+                               behind IS the nebula
          _sigCalcify3D         petrification creep — grey shell, stone dust
 
        ONLINE PARITY (RULE #2): every one of these fires from intents that
@@ -15101,66 +15103,184 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
     }
 
-    /* ── NEBULA — a star nursery unfurls over the zone ───────────────────
-       Slow violet/blue/pink dust banks with newborn stars twinkling through
-       them. Reads soft and beautiful — it's a concealment field, not a
-       detonation. ──────────────────────────────────────────────────────── */
-    function _sigNebulaAura3D(tx, ty, r, opts) {
+    /* ── NEBULA — birth a star and detonate it ───────────────────────────
+       The full stellar life cycle in two seconds: a newborn sun ignites over
+       the target, swells while matter spirals in, COLLAPSES for one held
+       breath, then goes supernova — blinding shell, stacked shock rings, and
+       starfire raining across the whole 5×5. The violet/blue/pink dust left
+       drifting afterwards IS the nebula: it's what remains of them. ─────── */
+    function _sigSupernova3D(tx, ty, r, opts) {
         opts = opts || {};
         if (_catOff('spells')) return;
-        if (_suppressed() || !_canSpawn()) return;
+        if (_suppressed()) return;
+        var scene = _getVFXScene(); if (!scene) return null;
         var ts = _cfg().tileSize || 128;
-        var rad = ((r != null ? r : 1) + 0.5) * ts;
-        var c = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
+        var ms = opts.ms != null ? opts.ms : 2050;
+        var collapseAt = 0.44;                            /* swell → collapse */
+        var novaAt = 0.52;                                /* collapse → BOOM */
+        var wp = _worldPos(tx, ty);
+        var hover = ts * 1.25;
+        var Rs = ts * 0.34;                               /* star radius at peak */
+        var blastR = ((r != null ? r : 2) + 0.6) * ts;
+        var p = _post();
         var DUST = [0x8a4dff, 0x4d7dff, 0xff4dd0, 0x3ae8ff];
 
-        /* deep-space floor */
-        _spawn({
-            x: c.x, y: c.y, z: zf + 2,
-            mode: 'world', sprite: 'void-mist', tint: 0x3a2470,
-            ml: 2600, size0: rad * 1.7, size1: rad * 2.0,
-            opacity0: 0.5, opacity1: 0,
-        });
-        _spawn({
-            x: c.x, y: c.y, z: zf + 3,
-            mode: 'world', sprite: 'halo-ring', tint: 0x8a4dff,
-            ml: 850, size0: rad * 0.5, size1: rad * 2.1,
-            opacity0: 0.5, opacity1: 0,
-        });
-
-        /* the dust banks */
-        for (var i = 0; i < 14; i++) {
-            _spawn({
-                x: c.x + rn(-rad, rad), y: c.y + rn(-rad, rad),
-                z: zf + rn(8, ts * 1.1),
-                mode: 'billboard', sprite: 'void-mist', tint: DUST[i % DUST.length],
-                ml: rn(1600, 2800),
-                size0: rn(20, 34), size1: rn(42, 64),
-                opacity0: 0.45, opacity1: 0,
-                vx: rn(-10, 10), vy: rn(-10, 10), vz: rn(2, 10),
-                gravity: -6, drag: 0.35,
-                wander: { amp: rn(24, 40), freq: rn(0.4, 0.7) },
+        /* the grade: the room dims for a stellar event, gold-white push,
+           and the frame tears on the exact detonation frame (kick below) */
+        if (p && p.spellGrade && !window.EW_DISABLE_SPELL_GRADE) {
+            p.spellGrade({
+                dim: 0.8,
+                focus: [{ x: wp.x, y: wp.y + hover, z: wp.z, r: ts * 1.8 }],
+                spotSoft: 0.85, spotLift: 0.95,
+                tint: [1.24, 1.04, 0.72], tintAmt: 0.5,
+                chroma: 5, warp: 0.0012, trip: 0, hueRate: 0,
+                riseMs: 240, holdMs: ms * novaAt + 300, fallMs: 620
             });
         }
-        /* newborn stars — staggered ignitions so the cloud keeps twinkling */
-        for (var s = 0; s < 20; s++) {
-            (function (idx) {
+
+        /* matter spiralling INTO the forming star */
+        _sigChargeSpiral3D(tx, ty, {
+            count: 20, r0: ts * 0.9, r1: ts * 2.0, ms: ms * collapseAt,
+            spiralDeg: 280, sprite: 'ember', tint: 0xffd77a,
+            height: hover, sizeMul: 1.1
+        });
+        _sigChargeSpiral3D(tx, ty, {
+            count: 12, r0: ts * 1.2, r1: ts * 2.4, ms: ms * collapseAt * 0.85,
+            spiralDeg: -220, sprite: 'divine-sparkle',
+            height: hover, sizeMul: 0.9
+        });
+
+        /* the star itself: hot core sprite + a shell that swells, collapses,
+           then blows out */
+        var root = new THREE.Group();
+        root.position.set(wp.x, wp.y + hover, wp.z);
+        var coreMat = _sigMagicOrbMat(0xffffff, _sigGlowTex());
+        var core = new THREE.Sprite(coreMat);
+        core.renderOrder = 212;
+        root.add(core);
+        var shellMat = _sigMat(0xffd77a);
+        var shell = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), shellMat);
+        shell.renderOrder = 211;
+        root.add(shell);
+
+        var novaFired = false;
+        var run = _sigRun(root, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            if (t < collapseAt) {
+                /* ignition + swell — the pulse quickens as it grows */
+                var k = t / collapseAt;
+                var swell = Rs * (0.15 + 0.85 * _sigEaseOutCubic(k));
+                var pulse = 1 + 0.08 * Math.sin(el * (0.008 + k * 0.02));
+                shell.scale.setScalar(swell * pulse);
+                shellMat.opacity = 0.55 * Math.min(1, k * 2);
+                var cs = swell * (2.6 + 0.5 * Math.sin(el * 0.012));
+                core.scale.set(cs, cs, 1);
+                coreMat.opacity = Math.min(1, k * 2.2) * 0.95;
+                return;
+            }
+            if (t < novaAt) {
+                /* the collapse — one held breath, everything falls in */
+                var c2 = (t - collapseAt) / (novaAt - collapseAt);
+                var crush = Rs * (1 - 0.85 * _sigEaseInCubic(c2));
+                shell.scale.setScalar(Math.max(0.01, crush));
+                var cs2 = crush * 2.2;
+                core.scale.set(cs2, cs2, 1);
+                coreMat.opacity = 1;
+                shellMat.opacity = 0.8;
+                return;
+            }
+            if (!novaFired) {
+                novaFired = true;
+                /* SUPERNOVA */
+                try { if (p && p.spellGradeKick) p.spellGradeKick(13, 300); } catch (e) {}
+                _sigScreenFlash('#fff6dd', 380, 0.6);
+                _sigShake('hard');
+                try { if (p && p.bloomPulse) p.bloomPulse(1.0, 520); } catch (e) {}
+                _sigOrbBurst3D(tx, ty, {
+                    mode: 'out', color: 0xffe9a8, ms: 640,
+                    r0: ts * 0.15, r1: blastR * 1.15, height: hover, opacity: 0.9
+                });
+                _sigShockRing3D(tx, ty, { color: 0xffd77a, r1: blastR * 1.3, ms: 520 });
                 window.setTimeout(function () {
-                    if (_suppressed() || !_canSpawn()) return;
+                    if (_suppressed()) return;
+                    _sigShockRing3D(tx, ty, { color: 0xffffff, r1: blastR * 0.9, ms: 420, height: ts * 0.5 });
+                }, 120);
+                try { _sigLightPillar3D(tx, ty, { color: 0xfff0c0, height: ts * 6.0, radius: ts * 0.5, ms: 820 }); } catch (e) {}
+                if (_canSpawn()) {
+                    var c = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
+                    /* starfire thrown across the whole blast */
+                    for (var s = 0; s < 34; s++) {
+                        var sa = rn(0, Math.PI * 2), sv = rn(200, 480);
+                        _spawn({
+                            x: c.x, y: c.y, z: zf + hover + rn(-14, 14),
+                            vx: Math.cos(sa) * sv, vy: Math.sin(sa) * sv, vz: rn(-40, 220),
+                            mode: 'billboard', sprite: s % 3 === 0 ? 'divine-sparkle' : 'ember',
+                            tint: s % 4 === 0 ? 0xffffff : 0xffb060,
+                            trackHeading: s % 3 !== 0, stretchVel: 0.07,
+                            ml: rn(450, 900), size0: rn(6, 13), size1: 1,
+                            opacity0: 1, opacity1: 0, gravity: 260, drag: 0.9
+                        });
+                    }
+                    /* the NEBULA — the remnant dust blooming outward and
+                       hanging there after the light dies */
+                    for (var d = 0; d < 16; d++) {
+                        var da = rn(0, Math.PI * 2), dr = rn(blastR * 0.2, blastR * 0.9);
+                        _spawn({
+                            x: c.x + Math.cos(da) * dr * 0.3, y: c.y + Math.sin(da) * dr * 0.3,
+                            z: zf + rn(ts * 0.4, ts * 1.6),
+                            vx: Math.cos(da) * rn(40, 110), vy: Math.sin(da) * rn(40, 110),
+                            vz: rn(-10, 30),
+                            mode: 'billboard', sprite: 'void-mist', tint: DUST[d % DUST.length],
+                            ml: rn(1600, 2800),
+                            size0: rn(18, 30), size1: rn(46, 72),
+                            opacity0: 0.55, opacity1: 0,
+                            gravity: -8, drag: 1.2,
+                            wander: { amp: rn(24, 40), freq: rn(0.4, 0.7) },
+                        });
+                    }
+                    /* newborn remnant stars twinkling inside the cloud */
+                    for (var st = 0; st < 12; st++) {
+                        (function (idx) {
+                            window.setTimeout(function () {
+                                if (_suppressed() || !_canSpawn()) return;
+                                _spawn({
+                                    x: c.x + rn(-blastR * 0.7, blastR * 0.7),
+                                    y: c.y + rn(-blastR * 0.7, blastR * 0.7),
+                                    z: zf + rn(ts * 0.5, ts * 1.6),
+                                    mode: 'billboard', sprite: 'divine-sparkle',
+                                    tint: idx % 3 === 0 ? 0x9fe8ff : 0xffffff,
+                                    ml: rn(300, 700), size0: rn(3, 7), size1: 1,
+                                    opacity0: 1, opacity1: 0,
+                                    gravity: -6, drag: 0.3,
+                                });
+                            }, 200 + idx * 130);
+                        })(st);
+                    }
+                    /* scorched starlight on the ground */
                     _spawn({
-                        x: c.x + rn(-rad * 0.9, rad * 0.9), y: c.y + rn(-rad * 0.9, rad * 0.9),
-                        z: zf + rn(12, ts * 1.3),
-                        mode: 'billboard', sprite: 'divine-sparkle',
-                        tint: idx % 3 === 0 ? 0x9fe8ff : 0xffffff,
-                        ml: rn(360, 800),
-                        size0: rn(3, 7), size1: 1,
-                        opacity0: 1, opacity1: 0,
-                        gravity: -8, drag: 0.3,
-                        wander: { amp: 12, freq: 0.8 },
+                        x: c.x, y: c.y, z: zf + 2,
+                        mode: 'world', sprite: 'fire-glow', tint: 0xffb060,
+                        ml: 1400, size0: blastR * 1.1, size1: blastR * 1.6,
+                        opacity0: 0.45, opacity1: 0,
                     });
-                }, idx * 110);
-            })(s);
+                }
+            }
+            /* the star dies into the light it threw */
+            var b = (t - novaAt) / (1 - novaAt);
+            var fl = Rs * (1 + b * 5);
+            shell.scale.setScalar(fl);
+            shellMat.opacity = Math.max(0, 0.6 - b * 1.4);
+            var cs3 = Rs * 3 * Math.max(0, 1 - b * 1.6);
+            core.scale.set(cs3, cs3, 1);
+            coreMat.opacity = Math.max(0, 1 - b * 1.5);
+        });
+        if (!run) {
+            try {
+                root.traverse(function (o) { if (o.geometry) o.geometry.dispose(); });
+                coreMat.dispose(); shellMat.dispose();
+            } catch (e) {}
         }
+        return run;
     }
 
     /* ── CALCIFY — the thoughts turn to stone ────────────────────────────
@@ -15426,8 +15546,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     SPELL_MAP['sharedBlackHole'] = { aoe: 'blackHole_aoe' };
 
-    /* Lava Lamp + Nebula: zone casts fire the aura intent; _fireAura runs
-       the bespoke field (in _spell3DGeometry) on top of these ambient layers. */
+    /* Lava Lamp: the zone cast fires the aura intent; _fireAura runs the
+       bespoke glob field (in _spell3DGeometry) on top of this ambient glow. */
     EFFECTS['lavaLamp_aura'] = {
         aoeRadius: 1,
         layers: [
@@ -15437,14 +15557,22 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     SPELL_MAP['raceLavaLamp'] = { aura: 'lavaLamp_aura' };
 
-    EFFECTS['nebula_aura'] = {
-        aoeRadius: 1,
+    /* Nebula: aoe intent → _fireAoeMapped fires the supernova rig
+       (in _spell3DGeometry) plus starfire licks per struck tile. */
+    EFFECTS['nebula_aoe'] = {
+        aoeRadius: 2,
+        impactTileEffect: '_nebula_tile',
+    };
+    EFFECTS['_nebula_tile'] = {
         layers: [
-            { anchor: 'floor', mode: 'world', sprite: 'void-mist', tint: 0x3a2470, ml: 1400, z: 2,
-              size0: 130, size1: 240, opacity0: 0.4, opacity1: 0 },
+            { count: 3, sprite: 'ember', tint: 0xffb060, ml: [420, 780], offsetXY: 12,
+              vxRange: 70, vyRange: 70, vzRange: [40, 160], gravity: 220, drag: 1.0,
+              size0: [6, 11], size1: 1, opacity0: 0.95 },
+            { anchor: 'floor', mode: 'world', sprite: 'fire-glow', tint: 0xffb060, ml: 900, z: 2,
+              size0: 40, size1: 110, opacity0: 0.4, opacity1: 0 },
         ]
     };
-    SPELL_MAP['sharedNebula'] = { aura: 'nebula_aura' };
+    SPELL_MAP['sharedNebula'] = { aoe: 'nebula_aoe' };
 
     var _spell3DGeometry = {
 
@@ -16528,7 +16656,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigLavaLampAura3D(tx, ty, r);
         },
         sharedNebula: function(tx, ty, r) {
-            _sigNebulaAura3D(tx, ty, r);
+            _sigSupernova3D(tx, ty, r);
         },
     };
 
@@ -16911,7 +17039,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sharedBlackHole: { archetype: 'anomaly', weight: 'ultimate',
                        grade: { trip: 0.12, warp: 0.0038, chroma: 7.5, hueRate: 0.07,
                                 tint: [0.76, 0.72, 1.12], tintAmt: 0.55 } },
-        sharedNebula: { archetype: 'alien', weight: 'standard' },
+        sharedNebula: { archetype: 'skyfall', weight: 'ultimate',
+                       grade: { chroma: 5, tint: [1.24, 1.04, 0.72], tintAmt: 0.5 } },
         raceLavaLamp: { archetype: 'poison', weight: 'standard',
                        grade: { trip: 0.4, hueRate: 0.2, chroma: 3,
                                 tint: [1.18, 0.85, 1.1], tintAmt: 0.4 } },
@@ -17746,7 +17875,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigSonicBoomerang3D: _sigSonicBoomerang3D,
         sigBlackHole3D: _sigBlackHole3D,
         sigLavaLampAura3D: _sigLavaLampAura3D,
-        sigNebulaAura3D: _sigNebulaAura3D,
+        sigSupernova3D: _sigSupernova3D,
         sigCalcify3D: _sigCalcify3D,
 
         getDescentTotalMs: getDescentTotalMs,

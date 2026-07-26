@@ -5,7 +5,7 @@ rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
 ## PSYCHEDELIC / COSMIC SPELL DROP (2026-07-26, LATEST) — data.js, battle.js, three-vfx-effects.js, index.html
-Token → `20260726x-psy`. Nine new spells with bespoke PS1-JRPG set-pieces, all
+Token → `20260726y-psy`. Nine new spells with bespoke PS1-JRPG set-pieces, all
 composed from the existing signature kit (orb/charge-spiral/dash-wave/snow/
 kaleidoscope/wireframe/grade). Catalogue lives in three-vfx-effects.js above
 `_sigEgoDeath3D`; every composer is exported on `ThreeVFXEffects` (`sigEgoDeath3D`
@@ -43,16 +43,21 @@ etc.) for the Spell Lab.
   torus + two counter-tilted accretion RingGeometry discs + spaghettified
   infall streaks (seek spiralDeg 340 + stretchVel), then collapse → one
   escaping flash. Heavy warp grade.
-- **Nebula** (`sharedNebula`, cosmic wraith + superhero): 3×3 zone, 3 rounds,
-  Smoke-Screen-style concealment (allies invisible inside) + enemy Slow.
-  Star-nursery visual: tinted dust banks + staggered twinkles.
+- **Nebula** (`sharedNebula`, cosmic wraith + superhero, ULTIMATE): 5×5 aoe
+  160 + Burn, 2 AP, CD 2 — a SUPERNOVA. `_sigSupernova3D`: star ignites and
+  swells (charge spirals feed it), collapses for one held breath, then
+  detonates — blinding shell, stacked shock rings, light pillar, starfire
+  across the blast, and the violet/blue/pink remnant dust that hangs after
+  IS the nebula. (Reworked same-day from a concealment zone — owner wanted
+  the star explosion, not a smoke screen.)
 - **Lava Lamp** (`raceLavaLamp`, barbarella, zone): 3×3, 3 rounds, Poison +
   Slow. The lit blood-glob pool RECOLOURED (`globColor` neon palette),
   negative gravity risers + delayed sinker wave + tinted haze. Far out.
-- **Calcify** (`raceCalcify`, gargoyle, debuff): INT -2 stages, SPD -1, Slow 2
-  — the intelligence debuff. Grey shell implosion + stone dust + granite
-  grade. VFX fired from a battle.js debuff-branch hook (`sigCalcify3D`), same
-  pattern as the spiral-beam debuffs.
+- **Calcify** (`raceCalcify`, gargoyle, debuff): INT -3 stages, nothing else —
+  THE intelligence debuff, pure (owner explicitly wanted one debuff, not a
+  pile). Grey shell implosion + stone dust + granite grade. VFX fired from a
+  battle.js debuff-branch hook (`sigCalcify3D`), same pattern as the
+  spiral-beam debuffs.
 
 ### Mechanics plumbing (battle.js)
 - `applyDamageToUnit`: records `sourceUnit._lastHitDealt` per enemy hit
