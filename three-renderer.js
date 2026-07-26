@@ -982,12 +982,29 @@ const ThreeRenderer = (function () {
           just OUTSIDE the sprite's silhouette.
        ── Model units: classic inverted-hull twins — the mesh re-drawn
           BackSide, pushed a hair outward along the view-space normal, so
-          a constant-width rim wraps the live animated pose. */
+          a constant-width rim wraps the live animated pose. A raw hull
+          also rims every INTERIOR contour (arm over torso, cape over leg),
+          so the body meshes stamp the stencil buffer with a per-unit ref
+          and the hull draws only where its own unit's body did NOT — the
+          rim collapses to the actual screen-space perimeter at whatever
+          angle the camera holds. (No stencil attachment → the test
+          silently passes and it degrades to the full-contour look.) */
     var TEAM_OUTLINE_ALLY_COLOR  = 0x14b4ff;   // matches TEAM_RING_ALLY_COLOR
     var TEAM_OUTLINE_ENEMY_COLOR = 0xff3355;   // matches TEAM_RING_ENEMY_COLOR
-    var TEAM_OUTLINE_OPACITY = 0.9;
-    var TEAM_OUTLINE_TEXELS = 2.0;         // sprite halo width, native sprite px
-    var TEAM_OUTLINE_MODEL_RATIO = 0.012;  // model hull push, fraction of tile size
+    var TEAM_OUTLINE_OPACITY = 0.65;
+    var TEAM_OUTLINE_TEXELS = 1.5;         // sprite halo width, native sprite px
+    var TEAM_OUTLINE_MODEL_RATIO = 0.009;  // model hull push, fraction of tile size
+
+    /* Stable per-unit stencil ref (1..254) hashed from the unit id. Per-UNIT
+       (not one shared ref) so a unit standing in front of another keeps its
+       rim where their screens overlap — only a unit's OWN body suppresses
+       its own hull. Hash collisions just mean those two units mutually
+       suppress where they overlap: rare and benign. */
+    function _unitStencilRef(id) {
+        var s = String(id), h = 0;
+        for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+        return 1 + (h % 254);
+    }
 
     var _spriteOutlineFragmentShader = [
         'uniform sampler2D uMap;',
@@ -1058,7 +1075,7 @@ const ThreeRenderer = (function () {
         'void main() { gl_FragColor = vec4(uColor, uOpacity); }'
     ].join('\n');
 
-    function _makeModelOutlineMaterial(color, skinned, ts) {
+    function _makeModelOutlineMaterial(color, skinned, ts, stencilRef) {
         var mat = new THREE.ShaderMaterial({
             uniforms: {
                 uColor:   { value: new THREE.Color(color) },
@@ -1078,6 +1095,13 @@ const ThreeRenderer = (function () {
             fog: false
         });
         if (skinned) mat.skinning = true;
+        /* Perimeter-only mask: draw ONLY where this unit's own body pixels
+           are absent (r128 enables the stencil TEST via stencilWrite, so it
+           stays true with a zeroed write mask — we test, never write). */
+        mat.stencilWrite = true;
+        mat.stencilWriteMask = 0;
+        mat.stencilRef = stencilRef || 0;
+        mat.stencilFunc = THREE.NotEqualStencilFunc;
         return mat;
     }
 
@@ -9983,6 +10007,7 @@ const ThreeRenderer = (function () {
             wrap.add(inner);
 
             var hasSkin = false;
+            var _stRef = _unitStencilRef(unit.id);
             m.traverse(function (n) {
                 if (!n.isMesh) return;
                 if (n.isSkinnedMesh) hasSkin = true;
@@ -10009,6 +10034,12 @@ const ThreeRenderer = (function () {
                     var lm = new THREE.MeshLambertMaterial({ map: tex });
                     if (n.isSkinnedMesh) lm.skinning = true;
                     if (apSpent) lm.color.setRGB(0.5, 0.5, 0.5);
+                    // Body pixels stamp this unit's stencil ref so the team-
+                    // outline hull (below) can mask itself down to the true
+                    // screen-space perimeter.
+                    lm.stencilWrite = true;
+                    lm.stencilRef = _stRef;
+                    lm.stencilZPass = THREE.ReplaceStencilOp;
                     if (tex) {
                         lm.emissive = new THREE.Color(0xffffff);
                         lm.emissiveMap = tex;
@@ -10056,7 +10087,7 @@ const ThreeRenderer = (function () {
             var _olColor = (unit.player === _viewerPlayerNum())
                 ? TEAM_OUTLINE_ALLY_COLOR : TEAM_OUTLINE_ENEMY_COLOR;
             _silTargets.forEach(function (n) {
-                var olMat = _makeModelOutlineMaterial(_olColor, !!n.isSkinnedMesh, ts);
+                var olMat = _makeModelOutlineMaterial(_olColor, !!n.isSkinnedMesh, ts, _stRef);
                 olMat._ew_shared = true;   // rig-cache owned — disposed in _disposeModelRig
                 var ol;
                 if (n.isSkinnedMesh) {
@@ -10066,7 +10097,9 @@ const ThreeRenderer = (function () {
                     ol = new THREE.Mesh(n.geometry, olMat);
                 }
                 ol.frustumCulled = false;
-                ol.renderOrder = 2;             // with the body — depth sorts the rim
+                ol.renderOrder = 3;             // AFTER every body (2) — the stencil
+                                                // stamps must all be down before the
+                                                // rim tests against them
                 ol.raycast = function () {};    // never block unit picking
                 ol._ew_silhouette = true;       // skipped by shadow flags / dispose sweeps / cine gate
                 ol._ew_teamOutline = true;

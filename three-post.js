@@ -1773,7 +1773,14 @@ const ThreePost = (function () {
             minFilter: THREE.LinearFilter,
             magFilter: THREE.LinearFilter,
             format: THREE.RGBAFormat,
-            stencilBuffer: false
+            /* Stencil ON: unit team outlines (three-renderer.js) stamp each
+               model body's pixels with a per-unit stencil ref and mask the
+               inverted-hull rim against it, so only the true screen-space
+               perimeter survives — no stencil attachment would silently
+               degrade back to full interior contour lines. The attachment
+               becomes DEPTH_STENCIL; nothing else in the chain reads depth
+               from this target, so it's free beyond a little VRAM. */
+            stencilBuffer: true
         });
 
         _composer = new THREE.EffectComposer(renderer, rt);
