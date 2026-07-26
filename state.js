@@ -348,15 +348,15 @@
            must NOT be in EW_MAP_META (no Δ variants, no picker card), so its
            GAME_MODES entry is written here by hand — same as the Guild Hub. */
         GAME_MODES.clash_stage = {
-            id: 'clash_stage', label: 'Clash Stage',
-            desc: '12×6 flat stage — two formation rows of 4 facing each other across the battlefield',
-            boardSize: 12, boardWidth: 12, boardHeight: 6, teamSize: 4,
+            id: 'clash_stage', label: 'Temple',
+            desc: '10×10 raised temple plateau — two formation columns of 4 facing each other across the sanctum',
+            boardSize: 10, boardWidth: 10, boardHeight: 10, teamSize: 4,
             winHourglasses: 0, hiddenItemSpawns: 0,
             blitzMode: true, hasTowers: false, isPrebuilt: true,
             terrainPatches: { water: [0, 0, 0], desert: [0, 0, 0], mountain: [0, 0, 0] },
             spawns: {
-                1: [{ x: 2, y: 1 }, { x: 2, y: 2 }, { x: 2, y: 3 }, { x: 2, y: 4 }],
-                2: [{ x: 9, y: 1 }, { x: 9, y: 2 }, { x: 9, y: 3 }, { x: 9, y: 4 }],
+                1: [{ x: 3, y: 6 }, { x: 3, y: 5 }, { x: 3, y: 4 }, { x: 3, y: 3 }],
+                2: [{ x: 6, y: 6 }, { x: 6, y: 5 }, { x: 6, y: 4 }, { x: 6, y: 3 }],
             },
             defaultBuilds: {
                 1: ['Warrior', 'Gunslinger', 'Black Mage', 'White Mage'],

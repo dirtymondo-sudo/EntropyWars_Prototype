@@ -11417,27 +11417,104 @@ function _mdBuildHub() {
 
 /* ── The Clash stage ───────────────────────────────────────────────────────
    The fixed battlefield for Clash (classic JRPG battle, MULTIPLAYER_MODES.
-   clash in state.js). 12×6, perfectly flat at the MapForge surface baseline:
-   two facing formation rows of 4 stone pads (x=2 and x=9, y=1..4) with a
-   7-tile grass field between them so spell cinematics have room to play.
+   clash in state.js). "Temple" (authored in the map editor, 2026-07-26):
+   a 10×10 raised octagonal temple plateau (height 2) ringed by T-pillar
+   colonnades and braziers, with N/S stairs down to the outer walkway. The
+   two facing formation columns of 4 (x=3 and x=6, y=3..6) stand on the
+   plateau, two tiles apart, so spell cinematics have room to play.
    Registered by hand like the Guild Hub — it must NOT be in EW_MAP_META
    (no Δ variants, no standard map-picker card). */
 (function _registerClashStage() {
-    const W = 12, H = 6, PAD = 13 /* road */, GRASS = 1;
-    const grid = [];
+    const W = 10, H = 10;
+    /* tid 48 = outer walkway, 55 = plateau floor, 104 = inner sanctum,
+       35 = stairs, 97 = plateau riser, 1 = grass base */
+    const grid = [
+        [48,48,48,48,48,48,48,48,48,48],
+        [48,48,48,48,35,35,48,48,48,48],
+        [48,48,55,55,55,55,55,55,48,48],
+        [48,55,55,55,55,55,55,55,55,48],
+        [48,55,55,104,104,104,104,55,55,48],
+        [48,55,55,104,104,104,104,55,55,48],
+        [48,55,55,55,55,55,55,55,55,48],
+        [48,48,55,55,55,55,55,55,48,48],
+        [48,48,48,48,35,35,48,48,48,48],
+        [48,48,48,48,48,48,48,48,48,48],
+    ];
+    const heightMap = [
+        [1,1,1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,1,1,1],
+        [1,1,2,2,2,2,2,2,1,1],
+        [1,2,2,2,2,2,2,2,2,1],
+        [1,2,2,2,2,2,2,2,2,1],
+        [1,2,2,2,2,2,2,2,2,1],
+        [1,2,2,2,2,2,2,2,2,1],
+        [1,1,2,2,2,2,2,2,1,1],
+        [1,1,1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,1,1,1],
+    ];
+    /* Voxel columns rebuilt from grid + heights: grass base at z0, plateau
+       tiles get a stone riser (tid 97) under their floor; the four stair
+       tiles carry their climb direction. */
+    const _stairDirs = { '4,1': 'N', '5,1': 'N', '4,8': 'S', '5,8': 'S' };
+    const voxels = [];
     for (let y = 0; y < H; y++) {
-        const row = new Array(W).fill(GRASS);
-        if (y >= 1 && y <= 4) { row[2] = PAD; row[9] = PAD; }
-        grid.push(row);
+        const vRow = [];
+        for (let x = 0; x < W; x++) {
+            const col = [{ z: 0, tid: 1 }];
+            if (heightMap[y][x] >= 2) {
+                col.push({ z: 1, tid: 97 }, { z: 2, tid: grid[y][x] });
+            } else {
+                const b = { z: 1, tid: grid[y][x] };
+                const sd = _stairDirs[x + ',' + y];
+                if (sd) b.sd = sd;
+                col.push(b);
+            }
+            vRow.push(col);
+        }
+        voxels.push(vRow);
     }
+    const objects = Array.from({ length: H }, () => Array.from({ length: W }, () => []));
+    const _obj = (x, y, oid, extra) => { objects[y][x] = [Object.assign({ oid, alignX: 'center', alignY: 'bottom', rot: 0, flipX: false, flipY: false }, extra || {})]; };
+    _obj(3, 1, 52, { leaf: 'floor' });
+    _obj(4, 1, 47);
+    _obj(5, 1, 47);
+    _obj(6, 1, 52, { leaf: 'floor' });
+    _obj(1, 2, 1, { leaf: 'leaves' });
+    _obj(8, 2, 1, { leaf: 'leaves' });
+    _obj(1, 7, 1, { leaf: 'leaves' });
+    _obj(6, 7, 52, { leaf: 'floor' });
+    _obj(8, 7, 1, { leaf: 'leaves' });
+    _obj(4, 8, 47, { rot: 135 });
+    _obj(5, 8, 47, { rot: 135 });
     PREBUILT_MAPS.clash_stage = {
-        name: 'Clash Stage', w: W, h: H,
+        name: 'Temple', w: W, h: H,
         grid,
-        heightMap: Array.from({ length: H }, () => new Array(W).fill(3)),
-        objects: Array.from({ length: H }, () => Array.from({ length: W }, () => [])),
+        heightMap,
+        objects,
+        voxels,
+        monuments: [
+            { kind: 'tpillar', x: 2, y: 7, rot: 0, foot: 1, maxH: 3, seed: 26020 },
+            { kind: 'tpillar', x: 3, y: 7, rot: 0, foot: 1, maxH: 3, seed: 82927 },
+            { kind: 'tpillar', x: 7, y: 7, rot: 0, foot: 1, maxH: 3, seed: 40083 },
+            { kind: 'tpillar', x: 6, y: 7, rot: 180, foot: 1, maxH: 3, seed: 83192 },
+            { kind: 'tpillar', x: 2, y: 2, rot: 0, foot: 1, maxH: 3, seed: 84389 },
+            { kind: 'tpillar', x: 3, y: 2, rot: 0, foot: 1, maxH: 3, seed: 77226 },
+            { kind: 'tpillar', x: 7, y: 2, rot: 0, foot: 1, maxH: 3, seed: 28950 },
+            { kind: 'tpillar', x: 6, y: 2, rot: 0, foot: 1, maxH: 3, seed: 24209 },
+            { kind: 'tpillar', x: 1, y: 6, rot: 90, foot: 1, maxH: 3, seed: 25704 },
+            { kind: 'tpillar', x: 1, y: 5, rot: 270, foot: 1, maxH: 3, seed: 40967 },
+            { kind: 'tpillar', x: 1, y: 4, rot: 90, foot: 1, maxH: 3, seed: 12546 },
+            { kind: 'tpillar', x: 1, y: 3, rot: 90, foot: 1, maxH: 3, seed: 99393 },
+            { kind: 'tpillar', x: 8, y: 3, rot: 90, foot: 1, maxH: 3, seed: 21686 },
+            { kind: 'tpillar', x: 8, y: 4, rot: 270, foot: 1, maxH: 3, seed: 93653 },
+            { kind: 'tpillar', x: 8, y: 5, rot: 90, foot: 1, maxH: 3, seed: 17300 },
+            { kind: 'tpillar', x: 8, y: 6, rot: 270, foot: 1, maxH: 3, seed: 83443 },
+            { kind: 'brazier', x: 3, y: 8, rot: 0, foot: 1, maxH: 2, seed: 82160 },
+            { kind: 'brazier', x: 6, y: 8, rot: 0, foot: 1, maxH: 2, seed: 55447 },
+        ],
         spawns: {
-            1: [{ x: 2, y: 1 }, { x: 2, y: 2 }, { x: 2, y: 3 }, { x: 2, y: 4 }],
-            2: [{ x: 9, y: 1 }, { x: 9, y: 2 }, { x: 9, y: 3 }, { x: 9, y: 4 }],
+            1: [{ x: 3, y: 6 }, { x: 3, y: 5 }, { x: 3, y: 4 }, { x: 3, y: 3 }],
+            2: [{ x: 6, y: 6 }, { x: 6, y: 5 }, { x: 6, y: 4 }, { x: 6, y: 3 }],
         },
     };
     MAP_LAYOUT_PRESETS.clash_stage = {

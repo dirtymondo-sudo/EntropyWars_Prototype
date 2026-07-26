@@ -1292,7 +1292,7 @@
             list.push({ modeId: 'prebuilt_custommap', name: 'Custom Map', size: '20×20', team: 6, floors: false, w: 20, h: 20, isPrebuilt: true });
             /* Clash's fixed JRPG stage — only ever offered when the Clash mode
                is selected (it's the mode's sole compatible map). */
-            list.push({ modeId: 'clash_stage', name: 'Clash Stage', size: '12×6', team: 4, floors: false, w: 12, h: 6, isPrebuilt: true });
+            list.push({ modeId: 'clash_stage', name: 'Temple', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true });
             // Only the 8×8 Δ appears in the picker; the 12×12 Arena Δ is a
             // hidden sibling that _msConfirm swaps in when the mode is Arena.
             meta.filter(m => m.isDelta && !m.isDeltaArena).forEach(m => {
