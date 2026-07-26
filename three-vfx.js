@@ -81,6 +81,7 @@ const ThreeVFX = (function () {
         'ring-7':            { r: 1.00, g: 0.60, b: 0.80, blend: 'add' },
 
         'smoke':             { r: 0.27, g: 0.24, b: 0.22, blend: 'nrm' },
+        'smoke-soft':        { r: 0.62, g: 0.59, b: 0.55, blend: 'nrm' },
         'scorch':            { r: 0.12, g: 0.08, b: 0.04, blend: 'nrm' },
         'dust-puff':         { r: 0.63, g: 0.55, b: 0.43, blend: 'nrm' },
         'debris':            { r: 0.47, g: 0.39, b: 0.27, blend: 'nrm' },
@@ -200,6 +201,11 @@ const ThreeVFX = (function () {
             [0,255,255,255,1],[0.22,255,240,180,0.95],[0.48,255,180,60,0.7],[0.68,255,100,20,0.35],[0.85,180,40,10,0]]},
         'smoke': { type: 'radial', stops: [
             [0,70,60,55,0.78],[0.35,50,42,38,0.55],[0.65,30,26,24,0.25],[0.80,20,18,16,0]]},
+        /* lighter, softer-falloff smoke used by the Smoke Screen zone bank —
+           overlapping puffs read as one rolling grey cloud instead of a pile
+           of dark blobs (the classic 'smoke' stays for impact/burn wisps) */
+        'smoke-soft': { type: 'radial', stops: [
+            [0,172,164,154,0.55],[0.30,148,140,131,0.42],[0.55,118,112,105,0.24],[0.78,88,84,79,0.09],[0.92,70,67,63,0]]},
         'scorch': { type: 'radial', stops: [
             [0,20,10,5,0.9],[0.30,35,18,8,0.8],[0.55,55,28,12,0.5],[0.75,80,40,18,0.18],[0.90,100,50,20,0]]},
         'flame': { type: 'linear', dir: 'up', stops: [
