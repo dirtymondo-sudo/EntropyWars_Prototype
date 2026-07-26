@@ -4756,6 +4756,29 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       return false;
     };
 
+    // Self-origin cross novae (Crossfire's diagonal X, cardinal crosses):
+    // the burst only touches tiles ON the arms, so "castable from (sxx,syy)"
+    // = the clicked enemy sits on an arm — a plain Manhattan-radius check
+    // offered casts (and MOVE→CAST spots) the shape never actually hits.
+    // Diamond novae really are the Manhattan disc, so they keep that rule.
+    // Mirrors getCrossArea (battle.js) — keep in sync.
+    const crossArmHits = (sxx, syy) => {
+      const r = sp.crossRadius || 1;
+      const cells = [{ x: tx, y: ty }];
+      if (targetUnit && targetUnit._isBoss && targetUnit._bossSize === 2) {
+        cells.push({ x: targetUnit.x + 1, y: targetUnit.y },
+                   { x: targetUnit.x, y: targetUnit.y + 1 },
+                   { x: targetUnit.x + 1, y: targetUnit.y + 1 });
+      }
+      return cells.some(c => {
+        const adx = Math.abs(c.x - sxx), ady = Math.abs(c.y - syy);
+        if (adx === 0 && ady === 0) return false;
+        if (sp.diamond) return adx + ady <= r;
+        if (sp.diagonal) return adx === ady && adx <= r;
+        return (adx === 0 && ady <= r) || (ady === 0 && adx <= r);
+      });
+    };
+
     if (isBarrage) {
       // Barrage novae (Meow, Quake, Requiem…) center on the CASTER and auto-hit
       // every enemy inside their radius — aoeRadius for self-origin bursts, else
@@ -4766,8 +4789,12 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       inSpellRange = dist >= 1 && dist <= barrageRadius && (sp.ignoresLineOfSight || !spLos);
     } else if (isAoeOriginSelf) {
 
-      const selfRadius = isCross ? (sp.crossRadius || 1) : (sp.aoeRadius || 1);
-      inSpellRange = dist <= selfRadius;
+      // Cross novae gate on the true arm footprint (X / cross / diamond) —
+      // the Manhattan `dist` here said an orthogonally-adjacent enemy was
+      // "in range" of an X whose arms can never touch it, and said a
+      // diagonal enemy at (2,2) was out of range of a radius-2 X that hits it.
+      inSpellRange = isCross ? crossArmHits(actingUnit.x, actingUnit.y)
+        : dist <= (sp.aoeRadius || 1);
     } else if (isLine) {
 
       inSpellRange = dist >= 1 && beamRayHits(actingUnit.x, actingUnit.y);
@@ -4819,8 +4846,41 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         spMoveTile = findMoveIntoRange(barrageRadius, spellApCost, spLongRange);
       } else if (isAoeOriginSelf) {
 
-        const selfRadius = isCross ? (sp.crossRadius || 1) : (sp.aoeRadius || 1);
-        spMoveTile = findMoveIntoRange(selfRadius, spellApCost, spLongRange);
+        if (isCross) {
+          // Shape-aware MOVE→CAST for self-origin crosses: step (or jump) to a
+          // tile whose ARMS actually cross the clicked enemy. findMoveIntoRange
+          // only measured Manhattan distance, so for Crossfire's X it happily
+          // walked the caster to a spot the diagonal arms never touch and the
+          // nova whiffed — the "moves me somewhere that doesn't hit" bug.
+          spMoveTile = null;
+          if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function'
+              && (unitAP - 1) >= spellApCost) {
+            const cand = [];
+            // Walk legs only BEFORE the first move: the second move of a turn
+            // drains ALL AP (finishMoveAt), so a walk-then-nova after moving
+            // could never cast. Takeoff tiles cost 2 AP — excluded outright.
+            if (canUnitMove(actingUnit) && (actingUnit.movesThisTurn || 0) < 1) {
+              try { cand.push(...getMoveTiles(actingUnit).filter(t => !t._takeoff)); } catch (e) {}
+            }
+            if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
+              // Tag leap candidates so the executor fires doJump — a raw jump
+              // tile is not a legal doMove destination and would just "Block!".
+              try { cand.push(...getJumpTiles(actingUnit).map(t => ({ x: t.x, y: t.y, z: t.z, _jumpVerb: true }))); } catch (e) {}
+            }
+            let best = null, bestD = -1;
+            for (const t of cand) {
+              if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
+              if (t.x === tx && t.y === ty) continue;
+              if (!crossArmHits(t.x, t.y)) continue;
+              // Farthest hitting tile wins (kite/safety), matching findMoveIntoRange.
+              const d = Math.abs(t.x - tx) + Math.abs(t.y - ty);
+              if (d > bestD) { bestD = d; best = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb }; }
+            }
+            spMoveTile = best;
+          }
+        } else {
+          spMoveTile = findMoveIntoRange(sp.aoeRadius || 1, spellApCost, spLongRange);
+        }
       } else if (isLine) {
         // Beam move-then-cast: step (or jump) to any reachable tile that puts
         // the enemy on one of the 8 ray headings with the ray unobstructed —
