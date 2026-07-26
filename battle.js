@@ -3673,6 +3673,16 @@
             } else {
                 // Single-hit damage path
                 let damage = computeSpellBase(spell, spellPower);
+                // Time Rewind: replay the target's last landed blow back onto
+                // them. Echo replaces the base roll when it's bigger; a target
+                // that hasn't hit anything yet still eats the (WEAK) base.
+                if (spell.echoLastDealt) {
+                    const _echo = Math.round(target._lastHitDealt || 0);
+                    if (_echo > damage) {
+                        damage = Math.min(_echo, 500);
+                        addLog(`⏪ ${spell.name} replays ${unitDisplayName(target)}'s last blow in reverse — ${damage} damage returns to sender!`);
+                    }
+                }
                 if (spell.actedTargetBonus && unitFinished(target)) {
                     damage += spell.actedTargetBonus;
                 }
@@ -15539,6 +15549,15 @@
 
                 if (sourceUnit) {
                     sourceUnit._trackDmgDealt = (sourceUnit._trackDmgDealt || 0) + finalDamage;
+
+                    // Time Rewind fuel: remember the last SINGLE hit this unit
+                    // landed on an enemy (DoT ticks don't count — the rewind
+                    // replays a blow, not a bleed). Host-authoritative and it
+                    // lives on the unit object, so state-sync carries it to
+                    // guests for free.
+                    if (damageType !== 'dot' && isEnemyUnit(sourceUnit, target)) {
+                        sourceUnit._lastHitDealt = finalDamage;
+                    }
 
                     // Balance Lab per-cast telemetry: attribute enemy damage to
                     // the spell currently resolving for this caster.
@@ -39185,6 +39204,16 @@
                         }
                     }, Math.max(0, impactDelay - actionMs(480)));
                 }
+
+                /* ── Calcify — the petrification creep (stone shell + dust +
+                   grey-out grade, ThreeVFXEffects.sigCalcify3D). ── */
+                if (spell.id === 'raceCalcify' && !_skipVisuals()
+                    && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.sigCalcify3D === 'function') {
+                    const _ccX = target.x, _ccY = target.y;
+                    window.setTimeout(() => {
+                        window.ThreeVFXEffects.sigCalcify3D(_ccX, _ccY);
+                    }, Math.max(0, impactDelay - actionMs(160)));
+                }
                 unit.mp -= effectiveSpellCost;
                 window.setTimeout(() => {
                     // Star Crossed: read the target's zodiac — the affliction
@@ -40104,6 +40133,24 @@
                         addLog(`${spell.name} hits ${hitTargets.length} target${hitTargets.length !== 1 ? 's' : ''} in a line.`);
                         scheduleBoardRender();
                     }, impactDelay);
+
+                    // Sonic Boomerang: the crescent comes BACK through the same
+                    // line and everyone still standing eats a second pass. The
+                    // return VFX is drawn by the beam handler (the boomerang
+                    // beam def animates out-and-back on its own); only the
+                    // damage needs a second tick here.
+                    if (spell.boomerang) {
+                        const _boomReturnMs = actionMs(560);
+                        window.setTimeout(() => {
+                            if (state.phase !== 'battle') return;
+                            const backTargets = _applyLineDamage(unit, spell, dx, dy, (spell.dmg || 0), spellPower);
+                            if (backTargets.length > 0) {
+                                addLog(`🪃 ${spell.name} scythes back through the line — ${backTargets.length} target${backTargets.length !== 1 ? 's' : ''} hit again!`);
+                            }
+                            scheduleBoardRender();
+                        }, impactDelay + _boomReturnMs);
+                        completionDelay = Math.max(completionDelay, impactDelay + _boomReturnMs + actionMs(300));
+                    }
                 }
             }
 

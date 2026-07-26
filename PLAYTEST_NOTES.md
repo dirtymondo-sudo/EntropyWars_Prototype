@@ -4,7 +4,76 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## SPELL LIBRARY DEV TOOL + SPELL LAB (2026-07-26, LATEST) — data.js, ui.js, battle.js, map.js, three-vfx-effects.js, styles-hud.css, index.html
+## PSYCHEDELIC / COSMIC SPELL DROP (2026-07-26, LATEST) — data.js, battle.js, three-vfx-effects.js, index.html
+Token → `20260726x-psy`. Nine new spells with bespoke PS1-JRPG set-pieces, all
+composed from the existing signature kit (orb/charge-spiral/dash-wave/snow/
+kaleidoscope/wireframe/grade). Catalogue lives in three-vfx-effects.js above
+`_sigEgoDeath3D`; every composer is exported on `ThreeVFXEffects` (`sigEgoDeath3D`
+etc.) for the Spell Lab.
+
+### The spells (data.js)
+- **Ego Death** (`sharedEgoDeath`, mind ULTIMATE — shaman + machine elves):
+  200 dmg single-target + Stun, 2 AP, CD 2. The trip grade at FULL tilt
+  (trip 1.0, hueRate 0.9), extra-long imploding-orb telegraph (1.08s), then
+  white shell + spectrum burst + kaleidoscope. Bolt = `_bolt_egodeath`
+  (boltGeometry).
+- **Time Rewind** (`raceTimeRewind`, glitch, anomaly): NEW MECHANIC
+  `echoLastDealt: true` — damage equals the target's last landed hit
+  (tracked as `unit._lastHitDealt` in applyDamageToUnit, DoT excluded,
+  capped 500, falls back to base 80 if they haven't hit anything). VFX: clock
+  circle spinning BACKWARD (negative spin), reverse-emitter streaks seeking
+  in with negative spiralDeg, scrub-stutter spellGradeKicks, hueRate -0.3.
+- **Merkaba** (`raceMerkaba`, seraphim, divine ULTIMATE): 3×3 AOE 160. Two
+  wireframe tetrahedra (one flipped = star tetrahedron) counter-rotate over
+  the target with THREE orbit rings of motes (engine `orbit` physics), then
+  collapse → orb burst + light pillar. Fires from the aoe intent.
+- **Absolute Zero** (ice queen — EXISTING id `raceAbsoluteZero`, upgraded):
+  now element ice, Freezes 2 turns (was Stun), CD 2. Show: whiteout + swirling
+  snow vortex + ice cage whose spin DECAYS TO A DEAD STOP (time freezes at
+  0 K) before shattering. Old `_BOLT_WIRING` entry removed → `_bolt_abszero`
+  with boltGeometry.
+- **Sonic Boomerang** (`raceSonicBoomerang`, siren, line): NEW MECHANIC
+  `boomerang: true` on line kind — battle.js runs `_applyLineDamage` a second
+  time ~560ms after the first (everyone in the line hit TWICE). VFX rides the
+  beam intent: `beamBoomerang` def flag → `_sigSonicBoomerang3D` (dash-waves
+  out AND back, rings popping per tile both directions, no laser cylinder).
+- **Black Hole** (`sharedBlackHole`, cosmic wraith + voidweaver): 5×5 aoePull
+  120 + Slow, grounds flyers, CD 2. True BLACK sphere (non-additive
+  MeshBasicMaterial — the one thing on the board emitting nothing) + photon
+  torus + two counter-tilted accretion RingGeometry discs + spaghettified
+  infall streaks (seek spiralDeg 340 + stretchVel), then collapse → one
+  escaping flash. Heavy warp grade.
+- **Nebula** (`sharedNebula`, cosmic wraith + superhero): 3×3 zone, 3 rounds,
+  Smoke-Screen-style concealment (allies invisible inside) + enemy Slow.
+  Star-nursery visual: tinted dust banks + staggered twinkles.
+- **Lava Lamp** (`raceLavaLamp`, barbarella, zone): 3×3, 3 rounds, Poison +
+  Slow. The lit blood-glob pool RECOLOURED (`globColor` neon palette),
+  negative gravity risers + delayed sinker wave + tinted haze. Far out.
+- **Calcify** (`raceCalcify`, gargoyle, debuff): INT -2 stages, SPD -1, Slow 2
+  — the intelligence debuff. Grey shell implosion + stone dust + granite
+  grade. VFX fired from a battle.js debuff-branch hook (`sigCalcify3D`), same
+  pattern as the spiral-beam debuffs.
+
+### Mechanics plumbing (battle.js)
+- `applyDamageToUnit`: records `sourceUnit._lastHitDealt` per enemy hit
+  (non-DoT) — Time Rewind fuel, syncs to guests via unit serialization.
+- `_applyDamageSpellHit`: `spell.echoLastDealt` swaps in the echo damage when
+  it beats the base roll (log line announces the replay).
+- line kind: `spell.boomerang` schedules the second pass + extends
+  completionDelay; return log only when someone is still standing.
+- debuff branch: raceCalcify hook next to the spiral-beam hook.
+
+### Online parity (RULE #2)
+Zero new plumbing: everything rides bolt/impact/aoe/aura/beam intents through
+`VFX3D.fire` (already relayed host→guest), and the two mechanics run
+host-side with results carried by state-sync.
+
+### Verification
+`node --check` on data.js / battle.js / three-vfx-effects.js. NOT playtested
+in-browser (RULE #1c). Staging weights via SPELL_STAGE_MAP (3 new ultimates:
+Ego Death, Merkaba, Absolute Zero, Black Hole ride the world-drop spotlight).
+
+## SPELL LIBRARY DEV TOOL + SPELL LAB (2026-07-26) — data.js, ui.js, battle.js, map.js, three-vfx-effects.js, styles-hud.css, index.html
 Token `20260726h-pb3d` → `20260726i-slb`. Owner request: a Codex-style dev tool
 (Settings → Developer → **Open Spell Library**) to browse/edit/add/delete/rename
 every spell + ability, reassign job learnsets & race movepools, preview the full

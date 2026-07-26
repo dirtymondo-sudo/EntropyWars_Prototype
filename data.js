@@ -5715,6 +5715,38 @@ const SHARED_SMOKE_SCREEN = {
     desc: 'Blanket a 3×3 area in smoke for 2 turns. Allies inside are hidden and stay invisible only while they remain in the cloud.'
 };
 
+/* ── 2026-07-26 psychedelic/cosmic spell drop ────────────────────────────
+   Ego Death — the trip grade at full tilt (shaman capstone, machine elves
+   too: they ARE the entities on the other side of the trip).
+   Black Hole — cosmic wraith + voidweaver: a 5×5 event horizon aoePull.
+   Nebula — cosmic wraith + superhero: the star-cloud concealment field. */
+const SHARED_EGO_DEATH = {
+    id: 'sharedEgoDeath', spellType: 'alien', element: 'psychic', name: 'Ego Death',
+    type: 'damage', cost: 50, dmg: 200, range: 3, apCost: 2, cooldownRounds: 2,
+    kind: 'damage', damageType: 'magic',
+    statusEffects: [{ id: 'stun', duration: 1 }],
+    desc: 'Dissolve the target\'s sense of self entirely. The world drains away, the colour wheel spins, and what is left of "them" implodes into white light. Deals MASSIVE magic damage to a Single Enemy and Stuns them while the pieces reassemble. Cooldown: 2 rounds.'
+};
+
+const SHARED_BLACK_HOLE = {
+    id: 'sharedBlackHole', spellType: 'alien', element: 'shadow', name: 'Black Hole',
+    type: 'damage', cost: 45, dmg: 120, range: 4, apCost: 2, cooldownRounds: 2,
+    kind: 'aoePull', damageType: 'magic', aoeRadius: 2, pullToCenter: true,
+    groundsFlyers: true,
+    statusEffects: [{ id: 'slow', duration: 1 }],
+    desc: 'Collapse a singularity: everything in a 5×5 event horizon is dragged screaming toward the center and crushed for MEDIUM magic damage. Applies Slow. Knocks flying enemies out of the sky. Cooldown: 2 rounds.'
+};
+
+const SHARED_NEBULA = {
+    id: 'sharedNebula', spellType: 'alien', element: 'arcane', name: 'Nebula',
+    type: 'utility', cost: 25, range: 4, apCost: 1,
+    kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 3,
+    smokeConcealment: true,
+    statusEffects: [{ id: 'slow', duration: 1 }],
+    allyStatusEffects: [{ id: 'invisible', duration: 1 }],
+    desc: 'Unfurl a newborn nebula over a 3×3 area for 3 rounds. Allies inside vanish into the stardust (invisible while they stay in the cloud); enemies wade through it Slowed.'
+};
+
 // 2026-07-13: EMP Burst left the shared Assassin spell pool (data: empBurst is
 // Engineer-school now) and lives on as a RACIAL for the machine races — it's
 // their hardware, not spy-school tradecraft.
@@ -5801,6 +5833,10 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statusEffects: [{ id: 'protect', duration: 1 }],
           desc: 'Empowers a Single Ally. Applies Protect. Cooldown: 2 rounds.' },
+        { id: 'raceMerkaba', spellType: 'divine', element: 'light', name: 'Merkaba',
+          type: 'damage', cost: 45, dmg: 160, range: 4, apCost: 2, cooldownRounds: 2,
+          kind: 'aoe', damageType: 'magic', aoeRadius: 1,
+          desc: 'Summon the sacred chariot: counter-rotating star tetrahedra spin up over the battlefield, gather three rings of light, and collapse into a detonation. Deals HEAVY magic damage to All Enemies in an AOE. Cooldown: 2 rounds.' },
     ],
     'orb of light': [
         { id: 'racePrismBurst', spellType: 'divine', name: 'Prism Burst',
@@ -5869,6 +5905,12 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stagger', duration: 1 }],
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           desc: 'Grab an adjacent enemy and release them from above. Damage scales with elevation delta. Staggers on landing.' },
+        { id: 'raceCalcify', spellType: 'unholy', element: 'earth', name: 'Calcify',
+          type: 'debuff', cost: 25, range: 3, apCost: 1,
+          kind: 'debuff',
+          statStageBoost: { int: -2, spd: -1 },
+          statusEffects: [{ id: 'slow', duration: 2 }],
+          desc: 'Turn the target\'s thoughts to stone. Grey creeps up from their feet as their mind petrifies — lowers INT by 2 stages and SPD by 1 stage, and Slows them for 2 turns as the joints harden.' },
         SHARED_RAMPART,
         SHARED_FISSURE,
         SHARED_WING_ATTACK
@@ -6128,6 +6170,10 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'silence', duration: 1 }],
           desc: 'Deals WEAK magic damage to All Enemies around the caster (AOE). Applies Silence.' },
+        { id: 'raceSonicBoomerang', spellType: 'anomaly', name: 'Sonic Boomerang',
+          type: 'damage', cost: 35, dmg: 80, range: 4, apCost: 1,
+          kind: 'line', damageType: 'magic', lineWidth: 1, boomerang: true,
+          desc: 'Hurl a scything crescent of sound down a line — then it comes BACK. Every enemy in its path takes WEAK magic damage on the way out AND again on the return.' },
         SHARED_TIDAL_SURGE
     ],
 
@@ -6164,6 +6210,11 @@ const RACE_ABILITIES = {
           kind: 'debuff',
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Weakens a Single Enemy. Applies Stun.' },
+        { id: 'raceTimeRewind', spellType: 'anomaly', element: 'psychic', name: 'Time Rewind',
+          type: 'damage', cost: 35, dmg: 80, range: 4, apCost: 1,
+          kind: 'damage', damageType: 'magic',
+          echoLastDealt: true,
+          desc: 'Corrupt the target\'s timeline and play their last blow BACKWARD — they take the same damage their most recent hit dealt (never less than WEAK). The harder they hit, the harder the rewind.' },
         SHARED_FISSURE
     ],
     'ai': [
@@ -6368,6 +6419,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Applies Slow.' },
         SHARED_HEX_OF_TOIL,
+        SHARED_EGO_DEATH,
     ],
     'mad scientist': [
         { id: 'raceTeslaTrap', spellType: 'tech', element: 'lightning', name: 'Tesla Coil',
@@ -6696,6 +6748,7 @@ const RACE_ABILITIES = {
            the prism lattice already IS the machine elves' laser identity.) */
         _mkBlink('short', { id: 'raceMirrorBlink', spellType: 'alien', element: 'arcane', name: 'Mirror Blink',
           desc: 'Fold through the light and blink to any tile within 3 — reposition inside your own lattice, or slip out of a collapsing trap.' }),
+        SHARED_EGO_DEATH,
     ],
     'cyclops': [
         { id: 'raceBalefulGaze', spellType: 'alien', name: 'Baleful Gaze',
@@ -6925,6 +6978,7 @@ const RACE_ABILITIES = {
           kind: 'swap', requiresLineOfSight: false,
           desc: 'Swaps positions with the target unit.' },
         SHARED_POISON_SWAMP,
+        SHARED_BLACK_HOLE,
     ],
     'cosmic wraith': [
         { id: 'raceEntropicBeam', spellType: 'alien', name: 'Entropic Beam',
@@ -6940,7 +6994,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Impose entropy on a 3×3 area for 2 turns — everything inside takes MEDIUM damage.' },
         SHARED_FISSURE,
-        SHARED_SUMMON_BLIZZARD
+        SHARED_SUMMON_BLIZZARD,
+        SHARED_BLACK_HOLE,
+        SHARED_NEBULA
     ],
     'superhero': [
         _mkCharge({ id: 'raceHeroicLeap', spellType: 'human', name: 'Heroic Leap' }),
@@ -6958,6 +7014,7 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statusEffects: [{ id: 'protect', duration: 2 }],
           desc: 'Empowers the caster. Applies Protect. Cooldown: 2 rounds.' },
+        SHARED_NEBULA,
     ],
     'general': [
         { id: 'raceRallyCommand', spellType: 'human', name: 'Rally Command',
@@ -7288,7 +7345,12 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 30, dmg: 120, range: 2,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'burn', duration: 2 }],
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Burn.' }
+          desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Burn.' },
+        { id: 'raceLavaLamp', spellType: 'anomaly', element: 'poison', name: 'Lava Lamp',
+          type: 'utility', cost: 30, range: 4, apCost: 1,
+          kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 3,
+          statusEffects: [{ id: 'poison', duration: 2 }, { id: 'slow', duration: 1 }],
+          desc: 'Switch on a groovy 3×3 lamp field for 3 rounds — wandering neon globs rise and fall through the zone. Enemies wading through the goo are Poisoned and Slowed. Far out.' }
     ],
 
     'black goo': [
@@ -7381,11 +7443,11 @@ const RACE_ABILITIES = {
           desc: 'Deals WEAK magic damage to All Enemies in a diamond-shaped AOE. Applies Slow. Leaves ice tiles behind.' },
         SHARED_FLASH_FREEZE,
         SHARED_SUMMON_BLIZZARD,
-        { id: 'raceAbsoluteZero', spellType: 'anomaly', name: 'Absolute Zero',
-          type: 'damage', cost: 40, dmg: 160, range: 3, apCost: 2,
+        { id: 'raceAbsoluteZero', spellType: 'anomaly', element: 'ice', name: 'Absolute Zero',
+          type: 'damage', cost: 40, dmg: 160, range: 3, apCost: 2, cooldownRounds: 2,
           kind: 'damage', damageType: 'magic',
-          statusEffects: [{ id: 'stun', duration: 1 }],
-          desc: 'Deals HEAVY magic damage to a Single Enemy. Applies Stun.' }
+          statusEffects: [{ id: 'frozen', duration: 2 }],
+          desc: 'Stop every molecule in the target\'s body. The world whites out, a crystal lattice locks around them, and time itself freezes before the shatter. Deals HEAVY magic damage to a Single Enemy and FREEZES them solid. Cooldown: 2 rounds.' }
     ],
 
     'juggernaut': [

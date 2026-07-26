@@ -1911,7 +1911,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         racePlasmaWhip:       '_bolt_plasma',
         raceKiBlast:          '_bolt_ki',
         raceIceSpear:         '_bolt_ice',
-        raceAbsoluteZero:     '_bolt_ice',
+        /* raceAbsoluteZero moved to '_bolt_abszero' — see the psychedelic/
+           cosmic drop block further down; the bolt now detonates the full
+           deep-freeze signature on arrival (boltGeometry). */
         /* racePrismBurst moved to '_bolt_prism' — see the prismatic block
            further down; it intercepts the bolt with the refraction rig. */
         raceDeathGaze:        '_bolt_psi',
@@ -3064,6 +3066,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            both the caster and the carved route) */
         if (spellId === 'swordBeam') {
             try { _sigSwordWave3D(fromX, fromY, hitTiles); } catch (e) {}
+        }
+
+        /* Sonic Boomerang owns its ENTIRE travel: sound crescents race out
+           to the end of the line and come back (battle.js lands the second
+           damage pass on the return). No laser cylinder wanted — bail after
+           the bespoke show. */
+        if (beamDef.beamBoomerang) {
+            try { _sigSonicBoomerang3D(fromX, fromY, hitTiles, beamDef); } catch (e) {}
+            return;
         }
 
         var chargeMs        = beamDef.chargeMs != null ? beamDef.chargeMs : 80;
@@ -14300,6 +14311,932 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return run;
     }
 
+    /* ═══════════════════════════════════════════════════════════════════════
+       PSYCHEDELIC / COSMIC SPELL DROP (2026-07-26)
+
+       Nine bespoke set-pieces built almost entirely from the existing
+       signature kit (orb / charge-spiral / dash-wave / snow / kaleidoscope /
+       fractal tunnel / wireframe / grade). Catalogue:
+
+         _sigEgoDeath3D        the trip grade at full tilt — world drains to
+                               black, hue wheel spins, extra-long imploding
+                               orb telegraph, white shell + kaleidoscope burst
+         _sigTimeRewind3D      the victim's timeline scrubbed backward:
+                               reverse emitters, a clock circle spinning the
+                               wrong way, playback-stutter aberration kicks
+         _sigMerkaba3D         counter-rotating wireframe star tetrahedra +
+                               three orbit rings of light collapsing into an
+                               orb burst (sacred geometry overdrive)
+         _sigAbsoluteZero3D    the ice ultimate: whiteout, snow vortex, a
+                               crystal cage whose spin decays to a dead stop
+                               (time freezes) before the shatter
+         _sigSonicBoomerang3D  crescent waves racing out AND back down a line
+         _sigBlackHole3D       event horizon + accretion discs + infalling
+                               spaghettified streaks, then the collapse flash
+         _sigLavaLampAura3D    rising/falling neon globs over a zone (the lit
+                               blood-glob pool, recoloured; negative gravity)
+         _sigNebulaAura3D      a newborn star nursery: tinted dust, twinkles
+         _sigCalcify3D         petrification creep — grey shell, stone dust
+
+       ONLINE PARITY (RULE #2): every one of these fires from intents that
+       already ride VFX3D.fire's host→guest relay (bolt/impact/aoe/aura/beam)
+       or from battle.js hooks inside relayed beats — no new plumbing.
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    /* ── EGO DEATH — the self dissolves ──────────────────────────────────
+       Phase A (0–1.1s): the world goes away. Full-tilt trip grade with the
+       victim spotlit, mandala + fractal tunnel, and the LONG imploding orb —
+       everything they are contracts to a point. Phase B: the point lets go —
+       white shell detonation, spectrum burst, hard aberration snap. ────── */
+    function _sigEgoDeath3D(tx, ty, opts) {
+        opts = opts || {};
+        if (_catOff('spells')) return;
+        if (_suppressed()) return;
+        var ts = _cfg().tileSize || 128;
+        var implodeMs = opts.implodeMs != null ? opts.implodeMs : 1080;
+        var totalMs = implodeMs + 1150;
+
+        /* the grade at FULL tilt — this is the spell the slider goes to 11 for */
+        var focus = null;
+        try {
+            var wp0 = _worldPos(tx, ty);
+            focus = [{ x: wp0.x, y: wp0.y + ts * 0.55, z: wp0.z, r: ts * 1.3 }];
+        } catch (e) {}
+        _sigPsychedelicTint({
+            inMs: 260, holdMs: totalMs - 900, outMs: 560,
+            trip: 1.0, hueRate: 0.9, warp: 0.0045, chroma: 12,
+            tint: [1.26, 0.62, 1.28], tintAmt: 0.6,
+            dim: 0.86, focus: focus
+        });
+
+        /* the scenery of the trip — mandala above/below, a pentagonal tunnel
+           (Bad Trip runs triangles, Psychosis hexes — the family stays
+           distinguishable) */
+        _sigKaleidoscope3D(tx, ty, { ms: totalMs * 0.9, radiusPx: ts * 1.9, ceilingH: 2.1 });
+        _sigFractalTunnel3D(tx, ty, { sides: 5, rings: 10, ms: totalMs * 0.85,
+                                      radiusPx: ts * 0.8, height: ts * 3.2, speed: 1.25 });
+
+        /* the EXTRA-LONG imploding orb telegraph — everything they are,
+           contracting */
+        _sigOrbBurst3D(tx, ty, {
+            mode: 'in', color: 0xffffff, ms: implodeMs,
+            r0: ts * 0.10, r1: ts * 1.6, opacity: 0.85
+        });
+        _sigChargeSpiral3D(tx, ty, {
+            count: 18, r0: ts * 0.9, r1: ts * 1.8, ms: implodeMs * 0.9,
+            spiralDeg: 300, sprite: 'psi-pulse', sizeMul: 1.2
+        });
+        /* second, tighter spectrum wave so the in-fall reads as a colour wheel */
+        window.setTimeout(function () {
+            if (_suppressed() || !_canSpawn()) return;
+            var c0 = tilePx(tx, ty), zf0 = unitSurfaceZ(tx, ty);
+            for (var i = 0; i < 21; i++) {
+                var a = (i / 21) * 6.2832;
+                var rad = ts * rn(0.7, 1.5);
+                var pms = rn(420, implodeMs * 0.62);
+                _spawn({
+                    x: c0.x + Math.cos(a) * rad, y: c0.y + Math.sin(a) * rad,
+                    z: zf0 + rn(8, ts * 1.1),
+                    mode: 'billboard', sprite: _SIG_SPECTRUM_SPRITES[i % _SIG_SPECTRUM_SPRITES.length],
+                    tint: _SIG_SPECTRUM[i % _SIG_SPECTRUM.length],
+                    ml: pms,
+                    seek: { x: c0.x, y: c0.y, z: zf0 + ts * 0.55, ms: pms, ease: 'in', spiralDeg: -260 },
+                    size0: rn(5, 10), size1: 1.5,
+                    opacity0: 0.95, opacity1: 0.6,
+                });
+            }
+        }, Math.max(0, implodeMs * 0.25));
+
+        /* Phase B — the point lets go */
+        window.setTimeout(function () {
+            if (_suppressed()) return;
+            var p = _post();
+            try { if (p && p.spellGradeKick) p.spellGradeKick(14, 280); } catch (e) {}
+            _sigOrbBurst3D(tx, ty, {
+                mode: 'out', color: 0xffffff, ms: 620,
+                r0: ts * 0.12, r1: ts * 1.95, opacity: 0.9
+            });
+            try { _sigSpectrumBurst3D(tx, ty, { radiusPx: ts * 1.8 }); } catch (e) {}
+            _sigScreenFlash('#ffffff', 300, 0.5);
+            _sigShake('hard');
+            try { if (p && p.bloomPulse) p.bloomPulse(0.85, 460); } catch (e) {}
+            /* the pieces of the self, scattering — pure white, then the world
+               floods back in colour behind them */
+            if (_canSpawn()) {
+                var c = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
+                for (var s = 0; s < 24; s++) {
+                    var sa = rn(0, Math.PI * 2), sv = rn(160, 380);
+                    _spawn({
+                        x: c.x, y: c.y, z: zf + ts * 0.55 + rn(-12, 12),
+                        vx: Math.cos(sa) * sv, vy: Math.sin(sa) * sv, vz: rn(60, 280),
+                        mode: 'billboard', sprite: 'flash',
+                        ml: rn(420, 820), size0: rn(6, 13), size1: 1,
+                        opacity0: 1, opacity1: 0, gravity: 240, drag: 1.0
+                    });
+                }
+            }
+        }, implodeMs);
+    }
+
+    /* ── TIME REWIND — the victim's last move played backward ────────────
+       Everything about this effect runs in reverse: emitters retrace INTO
+       the unit (negative spiral), the clock circle spins counter-clockwise,
+       and the frame stutters with scrub-kicks like a tape being dragged
+       backward over the heads. ─────────────────────────────────────────── */
+    function _sigTimeRewind3D(tx, ty, opts) {
+        opts = opts || {};
+        if (_catOff('spells')) return;
+        if (_suppressed()) return;
+        var ts = _cfg().tileSize || 128;
+        var ms = opts.ms != null ? opts.ms : 1250;
+        var p = _post();
+
+        /* cold, signal-degraded grade with the victim spotlit; two stutter
+           kicks = the playhead scrubbing */
+        if (p && p.spellGrade && !window.EW_DISABLE_SPELL_GRADE) {
+            var focus = null;
+            try {
+                var wp0 = _worldPos(tx, ty);
+                focus = [{ x: wp0.x, y: wp0.y + ts * 0.55, z: wp0.z, r: ts * 1.2 }];
+            } catch (e) {}
+            p.spellGrade({
+                dim: 0.6, focus: focus, spotSoft: 0.8, spotLift: 0.95,
+                tint: [0.74, 0.96, 1.18], tintAmt: 0.5,
+                chroma: 9, warp: 0.0016, trip: 0.18, hueRate: -0.3,
+                riseMs: 120, holdMs: ms - 500, fallMs: 420
+            });
+        }
+        try { if (p && p.spellGradeKick) p.spellGradeKick(8, 140); } catch (e) {}
+        window.setTimeout(function () {
+            try { if (p && p.spellGradeKick && !_suppressed()) p.spellGradeKick(10, 160); } catch (e) {}
+        }, 300);
+        window.setTimeout(function () {
+            try { if (p && p.spellGradeKick && !_suppressed()) p.spellGradeKick(12, 200); } catch (e) {}
+        }, 640);
+
+        /* the clock face, running the wrong way */
+        _sigMagicCircle3D(tx, ty, {
+            color: 0x7fe8ff, color2: 0xffffff, radiusPx: ts * 1.05,
+            growMs: 140, holdMs: ms - 500, fadeMs: 300, spin: -0.007,
+        });
+
+        /* the last move, retraced: streaks whip backward INTO the victim
+           along a decaying spiral (negative sweep = counter-clockwise) */
+        if (_canSpawn()) {
+            var c = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
+            var sprites = ['spark-blue', 'plasma', 'flash'];
+            for (var i = 0; i < 26; i++) {
+                var a = (i / 26) * Math.PI * 2 * 2.5;
+                var rad = ts * (1.7 - (i / 26) * 1.0);
+                var pms = rn(380, 760);
+                _spawn({
+                    x: c.x + Math.cos(a) * rad, y: c.y + Math.sin(a) * rad,
+                    z: zf + rn(6, ts * 1.0),
+                    mode: 'billboard', sprite: sprites[i % 3],
+                    tint: i % 3 === 2 ? 0x9fe8ff : null,
+                    ml: pms,
+                    seek: { x: c.x, y: c.y, z: zf + ts * 0.55, ms: pms, ease: 'in', spiralDeg: -300 },
+                    trackHeading: true, stretchVel: 0.06,
+                    size0: rn(5, 10), size1: 2,
+                    opacity0: 0.9, opacity1: 0.4,
+                });
+            }
+            /* ghost playback frames — tall pale after-images stepping back
+               into the body, oldest first */
+            for (var g = 0; g < 4; g++) {
+                (function (idx) {
+                    window.setTimeout(function () {
+                        if (_suppressed() || !_canSpawn()) return;
+                        var ga = rn(0, Math.PI * 2), gr = ts * (0.9 - idx * 0.18);
+                        _spawn({
+                            x: c.x + Math.cos(ga) * gr, y: c.y + Math.sin(ga) * gr,
+                            z: zf + 4,
+                            mode: 'y-locked', sprite: 'flash', tint: 0x9fe8ff,
+                            ml: 340,
+                            seek: { x: c.x, y: c.y, z: zf + 4, ms: 320, ease: 'in' },
+                            w0: ts * 0.28, w1: ts * 0.1, h0: ts * 0.9, h1: ts * 0.5,
+                            opacity0: 0.5, opacity1: 0,
+                        });
+                    }, idx * 150);
+                })(g);
+            }
+        }
+
+        /* the rewind bites: a contracting shell, then the hit registers */
+        _sigOrbBurst3D(tx, ty, {
+            mode: 'in', color: 0x7fe8ff, ms: Math.max(300, ms * 0.5),
+            r0: ts * 0.12, r1: ts * 1.1, opacity: 0.7
+        });
+        window.setTimeout(function () {
+            if (_suppressed()) return;
+            _sigOrbBurst3D(tx, ty, {
+                mode: 'out', color: 0xbfefff, ms: 380,
+                r0: ts * 0.1, r1: ts * 0.95, opacity: 0.7
+            });
+            _sigShockRing3D(tx, ty, { color: 0x7fe8ff, r1: ts * 1.5, ms: 380 });
+            _sigScreenFlash('#bfefff', 160, 0.22);
+            _sigShake('soft');
+        }, Math.max(320, ms * 0.55));
+    }
+
+    /* ── MERKABA — sacred geometry overdrive ─────────────────────────────
+       Two glowing wireframe tetrahedra interlock into the star tetrahedron
+       and counter-rotate over the target while three rings of light orbit at
+       different radii. Then the whole chariot collapses inward and detonates
+       as an orb burst + light pillar. ──────────────────────────────────── */
+    function _sigMerkaba3D(tx, ty, r, opts) {
+        opts = opts || {};
+        if (_catOff('spells')) return;
+        if (_suppressed()) return;
+        var scene = _getVFXScene(); if (!scene) return null;
+        var ts = _cfg().tileSize || 128;
+        var ms = opts.ms != null ? opts.ms : 1900;
+        var collapseAt = 0.62;                            /* fraction of ms */
+        var wp = _worldPos(tx, ty);
+        var R = ts * 0.58;
+        var hover = ts * 1.05;
+
+        /* the summoning circle underneath, gold */
+        _sigMagicCircle3D(tx, ty, {
+            color: 0xffd77a, color2: 0xfff3c8, radiusPx: ts * 1.25,
+            growMs: 200, holdMs: ms * collapseAt, fadeMs: 320, spin: 0.0022,
+        });
+
+        /* the two tetrahedra — one up, one down, sharing a centre */
+        var root = new THREE.Group();
+        root.position.set(wp.x, wp.y + hover, wp.z);
+        var geoA = new THREE.TetrahedronGeometry(R, 0);
+        var cageA = _sigWireframe3D(geoA, {
+            color: 0xffd77a, radius: Math.max(1.2, ts * 0.014), joints: true, renderOrder: 208 });
+        geoA.dispose();
+        var geoB = new THREE.TetrahedronGeometry(R, 0);
+        var cageB = _sigWireframe3D(geoB, {
+            color: 0xfff0b0, radius: Math.max(1.2, ts * 0.014), joints: true, renderOrder: 208 });
+        geoB.dispose();
+        cageB.rotation.x = Math.PI;                       /* the dual, inverted */
+        root.add(cageA); root.add(cageB);
+        var matA = cageA.userData.wireMat, matB = cageB.userData.wireMat;
+        root.scale.setScalar(0.01);
+
+        /* three orbit rings of light motes at three radii — the chariot's
+           wheels. Lifetimes end at the collapse so the rings die with it. */
+        if (_canSpawn()) {
+            var c = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
+            var rings = [
+                { rad: ts * 0.68, deg: 200,  z: zf + hover * 0.55, n: 8,  spr: 'divine-sparkle' },
+                { rad: ts * 1.05, deg: -150, z: zf + hover * 0.95, n: 10, spr: 'holy-light' },
+                { rad: ts * 1.42, deg: 110,  z: zf + hover * 1.35, n: 12, spr: 'divine-sparkle' },
+            ];
+            for (var ri = 0; ri < rings.length; ri++) {
+                var ring = rings[ri];
+                for (var mi = 0; mi < ring.n; mi++) {
+                    _spawn({
+                        x: c.x, y: c.y, z: ring.z,
+                        mode: 'billboard', sprite: ring.spr,
+                        ml: ms * collapseAt + rn(-80, 60),
+                        orbit: { x: c.x, y: c.y, z: ring.z,
+                                 r0: ring.rad * 0.35, r1: ring.rad,
+                                 degPerSec: ring.deg, phase: (mi / ring.n) * 6.2832,
+                                 bobAmp: 6, bobHz: 1.2 },
+                        size0: rn(5, 9), size1: 3,
+                        opacity0: 0.95, opacity1: 0.5,
+                    });
+                }
+            }
+        }
+
+        var col = new THREE.Color();
+        var burstFired = false;
+        var run = _sigRun(root, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            if (t < collapseAt) {
+                /* spin-up: fold in, counter-rotate, breathe */
+                var k = t / collapseAt;
+                root.scale.setScalar(Math.max(0.01, _sigEaseOutBack(Math.min(1, k * 1.3))));
+                cageA.rotation.y = el * 0.0021;
+                cageB.rotation.y = -el * 0.0027;
+                root.position.y = wp.y + hover + Math.sin(el * 0.004) * ts * 0.05;
+                var pulse = 0.75 + 0.25 * Math.sin(el * 0.012);
+                matA.opacity = Math.min(1, k * 2.5) * 0.95 * pulse;
+                matB.opacity = Math.min(1, k * 2.5) * 0.85 * pulse;
+                col.setHSL(0.12 + 0.02 * Math.sin(el * 0.006), 0.9, 0.68);
+                matA.color.copy(col);
+                return;
+            }
+            /* collapse: the chariot contracts to a point… */
+            var b = (t - collapseAt) / (1 - collapseAt);
+            var cEase = _sigEaseInCubic(Math.min(1, b * 1.8));
+            root.scale.setScalar(Math.max(0.02, 1 - cEase));
+            cageA.rotation.y += 0.06;                     /* whips faster as it falls in */
+            cageB.rotation.y -= 0.07;
+            matA.opacity = Math.max(0, 0.95 - b * 0.6);
+            matB.opacity = Math.max(0, 0.85 - b * 0.6);
+            if (!burstFired && b >= 0.55) {
+                burstFired = true;
+                /* …and lets go */
+                _sigOrbBurst3D(tx, ty, {
+                    mode: 'out', color: 0xffe9a8, ms: 540,
+                    r0: ts * 0.12, r1: ts * (1.3 + (r != null ? r : 1) * 0.45),
+                    height: hover, opacity: 0.85
+                });
+                try { _sigLightPillar3D(tx, ty, { color: 0xffe9a8, height: ts * 5.0, radius: ts * 0.4, ms: 760 }); } catch (e) {}
+                _sigShockRing3D(tx, ty, { color: 0xffd77a, r1: ts * (1.6 + (r != null ? r : 1) * 0.5), ms: 460 });
+                _sigSparks(tx, ty, 'divine-sparkle', 22, { vxy: 240, vz0: 60, vz1: 280, gravity: 160, z: 10 });
+                _sigScreenFlash('#ffe9a8', 260, 0.34);
+                _sigShake('normal');
+                try {
+                    var p = _post();
+                    if (p && p.bloomPulse) p.bloomPulse(0.7, 420);
+                    if (p && p.spellGradeKick) p.spellGradeKick(7, 220);
+                } catch (e) {}
+            }
+        });
+        if (!run) {
+            try {
+                root.traverse(function (o) { if (o.geometry) o.geometry.dispose(); });
+                matA.dispose(); matB.dispose();
+            } catch (e) {}
+        }
+        return run;
+    }
+
+    /* ── ABSOLUTE ZERO — every molecule stops ────────────────────────────
+       Whiteout + swirling snow vortex on the cast, then a crystal cage locks
+       around the victim and its spin DECAYS TO A DEAD STOP — a full beat of
+       absolute stillness at 0 K — before the lattice shatters. ──────────── */
+    function _sigAbsoluteZero3D(tx, ty, opts) {
+        opts = opts || {};
+        if (_catOff('spells')) return;
+        if (_suppressed()) return;
+        var scene = _getVFXScene(); if (!scene) return null;
+        var ts = _cfg().tileSize || 128;
+        var ms = opts.ms != null ? opts.ms : 1750;
+        var freezeAt = 0.30;                              /* spin fully dead here */
+        var breakAt = 0.58;
+        var wp = _worldPos(tx, ty);
+        var p = _post();
+
+        /* the world whites out and the storm arrives */
+        _sigWhiteout3D(tx, ty, { color: 0xdff2ff, sparkSprite: 'frost-crystal' });
+        _sigSnowfall3D(tx, ty, { radiusTiles: 1.7, count: 34, ms: ms, swirl: true });
+
+        /* deep-freeze grade: victim spotlit, the frame goes arctic and STILL
+           (no warp, no hue — frozen means frozen) */
+        if (p && p.spellGrade && !window.EW_DISABLE_SPELL_GRADE) {
+            p.spellGrade({
+                dim: 0.78,
+                focus: [{ x: wp.x, y: wp.y + ts * 0.55, z: wp.z, r: ts * 1.3 }],
+                spotSoft: 0.7, spotLift: 0.95,
+                tint: [0.62, 0.94, 1.34], tintAmt: 0.58,
+                chroma: 3.5, warp: 0, trip: 0, hueRate: 0,
+                riseMs: 180, holdMs: ms * breakAt, fallMs: 620
+            });
+        }
+
+        /* frost pool underneath */
+        if (_canSpawn()) {
+            var c0 = tilePx(tx, ty), zf0 = unitSurfaceZ(tx, ty);
+            _spawn({
+                x: c0.x, y: c0.y, z: zf0 + 2,
+                mode: 'world', sprite: 'frost-mist',
+                ml: ms, size0: ts * 1.2, size1: ts * 2.2,
+                opacity0: 0.5, opacity1: 0,
+            });
+        }
+
+        /* the crystal cage */
+        var geo = new THREE.IcosahedronGeometry(ts * 0.62, 0);
+        var cage = _sigWireframe3D(geo, { color: 0xbfefff, radius: Math.max(1.3, ts * 0.014),
+                                          joints: true, renderOrder: 208 });
+        geo.dispose();
+        var mat = cage.userData.wireMat;
+        cage.position.set(wp.x, wp.y + ts * 0.6, wp.z);
+        cage.scale.setScalar(0.01);
+
+        var bars = [];
+        for (var i = 0; i < cage.children.length; i++) {
+            var ch = cage.children[i];
+            var d = ch.position.clone();
+            if (d.lengthSq() < 1e-6) d.set(rn(-1, 1), rn(-1, 1), rn(-1, 1));
+            d.normalize();
+            bars.push({ mesh: ch, p0: ch.position.clone(), dir: d,
+                        spin: rn(-8, 8), spin2: rn(-6, 6), speed: rn(0.8, 1.9) });
+        }
+
+        var broke = false;
+        var col = new THREE.Color();
+        var run = _sigRun(cage, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+
+            if (t < breakAt) {
+                /* lock + freeze: spin bleeds out to NOTHING at freezeAt, and
+                   the cage whitens as the last degree drains away */
+                var kIn = Math.min(1, t / (freezeAt * 0.6));
+                cage.scale.setScalar(_sigEaseOutBack(kIn) * (1.1 - 0.1 * kIn));
+                var spinK = Math.max(0, 1 - t / freezeAt);      /* 1 → 0, then stays 0 */
+                cage.rotation.y += 0.055 * spinK * spinK;
+                var whiten = Math.min(1, Math.max(0, (t - freezeAt * 0.5) / freezeAt));
+                col.setHSL(0.55, 0.85 - 0.75 * whiten, 0.72 + 0.24 * whiten);
+                mat.color.copy(col);
+                mat.opacity = Math.min(1, kIn * 2.2) * 0.95;
+                return;
+            }
+
+            if (!broke) {
+                broke = true;
+                /* the stillness ends: LATTICE FAILURE */
+                try { if (p && p.spellGradeKick) p.spellGradeKick(12, 240); } catch (e) {}
+                _sigScreenFlash('#dff2ff', 180, 0.4);
+                _sigShake('hard');
+                try { if (p && p.bloomPulse) p.bloomPulse(0.75, 420); } catch (e) {}
+                var cpx = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
+                for (var s = 0; s < 30; s++) {
+                    var sa = rn(0, Math.PI * 2), sv = rn(170, 400);
+                    _spawn({
+                        x: cpx.x, y: cpx.y, z: zf + ts * 0.55 + rn(-14, 14),
+                        vx: Math.cos(sa) * sv, vy: Math.sin(sa) * sv, vz: rn(40, 250),
+                        mode: 'billboard', sprite: 'ice-shard',
+                        tint: s % 3 === 0 ? 0xffffff : 0xbfefff,
+                        ml: rn(400, 780), size0: rn(7, 15), size1: 1,
+                        opacity0: 1, opacity1: 0, gravity: 320, drag: 1.1
+                    });
+                }
+                for (var f = 0; f < 8; f++) {
+                    _spawn({
+                        x: cpx.x + rn(-14, 14), y: cpx.y + rn(-14, 14), z: zf + ts * 0.5,
+                        vx: rn(-60, 60), vy: rn(-60, 60), vz: rn(20, 90),
+                        mode: 'billboard', sprite: 'frost-mist',
+                        ml: rn(600, 1000), size0: rn(18, 30), size1: rn(40, 60),
+                        opacity0: 0.6, opacity1: 0, gravity: -20, drag: 0.6
+                    });
+                }
+                _sigShockRing3D(tx, ty, { color: 0xbfefff, r1: ts * 2.1, ms: 440 });
+                window.setTimeout(function () {
+                    if (_suppressed()) return;
+                    _sigShockRing3D(tx, ty, { color: 0xffffff, r1: ts * 1.5, ms: 360, height: ts * 0.5 });
+                }, 110);
+            }
+
+            /* shards of the lattice fly */
+            var b = (t - breakAt) / (1 - breakAt);
+            var ease = 1 - Math.pow(1 - b, 2);
+            cage.scale.setScalar(1);
+            for (var j = 0; j < bars.length; j++) {
+                var br = bars[j];
+                br.mesh.position.copy(br.p0).addScaledVector(br.dir, ease * ts * 2.2 * br.speed);
+                br.mesh.rotateX(br.spin * 0.014);
+                br.mesh.rotateZ(br.spin2 * 0.014);
+            }
+            mat.opacity = Math.max(0, 1 - b * b) * 0.95;
+        });
+        if (!run) {
+            try {
+                cage.traverse(function (o) { if (o.geometry) o.geometry.dispose(); });
+                mat.dispose();
+            } catch (e) {}
+        }
+        return run;
+    }
+
+    /* ── SONIC BOOMERANG — the crescent that comes back ──────────────────
+       Rides the beam intent (beamBoomerang def flag). Crescent chevrons race
+       from the caster to the end of the line, crack around, and race home —
+       with sonic rings popping on every tile BOTH ways. battle.js lands the
+       second damage pass timed to the return. ──────────────────────────── */
+    function _sigSonicBoomerang3D(fromX, fromY, hitTiles, def) {
+        def = def || {};
+        if (!hitTiles || !hitTiles.length) return;
+        var ts = _cfg().tileSize || 128;
+        var color = def.color != null ? def.color : 0x9fe8ff;
+        var end = hitTiles[hitTiles.length - 1];
+        var travelMs = Math.max(280, Math.min(560, hitTiles.length * 95));
+
+        /* out… */
+        _sigDashWave3D(fromX, fromY, end.x, end.y, {
+            color: color, waves: 3, ms: travelMs, staggerMs: 70, streaks: 8, dust: 0
+        });
+        /* rings pop down the line as the wave passes */
+        for (var i = 0; i < hitTiles.length; i++) {
+            (function (t2, at) {
+                window.setTimeout(function () {
+                    if (_suppressed()) return;
+                    _sigShockRing3D(t2.x, t2.y, { color: color, r1: ts * 0.9, ms: 300, height: ts * 0.45 });
+                }, at);
+            })(hitTiles[i], (travelMs * (i + 1)) / hitTiles.length);
+        }
+
+        /* …the crack of the turn-around… */
+        window.setTimeout(function () {
+            if (_suppressed()) return;
+            try { _sigSonicBoom3D(end.x, end.y, { color: color, rings: 3, radiusTiles: 1.1, height: 0.45 }); } catch (e) {}
+            _sigShake('soft');
+        }, travelMs + 40);
+
+        /* …and BACK, rings in reverse order */
+        var backAt = travelMs + 170;
+        window.setTimeout(function () {
+            if (_suppressed()) return;
+            _sigDashWave3D(end.x, end.y, fromX, fromY, {
+                color: color, waves: 3, ms: travelMs, staggerMs: 70, streaks: 8, dust: 0
+            });
+        }, backAt);
+        for (var j = hitTiles.length - 1; j >= 0; j--) {
+            (function (t3, at) {
+                window.setTimeout(function () {
+                    if (_suppressed()) return;
+                    _sigShockRing3D(t3.x, t3.y, { color: 0xffffff, r1: ts * 0.8, ms: 280, height: ts * 0.45 });
+                }, at);
+            })(hitTiles[j], backAt + (travelMs * (hitTiles.length - j)) / hitTiles.length);
+        }
+        /* caught! — a snap at the caster's hand */
+        window.setTimeout(function () {
+            if (_suppressed()) return;
+            _sigSparks(fromX, fromY, 'spark-blue', 8, { vxy: 140, vz0: 30, vz1: 140, gravity: 160, z: ts * 0.4 });
+            _sigScreenFlash('#bfefff', 120, 0.12);
+        }, backAt + travelMs + 60);
+    }
+
+    /* ── BLACK HOLE — the event horizon ──────────────────────────────────
+       A true black sphere (non-additive — the one thing on the board that
+       emits NOTHING) wrapped in a white-hot photon ring and two counter-
+       tilted accretion discs, while everything loose in the 5×5 is dragged
+       in as spaghettified streaks. Then the feed ends: the horizon collapses
+       to a point and lets one flash out. ───────────────────────────────── */
+    function _sigBlackHole3D(tx, ty, r, opts) {
+        opts = opts || {};
+        if (_catOff('spells')) return;
+        if (_suppressed()) return;
+        var scene = _getVFXScene(); if (!scene) return null;
+        var ts = _cfg().tileSize || 128;
+        var ms = opts.ms != null ? opts.ms : 1750;
+        var collapseAt = 0.78;
+        var wp = _worldPos(tx, ty);
+        var hover = ts * 0.85;
+        var Rh = ts * 0.42;                               /* horizon radius */
+        var p = _post();
+        var pullR = ((r != null ? r : 2) + 0.6) * ts;
+
+        /* gravity bends the FRAME: heavy dim, violet shift, UV warp */
+        if (p && p.spellGrade && !window.EW_DISABLE_SPELL_GRADE) {
+            p.spellGrade({
+                dim: 0.85,
+                focus: [{ x: wp.x, y: wp.y + hover, z: wp.z, r: ts * 1.9 }],
+                spotSoft: 0.9, spotLift: 0.9,
+                tint: [0.76, 0.72, 1.12], tintAmt: 0.55,
+                chroma: 7.5, warp: 0.0038, trip: 0.12, hueRate: 0.07,
+                riseMs: 240, holdMs: ms * collapseAt - 100, fallMs: 560
+            });
+        }
+
+        var root = new THREE.Group();
+        root.position.set(wp.x, wp.y + hover, wp.z);
+
+        /* the horizon: pure black, NOT additive */
+        var holeMat = new THREE.MeshBasicMaterial({
+            color: 0x000000, transparent: true, opacity: 0, depthWrite: false });
+        var hole = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 18), holeMat);
+        hole.renderOrder = 214;
+        root.add(hole);
+        /* lensing halo right behind it */
+        var haloMat = _sigMagicOrbMat(0x9fb8ff, _sigGlowTex());
+        var halo = new THREE.Sprite(haloMat);
+        halo.renderOrder = 212;
+        root.add(halo);
+        /* photon ring — the last light that will ever orbit */
+        var photonMat = _sigMat(0xffffff);
+        var photon = new THREE.Mesh(new THREE.TorusGeometry(1, 0.035, 8, 48), photonMat);
+        photon.rotation.x = Math.PI / 2 - 0.32;
+        photon.renderOrder = 215;
+        root.add(photon);
+        /* two accretion discs, counter-tilted, hot rim / violet rim */
+        function mkDisc(cIn, tilt, order) {
+            var m = _sigMat(cIn);
+            var mesh = new THREE.Mesh(new THREE.RingGeometry(1.25, 2.35, 48), m);
+            mesh.rotation.x = Math.PI / 2 - tilt;
+            mesh.renderOrder = order;
+            root.add(mesh);
+            return { mesh: mesh, mat: m };
+        }
+        var discA = mkDisc(0xffb060, 0.32, 210);
+        var discB = mkDisc(0x8a5cff, 0.55, 209);
+
+        /* the in-fall: two waves of spaghettified streaks + dust from the
+           whole event horizon, spiralling hard */
+        function infall(count, delay) {
+            window.setTimeout(function () {
+                if (_suppressed() || !_canSpawn()) return;
+                var c = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
+                for (var i = 0; i < count; i++) {
+                    var a = rn(0, Math.PI * 2);
+                    var rad = rn(pullR * 0.45, pullR);
+                    var pms = rn(520, 980);
+                    var hot = i % 4 !== 0;
+                    _spawn({
+                        x: c.x + Math.cos(a) * rad, y: c.y + Math.sin(a) * rad,
+                        z: zf + rn(4, ts * 1.4),
+                        mode: 'billboard',
+                        sprite: hot ? (i % 2 ? 'ember' : 'spark-blue') : 'void-mist',
+                        tint: hot ? (i % 3 === 0 ? 0xffb060 : null) : 0x6a4dcf,
+                        ml: pms,
+                        seek: { x: c.x, y: c.y, z: zf + hover, ms: pms, ease: 'in', spiralDeg: 340 },
+                        trackHeading: hot, stretchVel: hot ? 0.09 : 0,
+                        size0: hot ? rn(4, 9) : rn(16, 26), size1: hot ? 1.5 : 6,
+                        opacity0: hot ? 0.95 : 0.5, opacity1: 0.5,
+                    });
+                }
+            }, delay);
+        }
+        infall(26, 60);
+        infall(22, 520);
+
+        /* dark pool + contracting ring on the ground */
+        if (_canSpawn()) {
+            var cg = tilePx(tx, ty), zg = unitSurfaceZ(tx, ty);
+            _spawn({
+                x: cg.x, y: cg.y, z: zg + 2,
+                mode: 'world', sprite: 'void-mist', tint: 0x2a1a4d,
+                ml: ms * 0.9, size0: pullR * 1.5, size1: pullR * 0.5,
+                opacity0: 0.55, opacity1: 0,
+            });
+            _spawn({
+                x: cg.x, y: cg.y, z: zg + 3,
+                mode: 'world', sprite: 'halo-ring', tint: 0x9fb8ff,
+                ml: 700, size0: pullR * 2.0, size1: Rh * 2,
+                opacity0: 0.6, opacity1: 0.1,
+            });
+        }
+
+        var collapsed = false;
+        var run = _sigRun(root, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            if (t < collapseAt) {
+                /* open + feed */
+                var k = Math.min(1, t / 0.16);
+                var sc = Rh * _sigEaseOutBack(k);
+                hole.scale.setScalar(Math.max(0.01, sc));
+                holeMat.opacity = Math.min(0.97, k * 1.4);
+                var hs = sc * (3.1 + 0.25 * Math.sin(el * 0.004));
+                halo.scale.set(hs, hs, 1);
+                haloMat.opacity = 0.5 * k * (0.8 + 0.2 * Math.sin(el * 0.006));
+                photon.scale.setScalar(Math.max(0.01, sc * 1.28));
+                photonMat.opacity = 0.9 * k;
+                photon.rotation.z = el * 0.001;
+                discA.mesh.scale.setScalar(Math.max(0.01, sc));
+                discB.mesh.scale.setScalar(Math.max(0.01, sc * 1.12));
+                discA.mesh.rotation.z = el * 0.0045;
+                discB.mesh.rotation.z = -el * 0.003;
+                discA.mat.opacity = 0.55 * k;
+                discB.mat.opacity = 0.4 * k;
+                /* the whole system precesses a hair — it is not stable */
+                root.rotation.z = Math.sin(el * 0.0011) * 0.08;
+                return;
+            }
+            var b = (t - collapseAt) / (1 - collapseAt);
+            if (!collapsed) {
+                collapsed = true;
+                try { if (p && p.spellGradeKick) p.spellGradeKick(11, 260); } catch (e) {}
+            }
+            /* the feed ends: everything falls into the point */
+            var shrink = Math.max(0.001, 1 - _sigEaseInCubic(Math.min(1, b * 1.25)));
+            hole.scale.setScalar(Rh * shrink);
+            photon.scale.setScalar(Rh * 1.28 * shrink);
+            discA.mesh.scale.setScalar(Rh * shrink);
+            discB.mesh.scale.setScalar(Rh * 1.12 * shrink);
+            haloMat.opacity = Math.max(0, 0.5 - b * 0.5);
+            if (b >= 0.85 && collapsed !== 'flash') {
+                collapsed = 'flash';
+                /* one flash gets out */
+                _sigOrbBurst3D(tx, ty, {
+                    mode: 'out', color: 0xcfd8ff, ms: 480,
+                    r0: ts * 0.08, r1: ts * 1.6, height: hover, opacity: 0.85
+                });
+                _sigShockRing3D(tx, ty, { color: 0x9fb8ff, r1: pullR * 1.2, ms: 480 });
+                _sigScreenFlash('#cfd8ff', 240, 0.4);
+                _sigShake('hard');
+                _sigSparks(tx, ty, 'spark-blue', 18, { vxy: 260, vz0: 60, vz1: 260, gravity: 200, z: hover });
+                try { if (p && p.bloomPulse) p.bloomPulse(0.8, 440); } catch (e) {}
+            }
+        });
+        if (!run) {
+            try {
+                root.traverse(function (o) { if (o.geometry) o.geometry.dispose(); });
+                holeMat.dispose(); haloMat.dispose(); photonMat.dispose();
+                discA.mat.dispose(); discB.mat.dispose();
+            } catch (e) {}
+        }
+        return run;
+    }
+
+    /* ── LAVA LAMP — the grooviest zone in tactics ───────────────────────
+       The lit 3D blood-glob pool, recoloured neon: fat glossy blobs rise on
+       negative gravity, wander like they're deciding where to go, and a
+       second wave sinks back down — the eternal lamp cycle. ─────────────── */
+    function _sigLavaLampAura3D(tx, ty, r, opts) {
+        opts = opts || {};
+        if (_catOff('spells')) return;
+        if (_suppressed() || !_canSpawn()) return;
+        var ts = _cfg().tileSize || 128;
+        var rad = ((r != null ? r : 1) + 0.5) * ts;
+        var c = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
+        var LAMP = [0xff4fa0, 0xff8a2e, 0x7dff3a, 0xb44dff, 0x2ee8d8];
+
+        /* the warm light under the wax */
+        _spawn({
+            x: c.x, y: c.y, z: zf + 2,
+            mode: 'world', sprite: 'fire-glow', tint: 0xff7a3a,
+            ml: 2400, size0: rad * 1.6, size1: rad * 1.9,
+            opacity0: 0.4, opacity1: 0,
+        });
+        _spawn({
+            x: c.x, y: c.y, z: zf + 3,
+            mode: 'world', sprite: 'halo-ring', tint: 0xff4fa0,
+            ml: 900, size0: rad * 0.6, size1: rad * 2.2,
+            opacity0: 0.6, opacity1: 0,
+        });
+
+        /* wave 1: globs RISE (negative gravity + brownian wander) */
+        for (var i = 0; i < 16; i++) {
+            var col = LAMP[i % LAMP.length];
+            _spawn({
+                x: c.x + rn(-rad, rad), y: c.y + rn(-rad, rad),
+                z: zf + rn(4, 14),
+                vz: rn(14, 40), vx: rn(-8, 8), vy: rn(-8, 8),
+                mode: 'billboard', sprite: 'blood-glob', globColor: col,
+                ml: rn(1500, 2600),
+                size0: rn(10, 22), size1: rn(15, 28),
+                opacity0: 0.95, opacity1: 0.4,
+                gravity: rn(-34, -14), drag: 0.25,
+                wander: { amp: rn(26, 44), freq: rn(0.5, 0.9) },
+            });
+        }
+        /* wave 2 (delayed): cooled globs sink back down through the risers */
+        window.setTimeout(function () {
+            if (_suppressed() || !_canSpawn()) return;
+            for (var j = 0; j < 10; j++) {
+                var col2 = LAMP[(j + 2) % LAMP.length];
+                _spawn({
+                    x: c.x + rn(-rad, rad), y: c.y + rn(-rad, rad),
+                    z: zf + ts * rn(0.9, 1.5),
+                    vz: rn(-30, -8), vx: rn(-6, 6), vy: rn(-6, 6),
+                    mode: 'billboard', sprite: 'blood-glob', globColor: col2,
+                    ml: rn(1300, 2200),
+                    size0: rn(12, 24), size1: rn(8, 16),
+                    opacity0: 0.9, opacity1: 0.3,
+                    gravity: rn(16, 34), drag: 0.3,
+                    wander: { amp: rn(22, 38), freq: rn(0.5, 0.8) },
+                });
+            }
+        }, 600);
+        /* a little haze so the colours smear together lava-lamp style */
+        for (var h = 0; h < 6; h++) {
+            _spawn({
+                x: c.x + rn(-rad * 0.8, rad * 0.8), y: c.y + rn(-rad * 0.8, rad * 0.8),
+                z: zf + rn(10, ts * 0.8),
+                mode: 'billboard', sprite: 'void-mist', tint: LAMP[h % LAMP.length],
+                ml: rn(1400, 2200), size0: rn(18, 28), size1: rn(36, 54),
+                opacity0: 0.3, opacity1: 0,
+                gravity: -10, drag: 0.4,
+                wander: { amp: 30, freq: 0.6 },
+            });
+        }
+    }
+
+    /* ── NEBULA — a star nursery unfurls over the zone ───────────────────
+       Slow violet/blue/pink dust banks with newborn stars twinkling through
+       them. Reads soft and beautiful — it's a concealment field, not a
+       detonation. ──────────────────────────────────────────────────────── */
+    function _sigNebulaAura3D(tx, ty, r, opts) {
+        opts = opts || {};
+        if (_catOff('spells')) return;
+        if (_suppressed() || !_canSpawn()) return;
+        var ts = _cfg().tileSize || 128;
+        var rad = ((r != null ? r : 1) + 0.5) * ts;
+        var c = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
+        var DUST = [0x8a4dff, 0x4d7dff, 0xff4dd0, 0x3ae8ff];
+
+        /* deep-space floor */
+        _spawn({
+            x: c.x, y: c.y, z: zf + 2,
+            mode: 'world', sprite: 'void-mist', tint: 0x3a2470,
+            ml: 2600, size0: rad * 1.7, size1: rad * 2.0,
+            opacity0: 0.5, opacity1: 0,
+        });
+        _spawn({
+            x: c.x, y: c.y, z: zf + 3,
+            mode: 'world', sprite: 'halo-ring', tint: 0x8a4dff,
+            ml: 850, size0: rad * 0.5, size1: rad * 2.1,
+            opacity0: 0.5, opacity1: 0,
+        });
+
+        /* the dust banks */
+        for (var i = 0; i < 14; i++) {
+            _spawn({
+                x: c.x + rn(-rad, rad), y: c.y + rn(-rad, rad),
+                z: zf + rn(8, ts * 1.1),
+                mode: 'billboard', sprite: 'void-mist', tint: DUST[i % DUST.length],
+                ml: rn(1600, 2800),
+                size0: rn(20, 34), size1: rn(42, 64),
+                opacity0: 0.45, opacity1: 0,
+                vx: rn(-10, 10), vy: rn(-10, 10), vz: rn(2, 10),
+                gravity: -6, drag: 0.35,
+                wander: { amp: rn(24, 40), freq: rn(0.4, 0.7) },
+            });
+        }
+        /* newborn stars — staggered ignitions so the cloud keeps twinkling */
+        for (var s = 0; s < 20; s++) {
+            (function (idx) {
+                window.setTimeout(function () {
+                    if (_suppressed() || !_canSpawn()) return;
+                    _spawn({
+                        x: c.x + rn(-rad * 0.9, rad * 0.9), y: c.y + rn(-rad * 0.9, rad * 0.9),
+                        z: zf + rn(12, ts * 1.3),
+                        mode: 'billboard', sprite: 'divine-sparkle',
+                        tint: idx % 3 === 0 ? 0x9fe8ff : 0xffffff,
+                        ml: rn(360, 800),
+                        size0: rn(3, 7), size1: 1,
+                        opacity0: 1, opacity1: 0,
+                        gravity: -8, drag: 0.3,
+                        wander: { amp: 12, freq: 0.8 },
+                    });
+                }, idx * 110);
+            })(s);
+        }
+    }
+
+    /* ── CALCIFY — the thoughts turn to stone ────────────────────────────
+       Grey creeps UP: a stone shell closes over the victim, dust sifts off
+       the hardening surface, and the frame drains toward granite while they
+       stand there getting slower and dumber. Small, mean, readable. ────── */
+    function _sigCalcify3D(tx, ty, opts) {
+        opts = opts || {};
+        if (_catOff('spells')) return;
+        if (_suppressed()) return;
+        var ts = _cfg().tileSize || 128;
+        var ms = opts.ms != null ? opts.ms : 950;
+        var p = _post();
+
+        /* granite grade — desaturating tint, zero energy, victim spotlit */
+        if (p && p.spellGrade && !window.EW_DISABLE_SPELL_GRADE) {
+            var focus = null;
+            try {
+                var wp0 = _worldPos(tx, ty);
+                focus = [{ x: wp0.x, y: wp0.y + ts * 0.55, z: wp0.z, r: ts * 1.1 }];
+            } catch (e) {}
+            p.spellGrade({
+                dim: 0.45, focus: focus, spotSoft: 0.85, spotLift: 0.95,
+                tint: [1.0, 0.97, 0.9], tintAmt: 0.55,
+                chroma: 1.2, warp: 0, trip: 0, hueRate: 0,
+                riseMs: 160, holdMs: ms - 420, fallMs: 380
+            });
+        }
+
+        /* the shell closes (grey orb implosion reads as stone wrapping on) */
+        _sigOrbBurst3D(tx, ty, {
+            mode: 'in', color: 0xb0a89c, ms: 520,
+            r0: ts * 0.3, r1: ts * 1.0, opacity: 0.6
+        });
+
+        if (_canSpawn()) {
+            var c = tilePx(tx, ty), zf = unitSurfaceZ(tx, ty);
+            /* dust sifting off the hardening surface */
+            for (var i = 0; i < 10; i++) {
+                _spawn({
+                    x: c.x + rn(-ts * 0.3, ts * 0.3), y: c.y + rn(-ts * 0.3, ts * 0.3),
+                    z: zf + rn(ts * 0.3, ts * 0.9),
+                    vx: rn(-14, 14), vy: rn(-14, 14), vz: rn(-30, -8),
+                    mode: 'billboard', sprite: 'dust-puff',
+                    ml: rn(500, 900), size0: rn(6, 12), size1: rn(14, 22),
+                    opacity0: 0.55, opacity1: 0, gravity: 90, drag: 0.6
+                });
+            }
+            /* stone chips flaking loose */
+            for (var s = 0; s < 8; s++) {
+                var sa = rn(0, Math.PI * 2);
+                _spawn({
+                    x: c.x, y: c.y, z: zf + ts * rn(0.3, 0.7),
+                    vx: Math.cos(sa) * rn(40, 110), vy: Math.sin(sa) * rn(40, 110), vz: rn(20, 80),
+                    mode: 'billboard', sprite: 'steel-spark', tint: 0x9a938a,
+                    ml: rn(360, 620), size0: rn(4, 8), size1: 1,
+                    opacity0: 0.9, opacity1: 0, gravity: 320, drag: 1.0
+                });
+            }
+            /* dust skirt at the feet */
+            _spawn({
+                x: c.x, y: c.y, z: zf + 2,
+                mode: 'world', sprite: 'dust-puff',
+                ml: 800, size0: ts * 0.5, size1: ts * 1.3,
+                opacity0: 0.4, opacity1: 0,
+            });
+        }
+
+        /* the last joint locks — one dull thud */
+        window.setTimeout(function () {
+            if (_suppressed()) return;
+            try { if (p && p.spellGradeKick) p.spellGradeKick(4, 160); } catch (e) {}
+            _sigShake('soft');
+        }, Math.max(300, ms * 0.55));
+    }
+
     /* ─── PRISM BURST + BAD TRIP WIRING (2026-07-25) ─────────────────────
        Both spells were falling through to shared element defaults — Prism
        Burst borrowed the generic divine bolt, Bad Trip the generic psi bolt
@@ -14380,6 +15317,134 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ]
     };
     SPELL_MAP['raceBadTrip'] = { bolt: '_bolt_psychedelic', impact: 'badTrip_impact' };
+
+    /* ─── PSYCHEDELIC / COSMIC DROP WIRING (2026-07-26) ──────────────────
+       See the signature catalogue above _sigEgoDeath3D. Everything rides
+       intents online.js already relays (bolt/impact/aoe/aura/beam). ────── */
+
+    /* Ego Death: a slow white psi orb drifts in, and the WHOLE dissolution
+       fires on arrival via boltGeometry. */
+    EFFECTS['_bolt_egodeath'] = {
+        boltCore: 'psi-pulse', boltTrail: 'divine-sparkle', boltBurst: 'flash',
+        boltRing: 'target-ring', boltCoreSize: 0.32, boltTrailSize: 0.11,
+        boltTrailRate: 5, boltBurstCount: 26,
+        boltGeometry: true,
+    };
+    EFFECTS['egoDeath_impact'] = {
+        /* no `shake` — _sigEgoDeath3D kicks the board itself on the shell burst */
+        layers: [
+            { sprite: 'psi-pulse', ml: 300, size0: 60, size1: 120, opacity0: 0.6, opacity1: 0 },
+            { count: 8, sprite: 'void-mist', ml: [600, 1100], offsetXY: 10,
+              vxRange: 35, vyRange: 35, vzRange: [20, 80], gravity: -16, drag: 0.35,
+              size0: [14, 24], size1: [30, 50], opacity0: 0.45 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 900, z: 2,
+              size0: 40, size1: 230, opacity0: 0.6, opacity1: 0 },
+        ]
+    };
+    SPELL_MAP['sharedEgoDeath'] = { bolt: '_bolt_egodeath', impact: 'egoDeath_impact' };
+
+    /* Time Rewind: a thin cyan ripple travels (the causality link reads
+       better than nothing appearing), then the whole rewind runs on arrival. */
+    EFFECTS['_bolt_rewind'] = {
+        boltCore: 'spark-blue', boltTrail: 'flash', boltBurst: 'spark-blue',
+        boltRing: 'target-ring-blue', boltCoreSize: 0.2, boltTrailSize: 0.07,
+        boltTrailRate: 4, boltBurstCount: 14,
+        boltGeometry: true,
+    };
+    EFFECTS['timeRewind_impact'] = {
+        layers: [
+            { sprite: 'flash', tint: 0x9fe8ff, ml: 220, size0: 60, size1: 20, opacity0: 0.9, opacity1: 0 },
+            { count: 8, sprite: 'spark-blue', ml: [320, 600], offsetXY: 8,
+              vxRange: 110, vyRange: 110, vzRange: [30, 130], gravity: 60, drag: 0.9,
+              size0: [5, 10], size1: 1, opacity0: 0.9 },
+        ]
+    };
+    SPELL_MAP['raceTimeRewind'] = { bolt: '_bolt_rewind', impact: 'timeRewind_impact' };
+
+    /* Absolute Zero: the ice bolt now detonates the deep-freeze signature. */
+    EFFECTS['_bolt_abszero'] = {
+        boltCore: 'frost-crystal', boltTrail: 'ice-shard', boltBurst: 'frost-mist',
+        boltRing: 'target-ring-blue', boltCoreSize: 0.3, boltTrailSize: 0.1,
+        boltTrailRate: 5, boltBurstCount: 30,
+        boltGeometry: true,
+    };
+    EFFECTS['absoluteZero_impact'] = {
+        /* no `shake` — the cage shatter in _sigAbsoluteZero3D brings its own */
+        layers: [
+            { sprite: 'frost-mist', ml: 420, size0: 70, size1: 150, opacity0: 0.7, opacity1: 0 },
+            { count: 10, sprite: 'frost-crystal', ml: [400, 750], offsetXY: 9,
+              vxRange: 140, vyRange: 140, vzRange: [40, 180], gravity: 260, drag: 1.1,
+              size0: [6, 12], size1: 1, opacity0: 0.95 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring-blue', ml: 800, z: 2,
+              size0: 44, size1: 210, opacity0: 0.7, opacity1: 0 },
+        ]
+    };
+    SPELL_MAP['raceAbsoluteZero'] = { bolt: '_bolt_abszero', impact: 'absoluteZero_impact' };
+
+    /* Sonic Boomerang: the beam intent hands the whole out-and-back travel
+       to _sigSonicBoomerang3D (beamBoomerang def flag — see _fireBeamMapped). */
+    EFFECTS['_beam_boomerang'] = {
+        beamBoomerang: true, color: 0x9fe8ff,
+    };
+    SPELL_MAP['raceSonicBoomerang'] = { beam: '_beam_boomerang' };
+
+    /* Merkaba: aoe intent → _fireAoeMapped fires the star-tetrahedron rig
+       (in _spell3DGeometry) plus a soft gold shimmer per struck tile. */
+    EFFECTS['merkaba_aoe'] = {
+        aoeRadius: 1,
+        impactTileEffect: '_merkaba_tile',
+    };
+    EFFECTS['_merkaba_tile'] = {
+        layers: [
+            { count: 3, sprite: 'divine-sparkle', ml: [500, 900], offsetXY: 12,
+              vxRange: 30, vyRange: 30, vzRange: [40, 120], gravity: -30, drag: 0.5,
+              size0: [5, 9], size1: 1, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 700, z: 2,
+              size0: 30, size1: 130, opacity0: 0.5, opacity1: 0 },
+        ]
+    };
+    SPELL_MAP['raceMerkaba'] = { aoe: 'merkaba_aoe' };
+
+    /* Black Hole: aoe intent → _fireAoeMapped fires the bespoke geometry
+       (registered in _spell3DGeometry) plus these per-tile drag-marks. */
+    EFFECTS['blackHole_aoe'] = {
+        aoeRadius: 2,
+        impactTileEffect: '_blackHole_tile',
+        impactCenterEffect: '_blackHole_center',
+    };
+    EFFECTS['_blackHole_tile'] = {
+        layers: [
+            { count: 2, sprite: 'void-mist', tint: 0x6a4dcf, ml: [500, 900], offsetXY: 14,
+              vxRange: 20, vyRange: 20, vzRange: [10, 40], gravity: -14, drag: 0.4,
+              size0: [12, 20], size1: [24, 38], opacity0: 0.4 },
+        ]
+    };
+    EFFECTS['_blackHole_center'] = {
+        layers: [
+            { sprite: 'flash', tint: 0x9fb8ff, ml: 260, z: 40, size0: 70, size1: 24, opacity0: 0.8, opacity1: 0 },
+        ]
+    };
+    SPELL_MAP['sharedBlackHole'] = { aoe: 'blackHole_aoe' };
+
+    /* Lava Lamp + Nebula: zone casts fire the aura intent; _fireAura runs
+       the bespoke field (in _spell3DGeometry) on top of these ambient layers. */
+    EFFECTS['lavaLamp_aura'] = {
+        aoeRadius: 1,
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'fire-glow', tint: 0xff4fa0, ml: 1200, z: 2,
+              size0: 120, size1: 220, opacity0: 0.35, opacity1: 0 },
+        ]
+    };
+    SPELL_MAP['raceLavaLamp'] = { aura: 'lavaLamp_aura' };
+
+    EFFECTS['nebula_aura'] = {
+        aoeRadius: 1,
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'void-mist', tint: 0x3a2470, ml: 1400, z: 2,
+              size0: 130, size1: 240, opacity0: 0.4, opacity1: 0 },
+        ]
+    };
+    SPELL_MAP['sharedNebula'] = { aura: 'nebula_aura' };
 
     var _spell3DGeometry = {
 
@@ -15439,6 +16504,32 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceBadTrip: function(tx, ty) {
             _sigBadTrip3D(tx, ty);
         },
+
+        /* ── the psychedelic/cosmic drop (2026-07-26) ─────────────────────
+           Ego Death / Time Rewind / Absolute Zero fire on bolt arrival
+           (boltGeometry); Merkaba + Black Hole from the aoe intent (which
+           passes aoeRadius as r); Lava Lamp + Nebula from the aura intent. */
+        sharedEgoDeath: function(tx, ty) {
+            _sigEgoDeath3D(tx, ty);
+        },
+        raceTimeRewind: function(tx, ty) {
+            _sigTimeRewind3D(tx, ty);
+        },
+        raceMerkaba: function(tx, ty, r) {
+            _sigMerkaba3D(tx, ty, r);
+        },
+        raceAbsoluteZero: function(tx, ty) {
+            _sigAbsoluteZero3D(tx, ty);
+        },
+        sharedBlackHole: function(tx, ty, r) {
+            _sigBlackHole3D(tx, ty, r);
+        },
+        raceLavaLamp: function(tx, ty, r) {
+            _sigLavaLampAura3D(tx, ty, r);
+        },
+        sharedNebula: function(tx, ty, r) {
+            _sigNebulaAura3D(tx, ty, r);
+        },
     };
 
     /* ── Anime power-aura bursts (three-renderer EWPowerAura) ─────────────
@@ -15800,6 +16891,32 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceKiWave:              { archetype: 'ki', weight: 'heavy' },
         raceDragonFist:          { archetype: 'ki', weight: 'heavy' },
         raceInstantTransmission: { archetype: 'ki' },
+
+        /* ── the psychedelic/cosmic drop (2026-07-26) ─────────────────────
+           Ego Death is THE spell the trip grade was built for — full tilt.
+           Black Hole and Absolute Zero take the ultimate world-drop; Time
+           Rewind runs the hue wheel BACKWARD (negative hueRate). */
+        sharedEgoDeath: { archetype: 'mind', weight: 'ultimate',
+                       grade: { trip: 1.0, warp: 0.0046, chroma: 12, hueRate: 0.9,
+                                tint: [1.26, 0.62, 1.28], tintAmt: 0.6 } },
+        raceTimeRewind: { archetype: 'anomaly', weight: 'heavy',
+                       grade: { trip: 0.3, warp: 0.0016, chroma: 9, hueRate: -0.3,
+                                tint: [0.74, 0.96, 1.18], tintAmt: 0.5 } },
+        raceMerkaba: { archetype: 'divine', weight: 'ultimate',
+                       grade: { chroma: 3, tint: [1.26, 1.12, 0.74], tintAmt: 0.42 } },
+        raceAbsoluteZero: { archetype: 'ice', weight: 'ultimate',
+                       grade: { chroma: 3.5, tint: [0.62, 0.94, 1.34], tintAmt: 0.55 } },
+        raceSonicBoomerang: { archetype: 'kinetic', weight: 'heavy',
+                       grade: { chroma: 7, tint: [0.85, 0.98, 1.24], tintAmt: 0.36 } },
+        sharedBlackHole: { archetype: 'anomaly', weight: 'ultimate',
+                       grade: { trip: 0.12, warp: 0.0038, chroma: 7.5, hueRate: 0.07,
+                                tint: [0.76, 0.72, 1.12], tintAmt: 0.55 } },
+        sharedNebula: { archetype: 'alien', weight: 'standard' },
+        raceLavaLamp: { archetype: 'poison', weight: 'standard',
+                       grade: { trip: 0.4, hueRate: 0.2, chroma: 3,
+                                tint: [1.18, 0.85, 1.1], tintAmt: 0.4 } },
+        raceCalcify: { archetype: 'rig', weight: 'standard',
+                       grade: { chroma: 1.2, tint: [1.0, 0.96, 0.9], tintAmt: 0.5 } },
     };
 
     var _STAGE_TIERS = {
@@ -16619,6 +17736,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigBadTrip3D: _sigBadTrip3D,
         sigSkull3D: _sigSkull3D,
         SIG_SPECTRUM: _SIG_SPECTRUM,
+
+        /* psychedelic/cosmic drop (2026-07-26) — see catalogue above
+           _sigEgoDeath3D */
+        sigEgoDeath3D: _sigEgoDeath3D,
+        sigTimeRewind3D: _sigTimeRewind3D,
+        sigMerkaba3D: _sigMerkaba3D,
+        sigAbsoluteZero3D: _sigAbsoluteZero3D,
+        sigSonicBoomerang3D: _sigSonicBoomerang3D,
+        sigBlackHole3D: _sigBlackHole3D,
+        sigLavaLampAura3D: _sigLavaLampAura3D,
+        sigNebulaAura3D: _sigNebulaAura3D,
+        sigCalcify3D: _sigCalcify3D,
 
         getDescentTotalMs: getDescentTotalMs,
         getDescentTelegraphMs: getDescentTelegraphMs,
