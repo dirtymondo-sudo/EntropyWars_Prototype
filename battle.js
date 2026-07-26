@@ -38806,6 +38806,22 @@
                 else spendAP(unit, spellApCost);
                 const _spellPressRes = _consumePressCollector(unit, spellApCost);
                 _showPressFeedback(unit, _spellPressRes);
+                /* ── Recoil / HP cost ──────────────────────────────────────
+                   selfDamagePct (Blood Ritual, Inner Demon) and recoilPct
+                   (Twilight Reckoning, Blood Pact combos) both promise "costs
+                   a portion of your HP" in their descs but neither was ever
+                   wired — the caster paid nothing. The caster now pays that
+                   fraction of MAX HP after the cast resolves. Never lethal:
+                   the price bottoms out at 1 HP left, so a ritual can't KO
+                   its own ritualist. Runs after the press collector is
+                   consumed so self-damage can never feed a press turn. */
+                const _recoilFrac = spell.selfDamagePct || spell.recoilPct || 0;
+                if (_recoilFrac > 0 && !unit.dead && !unit._dying) {
+                    const _price = Math.min(
+                        Math.round((unit.maxHp || 0) * _recoilFrac),
+                        Math.max(0, unit.hp - 1));
+                    if (_price > 0) applyDamageToUnit(unit, _price, `${spell.name} recoil: `);
+                }
                 state._actionExecuting = false;
                 state._tileActionTarget = null;
                 state._enemyActionTargetId = null;

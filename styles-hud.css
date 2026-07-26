@@ -4804,6 +4804,44 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
+/* ── Spell Library QoL pass (2026-07-26): damage-tier presets, status chip
+   editor, searchable job/race assign inputs ─────────────────────────────── */
+.slb-numwrap { flex: 1; min-width: 0; display: flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+.slb-numwrap input[type="number"] { flex: 0 1 70px; width: 70px; min-width: 54px; }
+.slb-tier {
+    font: 9px 'DotGothic16', monospace; letter-spacing: 0.05em;
+    background: rgba(20,18,30,0.7); border: 1px solid rgba(160,140,200,0.3);
+    color: #a89fc0; padding: 3px 6px; border-radius: 3px; cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+.slb-tier:hover { border-color: rgba(255,216,106,0.55); color: #ffd86a; }
+.slb-tier.on { color: #ffd86a; border-color: rgba(255,216,106,0.55); background: rgba(40,34,14,0.6); }
+
+.slb-field-wide { grid-column: 1 / -1; }
+.slb-status-ed { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.slb-status-row { display: flex; align-items: center; gap: 5px; }
+.slb-status-row select {
+    flex: 1 1 150px; min-width: 110px; background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(160,140,200,0.22); color: #e6e9f2;
+    font: 11px 'DotGothic16', monospace; padding: 4px 7px; border-radius: 3px;
+}
+.slb-field .slb-status-row input[type="number"] { flex: 0 0 56px; width: 56px; min-width: 0; }
+.slb-status-l { font-size: 9px; color: #6d6584; flex-shrink: 0; }
+.slb-status-x {
+    font: 10px 'DotGothic16', monospace; background: rgba(20,18,30,0.7);
+    border: 1px solid rgba(160,140,200,0.3); color: #ff8a95;
+    padding: 3px 7px; border-radius: 3px; cursor: pointer; flex-shrink: 0;
+}
+.slb-status-x:hover { border-color: rgba(220,80,90,0.7); }
+.slb-field .slb-status-add {
+    align-self: flex-start; max-width: 240px; background: rgba(0,0,0,0.45);
+    border: 1px dashed rgba(160,140,200,0.35); color: #a89fc0;
+    font: 10px 'DotGothic16', monospace; padding: 4px 7px; border-radius: 3px; cursor: pointer;
+}
+.slb-field .slb-status-add:hover { border-color: rgba(255,216,106,0.5); color: #ffd86a; }
+.slb-assign-search { min-width: 185px; }
+.slb-lab-race { flex: 1; min-width: 0; }
+
 @media (max-width: 900px) {
     .slb-list { width: 240px; }
     .slb-field-grid { grid-template-columns: 1fr; }

@@ -59,6 +59,20 @@ rules extended to `#spellLibraryPage`).
 - **MOVEPOOLS tab**: jobs (learn ORDER = unlock level via
   `getSpellUnlockLevel`) and races; ↑/↓/✕ per row + datalist add; per-key REVERT.
   Writing the pristine order back auto-drops the override.
+- **QoL pass 2026-07-26**: every job/race list (filters, assign rows, movepool
+  rail, Lab caster/dummy) is ALPHABETICAL (`_slbJobs`/`_slbRaces` sort); assign
+  rows + Lab caster/dummy are datalist SEARCH inputs (case-insensitive resolve,
+  unknowns rejected with a toast). `dmg`/`heal`/`healAmt` rows carry tier preset
+  buttons (house scale: WEAK 80 · MEDIUM 120 · HEAVY 160 · SEVERE 210, heals
+  60/100/150); `statusEffects`/`allyStatusEffects`/`teamStatusEffects` render a
+  chip editor (status picker from STATUS_DEFS + duration + bonusDamage rider +
+  ✕) instead of raw JSON — all writes still round-trip `_slbSetField` as JSON so
+  diff/revert/reprice work. `dmg`, `statusEffects` and `selfDamagePct` rows are
+  ALWAYS visible (blank when unset). RECOIL: `selfDamagePct`/`recoilPct` are now
+  a real engine mechanic (battle.js doSpell completion: caster pays that
+  fraction of max HP after cast, clamped never-lethal at 1 HP; runs after the
+  press collector so self-damage can't feed a press turn) with 10/20/33% preset
+  buttons; both fields also discount the mana formula.
 - **Footer**: EDITS APPLIED/OFF master toggle, ⇩ EXPORT (downloads
   `entropy-wars-spell-mods-<date>.json` + clipboard), ⧉ COPY SUMMARY (human
   changelog lines), ⇪ IMPORT (file), ⟲ DISCARD ALL, ▶ OPEN SPELL LAB.
@@ -81,6 +95,14 @@ The JSON's `instructions`/`summary`/`baseline` fields are self-describing:
   flag conflicts instead of blind-applying. After shipping the changes, tell
   the owner to **⟲ DISCARD ALL EDITS** (or toggle OFF) so localStorage doesn't
   double-apply on top of the now-authored values.
+- **2026-07-26 export is BAKED** (8 modifies — Take Aim / Shadow Crush /
+  Water Pulse / Web Shoot / Raise Frequency / Great Flood / Heat Death→15MP
+  aoe nuke / Synthetic Punch; 28 deletions incl. warpRune, snareTrap,
+  frostMine, mark1, sharedMaelstrom, sharedCallLightning; 11 movepool
+  rewires). Cross-race borrows (Riptide/Flood on all water races, king kong's
+  Boulder Hurl + groundSlam, vampire's Bite, etc.) live in the
+  `Baked movepool shares` block right after the RACE_ABILITY_BY_ID loop in
+  data.js — add future by-id shares there, not by duplicating literals.
 
 ### 4. SPELL LAB — real-engine sandbox (ui.js `_slbLab*`, battle.js hooks)
 Boots an actual match: private `GAME_MODES.spelllab` + `MAP_LAYOUT_PRESETS.

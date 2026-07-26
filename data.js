@@ -3843,23 +3843,7 @@ const SPELL_LIBRARY = [
         jobPreference: ['Tank'],
         desc: 'Raise a 3-tile wall of impassable mountain terrain. Enemies on targeted tiles take damage and are pushed aside. Hold the line — build the line.'
     },
-    {
-        id: 'mark1',
-        spellType: 'tech',
-        name: 'Suppressing Fire',
-        type: 'debuff',
-        cost: 20,
-        equipCost: 15,
-        range: 4,
-        kind: 'debuff',
-        tier: 'I',
-        school: 'Tactics',
-        element: 'metal',
-        classRestrictions: ['Agent'],
-        jobPreference: ['Agent'],
-        statStageBoost: { atk: -2 },
-        desc: 'Weakens a Single Enemy. Lowers ATK by 2 stages.'
-    },
+    /* (mark1 / Suppressing Fire was CUT 2026-07-26 via the Spell Library.) */
     {
         id: 'heal1',
         spellType: 'divine',
@@ -4331,23 +4315,8 @@ const SPELL_LIBRARY = [
         classRestriction: 'Psychic',
         desc: 'Warp any unit — self, ally, or enemy — to any unoccupied tile within range. Costs 1 less MP for Psychics.'
     },
-    {
-        id: 'warpRune',
-        spellType: 'alien',
-        element: 'arcane',
-        name: 'Warp Rune',
-        type: 'utility',
-        cost: 25,
-        equipCost: 15,
-        apCost: 1,
-        range: 3,
-        kind: 'warpRune',
-        tier: 'I',
-        school: 'Psychic',
-        classRestriction: 'Psychic',
-        maxActivePerCaster: 2,
-        desc: 'Place a hidden warp rune on a tile. Any unit stepping on it is teleported to a random location. Max 2 active per Psychic.'
-    },
+    /* (warpRune was CUT 2026-07-26 via the Spell Library; the kind:'warpRune'
+       engine branch stays for anything that recreates one.) */
     {
         id: 'psychosis',
         spellType: 'alien',
@@ -4638,7 +4607,7 @@ const SPELL_LIBRARY = [
         id: 'fermata',
         spellType: 'anomaly',
         element: 'sonic',
-        name: 'Fermata',
+        name: 'Raise Frequency',
         type: 'buff',
         cost: 30,
         equipCost: 18,
@@ -4815,7 +4784,7 @@ const SPELL_LIBRARY = [
         id: 'headshot',
         spellType: 'tech',
         element: 'metal',
-        name: 'Assassinate',
+        name: 'Take Aim',
         type: 'damage',
         cost: 50,
         equipCost: 25,
@@ -5328,46 +5297,9 @@ const SPELL_LIBRARY = [
        kind 'placeTrap' hides a charge on an empty tile (visible only to
        your team). The first ENEMY to step on it springs it; airborne units
        glide over. Each trap warps the fight a different way. */
-    {
-        id: 'snareTrap',
-        spellType: 'human',
-        element: 'nature',
-        name: 'Snare Trap',
-        type: 'utility',
-        cost: 20,
-        equipCost: 10,
-        apCost: 1,
-        range: 2,
-        kind: 'placeTrap',
-        trapType: 'spike',
-        dmg: 90,
-        maxActivePerCaster: 2,
-        tier: 'I',
-        school: 'Agent',
-        classRestrictions: ['Agent'],
-        desc: 'Hide a spring-loaded spike snare on any EMPTY tile in range (max 2 active). The first enemy to step on it takes damage and is ROOTED in place for 2 turns — right where you want them.'
-    },
-    {
-        id: 'frostMine',
-        spellType: 'anomaly',
-        element: 'ice',
-        name: 'Frost Mine',
-        type: 'utility',
-        cost: 25,
-        equipCost: 12,
-        apCost: 1,
-        range: 2,
-        kind: 'placeTrap',
-        trapType: 'frost',
-        dmg: 60,
-        maxActivePerCaster: 2,
-        tier: 'I',
-        school: 'Black Mage',
-        classRestriction: 'Black Mage',
-        desc: 'Bury a freezing charge in any EMPTY tile in range (max 2 active). The triggering enemy takes damage and is stunned a turn while the surrounding 3×3 flash-freezes to slick ice — shatter it, slide on it, or melt it later.'
-    },
     /* (tremorCharge and magnetMine were CUT 2026-07-23 — the Engineer trap
-       arsenal is retired.) */
+       arsenal is retired. snareTrap and frostMine followed 2026-07-26 via
+       the Spell Library; kind:'placeTrap' plumbing stays.) */
 
     /* ── Assassin (job id 'Agent') kit fillers (2026-07-13) — replace the two
        tech spells (EMP Burst / Magnet Mine) that moved to Engineer. ── */
@@ -5580,7 +5512,7 @@ const SHARED_FLASH_FREEZE = {
 };
 
 const SHARED_TIDAL_SURGE = {
-    id: 'sharedTidalSurge', spellType: 'anomaly', element: 'water', name: 'Tidal Surge',
+    id: 'sharedTidalSurge', spellType: 'anomaly', element: 'water', name: 'Water Pulse',
     type: 'damage', cost: 30, dmg: 80, range: 5,
     kind: 'linePush', damageType: 'magic', lineWidth: 1, pushDistance: 2,
     leaveTerrain: 'water',
@@ -5660,13 +5592,7 @@ const SHARED_WALLS_OF_CAMELOT = {
     desc: 'Raise the walls of Camelot — a 3-tile rampart of brick masonry (castle wall stone). Enemies caught in the rising wall take damage.'
 };
 
-const SHARED_MAELSTROM = {
-    id: 'sharedMaelstrom', spellType: 'anomaly', element: 'water', name: 'Maelstrom',
-    type: 'damage', cost: 35, dmg: 80, range: 4, apCost: 2,
-    kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 1, orientable: false,
-    damageType: 'magic',
-    desc: 'Tear open a deep-water maelstrom on one tile. The water overflows the surrounding ground and pours downhill. Enemies caught in the surge take damage and risk drowning.'
-};
+/* (SHARED_MAELSTROM was CUT 2026-07-26 via the Spell Library.) */
 
 const SHARED_RAMPART = {
     id: 'sharedRampart', spellType: 'human', element: 'earth', name: 'Rampart',
@@ -5765,15 +5691,8 @@ const SHARED_SUMMON_BLOOD_RAIN = {
     desc: 'Summons bloodRain weather over the battlefield.'
 };
 
-const SHARED_CALL_LIGHTNING = {
-    id: 'sharedCallLightning', spellType: 'alien', element: 'lightning', name: 'Summon Storm',
-    type: 'utility', cost: 30, range: 4, apCost: 1,
-    kind: 'summonWeather',
-    weatherType: 'thunderstorm',
-    weatherDuration: [2, 3],
-    weatherTiles: [3, 4],
-    desc: 'Summons thunderstorm weather over the battlefield.'
-};
+/* (SHARED_CALL_LIGHTNING / Summon Storm was CUT 2026-07-26 via the Spell
+   Library.) */
 
 const SHARED_NUKE = {
     id: 'sharedNuke', spellType: 'tech', element: 'fire', name: 'Nuke',
@@ -6022,7 +5941,6 @@ const RACE_ABILITIES = {
           type: 'utility', cost: 30, range: 4, apCost: 1,
           kind: 'deployPair', maxActivePerCaster: 1,
           desc: 'Place paired tomb-gate tiles. Allies can teleport between them once each.' },
-        _mkBolt(_JAM_BOLT, { id: 'raceCanopicCurse', spellType: 'unholy', name: 'Canopic Curse' }),
         SHARED_SUMMON_SANDSTORM,
         SHARED_FISSURE
     ],
@@ -6031,11 +5949,6 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 15, dmg: 80, range: 3,
           kind: 'damage', damageType: 'physical', ignoreArmor: true,
           desc: 'Deals WEAK physical damage to a Single Enemy. Ignores DEF.' },
-        { id: 'raceBoneWall', spellType: 'unholy', name: 'Bone Wall',
-          type: 'utility', cost: 20, range: 3, apCost: 1,
-          kind: 'deployObject', objectHp: 2, blocksMovement: true,
-          maxActivePerCaster: 1,
-          desc: 'Summon a wall of bones at a target tile. Blocks movement and absorbs 2 hits before crumbling.' },
         { id: 'raceReassemble', spellType: 'unholy', name: 'Reassemble',
           type: 'heal', cost: 25, range: 0, apCost: 1,
           kind: 'selfHeal', selfHealPct: 0.30,
@@ -6072,13 +5985,11 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff', statusEffects: [{ id: 'invisible', duration: 1 }],
           desc: 'Empowers the caster. Applies Invisible. Cooldown: 2 rounds.' },
-        { id: 'raceShadowBind', spellType: 'anomaly', name: 'Shadow Bind',
-          type: 'debuff', cost: 25, range: 3, apCost: 1,
-          kind: 'debuff',
+        { id: 'raceShadowBind', spellType: 'anomaly', name: 'Shadow Crush',
+          type: 'damage', cost: 25, dmg: 120, range: 3, apCost: 1,
+          kind: 'damage', damageType: 'magic', vfxWeight: 'standard',
           statusEffects: [{ id: 'slow', duration: 2 }],
-          desc: 'Weakens a Single Enemy. Applies Slow.' },
-        _mkBlink('shadow', { id: 'raceVoidStep', spellType: 'anomaly', name: 'Void Step',
-          desc: 'It doesn\'t walk. It simply isn\'t, then is — blink 4 tiles through anything, no line of sight needed. (2-round cooldown.)' }),
+          desc: 'Damages a Single Enemy. Applies Slow.' },
         SHARED_SMOKE_SCREEN,
     ],
     'werewolf': [
@@ -6127,11 +6038,6 @@ const RACE_ABILITIES = {
           pushDistance: 2,
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Deals WEAK physical damage to a Single Enemy. Applies Slow.' },
-        { id: 'raceConspiracyOfScales', spellType: 'anomaly', name: 'Conspiracy of Scales',
-          type: 'buff', cost: 25, apCost: 1, range: 0,
-          kind: 'buff',
-          statusEffects: [{ id: 'invisible', duration: 2 }],
-          desc: 'Empowers the caster. Applies Invisible. Cooldown: 2 rounds.' },
         SHARED_POISON_SWAMP,
         SHARED_SMOKE_SCREEN
     ],
@@ -6222,8 +6128,7 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'silence', duration: 1 }],
           desc: 'Deals WEAK magic damage to All Enemies around the caster (AOE). Applies Silence.' },
-        SHARED_TIDAL_SURGE,
-        SHARED_MAELSTROM
+        SHARED_TIDAL_SURGE
     ],
 
     'mech': [
@@ -6289,10 +6194,6 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Stagger.' },
-        { id: 'raceIronGuard', spellType: 'tech', name: 'Iron Guard',
-          type: 'buff', cost: 20, apCost: 1, range: 0,
-          kind: 'buff', statusEffects: [{ id: 'protect', duration: 2 }],
-          desc: 'Empowers the caster. Applies Protect. Cooldown: 2 rounds.' },
         { id: 'raceRocketFist', spellType: 'tech', name: 'Rocket Fist',
           type: 'damage', cost: 25, dmg: 120, range: 3,
           kind: 'damage', damageType: 'physical',
@@ -6517,10 +6418,6 @@ const RACE_ABILITIES = {
           guaranteedCrit: true,
           projectileOverride: 'proj-bullet',
           desc: 'Deals HEAVY physical damage to a Single Enemy. Always lands a critical hit.' },
-        { id: 'raceTumbleweed', spellType: 'human', element: 'wind', name: 'Tumbleweed Roll',
-          type: 'utility', cost: 10, apCost: 1, range: 0,
-          kind: 'escape', teleportDistance: 2,
-          desc: 'Dodge-roll 2 tiles in any direction. Quick repositioning.' },
     ],
     'men in black': [
         _mkBolt(_JAM_BOLT, { id: 'raceDeneuralizer', spellType: 'tech', element: 'psychic', name: 'Deneuralizer' }),
@@ -6666,7 +6563,6 @@ const RACE_ABILITIES = {
           terrainDeform: { centerDelta: 2, edgeDelta: 0 },
           desc: 'Raise a 3-tile wall of stone. They didn\'t build the pyramids. They grew them.' },
         SHARED_GRAVITY_CRUSH,
-        SHARED_CALL_LIGHTNING,
         SHARED_FISSURE
     ],
     /* Nordic = Nordic ALIENS (Tall Blondes / Galactic Federation), not Norse
@@ -6773,7 +6669,6 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Weakens a Single Enemy. Applies Stun.' },
         SHARED_SUMMON_SANDSTORM,
-        SHARED_CALL_LIGHTNING,
     ],
     /* Machine Elves = the clockwork "machine elves" of DMT hyperspace, who
        refract reality through a lattice of laser-reflecting prism mirrors.
@@ -6837,7 +6732,7 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'jammed', duration: 2 }],
           desc: 'Deals WEAK magic damage to All Enemies in an AOE. Applies Jammed.' },
-        { id: 'raceHydraulicPunch', spellType: 'tech', name: 'Hydraulic Punch',
+        { id: 'raceHydraulicPunch', spellType: 'tech', name: 'Synthetic Punch',
           type: 'damage', cost: 25, dmg: 120, range: 1,
           kind: 'damage', damageType: 'physical',
           pushDistance: 2,
@@ -6860,23 +6755,11 @@ const RACE_ABILITIES = {
           kind: 'aoe', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Terrifying roar. All enemies within 2 tiles are staggered, losing 1 AP.' },
-        { id: 'raceThroneOfCinders', spellType: 'unholy', name: 'Throne of Cinders',
-          type: 'buff', cost: 30, apCost: 1, range: 0,
-          kind: 'buff',
-          statusEffects: [{ id: 'protect', duration: 1 }],
-          desc: 'Empowers the caster. Applies Protect. Cooldown: 2 rounds.' },
         { id: 'raceInfernalConscription', spellType: 'unholy', name: 'Infernal Conscription',
           type: 'debuff', cost: 35, range: 3, apCost: 1,
           kind: 'debuff',
           statusEffects: [{ id: 'marked', duration: 3, bonusDamage: 40 }],
           desc: 'Weakens a Single Enemy. Applies Marked.' },
-        { id: 'raceMeteorSlam', spellType: 'unholy', name: 'Meteor Slam',
-          type: 'damage', cost: 35, dmg: 80, range: 1, apCost: 2,
-          kind: 'skySlam', damageType: 'physical', carryHeight: 5, dmgPerLevel: 30,
-          requiresFlight: true, aoeRadius: 1, aoeDmgPct: 0.50,
-          statusEffects: [{ id: 'stagger', duration: 1 }],
-          terrainDeform: { centerDelta: -1, edgeDelta: -1 },
-          desc: 'Slams down from the sky, dealing WEAK physical damage in an AOE. Applies Stagger. Nearby enemies take splash damage. Usable only while flying. Reshapes the ground on impact.' },
         SHARED_SCORCHED_EARTH,
         SHARED_SUMMON_BLOOD_RAIN
     ],
@@ -6944,7 +6827,6 @@ const RACE_ABILITIES = {
           kind: 'buff', selfDamagePct: 0.10,
           statStageBoost: { atk: 2 },
           desc: 'Empowers the caster. Raises ATK by 2 stages. Costs a portion of your HP.' },
-        _mkBolt(_DISCORD_BOLT, { id: 'raceBlackPhillipsGaze', spellType: 'unholy', name: 'Black Phillip\'s Gaze' }),
         { id: 'raceCliffCharge', spellType: 'unholy', name: 'Cliff Charge',
           type: 'damage', cost: 25, dmg: 80, range: 2, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 20,
@@ -6975,19 +6857,13 @@ const RACE_ABILITIES = {
           type: 'utility', cost: 30, range: 3, apCost: 1,
           kind: 'zoneHeal', aoeRadius: 1, zoneDuration: 2, healPerTurn: 52,
           desc: 'Creates a zone that heals allies standing inside it each turn.' },
-        { id: 'raceWhirlpool', spellType: 'anomaly', name: 'Whirlpool',
-          type: 'damage', cost: 35, dmg: 80, range: 4,
-          kind: 'aoePull', damageType: 'magic', aoeRadius: 1, pullToCenter: true,
-          leaveTerrain: 'deep_water',
-          desc: 'Deals WEAK magic damage to All Enemies in an AOE and pulls them toward the center. Leaves deep water tiles behind.' },
         { id: 'raceSirenSong', spellType: 'anomaly', name: 'Siren Song',
           type: 'debuff', cost: 25, range: 4, apCost: 1,
           kind: 'debuff',
           statusEffects: [{ id: 'sirenSong', duration: 1 }],
           desc: 'Weakens a Single Enemy. Applies Siren Song.' },
         SHARED_FLASH_FREEZE,
-        SHARED_TIDAL_SURGE,
-        SHARED_MAELSTROM
+        SHARED_TIDAL_SURGE
     ],
     'nephilim': [
         { id: 'raceHolyBulwark', spellType: 'divine', name: 'Holy Bulwark',
@@ -7019,11 +6895,6 @@ const RACE_ABILITIES = {
           kind: 'escape', teleportDistance: 3,
           statusEffects: [{ id: 'invisible', duration: 1 }],
           desc: 'Dissolve into mist. Teleport 3 tiles and become invisible for 1 turn.' },
-        { id: 'raceBloodThrall', spellType: 'unholy', element: 'blood', name: 'Blood Thrall',
-          type: 'debuff', cost: 30, range: 3, apCost: 1,
-          kind: 'debuff',
-          statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 20 }],
-          desc: 'Weakens a Single Enemy. Applies Marked.' },
         { id: 'racePredatorDrop', spellType: 'unholy', element: 'blood', name: 'Predator Drop',
           type: 'damage', cost: 25, dmg: 40, range: 1, apCost: 1,
           kind: 'skyDrop', damageType: 'physical', carryHeight: 4, dmgPerLevel: 15,
@@ -7064,10 +6935,10 @@ const RACE_ABILITIES = {
         _mkBlink('short', { id: 'racePhaseWalk', spellType: 'tech', name: 'Phase Walk',
           desc: 'Phase through reality up to 3 tiles. Repositioning tool.' }),
         { id: 'raceHeatDeath', spellType: 'alien', name: 'Heat Death',
-          type: 'utility', cost: 35, range: 4, apCost: 2,
-          kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
+          type: 'damage', cost: 15, manaCostOverride: 15, dmg: 120, range: 4, apCost: 2,
+          kind: 'aoe', damageType: 'magic', aoeRadius: 1, zoneDuration: 2,
           statusEffects: [{ id: 'slow', duration: 1 }],
-          desc: 'Impose entropy on a 3×3 area for 2 turns — everything inside winds down, slowed. All energy tends toward entropy.' },
+          desc: 'Impose entropy on a 3×3 area for 2 turns — everything inside takes MEDIUM damage.' },
         SHARED_FISSURE,
         SHARED_SUMMON_BLIZZARD
     ],
@@ -7087,7 +6958,6 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statusEffects: [{ id: 'protect', duration: 2 }],
           desc: 'Empowers the caster. Applies Protect. Cooldown: 2 rounds.' },
-        SHARED_CALL_LIGHTNING
     ],
     'general': [
         { id: 'raceRallyCommand', spellType: 'human', name: 'Rally Command',
@@ -7134,11 +7004,6 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stagger', duration: 1 }],
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           desc: 'Deals MEDIUM physical damage to All Enemies in an AOE. Applies Stagger. Reshapes the ground on impact.' },
-        { id: 'raceTimeSurge', spellType: 'alien', name: 'Time Surge',
-          type: 'buff', cost: 30, range: 0, apCost: 1,
-          kind: 'buff',
-          statusEffects: [{ id: 'overclock', duration: 1 }],
-          desc: 'Empowers the caster. Applies Overclock.' },
         _mkCharge({ id: 'raceDarkJustice', spellType: 'human', name: 'Dark Justice',
           cost: 30, bonusVsDebuffed: 0.40,
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Deals bonus damage to debuffed targets.' }),
@@ -7154,10 +7019,6 @@ const RACE_ABILITIES = {
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
           statusEffects: [{ id: 'silence', duration: 1 }],
           desc: 'Kill the signal in a 3×3 area for 2 turns. Enemies inside are silenced.' },
-        { id: 'raceTinfoilFortress', spellType: 'human', name: 'Tinfoil Fortress',
-          type: 'buff', cost: 15, apCost: 1, range: 0,
-          kind: 'aoeShield', aoeRadius: 0, shieldHp: 100,
-          desc: 'Grants a damage-absorbing shield to All Allies in an AOE.' },
         { id: 'raceTinFoilHat', spellType: 'human', element: 'metal', name: 'Tin Foil Hat',
           type: 'buff', cost: 20, apCost: 1, range: 2,
           kind: 'buff',
@@ -7176,11 +7037,6 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statStageBoost: { atk: 2, def: 1 },
           desc: 'Empowers the caster. Raises ATK by 2 stages and DEF by 1 stage.' },
-        { id: 'raceVassalage', spellType: 'unholy', name: 'Vassalage',
-          type: 'debuff', cost: 25, range: 4, apCost: 1,
-          kind: 'debuff',
-          statusEffects: [{ id: 'marked', duration: 3, bonusDamage: 40 }],
-          desc: 'Weakens a Single Enemy. Applies Marked.' },
         { id: 'raceCataclysmDecree', spellType: 'unholy', name: 'Cataclysm Decree',
           type: 'damage', cost: 40, dmg: 160, range: 5, apCost: 2,
           kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
@@ -7235,7 +7091,7 @@ const RACE_ABILITIES = {
           kind: 'aoePull', damageType: 'magic', aoeRadius: 1, pullToCenter: true,
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Deals HEAVY magic damage to All Enemies in an AOE and pulls them toward the center. Applies Slow.' },
-        { id: 'raceFlood', spellType: 'anomaly', element: 'water', name: 'Flood',
+        { id: 'raceFlood', spellType: 'anomaly', element: 'water', name: 'Great Flood',
           type: 'damage', cost: 45, dmg: 130, range: 4, apCost: 2, cooldownRounds: 2,
           kind: 'terrainCreate', terrainType: 'water', tileCount: 12, elevationFlood: true,
           damageType: 'magic',
@@ -7263,11 +7119,6 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 25, dmg: 120, range: 1,
           kind: 'damage', damageType: 'physical', ignoreArmor: true,
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Ignores DEF.' },
-        { id: 'raceApexPounce', spellType: 'anomaly', name: 'Apex Pounce',
-          type: 'damage', cost: 25, dmg: 80, range: 3, apCost: 1,
-          kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 25,
-          statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Leaps onto a Single Enemy, dealing WEAK physical damage. Applies Stagger.' },
         SHARED_FISSURE,
     ],
     'dragon': [
@@ -7370,7 +7221,6 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           desc: 'Deals MEDIUM physical damage to All Enemies in an AOE.' },
         SHARED_TIDAL_SURGE,
-        SHARED_MAELSTROM,
         SHARED_VORTEX_SLAM
     ],
     'loch ness monster': [
@@ -7434,7 +7284,6 @@ const RACE_ABILITIES = {
           desc: 'Deals WEAK magic damage to All Enemies around the caster (AOE). Applies Discord.' },
         _mkBlink('short', { id: 'raceGravityBoots', spellType: 'tech', name: 'Gravity Boots',
           desc: 'Activate anti-gravity boots to reposition up to 3 tiles. Far out.' }),
-        _mkBolt(_DISCORD_BOLT, { id: 'raceCharmBeam', spellType: 'anomaly', name: 'Charm Beam' }),
         { id: 'racePlasmaWhip', spellType: 'tech', name: 'Plasma Whip',
           type: 'damage', cost: 30, dmg: 120, range: 2,
           kind: 'damage', damageType: 'physical',
@@ -7489,11 +7338,6 @@ const RACE_ABILITIES = {
           desc: 'Deals WEAK physical damage to All Enemies around the caster (AOE). Applies Stagger. Reshapes the ground on impact.' },
         SHARED_RAMPART,
         SHARED_FISSURE,
-        { id: 'raceAvalancheSmash', spellType: 'human', name: 'Avalanche Smash',
-          type: 'damage', cost: 30, dmg: 80, range: 2, apCost: 1,
-          kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 25,
-          statusEffects: [{ id: 'slow', duration: 2 }],
-          desc: 'Leaps onto a Single Enemy, dealing WEAK physical damage. Applies Slow.' }
     ],
 
     'honda civic': [
@@ -7527,11 +7371,6 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'slow', duration: 2 }],
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Applies Slow.' },
-        { id: 'raceFrostThrone', spellType: 'anomaly', name: 'Frost Throne',
-          type: 'buff', cost: 25, apCost: 1, range: 0,
-          kind: 'buff',
-          statusEffects: [{ id: 'protect', duration: 2 }],
-          desc: 'Empowers the caster. Applies Protect. Cooldown: 2 rounds.' },
         /* 2026-07-17 shape pass: Diamond Dust now falls in a literal DIAMOND
            (Manhattan radius 2, 13 tiles) instead of another 3×3. */
         { id: 'raceDiamondDust', spellType: 'anomaly', name: 'Diamond Dust',
@@ -7631,32 +7470,17 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stagger', duration: 1 }],
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Stagger. Reshapes the ground on impact.' },
-        { id: 'raceBoulderThrow', spellType: 'human', name: 'Boulder Throw',
-          type: 'damage', cost: 25, dmg: 120, range: 4,
-          kind: 'damage', damageType: 'physical',
-          statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Stagger.' },
         { id: 'raceApeFury', spellType: 'anomaly', name: 'Ape Fury',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
           statStageBoost: { atk: 2, def: 1 },
           desc: 'Empowers the caster. Raises ATK by 2 stages and DEF by 1 stage.' },
-        { id: 'raceGroundSlam', spellType: 'human', name: 'Ground Slam',
-          type: 'damage', cost: 35, dmg: 80, range: 0, apCost: 2,
-          kind: 'barrage', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
-          terrainDeform: { centerDelta: -2, edgeDelta: 0 },
-          desc: 'Deals WEAK physical damage to All Enemies around the caster (AOE). Reshapes the ground on impact.' }
     ],
 
     'minotaur': [
         _mkCharge({ id: 'raceBullRush', spellType: 'human', name: 'Bull Rush',
           kind: 'dash', range: 4, statusEffects: _STAGGER_1,
           desc: 'Charges at a Single Enemy, dealing MEDIUM physical damage. Applies Stagger.' }),
-        { id: 'raceGore', spellType: 'unholy', name: 'Gore',
-          type: 'damage', cost: 20, dmg: 120, range: 1,
-          kind: 'damage', damageType: 'physical',
-          statusEffects: [{ id: 'poison', duration: 2 }],
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Poison.' },
         { id: 'raceLabyrinthRoar', spellType: 'unholy', name: 'Labyrinth Roar',
           type: 'debuff', cost: 25, range: 0, apCost: 1,
           kind: 'barrage', aoeRadius: 2, aoeOriginSelf: true,
@@ -7884,7 +7708,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 30, dmg: 120, range: 2,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.40,
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Heals the caster for part of the damage dealt.' },
-        { id: 'raceWebLaunch', spellType: 'unholy', name: 'Web Launch',
+        { id: 'raceWebLaunch', spellType: 'unholy', name: 'Web Shoot',
           type: 'damage', cost: 25, dmg: 80, range: 4,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'slow', duration: 2 }],
@@ -7918,11 +7742,6 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 20, apCost: 1, range: 3,
           kind: 'aoeShield', aoeRadius: 0, shieldHp: 120,
           desc: 'Grants a damage-absorbing shield to All Allies in an AOE.' },
-        { id: 'raceNordicWarcry', spellType: 'divine', name: 'Nordic War Cry',
-          type: 'buff', cost: 25, apCost: 1, range: 0,
-          kind: 'warCry', aoeRadius: 2,
-          statStageBoost: { atk: 2, def: 2 },
-          desc: 'Empowers All Allies nearby. Raises ATK by 2 stages and DEF by 2 stages.' },
         SHARED_WING_ATTACK,
     ],
 
@@ -7961,6 +7780,32 @@ for (const [race, abilities] of Object.entries(RACE_ABILITIES)) {
         RACE_ABILITY_BY_ID[ability.id] = ability;
 
         SPELL_BY_ID[ability.id] = ability;
+    }
+}
+
+/* ── Baked movepool shares (2026-07-26, from the Spell Library editor) ────
+   These races borrow spells DEFINED elsewhere (another race's array or the
+   job spell library) by id, instead of duplicating the literals. Runs AFTER
+   the _race stamping loop above so a borrowed def keeps its home identity
+   (library spells stay job spells; giant/golem keep Boulder Hurl) — the
+   same wiring the EWSpellMods layer uses for exported movepool edits. */
+for (const [race, ids] of [
+    ['king kong',         ['raceBoulderHurl', 'groundSlam']],
+    ['barbarella',        ['raceCharm']],
+    ['shadow entity',     ['voidRush']],
+    ['siren',             ['raceRiptide', 'raceFlood']],
+    ['mermaid',           ['raceRiptide', 'raceFlood']],
+    ['loch ness monster', ['raceRiptide', 'raceFlood']],
+    ['kraken',            ['raceRiptide', 'raceFlood']],
+    ['vampire',           ['raceBite']],
+    ['machine elves',     ['raceFractalNeedle']],
+    ['ice queen',         ['raceFrozenPunch']],
+    ['minotaur',          ['raceGoreCharge']],
+]) {
+    for (const id of ids) {
+        const def = RACE_ABILITY_BY_ID[id] || SPELL_BY_ID[id];
+        if (!def) { console.warn(`[MovepoolShare] unknown spell id '${id}' for race ${race}`); continue; }
+        if (!RACE_ABILITIES[race].some(a => a.id === id)) RACE_ABILITIES[race].push(def);
     }
 }
 
@@ -8253,7 +8098,8 @@ function computeSpellManaCost(s){
     if (s.delayTurns || k === 'delayed') P *= 0.9;   // telegraphed
     if (s.friendlyFire) P *= 0.92;                   // can catch your own team
     if (s.requiresFlight) P *= 0.95;                 // conditional
-    if (s.recoilPct) P *= (1 - Math.min(0.15, s.recoilPct));
+    const _recoil = s.recoilPct || s.selfDamagePct;
+    if (_recoil) P *= (1 - Math.min(0.15, _recoil));
     if (s.selfStun) P *= 0.9;
     if (s.apCost >= 2) P *= 0.92;                    // already eats your whole turn
     if (s.apCost === 0) P *= 1.12;                   // free-action premium
@@ -12483,10 +12329,10 @@ const CLASS_SPELL_LEARN_ORDER = {
     'Gunslinger':  ['crossfire', 'doubleShot', 'ricochet1', 'shootout', 'deadEye'],
     'Warrior':     ['guardSlash', 'warCry', 'groundSlam', 'judgment'],
     'Tank':        ['fortify', 'provoke', 'shieldBash', 'rampart'],
-    'Black Mage':  ['fire1', 'thunder1', 'wallOfFire', 'frostMine', 'meteor', 'thunderstorm'],
+    'Black Mage':  ['fire1', 'thunder1', 'wallOfFire', 'meteor', 'thunderstorm'],
     'White Mage':  ['heal1', 'radiantBolt', 'veilOfLight', 'cleanse', 'healAll'],
-    'Agent':       ['knifeThrow', 'pistolWhip', 'placeBomb', 'snareTrap', 'poisonDart', 'sneakSlash', 'shadowLunge', 'assassinate'],
-    'Psychic':     ['kineticHurl', 'glare', 'warpRune', 'psychosis', 'mindShatter'],
+    'Agent':       ['knifeThrow', 'pistolWhip', 'placeBomb', 'poisonDart', 'sneakSlash', 'shadowLunge', 'assassinate'],
+    'Psychic':     ['kineticHurl', 'glare', 'psychosis', 'mindShatter'],
     'Harvester':   ['lifeDrain', 'healingSeed', 'poisonSeed', 'trunkThrow', 'leechSeed'],
     'Engineer':    ['plasmaGun', 'deployTurret', 'repair', 'fiveGTower', 'overclock', 'empBurst'],
     'Harbinger':   ['lullaby', 'sonicCharge', 'discordance', 'fermata', 'encore', 'requiem'],
@@ -12737,7 +12583,7 @@ window.EWSpellMods = (function () {
         'drainPct', 'aoeRadius', 'crossRadius', 'range', 'apCost', 'kind', 'type',
         'statusEffects', 'allyStatusEffects', 'teamStatusEffects', 'statStageBoost',
         'shield', 'shieldHp', 'cooldownRounds', 'delayTurns', 'randomTeamBuff',
-        'zodiacReading', 'friendlyFire', 'requiresFlight', 'recoilPct', 'selfStun'];
+        'zodiacReading', 'friendlyFire', 'requiresFlight', 'recoilPct', 'selfDamagePct', 'selfStun'];
 
     let doc = null;
     let pristine = null;    // exact pre-mod table snapshots (object refs, not clones)

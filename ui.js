@@ -8244,6 +8244,13 @@
         const _SLB_TRAVELS = ['strikeLeap','descent','boulder','iceSpear','beam','aura','aoe','teleport','chain','tether','bolt','domProjectile','none'];
         const _SLB_WEIGHTS = ['light', 'standard', 'heavy', 'ultimate'];
         const _SLB_PROJECTILES = ['proj-fire','proj-bullet','proj-knife','proj-debuff','proj-spiderweb','proj-arrow','proj-rock'];
+        /* House damage scale — the tiers the spell descs use ("Deals MEDIUM
+           magic damage…"). One-click presets on the dmg field; type any
+           number for something in between. Heal + recoil get the same
+           treatment. */
+        const _SLB_DMG_TIERS = [['WEAK', 80], ['MEDIUM', 120], ['HEAVY', 160], ['SEVERE', 210]];
+        const _SLB_HEAL_TIERS = [['WEAK', 60], ['MEDIUM', 100], ['BIG', 150]];
+        const _SLB_RECOIL_TIERS = [['10%', 0.10], ['20%', 0.20], ['33%', 0.33]];
 
         /* Field catalog — every known spell field with a terse meaning. Drives
            the "+ add field" picker and the hover help in the editor. Enum-
@@ -8262,7 +8269,7 @@
             equipCost: { t: 'num', h: 'Legacy loadout weight (job spells only).' },
             slotCost: { t: 'num', h: 'Loadout slots 1-3; overrides the mana-derived slot cost.' },
             range:  { t: 'num', h: 'Cast range in tiles. 0 = self / self-centred.' },
-            dmg:    { t: 'num', h: 'Base damage.' },
+            dmg:    { t: 'num', h: 'Base damage. House scale: WEAK 80 · MEDIUM 120 · HEAVY 160 · SEVERE 210 — click a preset or type any number. Mana cost re-derives from it unless pinned.' },
             heal:   { t: 'num', h: 'Flat heal (kind:heal).' },
             healAmt: { t: 'num', h: 'Heal amount for healAll / AoE heals.' },
             healPerTurn: { t: 'num', h: 'Zone/regen heal per turn.' },
@@ -8275,8 +8282,8 @@
             blastDmg: { t: 'num', h: 'Secondary explosion damage.' },
             blastRadius: { t: 'num', h: 'Secondary explosion radius.' },
             aoeDmgPct: { t: 'num', h: 'Splash fraction to non-primary targets (0-1).' },
-            selfDamagePct: { t: 'num', h: 'Recoil to caster as fraction (0-1).' },
-            recoilPct: { t: 'num', h: 'Recoil discount input to the mana formula (0-1).' },
+            selfDamagePct: { t: 'num', h: 'RECOIL: caster pays this fraction of MAX HP after the cast resolves (0-1). Never lethal — stops at 1 HP. Also discounts the mana formula.' },
+            recoilPct: { t: 'num', h: 'Same recoil mechanic as selfDamagePct (the combo spells use this name): caster pays the fraction of max HP after cast, never lethal. Discounts the mana formula.' },
             ignoreArmor: { t: 'bool', h: 'Bypass DEF/MDEF.' },
             bonusVsStatus: { t: 'json', h: '{status, mult} — e.g. {"status":"burn","mult":1.5}.' },
             bonusVsDebuffed: { t: 'num', h: 'Bonus vs any debuffed target (0-1).' },
@@ -8285,9 +8292,9 @@
             executePct: { t: 'num', h: 'Execute threshold fraction of max HP.' },
             executeBonusPct: { t: 'num', h: 'Execute bonus fraction.' },
             noDamage: { t: 'bool', h: 'Pure utility — never deals damage.' },
-            statusEffects: { t: 'json', h: 'Applied to targets: [{id, duration, bonusDamage?}] — id from STATUS_DEFS.' },
-            allyStatusEffects: { t: 'json', h: 'Statuses applied to allies.' },
-            teamStatusEffects: { t: 'json', h: 'Statuses applied to the whole team.' },
+            statusEffects: { t: 'status', h: 'Statuses applied to TARGETS on hit. Pick from the list — no JSON needed (raw JSON still available via { } RAW JSON).' },
+            allyStatusEffects: { t: 'status', h: 'Statuses applied to ALLIES.' },
+            teamStatusEffects: { t: 'status', h: 'Statuses applied to the WHOLE TEAM.' },
             statStageBoost: { t: 'json', h: 'Stat stages: {atk,def,mdef,int,spd} each -2..+2.' },
             randomTeamBuff: { t: 'json', h: '{stats:[...], stages:n} random team buff.' },
             cleanse: { t: 'json', h: 'true or N — removes N debuffs.' },
@@ -8372,11 +8379,14 @@
             return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
         function _slbMods() { return window.EWSpellMods; }
+        // Always alphabetical — these feed every job/race dropdown, filter and
+        // rail in the editor, and definition order in the data tables is
+        // arbitrary (a nightmare to scan at 60+ races).
         function _slbJobs() {
-            return (typeof CLASS_SPELL_LEARN_ORDER !== 'undefined') ? Object.keys(CLASS_SPELL_LEARN_ORDER) : [];
+            return (typeof CLASS_SPELL_LEARN_ORDER !== 'undefined') ? Object.keys(CLASS_SPELL_LEARN_ORDER).sort((a, b) => a.localeCompare(b)) : [];
         }
         function _slbRaces() {
-            return (typeof RACE_ABILITIES !== 'undefined') ? Object.keys(RACE_ABILITIES) : [];
+            return (typeof RACE_ABILITIES !== 'undefined') ? Object.keys(RACE_ABILITIES).sort((a, b) => a.localeCompare(b)) : [];
         }
         function _slbStatusIds() {
             return (typeof STATUS_DEFS !== 'undefined') ? Object.keys(STATUS_DEFS) : [];
@@ -8693,6 +8703,12 @@
             if (!key) return;
             const M = _slbMods();
             if (!M) return;
+            // free-typed via the search inputs — resolve case-insensitively,
+            // reject unknowns instead of minting a garbage learnset/movepool
+            const pool = kind === 'job' ? _slbJobs() : _slbRaces();
+            const match = pool.find(k => k === key) || pool.find(k => k.toLowerCase() === String(key).toLowerCase());
+            if (!match) { _slbToast(`✗ unknown ${kind}: "${key}"`, true); return; }
+            key = match;
             if (kind === 'job') {
                 const cur = (CLASS_SPELL_LEARN_ORDER[key] || []).slice();
                 if (!cur.includes(id)) cur.push(id);
@@ -8719,8 +8735,18 @@
         function _slbFieldInput(id, f, val, spec) {
             const t = spec ? spec.t : (typeof val === 'number' ? 'num' : typeof val === 'boolean' ? 'bool' : (val && typeof val === 'object') ? 'json' : 'text');
             const set = (raw, ft) => `window._slbSetField('${_slbEsc(id)}','${_slbEsc(f)}',${raw},'${ft}')`;
+            if (t === 'status') return _slbStatusEditor(id, f, val);
             if (t === 'bool') return `<input type="checkbox"${val ? ' checked' : ''} onchange="${set('this.checked', 'bool')}">`;
-            if (t === 'num') return `<input type="number" step="any" value="${val != null ? _slbEsc(val) : ''}" onchange="${set('this.value', 'num')}">`;
+            if (t === 'num') {
+                const input = `<input type="number" step="any" value="${val != null ? _slbEsc(val) : ''}" onchange="${set('this.value', 'num')}">`;
+                const tiers = f === 'dmg' ? _SLB_DMG_TIERS
+                    : (f === 'heal' || f === 'healAmt') ? _SLB_HEAL_TIERS
+                    : (f === 'selfDamagePct' || f === 'recoilPct') ? _SLB_RECOIL_TIERS
+                    : null;
+                if (!tiers) return input;
+                return `<span class="slb-numwrap">${input}${tiers.map(([l, v]) =>
+                    `<button class="slb-tier${val === v ? ' on' : ''}" title="${l} = ${v}" onclick="${set(v, 'num')}">${l}</button>`).join('')}</span>`;
+            }
             if (t === 'enum') {
                 const opts = (f === 'vfxArchetype' ? _slbArchetypes() : (spec.o || []));
                 return `<select onchange="${set('this.value', 'text')}"><option value=""${val == null ? ' selected' : ''}>(unset)</option>${opts.map(o => `<option value="${_slbEsc(o)}"${val === o ? ' selected' : ''}>${_slbEsc(o)}</option>`).join('')}</select>`;
@@ -8729,6 +8755,72 @@
             if (t === 'long') return `<textarea class="slb-json-mini slb-long" spellcheck="false" onchange="${set('this.value', 'text')}">${_slbEsc(val != null ? val : '')}</textarea>`;
             return `<input type="text" value="${_slbEsc(val != null ? val : '')}" onchange="${set('this.value', 'text')}">`;
         }
+
+        /* ── status-effect chip editor ───────────────────────────────────────
+           Replaces the raw-JSON textarea for statusEffects / allyStatusEffects /
+           teamStatusEffects: each applied status is a row (status picker ·
+           duration · optional bonus dmg · remove), plus "+ add status…" fed
+           from STATUS_DEFS. Every mutation round-trips through _slbSetField as
+           JSON, so diffing / revert / repricing all keep working. */
+        function _slbStatusDef(sid) {
+            return (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[sid]) || {};
+        }
+        function _slbStatusEditor(id, f, val) {
+            const arr = Array.isArray(val) ? val : [];
+            const sids = _slbStatusIds().slice().sort((a, b) => a.localeCompare(b));
+            const call = (fn, extra) => `window.${fn}('${_slbEsc(id)}','${_slbEsc(f)}'${extra})`;
+            const rows = arr.map((e, i) => {
+                const opts = sids.map(s => {
+                    const d = _slbStatusDef(s);
+                    return `<option value="${_slbEsc(s)}"${e.id === s ? ' selected' : ''}>${_slbEsc(d.icon || '')} ${_slbEsc(d.label || s)}</option>`;
+                }).join('');
+                return `<div class="slb-status-row">
+                    <select title="${_slbEsc(_slbStatusDef(e.id).label || e.id)}" onchange="${call('_slbStatusMut', `,${i},'id',this.value`)}">${opts}</select>
+                    <input type="number" min="1" step="1" value="${e.duration != null ? _slbEsc(e.duration) : 1}" title="duration (rounds)" onchange="${call('_slbStatusMut', `,${i},'duration',this.value`)}">
+                    <span class="slb-status-l">rnd</span>
+                    <input type="number" step="1" value="${e.bonusDamage != null ? _slbEsc(e.bonusDamage) : ''}" placeholder="＋dmg" title="bonusDamage rider (marked-style statuses) — blank = none" onchange="${call('_slbStatusMut', `,${i},'bonusDamage',this.value`)}">
+                    <button class="slb-status-x" title="remove this status" onclick="${call('_slbStatusRemove', `,${i}`)}">✕</button>
+                </div>`;
+            }).join('');
+            const addOpts = sids.map(s => {
+                const d = _slbStatusDef(s);
+                return `<option value="${_slbEsc(s)}">${_slbEsc(d.icon || '')} ${_slbEsc(d.label || s)} (${_slbEsc(s)})</option>`;
+            }).join('');
+            return `<div class="slb-status-ed">${rows}
+                <select class="slb-status-add" onchange="if(this.value){${call('_slbStatusAdd', `,this.value`)};this.value='';}">
+                    <option value="">＋ add status…</option>${addOpts}
+                </select>
+            </div>`;
+        }
+        function _slbStatusArr(id, f) {
+            const d = SPELL_BY_ID[id];
+            return (d && Array.isArray(d[f])) ? JSON.parse(JSON.stringify(d[f])) : [];
+        }
+        function _slbStatusWrite(id, f, arr) {
+            window._slbSetField(id, f, arr.length ? JSON.stringify(arr) : '', 'json');
+        }
+        window._slbStatusAdd = function(id, f, sid) {
+            const arr = _slbStatusArr(id, f);
+            arr.push({ id: sid, duration: 2 });
+            _slbStatusWrite(id, f, arr);
+        };
+        window._slbStatusRemove = function(id, f, i) {
+            const arr = _slbStatusArr(id, f);
+            arr.splice(i, 1);
+            _slbStatusWrite(id, f, arr);
+        };
+        window._slbStatusMut = function(id, f, i, key, raw) {
+            const arr = _slbStatusArr(id, f);
+            if (!arr[i]) return;
+            if (key === 'id') arr[i].id = raw;
+            else if (raw === '' || raw == null) delete arr[i][key];
+            else {
+                const n = Number(raw);
+                if (!isFinite(n)) { _slbToast('✗ ' + key + ': not a number', true); return; }
+                arr[i][key] = n;
+            }
+            _slbStatusWrite(id, f, arr);
+        };
 
         function _slbRenderDetail() {
             const el = document.getElementById('slbDetail');
@@ -8753,11 +8845,14 @@
                 return;
             }
             /* fields, ordered: core first, then whatever else the def carries, then add-a-field */
-            const CORE = ['name', 'desc', 'type', 'kind', 'spellType', 'element', 'damageType', 'cost', 'apCost', 'range', 'dmg', 'heal', 'healAmt', 'aoeRadius', 'cooldownRounds', 'statusEffects', 'statStageBoost', 'tier', 'school', 'classRestriction', 'projectileOverride', 'vfxArchetype', 'vfxWeight'];
+            const CORE = ['name', 'desc', 'type', 'kind', 'spellType', 'element', 'damageType', 'cost', 'apCost', 'range', 'dmg', 'heal', 'healAmt', 'aoeRadius', 'cooldownRounds', 'statusEffects', 'selfDamagePct', 'statStageBoost', 'tier', 'school', 'classRestriction', 'projectileOverride', 'vfxArchetype', 'vfxWeight'];
             const hidden = ['id', '_race', '_isRaceAbility', '_home', '_sentaiColor'];
             const present = Object.keys(d).filter(k => !hidden.includes(k));
             const rest = present.filter(k => !CORE.includes(k)).sort();
-            const shown = CORE.filter(k => Object.prototype.hasOwnProperty.call(d, k) || ['name', 'desc', 'type', 'kind', 'spellType', 'element', 'cost', 'range', 'vfxArchetype', 'vfxWeight'].includes(k)).concat(rest);
+            // dmg / statusEffects / selfDamagePct always render (blank when
+            // unset) — "how do I change the damage / add a status / add
+            // recoil" should never require hunting the +add-field picker.
+            const shown = CORE.filter(k => Object.prototype.hasOwnProperty.call(d, k) || ['name', 'desc', 'type', 'kind', 'spellType', 'element', 'damageType', 'cost', 'range', 'dmg', 'statusEffects', 'selfDamagePct', 'vfxArchetype', 'vfxWeight'].includes(k)).concat(rest);
             const catalogLeft = Object.keys(_SLB_FIELD_HELP).filter(k => !shown.includes(k)).sort();
             const fieldRow = f => {
                 const spec = _SLB_FIELD_HELP[f];
@@ -8765,7 +8860,8 @@
                 const isMod = doc.added[id] ? false : Object.prototype.hasOwnProperty.call(mod, f);
                 const prisVal = pris && Object.prototype.hasOwnProperty.call(pris, f) ? pris[f] : undefined;
                 const origHtml = isMod ? `<span class="slb-orig" title="original value — click to revert" onclick="window._slbRevertField('${_slbEsc(id)}','${_slbEsc(f)}')">↺ ${prisVal === undefined ? '(absent)' : _slbEsc(JSON.stringify(prisVal))}</span>` : '';
-                return `<div class="slb-field${isMod ? ' modded' : ''}" title="${_slbEsc(spec ? spec.h : '')}">
+                const wide = (spec && spec.t === 'status') || f === 'desc';
+                return `<div class="slb-field${isMod ? ' modded' : ''}${wide ? ' slb-field-wide' : ''}" title="${_slbEsc(spec ? spec.h : '')}">
                     <label>${_slbEsc(f)}</label>
                     ${_slbFieldInput(id, f, val, spec)}
                     ${origHtml}
@@ -8794,13 +8890,13 @@
                 <div class="slb-assign">
                     ${homeSel}
                     <div class="slb-assign-row"><span class="slb-assign-label">JOBS</span>${jobsChips}
-                        <select class="slb-sel slb-sel-add" onchange="window._slbAssign('${_slbEsc(id)}','job',this.value);this.value=''">
-                            <option value="">+ job…</option>${_slbJobs().filter(j => !row.jobs.includes(j)).map(j => `<option value="${_slbEsc(j)}">${_slbEsc(j)}</option>`).join('')}
-                        </select></div>
+                        <input class="slb-search slb-assign-search" list="slbAssignJobList" placeholder="＋ job… (type to search)"
+                            onchange="if(this.value){window._slbAssign('${_slbEsc(id)}','job',this.value);this.value='';}">
+                        <datalist id="slbAssignJobList">${_slbJobs().filter(j => !row.jobs.includes(j)).map(j => `<option value="${_slbEsc(j)}"></option>`).join('')}</datalist></div>
                     <div class="slb-assign-row"><span class="slb-assign-label">RACES</span>${raceChips}
-                        <select class="slb-sel slb-sel-add" onchange="window._slbAssign('${_slbEsc(id)}','race',this.value);this.value=''">
-                            <option value="">+ race…</option>${_slbRaces().filter(r => !row.races.includes(r)).map(r => `<option value="${_slbEsc(r)}">${_slbEsc(r)}</option>`).join('')}
-                        </select></div>
+                        <input class="slb-search slb-assign-search" list="slbAssignRaceList" placeholder="＋ race… (type to search)"
+                            onchange="if(this.value){window._slbAssign('${_slbEsc(id)}','race',this.value);this.value='';}">
+                        <datalist id="slbAssignRaceList">${_slbRaces().filter(r => !row.races.includes(r)).map(r => `<option value="${_slbEsc(r)}"></option>`).join('')}</datalist></div>
                 </div>
                 <div class="slb-field-grid">${shown.map(fieldRow).join('')}</div>
                 <div class="slb-addfield">
@@ -8818,14 +8914,14 @@
             </div>`;
         }
 
-        window._slbTypeFor = function(f) { const s = _SLB_FIELD_HELP[f]; return s ? (s.t === 'enum' || s.t === 'long' ? 'text' : s.t) : 'text'; };
+        window._slbTypeFor = function(f) { const s = _SLB_FIELD_HELP[f]; return s ? (s.t === 'enum' || s.t === 'long' ? 'text' : s.t === 'status' ? 'json' : s.t) : 'text'; };
         window._slbDefaultFor = function(f) {
             const s = _SLB_FIELD_HELP[f];
             if (!s) return '';
             if (s.t === 'num') return '1';
             if (s.t === 'bool') return true;
+            if (s.t === 'status') return '[{"id":"burn","duration":2}]';
             if (s.t === 'json') {
-                if (f === 'statusEffects' || f === 'allyStatusEffects' || f === 'teamStatusEffects') return '[{"id":"burn","duration":2}]';
                 if (f === 'statStageBoost') return '{"atk":-1}';
                 if (f === 'terrainDeform') return '{"centerDelta":-1,"edgeDelta":0}';
                 if (f === '_animOverride') return '{"travel":"beam"}';
@@ -9377,6 +9473,14 @@
 
         window._slbLabSetCfg = function(key, val) {
             const cfg = _slbLab.cfg;
+            if (key === 'casterRace' || key === 'dummyRace') {
+                // free-typed via the search input — resolve case-insensitively,
+                // reject unknowns (and restore the old value in the box)
+                const pool = _slbLab3DRaces().map(r => r.race);
+                const match = pool.find(r => r === val) || pool.find(r => r.toLowerCase() === String(val).trim().toLowerCase());
+                if (!match) { _slbToast(`✗ unknown race: "${val}"`, true); _slbLabSyncPanel(); return; }
+                val = match;
+            }
             if (key === 'distance') val = Math.max(1, Math.min(6, Number(val) || 3));
             if (key === 'repeatGapMs') val = Math.max(200, Number(val) || 1200);
             cfg[key] = (key === 'targetGround' || key === 'immortal' || key === 'repeat') ? !!val : val;
@@ -9481,21 +9585,22 @@
                 <div class="slb-lab-row slb-lab-hint">${learners.length ? 'learned by: ' + _slbEsc(learners.join(', ')) : (learnerRaces.length ? 'race ability: ' + _slbEsc(learnerRaces.slice(0, 4).join(', ')) + (learnerRaces.length > 4 ? '…' : '') : 'unassigned spell')}</div>
                 <div class="slb-lab-row">
                     <label>CASTER</label>
-                    <select onchange="window._slbLabSetCfg('casterRace', this.value)">
-                        ${races.map(r => `<option value="${_slbEsc(r.race)}"${r.race === cfg.casterRace ? ' selected' : ''}>${r.has3d ? '★ ' : ''}${_slbEsc(r.race)}</option>`).join('')}
-                    </select>
+                    <input class="slb-lab-race" list="slbLabRaceList" value="${_slbEsc(cfg.casterRace)}" placeholder="race… (type to search)"
+                        title="type to search — ★-prefixed races have a rigged 3D model" onchange="window._slbLabSetCfg('casterRace', this.value)">
                     <select onchange="window._slbLabSetCfg('casterJob', this.value)">
                         ${jobs.map(j => `<option value="${_slbEsc(j)}"${j === cfg.casterJob ? ' selected' : ''}>${_slbEsc(j)}</option>`).join('')}
                     </select>
                 </div>
                 <div class="slb-lab-row">
                     <label>DUMMY</label>
-                    <select onchange="window._slbLabSetCfg('dummyRace', this.value)">
-                        ${races.map(r => `<option value="${_slbEsc(r.race)}"${r.race === cfg.dummyRace ? ' selected' : ''}>${r.has3d ? '★ ' : ''}${_slbEsc(r.race)}</option>`).join('')}
-                    </select>
+                    <input class="slb-lab-race" list="slbLabRaceList" value="${_slbEsc(cfg.dummyRace)}" placeholder="race… (type to search)"
+                        title="type to search — ★-prefixed races have a rigged 3D model" onchange="window._slbLabSetCfg('dummyRace', this.value)">
                     <label class="slb-lab-mini">DIST</label>
                     <input type="number" min="1" max="6" value="${cfg.distance}" onchange="window._slbLabSetCfg('distance', this.value)" style="width:44px">
                 </div>
+                <datalist id="slbLabRaceList">
+                    ${races.map(r => `<option value="${_slbEsc(r.race)}" label="${r.has3d ? '★ 3D' : 'sprite'}"></option>`).join('')}
+                </datalist>
                 <div class="slb-lab-row slb-lab-hint">caster/dummy/distance changes need ⟳ RESTART STAGE</div>
                 <div class="slb-lab-row slb-lab-cast">
                     <button class="slb-lab-castbtn" onclick="window._slbLabCast()">✦ CAST</button>
