@@ -24796,15 +24796,14 @@ const ThreeRenderer = (function () {
             blob: blob, circle: circle, circleMat: circleMat,
             host: null, raf: 0, clock: new THREE.Clock(),
             model: null, mixer: null, url: null,
-            // view state
+            // view state — the model NEVER rotates on its own (owner call
+            // 2026-07-26b): only the player's drag moves it.
             h: 1, yaw: 0, polar: 0.42, zoom: 1, dist0: 4,
-            autoSpin: true, lastTouch: 0, dragging: false, px: 0, py: 0,
+            dragging: false, px: 0, py: 0,
         };
 
-        function _stopSpin() { _cv.lastTouch = performance.now(); }
         cnv.addEventListener('pointerdown', function (e) {
             _cv.dragging = true; _cv.px = e.clientX; _cv.py = e.clientY;
-            _stopSpin();
             cnv.style.cursor = 'grabbing';
             try { cnv.setPointerCapture(e.pointerId); } catch (_e) {}
         });
@@ -24814,7 +24813,6 @@ const ThreeRenderer = (function () {
             _cv.px = e.clientX; _cv.py = e.clientY;
             _cv.yaw += dx * 0.012;
             _cv.polar = Math.max(0.08, Math.min(1.25, _cv.polar + dy * 0.006));
-            _stopSpin();
         });
         function _endDrag(e) {
             _cv.dragging = false;
@@ -24826,13 +24824,20 @@ const ThreeRenderer = (function () {
         cnv.addEventListener('wheel', function (e) {
             e.preventDefault();
             _cv.zoom = Math.max(0.55, Math.min(2.8, _cv.zoom * Math.exp(-e.deltaY * 0.0012)));
-            _stopSpin();
         }, { passive: false });
         cnv.addEventListener('dblclick', function () {
             _cv.yaw = 0; _cv.polar = 0.42; _cv.zoom = 1;
-            _cv.lastTouch = 0;   // hand the character back to the turntable
         });
         return _cv;
+    }
+
+    /* One host wears exactly one viewer state class:
+       loading (summoning ring, sprite hidden) / ready (model live, sprite
+       crossfaded out) / fail (sprite fallback returns) / none. */
+    function _cvHostState(host, st) {
+        if (!host) return;
+        host.classList.remove('ew-cv-loading', 'ew-cv-ready', 'ew-cv-fail');
+        if (st) host.classList.add('ew-cv-' + st);
     }
 
     function _cvClearModel() {
@@ -24866,8 +24871,7 @@ const ThreeRenderer = (function () {
         }
         var dt = Math.min(v.clock.getDelta(), 0.1);
         if (v.mixer) v.mixer.update(dt);
-        // slow turntable until touched; resumes after 5s of stillness
-        if (!v.dragging && (performance.now() - v.lastTouch) > 5000) v.yaw += dt * 0.35;
+        // no auto-spin: yaw belongs to the player's drag alone
         if (v.model) v.model.rotation.y = v.yaw;
         v.circle.rotation.z += dt * 0.05;
         var dist = (v.dist0 / v.zoom);
@@ -24887,15 +24891,20 @@ const ThreeRenderer = (function () {
         var host = v.host;
         if (!res) {
             _cvClearModel();
-            if (host) { host.classList.remove('ew-cv-ready'); host.classList.add('ew-cv-fail'); }
+            _cvHostState(host, 'fail');   // sprite-only vessel — fallback stays
             return false;
         }
         var def = res.def;
         // faction accent stains the summoning circle
         if (opts.accent) { try { v.circleMat.color.set(opts.accent); } catch (_e) {} }
-        if (v.url === def.model && v.model) return true;   // same character
+        if (v.url === def.model && v.model) {              // same character
+            _cvHostState(host, 'ready');
+            return true;
+        }
         _cvClearModel();
-        if (host) { host.classList.remove('ew-cv-ready'); host.classList.remove('ew-cv-fail'); }
+        // Manifesting: sprite hides, the summoning ring spins (CSS). A cached
+        // GLB resolves synchronously below, so the ring never flashes then.
+        _cvHostState(host, 'loading');
         v.url = def.model;
         // fresh mount = fresh framing
         v.yaw = 0; v.polar = 0.42; v.zoom = 1; v.lastTouch = 0;
@@ -24967,7 +24976,7 @@ const ThreeRenderer = (function () {
                     });
                 }
             }
-            if (v.host) { v.host.classList.add('ew-cv-ready'); v.host.classList.remove('ew-cv-fail'); }
+            _cvHostState(v.host, 'ready');
             if (!v.raf) { v.clock.getDelta(); v.raf = requestAnimationFrame(_cvFrame); }
         });
         // a failed base GLB never fires the success cb — watch the cache entry
@@ -24975,10 +24984,10 @@ const ThreeRenderer = (function () {
         if (ce && !ce.root) {
             (ce.doneCbs = ce.doneCbs || []).push(function (e2) {
                 if (!_cv || tok !== _cvToken) return;
-                if (e2.failed && v.host) { v.host.classList.add('ew-cv-fail'); v.host.classList.remove('ew-cv-ready'); }
+                if (e2.failed) _cvHostState(v.host, 'fail');   // ring off, sprite returns
             });
-        } else if (ce && ce.failed && host) {
-            host.classList.add('ew-cv-fail');
+        } else if (ce && ce.failed) {
+            _cvHostState(host, 'fail');
         }
         return true;
     }
@@ -24993,13 +25002,10 @@ const ThreeRenderer = (function () {
             if (!host || !_cvSupports(race, gender)) return false;
             var v = _cvEnsure();
             if (!v) return false;
-            if (v.host && v.host !== host) {
-                v.host.classList.remove('ew-cv-ready', 'ew-cv-fail');
-            }
+            if (v.host && v.host !== host) _cvHostState(v.host, null);
             v.host = host;
             if (v.canvas.parentNode !== host) host.appendChild(v.canvas);
-            if (v.model) host.classList.add('ew-cv-ready');
-            _cvSetCharacter(race, gender, opts);
+            _cvSetCharacter(race, gender, opts);   // owns the host state class
             if (!v.raf) { v.clock.getDelta(); v.raf = requestAnimationFrame(_cvFrame); }
             return true;
         },
@@ -25007,7 +25013,7 @@ const ThreeRenderer = (function () {
         unmount: function () {
             if (!_cv) return;
             if (_cv.raf) { cancelAnimationFrame(_cv.raf); _cv.raf = 0; }
-            if (_cv.host) _cv.host.classList.remove('ew-cv-ready', 'ew-cv-fail');
+            _cvHostState(_cv.host, null);
             if (_cv.canvas.parentNode) _cv.canvas.parentNode.removeChild(_cv.canvas);
             _cv.host = null;
             _cvClearModel();

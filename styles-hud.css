@@ -956,6 +956,31 @@
         .cdx-hero-viewer { position: absolute; inset: 0; pointer-events: none; }
         .cdx-hero-stage.has-viewer .cdx-hero-sprite { transition: opacity 0.5s ease; }
         .cdx-hero-stage.ew-cv-ready .cdx-hero-sprite { opacity: 0; }
+        /* MANIFESTING — while the GLB downloads the sprite stays hidden (no
+           2D→3D pop) and a summoning ring spins instead. The sprite only
+           returns on ew-cv-fail / sprite-only vessels. Host classes are
+           juggled by EWCharViewer (three-renderer.js _cvHostState). */
+        .cdx-hero-stage.ew-cv-loading .cdx-hero-sprite,
+        .pb-hero3d.ew-cv-loading .pb-hero3d-fallback { opacity: 0; transition-duration: 0.15s; }
+        .ew-cv-loading::after {
+            content: ''; position: absolute; left: 50%; top: 44%;
+            width: 38px; height: 38px; margin: -19px 0 0 -19px;
+            border: 2px solid rgba(232,228,216,0.14);
+            border-top-color: #f2c468;
+            border-radius: 50%; z-index: 4; pointer-events: none;
+            animation: ewCvManifest 0.8s linear infinite;
+        }
+        .ew-cv-loading::before {
+            content: 'MANIFESTING'; position: absolute; left: 50%; top: 44%;
+            transform: translate(-50%, 30px);
+            font-family: 'DotGothic16', monospace; font-size: 9px;
+            letter-spacing: 0.22em; color: rgba(242,196,104,0.8);
+            text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+            z-index: 4; pointer-events: none;
+            animation: ewCvManifestTxt 1.6s ease-in-out infinite;
+        }
+        @keyframes ewCvManifest { to { transform: rotate(360deg); } }
+        @keyframes ewCvManifestTxt { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
         .cdx-viewer-hint {
             position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
             z-index: 3; pointer-events: none; white-space: nowrap;

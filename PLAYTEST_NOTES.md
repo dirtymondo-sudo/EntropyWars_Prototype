@@ -23,17 +23,25 @@ ONE lazy WebGL context (singleton), remounted between hosts:
   `_animLibBakeForModel` (per-character Meshy idle clip = fallback), and spins
   a rAF loop that self-sleeps when the host leaves the DOM.
 - Interactions: drag = model yaw + camera pitch (polar clamp 0.08–1.25),
-  wheel = zoom 0.55–2.8 (listener passive:false), double-click = reset +
-  resume the 0.35 rad/s auto-turntable (pauses 5s after any touch).
+  wheel = zoom 0.55–2.8 (listener passive:false), double-click = reset view.
+  NO auto-spin (owner call 2026-07-26b: yaw belongs to the player's drag
+  alone — do not reintroduce a turntable). The floor sigil's slow ambient
+  rotation stays; only the MODEL is still.
 - Scenery: hemi+key+violet-rim lights, soft shadow blob, additive esoteric
   summoning-circle floor decal (canvas texture; `opts.accent` tints it — the
   faction color is passed in).
-- Host classes: `.ew-cv-ready` when the model is live (CSS crossfades the 2D
-  sprite out — generic rules in styles-hud.css `canvas[data-ew-charviewer]`),
-  `.ew-cv-fail` on load failure (sprite stays). `unmount()` stops the loop —
-  called on codex/shop/teambuilder back-navigation and React unmounts. Wrap→
-  inner nesting preserves `def.yawOffset` under the turntable yaw. NEVER
-  dispose the clone's materials/geometry (shared with the cached base GLB).
+- Host classes (exactly ONE via `_cvHostState`): `.ew-cv-loading` while the
+  GLB downloads — the 2D sprite is HIDDEN and a gold summoning ring +
+  pulsing 'MANIFESTING' label spin instead (owner 2026-07-26b: the
+  sprite→model pop felt clunky; the sprite now only ever shows on
+  `.ew-cv-fail` or for sprite-only vessels). `.ew-cv-ready` when the model
+  is live (canvas crossfades in — generic rules in styles-hud.css
+  `canvas[data-ew-charviewer]` + the ring/label CSS right below them).
+  Cached GLBs resolve synchronously, so the ring never flashes on
+  re-visits. `unmount()` stops the loop — called on codex/shop/teambuilder
+  back-navigation and React unmounts. Wrap→inner nesting preserves
+  `def.yawOffset` under the drag yaw. NEVER dispose the clone's
+  materials/geometry (shared with the cached base GLB).
 
 ### 2. Codex + Shop dossiers stage the live model (ui.js, styles-hud.css)
 `_codexHeroHtml` emits `.cdx-hero-viewer[data-cv-race/gender/accent]` (data

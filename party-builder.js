@@ -725,7 +725,7 @@ function HeroViewer3D({ race, gender, cls, faction }) {
     } else if (window.EWCharViewer) {
       // sprite-only vessel — release the canvas if it was sitting in our host
       if (host.querySelector('canvas[data-ew-charviewer]')) window.EWCharViewer.unmount();
-      host.classList.remove('ew-cv-ready', 'ew-cv-fail');
+      host.classList.remove('ew-cv-loading', 'ew-cv-ready', 'ew-cv-fail');
     }
   }, [race, gender, supported, accent]);
   React.useEffect(() => () => {
