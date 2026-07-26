@@ -12697,3 +12697,359 @@ Object.assign(window, {
   ACCT_WIPEOUT_MULT, ACCT_STARTING_GOLD, ACCT_FREE_TOKENS, ACCT_MATCH_GOLD_CAP,
   ACCT_STARTER_UNITS, ACCT_PVP_MODES, isUnitUnlocked, computeAccountMatchGold,
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPELL LIBRARY DEV TOOL — override patch layer (2026-07-26)
+
+   The Spell Library screen (Settings → Developer → Spell Library, ui.js
+   _renderSpellLibrary) lets the owner edit/add/delete spells and reassign
+   job learnsets / race movepools. Edits live in localStorage
+   ('ew_spell_mods_v1') as a sparse diff document and are applied HERE, at
+   the very end of data.js — after every derivation pass
+   (_applySimTurnDefaults, _applyManaCostFormula, _applyBaselineCooldowns)
+   and before any other script reads the tables — so a stored edit behaves
+   exactly as if it had been authored in this file.
+
+   Document shape (also the Export format handed back to Claude):
+   {
+     version: 1,
+     enabled: true,                 // master "apply my edits" switch
+     modified: { spellId: { field: value, ... } },   // value null = delete field
+     added:    { spellId: { ...full def, _home: {lib:true}|{race:'ghost'} } },
+     deleted:  [spellId, ...],
+     learnsets:     { jobName: [spellId, ...] },     // full replacement arrays
+     raceAbilities: { raceKey: [spellId, ...] },     // full replacement arrays
+     notes: ''
+   }
+   Parity rules applied per touched spell (mirrors the load passes above):
+   - manaCostOverride set        → cost = manaCostOverride
+   - power fields touched, no explicit cost → cost = computeSpellManaCost()
+   - kind touched                → simTargeting/simPhase/simFallback restamped
+   apply() is idempotent: it restores the pristine tables first, then applies
+   the current doc, so the editor can re-apply live after every save.
+   ═══════════════════════════════════════════════════════════════════════ */
+const EW_SPELL_MODS_LS_KEY = 'ew_spell_mods_v1';
+
+window.EWSpellMods = (function () {
+    // Fields whose edit re-prices the spell through the mana formula when the
+    // user did not pin the cost (same inputs computeSpellManaCost reads).
+    const POWER_FIELDS = ['dmg', 'heal', 'healAmt', 'healPerTurn', 'hitDamages', 'dashDamage',
+        'drainPct', 'aoeRadius', 'crossRadius', 'range', 'apCost', 'kind', 'type',
+        'statusEffects', 'allyStatusEffects', 'teamStatusEffects', 'statStageBoost',
+        'shield', 'shieldHp', 'cooldownRounds', 'delayTurns', 'randomTeamBuff',
+        'zodiacReading', 'friendlyFire', 'requiresFlight', 'recoilPct', 'selfStun'];
+
+    let doc = null;
+    let pristine = null;    // exact pre-mod table snapshots (object refs, not clones)
+    let fieldBase = {};     // spellId -> field -> [{ref, had, val}] originals per object ref
+
+    function emptyDoc() {
+        return { version: 1, enabled: true, modified: {}, added: {}, deleted: [],
+                 learnsets: {}, raceAbilities: {}, notes: '' };
+    }
+
+    function load() {
+        let d = null;
+        try { d = JSON.parse(localStorage.getItem(EW_SPELL_MODS_LS_KEY) || 'null'); } catch (e) { d = null; }
+        if (!d || typeof d !== 'object' || d.version !== 1) d = emptyDoc();
+        ['modified', 'added', 'learnsets', 'raceAbilities'].forEach(k => { if (!d[k] || typeof d[k] !== 'object') d[k] = {}; });
+        if (!Array.isArray(d.deleted)) d.deleted = [];
+        if (typeof d.enabled !== 'boolean') d.enabled = true;
+        doc = d;
+        return doc;
+    }
+
+    function save() {
+        try { localStorage.setItem(EW_SPELL_MODS_LS_KEY, JSON.stringify(doc)); } catch (e) {
+            console.error('[SpellMods] save failed', e);
+        }
+    }
+
+    function capturePristine() {
+        if (pristine) return;
+        const raceRefs = {}, raceById = {};
+        Object.keys(RACE_ABILITIES).forEach(r => { raceRefs[r] = RACE_ABILITIES[r].slice(); });
+        Object.keys(RACE_ABILITY_BY_ID).forEach(id => { raceById[id] = RACE_ABILITY_BY_ID[id]; });
+        const byId = {};
+        Object.keys(SPELL_BY_ID).forEach(id => { byId[id] = SPELL_BY_ID[id]; });
+        const learn = {};
+        Object.keys(CLASS_SPELL_LEARN_ORDER).forEach(j => { learn[j] = CLASS_SPELL_LEARN_ORDER[j].slice(); });
+        // byId/raceById/libRefs/raceRefs hold live OBJECT REFS (for exact array
+        // membership restore). defClones holds deep-copied VALUES — the editor
+        // diffs against these, and they must not drift when mods mutate the
+        // live objects in place.
+        const defClones = {};
+        Object.keys(byId).forEach(id => { try { defClones[id] = JSON.parse(JSON.stringify(byId[id])); } catch (e) {} });
+        Object.keys(raceById).forEach(id => { if (!defClones[id]) { try { defClones[id] = JSON.parse(JSON.stringify(raceById[id])); } catch (e) {} } });
+        pristine = { libRefs: SPELL_LIBRARY.slice(), raceRefs, byId, raceById, learn, defClones };
+    }
+
+    // Every live def object carrying this id (lib entry, race-array entries,
+    // map entries) — identity-deduped. The two known duplicate-id literals
+    // (raceAbsolution, raceBoulderHurl) therefore BOTH receive field mods.
+    function refsFor(id) {
+        const out = [];
+        const seen = new Set();
+        const push = o => { if (o && typeof o === 'object' && !seen.has(o)) { seen.add(o); out.push(o); } };
+        pristine.libRefs.forEach(s => { if (s.id === id) push(s); });
+        Object.keys(pristine.raceRefs).forEach(r => pristine.raceRefs[r].forEach(a => { if (a.id === id) push(a); }));
+        if (SPELL_BY_ID[id]) push(SPELL_BY_ID[id]);
+        if (RACE_ABILITY_BY_ID[id]) push(RACE_ABILITY_BY_ID[id]);
+        return out;
+    }
+
+    function restoreAll() {
+        if (!pristine) return;
+        // 1. un-apply field mods
+        Object.keys(fieldBase).forEach(id => {
+            const fields = fieldBase[id];
+            Object.keys(fields).forEach(f => {
+                fields[f].forEach(rec => {
+                    if (rec.had) rec.ref[f] = rec.val; else delete rec.ref[f];
+                });
+            });
+        });
+        fieldBase = {};
+        // 2. exact array/map restore from pristine refs
+        SPELL_LIBRARY.length = 0;
+        pristine.libRefs.forEach(s => SPELL_LIBRARY.push(s));
+        Object.keys(RACE_ABILITIES).forEach(r => { if (!pristine.raceRefs[r]) delete RACE_ABILITIES[r]; });
+        Object.keys(pristine.raceRefs).forEach(r => {
+            if (!RACE_ABILITIES[r]) RACE_ABILITIES[r] = [];
+            RACE_ABILITIES[r].length = 0;
+            pristine.raceRefs[r].forEach(a => RACE_ABILITIES[r].push(a));
+        });
+        Object.keys(SPELL_BY_ID).forEach(id => { if (!pristine.byId[id]) delete SPELL_BY_ID[id]; });
+        Object.keys(pristine.byId).forEach(id => { SPELL_BY_ID[id] = pristine.byId[id]; });
+        Object.keys(RACE_ABILITY_BY_ID).forEach(id => { if (!pristine.raceById[id]) delete RACE_ABILITY_BY_ID[id]; });
+        Object.keys(pristine.raceById).forEach(id => { RACE_ABILITY_BY_ID[id] = pristine.raceById[id]; });
+        Object.keys(CLASS_SPELL_LEARN_ORDER).forEach(j => { if (!pristine.learn[j]) delete CLASS_SPELL_LEARN_ORDER[j]; });
+        Object.keys(pristine.learn).forEach(j => {
+            if (!CLASS_SPELL_LEARN_ORDER[j]) CLASS_SPELL_LEARN_ORDER[j] = [];
+            CLASS_SPELL_LEARN_ORDER[j].length = 0;
+            pristine.learn[j].forEach(id => CLASS_SPELL_LEARN_ORDER[j].push(id));
+        });
+    }
+
+    function reprice(sp, mod) {
+        if (mod && Object.prototype.hasOwnProperty.call(mod, 'kind') && typeof SIM_DEFAULTS !== 'undefined') {
+            const sd = SIM_DEFAULTS[sp.kind];
+            if (sd) {
+                if (!Object.prototype.hasOwnProperty.call(mod, 'simTargeting')) sp.simTargeting = sd.simTargeting;
+                if (!Object.prototype.hasOwnProperty.call(mod, 'simPhase')) sp.simPhase = sd.simPhase;
+                if (!Object.prototype.hasOwnProperty.call(mod, 'simFallback')) sp.simFallback = sd.simFallback;
+            }
+        }
+        if (typeof sp.manaCostOverride === 'number') { sp.cost = sp.manaCostOverride; return; }
+        const explicitCost = mod && Object.prototype.hasOwnProperty.call(mod, 'cost');
+        const touchesPower = mod && POWER_FIELDS.some(f => Object.prototype.hasOwnProperty.call(mod, f));
+        if (!explicitCost && touchesPower && typeof computeSpellManaCost === 'function') {
+            sp.cost = computeSpellManaCost(sp);
+        }
+    }
+
+    function applyDoc() {
+        // deletions
+        doc.deleted.forEach(id => {
+            for (let i = SPELL_LIBRARY.length - 1; i >= 0; i--) if (SPELL_LIBRARY[i].id === id) SPELL_LIBRARY.splice(i, 1);
+            Object.keys(RACE_ABILITIES).forEach(r => {
+                const arr = RACE_ABILITIES[r];
+                for (let i = arr.length - 1; i >= 0; i--) if (arr[i].id === id) arr.splice(i, 1);
+            });
+            delete SPELL_BY_ID[id];
+            delete RACE_ABILITY_BY_ID[id];
+            Object.keys(CLASS_SPELL_LEARN_ORDER).forEach(j => {
+                const arr = CLASS_SPELL_LEARN_ORDER[j];
+                for (let i = arr.length - 1; i >= 0; i--) if (arr[i] === id) arr.splice(i, 1);
+            });
+        });
+        // additions
+        Object.keys(doc.added).forEach(id => {
+            if (doc.deleted.includes(id)) return;
+            const def = JSON.parse(JSON.stringify(doc.added[id]));
+            def.id = id;
+            const home = def._home || { lib: true };
+            delete def._home;
+            if (home.race) {
+                def._race = home.race;
+                def._isRaceAbility = true;
+                if (!RACE_ABILITIES[home.race]) RACE_ABILITIES[home.race] = [];
+                RACE_ABILITIES[home.race].push(def);
+                RACE_ABILITY_BY_ID[id] = def;
+            } else {
+                SPELL_LIBRARY.push(def);
+            }
+            SPELL_BY_ID[id] = def;
+            if (typeof SIM_DEFAULTS !== 'undefined' && SIM_DEFAULTS[def.kind]) {
+                const sd = SIM_DEFAULTS[def.kind];
+                if (def.simTargeting == null) def.simTargeting = sd.simTargeting;
+                if (def.simPhase == null) def.simPhase = sd.simPhase;
+                if (def.simFallback == null) def.simFallback = sd.simFallback;
+            }
+            if (typeof def.manaCostOverride === 'number') def.cost = def.manaCostOverride;
+            else if (typeof def.cost !== 'number' && typeof computeSpellManaCost === 'function') def.cost = computeSpellManaCost(def);
+        });
+        // field mods
+        Object.keys(doc.modified).forEach(id => {
+            if (doc.deleted.includes(id)) return;
+            const mod = doc.modified[id];
+            const refs = refsFor(id);
+            if (!refs.length) return;
+            const base = fieldBase[id] = fieldBase[id] || {};
+            const captureField = f => {
+                if (base[f]) return;
+                base[f] = refs.map(ref => ({
+                    ref,
+                    had: Object.prototype.hasOwnProperty.call(ref, f),
+                    val: (() => { try { return JSON.parse(JSON.stringify(ref[f] === undefined ? null : ref[f])); } catch (e) { return ref[f]; } })(),
+                }));
+            };
+            // reprice() may rewrite these even when the mod doesn't name them —
+            // capture their originals up front so restoreAll() can undo them.
+            ['cost', 'simTargeting', 'simPhase', 'simFallback'].forEach(captureField);
+            Object.keys(mod).forEach(f => {
+                captureField(f);
+                refs.forEach(ref => {
+                    if (mod[f] === null) delete ref[f];
+                    else ref[f] = JSON.parse(JSON.stringify(mod[f]));
+                });
+            });
+            refs.forEach(ref => reprice(ref, mod));
+        });
+        // learnset replacement (job -> ordered spell ids)
+        Object.keys(doc.learnsets).forEach(j => {
+            if (!CLASS_SPELL_LEARN_ORDER[j]) CLASS_SPELL_LEARN_ORDER[j] = [];
+            const arr = CLASS_SPELL_LEARN_ORDER[j];
+            arr.length = 0;
+            doc.learnsets[j].forEach(id => {
+                if (SPELL_BY_ID[id]) arr.push(id);
+                else console.warn(`[SpellMods] learnset ${j}: unknown spell id '${id}' skipped`);
+            });
+        });
+        // race movepool replacement (race -> ability def refs, by id)
+        Object.keys(doc.raceAbilities).forEach(r => {
+            if (!RACE_ABILITIES[r]) RACE_ABILITIES[r] = [];
+            const arr = RACE_ABILITIES[r];
+            arr.length = 0;
+            doc.raceAbilities[r].forEach(id => {
+                const def = RACE_ABILITY_BY_ID[id] || SPELL_BY_ID[id];
+                if (def) arr.push(def);
+                else console.warn(`[SpellMods] race ${r}: unknown spell id '${id}' skipped`);
+            });
+        });
+    }
+
+    function apply() {
+        capturePristine();
+        restoreAll();
+        if (doc && doc.enabled) applyDoc();
+    }
+
+    function counts() {
+        return {
+            modified: Object.keys(doc.modified).length,
+            added: Object.keys(doc.added).length,
+            deleted: doc.deleted.length,
+            learnsets: Object.keys(doc.learnsets).length,
+            raceAbilities: Object.keys(doc.raceAbilities).length,
+        };
+    }
+
+    // Human-readable changelog for the export (what Claude reads first).
+    function summary() {
+        const lines = [];
+        Object.keys(doc.modified).forEach(id => {
+            const mod = doc.modified[id];
+            const base = fieldBase[id] || {};
+            const parts = Object.keys(mod).map(f => {
+                const orig = base[f] && base[f][0] ? (base[f][0].had ? JSON.stringify(base[f][0].val) : '(absent)') : '?';
+                return `${f} ${orig} → ${mod[f] === null ? '(removed)' : JSON.stringify(mod[f])}`;
+            });
+            lines.push(`MODIFY ${id}: ${parts.join(', ')}`);
+        });
+        Object.keys(doc.added).forEach(id => {
+            const d = doc.added[id];
+            const home = d._home && d._home.race ? `race:${d._home.race}` : 'spell library';
+            lines.push(`ADD ${id} ("${d.name}", kind:${d.kind}, ${home})`);
+        });
+        doc.deleted.forEach(id => lines.push(`DELETE ${id}`));
+        Object.keys(doc.learnsets).forEach(j => lines.push(`LEARNSET ${j}: [${doc.learnsets[j].join(', ')}]`));
+        Object.keys(doc.raceAbilities).forEach(r => lines.push(`RACE MOVEPOOL ${r}: [${doc.raceAbilities[r].join(', ')}]`));
+        return lines;
+    }
+
+    function exportDoc() {
+        const baseline = {};
+        Object.keys(doc.modified).forEach(id => {
+            const base = fieldBase[id];
+            if (!base) return;
+            baseline[id] = {};
+            Object.keys(base).forEach(f => {
+                baseline[id][f] = base[f][0] && base[f][0].had ? base[f][0].val : null;
+            });
+        });
+        return {
+            format: 'entropy-wars-spell-mods',
+            exportedAt: new Date().toISOString(),
+            build: (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || 'unknown',
+            instructions: 'Hand this file to Claude: apply these diffs to data.js '
+                + '(SPELL_LIBRARY / RACE_ABILITIES / CLASS_SPELL_LEARN_ORDER). '
+                + 'baseline holds the pre-edit values for sanity-checking drift. '
+                + 'modified are sparse field patches (null = remove field); added are full defs '
+                + '(_home says where they live); learnsets/raceAbilities are full replacement id arrays.',
+            summary: summary(),
+            baseline,
+            ...JSON.parse(JSON.stringify(doc)),
+        };
+    }
+
+    function importDoc(obj) {
+        if (!obj || typeof obj !== 'object') throw new Error('not an object');
+        if (obj.format && obj.format !== 'entropy-wars-spell-mods') throw new Error('unrecognized format');
+        const d = emptyDoc();
+        ['enabled', 'notes'].forEach(k => { if (obj[k] !== undefined) d[k] = obj[k]; });
+        ['modified', 'added', 'learnsets', 'raceAbilities'].forEach(k => { if (obj[k] && typeof obj[k] === 'object') d[k] = JSON.parse(JSON.stringify(obj[k])); });
+        if (Array.isArray(obj.deleted)) d.deleted = obj.deleted.slice();
+        doc = d;
+        save();
+        apply();
+        return doc;
+    }
+
+    function reset() {
+        doc = emptyDoc();
+        save();
+        apply();
+    }
+
+    // pristine (pre-mod) def VALUES for a spell id — a deep clone frozen at
+    // boot, safe to diff against. Null when the id never existed.
+    function pristineDef(id) {
+        if (!pristine) return null;
+        return pristine.defClones[id] || null;
+    }
+
+    function pristineState() { return pristine; }
+
+    try {
+        load();
+        apply();
+        const c = counts();
+        if (c.modified || c.added || c.deleted || c.learnsets || c.raceAbilities) {
+            console.log(`[SpellMods] ${doc.enabled ? 'Applied' : 'Loaded (DISABLED)'} — ${c.modified} modified, ${c.added} added, ${c.deleted} deleted, ${c.learnsets} learnsets, ${c.raceAbilities} race movepools`);
+        }
+    } catch (e) {
+        console.error('[SpellMods] failed to apply stored spell mods — running vanilla', e);
+        try { doc = emptyDoc(); pristine = null; fieldBase = {}; } catch (e2) {}
+    }
+
+    return {
+        get doc() { return doc; },
+        load, save, apply, reset,
+        counts, summary,
+        export: exportDoc,
+        import: importDoc,
+        pristineDef, pristineState,
+        LS_KEY: EW_SPELL_MODS_LS_KEY,
+    };
+})();

@@ -4,7 +4,139 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## 3D CHARACTER VIEWER + PARTY FORGE (2026-07-26, LATEST) — three-renderer.js, party-builder.js, ui.js, map.js, index.html, styles-hud.css, styles-base.css
+## SPELL LIBRARY DEV TOOL + SPELL LAB (2026-07-26, LATEST) — data.js, ui.js, battle.js, map.js, three-vfx-effects.js, styles-hud.css, index.html
+Token `20260726h-pb3d` → `20260726i-slb`. Owner request: a Codex-style dev tool
+(Settings → Developer → **Open Spell Library**) to browse/edit/add/delete/rename
+every spell + ability, reassign job learnsets & race movepools, preview the full
+cast animation in a sandbox, and **export the edits as JSON for Claude to make
+permanent in data.js**. Everything is menu-side/local — no online surface.
+
+### 1. EWSpellMods — the diff/patch layer (data.js, very end of file)
+`window.EWSpellMods` (after the `Object.assign(window,…)` export block). Edits
+live in localStorage **`ew_spell_mods_v1`** as a sparse diff doc and are applied
+at the END of data.js — after `_applySimTurnDefaults` / `_applyManaCostFormula` /
+`_applyBaselineCooldowns` and before any other script reads the tables — so a
+stored edit behaves exactly as if authored in data.js. Doc shape:
+```js
+{ version:1, enabled:true,
+  modified:{ id:{field:value,…} },     // value null = DELETE the field
+  added:{ id:{…def, _home:{lib:true}|{race:'ghost'}} },
+  deleted:[id,…],
+  learnsets:{ job:[ids] },             // full replacement arrays
+  raceAbilities:{ race:[ids] },        // full replacement arrays
+  notes:'' }
+```
+Parity rules per touched spell (mirrors the real load passes): explicit `cost`
+edit ⇒ editor also writes `manaCostOverride` (pins it); power-field edit without
+cost ⇒ `cost = computeSpellManaCost()` re-derives; `kind` edit ⇒ sim* fields
+restamped from `SIM_DEFAULTS`. `apply()` is **idempotent** (pristine-restore →
+re-apply) so the editor re-applies live after every save; `enabled:false`
+restores vanilla tables without losing the doc. Key internals: `capturePristine`
+stashes live object REFS for exact array restore + `defClones` (deep copies) for
+value diffs — **pristineDef(id) returns the clone; never diff against live
+objects, they mutate**. Field mods apply to EVERY ref carrying that id (the two
+duplicate-id literals `raceAbsolution`/`raceBoulderHurl` both get patched;
+`SHARED_*` abilities are one shared object — one edit hits every race, correct).
+API: `doc/load/save/apply/reset/counts/summary/export/import/pristineDef/
+pristineState`. Boot is try/caught — a corrupt doc logs and runs vanilla.
+
+### 2. The screen (ui.js, after `_shopBack`; markup `#spellLibraryPage` in index.html)
+Same innerHTML-screen pattern as the codex. Nav: `map.js _goToSpellLibrary()` /
+`_spellLibraryBack()` (back returns to Settings). Launcher button + pending-edit
+badge: map.js `_renderMainMenuSettings()` Developer group. All handlers are
+`window._slb*` globals; CSS `.slb-*` appended to styles-hud.css (codex full-bleed
+rules extended to `#spellLibraryPage`).
+- **SPELLS tab**: search + filters (source/type/kind/spellType/element/job/race)
+  + sort; list rail with modified ●/NEW/DEL flags; editor pane = assignments
+  (job/race chips with +/✕ → writes learnsets/raceAbilities), typed field grid
+  (number/bool/enum/JSON/long-text inputs; modified fields show ● + original
+  value with per-field revert), "+ add field…" picker fed by `_SLB_FIELD_HELP`
+  (~110 fields with hover help), and a RAW JSON editor (diffs vs pristine on
+  Apply — the true "edit everything" path). Actions: ▶ LAB, ⧉ DUPLICATE (new id
+  — **id rename is deliberately not offered**; ids are load-bearing in saves/
+  VFX/online — rename the `name` field freely instead, it warns on collisions
+  since casts resolve by name), ↺ REVERT, ✕ DELETE (tombstoned, restorable).
+- **MOVEPOOLS tab**: jobs (learn ORDER = unlock level via
+  `getSpellUnlockLevel`) and races; ↑/↓/✕ per row + datalist add; per-key REVERT.
+  Writing the pristine order back auto-drops the override.
+- **Footer**: EDITS APPLIED/OFF master toggle, ⇩ EXPORT (downloads
+  `entropy-wars-spell-mods-<date>.json` + clipboard), ⧉ COPY SUMMARY (human
+  changelog lines), ⇪ IMPORT (file), ⟲ DISCARD ALL, ▶ OPEN SPELL LAB.
+
+### 3. How Claude applies an export (the whole point)
+The JSON's `instructions`/`summary`/`baseline` fields are self-describing:
+- `summary` = human lines (`MODIFY fire1: dmg 120 → 200, …`) — read this first.
+- `modified` → edit those fields on the matching entries in data.js
+  (`SPELL_LIBRARY` ~3801-5538 / `RACE_ABILITIES` ~5867-7954). `null` = remove
+  the field. If `manaCostOverride` is present, author BOTH `cost` and
+  `manaCostOverride` (that's how the game pins formula-derived costs).
+- `added` → new entries: `_home.lib` ⇒ append to SPELL_LIBRARY (needs
+  school/classRestriction/tier/equipCost for full parity); `_home.race` ⇒
+  append to that race's RACE_ABILITIES array (no school/tier needed). Strip
+  `_home` itself.
+- `deleted` → remove the def + every learnset/movepool occurrence.
+- `learnsets`/`raceAbilities` → replace those arrays wholesale
+  (`CLASS_SPELL_LEARN_ORDER` ~12481; race arrays by id → def, order preserved).
+- `baseline` holds pre-edit values — if data.js has drifted since the export,
+  flag conflicts instead of blind-applying. After shipping the changes, tell
+  the owner to **⟲ DISCARD ALL EDITS** (or toggle OFF) so localStorage doesn't
+  double-apply on top of the now-authored values.
+
+### 4. SPELL LAB — real-engine sandbox (ui.js `_slbLab*`, battle.js hooks)
+Boots an actual match: private `GAME_MODES.spelllab` + `MAP_LAYOUT_PRESETS.
+spelllab` (8×8 flat grass, 1v1, registered at runtime from ui.js),
+`activeMultiplayerMode='tdm'`, BOTH controllers `CTRL.LOCAL` (AI can never run),
+fog off, `EW_DISABLE_INTRO_CINE` on, sticky flags cleared (squadLeaderMode,
+isRankedMatch, isCampaign). Caster = P1 (`partyMeta customSpells:[spellId]`),
+Dummy = P2 flagged **`_mdNpc`** (the MD hub-scenery flag — permanently filtered
+out of `buildBlitzTurnOrder`, renders normally, never acts) + `maxHp ×100`
+while IMMORTAL is on. Engine hooks (battle.js):
+- `maybeAdvanceTurn` intercept right after `_mdLockIntercept`: while
+  `state._spellLabMode`, calls `window._spellLabTick()` and returns — rounds
+  NEVER end, end-of-round upkeep never runs (statuses on the dummy don't tick —
+  use ♻ CLEANSE).
+- `checkWin`/`checkWinConditionOnly` return early — nothing can end the match.
+- `_spellLabTick` (ui.js, also on a 1.2s interval): refills caster AP
+  (`UNIT_MAX_AP`+bonus)/MP/HP, clears `_spellCooldowns` + `_spellsUsedThisTurn`,
+  keeps `_blitzActiveUnitId` on the caster, re-stamps dummy `_mdNpc`, tops up
+  dummy HP.
+- ✦ CAST re-clones the CURRENT (post-edit) def from `SPELL_BY_ID` into
+  `caster.spells`, auto-walks the caster into range (teleport-step vs
+  `GAME.getSpellRangeTiles`, the same gate doSpell uses), sets
+  `state.selectedTool = name` (doSpell resolves BY NAME) and calls
+  `GAME.doSpell(caster, tx, ty, tz)` — full real pipeline: cast anim slot,
+  windup/burst/finish staging, travel VFX, impact geometry, action camera,
+  damage numbers. The normal battle HUD also works — the panel is additive.
+- Panel (`.slb-lab`, fixed top-right): spell/caster-race★3D/caster-job/dummy-race
+  /distance selects (caster/dummy/distance need ⟳ RESTART STAGE), ✦ CAST,
+  ⟳ AUTO repeat, TARGET DUMMY/GROUND, IMMORTAL, ♻ CLEANSE, ACTION CAM/CAMERA/
+  STAGING/GRADE/HUD toggles, and LIVE VFX FIELDS (element/projectile/archetype/
+  weight/travel/dmg) that write into the SAME mod doc → they export with
+  everything else. `vfxArchetype`/`vfxWeight` were already read by the staging
+  system (`stageInfo`) but set by zero spells — they're now the primary VFX
+  tuning surface; `three-vfx-effects.js clearStageInfoCache(id)` (new export)
+  is called after edits so the memoized staging resolution refreshes.
+  `_animOverride:{travel}` overrides `resolveTravel`; `projectileOverride`
+  swaps the projectile sprite; `element` re-themes colors.
+- EXIT (✕) → `backToMainMenu()` → returns to the Spell Library screen.
+
+### 5. Gotchas for future sessions
+- `unit.spells` are DETACHED CLONES made at unit creation — editing tables
+  mid-match doesn't touch spawned units (the Lab re-clones per cast on purpose;
+  normal matches pick up edits on the next match start).
+- The mana formula OVERWRITES authored `cost` at load unless `manaCostOverride`
+  exists — never hand-edit cost in data.js without deciding pin vs derive.
+- `state.selectedTool` cast resolution is BY NAME → duplicate names collide
+  (the editor toasts a warning).
+- Sim-mode fields (`simTargeting/simPhase/simFallback`) + `_race`/
+  `_isRaceAbility` are load-stamped — exports may carry them inside `added`
+  defs harmlessly, but don't author them into data.js.
+- Node smoke harnesses for the layer live in the session scratchpad
+  (test_mods.js / test_slb_ui.js) — pattern: load data.js in a `vm` sandbox
+  with fake window/localStorage, bridge `const` tables via
+  `window.__T = {SPELL_BY_ID,…}` (top-level consts are NOT window props).
+
+## 3D CHARACTER VIEWER + PARTY FORGE (2026-07-26) — three-renderer.js, party-builder.js, ui.js, map.js, index.html, styles-hud.css, styles-base.css
 Token `20260726f-blackui` → `20260726g-pb3d`. Owner request: live 3D models in
 the Codex + Party Builder (character-creator orbit/zoom), battle-parity spell
 blades, visual-weight hierarchy pass, and a standalone Pokémon-Showdown-style

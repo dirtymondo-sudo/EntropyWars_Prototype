@@ -27965,6 +27965,15 @@
                round upkeep the clock asked for (_mdEorPending). ── */
             if (typeof _mdLockIntercept === 'function' && _mdLockIntercept()) return;
 
+            /* ── SPELL LAB (Settings → Developer → Spell Library): the lab owns
+               the loop — one caster free-casting at an inert dummy, forever.
+               Rounds never end, the caster never yields; the tick (ui.js
+               _spellLabTick) refills AP/MP/cooldowns and re-activates. ── */
+            if (state._spellLabMode) {
+                if (typeof window._spellLabTick === 'function') window._spellLabTick();
+                return;
+            }
+
             const mode = getActiveGameMode();
             if (mode.blitzMode) {
                 if (state.winner) return;
@@ -42877,6 +42886,9 @@
                every enemy on a floor must NOT end the match. */
             if (typeof _isDungeonMode === 'function' && _isDungeonMode()) return false;
 
+            /* Spell Lab never ends — the dummy dying is a feature. */
+            if (state._spellLabMode) return false;
+
             const mpMode = getActiveMultiplayerMode();
             const wcs = mpMode.winConditions || [];
 
@@ -42906,6 +42918,8 @@
                 if (typeof _mdCheckWin === 'function') _mdCheckWin();
                 return;
             }
+            /* Spell Lab sandbox: no winner, ever — exit is the Exit button. */
+            if (state._spellLabMode) return;
             if (state.winner) {
                 if (!state._winLogged) {
                     state._winLogged = true;

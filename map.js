@@ -400,6 +400,21 @@
             _showTitlePage('mainMenuPage');
         };
 
+        /* ── Spell Library (Settings → Developer): the spell/ability dev
+           editor + Spell Lab. Rendering lives in ui.js (_renderSpellLibrary),
+           same innerHTML-screen pattern as the codex. ── */
+        window._goToSpellLibrary = function() {
+            playSfx('uiButtonConfirm');
+            _showTitlePage('spellLibraryPage');
+            if (typeof window._renderSpellLibrary === 'function') window._renderSpellLibrary();
+        };
+        window._spellLibraryBack = function() {
+            playSfx('uiButtonConfirm');
+            state.gameState = GS.MAIN_MENU;
+            _showTitlePage('settingsPage');
+            if (typeof _renderMainMenuSettings === 'function') _renderMainMenuSettings();
+        };
+
         /* ── Standalone Party Builder (main menu → team archive) ──────────
            Pokémon-Showdown-style teambuilder: forge and save squads OUTSIDE
            the match flow. Same React component as the pre-match builder,
@@ -1207,6 +1222,10 @@
                     ${typeof window._buildControlsSettingsHTML === 'function' ? window._buildControlsSettingsHTML() : ''}
                     <div class="pm-set-group">
                         <div class="pm-set-group-title">Developer</div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Spell Library — browse, edit, add, delete and reassign every spell/ability, preview animations in the Spell Lab, then export your changes as JSON for Claude to make live.${(typeof window.EWSpellMods !== 'undefined' && (() => { const c = window.EWSpellMods.counts(); const n = c.modified + c.added + c.deleted + c.learnsets + c.raceAbilities; return n ? ` <span style="color:#ffd86a">●</span> ${n} pending change group${n === 1 ? '' : 's'}${window.EWSpellMods.doc.enabled ? '' : ' (DISABLED)'}` : ''; })()) || ''}</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn" onclick="window._goToSpellLibrary()">Open Spell Library</button>
+                        </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Unlock every vessel for testing. View-only — nothing is written to your account or the server, so it can't corrupt your roster. Toggle off to return to your real unlocks.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn${window._DEV_UNLOCK_ALL ? ' active' : ''}" id="mmUnlockAllBtn" onclick="window._toggleUnlockAll()">${window._DEV_UNLOCK_ALL ? 'Unlock All Vessels: ON' : 'Unlock All Vessels: OFF'}</button>

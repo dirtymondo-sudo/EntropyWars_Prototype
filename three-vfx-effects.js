@@ -15682,6 +15682,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* Public read-only resolution — battle.js uses this to pace the camera
        and pick a shot without duplicating any of the logic above. */
     var _stageInfoCache = {};
+    /* Spell Library dev tool: after a live edit to a def's vfxWeight /
+       vfxArchetype (or a SPELL_STAGE_MAP entry) the memoized resolution is
+       stale — drop one id, or everything when called with no argument. */
+    function clearStageInfoCache(spellId) {
+        if (spellId) delete _stageInfoCache[spellId];
+        else _stageInfoCache = {};
+    }
     function stageInfo(spellId) {
         if (_stageInfoCache[spellId]) return _stageInfoCache[spellId];
         var def = _spellDefFor(spellId);
@@ -15999,6 +16006,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         /* spell staging (cinematic grammar) — see the big block above */
         stageInfo: stageInfo,
+        clearStageInfoCache: clearStageInfoCache,
         SPELL_STAGE_MAP: SPELL_STAGE_MAP,
         STAGE_ARCHETYPES: _STAGE_ARCHETYPES,
 

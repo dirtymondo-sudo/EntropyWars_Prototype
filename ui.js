@@ -8209,6 +8209,1350 @@
             window._refreshWallets();
         };
 
+        /* ═══════════════════════════════════════════════════════════════════
+           SPELL LIBRARY — dev tool (Settings → Developer → Spell Library)
+
+           A codex-style screen over the live spell tables. Three jobs:
+           1. EDIT — every field of every spell/ability (add / delete /
+              duplicate / rename), backed by the EWSpellMods diff layer
+              (data.js tail): edits persist in localStorage, apply live to
+              the tables, and survive reloads.
+           2. MOVEPOOLS — reassign CLASS_SPELL_LEARN_ORDER (job learnsets)
+              and RACE_ABILITIES (race movepools) by id, with ordering.
+           3. SPELL LAB — boots a real-engine sandbox (8×8 flat, caster vs
+              inert dummy, free casting) to preview the full cast: rigged
+              cast anim + staging + projectile + impact VFX + action camera.
+           Export hands Claude a JSON diff to make permanent in data.js.
+           ═══════════════════════════════════════════════════════════════ */
+
+        let _slbTab = 'spells';               // 'spells' | 'movepools'
+        let _slbSelectedId = null;
+        let _slbSearch = '';
+        let _slbFilters = { source: 'all', type: 'all', kind: 'all', spellType: 'all', element: 'all', job: 'all', race: 'all' };
+        let _slbSort = 'name';
+        let _slbMpMode = 'jobs';              // 'jobs' | 'races'
+        let _slbMpKey = null;
+        let _slbMpSearch = '';
+        let _slbRawOpen = false;
+
+        const _SLB_KINDS = ['damage','buff','aoe','debuff','terrainCreate','line','dash','lifeDrain','barrage','warCry','aoeShield','zoneDebuff','escape','cross','deployObject','leapStrike','teleport','heal','healAll','multiHit','delayed','summonWeather','aoePull','deployTurret','displacement','swap','skyThrow','selfHeal','pull','ricochet','zoneHeal','skyDrop','linePush','shield','revive','placeTrap','deployPair','utility','skySlam','scan','bomb','seedHeal','seedPoison','warpRune','leechSeed','remoteView','encore','cleanse','trickRoom','guard','manaRestoreAll','splitBeam','placeMirror','tuneFrequency','pulseLattice','rallyPull','raiseDead','placeBlock','buildStructure'];
+        const _SLB_TYPES = ['damage', 'utility', 'buff', 'debuff', 'heal'];
+        const _SLB_SPELLTYPES = ['anomaly', 'human', 'unholy', 'tech', 'alien', 'divine'];
+        const _SLB_ELEMENTS = ['fire','water','ice','lightning','earth','wind','nature','poison','light','shadow','arcane','psychic','sonic','metal','blood'];
+        const _SLB_DMGTYPES = ['physical', 'magic'];
+        const _SLB_TIERS = ['I', 'II', 'III'];
+        const _SLB_TRAVELS = ['strikeLeap','descent','boulder','iceSpear','beam','aura','aoe','teleport','chain','tether','bolt','domProjectile','none'];
+        const _SLB_WEIGHTS = ['light', 'standard', 'heavy', 'ultimate'];
+        const _SLB_PROJECTILES = ['proj-fire','proj-bullet','proj-knife','proj-debuff','proj-spiderweb','proj-arrow','proj-rock'];
+
+        /* Field catalog — every known spell field with a terse meaning. Drives
+           the "+ add field" picker and the hover help in the editor. Enum-
+           valued fields carry their options; 'json' fields edit as JSON. */
+        const _SLB_FIELD_HELP = {
+            name:   { t: 'text', h: 'Display name. ALSO the runtime cast lookup key (state.selectedTool) — keep unique.' },
+            desc:   { t: 'long', h: 'Tooltip / HUD description.' },
+            type:   { t: 'enum', o: _SLB_TYPES, h: 'Coarse category (drives AI + UI grouping).' },
+            kind:   { t: 'enum', o: _SLB_KINDS, h: 'THE behaviour selector — picks the engine branch in battle.js doSpell.' },
+            spellType: { t: 'enum', o: _SLB_SPELLTYPES, h: 'Faction/combo type (keys COMBO_REGISTRY).' },
+            element: { t: 'enum', o: _SLB_ELEMENTS, h: 'Flavor element — drives VFX theming, NOT the type chart.' },
+            damageType: { t: 'enum', o: _SLB_DMGTYPES, h: 'physical → DEF, magic → MDEF.' },
+            cost:   { t: 'num', h: 'MP cost. Editing pins it (sets manaCostOverride); otherwise the mana formula re-derives it from power fields.' },
+            manaCostOverride: { t: 'num', h: 'Pins MP cost, bypassing the derivation formula.' },
+            apCost: { t: 'num', h: 'Action points (1 or 2). Missing → engine default.' },
+            equipCost: { t: 'num', h: 'Legacy loadout weight (job spells only).' },
+            slotCost: { t: 'num', h: 'Loadout slots 1-3; overrides the mana-derived slot cost.' },
+            range:  { t: 'num', h: 'Cast range in tiles. 0 = self / self-centred.' },
+            dmg:    { t: 'num', h: 'Base damage.' },
+            heal:   { t: 'num', h: 'Flat heal (kind:heal).' },
+            healAmt: { t: 'num', h: 'Heal amount for healAll / AoE heals.' },
+            healPerTurn: { t: 'num', h: 'Zone/regen heal per turn.' },
+            selfHealPct: { t: 'num', h: 'Self-heal as fraction of max HP (0-1).' },
+            drainPct: { t: 'num', h: 'lifeDrain: fraction of damage returned as HP (0-1).' },
+            hitDamages: { t: 'json', h: 'multiHit per-hit damage array, e.g. [16,16,16,16].' },
+            dashDamage: { t: 'num', h: 'Damage on the dash portion (kind:dash).' },
+            dmgPerLevel: { t: 'num', h: 'Extra damage per elevation level (sky spells).' },
+            collisionBonus: { t: 'num', h: 'Bonus when a thrown body hits another unit.' },
+            blastDmg: { t: 'num', h: 'Secondary explosion damage.' },
+            blastRadius: { t: 'num', h: 'Secondary explosion radius.' },
+            aoeDmgPct: { t: 'num', h: 'Splash fraction to non-primary targets (0-1).' },
+            selfDamagePct: { t: 'num', h: 'Recoil to caster as fraction (0-1).' },
+            recoilPct: { t: 'num', h: 'Recoil discount input to the mana formula (0-1).' },
+            ignoreArmor: { t: 'bool', h: 'Bypass DEF/MDEF.' },
+            bonusVsStatus: { t: 'json', h: '{status, mult} — e.g. {"status":"burn","mult":1.5}.' },
+            bonusVsDebuffed: { t: 'num', h: 'Bonus vs any debuffed target (0-1).' },
+            guaranteedCrit: { t: 'bool', h: 'Always crits.' },
+            sneakBonus: { t: 'bool', h: 'Backstab bonus.' },
+            executePct: { t: 'num', h: 'Execute threshold fraction of max HP.' },
+            executeBonusPct: { t: 'num', h: 'Execute bonus fraction.' },
+            noDamage: { t: 'bool', h: 'Pure utility — never deals damage.' },
+            statusEffects: { t: 'json', h: 'Applied to targets: [{id, duration, bonusDamage?}] — id from STATUS_DEFS.' },
+            allyStatusEffects: { t: 'json', h: 'Statuses applied to allies.' },
+            teamStatusEffects: { t: 'json', h: 'Statuses applied to the whole team.' },
+            statStageBoost: { t: 'json', h: 'Stat stages: {atk,def,mdef,int,spd} each -2..+2.' },
+            randomTeamBuff: { t: 'json', h: '{stats:[...], stages:n} random team buff.' },
+            cleanse: { t: 'json', h: 'true or N — removes N debuffs.' },
+            groundsFlyers: { t: 'bool', h: 'Forces flying targets to the ground.' },
+            burningRounds: { t: 'num', h: 'Burn duration override.' },
+            shield: { t: 'num', h: 'Single-target shield HP (kind:shield).' },
+            shieldHp: { t: 'num', h: 'AoE shield HP (kind:aoeShield).' },
+            shieldCapPct: { t: 'num', h: 'Shield cap as fraction of max HP.' },
+            aoeRadius: { t: 'num', h: 'AoE radius in tiles (0-3).' },
+            aoeOriginSelf: { t: 'bool', h: 'AoE centred on the caster.' },
+            selfCenter: { t: 'bool', h: 'Older self-centred flag.' },
+            aoeShape: { t: 'text', h: 'Shape override (e.g. "round").' },
+            crossRadius: { t: 'num', h: 'kind:cross arm length.' },
+            diamond: { t: 'bool', h: 'Diamond-shaped AoE.' },
+            diagonal: { t: 'bool', h: 'Include diagonals.' },
+            squareFlood: { t: 'bool', h: 'Square flood-fill area.' },
+            lineWidth: { t: 'num', h: 'kind:line / linePush width.' },
+            tileCount: { t: 'num', h: 'Tiles affected (terrainCreate lines).' },
+            orientable: { t: 'bool', h: 'Player picks wall orientation.' },
+            auraRadius: { t: 'num', h: 'Persistent aura radius.' },
+            scanRadius: { t: 'num', h: 'kind:scan reveal radius.' },
+            requiresLineOfSight: { t: 'bool', h: 'Explicit LOS requirement.' },
+            ignoresLineOfSight: { t: 'bool', h: 'Fires through cover.' },
+            requireVision: { t: 'bool', h: 'Target must be visible.' },
+            requiresFlight: { t: 'bool', h: 'Caster must be flying.' },
+            allyOnly: { t: 'bool', h: 'Ally-only target filter.' },
+            friendlyFire: { t: 'bool', h: 'Can catch your own team.' },
+            chargeToTarget: { t: 'bool', h: 'Caster charges into melee first.' },
+            teleportDistance: { t: 'num', h: 'kind:teleport range.' },
+            teleportAnyUnit: { t: 'bool', h: 'Can teleport others.' },
+            pushDistance: { t: 'num', h: 'Knockback tiles.' },
+            pullDistance: { t: 'num', h: 'Pull tiles.' },
+            pullToCenter: { t: 'bool', h: 'aoePull vacuum.' },
+            displaceDistance: { t: 'num', h: 'Sideways displacement tiles.' },
+            swapOnHit: { t: 'bool', h: 'Swap positions on hit.' },
+            carryHeight: { t: 'num', h: 'Lift height for skyDrop/skyThrow.' },
+            throwRange: { t: 'num', h: 'skyThrow horizontal range.' },
+            arcThrow: { t: 'bool', h: 'Arcing throw trajectory.' },
+            gravityField: { t: 'text', h: '"weak" | "super" gravity zone.' },
+            trickRoomDuration: { t: 'num', h: 'Speed-inversion rounds.' },
+            terrainType: { t: 'text', h: 'Terrain painted by terrainCreate (mountain/ice/chasm/...).' },
+            terrainDeform: { t: 'json', h: '{centerDelta, edgeDelta} elevation change.' },
+            leaveTerrain: { t: 'text', h: 'Terrain left after the hit (lava/water/poison/scorched).' },
+            blocksMovement: { t: 'bool', h: 'Created object/terrain is impassable.' },
+            destroysObstacles: { t: 'bool', h: 'Clears props.' },
+            demolishesBuildings: { t: 'bool', h: 'Damages structures.' },
+            maxActivePerCaster: { t: 'num', h: 'Cap on simultaneous deployables.' },
+            objectHp: { t: 'num', h: 'Deployed object HP.' },
+            turretHp: { t: 'num', h: 'deployTurret HP.' },
+            turretDmg: { t: 'num', h: 'deployTurret damage.' },
+            turretRange: { t: 'num', h: 'deployTurret range.' },
+            trapType: { t: 'text', h: '"spike" | "frost" trap variant.' },
+            detonateOnStep: { t: 'bool', h: 'Trap/mine triggers on step.' },
+            zoneDuration: { t: 'num', h: 'zoneDebuff/zoneHeal lifetime (rounds).' },
+            delayTurns: { t: 'num', h: 'kind:delayed fuse (rounds).' },
+            revivePct: { t: 'num', h: 'HP fraction on revive.' },
+            oneRevivePerUnitPerMatch: { t: 'bool', h: 'Per-unit revive cap.' },
+            weatherType: { t: 'text', h: 'thunderstorm/blizzard/sandstorm/bloodRain.' },
+            weatherDuration: { t: 'json', h: '[min,max] rounds.' },
+            weatherTiles: { t: 'json', h: '[min,max] coverage radius.' },
+            cooldownRounds: { t: 'num', h: 'Rounds between casts (per unit).' },
+            tier: { t: 'enum', o: _SLB_TIERS, h: 'Shop price tier (I:40 / II:80 / III:140 gold).' },
+            school: { t: 'text', h: 'Owning job (job spells) — cross-class slot penalty pivots on it.' },
+            classRestriction: { t: 'text', h: 'Hard job gate (one job name).' },
+            classRestrictions: { t: 'json', h: 'Multi-job gate: ["Agent", ...].' },
+            jobPreference: { t: 'json', h: 'AI/builder hint: preferred jobs array.' },
+            jobRequirement: { t: 'text', h: 'Race abilities: only this job gets it.' },
+            equipReq: { t: 'text', h: 'Weapon requirement (knife/tarot) — currently stubbed true.' },
+            projectileOverride: { t: 'enum', o: _SLB_PROJECTILES, h: 'VFX projectile sprite id.' },
+            impactSfx: { t: 'text', h: 'Sound key override on impact.' },
+            vfxArchetype: { t: 'enum', o: [], h: 'Staging archetype (colors/props of windup-burst-finish). Empty = auto from kind/element.' },
+            vfxWeight: { t: 'enum', o: _SLB_WEIGHTS, h: 'Staging weight — pacing/size of the cinematic beats. Empty = auto from cost/tier/dmg.' },
+            _animOverride: { t: 'json', h: 'Animation pipeline override, e.g. {"travel":"beam"}. travel ∈ ' + _SLB_TRAVELS.join('/') + '.' },
+            selfStun: { t: 'bool', h: 'Self-stun after cast (mana formula discount).' },
+            longRange: { t: 'bool', h: 'Long-range flag (engine-supported, unused in data).' },
+            simTargeting: { t: 'text', h: 'SIMUL mode targeting (auto-stamped from kind — rarely hand-set).' },
+            simPhase: { t: 'text', h: 'SIMUL mode phase (auto-stamped from kind).' },
+            simFallback: { t: 'text', h: 'SIMUL mode whiff behavior (auto-stamped from kind).' },
+        };
+
+        function _slbEsc(s) {
+            return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        function _slbMods() { return window.EWSpellMods; }
+        function _slbJobs() {
+            return (typeof CLASS_SPELL_LEARN_ORDER !== 'undefined') ? Object.keys(CLASS_SPELL_LEARN_ORDER) : [];
+        }
+        function _slbRaces() {
+            return (typeof RACE_ABILITIES !== 'undefined') ? Object.keys(RACE_ABILITIES) : [];
+        }
+        function _slbStatusIds() {
+            return (typeof STATUS_DEFS !== 'undefined') ? Object.keys(STATUS_DEFS) : [];
+        }
+        function _slbArchetypes() {
+            try { return Object.keys(window.ThreeVFXEffects.STAGE_ARCHETYPES); } catch (e) { return []; }
+        }
+
+        /* One row per unique spell id across SPELL_BY_ID (which already merges
+           race abilities) + ids deleted by the mod doc (pristine def shown). */
+        function _slbAllRows() {
+            const M = _slbMods();
+            const doc = M ? M.doc : { modified: {}, added: {}, deleted: [] };
+            const rows = [];
+            const seen = new Set();
+            const jobsFor = id => _slbJobs().filter(j => (CLASS_SPELL_LEARN_ORDER[j] || []).includes(id));
+            const racesFor = id => _slbRaces().filter(r => (RACE_ABILITIES[r] || []).some(a => a.id === id));
+            Object.keys(SPELL_BY_ID).forEach(id => {
+                if (seen.has(id)) return;
+                seen.add(id);
+                const def = SPELL_BY_ID[id];
+                rows.push({
+                    id, def,
+                    added: !!doc.added[id],
+                    modified: !!doc.modified[id],
+                    deleted: false,
+                    isRace: !!(def._isRaceAbility || RACE_ABILITY_BY_ID[id]),
+                    jobs: jobsFor(id), races: racesFor(id),
+                });
+            });
+            (doc.deleted || []).forEach(id => {
+                if (seen.has(id)) return;
+                seen.add(id);
+                const def = (M && M.pristineDef(id)) || (doc.added[id] ? doc.added[id] : null);
+                if (!def) return;
+                rows.push({ id, def, added: !!doc.added[id], modified: false, deleted: true, isRace: !!def._isRaceAbility, jobs: [], races: [] });
+            });
+            return rows;
+        }
+
+        function _slbFilteredRows() {
+            const f = _slbFilters;
+            const q = _slbSearch.trim().toLowerCase();
+            let rows = _slbAllRows().filter(r => {
+                const d = r.def;
+                if (f.source === 'lib' && (r.isRace || r.added)) return false;
+                if (f.source === 'race' && !r.isRace) return false;
+                if (f.source === 'added' && !r.added) return false;
+                if (f.source === 'modified' && !(r.modified || r.added || r.deleted)) return false;
+                if (f.source === 'deleted' && !r.deleted) return false;
+                if (f.type !== 'all' && d.type !== f.type) return false;
+                if (f.kind !== 'all' && d.kind !== f.kind) return false;
+                if (f.spellType !== 'all' && d.spellType !== f.spellType) return false;
+                if (f.element !== 'all' && (d.element || '(none)') !== f.element) return false;
+                if (f.job !== 'all' && !(r.jobs.includes(f.job) || d.school === f.job || d.classRestriction === f.job || (Array.isArray(d.classRestrictions) && d.classRestrictions.includes(f.job)))) return false;
+                if (f.race !== 'all' && !r.races.includes(f.race)) return false;
+                if (q && !(r.id.toLowerCase().includes(q) || String(d.name || '').toLowerCase().includes(q)
+                    || String(d.kind || '').toLowerCase().includes(q) || String(d.desc || '').toLowerCase().includes(q))) return false;
+                return true;
+            });
+            const key = _slbSort;
+            rows.sort((a, b) => {
+                if (key === 'name') return String(a.def.name || '').localeCompare(String(b.def.name || ''));
+                if (key === 'id') return a.id.localeCompare(b.id);
+                if (key === 'kind') return String(a.def.kind || '').localeCompare(String(b.def.kind || '')) || String(a.def.name || '').localeCompare(String(b.def.name || ''));
+                if (key === 'type') return String(a.def.type || '').localeCompare(String(b.def.type || '')) || String(a.def.name || '').localeCompare(String(b.def.name || ''));
+                const av = a.def[key] || 0, bv = b.def[key] || 0;
+                return bv - av || String(a.def.name || '').localeCompare(String(b.def.name || ''));
+            });
+            return rows;
+        }
+
+        window._renderSpellLibrary = function() {
+            const body = document.getElementById('spellLibraryBody');
+            if (!body || !_slbMods()) {
+                if (body) body.innerHTML = '<div style="padding:30px;color:var(--muted)">EWSpellMods layer missing (data.js out of date).</div>';
+                return;
+            }
+            const rows = _slbAllRows();
+            if (!_slbSelectedId || !rows.some(r => r.id === _slbSelectedId)) _slbSelectedId = rows[0] ? rows[0].id : null;
+            const opt = (list, cur, allLabel) => `<option value="all"${cur === 'all' ? ' selected' : ''}>${allLabel}</option>` +
+                list.map(v => `<option value="${_slbEsc(v)}"${cur === v ? ' selected' : ''}>${_slbEsc(v)}</option>`).join('');
+            body.innerHTML = `
+                <div class="slb-tabs">
+                    <button class="slb-tab${_slbTab === 'spells' ? ' active' : ''}" onclick="window._slbSetTab('spells')">SPELLS</button>
+                    <button class="slb-tab${_slbTab === 'movepools' ? ' active' : ''}" onclick="window._slbSetTab('movepools')">MOVEPOOLS</button>
+                    <div class="slb-tabs-spacer"></div>
+                    <div class="slb-modcount" id="slbModCount"></div>
+                </div>
+                ${_slbTab === 'spells' ? `
+                <div class="slb-toolbar">
+                    <input id="slbSearch" class="slb-search" type="text" placeholder="⌕ search id / name / kind / desc" value="${_slbEsc(_slbSearch)}" oninput="window._slbOnSearch(this.value)">
+                    <select class="slb-sel" onchange="window._slbSetFilter('source', this.value)">
+                        ${['all', 'lib', 'race', 'added', 'modified', 'deleted'].map(v => `<option value="${v}"${_slbFilters.source === v ? ' selected' : ''}>${{ all: 'ALL SOURCES', lib: 'JOB SPELLS', race: 'RACE ABILITIES', added: 'ADDED', modified: 'CHANGED', deleted: 'DELETED' }[v]}</option>`).join('')}
+                    </select>
+                    <select class="slb-sel" onchange="window._slbSetFilter('type', this.value)">${opt(_SLB_TYPES, _slbFilters.type, 'ALL TYPES')}</select>
+                    <select class="slb-sel" onchange="window._slbSetFilter('kind', this.value)">${opt(_SLB_KINDS.slice().sort(), _slbFilters.kind, 'ALL KINDS')}</select>
+                    <select class="slb-sel" onchange="window._slbSetFilter('spellType', this.value)">${opt(_SLB_SPELLTYPES, _slbFilters.spellType, 'ALL FACTIONS')}</select>
+                    <select class="slb-sel" onchange="window._slbSetFilter('element', this.value)">${opt(['(none)'].concat(_SLB_ELEMENTS), _slbFilters.element, 'ALL ELEMENTS')}</select>
+                    <select class="slb-sel" onchange="window._slbSetFilter('job', this.value)">${opt(_slbJobs(), _slbFilters.job, 'ALL JOBS')}</select>
+                    <select class="slb-sel" onchange="window._slbSetFilter('race', this.value)">${opt(_slbRaces(), _slbFilters.race, 'ALL RACES')}</select>
+                    <select class="slb-sel" onchange="window._slbSetSort(this.value)">
+                        ${[['name', 'SORT: NAME'], ['id', 'SORT: ID'], ['cost', 'SORT: MP'], ['dmg', 'SORT: DMG'], ['range', 'SORT: RANGE'], ['kind', 'SORT: KIND'], ['type', 'SORT: TYPE']].map(([v, l]) => `<option value="${v}"${_slbSort === v ? ' selected' : ''}>${l}</option>`).join('')}
+                    </select>
+                    <button class="slb-btn slb-btn-add" onclick="window._slbAddSpell()">+ NEW SPELL</button>
+                </div>
+                <div class="slb-layout">
+                    <div class="slb-list" id="slbList"></div>
+                    <div class="slb-detail" id="slbDetail"></div>
+                </div>` : `
+                <div class="slb-toolbar">
+                    <button class="slb-btn${_slbMpMode === 'jobs' ? ' active' : ''}" onclick="window._slbMpSetMode('jobs')">JOB LEARNSETS</button>
+                    <button class="slb-btn${_slbMpMode === 'races' ? ' active' : ''}" onclick="window._slbMpSetMode('races')">RACE MOVEPOOLS</button>
+                    <input class="slb-search" type="text" placeholder="⌕ filter ${_slbMpMode}" value="${_slbEsc(_slbMpSearch)}" oninput="window._slbMpOnSearch(this.value)">
+                </div>
+                <div class="slb-layout">
+                    <div class="slb-list slb-mp-rail" id="slbMpRail"></div>
+                    <div class="slb-detail" id="slbMpDetail"></div>
+                </div>`}
+                <div class="slb-actionbar">
+                    <button class="slb-btn" id="slbToggleBtn" onclick="window._slbToggleEnabled()"></button>
+                    <button class="slb-btn" onclick="window._slbExport()">⇩ EXPORT JSON</button>
+                    <button class="slb-btn" onclick="window._slbCopySummary()">⧉ COPY SUMMARY</button>
+                    <button class="slb-btn" onclick="window._slbImportClick()">⇪ IMPORT</button>
+                    <input type="file" id="slbImportFile" accept="application/json,.json" style="display:none" onchange="window._slbImportFile(this)">
+                    <button class="slb-btn slb-btn-danger" onclick="window._slbResetAll()">⟲ DISCARD ALL EDITS</button>
+                    <div class="slb-tabs-spacer"></div>
+                    <button class="slb-btn slb-btn-lab" onclick="window._slbEnterLab()">▶ OPEN SPELL LAB</button>
+                </div>`;
+            _slbRefreshChrome();
+            if (_slbTab === 'spells') {
+                _slbRenderList();
+                _slbRenderDetail();
+            } else {
+                _slbMpRenderRail();
+                _slbMpRenderDetail();
+            }
+        };
+
+        function _slbRefreshChrome() {
+            const M = _slbMods();
+            const cEl = document.getElementById('slbModCount');
+            if (cEl && M) {
+                const c = M.counts();
+                const bits = [];
+                if (c.modified) bits.push(`${c.modified} modified`);
+                if (c.added) bits.push(`${c.added} added`);
+                if (c.deleted) bits.push(`${c.deleted} deleted`);
+                if (c.learnsets) bits.push(`${c.learnsets} learnsets`);
+                if (c.raceAbilities) bits.push(`${c.raceAbilities} movepools`);
+                cEl.innerHTML = bits.length ? `<span class="slb-dot">●</span> ${bits.join(' · ')}` : 'no pending edits';
+            }
+            const tBtn = document.getElementById('slbToggleBtn');
+            if (tBtn && M) {
+                tBtn.textContent = M.doc.enabled ? 'EDITS: APPLIED IN GAME' : 'EDITS: OFF (vanilla data)';
+                tBtn.classList.toggle('active', !!M.doc.enabled);
+            }
+        }
+
+        window._slbSetTab = function(t) { _slbTab = t; window._renderSpellLibrary(); };
+        window._slbOnSearch = function(v) { _slbSearch = v; _slbRenderList(); };
+        window._slbSetFilter = function(k, v) { _slbFilters[k] = v; _slbRenderList(); };
+        window._slbSetSort = function(v) { _slbSort = v; _slbRenderList(); };
+        window._slbSelect = function(id) { _slbSelectedId = id; _slbRawOpen = false; _slbRenderList(); _slbRenderDetail(); };
+
+        function _slbRenderList() {
+            const el = document.getElementById('slbList');
+            if (!el) return;
+            const rows = _slbFilteredRows();
+            el.innerHTML = `<div class="slb-list-count">${rows.length} spell${rows.length === 1 ? '' : 's'}</div>` + rows.map(r => {
+                const d = r.def;
+                const flags = `${r.deleted ? '<span class="slb-flag slb-flag-del">DEL</span>' : ''}${r.added ? '<span class="slb-flag slb-flag-add">NEW</span>' : ''}${r.modified ? '<span class="slb-flag slb-flag-mod">●</span>' : ''}`;
+                return `<div class="slb-row${r.id === _slbSelectedId ? ' selected' : ''}${r.deleted ? ' deleted' : ''}" onclick="window._slbSelect('${_slbEsc(r.id)}')">
+                    <div class="slb-row-top"><span class="slb-row-name">${_slbEsc(d.name || r.id)}</span>${flags}</div>
+                    <div class="slb-row-sub">
+                        <span class="slb-badge slb-badge-${_slbEsc(d.type || 'utility')}">${_slbEsc(d.type || '?')}</span>
+                        <span class="slb-badge">${_slbEsc(d.kind || '?')}</span>
+                        ${d.element ? `<span class="slb-badge slb-badge-elem">${_slbEsc(d.element)}</span>` : ''}
+                        <span class="slb-row-stats">${d.dmg != null ? '⚔' + d.dmg + ' ' : ''}${d.heal != null ? '✚' + d.heal + ' ' : ''}${d.healAmt != null ? '✚' + d.healAmt + ' ' : ''}✦${d.cost != null ? d.cost : '?'} ${d.range != null ? '↔' + d.range : ''}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        /* ── field mutation core ─────────────────────────────────────────── */
+        function _slbDeepEq(a, b) { return JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b); }
+
+        window._slbSetField = function(id, field, raw, ftype) {
+            const M = _slbMods();
+            if (!M) return;
+            let value;
+            try {
+                if (ftype === 'num') { value = raw === '' ? null : Number(raw); if (value !== null && !isFinite(value)) throw new Error('not a number'); }
+                else if (ftype === 'bool') value = !!raw;
+                else if (ftype === 'json') value = raw.trim() === '' ? null : JSON.parse(raw);
+                else value = raw === '' ? null : raw;
+            } catch (e) { _slbToast('✗ ' + field + ': ' + e.message, true); return; }
+            const doc = M.doc;
+            if (doc.added[id]) {
+                if (value === null) delete doc.added[id][field];
+                else doc.added[id][field] = value;
+                if (field === 'cost') { if (value === null) delete doc.added[id].manaCostOverride; else doc.added[id].manaCostOverride = value; }
+            } else {
+                const pris = M.pristineDef(id);
+                const prisVal = pris && Object.prototype.hasOwnProperty.call(pris, field) ? pris[field] : undefined;
+                const mod = doc.modified[id] = doc.modified[id] || {};
+                if (_slbDeepEq(value, prisVal) || (value === null && prisVal === undefined)) {
+                    delete mod[field];
+                    if (field === 'cost') delete mod.manaCostOverride;
+                } else {
+                    mod[field] = value;
+                    if (field === 'cost' && value !== null) mod.manaCostOverride = value;
+                }
+                if (!Object.keys(mod).length) delete doc.modified[id];
+            }
+            M.save();
+            M.apply();
+            try { if (window.ThreeVFXEffects && window.ThreeVFXEffects.clearStageInfoCache) window.ThreeVFXEffects.clearStageInfoCache(id); } catch (e) {}
+            if (field === 'name') {
+                const dupes = _slbAllRows().filter(r => !r.deleted && String(r.def.name) === String(value) && r.id !== id);
+                if (value && dupes.length) _slbToast(`⚠ name "${value}" also used by ${dupes.map(r => r.id).join(', ')} — casts resolve by name, keep names unique!`, true);
+            }
+            _slbRenderList();
+            _slbRenderDetail();
+            _slbRefreshChrome();
+            if (window._spellLabActive) window._slbLabRefreshSpell();
+        };
+
+        window._slbRevertSpell = function(id) {
+            const M = _slbMods();
+            if (!M) return;
+            delete M.doc.modified[id];
+            M.save(); M.apply();
+            _slbToast('↺ reverted ' + id);
+            _slbRenderList(); _slbRenderDetail(); _slbRefreshChrome();
+        };
+
+        window._slbDeleteSpell = function(id) {
+            const M = _slbMods();
+            if (!M) return;
+            if (M.doc.added[id]) {
+                delete M.doc.added[id];
+                delete M.doc.modified[id];
+            } else if (!M.doc.deleted.includes(id)) {
+                M.doc.deleted.push(id);
+            }
+            M.save(); M.apply();
+            _slbToast('✕ deleted ' + id + ' (restore any time)');
+            _slbRenderList(); _slbRenderDetail(); _slbRefreshChrome();
+        };
+
+        window._slbRestoreSpell = function(id) {
+            const M = _slbMods();
+            if (!M) return;
+            M.doc.deleted = M.doc.deleted.filter(x => x !== id);
+            M.save(); M.apply();
+            _slbToast('↻ restored ' + id);
+            _slbRenderList(); _slbRenderDetail(); _slbRefreshChrome();
+        };
+
+        function _slbUniqueId(base) {
+            let id = base, n = 2;
+            while (SPELL_BY_ID[id] || _slbMods().doc.added[id] || _slbMods().doc.deleted.includes(id)) id = base + (n++);
+            return id;
+        }
+
+        window._slbAddSpell = function() {
+            const M = _slbMods();
+            if (!M) return;
+            const id = _slbUniqueId('customSpell');
+            M.doc.added[id] = {
+                name: 'New Spell', type: 'damage', kind: 'damage', spellType: 'human', element: 'arcane',
+                dmg: 100, range: 3, apCost: 2, damageType: 'magic',
+                tier: 'I', school: 'Black Mage', classRestriction: 'Black Mage',
+                desc: 'Deals MEDIUM magic damage to a Single Enemy.',
+                _home: { lib: true },
+            };
+            M.save(); M.apply();
+            _slbSelectedId = id;
+            _slbFilters.source = 'all';
+            _slbSearch = '';
+            window._renderSpellLibrary();
+            _slbToast('+ created ' + id + ' — rename fields freely, then assign it in MOVEPOOLS');
+        };
+
+        window._slbDuplicate = function(id) {
+            const M = _slbMods();
+            const src = SPELL_BY_ID[id] || M.pristineDef(id);
+            if (!M || !src) return;
+            const nid = _slbUniqueId(id + 'Copy');
+            const clone = JSON.parse(JSON.stringify(src));
+            delete clone.id;
+            delete clone._race; delete clone._isRaceAbility;
+            delete clone.simTargeting; delete clone.simPhase; delete clone.simFallback;
+            clone.name = (clone.name || id) + ' Copy';
+            clone._home = (src._isRaceAbility && src._race) ? { race: src._race } : { lib: true };
+            M.doc.added[nid] = clone;
+            M.save(); M.apply();
+            _slbSelectedId = nid;
+            window._renderSpellLibrary();
+            _slbToast('⧉ duplicated to ' + nid);
+        };
+
+        window._slbSetHome = function(id, v) {
+            const M = _slbMods();
+            if (!M || !M.doc.added[id]) return;
+            M.doc.added[id]._home = v === 'lib' ? { lib: true } : { race: v };
+            M.save(); M.apply();
+            _slbRenderDetail(); _slbRefreshChrome();
+        };
+
+        /* movepool quick-assign from the detail pane */
+        window._slbAssign = function(id, kind, key) {
+            if (!key) return;
+            const M = _slbMods();
+            if (!M) return;
+            if (kind === 'job') {
+                const cur = (CLASS_SPELL_LEARN_ORDER[key] || []).slice();
+                if (!cur.includes(id)) cur.push(id);
+                M.doc.learnsets[key] = cur;
+            } else {
+                const cur = (RACE_ABILITIES[key] || []).map(a => a.id);
+                if (!cur.includes(id)) cur.push(id);
+                M.doc.raceAbilities[key] = cur;
+            }
+            M.save(); M.apply();
+            _slbRenderDetail(); _slbRefreshChrome();
+            _slbToast(`→ added ${id} to ${key}`);
+        };
+
+        window._slbUnassign = function(id, kind, key) {
+            const M = _slbMods();
+            if (!M) return;
+            if (kind === 'job') M.doc.learnsets[key] = (CLASS_SPELL_LEARN_ORDER[key] || []).filter(x => x !== id);
+            else M.doc.raceAbilities[key] = (RACE_ABILITIES[key] || []).map(a => a.id).filter(x => x !== id);
+            M.save(); M.apply();
+            _slbRenderDetail(); _slbRefreshChrome();
+        };
+
+        function _slbFieldInput(id, f, val, spec) {
+            const t = spec ? spec.t : (typeof val === 'number' ? 'num' : typeof val === 'boolean' ? 'bool' : (val && typeof val === 'object') ? 'json' : 'text');
+            const set = (raw, ft) => `window._slbSetField('${_slbEsc(id)}','${_slbEsc(f)}',${raw},'${ft}')`;
+            if (t === 'bool') return `<input type="checkbox"${val ? ' checked' : ''} onchange="${set('this.checked', 'bool')}">`;
+            if (t === 'num') return `<input type="number" step="any" value="${val != null ? _slbEsc(val) : ''}" onchange="${set('this.value', 'num')}">`;
+            if (t === 'enum') {
+                const opts = (f === 'vfxArchetype' ? _slbArchetypes() : (spec.o || []));
+                return `<select onchange="${set('this.value', 'text')}"><option value=""${val == null ? ' selected' : ''}>(unset)</option>${opts.map(o => `<option value="${_slbEsc(o)}"${val === o ? ' selected' : ''}>${_slbEsc(o)}</option>`).join('')}</select>`;
+            }
+            if (t === 'json') return `<textarea class="slb-json-mini" spellcheck="false" onchange="${set('this.value', 'json')}">${val !== undefined ? _slbEsc(JSON.stringify(val)) : ''}</textarea>`;
+            if (t === 'long') return `<textarea class="slb-json-mini slb-long" spellcheck="false" onchange="${set('this.value', 'text')}">${_slbEsc(val != null ? val : '')}</textarea>`;
+            return `<input type="text" value="${_slbEsc(val != null ? val : '')}" onchange="${set('this.value', 'text')}">`;
+        }
+
+        function _slbRenderDetail() {
+            const el = document.getElementById('slbDetail');
+            if (!el) return;
+            const M = _slbMods();
+            const id = _slbSelectedId;
+            const row = id ? _slbAllRows().find(r => r.id === id) : null;
+            if (!row) { el.innerHTML = '<div class="slb-empty">No spell selected.</div>'; return; }
+            const d = row.def;
+            const doc = M.doc;
+            const mod = doc.modified[id] || {};
+            const pris = M.pristineDef(id);
+            if (row.deleted) {
+                el.innerHTML = `<div class="slb-detail-scroll">
+                    <div class="slb-head">
+                        <div class="slb-head-name deleted">${_slbEsc(d.name || id)}</div>
+                        <div class="slb-head-id">${_slbEsc(id)} — DELETED</div>
+                        <div class="slb-head-actions"><button class="slb-btn" onclick="window._slbRestoreSpell('${_slbEsc(id)}')">↻ RESTORE</button></div>
+                    </div>
+                    <pre class="slb-pre">${_slbEsc(JSON.stringify(d, null, 2))}</pre>
+                </div>`;
+                return;
+            }
+            /* fields, ordered: core first, then whatever else the def carries, then add-a-field */
+            const CORE = ['name', 'desc', 'type', 'kind', 'spellType', 'element', 'damageType', 'cost', 'apCost', 'range', 'dmg', 'heal', 'healAmt', 'aoeRadius', 'cooldownRounds', 'statusEffects', 'statStageBoost', 'tier', 'school', 'classRestriction', 'projectileOverride', 'vfxArchetype', 'vfxWeight'];
+            const hidden = ['id', '_race', '_isRaceAbility', '_home', '_sentaiColor'];
+            const present = Object.keys(d).filter(k => !hidden.includes(k));
+            const rest = present.filter(k => !CORE.includes(k)).sort();
+            const shown = CORE.filter(k => Object.prototype.hasOwnProperty.call(d, k) || ['name', 'desc', 'type', 'kind', 'spellType', 'element', 'cost', 'range', 'vfxArchetype', 'vfxWeight'].includes(k)).concat(rest);
+            const catalogLeft = Object.keys(_SLB_FIELD_HELP).filter(k => !shown.includes(k)).sort();
+            const fieldRow = f => {
+                const spec = _SLB_FIELD_HELP[f];
+                const val = d[f];
+                const isMod = doc.added[id] ? false : Object.prototype.hasOwnProperty.call(mod, f);
+                const prisVal = pris && Object.prototype.hasOwnProperty.call(pris, f) ? pris[f] : undefined;
+                const origHtml = isMod ? `<span class="slb-orig" title="original value — click to revert" onclick="window._slbRevertField('${_slbEsc(id)}','${_slbEsc(f)}')">↺ ${prisVal === undefined ? '(absent)' : _slbEsc(JSON.stringify(prisVal))}</span>` : '';
+                return `<div class="slb-field${isMod ? ' modded' : ''}" title="${_slbEsc(spec ? spec.h : '')}">
+                    <label>${_slbEsc(f)}</label>
+                    ${_slbFieldInput(id, f, val, spec)}
+                    ${origHtml}
+                </div>`;
+            };
+            const jobsChips = row.jobs.map(j => `<span class="slb-chip">${_slbEsc(j)} <a onclick="window._slbUnassign('${_slbEsc(id)}','job','${_slbEsc(j)}')" title="remove from ${_slbEsc(j)} learnset">✕</a></span>`).join('')
+                || '<span class="slb-chip slb-chip-empty">no job learnset</span>';
+            const raceChips = row.races.map(r => `<span class="slb-chip">${_slbEsc(r)} <a onclick="window._slbUnassign('${_slbEsc(id)}','race','${_slbEsc(r)}')" title="remove from ${_slbEsc(r)} movepool">✕</a></span>`).join('')
+                || '<span class="slb-chip slb-chip-empty">no race movepool</span>';
+            const homeSel = doc.added[id] ? `<div class="slb-assign-row"><span class="slb-assign-label">LIVES IN</span>
+                <select class="slb-sel" onchange="window._slbSetHome('${_slbEsc(id)}', this.value)">
+                    <option value="lib"${!(doc.added[id]._home && doc.added[id]._home.race) ? ' selected' : ''}>Spell Library (job spell)</option>
+                    ${_slbRaces().map(r => `<option value="${_slbEsc(r)}"${doc.added[id]._home && doc.added[id]._home.race === r ? ' selected' : ''}>race: ${_slbEsc(r)}</option>`).join('')}
+                </select></div>` : '';
+            el.innerHTML = `<div class="slb-detail-scroll">
+                <div class="slb-head">
+                    <div class="slb-head-name">${_slbEsc(d.name || id)}</div>
+                    <div class="slb-head-id">${_slbEsc(id)}${row.isRace ? ' · race ability' : ' · job spell'}${row.added ? ' · ADDED' : ''}${row.modified ? ' · <span class="slb-dot">●</span> modified' : ''}</div>
+                    <div class="slb-head-actions">
+                        <button class="slb-btn" onclick="window._slbEnterLab('${_slbEsc(id)}')">▶ LAB</button>
+                        <button class="slb-btn" onclick="window._slbDuplicate('${_slbEsc(id)}')">⧉ DUPLICATE</button>
+                        ${row.modified ? `<button class="slb-btn" onclick="window._slbRevertSpell('${_slbEsc(id)}')">↺ REVERT</button>` : ''}
+                        <button class="slb-btn slb-btn-danger" onclick="window._slbDeleteSpell('${_slbEsc(id)}')">✕ DELETE</button>
+                    </div>
+                </div>
+                <div class="slb-assign">
+                    ${homeSel}
+                    <div class="slb-assign-row"><span class="slb-assign-label">JOBS</span>${jobsChips}
+                        <select class="slb-sel slb-sel-add" onchange="window._slbAssign('${_slbEsc(id)}','job',this.value);this.value=''">
+                            <option value="">+ job…</option>${_slbJobs().filter(j => !row.jobs.includes(j)).map(j => `<option value="${_slbEsc(j)}">${_slbEsc(j)}</option>`).join('')}
+                        </select></div>
+                    <div class="slb-assign-row"><span class="slb-assign-label">RACES</span>${raceChips}
+                        <select class="slb-sel slb-sel-add" onchange="window._slbAssign('${_slbEsc(id)}','race',this.value);this.value=''">
+                            <option value="">+ race…</option>${_slbRaces().filter(r => !row.races.includes(r)).map(r => `<option value="${_slbEsc(r)}">${_slbEsc(r)}</option>`).join('')}
+                        </select></div>
+                </div>
+                <div class="slb-field-grid">${shown.map(fieldRow).join('')}</div>
+                <div class="slb-addfield">
+                    <select class="slb-sel" onchange="if(this.value){window._slbSetField('${_slbEsc(id)}', this.value, window._slbDefaultFor(this.value), window._slbTypeFor(this.value));this.value='';}">
+                        <option value="">+ add field…</option>
+                        ${catalogLeft.map(f => `<option value="${_slbEsc(f)}" title="${_slbEsc(_SLB_FIELD_HELP[f].h)}">${_slbEsc(f)} — ${_slbEsc(_SLB_FIELD_HELP[f].h.slice(0, 60))}</option>`).join('')}
+                    </select>
+                    <button class="slb-btn" onclick="window._slbToggleRaw()">${_slbRawOpen ? '✕ CLOSE JSON' : '{ } RAW JSON'}</button>
+                </div>
+                ${_slbRawOpen ? `<div class="slb-rawwrap">
+                    <textarea id="slbRawTa" class="slb-json" spellcheck="false">${_slbEsc(JSON.stringify(d, null, 2))}</textarea>
+                    <button class="slb-btn" onclick="window._slbApplyRaw('${_slbEsc(id)}')">APPLY JSON</button>
+                    <span class="slb-hint">Full effective def. Apply diffs it against the original — id itself can't be changed (use DUPLICATE for a new id).</span>
+                </div>` : ''}
+            </div>`;
+        }
+
+        window._slbTypeFor = function(f) { const s = _SLB_FIELD_HELP[f]; return s ? (s.t === 'enum' || s.t === 'long' ? 'text' : s.t) : 'text'; };
+        window._slbDefaultFor = function(f) {
+            const s = _SLB_FIELD_HELP[f];
+            if (!s) return '';
+            if (s.t === 'num') return '1';
+            if (s.t === 'bool') return true;
+            if (s.t === 'json') {
+                if (f === 'statusEffects' || f === 'allyStatusEffects' || f === 'teamStatusEffects') return '[{"id":"burn","duration":2}]';
+                if (f === 'statStageBoost') return '{"atk":-1}';
+                if (f === 'terrainDeform') return '{"centerDelta":-1,"edgeDelta":0}';
+                if (f === '_animOverride') return '{"travel":"beam"}';
+                return '{}';
+            }
+            if (s.t === 'enum') return (f === 'vfxArchetype' ? (_slbArchetypes()[0] || '') : (s.o && s.o[0]) || '');
+            return 'value';
+        };
+
+        window._slbRevertField = function(id, f) {
+            const M = _slbMods();
+            if (!M) return;
+            const mod = M.doc.modified[id];
+            if (mod) {
+                delete mod[f];
+                if (f === 'cost') delete mod.manaCostOverride;
+                if (!Object.keys(mod).length) delete M.doc.modified[id];
+            }
+            M.save(); M.apply();
+            _slbRenderList(); _slbRenderDetail(); _slbRefreshChrome();
+        };
+
+        window._slbToggleRaw = function() { _slbRawOpen = !_slbRawOpen; _slbRenderDetail(); };
+
+        window._slbApplyRaw = function(id) {
+            const ta = document.getElementById('slbRawTa');
+            const M = _slbMods();
+            if (!ta || !M) return;
+            let parsed;
+            try { parsed = JSON.parse(ta.value); } catch (e) { _slbToast('✗ JSON: ' + e.message, true); return; }
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) { _slbToast('✗ must be an object', true); return; }
+            const skip = ['id', '_race', '_isRaceAbility'];
+            if (M.doc.added[id]) {
+                const home = M.doc.added[id]._home;
+                skip.forEach(k => delete parsed[k]);
+                delete parsed._home;
+                M.doc.added[id] = parsed;
+                M.doc.added[id]._home = home;
+            } else {
+                const pris = M.pristineDef(id) || {};
+                const mod = {};
+                const keys = new Set([...Object.keys(parsed), ...Object.keys(pris)]);
+                keys.forEach(k => {
+                    if (skip.includes(k)) return;
+                    const inNew = Object.prototype.hasOwnProperty.call(parsed, k);
+                    const inOld = Object.prototype.hasOwnProperty.call(pris, k);
+                    if (inNew && (!inOld || !_slbDeepEq(parsed[k], pris[k]))) mod[k] = parsed[k];
+                    else if (!inNew && inOld) mod[k] = null;
+                });
+                if (Object.prototype.hasOwnProperty.call(mod, 'cost') && mod.cost !== null && !Object.prototype.hasOwnProperty.call(mod, 'manaCostOverride')) mod.manaCostOverride = mod.cost;
+                if (Object.keys(mod).length) M.doc.modified[id] = mod;
+                else delete M.doc.modified[id];
+            }
+            M.save(); M.apply();
+            try { if (window.ThreeVFXEffects && window.ThreeVFXEffects.clearStageInfoCache) window.ThreeVFXEffects.clearStageInfoCache(id); } catch (e) {}
+            _slbToast('✓ applied JSON to ' + id);
+            _slbRenderList(); _slbRenderDetail(); _slbRefreshChrome();
+        };
+
+        /* ── movepools tab ───────────────────────────────────────────────── */
+        window._slbMpSetMode = function(m) { _slbMpMode = m; _slbMpKey = null; window._renderSpellLibrary(); };
+        window._slbMpOnSearch = function(v) { _slbMpSearch = v; _slbMpRenderRail(); };
+        window._slbMpSelect = function(k) { _slbMpKey = k; _slbMpRenderRail(); _slbMpRenderDetail(); };
+
+        function _slbMpRenderRail() {
+            const el = document.getElementById('slbMpRail');
+            if (!el) return;
+            const M = _slbMods();
+            const q = _slbMpSearch.trim().toLowerCase();
+            const keys = (_slbMpMode === 'jobs' ? _slbJobs() : _slbRaces()).filter(k => !q || k.toLowerCase().includes(q));
+            if (!_slbMpKey || !keys.includes(_slbMpKey)) _slbMpKey = keys[0] || null;
+            el.innerHTML = keys.map(k => {
+                const n = _slbMpMode === 'jobs' ? (CLASS_SPELL_LEARN_ORDER[k] || []).length : (RACE_ABILITIES[k] || []).length;
+                const touched = _slbMpMode === 'jobs' ? !!M.doc.learnsets[k] : !!M.doc.raceAbilities[k];
+                return `<div class="slb-row${k === _slbMpKey ? ' selected' : ''}" onclick="window._slbMpSelect('${_slbEsc(k)}')">
+                    <div class="slb-row-top"><span class="slb-row-name">${_slbEsc(k)}</span>${touched ? '<span class="slb-flag slb-flag-mod">●</span>' : ''}</div>
+                    <div class="slb-row-sub"><span class="slb-row-stats">${n} spell${n === 1 ? '' : 's'}</span></div>
+                </div>`;
+            }).join('') || '<div class="slb-empty">nothing matches</div>';
+        }
+
+        function _slbMpIds(key) {
+            return _slbMpMode === 'jobs' ? (CLASS_SPELL_LEARN_ORDER[key] || []).slice() : (RACE_ABILITIES[key] || []).map(a => a.id);
+        }
+
+        function _slbMpWrite(key, ids) {
+            const M = _slbMods();
+            if (!M) return;
+            const kind = _slbMpMode === 'jobs' ? 'learnsets' : 'raceAbilities';
+            // storing the pristine order back = untouched → drop the override
+            const prisArr = _slbMpMode === 'jobs'
+                ? ((M.pristineState() && M.pristineState().learn[key]) || [])
+                : ((M.pristineState() && M.pristineState().raceRefs[key]) || []).map(a => a.id);
+            if (JSON.stringify(ids) === JSON.stringify(prisArr)) delete M.doc[kind][key];
+            else M.doc[kind][key] = ids;
+            M.save(); M.apply();
+            _slbMpRenderRail(); _slbMpRenderDetail(); _slbRefreshChrome();
+        }
+
+        window._slbMpMove = function(key, idx, dir) {
+            const ids = _slbMpIds(key);
+            const j = idx + dir;
+            if (j < 0 || j >= ids.length) return;
+            const t = ids[idx]; ids[idx] = ids[j]; ids[j] = t;
+            _slbMpWrite(key, ids);
+        };
+        window._slbMpRemove = function(key, idx) {
+            const ids = _slbMpIds(key);
+            ids.splice(idx, 1);
+            _slbMpWrite(key, ids);
+        };
+        window._slbMpAdd = function(key, id) {
+            if (!id) return;
+            const ids = _slbMpIds(key);
+            if (!ids.includes(id)) ids.push(id);
+            _slbMpWrite(key, ids);
+        };
+        window._slbMpRevert = function(key) {
+            const M = _slbMods();
+            const kind = _slbMpMode === 'jobs' ? 'learnsets' : 'raceAbilities';
+            delete M.doc[kind][key];
+            M.save(); M.apply();
+            _slbMpRenderRail(); _slbMpRenderDetail(); _slbRefreshChrome();
+        };
+
+        function _slbMpRenderDetail() {
+            const el = document.getElementById('slbMpDetail');
+            if (!el) return;
+            const key = _slbMpKey;
+            if (!key) { el.innerHTML = '<div class="slb-empty">Pick a ' + (_slbMpMode === 'jobs' ? 'job' : 'race') + '.</div>'; return; }
+            const M = _slbMods();
+            const ids = _slbMpIds(key);
+            const touched = _slbMpMode === 'jobs' ? !!M.doc.learnsets[key] : !!M.doc.raceAbilities[key];
+            const lvl = i => (_slbMpMode === 'jobs' && typeof getSpellUnlockLevel === 'function') ? `<span class="slb-mp-lvl">Lv ${getSpellUnlockLevel(key, i)}</span>` : '';
+            const allIds = _slbAllRows().filter(r => !r.deleted).map(r => r.id).sort();
+            el.innerHTML = `<div class="slb-detail-scroll">
+                <div class="slb-head">
+                    <div class="slb-head-name">${_slbEsc(key)}</div>
+                    <div class="slb-head-id">${_slbMpMode === 'jobs' ? 'learn order — position sets the unlock level' : 'race movepool — every unit of this race can equip these'}${touched ? ' · <span class="slb-dot">●</span> modified' : ''}</div>
+                    <div class="slb-head-actions">${touched ? `<button class="slb-btn" onclick="window._slbMpRevert('${_slbEsc(key)}')">↺ REVERT</button>` : ''}</div>
+                </div>
+                <div class="slb-mp-list">
+                    ${ids.map((id, i) => {
+                        const d = SPELL_BY_ID[id] || {};
+                        return `<div class="slb-mp-row">
+                            <span class="slb-mp-idx">${i + 1}</span>${lvl(i)}
+                            <span class="slb-mp-name" onclick="window._slbJumpToSpell('${_slbEsc(id)}')" title="open in editor">${_slbEsc(d.name || id)}</span>
+                            <span class="slb-mp-id">${_slbEsc(id)}</span>
+                            <span class="slb-badge">${_slbEsc(d.kind || '?')}</span>
+                            <span class="slb-mp-ctl">
+                                <button onclick="window._slbMpMove('${_slbEsc(key)}',${i},-1)" title="earlier">↑</button>
+                                <button onclick="window._slbMpMove('${_slbEsc(key)}',${i},1)" title="later">↓</button>
+                                <button onclick="window._slbMpRemove('${_slbEsc(key)}',${i})" title="remove">✕</button>
+                            </span>
+                        </div>`;
+                    }).join('') || '<div class="slb-empty">empty movepool</div>'}
+                </div>
+                <div class="slb-addfield">
+                    <input class="slb-search" list="slbMpAddList" id="slbMpAddInput" placeholder="+ add spell by id (type to search)…"
+                        onchange="window._slbMpAdd('${_slbEsc(key)}', this.value); this.value='';">
+                    <datalist id="slbMpAddList">${allIds.filter(id => !ids.includes(id)).map(id => `<option value="${_slbEsc(id)}">${_slbEsc((SPELL_BY_ID[id] || {}).name || '')}</option>`).join('')}</datalist>
+                </div>
+            </div>`;
+        }
+
+        window._slbJumpToSpell = function(id) {
+            _slbTab = 'spells';
+            _slbSelectedId = id;
+            _slbFilters = { source: 'all', type: 'all', kind: 'all', spellType: 'all', element: 'all', job: 'all', race: 'all' };
+            _slbSearch = '';
+            window._renderSpellLibrary();
+        };
+
+        /* ── footer: toggle / export / import / reset ────────────────────── */
+        window._slbToggleEnabled = function() {
+            const M = _slbMods();
+            if (!M) return;
+            M.doc.enabled = !M.doc.enabled;
+            M.save(); M.apply();
+            _slbToast(M.doc.enabled ? '✓ edits APPLIED to live data' : '◌ edits disabled — vanilla data restored');
+            window._renderSpellLibrary();
+        };
+
+        window._slbExport = function() {
+            const M = _slbMods();
+            if (!M) return;
+            const ex = M.export();
+            const json = JSON.stringify(ex, null, 2);
+            const stamp = new Date().toISOString().slice(0, 10);
+            try {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+                a.download = `entropy-wars-spell-mods-${stamp}.json`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+            } catch (e) { console.error('[SLB] export', e); }
+            try { navigator.clipboard && navigator.clipboard.writeText(json); } catch (e) {}
+            _slbToast('⇩ exported JSON (downloaded + copied) — hand the file to Claude to make it live');
+        };
+
+        window._slbCopySummary = function() {
+            const M = _slbMods();
+            if (!M) return;
+            const s = M.summary();
+            const text = s.length ? s.join('\n') : '(no edits)';
+            try { navigator.clipboard && navigator.clipboard.writeText(text); } catch (e) {}
+            _slbToast('⧉ summary copied (' + s.length + ' lines)');
+        };
+
+        window._slbImportClick = function() {
+            const inp = document.getElementById('slbImportFile');
+            if (inp) inp.click();
+        };
+        window._slbImportFile = function(inp) {
+            const file = inp && inp.files && inp.files[0];
+            if (!file) return;
+            const fr = new FileReader();
+            fr.onload = () => {
+                try {
+                    _slbMods().import(JSON.parse(fr.result));
+                    _slbToast('⇪ imported ' + file.name);
+                    window._renderSpellLibrary();
+                } catch (e) { _slbToast('✗ import failed: ' + e.message, true); }
+            };
+            fr.readAsText(file);
+            inp.value = '';
+        };
+
+        window._slbResetAll = function() {
+            const M = _slbMods();
+            if (!M) return;
+            const c = M.counts();
+            const n = c.modified + c.added + c.deleted + c.learnsets + c.raceAbilities;
+            if (n && !window.confirm(`Discard ALL ${n} pending change group(s)? This clears every spell edit, addition, deletion and movepool change. Export first if you want to keep them.`)) return;
+            M.reset();
+            _slbToast('⟲ all edits discarded — vanilla data restored');
+            window._renderSpellLibrary();
+        };
+
+        let _slbToastTimer = null;
+        function _slbToast(msg, isErr) {
+            let t = document.getElementById('slbToast');
+            if (!t) {
+                t = document.createElement('div');
+                t.id = 'slbToast';
+                document.body.appendChild(t);
+            }
+            t.textContent = msg;
+            t.className = 'slb-toast' + (isErr ? ' err' : '');
+            t.style.opacity = '1';
+            if (_slbToastTimer) clearTimeout(_slbToastTimer);
+            _slbToastTimer = setTimeout(() => { t.style.opacity = '0'; }, isErr ? 5200 : 3000);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           SPELL LAB — real-engine animation sandbox.
+
+           Boots an actual match on a private 8×8 flat board: the CASTER
+           (P1, local) vs an inert DUMMY (P2, local + _mdNpc → never in the
+           blitz turn order, no AI ever runs). battle.js maybeAdvanceTurn is
+           intercepted while state._spellLabMode is set, so rounds never end
+           and the caster free-casts forever; _spellLabTick refills AP/MP/
+           cooldowns. Every cast goes through the REAL GAME.doSpell — cast
+           anim, staging beats, travel VFX, impact geometry, action camera,
+           damage numbers — exactly what a live match shows.
+           ═══════════════════════════════════════════════════════════════ */
+
+        window._spellLabActive = false;
+        const _slbLab = {
+            cfg: { spellId: null, casterRace: 'homosapien', casterJob: 'Black Mage', dummyRace: 'homosapien', distance: 3, targetGround: false, immortal: true, repeat: false, repeatGapMs: 1200 },
+            saved: null,
+            tickTimer: null,
+            repeatTimer: null,
+            booting: false,
+        };
+
+        function _slbLabLearnerFor(spellId) {
+            const out = { job: null, race: null };
+            const jobs = _slbJobs().filter(j => (CLASS_SPELL_LEARN_ORDER[j] || []).includes(spellId));
+            const def = SPELL_BY_ID[spellId];
+            if (jobs.length) out.job = jobs[0];
+            else if (def && (def.classRestriction || (def.classRestrictions && def.classRestrictions[0]))) out.job = def.classRestriction || def.classRestrictions[0];
+            const races = _slbRaces().filter(r => (RACE_ABILITIES[r] || []).some(a => a.id === spellId));
+            if (races.length) out.race = races[0];
+            else if (def && def._race) out.race = def._race;
+            return out;
+        }
+
+        function _slbLab3DRaces() {
+            const all = (typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES.slice() : _slbRaces();
+            const ready = r => { try { return typeof isRace3DReady === 'function' && isRace3DReady(r); } catch (e) { return false; } };
+            return all.sort((a, b) => (ready(b) - ready(a)) || a.localeCompare(b)).map(r => ({ race: r, has3d: ready(r) }));
+        }
+
+        window._slbEnterLab = function(spellId) {
+            const cfg = _slbLab.cfg;
+            if (spellId) cfg.spellId = spellId;
+            if (!cfg.spellId) {
+                const first = _slbAllRows().find(r => !r.deleted);
+                cfg.spellId = _slbSelectedId && SPELL_BY_ID[_slbSelectedId] ? _slbSelectedId : (first ? first.id : null);
+            }
+            if (!cfg.spellId) { _slbToast('✗ no spell to preview', true); return; }
+            const learner = _slbLabLearnerFor(cfg.spellId);
+            if (learner.race) {
+                cfg.casterRace = learner.race;
+                cfg.casterJob = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[learner.race]) || learner.job || cfg.casterJob;
+            } else if (learner.job) {
+                cfg.casterJob = learner.job;
+                const owned = (typeof cpu3DRaceForJobSlot === 'function') ? cpu3DRaceForJobSlot(cfg.casterJob) : null;
+                if (owned) cfg.casterRace = owned;
+            }
+            _slbLabBoot();
+        };
+
+        function _slbLabBoot() {
+            if (_slbLab.booting) return;
+            _slbLab.booting = true;
+            const cfg = _slbLab.cfg;
+            try {
+                _slbLab.saved = _slbLab.saved || {
+                    introCine: window.EW_DISABLE_INTRO_CINE,
+                    fog: state.fogOfWar,
+                };
+                window.EW_DISABLE_INTRO_CINE = true;
+
+                GAME_MODES.spelllab = {
+                    id: 'spelllab', label: 'Spell Lab', desc: 'dev sandbox',
+                    boardSize: 8, boardWidth: 8, boardHeight: 8, teamSize: 1,
+                    winHourglasses: 99, hiddenItemSpawns: 0, blitzMode: true, hasTowers: false,
+                    terrainPatches: { water: [0, 0, 0], desert: [0, 0, 0], mountain: [0, 0, 0] },
+                    spawns: { 1: [{ x: Math.max(0, 4 - Math.ceil(cfg.distance / 2)), y: 4 }], 2: [{ x: Math.min(7, 4 + Math.floor(cfg.distance / 2)), y: 4 }] },
+                    defaultBuilds: { 1: [cfg.casterJob], 2: ['Warrior'] },
+                };
+                MAP_LAYOUT_PRESETS.spelllab = {
+                    sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 7, label: 'Earth', baseTerrain: 'grass' }, buffer2: null, below: null },
+                    barrierRows: [], barrierOpeningsX: [], hasFloors: false,
+                };
+
+                applyGameMode('spelllab');
+                activeMultiplayerMode = 'tdm';
+                state.controllers[1] = CTRL.LOCAL;
+                state.controllers[2] = CTRL.LOCAL;      // no AI branch can ever fire
+                state.devAutoSim = false;
+                state.devSimSpeed = 1;
+                state.fogOfWar = false;
+                // sticky flags from earlier menu picks would derail the sandbox
+                state.squadLeaderMode = false;
+                state.isRankedMatch = false;
+                state.isCampaign = false;
+                state._customRoundLimit = 0;
+
+                state.partyBuilds = { 1: [cfg.casterJob], 2: ['Warrior'] };
+                state.partyNames = { 1: ['Caster'], 2: ['Dummy'] };
+                state.loadouts = { 1: [emptyLoadout()], 2: [emptyLoadout()] };
+                state.partyMeta = {
+                    1: [{ race: cfg.casterRace, customSpells: [cfg.spellId] }],
+                    2: [{ race: cfg.dummyRace }],
+                };
+
+                state._spellLabMode = true;
+                window._spellLabActive = true;
+
+                // leave the menu overlay like dismissTitleScreen does, minus the
+                // party-builder transition — startMatch drives the phase itself
+                const ov = document.getElementById('startOverlay');
+                if (ov) {
+                    ov.classList.add('hidden');
+                    ov.style.display = 'none';
+                    ov.style.pointerEvents = 'none';
+                    ov.setAttribute('aria-hidden', 'true');
+                }
+
+                state.teamLockedIn = true;
+                applyPartyBuild(false);
+                startMatch();
+
+                let waited = 0;
+                const poll = setInterval(() => {
+                    waited += 200;
+                    const ready = state.phase === 'battle' && state.units && state.units.length >= 2;
+                    if (ready || waited > 20000) {
+                        clearInterval(poll);
+                        _slbLab.booting = false;
+                        if (ready) _slbLabPostBoot();
+                        else { _slbToast('✗ lab boot timed out', true); window._slbExitLab(); }
+                    }
+                }, 200);
+            } catch (e) {
+                console.error('[SpellLab] boot failed', e);
+                _slbLab.booting = false;
+                window._spellLabActive = false;
+                state._spellLabMode = false;
+                _slbToast('✗ lab boot failed: ' + e.message, true);
+            }
+        }
+
+        function _slbLabUnits() {
+            const caster = (state.units || []).find(u => u.player === 1 && !u.dead);
+            const dummy = (state.units || []).find(u => u.player === 2);
+            return { caster, dummy };
+        }
+
+        function _slbLabPostBoot() {
+            try {
+                if (state.matchClock) state.matchClock.roundLimit = 0;
+                state.shotClock = null;
+                const { caster, dummy } = _slbLabUnits();
+                if (dummy) {
+                    dummy._mdNpc = true;                       // permanently out of the turn order
+                    if (_slbLab.cfg.immortal && !dummy._slbBaseMaxHp) {
+                        dummy._slbBaseMaxHp = dummy.maxHp;
+                        dummy.maxHp = dummy.maxHp * 100;
+                        dummy.hp = dummy.maxHp;
+                    }
+                }
+                if (typeof buildBlitzTurnOrder === 'function') buildBlitzTurnOrder();
+                window._spellLabTick();
+                _slbLabMountPanel();
+                _slbToast('▶ Spell Lab ready — free-cast away (AP/MP/cooldowns auto-refill)');
+            } catch (e) { console.error('[SpellLab] post-boot', e); }
+        }
+
+        /* Called by the battle.js maybeAdvanceTurn intercept AND our own timer:
+           keeps the caster eternally active, topped up, and the dummy inert. */
+        window._spellLabTick = function() {
+            if (!state._spellLabMode || state.phase !== 'battle') return;
+            const { caster, dummy } = _slbLabUnits();
+            if (!caster) return;
+            const apMax = (typeof UNIT_MAX_AP !== 'undefined' ? UNIT_MAX_AP : 2) + (caster._xpBonusAP || 0);
+            caster.ap = apMax;
+            caster.mp = caster.maxMp;
+            caster.hp = caster.maxHp;               // recoil/self-damage spells never kill the caster
+            caster._spellCooldowns = {};
+            caster._spellsUsedThisTurn = {};
+            caster._skippedTurn = false;
+            if (state._blitzActiveUnitId !== caster.id) {
+                state._blitzActiveUnitId = caster.id;
+                state.activePlayer = 1;
+                try { if (typeof selectUnit === 'function' && state.selectedUnitId !== caster.id) selectUnit(caster.id); } catch (e) {}
+            }
+            if (dummy) {
+                dummy._mdNpc = true;
+                if (_slbLab.cfg.immortal) {
+                    if (!dummy._slbBaseMaxHp) { dummy._slbBaseMaxHp = dummy.maxHp; dummy.maxHp = dummy.maxHp * 100; }
+                    if (!dummy.dead) dummy.hp = dummy.maxHp;
+                } else if (dummy._slbBaseMaxHp) {
+                    dummy.maxHp = dummy._slbBaseMaxHp;
+                    dummy.hp = Math.min(dummy.hp, dummy.maxHp);
+                    dummy._slbBaseMaxHp = null;
+                }
+            }
+            if (typeof GAME !== 'undefined' && GAME.markDirty) { GAME.markDirty(); GAME.renderIfDirty && GAME.renderIfDirty(); }
+        };
+
+        function _slbLabEnsureTick() {
+            if (_slbLab.tickTimer) return;
+            _slbLab.tickTimer = setInterval(() => {
+                if (!state._spellLabMode) return;
+                window._spellLabTick();
+            }, 1200);
+        }
+
+        /* Teleport the caster stepwise toward the dummy until the target tile
+           is inside the spell's true range set (getSpellRangeTiles = the same
+           gate doSpell uses). Lab-only convenience — spells keep their real
+           ranges, the caster just walks up for free. */
+        function _slbLabApproach(caster, sp, tx, ty) {
+            const inRange = () => (GAME.getSpellRangeTiles(caster, sp) || []).some(t => t.x === tx && t.y === ty);
+            if (!sp.range || (typeof isSpellSelfCast === 'function' && isSpellSelfCast(sp))) return true;
+            let guard = 16;
+            while (!inRange() && guard-- > 0) {
+                const dx = Math.sign(tx - caster.x), dy = Math.sign(ty - caster.y);
+                let nx = caster.x, ny = caster.y;
+                if (Math.abs(tx - caster.x) >= Math.abs(ty - caster.y)) nx += dx; else ny += dy;
+                if (nx === tx && ny === ty) break;                    // never stand ON the target
+                const occupied = (state.units || []).some(u => !u.dead && u !== caster && u.x === nx && u.y === ny);
+                if (occupied || nx < 0 || ny < 0 || nx >= (CONFIG.boardWidth || 8) || ny >= (CONFIG.boardHeight || 8)) break;
+                caster.x = nx; caster.y = ny;
+                try { if (typeof getHeightAt === 'function') caster.z = getHeightAt(nx, ny); } catch (e) {}
+            }
+            try {
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.invalidateUnits) ThreeRenderer.invalidateUnits();
+                GAME.markDirty(); GAME.renderIfDirty && GAME.renderIfDirty();
+            } catch (e) {}
+            return inRange();
+        }
+
+        window._slbLabCast = function() {
+            if (!state._spellLabMode || state.phase !== 'battle') return;
+            const cfg = _slbLab.cfg;
+            const { caster, dummy } = _slbLabUnits();
+            const def = SPELL_BY_ID[cfg.spellId];
+            if (!caster || !def) { _slbLabLog('✗ missing caster or spell'); return; }
+            if (state.aiThinking) state.aiThinking = false;
+            window._spellLabTick();
+            // fresh clone straight from the (post-mods) table, so every edit
+            // made in the library screen previews on the very next cast
+            const sp = JSON.parse(JSON.stringify(def));
+            caster.spells = [sp];
+            caster._spellSlots = [cfg.spellId];
+            caster._raceAbilities = [];
+            let tx, ty;
+            if (cfg.targetGround || !dummy || dummy.dead) {
+                const bx = dummy && !dummy.dead ? dummy.x : Math.min((CONFIG.boardWidth || 8) - 1, caster.x + 2);
+                const by = dummy && !dummy.dead ? dummy.y : caster.y;
+                tx = Math.max(0, bx - 1) === caster.x && by === caster.y ? Math.min((CONFIG.boardWidth || 8) - 1, bx + 1) : Math.max(0, bx - 1);
+                ty = by;
+                const occ = (state.units || []).some(u => !u.dead && u.x === tx && u.y === ty);
+                if (occ) { ty = Math.min((CONFIG.boardHeight || 8) - 1, by + 1); }
+            } else {
+                tx = dummy.x; ty = dummy.y;
+            }
+            if (!_slbLabApproach(caster, sp, tx, ty)) _slbLabLog('⚠ could not reach range ' + (sp.range != null ? sp.range : '?') + ' — casting anyway (engine may reject)');
+            state.actionMode = 'spell';
+            state.selectedTool = sp.name;
+            let delay = 0;
+            try {
+                const tz = (typeof getHeightAt === 'function') ? getHeightAt(tx, ty) : 0;
+                delay = GAME.doSpell(caster, tx, ty, tz) || 0;
+            } catch (e) {
+                console.error('[SpellLab] doSpell threw', e);
+                _slbLabLog('✗ engine error: ' + e.message);
+                return;
+            }
+            if (!delay) {
+                _slbLabLog('✗ cast rejected (range/LOS/target rules for kind:' + sp.kind + ') — try TARGET: GROUND or a shorter distance');
+            } else {
+                _slbLabLog('✦ cast ' + (sp.name || cfg.spellId) + ' (' + delay + 'ms)');
+                setTimeout(() => window._spellLabTick(), delay + 250);
+                if (cfg.repeat) {
+                    if (_slbLab.repeatTimer) clearTimeout(_slbLab.repeatTimer);
+                    _slbLab.repeatTimer = setTimeout(() => { if (state._spellLabMode && _slbLab.cfg.repeat) window._slbLabCast(); }, delay + Math.max(400, cfg.repeatGapMs));
+                }
+            }
+        };
+
+        window._slbLabCleanse = function() {
+            const { caster, dummy } = _slbLabUnits();
+            [caster, dummy].forEach(u => {
+                if (!u) return;
+                u.status = {};
+                Object.keys(u.statStages || {}).forEach(k => { u.statStages[k] = 0; });
+                u.shield = 0;
+            });
+            try { GAME.markDirty(); GAME.renderIfDirty && GAME.renderIfDirty(); } catch (e) {}
+            _slbLabLog('♻ caster + dummy cleansed (statuses, stages, shields)');
+        };
+
+        window._slbLabSetCfg = function(key, val) {
+            const cfg = _slbLab.cfg;
+            if (key === 'distance') val = Math.max(1, Math.min(6, Number(val) || 3));
+            if (key === 'repeatGapMs') val = Math.max(200, Number(val) || 1200);
+            cfg[key] = (key === 'targetGround' || key === 'immortal' || key === 'repeat') ? !!val : val;
+            if (key === 'repeat' && !val && _slbLab.repeatTimer) { clearTimeout(_slbLab.repeatTimer); _slbLab.repeatTimer = null; }
+            if (key === 'repeat' && val) window._slbLabCast();
+            if (key === 'spellId') window._slbLabRefreshSpell();
+            if (key === 'immortal') window._spellLabTick();
+        };
+
+        window._slbLabToggleCam = function(which) {
+            if (which === 'action') {
+                state.cinematicActionCam = !state.cinematicActionCam;
+                try { localStorage.setItem('ew_cinematicActionCam', state.cinematicActionCam ? '1' : '0'); } catch (e) {}
+            } else if (which === 'camera') {
+                state.cameraDisabled = !state.cameraDisabled;
+            } else if (which === 'staging') {
+                window.EW_DISABLE_SPELL_STAGING = !window.EW_DISABLE_SPELL_STAGING;
+            } else if (which === 'grade') {
+                window.EW_DISABLE_SPELL_GRADE = !window.EW_DISABLE_SPELL_GRADE;
+            } else if (which === 'hud') {
+                const root = document.getElementById('reactHudRoot');
+                if (root) root.style.display = root.style.display === 'none' ? '' : 'none';
+            }
+            _slbLabSyncPanel();
+        };
+
+        window._slbLabRestart = function() {
+            const cfg = _slbLab.cfg;
+            _slbLabTeardownMatch(() => {
+                _slbLab.cfg = cfg;
+                _slbLabBoot();
+            });
+        };
+
+        function _slbLabTeardownMatch(then) {
+            if (_slbLab.repeatTimer) { clearTimeout(_slbLab.repeatTimer); _slbLab.repeatTimer = null; }
+            if (_slbLab.tickTimer) { clearInterval(_slbLab.tickTimer); _slbLab.tickTimer = null; }
+            state._spellLabMode = false;
+            window._spellLabActive = false;
+            const panel = document.getElementById('slbLabPanel');
+            if (panel) panel.remove();
+            const p = (typeof backToMainMenu === 'function') ? backToMainMenu() : Promise.resolve();
+            Promise.resolve(p).then(() => {
+                if (_slbLab.saved) {
+                    window.EW_DISABLE_INTRO_CINE = _slbLab.saved.introCine;
+                    state.fogOfWar = _slbLab.saved.fog;
+                    _slbLab.saved = null;
+                }
+                if (then) then();
+            }).catch(e => { console.error('[SpellLab] teardown', e); if (then) then(); });
+        }
+
+        window._slbExitLab = function() {
+            _slbLabTeardownMatch(() => {
+                if (typeof window._goToSpellLibrary === 'function') window._goToSpellLibrary();
+            });
+        };
+
+        function _slbLabLog(msg) {
+            const el = document.getElementById('slbLabLog');
+            if (el) {
+                el.textContent = msg;
+                el.title = msg;
+            }
+        }
+
+        window._slbLabRefreshSpell = function() {
+            _slbLabSyncPanel();
+        };
+
+        function _slbLabMountPanel() {
+            let panel = document.getElementById('slbLabPanel');
+            if (panel) panel.remove();
+            panel = document.createElement('div');
+            panel.id = 'slbLabPanel';
+            panel.className = 'slb-lab';
+            document.body.appendChild(panel);
+            _slbLabSyncPanel();
+            _slbLabEnsureTick();
+        }
+
+        function _slbLabSyncPanel() {
+            const panel = document.getElementById('slbLabPanel');
+            if (!panel) return;
+            const cfg = _slbLab.cfg;
+            const rows = _slbAllRows().filter(r => !r.deleted).sort((a, b) => String(a.def.name || '').localeCompare(String(b.def.name || '')));
+            const def = SPELL_BY_ID[cfg.spellId] || {};
+            const races = _slbLab3DRaces();
+            const jobs = _slbJobs();
+            const learners = _slbJobs().filter(j => (CLASS_SPELL_LEARN_ORDER[j] || []).includes(cfg.spellId));
+            const learnerRaces = _slbRaces().filter(r => (RACE_ABILITIES[r] || []).some(a => a.id === cfg.spellId));
+            const chip = (on, label, cb) => `<button class="slb-lab-chip${on ? ' on' : ''}" onclick="${cb}">${label}</button>`;
+            panel.innerHTML = `
+                <div class="slb-lab-head">⚗ SPELL LAB <span class="slb-lab-sub">${_slbEsc(def.name || cfg.spellId || '?')}</span>
+                    <button class="slb-lab-x" onclick="window._slbExitLab()" title="exit to Spell Library">✕</button></div>
+                <div class="slb-lab-row">
+                    <label>SPELL</label>
+                    <select onchange="window._slbLabSetCfg('spellId', this.value)">
+                        ${rows.map(r => `<option value="${_slbEsc(r.id)}"${r.id === cfg.spellId ? ' selected' : ''}>${_slbEsc(r.def.name || r.id)}${r.modified || r.added ? ' ●' : ''}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="slb-lab-row slb-lab-hint">${learners.length ? 'learned by: ' + _slbEsc(learners.join(', ')) : (learnerRaces.length ? 'race ability: ' + _slbEsc(learnerRaces.slice(0, 4).join(', ')) + (learnerRaces.length > 4 ? '…' : '') : 'unassigned spell')}</div>
+                <div class="slb-lab-row">
+                    <label>CASTER</label>
+                    <select onchange="window._slbLabSetCfg('casterRace', this.value)">
+                        ${races.map(r => `<option value="${_slbEsc(r.race)}"${r.race === cfg.casterRace ? ' selected' : ''}>${r.has3d ? '★ ' : ''}${_slbEsc(r.race)}</option>`).join('')}
+                    </select>
+                    <select onchange="window._slbLabSetCfg('casterJob', this.value)">
+                        ${jobs.map(j => `<option value="${_slbEsc(j)}"${j === cfg.casterJob ? ' selected' : ''}>${_slbEsc(j)}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="slb-lab-row">
+                    <label>DUMMY</label>
+                    <select onchange="window._slbLabSetCfg('dummyRace', this.value)">
+                        ${races.map(r => `<option value="${_slbEsc(r.race)}"${r.race === cfg.dummyRace ? ' selected' : ''}>${r.has3d ? '★ ' : ''}${_slbEsc(r.race)}</option>`).join('')}
+                    </select>
+                    <label class="slb-lab-mini">DIST</label>
+                    <input type="number" min="1" max="6" value="${cfg.distance}" onchange="window._slbLabSetCfg('distance', this.value)" style="width:44px">
+                </div>
+                <div class="slb-lab-row slb-lab-hint">caster/dummy/distance changes need ⟳ RESTART STAGE</div>
+                <div class="slb-lab-row slb-lab-cast">
+                    <button class="slb-lab-castbtn" onclick="window._slbLabCast()">✦ CAST</button>
+                    <button class="slb-lab-chip${cfg.repeat ? ' on' : ''}" onclick="window._slbLabSetCfg('repeat', ${cfg.repeat ? 'false' : 'true'})" title="auto-recast">⟳ AUTO</button>
+                    <button class="slb-lab-chip" onclick="window._slbLabRestart()" title="rebuild the stage with current caster/dummy/distance">⟳ RESTART STAGE</button>
+                </div>
+                <div class="slb-lab-row">
+                    ${chip(cfg.targetGround, 'TARGET: ' + (cfg.targetGround ? 'GROUND' : 'DUMMY'), `window._slbLabSetCfg('targetGround', ${cfg.targetGround ? 'false' : 'true'});window._slbLabRefreshSpell()`)}
+                    ${chip(cfg.immortal, 'IMMORTAL DUMMY', `window._slbLabSetCfg('immortal', ${cfg.immortal ? 'false' : 'true'});window._slbLabRefreshSpell()`)}
+                    ${chip(false, '♻ CLEANSE', 'window._slbLabCleanse()')}
+                </div>
+                <div class="slb-lab-row">
+                    ${chip(state.cinematicActionCam, 'ACTION CAM', `window._slbLabToggleCam('action')`)}
+                    ${chip(!state.cameraDisabled, 'CAMERA', `window._slbLabToggleCam('camera')`)}
+                    ${chip(!window.EW_DISABLE_SPELL_STAGING, 'STAGING', `window._slbLabToggleCam('staging')`)}
+                    ${chip(!window.EW_DISABLE_SPELL_GRADE, 'GRADE', `window._slbLabToggleCam('grade')`)}
+                    ${chip(true, 'HUD', `window._slbLabToggleCam('hud')`)}
+                </div>
+                <div class="slb-lab-vfx">
+                    <div class="slb-lab-vfx-title">LIVE VFX FIELDS <span>(saved to the spell — exports with your edits)</span></div>
+                    <div class="slb-lab-row">
+                        <label>element</label>
+                        <select onchange="window._slbSetField('${_slbEsc(cfg.spellId)}','element',this.value,'text')">
+                            <option value=""${!def.element ? ' selected' : ''}>(none)</option>
+                            ${_SLB_ELEMENTS.map(e2 => `<option value="${e2}"${def.element === e2 ? ' selected' : ''}>${e2}</option>`).join('')}
+                        </select>
+                        <label>projectile</label>
+                        <select onchange="window._slbSetField('${_slbEsc(cfg.spellId)}','projectileOverride',this.value,'text')">
+                            <option value=""${!def.projectileOverride ? ' selected' : ''}>(auto)</option>
+                            ${_SLB_PROJECTILES.map(p => `<option value="${p}"${def.projectileOverride === p ? ' selected' : ''}>${p.replace('proj-', '')}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="slb-lab-row">
+                        <label>archetype</label>
+                        <select onchange="window._slbSetField('${_slbEsc(cfg.spellId)}','vfxArchetype',this.value,'text')">
+                            <option value=""${!def.vfxArchetype ? ' selected' : ''}>(auto)</option>
+                            ${_slbArchetypes().map(a => `<option value="${a}"${def.vfxArchetype === a ? ' selected' : ''}>${a}</option>`).join('')}
+                        </select>
+                        <label>weight</label>
+                        <select onchange="window._slbSetField('${_slbEsc(cfg.spellId)}','vfxWeight',this.value,'text')">
+                            <option value=""${!def.vfxWeight ? ' selected' : ''}>(auto)</option>
+                            ${_SLB_WEIGHTS.map(w => `<option value="${w}"${def.vfxWeight === w ? ' selected' : ''}>${w}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="slb-lab-row">
+                        <label>travel</label>
+                        <select onchange="window._slbSetField('${_slbEsc(cfg.spellId)}','_animOverride',this.value ? JSON.stringify({travel:this.value}) : '', 'json')">
+                            <option value=""${!(def._animOverride && def._animOverride.travel) ? ' selected' : ''}>(auto)</option>
+                            ${_SLB_TRAVELS.map(t => `<option value="${t}"${def._animOverride && def._animOverride.travel === t ? ' selected' : ''}>${t}</option>`).join('')}
+                        </select>
+                        <label>dmg</label>
+                        <input type="number" step="any" value="${def.dmg != null ? _slbEsc(def.dmg) : ''}" onchange="window._slbSetField('${_slbEsc(cfg.spellId)}','dmg',this.value,'num')" style="width:64px">
+                    </div>
+                </div>
+                <div class="slb-lab-log" id="slbLabLog">ready — CAST fires the real engine pipeline</div>`;
+        }
+
         // ── ONBOARDING: one-time free first-pick ceremony ──────────────────
         window._maybeShowOnboarding = function() {
             try {
