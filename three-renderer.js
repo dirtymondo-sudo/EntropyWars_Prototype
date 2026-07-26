@@ -969,6 +969,118 @@ const ThreeRenderer = (function () {
         return mat;
     }
 
+    /* ════════════════════════════════════════════════════════════════════
+       TEAM OUTLINES — a thin, always-on rim of team colour around every
+       unit (blue = the viewer's own side, red = enemy), so allegiance reads
+       at a glance without hunting for the foot ring or nameplate. Pure
+       client-side view state derived from unit.player vs the current
+       viewer: host and guest each colour from their own perspective, no
+       relay needed, and a perspective swap recolours in place (see
+       _updateEnemyConcealment).
+       ── Sprite units: two alpha-halo cutout planes (same geometry as the
+          billboard) sandwich the extruded slab, painting only the texels
+          just OUTSIDE the sprite's silhouette.
+       ── Model units: classic inverted-hull twins — the mesh re-drawn
+          BackSide, pushed a hair outward along the view-space normal, so
+          a constant-width rim wraps the live animated pose. */
+    var TEAM_OUTLINE_ALLY_COLOR  = 0x14b4ff;   // matches TEAM_RING_ALLY_COLOR
+    var TEAM_OUTLINE_ENEMY_COLOR = 0xff3355;   // matches TEAM_RING_ENEMY_COLOR
+    var TEAM_OUTLINE_OPACITY = 0.9;
+    var TEAM_OUTLINE_TEXELS = 2.0;         // sprite halo width, native sprite px
+    var TEAM_OUTLINE_MODEL_RATIO = 0.012;  // model hull push, fraction of tile size
+
+    var _spriteOutlineFragmentShader = [
+        'uniform sampler2D uMap;',
+        'uniform vec3 uColor;',
+        'uniform float uOpacity;',
+        'uniform vec2 uTexel;',
+        'varying vec2 vUv;',
+        'void main() {',
+        '  if (texture2D(uMap, vUv).a > 0.12) discard;',   // never paint over the art itself
+        '  float n = 0.0;',
+        '  n = max(n, texture2D(uMap, vUv + vec2( uTexel.x, 0.0)).a);',
+        '  n = max(n, texture2D(uMap, vUv + vec2(-uTexel.x, 0.0)).a);',
+        '  n = max(n, texture2D(uMap, vUv + vec2(0.0,  uTexel.y)).a);',
+        '  n = max(n, texture2D(uMap, vUv + vec2(0.0, -uTexel.y)).a);',
+        '  n = max(n, texture2D(uMap, vUv + vec2( uTexel.x,  uTexel.y) * 0.707).a);',
+        '  n = max(n, texture2D(uMap, vUv + vec2(-uTexel.x,  uTexel.y) * 0.707).a);',
+        '  n = max(n, texture2D(uMap, vUv + vec2( uTexel.x, -uTexel.y) * 0.707).a);',
+        '  n = max(n, texture2D(uMap, vUv + vec2(-uTexel.x, -uTexel.y) * 0.707).a);',
+        '  if (n < 0.5) discard;',                          // no opaque body nearby → open air
+        '  gl_FragColor = vec4(uColor, uOpacity);',
+        '}'
+    ].join('\n');
+
+    function _makeSpriteOutlineMaterial(color, tex, texelX, texelY) {
+        return new THREE.ShaderMaterial({
+            uniforms: {
+                uMap:     { value: tex || null },
+                uColor:   { value: new THREE.Color(color) },
+                uOpacity: { value: TEAM_OUTLINE_OPACITY },
+                uTexel:   { value: new THREE.Vector2(texelX, texelY) }
+            },
+            vertexShader: _silVertexShader,     // plain UV passthrough, shared with the x-ray
+            fragmentShader: _spriteOutlineFragmentShader,
+            transparent: true,
+            depthTest: true,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+            fog: false
+        });
+    }
+
+    /* Inverted-hull material for model units. Skinning is compiled in via
+       the stock r128 chunks (same trick as the x-ray twin), then the vertex
+       is pushed along the VIEW-space normal — view units == world units, so
+       the rim width is independent of whatever fit-scale the GLB got.
+       Opaque queue + explicit CustomBlending (the r128 opaque/NormalBlending
+       force-off, see the x-ray comment) so uOpacity still works and the
+       death tween can dissolve the rim with the body. */
+    var _modelOutlineVertexShader = [
+        '#include <common>',
+        '#include <skinning_pars_vertex>',
+        'uniform float uOutline;',
+        'void main() {',
+        '  #include <beginnormal_vertex>',
+        '  #include <skinbase_vertex>',
+        '  #include <skinnormal_vertex>',
+        '  #include <begin_vertex>',
+        '  #include <skinning_vertex>',
+        '  vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);',
+        '  mvPosition.xyz += normalize(normalMatrix * objectNormal) * uOutline;',
+        '  gl_Position = projectionMatrix * mvPosition;',
+        '}'
+    ].join('\n');
+
+    var _modelOutlineFragmentShader = [
+        'uniform vec3 uColor;',
+        'uniform float uOpacity;',
+        'void main() { gl_FragColor = vec4(uColor, uOpacity); }'
+    ].join('\n');
+
+    function _makeModelOutlineMaterial(color, skinned, ts) {
+        var mat = new THREE.ShaderMaterial({
+            uniforms: {
+                uColor:   { value: new THREE.Color(color) },
+                uOpacity: { value: TEAM_OUTLINE_OPACITY },
+                uOutline: { value: (ts || 128) * TEAM_OUTLINE_MODEL_RATIO }
+            },
+            vertexShader: _modelOutlineVertexShader,
+            fragmentShader: _modelOutlineFragmentShader,
+            transparent: false,
+            blending: THREE.CustomBlending,
+            blendEquation: THREE.AddEquation,
+            blendSrc: THREE.SrcAlphaFactor,
+            blendDst: THREE.OneMinusSrcAlphaFactor,
+            depthTest: true,
+            depthWrite: true,
+            side: THREE.BackSide,
+            fog: false
+        });
+        if (skinned) mat.skinning = true;
+        return mat;
+    }
+
     var renderer = null, scene = null, canvas = null;
     var active = false, initialized = false;
 
@@ -9195,7 +9307,7 @@ const ThreeRenderer = (function () {
         if (!rig) return;
         try { if (rig.inner && rig.inner.parent) rig.inner.parent.remove(rig.inner); } catch (_e) {}
         try { if (rig.mixer) { rig.mixer.stopAllAction(); rig.mixer.uncacheRoot(rig.mixer.getRoot()); } } catch (_e) {}
-        var mats = (rig.modelMats || []).concat(rig.silMats || []);
+        var mats = (rig.modelMats || []).concat(rig.silMats || []).concat(rig.outlineMats || []);
         for (var i = 0; i < mats.length; i++) { try { mats[i].dispose(); } catch (_e) {} }
         // Geometry stays untouched: every clone shares the base GLB's buffers
         // (flagged _ew_shared at load time).
@@ -9756,6 +9868,7 @@ const ThreeRenderer = (function () {
         }
         entry.sprite = null;
         entry.silhouette = null;
+        entry.outlines = null;   // halo planes ride the sprite mesh — gone with it
     }
 
     function _attachUnitModel(entry, unit, def, ts) {
@@ -9833,6 +9946,7 @@ const ThreeRenderer = (function () {
             entry.actions = _rig.actions;
             entry.modelMats = _rig.modelMats;
             entry.modelSilMats = _rig.silMats;
+            entry.modelOutlineMats = _rig.outlineMats || [];
             // The mixer never stopped, so whatever clip was playing carries
             // straight on — just tell the new entry which one that is.
             var _rst = _modelAnimState.get(unit.id);
@@ -9934,11 +10048,39 @@ const ThreeRenderer = (function () {
                 entry.modelSilMats.push(silMat);
             });
 
+            // Team-colour outline — inverted-hull twins (see the material's
+            // comment block). Depth-tested like the body, so terrain still
+            // occludes the rim and the model's own front faces cover
+            // everything but the thin edge.
+            entry.modelOutlineMats = [];
+            var _olColor = (unit.player === _viewerPlayerNum())
+                ? TEAM_OUTLINE_ALLY_COLOR : TEAM_OUTLINE_ENEMY_COLOR;
+            _silTargets.forEach(function (n) {
+                var olMat = _makeModelOutlineMaterial(_olColor, !!n.isSkinnedMesh, ts);
+                olMat._ew_shared = true;   // rig-cache owned — disposed in _disposeModelRig
+                var ol;
+                if (n.isSkinnedMesh) {
+                    ol = new THREE.SkinnedMesh(n.geometry, olMat);
+                    ol.bind(n.skeleton, n.bindMatrix);
+                } else {
+                    ol = new THREE.Mesh(n.geometry, olMat);
+                }
+                ol.frustumCulled = false;
+                ol.renderOrder = 2;             // with the body — depth sorts the rim
+                ol.raycast = function () {};    // never block unit picking
+                ol._ew_silhouette = true;       // skipped by shadow flags / dispose sweeps / cine gate
+                ol._ew_teamOutline = true;
+                ol._ew_shadowFlagged = true;
+                n.add(ol);                      // rides the parent mesh's transform
+                entry.modelOutlineMats.push(olMat);
+            });
+
             // Register the rig cache record now; mixer/actions attach below
             // (they stay null for unrigged static models).
             var _rigRec = {
                 url: def.model, ts: ts, inner: inner, mixer: null, actions: null,
-                modelMats: entry.modelMats, silMats: entry.modelSilMats
+                modelMats: entry.modelMats, silMats: entry.modelSilMats,
+                outlineMats: entry.modelOutlineMats
             };
             _unitModelRigs.set(unit.id, _rigRec);
 
@@ -10255,6 +10397,7 @@ const ThreeRenderer = (function () {
 
         var spriteMesh = null;
         var silhouetteMesh = null;
+        var outlineMeshes = [];
 
         // Rigged 3D model race (RACE_MODELS_3D)? Once the GLB is cached the
         // sprite pipeline below is skipped entirely; on the very first build
@@ -10411,6 +10554,36 @@ const ThreeRenderer = (function () {
                 silMesh._ew_unitId = unit.id;
                 silhouetteMesh = silMesh;
             }
+
+            // Team-colour outline — two alpha-halo planes sandwiching the
+            // extruded slab (front + back) so the thin rim shows from either
+            // side of the yawed sprite. Children of the sprite mesh, so they
+            // inherit facing, flip, bob and hit-shake for free; hidden while
+            // a sprite-sheet animation plays (the halo is baked from the
+            // idle art, same reason the 3D shell hides — see
+            // _startSpriteAnim).
+            if (spriteTex) {
+                var _olCol = (unit.player === _viewerPlayerNum())
+                    ? TEAM_OUTLINE_ALLY_COLOR : TEAM_OUTLINE_ENEMY_COLOR;
+                var _olTx = TEAM_OUTLINE_TEXELS / nw;
+                var _olTy = TEAM_OUTLINE_TEXELS / nh;
+                var _olDepth = UNIT_SPRITE_DEPTH_PX * _nativeScale;
+                var _olOffsets = [0.75, -_olDepth - 0.75];
+                for (var _oli = 0; _oli < _olOffsets.length; _oli++) {
+                    var olMesh = new THREE.Mesh(
+                        spriteMesh.geometry,
+                        _makeSpriteOutlineMaterial(_olCol, spriteTex, _olTx, _olTy)
+                    );
+                    olMesh.position.z = _olOffsets[_oli];
+                    olMesh.renderOrder = 3;
+                    olMesh.raycast = function () {};    // never block unit picking
+                    olMesh._ew_silhouette = true;       // skipped by shadow flags / dispose sweeps / cine gate
+                    olMesh._ew_teamOutline = true;
+                    olMesh._ew_shadowFlagged = true;
+                    spriteMesh.add(olMesh);
+                    outlineMeshes.push(olMesh);
+                }
+            }
         }
 
         var ringCol = _isAllyPlayer(unit.player) ? TEAM_RING_ALLY_COLOR : TEAM_RING_ENEMY_COLOR;
@@ -10511,7 +10684,7 @@ const ThreeRenderer = (function () {
            frame straight from unit state, so it survives rebuilds and needs
            no teardown hook (the old head-torch flame this replaced did). */
 
-        var entryObj = { group: group, sprite: spriteMesh, silhouette: silhouetteMesh };
+        var entryObj = { group: group, sprite: spriteMesh, silhouette: silhouetteMesh, outlines: outlineMeshes };
         if (_m3dDef) _attachUnitModel(entryObj, unit, _m3dDef, ts);
         return entryObj;
     }
@@ -13351,6 +13524,12 @@ const ThreeRenderer = (function () {
     function _setEntrySpriteOpacity(entry, op) {
         if (!entry || !entry.group) return;
         entry.group.traverse(function(o) {
+            if (o.isMesh && o._ew_teamOutline) {
+                // A team-colour rim on a cloaked unit would defeat the cloak
+                // read — hide it outright while the unit is ghosted.
+                o.visible = op >= 1;
+                return;
+            }
             if (o.isMesh && (o._ew_billboard || o._ew_modelSkin) && o.material) {
                 if (o.material._ew_baseOpacity === undefined) {
                     o.material._ew_baseOpacity = (o.material.opacity !== undefined) ? o.material.opacity : 1;
@@ -13423,6 +13602,19 @@ const ThreeRenderer = (function () {
                 var _msc = unit.player === vp ? SILHOUETTE_OWN_COLOR : SILHOUETTE_ENEMY_COLOR;
                 for (var _msi = 0; _msi < entry.modelSilMats.length; _msi++) {
                     entry.modelSilMats[_msi].uniforms.uColor.value.set(_msc);
+                }
+            }
+            /* Team outlines recolour from the viewer's side too. */
+            var _toc = unit.player === vp ? TEAM_OUTLINE_ALLY_COLOR : TEAM_OUTLINE_ENEMY_COLOR;
+            if (entry.outlines && entry.outlines.length) {
+                for (var _toi = 0; _toi < entry.outlines.length; _toi++) {
+                    var _tom = entry.outlines[_toi].material;
+                    if (_tom && _tom.uniforms) _tom.uniforms.uColor.value.set(_toc);
+                }
+            }
+            if (entry.modelOutlineMats && entry.modelOutlineMats.length) {
+                for (var _tmi = 0; _tmi < entry.modelOutlineMats.length; _tmi++) {
+                    entry.modelOutlineMats[_tmi].uniforms.uColor.value.set(_toc);
                 }
             }
             if (unit.player === vp) {
@@ -15741,6 +15933,16 @@ const ThreeRenderer = (function () {
                             if (ch.material.color) ch.material.color.setRGB(1, 1, 1);
                         }
                     }
+                    // Shader-driven overlays (team-outline halos, x-ray ghost)
+                    // fade via their uOpacity uniform so they dissolve with
+                    // the body instead of staying full-strength to the end.
+                    g.traverse(function (o) {
+                        var mm = o.material;
+                        if (mm && !Array.isArray(mm) && mm.uniforms && mm.uniforms.uOpacity) {
+                            mm.uniforms.uOpacity.value =
+                                Math.min(mm.uniforms.uOpacity.value, (1 - easedFade) * SILHOUETTE_OPACITY);
+                        }
+                    });
                 }
             }
             if (t >= 1) {
@@ -16942,6 +17144,11 @@ const ThreeRenderer = (function () {
         // The 3D shell's silhouette is baked from the idle art — hide it while
         // a sheet plays so extended limbs aren't clipped by the idle outline.
         if (spr._ew_shell) spr._ew_shell.visible = false;
+        // Same for the team-outline halos: their alpha lookup samples the
+        // IDLE texture, which no longer matches the sheet frames.
+        for (var _oci = 0; _oci < spr.children.length; _oci++) {
+            if (spr.children[_oci]._ew_teamOutline) spr.children[_oci].visible = false;
+        }
 
         // Correct the billboard's on-screen aspect so a (square) sheet cell is
         // never stretched by a non-square idle plane. Display width is forced
@@ -16985,6 +17192,11 @@ const ThreeRenderer = (function () {
             tw.sprite.scale.x = tw.baseScaleX;
         }
         if (tw.sprite && tw.sprite._ew_shell) tw.sprite._ew_shell.visible = true;
+        if (tw.sprite) {
+            for (var _oci = 0; _oci < tw.sprite.children.length; _oci++) {
+                if (tw.sprite.children[_oci]._ew_teamOutline) tw.sprite.children[_oci].visible = true;
+            }
+        }
         if (tw.mat) {
             tw.mat.map = tw.idleMap;
             if (tw.mat.emissiveMap) tw.mat.emissiveMap = tw.idleMap;
