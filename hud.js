@@ -1381,9 +1381,12 @@ function MatchMeta({ st }) {
         }}, zodiacIcon),
         h('span', { style: { color: EW.ink }}, zodiacLabel),
       ),
-      h('span', { style: { width: 1, height: 10, background: EW.panelEdge }}),
-      h('span', null, 'MATCH'),
-      h('span', { style: { color: EW.ink, fontWeight: 600 }}, p1Score + ' — ' + p2Score),
+      /* Series record chip — only meaningful once a rematch chain has a
+         result. In a single match it sat there as a confusing "MATCH 0 — 0"
+         next to the real score, so it stays hidden until someone has won. */
+      (p1Score > 0 || p2Score > 0) && h('span', { style: { width: 1, height: 10, background: EW.panelEdge }}),
+      (p1Score > 0 || p2Score > 0) && h('span', null, 'MATCH'),
+      (p1Score > 0 || p2Score > 0) && h('span', { style: { color: EW.ink, fontWeight: 600 }}, p1Score + ' — ' + p2Score),
       h('span', { style: { width: 1, height: 10, background: EW.panelEdge }}),
       h('span', {
         style: { cursor: 'pointer', color: EW.inkMute, fontSize: 16 },

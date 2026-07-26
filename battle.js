@@ -8081,6 +8081,12 @@
 
         function checkAchievement(id, unit) {
             if (!ACHIEVEMENT_DEFS[id]) return;
+            /* Per-match guard FIRST: when no profile is active the persisted
+               store is a fresh {} on every load, so the saved-achievements
+               check below never trips and one trigger-happy achievement
+               ("Last Stand") could toast + chip itself once per trigger. */
+            state._matchAchievements = state._matchAchievements || [];
+            if (state._matchAchievements.includes(id)) return;
             const achievements = loadAchievements();
             if (achievements[id]) return;
             achievements[id] = {
@@ -8091,7 +8097,6 @@
 
             showAchievementToast(id);
 
-            state._matchAchievements = state._matchAchievements || [];
             state._matchAchievements.push(id);
         }
 
@@ -10127,21 +10132,46 @@
             _convergenceRaf: null,
 
             _lastZoomRounded: -1,
+            _zoomToastTimer: null,
             _updateZoomState(zoom) {
                 if (!boardStageEl) return;
                 const rounded = Math.round(zoom * 100);
                 if (rounded === this._lastZoomRounded) return;
+                const _firstApply = this._lastZoomRounded === -1;
                 this._lastZoomRounded = rounded;
                 boardStageEl.dataset.zoomed = zoom > 1.05 ? 'true' : 'false';
                 boardStageEl.style.setProperty('--board-scale', zoom.toFixed(4));
+                /* Transient zoom toast. It used to be created once and never
+                   hidden — it sat over every cinematic ("CLICK TO SKIP" shared
+                   its corner), the victory screen and the whole session. Now:
+                   only shows for direct zoom changes (no tween running, no
+                   cinematic shot owning the camera, battle actually live) and
+                   fades ~1.2s after the last delta. */
                 let zi = document.getElementById('zoomLevelIndicator');
+                const _autoCam = this._duration > 0
+                    || this._cineShotId != null || this._preCineView != null;
+                const _noToast = _firstApply || _autoCam
+                    || typeof state === 'undefined' || state.devAutoSim
+                    || state.winner != null || state.phase !== 'battle'
+                    || document.body.classList.contains('ewi-cinema');
+                if (_noToast) {
+                    if (zi) zi.style.opacity = '0';
+                    return;
+                }
                 if (!zi) {
                     zi = document.createElement('div');
                     zi.id = 'zoomLevelIndicator';
-                    zi.style.cssText = 'position:absolute;bottom:8px;right:8px;z-index:9999;background:rgba(0,0,0,0.7);color:#d4c8b0;font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;pointer-events:none;font-family:DotGothic16,monospace;border:1px solid rgba(200,180,150,0.2)';
+                    zi.style.cssText = 'position:absolute;bottom:8px;right:8px;z-index:9999;background:rgba(0,0,0,0.7);color:#d4c8b0;font-size:11px;font-weight:700;padding:3px 8px;border-radius:4px;pointer-events:none;font-family:DotGothic16,monospace;border:1px solid rgba(200,180,150,0.2);opacity:0;transition:opacity 0.35s ease';
                     (document.getElementById("game-viewport") || document.body).appendChild(zi);
                 }
                 zi.textContent = `Zoom: ${zoom.toFixed(2)}x`;
+                zi.style.opacity = '1';
+                if (this._zoomToastTimer) clearTimeout(this._zoomToastTimer);
+                this._zoomToastTimer = setTimeout(() => {
+                    this._zoomToastTimer = null;
+                    const el = document.getElementById('zoomLevelIndicator');
+                    if (el) el.style.opacity = '0';
+                }, 1200);
             },
 
             _tick(now) {
@@ -21211,17 +21241,20 @@
                             _setBalance('Wallet: 💰 ' + (r.data.gold || 0).toLocaleString(), '#ffd86a');
                         } else {
                             // Server unreachable → fall back to the local mirror so play still rewards.
+                            // creditLocalGold returns 0 when there is NO active profile to bank
+                            // into — a 0 balance under "GOLD EARNED +139" reads as a broken
+                            // wallet, so any falsy result shows the earned amount instead.
                             const bal = (typeof PS.creditLocalGold === 'function') ? PS.creditLocalGold(calc.matchGold) : null;
-                            _setBalance(bal != null ? ('Wallet: 💰 ' + bal.toLocaleString() + ' (offline)') : 'Saved locally', '#cdbf90');
+                            _setBalance(bal ? ('Wallet: 💰 ' + bal.toLocaleString() + ' (offline)') : ('+' + calc.matchGold.toLocaleString() + ' banked'), '#cdbf90');
                         }
                     }).catch(function() {
                         const bal = (typeof PS.creditLocalGold === 'function') ? PS.creditLocalGold(calc.matchGold) : null;
-                        _setBalance(bal != null ? ('Wallet: 💰 ' + bal.toLocaleString() + ' (offline)') : 'Saved locally', '#cdbf90');
+                        _setBalance(bal ? ('Wallet: 💰 ' + bal.toLocaleString() + ' (offline)') : ('+' + calc.matchGold.toLocaleString() + ' banked'), '#cdbf90');
                     });
                 } else {
                     // No online account → credit the local wallet so solo play still earns.
                     const bal = (PS && typeof PS.creditLocalGold === 'function') ? PS.creditLocalGold(calc.matchGold) : null;
-                    _setBalance(bal != null ? ('Wallet: 💰 ' + bal.toLocaleString()) : ('+' + calc.matchGold.toLocaleString()), '#ffd86a');
+                    _setBalance(bal ? ('Wallet: 💰 ' + bal.toLocaleString()) : ('+' + calc.matchGold.toLocaleString()), '#ffd86a');
                 }
             } catch (e) { console.error('[ECON] bank failed:', e); }
         }
@@ -21336,7 +21369,7 @@
 
             vicAwards.innerHTML = buildVicAwards();
 
-            const matchAchs = state._matchAchievements || [];
+            const matchAchs = [...new Set(state._matchAchievements || [])];
             if (matchAchs.length > 0) {
                 let achHtml = '<div class="vic-achievements"><div class="vic-ach-title">Achievements Unlocked</div><div class="vic-ach-grid">';
                 for (const id of matchAchs) {
@@ -38503,13 +38536,21 @@
                 || (spell.kind === 'skyThrow' && !unit._skyThrowGrab);
 
             const isLineDirection = spell.kind === 'line' || spell.kind === 'linePush';
+            /* AI probe rejections stay OUT of the player's log: the CPU
+               occasionally calls doSpell with a stale/invalid target while
+               scoring, and the "out of range" line + error beep leaked into
+               the player-facing combat log every few rounds. Rejection
+               feedback is for the local human's own clicks only. */
+            const _silentReject = state.controllers?.[unit.player] === CTRL.AI;
             if (!isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2) {
                 const effSpellRange = getEffectiveSpellRange(unit, spell);
                 const gateD = _isSkyGrabCast ? _rawDxy : dEff;
                 if (gateD < minRange || gateD > effSpellRange) {
-                    addLog('Spell target is out of range.');
+                    if (!_silentReject) {
+                        addLog('Spell target is out of range.');
+                        playErrorSfx();
+                    }
                     state._teleportingUnit = null;
-                    playErrorSfx();
                     return 0;
                 }
 
@@ -38520,8 +38561,10 @@
                 // gating it here is what produced "Terrain blocks the spell path" on tiles
                 // the AI legitimately picked, wasting the unit's turn.
                 if (spell.kind !== 'teleport' && spell.kind !== 'delayed' && !spell.ignoresLineOfSight && !_isSkyGrabCast && _rawDxy >= 1 && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unitZ)) {
-                    addLog('Terrain blocks the spell path.');
-                    playErrorSfx();
+                    if (!_silentReject) {
+                        addLog('Terrain blocks the spell path.');
+                        playErrorSfx();
+                    }
                     return 0;
                 }
             }
@@ -39553,7 +39596,11 @@
                             totalHealed += healed;
                         }
                     }
-                    addLog(totalHealed > 0
+                    /* "restoring 1 total HP across 4 allies" read as a bug —
+                       when the team is basically full the heal is incidental
+                       (the cast was for the buff/cleanse), so only itemize
+                       amounts worth saying out loud. */
+                    addLog(totalHealed >= 5
                         ? `${unitDisplayName(unit)} casts ${spell.name}, restoring ${totalHealed} total HP across ${allies.length} allies.`
                         : `${unitDisplayName(unit)} casts ${spell.name}, bolstering ${allies.length} allies.`);
                 }

@@ -1461,7 +1461,7 @@ const ThreeVFX = (function () {
     // (`ew_ambientFx`, ThreeVFX.setAmbientDensity, 0 = off); it gates
     // particles per-fragment via each point's aRand, so the slider thins the
     // clouds smoothly instead of popping whole systems.
-    var _ambDensity = 0.6;
+    var _ambDensity = 0.3;
     try {
         var _ambSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_ambientFx') : null;
         if (_ambSaved !== null) {

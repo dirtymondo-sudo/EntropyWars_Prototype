@@ -1121,47 +1121,71 @@ function CreateProfileModal({ onCreated, onCancel }) {
     if (onCreated) onCreated(slot);
   };
 
+  /* First-touch surface of the whole game — styled as a classified intake
+     form (black/minimal dossier dialect: white on black, green = confirm,
+     red = back) instead of the old stock-blue modal. */
   return h('div', { style: {
     position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)',
   }},
     h('div', { style: {
-      background: EW.bg2, border: '1px solid ' + EW.panelEdge,
-      borderRadius: 10, padding: '28px 32px', minWidth: 300, maxWidth: 400,
-      textAlign: 'center',
+      background: '#050505', border: '1px solid rgba(255,255,255,0.18)',
+      padding: '28px 34px 24px', minWidth: 340, maxWidth: 430,
+      textAlign: 'left', boxShadow: '0 12px 60px rgba(0,0,0,0.8)',
     }},
-      h('div', { style: { fontSize: 18, fontFamily: 'Cinzel, serif', color: EW.ink, marginBottom: 16 } }, 'Create Profile'),
+      h('div', { style: {
+        fontFamily: 'DotGothic16, monospace', fontSize: 9, letterSpacing: '0.3em',
+        color: '#5c5c5c', marginBottom: 8,
+      } }, 'INTELLIGENCE DIVISION · NEW FILE'),
+      h('div', { style: {
+        fontSize: 20, fontFamily: 'Cinzel, serif', color: '#f2f2f2',
+        letterSpacing: '0.08em',
+      } }, 'OPERATIVE REGISTRATION'),
+      h('div', { style: {
+        height: 1, background: 'linear-gradient(90deg, rgba(255,255,255,0.35), transparent)',
+        margin: '12px 0 16px',
+      } }),
+      h('div', { style: {
+        fontFamily: 'DotGothic16, monospace', fontSize: 10, letterSpacing: '0.18em',
+        color: '#9c9c9c', marginBottom: 8,
+      } }, 'ENTER CALLSIGN'),
       h('input', {
-        type: 'text', maxLength: 16, placeholder: 'Enter username',
+        type: 'text', maxLength: 16, placeholder: 'callsign',
         value: name,
         onChange: e => { setName(e.target.value); setError(''); },
         onKeyDown: e => { if (e.key === 'Enter') submit(); },
         autoFocus: true,
         style: {
-          width: '100%', padding: '10px 14px', fontSize: 15, borderRadius: 6,
-          background: 'rgba(255,255,255,0.06)', border: '1px solid ' + EW.panelEdge,
-          color: EW.ink, outline: 'none', fontFamily: 'DotGothic16, monospace',
-          boxSizing: 'border-box',
+          width: '100%', padding: '10px 14px', fontSize: 15,
+          background: '#000', border: '1px solid rgba(255,255,255,0.25)',
+          color: '#f2f2f2', outline: 'none', fontFamily: 'DotGothic16, monospace',
+          letterSpacing: '0.08em', boxSizing: 'border-box',
         }
       }),
-      error ? h('div', { style: { color: EW.bad, fontSize: 12, marginTop: 6 } }, error) : null,
-      h('div', { style: { display: 'flex', gap: 10, marginTop: 16, justifyContent: 'center' } },
+      h('div', { style: {
+        fontFamily: 'DotGothic16, monospace', fontSize: 9, letterSpacing: '0.12em',
+        color: error ? '#ff5c5c' : '#5c5c5c', marginTop: 7,
+      } }, error || '2–16 CHARS · LETTERS / NUMBERS / UNDERSCORES'),
+      h('div', { style: { display: 'flex', gap: 10, marginTop: 18, justifyContent: 'flex-end' } },
         onCancel ? h('button', {
           onClick: onCancel,
           style: {
-            padding: '8px 20px', borderRadius: 6, fontSize: 13, cursor: 'pointer',
-            background: 'rgba(255,255,255,0.06)', color: EW.inkMute, border: '1px solid ' + EW.panelEdge,
+            padding: '9px 20px', fontSize: 11, cursor: 'pointer', letterSpacing: '0.16em',
+            background: 'rgba(255,92,92,0.07)', color: '#ff5c5c',
+            border: '1px solid rgba(255,92,92,0.5)',
             fontFamily: 'DotGothic16, monospace',
           }
-        }, 'Cancel') : null,
+        }, 'CANCEL') : null,
         h('button', {
           onClick: submit,
           style: {
-            padding: '8px 24px', borderRadius: 6, fontSize: 13, cursor: 'pointer',
-            background: EW.accent, color: '#000', border: 'none', fontWeight: 700,
+            padding: '9px 26px', fontSize: 11, cursor: 'pointer', letterSpacing: '0.16em',
+            background: 'rgba(61,220,132,0.1)', color: '#3ddc84',
+            border: '1px solid #3ddc84', fontWeight: 700,
             fontFamily: 'DotGothic16, monospace',
+            boxShadow: '0 0 16px rgba(61,220,132,0.15)',
           }
-        }, 'Create'),
+        }, 'REGISTER'),
       ),
     )
   );
@@ -1574,7 +1598,23 @@ function ProfilePage() {
 
   if (profile === null && !showCreate) {
     return h(CreateProfileModal, {
-      onCreated: () => { refresh(); setShowCreate(false); },
+      onCreated: () => {
+        refresh(); setShowCreate(false);
+        /* First-run funnel: registration used to drop the brand-new player
+           onto their EMPTY stats page, and Back returned them to the title
+           where they had to press ENTER again. If we got here from the
+           title screen, close the overlay and click ENTER for them — the
+           title's first-profile interceptor sees a profile now and lets
+           the normal flow carry straight into the main menu. */
+        const titlePage = document.getElementById('titlePage');
+        if (titlePage && titlePage.classList.contains('active')) {
+          setTimeout(() => {
+            if (typeof window._unmountReactProfile === 'function') window._unmountReactProfile();
+            const enterBtn = document.getElementById('enterGameBtn');
+            if (enterBtn) enterBtn.click();
+          }, 0);
+        }
+      },
     });
   }
   if (showCreate) {

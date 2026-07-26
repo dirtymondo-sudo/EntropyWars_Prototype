@@ -9,58 +9,59 @@ if (!document.getElementById('pb-hover-css')) {
   _css.textContent = `
     /* ── Party Builder — champ-select redesign ── */
 
-    /* Ghost outline buttons (BACK, RANDOM, RANDOM ALL, DEFAULTS, RND, RST) */
+    /* Ghost outline buttons (RANDOM, RANDOM ALL, DEFAULTS, RND, RST) —
+       black/minimal: white text on black, white hairline on hover */
     .pb-btn-ghost {
       transition: background 0.12s, border-color 0.15s, color 0.12s,
                   box-shadow 0.15s, transform 0.1s !important;
     }
     .pb-btn-ghost:hover {
-      background: rgba(201,180,240,0.08) !important;
-      border-color: rgba(201,180,240,0.35) !important;
-      color: #e6e9f2 !important;
+      background: rgba(255,255,255,0.07) !important;
+      border-color: rgba(255,255,255,0.4) !important;
+      color: #fff !important;
     }
     .pb-btn-ghost:active {
       transform: scale(0.96);
-      background: rgba(201,180,240,0.14) !important;
+      background: rgba(255,255,255,0.12) !important;
     }
 
-    /* CLR button (red-ish ghost) */
+    /* BACK / CLR buttons (red) */
     .pb-btn-danger {
       transition: background 0.12s, border-color 0.15s, color 0.12s,
                   transform 0.1s !important;
     }
     .pb-btn-danger:hover {
-      background: rgba(255,120,120,0.1) !important;
-      border-color: rgba(255,120,120,0.45) !important;
-      color: rgba(255,120,120,0.95) !important;
+      background: rgba(255,92,92,0.12) !important;
+      border-color: #ff5c5c !important;
+      color: #ff8a8a !important;
     }
     .pb-btn-danger:active {
       transform: scale(0.95);
     }
 
-    /* CONFIRM button (green tint) */
+    /* CONFIRM button (green) */
     .pb-btn-confirm {
       transition: background 0.12s, border-color 0.15s, color 0.12s,
                   box-shadow 0.15s, transform 0.1s !important;
     }
     .pb-btn-confirm:hover {
-      background: rgba(100,200,120,0.16) !important;
-      border-color: rgba(100,200,120,0.45) !important;
-      color: rgba(100,200,120,1) !important;
-      box-shadow: 0 0 12px rgba(100,200,120,0.12);
+      background: rgba(61,220,132,0.16) !important;
+      border-color: #3ddc84 !important;
+      color: #3ddc84 !important;
+      box-shadow: 0 0 12px rgba(61,220,132,0.12);
     }
     .pb-btn-confirm:active {
       transform: scale(0.96);
     }
 
-    /* SEAL THE PARTY primary CTA */
+    /* SEAL YOUR FATE primary CTA (green) */
     .pb-btn-primary {
       transition: box-shadow 0.15s, transform 0.1s, filter 0.12s !important;
     }
     .pb-btn-primary:hover {
-      filter: brightness(1.2) saturate(1.1);
-      box-shadow: 0 0 30px var(--pb-fc, rgba(242,196,104,0.3)),
-                  0 2px 12px var(--pb-fc, rgba(242,196,104,0.2)) !important;
+      filter: brightness(1.15);
+      box-shadow: 0 0 30px rgba(61,220,132,0.3),
+                  0 2px 12px rgba(61,220,132,0.2) !important;
       transform: translateY(-1px);
     }
     .pb-btn-primary:active {
@@ -70,8 +71,8 @@ if (!document.getElementById('pb-hover-css')) {
 
     /* Waiting-for-opponent pulsing state */
     @keyframes pb-waiting-pulse {
-      0%, 100% { opacity: 1; box-shadow: 0 0 18px rgba(100,200,120,0.2); }
-      50%      { opacity: 0.7; box-shadow: 0 0 30px rgba(100,200,120,0.4); }
+      0%, 100% { opacity: 1; box-shadow: 0 0 18px rgba(61,220,132,0.2); }
+      50%      { opacity: 0.7; box-shadow: 0 0 30px rgba(61,220,132,0.4); }
     }
     .pb-btn-waiting {
       animation: pb-waiting-pulse 1.8s ease-in-out infinite !important;
@@ -85,8 +86,8 @@ if (!document.getElementById('pb-hover-css')) {
                   transform 0.1s !important;
     }
     .pb-slot-card:hover {
-      border-color: rgba(201,180,240,0.4) !important;
-      box-shadow: 0 0 10px rgba(201,180,240,0.08);
+      border-color: rgba(255,255,255,0.4) !important;
+      box-shadow: 0 0 10px rgba(255,255,255,0.06);
     }
     .pb-slot-card:active {
       transform: scale(0.98);
@@ -98,8 +99,8 @@ if (!document.getElementById('pb-hover-css')) {
                   transform 0.1s !important;
     }
     .pb-vessel-card:hover {
-      border-color: rgba(201,180,240,0.4) !important;
-      box-shadow: 0 0 12px rgba(201,180,240,0.1);
+      border-color: rgba(255,255,255,0.4) !important;
+      box-shadow: 0 0 12px rgba(255,255,255,0.08);
       transform: translateY(-1px);
     }
     .pb-vessel-card:active {
@@ -112,8 +113,8 @@ if (!document.getElementById('pb-hover-css')) {
                   box-shadow 0.12s, transform 0.1s !important;
     }
     .pb-faction-chip:hover {
-      border-color: rgba(201,180,240,0.4) !important;
-      box-shadow: 0 0 8px rgba(201,180,240,0.08);
+      border-color: rgba(255,255,255,0.4) !important;
+      box-shadow: 0 0 8px rgba(255,255,255,0.06);
       filter: brightness(1.2);
     }
     .pb-faction-chip:active {
@@ -131,13 +132,13 @@ if (!document.getElementById('pb-hover-css')) {
       transition: background 0.1s, border-color 0.12s, color 0.1s, transform 0.08s !important;
     }
     .pb-stepper-btn:hover {
-      background: rgba(201,180,240,0.12) !important;
-      border-color: rgba(201,180,240,0.35) !important;
-      color: #e6e9f2 !important;
+      background: rgba(255,255,255,0.1) !important;
+      border-color: rgba(255,255,255,0.4) !important;
+      color: #fff !important;
     }
     .pb-stepper-btn:active {
       transform: scale(0.85);
-      background: rgba(201,180,240,0.2) !important;
+      background: rgba(255,255,255,0.16) !important;
     }
 
     /* ── Battle-parity ability BLADES ──────────────────────────────
@@ -149,8 +150,8 @@ if (!document.getElementById('pb-hover-css')) {
       position: relative;
       display: flex; align-items: center; gap: 8px;
       min-height: 40px; padding: 3px 14px 4px 8px; margin: 0 9px 0 5px;
-      background: linear-gradient(100deg, #0f0a1c 0%, #0b0716 55%, rgba(12,9,22,0.55) 100%);
-      border: 1px solid rgba(150,130,190,0.2);
+      background: linear-gradient(100deg, #0d0d0d 0%, #070707 55%, rgba(10,10,10,0.55) 100%);
+      border: 1px solid rgba(255,255,255,0.14);
       border-left: 3px solid var(--cat, #8890b0);
       clip-path: polygon(8px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
       transform: skewX(-6deg); transform-origin: 0 50%;
@@ -160,27 +161,27 @@ if (!document.getElementById('pb-hover-css')) {
     }
     .pbx-blade > * { transform: skewX(6deg); }
     .pbx-blade:hover {
-      background: linear-gradient(100deg, #1b1433 0%, #120c22 65%, rgba(20,14,36,0.6) 100%);
+      background: linear-gradient(100deg, #1a1a1a 0%, #101010 65%, rgba(18,18,18,0.6) 100%);
       border-color: var(--cat, #8890b0);
-      box-shadow: -2px 0 14px rgba(160,130,220,0.14), inset 3px 0 0 var(--cat, #8890b0);
+      box-shadow: -2px 0 14px rgba(255,255,255,0.1), inset 3px 0 0 var(--cat, #8890b0);
       transform: skewX(-6deg) translateX(3px);
     }
     .pbx-blade:active { filter: brightness(0.85); }
     .pbx-blade.on {
-      background: linear-gradient(100deg, #160f2a 0%, #110b1f 65%, rgba(19,13,32,0.6) 100%);
+      background: linear-gradient(100deg, #151515 0%, #0c0c0c 65%, rgba(15,15,15,0.6) 100%);
       border-color: var(--cat, #8890b0);
       box-shadow: inset 3px 0 0 var(--cat, #8890b0), -1px 0 10px rgba(0,0,0,0.4);
     }
     .pbx-blade.empty {
-      border: 1px dashed rgba(150,130,190,0.22);
-      border-left: 3px solid rgba(150,130,190,0.12);
+      border: 1px dashed rgba(255,255,255,0.18);
+      border-left: 3px solid rgba(255,255,255,0.1);
       background: rgba(255,255,255,0.015);
       cursor: default; min-height: 26px;
     }
     .pbx-blade.empty:hover {
       transform: skewX(-6deg); box-shadow: none;
       background: rgba(255,255,255,0.015);
-      border-color: rgba(150,130,190,0.22);
+      border-color: rgba(255,255,255,0.18);
     }
     /* ── EQUIPPED slot blades — green = locked into a spell slot ── */
     .pbx-blade.equipped {
@@ -244,7 +245,7 @@ if (!document.getElementById('pb-hover-css')) {
       align-items: flex-end; justify-content: space-around; gap: 2px; padding: 1px 0; }
     .pbx-slotno > span { line-height: 1; }
     .pbx-checkbox {
-      flex: none; width: 12px; height: 12px; border: 1px solid rgba(140,160,200,0.4);
+      flex: none; width: 12px; height: 12px; border: 1px solid rgba(255,255,255,0.35);
       display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4);
     }
     .pbx-x { flex: none; font-size: 10px; color: rgba(255,122,138,0); transition: color 0.12s; }
@@ -254,7 +255,7 @@ if (!document.getElementById('pb-hover-css')) {
     .pbx-subbar {
       display: flex; align-items: center; gap: 9px;
       min-height: 34px; padding: 4px 14px 4px 10px; margin: 7px 9px 0 5px;
-      background: linear-gradient(100deg, #160f2a 0%, #110b1f 65%, rgba(19,13,32,0.6) 100%);
+      background: linear-gradient(100deg, #151515 0%, #0c0c0c 65%, rgba(15,15,15,0.6) 100%);
       border: 1px solid var(--cat, #8890b0); border-left: 3px solid var(--cat, #8890b0);
       clip-path: polygon(8px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
       transform: skewX(-6deg); transform-origin: 0 50%;
@@ -263,8 +264,8 @@ if (!document.getElementById('pb-hover-css')) {
     }
     .pbx-subbar > * { transform: skewX(6deg); }
     .pbx-subbar:hover {
-      background: linear-gradient(100deg, #1a2542 0%, #101731 65%, rgba(16,23,49,0.6) 100%);
-      box-shadow: -2px 0 16px rgba(160,130,220,0.16), inset 3px 0 0 var(--cat, #8890b0);
+      background: linear-gradient(100deg, #1e1e1e 0%, #121212 65%, rgba(20,20,20,0.6) 100%);
+      box-shadow: -2px 0 16px rgba(255,255,255,0.12), inset 3px 0 0 var(--cat, #8890b0);
       transform: skewX(-6deg) translateX(3px);
     }
     .pbx-subbar:active { filter: brightness(0.85); }
@@ -273,33 +274,33 @@ if (!document.getElementById('pb-hover-css')) {
     .pbx-trait {
       display: flex; align-items: flex-start; gap: 7px;
       padding: 3px 8px 4px 6px; background: rgba(0,0,0,0.25);
-      border: 1px solid rgba(150,130,190,0.12);
+      border: 1px solid rgba(255,255,255,0.1);
       border-left: 2px solid var(--pb-fc, rgba(242,196,104,0.5));
     }
 
     /* ── RPG equipment / item slot squares flanking the hero ── */
     .pbx-eqslot {
       position: relative; flex: none;
-      border: 1px dashed rgba(140,160,200,0.3); background: rgba(0,0,0,0.35);
+      border: 1px dashed rgba(255,255,255,0.25); background: rgba(0,0,0,0.35);
       display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 1px;
       cursor: pointer;
       transition: border-color 0.12s, background 0.12s, box-shadow 0.15s, transform 0.1s;
       clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
     }
     .pbx-eqslot:hover {
-      border-color: var(--acc, rgba(201,180,240,0.55));
-      box-shadow: 0 0 10px rgba(160,190,255,0.12);
-      background: rgba(20,26,44,0.5);
+      border-color: var(--acc, rgba(255,255,255,0.5));
+      box-shadow: 0 0 10px rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.06);
       transform: translateY(-1px);
     }
     .pbx-eqslot.filled {
-      border-style: solid; border-color: var(--acc, rgba(201,180,240,0.55));
-      background: linear-gradient(180deg, rgba(20,26,44,0.5), rgba(0,0,0,0.4));
-      box-shadow: 0 0 8px rgba(0,0,0,0.5), inset 0 0 12px rgba(160,130,220,0.06);
+      border-style: solid; border-color: var(--acc, rgba(255,255,255,0.5));
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.4));
+      box-shadow: 0 0 8px rgba(0,0,0,0.5), inset 0 0 12px rgba(255,255,255,0.04);
     }
     .pbx-eqslot-icon { font-size: 19px; line-height: 1; }
     .pbx-eqslot:not(.filled) .pbx-eqslot-icon {
-      color: rgba(140,160,200,0.4); font-size: 16px; font-family: 'DotGothic16', monospace;
+      color: rgba(255,255,255,0.35); font-size: 16px; font-family: 'DotGothic16', monospace;
     }
     .pbx-eqslot-label {
       font-size: 7px; letter-spacing: 0.04em; color: #8a93a8; max-width: 92%;
@@ -324,28 +325,32 @@ if (!document.getElementById('pb-hover-css')) {
     /* ── Gear / item picker rows ── */
     .pbx-pick-row {
       display: flex; align-items: center; gap: 10px; padding: 8px 10px;
-      background: rgba(0,0,0,0.3); border: 1px solid rgba(150,130,190,0.16);
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.14);
       cursor: pointer; transition: background 0.12s, border-color 0.12s;
     }
     .pbx-pick-row:hover {
-      background: rgba(160,130,220,0.08);
-      border-color: rgba(201,180,240,0.4);
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(255,255,255,0.4);
     }
   `;
   document.head.appendChild(_css);
 }
 
+/* Black/minimal chrome — same dialect as the title screen / main menu /
+   loading screen: pure black, white text, white hairline borders. Faction
+   colors (space/time/chaos) and type colors are game CONTENT and stay
+   colored; only the panel/border/background chrome is neutralized. */
 const EW = {
-  bg: '#070510', bg2: '#0d0a16', bg3: '#141021',
-  panel: 'rgba(22,18,36,0.72)',
-  panelEdge: 'rgba(150,130,190,0.18)',
-  panelEdgeHi: 'rgba(201,180,240,0.35)',
-  ink: '#e9e6f2', inkMute: '#8f88a8', inkDim: '#5c5570',
-  grid: 'rgba(150,130,190,0.06)',
+  bg: '#000000', bg2: '#050505', bg3: '#0a0a0a',
+  panel: 'rgba(0,0,0,0.6)',
+  panelEdge: 'rgba(255,255,255,0.14)',
+  panelEdgeHi: 'rgba(255,255,255,0.38)',
+  ink: '#f2f2f2', inkMute: '#9c9c9c', inkDim: '#5c5c5c',
+  grid: 'rgba(255,255,255,0.04)',
   space: '#5ab0ff', time: '#f2c468', chaos: '#e168c8',
   human:'#a0a0c3', alien:'#32aa50', divine:'#dcaa1e',
   unholy:'#9632b4', anomaly:'#dc3c82', tech:'#28a0be',
-  good: '#6ee2a8', bad: '#ff7a8a', warn: '#f2c468',
+  good: '#3ddc84', bad: '#ff5c5c', warn: '#f2c468',
 };
 
 const FACTION_C = { space: EW.space, time: EW.time, chaos: EW.chaos };
@@ -636,7 +641,7 @@ function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip }) {
     h('span', { style:{ width:30, color:labelColor, letterSpacing:'0.04em', fontSize:10 } }, label,
       zodiacMod === 'up' ? h('span', { style:{color:EW.good, fontSize:'0.7em'} }, ' \u25B2') : null,
       zodiacMod === 'dn' ? h('span', { style:{color:EW.bad, fontSize:'0.7em'} }, ' \u25BC') : null),
-    h('div', { style:{ flex:1, position:'relative', height: compact?5:7, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(150,130,190,0.08)' } },
+    h('div', { style:{ flex:1, position:'relative', height: compact?5:7, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)' } },
       h('div', { style:{ position:'absolute', inset:0, width:`${pct}%`, background:`linear-gradient(90deg, ${barColor}, ${barColor}aa)` } })),
     h('span', { style:{ width:32, textAlign:'right', color:valColor, fontWeight:600, fontSize:11 } }, val + (suffix || '')),
     deltaNum !== 0 ? h('span', { style:{ width:28, textAlign:'right', fontSize:9, fontWeight:700, color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+'+deltaNum : ''+deltaNum) : h('span', { style:{ width:28 } }));
@@ -812,7 +817,7 @@ function SpellBlade({ sp, slotLabel, slotNums, heightPx, equippedSlot, pool, equ
     onClick, onMouseEnter: onHoverIn, onMouseLeave: onHoverOut,
   },
     slotNoNode(slotNums, slotLabel),
-    pool ? h('span', { className:'pbx-checkbox', style:{ borderColor: equipped ? cc.color : 'rgba(140,160,200,0.4)' } }, equipped ? h('span', { style:{ width:6, height:6, background:cc.color, display:'block' } }) : null) : null,
+    pool ? h('span', { className:'pbx-checkbox', style:{ borderColor: equipped ? cc.color : 'rgba(255,255,255,0.35)' } }, equipped ? h('span', { style:{ width:6, height:6, background:cc.color, display:'block' } }) : null) : null,
     h('span', { className:'pbx-glyph', style:{ color:cc.color } }, cc.icon),
     h('div', { className:'pbx-main' },
       h('div', { className:'pbx-row1' },
@@ -999,7 +1004,7 @@ function RangeDiamond({ radius, fill, edge, label, value, color }) {
 // RPG-style equipment/item slot square flanking the hero sprite.
 function EquipSlotBox({ size, accent, filled, icon, label, title, onClick, onClear }) {
   const s = size || 48;
-  return h('div', { onClick, title, className:'pbx-eqslot' + (filled ? ' filled' : ''), style:{ width:s, height:s, '--acc': accent || 'rgba(201,180,240,0.55)' } },
+  return h('div', { onClick, title, className:'pbx-eqslot' + (filled ? ' filled' : ''), style:{ width:s, height:s, '--acc': accent || 'rgba(255,255,255,0.5)' } },
     filled && onClear ? h('span', { className:'pbx-eqslot-x', title:'Remove', onClick:(e)=>{ e.stopPropagation(); onClear(); } }, '✕') : null,
     h('span', { className:'pbx-eqslot-icon' }, filled ? icon : '+'),
     filled && label ? h('span', { className:'pbx-eqslot-label' }, label) : null);
@@ -1359,7 +1364,7 @@ function PartyBuilder() {
   const slotCap = typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 6;
   const docNum = 'EW-' + (Math.abs((unitRace||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0)*7)%9000+1000);
 
-  return h('div', { className: `pb-tarot pb-tarot-${unitFaction}`, style:{ width:'100%', height:'100%', position:'relative', overflow:'hidden', background: `radial-gradient(ellipse 900px 700px at 65% 35%, ${fc}12, transparent 60%), radial-gradient(ellipse 1200px 900px at 20% 50%, #12101e 0%, ${EW.bg} 60%, #000004 100%)`, color: EW.ink, fontFamily:'DotGothic16, monospace', display:'flex', flexDirection:'column', '--pb-fc': fc }},
+  return h('div', { className: `pb-tarot pb-tarot-${unitFaction}`, style:{ width:'100%', height:'100%', position:'relative', overflow:'hidden', background: `radial-gradient(ellipse 900px 700px at 65% 35%, ${fc}12, transparent 60%), radial-gradient(ellipse 1200px 900px at 20% 50%, #0b0b0b 0%, ${EW.bg} 60%, #000 100%)`, color: EW.ink, fontFamily:'DotGothic16, monospace', display:'flex', flexDirection:'column', '--pb-fc': fc }},
     h(StarField),
 
     h('div', { style:{ display:'flex', alignItems:'center', height:46, padding:'0 14px 0 8px', gap:10, borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0, position:'relative', zIndex:2 }},
@@ -1453,7 +1458,7 @@ function PartyBuilder() {
               h('input', { key:player+'-'+slot, defaultValue:unitName, style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:10, padding:'3px 6px', width:110, minWidth:0 }, onBlur:e=>handleNameChange(e.target.value), onKeyDown:e=>{ if(e.key==='Enter') e.target.blur(); } }),
               h('span', { style:{ color:EW.inkDim, letterSpacing:'0.08em' } }, 'ZODIAC'),
               h('select', { value:identity.zodiac||'aries', onChange:e=>handleZodiacChange(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:10, padding:'3px 4px', maxWidth:96 } },
-                zodiacs.map(z=>h('option',{key:z,value:z,style:{background:'#0c0b16',color:'#ccc'}}, (window.ZODIAC_ICONS?.[z]||'')+' '+z.charAt(0).toUpperCase()+z.slice(1)))),
+                zodiacs.map(z=>h('option',{key:z,value:z,style:{background:'#000000',color:'#ccc'}}, (window.ZODIAC_ICONS?.[z]||'')+' '+z.charAt(0).toUpperCase()+z.slice(1)))),
               // Subclass selection lives on the ABILITIES panel (it drives the
               // spell pool); this echo just keeps it visible on the sheet.
               !isArena && clsName!=='Freelancer' && secJob && h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.1em', textTransform:'uppercase' } }, '◈ SUB: ', getJobDisplay(secJob))),
@@ -1503,14 +1508,14 @@ function PartyBuilder() {
             h('span', { style:{ fontSize:10, color:EW.inkDim, letterSpacing:'0.1em', marginRight:6 } }, filteredRoster.length,'/',rosterEntries.length),
             h('input', { placeholder:'Search...', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 10px', width:130 }}),
             h('select', { value:`${sortKey}-${sortDir}`, onChange:e=>{const[k,d]=e.target.value.split('-');setSortKey(k);setSortDir(d);}, style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, color:EW.time, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none' }},
-              ...STAT_KEYS.map(k=>[h('option',{key:`${k}-desc`,value:`${k}-desc`,style:{background:'#0c0b16'}},`${k} ↓`),h('option',{key:`${k}-asc`,value:`${k}-asc`,style:{background:'#0c0b16'}},`${k} ↑`)]).flat(),
-              h('option',{value:'label-asc',style:{background:'#0c0b16'}},'Name A-Z'), h('option',{value:'label-desc',style:{background:'#0c0b16'}},'Name Z-A')),
+              ...STAT_KEYS.map(k=>[h('option',{key:`${k}-desc`,value:`${k}-desc`,style:{background:'#000000'}},`${k} ↓`),h('option',{key:`${k}-asc`,value:`${k}-asc`,style:{background:'#000000'}},`${k} ↑`)]).flat(),
+              h('option',{value:'label-asc',style:{background:'#000000'}},'Name A-Z'), h('option',{value:'label-desc',style:{background:'#000000'}},'Name Z-A')),
             h('select', { value:typeFilter||'', onChange:e=>setTypeFilter(e.target.value||null), title:'Filter by Type', style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${typeFilter?getTypeColor(typeFilter):EW.panelEdge}`, color:typeFilter?getTypeColor(typeFilter):EW.inkMute, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none', cursor:'pointer' }},
-              h('option',{value:'',style:{background:'#0c0b16',color:'#ccc'}},'All Types'),
-              ...availableTypes.map(t=>h('option',{key:t,value:t,style:{background:'#0c0b16',color:'#ccc'}}, t.toUpperCase()))),
+              h('option',{value:'',style:{background:'#000000',color:'#ccc'}},'All Types'),
+              ...availableTypes.map(t=>h('option',{key:t,value:t,style:{background:'#000000',color:'#ccc'}}, t.toUpperCase()))),
             h('select', { value:jobFilter||'', onChange:e=>setJobFilter(e.target.value||null), title:'Filter by Job', style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${jobFilter?EW.time:EW.panelEdge}`, color:jobFilter?EW.time:EW.inkMute, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none', cursor:'pointer' }},
-              h('option',{value:'',style:{background:'#0c0b16',color:'#ccc'}},'All Jobs'),
-              ...availableJobs.map(j=>h('option',{key:j,value:j,style:{background:'#0c0b16',color:'#ccc'}}, getJobDisplay(j)))),
+              h('option',{value:'',style:{background:'#000000',color:'#ccc'}},'All Jobs'),
+              ...availableJobs.map(j=>h('option',{key:j,value:j,style:{background:'#000000',color:'#ccc'}}, getJobDisplay(j)))),
             h('span', { style:{ width:1, height:14, background:EW.panelEdge } }),
             ...['space','time','chaos'].map(fk=>h('button',{key:fk,onClick:()=>setFactionFilter(factionFilter===fk?null:fk),className:'pb-faction-chip',style:{ background:factionFilter===fk?`${FACTION_C[fk]}18`:'rgba(0,0,0,0.3)', border:`1px solid ${factionFilter===fk?FACTION_C[fk]:EW.panelEdge}`, color:factionFilter===fk?FACTION_C[fk]:EW.inkDim, padding:'2px 8px', fontFamily:'DotGothic16, monospace', fontSize:10, letterSpacing:'0.08em', textTransform:'uppercase', cursor:'pointer' }}, fk)),
           ),
@@ -1636,9 +1641,9 @@ function PartyBuilder() {
       ),
     ),
 
-    h('div', { style:{ display:'flex', alignItems:'center', padding:'0 16px', height:52, gap:8, borderTop:`1px solid ${EW.panelEdge}`, background:'linear-gradient(0deg, rgba(8,10,18,0.8), rgba(8,10,18,0.3))', flexShrink:0, position:'relative', zIndex:2 }},
+    h('div', { style:{ display:'flex', alignItems:'center', padding:'0 16px', height:52, gap:8, borderTop:`1px solid ${EW.panelEdge}`, background:'linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0.3))', flexShrink:0, position:'relative', zIndex:2 }},
       // One command row: exit · party tools · presets ─ status ─ commit
-      h('button',{onClick:doBack,className:'pb-btn-danger',style:{background:'rgba(255,120,120,0.08)',color:'rgba(255,130,140,0.95)',border:'1px solid rgba(255,120,120,0.45)',padding:'9px 20px',fontFamily:'DotGothic16, monospace',fontSize:12,letterSpacing:'0.16em',cursor:'pointer',fontWeight:600}},'← BACK'),
+      h('button',{onClick:doBack,className:'pb-btn-danger',style:{background:'rgba(255,92,92,0.08)',color:'#ff5c5c',border:'1px solid rgba(255,92,92,0.5)',padding:'9px 20px',fontFamily:'DotGothic16, monospace',fontSize:12,letterSpacing:'0.16em',cursor:'pointer',fontWeight:600}},'← BACK'),
       h('div',{style:{width:1,height:24,background:EW.panelEdge,margin:'0 4px'}}),
       h('button',{onClick:doRandomize,className:'pb-btn-ghost',style:{background:'transparent',color:EW.inkMute,border:`1px solid ${EW.panelEdge}`,padding:'9px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'RANDOM'),
       h('button',{onClick:doRandomizeAll,className:'pb-btn-ghost',style:{background:'transparent',color:EW.inkMute,border:`1px solid ${EW.panelEdge}`,padding:'9px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'RANDOM ALL'),
@@ -1658,12 +1663,12 @@ function PartyBuilder() {
             (isRankedNet && opponentLockedToo) ? 'MATCH STARTING…'
             : (!isRankedNet && netRole === 'guest' && opponentLockedToo) ? '⌛ WAITING FOR HOST TO START…'
             : '⌛ WAITING ON OPPONENT…')
-        : h('button',{onClick:doStart,className:'pb-btn-primary',style:{background:`linear-gradient(180deg,${fc}28,${fc}0a)`,color:fc,border:`1px solid ${fc}`,padding:'10px 28px',fontFamily:'Cinzel, serif',fontSize:16,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:`0 0 18px ${fc}33`,display:'flex',alignItems:'center',gap:10}},
+        : h('button',{onClick:doStart,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(61,220,132,0.22),rgba(61,220,132,0.06))',color:'#3ddc84',border:'1px solid #3ddc84',padding:'10px 28px',fontFamily:'Cinzel, serif',fontSize:16,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 18px rgba(61,220,132,0.25)',display:'flex',alignItems:'center',gap:10}},
             'SEAL YOUR FATE',h('span',{style:{fontFamily:'DotGothic16, monospace',fontSize:10,opacity:0.7}},'\u21B5')),
     ),
 
     showTeamModal && h('div', { onClick:()=>setShowTeamModal(false), style:{ position:'absolute', inset:0, background:'rgba(0,0,0,0.75)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }},
-      h('div', { onClick:e=>e.stopPropagation(), style:{ background:'#0e0d1a', border:`1px solid ${EW.panelEdge}`, padding:'20px 24px', minWidth:340, maxWidth:480, maxHeight:'70vh', display:'flex', flexDirection:'column', gap:12, boxShadow:'0 8px 40px rgba(0,0,0,0.7)' }},
+      h('div', { onClick:e=>e.stopPropagation(), style:{ background:'#0a0a0a', border:`1px solid ${EW.panelEdge}`, padding:'20px 24px', minWidth:340, maxWidth:480, maxHeight:'70vh', display:'flex', flexDirection:'column', gap:12, boxShadow:'0 8px 40px rgba(0,0,0,0.7)' }},
         h('div', { style:{ display:'flex', alignItems:'center', justifyContent:'space-between' }},
           h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:16, letterSpacing:'0.16em' }}, showTeamModal === 'save' ? 'SAVE TEAM' : 'LOAD TEAM'),
           h('button', { onClick:()=>setShowTeamModal(false), style:{ background:'transparent', border:'none', color:EW.inkMute, fontSize:18, cursor:'pointer', lineHeight:1 }}, '\u2715')),
@@ -1694,7 +1699,7 @@ function PartyBuilder() {
       )),
 
     equipPicker && h('div', { onClick:()=>setEquipPicker(null), style:{ position:'absolute', inset:0, background:'rgba(0,0,0,0.72)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }},
-      h('div', { onClick:e=>e.stopPropagation(), style:{ background:'#0e0d1a', border:`1px solid ${EW.panelEdgeHi}`, padding:'16px 18px', width:430, maxWidth:'92vw', maxHeight:'72vh', display:'flex', flexDirection:'column', gap:10, boxShadow:'0 8px 40px rgba(0,0,0,0.7)' }},
+      h('div', { onClick:e=>e.stopPropagation(), style:{ background:'#0a0a0a', border:`1px solid ${EW.panelEdgeHi}`, padding:'16px 18px', width:430, maxWidth:'92vw', maxHeight:'72vh', display:'flex', flexDirection:'column', gap:10, boxShadow:'0 8px 40px rgba(0,0,0,0.7)' }},
         h('div', { style:{ display:'flex', alignItems:'center', gap:10 }},
           h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:15, letterSpacing:'0.14em', textTransform:'uppercase' }},
             equipPicker === 'item' ? 'Battle Items' : equipPicker === 'subjob' ? 'Choose a Subclass' : 'Gear — Slot ' + (equipPicker === 'accessory1' ? '1' : '2')),

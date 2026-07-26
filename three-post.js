@@ -15,7 +15,7 @@ const ThreePost = (function () {
     // User-controllable bloom (persisted, tuned via the pause-menu slider). The
     // day/night presets carry bloomStr 0, so without this floor bloom is
     // invisible. A strength of 0 turns bloom off entirely.
-    var BLOOM_USER_STRENGTH  = 0.35;   // default glow intensity (slider value)
+    var BLOOM_USER_STRENGTH  = 0.05;   // default glow intensity (slider value) — near-off: day maps washed out at higher values
     var BLOOM_USER_RADIUS    = 0.6;    // how far the glow spreads
     var BLOOM_USER_THRESHOLD = 0.72;   // higher → only the brightest surfaces bloom (less daytime over-bloom on map/spawn zones)
     var BLOOM_MAX_STRENGTH   = 1.6;    // pause-menu slider ceiling
@@ -68,7 +68,7 @@ const ThreePost = (function () {
     // Tilt-shift depth of field (the HD-2D diorama look): a horizontal band of
     // the screen around the camera's focal point stays sharp, everything
     // nearer/farther melts into a miniature-photography blur. Strength 0 = off.
-    var _dofStrength = 0.45;                   // 0..1 (slider), 0 disables
+    var _dofStrength = 0.65;                   // 0..1 (slider), 0 disables
     var DOF_MAX_BLUR_PX = 5.0;                 // tap spread at strength 1 (per pass)
     var DOF_BAND = 0.13;                       // half-height of the fully-sharp band (uv)
     var DOF_FEATHER = 0.30;                    // uv distance over which blur ramps to full
@@ -89,7 +89,7 @@ const ThreePost = (function () {
     // cheap "the screen radiates" moment (the bloom pass already runs, so a
     // pulse costs nothing). Scaled by the pause-menu Impact Flash slider;
     // 0 disables pulses entirely. Fired by the VFX layer via bloomPulse().
-    var _impactFx = 0.7;                       // 0..1.5 slider
+    var _impactFx = 1.0;                       // 0..1.5 slider
     var IMPACT_FX_MAX = 1.5;
     try {
         var _ifxSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_impactFx') : null;
@@ -372,14 +372,17 @@ const ThreePost = (function () {
     // and every knob below is a pause-menu slider, persisted as one JSON blob.
     // Vignette strength defaults low: the old build hard-wired a full-strength
     // vignette into the CRT filter, which read as far too heavy.
+    /* Defaults = the calibrated "PS1 grade" (2026-07-26): CRT + vignette ON
+       out of the box so new players land on the intended retro look instead
+       of the washed-out clean render. Saved slider values still win. */
     var _cin = {
-        crt:        false,   // scanlines + chroma + curvature + flicker
-        vignette:   false,   // dark-corner vignette (independent of CRT)
-        scanline:   0.07,    // scanline darkening (uScanlineAlpha)
-        chroma:     0.8,     // chromatic-aberration shift in px (uChromaShift)
+        crt:        true,    // scanlines + chroma + curvature + flicker
+        vignette:   true,    // dark-corner vignette (independent of CRT)
+        scanline:   0.075,   // scanline darkening (uScanlineAlpha) — 25% slider
+        chroma:     0.9,     // chromatic-aberration shift in px (uChromaShift) — 30% slider
         curvature:  0.0,     // barrel distortion (uCurvature)
-        vigAmount:  0.45,    // vignette strength (0 = none, 1 = full darkening)
-        vigSize:    0.42,    // vignette radius (uVignetteSize)
+        vigAmount:  0.35,    // vignette strength (0 = none, 1 = full darkening)
+        vigSize:    0.275,   // vignette radius (uVignetteSize) — 15% slider
         vigSoft:    0.55     // vignette edge softness (uVignetteSoft)
     };
     try {
@@ -668,34 +671,36 @@ const ThreePost = (function () {
     // Live state (persisted as one JSON blob). pixelSize/dither*/grain are
     // preset-independent; levels + tintAmount are seeded by the preset but then
     // fine-tunable via the Colour-Depth / Tint sliders.
+    /* Defaults = the calibrated "PS1 / Dreamy" grade (2026-07-26): the retro
+       pass ships ON — models-only 2x pixelation, gentle dither, Dreamy mood,
+       scene fog — so the first boot already looks like the cult-classic
+       haunted-PS1 build instead of the clean washed-out one. */
     var _retro = {
-        enabled:        false,
-        preset:         'teal',
-        pixelSize:      1.0,    // 1 = off (game is already pixel-art); >1 = chunkier blocks
+        enabled:        true,
+        preset:         'dream',
+        pixelSize:      2.0,    // 1 = off (game is already pixel-art); >1 = chunkier blocks
         // WHAT the pixelation applies to. 'models' (default) = only the 3D GLB
         // models (units, Meshy props) get the chunky UV-snap; the terrain,
         // trees, turrets and stairs are already hand-pixelled sprite art, so
         // re-pixelating them just smears the tile grid. 'screen' = the old
         // whole-frame behaviour. See _renderPixelMask.
         pixelScope:     'models',
-        ditherStrength: 0.6,
+        ditherStrength: 0.2,
         ditherScale:    1.0,    // size of a dither cell in source pixels (bigger = coarser weave)
-        grain:          0.04,
-        levels:         24.0,   // colour levels per channel (lower = chunkier banding)
-        tintAmount:     0.55,
-        // Optional tinted scene fog (King's-Field haze). Off by default: with the
-        // far orbit camera, exp2 fog hazes the whole board, so it's an opt-in mood
-        // lever the player dials with the density slider, not a forced default.
-        fogEnabled:     false,
+        grain:          0.006,  // 5% slider — a whisper of animated film grain
+        levels:         28.0,   // colour levels per channel (lower = chunkier banding)
+        tintAmount:     0.45,
+        // Tinted scene fog (King's-Field haze) — ON by default as part of the
+        // PS1 grade; the density slider is still the player's mood lever.
+        fogEnabled:     true,
         // Calibrated to the world scale: camera ~800u from the board, horizon
-        // scenery 6k–15k out. At ~0.0002 the board stays readable, near landmarks
-        // poke out of the haze, and the deepest ones dissolve completely.
-        fogDensity:     0.0002,
+        // scenery 6k–15k out. 0.00044 (55% slider) keeps the board readable
+        // while the horizon landmarks sink into the mood haze.
+        fogDensity:     0.00044,
         // Altitude (view-ray .y) at which the horizon haze band fully CLEARS.
         // 0 = the fog dissolves exactly at the board horizon (z=0 board level) and
-        // sits below it — the realistic ground-fog default; higher lets the haze
-        // climb up into the sky. Tuned by the pause-menu "Fog Horizon" slider.
-        fogHorizon:     0.0
+        // sits below it; 0.075 (15% slider) lets a shallow band climb the sky.
+        fogHorizon:     0.075
     };
     try {
         var _retroSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_retro') : null;
@@ -1054,7 +1059,7 @@ const ThreePost = (function () {
         bloomStrength: 0, bloomThreshold: 1.0
     };
 
-    var _nightMood = 0.65;                     // 0..1 pause-menu slider
+    var _nightMood = 0.40;                     // 0..1 pause-menu slider
     try {
         var _nmSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_nightMood') : null;
         if (_nmSaved !== null) {

@@ -18836,7 +18836,9 @@ const ThreeRenderer = (function () {
     var _RAY_DIR_DAY = null, _RAY_DIR_NIGHT = null;
     var _rayAxis = null, _rayAxisJ = null, _rayUpVec = null;
     // User strength (pause-menu slider, persisted). 0 hides the shafts.
-    var _rayStrength = 1.0;
+    // Default dropped 1.0 → 0.10 (2026-07-26 PS1 grade): full-strength shafts
+    // were a big contributor to the washed-out daytime look.
+    var _rayStrength = 0.10;
     try {
         var _raySaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_lightRays') : null;
         if (_raySaved !== null) {

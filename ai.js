@@ -1765,7 +1765,12 @@
             const hurt = allies.filter(a => a.hp < a.maxHp * 0.75);
             const hBase = spell.healAmt != null ? spell.healAmt : (spell.heal || 16);
             const total = allies.reduce((s, a) => s + Math.min(hBase, a.maxHp - a.hp), 0);
-            let s = total * (hurt.length >= 2 ? 1.5 : 0.5);
+            // A near-full team makes the heal component worthless — zero it so
+            // the AI never casts a team heal to restore a couple of scratch HP
+            // (the buff component below still scores buff-carrying casts).
+            const teamMax = allies.reduce((s, a) => s + a.maxHp, 0);
+            const meaningfulHeal = total >= Math.max(20, teamMax * 0.05);
+            let s = meaningfulHeal ? total * (hurt.length >= 2 ? 1.5 : 0.5) : 0;
             if (unit.cls === 'White Mage') s *= 2.0;
             // Team-wide stat buffs (Iron Dome, Veil of Light): worth casting once
             // enemies are in sight, but don't re-stack while a buff is live.
