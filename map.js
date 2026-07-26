@@ -395,6 +395,27 @@
         };
         window._codexBack = function() {
             playSfx('uiButtonConfirm');
+            if (window.EWCharViewer) window.EWCharViewer.unmount();
+            state.gameState = GS.MAIN_MENU;
+            _showTitlePage('mainMenuPage');
+        };
+
+        /* ── Standalone Party Builder (main menu → team archive) ──────────
+           Pokémon-Showdown-style teambuilder: forge and save squads OUTSIDE
+           the match flow. Same React component as the pre-match builder,
+           mounted in standalone mode onto its own title page. Saved teams
+           land in the profile's teamPresets — the pre-match builder's LOAD
+           button serves them in the normal flow of play. */
+        window._goToTeamBuilder = function() {
+            playSfx('uiButtonConfirm');
+            state.gameState = GS.MAIN_MENU;
+            _showTitlePage('teamBuilderPage');
+            if (typeof window._mountReactTeamBuilder === 'function') window._mountReactTeamBuilder();
+        };
+        window._teamBuilderBack = function() {
+            playSfx('uiButtonConfirm');
+            if (window.EWCharViewer) window.EWCharViewer.unmount();
+            if (typeof window._unmountReactTeamBuilder === 'function') window._unmountReactTeamBuilder();
             state.gameState = GS.MAIN_MENU;
             _showTitlePage('mainMenuPage');
         };

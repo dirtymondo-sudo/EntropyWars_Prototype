@@ -7573,6 +7573,18 @@
             const locked = !!opts.locked;
             const blk = (n) => '█'.repeat(n);
 
+            /* Rigged 3D vessels stage a LIVE model instead of the flat sprite:
+               drag to orbit, wheel to zoom (window.EWCharViewer, mounted after
+               the innerHTML pass by _ewMountDossierViewer). The sprite stays
+               underneath as the loading frame / no-model fallback. */
+            const g3dList = (typeof race3DGenders === 'function') ? race3DGenders(race) : [];
+            const g3d = g3dList.includes('male') ? 'male' : g3dList[0];
+            const viewable = !locked && !!g3d && !!(window.EWCharViewer && window.EWCharViewer.supports(race, g3d));
+            const raceAttr = race.replace(/"/g, '&quot;');
+            const viewerHtml = viewable
+                ? `<div class="cdx-hero-viewer" data-cv-race="${raceAttr}" data-cv-gender="${g3d}" data-cv-accent="${faction.color}"></div>
+                   <div class="cdx-viewer-hint">⟲ DRAG&nbsp;&nbsp;·&nbsp;&nbsp;⌕ SCROLL&nbsp;&nbsp;·&nbsp;&nbsp;✕2 RESET</div>` : '';
+
             const stamp = locked
                 ? `<div class="cdx-stamp ${profile.faction}">🔒 SEALED FILE</div>`
                 : `<div class="cdx-stamp ${profile.faction}">${faction.stamp} ${faction.label} FACTION</div>`;
@@ -7590,10 +7602,11 @@
 
             return `
             <div class="cdx-hero" style="${_codexFactionVars(profile.faction)}">
-                <div class="cdx-hero-stage">
+                <div class="cdx-hero-stage${viewable ? ' has-viewer' : ''}">
                     <div class="cdx-hero-glow"></div>
                     <div class="cdx-hero-ground"></div>
                     <div class="cdx-hero-sprite${locked ? ' locked' : ''}" style="background-image:url('${sprUrl}')"></div>
+                    ${viewerHtml}
                 </div>
                 <div class="cdx-hero-id">
                     <div class="cdx-hero-topline">
@@ -7726,6 +7739,26 @@
             return html;
         }
 
+        /* Attach the shared 3D character viewer to whichever dossier hero is
+           currently on screen (codex OR shop — only one page is ever active).
+           Runs on a rAF so it lands after the innerHTML pass that created the
+           host div. Safe to call anytime: no host → no-op. */
+        window._ewMountDossierViewer = function() {
+            if (!window.EWCharViewer) return;
+            requestAnimationFrame(() => {
+                const el = document.querySelector('.title-page.active .cdx-hero-viewer[data-cv-race]');
+                if (!el || !el.parentElement) return;
+                // mount on the STAGE (the .ew-cv-ready class + sprite crossfade
+                // CSS key off it); the .cdx-hero-viewer div just carries data.
+                window.EWCharViewer.mount(
+                    el.parentElement,
+                    el.getAttribute('data-cv-race'),
+                    el.getAttribute('data-cv-gender') || null,
+                    { accent: el.getAttribute('data-cv-accent') || undefined }
+                );
+            });
+        };
+
         window._renderCodex = function() {
             const body = document.getElementById('codexBody');
             if (!body) return;
@@ -7753,6 +7786,7 @@
                     <div class="cdx-detail" id="codexDetail">${_codexDossierFor(_codexSelectedRace)}</div>
                 </div>
             `;
+            window._ewMountDossierViewer();
         };
 
         // Collection meter — shared by codex + shop toolbars.
@@ -7816,6 +7850,7 @@
             if (listEl) listEl.innerHTML = _codexRenderList();
             const detailEl = document.getElementById('codexDetail');
             if (detailEl) detailEl.innerHTML = _codexDossierFor(race);
+            window._ewMountDossierViewer();
         };
 
         window._codexSetFilter = function(type, value) {
@@ -8056,6 +8091,7 @@
             `;
             const w = document.getElementById('shopWallet');
             if (w) window._renderWallet(w);
+            window._ewMountDossierViewer();
         };
 
         window._shopSelect = function(race) {
@@ -8071,6 +8107,7 @@
             grid.innerHTML = _shopGridHtml();
             if (feat) feat.innerHTML = _shopFeaturedHtml();
             detail.innerHTML = _shopRenderDetail(race);
+            window._ewMountDossierViewer();
         };
 
         window._shopSetFilter = function(type, value) {
@@ -8095,6 +8132,7 @@
             _shopConfirmToken = !!useToken;
             const d = document.getElementById('shopDetail');
             if (d) d.innerHTML = _shopRenderDetail(race);
+            window._ewMountDossierViewer();
         };
 
         window._shopCancelConfirm = function() {
@@ -8103,6 +8141,7 @@
             _shopConfirmToken = false;
             const d = document.getElementById('shopDetail');
             if (d) d.innerHTML = _shopRenderDetail(_shopSelectedRace);
+            window._ewMountDossierViewer();
         };
 
         window._shopViewInCodex = function(race) {
@@ -8144,6 +8183,7 @@
                     if (typeof playSfx === 'function') { try { playSfx('uiError'); } catch (e) {} }
                     alert((r && r.error) || 'Purchase failed.');
                     if (d) d.innerHTML = _shopRenderDetail(race);
+                    window._ewMountDossierViewer();
                 }
             });
         };
@@ -8163,6 +8203,7 @@
 
         window._shopBack = function() {
             if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+            if (window.EWCharViewer) window.EWCharViewer.unmount();
             if (typeof GS !== 'undefined' && typeof state !== 'undefined') state.gameState = GS.MAIN_MENU;
             if (typeof _showTitlePage === 'function') _showTitlePage('mainMenuPage');
             window._refreshWallets();

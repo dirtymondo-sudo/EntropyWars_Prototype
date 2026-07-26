@@ -4,7 +4,91 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## ABILITY TARGET DRUM = QUICK-MENU MIRROR: MOVE→CAST rows (2026-07-25, LATEST) — battle.js, hud.js
+## 3D CHARACTER VIEWER + PARTY FORGE (2026-07-26, LATEST) — three-renderer.js, party-builder.js, ui.js, map.js, index.html, styles-hud.css, styles-base.css
+Token `20260726f-blackui` → `20260726g-pb3d`. Owner request: live 3D models in
+the Codex + Party Builder (character-creator orbit/zoom), battle-parity spell
+blades, visual-weight hierarchy pass, and a standalone Pokémon-Showdown-style
+team builder. All menu-side/local — no online relay surface touched.
+
+### 1. window.EWCharViewer — shared interactive character viewer (three-renderer.js)
+Inside the ThreeRenderer IIFE (also exported as `ThreeRenderer.charViewer`).
+ONE lazy WebGL context (singleton), remounted between hosts:
+- `supports(race, gender)` → bool (reads RACE_MODELS_3D directly, so werewolf
+  always shows the BEAST, not the day form).
+- `mount(hostEl, race, gender, {accent})` — appends the canvas into hostEl
+  (must be position:relative), loads the def's GLB through the SAME
+  `_unitGlbCache` as the board (codex browsing pre-warms match preload),
+  clones via SkeletonUtils, scales to `def.heightRatio` (TRUE relative scale:
+  fairy small, giant looms), bakes the retargeted library idle via
+  `_animLibBakeForModel` (per-character Meshy idle clip = fallback), and spins
+  a rAF loop that self-sleeps when the host leaves the DOM.
+- Interactions: drag = model yaw + camera pitch (polar clamp 0.08–1.25),
+  wheel = zoom 0.55–2.8 (listener passive:false), double-click = reset +
+  resume the 0.35 rad/s auto-turntable (pauses 5s after any touch).
+- Scenery: hemi+key+violet-rim lights, soft shadow blob, additive esoteric
+  summoning-circle floor decal (canvas texture; `opts.accent` tints it — the
+  faction color is passed in).
+- Host classes: `.ew-cv-ready` when the model is live (CSS crossfades the 2D
+  sprite out — generic rules in styles-hud.css `canvas[data-ew-charviewer]`),
+  `.ew-cv-fail` on load failure (sprite stays). `unmount()` stops the loop —
+  called on codex/shop/teambuilder back-navigation and React unmounts. Wrap→
+  inner nesting preserves `def.yawOffset` under the turntable yaw. NEVER
+  dispose the clone's materials/geometry (shared with the cached base GLB).
+
+### 2. Codex + Shop dossiers stage the live model (ui.js, styles-hud.css)
+`_codexHeroHtml` emits `.cdx-hero-viewer[data-cv-race/gender/accent]` (data
+carrier) when the race is 3D-ready and not locked; `_ewMountDossierViewer()`
+(rAF) mounts the viewer on the PARENT `.cdx-hero-stage` — called after every
+codex/shop innerHTML pass (`_renderCodex`, `_codexSelect`, `_renderShop`,
+`_shopSelect`, confirm/cancel/buy re-renders). Locked files keep the blacked
+sprite. `.cdx-hero` grew to clamp(240px,40vh,430px) (the subject IS the page).
+Gender = male model when both exist, else whichever gender has one.
+
+### 3. Party Builder hero = HeroViewer3D (party-builder.js)
+React component (`.pb-hero3d` host, `.pb-hero3d-fallback` sprite under it,
+hover hint chip). Mounts/moves the singleton on race/gender change; cleanup on
+unmount. The big 2D hero sprite is gone wherever a model exists.
+
+### 4. Battle-parity spell blades (party-builder.js `.pbx-blade`)
+The old skewed clip-path blades (retired in battle with the drum) are REPLACED
+with the current Horologe command-row look: straight rows, category tint edge
+to edge (`--bc-hi/--bc-lo` gradient wash over near-black), 3px colored left
+edge, glowing category glyph, Cormorant SC 16px names, PS1 outline type badge
+(IBM Plex Mono, matches hud.js `typeBadgeStyle`), PW/MP chips, GOLD DIAMOND
+slot-cost pips (`.pbx-cpip`, the battle's AP pip language), yellow ▶ bob
+cursor on hover, spectrum shimmer hairline on equipped pool rows, armed-green
+equipped rack rows (the battle's ✓-pend look). PB_CAT synced to hud.js
+_HRLG_CAT (#ff5f5f/#58d858/#5cb2ff/#a06bff/#f0d060) — KEEP THESE IN SYNC.
+Two-line layout: row1 name+type badge (+gold RACE chip for race abilities),
+row2 desc+chips. Rack SLOT_H is 44 now.
+
+### 5. Visual-weight pass (party-builder.js)
+Primary: 3D hero + name (clamp 24–40px Cinzel) and the ONE big green CTA
+(SEAL YOUR FATE / START MATCH / SAVE TEAM — fontSize 18, padding 12/34).
+Secondary: party rail, roster, abilities, ★SAVE/↑LOAD (LOAD shows saved-team
+count). Tertiary: dice tools shrunk + dimmed ('🎲 ONE'/'🎲 ALL'/'RESET' with
+tooltips), CONFIRM now says which numeral it locks. Tabs renamed ASSESSMENT /
+DOSSIER.
+
+### 6. Standalone Party Forge (main menu → Party Builder)
+- index.html: `.mm-btn-teambuilder` main-menu button (after Play) →
+  `window._goToTeamBuilder()` (map.js) → `#teamBuilderPage` title-page with
+  `#teamBuilderBody`; hover color in styles-base.css.
+- party-builder.js: `_pbStandaloneMode` module flag; `_mountReactTeamBuilder`
+  /`_unmountReactTeamBuilder` render the SAME PartyBuilder component into the
+  page. Standalone opens on the TEAM ARCHIVE locker (opaque layer, zIndex 60):
+  saved-team cards (portrait minis, mode/date, ⚒ FORGE / COPY / DEL) + big
+  NEW TEAM card. Forging: footer becomes ← TEAMS · team-name input · 💾 SAVE
+  TEAM (no CONFIRM/SEAL/online locks). `saveTeamAs(existingId, name)` updates
+  a preset IN PLACE (id/createdAt kept) or pushes new; `captureTeamSlots()`
+  is the shared snapshot; `loadTeamPreset` reads CONFIG.teamSize FRESH
+  (standalone sets it to the preset's slot count, 1–8, before loading; NEW
+  TEAM = 4 + `defaultAllTeams()` — battle.js top-level global). Teams live in
+  profile `teamPresets` (MAX_TEAM_PRESETS 20) — the SAME list the pre-match
+  ↑ LOAD serves, so archived squads flow into every normal match. Queueing is
+  NOT gated on presets (owner deferred that decision).
+
+## ABILITY TARGET DRUM = QUICK-MENU MIRROR: MOVE→CAST rows (2026-07-25) — battle.js, hud.js
 Token `20260725o` → `20260725p`. Recurring desync, root-caused: the spell
 target drum was built ONLY from `_getSpellValidTargets` (castable from where
 the caster STANDS), while the enemy/ally quick menus and board clicks offer

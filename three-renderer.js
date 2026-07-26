@@ -24661,10 +24661,372 @@ const ThreeRenderer = (function () {
         _introWalkUids = [];
     }
 
+    /* ══════════════════════════════════════════════════════════════════
+     *  INTERACTIVE CHARACTER VIEWER — Codex / Party Builder hero stage
+     *  A self-contained mini-scene that renders one rigged RACE_MODELS_3D
+     *  character with its retargeted idle, orbitable like a character
+     *  creator: drag to rotate (yaw + a little pitch), wheel to zoom,
+     *  double-click to reset. Reuses the SAME GLB cache + animation-library
+     *  bake as the board renderer, so the codex warms the match preload.
+     *  Singleton: one WebGL context, remounted between hosts. The host
+     *  keeps its 2D sprite underneath; we stamp `ew-cv-ready` on the host
+     *  when the model is live so CSS can crossfade sprite → model (and
+     *  `ew-cv-fail` on load failure so the sprite simply stays).
+     * ══════════════════════════════════════════════════════════════════ */
+    var _cv = null;          // singleton viewer state
+    var _cvToken = 0;        // staleness guard for async loads
+
+    function _cvResolveDef(race, gender) {
+        if (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) return null;
+        if (typeof RACE_MODELS_3D === 'undefined') return null;
+        var set = RACE_MODELS_3D[race];
+        if (!set) return null;
+        if (gender && set[gender]) return { def: set[gender], gender: gender };
+        var g = Object.keys(set)[0];
+        return g ? { def: set[g], gender: g } : null;
+    }
+
+    function _cvSupports(race, gender) {
+        if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') return false;
+        return !!_cvResolveDef(race, gender);
+    }
+
+    /* Esoteric summoning-circle floor decal, drawn once into a canvas —
+       concentric rings + tick "sigil" dashes, tinted per mount via material
+       color so each faction stains the circle its own hue. */
+    function _cvMakeCircleTexture() {
+        var cnv = document.createElement('canvas');
+        cnv.width = cnv.height = 256;
+        var g = cnv.getContext('2d');
+        g.clearRect(0, 0, 256, 256);
+        g.strokeStyle = 'rgba(255,255,255,0.9)';
+        g.lineWidth = 2;
+        g.beginPath(); g.arc(128, 128, 118, 0, Math.PI * 2); g.stroke();
+        g.lineWidth = 1;
+        g.beginPath(); g.arc(128, 128, 104, 0, Math.PI * 2); g.stroke();
+        g.beginPath(); g.arc(128, 128, 64, 0, Math.PI * 2); g.stroke();
+        // rune ticks between the outer rings
+        for (var i = 0; i < 36; i++) {
+            var a = (i / 36) * Math.PI * 2;
+            var r0 = 106, r1 = (i % 3 === 0) ? 116 : 111;
+            g.beginPath();
+            g.moveTo(128 + Math.cos(a) * r0, 128 + Math.sin(a) * r0);
+            g.lineTo(128 + Math.cos(a) * r1, 128 + Math.sin(a) * r1);
+            g.stroke();
+        }
+        // inner triangle — as above, so below
+        g.globalAlpha = 0.8;
+        for (var t = 0; t < 2; t++) {
+            g.beginPath();
+            for (var k = 0; k <= 3; k++) {
+                var ang = -Math.PI / 2 + (k / 3) * Math.PI * 2 + (t ? Math.PI : 0);
+                var px = 128 + Math.cos(ang) * 62, py = 128 + Math.sin(ang) * 62;
+                if (k === 0) g.moveTo(px, py); else g.lineTo(px, py);
+            }
+            g.stroke();
+        }
+        var tex = new THREE.CanvasTexture(cnv);
+        tex.anisotropy = 4;
+        return tex;
+    }
+
+    function _cvEnsure() {
+        if (_cv) return _cv;
+        if (typeof THREE === 'undefined') return null;
+        var r;
+        try {
+            r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        } catch (e) { return null; }
+        r.setClearColor(0x000000, 0);
+        r.outputEncoding = THREE.sRGBEncoding;
+        r.toneMapping = THREE.ACESFilmicToneMapping;
+        r.toneMappingExposure = 1.05;
+        r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        var cnv = r.domElement;
+        cnv.style.position = 'absolute';
+        cnv.style.inset = '0';
+        cnv.style.width = '100%';
+        cnv.style.height = '100%';
+        cnv.style.cursor = 'grab';
+        cnv.style.touchAction = 'none';
+        cnv.style.zIndex = '2';   // over the host's 2D sprite fallback
+        cnv.setAttribute('data-ew-charviewer', '1');
+
+        var scene = new THREE.Scene();
+        var cam = new THREE.PerspectiveCamera(26, 1, 0.05, 60);
+        scene.add(new THREE.HemisphereLight(0xcfd8ff, 0x191024, 0.9));
+        var key = new THREE.DirectionalLight(0xfff1da, 1.2);
+        key.position.set(1.7, 2.7, 2.2);
+        scene.add(key);
+        var rim = new THREE.DirectionalLight(0x9a7bff, 0.6);
+        rim.position.set(-2.2, 1.6, -2.5);
+        scene.add(rim);
+
+        var stage = new THREE.Group();     // character spins on this
+        scene.add(stage);
+
+        // grounding: soft shadow blob + slowly counter-rotating sigil circle
+        var blobTex = (function () {
+            var c2 = document.createElement('canvas'); c2.width = c2.height = 128;
+            var gg = c2.getContext('2d');
+            var grd = gg.createRadialGradient(64, 64, 4, 64, 64, 62);
+            grd.addColorStop(0, 'rgba(0,0,0,0.62)');
+            grd.addColorStop(1, 'rgba(0,0,0,0)');
+            gg.fillStyle = grd; gg.fillRect(0, 0, 128, 128);
+            return new THREE.CanvasTexture(c2);
+        })();
+        var blob = new THREE.Mesh(
+            new THREE.PlaneGeometry(1, 1),
+            new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false })
+        );
+        blob.rotation.x = -Math.PI / 2;
+        blob.position.y = 0.002;
+        scene.add(blob);
+        var circleMat = new THREE.MeshBasicMaterial({
+            map: _cvMakeCircleTexture(), transparent: true, depthWrite: false,
+            opacity: 0.34, blending: THREE.AdditiveBlending, color: 0xf2c468,
+        });
+        var circle = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), circleMat);
+        circle.rotation.x = -Math.PI / 2;
+        circle.position.y = 0.004;
+        scene.add(circle);
+
+        _cv = {
+            renderer: r, canvas: cnv, scene: scene, cam: cam, stage: stage,
+            blob: blob, circle: circle, circleMat: circleMat,
+            host: null, raf: 0, clock: new THREE.Clock(),
+            model: null, mixer: null, url: null,
+            // view state
+            h: 1, yaw: 0, polar: 0.42, zoom: 1, dist0: 4,
+            autoSpin: true, lastTouch: 0, dragging: false, px: 0, py: 0,
+        };
+
+        function _stopSpin() { _cv.lastTouch = performance.now(); }
+        cnv.addEventListener('pointerdown', function (e) {
+            _cv.dragging = true; _cv.px = e.clientX; _cv.py = e.clientY;
+            _stopSpin();
+            cnv.style.cursor = 'grabbing';
+            try { cnv.setPointerCapture(e.pointerId); } catch (_e) {}
+        });
+        cnv.addEventListener('pointermove', function (e) {
+            if (!_cv.dragging) return;
+            var dx = e.clientX - _cv.px, dy = e.clientY - _cv.py;
+            _cv.px = e.clientX; _cv.py = e.clientY;
+            _cv.yaw += dx * 0.012;
+            _cv.polar = Math.max(0.08, Math.min(1.25, _cv.polar + dy * 0.006));
+            _stopSpin();
+        });
+        function _endDrag(e) {
+            _cv.dragging = false;
+            cnv.style.cursor = 'grab';
+            if (e && e.pointerId != null) { try { cnv.releasePointerCapture(e.pointerId); } catch (_e) {} }
+        }
+        cnv.addEventListener('pointerup', _endDrag);
+        cnv.addEventListener('pointercancel', _endDrag);
+        cnv.addEventListener('wheel', function (e) {
+            e.preventDefault();
+            _cv.zoom = Math.max(0.55, Math.min(2.8, _cv.zoom * Math.exp(-e.deltaY * 0.0012)));
+            _stopSpin();
+        }, { passive: false });
+        cnv.addEventListener('dblclick', function () {
+            _cv.yaw = 0; _cv.polar = 0.42; _cv.zoom = 1;
+            _cv.lastTouch = 0;   // hand the character back to the turntable
+        });
+        return _cv;
+    }
+
+    function _cvClearModel() {
+        if (!_cv) return;
+        if (_cv.model) {
+            _cv.stage.remove(_cv.model);
+            // clones share the cached base GLB's geometry AND materials — never
+            // dispose them here; just drop the references.
+            _cv.model = null;
+        }
+        if (_cv.mixer) { try { _cv.mixer.stopAllAction(); } catch (_e) {} _cv.mixer = null; }
+        _cv.url = null;
+    }
+
+    function _cvFrame() {
+        var v = _cv;
+        if (!v) return;
+        if (!v.host || !v.host.isConnected) {   // host got re-rendered away — sleep
+            v.raf = 0;
+            return;
+        }
+        v.raf = requestAnimationFrame(_cvFrame);
+        var w = v.host.clientWidth, hpx = v.host.clientHeight;
+        if (w > 4 && hpx > 4) {
+            var sz = v.renderer.getSize(new THREE.Vector2());
+            if (Math.abs(sz.x - w) > 1 || Math.abs(sz.y - hpx) > 1) {
+                v.renderer.setSize(w, hpx, false);
+                v.cam.aspect = w / hpx;
+                v.cam.updateProjectionMatrix();
+            }
+        }
+        var dt = Math.min(v.clock.getDelta(), 0.1);
+        if (v.mixer) v.mixer.update(dt);
+        // slow turntable until touched; resumes after 5s of stillness
+        if (!v.dragging && (performance.now() - v.lastTouch) > 5000) v.yaw += dt * 0.35;
+        if (v.model) v.model.rotation.y = v.yaw;
+        v.circle.rotation.z += dt * 0.05;
+        var dist = (v.dist0 / v.zoom);
+        var cy = v.h * 0.52;
+        var pol = v.polar;
+        // camera stays on the +Z axis; the MODEL yaws under the pointer
+        v.cam.position.set(0, cy + Math.sin(pol) * dist, Math.cos(pol) * dist);
+        v.cam.lookAt(0, cy * 0.96, 0);
+        v.renderer.render(v.scene, v.cam);
+    }
+
+    function _cvSetCharacter(race, gender, opts) {
+        var v = _cvEnsure();
+        if (!v) return false;
+        opts = opts || {};
+        var res = _cvResolveDef(race, gender);
+        var host = v.host;
+        if (!res) {
+            _cvClearModel();
+            if (host) { host.classList.remove('ew-cv-ready'); host.classList.add('ew-cv-fail'); }
+            return false;
+        }
+        var def = res.def;
+        // faction accent stains the summoning circle
+        if (opts.accent) { try { v.circleMat.color.set(opts.accent); } catch (_e) {} }
+        if (v.url === def.model && v.model) return true;   // same character
+        _cvClearModel();
+        if (host) { host.classList.remove('ew-cv-ready'); host.classList.remove('ew-cv-fail'); }
+        v.url = def.model;
+        // fresh mount = fresh framing
+        v.yaw = 0; v.polar = 0.42; v.zoom = 1; v.lastTouch = 0;
+        var tok = ++_cvToken;
+        _loadUnitGLB(def.model, function (entry) {
+            if (!_cv || tok !== _cvToken) return;      // stale — user moved on
+            if (!entry || !entry.root) return;
+            var m = _cloneUnitModel(entry.root);
+            var bb = entry.bbox;
+            var rawH = (bb.max.y - bb.min.y) || 1;
+            // True relative scale: the same heightRatio the board uses, so a
+            // fairy stands waist-high to the fortune teller and a giant looms.
+            var h = Math.max(0.35, Math.min(2.8, def.heightRatio || 1));
+            var s = h / rawH;
+            m.scale.setScalar(s);
+            m.position.set(
+                -((bb.min.x + bb.max.x) * 0.5) * s,
+                -bb.min.y * s,
+                -((bb.min.z + bb.max.z) * 0.5) * s
+            );
+            var hasSkin = false;
+            m.traverse(function (n) {
+                if (n.isMesh) {
+                    n.frustumCulled = false;
+                    if (n.isSkinnedMesh) hasSkin = true;
+                }
+            });
+            // wrap (frame-loop yaw) → inner (authored yawOffset) → model —
+            // same nesting as the board, so the turntable never clobbers a
+            // model's authored facing correction.
+            var inner = new THREE.Group();
+            inner.rotation.y = def.yawOffset || 0;
+            inner.add(m);
+            var wrap = new THREE.Group();
+            wrap.add(inner);
+            v.model = wrap;
+            v.h = h;
+            var fh = Math.max(1.02, h * 1.04);
+            v.dist0 = (fh / (2 * Math.tan((v.cam.fov * Math.PI / 180) / 2))) * 1.32;
+            var gr = Math.max(0.62, Math.min(1.7, h * 0.78));
+            v.blob.scale.set(gr, gr, 1);
+            v.circle.scale.set(gr * 1.55, gr * 1.55, 1);
+            v.stage.add(wrap);
+            // idle animation: retargeted library bake first, per-character
+            // Meshy clip GLB as the fallback — same chain as the board.
+            if (hasSkin) {
+                var mixer = new THREE.AnimationMixer(m);
+                v.mixer = mixer;
+                function _playIdleClip(clip, ts) {
+                    if (!_cv || tok !== _cvToken || v.mixer !== mixer || !clip) return;
+                    var act = mixer.clipAction(clip);
+                    act.setLoop(THREE.LoopRepeat, Infinity);
+                    if (ts) act.timeScale = ts;
+                    act.play();
+                }
+                if (_animLibActive(def)) {
+                    _animLibBakeForModel(def, entry, function (baked) {
+                        if (baked && baked.idle) {
+                            _playIdleClip(baked.idle, (def.libTimeScales && def.libTimeScales.idle) || 1);
+                        } else if (def.clips && def.clips.idle) {
+                            _loadUnitGLB(def.clips.idle, function (ce) {
+                                _playIdleClip(ce.clips && ce.clips[0], def.idleTimeScale || 0);
+                            });
+                        }
+                    });
+                } else if (def.clips && def.clips.idle) {
+                    _loadUnitGLB(def.clips.idle, function (ce) {
+                        _playIdleClip(ce.clips && ce.clips[0], def.idleTimeScale || 0);
+                    });
+                }
+            }
+            if (v.host) { v.host.classList.add('ew-cv-ready'); v.host.classList.remove('ew-cv-fail'); }
+            if (!v.raf) { v.clock.getDelta(); v.raf = requestAnimationFrame(_cvFrame); }
+        });
+        // a failed base GLB never fires the success cb — watch the cache entry
+        var ce = _unitGlbCache[def.model];
+        if (ce && !ce.root) {
+            (ce.doneCbs = ce.doneCbs || []).push(function (e2) {
+                if (!_cv || tok !== _cvToken) return;
+                if (e2.failed && v.host) { v.host.classList.add('ew-cv-fail'); v.host.classList.remove('ew-cv-ready'); }
+            });
+        } else if (ce && ce.failed && host) {
+            host.classList.add('ew-cv-fail');
+        }
+        return true;
+    }
+
+    var charViewer = {
+        supports: _cvSupports,
+        /* Mount (or move) the viewer into `host` and show `race`/`gender`.
+           opts: { accent: '#hex' } tints the floor sigil. Host should be
+           position:relative; the canvas fills it. Returns false when 3D
+           can't run here (caller keeps its 2D sprite). */
+        mount: function (host, race, gender, opts) {
+            if (!host || !_cvSupports(race, gender)) return false;
+            var v = _cvEnsure();
+            if (!v) return false;
+            if (v.host && v.host !== host) {
+                v.host.classList.remove('ew-cv-ready', 'ew-cv-fail');
+            }
+            v.host = host;
+            if (v.canvas.parentNode !== host) host.appendChild(v.canvas);
+            if (v.model) host.classList.add('ew-cv-ready');
+            _cvSetCharacter(race, gender, opts);
+            if (!v.raf) { v.clock.getDelta(); v.raf = requestAnimationFrame(_cvFrame); }
+            return true;
+        },
+        setCharacter: function (race, gender, opts) { return _cvSetCharacter(race, gender, opts); },
+        unmount: function () {
+            if (!_cv) return;
+            if (_cv.raf) { cancelAnimationFrame(_cv.raf); _cv.raf = 0; }
+            if (_cv.host) _cv.host.classList.remove('ew-cv-ready', 'ew-cv-fail');
+            if (_cv.canvas.parentNode) _cv.canvas.parentNode.removeChild(_cv.canvas);
+            _cv.host = null;
+            _cvClearModel();
+        },
+        resetView: function () {
+            if (!_cv) return;
+            _cv.yaw = 0; _cv.polar = 0.42; _cv.zoom = 1; _cv.lastTouch = 0;
+        },
+        isMounted: function () { return !!(_cv && _cv.host && _cv.host.isConnected); },
+    };
+    // menu screens (ui.js codex/shop, party-builder.js) reach it here:
+    if (typeof window !== 'undefined') window.EWCharViewer = charViewer;
+
     return {
         init, activate, deactivate, isActive, dispose, hookCamera, resetForNewMatch,
         rebuildTerrain, rebuildObjects, rebuildTurrets, rebuildNexusWalls, rebuildSanctuaryWalls, rebuildUnits, rebuildHighlights,
         rebuildFog, invalidateUnits,
+
+        charViewer,
 
         /* Match-start asset gate (battle.js loading screen, ROADMAP §3.1) */
         preloadUnitModels,

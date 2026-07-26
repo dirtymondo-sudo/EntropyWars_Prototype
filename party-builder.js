@@ -142,61 +142,78 @@ if (!document.getElementById('pb-hover-css')) {
     }
 
     /* ── Battle-parity ability BLADES ──────────────────────────────
-       Same visual instrument as the in-battle Horologe menu (hud.js):
-       skewed dark body with angled ends, colored category left edge,
-       glyph, Cinzel name, chips on the right — plus an always-visible
-       one-line description (no hover required to learn a spell). */
+       The EXACT visual instrument as the in-battle Horologe command rows
+       (hud.js .hrlg-blade, 2026-07 refactor): straight full-lit rows that
+       wear their category color edge to edge — colored 3px left edge,
+       whisper-tint gradient fill, glowing category glyph, Cormorant SC
+       name, PW/MP chips, gold slot-cost diamonds — so what you equip here
+       is literally the row you'll click mid-fight. (The old skewed
+       clip-path blades were retired with the drum.) */
     .pbx-blade {
       position: relative;
       display: flex; align-items: center; gap: 8px;
-      min-height: 40px; padding: 3px 14px 4px 8px; margin: 0 9px 0 5px;
-      background: linear-gradient(100deg, #0d0d0d 0%, #070707 55%, rgba(10,10,10,0.55) 100%);
-      border: 1px solid rgba(255,255,255,0.14);
+      min-height: 44px; padding: 4px 12px 4px 10px; margin: 0 6px 0 4px;
+      background: linear-gradient(100deg, var(--bc-hi, rgba(255,255,255,0.04)) 0%, var(--bc-lo, rgba(255,255,255,0.02)) 100%), rgba(12,10,18,0.85);
+      border: 1px solid #2b2838;
       border-left: 3px solid var(--cat, #8890b0);
-      clip-path: polygon(8px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
-      transform: skewX(-6deg); transform-origin: 0 50%;
       cursor: pointer;
-      transition: background 0.12s, border-color 0.12s, box-shadow 0.15s,
-                  transform 0.12s, opacity 0.15s;
+      transition: transform 0.09s ease, box-shadow 0.1s ease, filter 0.09s ease,
+                  border-color 0.09s ease, opacity 0.15s;
     }
-    .pbx-blade > * { transform: skewX(6deg); }
-    .pbx-blade:hover {
-      background: linear-gradient(100deg, #1a1a1a 0%, #101010 65%, rgba(18,18,18,0.6) 100%);
-      border-color: var(--cat, #8890b0);
-      box-shadow: -2px 0 14px rgba(255,255,255,0.1), inset 3px 0 0 var(--cat, #8890b0);
-      transform: skewX(-6deg) translateX(3px);
+    .pbx-blade:hover:not(.empty) {
+      transform: scaleY(1.03);
+      border-color: rgba(232,228,216,0.9); border-left-color: var(--cat, #8890b0);
+      box-shadow: 0 0 16px var(--bc-faint, rgba(255,255,255,0.08)), inset 3px 0 0 var(--cat, #8890b0);
+      filter: brightness(1.22) saturate(1.08);
+      z-index: 3;
     }
-    .pbx-blade:active { filter: brightness(0.85); }
-    .pbx-blade.on {
-      background: linear-gradient(100deg, #151515 0%, #0c0c0c 65%, rgba(15,15,15,0.6) 100%);
-      border-color: var(--cat, #8890b0);
-      box-shadow: inset 3px 0 0 var(--cat, #8890b0), -1px 0 10px rgba(0,0,0,0.4);
+    .pbx-blade:active:not(.empty) { transform: scale(0.985); }
+    /* the classic yellow JRPG hand-cursor slides in on the hovered row */
+    .pbx-cursor {
+      flex: none; width: 0; overflow: hidden; margin-right: -4px;
+      font-size: 13px; line-height: 1; color: #f0d060; pointer-events: none;
+      text-shadow: 2px 2px 0 #000, 0 0 9px rgba(240,208,96,0.85);
+      transition: width 0.1s ease, margin 0.1s ease;
     }
+    .pbx-blade:hover:not(.empty) .pbx-cursor { width: 13px; margin-right: 0;
+      animation: pbxCursorBob 0.55s steps(2, jump-none) infinite; }
+    @keyframes pbxCursorBob {
+      0%, 100% { transform: translateX(0); }
+      50%      { transform: translateX(-4px); }
+    }
+    .pbx-blade.on { border-color: var(--cat, #8890b0); }
     .pbx-blade.empty {
-      border: 1px dashed rgba(255,255,255,0.18);
-      border-left: 3px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.015);
-      cursor: default; min-height: 26px;
+      border: 1px dashed #2b2838;
+      border-left: 3px dashed #3a3548;
+      background: rgba(10,9,16,0.5);
+      cursor: default; min-height: 28px;
     }
-    .pbx-blade.empty:hover {
-      transform: skewX(-6deg); box-shadow: none;
-      background: rgba(255,255,255,0.015);
-      border-color: rgba(255,255,255,0.18);
-    }
-    /* ── EQUIPPED slot blades — green = locked into a spell slot ── */
+    /* ── EQUIPPED slot blades — armed green, same as the battle's ✓ row ── */
     .pbx-blade.equipped {
-      border-color: rgba(90,205,125,0.45);
-      border-left: 3px solid #4fd07a;
-      background: linear-gradient(100deg, rgba(20,52,33,0.92) 0%, rgba(12,30,20,0.85) 55%, rgba(11,26,17,0.5) 100%);
-      box-shadow: inset 3px 0 0 #4fd07a, -1px 0 10px rgba(0,0,0,0.4);
+      border-color: rgba(87,217,138,0.5); border-left: 3px solid #57d98a;
+      background: linear-gradient(100deg, rgba(87,217,138,0.14) 0%, rgba(87,217,138,0.05) 100%), rgba(10,16,12,0.88);
+      box-shadow: inset 3px 0 0 #57d98a;
     }
     .pbx-blade.equipped:hover {
-      border-color: #62e290;
-      background: linear-gradient(100deg, rgba(26,66,42,0.95) 0%, rgba(15,38,25,0.9) 65%, rgba(14,34,22,0.6) 100%);
-      box-shadow: inset 3px 0 0 #62e290, -2px 0 14px rgba(70,205,115,0.2);
+      border-color: #57d98a;
+      box-shadow: -2px 0 22px rgba(87,217,138,0.35), inset 3px 0 0 #57d98a;
+      filter: brightness(1.15);
     }
     .pbx-blade.equipped .pbx-slotno { color: #5fbf82; font-weight: 700; }
     .pbx-blade.equipped .pbx-x { color: rgba(255,122,138,0); }
+    /* pool row already equipped — spectrum hairline underneath, like the
+       battle's selected row */
+    .pbx-blade.on::after {
+      content: ''; position: absolute; left: 2px; right: 2px; bottom: -1px; height: 2px;
+      background: linear-gradient(90deg, #ff5f5f, #f0d060, #58d858, #4fd8ff, #a06bff, #ff4fa3, #ff5f5f);
+      background-size: 200% 100%;
+      animation: pbxShimmer 3s linear infinite;
+      opacity: 0.75; pointer-events: none; z-index: 4;
+    }
+    @keyframes pbxShimmer {
+      0%   { background-position: 0% 50%; }
+      100% { background-position: 200% 50%; }
+    }
     /* the rack that holds the 8 fixed spell slots */
     .pbx-slotrack {
       display: flex; flex-direction: column; gap: 3px;
@@ -215,31 +232,39 @@ if (!document.getElementById('pb-hover-css')) {
       overflow-y: auto; min-height: 0;
     }
     .pbx-glyph { font-size: 15px; width: 18px; text-align: center; flex: none;
-                 text-shadow: 0 0 10px rgba(0,0,0,0.6); }
-    .pbx-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+                 color: var(--cat, #8890b0); text-shadow: 0 0 10px var(--bc-soft, rgba(0,0,0,0.6)); }
+    .pbx-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
     .pbx-row1 { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
-    /* the NAME never shrinks — chips clip at the right edge if space runs out
-       (same rule as the battle blades) */
+    /* battle-parity name: Cormorant SC small caps, never shrinks below the
+       chips — the desc row ellipsizes instead */
     .pbx-name {
-      flex: 0 0 auto; max-width: 50%;
-      font-family: 'Cinzel', serif; font-weight: 700; font-size: 13px;
-      letter-spacing: 0.04em; color: #e6e9f2; line-height: 1.15;
+      flex: 0 1 auto; min-width: 0;
+      font-family: 'Cormorant SC', serif; font-weight: 600; font-size: 16px;
+      letter-spacing: 0.1em; color: #e8e4d8; line-height: 1;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.7);
     }
+    .pbx-blade:hover .pbx-name { color: #fff; text-shadow: 0 0 10px var(--bc-soft, rgba(255,255,255,0.3)); }
     @media (max-width: 1500px) {
-      .pbx-name { font-size: 12px; }
+      .pbx-name { font-size: 14px; }
     }
     .pbx-desc {
-      font-size: 10px; line-height: 1.3; color: #77809a;
+      font-size: 10px; line-height: 1.3; color: #7a7490;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      flex: 1 1 auto; min-width: 0;
     }
+    .pbx-row2 { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
     .pbx-mp {
-      flex: none; font-size: 9px; letter-spacing: 0.08em; color: #7fc9e8;
-      border: 1px solid rgba(95,214,255,0.35); background: rgba(95,214,255,0.08);
+      flex: none; font-size: 9px; letter-spacing: 0.08em; color: #8fd0e8;
+      border: 1px solid rgba(79,216,255,0.45); background: rgba(8,7,12,0.7);
       padding: 1px 5px; white-space: nowrap;
     }
-    .pbx-pw { flex: none; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; }
-    .pbx-cost { flex: none; font-size: 8px; letter-spacing: 0.14em; }
+    .pbx-pw { flex: none; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+    /* loadout-slot cost — gold diamond pips, the battle's AP language */
+    .pbx-cost { flex: none; display: flex; gap: 3px; align-items: center; }
+    .pbx-cpip { width: 7px; height: 7px; transform: rotate(45deg); background: #f0d060;
+      opacity: 0.95; box-shadow: 0 0 5px rgba(240,208,96,0.6); }
+    .pbx-cpip.heavy { background: #ff9a70; box-shadow: 0 0 5px rgba(255,150,112,0.6); }
     .pbx-slotno { flex: none; width: 20px; font-size: 9px; color: #555c70; text-align: right;
       align-self: stretch; display: flex; flex-direction: column;
       align-items: flex-end; justify-content: space-around; gap: 2px; padding: 1px 0; }
@@ -251,24 +276,22 @@ if (!document.getElementById('pb-hover-css')) {
     .pbx-x { flex: none; font-size: 10px; color: rgba(255,122,138,0); transition: color 0.12s; }
     .pbx-blade:hover .pbx-x { color: rgba(255,122,138,0.9); }
 
-    /* ── SUBCLASS bar — same blade instrument, sits above the spell pool ── */
+    /* ── SUBCLASS bar — same command-row instrument, above the spell pool ── */
     .pbx-subbar {
       display: flex; align-items: center; gap: 9px;
-      min-height: 34px; padding: 4px 14px 4px 10px; margin: 7px 9px 0 5px;
-      background: linear-gradient(100deg, #151515 0%, #0c0c0c 65%, rgba(15,15,15,0.6) 100%);
-      border: 1px solid var(--cat, #8890b0); border-left: 3px solid var(--cat, #8890b0);
-      clip-path: polygon(8px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
-      transform: skewX(-6deg); transform-origin: 0 50%;
+      min-height: 36px; padding: 4px 12px 4px 10px; margin: 7px 6px 0 4px;
+      background: linear-gradient(100deg, var(--bc-hi, rgba(255,255,255,0.05)) 0%, var(--bc-lo, rgba(255,255,255,0.02)) 100%), rgba(12,10,18,0.85);
+      border: 1px solid #2b2838; border-left: 3px solid var(--cat, #8890b0);
       cursor: pointer;
-      transition: background 0.12s, box-shadow 0.15s, transform 0.12s;
+      transition: transform 0.09s ease, box-shadow 0.1s ease, filter 0.09s ease, border-color 0.09s ease;
     }
-    .pbx-subbar > * { transform: skewX(6deg); }
     .pbx-subbar:hover {
-      background: linear-gradient(100deg, #1e1e1e 0%, #121212 65%, rgba(20,20,20,0.6) 100%);
-      box-shadow: -2px 0 16px rgba(255,255,255,0.12), inset 3px 0 0 var(--cat, #8890b0);
-      transform: skewX(-6deg) translateX(3px);
+      transform: scaleY(1.03);
+      border-color: rgba(232,228,216,0.9); border-left-color: var(--cat, #8890b0);
+      box-shadow: 0 0 16px var(--bc-faint, rgba(255,255,255,0.08)), inset 3px 0 0 var(--cat, #8890b0);
+      filter: brightness(1.2);
     }
-    .pbx-subbar:active { filter: brightness(0.85); }
+    .pbx-subbar:active { transform: scale(0.985); }
 
     /* ── race trait rows (passives & terrain) ── */
     .pbx-trait {
@@ -332,6 +355,67 @@ if (!document.getElementById('pb-hover-css')) {
       background: rgba(255,255,255,0.07);
       border-color: rgba(255,255,255,0.4);
     }
+
+    /* ── LIVE 3D HERO STAGE (EWCharViewer mounts here) ─────────────────
+       The canvas is appended into .pb-hero3d; when the model is live the
+       host gains .ew-cv-ready and the flat sprite fades out beneath it.
+       (Generic canvas fade rules live in styles-hud.css.) */
+    .pb-hero3d { position: absolute; inset: 0; }
+    .pb-hero3d-fallback {
+      position: absolute; inset: 0; display: flex;
+      align-items: flex-end; justify-content: center;
+      transition: opacity 0.5s ease;
+    }
+    .pb-hero3d.ew-cv-ready .pb-hero3d-fallback { opacity: 0; }
+    .pb-hero3d-hint {
+      position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+      z-index: 3; pointer-events: none; white-space: nowrap;
+      font-family: 'DotGothic16', monospace; font-size: 9px; letter-spacing: 0.14em;
+      color: rgba(232,228,216,0); text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+      padding: 2px 10px; border: 1px solid rgba(255,255,255,0);
+      background: rgba(0,0,0,0); transition: color 0.25s, border-color 0.25s, background 0.25s;
+    }
+    .pb-hero3d.ew-cv-ready:hover .pb-hero3d-hint {
+      color: rgba(232,228,216,0.85);
+      border-color: rgba(255,255,255,0.16);
+      background: rgba(0,0,0,0.55);
+    }
+
+    /* ── TEAM ARCHIVE (standalone builder locker) ────────────────────── */
+    .pb-team-card {
+      position: relative; display: flex; flex-direction: column; gap: 8px;
+      padding: 12px 14px; background: rgba(0,0,0,0.42);
+      border: 1px solid rgba(255,255,255,0.14); cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s, background 0.15s;
+      clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+    }
+    .pb-team-card:hover {
+      border-color: rgba(242,196,104,0.7);
+      box-shadow: 0 0 18px rgba(242,196,104,0.12);
+      background: rgba(242,196,104,0.05);
+      transform: translateY(-2px);
+    }
+    .pb-team-card.new {
+      align-items: center; justify-content: center; min-height: 150px;
+      border: 1px dashed rgba(61,220,132,0.45); background: rgba(61,220,132,0.04);
+    }
+    .pb-team-card.new:hover {
+      border-color: #3ddc84; box-shadow: 0 0 22px rgba(61,220,132,0.18);
+      background: rgba(61,220,132,0.08);
+    }
+    .pb-team-mini {
+      width: 44px; height: 44px; flex: none; overflow: hidden; position: relative;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.5));
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .pb-team-act {
+      background: transparent; border: 1px solid rgba(255,255,255,0.18);
+      color: #9c9c9c; font-family: 'DotGothic16', monospace; font-size: 9px;
+      letter-spacing: 0.12em; padding: 4px 9px; cursor: pointer;
+      transition: color 0.12s, border-color 0.12s, background 0.12s;
+    }
+    .pb-team-act:hover { color: #fff; border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.07); }
+    .pb-team-act.danger:hover { color: #ff8a8a; border-color: #ff5c5c; background: rgba(255,92,92,0.1); }
   `;
   document.head.appendChild(_css);
 }
@@ -624,6 +708,35 @@ function PortraitSprite({ race, gender, cls, glow, style: extraStyle }) {
     ...extraStyle,
   }});
 }
+/* ── LIVE 3D HERO — the character-creator stage ─────────────────────
+   Mounts the shared EWCharViewer (three-renderer.js) into a host div:
+   the vessel's rigged GLB with its retargeted idle, drag to orbit,
+   wheel to zoom, double-click to reset. The flat sprite renders
+   underneath as the loading frame and stays for sprite-only vessels. */
+function HeroViewer3D({ race, gender, cls, faction }) {
+  const hostRef = React.useRef(null);
+  const accent = getFactionColor(faction);
+  const supported = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports(race, gender));
+  React.useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    if (supported) {
+      window.EWCharViewer.mount(host, race, gender, { accent });
+    } else if (window.EWCharViewer) {
+      // sprite-only vessel — release the canvas if it was sitting in our host
+      if (host.querySelector('canvas[data-ew-charviewer]')) window.EWCharViewer.unmount();
+      host.classList.remove('ew-cv-ready', 'ew-cv-fail');
+    }
+  }, [race, gender, supported, accent]);
+  React.useEffect(() => () => {
+    // component teardown: put the singleton viewer to sleep
+    if (window.EWCharViewer) window.EWCharViewer.unmount();
+  }, []);
+  return h('div', { ref: hostRef, className: 'pb-hero3d' },
+    h('div', { className: 'pb-hero3d-fallback' },
+      h(Sprite, { race, gender, cls, size: '100%', glow: faction, style: { width: '100%', height: '97%' } })),
+    supported ? h('div', { className: 'pb-hero3d-hint' }, '⟲ DRAG · ⌕ SCROLL · ✕2 RESET') : null);
+}
 function TypeChip({ type, size }) {
   const c = getTypeColor(type);
   const text = TYPE_TEXT_C[(type || '').toLowerCase()] || c;
@@ -763,16 +876,18 @@ function buildSpellTooltip(sp, x, y) {
 }
 
 // ── Battle-parity ability blades ─────────────────────────────────
-// The builder's spell rows mirror the in-battle Horologe blades
-// (hud.js): category glyph + colored left edge, Cinzel name, the
-// canonical type badge, power/MP chips. What you equip here is what
-// you'll recognize mid-fight. Category map matches hud.js _HRLG_CAT.
+// The builder's spell rows ARE the in-battle Horologe command rows
+// (hud.js HorologeBlade / .hrlg-blade): whole row wears its category
+// color, glowing glyph + colored left edge, Cormorant SC name, the
+// canonical type badge, PW/MP chips, gold cost diamonds. What you
+// equip here is exactly the row you'll click mid-fight.
+// KEEP IN SYNC with hud.js _HRLG_CAT (colors updated 2026-07-26).
 const PB_CAT = {
-  damage:  { icon: '⚔', color: '#ee6655' },
-  heal:    { icon: '♥', color: '#55cc66' },
-  buff:    { icon: '▲', color: '#55aaff' },
-  debuff:  { icon: '▼', color: '#cc77dd' },
-  utility: { icon: '◎', color: '#ccaa55' },
+  damage:  { icon: '⚔', color: '#ff5f5f' },
+  heal:    { icon: '♥', color: '#58d858' },
+  buff:    { icon: '▲', color: '#5cb2ff' },
+  debuff:  { icon: '▼', color: '#a06bff' },
+  utility: { icon: '◎', color: '#f0d060' },
 };
 function pbPowerStat(sp) {
   if (typeof window.spellPowerStat === 'function') return window.spellPowerStat(sp);
@@ -787,10 +902,14 @@ function pbPowerStat(sp) {
 const PB_CAT_ORDER = { damage:0, utility:1, buff:2, debuff:3, heal:4 };
 function pbCatRank(sp) { const c = classifySpellLocal(sp); return PB_CAT_ORDER[c] != null ? PB_CAT_ORDER[c] : 9; }
 function pbPowerVal(sp) { const p = pbPowerStat(sp); return p ? (parseFloat(p.value) || 0) : 0; }
+/* THE canonical type badge — same shape as hud.js typeBadgeStyle (PS1
+   outline chip: 1px frame in the type's color around mono caps, no fill
+   wash, no cut corners). Battle-parity: matchup intel looks identical
+   on the blade here and mid-fight. */
 function pbTypeBadgeStyle(typeKey, fontSize) {
   const k = (typeKey || '').toLowerCase();
   const base = TYPE_C[k] || EW.inkMute;
-  return { display:'inline-flex', alignItems:'center', flexShrink:0, fontFamily:'DotGothic16, monospace', fontSize:fontSize||9, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', lineHeight:1.3, color:TYPE_TEXT_C[k]||base, background:`linear-gradient(${base}22,${base}22), rgba(9,11,17,0.82)`, border:`1px solid ${base}aa`, padding:'1px 6px', textShadow:'0 1px 2px rgba(0,0,0,0.85)', clipPath:'polygon(3px 0, 100% 0, 100% calc(100% - 3px), calc(100% - 3px) 100%, 0 100%, 0 3px)' };
+  return { display:'inline-flex', alignItems:'center', flexShrink:0, fontFamily:'"IBM Plex Mono", monospace', fontSize:fontSize||9, fontWeight:500, letterSpacing:'0.14em', textTransform:'uppercase', lineHeight:1.3, color:TYPE_TEXT_C[k]||base, background:'rgba(8,7,12,0.72)', border:`1px solid ${base}`, padding:'1px 6px', textShadow:'0 1px 2px rgba(0,0,0,0.85)' };
 }
 function slotNoNode(slotNums, slotLabel) {
   if (slotNums && slotNums.length) return h('span', { className:'pbx-slotno' }, slotNums.map(n => h('span', { key:n }, n)));
@@ -807,28 +926,39 @@ function SpellBlade({ sp, slotLabel, slotNums, heightPx, equippedSlot, pool, equ
   const cc = PB_CAT[cat] || PB_CAT.damage;
   const sc = spellSlotCost(sp);
   const pw = pbPowerStat(sp);
-  const costColor = sc >= 3 ? 'rgba(255,150,120,0.9)' : sc === 2 ? 'rgba(240,200,110,0.85)' : 'rgba(160,170,200,0.65)';
   const aoe = pbAoeLabel(sp);
   const rng = sp.range != null ? (sp.range === 0 ? 'Self' : 'RNG ' + sp.range) : null;
   const descBits = [rng, aoe ? 'AOE ' + aoe : null].filter(Boolean).join(' · ');
+  // The whole row wears its category color — same CSS vars as hud.js.
+  const catVars = {
+    '--cat': cc.color,
+    '--bc-soft': cc.color + '88', '--bc-faint': cc.color + '2a',
+    '--bc-hi': cc.color + '2e', '--bc-lo': cc.color + '12',
+  };
+  const pips = [];
+  for (let i = 0; i < sc; i++) pips.push(h('span', { key:i, className:'pbx-cpip' + (sc >= 3 ? ' heavy' : '') }));
   return h('div', {
     className: 'pbx-blade' + (pool ? ' pool' : '') + (equipped ? ' on' : '') + (equippedSlot ? ' equipped' : ''),
-    style: { '--cat': cc.color, opacity: dim ? 0.45 : 1, minHeight: heightPx || undefined },
+    style: { ...catVars, opacity: dim ? 0.45 : 1, minHeight: heightPx || undefined },
     onClick, onMouseEnter: onHoverIn, onMouseLeave: onHoverOut,
   },
     slotNoNode(slotNums, slotLabel),
+    h('span', { className:'pbx-cursor' }, '▶'),
     pool ? h('span', { className:'pbx-checkbox', style:{ borderColor: equipped ? cc.color : 'rgba(255,255,255,0.35)' } }, equipped ? h('span', { style:{ width:6, height:6, background:cc.color, display:'block' } }) : null) : null,
-    h('span', { className:'pbx-glyph', style:{ color:cc.color } }, cc.icon),
+    h('span', { className:'pbx-glyph' }, cc.icon),
     h('div', { className:'pbx-main' },
+      // row 1: name + TYPE badge own the line (matchup intel never clips)
       h('div', { className:'pbx-row1' },
         h('span', { className:'pbx-name' }, sp.name),
-        sp.spellType ? h('span', { style: pbTypeBadgeStyle(sp.spellType, 8) }, sp.spellType) : null,
-        h('span', { style:{ flex:1, minWidth:4 } }),
-        h('span', { className:'pbx-cost', title: sc + ' loadout slot' + (sc > 1 ? 's' : ''), style:{ color:costColor } }, '◆'.repeat(sc)),
+        sp.spellType ? h('span', { style: pbTypeBadgeStyle(sp.spellType, 9) }, sp.spellType) : null,
+        raceAbility ? h('span', { style:{ flexShrink:0, fontSize:8, letterSpacing:'0.14em', color:'#f2c468', border:'1px solid rgba(242,196,104,0.45)', background:'rgba(8,7,12,0.7)', padding:'1px 5px', whiteSpace:'nowrap' }, title:'Race ability — this vessel’s birthright' }, 'RACE') : null,
+        (!pool && onClick) ? h('span', { className:'pbx-x', style:{ marginLeft:'auto' } }, '✕') : null),
+      // row 2: what it does + the chips, underneath — nothing ever cut off
+      h('div', { className:'pbx-row2' },
+        h('span', { className:'pbx-desc' }, [descBits, sp.desc || ''].filter(Boolean).join(' — ') || spellCategoryLabel(cat)),
         pw ? h('span', { className:'pbx-pw', style:{ color:pw.color } }, pw.value + ' ' + pw.unit) : null,
         sp.cost ? h('span', { className:'pbx-mp' }, sp.cost + ' MP') : null,
-        (!pool && onClick) ? h('span', { className:'pbx-x' }, '✕') : null),
-      h('div', { className:'pbx-desc' }, [descBits, sp.desc || ''].filter(Boolean).join(' — ') || spellCategoryLabel(cat))));
+        h('span', { className:'pbx-cost', title: sc + ' loadout slot' + (sc > 1 ? 's' : '') }, pips))));
 }
 // ── Race traits: passives & terrain rules shown on the hero sheet ──
 // Entries marked CODED are live engine rules (map.js adaptation fns,
@@ -1010,6 +1140,13 @@ function EquipSlotBox({ size, accent, filled, icon, label, title, onClick, onCle
     filled && label ? h('span', { className:'pbx-eqslot-label' }, label) : null);
 }
 
+/* Standalone mode flag \u2014 set by _mountReactTeamBuilder (main-menu Party
+   Builder page) and cleared by the pre-match mount. In standalone the
+   component opens on the TEAM ARCHIVE locker (Pok\u00e9mon-Showdown-style:
+   saved squads \u2192 pick one to forge), and the footer trades the match
+   controls (CONFIRM / SEAL YOUR FATE / online locks) for SAVE TEAM. */
+let _pbStandaloneMode = false;
+
 function PartyBuilder() {
   const st = getSt();
   if (!st || !st.partyBuilds) return h('div', { style:{ color:'#8a93a8', padding:40, fontFamily:'DotGothic16, monospace', textAlign:'center' } }, 'Initializing\u2026');
@@ -1029,6 +1166,10 @@ function PartyBuilder() {
   const friendlyHostCanStart = isWaitingOnline && !isRankedNet && netRole === 'host' && opponentLockedToo;
   const player = isOnline ? (typeof window._myPlayer === 'function' ? window._myPlayer() : 1) : (st.builderSelectedPlayer || 1);
   const teamSize = window.CONFIG?.teamSize || 4;
+  const standalone = _pbStandaloneMode;
+  const [tbView, setTbView] = React.useState(standalone ? 'locker' : 'edit');   // standalone: 'locker' | 'edit'
+  const [editingTeamId, setEditingTeamId] = React.useState(null);
+  const [teamNameDraft, setTeamNameDraft] = React.useState('');
   const [slot, setSlot] = React.useState(() => st.builderSelectedSlot || 0);
   const [sortKey, setSortKey] = React.useState('HP');
   const [sortDir, setSortDir] = React.useState('desc');
@@ -1090,15 +1231,12 @@ function PartyBuilder() {
     const p = window.ProfileSystem?.getActiveProfile?.();
     return p?.teamPresets || [];
   };
-  const saveCurrentTeam = (name) => {
-    const p = window.ProfileSystem?.getActiveProfile?.();
-    const idx = window.ProfileSystem?.getActiveProfileIndex?.();
-    if (!p || idx == null) return;
-    if (!p.teamPresets) p.teamPresets = [];
-    const MAX = window.ProfileSystem?.MAX_TEAM_PRESETS || 20;
-    if (p.teamPresets.length >= MAX) { sfx('uiError'); return; }
+  // Snapshot the player's current build into preset slots (shared by the
+  // pre-match SAVE modal and the standalone archive's SAVE TEAM).
+  const captureTeamSlots = () => {
+    const size = window.CONFIG?.teamSize || teamSize;
     const slots = [];
-    for (let i = 0; i < teamSize; i++) {
+    for (let i = 0; i < size; i++) {
       const cn = typeof window.normalizeClassName === 'function' ? window.normalizeClassName(st.partyBuilds?.[player]?.[i], window.DEFAULT_BUILDS?.[player]?.[i]) : (st.partyBuilds?.[player]?.[i] || 'Warrior');
       const mt = st.partyMeta?.[player]?.[i] || {};
       const lo = st.loadouts?.[player]?.[i] || {};
@@ -1113,22 +1251,51 @@ function PartyBuilder() {
         loadout: { items: lo.items ? { ...lo.items } : {}, equipment: lo.equipment ? { ...lo.equipment } : {} },
       });
     }
-    p.teamPresets.push({
-      id: 'team-' + Date.now(),
-      name: name || 'Team ' + (p.teamPresets.length + 1),
-      slots,
-      gameMode: st.gameMode || 'arena',
-      createdAt: new Date().toISOString(),
-      lastUsed: new Date().toISOString(),
-    });
+    return slots;
+  };
+  /* Save into an EXISTING preset (by id) or push a new one. Returns the
+     saved preset id, or null when the archive is full. */
+  const saveTeamAs = (existingId, name) => {
+    const p = window.ProfileSystem?.getActiveProfile?.();
+    const idx = window.ProfileSystem?.getActiveProfileIndex?.();
+    if (!p || idx == null) return null;
+    if (!p.teamPresets) p.teamPresets = [];
+    const slots = captureTeamSlots();
+    const now = new Date().toISOString();
+    let saved = existingId ? p.teamPresets.find(t => t.id === existingId) : null;
+    if (saved) {
+      saved.name = name || saved.name;
+      saved.slots = slots;
+      saved.gameMode = st.gameMode || saved.gameMode || 'arena';
+      saved.lastUsed = now;
+    } else {
+      const MAX = window.ProfileSystem?.MAX_TEAM_PRESETS || 20;
+      if (p.teamPresets.length >= MAX) { sfx('uiError'); return null; }
+      saved = {
+        id: 'team-' + Date.now(),
+        name: name || 'Team ' + (p.teamPresets.length + 1),
+        slots,
+        gameMode: st.gameMode || 'arena',
+        createdAt: now,
+        lastUsed: now,
+      };
+      p.teamPresets.push(saved);
+    }
     window.ProfileSystem.saveProfile(idx, p);
     sfx('uiButtonConfirm');
+    return saved.id;
+  };
+  const saveCurrentTeam = (name) => {
+    if (saveTeamAs(null, name) == null) return;
     setShowTeamModal(false);
     setTeamSaveName('');
   };
   const loadTeamPreset = (preset) => {
     if (!preset?.slots) return;
-    for (let i = 0; i < Math.min(preset.slots.length, teamSize); i++) {
+    // Read the size FRESH — the standalone archive resizes CONFIG.teamSize
+    // to the preset before calling this, after this render captured it.
+    const sizeNow = window.CONFIG?.teamSize || teamSize;
+    for (let i = 0; i < Math.min(preset.slots.length, sizeNow); i++) {
       const s = preset.slots[i];
       if (!st.partyBuilds[player]) st.partyBuilds[player] = [];
       st.partyBuilds[player][i] = s.cls;
@@ -1167,6 +1334,55 @@ function PartyBuilder() {
     p.teamPresets = (p.teamPresets || []).filter(t => t.id !== presetId);
     window.ProfileSystem.saveProfile(idx, p);
     sfx('uiCursorMove');
+    refresh();
+  };
+
+  // ── Standalone TEAM ARCHIVE actions (Pokémon-Showdown-style locker) ──
+  const tbNewTeam = () => {
+    if (window.CONFIG) window.CONFIG.teamSize = 4;   // standard squad; modes clamp on load
+    if (typeof window.defaultAllTeams === 'function') window.defaultAllTeams();
+    st.builderConfirmedSlots = {};
+    st.teamLockedIn = false;
+    setSlot(0);
+    setEditingTeamId(null);
+    setTeamNameDraft('');
+    setTbView('edit');
+    sfx('uiButtonConfirm');
+  };
+  const tbEditTeam = (preset) => {
+    const size = Math.max(1, Math.min(8, (preset.slots || []).length || 4));
+    if (window.CONFIG) window.CONFIG.teamSize = size;
+    loadTeamPreset(preset);
+    setSlot(0);
+    setEditingTeamId(preset.id);
+    setTeamNameDraft(preset.name || '');
+    setTbView('edit');
+  };
+  const tbDuplicateTeam = (preset) => {
+    const p = window.ProfileSystem?.getActiveProfile?.();
+    const idx = window.ProfileSystem?.getActiveProfileIndex?.();
+    if (!p || idx == null) return;
+    if (!p.teamPresets) p.teamPresets = [];
+    const MAX = window.ProfileSystem?.MAX_TEAM_PRESETS || 20;
+    if (p.teamPresets.length >= MAX) { sfx('uiError'); return; }
+    const now = new Date().toISOString();
+    p.teamPresets.push({
+      ...preset,
+      id: 'team-' + Date.now(),
+      name: (preset.name || 'Team') + ' copy',
+      slots: (preset.slots || []).map(s => ({ ...s, customSpells: (s.customSpells || []).slice(), loadout: { items: { ...(s.loadout?.items || {}) }, equipment: { ...(s.loadout?.equipment || {}) } } })),
+      createdAt: now, lastUsed: now,
+    });
+    window.ProfileSystem.saveProfile(idx, p);
+    sfx('uiButtonConfirm');
+    refresh();
+  };
+  const tbSaveTeam = () => {
+    const fallback = editingTeamId ? null : ('Team ' + (getTeamPresets().length + 1));
+    const id = saveTeamAs(editingTeamId, teamNameDraft.trim() || fallback);
+    if (id == null) return;             // archive full
+    setEditingTeamId(id);
+    setTbView('locker');
     refresh();
   };
 
@@ -1371,10 +1587,10 @@ function PartyBuilder() {
       h(SigilMark),
       h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:15, letterSpacing:'0.14em', fontWeight:500 } }, 'ENTROPY WARS'),
       h('span', { style:{ width:1, height:16, background:EW.panelEdge } }),
-      h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.2em' } }, 'CHOOSE YOUR VESSEL'),
+      h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.2em' } }, standalone ? 'THE PARTY FORGE' : 'CHOOSE YOUR VESSEL'),
       h('div', { style:{flex:1} }),
       h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.14em' } }, teamSize, ' SLOTS \u00B7 ',
-        h('span', { style:{color:EW.ink} }, (mpMode?.label || 'BATTLE').toUpperCase())),
+        h('span', { style:{color:EW.ink} }, standalone ? 'TEAM ARCHIVE' : (mpMode?.label || 'BATTLE').toUpperCase())),
     ),
 
     h('div', { style:{ display:'grid', gridTemplateColumns:'112px minmax(0,1fr) clamp(340px,28vw,470px)', flex:1, minHeight:0, position:'relative', zIndex:1 } },
@@ -1429,7 +1645,7 @@ function PartyBuilder() {
               h('div', { style:{ flex:1, minWidth:0, position:'relative', display:'flex', alignItems:'flex-end', justifyContent:'center' } },
                 h('div', { style:{ position:'absolute', left:'50%', top:'52%', transform:'translate(-50%,-50%)', width:'88%', aspectRatio:'1', background:`radial-gradient(circle, ${fc}26, transparent 62%)`, filter:'blur(18px)', pointerEvents:'none' } }),
                 h('div', { style:{ position:'absolute', bottom:8, left:'50%', transform:'translateX(-50%)', width:'70%', height:12, background:`radial-gradient(ellipse, ${fc}66, transparent 70%)`, filter:'blur(3px)', pointerEvents:'none' } }),
-                h(Sprite, { race:unitRace, gender:identity.gender||'male', cls:clsName, size:'100%', glow:unitFaction, style:{ position:'relative', zIndex:1, width:'100%', height:'97%' } }),
+                h(HeroViewer3D, { race:unitRace, gender:identity.gender||'male', cls:clsName, faction:unitFaction }),
               ),
               h('div', { style:{ display:'flex', flexDirection:'column', justifyContent:'flex-end', gap:7, paddingBottom:12, flexShrink:0, paddingRight:4 } },
                 h('div', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.16em', textAlign:'center' } }, 'ITEMS'),
@@ -1448,8 +1664,8 @@ function PartyBuilder() {
           // ── identity + assessment sheet ──
           h('div', { style:{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:5, padding:'10px 12px 8px 10px', borderLeft:`1px solid ${EW.panelEdge}` } },
             h('div', { style:{ display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap', flexShrink:0 } },
-              h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(20px,2.2vw,32px)', fontWeight:600, lineHeight:1, textShadow:`0 0 26px ${fc}33` } }, _grl(unitRace, identity.gender) || unitRace),
-              h('span', { style:{ fontFamily:'Cinzel, serif', fontStyle:'italic', fontSize:'clamp(10px,1vw,14px)', fontWeight:300, color:EW.inkMute } }, 'the ', getJobDisplay(clsName).toLowerCase())),
+              h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(24px,2.8vw,40px)', fontWeight:600, lineHeight:1, textShadow:`0 0 30px ${fc}44` } }, _grl(unitRace, identity.gender) || unitRace),
+              h('span', { style:{ fontFamily:'Cinzel, serif', fontStyle:'italic', fontSize:'clamp(11px,1.1vw,16px)', fontWeight:300, color:EW.inkMute } }, 'the ', getJobDisplay(clsName).toLowerCase())),
             h('div', { style:{ display:'flex', alignItems:'center', gap:5, flexWrap:'wrap', flexShrink:0 } },
               ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:11})),
               h('span', { style:{ fontSize:9, color:`${fc}99`, letterSpacing:'0.14em', marginLeft:4, textTransform:'uppercase' } }, unitFaction, ' alignment', factionBonusTxt ? ' · ' + factionBonusTxt : '')),
@@ -1463,8 +1679,8 @@ function PartyBuilder() {
               // spell pool); this echo just keeps it visible on the sheet.
               !isArena && clsName!=='Freelancer' && secJob && h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.1em', textTransform:'uppercase' } }, '◈ SUB: ', getJobDisplay(secJob))),
             h('div', { style:{ display:'flex', gap:2, borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0, marginTop:2 } },
-              h('button', { className:'pbx-tab'+(heroTab==='stats'?' on':''), onClick:()=>setHeroTab('stats') }, 'COMBAT ASSESSMENT'),
-              h('button', { className:'pbx-tab'+(heroTab==='lore'?' on':''), onClick:()=>setHeroTab('lore') }, 'CODEX DOSSIER')),
+              h('button', { className:'pbx-tab'+(heroTab==='stats'?' on':''), onClick:()=>setHeroTab('stats') }, 'ASSESSMENT'),
+              h('button', { className:'pbx-tab'+(heroTab==='lore'?' on':''), onClick:()=>setHeroTab('lore') }, 'DOSSIER')),
             heroTab === 'stats'
               ? h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:6, overflow:'hidden', paddingTop:2 } },
                   // stat bars (short) + separate MOVE / RANGE footprints
@@ -1504,7 +1720,7 @@ function PartyBuilder() {
         // ══ ROSTER — compact codex grid; the hero + abilities lead ══
         h('div', { style:{ display:'flex', flexDirection:'column', gap:4, padding:'6px 10px', flex:1, minHeight:0, background:'linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.45))', overflow:'hidden' }},
           h('div', { style:{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', flexShrink:0 } },
-            h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(12px,1vw,15px)', letterSpacing:'0.14em', textTransform:'uppercase', color:EW.inkMute } }, 'Codex of Vessels'),
+            h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(13px,1.1vw,17px)', letterSpacing:'0.14em', textTransform:'uppercase', color:EW.ink } }, 'Codex of Vessels'),
             h('span', { style:{ fontSize:10, color:EW.inkDim, letterSpacing:'0.1em', marginRight:6 } }, filteredRoster.length,'/',rosterEntries.length),
             h('input', { placeholder:'Search...', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 10px', width:130 }}),
             h('select', { value:`${sortKey}-${sortDir}`, onChange:e=>{const[k,d]=e.target.value.split('-');setSortKey(k);setSortDir(d);}, style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, color:EW.time, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none' }},
@@ -1560,7 +1776,7 @@ function PartyBuilder() {
             h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } }, spellSlotsUsed, ' / ', slotCap, ' SLOTS FILLED')),
           h('div', { className:'pbx-slotrack-body' },
           (()=>{
-            const SLOT_H = 34, GAP = 3;
+            const SLOT_H = 44, GAP = 3;   // battle-parity row height (.pbx-blade)
             let slotNo = 1;
             const rows = learnedSpells.map((sp, si) => {
               const sc = spellSlotCost(sp);
@@ -1574,7 +1790,7 @@ function PartyBuilder() {
                 onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
             });
             for (let si = spellSlotsUsed; si < slotCap; si++) rows.push(h(SpellBlade, { key:'empty-'+si, empty:true, slotNums:[String(si+1)], heightPx:SLOT_H }));
-            if (spellSlotsUsed > slotCap) rows.push(h('div', { key:'overbudget', style:{ display:'flex', alignItems:'center', gap:4, padding:'3px 8px', margin:'0 9px 0 5px', background:'rgba(255,120,120,0.08)', borderLeft:'3px solid rgba(255,120,120,0.6)', fontSize:10, color:EW.bad } },
+            if (spellSlotsUsed > slotCap) rows.push(h('div', { key:'overbudget', style:{ display:'flex', alignItems:'center', gap:4, padding:'3px 8px', margin:'0 6px 0 4px', background:'rgba(255,120,120,0.08)', borderLeft:'3px solid rgba(255,120,120,0.6)', fontSize:10, color:EW.bad } },
               h('span', { style:{flex:1} }, 'OVER BUDGET — remove spells (extras are dropped in battle)')));
             return rows;
           })())),
@@ -1641,31 +1857,98 @@ function PartyBuilder() {
       ),
     ),
 
-    h('div', { style:{ display:'flex', alignItems:'center', padding:'0 16px', height:52, gap:8, borderTop:`1px solid ${EW.panelEdge}`, background:'linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0.3))', flexShrink:0, position:'relative', zIndex:2 }},
-      // One command row: exit · party tools · presets ─ status ─ commit
-      h('button',{onClick:doBack,className:'pb-btn-danger',style:{background:'rgba(255,92,92,0.08)',color:'#ff5c5c',border:'1px solid rgba(255,92,92,0.5)',padding:'9px 20px',fontFamily:'DotGothic16, monospace',fontSize:12,letterSpacing:'0.16em',cursor:'pointer',fontWeight:600}},'← BACK'),
-      h('div',{style:{width:1,height:24,background:EW.panelEdge,margin:'0 4px'}}),
-      h('button',{onClick:doRandomize,className:'pb-btn-ghost',style:{background:'transparent',color:EW.inkMute,border:`1px solid ${EW.panelEdge}`,padding:'9px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'RANDOM'),
-      h('button',{onClick:doRandomizeAll,className:'pb-btn-ghost',style:{background:'transparent',color:EW.inkMute,border:`1px solid ${EW.panelEdge}`,padding:'9px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'RANDOM ALL'),
-      h('button',{onClick:doDefaults,className:'pb-btn-ghost',style:{background:'transparent',color:EW.inkMute,border:`1px solid ${EW.panelEdge}`,padding:'9px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'DEFAULTS'),
-      h('div',{style:{width:1,height:24,background:EW.panelEdge,margin:'0 4px'}}),
-      h('button',{onClick:()=>{setTeamSaveName('');setShowTeamModal('save');},className:'pb-btn-ghost',style:{background:'rgba(220,170,30,0.06)',color:'#dcaa1e',border:'1px solid rgba(220,170,30,0.25)',padding:'9px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'\u2605 SAVE'),
-      h('button',{onClick:()=>setShowTeamModal('load'),className:'pb-btn-ghost',style:{background:'rgba(100,180,255,0.06)',color:'rgba(100,180,255,0.9)',border:'1px solid rgba(100,180,255,0.25)',padding:'9px 14px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer'}},'\u2191 LOAD'),
-      h('div',{style:{flex:1}}),
-      h('span',{style:{fontSize:10,color:EW.inkMute,letterSpacing:'0.12em'}}, 'SLOT ', numerals[slot], ' · ', unitName),
-      h('div',{style:{width:1,height:24,background:EW.panelEdge,margin:'0 4px'}}),
-      h('button',{onClick:confirmSlot,className:'pb-btn-confirm',style:{background:'rgba(100,200,120,0.08)',color:'rgba(100,200,120,0.9)',border:'1px solid rgba(100,200,120,0.25)',padding:'9px 16px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.12em',cursor:'pointer',fontWeight:600}},'CONFIRM'),
-      friendlyHostCanStart
-        ? h('button',{onClick:doStart,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(100,200,120,0.25),rgba(100,200,120,0.08))',color:'rgba(140,240,160,0.95)',border:'1px solid rgba(100,200,120,0.6)',padding:'10px 28px',fontFamily:'Cinzel, serif',fontSize:16,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 18px rgba(100,200,120,0.25)',display:'flex',alignItems:'center',gap:10}},
-            '⚔ START MATCH')
-        : isWaitingOnline
-        ? h('button',{disabled:true,className:'pb-btn-primary pb-btn-waiting',style:{background:'linear-gradient(180deg,rgba(100,200,120,0.15),rgba(100,200,120,0.04))',color:'rgba(100,200,120,0.9)',border:'1px solid rgba(100,200,120,0.4)',padding:'10px 28px',fontFamily:'Cinzel, serif',fontSize:14,letterSpacing:'0.18em',fontWeight:500,display:'flex',alignItems:'center',gap:10,cursor:'default',opacity:0.9}},
-            (isRankedNet && opponentLockedToo) ? 'MATCH STARTING…'
-            : (!isRankedNet && netRole === 'guest' && opponentLockedToo) ? '⌛ WAITING FOR HOST TO START…'
-            : '⌛ WAITING ON OPPONENT…')
-        : h('button',{onClick:doStart,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(61,220,132,0.22),rgba(61,220,132,0.06))',color:'#3ddc84',border:'1px solid #3ddc84',padding:'10px 28px',fontFamily:'Cinzel, serif',fontSize:16,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 18px rgba(61,220,132,0.25)',display:'flex',alignItems:'center',gap:10}},
-            'SEAL YOUR FATE',h('span',{style:{fontFamily:'DotGothic16, monospace',fontSize:10,opacity:0.7}},'\u21B5')),
+    /* ══ COMMAND BAR — visual weight runs left (tertiary tools, small)
+       to right (THE decision, biggest). One glance answers "what do I
+       do to finish?": the big green seal. ══ */
+    h('div', { style:{ display:'flex', alignItems:'center', padding:'0 16px', height:56, gap:7, borderTop:`1px solid ${EW.panelEdge}`, background:'linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0.3))', flexShrink:0, position:'relative', zIndex:2 }},
+      standalone
+        ? h('button',{onClick:()=>{ setTbView('locker'); sfx('uiCursorMove'); refresh(); },className:'pb-btn-danger',style:{background:'rgba(255,92,92,0.08)',color:'#ff5c5c',border:'1px solid rgba(255,92,92,0.5)',padding:'9px 18px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer',fontWeight:600}},'← TEAMS')
+        : h('button',{onClick:doBack,className:'pb-btn-danger',style:{background:'rgba(255,92,92,0.08)',color:'#ff5c5c',border:'1px solid rgba(255,92,92,0.5)',padding:'9px 18px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer',fontWeight:600}},'← BACK'),
+      h('div',{style:{width:1,height:22,background:EW.panelEdge,margin:'0 3px'}}),
+      // tertiary dice tools — quiet, small, out of the decision path
+      h('button',{onClick:doRandomize,className:'pb-btn-ghost',title:'Randomize this vessel',style:{background:'transparent',color:EW.inkDim,border:`1px solid ${EW.panelEdge}`,padding:'7px 10px',fontFamily:'DotGothic16, monospace',fontSize:10,letterSpacing:'0.14em',cursor:'pointer'}},'🎲 ONE'),
+      h('button',{onClick:doRandomizeAll,className:'pb-btn-ghost',title:'Randomize the whole party',style:{background:'transparent',color:EW.inkDim,border:`1px solid ${EW.panelEdge}`,padding:'7px 10px',fontFamily:'DotGothic16, monospace',fontSize:10,letterSpacing:'0.14em',cursor:'pointer'}},'🎲 ALL'),
+      h('button',{onClick:doDefaults,className:'pb-btn-ghost',title:'Reset every slot to defaults',style:{background:'transparent',color:EW.inkDim,border:`1px solid ${EW.panelEdge}`,padding:'7px 10px',fontFamily:'DotGothic16, monospace',fontSize:10,letterSpacing:'0.14em',cursor:'pointer'}},'RESET'),
+      h('div',{style:{width:1,height:22,background:EW.panelEdge,margin:'0 3px'}}),
+      standalone
+        // ── standalone: name the squad, then archive it — SAVE is the seal ──
+        ? h(React.Fragment, null,
+            h('span',{style:{fontSize:9,color:EW.inkDim,letterSpacing:'0.14em'}},'TEAM NAME'),
+            h('input',{value:teamNameDraft,onChange:e=>setTeamNameDraft(e.target.value),placeholder:'Name this squad…',maxLength:30,style:{background:'rgba(0,0,0,0.4)',border:`1px solid ${EW.panelEdge}`,color:EW.ink,fontFamily:'Cinzel, serif',fontSize:14,padding:'7px 12px',width:220,letterSpacing:'0.06em'}}),
+            h('div',{style:{flex:1}}),
+            h('span',{style:{fontSize:10,color:EW.inkMute,letterSpacing:'0.12em'}}, editingTeamId ? 'FORGING · ' + (teamNameDraft || 'UNNAMED').toUpperCase() : 'NEW SQUAD'),
+            h('div',{style:{width:1,height:22,background:EW.panelEdge,margin:'0 3px'}}),
+            h('button',{onClick:tbSaveTeam,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(61,220,132,0.22),rgba(61,220,132,0.06))',color:'#3ddc84',border:'1px solid #3ddc84',padding:'12px 34px',fontFamily:'Cinzel, serif',fontSize:18,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 22px rgba(61,220,132,0.3)',display:'flex',alignItems:'center',gap:10}},
+              '💾 SAVE TEAM'))
+        // ── match flow: presets left of the status, the seal on the right ──
+        : h(React.Fragment, null,
+            h('button',{onClick:()=>{setTeamSaveName('');setShowTeamModal('save');},className:'pb-btn-ghost',title:'Archive this party as a saved team',style:{background:'rgba(220,170,30,0.06)',color:'#dcaa1e',border:'1px solid rgba(220,170,30,0.25)',padding:'8px 12px',fontFamily:'DotGothic16, monospace',fontSize:10,letterSpacing:'0.14em',cursor:'pointer'}},'★ SAVE'),
+            h('button',{onClick:()=>setShowTeamModal('load'),className:'pb-btn-ghost',title:'Load a saved team from your archive',style:{background:'rgba(100,180,255,0.06)',color:'rgba(100,180,255,0.9)',border:'1px solid rgba(100,180,255,0.25)',padding:'8px 12px',fontFamily:'DotGothic16, monospace',fontSize:10,letterSpacing:'0.14em',cursor:'pointer',display:'inline-flex',alignItems:'center'}},'↑ LOAD',
+              getTeamPresets().length ? h('span',{style:{marginLeft:5,fontSize:9,color:'rgba(100,180,255,0.6)'}}, getTeamPresets().length) : null),
+            h('div',{style:{flex:1}}),
+            h('span',{style:{fontSize:10,color:EW.inkMute,letterSpacing:'0.12em'}}, 'SLOT ', numerals[slot], ' · ', unitName),
+            h('div',{style:{width:1,height:22,background:EW.panelEdge,margin:'0 3px'}}),
+            h('button',{onClick:confirmSlot,className:'pb-btn-confirm',title:'Lock this vessel and move to the next open slot',style:{background:'rgba(100,200,120,0.08)',color:'rgba(100,200,120,0.9)',border:'1px solid rgba(100,200,120,0.25)',padding:'9px 16px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.12em',cursor:'pointer',fontWeight:600}},'CONFIRM ', numerals[slot]),
+            friendlyHostCanStart
+              ? h('button',{onClick:doStart,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(100,200,120,0.25),rgba(100,200,120,0.08))',color:'rgba(140,240,160,0.95)',border:'1px solid rgba(100,200,120,0.6)',padding:'12px 32px',fontFamily:'Cinzel, serif',fontSize:18,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 22px rgba(100,200,120,0.3)',display:'flex',alignItems:'center',gap:10}},
+                  '⚔ START MATCH')
+              : isWaitingOnline
+              ? h('button',{disabled:true,className:'pb-btn-primary pb-btn-waiting',style:{background:'linear-gradient(180deg,rgba(100,200,120,0.15),rgba(100,200,120,0.04))',color:'rgba(100,200,120,0.9)',border:'1px solid rgba(100,200,120,0.4)',padding:'12px 30px',fontFamily:'Cinzel, serif',fontSize:15,letterSpacing:'0.18em',fontWeight:500,display:'flex',alignItems:'center',gap:10,cursor:'default',opacity:0.9}},
+                  (isRankedNet && opponentLockedToo) ? 'MATCH STARTING…'
+                  : (!isRankedNet && netRole === 'guest' && opponentLockedToo) ? '⌛ WAITING FOR HOST TO START…'
+                  : '⌛ WAITING ON OPPONENT…')
+              : h('button',{onClick:doStart,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(61,220,132,0.22),rgba(61,220,132,0.06))',color:'#3ddc84',border:'1px solid #3ddc84',padding:'12px 34px',fontFamily:'Cinzel, serif',fontSize:18,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 22px rgba(61,220,132,0.3)',display:'flex',alignItems:'center',gap:10}},
+                  'SEAL YOUR FATE',h('span',{style:{fontFamily:'DotGothic16, monospace',fontSize:10,opacity:0.7}},'\u21B5'))),
     ),
+
+    /* ══ TEAM ARCHIVE — standalone landing view (Pokémon-Showdown locker).
+       Opaque layer over the forge: pick a squad to edit, or start a new
+       one. Primary = NEW TEAM + the team cards; tertiary = per-card
+       COPY/DEL. Teams saved here surface in the pre-match ↑ LOAD list. ══ */
+    standalone && tbView === 'locker' && (() => {
+      const presets = getTeamPresets();
+      return h('div', { style:{ position:'absolute', inset:0, zIndex:60, display:'flex', flexDirection:'column', background:`radial-gradient(ellipse 1000px 700px at 50% 20%, ${EW.time}0d, transparent 60%), radial-gradient(ellipse 1200px 900px at 20% 80%, #0b0b0b 0%, ${EW.bg} 60%, #000 100%)` }},
+        h(StarField),
+        h('div', { style:{ display:'flex', alignItems:'center', height:46, padding:'0 14px 0 8px', gap:10, borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0, position:'relative', zIndex:2 }},
+          h(SigilMark),
+          h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:15, letterSpacing:'0.14em', fontWeight:500 } }, 'ENTROPY WARS'),
+          h('span', { style:{ width:1, height:16, background:EW.panelEdge } }),
+          h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.2em' } }, 'THE PARTY FORGE'),
+          h('div', { style:{flex:1} }),
+          h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.14em' } }, presets.length, ' / ', (window.ProfileSystem?.MAX_TEAM_PRESETS || 20), ' SQUADS ARCHIVED')),
+        h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', padding:'26px clamp(20px,5vw,80px) 30px', position:'relative', zIndex:1 }},
+          h('div', { style:{ marginBottom:18 }},
+            h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(22px,2.6vw,34px)', fontWeight:600, letterSpacing:'0.1em', textShadow:`0 0 30px ${EW.time}33` }}, 'TEAM ARCHIVE'),
+            h('div', { style:{ fontSize:11, color:EW.inkMute, letterSpacing:'0.08em', marginTop:4, lineHeight:1.5 }},
+              'Forge squads here, before the war finds you. Saved teams appear under ', h('b', {style:{color:'rgba(100,180,255,0.9)'}}, '↑ LOAD'), ' whenever you build a party for any match.')),
+          h('div', { style:{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:14, alignContent:'start' }},
+            h('div', { className:'pb-team-card new', onClick:tbNewTeam },
+              h('div', { style:{ fontSize:34, color:'#3ddc84', lineHeight:1, textShadow:'0 0 18px rgba(61,220,132,0.5)' }}, '+'),
+              h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:17, letterSpacing:'0.14em', color:'#3ddc84', fontWeight:600 }}, 'NEW TEAM'),
+              h('div', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.1em' }}, 'FORGE A FRESH SQUAD')),
+            presets.map(preset => {
+              const slots = preset.slots || [];
+              return h('div', { key:preset.id, className:'pb-team-card', onClick:()=>tbEditTeam(preset), title:'Open this squad in the forge' },
+                h('div', { style:{ display:'flex', alignItems:'baseline', gap:10 }},
+                  h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:18, fontWeight:600, letterSpacing:'0.06em', color:EW.ink, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 }}, preset.name || 'Unnamed'),
+                  h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.1em', flexShrink:0 }}, slots.length, ' VESSELS')),
+                h('div', { style:{ display:'flex', gap:5, flexWrap:'wrap' }},
+                  slots.slice(0, 8).map((s, si) => h('div', { key:si, className:'pb-team-mini', title:(_grl(s.race, s.gender)||s.race)+' · '+getJobDisplay(s.cls) },
+                    h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls })))),
+                h('div', { style:{ display:'flex', alignItems:'center', gap:6, marginTop:2 }},
+                  h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.08em', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }},
+                    (preset.gameMode || '').toUpperCase(), preset.lastUsed ? ' · ' + new Date(preset.lastUsed).toLocaleDateString() : ''),
+                  h('button', { className:'pb-team-act', onClick:e=>{ e.stopPropagation(); tbEditTeam(preset); } }, '⚒ FORGE'),
+                  h('button', { className:'pb-team-act', onClick:e=>{ e.stopPropagation(); tbDuplicateTeam(preset); } }, 'COPY'),
+                  h('button', { className:'pb-team-act danger', onClick:e=>{ e.stopPropagation(); deleteTeamPreset(preset.id); } }, 'DEL')));
+            })),
+          presets.length === 0 && h('div', { style:{ marginTop:22, fontSize:11, color:EW.inkDim, fontStyle:'italic', letterSpacing:'0.06em' }},
+            'The archive is empty. Forge your first squad — the entropy is patient, but not that patient.')),
+        h('div', { style:{ display:'flex', alignItems:'center', padding:'0 16px', height:56, gap:8, borderTop:`1px solid ${EW.panelEdge}`, background:'linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0.3))', flexShrink:0, position:'relative', zIndex:2 }},
+          h('button', { onClick:()=>{ if (typeof window._teamBuilderBack==='function') window._teamBuilderBack(); }, className:'pb-btn-danger', style:{background:'rgba(255,92,92,0.08)',color:'#ff5c5c',border:'1px solid rgba(255,92,92,0.5)',padding:'9px 18px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer',fontWeight:600}}, '← MAIN MENU'),
+          h('div', { style:{flex:1} }),
+          h('span', { style:{ fontSize:10, color:EW.inkDim, letterSpacing:'0.12em' }}, 'SQUADS ARE SAVED TO YOUR PROFILE')));
+    })(),
 
     showTeamModal && h('div', { onClick:()=>setShowTeamModal(false), style:{ position:'absolute', inset:0, background:'rgba(0,0,0,0.75)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }},
       h('div', { onClick:e=>e.stopPropagation(), style:{ background:'#0a0a0a', border:`1px solid ${EW.panelEdge}`, padding:'20px 24px', minWidth:340, maxWidth:480, maxHeight:'70vh', display:'flex', flexDirection:'column', gap:12, boxShadow:'0 8px 40px rgba(0,0,0,0.7)' }},
@@ -1784,8 +2067,34 @@ function PartyBuilder() {
 }
 
 let _pbRoot = null;
-window._mountReactPartyBuilder = function() { const c=document.getElementById('builderOverlay'); if(!c)return; if(!_pbRoot)_pbRoot=ReactDOM.createRoot(c); _pbRoot.render(h(PartyBuilder)); };
-window._unmountReactPartyBuilder = function() { if(_pbRoot){_pbRoot.unmount();_pbRoot=null;} };
-window._refreshReactPartyBuilder = function() { if(_pbRoot)_pbRoot.render(h(PartyBuilder)); };
+window._mountReactPartyBuilder = function() {
+  const c = document.getElementById('builderOverlay');
+  if (!c) return;
+  _pbStandaloneMode = false;
+  if (!_pbRoot) _pbRoot = ReactDOM.createRoot(c);
+  _pbRoot.render(h(PartyBuilder));
+};
+window._unmountReactPartyBuilder = function() {
+  if (_pbRoot) { _pbRoot.unmount(); _pbRoot = null; }
+  if (window.EWCharViewer) window.EWCharViewer.unmount();
+};
+window._refreshReactPartyBuilder = function() { if (_pbRoot) _pbRoot.render(h(PartyBuilder)); };
+
+/* ── Standalone Party Forge (main menu → #teamBuilderPage) ─────────────
+   Same component, standalone mode: opens on the TEAM ARCHIVE locker.
+   map.js _goToTeamBuilder / _teamBuilderBack own the page navigation. */
+let _tbRoot = null;
+window._mountReactTeamBuilder = function() {
+  const c = document.getElementById('teamBuilderBody');
+  if (!c) return;
+  _pbStandaloneMode = true;
+  if (!_tbRoot) _tbRoot = ReactDOM.createRoot(c);
+  _tbRoot.render(h(PartyBuilder));
+};
+window._unmountReactTeamBuilder = function() {
+  _pbStandaloneMode = false;
+  if (_tbRoot) { _tbRoot.unmount(); _tbRoot = null; }
+  if (window.EWCharViewer) window.EWCharViewer.unmount();
+};
 
 })();

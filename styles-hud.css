@@ -939,11 +939,35 @@
             background:
                 radial-gradient(ellipse at 20% 80%, var(--cdx-fc-dim, rgba(160,140,200,0.08)) 0%, transparent 55%),
                 linear-gradient(180deg, rgba(10,9,5,0.35), rgba(0,0,0,0.12));
-            height: clamp(200px, 32vh, 320px);
+            /* The subject IS the page — the live model gets the biggest stage
+               the dossier can spare (visual-weight pass, 2026-07-26). */
+            height: clamp(240px, 40vh, 430px);
         }
         .cdx-hero-stage {
-            position: relative; flex: 0 0 clamp(170px, 21vw, 300px);
+            position: relative; flex: 0 0 clamp(210px, 27vw, 400px);
             display: flex; align-items: flex-end; justify-content: center; min-width: 0;
+        }
+        /* ── Live 3D subject (window.EWCharViewer mounts on the STAGE) ──
+           The canvas rides over the sprite; when the model is live the host
+           gets .ew-cv-ready and the flat sprite crossfades away underneath.
+           Generic rules — the party builder's hero stage reuses them. */
+        canvas[data-ew-charviewer] { opacity: 0; transition: opacity 0.5s ease; }
+        .ew-cv-ready > canvas[data-ew-charviewer] { opacity: 1; }
+        .cdx-hero-viewer { position: absolute; inset: 0; pointer-events: none; }
+        .cdx-hero-stage.has-viewer .cdx-hero-sprite { transition: opacity 0.5s ease; }
+        .cdx-hero-stage.ew-cv-ready .cdx-hero-sprite { opacity: 0; }
+        .cdx-viewer-hint {
+            position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+            z-index: 3; pointer-events: none; white-space: nowrap;
+            font-family: 'DotGothic16', monospace; font-size: 9px; letter-spacing: 0.14em;
+            color: rgba(232,228,216,0.0); text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+            padding: 2px 10px; border: 1px solid rgba(255,255,255,0);
+            background: rgba(0,0,0,0); transition: color 0.25s, border-color 0.25s, background 0.25s;
+        }
+        .cdx-hero-stage.ew-cv-ready:hover .cdx-viewer-hint {
+            color: rgba(232,228,216,0.85);
+            border-color: rgba(255,255,255,0.16);
+            background: rgba(0,0,0,0.55);
         }
         .cdx-hero-glow {
             position: absolute; left: 50%; top: 54%; transform: translate(-50%,-50%);
@@ -1193,8 +1217,8 @@
             }
             .shop-left { min-width: unset; max-height: 34vh; flex: 0 0 auto; border-right: none; border-bottom: 1px solid rgba(160,140,200,0.12); }
             .shop-featured { display: none; }
-            .cdx-hero { height: auto; min-height: 150px; gap: 12px; padding: 10px 14px 8px 10px; }
-            .cdx-hero-stage { flex-basis: 128px; }
+            .cdx-hero { height: auto; min-height: 190px; gap: 12px; padding: 10px 14px 8px 10px; }
+            .cdx-hero-stage { flex-basis: 150px; }
             .cdx-subject-name { font-size: 19px; letter-spacing: 2px; }
             .cdx-traits-row { display: none; }
             .cdx-dossier { padding: 12px 14px 28px; }
