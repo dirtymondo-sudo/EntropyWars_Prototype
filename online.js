@@ -862,6 +862,10 @@
                     if (opts.attackName) camEvt.attackName = opts.attackName;
                     if (opts.sourceHold) camEvt.sourceHold = opts.sourceHold;
                     if (opts.targetHold) camEvt.targetHold = opts.targetHold;
+                    /* beat-1 shot variant (ots / lowHero / sky) — without it
+                       the guest opened every relayed cast on the default OTS
+                       framing while the host got the anime power shot. */
+                    if (opts.shotKind) camEvt.shotKind = opts.shotKind;
                     /* Basic attacks (and other opted-out actions) must stay
                        tactical on the guest too — dropping these flags made
                        EVERY relayed attack replay as a full cinematic. */
@@ -1785,6 +1789,116 @@
             };
         }
 
+        /* ── Cosmetic VFX siblings relay (2026-07-26) ────────────────────
+           VFX3D.fire is relayed above, but its sibling entry points never
+           were — heals, buffs, debuffs, dashes, status pops, level-ups,
+           blood, teleports, zones, and the generic projectile/beam/aoe
+           streams all existed on the HOST only. One generic wrapper:
+           primitive args ride a 'vfx3d-x' relay; the guest fog-gates each
+           fn's anchor tiles (map below) and replays.
+           fireCombo is deliberately absent — the combo-cine relay already
+           replays the full presentation (streams included) on the guest. */
+        if (typeof VFX3D !== 'undefined') {
+            /* fn → [x,y] argument-index pairs used as fog anchors */
+            window._VFXX_ANCHORS = {
+                fireHeal:           [[0, 1]],
+                fireMana:           [[0, 1]],
+                fireBuff:           [[0, 1]],
+                fireDebuff:         [[0, 1]],
+                fireLevelUp:        [[0, 1]],
+                fireStatus:         [[1, 2]],
+                fireBlood:          [[0, 1]],
+                fireDash:           [[0, 1], [2, 3]],
+                fireTeleportLegacy: [[0, 1], [2, 3]],
+                fireZone:           [[0, 1]],
+                projectile:         [[0, 1], [2, 3]],
+                beam:               [[0, 1], [2, 3]],
+                aoe:                [[0, 1]],
+            };
+            Object.keys(window._VFXX_ANCHORS).forEach(function(fnName) {
+                var _origSib = VFX3D[fnName];
+                if (typeof _origSib !== 'function') return;
+                VFX3D[fnName] = function() {
+                    var args = Array.prototype.slice.call(arguments);
+                    var result = _origSib.apply(VFX3D, args);
+                    var _netOn = window._NET && window._NET.online;
+                    if (_netOn && _isHost()) {
+                        /* JSON-safe payload: primitives ride as-is, a trailing
+                           opts object is reduced to its primitive fields */
+                        var safe = args.map(function(a) {
+                            if (a == null || typeof a === 'number'
+                                || typeof a === 'string' || typeof a === 'boolean') return a;
+                            if (typeof a === 'object' && !Array.isArray(a)) {
+                                var o = {};
+                                for (var k in a) {
+                                    if (typeof a[k] === 'number' || typeof a[k] === 'string'
+                                        || typeof a[k] === 'boolean') o[k] = a[k];
+                                }
+                                return o;
+                            }
+                            return null;
+                        });
+                        _emit('relay', { type: 'vfx3d-x', fn: fnName, args: safe });
+                    }
+                    return result;
+                };
+            });
+        }
+
+        /* ── Support / self-cast spell camera relay (2026-07-26) ─────────
+           The two-beat "gift" shot (_playSupportCineShot) and the self-cast
+           hero shot (via _spellFocusCamera) run HOST-side in battle.js —
+           without these relays the guest kept a static camera for every
+           non-offensive cast: the biggest "buffs feel flat online" gap.
+           Split to avoid double-fire: _playSupportCineShot relays itself;
+           _spellFocusCamera relays only when it did NOT delegate to the
+           support shot (self hero shot / flat pan). Guest-side fog gating
+           happens inside the replayed functions against the guest's own
+           vision. */
+        const _origPlaySupportCineShot = (typeof _playSupportCineShot === 'function') ? _playSupportCineShot : null;
+        if (_origPlaySupportCineShot) {
+            _playSupportCineShot = function(unit, target, opts) {
+                var result = _origPlaySupportCineShot(unit, target, opts);
+                var _netOn = window._NET && window._NET.online;
+                if (result && _netOn && _isHost() && unit && target) {
+                    _emit('relay', {
+                        type: 'support-cine',
+                        casterId: unit.id || null,
+                        cx: unit.x, cy: unit.y,
+                        casterPlayer: unit.player || null,
+                        tgtId: target.id != null ? target.id : null,
+                        tx: target.x, ty: target.y,
+                        spellName: (opts && opts.spellName) || null,
+                        spellId: (opts && opts.spellId) || null
+                    });
+                }
+                return result;
+            };
+            window._playSupportCineShot = _playSupportCineShot;
+        }
+
+        const _origSpellFocusCamera = (typeof _spellFocusCamera === 'function') ? _spellFocusCamera : null;
+        if (_origSpellFocusCamera) {
+            _spellFocusCamera = function(casterUnit, tx, ty, opts) {
+                var result = _origSpellFocusCamera(casterUnit, tx, ty, opts);
+                var _netOn = window._NET && window._NET.online;
+                if (_netOn && _isHost() && casterUnit
+                    && !(result && result.mode === 'support')) {
+                    _emit('relay', {
+                        type: 'spell-focus-cam',
+                        casterId: casterUnit.id || null,
+                        cx: casterUnit.x, cy: casterUnit.y,
+                        casterPlayer: casterUnit.player || null,
+                        tx: tx, ty: ty,
+                        spellName: (opts && opts.spellName) || null,
+                        spellId: (opts && opts.spellId) || null
+                    });
+                }
+                return result;
+            };
+            window._spellFocusCamera = _spellFocusCamera;
+        }
+
         resetGame();
 
         transitionTo(GS.TITLE);
@@ -2691,6 +2805,7 @@
                                 if (camEvt.attackName) camOpts.attackName = camEvt.attackName;
                                 if (camEvt.sourceHold) camOpts.sourceHold = camEvt.sourceHold;
                                 if (camEvt.targetHold) camOpts.targetHold = camEvt.targetHold;
+                                if (camEvt.shotKind) camOpts.shotKind = camEvt.shotKind;
                                 if (camEvt.noActionCam) camOpts.noActionCam = true;
                                 if (camEvt._noCinematic) camOpts._noCinematic = true;
                                 if (camEvt.frameTiles && camEvt.frameTiles.length) camOpts.frameTiles = camEvt.frameTiles;
@@ -3012,6 +3127,63 @@
                                 VFX3D.fire(data.phase, data.spellId, data.params || {});
                             } catch (e) {  }
                         }
+                    }
+
+                    /* Cosmetic VFX siblings (heals/buffs/dashes/projectiles/
+                       beams/aoe…) — fog-gate on the fn's anchor tiles, then
+                       replay. The guest's own wrapper re-runs but its emit is
+                       host-gated, so nothing loops back. */
+                    if (data.type === 'vfx3d-x' && NET.role === 'guest') {
+                        var _xArgs = data.args || [];
+                        var _xAnch = (window._VFXX_ANCHORS || {})[data.fn];
+                        var _xVis = true;
+                        if (st && st.fogOfWar && _xAnch && typeof window._isTileVisibleToViewer === 'function') {
+                            _xVis = false;
+                            for (var _xi = 0; _xi < _xAnch.length; _xi++) {
+                                var _ax = _xArgs[_xAnch[_xi][0]], _ay = _xArgs[_xAnch[_xi][1]];
+                                if (typeof _ax === 'number' && typeof _ay === 'number'
+                                    && window._isTileVisibleToViewer(_ax, _ay)) { _xVis = true; break; }
+                            }
+                        }
+                        if (_xVis && typeof VFX3D !== 'undefined'
+                            && typeof VFX3D[data.fn] === 'function'
+                            && (window._VFXX_ANCHORS || {})[data.fn]) {
+                            try { VFX3D[data.fn].apply(VFX3D, _xArgs); } catch (e) {}
+                        }
+                    }
+
+                    /* Support "gift" camera (heal/buff on an ally, deploys,
+                       zones): replay the two-beat shot. Fog gating runs
+                       inside the shot against THIS viewer's vision. */
+                    if (data.type === 'support-cine' && NET.role === 'guest') {
+                        try {
+                            var _scU = (typeof window.unitFromId === 'function') ? window.unitFromId(data.casterId) : null;
+                            if (!_scU) _scU = { x: data.cx, y: data.cy, player: data.casterPlayer || 1, id: data.casterId };
+                            var _scT = (data.tgtId != null && typeof window.unitFromId === 'function')
+                                ? window.unitFromId(data.tgtId) : null;
+                            if (!_scT) _scT = { x: data.tx, y: data.ty };
+                            var _scOpts = {};
+                            if (data.spellName) _scOpts.spellName = data.spellName;
+                            if (data.spellId) _scOpts.spellId = data.spellId;
+                            if (typeof window._playSupportCineShot === 'function') {
+                                window._playSupportCineShot(_scU, _scT, _scOpts);
+                            }
+                        } catch (e) {}
+                    }
+
+                    /* Self-cast hero shot / focus pan for every other
+                       non-offensive cast. Same viewer-side fog gating. */
+                    if (data.type === 'spell-focus-cam' && NET.role === 'guest') {
+                        try {
+                            var _sfU = (typeof window.unitFromId === 'function') ? window.unitFromId(data.casterId) : null;
+                            if (!_sfU) _sfU = { x: data.cx, y: data.cy, player: data.casterPlayer || 1, id: data.casterId };
+                            var _sfOpts = {};
+                            if (data.spellName) _sfOpts.spellName = data.spellName;
+                            if (data.spellId) _sfOpts.spellId = data.spellId;
+                            if (typeof window._spellFocusCamera === 'function') {
+                                window._spellFocusCamera(_sfU, data.tx, data.ty, _sfOpts);
+                            }
+                        } catch (e) {}
                     }
 
                     /* Entropy Strike: replay the FULL team-attack cinematic

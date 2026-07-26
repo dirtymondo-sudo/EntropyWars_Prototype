@@ -969,6 +969,7 @@ const ThreeVFX = (function () {
                 _rot0x: 0, _rot0y: 0, _rot0z: 0,
                 _spinx: 0, _spiny: 0, _spinz: 0,
                 _stretch: false,
+                _seek: null, _orbit: null, _wander: null, _stretchVel: 0,
             });
         }
 
@@ -1010,6 +1011,7 @@ const ThreeVFX = (function () {
         p.trail = null; p.onComplete = null; p.descent = false; p._ease = null;
         p._beamYawDeg = null; p._trackHeading = false; p._uvRect = null;
         p._tint = null;
+        p._seek = null; p._orbit = null; p._wander = null; p._stretchVel = 0;
         p.poolType = null; p.slotIdx = -1;
         _aliveCount = Math.max(0, _aliveCount - 1);
     }
@@ -1131,6 +1133,56 @@ const ThreeVFX = (function () {
                         sizeRange: opts.trail.sizeRange || [10, 18],
                         msRange: opts.trail.msRange || [300, 600] };
         }
+
+        /* ── Parametric motion paths (2026-07-26, ported from the wawa-vfx /
+           three-nebula playbook) ─────────────────────────────────────────
+           seek  — REVERSE EMITTER: the particle spawns wherever opts.x/y/z
+                   put it and travels INTO seek.{x,y,z} over seek.ms with an
+                   ease, optionally sweeping seek.spiralDeg degrees around
+                   the destination on the way in (charge-up spirals). After
+                   arrival it holds at the destination until ml expires.
+           orbit — circle a center: {x,y,z, r0,r1, degPerSec, phase, zRate,
+                   bobAmp, bobHz}. Radius lerps r0→r1 over the LIFETIME.
+           wander— brownian drift à la nebula's RandomDrift: adds a smooth
+                   sin/cos velocity perturbation {amp, freq} so smoke/snow
+                   stops moving in dead-straight lines.
+           All three are opt-in and cost nothing when unset. seek/orbit own
+           the particle's position (physics is skipped, like descent). */
+        if (opts.seek) {
+            p._seek = {
+                x: opts.seek.x || 0, y: opts.seek.y || 0,
+                z: opts.seek.z != null ? opts.seek.z : p.z,
+                ms: Math.max(1, opts.seek.ms || p.ml),
+                ease: opts.seek.ease || 'in',
+                spiral: (opts.seek.spiralDeg || 0) * Math.PI / 180,
+                sx: p.x, sy: p.y, sz: p.z,
+            };
+        } else { p._seek = null; }
+        if (opts.orbit) {
+            p._orbit = {
+                x: opts.orbit.x || 0, y: opts.orbit.y || 0,
+                z: opts.orbit.z != null ? opts.orbit.z : p.z,
+                r0: opts.orbit.r0 != null ? opts.orbit.r0 : 40,
+                r1: opts.orbit.r1 != null ? opts.orbit.r1 : (opts.orbit.r0 != null ? opts.orbit.r0 : 40),
+                spd: (opts.orbit.degPerSec != null ? opts.orbit.degPerSec : 180) * Math.PI / 180,
+                phase: opts.orbit.phase != null ? opts.orbit.phase : Math.random() * Math.PI * 2,
+                zRate: opts.orbit.zRate || 0,
+                bobAmp: opts.orbit.bobAmp || 0,
+                bobHz: opts.orbit.bobHz || 1.6,
+            };
+        } else { p._orbit = null; }
+        if (opts.wander) {
+            p._wander = {
+                amp: opts.wander.amp != null ? opts.wander.amp : 40,
+                freq: opts.wander.freq != null ? opts.wander.freq : 1.1,
+                ph1: Math.random() * Math.PI * 2,
+                ph2: Math.random() * Math.PI * 2,
+            };
+        } else { p._wander = null; }
+        /* stretchVel: quad-pool speed lines — the quad's LONG axis (w) keeps
+           tracking the velocity heading and its length becomes speed×k, so
+           fast particles smear into streaks (wawa-vfx "stretch billboard"). */
+        p._stretchVel = opts.stretchVel || 0;
 
         p.onComplete = opts.onComplete || null;
         p._trackHeading = !!opts.trackHeading;
@@ -1309,6 +1361,13 @@ const ThreeVFX = (function () {
         var cw = _lerp(p.w0, p.w1, t);
         var ch = _lerp(p.h0, p.h1, t);
 
+        if (p._stretchVel > 0) {
+            /* stretch-billboard: length rides the live speed so streaks smear
+               when fast and collapse to their base size as they slow */
+            var spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz);
+            cw = Math.max(cw, Math.min(spd * p._stretchVel, cw * 8));
+        }
+
         var mesh = entry.mesh;
         mesh.position.set(w.x, w.y, w.z);
 
@@ -1405,7 +1464,45 @@ const ThreeVFX = (function () {
                         });
                     }
                 }
+            } else if (p._seek) {
+                /* reverse emitter: parametric travel INTO the destination,
+                   optionally spiralling around it as the radius closes */
+                var sk = p._seek;
+                var skT = Math.min(1, p.life / sk.ms);
+                var skE = (sk.ease === 'out') ? _easeOut(skT)
+                        : (sk.ease === 'inOut') ? (skT * skT * (3 - 2 * skT))
+                        : _easeIn(skT);
+                var shrink = 1 - skE;
+                var ox = sk.sx - sk.x, oy = sk.sy - sk.y, oz = sk.sz - sk.z;
+                if (sk.spiral) {
+                    var sa = sk.spiral * skE;
+                    var sc = Math.cos(sa), ss = Math.sin(sa);
+                    var rox = ox * sc - oy * ss;
+                    var roy = ox * ss + oy * sc;
+                    ox = rox; oy = roy;
+                }
+                p.x = sk.x + ox * shrink;
+                p.y = sk.y + oy * shrink;
+                p.z = sk.z + oz * shrink;
+            } else if (p._orbit) {
+                var ob = p._orbit;
+                var obSec = p.life / 1000;
+                var obAng = ob.phase + ob.spd * obSec;
+                var obR = _lerp(ob.r0, ob.r1, t);
+                p.x = ob.x + Math.cos(obAng) * obR;
+                p.y = ob.y + Math.sin(obAng) * obR;
+                p.z = ob.z + ob.zRate * obSec
+                    + (ob.bobAmp ? Math.sin(obSec * ob.bobHz * 6.2832 + ob.phase) * ob.bobAmp : 0);
             } else {
+                if (p._wander) {
+                    /* smooth brownian drift (nebula RandomDrift): perturb the
+                       VELOCITY, never the position, so paths stay continuous */
+                    var wd = p._wander;
+                    var wt = (p.life / 1000) * wd.freq * 6.2832;
+                    p.vx += Math.sin(wt + wd.ph1) * wd.amp * dt;
+                    p.vy += Math.cos(wt * 0.83 + wd.ph2) * wd.amp * dt;
+                    p.vz += Math.sin(wt * 0.61 + wd.ph1 * 1.7) * wd.amp * 0.5 * dt;
+                }
                 var dm = Math.max(0, 1 - p.drag * dt);
                 p.vx *= dm; p.vy *= dm; p.vz *= dm;
                 p.vz -= p.gravity * dt;

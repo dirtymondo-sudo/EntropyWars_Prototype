@@ -2485,6 +2485,28 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function fireDash(fromTx, fromTy, toTx, toTy) {
         if (_suppressed()) return;
         _fireUtility('_dash_burst', { tx: fromTx, ty: fromTy });
+        /* 2026-07-26: dashes were the worst-covered kind in the library —
+           an origin puff and nothing else. Now the whole travel reads:
+           crescent chevron waves racing the mover down the path, stretch-
+           billboard speed lines, dust kicked up in their wake, and a skid
+           ring where they land. */
+        if (toTx == null || toTy == null
+            || (toTx === fromTx && toTy === fromTy)) return;
+        try {
+            _sigDashWave3D(fromTx, fromTy, toTx, toTy, {});
+        } catch (e) {}
+        var _dLen = Math.hypot(toTx - fromTx, toTy - fromTy);
+        var _dMs = Math.max(240, Math.min(520, _dLen * (_cfg().tileSize || 128) * 0.9));
+        window.setTimeout(function () {
+            if (_suppressed() || !_canSpawn()) return;
+            var ts2 = _cfg().tileSize || 128;
+            try {
+                _sigShockRing3D(toTx, toTy, {
+                    color: 0xffe0b0, r0: ts2 * 0.15, r1: ts2 * 0.95,
+                    ms: 320, height: 4
+                });
+            } catch (e) {}
+        }, _dMs);
     }
 
     function fireTeleportLegacy(fromTx, fromTy, toTx, toTy) {
@@ -4051,11 +4073,32 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var core = mkCyl(ts * 0.034 * thick, coreColor, 0.98, 212);
         var layers = [glow, mid, core];
 
+        /* 2026-07-26: ENERGY RINGS riding the beam — ring-textured discs
+           perpendicular to the axis, racing muzzle→target on a loop while
+           the beam holds. Sells power FLOW down the line instead of a
+           static glowing rod. */
+        var ringN = opts.rings != null ? opts.rings : 3;
+        var rings = [];
+        if (ringN > 0) {
+            var ringQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
+            var ringTex = _sigRingTex();
+            for (var rI = 0; rI < ringN; rI++) {
+                var rMat = _sigMat(glowColor, { map: ringTex });
+                var rMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), rMat);
+                rMesh.quaternion.copy(ringQuat);
+                rMesh.position.copy(start);
+                rMesh.renderOrder = 213;
+                scene.add(rMesh);
+                rings.push({ mesh: rMesh, mat: rMat, off: rI / ringN });
+            }
+        }
+
         var lanceMs = Math.min(80, beamMs * 0.18);
         var fadeMs  = Math.max(120, beamMs * 0.34);
         var holdEnd = beamMs - fadeMs;
 
         var entry = { meshes: [glow.mesh, mid.mesh, core.mesh], done: false };
+        for (var rM = 0; rM < rings.length; rM++) entry.meshes.push(rings[rM].mesh);
 
         _animate3D(entry, beamMs, function (elapsed) {
             /* extension 0..1 — the beam lances out from the muzzle */
@@ -4082,11 +4125,36 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 L.mesh.scale.set(r, curLen, r);
                 L.mat.opacity = L.baseOp * op;
             }
+
+            for (var ri2 = 0; ri2 < rings.length; ri2++) {
+                var R2 = rings[ri2];
+                var rt = (R2.off + elapsed / Math.max(1, beamMs * 0.55)) % 1;
+                R2.mesh.position.copy(start).addScaledVector(dir, curLen * rt);
+                var rs = ts * (0.24 + 0.14 * Math.sin(rt * Math.PI)) * thick;
+                R2.mesh.scale.set(rs, rs, 1);
+                /* bright through the middle of the run, faded at both ends */
+                R2.mat.opacity = 0.7 * op * Math.sin(rt * Math.PI);
+            }
         });
 
         /* Muzzle flash + charge sparks at the caster */
         var mp = tilePx(fromTx, fromTy);
         var mz = unitSurfaceZ(fromTx, fromTy) + unitZBoost();
+        /* reverse-emitter gather INTO the muzzle during the lance — the beam
+           visibly PULLS power in before it throws it (wawa-vfx trick) */
+        for (var cvi = 0; cvi < 9; cvi++) {
+            var ca = rn(0, 6.2832), cr = ts * rn(0.35, 0.8);
+            _spawn({
+                x: mp.x + Math.cos(ca) * cr, y: mp.y + Math.sin(ca) * cr,
+                z: mz + rn(-ts * 0.2, ts * 0.3),
+                mode: 'billboard', sprite: 'spark-blue', tint: glowColor,
+                ml: 170 + rn(0, 90),
+                seek: { x: mp.x, y: mp.y, z: mz, ms: 170 + rn(0, 80),
+                        ease: 'in', spiralDeg: 130 },
+                size0: rn(4, 8), size1: 1.5,
+                opacity0: 0.9, opacity1: 0.5,
+            });
+        }
         _spawn({
             x: mp.x, y: mp.y, z: mz,
             mode: 'billboard', sprite: 'flash',
@@ -4110,6 +4178,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var izFloor = tileZ(toTx, toTy) + 1;
         window.setTimeout(function () {
             if (_suppressed()) return;
+            /* the terminus ORB — beams used to just spark and stop; now the
+               energy visibly detonates where the line ends */
+            try {
+                _sigOrbBurst3D(toTx, toTy, {
+                    mode: 'out', color: glowColor,
+                    r0: ts * 0.1, r1: ts * 0.85 * thick,
+                    ms: 380, opacity: 0.6
+                });
+            } catch (e) {}
             for (var f = 0; f < 5; f++) {
                 _spawn({
                     x: ip.x + rn(-4, 4), y: ip.y + rn(-4, 4), z: iz + rn(-4, 4),
@@ -7349,6 +7426,252 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var s = size * (0.7 + 0.5 * e);
             mesh.scale.set(s, s, s);
             mat.opacity = (t < 0.1 ? t / 0.1 : 1 - t * t);
+        });
+    }
+
+    /* ════════════════════════════════════════════════════════════════════
+       CHARGE / ORB / WAVE / SNOW KIT (2026-07-26)
+       ════════════════════════════════════════════════════════════════════
+       Four general-purpose primitives for the systemic staging upgrade,
+       ported from the wawa-vfx / three-nebula playbook onto the house
+       engine (ThreeVFX.spawn grew seek/orbit/wander/stretchVel physics —
+       see three-vfx.js):
+         _sigChargeSpiral3D  reverse emitter — motes spiral INTO a point
+         _sigOrbBurst3D      the JRPG magic orb, imploding or exploding
+         _sigDashWave3D      crescent chevrons racing a dash path
+         _sigSnowfall3D      blizzard field (drifting flakes + frost floor)
+       All are relay-safe: they only ever run inside beats/effects that
+       online.js already carries host→guest. */
+
+    /* ── reverse emitter: motes spiral INTO a gathering point ──────────── */
+    function _sigChargeSpiral3D(tx, ty, opts) {
+        if (!_canSpawn()) return;
+        opts = opts || {};
+        var ts = _cfg().tileSize || 128;
+        var c = tilePx(tx, ty);
+        var z = unitSurfaceZ(tx, ty) + (opts.height != null ? opts.height : ts * 0.5);
+        var n = opts.count != null ? opts.count : 14;
+        var r0 = opts.r0 != null ? opts.r0 : ts * 0.6;
+        var r1 = opts.r1 != null ? opts.r1 : ts * 1.3;
+        var ms = opts.ms != null ? opts.ms : 560;
+        var spiral = opts.spiralDeg != null ? opts.spiralDeg : 220;
+        var szMul = opts.sizeMul != null ? opts.sizeMul : 1;
+        for (var i = 0; i < n; i++) {
+            var a = (i / n) * 6.2832 + rn(-0.35, 0.35);
+            var rad = rn(r0, r1);
+            var pms = ms + rn(-90, 50);
+            _spawn({
+                x: c.x + Math.cos(a) * rad,
+                y: c.y + Math.sin(a) * rad,
+                z: z + rn(-ts * 0.28, ts * 0.42),
+                mode: 'billboard', sprite: opts.sprite || 'divine-sparkle',
+                tint: opts.tint != null ? opts.tint : null,
+                ml: pms,
+                seek: { x: c.x, y: c.y, z: z, ms: pms, ease: 'in', spiralDeg: spiral },
+                size0: rn(4, 9) * szMul, size1: 1.5,
+                opacity0: 0.95, opacity1: 0.55,
+            });
+        }
+    }
+
+    /* ── the JRPG magic orb: sphere shell + hot core, in or out ──────────
+       mode 'in'  = implode: shell contracts ONTO the target (pre-impact
+                    gather / "shrinking on the victim" telegraph)
+       mode 'out' = explode: shell blooms OUT of the victim on the hit —
+                    the beat every PS1 summon ends on. */
+    function _sigOrbBurst3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var mode = opts.mode === 'in' ? 'in' : 'out';
+        var ms = opts.ms != null ? opts.ms : (mode === 'in' ? 340 : 460);
+        var rSmall = opts.r0 != null ? opts.r0 : ts * 0.13;
+        var rBig = opts.r1 != null ? opts.r1 : ts * (mode === 'in' ? 0.95 : 1.2);
+        var baseY = opts.height != null ? opts.height : ts * 0.5;
+        var color = opts.color != null ? opts.color : 0x9a7cff;
+        var peak = opts.opacity != null ? opts.opacity : 0.8;
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y + baseY, wp.z);
+
+        var shellGeo = new THREE.SphereGeometry(1, 20, 14);
+        var shellMat = _sigMat(color);
+        var shell = new THREE.Mesh(shellGeo, shellMat);
+        shell.renderOrder = 167;
+        group.add(shell);
+        var shell2Mat = _sigMat(0xffffff);
+        var shell2 = new THREE.Mesh(shellGeo.clone(), shell2Mat);
+        shell2.renderOrder = 168;
+        group.add(shell2);
+        var coreMat = _sigMagicOrbMat(0xffffff, _sigGlowTex());
+        var core = new THREE.Sprite(coreMat);
+        core.renderOrder = 169;
+        group.add(core);
+
+        return _sigRun(group, ms, function (el) {
+            var t = _sigClamp01(el / ms);
+            var r, fade;
+            if (mode === 'in') {
+                var e = _sigEaseInCubic(t);
+                r = rBig + (rSmall - rBig) * e;
+                fade = t < 0.12 ? t / 0.12 : 1;
+                coreMat.opacity = peak * t * t;
+                var cs = rSmall * (2.2 + 2.8 * t);
+                core.scale.set(cs, cs, 1);
+            } else {
+                var e2 = _sigEaseOutCubic(t);
+                r = rSmall + (rBig - rSmall) * e2;
+                fade = 1 - t * t;
+                coreMat.opacity = peak * (1 - t);
+                var cs2 = rBig * 1.15 * (0.5 + 0.8 * e2);
+                core.scale.set(cs2, cs2, 1);
+            }
+            shell.scale.set(r, r, r);
+            shell2.scale.set(r * 0.72, r * 0.72, r * 0.72);
+            shellMat.opacity = 0.5 * peak * fade;
+            shell2Mat.opacity = 0.3 * peak * fade;
+            group.rotation.y = el * 0.002;
+        });
+    }
+
+    /* ── crescent chevron waves racing along a dash/charge path ────────── */
+    function _sigDashWave3D(fromTx, fromTy, toTx, toTy, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var a = _worldPos(fromTx, fromTy);
+        var b = _worldPos(toTx, toTy);
+        var ts = a.ts;
+        var dx = b.x - a.x, dz = b.z - a.z, dyv = b.y - a.y;
+        var len = Math.sqrt(dx * dx + dz * dz) || 1;
+        /* plane-local +X (the crescent's bulge) → travel direction */
+        var yawX = Math.atan2(-dz, dx);
+        var color = opts.color != null ? opts.color : 0xffe0b0;
+        var waves = opts.waves != null ? opts.waves : (len > ts * 2.2 ? 3 : 2);
+        var travelMs = opts.ms != null ? opts.ms : Math.max(240, Math.min(520, len * 0.9));
+
+        for (var wi = 0; wi < waves; wi++) {
+            (function (idx) {
+                window.setTimeout(function () {
+                    if (_suppressed()) return;
+                    var group = new THREE.Group();
+                    group.position.set(a.x, a.y + ts * 0.5, a.z);
+                    group.rotation.y = yawX;
+                    var mat = _sigMat(color, { map: _sigCrescentTex() });
+                    var mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
+                    mesh.rotation.x = -0.35;
+                    mesh.renderOrder = 165;
+                    group.add(mesh);
+                    var size = (opts.size != null ? opts.size : ts * 1.15) * (1 + idx * 0.18);
+                    _sigRun(group, travelMs + 140, function (el) {
+                        var t = _sigClamp01(el / travelMs);
+                        var e = _sigEaseOutCubic(t);
+                        group.position.set(
+                            a.x + dx * e, a.y + ts * 0.5 + dyv * e, a.z + dz * e);
+                        var s = size * (0.65 + 0.55 * e);
+                        mesh.scale.set(s, s, s);
+                        mesh.rotation.z = (idx % 2 ? -1 : 1) * 0.35 * Math.sin(el * 0.012);
+                        mat.opacity = (t < 0.1 ? t / 0.1 : 1)
+                            * (el > travelMs ? Math.max(0, 1 - (el - travelMs) / 140) : 0.95);
+                    });
+                }, idx * (opts.staggerMs != null ? opts.staggerMs : 90));
+            })(wi);
+        }
+
+        if (_canSpawn()) {
+            /* stretch-billboard speed lines whipping down the path */
+            var cFrom = tilePx(fromTx, fromTy), cTo = tilePx(toTx, toTy);
+            var vdx = cTo.x - cFrom.x, vdy = cTo.y - cFrom.y;
+            var vlen = Math.sqrt(vdx * vdx + vdy * vdy) || 1;
+            var zBase = unitSurfaceZ(fromTx, fromTy);
+            var spd = vlen / (travelMs / 1000);
+            var px = -vdy / vlen, py = vdx / vlen;
+            var nS = opts.streaks != null ? opts.streaks : 7;
+            for (var si = 0; si < nS; si++) {
+                var off = rn(-ts * 0.24, ts * 0.24);
+                _spawn({
+                    x: cFrom.x + px * off + rn(-6, 6),
+                    y: cFrom.y + py * off + rn(-6, 6),
+                    z: zBase + rn(8, ts * 0.7),
+                    vx: (vdx / vlen) * spd * rn(0.85, 1.15),
+                    vy: (vdy / vlen) * spd * rn(0.85, 1.15),
+                    vz: rn(-6, 14),
+                    mode: 'billboard', sprite: 'flash', tint: color,
+                    trackHeading: true, stretchVel: 0.09,
+                    ml: travelMs * rn(0.55, 0.95),
+                    w0: rn(14, 26), w1: 6, h0: rn(2.5, 4.5), h1: 1,
+                    opacity0: 0.85, opacity1: 0, drag: 0.15,
+                });
+            }
+            /* dust kicked up along the ground, timed to the passage */
+            var nD = opts.dust != null ? opts.dust : 6;
+            for (var di = 0; di < nD; di++) {
+                (function (t2) {
+                    window.setTimeout(function () {
+                        if (_suppressed() || !_canSpawn()) return;
+                        _spawn({
+                            x: cFrom.x + vdx * t2 + rn(-10, 10),
+                            y: cFrom.y + vdy * t2 + rn(-10, 10),
+                            z: zBase + rn(2, 10),
+                            vx: rn(-30, 30) - (vdx / vlen) * 40,
+                            vy: rn(-30, 30) - (vdy / vlen) * 40,
+                            vz: rn(15, 55),
+                            mode: 'billboard', sprite: 'dust-puff',
+                            ml: rn(380, 700), size0: rn(10, 20), size1: rn(28, 44),
+                            opacity0: 0.5, opacity1: 0, gravity: 60, drag: 1.0,
+                        });
+                    }, t2 * travelMs);
+                })(di / nD);
+            }
+        }
+    }
+
+    /* ── blizzard field: drifting flakes + frost floor over an area ────── */
+    function _sigSnowfall3D(tx, ty, opts) {
+        if (!_canSpawn()) return;
+        opts = opts || {};
+        var ts = _cfg().tileSize || 128;
+        var c = tilePx(tx, ty);
+        var zGround = tileZ(tx, ty);
+        var radius = (opts.radiusTiles != null ? opts.radiusTiles : 1.4) * ts;
+        var n = opts.count != null ? opts.count : 26;
+        var ms0 = opts.ms != null ? opts.ms : 1500;
+        var swirl = !!opts.swirl;
+        for (var i = 0; i < n; i++) {
+            var a = rn(0, 6.2832), rad = Math.sqrt(Math.random()) * radius;
+            var h = zGround + ts * rn(0.9, 1.9);
+            var o = {
+                x: c.x + Math.cos(a) * rad, y: c.y + Math.sin(a) * rad, z: h,
+                mode: 'billboard', sprite: 'snowflake',
+                ml: ms0 * rn(0.55, 1.05),
+                size0: rn(3.5, 7.5), size1: rn(2.5, 5),
+                opacity0: 0.9, opacity1: 0.15,
+                gravity: rn(55, 95), drag: 0.25,
+                vx: rn(-14, 14), vy: rn(-14, 14), vz: rn(-25, -5),
+                wander: { amp: rn(30, 55), freq: rn(0.7, 1.3) },
+            };
+            if (swirl) {
+                /* vortex variant: flakes ride a decaying orbit instead */
+                o.wander = null;
+                o.gravity = 0; o.vx = 0; o.vy = 0; o.vz = 0;
+                o.orbit = { x: c.x, y: c.y, z: h,
+                            r0: rad, r1: rad * 0.35,
+                            degPerSec: rn(140, 260) * (i % 2 ? -1 : 1),
+                            zRate: -ts * rn(0.45, 0.8) };
+            }
+            _spawn(o);
+        }
+        _spawn({
+            x: c.x, y: c.y, z: zGround + 2,
+            mode: 'world', sprite: 'frost-mist',
+            ml: ms0, size0: radius * 1.1, size1: radius * 1.7,
+            opacity0: 0.35, opacity1: 0,
+        });
+        _spawn({
+            x: c.x, y: c.y, z: zGround + 2,
+            mode: 'world', sprite: 'target-ring-blue',
+            ml: 620, size0: radius * 0.4, size1: radius * 2.0,
+            opacity0: 0.55, opacity1: 0,
         });
     }
 
@@ -15342,6 +15665,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         skyfall:  { orb: 0xffb060, ring: 0xff8844, flash: '#ffe0b0', mote: 'rock-debris',    glyph: false, slash: false, lineColor: '#ffcc99', heavyLand: true },
         rig:      { orb: 0x9ad8ff, ring: 0x7ab8e0, flash: '#d0eeff', mote: 'steel-spark',    glyph: false, slash: false, lineColor: '#bfe6ff', gentle: true, moteTint: 0x9ad8ff },
         mind:     { orb: 0xd08cff, ring: 0xa060e0, flash: '#e8c8ff', mote: 'psi-pulse',      glyph: true,  slash: false, lineColor: '#dcb0ff', gentle: true, moteTint: 0xff70e0 },
+        /* ── 2026-07-26 ── */
+        /* ki: the martial-aura family (DBZ read) — golden power-up streaks
+           in the windup (aura:true), crescents + rush lines on the hit */
+        ki:       { orb: 0xffe083, ring: 0xffd24d, flash: '#fff2c0', mote: 'ember',          glyph: false, slash: true,  lineColor: '#ffe9a8', groundRush: true, aura: true, moteTint: 0xffd24d },
+        /* aura: buffs/shields/war-cries — warm gold blessing, distinct from
+           heal-green and divine-cream so a buff never reads as a heal */
+        aura:     { orb: 0xffd76a, ring: 0xffe9a8, flash: '#fff3cc', mote: 'divine-sparkle', glyph: true,  slash: false, lineColor: '#ffeec0', gentle: true, moteTint: 0xffd76a },
     };
 
     /* Mechanical kind → archetype. This is what finally covers the ~60
@@ -15363,6 +15693,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         heal: 'heal', healAll: 'heal', selfHeal: 'heal', seedHeal: 'heal',
         zoneHeal: 'heal', revive: 'divine', cleanse: 'divine',
         leechSeed: 'poison', seedPoison: 'poison',
+        /* buffs used to fall through to the name-regex and mostly landed on
+           'arcane' — now every blessing stages as the warm gold aura family */
+        buff: 'aura', shield: 'aura', aoeShield: 'aura', warCry: 'aura',
     };
 
     /* Explicit per-spell overrides. THIS is the extension point — one line
@@ -15398,6 +15731,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         racePrismBurst: { archetype: 'divine', weight: 'heavy',
                        grade: { trip: 0.45, warp: 0.0012, chroma: 11, hueRate: 0.5,
                                 tint: [1.15, 1.10, 1.15], tintAmt: 0.3 } },
+
+        /* ── the ki fighter kit (2026-07-26) — full DBZ staging: golden
+           aura streaks + spiral charge in the windup, crescents and rush
+           lines on the hit. Instant Transmission stays light (it's the
+           utility blink, not the punch). ─────────────────────────────── */
+        raceKiBlast:             { archetype: 'ki' },
+        raceFlurryOfBlows:       { archetype: 'ki' },
+        raceKiCharge:            { archetype: 'ki', weight: 'heavy' },
+        raceKiWave:              { archetype: 'ki', weight: 'heavy' },
+        raceDragonFist:          { archetype: 'ki', weight: 'heavy' },
+        raceInstantTransmission: { archetype: 'ki' },
     };
 
     var _STAGE_TIERS = {
@@ -15452,6 +15796,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         skyfall:  { tint: [1.16, 0.94, 0.72], tintAmt: 0.34, chroma: 4.5 },
         rig:      { tint: [0.82, 1.02, 1.18], tintAmt: 0.28, chroma: 2.0 },
         mind:     { tint: [1.14, 0.68, 1.26], tintAmt: 0.52, chroma: 5.5, trip: 0.62, warp: 0.0028, hueRate: 0.46 },
+        ki:       { tint: [1.20, 1.06, 0.70], tintAmt: 0.40, chroma: 4.5 },
+        aura:     { tint: [1.16, 1.08, 0.82], tintAmt: 0.30, chroma: 1.5 },
     };
     var _GRADE_FALLBACK = { tint: [1, 1, 1], tintAmt: 0.2, chroma: 1.5 };
 
@@ -15666,6 +16012,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            would otherwise be swallowed by the 'unholy' regex below on words
            like nightmare/dread. */
         if (/psych|psion|psi\b|mind|hypno|mesmer|trance|halluc|delus|insan|madness|nightmare|dream|telepath|confus|lucid|trip\b/.test(s)) return 'mind';
+        if (/\bki\b|kamehame|chakra|martial|iaijutsu/.test(s)) return 'ki';
         if (/fire|flame|inferno|burn|blaze|scorch|ember|magma|lava|solar/.test(s)) return 'fire';
         if (/ice|frost|blizzard|freeze|cryo|cold|glacial|frozen|chill/.test(s)) return 'ice';
         if (/lightning|thunder|bolt|shock|electr|static|spark|emp|tesla/.test(s)) return 'lightning';
@@ -15805,29 +16152,96 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             } catch (e) {}
         }
 
-        /* motes converging INWARD — spawned out on a ring, aimed back at
-           the caster, so the charge reads as gathering, not venting */
+        /* motes converging INWARD — a true reverse emitter now: spawned out
+           on a ring and pulled INTO the gathering point on an accelerating
+           SPIRAL (seek physics, three-vfx.js). The swirl is the tell-tale
+           "power gathering" read the old straight-line motes lacked. */
         var c = tilePx(tx, ty);
         var zf = unitSurfaceZ(tx, ty);
-        var n = T.motes;
-        for (var i = 0; i < n; i++) {
-            var a = (i / n) * Math.PI * 2 + rn(-0.3, 0.3);
-            var rad = ts * rn(0.55, 1.15);
-            var sp = rad / 0.55;                    /* arrive in ~0.55s */
-            _spawn({
-                x: c.x + Math.cos(a) * rad,
-                y: c.y + Math.sin(a) * rad,
-                z: zf + rn(4, ts * 0.55),
-                vx: -Math.cos(a) * sp,
-                vy: -Math.sin(a) * sp,
-                vz: rn(10, 45),
-                mode: 'billboard', sprite: P.mote,
-                tint: P.moteTint || null,
-                ml: rn(420, 620),
-                size0: rn(4, 9) * (0.8 + 0.4 * T.orbScale), size1: 1,
-                opacity0: 0.9, opacity1: 0,
-                gravity: -20, drag: 0.2
+        try {
+            _sigChargeSpiral3D(tx, ty, {
+                count: T.motes,
+                r0: ts * 0.6, r1: ts * (0.95 + 0.4 * T.orbScale),
+                ms: Math.max(360, Math.min(760, holdMs * 0.8)),
+                spiralDeg: 200 + 80 * T.orbScale,
+                sprite: P.mote, tint: P.moteTint || null,
+                height: ts * 0.5,
+                sizeMul: 0.8 + 0.4 * T.orbScale
             });
+        } catch (e) {}
+
+        /* rising aura streaks — the power-up column. Always on the ki
+           family, and on any heavy/ultimate cast: thin vertical slivers
+           accelerating up the caster's body while the charge builds. */
+        var _rank = _TIER_ORDER[info.weight] || 0;
+        if ((P.aura || _rank >= 2) && _canSpawn()) {
+            var nA = P.aura ? 10 : 5 + 3 * (_rank - 2);
+            for (var ai = 0; ai < nA; ai++) {
+                var aa = rn(0, 6.2832), ar = ts * rn(0.16, 0.4);
+                _spawn({
+                    x: c.x + Math.cos(aa) * ar, y: c.y + Math.sin(aa) * ar,
+                    z: zf + rn(2, 20),
+                    vz: rn(90, 190), gravity: -160, drag: 0.25,
+                    mode: 'y-locked', sprite: P.aura ? 'flame-hot' : 'flash',
+                    tint: P.moteTint != null ? P.moteTint : P.orb,
+                    ml: rn(340, Math.max(430, holdMs * 0.75)),
+                    w0: rn(3, 6), w1: 1.5, h0: rn(18, 42), h1: rn(50, 90),
+                    opacity0: 0.75, opacity1: 0,
+                });
+            }
+        }
+
+        /* a halo of motes ORBITING the caster while the big ones charge —
+           decaying radius so the ring tightens as the cast peaks */
+        if (_rank >= 2 && _canSpawn()) {
+            var nO = _rank >= 3 ? 5 : 3;
+            for (var oi = 0; oi < nO; oi++) {
+                _spawn({
+                    x: c.x, y: c.y, z: zf + ts * 0.5,
+                    mode: 'billboard', sprite: P.mote, tint: P.moteTint || null,
+                    ml: Math.max(420, holdMs * 0.9),
+                    orbit: { x: c.x, y: c.y, z: zf + ts * rn(0.3, 0.62),
+                             r0: ts * 0.62, r1: ts * 0.2,
+                             degPerSec: 300 + oi * 40, phase: (oi / nO) * 6.2832,
+                             bobAmp: 4, bobHz: 2.2 },
+                    size0: rn(5, 8), size1: 2,
+                    opacity0: 0.9, opacity1: 0.2,
+                });
+            }
+        }
+
+        /* ── TARGET TELEGRAPH — magic gathers ON the victim while the
+           caster charges: a ring contracts and a translucent orb implodes
+           onto them, crescendoing exactly at the burst. Magical families
+           only (kinetic dashes/grabs/sky-drops keep their clean read),
+           never on self-casts. Rides the relayed windup beat, so the
+           guest gets it for free; params.tx/ty are already fog anchors. */
+        var _isKineticFam = P.slash || P.groundRush || P.heavyLand;
+        if (!_isKineticFam && _rank >= 1 && !_isGunSpell(spellId)
+            && params.tx != null && params.ty != null
+            && !(params.tx === tx && params.ty === ty)) {
+            var _teleMs = Math.max(260, Math.min(620, holdMs * 0.45));
+            var _teleAt = Math.max(80, holdMs - _teleMs);
+            var _ttx = params.tx, _tty = params.ty;
+            var _teleRing = P.ring, _teleOrb = P.orb, _teleScale = T.orbScale;
+            window.setTimeout(function () {
+                if (_suppressed() || !_canSpawn()) return;
+                try {
+                    _sigOrbBurst3D(_ttx, _tty, {
+                        mode: 'in', color: _teleOrb, ms: _teleMs,
+                        r1: ts * (0.65 + 0.3 * _teleScale),
+                        r0: ts * 0.1, opacity: 0.55
+                    });
+                } catch (e) {}
+                var tc = tilePx(_ttx, _tty);
+                _spawn({
+                    x: tc.x, y: tc.y, z: tileZ(_ttx, _tty) + 2,
+                    mode: 'world', sprite: 'target-ring', tint: _teleRing,
+                    ml: _teleMs,
+                    size0: ts * 1.5, size1: ts * 0.3,
+                    opacity0: 0.65, opacity1: 0.25,
+                });
+            }, _teleAt);
         }
 
         /* gun & gun-adjacent casts paint a lock-on crosshair on the target
@@ -15915,6 +16329,64 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 });
             } catch (e) {}
 
+            /* the EXPANDING ORB — a translucent sphere shell blooming out of
+               the victim on magical hits (the beat every PS1 summon ends
+               on). Kinetic families keep their slash-led read instead. */
+            var _bRank = _TIER_ORDER[info.weight] || 0;
+            if (!P.slash && !P.heavyLand && _bRank >= 1) {
+                try {
+                    _sigOrbBurst3D(tx, ty, {
+                        mode: 'out', color: P.orb,
+                        r0: ts * 0.12, r1: ts * (0.75 + 0.5 * T.ringScale),
+                        ms: 380 + 90 * _bRank,
+                        opacity: P.gentle ? 0.5 : 0.7
+                    });
+                } catch (e) {}
+            }
+
+            /* kinetic heavies rake a SECOND, mirrored crescent — the X-slash */
+            if (P.slash && _bRank >= 2) {
+                window.setTimeout(function () {
+                    if (_suppressed()) return;
+                    try {
+                        _sigCrescentSlash3D(tx, ty, {
+                            color: P.ring, size: ts * (1.1 + 0.4 * T.ringScale),
+                            ms: 220, yaw: _sigYawToward(tx, ty),
+                            height: ts * 0.5, dir: -1, roll: 1.2
+                        });
+                    } catch (e) {}
+                }, 70);
+            }
+
+            /* heavy+ aftershock — a second, faster ring chasing the first,
+               so big hits land in WAVES instead of one pulse */
+            if (_bRank >= 2) {
+                window.setTimeout(function () {
+                    if (_suppressed() || !_canSpawn()) return;
+                    try {
+                        _sigShockRing3D(tx, ty, {
+                            color: P.ring, r0: ts * 0.2,
+                            r1: ts * (0.9 + 0.6 * T.ringScale),
+                            ms: 300, height: 6
+                        });
+                    } catch (e) {}
+                }, 150);
+            }
+
+            /* frozen family whips up a real snow flurry on the hit —
+               blizzard-named spells get the full swirling field */
+            var _blizzName = /blizzard|snowstorm|whiteout|hailstorm|avalanche|winter|flurr/i.test(String(spellId));
+            if (_blizzName || (info.archetype === 'ice' && _bRank >= 2)) {
+                try {
+                    _sigSnowfall3D(tx, ty, {
+                        radiusTiles: 1.0 + 0.5 * T.ringScale,
+                        count: 14 + T.sparks,
+                        ms: _blizzName ? 1700 : 1200,
+                        swirl: _blizzName || _bRank >= 3
+                    });
+                } catch (e) {}
+            }
+
             /* sky-drops kick a dust skirt outward along the ground */
             if (P.heavyLand) {
                 var cc = tilePx(tx, ty), zz = unitSurfaceZ(tx, ty);
@@ -15966,9 +16438,23 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 ml: rn(700, 1200),
                 size0: rn(3, 7), size1: 1,
                 opacity0: 0.55, opacity1: 0,
-                gravity: -25, drag: 0.35
+                gravity: -25, drag: 0.35,
+                wander: { amp: 26, freq: 0.9 }
             });
         }
+
+        /* the AFTERMATH floor: kinetic hits leave settling dust, magical
+           hits a fading pool of their own light — the world exhaling
+           before units drop back to idle */
+        var _isKin = P.slash || P.heavyLand || P.groundRush;
+        _spawn({
+            x: c.x, y: c.y, z: zf + 2,
+            mode: 'world', sprite: _isKin ? 'dust-puff' : 'fire-glow',
+            tint: _isKin ? null : P.orb,
+            ml: 950,
+            size0: ts * 0.85, size1: ts * 1.35,
+            opacity0: _isKin ? 0.3 : 0.26, opacity1: 0,
+        });
     }
 
     function _fireStage(phase, spellId, params) {
@@ -16059,6 +16545,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         /* prismatic / psychedelic kit (2026-07-25) — general-purpose, see the
            catalogue block above their definitions */
+        /* charge / orb / wave / snow kit (2026-07-26) */
+        sigChargeSpiral3D: _sigChargeSpiral3D,
+        sigOrbBurst3D: _sigOrbBurst3D,
+        sigDashWave3D: _sigDashWave3D,
+        sigSnowfall3D: _sigSnowfall3D,
+
         sigWireframe3D: _sigWireframe3D,
         sigPrismRefraction3D: _sigPrismRefraction3D,
         sigSpectrumBurst3D: _sigSpectrumBurst3D,

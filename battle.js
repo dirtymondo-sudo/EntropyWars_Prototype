@@ -4109,6 +4109,10 @@
                 extraTargets: extraTargets.length > 0 ? extraTargets : undefined,
                 frameTiles: _aoeFrameTiles,
                 attackName: spell.name,
+                // Beat-1 shot variant (ots / lowHero / sky) from the staging
+                // weight — AoE casts never forwarded this, so a heavy nova
+                // and a cheap poke opened on the identical framing.
+                shotKind: _spellShotKind(spell, hasDescent ? 'descent' : null),
                 // Timing data only — descent spells keep the standard two-beat
                 // shot; this just syncs the impact kick to the real landing.
                 descentCam: hasDescent ? {
@@ -4158,13 +4162,19 @@
                     VFX.fire('descent', spell.id, { tx, ty });
                 }, projectileDelay);
             } else if (hasAoe) {
-                window.setTimeout(() => playProjectile(unit.x, unit.y, tx, ty, 'damage', cam?.travelMs ?? actionMs(480), spell.spellType, spell.projectileOverride || null, spell), projectileDelay);
+                // Self-centered novas (Kill Mode & co): from-tile === to-tile
+                // used to fire a degenerate zero-length projectile every cast.
+                if (unit.x !== tx || unit.y !== ty) {
+                    window.setTimeout(() => playProjectile(unit.x, unit.y, tx, ty, 'damage', cam?.travelMs ?? actionMs(480), spell.spellType, spell.projectileOverride || null, spell), projectileDelay);
+                }
                 window.setTimeout(() => {
                     if (state.phase !== 'battle' || _skipVisuals()) return;
                     VFX.fire('aoe', spell.id, { tx, ty, cx: unit.x, cy: unit.y });
                 }, impactDelay);
             } else {
-                window.setTimeout(() => playProjectile(unit.x, unit.y, tx, ty, 'damage', cam?.travelMs ?? actionMs(480), spell.spellType, spell.projectileOverride || null, spell), projectileDelay);
+                if (unit.x !== tx || unit.y !== ty) {
+                    window.setTimeout(() => playProjectile(unit.x, unit.y, tx, ty, 'damage', cam?.travelMs ?? actionMs(480), spell.spellType, spell.projectileOverride || null, spell), projectileDelay);
+                }
                 window.setTimeout(() => playAoeRing(tx, ty, spell.aoeRadius || spell.crossRadius || 1, spell.spellType, actionMs(550)), impactDelay);
             }
         }
@@ -4311,9 +4321,9 @@
             // glides to the recipient as the gift arrives. Falls back to the
             // tactical focus pan (and the old flat timings) when unavailable.
             const _supCine = (target.id !== unit.id)
-                ? _playSupportCineShot(unit, target, { spellName: spell.name })
+                ? _playSupportCineShot(unit, target, { spellName: spell.name, spellId: spell.id })
                 : null;
-            if (!_supCine) _spellFocusCamera(unit, x, y, { spellName: spell.name });
+            if (!_supCine) _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
 
             // VFX: aura (3D or canvas fallback)
             const VFX = window.ThreeVFXEffects;
@@ -4342,15 +4352,25 @@
                     window.setTimeout(() => { vfxFallback(target.x, target.y); }, _supArrive);
                 }
             } else {
-                // Self-cast: immediate aura
-                if (hasAura) {
-                    if (state.phase === 'battle' && !_skipVisuals()) {
-                        VFX.fire('aura', spell.id, { tx: target.x, ty: target.y });
+                // Self-cast: the aura lands on the hero shot's push-in peak
+                // instead of frame one, so the charge visibly builds first
+                // (the staging windup fills the gap).
+                const _selfAt = actionMs(640);
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle') return;
+                    if (hasAura) {
+                        if (!_skipVisuals()) VFX.fire('aura', spell.id, { tx: target.x, ty: target.y });
+                    } else {
+                        vfxFallback(target.x, target.y);
                     }
-                } else {
-                    vfxFallback(target.x, target.y);
-                }
+                }, _selfAt);
             }
+
+            // Staging sync: the burst beat lands where and WHEN the gift
+            // arrives (recipient tile at aura bloom), not 280ms in on the
+            // caster — this mistiming was the core "buffs feel unfinished".
+            _stageRetimeBurst(unit, spell, { x: target.x, y: target.y },
+                target.id !== unit.id ? _supArrive : actionMs(700));
 
             unit.mp -= effectiveSpellCost;
             // applyAt: when the gift visibly ARRIVES — callers that want the
@@ -4358,10 +4378,12 @@
             // here instead of applying instantly at cast.
             return {
                 target,
-                applyAt: target.id !== unit.id ? _supArrive : 0,
+                // Self-casts now apply on the aura bloom (~700ms) instead of
+                // frame one, so the number pops with the visuals.
+                applyAt: target.id !== unit.id ? _supArrive : actionMs(700),
                 completionDelay: _supCine
                     ? Math.max(actionMs(500), _supCine.totalMs - actionMs(500))
-                    : actionMs(500)
+                    : actionMs(900)
             };
         }
 
@@ -4452,19 +4474,27 @@
             const pace = _STAGE_PACE[st.weight] || _STAGE_PACE.standard;
             const profile = _animProfile(spell);
 
-            // Where the payload lands. Self-cast and ally-support spells stage
-            // on the caster; everything else on the clicked tile.
-            const selfish = (typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell))
-                || profile.camera !== 'offensive';
-            const stx = selfish ? unit.x : (tx != null ? tx : unit.x);
-            const sty = selfish ? unit.y : (ty != null ? ty : unit.y);
+            // Where the payload lands. True self-casts stage on the caster;
+            // everything else — including ally heals, zones and deploys —
+            // bursts on the CLICKED tile (the windup beat anchors on the
+            // caster via sx/sy regardless, so the charge is never lost).
+            const _trueSelf = (typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell))
+                || tx == null || (tx === unit.x && ty === unit.y);
+            const stx = _trueSelf ? unit.x : tx;
+            const sty = _trueSelf ? unit.y : ty;
 
             // Impact estimate. Offensive kinds ride the two-beat camera
-            // (source hold + travel); self/ally casts resolve almost at once.
+            // (source hold + travel). Support/self casts used to burst at
+            // 280ms — before their own cinematic even reached the caster,
+            // which is why buffs read as "windup-less". They now get a real
+            // charge window matched to the support/self hero shots (weight-
+            // scaled); paths that know their true arrival retime it.
             const sourceHold = actionMs(Math.round(1250 * pace.source));
             const impactMs = profile.camera === 'offensive'
                 ? sourceHold + actionMs(360)
-                : actionMs(280);
+                : (_trueSelf
+                    ? actionMs(Math.round(720 * pace.source))
+                    : actionMs(Math.round(800 * pace.source) + 420));
 
             // Drop any staging still in flight for this unit (fast re-cast,
             // encore, an interrupted turn) so a stale burst can't land on top
@@ -4571,7 +4601,12 @@
                     shotKind: _spellShotKind(spell, travel)
                 });
             } else if (profile.camera === 'focus') {
-                _spellFocusCamera(unit, tileXY.x, tileXY.y, { spellName: spell.name });
+                const _focusShot = _spellFocusCamera(unit, tileXY.x, tileXY.y,
+                    { spellName: spell.name, spellId: spell.id });
+                // The support two-beat returns real timings — let the travel
+                // handlers pace the launch/arrival off its beats. Hero-shot
+                // and flat-pan modes keep the default clock.
+                if (_focusShot && _focusShot.mode === 'support') cam = _focusShot;
             }
 
             // Phase 1: SFX (after camera so cinematic can set up)
@@ -14702,11 +14737,22 @@
                         ? (state.units || []).find(u => u.id === target.id) : null;
                     if (_cutVictim && (_cutVictim.dead || _cutVictim._dying)) return;
                     _cineTpsAnchor(target, (target && target.id != null) ? target : null);
-                    const zoomHit = _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES);
+                    // TWO-ACTOR reverse cut (2026-07-26): on close/mid casts
+                    // the hit shot keeps the CASTER in frame — less yaw swing
+                    // (the lens stays nearer the line, looking back past the
+                    // victim at the caster) and the zoom widened just enough
+                    // to fit both. Long casts keep the tight victim close-up.
+                    const _pairShot = len <= 4.2;
+                    const zoomHit = _pairShot
+                        ? Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
+                                   _cineZoomForTiles(len + 3.0, CINE_HIT_TILT))
+                        : _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES);
                     _cineHardCut({
-                        x: tx, y: ty,
+                        x: _pairShot ? tx - dirx * len * 0.24 : tx,
+                        y: _pairShot ? ty - diry * len * 0.24 : ty,
                         zoom: zoomHit, tilt: CINE_HIT_TILT,
-                        yaw: yawFwd + CINE_CAM_YAW_OFFSET + CINE_HIT_SWING,
+                        yaw: yawFwd + CINE_CAM_YAW_OFFSET
+                            + (_pairShot ? CINE_HIT_SWING * 0.45 : CINE_HIT_SWING),
                         elevZ: tgtPx + ts * CINE_FOCAL_RISE
                     });
                     _acChromeFlash('cut');
@@ -38267,11 +38313,30 @@
                 duration: actionMs(420), easing: 'easeInOut',
                 _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
             });
+            // Slow dolly-in while the charge builds — the lens leaning in as
+            // the power gathers, releasing when the aura pops (~640ms, where
+            // the staging burst now lands for self-casts).
+            const _selfHold = actionMs(opts.holdMs ?? 1500);
+            window.setTimeout(() => {
+                if (camera._cineShotId !== sequenceId) return;
+                if (state.phase !== 'battle' || state.cameraDisabled) return;
+                _cineBeatMove({
+                    zoom: _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES) * 1.1,
+                    duration: Math.max(actionMs(320), _selfHold - actionMs(460)),
+                    easing: 'linear',
+                    _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                });
+            }, actionMs(440));
             if (opts.spellName) {
-                showActionCamChrome({ name: opts.spellName, heavy: false, totalMs: actionMs(1600) });
+                showActionCamChrome({ name: opts.spellName, heavy: false,
+                    totalMs: _selfHold + actionMs(600) });
             }
             return true;
         }
+
+        // Set by doSpell at cast commit; read by _spellFocusCamera so bare
+        // call sites still get the spell's name/pacing. Host-local cosmetics.
+        let _focusCamSpellCtx = null;
 
         // ═══════════════════════════════════════════════════════════════════
         // _playSupportCineShot() — ALLY-targeted support framing (heals,
@@ -38288,7 +38353,13 @@
         // effect at .sourceHold + .travelMs.
         // ═══════════════════════════════════════════════════════════════════
         function _playSupportCineShot(unit, target, opts = {}) {
-            if (!unit || !target || target.dead || target.id === unit.id) return null;
+            // Accepts a bare {x, y} tile as the target too (deploys, zones,
+            // warp destinations) — the glide-to-recipient beat works the
+            // same whether anything is standing there.
+            if (!unit || !target) return null;
+            const _tgtIsUnit = target.id != null;
+            if (_tgtIsUnit && (target.dead || target.id === unit.id)) return null;
+            if (!_tgtIsUnit && target.x === unit.x && target.y === unit.y) return null;
             if (!state.cinematicActionCam || state.cameraDisabled || _skipVisuals()) return null;
             if (state.phase !== 'battle' || state.winner) return null;
             if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return null;
@@ -38316,9 +38387,14 @@
                 tgtPx = tz > 0 ? window._getElevationPx(tz) : 0;
             }
 
-            const sourceHold = actionMs(opts.sourceHold ?? 780);
+            // Holds scale with the spell's staging weight (same table the
+            // offensive shot uses) so a big blessing breathes longer than a
+            // cheap utility poke.
+            const _supStage = opts.spellId ? _spellStageInfo({ id: opts.spellId }) : null;
+            const _supPace = _STAGE_PACE[(_supStage && _supStage.weight) || 'standard'] || _STAGE_PACE.standard;
+            const sourceHold = actionMs(opts.sourceHold ?? Math.round(800 * _supPace.source));
             const travelMs = actionMs(opts.travelMs ?? Math.max(300, Math.min(600, 180 + len * 55)));
-            const targetHold = actionMs(opts.targetHold ?? 1000);
+            const targetHold = actionMs(opts.targetHold ?? Math.round(1000 * _supPace.target));
             const totalMs = sourceHold + travelMs + targetHold + actionMs(200);
 
             // BEAT 1 — the giver: face the caster while they wind up the gift.
@@ -38357,13 +38433,33 @@
         }
 
         function _spellFocusCamera(casterUnit, tx, ty, opts = {}) {
-            if (state.cameraDisabled) return;
+            if (state.cameraDisabled) return null;
+
+            // Recover the casting spell's name/id from doSpell's commit stash
+            // when the caller didn't pass them (most kind branches don't).
+            if (_focusCamSpellCtx && (!opts.spellName || !opts.spellId)) {
+                opts = Object.assign({}, _focusCamSpellCtx, opts);
+            }
 
             // SELF-cast (the target tile is the caster's own): hero shot facing
             // the caster instead of a flat pan. Falls through to the tactical
             // focus below when the 3D rig is off or the shot declines.
             if (casterUnit && !casterUnit.dead && tx === casterUnit.x && ty === casterUnit.y
-                && _playSelfCastHeroShot(casterUnit, opts)) return;
+                && _playSelfCastHeroShot(casterUnit, opts)) {
+                return { mode: 'self', sourceHold: actionMs(640), totalMs: actionMs(1900) };
+            }
+
+            // TARGETED support/utility (deploys, zones, runes, remote views,
+            // heals routed here): the same two-beat "gift" shot the ally
+            // pipeline uses — beat 1 on the caster, beat 2 gliding to the
+            // target tile — so EVERY cast gets the caster shot + target
+            // shot, not just damage spells. Falls through to the flat pan
+            // when the rig declines (fog, cinematics off, 2D).
+            if (casterUnit && !casterUnit.dead && (tx !== casterUnit.x || ty !== casterUnit.y)) {
+                const _rcpt = (typeof unitAt === 'function' ? unitAt(tx, ty) : null) || { x: tx, y: ty };
+                const _shot = _playSupportCineShot(casterUnit, _rcpt, opts);
+                if (_shot) return { mode: 'support', ...(_shot) };
+            }
 
             const points = [];
             if (casterUnit && !casterUnit.dead) {
@@ -38381,6 +38477,7 @@
                 transitionMs: opts.transitionMs ?? 380,
                 _fogAllowed: _fogCamTilesVisible(...points)
             });
+            return { mode: 'pan' };
         }
 
         // ── Spellsteal / Borrowed Claw: take one of the target's spells and give it to the caster ──
@@ -38719,6 +38816,12 @@
                that have their own branches below and no VFX entry at all. */
             _stageSpellCast(unit, spell, x, y);
 
+            /* Focus-camera context: ~35 kind branches below call
+               _spellFocusCamera bare — this stash lets it recover the spell
+               name (chrome title) and id (weight pacing) without editing
+               every call site. Cleared in finishAction. */
+            _focusCamSpellCtx = { spellName: spell.name, spellId: spell.id };
+
             /* Unit animation override: race-specific cast sprite */
             if (_applySpriteOverride(unit, spell, 'castSprite')) {
                 scheduleBoardRender();
@@ -38777,6 +38880,9 @@
 
             const finishAction = () => {
                 unit._trackSpellsCast = (unit._trackSpellsCast || 0) + 1;
+                if (_focusCamSpellCtx && _focusCamSpellCtx.spellId === spell.id) {
+                    _focusCamSpellCtx = null;
+                }
 
                 // Balance Lab: flush the cast telemetry (damage/kills landed
                 // during resolution via the applyDamageToUnit hooks).
