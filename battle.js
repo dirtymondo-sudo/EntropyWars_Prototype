@@ -3284,6 +3284,350 @@
             return true;
         }
 
+        /* ═══════════ 🎱 FORCED-SLIDE RESOLVER (2026-07-26 bounce pass) ═══════
+           THE shared walker for every push / pull / hurl / fling. Replaces the
+           per-site copy-pasted loops (each with its own blind spots — none of
+           them tested the EDGE the body crossed, which is how Mystery Dungeon
+           bodies ended up inside sealed masonry waiting for _mdRescueStranded).
+           Rules, in test order per step:
+             · thin edge walls (buildings, MD facades) block the CROSSING
+               (wallBlocksStep — height-aware, MD masonry absolute);
+             · another UNIT is a bowling pin (crash damage both ways, unspent
+               momentum transfers weight-scaled and the pin slides on — chains
+               capped; an immovable pin is a cushion → rebound);
+             · holes (chasm/void/…) end the slide with no slam — the pit IS
+               the punishment (nothing solid to hit);
+             · a voxel lip taller than MAX_CLIMB_HEIGHT is a wall face, not a
+               ramp — no more teleporting up cliffs mid-shove;
+             · breakable barriers still shatter (_tryCrashThrough weight vs
+               hardness; NEW: a breakable thin wall snaps off its edge) and
+               the body carries through;
+             · anything unbreakable is a pool cushion: slam damage
+               (COLLISION_CONFIG) and the body REBOUNDS with its unspent
+               momentum — axis-aware reflection, so a diagonal throw banks
+               off a straight wall like an 8-ball.
+           Handles movement, collision damage, knock-in hazards, fall damage,
+           fanned flames, impact FX and the displacement animation (waypoints
+           include a half-tile "bump" overshoot at each slam so the rebound
+           reads on screen). opts.simulate = pure prediction for previews: no
+           mutation, no damage, no animation. */
+        function _collisionCfg() {
+            return (typeof COLLISION_CONFIG !== 'undefined') ? COLLISION_CONFIG
+                : { wallSlamDmg: 16, wallSlamPerTile: 7, unitCrashDmg: 12, unitCrashPerTile: 6, maxBounces: 2, maxChain: 3 };
+        }
+
+        // Impassable terrains a slide falls short of but never bounces off.
+        const _SLIDE_HOLE_TERRAIN = { chasm: 1, void: 1, cloud_gap: 1, sky_open: 1, blank: 1 };
+
+        // Mystery Dungeon floors: the maze is the game — masonry never breaks.
+        function _slideNoBreach() {
+            return typeof _isDungeonMode === 'function' && _isDungeonMode()
+                && state._mdPhase === 'floor' && !!state._mdRun;
+        }
+
+        /* Classify ONE slide step from (x,y,z) along (dx,dy) for `mover`.
+           Pure — never mutates. kinds: 'open' (nz = landing surface), 'unit'
+           (occ), 'thinwall', 'wall' (voxel/terrain/object), 'edge' (map
+           border), 'hole'. */
+        function _slideStepInfo(mover, x, y, z, dx, dy) {
+            const nx = x + dx, ny = y + dy;
+            if (!isInside(nx, ny)) return { kind: 'edge', nx, ny };
+            if (typeof wallBlocksStep === 'function' && wallBlocksStep(x, y, nx, ny, z, null)) {
+                return { kind: 'thinwall', nx, ny };
+            }
+            const occ = unitAt(nx, ny);
+            if (occ && occ !== mover) return { kind: 'unit', nx, ny, occ };
+            const terr = getTerrainAt(nx, ny);
+            const rule = getTerrainRule(terr);
+            if (rule && rule.passable === false && _SLIDE_HOLE_TERRAIN[terr]) return { kind: 'hole', nx, ny };
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(mover)) {
+                // A flyer sails over anything below its altitude.
+                if (getBaseHeightAt(nx, ny) > z) return { kind: 'wall', nx, ny };
+                return { kind: 'open', nx, ny, nz: z };
+            }
+            if (!isTerrainPassable(nx, ny)) return { kind: 'wall', nx, ny };
+            const nz = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(nx, ny, z) : 0;
+            const climbCap = (typeof MAX_CLIMB_HEIGHT !== 'undefined') ? MAX_CLIMB_HEIGHT : 1;
+            if (nz - z > climbCap) return { kind: 'wall', nx, ny, lip: true };
+            if (!canOccupy(nx, ny)) return { kind: 'wall', nx, ny };   // turret / tower / object
+            return { kind: 'open', nx, ny, nz };
+        }
+
+        // Pure twin of _tryCrashThrough for previews — could this body break
+        // the barrier at (nx,ny)? No mutation.
+        function _slideCouldBreach(mover, nx, ny, bodyZ) {
+            if (_slideNoBreach()) return false;
+            if (!mover || mover.dead) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(mover)) return false;
+            if (unitAt(nx, ny)) return false;
+            const power = unitBreachPower(mover);
+            if (power <= 0) return false;
+            if (typeof _tileHasTree === 'function' && _tileHasTree(nx, ny)) {
+                return power >= getTerrainHardness('tree');
+            }
+            return !!_breachWindowCheck(nx, ny, bodyZ, power);
+        }
+
+        /* 💥 A heavy body hurled into a THIN wall (state.edgeWalls) snaps the
+           panel clean off its edge — same weight-vs-material rule as voxel
+           breach (timber/ice give way to a medium body, masonry needs heavy,
+           steel needs colossal). Never in Mystery Dungeon (absolute masonry),
+           never on diagonal crossings, never walls taller than 3 cells. */
+        function _tryBreachThinWall(mover, x, y, nx, ny, opts = {}) {
+            if (typeof _ewWallBetween !== 'function' || typeof wallBlocksStep !== 'function') return false;
+            if (typeof _ewAbsolute === 'function' && _ewAbsolute()) return false;
+            const ddx = nx - x, ddy = ny - y;
+            if (ddx && ddy) return false;
+            const w = _ewWallBetween(x, y, nx, ny);
+            if (!w) return false;
+            if ((w.h || 1) > 3) return false;                 // a fortress face — too much wall
+            const tex = w.tex || 'cobblestone';
+            const power = opts.power ?? unitBreachPower(mover);
+            if (power < getTerrainHardness(tex)) return false;
+            if (opts.simulate) return true;
+            const key = ddx === 1 ? (nx + ',' + ny + ',W') : ddx === -1 ? (x + ',' + y + ',W')
+                : ddy === 1 ? (x + ',' + (y + 1) + ',N') : (x + ',' + y + ',N');
+            if (!state.edgeWalls || !state.edgeWalls[key]) return false;
+            delete state.edgeWalls[key];
+            state._wallVersion = (state._wallVersion || 0) + 1;
+            const mat = getTerrainMaterial(tex);
+            const label = mat === 'metal' ? 'steel' : mat === 'stone' ? 'stone'
+                : mat === 'wood' ? 'timber' : (tex === 'ice' ? 'ice' : 'brittle');
+            spawnMaterialDrops(nx, ny, [{ terrain: tex }], { log: false });
+            if (!mover.dead && !mover._dying) {
+                applyDamageToUnit(mover, CRASH_THROUGH_DMG, `${unitDisplayName(mover)} crashes through the ${label} wall: `, {
+                    ignoreArmor: true, consumeMarked: false
+                });
+            }
+            addLog(`💥 ${unitDisplayName(mover)} smashes straight through the ${label} wall!`);
+            showFloatingTextForUnit(mover, '💥 CRASH!', 'damage', { durationMs: 900 });
+            if (opts.byUnit) addEntropy(opts.byUnit.player, ENTROPY_PTS.destructTerrain, 'terrain', null);
+            if (typeof shakeBoard === 'function') shakeBoard('normal');
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            scheduleBoardRender();
+            return true;
+        }
+
+        // Shared impact FX beat for slams and bowling-pin crashes: shake +
+        // thud + spark + tile text. Global on purpose — online.js wraps it
+        // into a 'collision-fx' relay so the guest sees the hit land.
+        // opts: { delayMs, muteSfx, muteText } (guest replays pass the mutes —
+        // the sfx/floating-text relays already carry those channels).
+        function playCollisionImpactFx(x, y, kind, opts = {}) {
+            const run = () => {
+                if (state.phase !== 'battle' || _skipVisuals()) return;
+                if (!opts.muteSfx && typeof playSfx === 'function') {
+                    playSfx(kind === 'unit' ? 'basicAttack' : 'physicalAbility');
+                }
+                if (typeof shakeBoard === 'function') shakeBoard('normal');
+                if (typeof playHitEffect === 'function') playHitEffect(x, y, { variant: 'hit02', durationMs: 460 });
+                if (!opts.muteText) {
+                    showFloatingTextAtTile(x, y, kind === 'unit' ? '🎳 CRASH!' : '💥 SLAM!', 'damage', { durationMs: 900 });
+                }
+            };
+            const d = opts.delayMs || 0;
+            if (d > 0) window.setTimeout(run, d); else run();
+        }
+
+        function _slideSlamDamage(mover, dmg, info, opts) {
+            if (!mover || mover.dead || mover._dying) return;
+            const what = info.kind === 'edge' ? 'the edge of the battlefield'
+                : info.kind === 'thinwall' ? 'the wall'
+                : info.lip ? 'the cliff face' : 'the wall';
+            applyDamageToUnit(mover, dmg, `${unitDisplayName(mover)} slams into ${what}: `, {
+                ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null
+            });
+            addLog(`🎱 ${unitDisplayName(mover)} slams into ${what} and rebounds!`);
+        }
+
+        // Which axis did a diagonal slide actually hit? Probe each component;
+        // reflect only the blocked one (bank shot), both on a square corner.
+        function _slideReflect(mover, x, y, z, dx, dy) {
+            if (dx && dy) {
+                const bx = _slideStepInfo(mover, x, y, z, dx, 0).kind !== 'open';
+                const by = _slideStepInfo(mover, x, y, z, 0, dy).kind !== 'open';
+                if (bx && !by) return { dx: -dx, dy: dy };
+                if (by && !bx) return { dx: dx, dy: -dy };
+            }
+            return { dx: -dx, dy: -dy };
+        }
+
+        /* The resolver. opts:
+             byUnit      — attacker (damage credit, breach credit)
+             label       — log prefix (usually `${spell.name}: `)
+             perStepMs   — animation pace (default 120)
+             delayMs     — beat before the slide animation starts
+             arcThrow    — clean flights use animateJumpArc (kinetic hurls);
+                           any impact downgrades to the ground path so the
+                           bump/bounce waypoints actually show
+             stopBefore  — {x,y} tile that cleanly ends the slide (a pull
+                           reeling in stops at the caster — no slam)
+             onStep(x,y,z) — per-tile callback (pull-through-hazards drags)
+             animate     — false: caller animates from res.steps itself
+             simulate    — pure prediction (previews/AI): NO side effects
+           Returns { fromX, fromY, fromZ, x, y, z, moved, steps, hitWall,
+                     hitUnits, bounces, slamDamage, animMs, chain }. */
+        function resolveForcedSlide(target, dx, dy, dist, opts = {}) {
+            const cfg = _collisionCfg();
+            const simulate = !!opts.simulate;
+            const depth = opts._depth || 0;
+            const perStepMs = opts.perStepMs || 120;
+            const baseDelay = opts.delayMs || 0;
+            const res = {
+                fromX: target ? target.x : 0, fromY: target ? target.y : 0,
+                fromZ: target ? (target.z ?? 0) : 0,
+                x: target ? target.x : 0, y: target ? target.y : 0, z: target ? (target.z ?? 0) : 0,
+                moved: 0, steps: [], hitWall: false, hitUnits: [], bounces: 0,
+                slamDamage: 0, animMs: 0, chain: []
+            };
+            if (!target || target.dead || !dist || dist <= 0 || (!dx && !dy)) return res;
+
+            let cx = res.fromX, cy = res.fromY, cz = res.fromZ;
+            let vx = dx, vy = dy;
+            let m = dist;                     // unspent momentum, in tiles
+            let guard = 24;
+            const impacts = [];               // {x, y, atMs, kind} FX beats
+
+            const stepTo = (nx, ny, nz) => {
+                cx = nx; cy = ny; cz = nz;
+                res.steps.push({ x: cx, y: cy, z: cz });
+                m--; res.moved++;
+                if (!simulate) {
+                    target.x = cx; target.y = cy; target.z = cz;
+                    if (typeof opts.onStep === 'function') opts.onStep(cx, cy, cz);
+                }
+            };
+
+            while (m > 0 && guard-- > 0) {
+                const info = _slideStepInfo(target, cx, cy, cz, vx, vy);
+                if (opts.stopBefore && info.nx === opts.stopBefore.x && info.ny === opts.stopBefore.y) break;
+
+                if (info.kind === 'open') { stepTo(info.nx, info.ny, info.nz); continue; }
+                if (info.kind === 'hole') break;   // fall short of the pit lip — nothing to slam
+
+                if (info.kind === 'unit') {
+                    // 🎳 Bowling pin: crash damage both ways, momentum transfers.
+                    const occ = info.occ;
+                    res.hitUnits.push(occ);
+                    const crash = cfg.unitCrashDmg + cfg.unitCrashPerTile * Math.max(0, m - 1);
+                    const tDist = (typeof getUnitPushDistance === 'function') ? getUnitPushDistance(occ, m) : m;
+                    const atMs = baseDelay + res.steps.length * perStepMs;
+                    if (!simulate) {
+                        impacts.push({ x: info.nx, y: info.ny, atMs, kind: 'unit' });
+                        addLog(`🎳 ${unitDisplayName(target)} crashes into ${unitDisplayName(occ)} — both bodies are battered!`);
+                        if (!occ.dead && !occ._dying) {
+                            applyDamageToUnit(occ, crash, `${unitDisplayName(target)} is hurled into ${unitDisplayName(occ)}: `, {
+                                ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null
+                            });
+                        }
+                        if (!target.dead && !target._dying) {
+                            applyDamageToUnit(target, crash, `${unitDisplayName(target)} crashes into ${unitDisplayName(occ)}: `, {
+                                ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null
+                            });
+                        }
+                        res.slamDamage += crash;
+                    }
+                    if (tDist > 0 && depth < cfg.maxChain && !occ.dead) {
+                        if (!simulate) {
+                            const sub = resolveForcedSlide(occ, vx, vy, tDist, {
+                                byUnit: opts.byUnit, label: opts.label,
+                                perStepMs, delayMs: atMs + Math.floor(perStepMs / 2),
+                                stopBefore: opts.stopBefore || null,
+                                _depth: depth + 1
+                            });
+                            res.chain.push({ unit: occ, res: sub });
+                            if (sub.chain && sub.chain.length) res.chain = res.chain.concat(sub.chain);
+                        }
+                        m = 0;   // momentum handed over — the striker stops here
+                        break;
+                    }
+                    // The pin would not budge — a cushion. Bounce off it.
+                    if (res.bounces >= cfg.maxBounces || m <= 0) break;
+                    res.steps.push({ x: cx + vx * 0.4, y: cy + vy * 0.4, z: cz, bump: 1 });
+                    res.steps.push({ x: cx, y: cy, z: cz, bump: 1 });
+                    const uref = _slideReflect(target, cx, cy, cz, vx, vy);
+                    vx = uref.dx; vy = uref.dy;
+                    res.bounces++;
+                    if (!simulate && (target.dead || target._dying)) break;
+                    continue;
+                }
+
+                // 'wall' / 'thinwall' / 'edge' — try to smash THROUGH first.
+                if (!_slideNoBreach() && (info.kind === 'wall' || info.kind === 'thinwall')) {
+                    let broke = false;
+                    if (info.kind === 'thinwall') {
+                        broke = _tryBreachThinWall(target, cx, cy, info.nx, info.ny,
+                            simulate ? { simulate: true } : { byUnit: opts.byUnit });
+                    } else {
+                        broke = simulate ? _slideCouldBreach(target, info.nx, info.ny, cz)
+                            : _tryCrashThrough(target, info.nx, info.ny, { byUnit: opts.byUnit });
+                    }
+                    if (broke) {
+                        if (simulate) { stepTo(info.nx, info.ny, cz); continue; }
+                        const again = _slideStepInfo(target, cx, cy, cz, vx, vy);
+                        if (again.kind === 'open') { stepTo(again.nx, again.ny, again.nz); continue; }
+                        // Hole punched but something still blocks (turret, tall
+                        // floor) — fall through to the slam below.
+                    }
+                }
+
+                // 🎱 SLAM — the cushion. Damage now, rebound with what's left.
+                res.hitWall = true;
+                const slamDmg = cfg.wallSlamDmg + cfg.wallSlamPerTile * Math.max(0, m - 1);
+                const atMs = baseDelay + res.steps.length * perStepMs;
+                if (!simulate) {
+                    impacts.push({ x: info.nx, y: info.ny, atMs, kind: 'wall' });
+                    _slideSlamDamage(target, slamDmg, info, opts);
+                    res.slamDamage += slamDmg;
+                }
+                // Half-tile lunge INTO the wall face and back — sells the hit.
+                res.steps.push({ x: cx + vx * 0.4, y: cy + vy * 0.4, z: cz, bump: 1 });
+                res.steps.push({ x: cx, y: cy, z: cz, bump: 1 });
+                if (res.bounces >= cfg.maxBounces) break;
+                const refl = _slideReflect(target, cx, cy, cz, vx, vy);
+                vx = refl.dx; vy = refl.dy;
+                res.bounces++;
+                if (!simulate && (target.dead || target._dying)) break;   // the wall won
+            }
+
+            res.x = cx; res.y = cy; res.z = cz;
+
+            if (!simulate) {
+                // Landing consequences — but only if a chained re-knock didn't
+                // already move the body again (its own slide handled them).
+                if (target.x === cx && target.y === cy) {
+                    if (!opts.noFall && typeof applyFallDamage === 'function') {
+                        applyFallDamage(target, res.fromZ, cz, opts.label || '', { byEnemy: true });
+                    }
+                    if (res.moved > 0) {
+                        _applyKnockbackHazard(target);
+                        _fanFlamesAlongPush(target, res.steps.filter(s => !s.bump), dx, dy, opts.byUnit || null);
+                    }
+                }
+
+                if (res.steps.length) {
+                    res.animMs = baseDelay + res.steps.length * perStepMs;
+                    if (opts.animate !== false) {
+                        const clean = !res.hitWall && !res.hitUnits.length;
+                        if (opts.arcThrow && clean && typeof animateJumpArc === 'function') {
+                            // Telekinetic hurl with a clear flight path: the
+                            // parabola. Any impact uses the ground path so the
+                            // bump waypoints (and the rebound) actually read.
+                            const arcMs = Math.max(actionMs(420), res.steps.length * actionMs(170));
+                            animateJumpArc(target, res.fromX, res.fromY, cx, cy, res.fromZ, cz, arcMs);
+                            res.animMs = arcMs;
+                        } else if (typeof animateDisplacementPath === 'function') {
+                            animateDisplacementPath(target, res.fromX, res.fromY, res.steps, perStepMs, { delayMs: baseDelay });
+                        }
+                    }
+                }
+                for (const imp of impacts) {
+                    playCollisionImpactFx(imp.x, imp.y, imp.kind, { delayMs: imp.atMs });
+                }
+            }
+            return res;
+        }
+
         // ── Salvage / material economy (2026-07-07 terraforming pass) ────────
         // Destruction pays: chopping trees, smashing raised columns, collapsing
         // buildings and wrecking turrets bank MATERIALS for the destroyer's
@@ -3967,27 +4311,17 @@
                         element: classifySpellElement(spell)
                     });
 
-                    // Cross-style push
+                    // Cross-style push — 🎱 full slide physics: crash-through,
+                    // wall/edge rebounds and bowling-pin chains included.
                     if (spell.pushDistance && !target.dead && opts.pushFromCenter) {
                         const cx = opts.pushFromCenter.x, cy = opts.pushFromCenter.y;
                         const pdx = Math.sign(target.x - cx), pdy = Math.sign(target.y - cy);
-                        const _crFromX = target.x, _crFromY = target.y;
-                        const _crFromZ = target.z ?? 0;
-                        const _crSteps = [];
-                        const _crPush = getUnitPushDistance(target, spell.pushDistance);
-                        for (let p = 0; p < _crPush; p++) {
-                            const nx = target.x + pdx, ny = target.y + pdy;
-                            if (!isInside(nx, ny)) break;
-                            // Weak barriers give way: trees / wood / ice / crystal
-                            // lips shatter and the shove carries through.
-                            if (!canOccupy(nx, ny) && !(_tryCrashThrough(target, nx, ny, { byUnit: unit }) && canOccupy(nx, ny))) break;
-                            target.x = nx; target.y = ny; if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z); _crSteps.push({ x: nx, y: ny });
+                        if (pdx || pdy) {
+                            resolveForcedSlide(target, pdx, pdy, getUnitPushDistance(target, spell.pushDistance), {
+                                byUnit: unit, label: `${spell.name}: `,
+                                perStepMs: 120, delayMs: actionMs(320)
+                            });
                         }
-                        if (typeof applyFallDamage === 'function') applyFallDamage(target, _crFromZ, target.z ?? 0, `${spell.name}: `, { byEnemy: true });
-                        // impact → beat → knockback (see linePush)
-                        if (_crSteps.length > 0) animateDisplacementPath(target, _crFromX, _crFromY, _crSteps, 120, { delayMs: actionMs(320) });
-                        if (_crSteps.length > 0) _applyKnockbackHazard(target);
-                        if (_crSteps.length > 0) _fanFlamesAlongPush(target, _crSteps, pdx, pdy, unit);
                     }
 
                     // AoePull-style pull toward center (Clash: damage only —
@@ -4277,25 +4611,15 @@
                 });
                 applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
 
-                // linePush: push targets away
+                // linePush: push targets away — 🎱 full slide physics (crash-
+                // through, wall/edge rebounds, bowling-pin chains). The slide
+                // waits a beat past the impact frame so the sequence still
+                // reads impact → knockback.
                 if (spell.kind === 'linePush' && !hit.dead) {
-                    const pushDist = getUnitPushDistance(hit, spell.pushDistance || 1);
-                    const _lpFromX = hit.x, _lpFromY = hit.y;
-                    const _lpFromZ = hit.z ?? 0;
-                    const _lpSteps = [];
-                    for (let p = 0; p < pushDist; p++) {
-                        const nx = hit.x + dx, ny = hit.y + dy;
-                        if (!isInside(nx, ny)) break;
-                        // Crash-through: weak barriers break instead of stopping the shove.
-                        if (!canOccupy(nx, ny) && !(_tryCrashThrough(hit, nx, ny, { byUnit: unit }) && canOccupy(nx, ny))) break;
-                        hit.x = nx; hit.y = ny; if (typeof nearestWalkableZ === 'function') hit.z = nearestWalkableZ(nx, ny, hit.z); _lpSteps.push({ x: nx, y: ny });
-                    }
-                    if (typeof applyFallDamage === 'function') applyFallDamage(hit, _lpFromZ, hit.z ?? 0, `${spell.name}: `, { byEnemy: true });
-                    // Hit lands first, THEN the shove: the slide waits a beat past
-                    // the impact frame so the sequence reads impact → knockback.
-                    if (_lpSteps.length > 0) animateDisplacementPath(hit, _lpFromX, _lpFromY, _lpSteps, 120, { delayMs: actionMs(320) });
-                    if (_lpSteps.length > 0) _applyKnockbackHazard(hit);
-                    if (_lpSteps.length > 0) _fanFlamesAlongPush(hit, _lpSteps, dx, dy, unit);
+                    resolveForcedSlide(hit, dx, dy, getUnitPushDistance(hit, spell.pushDistance || 1), {
+                        byUnit: unit, label: `${spell.name}: `,
+                        perStepMs: 120, delayMs: actionMs(320)
+                    });
                 }
             }
             triggerTerrainSpellReaction(unit, spell, _lineCells);
@@ -20419,24 +20743,21 @@
             let dx, dy, dist, mode;
             if (isPull) {
                 dx = Math.sign(castX - target.x); dy = Math.sign(castY - target.y);
-                dist = spell.pullDistance || 3; mode = 'pull';
-                if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(target) === 'colossal') dist = 0;
+                dist = getUnitPushDistance(target, spell.pullDistance || 3); mode = 'pull';
             } else {
                 dx = Math.sign(target.x - castX) || 1; dy = Math.sign(target.y - castY);
                 dist = getUnitPushDistance(target, spell.displaceDistance || spell.pushDistance || 2); mode = 'push';
             }
             if (!dist) return null;
             if (dx === 0 && dy === 0) return null;
-            let px = target.x, py = target.y;
-            for (let i = 0; i < dist; i++) {
-                const nx = px + dx, ny = py + dy;
-                if (typeof isInside === 'function' && !isInside(nx, ny)) break;
-                if (typeof isTerrainPassable === 'function' && !isTerrainPassable(nx, ny)) break;
-                if (typeof unitAt === 'function' && unitAt(nx, ny)) break;
-                px = nx; py = ny;
-            }
-            if (px === target.x && py === target.y) return null;
-            return { x: px, y: py, mode };
+            // 🎱 Same physics as the real slide (crash-through, wall rebounds,
+            // bowling pins) so the hologram shows where the body TRULY lands.
+            const sim = resolveForcedSlide(target, dx, dy, dist, {
+                simulate: true,
+                stopBefore: isPull ? { x: castX, y: castY } : null
+            });
+            if (!sim || (sim.x === target.x && sim.y === target.y)) return null;
+            return { x: sim.x, y: sim.y, mode, slammed: sim.hitWall, pinned: sim.hitUnits.length > 0 };
         }
 
         // Hologram + bent arrow showing where the spell will knock/pull the target.
@@ -30565,6 +30886,10 @@
             // the Minecraft-style collectible debris cubes (state.matDrops)
             getTerrainHardness, unitBreachPower, spellBreachPower,
             spawnMaterialDrops, collectMatDropsAt, _tryCrashThrough,
+            // 🎱 collision physics (2026-07-26): shared forced-movement walker
+            // (bounces, crash-through, bowling-pin chains) + its impact FX.
+            // simulate:true = pure landing-tile prediction (previews / AI).
+            resolveForcedSlide, playCollisionImpactFx,
             // placement validity (shared by menus / previews / AI)
             _placeBlockProblem, _placeTrapProblem, _structurePlanFor,
             // 🧱 BUILD action (universal place/dig verb, 2026-07-10)
@@ -33881,8 +34206,10 @@
 
             if (window.ThreeAnim && window.ThreeAnim.isActive() && steps && steps.length) {
                 var last = steps[steps.length - 1];
+                // Full waypoint path: bounce rebounds and slam "bump" overshoots
+                // ride through to the 3D tween instead of a straight A→B glide.
                 window.ThreeAnim.displace(unit, fromX, fromY, last.x, last.y, (perStepMs || 150) * steps.length,
-                    { delayMs: (opts && opts.delayMs) || 0 });
+                    { delayMs: (opts && opts.delayMs) || 0, path: steps });
                 return;
             }
             if (!boardEl || _skipVisuals()) return;
@@ -39958,38 +40285,26 @@
 
                     const dx = Math.sign(target.x - unit.x) || 1;
                     const dy = Math.sign(target.y - unit.y);
-                    const dist = getUnitPushDistance(target, spell.displaceDistance || 2);
-                    let flung = 0;
-                    let hitObstacle = false;
+                    // 2026-07-26: honor the pushDistance fallback (Body Check /
+                    // Horn Toss author it) — displaceDistance still wins.
+                    const dist = getUnitPushDistance(target, spell.displaceDistance || spell.pushDistance || 2);
                     const _displaceFromX = target.x, _displaceFromY = target.y;
-                    const _displaceFromZ = target.z ?? 0;
-                    const _displaceSteps = [];
                     if (dist === 0) {
                         addLog(`${unitDisplayName(target)} is far too heavy to budge!`);
                         showFloatingTextForUnit(target, '⚖️ IMMOVABLE', 'debuff', { durationMs: 1000 });
                     }
-                    for (let i = 0; i < dist; i++) {
-                        const nx = target.x + dx;
-                        const ny = target.y + dy;
-                        if (!isInside(nx, ny)) { hitObstacle = true; break; }
-                        if (!isTerrainPassable(nx, ny) || unitAt(nx, ny)) {
-                            // Crash-through: trees and weak block lips break under
-                            // the flung body instead of stopping it.
-                            if (_tryCrashThrough(target, nx, ny, { byUnit: unit }) && isTerrainPassable(nx, ny) && !unitAt(nx, ny)) {
-                                // barrier broken — fall through to the move below
-                            } else { hitObstacle = true; break; }
-                        }
-                        target.x = nx;
-                        target.y = ny;
-                        if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z);
-                        _displaceSteps.push({ x: nx, y: ny });
-                        flung++;
-                    }
+                    // 🎱 The fling, with full collision physics: crash-through,
+                    // wall/edge slam + rebound, bowling-pin momentum transfer.
+                    // Movement, fall damage, hazards, fanned flames and the
+                    // fling animation all resolve inside.
+                    const slide = resolveForcedSlide(target, dx, dy, dist, {
+                        byUnit: unit, label: `${spell.name}: `,
+                        perStepMs: 120, delayMs: actionMs(320),
+                        arcThrow: !!spell.arcThrow
+                    });
+                    const hitObstacle = slide.hitWall || slide.hitUnits.length > 0;
                     if (hitObstacle && spell.collisionBonus) damage += spell.collisionBonus;
 
-                    if (typeof applyFallDamage === 'function') {
-                        applyFallDamage(target, _displaceFromZ, target.z ?? 0, `${spell.name}: `, { byEnemy: true });
-                    }
                     applyDamageToUnit(target, damage, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'magic',
@@ -40000,22 +40315,9 @@
                         addLog(`${unitDisplayName(target)} slams into an obstacle for bonus damage!`);
                         showFloatingTextForUnit(target, 'COLLISION!', 'streak', { durationMs: 1000 });
                     }
-                    if (flung > 0) _applyKnockbackHazard(target);
-                    if (flung > 0) _fanFlamesAlongPush(target, _displaceSteps, dx, dy, unit);
 
-                    if (_displaceSteps.length > 0) {
-                        const flingAnimMs = spell.arcThrow
-                            ? Math.max(actionMs(420), _displaceSteps.length * actionMs(170))
-                            : _displaceSteps.length * 120;
-                        if (spell.arcThrow) {
-                            // Telekinetic hurl: lift the target off the ground and
-                            // fling it in a parabola to its landing tile.
-                            animateJumpArc(target, _displaceFromX, _displaceFromY, target.x, target.y,
-                                _displaceFromZ, target.z ?? 0, flingAnimMs);
-                        } else {
-                            // impact → beat → fling (see linePush)
-                            animateDisplacementPath(target, _displaceFromX, _displaceFromY, _displaceSteps, 120, { delayMs: actionMs(320) });
-                        }
+                    if (slide.steps.length > 0) {
+                        const flingAnimMs = slide.animMs || (slide.steps.length * 120);
 
                         // The camera FOLLOWS the flung body: the live action
                         // shot glides with the victim to their landing tile
@@ -40041,7 +40343,7 @@
                     }
                     scheduleBoardRender();
                 }, impactDelay);
-                const flingMs = actionMs(120 * ((spell.displaceDistance || 2) + 1));
+                const flingMs = actionMs(120 * (((spell.displaceDistance || spell.pushDistance || 2) * 2) + 3));
                 completionDelay = Math.max(impactDelay + flingMs + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
             }
 
@@ -40204,45 +40506,43 @@
                     }
                 }
                 unit.mp -= effectiveSpellCost;
-                let pullDist = spell.pullDistance || 3;
-                // Clash: the yank lands (tether, damage, log) but nobody is
-                // dragged off their formation tile.
-                if (typeof _isClashMode === 'function' && _isClashMode()) pullDist = 0;
-                if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(target) === 'colossal') {
-                    pullDist = 0;
+                // Weight + Clash gate in one place now (getUnitPushDistance:
+                // feather +1, heavy -1, colossal 0, Clash freezes everyone).
+                if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(target) === 'colossal'
+                    && !(typeof _isClashMode === 'function' && _isClashMode())) {
                     addLog(`${unitDisplayName(target)} is far too heavy to drag!`);
                     showFloatingTextForUnit(target, '⚖️ IMMOVABLE', 'debuff', { durationMs: 1000 });
                 }
+                const pullDist = getUnitPushDistance(target, spell.pullDistance || 3);
                 const pdx = Math.sign(unit.x - target.x);
                 const pdy = Math.sign(unit.y - target.y);
-                let pulled = 0;
                 const _pullFromX = target.x, _pullFromY = target.y;
-                const _pullFromZ = target.z ?? 0;
-                const _pullSteps = [];
-                for (let i = 0; i < pullDist; i++) {
-                    const nx = target.x + pdx, ny = target.y + pdy;
-                    if (!isInside(nx, ny) || !isTerrainPassable(nx, ny)) break;
-                    if (unitAt(nx, ny)) break;
-                    if (nx === unit.x && ny === unit.y) break;
-
-                    if (spell.pullThroughHazards) {
-                        const terrain = getTerrainAt(nx, ny);
+                /* The yank waits for the rope/vine to visibly fly out and
+                   BITE (shoot + a beat) before the drag starts — the old
+                   instant drag had the victim moving before the tether
+                   even reached them. Lassos linger a touch longer while
+                   the loop cinches. */
+                const _yankDelayMs = actionMs(280) + actionMs(_pullIsLasso ? 220 : 120);
+                // 🎱 The drag, with full slide physics: a wall between you and
+                // the caster is a cushion now (no more phasing through thin
+                // masonry), and a body in the drag lane is a bowling pin. The
+                // reel-in still stops cleanly at the caster's tile. Movement,
+                // fall damage, hazards and the drag animation resolve inside.
+                const _pullSlide = resolveForcedSlide(target, pdx, pdy, pullDist, {
+                    byUnit: unit, label: `${spell.name}: `,
+                    perStepMs: 120, delayMs: _yankDelayMs,
+                    stopBefore: { x: unit.x, y: unit.y },
+                    onStep: spell.pullThroughHazards ? ((sx, sy) => {
+                        const terrain = getTerrainAt(sx, sy);
                         if (terrain === 'lava' || terrain === 'poison') {
                             // Lava drags are fire-element (2026-07-23) so Thermal
                             // Regen units heal from the trip through the melt.
                             applyDamageToUnit(target, 24, `Dragged through ${terrain}: `, { sourceUnit: unit, damageType: 'magic', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, element: terrain === 'lava' ? 'fire' : null });
                         }
-                    }
-                    target.x = nx;
-                    target.y = ny;
-                    if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z);
-                    _pullSteps.push({ x: nx, y: ny });
-                    pulled++;
-                }
-
-                if (typeof applyFallDamage === 'function') {
-                    applyFallDamage(target, _pullFromZ, target.z ?? 0, `${spell.name}: `, { byEnemy: true });
-                }
+                    }) : null
+                });
+                const pulled = _pullSlide.moved;
+                const _pullSteps = _pullSlide.steps;
 
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(target)) {
                     const _pullAirZ = target.z ?? 0;
@@ -40267,18 +40567,12 @@
                     });
                 }
                 addLog(`${unitDisplayName(unit)} pulls ${unitDisplayName(target)} ${pulled} tile${pulled !== 1 ? 's' : ''}.`);
-                if (pulled > 0) _applyKnockbackHazard(target);
 
                 let _pullTotalAnimMs = 0;
 
                 if (_pullSteps.length > 0) {
-                    /* The yank waits for the rope/vine to visibly fly out and
-                       BITE (shoot + a beat) before the drag starts — the old
-                       instant drag had the victim moving before the tether
-                       even reached them. Lassos linger a touch longer while
-                       the loop cinches. */
-                    const _yankDelayMs = actionMs(280) + actionMs(_pullIsLasso ? 220 : 120);
-                    animateDisplacementPath(target, _pullFromX, _pullFromY, _pullSteps, 120, { delayMs: _yankDelayMs });
+                    // (hazards + the drag animation already resolved inside
+                    // resolveForcedSlide, on the _yankDelayMs cadence)
                     if (_pullIsLasso) {
                         window.setTimeout(() => {
                             if (target && !target.dead) {
@@ -41311,23 +41605,18 @@
 
                             const dx = Math.sign(unit.x - target.x);
                             const dy = Math.sign(unit.y - target.y);
-                            let pulled = 0;
                             const _grFromX = target.x, _grFromY = target.y;
-                            const _grSteps = [];
-                            for (let i = 0; i < 2; i++) {
-                                const nx = target.x + dx;
-                                const ny = target.y + dy;
-                                if (!isInside(nx, ny)) break;
-                                if (unitAt(nx, ny)) break;
-                                if (!isTerrainPassable(nx, ny)) break;
-
-                                if (nx === unit.x && ny === unit.y) break;
-                                target.x = nx;
-                                target.y = ny;
-                                if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(nx, ny, target.z);
-                                _grSteps.push({ x: nx, y: ny });
-                                pulled++;
-                            }
+                            // 🎱 Weight-aware reel-in with full slide physics:
+                            // a wall in the lane is a cushion (slam + rebound),
+                            // a body in the lane is a bowling pin. Movement,
+                            // hazards and the drag animation resolve inside.
+                            const _grSlide = resolveForcedSlide(target, dx, dy, getUnitPushDistance(target, 2), {
+                                byUnit: unit, label: 'Grapple: ',
+                                perStepMs: 120,
+                                stopBefore: { x: unit.x, y: unit.y }
+                            });
+                            const pulled = _grSlide.moved;
+                            const _grSteps = _grSlide.steps;
 
                             if (typeof isUnitAirborne === 'function' && isUnitAirborne(target)) {
                                 const _grGroundZ = getHeightAt(target.x, target.y);
@@ -41342,10 +41631,10 @@
                             if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${grappleDmg}`, false);
                             addLog(`${unitDisplayName(unit)} grapples ${unitDisplayName(target)}, pulling them ${pulled} tile${pulled !== 1 ? 's' : ''} closer and dealing ${grappleDmg} damage.`);
                             showFloatingTextForUnit(target, `GRAPPLED!`, 'status', { durationMs: 1000 });
-                            if (pulled > 0) _applyKnockbackHazard(target);
 
                             if (_grSteps.length > 0) {
-                                animateDisplacementPath(target, _grFromX, _grFromY, _grSteps, 120);
+                                // (hazards + the drag animation already resolved
+                                // inside resolveForcedSlide)
                                 const _grAnimMs = _grSteps.length * 120;
                                 if (_grTether) {
                                     _grTether.retract(target.x, target.y, _grAnimMs);

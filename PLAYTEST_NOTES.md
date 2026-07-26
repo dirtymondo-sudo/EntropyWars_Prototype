@@ -4,7 +4,54 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## PSYCHEDELIC / COSMIC SPELL DROP (2026-07-26, LATEST) — data.js, battle.js, three-vfx-effects.js, index.html
+## 🎱 COLLISION PHYSICS: wall bounce + bowling-pin knockback (2026-07-26, LATEST) — battle.js, data.js, hud.js, online.js, three-renderer.js, index.html
+Token → `20260726z`. Every push/pull/hurl now funnels through ONE walker,
+`resolveForcedSlide(target, dx, dy, dist, opts)` (battle.js, right after
+`_tryCrashThrough`; exported on `GAME`). Per step, in order: thin edge wall on
+the CROSSING (`wallBlocksStep` — this kills the MD "shoved through masonry then
+'slipped back inside the ruins'" bug; `_mdRescueStranded` is now a last-resort
+net) → unit = 🎳 bowling pin → hole terrain (chasm/void/…) = stop, no slam →
+airborne fly-over → impassable terrain / voxel lip > MAX_CLIMB_HEIGHT /
+turret/tower = wall face. Walls try `_tryCrashThrough` first (weight vs
+hardness, unchanged; NEW `_tryBreachThinWall` snaps a breakable edge-wall
+panel off, bumping `state._wallVersion`); unbreakable = SLAM: damage
+`COLLISION_CONFIG` (data.js: 16+7/tile of unspent momentum), then the body
+REBOUNDS with momentum conserved, axis-aware reflection (diagonals bank like
+an 8-ball; `maxBounces: 2`). Unit hits crash BOTH bodies (12+6/tile) and
+transfer the unspent momentum weight-scaled (`getUnitPushDistance`) to the
+pin, which slides on recursively (`maxChain: 3`); a colossal pin is a cushion
+(striker rebounds). Mystery Dungeon floors NEVER breach — always bounce.
+- Converted sites: `kind==='displacement'` (kineticHurl & co — arcThrow only
+  arcs on a CLEAN flight now, any impact uses the ground path so the bump
+  reads; also honors `pushDistance` fallback, fixing Body Check/Horn Toss),
+  cross push + linePush (`_applyAoeDamage`/`_applyLineDamage`), `kind==='pull'`
+  (+grapple — both now weight/Clash-gated via getUnitPushDistance; reel-in
+  stops cleanly at the caster via `opts.stopBefore`). Single-tile shoves
+  (magnet mine, erupt, dash push-aside, siren) intentionally untouched.
+- Slam waypoints include fractional "bump" overshoot steps (`{bump:1}`);
+  `animateDisplacementPath` passes the full path to the 3D tween
+  (`ThreeAnim.displace` `opts.path` → polyline, constant speed) and the 2D
+  ghost already walks waypoints. Impact beat = `playCollisionImpactFx(x,y,
+  'wall'|'unit')` (shake + sfx + hit02 spark + tile text), scheduled at the
+  step-accurate `delayMs`.
+- ONLINE (RULE #2): displacement anims were NEVER relayed (guests saw
+  teleports). New relays: `displace-anim` (host wraps animateDisplacementPath
+  + animateDisplacement; guest replays with the walk-anim save/restore dance,
+  fog-gated "any point visible") and `collision-fx` (guest replays muted:
+  sfx + floating text already ride their own relays). Also `_deserializeInto`
+  now replaces `edgeWalls`/`burningTiles` WHOLESALE — the key-merge never
+  deleted host-deleted entries, so guests kept phantom walls/fires.
+- Previews: battle.js `_predictSpellApproachShove` + hud.js
+  `_predictTargetShove` now call `resolveForcedSlide({simulate:true})` (pure,
+  no mutation — validated) so the hologram sits on the TRUE post-bounce tile
+  and finally respects weight. ui.js `_renderDisplacementArrows` still draws
+  the naive pre-bounce lane (known cosmetic gap).
+- Sim harness (13 scenarios, 34 asserts, all green): immediate-slam rebound,
+  mid-path slam, diagonal bank, 1-wide pocket termination, pin transfer,
+  colossal cushion, pull stop-before, simulate purity, chasm no-slam, thin
+  wall block, cliff lip, chain cap, feather +1 transfer.
+
+## PSYCHEDELIC / COSMIC SPELL DROP (2026-07-26) — data.js, battle.js, three-vfx-effects.js, index.html
 Token → `20260726y-psy`. Nine new spells with bespoke PS1-JRPG set-pieces, all
 composed from the existing signature kit (orb/charge-spiral/dash-wave/snow/
 kaleidoscope/wireframe/grade). Catalogue lives in three-vfx-effects.js above

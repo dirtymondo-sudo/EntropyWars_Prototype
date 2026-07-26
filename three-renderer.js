@@ -15335,6 +15335,33 @@ const ThreeRenderer = (function () {
         // read as a real glide instead of snapping. The caller's duration acts as
         // a per-move floor (short 1-tile shoves stay punchy).
         var _dpDist = Math.abs(toX - fromX) + Math.abs(toY - fromY);
+
+        /* 🎱 Waypoint path (2026-07-26 bounce pass): a knocked-back body can
+           rebound off walls and overshoot into the wall face ("bump" steps),
+           so the tween follows the ACTUAL polyline instead of a straight
+           A→B glide. Constant speed along the path; each waypoint carries
+           its own z. Fractional coords (the half-tile bump) are fine. */
+        var _dpPts = null, _dpCum = null, _dpLen = 0;
+        if (opts && opts.path && opts.path.length) {
+            _dpPts = [{ x: fromX, y: fromY, z: fromZ }];
+            for (var _pi = 0; _pi < opts.path.length; _pi++) {
+                var _pp = opts.path[_pi];
+                _dpPts.push({
+                    x: _pp.x, y: _pp.y,
+                    z: (_pp.z !== undefined && _pp.z !== null) ? _pp.z
+                        : ((typeof getHeightAt === 'function') ? getHeightAt(Math.round(_pp.x), Math.round(_pp.y)) : 0)
+                });
+            }
+            _dpCum = [0];
+            for (var _si = 1; _si < _dpPts.length; _si++) {
+                var _sdx = _dpPts[_si].x - _dpPts[_si - 1].x;
+                var _sdy = _dpPts[_si].y - _dpPts[_si - 1].y;
+                _dpLen += Math.sqrt(_sdx * _sdx + _sdy * _sdy);
+                _dpCum.push(_dpLen);
+            }
+            _dpDist = Math.max(_dpDist, Math.round(_dpLen));
+        }
+
         // 150ms/tile: matches the normal walk-tween pace so dashes/charges
         // stay readable — at the old 110 the action was over before it read.
         var _dpScaled = Math.max(_dpDist, 1) * 150;
@@ -15342,6 +15369,7 @@ const ThreeRenderer = (function () {
         _displaceTweens.set(unit.id, {
             fromX: fromX, fromY: fromY, fromZ: fromZ,
             toX: toX, toY: toY, toZ: toZ,
+            pts: _dpPts, cum: _dpCum, totalLen: _dpLen,
             startTime: _animNow(),
             durationMs: _dpDur,
             /* optional hold at the FROM tile before the slide begins — lets a
@@ -15377,11 +15405,29 @@ const ThreeRenderer = (function () {
             var uid = entry[0], tw = entry[1];
             var t = Math.min(Math.max(0, now - tw.startTime - (tw.delayMs || 0)) / tw.durationMs, 1);
             var ease = _easeOut(t);
-            var fromSY = _tileSurfaceY(tw.fromX, tw.fromY, tw.fromZ);
-            var toSY = _tileSurfaceY(tw.toX, tw.toY, tw.toZ);
-            var wx = (tw.fromX + (tw.toX - tw.fromX) * ease) * ts + ts / 2;
-            var wy = fromSY + (toSY - fromSY) * ease;
-            var wz = (tw.fromY + (tw.toY - tw.fromY) * ease) * ts + ts / 2;
+            var wx, wy, wz;
+            if (tw.pts && tw.totalLen > 0) {
+                // 🎱 polyline slide: constant speed along the waypoints so a
+                // rebound visibly goes IN, smacks, and comes back OUT.
+                var _plP = ease * tw.totalLen;
+                var _plI = 1;
+                while (_plI < tw.cum.length - 1 && tw.cum[_plI] < _plP) _plI++;
+                var _plA = tw.pts[_plI - 1], _plB = tw.pts[_plI];
+                var _plSeg = tw.cum[_plI] - tw.cum[_plI - 1];
+                var _plF = _plSeg > 0 ? (_plP - tw.cum[_plI - 1]) / _plSeg : 1;
+                var _plX = _plA.x + (_plB.x - _plA.x) * _plF;
+                var _plY = _plA.y + (_plB.y - _plA.y) * _plF;
+                var _plZ = (_plA.z || 0) + ((_plB.z || 0) - (_plA.z || 0)) * _plF;
+                wx = _plX * ts + ts / 2;
+                wy = _plZ * ts * ELEV_STEP_RATIO;
+                wz = _plY * ts + ts / 2;
+            } else {
+                var fromSY = _tileSurfaceY(tw.fromX, tw.fromY, tw.fromZ);
+                var toSY = _tileSurfaceY(tw.toX, tw.toY, tw.toZ);
+                wx = (tw.fromX + (tw.toX - tw.fromX) * ease) * ts + ts / 2;
+                wy = fromSY + (toSY - fromSY) * ease;
+                wz = (tw.fromY + (tw.toY - tw.fromY) * ease) * ts + ts / 2;
+            }
             var ue = _getUnitEntry(uid);
             if (ue && ue.group) {
 
@@ -15394,7 +15440,11 @@ const ThreeRenderer = (function () {
                     }
                 }
                 ue.group.visible = _dpVisible;
-                _updateSubmersionClip(ue, tw.toX, tw.toY, toSY, ts);
+                // (destination surface Y — the polyline branch above doesn't
+                // compute toSY, so derive it here for the submersion clip)
+                var _dpToSY = (typeof toSY !== 'undefined' && toSY !== undefined)
+                    ? toSY : _tileSurfaceY(tw.toX, tw.toY, tw.toZ);
+                _updateSubmersionClip(ue, tw.toX, tw.toY, _dpToSY, ts);
                 var sink = ue.group._ew_subSink || 0;
                 ue.group.position.set(wx, wy - sink, wz);
                 ue.group._ew_spriteTopY = wy + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;

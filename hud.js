@@ -5227,6 +5227,18 @@ function _predictTargetShove(spell, target, castX, castY) {
   }
   if (dx === 0 && dy === 0) return null;
 
+  // 🎱 2026-07-26: predict with the engine's own slide physics (weight
+  // scaling, crash-through, wall rebounds, bowling pins) so the ghost
+  // hologram sits on the tile the body will TRULY land on.
+  if (typeof resolveForcedSlide === 'function' && typeof getUnitPushDistance === 'function') {
+    const sim = resolveForcedSlide(target, dx, dy, getUnitPushDistance(target, dist), {
+      simulate: true,
+      stopBefore: isPull ? { x: castX, y: castY } : null
+    });
+    if (!sim || (sim.x === target.x && sim.y === target.y)) return null;
+    return { x: sim.x, y: sim.y, mode, slammed: sim.hitWall, pinned: sim.hitUnits.length > 0 };
+  }
+
   let px = target.x, py = target.y;
   for (let i = 0; i < dist; i++) {
     const nx = px + dx, ny = py + dy;

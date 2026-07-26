@@ -1680,6 +1680,69 @@
             return _origAnimateStrikeLeap(unit, tx, ty, opts);
         };
 
+        /* 🎱 Knockback / shove / drag animations (2026-07-26 bounce pass).
+           Every push, pull, hurl and rebound funnels through these two — they
+           were never relayed, so the guest just saw bodies teleport on the
+           next state-sync. The relayed steps carry z and the fractional
+           "bump" waypoints, so wall slams and pool-ball rebounds read
+           identically on both clients. */
+        const _origAnimateDisplacementPath = animateDisplacementPath;
+        animateDisplacementPath = function(unit, fromX, fromY, steps, perStepMs, opts) {
+            var _netOnline = window._NET && window._NET.online;
+            if (_netOnline && _isHost() && unit && steps && steps.length > 0) {
+                _emit('relay', {
+                    type: 'displace-anim',
+                    unitId: unit.id,
+                    fromX: fromX,
+                    fromY: fromY,
+                    steps: steps.map(function(p) {
+                        return { x: p.x, y: p.y, z: p.z, bump: p.bump ? 1 : 0 };
+                    }),
+                    perStepMs: perStepMs || 120,
+                    delayMs: (opts && opts.delayMs) || 0
+                });
+            }
+            return _origAnimateDisplacementPath(unit, fromX, fromY, steps, perStepMs, opts);
+        };
+        window.animateDisplacementPath = animateDisplacementPath;
+
+        const _origAnimateDisplacement = animateDisplacement;
+        animateDisplacement = function(unit, fromX, fromY, toX, toY, durationMs, opts) {
+            var _netOnline = window._NET && window._NET.online;
+            if (_netOnline && _isHost() && unit && (fromX !== toX || fromY !== toY)) {
+                _emit('relay', {
+                    type: 'displace-anim',
+                    unitId: unit.id,
+                    fromX: fromX,
+                    fromY: fromY,
+                    steps: [{ x: toX, y: toY }],
+                    perStepMs: durationMs || 220,
+                    delayMs: (opts && opts.delayMs) || 0
+                });
+            }
+            return _origAnimateDisplacement(unit, fromX, fromY, toX, toY, durationMs, opts);
+        };
+        window.animateDisplacement = animateDisplacement;
+
+        /* Collision impact beat (shake + thud + spark + tile text). The sfx
+           and floating text channels are already relayed on their own, so the
+           guest replay mutes both and keeps only the shake + spark. */
+        const _origPlayCollisionImpactFx = (typeof playCollisionImpactFx === 'function') ? playCollisionImpactFx : null;
+        if (_origPlayCollisionImpactFx) {
+            playCollisionImpactFx = function(x, y, kind, opts) {
+                var _netOn = window._NET && window._NET.online;
+                if (_netOn && _isHost() && !(opts && opts.remote)) {
+                    _emit('relay', {
+                        type: 'collision-fx',
+                        x: x, y: y, kind: kind,
+                        delayMs: (opts && opts.delayMs) || 0
+                    });
+                }
+                return _origPlayCollisionImpactFx(x, y, kind, opts);
+            };
+            window.playCollisionImpactFx = playCollisionImpactFx;
+        }
+
         const _origPlaySfx = playSfx;
         playSfx = function(key, opts) {
             _origPlaySfx(key, opts);
@@ -3042,6 +3105,53 @@
                         }
                     }
 
+                    /* 🎱 Knockback / shove / drag replay (2026-07-26): the
+                       guest plays the same waypoint slide the host resolved —
+                       bumps, rebounds and all — instead of a state-sync
+                       teleport. Same save/restore dance as walk-anim: the
+                       sync already placed the unit at its landing tile, so
+                       rewind it to the from-tile for the tween's benefit. */
+                    if (data.type === 'displace-anim' && NET.role === 'guest') {
+                        var dispUnit = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
+                        if (dispUnit && data.steps && data.steps.length > 0) {
+                            var _showDisp = true;
+                            if (st.fogOfWar && dispUnit.player !== NET.myPlayer
+                                && typeof window._isTileVisibleToViewer === 'function') {
+                                // Enemy slide under fog: show it if ANY point of
+                                // the ride is visible (short paths — no trimming).
+                                _showDisp = window._isTileVisibleToViewer(data.fromX, data.fromY);
+                                for (var _dvi = 0; _dvi < data.steps.length && !_showDisp; _dvi++) {
+                                    _showDisp = window._isTileVisibleToViewer(
+                                        Math.round(data.steps[_dvi].x), Math.round(data.steps[_dvi].y));
+                                }
+                            }
+                            if (_showDisp && typeof window.animateDisplacementPath === 'function') {
+                                var _savedDX = dispUnit.x, _savedDY = dispUnit.y, _savedDZ = dispUnit.z;
+                                dispUnit.x = data.fromX;
+                                dispUnit.y = data.fromY;
+                                window.animateDisplacementPath(dispUnit, data.fromX, data.fromY,
+                                    data.steps, data.perStepMs || 120, { delayMs: data.delayMs || 0 });
+                                dispUnit.x = _savedDX;
+                                dispUnit.y = _savedDY;
+                                dispUnit.z = _savedDZ;
+                            }
+                        }
+                    }
+
+                    if (data.type === 'collision-fx' && NET.role === 'guest') {
+                        var _cfxVisible = true;
+                        if (st.fogOfWar && typeof window._isTileVisibleToViewer === 'function') {
+                            _cfxVisible = window._isTileVisibleToViewer(data.x, data.y);
+                        }
+                        if (_cfxVisible && typeof window.playCollisionImpactFx === 'function') {
+                            // sfx + floating text arrive on their own relays —
+                            // replay only the shake + impact spark here.
+                            window.playCollisionImpactFx(data.x, data.y, data.kind, {
+                                delayMs: data.delayMs || 0, muteSfx: true, muteText: true, remote: true
+                            });
+                        }
+                    }
+
                     if (data.type === 'strike-leap' && NET.role === 'guest') {
                         var leapUnit = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
                         if (leapUnit) {
@@ -3387,12 +3497,21 @@
                 return s;
             }
 
+            /* Keyed dicts whose entries can be DELETED host-side (a body
+               smashing a thin wall removes its edgeWalls record). The generic
+               merge below only adds/overwrites keys — it never removes ones
+               absent from the snapshot — so these must be replaced wholesale
+               or the guest keeps phantom walls forever. */
+            var _REPLACE_WHOLESALE = { edgeWalls: 1, burningTiles: 1 };
+
             function _deserializeInto(target, s) {
                 for (var key in s) {
                     if (!s.hasOwnProperty(key)) continue;
                     var val = s[key];
                     if (val && typeof val === 'object' && val._t === 'S') {
                         target[key] = new Set(val.v);
+                    } else if (val && typeof val === 'object' && !Array.isArray(val) && _REPLACE_WHOLESALE[key]) {
+                        target[key] = val;
                     } else if (val && typeof val === 'object' && !Array.isArray(val)) {
                         if (target[key] && typeof target[key] === 'object' && !Array.isArray(target[key])) {
                             for (var k2 in val) {

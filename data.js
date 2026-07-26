@@ -76,6 +76,24 @@ const BREACH_CONFIG = {
     beamMaxBores: 2,        // walls one beam can drill through per cast
 };
 
+/* ── 🎱 Collision physics (2026-07-26 bounce pass) ────────────────────────
+   A body hurled into something it cannot break no longer stops dead — it
+   takes SLAM damage and REBOUNDS off the barrier pool-ball style, momentum
+   conserved (a 3-tile throw travels 3 tiles unless something eats them).
+   A body hurled into another UNIT is a bowling strike: both take crash
+   damage and the unspent momentum transfers (weight-scaled) to the struck
+   unit, which slides on under the same rules. Mystery Dungeon masonry is
+   absolute — it never breaks, bodies always rebound. Consumed by
+   battle.js resolveForcedSlide (every push / pull / hurl path). */
+const COLLISION_CONFIG = {
+    wallSlamDmg: 16,        // flat slam damage on hitting any unbreakable barrier
+    wallSlamPerTile: 7,     // + per tile of unspent momentum at the moment of impact
+    unitCrashDmg: 12,       // bowling-pin crash: BOTH bodies take this…
+    unitCrashPerTile: 6,    // …+ per tile of unspent momentum
+    maxBounces: 2,          // cushion rebounds per throw (a corner pocket ends it)
+    maxChain: 3,            // momentum transfers per throw (A→B→C→D, then it stops)
+};
+
 /* 🧱 Mini material cubes (Minecraft-style debris). Violently destroyed
    blocks scatter these onto nearby walkable tiles; ANY grounded unit that
    walks over / lands on / stands under the scatter banks the pile for its
