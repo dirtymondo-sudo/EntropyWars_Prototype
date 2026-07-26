@@ -13566,8 +13566,16 @@ const ThreeRenderer = (function () {
             if (o.isMesh && (o._ew_billboard || o._ew_modelSkin) && o.material) {
                 if (o.material._ew_baseOpacity === undefined) {
                     o.material._ew_baseOpacity = (o.material.opacity !== undefined) ? o.material.opacity : 1;
+                    o.material._ew_baseTransparent = !!o.material.transparent;
                 }
-                o.material.transparent = true;
+                /* Only force the transparent queue while actually dimmed.
+                   This sweep runs EVERY frame for the viewer's own units, and
+                   unconditionally flagging opaque model materials transparent
+                   pushed ally bodies into the transparent pass — which draws
+                   AFTER the opaque team-outline hull, so their stencil stamps
+                   landed too late and allies kept full interior contour lines
+                   while enemies masked correctly. */
+                o.material.transparent = (op < 1) ? true : o.material._ew_baseTransparent;
                 o.material.opacity = (op < 1) ? op : o.material._ew_baseOpacity;
             }
         });
