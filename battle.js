@@ -7104,7 +7104,7 @@
             for (const url of Object.values(HIT_EFFECT_URLS)) {
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
-                img.src = url;
+                img.src = window._ewCorsBust ? window._ewCorsBust(url) : url;
             }
         })();
 
@@ -26172,7 +26172,7 @@
                     const step = () => { texDone++; prog.tex = [texDone, texList.length]; res(); };
                     im.onload = step;
                     im.onerror = step;
-                    im.src = u;
+                    im.src = window._ewCorsBust ? window._ewCorsBust(u) : u;
                 }))));
             }
 

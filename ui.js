@@ -1821,7 +1821,7 @@
           }
         };
         img.onerror = () => { oSpr._trimScanning = false; };
-        img.src = oSpr.url;
+        img.src = window._ewCorsBust ? window._ewCorsBust(oSpr.url) : oSpr.url;
         if (img.complete && img.naturalWidth) img.onload();
       }
       window._alphaScanSprite = _alphaScanSprite;
@@ -3581,7 +3581,7 @@
             if (_imgCache.has(src)) return _imgCache.get(src);
             const img = new Image();
             img.crossOrigin = 'anonymous';
-            img.src = src;
+            img.src = window._ewCorsBust ? window._ewCorsBust(src) : src;
             img.onload = () => {
 
                 _pendingSpriteSrcs.add(src);

@@ -1115,6 +1115,14 @@ const ThreeRenderer = (function () {
 
     var textureLoader = new THREE.TextureLoader();
     textureLoader.setCrossOrigin('anonymous');
+    /* Safari serves CSS-cached (no-CORS, headerless) copies to crossOrigin
+       fetches of the same URL → texture blocked, black tile. _ewCorsBust
+       (sprites.js) gives every CORS fetch its own ?ewcors=1 cache entry. */
+    var _texLoadRaw = textureLoader.load.bind(textureLoader);
+    textureLoader.load = function (url, onLoad, onProgress, onError) {
+        return _texLoadRaw(window._ewCorsBust ? window._ewCorsBust(url) : url,
+            onLoad, onProgress, onError);
+    };
     var textureCache = new Map();
     /* Texture-cache epoch (ROADMAP §4.9): getTexture stamps every texture it
        hands out with the current match epoch; resetForNewMatch bumps the epoch

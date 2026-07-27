@@ -1,5 +1,26 @@
 const _S = 'https://cdn.entropywars.net/Assets/Sprites';
 
+/* ── Safari CORS-cache guard (_ewCorsBust) ─────────────────────────────────
+   The same R2 image URLs are fetched BOTH ways: as CSS background-image
+   (no-CORS, no Origin header) and as WebGL/canvas textures
+   (img.crossOrigin='anonymous' / THREE.TextureLoader). Safari's HTTP cache
+   does not partition entries by request mode, so whichever fetch lands first
+   poisons the other: a CSS-cached copy carries no Access-Control-Allow-Origin
+   header, and a later crossOrigin load of the SAME URL is then blocked with
+   "not allowed by Access-Control-Allow-Origin. Status code: 200" → black
+   tiles/black textures. (The Cloudflare edge cache can serve the same
+   headerless variant.) Fix: every crossOrigin load routes its URL through
+   this helper, which appends ?ewcors=1 — the CORS variant gets its own cache
+   entry that is ALWAYS fetched with an Origin header. Use it at every
+   crossOrigin image/texture load of a cdn.entropywars.net URL; NEVER on CSS
+   background URLs. */
+function _ewCorsBust(u) {
+    if (typeof u !== 'string' || u.indexOf('cdn.entropywars.net') === -1) return u;
+    if (u.indexOf('ewcors=') !== -1) return u;
+    return u + (u.indexOf('?') === -1 ? '?ewcors=1' : '&ewcors=1');
+}
+window._ewCorsBust = _ewCorsBust;
+
 const RACE_PATH_RULES = {
   'werewolf':   { folder: 'Werewolf',   capGender: false },
   'giant':      { folder: 'Giant',      capGender: false },
@@ -2256,7 +2277,7 @@ for (let i = 0; i < TORNADO_FRAME_COUNT; i++) {
     TORNADO_FRAMES.push(url);
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.src = url;
+    img.src = _ewCorsBust(url);
     TORNADO_IMAGES.push(img);
 }
 

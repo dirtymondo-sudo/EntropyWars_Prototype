@@ -730,7 +730,7 @@ const ThreeVFX = (function () {
                     console.warn('[ThreeVFX] failed to load atlas image: ' + sprKey);
                     _pendingImageCount--;
                 };
-                img.src = _imageDefs[sprKey];
+                img.src = window._ewCorsBust ? window._ewCorsBust(_imageDefs[sprKey]) : _imageDefs[sprKey];
             })(keys[i]);
         }
     }
