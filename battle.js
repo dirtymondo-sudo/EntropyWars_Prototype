@@ -8431,14 +8431,38 @@
         };
         window.ACHIEVEMENT_DEFS = ACHIEVEMENT_DEFS;
 
-        function loadAchievements() {
-            if (window.ProfileSystem) return window.ProfileSystem.loadAchievements();
-            try {
-                const raw = localStorage.getItem('entropy-wars-achievements-v1');
-                return raw ? JSON.parse(raw) : {};
-            } catch {
-                return {};
+        /* One-time store repair (2026-07-27): checkAchievement used to fire on
+           OPPONENT/CPU actions too (an enemy double-kill unlocked YOUR "Double
+           Kill"), so every store quietly filled to 14/14 and the end-screen
+           count was meaningless. All pre-fix unlocks are therefore suspect —
+           drop any entry unlocked before the fix shipped so the roster is
+           re-earned under the owner-gated rules below. Timestamp comparison on
+           the ISO strings is lexicographic-safe and idempotent, and running it
+           inside loadAchievements() repairs every profile slot as it is used. */
+        const _ACH_REPAIR_CUTOFF = '2026-07-27T12:00:00Z';
+        function _repairAchievementStore(store) {
+            let changed = false;
+            for (const k of Object.keys(store)) {
+                const at = store[k] && store[k].unlockedAt;
+                if (!at || at < _ACH_REPAIR_CUTOFF) { delete store[k]; changed = true; }
             }
+            return changed;
+        }
+
+        function loadAchievements() {
+            let store;
+            if (window.ProfileSystem) {
+                store = window.ProfileSystem.loadAchievements() || {};
+            } else {
+                try {
+                    const raw = localStorage.getItem('entropy-wars-achievements-v1');
+                    store = raw ? JSON.parse(raw) : {};
+                } catch {
+                    store = {};
+                }
+            }
+            if (_repairAchievementStore(store)) saveAchievements(store);
+            return store;
         }
 
         function saveAchievements(achievements) {
@@ -8450,6 +8474,16 @@
 
         function checkAchievement(id, unit) {
             if (!ACHIEVEMENT_DEFS[id]) return;
+            /* Dev-sim batches must never farm the profile's trophy case. */
+            if (state.devAutoSim) return;
+            /* Achievements are the VIEWER's trophies. Unit-scoped triggers
+               (firstBlood / doubleKill / overkill / lastStand / critMaster /
+               comboKing…) pass the ACTING unit — require it to be ours, or a
+               CPU/opponent rampage unlocks + toasts on this player's profile
+               (this is how every store crept to 14/14). Player-scoped triggers
+               pass null and are already gated on the viewer winning at the
+               call site. */
+            if (unit && unit.player !== getViewerPlayer()) return;
             /* Per-match guard FIRST: when no profile is active the persisted
                store is a fresh {} on every load, so the saved-achievements
                check below never trips and one trigger-happy achievement
@@ -21645,6 +21679,165 @@
             } catch (e) { console.error('[ECON] bank failed:', e); }
         }
 
+        /* ══════════ 3D VICTORY PODIUM (post-match stage) ══════════
+           The live Three.js battlefield becomes the end-screen backdrop: the
+           winning team is teleported into a chevron lineup at board centre,
+           revived (visually), faced at the camera, and framed with a low
+           near-horizon shot that slowly drifts — the result overlay renders
+           as a translucent FPS-style layer over it (.result-overlay.vic-3d +
+           body.vic-podium). Everything here is viewer-local and runs AFTER
+           career stats / gold banking snapshot the real outcome, so the
+           visual revive can't pollute records. Online needs no relay: the
+           match is over and both clients stage the same lineup from their own
+           final state. Teardown restores every mutated field. */
+        let _podiumState = null;
+
+        function _canStagePodium() {
+            return !state.devAutoSim
+                && state.winner != null && state.winner !== 0
+                && !state.isCampaign
+                && typeof ThreeRenderer !== 'undefined'
+                && ThreeRenderer.isActive && ThreeRenderer.isActive()
+                && state.boardTerrain && state.boardTerrain.length > 0;
+        }
+
+        function _stageVictoryPodium() {
+            if (!_canStagePodium() || _podiumState) return false;
+            try {
+                const winnerP = state.winner;
+                const cast = (state.units || []).filter(u => u.player === winnerP);
+                if (!cast.length) return false;
+                const sorted = [...cast].sort((a, b) => {
+                    const ak = (a._matchKills || 0), bk = (b._matchKills || 0);
+                    if (ak !== bk) return bk - ak;
+                    return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
+                }).slice(0, 8);
+
+                _podiumState = {
+                    saved: sorted.map(u => ({
+                        u, x: u.x, y: u.y, z: u.z, dead: u.dead,
+                        dying: u._dying, hp: u.hp, facing: u.facing,
+                        inside: u._insideBuildingId
+                    })),
+                    fogWas: state.fogOfWar,
+                    selWas: state.selectedUnitId,
+                    raf: 0, driftTimer: 0, pulseTimer: 0
+                };
+
+                /* Full post-match reveal — the podium must never be fog-hidden
+                   (standard FPS end-screen behavior; the match is decided). */
+                state.fogOfWar = false;
+                state.selectedUnitId = null;
+                state.focusedUnitId = null;
+                state.hoverUnitId = null;
+
+                const cols = state.boardTerrain[0].length;
+                const rows = state.boardTerrain.length;
+                const cx = Math.floor(cols / 2), cy = Math.floor(rows / 2);
+                const _groundZ = (x, y) => {
+                    let z = (typeof getHeightAt === 'function') ? (getHeightAt(x, y) || 0) : 0;
+                    if (typeof nearestWalkableZ === 'function') {
+                        const wz = nearestWalkableZ(x, y, z);
+                        if (wz != null && wz >= 0) z = wz;
+                    }
+                    return z;
+                };
+                /* Chevron: MVP front-and-centre (one row toward the camera),
+                   the rest fan out and back in alternating pairs. */
+                for (let i = 0; i < sorted.length; i++) {
+                    const u = sorted[i];
+                    const side = (i % 2 === 1) ? -1 : 1;
+                    const lane = Math.ceil(i / 2);   // 0,1,1,2,2,3,3…
+                    const x = Math.max(0, Math.min(cols - 1, cx + side * lane));
+                    const y = Math.max(0, Math.min(rows - 1, i === 0 ? cy + 1 : cy - (lane - 1)));
+                    u.x = x; u.y = y; u.z = _groundZ(x, y);
+                    u.dead = false; u._dying = false;
+                    u._insideBuildingId = null;
+                    if (u.hp <= 0) u.hp = u.maxHp || 1;   // revived for the bow
+                    u.facing = { dx: 0, dy: 1 };          // face the camera
+                }
+
+                /* Near-horizon hero framing, then a slow psychedelic drift. */
+                const span = Math.min(sorted.length, 7);
+                const zoom = Math.max(1.15, Math.min(2.1, 4.6 / (span + 1.2)));
+                if (typeof camera !== 'undefined' && camera && camera.moveTo) {
+                    camera.moveTo({
+                        x: cx, y: cy + 0.6, zoom,
+                        tilt: 60, yaw: 0,
+                        duration: 1500, easing: 'easeInOut',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                    });
+                }
+                const t0 = performance.now();
+                _podiumState.driftTimer = setTimeout(() => {
+                    const drift = () => {
+                        if (!_podiumState) return;
+                        const t = (performance.now() - t0) / 1000;
+                        if (typeof camera !== 'undefined' && camera && camera.snap) {
+                            camera.snap({
+                                yaw: Math.sin(t * 0.13) * 8,
+                                tilt: 60 + Math.sin(t * 0.07) * 2.5
+                            });
+                        }
+                        _podiumState.raf = requestAnimationFrame(drift);
+                    };
+                    _podiumState.raf = requestAnimationFrame(drift);
+                }, 1700);
+
+                /* Celebration flourishes: MVP opens with a charged cast, then
+                   random front-liners keep the stage alive. */
+                const _flourish = () => {
+                    if (!_podiumState) return;
+                    const pick = sorted[Math.floor(Math.random() * Math.min(sorted.length, 5))];
+                    const slots = ['castAOE', 'castSlam', 'jump', 'castSupport', 'castMagic'];
+                    const slot = slots[Math.floor(Math.random() * slots.length)];
+                    try {
+                        if (ThreeRenderer.strikeRT && ThreeRenderer.strikeRT.playAnim) {
+                            ThreeRenderer.strikeRT.playAnim(pick.id, [slot, 'cast']);
+                        }
+                    } catch (e) {}
+                    _podiumState.pulseTimer = setTimeout(_flourish, 2800 + Math.random() * 2600);
+                };
+                _podiumState.pulseTimer = setTimeout(() => {
+                    if (!_podiumState) return;
+                    try {
+                        if (ThreeRenderer.strikeRT && ThreeRenderer.strikeRT.playAnim) {
+                            ThreeRenderer.strikeRT.playAnim(sorted[0].id, ['castAOE', 'cast']);
+                        }
+                    } catch (e) {}
+                    _podiumState.pulseTimer = setTimeout(_flourish, 3800);
+                }, 1900);
+
+                document.body.classList.add('vic-podium');
+                if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+                return true;
+            } catch (err) {
+                console.error('[Podium] staging failed:', err);
+                _teardownVictoryPodium();
+                return false;
+            }
+        }
+
+        function _teardownVictoryPodium() {
+            document.body.classList.remove('vic-podium');
+            const ps = _podiumState;
+            if (!ps) return;
+            _podiumState = null;
+            if (ps.raf) cancelAnimationFrame(ps.raf);
+            if (ps.driftTimer) clearTimeout(ps.driftTimer);
+            if (ps.pulseTimer) clearTimeout(ps.pulseTimer);
+            try {
+                for (const s of ps.saved) {
+                    s.u.x = s.x; s.u.y = s.y; s.u.z = s.z;
+                    s.u.dead = s.dead; s.u._dying = s.dying;
+                    s.u.hp = s.hp; s.u.facing = s.facing;
+                    s.u._insideBuildingId = s.inside;
+                }
+                state.fogOfWar = ps.fogWas;
+                state.selectedUnitId = ps.selWas;
+            } catch (e) {}
+        }
+
         function showResultOverlay() {
             const viewer = getViewerPlayer();
             const isNoContest = state.winner === 0;
@@ -21660,9 +21853,18 @@
             const vicAwards = document.getElementById('vicAwards');
             const vicParticles = document.getElementById('vicParticles');
 
+            /* 3D podium mode: the live battlefield renders the winners — the
+               2D painted sky/ground/sprites become a fallback for when the
+               Three renderer isn't running. Class toggles switch the CSS. */
+            const use3d = _canStagePodium();
+            resultOverlay.classList.toggle('vic-3d', use3d);
+
             vicSky.className = 'vic-sky ' + wonClass;
             vicGround.className = 'vic-ground ' + wonClass;
-            vicTitle.textContent = isNoContest ? 'No Contest' : (playerWon ? 'Victory' : 'Defeat');
+            const _titleText = isNoContest ? 'No Contest' : (playerWon ? 'Victory' : 'Defeat');
+            vicTitle.textContent = _titleText;
+            /* data-text feeds the chromatic-aberration ghost layers (CSS). */
+            vicTitle.setAttribute('data-text', _titleText);
             vicTitle.className = 'vic-title ' + wonClass;
 
             const careerStats = loadCareerStats();
@@ -21674,7 +21876,7 @@
                 : (namePrefix + (playerWon ? 'You won' : 'You lost') + ` match ${state.matchNumber}.` + streakHtml);
 
             let particleHtml = '';
-            if (playerWon) {
+            if (playerWon && !use3d) {
                 for (let i = 0; i < 30; i++) {
                     const x = Math.random() * 100;
                     const y = 20 + Math.random() * 60;
@@ -21751,7 +21953,10 @@
         </div>`;
             }
 
-            vicParty.innerHTML = partyHtml;
+            /* In 3D podium mode the real models ARE the party — the painted
+               sprite lineup stays empty (partyHtml is kept as the fallback if
+               staging fails, see bottom of this function). */
+            vicParty.innerHTML = use3d ? '' : partyHtml;
 
             vicAwards.innerHTML = buildVicAwards();
 
@@ -21767,17 +21972,44 @@
                 vicAwards.innerHTML += achHtml;
             }
 
+            /* Career progress: one honest line. The old full 14-item grid read
+               as "you earned all of these THIS match" (and the polluted store
+               pinned it at 14/14 forever) — the full trophy case lives in the
+               Profile screen, not here. */
             const allAchs = loadAchievements();
             const totalUnlocked = Object.keys(allAchs).length;
             const totalPossible = Object.keys(ACHIEVEMENT_DEFS).length;
-            if (totalUnlocked > 0) {
-                let allAchHtml = `<div class="vic-achievements vic-all-achievements"><div class="vic-ach-title">Achievements (${totalUnlocked}/${totalPossible})</div><div class="vic-ach-grid">`;
-                for (const [id, def] of Object.entries(ACHIEVEMENT_DEFS)) {
-                    const unlocked = !!allAchs[id];
-                    allAchHtml += `<div class="vic-ach-item${unlocked ? '' : ' locked'}" title="${def.desc}"><span class="vic-ach-icon">${unlocked ? def.icon : '🔒'}</span><span class="vic-ach-name">${def.name}</span></div>`;
+            vicAwards.innerHTML += `<div class="vic-career-ach">
+                <span class="vic-career-ach-label">✦ Career Achievements</span>
+                <span class="vic-career-ach-count"><b>${totalUnlocked}</b> / ${totalPossible}</span>
+                <div class="vic-career-ach-bar"><div class="vic-career-ach-fill" style="width:${Math.round(totalUnlocked / Math.max(1, totalPossible) * 100)}%"></div></div>
+            </div>`;
+
+            /* MVP plate under the podium: top of the winning team. */
+            const vicMvpTag = document.getElementById('vicMvpTag');
+            if (vicMvpTag) {
+                if (!isNoContest && sortedWinners.length) {
+                    const mvp = [...winnerUnits].sort((a, b) => {
+                        const ak = (a._matchKills || 0), bk = (b._matchKills || 0);
+                        if (ak !== bk) return bk - ak;
+                        return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
+                    })[0];
+                    const mvpPort = (typeof getUnitPortraitUrl === 'function') ? getUnitPortraitUrl(mvp) : null;
+                    const mvpSprite = mvpPort || getBattleMapSpriteUrl(mvp);
+                    const mvpSide = mvp.player === viewer ? 'ally' : 'enemy';
+                    vicMvpTag.className = 'vic-mvp-tag ' + mvpSide;
+                    vicMvpTag.innerHTML = `
+                        <div class="vic-mvp-port" style="background-image:url('${mvpSprite}')"></div>
+                        <div class="vic-mvp-col">
+                            <div class="vic-mvp-label">☩ Match MVP ☩</div>
+                            <div class="vic-mvp-name">${escapeHtml(unitDisplayName(mvp))}</div>
+                            <div class="vic-mvp-stat">${mvp._matchKills || 0} kills · ${mvp._trackDmgDealt || 0} dmg · ${mvp._trackHealDone || 0} heal</div>
+                        </div>`;
+                    vicMvpTag.style.display = '';
+                } else {
+                    vicMvpTag.style.display = 'none';
+                    vicMvpTag.innerHTML = '';
                 }
-                allAchHtml += '</div></div>';
-                vicAwards.innerHTML += allAchHtml;
             }
 
             const durationMs = Date.now() - (state.startTime || Date.now());
@@ -21942,6 +22174,15 @@
             _accountBankMatchGold();
 
             resultOverlay.classList.remove('hidden');
+
+            /* Stage the 3D podium LAST — career stats, gold banking and every
+               stat readout above snapshot the real outcome before the visual
+               revive/teleport touches the units. If staging fails, fall back
+               to the painted 2D lineup. */
+            if (use3d && !_stageVictoryPodium()) {
+                resultOverlay.classList.remove('vic-3d');
+                vicParty.innerHTML = partyHtml || '';
+            }
         }
 
         function buildVicAwards() {
@@ -22119,6 +22360,10 @@
 
         function hideResultOverlay() {
             resultOverlay.classList.add('hidden');
+            resultOverlay.classList.remove('vic-3d');
+            const _mvp = document.getElementById('vicMvpTag');
+            if (_mvp) { _mvp.style.display = 'none'; _mvp.innerHTML = ''; }
+            _teardownVictoryPodium();
         }
 
         function revealAllHourglasses() {
@@ -24090,6 +24335,11 @@
                 <button class="primary camp-btn" onclick="window._mdReturnToHub()">🏘 Return to Hub</button>
                 <button class="warn camp-btn" onclick="window._mdExitToMenu()">Main Menu</button>
             `;
+            /* This overlay reuses the shared result DOM — make sure a prior
+               PvP podium's 3D mode / MVP plate can't bleed into it. */
+            resultOverlay.classList.remove('vic-3d');
+            const _mdMvp = document.getElementById('vicMvpTag');
+            if (_mdMvp) { _mdMvp.style.display = 'none'; _mdMvp.innerHTML = ''; }
             resultOverlay.classList.remove('hidden');
         }
 
@@ -24444,6 +24694,11 @@
                 }
             }
 
+            /* Shared result DOM — a prior PvP podium's 3D mode / MVP plate
+               must not bleed into the campaign result screen. */
+            resultOverlay.classList.remove('vic-3d');
+            const _campMvp = document.getElementById('vicMvpTag');
+            if (_campMvp) { _campMvp.style.display = 'none'; _campMvp.innerHTML = ''; }
             resultOverlay.classList.remove('hidden');
         }
 
@@ -24672,6 +24927,9 @@
 
         function prepareBattleStateFromCurrentBuilds() {
             _finalizing = false;
+            /* Any lingering victory-podium staging must release its camera
+               drift + unit mutations before the new match builds its units. */
+            _teardownVictoryPodium();
             _invalidateBoardGrid();
 
             /* Clash: no fog of war, ever — both formations are always in full

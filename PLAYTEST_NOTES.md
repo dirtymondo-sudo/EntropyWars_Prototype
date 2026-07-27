@@ -7861,3 +7861,56 @@ effect × ×1.25 STAB), a flank, high ground or a crit. Ten levels is a rout.
   `_dbNum`/`_dbNumS` on the hud.js spell card). Change the engine, change these.
 - ai.js `_aiKillHp(target, attacker)` de-scales through `offenseScale` — that's
   what makes the AI respect the level gap when it asks "can I kill this?".
+
+## 2026-07-27 — End-of-match redesign: 3D victory podium + achievements fix (battle.js, styles-cinematic.css, index.html)
+
+**Achievements bug (the perpetual 14/14).** `checkAchievement` fired for ANY
+acting unit — an enemy/CPU double-kill, overkill, last stand, crit streak or
+combo unlocked achievements on the *player's* profile, so every store crept to
+14/14 and both end-screen readouts were lies. Fixes in `checkAchievement`:
+- `if (state.devAutoSim) return;` — dev-sim can't farm the trophy case.
+- `if (unit && unit.player !== getViewerPlayer()) return;` — unit-scoped
+  triggers must come from the viewer's own units. Null-unit triggers
+  (ace/perfectVictory/weatherSurvivor/winStreaks) stay gated at the call site.
+- One-time store repair in `loadAchievements()`: any entry with
+  `unlockedAt < _ACH_REPAIR_CUTOFF` (2026-07-27T12:00Z) is deleted and the
+  store re-saved — all pre-fix unlocks were suspect. Idempotent, repairs each
+  profile slot as it loads. Post-fix unlocks persist normally.
+- End screen now shows only match-earned chips + ONE career line
+  (`.vic-career-ach`, count + gradient progress bar); the full 14-item grid
+  (which read as "earned this match") is gone — trophy case lives in Profile.
+
+**3D victory podium.** POST_MATCH keeps `state.phase='battle'`, so the Three
+renderer keeps running behind `#resultOverlay` — the redesign stages the LIVE
+scene as the end-screen backdrop instead of the painted 2D sprite lineup:
+- `_stageVictoryPodium()` (battle.js, above `showResultOverlay`): winning team
+  sorted kills→damage, teleported into a chevron at board centre (MVP one row
+  toward the camera), visually revived (`dead=false`, hp refilled), faced
+  `{dx:0,dy:1}`, fog forced off. Mutating x/y/dead/hp is enough — the renderer's
+  per-frame `_computeUnitSerial` diff triggers `rebuildUnits()` automatically.
+- Camera: `camera.moveTo({x,y,zoom,tilt:60,yaw:0,_allowZoomChange,_bypassCap,
+  _fogAllowed})` for a near-horizon hero shot, then a rAF loop of
+  `camera.snap({yaw: sin, tilt: 60+sin})` for slow psychedelic drift.
+- Flourishes: `ThreeRenderer.strikeRT.playAnim(uid, ['castAOE','cast'])` — MVP
+  opens with a charged cast, random front-liners keep pulsing every ~3-5s.
+- ORDERING IS LOAD-BEARING: staging runs at the very END of
+  `showResultOverlay`, after career stats, gold banking
+  (`_accountBankMatchGold` reads `u.dead` for the no-deaths bonus!) and every
+  stat readout snapshot the real outcome. `_teardownVictoryPodium()` restores
+  every mutated field; wired into `hideResultOverlay` and
+  `prepareBattleStateFromCurrentBuilds`.
+- Online parity: viewer-local, no relay needed — match is decided, both
+  clients stage the same lineup from their own final state; fog-off at match
+  end is the standard full reveal.
+- CSS: `.result-overlay.vic-3d` goes transparent, hides the painted
+  sky/ground/party, adds `.vic-vignette` (letterbox + CRT corner fade) and
+  `.vic-scanlines` (flickering CRT lines). `body.vic-podium` hides everything
+  in `#mapRow` except `#threeCanvas` + `#css2dOverlay` (nameplates stay, FPS
+  style). Title is now iridescent gradient text (background-clip) with
+  magenta/cyan chromatic-aberration ghost layers driven by `data-text`;
+  planetary-glyph strip (`.vic-glyphs`) under it. `#vicMvpTag` MVP plate
+  bottom-centre (portrait via `getUnitPortraitUrl`, sprite fallback).
+- Fallbacks: renderer inactive / campaign / no-contest / dev-sim →
+  `_canStagePodium()` false → old 2D sprite lineup renders exactly as before.
+  Mystery-Dungeon + campaign overlays share the result DOM and explicitly
+  clear `vic-3d` + the MVP plate.

@@ -228,50 +228,127 @@
             z-index: 10;
         }
 
+        /* Title — PS1-era psychedelia: iridescent gradient fill that slowly
+           cycles, flanked by magenta/cyan chromatic-aberration ghost layers
+           (::before/::after read the same text from data-text). */
         .vic-title {
-            font-size: clamp(48px, 10vw, 96px);
+            position: relative;
+            font-family: 'Cormorant SC', 'DotGothic16', serif;
+            font-size: clamp(52px, 11vw, 104px);
             font-weight: 900;
             text-transform: uppercase;
-            letter-spacing: 0.06em;
+            letter-spacing: 0.1em;
             line-height: 1;
             opacity: 0;
             animation: vicTitleSlam 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards;
         }
 
+        .vic-title::before,
+        .vic-title::after {
+            content: attr(data-text);
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            background: none;
+            pointer-events: none;
+        }
+
+        .vic-title::before {
+            -webkit-text-fill-color: rgba(255, 60, 220, 0.38);
+            color: rgba(255, 60, 220, 0.38);
+            animation: vicChromaA 3.4s ease-in-out infinite;
+        }
+
+        .vic-title::after {
+            -webkit-text-fill-color: rgba(80, 220, 255, 0.38);
+            color: rgba(80, 220, 255, 0.38);
+            animation: vicChromaB 2.7s ease-in-out infinite;
+        }
+
+        @keyframes vicChromaA {
+            0%, 100% { transform: translate(2px, 0); }
+            50%      { transform: translate(4px, -1px); }
+        }
+
+        @keyframes vicChromaB {
+            0%, 100% { transform: translate(-2px, 0); }
+            50%      { transform: translate(-4px, 1px); }
+        }
+
         .vic-title.victory {
+            background: linear-gradient(100deg,
+                #ffd75e 0%, #ffb03a 18%, #ff8ad8 38%,
+                #b98aff 55%, #7fd9ff 72%, #ffd75e 100%);
+            background-size: 260% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
             color: #f0d860;
-            text-shadow:
-                0 0 40px rgba(240, 200, 60, 0.4),
-                0 0 80px rgba(240, 180, 40, 0.2),
-                0 4px 0 #b08020,
-                0 6px 0 #806010;
+            animation:
+                vicTitleSlam 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards,
+                vicHueDrift 8s linear 0.8s infinite;
+            filter: drop-shadow(0 0 26px rgba(240, 190, 70, 0.45))
+                    drop-shadow(0 4px 0 rgba(110, 70, 10, 0.9));
         }
 
         .vic-title.defeat {
+            background: linear-gradient(100deg,
+                #ff4a4a 0%, #b3244f 30%, #7a2a8f 55%,
+                #b3244f 78%, #ff4a4a 100%);
+            background-size: 260% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
             color: #cc3030;
-            text-shadow:
-                0 0 40px rgba(200, 40, 40, 0.3),
-                0 4px 0 #801818,
-                0 6px 0 #500c0c;
+            animation:
+                vicTitleSlam 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards,
+                vicHueDrift 11s linear 0.8s infinite;
+            filter: drop-shadow(0 0 24px rgba(200, 40, 80, 0.4))
+                    drop-shadow(0 4px 0 rgba(60, 8, 20, 0.9));
+        }
+
+        @keyframes vicHueDrift {
+            from { background-position: 0% 50%; }
+            to   { background-position: 260% 50%; }
         }
 
         @keyframes vicTitleSlam {
             0% {
                 opacity: 0;
                 transform: scale(2.5) translateY(-20px);
-                filter: blur(8px);
             }
 
             60% {
                 opacity: 1;
                 transform: scale(0.95) translateY(2px);
-                filter: blur(0);
             }
 
             100% {
                 opacity: 1;
                 transform: scale(1) translateY(0);
             }
+        }
+
+        /* Esoteric planetary-glyph strip under the title — echoes the zodiac
+           system; shimmer only, no layout weight. */
+        .vic-glyphs {
+            margin-top: 6px;
+            font-size: 14px;
+            letter-spacing: 0.5em;
+            color: rgba(255, 214, 120, 0.55);
+            text-shadow: 0 0 10px rgba(255, 190, 80, 0.45);
+            opacity: 0;
+            animation: vicGlyphShimmer 5s ease-in-out 1.1s infinite;
+        }
+
+        .vic-title.defeat + .vic-glyphs {
+            color: rgba(255, 120, 160, 0.5);
+            text-shadow: 0 0 10px rgba(255, 60, 120, 0.4);
+        }
+
+        @keyframes vicGlyphShimmer {
+            0%, 100% { opacity: 0.4; }
+            50%      { opacity: 0.85; }
         }
 
         .vic-subtitle {
@@ -741,6 +818,231 @@
             color: var(--muted);
             opacity: 0;
             animation: vicFadeUp 0.5s ease 1s forwards;
+        }
+
+        /* ════════════════════════════════════════════════════
+           3D VICTORY PODIUM MODE (.result-overlay.vic-3d)
+           The live Three.js battlefield IS the backdrop: the overlay goes
+           transparent in the middle, the painted 2D landscape layers hide,
+           and a CRT/psychedelic cinematic frame (vignette + scanlines +
+           letterbox) wraps the winners' 3D lineup. body.vic-podium mutes
+           the battle HUD around the canvas so only the scene shows.
+           ════════════════════════════════════════════════════ */
+        .result-overlay.vic-3d {
+            background: transparent;
+        }
+
+        .result-overlay.vic-3d .vic-sky,
+        .result-overlay.vic-3d .vic-rays,
+        .result-overlay.vic-3d .vic-particles,
+        .result-overlay.vic-3d .vic-ground-wrap,
+        .result-overlay.vic-3d .vic-party {
+            display: none;
+        }
+
+        /* Cinematic dressing layers only exist in 3D mode */
+        .vic-vignette,
+        .vic-scanlines {
+            display: none;
+        }
+
+        .result-overlay.vic-3d .vic-vignette {
+            display: block;
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            background:
+                /* CRT corner vignette */
+                radial-gradient(ellipse 105% 90% at 50% 46%,
+                    transparent 42%, rgba(5, 2, 12, 0.38) 74%, rgba(4, 2, 10, 0.92) 100%),
+                /* letterbox bars, psychedelic-tinted */
+                linear-gradient(180deg,
+                    rgba(8, 4, 18, 0.92) 0%, rgba(10, 5, 22, 0.55) 9%, transparent 22%,
+                    transparent 72%, rgba(10, 5, 22, 0.6) 88%, rgba(8, 4, 18, 0.95) 100%);
+        }
+
+        .result-overlay.vic-3d .vic-scanlines {
+            display: block;
+            position: absolute;
+            inset: 0;
+            z-index: 55;
+            pointer-events: none;
+            background: repeating-linear-gradient(0deg,
+                rgba(0, 0, 0, 0.14) 0px, rgba(0, 0, 0, 0.14) 1px,
+                transparent 1px, transparent 3px);
+            opacity: 0.55;
+            animation: vicCrtFlicker 4.2s steps(2) infinite;
+        }
+
+        @keyframes vicCrtFlicker {
+            0%, 100% { opacity: 0.55; }
+            50%      { opacity: 0.44; }
+        }
+
+        /* Panels sit ON the scene now — deepen the glass so text stays
+           readable over a bright battlefield. */
+        .result-overlay.vic-3d .vic-stats-table {
+            background: linear-gradient(168deg, rgba(10, 8, 20, 0.93), rgba(6, 5, 14, 0.95));
+            border-color: rgba(170, 130, 255, 0.16);
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 8px 28px rgba(0, 0, 0, 0.5);
+        }
+
+        .result-overlay.vic-3d .vic-award {
+            background: linear-gradient(168deg, rgba(10, 8, 20, 0.93), rgba(6, 5, 14, 0.95));
+            border-color: rgba(170, 130, 255, 0.14);
+        }
+
+        .result-overlay.vic-3d .vic-achievements {
+            background: rgba(8, 6, 16, 0.9);
+            border-color: rgba(170, 130, 255, 0.14);
+        }
+
+        /* Gold breakdown floats dead-centre in 2D mode — in 3D mode that's on
+           top of the models, so it drops to just above the MVP plate. */
+        .result-overlay.vic-3d .vic-gold-breakdown {
+            top: auto;
+            bottom: 170px;
+            transform: translateX(-50%);
+        }
+
+        /* ── MVP plate (bottom-centre, under the 3D MVP) ── */
+        .vic-mvp-tag {
+            position: absolute;
+            left: 50%;
+            bottom: 92px;
+            transform: translateX(-50%);
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 20px 8px 10px;
+            background: linear-gradient(168deg, rgba(12, 9, 22, 0.92), rgba(7, 5, 14, 0.95));
+            border: 1px solid rgba(255, 215, 94, 0.4);
+            box-shadow:
+                0 0 22px rgba(255, 200, 80, 0.14),
+                inset 0 0 18px rgba(120, 70, 200, 0.12);
+            opacity: 0;
+            animation: vicFadeUp 0.6s ease 1.9s forwards;
+            pointer-events: none;
+        }
+
+        /* corner notches — esoteric card frame */
+        .vic-mvp-tag::before,
+        .vic-mvp-tag::after {
+            content: '✦';
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 11px;
+            color: rgba(255, 215, 94, 0.75);
+            text-shadow: 0 0 8px rgba(255, 190, 80, 0.6);
+        }
+
+        .vic-mvp-tag::before { left: -18px; }
+        .vic-mvp-tag::after  { right: -18px; }
+
+        .vic-mvp-port {
+            width: 44px;
+            height: 44px;
+            background-size: cover;
+            background-position: center top;
+            background-repeat: no-repeat;
+            image-rendering: pixelated;
+            border: 1px solid rgba(255, 215, 94, 0.35);
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .vic-mvp-col {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.25;
+        }
+
+        .vic-mvp-label {
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+            color: rgba(255, 215, 94, 0.85);
+            text-shadow: 0 0 8px rgba(255, 190, 80, 0.5);
+        }
+
+        .vic-mvp-name {
+            font-family: 'Cormorant SC', serif;
+            font-size: 19px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: #f2ecd8;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .vic-mvp-tag.enemy .vic-mvp-name { color: #ffb0b0; }
+
+        .vic-mvp-stat {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* ── Career achievements: one honest line + progress bar ── */
+        .vic-career-ach {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: rgba(8, 6, 16, 0.85);
+            border: 1px solid rgba(170, 130, 255, 0.12);
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            opacity: 0;
+            animation: vicFadeUp 0.5s ease 2.2s forwards;
+        }
+
+        .vic-career-ach-label {
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: rgba(255, 215, 94, 0.8);
+        }
+
+        .vic-career-ach-count {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--muted);
+            margin-left: auto;
+        }
+
+        .vic-career-ach-count b {
+            color: var(--gold);
+            font-size: 13px;
+        }
+
+        .vic-career-ach-bar {
+            flex-basis: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.06);
+            overflow: hidden;
+        }
+
+        .vic-career-ach-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffd75e, #ff8ad8, #7fd9ff);
+            transition: width 0.8s ease;
+        }
+
+        /* ── Mute the battle HUD around the canvas while the podium runs ──
+           Everything in the map row except the WebGL canvas and its CSS2D
+           nameplate overlay goes dark; the result overlay is the only UI. */
+        body.vic-podium #mapRow > *:not(.map-center) {
+            visibility: hidden !important;
+        }
+
+        body.vic-podium .map-center > *:not(#threeCanvas):not(#css2dOverlay) {
+            visibility: hidden !important;
         }
 
 
