@@ -4359,6 +4359,34 @@
 
             var SPEEDS = [0.5, 1, 2, 4];
 
+            /* Dead-air compression. A recording carries every second of human
+               thinking time between actions, so a straight playback drags —
+               long silent stretches where nothing on screen moves. While the
+               engine is doing ANYTHING, snapshots land every ~120ms
+               (SNAP_THROTTLE_MS) and relays are unthrottled, so any
+               event-to-event gap bigger than GAP_CAP_MS is guaranteed idle
+               time, not an in-flight animation. Rewriting the timeline caps
+               each gap at GAP_CAP_MS: action keeps its exact recorded rhythm,
+               idle stretches collapse to a short beat, and the whole match
+               plays like continuous battle. Event objects are copied so the
+               saved recording (IndexedDB / _EW_LAST_REPLAY) keeps its true
+               timings. */
+            var GAP_CAP_MS = 1500;
+            function _compressTimeline(events) {
+                var out = [], shift = 0, prevT = 0, i, ev, t;
+                for (i = 0; i < events.length; i++) {
+                    ev = events[i];
+                    t = ev.t - shift;
+                    if (t - prevT > GAP_CAP_MS) {
+                        shift += (t - prevT) - GAP_CAP_MS;
+                        t = prevT + GAP_CAP_MS;
+                    }
+                    out.push({ t: t, k: ev.k, d: ev.d });
+                    prevT = t;
+                }
+                return out;
+            }
+
             window._ewReplayLastMatch = function() {
                 if (R.playing) return;
                 if (window._NET && window._NET.online) {
@@ -4392,7 +4420,7 @@
                 R.speed = 1;
                 R.idx = 0;
                 R.playhead = 0;
-                R.events = rec.events;
+                R.events = _compressTimeline(rec.events);
                 R.meta = rec.meta || {};
                 R.acc = {};
                 R.accUnits = {};
@@ -4400,7 +4428,7 @@
                 R._prevActiveUnit = null;
                 R._boardBuilt = false;
                 R._endShown = false;
-                R._durationMs = rec.events.length ? rec.events[rec.events.length - 1].t : 0;
+                R._durationMs = R.events.length ? R.events[R.events.length - 1].t : 0;
 
                 /* Pin the environment: viewer = P1, engine dormant. Everything
                    saved here is restored on exit. */
@@ -4446,8 +4474,10 @@
                 for (var _ci = 0; _ci < rec.events.length; _ci++) {
                     if (rec.events[_ci].k === 's') _nS++; else _nR++;
                 }
+                var _recDur = rec.events.length ? rec.events[rec.events.length - 1].t : 0;
                 console.log('[REPLAY] Playing ' + rec.events.length + ' events (' + _nS +
-                    ' snapshots, ' + _nR + ' relay) · ' + Math.round(R._durationMs / 1000) + 's');
+                    ' snapshots, ' + _nR + ' relay) · ' + Math.round(R._durationMs / 1000) +
+                    's (recorded ' + Math.round(_recDur / 1000) + 's, idle gaps compressed)');
 
                 /* Baseline snapshot builds the world; the Three renderer
                    auto-activates off phase==='battle' just like a live match. */
