@@ -36,7 +36,23 @@
         }
 
         function _emit(evt, data) {
+            /* REPLAY TAP: while a local/host match is being recorded, every
+               relay-channel event (banners, cameras, walk anims, VFX, SFX —
+               the whole guest presentation stream) is also written to the
+               match recorder. Offline there is no socket, so this tap is the
+               only consumer; online host it records AND emits. */
+            if (evt === 'relay' && typeof window._ewRecRelay === 'function') {
+                try { window._ewRecRelay(data); } catch (e) {}
+            }
             if (window._NET && window._NET.socket) window._NET.socket.emit(evt, data);
+        }
+
+        /* True while the match recorder is capturing (see the MATCH REPLAY
+           section at the bottom of this file). Referenced by every host-emit
+           guard so the presentation stream is generated even offline. */
+        function _ewRecOn() {
+            var R = window._EW_REC;
+            return !!(R && R.active);
         }
 
         /* Opening-cinematic skip vote (battle.js playOpeningCinematic): each
@@ -102,6 +118,10 @@
         const _origMaybeTriggerComputerTurn = maybeTriggerComputerTurn;
         maybeTriggerComputerTurn = function() {
             if (_isOnline() && _isGuest()) return;
+            /* REPLAY: playback applies recorded snapshots that look like a live
+               battle — the engine must stay dormant or the AI would start
+               playing on top of the recording. */
+            if (window._EW_REPLAY && window._EW_REPLAY.playing) return;
             return _origMaybeTriggerComputerTurn();
         };
 
@@ -612,7 +632,7 @@
         endUnitIfDone = function(unit) {
             const r = _origEndUnitIfDone(unit);
             var _netOnE = window._NET && window._NET.online;
-            if (_netOnE && _isHost() && state.phase === 'battle' && window._broadcastState) {
+            if ((_netOnE && _isHost() || _ewRecOn()) && state.phase === 'battle' && window._broadcastState) {
                 window._broadcastState();
             }
             return r;
@@ -809,7 +829,7 @@
         maybeAdvanceTurn = function() {
             _origMaybeAdvanceTurn();
             var _netOn = window._NET && window._NET.online;
-            if (_netOn && _isHost() && window._broadcastState) window._broadcastState();
+            if ((_netOn && _isHost() || _ewRecOn()) && window._broadcastState) window._broadcastState();
         };
 
         const _origToggleAutoMode = toggleAutoMode;
@@ -845,7 +865,7 @@
             var result = _origPlayOffensiveActionCamera(sourceUnit, target, opts);
 
             var _netOn = window._NET && window._NET.online;
-            if (_netOn && _isHost() && sourceUnit && target) {
+            if ((_netOn && _isHost() || _ewRecOn()) && sourceUnit && target) {
                 var camEvt = {
                     type: 'offensive',
                     srcId: sourceUnit.id,
@@ -901,7 +921,7 @@
         queueAnnouncement = function(title, subtitle, kind) {
             _origQueueAnnouncement(title, subtitle, kind);
             var _netOn = window._NET && window._NET.online;
-            if (_netOn && _isHost()) {
+            if ((_netOn && _isHost() || _ewRecOn())) {
                 _emit('relay', {
                     type: 'announcement',
                     title: title,
@@ -915,7 +935,7 @@
         showTurnBanner = function(player, roundNum, isNewRound, blitzUnit) {
             _origShowTurnBanner(player, roundNum, isNewRound, blitzUnit);
             var _netOn = window._NET && window._NET.online;
-            if (_netOn && _isHost()) {
+            if ((_netOn && _isHost() || _ewRecOn())) {
                 _emit('relay', {
                     type: 'turn-banner',
                     player: player,
@@ -930,7 +950,7 @@
         showRoundBanner = function(roundNum, onDone) {
             _origShowRoundBanner(roundNum, onDone);
             var _netOn = window._NET && window._NET.online;
-            if (_netOn && _isHost()) {
+            if ((_netOn && _isHost() || _ewRecOn())) {
                 _emit('relay', {
                     type: 'round-banner',
                     roundNum: roundNum
@@ -948,7 +968,7 @@
         showPlayerTurnAnnounce = function(unit) {
             _origShowPlayerTurnAnnounce(unit);
             var _netOn = window._NET && window._NET.online;
-            if (_netOn && _isHost() && unit) {
+            if ((_netOn && _isHost() || _ewRecOn()) && unit) {
                 _emit('relay', {
                     type: 'player-turn-announce',
                     player: unit.player,
@@ -962,7 +982,7 @@
         showFloatingTextAtTile = function(x, y, textValue, kind, opts) {
             _origShowFloatingTextAtTile(x, y, textValue, kind, opts);
             var _netOn = window._NET && window._NET.online;
-            if (_netOn && _isHost() && state.phase === 'battle') {
+            if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
                 _emit('relay', {
                     type: 'floating-text',
                     x: x, y: y,
@@ -981,7 +1001,7 @@
         followUnitFall = function(unit, opts) {
             _origFollowUnitFall(unit, opts);
             var _netOn = window._NET && window._NET.online;
-            if (_netOn && _isHost() && unit && state.phase === 'battle') {
+            if ((_netOn && _isHost() || _ewRecOn()) && unit && state.phase === 'battle') {
                 _emit('relay', {
                     type: 'unit-fall-follow',
                     unitId: unit.id,
@@ -1007,7 +1027,7 @@
             window._armActionCamSettle = function(unitId, x, y, delayMs, endShot) {
                 _origArmActionCamSettle(unitId, x, y, delayMs, endShot);
                 var _netOn = window._NET && window._NET.online;
-                if (_netOn && _isHost() && state.phase === 'battle') {
+                if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
                     _emit('relay', {
                         type: 'cam-action-settle',
                         unitId: unitId != null ? unitId : null,
@@ -1029,7 +1049,7 @@
         animateDashActionCamera = function(fromPoint, toPoint, opts) {
             var result = _origAnimateDashActionCamera(fromPoint, toPoint, opts);
             var _netOn = window._NET && window._NET.online;
-            if (_netOn && _isHost() && fromPoint && toPoint && state.phase === 'battle') {
+            if ((_netOn && _isHost() || _ewRecOn()) && fromPoint && toPoint && state.phase === 'battle') {
                 _emit('relay', {
                     type: 'dash-cam-follow',
                     fromX: fromPoint.x, fromY: fromPoint.y,
@@ -1054,7 +1074,7 @@
             window.playSkyGrabFx = function(caster, target, spell) {
                 _origPlaySkyGrabFx(caster, target, spell);
                 var _netOn = window._NET && window._NET.online;
-                if (_netOn && _isHost() && target && spell && state.phase === 'battle') {
+                if ((_netOn && _isHost() || _ewRecOn()) && target && spell && state.phase === 'battle') {
                     _emit('relay', {
                         type: 'sky-grab-fx',
                         casterId: caster ? caster.id : null,
@@ -1071,7 +1091,7 @@
             window.playSkyThrowFx = function(target, fromX, fromY, toX, toY, spell, opts) {
                 var result = _origPlaySkyThrowFx(target, fromX, fromY, toX, toY, spell, opts);
                 var _netOn = window._NET && window._NET.online;
-                if (_netOn && _isHost() && target && spell && state.phase === 'battle') {
+                if ((_netOn && _isHost() || _ewRecOn()) && target && spell && state.phase === 'battle') {
                     _emit('relay', {
                         type: 'sky-throw-fx',
                         targetId: target.id,
@@ -1635,7 +1655,7 @@
         animateWalkPath = function(unit, path, onComplete) {
 
             var _netOnline = window._NET && window._NET.online;
-            if (_netOnline && _isHost() && unit && path && path.length > 0) {
+            if ((_netOnline && _isHost() || _ewRecOn()) && unit && path && path.length > 0) {
                 _emit('relay', {
                     type: 'walk-anim',
                     unitId: unit.id,
@@ -1654,7 +1674,7 @@
         animateJumpArc = function(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs) {
 
             var _netOnline = window._NET && window._NET.online;
-            if (_netOnline && _isHost() && unit) {
+            if ((_netOnline && _isHost() || _ewRecOn()) && unit) {
                 _emit('relay', {
                     type: 'jump-anim',
                     unitId: unit.id,
@@ -1670,7 +1690,7 @@
         const _origAnimateStrikeLeap = animateStrikeLeap;
         animateStrikeLeap = function(unit, tx, ty, opts) {
             var _netOnline = window._NET && window._NET.online;
-            if (_netOnline && _isHost() && unit) {
+            if ((_netOnline && _isHost() || _ewRecOn()) && unit) {
                 _emit('relay', {
                     type: 'strike-leap',
                     unitId: unit.id,
@@ -1689,7 +1709,7 @@
         const _origAnimateDisplacementPath = animateDisplacementPath;
         animateDisplacementPath = function(unit, fromX, fromY, steps, perStepMs, opts) {
             var _netOnline = window._NET && window._NET.online;
-            if (_netOnline && _isHost() && unit && steps && steps.length > 0) {
+            if ((_netOnline && _isHost() || _ewRecOn()) && unit && steps && steps.length > 0) {
                 _emit('relay', {
                     type: 'displace-anim',
                     unitId: unit.id,
@@ -1709,7 +1729,7 @@
         const _origAnimateDisplacement = animateDisplacement;
         animateDisplacement = function(unit, fromX, fromY, toX, toY, durationMs, opts) {
             var _netOnline = window._NET && window._NET.online;
-            if (_netOnline && _isHost() && unit && (fromX !== toX || fromY !== toY)) {
+            if ((_netOnline && _isHost() || _ewRecOn()) && unit && (fromX !== toX || fromY !== toY)) {
                 _emit('relay', {
                     type: 'displace-anim',
                     unitId: unit.id,
@@ -1731,7 +1751,7 @@
         if (_origPlayCollisionImpactFx) {
             playCollisionImpactFx = function(x, y, kind, opts) {
                 var _netOn = window._NET && window._NET.online;
-                if (_netOn && _isHost() && !(opts && opts.remote)) {
+                if ((_netOn && _isHost() || _ewRecOn()) && !(opts && opts.remote)) {
                     _emit('relay', {
                         type: 'collision-fx',
                         x: x, y: y, kind: kind,
@@ -1747,7 +1767,7 @@
         playSfx = function(key, opts) {
             _origPlaySfx(key, opts);
             var _netOn = window._NET && window._NET.online;
-            if (_netOn && _isHost() && state.phase === 'battle' && key) {
+            if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle' && key) {
                 _emit('relay', { type: 'sfx', key: key });
             }
         };
@@ -1763,7 +1783,7 @@
         if (_origEwsPlayCinematic) {
             _ewsPlayCinematic = function(unit, targets, allies, hooks) {
                 var _netOn = window._NET && window._NET.online;
-                if (_netOn && _isHost() && unit && !(hooks && hooks.remote)) {
+                if ((_netOn && _isHost() || _ewRecOn()) && unit && !(hooks && hooks.remote)) {
                     _emit('relay', {
                         type: 'entropy-cine',
                         unitId: unit.id,
@@ -1784,7 +1804,7 @@
         if (_origComboPlayPresentation) {
             _comboPlayPresentation = function(initiator, partner, target, combo, T) {
                 var _netOn = window._NET && window._NET.online;
-                if (_netOn && _isHost() && initiator && partner && target && !(T && T.remote)) {
+                if ((_netOn && _isHost() || _ewRecOn()) && initiator && partner && target && !(T && T.remote)) {
                     _emit('relay', {
                         type: 'combo-cine',
                         initiatorId: initiator.id, partnerId: partner.id, targetId: target.id,
@@ -1809,7 +1829,7 @@
             VFX3D.fire = function(phase, spellId, params) {
                 var result = _origVFX3Dfire.call(VFX3D, phase, spellId, params);
                 var _netOn = window._NET && window._NET.online;
-                if (_netOn && _isHost()) {
+                if ((_netOn && _isHost() || _ewRecOn())) {
 
                     var safeParams = {};
                     if (params) {
@@ -1885,7 +1905,7 @@
                     var args = Array.prototype.slice.call(arguments);
                     var result = _origSib.apply(VFX3D, args);
                     var _netOn = window._NET && window._NET.online;
-                    if (_netOn && _isHost()) {
+                    if ((_netOn && _isHost() || _ewRecOn())) {
                         /* JSON-safe payload: primitives ride as-is, a trailing
                            opts object is reduced to its primitive fields */
                         var safe = args.map(function(a) {
@@ -1923,7 +1943,7 @@
             _playSupportCineShot = function(unit, target, opts) {
                 var result = _origPlaySupportCineShot(unit, target, opts);
                 var _netOn = window._NET && window._NET.online;
-                if (result && _netOn && _isHost() && unit && target) {
+                if (result && (_netOn && _isHost() || _ewRecOn()) && unit && target) {
                     _emit('relay', {
                         type: 'support-cine',
                         casterId: unit.id || null,
@@ -1945,7 +1965,7 @@
             _spellFocusCamera = function(casterUnit, tx, ty, opts) {
                 var result = _origSpellFocusCamera(casterUnit, tx, ty, opts);
                 var _netOn = window._NET && window._NET.online;
-                if (_netOn && _isHost() && casterUnit
+                if ((_netOn && _isHost() || _ewRecOn()) && casterUnit
                     && !(result && result.mode === 'support')) {
                     _emit('relay', {
                         type: 'spell-focus-cam',
@@ -2731,7 +2751,22 @@
                     }
                 });
 
-                NET.socket.on('relay', function(data) {
+                NET.socket.on('relay', function(data) { window._ewApplyRelay(data); });
+            }
+
+            /* Mirror-view check: is this client a pure viewer of a match run
+               elsewhere? True for a real online guest, and during replay
+               playback (the replay player is a synthetic guest fed from a
+               recording instead of a socket). */
+            function _ewMirrorView() {
+                return NET.role === 'guest' || !!(window._EW_REPLAY && window._EW_REPLAY.playing);
+            }
+
+            /* Guest-side relay dispatcher, extracted from _connectSocket so the
+               REPLAY player can feed recorded events through the exact same code
+               path a live online guest uses. _ewMirrorView() is true for a real
+               guest AND during replay playback (was: NET.role === 'guest'). */
+            window._ewApplyRelay = function(data) {
                     var st = window._gameState;
                     if (data.type === 'intro-skip') {
                         /* Opponent voted to skip the opening cinematic. Latch the
@@ -2807,7 +2842,7 @@
                         if (typeof window.render === 'function') window.render();
                     }
 
-                    if (data.type === 'game-mode' && NET.role === 'guest') {
+                    if (data.type === 'game-mode' && _ewMirrorView()) {
                         if (data.modeId && typeof window._rawApplyGameMode === 'function') {
                             window._rawApplyGameMode(data.modeId);
                             if (typeof window.repairPartyBuilderState === 'function') window.repairPartyBuilderState();
@@ -2830,7 +2865,7 @@
                         if (typeof window.render === 'function') window.render();
                     }
 
-                    if (data.type === 'multiplayer-mode' && NET.role === 'guest') {
+                    if (data.type === 'multiplayer-mode' && _ewMirrorView()) {
                         if (data.modeId) {
                             activeMultiplayerMode = data.modeId;
                         }
@@ -2838,7 +2873,7 @@
                         if (typeof window.render === 'function') window.render();
                     }
 
-                    if (data.type === 'camera-events' && NET.role === 'guest') {
+                    if (data.type === 'camera-events' && _ewMirrorView()) {
                         var events = data.events || [];
                         for (var ci = 0; ci < events.length; ci++) {
                             var camEvt = events[ci];
@@ -2888,13 +2923,13 @@
                         }
                     }
 
-                    if (data.type === 'announcement' && NET.role === 'guest') {
+                    if (data.type === 'announcement' && _ewMirrorView()) {
                         if (typeof window.showAnnouncementBanner === 'function') {
                             window.showAnnouncementBanner(data.title, data.subtitle, data.kind, function() {});
                         }
                     }
 
-                    if (data.type === 'turn-banner' && NET.role === 'guest') {
+                    if (data.type === 'turn-banner' && _ewMirrorView()) {
                         if (typeof window.showTurnBanner === 'function') {
                             var blitzUnit = null;
                             if (data.blitzUnitId && st && st.units) {
@@ -2904,13 +2939,13 @@
                         }
                     }
 
-                    if (data.type === 'round-banner' && NET.role === 'guest') {
+                    if (data.type === 'round-banner' && _ewMirrorView()) {
                         if (typeof window.showRoundBanner === 'function') {
                             window.showRoundBanner(data.roundNum, function() {});
                         }
                     }
 
-                    if (data.type === 'player-turn-announce' && NET.role === 'guest') {
+                    if (data.type === 'player-turn-announce' && _ewMirrorView()) {
                         if (typeof window.showPlayerTurnAnnounce === 'function' && data.player) {
                             var _ptaUnit = null;
                             if (data.unitId && st && st.units) {
@@ -2922,7 +2957,7 @@
                         }
                     }
 
-                    if (data.type === 'floating-text' && NET.role === 'guest') {
+                    if (data.type === 'floating-text' && _ewMirrorView()) {
                         // Fog gate: don't render combat numbers happening inside
                         // the fog — they'd reveal hidden enemy positions/fights.
                         var _ftVisible = true;
@@ -2934,7 +2969,7 @@
                         }
                     }
 
-                    if (data.type === 'unit-fall-follow' && NET.role === 'guest') {
+                    if (data.type === 'unit-fall-follow' && _ewMirrorView()) {
                         /* Camera dives with a falling/grounded unit. The
                            function itself fog-gates on the GUEST's viewer
                            (_shouldCameraFollowUnit), so a hidden enemy's
@@ -2946,7 +2981,7 @@
                         }
                     }
 
-                    if (data.type === 'cam-action-settle' && NET.role === 'guest') {
+                    if (data.type === 'cam-action-settle' && _ewMirrorView()) {
                         /* End the relayed cinematic shot on the mirror and ease
                            back to the actor at the resting framing. The helper
                            fog-gates the re-centre itself (hidden enemy actor →
@@ -2960,7 +2995,7 @@
                         }
                     }
 
-                    if (data.type === 'dash-cam-follow' && NET.role === 'guest') {
+                    if (data.type === 'dash-cam-follow' && _ewMirrorView()) {
                         /* Dash/charge follow camera: glide with the dasher from
                            launch to landing. Fog gate on the GUEST's own fog
                            set — both endpoints must be screen-visible, or the
@@ -2988,7 +3023,7 @@
                         }
                     }
 
-                    if (data.type === 'walk-anim' && NET.role === 'guest') {
+                    if (data.type === 'walk-anim' && _ewMirrorView()) {
                         var walkUnit = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
                         if (walkUnit && data.path && data.path.length > 0) {
                             var _isEnemyWalk = walkUnit.player !== NET.myPlayer;
@@ -3063,7 +3098,7 @@
                         }
                     }
 
-                    if (data.type === 'jump-anim' && NET.role === 'guest') {
+                    if (data.type === 'jump-anim' && _ewMirrorView()) {
                         var jumpUnit = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
                         if (jumpUnit) {
                             var _showJump = true;
@@ -3111,7 +3146,7 @@
                        teleport. Same save/restore dance as walk-anim: the
                        sync already placed the unit at its landing tile, so
                        rewind it to the from-tile for the tween's benefit. */
-                    if (data.type === 'displace-anim' && NET.role === 'guest') {
+                    if (data.type === 'displace-anim' && _ewMirrorView()) {
                         var dispUnit = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
                         if (dispUnit && data.steps && data.steps.length > 0) {
                             var _showDisp = true;
@@ -3138,7 +3173,7 @@
                         }
                     }
 
-                    if (data.type === 'collision-fx' && NET.role === 'guest') {
+                    if (data.type === 'collision-fx' && _ewMirrorView()) {
                         var _cfxVisible = true;
                         if (st.fogOfWar && typeof window._isTileVisibleToViewer === 'function') {
                             _cfxVisible = window._isTileVisibleToViewer(data.x, data.y);
@@ -3152,7 +3187,7 @@
                         }
                     }
 
-                    if (data.type === 'strike-leap' && NET.role === 'guest') {
+                    if (data.type === 'strike-leap' && _ewMirrorView()) {
                         var leapUnit = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
                         if (leapUnit) {
                             var _showLeap = true;
@@ -3171,7 +3206,7 @@
                         }
                     }
 
-                    if (data.type === 'sfx' && NET.role === 'guest') {
+                    if (data.type === 'sfx' && _ewMirrorView()) {
                         if (data.key && typeof window.playSfx === 'function') {
                             window.playSfx(data.key);
                         }
@@ -3180,7 +3215,7 @@
                     /* Sky-throw grab: replay the lift-and-hold (+ saucer for the
                        grey beam) on the guest. Fog gate on the VICTIM's tile —
                        a hidden enemy's grab must not telegraph its position. */
-                    if (data.type === 'sky-grab-fx' && NET.role === 'guest') {
+                    if (data.type === 'sky-grab-fx' && _ewMirrorView()) {
                         var _sgT = st && st.units ? st.units.find(function(u) { return u.id === data.targetId; }) : null;
                         var _sgVis = _sgT && (!st.fogOfWar || typeof window._isTileVisibleToViewer !== 'function'
                             || window._isTileVisibleToViewer(_sgT.x, _sgT.y));
@@ -3196,7 +3231,7 @@
                        guest sees the body travel instead of a sync teleport.
                        Cosmetic impact only — positions/damage arrive via
                        state-sync. Visible if either endpoint is in view. */
-                    if (data.type === 'sky-throw-fx' && NET.role === 'guest') {
+                    if (data.type === 'sky-throw-fx' && _ewMirrorView()) {
                         var _stT = st && st.units ? st.units.find(function(u) { return u.id === data.targetId; }) : null;
                         var _stVis = !st || !st.fogOfWar || typeof window._isTileVisibleToViewer !== 'function'
                             || window._isTileVisibleToViewer(data.fromX, data.fromY)
@@ -3212,7 +3247,7 @@
                         }
                     }
 
-                    if (data.type === 'vfx3d' && NET.role === 'guest') {
+                    if (data.type === 'vfx3d' && _ewMirrorView()) {
                         // Fog gate: skip spell VFX whose every anchor point is
                         // hidden in the fog (a fireball flashing inside the fog
                         // pinpoints the hidden caster/fight).
@@ -3243,7 +3278,7 @@
                        beams/aoe…) — fog-gate on the fn's anchor tiles, then
                        replay. The guest's own wrapper re-runs but its emit is
                        host-gated, so nothing loops back. */
-                    if (data.type === 'vfx3d-x' && NET.role === 'guest') {
+                    if (data.type === 'vfx3d-x' && _ewMirrorView()) {
                         var _xArgs = data.args || [];
                         var _xAnch = (window._VFXX_ANCHORS || {})[data.fn];
                         var _xVis = true;
@@ -3265,7 +3300,7 @@
                     /* Support "gift" camera (heal/buff on an ally, deploys,
                        zones): replay the two-beat shot. Fog gating runs
                        inside the shot against THIS viewer's vision. */
-                    if (data.type === 'support-cine' && NET.role === 'guest') {
+                    if (data.type === 'support-cine' && _ewMirrorView()) {
                         try {
                             var _scU = (typeof window.unitFromId === 'function') ? window.unitFromId(data.casterId) : null;
                             if (!_scU) _scU = { x: data.cx, y: data.cy, player: data.casterPlayer || 1, id: data.casterId };
@@ -3283,7 +3318,7 @@
 
                     /* Self-cast hero shot / focus pan for every other
                        non-offensive cast. Same viewer-side fog gating. */
-                    if (data.type === 'spell-focus-cam' && NET.role === 'guest') {
+                    if (data.type === 'spell-focus-cam' && _ewMirrorView()) {
                         try {
                             var _sfU = (typeof window.unitFromId === 'function') ? window.unitFromId(data.casterId) : null;
                             if (!_sfU) _sfU = { x: data.cx, y: data.cy, player: data.casterPlayer || 1, id: data.casterId };
@@ -3303,7 +3338,7 @@
                        because the host's 'sfx' relay already carries them.
                        Fog gating happens inside _ewsPlayCinematic per
                        anchor, against THIS viewer's visible-tile set. */
-                    if (data.type === 'entropy-cine' && NET.role === 'guest') {
+                    if (data.type === 'entropy-cine' && _ewMirrorView()) {
                         try {
                             var _ecFind = function(id) {
                                 return (st && st.units) ? st.units.find(function(u) { return u.id === id; }) : null;
@@ -3325,7 +3360,7 @@
                        the guest's own registry (same data.js); panels and
                        every 3D anchor are fog-gated viewer-side inside the
                        presentation. Damage/floaters arrive via sync. */
-                    if (data.type === 'combo-cine' && NET.role === 'guest') {
+                    if (data.type === 'combo-cine' && _ewMirrorView()) {
                         try {
                             var _cchFind = function(id) {
                                 return (st && st.units) ? st.units.find(function(u) { return u.id === id; }) : null;
@@ -3351,7 +3386,7 @@
                         } catch (e) { /* cosmetic replay must never break the sync */ }
                     }
 
-                    if (data.type === 'pickup-dialog' && NET.role === 'guest') {
+                    if (data.type === 'pickup-dialog' && _ewMirrorView()) {
                         if (st) {
                             st.uiDialog = {
                                 type: 'pickupDecision',
@@ -3392,8 +3427,13 @@
                             if (typeof window._broadcastState === 'function') window._broadcastState();
                         }
                     }
-                });
-            }
+            };
+
+            /* Exposed for the MATCH REPLAY recorder/player (bottom of file) —
+               they live outside this closure but must share the exact same
+               serialize/deserialize logic the online mirror uses. */
+            window._ewSerializeState = function() { return _serializeState(); };
+            window._ewDeserializeInto = function(target, s) { return _deserializeInto(target, s); };
 
             function _serializeState() {
                 var st = window._gameState;
@@ -3532,6 +3572,12 @@
             }
 
             window._broadcastState = function() {
+                /* REPLAY TAP: the recorder rides the exact same sync points the
+                   online guest does — every _broadcastState call is a potential
+                   snapshot (it has its own throttle + per-key dedup inside). */
+                if (typeof window._ewRecTick === 'function') {
+                    try { window._ewRecTick(); } catch (e) {}
+                }
                 if (!NET.online || NET.role !== 'host' || !NET.socket) return;
 
                 if (state.winner && state.isRankedMatch && !NET._rankedResultEmitted) {
@@ -3923,4 +3969,883 @@
                 }
             } catch(e) {}
 
+        })();
+
+        /* ═══════════════════════════════════════════════════════════════════
+           MATCH REPLAY — recorder + cinematic player
+           ═══════════════════════════════════════════════════════════════════
+           Every local (VS-CPU / hotseat) match and every ONLINE-HOST match is
+           silently recorded as the same stream the online guest consumes:
+             • delta state snapshots (via _ewSerializeState, per-key + per-unit
+               dedup so a long match stays a few MB, gzip'd on save)
+             • the full relay presentation stream (banners, action cameras,
+               walk/jump/displace anims, strike leaps, VFX, SFX, cinematics)
+           Playback replays that stream through window._ewApplyRelay — the
+           EXACT code path a live online guest renders with — so whatever the
+           guest mirror can show, the replay can show. The engine and AI stay
+           completely dormant during playback; fog is lifted for a clean
+           spectator/trailer view; HUD is hidden vic-podium-style with
+           letterbox bars and auto-hiding controls for screen recording.
+           Latest finished match is kept in memory AND persisted to IndexedDB
+           ('ew-replays-v1'), so it survives a reload. Guests can't record
+           (they don't run the engine — the relay stream originates hostside).
+           ═══════════════════════════════════════════════════════════════════ */
+        (function() {
+            'use strict';
+
+            var IDB_NAME = 'ew-replays-v1';
+            var IDB_STORE = 'replays';
+            var IDB_KEY = 'last';
+            var SNAP_THROTTLE_MS = 120;   /* max snapshot cadence (relay events are not throttled) */
+            var MAX_EVENTS = 240000;      /* runaway-match memory backstop */
+
+            /* Session/lobby control traffic — never part of a replay. */
+            var SKIP_RELAY = {
+                'intro-skip': 1, 'match-ready': 1, 'intro-done': 1,
+                'rematch-request': 1, 'rematch-accept': 1,
+                'guest-locked': 1, 'host-locked': 1,
+                'game-mode': 1, 'multiplayer-mode': 1,
+                'pickup-dialog': 1, 'pickup-response': 1
+            };
+            /* Camera-driving relay types — skippable when the user takes the
+               camera themselves (free-cam mode for filming trailers). */
+            var CAMERA_RELAY = {
+                'camera-events': 1, 'cam-action-settle': 1, 'dash-cam-follow': 1,
+                'unit-fall-follow': 1, 'spell-focus-cam': 1
+            };
+
+            /* ── IndexedDB (localStorage's ~5MB quota is too small for this) ── */
+            function _idbOpen() {
+                return new Promise(function(resolve, reject) {
+                    try {
+                        var req = indexedDB.open(IDB_NAME, 1);
+                        req.onupgradeneeded = function() {
+                            var db = req.result;
+                            if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+                        };
+                        req.onsuccess = function() { resolve(req.result); };
+                        req.onerror = function() { reject(req.error); };
+                    } catch (e) { reject(e); }
+                });
+            }
+            function _idbPut(val) {
+                return _idbOpen().then(function(db) {
+                    return new Promise(function(resolve, reject) {
+                        var tx = db.transaction(IDB_STORE, 'readwrite');
+                        tx.objectStore(IDB_STORE).put(val, IDB_KEY);
+                        tx.oncomplete = function() { db.close(); resolve(); };
+                        tx.onerror = function() { db.close(); reject(tx.error); };
+                    });
+                });
+            }
+            function _idbGetRaw() {
+                return _idbOpen().then(function(db) {
+                    return new Promise(function(resolve, reject) {
+                        var tx = db.transaction(IDB_STORE, 'readonly');
+                        var req = tx.objectStore(IDB_STORE).get(IDB_KEY);
+                        req.onsuccess = function() { db.close(); resolve(req.result || null); };
+                        req.onerror = function() { db.close(); reject(req.error); };
+                    });
+                });
+            }
+
+            function _gzipStr(str) {
+                if (typeof CompressionStream === 'undefined') return Promise.resolve({ gz: false, data: str });
+                try {
+                    var stream = new Blob([str]).stream().pipeThrough(new CompressionStream('gzip'));
+                    return new Response(stream).blob().then(function(b) { return { gz: true, data: b }; });
+                } catch (e) { return Promise.resolve({ gz: false, data: str }); }
+            }
+            function _gunzipToStr(stored) {
+                if (!stored.gz) {
+                    return typeof stored.data === 'string'
+                        ? Promise.resolve(stored.data)
+                        : new Response(stored.data).text();
+                }
+                var stream = stored.data.stream().pipeThrough(new DecompressionStream('gzip'));
+                return new Response(stream).text();
+            }
+
+            /* ══════════════════ RECORDER ══════════════════ */
+
+            var REC = window._EW_REC = {
+                active: false, t0: 0, events: [], meta: null,
+                keyJson: null, unitJson: null, unitOrder: '', arrLen: null,
+                lastSnapAt: 0, trailTimer: null, blocked: false
+            };
+
+            function _recStart(st) {
+                REC.active = true;
+                REC.t0 = performance.now();
+                REC.events = [];
+                REC.keyJson = {};
+                REC.unitJson = {};
+                REC.unitOrder = '';
+                REC.arrLen = {};
+                REC.lastSnapAt = 0;
+                REC.blocked = false;
+                REC.meta = {
+                    v: 1,
+                    startedAt: Date.now(),
+                    mode: (typeof activeGameMode !== 'undefined') ? activeGameMode : null,
+                    mpMode: (typeof activeMultiplayerMode !== 'undefined') ? activeMultiplayerMode : null,
+                    teamSize: (typeof CONFIG !== 'undefined') ? (CONFIG.teamSize || null) : null,
+                    names: st.partyNames ? { 1: st.partyNames[1], 2: st.partyNames[2] } : null,
+                    online: !!(window._NET && window._NET.online)
+                };
+                _recCaptureSnap(true); /* full baseline — every key differs from the empty cache */
+                console.log('[REPLAY] Recording started');
+            }
+
+            function _recAbort() {
+                REC.active = false;
+                REC.events = [];
+                REC.keyJson = REC.unitJson = REC.arrLen = null;
+                if (REC.trailTimer) { clearTimeout(REC.trailTimer); REC.trailTimer = null; }
+            }
+
+            /* Ride every _broadcastState call (renderBattleUpdate fires it on
+               each engine update, online or not). Auto-starts at battle phase,
+               finalizes on winner, aborts if the match is abandoned. */
+            window._ewRecTick = function() {
+                var st = window._gameState;
+                if (!st) return;
+                var RP = window._EW_REPLAY;
+                if (RP && RP.playing) return;                     /* never record a replay of a replay */
+                var N = window._NET;
+                if (N && N.online && N.role === 'guest') return;  /* guest has no engine to record */
+                if (!REC.active) {
+                    if (REC.blocked) { if (st.phase !== 'battle') REC.blocked = false; return; }
+                    if (st.phase === 'battle' && !st.winner && !st.devAutoSim) _recStart(st);
+                    return;
+                }
+                if (st.phase !== 'battle' || st.devAutoSim) { _recAbort(); return; }
+                var finalize = !!st.winner && !REC.meta.winner;
+                _recCaptureSnap(finalize);
+                if (finalize) _recFinalize(st);
+            };
+
+            window._ewRecRelay = function(data) {
+                if (!REC.active || !data || SKIP_RELAY[data.type]) return;
+                try {
+                    REC.events.push({
+                        t: Math.max(0, Math.round(performance.now() - REC.t0)),
+                        k: 'r',
+                        d: JSON.parse(JSON.stringify(data))
+                    });
+                } catch (e) {}
+                if (REC.events.length > MAX_EVENTS) {
+                    console.warn('[REPLAY] Event cap hit — recording aborted');
+                    _recAbort();
+                    REC.blocked = true;
+                }
+            };
+
+            /* Delta snapshot: per-top-level-key JSON dedup, per-unit dedup for
+               state.units (the hot key — only changed units are stored), and an
+               append-only fast path for grow-only arrays like the battle log. */
+            function _recCaptureSnap(force) {
+                var now = performance.now();
+                if (!force && now - REC.lastSnapAt < SNAP_THROTTLE_MS) {
+                    /* trailing capture so the last state of a burst isn't dropped */
+                    if (!REC.trailTimer) {
+                        REC.trailTimer = setTimeout(function() {
+                            REC.trailTimer = null;
+                            if (REC.active) _recCaptureSnap(true);
+                        }, SNAP_THROTTLE_MS + 20);
+                    }
+                    return;
+                }
+                REC.lastSnapAt = now;
+                var s = (typeof window._ewSerializeState === 'function') ? window._ewSerializeState() : null;
+                if (!s) return;
+                var delta = {}, changed = false, key, j;
+
+                if (Array.isArray(s.units)) {
+                    var ids = [], ch = {}, anyU = false, i, u;
+                    for (i = 0; i < s.units.length; i++) {
+                        u = s.units[i];
+                        ids.push(u.id);
+                        try { j = JSON.stringify(u); } catch (e) { continue; }
+                        if (REC.unitJson[u.id] !== j) {
+                            REC.unitJson[u.id] = j;
+                            ch[u.id] = JSON.parse(j);
+                            anyU = true;
+                        }
+                    }
+                    var orderStr = ids.join(',');
+                    if (orderStr !== REC.unitOrder) { REC.unitOrder = orderStr; anyU = true; }
+                    if (anyU) { delta.units = { _t: 'U', o: ids, c: ch }; changed = true; }
+                }
+
+                for (key in s) {
+                    if (!s.hasOwnProperty(key) || key === 'units') continue;
+                    try { j = JSON.stringify(s[key]); } catch (e) { continue; }
+                    if (j === undefined || REC.keyJson[key] === j) continue;
+                    var prev = REC.keyJson[key];
+                    REC.keyJson[key] = j;
+                    changed = true;
+                    if (prev && prev.charAt(0) === '[' && j.charAt(0) === '[' && prev.length > 2 &&
+                        j.length > prev.length &&
+                        j.slice(0, prev.length - 1) === prev.slice(0, -1) &&
+                        j.charAt(prev.length - 1) === ',' &&
+                        REC.arrLen[key] != null) {
+                        var full = JSON.parse(j);
+                        delta[key] = { _t: 'A', a: full.slice(REC.arrLen[key]) };
+                        REC.arrLen[key] = full.length;
+                    } else {
+                        delta[key] = JSON.parse(j);
+                        REC.arrLen[key] = Array.isArray(delta[key]) ? delta[key].length : null;
+                    }
+                }
+
+                if (!changed) return;
+                REC.events.push({
+                    t: Math.max(0, Math.round(now - REC.t0)),
+                    k: 's',
+                    d: delta
+                });
+                if (REC.events.length > MAX_EVENTS) {
+                    console.warn('[REPLAY] Event cap hit — recording aborted');
+                    _recAbort();
+                    REC.blocked = true;
+                }
+            }
+
+            function _recFinalize(st) {
+                if (REC.trailTimer) { clearTimeout(REC.trailTimer); REC.trailTimer = null; }
+                REC.meta.winner = st.winner;
+                REC.meta.rounds = st.round || null;
+                REC.meta.durationMs = Math.round(performance.now() - REC.t0);
+                REC.meta.endedAt = Date.now();
+                REC.meta.eventCount = REC.events.length;
+                var recording = { v: 1, meta: REC.meta, events: REC.events };
+                REC.active = false;
+                REC.blocked = true; /* until phase leaves battle */
+                window._EW_LAST_REPLAY = recording;
+                REC.events = [];    /* recording object holds the only reference now */
+                REC.keyJson = REC.unitJson = REC.arrLen = null;
+                console.log('[REPLAY] Recording finished: ' + recording.meta.eventCount + ' events, ' +
+                    Math.round(recording.meta.durationMs / 1000) + 's');
+                try {
+                    var json = JSON.stringify(recording);
+                    _gzipStr(json).then(function(packed) {
+                        return _idbPut({ meta: recording.meta, gz: packed.gz, data: packed.data });
+                    }).then(function() {
+                        console.log('[REPLAY] Saved to IndexedDB');
+                    }).catch(function(e) {
+                        console.warn('[REPLAY] Save failed (replay still available this session):', e);
+                    });
+                } catch (e) {
+                    console.warn('[REPLAY] Serialize failed:', e);
+                }
+                /* Playback is offline-only — don't tease the button mid-session
+                   online; the replay is saved and watchable from the main menu
+                   after the session ends. */
+                if (!(window._NET && window._NET.online)) _injectVictoryReplayBtn();
+            }
+
+            function _loadSavedReplay() {
+                if (window._EW_LAST_REPLAY) return Promise.resolve(window._EW_LAST_REPLAY);
+                return _idbGetRaw().then(function(stored) {
+                    if (!stored || !stored.data) return null;
+                    return _gunzipToStr(stored).then(function(json) {
+                        var rec = JSON.parse(json);
+                        window._EW_LAST_REPLAY = rec;
+                        return rec;
+                    });
+                });
+            }
+
+            /* ══════════════════ PLAYER ══════════════════ */
+
+            var R = window._EW_REPLAY = {
+                playing: false, paused: false, speed: 1,
+                idx: 0, playhead: 0, events: null, meta: null, timer: null, lastTick: 0,
+                acc: null, accUnits: null, accOrder: null,
+                autoCam: true, fogOff: true, letterbox: true,
+                _prevActiveUnit: null, _boardBuilt: false, _endShown: false,
+                _saved: null, _idleTimer: null, _durationMs: 0
+            };
+
+            var SPEEDS = [0.5, 1, 2, 4];
+
+            window._ewReplayLastMatch = function() {
+                if (R.playing) return;
+                if (window._NET && window._NET.online) {
+                    _toast('Replay is not available during an online session.');
+                    return;
+                }
+                var st = window._gameState;
+                if (st && st.phase === 'battle' && !st.winner) {
+                    _toast('Finish the current match first.');
+                    return;
+                }
+                _loadSavedReplay().then(function(rec) {
+                    if (!rec || !rec.events || !rec.events.length) {
+                        _toast('No recorded match yet — play a match first!');
+                        return;
+                    }
+                    _startPlayback(rec);
+                }).catch(function(e) {
+                    console.warn('[REPLAY] Load failed:', e);
+                    _toast('No recorded match found.');
+                });
+            };
+
+            function _startPlayback(rec) {
+                var st = window._gameState;
+                var N = window._NET;
+                if (!st || !N) return;
+
+                R.playing = true;
+                R.paused = false;
+                R.speed = 1;
+                R.idx = 0;
+                R.playhead = 0;
+                R.events = rec.events;
+                R.meta = rec.meta || {};
+                R.acc = {};
+                R.accUnits = {};
+                R.accOrder = [];
+                R._prevActiveUnit = null;
+                R._boardBuilt = false;
+                R._endShown = false;
+                R._durationMs = rec.events.length ? rec.events[rec.events.length - 1].t : 0;
+
+                /* Pin the environment: viewer = P1, engine dormant. Everything
+                   saved here is restored on exit. */
+                R._saved = {
+                    myPlayer: N.myPlayer,
+                    c1: st.controllers ? st.controllers[1] : null,
+                    c2: st.controllers ? st.controllers[2] : null,
+                    fogOfWar: st.fogOfWar,
+                    audioUnlocked: st.audioUnlocked
+                };
+                N.myPlayer = 1;
+                if (typeof CTRL !== 'undefined' && st.controllers) {
+                    st.controllers[1] = CTRL.LOCAL;
+                    st.controllers[2] = CTRL.AI;
+                }
+                st.audioUnlocked = true;
+                st.selectedUnitId = null;
+                st.focusedUnitId = null;
+                st.actionMode = null;
+                st.devAutoSim = false;
+
+                /* Dismiss whatever screen we came from (main menu / victory). */
+                if (typeof hideResultOverlay === 'function') { try { hideResultOverlay(); } catch (e) {} }
+                var so = document.getElementById('startOverlay');
+                if (so) {
+                    so.classList.add('hidden');
+                    so.style.display = 'none';
+                    so.style.pointerEvents = 'none';
+                    so.setAttribute('aria-hidden', 'true');
+                }
+                document.body.classList.add('ew-replay');
+                if (R.letterbox) document.body.classList.add('ew-replay-letterbox');
+                _injectReplayCss();
+                _buildControls();
+                _armIdleWatch();
+                window.addEventListener('keydown', _onKeyDown, true);
+
+                if (typeof transitionTo === 'function' && typeof GS !== 'undefined') {
+                    try { transitionTo(GS.BATTLE); } catch (e) {}
+                }
+
+                /* Baseline snapshot builds the world; the Three renderer
+                   auto-activates off phase==='battle' just like a live match. */
+                var first = R.events[0];
+                if (first && first.k === 's') { _applySnapEvent(first, true); R.idx = 1; }
+
+                if (typeof syncMusicToState === 'function') {
+                    try { var p = syncMusicToState(); if (p && p.catch) p.catch(function() {}); } catch (e) {}
+                }
+
+                var begin = function() {
+                    if (typeof resetBoardCamera === 'function') { try { resetBoardCamera(true); } catch (e) {} }
+                    R.lastTick = performance.now();
+                    R.timer = setInterval(_tick, 33);
+                    _toast('▶ Replay — Space pauses, Esc exits', 2600);
+                };
+                /* Loading screen doubles as the asset gate (GLBs, battle track,
+                   sprites) so the recording opens clean — same as the guest. */
+                if (typeof window.showBattleLoadingScreen === 'function') {
+                    try { window.showBattleLoadingScreen(begin); } catch (e) { begin(); }
+                } else begin();
+            }
+
+            function _tick() {
+                if (!R.playing) return;
+                var now = performance.now();
+                var dt = now - R.lastTick;
+                R.lastTick = now;
+                if (!R.paused) {
+                    R.playhead += dt * R.speed;
+                    var n = 0;
+                    while (R.idx < R.events.length && R.events[R.idx].t <= R.playhead) {
+                        var ev = R.events[R.idx++];
+                        try {
+                            if (ev.k === 's') _applySnapEvent(ev);
+                            else _applyRelayEvent(ev);
+                        } catch (e) { console.warn('[REPLAY] Event apply error:', e); }
+                        if (++n > 300) break; /* yield to the frame */
+                    }
+                    if (R.idx >= R.events.length && !R._endShown) {
+                        R._endShown = true;
+                        setTimeout(_showEndCard, 1200);
+                    }
+                }
+                _updateProgressUi();
+            }
+
+            function _applyRelayEvent(ev) {
+                var d = ev.d;
+                if (!d || SKIP_RELAY[d.type]) return;
+                if (!R.autoCam && CAMERA_RELAY[d.type]) return;
+                if (typeof window._ewApplyRelay === 'function') window._ewApplyRelay(d);
+            }
+
+            function _applySnapEvent(ev, isBaseline) {
+                var st = window._gameState;
+                var delta = ev.d || {};
+                var resolved = {}, key, v;
+
+                if (Array.isArray(delta._del)) {
+                    for (var di = 0; di < delta._del.length; di++) {
+                        delete st[delta._del[di]];
+                        delete R.acc[delta._del[di]];
+                    }
+                }
+
+                for (key in delta) {
+                    if (!delta.hasOwnProperty(key) || key === '_del') continue;
+                    v = delta[key];
+                    if (key === 'units' && v && v._t === 'U') {
+                        var id;
+                        for (id in v.c) {
+                            if (v.c.hasOwnProperty(id)) R.accUnits[id] = v.c[id];
+                        }
+                        R.accOrder = v.o;
+                        /* Deep-copy: relay-driven animations may write onto the
+                           live unit objects — the accumulator must stay pristine
+                           for units that go unchanged across many deltas. */
+                        resolved.units = [];
+                        for (var oi = 0; oi < R.accOrder.length; oi++) {
+                            var uref = R.accUnits[R.accOrder[oi]];
+                            if (uref) resolved.units.push(JSON.parse(JSON.stringify(uref)));
+                        }
+                    } else if (v && v._t === 'A') {
+                        var base = Array.isArray(R.acc[key]) ? R.acc[key] : [];
+                        R.acc[key] = base.concat(v.a);
+                        resolved[key] = R.acc[key];
+                    } else {
+                        R.acc[key] = v;
+                        resolved[key] = v;
+                    }
+                }
+
+                /* Baseline must land on a clean slate: _ewDeserializeInto MERGES
+                   plain objects key-by-key, so stale entries from this session's
+                   own previous match (deployables, kill maps, zones…) would
+                   survive underneath the recording. Deleting first makes every
+                   baseline key a wholesale set. */
+                if (isBaseline) {
+                    for (key in resolved) {
+                        if (resolved.hasOwnProperty(key)) { try { delete st[key]; } catch (e) {} }
+                    }
+                }
+                if (typeof window._ewDeserializeInto === 'function') {
+                    window._ewDeserializeInto(st, resolved);
+                }
+                _postApplySnap(st);
+            }
+
+            function _postApplySnap(st) {
+                /* Keep CONFIG board dims locked to the applied board (same fix
+                   as _applyRemoteState — bounds derive from CONFIG, which is
+                   local and never rides a snapshot). */
+                if (typeof CONFIG !== 'undefined' && st.boardTerrain && st.boardTerrain.length) {
+                    var _bh2 = st.boardTerrain.length;
+                    var _bw2 = (st.boardTerrain[0] && st.boardTerrain[0].length) || CONFIG.boardWidth;
+                    if (_bw2 && (CONFIG.boardWidth !== _bw2 || CONFIG.boardHeight !== _bh2)) {
+                        CONFIG.boardWidth = _bw2;
+                        CONFIG.boardHeight = _bh2;
+                        CONFIG.boardSize = Math.max(_bw2, _bh2);
+                        if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
+                        st._terrainVersion = (st._terrainVersion || 0) + 1;
+                    }
+                }
+
+                if (R.fogOff) st.fogOfWar = false;
+                st._actionExecuting = false;
+                st._walkAnimActive = false;
+                st.devAutoSim = false;
+
+                if (st.phase === 'battle' && !R._boardBuilt) {
+                    R._boardBuilt = true;
+                    if (typeof BASE_TILE !== 'undefined') CONFIG.tileSize = BASE_TILE;
+                    if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
+                }
+                if (st.phase === 'battle' && typeof window._rebuildBlitzTurnOrderFromIds === 'function') {
+                    window._rebuildBlitzTurnOrderFromIds();
+                }
+
+                var appEl = document.querySelector('.app');
+                if (appEl) {
+                    appEl.classList.toggle('setup-mode', st.phase === 'setup');
+                    appEl.classList.toggle('battle-mode', st.phase === 'battle');
+                }
+
+                /* Baseline camera choreography: follow each newly-active unit.
+                   The recorded action cams / cinematics layer on top via relay. */
+                if (R.autoCam && st._blitzActiveUnitId && st._blitzActiveUnitId !== R._prevActiveUnit) {
+                    R._prevActiveUnit = st._blitzActiveUnitId;
+                    var au = (st.units || []).find(function(u) { return u.id === st._blitzActiveUnitId && !u.dead; });
+                    if (au && typeof focusBoardCameraOnTiles === 'function') {
+                        var _dz = (typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1;
+                        focusBoardCameraOnTiles([{ x: au.x, y: au.y }], {
+                            zoom: _dz, holdMs: 99999, persist: true, transitionMs: 750, _fogAllowed: true
+                        });
+                    }
+                }
+
+                if (typeof window.render === 'function') window.render();
+
+                if (st.winner && !R._endShown) {
+                    R._endShown = true;
+                    setTimeout(_showEndCard, 2400); /* let the final beat land */
+                }
+            }
+
+            /* ── input guard: no game actions while a replay owns the screen ── */
+            if (typeof clickTile === 'function') {
+                const _ewOrigClickTile = clickTile;
+                clickTile = function() {
+                    if (R.playing) return;
+                    return _ewOrigClickTile.apply(this, arguments);
+                };
+            }
+
+            function _onKeyDown(e) {
+                if (!R.playing) return;
+                var k = e.key;
+                var handled = true;
+                if (k === ' ') _togglePause();
+                else if (k === 'Escape') _exitReplay();
+                else if (k === 'ArrowRight') _cycleSpeed(1);
+                else if (k === 'ArrowLeft') _cycleSpeed(-1);
+                else if (k === 'c' || k === 'C') _toggleAutoCam();
+                else if (k === 'f' || k === 'F') _toggleFog();
+                else if (k === 'l' || k === 'L') _toggleLetterbox();
+                else handled = false;
+                if (handled) e.preventDefault();
+                /* swallow game hotkeys either way — the engine must not react */
+                e.stopImmediatePropagation();
+                e.stopPropagation();
+            }
+
+            /* ── controls / chrome ── */
+
+            function _injectReplayCss() {
+                if (document.getElementById('ewReplayCss')) return;
+                var css = [
+                    /* vic-podium-style HUD park: keep only the 3D canvas and the
+                       CSS2D overlay (nameplates + floating damage text). */
+                    'body.ew-replay #mapRow > *:not(.map-center) { visibility: hidden !important; }',
+                    'body.ew-replay .map-center > *:not(#threeCanvas):not(#css2dOverlay) { visibility: hidden !important; }',
+                    'body.ew-replay #sidebarPanel, body.ew-replay #scorePanel,',
+                    'body.ew-replay .battle-top-scoreboard, body.ew-replay #battleMinimap { visibility: hidden !important; }',
+                    'body.ew-replay.ew-replay-idle { cursor: none; }',
+                    'body.ew-replay.ew-replay-idle #ewReplayControls { opacity: 0; }',
+                    '.ew-replay-bar { position: fixed; left: 0; right: 0; height: 8vh; background: #000;',
+                    '  z-index: 6000; pointer-events: none; transition: transform 0.6s ease; }',
+                    '.ew-replay-bar.top { top: 0; transform: translateY(-101%); }',
+                    '.ew-replay-bar.bottom { bottom: 0; transform: translateY(101%); }',
+                    'body.ew-replay-letterbox .ew-replay-bar { transform: translateY(0); }',
+                    '#ewReplayControls { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);',
+                    '  z-index: 6002; display: flex; gap: 6px; align-items: center; padding: 7px 10px;',
+                    '  background: rgba(8,10,18,0.88); border: 1px solid rgba(120,140,180,0.25);',
+                    '  border-radius: 8px; transition: opacity 0.45s ease; font-family: "DotGothic16", monospace; }',
+                    '#ewReplayControls button { background: rgba(30,36,54,0.9); color: #cfd6e6;',
+                    '  border: 1px solid rgba(120,140,180,0.3); border-radius: 5px; padding: 4px 10px;',
+                    '  font-family: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }',
+                    '#ewReplayControls button:hover { background: rgba(60,70,100,0.9); color: #fff; }',
+                    '#ewReplayControls .ewr-time { color: #8a93a8; font-size: 11px; min-width: 86px; text-align: center; }',
+                    '#ewReplayControls .ewr-prog { width: 120px; height: 4px; background: rgba(120,140,180,0.25);',
+                    '  border-radius: 2px; overflow: hidden; }',
+                    '#ewReplayControls .ewr-prog > div { height: 100%; width: 0%; background: #55d38a; }',
+                    '#ewReplayEnd { position: fixed; inset: 0; z-index: 6005; display: flex; flex-direction: column;',
+                    '  align-items: center; justify-content: center; gap: 14px; background: rgba(4,6,12,0.72); }',
+                    '#ewReplayEnd .ewr-title { font-family: "DotGothic16", monospace; font-size: 30px; color: #fff;',
+                    '  letter-spacing: 0.22em; text-transform: uppercase; text-shadow: 0 0 18px rgba(85,211,138,0.5); }',
+                    '#ewReplayEnd .ewr-sub { font-family: "DotGothic16", monospace; font-size: 14px; color: #8a93a8; }',
+                    '#ewReplayEnd .ewr-row { display: flex; gap: 10px; margin-top: 8px; }',
+                    '#ewReplayEnd button { background: rgba(30,36,54,0.95); color: #cfd6e6; font-size: 14px;',
+                    '  border: 1px solid rgba(120,140,180,0.4); border-radius: 6px; padding: 10px 22px;',
+                    '  font-family: "DotGothic16", monospace; cursor: pointer; }',
+                    '#ewReplayEnd button:hover { background: rgba(60,70,100,0.95); color: #fff; }',
+                    '#ewReplayToast { position: fixed; top: 9vh; left: 50%; transform: translateX(-50%);',
+                    '  z-index: 6010; background: rgba(8,10,18,0.92); color: #cfd6e6; padding: 9px 18px;',
+                    '  border: 1px solid rgba(120,140,180,0.3); border-radius: 6px;',
+                    '  font-family: "DotGothic16", monospace; font-size: 13px; pointer-events: none;',
+                    '  opacity: 0; transition: opacity 0.35s ease; }'
+                ].join('\n');
+                var el = document.createElement('style');
+                el.id = 'ewReplayCss';
+                el.textContent = css;
+                document.head.appendChild(el);
+            }
+
+            function _buildControls() {
+                _removeControls();
+                var top = document.createElement('div');
+                top.className = 'ew-replay-bar top';
+                top.id = 'ewReplayBarTop';
+                var bot = document.createElement('div');
+                bot.className = 'ew-replay-bar bottom';
+                bot.id = 'ewReplayBarBottom';
+                document.body.appendChild(top);
+                document.body.appendChild(bot);
+
+                var c = document.createElement('div');
+                c.id = 'ewReplayControls';
+                c.innerHTML =
+                    '<button id="ewrPause" title="Space">⏸</button>' +
+                    '<button id="ewrSpeed" title="←/→">1×</button>' +
+                    '<button id="ewrRestart" title="Restart">↻</button>' +
+                    '<div class="ewr-prog"><div id="ewrProgFill"></div></div>' +
+                    '<span class="ewr-time" id="ewrTime">0:00 / 0:00</span>' +
+                    '<button id="ewrCam" title="C — auto camera vs free camera">📷 AUTO</button>' +
+                    '<button id="ewrFog" title="F — fog of war">FOG OFF</button>' +
+                    '<button id="ewrBox" title="L — letterbox bars">⬛</button>' +
+                    '<button id="ewrExit" title="Esc">✕ EXIT</button>';
+                document.body.appendChild(c);
+                document.getElementById('ewrPause').onclick = _togglePause;
+                document.getElementById('ewrSpeed').onclick = function() { _cycleSpeed(1); };
+                document.getElementById('ewrRestart').onclick = _restartReplay;
+                document.getElementById('ewrCam').onclick = _toggleAutoCam;
+                document.getElementById('ewrFog').onclick = _toggleFog;
+                document.getElementById('ewrBox').onclick = _toggleLetterbox;
+                document.getElementById('ewrExit').onclick = _exitReplay;
+            }
+
+            function _removeControls() {
+                ['ewReplayControls', 'ewReplayBarTop', 'ewReplayBarBottom', 'ewReplayEnd'].forEach(function(id) {
+                    var el = document.getElementById(id);
+                    if (el) el.remove();
+                });
+            }
+
+            function _armIdleWatch() {
+                var reset = function() {
+                    document.body.classList.remove('ew-replay-idle');
+                    if (R._idleTimer) clearTimeout(R._idleTimer);
+                    R._idleTimer = setTimeout(function() {
+                        if (R.playing && !R.paused) document.body.classList.add('ew-replay-idle');
+                    }, 2600);
+                };
+                R._idleReset = reset;
+                window.addEventListener('mousemove', reset);
+                window.addEventListener('pointerdown', reset);
+                reset();
+            }
+
+            function _disarmIdleWatch() {
+                if (R._idleTimer) { clearTimeout(R._idleTimer); R._idleTimer = null; }
+                if (R._idleReset) {
+                    window.removeEventListener('mousemove', R._idleReset);
+                    window.removeEventListener('pointerdown', R._idleReset);
+                    R._idleReset = null;
+                }
+                document.body.classList.remove('ew-replay-idle');
+            }
+
+            function _fmtTime(ms) {
+                var s = Math.max(0, Math.floor(ms / 1000));
+                return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
+            }
+
+            function _updateProgressUi() {
+                var fill = document.getElementById('ewrProgFill');
+                var time = document.getElementById('ewrTime');
+                if (fill && R._durationMs > 0) {
+                    fill.style.width = Math.min(100, (R.playhead / R._durationMs) * 100) + '%';
+                }
+                if (time) time.textContent = _fmtTime(Math.min(R.playhead, R._durationMs)) + ' / ' + _fmtTime(R._durationMs);
+            }
+
+            function _togglePause() {
+                R.paused = !R.paused;
+                var b = document.getElementById('ewrPause');
+                if (b) b.textContent = R.paused ? '▶' : '⏸';
+                if (R.paused) document.body.classList.remove('ew-replay-idle');
+            }
+
+            function _cycleSpeed(dir) {
+                var i = SPEEDS.indexOf(R.speed);
+                i = (i + dir + SPEEDS.length) % SPEEDS.length;
+                R.speed = SPEEDS[i];
+                var b = document.getElementById('ewrSpeed');
+                if (b) b.textContent = R.speed + '×';
+            }
+
+            function _toggleAutoCam() {
+                R.autoCam = !R.autoCam;
+                var b = document.getElementById('ewrCam');
+                if (b) b.textContent = R.autoCam ? '📷 AUTO' : '📷 FREE';
+                _toast(R.autoCam ? 'Auto camera' : 'Free camera — drag / zoom to film your own shots', 2200);
+            }
+
+            function _toggleFog() {
+                R.fogOff = !R.fogOff;
+                var st = window._gameState;
+                if (st) {
+                    if (R.fogOff) st.fogOfWar = false;
+                    else if (R.acc && R.acc.fogOfWar !== undefined) st.fogOfWar = R.acc.fogOfWar;
+                    if (typeof window.render === 'function') window.render();
+                }
+                var b = document.getElementById('ewrFog');
+                if (b) b.textContent = R.fogOff ? 'FOG OFF' : 'FOG ON';
+            }
+
+            function _toggleLetterbox() {
+                R.letterbox = !R.letterbox;
+                document.body.classList.toggle('ew-replay-letterbox', R.letterbox);
+            }
+
+            function _showEndCard() {
+                if (!R.playing) return;
+                R.paused = true;
+                var old = document.getElementById('ewReplayEnd');
+                if (old) old.remove();
+                var st = window._gameState;
+                var winner = (st && st.winner) || (R.meta && R.meta.winner);
+                var names = (R.meta && R.meta.names) || {};
+                var winName = winner ? (names[winner] || ('Player ' + winner)) : null;
+                var div = document.createElement('div');
+                div.id = 'ewReplayEnd';
+                div.innerHTML =
+                    '<div class="ewr-title">Replay Complete</div>' +
+                    (winName ? '<div class="ewr-sub">Winner: ' + String(winName).replace(/[<>&]/g, '') + '</div>' : '') +
+                    '<div class="ewr-sub">' + _fmtTime(R._durationMs) + ' · ' + ((R.meta && R.meta.rounds) ? ('Round ' + R.meta.rounds) : '') + '</div>' +
+                    '<div class="ewr-row"><button id="ewrAgain">↻ Watch Again</button>' +
+                    '<button id="ewrEndExit">✕ Exit Replay</button></div>';
+                document.body.appendChild(div);
+                document.getElementById('ewrAgain').onclick = _restartReplay;
+                document.getElementById('ewrEndExit').onclick = _exitReplay;
+                document.body.classList.remove('ew-replay-idle');
+            }
+
+            function _restartReplay() {
+                if (!R.playing || !R.events) return;
+                var end = document.getElementById('ewReplayEnd');
+                if (end) end.remove();
+                R.idx = 0;
+                R.playhead = 0;
+                R.acc = {};
+                R.accUnits = {};
+                R.accOrder = [];
+                R._prevActiveUnit = null;
+                R._endShown = false;
+                R.paused = false;
+                var b = document.getElementById('ewrPause');
+                if (b) b.textContent = '⏸';
+                var first = R.events[0];
+                if (first && first.k === 's') { _applySnapEvent(first, true); R.idx = 1; }
+                if (typeof resetBoardCamera === 'function') { try { resetBoardCamera(true); } catch (e) {} }
+                R.lastTick = performance.now();
+            }
+
+            function _exitReplay() {
+                if (!R.playing) return;
+                R.playing = false;
+                R.paused = false;
+                if (R.timer) { clearInterval(R.timer); R.timer = null; }
+                window.removeEventListener('keydown', _onKeyDown, true);
+                _disarmIdleWatch();
+                _removeControls();
+                document.body.classList.remove('ew-replay');
+                document.body.classList.remove('ew-replay-letterbox');
+
+                var st = window._gameState;
+                var N = window._NET;
+                if (R._saved) {
+                    if (N) N.myPlayer = R._saved.myPlayer;
+                    if (st && st.controllers) {
+                        if (R._saved.c1 != null) st.controllers[1] = R._saved.c1;
+                        if (R._saved.c2 != null) st.controllers[2] = R._saved.c2;
+                    }
+                    if (st) {
+                        st.fogOfWar = R._saved.fogOfWar;
+                        st.audioUnlocked = R._saved.audioUnlocked || st.audioUnlocked;
+                    }
+                    R._saved = null;
+                }
+                R.events = null;
+                R.acc = null;
+                R.accUnits = null;
+                R.accOrder = null;
+
+                if (typeof window.backToMainMenu === 'function') {
+                    try { window.backToMainMenu(); } catch (e) { window.location.reload(); }
+                } else {
+                    window.location.reload();
+                }
+            }
+            window._ewReplayExit = _exitReplay;
+
+            /* ── entry-point chrome ── */
+
+            var _toastTimer = null;
+            function _toast(msg, ms) {
+                var el = document.getElementById('ewReplayToast');
+                if (!el) {
+                    _injectReplayCss();
+                    el = document.createElement('div');
+                    el.id = 'ewReplayToast';
+                    document.body.appendChild(el);
+                }
+                el.textContent = msg;
+                /* force a style flush so back-to-back toasts re-fade */
+                void el.offsetWidth;
+                el.style.opacity = '1';
+                if (_toastTimer) clearTimeout(_toastTimer);
+                _toastTimer = setTimeout(function() { el.style.opacity = '0'; }, ms || 3200);
+            }
+
+            /* "🎬 Watch Replay" on the victory screen — injected (not in the
+               static HTML) because _restoreResultOverlayButtons rewrites
+               #vicBottom wholesale, and because it should only appear when a
+               recording of this match actually exists. */
+            function _injectVictoryReplayBtn() {
+                var tries = 0;
+                var iv = setInterval(function() {
+                    tries++;
+                    var overlay = document.getElementById('resultOverlay');
+                    var bottom = document.getElementById('vicBottom');
+                    if (overlay && bottom && !overlay.classList.contains('hidden')) {
+                        if (!document.getElementById('ewReplayVicBtn')) {
+                            var ref = document.getElementById('exportLastMatchBtn') || bottom.firstChild;
+                            var b = document.createElement('button');
+                            b.id = 'ewReplayVicBtn';
+                            b.textContent = '🎬 Watch Replay';
+                            if (ref && ref.className) b.className = ref.className;
+                            b.onclick = function() { window._ewReplayLastMatch(); };
+                            bottom.insertBefore(b, ref || null);
+                        }
+                        clearInterval(iv);
+                    } else if (tries > 60) {
+                        clearInterval(iv);
+                    }
+                }, 250);
+            }
+
+            /* console/debug hooks (also used by the offline codec self-test) */
+            window._ewReplayInternals = {
+                recStart: _recStart,
+                captureSnap: _recCaptureSnap,
+                applySnap: _applySnapEvent,
+                loadSaved: _loadSavedReplay
+            };
         })();

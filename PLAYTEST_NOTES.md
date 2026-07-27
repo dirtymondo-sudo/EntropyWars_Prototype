@@ -7950,3 +7950,59 @@ scene as the end-screen backdrop instead of the painted 2D sprite lineup:
   `_canStagePodium()` false → old 2D sprite lineup renders exactly as before.
   Mystery-Dungeon + campaign overlays share the result DOM and explicitly
   clear `vic-3d` + the MVP plate.
+
+## Match replay system (2026-07-27)
+"Save the most recent match + play it back cinematically" — lives entirely in
+`online.js` (MATCH REPLAY section at the bottom) + one main-menu button in
+`index.html`. Architecture: the replay IS the online guest mirror, fed from a
+recording instead of a socket. No re-simulation (RNG is unseeded — an action
+log can never reproduce a match); we record the presentation stream itself.
+- RECORDER: auto-records every local/VS-CPU match and every online-HOST match
+  (guests can't — the engine/relay stream originates hostside; devsim skipped).
+  Two sources, one timestamped event list:
+  (1) delta state snapshots — `_ewRecTick` rides every `_broadcastState()`
+      call (its guard now passes when `_ewRecOn()`), throttled to 120ms with a
+      trailing capture. Per-top-level-key JSON dedup, per-UNIT dedup
+      (`{_t:'U', o:[ids], c:{id:unit}}`), append-only fast path for grow-only
+      arrays (`{_t:'A', a:[items]}` — battle log etc.). Codec round-trip is
+      unit-tested (scratchpad codec-test.js pattern: encode → decode → exact
+      state match incl. Set boxing + `_REPLACE_WHOLESALE`).
+  (2) the full relay stream — `_emit('relay')` is tapped; all ~30 host-emit
+      guards were mechanically rewritten `(_netOn && _isHost() || _ewRecOn())`
+      so banners/action-cams/walk-jump-displace anims/strike leaps/VFX/SFX/
+      cinematics are generated even offline. Lobby/control types are
+      blocklisted (SKIP_RELAY).
+  On `state.winner`: final capture, meta stamped, kept in memory
+  (`window._EW_LAST_REPLAY`) AND gzip'd (CompressionStream) into IndexedDB
+  `ew-replays-v1`/`replays`/`last` — localStorage's ~5MB quota is too small.
+  Only the most recent match is kept.
+- PLAYER: `window._ewReplayLastMatch()` (main-menu 🎬 Replay button; a
+  "🎬 Watch Replay" button is also injected into `#vicBottom` after each
+  recorded match — injected, not static HTML, because
+  `_restoreResultOverlayButtons()` rewrites that container). Playback = a
+  synthetic guest: snapshots resolve through an accumulator and apply via
+  `_ewDeserializeInto` (exposed from the NET closure, same for
+  `_ewSerializeState`); relay events dispatch through `window._ewApplyRelay` —
+  the socket relay handler EXTRACTED out of `_connectSocket` to closure level;
+  its 26 inline `NET.role === 'guest'` gates became `_ewMirrorView()` (true
+  for real guests OR replay). Engine stays dormant: `maybeTriggerComputerTurn`
+  has a replay guard, `clickTile` is wrapped to no-op, keyboard is swallowed
+  by a capture listener. `NET.myPlayer` pinned to 1, controllers LOCAL/AI
+  (stable `getViewerPlayer`), fog forced OFF each snapshot (toggleable),
+  baseline snapshot applies onto a CLEAN slate (keys deleted first — the
+  deserializer merges dicts, stale session state would leave phantoms).
+  Camera: follow-active-unit baseline + all recorded action cams; "FREE cam"
+  toggle drops the camera relay types (CAMERA_RELAY) so you can film your own
+  shots — trailer workflow. Chrome: `body.ew-replay` hides HUD vic-podium
+  style (canvas + nameplates/damage text stay), letterbox bars, auto-hiding
+  control bar (pause/speed 0.5-4×/restart/cam/fog/letterbox/exit; Space ← →
+  C F L Esc), progress readout, end card. Exit restores pinned state and runs
+  `backToMainMenu()` (which restores `#startOverlay` inline styles — verified).
+- GOTCHAS for future work: recording aborts if the match is left unfinished
+  (only decided matches are saved); replay of a match recorded pre-refactor
+  breaks silently if `_serializeState`'s shape changes → bump the recording
+  `v` field; new relay types added to online.js are recorded automatically
+  (nothing to do) but if one is session-control, add it to SKIP_RELAY; no
+  seeking/scrubbing (deltas are forward-only) — restart is instant though.
+  Debug hooks: `window._ewReplayInternals`, `window._EW_REC`,
+  `window._EW_REPLAY`.
