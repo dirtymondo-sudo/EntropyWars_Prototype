@@ -7,9 +7,16 @@ const fs = require('fs');
 const d1 = require('./d1');
 
 const app = express();
+app.disable('x-powered-by');
 const server = http.createServer(app);
+// EW_ALLOWED_ORIGINS: optional comma-separated origin allowlist for the
+// socket layer (e.g. "https://entropywars.net,http://localhost:3000").
+// Unset = '*' (current behavior). Set it in production so arbitrary sites
+// can't open sockets against the matchmaker from their visitors' browsers.
+const ALLOWED_ORIGINS = (process.env.EW_ALLOWED_ORIGINS || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
 const io = new Server(server, {
-    cors: { origin: '*' },
+    cors: { origin: ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : '*' },
     transports: ['websocket', 'polling']
 });
 
@@ -19,10 +26,25 @@ try { app.use(require('compression')()); } catch (e) { console.warn('[BOOT] comp
 
 app.use(express.json());
 
-app.use(express.static(path.join(__dirname), {
-    extensions: ['html'],
-    index: 'index.html'
-}));
+// Serve ONLY the entry page. Every script/style/asset the game uses loads
+// from the CDN, so blanket express.static(__dirname) exposed things that must
+// never be public: server.js itself (guard/anti-cheat logic), the internal
+// docs, the .git directory, and ./replays/ (per-match logs). Opt back into
+// full-directory serving for local tinkering with EW_DEV_STATIC=1.
+if (process.env.EW_DEV_STATIC === '1') {
+    app.use(express.static(path.join(__dirname), {
+        extensions: ['html'],
+        index: 'index.html'
+    }));
+} else {
+    const INDEX_HTML = path.join(__dirname, 'index.html');
+    app.get(['/', '/index.html'], (req, res) => {
+        // Must stay revalidated so a ?v= cache-bust token bump is seen
+        // immediately — the CDN assets are immutable, the entry page is not.
+        res.set('Cache-Control', 'no-cache');
+        res.sendFile(INDEX_HTML);
+    });
+}
 
 function uuid() { return crypto.randomUUID(); }
 

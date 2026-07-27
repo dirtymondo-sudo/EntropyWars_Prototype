@@ -39,6 +39,148 @@
             }
         }, true);
     })();
+
+    /* ── Cross-browser safety net ──
+       structuredClone shipped in Safari 15.4 / Chrome 98; older browsers get a
+       JSON round-trip fallback. The engine only clones plain build/state
+       objects (no Maps/Dates/cycles), so the fallback is faithful. Without
+       this, ONE missing built-in throws inside battle.js/state.js and takes
+       the whole match setup down on older Safari. */
+    if (typeof window.structuredClone !== 'function') {
+        window.structuredClone = function (v) {
+            return v === undefined ? v : JSON.parse(JSON.stringify(v));
+        };
+    }
+
+    /* ── Renderer / compatibility diagnostics (?ewdiag=1 or EW_SHOW_DIAG()) ──
+       "Terrain is black in Safari" class bugs are near-impossible to fix from
+       a bug report with no data. This collector records, in ES5-only syntax so
+       it can never be the thing that breaks:
+       - uncaught JS errors with file:line — a single unsupported syntax
+         feature aborts that ENTIRE script file, silently deleting every
+         global it defines (the #1 cause of "works in Chrome, broken there");
+       - THREE.js console errors (shader compile failures, texture errors);
+       - failed CDN downloads (from the boot collector above);
+       - a GPU capability probe (WebGL1/2, renderer string, texture limits,
+         fragment highp support — Apple GPUs are the usual precision outlier).
+       Open the game with ?ewdiag=1 to get an overlay + copy button ~5s after
+       load, or run EW_SHOW_DIAG() in the console any time. Players on a
+       broken browser just screenshot / paste the report. */
+    (function () {
+        var diag = window._ewDiag = { jsErrors: [], three: [] };
+        var CAP = 100;
+        function shortUrl(u) {
+            return String(u || '').replace(/[#?].*$/, '').split('/').pop() || String(u || '');
+        }
+        window.addEventListener('error', function (e) {
+            if (!e || (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK'))) return;
+            if (diag.jsErrors.length >= CAP) return;
+            diag.jsErrors.push(shortUrl(e.filename) + ':' + (e.lineno || 0) + ':' + (e.colno || 0) +
+                ' — ' + (e.message || '?'));
+        }, true);
+        window.addEventListener('unhandledrejection', function (e) {
+            if (diag.jsErrors.length >= CAP) return;
+            var r = e && e.reason;
+            diag.jsErrors.push('unhandled rejection — ' +
+                String((r && (r.message || r)) || '?').slice(0, 300));
+        });
+        var origErr = console.error;
+        console.error = function () {
+            try {
+                var s = Array.prototype.map.call(arguments, function (a) {
+                    return (a && a.message) ? a.message : String(a);
+                }).join(' ');
+                if (/THREE/.test(s) && diag.three.length < CAP) diag.three.push(s.slice(0, 800));
+            } catch (x) {}
+            return origErr.apply(console, arguments);
+        };
+        diag.gpuProbe = function () {
+            var out = [];
+            out.push('ua: ' + navigator.userAgent);
+            out.push('dpr: ' + (window.devicePixelRatio || 1) +
+                '  screen: ' + screen.width + 'x' + screen.height);
+            try {
+                var cv = document.createElement('canvas');
+                var gl = cv.getContext('webgl2');
+                var kind = gl ? 'webgl2' : '';
+                if (!gl) {
+                    gl = cv.getContext('webgl') || cv.getContext('experimental-webgl');
+                    kind = gl ? 'webgl1' : 'NONE — game cannot render';
+                }
+                out.push('context: ' + kind);
+                if (gl) {
+                    var dbg = gl.getExtension('WEBGL_debug_renderer_info');
+                    if (dbg) {
+                        out.push('gpu: ' + gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) +
+                            ' / ' + gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL));
+                    }
+                    out.push('maxTexture: ' + gl.getParameter(gl.MAX_TEXTURE_SIZE));
+                    var hp = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT);
+                    out.push('fragment highp bits: ' + (hp ? hp.precision : '?') +
+                        ((hp && hp.precision > 0) ? '' : '  << mediump-only GPU (fp16 hazards!)'));
+                }
+            } catch (e) { out.push('gpu probe failed: ' + e.message); }
+            return out;
+        };
+        window.EW_SHOW_DIAG = function () {
+            var boot = window._ewBoot || { failed: [] };
+            var lines = ['ENTROPY WARS DIAGNOSTIC — ' + new Date().toISOString(),
+                'build: ' + (window._EW_BUILD_TOKEN || '?')];
+            lines = lines.concat(diag.gpuProbe());
+            function section(title, arr) {
+                lines.push('');
+                lines.push(title + ' (' + arr.length + '):');
+                if (!arr.length) { lines.push('  none'); return; }
+                for (var i = 0; i < arr.length; i++) lines.push('  ' + arr[i]);
+            }
+            section('FAILED DOWNLOADS', boot.failed || []);
+            section('JS ERRORS', diag.jsErrors);
+            section('THREE / RENDERER ERRORS', diag.three);
+            var report = lines.join('\n');
+            var old = document.getElementById('ew-diag-overlay');
+            if (old && old.parentNode) old.parentNode.removeChild(old);
+            var d = document.createElement('div');
+            d.id = 'ew-diag-overlay';
+            d.style.cssText = 'position:fixed;z-index:2147483647;left:2vw;top:2vh;width:92vw;' +
+                'height:88vh;background:#0a0a14;color:#cfe8e0;border:1px solid #4a8;' +
+                'font:11px/1.5 monospace;padding:10px;overflow:auto;box-sizing:border-box;';
+            function btn(label, fn) {
+                var b = document.createElement('button');
+                b.textContent = label;
+                b.style.cssText = 'margin:0 8px 8px 0;padding:4px 12px;background:#123;' +
+                    'color:#cfe8e0;border:1px solid #4a8;font:11px monospace;cursor:pointer;';
+                b.onclick = fn;
+                return b;
+            }
+            var pre = document.createElement('div');
+            pre.style.whiteSpace = 'pre-wrap';
+            pre.textContent = report;
+            var copyBtn = btn('COPY REPORT', function () {
+                function done() { copyBtn.textContent = 'COPIED ✓'; }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(report).then(done, function () { fallback(); });
+                } else { fallback(); }
+                function fallback() {
+                    var ta = document.createElement('textarea');
+                    ta.value = report;
+                    d.appendChild(ta);
+                    ta.select();
+                    try { document.execCommand('copy'); done(); } catch (e) {}
+                    d.removeChild(ta);
+                }
+            });
+            d.appendChild(copyBtn);
+            d.appendChild(btn('CLOSE', function () { d.parentNode.removeChild(d); }));
+            d.appendChild(pre);
+            (document.body || document.documentElement).appendChild(d);
+            return report;
+        };
+        if (/[?&#]ewdiag/.test(location.search + location.hash)) {
+            window.addEventListener('load', function () {
+                setTimeout(function () { window.EW_SHOW_DIAG(); }, 5000);
+            });
+        }
+    })();
     </script>
     <link rel="preconnect" href="https://cdn.entropywars.net">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -47,12 +189,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+SC:wght@500;600;700&family=DotGothic16&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20260727f-replay">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20260727f-replay">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20260727f-replay">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20260727f-replay">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20260727g-compat">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20260727g-compat">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20260727g-compat">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20260727g-compat">
 
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20260727f-replay">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20260727g-compat">
     <!-- Three.js r128 for game board renderer -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- Three.js r128 postprocessing (bloom + FXAA) — adds to global THREE -->
@@ -66,7 +208,7 @@
     <!-- THREE.CSS2DRenderer — DOM labels synced to 3D camera (nameplates, nexus bars) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
     <!-- THREE.MeshLine — thick 3D lines for lightning bolts -->
-    <script src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20260727f-replay"></script>
+    <script src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20260727g-compat"></script>
     <!-- THREE.OBJLoader — real 3D foliage/tree models (Entropy Vale natural maps) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
     <!-- THREE.GLTFLoader — esoteric background props from /Assets/misc (Pyramid.glb)
@@ -392,7 +534,7 @@
         <!-- PAGE 1: Title Screen with artwork -->
         <div id="titlePage" class="title-page active">
             <div class="title-art-wrap">
-                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20260727f-replay" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
+                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20260727g-compat" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
             </div>
             <div class="title-characters">
                 <div class="title-sprite sprite-steve"></div>
@@ -940,18 +1082,18 @@
 
     <!-- External dependencies -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script src="https://cdn.entropywars.net/sprites.js?v=20260727f-replay"></script>
-    <script>window._spritesLoaded = true; window._EW_BUILD_TOKEN = '20260727c-endscreen';</script>
+    <script src="https://cdn.entropywars.net/sprites.js?v=20260727g-compat"></script>
+    <script>window._spritesLoaded = true; window._EW_BUILD_TOKEN = '20260727g-compat';</script>
     <script>
     // NOTE: crossorigin="anonymous" removed from display <img> tags.
     // Only _getCachedImg (canvas compositing) uses CORS mode.
     </script>
-    <script src="https://cdn.entropywars.net/data.js?v=20260727f-replay"></script>
+    <script src="https://cdn.entropywars.net/data.js?v=20260727g-compat"></script>
     <script>
       // Fallback: if local data.js didn't load, try CDN
       if (typeof SPELL_LIBRARY === 'undefined') {
         var _djs = document.createElement('script');
-        _djs.src = 'https://cdn.entropywars.net/data.js?v=20260727f-replay';
+        _djs.src = 'https://cdn.entropywars.net/data.js?v=20260727g-compat';
         document.head.appendChild(_djs);
       }
     </script>
@@ -1102,23 +1244,23 @@
 
 
     <!-- React (for Party Builder UI) -->
-    <script src="https://cdn.entropywars.net/react.production.min.js?v=20260727f-replay"></script>
-    <script src="https://cdn.entropywars.net/react-dom.production.min.js?v=20260727f-replay"></script>
+    <script src="https://cdn.entropywars.net/react.production.min.js?v=20260727g-compat"></script>
+    <script src="https://cdn.entropywars.net/react-dom.production.min.js?v=20260727g-compat"></script>
 
     <!-- Game modules -->
-    <script src="https://cdn.entropywars.net/state.js?v=20260727f-replay"></script>
-    <script src="https://cdn.entropywars.net/audio.js?v=20260727f-replay"></script>
-    <script src="https://cdn.entropywars.net/map.js?v=20260727f-replay"></script>
+    <script src="https://cdn.entropywars.net/state.js?v=20260727g-compat"></script>
+    <script src="https://cdn.entropywars.net/audio.js?v=20260727g-compat"></script>
+    <script src="https://cdn.entropywars.net/map.js?v=20260727g-compat"></script>
     <!-- Three.js renderer — three-camera.js must load before battle.js, three-renderer.js after -->
-    <script src="https://cdn.entropywars.net/three-camera.js?v=20260727f-replay"></script>
-    <script src="https://cdn.entropywars.net/battle.js?v=20260727f-replay"></script>
-    <script src="https://cdn.entropywars.net/three-post.js?v=20260727f-replay"></script>
-    <script src="https://cdn.entropywars.net/three-renderer.js?v=20260727f-replay"></script>
-    <script src="https://cdn.entropywars.net/three-vfx.js?v=20260727f-replay"></script>
-    <script src="https://cdn.entropywars.net/three-lightning.js?v=20260727f-replay"></script>
-    <script src="https://cdn.entropywars.net/three-vfx-effects.js?v=20260727f-replay"></script>
-    <script src="https://cdn.entropywars.net/ui.js?v=20260727f-replay"></script>
-    <script src="https://cdn.entropywars.net/profile.js?v=20260727f-replay"></script>
+    <script src="https://cdn.entropywars.net/three-camera.js?v=20260727g-compat"></script>
+    <script src="https://cdn.entropywars.net/battle.js?v=20260727g-compat"></script>
+    <script src="https://cdn.entropywars.net/three-post.js?v=20260727g-compat"></script>
+    <script src="https://cdn.entropywars.net/three-renderer.js?v=20260727g-compat"></script>
+    <script src="https://cdn.entropywars.net/three-vfx.js?v=20260727g-compat"></script>
+    <script src="https://cdn.entropywars.net/three-lightning.js?v=20260727g-compat"></script>
+    <script src="https://cdn.entropywars.net/three-vfx-effects.js?v=20260727g-compat"></script>
+    <script src="https://cdn.entropywars.net/ui.js?v=20260727g-compat"></script>
+    <script src="https://cdn.entropywars.net/profile.js?v=20260727g-compat"></script>
     <script>
     // First-launch: if no profile exists after migration, open profile creation on ENTER click
     (function() {
@@ -1148,14 +1290,14 @@
         }
     })();
     </script>
-    <script src="https://cdn.entropywars.net/party-builder.js?v=20260727f-replay"></script>
-    <script src="https://cdn.entropywars.net/match-select.js?v=20260727f-replay"></script>
-    <script src="https://cdn.entropywars.net/online.js?v=20260727f-replay"></script>
-    <script src="https://cdn.entropywars.net/ai.js?v=20260727f-replay"></script>
+    <script src="https://cdn.entropywars.net/party-builder.js?v=20260727g-compat"></script>
+    <script src="https://cdn.entropywars.net/match-select.js?v=20260727g-compat"></script>
+    <script src="https://cdn.entropywars.net/online.js?v=20260727g-compat"></script>
+    <script src="https://cdn.entropywars.net/ai.js?v=20260727g-compat"></script>
     <!-- "Claude" AI override: MUST load after ai.js (wraps window.aiTakeTurn) -->
-    <script src="https://cdn.entropywars.net/ainew.js?v=20260727f-replay"></script>
+    <script src="https://cdn.entropywars.net/ainew.js?v=20260727g-compat"></script>
     <!-- React HUD overlay (Codex visual system) -->
-    <script src="https://cdn.entropywars.net/hud.js?v=20260727f-replay"></script>
+    <script src="https://cdn.entropywars.net/hud.js?v=20260727g-compat"></script>
 
     <!-- ── Shader Sky Background (Three.js volumetric terrain) ── -->
     <script type="module">

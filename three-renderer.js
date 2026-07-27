@@ -21909,8 +21909,13 @@ const ThreeRenderer = (function () {
             // normalize: x/z → ±0.5 across the prism, y → 0 bottom … 1 top
             'void main(){ vLocal = vec3(position.x / uW, position.y / uH + 0.5, position.z / uW);\n' +
             '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+        /* NO manual 'precision mediump' here: ShaderMaterial already gets
+           three's guarded precision prefix (highp where the GPU has it,
+           mediump fallback otherwise). A hand-written mediump override is
+           fp32 on desktop but REAL fp16 on Apple GPUs, where session-time
+           uniforms (uTime in seconds) lose sin() precision within minutes —
+           one of the "renders fine in Chrome, wrong in Safari/iOS" traps. */
         _RAY_FS =
-            'precision mediump float;\n' +
             'varying vec3 vLocal;\n' +
             'uniform float uTime; uniform vec3 uColor; uniform float uIntensity; uniform float uSeed;\n' +
             'void main(){\n' +
@@ -21935,7 +21940,6 @@ const ThreeRenderer = (function () {
             'varying vec2 vUv;\n' +
             'void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
         _RAY_POOL_FS =
-            'precision mediump float;\n' +
             'varying vec2 vUv;\n' +
             'uniform float uTime; uniform vec3 uColor; uniform float uIntensity; uniform float uSeed;\n' +
             'void main(){\n' +
@@ -21964,7 +21968,6 @@ const ThreeRenderer = (function () {
             '  gl_Position = projectionMatrix * mv;\n' +
             '}';
         _RAY_MOTE_FS =
-            'precision mediump float;\n' +
             'uniform vec3 uColor;\n' +
             'varying float vA;\n' +
             'void main(){\n' +
