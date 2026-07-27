@@ -5050,11 +5050,39 @@
             return !!spell && (spell.kind === 'leapStrike' || spell.requiresAboveTarget === true);
         }
 
+        // Direction beams (line/linePush): the true castable footprint is the 8
+        // rays out of the caster, capped at the spell's range and stopped by
+        // impassable terrain — EXACTLY the walk _applyLineDamage does (minus
+        // breach boring). The generic Manhattan disc both offered misaligned
+        // tiles the beam can never touch (casts that hit zero targets) and
+        // rejected diagonally-aligned tiles the beam DOES reach (Manhattan
+        // distance doubles diagonal steps → bogus "out of range"). Every
+        // range/approach consumer (findSpellApproachTile, hud fallbacks,
+        // highlights) routes through here so move+cast lands on a tile the
+        // beam actually fires from.
+        function getLineSpellRayTiles(unit, spell) {
+            const lineRange = spell.range || 4;   // must match _applyLineDamage
+            const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+            const tiles = [];
+            for (const [dx, dy] of dirs) {
+                for (let i = 1; i <= lineRange; i++) {
+                    const cx = unit.x + dx * i, cy = unit.y + dy * i;
+                    if (!isInside(cx, cy)) break;
+                    if (!isTerrainPassable(cx, cy) && !spell.destroysObstacles) break;
+                    tiles.push({ x: cx, y: cy });
+                }
+            }
+            return tiles;
+        }
+
         function getSpellRangeTiles(unit, spell) {
             // Self-cast / zero-range abilities (Howl, Reassemble, Siege Mode, …)
             // target the caster's own tile; without this they'd produce an empty
             // range set and any confirm/hover path would wrongly say "out of range".
             if (unit && spell && isSpellSelfCast(spell)) return [{ x: unit.x, y: unit.y }];
+            // Beams use the capped 8-ray footprint, not the Manhattan disc.
+            // (Before the range guard: a rangeless line def still beams 4 tiles.)
+            if (unit && spell && (spell.kind === 'line' || spell.kind === 'linePush')) return getLineSpellRayTiles(unit, spell);
             if (!unit || !spell || !spell.range) return [];
             const tiles = [];
             const effRange = getEffectiveSpellRange(unit, spell);
@@ -32177,6 +32205,29 @@
         function _getSpellValidTargets(unit, spell) {
             if (!unit || !spell) return [];
             const targets = [];
+            // Direction beams: valid targets are the enemies sitting ON one of
+            // the 8 capped rays (getLineSpellRayTiles = _applyLineDamage's
+            // walk). The generic Manhattan-disc branch below both accepted
+            // misaligned enemies the beam can never hit (armed casts that hit
+            // zero targets) and rejected diagonally-aligned enemies in beam
+            // reach (Manhattan doubles diagonal steps → "no longer in range"
+            // on perfectly legal casts). Fog still hides suggestions so the
+            // drum never leaks a hidden enemy's position.
+            if (spell.kind === 'line' || spell.kind === 'linePush') {
+                const _lnFogLimit = state.fogOfWar && !state.autoPlayers?.[unit.player];
+                const _raySet = new Set(getLineSpellRayTiles(unit, spell).map(t => t.x + ',' + t.y));
+                for (const u of state.units) {
+                    if (u.dead || u.player === unit.player) continue;
+                    const _lnCells = (u._isBoss && u._bossSize === 2)
+                        ? [[u.x, u.y], [u.x + 1, u.y], [u.x, u.y + 1], [u.x + 1, u.y + 1]]
+                        : [[u.x, u.y]];
+                    if (!_lnCells.some(([cx, cy]) => _raySet.has(cx + ',' + cy))) continue;
+                    if (_lnFogLimit && !isInVision(unit, u.x, u.y)) continue;
+                    targets.push({ x: u.x, y: u.y, dist: Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y), unit: u });
+                }
+                _orderTargetsByNeed(spell, targets);
+                return targets;
+            }
             const _skm = _kindMeta(spell);
             const minRange = _skm.minRange ?? 1;
             const isOffensive = !!_skm.offensive;
@@ -33104,7 +33155,10 @@
                 return;
             }
 
-            const isDirectional = !!_kindMeta(spell).directional;
+            // line/linePush only — splitBeam is also flagged directional but
+            // targets like a normal ranged spell, so it takes the generic
+            // getSpellRangeTiles disc below instead of a ray hint.
+            const isDirectional = spell.kind === 'line' || spell.kind === 'linePush';
             const isCross = spell.kind === 'cross';
             let rangeTiles;
 
@@ -33116,12 +33170,18 @@
                 rangeTiles = [];
                 const effRange = getEffectiveSpellRange(unit, spell);
 
-                const lineLen = isCross ? (spell.crossRadius || effRange) : (isDirectional ? Math.max(bw(), bh()) : effRange);
+                // Beams are range-capped (spell.range || 4, matches
+                // _applyLineDamage) — the old board-length hint promised reach
+                // the capped beam no longer has.
+                const lineLen = isCross ? (spell.crossRadius || effRange) : (isDirectional ? (spell.range || 4) : effRange);
                 // Diagonal crosses (Crossfire / Arcane Sigil) hint their X
-                // arms; everything else hints the 4 cardinals.
+                // arms; directional beams fire on all 8 headings; everything
+                // else hints the 4 cardinals.
                 const dirs = (isCross && spell.diagonal)
                     ? [[1,1],[-1,-1],[1,-1],[-1,1]]
-                    : [[1,0],[-1,0],[0,1],[0,-1]];
+                    : isDirectional
+                        ? [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
+                        : [[1,0],[-1,0],[0,1],[0,-1]];
                 for (const [dx, dy] of dirs) {
                     for (let i = 1; i <= lineLen; i++) {
                         const tx = unit.x + dx * i;
@@ -33404,8 +33464,11 @@
                     const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
                     if (spell) {
 
-                        const isLineSp = spell.kind === 'line' || spell.kind === 'linePush';
-                        if (!isLineSp) {
+                        // Line beams included: getSpellRangeTiles returns their
+                        // capped 8-ray footprint, so hovering past the beam's
+                        // reach shows the approach arrow instead of arming a
+                        // confirm that would fire and hit nothing.
+                        {
                             const rangeTiles = getSpellRangeTiles(unit, spell);
                             const inRange = rangeTiles.some(t => t.x === x && t.y === y);
                             if (!inRange) {
@@ -33849,8 +33912,11 @@
                     || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
                 if (spell) {
 
-                    const _isLineSp = spell.kind === 'line' || spell.kind === 'linePush';
-                    if (!_isLineSp) {
+                    // Line beams included: getSpellRangeTiles returns their
+                    // capped 8-ray footprint, so a click past the beam's reach
+                    // routes into move-then-cast (or errors) instead of firing
+                    // a cast that stops short and hits zero targets.
+                    {
                     const rangeTiles = getSpellRangeTiles(actingUnit, spell);
                     const inRange = rangeTiles.some(t => t.x === x && t.y === y);
                     if (!inRange) {

@@ -4766,17 +4766,19 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     const isLeap = sp.kind === 'leapStrike';
 
     // Engine beams (line/linePush) are DIRECTION casts: the click only picks a
-    // heading — orthogonal OR diagonal — and the ray walks the whole board,
-    // stopping only at impassable terrain (doSpell skips the range/LOS gates
-    // entirely; see _applyLineDamage). So "castable on this enemy from (sx,sy)"
-    // = enemy sits on one of the 8 ray headings and the ray reaches them.
+    // heading — orthogonal OR diagonal — and the ray walks up to the spell's
+    // range (spell.range || 4, capped in _applyLineDamage — beams no longer
+    // sweep the whole board), stopping at impassable terrain. So "castable on
+    // this enemy from (sx,sy)" = enemy sits on one of the 8 ray headings AND
+    // within the capped ray's reach.
     const beamRayHits = (sxx, syy) => {
       const ddx = Math.sign(tx - sxx), ddy = Math.sign(ty - syy);
       if (ddx === 0 && ddy === 0) return false;
       const adx = Math.abs(tx - sxx), ady = Math.abs(ty - syy);
       if (!(ddx === 0 || ddy === 0 || adx === ady)) return false;
-      let cx2 = sxx + ddx, cy2 = syy + ddy;
       const maxSteps = Math.max(adx, ady);
+      if (maxSteps > (sp.range || 4)) return false;
+      let cx2 = sxx + ddx, cy2 = syy + ddy;
       for (let i = 0; i < maxSteps; i++) {
         if (typeof isTerrainPassable === 'function' && !isTerrainPassable(cx2, cy2) && !sp.destroysObstacles) return false;
         if (cx2 === tx && cy2 === ty) return true;
@@ -6562,13 +6564,16 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, sp) : true;
     const spRange = sp.range || 3;
     const spDist = _spellTileDist(sp);
-    // Direction beams (line/linePush) have NO range or LOS gate in the engine —
-    // the clicked tile only picks a heading (orthogonal or diagonal) and the ray
-    // walks the whole board. Offer them on any aligned tile.
+    // Direction beams (line/linePush): the clicked tile picks a heading
+    // (orthogonal or diagonal), but the ray is CAPPED at the spell's range
+    // (spell.range || 4 — matches _applyLineDamage; beams no longer sweep the
+    // whole board). Offer them only on aligned tiles the beam can reach.
     const _isDirBeam = sp.kind === 'line' || sp.kind === 'linePush';
-    const _beamAligned = _isDirBeam && spDist > 0
+    const _beamOnAxis = _isDirBeam && spDist > 0
       && (actingUnit.x === tx || actingUnit.y === ty
           || Math.abs(actingUnit.x - tx) === Math.abs(actingUnit.y - ty));
+    const _beamAligned = _beamOnAxis
+      && Math.max(Math.abs(actingUnit.x - tx), Math.abs(actingUnit.y - ty)) <= (sp.range || 4);
     const inRange = _isDirBeam ? _beamAligned : spDist <= spRange;
     const losBlocked = !_isDirBeam && typeof isRangeBlockedByTerrain === 'function' && spDist > 0 && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty);
     // Placement kinds: validate THIS tile so the row is greyed with the real
@@ -6594,7 +6599,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     else if (actingUnit.mp < mpCost) reason = 'No MP';
     else if (unitAP < spellApCost) reason = 'No AP';
     else if (needMats) reason = 'Need ' + (typeof materialCostLabel === 'function' ? materialCostLabel(sp.materialCost) : 'materials');
-    else if (!inRange) reason = _isDirBeam ? 'Not in line with caster' : 'Out of range';
+    else if (!inRange) reason = _isDirBeam ? (_beamOnAxis ? 'Out of range' : 'Not in line with caster') : 'Out of range';
     else if (losBlocked) reason = 'No line of sight';
     else if (placeReason) reason = placeReason;
 
