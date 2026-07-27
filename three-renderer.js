@@ -2451,6 +2451,17 @@ const ThreeRenderer = (function () {
         return group;
     }
 
+    /* state._monumentTiles is a Map (map.js _stampMonumentCollision). It rides
+       state snapshots, and anything that hands us a non-Map (an older
+       recording, a lossy snapshot) must NOT be dereferenced: a .get()/.has()
+       TypeError in here kills renderFrame every frame, which freezes the canvas
+       on its last drawn image while DOM banners and VFX keep playing. Treat
+       anything that isn't a real Map as "no monument tiles". */
+    function _monumentMap() {
+        var m = state._monumentTiles;
+        return (m && typeof m.get === 'function' && typeof m.has === 'function') ? m : null;
+    }
+
     function rebuildTerrain() {
         if (!terrainGroup) return;
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -2470,8 +2481,8 @@ const ThreeRenderer = (function () {
                 /* Monument tiles carry invisible climb/collision voxels (gameplay
                    reads the full column); render only up to the ground floor so the
                    smooth _hz* mesh is the visual, not a stack of blocky cubes. */
-                if (col && col.length && state._monumentTiles) {
-                    var _mcap = state._monumentTiles.get(x + ',' + y);
+                if (col && col.length && _monumentMap()) {
+                    var _mcap = _monumentMap().get(x + ',' + y);
                     if (_mcap !== undefined) col = col.filter(function (b) { return b.z <= _mcap; });
                 }
                 /* Roof slabs (map editor "Walls & Roofs"): roof-flagged blocks
@@ -6021,7 +6032,7 @@ const ThreeRenderer = (function () {
            no raycast); everything else gets the one-draw-call merge. */
         var _mergeGrass = !(state.fogOfWar && typeof _fogGridWanted === 'function' && _fogGridWanted());
         var _gVerts = [], _gCols = [], _gUvs = [], _gBend = [];
-        var _monTiles = state._monumentTiles || null;
+        var _monTiles = _monumentMap();
 
         for (var dy = 0; dy < _bh; dy++) {
             for (var dx = 0; dx < _bw; dx++) {
@@ -6180,8 +6191,9 @@ const ThreeRenderer = (function () {
         var surfaceY = 0;
         try {
             var floorZ;
-            if (state._monumentTiles && state._monumentTiles.has(mon.x + ',' + mon.y)) {
-                floorZ = state._monumentTiles.get(mon.x + ',' + mon.y);
+            var _mmap = _monumentMap();
+            if (_mmap && _mmap.has(mon.x + ',' + mon.y)) {
+                floorZ = _mmap.get(mon.x + ',' + mon.y);
             } else if (typeof getHeightAt === 'function') {
                 floorZ = getHeightAt(mon.x, mon.y) || 0;
             } else floorZ = 0;

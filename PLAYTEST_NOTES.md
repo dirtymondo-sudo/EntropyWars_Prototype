@@ -8006,3 +8006,45 @@ log can never reproduce a match); we record the presentation stream itself.
   seeking/scrubbing (deltas are forward-only) — restart is instant though.
   Debug hooks: `window._ewReplayInternals`, `window._EW_REC`,
   `window._EW_REPLAY`.
+
+### Replay froze on the end-match tableau — Maps died in `_serializeState` (2026-07-27)
+First bug report on the replay: "units standing like the end match screen, I can
+see spells going off and the player playing but nothing is happening on screen."
+That symptom (DOM banners/floating text/VFX overlays play, 3D board is a frozen
+still) is the signature of **`renderFrame` throwing every frame** — three.js keeps
+calling the animation loop, the exception aborts it before `renderer.render()`, so
+the canvas keeps whatever was last drawn (here: the victory podium / final board).
+Root cause chain:
+- `state._monumentTiles` is a **Map** (`map.js _stampMonumentCollision`, non-null on
+  every map with monuments). `_serializeState` boxed `Set`s but not `Map`s, and a
+  Map has no enumerable own props → it serialized to `{}`.
+- Live online this was masked: `_deserializeInto`'s merge branch kept the guest's
+  own object when the key already existed. The replay's baseline **deletes every
+  key first** (clean-slate rule), so the wholesale-set branch planted the bare `{}`
+  on `state`.
+- `rebuildTerrain()` then called `state._monumentTiles.get(x+','+y)` (and the grass
+  pass `.has()`) → TypeError → frozen canvas, forever, because the terrain/object
+  serials only update at the END of the rebuild that throws.
+- Guests hit the SAME thing whenever their local `_monumentTiles` was falsy — this
+  was an online bug too, not just a replay bug.
+Fixes (online.js + three-renderer.js):
+- `_serializeState` boxes Maps as `{_t:'M', v:[[k,v]…]}` at top level and one level
+  deep, exactly like Sets.
+- `_deserializeInto` rehydrates boxes via one `_unbox()` helper at EVERY depth —
+  including the wholesale-set path, which previously left
+  `state.foundByPlayer[1]` as a raw `{_t:'S'}` literal (every `.has()/.add()` on it
+  throws). `_MAP_KEYS` (`_monumentTiles`, `_batTransformIds`) are coerced through
+  `_toMap()` so recordings made before this fix still play.
+- three-renderer: `_monumentMap()` returns the Map only when it really is one, so a
+  lossy snapshot can never freeze the canvas again.
+- Replay start/restart share `_applyBaseline()`: calls `ThreeRenderer.resetForNewMatch()`
+  (playback always begins on top of a FINISHED match — leftover death/carry tweens,
+  time-warp, clamped death-pose rigs and stale serials), applies the baseline in a
+  try/catch that LOGS instead of silently leaving the old board up, then
+  `invalidateUnits()` + `invalidateLayoutCache()` + `renderBoard()`.
+- Playback now logs its event composition (`N snapshots, M relay`) — first thing to
+  check if a replay ever looks dead again.
+Lesson: any non-plain object on `state` (Map/Set/class instance) must be boxed by
+`_serializeState` AND unboxed at every depth, or it silently becomes `{}` — and a
+`{}` where the renderer expects a collection is a total black/frozen screen, not a
+small glitch.

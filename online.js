@@ -3516,6 +3516,20 @@
                             _t: 'S',
                             v: Array.from(val)
                         };
+                    } else if (val instanceof Map) {
+                        /* Maps MUST be boxed like Sets: their entries are not
+                           enumerable own properties, so the generic object
+                           branch below flattens one to `{}` — and a bare {}
+                           landing on e.g. state._monumentTiles makes the 3D
+                           terrain builder throw on .get()/.has() EVERY FRAME
+                           (renderFrame dies → the canvas freezes on its last
+                           drawn image while DOM banners/VFX keep playing).
+                           That was the replay's "units stuck standing like the
+                           end screen", and it hit online guests too. */
+                        s[key] = {
+                            _t: 'M',
+                            v: Array.from(val.entries())
+                        };
                     } else if (val && typeof val === 'object' && !Array.isArray(val)) {
                         var obj = {};
                         for (var k2 in val) {
@@ -3523,6 +3537,10 @@
                             if (val[k2] instanceof Set) obj[k2] = {
                                 _t: 'S',
                                 v: Array.from(val[k2])
+                            };
+                            else if (val[k2] instanceof Map) obj[k2] = {
+                                _t: 'M',
+                                v: Array.from(val[k2].entries())
                             };
                             else if (typeof val[k2] === 'function') continue;
                             else obj[k2] = val[k2];
@@ -3544,26 +3562,63 @@
                or the guest keeps phantom walls forever. */
             var _REPLACE_WHOLESALE = { edgeWalls: 1, burningTiles: 1 };
 
+            /* state keys that MUST end up as real Maps. A recording made by an
+               older build (or any snapshot that lost the boxing) carries them as
+               a plain object — planting that on state is fatal, see the _t:'M'
+               note in _serializeState — so they are always coerced back. */
+            var _MAP_KEYS = { _monumentTiles: 1, _batTransformIds: 1 };
+
+            /* Rehydrate a boxed collection. Applied at EVERY depth the
+               serializer boxes at, including the wholesale-set path below —
+               without that, state.foundByPlayer[1] lands as a raw
+               {_t:'S',v:[…]} literal and every .has()/.add() on it throws. */
+            function _unbox(v) {
+                if (v && typeof v === 'object' && !Array.isArray(v)) {
+                    if (v._t === 'S') return new Set(v.v || []);
+                    if (v._t === 'M') return new Map(v.v || []);
+                }
+                return v;
+            }
+
+            function _toMap(val) {
+                if (val instanceof Map) return val;
+                if (val && typeof val === 'object' && !Array.isArray(val)) {
+                    if (val._t === 'M') return new Map(val.v || []);
+                    var m = new Map();
+                    for (var mk in val) {
+                        if (val.hasOwnProperty(mk)) m.set(mk, val[mk]);
+                    }
+                    return m;
+                }
+                return val;   /* null / undefined stay as-is (the "no monuments" case) */
+            }
+
             function _deserializeInto(target, s) {
                 for (var key in s) {
                     if (!s.hasOwnProperty(key)) continue;
                     var val = s[key];
-                    if (val && typeof val === 'object' && val._t === 'S') {
-                        target[key] = new Set(val.v);
+                    if (_MAP_KEYS[key]) {
+                        target[key] = _toMap(val);
+                    } else if (val && typeof val === 'object' && (val._t === 'S' || val._t === 'M')) {
+                        target[key] = _unbox(val);
                     } else if (val && typeof val === 'object' && !Array.isArray(val) && _REPLACE_WHOLESALE[key]) {
                         target[key] = val;
                     } else if (val && typeof val === 'object' && !Array.isArray(val)) {
                         if (target[key] && typeof target[key] === 'object' && !Array.isArray(target[key])) {
                             for (var k2 in val) {
                                 if (!val.hasOwnProperty(k2)) continue;
-                                if (val[k2] && typeof val[k2] === 'object' && val[k2]._t === 'S') {
-                                    target[key][k2] = new Set(val[k2].v);
-                                } else {
-                                    target[key][k2] = val[k2];
-                                }
+                                target[key][k2] = _unbox(val[k2]);
                             }
                         } else {
-                            target[key] = val;
+                            /* The key is absent locally (the replay baseline
+                               deletes every key first) — rebuild it box-aware
+                               instead of assigning the raw wire object. */
+                            var fresh = {};
+                            for (var k3 in val) {
+                                if (!val.hasOwnProperty(k3)) continue;
+                                fresh[k3] = _unbox(val[k3]);
+                            }
+                            target[key] = fresh;
                         }
                     } else {
                         target[key] = val;
@@ -4353,10 +4408,16 @@
                     try { transitionTo(GS.BATTLE); } catch (e) {}
                 }
 
+                var _nS = 0, _nR = 0;
+                for (var _ci = 0; _ci < rec.events.length; _ci++) {
+                    if (rec.events[_ci].k === 's') _nS++; else _nR++;
+                }
+                console.log('[REPLAY] Playing ' + rec.events.length + ' events (' + _nS +
+                    ' snapshots, ' + _nR + ' relay) · ' + Math.round(R._durationMs / 1000) + 's');
+
                 /* Baseline snapshot builds the world; the Three renderer
                    auto-activates off phase==='battle' just like a live match. */
-                var first = R.events[0];
-                if (first && first.k === 's') { _applySnapEvent(first, true); R.idx = 1; }
+                _applyBaseline();
 
                 if (typeof syncMusicToState === 'function') {
                     try { var p = syncMusicToState(); if (p && p.catch) p.catch(function() {}); } catch (e) {}
@@ -4373,6 +4434,38 @@
                 if (typeof window.showBattleLoadingScreen === 'function') {
                     try { window.showBattleLoadingScreen(begin); } catch (e) { begin(); }
                 } else begin();
+            }
+
+            /* Baseline = event 0. Playback always starts on top of a FINISHED
+               match (victory screen or main menu), so the 3D renderer is still
+               holding that match's animation state: death/carry tweens, a
+               running time-warp, clamped death-pose model rigs and every
+               "already built" serial. A real match start clears all of it via
+               resetForNewMatch — the replay must too, or the first frames fight
+               leftovers. Errors are caught and logged: a baseline that throws
+               used to leave the finished match's board on screen with the relay
+               stream (banners, spells, cameras) playing over it. */
+            function _applyBaseline() {
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.resetForNewMatch) {
+                    try { ThreeRenderer.resetForNewMatch(); } catch (e) {}
+                }
+                var first = R.events && R.events[0];
+                if (!first || first.k !== 's') {
+                    console.warn('[REPLAY] Recording has no baseline snapshot — playback will be blind');
+                    return;
+                }
+                try {
+                    _applySnapEvent(first, true);
+                    R.idx = 1;
+                } catch (e) {
+                    console.error('[REPLAY] Baseline apply FAILED — the board is still the old match:', e);
+                    R.idx = 1;
+                }
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.invalidateUnits) {
+                    try { ThreeRenderer.invalidateUnits(); } catch (e) {}
+                }
+                if (typeof invalidateLayoutCache === 'function') { try { invalidateLayoutCache(); } catch (e) {} }
+                if (typeof renderBoard === 'function') { try { renderBoard(); } catch (e) {} }
             }
 
             function _tick() {
@@ -4751,8 +4844,7 @@
                 R.paused = false;
                 var b = document.getElementById('ewrPause');
                 if (b) b.textContent = '⏸';
-                var first = R.events[0];
-                if (first && first.k === 's') { _applySnapEvent(first, true); R.idx = 1; }
+                _applyBaseline();
                 if (typeof resetBoardCamera === 'function') { try { resetBoardCamera(true); } catch (e) {} }
                 R.lastTick = performance.now();
             }
