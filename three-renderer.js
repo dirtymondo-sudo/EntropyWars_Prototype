@@ -18310,7 +18310,11 @@ const ThreeRenderer = (function () {
         'void main(){ vec4 wp=modelMatrix*vec4(position,1.0); vDir=wp.xyz-cameraPosition; gl_Position=projectionMatrix*viewMatrix*wp; }';
 
     function _envDomeFS() {
-        return 'varying vec3 vDir;\n' + _ENV_COMMON + '\n' +
+        return 'varying vec3 vDir;\n' +
+        // 1.0 once the real 3D moon model (_skyMoon) is on screen — fades the
+        // shader's painted moon DISC out while keeping its soft glow halo, so
+        // the glow wraps the mesh and the disc never double-exposes behind it.
+        'uniform float uMoonMesh;\n' + _ENV_COMMON + '\n' +
         'void main(){\n' +
         '  vec3 rd=normalize(vDir); float night=uDayNight; float t=uTime;\n' +
         '  float wStorm=uWeather.x,wSnow=uWeather.y,wSand=uWeather.z,wBlood=uWeather.w;\n' +
@@ -18376,9 +18380,10 @@ const ThreeRenderer = (function () {
         '  float ma=acos(clamp(dot(rd,moonDir),-1.0,1.0)); float moonVis=0.35+0.65*night; float moonR=mix(0.06,0.095,bloodM);\n' +
         '  float mdisc=smoothstep(moonR,moonR*0.85,ma); float craters=fbm((rd.xy-moonDir.xy)*42.0);\n' +
         '  vec3 moonGrey=vec3(0.85,0.88,0.95)*(0.8+0.3*craters); float mGlow=exp(-ma*7.0)*0.4;\n' +
-        '  vec3 moonC=mdisc*moonGrey*1.6+mGlow*moonGrey*0.6;\n' +
+        '  float mMesh=1.0-uMoonMesh;\n' +   // 3D moon model on screen → hide the painted disc, keep the halo
+        '  vec3 moonC=mdisc*moonGrey*1.6*mMesh+mGlow*moonGrey*0.6;\n' +
         '  vec3 moonRed=vec3(0.75,0.12,0.07)*(0.7+0.5*craters);\n' +
-        '  vec3 moonEv=mdisc*moonRed*2.0+exp(-ma*3.5)*vec3(0.7,0.12,0.08)*0.8;\n' +
+        '  vec3 moonEv=mdisc*moonRed*2.0*mMesh+exp(-ma*3.5)*vec3(0.7,0.12,0.08)*0.8;\n' +
         '  col+=mix(moonC*moonVis,moonEv,max(bloodM,lun));\n' +
         '  col+=smoothstep(0.85,1.0,el)*mix(vec3(0.10,0.08,0.18),vec3(0.30,0.25,0.45),night)*0.14*uOccult;\n' +
         // ── storm overcast: seamless, weighted to the lower sky, no hard edge ──
@@ -18433,7 +18438,9 @@ const ThreeRenderer = (function () {
                 uMapTint: { value: new THREE.Vector3(0, 0, 0) },
                 uMapTintAmt: { value: 0.0 },
                 uMapStars: { value: 1.0 },
-                uMapNebula: { value: 1.0 }
+                uMapNebula: { value: 1.0 },
+                // 1 while the real 3D moon model is visible (see _updateSkyMoon)
+                uMoonMesh: { value: 0.0 }
             };
 
             var groundMat = new THREE.ShaderMaterial({
@@ -18613,6 +18620,68 @@ const ThreeRenderer = (function () {
 
         // rotating zodiac wheel + constellations (real geometry in the dome)
         _updateZodiacWheel(S, _envUni.uTime.value);
+
+        // the real 3D moon riding the camera along the dome's moon direction
+        _updateSkyMoon(ThreeCamera.getCamera(), S, _envUni.uTime.value);
+    }
+
+    // ── The Moon, for real ───────────────────────────────────────────────
+    // The dome shader used to paint the moon as a procedural disc. It now
+    // yields to an actual 3D moon model (Assets/misc, Meshy scan) hung along
+    // the SAME direction the dome points its moon glow — camera-anchored like
+    // the dome itself, so it keeps a constant angular size and always sits
+    // inside its own halo. While the GLB streams in (or if it fails / is
+    // killed via window.EW_DISABLE_SKY_MOON_3D = true) uMoonMesh stays 0 and
+    // the shader disc quietly comes back — no gap in the sky either way.
+    // Blood moons swell + redden it exactly like the old disc; day dims it.
+    var _skyMoon = null, _skyMoonInner = null, _skyMoonMats = [], _skyMoonReady = false;
+    var _skyMoonCol = null, _SKY_MOON_RED = null;
+    var _SKY_MOON_DIST = 12500;     // from the camera (far plane is 20000)
+    var _SKY_MOON_ANG_R = 0.06;     // angular radius the shader disc used
+
+    function _initSkyMoon() {
+        if (_skyMoon || !scene || typeof THREE === 'undefined') return;
+        var dia = 2 * _SKY_MOON_DIST * Math.tan(_SKY_MOON_ANG_R);
+        _skyMoon = new THREE.Group();
+        _skyMoon.name = 'skyMoon3D';
+        _skyMoon.visible = false;
+        _skyMoonInner = _miscModelInstance(_R2_MISC + _MISC_GLB.moon, true, dia, {
+            matPick: function (node, srcMat) {
+                var m = new THREE.MeshBasicMaterial({
+                    map: (srcMat && srcMat.map) || null,
+                    side: THREE.FrontSide, depthWrite: true, fog: false
+                });
+                _skyMoonMats.push(m);
+                return m;
+            },
+            onDone: function () { _skyMoonReady = true; }
+        });
+        _skyMoonInner.position.y = -dia * 0.5;   // instance sits base-on-origin → recentre on the group
+        _skyMoon.add(_skyMoonInner);
+        scene.add(_skyMoon);
+    }
+
+    function _updateSkyMoon(cam, S, t) {
+        if (!_skyMoon) _initSkyMoon();
+        if (!_skyMoon || !_envUni) return;
+        var on = _skyMoonReady && !window.EW_DISABLE_SKY_MOON_3D;
+        _envUni.uMoonMesh.value = on ? 1 : 0;
+        _skyMoon.visible = on;
+        if (!on || !cam) return;
+        // same direction (incl. the slow z wobble) the dome shader aims its glow
+        var mx = -0.50, my = 0.40, mz = 0.56 + 0.03 * Math.sin(t * 0.04);
+        var k = _SKY_MOON_DIST / Math.sqrt(mx * mx + my * my + mz * mz);
+        _skyMoon.position.set(cam.position.x + mx * k, cam.position.y + my * k, cam.position.z + mz * k);
+        _skyMoonInner.rotation.y = t * 0.006;    // barely-there face drift
+        var bloodM = (S.skyEvent > 0.5 && S.skyEvent < 1.5) ? S.skyAmt : 0;
+        var lun = (S.skyEvent >= 2.5) ? S.skyAmt : 0;
+        var red = Math.max(bloodM, lun);
+        _skyMoon.scale.setScalar(1 + 0.58 * bloodM);   // old disc grew 0.06 → 0.095 rad on blood moons
+        if (!_skyMoonCol) { _skyMoonCol = new THREE.Color(); _SKY_MOON_RED = new THREE.Color(0xc22014); }
+        // faint by day, bright by night (the old moonVis beat), washed red by events
+        _skyMoonCol.setScalar(0.55 + 0.75 * S.night);
+        if (red > 0.01) _skyMoonCol.lerp(_SKY_MOON_RED, red * 0.85);
+        for (var i = 0; i < _skyMoonMats.length; i++) _skyMoonMats[i].color.copy(_skyMoonCol);
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -19540,6 +19609,152 @@ const ThreeRenderer = (function () {
         var aura = _hzGlowCore(h * 0.46, 0xff5f8f, 0x9a4cff);   // sickly violet halo
         aura.position.y = h * 0.5;
         g.add(aura);
+        return g;
+    }
+
+    // ── Cosmic misc models (Assets/misc root — Meshy *_texture.glb props) ──
+    // Textured, boneless one-piece GLBs: planets, the moon, a burning star, a
+    // solar-system orrery, alien craft and surreal timepieces. Filenames live
+    // in this ONE map so a renamed R2 upload is a one-line fix. Like the
+    // pyramid, they render unlit (MeshBasicMaterial keeping the GLB's own
+    // embedded texture, fog:false) and are deliberately NOT day/night graded —
+    // celestial bodies read as self-lit against the void.
+    var _MISC_GLB = {
+        moon:      'Meshy_AI_moon_realistic_0727195427_texture.glb',
+        earth:     'Meshy_AI_planet_earth_realist_0727195349_texture.glb',
+        jupiter:   'Meshy_AI_jupiter_realistic_0727195413_texture.glb',
+        saturn:    'Meshy_AI_saturn_realistic_0727200914_texture.glb',
+        alien:     'Meshy_AI_alien_planet_realis_0727195330_texture.glb',
+        star:      'Meshy_AI_star_realistic_0727195402_texture.glb',
+        solar:     'Meshy_AI_solar_system_realist_0727195437_texture.glb',
+        ufo:       'Meshy_AI_Triangle_UFO_0727195842_texture.glb',
+        spaceship: 'Meshy_AI_spaceship_0727195825_texture.glb',
+        clock:     'Meshy_AI_analog_clock_realist_0727195259_texture.glb',
+        gclock:    'Meshy_AI_grandfather_clock_re_0727195306_texture.glb'
+    };
+
+    // keep the GLB's own baked texture, just unlit — the misc-model default
+    function _hzMiscUnlitPick(node, srcMat) {
+        return new THREE.MeshBasicMaterial({
+            map: (srcMat && srcMat.map) || null,
+            side: THREE.FrontSide, depthWrite: true, fog: false
+        });
+    }
+    function _hzMiscGLB(key, target, opts) {
+        opts = opts || {};
+        if (!opts.matPick) opts.matPick = _hzMiscUnlitPick;
+        return _miscModelInstance(_R2_MISC + _MISC_GLB[key], true, target, opts);
+    }
+
+    // A lone planet adrift in the void — Earth, Jupiter, Saturn or a nameless
+    // alien world, each haloed in its own atmospheric tint. Upright with a slow
+    // roster spin (not tumbling), so ring systems stay level. The moon is NOT
+    // in this mix — it hangs in the sky for real (see _updateSkyMoon).
+    var _HZ_PLANETS = [
+        //  key        aura      rim       size×
+        ['earth',   0x76a8ff, 0x3f6fd8, 1.00],
+        ['jupiter', 0xffbf86, 0xc97b3a, 1.40],
+        ['saturn',  0xe8cf9a, 0xb89454, 1.35],
+        ['alien',   0x8fe8c0, 0x3fae86, 1.05]
+    ];
+    function _hzModelPlanet(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var pick = _HZ_PLANETS[rng() * _HZ_PLANETS.length | 0];
+        var h = ts * (3.5 + rng() * 4.5) * pick[3];
+        var g = _hzMiscGLB(pick[0], h);
+        var aura = _hzGlowSprite(h * 1.9, pick[1], 0.26, 0.07, 0.05, 0.22 + rng() * 0.3);
+        aura.position.y = h * 0.5;
+        g.add(aura);
+        var rim = _hzGlowSprite(h * 1.15, pick[2], 0.20, 0.06, 0.04, 0.3 + rng() * 0.4);
+        rim.position.y = h * 0.5;
+        g.add(rim);
+        return g;
+    }
+
+    // A burning star — the model wrapped in a furious additive corona so it
+    // blooms like the astral lights do.
+    function _hzModelStar(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var h = ts * (4 + rng() * 4);
+        var g = _hzMiscGLB('star', h);
+        var core = _hzGlowCore(h * 0.62, 0xffe9a8, 0xff9a3a);
+        core.position.y = h * 0.5;
+        g.add(core);
+        return g;
+    }
+
+    // The full solar-system orrery — a rare, wide cosmic showpiece.
+    function _hzModelSolarSystem(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var w = ts * (11 + rng() * 7);
+        var g = _hzMiscGLB('solar', w, { fit: 'span' });
+        var aura = _hzGlowSprite(w * 1.2, 0xffd9a0, 0.16, 0.05, 0.03, 0.22);
+        aura.position.y = w * 0.15;
+        g.add(aura);
+        return g;
+    }
+
+    // Alien craft on distant patrol — the triangle UFO (with an eerie
+    // abduction-beam underglow) or the rocket-age spaceship.
+    function _hzModelCraft(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var ufo = rng() < 0.6;
+        var w = ts * (ufo ? 5 + rng() * 4 : 4 + rng() * 3.5);
+        var g = _hzMiscGLB(ufo ? 'ufo' : 'spaceship', w, { fit: 'span' });
+        if (ufo) {
+            var beam = _hzGlowSprite(w * 0.9, 0x7dffb8, 0.26, 0.10, 0.06, 0.5 + rng() * 0.5);
+            beam.position.y = -w * 0.10;
+            g.add(beam);
+        }
+        return g;
+    }
+
+    // Surreal timepieces adrift in the void — a giant analog clock face or a
+    // grandfather clock, glowing faintly gold: time itself run aground on the
+    // apocalypse. (Dali would approve.)
+    function _hzModelClock(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var grand = rng() < 0.45;
+        var h = ts * (grand ? 6 + rng() * 4 : 3.5 + rng() * 3);
+        var g = _hzMiscGLB(grand ? 'gclock' : 'clock', h);
+        var aura = _hzGlowSprite(h * 1.5, 0xd8b46a, 0.16, 0.06, 0.04, 0.2 + rng() * 0.3);
+        aura.position.y = h * 0.55;
+        g.add(aura);
+        return g;
+    }
+
+    // Synchronous misc-model clone for effect layers (exported as
+    // getMiscModelClone). Unlike _miscModelInstance this never fills in later:
+    // a spell needs its prop NOW or not at all, so it returns null (and kicks
+    // off the download for next time) until the shared root is cached.
+    function _getMiscModelClone(key, target, align) {
+        var file = _MISC_GLB[key];
+        if (!file || typeof THREE === 'undefined') return null;
+        var url = _R2_MISC + file;
+        var e = _miscModelCache[url];
+        if (!e || !e.root) {
+            _loadMiscModel(url, true, function () {});   // warm the cache
+            return null;
+        }
+        var bb = e.root._ew_bbox;
+        var ey = (bb.max.y - bb.min.y) || 1;
+        var s = (target || 1) / ey;
+        var m = e.root.clone(true);
+        m.traverse(function (n) {
+            if (!n.isMesh) return;
+            var src = Array.isArray(n.material) ? n.material[0] : n.material;
+            n.material = new THREE.MeshBasicMaterial({
+                map: (src && src.map) || null,
+                side: THREE.FrontSide, depthWrite: true, fog: false
+            });
+        });
+        m.scale.setScalar(s);
+        m.position.set(
+            -((bb.min.x + bb.max.x) * 0.5) * s,
+            (align === 'center') ? -((bb.min.y + bb.max.y) * 0.5) * s : -bb.min.y * s,
+            -((bb.min.z + bb.max.z) * 0.5) * s);
+        var g = new THREE.Group();
+        g.add(m);
         return g;
     }
 
@@ -21602,10 +21817,10 @@ const ThreeRenderer = (function () {
     function _hzThemeRoster(name) {
         if (!_HZ_THEME_ROSTERS) _HZ_THEME_ROSTERS = {
             divine: [
-                [0.15, _hzGoldGate, false, 0.00, 0.45], [0.31, _hzLightPillar, false, -0.15, 0.50],
-                [0.45, _hzStairway, false, -0.30, 0.55], [0.60, _hzGreekRuin, false, -0.35, 0.50],
-                [0.68, _hzFloatingIsland, false, -0.30, 0.60], [0.78, _hzTome, false, -0.20, 0.60],
-                [0.86, _hzRoseWindow, false, -0.35, 0.50],
+                [0.14, _hzGoldGate, false, 0.00, 0.45], [0.29, _hzLightPillar, false, -0.15, 0.50],
+                [0.42, _hzStairway, false, -0.30, 0.55], [0.56, _hzGreekRuin, false, -0.35, 0.50],
+                [0.64, _hzFloatingIsland, false, -0.30, 0.60], [0.73, _hzTome, false, -0.20, 0.60],
+                [0.81, _hzRoseWindow, false, -0.35, 0.50], [0.88, _hzModelClock, false, -0.25, 0.55],
                 [0.94, _hzSacredRings, true, -0.30, 0.65], [1.00, _hzAstralOrbs, true, -0.25, 0.70]],
             infernal: [
                 [0.24, _hzMonolith, false, -0.55, 0.35], [0.40, _hzColossus, false, -0.50, 0.30],
@@ -21623,13 +21838,14 @@ const ThreeRenderer = (function () {
                 [0.66, _hzObelisk, false, -0.45, 0.55], [0.80, _hzMonolith, false, -0.50, 0.55],
                 [0.90, _hzColossus, false, -0.45, 0.40], [1.00, _hzFloatingIsland, false, -0.50, 0.55]],
             crystals: [
-                [0.34, _hzCrystalShards, true, -0.55, 0.65], [0.54, _hzSacredRings, true, -0.50, 0.70],
-                [0.72, _hzAstralOrbs, true, -0.55, 0.75], [0.88, _hzFloatingIsland, false, -0.55, 0.60],
-                [1.00, _hzMonolith, false, -0.50, 0.55]],
+                [0.30, _hzCrystalShards, true, -0.55, 0.65], [0.48, _hzSacredRings, true, -0.50, 0.70],
+                [0.64, _hzAstralOrbs, true, -0.55, 0.75], [0.78, _hzModelPlanet, false, -0.55, 0.72],
+                [0.90, _hzFloatingIsland, false, -0.55, 0.60], [1.00, _hzMonolith, false, -0.50, 0.55]],
             orbs: [
-                [0.34, _hzAstralOrbs, true, -0.55, 0.75], [0.52, _hzSacredRings, true, -0.55, 0.70],
-                [0.66, _hzModelEyeball, true, -0.45, 0.65], [0.80, _hzSaucer, false, -0.35, 0.62],
-                [0.92, _hzMonolith, false, -0.50, 0.55], [1.00, _hzFloatingIsland, false, -0.55, 0.60]],
+                [0.28, _hzAstralOrbs, true, -0.55, 0.75], [0.44, _hzSacredRings, true, -0.55, 0.70],
+                [0.58, _hzModelEyeball, true, -0.45, 0.65], [0.70, _hzModelPlanet, false, -0.55, 0.75],
+                [0.80, _hzSaucer, false, -0.35, 0.62], [0.88, _hzModelCraft, false, -0.35, 0.65],
+                [0.95, _hzMonolith, false, -0.50, 0.55], [1.00, _hzFloatingIsland, false, -0.55, 0.60]],
             eyes: [
                 [0.34, _hzModelEyeball, true, -0.45, 0.65], [0.60, _hzAstralOrbs, true, -0.55, 0.75],
                 [0.76, _hzSacredRings, true, -0.55, 0.70], [1.00, _hzMonolith, false, -0.55, 0.55]],
@@ -21642,14 +21858,16 @@ const ThreeRenderer = (function () {
                 [0.68, _hzFloatingIsland, false, -0.55, 0.60], [0.84, _hzAstralOrbs, true, -0.50, 0.72],
                 [1.00, _hzSacredRings, true, -0.50, 0.70]],
             space: [
-                [0.28, _hzAstralOrbs, true, -0.60, 0.76], [0.48, _hzCrystalShards, true, -0.60, 0.70],
-                [0.64, _hzFloatingIsland, false, -0.58, 0.66], [0.76, _hzModelEyeball, true, -0.50, 0.70],
-                [0.88, _hzSaucer, false, -0.45, 0.68], [1.00, _hzSacredRings, true, -0.60, 0.72]],
+                [0.22, _hzModelPlanet, false, -0.60, 0.78], [0.36, _hzAstralOrbs, true, -0.60, 0.76],
+                [0.48, _hzCrystalShards, true, -0.60, 0.70], [0.58, _hzModelStar, false, -0.55, 0.80],
+                [0.66, _hzModelSolarSystem, false, -0.40, 0.70], [0.74, _hzFloatingIsland, false, -0.58, 0.66],
+                [0.82, _hzModelEyeball, true, -0.50, 0.70], [0.88, _hzSaucer, false, -0.45, 0.68],
+                [0.94, _hzModelCraft, false, -0.35, 0.70], [1.00, _hzSacredRings, true, -0.60, 0.72]],
             dark: [
-                [0.26, _hzMonolith, false, -0.52, 0.60], [0.46, _hzColossus, false, -0.45, 0.45],
-                [0.62, _hzMountain, false, -0.25, 0.25], [0.76, _hzGateway, false, -0.45, 0.55],
-                [0.86, _hzObelisk, false, -0.45, 0.58], [0.94, _hzGrinSkull, false, -0.45, 0.40],
-                [1.00, _hzWoodCross, false, -0.42, 0.45]],
+                [0.24, _hzMonolith, false, -0.52, 0.60], [0.43, _hzColossus, false, -0.45, 0.45],
+                [0.58, _hzMountain, false, -0.25, 0.25], [0.70, _hzGateway, false, -0.45, 0.55],
+                [0.79, _hzObelisk, false, -0.45, 0.58], [0.87, _hzGrinSkull, false, -0.45, 0.40],
+                [0.94, _hzModelClock, false, -0.42, 0.55], [1.00, _hzWoodCross, false, -0.42, 0.45]],
         };
         return _HZ_THEME_ROSTERS[name] || null;
     }
@@ -21690,20 +21908,25 @@ const ThreeRenderer = (function () {
         // rest hang roughly upright with a slow turn and an organic tilt.
         //   thr,  builder,          tumble, yLoFactor, yHiFactor   (× discR)
         var ROSTER = themeRoster || [
-            [0.118, _hzMountain,       false, -0.08,  0.22],   // floating peaks / land-chunks
-            [0.217, _hzGreekRuin,      false, -0.45,  0.55],   // colonnade ruins
-            [0.308, _hzStairway,       false, -0.50,  0.55],   // stairways to nowhere
-            [0.480, _hzZiggurat,       false, -0.45,  0.55],   // stepped temples
-            [0.552, _hzGateway,        false, -0.45,  0.58],   // gateways to nowhere
-            [0.615, _hzObelisk,        false, -0.45,  0.58],   // obelisks
-            [0.688, _hzMonolith,       false, -0.52,  0.62],   // leaning monoliths
-            [0.742, _hzColossus,       false, -0.45,  0.48],   // toppled colossi
-            [0.815, _hzFloatingIsland, false, -0.58,  0.66],   // broken sky-islands
-            [0.855, _hzCrystalShards, true,  -0.60,  0.70],   // crystal clusters
-            [0.882, _hzAstralOrbs,    true,  -0.64,  0.76],   // wandering astral lights
-            [0.905, _hzSacredRings,   true,  -0.60,  0.72],   // sacred-geometry haloes
-            [0.952, _hzModelPyramid,  false, -0.48,  0.55],   // textured pyramid model (.glb)
-            [1.00,  _hzModelEyeball,  true,  -0.55,  0.70]    // watcher eyeball — tumbles/scans
+            [0.100, _hzMountain,       false, -0.08,  0.22],   // floating peaks / land-chunks
+            [0.185, _hzGreekRuin,      false, -0.45,  0.55],   // colonnade ruins
+            [0.262, _hzStairway,       false, -0.50,  0.55],   // stairways to nowhere
+            [0.408, _hzZiggurat,       false, -0.45,  0.55],   // stepped temples
+            [0.468, _hzGateway,        false, -0.45,  0.58],   // gateways to nowhere
+            [0.521, _hzObelisk,        false, -0.45,  0.58],   // obelisks
+            [0.583, _hzMonolith,       false, -0.52,  0.62],   // leaning monoliths
+            [0.629, _hzColossus,       false, -0.45,  0.48],   // toppled colossi
+            [0.691, _hzFloatingIsland, false, -0.58,  0.66],   // broken sky-islands
+            [0.725, _hzCrystalShards, true,  -0.60,  0.70],   // crystal clusters
+            [0.748, _hzAstralOrbs,    true,  -0.64,  0.76],   // wandering astral lights
+            [0.768, _hzSacredRings,   true,  -0.60,  0.72],   // sacred-geometry haloes
+            [0.808, _hzModelPyramid,  false, -0.48,  0.55],   // textured pyramid model (.glb)
+            [0.848, _hzModelEyeball,  true,  -0.55,  0.70],   // watcher eyeball — tumbles/scans
+            [0.918, _hzModelPlanet,   false, -0.60,  0.78],   // drifting planets (misc .glb)
+            [0.938, _hzModelStar,     false, -0.55,  0.80],   // a burning star
+            [0.953, _hzModelSolarSystem, false, -0.40, 0.70], // rare orrery showpiece
+            [0.976, _hzModelClock,    false, -0.45,  0.62],   // surreal timepieces
+            [1.00,  _hzModelCraft,    false, -0.30,  0.68]    // UFO / spaceship on patrol
         ];
 
         var slots = 132;
@@ -24731,6 +24954,8 @@ const ThreeRenderer = (function () {
         if (_arenaRuinsGroup) { if (scene) scene.remove(_arenaRuinsGroup); _disposeR(_arenaRuinsGroup); }
         _arenaRuinsGroup = null; _arenaRuinsKey = '';
         _envGroup = _envGround = _envWall = _envDome = null; _envInited = false;
+        if (_skyMoon && scene) { scene.remove(_skyMoon); _disposeR(_skyMoon); }
+        _skyMoon = _skyMoonInner = null; _skyMoonMats.length = 0; _skyMoonReady = false;
         if (_zwGroup && scene) scene.remove(_zwGroup);
         _zwGroup = null; _zwRimMat = null; _zwSigns.length = 0; _zwInited = false;
         _zwReveal = null; _zwShownIdx = -1; _zwAutoAt = 0;
@@ -25597,6 +25822,14 @@ const ThreeRenderer = (function () {
         isFogGridOn: function () { return _perfSettings.fogGrid !== false; },
 
         setHorizonFog,
+
+        /* Cosmetic hook for VFX layers: a clone of a cached /Assets/misc GLB
+           (unlit materials keeping the embedded texture), normalized to
+           `target` world units tall. align 'center' pivots on the model's
+           centre (projectiles); default sits the base on y=0 (standing props).
+           Returns null while the model is still streaming — the caller keeps
+           its procedural fallback and the call itself warms the cache. */
+        getMiscModelClone: _getMiscModelClone,
 
         setLightRayStrength, getLightRayStrength,
 

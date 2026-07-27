@@ -4,7 +4,39 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## 🕊 FLIGHT & VERTICAL MOVEMENT OVERHAUL (2026-07-27, LATEST) — map.js, battle.js, data.js, ai.js, hud.js, three-renderer.js
+## 🌌 COSMIC MISC MODELS: planets/clocks/craft in the void + REAL 3D MOON (2026-07-27, LATEST) — three-renderer.js, three-vfx-effects.js, index.html
+Token → `20260727o`. New Meshy `*_texture.glb` props uploaded flat into R2
+`/Assets/misc/` (moon, earth, jupiter, saturn, alien planet, star, solar
+system, triangle UFO, spaceship, analog + grandfather clock) are wired in:
+- **Catalog**: `_MISC_GLB` map in three-renderer.js (one place to fix a
+  filename if an upload is renamed). All render unlit via `_hzMiscGLB`
+  (MeshBasicMaterial keeping the GLB's embedded texture, fog:false, NOT
+  day/night graded — same deliberate choice as the R2 pyramid).
+- **New horizon builders**: `_hzModelPlanet` (earth/jupiter/saturn/alien +
+  tinted aura), `_hzModelStar` (glow-core corona), `_hzModelSolarSystem`
+  (rare wide orrery), `_hzModelCraft` (UFO w/ green underglow, or
+  spaceship), `_hzModelClock` (analog/grandfather, gold aura — Dali beat).
+  Added to the default cosmic roster (~25% of slots) and theme rosters:
+  space/orbs/crystals get planets+craft, divine/dark get clocks.
+- **REAL 3D MOON**: the dome shader's painted moon disc now yields to the
+  actual moon GLB (`_initSkyMoon`/`_updateSkyMoon`), camera-anchored 12.5k
+  units along the dome's exact moon direction (incl. its slow z wobble) so
+  it sits inside the shader's kept glow halo. Day dims it, blood moon
+  swells (+58%) and reddens it, lunar eclipse reddens it — matching the old
+  disc beats via `uMoonMesh` uniform (0 → shader disc returns, so a failed
+  GLB load degrades gracefully). Kill-switch:
+  `window.EW_DISABLE_SKY_MOON_3D = true`.
+- **Meteor spell**: `_spawnMeteorSphere3D` uses a clone of the cached moon
+  GLB as the falling body (the sky moon warms that cache every battle);
+  procedural icosahedron stays as the fallback. New exported hook
+  `ThreeRenderer.getMiscModelClone(key, targetHeight, align)` returns
+  null-until-cached (and warms the cache) for any effect wanting a misc
+  prop. `_cleanup3D` in three-vfx-effects.js now traverses groups and
+  skips `_ew_shared` geometry so cached GLB geometry survives disposal.
+- Guest parity: all of this is renderer-local cosmetics driven by already-
+  synced state (mapEnv/skyEvent), so online needs no relays.
+
+## 🕊 FLIGHT & VERTICAL MOVEMENT OVERHAUL (2026-07-27) — map.js, battle.js, data.js, ai.js, hud.js, three-renderer.js
 Token → `20260727i`. Five coordinated rule changes — flyers track terrain, climbing
 costs move, roofed rooms ban hovering, altitude cap 8→4, tile cap 1-ground+1-air:
 - **Flyers hold CLEARANCE, not absolute z** (the "flyer stuck 8 tiles up over

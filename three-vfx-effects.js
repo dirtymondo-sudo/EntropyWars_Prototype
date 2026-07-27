@@ -4036,9 +4036,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var scene = _getVFXScene();
         if (entry.meshes) {
             for (var i = 0; i < entry.meshes.length; i++) {
-                if (scene) scene.remove(entry.meshes[i]);
-                if (entry.meshes[i].material) entry.meshes[i].material.dispose();
-                if (entry.meshes[i].geometry) entry.meshes[i].geometry.dispose();
+                var o = entry.meshes[i];
+                if (scene) scene.remove(o);
+                if (o.traverse) {
+                    o.traverse(function (n) {   // groups (GLB prop clones) dispose their children too
+                        if (n.material) {
+                            var ms = Array.isArray(n.material) ? n.material : [n.material];
+                            for (var mi = 0; mi < ms.length; mi++) ms[mi].dispose();
+                        }
+                        // cached misc-GLB geometry is shared across clones — must survive
+                        if (n.geometry && !n.geometry._ew_shared) n.geometry.dispose();
+                    });
+                } else {
+                    if (o.material) o.material.dispose();
+                    if (o.geometry && !o.geometry._ew_shared) o.geometry.dispose();
+                }
             }
         }
         var idx = _active3DGeom.indexOf(entry);
@@ -4855,25 +4867,38 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var startZ = wp.y + 900;
         var endZ = wp.y;
 
-        var rockGeo = new THREE.IcosahedronGeometry(1, 1);
-        var posAttr = rockGeo.getAttribute('position');
-        for (var vi = 0; vi < posAttr.count; vi++) {
-            var vx = posAttr.getX(vi);
-            var vy = posAttr.getY(vi);
-            var vz = posAttr.getZ(vi);
-            var noise = 1 + 0.2 * Math.sin(vx * 8.1 + vy * 12.3) * Math.cos(vz * 6.2 + vx * 4.1);
-            posAttr.setXYZ(vi, vx * noise, vy * noise, vz * noise);
-        }
-        posAttr.needsUpdate = true;
-        rockGeo.computeVertexNormals();
+        // The falling body: the real cratered-moon GLB when the shared misc
+        // model is already streamed in (the 3D sky moon warms that cache every
+        // battle), else the classic procedural icosahedron rock. The GLB clone
+        // is a Group normalized to 1 unit tall and centre-pivoted, so the same
+        // scale/rotation animator drives either body unchanged.
+        var rock = null;
+        try {
+            if (window.ThreeRenderer && ThreeRenderer.getMiscModelClone) {
+                rock = ThreeRenderer.getMiscModelClone('moon', 2, 'center');   // 2 units tall = radius-1 sphere
+            }
+        } catch (e) { rock = null; }
+        if (!rock) {
+            var rockGeo = new THREE.IcosahedronGeometry(1, 1);
+            var posAttr = rockGeo.getAttribute('position');
+            for (var vi = 0; vi < posAttr.count; vi++) {
+                var vx = posAttr.getX(vi);
+                var vy = posAttr.getY(vi);
+                var vz = posAttr.getZ(vi);
+                var noise = 1 + 0.2 * Math.sin(vx * 8.1 + vy * 12.3) * Math.cos(vz * 6.2 + vx * 4.1);
+                posAttr.setXYZ(vi, vx * noise, vy * noise, vz * noise);
+            }
+            posAttr.needsUpdate = true;
+            rockGeo.computeVertexNormals();
 
-        var rockTex = _getRocks4Texture();
-        var matRock = new THREE.MeshBasicMaterial({
-            map: rockTex,
-            transparent: false,
-            depthWrite: true,
-        });
-        var rock = new THREE.Mesh(rockGeo, matRock);
+            var rockTex = _getRocks4Texture();
+            var matRock = new THREE.MeshBasicMaterial({
+                map: rockTex,
+                transparent: false,
+                depthWrite: true,
+            });
+            rock = new THREE.Mesh(rockGeo, matRock);
+        }
         rock.scale.set(0.01, 0.01, 0.01);
         rock.position.set(wp.x, startZ, wp.z);
         rock.renderOrder = 160;
