@@ -4,7 +4,63 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## 🔁 REMATCH / MATCH CARRYOVER FIX (2026-07-27, LATEST) — battle.js, map.js, index.html
+## 🕊 FLIGHT & VERTICAL MOVEMENT OVERHAUL (2026-07-27, LATEST) — map.js, battle.js, data.js, ai.js, hud.js, three-renderer.js
+Token → `20260727i`. Five coordinated rule changes — flyers track terrain, climbing
+costs move, roofed rooms ban hovering, altitude cap 8→4, tile cap 1-ground+1-air:
+- **Flyers hold CLEARANCE, not absolute z** (the "flyer stuck 8 tiles up over
+  the lowlands after leaving a plateau" bug). `getFlightZChoices(x,y,prefZ,span,
+  limit,prefClr)` (map.js) now ranks candidates by |clearance − prefClr| (floor-
+  relative, per air pocket), tie-broken toward the current absolute z (a flyer
+  above a bridge stays above it), then LOWER z. `FLY_STEP_ALT_SPAN = 2` is now a
+  per-step CLEARANCE-change band — swooping down a cliff at constant hover
+  height is a clearance change of 0 and happens in one step. All airborne
+  callers (getMoveTiles, findMovePath incl. destZ derivation, finishMoveAt
+  fallback, per-column overlay dedupe) pass the flyer's current clearance.
+  When nothing fits the band the function falls back to nearest-legal
+  clearance so an over-cap flyer settles down instead of getting stranded.
+- **Climbing costs movement — 3D Chebyshev step cost** in getMoveTiles +
+  findMovePath (+ ai.js findWaypoint parity): `max(terrainCost, levelsRisen)`.
+  1-level slopes cost exactly what they did before; a stair flight to the next
+  storey pays its full rise (no more ground-floor→roof in one cheap move), and
+  a flyer with move 5 can crest a 5-tall tower while a 6-tall one is a real
+  barrier (matches combatDist's max(dxy,vz) philosophy). Descents free (walkers
+  still eat fall damage). Jump stat stays the per-step STEEPNESS gate; stairs
+  still waive the gate but no longer the cost. AI inherits via getMoveTiles.
+- **No hovering in roofed rooms**: getFlightZChoices rejects airborne z in a
+  pocket whose ceiling is a thin `roof` slab AND is room-height
+  (ceil−floor ≤ minClearance+2). Tall slab-roofed halls (atriums) and tight
+  pockets under SOLID ceilings (bridge decks) still admit flight. Grounded
+  flyers walk/stair through buildings like anyone. `_pocketCeilingIsRoof`
+  helper. Also fixed: `airBodyFreeAt` now treats roofWalkable 2×2 OBJECT
+  prisms as solid (they have no voxels — `oSpr._gameHeight` only), so flyers
+  can no longer hover INSIDE a building_N's solid volume.
+- **`maxAltitudeAboveGround` 8 → 4** (data.js) — readability + any range-4
+  attack reaches a max-altitude flyer (3D range is Chebyshev).
+- **TILE CAP: one grounded + ONE airborne unit per tile, per AIR POCKET**
+  (`airborneOccupantInPocket(x,y,z,exclude)` in map.js, boss-footprint aware).
+  Multi-floor columns still hold a pair per storey pocket; under-bridge +
+  over-deck coexist (different pockets). Enforced in getMoveTiles/findMovePath
+  (routing through allied airborne still allowed, stopping isn't),
+  `_resolveTakeoffZ` (takeoff denied under a hovering unit — move out first),
+  and finishMoveAt's `_fmLegal` fast path. enforceUnitSeparation's exact-z
+  sweep stays as last-resort defense in depth.
+- **Airborne vertical lanes**: altitude gain checks `columnLaneClear` above the
+  TAKEOFF column, altitude shed checks the LANDING column (walker jump-rule
+  shape) — no rising through a deck overhead, no dropping into covered pockets;
+  cliff faces taller than the body still climbable (rise happens over open air).
+- **Pocket-floor consistency fixes**: `forceGroundUnit` lands on
+  `getFloorBelowZ` (a flyer slammed under a bridge no longer teleports UP onto
+  the deck); battle.js `unitElevationZ` + three-renderer `_flyVisualY` callers
+  (unitSurfaceY, walk-tween interp/terminal) use new `_flyGroundZ` → hover sink
+  correct under cover; hud.js LAND/TAKE OFF row keys on `isUnitAirborne`.
+- **Preserved intact**: high-ground damage/range bonuses, fall damage,
+  skydrop/skyThrow/skySlam (2D-Manhattan, no LOS), land-to-channel, grounded-
+  only terrain effects, forced grounding (wounded <25%, groundsFlyers spells,
+  super gravity), MD/Clash flight bans, Enter Building lift, takeoff fan-out
+  preview. Online untouched: all changes are host-side engine state; guest
+  mirrors `unit.z` via state-sync and walk-anim relays carry path z verbatim.
+
+## 🔁 REMATCH / MATCH CARRYOVER FIX (2026-07-27) — battle.js, map.js, index.html
 Token → `20260727d-rematch`. "Find Next Match" was unplayable without a refresh:
 - **Root cause of the "units level to 100 + re-pick secondary job" spam**: unit
   ASSEMBLY (`setUnitLevel` → `applyLevelUpRewards` 2..100, and the

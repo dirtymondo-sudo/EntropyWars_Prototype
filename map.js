@@ -3477,7 +3477,10 @@
 
         /* Can a body hover at stand-height z here? Feet occupy cell z+1 and the
            head cell z+2; a thin roof slab hugs the TOP of its cell, so brushing
-           one with your head is allowed (mirrors columnLaneClear). */
+           one with your head is allowed (mirrors columnLaneClear). Also treats
+           a roofWalkable 2×2 building's PRISM as solid: it has no voxels (its
+           height lives on OBJECT_SPRITES._gameHeight), which used to let a
+           flyer hover inside the building's solid volume. */
         function airBodyFreeAt(x, y, z) {
             if (!isInside(x, y) || z < 0) return false;
             for (const b of getColumn(x, y)) {
@@ -3485,36 +3488,96 @@
                 if (b.roof) { if (b.z === z + 1) return false; }
                 else if (b.z === z + 1 || b.z === z + 2) return false;
             }
+            const obj = (typeof getObjectAt === 'function') ? getObjectAt(x, y) : null;
+            if (obj) {
+                const rule = getObjectRule(obj);
+                if (rule && rule.roofWalkable) {
+                    const oSpr = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[obj] : null;
+                    if (oSpr && oSpr._gameHeight > 0) {
+                        const baseH = state.boardHeights?.[y]?.[x] ?? 0;
+                        const roofZ = baseH + oSpr._gameHeight;
+                        /* Prism fills cells baseH+1 .. roofZ; body needs z+1, z+2 free. */
+                        if (z + 2 >= baseH + 1 && z + 1 <= roofZ) return false;
+                    }
+                }
+            }
             return true;
         }
 
-        /* Legal hover altitudes in this column near prefZ, nearest-first.
-           Empty = the flyer cannot be airborne in this column at that height
-           band (solid rock, or a gap too tight for a body). */
-        function getFlightZChoices(x, y, prefZ, span, limit) {
+        /* Is the ceiling over this pocket a thin ROOF slab (a building room)
+           rather than solid architecture (a bridge deck / raw rock)? */
+        function _pocketCeilingIsRoof(x, y, ceilZ) {
+            if (ceilZ === Infinity) return false;
+            for (const b of getColumn(x, y)) {
+                if (b.z === ceilZ && b.roof) return true;
+            }
+            return false;
+        }
+
+        /* Legal hover altitudes in this column, nearest-first by CLEARANCE
+           (height above the pocket floor), NOT by absolute z.
+           prefZ:    the flyer's current absolute z (kept for pocket context).
+           prefClr:  the clearance to hold — the flyer's current height above
+                     its own floor. Omitted → minClearance (standard hover).
+           span:     how many levels of CLEARANCE change one step may make.
+           Sorting by clearance is what makes flyers TRACK the terrain: when a
+           flyer leaves a plateau the preferred candidate is the low ground's
+           floor + its same hover height, so it swoops down with the ground
+           instead of keeping the plateau's absolute altitude and ending up
+           eight tiles deep in the sky (the old nearest-absolute-z sort).
+           NO FLYING IN ROOFED ROOMS: a pocket whose ceiling is a roof slab
+           only admits airborne units when it is tall (an atrium) — wings need
+           room. Tight pockets under SOLID ceilings (bridge decks) still allow
+           threading beneath at reduced clearance.
+           Empty = the flyer cannot be airborne in this column at all. */
+        function getFlightZChoices(x, y, prefZ, span, limit, prefClr) {
             const cfg = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined') ? FLYING_ALTITUDE_CONFIG
-                : { minClearance: 2, maxAltitudeAboveGround: 8 };
+                : { minClearance: 2, maxAltitudeAboveGround: 4 };
             const out = [];
             if (!isInside(x, y)) return out;
             const S = (span == null) ? 2 : span;
             const p = prefZ | 0;
-            for (let z = Math.max(0, p - S); z <= p + S; z++) {
+            const wantClr = (prefClr == null) ? cfg.minClearance : prefClr;
+            const zTop = getHeightAt(x, y) + cfg.maxAltitudeAboveGround;
+            const legal = [];
+            for (let z = 1; z <= zTop; z++) {
                 const floor = getFloorBelowZ(x, y, z);
                 if (z <= floor) continue;                              // that's the ground, not flight
-                if (z - floor > cfg.maxAltitudeAboveGround) continue;  // altitude cap
+                const clr = z - floor;
+                if (clr > cfg.maxAltitudeAboveGround) continue;        // altitude cap
                 if (!airBodyFreeAt(x, y, z)) continue;                 // solid block / roof in the way
-                if (z - floor < cfg.minClearance) {
+                const ceil = getCeilingAboveZ(x, y, floor);
+                const tight = ceil !== Infinity && (ceil - floor) <= cfg.minClearance + 2;
+                /* Roofed ROOM (thin slab ceiling, room-height pocket): no
+                   airborne hovering at all — land and walk, or stay outside.
+                   Tall roofed halls (ceiling higher than a room) still admit
+                   flight; so do tight pockets under SOLID ceilings (bridges). */
+                if (tight && _pocketCeilingIsRoof(x, y, ceil)) continue;
+                if (clr < cfg.minClearance) {
                     /* Below the normal hover clearance is only allowed inside a
                        TIGHT pocket — threading the gap under a bridge is fine,
                        skimming an open field at altitude 1 is not. */
-                    const ceil = getCeilingAboveZ(x, y, floor);
-                    if (ceil === Infinity || (ceil - floor) > cfg.minClearance + 2) continue;
+                    if (!tight) continue;
                 }
-                out.push(z);
+                legal.push(z);
             }
-            out.sort((a, b) => Math.abs(a - p) - Math.abs(b - p) || a - b);
+            const clrOf = (z) => z - getFloorBelowZ(x, y, z);
+            /* Strict pass: clearance within ±span of the held clearance. */
+            for (const z of legal) {
+                if (Math.abs(clrOf(z) - wantClr) <= S) out.push(z);
+            }
+            /* Fallback: nothing inside the band (e.g. the flyer is above the
+               new altitude cap, or the pocket only fits a lower hover) — use
+               the nearest legal clearances so the flyer can still move and
+               settle back toward a sane height instead of being stranded. */
+            const pool = out.length ? out : legal;
+            pool.sort((a, b) => Math.abs(clrOf(a) - wantClr) - Math.abs(clrOf(b) - wantClr)
+                /* Same clearance both over and under an obstacle (bridge):
+                   stay on the side of it the flyer is already on. */
+                || Math.abs(a - p) - Math.abs(b - p)
+                || a - b);                                  // then prefer the LOWER altitude
             const cap = (limit == null) ? 3 : limit;
-            return (out.length > cap) ? out.slice(0, cap) : out;
+            return (pool.length > cap) ? pool.slice(0, cap) : pool;
         }
 
         function isUnitAirborne(unit) {
@@ -3525,6 +3588,28 @@
                On solid columns getFloorBelowZ(top) === top, so nothing changes
                for ordinary maps. */
             return z > getFloorBelowZ(unit.x, unit.y, z);
+        }
+
+        /* ── Tile occupancy cap: ONE grounded + ONE airborne unit ─────────────
+           Per AIR POCKET, not per column — a multi-floor tower still holds one
+           pair per storey, and a flyer under a bridge coexists with another
+           above the deck (different pockets). Returns the airborne unit whose
+           pocket (same column, same local floor) contains z, or null. Grounded
+           occupancy stays the existing exact-z rule; this closes the "two
+           flyers stacked at different altitudes in the same airspace" case. */
+        function airborneOccupantInPocket(x, y, z, exclude) {
+            if (!state.units) return null;
+            const floor = getFloorBelowZ(x, y, z);
+            for (const u of state.units) {
+                if (!u || u.dead || u._dying || u === exclude || u._insideBuildingId) continue;
+                const onTile = (u.x === x && u.y === y) ||
+                    (u._isBoss && u._bossSize === 2 && (x === u.x || x === u.x + 1) && (y === u.y || y === u.y + 1));
+                if (!onTile) continue;
+                if (!isUnitAirborne(u)) continue;
+                if (getFloorBelowZ(x, y, u.z ?? 0) !== floor) continue;
+                return u;
+            }
+            return null;
         }
 
         /* refZ (optional): resolve against the air pocket around that height

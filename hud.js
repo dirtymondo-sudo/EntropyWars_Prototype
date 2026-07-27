@@ -3909,8 +3909,11 @@ function ActionMenu({ st, hidden }) {
   }
   // ⬆/⬇ flyers get a permanent LAND / TAKE OFF tool row the same way.
   if (typeof canFly === 'function' && canFly(unit) && typeof canChangeAltitude === 'function') {
-    const _groundZ = typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0;
-    const _airborne = (unit.z ?? 0) > _groundZ;
+    /* Air-pocket aware: a flyer hovering UNDER a bridge is airborne even
+       though it sits below the column top getHeightAt reports. */
+    const _airborne = typeof isUnitAirborne === 'function'
+      ? isUnitAirborne(unit)
+      : (unit.z ?? 0) > (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
     const _alt = canChangeAltitude(unit, _airborne ? 'descend' : 'ascend');
     const _altOk = !!(_alt && _alt.ok);
     pushers.push({

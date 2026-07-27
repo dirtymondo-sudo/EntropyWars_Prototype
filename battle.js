@@ -71,11 +71,13 @@
 
         const MAX_CLIMB_HEIGHT = 1;
 
-        /* How many levels of altitude a FLYING unit may gain or shed per tile of
-           horizontal movement. Airborne pathing samples every legal hover height
-           in this band inside each neighbouring column's air pocket, which is
-           what lets a flyer hold level under a bridge or lift over its parapet
-           mid-move instead of being locked to one column-top-derived altitude. */
+        /* How many levels of CLEARANCE (hover height above the local floor) a
+           FLYING unit may gain or shed per tile of horizontal movement. Since
+           2026-07-27 the band is clearance-relative, not absolute-z-relative:
+           the absolute altitude follows the terrain automatically (a flyer at
+           hover height 2 stays 2 above whatever it crosses — swooping down off
+           a plateau in one step is a clearance change of ZERO), while deliberate
+           hover-height changes mid-move stay limited to this span. */
         const FLY_STEP_ALT_SPAN = 2;
 
         const FALL_DAMAGE_THRESHOLD = 3;
@@ -7230,7 +7232,8 @@
                    their own ground — just enough to clear one standing unit
                    and its nameplate instead of hanging two full tiles up.
                    Keep in sync with _flyVisualY in three-renderer.js. */
-                const _gZ = (typeof getHeightAt === 'function') ? getHeightAt(unit.x, unit.y) : 0;
+                const _gZ = (typeof getFloorBelowZ === 'function') ? getFloorBelowZ(unit.x, unit.y, unitZ)
+                    : ((typeof getHeightAt === 'function') ? getHeightAt(unit.x, unit.y) : 0);
                 const _clr = unitZ - _gZ;
                 const _visZ = _clr > 0 ? _gZ + Math.max(Math.min(_clr, 1.35), _clr - 0.65) : unitZ;
                 return _visZ !== 0 && (typeof window._getElevationPx === 'function') ? window._getElevationPx(_visZ) : 0;
@@ -17240,9 +17243,11 @@
 
             if (destZ === undefined || destZ === null) {
                 if (canFly(unit) && isUnitAirborne(unit)) {
-                    /* Air-pocket aware: prefer holding the current altitude, then
-                       the nearest legal hover height in the destination column. */
-                    const _fpChoices = getFlightZChoices(destX, destY, unitZ, 4, 1);
+                    /* Air-pocket aware: prefer holding the current CLEARANCE
+                       (hover height above the floor), then the nearest legal
+                       hover height in the destination column. */
+                    const _fpClr = unitZ - getFloorBelowZ(unit.x, unit.y, unitZ);
+                    const _fpChoices = getFlightZChoices(destX, destY, unitZ, 4, 1, _fpClr);
                     if (_fpChoices.length) {
                         destZ = _fpChoices[0];
                     } else {
@@ -17301,10 +17306,11 @@
                     const _pathIsAirborne = _pathFlies && isUnitAirborne(unit);
                     let neighborSurfaces;
                     if (_pathIsAirborne) {
-                        /* Mirrors getMoveTiles: air-pocket aware candidates so the
-                           executed path can actually reach the previewed tile
-                           (under a bridge as readily as over it). */
-                        neighborSurfaces = getFlightZChoices(nx, ny, cur.z, FLY_STEP_ALT_SPAN);
+                        /* Mirrors getMoveTiles: air-pocket aware, CLEARANCE-ranked
+                           candidates so the executed path tracks the terrain the
+                           same way the previewed tiles did. */
+                        const _pcClr = cur.z - getFloorBelowZ(cur.x, cur.y, cur.z);
+                        neighborSurfaces = getFlightZChoices(nx, ny, cur.z, FLY_STEP_ALT_SPAN, null, _pcClr);
                     } else {
                         neighborSurfaces = _has3D ? getWalkableSurfaces(nx, ny) : [getHeightAt(nx, ny)];
                     }
@@ -17352,7 +17358,20 @@
                             }
                         }
 
-                        const _pathBlocker = _has3D ? unitAt(nx, ny, nz) : unitAt(nx, ny);
+                        /* Airborne vertical lanes — rise above the takeoff
+                           column, descend down the landing column. Mirrors
+                           getMoveTiles. */
+                        if (_pathIsAirborne && typeof columnLaneClear === 'function') {
+                            if (nz > cur.z && !columnLaneClear(cur.x, cur.y, cur.z, nz)) continue;
+                            if (nz < cur.z && !columnLaneClear(nx, ny, nz, cur.z)) continue;
+                        }
+
+                        let _pathBlocker = _has3D ? unitAt(nx, ny, nz) : unitAt(nx, ny);
+                        /* Tile cap (mirrors getMoveTiles): the destination pocket
+                           admits only one airborne unit. */
+                        if (!_pathBlocker && _pathIsAirborne && typeof airborneOccupantInPocket === 'function') {
+                            _pathBlocker = airborneOccupantInPocket(nx, ny, nz, unit);
+                        }
                         if (!_pathPhasing && (nx !== destX || ny !== destY || nz !== destZ) && _pathBlocker && _pathBlocker.player !== unit.player) continue;
                         let _deployBlocks = false;
                         if (!_pathPhasing && state._deployedObjects) {
@@ -17362,9 +17381,11 @@
                         }
                         if (_deployBlocks) continue;
 
-                        /* Elevation is free — mirrors getMoveTiles (jump and
-                           movement are the same thing; no height surcharge). */
-                        const nextCost = cur.cost + getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined);
+                        /* Climbing costs movement — mirrors getMoveTiles:
+                           max(terrain cost, levels risen); descents free. */
+                        const _pRise = Math.max(0, nz - cur.z);
+                        const nextCost = cur.cost
+                            + Math.max(getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined), _pRise);
                         if (nextCost > maxMove) continue;
                         const nKey = _has3D ? posKey3(nx, ny, nz) : posKey(nx, ny);
                         if (nextCost >= (costs.get(nKey) ?? Infinity)) continue;
@@ -17489,13 +17510,18 @@
                    Only fall back when the requested altitude is no longer legal. */
                 const _fmLegal = (opts.z !== undefined && opts.z !== null
                     && typeof airBodyFreeAt === 'function' && airBodyFreeAt(x, y, opts.z)
-                    && opts.z > getFloorBelowZ(x, y, opts.z));
+                    && opts.z > getFloorBelowZ(x, y, opts.z)
+                    /* Tile cap: never settle into a pocket another airborne
+                       unit already holds (one ground + one air per tile). */
+                    && !(typeof airborneOccupantInPocket === 'function'
+                        && airborneOccupantInPocket(x, y, opts.z, unit)));
                 if (_fmLegal) {
                     unit.z = opts.z;
                 } else {
                     const _fmRef = (opts.z !== undefined && opts.z !== null) ? opts.z : (unit.z ?? 0);
+                    const _fmRefClr = (unit.z ?? 0) - getFloorBelowZ(_originX, _originY, unit.z ?? 0);
                     const _fmChoices = (typeof getFlightZChoices === 'function')
-                        ? getFlightZChoices(x, y, _fmRef, 4, 1) : [];
+                        ? getFlightZChoices(x, y, _fmRef, 4, 1, _fmRefClr) : [];
                     if (_fmChoices.length) {
                         unit.z = _fmChoices[0];
                     } else {
@@ -35542,7 +35568,11 @@
             if (typeof canFly !== 'function' || !canFly(unit)) return false;
             if (typeof isUnitAirborne !== 'function' || !isUnitAirborne(unit)) return false;
             const _fgFromZ = unit.z ?? 0;
-            const groundZ = getHeightAt(unit.x, unit.y);
+            /* Pocket floor, not column top: slamming a flyer down while it is
+               UNDER a bridge drops it to the ground beneath it — the old
+               getHeightAt teleported it up onto the deck. */
+            const groundZ = (typeof getFloorBelowZ === 'function')
+                ? getFloorBelowZ(unit.x, unit.y, _fgFromZ) : getHeightAt(unit.x, unit.y);
             const landedZ = (typeof resolveDescentCollision === 'function')
                 ? resolveDescentCollision(unit, groundZ, { byLabel: opts.byLabel || '' })
                 : groundZ;
@@ -36767,6 +36797,11 @@
             if (newZ > maxZ) return null;
             /* A pocket only 1 level deep has no room for a body at all. */
             if (typeof airBodyFreeAt === 'function' && !airBodyFreeAt(unit.x, unit.y, newZ)) return null;
+            /* Tile cap: the airspace over this tile holds ONE airborne unit —
+               with a flyer already hovering in this pocket, takeoff is denied
+               (move out from under it first). */
+            if (typeof airborneOccupantInPocket === 'function'
+                && airborneOccupantInPocket(unit.x, unit.y, newZ, unit)) return null;
             return newZ;
         }
 
@@ -44467,18 +44502,17 @@
                     const _isAirborne = _unitFlies && isUnitAirborne(unit);
                     let neighborSurfaces;
                     if (_isAirborne) {
-                        /* AIR-POCKET FLIGHT (2026-07-24). The old rule derived a
-                           SINGLE altitude per neighbour from getHeightAt — the
-                           column TOP — so a flyer approaching a bridge was yanked
-                           up to deck+minClearance whether it wanted to pass over
-                           or under. On air-gap maps that made bridges impassable
-                           in both directions (the forced climb also dragged the
-                           flyer's body through the deck's parapet, which the wall
-                           test then refused). Now every legal hover height in the
-                           neighbour's air pocket near the flyer's current altitude
-                           is a candidate, so it can hold level and slip UNDERNEATH,
-                           or rise a level and cross OVER. */
-                        neighborSurfaces = getFlightZChoices(nx, ny, cur.z, FLY_STEP_ALT_SPAN);
+                        /* AIR-POCKET FLIGHT (2026-07-24, reworked 2026-07-27).
+                           Candidates are every legal hover height in the
+                           neighbour's air pocket — under a bridge as readily as
+                           over it. Since 2026-07-27 they are ranked by CLEARANCE
+                           (height above the local floor), not absolute z: a
+                           flyer holds its hover height RELATIVE to the terrain,
+                           so leaving a plateau it swoops down with the ground
+                           instead of keeping the plateau's altitude and parking
+                           eight tiles up in the sky over the lowlands. */
+                        const _curClr = cur.z - getFloorBelowZ(cur.x, cur.y, cur.z);
+                        neighborSurfaces = getFlightZChoices(nx, ny, cur.z, FLY_STEP_ALT_SPAN, null, _curClr);
                     } else {
                         neighborSurfaces = _has3D ? getWalkableSurfaces(nx, ny) : [getHeightAt(nx, ny)];
                     }
@@ -44552,12 +44586,30 @@
                             }
                         }
 
+                        /* Airborne altitude changes ride a real vertical lane —
+                           same shape as the walker jump rule: gaining height
+                           needs open air above the TAKEOFF column (no climbing
+                           up through a bridge deck overhead), shedding height
+                           needs an open descent lane down the LANDING column
+                           (no dropping into a covered pocket through its
+                           cover). Rising at the takeoff column is what lets a
+                           flyer scale a cliff face taller than its own body. */
+                        if (_isAirborne && typeof columnLaneClear === 'function') {
+                            if (nz > curZ && !columnLaneClear(cur.x, cur.y, curZ, nz)) { continue; }
+                            if (nz < curZ && !columnLaneClear(nx, ny, nz, curZ)) { continue; }
+                        }
+
                         const _thisStepIsJump = !_isAirborne && (_hDiff > MAX_CLIMB_HEIGHT || _wallVault);
                         const _nodeViaJump = cur._viaJump || _thisStepIsJump;
 
                         let _occupant;
                         if (_isAirborne) {
-                            _occupant = unitAt(nx, ny, nz);
+                            /* Tile cap: one grounded + ONE airborne unit per air
+                               pocket — a second flyer can't stack into occupied
+                               airspace at a different z anymore. */
+                            _occupant = unitAt(nx, ny, nz)
+                                || (typeof airborneOccupantInPocket === 'function'
+                                    ? airborneOccupantInPocket(nx, ny, nz, unit) : null);
                         } else {
                             _occupant = _has3D ? unitAt(nx, ny, nz) : unitAt(nx, ny);
                         }
@@ -44581,14 +44633,19 @@
                             if (_siegeBlocks) { continue; }
                         }
 
-                        /* Jump and movement are the same thing: climbing or
-                           leaping a height difference consumes NO extra move
-                           budget — a tile within flat movement range is
-                           reachable as ONE move action, jump legs included.
-                           (The old 0.5/level surcharge pushed high tiles out
-                           of the move set and forced a move + separate 1-AP
-                           Jump to reach them.) */
-                        const nextCost = cur.cost + getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined);
+                        /* CLIMBING COSTS MOVEMENT (2026-07-27). A step's price is
+                           Chebyshev in 3D: max(terrain cost, levels RISEN) — so a
+                           1-level slope still costs the same 1 as flat ground, but
+                           a stair flight to the next storey or a flyer cresting a
+                           tower pays for the altitude it gains. A flyer with move
+                           5 can lift onto a 5-tall tower; a 6-tall one is a real
+                           barrier to it. Descents stay free (gravity does the
+                           work — walkers may eat fall damage instead). Jump is
+                           still the per-step STEEPNESS gate (getUnitJumpClimb);
+                           move is the budget the whole climb draws from. */
+                        const _rise = Math.max(0, nz - curZ);
+                        const nextCost = cur.cost
+                            + Math.max(getTerrainMoveCost(unit, nx, ny, _has3D ? nz : undefined), _rise);
                         if (nextCost > maxCost) { continue; }
 
                         const nKey = _has3D ? posKey3(nx, ny, nz) : posKey(nx, ny);
@@ -44619,10 +44676,12 @@
                                 _isBuilding = true;
                             }
                         }
-                        /* A unit already at the destination's EXACT elevation blocks
-                           landing there — airborne included (two flyers may share a
-                           column, never a z). Allies can still be passed THROUGH;
-                           only enemies stop pathing (the continue above). */
+                        /* A unit already at the destination's EXACT elevation
+                           blocks landing there — and for airborne movers, ANY
+                           airborne unit in the destination pocket does (tile cap:
+                           one on the ground + one in the air). Allies can still
+                           be passed THROUGH; only enemies stop pathing (the
+                           continue above). */
                         const _blocked = !!_occupant;
                         if (!_blocked && !_isBuilding && !tileSet.has(nKey)) {
                             tileSet.add(nKey);
@@ -44651,20 +44710,25 @@
                 }
             }
 
-            /* Airborne pathing now samples several altitudes per column (air
+            /* Airborne pathing samples several altitudes per column (air
                pockets), which is right for ROUTING but would litter the move
                overlay with two or three highlights stacked in one column. Keep
-               only the altitude closest to the flyer's current one per column —
-               that is also the one a player means when they click ("hold level
-               and slip under the bridge"); going over instead is an explicit
-               Ascend first. */
+               one per column: the altitude whose CLEARANCE is closest to the
+               flyer's current hover height (terrain-tracking — the tile a
+               player means when they click), tie-broken toward the current
+               absolute z, then the cheaper route. */
             if (_unitFlies && isUnitAirborne(unit) && tiles.length) {
+                const _startClr = unitZ - getFloorBelowZ(unit.x, unit.y, unitZ);
+                const _clrDist = (t) => Math.abs((t.z - getFloorBelowZ(t.x, t.y, t.z)) - _startClr);
                 const _byCol = new Map();
                 for (const t of tiles) {
                     const pk = posKey(t.x, t.y);
                     const prev = _byCol.get(pk);
-                    if (!prev || Math.abs(t.z - unitZ) < Math.abs(prev.z - unitZ)
-                        || (Math.abs(t.z - unitZ) === Math.abs(prev.z - unitZ) && t.cost < prev.cost)) {
+                    if (!prev) { _byCol.set(pk, t); continue; }
+                    const dNew = _clrDist(t), dOld = _clrDist(prev);
+                    if (dNew < dOld
+                        || (dNew === dOld && Math.abs(t.z - unitZ) < Math.abs(prev.z - unitZ))
+                        || (dNew === dOld && Math.abs(t.z - unitZ) === Math.abs(prev.z - unitZ) && t.cost < prev.cost)) {
                         _byCol.set(pk, t);
                     }
                 }

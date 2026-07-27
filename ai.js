@@ -3340,6 +3340,7 @@
 
                 if (!_phase && g.objectBlocksEdge && g.objectBlocksEdge(cur.x, cur.y, nx, ny)) continue;
 
+                let _stepCost = 1;
                 if (_hasHeight && !_canFly) {
                     const curH = g.getHeightAt(cur.x, cur.y);
                     const nxH = g.getHeightAt(nx, ny);
@@ -3351,12 +3352,14 @@
                     if (_aiNxtRw && rise > _maxClimb) continue;
                     // Rising more than a jump is blocked; drops are unlimited.
                     if (rise > _jumpH) continue;
+                    // Climbs cost their rise (engine parity 2026-07-27:
+                    // getMoveTiles/findMovePath price a step at
+                    // max(terrain, levels risen); descents stay free).
+                    if (rise > 0) _stepCost = Math.max(_stepCost, rise);
                 }
                 const ni = nx + ny * W;
 
-                // Elevation is free (engine parity: getMoveTiles/findMovePath
-                // no longer surcharge climbs — jump and movement are the same).
-                const tentG = gScore[ci] + 1;
+                const tentG = gScore[ci] + _stepCost;
                 if (tentG >= gScore[ni]) continue;
                 gScore[ni] = tentG;
                 from[ni] = ci;

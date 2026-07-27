@@ -525,6 +525,14 @@ const ThreeRenderer = (function () {
         var vis = Math.max(Math.min(clr, FLY_MIN_VISUAL_CLR), clr - FLY_VISUAL_SINK);
         return (groundZ + vis) * ts * ELEV_STEP_RATIO;
     }
+    /* Ground reference for the hover sink: the floor of the air POCKET the
+       flyer is actually in (the water under a bridge, the room floor), not
+       the column top — getHeightAt returned the deck/roof, which zeroed the
+       clearance and killed the sink for anything flying beneath cover. */
+    function _flyGroundZ(x, y, z) {
+        if (typeof getFloorBelowZ === 'function') return getFloorBelowZ(x, y, z);
+        return (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0;
+    }
 
     const SUBMERSION_DEPTH = {
         water:      0.22,
@@ -2142,7 +2150,7 @@ const ThreeRenderer = (function () {
         if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)
             && !(_introGroundSet && _introGroundSet.size && _introGroundSet.has(unit.id))) {
             var h = unit.z || 0;
-            var gH = (typeof getHeightAt === 'function') ? getHeightAt(ux, uy) : 0;
+            var gH = _flyGroundZ(ux, uy, h);
             return _flyVisualY(h, gH, ts);
         }
 
@@ -15258,8 +15266,8 @@ const ThreeRenderer = (function () {
                 /* Same visual hover sink as unitSurfaceY, per path node — no
                    pop at glide start/end. Grounded nodes (takeoff/landing
                    legs) resolve to their true surface. */
-                fromY = _flyVisualY(from.z || 0, getHeightAt(from.x, from.y), ts);
-                toY = _flyVisualY(to.z || 0, getHeightAt(to.x, to.y), ts);
+                fromY = _flyVisualY(from.z || 0, _flyGroundZ(from.x, from.y, from.z || 0), ts);
+                toY = _flyVisualY(to.z || 0, _flyGroundZ(to.x, to.y, to.z || 0), ts);
             } else {
                 fromY = _tileSurfaceY(from.x, from.y, from.z);
                 toY = _tileSurfaceY(to.x, to.y, to.z);
@@ -15304,7 +15312,7 @@ const ThreeRenderer = (function () {
                 var final = tw.path[tw.path.length - 1];
                 if (ue && ue.group) {
                     var fy = (tw.isFlying && typeof getHeightAt === 'function')
-                        ? _flyVisualY(final.z || 0, getHeightAt(final.x, final.y), ts)
+                        ? _flyVisualY(final.z || 0, _flyGroundZ(final.x, final.y, final.z || 0), ts)
                         : _tileSurfaceY(final.x, final.y, final.z);
                     var fSink = ue.group._ew_subSink || 0;
                     ue.group.position.set(final.x * ts + ts / 2, fy - fSink, final.y * ts + ts / 2);

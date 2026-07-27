@@ -110,7 +110,13 @@ const FLYING_ALTITUDE_CONFIG = {
     apCost: 1,
     maxPerTurn: 3,
     minClearance: 2,
-    maxAltitudeAboveGround: 8,
+    // 2026-07-27: was 8 — flyers parked 8 tiles up were unreadable at a
+    // glance (constant camera work to see the board) and nearly untouchable
+    // (3D range is Chebyshev, so altitude 8 needed range-8 attacks). At 4 a
+    // deliberate double-Ascend still buys real height advantage, but any
+    // range-4 attack can reach a max-altitude flyer. Movement now tracks
+    // clearance over terrain, so this cap is the only way that high.
+    maxAltitudeAboveGround: 4,
     // Wounded flyers are grounded: below this fraction of max HP a flyer
     // crashes out of the air and cannot take off until healed above it.
     woundedGroundPct: 0.25,
