@@ -10009,7 +10009,22 @@
             return [];
         }
 
+        // Last tile the AoE/ghost preview was computed for — lets the
+        // orientation toggle (H/V chips, R key) repaint the footprint in
+        // place without waiting for the mouse to move again.
+        let _lastAoePreviewX = null, _lastAoePreviewY = null, _lastAoePreviewTool = null;
+        window._refreshAoePreview = function() {
+            if (_lastAoePreviewX == null || _lastAoePreviewY == null) return;
+            // Stale-tile guard: only repaint for the SAME armed spell the
+            // stored tile was previewed with — never a leftover from the
+            // previously aimed tool.
+            if (_lastAoePreviewTool !== state.selectedTool) return;
+            updateAoePreview(_lastAoePreviewX, _lastAoePreviewY);
+        };
+
         function updateAoePreview(x, y) {
+            _lastAoePreviewX = x; _lastAoePreviewY = y;
+            _lastAoePreviewTool = state.selectedTool || null;
             if (state.actionMode !== 'spell') { clearAoePreview(); clearIntentPreview(); return; }
             const unit = getSelectedUnit();
             if (!unit) { clearAoePreview(); clearIntentPreview(); return; }
@@ -11575,6 +11590,15 @@
             if (key === 'i' && !event.ctrlKey && !event.metaKey && !event.altKey) {
                 event.preventDefault();
                 toggleUnitInfo();
+                return;
+            }
+            // R flips an armed orientable spell between horizontal and
+            // vertical (the H/V chips beside the aim panel do the same).
+            if (key === 'r' && !event.ctrlKey && !event.metaKey && !event.altKey
+                && state.actionMode === 'spell' && state.selectedTool
+                && typeof window.toggleSpellOrientation === 'function') {
+                event.preventDefault();
+                window.toggleSpellOrientation();
                 return;
             }
             // B toggles Build mode — in and out, Minecraft-style.

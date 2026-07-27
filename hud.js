@@ -3289,8 +3289,14 @@ function _hrlgPingBlades() {
 }
 
 function _hrlgOrientationBlades(st) {
+  // The current pick wears the selected highlight; while aiming, these two
+  // blades stay up beside the aim panel so switching is ONE click (or R) —
+  // no more backing all the way out to flip horizontal↔vertical.
+  const cur = st._spellOrientation || null;
   const mk = (dir, icon, label) => ({
     id: 'or:' + dir, icon, label, available: true,
+    selected: cur === dir,
+    hint: cur && cur !== dir ? 'R' : null,
     fire: () => { if (typeof setSpellOrientation === 'function') setSpellOrientation(dir); },
   });
   return {
@@ -3470,7 +3476,17 @@ function _hrlgItemTargetBlades(unit, st) {
       .filter(u => u.player === unit.player)
       .map(u => ({ unit: u, dist: Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y) }));
   }
-  targets.sort((a, b) => a.dist - b.dist);
+  // Priority order (same rule as the spell/attack drums): potions list the
+  // neediest ally first — lowest HP% for heals, lowest MP% for mana — and
+  // banes the closest-to-death enemy. Unusable rows (full HP/MP) sink to
+  // the bottom; distance is only the tiebreak.
+  const _usableT = (u) => isHeal ? (u.hp < u.maxHp)
+    : isMana ? (u.maxMp > 0 && u.mp < u.maxMp) : true;
+  const _needT = (u) => isHeal ? (u.maxHp > 0 ? u.hp / u.maxHp : 1)
+    : isMana ? (u.maxMp > 0 ? u.mp / u.maxMp : 1)
+    : isBane ? (u.hp || 0) : 0;
+  targets.sort((a, b) => ((_usableT(a.unit) ? 0 : 1) - (_usableT(b.unit) ? 0 : 1))
+    || (_needT(a.unit) - _needT(b.unit)) || (a.dist - b.dist));
 
   const blades = targets.map((t, i) => {
     const u = t.unit;
@@ -4049,12 +4065,19 @@ function ActionMenu({ st, hidden }) {
           && _getSpellApproachTargets(unit, _aimSp).length > 0));
     view = 'aim';
     panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));
+    // Orientable spells keep the H/V picker ALIVE while aiming — the current
+    // pick highlights, clicking the other (or pressing R) flips in place.
+    const _aimOrientable = !!(_aimSp && _aimSp.orientable);
     if (_listUnits) {
       modeLabel = (st.selectedTool + ' — PICK FROM LIST OR CLICK THE BOARD').toUpperCase();
       panels.push(_mkPanel('aim|spell|' + st.selectedTool, _hrlgTargetBlades(unit, st, 'spell'), cancelBlade));
     } else {
-      modeLabel = (st.selectedTool + ' — CLICK A TARGET').toUpperCase();
+      modeLabel = (st.selectedTool + ' — CLICK A TARGET'
+        + (_aimOrientable ? ' · R ROTATES' : '')).toUpperCase();
       panels.push({ key: 'aim|spell|' + st.selectedTool, title: { icon: '✦', text: st.selectedTool }, blades: [cancelBlade] });
+    }
+    if (_aimOrientable) {
+      panels.push(_mkPanel('orient|' + (st._spellOrientation || ''), _hrlgOrientationBlades(st)));
     }
   } else if (menuView === 'items' && am === 'item' && st.selectedTool) {
     const itRule = (typeof ITEM_RULES !== 'undefined') ? ITEM_RULES[st.selectedTool] : null;

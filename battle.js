@@ -31520,12 +31520,59 @@
 
         function setSpellOrientation(orientation) {
             if (orientation !== 'horizontal' && orientation !== 'vertical') return;
+            const _was = state._spellOrientation;
             state._spellOrientation = orientation;
             const tool = state.selectedTool;
+
+            // Already aiming (the H/V chips stay up beside the aim panel now,
+            // and R toggles) → swap IN PLACE: no setTool re-run, which would
+            // re-frame the camera and reset the aim. Just repaint the ghost
+            // footprint under the cursor and the HUD chips.
+            if (_was && state.actionMode === 'spell' && state.actionMenuView !== 'spellOrientation') {
+                if (_was !== orientation) {
+                    playSfx('uiCursorFocus');
+                    if (typeof window._refreshAoePreview === 'function') window._refreshAoePreview();
+                    if (typeof markDirty === 'function') { markDirty('hud'); renderIfDirty(); }
+                    scheduleBoardRender();
+                }
+                return;
+            }
 
             setTool('spell', tool);
         }
         window.setSpellOrientation = setSpellOrientation;
+
+        // R-key / gamepad-friendly flip between the two orientations — only
+        // meaningful while an orientable spell is armed.
+        function toggleSpellOrientation() {
+            if (state.actionMode !== 'spell' || !state.selectedTool) return;
+            const u = getSelectedUnit();
+            const sp = u && ((u.spells || []).find(s => s.name === state.selectedTool)
+                || (u._raceAbilities || []).find(s => s.name === state.selectedTool));
+            if (!sp || !sp.orientable) return;
+            setSpellOrientation((state._spellOrientation || 'horizontal') === 'horizontal' ? 'vertical' : 'horizontal');
+        }
+        window.toggleSpellOrientation = toggleSpellOrientation;
+
+        /* Target-drum priority order (2026-07-27): the list leads with the
+           target that most WANTS the action instead of plain nearest-first —
+           heals put the most-wounded ally on top (lowest HP%), damaging casts
+           and basic attacks put the closest-to-death enemy on top. Distance
+           stays the tiebreak so equal-need rows never shuffle, and non-unit
+           rows (graves, structures) fall back to distance order. Shared by
+           the spell drum, its MOVE→CAST companion rows and the attack drum. */
+        function _orderTargetsByNeed(spell, targets) {
+            const _heal = !!spell && (spell.heal > 0 || spell.kind === 'heal' || spell.kind === 'zoneHeal');
+            const _dmg = !_heal && !!spell && spellDealsDamage(spell);
+            if (!_heal && !_dmg) { targets.sort((a, b) => a.dist - b.dist); return targets; }
+            const _need = (t) => {
+                const u = t.unit;
+                if (!u || u.dead) return 1e9;   // non-unit / grave rows: distance order at the back
+                return _heal ? (u.maxHp > 0 ? u.hp / u.maxHp : 1) : (u.hp || 0);
+            };
+            targets.sort((a, b) => (_need(a) - _need(b)) || (a.dist - b.dist));
+            return targets;
+        }
 
         function _getSpellValidTargets(unit, spell) {
             if (!unit || !spell) return [];
@@ -31616,7 +31663,7 @@
                 if (!spellTargetUsableOn(unit, spell, u)) continue;
                 targets.push({ x: u.x, y: u.y, dist: d, unit: u });
             }
-            targets.sort((a, b) => a.dist - b.dist);
+            _orderTargetsByNeed(spell, targets);
             // 🗯 Provoke: when the caster is taunted and the challenger sits in
             // this drum, unit-targeted offensive casts collapse to the
             // challenger alone — mirrors the doSpell gate exactly.
@@ -31681,7 +31728,7 @@
                 const d = Math.abs(u.x - unit.x) + Math.abs(u.y - unit.y);
                 out.push({ x: u.x, y: u.y, dist: d, unit: u, _approach: approach });
             }
-            out.sort((a, b) => a.dist - b.dist);
+            _orderTargetsByNeed(spell, out);
             // 🗯 Provoke: offensive unit-target casts collapse to the challenger
             // whenever the challenger is on offer (castable now OR via approach)
             // — mirrors the drum's and doSpell's gate.
@@ -32128,8 +32175,11 @@
 
             // Trees/buildings/terrain sort AFTER real targets so the auto-picked
             // pending target (and target-cycling) always prefers enemies over scenery.
+            // Among enemy UNITS the closest-to-death leads (priority order, same
+            // rule as the spell drum); structures then scenery keep distance order.
             const _isScenery = (t) => (t.kind === 'tree' || t.kind === 'building' || t.kind === 'terrain') ? 1 : 0;
-            targets.sort((a, b) => (_isScenery(a) - _isScenery(b)) || a.dist - b.dist);
+            const _atkNeed = (t) => (t.unit && !t.unit.dead) ? (t.unit.hp || 0) : 1e9;
+            targets.sort((a, b) => (_isScenery(a) - _isScenery(b)) || (_atkNeed(a) - _atkNeed(b)) || (a.dist - b.dist));
             return targets;
         }
 
