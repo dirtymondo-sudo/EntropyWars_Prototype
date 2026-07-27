@@ -5532,8 +5532,11 @@ const ThreeRenderer = (function () {
         '    float root = 1.0 - vUv.y;',
         '    float flame = smoothstep(0.30 + 0.55 * vUv.y, 0.62 + 0.55 * vUv.y, n + root * 0.62);',
         '    float body = flame * (1.0 - vUv.y * 0.82);',
-        '    vec3 col = mix(uColor, uCore, clamp(body * 1.7 - 0.28, 0.0, 1.0));',
-        '    gl_FragColor = vec4(col * (0.72 + body * 0.9), body * uOpacity);',
+        /* keep the body HUE-dominant: only the very hottest spots drift toward
+           the near-white core, and total RGB stays <= ~1.0 so two additive
+           shells stack to vivid color instead of blown-out white */
+        '    vec3 col = mix(uColor, uCore, clamp(body * 1.1 - 0.55, 0.0, 1.0));',
+        '    gl_FragColor = vec4(col * (0.5 + body * 0.5), body * uOpacity);',
         '}'
     ].join('\n');
 
@@ -5624,19 +5627,20 @@ const ThreeRenderer = (function () {
         var r = ts * 0.42 * boss * (scaleMul || 1);
         var topY = entry.group._ew_spriteTopY != null
             ? (entry.group._ew_spriteTopY - entry.group.position.y) : ts;
-        var h = Math.max(ts * 0.9, topY) * 1.1;
+        var h = Math.max(ts * 0.9, topY) * 0.95;
 
         var g = new THREE.Group();
         g._ew_aura = true;
         var mats = [];
 
-        /* outer + inner flame shells */
+        /* outer + inner flame shells — tongues crest just above the head
+           (was 1.45×/1.15× a taller h: the shroud swallowed the whole unit) */
         var outer = new THREE.Mesh(
-            _auraShellGeo(r * 0.55, r, h * 1.45),
-            _makeAuraShellMat(pal.color, pal.mid, 0.85, 1.0, 1.0));
+            _auraShellGeo(r * 0.55, r, h * 1.12),
+            _makeAuraShellMat(pal.color, pal.mid, 0.6, 1.0, 1.0));
         var inner = new THREE.Mesh(
-            _auraShellGeo(r * 0.40, r * 0.72, h * 1.15),
-            _makeAuraShellMat(pal.mid, pal.core, 0.9, 1.35, 0.7));
+            _auraShellGeo(r * 0.40, r * 0.72, h * 0.9),
+            _makeAuraShellMat(pal.mid, pal.core, 0.55, 1.35, 0.7));
         mats.push(outer.material, inner.material);
         g.add(outer); g.add(inner);
 
@@ -5652,7 +5656,7 @@ const ThreeRenderer = (function () {
 
         /* base glow (soft radial sprite, animated manually — no _hzPulse so
            the fade owns opacity) */
-        var glow = _hzGlowSprite(r * 3.2, pal.light, 0.0, 0, 0);
+        var glow = _hzGlowSprite(r * 2.4, pal.light, 0.0, 0, 0);
         glow.position.y = h * 0.22;
         g.add(glow);
 
@@ -5850,16 +5854,16 @@ const ThreeRenderer = (function () {
             a.ring.rotation.z += dt * 0.9;
             var rs = 1 + 0.07 * Math.sin(t * 4.2 + a.seed);
             a.ring.scale.set(rs, rs, 1);
-            a.glow.material.opacity = 0.42 * ease * (0.85 + 0.15 * f);
+            a.glow.material.opacity = 0.22 * ease * (0.85 + 0.15 * f);
             for (var si = 0; si < a.streaks.length; si++) {
                 var s = a.streaks[si];
                 var prog = (t * s._ew_spd + s._ew_ph) % 1;
                 s._ew_ang += dt * 0.35;
                 s.position.set(Math.cos(s._ew_ang) * s._ew_r, prog * a.h * 1.15, Math.sin(s._ew_ang) * s._ew_r);
                 s.rotation.y = s._ew_ang + Math.PI / 2;
-                s.material.opacity = 0.65 * ease * Math.sin(Math.PI * prog);
+                s.material.opacity = 0.5 * ease * Math.sin(Math.PI * prog);
             }
-            if (a.light) a.light.intensity = (a.kind === 'laststand' ? 1.5 : 1.2) * ease * f;
+            if (a.light) a.light.intensity = (a.kind === 'laststand' ? 1.0 : 0.8) * ease * f;
 
             /* occasional SSJ2-style crackle around the shroud */
             if (window.ThreeLightning && a.fade > 0.6 && now >= a.nextSpark) {
@@ -7903,11 +7907,14 @@ const ThreeRenderer = (function () {
                 var r = (color >> 16) & 0xff;
                 var g_c = (color >> 8) & 0xff;
                 var b = color & 0xff;
+                /* additive + DoubleSide means near AND far walls of the zone
+                   stack along the view ray — keep peak alpha low enough that
+                   two stacked walls stay colored light, not blown-out white */
                 var grad = ctx.createLinearGradient(0, 0, 0, 64);
                 grad.addColorStop(0, 'rgba(' + r + ',' + g_c + ',' + b + ',0)');
-                grad.addColorStop(0.3, 'rgba(' + r + ',' + g_c + ',' + b + ',0.35)');
-                grad.addColorStop(0.7, 'rgba(' + r + ',' + g_c + ',' + b + ',0.7)');
-                grad.addColorStop(1, 'rgba(' + r + ',' + g_c + ',' + b + ',0.9)');
+                grad.addColorStop(0.3, 'rgba(' + r + ',' + g_c + ',' + b + ',0.18)');
+                grad.addColorStop(0.7, 'rgba(' + r + ',' + g_c + ',' + b + ',0.38)');
+                grad.addColorStop(1, 'rgba(' + r + ',' + g_c + ',' + b + ',0.55)');
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, 4, 64);
 
@@ -8119,7 +8126,10 @@ const ThreeRenderer = (function () {
 
                 var geo = new THREE.PlaneGeometry(ts, wallHeight);
 
-                /* Gradient canvas — transparent at top, color at bottom (same as nexus) */
+                /* Gradient canvas — transparent at top, color at bottom (same as
+                   nexus). Peak alpha kept low: additive + DoubleSide stacks the
+                   near and far perimeter walls along the view ray, and higher
+                   alphas summed to blown-out white over bright terrain. */
                 var canvas = document.createElement('canvas');
                 canvas.width = 4; canvas.height = 64;
                 var ctx = canvas.getContext('2d');
@@ -8128,9 +8138,9 @@ const ThreeRenderer = (function () {
                 var b = color & 0xff;
                 var grad = ctx.createLinearGradient(0, 0, 0, 64);
                 grad.addColorStop(0, 'rgba(' + r + ',' + g_c + ',' + b + ',0)');
-                grad.addColorStop(0.3, 'rgba(' + r + ',' + g_c + ',' + b + ',0.3)');
-                grad.addColorStop(0.7, 'rgba(' + r + ',' + g_c + ',' + b + ',0.6)');
-                grad.addColorStop(1, 'rgba(' + r + ',' + g_c + ',' + b + ',0.8)');
+                grad.addColorStop(0.3, 'rgba(' + r + ',' + g_c + ',' + b + ',0.16)');
+                grad.addColorStop(0.7, 'rgba(' + r + ',' + g_c + ',' + b + ',0.34)');
+                grad.addColorStop(1, 'rgba(' + r + ',' + g_c + ',' + b + ',0.5)');
                 ctx.fillStyle = grad;
                 ctx.fillRect(0, 0, 4, 64);
 
@@ -8187,7 +8197,7 @@ const ThreeRenderer = (function () {
     function _updateSanctuaryWallPulse() {
         if (_sanctuaryWallMats.length === 0) return;
         var t = performance.now() / 1000;
-        var pulse = 0.7 + 0.2 * Math.sin(t * 1.8);
+        var pulse = 0.5 + 0.15 * Math.sin(t * 1.8);
         for (var i = 0; i < _sanctuaryWallMats.length; i++) {
             _sanctuaryWallMats[i].opacity = pulse;
         }
@@ -8416,7 +8426,7 @@ const ThreeRenderer = (function () {
         if (_nexusWallMats.length === 0) return;
         var t = performance.now() / 1000;
 
-        var pulse = 0.8 + 0.2 * Math.sin(t * 2.0);
+        var pulse = 0.55 + 0.15 * Math.sin(t * 2.0);
         for (var i = 0; i < _nexusWallMats.length; i++) {
             _nexusWallMats[i].opacity = pulse;
         }
