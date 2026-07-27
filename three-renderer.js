@@ -11962,6 +11962,16 @@ const ThreeRenderer = (function () {
                     highlightGroup.add(_makeHlTile(jt.x, jt.y, _getSharedHlMat('move-jump'), 0.92, 0.3, jt.z));
                 }
             }
+            /* Red = in reach but no legal arc (un-vaultable wall / roofed
+               arc / ledge above the unit's climb) — mirrors ui.js's cached
+               jump overlay so the fallback path tells the same story. */
+            if (typeof G.getJumpBlockedTiles === 'function') {
+                var jbTiles = G.getJumpBlockedTiles(sel);
+                for (var jbi = 0; jbi < jbTiles.length; jbi++) {
+                    var jbt = jbTiles[jbi];
+                    highlightGroup.add(_makeHlTile(jbt.x, jbt.y, _getSharedHlMat('move-edge'), 0.92, 0.3, jbt.z));
+                }
+            }
         } else if (state.actionMode === 'attack' && typeof G.getAttackTiles === 'function') {
             tiles = G.getAttackTiles(sel);
             if (tiles) {

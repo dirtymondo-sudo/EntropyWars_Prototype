@@ -5573,17 +5573,57 @@ function _bestTowardStep(actingUnit, targetUnit) {
   const tz = targetUnit.z ?? 0;
   const flat = (fx, fy) => Math.abs(fx - targetUnit.x) + Math.abs(fy - targetUnit.y);
   const zGap = (fz) => Math.abs((fz ?? 0) - tz);
-  let best = null;
-  let bestD = flat(actingUnit.x, actingUnit.y);
-  let bestZ = zGap(actingUnit.z);
+  const moveByKey = new Map();
+  const moveTiles = [];
   if (typeof getMoveTiles === 'function' && typeof canUnitMove === 'function' && canUnitMove(actingUnit)) {
     for (const t of getMoveTiles(actingUnit)) {
       if (t._takeoff) continue;
       if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
-      const d = flat(t.x, t.y);
-      const zg = zGap(t.z);
-      if (d < bestD || (d === bestD && best && zg < bestZ)) { best = { x: t.x, y: t.y, z: t.z }; bestD = d; bestZ = zg; }
+      moveTiles.push(t);
+      moveByKey.set(t.x + ',' + t.y + ',' + (t.z ?? 0), t);
+      moveByKey.set(t.x + ',' + t.y, t);
     }
+  }
+
+  /* WALL-AWARE (2026-07-27): follow the REAL route to the target (findRouteTo,
+     battle.js — full wall/stairs/climb rules, budget uncapped) and step to the
+     furthest route point reachable this move. This is what routes the chase
+     out of a building through its door instead of pressing the unit against
+     the wall nearest the enemy. Falls back to the old greedy pick when the
+     target is genuinely unreachable (sealed room / plugged door). */
+  try {
+    if (moveTiles.length && typeof findRouteTo === 'function') {
+      const route = findRouteTo(actingUnit, targetUnit.x, targetUnit.y, targetUnit.z);
+      // Jump-action landings can splice onto the route too — a leap that
+      // lands FURTHER along the route than any walk beats the walk.
+      const jumpByKey = new Map();
+      if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
+        for (const t of getJumpTiles(actingUnit)) {
+          if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
+          jumpByKey.set(t.x + ',' + t.y + ',' + (t.z ?? 0), t);
+          jumpByKey.set(t.x + ',' + t.y, t);
+        }
+      }
+      for (let i = route.length - 1; i >= 0; i--) {
+        const n = route[i];
+        // Never end the leg ON the target's tile (route's last node).
+        if (n.x === targetUnit.x && n.y === targetUnit.y) continue;
+        const k3 = n.x + ',' + n.y + ',' + (n.z ?? 0), k2 = n.x + ',' + n.y;
+        const t = moveByKey.get(k3) || moveByKey.get(k2);
+        if (t) return { x: t.x, y: t.y, z: t.z };
+        const j = jumpByKey.get(k3) || jumpByKey.get(k2);
+        if (j) return { x: j.x, y: j.y, z: j.z, _jump: true };
+      }
+    }
+  } catch (e) { /* preview/chase must never crash on a pathing hiccup */ }
+
+  let best = null;
+  let bestD = flat(actingUnit.x, actingUnit.y);
+  let bestZ = zGap(actingUnit.z);
+  for (const t of moveTiles) {
+    const d = flat(t.x, t.y);
+    const zg = zGap(t.z);
+    if (d < bestD || (d === bestD && best && zg < bestZ)) { best = { x: t.x, y: t.y, z: t.z }; bestD = d; bestZ = zg; }
   }
   if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
     for (const t of getJumpTiles(actingUnit)) {

@@ -17371,7 +17371,7 @@
             return _ok(cx + dx, cy) && _ok(cx, cy + dy);
         }
 
-        function findMovePath(unit, destX, destY, destZ) {
+        function findMovePath(unit, destX, destY, destZ, _routeOpts) {
             if (!unit || !isInside(destX, destY)) return [];
             const _has3D = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
             const unitZ = unit.z ?? 0;
@@ -17412,7 +17412,10 @@
             const _pathFlies = canFly(unit);
             /* 👻 Spectral Passage (Ghost passive) — mirrors getMoveTiles. */
             const _pathPhasing = typeof unitIsPhasing === 'function' && unitIsPhasing(unit);
-            const maxMove = getEffectiveMove(unit);
+            /* Route mode (findRouteTo): same walls/climb/stairs rules, but the
+               move budget stops capping the search — the caller wants the REAL
+               route to a far destination, not just this turn's reach. */
+            const maxMove = (_routeOpts && _routeOpts.maxMove) || getEffectiveMove(unit);
             while (open.length) {
                 let minI = 0;
                 for (let i = 1; i < open.length; i++) {
@@ -17559,6 +17562,16 @@
             }
             path.reverse();
             return path;
+        }
+
+        /* Wall-aware full-board route (2026-07-27): findMovePath with the move
+           budget uncapped. Used by "Move Towards" (blade + Move-mode click) to
+           pick WHICH reachable tile actually leads to the target — around a
+           building via its door — instead of the Manhattan-closest tile, which
+           marched units face-first into walls. Returns [] when the destination
+           is genuinely unreachable (sealed room, enemy plugging the only door). */
+        function findRouteTo(unit, destX, destY, destZ) {
+            return findMovePath(unit, destX, destY, destZ, { maxMove: 9999 });
         }
 
         function getPathPickupEvent(unit, x, y) {
@@ -20828,18 +20841,14 @@
             const sx = unit.x, sy = unit.y, sz = unit.z;
             const startDist = Math.abs(sx - tx) + Math.abs(sy - ty);
             const _tzKnown = (tz !== undefined && tz !== null);
-            let best = null, bestDist = startDist, bestCost = Infinity;
-            const _consider = (cand, dist, cost) => {
-                // Strictly closer wins; equal distance → cheaper (fewer steps).
-                if (dist < bestDist || (dist === bestDist && cost < bestCost)) {
-                    best = cand; bestDist = dist; bestCost = cost;
-                }
-            };
+            // Reachable-this-move plain walks, keyed for the route splice below.
+            // (No jump/takeoff legs — those are their own deliberate verbs —
+            // and never step onto an occupied tile.)
+            const walkable = [];
+            const walkByKey = new Map();
             try {
                 const ring1 = getMoveTiles(unit);
                 for (const t of ring1) {
-                    // Plain walks only (no jump/takeoff legs — those are their own
-                    // deliberate verbs), and never step onto an occupied tile.
                     if (t._jump || t._takeoff) continue;
                     if (unitAt(t.x, t.y, t.z)) continue;
                     /* WYSIWYG (2026-07-21): "towards" must never LAND on the
@@ -20852,13 +20861,44 @@
                        counts at exactly that z; approach tiles on OTHER
                        columns are unaffected. */
                     if (_tzKnown && t.x === tx && t.y === ty && (t.z ?? 0) !== tz) continue;
-                    const d = Math.abs(t.x - tx) + Math.abs(t.y - ty);
-                    _consider({ x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1 }, d, 1);
+                    const cand = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1 };
+                    walkable.push(cand);
+                    walkByKey.set(t.x + ',' + t.y + ',' + (t.z ?? sz), cand);
+                    walkByKey.set(t.x + ',' + t.y, cand); // 2D fallback key
                 }
             } finally {
                 unit.x = sx; unit.y = sy; unit.z = sz;
             }
-            // Only worth it if we actually get closer than standing still.
+            if (!walkable.length) return null;
+
+            /* WALL-AWARE (2026-07-27): route first. Compute the REAL path to
+               the target (budget uncapped, same walls/stairs/climb rules as
+               movement) and take the furthest point along it we can walk to
+               this move. An enemy across a wall no longer means "hug the
+               wall" — the route leaves through the door, even when the door
+               is on the opposite side and the first leg walks AWAY from the
+               target. */
+            try {
+                const route = (typeof findRouteTo === 'function')
+                    ? findRouteTo(unit, tx, ty, _tzKnown ? tz : undefined) : [];
+                for (let i = route.length - 1; i >= 0; i--) {
+                    const n = route[i];
+                    const cand = walkByKey.get(n.x + ',' + n.y + ',' + (n.z ?? 0))
+                        || walkByKey.get(n.x + ',' + n.y);
+                    if (cand) return cand;
+                }
+            } catch (e) { /* fall through to the greedy pick */ }
+
+            /* No route (sealed room / door plugged): fall back to the old
+               Manhattan-closest pick so the unit still closes distance for
+               ranged play. Strictly closer wins; ties → cheaper. */
+            let best = null, bestDist = startDist, bestCost = Infinity;
+            for (const cand of walkable) {
+                const d = Math.abs(cand.x - tx) + Math.abs(cand.y - ty);
+                if (d < bestDist || (d === bestDist && cand.moveCost < bestCost)) {
+                    best = cand; bestDist = d; bestCost = cand.moveCost;
+                }
+            }
             return (best && bestDist < startDist) ? best : null;
         }
 
@@ -31404,6 +31444,7 @@
             getCritChance, getEvasionChance,
             getMoveTiles, getAttackTiles, getInspectTiles, getSpellRangeTiles,
             getJumpTiles, canJump, getUnitJumpStat, getUnitJumpClimb, getUnitJumpReach,
+            getJumpBlockedTiles, findRouteTo,
             isRangeBlockedByTerrain, getLinePoints,
             unitHasStatus, unitHasFlair, unitHasWard,
             isUnitConcealedFrom, isUnitSeenByAnyEnemy, isUnitSeenByTeam, checkStealthReveals,
@@ -35683,6 +35724,56 @@
             if (canFly(unit) && isUnitAirborne(unit)) return false;
             if (!canUnitAct(unit)) return false;
             return getJumpTiles(unit).length > 0;
+        }
+
+        /* "Can I clear that wall?" feedback (2026-07-27): every tile inside
+           the unit's jump reach that LOOKS landable (real walkable surface,
+           not occupied) but that no legal arc reaches — wall too tall to
+           vault, roof over the arc, ledge above the jump climb, gravity
+           field. Jump mode paints these red ('move-edge') so the player sees
+           BEFORE walking up to a wall that this unit can't get over it,
+           instead of wasting a move discovering the teal tile never appears. */
+        function getJumpBlockedTiles(unit) {
+            if (!unit || unit.dead) return [];
+            if (typeof _isClashMode === 'function' && _isClashMode()) return [];
+            if (canFly(unit) && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return [];
+            const _jbGrav = getGravityFieldAt(unit.x, unit.y);
+            const _gravBonus = _jbGrav === 'weak' ? 2 : 0;
+            const reach = _jbGrav === 'super' ? 1 : getUnitJumpReach(unit) + _gravBonus;
+            const has3D = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
+            // Legal landings, keyed by column — a column with ANY reachable
+            // surface is not "blocked", it's an option.
+            const okCols = new Set();
+            for (const t of getJumpTiles(unit)) okCols.add(posKey(t.x, t.y));
+            const blocked = [];
+            const seen = new Set();
+            for (let dy = -reach; dy <= reach; dy++) {
+                for (let dx = -reach; dx <= reach; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    const adx = Math.abs(dx), ady = Math.abs(dy);
+                    const hd = (adx <= 1 && ady <= 1) ? Math.max(adx, ady) : (adx + ady);
+                    if (hd > reach) continue;
+                    const nx = unit.x + dx;
+                    const ny = unit.y + dy;
+                    if (!isInside(nx, ny)) continue;
+                    const pk = posKey(nx, ny);
+                    if (okCols.has(pk) || seen.has(pk)) continue;
+                    seen.add(pk);
+                    // Only flag columns that read as solid ground the unit could
+                    // stand on — impassable terrain / voids just stay dark.
+                    const surfaces = has3D ? getWalkableSurfaces(nx, ny) : [getHeightAt(nx, ny)];
+                    let landable = null;
+                    for (const nz of surfaces) {
+                        if (!unitCanTraverse(unit, nx, ny, has3D ? nz : undefined)) continue;
+                        const occ = unitAt(nx, ny, nz);
+                        if (occ && !(typeof isUnitAirborne === 'function' && isUnitAirborne(occ) && (occ.z ?? 0) !== nz)) continue;
+                        if (landable === null || Math.abs(nz - (unit.z ?? 0)) < Math.abs(landable - (unit.z ?? 0))) landable = nz;
+                    }
+                    if (landable === null) continue;
+                    blocked.push({ x: nx, y: ny, z: has3D ? landable : undefined });
+                }
+            }
+            return blocked;
         }
 
         /* Sky-grab casts (Predator Drop / Sky Throw / Sky Slam) are aerial moves:

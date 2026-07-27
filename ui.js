@@ -2540,20 +2540,76 @@
 
           const _unitKey = posKey(_selectedForHl.x, _selectedForHl.y);
           _moveSet.add(_unitKey);
+          /* Boundary paint (red 'move-edge'):
+             - hard-invalid neighbours (impassable terrain / enemy body), as before;
+             - NEW (2026-07-27): neighbours that LOOK walkable but that NO
+               adjacent reachable tile can actually step into — an authored
+               wall too tall for this unit's jump climb, or a ledge above
+               it. Red = "this unit cannot cross here, period", so an
+               un-jumpable wall reads at a glance BEFORE anyone wastes a
+               move walking up to it. Tiles that are merely beyond this
+               move's budget stay dark (they're far, not blocked). */
+          const _jcHl = (typeof getUnitJumpClimb === 'function') ? getUnitJumpClimb(_selectedForHl) : 1;
+          const _has3DHl = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
+          const _stepOpen = (t, ex, ey) => {
+            // Can the unit physically step t → (ex,ey) onto SOME surface?
+            // Mirrors getMoveTiles' per-step gates (walls, climb, stairs,
+            // roofs, fall lanes) without the budget cap.
+            if (typeof objectBlocksEdge === 'function' && objectBlocksEdge(t.x, t.y, ex, ey, true)) return false;
+            const tz2 = t.z ?? (_selectedForHl.z ?? 0);
+            const surfs = _has3DHl ? getWalkableSurfaces(ex, ey) : [getHeightAt(ex, ey)];
+            for (const nz of surfs) {
+              if (!unitCanTraverse(_selectedForHl, ex, ey, _has3DHl ? nz : undefined)) continue;
+              if (typeof wallStepInfo === 'function'
+                  && wallStepInfo(t.x, t.y, ex, ey, tz2, nz, _jcHl).v === 2) continue;
+              const rise = nz - tz2;
+              if (Math.abs(rise) > MAX_CLIMB_HEIGHT) {
+                const _ct = getTerrainAt(t.x, t.y);
+                const _nt = (_has3DHl && typeof getTerrainAt3D === 'function') ? getTerrainAt3D(ex, ey, nz) : getTerrainAt(ex, ey);
+                const _co = (typeof getObjectAt === 'function') ? getObjectAt(t.x, t.y) : null;
+                const _no = (typeof getObjectAt === 'function') ? getObjectAt(ex, ey) : null;
+                const _stairs = _ct === 'barrier_passage' || _nt === 'barrier_passage'
+                  || _co === 'stairs' || _co === 'stairs_2' || _no === 'stairs' || _no === 'stairs_2';
+                if (!_stairs) {
+                  const _nr = (_no && typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_no] : null;
+                  if (_nr && _nr.roofWalkable && rise > MAX_CLIMB_HEIGHT) continue;
+                  const _ceil = (typeof _climbCeilingAt === 'function') ? _climbCeilingAt(ex, ey, _jcHl) : _jcHl;
+                  if (rise > _ceil) continue;
+                  if (typeof columnLaneClear === 'function') {
+                    if (rise > 0 && !columnLaneClear(t.x, t.y, tz2, nz)) continue;
+                    if (rise < 0 && !columnLaneClear(ex, ey, nz, tz2)) continue;
+                  }
+                }
+              }
+              return true;
+            }
+            return false;
+          };
           const _edgeChecked = new Set();
-          for (const t of _cachedMoveTiles) {
+          const _wallSealed = new Map();  // ek → true while EVERY probed step in is blocked
+          const _probeSrcs = _cachedMoveTiles.concat([{ x: _selectedForHl.x, y: _selectedForHl.y, z: _selectedForHl.z }]);
+          for (const t of _probeSrcs) {
             for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
               const ex = t.x + dx, ey = t.y + dy;
               const ek = posKey(ex, ey);
-              if (_edgeChecked.has(ek) || _moveSet.has(ek) || !isInside(ex, ey)) continue;
-              _edgeChecked.add(ek);
+              if (_moveSet.has(ek) || !isInside(ex, ey)) continue;
 
-              const _edgeOccupant = unitAt(ex, ey);
-              const _edgeBlockedByEnemy = _edgeOccupant && isEnemyUnit(_edgeOccupant, _selectedForHl);
-              if (!unitCanTraverse(_selectedForHl, ex, ey) || _edgeBlockedByEnemy) {
-                _hlCache.set(ek, 'move-edge');
+              if (!_edgeChecked.has(ek)) {
+                _edgeChecked.add(ek);
+                const _edgeOccupant = unitAt(ex, ey);
+                const _edgeBlockedByEnemy = _edgeOccupant && isEnemyUnit(_edgeOccupant, _selectedForHl);
+                if (!unitCanTraverse(_selectedForHl, ex, ey) || _edgeBlockedByEnemy) {
+                  _hlCache.set(ek, 'move-edge');
+                }
               }
+              if (_hlCache.get(ek) === 'move-edge') continue;
+              if (_wallSealed.get(ek) === false) continue;    // already proven open
+              if (_stepOpen(t, ex, ey)) _wallSealed.set(ek, false);
+              else _wallSealed.set(ek, true);
             }
+          }
+          for (const [ek, sealed] of _wallSealed) {
+            if (sealed && !_hlCache.has(ek)) _hlCache.set(ek, 'move-edge');
           }
 
           /* ─────────────────────────────────────────────────────────────────
@@ -2738,6 +2794,18 @@
               }
               _hlCache.set(pk, _jCls);
               if (t.z !== undefined) _hlZCache.set(pk, t.z);
+            }
+            /* Red = inside jump reach but NO legal arc gets there (wall too
+               tall for this unit's jump, roof over the arc, ledge above its
+               climb) — answers "can I clear that wall?" at a glance instead
+               of the player finding out after walking up to it. */
+            if (typeof getJumpBlockedTiles === 'function') {
+              for (const bt of getJumpBlockedTiles(_selectedForHl)) {
+                const bk = posKey(bt.x, bt.y);
+                if (String(_hlCache.get(bk) || '').indexOf('move-jump') === 0) continue;
+                _hlCache.set(bk, 'move-edge');
+                if (bt.z !== undefined) _hlZCache.set(bk, bt.z);
+              }
             }
           }
         } else if (state.actionMode === 'build' && canUnitAct(_selectedForHl)) {
