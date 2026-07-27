@@ -14008,6 +14008,29 @@ const ThreeRenderer = (function () {
         _shadowsDirty = true;
     }
 
+    /* May this unit drive the occlusion fade for the current viewer?
+       The viewer's own units: always. An enemy: only when the screen already
+       shows it — not concealed (Invisible/smoke) and, under fog of war, both
+       fog-tile-visible AND passing the same 3D line-of-sight probe the
+       renderer uses to draw the unit itself. Anything less and fading the
+       terrain/walls in front of a hidden enemy would leak its position (and
+       its spell VFX) through geometry the viewer has no sight past. Cinematic
+       shots are NOT gated here: battle.js only arms a shot on subjects the
+       viewer is allowed to see, and during a live shot the caster/target must
+       always read 100% clear. The intro cinematic (whole rosters on show, no
+       vision rules) runs through the cine path too, so it is unaffected. */
+    function _occSubjectViewerVisible(unit) {
+        if (!unit) return false;
+        var vp = _viewerPlayerNum();
+        if (unit.player === vp) return true;
+        if (_isConcealedFromViewer(unit, vp)) return false;
+        if (state.fogOfWar) {
+            if (!_fogVisibleSet || !_fogVisibleSet.has(unit.x + ',' + unit.y)) return false;
+            if (!_unitLosSeen(unit, vp)) return false;
+        }
+        return true;
+    }
+
     /* Roots that block the line of sight to the caster or target this frame. */
     function _occComputeBlockers(cam, cineActive, selUnit) {
         var roots = new Set();
@@ -14120,7 +14143,13 @@ const ThreeRenderer = (function () {
             var selId = state.selectedUnitId || state._blitzActiveUnitId;
             if (selId != null) {
                 var su = _unitById.get(selId);
-                if (su && !su.dead) selUnit = su;
+                /* Fog gate (same rule as the canopy cutaway): an ENEMY active
+                   unit the viewer cannot actually SEE on screen must not drive
+                   the fade — ghosting the wall in front of a fogged/concealed
+                   caster hands the player its position and its cast VFX for
+                   free ("I can see their spells through the walls"). Own units
+                   always qualify; visible enemies still get the clarity fade. */
+                if (su && !su.dead && _occSubjectViewerVisible(su)) selUnit = su;
             }
         }
 
