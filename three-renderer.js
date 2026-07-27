@@ -12251,6 +12251,100 @@ const ThreeRenderer = (function () {
         return { mesh: ring, mat: ringMat };
     }
 
+    /* ── Ghost badge sprite (2026-07-27) ─────────────────────────────────────
+       Small camera-facing pill pinned above the move-preview hologram's head:
+       an EYE (red open = an enemy will see you standing there, green slashed
+       = you stay hidden) and/or a red "-N" (predicted damage for landing on /
+       ending the turn on that tile — fall damage, lava, deep water, bog).
+       Drawn on a canvas → THREE.Sprite so it always faces the camera and
+       never blocks picking. battle.js computes the payload
+       (_moveGhostBadges) and passes it via showGhostUnit opts.badges. */
+    function _drawBadgeEye(ctx, ex, ey, w, color, slashed) {
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 5;
+        var hw = w / 2, hh = w * 0.30;
+        ctx.beginPath();
+        ctx.moveTo(ex - hw, ey);
+        ctx.quadraticCurveTo(ex, ey - hh * 2, ex + hw, ey);
+        ctx.quadraticCurveTo(ex, ey + hh * 2, ex - hw, ey);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(ex, ey, w * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+        if (slashed) {
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(ex - hw * 0.9, ey + hh * 2.1);
+            ctx.lineTo(ex + hw * 0.9, ey - hh * 2.1);
+            ctx.stroke();
+        }
+    }
+
+    function _makeGhostBadgeSprite(badges, ts) {
+        var showEye = badges.eye === 'seen' || badges.eye === 'hidden';
+        var dmg = (badges.dmg > 0) ? Math.round(badges.dmg) : 0;
+        if (!showEye && !dmg) return null;
+        var cw = 256, ch = 128;
+        var cv = document.createElement('canvas');
+        cv.width = cw; cv.height = ch;
+        var ctx = cv.getContext('2d');
+        if (!ctx) return null;
+
+        var eyeColor = badges.eye === 'seen' ? '#ff5544' : '#7fd6a0';
+        var dmgText = dmg ? ('-' + dmg) : '';
+        ctx.font = '700 56px "Segoe UI", Arial, sans-serif';
+        var eyeW = showEye ? 74 : 0;
+        var dmgW = dmgText ? Math.ceil(ctx.measureText(dmgText).width) : 0;
+        var gap = (showEye && dmg) ? 16 : 0;
+        var pad = 22;
+        var pillW = Math.min(cw - 4, eyeW + dmgW + gap + pad * 2);
+        var pillH = 92;
+        var px = (cw - pillW) / 2, py = (ch - pillH) / 2, r = pillH / 2;
+
+        ctx.beginPath();
+        ctx.moveTo(px + r, py);
+        ctx.arcTo(px + pillW, py, px + pillW, py + pillH, r);
+        ctx.arcTo(px + pillW, py + pillH, px, py + pillH, r);
+        ctx.arcTo(px, py + pillH, px, py, r);
+        ctx.arcTo(px, py, px + pillW, py, r);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(8, 10, 16, 0.78)';
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = badges.eye === 'seen' ? 'rgba(255, 90, 70, 0.9)'
+            : (badges.eye === 'hidden' ? 'rgba(127, 214, 160, 0.85)' : 'rgba(255, 84, 68, 0.9)');
+        ctx.stroke();
+
+        var cx = px + pad;
+        var cy = py + pillH / 2;
+        if (showEye) {
+            _drawBadgeEye(ctx, cx + eyeW / 2, cy, eyeW, eyeColor, badges.eye === 'hidden');
+            cx += eyeW + gap;
+        }
+        if (dmgText) {
+            ctx.font = '700 56px "Segoe UI", Arial, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#ff5544';
+            ctx.fillText(dmgText, cx, cy + 3);
+        }
+
+        var tex = new THREE.CanvasTexture(cv);
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        tex._ew_ghostBadge = true;
+        var smat = new THREE.SpriteMaterial({
+            map: tex, transparent: true, depthTest: false, depthWrite: false
+        });
+        var spr = new THREE.Sprite(smat);
+        spr.renderOrder = 5000;
+        spr.scale.set(ts * 1.05, ts * 0.525, 1);
+        spr.raycast = function () {};   // never block unit/tile picking
+        return spr;
+    }
+
     function showGhostUnit(unit, tileX, tileY, surfaceYOverride, opts) {
         opts = opts || {};
         var tag = opts.tag || 'caster';
@@ -12390,6 +12484,18 @@ const ThreeRenderer = (function () {
             group.add(spriteMesh);
         }
 
+        // Warning badges (eye / -N damage) pinned above the hologram's head.
+        if (opts.badges && (opts.badges.eye || opts.badges.dmg > 0)) {
+            try {
+                var _badge = _makeGhostBadgeSprite(opts.badges, ts);
+                if (_badge) {
+                    _badge.position.y = _builtFromModel ? ts * 1.5
+                        : (typeof sprH === 'number' && sprH > 0 ? sprH * 1.04 + ts * 0.1 : ts * 1.3);
+                    group.add(_badge);
+                }
+            } catch (e) { /* badge is cosmetic — never let it break the ghost */ }
+        }
+
         highlightGroup.add(group);
         _ghostGroups.push({
             group: group, mat: mat, mats: mats, ringMat: ringInfo.mat, ring: ringInfo.mesh,
@@ -12412,7 +12518,11 @@ const ThreeRenderer = (function () {
                 // Model-ghost geometry is the GLB's shared geometry (_ew_shared,
                 // still used by the live unit) — dispose only what's ours.
                 if (child.geometry && !child.geometry._ew_shared) child.geometry.dispose();
-                if (child.material && !child.material._ew_shared) child.material.dispose();
+                if (child.material && !child.material._ew_shared) {
+                    // Badge sprites own their canvas texture — free it too.
+                    if (child.material.map && child.material.map._ew_ghostBadge) child.material.map.dispose();
+                    child.material.dispose();
+                }
             });
             _ghostGroups.splice(i, 1);
         }

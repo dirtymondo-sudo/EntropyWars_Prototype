@@ -363,20 +363,27 @@
             multiHit:     { minRange: 1, offensive: true,  breaksStealth: true },
             ricochet:     { minRange: 1, offensive: true,  breaksStealth: true },
             lifeDrain:    { minRange: 1, offensive: true,  breaksStealth: true },
-            pull:         { minRange: 1, offensive: true,  noStrikeLeap: true },
+            /* 2026-07-27 stealth audit: EVERY kind that lays hands on an enemy
+               right now breaks camouflage (the design rule: attacking/casting
+               offensively blows your cover). pull/displacement/cross/aoePull/
+               splitBeam and the sky grabs were missing the flag, so an
+               invisible unit could fling, beam and yank while staying cloaked.
+               Covert kinds stay covert on purpose: traps, seeds, deploys,
+               bombs/delayed (planting is quiet), swap and movement/support. */
+            pull:         { minRange: 1, offensive: true,  noStrikeLeap: true, breaksStealth: true },
             swap:         { minRange: 1, offensive: true,  noStrikeLeap: true },
-            displacement: { minRange: 1, offensive: true,  noStrikeLeap: true },
+            displacement: { minRange: 1, offensive: true,  noStrikeLeap: true, breaksStealth: true },
 
             // ── Offensive AoE / area ──
             aoe:          { minRange: 0, offensive: false, tileTargeted: true, breaksStealth: true },
             barrage:      { minRange: 0, offensive: false, selfCast: true,     breaksStealth: true },
-            aoePull:      { minRange: 0, offensive: false, tileTargeted: true },
-            cross:        { minRange: 0, offensive: false, tileTargeted: true },
+            aoePull:      { minRange: 0, offensive: false, tileTargeted: true, breaksStealth: true },
+            cross:        { minRange: 0, offensive: false, tileTargeted: true, breaksStealth: true },
 
             // ── Line / Beam (directional) ──
             line:         { minRange: 0, offensive: true,  tileTargeted: true, directional: true, noStrikeLeap: true, breaksStealth: true },
             linePush:     { minRange: 0, offensive: true,  tileTargeted: true, directional: true, noStrikeLeap: true, breaksStealth: true },
-            splitBeam:    { minRange: 1, offensive: true,  directional: true },
+            splitBeam:    { minRange: 1, offensive: true,  directional: true, breaksStealth: true },
 
             // ── Ally support ──
             // rallyPull (Knights of Round): self-cast, drags every ally to the caster.
@@ -444,10 +451,10 @@
             trickRoom:    { minRange: 0, offensive: false, selfCast: true, fogExempt: true, noStrikeLeap: true },
 
             // ── Sky / elevation combat ──
-            skyDrop:      { minRange: 1, offensive: true },
-            skyThrow:     { minRange: 1, offensive: true },
-            skySlam:      { minRange: 1, offensive: true },
-            leapStrike:   { minRange: 1, offensive: true },
+            skyDrop:      { minRange: 1, offensive: true, breaksStealth: true },
+            skyThrow:     { minRange: 1, offensive: true, breaksStealth: true },
+            skySlam:      { minRange: 1, offensive: true, breaksStealth: true },
+            leapStrike:   { minRange: 1, offensive: true, breaksStealth: true },
         };
 
         // ═══════════════════════════════════════════════════════════════════
@@ -6716,6 +6723,108 @@
             return false;
         }
 
+        /* ── Move-preview stealth prediction (2026-07-27) ─────────────────────
+           "If I stand on (x,y,z), will an enemy see me?" — drives the eyeball
+           badge on the move-hover ghost. Uses the SAME truth as the nameplate
+           eye (isUnitSeenByAnyEnemy: isInVision LOS + concealment), evaluated
+           at a hypothetical position. Smoke-granted cloaks lapse the moment
+           the unit leaves the cloud (updateSmokeZoneCloak), so the simulation
+           drops the Invisible status for destinations outside friendly smoke.
+           Returns null when stealth isn't in play (already seen and not
+           cloaked) so the ghost stays badge-free in ordinary play.
+           NOTE: like the nameplate eye, this consults ALL enemy vision —
+           including enemies the mover can't currently see. That's consistent
+           with the existing eye icon; to make it "fair" (only count enemies
+           your team has eyes on), gate the sweep on isUnitSeenByTeam. */
+        function predictStealthAtTile(unit, x, y, z) {
+            if (!unit || unit.dead) return null;
+            const _cloaked = unitHasStatus(unit, 'invisible');
+            const seenNow = isUnitSeenByAnyEnemy(unit);
+            if (seenNow && !_cloaked) return null;   // no cover to lose
+            const sx = unit.x, sy = unit.y, sz = unit.z;
+            let invisRestore = null;
+            let seenThere = seenNow;
+            try {
+                unit.x = x; unit.y = y;
+                if (z !== undefined && z !== null) unit.z = z;
+                if (_cloaked && unit._smokeCloaked && unit.status) {
+                    let inSmoke = false;
+                    for (const zone of (state._activeZones || [])) {
+                        if (!zone.smokeConcealment || zone.ownerPlayer !== unit.player) continue;
+                        const r = zone.radius || 1;
+                        if (Math.abs(x - zone.x) <= r && Math.abs(y - zone.y) <= r) { inSmoke = true; break; }
+                    }
+                    if (!inSmoke) { invisRestore = unit.status.invisible; unit.status.invisible = 0; }
+                }
+                seenThere = isUnitSeenByAnyEnemy(unit);
+            } catch (e) { /* preview is cosmetic */ } finally {
+                unit.x = sx; unit.y = sy; unit.z = sz;
+                if (invisRestore !== null && unit.status) unit.status.invisible = invisRestore;
+            }
+            return { seen: seenThere };
+        }
+
+        /* ── Move-preview hazard damage prediction (2026-07-27) ───────────────
+           The red "-N" on the move-hover ghost: what landing on (x,y,z) costs.
+           Fall damage is exact (predictFallDamage is applyFallDamage's pure
+           twin — doMove/doJump apply it on arrival). Hazard terrain adds the
+           FIRST end-of-round tick the tile will inflict if the unit stays:
+           lava → escalating burn tick (TERRAIN_RULES.lava + burn.onRoundEnd),
+           deep water → drowning tick, poison bog → the flat sicken hit. Ticks
+           mirror the DoT pipeline's gap-1 level scaling (scaleByTargetLevel →
+           offenseScale(lvl, lvl)); the poison hit respects armor like its
+           applyDamageToUnit call does. Keep in lockstep with those rules. */
+        function predictMoveHazardDamage(unit, x, y, z) {
+            if (!unit || unit.dead) return 0;
+            let dmg = 0;
+            const destZ = (z !== undefined && z !== null) ? z
+                : (typeof getHeightAt === 'function' ? getHeightAt(x, y) : 0);
+            if (typeof predictFallDamage === 'function') {
+                dmg += predictFallDamage(unit, unit.z ?? 0, destZ, x, y) || 0;
+            }
+            const _lvl = (typeof getUnitLevel === 'function') ? getUnitLevel(unit) : 1;
+            const _sc = (typeof offenseScale === 'function' && _lvl >= 1) ? offenseScale(_lvl, _lvl) : 1;
+            const terr = (typeof getTerrainAt3D === 'function' && z !== undefined && z !== null
+                && state.boardColumns?.length > 0) ? getTerrainAt3D(x, y, z) : getTerrainAt(x, y);
+            const _flies = typeof canFly === 'function' && canFly(unit);
+            if (_isLavaTile(x, y)) {
+                const _adapted = (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit))
+                    || (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'healedByElement') === 'fire');
+                if (!_flies && !_adapted) {
+                    const stacks = (unit._lavaBurnStacks || 0) + 1;
+                    dmg += Math.max(1, Math.round(Math.min(200, 32 + stacks * 32) * _sc));
+                }
+            } else if (terr === 'deep_water') {
+                if (!_flies && !(typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit))) {
+                    const stacks = (unit._drowningStacks || 0) + 1;
+                    dmg += Math.max(1, Math.round(Math.min(160, 24 + stacks * 24) * _sc));
+                }
+            } else if (terr === 'poison' || terr === 'poison_bog') {
+                if (!(typeof unitIsPoisonTerrainImmune === 'function' && unitIsPoisonTerrainImmune(unit))) {
+                    const _defSc = (typeof defenseScale === 'function') ? defenseScale(_lvl) : 1;
+                    const _arm = (typeof getEffectiveArmor === 'function')
+                        ? Math.round(getEffectiveArmor(unit, 'magic') * _defSc) : 0;
+                    dmg += Math.max(1, Math.round(12 * _sc) - _arm);
+                }
+            }
+            return Math.round(dmg);
+        }
+
+        /* Bundle both predictions for the ghost hologram. Returns null when
+           there is nothing to warn about (no badge → no visual noise). */
+        function _moveGhostBadges(unit, x, y, z) {
+            const badges = {};
+            try {
+                const st = predictStealthAtTile(unit, x, y, z);
+                if (st) badges.eye = st.seen ? 'seen' : 'hidden';
+            } catch (e) {}
+            try {
+                const d = predictMoveHazardDamage(unit, x, y, z);
+                if (d > 0) badges.dmg = d;
+            } catch (e) {}
+            return (badges.eye || badges.dmg) ? badges : null;
+        }
+
         /* ── Stealth reveal sweep: when an enemy ends up adjacent to an Invisible
            unit (someone "walked into" them), break the cloak for good and fire a
            big on-screen banner once. Smoke concealment is NOT consumed here — it
@@ -6747,17 +6856,33 @@
                 addLog(`👁️ ${unitDisplayName(u)} is revealed — too close to ${unitDisplayName(revealer)}!`, u.player);
                 try { playSfx('uiConfirm'); } catch (e) {}
 
-                if (typeof showCombatBanner === 'function' && !state.devAutoSim) {
-                    if (u.player === viewer) {
-                        showCombatBanner('⚠️ Spotted!', `${unitDisplayName(u)} was discovered — cover blown!`, 'pickup-enemy');
-                    } else {
-                        showCombatBanner('👁️ Hidden Enemy Revealed!', `${unitDisplayName(u)} steps out of hiding!`, 'pickup-friendly');
-                    }
+                /* Routed through the window global so online.js can wrap it —
+                   the sweep runs HOST-side only, and without the relay the
+                   guest never saw its own unit get spotted (RULE #2). */
+                if (typeof window.showStealthRevealBanner === 'function') {
+                    window.showStealthRevealBanner(u);
                 }
                 if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(u, '👁️ Revealed!', 'debuff');
                 if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
             }
         }
+
+        /* Viewer-relative "cover blown" banner. Lives on window so online.js
+           can wrap it: the host relays the event and the GUEST re-runs this
+           very function, where getViewerPlayer() resolves to the guest's own
+           side — each screen gets the right "Spotted!" vs "Revealed!" read. */
+        function showStealthRevealBanner(unit) {
+            if (!unit || state.devAutoSim) return;
+            if (typeof showCombatBanner !== 'function') return;
+            const viewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+            const nm = (typeof unitDisplayName === 'function') ? unitDisplayName(unit) : (unit.name || 'A unit');
+            if (unit.player === viewer) {
+                showCombatBanner('⚠️ Spotted!', `${nm} was discovered — cover blown!`, 'pickup-enemy');
+            } else {
+                showCombatBanner('👁️ Hidden Enemy Revealed!', `${nm} steps out of hiding!`, 'pickup-friendly');
+            }
+        }
+        window.showStealthRevealBanner = showStealthRevealBanner;
 
         function _shouldCameraFollowUnit(unit) {
             const viewer = getViewerPlayer();
@@ -8110,6 +8235,16 @@
             state.selectedTool = null;
 
             addLog(`⚛ ${unitDisplayName(unit)} triggers the ENTROPY STRIKE — Player ${unit.player}'s team attacks as one!`);
+
+            /* The whole team attacks as one — every cloaked ally on the team
+               breaks camouflage (attacking always blows cover; 2026-07-27
+               stealth audit). */
+            for (const _esa of allies) {
+                if (unitHasStatus(_esa, 'invisible')) {
+                    clearStatus(_esa, 'invisible');
+                    addLog(`${unitDisplayName(_esa)} breaks camouflage!`);
+                }
+            }
 
             const applyHit = (enemy) => {
                 if (!enemy || enemy.dead || enemy._dying) return;
@@ -17483,6 +17618,11 @@
                     clearStatus(unit, 'invisible');
                     addLog(`👁 ${unitDisplayName(unit)} steps out of the smoke and is revealed!`);
                     showFloatingTextForUnit(unit, '👁 Revealed', 'debuff', { durationMs: 1000 });
+                    /* Same viewer-relative banner (and online relay) as the
+                       adjacency reveal — the other player must see it too. */
+                    if (typeof window.showStealthRevealBanner === 'function') {
+                        window.showStealthRevealBanner(unit);
+                    }
                 }
             }
         }
@@ -21189,7 +21329,8 @@
                        marker draws on its own floor, not on the roof above */
                     marks.push({ x: x, y: y, color: routeColor, opacity: 0.45, z: destZ });
                     ThreeRenderer.setOverlay('moveHoverDest', marks, routeColor, 0.45);
-                    ThreeRenderer.showGhostUnit(unit, x, y, _wpY(x, y, destZ), { tag: 'caster', color: ghostTint, opacity: 0.85 });
+                    ThreeRenderer.showGhostUnit(unit, x, y, _wpY(x, y, destZ), { tag: 'caster', color: ghostTint, opacity: 0.85,
+                        badges: _moveGhostBadges(unit, x, y, destZ) });
                     state._moveHoverActive = true;
                     scheduleBoardRender();
                 };
@@ -21286,7 +21427,8 @@
                                 if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, routeColor);
                                 ThreeRenderer.setOverlay('moveHoverDest',
                                     [{ x: x, y: y, color: routeColor, opacity: 0.45 }], routeColor, 0.45);
-                                ThreeRenderer.showGhostUnit(unit, x, y, _flyY(dest.z), { tag: 'caster', color: ghostTint, opacity: 0.85 });
+                                ThreeRenderer.showGhostUnit(unit, x, y, _flyY(dest.z), { tag: 'caster', color: ghostTint, opacity: 0.85,
+                                    badges: _moveGhostBadges(unit, x, y, dest.z) });
                                 state._moveHoverActive = true;
                                 scheduleBoardRender();
                                 return;
@@ -21362,7 +21504,8 @@
                         }
                         ThreeRenderer.setOverlay('moveHoverDest', marks, towardsColor, 0.45);
                         ThreeRenderer.showGhostUnit(unit, approach.x, approach.y,
-                            _wpY(approach.x, approach.y, approach.z), { tag: 'caster', color: ghostTint, opacity: 0.85 });
+                            _wpY(approach.x, approach.y, approach.z), { tag: 'caster', color: ghostTint, opacity: 0.85,
+                                badges: _moveGhostBadges(unit, approach.x, approach.y, approach.z) });
                         state._moveHoverActive = true;
                         scheduleBoardRender();
                         return;
@@ -38355,6 +38498,19 @@
             }
 
             pushUndoSnapshot(true);
+
+            /* A combo is an attack — both participants swing, so an offensive
+               combo breaks BOTH cloaks (mirrors doAttack / doSpell's
+               breaksStealth; this was the one attack path that kept you
+               invisible — 2026-07-27 stealth audit). */
+            if (isOffensive) {
+                for (const _cu of [initiator, partner]) {
+                    if (unitHasStatus(_cu, 'invisible')) {
+                        clearStatus(_cu, 'invisible');
+                        addLog(`${unitDisplayName(_cu)} breaks camouflage!`);
+                    }
+                }
+            }
 
             // Facing: both combo participants square up on the target.
             if (isOffensive && target) {

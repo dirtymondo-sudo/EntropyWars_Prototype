@@ -978,6 +978,27 @@
         };
         window.showPlayerTurnAnnounce = showPlayerTurnAnnounce;
 
+        /* Stealth reveal banner (battle.js checkStealthReveals /
+           updateSmokeZoneCloak): engine-side, so online it only ever fires on
+           the HOST. Relay it and let the guest re-run the global, which
+           recomputes "⚠️ Spotted!" vs "👁️ Hidden Enemy Revealed!" from ITS
+           OWN viewer — the guest must feel its cover being blown. */
+        if (typeof window.showStealthRevealBanner === 'function') {
+            const _origShowStealthRevealBanner = window.showStealthRevealBanner;
+            window.showStealthRevealBanner = function(unit) {
+                _origShowStealthRevealBanner(unit);
+                var _netOn = window._NET && window._NET.online;
+                if ((_netOn && _isHost() || _ewRecOn()) && unit && state.phase === 'battle') {
+                    _emit('relay', {
+                        type: 'stealth-reveal-banner',
+                        unitId: unit.id || null,
+                        player: unit.player,
+                        name: unit.name || null
+                    });
+                }
+            };
+        }
+
         const _origShowFloatingTextAtTile = showFloatingTextAtTile;
         showFloatingTextAtTile = function(x, y, textValue, kind, opts) {
             _origShowFloatingTextAtTile(x, y, textValue, kind, opts);
@@ -2954,6 +2975,19 @@
                             /* The announce only needs .player to pick the label
                                ("Your Turn" vs "Opponent's Turn") and color. */
                             window.showPlayerTurnAnnounce(_ptaUnit || { player: data.player });
+                        }
+                    }
+
+                    if (data.type === 'stealth-reveal-banner' && _ewMirrorView()) {
+                        /* Re-run the viewer-relative banner on the mirror. The
+                           wrapped global only re-emits on the host, so this
+                           can't echo. Prefer the live unit (right name after
+                           renames); fall back to the relayed name/player. */
+                        if (typeof window.showStealthRevealBanner === 'function' && data.player) {
+                            var _srbUnit = (data.unitId && st && st.units)
+                                ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
+                            window.showStealthRevealBanner(_srbUnit
+                                || { player: data.player, name: data.name || 'A unit' });
                         }
                     }
 
