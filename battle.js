@@ -19013,7 +19013,15 @@
             if (!unit._baseStats) {
                 unit._baseStats = { maxHp: unit.maxHp || 0, maxMp: unit.maxMp || 0 };
             }
+            /* Build-time leveling is SILENT. Without this flag, rebuilding a
+               level-100 PvP unit while state.phase is still 'battle' (e.g.
+               "Find Next Match" from the result overlay, which rebuilds units
+               before the phase ever leaves 'battle') replayed all 99 level-up
+               banners/logs/sfx and re-armed the secondary-job picker. */
+            const _wasBuildLeveling = unit._buildLeveling;
+            unit._buildLeveling = true;
             for (let L = 2; L <= level; L++) applyLevelUpRewards(unit, L);
+            unit._buildLeveling = _wasBuildLeveling;
             _recomputeStatsForLevel(unit, level);
             unit._xp = XP_THRESHOLDS[level - 1] || 0;
             unit._lvlCacheXp = unit._xp;
@@ -19124,12 +19132,18 @@
             const _apLvls = (typeof AP_BONUS_LEVELS !== 'undefined') ? AP_BONUS_LEVELS : [];
 
             let milestoneMsg = '';
-            const _inBattle = state.phase === 'battle';
+            /* "In battle" means a REAL mid-match level-up — never the silent
+               build-time pre-leveling loop (setUnitLevel / makeUnitsFromBuilds
+               set _buildLeveling), which can run while the previous match's
+               'battle' phase is still active (rematch, editor play test). */
+            const _inBattle = state.phase === 'battle' && !unit._buildLeveling;
             if (level === _shopLvl) {
                 milestoneMsg = 'Spell Shop unlocks!';
                 if (_inBattle) addLog(`⬆ ${name} reaches Lv.${level}! Spell Shop unlocks!`);
             } else if (level === _secJobLvl) {
-                if (_inBattle) unit._pendingSecondaryJobPick = true;
+                /* Only prompt units that don't already HAVE a secondary job —
+                   PvP units pick theirs in the party builder before the match. */
+                if (_inBattle && !unit._secondaryJob) unit._pendingSecondaryJobPick = true;
                 milestoneMsg = 'Choose a Secondary Job!';
                 if (_inBattle) addLog(`⬆ ${name} reaches Lv.${level}! Choose a Secondary Job!`);
             } else if (_apLvls.includes(level)) {
@@ -19148,7 +19162,7 @@
             // spell learns, milestones, or every 5th level (avoids 99 popups when
             // a unit is pre-leveled at build time — that runs outside battle).
             const _worthShowing = spellsToLearn.length > 0 || milestoneMsg || (level % 5 === 0);
-            if (level > 1 && _worthShowing && !_skipVisuals() && state.phase === 'battle'
+            if (level > 1 && _worthShowing && !_skipVisuals() && _inBattle
                 && !unit._lvlDlgSuppress /* grantXP shows ONE consolidated stat card instead */) {
                 showFloatingTextForUnit(unit, `⬆ LEVEL ${level}!`, 'levelup', { durationMs: 1800 });
                 playSfx('uiButtonConfirm');
@@ -19214,8 +19228,11 @@
             }
 
             const name = unitDisplayName(unit);
-            if (state.phase === 'battle') addLog(`🎭 ${name} chose ${jobName} as secondary job!`);
-            if (!_skipVisuals() && state.phase === 'battle') {
+            /* Same build-time gate as applyLevelUpRewards: units assembled for
+               a rematch pick/apply their secondary job silently. */
+            const _secInBattle = state.phase === 'battle' && !unit._buildLeveling;
+            if (_secInBattle) addLog(`🎭 ${name} chose ${jobName} as secondary job!`);
+            if (!_skipVisuals() && _secInBattle) {
                 const spellLearned = learnOrder?.[0] ? getSpellById(learnOrder[0]) : null;
                 const dlgLines = [
                     `<span class="dlg-sec-job">🎭 ${escapeHtml(name)} — ${escapeHtml(jobName)}!</span>`,
@@ -25243,6 +25260,79 @@
             hideResultOverlay();
         }
 
+        /* "Find Next Match" = re-queue with the same party, so the arena
+           rerolls too. Offline skirmish only: online rematches renegotiate
+           through the lobby, AI training/balance rotates its own pool,
+           campaign/dungeon/editor boards are authored, and Clash owns a
+           single fixed stage. Rotates within the current map class — full
+           launch maps among full maps, ranked Δ crops among Δ crops (Arena
+           keeps its 12×12 Δ siblings). */
+        function _rerollMapForNextMatch() {
+            if (typeof isOnlineMatch === 'function' && isOnlineMatch()) return;
+            if (state.isCampaign || state._mdRun) return;
+            if (_aiTrainingMode || _strengthTestMode || state.devAutoSim) return;
+            const mpMode = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
+            if (mpMode && mpMode.isClash) return;
+            const cur = (typeof activeGameMode !== 'undefined') ? activeGameMode : '';
+            if (!/^prebuilt_/.test(cur) || cur === 'prebuilt_custommap') return;
+            if (typeof EW_MAP_META === 'undefined' || !EW_MAP_META.length) return;
+
+            const isArenaDelta = /_delta_arena$/.test(cur);
+            const wantDelta = /_delta(_arena)?$/.test(cur);
+            const pool = [];
+            for (const m of EW_MAP_META) {
+                if (!!m.isDelta !== wantDelta) continue;
+                if (m.isDelta && !!m.isDeltaArena !== isArenaDelta) continue;
+                if (!GAME_MODES[m.id] || m.id === cur) continue;
+                pool.push(m.id);
+            }
+            if (!pool.length) return;
+            const nextId = pool[randInt(pool.length)];
+
+            // applyGameMode() resizes the party arrays and SPAWNS to the new
+            // map's DEFAULT team size — snapshot the real party + chosen team
+            // size, restore them after, then rebuild the spawn seats exactly
+            // the way match-select's confirm does for a custom team size.
+            const teamSize = CONFIG.teamSize;
+            const deploy = CONFIG.gauntletDeploy || 0;
+            const snap = {};
+            for (const p of [1, 2]) {
+                snap[p] = {
+                    builds: (state.partyBuilds[p] || []).slice(),
+                    names: (state.partyNames[p] || []).slice(),
+                    loadouts: (state.loadouts[p] || []).slice(),
+                    meta: ((state.partyMeta && state.partyMeta[p]) || []).slice(),
+                };
+            }
+            applyGameMode(nextId);
+            for (const p of [1, 2]) {
+                state.partyBuilds[p] = snap[p].builds;
+                state.partyNames[p] = snap[p].names;
+                state.loadouts[p] = snap[p].loadouts;
+                if (!state.partyMeta) state.partyMeta = {};
+                state.partyMeta[p] = snap[p].meta;
+            }
+            CONFIG.teamSize = teamSize;
+            CONFIG.gauntletDeploy = deploy;
+            const mode = GAME_MODES[nextId];
+            const seats = deploy > 0 ? deploy : teamSize;
+            const _mw = mode.boardWidth || mode.boardSize || 8;
+            const _mh = mode.boardHeight || mode.boardSize || 8;
+            SPAWNS[1] = (mode.spawns[1] || []).slice(0, seats);
+            SPAWNS[2] = (mode.spawns[2] || []).slice(0, seats);
+            while (SPAWNS[1].length < seats) {
+                const idx = SPAWNS[1].length;
+                SPAWNS[1].push({ x: idx % 2, y: Math.min(Math.floor(idx / 2), _mh - 1) });
+            }
+            while (SPAWNS[2].length < seats) {
+                const idx = SPAWNS[2].length;
+                SPAWNS[2].push({ x: _mw - 1 - idx % 2, y: Math.min(_mh - 1 - Math.floor(idx / 2), _mh - 1) });
+            }
+            // The caller logs the new arena AFTER prepareBattleState... wipes
+            // the combat log — a message added here would never be seen.
+            return mode.label;
+        }
+
         async function continueToNextMatch() {
             playSfx('uiButtonConfirm');
             state.matchNumber += 1;
@@ -25267,10 +25357,35 @@
             state._nexusThreatAnnounced = 0;
             state.suddenDeathActive = false;
 
+            // Everything startMatch() resets must reset here too, or it leaks
+            // into the rematch: weather/sky events kept raging, the match and
+            // shot clocks kept the old match's timestamps, the zodiac never
+            // rerolled, and CTF flags / the roaming nexus stayed wherever the
+            // last match left them (re-placed below, after the new board).
+            state.startTime = Date.now();
+            state.flags = null;
+            state.roamingNexus = null;
+            state.skyEvent = null;
+            state.activeWeather = [];
+            state.announcementQueue = [];
+            state.zodiacOffset = randInt(ZODIAC_CYCLE.length);
+            state.activeZodiac = getActiveZodiac(1);
+            const _nmMode = getActiveMultiplayerMode();
+            state.matchClock = {
+                // Keep the series' round limit (startMatch consumed any custom
+                // _customRoundLimit into the previous clock, so carry it over).
+                roundLimit: state.matchClock ? state.matchClock.roundLimit
+                    : ((_nmMode.roundLimit === 0) ? 0 : (_nmMode.roundLimit || 0)),
+                paused: false,
+                startedAt: Date.now(),
+            };
+            state.shotClock = { startedAt: 0, limitSec: 30, active: false };
+
             if (_aiTrainingMode && _trainMapSetting === 'rotate') {
                 const nextMap = _TRAIN_MAP_POOL[_trainMapIndex++ % _TRAIN_MAP_POOL.length];
                 applyGameMode(nextMap);
             }
+            const _newArenaLabel = _rerollMapForNextMatch();
 
             if (state.devAutoSim) {
                 if (_aiTrainingMode) {
@@ -25290,6 +25405,22 @@
             prepareBattleStateFromCurrentBuilds();
             refillBattleShuffleBag();
             state.currentBattleTrackKey = chooseBattleTrackKey();
+            clearUndoStack();
+            _startMatchClockInterval();
+
+            // Mode objectives live on the board, so they re-place AFTER the
+            // new board exists (same as startMatch's post-splash setup).
+            if (_nmMode.hasFlags) {
+                const z1 = state.spawnZones?.[1] || [];
+                const z2 = state.spawnZones?.[2] || [];
+                const mid1 = z1[Math.floor(z1.length / 2)] || { x: 1, y: 0 };
+                const mid2 = z2[Math.floor(z2.length / 2)] || { x: bw() - 2, y: 0 };
+                state.flags = {
+                    1: { x: mid1.x, y: mid1.y, carriedBy: null, atBase: true, owner: 1 },
+                    2: { x: mid2.x, y: mid2.y, carriedBy: null, atBase: true, owner: 2 },
+                };
+            }
+            if (_nmMode.hasRoamingNexus) _spawnRoamingNexus();
 
             state.round = 1;
 
@@ -25322,6 +25453,7 @@
             buildBlitzTurnOrder();
             beginBlitzRound();
 
+            if (_newArenaLabel) addLog(`🗺️ Matchmaking found a new arena: ${_newArenaLabel}!`);
             addLog(state.devAutoSim ?
                 `Dev sim match ${state.matchNumber} started. Both teams were rerandomized and a fresh objective-and-consumable roll was generated.` :
                 `⚡ Match ${state.matchNumber} started. Units act in speed order!`);

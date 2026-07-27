@@ -7168,6 +7168,14 @@
 
             applyLevelUpRewards(newUnit, 1);
 
+            /* Everything below (secondary job + pre-leveling to the target
+               level) is unit ASSEMBLY, not gameplay — keep it silent even when
+               the previous match's 'battle' phase is still live (rematch /
+               editor play test rebuild units before the phase resets). The
+               flag mutes applyLevelUpRewards + applySecondaryJob banners/logs
+               and the in-battle secondary-job re-prompt. */
+            newUnit._buildLeveling = true;
+
             /* Mystery Dungeon reuses the campaign leveling pipeline for its
                floor-scaled enemies (partyMeta._campaignEnemyLevel). */
             const _isCampaign = (typeof state !== 'undefined') && (state.isCampaign || !!state._mdRun);
@@ -7292,6 +7300,8 @@
                 }
             }
             }
+
+            delete newUnit._buildLeveling;
 
             // ── Accessory stat bonuses become REAL here ──────────────────────
             // computeEquipBonuses was previously only used for the party-builder
@@ -9796,6 +9806,37 @@
         }
 
         function _meEnterDioramaEditor() {
+            /* A finished match must not haunt the editor: stale units, pickups
+               and deployables from the last battle would render on top of the
+               authored board (and ride into the next Play Test). The editor is
+               only ever entered from the menus, so wiping battle-only state
+               here is safe — Play Test rebuilds all of it via startMatch(). */
+            state.units = [];
+            state.winner = null;
+            state.selectedUnitId = null;
+            state.focusedUnitId = null;
+            state.hoverUnitId = null;
+            state.actionMode = null;
+            state.actionMenuView = 'root';
+            state.pendingTarget = null;
+            state.hourglasses = [];
+            state.hiddenItems = [];
+            state.bombs = [];
+            state.traps = [];
+            state.wards = [];
+            state.turrets = [];
+            state.mirrors = [];
+            state.warpRunes = [];
+            state.pixieDust = [];
+            state.plantedSeeds = [];
+            state.plantedTrees = [];
+            state._deployedObjects = [];
+            state._delayedSpells = [];
+            state.activeWeather = [];
+            state.skyEvent = null;
+            state.flags = null;
+            state.roamingNexus = null;
+
             state.phase = 'editor';
             state.titleScreenVisible = false;
             /* Entering the editor is itself a user gesture, so audio may start —

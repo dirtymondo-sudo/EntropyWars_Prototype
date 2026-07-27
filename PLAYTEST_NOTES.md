@@ -4,7 +4,43 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## 🎱 COLLISION PHYSICS: wall bounce + bowling-pin knockback (2026-07-26, LATEST) — battle.js, data.js, hud.js, online.js, three-renderer.js, index.html
+## 🔁 REMATCH / MATCH CARRYOVER FIX (2026-07-27, LATEST) — battle.js, map.js, index.html
+Token → `20260727d-rematch`. "Find Next Match" was unplayable without a refresh:
+- **Root cause of the "units level to 100 + re-pick secondary job" spam**: unit
+  ASSEMBLY (`setUnitLevel` → `applyLevelUpRewards` 2..100, and the
+  `applySecondaryJob`/`aiPickSecondaryJob` calls in map.js
+  `makeUnitsFromBuilds`) keyed its banners/logs/sfx and
+  `_pendingSecondaryJobPick` on `state.phase === 'battle'`. From a menu boot
+  the phase is 'setup' (silent); from the result overlay the previous match's
+  phase is STILL 'battle', so every rebuild replayed 99 level-ups per unit and
+  re-armed the Lv.15 secondary-job picker. Fix: `unit._buildLeveling` flag —
+  set by `setUnitLevel` (save/restore) and around makeUnitsFromBuilds'
+  leveling block (deleted after) — makes `_inBattle` false in
+  `applyLevelUpRewards`/`applySecondaryJob`. Also `_pendingSecondaryJobPick`
+  now only arms when the unit has NO `_secondaryJob` yet (real progression
+  level-ups keep prompting).
+- **continueToNextMatch now resets everything startMatch does**: startTime,
+  flags/roamingNexus (re-placed after the new board, same as startMatch),
+  skyEvent/activeWeather/announcementQueue, zodiac reroll, matchClock
+  (roundLimit carried over, timestamps fresh) + `_startMatchClockInterval()`
+  (finalizeMatch had stopped it — the round-limit clock was DEAD in every
+  rematch), shotClock, `clearUndoStack()`.
+- **Map reroll on rematch** (`_rerollMapForNextMatch`, battle.js above
+  continueToNextMatch): simulates re-queuing — random different map from
+  `EW_MAP_META` within the current class (full↔full, Δ↔Δ, Arena-Δ↔Arena-Δ).
+  Gated OFF for online, campaign/MD, aitrain/balance/strength, devAutoSim,
+  Clash, `_custom_editor`/`_custom_community`/`prebuilt_custommap`, legacy
+  size modes. Snapshots party arrays + CONFIG.teamSize/gauntletDeploy around
+  `applyGameMode` (which resizes them to the map's default) and re-pads
+  SPAWNS like `_msConfirm`. Logs "🗺️ Matchmaking found a new arena: X!"
+  AFTER prepareBattleState (which wipes the log).
+- **Map editor residue**: `_meEnterDioramaEditor` now wipes battle-only state
+  (units, hourglasses, hiddenItems, bombs/traps/wards/turrets/mirrors/
+  warpRunes/pixieDust/seeds/trees/_deployedObjects/_delayedSpells, weather,
+  skyEvent, flags, winner, selection) — a finished match's units/pickups no
+  longer render on the authored board or ride into Play Test.
+
+## 🎱 COLLISION PHYSICS: wall bounce + bowling-pin knockback (2026-07-26) — battle.js, data.js, hud.js, online.js, three-renderer.js, index.html
 Token → `20260726z`. Every push/pull/hurl now funnels through ONE walker,
 `resolveForcedSlide(target, dx, dy, dist, opts)` (battle.js, right after
 `_tryCrashThrough`; exported on `GAME`). Per step, in order: thin edge wall on
