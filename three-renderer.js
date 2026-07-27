@@ -12965,6 +12965,26 @@ const ThreeRenderer = (function () {
         highlightGroup.add(underfootMesh);
     }
 
+    /* Custom "pick this unit" cursor: a little pointing finger, tinted gold
+       over your own units and red over enemies. Built once per color as an
+       SVG data-URI; falls back to the OS pointer if custom cursors fail. */
+    var _unitCursorCache = {};
+    function _unitHoverCursor(colorHex) {
+        if (_unitCursorCache[colorHex]) return _unitCursorCache[colorHex];
+        var fill = '#' + ('00000' + colorHex.toString(16)).slice(-6);
+        var svg =
+            '<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 26 26">' +
+            '<g stroke="#1a1408" stroke-width="1.4" stroke-linejoin="round" fill="' + fill + '">' +
+            '<path d="M10 3.2 C10 1.9 11 1 12.1 1 c1.1 0 2.1 0.9 2.1 2.2 L14.2 11 l1.2 0.2 ' +
+            'c0.5-0.9 1.7-1.2 2.6-0.7 l3.2 1.8 c0.9 0.5 1.4 1.5 1.2 2.5 l-1 5.1 ' +
+            'c-0.5 2.4-2.6 4.1-5 4.1 h-3.6 c-1.6 0-3.1-0.8-4.1-2.1 L4.6 16 ' +
+            'c-0.7-0.9-0.5-2.2 0.4-2.9 c0.8-0.6 2-0.5 2.7 0.3 L10 15.6 Z"/>' +
+            '</g></svg>';
+        var url = 'url("data:image/svg+xml;utf8,' + encodeURIComponent(svg) + '") 12 2, pointer';
+        _unitCursorCache[colorHex] = url;
+        return url;
+    }
+
     function _updateUnitHover(unitId) {
         if (unitId === _hoveredUnitId) return;
         _clearUnitHover();
@@ -12973,7 +12993,11 @@ const ThreeRenderer = (function () {
             if (canvas) canvas.style.cursor = '';
             return;
         }
-        if (canvas) canvas.style.cursor = 'pointer';
+        if (canvas) {
+            var hUnit = _findUnit(unitId);
+            var hCol = (hUnit && hUnit.player === _viewerPlayerNum()) ? TURN_COLOR_OWN : TURN_COLOR_ENEMY;
+            canvas.style.cursor = _unitHoverCursor(hCol);
+        }
 
         /* Bring the hovered unit's nameplate to full strength (visual hierarchy). */
         var hpo = _plateObjs.get(unitId);
@@ -13045,9 +13069,11 @@ const ThreeRenderer = (function () {
 
     function _buildSelectionChevron(ts, colorHex) {
         var col = (colorHex != null) ? colorHex : TURN_COLOR_OWN;
-        var w = ts * 0.30;
-        var h = ts * 0.26;
-        var t = ts * 0.13;
+        /* Compact marker: ~2/3 the old footprint. Still a bold solid V, but
+           it hugs the nameplate instead of towering over the unit. */
+        var w = ts * 0.20;
+        var h = ts * 0.17;
+        var t = ts * 0.09;
 
         var grp = new THREE.Group();
         grp._ew_billboard = true;
@@ -13056,8 +13082,9 @@ const ThreeRenderer = (function () {
 
         var mainGeo = _chevGeometry(w, h, t);
         /* Second, smaller chevron stacked above — the classic double-chevron
-           "you are HERE" marker; reads at a glance even on a busy board. */
-        var stackGeo = _chevGeometry(w * 0.72, h * 0.72, t * 0.85);
+           "you are HERE" marker; reads at a glance even on a busy board.
+           Tucked tighter to the main V so the whole marker stays compact. */
+        var stackGeo = _chevGeometry(w * 0.68, h * 0.68, t * 0.8);
 
         function _mkSolid(geo, y) {
             var mat = new THREE.MeshBasicMaterial({
@@ -13088,10 +13115,10 @@ const ThreeRenderer = (function () {
             return m;
         }
 
-        _mkGlow(mainGeo, -h * 0.18, 1.45);
-        _mkGlow(stackGeo, h + t * 1.4, 1.45);
+        _mkGlow(mainGeo, -h * 0.18, 1.3);
+        _mkGlow(stackGeo, h + t * 1.1, 1.3);
         _mkSolid(mainGeo, 0);
-        _mkSolid(stackGeo, h + t * 1.6);
+        _mkSolid(stackGeo, h + t * 1.25);
         return grp;
     }
 
@@ -13145,7 +13172,7 @@ const ThreeRenderer = (function () {
         }
 
         var topY = ue.group._ew_spriteTopY ? (ue.group._ew_spriteTopY - ue.group.position.y) : ((CONFIG.tileSize || BASE_TILE) * 0.85);
-        var bobOffset = Math.sin(performance.now() * 0.003) * 6;
+        var bobOffset = Math.sin(performance.now() * 0.003) * 4;
 
         /* Plate anchor is at topY + 12 in local coords; plate grows upward ~75px
            in screen space (fixed size due to MIN_PLATE_SCALE clamping).
