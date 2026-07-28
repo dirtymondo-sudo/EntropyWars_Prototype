@@ -2271,12 +2271,14 @@
                                 ground level; only jump-stat-2+ units can JUMP
                                 onto the T-head (never stand inside it) — for
                                 jump-1 units (most, since 2026-07-23) it's a wall
-             monolith/ankh/greytube → full-height solid masses (capped by the
+             monolith/greytube → full-height solid masses (capped by the
                                 placement's maxH — an h2 monolith is a jumpable
                                 block, an h3 one is a true wall)
              blastdoor        → a thin full-height wall row (stamps are
                                 rotation-blind: the row runs along X)
-           greek & arch are left passable (visual-only) for now. Placements
+             greek            → a low h1 plinth across the ruin's footprint —
+                                clamber up and fight among the columns
+           arch/gateway are left passable (walk under the span). Placements
            that want any of these purely cosmetic pass { solid: false }. */
         const _MON_COLLISION = {
             pyramid:  (dx, dy, rr) => rr - Math.max(Math.abs(dx), Math.abs(dy)),
@@ -2284,18 +2286,27 @@
             stairway: (dx, dy, rr) => dy + rr,
             obelisk:  (dx, dy, rr) => (dx === 0 && dy === 0) ? 6 : 0,
             colossus: (dx, dy, rr) => 1,
-            // 2026-07 prop foundry: vehicles are mantle-height platforms
-            // (climb the bus/lander roof); the Owl of the Grove is a wall
-            bus:      (dx, dy, rr) => 1,
-            lander:   (dx, dy, rr) => 1,
-            owlidol:  (dx, dy, rr) => (dx === 0 && dy === 0) ? 6 : 0,
+            greek:    (dx, dy, rr) => 1,
             // 2026-07-15 hard-cover pass: solid landmarks you can no longer
             // stand inside / see through (see the profile notes above)
             tpillar:   (dx, dy, rr) => 2,
             monolith:  (dx, dy, rr) => 6,
-            ankh:      (dx, dy, rr) => (dx === 0 && dy === 0) ? 6 : 0,
             greytube:  (dx, dy, rr) => (dx === 0 && dy === 0) ? 6 : 0,
             blastdoor: (dx, dy, rr) => (dy === 0) ? 6 : 0
+        };
+        /* Grid-snapped GLB props claim an EXACT tile box [w, d, h] (tiles),
+           anchored so the box starts at x - floor((w-1)/2) — identical to the
+           centered stamps for odd sizes, extending east/south for even ones.
+           Every covered tile gets the full h stacked on its floor, so units can
+           never stand inside or clip through them (an h1 roof is a climbable
+           platform, h2 is jump-only cover, h3 is a wall). Keep in sync with
+           three-renderer.js _MON_GRID (the matching visual fit). */
+        const _MON_GRID = {
+            dumpster:  [2, 1, 1],
+            greekcol:  [1, 1, 2],
+            mushroom:  [1, 1, 2],
+            mushroom2: [1, 1, 1],
+            obelisk3d: [1, 1, 3]
         };
         function _stampMonumentCollision() {
             state._monumentTiles = null;
@@ -2310,8 +2321,31 @@
                     return m;
                 };
                 for (const mon of state.monuments) {
+                    if (mon.solid === false) continue;
+                    const grid = _MON_GRID[mon.kind];
+                    if (grid) {
+                        /* exact tile box; 90°/270° rotation swaps w↔d */
+                        const swap = (Math.round((mon.rot || 0) / 90) & 1) === 1;
+                        const gw = swap ? grid[1] : grid[0], gd = swap ? grid[0] : grid[1], gh = grid[2];
+                        const x0 = mon.x - Math.floor((gw - 1) / 2), y0 = mon.y - Math.floor((gd - 1) / 2);
+                        for (let gy = y0; gy < y0 + gd; gy++) {
+                            for (let gx = x0; gx < x0 + gw; gx++) {
+                                if (gx < 0 || gy < 0 || gx >= W || gy >= H) continue;
+                                const floor = curTop(gx, gy);
+                                const colV = state.boardVoxels[gy][gx] || (state.boardVoxels[gy][gx] = []);
+                                const have = new Set(colV.map(b => b.z));
+                                for (let z = floor + 1; z <= floor + gh; z++) {
+                                    if (!have.has(z)) colV.push({ z, terrain: 'grass' });
+                                }
+                                const key = gx + ',' + gy;
+                                const prev = tiles.get(key);
+                                tiles.set(key, (prev === undefined) ? floor : Math.min(prev, floor));
+                            }
+                        }
+                        continue;
+                    }
                     const prof = _MON_COLLISION[mon.kind];
-                    if (!prof || mon.solid === false) continue;
+                    if (!prof) continue;
                     const F = Math.max(1, mon.foot || 3);
                     const rr = Math.floor(F / 2);
                     const cap = (typeof mon.maxH === 'number') ? mon.maxH : 99;
@@ -7893,7 +7927,6 @@
             { kind: 'crystal',     label: 'Crystal Shards',  emoji: '💎', foot: 2, maxH: 3 },
             { kind: 'rings',       label: 'Sacred Rings',    emoji: '🌀', foot: 2, maxH: 3 },
             { kind: 'island',      label: 'Floating Island', emoji: '🏝️', foot: 3, maxH: 3 },
-            { kind: 'mountain',    label: 'Mountain',        emoji: '🏔️', foot: 4, maxH: 4 },
             { kind: 'flag',        label: 'Flag',            emoji: '🚩', foot: 1, maxH: 2 },
             { kind: 'rover',       label: 'Rover',           emoji: '🛻', foot: 1, maxH: 1 },
             { kind: 'goldgate',    label: 'Golden Gate',     emoji: '🌁', foot: 3, maxH: 3 },
@@ -7903,57 +7936,39 @@
             // 2026-07 prop foundry — per-map signature lore pieces
             { kind: 'lenticular',  label: 'Lenticular Cloud', emoji: '🛸', foot: 3, maxH: 6 },
             { kind: 'trilithon',   label: 'Trilithon',       emoji: '🪨', foot: 2, maxH: 3 },
-            { kind: 'wickerman',   label: 'Wicker Man',      emoji: '🔥', foot: 2, maxH: 4 },
-            { kind: 'sphinx',      label: 'Sphinx',          emoji: '🐈', foot: 3, maxH: 2 },
-            { kind: 'ankh',        label: 'Ankh',            emoji: '☥', foot: 1, maxH: 3 },
-            { kind: 'bus',         label: 'School Bus',      emoji: '🚌', foot: 2, maxH: 2 },
-            { kind: 'mannequin',   label: 'Mannequin',       emoji: '🧍', foot: 1, maxH: 2 },
-            { kind: 'throne',      label: 'Empty Throne',    emoji: '👑', foot: 2, maxH: 3 },
-            { kind: 'seraph',      label: 'Seraph Statue',   emoji: '👼', foot: 2, maxH: 3 },
-            { kind: 'bonearch',    label: 'Bone Arch',       emoji: '🦴', foot: 3, maxH: 2 },
             { kind: 'brazier',     label: 'Brazier',         emoji: '🕯️', foot: 1, maxH: 2 },
             { kind: 'holoboard',   label: 'Holo Billboard',  emoji: '📺', foot: 2, maxH: 4 },
-            { kind: 'hovercar',    label: 'Hover Car',       emoji: '🚗', foot: 2, maxH: 1 },
             { kind: 'excalibur',   label: 'Sword in Stone',  emoji: '⚔️', foot: 1, maxH: 3 },
-            { kind: 'dragonskull', label: 'Dragon Skull',    emoji: '🐲', foot: 2, maxH: 2 },
-            { kind: 'blimp',       label: 'Blimp',           emoji: '🎈', foot: 3, maxH: 7 },
             { kind: 'jumbotron',   label: 'Jumbotron',       emoji: '🖥️', foot: 3, maxH: 4 },
-            { kind: 'trident',     label: 'Trident',         emoji: '🔱', foot: 1, maxH: 4 },
-            { kind: 'shipwreck',   label: 'Shipwreck',       emoji: '⛵', foot: 3, maxH: 2 },
             { kind: 'babelcrane',  label: 'Ancient Crane',   emoji: '🏗️', foot: 2, maxH: 4 },
             { kind: 'tablet',      label: 'Law Tablet',      emoji: '📜', foot: 1, maxH: 2 },
-            { kind: 'zeusbolt',    label: 'Zeus Bolt',       emoji: '⚡', foot: 1, maxH: 3 },
-            { kind: 'cydoniaface', label: 'Cydonia Face',    emoji: '🗿', foot: 3, maxH: 2 },
             { kind: 'biodome',     label: 'Biodome',         emoji: '🫧', foot: 3, maxH: 2 },
             { kind: 'saucer',      label: 'Saucer',          emoji: '🛸', foot: 3, maxH: 3 },
-            { kind: 'radardish',   label: 'Radar Dish',      emoji: '📡', foot: 2, maxH: 3 },
             { kind: 'whalebones',  label: 'Whalefall',       emoji: '🐋', foot: 3, maxH: 2 },
-            { kind: 'cattleskull', label: 'Cattle Skull',    emoji: '💀', foot: 1, maxH: 3 },
             { kind: 'windmill',    label: 'Windpump',        emoji: '🌬️', foot: 2, maxH: 4 },
             { kind: 'innersun',    label: 'Inner Sun',       emoji: '☀️', foot: 2, maxH: 7 },
-            { kind: 'fossil',      label: 'Fossil',          emoji: '🦕', foot: 3, maxH: 2 },
             { kind: 'toadstool',   label: 'Toadstool',       emoji: '🍄', foot: 2, maxH: 3 },
             { kind: 'fairyring',   label: 'Fairy Ring',      emoji: '🧚', foot: 2, maxH: 2 },
-            { kind: 'lander',      label: 'Lunar Lander',    emoji: '🚀', foot: 2, maxH: 3 },
-            { kind: 'serpenthead', label: 'Serpent Head',    emoji: '🐍', foot: 2, maxH: 3 },
             { kind: 'holopyramid', label: 'Holo Pyramid',    emoji: '🔻', foot: 2, maxH: 4 },
             { kind: 'geode',       label: 'Geode',           emoji: '🔮', foot: 2, maxH: 2 },
             { kind: 'basilicadome',label: 'Basilica Dome',   emoji: '⛪', foot: 3, maxH: 4 },
             { kind: 'censer',      label: 'Censer',          emoji: '🪔', foot: 1, maxH: 3 },
-            { kind: 'owlidol',     label: 'Owl Idol',        emoji: '🦉', foot: 2, maxH: 4 },
             { kind: 'effigy',      label: 'Effigy',          emoji: '🪦', foot: 2, maxH: 1 },
             { kind: 'tpillar',     label: 'T-Pillar',        emoji: '🇹', foot: 1, maxH: 3 },
-            { kind: 'handbag',     label: 'Gods\' Handbag',  emoji: '👜', foot: 2, maxH: 2 },
             { kind: 'greytube',    label: 'Specimen Tank',   emoji: '🧪', foot: 1, maxH: 3 },
             { kind: 'blastdoor',   label: 'Blast Door',      emoji: '🚪', foot: 2, maxH: 3 },
-            { kind: 'shiva',       label: 'Dancer Statue',   emoji: '🕉️', foot: 2, maxH: 3 },
             { kind: 'beamring',    label: 'Beamline',        emoji: '🧲', foot: 3, maxH: 2 },
-            { kind: 'wetfloorsign',label: 'Wet Floor Sign',  emoji: '⚠️', foot: 1, maxH: 1 },
             { kind: 'securitycam', label: 'Security Camera', emoji: '📹', foot: 1, maxH: 3 },
             { kind: 'sleigh',      label: 'Sleigh',          emoji: '🛷', foot: 2, maxH: 2 },
             { kind: 'candycane',   label: 'Candy Pole',      emoji: '🍬', foot: 1, maxH: 3 },
-            { kind: 'weatherballoon', label: 'Weather Balloon', emoji: '🎈', foot: 2, maxH: 7 },
-            { kind: 'roadsign',    label: 'Road Sign',       emoji: '🛑', foot: 1, maxH: 3 },
+            // 2026-07-28 real-GLB props — grid-snapped tile boxes (w×d×h),
+            // solid collision stamped from _MON_GRID; foot/maxH shown here are
+            // display-only (the box is fixed per kind)
+            { kind: 'dumpster',    label: 'Dumpster',        emoji: '🗑️', foot: 2, maxH: 1 },
+            { kind: 'greekcol',    label: 'Greek Column',    emoji: '🏛️', foot: 1, maxH: 2 },
+            { kind: 'mushroom',    label: 'Mushroom',        emoji: '🍄', foot: 1, maxH: 2 },
+            { kind: 'mushroom2',   label: 'Mushroom (Real)', emoji: '🍄', foot: 1, maxH: 1 },
+            { kind: 'obelisk3d',   label: 'Obelisk (3D)',    emoji: '🗿', foot: 1, maxH: 3 },
         ];
         const ME_MON_BY_KIND = {};
         ME_MONUMENT_KINDS.forEach(m => { ME_MON_BY_KIND[m.kind] = m; });

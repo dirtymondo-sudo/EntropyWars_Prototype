@@ -7039,21 +7039,31 @@ data.js, index.html** (token → 20260708b).
   sprite textured via `_hzTex`/`_hzGeoMat` (day/night graded) + `_hzGlowMat`/
   `_hzGlowCore`/`_hzPulse` bloom accents. Registered in `_MON_BUILDERS`
   (~line 4400) + `ME_MONUMENT_KINDS` (map.js editor palette, emoji cards).
-  Kinds: lenticular trilithon wickerman sphinx ankh bus mannequin throne
-  seraph bonearch brazier holoboard hovercar excalibur dragonskull blimp
-  jumbotron trident shipwreck babelcrane tablet zeusbolt cydoniaface biodome
-  saucer radardish whalebones cattleskull windmill innersun fossil toadstool
-  fairyring lander serpenthead holopyramid geode basilicadome censer owlidol
-  effigy tpillar handbag greytube blastdoor shiva beamring wetfloorsign
-  securitycam sleigh candycane weatherballoon roadsign.
+  Kinds (surviving the 2026-07-28 cull — see below): lenticular trilithon
+  brazier holoboard excalibur jumbotron babelcrane tablet biodome saucer
+  whalebones windmill innersun toadstool fairyring holopyramid geode
+  basilicadome censer effigy tpillar greytube blastdoor beamring securitycam
+  sleigh candycane.
+  **2026-07-28 CULL:** removed completely (builders, `_MON_BUILDERS`,
+  `ME_MONUMENT_KINDS`, `_MON_COLLISION`, data.js placements, horizon rosters):
+  mountain wickerman sphinx ankh bus mannequin throne seraph bonearch hovercar
+  dragonskull blimp trident shipwreck zeusbolt cydoniaface radardish
+  cattleskull fossil lander serpenthead owlidol handbag shiva wetfloorsign
+  weatherballoon roadsign. `sleigh` + `excalibur` now render REAL Meshy GLBs
+  (Assets/weapons Golden_Red_Sleigh / master_sword); five NEW grid-snapped GLB
+  props added from Assets/misc: dumpster (2×1×1) greekcol (1×1×2) mushroom
+  (1×1×2) mushroom2 (1×1×1) obelisk3d (1×1×3) — `_MON_GRID` (both
+  three-renderer.js and map.js, keep in sync) stamps their exact tile box
+  solid so units can't stand in / clip through them; the renderer fills the
+  box visually (min-axis fit + clamped height normalize). Classic monuments
+  now scale to FILL their footprint (no more shrink-to-maxH) with a clamped
+  vertical squash/stretch, and `greek` stamps an h1 plinth platform.
 - **Functional (collision, map.js `_MON_COLLISION` + validator mirror):**
-  `bus`/`lander` = colossus-style +1 platforms (mantle onto the roof);
-  `owlidol` = obelisk-style blocker. Everything else decorative (solid:false).
-- **Placements** live in each map's forge builder (data.js): every launch map
-  now carries 1-3 signature pieces (Nuketown bus+mannequins, Moon landers,
-  Giza sphinxes+ankhs, Grove owl+effigy, CERN shiva+beamline, Flat Lands
-  weather balloon, Stadium blimp+jumbotron, etc.). Saucers also drift in the
-  'orbs'/'space' horizon themes; lenticulars in 'islands'.
+  pyramid/ziggurat steps, stairway, obelisk/monolith/greytube blockers,
+  colossus/greek h1 platforms, tpillar 2-voxel cover, blastdoor wall, plus the
+  `_MON_GRID` boxes above. Everything else decorative (solid:false).
+- **Placements** live in each map's forge builder (data.js). Saucers also
+  drift in the 'orbs'/'space' horizon themes; lenticulars in 'islands'.
 - **Floating props MUST carry a ground anchor** (tether/beam/shadow disc):
   `_buildMonumentObj` seats groups by `surfaceY - box.min.y`, so an anchor at
   y=0 is what keeps a blimp/balloon/inner-sun aloft.

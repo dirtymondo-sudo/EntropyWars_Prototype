@@ -6141,29 +6141,29 @@ const ThreeRenderer = (function () {
             pyramid: _hzModelPyramid, pyramid_cone: _hzPyramid,
             ziggurat: _hzZiggurat, arch: _hzGateway, gateway: _hzGateway,
             obelisk: _hzObelisk, stairway: _hzStairway, monolith: _hzMonolith,
-            greek: _hzGreekRuin, mountain: _hzMountain, crystal: _hzCrystalShards,
+            greek: _hzGreekRuin, crystal: _hzCrystalShards,
             rings: _hzSacredRings, colossus: _hzColossus, island: _hzFloatingIsland,
             flag: _hzFlag, rover: _hzRover, goldgate: _hzGoldGate,
             lightpillar: _hzLightPillar, fluorescent: _hzFluorescent,
             exitsign: _hzExitSign,
             // 2026-07 map-prop foundry — per-map signature lore pieces
-            lenticular: _hzLenticular, trilithon: _hzTrilithon, wickerman: _hzWickerman,
-            sphinx: _hzSphinx, ankh: _hzAnkh, bus: _hzBus, mannequin: _hzMannequin,
-            throne: _hzThrone, seraph: _hzSeraph, bonearch: _hzBoneArch, brazier: _hzBrazier,
-            holoboard: _hzHoloboard, hovercar: _hzHovercar, excalibur: _hzExcalibur,
-            dragonskull: _hzDragonSkull, blimp: _hzBlimp, jumbotron: _hzJumbotron,
-            trident: _hzTrident, shipwreck: _hzShipwreck, babelcrane: _hzBabelCrane,
-            tablet: _hzTablet, zeusbolt: _hzZeusBolt, cydoniaface: _hzCydoniaFace,
-            biodome: _hzBiodome, saucer: _hzSaucer, radardish: _hzRadarDish,
-            whalebones: _hzWhalebones, cattleskull: _hzCattleSkull, windmill: _hzWindmill,
-            innersun: _hzInnerSun, fossil: _hzFossil, toadstool: _hzToadstool,
-            fairyring: _hzFairyRing, lander: _hzLander, serpenthead: _hzSerpentHead,
+            lenticular: _hzLenticular, trilithon: _hzTrilithon, brazier: _hzBrazier,
+            holoboard: _hzHoloboard, excalibur: _hzExcalibur,
+            jumbotron: _hzJumbotron, babelcrane: _hzBabelCrane,
+            tablet: _hzTablet,
+            biodome: _hzBiodome, saucer: _hzSaucer,
+            whalebones: _hzWhalebones, windmill: _hzWindmill,
+            innersun: _hzInnerSun, toadstool: _hzToadstool,
+            fairyring: _hzFairyRing,
             holopyramid: _hzHoloPyramid, geode: _hzGeode, basilicadome: _hzBasilicaDome,
-            censer: _hzCenser, owlidol: _hzOwlIdol, effigy: _hzEffigy, tpillar: _hzTPillar,
-            handbag: _hzHandbag, greytube: _hzGreyTube, blastdoor: _hzBlastDoor,
-            shiva: _hzShiva, beamring: _hzBeamRing, wetfloorsign: _hzWetFloorSign,
+            censer: _hzCenser, effigy: _hzEffigy, tpillar: _hzTPillar,
+            greytube: _hzGreyTube, blastdoor: _hzBlastDoor,
+            beamring: _hzBeamRing,
             securitycam: _hzSecurityCam, sleigh: _hzSleigh, candycane: _hzCandyCane,
-            weatherballoon: _hzWeatherBalloon, roadsign: _hzRoadSign,
+            // 2026-07-28 real-GLB props (Assets/misc Meshy models, grid-snapped)
+            dumpster: _hzPropDumpster, greekcol: _hzPropGreekColumn,
+            mushroom: _hzPropMushroom, mushroom2: _hzPropMushroomReal,
+            obelisk3d: _hzPropObelisk,
             // 2026-07 gap-fill batch — graveyard / unholy / arcane lore pieces
             woodcross: _hzWoodCross, skull: _hzGrinSkull,
             fleshmound: _hzFleshMound, tome: _hzTome,
@@ -6179,6 +6179,23 @@ const ThreeRenderer = (function () {
             t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
             return ((t ^ t >>> 14) >>> 0) / 4294967296;
         };
+    }
+    /* Kinds that occupy an EXACT tile box [w, d, h] (in tiles), anchored so the
+       box starts at mon.x - floor((w-1)/2) (identical to today's centering for
+       odd sizes; even sizes extend east/south). Keep in sync with map.js
+       _MON_GRID — that table stamps the matching solid collision. */
+    var _MON_GRID = {
+        dumpster:  [2, 1, 1],
+        greekcol:  [1, 1, 2],
+        mushroom:  [1, 1, 2],
+        mushroom2: [1, 1, 1],
+        obelisk3d: [1, 1, 3]
+    };
+    function _monGridDims(mon) {
+        var grid = _MON_GRID[mon.kind];
+        if (!grid) return null;
+        var swap = (Math.round((mon.rot || 0) / 90) & 1) === 1;   // 90°/270° swaps w↔d
+        return { w: swap ? grid[1] : grid[0], d: swap ? grid[0] : grid[1], h: grid[2] };
     }
     function _buildMonumentObj(mon) {
         if (!mon || typeof THREE === 'undefined') return null;
@@ -6196,9 +6213,40 @@ const ThreeRenderer = (function () {
         g.updateMatrixWorld(true);
         var box = new THREE.Box3().setFromObject(g);
         var size = new THREE.Vector3(); box.getSize(size);
-        var s = ((mon.foot || 3) * ts) / Math.max(size.x, size.z, 1);   // fit footprint
-        if (mon.maxH) { var sH = (mon.maxH * ts) / Math.max(size.y, 1); if (sH < s) s = sH; }
-        g.scale.set(s, s, s);
+        var grid = _monGridDims(mon);
+        /* Async GLB props start life as an empty group (bbox degenerate). Park
+           the group at its anchor unscaled — the loader flips _objectsDirty when
+           the mesh arrives and the rebuild re-measures it properly. */
+        if (!isFinite(box.min.y) || size.x <= 0) {
+            var aw = grid ? grid.w : 1, ad = grid ? grid.d : 1;
+            var ax = grid ? (mon.x - Math.floor((aw - 1) / 2)) : mon.x;
+            var ay = grid ? (mon.y - Math.floor((ad - 1) / 2)) : mon.y;
+            g.position.set((ax + aw / 2) * ts, 0, (ay + ad / 2) * ts);
+            g._ew_monument = true;
+            return g;
+        }
+        var s, sy;
+        if (grid) {
+            /* Grid-snapped prop: FILL the tile box on both horizontal axes
+               (uniform fit against the tighter axis) and normalize height to
+               the box, within sane proportion bounds so nothing pancakes. */
+            s = Math.min((grid.w * ts) / Math.max(size.x, 0.001),
+                         (grid.d * ts) / Math.max(size.z, 0.001));
+            sy = (grid.h * ts) / Math.max(size.y, 0.001);
+            sy = Math.max(s * 0.6, Math.min(s * 1.8, sy));
+        } else {
+            /* Classic monuments: fit the declared footprint with the LONGEST
+               horizontal axis (so they finally span their footprint instead of
+               shrinking to satisfy maxH), then normalize height toward maxH
+               tiles with a clamped vertical stretch/squash. */
+            s = ((mon.foot || 3) * ts) / Math.max(size.x, size.z, 1);
+            sy = s;
+            if (mon.maxH) {
+                sy = (mon.maxH * ts) / Math.max(size.y, 1);
+                sy = Math.max(s * 0.55, Math.min(s * 1.7, sy));
+            }
+        }
+        g.scale.set(s, sy, s);
         g.updateMatrixWorld(true);
         box = new THREE.Box3().setFromObject(g);
         /* Sit on the tile's GROUND floor (maps have a z>=3 floor). Use the recorded
@@ -6215,7 +6263,12 @@ const ThreeRenderer = (function () {
             } else floorZ = 0;
             surfaceY = floorZ * ts * ELEV_STEP_RATIO;
         } catch (e) { surfaceY = 0; }
-        g.position.set(mon.x * ts + ts / 2, surfaceY - box.min.y, mon.y * ts + ts / 2);
+        if (grid) {
+            var gx = mon.x - Math.floor((grid.w - 1) / 2), gy = mon.y - Math.floor((grid.d - 1) / 2);
+            g.position.set((gx + grid.w / 2) * ts, surfaceY - box.min.y, (gy + grid.d / 2) * ts);
+        } else {
+            g.position.set(mon.x * ts + ts / 2, surfaceY - box.min.y, mon.y * ts + ts / 2);
+        }
         g._ew_monument = true;
         return g;
     }
@@ -19291,23 +19344,6 @@ const ThreeRenderer = (function () {
         var g = new THREE.Group(); g.add(m); return g;
     }
 
-    // Distant mountain peak, textured with the nexus terrain sprite.
-    function _hzMountain(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var tex = _hzTex('nexus');
-        var h = ts * (9 + rng() * 10);
-        var r = h * (0.55 + rng() * 0.40);               // base radius
-        var seg = 5 + (rng() * 3 | 0);                   // low-poly, faceted peak
-        var geo = new THREE.ConeGeometry(r, h, seg, 1, false);
-        // tile around the base circumference and up the slant for terrain density
-        _hzScaleUV(geo, Math.max(1, (2 * Math.PI * r) / ts), Math.max(1, h / ts));
-        var m = new THREE.Mesh(geo, _hzGeoMat(tex, 0xffffff));
-        m.position.y = h * 0.5; m.frustumCulled = false;
-        g.add(m);
-        return g;
-    }
-
     // ── geometry helpers for the landmark structures ──
     // Dedicated horizon texture instances (one per terrain key) loaded through
     // the module loader so they upload reliably once the PNG arrives. We keep
@@ -19630,7 +19666,13 @@ const ThreeRenderer = (function () {
         ufo:       'Meshy_AI_Triangle_UFO_0727195842_texture.glb',
         spaceship: 'Meshy_AI_spaceship_0727195825_texture.glb',
         clock:     'Meshy_AI_analog_clock_realist_0727195259_texture.glb',
-        gclock:    'Meshy_AI_grandfather_clock_re_0727195306_texture.glb'
+        gclock:    'Meshy_AI_grandfather_clock_re_0727195306_texture.glb',
+        // 2026-07-28 on-board prop batch — grid-snapped monuments (see _MON_GRID)
+        dumpster:  'Meshy_AI_dumpster_0727195512_texture.glb',
+        greekcol:  'Meshy_AI_greek_column_0727195651_texture.glb',
+        mushroom:  'Meshy_AI_mushroom_0727200342_texture.glb',
+        mushroom2: 'Meshy_AI_mushroom_realistic_0727202046_texture.glb',
+        obelisk3d: 'Meshy_AI_obelisk_0727195707_texture.glb'
     };
 
     // keep the GLB's own baked texture, just unlit — the misc-model default
@@ -19644,6 +19686,61 @@ const ThreeRenderer = (function () {
         opts = opts || {};
         if (!opts.matPick) opts.matPick = _hzMiscUnlitPick;
         return _miscModelInstance(_R2_MISC + _MISC_GLB[key], true, target, opts);
+    }
+
+    // On-BOARD prop material: keep the GLB's baked texture but respond to the
+    // scene's lights + fog (Lambert), so grounded props sit in the world's
+    // day/night grade instead of glowing like the celestial bodies do.
+    function _hzPropLitPick(node, srcMat) {
+        return new THREE.MeshLambertMaterial({
+            map: (srcMat && srcMat.map) || null,
+            side: THREE.FrontSide
+        });
+    }
+    function _hzPropGLB(key, target) {
+        return _hzMiscGLB(key, target, { matPick: _hzPropLitPick });
+    }
+
+    // ── Grid-snapped board props (real Meshy GLBs from Assets/misc) ───────
+    // These five are true on-board furniture, not horizon scenery: each one
+    // claims an exact tile box (see _MON_GRID + map.js _MON_GRID footprints
+    // for the matching collision stamp) so units can never stand inside or
+    // clip through them. The target height passed here is only the pre-scale;
+    // _buildMonumentObj re-fits them to their tile box.
+    function _hzPropDumpster(rng)     { var ts = CONFIG.tileSize || BASE_TILE; return _hzPropGLB('dumpster',  ts * 1.0); }
+    function _hzPropGreekColumn(rng)  { var ts = CONFIG.tileSize || BASE_TILE; return _hzPropGLB('greekcol',  ts * 2.0); }
+    function _hzPropMushroom(rng)     { var ts = CONFIG.tileSize || BASE_TILE; return _hzPropGLB('mushroom',  ts * 2.0); }
+    function _hzPropMushroomReal(rng) { var ts = CONFIG.tileSize || BASE_TILE; return _hzPropGLB('mushroom2', ts * 1.0); }
+    function _hzPropObelisk(rng)      { var ts = CONFIG.tileSize || BASE_TILE; return _hzPropGLB('obelisk3d', ts * 3.0); }
+
+    // ── Camelot: the sword in the stone (real Meshy master-sword GLB) ─────
+    function _hzExcalibur(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var rock = _hzGeoMat(_hzTex('rocks_2') || _hzTex('cliff'), 0x9a958c);
+        var stone = new THREE.Mesh(new THREE.DodecahedronGeometry(ts * 0.9, 0), rock);
+        stone.scale.y = 0.72;
+        _hzAt(g, stone, 0, ts * 0.6, 0);
+        // the blade itself: the Meshy master-sword model, point sunk into the stone
+        var sword = _miscModelInstance(
+            'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_master_sword_0713025949_texture.glb',
+            true, ts * 2.6, { matPick: _hzPropLitPick });
+        sword.position.y = ts * 0.55;          // hide the point inside the rock
+        sword.rotation.z = 0.06;               // the slight lean every legend draws
+        g.add(sword);
+        var gleamMat = _hzGlowMat(0xdfefff, 0.5);
+        var gleam = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.09, 6, 5), gleamMat);
+        _hzAt(g, gleam, ts * 0.06, ts * 2.5, ts * 0.04);
+        _hzPulse(gleamMat, gleam, 0.3, 0.2, 0.6);
+        return g;
+    }
+
+    // ── North Pole: the sleigh, packed and ready (real Meshy GLB) ─────────
+    function _hzSleigh(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        return _miscModelInstance(
+            'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_Golden_Red_Sleigh_0725071548_texture.glb',
+            true, ts * 1.5, { matPick: _hzPropLitPick });
     }
 
     // A lone planet adrift in the void — Earth, Jupiter, Saturn or a nameless
@@ -20411,174 +20508,6 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Stonehenge: the wicker man, ember-hearted ──
-    function _hzWickerman(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var tex = _hzTex('wood') || _hzTex('wood_planks');
-        var m = function (c) { return _hzGeoMat(tex, c || 0x7a6136); };
-        var legH = ts * 2.2, bodyH = ts * 2.6, headR = ts * 0.62;
-        _hzAt(g, _hzCyl(ts * 0.22, ts * 0.30, legH, 7, ts, m()), -ts * 0.55, legH / 2, 0, 0, 0.06);
-        _hzAt(g, _hzCyl(ts * 0.22, ts * 0.30, legH, 7, ts, m()), ts * 0.55, legH / 2, 0, 0, -0.06);
-        var torso = _hzAt(g, _hzCyl(ts * 0.55, ts * 0.85, bodyH, 8, ts, m()), 0, legH + bodyH / 2, 0);
-        _hzAt(g, _hzCyl(ts * 0.16, ts * 0.20, ts * 2.3, 6, ts, m()), -ts * 1.15, legH + bodyH * 0.82, 0, 0, 1.25);
-        _hzAt(g, _hzCyl(ts * 0.16, ts * 0.20, ts * 2.3, 6, ts, m()), ts * 1.15, legH + bodyH * 0.82, 0, 0, -1.25);
-        _hzAt(g, new THREE.Mesh(new THREE.SphereGeometry(headR, 10, 8), m(0x86683a)), 0, legH + bodyH + headR * 0.9, 0);
-        // the offering burns inside the chest lattice
-        var ember = _hzGlowMat(0xff9a3c, 0.85);
-        var core = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.4, 8, 6), ember);
-        _hzAt(g, core, 0, legH + bodyH * 0.6, 0);
-        _hzPulse(ember, core, 0.30, 0.10, 1.1 + rng());
-        (function () { var _gc = _hzGlowCore(ts * 0.5, 0xffb060, 0xff7020); _gc.position.y = legH + bodyH * 0.6; g.add(_gc); })();
-        return g;
-    }
-
-    // ── Giza: the sphinx (and its buried twin) ──
-    function _hzSphinx(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var tex = _hzTex('desert') || _hzTex('wasteland');
-        var m = function (c) { return _hzGeoMat(tex, c || 0xd9bd82); };
-        var bodyL = ts * 4.6, bodyH = ts * 1.5, bodyW = ts * 1.7;
-        _hzAt(g, _hzBox(bodyW, ts * 0.5, bodyL + ts * 1.2, ts, m(0xcdb279)), 0, ts * 0.25, 0);           // plinth
-        _hzAt(g, _hzBox(bodyW * 0.86, bodyH, bodyL, ts, m()), 0, ts * 0.5 + bodyH / 2, ts * 0.1);        // lion body
-        _hzAt(g, _hzBox(ts * 0.42, ts * 0.55, ts * 1.7, ts, m()), -bodyW * 0.28, ts * 0.78, -bodyL * 0.42); // forepaws
-        _hzAt(g, _hzBox(ts * 0.42, ts * 0.55, ts * 1.7, ts, m()), bodyW * 0.28, ts * 0.78, -bodyL * 0.42);
-        var headY = ts * 0.5 + bodyH + ts * 0.72;
-        _hzAt(g, _hzBox(ts * 0.95, ts * 1.15, ts * 0.85, ts, m(0xe0c68e)), 0, headY, -bodyL * 0.34);     // head
-        _hzAt(g, _hzBox(ts * 1.65, ts * 0.95, ts * 0.55, ts, m(0xc7a96b)), 0, headY + ts * 0.06, -bodyL * 0.34 + ts * 0.18); // nemes
-        var eye = _hzGlowMat(0xffd27a, 0.0);                       // eyes wake at night via grade? keep faint
-        eye.opacity = 0.35;
-        var e1 = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.07, 6, 5), eye);
-        _hzAt(g, e1, -ts * 0.2, headY + ts * 0.12, -bodyL * 0.34 - ts * 0.44);
-        var e2 = e1.clone(); e2.position.x = ts * 0.2; g.add(e2);
-        _hzPulse(eye, null, 0.20, 0, 0.25 + rng() * 0.3);
-        return g;
-    }
-
-    // ── Giza: gilded ankh on a plinth ──
-    function _hzAnkh(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var gold = function () { return _hzGeoMat(_hzTex('gold'), 0xe8bf5a); };
-        var stone = _hzGeoMat(_hzTex('desert'), 0xcdb279);
-        _hzAt(g, _hzBox(ts * 1.3, ts * 0.6, ts * 1.3, ts, stone), 0, ts * 0.3, 0);
-        _hzAt(g, _hzBox(ts * 0.32, ts * 2.2, ts * 0.26, ts, gold()), 0, ts * 0.6 + ts * 1.1, 0);         // shaft
-        _hzAt(g, _hzBox(ts * 1.5, ts * 0.30, ts * 0.26, ts, gold()), 0, ts * 2.35, 0);                    // arms
-        var loopGeo = new THREE.TorusGeometry(ts * 0.55, ts * 0.15, 8, 18);
-        _hzScaleUV(loopGeo, 3, 1);
-        _hzAt(g, new THREE.Mesh(loopGeo, gold()), 0, ts * 3.25, 0);
-        var glow = _hzGlowCore(ts * 0.4, 0xffe6a0, 0xffc050);
-        glow.position.y = ts * 3.25; g.add(glow);
-        return g;
-    }
-
-    // ── Nuketown: the yellow school bus (climb the roof) ──
-    function _hzBus(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var body = _hzGeoMat(_hzTex('gold') || _hzTex('desert'), 0xf2b83a);
-        var dark = _hzGeoMat(_hzTex('metal'), 0x24262c);
-        var chrome = _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), 0xcfd3da);
-        var L = ts * 4.6, W = ts * 1.6, H = ts * 1.5, clr = ts * 0.5;
-        _hzAt(g, _hzBox(W, H, L, ts, body), 0, clr + H / 2, 0);
-        _hzAt(g, _hzBox(W * 0.9, H * 0.55, ts * 0.9, ts, body), 0, clr + H * 0.45, -L / 2 - ts * 0.42);   // hood
-        _hzAt(g, _hzBox(W + ts * 0.04, ts * 0.34, L * 0.86, ts, dark), 0, clr + H * 0.72, 0);             // window band
-        _hzAt(g, _hzBox(W * 0.96, ts * 0.10, L * 0.98, ts, chrome), 0, clr + H + ts * 0.05, 0);           // roof trim
-        for (var i = 0; i < 3; i++) {
-            var wz = -L * 0.34 + i * L * 0.34;
-            var wl = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.34, ts * 0.34, ts * 0.24, 10), dark);
-            wl.rotation.z = Math.PI / 2;
-            _hzAt(g, wl, -W / 2, ts * 0.34, wz);
-            var wr = wl.clone(); wr.position.x = W / 2; g.add(wr);
-        }
-        var lampMat = _hzGlowMat(0xffdf9a, 0.7);
-        var lamp = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.09, 6, 5), lampMat);
-        _hzAt(g, lamp, -W * 0.3, clr + H * 0.4, -L / 2 - ts * 0.86);
-        var lamp2 = lamp.clone(); lamp2.position.x = W * 0.3; g.add(lamp2);
-        return g;
-    }
-
-    // ── Nuketown: test-site mannequin, smiling at nothing ──
-    function _hzMannequin(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var pale = function () { return _hzGeoMat(_hzTex('skin') || _hzTex('drywall'), 0xe8ded2); };
-        var base = _hzGeoMat(_hzTex('metal'), 0x565a62);
-        _hzAt(g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.42, ts * 0.5, ts * 0.12, 10), base), 0, ts * 0.06, 0);
-        _hzAt(g, _hzCyl(ts * 0.05, ts * 0.05, ts * 0.9, 6, ts, base), 0, ts * 0.55, 0);                   // stand rod
-        _hzAt(g, _hzCyl(ts * 0.26, ts * 0.34, ts * 1.15, 8, ts, pale()), 0, ts * 1.55, 0);                // torso
-        _hzAt(g, _hzCyl(ts * 0.10, ts * 0.12, ts * 0.95, 6, ts, pale()), -ts * 0.42, ts * 1.5, 0, 0, 0.5);
-        _hzAt(g, _hzCyl(ts * 0.10, ts * 0.12, ts * 0.95, 6, ts, pale()), ts * 0.42, ts * 1.7, 0, 0, -1.2); // one arm raised. waving?
-        _hzAt(g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.26, 9, 7), pale()), 0, ts * 2.4, 0);       // featureless head
-        return g;
-    }
-
-    // ── Heaven: the Empty Throne ──
-    function _hzThrone(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var gold = function () { return _hzGeoMat(_hzTex('gold'), 0xf0cd6e); };
-        var marble = _hzGeoMat(_hzTex('marble_light') || _hzTex('marble'), 0xfdfaf0);
-        // royal damask upholstery on the seat and backrest
-        var damask = function () { return _hzGeoMat(_hzTex('damask') || _hzTex('carpet'), 0xc03a4a); };
-        _hzAt(g, _hzBox(ts * 2.6, ts * 0.5, ts * 2.6, ts, marble), 0, ts * 0.25, 0);
-        _hzAt(g, _hzBox(ts * 1.5, ts * 0.55, ts * 1.4, ts, gold()), 0, ts * 0.5 + ts * 0.28, 0);          // seat
-        _hzAt(g, _hzBox(ts * 1.34, ts * 0.16, ts * 1.24, ts, damask()), 0, ts * 0.5 + ts * 0.63, 0);      // seat cushion
-        _hzAt(g, _hzBox(ts * 1.5, ts * 2.6, ts * 0.32, ts, gold()), 0, ts * 0.5 + ts * 1.3, ts * 0.55);   // high back
-        _hzAt(g, _hzBox(ts * 1.2, ts * 2.1, ts * 0.06, ts, damask()), 0, ts * 0.5 + ts * 1.45, ts * 0.37); // back panel
-        _hzAt(g, _hzBox(ts * 0.28, ts * 0.9, ts * 1.2, ts, gold()), -ts * 0.75, ts * 1.2, 0);             // arms
-        _hzAt(g, _hzBox(ts * 0.28, ts * 0.9, ts * 1.2, ts, gold()), ts * 0.75, ts * 1.2, 0);
-        // damask runner spilling down the dais steps
-        var runner = _hzBox(ts * 0.9, ts * 0.05, ts * 1.4, ts, damask());
-        _hzAt(g, runner, 0, ts * 0.53, -ts * 1.5, 0, 0, -0.32);
-        var haloMat = _hzGlowMat(0xfff2c8, 0.55);
-        var halo = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.75, ts * 0.06, 8, 26), haloMat);
-        _hzAt(g, halo, 0, ts * 3.6, ts * 0.35);
-        _hzPulse(haloMat, halo, 0.18, 0.05, 0.4 + rng() * 0.3);
-        (function () { var _gc = _hzGlowCore(ts * 0.55, 0xfff6da, 0xffe9a0); _gc.position.y = ts * 2.2; g.add(_gc); })();
-        return g;
-    }
-
-    // ── Heaven: six-winged seraph statue ──
-    function _hzSeraph(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var marble = function () { return _hzGeoMat(_hzTex('marble_light') || _hzTex('marble'), 0xf6f3e8); };
-        _hzAt(g, _hzCyl(ts * 0.8, ts * 1.0, ts * 0.5, 10, ts, marble()), 0, ts * 0.25, 0);
-        _hzAt(g, _hzCyl(ts * 0.34, ts * 0.62, ts * 2.4, 9, ts, marble()), 0, ts * 1.7, 0);                // robed body
-        _hzAt(g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.3, 9, 7), marble()), 0, ts * 3.2, 0);
-        for (var i = 0; i < 3; i++) {                                          // three wing pairs
-            var wy = ts * (1.6 + i * 0.62), tilt = 0.5 - i * 0.34;
-            var wing = _hzBox(ts * 1.7, ts * 0.5, ts * 0.1, ts, marble());
-            wing.scale.x = 1 - i * 0.14;
-            _hzAt(g, wing, -ts * 0.95, wy, ts * 0.1, 0, 0.55 + tilt * 0.3);
-            var w2 = wing.clone(); w2.position.x = ts * 0.95; w2.rotation.z = -(0.55 + tilt * 0.3); g.add(w2);
-        }
-        var haloMat = _hzGlowMat(0xfff0c0, 0.5);
-        var halo = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.4, ts * 0.045, 8, 22), haloMat);
-        halo.rotation.x = Math.PI / 2;
-        _hzAt(g, halo, 0, ts * 3.65, 0);
-        _hzPulse(haloMat, halo, 0.15, 0.04, 0.5);
-        return g;
-    }
-
-    // ── Hell: an arch of colossal ribs over the road to the altar ──
-    function _hzBoneArch(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var bone = function () { return _hzGeoMat(_hzTex('enamel') || _hzTex('drywall'), 0xd8cbb2); };
-        var ribs = 4 + (rng() * 2 | 0);
-        for (var i = 0; i < ribs; i++) {
-            var r = ts * (2.2 - i * 0.16);
-            var geo = new THREE.TorusGeometry(r, ts * (0.16 - i * 0.012), 7, 18, Math.PI);
-            _hzScaleUV(geo, 4, 1);
-            var rib = new THREE.Mesh(geo, bone());
-            _hzAt(g, rib, 0, ts * 0.15, -ts * 1.1 * i + ts * ribs * 0.5, 0, (rng() - 0.5) * 0.12);
-        }
-        return g;
-    }
-
     // ── Hell: obsidian brazier, always burning ──
     function _hzBrazier(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -20618,92 +20547,6 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Cyberpunk: parked hover-car with underglow ──
-    function _hzHovercar(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var paint = _hzGeoMat(_hzTex('metal_2') || _hzTex('metal'), rng() < 0.5 ? 0x8a2fd0 : 0x2f6ad0);
-        var glass = _hzGeoMat(_hzTex('metal'), 0x1a1d24);
-        var hover = ts * 0.42;
-        var bodyGeo = new THREE.BoxGeometry(ts * 1.3, ts * 0.42, ts * 2.8);
-        _hzBoxUV(bodyGeo, ts * 1.3, ts * 0.42, ts * 2.8, ts);
-        _hzAt(g, new THREE.Mesh(bodyGeo, paint), 0, hover + ts * 0.21, 0);
-        _hzAt(g, _hzBox(ts * 1.05, ts * 0.34, ts * 1.3, ts, glass), 0, hover + ts * 0.55, -ts * 0.1);     // cabin
-        var glowMat = _hzGlowMat(0x35e0ff, 0.6);
-        var glow = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.1, ts * 2.5), glowMat);
-        glow.rotation.x = -Math.PI / 2;
-        _hzAt(g, glow, 0, ts * 0.1, 0);
-        _hzPulse(glowMat, null, 0.18, 0, 0.8 + rng() * 0.6);
-        return g;
-    }
-
-    // ── Camelot: the sword in the stone ──
-    function _hzExcalibur(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var rock = _hzGeoMat(_hzTex('rocks_2') || _hzTex('cliff'), 0x9a958c);
-        var steel = function () { return _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), 0xe4e8f0); };
-        var gold = _hzGeoMat(_hzTex('gold'), 0xd8b04a);
-        var stone = new THREE.Mesh(new THREE.DodecahedronGeometry(ts * 0.9, 0), rock);
-        stone.scale.y = 0.72;
-        _hzAt(g, stone, 0, ts * 0.6, 0);
-        var blade = _hzBox(ts * 0.16, ts * 1.9, ts * 0.05, ts, steel());
-        _hzAt(g, blade, 0, ts * 1.9, 0, 0, 0.05);
-        _hzAt(g, _hzBox(ts * 0.75, ts * 0.12, ts * 0.12, ts, gold), 0, ts * 2.75, 0, 0, 0.05);            // crossguard
-        _hzAt(g, _hzCyl(ts * 0.06, ts * 0.07, ts * 0.5, 6, ts, gold), ts * -0.02, ts * 3.06, 0, 0, 0.05); // grip
-        var gleamMat = _hzGlowMat(0xdfefff, 0.5);
-        var gleam = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.09, 6, 5), gleamMat);
-        _hzAt(g, gleam, ts * 0.06, ts * 2.5, ts * 0.04);
-        _hzPulse(gleamMat, gleam, 0.3, 0.2, 0.6);
-        return g;
-    }
-
-    // ── Camelot: the dragon's skull in the graveyard ──
-    function _hzDragonSkull(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var bone = function () { return _hzGeoMat(_hzTex('enamel') || _hzTex('drywall'), 0xcfc3a8); };
-        var skull = new THREE.Mesh(new THREE.SphereGeometry(ts * 1.05, 10, 8), bone());
-        skull.scale.set(1, 0.85, 1.1);
-        _hzAt(g, skull, 0, ts * 1.0, ts * 0.2);
-        _hzAt(g, _hzBox(ts * 1.1, ts * 0.55, ts * 1.6, ts, bone()), 0, ts * 0.65, -ts * 0.9);             // snout
-        for (var i = 0; i < 5; i++) {                                          // teeth
-            _hzAt(g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.08, ts * 0.3, 5), bone()),
-                -ts * 0.4 + i * ts * 0.2, ts * 0.3, -ts * 1.55, 0, 0, Math.PI);
-        }
-        var hornGeo = new THREE.ConeGeometry(ts * 0.16, ts * 1.5, 6);
-        _hzAt(g, new THREE.Mesh(hornGeo, bone()), -ts * 0.75, ts * 1.9, ts * 0.75, 0, 0.8, -0.5);
-        _hzAt(g, new THREE.Mesh(hornGeo.clone(), bone()), ts * 0.75, ts * 1.9, ts * 0.75, 0, -0.8, -0.5);
-        var eyeMat = _hzGlowMat(0x76ff9a, 0.45);                                // something still lives in there
-        var eye = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.1, 6, 5), eyeMat);
-        _hzAt(g, eye, -ts * 0.38, ts * 1.05, -ts * 0.55);
-        _hzPulse(eyeMat, eye, 0.35, 0.1, 0.35);
-        return g;
-    }
-
-    // ── Stadium: the blimp, moored over the bowl ──
-    function _hzBlimp(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var skin = _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), 0xd8dde6);
-        var dark = _hzGeoMat(_hzTex('metal'), 0x3a3e46);
-        var lift = ts * 7.5;
-        var env = new THREE.Mesh(new THREE.SphereGeometry(ts * 1.6, 14, 10), skin);
-        env.scale.set(1, 0.62, 2.2);
-        _hzAt(g, env, 0, lift, 0);
-        _hzAt(g, _hzBox(ts * 0.5, ts * 0.34, ts * 1.2, ts, dark), 0, lift - ts * 1.1, 0);                 // gondola
-        var finGeo = new THREE.BoxGeometry(ts * 0.08, ts * 0.9, ts * 0.9);
-        _hzAt(g, new THREE.Mesh(finGeo, dark), 0, lift + ts * 0.4, ts * 3.2, 0, 0, 0);
-        _hzAt(g, new THREE.Mesh(finGeo.clone(), dark), 0, lift, ts * 3.2, 0, Math.PI / 2, 0);
-        var adMat = _hzGlowMat(0xffd34a, 0.65);
-        var ad = new THREE.Mesh(new THREE.PlaneGeometry(ts * 2.6, ts * 0.8), adMat);
-        _hzAt(g, ad, ts * 1.62, lift, 0, Math.PI / 2);
-        _hzPulse(adMat, null, 0.25, 0, 1.6);
-        // mooring line keeps min.y at the ground → the blimp stays up
-        _hzAt(g, _hzCyl(ts * 0.02, ts * 0.02, lift - ts * 1.3, 4, ts, dark), 0, (lift - ts * 1.3) / 2, 0);
-        return g;
-    }
-
     // ── Stadium: the jumbotron ──
     function _hzJumbotron(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -20721,45 +20564,6 @@ const ThreeRenderer = (function () {
         var tick = new THREE.Mesh(new THREE.PlaneGeometry(ts * 3.8, ts * 0.16), tickMat);
         _hzAt(g, tick, 0, legH - ts * 0.12, ts * 0.21);
         _hzPulse(tickMat, null, 0.3, 0, 2.8);
-        return g;
-    }
-
-    // ── Atlantis: Poseidon's trident, still planted ──
-    function _hzTrident(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var gold = function () { return _hzGeoMat(_hzTex('gold'), 0xd8bc62); };
-        var H = ts * 4.4;
-        _hzAt(g, _hzCyl(ts * 0.09, ts * 0.12, H, 7, ts, gold()), 0, H / 2, 0, 0, 0.04);
-        _hzAt(g, _hzBox(ts * 1.5, ts * 0.16, ts * 0.16, ts, gold()), 0, H, 0);
-        for (var i = -1; i <= 1; i++) {
-            var tine = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.11, ts * 1.1, 6), gold());
-            _hzAt(g, tine, i * ts * 0.7, H + ts * 0.6, 0);
-        }
-        var glowMat = _hzGlowMat(0x7ae8ff, 0.5);
-        var orb = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.16, 8, 6), glowMat);
-        _hzAt(g, orb, 0, H + ts * 1.2, 0);
-        _hzPulse(glowMat, orb, 0.25, 0.12, 0.5);
-        return g;
-    }
-
-    // ── Atlantis / Antarctica: wrecked hull ribs ──
-    function _hzShipwreck(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var wood = function () { return _hzGeoMat(_hzTex('wood_planks') || _hzTex('wood'), 0x6e5638); };
-        var ribs = 5 + (rng() * 3 | 0);
-        for (var i = 0; i < ribs; i++) {
-            var r = ts * (1.5 - Math.abs(i - ribs / 2) * 0.14);
-            var geo = new THREE.TorusGeometry(r, ts * 0.09, 6, 14, Math.PI * (0.62 + rng() * 0.2));
-            _hzScaleUV(geo, 3, 1);
-            var rib = new THREE.Mesh(geo, wood());
-            _hzAt(g, rib, 0, ts * 0.1, (i - ribs / 2) * ts * 0.8, 0, 0, 0.15 + (rng() - 0.5) * 0.2);
-        }
-        var keel = _hzBox(ts * 0.22, ts * 0.2, ts * ribs * 0.85, ts, wood());
-        _hzAt(g, keel, 0, ts * 0.12, 0);
-        var mast = _hzCyl(ts * 0.08, ts * 0.11, ts * 2.6, 6, ts, wood());
-        _hzAt(g, mast, ts * 0.4, ts * 1.1, ts * 0.6, 0, 0, 0.85);
         return g;
     }
 
@@ -20793,40 +20597,6 @@ const ThreeRenderer = (function () {
             _hzAt(g, line, (rng() - 0.5) * ts * 0.2, ts * 2.15 - i * ts * 0.38, ts * 0.21);
             if (i === 2) _hzPulse(lineMat, null, 0.25, 0, 0.7);
         }
-        return g;
-    }
-
-    // ── Olympus: Zeus's bolt, quivering in the marble ──
-    function _hzZeusBolt(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var marble = _hzGeoMat(_hzTex('marble_2') || _hzTex('marble'), 0xf2efe4);
-        var crack = new THREE.Mesh(new THREE.DodecahedronGeometry(ts * 0.8, 0), marble);
-        crack.scale.y = 0.4;
-        _hzAt(g, crack, 0, ts * 0.3, 0);
-        var boltMat = _hzGlowMat(0xaad4ff, 0.9);
-        var segs = [[0, 0.6, 0.28], [0.22, 1.5, -0.34], [-0.1, 2.4, 0.3], [0.18, 3.3, -0.26]];
-        for (var i = 0; i < segs.length; i++) {
-            var seg = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.16, ts * 1.1, ts * 0.16), boltMat);
-            _hzAt(g, seg, ts * segs[i][0], ts * segs[i][1], 0, 0, segs[i][2]);
-        }
-        _hzPulse(boltMat, null, 0.35, 0, 3.2);
-        (function () { var _gc = _hzGlowCore(ts * 0.7, 0xcfe4ff, 0x86b8ff); _gc.position.y = ts * 2.0; g.add(_gc); })();
-        return g;
-    }
-
-    // ── Mars: the Face of Cydonia ──
-    function _hzCydoniaFace(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var rock = function (c) { return _hzGeoMat(_hzTex('mars') || _hzTex('cliff'), c || 0xb06a48); };
-        var mesa = _hzBox(ts * 3.2, ts * 1.1, ts * 4.4, ts, rock());
-        _hzAt(g, mesa, 0, ts * 0.55, 0);
-        _hzAt(g, _hzBox(ts * 2.4, ts * 0.35, ts * 0.7, ts, rock(0xb0684a)), 0, ts * 1.25, -ts * 1.3);     // brow
-        _hzAt(g, _hzBox(ts * 0.5, ts * 0.45, ts * 1.6, ts, rock(0xb0684a)), 0, ts * 1.3, ts * 0.1);       // nose
-        _hzAt(g, _hzBox(ts * 1.6, ts * 0.25, ts * 0.5, ts, rock(0x7a4228)), 0, ts * 1.18, ts * 1.5);      // mouth
-        _hzAt(g, _hzBox(ts * 0.6, ts * 0.18, ts * 0.5, ts, rock(0x6a3a20)), -ts * 0.85, ts * 1.14, -ts * 0.7); // eye shadows
-        _hzAt(g, _hzBox(ts * 0.6, ts * 0.18, ts * 0.5, ts, rock(0x6a3a20)), ts * 0.85, ts * 1.14, -ts * 0.7);
         return g;
     }
 
@@ -20912,24 +20682,6 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Area 51: the listening dish ──
-    function _hzRadarDish(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var m = function () { return _hzGeoMat(_hzTex('metal'), 0x9aa2ac); };
-        _hzAt(g, _hzBox(ts * 1.1, ts * 0.5, ts * 1.1, ts, m()), 0, ts * 0.25, 0);
-        _hzAt(g, _hzCyl(ts * 0.14, ts * 0.2, ts * 1.5, 7, ts, m()), 0, ts * 1.25, 0);
-        var dishGeo = new THREE.SphereGeometry(ts * 1.5, 14, 8, 0, Math.PI * 2, 0, Math.PI / 3);
-        var dish = new THREE.Mesh(dishGeo, _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), 0xdde2ea));
-        dish.material.side = THREE.DoubleSide;
-        _hzAt(g, dish, 0, ts * 2.1, 0, 0, 0, 2.4);
-        var beaconMat = _hzGlowMat(0xff4a4a, 0.8);
-        var beacon = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.08, 6, 5), beaconMat);
-        _hzAt(g, beacon, 0, ts * 2.75, -ts * 0.6);
-        _hzPulse(beaconMat, beacon, 0.45, 0.1, 1.8);
-        return g;
-    }
-
     // ── Antarctica: whalefall ribcage in the ice ──
     function _hzWhalebones(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -20946,31 +20698,6 @@ const ThreeRenderer = (function () {
         var spine = _hzCyl(ts * 0.12, ts * 0.12, ts * ribs * 0.72, 6, ts, bone());
         spine.rotation.x = Math.PI / 2;
         _hzAt(g, spine, ts * 1.2, ts * 0.35, 0);
-        return g;
-    }
-
-    // ── Skinwalker Ranch: longhorn skull totem ──
-    function _hzCattleSkull(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var bone = function () { return _hzGeoMat(_hzTex('enamel') || _hzTex('drywall'), 0xe0d6c0); };
-        var wood = _hzGeoMat(_hzTex('wood'), 0x6e5638);
-        _hzAt(g, _hzCyl(ts * 0.09, ts * 0.12, ts * 2.2, 6, ts, wood), 0, ts * 1.1, 0);                    // stake
-        var skull = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.5, 9, 7), bone());
-        skull.scale.set(0.9, 1.1, 0.7);
-        _hzAt(g, skull, 0, ts * 2.35, 0);
-        _hzAt(g, _hzBox(ts * 0.34, ts * 0.5, ts * 0.3, ts, bone()), 0, ts * 1.95, -ts * 0.05);            // snout
-        var hornGeo = new THREE.TorusGeometry(ts * 0.55, ts * 0.07, 6, 12, Math.PI * 0.55);
-        var h1 = new THREE.Mesh(hornGeo, bone());
-        _hzAt(g, h1, -ts * 0.6, ts * 2.5, 0, 0, 0.6);
-        var h2 = new THREE.Mesh(hornGeo.clone(), bone());
-        h2.scale.x = -1;
-        _hzAt(g, h2, ts * 0.6, ts * 2.5, 0, 0, -0.6);
-        var eyeMat = _hzGlowMat(0xff8a3c, 0.0); eyeMat.opacity = 0.3;                       // it looks back
-        var eye = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.06, 5, 4), eyeMat);
-        _hzAt(g, eye, -ts * 0.16, ts * 2.38, -ts * 0.3);
-        var eyeB = eye.clone(); eyeB.position.x = ts * 0.16; g.add(eyeB);
-        _hzPulse(eyeMat, null, 0.28, 0, 0.22);
         return g;
     }
 
@@ -21024,29 +20751,6 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Hollow Earth: something enormous fossilised mid-stride ──
-    function _hzFossil(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var bone = function () { return _hzGeoMat(_hzTex('rocks_3') || _hzTex('cliff'), 0xb8a888); };
-        var segs = 7;
-        for (var i = 0; i < segs; i++) {                                // arched spine
-            var t = i / (segs - 1);
-            var y = ts * (0.5 + Math.sin(t * Math.PI) * 1.6);
-            var vert = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.22, 7, 5), bone());
-            _hzAt(g, vert, (t - 0.5) * ts * 4.4, y, 0);
-            if (i > 0 && i < segs - 1 && i % 2 === 1) {
-                var rGeo = new THREE.TorusGeometry(ts * 0.8, ts * 0.06, 5, 10, Math.PI * 0.7);
-                var rib = new THREE.Mesh(rGeo, bone());
-                _hzAt(g, rib, (t - 0.5) * ts * 4.4, y - ts * 0.3, 0, 0, 0, Math.PI * 0.15);
-            }
-        }
-        var skull = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.45, 8, 6), bone());
-        skull.scale.set(1, 0.8, 1.4);
-        _hzAt(g, skull, ts * 2.5, ts * 0.5, 0);
-        return g;
-    }
-
     // ── Fairy Forest: giant crystal toadstool ──
     function _hzToadstool(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -21091,58 +20795,6 @@ const ThreeRenderer = (function () {
         var cap = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.16, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2),
             _hzGeoMat(_hzTex('mushroom'), 0xe06a9a));
         _hzAt(g, cap, 0, ts * 0.3, 0);
-        return g;
-    }
-
-    // ── Moon: the Eagle — descent stage, gold foil and all (climbable) ──
-    function _hzLander(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var foil = function () { return _hzGeoMat(_hzTex('gold'), 0xc9a23f); };
-        var alum = function () { return _hzGeoMat(_hzTex('aluminium') || _hzTex('metal'), 0xd0d4dc); };
-        var clr = ts * 0.8;
-        var desc = _hzCyl(ts * 1.15, ts * 1.15, ts * 0.85, 8, ts, foil());
-        _hzAt(g, desc, 0, clr + ts * 0.42, 0);
-        var asc = _hzBox(ts * 1.25, ts * 0.95, ts * 1.25, ts, alum());
-        _hzAt(g, asc, 0, clr + ts * 1.35, 0, Math.PI / 8);
-        _hzAt(g, _hzCyl(ts * 0.02, ts * 0.02, ts * 0.9, 4, ts, alum()), ts * 0.4, clr + ts * 2.2, ts * 0.4);   // antenna
-        var nozzle = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.4, ts * 0.6, 9, 1, true), alum());
-        _hzAt(g, nozzle, 0, clr - ts * 0.3 + ts * 0.3, 0, 0, 0, Math.PI);
-        for (var i = 0; i < 4; i++) {                                    // legs + pads
-            var a = i * Math.PI / 2 + Math.PI / 4;
-            _hzAt(g, _hzCyl(ts * 0.05, ts * 0.06, ts * 1.6, 5, ts, foil()),
-                Math.cos(a) * ts * 1.35, ts * 0.75, Math.sin(a) * ts * 1.35, 0, Math.cos(a) * 0.55, Math.sin(a) * 0.55);
-            var pad = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.26, ts * 0.3, ts * 0.08, 9), alum());
-            _hzAt(g, pad, Math.cos(a) * ts * 1.75, ts * 0.05, Math.sin(a) * ts * 1.75);
-        }
-        var winMat = _hzGlowMat(0xcfe8ff, 0.5);
-        var win = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.3, ts * 0.24), winMat);
-        _hzAt(g, win, -ts * 0.35, clr + ts * 1.45, -ts * 0.64);
-        _hzPulse(winMat, null, 0.2, 0, 0.4);
-        return g;
-    }
-
-    // ── Technoticlan: feathered-serpent head with neon eyes ──
-    function _hzSerpentHead(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var stone = function (c) { return _hzGeoMat(_hzTex('cobblestone') || _hzTex('bricks_2'), c || 0x8a95a8); };
-        _hzAt(g, _hzBox(ts * 2.0, ts * 1.6, ts * 2.2, ts, stone()), 0, ts * 1.1, 0);                       // head block
-        _hzAt(g, _hzBox(ts * 1.5, ts * 0.75, ts * 1.4, ts, stone(0x7a8598)), 0, ts * 0.65, -ts * 1.5);     // jaw
-        for (var i = 0; i < 4; i++) {                                    // fangs
-            _hzAt(g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.09, ts * 0.4, 5), stone(0xd8dde6)),
-                -ts * 0.45 + i * ts * 0.3, ts * 1.0, -ts * 2.05, 0, 0, Math.PI);
-        }
-        for (var f = 0; f < 5; f++) {                                    // feather crest
-            var fa = -0.9 + f * 0.45;
-            _hzAt(g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.22, ts * 1.5, 6), stone(0x5aa88a)),
-                Math.sin(fa) * ts * 1.0, ts * 2.4 + Math.cos(fa) * ts * 0.5, ts * 0.6, 0, 0, -fa);
-        }
-        var eyeMat = _hzGlowMat(0x35f2d8, 0.85);
-        var eye = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.16, 7, 6), eyeMat);
-        _hzAt(g, eye, -ts * 0.55, ts * 1.5, -ts * 1.11);
-        var eye2 = eye.clone(); eye2.position.x = ts * 0.55; g.add(eye2);
-        _hzPulse(eyeMat, null, 0.25, 0, 1.2);
         return g;
     }
 
@@ -21248,32 +20900,6 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Bohemian Grove: the Owl of the Grove (a real blocker) ──
-    function _hzOwlIdol(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var moss = function (c) { return _hzGeoMat(_hzTex('rocks_1') || _hzTex('cliff'), c || 0x9aa08e); };
-        _hzAt(g, _hzBox(ts * 2.2, ts * 0.7, ts * 1.8, ts, moss(0x8a9080)), 0, ts * 0.35, 0);              // plinth
-        var body = _hzCyl(ts * 0.85, ts * 1.15, ts * 2.8, 10, ts, moss());
-        _hzAt(g, body, 0, ts * 0.7 + ts * 1.4, 0);
-        var wing = _hzBox(ts * 0.3, ts * 2.0, ts * 1.0, ts, moss(0x8f9584));
-        _hzAt(g, wing, -ts * 1.0, ts * 2.1, 0, 0, 0.08);
-        var w2 = wing.clone(); w2.position.x = ts * 1.0; w2.rotation.z = -0.08; g.add(w2);
-        var head = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.8, 11, 8), moss());
-        head.scale.y = 0.9;
-        _hzAt(g, head, 0, ts * 4.4, 0);
-        _hzAt(g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.22, ts * 0.55, 5), moss()), -ts * 0.5, ts * 5.05, 0, 0, 0, -0.25); // ear tufts
-        _hzAt(g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.22, ts * 0.55, 5), moss()), ts * 0.5, ts * 5.05, 0, 0, 0, 0.25);
-        var eyeMat = _hzGlowMat(0xffb84a, 0.35);
-        var eyeL = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.2, ts * 0.06, 10), eyeMat);
-        eyeL.rotation.x = Math.PI / 2;
-        _hzAt(g, eyeL, -ts * 0.32, ts * 4.45, -ts * 0.68);
-        var eyeR = eyeL.clone(); eyeR.position.x = ts * 0.32; g.add(eyeR);
-        _hzPulse(eyeMat, null, 0.22, 0, 0.18);                           // slow blink of attention
-        _hzAt(g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.14, ts * 0.3, 4), moss(0x7f8574)), 0, ts * 4.25, -ts * 0.72, 0, 0, Math.PI * 0.5); // beak
-        return g;
-    }
-
     // ── Bohemian Grove: the wrapped effigy on its bier ──
     function _hzEffigy(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -21308,23 +20934,6 @@ const ThreeRenderer = (function () {
         _hzAt(g, _hzBox(ts * 1.9, ts * 0.7, ts * 0.62, ts, stone(0xd6c6a4)), 0, H + ts * 0.35, 0);        // T head
         _hzAt(g, _hzBox(ts * 0.16, H * 0.5, ts * 0.06, ts, stone(0xb8a678)), ts * 0.2, H * 0.55, ts * 0.26); // relief arm
         _hzAt(g, _hzBox(ts * 0.4, ts * 0.14, ts * 0.06, ts, stone(0xb8a678)), ts * 0.12, H * 0.32, ts * 0.26); // relief hand
-        return g;
-    }
-
-    // ── Göbekli Tepe: the handbag of the gods. You've seen it before. ──
-    function _hzHandbag(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var stone = function () { return _hzGeoMat(_hzTex('rocks_1') || _hzTex('bricks_2'), 0xcbb890); };
-        var body = _hzBox(ts * 1.9, ts * 1.4, ts * 0.85, ts, stone());
-        _hzAt(g, body, 0, ts * 0.7, 0);
-        var handleGeo = new THREE.TorusGeometry(ts * 0.75, ts * 0.16, 7, 16, Math.PI);
-        _hzScaleUV(handleGeo, 3, 1);
-        _hzAt(g, new THREE.Mesh(handleGeo, stone()), 0, ts * 1.4, 0);
-        var glyphMat = _hzGlowMat(0xffc860, 0.28);
-        var glyph = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.5, ts * 0.5), glyphMat);
-        _hzAt(g, glyph, 0, ts * 0.75, ts * 0.44);
-        _hzPulse(glyphMat, null, 0.18, 0, 0.3);
         return g;
     }
 
@@ -21372,37 +20981,6 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── CERN: the dancer at the interaction point ──
-    function _hzShiva(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var bronze = function () { return _hzGeoMat(_hzTex('gold_2') || _hzTex('gold'), 0x7a5a30); };
-        _hzAt(g, _hzCyl(ts * 1.0, ts * 1.2, ts * 0.4, 12, ts, bronze()), 0, ts * 0.2, 0);
-        var ringGeo = new THREE.TorusGeometry(ts * 1.5, ts * 0.09, 8, 30);
-        _hzScaleUV(ringGeo, 6, 1);
-        _hzAt(g, new THREE.Mesh(ringGeo, bronze()), 0, ts * 2.1, 0);
-        // the figure: one leg raised, four arms
-        _hzAt(g, _hzCyl(ts * 0.11, ts * 0.13, ts * 1.0, 6, ts, bronze()), ts * 0.1, ts * 0.9, 0, 0, 0.15);      // standing leg
-        _hzAt(g, _hzCyl(ts * 0.10, ts * 0.12, ts * 0.9, 6, ts, bronze()), -ts * 0.4, ts * 1.35, 0, 0, 1.35);    // raised leg
-        _hzAt(g, _hzCyl(ts * 0.16, ts * 0.2, ts * 0.9, 7, ts, bronze()), 0, ts * 1.85, 0);                       // torso
-        for (var i = 0; i < 4; i++) {
-            var za = 0.9 - i * 0.6;
-            _hzAt(g, _hzCyl(ts * 0.06, ts * 0.08, ts * 0.85, 5, ts, bronze()),
-                (i < 2 ? -1 : 1) * ts * 0.42, ts * (2.05 + (i % 2) * 0.25), 0, 0, (i < 2 ? 1 : -1) * (0.8 + (i % 2) * 0.5));
-        }
-        _hzAt(g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.17, 8, 6), bronze()), 0, ts * 2.5, 0);
-        for (var f = 0; f < 12; f++) {                                   // ring of flames
-            var fa = f * Math.PI / 6;
-            var flameM = _hzGlowMat(0xff9a40, 0.55);
-            var flame = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.07, ts * 0.28, 4), flameM);
-            flame.position.set(Math.cos(fa) * ts * 1.5, ts * 2.1 + Math.sin(fa) * ts * 1.5, 0);
-            flame.rotation.z = fa - Math.PI / 2;
-            g.add(flame);
-            if (f % 4 === 0) _hzPulse(flameM, flame, 0.3, 0.1, 1.0 + f * 0.1);
-        }
-        return g;
-    }
-
     // ── CERN: superconducting beamline segment ──
     function _hzBeamRing(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -21428,21 +21006,6 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // ── Backrooms: wet floor sign. The floor is always wet. ──
-    function _hzWetFloorSign(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var yellowTex = _hzTex('gold') || _hzTex('wallpaper');
-        var panelA = _hzBox(ts * 0.85, ts * 1.25, ts * 0.05, ts, _hzGeoMat(yellowTex, 0xe8c83a));
-        _hzAt(g, panelA, 0, ts * 0.6, -ts * 0.22, 0, 0, -0.32);
-        var panelB = _hzBox(ts * 0.85, ts * 1.25, ts * 0.05, ts, _hzGeoMat(yellowTex, 0xd8b832));
-        _hzAt(g, panelB, 0, ts * 0.6, ts * 0.22, 0, 0, 0.32);
-        var mark = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.3, ts * 0.5),
-            _hzGeoMat(_hzTex('metal'), 0x2a2d33));
-        _hzAt(g, mark, 0, ts * 0.68, -ts * 0.41, 0, 0, -0.32);           // the figure, mid-slip, forever
-        return g;
-    }
-
     // ── Backrooms / D.U.M.B.: the camera that was already watching you ──
     function _hzSecurityCam(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -21457,28 +21020,6 @@ const ThreeRenderer = (function () {
         var lens = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.05, 6, 5), lensMat);
         _hzAt(g, lens, 0, H - ts * 0.06, -ts * 0.76);
         _hzPulse(lensMat, lens, 0.45, 0.1, 0.5);
-        return g;
-    }
-
-    // ── North Pole: the sleigh, packed and ready ──
-    function _hzSleigh(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var red = function () { return _hzGeoMat(_hzTex('carpet') || _hzTex('bricks_1'), 0xc03a2a); };
-        var gold = function () { return _hzGeoMat(_hzTex('gold'), 0xe0b84a); };
-        _hzAt(g, _hzBox(ts * 1.2, ts * 0.7, ts * 2.4, ts, red()), 0, ts * 0.75, 0);                        // body
-        _hzAt(g, _hzBox(ts * 1.2, ts * 1.0, ts * 0.2, ts, red()), 0, ts * 0.95, ts * 1.15);                // high back
-        _hzAt(g, _hzBox(ts * 1.24, ts * 0.14, ts * 2.5, ts, gold()), 0, ts * 1.12, 0);                     // gold trim
-        for (var s = -1; s <= 1; s += 2) {                               // runners w/ curled fronts
-            _hzAt(g, _hzBox(ts * 0.1, ts * 0.1, ts * 2.9, ts, gold()), s * ts * 0.55, ts * 0.1, 0);
-            var curl = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.3, ts * 0.05, 5, 10, Math.PI * 0.9), gold());
-            _hzAt(g, curl, s * ts * 0.55, ts * 0.38, -ts * 1.45, Math.PI / 2, 0, 0);
-        }
-        var giftTints = [0x3a9a4a, 0x3a5ac0, 0xc0b03a];
-        for (var i = 0; i < 3; i++) {
-            var gift = _hzBox(ts * 0.4, ts * 0.4, ts * 0.4, ts, _hzGeoMat(_hzTex('carpet_2') || _hzTex('metal'), giftTints[i]));
-            _hzAt(g, gift, (i - 1) * ts * 0.3, ts * 1.28, -ts * 0.4 + i * ts * 0.4, i);
-        }
         return g;
     }
 
@@ -21498,44 +21039,6 @@ const ThreeRenderer = (function () {
         _hzAt(g, new THREE.Mesh(hookGeo, red()), ts * 0.42, H, 0);
         var star = _hzGlowCore(ts * 0.22, 0xfff2c0, 0xffd27a);
         star.position.set(ts * 0.84, H, 0); g.add(star);
-        return g;
-    }
-
-    // ── Flat Lands: it's just a weather balloon. it was always a weather balloon ──
-    function _hzWeatherBalloon(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var lift = ts * 6.2;
-        var skinMat = _hzGeoMat(_hzTex('rubber') || _hzTex('drywall'), 0xf0eee8);
-        var balloon = new THREE.Mesh(new THREE.SphereGeometry(ts * 1.35, 14, 10), skinMat);
-        balloon.scale.y = 1.15;
-        _hzAt(g, balloon, 0, lift, 0);
-        var box = _hzBox(ts * 0.36, ts * 0.3, ts * 0.36, ts, _hzGeoMat(_hzTex('metal'), 0xb8bcc4));
-        _hzAt(g, box, 0, lift - ts * 2.2, 0);
-        var lineMat = _hzGeoMat(_hzTex('metal'), 0x8a8e96);
-        _hzAt(g, _hzCyl(ts * 0.015, ts * 0.015, ts * 0.7, 4, ts, lineMat), 0, lift - ts * 1.85, 0);
-        // the tether: taut, all the way to the ground. who staked it?
-        _hzAt(g, _hzCyl(ts * 0.02, ts * 0.02, lift - ts * 2.35, 4, ts, lineMat), ts * 0.04, (lift - ts * 2.35) / 2, 0, 0, 0.01);
-        var blinkMat = _hzGlowMat(0xff4040, 0.7);
-        var blink = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.05, 5, 4), blinkMat);
-        _hzAt(g, blink, 0, lift - ts * 2.0, ts * 0.2);
-        _hzPulse(blinkMat, blink, 0.5, 0.1, 1.1);
-        return g;
-    }
-
-    // ── Flat Lands: a road sign for a road that isn't there ──
-    function _hzRoadSign(rng) {
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var g = new THREE.Group();
-        var steel = function () { return _hzGeoMat(_hzTex('metal'), 0x9aa0a8); };
-        var H = ts * 2.6;
-        _hzAt(g, _hzCyl(ts * 0.05, ts * 0.06, H, 6, ts, steel()), 0, H / 2, 0, 0, 0.12);                  // leaning post
-        var face = _hzBox(ts * 1.8, ts * 0.9, ts * 0.05, ts, _hzGeoMat(_hzTex('metal_2') || _hzTex('metal'), 0x2a7a4a));
-        _hzAt(g, face, ts * 0.15, H - ts * 0.35, 0, 0.06, 0.12);
-        // the sign is blank. it has always been blank.
-        var blankMat = _hzGlowMat(0xd8e8dc, 0.10);
-        var blank = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.6, ts * 0.7), blankMat);
-        _hzAt(g, blank, ts * 0.15, H - ts * 0.35, ts * 0.04, 0.06, 0.12);
         return g;
     }
 
@@ -21824,7 +21327,7 @@ const ThreeRenderer = (function () {
                 [0.94, _hzSacredRings, true, -0.30, 0.65], [1.00, _hzAstralOrbs, true, -0.25, 0.70]],
             infernal: [
                 [0.24, _hzMonolith, false, -0.55, 0.35], [0.40, _hzColossus, false, -0.50, 0.30],
-                [0.54, _hzMountain, false, -0.30, 0.25], [0.66, _hzCrystalShards, true, -0.55, 0.45],
+                [0.66, _hzCrystalShards, true, -0.55, 0.45],
                 [0.76, _hzObelisk, false, -0.50, 0.40], [0.86, _hzGrinSkull, false, -0.45, 0.35],
                 [0.94, _hzFleshMound, false, -0.50, 0.30], [1.00, _hzFloatingIsland, false, -0.60, 0.35]],
             ruins: [
@@ -21850,7 +21353,7 @@ const ThreeRenderer = (function () {
                 [0.34, _hzModelEyeball, true, -0.45, 0.65], [0.60, _hzAstralOrbs, true, -0.55, 0.75],
                 [0.76, _hzSacredRings, true, -0.55, 0.70], [1.00, _hzMonolith, false, -0.55, 0.55]],
             islands: [
-                [0.28, _hzFloatingIsland, false, -0.55, 0.65], [0.50, _hzMountain, false, -0.25, 0.30],
+                [0.50, _hzFloatingIsland, false, -0.55, 0.65],
                 [0.64, _hzStairway, false, -0.45, 0.55], [0.78, _hzGreekRuin, false, -0.40, 0.50],
                 [0.90, _hzLenticular, false, -0.10, 0.45], [1.00, _hzAstralOrbs, true, -0.50, 0.70]],
             city: [
@@ -21865,7 +21368,7 @@ const ThreeRenderer = (function () {
                 [0.94, _hzModelCraft, false, -0.35, 0.70], [1.00, _hzSacredRings, true, -0.60, 0.72]],
             dark: [
                 [0.24, _hzMonolith, false, -0.52, 0.60], [0.43, _hzColossus, false, -0.45, 0.45],
-                [0.58, _hzMountain, false, -0.25, 0.25], [0.70, _hzGateway, false, -0.45, 0.55],
+                [0.70, _hzGateway, false, -0.45, 0.55],
                 [0.79, _hzObelisk, false, -0.45, 0.58], [0.87, _hzGrinSkull, false, -0.45, 0.40],
                 [0.94, _hzModelClock, false, -0.42, 0.55], [1.00, _hzWoodCross, false, -0.42, 0.45]],
         };
@@ -21908,7 +21411,6 @@ const ThreeRenderer = (function () {
         // rest hang roughly upright with a slow turn and an organic tilt.
         //   thr,  builder,          tumble, yLoFactor, yHiFactor   (× discR)
         var ROSTER = themeRoster || [
-            [0.100, _hzMountain,       false, -0.08,  0.22],   // floating peaks / land-chunks
             [0.185, _hzGreekRuin,      false, -0.45,  0.55],   // colonnade ruins
             [0.262, _hzStairway,       false, -0.50,  0.55],   // stairways to nowhere
             [0.408, _hzZiggurat,       false, -0.45,  0.55],   // stepped temples
