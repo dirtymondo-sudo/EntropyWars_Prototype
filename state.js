@@ -1047,9 +1047,14 @@
             return GAME_MODES[activeGameMode] || GAME_MODES.normal;
         }
 
-        function applyGameMode(modeId) {
+        function applyGameMode(modeId, authoritative) {
 
-            if (isOnlineMatch() && typeof _isGuest === 'function' && _isGuest()) {
+            /* `authoritative` = this modeId came from the server/host (match
+               config, game-mode relay) — the guest MUST apply it or its
+               activeGameMode stays stale (loading screen / HUD showed a
+               different map than the one actually played). The guard below
+               only blocks guest-initiated LOCAL changes. */
+            if (!authoritative && isOnlineMatch() && typeof _isGuest === 'function' && _isGuest()) {
                 addLog('Only the host can change the map size.');
                 return;
             }
@@ -1119,7 +1124,10 @@
                 }
             });
 
-            if (isOnlineMatch() && typeof _isHost === 'function' && _isHost()) {
+            /* authoritative applies come FROM the shared match config — no need
+               to re-broadcast, and resetting the lock state would wrongly
+               un-lock both players at match start. */
+            if (!authoritative && isOnlineMatch() && typeof _isHost === 'function' && _isHost()) {
                 if (typeof _emit === 'function') _emit('relay', {
                     type: 'game-mode',
                     modeId: modeId

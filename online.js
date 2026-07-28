@@ -667,6 +667,11 @@
                         N.online = false;
                         N.connected = false;
                         N.role = null;
+                        /* The guest's seat number MUST reset with the session —
+                           a stale myPlayer=2 made getLocalPlayer()/
+                           getViewerPlayer() treat the human as P2 in the next
+                           LOCAL match. */
+                        N.myPlayer = 1;
                         N.roomCode = null;
                         N.ranked = false;
                         N._wasInMatch = false;
@@ -680,6 +685,11 @@
                         sessionStorage.removeItem('ew_rejoinRole');
                     } catch (e) {}
                     state.controllers = { 1: CTRL.LOCAL, 2: CTRL.AI };
+                    /* The guest's party builder wrote builderSelectedPlayer=2
+                       (ui.js renderBuilder) — left stale, the next VS-CPU
+                       builder writes the human's picks into TEAM 2, i.e. the
+                       CPU's side. Local play always builds as P1. */
+                    state.builderSelectedPlayer = 1;
                     if (typeof window._ewHideReconnectBanner === 'function') window._ewHideReconnectBanner();
                 }
                 return _origBackToMainMenu();
@@ -1255,10 +1265,27 @@
                     case 'setActionMode':
                         setActionMode(data.mode);
                         break;
-                    case 'triggerEndTurn':
+                    case 'triggerEndTurn': {
+                        /* Ownership + turn validation (same rigor as 'engine').
+                           An unvalidated end-turn was a soft-lock vector: a
+                           late/duplicate guest END TURN landing during the
+                           host's turn-handoff window (state._blitzActiveUnitId
+                           null) re-entered maybeAdvanceTurn mid-advance and
+                           could zero ANY unit's AP — including a host unit —
+                           via ui.js triggerEndTurn's unguarded `unit.ap = 0`. */
+                        if (state.phase === 'battle') {
+                            if (state.activePlayer !== remoteP) break;
+                            /* Advance already in flight — drop the stale press. */
+                            if (!state._blitzActiveUnitId) break;
+                            var _etUnit = data._selectedUnitId
+                                ? state.units.find(function(u) { return u.id === data._selectedUnitId && !u.dead; })
+                                : null;
+                            if (_etUnit && _etUnit.player !== remoteP) break;
+                        }
                         if (data._selectedUnitId) state.selectedUnitId = data._selectedUnitId;
                         triggerEndTurn();
                         break;
+                    }
                     case 'useRosterItem':
                         useRosterItemButton(data.unitId, data.itemKey);
                         break;
@@ -1426,8 +1453,10 @@
             var _net = window._NET;
             if (_net && _net.ranked && _net.matchMapModeId) {
 
+                /* authoritative=true: the server picked this map — the guest
+                   guard inside applyGameMode must not swallow it. */
                 if (typeof applyGameMode === 'function') {
-                    applyGameMode(_net.matchMapModeId);
+                    applyGameMode(_net.matchMapModeId, true);
                 } else if (typeof window._rawApplyGameMode === 'function') {
                     window._rawApplyGameMode(_net.matchMapModeId);
                 }
@@ -1498,8 +1527,10 @@
                 }
 
                 if (fc.mapId) {
+                    /* authoritative=true: host-picked friendly config — must
+                       apply on the guest too (see ranked branch above). */
                     if (typeof applyGameMode === 'function') {
-                        applyGameMode(fc.mapId);
+                        applyGameMode(fc.mapId, true);
                     } else if (typeof window._rawApplyGameMode === 'function') {
                         window._rawApplyGameMode(fc.mapId);
                     }
@@ -1656,7 +1687,14 @@
         window.finalizeMatch = finalizeMatch;
         window.GAME_MODES = GAME_MODES;
         window.addLog = addLog;
-        window._rawApplyGameMode = applyGameMode;
+        /* Genuine guest-guard bypass: applies an AUTHORITATIVE map id (server
+           match config / host game-mode relay). Must NOT be a bare alias of
+           applyGameMode — the guard inside it silently no-ops for guests,
+           which left the guest's activeGameMode stale (loading screen + HUD
+           showed the wrong map). */
+        window._rawApplyGameMode = function(modeId) {
+            return applyGameMode(modeId, true);
+        };
 
         window.focusBoardCameraOnTiles = focusBoardCameraOnTiles;
         window.resetBoardCamera = resetBoardCamera;
@@ -2083,6 +2121,8 @@
 
             window.lobbyPlayOffline = function() {
                 NET.online = false;
+                NET.myPlayer = 1;
+                if (window._gameState) window._gameState.builderSelectedPlayer = 1;
 
                 if (window._lobbyBack) window._lobbyBack();
             };
@@ -2099,6 +2139,13 @@
                     NET.socket.disconnect();
                     NET.socket = null;
                 }
+                /* Leaving the online lobby ends the online session entirely —
+                   without these two the guest identity (online=true,
+                   myPlayer=2) survived into the next local match: the human
+                   was viewed as P2 and built the CPU's team. */
+                NET.online = false;
+                NET.myPlayer = 1;
+                if (window._gameState) window._gameState.builderSelectedPlayer = 1;
                 NET.role = null;
                 NET.roomCode = null;
                 NET.connected = false;
@@ -2132,6 +2179,11 @@
                 NET.role = null;
                 NET.roomCode = null;
                 NET.connected = false;
+                /* Session over (socket dropped) — retire the guest seat too,
+                   see lobbyBackToPlayHub. */
+                NET.online = false;
+                NET.myPlayer = 1;
+                if (window._gameState) window._gameState.builderSelectedPlayer = 1;
                 _showPage('lobbyFriendlyMain');
             };
 
@@ -3529,6 +3581,13 @@
                     _guestBoardBuilt: 1,
 
                     _actionExecuting: 1,
+                    /* Engine-side action bookkeeping — meaningless on the
+                       guest (only the host drains the repeat queue) and
+                       actively harmful when synced: the host's setTimeout
+                       HANDLE stomped the guest's own watchdog id, so the
+                       guest's clearTimeout released the wrong timer. */
+                    _repeatQueue: 1,
+                    _actionExecutingWatchdog: 1,
 
                     _walkAnimActive: 1,
                     _takeoffRiseFromZ: 1,
@@ -3798,6 +3857,17 @@
                     _guestUIKeys.forEach(function(k) {
                         st[k] = savedUI[k];
                     });
+
+                    /* comboPartner is a LIVE UNIT REFERENCE preserved across
+                       syncs, but st.units was just replaced wholesale — left
+                       alone it points at a detached pre-sync object whose
+                       .ap/.hp never update (the combo verb then rejects on
+                       phantom-stale AP). Re-resolve it into the fresh array. */
+                    if (st.comboPartner && st.comboPartner.id) {
+                        st.comboPartner = st.units.find(function(u) {
+                            return u.id === st.comboPartner.id && !u.dead;
+                        }) || null;
+                    }
 
                     if (st.autoPlayers) st.autoPlayers[2] = savedGuestAuto;
 

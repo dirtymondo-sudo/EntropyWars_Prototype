@@ -29427,6 +29427,62 @@
             check();
         }
 
+        /* ── NO-ACTIVE-UNIT WATCHDOG (engine side: host online, or any local
+           match) ────────────────────────────────────────────────────────────
+           The blitz loop is purely event-driven: between maybeAdvanceTurn
+           nulling state._blitzActiveUnitId and _continueBlitzWithUnit_impl
+           setting the next one, the ONLY thing keeping the match alive is a
+           pending timer/callback. If that chain is ever dropped (an exception
+           inside an end-of-round callback, a continuation invalidated by a
+           concurrent _blitzTurnGen bump — none of which clear
+           _roundAdvanceInProgress) the match parks forever with no current
+           unit and no action menu on either screen. The shot clock can't
+           catch it: _shotClockExpired bails when _blitzActiveUnitId is null —
+           gated on the exact symptom.
+           This watchdog fires only after a sustained quiet stall: no active
+           unit AND no animation/banner/camera/death activity for the full
+           window (a genuinely progressing end-of-round always has beats
+           running, and the round++ mid-sequence also resets the timer). */
+        let _ewStallSince = 0;
+        let _ewStallRound = -1;
+        setInterval(function _noActiveUnitWatchdog() {
+            try {
+                const reset = () => { _ewStallSince = 0; };
+                if (!state || state.phase !== 'battle' || state.winner) return reset();
+                if (typeof document !== 'undefined' && document.hidden) return reset();
+                /* Guests mirror the host's engine — never self-drive. */
+                if (window._NET && window._NET.online && window._NET.role !== 'host') return reset();
+                const mode = getActiveGameMode();
+                if (!mode || !mode.blitzMode) return reset();
+                if (typeof window._isStrikeRT === 'function' && window._isStrikeRT()) return reset();
+                if (typeof window._isSimulMode === 'function' && window._isSimulMode()) return reset();
+                if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return reset();
+                if (state._spellLabMode) return reset();
+                if (_gauntletAwaitingHumanReplace()) return reset();
+                if (state._blitzActiveUnitId) return reset();
+                /* Visible activity = the engine is mid-sequence, not stuck. */
+                if (_walkAnimActive
+                    || (typeof isCinematicPresent === 'function' && isCinematicPresent())
+                    || (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy())
+                    || state.units.some(u => u._dying)
+                    || (camera && camera.isBusy && camera.isBusy())) return reset();
+                const now = Date.now();
+                if (!_ewStallSince || _ewStallRound !== state.round) {
+                    _ewStallSince = now;
+                    _ewStallRound = state.round;
+                    return;
+                }
+                if (now - _ewStallSince < 15000) return;
+                console.warn('[WATCHDOG] No active unit + no activity for 15s — forcing turn advance.',
+                    { round: state.round, roundAdvanceInProgress: _roundAdvanceInProgress });
+                _ewStallSince = 0;
+                _roundAdvanceInProgress = false;
+                state._actionExecuting = false;
+                state.aiThinking = false;
+                maybeAdvanceTurn();
+            } catch (e) { /* the watchdog must never throw */ }
+        }, 2000);
+
         function _continueBlitzWithUnit(nextUnit) {
                 if (state.winner) return;
 
@@ -29452,13 +29508,41 @@
                     return;
                 }
 
-                if (!nextUnit) return;
-                _waitForAnimationsThen(() => _continueBlitzWithUnit_impl(nextUnit));
+                if (!nextUnit) {
+                    /* A null unit here (post-EOR restart or match boot with
+                       every unit frozen/spent/_dying) used to return into the
+                       void: no active unit, no pending timer, nothing left
+                       driving the loop — the "neither player has a current
+                       unit" online soft-lock. Re-drive maybeAdvanceTurn after
+                       a beat: it either finds a now-eligible unit or runs the
+                       next end-of-round (statuses tick down, frozen thaws) —
+                       the same survivable semantics simul mode already has. */
+                    if (state.phase === 'battle' && !state.winner && !_roundAdvanceInProgress) {
+                        setTimeout(() => {
+                            if (state.phase === 'battle' && !state.winner
+                                && !_roundAdvanceInProgress && !state._blitzActiveUnitId) {
+                                maybeAdvanceTurn();
+                            }
+                        }, 800);
+                    }
+                    return;
+                }
+                const _actGen = _blitzTurnGen;
+                _waitForAnimationsThen(() => _continueBlitzWithUnit_impl(nextUnit, _actGen));
         }
 
-        function _continueBlitzWithUnit_impl(nextUnit) {
+        function _continueBlitzWithUnit_impl(nextUnit, _gen) {
                 if (!nextUnit) return;
                 if (state.winner) return;
+                /* Stale continuation: another maybeAdvanceTurn ran while we
+                   waited on animations (a concurrent end-turn / shot clock).
+                   The newer advance owns the loop — activating here would
+                   fight it and could crown a dead or 0-AP unit. */
+                if (_gen !== undefined && _gen !== _blitzTurnGen) return;
+                if (nextUnit.dead || nextUnit._dying || unitFinished(nextUnit)) {
+                    maybeAdvanceTurn();
+                    return;
+                }
 
                 // Whose unit acted immediately before this one — drives the
                 // enemy→player handoff announcement below. Captured before we
@@ -32934,6 +33018,17 @@
            back-to-back by endUnitIfDone — "3 super-effective basic attacks"
            without waiting out each swing. Returns true when the click was
            consumed as a queue attempt. */
+        /* ONLINE GUEST: the repeat queue can never drain — the HOST runs the
+           engine, so endUnitIfDone (the drainer) never fires on this client.
+           Routing clicks into it just eats them: after a press refund
+           (+2 AP — Free action!) every follow-up ATTACK click died in
+           _tryQueueRepeat with an error chirp (read as "not enough AP")
+           while SPELLS still worked (the enemy quick-cast path never checks
+           the latch). Guests swallow in-flight clicks instead; the latch
+           clears on the next state-sync (~RTT, forced after every remote
+           action) and a fresh click then emits normally. */
+        const _netGuestViewer = () => !!(window._NET && window._NET.online && window._NET.role === 'guest');
+
         function _tryQueueRepeat(unit, x, y) {
             const rq = state._repeatQueue;
             if (!rq || !unit || rq.unitId !== unit.id) return false;
@@ -32958,7 +33053,10 @@
         function selectTargetFromMenu(x, y, z) {
             const unit = getSelectedUnit();
             if (!unit) return;
-            if (state._actionExecuting) { _tryQueueRepeat(unit, x, y); return; }
+            if (state._actionExecuting) {
+                if (_netGuestViewer()) return;   // see _netGuestViewer note
+                _tryQueueRepeat(unit, x, y); return;
+            }
             if (!canUnitAct(unit)) {
 
                 state.actionMode = null;
@@ -33718,6 +33816,10 @@
             } else {
 
                 clearTimeout(state._actionExecutingWatchdog);
+                /* A guest's action resolves on the HOST — its latch normally
+                   clears on the next state-sync. If that sync is missed, 8s
+                   of dead input is brutal; self-heal fast instead. */
+                const _wdMs = _netGuestViewer() ? 1500 : 8000;
                 state._actionExecutingWatchdog = setTimeout(() => {
                     if (state._actionExecuting) {
                         console.warn('[_execAction] watchdog: _actionExecuting was stuck true — force-clearing');
@@ -33727,7 +33829,7 @@
                             renderIfDirty();
                         }
                     }
-                }, 8000);
+                }, _wdMs);
             }
             return result;
         }
@@ -33756,7 +33858,10 @@
                AI's — same input freeze as a CPU player's turn. */
             if (typeof _mdAutoTurnActive === 'function' && _mdAutoTurnActive()) return;
 
-            if (state._actionExecuting) { _tryQueueRepeat(getSelectedUnit(), x, y); return; }
+            if (state._actionExecuting) {
+                if (_netGuestViewer()) return;   // see _netGuestViewer note
+                _tryQueueRepeat(getSelectedUnit(), x, y); return;
+            }
 
             if (isCinematicActive()) return;
 

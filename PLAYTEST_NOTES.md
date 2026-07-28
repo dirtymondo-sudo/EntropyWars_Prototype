@@ -8146,3 +8146,88 @@ Lesson: any non-plain object on `state` (Map/Set/class instance) must be boxed b
 `_serializeState` AND unboxed at every depth, or it silently becomes `{}` — and a
 `{}` where the renderer expects a collection is a total black/frozen screen, not a
 small glitch.
+
+## 2026-07-28 — Online PvP bug batch (press-turn attack lockout, soft-lock, wrong loading-screen map, guest role leaking into VS CPU)
+
+User + friend live-tested online PvP; four bugs, all root-caused and fixed.
+
+### 1. Press turn: guest couldn't ATTACK ("not enough AP" at 2 AP) but could cast
+Not an AP desync — unit fields sync wholesale and press writes only unit fields.
+The guest's attack CLICKS were being eaten client-side:
+- After emitting an action, the guest's `doAttack`/`doSpell` wrappers return a
+  nominal delay → `_execAction` leaves `state._actionExecuting = true` (cleared
+  only by the next state-sync apply, online.js `st._actionExecuting = false`).
+- While that latch is true, `selectTargetFromMenu` and `clickTile` route EVERY
+  click into `_tryQueueRepeat` — but the repeat queue is drained by
+  `endUnitIfDone`, which only runs on the HOST. On a guest the queue never
+  drains: clicks are consumed, and once `(queued+1) > unit.ap` it plays the
+  error chirp — read by the player as "not enough AP".
+- Spells still worked because the enemy quick-cast path (`hud.js
+  _fireEnemyAction`) never checks `_actionExecuting`. That's the whole
+  attack-blocked/spell-allowed asymmetry.
+Fixes (battle.js + online.js):
+- `_netGuestViewer()` helper; guests SWALLOW in-flight clicks instead of
+  queueing them (latch clears ~RTT later — a forced broadcast follows every
+  remote action — then fresh clicks emit normally).
+- Guest `_execAction` watchdog shortened 8s → 1.5s (a missed sync no longer
+  means 8s of dead input).
+- Serializer skip list += `_repeatQueue`, `_actionExecutingWatchdog` (the
+  host's setTimeout HANDLE used to stomp the guest's own watchdog id).
+- `_applyRemoteState` re-resolves `st.comboPartner` into the fresh units array
+  (it's a live unit ref kept across syncs while `st.units` is replaced
+  wholesale — detached-stale `.ap` made combo reject at full AP).
+
+### 2. Soft-lock: neither player had an active unit / action menu
+The blitz loop is purely event-driven; between `maybeAdvanceTurn` nulling
+`_blitzActiveUnitId` and `_continueBlitzWithUnit_impl` setting the next one,
+only a pending timer keeps the match alive. Found three ways to drop it:
+- `_continueBlitzWithUnit(null)` returned into the void (post-EOR restart with
+  every unit frozen/spent/_dying). Now re-drives `maybeAdvanceTurn` after 800ms
+  (next EOR ticks statuses → frozen thaws), like simul mode already did.
+- Relayed guest `triggerEndTurn` had NO ownership/turn validation (unlike
+  'engine'): a late/duplicate end-turn could zero ANY unit's AP (ui.js
+  `unit.ap = 0` bypass via `data._selectedUnitId`) and re-enter
+  `maybeAdvanceTurn` mid-advance, bumping `_blitzTurnGen` and killing in-flight
+  EOR continuations WITHOUT clearing `_roundAdvanceInProgress`. Now validated:
+  must be remoteP's turn, an active blitz unit must exist, named unit must be
+  remoteP's.
+- `_continueBlitzWithUnit_impl` had no generation guard → stale delayed
+  activation could crown a dead/0-AP unit. Now gen-checked + re-validated.
+- NEW watchdog (battle.js, near `_waitForAnimationsThen`): engine side only
+  (host online / any local), fires after 15s of battle-phase with NO active
+  unit AND no visible activity (walk/cinematic/banner/dying/camera — a real
+  EOR always has beats running); force-clears `_roundAdvanceInProgress` and
+  calls `maybeAdvanceTurn()`. The shot clock could never catch this state —
+  `_shotClockExpired` bails when `_blitzActiveUnitId` is null.
+
+### 3. Different maps on the two loading screens
+The loading screen title (`battle.js _lsMapTitle`, also the cinematic title
+card + HUD map chip) reads local global `activeGameMode` — and the ONLY
+assignment to it is inside `applyGameMode`, whose guest guard ("Only the host
+can change the map size") silently swallowed even the AUTHORITATIVE map id
+from the server (ranked `match-found`) / host (`friendly-config`,
+`game-mode` relay). `_rawApplyGameMode` was a bare alias of the same guarded
+function — a bypass in name only. The match still PLAYED on the right map
+(terrain rides the snapshot; CONFIG dims re-derived from synced boardTerrain)
+— only the displayed identity was wrong.
+Fix: `applyGameMode(modeId, authoritative)` — authoritative skips the guest
+guard (and the host's re-broadcast/lock-reset); ranked + friendly config
+paths pass true; `_rawApplyGameMode` is now a real bypass wrapper.
+
+### 4. VS CPU after an online match: human seated as P2, his team on the CPU
+Stale online identity — nothing ever reset it:
+- `NET.myPlayer = 2` (guest) survived EVERY teardown path; `getLocalPlayer()`/
+  `getViewerPlayer()` read it whenever `NET.online` (which `lobbyBackToPlayHub`
+  and `lobbyBackToFriendlyMain` never set false).
+- `state.builderSelectedPlayer = 2` (written by ui.js renderBuilder while
+  online) is what the OFFLINE party-builder branch reads → the human's picks
+  were written into `state.partyBuilds[2]` = the CPU's team.
+Fix: all four teardown paths (`backToMainMenu` online branch,
+`lobbyBackToPlayHub`, `lobbyBackToFriendlyMain`, `lobbyPlayOffline`) now reset
+`online=false, myPlayer=1, builderSelectedPlayer=1`; `_msConfirm` (map.js)
+also defensively re-seats P1 at every local match start.
+
+Lesson (general): guest-side input plumbing must never depend on engine-side
+drains (`_repeatQueue`), and EVERY relayed player action needs the same
+ownership+turn validation as the 'engine' case — `triggerEndTurn` was the one
+that slipped through and it could zero host units.

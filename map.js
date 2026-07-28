@@ -1749,6 +1749,14 @@
             state.showPlayer2Builder = false;
             state.squadLeaderMode = false;
 
+            /* Belt-and-braces vs stale online identity: a finished online
+               session as the GUEST left _NET.myPlayer=2 and
+               builderSelectedPlayer=2 behind, so the next VS-CPU match viewed
+               the human as P2 and handed their chosen team to the CPU. A
+               local match ALWAYS seats the human as P1. */
+            if (window._NET && !window._NET.online) window._NET.myPlayer = 1;
+            state.builderSelectedPlayer = 1;
+
             if (mpMode && mpMode.isFFA) {
                 state.autoPlayers = state.autoPlayers || {};
                 state.autoPlayers[2] = true;
