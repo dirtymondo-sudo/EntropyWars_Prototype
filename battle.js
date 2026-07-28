@@ -6735,10 +6735,24 @@
             if (isUnitConcealedFrom(unit, teamPlayer)) return false;
             for (const f of state.units) {
                 if (f.dead || f.player !== teamPlayer) continue;
-                if (typeof isInVision === 'function') {
+                if (state.fogOfWar && typeof isInVision === 'function') {
                     if (isInVision(f, unit.x, unit.y)) return true;
-                } else if (!state.fogOfWar) {
-                    return true;
+                } else {
+                    /* Fog OFF: isInVision short-circuits TRUE for the whole
+                       board, which made this gate vacuous — Take Aim landed
+                       through solid walls in every fog-less mode because the
+                       target was always "seen". Run the same per-unit
+                       vision-range + true 3D terrain-LOS test the fog renderer
+                       applies, so "break line of sight" actually breaks the
+                       lock with fog disabled too. */
+                    const vr = (typeof getUnitVisionRange === 'function')
+                        ? getUnitVisionRange(f) : ((f.awr || 3) + 2);
+                    const d = Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y);
+                    const losOnly = (typeof LOS_ONLY_VISION !== 'undefined' && LOS_ONLY_VISION);
+                    if (!losOnly && d > vr) continue;
+                    if (f.wallVision) return true;
+                    if (typeof isVisionBlockedByTerrain !== 'function'
+                        || !isVisionBlockedByTerrain(f.x, f.y, unit.x, unit.y, f.z ?? null, unit.z ?? null)) return true;
                 }
             }
             /* Vision wards grant sight even with no unit in range. */
@@ -20221,6 +20235,27 @@
             return allSpells.some(s => canAffordSpell(unit, s) && unit.mp >= getSpellMpCostFor(unit, s) && !unitHasStatus(unit, 'silence'));
         }
 
+        /* Self-origin cross-nova reality check (Crossfire's X, Blade Waltz /
+           Resonance Pulse diamonds): the blast only touches its true footprint
+           tiles, so "has a target" must mean an enemy — or a destructible
+           turret / enemy deployed object the blast damages — actually stands
+           ON the footprint. The old blanket pass lit the button (and let the
+           cast through) for novae that hit zero targets. Footprint comes from
+           the same getCrossArea/getSpellAoeArea the damage handler uses. */
+        function _selfNovaHasTarget(unit, spell) {
+            if (!unit || !spell) return false;
+            const area = (spell.kind === 'cross')
+                ? getCrossArea(spell, unit.x, unit.y)
+                : getSpellAoeArea(spell, unit.x, unit.y);
+            for (const t of area) {
+                if (t.x === unit.x && t.y === unit.y) continue;
+                if (state.units.some(e => !e.dead && e.player !== unit.player && e.x === t.x && e.y === t.y)) return true;
+                if (state.turrets?.some(tr => tr.hp > 0 && tr.x === t.x && tr.y === t.y)) return true;
+                if (state._deployedObjects?.some(o => o.hp > 0 && !o._detonated && o.x === t.x && o.y === t.y && o.ownerPlayer !== unit.player)) return true;
+            }
+            return false;
+        }
+
         function hasSpellTargetInRange(unit, spell) {
             if (!spell) return false;
             const kind = spell.kind;
@@ -20228,8 +20263,13 @@
 
             if (['healAll', 'manaRestoreAll', 'warCry', 'scan', 'barrage', 'remoteView', 'selfHeal', 'escape'].includes(kind)) return true;
 
-            // aoeOriginSelf spells always have a valid target (centered on caster)
-            if (spell.aoeOriginSelf) return true;
+            // aoeOriginSelf spells center on the caster: utility/heal novae are
+            // always castable, but a self-origin DAMAGE cross (Crossfire's X)
+            // only has a target when something hittable stands on the arms.
+            if (spell.aoeOriginSelf) {
+                if (kind === 'cross' && (spell.dmg || 0) > 0) return _selfNovaHasTarget(unit, spell);
+                return true;
+            }
 
             if (kind === 'line' || kind === 'linePush') return true;
 
@@ -20537,6 +20577,49 @@
                         break;
                     }
                     unit.z = sz;
+                }
+            } finally {
+                unit.x = sx; unit.y = sy; unit.z = sz;
+            }
+            return best;
+        }
+
+        // Best one-step walk/jump tile from which a self-origin nova's TRUE
+        // footprint (Crossfire's X arms, diamond novae) actually touches an
+        // enemy; null if none. Scored by enemies hit (most first) — a plain
+        // Manhattan finder walked the caster to spots the arms never touch.
+        function _findSelfNovaApproachTile(unit, spell) {
+            const sx = unit.x, sy = unit.y, sz = unit.z;
+            const _hits = () => {
+                const area = (spell.kind === 'cross')
+                    ? getCrossArea(spell, unit.x, unit.y)
+                    : getSpellAoeArea(spell, unit.x, unit.y);
+                let n = 0;
+                for (const t of area) {
+                    if (t.x === unit.x && t.y === unit.y) continue;
+                    if (state.units.some(e => !e.dead && e.player !== unit.player && e.x === t.x && e.y === t.y)) n++;
+                }
+                return n;
+            };
+            let best = null, bestScore = 0;
+            try {
+                const steps = _spellMoveBudget(unit, spell);
+                const ring1 = steps > 0 ? getMoveTiles(unit) : [];
+                for (const t of ring1) {
+                    if (t._jump || t._takeoff) continue;
+                    if (unitAt(t.x, t.y, t.z)) continue;
+                    unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                    const n = _hits();
+                    if (n > bestScore) { best = { x: t.x, y: t.y, z: t.z ?? sz, moveCost: 1 }; bestScore = n; }
+                    unit.x = sx; unit.y = sy; unit.z = sz;
+                }
+                if (best) return best;
+                for (const jt of _spellJumpApproachTiles(unit, spell)) {
+                    if (unitAt(jt.x, jt.y, jt.z)) continue;
+                    unit.x = jt.x; unit.y = jt.y; unit.z = jt.z ?? sz;
+                    const n = _hits();
+                    if (n > bestScore) { best = { x: jt.x, y: jt.y, z: jt.z ?? sz, moveCost: 1, _jump: true }; bestScore = n; }
+                    unit.x = sx; unit.y = sy; unit.z = sz;
                 }
             } finally {
                 unit.x = sx; unit.y = sy; unit.z = sz;
@@ -32109,6 +32192,18 @@
                     }
                 } else if (spell && isSpellSelfCast(spell)) {
 
+                    /* Self-origin damage novae (Crossfire's X): if the arms hit
+                       nothing from HERE but a one-step walk/jump puts an enemy
+                       on the footprint, run the same MOVE→CAST the quick menu
+                       offers instead of detonating on empty air. */
+                    if (spell.kind === 'cross' && spell.aoeOriginSelf && (spell.dmg || 0) > 0
+                        && !_selfNovaHasTarget(unit, spell)) {
+                        const _nvApproach = _findSelfNovaApproachTile(unit, spell);
+                        if (_nvApproach) {
+                            _moveThenCast(unit, _nvApproach, spell.name, _nvApproach.x, _nvApproach.y, _nvApproach.z);
+                            return;
+                        }
+                    }
                     state._actionExecuting = true;
                     _focusPlatesForAction(unit, unit.x, unit.y);
                     clearAoePreview();
@@ -41262,6 +41357,15 @@
             }
 
             else if (spell.kind === 'cross') {
+                // Self-origin nova with nothing on the arms: refuse instead of
+                // detonating on empty air — the greyed button's engine-side
+                // twin, protecting every entry point (board clicks, quick
+                // menus, online relays) before MP/AP are spent.
+                if (spell.aoeOriginSelf && (spell.dmg || 0) > 0 && !_selfNovaHasTarget(unit, spell)) {
+                    addLog(`${spell.name}: no target in the blast pattern from here!`);
+                    playErrorSfx();
+                    return 0;
+                }
                 // Phase 4 migration: cross uses shared AoE helpers
                 playSfx(spellLaunchSfx(spell));
                 unit.mp -= effectiveSpellCost;

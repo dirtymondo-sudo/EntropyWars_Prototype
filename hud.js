@@ -4940,8 +4940,11 @@ function _computeEnemyActions(actingUnit, targetUnit) {
             // Walk legs only BEFORE the first move: the second move of a turn
             // drains ALL AP (finishMoveAt), so a walk-then-nova after moving
             // could never cast. Takeoff tiles cost 2 AP — excluded outright.
+            // Jump-folded tiles too: they aren't legal doMove destinations
+            // (the executor would just "Block!"); the jump leg below re-adds
+            // them tagged with the right verb.
             if (canUnitMove(actingUnit) && (actingUnit.movesThisTurn || 0) < 1) {
-              try { cand.push(...getMoveTiles(actingUnit).filter(t => !t._takeoff)); } catch (e) {}
+              try { cand.push(...getMoveTiles(actingUnit).filter(t => !t._takeoff && !t._jump)); } catch (e) {}
             }
             if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
               // Tag leap candidates so the executor fires doJump — a raw jump
@@ -4972,9 +4975,11 @@ function _computeEnemyActions(actingUnit, targetUnit) {
           const cand = [];
           // Walk legs only BEFORE the first move: the second move of a turn
           // drains ALL AP (finishMoveAt), so a walk-then-beam after moving
-          // could never cast. Takeoff tiles cost 2 AP — excluded outright.
+          // could never cast. Takeoff tiles cost 2 AP — excluded outright,
+          // and jump-folded tiles too (not legal doMove destinations; the
+          // jump leg below re-adds them tagged with the right verb).
           if (canUnitMove(actingUnit) && (actingUnit.movesThisTurn || 0) < 1) {
-            try { cand.push(...getMoveTiles(actingUnit).filter(t => !t._takeoff)); } catch (e) {}
+            try { cand.push(...getMoveTiles(actingUnit).filter(t => !t._takeoff && !t._jump)); } catch (e) {}
           }
           if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
             // Tag leap candidates so the executor fires doJump — a raw jump
