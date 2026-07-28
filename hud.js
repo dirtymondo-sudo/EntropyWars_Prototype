@@ -5765,6 +5765,19 @@ function _chainMoveTowards(actingUnit, targetUnit) {
     if (typeof renderIfDirty === 'function') renderIfDirty();
     if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
   };
+  /* ONLINE GUEST: relay the whole chase once — a guest's unit positions only
+     advance via state-sync, so a local chain would re-read its stale tile and
+     re-emit the same step forever. The HOST runs this same function
+     authoritatively (online.js 'quickMoveTowards'); every step it takes goes
+     through doMove/doJump and is re-validated there. */
+  if (window._NET && window._NET.online && window._NET.role === 'guest') {
+    if (actingUnit && !actingUnit.dead && targetUnit && !targetUnit.dead
+        && typeof _emit === 'function') {
+      _emit('game-action', { type: 'quickMoveTowards', unitId: actingUnit.id, targetId: targetUnit.id });
+      if (typeof playSfx === 'function') playSfx('moveStep');
+    }
+    return _finish();
+  }
   if (!actingUnit || actingUnit.dead || !targetUnit || targetUnit.dead) return _finish();
   if ((actingUnit.ap || 0) < 1) return _finish();
   const dist = Math.abs(actingUnit.x - targetUnit.x) + Math.abs(actingUnit.y - targetUnit.y);
@@ -5832,8 +5845,18 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
         // swings (drained back-to-back by endUnitIfDone, each re-validated).
         // Armed only when the first swing actually fired.
         if (a.repeat > 1 && _atkQr !== 0 && _atkQr !== false) {
-          state._repeatQueue = { unitId: actingUnit.id, mode: 'attack', tool: null,
-            x: tx, y: ty, z: tz, queued: a.repeat - 1 };
+          if (window._NET && window._NET.online && window._NET.role === 'guest') {
+            /* the repeat queue drains HOST-side (endUnitIfDone) — a guest-
+               local queue never fires. Relay the arm; the host re-validates
+               every queued swing (online.js 'armRepeat'). */
+            if (typeof _emit === 'function') {
+              _emit('game-action', { type: 'armRepeat', unitId: actingUnit.id,
+                x: tx, y: ty, z: tz, queued: a.repeat - 1 });
+            }
+          } else {
+            state._repeatQueue = { unitId: actingUnit.id, mode: 'attack', tool: null,
+              x: tx, y: ty, z: tz, queued: a.repeat - 1 };
+          }
         }
       }
     } else if (actionId === 'grappleAttack' && spell) {
@@ -6228,13 +6251,17 @@ function _computeAllyActions(actingUnit, targetUnit) {
   }
 
   // Trade — hand items across when adjacent (opens the trade dialog, free).
+  // ONLINE GUEST: greyed. The trade dialog's apply mutates items locally and
+  // is not relayed, so a guest's trade would be erased by the next state-sync
+  // (grey-don't-fail until trade gets a real relay surface).
   if (typeof canTradeWithUnit === 'function' && typeof doTrade === 'function') {
     const adj = canTradeWithUnit(actingUnit, targetUnit);
+    const _tradeNetBlocked = !!(window._NET && window._NET.online && window._NET.role === 'guest');
     actions.push({
       id: 'trade', label: 'Trade', icon: '🔄',
       apCost: 0, moveTile: null, preview: null, typeNote: '',
-      available: !!adj,
-      reason: adj ? null : 'Not adjacent',
+      available: !!adj && !_tradeNetBlocked,
+      reason: _tradeNetBlocked ? 'N/A online' : (adj ? null : 'Not adjacent'),
     });
   }
 

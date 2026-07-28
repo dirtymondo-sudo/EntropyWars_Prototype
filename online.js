@@ -178,13 +178,120 @@
                     const clickedUnit = unitAt(x, y);
                     const actingUnit = getSelectedUnit();
 
-                    if (!actingUnit || !state.actionMode) {
-                        if (clickedUnit && clickedUnit.player === _myPlayer() && !clickedUnit.dead) {
+                    /* ── Guest quick menus (2026-07-28) ─────────────────────
+                       The quick-menu anchors (_enemyActionTargetId /
+                       _tileActionTarget) are per-viewer UI on the state-sync
+                       skip list, so they can never arrive from the host: they
+                       must be set HERE, mirroring the engine's clickTile root
+                       branch. The old code only focused the info panel and
+                       relayed the click — which opened the menus invisibly on
+                       the HOST's copy (and panned the host's camera / played
+                       its cursor SFX): the guest could never open the enemy /
+                       ally / tile quick menu at all. Menu-BROWSING clicks are
+                       handled fully locally and NOT relayed; clicks that need
+                       the engine (armed actions, enemy deployables in reach)
+                       still go to the host. */
 
-                            selectUnit(clickedUnit.id);
-                        } else if (clickedUnit) {
-                            focusUnitPanel(clickedUnit.id);
+                    /* the exact sprite the renderer resolved wins over the
+                       ground unit (stacked columns) — same rule as the engine */
+                    let _qmUnit = null;
+                    if (state._clickedUnitId != null) {
+                        const _qmDirect = state.units.find(function(u) { return u.id === state._clickedUnitId && !u.dead && !u._dying; });
+                        if (_qmDirect && _qmDirect.x === x && _qmDirect.y === y) _qmUnit = _qmDirect;
+                    }
+                    if (!_qmUnit) _qmUnit = clickedUnit;
+
+                    /* fog: browsing an unseen tile is inert, exactly like the
+                       engine's gate (armed-action clicks relay below and re-run
+                       the same gate host-side with this player's fog) */
+                    let _qmVisible = true;
+                    if (state.fogOfWar && typeof computeVisibleTiles === 'function' && typeof posKey === 'function') {
+                        try { _qmVisible = computeVisibleTiles(state.activePlayer).has(posKey(x, y)); } catch (e) {}
+                    }
+
+                    const _qmCanControl = !!(actingUnit && !state.autoPlayers?.[state.activePlayer]
+                        && actingUnit.player === state.activePlayer
+                        && (typeof canUnitAct !== 'function' || canUnitAct(actingUnit)));
+
+                    if (!state.actionMode) {
+                        /* same input freezes the engine's clickTile applies */
+                        if (state._actionExecuting) return;
+                        if (typeof isCinematicActive === 'function' && isCinematicActive()) return;
+                        if (!_qmVisible) return;
+                        if (_qmUnit && _qmUnit.dead) {
+                            focusUnitPanel(_qmUnit.id);
+                            return;
                         }
+                        if (_qmCanControl && _qmUnit) {
+                            if (_qmUnit.id === actingUnit.id) {
+                                /* own ACTIVE unit → toggle the tile card */
+                                state._enemyActionTargetId = null;
+                                state._tileActionTarget = (state._tileActionTarget && state._tileActionTarget.x === x && state._tileActionTarget.y === y)
+                                    ? null : { x: x, y: y, z: (z != null ? z : _qmUnit.z) };
+                                playSfx('uiCursorFocus');
+                                markDirty('hud');
+                                renderIfDirty();
+                                return;
+                            }
+                            /* any OTHER living unit — enemy or ally — toggles
+                               its quick menu (offense vs quick-cast decided by
+                               the HUD by team, same as the engine) */
+                            if ((state.actionMenuView || 'root') !== 'root') {
+                                state.actionMenuView = 'root';
+                                state.selectedTool = null;
+                                state.pendingTarget = null;
+                            }
+                            state._tileActionTarget = null;
+                            if (state._enemyActionTargetId === _qmUnit.id) {
+                                state._enemyActionTargetId = null;
+                                if (typeof window._tpsTurnShot === 'function') window._tpsTurnShot();
+                            } else {
+                                state._enemyActionTargetId = _qmUnit.id;
+                                if (typeof _tpsTargetShot === 'function') _tpsTargetShot(actingUnit, _qmUnit);
+                            }
+                            focusUnitPanel(_qmUnit.id);
+                            playSfx('uiCursorFocus');
+                            markDirty('hud');
+                            renderIfDirty();
+                            return;
+                        }
+                        if (_qmCanControl && !_qmUnit) {
+                            const _qmDeploy = (state._deployedObjects || []).find(function(o) {
+                                return o.x === x && o.y === y && o.hp > 0 && o.ownerPlayer !== actingUnit.player;
+                            });
+                            if (!_qmDeploy) {
+                                /* empty tile → toggle the tile card */
+                                state._enemyActionTargetId = null;
+                                state._tileActionTarget = (state._tileActionTarget && state._tileActionTarget.x === x && state._tileActionTarget.y === y)
+                                    ? null : { x: x, y: y, z: z };
+                                playSfx('uiCursorFocus');
+                                markDirty('hud');
+                                renderIfDirty();
+                                return;
+                            }
+                            /* enemy deployable: the ENGINE owns the in-reach
+                               attack shortcut — fall through to the relay */
+                        }
+                        if (!_qmCanControl) {
+                            /* not driveable right now → old select/focus path */
+                            if (clickedUnit && clickedUnit.player === _myPlayer() && !clickedUnit.dead) {
+                                selectUnit(clickedUnit.id);
+                            } else if (clickedUnit) {
+                                focusUnitPanel(clickedUnit.id);
+                            }
+                            return;
+                        }
+                    } else if (state.actionMode === 'move' && _qmVisible && actingUnit
+                        && _qmUnit && !_qmUnit.dead && _qmUnit.id !== actingUnit.id
+                        && state._clickedUnitId === _qmUnit.id) {
+                        /* move mode, clicked a unit SPRITE → engine parity:
+                           drop the mode and open that unit's quick menu (the
+                           engine's own helper — pure viewer-local UI) */
+                        if (typeof _exitModeAndShowUnitMenu === 'function') {
+                            _exitModeAndShowUnitMenu(actingUnit, _qmUnit);
+                            return;
+                        }
+                        focusUnitPanel(_qmUnit.id);
                     } else if (clickedUnit) {
                         focusUnitPanel(clickedUnit.id);
                     }
@@ -500,6 +607,22 @@
                 if (!_guestOwnsAction(unit)) return 0;
                 playSfx(mode === 'ascend' ? 'buff' : 'moveStep');
                 _emit('game-action', { type: 'engine', fn: 'doAltitudeChange', unitId: unit.id, mode: mode });
+                return 500; /* nominal delay — the authoritative result arrives via state-sync */
+            };
+        }
+
+        /* Raise/Lower the ground underfoot (quick-menu height-approach rows +
+           the build kit). Same hole as the altitude verbs: un-relayed, a
+           guest's reshape edited only its local terrain copy and the next
+           state-sync erased it. */
+        const _origDoReshape = (typeof doReshape === 'function') ? doReshape : null;
+        if (_origDoReshape) {
+            doReshape = function(unit, mode) {
+                if (!_isOnline() || state._remoteAction) return _origDoReshape(unit, mode);
+                if (_isHost()) return _hostRunAndSync(_origDoReshape, [unit, mode]);
+                if (!_guestOwnsAction(unit)) return 0;
+                playSfx('physicalAbility');
+                _emit('game-action', { type: 'engine', fn: 'doReshape', unitId: unit.id, mode: mode });
                 return 500; /* nominal delay — the authoritative result arrives via state-sync */
             };
         }
@@ -1349,6 +1472,9 @@
                             case 'doAltitudeChange':
                                 if (typeof doAltitudeChange === 'function') doAltitudeChange(engUnit, data.mode);
                                 break;
+                            case 'doReshape':
+                                if (typeof doReshape === 'function') doReshape(engUnit, data.mode);
+                                break;
                             case 'channelNexus':
                                 if (typeof channelNexus === 'function') channelNexus(engUnit);
                                 break;
@@ -1368,6 +1494,37 @@
                                 if (typeof doDetonate === 'function') doDetonate(engUnit);
                                 break;
                         }
+                        break;
+                    }
+                    case 'armRepeat': {
+                        /* Attack ×N from the guest's quick menu: the repeat
+                           queue is drained host-side (endUnitIfDone), so a
+                           guest-local queue would never fire — the guest
+                           relays the arm instead. Same ownership/turn gates
+                           as 'engine'; every queued swing is re-validated by
+                           doAttack when it drains. */
+                        var rqUnit = state.units.find(function(u) { return u.id === data.unitId && !u.dead; });
+                        if (!rqUnit || rqUnit.player !== remoteP) break;
+                        if (state.activePlayer !== remoteP) break;
+                        var rqN = Math.max(0, Math.min(8, (data.queued | 0)));
+                        if (rqN > 0) {
+                            state._repeatQueue = { unitId: rqUnit.id, mode: 'attack', tool: null,
+                                x: data.x, y: data.y, z: data.z, queued: rqN };
+                        }
+                        break;
+                    }
+                    case 'quickMoveTowards': {
+                        /* Quick-menu "Move Towards" chase: the chain must run
+                           on the HOST — the guest's unit positions only move
+                           via state-sync, so a guest-local chain re-reads
+                           stale tiles forever (see hud.js _chainMoveTowards).
+                           Each step goes through doMove/doJump and is
+                           re-validated. */
+                        var mtUnit = state.units.find(function(u) { return u.id === data.unitId && !u.dead; });
+                        var mtTarget = state.units.find(function(u) { return u.id === data.targetId && !u.dead; });
+                        if (!mtUnit || mtUnit.player !== remoteP) break;
+                        if (state.activePlayer !== remoteP) break;
+                        if (mtTarget && typeof _chainMoveTowards === 'function') _chainMoveTowards(mtUnit, mtTarget);
                         break;
                     }
                 }
