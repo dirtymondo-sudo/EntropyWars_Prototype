@@ -2185,6 +2185,10 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     portCol = h('span', { className: 'hrlg-tcol' },
       h('span', { className: 'hrlg-trow-top' },
         h('span', { className: 'hrlg-blabel' }, b.label),
+        // TYPE badges ride the name row on portrait rows too (combo partner
+        // picker: the pair's DUAL type badges) — same matchup intel as the
+        // ability rows, never clipped (the name ellipsizes first).
+        badgeRow,
       ),
       h('span', { className: 'hrlg-trow' },
       h('span', { className: 'hrlg-thp' },
@@ -3067,6 +3071,20 @@ function _hrlgSpellBadges(sp) {
   return badges;
 }
 
+// A combo is a two-unit pact — BOTH component types ride the row (the pair
+// IS the recipe: typeA|typeB keys COMBO_REGISTRY), the same canonical badge
+// every spell row wears. Effectiveness vs a target is still judged by the
+// combo's own spellType (applyDamageToUnit's rule) — these badges are the
+// "what pair makes this" intel.
+function _hrlgComboTypeBadges(combo, fs) {
+  if (!combo) return [];
+  return [combo.typeA, combo.typeB].filter(Boolean).map(t => ({
+    label: t.toUpperCase(),
+    style: typeBadgeStyleFor(t, { fontSize: fs || _HRLG_TYPE_FS, padding: _HRLG_TYPE_PAD }),
+    title: 'Combo component type — ' + (combo.name || 'combo'),
+  }));
+}
+
 function _hrlgSpellBlades(unit, st) {
   const am = st.actionMode;
   const spells = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(Boolean);
@@ -3557,6 +3575,9 @@ function _hrlgComboBlades(unit, st) {
         label: typeof unitDisplayName === 'function' ? unitDisplayName(p) : (p.name || p.cls),
         available: true,
         portrait: _hrlgPortraitData(p, unit),
+        // The pair's DUAL type badges — the recipe this partner unlocks —
+        // riding the name row like every spell's type badge does.
+        badges: _hrlgComboTypeBadges(combo, 9),
         meta: combo ? { text: combo.name, color: '#f0d060' } : null,
         hint: syn.label ? '×1.3 SYNERGY' : null,
         fire: () => {
@@ -3578,7 +3599,7 @@ function _hrlgComboBlades(unit, st) {
   // partner locked in → list everything the combo can actually reach
   const combo = typeof getComboForUnits === 'function' ? getComboForUnits(unit, partner) : null;
   const comboRange = (combo && combo.range) || 3;
-  const isOffensive = !combo || ['damage', 'multiHit', 'aoe'].includes(combo.kind);
+  const isOffensive = !combo || ['damage', 'multiHit', 'aoe', 'lifeDrain'].includes(combo.kind);
   const G = window.GAME;
   const _dist = (u) => (G && typeof G.combatDist === 'function')
     ? G.combatDist(unit.x, unit.y, unit.z ?? 0, u.x, u.y, u.z ?? 0)
@@ -3599,17 +3620,34 @@ function _hrlgComboBlades(unit, st) {
     .sort((a, b) => a.d - b.d);
 
   const blades = targets.map(t => {
-    let typeAdv = '';
-    if (isOffensive && typeof getTypeEffectSummary === 'function') {
-      const adv = getTypeEffectSummary([...(unit.types || []), ...(partner.types || [])], t.u.types || []);
-      typeAdv = adv.hasStrong && !adv.hasWeak ? '▲' : adv.hasWeak && !adv.hasStrong ? '▼' : '';
+    // Type matchup vs THIS target — SAME rule as the attack/spell target
+    // drums: judged by the combo's own spellType (what applyDamageToUnit
+    // actually uses), STAB backed out so the green ! / ▼ always mean the
+    // real weak/resist matchup — not the silent same-type bonus.
+    let superEff = false, typeAdv = '';
+    if (isOffensive && typeof getTypeDamageMultiplier === 'function'
+        && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, t.u)) {
+      const _cType = (combo && combo.spellType) || null;
+      const _stab = (_cType && (unit.types || []).includes(_cType))
+        ? ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : 1;
+      const _eff = getTypeDamageMultiplier(unit, t.u, _cType) / _stab;
+      if (_eff > 1.001) superEff = true;
+      else if (_eff < 0.999) typeAdv = '▼';
     }
+    // Damage forecast: the projected combo damage blinks white on the row's
+    // HP bar + reads as the ≈−N chip — the exact same treatment every
+    // attack/spell target row gets (predictComboDamageToUnit, ui.js).
+    const previewDmg = (isOffensive && combo && typeof predictComboDamageToUnit === 'function')
+      ? predictComboDamageToUnit(unit, partner, combo, t.u) : 0;
     return {
       id: 'ct:' + t.u.id,
       icon: typeAdv || '◆',
-      iconColor: typeAdv === '▲' ? EW.good : typeAdv === '▼' ? EW.bad : '#f0d060',
+      iconColor: typeAdv === '▼' ? EW.bad : '#f0d060',
       label: typeof unitDisplayName === 'function' ? unitDisplayName(t.u) : (t.u.name || t.u.cls),
       available: true,
+      superEff: superEff,
+      previewDmg: previewDmg,
+      power: previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad } : undefined,
       portrait: _hrlgPortraitData(t.u, unit),
       meta: { text: t.d + 't' },
       fire: () => {
@@ -3627,8 +3665,20 @@ function _hrlgComboBlades(unit, st) {
       label: isOffensive ? 'No enemy in combo range' : 'No ally in combo range',
     });
   }
+  // Title carries the combo's DUAL type badges next to its name — the pair
+  // recipe stays visible while aiming, same intel the partner rows showed.
+  const _cbTitle = combo
+    ? { node: h(React.Fragment, null,
+        h('span', { className: 'hrlg-view-tab-icon', style: { color: '#f0d060' } }, '◆'),
+        h('span', { className: 'hrlg-view-tab-text' }, combo.name),
+        h('span', { className: 'hrlg-badges' },
+          _hrlgComboTypeBadges(combo, 9).map((bd, k) =>
+            h('span', { key: k, style: bd.style, title: bd.title }, bd.label))),
+        h('span', { className: 'hrlg-view-tab-count' }, targets.length + ''),
+      ) }
+    : { icon: '◆', text: 'Combo', count: targets.length + '' };
   return {
-    title: { icon: '◆', text: combo ? combo.name : 'Combo', count: targets.length + '' },
+    title: _cbTitle,
     blades,
   };
 }
@@ -5017,25 +5067,37 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     // range with the COMBO's own range (default 3), not the unit's attack
     // range, so measuring with effRange here let dead-on-arrival combos
     // through ("Combo target is out of range").
-    let comboOk = false;
+    // Pick the BEST reachable partner (highest forecast damage vs THIS
+    // enemy) so the row carries the same live numbers as attack/spell rows:
+    // real damage preview, super-effective note, the pair's dual type
+    // badges — and the fire path uses this same partner.
+    let comboOk = false, _cbBest = null;
     if (!onCooldown && unitAP >= comboApCost && !losBlocked && _fogSees) {
       for (const p of getComboPartners(actingUnit)) {
         const pCombo = typeof getComboForUnits === 'function' ? getComboForUnits(actingUnit, p) : null;
-        if (!pCombo || !['damage', 'multiHit', 'aoe'].includes(pCombo.kind)) continue;
+        if (!pCombo || !['damage', 'multiHit', 'aoe', 'lifeDrain'].includes(pCombo.kind)) continue;
         const pRange = pCombo.range || 3;
-        if (dist >= 1 && dist <= pRange) { comboOk = true; break; }
+        if (dist >= 1 && dist <= pRange) {
+          comboOk = true;
+          const pd = (typeof predictComboDamageToUnit === 'function')
+            ? predictComboDamageToUnit(actingUnit, p, pCombo, targetUnit) : 0;
+          if (!_cbBest || pd > _cbBest.dmg) _cbBest = { partner: p, combo: pCombo, dmg: pd };
+        }
       }
     }
 
     if (comboOk) {
       actions.push({
         id: 'combo',
-        label: 'Combo',
+        label: (_cbBest && _cbBest.combo) ? _cbBest.combo.name : 'Combo',
         icon: '◆',
         apCost: comboApCost,
         moveTile: null,
-        preview: null,
-        typeNote: '',
+        preview: (_cbBest && _cbBest.dmg > 0) ? { type: 'damage', amount: _cbBest.dmg } : null,
+        typeNote: (_cbBest && typeof getTypeCombatNote === 'function')
+          ? getTypeCombatNote(actingUnit, targetUnit, _cbBest.combo.spellType || null) : '',
+        badges: _cbBest ? _hrlgComboTypeBadges(_cbBest.combo) : undefined,
+        _comboPartnerId: _cbBest ? _cbBest.partner.id : null,
         available: true,
       });
     }
@@ -5408,7 +5470,10 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
       attackerId: actingUnit.id,
       targetId: targetUnit.id,
       spellName: (action && action.spell) ? action.spell.name : null,
-      isAttack: !!(action && (action.id === 'attack' || action.id === 'combo')),
+      isAttack: !!(action && action.id === 'attack'),
+      // Combo rows forecast the PAIR's combo damage (ui.js branches on the
+      // partner id) — hovering "Combo" used to flash a basic attack's number.
+      comboPartnerId: (action && action.id === 'combo') ? (action._comboPartnerId ?? null) : null,
       // Potion rows (ally quick menu): forecast the item's heal the same way.
       itemKey: (action && action.itemKey) || null,
     };
@@ -5816,9 +5881,18 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
         ? _gg.combatDist(actingUnit.x, actingUnit.y, actingUnit.z ?? 0, tx, ty, tz ?? 0)
         : Math.abs(actingUnit.x - tx) + Math.abs(actingUnit.y - ty);
       let _cbPick = null;
+      // The row previewed a specific partner's combo (damage number, type
+      // badges, matchup note) — fire with THAT partner when it still
+      // reaches, so the forecast is the contract.
+      if (a && a._comboPartnerId != null) {
+        const _prev = partners.find(p => p.id === a._comboPartnerId);
+        const _prevCombo = _prev && typeof getComboForUnits === 'function' ? getComboForUnits(actingUnit, _prev) : null;
+        if (_prevCombo && _cDist >= 1 && _cDist <= (_prevCombo.range || 3)) _cbPick = _prev;
+      }
       for (const p of partners) {
+        if (_cbPick) break;
         const pCombo = typeof getComboForUnits === 'function' ? getComboForUnits(actingUnit, p) : null;
-        if (!pCombo || !['damage', 'multiHit', 'aoe'].includes(pCombo.kind)) continue;
+        if (!pCombo || !['damage', 'multiHit', 'aoe', 'lifeDrain'].includes(pCombo.kind)) continue;
         if (_cDist >= 1 && _cDist <= (pCombo.range || 3)) { _cbPick = p; break; }
       }
       if (!_cbPick && partners.length > 0) _cbPick = partners[0];
@@ -5973,7 +6047,7 @@ function _hrlgEnemyBlades(actingUnit, st) {
       available: a.available,
       spell: a.spell || null,
       catColor: a.spell ? (_HRLG_CAT[typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage'] || _HRLG_CAT.damage).color : undefined,
-      badges: a.spell ? _hrlgSpellBadges(a.spell, typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage', true) : undefined,
+      badges: a.badges || (a.spell ? _hrlgSpellBadges(a.spell, typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage', true) : undefined),
       power: power,
       mp: a.mpCost || null,
       cost: a.available ? a.apCost : null,

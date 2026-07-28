@@ -38631,7 +38631,7 @@
             // Exact-z first: a combo aimed at a flyer must not resolve to the
             // ground unit stacked beneath it (unitAt(x,y) prefers ground).
             const target = ((targetZ !== undefined && targetZ !== null) ? unitAt(targetX, targetY, targetZ) : null) || unitAt(targetX, targetY);
-            const isOffensive = ['damage', 'multiHit', 'aoe'].includes(combo.kind);
+            const isOffensive = ['damage', 'multiHit', 'aoe', 'lifeDrain'].includes(combo.kind);
             const _comboTargetZ = target ? (target.z ?? 0) : 0;
             const d = combatDist(initiator.x, initiator.y, initiator.z ?? 0, targetX, targetY, _comboTargetZ);
             const _comboDxy = Math.abs(initiator.x - targetX) + Math.abs(initiator.y - targetY);
@@ -38774,7 +38774,7 @@
             let completionDelay = actionMs(800);
             if (cam) completionDelay = Math.max(completionDelay, cam.totalMs);
 
-            if (combo.kind === 'damage' && target) {
+            if ((combo.kind === 'damage' || combo.kind === 'lifeDrain') && target) {
                 const baseDmg = (combo.dmg || 160) + combinedPower;
                 const totalDmg = Math.max(1, Math.round(baseDmg * synergyMult));
                 window.setTimeout(() => {
@@ -38784,6 +38784,23 @@
                         damageType: combo.damageType,
                         spellType: combo.spellType || null
                     });
+
+                    // 🩸 lifeDrain (Abyssal Pact): the registry defined the kind
+                    // but no resolver branch existed — the combo spent 3 AP and
+                    // did NOTHING. It lands like a damage combo and both
+                    // partners drink drainPct of the hit (mirrors the spell
+                    // lifeDrain rule: drain quoted off the pre-mitigation hit).
+                    if (combo.kind === 'lifeDrain' && (combo.drainPct || 0) > 0) {
+                        const _drain = Math.floor(totalDmg * combo.drainPct);
+                        for (const _du of [initiator, partner]) {
+                            if (_du.dead) continue;
+                            const _gain = Math.min(_drain, (_du.maxHp || 0) - (_du.hp || 0));
+                            if (_gain > 0) {
+                                applyHealingToUnit(_du, _gain, initiator);
+                                addLog(`${combo.name} siphons ${_gain} HP to ${unitDisplayName(_du)}.`);
+                            }
+                        }
+                    }
 
                     for (const eff of (combo.statusEffects || [])) {
                         if (rollStatusApply(initiator, target, 0.85)) {

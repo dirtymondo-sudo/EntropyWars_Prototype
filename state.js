@@ -3307,7 +3307,7 @@
                 const combo = getComboForUnits(unit, partner);
                 if (!combo) return false;
                 const comboRange = combo.range || 3;
-                const isOffensive = ['damage', 'multiHit', 'aoe'].includes(combo.kind);
+                const isOffensive = ['damage', 'multiHit', 'aoe', 'lifeDrain'].includes(combo.kind);
                 const pool = isOffensive ? enemies : allies;
                 return pool.some(t => {
                     const d = _cpDist(t);

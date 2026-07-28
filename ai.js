@@ -2624,7 +2624,7 @@
             if (!combo) continue;
 
             const synergy = g.getComboTypeSynergy(unit, partner);
-            const isOff = ['damage', 'multiHit', 'aoe'].includes(combo.kind);
+            const isOff = ['damage', 'multiHit', 'aoe', 'lifeDrain'].includes(combo.kind);
 
             let comboTarget = null;
             if (isOff) {
@@ -2650,7 +2650,7 @@
 
             // Press value: an offensive combo into a weakness refunds AP to the
             // initiator (extends its turn).
-            if (comboTarget && ['damage', 'multiHit', 'aoe'].includes(combo.kind)) {
+            if (comboTarget && ['damage', 'multiHit', 'aoe', 'lifeDrain'].includes(combo.kind)) {
                 score += _pressScoreAdj(unit, comboTarget, { spellType: combo.spellType || null }).add;
             }
 

@@ -2834,7 +2834,7 @@
           } else {
             const combo = getComboForUnits(_selectedForHl, state.comboPartner);
             if (combo) {
-              const isOff = ['damage', 'multiHit', 'aoe'].includes(combo.kind);
+              const isOff = ['damage', 'multiHit', 'aoe', 'lifeDrain'].includes(combo.kind);
               const comboRange = combo.range || 3;
               if (isOff) {
                 const _comboSrcZ = _selectedForHl.z ?? (typeof getHeightAt === 'function' ? getHeightAt(_selectedForHl.x, _selectedForHl.y) : 0);
@@ -10450,6 +10450,92 @@
             return Math.min(dmg, Math.max(0, target.hp));
         }
 
+        /* ── Combo damage forecast ───────────────────────────────────────
+           Mirrors doComboAttack's damage assembly (combined spellPower +
+           hourglass + the pair's stat bonus, × pair-synergy vs the target)
+           and then applyDamageToUnit's pipeline the same way
+           _estimateSpellDamage does: matchup × STAB judged by the COMBO's
+           own spellType, high ground, range profile, capped product, level
+           scaling, armor and the flat soaks. Same midpoint contract as
+           every other forecast. */
+        function _estimateComboDamage(initiator, partner, combo, target) {
+            if (!initiator || !partner || !combo || !target) return 0;
+            if (!isEnemyUnit(initiator, target)) return 0;
+            const synergy = (typeof getComboTypeSynergyVsTarget === 'function')
+                ? getComboTypeSynergyVsTarget(initiator, partner, target)
+                : getComboTypeSynergy(initiator, partner);
+            const _statKey = combo.damageType === 'physical' ? 'atk' : 'intStat';
+            const _statBonus = Math.floor(((initiator[_statKey] || 0) + (partner[_statKey] || 0)) * 0.5 * 0.35);
+            const combinedPower = (initiator.spellPower || 0) + (partner.spellPower || 0)
+                + getHourglassPower(initiator) + getHourglassPower(partner) + _statBonus;
+            let dmg = 0;
+            if (combo.kind === 'multiHit') {
+                const hits = combo.hitDamages || [combo.dmg || 10];
+                dmg = hits.reduce((s, h) => s + Math.max(1, Math.round((h + Math.floor(combinedPower / hits.length)) * synergy.mult)), 0);
+            } else if (combo.kind === 'aoe') {
+                dmg = Math.max(1, Math.round(((combo.dmg || 16) + combinedPower) * synergy.mult));
+            } else {   // 'damage' / 'lifeDrain'
+                dmg = Math.max(1, Math.round(((combo.dmg || 160) + combinedPower) * synergy.mult));
+            }
+            // applyDamageToUnit's pipeline — the initiator is the sourceUnit.
+            dmg += getEffectiveAttackBonus(initiator, combo.damageType === 'magic' ? 'magic' : 'physical');
+            let offMult = getTypeDamageMultiplier(initiator, target, combo.spellType || null);
+            let heightSoak = 0;
+            if (typeof getUnitStandingHeight === 'function') {
+                const srcH = getUnitStandingHeight(initiator);
+                const tgtH = getUnitStandingHeight(target);
+                if (srcH > tgtH) {
+                    offMult *= 1 + (typeof DOWNHILL_DAMAGE_BONUS !== 'undefined' ? DOWNHILL_DAMAGE_BONUS : 0.1) * (srcH - tgtH);
+                } else if (tgtH > srcH) {
+                    heightSoak = (typeof HIGH_GROUND_DEF_BONUS !== 'undefined' ? HIGH_GROUND_DEF_BONUS : 5) * (tgtH - srcH);
+                }
+            }
+            if (typeof getRangeDamageMult === 'function') {
+                offMult *= getRangeDamageMult(initiator, target);
+            }
+            offMult = Math.min(offMult, typeof MAX_OFFENSIVE_MULT !== 'undefined' ? MAX_OFFENSIVE_MULT : 3);
+            dmg = Math.max(1, Math.round(dmg * offMult));
+            // Marked only rides physical hits (applyDamageToUnit's consumeMarked).
+            if (combo.damageType === 'physical' && unitHasStatus(target, 'marked')) {
+                dmg += target.markBonus ?? 40;
+            }
+            const _cbTL = getUnitLevel(target);
+            const _cbLs = (typeof offenseScale === 'function') ? offenseScale(getUnitLevel(initiator), _cbTL) : 1;
+            const _cbLsT = (typeof defenseScale === 'function') ? defenseScale(_cbTL) : 1;
+            dmg = Math.max(1, Math.round(dmg * _cbLs));
+            const armor = Math.round(getEffectiveArmor(target, combo.damageType) * _cbLsT);
+            if (armor > 0) dmg = Math.max(1, dmg - armor);
+            const _hs = Math.round(heightSoak * _cbLsT);
+            if (_hs > 0) dmg = Math.max(1, dmg - _hs);
+            // Bulwark (Tank passive): flat 8 soak on armor-respecting hits.
+            if (target.cls === 'Tank') dmg = Math.max(1, dmg - Math.round(8 * _cbLsT));
+            const hgRed = Math.round(getHourglassDamageReduction(target) * _cbLsT);
+            if (hgRed > 0) dmg = Math.max(1, dmg - hgRed);
+            return Math.max(1, dmg);
+        }
+
+        /* Combo counterpart of predictDamageToUnit: the mid estimate run
+           through the status damage-taken multipliers and the shield soak,
+           clamped to current HP — so combo target rows get the SAME HP-bar
+           forecast every other attack/spell row shows. */
+        function predictComboDamageToUnit(initiator, partner, combo, target) {
+            if (!initiator || !partner || !combo || !target || target.dead) return 0;
+            if (!isEnemyUnit(initiator, target)) return 0;
+            if (getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable)) return 0;
+            let dmg = _estimateComboDamage(initiator, partner, combo, target);
+            if (dmg <= 0) return 0;
+            if (combo.damageType !== 'magic' && typeof getStatusRangedDamageTakenMultiplier === 'function') {
+                const rm = getStatusRangedDamageTakenMultiplier(target);
+                if (rm !== 1) dmg = Math.max(1, Math.round(dmg * rm));
+            }
+            if (typeof getStatusDamageTakenMultiplier === 'function') {
+                const dm = getStatusDamageTakenMultiplier(target);
+                if (dm !== 1) dmg = Math.max(1, Math.round(dmg * dm));
+            }
+            dmg = Math.max(0, dmg - (target.shield || 0));   // shield soaks first
+            return Math.min(dmg, Math.max(0, target.hp));
+        }
+
         /* Projected Healing Potion restore on a target — mirrors doItem's
            formula (ITEM_RULES.healPotion.healPct of max HP × terrain heal
            multiplier), clamped to the missing HP so a full bar previews 0. */
@@ -10488,11 +10574,19 @@
                     }
                     const key = ['hov', attacker.id, target.id,
                         (spell && spell.name) || (hov.isAttack ? 'atk' : '') || (hov.itemKey || ''),
+                        hov.comboPartnerId != null ? 'cp' + hov.comboPartnerId : '',
                         target.hp, target.shield || 0,
                         attacker.x, attacker.y, attacker.z ?? 0].join('|');
                     if (key === _dmgPreviewCacheKey) return _dmgPreviewCacheVal;
                     let val = null;
-                    if (hov.itemKey === 'healPotion' && !isEnemyUnit(attacker, target)) {
+                    if (hov.comboPartnerId != null && isEnemyUnit(attacker, target)) {
+                        // Combo row hover → forecast the COMBO's damage (the
+                        // pair's real numbers), not a basic attack's.
+                        const _cbP = state.units.find(u => u.id === hov.comboPartnerId && !u.dead);
+                        const _cbC = (_cbP && typeof getComboForUnits === 'function') ? getComboForUnits(attacker, _cbP) : null;
+                        const dmg = _cbC ? predictComboDamageToUnit(attacker, _cbP, _cbC, target) : 0;
+                        if (dmg > 0) val = { unitId: target.id, dmg: dmg, lethal: dmg >= (target.hp || 0) };
+                    } else if (hov.itemKey === 'healPotion' && !isEnemyUnit(attacker, target)) {
                         // Healing Potion row hover → projected potion heal on the
                         // ally's HP bar (percent-of-max × terrain, clamped to the
                         // missing HP — mirrors doItem's formula).
