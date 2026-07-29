@@ -5,6 +5,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "test": "node --test *.test.js",
+    "test:syntax": "node check-syntax.js",
+    "test:parity": "node check-data-parity.js",
+    "deploy": "node deploy.js",
     "bots": "node bots.js",
     "bots:register": "node bot_register.js"
   },

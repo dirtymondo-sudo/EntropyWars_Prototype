@@ -8,13 +8,39 @@ socket.io) is only matchmaking/relay; ALL gameplay logic is client-side in
 ## RULE #1 — DELIVERY WORKFLOW (do this, nothing else)
 The game loads its scripts from the R2 bucket, NOT from the repo and NOT from a
 local server. So Claude CANNOT make changes go live. The ONLY correct workflow:
-1. Edit the ACTUAL existing files in the repo in place (never create new .js
-   files, never split logic into a new module — work with what's already there).
+1. Edit the ACTUAL existing files in the repo in place (never create new GAME
+   .js files, never split game logic into a new module — work with what's
+   already there; that rule protects the fixed R2 upload set. Repo-only dev
+   tooling at the repo root (check-*.js, *.test.js, deploy.js, load-data.js)
+   is fine and expected — see TOOLING).
 2. Hand the user the COMPLETE edited file(s) in the chat (SendUserFile).
 3. The user uploads them to the R2 bucket (and manually syncs the repo so future
-   sessions start from the latest).
+   sessions start from the latest) — or runs `npm run deploy` (see TOOLING),
+   which uploads + cache-busts in one command.
 DO NOT `git commit`, DO NOT `git push` (it 403s anyway), DO NOT generate patches/
 diffs. The deliverable is always the full edited file, produced in chat.
+
+### TOOLING (added 2026-07-29 — run `npm test` before delivering ANY file)
+- `npm test` — zero-dependency (Node 22 built-in runner): syntax-checks every
+  repo JS, validates data.js content schemas (races/spells/abilities/classes),
+  and diffs the hand-synced server.js economy copy against data.js (this
+  caught real drift on day one: `swordfighter` missing from the server's
+  AVAILABLE_RACES). A server-boot smoke test runs when node_modules exists.
+  OPTIONAL: .github/workflows/ci.yml runs the same suite on every push
+  (must live at exactly that path — GitHub ignores workflows elsewhere).
+- `npm run test:parity` / `npm run test:syntax` — the individual checks.
+  ANY edit to the ACCT_* constants / starter lists / race lists in data.js or
+  server.js MUST pass test:parity — the two files are hand-synced copies.
+- `npm run deploy` — USER-run (needs wrangler auth + EW_R2_BUCKET env): finds
+  the changed R2 files (git status, explicit args, or `--all`), node --checks
+  them, bumps the `?v=` token in index.html, uploads via wrangler, and prints
+  the Render-redeploy reminder. `--dry-run` previews. Without a bucket it
+  still bumps the token and prints a manual upload checklist. Claude has no
+  wrangler creds — Claude's deliverable is still files in chat (RULE #1);
+  this script is how the USER ships them.
+- `load-data.js` — loads data.js headlessly in a Node vm sandbox (real
+  values, not a copy). Use it for any new data validation/tooling instead of
+  regex-scraping data.js.
 
 ### RULE #1c — DO NOT PLAYTEST UNLESS EXPLICITLY ASKED
 Playtesting (Playwright runs, browser automation, driving the game) burns a LOT
@@ -34,7 +60,9 @@ changed ⇒ ship a fresh index.html too.
 - Bump = one global find/replace of the current token to a new unique one:
   `sed -i 's/?v=<OLD>/?v=<NEW>/g' index.html`  (e.g. `20260705a` → `20260705b`,
   or a fresh date). The token is shared across every URL, so one bump
-  invalidates everything — that's intended.
+  invalidates everything — that's intended. KEEP any suffix after the date+rev
+  (the current tokens end in `-cors` — that part is load-bearing).
+  `npm run deploy` / `node deploy.js` does this bump automatically.
 - `index.html` is served by Render (NOT R2); the user redeploys it to Render.
   It must stay revalidated (short/no cache), so the new token is seen immediately.
 - Asset URLs *inside* the JS (sprites/textures/audio/GLB in sprites.js `_S`,
