@@ -22,6 +22,9 @@ const io = new Server(server, {
     cors: { origin: ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : '*' },
     transports: ['websocket', 'polling']
 });
+console.log(ALLOWED_ORIGINS.length
+    ? '[BOOT] socket origin allowlist: ' + ALLOWED_ORIGINS.join(', ')
+    : '[BOOT] EW_ALLOWED_ORIGINS unset — sockets accept any origin (set it in production)');
 
 // gzip everything Express serves (index.html alone drops ~110KB → ~25KB).
 // Optional so a stale node_modules can't crash the server.
@@ -1755,6 +1758,20 @@ io.on('connection', (socket) => {
                 && (data.winner === 1 || data.winner === 2)) {
                 applyRankedElo(room, code, data.winner, 'state-sync');
             }
+            // Host-stamped state checksum (online.js _ewStateChecksum): keep a
+            // short seq→hash window so the guest's post-apply report (relay
+            // 'state-checksum') can be compared below. The stamp itself is
+            // STRIPPED before forwarding — the guest must recompute the hash
+            // from its own applied state, not echo the host's.
+            if (data._csumSeq != null && data._csum != null) {
+                if (!room._csums) room._csums = new Map();
+                room._csums.set(data._csumSeq, data._csum);
+                for (const k of room._csums.keys()) {
+                    if (room._csums.size <= 64) break; // insertion order ⇒ oldest first
+                    room._csums.delete(k);
+                }
+                delete data._csum;
+            }
         }
         socket.to(code).emit('state-sync', data);
     });
@@ -1817,6 +1834,30 @@ io.on('connection', (socket) => {
         const found = findRoomBySocket(socket.id);
         if (!found) return;
         if (!allowEvent(socket.id, 'relay')) return;
+
+        // Guest state-checksum report (anomaly detection). The guest hashes
+        // its applied state after each sync (online.js _ewStateChecksum) and
+        // reports it here; compare against the host's stamp for that seq. A
+        // mismatch means the guest's mirror diverged from what the host
+        // serialized — a desync bug or a tampered client. LOG-ONLY (console
+        // + replay 'anomaly' record) until the false-positive rate is known;
+        // no forfeits. Consumed here — never forwarded to the other client.
+        if (data && data.type === 'state-checksum') {
+            if (socket.id !== found.room.guest) return; // only the guest reports
+            const expected = found.room._csums ? found.room._csums.get(data.seq) : undefined;
+            if (expected === undefined) return; // seq aged out of the window
+            found.room._csums.delete(data.seq);
+            if (expected !== data.csum) {
+                const n = found.room._csumMismatches = (found.room._csumMismatches || 0) + 1;
+                console.warn(`[GUARD] state-checksum mismatch in room ${found.code} (seq ${data.seq}, round ${data.round}): host ${expected} vs guest ${data.csum} — mismatch #${n}`);
+                replayWrite(found.room, {
+                    t: Date.now(), e: 'anomaly', kind: 'state-checksum',
+                    seq: data.seq, round: data.round ?? null,
+                    host: expected, guest: data.csum, count: n,
+                });
+            }
+            return;
+        }
 
         // Only the small semantic relays matter for replays — the VFX /
         // floating-text / camera streams are re-derivable from the actions.

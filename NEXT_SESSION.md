@@ -13,8 +13,8 @@ Keep it updated when you finish (or intentionally reject) an item.
 | 2 | Canonical data (client/server) | **Done 2026-07-29** — server derives ACCT_*/starters/races from data.js at boot (`ECON` object, see below); literals kept as fallback + parity source; `npm run test:parity` still guards the fallback |
 | 3 | Fast tests + CI | **Done 2026-07-29** — `npm test` (syntax, content schemas, parity, migrations, server smoke), `.github/workflows/ci.yml` |
 | 4 | Reproducible builds / deploy | **Mostly done** — `npm run deploy` (upload + auto cache-bust). Open: lockfile decision, vendored CDN deps |
-| 5 | Online hardening (near-term list) | **Done 2026-07-29** — hashed tokens, HTTP rate limits, `migrations/` dir, origin allowlist supported. Open: guest checksums + anomaly detection (item 1 below) |
-| 6 | Server-side simulation for ranked | **Deliberately deferred** — rewrite-scale; don't start until cheating is an observed problem. Seeded RNG (item 2 below) is the prerequisite either way |
+| 5 | Online hardening (near-term list) | **Fully done 2026-07-29** — hashed tokens, HTTP rate limits, `migrations/` dir, origin allowlist (+ boot log), guest state checksums + log-only anomaly detection |
+| 6 | Server-side simulation for ranked | **Deliberately deferred** — rewrite-scale; don't start until cheating is an observed problem. Seeded RNG (item 1 below) is the prerequisite either way |
 
 ## Verified this session (2026-07-29, session 2)
 
@@ -35,24 +35,34 @@ Keep it updated when you finish (or intentionally reject) an item.
   `[ECON] economy derived from data.js (68 starters, 96 races, unit price
   5000)`, simulated load failure logs the fallback line and boots fine.
 
+## Shipped 2026-07-29 (session 2): guest state checksum + anomaly detection
+
+Implementation notes (for future debugging — the design shipped as planned):
+- online.js `_ewStateChecksum(st)` (exposed as `window._ewStateChecksum`):
+  FNV-1a over unit id/player/x/y/z/hp/mp/ap/dead + round/activePlayer/
+  matchKills. All hashed fields ride state-sync verbatim, so host and guest
+  hash identical values. Returns null when st/units absent (setup screens).
+- HOST stamps `s._csumSeq` (counter) + `s._csum` in `_broadcastState`,
+  AFTER the lastSyncJson dedup compare — the ever-changing seq inside the
+  dedup JSON would otherwise defeat the dedup entirely. Don't move it.
+- GUEST reports at the END of `_applyRemoteState` (nothing after
+  `_deserializeInto` touches a hashed field), throttled to 1 per 1.5s:
+  `relay {type:'state-checksum', seq, round, csum}`. Replay player never
+  emits (NET.online false). `_ewApplyRelay` drops the type early in case a
+  pre-upgrade server forwards it.
+- SERVER (server.js): state-sync handler stores seq→hash in `room._csums`
+  (64-entry window, oldest evicted) and STRIPS `_csum` before forwarding so
+  the guest can't just echo it. Relay handler intercepts 'state-checksum'
+  (guest-only, never forwarded); mismatch ⇒ `[GUARD]` console warn +
+  replay `{e:'anomaly', kind:'state-checksum', seq, round, host, guest,
+  count}`. LOG-ONLY by design — check Render logs / replays for real-match
+  false positives BEFORE ever escalating to forfeits.
+- Also added: `[BOOT]` line logging the socket origin allowlist state, so
+  whether EW_ALLOWED_ORIGINS is live on Render is visible in boot logs.
+
 ## Priority queue (in order — pick by available effort)
 
-### 1. Guest state checksum + anomaly detection (medium, client+server)
-Completes suggestion #5's near-term list. Design:
-- Host already streams `state-sync`; the GUEST computes a cheap checksum of
-  gameplay-relevant fields after applying each sync (unit hp/xy/z/mp/ap,
-  round, activePlayer, matchKills — skip UI/fog/guest-local keys, reuse
-  `_serializeState`'s skip list knowledge in online.js) and emits
-  `relay {type:'state-checksum', round, hash}` (guests may only relay — never
-  a new server event type that breaks direction enforcement).
-- server.js: compare guest hash vs a hash the HOST also attaches to each sync
-  (cheapest: host stamps `data._csum`, server compares guest's report).
-  Mismatch ⇒ `replayWrite(room, {e:'anomaly', ...})` + console [GUARD] log.
-  LOG ONLY at first — no forfeits until false-positive rate is known.
-- Touches online.js (R2!) ⇒ RULE #1b: deliver online.js AND a `?v=`-bumped
-  index.html in the same message. server.js too (chat delivery, Render).
-
-### 2. Seeded RNG for engine rolls (large, battle.js/state.js, staged)
+### 1. Seeded RNG for engine rolls (large, battle.js/state.js, staged)
 Extraction stage 5; prerequisite for replay verification and any future
 server-side/deterministic ranked (suggestion #6). battle.js has ~98
 `Math.random()` sites, state.js ~15, ai.js 3 — but only ENGINE-affecting rolls
@@ -68,7 +78,7 @@ so the stream isn't polluted by presentation. Plan:
 - Payoff test: a scripted battle replayed twice from the same seed produces
   identical state (deterministic-scenario test, suggestion #3's last gap).
 
-### 3. Pure damage/status resolution + headless tests (large, staged)
+### 2. Pure damage/status resolution + headless tests (large, staged)
 Extraction stage 2. The damage pipeline lives in battle.js:
 `_applyDamageSpellHit`, `_applyMultiHitDamage`, `_applyRicochetDamage`,
 `_applyAoeDamage`, `_applyLineDamage`, `getRangeDamageMult`,
@@ -79,9 +89,9 @@ NUMERIC CORE of each into pure `calcX(attacker, defender, spell, ctx) ->
 by the existing appliers. Then test headlessly: extend load-data.js's sandbox
 pattern to evaluate battle.js far enough to reach the pure functions, or
 extract them by source (extractConst-style) — whichever works first. Best
-done AFTER #2 so rolls are injectable (pass rng into ctx).
+done AFTER #1 so rolls are injectable (pass rng into ctx).
 
-### 4. Reproducible-build leftovers (small, mostly user decisions)
+### 3. Reproducible-build leftovers (small, mostly user decisions)
 - package-lock.json is currently gitignored (CLAUDE.md convention) — ask the
   user before changing that; committing it is ChatGPT's recommendation and is
   probably right now that CI exists (CI would then use `npm ci`).

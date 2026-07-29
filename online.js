@@ -2940,6 +2940,12 @@
                guest AND during replay playback (was: NET.role === 'guest'). */
             window._ewApplyRelay = function(data) {
                     var st = window._gameState;
+                    /* state-checksum reports are consumed by the SERVER (it
+                       compares them against the host's stamped hash) and are
+                       never meant for the other client — but a pre-upgrade
+                       server forwards every relay verbatim, so drop them
+                       here instead of falling through the dispatcher. */
+                    if (data.type === 'state-checksum') return;
                     if (data.type === 'intro-skip') {
                         /* Opponent voted to skip the opening cinematic. Latch the
                            vote (it may arrive before OUR cinematic mounts) and
@@ -3620,6 +3626,42 @@
             window._ewSerializeState = function() { return _serializeState(); };
             window._ewDeserializeInto = function(target, s) { return _deserializeInto(target, s); };
 
+            /* ── STATE CHECKSUM (desync / anomaly detection) ────────────────
+               Cheap FNV-1a hash over the gameplay-relevant slice of state:
+               every unit's identity/position/resources plus round /
+               activePlayer / matchKills. The HOST stamps it on each
+               state-sync (_csum + _csumSeq, added AFTER the dedup check so
+               the ever-changing seq can't defeat it); the GUEST recomputes
+               it from its own state AFTER applying that sync and reports it
+               back via relay {type:'state-checksum'}. The SERVER compares
+               the pair and logs mismatches to console + the replay file
+               (LOG-ONLY — no forfeits until the false-positive rate is
+               known; see server.js relay handler). Per-viewer keys (UI,
+               fog, camera) are deliberately excluded — they differ between
+               host and guest by design. Every field read here rides
+               state-sync verbatim (units wholesale, round/activePlayer/
+               matchKills scalars), so host and guest hash identical values. */
+            function _ewStateChecksum(st) {
+                if (!st || !st.units) return null;
+                var parts = [];
+                for (var i = 0; i < st.units.length; i++) {
+                    var u = st.units[i];
+                    if (!u) continue;
+                    parts.push(u.id, u.player, u.x, u.y, u.z, u.hp, u.mp, u.ap, u.dead ? 1 : 0);
+                }
+                parts.push('R', st.round, 'A', st.activePlayer);
+                var mk = st.matchKills;
+                if (mk) parts.push('K', mk[1] || 0, mk[2] || 0);
+                var str = parts.join('|');
+                var h = 0x811c9dc5;
+                for (var j = 0; j < str.length; j++) {
+                    h ^= str.charCodeAt(j);
+                    h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+                }
+                return ('0000000' + h.toString(16)).slice(-8);
+            }
+            window._ewStateChecksum = _ewStateChecksum;
+
             function _serializeState() {
                 var st = window._gameState;
                 if (!st) return null;
@@ -3855,6 +3897,12 @@
                     var json = JSON.stringify(s);
                     if (json === NET.lastSyncJson) return;
                     NET.lastSyncJson = json;
+                    /* Checksum stamp — added AFTER the dedup compare (the seq
+                       increments every send, so including it in `json` would
+                       make every snapshot look "changed" and kill the dedup). */
+                    NET._csumSeq = (NET._csumSeq || 0) + 1;
+                    s._csumSeq = NET._csumSeq;
+                    s._csum = _ewStateChecksum(window._gameState);
                     NET.socket.emit('state-sync', s);
                 } catch (e) {
                     console.error('[NET] Serialize error:', e);
@@ -4169,6 +4217,28 @@
                             }
                         } else if (typeof window.showResultOverlay === 'function') {
                             window.showResultOverlay();
+                        }
+                    }
+
+                    /* ── Checksum report (see _ewStateChecksum) ─────────────
+                       Recompute AFTER the whole apply (nothing between here
+                       and _deserializeInto touches a hashed field — the UI
+                       restores, auto-select and camera work above are all
+                       per-viewer keys). Throttled to ~1 report / 1.5s so it
+                       stays a rounding error inside the relay rate budget;
+                       the server matches reports to stamps by seq, so
+                       skipped syncs are fine. Live guests only — the replay
+                       player is offline (NET.online false) and never emits. */
+                    if (NET.online && NET.role === 'guest' && NET.socket && data._csumSeq != null) {
+                        var _csNow = Date.now();
+                        if (!NET._lastCsumReportAt || _csNow - NET._lastCsumReportAt > 1500) {
+                            NET._lastCsumReportAt = _csNow;
+                            NET.socket.emit('relay', {
+                                type: 'state-checksum',
+                                seq: data._csumSeq,
+                                round: st.round,
+                                csum: _ewStateChecksum(st)
+                            });
                         }
                     }
                 } catch (e) {
