@@ -178,19 +178,29 @@
                     const clickedUnit = unitAt(x, y);
                     const actingUnit = getSelectedUnit();
 
-                    /* ── Guest quick menus (2026-07-28) ─────────────────────
-                       The quick-menu anchors (_enemyActionTargetId /
-                       _tileActionTarget) are per-viewer UI on the state-sync
-                       skip list, so they can never arrive from the host: they
-                       must be set HERE, mirroring the engine's clickTile root
-                       branch. The old code only focused the info panel and
-                       relayed the click — which opened the menus invisibly on
-                       the HOST's copy (and panned the host's camera / played
-                       its cursor SFX): the guest could never open the enemy /
-                       ally / tile quick menu at all. Menu-BROWSING clicks are
-                       handled fully locally and NOT relayed; clicks that need
-                       the engine (armed actions, enemy deployables in reach)
-                       still go to the host. */
+                    /* ── Guest quick menus (stage 3 of the TargetQuery
+                       refactor, 2026-07-29) ─────────────────────────────────
+                       Menu-BROWSING clicks (no armed action mode) run the REAL
+                       engine clickTile locally instead of the hand-copied
+                       mirror of its root branch that used to live here (the
+                       fork that drifted and caused the 2026-07-28 PvP bug).
+                       Everything on the engine's root branch is either
+                       per-viewer UI — the quick-menu anchors
+                       _enemyActionTargetId / _tileActionTarget are on the
+                       state-sync skip list (_guestUIKeys), plus focus, cursor
+                       SFX, camera shots — or an engine mutator the wrappers
+                       below already relay to the host (selectUnit; doAttack
+                       via the in-reach enemy-deployable shortcut). The engine
+                       applies its own input freezes (_actionExecuting →
+                       _netGuestViewer bail, cinematics, fog computed with
+                       state.activePlayer = this guest), so the gates can never
+                       drift apart again: one implementation, host and guest.
+                       Armed-action clicks below still RELAY — they mutate
+                       authoritative match state and must execute on the
+                       host. */
+                    if (!state.actionMode) {
+                        return _onlineOrigClickTile(x, y, z);
+                    }
 
                     /* the exact sprite the renderer resolved wins over the
                        ground unit (stacked columns) — same rule as the engine */
@@ -201,87 +211,16 @@
                     }
                     if (!_qmUnit) _qmUnit = clickedUnit;
 
-                    /* fog: browsing an unseen tile is inert, exactly like the
-                       engine's gate (armed-action clicks relay below and re-run
-                       the same gate host-side with this player's fog) */
+                    /* fog: an armed click into the murk still relays below and
+                       re-runs the engine's own gate host-side with this
+                       player's fog — but never open a unit menu here for a
+                       sprite the guest cannot actually see */
                     let _qmVisible = true;
                     if (state.fogOfWar && typeof computeVisibleTiles === 'function' && typeof posKey === 'function') {
                         try { _qmVisible = computeVisibleTiles(state.activePlayer).has(posKey(x, y)); } catch (e) {}
                     }
 
-                    const _qmCanControl = !!(actingUnit && !state.autoPlayers?.[state.activePlayer]
-                        && actingUnit.player === state.activePlayer
-                        && (typeof canUnitAct !== 'function' || canUnitAct(actingUnit)));
-
-                    if (!state.actionMode) {
-                        /* same input freezes the engine's clickTile applies */
-                        if (state._actionExecuting) return;
-                        if (typeof isCinematicActive === 'function' && isCinematicActive()) return;
-                        if (!_qmVisible) return;
-                        if (_qmUnit && _qmUnit.dead) {
-                            focusUnitPanel(_qmUnit.id);
-                            return;
-                        }
-                        if (_qmCanControl && _qmUnit) {
-                            if (_qmUnit.id === actingUnit.id) {
-                                /* own ACTIVE unit → toggle the tile card */
-                                state._enemyActionTargetId = null;
-                                state._tileActionTarget = (state._tileActionTarget && state._tileActionTarget.x === x && state._tileActionTarget.y === y)
-                                    ? null : { x: x, y: y, z: (z != null ? z : _qmUnit.z) };
-                                playSfx('uiCursorFocus');
-                                markDirty('hud');
-                                renderIfDirty();
-                                return;
-                            }
-                            /* any OTHER living unit — enemy or ally — toggles
-                               its quick menu (offense vs quick-cast decided by
-                               the HUD by team, same as the engine) */
-                            if ((state.actionMenuView || 'root') !== 'root') {
-                                state.actionMenuView = 'root';
-                                state.selectedTool = null;
-                                state.pendingTarget = null;
-                            }
-                            state._tileActionTarget = null;
-                            if (state._enemyActionTargetId === _qmUnit.id) {
-                                state._enemyActionTargetId = null;
-                                if (typeof window._tpsTurnShot === 'function') window._tpsTurnShot();
-                            } else {
-                                state._enemyActionTargetId = _qmUnit.id;
-                                if (typeof _tpsTargetShot === 'function') _tpsTargetShot(actingUnit, _qmUnit);
-                            }
-                            focusUnitPanel(_qmUnit.id);
-                            playSfx('uiCursorFocus');
-                            markDirty('hud');
-                            renderIfDirty();
-                            return;
-                        }
-                        if (_qmCanControl && !_qmUnit) {
-                            const _qmDeploy = (state._deployedObjects || []).find(function(o) {
-                                return o.x === x && o.y === y && o.hp > 0 && o.ownerPlayer !== actingUnit.player;
-                            });
-                            if (!_qmDeploy) {
-                                /* empty tile → toggle the tile card */
-                                state._enemyActionTargetId = null;
-                                state._tileActionTarget = (state._tileActionTarget && state._tileActionTarget.x === x && state._tileActionTarget.y === y)
-                                    ? null : { x: x, y: y, z: z };
-                                playSfx('uiCursorFocus');
-                                markDirty('hud');
-                                renderIfDirty();
-                                return;
-                            }
-                            /* enemy deployable: the ENGINE owns the in-reach
-                               attack shortcut — fall through to the relay */
-                        }
-                        if (!_qmCanControl) {
-                            /* not driveable right now → old select/focus path */
-                            if (clickedUnit && clickedUnit.player === _myPlayer() && !clickedUnit.dead) {
-                                selectUnit(clickedUnit.id);
-                            } else if (clickedUnit) {
-                                focusUnitPanel(clickedUnit.id);
-                            }
-                            return;
-                        }
-                    } else if (state.actionMode === 'move' && _qmVisible && actingUnit
+                    if (state.actionMode === 'move' && _qmVisible && actingUnit
                         && _qmUnit && !_qmUnit.dead && _qmUnit.id !== actingUnit.id
                         && state._clickedUnitId === _qmUnit.id) {
                         /* move mode, clicked a unit SPRITE → engine parity:
@@ -368,10 +307,13 @@
 
                         /* Instant move feedback — footstep + a destination
                            hologram — but only for a tile the engine will
-                           actually accept, so the ghost never lies. */
-                        if (actingUnit && typeof getMoveTiles === 'function') {
+                           actually accept, so the ghost never lies. Legal
+                           tiles come from the ONE validity oracle
+                           (GAME.TargetQuery), not a local re-derivation. */
+                        var _tqMove = window.GAME && window.GAME.TargetQuery;
+                        if (actingUnit && _tqMove) {
                             try {
-                                var _mvTiles = getMoveTiles(actingUnit);
+                                var _mvTiles = _tqMove.moveTiles(actingUnit);
                                 if (_mvTiles && _mvTiles.some(function(t) { return t.x === x && t.y === y; })) {
                                     _guestActionFeedback('move', actingUnit, x, y);
                                 }
