@@ -19562,14 +19562,17 @@ const ThreeRenderer = (function () {
             var s = (opts.fit === 'span') ? target / Math.max(ex, ez) : target / ey;
             function _mk() {
                 var m = root.clone(true);
-                if (opts.matPick) {
-                    m.traverse(function (n) {
-                        if (!n.isMesh) return;
-                        n.material = Array.isArray(n.material)
-                            ? n.material.map(function (mm) { return opts.matPick(n, mm) || mm; })
-                            : (opts.matPick(n, n.material) || n.material);
-                    });
-                }
+                m.traverse(function (n) {
+                    if (!n.isMesh) return;
+                    // Smooth-shaded misc model (Meshy bake / authored OBJ), not
+                    // pixel-art sprite art — ride the retro filter's models-only
+                    // pixelation mask (ThreePost._renderPixelMask reads the flag).
+                    n._ew_pixelate = true;
+                    if (!opts.matPick) return;
+                    n.material = Array.isArray(n.material)
+                        ? n.material.map(function (mm) { return opts.matPick(n, mm) || mm; })
+                        : (opts.matPick(n, n.material) || n.material);
+                });
                 m.scale.setScalar(s);
                 m.position.x = -((bb.min.x + bb.max.x) * 0.5) * s;
                 m.position.y = -bb.min.y * s;                 // sit base on y=0
