@@ -1,0 +1,27 @@
+# CI — syntax + canonical-data checks on every push/PR.
+#
+# Everything except the server smoke test is dependency-free (Node built-ins
+# only), so this stays fast even if npm install ever flakes: the smoke test
+# skips itself when express isn't resolvable.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install server deps (browsers skipped)
+        env:
+          # playwright is a package.json dependency for the playtest harness;
+          # its postinstall must not pull browser binaries in CI.
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: npm install --no-audit --no-fund
+      - name: npm test
+        run: npm test
