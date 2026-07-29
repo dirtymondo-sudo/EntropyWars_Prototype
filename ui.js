@@ -3256,7 +3256,13 @@
         let _dragMoveOrigin = null;
         let _dragMoveTarget = null;
         let _editorDragPainting = false;
-        document.addEventListener('mouseup', () => {
+        /* Shared by mouseup AND touchend — a finger lift must commit the same
+           things a button release does (drag-to-move, editor drag-painting),
+           otherwise touch players silently lose both gestures. A plain tap is
+           safe either way: _dragMoveTarget only gets set after the pointer
+           ENTERS a different tile, so start+release on one tile commits
+           nothing. */
+        function _dragGestureEnd() {
             if (_editorDragPainting && typeof window._meEditorDragEnd === 'function') window._meEditorDragEnd();
             _editorDragPainting = false;
             if (_dragMoveActive && _dragMoveTarget) {
@@ -3271,8 +3277,14 @@
             _dragMoveActive = false;
             _dragMoveOrigin = null;
             _dragMoveTarget = null;
-        });
-        document.addEventListener('touchend', () => {
+        }
+        document.addEventListener('mouseup', _dragGestureEnd);
+        document.addEventListener('touchend', _dragGestureEnd);
+        document.addEventListener('touchcancel', () => {
+            // interrupted gesture (call, notification, palm): close the editor
+            // paint stroke (undo batch) but do NOT commit a unit move
+            if (_editorDragPainting && typeof window._meEditorDragEnd === 'function') window._meEditorDragEnd();
+            _editorDragPainting = false;
             _dragMoveActive = false;
             _dragMoveOrigin = null;
             _dragMoveTarget = null;
@@ -6981,7 +6993,8 @@
 
                 <div class="pm-set-group">
                     <div class="pm-set-group-title">Graphics</div>
-                    <div class="pm-set-toggles">
+                    ${typeof window._buildPerfSettingsHTML === 'function' ? window._buildPerfSettingsHTML('_renderPauseMenu();') : ''}
+                    <div class="pm-set-toggles" style="margin-top:8px">
                         <label class="pm-toggle"><input type="checkbox" ${fxaaOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setFXAA)ThreePost.setFXAA(this.checked);"><span class="pm-toggle-label">FXAA</span><span class="pm-toggle-hint">anti-aliasing</span></label>
                         <label class="pm-toggle"><input type="checkbox" ${filmicOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setFilmicTone)ThreePost.setFilmicTone(this.checked);"><span class="pm-toggle-label">Filmic Tone</span><span class="pm-toggle-hint">rich contrast grade</span></label>
                     </div>

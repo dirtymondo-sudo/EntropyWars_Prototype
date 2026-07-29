@@ -1152,6 +1152,9 @@ const ThreeRenderer = (function () {
             if (tb !== null) _perfSettings.terrainBatch = tb !== '0';
             var fc = localStorage.getItem('ew_fpsCap');
             if (fc !== null) _perfSettings.fpsCap = parseInt(fc, 10) || 0;
+            // Low performance mode (mobile): default to 30fps until the player
+            // picks a cap themselves — halves GPU/battery load on phones.
+            else if (typeof window !== 'undefined' && window.EW_PERF_LOW) _perfSettings.fpsCap = 30;
             var fq = localStorage.getItem('ew_fpsCounter');
             if (fq !== null) _perfSettings.fpsCounter = fq === '1';
             var fg = localStorage.getItem('ew_fogGrid');
@@ -19685,8 +19688,18 @@ const ThreeRenderer = (function () {
             side: THREE.FrontSide, depthWrite: true, fog: false
         });
     }
+    /* Low performance mode: skip the purely-decorative celestial/horizon GLBs
+       (planets, UFOs, clocks — each a multi-MB download with an uncompressed
+       embedded texture). Returning the empty Group keeps every roster builder
+       working; the procedural horizon (mountains, obelisks, glow cores) still
+       renders. On-board props (dumpster, columns, mushrooms, obelisk3d) are
+       NOT skipped — they have collision footprints and must stay visible. */
+    var _HZ_SCENERY_SKIP_LOW = { moon: 1, earth: 1, jupiter: 1, saturn: 1, alien: 1, star: 1, solar: 1, ufo: 1, spaceship: 1, clock: 1, gclock: 1 };
     function _hzMiscGLB(key, target, opts) {
         opts = opts || {};
+        if (typeof window !== 'undefined' && window.EW_PERF_LOW && _HZ_SCENERY_SKIP_LOW[key]) {
+            return new THREE.Group();
+        }
         if (!opts.matPick) opts.matPick = _hzMiscUnlitPick;
         return _miscModelInstance(_R2_MISC + _MISC_GLB[key], true, target, opts);
     }
@@ -22056,12 +22069,28 @@ const ThreeRenderer = (function () {
 
         canvas = document.createElement('canvas');
         canvas.id = 'threeCanvas';
-        canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:5;display:none;pointer-events:auto;';
+        canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:5;display:none;pointer-events:auto;touch-action:none;';
         _parentEl.appendChild(canvas);
+        /* touch-action:none on the board surface: iOS ignores user-scalable=no,
+           so without it a two-finger pinch on the board zooms the PAGE instead
+           of feeding the state.js pinch-zoom camera gesture. Taps still
+           synthesize clicks (touch-action only suppresses browser gestures). */
+        try { _parentEl.style.touchAction = 'none'; } catch (e) {}
 
         var w = _parentEl.clientWidth || 960, h = _parentEl.clientHeight || 540;
         renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, alpha: true, powerPreference: 'high-performance' });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        /* Pixel ratio: saved pref (pause-menu Fast/Native) wins; otherwise low
+           performance mode (mobile OOM guard) renders at 1x — every composer
+           target and the drawing buffer scale with this, so it's the single
+           biggest VRAM lever after the 3D-unit switch. */
+        var _pr = null;
+        try { _pr = parseFloat(localStorage.getItem('ew_pixelRatio')); } catch (e) {}
+        if (!(_pr > 0)) {
+            _pr = (typeof window !== 'undefined' && window.EW_PERF_LOW) ? 1 : Math.min(window.devicePixelRatio, 2);
+        }
+        _pr = Math.max(0.5, Math.min(_pr, window.devicePixelRatio || 1, 2));
+        renderer.setPixelRatio(_pr);
+        try { window._ewPixelRatio = _pr; } catch (e) {}
         renderer.setSize(w, h);
         /* §4.2: the depth pass renders only when renderFrame flags it dirty
            (renderer.shadowMap.needsUpdate) instead of every frame. */
@@ -24921,7 +24950,9 @@ const ThreeRenderer = (function () {
         r.outputEncoding = THREE.sRGBEncoding;
         r.toneMapping = THREE.ACESFilmicToneMapping;
         r.toneMappingExposure = 1.05;
-        r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        // Mobile: the viewer is a SECOND WebGL context living alongside the
+        // board renderer — keep it at 1x there so it can't tip a phone over.
+        r.setPixelRatio(window.EW_MOBILE ? 1 : Math.min(window.devicePixelRatio || 1, 2));
         var cnv = r.domElement;
         cnv.style.position = 'absolute';
         cnv.style.inset = '0';

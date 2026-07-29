@@ -182,6 +182,44 @@
         }
     })();
     </script>
+
+    <script>
+    /* ── Mobile detection + performance mode (must run BEFORE every game
+       module — three-post.js / three-renderer.js / three-vfx.js read the
+       flags at parse time to pick their defaults) ──
+       Phones were tab-crashing (OOM) at match start: rigged GLB unit models
+       ship uncompressed 2K textures, three shared animation libraries are
+       preloaded and re-baked on the main thread, and the renderer + post
+       chain allocate at devicePixelRatio 2. window.EW_PERF_LOW gates all of
+       that down to the sprite pipeline at 1x. Persisted knobs:
+       - ew_perfMode: 'auto' (default; low on mobile, high on desktop),
+         'low', 'high' — set via the Performance buttons in Settings.
+       - ew_units3d: '1'/'0' explicit 3D-unit-model override; wins over the
+         mode-derived default either way. */
+    (function () {
+        var touch = (navigator.maxTouchPoints || 0) > 0 || ('ontouchstart' in window);
+        var coarse = false;
+        try { coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); } catch (e) {}
+        var uaMobile = /Android|iPhone|iPad|iPod|Mobile|Silk/i.test(navigator.userAgent || '') ||
+            !!(navigator.userAgentData && navigator.userAgentData.mobile);
+        // iPad Safari masquerades as desktop Mac — touch + coarse pointer is the giveaway
+        window.EW_MOBILE = !!(touch && (coarse || uaMobile));
+        var mode = 'auto';
+        try { mode = localStorage.getItem('ew_perfMode') || 'auto'; } catch (e) {}
+        if (mode !== 'low' && mode !== 'high') mode = 'auto';
+        window.EW_PERF_MODE = mode;
+        window.EW_PERF_LOW = (mode === 'low') || (mode === 'auto' && window.EW_MOBILE);
+        var m3d = null;
+        try { m3d = localStorage.getItem('ew_units3d'); } catch (e) {}
+        if (m3d === '0' || (window.EW_PERF_LOW && m3d !== '1')) {
+            window.EW_DISABLE_3D_UNITS = true;
+        }
+        try {
+            document.documentElement.classList.add(window.EW_MOBILE ? 'ew-mobile' : 'ew-desktop');
+            if (window.EW_PERF_LOW) document.documentElement.classList.add('ew-perf-low');
+        } catch (e) {}
+    })();
+    </script>
     <link rel="preconnect" href="https://cdn.entropywars.net">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
@@ -189,12 +227,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;900&family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+SC:wght@500;600;700&family=DotGothic16&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20260729j-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20260729j-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20260729j-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20260729j-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20260729k-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20260729k-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20260729k-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20260729k-cors">
 
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20260729j-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20260729k-cors">
     <!-- Three.js r128 for game board renderer -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- Three.js r128 postprocessing (bloom + FXAA) — adds to global THREE -->
@@ -208,7 +246,7 @@
     <!-- THREE.CSS2DRenderer — DOM labels synced to 3D camera (nameplates, nexus bars) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
     <!-- THREE.MeshLine — thick 3D lines for lightning bolts -->
-    <script src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20260729j-cors"></script>
+    <script src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20260729k-cors"></script>
     <!-- THREE.OBJLoader — real 3D foliage/tree models (Entropy Vale natural maps) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
     <!-- THREE.GLTFLoader — esoteric background props from /Assets/misc (Pyramid.glb)
@@ -534,7 +572,7 @@
         <!-- PAGE 1: Title Screen with artwork -->
         <div id="titlePage" class="title-page active">
             <div class="title-art-wrap">
-                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20260729j-cors" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
+                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20260729k-cors" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
             </div>
             <div class="title-characters">
                 <div class="title-sprite sprite-steve"></div>
@@ -1082,18 +1120,18 @@
 
     <!-- External dependencies -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script src="https://cdn.entropywars.net/sprites.js?v=20260729j-cors"></script>
-    <script>window._spritesLoaded = true; window._EW_BUILD_TOKEN = '20260727h-cors';</script>
+    <script src="https://cdn.entropywars.net/sprites.js?v=20260729k-cors"></script>
+    <script>window._spritesLoaded = true; window._EW_BUILD_TOKEN = '20260729k-cors';</script>
     <script>
     // NOTE: crossorigin="anonymous" removed from display <img> tags.
     // Only _getCachedImg (canvas compositing) uses CORS mode.
     </script>
-    <script src="https://cdn.entropywars.net/data.js?v=20260729j-cors"></script>
+    <script src="https://cdn.entropywars.net/data.js?v=20260729k-cors"></script>
     <script>
       // Fallback: if local data.js didn't load, try CDN
       if (typeof SPELL_LIBRARY === 'undefined') {
         var _djs = document.createElement('script');
-        _djs.src = 'https://cdn.entropywars.net/data.js?v=20260729j-cors';
+        _djs.src = 'https://cdn.entropywars.net/data.js?v=20260729k-cors';
         document.head.appendChild(_djs);
       }
     </script>
@@ -1244,23 +1282,23 @@
 
 
     <!-- React (for Party Builder UI) -->
-    <script src="https://cdn.entropywars.net/react.production.min.js?v=20260729j-cors"></script>
-    <script src="https://cdn.entropywars.net/react-dom.production.min.js?v=20260729j-cors"></script>
+    <script src="https://cdn.entropywars.net/react.production.min.js?v=20260729k-cors"></script>
+    <script src="https://cdn.entropywars.net/react-dom.production.min.js?v=20260729k-cors"></script>
 
     <!-- Game modules -->
-    <script src="https://cdn.entropywars.net/state.js?v=20260729j-cors"></script>
-    <script src="https://cdn.entropywars.net/audio.js?v=20260729j-cors"></script>
-    <script src="https://cdn.entropywars.net/map.js?v=20260729j-cors"></script>
+    <script src="https://cdn.entropywars.net/state.js?v=20260729k-cors"></script>
+    <script src="https://cdn.entropywars.net/audio.js?v=20260729k-cors"></script>
+    <script src="https://cdn.entropywars.net/map.js?v=20260729k-cors"></script>
     <!-- Three.js renderer — three-camera.js must load before battle.js, three-renderer.js after -->
-    <script src="https://cdn.entropywars.net/three-camera.js?v=20260729j-cors"></script>
-    <script src="https://cdn.entropywars.net/battle.js?v=20260729j-cors"></script>
-    <script src="https://cdn.entropywars.net/three-post.js?v=20260729j-cors"></script>
-    <script src="https://cdn.entropywars.net/three-renderer.js?v=20260729j-cors"></script>
-    <script src="https://cdn.entropywars.net/three-vfx.js?v=20260729j-cors"></script>
-    <script src="https://cdn.entropywars.net/three-lightning.js?v=20260729j-cors"></script>
-    <script src="https://cdn.entropywars.net/three-vfx-effects.js?v=20260729j-cors"></script>
-    <script src="https://cdn.entropywars.net/ui.js?v=20260729j-cors"></script>
-    <script src="https://cdn.entropywars.net/profile.js?v=20260729j-cors"></script>
+    <script src="https://cdn.entropywars.net/three-camera.js?v=20260729k-cors"></script>
+    <script src="https://cdn.entropywars.net/battle.js?v=20260729k-cors"></script>
+    <script src="https://cdn.entropywars.net/three-post.js?v=20260729k-cors"></script>
+    <script src="https://cdn.entropywars.net/three-renderer.js?v=20260729k-cors"></script>
+    <script src="https://cdn.entropywars.net/three-vfx.js?v=20260729k-cors"></script>
+    <script src="https://cdn.entropywars.net/three-lightning.js?v=20260729k-cors"></script>
+    <script src="https://cdn.entropywars.net/three-vfx-effects.js?v=20260729k-cors"></script>
+    <script src="https://cdn.entropywars.net/ui.js?v=20260729k-cors"></script>
+    <script src="https://cdn.entropywars.net/profile.js?v=20260729k-cors"></script>
     <script>
     // First-launch: if no profile exists after migration, open profile creation on ENTER click
     (function() {
@@ -1290,14 +1328,14 @@
         }
     })();
     </script>
-    <script src="https://cdn.entropywars.net/party-builder.js?v=20260729j-cors"></script>
-    <script src="https://cdn.entropywars.net/match-select.js?v=20260729j-cors"></script>
-    <script src="https://cdn.entropywars.net/online.js?v=20260729j-cors"></script>
-    <script src="https://cdn.entropywars.net/ai.js?v=20260729j-cors"></script>
+    <script src="https://cdn.entropywars.net/party-builder.js?v=20260729k-cors"></script>
+    <script src="https://cdn.entropywars.net/match-select.js?v=20260729k-cors"></script>
+    <script src="https://cdn.entropywars.net/online.js?v=20260729k-cors"></script>
+    <script src="https://cdn.entropywars.net/ai.js?v=20260729k-cors"></script>
     <!-- "Claude" AI override: MUST load after ai.js (wraps window.aiTakeTurn) -->
-    <script src="https://cdn.entropywars.net/ainew.js?v=20260729j-cors"></script>
+    <script src="https://cdn.entropywars.net/ainew.js?v=20260729k-cors"></script>
     <!-- React HUD overlay (Codex visual system) -->
-    <script src="https://cdn.entropywars.net/hud.js?v=20260729j-cors"></script>
+    <script src="https://cdn.entropywars.net/hud.js?v=20260729k-cors"></script>
 
     <!-- ── Shader Sky Background (Three.js volumetric terrain) ── -->
     <script type="module">

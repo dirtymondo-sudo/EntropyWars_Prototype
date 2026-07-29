@@ -62,6 +62,9 @@ const ThreePost = (function () {
     try {
         var _shSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_shadows') : null;
         if (_shSaved === 'off' || _shSaved === 'low' || _shSaved === 'high') _shadowQuality = _shSaved;
+        // Low performance mode (mobile OOM guard): no depth pass / no 2048²
+        // shadow map until the player explicitly picks a shadow quality.
+        else if (typeof window !== 'undefined' && window.EW_PERF_LOW) _shadowQuality = 'off';
     } catch (e) {}
     var _shadowFrame = null;                   // { cx, cz, radius } board fit, world px
 
@@ -77,10 +80,22 @@ const ThreePost = (function () {
         if (_dofSaved !== null) {
             var _dv = parseFloat(_dofSaved);
             if (!isNaN(_dv)) _dofStrength = Math.max(0, Math.min(1, _dv));
+        // Low performance mode: two fewer full-screen gaussian passes per frame.
+        } else if (typeof window !== 'undefined' && window.EW_PERF_LOW) {
+            _dofStrength = 0;
         }
     } catch (e) {}
     var _dofPassH = null, _dofPassV = null;
     var _dofFocusCur = 0.5;                    // smoothed focus line (screen v, 0=bottom)
+
+    // FXAA — persisted (ew_fxaa) so the pause-menu toggle survives reloads;
+    // low performance mode defaults it off (one fewer full-screen pass).
+    var _fxaaWanted = true;
+    try {
+        var _fxSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem('ew_fxaa') : null;
+        if (_fxSaved !== null) _fxaaWanted = (_fxSaved === '1' || _fxSaved === 'true');
+        else if (typeof window !== 'undefined' && window.EW_PERF_LOW) _fxaaWanted = false;
+    } catch (e) {}
 
     var _cinematicPass = null;
 
@@ -1825,6 +1840,7 @@ const ThreePost = (function () {
             _fxaaPass.material.uniforms['resolution'].value.set(
                 1 / (w * pixelRatio), 1 / (h * pixelRatio)
             );
+            _fxaaPass.enabled = _fxaaWanted;
             _composer.addPass(_fxaaPass);
         } else {
             console.warn('[ThreePost] FXAAShader not found — skipping FXAA');
@@ -2022,17 +2038,27 @@ const ThreePost = (function () {
     function isReady() { return _ready; }
 
     function setFXAA(enabled) {
-        if (!_fxaaPass) return;
-        _fxaaPass.enabled = !!enabled;
+        _fxaaWanted = !!enabled;
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_fxaa', _fxaaWanted ? '1' : '0'); } catch (e) {}
+        if (_fxaaPass) _fxaaPass.enabled = _fxaaWanted;
     }
 
     function isFXAAEnabled() {
-        return _fxaaPass ? _fxaaPass.enabled : false;
+        return _fxaaPass ? _fxaaPass.enabled : _fxaaWanted;
     }
 
-    function setPixelRatio(ratio) {
+    /* persist=false → apply without saving (used by the Performance preset's
+       live-apply so a preset doesn't masquerade as an explicit user pref). */
+    function setPixelRatio(ratio, persist) {
+        var r = parseFloat(ratio);
+        if (isNaN(r) || r <= 0) return;
+        r = Math.max(0.5, Math.min(r, window.devicePixelRatio || 1, 2));
+        if (persist !== false) {
+            try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_pixelRatio', String(r)); } catch (e) {}
+        }
+        try { window._ewPixelRatio = r; } catch (e) {}
         if (!_renderer) return;
-        _renderer.setPixelRatio(ratio);
+        _renderer.setPixelRatio(r);
 
         if (_renderer.domElement) {
             var w = _renderer.domElement.clientWidth;

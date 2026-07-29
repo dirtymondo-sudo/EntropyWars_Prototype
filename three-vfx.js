@@ -1570,6 +1570,9 @@ const ThreeVFX = (function () {
         if (_ambSaved !== null) {
             var _av = parseFloat(_ambSaved);
             if (!isNaN(_av)) _ambDensity = Math.max(0, Math.min(1, _av));
+        // Low performance mode (mobile): thinner ambient clouds by default.
+        } else if (typeof window !== 'undefined' && window.EW_PERF_LOW) {
+            _ambDensity = 0.15;
         }
     } catch (e) {}
     var _ambMotes = null, _ambFlies = null;   // { points, geo, mat }

@@ -1183,6 +1183,68 @@
             return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
         }
 
+        /* ── Performance preset (mobile crash guard) ──────────────────────
+           One button that sets every perf-relevant knob at once, like a
+           console game's quality preset. 'auto' resolves by device
+           (window.EW_MOBILE, detected in index.html before any module
+           loads): phones get Low, desktops High. Low = sprite units
+           (no rigged GLBs / 2K textures / anim-library bakes), 1x pixel
+           ratio, shadows off, tilt-shift off, FXAA off, thin ambient FX,
+           30fps cap — the set that stops the out-of-memory tab crash at
+           match start on phones. Individual knobs stay adjustable in the
+           pause menu afterwards (the preset just overwrites them). */
+        window._ewApplyPerfPreset = function (mode) {
+            if (mode !== 'auto' && mode !== 'low' && mode !== 'high') mode = 'auto';
+            try { localStorage.setItem('ew_perfMode', mode); } catch (e) {}
+            window.EW_PERF_MODE = mode;
+            const low = (mode === 'low') || (mode === 'auto' && !!window.EW_MOBILE);
+            window.EW_PERF_LOW = low;
+            try { document.documentElement.classList.toggle('ew-perf-low', low); } catch (e) {}
+            // 3D unit models follow the preset; the dedicated toggle can re-override
+            try { localStorage.setItem('ew_units3d', low ? '0' : '1'); } catch (e) {}
+            window.EW_DISABLE_3D_UNITS = low;
+            try {
+                if (typeof ThreePost !== 'undefined') {
+                    if (ThreePost.setShadowQuality) ThreePost.setShadowQuality(low ? 'off' : 'high');
+                    if (ThreePost.setDofStrength) ThreePost.setDofStrength(low ? 0 : 0.65);
+                    if (ThreePost.setFXAA) ThreePost.setFXAA(!low);
+                    if (ThreePost.setPixelRatio) ThreePost.setPixelRatio(low ? 1 : Math.min(window.devicePixelRatio || 1, 2));
+                }
+            } catch (e) {}
+            try { if (typeof ThreeVFX !== 'undefined' && ThreeVFX.setAmbientDensity) ThreeVFX.setAmbientDensity(low ? 0.15 : 0.3); } catch (e) {}
+            try {
+                if (typeof ThreeRenderer !== 'undefined') {
+                    if (ThreeRenderer.setFpsCap) ThreeRenderer.setFpsCap(low ? 30 : 0);
+                    if (ThreeRenderer.invalidateUnits) ThreeRenderer.invalidateUnits();
+                }
+            } catch (e) {}
+        };
+        window._ewSetUnits3D = function (on) {
+            try { localStorage.setItem('ew_units3d', on ? '1' : '0'); } catch (e) {}
+            window.EW_DISABLE_3D_UNITS = !on;
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.invalidateUnits) ThreeRenderer.invalidateUnits(); } catch (e) {}
+        };
+        /* Shared Performance section HTML — rendered in the main-menu Settings
+           AND the pause menu (ui.js). refreshJs re-renders the host page. */
+        window._buildPerfSettingsHTML = function (refreshJs) {
+            const mode = window.EW_PERF_MODE || 'auto';
+            const units3dOn = !window.EW_DISABLE_3D_UNITS;
+            const seg = (v, label) => `<button class="pm-seg-btn${mode === v ? ' active' : ''}" onclick="window._ewApplyPerfPreset('${v}');${refreshJs}">${label}</button>`;
+            return `
+                <div class="pm-set-row pm-setting-row" style="margin-top:10px">
+                    <span class="pm-setting-label">Performance</span>
+                    <div class="pm-seg-group">
+                        ${seg('auto', 'Auto')}${seg('low', 'Low')}${seg('high', 'High')}
+                    </div>
+                </div>
+                <div class="pm-set-row" style="margin-top:2px">
+                    <span class="pm-toggle-hint">Auto picks Low on phones/tablets (this device: ${window.EW_MOBILE ? 'phone/tablet' : 'desktop'}). Low fixes crashes &amp; heat on mobile — sprite units, 1x resolution, shadows off, 30fps.</span>
+                </div>
+                <div class="pm-set-toggles" style="margin-top:8px">
+                    <label class="pm-toggle"><input type="checkbox" ${units3dOn ? 'checked' : ''} onchange="window._ewSetUnits3D(this.checked);"><span class="pm-toggle-label">3D Unit Models</span><span class="pm-toggle-hint">rigged characters — heavy on phones; off = pixel sprites</span></label>
+                </div>`;
+        };
+
         function _renderMainMenuSettings() {
             const body = document.getElementById('mmSettingsBody');
             if (!body) return;
@@ -1217,6 +1279,7 @@
                         <div class="pm-set-row">
                             <button class="pm-set-btn${isFs ? ' active' : ''}" id="mmFsBtn" onclick="toggleFullscreen();setTimeout(()=>{const b=document.getElementById('mmFsBtn');if(b)b.textContent=document.fullscreenElement?'Exit Fullscreen':'⛶ Fullscreen';},120);">${isFs ? 'Exit Fullscreen' : '⛶ Fullscreen'}</button>
                         </div>
+                        ${window._buildPerfSettingsHTML('window._openMainMenuSettings();')}
                     </div>
                     ${typeof window._buildAiDifficultyHTML === 'function' ? window._buildAiDifficultyHTML('window._openMainMenuSettings();') : ''}
                     ${typeof window._buildControlsSettingsHTML === 'function' ? window._buildControlsSettingsHTML() : ''}
