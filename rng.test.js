@@ -22,6 +22,7 @@ const path = require('node:path');
 const stateSrc = fs.readFileSync(path.join(__dirname, 'state.js'), 'utf8');
 const battleSrc = fs.readFileSync(path.join(__dirname, 'battle.js'), 'utf8');
 const onlineSrc = fs.readFileSync(path.join(__dirname, 'online.js'), 'utf8');
+const mapSrc = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
 
 // Extract `function _ewRngNext(s) { ... }` by balanced braces. The function
 // is documented in state.js as pure + dependency-free precisely so this
@@ -86,6 +87,40 @@ test('both battle boot paths seed the engine RNG', () => {
     const seeds = battleSrc.match(/seedEngineRng\(\(Math\.random\(\) \* 0x100000000\) >>> 0\)/g) || [];
     assert.ok(seeds.length >= 2,
         `expected the 2 battle boot paths to call seedEngineRng, found ${seeds.length}`);
+});
+
+// Extract a top-level `function NAME(...) { ... }` body by balanced braces.
+// Same technique as extractEwRngNext, but returns the source text (these
+// functions touch globals, so they can't be evaluated here).
+function extractFnSource(src, name) {
+    const start = src.indexOf('function ' + name + '(');
+    assert.notStrictEqual(start, -1, `must define function ${name}`);
+    let i = src.indexOf('{', start), depth = 0;
+    for (; i < src.length; i++) {
+        if (src[i] === '{') depth++;
+        else if (src[i] === '}' && --depth === 0) break;
+    }
+    return src.slice(start, i + 1);
+}
+
+test('battle map-gen + objective placement stay on the seeded stream', () => {
+    // Stage 5 map-gen conversion (2026-07-29 s4): these functions produce or
+    // mutate MATCH STATE (board terrain, tower identity, respawn placement,
+    // hourglass spawns), so a bare Math.random inside any of them would break
+    // same-seed board reproduction. The map-editor `_me*` biome generator and
+    // the cosmetic `randInt` helper are deliberately NOT listed — authoring
+    // tools and VFX stay on Math.random by design (see state.js RNG comment).
+    const mapFns = ['placeTowers', 'generateBelowTerrain', 'generateAboveTerrain',
+        'initMap', 'generateHugeMap', 'generateTerrainBoard', 'processRespawns'];
+    const battleFns = ['randomizeSharedObjectives', 'spawnPeriodicHourglasses'];
+    for (const fn of mapFns) {
+        assert.ok(!/Math\.random|[^.\w]randInt\(/.test(extractFnSource(mapSrc, fn)),
+            `map.js ${fn} must use engineRng/engineRandInt, not Math.random/randInt`);
+    }
+    for (const fn of battleFns) {
+        assert.ok(!/Math\.random|[^.\w]randInt\(/.test(extractFnSource(battleSrc, fn)),
+            `battle.js ${fn} must use engineRng/engineRandInt, not Math.random/randInt`);
+    }
 });
 
 test('rngSeed/rngState ride state-sync (not on the online.js skip list)', () => {

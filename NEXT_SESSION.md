@@ -1,4 +1,4 @@
-# NEXT_SESSION.md — architecture-work handoff (updated 2026-07-29, session 3)
+# NEXT_SESSION.md — architecture-work handoff (updated 2026-07-29, session 4)
 
 Read CLAUDE.md FIRST (delivery rules, online-parity rules, no-playtest rule).
 This file tracks the ChatGPT architecture-suggestion work specifically: what's
@@ -9,7 +9,7 @@ Keep it updated when you finish (or intentionally reject) an item.
 
 | # | Suggestion | Status |
 |---|-----------|--------|
-| 1 | Break up combat monolith (staged extraction) | **Stages 1 + 5 (core) done** — TargetQuery service; seeded engine RNG shipped 2026-07-29 s3 (all combat/status/AI/weather rolls, see below). Stages 2–4 open: pure damage/status fns, command layer, typed event stream |
+| 1 | Break up combat monolith (staged extraction) | **Stages 1 + 5 done** — TargetQuery service; seeded engine RNG s3 (combat/status/AI/weather) + s4 (map-gen/towers/hourglasses/FFA-respawns, see below). Stages 2–4 open: pure damage/status fns, command layer, typed event stream. Stage-5 payoff test (same-seed replay ⇒ identical state) still open — needs the stage-2 headless harness |
 | 2 | Canonical data (client/server) | **Done 2026-07-29** — server derives ACCT_*/starters/races from data.js at boot (`ECON` object, see below); literals kept as fallback + parity source; `npm run test:parity` still guards the fallback |
 | 3 | Fast tests + CI | **Done 2026-07-29** — `npm test` (syntax, content schemas, parity, migrations, server smoke), `.github/workflows/ci.yml` |
 | 4 | Reproducible builds / deploy | **Mostly done** — `npm run deploy` (upload + auto cache-bust). Open: lockfile decision, vendored CDN deps |
@@ -96,20 +96,42 @@ Implementation (files: state.js, battle.js, ai.js, rng.test.js, index.html bump)
   driven, inherently non-deterministic); A/B training shuffles; bot Elo.
 - `npm test` 17/17 (rng.test.js adds 4).
 
+## Shipped 2026-07-29 (session 4): map-gen + objective rolls on the seeded stream
+
+Files: map.js, battle.js, rng.test.js, index.html bump (→ 20260729g-cors).
+- map.js CONVERTED to engineRng/engineRandInt: placeTowers gender flip,
+  generateBelowTerrain mushroom/obsidian scatter, generateAboveTerrain
+  cloud_thick scatter, _initTowersFromObjects + _autoPlaceTowersIfNeeded +
+  huge-mode tower genders (tower gender is match state — rides state-sync),
+  generateHugeMap lava/obsidian rolls, generateTerrainBoard forest/desert
+  frontier growth, and processRespawns' FFA respawn-tile pick (a MID-BATTLE
+  engine roll that s3 missed — it lives in map.js, not battle.js).
+- battle.js CONVERTED: hourglass placement shuffles in
+  randomizeSharedObjectives (both center pool + fallback) and the mid-battle
+  spawnPeriodicHourglasses center-pool shuffle. All three were
+  `sort(() => Math.random() - 0.5)` → `sort(() => engineRng() - 0.5)`
+  (matches the existing mat-drop scatter convention from s3).
+- LEFT on Math.random ON PURPOSE: map.js's local cosmetic `randInt` helper
+  (line ~2453 — it SHADOWS state.js's identical global, map.js loads later;
+  harmless, both are Math.random wrappers for cosmetic use) and the whole
+  `_me*` map-editor biome generator (authoring tool, not battle state).
+  Hidden items turned out VESTIGIAL: `_spawnHiddenItemsOnly` is an empty
+  stub and nothing ever pushes to state.hiddenItems — no rolls to convert.
+- Call-order verified: both boot paths seed before
+  prepareBattleStateFromCurrentBuilds (battle.js seeds at ~25794/27553,
+  prepare at ~25834/27608 → generateTerrainBoard/initMap inside it), and
+  randomizeSharedObjectives runs after. processRespawns /
+  spawnPeriodicHourglasses are mid-battle (host-side) — post-seed by nature.
+- rng.test.js: new guard test extracts the 9 converted functions by source
+  (balanced braces) and fails if Math.random/bare randInt( reappears in any
+  of them. `npm test` 18/18 (17 pass + server-smoke skip w/o node_modules).
+
 ## Priority queue (in order — pick by available effort)
 
-### 1. Finish determinism: map-gen rolls + the payoff test (medium)
-Stage 5 leftovers, in payoff order:
+### 1. Determinism payoff test (medium — blocked on the stage-2 harness)
 - The PAYOFF test from the original plan is still open: a scripted battle
   replayed twice from the same seed ⇒ identical state. Needs a headless
   engine harness — same blocker as stage 2 below, do them together.
-- Board/terrain generation (map.js ~28 Math.random sites + the hidden-item/
-  hourglass placement rolls wherever they live) still uses Math.random, so
-  same-seed reruns get identical FIGHTS only on an identical board. Board
-  state rides state-sync (guests unaffected) — this only matters for
-  full-match reproduction. Convert with the same engineRng/engineRandInt
-  pattern AFTER confirming map gen runs post-seed (both boot paths seed
-  before prepareBattleStateFromCurrentBuilds ⇒ before map prep).
 - Campaign/gauntlet enemy gen + `optimizeRandomizeParty` (ranked bot) are
   setup-time: convert only if full-match determinism is wanted there too.
 

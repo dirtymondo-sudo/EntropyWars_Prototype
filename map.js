@@ -3783,7 +3783,9 @@
             const midY = earthStart + Math.floor(earthH / 2);
             const boxTopY = Math.max(earthStart, midY - 1);
             const boxBotY = Math.min(earthEnd, boxTopY + 1);
-            const genders = Math.random() < 0.5 ? ['male', 'female'] : ['female', 'male'];
+            /* Tower gender is match state (rides state-sync) — seeded stream,
+               like every board-gen roll below (see NEXT_SESSION.md stage 5). */
+            const genders = engineRng() < 0.5 ? ['male', 'female'] : ['female', 'male'];
             const w = bw();
 
             const leftPos  = { x: 0, y: midY };
@@ -3896,15 +3898,15 @@
 
             const mushCount = Math.max(1, Math.floor(w * sH * 0.04));
             for (let i = 0; i < mushCount; i++) {
-                const x = 1 + Math.floor(Math.random() * (w - 2));
-                const y = startRow + Math.floor(Math.random() * sH);
+                const x = 1 + engineRandInt(w - 2);
+                const y = startRow + engineRandInt(sH);
                 if (board[y][x] === 'cave_floor') board[y][x] = 'mushroom';
             }
 
             const obsCount = Math.max(1, Math.floor(w * sH * 0.05));
             for (let i = 0; i < obsCount; i++) {
-                const x = 1 + Math.floor(Math.random() * (w - 2));
-                const y = startRow + Math.floor(Math.random() * sH);
+                const x = 1 + engineRandInt(w - 2);
+                const y = startRow + engineRandInt(sH);
                 if (board[y][x] === 'cave_floor') board[y][x] = 'obsidian';
             }
 
@@ -3991,8 +3993,8 @@
 
             const thickCount = Math.max(1, Math.floor(w * sH * 0.06));
             for (let i = 0; i < thickCount; i++) {
-                const x = Math.floor(Math.random() * w);
-                const y = startRow + Math.floor(Math.random() * sH);
+                const x = engineRandInt(w);
+                const y = startRow + engineRandInt(sH);
                 if (board[y][x] === 'cloud') {
                     board[y][x] = 'cloud_thick';
                 }
@@ -4107,7 +4109,7 @@
                     const posB = dragons[dragons.length - 1];
                     const owners = _assignTowerOwnersBySpawns(posA, posB);
                     const p1 = owners[1], p2 = owners[2];
-                    const genders = Math.random() < 0.5 ? ['male', 'female'] : ['female', 'male'];
+                    const genders = engineRng() < 0.5 ? ['male', 'female'] : ['female', 'male'];
                     state.towers = {
                         1: { x: p1.x, y: p1.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 1, gender: genders[0],
                              homeBox: { x1: Math.max(0, p1.x - 1), y1: Math.max(0, p1.y - 1), x2: Math.min(w - 1, p1.x + 1), y2: Math.min(h - 1, p1.y + 1) } },
@@ -4120,7 +4122,7 @@
                     const mirrored = { x: (w - 1) - d0.x, y: (h - 1) - d0.y };
                     const owners = _assignTowerOwnersBySpawns(d0, mirrored);
                     const p1 = owners[1], p2 = owners[2];
-                    const genders = Math.random() < 0.5 ? ['male', 'female'] : ['female', 'male'];
+                    const genders = engineRng() < 0.5 ? ['male', 'female'] : ['female', 'male'];
                     state.towers = {
                         1: { x: p1.x, y: p1.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), owner: 1, gender: genders[0],
                              homeBox: { x1: Math.max(0, p1.x - 1), y1: Math.max(0, p1.y - 1), x2: Math.min(w - 1, p1.x + 1), y2: Math.min(h - 1, p1.y + 1) } },
@@ -4215,7 +4217,7 @@
                 if (!needsTowers) return;
                 if (state.towers && (state.towers[1] || state.towers[2])) return;
 
-                const genders = Math.random() < 0.5 ? ['male', 'female'] : ['female', 'male'];
+                const genders = engineRng() < 0.5 ? ['male', 'female'] : ['female', 'male'];
 
                 function _isSafeTowerTile(x, y) {
                     if (x < 0 || y < 0 || y >= h || x >= w) return false;
@@ -4617,7 +4619,7 @@
                 const outerRx = 17, outerRy = 14;
                 const eMidY = Math.floor(cy), eMidX = Math.floor(cx);
 
-                const genders = Math.random() < 0.5 ? ['male', 'female'] : ['female', 'male'];
+                const genders = engineRng() < 0.5 ? ['male', 'female'] : ['female', 'male'];
                 const t1x = Math.floor(cx - outerRx + 2), t2x = Math.floor(cx + outerRx - 3);
                 board[eMidY][t1x] = 'home_base';
                 board[eMidY - 1][t1x] = 'home_base';
@@ -5461,8 +5463,8 @@
                     const d = ellipseDist(tx, ty, outerRx, outerRy);
                     if (d > 0.90) { board[y][x] = 'void'; zoneMap[y][x] = 'void'; }
                     else if (d > 0.80) board[y][x] = 'cave_wall';
-                    else if (board[y][x] === 'cave_floor' && Math.random() < 0.04) board[y][x] = 'lava';
-                    else if (board[y][x] === 'cave_floor' && Math.random() < 0.03) board[y][x] = 'obsidian';
+                    else if (board[y][x] === 'cave_floor' && engineRng() < 0.04) board[y][x] = 'lava';
+                    else if (board[y][x] === 'cave_floor' && engineRng() < 0.03) board[y][x] = 'obsidian';
                 }
             }
             const ugFeatures = [
@@ -5769,7 +5771,7 @@
                     const frontier = [{ x: fc.cx, y: fc.cy }];
                     const seen = new Set([posKey(fc.cx, fc.cy)]);
                     while (frontier.length && painted < fc.count) {
-                        const idx = Math.floor(Math.random() * frontier.length);
+                        const idx = engineRandInt(frontier.length);
                         const cur = frontier.splice(idx, 1)[0];
                         if (reserved.has(posKey(cur.x, cur.y))) continue;
                         if (cur.x < 0 || cur.x >= w || cur.y < eStart || cur.y > eEnd) continue;
@@ -5798,7 +5800,7 @@
                     const frontier = [{ x: dc.cx, y: dc.cy }];
                     const seen = new Set([posKey(dc.cx, dc.cy)]);
                     while (frontier.length && painted < dc.count) {
-                        const idx = Math.floor(Math.random() * frontier.length);
+                        const idx = engineRandInt(frontier.length);
                         const cur = frontier.splice(idx, 1)[0];
                         if (reserved.has(posKey(cur.x, cur.y))) continue;
                         if (cur.x < 0 || cur.x >= w || cur.y < eStart || cur.y > eEnd) continue;
@@ -5808,7 +5810,7 @@
                         for (const [ddx, ddy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
                             const nx = cur.x + ddx, ny = cur.y + ddy;
                             const k = posKey(nx, ny);
-                            if (!seen.has(k) && Math.random() < 0.7) { seen.add(k); frontier.push({ x: nx, y: ny }); }
+                            if (!seen.has(k) && engineRng() < 0.7) { seen.add(k); frontier.push({ x: nx, y: ny }); }
                         }
                     }
                 }
@@ -6983,7 +6985,8 @@
 
                         candidates.sort((a, b) => b.dist - a.dist);
                         const pool = candidates.slice(0, Math.max(1, Math.floor(candidates.length * 0.25)));
-                        const pick = pool[Math.floor(Math.random() * pool.length)];
+                        /* Engine roll (respawn placement is match state) — seeded stream. */
+                        const pick = pool[engineRandInt(pool.length)];
                         unit.x = pick.x;
                         unit.y = pick.y;
                         unit.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(pick.x, pick.y) : (state.boardHeights?.[pick.y]?.[pick.x] ?? 0);

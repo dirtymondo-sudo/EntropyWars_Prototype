@@ -18037,7 +18037,8 @@
                 let placed = 0;
 
                 let pool = getCenterCandidatesForFloor(floorId, terrain);
-                pool.sort(() => Math.random() - 0.5);
+                /* Hourglass placement is match state — seeded stream (stage 5). */
+                pool.sort(() => engineRng() - 0.5);
                 for (const spot of pool) {
                     if (canPlaceHourglassAt(spot.x, spot.y)) {
                         state.hourglasses.push({
@@ -18067,7 +18068,7 @@
                             }
                         }
                     }
-                    fallback.sort(() => Math.random() - 0.5);
+                    fallback.sort(() => engineRng() - 0.5);
                     for (const spot of fallback) {
                         if (canPlaceHourglassAt(spot.x, spot.y)) {
                             state.hourglasses.push({
@@ -18118,7 +18119,7 @@
                     }
                 }
             }
-            centerPool.sort(() => Math.random() - 0.5);
+            centerPool.sort(() => engineRng() - 0.5);
 
             let placed = 0;
             for (const spot of centerPool) {
