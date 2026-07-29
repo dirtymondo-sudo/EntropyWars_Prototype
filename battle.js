@@ -19640,13 +19640,236 @@
         }
         window.spellUsedThisTurn = spellUsedThisTurn;
 
+        /* ═══ TargetQuery — the ONE validity/targeting oracle ═════════════
+           Answers "what can this unit legally do right now — and if not,
+           WHY not?" for every consumer: the engine (clickTile / the cast
+           pipeline), the HUD (range washes, quick menus, AP pips), the AI
+           action picker, and the online guest quickmenu. One rule changed
+           here is changed everywhere — the hand-copied forks of this logic
+           (the guest-quickmenu PvP bug class) are what this replaces.
+
+           CONTRACT: pure questions only. Methods NEVER mutate state, NEVER
+           animate, NEVER relay — safe to call on host and guest alike.
+
+           The legacy globals (getSpellApCost, getSpellBlockReason,
+           canAffordSpell, canCastAnySpell, canCastAnySpellWithTargets,
+           spellHasReachableTarget) are now one-line delegates into this
+           object, so every existing caller keeps working unchanged; the
+           tile/target enumerators that live elsewhere in the file
+           (getMoveTiles, getAttackTiles, getSpellRangeTiles,
+           getEntropyStrikeTargets) are wrapped as-is. Exposed on
+           window.GAME as GAME.TargetQuery. */
+        const TargetQuery = {
+
+            /* ── enumeration (wraps the engine's tile/target walkers) ── */
+
+            // Legal movement tiles (full pathfinder set, incl. folded
+            // jump/takeoff tiles — see getMoveTiles).
+            moveTiles(unit) { return getMoveTiles(unit); },
+
+            // Legal basic-attack target tiles ({x, y}, plus _skyTarget
+            // telescope entries) — see getAttackTiles.
+            attackTargets(unit) { return getAttackTiles(unit); },
+
+            // Tiles `spell` can be aimed at from where the unit stands.
+            spellTiles(unit, spell) { return getSpellRangeTiles(unit, spell); },
+
+            // Living enemies the team-attack can hit (fog-aware).
+            entropyStrikeTargets(unit) { return getEntropyStrikeTargets(unit); },
+
+            /* ── affordability / castability (logic lives HERE now) ── */
+
+            apCost(spell) {
+                const cost = (spell && spell.apCost != null) ? spell.apCost : AP_COST_SPELL;
+                // Every action costs 1 AP under the two-action turn: legacy
+                // per-spell apCost:2 entries in data.js are clamped down so
+                // move-then-cast stays affordable. Spell "heaviness" is enforced
+                // by the 1-spell-per-turn gate instead (spellBlockReason).
+                return Math.min(cost, AP_COST_SPELL);
+            },
+
+            /* THE universal castability guard: ONE method answers "why can't
+               this unit cast this spell right now?". The ability drum's
+               greying, the quick menus, doSpell and canAfford all route
+               through here — add any NEW hard lock (accessory rules,
+               statuses, mode rules) HERE ONCE and every menu greys it out
+               and every cast path rejects it automatically.
+               Returns a short player-facing reason string, or null =
+               castable (target availability is checked separately — see
+               hasSpellTargetInRange / spellTargetUsableOn). */
+            spellBlockReason(unit, spell) {
+                if (!unit || !spell) return null;
+                if (unitHasStatus(unit, 'silence')) return 'Silenced';
+                if (!unitMeetsSpellTierReq(unit, spell)) {
+                    const trl = spell.tier === 'II' ? 2 : spell.tier === 'III' ? 3 : 1;
+                    return 'Req Lv.' + trl;
+                }
+                const cdLeft = getSpellCooldownRemaining(unit, spell);
+                if (cdLeft > 0) return '⏳ CD ' + cdLeft;
+                // Universal once-per-turn lock (see _markSpellUsedThisTurn).
+                if (spellUsedThisTurn(unit, spell)) return 'Used this turn';
+                // ONE spell/ability per turn — ANY spell, not just a repeat of the
+                // same one. _spellsUsedThisTurn doubles as the cast counter (every
+                // committed cast marks exactly one key). The only exemption: a
+                // press refund (weakness/crit) hands back a full fresh action,
+                // which may be a second cast.
+                // Setup placements (bombs, prisms) are exempt from the per-turn
+                // cast cap — they neither count toward it nor get blocked by it
+                // (see spellIsSetupPlacement); AP is their only limiter.
+                if (!spellIsSetupPlacement(spell)) {
+                    const _castsUsed = unit._spellsUsedThisTurn
+                        ? Object.keys(unit._spellsUsedThisTurn).length : 0;
+                    const _castsAllowed = 1 + ((unit._pressGainedThisTurn || 0) > 0 ? 1 : 0);
+                    if (_castsUsed >= _castsAllowed) return '1 spell/turn';
+                }
+                // Berserker's Brand / Archon's Focus choice lock: each life the
+                // unit is bound to the FIRST spell it casts. doSpell already
+                // rejects other casts — this surfaces the lock in every menu.
+                if (typeof unitHasAccessory === 'function'
+                    && unit._brandLockSpellId && spell.id !== unit._brandLockSpellId
+                    && (unitHasAccessory(unit, 'berserkers_brand') || unitHasAccessory(unit, 'archons_focus'))) {
+                    return '🔒 Brand-locked';
+                }
+                if ((unit.ap || 0) < TargetQuery.apCost(spell)) return 'No AP';
+                // Build spells consume banked materials (salvage economy).
+                if (spell.materialCost && !canAffordMaterials(unit.player, spell.materialCost)) {
+                    return 'Need ' + (typeof materialCostLabel === 'function' ? materialCostLabel(spell.materialCost) : 'materials');
+                }
+                // Machine Elves: Pulse/Tune need prisms already on the board.
+                const _mirrorWhy = _mirrorSpellBlockReason(unit, spell);
+                if (_mirrorWhy) return _mirrorWhy;
+                // Flight-gated casts (Sky Drop / Sky Throw / Sky Slam): a grounded
+                // caster that cannot actually get airborne — not a flyer, too
+                // wounded to swoop-takeoff (below 25% HP), or pinned by super
+                // gravity — would only bounce off doSpell AFTER walking into
+                // position. Grey the row everywhere with the real reason instead.
+                if (spell.requiresFlight
+                    && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
+                    if (typeof canFly === 'function' && !canFly(unit)) return 'Flyers only';
+                    if (typeof isFlightCrippled === 'function' && isFlightCrippled(unit)) return 'Too wounded to fly';
+                    if (typeof getGravityFieldAt === 'function'
+                        && getGravityFieldAt(unit.x, unit.y) === 'super') return '🕳 Pinned by gravity';
+                }
+                // MP is deliberately checked LAST: canAfford() treats a bare
+                // 'No MP' as passable (its callers gate MP themselves), so no
+                // other block may hide behind it.
+                if ((unit.mp || 0) < getSpellMpCostFor(unit, spell)) return 'No MP';
+                return null;
+            },
+
+            canAfford(unit, spell) {
+                const cost = spell ? TargetQuery.apCost(spell) : AP_COST_SPELL;
+                if ((unit.ap || 0) < cost) return false;
+                if (!spell) return true;
+                // Everything else (tier, cooldown, materials, mirror prisms, the
+                // Brand choice lock…) lives in the universal guard. NOTE: raw MP
+                // affordability is deliberately NOT part of this check — callers
+                // gate MP themselves — so the guard's MP reason is skipped here.
+                const why = TargetQuery.spellBlockReason(unit, spell);
+                return !why || why === 'No MP';
+            },
+
+            canCastAny(unit) {
+                const allSpells = (unit.spells || []);
+                return allSpells.some(s => TargetQuery.canAfford(unit, s) && unit.mp >= getSpellMpCostFor(unit, s) && !unitHasStatus(unit, 'silence'));
+            },
+
+            canCastAnyWithTargets(unit) {
+                const silenced = unitHasStatus(unit, 'silence');
+                if (silenced) return false;
+                const allSpells = (unit.spells || []);
+                return allSpells.some(s =>
+                    s && TargetQuery.canAfford(unit, s) && unit.mp >= getSpellMpCostFor(unit, s) && hasSpellTargetInRange(unit, s)
+                );
+            },
+
+            // True when the unit could step/jump/take-off into range this turn
+            // and cast `spell` on SOME valid target (used to keep the
+            // ability-menu entry enabled). Probing temporarily relocates the
+            // unit but ALWAYS restores it (finally) — still a pure question.
+            hasReachableTarget(unit, spell) {
+                /* Mystery Dungeon lockstep: any move/jump/height-then-cast plan is
+                   two beats' worth of action — never light a blade for it. */
+                if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return false;
+                const sx = unit.x, sy = unit.y, sz = unit.z;
+                try {
+                    // Jump approach first: leap to a tile (often high ground) from which the
+                    // spell becomes castable. Independent of the walk move budget — this is
+                    // what unlocks elevation-gated spells the unit can't cast from the floor.
+                    for (const jt of _spellJumpApproachTiles(unit, spell)) {
+                        if (unitAt(jt.x, jt.y, jt.z)) continue;
+                        unit.x = jt.x; unit.y = jt.y; unit.z = jt.z ?? sz;
+                        if (hasSpellTargetInRange(unit, spell)) return true;
+                        unit.x = sx; unit.y = sy; unit.z = sz;
+                    }
+                    // Walk approach (ONE step — moving twice ends the turn, so a
+                    // second leg could never cast).
+                    const steps = _spellMoveBudget(unit, spell);
+                    if (steps > 0) {
+                        const ring1 = getMoveTiles(unit);
+                        for (const t of ring1) {
+                            // Parity with findSpellApproachTile: jump/takeoff legs are
+                            // probed by their own approaches above/below — counting
+                            // them here as 1-AP walks lit the button for plans the
+                            // finder (and the AP budget) would then refuse.
+                            if (t._jump || t._takeoff) continue;
+                            if (unitAt(t.x, t.y, t.z)) continue;
+                            unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
+                            if (hasSpellTargetInRange(unit, spell)) return true;
+                        }
+                        unit.x = sx; unit.y = sy; unit.z = sz;
+                    }
+                    // Height approach: take off / land / raise terrain in place, then cast.
+                    // Independent of the walk budget (its own AP action), so a unit that
+                    // already spent its moves can still unlock an above-target/airborne cast.
+                    for (const hp of _spellHeightApproaches(unit, spell)) {
+                        unit.z = hp.z;
+                        if (hasSpellTargetInRange(unit, spell)) return true;
+                        unit.z = sz;
+                    }
+                } finally {
+                    unit.x = sx; unit.y = sy; unit.z = sz;
+                }
+                return false;
+            },
+
+            /* ── the quickmenu one-stop call ──
+               Everything a quick/action menu needs to build itself for
+               `unit`, in one read-only pass. Stage 3 rebuilds the online
+               guest quickmenu from exactly this. */
+            actionsFor(unit) {
+                if (!unit || unit.dead || unit._dying) {
+                    return { canMove: false, canAttack: false, canJump: false,
+                             entropyReady: false, moveTiles: [], attackTiles: [], spells: [] };
+                }
+                const moveTiles = TargetQuery.moveTiles(unit);
+                const attackTiles = TargetQuery.attackTargets(unit);
+                const spells = (unit.spells || []).filter(Boolean).map(spell => {
+                    const reason = TargetQuery.spellBlockReason(unit, spell);
+                    const hasTarget = !reason && hasSpellTargetInRange(unit, spell);
+                    const reachable = !reason && (hasTarget || TargetQuery.hasReachableTarget(unit, spell));
+                    return {
+                        spell,
+                        apCost: TargetQuery.apCost(spell),
+                        mpCost: getSpellMpCostFor(unit, spell),
+                        reason: reason || (reachable ? null : 'No target'),
+                        castable: !reason && reachable,
+                        hasTarget,      // castable from where the unit stands
+                        reachable,      // castable after a move/jump/height approach
+                    };
+                });
+                return {
+                    canMove: canUnitMove(unit) && moveTiles.length > 0,
+                    canAttack: (unit.ap || 0) > 0 && attackTiles.length > 0,
+                    canJump: (typeof canJump === 'function') ? canJump(unit) : false,
+                    entropyReady: (typeof canUseEntropyStrike === 'function') ? canUseEntropyStrike(unit) : false,
+                    moveTiles, attackTiles, spells,
+                };
+            },
+        };
+
         function getSpellApCost(spell) {
-            const cost = (spell && spell.apCost != null) ? spell.apCost : AP_COST_SPELL;
-            // Every action costs 1 AP under the two-action turn: legacy
-            // per-spell apCost:2 entries in data.js are clamped down so
-            // move-then-cast stays affordable. Spell "heaviness" is enforced
-            // by the 1-spell-per-turn gate instead (getSpellBlockReason).
-            return Math.min(cost, AP_COST_SPELL);
+            return TargetQuery.apCost(spell);
         }
         // hud.js reads this for every AP-cost pip/tooltip — without the export
         // its `typeof getSpellApCost === 'function'` guards silently fall back
@@ -19663,73 +19886,11 @@
             return Math.max(0, ready - (state.round || 0));
         }
 
-        /* ═══ UNIVERSAL castability guard ════════════════════════════════
-           ONE function answers "why can't this unit cast this spell right
-           now?". The ability drum's greying, the quick menus, doSpell and
-           canAffordSpell all route through here — add any NEW hard lock
-           (accessory rules, statuses, mode rules) HERE ONCE and every menu
-           greys it out and every cast path rejects it automatically.
-           Returns a short player-facing reason string, or null = castable
-           (target availability is checked separately — see
-           hasSpellTargetInRange / spellTargetUsableOn). */
+        /* Universal castability guard — the logic now lives in
+           TargetQuery.spellBlockReason (add new hard locks THERE). This
+           delegate keeps every legacy caller working. */
         function getSpellBlockReason(unit, spell) {
-            if (!unit || !spell) return null;
-            if (unitHasStatus(unit, 'silence')) return 'Silenced';
-            if (!unitMeetsSpellTierReq(unit, spell)) {
-                const trl = spell.tier === 'II' ? 2 : spell.tier === 'III' ? 3 : 1;
-                return 'Req Lv.' + trl;
-            }
-            const cdLeft = getSpellCooldownRemaining(unit, spell);
-            if (cdLeft > 0) return '⏳ CD ' + cdLeft;
-            // Universal once-per-turn lock (see _markSpellUsedThisTurn).
-            if (spellUsedThisTurn(unit, spell)) return 'Used this turn';
-            // ONE spell/ability per turn — ANY spell, not just a repeat of the
-            // same one. _spellsUsedThisTurn doubles as the cast counter (every
-            // committed cast marks exactly one key). The only exemption: a
-            // press refund (weakness/crit) hands back a full fresh action,
-            // which may be a second cast.
-            // Setup placements (bombs, prisms) are exempt from the per-turn
-            // cast cap — they neither count toward it nor get blocked by it
-            // (see spellIsSetupPlacement); AP is their only limiter.
-            if (!spellIsSetupPlacement(spell)) {
-                const _castsUsed = unit._spellsUsedThisTurn
-                    ? Object.keys(unit._spellsUsedThisTurn).length : 0;
-                const _castsAllowed = 1 + ((unit._pressGainedThisTurn || 0) > 0 ? 1 : 0);
-                if (_castsUsed >= _castsAllowed) return '1 spell/turn';
-            }
-            // Berserker's Brand / Archon's Focus choice lock: each life the
-            // unit is bound to the FIRST spell it casts. doSpell already
-            // rejects other casts — this surfaces the lock in every menu.
-            if (typeof unitHasAccessory === 'function'
-                && unit._brandLockSpellId && spell.id !== unit._brandLockSpellId
-                && (unitHasAccessory(unit, 'berserkers_brand') || unitHasAccessory(unit, 'archons_focus'))) {
-                return '🔒 Brand-locked';
-            }
-            if ((unit.ap || 0) < getSpellApCost(spell)) return 'No AP';
-            // Build spells consume banked materials (salvage economy).
-            if (spell.materialCost && !canAffordMaterials(unit.player, spell.materialCost)) {
-                return 'Need ' + (typeof materialCostLabel === 'function' ? materialCostLabel(spell.materialCost) : 'materials');
-            }
-            // Machine Elves: Pulse/Tune need prisms already on the board.
-            const _mirrorWhy = _mirrorSpellBlockReason(unit, spell);
-            if (_mirrorWhy) return _mirrorWhy;
-            // Flight-gated casts (Sky Drop / Sky Throw / Sky Slam): a grounded
-            // caster that cannot actually get airborne — not a flyer, too
-            // wounded to swoop-takeoff (below 25% HP), or pinned by super
-            // gravity — would only bounce off doSpell AFTER walking into
-            // position. Grey the row everywhere with the real reason instead.
-            if (spell.requiresFlight
-                && !(typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) {
-                if (typeof canFly === 'function' && !canFly(unit)) return 'Flyers only';
-                if (typeof isFlightCrippled === 'function' && isFlightCrippled(unit)) return 'Too wounded to fly';
-                if (typeof getGravityFieldAt === 'function'
-                    && getGravityFieldAt(unit.x, unit.y) === 'super') return '🕳 Pinned by gravity';
-            }
-            // MP is deliberately checked LAST: canAffordSpell() treats a bare
-            // 'No MP' as passable (its callers gate MP themselves), so no
-            // other block may hide behind it.
-            if ((unit.mp || 0) < getSpellMpCostFor(unit, spell)) return 'No MP';
-            return null;
+            return TargetQuery.spellBlockReason(unit, spell);
         }
         window.getSpellBlockReason = getSpellBlockReason;
 
@@ -19780,15 +19941,7 @@
         window.spellTargetUsableOn = spellTargetUsableOn;
 
         function canAffordSpell(unit, spell) {
-            const cost = spell ? getSpellApCost(spell) : AP_COST_SPELL;
-            if ((unit.ap || 0) < cost) return false;
-            if (!spell) return true;
-            // Everything else (tier, cooldown, materials, mirror prisms, the
-            // Brand choice lock…) lives in the universal guard. NOTE: raw MP
-            // affordability is deliberately NOT part of this check — callers
-            // gate MP themselves — so the guard's MP reason is skipped here.
-            const why = getSpellBlockReason(unit, spell);
-            return !why || why === 'No MP';
+            return TargetQuery.canAfford(unit, spell);
         }
 
         /* ─── Press Turn helpers ─────────────────────────────────────────────
@@ -20231,8 +20384,7 @@
         window._gauntletDeployReserve = _gauntletDeployReserve;
 
         function canCastAnySpell(unit) {
-            const allSpells = (unit.spells || []);
-            return allSpells.some(s => canAffordSpell(unit, s) && unit.mp >= getSpellMpCostFor(unit, s) && !unitHasStatus(unit, 'silence'));
+            return TargetQuery.canCastAny(unit);
         }
 
         /* Self-origin cross-nova reality check (Crossfire's X, Blade Waltz /
@@ -20380,12 +20532,7 @@
         }
 
         function canCastAnySpellWithTargets(unit) {
-            const silenced = unitHasStatus(unit, 'silence');
-            if (silenced) return false;
-            const allSpells = (unit.spells || []);
-            return allSpells.some(s =>
-                s && canAffordSpell(unit, s) && unit.mp >= getSpellMpCostFor(unit, s) && hasSpellTargetInRange(unit, s)
-            );
+            return TargetQuery.canCastAnyWithTargets(unit);
         }
 
         // ───────────────────────────────────────────────────────────────────
@@ -20481,50 +20628,9 @@
 
         // True when the unit could step into range this turn and cast `spell`
         // on SOME valid target (used to keep the ability-menu entry enabled).
+        // Logic lives in TargetQuery.hasReachableTarget.
         function spellHasReachableTarget(unit, spell) {
-            /* Mystery Dungeon lockstep: any move/jump/height-then-cast plan is
-               two beats' worth of action — never light a blade for it. */
-            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return false;
-            const sx = unit.x, sy = unit.y, sz = unit.z;
-            try {
-                // Jump approach first: leap to a tile (often high ground) from which the
-                // spell becomes castable. Independent of the walk move budget — this is
-                // what unlocks elevation-gated spells the unit can't cast from the floor.
-                for (const jt of _spellJumpApproachTiles(unit, spell)) {
-                    if (unitAt(jt.x, jt.y, jt.z)) continue;
-                    unit.x = jt.x; unit.y = jt.y; unit.z = jt.z ?? sz;
-                    if (hasSpellTargetInRange(unit, spell)) return true;
-                    unit.x = sx; unit.y = sy; unit.z = sz;
-                }
-                // Walk approach (ONE step — moving twice ends the turn, so a
-                // second leg could never cast).
-                const steps = _spellMoveBudget(unit, spell);
-                if (steps > 0) {
-                    const ring1 = getMoveTiles(unit);
-                    for (const t of ring1) {
-                        // Parity with findSpellApproachTile: jump/takeoff legs are
-                        // probed by their own approaches above/below — counting
-                        // them here as 1-AP walks lit the button for plans the
-                        // finder (and the AP budget) would then refuse.
-                        if (t._jump || t._takeoff) continue;
-                        if (unitAt(t.x, t.y, t.z)) continue;
-                        unit.x = t.x; unit.y = t.y; unit.z = t.z ?? sz;
-                        if (hasSpellTargetInRange(unit, spell)) return true;
-                    }
-                    unit.x = sx; unit.y = sy; unit.z = sz;
-                }
-                // Height approach: take off / land / raise terrain in place, then cast.
-                // Independent of the walk budget (its own AP action), so a unit that
-                // already spent its moves can still unlock an above-target/airborne cast.
-                for (const hp of _spellHeightApproaches(unit, spell)) {
-                    unit.z = hp.z;
-                    if (hasSpellTargetInRange(unit, spell)) return true;
-                    unit.z = sz;
-                }
-            } finally {
-                unit.x = sx; unit.y = sy; unit.z = sz;
-            }
-            return false;
+            return TargetQuery.hasReachableTarget(unit, spell);
         }
 
         // Best tile the unit can reach this turn from which `spell` can hit the
@@ -31635,6 +31741,10 @@
             getUnitLevel, getXPProgressPct, xpProgressionActive,
 
             canUnitAct, canUnitMove,
+            // The ONE validity/targeting oracle (pure, read-only — safe on
+            // host AND guest). All consumers converge on this; the legacy
+            // validity globals below are delegates into it.
+            TargetQuery,
             canAffordSpell, getSpellApCost, getSpellCooldownRemaining,
             getCritChance, getEvasionChance,
             getMoveTiles, getAttackTiles, getInspectTiles, getSpellRangeTiles,
