@@ -1,4 +1,4 @@
-# NEXT_SESSION.md — architecture-work handoff (updated 2026-07-29, session 4)
+# NEXT_SESSION.md — architecture-work handoff (updated 2026-07-29, session 5)
 
 Read CLAUDE.md FIRST (delivery rules, online-parity rules, no-playtest rule).
 This file tracks the ChatGPT architecture-suggestion work specifically: what's
@@ -9,7 +9,7 @@ Keep it updated when you finish (or intentionally reject) an item.
 
 | # | Suggestion | Status |
 |---|-----------|--------|
-| 1 | Break up combat monolith (staged extraction) | **Stages 1 + 5 done** — TargetQuery service; seeded engine RNG s3 (combat/status/AI/weather) + s4 (map-gen/towers/hourglasses/FFA-respawns, see below). Stages 2–4 open: pure damage/status fns, command layer, typed event stream. Stage-5 payoff test (same-seed replay ⇒ identical state) still open — needs the stage-2 headless harness |
+| 1 | Break up combat monolith (staged extraction) | **Stages 1 + 5 done, stage 2 CORE done (s5, see below)** — TargetQuery service; seeded engine RNG s3 (combat/status/AI/weather) + s4 (map-gen/towers/hourglasses/FFA-respawns); s5: pure `calc*` damage-math layer in battle.js + `damage.test.js`. Stage-2 remainder (per-resolver cores, status expiry), stages 3–4 (command layer, typed event stream) open. Stage-5 payoff test (same-seed replay ⇒ identical state) still open |
 | 2 | Canonical data (client/server) | **Done 2026-07-29** — server derives ACCT_*/starters/races from data.js at boot (`ECON` object, see below); literals kept as fallback + parity source; `npm run test:parity` still guards the fallback |
 | 3 | Fast tests + CI | **Done 2026-07-29** — `npm test` (syntax, content schemas, parity, migrations, server smoke), `.github/workflows/ci.yml` |
 | 4 | Reproducible builds / deploy | **Mostly done** — `npm run deploy` (upload + auto cache-bust). Open: lockfile decision, vendored CDN deps |
@@ -126,28 +126,59 @@ Files: map.js, battle.js, rng.test.js, index.html bump (→ 20260729g-cors).
   (balanced braces) and fails if Math.random/bare randInt( reappears in any
   of them. `npm test` 18/18 (17 pass + server-smoke skip w/o node_modules).
 
+## Shipped 2026-07-29 (session 5): pure damage math core (extraction stage 2, core)
+
+Files: battle.js (R2 — token bumped → 20260729h-cors), damage.test.js (new
+repo-root test, auto-picked-up by `npm test`'s `*.test.js` glob).
+- battle.js now has a **PURE DAMAGE MATH** block (right after
+  `SPELL_DMG_VARIANCE`, ~line 157): 6 dependency-free functions —
+  `calcRangeMult`, `calcSpellBase`, `calcStatusApplyChance`,
+  `calcCounterChance`, `calcElementComboMult`, `calcDamageResolution`.
+  CONTRACT (documented in the block header): args in, value out; no
+  globals/state/window/RNG/logging — damage.test.js extracts them by
+  balanced braces and EVALUATES them, so referencing any outer name breaks
+  the suite (test 1 also greps for banned names). Tuning constants are
+  passed in by wrappers, never read inside.
+- Rewired wrappers (behavior-identical, verified stage-by-stage against the
+  old inline code): `getRangeDamageMult`, `computeSpellBase` (draws
+  engineRng ONLY when variance>0 — same stream discipline as before),
+  `rollStatusApply`, `getCounterChance`, and `applyDamageToUnit`, whose
+  cap→marked→level-scale→armor/soaks→status-mults→shield tail now runs
+  through ONE `calcDamageResolution` call (side effects — marked consume,
+  shield log/float — stay in the wrapper). Elemental combos resolve via
+  `calcElementComboMult` returning a `note` key that drives the callouts.
+- PARITY QUIRKS deliberately preserved (and pinned by tests — don't "fix"):
+  the ranged-taken stage floors a 0-damage physical enemy hit to 1; each
+  armor/soak stage floors at 1 independently; sub-×1 offensive products are
+  uncapped; marked adds AFTER the cap, BEFORE level scaling.
+- damage.test.js (14 tests): purity grep, wrapper-delegation guards,
+  numeric-constant pins (sweet spot 3, ±10%/±20%, sniper 0.6→1.2, cap ×3,
+  variance 8), full curve/table/stage-order coverage. Its `extractFnSource`
+  skips the PARAM LIST before brace-matching (an `opts = {}` default param
+  broke the naive rng.test.js version — reuse damage.test.js's copy for any
+  future extraction). `npm test`: 32 tests, 31 pass + server-smoke skip.
+
 ## Priority queue (in order — pick by available effort)
 
-### 1. Determinism payoff test (medium — blocked on the stage-2 harness)
-- The PAYOFF test from the original plan is still open: a scripted battle
-  replayed twice from the same seed ⇒ identical state. Needs a headless
-  engine harness — same blocker as stage 2 below, do them together.
+### 1. Stage-2 remainder: per-resolver cores + status expiry (medium)
+The shared chokepoint is pure now; the per-resolver numeric bits are not:
+`_applyDamageSpellHit` (chain-profile falloff, echo/acted/unholy/water/sneak
+bonuses), `_applyMultiHitDamage` (per-hit split + marked second-hit bonus),
+`_applyRicochetDamage` (bounce falloff), `_applyAoeDamage` (epicenter/
+falloff/friendly rules), `_applyLineDamage`, plus status expiry in the turn
+code. Same recipe as session 5: factor each numeric core into the PURE
+DAMAGE MATH block, wrapper keeps the VFX/relay/side effects, pin in
+damage.test.js. Keep each calc* dependency-free (the purity test enforces).
+
+### 2. Determinism payoff test (medium-large)
+The PAYOFF test from the original plan: a scripted battle replayed twice
+from the same seed ⇒ identical state. Needs a headless engine harness —
+evaluate state.js+battle.js in a load-data-style vm sandbox with enough DOM
+stubbed, or drive via playtest.js/Playwright (user-approved only). The calc*
+layer shrinks what the harness must stub, but the applier shell (VFX, timers,
+camera) is still interleaved — stage-3 (command layer) would shrink it more.
 - Campaign/gauntlet enemy gen + `optimizeRandomizeParty` (ranked bot) are
   setup-time: convert only if full-match determinism is wanted there too.
-
-### 2. Pure damage/status resolution + headless tests (large, staged)
-Extraction stage 2. The damage pipeline lives in battle.js:
-`_applyDamageSpellHit`, `_applyMultiHitDamage`, `_applyRicochetDamage`,
-`_applyAoeDamage`, `_applyLineDamage`, `getRangeDamageMult`,
-`getStatusDamageTakenMultiplier`, `getHourglassDamageReduction`, plus
-status expiry in the turn code. Approach: inside battle.js, refactor the
-NUMERIC CORE of each into pure `calcX(attacker, defender, spell, ctx) ->
-{dmg, crit, ...}` functions (no state mutation, no VFX, no globals), called
-by the existing appliers. Then test headlessly: extend load-data.js's sandbox
-pattern to evaluate battle.js far enough to reach the pure functions, or
-extract them by source (extractConst-style) — whichever works first. The
-seeded RNG is in (session 3), so rolls are already injectable: thread
-`engineRng` through ctx rather than calling the global inside pure fns.
 
 ### 3. Reproducible-build leftovers (small, mostly user decisions)
 - package-lock.json is currently gitignored (CLAUDE.md convention) — ask the

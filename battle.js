@@ -131,13 +131,13 @@
         function getRangeDamageMult(sourceUnit, target) {
             if (!sourceUnit || !target) return 1;
             const dist = Math.abs(sourceUnit.x - target.x) + Math.abs(sourceUnit.y - target.y);
-            if (dist <= 0) return 1;
-            if (sourceUnit.cls === 'Sniper') {
-                return Math.max(SNIPER_RANGE_MULT_MIN, Math.min(SNIPER_RANGE_MULT_MAX,
-                    SNIPER_RANGE_MULT_MIN + SNIPER_RANGE_STEP * (dist - 1)));
-            }
-            return Math.max(RANGE_MULT_MIN, Math.min(RANGE_MULT_MAX,
-                1 + RANGE_DAMAGE_STEP * (RANGE_SWEET_SPOT - dist)));
+            return calcRangeMult(dist, {
+                sniper: sourceUnit.cls === 'Sniper',
+                sweetSpot: RANGE_SWEET_SPOT, step: RANGE_DAMAGE_STEP,
+                min: RANGE_MULT_MIN, max: RANGE_MULT_MAX,
+                sniperStep: SNIPER_RANGE_STEP,
+                sniperMin: SNIPER_RANGE_MULT_MIN, sniperMax: SNIPER_RANGE_MULT_MAX,
+            });
         }
 
         // Hard ceiling on the PRODUCT of all offensive multipliers (STAB ×
@@ -153,6 +153,124 @@
         // and combos decide outcomes (Into the Breach school: RNG is
         // seasoning, never the meal).
         const SPELL_DMG_VARIANCE = 8;
+
+        /* ═══ PURE DAMAGE MATH (extraction stage 2, 2026-07-29) ═════════════
+           The numeric cores of the damage pipeline, factored out of the
+           appliers so they can be tested headlessly. CONTRACT: every calc*
+           function below is PURE and DEPENDENCY-FREE — arguments in, value
+           out; no globals, no `state`, no `window`, no RNG draws (the caller
+           passes any random value in), no logging/VFX. damage.test.js
+           extracts them from this source by balanced braces and evaluates
+           them in isolation — referencing ANY outer name breaks the suite.
+           Tuning constants are passed in by the wrappers, never read here. */
+
+        // Damage-by-distance curve. p: { sniper, sweetSpot, step, min, max,
+        // sniperStep, sniperMin, sniperMax }. dist <= 0 (self/adjacent-0) → 1.
+        function calcRangeMult(dist, p) {
+            if (!(dist > 0)) return 1;
+            if (p.sniper) {
+                return Math.max(p.sniperMin, Math.min(p.sniperMax,
+                    p.sniperMin + p.sniperStep * (dist - 1)));
+            }
+            return Math.max(p.min, Math.min(p.max,
+                1 + p.step * (p.sweetSpot - dist)));
+        }
+
+        // Caster-side base-damage roll. rand is a [0,1) draw supplied by the
+        // caller (engineRng) — with variance 0 it is unused, so callers must
+        // NOT draw from the seeded stream in that case (stream discipline).
+        function calcSpellBase(base, spellPower, variance, floor, rand) {
+            const roll = variance > 0
+                ? Math.floor(rand * (2 * variance + 1)) - variance : 0;
+            return Math.max(floor, (base || 0) + (spellPower || 0) + roll);
+        }
+
+        // Status-application chance, clamped to a 5%–95% window so neither
+        // side ever reaches certainty. intModifier is the caster-vs-target
+        // INT differential bonus (getDebuffIntModifier).
+        function calcStatusApplyChance(baseChance, intModifier) {
+            return Math.max(0.05, Math.min(0.95, baseChance + (intModifier || 0)));
+        }
+
+        // Counter-attack chance table (Riposte / bulwark classes / high DEF),
+        // plus any temporary guard bonus, hard-capped at 75%.
+        function calcCounterChance(cls, def, guardBonus) {
+            let base = 0.12;
+            if (cls === 'Swordmaster') base = 0.35;   // Riposte passive
+            else if (cls === 'Warrior' || cls === 'Tank') base = 0.30;
+            else if ((def || 0) >= 12) base = 0.20;
+            return Math.min(0.75, base + (guardBonus || 0));
+        }
+
+        // Elemental-combo interaction table (⚡/🔥 vs soaked/tech victims).
+        // cond: { soaked, tech }. Returns { mult, supercharge, note } where
+        // note keys the caller's callout text ('soakedShock' | 'shortCircuit'
+        // | 'overclock' | 'soakedFire' | null). Zodiac resonance is a separate
+        // multiplier handled by the caller (it reads match state).
+        function calcElementComboMult(element, cond) {
+            if (element === 'lightning') {
+                if (cond.soaked) {
+                    // ⚡💧 Water conducts — a dripping-wet target fries.
+                    // (Soaked TECH shorts out instead of supercharging.)
+                    return { mult: 1.5, supercharge: false,
+                        note: cond.tech ? 'shortCircuit' : 'soakedShock' };
+                }
+                if (cond.tech) {
+                    // ⚙️ Dry tech runs on current: the surge half-hurts and
+                    // OVERCLOCKS the machine (bolting your own robot is a play).
+                    return { mult: 0.5, supercharge: true, note: 'overclock' };
+                }
+            } else if (element === 'fire' && cond.soaked) {
+                // 🔥💧 Soaked flesh chars poorly — the blast steams them dry.
+                return { mult: 0.75, supercharge: false, note: 'soakedFire' };
+            }
+            return { mult: 1, supercharge: false, note: null };
+        }
+
+        // THE damage-resolution pipeline: everything between "flat damage +
+        // accumulated offensive product assembled" and "HP actually moves",
+        // in the exact stage order the balance work established:
+        //   1. offensive product ×once, capped at p.offCap (penalty products
+        //      below ×1 stay uncapped — the defender's earned reward),
+        //   2. + marked flat rider (post-cap so its card value is its value),
+        //   3. × level magnitude (offenseScale, null = not applicable),
+        //   4. − armor, − height soak, − bulwark, − hourglass (each floors
+        //      the hit at 1 — armor never blanks a connected hit),
+        //   5. × ranged-taken status mult (physical enemy hits; null = skip.
+        //      NOTE deliberate quirk kept for parity: when applicable this
+        //      stage floors at 1 even for a 0-damage hit),
+        //   6. × general damage-taken status mult,
+        //   7. shield absorption (shieldIgnore pierces, absorb is capped by
+        //      what remains).
+        // Returns { dmg, absorbed, shieldLeft }.
+        function calcDamageResolution(p) {
+            let dmg = Math.max(0, p.base || 0);
+            if (p.offMult !== 1 && dmg > 0) {
+                dmg = Math.max(1, Math.round(dmg * Math.min(p.offMult, p.offCap)));
+            }
+            if (p.markedBonus) dmg += p.markedBonus;
+            if (p.levelMult != null) {
+                dmg = Math.max(1, Math.round(dmg * p.levelMult));
+            }
+            if (p.armor > 0) dmg = Math.max(1, dmg - p.armor);
+            if (p.heightSoak > 0) dmg = Math.max(1, dmg - p.heightSoak);
+            if (p.bulwarkSoak > 0) dmg = Math.max(1, dmg - p.bulwarkSoak);
+            if (p.hourglassSoak > 0) dmg = Math.max(1, dmg - p.hourglassSoak);
+            if (p.rangedMult != null) {
+                dmg = Math.max(1, Math.round(dmg * p.rangedMult));
+            }
+            if (p.statusTakenMult != null && p.statusTakenMult !== 1 && dmg > 0) {
+                dmg = Math.max(1, Math.round(dmg * p.statusTakenMult));
+            }
+            let absorbed = 0, shieldLeft = p.shield || 0;
+            if (shieldLeft > 0) {
+                const effectiveShield = Math.max(0, shieldLeft - Math.max(0, p.shieldIgnore || 0));
+                absorbed = Math.min(effectiveShield, dmg);
+                shieldLeft -= absorbed;
+                dmg -= absorbed;
+            }
+            return { dmg, absorbed, shieldLeft };
+        }
 
         // ── Level-cap-equivalent stats for damage formulas ─────────────────
         // Every roll built from ATK or INT reads the stat through these, NOT
@@ -252,7 +370,7 @@
         }
 
         function rollStatusApply(sourceUnit, targetUnit, baseChance = 1) {
-            const chance = Math.max(0.05, Math.min(0.95, baseChance + getDebuffIntModifier(sourceUnit, targetUnit)));
+            const chance = calcStatusApplyChance(baseChance, getDebuffIntModifier(sourceUnit, targetUnit));
             return engineRng() <= chance;
         }
 
@@ -3963,11 +4081,12 @@
         // the variance window (0 = fully deterministic).
         // ═══════════════════════════════════════════════════════════════════
         function computeSpellBase(spell, spellPower, opts = {}) {
-            const base = (opts.baseDmg != null ? opts.baseDmg : ((spell && spell.dmg) || 0))
-                + (spellPower || 0);
+            const base = opts.baseDmg != null ? opts.baseDmg : ((spell && spell.dmg) || 0);
             const v = opts.variance != null ? opts.variance : SPELL_DMG_VARIANCE;
-            const roll = v > 0 ? Math.floor(engineRng() * (2 * v + 1)) - v : 0;
-            return Math.max(opts.floor != null ? opts.floor : 32, base + roll);
+            // Draw from the seeded stream ONLY when variance is live — a
+            // variance-0 call must not advance state.rngState (determinism).
+            return calcSpellBase(base, spellPower, v,
+                opts.floor != null ? opts.floor : 32, v > 0 ? engineRng() : 0);
         }
 
         function _applyDamageSpellHit(unit, spell, target, spellPower, travelType) {
@@ -7660,13 +7779,7 @@
 
         function getCounterChance(unit) {
             if (!unit || unit.dead) return 0;
-            let base = 0.12;
-            if (unit.cls === 'Swordmaster') base = 0.35;   // Riposte passive
-            else if (unit.cls === 'Warrior' || unit.cls === 'Tank') base = 0.30;
-            else if ((unit.def || 0) >= 12) base = 0.20;
-
-            if (unit._guardCounterBonus) base += unit._guardCounterBonus;
-            return Math.min(0.75, base);
+            return calcCounterChance(unit.cls, unit.def || 0, unit._guardCounterBonus || 0);
         }
 
         function rollCounter(unit) {
@@ -15982,39 +16095,30 @@
                         addLog(`★ The ${state.activeZodiac} sky resonates with the ${_comboEl === 'cold' ? 'frost' : _comboEl} — its power swells!`);
                     }
                 }
-                const _isSoaked = _unitIsSoaked(target);
-                if (_comboEl === 'lightning') {
-                    const _isTech = (target.types || []).includes('tech');
-                    if (_isSoaked) {
-                        // ⚡💧 Water conducts — a dripping-wet target fries.
-                        // (Soaked TECH shorts out instead of supercharging.)
-                        _offMult *= 1.5;
-                        showFloatingTextForUnit(target, _isTech ? '⚡💧 ×1.5 SHORT CIRCUIT!' : '⚡💧 ×1.5 SOAKED!', 'mult', { durationMs: 1100 });
-                    } else if (_isTech) {
-                        // ⚙️ Dry tech runs on current: the surge half-hurts and
-                        // OVERCLOCKS the machine (bolting your own robot is a play).
-                        _offMult *= 0.5;
-                        _comboSupercharge = true;
-                    }
-                } else if (_comboEl === 'fire' && _isSoaked) {
-                    // 🔥💧 Soaked flesh chars poorly — the blast steams them dry.
-                    _offMult *= 0.75;
+                // The interaction table itself is pure (calcElementComboMult,
+                // see PURE DAMAGE MATH); only the callouts stay here.
+                const _cmb = calcElementComboMult(_comboEl, {
+                    soaked: _unitIsSoaked(target),
+                    tech: (target.types || []).includes('tech'),
+                });
+                if (_cmb.mult !== 1) _offMult *= _cmb.mult;
+                _comboSupercharge = _cmb.supercharge;
+                if (_cmb.note === 'shortCircuit') {
+                    showFloatingTextForUnit(target, '⚡💧 ×1.5 SHORT CIRCUIT!', 'mult', { durationMs: 1100 });
+                } else if (_cmb.note === 'soakedShock') {
+                    showFloatingTextForUnit(target, '⚡💧 ×1.5 SOAKED!', 'mult', { durationMs: 1100 });
+                } else if (_cmb.note === 'soakedFire') {
                     showFloatingTextForUnit(target, '💧 ×0.75 SOAKED', 'mult', { durationMs: 1000 });
                 }
             }
 
-            // Apply the whole offensive product ONCE, capped. (Penalty stacks
-            // below ×1 are left uncapped — resist × long shot × soak is the
-            // defender's earned reward.)
-            if (_offMult !== 1 && finalDamage > 0) {
-                finalDamage = Math.max(1, Math.round(finalDamage * Math.min(_offMult, MAX_OFFENSIVE_MULT)));
-            }
-
-            // Marked is a FLAT rider — added after the multiplier product so
-            // its value on the card is its value on the hit.
+            // Marked is a FLAT rider — added after the multiplier product
+            // (inside calcDamageResolution below) so its value on the card is
+            // its value on the hit. Only the status consumption lives here.
             const canConsumeMarked = opts.consumeMarked ?? (damageType === 'physical');
+            let _markedBonus = 0;
             if (sourceUnit && isEnemyUnit(sourceUnit, target) && opts.allowMarkBonus !== false && canConsumeMarked && unitHasStatus(target, 'marked')) {
-                finalDamage += opts.markBonus ?? target.markBonus ?? 40;
+                _markedBonus = opts.markBonus ?? target.markBonus ?? 40;
                 clearStatus(target, 'marked');
                 target.markBonus = 0;
                 addLog(`${unitDisplayName(target)} was marked, so the hit deals extra damage.`);
@@ -16029,12 +16133,11 @@
             // opts.scaleByTargetLevel handles source-less hazards (e.g. DoT),
             // which resolve at gap 1 against their victim.
             const _tgtLvl = getUnitLevel(target);
+            let _levelMult = null;
             if (!opts.preScaled && typeof offenseScale === 'function') {
                 const _srcLvl = sourceUnit ? getUnitLevel(sourceUnit)
                     : (opts.scaleByTargetLevel ? _tgtLvl : 0);
-                if (_srcLvl >= 1) {
-                    finalDamage = Math.max(1, Math.round(finalDamage * offenseScale(_srcLvl, _tgtLvl)));
-                }
+                if (_srcLvl >= 1) _levelMult = offenseScale(_srcLvl, _tgtLvl);
             }
             // Mitigation is stored in base magnitude, so bring it into the
             // target's magnitude space at the SAME pace as the damage above —
@@ -16046,28 +16149,31 @@
             // respects armor — the tank shrugs off chip damage.
             const _bulwarkSoak = (!opts.ignoreArmor && target.cls === 'Tank') ? Math.round(8 * _defLs) : 0;
             const effectiveArmor = opts.ignoreArmor ? 0 : Math.round(getEffectiveArmor(target, damageType) * _defLs);
-            if (effectiveArmor > 0) finalDamage = Math.max(1, finalDamage - effectiveArmor);
-            if (_heightSoak > 0) finalDamage = Math.max(1, finalDamage - _heightSoak);
-            if (_bulwarkSoak > 0) finalDamage = Math.max(1, finalDamage - _bulwarkSoak);
-            if (hourglassReduction > 0) finalDamage = Math.max(1, finalDamage - hourglassReduction);
-            if (damageType === 'physical' && sourceUnit && isEnemyUnit(sourceUnit, target)) {
-                finalDamage = Math.max(1, Math.round(finalDamage * getStatusRangedDamageTakenMultiplier(target)));
-            }
-            const _dtMult = getStatusDamageTakenMultiplier(target);
-            if (_dtMult !== 1 && finalDamage > 0) {
-                finalDamage = Math.max(1, Math.round(finalDamage * _dtMult));
-            }
 
-            if (target.shield > 0) {
-                const shieldIgnore = Math.max(0, Number(opts.shieldIgnore || 0));
-                const effectiveShield = Math.max(0, target.shield - shieldIgnore);
-                const absorbed = Math.min(effectiveShield, finalDamage);
-                if (absorbed > 0) {
-                    target.shield -= absorbed;
-                    finalDamage -= absorbed;
-                    addLog(`${unitDisplayName(target)}'s shield absorbs ${absorbed} HP damage.`);
-                    showFloatingTextForUnit(target, `${absorbed}`, 'mp');
-                }
+            // Resolve cap → marked → level scale → armor/soaks → status
+            // multipliers → shield in ONE pure call (calcDamageResolution,
+            // see PURE DAMAGE MATH block) — the stage order and the cap/floor
+            // semantics are pinned there and in damage.test.js.
+            const _res = calcDamageResolution({
+                base: finalDamage,
+                offMult: _offMult, offCap: MAX_OFFENSIVE_MULT,
+                markedBonus: _markedBonus,
+                levelMult: _levelMult,
+                armor: effectiveArmor,
+                heightSoak: _heightSoak,
+                bulwarkSoak: _bulwarkSoak,
+                hourglassSoak: hourglassReduction,
+                rangedMult: (damageType === 'physical' && sourceUnit && isEnemyUnit(sourceUnit, target))
+                    ? getStatusRangedDamageTakenMultiplier(target) : null,
+                statusTakenMult: getStatusDamageTakenMultiplier(target),
+                shield: target.shield || 0,
+                shieldIgnore: Number(opts.shieldIgnore || 0),
+            });
+            finalDamage = _res.dmg;
+            if (_res.absorbed > 0) {
+                target.shield = _res.shieldLeft;
+                addLog(`${unitDisplayName(target)}'s shield absorbs ${_res.absorbed} HP damage.`);
+                showFloatingTextForUnit(target, `${_res.absorbed}`, 'mp');
             }
 
             if (finalDamage > 0) {
