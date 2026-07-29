@@ -119,6 +119,44 @@ const ACCT_STARTER_UNITS = [
 ];
 const AVAILABLE_RACES = new Set(['homosapien', 'pirate', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'swordfighter', 'symbiote', 'valkraye', 'watcher']);
 
+// data.js is the canonical source for the economy. The literals above are the
+// hand-synced FALLBACK — keep them as plain `const NAME = <literal>`, because
+// check-data-parity.js extracts them from this file's source text. At boot we
+// load data.js headlessly (load-data.js vm sandbox) and copy the REAL values
+// into ECON; runtime code reads ECON.* only, so a drifted literal shows up as
+// a parity-test failure instead of live server behavior.
+const ECON = {
+    ACCT_UNIT_PRICE, ACCT_STARTING_GOLD, ACCT_FREE_TOKENS, ACCT_MATCH_GOLD_CAP,
+    ACCT_PVP_MODES, ACCT_STARTER_UNITS, AVAILABLE_RACES,
+};
+(function deriveEconomyFromDataJs() {
+    let data;
+    try {
+        data = require('./load-data').loadGameData();
+    } catch (e) {
+        console.error('[ECON] FAILED to load data.js — running on hand-synced fallback literals:', e.message);
+        return;
+    }
+    const bad = [];
+    const asList = v => (v instanceof Set) ? [...v] : (Array.isArray(v) ? v : null);
+    for (const k of ['ACCT_UNIT_PRICE', 'ACCT_STARTING_GOLD', 'ACCT_FREE_TOKENS', 'ACCT_MATCH_GOLD_CAP']) {
+        if (typeof data[k] === 'number' && Number.isFinite(data[k])) ECON[k] = data[k];
+        else bad.push(k);
+    }
+    for (const k of ['ACCT_PVP_MODES', 'AVAILABLE_RACES']) {
+        const list = asList(data[k]);
+        if (list && list.length) ECON[k] = new Set(list); // server code calls .has()
+        else bad.push(k);
+    }
+    {
+        const list = asList(data.ACCT_STARTER_UNITS);
+        if (list && list.length) ECON.ACCT_STARTER_UNITS = list.slice();
+        else bad.push('ACCT_STARTER_UNITS');
+    }
+    if (bad.length) console.error('[ECON] data.js loaded but missing/invalid: ' + bad.join(', ') + ' — fallback literals kept for those');
+    console.log(`[ECON] economy derived from data.js (${ECON.ACCT_STARTER_UNITS.length} starters, ${ECON.AVAILABLE_RACES.size} races, unit price ${ECON.ACCT_UNIT_PRICE})`);
+})();
+
 // ── D1 SCHEMA MIGRATIONS ───────────────────────────────────────────────
 // Versioned SQL files under ./migrations, applied in filename order and
 // recorded in a schema_migrations table. "duplicate column" / "already
@@ -230,8 +268,8 @@ async function getOrBackfillEconomy(player) {
     let freeTokens = player.free_tokens || 0;
     const gold = player.gold || 0;
     if (unlocked.length === 0) {
-        unlocked = ACCT_STARTER_UNITS.slice();
-        freeTokens = ACCT_FREE_TOKENS;
+        unlocked = ECON.ACCT_STARTER_UNITS.slice();
+        freeTokens = ECON.ACCT_FREE_TOKENS;
         await d1.execute(
             "UPDATE players SET unlocked_units = ?1, free_tokens = ?2 WHERE id = ?3 AND (unlocked_units IS NULL OR unlocked_units = '' OR unlocked_units = '[]')",
             [JSON.stringify(unlocked), freeTokens, player.id]
@@ -240,7 +278,7 @@ async function getOrBackfillEconomy(player) {
     } else {
         // Starters are a floor, not just a new-account seed: when the starter
         // list grows, existing accounts pick up the new defaults on next read.
-        const missing = ACCT_STARTER_UNITS.filter(r => !unlocked.includes(r));
+        const missing = ECON.ACCT_STARTER_UNITS.filter(r => !unlocked.includes(r));
         if (missing.length > 0) {
             unlocked = unlocked.concat(missing);
             await d1.execute(
@@ -878,19 +916,19 @@ app.post('/api/register', limitAuth, async (req, res) => {
         const id = uuid();
         const token = uuid();
         const tokenHash = hashToken(token);
-        const starters = JSON.stringify(ACCT_STARTER_UNITS);
+        const starters = JSON.stringify(ECON.ACCT_STARTER_UNITS);
 
         // Only the hash is stored; the client keeps the plaintext token from
         // this response. The token column gets the '#'-tombstone (UNIQUE-safe).
         await d1.execute(
             'INSERT INTO players (id, username, token, token_hash, elo, peak_elo, wins, losses, total_games, gold, unlocked_units, free_tokens) VALUES (?1, ?2, ?3, ?4, 1200, 1200, 0, 0, 0, ?5, ?6, ?7)',
-            [id, username, '#' + tokenHash, tokenHash, ACCT_STARTING_GOLD, starters, ACCT_FREE_TOKENS]
+            [id, username, '#' + tokenHash, tokenHash, ECON.ACCT_STARTING_GOLD, starters, ECON.ACCT_FREE_TOKENS]
         );
 
         console.log(`[AUTH] Registered: ${username} (${id})`);
         res.json({
             id, token, username, elo: 1200, peakElo: 1200, wins: 0, losses: 0,
-            gold: ACCT_STARTING_GOLD, unlockedUnits: ACCT_STARTER_UNITS.slice(), freeTokens: ACCT_FREE_TOKENS,
+            gold: ECON.ACCT_STARTING_GOLD, unlockedUnits: ECON.ACCT_STARTER_UNITS.slice(), freeTokens: ECON.ACCT_FREE_TOKENS,
         });
     } catch (err) {
         console.error('[AUTH] Register error:', err.message);
@@ -973,7 +1011,7 @@ app.post('/api/economy/bank', limitEcon, async (req, res) => {
         if (!token) {
             return res.status(401).json({ error: 'Authentication required.' });
         }
-        if (!ACCT_PVP_MODES.has(mode)) {
+        if (!ECON.ACCT_PVP_MODES.has(mode)) {
             return res.status(400).json({ error: 'Unrecognized PvP mode.' });
         }
         const player = await findPlayerByToken(token, 'id, gold, unlocked_units, free_tokens');
@@ -982,7 +1020,7 @@ app.post('/api/economy/bank', limitEcon, async (req, res) => {
         }
         let amt = Math.round(Number(matchGold));
         if (!isFinite(amt) || amt < 0) amt = 0;
-        amt = Math.min(amt, ACCT_MATCH_GOLD_CAP); // server-enforced anti-cheat cap
+        amt = Math.min(amt, ECON.ACCT_MATCH_GOLD_CAP); // server-enforced anti-cheat cap
 
         await d1.execute('UPDATE players SET gold = gold + ?1 WHERE id = ?2', [amt, player.id]);
         const updated = await d1.getOne('SELECT gold, unlocked_units, free_tokens FROM players WHERE id = ?1', [player.id]);
@@ -1008,7 +1046,7 @@ app.post('/api/economy/purchase', limitEcon, async (req, res) => {
         if (!token) {
             return res.status(401).json({ error: 'Authentication required.' });
         }
-        if (!raceKey || !AVAILABLE_RACES.has(raceKey)) {
+        if (!raceKey || !ECON.AVAILABLE_RACES.has(raceKey)) {
             return res.status(400).json({ error: 'Unknown unit.' });
         }
         const player = await findPlayerByToken(token, 'id, gold, unlocked_units, free_tokens');
@@ -1033,13 +1071,13 @@ app.post('/api/economy/purchase', limitEcon, async (req, res) => {
                 [newUnlocked, player.id, fresh.unlocked_units]
             );
         } else {
-            if ((fresh.gold || 0) < ACCT_UNIT_PRICE) {
+            if ((fresh.gold || 0) < ECON.ACCT_UNIT_PRICE) {
                 return res.status(402).json({ error: 'Insufficient gold.' });
             }
             // Atomic: WHERE gold >= price prevents double-spend on concurrent clicks.
             result = await d1.execute(
                 'UPDATE players SET gold = gold - ?1, unlocked_units = ?2 WHERE id = ?3 AND gold >= ?1 AND unlocked_units = ?4',
-                [ACCT_UNIT_PRICE, newUnlocked, player.id, fresh.unlocked_units]
+                [ECON.ACCT_UNIT_PRICE, newUnlocked, player.id, fresh.unlocked_units]
             );
         }
         const changes = result && result.meta ? (result.meta.changes || 0) : 0;
@@ -1743,7 +1781,7 @@ io.on('connection', (socket) => {
                     const row = await d1.getOne('SELECT unlocked_units FROM players WHERE id = ?1', [auth.playerId]);
                     if (row) {
                         // Starters are an account floor even before backfill runs.
-                        const owned = new Set(parseUnlocked(row.unlocked_units).concat(ACCT_STARTER_UNITS));
+                        const owned = new Set(parseUnlocked(row.unlocked_units).concat(ECON.ACCT_STARTER_UNITS));
                         const illegal = data.meta
                             .map(m => m && m.race)
                             .filter(r => r && !owned.has(r));

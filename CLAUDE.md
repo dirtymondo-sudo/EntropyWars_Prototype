@@ -30,7 +30,11 @@ diffs. The deliverable is always the full edited file, produced in chat.
   (must live at exactly that path — GitHub ignores workflows elsewhere).
 - `npm run test:parity` / `npm run test:syntax` — the individual checks.
   ANY edit to the ACCT_* constants / starter lists / race lists in data.js or
-  server.js MUST pass test:parity — the two files are hand-synced copies.
+  server.js MUST pass test:parity. Since 2026-07-29 the server RUNTIME derives
+  these from data.js at boot (server.js `ECON` object, headless load via
+  load-data.js), but the server literals remain the boot-failure fallback AND
+  the parity tool's extraction target — keep them synced, and keep them as
+  plain `const NAME = <literal>` declarations (extraction is source-text based).
 - `npm run deploy` — USER-run (needs wrangler auth + EW_R2_BUCKET env): finds
   the changed R2 files (git status, explicit args, or `--all`), node --checks
   them, bumps the `?v=` token in index.html, uploads via wrangler, and prints
