@@ -43,6 +43,31 @@ const HP_ALLY_GLOW = '0 0 6px rgba(46,209,88,0.45)';
 const HP_ENEMY_GLOW = '0 0 6px rgba(255,74,86,0.45)';
 const MP_GLOW = '0 0 6px rgba(47,157,255,0.4)';
 
+// ── TargetQuery convergence (stage 2 of the validity refactor) ──
+// ALL of this file's spell affordability / AP-cost / block-reason /
+// move-then-cast checks route through battle.js's ONE validity oracle,
+// GAME.TargetQuery, via these accessors — hud.js no longer keeps its own
+// fallback copies of those rules (the hardcoded `: 1` / `: true` fallbacks
+// were silent drift whenever a guard failed). A rule changed in TargetQuery
+// changes every wash/menu/pip here for free. Pure questions only — safe on
+// host and guest alike.
+function _TQ() { return (window.GAME && window.GAME.TargetQuery) || null; }
+function _tqApCost(sp) {
+  const q = _TQ(); return q ? q.apCost(sp) : 1;
+}
+function _tqCanAfford(unit, sp) {
+  const q = _TQ(); return q ? q.canAfford(unit, sp) : true;
+}
+function _tqBlockReason(unit, sp) {
+  const q = _TQ(); return q ? q.spellBlockReason(unit, sp) : null;
+}
+function _tqReachable(unit, sp) {
+  const q = _TQ(); return q ? q.hasReachableTarget(unit, sp) : false;
+}
+function _tqCanCastAnyWithTargets(unit) {
+  const q = _TQ(); return q ? q.canCastAnyWithTargets(unit) : false;
+}
+
 const FACTION_COLORS = { space: EW.space, time: EW.time, chaos: EW.chaos };
 const TYPE_COLORS = { human: EW.human, alien: EW.alien, divine: EW.divine, unholy: EW.unholy, anomaly: EW.anomaly, tech: EW.tech };
 // Brightened text colors for the canonical type badge (legible over any background).
@@ -3093,12 +3118,12 @@ function _hrlgSpellBlades(unit, st) {
 
   const _isAvail = (sp) => {
     const cost = (typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(unit, sp) : (sp.cost || 0);
-    const canAfford = unit.mp >= (cost + mpPenalty) && (typeof canAffordSpell === 'function' ? canAffordSpell(unit, sp) : true);
+    const canAfford = unit.mp >= (cost + mpPenalty) && _tqCanAfford(unit, sp);
     if (!canAfford) return false;
     const hasTarget = typeof hasSpellTargetInRange === 'function' ? hasSpellTargetInRange(unit, sp) : true;
     // No target where it stands, but it could step into range and still cast
     // this turn → keep it usable (move-then-cast), don't grey it out.
-    const canReach = !hasTarget && typeof spellHasReachableTarget === 'function' && spellHasReachableTarget(unit, sp);
+    const canReach = !hasTarget && _tqReachable(unit, sp);
     return hasTarget || canReach;
   };
   // Memoize availability — _isAvail can run a move-into-range probe, and a
@@ -3124,12 +3149,15 @@ function _hrlgSpellBlades(unit, st) {
   let castableCount = 0;
   const blades = spells.map((sp, i) => {
     const cost = (typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(unit, sp) : (sp.cost || 0);
-    const apCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
+    const apCost = _tqApCost(sp);
     const isSilenced = mpPenalty > 0;
     const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(unit, sp) : true;
-    const canAfford = !isSilenced && tierOk && unit.mp >= cost && (typeof canAffordSpell === 'function' ? canAffordSpell(unit, sp) : true);
+    // TargetQuery.canAfford already folds in silence/tier/cooldown/locks;
+    // only the raw-MP gate rides alongside (canAfford deliberately passes
+    // a bare 'No MP' — callers gate MP themselves).
+    const canAfford = !isSilenced && tierOk && unit.mp >= cost && _tqCanAfford(unit, sp);
     const hasTarget = typeof hasSpellTargetInRange === 'function' ? hasSpellTargetInRange(unit, sp) : true;
-    const canReach = canAfford && !hasTarget && typeof spellHasReachableTarget === 'function' && spellHasReachableTarget(unit, sp);
+    const canReach = canAfford && !hasTarget && _tqReachable(unit, sp);
     const canCast = canAfford && (hasTarget || canReach);
     const needsMove = canCast && !hasTarget && canReach;
     if (canAfford) castableCount++;
@@ -3137,10 +3165,10 @@ function _hrlgSpellBlades(unit, st) {
     const cdLeft = typeof getSpellCooldownRemaining === 'function' ? getSpellCooldownRemaining(unit, sp) : 0;
     let reason = '';
     if (!canCast) {
-      // The UNIVERSAL guard (battle.js getSpellBlockReason) speaks first —
+      // The UNIVERSAL guard (TargetQuery.spellBlockReason) speaks first —
       // silence/tier/cooldown/MP/AP/materials/prisms AND hard locks like the
       // Berserker's Brand. New block rules added there grey out here for free.
-      const _why = (typeof getSpellBlockReason === 'function') ? getSpellBlockReason(unit, sp) : null;
+      const _why = _tqBlockReason(unit, sp);
       if (_why) reason = _why;
       else if (isSilenced) reason = 'Silenced';
       else if (!tierOk) { const trl = sp.tier === 'II' ? 2 : sp.tier === 'III' ? 3 : 1; reason = 'Req Lv.' + trl; }
@@ -3773,7 +3801,7 @@ function ActionMenu({ st, hidden }) {
   // on — cooldown/guard-aware and covering race abilities + move-then-cast —
   // so the button's lit state always agrees with whether the menu will open.
   const hasSpells = typeof anyCastableSpellNow === 'function' ? anyCastableSpellNow(unit)
-    : (typeof canCastAnySpellWithTargets === 'function' ? canCastAnySpellWithTargets(unit) : false);
+    : _tqCanCastAnyWithTargets(unit);
   const hasAnySpells = (unit.spells || []).some(Boolean) || (unit._raceAbilities || []).some(Boolean);
   let abilSub = null;
   if (!hasAnySpells) {
@@ -3792,15 +3820,15 @@ function ActionMenu({ st, hidden }) {
       for (const sp of _abilList) {
         const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(unit, sp) : true;
         if (!tierOk) continue; // locked by level — never the headline reason
-        const apOk = (unit.ap || 0) >= (typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1);
+        const apOk = (unit.ap || 0) >= _tqApCost(sp);
         const mpOk = (unit.mp || 0) >= (typeof getSpellMpCostFor === 'function'
       ? getSpellMpCostFor(unit, sp) : (sp.cost || 0));
         const tgt = (typeof hasSpellTargetInRange === 'function' ? hasSpellTargetInRange(unit, sp) : true)
-                 || (typeof spellHasReachableTarget === 'function' && spellHasReachableTarget(unit, sp));
-        // canAffordSpell folds in cooldown/materials/hard locks — without it a
-        // cooldown-blocked spell could light the button for a menu that then
-        // refuses to open (chooseActionMenu gates on the same full check).
-        const guardOk = typeof canAffordSpell !== 'function' || canAffordSpell(unit, sp);
+                 || _tqReachable(unit, sp);
+        // TargetQuery.canAfford folds in cooldown/materials/hard locks —
+        // without it a cooldown-blocked spell could light the button for a
+        // menu that then refuses to open (chooseActionMenu gates the same).
+        const guardOk = _tqCanAfford(unit, sp);
         if (apOk && mpOk && tgt && guardOk) { anyCastable = true; break; }
         if (!mpOk) mpShort = true;
         if (apOk && tgt && !mpOk) mpBlocked = true;        // would cast if it had MP
@@ -4753,15 +4781,15 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       if (seedGround === 'mountain' || seedGround === 'lava') continue;
     }
 
-    const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
+    const spellApCost = _tqApCost(sp);
     const mpPenalty = typeof getStatusMpCostDelta === 'function' ? getStatusMpCostDelta(actingUnit) : 0;
     const mpCost = (typeof getSpellMpCostFor === 'function')
       ? getSpellMpCostFor(actingUnit, sp) : (sp.cost || 0) + mpPenalty;
-    // canAffordSpell folds in cooldown + banked materials, so a quick-cast row
-    // never lights up for a spell doSpell would reject.
+    // TargetQuery.canAfford folds in cooldown + banked materials, so a
+    // quick-cast row never lights up for a spell doSpell would reject.
     const canAfford = unitAP >= spellApCost && actingUnit.mp >= mpCost
       && !(typeof unitHasStatus === 'function' && unitHasStatus(actingUnit, 'silence'))
-      && (typeof canAffordSpell !== 'function' || canAffordSpell(actingUnit, sp));
+      && _tqCanAfford(actingUnit, sp);
     const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, sp) : true;
     // placeBlock aimed at the enemy's tile = the block-shove play; grey the row
     // when the erupting block can't actually form there (colossal target, max
@@ -6160,13 +6188,13 @@ function _computeAllyActions(actingUnit, targetUnit) {
     const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, sp) : true;
     if (!tierOk) continue;   // level-locked — not quick-cast material
 
-    const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
+    const spellApCost = _tqApCost(sp);
     const mpCost = (typeof getSpellMpCostFor === 'function')
       ? getSpellMpCostFor(actingUnit, sp)
       : (sp.cost || 0) + (typeof getStatusMpCostDelta === 'function' ? getStatusMpCostDelta(actingUnit) : 0);
     const canAfford = unitAP >= spellApCost && (actingUnit.mp || 0) >= mpCost
       && !(typeof unitHasStatus === 'function' && unitHasStatus(actingUnit, 'silence'))
-      && (typeof canAffordSpell !== 'function' || canAffordSpell(actingUnit, sp));
+      && _tqCanAfford(actingUnit, sp);
 
     const healAmt = sp.heal || sp.healAmt || 0;
     const isHealish = cls === 'heal' || !!healAmt;
@@ -6189,7 +6217,7 @@ function _computeAllyActions(actingUnit, targetUnit) {
     let reason = '';
     let moveTile = null;
     if (!canAfford) {
-      reason = (typeof getSpellBlockReason === 'function' && getSpellBlockReason(actingUnit, sp))
+      reason = _tqBlockReason(actingUnit, sp)
         || ((actingUnit.mp || 0) < mpCost ? 'No MP' : unitAP < spellApCost ? 'No AP' : 'Unavailable');
     } else if (!validHere) {
       if (isHealish && fullHp) reason = 'Full HP';
@@ -6572,11 +6600,11 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
 
   for (const sp of allSpells) {
     if (!movementKinds.has(sp.kind)) continue;
-    const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
+    const spellApCost = _tqApCost(sp);
     const mpCost = (typeof getSpellMpCostFor === 'function')
       ? getSpellMpCostFor(actingUnit, sp) : (sp.cost || 0) + mpPenalty;
     const canAfford = unitAP >= spellApCost && actingUnit.mp >= mpCost && !isSilenced
-      && (typeof canAffordSpell !== 'function' || canAffordSpell(actingUnit, sp));
+      && _tqCanAfford(actingUnit, sp);
     const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, sp) : true;
 
     const spRange = sp.teleportDistance || sp.dashDistance || sp.range || 3;
@@ -6660,12 +6688,12 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       if (_tt === 'enemy' && _occAlly && _tileOcc.id !== actingUnit.id) continue;
       if (_tt === 'ally' && _occEnemy) continue;
     }
-    const spellApCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
+    const spellApCost = _tqApCost(sp);
     const mpCost = (typeof getSpellMpCostFor === 'function')
       ? getSpellMpCostFor(actingUnit, sp) : (sp.cost || 0) + mpPenalty;
     // Full engine gate — AP, MP, silence, tier, COOLDOWN and MATERIALS — so a
     // spell this menu offers can never bounce off doSpell's own checks.
-    const engineOk = typeof canAffordSpell === 'function' ? canAffordSpell(actingUnit, sp) : true;
+    const engineOk = _tqCanAfford(actingUnit, sp);
     const canAfford = unitAP >= spellApCost && actingUnit.mp >= mpCost && !isSilenced && engineOk;
     const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(actingUnit, sp) : true;
     const spRange = sp.range || 3;
@@ -7014,7 +7042,7 @@ function _renderSpellDescBar() {
   if (sp.aoeRadius) details.push('AOE ' + sp.aoeRadius);
   if (sp.teleportDistance) details.push('Leap ' + sp.teleportDistance);
   const cost = (_dbUnit && typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(_dbUnit, sp) : (sp.cost || 0);
-  const apCost = typeof getSpellApCost === 'function' ? getSpellApCost(sp) : 1;
+  const apCost = _tqApCost(sp);
   details.push(cost + ' MP · ' + apCost + ' AP');
   if (sp.tier) details.push('T·' + sp.tier);
 

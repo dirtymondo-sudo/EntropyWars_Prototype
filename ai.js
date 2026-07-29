@@ -3,6 +3,12 @@
 
     const G = () => window.GAME;
 
+    // Validity questions (spell affordability, AP cost, move tiles, entropy
+    // targets) route through GAME.TargetQuery — battle.js's ONE pure
+    // validity/targeting oracle — so the AI can never drift from what the
+    // engine (doSpell/doMove) will actually accept. Range/LOS *scoring*
+    // heuristics below are deliberately the AI's own.
+
     const MAX_LOOPS = 8;
     let _failedSpells = new Set();
     let _failedCombos = new Set();
@@ -440,7 +446,7 @@
 
         if (!best || best.score <= 0) {
             if (!_skipMove && g.canUnitMove(unit)) {
-                const moveTiles = g.getMoveTiles(unit);
+                const moveTiles = g.TargetQuery.moveTiles(unit);
                 if (moveTiles.length > 0) {
                     const recent = new Set(unit._aiRecentTiles || []);
                     const fresh = moveTiles.filter(t => !recent.has(g.posKey(t.x, t.y)));
@@ -1353,7 +1359,7 @@
             // a real damage spell, the basic attack shouldn't outbid it.
             if (JOB_TENDENCIES[unit.cls]?.preferSpells &&
                 (unit.spells || []).some(sp => sp && DMG_KINDS_T.includes(sp.kind)
-                    && g.canAffordSpell(unit, sp) && unit.mp >= ((typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(unit, sp) : sp.cost))) {
+                    && g.TargetQuery.canAfford(unit, sp) && unit.mp >= ((typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(unit, sp) : sp.cost))) {
                 score *= 0.6;
             }
 
@@ -1490,7 +1496,7 @@
         let _healDuty = false;
         if (_tend && _tend.healFirst) {
             const _canHeal = (unit.spells || []).some(sp => sp && ['heal', 'healAll'].includes(sp.kind)
-                && g.canAffordSpell(unit, sp) && unit.mp >= ((typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(unit, sp) : sp.cost) && ap >= g.getSpellApCost(sp));
+                && g.TargetQuery.canAfford(unit, sp) && unit.mp >= ((typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(unit, sp) : sp.cost) && ap >= g.TargetQuery.apCost(sp));
             _healDuty = _canHeal && [unit, ...v.allies].some(a => !a.dead && a.hp < a.maxHp * 0.6);
         }
 
@@ -1498,8 +1504,8 @@
         for (const spell of _allSpells) {
             if (!spell) continue;
             if (_failedSpells.has(spell.name)) continue;
-            const apCost = g.getSpellApCost(spell);
-            if (ap < apCost || !g.canAffordSpell(unit, spell) || unit.mp < ((typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(unit, spell) : spell.cost)) continue;
+            const apCost = g.TargetQuery.apCost(spell);
+            if (ap < apCost || !g.TargetQuery.canAfford(unit, spell) || unit.mp < ((typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(unit, spell) : spell.cost)) continue;
 
             const target = findSpellTarget(unit, spell, v);
             const noTargetKinds = ['healAll', 'manaRestoreAll', 'barrage', 'warCry', 'encore', 'deployTurret', 'utility',
@@ -2676,7 +2682,7 @@
         const g = G();
         if (_skipMove || !g.canUnitMove(unit)) return;
 
-        const moveTiles = g.getMoveTiles(unit);
+        const moveTiles = g.TargetQuery.moveTiles(unit);
         if (moveTiles.length === 0) return;
 
         if ((unit.ap || 0) >= g.AP_COST_ACTION * 2 && !_skipAttack) {
@@ -2810,7 +2816,7 @@
 
         if (unit._aiLoopCount <= 1) return;
 
-        const moveTiles = g.getMoveTiles(unit);
+        const moveTiles = g.TargetQuery.moveTiles(unit);
         if (moveTiles.length === 0) return;
 
         let bestTile = null, bestScore = -Infinity;
@@ -2991,7 +2997,7 @@
         if (round <= 3 && v.visibleEnemies.length === 0 && v.visibleHourglasses.length === 0) {
             const exploreBonus = AI_TUNE.earlyExploreBonus;
             if (exploreBonus > 0 && g.canUnitMove(unit)) {
-                const moveTiles = g.getMoveTiles(unit);
+                const moveTiles = g.TargetQuery.moveTiles(unit);
                 if (moveTiles.length > 0) {
 
                     const cx = Math.floor(g.bw() / 2);
@@ -3019,7 +3025,7 @@
         }
 
         if (v.visibleHourglasses.length > 0) {
-            const moveTiles = g.getMoveTiles(unit);
+            const moveTiles = g.TargetQuery.moveTiles(unit);
             const reachable = v.visibleHourglasses.filter(h =>
                 moveTiles.some(t => t.x === h.x && t.y === h.y)
             );
@@ -3725,7 +3731,7 @@
 
         // (d) softlock escape — no moves, nothing to hit: build/dig out
         const stuck = v.attackTargets.length === 0
-            && typeof g.getMoveTiles === 'function' && g.getMoveTiles(unit).length === 0;
+            && !!g.TargetQuery && g.TargetQuery.moveTiles(unit).length === 0;
         if (stuck) {
             if (placeTool && !g._buildProblem(unit, placeTool, unit.x, unit.y)) {
                 out.push({ type: 'build', tool: placeTool, x: unit.x, y: unit.y, score: 40 });
@@ -3837,7 +3843,7 @@
     function scoreEntropyStrike(unit, v, out) {
         const g = G();
         if (typeof g.canUseEntropyStrike !== 'function' || !g.canUseEntropyStrike(unit)) return;
-        const targets = (typeof g.getEntropyStrikeTargets === 'function') ? g.getEntropyStrikeTargets(unit) : [];
+        const targets = g.TargetQuery ? g.TargetQuery.entropyStrikeTargets(unit) : [];
         if (!targets.length) return;
         out.push({ type: 'entropyStrike', score: 200 + targets.length * 40 });
     }
@@ -4009,7 +4015,7 @@
             // hand doMove a tile that isn't in getMoveTiles (out of range / blocked),
             // which it refuses — the unit then makes no move, no progress, and the AI
             // loop spins until the stall safety-net force-ends the turn (wasting AP).
-            const moveTiles = g.getMoveTiles(unit);
+            const moveTiles = g.TargetQuery.moveTiles(unit);
             let bt = null, bd = Infinity;
             for (const t of moveTiles) {
                 const d = Math.abs(t.x - tgtX) + Math.abs(t.y - tgtY);
