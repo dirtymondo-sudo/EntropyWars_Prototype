@@ -1,4 +1,4 @@
-# NEXT_SESSION.md — architecture-work handoff (updated 2026-07-29, session 5)
+# NEXT_SESSION.md — architecture-work handoff (updated 2026-07-29, session 6)
 
 Read CLAUDE.md FIRST (delivery rules, online-parity rules, no-playtest rule).
 This file tracks the ChatGPT architecture-suggestion work specifically: what's
@@ -9,7 +9,7 @@ Keep it updated when you finish (or intentionally reject) an item.
 
 | # | Suggestion | Status |
 |---|-----------|--------|
-| 1 | Break up combat monolith (staged extraction) | **Stages 1 + 5 done, stage 2 CORE done (s5, see below)** — TargetQuery service; seeded engine RNG s3 (combat/status/AI/weather) + s4 (map-gen/towers/hourglasses/FFA-respawns); s5: pure `calc*` damage-math layer in battle.js + `damage.test.js`. Stage-2 remainder (per-resolver cores, status expiry), stages 3–4 (command layer, typed event stream) open. Stage-5 payoff test (same-seed replay ⇒ identical state) still open |
+| 1 | Break up combat monolith (staged extraction) | **Stages 1 + 2 + 5 done (s6 finished stage 2, see below)** — TargetQuery service; seeded engine RNG s3 (combat/status/AI/weather) + s4 (map-gen/towers/hourglasses/FFA-respawns); s5+s6: pure `calc*` damage-math layer in battle.js (shared chokepoint + all per-resolver cores + status-duration tick) + `damage.test.js`. Stages 3–4 (command layer, typed event stream) open. Stage-5 payoff test (same-seed replay ⇒ identical state) still open |
 | 2 | Canonical data (client/server) | **Done 2026-07-29** — server derives ACCT_*/starters/races from data.js at boot (`ECON` object, see below); literals kept as fallback + parity source; `npm run test:parity` still guards the fallback |
 | 3 | Fast tests + CI | **Done 2026-07-29** — `npm test` (syntax, content schemas, parity, migrations, server smoke), `.github/workflows/ci.yml` |
 | 4 | Reproducible builds / deploy | **Mostly done** — `npm run deploy` (upload + auto cache-bust). Open: lockfile decision, vendored CDN deps |
@@ -158,19 +158,45 @@ repo-root test, auto-picked-up by `npm test`'s `*.test.js` glob).
   broke the naive rng.test.js version — reuse damage.test.js's copy for any
   future extraction). `npm test`: 32 tests, 31 pass + server-smoke skip.
 
+## Shipped 2026-07-29 (session 6): per-resolver cores + status tick (stage 2 done)
+
+Files: battle.js (R2 — token bumped → 20260729i-cors), damage.test.js.
+- 8 new pure functions in the PURE DAMAGE MATH block (same contract, right
+  after `calcDamageResolution`): `calcFlatSpellDamage` (base+power+floor —
+  chain hops floor 16, beams 32, ricochet 0), `calcChainTargets` (chain-hop
+  selection: lowest-HP living candidate within chainRadius, no revisits,
+  profile-length cap), `calcSpellHitRiders` (single-hit rider stack: Time
+  Rewind echo replaces-when-strictly-bigger capped 500 → acted/unholy flat
+  adds → water ×1.5 floor → sneak ×1.5 floor; returns `{dmg, echoed,
+  echoDmg}` — echoDmg is the pre-rider value the callout prints),
+  `calcMultiHitDamage` (per-hit base + floor(spellPower/hitCount) + marked
+  hit-2 rider), `calcBounceTarget` (ricochet bounce: lowest-HP in
+  bounceRadius, excludes first victim), `calcAoeVariance` (noRandom → 0,
+  rngRange → floor(half), else SPELL_DMG_VARIANCE) + `calcAoeHitDamage`
+  (variance roll → water mult → min floor; rand passed in, unused at
+  variance 0 — stream discipline), `calcStatusDurationTick` (end-of-round
+  decrement/expiry split; input never mutated).
+- Rewired wrappers (behavior-identical): `_applyDamageSpellHit` (both chain
+  + single-hit paths; conditions/logs/VFX stay in the wrapper),
+  `_applyMultiHitDamage`, `_applyRicochetDamage` (primary + bounce),
+  `_applyAoeDamage` (engineRng drawn ONLY when variance > 0, as before),
+  `_applyLineDamage`, `_tickAllStatusDurations` (unknown STATUS_DEFS keys
+  still deliberately untouched; clearStatus + wore-off logs in the wrapper).
+- damage.test.js: purity + delegation guards extended to all 14 calc* fns
+  and the 6 wrappers, plus numeric pins for each new core (chain/bounce
+  selection order & purity, echo cap/tie semantics, rider stage order,
+  AoE variance window, status-tick non-mutation). `npm test`: 41 tests,
+  40 pass + server-smoke skip.
+- NOT extracted on purpose: the DoT magnitude curves (burn
+  `min(200, 32+stacks*32)`, drowning `min(160, 24+stacks*24)`, poison 32,
+  regen 40) live in data.js STATUS_DEFS onRoundEnd handlers, not battle.js —
+  extracting them means a data.js pure block + test extraction from data.js.
+  Fine to do later if wanted, but it's a different file's contract; the
+  handlers already route through applyDamageToUnit (which is core-backed).
+
 ## Priority queue (in order — pick by available effort)
 
-### 1. Stage-2 remainder: per-resolver cores + status expiry (medium)
-The shared chokepoint is pure now; the per-resolver numeric bits are not:
-`_applyDamageSpellHit` (chain-profile falloff, echo/acted/unholy/water/sneak
-bonuses), `_applyMultiHitDamage` (per-hit split + marked second-hit bonus),
-`_applyRicochetDamage` (bounce falloff), `_applyAoeDamage` (epicenter/
-falloff/friendly rules), `_applyLineDamage`, plus status expiry in the turn
-code. Same recipe as session 5: factor each numeric core into the PURE
-DAMAGE MATH block, wrapper keeps the VFX/relay/side effects, pin in
-damage.test.js. Keep each calc* dependency-free (the purity test enforces).
-
-### 2. Determinism payoff test (medium-large)
+### 1. Determinism payoff test (medium-large)
 The PAYOFF test from the original plan: a scripted battle replayed twice
 from the same seed ⇒ identical state. Needs a headless engine harness —
 evaluate state.js+battle.js in a load-data-style vm sandbox with enough DOM
@@ -180,7 +206,7 @@ camera) is still interleaved — stage-3 (command layer) would shrink it more.
 - Campaign/gauntlet enemy gen + `optimizeRandomizeParty` (ranked bot) are
   setup-time: convert only if full-match determinism is wanted there too.
 
-### 3. Reproducible-build leftovers (small, mostly user decisions)
+### 2. Reproducible-build leftovers (small, mostly user decisions)
 - package-lock.json is currently gitignored (CLAUDE.md convention) — ask the
   user before changing that; committing it is ChatGPT's recommendation and is
   probably right now that CI exists (CI would then use `npm ci`).

@@ -272,6 +272,111 @@
             return { dmg, absorbed, shieldLeft };
         }
 
+        // Flat power-added base with a minimum floor — chain hops floor at
+        // 16, line beams pre-assemble at 32, ricochet hits at 0 (no floor).
+        function calcFlatSpellDamage(base, spellPower, floor) {
+            return Math.max(floor, (base || 0) + (spellPower || 0));
+        }
+
+        // Chain-spell hop selection (Chain Lightning school): starting from
+        // the struck unit, each hop arcs to the lowest-HP living candidate
+        // within chainRadius (manhattan) of the current link that isn't
+        // already in the chain. Returns the chain INCLUDING the first
+        // target, capped at profileLen links. Candidates are read, never
+        // mutated (the radius filter copies before sorting).
+        function calcChainTargets(first, candidates, profileLen, chainRadius) {
+            const chain = [first];
+            let current = first;
+            for (let i = 1; i < profileLen; i++) {
+                if (!current) break;
+                const link = candidates
+                    .filter(e => !e.dead && !chain.includes(e)
+                        && Math.abs(e.x - current.x) + Math.abs(e.y - current.y)
+                           <= chainRadius)
+                    .sort((a, b) => a.hp - b.hp)[0];
+                if (!link) break;
+                chain.push(link);
+                current = link;
+            }
+            return chain;
+        }
+
+        // Single-target damage-spell rider stack, in resolution order: the
+        // Time Rewind echo REPLACES the base roll when bigger (capped at
+        // p.echoCap), then the flat acted-target/unholy riders add, then the
+        // caster-in-water and sneak-ambush multipliers floor. The wrapper
+        // resolves every condition (terrain, unit flags, types) and passes
+        // null/0 for inert riders. Returns { dmg, echoed, echoDmg } —
+        // echoDmg is the value at the echo stage (what the replay callout
+        // prints, before later riders adjust it).
+        function calcSpellHitRiders(p) {
+            let dmg = p.base;
+            let echoed = false, echoDmg = 0;
+            if (p.echo != null) {
+                const e = Math.round(p.echo);
+                if (e > dmg) { dmg = echoDmg = Math.min(e, p.echoCap); echoed = true; }
+            }
+            if (p.actedBonus) dmg += p.actedBonus;
+            if (p.unholyBonus) dmg += p.unholyBonus;
+            if (p.waterMult != null) dmg = Math.floor(dmg * p.waterMult);
+            if (p.sneakMult != null) dmg = Math.floor(dmg * p.sneakMult);
+            return { dmg, echoed, echoDmg };
+        }
+
+        // multiHit per-hit roll: each hit keeps its own profile base, the
+        // spell power splits evenly across the volley (integer floor), and
+        // the wrapper passes the mark-synergy rider (hit 2 on a marked
+        // target) as a pre-resolved flat bonus.
+        function calcMultiHitDamage(p) {
+            return (p.base || 0) + (p.markedBonus || 0)
+                + Math.floor((p.spellPower || 0) / p.hitCount);
+        }
+
+        // Ricochet bounce pick: the lowest-HP living candidate within
+        // radius (manhattan) of the first victim, excluding the victim
+        // itself. Returns null when nothing is in bounce range. The radius
+        // filter copies before sorting — candidates are never mutated.
+        function calcBounceTarget(from, candidates, radius, excludeId) {
+            const others = candidates.filter(u =>
+                !u.dead && u.id !== excludeId
+                && Math.abs(u.x - from.x) + Math.abs(u.y - from.y) <= radius);
+            others.sort((a, b) => a.hp - b.hp);
+            return others.length > 0 ? others[0] : null;
+        }
+
+        // AoE variance half-window: an rngRange override gives half its
+        // span, noRandom kills the roll outright, otherwise the shared
+        // default (SPELL_DMG_VARIANCE, passed in by the wrapper) applies.
+        function calcAoeVariance(noRandom, rngRange, fallback) {
+            return noRandom ? 0 : (rngRange != null ? Math.floor(rngRange / 2) : fallback);
+        }
+
+        // AoE per-target roll: symmetric variance around the base, the
+        // caster-on-water bonus multiplier, then the minimum-damage floor.
+        // rand is a [0,1) draw supplied by the caller — with variance 0 it
+        // is unused, so callers must not draw from the seeded stream then
+        // (same stream discipline as calcSpellBase).
+        function calcAoeHitDamage(base, variance, waterMult, minDmg, rand) {
+            const roll = variance > 0
+                ? Math.floor(rand * (2 * variance + 1)) - variance : 0;
+            return Math.max(minDmg, Math.floor((base + roll) * waterMult));
+        }
+
+        // End-of-round duration tick for one unit's tickable statuses.
+        // entries: [{ key, value }] — only the keys the wrapper deems
+        // tickable (unknown status defs stay untouched by design). Returns
+        // { next: [{ key, value }], expired: [key] } in input order.
+        // Input entries are never mutated.
+        function calcStatusDurationTick(entries) {
+            const next = [], expired = [];
+            for (const e of entries) {
+                const v = (e.value || 0) - 1;
+                if (v > 0) next.push({ key: e.key, value: v });
+                else expired.push(e.key);
+            }
+            return { next, expired };
+        }
+
         // ── Level-cap-equivalent stats for damage formulas ─────────────────
         // Every roll built from ATK or INT reads the stat through these, NOT
         // through unit.atk / unit.intStat directly. atk/def/mdef/int grow
@@ -4092,21 +4197,12 @@
         function _applyDamageSpellHit(unit, spell, target, spellPower, travelType) {
             const _spellEl = classifySpellElement(spell);
             if (spell.chainProfile?.length) {
-                // Chain damage path
-                const allEnemies = aliveUnitsFor(enemyOf(unit.player));
-                const chain = [target];
-                let current = target;
-                for (let i = 1; i < spell.chainProfile.length; i++) {
-                    if (!current) break;
-                    const next = allEnemies
-                        .filter(e => !e.dead && !chain.includes(e)
-                            && Math.abs(e.x - current.x) + Math.abs(e.y - current.y)
-                               <= (spell.chainRadius || 1))
-                        .sort((a, b) => a.hp - b.hp)[0];
-                    if (!next) break;
-                    chain.push(next);
-                    current = next;
-                }
+                // Chain damage path — hop selection is pure (calcChainTargets,
+                // see PURE DAMAGE MATH); this wrapper supplies the live enemy
+                // list and owns the VFX/stagger scheduling below.
+                const chain = calcChainTargets(target,
+                    aliveUnitsFor(enemyOf(unit.player)),
+                    spell.chainProfile.length, spell.chainRadius || 1);
 
                 const staggerMs = actionMs(140);
                 const useVfx3dChain = window.ThreeVFXEffects
@@ -4125,7 +4221,7 @@
                     const baseDamage = spell.chainProfile[idx];
                     const applyHit = () => {
                         if (!hopTarget || hopTarget.dead) return;
-                        applyDamageToUnit(hopTarget, Math.max(16, baseDamage + spellPower),
+                        applyDamageToUnit(hopTarget, calcFlatSpellDamage(baseDamage, spellPower, 16),
                             idx === 0
                                 ? `${unitDisplayName(unit)} casts ${spell.name}: `
                                 : `${spell.name} chains to `,
@@ -4143,32 +4239,31 @@
                     else applyHit();
                 });
             } else {
-                // Single-hit damage path
-                let damage = computeSpellBase(spell, spellPower);
-                // Time Rewind: replay the target's last landed blow back onto
-                // them. Echo replaces the base roll when it's bigger; a target
-                // that hasn't hit anything yet still eats the (WEAK) base.
-                if (spell.echoLastDealt) {
-                    const _echo = Math.round(target._lastHitDealt || 0);
-                    if (_echo > damage) {
-                        damage = Math.min(_echo, 500);
-                        addLog(`⏪ ${spell.name} replays ${unitDisplayName(target)}'s last blow in reverse — ${damage} damage returns to sender!`);
-                    }
+                // Single-hit damage path. The rider stack — Time Rewind echo
+                // (replays the target's last landed blow when bigger than the
+                // base roll), acted-target/unholy flat riders, caster-on-water
+                // ×1.5, and the Sneak Slash from-invisibility ambush ×1.5
+                // (flag stamped in doSpell before the cast broke the cloak) —
+                // is pure (calcSpellHitRiders, see PURE DAMAGE MATH); this
+                // wrapper resolves the conditions and keeps the callouts.
+                const _riders = calcSpellHitRiders({
+                    base: computeSpellBase(spell, spellPower),
+                    echo: spell.echoLastDealt ? (target._lastHitDealt || 0) : null,
+                    echoCap: 500,
+                    actedBonus: (spell.actedTargetBonus && unitFinished(target))
+                        ? spell.actedTargetBonus : 0,
+                    unholyBonus: (spell.unholyBonus && target.types
+                        && (target.types.includes('unholy') || target.types.includes('anomaly')))
+                        ? spell.unholyBonus : 0,
+                    waterMult: (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water')
+                        ? 1.5 : null,
+                    sneakMult: (spell.sneakBonus && unit._sneakStrikeBonus) ? 1.5 : null,
+                });
+                const damage = _riders.dmg;
+                if (_riders.echoed) {
+                    addLog(`⏪ ${spell.name} replays ${unitDisplayName(target)}'s last blow in reverse — ${_riders.echoDmg} damage returns to sender!`);
                 }
-                if (spell.actedTargetBonus && unitFinished(target)) {
-                    damage += spell.actedTargetBonus;
-                }
-                if (spell.unholyBonus && target.types
-                    && (target.types.includes('unholy') || target.types.includes('anomaly'))) {
-                    damage += spell.unholyBonus;
-                }
-                if (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') {
-                    damage = Math.floor(damage * 1.5);
-                }
-                /* Sneak Slash cast from invisibility (flag stamped in doSpell before
-                   the cast broke the cloak) lands an extra 50% ambush damage. */
                 if (spell.sneakBonus && unit._sneakStrikeBonus) {
-                    damage = Math.floor(damage * 1.5);
                     addLog(`🗡️ ${unitDisplayName(unit)} strikes from the shadows — ambush bonus!`, unit.player);
                 }
                 applyDamageToUnit(target, damage,
@@ -4308,11 +4403,12 @@
                         && state.phase === 'battle' && !_skipVisuals()) {
                         window.ThreeVFXEffects.fire('impact', spell.id, { tx: target.x, ty: target.y });
                     }
-                    let bonus = 0;
-                    if (idx === 1 && unitHasStatus(target, 'marked')) {
-                        bonus += spell.markedSecondHitBonus || 0;
-                    }
-                    const dmg = base + bonus + Math.floor((spellPower || 0) / hits.length);
+                    const dmg = calcMultiHitDamage({
+                        base,
+                        markedBonus: (idx === 1 && unitHasStatus(target, 'marked'))
+                            ? (spell.markedSecondHitBonus || 0) : 0,
+                        spellPower, hitCount: hits.length,
+                    });
                     applyDamageToUnit(target, dmg,
                         idx === 0
                             ? `${unitDisplayName(unit)} casts ${spell.name}: `
@@ -4358,7 +4454,7 @@
         // ═══════════════════════════════════════════════════════════════════
         function _applyRicochetDamage(unit, spell, first, spellPower, bounceDelay, bounceProjectileMs) {
             // Primary hit
-            const dmg = (spell.dmg || 0) + spellPower;
+            const dmg = calcFlatSpellDamage(spell.dmg || 0, spellPower, 0);
             applyDamageToUnit(first, dmg, `Ricochet from ${unit.cls}: `, {
                 sourceUnit: unit,
                 damageType: spell.damageType || 'physical',
@@ -4370,13 +4466,12 @@
             // Bounce to secondary target (fires even if the primary died —
             // the projectile still ricochets off the body).
             window.setTimeout(() => {
-                const others = state.units.filter(u =>
-                    !u.dead && u.player !== unit.player && u.id !== first.id
-                    && Math.abs(u.x - first.x) + Math.abs(u.y - first.y)
-                       <= (spell.bounceRadius || 2));
-                if (others.length > 0) {
-                    others.sort((a, b) => a.hp - b.hp);
-                    const second = others[0];
+                // Bounce pick is pure (calcBounceTarget, see PURE DAMAGE
+                // MATH); the wrapper supplies the enemy roster.
+                const second = calcBounceTarget(first,
+                    state.units.filter(u => u.player !== unit.player),
+                    spell.bounceRadius || 2, first.id);
+                if (second) {
                     playProjectile(first.x, first.y, second.x, second.y,
                         'proj-ricochet', bounceProjectileMs, spell.spellType, null, spell);
                     playSfx(spellLaunchSfx(spell));
@@ -4396,7 +4491,7 @@
                     window.setTimeout(() => {
                         if (second.dead) return;
                         applyDamageToUnit(second,
-                            (spell.bounceDamage || 8) + spellPower,
+                            calcFlatSpellDamage(spell.bounceDamage || 8, spellPower, 0),
                             `Ricochet bounces to `, {
                                 sourceUnit: unit,
                                 damageType: spell.damageType || 'physical',
@@ -4427,9 +4522,11 @@
                     ? opts.findTarget(tile)
                     : enemies.find(e => e.x === tile.x && e.y === tile.y);
                 if (target && !target.dead) {
-                    const _vr = opts.noRandom ? 0 : (opts.rngRange != null ? Math.floor(opts.rngRange / 2) : SPELL_DMG_VARIANCE);
-                    const rng = _vr > 0 ? Math.floor(engineRng() * (2 * _vr + 1)) - _vr : 0;
-                    let dmg = Math.max(opts.minDmg || 32, Math.floor((baseDmg + rng) * waterMult));
+                    const _vr = calcAoeVariance(!!opts.noRandom, opts.rngRange, SPELL_DMG_VARIANCE);
+                    // Draw from the seeded stream ONLY when variance is live —
+                    // same stream discipline as computeSpellBase.
+                    const dmg = calcAoeHitDamage(baseDmg, _vr, waterMult,
+                        opts.minDmg || 32, _vr > 0 ? engineRng() : 0);
                     applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         allowMarkBonus: false,
@@ -4728,7 +4825,7 @@
                 if (spell.leaveTerrain) setTerrainAt(cx, cy, spell.leaveTerrain);
                 cx += dx; cy += dy;
             }
-            const dmgBase = Math.max(32, baseDmg + spellPower);
+            const dmgBase = calcFlatSpellDamage(baseDmg, spellPower, 32);
             for (const hit of hitTargets) {
                 const dmg = computeSpellBase(null, 0, { baseDmg: dmgBase, floor: 1 });
                 applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
@@ -7112,16 +7209,19 @@
         function _tickAllStatusDurations() {
             for (const u of state.units) {
                 if (u.dead) continue;
-                for (const key of [...getActiveStatusKeys(u)]) {
-
+                // The decrement/expiry split is pure (calcStatusDurationTick,
+                // see PURE DAMAGE MATH in battle.js top); this wrapper picks
+                // the tickable keys (unknown STATUS_DEFS stay untouched) and
+                // owns the clearStatus side effects + wore-off log lines.
+                const tick = calcStatusDurationTick(
+                    [...getActiveStatusKeys(u)]
+                        .filter(key => STATUS_DEFS[key])
+                        .map(key => ({ key, value: getStatusValue(u, key) })));
+                for (const e of tick.next) u.status[e.key] = e.value;
+                for (const key of tick.expired) {
                     const def = STATUS_DEFS[key];
-                    if (!def) continue;
-                    const next = getStatusValue(u, key) - 1;
-                    if (next > 0) u.status[key] = next;
-                    else {
-                        clearStatus(u, key);
-                        addLog(`${def.icon || '✓'} ${unitDisplayName(u)}'s ${def.label || key} wore off.`);
-                    }
+                    clearStatus(u, key);
+                    addLog(`${def.icon || '✓'} ${unitDisplayName(u)}'s ${def.label || key} wore off.`);
                 }
                 // Drop stale stat-stage magnitudes once both carriers expire.
                 if (u.statStages && !unitHasStatus(u, 'statUp') && !unitHasStatus(u, 'statDown')) {

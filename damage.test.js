@@ -11,6 +11,11 @@
 //   3. the tuning constants the wrappers feed in,
 //   4. the numbers: range curve, spell-base roll, resolution stage order,
 //      cap/floor semantics, elemental-combo table, status/counter chances.
+//
+// Stage-2 remainder (2026-07-29 s6): the per-resolver cores joined the pure
+// block — chain-hop / ricochet-bounce target selection, the single-hit rider
+// stack, multiHit split, AoE variance/roll, flat-base floors, and the
+// end-of-round status-duration tick. Same contract, same extraction.
 
 'use strict';
 
@@ -57,7 +62,10 @@ function extractFn(src, name) {
 }
 
 const CALC_FNS = ['calcRangeMult', 'calcSpellBase', 'calcStatusApplyChance',
-    'calcCounterChance', 'calcElementComboMult', 'calcDamageResolution'];
+    'calcCounterChance', 'calcElementComboMult', 'calcDamageResolution',
+    'calcFlatSpellDamage', 'calcChainTargets', 'calcSpellHitRiders',
+    'calcMultiHitDamage', 'calcBounceTarget', 'calcAoeVariance',
+    'calcAoeHitDamage', 'calcStatusDurationTick'];
 
 const calcRangeMult = extractFn(battleSrc, 'calcRangeMult');
 const calcSpellBase = extractFn(battleSrc, 'calcSpellBase');
@@ -65,6 +73,14 @@ const calcStatusApplyChance = extractFn(battleSrc, 'calcStatusApplyChance');
 const calcCounterChance = extractFn(battleSrc, 'calcCounterChance');
 const calcElementComboMult = extractFn(battleSrc, 'calcElementComboMult');
 const calcDamageResolution = extractFn(battleSrc, 'calcDamageResolution');
+const calcFlatSpellDamage = extractFn(battleSrc, 'calcFlatSpellDamage');
+const calcChainTargets = extractFn(battleSrc, 'calcChainTargets');
+const calcSpellHitRiders = extractFn(battleSrc, 'calcSpellHitRiders');
+const calcMultiHitDamage = extractFn(battleSrc, 'calcMultiHitDamage');
+const calcBounceTarget = extractFn(battleSrc, 'calcBounceTarget');
+const calcAoeVariance = extractFn(battleSrc, 'calcAoeVariance');
+const calcAoeHitDamage = extractFn(battleSrc, 'calcAoeHitDamage');
+const calcStatusDurationTick = extractFn(battleSrc, 'calcStatusDurationTick');
 
 // Tuning constants the wrappers feed the pure functions.
 const C = {};
@@ -102,6 +118,23 @@ test('wrappers delegate to the pure cores (no forked math)', () => {
     }
     assert.ok(extractFnSource(battleSrc, 'applyDamageToUnit').includes('calcElementComboMult('),
         'applyDamageToUnit must resolve elemental combos through calcElementComboMult');
+});
+
+test('resolver wrappers delegate to the stage-2 cores (no forked math)', () => {
+    const resolverDelegations = {
+        _applyDamageSpellHit: ['calcChainTargets(', 'calcSpellHitRiders(', 'calcFlatSpellDamage('],
+        _applyMultiHitDamage: ['calcMultiHitDamage('],
+        _applyRicochetDamage: ['calcBounceTarget(', 'calcFlatSpellDamage('],
+        _applyAoeDamage: ['calcAoeVariance(', 'calcAoeHitDamage('],
+        _applyLineDamage: ['calcFlatSpellDamage('],
+        _tickAllStatusDurations: ['calcStatusDurationTick('],
+    };
+    for (const [wrapper, cores] of Object.entries(resolverDelegations)) {
+        const src = extractFnSource(battleSrc, wrapper);
+        for (const core of cores) {
+            assert.ok(src.includes(core), `${wrapper} must call ${core}...)`);
+        }
+    }
 });
 
 test('tuning constants hold their balanced values', () => {
@@ -270,4 +303,125 @@ test('resolution: shield absorbs last, shieldIgnore pierces', () => {
     r = calcDamageResolution(R({ armor: 60, shield: 40 }));
     assert.deepStrictEqual({ dmg: r.dmg, absorbed: r.absorbed, shieldLeft: r.shieldLeft },
         { dmg: 0, absorbed: 40, shieldLeft: 0 });
+});
+
+// ── Stage-2 remainder: per-resolver cores ──────────────────────────────────
+
+test('calcFlatSpellDamage: base+power with the caller-chosen floor', () => {
+    assert.strictEqual(calcFlatSpellDamage(100, 20, 16), 120);
+    assert.strictEqual(calcFlatSpellDamage(4, 2, 16), 16, 'chain-hop floor 16');
+    assert.strictEqual(calcFlatSpellDamage(10, 5, 32), 32, 'beam floor 32');
+    assert.strictEqual(calcFlatSpellDamage(0, 0, 0), 0, 'ricochet has no floor');
+    assert.strictEqual(calcFlatSpellDamage(null, undefined, 0), 0, 'null-safe');
+});
+
+// Plain-data unit helper for the target-selection cores.
+const U = (id, x, y, hp, dead) => ({ id, x, y, hp, dead: !!dead });
+
+test('calcChainTargets: lowest-HP hop within radius, no revisits, len cap', () => {
+    const a = U('a', 0, 0, 100);
+    const b = U('b', 1, 0, 50), c = U('c', 0, 1, 30);
+    const d = U('d', 2, 0, 10), far = U('far', 9, 9, 5);
+    const pool = [b, c, d, far];
+    // Radius 1: a → c (30 beats b's 50); from c nothing new within 1 → stop.
+    assert.deepStrictEqual(calcChainTargets(a, pool, 4, 1).map(u => u.id), ['a', 'c']);
+    // Radius 2: d (10 HP, dist 2) wins the first hop, then b, then c.
+    // `far` is never reachable.
+    assert.deepStrictEqual(calcChainTargets(a, pool, 4, 2).map(u => u.id), ['a', 'd', 'b', 'c']);
+    // The profile length caps the chain even with hops available.
+    assert.deepStrictEqual(calcChainTargets(a, pool, 2, 2).map(u => u.id), ['a', 'd']);
+    assert.deepStrictEqual(calcChainTargets(a, pool, 1, 2).map(u => u.id), ['a']);
+    // Dead candidates never join the chain.
+    const deadC = [b, U('c', 0, 1, 30, true), d, far];
+    assert.deepStrictEqual(calcChainTargets(a, deadC, 2, 1).map(u => u.id), ['a', 'b']);
+    // Purity: the candidate array order is untouched by the internal sorts.
+    assert.deepStrictEqual(pool.map(u => u.id), ['b', 'c', 'd', 'far']);
+});
+
+test('calcSpellHitRiders: echo replaces-when-bigger (cap 500), riders stack in order', () => {
+    // Inert riders pass the base through.
+    assert.deepStrictEqual(calcSpellHitRiders({ base: 100 }),
+        { dmg: 100, echoed: false, echoDmg: 0 });
+    // Echo replaces the base only when strictly bigger; rounded, capped at echoCap.
+    assert.deepStrictEqual(calcSpellHitRiders({ base: 100, echo: 250.4, echoCap: 500 }),
+        { dmg: 250, echoed: true, echoDmg: 250 });
+    assert.deepStrictEqual(calcSpellHitRiders({ base: 100, echo: 900, echoCap: 500 }),
+        { dmg: 500, echoed: true, echoDmg: 500 });
+    assert.deepStrictEqual(calcSpellHitRiders({ base: 100, echo: 80, echoCap: 500 }),
+        { dmg: 100, echoed: false, echoDmg: 0 });
+    assert.deepStrictEqual(calcSpellHitRiders({ base: 100, echo: 100, echoCap: 500 }),
+        { dmg: 100, echoed: false, echoDmg: 0 }, 'a tie is not an echo');
+    // Stage order: flat adds first, then water ×1.5 floors, then sneak ×1.5 floors.
+    assert.strictEqual(calcSpellHitRiders({
+        base: 100, actedBonus: 20, unholyBonus: 30 }).dmg, 150);
+    assert.strictEqual(calcSpellHitRiders({
+        base: 100, actedBonus: 20, unholyBonus: 30, waterMult: 1.5 }).dmg, 225);
+    assert.strictEqual(calcSpellHitRiders({
+        base: 100, actedBonus: 20, unholyBonus: 30, waterMult: 1.5, sneakMult: 1.5 }).dmg,
+        337, 'floor(225 × 1.5) = 337');
+    // Echo lands BEFORE the riders — echoDmg keeps the pre-rider value.
+    const r = calcSpellHitRiders({ base: 10, echo: 100, echoCap: 500, actedBonus: 5 });
+    assert.deepStrictEqual(r, { dmg: 105, echoed: true, echoDmg: 100 });
+});
+
+test('calcMultiHitDamage: per-hit power split (floor) + marked rider', () => {
+    assert.strictEqual(calcMultiHitDamage({ base: 8, spellPower: 10, hitCount: 3 }), 11);
+    assert.strictEqual(calcMultiHitDamage({ base: 8, spellPower: 0, hitCount: 2 }), 8);
+    assert.strictEqual(calcMultiHitDamage({ base: 8, markedBonus: 12, spellPower: 9, hitCount: 2 }), 24);
+    assert.strictEqual(calcMultiHitDamage({ base: 8, hitCount: 2 }), 8, 'missing power/bonus are 0');
+});
+
+test('calcBounceTarget: lowest-HP in radius, excludes first victim and the dead', () => {
+    const first = U('first', 5, 5, 40);
+    const near = U('near', 6, 5, 60), nearer = U('weak', 5, 7, 20);
+    const dead = U('dead', 5, 6, 1, true), far = U('far', 0, 0, 2);
+    const pool = [first, near, nearer, dead, far];
+    assert.strictEqual(calcBounceTarget(first, pool, 2, 'first').id, 'weak');
+    // Radius 1 leaves only `near`; dead and far never qualify.
+    assert.strictEqual(calcBounceTarget(first, pool, 1, 'first').id, 'near');
+    assert.strictEqual(calcBounceTarget(first, [first, dead, far], 2, 'first'), null);
+    // Purity: candidate order untouched.
+    assert.deepStrictEqual(pool.map(u => u.id), ['first', 'near', 'weak', 'dead', 'far']);
+});
+
+test('calcAoeVariance: noRandom kills, rngRange halves, else fallback', () => {
+    assert.strictEqual(calcAoeVariance(true, 20, C.SPELL_DMG_VARIANCE), 0);
+    assert.strictEqual(calcAoeVariance(false, 20, C.SPELL_DMG_VARIANCE), 10);
+    assert.strictEqual(calcAoeVariance(false, 9, C.SPELL_DMG_VARIANCE), 4, 'floor of half');
+    assert.strictEqual(calcAoeVariance(false, 0, C.SPELL_DMG_VARIANCE), 0, 'explicit 0 wins');
+    assert.strictEqual(calcAoeVariance(false, null, C.SPELL_DMG_VARIANCE), C.SPELL_DMG_VARIANCE);
+    assert.strictEqual(calcAoeVariance(false, undefined, C.SPELL_DMG_VARIANCE), C.SPELL_DMG_VARIANCE);
+});
+
+test('calcAoeHitDamage: variance window, water mult before the floor', () => {
+    const V = C.SPELL_DMG_VARIANCE;
+    // Variance 0 ignores rand entirely (stream discipline mirror).
+    assert.strictEqual(calcAoeHitDamage(100, 0, 1, 32, 0), 100);
+    assert.strictEqual(calcAoeHitDamage(100, 0, 1, 32, 0.999), 100);
+    // rand→roll mapping matches calcSpellBase: 0 ⇒ −V, just-under-1 ⇒ +V.
+    assert.strictEqual(calcAoeHitDamage(100, V, 1, 32, 0), 100 - V);
+    assert.strictEqual(calcAoeHitDamage(100, V, 1, 32, 1 - 1e-12), 100 + V);
+    assert.strictEqual(calcAoeHitDamage(100, V, 1, 32, 0.5), 100);
+    // Water bonus multiplies base+roll, then the min floors.
+    assert.strictEqual(calcAoeHitDamage(100, 0, 1.5, 32, 0), 150);
+    assert.strictEqual(calcAoeHitDamage(10, 0, 1, 32, 0), 32, 'min floor holds');
+    // Every roll stays inside the window.
+    for (let r = 0; r < 1; r += 0.001) {
+        const v = calcAoeHitDamage(200, V, 1, 32, r);
+        assert.ok(v >= 200 - V && v <= 200 + V, `roll out of window: ${v} (rand ${r})`);
+    }
+});
+
+test('calcStatusDurationTick: decrements, splits expiries, never mutates input', () => {
+    const entries = [
+        { key: 'burn', value: 2 }, { key: 'stun', value: 1 },
+        { key: 'regen', value: 3 }, { key: 'stale', value: 0 },
+    ];
+    const snapshot = JSON.parse(JSON.stringify(entries));
+    const tick = calcStatusDurationTick(entries);
+    assert.deepStrictEqual(tick.next,
+        [{ key: 'burn', value: 1 }, { key: 'regen', value: 2 }]);
+    assert.deepStrictEqual(tick.expired, ['stun', 'stale']);
+    assert.deepStrictEqual(entries, snapshot, 'input entries must not be mutated');
+    assert.deepStrictEqual(calcStatusDurationTick([]), { next: [], expired: [] });
 });
