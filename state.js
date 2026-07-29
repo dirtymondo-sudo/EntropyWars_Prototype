@@ -2,6 +2,50 @@
             return Math.floor(Math.random() * n);
         }
 
+        /* ── Seeded engine RNG (mulberry32) ──────────────────────────────
+           Extraction stage 5 (see NEXT_SESSION.md): every ENGINE-affecting
+           roll (damage variance, crit/dodge/counter, status apply/resist,
+           AI tie-breaks, weather/sky events, turn-order shuffles, warp/loot
+           picks) goes through engineRng()/engineRandInt() so a battle is
+           reproducible from state.rngSeed. Cosmetic rolls (VFX jitter, sfx
+           pitch, particles, menu shuffles) MUST stay on Math.random/randInt
+           so presentation doesn't pollute the deterministic stream.
+           The whole PRNG state is ONE uint32 (state.rngState), so it rides
+           state-sync to online guests and into replays automatically —
+           keep both fields OFF _serializeState's skip list (online.js).
+           _ewRngNext is pure + self-contained: rng.test.js extracts it by
+           source text (extractConst-style) — keep it dependency-free. */
+        function _ewRngNext(s) {
+            s = (s + 0x6D2B79F5) | 0;
+            let t = s;
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return { s: s, v: ((t ^ (t >>> 14)) >>> 0) / 4294967296 };
+        }
+
+        function seedEngineRng(seed) {
+            state.rngSeed = seed >>> 0;
+            state.rngState = state.rngSeed;
+            console.log('[RNG] engine seeded:', state.rngSeed);
+        }
+
+        function engineRng() {
+            /* Unseeded (setup screens, pre-upgrade replays/snapshots):
+               self-seed once rather than throw — determinism only matters
+               within a battle, and battles seed at startMatch. */
+            if (typeof state.rngState !== 'number' || !isFinite(state.rngState)) {
+                state.rngSeed = (Math.random() * 0x100000000) >>> 0;
+                state.rngState = state.rngSeed;
+            }
+            const r = _ewRngNext(state.rngState);
+            state.rngState = r.s;
+            return r.v;
+        }
+
+        function engineRandInt(n) {
+            return Math.floor(engineRng() * n);
+        }
+
         /* Real status effects: gates the end-of-round onRoundEnd dispatcher and
            the nameplate status badges. 'regen' was defined with a heal tick but
            missing here, so it never actually ticked (dead code bug — fixed);
@@ -525,8 +569,8 @@
                 const p1 = tierUnits.filter(u => u.player === 1);
                 const p2 = tierUnits.filter(u => u.player === 2);
 
-                for (let i = p1.length - 1; i > 0; i--) { const j = randInt(i + 1); [p1[i], p1[j]] = [p1[j], p1[i]]; }
-                for (let i = p2.length - 1; i > 0; i--) { const j = randInt(i + 1); [p2[i], p2[j]] = [p2[j], p2[i]]; }
+                for (let i = p1.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p1[i], p1[j]] = [p1[j], p1[i]]; }
+                for (let i = p2.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p2[i], p2[j]] = [p2[j], p2[i]]; }
 
                 let first = (state.round % 2 === 1) ? p1 : p2;
                 let second = (first === p1) ? p2 : p1;
@@ -1212,8 +1256,8 @@
         function rollSkyEvent() {
             if (state.skyEvent) return null;
             if (state.round < SKY_EVENT_START_ROUND) return null;
-            if (Math.random() > SKY_EVENT_CHANCE) return null;
-            const type = SKY_EVENT_KEYS[Math.floor(Math.random() * SKY_EVENT_KEYS.length)];
+            if (engineRng() > SKY_EVENT_CHANCE) return null;
+            const type = SKY_EVENT_KEYS[Math.floor(engineRng() * SKY_EVENT_KEYS.length)];
             return {
                 type,
                 remaining: SKY_EVENT_DURATION
@@ -1456,7 +1500,7 @@
                 desc: 'Chases the nearest unit (up to 3 tiles/round); shreds and hurls anyone it catches.',
                 homingDamage(unit) {
                     return {
-                        amount: randInt(40) + 32,
+                        amount: engineRandInt(40) + 32,
                         text: `${unitDisplayName(unit)} is shredded by the Tornado for`
                     };
                 }
@@ -1472,7 +1516,7 @@
                 onSpawnEffect(unit) {
                     return {
                         type: 'damage',
-                        amount: randInt(40) + 40,
+                        amount: engineRandInt(40) + 40,
                         text: `${unitDisplayName(unit)} is slammed by the Earthquake for`
                     };
                 }
@@ -1494,7 +1538,7 @@
                 },
                 homingDamage(unit) {
                     return {
-                        amount: randInt(20) + 24,
+                        amount: engineRandInt(20) + 24,
                         text: `${unitDisplayName(unit)} is hurled by the Hurricane for`
                     };
                 }
@@ -1512,13 +1556,13 @@
                     const isUnholy = (unit.types || []).includes('unholy');
                     if (isDivine) return {
                         type: 'damage',
-                        amount: randInt(24) + 24,
+                        amount: engineRandInt(24) + 24,
                         text: `${unitDisplayName(unit)} is burned by Blood Rain for`
                     };
                     if (isUnholy) return {
                         type: 'heal',
-                        hpAmount: randInt(24) + 16,
-                        mpAmount: randInt(10) + 5,
+                        hpAmount: engineRandInt(24) + 16,
+                        mpAmount: engineRandInt(10) + 5,
                         text: `Blood Rain restores ${unitDisplayName(unit)}.`
                     };
                     return null;
@@ -1545,7 +1589,7 @@
                     const isTech = (unit.types || []).includes('tech');
                     if (isTech) return {
                         type: 'damage',
-                        amount: randInt(24) + 16,
+                        amount: engineRandInt(24) + 16,
                         text: `${unitDisplayName(unit)} is scorched by Solar Flare for`
                     };
                     return null;
@@ -1572,7 +1616,7 @@
                 },
                 homingDamage(unit) {
                     return {
-                        amount: randInt(32) + 32,
+                        amount: engineRandInt(32) + 32,
                         text: `${unitDisplayName(unit)} is struck by lightning for`
                     };
                 }
@@ -1596,12 +1640,12 @@
                     if (isAnomaly) return {
                         type: 'heal',
                         hpAmount: 0,
-                        mpAmount: randInt(12) + 8,
+                        mpAmount: engineRandInt(12) + 8,
                         text: `${unitDisplayName(unit)} resonates with the Tesseract Storm.`
                     };
-                    if (Math.random() < 0.45) return {
+                    if (engineRng() < 0.45) return {
                         type: 'damage',
-                        amount: randInt(20) + 16,
+                        amount: engineRandInt(20) + 16,
                         text: `${unitDisplayName(unit)} is struck by a geometric shard for`
                     };
                     return null;
@@ -1629,7 +1673,7 @@
                         // whiteout batters them roughly twice as hard.
                         const frozenSolid = !!(unit.status && (unit.status.frozen | 0) > 0);
                         return {
-                            amount: (randInt(10) + 15) + (frozenSolid ? randInt(10) + 15 : 0),
+                            amount: (engineRandInt(10) + 15) + (frozenSolid ? engineRandInt(10) + 15 : 0),
                             text: frozenSolid
                                 ? `${unitDisplayName(unit)} is frozen helpless as the Blizzard batters them for`
                                 : `${unitDisplayName(unit)} is battered by the Blizzard for`
@@ -1653,7 +1697,7 @@
                 homingDamage(unit) {
                     const isHuman = (unit.types || []).includes('human');
                     if (!isHuman) return {
-                        amount: randInt(10) + 20,
+                        amount: engineRandInt(10) + 20,
                         text: `${unitDisplayName(unit)} is scoured by the Sandstorm for`
                     };
                     return null;
@@ -1892,7 +1936,7 @@
                     [0, 1],
                     [0, -1]
                 ];
-                const pick = dirs[randInt(dirs.length)];
+                const pick = dirs[engineRandInt(dirs.length)];
                 pushDx = pick[0];
                 pushDy = pick[1];
             }
@@ -2042,7 +2086,7 @@
         }
 
         function rollWeatherTiles(tileRange, preferredTerrain, ignoresTerrain) {
-            const count = tileRange[0] + randInt(tileRange[1] - tileRange[0] + 1);
+            const count = tileRange[0] + engineRandInt(tileRange[1] - tileRange[0] + 1);
             const size = bw(),
                 sizeH = bh();
 
@@ -2082,12 +2126,12 @@
 
             let sx, sy;
             if (candidates.length > 0) {
-                const seed = candidates[randInt(candidates.length)];
+                const seed = candidates[engineRandInt(candidates.length)];
                 sx = seed.x;
                 sy = seed.y;
             } else {
-                sx = randInt(size);
-                sy = randInt(sizeH);
+                sx = engineRandInt(size);
+                sy = engineRandInt(sizeH);
             }
 
             const tiles = [{
@@ -2099,14 +2143,14 @@
             const maxAttempts = count * 20;
             while (tiles.length < count && attempts < maxAttempts) {
                 attempts++;
-                const base = tiles[randInt(tiles.length)];
+                const base = tiles[engineRandInt(tiles.length)];
                 const dirs = [
                     [0, 1],
                     [0, -1],
                     [1, 0],
                     [-1, 0]
                 ];
-                const [dx, dy] = dirs[randInt(4)];
+                const [dx, dy] = dirs[engineRandInt(4)];
                 const nx = base.x + dx,
                     ny = base.y + dy;
                 if (nx >= 0 && nx < size && ny >= 0 && ny < sizeH && !seen.has(posKey(nx, ny))) {
@@ -2133,18 +2177,18 @@
                 [-1, 1],
                 [-1, -1]
             ];
-            return dirs[randInt(dirs.length)];
+            return dirs[engineRandInt(dirs.length)];
         }
 
         function spawnWeather() {
             if (state.round < WEATHER_SPAWN_ROUND) return;
             if ((state.activeWeather || []).length >= WEATHER_MAX_ACTIVE) return;
-            if (Math.random() > WEATHER_SPAWN_CHANCE) return;
+            if (engineRng() > WEATHER_SPAWN_CHANCE) return;
 
             let availableKeys = WEATHER_KEYS;
-            const type = availableKeys[randInt(availableKeys.length)];
+            const type = availableKeys[engineRandInt(availableKeys.length)];
             const def = WEATHER_REGISTRY[type];
-            const dur = def.duration[0] + randInt(def.duration[1] - def.duration[0] + 1);
+            const dur = def.duration[0] + engineRandInt(def.duration[1] - def.duration[0] + 1);
             const tiles = rollWeatherTiles(def.tiles, def.preferredTerrain || null, def.ignoresTerrain);
             // Homing storms are a single roaming vortex tile that hunts the nearest units.
             if (def.homing && tiles.length > 1) tiles.splice(1);
@@ -2214,14 +2258,14 @@
             let dx = weather.direction[0],
                 dy = weather.direction[1];
 
-            if (Math.random() < 0.45) {
-                if (Math.random() < 0.5) dx += (Math.random() < 0.5 ? 1 : -1);
-                else dy += (Math.random() < 0.5 ? 1 : -1);
+            if (engineRng() < 0.45) {
+                if (engineRng() < 0.5) dx += (engineRng() < 0.5 ? 1 : -1);
+                else dy += (engineRng() < 0.5 ? 1 : -1);
                 dx = Math.max(-1, Math.min(1, dx));
                 dy = Math.max(-1, Math.min(1, dy));
             }
 
-            const speed = Math.random() < 0.20 ? 2 : 1;
+            const speed = engineRng() < 0.20 ? 2 : 1;
             const newTiles = weather.tiles.map(t => ({
                 x: Math.max(0, Math.min(size - 1, t.x + dx * speed)),
                 y: Math.max(0, Math.min(sizeH - 1, t.y + dy * speed))

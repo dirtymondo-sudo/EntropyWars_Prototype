@@ -1,4 +1,4 @@
-# NEXT_SESSION.md — architecture-work handoff (updated 2026-07-29, session 2)
+# NEXT_SESSION.md — architecture-work handoff (updated 2026-07-29, session 3)
 
 Read CLAUDE.md FIRST (delivery rules, online-parity rules, no-playtest rule).
 This file tracks the ChatGPT architecture-suggestion work specifically: what's
@@ -9,7 +9,7 @@ Keep it updated when you finish (or intentionally reject) an item.
 
 | # | Suggestion | Status |
 |---|-----------|--------|
-| 1 | Break up combat monolith (staged extraction) | **Stage 1 done** (TargetQuery/action-validity service). Stages 2–5 open: pure damage/status fns, command layer, typed event stream, seeded RNG |
+| 1 | Break up combat monolith (staged extraction) | **Stages 1 + 5 (core) done** — TargetQuery service; seeded engine RNG shipped 2026-07-29 s3 (all combat/status/AI/weather rolls, see below). Stages 2–4 open: pure damage/status fns, command layer, typed event stream |
 | 2 | Canonical data (client/server) | **Done 2026-07-29** — server derives ACCT_*/starters/races from data.js at boot (`ECON` object, see below); literals kept as fallback + parity source; `npm run test:parity` still guards the fallback |
 | 3 | Fast tests + CI | **Done 2026-07-29** — `npm test` (syntax, content schemas, parity, migrations, server smoke), `.github/workflows/ci.yml` |
 | 4 | Reproducible builds / deploy | **Mostly done** — `npm run deploy` (upload + auto cache-bust). Open: lockfile decision, vendored CDN deps |
@@ -60,23 +60,58 @@ Implementation notes (for future debugging — the design shipped as planned):
 - Also added: `[BOOT]` line logging the socket origin allowlist state, so
   whether EW_ALLOWED_ORIGINS is live on Render is visible in boot logs.
 
+## Shipped 2026-07-29 (session 3): seeded engine RNG (extraction stage 5, core)
+
+Implementation (files: state.js, battle.js, ai.js, rng.test.js, index.html bump):
+- state.js (top of file, after `randInt`): `_ewRngNext(s)` — PURE mulberry32
+  step, uint32-in/`{s, v}`-out, deliberately dependency-free because
+  rng.test.js extracts it by source text and diffs it against an independent
+  reference implementation. `engineRng()` advances `state.rngState` through
+  it; `engineRandInt(n)`; `seedEngineRng(seed)` sets rngSeed+rngState and
+  logs `[RNG] engine seeded:`. Unseeded call ⇒ lazy self-seed (setup
+  screens, pre-upgrade snapshots) — never throws.
+- The ENTIRE PRNG state is one uint32 (`state.rngState`), so it rides
+  state-sync + replays with no serializer work. rng.test.js asserts
+  rngSeed/rngState are NOT on `_serializeState`'s skip list, and that BOTH
+  battle boot paths seed: `startMatch()` AND `continueToNextMatch()` (the
+  rematch path bypasses startMatch — easy to miss, now test-guarded).
+- Exposed on `window.GAME` (`engineRng, engineRandInt, seedEngineRng`) —
+  ai.js uses `g.engineRng()`; engine code in state/battle.js calls the bare
+  globals (classic-script top-level fns are global). NOTE: the bare name
+  `rng` was NOT used — battle.js has local `const rng` vars that would
+  shadow it (e.g. _applyAoeDamage).
+- CONVERTED (engine stream): battle.js — rollStatusApply, retreat
+  opportunity-strike, burning spread, computeSpellBase + _applyAoeDamage
+  variance, status resist, rollCrit/rollEvasion/rollCounter, counter dmg,
+  turret/blast/entropy-strike/flood variance, blind miss, warp-rune dest,
+  spell-steal + Tarot Draw picks, roaming-nexus spawn, startingPlayer coin
+  flips, zodiacOffset, rubble variants, mat-drop scatter shuffle, simul-AI +
+  secondary-job jitter. state.js — blitz turn-order shuffle, sky events,
+  ALL weather (spawn/type/duration/tiles/direction/drift/damage callbacks).
+  ai.js — softmax pick + fallback move/inspect picks.
+- LEFT on Math.random/randInt ON PURPOSE (don't "fix"): all VFX/particle/
+  audio/camera jitter, loading screen, podium; setup-time party/identity/
+  loadout generation (incl. campaign+gauntlet enemy gen); Mystery Dungeon
+  rolls (local-only, has its own seed field); realtime bot brawl (timer-
+  driven, inherently non-deterministic); A/B training shuffles; bot Elo.
+- `npm test` 17/17 (rng.test.js adds 4).
+
 ## Priority queue (in order — pick by available effort)
 
-### 1. Seeded RNG for engine rolls (large, battle.js/state.js, staged)
-Extraction stage 5; prerequisite for replay verification and any future
-server-side/deterministic ranked (suggestion #6). battle.js has ~98
-`Math.random()` sites, state.js ~15, ai.js 3 — but only ENGINE-affecting rolls
-(damage variance, crits, dodge, AI tie-breaks, spawn/loot rolls) need seeding;
-cosmetic rolls (VFX jitter, sfx pitch, camera shake) must STAY on Math.random
-so the stream isn't polluted by presentation. Plan:
-- Add a tiny PRNG (mulberry32) + `state.rngSeed` + `GAME.rng()` in state.js
-  (no new files — RULE #1). Host seeds at battle start; seed rides state-sync
-  to the guest automatically (verify it isn't on `_serializeState`'s skip list).
-- Convert call sites INCREMENTALLY, engine paths first (grep damage/crit/
-  dodge/AI sections); each converted batch = still-passing `npm test` +
-  syntax check. Do NOT bulk sed 98 sites in one pass.
-- Payoff test: a scripted battle replayed twice from the same seed produces
-  identical state (deterministic-scenario test, suggestion #3's last gap).
+### 1. Finish determinism: map-gen rolls + the payoff test (medium)
+Stage 5 leftovers, in payoff order:
+- The PAYOFF test from the original plan is still open: a scripted battle
+  replayed twice from the same seed ⇒ identical state. Needs a headless
+  engine harness — same blocker as stage 2 below, do them together.
+- Board/terrain generation (map.js ~28 Math.random sites + the hidden-item/
+  hourglass placement rolls wherever they live) still uses Math.random, so
+  same-seed reruns get identical FIGHTS only on an identical board. Board
+  state rides state-sync (guests unaffected) — this only matters for
+  full-match reproduction. Convert with the same engineRng/engineRandInt
+  pattern AFTER confirming map gen runs post-seed (both boot paths seed
+  before prepareBattleStateFromCurrentBuilds ⇒ before map prep).
+- Campaign/gauntlet enemy gen + `optimizeRandomizeParty` (ranked bot) are
+  setup-time: convert only if full-match determinism is wanted there too.
 
 ### 2. Pure damage/status resolution + headless tests (large, staged)
 Extraction stage 2. The damage pipeline lives in battle.js:
@@ -88,8 +123,9 @@ NUMERIC CORE of each into pure `calcX(attacker, defender, spell, ctx) ->
 {dmg, crit, ...}` functions (no state mutation, no VFX, no globals), called
 by the existing appliers. Then test headlessly: extend load-data.js's sandbox
 pattern to evaluate battle.js far enough to reach the pure functions, or
-extract them by source (extractConst-style) — whichever works first. Best
-done AFTER #1 so rolls are injectable (pass rng into ctx).
+extract them by source (extractConst-style) — whichever works first. The
+seeded RNG is in (session 3), so rolls are already injectable: thread
+`engineRng` through ctx rather than calling the global inside pure fns.
 
 ### 3. Reproducible-build leftovers (small, mostly user decisions)
 - package-lock.json is currently gitignored (CLAUDE.md convention) — ask the

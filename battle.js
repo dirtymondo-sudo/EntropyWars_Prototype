@@ -253,7 +253,7 @@
 
         function rollStatusApply(sourceUnit, targetUnit, baseChance = 1) {
             const chance = Math.max(0.05, Math.min(0.95, baseChance + getDebuffIntModifier(sourceUnit, targetUnit)));
-            return Math.random() <= chance;
+            return engineRng() <= chance;
         }
 
         // Each hourglass level is worth a real chunk of power (+8 damage dealt,
@@ -302,7 +302,7 @@
                 const spdDiff = ((enemy.spd || 0) + getStatStageDelta(enemy, 'spd')) - ((unit.spd || 0) + getStatStageDelta(unit, 'spd'));
                 const awrDiff = (getEffectiveAwr(enemy) || 0) - (getEffectiveAwr(unit) || 0);
                 const chance = Math.min(0.70, Math.max(0.10, 0.30 + spdDiff * 0.03 + awrDiff * 0.02));
-                if (Math.random() >= chance) continue;
+                if (engineRng() >= chance) continue;
 
                 const baseDmg = Math.max(1, Math.round(pwrAtk(enemy) * 0.5));
                 const armor = getEffectiveArmor(unit);
@@ -2829,7 +2829,7 @@
                     const nk = n[0] + ',' + n[1];
                     if (b[nk] || spread.some(s => s.x === n[0] && s.y === n[1])) continue;
                     if (!_isFlammableTile(n[0], n[1])) continue;
-                    if (Math.random() < BURNING_SPREAD_CHANCE) spread.push({ x: n[0], y: n[1], p: f.p });
+                    if (engineRng() < BURNING_SPREAD_CHANCE) spread.push({ x: n[0], y: n[1], p: f.p });
                 }
             }
             for (const s of spread) {
@@ -3803,7 +3803,7 @@
                     if (_matDropTileOk(ox + dx, oy + dy)) ring.push({ x: ox + dx, y: oy + dy });
                 }
                 for (let i = ring.length - 1; i > 0; i--) {
-                    const j = randInt(i + 1); const tmp = ring[i]; ring[i] = ring[j]; ring[j] = tmp;
+                    const j = engineRandInt(i + 1); const tmp = ring[i]; ring[i] = ring[j]; ring[j] = tmp;
                 }
                 cand.push(...ring);
             }
@@ -3921,7 +3921,7 @@
         function _breachWallAt(x, y, bodyZ, check, opts = {}) {
             const removed = [];
             if (check.flat) {
-                setTerrainAt(x, y, `rubble_${1 + randInt(4)}`);
+                setTerrainAt(x, y, `rubble_${1 + engineRandInt(4)}`);
                 removed.push({ terrain: check.terrain });
             } else {
                 for (const b of check.blocks) {
@@ -3933,7 +3933,7 @@
                 const floor = (typeof getBlockAt === 'function') ? getBlockAt(x, y, bodyZ) : null;
                 if (floor && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[floor.terrain]
                     && TERRAIN_RULES[floor.terrain].passable === false) {
-                    setBlockAt(x, y, bodyZ, `rubble_${1 + randInt(4)}`);
+                    setBlockAt(x, y, bodyZ, `rubble_${1 + engineRandInt(4)}`);
                 }
             }
             if (opts.byUnit) addEntropy(opts.byUnit.player, ENTROPY_PTS.destructTerrain, 'terrain', null);
@@ -3966,7 +3966,7 @@
             const base = (opts.baseDmg != null ? opts.baseDmg : ((spell && spell.dmg) || 0))
                 + (spellPower || 0);
             const v = opts.variance != null ? opts.variance : SPELL_DMG_VARIANCE;
-            const roll = v > 0 ? Math.floor(Math.random() * (2 * v + 1)) - v : 0;
+            const roll = v > 0 ? Math.floor(engineRng() * (2 * v + 1)) - v : 0;
             return Math.max(opts.floor != null ? opts.floor : 32, base + roll);
         }
 
@@ -4309,7 +4309,7 @@
                     : enemies.find(e => e.x === tile.x && e.y === tile.y);
                 if (target && !target.dead) {
                     const _vr = opts.noRandom ? 0 : (opts.rngRange != null ? Math.floor(opts.rngRange / 2) : SPELL_DMG_VARIANCE);
-                    const rng = _vr > 0 ? Math.floor(Math.random() * (2 * _vr + 1)) - _vr : 0;
+                    const rng = _vr > 0 ? Math.floor(engineRng() * (2 * _vr + 1)) - _vr : 0;
                     let dmg = Math.max(opts.minDmg || 32, Math.floor((baseDmg + rng) * waterMult));
                     applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
@@ -5491,7 +5491,7 @@
             const isEnemyDebuff = !!sourceUnit && isEnemyUnit(sourceUnit, target) && meta.kind === 'debuff';
             if (isEnemyDebuff) {
                 const chance = getStatusApplyChance(sourceUnit, target, payload);
-                if (Math.random() > chance) {
+                if (engineRng() > chance) {
                     addLog(`${sourceLabel}${unitDisplayName(target)} resists ${meta.label}.`);
                     return false;
                 }
@@ -7644,7 +7644,7 @@
         }
 
         function rollCrit(unit) {
-            return Math.random() < getCritChance(unit);
+            return engineRng() < getCritChance(unit);
         }
 
         function getEvasionChance(unit) {
@@ -7655,7 +7655,7 @@
         }
 
         function rollEvasion(target) {
-            return Math.random() < getEvasionChance(target);
+            return engineRng() < getEvasionChance(target);
         }
 
         function getCounterChance(unit) {
@@ -7671,13 +7671,13 @@
 
         function rollCounter(unit) {
             if (!unit || unit.dead) return false;
-            return Math.random() < getCounterChance(unit);
+            return engineRng() < getCounterChance(unit);
         }
 
         function getCounterDamage(unit) {
             // Riposte passive: Swordmaster counters swing at full sword strength.
             const atkPct = unit && unit.cls === 'Swordmaster' ? 0.6 : 0.4;
-            return Math.max(24, Math.floor(pwrAtk(unit) * atkPct) + randInt(24));
+            return Math.max(24, Math.floor(pwrAtk(unit) * atkPct) + engineRandInt(24));
         }
 
         /* ── Unit Facing ─────────────────────────────────────────────────
@@ -7951,7 +7951,7 @@
             for (const tile of blastArea) {
                 const hit = unitAt(tile.x, tile.y);
                 if (hit && !hit.dead) {
-                    const blastDmg = dmg + Math.floor(Math.random() * 20) - 10;
+                    const blastDmg = dmg + Math.floor(engineRng() * 20) - 10;
                     applyDamageToUnit(hit, blastDmg, `${obj.spellName || 'Explosion'}: `, {
                         sourceUnit: sourceUnit || null,
                         noRangeMult: true,
@@ -8290,7 +8290,7 @@
 
             const applyHit = (enemy) => {
                 if (!enemy || enemy.dead || enemy._dying) return;
-                const dmg = dmgBase + Math.floor(Math.random() * 30) - 15;
+                const dmg = dmgBase + Math.floor(engineRng() * 30) - 15;
                 applyDamageToUnit(enemy, dmg, 'Entropy Strike: ', {
                     sourceUnit: unit,
                     damageType: 'magic',
@@ -16443,7 +16443,7 @@
                         }
                         if (Math.abs(prey.x - turret.x) + Math.abs(prey.y - turret.y) <= (turret.range || 1)) {
                             turret.facingAngle = Math.atan2(prey.y - turret.y, prey.x - turret.x);
-                            shots.push({ turret, target: prey, zombie: true, dmg: Math.max(24, turret.dmg + randInt(24) - 8) });
+                            shots.push({ turret, target: prey, zombie: true, dmg: Math.max(24, turret.dmg + engineRandInt(24) - 8) });
                         }
                         continue;
                     }
@@ -16458,7 +16458,7 @@
                     if (!inRange.length) continue;
                     const target = inRange[0];
                     turret.facingAngle = Math.atan2(target.y - turret.y, target.x - turret.x);
-                    shots.push({ turret, target, dmg: Math.max(24, turret.dmg + randInt(24) - 8) });
+                    shots.push({ turret, target, dmg: Math.max(24, turret.dmg + engineRandInt(24) - 8) });
                 }
             }
             if (!shots.length) { if (onDone) onDone(); return; }
@@ -19506,7 +19506,7 @@
                 const teamHasHealer = team.some(u => healers.includes(u.job || u.cls));
                 if (!teamHasHealer && healers.includes(job)) score += 6;
 
-                score += Math.random() * 3;
+                score += engineRng() * 3;
 
                 return { job, score };
             });
@@ -25618,7 +25618,7 @@
             }
             state.round = 1;
             _roundAdvanceInProgress = false;
-            state.startingPlayer = Math.random() < 0.5 ? 1 : 2;
+            state.startingPlayer = engineRng() < 0.5 ? 1 : 2;
             state.activePlayer = state.startingPlayer;
             for (const u of state.units) {
                 u.ap = getUnitMaxAP(u);
@@ -25789,12 +25789,15 @@
             // rerolled, and CTF flags / the roaming nexus stayed wherever the
             // last match left them (re-placed below, after the new board).
             state.startTime = Date.now();
+            /* Fresh engine-RNG seed per match — this boot path bypasses
+               startMatch(), which seeds for the first match of a series. */
+            seedEngineRng((Math.random() * 0x100000000) >>> 0);
             state.flags = null;
             state.roamingNexus = null;
             state.skyEvent = null;
             state.activeWeather = [];
             state.announcementQueue = [];
-            state.zodiacOffset = randInt(ZODIAC_CYCLE.length);
+            state.zodiacOffset = engineRandInt(ZODIAC_CYCLE.length);
             state.activeZodiac = getActiveZodiac(1);
             const _nmMode = getActiveMultiplayerMode();
             state.matchClock = {
@@ -25853,7 +25856,7 @@
             if (_aiTrainingMode || _strengthTestMode) {
                 state.startingPlayer = (state.matchNumber % 2 === 0) ? 1 : 2;
             } else {
-                state.startingPlayer = Math.random() < 0.5 ? 1 : 2;
+                state.startingPlayer = engineRng() < 0.5 ? 1 : 2;
             }
             state.activePlayer = state.startingPlayer;
             state._blitzActiveUnitId = null;
@@ -27543,6 +27546,12 @@
         function startMatch() {
             state.startTime = Date.now();
 
+            /* Seeded engine RNG (extraction stage 5, see NEXT_SESSION.md):
+               one fresh seed per battle, rolled here by whoever runs the
+               engine (local player / online HOST). state.rngSeed/rngState
+               ride state-sync, so guests and replays carry the stream. */
+            seedEngineRng((Math.random() * 0x100000000) >>> 0);
+
             const mpMode = getActiveMultiplayerMode();
             state.matchKills = { 1: 0, 2: 0 };
             state.matchScores = { 1: 0, 2: 0 };
@@ -27591,7 +27600,7 @@
             }
             refillBattleShuffleBag();
             state.currentBattleTrackKey = chooseBattleTrackKey();
-            state.zodiacOffset = randInt(ZODIAC_CYCLE.length);
+            state.zodiacOffset = engineRandInt(ZODIAC_CYCLE.length);
             state.activeZodiac = getActiveZodiac(1);
             state.skyEvent = null;
             state.activeWeather = [];
@@ -28752,7 +28761,7 @@
                     /* Spread encouragement: mild penalty for re-picking the same
                        unit turn after turn, tiny jitter so openings vary. */
                     if (state._simulAiLastUnit && state._simulAiLastUnit[player] === u.id) score *= 0.85;
-                    score += Math.random() * 6;
+                    score += engineRng() * 6;
                     if (steps.length && (!best || score > best.score)) {
                         best = { unitId: u.id, steps, score };
                     }
@@ -31735,6 +31744,9 @@
             SKY_RACES, UNDERGROUND_RACES, unitFinished,
             getEffectiveRange, getEffectiveSpellRange, getEffectiveMove, getEffectiveAwr,
             getRangeDamageMult, computeSpellBase,
+            /* Seeded engine RNG (state.js) — ai.js and console tooling reach
+               it through GAME; engine code calls the globals directly. */
+            engineRng, engineRandInt, seedEngineRng,
             getEffectiveAttackBonus, getHourglassPower, getSpellStatBonus,
             getStatusArmorDelta, getStatusMdefDelta, getStatusAtkDelta, getStatusIntDelta,
             getStatStageCount, applyStatStageBoost,
@@ -34723,7 +34735,7 @@
                 }
             }
             if (!candidates.length) return false;
-            const dest = candidates[Math.floor(Math.random() * candidates.length)];
+            const dest = candidates[Math.floor(engineRng() * candidates.length)];
             const oldLabel = coordLabel(unit.x, unit.y);
             unit.x = dest.x;
             unit.y = dest.y;
@@ -36838,7 +36850,7 @@
 
             // 🌫️ Blind: a blinded attacker swings wide half the time — even
             // from the back arc, where normal evasion can't save the target.
-            const _blindMiss = unitHasStatus(unit, 'blind') && Math.random() < 0.5;
+            const _blindMiss = unitHasStatus(unit, 'blind') && engineRng() < 0.5;
             if (_blindMiss) {
                 addLog(`🌫️ ${unitDisplayName(unit)} swings blind — and misses!`);
                 showFloatingTextForUnit(unit, '🌫️ BLIND!', 'debuff', { durationMs: 900 });
@@ -39961,7 +39973,7 @@
             }
             let candidates = pool.filter(p => !known.has(p.spell.id));
             if (!candidates.length) candidates = pool;
-            const pick = candidates[Math.floor(Math.random() * candidates.length)];
+            const pick = candidates[Math.floor(engineRng() * candidates.length)];
             const stolen = pick.spell;
             // Remove it from the victim.
             if (pick.from === 'spells') {
@@ -42602,7 +42614,7 @@
                         for (const ct of affectedTiles) {
                             const hit = unitAt(ct.x, ct.y);
                             if (hit && hit.player !== unit.player && !hit.dead) {
-                                let dmg = baseDmg + Math.floor(Math.random() * 20) - 10;
+                                let dmg = baseDmg + Math.floor(engineRng() * 20) - 10;
                                 if (spell.executePct && hit.hp <= hit.maxHp * spell.executePct) {
                                     dmg = Math.max(dmg, hit.hp);
                                     showFloatingTextForUnit(hit, 'OVERBOARD!', 'damage', { durationMs: 1300 });
@@ -43501,7 +43513,7 @@
                 } else if (spell.randomTeamBuff) {
                     // Tarot Draw: one random stat, boosted for the WHOLE team.
                     const _rtb = spell.randomTeamBuff;
-                    const _stat = _rtb.stats[Math.floor(Math.random() * _rtb.stats.length)];
+                    const _stat = _rtb.stats[Math.floor(engineRng() * _rtb.stats.length)];
                     const _stages = _rtb.stages || 1;
                     const _cardFor = {
                         atk: { card: 'The Chariot', label: 'ATK' },
@@ -44968,7 +44980,7 @@
                 }
             }
             if (candidates.length === 0) return;
-            candidates.sort(() => Math.random() - 0.5);
+            candidates.sort(() => engineRng() - 0.5);
             const spot = candidates[0];
             const nzSize = 2;
             state.roamingNexus = {

@@ -436,7 +436,7 @@
             if (pool.length > 1) {
                 const t = Math.max(1, _diffPick.softmaxT);
                 const w = pool.map(c => Math.exp((c.score - pool[0].score) / t));
-                let r = Math.random() * w.reduce((a, b) => a + b, 0);
+                let r = g.engineRng() * w.reduce((a, b) => a + b, 0);
                 for (let i = 0; i < pool.length; i++) {
                     r -= w[i];
                     if (r <= 0) { best = pool[i]; break; }
@@ -451,7 +451,7 @@
                     const recent = new Set(unit._aiRecentTiles || []);
                     const fresh = moveTiles.filter(t => !recent.has(g.posKey(t.x, t.y)));
                     const pool = fresh.length > 0 ? fresh : moveTiles;
-                    const pick = pool[Math.floor(Math.random() * pool.length)];
+                    const pick = pool[Math.floor(g.engineRng() * pool.length)];
                     best = { type: 'move', x: pick.x, y: pick.y, z: pick.z, score: 1 };
                 }
             }
@@ -463,7 +463,7 @@
                             !g.state.scannedByPlayer[unit.player].has(g.scanKey(t.x, t.y))
                         );
                         const pool = unscanned.length > 0 ? unscanned : inspTiles;
-                        const pick = pool[Math.floor(Math.random() * pool.length)];
+                        const pick = pool[Math.floor(g.engineRng() * pool.length)];
                         best = { type: 'inspect', x: pick.x, y: pick.y, score: 1 };
                     }
                 }
