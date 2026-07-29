@@ -30229,7 +30229,11 @@
            What remains is the curated set with a live code path and room to
            move — 15 weights instead of 45, so each training pass costs ~1/3
            as many matches and every experiment tests something real.
-           Values are the gen-100 champion weights. Keys whose code paths
+           Values are the gen-105 champion weights (adopted 2026-07-29 after
+           6144 training matches; the 60-match strength-test gauntlet against
+           the previous gen-100 defaults returned 40W-20L = 66.7% champion win
+           rate, Wilson-95 [54.1%, 77.3%], ~+120 Elo, significant at 95%).
+           Keys whose code paths
            only exist on some boards carry a `probe` tag — _weightRelevantNow()
            skips their experiments when the training board can't exercise
            them. `noMult: true` marks thresholds/comparators the campaign
@@ -30240,30 +30244,30 @@
         const AI_WEIGHT_DEFAULTS = {
             // NOTE: these defaults are also the BASELINE side of the
             // strength-test gauntlet — adopting a new export moves that goalpost.
-            healPotionHpPct_v1:       { value: 0.45,  min: 0.20, max: 0.70, noMult: true, label: 'Heal Potion HP%', desc: 'Use heal potion when HP below this %' },
+            healPotionHpPct_v1:       { value: 0.325, min: 0.20, max: 0.70, noMult: true, label: 'Heal Potion HP%', desc: 'Use heal potion when HP below this %' },
 
-            killBonusScore_v1:        { value: 28.75, min: 10,   max: 120,  label: 'Kill Bonus', desc: 'Score bonus for attacks that would kill' },
+            killBonusScore_v1:        { value: 97.188, min: 10,  max: 120,  label: 'Kill Bonus', desc: 'Score bonus for attacks that would kill' },
             comboSynergyBonus_v1:     { value: 23.953, min: 4,   max: 40,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
-            comboKillBonus_v1:        { value: 27.688, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
+            comboKillBonus_v1:        { value: 13.688, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
             statusEffectBonus_v1:     { value: 29.85, min: 2,    max: 60,   label: 'Status Effect Bonus', desc: 'Score bonus for spells/combos with status effects' },
 
-            pressRefundValue_v1:      { value: 51.032, min: 10,  max: 140,  label: 'Press: Refund Value', desc: 'Score bonus for an offensive action expected to press (hit a type weakness or crit) and grant a free action this turn' },
+            pressRefundValue_v1:      { value: 96.379, min: 10,  max: 140,  label: 'Press: Refund Value', desc: 'Score bonus for an offensive action expected to press (hit a type weakness or crit) and grant a free action this turn' },
 
-            engageAdvantage_v1:       { value: -0.5,  min: -1.0, max: 0.3,  noMult: true, label: 'Engage Threshold', desc: 'Min advantage score to engage enemies (range widened: gen-100 pinned the old -0.5 floor twice)' },
+            engageAdvantage_v1:       { value: -0.45, min: -1.0, max: 0.3,  noMult: true, label: 'Engage Threshold', desc: 'Min advantage score to engage enemies (range widened: gen-100 pinned the old -0.5 floor twice)' },
 
-            safeEnemyDistWeight_v1:   { value: 7.875, min: 3,   max: 18,   label: 'Safe Move: Enemy Distance Weight', desc: 'How much to value distance from enemies when retreating' },
+            safeEnemyDistWeight_v1:   { value: 5.438, min: 3,   max: 18,   label: 'Safe Move: Enemy Distance Weight', desc: 'How much to value distance from enemies when retreating' },
 
-            towerBaseBonus_v1:       { value: 18.223, min: 10,   max: 60,   label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
-            towerDefendBonus_v1:     { value: 40.798, min: 10,   max: 55,   label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
+            towerBaseBonus_v1:       { value: 39.112, min: 10,   max: 60,   label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
+            towerDefendBonus_v1:     { value: 47.899, min: 10,   max: 55,   label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
 
-            hgSeekPriority_v1:       { value: 8,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'Movement pull toward visible loose hourglasses (reachable since schema 12 — used to be shadowed by the engage branch)' },
-            scannerPriority_v1:      { value: 19.063, min: 5,   max: 35,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
+            hgSeekPriority_v1:       { value: 4,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'Movement pull toward visible loose hourglasses (reachable since schema 12 — used to be shadowed by the engage branch)' },
+            scannerPriority_v1:      { value: 12.032, min: 5,   max: 35,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
 
             antiOscillationPen_v1:   { value: -1.663, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
 
-            nexusCapBonus_v1:        { value: 28.938, min: 10,  max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
+            nexusCapBonus_v1:        { value: 19.469, min: 10,  max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
 
-            healAllyThreshold_v1:    { value: 0.757, min: 0.3,  max: 0.8,  noMult: true, label: 'Heal Ally Threshold', desc: 'HP% below which units prefer self-heal/lifeDrain actions' },
+            healAllyThreshold_v1:    { value: 0.8,   min: 0.3,  max: 0.8,  noMult: true, label: 'Heal Ally Threshold', desc: 'HP% below which units prefer self-heal/lifeDrain actions' },
         };
 
         let _aiTrainedWeights = null;

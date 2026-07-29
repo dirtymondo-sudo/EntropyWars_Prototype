@@ -4,7 +4,40 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## 🌌 COSMIC MISC MODELS: planets/clocks/craft in the void + REAL 3D MOON (2026-07-27, LATEST) — three-renderer.js, three-vfx-effects.js, index.html
+## 🧠 AI GEN-105 CHAMPION WEIGHTS ADOPTED (2026-07-29, LATEST) — battle.js, index.html
+Token → `20260729j-cors`. The schema-12 `AI_WEIGHT_DEFAULTS` values in battle.js
+are now the gen-105 training champion (6144 matches, 8 passes). Unlike gen-100
+(WR 49% = noise) this one is a real gain: the 60-match strength-test gauntlet
+against the previous defaults returned **40W-20L = 66.7%**, Wilson-95
+[54.1%, 77.3%], ~**+120 Elo**, significant at 95%.
+
+Changed (old → new), 11 of 15 keys moved:
+`healPotionHpPct` 0.45→0.325 · `killBonusScore` 28.75→**97.188** ·
+`comboKillBonus` 27.688→13.688 · `pressRefundValue` 51.032→**96.379** ·
+`engageAdvantage` -0.5→-0.45 · `safeEnemyDistWeight` 7.875→5.438 ·
+`towerBaseBonus` 18.223→**39.112** · `towerDefendBonus` 40.798→47.899 ·
+`hgSeekPriority` 8→4 · `scannerPriority` 19.063→12.032 ·
+`nexusCapBonus` 28.938→19.469 · `healAllyThreshold` 0.757→0.8 (pinned at max).
+Unchanged: `comboSynergyBonus` 23.953, `statusEffectBonus` 29.85,
+`antiOscillationPen` -1.663 — all three went inconclusive in every experiment
+across 8 passes and are prune candidates for schema 13.
+
+Shape of the champion: kill-hungry and objective-hungry at once — kill bonus
+tripled and press-refund nearly doubled (finish + chain), tower base bonus
+doubled, while the *approach* weights all shrank (nexus/scanner/hourglass
+seeking down, retreat distance down, heal potion later). It commits.
+
+Notes for the next training run:
+- **SCHEMA VERSION STAYS 12** — the key set is identical, so bumping would
+  orphan `ai-weights-v12` for no reason. Anyone with locally trained weights
+  keeps overriding these defaults; a fresh browser gets gen-105.
+- `healAllyThreshold` is pinned at its 0.8 max (adopted "high" 3× and never
+  went low) — widen the range or freeze it into ai.js `AI_TUNE`.
+- Defaults ARE the baseline side of the strength-test gauntlet, so the next
+  run's goalpost is now gen-105, not gen-100. A future 50% result means
+  "no gain over a genuinely stronger bot", not "training broken".
+
+## 🌌 COSMIC MISC MODELS: planets/clocks/craft in the void + REAL 3D MOON (2026-07-27) — three-renderer.js, three-vfx-effects.js, index.html
 Token → `20260727o`. New Meshy `*_texture.glb` props uploaded flat into R2
 `/Assets/misc/` (moon, earth, jupiter, saturn, alien planet, star, solar
 system, triangle UFO, spaceship, analog + grandfather clock) are wired in:
