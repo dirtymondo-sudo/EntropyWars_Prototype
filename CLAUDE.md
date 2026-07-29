@@ -41,6 +41,16 @@ diffs. The deliverable is always the full edited file, produced in chat.
 - `load-data.js` — loads data.js headlessly in a Node vm sandbox (real
   values, not a copy). Use it for any new data validation/tooling instead of
   regex-scraping data.js.
+- `migrations/*.sql` (added 2026-07-29) — versioned D1 schema, applied at
+  boot by server.js `runMigrations` (recorded in `schema_migrations`;
+  duplicate-column/already-exists errors are tolerated so it converges on
+  the pre-existing live DB). Schema changes = a NEW `NNN_*.sql` file, never
+  ad-hoc ALTERs in code. Account tokens are SHA-256-hashed at rest since
+  2026-07-29 (`players.token_hash`; plaintext column holds a `'#'+hash`
+  tombstone, legacy rows are backfilled at boot — all lookups MUST go
+  through server.js `findPlayerByToken`). HTTP endpoints are per-IP
+  rate-limited (`httpRateLimit`). Production checklist: set
+  `EW_ALLOWED_ORIGINS` on Render so arbitrary sites can't open sockets.
 
 ### RULE #1c — DO NOT PLAYTEST UNLESS EXPLICITLY ASKED
 Playtesting (Playwright runs, browser automation, driving the game) burns a LOT

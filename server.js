@@ -8,6 +8,9 @@ const d1 = require('./d1');
 
 const app = express();
 app.disable('x-powered-by');
+// Render (and any reverse proxy) fronts this server — trust one hop of
+// X-Forwarded-For so req.ip is the real client IP for HTTP rate limiting.
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 // EW_ALLOWED_ORIGINS: optional comma-separated origin allowlist for the
 // socket layer (e.g. "https://entropywars.net,http://localhost:3000").
@@ -25,6 +28,37 @@ const io = new Server(server, {
 try { app.use(require('compression')()); } catch (e) { console.warn('[BOOT] compression middleware unavailable:', e.message); }
 
 app.use(express.json());
+
+// ── HTTP RATE LIMITING ─────────────────────────────────────────────────
+// Same token-bucket idea as the socket-event limiter below, keyed per
+// client IP per route group. The D1-writing endpoints get tight buckets;
+// read-only endpoints just need flood protection. In-memory on purpose —
+// single-process server, and a restart forgiving everyone is fine.
+const _httpBuckets = new Map(); // "<group>|<ip>" -> { tokens, last }
+function httpRateLimit(group, perMinute, burst) {
+    return (req, res, next) => {
+        const key = group + '|' + (req.ip || req.socket.remoteAddress || 'unknown');
+        const now = Date.now();
+        let b = _httpBuckets.get(key);
+        if (!b) { b = { tokens: burst, last: now }; _httpBuckets.set(key, b); }
+        b.tokens = Math.min(burst, b.tokens + ((now - b.last) / 60000) * perMinute);
+        b.last = now;
+        if (b.tokens < 1) {
+            res.set('Retry-After', '60');
+            return res.status(429).json({ error: 'Too many requests — slow down.' });
+        }
+        b.tokens -= 1;
+        next();
+    };
+}
+setInterval(() => {
+    const cutoff = Date.now() - 10 * 60 * 1000;
+    for (const [k, b] of _httpBuckets) if (b.last < cutoff) _httpBuckets.delete(k);
+}, 10 * 60 * 1000);
+const limitAuth = httpRateLimit('auth', 15, 10);        // register/login
+const limitEcon = httpRateLimit('econ', 30, 20);        // wallet reads + writes
+const limitRead = httpRateLimit('read', 120, 60);       // profiles/leaderboard/maps browse
+const limitMapWrite = httpRateLimit('map-write', 10, 10); // map submit/rate/delete
 
 // Serve ONLY the entry page. Every script/style/asset the game uses loads
 // from the CDN, so blanket express.static(__dirname) exposed things that must
@@ -85,19 +119,103 @@ const ACCT_STARTER_UNITS = [
 ];
 const AVAILABLE_RACES = new Set(['homosapien', 'pirate', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'swordfighter', 'symbiote', 'valkraye', 'watcher']);
 
-let _economyMigrated = false;
-async function ensureEconomyColumns() {
-    if (_economyMigrated || !d1.isConfigured()) return;
-    const stmts = [
-        "ALTER TABLE players ADD COLUMN gold INTEGER NOT NULL DEFAULT 0",
-        "ALTER TABLE players ADD COLUMN unlocked_units TEXT NOT NULL DEFAULT '[]'",
-        "ALTER TABLE players ADD COLUMN free_tokens INTEGER NOT NULL DEFAULT 0",
-    ];
-    for (const sql of stmts) {
-        try { await d1.execute(sql); console.log('[ECON] migrated:', sql); }
-        catch (e) { /* duplicate column on re-boot — expected, ignore */ }
+// ── D1 SCHEMA MIGRATIONS ───────────────────────────────────────────────
+// Versioned SQL files under ./migrations, applied in filename order and
+// recorded in a schema_migrations table. "duplicate column" / "already
+// exists" errors are tolerated so the runner converges on the live database
+// (built by hand + the old ad-hoc economy ALTERs before this existed).
+// Schema changes go in a NEW NNN_*.sql file — never ad-hoc ALTERs in code.
+const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
+
+function splitSqlStatements(sql) {
+    return sql
+        .split('\n').filter(l => !l.trim().startsWith('--')).join('\n')
+        .split(';')
+        .map(s => s.trim())
+        .filter(Boolean);
+}
+
+async function runMigrations() {
+    await d1.execute("CREATE TABLE IF NOT EXISTS schema_migrations (id TEXT PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT (datetime('now')))");
+    const applied = new Set((await d1.getAll('SELECT id FROM schema_migrations')).map(r => r.id));
+    let files = [];
+    try { files = fs.readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort(); }
+    catch (e) { console.warn('[DB] migrations directory missing:', e.message); return; }
+    for (const file of files) {
+        if (applied.has(file)) continue;
+        const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8');
+        for (const stmt of splitSqlStatements(sql)) {
+            try { await d1.execute(stmt); }
+            catch (e) {
+                const msg = (e.message || '').toLowerCase();
+                if (msg.includes('duplicate column') || msg.includes('already exists')) continue;
+                throw new Error(`migration ${file}: ${e.message}`);
+            }
+        }
+        await d1.execute('INSERT INTO schema_migrations (id) VALUES (?1)', [file]);
+        console.log('[DB] applied migration:', file);
     }
-    _economyMigrated = true;
+}
+
+// Single-flight wrapper: endpoints hitting the DB concurrently on a cold
+// boot must not race the runner (a double INSERT into schema_migrations
+// would throw). A failed run clears itself so the next request retries.
+let _migrationsPromise = null;
+function ensureMigrations() {
+    if (!d1.isConfigured()) return Promise.resolve();
+    if (!_migrationsPromise) {
+        _migrationsPromise = runMigrations().catch(err => {
+            _migrationsPromise = null;
+            throw err;
+        });
+    }
+    return _migrationsPromise;
+}
+
+// ── ACCOUNT TOKENS — hashed at rest ────────────────────────────────────
+// Only SHA-256(token) is stored and queried (players.token_hash); the
+// plaintext column keeps a '#'-prefixed tombstone purely to satisfy its
+// UNIQUE constraint. A D1 leak therefore no longer leaks login credentials.
+// Legacy plaintext rows still match via the fallback lookup and are
+// upgraded in place; backfillTokenHashes() sweeps the rest at boot.
+function hashToken(token) {
+    return crypto.createHash('sha256').update(String(token)).digest('hex');
+}
+
+// The single lookup path for every token-authenticated endpoint.
+// `cols` MUST include `id` — the legacy-row upgrade needs it.
+async function findPlayerByToken(token, cols) {
+    if (!token) return null;
+    await ensureMigrations().catch(() => {}); // token_hash column must exist
+    const h = hashToken(token);
+    let player = await d1.getOne(`SELECT ${cols} FROM players WHERE token_hash = ?1`, [h]);
+    if (player) return player;
+    // Legacy plaintext row → upgrade: store the hash, tombstone the plaintext.
+    player = await d1.getOne(`SELECT ${cols} FROM players WHERE token = ?1`, [token]);
+    if (player) {
+        try {
+            await d1.execute('UPDATE players SET token_hash = ?1, token = ?2 WHERE id = ?3', [h, '#' + h, player.id]);
+        } catch (e) { console.warn('[AUTH] token-hash upgrade failed:', e.message); }
+    }
+    return player;
+}
+
+async function backfillTokenHashes() {
+    if (!d1.isConfigured()) return;
+    let total = 0;
+    for (let batch = 0; batch < 50; batch++) {
+        const rows = await d1.getAll(
+            "SELECT id, token FROM players WHERE (token_hash IS NULL OR token_hash = '') AND token IS NOT NULL AND token != '' AND token NOT LIKE '#%' LIMIT 100"
+        );
+        if (rows.length === 0) break;
+        for (const r of rows) {
+            const h = hashToken(r.token);
+            await d1.execute('UPDATE players SET token_hash = ?1, token = ?2 WHERE id = ?3', [h, '#' + h, r.id]);
+            total++;
+        }
+        if (rows.length < 100) break;
+    }
+    if (total) console.log(`[AUTH] hashed ${total} legacy plaintext token(s)`);
 }
 
 function parseUnlocked(raw) {
@@ -668,7 +786,7 @@ setInterval(() => {
     }
 }, 3000);
 
-app.get('/api/queue-stats', (req, res) => {
+app.get('/api/queue-stats', limitRead, (req, res) => {
     // Per-queue breakdown so the filler-bot manager (bots.js) can tell whether a
     // real human is stuck waiting with nobody to play. `humans`/`bots` split lets
     // it summon exactly one filler per lonely queue and never bot-vs-bot.
@@ -697,7 +815,7 @@ app.get('/api/queue-stats', (req, res) => {
 // to fill for, so the match forms instantly and the human's ELO swing is fair.
 // Gated by a shared secret (BOT_ADMIN_SECRET) so real players can't move their
 // own rating; disabled entirely when the secret is unset.
-app.post('/api/bot/sync-elo', async (req, res) => {
+app.post('/api/bot/sync-elo', limitEcon, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
     }
@@ -718,7 +836,7 @@ app.post('/api/bot/sync-elo', async (req, res) => {
     }
     target = Math.max(100, Math.min(4000, target));
     try {
-        const player = await d1.getOne('SELECT id FROM players WHERE token = ?1', [token]);
+        const player = await findPlayerByToken(token, 'id');
         if (!player) {
             return res.status(401).json({ error: 'Invalid token.' });
         }
@@ -739,7 +857,7 @@ const botSockets = new Set();
 
 const USERNAME_RE = /^[A-Za-z0-9_]{2,16}$/;
 
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', limitAuth, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured. Set CF_ACCOUNT_ID, CF_D1_DATABASE_ID, CF_API_TOKEN.' });
     }
@@ -750,7 +868,7 @@ app.post('/api/register', async (req, res) => {
     }
 
     try {
-        await ensureEconomyColumns();
+        await ensureMigrations();
 
         const existing = await d1.getOne('SELECT id FROM players WHERE username = ?1', [username]);
         if (existing) {
@@ -759,11 +877,14 @@ app.post('/api/register', async (req, res) => {
 
         const id = uuid();
         const token = uuid();
+        const tokenHash = hashToken(token);
         const starters = JSON.stringify(ACCT_STARTER_UNITS);
 
+        // Only the hash is stored; the client keeps the plaintext token from
+        // this response. The token column gets the '#'-tombstone (UNIQUE-safe).
         await d1.execute(
-            'INSERT INTO players (id, username, token, elo, peak_elo, wins, losses, total_games, gold, unlocked_units, free_tokens) VALUES (?1, ?2, ?3, 1200, 1200, 0, 0, 0, ?4, ?5, ?6)',
-            [id, username, token, ACCT_STARTING_GOLD, starters, ACCT_FREE_TOKENS]
+            'INSERT INTO players (id, username, token, token_hash, elo, peak_elo, wins, losses, total_games, gold, unlocked_units, free_tokens) VALUES (?1, ?2, ?3, ?4, 1200, 1200, 0, 0, 0, ?5, ?6, ?7)',
+            [id, username, '#' + tokenHash, tokenHash, ACCT_STARTING_GOLD, starters, ACCT_FREE_TOKENS]
         );
 
         console.log(`[AUTH] Registered: ${username} (${id})`);
@@ -777,7 +898,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', limitAuth, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
     }
@@ -788,11 +909,9 @@ app.post('/api/login', async (req, res) => {
     }
 
     try {
-        await ensureEconomyColumns();
-        const player = await d1.getOne(
-            'SELECT id, username, elo, peak_elo, wins, losses, total_games, gold, unlocked_units, free_tokens FROM players WHERE token = ?1',
-            [token]
-        );
+        await ensureMigrations();
+        const player = await findPlayerByToken(token,
+            'id, username, elo, peak_elo, wins, losses, total_games, gold, unlocked_units, free_tokens');
 
         if (!player) {
             return res.status(401).json({ error: 'Invalid token.' });
@@ -822,16 +941,16 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ── ECONOMY ENDPOINTS ──────────────────────────────────────────────────
-app.get('/api/economy/:id', async (req, res) => {
+app.get('/api/economy/:id', limitEcon, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
     }
     try {
-        await ensureEconomyColumns();
+        await ensureMigrations();
         const token = req.headers['x-auth-token'] || req.query.token;
         // Resolve by token when supplied (authoritative); otherwise fall back to id.
         const player = token
-            ? await d1.getOne('SELECT id, gold, unlocked_units, free_tokens FROM players WHERE token = ?1', [token])
+            ? await findPlayerByToken(token, 'id, gold, unlocked_units, free_tokens')
             : await d1.getOne('SELECT id, gold, unlocked_units, free_tokens FROM players WHERE id = ?1', [req.params.id]);
         if (!player) {
             return res.status(404).json({ error: 'Player not found.' });
@@ -844,12 +963,12 @@ app.get('/api/economy/:id', async (req, res) => {
     }
 });
 
-app.post('/api/economy/bank', async (req, res) => {
+app.post('/api/economy/bank', limitEcon, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
     }
     try {
-        await ensureEconomyColumns();
+        await ensureMigrations();
         const { token, matchGold, mode } = req.body || {};
         if (!token) {
             return res.status(401).json({ error: 'Authentication required.' });
@@ -857,7 +976,7 @@ app.post('/api/economy/bank', async (req, res) => {
         if (!ACCT_PVP_MODES.has(mode)) {
             return res.status(400).json({ error: 'Unrecognized PvP mode.' });
         }
-        const player = await d1.getOne('SELECT id, gold, unlocked_units, free_tokens FROM players WHERE token = ?1', [token]);
+        const player = await findPlayerByToken(token, 'id, gold, unlocked_units, free_tokens');
         if (!player) {
             return res.status(401).json({ error: 'Invalid token.' });
         }
@@ -879,12 +998,12 @@ app.post('/api/economy/bank', async (req, res) => {
     }
 });
 
-app.post('/api/economy/purchase', async (req, res) => {
+app.post('/api/economy/purchase', limitEcon, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
     }
     try {
-        await ensureEconomyColumns();
+        await ensureMigrations();
         const { token, raceKey, useToken } = req.body || {};
         if (!token) {
             return res.status(401).json({ error: 'Authentication required.' });
@@ -892,7 +1011,7 @@ app.post('/api/economy/purchase', async (req, res) => {
         if (!raceKey || !AVAILABLE_RACES.has(raceKey)) {
             return res.status(400).json({ error: 'Unknown unit.' });
         }
-        const player = await d1.getOne('SELECT id, gold, unlocked_units, free_tokens FROM players WHERE token = ?1', [token]);
+        const player = await findPlayerByToken(token, 'id, gold, unlocked_units, free_tokens');
         if (!player) {
             return res.status(401).json({ error: 'Invalid token.' });
         }
@@ -941,7 +1060,7 @@ app.post('/api/economy/purchase', async (req, res) => {
     }
 });
 
-app.get('/api/player/:id', async (req, res) => {
+app.get('/api/player/:id', limitRead, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
     }
@@ -969,7 +1088,7 @@ app.get('/api/player/:id', async (req, res) => {
     }
 });
 
-app.get('/api/check-username/:username', async (req, res) => {
+app.get('/api/check-username/:username', limitRead, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
     }
@@ -987,7 +1106,7 @@ app.get('/api/check-username/:username', async (req, res) => {
     }
 });
 
-app.get('/api/leaderboard', async (req, res) => {
+app.get('/api/leaderboard', limitRead, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
     }
@@ -1016,7 +1135,7 @@ app.get('/api/leaderboard', async (req, res) => {
     }
 });
 
-app.get('/api/matches', async (req, res) => {
+app.get('/api/matches', limitRead, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
     }
@@ -1064,7 +1183,7 @@ app.get('/api/matches', async (req, res) => {
     }
 });
 
-app.get('/api/player/:id/rank', async (req, res) => {
+app.get('/api/player/:id/rank', limitRead, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
     }
@@ -1087,7 +1206,7 @@ app.get('/api/player/:id/rank', async (req, res) => {
     }
 });
 
-app.post('/api/maps', async (req, res) => {
+app.post('/api/maps', limitMapWrite, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
     }
@@ -1097,10 +1216,7 @@ app.post('/api/maps', async (req, res) => {
     }
 
     try {
-        const player = await d1.getOne(
-            'SELECT id, username FROM players WHERE token = ?1',
-            [token]
-        );
+        const player = await findPlayerByToken(token, 'id, username');
         if (!player) {
             return res.status(401).json({ error: 'Invalid token.' });
         }
@@ -1159,7 +1275,7 @@ app.post('/api/maps', async (req, res) => {
     }
 });
 
-app.get('/api/maps', async (req, res) => {
+app.get('/api/maps', limitRead, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
     }
@@ -1202,7 +1318,7 @@ app.get('/api/maps', async (req, res) => {
     }
 });
 
-app.get('/api/maps/:id', async (req, res) => {
+app.get('/api/maps/:id', limitRead, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
     }
@@ -1241,7 +1357,7 @@ app.get('/api/maps/:id', async (req, res) => {
     }
 });
 
-app.post('/api/maps/:id/rate', async (req, res) => {
+app.post('/api/maps/:id/rate', limitMapWrite, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
     }
@@ -1251,7 +1367,7 @@ app.post('/api/maps/:id/rate', async (req, res) => {
     }
 
     try {
-        const player = await d1.getOne('SELECT id FROM players WHERE token = ?1', [token]);
+        const player = await findPlayerByToken(token, 'id');
         if (!player) {
             return res.status(401).json({ error: 'Invalid token.' });
         }
@@ -1305,7 +1421,7 @@ app.post('/api/maps/:id/rate', async (req, res) => {
     }
 });
 
-app.delete('/api/maps/:id', async (req, res) => {
+app.delete('/api/maps/:id', limitMapWrite, async (req, res) => {
     if (!d1.isConfigured()) {
         return res.status(503).json({ error: 'Database not configured.' });
     }
@@ -1315,7 +1431,7 @@ app.delete('/api/maps/:id', async (req, res) => {
     }
 
     try {
-        const player = await d1.getOne('SELECT id FROM players WHERE token = ?1', [token]);
+        const player = await findPlayerByToken(token, 'id');
         if (!player) {
             return res.status(401).json({ error: 'Invalid token.' });
         }
@@ -1362,10 +1478,8 @@ io.on('connection', (socket) => {
             return;
         }
         try {
-            const player = await d1.getOne(
-                'SELECT id, username, elo, peak_elo, wins, losses FROM players WHERE token = ?1',
-                [token]
-            );
+            const player = await findPlayerByToken(token,
+                'id, username, elo, peak_elo, wins, losses');
             if (!player) {
                 if (callback) callback({ error: 'Invalid token.' });
                 return;
@@ -1817,5 +1931,7 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`[Entropy Wars] Server running on port ${PORT}`);
-    ensureEconomyColumns().catch(err => console.error('[ECON] Migration failed:', err.message));
+    ensureMigrations()
+        .then(backfillTokenHashes)
+        .catch(err => console.error('[DB] boot migration failed:', err.message));
 });
