@@ -5086,7 +5086,80 @@
             };
             rec.burst = burst;
             rec.timers.push(window.setTimeout(burst, impactMs));
+
+            /* ── TIMELINE CUES (Spell Lab, 2026-08-02) ──────────────────────
+               Authored per-spell audio/visual cues: `sfxCues` and `vfxCues`
+               arrays on the def, each { at:'cast'|'launch'|'impact',
+               offsetMs } plus sfx key / vfx primitive fields. This is THE
+               universal commit point (every kind passes through here), so
+               cues cover all ~60 kinds. Anchored to the same beat estimates
+               the camera uses; impact-anchored cues are re-armed by
+               _stageRetimeBurst when a path learns its real impact frame.
+               SFX ride playSfx (host→guest 'sfx' relay), VFX ride
+               VFX3D.fire('cue', …) (the wrapped relay fn) — RULE #2 holds
+               with zero extra plumbing. */
+            const launchMs = profile.camera === 'offensive'
+                ? sourceHold
+                : Math.round(impactMs * 0.6);
+            rec.t0 = performance.now();
+            rec.cueBeats = { castMs: 0, launchMs, impactMs };
+            try {
+                window._EW_LAST_CAST_BEATS = {
+                    spellId: spell.id, t0: Date.now(),
+                    launchMs, impactMs, weight: st.weight
+                };
+            } catch (e) {}
+            const _cueSpecs = []
+                .concat(Array.isArray(spell.sfxCues) ? spell.sfxCues.map(c => ({ c, sfx: true })) : [])
+                .concat(Array.isArray(spell.vfxCues) ? spell.vfxCues.map(c => ({ c, sfx: false })) : [])
+                .filter(s => s.c && (s.sfx ? s.c.sfx : s.c.fx));
+            if (_cueSpecs.length) {
+                rec.armCues = () => {
+                    const beats = rec.cueBeats;
+                    const elapsed = performance.now() - rec.t0;
+                    for (const spec of _cueSpecs) {
+                        if (spec.fired) continue;
+                        const anchorT = spec.c.at === 'launch' ? beats.launchMs
+                            : spec.c.at === 'impact' ? beats.impactMs : 0;
+                        const remaining = anchorT + (spec.c.offsetMs || 0) - elapsed;
+                        rec.timers.push(window.setTimeout(() => {
+                            if (spec.fired || state.phase !== 'battle') return;
+                            spec.fired = true;
+                            if (spec.sfx) {
+                                playSfx(spec.c.sfx, spec.c.volume != null ? { volume: spec.c.volume } : undefined);
+                            } else {
+                                _fireStageBeat('cue', spell, {
+                                    fx: spec.c.fx, tx: rec.tx, ty: rec.ty, sx: unit.x, sy: unit.y,
+                                    anchor: spec.c.anchor, scale: spec.c.scale,
+                                    tint: spec.c.tint, durMs: spec.c.durMs
+                                });
+                            }
+                        }, Math.max(0, remaining)));
+                    }
+                };
+                rec.armCues();
+            }
         }
+
+        // Beat-time estimate for a spell WITHOUT casting it — the Spell Lab
+        // timeline draws its CAST/LAUNCH/IMPACT markers from this until a
+        // real cast refines them (window._EW_LAST_CAST_BEATS).
+        window._EW_PREDICT_CAST_BEATS = function(spellId) {
+            const spell = (typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[spellId]) || null;
+            if (!spell) return { launchMs: 1250, impactMs: 1610, weight: 'standard' };
+            const st = _spellStageInfo(spell);
+            const pace = _STAGE_PACE[st.weight] || _STAGE_PACE.standard;
+            const profile = _animProfile(spell);
+            const offensive = profile.camera === 'offensive';
+            const sourceHold = Math.round(1250 * pace.source);
+            const selfCast = (typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell));
+            const impactMs = offensive ? sourceHold + 360
+                : (selfCast ? Math.round(720 * pace.source) : Math.round(800 * pace.source) + 420);
+            return {
+                launchMs: offensive ? sourceHold : Math.round(impactMs * 0.6),
+                impactMs, weight: st.weight
+            };
+        };
 
         // A kind that knows its REAL impact frame corrects the estimate. Only
         // ever moves the burst LATER (an early burst is a miss; a late one
@@ -5100,6 +5173,18 @@
             for (const t of rec.timers) clearTimeout(t);
             rec.timers.length = 0;
             rec.timers.push(window.setTimeout(rec.burst, Math.max(0, impactDelay)));
+            // Timeline cues follow the corrected clock: unfired cues re-arm
+            // against the real impact frame (armCues skips fired ones and
+            // compensates for time already elapsed since the cast).
+            if (rec.armCues) {
+                if (rec.cueBeats) rec.cueBeats.impactMs = impactDelay;
+                try {
+                    if (window._EW_LAST_CAST_BEATS && window._EW_LAST_CAST_BEATS.spellId === spell.id) {
+                        window._EW_LAST_CAST_BEATS.impactMs = impactDelay;
+                    }
+                } catch (e) {}
+                rec.armCues();
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -5168,13 +5253,26 @@
                 if (_focusShot && _focusShot.mode === 'support') cam = _focusShot;
             }
 
-            // Phase 1: SFX (after camera so cinematic can set up)
-            playSfx(profile.sfx || spellLaunchSfx(spell));
-
             // Focus unit panel on target
             if (target) focusUnitPanel(target.id);
 
             const projectileDelay = Math.max(0, cam?.sourceHold ?? actionMs(900));
+
+            // Phase 1: SFX (after camera so cinematic can set up).
+            // Percussive reports (gun / doubleShot / shootout) are the sound
+            // OF the shot leaving — they play on the launch frame with the
+            // muzzle flash, not at cast start where they used to land a full
+            // second early. Sustained "chant" launch sounds keep cast start.
+            // Spells with authored sfxCues get null here (see spellLaunchSfx)
+            // — the cue scheduler owns their audio.
+            const _launchSfxKey = profile.sfx || spellLaunchSfx(spell);
+            if (_launchSfxKey) {
+                if (_PERCUSSIVE_LAUNCH_SFX[_launchSfxKey]) {
+                    window.setTimeout(() => { if (state.phase === 'battle') playSfx(_launchSfxKey); }, projectileDelay);
+                } else {
+                    playSfx(_launchSfxKey);
+                }
+            }
 
             // Phase 3: Travel animation
             const handler = TRAVEL_HANDLERS[travel];
@@ -5196,6 +5294,16 @@
                 impactDelay = adjusted.impactDelay ?? impactDelay;
                 completionDelay = adjusted.completionDelay ?? completionDelay;
             }
+
+            // Real beat times for the Spell Lab timeline's markers (the
+            // _stageSpellCast estimate is refined with the measured cast).
+            try {
+                if (window._EW_LAST_CAST_BEATS && window._EW_LAST_CAST_BEATS.spellId === spell.id) {
+                    Object.assign(window._EW_LAST_CAST_BEATS, {
+                        launchMs: projectileDelay, impactMs: impactDelay, completionMs: completionDelay
+                    });
+                }
+            } catch (e) {}
 
             // Deduct MP
             unit.mp -= effectiveSpellCost;
@@ -39913,7 +40021,17 @@
             renderBattleUpdate();
         }
 
+        // Percussive one-shot reports — the sound OF the projectile leaving.
+        // These must land on the launch frame (muzzle flash), not at cast
+        // start where the aim/windup camera still has a full second to run.
+        const _PERCUSSIVE_LAUNCH_SFX = { gun: 1, doubleShot: 1, shootout: 1 };
+
         function spellLaunchSfx(spell) {
+            // Authored SFX cues (Spell Lab timeline) replace the default
+            // launch sound wholesale — _scheduleSpellCues owns this cast's
+            // audio. Returning null turns every playSfx(spellLaunchSfx(...))
+            // call site into a no-op without touching them individually.
+            if (spell && Array.isArray(spell.sfxCues) && spell.sfxCues.length) return null;
             const id = spell?.id;
             // Nuke / artillery launches: warning klaxon as the strike is called in.
             if (id === 'nuke' || id === 'sharedNuke' || id === 'raceArtilleryStrike') return 'nukeAlarm';

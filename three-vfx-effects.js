@@ -2207,6 +2207,557 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
     }
 
+    /* ════════════════════════════════════════════════════════════════════
+       CUE PRIMITIVES — the Spell Lab timeline's building blocks (2026-08-02)
+
+       The Spell Lab timeline lets the owner drop VFX cues on a spell at
+       authored time offsets (spell def `vfxCues`, scheduled by battle.js
+       inside _stageSpellCast). Each cue names a primitive from this bank —
+       a parameterized, composable effect (fire, explosions, sparks, beams,
+       portals, god rays, anime speed lines…) tuned for the JRPG read.
+       Every primitive respects { scale, tint, durMs, anchor } so one shape
+       serves many spells.
+
+       ONLINE PARITY (RULE #2): cues fire through VFX3D.fire('cue', …) —
+       the function online.js wraps for the host→guest relay — so guests
+       replay every cue with zero extra plumbing (the cue params ride the
+       relay whitelist).
+
+       `fx: 'bank:<effectId>'` plays any entry from the EFFECTS bank
+       instead, opening all ~600 authored recipes to the timeline. */
+
+    function _cueHex(t, fallback) {
+        if (t == null) return fallback != null ? fallback : null;
+        if (typeof t === 'number') return t;
+        if (typeof t === 'string') {
+            var h = t.charAt(0) === '#' ? t.slice(1) : t;
+            if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+            var n = parseInt(h, 16);
+            if (!isNaN(n)) return n;
+        }
+        return fallback != null ? fallback : null;
+    }
+
+    /* repeated emission across a cue's durMs — every step re-checks the
+       suppression gates so a scene teardown mid-cue stops the batches */
+    function _cueBatches(totalMs, stepMs, fn) {
+        var t = 0;
+        var run = function() {
+            if (_suppressed() || !_canSpawn()) return;
+            fn(t);
+            t += stepMs;
+            if (t < totalMs) window.setTimeout(run, stepMs);
+        };
+        run();
+    }
+
+    /* Editor metadata — the Spell Lab timeline reads this to build its
+       "＋ VFX" picker. knobs: which cue fields matter for the primitive. */
+    var _CUE_LIB = {
+        muzzle_flash:    { label: 'Muzzle Flash (gun)',        cat: 'impact',  ms: 260,  knobs: ['scale', 'tint'] },
+        explosion:       { label: 'Explosion',                 cat: 'impact',  ms: 900,  knobs: ['scale', 'tint'] },
+        shockwave:       { label: 'Shockwave Ring',            cat: 'impact',  ms: 600,  knobs: ['scale', 'tint'] },
+        sparks:          { label: 'Spark Spray',               cat: 'impact',  ms: 600,  knobs: ['scale', 'tint'] },
+        dust_kick:       { label: 'Dust Kick',                 cat: 'impact',  ms: 800,  knobs: ['scale'] },
+        rock_debris:     { label: 'Rock Debris',               cat: 'impact',  ms: 900,  knobs: ['scale'] },
+        big_flash:       { label: 'Screen Flash',              cat: 'light',   ms: 220,  knobs: ['scale', 'tint'] },
+        fire_burst:      { label: 'Fire Burst (volumetric)',   cat: 'fire',    ms: 1000, knobs: ['scale'] },
+        flame_jet:       { label: 'Flame Jet (directional)',   cat: 'fire',    ms: 700,  knobs: ['scale', 'tint'] },
+        embers:          { label: 'Ember Drift',               cat: 'fire',    ms: 1500, knobs: ['scale', 'tint', 'durMs'] },
+        smoke_plume:     { label: 'Smoke Plume',               cat: 'fire',    ms: 1400, knobs: ['scale', 'durMs'] },
+        speed_lines:     { label: 'Anime Speed Lines',         cat: 'motion',  ms: 400,  knobs: ['scale', 'tint'] },
+        crescent_slash:  { label: 'Crescent Slash',            cat: 'motion',  ms: 320,  knobs: ['scale', 'tint'] },
+        charge_spiral:   { label: 'Charge-Up Spiral',          cat: 'magic',   ms: 700,  knobs: ['scale', 'tint', 'durMs'] },
+        implosion:       { label: 'Implosion (suck-in)',       cat: 'magic',   ms: 500,  knobs: ['scale', 'tint'] },
+        magic_burst:     { label: 'Magic Burst',               cat: 'magic',   ms: 600,  knobs: ['scale', 'tint'] },
+        magic_circle:    { label: 'Magic Circle (glyph)',      cat: 'magic',   ms: 1200, knobs: ['scale', 'tint', 'durMs'] },
+        orb_burst:       { label: 'Orb Burst',                 cat: 'magic',   ms: 500,  knobs: ['scale', 'tint'] },
+        portal:          { label: 'Portal (summoning)',        cat: 'magic',   ms: 1800, knobs: ['scale', 'tint', 'durMs'] },
+        aura_flare:      { label: 'Rising Aura Streaks',       cat: 'support', ms: 1000, knobs: ['scale', 'tint', 'durMs'] },
+        heal_sparkle:    { label: 'Heal Sparkle',              cat: 'support', ms: 900,  knobs: ['scale'] },
+        holy_pillar:     { label: 'Pillar of Light',           cat: 'light',   ms: 1000, knobs: ['scale', 'tint', 'durMs'] },
+        light_rays:      { label: 'God Rays',                  cat: 'light',   ms: 1100, knobs: ['scale', 'tint', 'durMs'] },
+        energy_beam:     { label: 'Energy Beam (caster→target)', cat: 'energy', ms: 500, knobs: ['scale', 'tint', 'durMs'] },
+        lightning_strike:{ label: 'Lightning Strike (sky)',    cat: 'energy',  ms: 500,  knobs: ['scale', 'tint'] },
+        electric_arcs:   { label: 'Electric Arcs',             cat: 'energy',  ms: 450,  knobs: ['scale', 'tint'] },
+        ice_shards:      { label: 'Ice Shards',                cat: 'nature',  ms: 700,  knobs: ['scale'] },
+        poison_cloud:    { label: 'Poison Cloud',              cat: 'nature',  ms: 1400, knobs: ['scale', 'durMs'] },
+        water_splash:    { label: 'Water Splash',              cat: 'nature',  ms: 700,  knobs: ['scale'] },
+        void_burst:      { label: 'Void Burst (dark)',         cat: 'dark',    ms: 700,  knobs: ['scale', 'tint'] },
+    };
+
+    /* Each primitive receives q:
+       { tx, ty       anchor tile (already resolved from cue.anchor)
+         sx, sy       caster tile
+         c            anchor px {x,y}   cs  caster px {x,y}
+         zf, zt       anchor floor / torso z (px)
+         ts           tile size px
+         s            scale multiplier (default 1)
+         hex          tint as 0xRRGGBB or null
+         ms           duration override or the _CUE_LIB default
+         dx, dy       normalized caster→anchor direction (screen-plane) } */
+    var _CUE_PRIMITIVES = {
+
+        muzzle_flash: function(q) {
+            var mz = { x: q.cs.x + q.dx * q.ts * 0.34, y: q.cs.y + q.dy * q.ts * 0.34 };
+            var zt = unitSurfaceZ(q.sx, q.sy) + unitZBoost();
+            _spawn({ x: mz.x, y: mz.y, z: zt, sprite: 'flash', tint: q.hex != null ? q.hex : 0xffd9a0,
+                ml: 90, size0: q.ts * 0.55 * q.s, size1: q.ts * 0.16, opacity0: 1, opacity1: 0 });
+            _spawn({ x: mz.x, y: mz.y, z: zt, sprite: 'fire-glow',
+                ml: 150, size0: q.ts * 0.34 * q.s, size1: q.ts * 0.1, opacity0: 0.8, opacity1: 0 });
+            for (var i = 0; i < Math.round(8 * q.s); i++) {
+                var sp = rn(240, 520) * q.s;
+                _spawn({ x: mz.x, y: mz.y, z: zt + rn(-4, 6),
+                    vx: q.dx * sp + rn(-70, 70), vy: q.dy * sp + rn(-70, 70), vz: rn(-20, 60),
+                    sprite: 'ember', ml: rn(90, 200), gravity: 300, drag: 2.2,
+                    size0: rn(3, 6) * q.s, size1: 1, opacity0: 1, opacity1: 0 });
+            }
+            _spawn({ x: mz.x + q.dx * 6, y: mz.y + q.dy * 6, z: zt + 4,
+                vx: q.dx * 30, vy: q.dy * 30, vz: rn(18, 34),
+                sprite: 'smoke-soft', ml: rn(420, 620), drag: 0.6,
+                size0: q.ts * 0.14 * q.s, size1: q.ts * 0.42 * q.s, opacity0: 0.5, opacity1: 0 });
+            var P0 = _post(); if (P0 && P0.bloomPulse) P0.bloomPulse(0.22 * q.s, 160);
+        },
+
+        explosion: function(q) {
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zt, sprite: 'flash', tint: q.hex,
+                ml: 160, size0: q.ts * 1.5 * q.s, size1: q.ts * 0.4, opacity0: 1, opacity1: 0 });
+            for (var i = 0; i < Math.round(5 * q.s); i++) {
+                _spawn({ x: q.c.x + rn(-14, 14) * q.s, y: q.c.y + rn(-14, 14) * q.s, z: q.zt + rn(-10, 18),
+                    sprite: 'explosion-orange', ml: rn(220, 420),
+                    size0: rn(30, 52) * q.s, size1: rn(70, 100) * q.s, opacity0: 0.95, opacity1: 0 });
+            }
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zf + 2, mode: 'world', sprite: 'shockwave',
+                ml: 420, size0: q.ts * 0.4 * q.s, size1: q.ts * 2.6 * q.s, opacity0: 0.9, opacity1: 0 });
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zf + 1, mode: 'world', sprite: 'scorch',
+                ml: Math.max(1200, q.ms), size0: q.ts * 0.8 * q.s, size1: q.ts * 0.95 * q.s, opacity0: 0.85, opacity1: 0 });
+            for (i = 0; i < Math.round(22 * q.s); i++) {
+                _spawn({ x: q.c.x, y: q.c.y, z: q.zt + rn(-8, 8),
+                    vx: rn(-260, 260) * q.s, vy: rn(-260, 260) * q.s, vz: rn(60, 300) * q.s,
+                    sprite: 'ember', ml: rn(360, 720), gravity: 420, drag: 1.3,
+                    size0: rn(8, 14) * q.s, size1: 2, opacity0: 1, opacity1: 0 });
+            }
+            for (i = 0; i < Math.round(6 * q.s); i++) {
+                _spawn({ x: q.c.x, y: q.c.y, z: q.zt,
+                    vx: rn(-180, 180) * q.s, vy: rn(-180, 180) * q.s, vz: rn(120, 320) * q.s,
+                    sprite: 'debris', ml: rn(500, 850), gravity: 520, drag: 0.4,
+                    size0: rn(6, 11) * q.s, size1: rn(4, 7), opacity0: 1, opacity1: 0.2 });
+            }
+            for (i = 0; i < Math.round(7 * q.s); i++) {
+                _spawn({ x: q.c.x + rn(-18, 18), y: q.c.y + rn(-18, 18), z: q.zt + rn(0, 20),
+                    vz: rn(30, 60), sprite: 'smoke', ml: rn(800, 1400), drag: 0.4,
+                    size0: rn(40, 60) * q.s, size1: rn(100, 150) * q.s, opacity0: 0.65, opacity1: 0 });
+            }
+            if (typeof window.shakeBoard === 'function') window.shakeBoard(q.s >= 1.5 ? 'hard' : 'normal');
+            var P1 = _post(); if (P1 && P1.bloomPulse) P1.bloomPulse(0.5 * q.s, 320);
+        },
+
+        shockwave: function(q) {
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zf + 2, mode: 'world', sprite: 'shockwave', tint: q.hex,
+                ml: q.ms, size0: q.ts * 0.3 * q.s, size1: q.ts * 3.0 * q.s, opacity0: 0.95, opacity1: 0 });
+            try { _sigSpeedBurst3D(q.tx, q.ty, { color: _cueHex(q.hex, 0xfff0d0), ms: Math.min(300, q.ms), size: q.ts * 1.3 * q.s }); } catch (e) {}
+            if (q.s >= 1 && typeof window.shakeBoard === 'function') window.shakeBoard('normal');
+        },
+
+        sparks: function(q) {
+            for (var i = 0; i < Math.round(18 * q.s); i++) {
+                var a = rn(0, 6.2832), sp = rn(140, 380) * q.s;
+                _spawn({ x: q.c.x, y: q.c.y, z: q.zt + rn(-6, 10),
+                    vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: rn(40, 220) * q.s,
+                    sprite: 'spark-elec', tint: q.hex, ml: rn(200, 480), gravity: 380, drag: 1.2,
+                    size0: rn(4, 8) * q.s, size1: 1, opacity0: 1, opacity1: 0 });
+            }
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zt, sprite: 'flash', tint: q.hex,
+                ml: 120, size0: q.ts * 0.5 * q.s, size1: q.ts * 0.14, opacity0: 0.9, opacity1: 0 });
+        },
+
+        dust_kick: function(q) {
+            for (var i = 0; i < Math.round(10 * q.s); i++) {
+                var a = rn(0, 6.2832), r = rn(6, q.ts * 0.3);
+                _spawn({ x: q.c.x + Math.cos(a) * r, y: q.c.y + Math.sin(a) * r, z: q.zf + rn(2, 12),
+                    vx: Math.cos(a) * rn(40, 110), vy: Math.sin(a) * rn(40, 110), vz: rn(15, 55),
+                    sprite: 'dust-puff', ml: rn(400, q.ms), drag: 1.2,
+                    size0: rn(16, 26) * q.s, size1: rn(38, 60) * q.s, opacity0: 0.7, opacity1: 0 });
+            }
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zf + 1, mode: 'world', sprite: 'dust-puff',
+                ml: q.ms * 0.7, size0: q.ts * 0.4 * q.s, size1: q.ts * 1.3 * q.s, opacity0: 0.45, opacity1: 0 });
+        },
+
+        rock_debris: function(q) {
+            for (var i = 0; i < Math.round(12 * q.s); i++) {
+                _spawn({ x: q.c.x + rn(-10, 10), y: q.c.y + rn(-10, 10), z: q.zf + rn(4, 18),
+                    vx: rn(-200, 200) * q.s, vy: rn(-200, 200) * q.s, vz: rn(140, 340) * q.s,
+                    sprite: 'rock-debris', ml: rn(500, 900), gravity: 560, drag: 0.3,
+                    size0: rn(7, 13) * q.s, size1: rn(5, 9), opacity0: 1, opacity1: 0.3 });
+            }
+            _CUE_PRIMITIVES.dust_kick(q);
+        },
+
+        big_flash: function(q) {
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zt, sprite: 'flash', tint: q.hex,
+                ml: q.ms, size0: q.ts * 5 * q.s, size1: q.ts * 6.5 * q.s, opacity0: 0.95, opacity1: 0 });
+            var P2 = _post(); if (P2 && P2.bloomPulse) P2.bloomPulse(0.7 * q.s, Math.max(220, q.ms));
+        },
+
+        fire_burst: function(q) {
+            try { spawnFlameBurst3D(q.tx, q.ty, { lifeMs: q.ms, hScale: Math.min(1.2, 0.7 * q.s + 0.3), rScale: Math.min(1.15, 0.65 * q.s + 0.35) }); } catch (e) {}
+            for (var i = 0; i < Math.round(12 * q.s); i++) {
+                _spawn({ x: q.c.x + rn(-14, 14), y: q.c.y + rn(-14, 14), z: q.zf + rn(4, 30),
+                    vx: rn(-60, 60), vy: rn(-60, 60), vz: rn(60, 200) * q.s,
+                    sprite: 'ember', ml: rn(400, 800), gravity: 160, drag: 0.8,
+                    size0: rn(6, 12) * q.s, size1: 2, opacity0: 1, opacity1: 0 });
+            }
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zf + 2, mode: 'world', sprite: 'fire-glow',
+                ml: q.ms, size0: q.ts * 0.7 * q.s, size1: q.ts * 1.0 * q.s, opacity0: 0.8, opacity1: 0 });
+        },
+
+        flame_jet: function(q) {
+            var zt = unitSurfaceZ(q.sx, q.sy) + unitZBoost();
+            for (var i = 0; i < Math.round(20 * q.s); i++) {
+                var sp = rn(180, 420) * q.s, lat = rn(-70, 70);
+                _spawn({ x: q.cs.x + q.dx * q.ts * 0.3, y: q.cs.y + q.dy * q.ts * 0.3, z: zt + rn(-8, 8),
+                    vx: q.dx * sp - q.dy * lat, vy: q.dy * sp + q.dx * lat, vz: rn(-10, 60),
+                    sprite: i % 3 ? 'flame' : 'flame-hot', tint: q.hex, mode: 'billboard',
+                    ml: rn(250, q.ms), drag: 0.9, gravity: -40,
+                    size0: rn(14, 26) * q.s, size1: rn(30, 46) * q.s, opacity0: 0.95, opacity1: 0 });
+            }
+            _spawn({ x: q.cs.x + q.dx * q.ts * 0.3, y: q.cs.y + q.dy * q.ts * 0.3, z: zt,
+                sprite: 'flash', tint: q.hex != null ? q.hex : 0xffb066,
+                ml: 140, size0: q.ts * 0.5 * q.s, size1: q.ts * 0.2, opacity0: 0.9, opacity1: 0 });
+        },
+
+        embers: function(q) {
+            _cueBatches(q.ms, 240, function() {
+                for (var i = 0; i < Math.round(4 * q.s); i++) {
+                    _spawn({ x: q.c.x + rn(-q.ts * 0.5, q.ts * 0.5) * q.s, y: q.c.y + rn(-q.ts * 0.5, q.ts * 0.5) * q.s,
+                        z: q.zf + rn(2, 26),
+                        vx: rn(-24, 24), vy: rn(-24, 24), vz: rn(30, 90),
+                        wander: { amp: 26, freq: 2.2 },
+                        sprite: 'ember', tint: q.hex, ml: rn(700, 1300), drag: 0.3,
+                        size0: rn(4, 9) * q.s, size1: 1, opacity0: 0.95, opacity1: 0 });
+                }
+            });
+        },
+
+        smoke_plume: function(q) {
+            _cueBatches(q.ms, 200, function() {
+                _spawn({ x: q.c.x + rn(-10, 10), y: q.c.y + rn(-10, 10), z: q.zf + rn(2, 14),
+                    vz: rn(40, 80), vx: rn(-14, 14), vy: rn(-14, 14),
+                    sprite: 'smoke-soft', ml: rn(900, 1500), drag: 0.35,
+                    size0: rn(26, 40) * q.s, size1: rn(70, 110) * q.s, opacity0: 0.55, opacity1: 0 });
+            });
+        },
+
+        speed_lines: function(q) {
+            /* vertical light slats racing inward past the anchor + a radial
+               starburst — the anime rush frame */
+            for (var i = 0; i < Math.round(14 * q.s); i++) {
+                var a = (i / Math.round(14 * q.s)) * 6.2832 + rn(-0.15, 0.15);
+                var r = q.ts * rn(1.9, 2.6) * q.s;
+                var sp = q.ts * rn(5.2, 7.0);
+                _spawn({ x: q.c.x + Math.cos(a) * r, y: q.c.y + Math.sin(a) * r, z: q.zt + rn(-q.ts * 0.2, q.ts * 0.3),
+                    vx: -Math.cos(a) * sp, vy: -Math.sin(a) * sp,
+                    mode: 'y-locked', sprite: 'flash', tint: q.hex != null ? q.hex : 0xffffff,
+                    ml: rn(180, 300),
+                    w0: rn(2, 4) * q.s, w1: 1.5, h0: rn(34, 80) * q.s, h1: rn(20, 40) * q.s,
+                    opacity0: 0.85, opacity1: 0 });
+            }
+            try { _sigSpeedBurst3D(q.tx, q.ty, { color: _cueHex(q.hex, 0xffffff), ms: Math.min(280, q.ms), size: q.ts * 1.6 * q.s }); } catch (e) {}
+        },
+
+        crescent_slash: function(q) {
+            try { _sigCrescentSlash3D(q.tx, q.ty, { color: _cueHex(q.hex, 0xfff2cc), ms: q.ms, size: q.ts * 1.15 * q.s }); } catch (e) {}
+        },
+
+        charge_spiral: function(q) {
+            try {
+                _sigChargeSpiral3D(q.tx, q.ty, {
+                    count: Math.round(12 * q.s), r0: q.ts * 0.5, r1: q.ts * (1.0 * q.s + 0.2),
+                    ms: q.ms, spiralDeg: 260, sprite: 'psi-pulse',
+                    tint: q.hex, height: q.ts * 0.5, sizeMul: q.s
+                });
+            } catch (e) {}
+            try { _sigMagicOrb3D(q.tx, q.ty, { color: _cueHex(q.hex, 0x9a7cff), r0: q.ts * 0.08 * q.s, r1: q.ts * 0.4 * q.s, ms: q.ms, rise: q.ts * 0.3, height: q.ts * 0.5 }); } catch (e) {}
+        },
+
+        implosion: function(q) {
+            try { _sigOrbBurst3D(q.tx, q.ty, { mode: 'in', color: _cueHex(q.hex, 0xc0a8ff), ms: q.ms }); } catch (e) {}
+            for (var i = 0; i < Math.round(10 * q.s); i++) {
+                var a = rn(0, 6.2832), r = q.ts * rn(0.8, 1.3) * q.s;
+                _spawn({ x: q.c.x + Math.cos(a) * r, y: q.c.y + Math.sin(a) * r, z: q.zt + rn(-14, 14),
+                    seek: { x: q.c.x, y: q.c.y, z: q.zt, ms: q.ms * 0.85, ease: 'easeIn', spiralDeg: 120 },
+                    sprite: 'flash', tint: q.hex, ml: q.ms,
+                    size0: rn(5, 9) * q.s, size1: 2, opacity0: 0.9, opacity1: 0.4 });
+            }
+        },
+
+        magic_burst: function(q) {
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zt, sprite: 'flash', tint: q.hex != null ? q.hex : 0xc9b8ff,
+                ml: 200, size0: q.ts * 1.0 * q.s, size1: q.ts * 0.3, opacity0: 1, opacity1: 0 });
+            for (var i = 0; i < Math.round(16 * q.s); i++) {
+                var a = rn(0, 6.2832), sp = rn(90, 240) * q.s;
+                _spawn({ x: q.c.x, y: q.c.y, z: q.zt,
+                    vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: rn(-40, 120),
+                    sprite: 'psi-pulse', tint: q.hex, ml: rn(300, 600), drag: 1.0,
+                    size0: rn(6, 11) * q.s, size1: 2, opacity0: 0.95, opacity1: 0 });
+            }
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zf + 2, mode: 'world', sprite: 'target-ring',
+                tint: q.hex, ml: 420, size0: q.ts * 0.5 * q.s, size1: q.ts * 1.6 * q.s, opacity0: 0.8, opacity1: 0 });
+        },
+
+        magic_circle: function(q) {
+            try {
+                _sigMagicCircle3D(q.tx, q.ty, {
+                    radiusPx: q.ts * 0.95 * q.s, growMs: 220,
+                    holdMs: Math.max(200, q.ms - 460), fadeMs: 240,
+                    opacity: 0.6, color: _cueHex(q.hex, 0xb69cff)
+                });
+            } catch (e) {}
+        },
+
+        orb_burst: function(q) {
+            try { _sigOrbBurst3D(q.tx, q.ty, { mode: 'out', color: _cueHex(q.hex, 0xc9b8ff), ms: q.ms }); } catch (e) {}
+        },
+
+        portal: function(q) {
+            var hex = _cueHex(q.hex, 0x9a7cff);
+            try {
+                _sigMagicCircle3D(q.tx, q.ty, { radiusPx: q.ts * 1.0 * q.s, growMs: 260, holdMs: Math.max(300, q.ms - 700), fadeMs: 380, opacity: 0.65, color: hex });
+                _sigMagicCircle3D(q.tx, q.ty, { radiusPx: q.ts * 0.55 * q.s, growMs: 380, holdMs: Math.max(260, q.ms - 800), fadeMs: 340, opacity: 0.5, color: hex });
+            } catch (e) {}
+            /* the well: dark core + swirling rim motes climbing out */
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zf + 2, mode: 'world', sprite: 'void-mist', tint: hex,
+                ml: q.ms, size0: q.ts * 0.7 * q.s, size1: q.ts * 0.85 * q.s, opacity0: 0.75, opacity1: 0 });
+            var nOrb = Math.round(12 * q.s);
+            for (var i = 0; i < nOrb; i++) {
+                _spawn({ x: q.c.x, y: q.c.y, z: q.zf + 4,
+                    mode: 'billboard', sprite: 'psi-pulse', tint: hex,
+                    ml: q.ms * rn(0.6, 0.95),
+                    orbit: { x: q.c.x, y: q.c.y, z: q.zf + 4, r0: q.ts * 0.55 * q.s, r1: q.ts * 0.35 * q.s,
+                             degPerSec: 260 + i * 14, phase: (i / nOrb) * 6.2832, zRate: q.ts * 0.5, bobAmp: 3, bobHz: 2 },
+                    size0: rn(5, 9) * q.s, size1: 2, opacity0: 0.9, opacity1: 0 });
+            }
+            /* opening flash + light column */
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zf + 10, sprite: 'flash', tint: hex,
+                ml: 220, size0: q.ts * 0.9 * q.s, size1: q.ts * 0.3, opacity0: 0.9, opacity1: 0 });
+            try { _sigLightPillar3D(q.tx, q.ty, { color: hex, coreColor: 0xffffff, height: q.ts * 1.6 * q.s, radius: q.ts * 0.2 * q.s, ms: Math.min(700, q.ms) }); } catch (e) {}
+        },
+
+        aura_flare: function(q) {
+            var hex = q.hex != null ? q.hex : 0xffd76a;
+            _cueBatches(q.ms, 180, function() {
+                for (var i = 0; i < Math.round(4 * q.s); i++) {
+                    var a = rn(0, 6.2832), r = q.ts * rn(0.14, 0.38);
+                    _spawn({ x: q.c.x + Math.cos(a) * r, y: q.c.y + Math.sin(a) * r, z: q.zf + rn(2, 18),
+                        vz: rn(90, 190), gravity: -160, drag: 0.25,
+                        mode: 'y-locked', sprite: 'flame-hot', tint: hex,
+                        ml: rn(320, 520),
+                        w0: rn(3, 6) * q.s, w1: 1.5, h0: rn(18, 40) * q.s, h1: rn(46, 88) * q.s,
+                        opacity0: 0.8, opacity1: 0 });
+                }
+            });
+        },
+
+        heal_sparkle: function(q) {
+            for (var i = 0; i < Math.round(12 * q.s); i++) {
+                _spawn({ x: q.c.x + rn(-q.ts * 0.3, q.ts * 0.3), y: q.c.y + rn(-q.ts * 0.3, q.ts * 0.3),
+                    z: q.zf + rn(4, 24), vz: rn(40, 100), drag: 0.4,
+                    sprite: i % 3 ? 'heal-glow' : 'heal-cross', ml: rn(500, q.ms),
+                    size0: rn(6, 12) * q.s, size1: 3, opacity0: 0.95, opacity1: 0 });
+            }
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zf + 2, mode: 'world', sprite: 'target-ring-green',
+                ml: 500, size0: q.ts * 0.4 * q.s, size1: q.ts * 1.2 * q.s, opacity0: 0.7, opacity1: 0 });
+        },
+
+        holy_pillar: function(q) {
+            try { _sigLightPillar3D(q.tx, q.ty, { color: _cueHex(q.hex, 0xffe9a8), height: q.ts * 3.2 * q.s, radius: q.ts * 0.42 * q.s, ms: q.ms }); } catch (e) {}
+            var P3 = _post(); if (P3 && P3.bloomPulse) P3.bloomPulse(0.35 * q.s, 400);
+        },
+
+        light_rays: function(q) {
+            var hex = q.hex != null ? q.hex : 0xfff2cc;
+            var n = Math.round(7 * q.s);
+            for (var i = 0; i < n; i++) {
+                var a = (i / n) * 6.2832;
+                _spawn({ x: q.c.x + Math.cos(a) * q.ts * 0.2, y: q.c.y + Math.sin(a) * q.ts * 0.2, z: q.zf + 4,
+                    mode: 'y-locked', sprite: 'holy-light', tint: hex,
+                    ml: q.ms, spriteRot: (i % 2 ? 13 : -13),
+                    w0: rn(6, 12) * q.s, w1: rn(3, 6), h0: q.ts * 1.4 * q.s, h1: q.ts * 2.6 * q.s,
+                    opacity0: 0.0, opacity1: 0.75 });
+            }
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zf + 2, mode: 'world', sprite: 'halo-ring', tint: q.hex,
+                ml: q.ms, size0: q.ts * 0.6 * q.s, size1: q.ts * 1.4 * q.s, opacity0: 0.7, opacity1: 0 });
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zt + q.ts * 0.4, sprite: 'holy-light', tint: hex,
+                ml: q.ms, size0: q.ts * 0.8 * q.s, size1: q.ts * 1.2 * q.s, opacity0: 0.5, opacity1: 0 });
+        },
+
+        energy_beam: function(q) {
+            var hex = _cueHex(q.hex, 0x88bbff);
+            try { _spawnLaserBeam3D(q.sx, q.sy, q.tx, q.ty, { core: 0xffffff, glow: hex, thickness: q.s, beamMs: q.ms }); } catch (e) {}
+            var zt = unitSurfaceZ(q.sx, q.sy) + unitZBoost();
+            _spawn({ x: q.cs.x, y: q.cs.y, z: zt, sprite: 'flash', tint: hex,
+                ml: 140, size0: q.ts * 0.5 * q.s, size1: q.ts * 0.2, opacity0: 0.9, opacity1: 0 });
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zt, sprite: 'flash', tint: hex,
+                ml: Math.min(300, q.ms), size0: q.ts * 0.8 * q.s, size1: q.ts * 0.25, opacity0: 1, opacity1: 0 });
+        },
+
+        lightning_strike: function(q) {
+            var cfgL = _cfg(), pad = cfgL.boardPadding || 2;
+            var hex = _cueHex(q.hex, 0x88ccff);
+            if (window.ThreeLightning && typeof window.ThreeLightning.bolt === 'function') {
+                try {
+                    window.ThreeLightning.bolt(
+                        { x: q.c.x - pad + rn(-8, 8), y: q.zt + q.ts * 3.4, z: q.c.y - pad + rn(-8, 8) },
+                        { x: q.c.x - pad, y: q.zf + 6, z: q.c.y - pad },
+                        { segments: 9, jitter: 0.42, branchChance: 0.28, branchDepth: 1,
+                          coreWidth: 3.4 * q.s, glowWidth: 10 * q.s,
+                          durationMs: Math.min(320, q.ms), color: 0xffffff, glowColor: hex });
+                } catch (e) {}
+            }
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zt, sprite: 'flash', tint: hex,
+                ml: 150, size0: q.ts * 1.1 * q.s, size1: q.ts * 0.3, opacity0: 1, opacity1: 0 });
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zf + 2, mode: 'world', sprite: 'stun-ring',
+                ml: 400, size0: q.ts * 0.3 * q.s, size1: q.ts * 1.4 * q.s, opacity0: 0.85, opacity1: 0 });
+            for (var i = 0; i < Math.round(10 * q.s); i++) {
+                var a = rn(0, 6.2832), sp = rn(120, 300) * q.s;
+                _spawn({ x: q.c.x, y: q.c.y, z: q.zf + rn(4, 16),
+                    vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: rn(30, 160),
+                    sprite: 'spark-elec', ml: rn(200, 420), gravity: 320, drag: 1.1,
+                    size0: rn(4, 8) * q.s, size1: 1, opacity0: 1, opacity1: 0 });
+            }
+            if (typeof window.shakeBoard === 'function') window.shakeBoard('normal');
+            var P4 = _post(); if (P4 && P4.bloomPulse) P4.bloomPulse(0.4 * q.s, 260);
+        },
+
+        electric_arcs: function(q) {
+            var cfgL = _cfg(), pad = cfgL.boardPadding || 2;
+            var hex = _cueHex(q.hex, 0x88ccff);
+            var nB = Math.max(2, Math.round(3 * q.s));
+            for (var i = 0; i < nB; i++) {
+                (function(idx) {
+                    window.setTimeout(function() {
+                        if (_suppressed() || !window.ThreeLightning) return;
+                        var arcLen = q.ts * (0.4 + Math.random() * 0.55) * q.s;
+                        var ang = Math.random() * 6.2832;
+                        var from = { x: q.c.x - pad, y: q.zt + 3, z: q.c.y - pad };
+                        try {
+                            window.ThreeLightning.bolt(from,
+                                { x: from.x + Math.cos(ang) * arcLen, y: from.y + (Math.random() - 0.5) * arcLen * 0.5, z: from.z + Math.sin(ang) * arcLen },
+                                { segments: 6, jitter: 0.4, branchChance: 0.12, branchDepth: 0,
+                                  coreWidth: 2.6 * q.s, glowWidth: 7 * q.s,
+                                  durationMs: 140 + Math.random() * 90, color: 0xffffff, glowColor: hex });
+                        } catch (e) {}
+                    }, idx * 60);
+                })(i);
+            }
+        },
+
+        ice_shards: function(q) {
+            for (var i = 0; i < Math.round(14 * q.s); i++) {
+                var a = rn(0, 6.2832), sp = rn(120, 300) * q.s;
+                _spawn({ x: q.c.x, y: q.c.y, z: q.zt + rn(-6, 10),
+                    vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: rn(60, 240) * q.s,
+                    sprite: 'ice-shard', ml: rn(350, 650), gravity: 420, drag: 0.6,
+                    size0: rn(7, 13) * q.s, size1: 3, opacity0: 1, opacity1: 0.2 });
+            }
+            for (i = 0; i < Math.round(6 * q.s); i++) {
+                _spawn({ x: q.c.x + rn(-16, 16), y: q.c.y + rn(-16, 16), z: q.zt + rn(-8, 12),
+                    sprite: 'frost-mist', ml: rn(500, 900), drag: 0.5,
+                    vx: rn(-40, 40), vy: rn(-40, 40), vz: rn(10, 40),
+                    size0: rn(24, 40) * q.s, size1: rn(56, 84) * q.s, opacity0: 0.6, opacity1: 0 });
+            }
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zf + 2, mode: 'world', sprite: 'target-ring-blue',
+                ml: 420, size0: q.ts * 0.4 * q.s, size1: q.ts * 1.4 * q.s, opacity0: 0.8, opacity1: 0 });
+        },
+
+        poison_cloud: function(q) {
+            _cueBatches(q.ms, 260, function() {
+                for (var i = 0; i < Math.round(3 * q.s); i++) {
+                    _spawn({ x: q.c.x + rn(-q.ts * 0.4, q.ts * 0.4) * q.s, y: q.c.y + rn(-q.ts * 0.4, q.ts * 0.4) * q.s,
+                        z: q.zf + rn(4, 26), vz: rn(8, 30), vx: rn(-16, 16), vy: rn(-16, 16),
+                        wander: { amp: 20, freq: 1.6 },
+                        sprite: 'poison-mist', ml: rn(800, 1400), drag: 0.4,
+                        size0: rn(26, 42) * q.s, size1: rn(60, 90) * q.s, opacity0: 0.55, opacity1: 0 });
+                    _spawn({ x: q.c.x + rn(-q.ts * 0.3, q.ts * 0.3), y: q.c.y + rn(-q.ts * 0.3, q.ts * 0.3),
+                        z: q.zf + rn(4, 20), vz: rn(30, 70),
+                        sprite: 'poison-bubble', ml: rn(500, 900), drag: 0.3,
+                        size0: rn(6, 11) * q.s, size1: 3, opacity0: 0.9, opacity1: 0 });
+                }
+            });
+        },
+
+        water_splash: function(q) {
+            for (var i = 0; i < Math.round(5 * q.s); i++) {
+                _spawn({ x: q.c.x + rn(-12, 12), y: q.c.y + rn(-12, 12), z: q.zf + rn(2, 10),
+                    sprite: 'wave-1', ml: rn(400, 700),
+                    size0: rn(30, 46) * q.s, size1: rn(60, 86) * q.s, opacity0: 0.9, opacity1: 0 });
+            }
+            for (i = 0; i < Math.round(16 * q.s); i++) {
+                var a = rn(0, 6.2832), sp = rn(80, 260) * q.s;
+                _spawn({ x: q.c.x, y: q.c.y, z: q.zf + rn(2, 12),
+                    vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: rn(100, 300) * q.s,
+                    sprite: 'frost-mist', tint: 0x5fb8f0, ml: rn(300, 600), gravity: 520, drag: 0.5,
+                    size0: rn(5, 10) * q.s, size1: 2, opacity0: 0.9, opacity1: 0 });
+            }
+        },
+
+        void_burst: function(q) {
+            var hex = _cueHex(q.hex, 0xb066ff);
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zt, sprite: 'void-mist', tint: hex,
+                ml: q.ms, size0: q.ts * 0.5 * q.s, size1: q.ts * 1.5 * q.s, opacity0: 0.85, opacity1: 0 });
+            for (var i = 0; i < Math.round(14 * q.s); i++) {
+                var a = rn(0, 6.2832), sp = rn(80, 220) * q.s;
+                _spawn({ x: q.c.x, y: q.c.y, z: q.zt,
+                    vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: rn(-60, 140),
+                    sprite: 'void-mist', tint: hex, ml: rn(400, 800), drag: 0.8,
+                    size0: rn(10, 18) * q.s, size1: rn(24, 40) * q.s, opacity0: 0.8, opacity1: 0 });
+            }
+            _spawn({ x: q.c.x, y: q.c.y, z: q.zt, sprite: 'flash', tint: hex,
+                ml: 180, size0: q.ts * 0.9 * q.s, size1: q.ts * 0.25, opacity0: 0.9, opacity1: 0 });
+        },
+    };
+
+    function _fireCue(spellId, params) {
+        if (_catOff('spells')) return;
+        if (!_canSpawn()) return;
+        var fx = params.fx;
+        if (!fx) return;
+        var tx = params.tx, ty = params.ty;
+        var sx = params.sx != null ? params.sx : tx;
+        var sy = params.sy != null ? params.sy : ty;
+        if (params.anchor === 'caster') { tx = sx; ty = sy; }
+        else if (params.anchor === 'midpoint') { tx = (params.tx + sx) / 2; ty = (params.ty + sy) / 2; }
+        if (tx == null || ty == null) return;
+
+        /* bank cue: replay any authored EFFECTS recipe at this anchor */
+        if (typeof fx === 'string' && fx.indexOf('bank:') === 0) {
+            var eff = EFFECTS[fx.slice(5)];
+            if (eff && eff.layers) _spawnEffect(eff, { tx: tx, ty: ty }, _autoTintFor(spellId));
+            return;
+        }
+
+        var fn = _CUE_PRIMITIVES[fx];
+        if (!fn) return;
+        var meta = _CUE_LIB[fx] || {};
+        var ts = _cfg().tileSize || 128;
+        var c = tilePx(tx, ty);
+        var cs = tilePx(sx, sy);
+        var ddx = c.x - cs.x, ddy = c.y - cs.y;
+        var dl = Math.sqrt(ddx * ddx + ddy * ddy);
+        var q = {
+            tx: tx, ty: ty, sx: sx, sy: sy,
+            c: c, cs: cs,
+            zf: unitSurfaceZ(tx, ty),
+            zt: unitSurfaceZ(tx, ty) + unitZBoost(),
+            ts: ts,
+            s: Math.max(0.2, Math.min(4, params.scale != null ? params.scale : 1)),
+            hex: _cueHex(params.tint, null),
+            ms: Math.max(80, Math.min(12000, params.durMs != null ? params.durMs : (meta.ms || 600))),
+            dx: dl > 1 ? ddx / dl : 1, dy: dl > 1 ? ddy / dl : 0,
+        };
+        try { fn(q); } catch (e) { console.warn('[VFX cue] ' + fx + ' failed', e); }
+    }
+
     function fire(intent, spellId, params) {
         if (_suppressed()) return;
         /* Staging beats are resolved from spell DATA, not from SPELL_MAP —
@@ -2216,6 +2767,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            with no extra plumbing. */
         if (intent === 'windup' || intent === 'burst' || intent === 'finish') {
             _fireStage(intent, spellId, params || {});
+            return;
+        }
+        /* Timeline cues (Spell Lab) — same relay-riding trick as staging:
+           they resolve from spell data, not SPELL_MAP. */
+        if (intent === 'cue') {
+            _fireCue(spellId, params || {});
             return;
         }
         if (!hasMapping(spellId, intent)) return;
@@ -17818,6 +18375,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         fireBoltDirect: fireBoltDirect,
         fireGeometry: fireGeometry,
         hasMapping: hasMapping,
+
+        /* Spell Lab timeline cues — CUE_LIB is the primitive catalog the
+           editor's "＋ VFX" picker reads; fireCue routes through fire() so
+           the online relay wrapper sees it (never call _fireCue direct). */
+        CUE_LIB: _CUE_LIB,
+        fireCue: function(spellId, params) { fire('cue', spellId, params); },
 
         /* spell staging (cinematic grammar) — see the big block above */
         stageInfo: stageInfo,

@@ -8264,3 +8264,61 @@ Lesson (general): guest-side input plumbing must never depend on engine-side
 drains (`_repeatQueue`), and EVERY relayed player action needs the same
 ownership+turn validation as the 'engine' case — `triggerEndTurn` was the one
 that slipped through and it could zero host units.
+
+## 2026-08-02 — Spell Lab v2: timeline cue editor, auto-desc, prune, cue primitives
+
+The Spell Lab (Settings → Developer → Spell Library → OPEN SPELL LAB) grew an
+After-Effects-style TIMELINE (bottom-docked bar, ui.js `_slbTl*`, CSS in
+styles-hud.css `.slb-tl-*`). Everything below survives export→bake unchanged
+(fields live on the spell def, ride the EWSpellMods diff layer).
+
+### Timeline cues (the "gun SFX off-time" fix + full VFX layering)
+- Spell def fields: `sfxCues: [{sfx, at, offsetMs, volume?}]` and
+  `vfxCues: [{fx, at, offsetMs, anchor?, scale?, tint?, durMs?}]` with
+  `at ∈ 'cast'|'launch'|'impact'` (offset in ms, negative = earlier),
+  `anchor ∈ 'target'(default)|'caster'|'midpoint'`.
+- Scheduled by battle.js inside `_stageSpellCast` (the universal doSpell
+  commit point → covers every kind); impact-anchored cues re-arm in
+  `_stageRetimeBurst` when a path learns its real impact frame. Cue timers
+  ride the staging rec so a re-cast cancels stale cues.
+- ANY spell with `sfxCues` suppresses the default launch sound
+  (`spellLaunchSfx` returns null) — the cues own the cast's audio.
+- Default fix even without cues: percussive keys (gun/doubleShot/shootout —
+  `_PERCUSSIVE_LAUNCH_SFX` in battle.js) now play at `projectileDelay`
+  (muzzle flash frame) instead of cast start in `executeSpellAnimation`.
+- VFX cues fire `VFX3D.fire('cue', spellId, params)` — a new intent handled
+  BEFORE the SPELL_MAP gate in three-vfx-effects.js (`_fireCue`). online.js
+  already wraps fire() so guests replay cues; cue params (fx/anchor/scale/
+  tint/durMs) were added to the relay whitelist. Fog-gates on tx/ty like
+  every vfx3d relay.
+- `fx` is either a CUE PRIMITIVE id (30 of them, `_CUE_LIB` /
+  `_CUE_PRIMITIVES` in three-vfx-effects.js: explosion, muzzle_flash,
+  fire_burst, flame_jet, speed_lines, light_rays, holy_pillar, portal,
+  lightning_strike, energy_beam, ice_shards, poison_cloud, void_burst, …)
+  or `bank:<effectId>` to replay ANY of the ~600 authored EFFECTS recipes.
+  All primitives take scale/tint/durMs.
+- Beat markers: real cast times land in `window._EW_LAST_CAST_BEATS`
+  (written by `_stageSpellCast`, refined by `executeSpellAnimation` /
+  `_stageRetimeBurst`); pre-cast estimates via
+  `window._EW_PREDICT_CAST_BEATS(spellId)`. Timeline auto-grows its view
+  window (2s/3s/5s/10s) to keep IMPACT on screen; chips drag with snapping
+  (70ms) to the CAST/LAUNCH/IMPACT lines.
+
+### Auto spell descriptions
+- `describeSpell(def)` (data.js, house voice: "Deals MEDIUM magic damage to
+  a Single Enemy. Applies Burn.") covers all kinds + riders (statuses,
+  stages, ignoreArmor, drain, recoil, cooldown…). Editor desc row has
+  AUTO-DESC ON/OFF + ↻ GENERATE + live preview; `descAuto: true` on a def
+  regenerates desc after every field edit (`_slbSetField` hook). New spells
+  default descAuto:true. Tier words: <100 WEAK, <140 MEDIUM, <185 HEAVY,
+  else SEVERE (heals <80/<125/BIG).
+
+### Stuck "pending change groups" counter — FIXED
+- `EWSpellMods.prune()` (data.js) runs at boot: drops stored groups whose
+  values already ship in the loaded data.js (per-field for `modified`;
+  `added` that now ships converts drift → sparse modified patch; baked
+  deletions/learnsets/movepools dropped). Manual button: ✓ CLEAR APPLIED in
+  the Spell Library action bar. This is why the "47 pending change groups"
+  badge finally clears after an export gets baked.
+- data.js `Object.assign(window,…)` export list now also carries
+  SPELL_BY_ID, RACE_ABILITY_BY_ID, STATUS_DEFS (headless tooling parity).

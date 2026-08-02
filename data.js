@@ -12582,6 +12582,7 @@ Object.assign(window, {
   AVAILABLE_ZODIACS, ZODIAC_ICONS, JOB_MODIFIERS, CLASS_TEMPLATES,
   JOB_PASSIVES, CLASS_PASSIVES, getJobPassive,
   DEFAULT_BUILDS, ITEM_RULES, SPELL_LIBRARY, SPELL_SLOT_MAX,
+  SPELL_BY_ID, RACE_ABILITY_BY_ID, STATUS_DEFS,
   getSpellSlotCost, getSpellIdsSlotCost, trimSpellIdsToSlotBudget,
   CLASS_SPELL_LEARN_ORDER, RACE_ABILITIES, CAMPAIGN_REGION_THEMES,
   LEVEL_CAP, EW_SCALE, EW_L1_FRAC, LEVEL_SCALE_EXP, levelScale,
@@ -12597,6 +12598,171 @@ Object.assign(window, {
   ACCT_WIPEOUT_MULT, ACCT_STARTING_GOLD, ACCT_FREE_TOKENS, ACCT_MATCH_GOLD_CAP,
   ACCT_STARTER_UNITS, ACCT_PVP_MODES, isUnitUnlocked, computeAccountMatchGold,
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AUTO SPELL DESCRIPTIONS — describeSpell(def) (2026-08-02)
+
+   Generates the house-voice tooltip text ("Deals MEDIUM magic damage to a
+   Single Enemy. Applies Burn.") straight from a spell def, so the Spell
+   Library editor can keep `desc` accurate automatically instead of the
+   owner re-typing it after every stat tweak. Deterministic and data-driven:
+   same def in → same sentence out. The editor exposes it via the AUTO-DESC
+   toggle (def.descAuto !== false → desc regenerates on every field edit).
+   ═══════════════════════════════════════════════════════════════════════ */
+function _dscDmgWord(n) {
+    // House damage scale: WEAK 80 · MEDIUM 120 · HEAVY 160 · SEVERE 210
+    if (n == null) return null;
+    if (n < 100) return 'WEAK';
+    if (n < 140) return 'MEDIUM';
+    if (n < 185) return 'HEAVY';
+    return 'SEVERE';
+}
+function _dscHealWord(n) {
+    // House heal scale: WEAK 60 · MEDIUM 100 · BIG 150
+    if (n == null) return null;
+    if (n < 80) return 'a WEAK amount';
+    if (n < 125) return 'a MEDIUM amount';
+    return 'a BIG amount';
+}
+function _dscStatusLabel(sid) {
+    try { if (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[sid] && STATUS_DEFS[sid].label) return STATUS_DEFS[sid].label; } catch (e) {}
+    return String(sid || '').replace(/^\w/, c => c.toUpperCase());
+}
+function _dscJoin(list) {
+    if (list.length <= 1) return list.join('');
+    return list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1];
+}
+const _DSC_STAT_NAMES = { atk: 'ATK', def: 'DEF', mdef: 'MDEF', int: 'INT', spd: 'SPD', mov: 'MOV', awr: 'AWR', rng: 'RNG', hp: 'HP', mp: 'MP' };
+function _dscStages(boost, verbUp, verbDown) {
+    const ups = [], downs = [];
+    Object.keys(boost || {}).forEach(k => {
+        const v = boost[k];
+        if (!v) return;
+        const name = _DSC_STAT_NAMES[k] || k.toUpperCase();
+        const amt = Math.abs(v);
+        (v > 0 ? ups : downs).push(`${name} by ${amt} stage${amt === 1 ? '' : 's'}`);
+    });
+    const parts = [];
+    if (ups.length) parts.push(`${verbUp} ${_dscJoin(ups)}.`);
+    if (downs.length) parts.push(`${verbDown} ${_dscJoin(downs)}.`);
+    return parts;
+}
+
+function describeSpell(def) {
+    if (!def || typeof def !== 'object') return '';
+    const d = def;
+    const kind = d.kind || 'damage';
+    const dmgType = d.damageType === 'physical' ? 'physical' : 'magic';
+    const S = [];               // sentences, joined at the end
+    const hits = Array.isArray(d.hitDamages) ? d.hitDamages : null;
+    const totalDmg = hits ? hits.reduce((a, b) => a + (b || 0), 0) : d.dmg;
+    const tier = _dscDmgWord(totalDmg);
+    const radius = d.aoeRadius != null ? d.aoeRadius : d.crossRadius;
+
+    // ── target phrase for offensive area kinds ──
+    const aoeTarget = kind === 'cross' ? 'All Enemies in an X-shaped AOE'
+        : (kind === 'line' || kind === 'linePush' || kind === 'splitBeam') ? 'All Enemies in a line'
+        : 'All Enemies in an AOE';
+
+    // ── main clause per kind ──
+    const dmgClause = tgt => `Deals ${tier || 'MEDIUM'} ${dmgType} damage to ${tgt}.`;
+    switch (kind) {
+        case 'damage':      S.push(dmgClause('a Single Enemy')); break;
+        case 'multiHit':    S.push(`Deals ${tier || 'MEDIUM'} ${dmgType} damage to a Single Enemy across ${hits ? hits.length : 2} hits.`); break;
+        case 'ricochet':    S.push(`Deals ${tier || 'WEAK'} ${dmgType} damage to a Single Enemy, then bounces to nearby enemies.`); break;
+        case 'lifeDrain':   S.push(dmgClause('a Single Enemy')); break;
+        case 'aoe': case 'barrage': S.push(dmgClause(aoeTarget)); break;
+        case 'cross':       S.push(dmgClause(aoeTarget)); break;
+        case 'line':        S.push(dmgClause(aoeTarget)); break;
+        case 'splitBeam':   S.push(`Fires a beam that splits apart. ${dmgClause(aoeTarget)}`); break;
+        case 'linePush':    S.push(`${dmgClause(aoeTarget)} Pushes them back.`); break;
+        case 'dash':        S.push(`Dashes through the battlefield${d.dashDamage != null ? `, dealing ${_dscDmgWord(d.dashDamage) || 'MEDIUM'} ${dmgType} damage to enemies along the path` : ''}.`); break;
+        case 'leapStrike':  S.push(`Leaps to a Single Enemy, dealing ${tier || 'MEDIUM'} ${dmgType} damage.`); break;
+        case 'delayed':     S.push(`Marks the target tile — the strike lands after ${d.delayTurns || 1} round${(d.delayTurns || 1) === 1 ? '' : 's'}, dealing ${tier || 'MEDIUM'} ${dmgType} damage${radius ? ' in an AOE' : ''}.`); break;
+        case 'bomb':        S.push(`Places a bomb. Detonate it to deal ${tier || 'MEDIUM'} ${dmgType} damage in an AOE.`); break;
+        case 'pull':        S.push(`${tier ? dmgClause('a Single Enemy') + ' ' : ''}Pulls the target toward the caster.`.trim()); break;
+        case 'aoePull':     S.push(`${tier ? dmgClause(aoeTarget) + ' ' : ''}Drags everything caught toward the center.`.trim()); break;
+        case 'rallyPull':   S.push('Pulls allies to the caster\'s side.'); break;
+        case 'swap':        S.push(`${tier ? dmgClause('a Single Enemy') + ' ' : ''}Swaps positions with the target.`.trim()); break;
+        case 'displacement':S.push(`${tier ? dmgClause('a Single Enemy') + ' ' : ''}Shoves the target sideways.`.trim()); break;
+        case 'teleport':    S.push(d.teleportAnyUnit ? 'Warp any unit — self, ally, or enemy — to any unoccupied tile within range.' : 'Teleports the caster to an unoccupied tile within range.'); break;
+        case 'warpRune':    S.push('Places a warp rune. Step on it to travel between linked runes.'); break;
+        case 'escape':      S.push('Breaks away — the caster escapes to a safer tile.'); break;
+        case 'skyThrow':    S.push(`Grabs the target, carries it skyward and hurls it${d.throwRange ? ` up to ${d.throwRange} tiles` : ''}. Deals ${tier || 'MEDIUM'} ${dmgType} damage${d.collisionBonus ? ', more if they crash into another unit' : ''}.`); break;
+        case 'skyDrop':     S.push(`Lifts the target high and drops it. Deals ${tier || 'MEDIUM'} ${dmgType} damage plus fall damage.`); break;
+        case 'skySlam':     S.push(`Dives from the sky onto ${radius ? aoeTarget : 'the target'}, dealing ${tier || 'MEDIUM'} ${dmgType} damage.`); break;
+        case 'heal':        S.push(`Restores ${_dscHealWord(d.heal) || 'a MEDIUM amount'} of HP to a Single Ally.`); break;
+        case 'healAll':     S.push(`Restores ${_dscHealWord(d.healAmt != null ? d.healAmt : d.heal) || 'a MEDIUM amount'} of HP to All Allies.`); break;
+        case 'selfHeal':    S.push(d.selfHealPct ? `The caster restores ${Math.round(d.selfHealPct * 100)}% of max HP.` : `The caster restores ${_dscHealWord(d.heal) || 'a MEDIUM amount'} of HP.`); break;
+        case 'zoneHeal':    S.push(`Creates a healing zone${d.healPerTurn ? ` that restores ${d.healPerTurn} HP to allies inside each turn` : ''}${d.zoneDuration ? ` for ${d.zoneDuration} rounds` : ''}.`); break;
+        case 'seedHeal':    S.push('Plants a seed that heals nearby allies each turn.'); break;
+        case 'seedPoison':  S.push('Plants a seed that poisons nearby enemies each turn.'); break;
+        case 'leechSeed':   S.push('Plants a seed on a Single Enemy: drains HP each turn and heals the caster.'); break;
+        case 'revive':      S.push(`Revives a fallen ally${d.revivePct ? ` at ${Math.round(d.revivePct * 100)}% HP` : ''}.${d.oneRevivePerUnitPerMatch ? ' Works once per unit per match.' : ''}`); break;
+        case 'cleanse':     S.push('Cleanses debuffs from the target.'); break;
+        case 'shield':      S.push(`Shields a Single Ally${d.shield ? ` for ${d.shield} HP` : ''}.`); break;
+        case 'aoeShield':   S.push(`Shields All Allies in an AOE${d.shieldHp ? ` for ${d.shieldHp} HP` : ''}.`); break;
+        case 'buff':        S.push(`Empowers ${((d.range || 0) === 0) ? 'the caster' : (d.teamStatusEffects ? 'All Allies' : 'a Single Ally')}.`); break;
+        case 'warCry':      S.push('Empowers All Allies nearby.'); break;
+        case 'encore':      S.push('Grant a friendly unit that already acted this turn 1 bonus AP, letting them take one more action.'); break;
+        case 'guard':       S.push('The caster braces, taking reduced damage until their next turn.'); break;
+        case 'debuff':      S.push('Weakens a Single Enemy.'); break;
+        case 'zoneDebuff':  S.push(`Creates a hostile zone that weakens enemies inside${d.zoneDuration ? ` for ${d.zoneDuration} rounds` : ''}.`); break;
+        case 'scan':        S.push(`Reveals hidden enemies${d.scanRadius ? ` within ${d.scanRadius} tiles` : ' in the area'}.`); break;
+        case 'remoteView':  S.push('Reveals a distant area of the map, granting vision for several turns.'); break;
+        case 'summonWeather': S.push(`Summons ${d.weatherType || 'wild'} weather over the battlefield.`); break;
+        case 'terrainCreate': S.push(`Reshapes the battlefield — creates ${d.terrainType || 'new terrain'}${d.tileCount ? ` across ${d.tileCount} tiles` : ''}${d.orientable ? ' (pick the orientation)' : ''}.`); break;
+        case 'deployObject': S.push('Deploys an object on an empty tile.'); break;
+        case 'deployTurret': S.push(`Deploys a turret${d.turretDmg ? ` that fires for ${d.turretDmg} damage` : ''}${d.maxActivePerCaster ? ` (max ${d.maxActivePerCaster} active)` : ''}. Enemies can destroy it.`); break;
+        case 'deployPair':  S.push('Deploys a linked pair of objects.'); break;
+        case 'placeTrap':   S.push(`Places a hidden ${d.trapType || ''} trap that triggers when an enemy steps on it.`.replace('  ', ' ')); break;
+        case 'placeMirror': S.push('Places a mirror that redirects beams.'); break;
+        case 'placeBlock':  S.push('Places a solid block on the battlefield.'); break;
+        case 'buildStructure': S.push('Builds a structure on the battlefield.'); break;
+        case 'trickRoom':   S.push(`Inverts the turn order — slowest act first${d.trickRoomDuration ? ` for ${d.trickRoomDuration} rounds` : ''}.`); break;
+        case 'manaRestoreAll': S.push('Restores MP to All Allies.'); break;
+        case 'raiseDead':   S.push('Raises the fallen to fight again.'); break;
+        case 'tuneFrequency': S.push('Retunes deployed prisms to a new frequency.'); break;
+        case 'pulseLattice': S.push('Fires the prism lattice — every beam segment strikes enemies it crosses.'); break;
+        case 'utility':     S.push('Utility effect.'); break;
+        default:
+            S.push(tier ? dmgClause(radius ? aoeTarget : 'a Single Enemy')
+                : (d.type === 'heal' ? 'Restores HP.' : d.type === 'buff' ? 'Empowers allies.' : d.type === 'debuff' ? 'Weakens enemies.' : 'Special effect.'));
+            break;
+    }
+
+    // ── riders, in house order ──
+    if (d.ignoreArmor) S.push('Ignores DEF.');
+    if (d.guaranteedCrit) S.push('Always crits.');
+    if (Array.isArray(d.statusEffects) && d.statusEffects.length)
+        S.push(`Applies ${_dscJoin(d.statusEffects.map(e => _dscStatusLabel(e.id)))}.`);
+    if (Array.isArray(d.allyStatusEffects) && d.allyStatusEffects.length)
+        S.push(`Applies ${_dscJoin(d.allyStatusEffects.map(e => _dscStatusLabel(e.id)))} to allies.`);
+    if (Array.isArray(d.teamStatusEffects) && d.teamStatusEffects.length)
+        S.push(`Applies ${_dscJoin(d.teamStatusEffects.map(e => _dscStatusLabel(e.id)))} to the whole team.`);
+    if (d.statStageBoost) {
+        const isHostile = d.type === 'debuff' || (d.type === 'damage' && Object.values(d.statStageBoost).some(v => v < 0));
+        S.push(..._dscStages(d.statStageBoost, isHostile ? 'Raises the target\'s' : 'Raises', isHostile ? 'Lowers' : 'Lowers'));
+    }
+    if (d.bonusVsStatus && d.bonusVsStatus.status) S.push(`Deals bonus damage to targets with ${_dscStatusLabel(d.bonusVsStatus.status)}.`);
+    if (d.bonusVsDebuffed) S.push('Deals bonus damage to debuffed targets.');
+    if (d.executePct) S.push(`Executes: bonus damage below ${Math.round(d.executePct * 100)}% HP.`);
+    if (d.drainPct) S.push('Heals the caster for part of the damage dealt.');
+    if (d.groundsFlyers) S.push('Knocks flying targets out of the sky.');
+    if (d.pushDistance) S.push(`Knocks the target back ${d.pushDistance} tile${d.pushDistance === 1 ? '' : 's'}.`);
+    if (d.pullDistance && kind !== 'pull' && kind !== 'aoePull') S.push(`Pulls the target ${d.pullDistance} tile${d.pullDistance === 1 ? '' : 's'} closer.`);
+    if (d.leaveTerrain) S.push(`Leaves ${d.leaveTerrain} behind.`);
+    if (d.chargeToTarget) S.push('The caster charges into melee first.');
+    const recoil = d.selfDamagePct || d.recoilPct;
+    if (recoil) S.push(`Recoil: the caster loses ${Math.round(recoil * 100)}% of max HP.`);
+    if (d.selfStun) S.push('The caster is stunned afterward.');
+    if (d.friendlyFire) S.push('Can catch your own team.');
+    if (d.requiresFlight) S.push('Caster must be flying.');
+    if (d.ignoresLineOfSight) S.push('Fires through cover.');
+    if (d.cooldownRounds) S.push(`Cooldown: ${d.cooldownRounds} round${d.cooldownRounds === 1 ? '' : 's'}.`);
+    return S.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+}
+window.describeSpell = describeSpell;
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SPELL LIBRARY DEV TOOL — override patch layer (2026-07-26)
@@ -12931,9 +13097,81 @@ window.EWSpellMods = (function () {
 
     function pristineState() { return pristine; }
 
+    /* ── PRUNE — auto-clear change groups already baked into data.js ─────
+       The overlay lives in localStorage; when an exported change set gets
+       made permanent in data.js the stored diffs used to stay behind, so
+       the UI reported them as "pending" forever (the stuck counter). This
+       compares every stored group against the PRISTINE tables of the
+       data.js that just loaded and drops whatever the code now ships:
+       - modified: per-field — a stored value that now equals the shipped
+         value is baked; a group with no live fields left is dropped.
+       - added: the id now ships in data.js → drift between the stored def
+         and the shipped def converts to a sparse `modified` patch (post-
+         export tweaks survive), then the add is dropped.
+       - deleted: the id no longer ships → baked.
+       - learnsets / raceAbilities: full-array equality vs shipped order.
+       Runs at boot before apply() and from the Spell Library's CLEAR
+       APPLIED button. Returns { groups, fields } dropped. */
+    function prune() {
+        capturePristine();
+        let groups = 0, fields = 0;
+        const eq = (a, b) => JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
+        Object.keys(doc.modified).forEach(id => {
+            const pris = pristine.defClones[id];
+            if (!pris) return;                    // not shipped (mods on an added spell) — keep
+            const mod = doc.modified[id];
+            Object.keys(mod).forEach(f => {
+                const prisVal = Object.prototype.hasOwnProperty.call(pris, f) ? pris[f] : undefined;
+                const baked = (mod[f] === null) ? prisVal === undefined : eq(mod[f], prisVal);
+                if (baked) { delete mod[f]; fields++; }
+            });
+            // manaCostOverride rides cost edits — alone and matching the
+            // shipped price, it's baked too
+            if (Object.keys(mod).length === 1 && mod.manaCostOverride !== undefined
+                && eq(mod.manaCostOverride, pris.manaCostOverride !== undefined ? pris.manaCostOverride : pris.cost)) {
+                delete mod.manaCostOverride; fields++;
+            }
+            if (!Object.keys(mod).length) { delete doc.modified[id]; groups++; }
+        });
+        Object.keys(doc.added).forEach(id => {
+            const pris = pristine.defClones[id];
+            if (!pris) return;                    // still overlay-only — keep
+            const stored = doc.added[id];
+            const skip = { _home: 1, id: 1, _race: 1, _isRaceAbility: 1, simTargeting: 1, simPhase: 1, simFallback: 1 };
+            const patch = {};
+            Object.keys(stored).forEach(f => {
+                if (skip[f]) return;
+                const prisVal = Object.prototype.hasOwnProperty.call(pris, f) ? pris[f] : undefined;
+                if (f === 'manaCostOverride' && eq(stored[f], pris.manaCostOverride !== undefined ? pris.manaCostOverride : pris.cost)) return;
+                if (!eq(stored[f], prisVal)) { try { patch[f] = JSON.parse(JSON.stringify(stored[f])); } catch (e) {} }
+            });
+            delete doc.added[id];
+            groups++;
+            if (Object.keys(patch).length) doc.modified[id] = Object.assign(patch, doc.modified[id] || {});
+        });
+        doc.deleted = doc.deleted.filter(id => {
+            if (!pristine.defClones[id] && !pristine.byId[id] && !pristine.raceById[id]) { groups++; return false; }
+            return true;
+        });
+        Object.keys(doc.learnsets).forEach(j => {
+            if (eq(doc.learnsets[j], pristine.learn[j] || [])) { delete doc.learnsets[j]; groups++; }
+        });
+        Object.keys(doc.raceAbilities).forEach(r => {
+            const prisIds = (pristine.raceRefs[r] || []).map(a => a.id);
+            if (eq(doc.raceAbilities[r], prisIds)) { delete doc.raceAbilities[r]; groups++; }
+        });
+        if (groups || fields) save();
+        return { groups, fields };
+    }
+
     try {
         load();
+        capturePristine();
+        const _pruned = prune();
         apply();
+        if (_pruned.groups || _pruned.fields) {
+            console.log(`[SpellMods] pruned ${_pruned.groups} change group(s) / ${_pruned.fields} field(s) already baked into data.js`);
+        }
         const c = counts();
         if (c.modified || c.added || c.deleted || c.learnsets || c.raceAbilities) {
             console.log(`[SpellMods] ${doc.enabled ? 'Applied' : 'Loaded (DISABLED)'} — ${c.modified} modified, ${c.added} added, ${c.deleted} deleted, ${c.learnsets} learnsets, ${c.raceAbilities} race movepools`);
@@ -12945,7 +13183,7 @@ window.EWSpellMods = (function () {
 
     return {
         get doc() { return doc; },
-        load, save, apply, reset,
+        load, save, apply, reset, prune,
         counts, summary,
         export: exportDoc,
         import: importDoc,

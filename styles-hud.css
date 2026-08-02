@@ -4846,3 +4846,108 @@
     .slb-list { width: 240px; }
     .slb-field-grid { grid-template-columns: 1fr; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════ */
+/* ══ SPELL LAB TIMELINE — AE-style cue editor (2026-08-02) ══ */
+/* ══════════════════════════════════════════════════════════════════════ */
+/* Bottom-docked bar while the Spell Lab is open. Two draggable cue tracks
+   (SFX / VFX) over a time ruler with live CAST/LAUNCH/IMPACT beat markers. */
+
+.slb-tl {
+    position: fixed; left: 10px; right: 320px; bottom: 10px; z-index: 5200;
+    background: rgba(10,8,14,0.94); border: 1px solid rgba(110,170,255,0.35);
+    border-radius: 8px; padding: 8px 12px 10px;
+    font: 11px 'DotGothic16', monospace; color: #cfc8e0;
+    box-shadow: 0 10px 44px rgba(0,0,0,0.65);
+    display: flex; flex-direction: column; gap: 6px;
+}
+.slb-tl:empty { display: none; }
+.slb-tl-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.slb-tl-title { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.14em; color: #9ad0ff; }
+.slb-tl-spell { color: #ffd86a; font-size: 10px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slb-tl-beatinfo { font-size: 9px; color: #6d84a8; }
+.slb-tl-add {
+    background: rgba(0,0,0,0.5); border: 1px solid rgba(110,170,255,0.3); color: #e6e9f2;
+    font: 10px 'DotGothic16', monospace; padding: 3px 6px; border-radius: 3px; max-width: 170px;
+}
+.slb-tl-bankin { width: 190px; }
+.slb-tl-btn {
+    background: rgba(20,18,30,0.8); border: 1px solid rgba(160,140,200,0.35); color: #cfc8e0;
+    font: 10px 'DotGothic16', monospace; padding: 3px 8px; border-radius: 3px; cursor: pointer;
+}
+.slb-tl-btn:hover { border-color: #9ad0ff; color: #fff; }
+.slb-tl-winlabel { font-size: 9px; letter-spacing: 0.12em; color: #6d84a8; margin-left: auto; }
+.slb-tl-win {
+    background: rgba(20,18,30,0.8); border: 1px solid rgba(160,140,200,0.3); color: #8d84a8;
+    font: 9px 'DotGothic16', monospace; padding: 3px 7px; border-radius: 3px; cursor: pointer;
+}
+.slb-tl-win.on { color: #ffd86a; border-color: rgba(255,216,106,0.55); background: rgba(40,34,14,0.6); }
+
+.slb-tl-graph { position: relative; }
+.slb-tl-markers { position: absolute; left: 56px; right: 8px; top: 0; bottom: 0; pointer-events: none; z-index: 3; }
+.slb-tl-marker { position: absolute; top: 0; bottom: 0; transform: translateX(-0.5px); }
+.slb-tl-marker i { position: absolute; top: 0; bottom: 0; left: 0; width: 1px; }
+.slb-tl-marker b { position: absolute; top: -1px; left: 3px; font-size: 8px; font-weight: 400; letter-spacing: 0.1em; white-space: nowrap; }
+.slb-tl-marker.m-cast   i { background: rgba(160,160,180,0.55); }
+.slb-tl-marker.m-cast   b { color: #a0a0b4; }
+.slb-tl-marker.m-launch i { background: rgba(255,216,106,0.75); }
+.slb-tl-marker.m-launch b { color: #ffd86a; }
+.slb-tl-marker.m-impact i { background: rgba(255,110,110,0.8); }
+.slb-tl-marker.m-impact b { color: #ff8a95; }
+.slb-tl-playhead {
+    position: absolute; top: 0; bottom: 0; left: 0; width: 2px;
+    background: linear-gradient(180deg, #9ad0ff, rgba(120,200,255,0.2));
+    opacity: 0; box-shadow: 0 0 8px rgba(120,200,255,0.8);
+}
+.slb-tl-ruler {
+    position: relative; height: 20px; margin-left: 56px; margin-right: 8px;
+    border-bottom: 1px solid rgba(110,170,255,0.25);
+}
+.slb-tl-tick { position: absolute; bottom: 0; width: 1px; height: 5px; background: rgba(150,150,180,0.35); }
+.slb-tl-tick.whole { height: 9px; background: rgba(150,150,180,0.6); }
+.slb-tl-tick span { position: absolute; bottom: 10px; left: 2px; font-size: 8px; color: #6d84a8; }
+.slb-tl-track { display: flex; align-items: stretch; height: 34px; }
+.slb-tl-track + .slb-tl-track { border-top: 1px dashed rgba(110,170,255,0.14); }
+.slb-tl-lanelabel { width: 56px; flex-shrink: 0; font-size: 9px; letter-spacing: 0.16em; color: #6d84a8; display: flex; align-items: center; }
+.slb-tl-lane { position: relative; flex: 1; margin-right: 8px; background: repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 40px); }
+.slb-tl-cue {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    background: linear-gradient(180deg, rgba(40,50,90,0.95), rgba(22,26,48,0.95));
+    border: 1px solid rgba(110,170,255,0.5); color: #dfe8ff;
+    font: 9px 'DotGothic16', monospace; padding: 4px 8px; border-radius: 10px;
+    cursor: grab; user-select: none; touch-action: none; white-space: nowrap; z-index: 4;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+.slb-tl-cue:active { cursor: grabbing; }
+.slb-tl-cue.sel { border-color: #ffd86a; color: #ffe9a8; box-shadow: 0 0 10px rgba(255,216,106,0.35); }
+.slb-tl-cue-ic { margin-right: 3px; }
+.slb-tl-edit {
+    display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+    border-top: 1px dashed rgba(110,170,255,0.25); padding-top: 6px;
+}
+.slb-tl-edit-name { color: #ffd86a; font-size: 10px; margin-right: 4px; }
+.slb-tl-edit label { font-size: 8px; letter-spacing: 0.1em; color: #6d84a8; }
+.slb-tl-edit select, .slb-tl-edit input {
+    background: rgba(0,0,0,0.5); border: 1px solid rgba(110,170,255,0.3); color: #e6e9f2;
+    font: 10px 'DotGothic16', monospace; padding: 3px 5px; border-radius: 3px;
+    width: 86px;
+}
+.slb-tl-edit input[type="number"] { width: 64px; }
+.slb-tl-edit input[type="color"] { width: 34px; padding: 1px; height: 22px; }
+.slb-tl-edit .slb-tl-fxin { width: 150px; }
+.slb-tl-ms { font-size: 8px; color: #6d84a8; }
+.slb-tl-x, .slb-tl-del {
+    background: none; border: 1px solid rgba(220,80,90,0.5); color: #ff8a95;
+    border-radius: 3px; cursor: pointer; font-size: 10px; padding: 2px 6px;
+}
+.slb-tl-hint { font-size: 9px; color: #6d6584; padding-top: 2px; }
+
+/* AUTO-DESC controls under the desc field in the editor. The desc row is a
+   .slb-field-wide flex row — the tools take a full-width wrap line. */
+.slb-field-wide { flex-wrap: wrap; }
+.slb-desc-tools { flex-basis: 100%; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+.slb-desc-preview { font-size: 9px; color: #8fd7c8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+
+@media (max-width: 1100px) {
+    .slb-tl { right: 10px; }
+}

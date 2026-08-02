@@ -2001,7 +2001,11 @@
                          'toX', 'toY', 'fromZ', 'toZ', 'flyMs', 'headGlow',
                          'staggerMs', 'includePrimary',
                          /* staging (cinematic grammar) beat params */
-                         'weight', 'archetype', 'dimMs', 'holdMs'].forEach(function(k) {
+                         'weight', 'archetype', 'dimMs', 'holdMs',
+                         /* timeline cue params (Spell Lab 'cue' intent) —
+                            without these the guest gets a cue with no fx
+                            name and silently drops it */
+                         'fx', 'anchor', 'scale', 'tint', 'durMs'].forEach(function(k) {
                             if (params[k] !== undefined) safeParams[k] = params[k];
                         });
                         if (params.hitTiles) {

@@ -8454,6 +8454,9 @@
             simTargeting: { t: 'text', h: 'SIMUL mode targeting (auto-stamped from kind — rarely hand-set).' },
             simPhase: { t: 'text', h: 'SIMUL mode phase (auto-stamped from kind).' },
             simFallback: { t: 'text', h: 'SIMUL mode whiff behavior (auto-stamped from kind).' },
+            descAuto: { t: 'bool', h: 'AUTO-DESC: regenerate `desc` from the spell data after every field edit (describeSpell). Toggle from the desc row.' },
+            sfxCues: { t: 'json', h: 'TIMELINE sound cues (edit visually in the Spell Lab timeline): [{sfx, at:"cast"|"launch"|"impact", offsetMs, volume}]. Replaces the default launch sound.' },
+            vfxCues: { t: 'json', h: 'TIMELINE visual cues (edit visually in the Spell Lab timeline): [{fx, at, offsetMs, anchor:"target"|"caster"|"midpoint", scale, tint, durMs}]. fx = cue primitive or "bank:<effectId>".' },
         };
 
         function _slbEsc(s) {
@@ -8593,6 +8596,7 @@
                     <button class="slb-btn" onclick="window._slbCopySummary()">⧉ COPY SUMMARY</button>
                     <button class="slb-btn" onclick="window._slbImportClick()">⇪ IMPORT</button>
                     <input type="file" id="slbImportFile" accept="application/json,.json" style="display:none" onchange="window._slbImportFile(this)">
+                    <button class="slb-btn" title="drop pending change groups whose values are already live in this build's data.js (they were baked in)" onclick="window._slbPruneApplied()">✓ CLEAR APPLIED</button>
                     <button class="slb-btn slb-btn-danger" onclick="window._slbResetAll()">⟲ DISCARD ALL EDITS</button>
                     <div class="slb-tabs-spacer"></div>
                     <button class="slb-btn slb-btn-lab" onclick="window._slbEnterLab()">▶ OPEN SPELL LAB</button>
@@ -8686,6 +8690,19 @@
             M.save();
             M.apply();
             try { if (window.ThreeVFXEffects && window.ThreeVFXEffects.clearStageInfoCache) window.ThreeVFXEffects.clearStageInfoCache(id); } catch (e) {}
+            // AUTO-DESC: when the spell opts in (descAuto), every data edit
+            // regenerates `desc` so the tooltip never drifts from the truth.
+            // Guarded on field !== desc/descAuto so the nested write can't
+            // recurse.
+            if (field !== 'desc' && field !== 'descAuto') {
+                try {
+                    const live = SPELL_BY_ID[id];
+                    if (live && live.descAuto && typeof describeSpell === 'function') {
+                        const gen = describeSpell(live);
+                        if (gen && gen !== live.desc) window._slbSetField(id, 'desc', gen, 'text');
+                    }
+                } catch (e) {}
+            }
             if (field === 'name') {
                 const dupes = _slbAllRows().filter(r => !r.deleted && String(r.def.name) === String(value) && r.id !== id);
                 if (value && dupes.length) _slbToast(`⚠ name "${value}" also used by ${dupes.map(r => r.id).join(', ')} — casts resolve by name, keep names unique!`, true);
@@ -8743,6 +8760,7 @@
                 dmg: 100, range: 3, apCost: 2, damageType: 'magic',
                 tier: 'I', school: 'Black Mage', classRestriction: 'Black Mage',
                 desc: 'Deals MEDIUM magic damage to a Single Enemy.',
+                descAuto: true,
                 _home: { lib: true },
             };
             M.save(); M.apply();
@@ -8942,10 +8960,25 @@
                 const prisVal = pris && Object.prototype.hasOwnProperty.call(pris, f) ? pris[f] : undefined;
                 const origHtml = isMod ? `<span class="slb-orig" title="original value — click to revert" onclick="window._slbRevertField('${_slbEsc(id)}','${_slbEsc(f)}')">↺ ${prisVal === undefined ? '(absent)' : _slbEsc(JSON.stringify(prisVal))}</span>` : '';
                 const wide = (spec && spec.t === 'status') || f === 'desc';
+                // desc row grows AUTO-DESC controls: toggle continuous sync,
+                // one-shot generate, and a live preview of the generated text
+                // while sync is off.
+                let descTools = '';
+                if (f === 'desc' && typeof describeSpell === 'function') {
+                    const auto = !!d.descAuto;
+                    let gen = '';
+                    try { gen = describeSpell(d) || ''; } catch (e) {}
+                    descTools = `<div class="slb-desc-tools">
+                        <button class="slb-tier${auto ? ' on' : ''}" title="regenerate desc from the spell data after every edit" onclick="window._slbToggleDescAuto('${_slbEsc(id)}')">AUTO-DESC ${auto ? 'ON' : 'OFF'}</button>
+                        <button class="slb-tier" title="fill desc from the generator once" onclick="window._slbGenDesc('${_slbEsc(id)}')">↻ GENERATE</button>
+                        ${!auto && gen && gen !== d.desc ? `<span class="slb-desc-preview" title="${_slbEsc(gen)}">auto: ${_slbEsc(gen.length > 110 ? gen.slice(0, 110) + '…' : gen)}</span>` : ''}
+                    </div>`;
+                }
                 return `<div class="slb-field${isMod ? ' modded' : ''}${wide ? ' slb-field-wide' : ''}" title="${_slbEsc(spec ? spec.h : '')}">
                     <label>${_slbEsc(f)}</label>
                     ${_slbFieldInput(id, f, val, spec)}
                     ${origHtml}
+                    ${descTools}
                 </div>`;
             };
             const jobsChips = row.jobs.map(j => `<span class="slb-chip">${_slbEsc(j)} <a onclick="window._slbUnassign('${_slbEsc(id)}','job','${_slbEsc(j)}')" title="remove from ${_slbEsc(j)} learnset">✕</a></span>`).join('')
@@ -9243,6 +9276,44 @@
             window._renderSpellLibrary();
         };
 
+        /* Drop stored change groups that are already baked into this build's
+           data.js (runs automatically at boot too — see EWSpellMods.prune).
+           This is what un-sticks the "N pending change groups" counter after
+           an export has been made permanent. */
+        window._slbPruneApplied = function() {
+            const M = _slbMods();
+            if (!M) return;
+            if (typeof M.prune !== 'function') { _slbToast('✗ prune unavailable — data.js out of date', true); return; }
+            const r = M.prune();
+            M.apply();
+            _slbToast((r.groups || r.fields)
+                ? `✓ cleared ${r.groups} baked change group(s) / ${r.fields} field(s) — they're already live in data.js`
+                : 'nothing to clear — no stored change matches data.js');
+            window._renderSpellLibrary();
+        };
+
+        /* ── AUTO-DESC controls (desc row in the editor) ─────────────────── */
+        window._slbToggleDescAuto = function(id) {
+            const d = SPELL_BY_ID[id];
+            const on = !(d && d.descAuto);
+            // OFF stores '' (field removed) instead of false so untouched
+            // spells don't accumulate a descAuto:false diff entry.
+            window._slbSetField(id, 'descAuto', on ? true : '', on ? 'bool' : 'text');
+            if (on) window._slbGenDesc(id);
+        };
+        window._slbGenDesc = function(id) {
+            const d = SPELL_BY_ID[id];
+            if (!d || typeof describeSpell !== 'function') return;
+            let gen = '';
+            try { gen = describeSpell(d) || ''; } catch (e) {}
+            if (gen && gen !== d.desc) {
+                window._slbSetField(id, 'desc', gen, 'text');
+                _slbToast('↻ desc regenerated from spell data');
+            } else if (gen) {
+                _slbToast('desc already matches the generator');
+            }
+        };
+
         let _slbToastTimer = null;
         function _slbToast(msg, isErr) {
             let t = document.getElementById('slbToast');
@@ -9532,6 +9603,10 @@
                 _slbLabLog('✗ cast rejected (range/LOS/target rules for kind:' + sp.kind + ') — try TARGET: GROUND or a shorter distance');
             } else {
                 _slbLabLog('✦ cast ' + (sp.name || cfg.spellId) + ' (' + delay + 'ms)');
+                // the cast just measured its real beats (window._EW_LAST_CAST_BEATS)
+                // — redraw the timeline markers and sweep the playhead
+                _slbTlRender();
+                _slbTlPlayhead();
                 setTimeout(() => window._spellLabTick(), delay + 250);
                 if (cfg.repeat) {
                     if (_slbLab.repeatTimer) clearTimeout(_slbLab.repeatTimer);
@@ -9567,7 +9642,7 @@
             cfg[key] = (key === 'targetGround' || key === 'immortal' || key === 'repeat') ? !!val : val;
             if (key === 'repeat' && !val && _slbLab.repeatTimer) { clearTimeout(_slbLab.repeatTimer); _slbLab.repeatTimer = null; }
             if (key === 'repeat' && val) window._slbLabCast();
-            if (key === 'spellId') window._slbLabRefreshSpell();
+            if (key === 'spellId') { _slbTl.sel = null; window._slbLabRefreshSpell(); }
             if (key === 'immortal') window._spellLabTick();
         };
 
@@ -9603,6 +9678,8 @@
             window._spellLabActive = false;
             const panel = document.getElementById('slbLabPanel');
             if (panel) panel.remove();
+            const tlPanel = document.getElementById('slbTlPanel');
+            if (tlPanel) tlPanel.remove();
             const p = (typeof backToMainMenu === 'function') ? backToMainMenu() : Promise.resolve();
             Promise.resolve(p).then(() => {
                 if (_slbLab.saved) {
@@ -9639,6 +9716,12 @@
             panel.id = 'slbLabPanel';
             panel.className = 'slb-lab';
             document.body.appendChild(panel);
+            let tl = document.getElementById('slbTlPanel');
+            if (tl) tl.remove();
+            tl = document.createElement('div');
+            tl.id = 'slbTlPanel';
+            tl.className = 'slb-tl';
+            document.body.appendChild(tl);
             _slbLabSyncPanel();
             _slbLabEnsureTick();
         }
@@ -9737,6 +9820,372 @@
                     </div>
                 </div>
                 <div class="slb-lab-log" id="slbLabLog">ready — CAST fires the real engine pipeline</div>`;
+            _slbTlRender();
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           SPELL LAB TIMELINE — After-Effects-style cue editor (2026-08-02)
+
+           Bottom-docked bar while the Lab is open. Two tracks (SFX / VFX)
+           over a time ruler; every cue is a draggable chip. Cues store as
+           `sfxCues` / `vfxCues` on the spell def (anchor + offset, so they
+           stay glued to the real CAST/LAUNCH/IMPACT beats no matter how the
+           camera pacing changes), ride the EWSpellMods diff layer, export
+           with the owner's edits, and play back through battle.js
+           _stageSpellCast — the same code path a live match uses.
+
+           Beat markers come from the LAST REAL CAST when available
+           (window._EW_LAST_CAST_BEATS, refined inside the engine) and from
+           window._EW_PREDICT_CAST_BEATS estimates before the first cast. */
+
+        const _SLB_TL_WINDOWS = [2000, 3000, 5000, 10000];
+        const _slbTl = { windowMs: 3000, sel: null, drag: null };
+        const _SLB_TL_CAT_ICON = { impact: '💥', fire: '🔥', magic: '✨', energy: '⚡', light: '🌟', nature: '🍃', motion: '💨', dark: '🕳', support: '💚' };
+
+        function _slbTlSpellId() { return _slbLab.cfg.spellId; }
+        function _slbTlDef() { return (typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[_slbTlSpellId()]) || null; }
+        function _slbTlCues(kind) {
+            const d = _slbTlDef();
+            const arr = d && d[kind === 'sfx' ? 'sfxCues' : 'vfxCues'];
+            return Array.isArray(arr) ? JSON.parse(JSON.stringify(arr)) : [];
+        }
+        function _slbTlWrite(kind, arr) {
+            window._slbSetField(_slbTlSpellId(), kind === 'sfx' ? 'sfxCues' : 'vfxCues',
+                arr.length ? JSON.stringify(arr) : '', 'json');
+        }
+        function _slbTlBeats() {
+            const id = _slbTlSpellId();
+            const last = window._EW_LAST_CAST_BEATS;
+            if (last && last.spellId === id && last.launchMs != null) {
+                return { launchMs: last.launchMs, impactMs: last.impactMs, measured: true };
+            }
+            const p = (typeof window._EW_PREDICT_CAST_BEATS === 'function')
+                ? window._EW_PREDICT_CAST_BEATS(id) : { launchMs: 1250, impactMs: 1610 };
+            return { launchMs: p.launchMs, impactMs: p.impactMs, measured: false };
+        }
+        function _slbTlAnchorT(at, beats) {
+            return at === 'launch' ? beats.launchMs : at === 'impact' ? beats.impactMs : 0;
+        }
+        function _slbTlResolve(cue, beats) {
+            return Math.max(0, _slbTlAnchorT(cue.at || 'cast', beats) + (cue.offsetMs || 0));
+        }
+        function _slbTlSfxKeys() {
+            try { return Object.keys(sfxLibrary).sort((a, b) => a.localeCompare(b)); } catch (e) { return []; }
+        }
+        function _slbTlCueLib() {
+            try { return window.ThreeVFXEffects.CUE_LIB || {}; } catch (e) { return {}; }
+        }
+        let _slbTlFxOptsCache = null;
+        function _slbTlFxDatalist() {
+            if (_slbTlFxOptsCache) return _slbTlFxOptsCache;
+            const lib = _slbTlCueLib();
+            let html = Object.keys(lib).map(k => `<option value="${_slbEsc(k)}">${_slbEsc(lib[k].label || k)}</option>`).join('');
+            try {
+                html += Object.keys(window.VFX3D_EFFECTS || {}).sort()
+                    .map(k => `<option value="bank:${_slbEsc(k)}">bank effect</option>`).join('');
+            } catch (e) {}
+            _slbTlFxOptsCache = html;
+            return html;
+        }
+        function _slbTlCueIcon(cue, kind) {
+            if (kind === 'sfx') return '♪';
+            if (String(cue.fx || '').indexOf('bank:') === 0) return '📦';
+            const meta = _slbTlCueLib()[cue.fx];
+            return (meta && _SLB_TL_CAT_ICON[meta.cat]) || '✨';
+        }
+        function _slbTlFmt(ms) {
+            return (ms / 1000).toFixed(ms % 1000 === 0 ? 0 : 2).replace(/\.?0+$/, '') + 's';
+        }
+
+        window._slbTlSetWindow = function(ms) { _slbTl.windowMs = Number(ms) || 3000; _slbTlRender(); };
+
+        function _slbTlRender() {
+            const panel = document.getElementById('slbTlPanel');
+            if (!panel) return;
+            const id = _slbTlSpellId();
+            const def = _slbTlDef();
+            if (!id || !def) { panel.innerHTML = ''; return; }
+            const beats = _slbTlBeats();
+            // auto-grow the view window so the impact beat is always on screen
+            while (_slbTl.windowMs < beats.impactMs + 400 && _slbTl.windowMs < 10000) {
+                const next = _SLB_TL_WINDOWS.find(w => w > _slbTl.windowMs);
+                if (!next) break;
+                _slbTl.windowMs = next;
+            }
+            const win = _slbTl.windowMs;
+            const pct = ms => Math.max(0, Math.min(99, ms / win * 100));
+            const sfx = _slbTlCues('sfx');
+            const vfx = _slbTlCues('vfx');
+            if (_slbTl.sel) {
+                const pool = _slbTl.sel.kind === 'sfx' ? sfx : vfx;
+                if (_slbTl.sel.idx >= pool.length) _slbTl.sel = null;
+            }
+
+            // ruler ticks every 500ms, labels on whole seconds
+            let ticks = '';
+            for (let t = 0; t <= win; t += 500) {
+                const whole = t % 1000 === 0;
+                ticks += `<div class="slb-tl-tick${whole ? ' whole' : ''}" style="left:${pct(t)}%">${whole ? `<span>${_slbTlFmt(t)}</span>` : ''}</div>`;
+            }
+            const marker = (label, ms, cls) =>
+                `<div class="slb-tl-marker ${cls}" style="left:${pct(ms)}%" title="${label} @ ${Math.round(ms)}ms${beats.measured ? ' (measured)' : ' (estimate)'}"><i></i><b>${label}</b></div>`;
+
+            const chip = (cue, kind, idx) => {
+                const t = _slbTlResolve(cue, beats);
+                const sel = _slbTl.sel && _slbTl.sel.kind === kind && _slbTl.sel.idx === idx;
+                const name = kind === 'sfx' ? (cue.sfx || '?') : String(cue.fx || '?').replace(/^bank:/, '');
+                return `<div class="slb-tl-cue${sel ? ' sel' : ''}" data-kind="${kind}" data-idx="${idx}" style="left:${pct(t)}%"
+                    title="${_slbEsc(name)} — ${(cue.at || 'cast')}${(cue.offsetMs || 0) >= 0 ? '+' : ''}${cue.offsetMs || 0}ms → ${Math.round(t)}ms (drag to retime, click to edit)">
+                    <span class="slb-tl-cue-ic">${_slbTlCueIcon(cue, kind)}</span>${_slbEsc(name.length > 14 ? name.slice(0, 14) + '…' : name)}</div>`;
+            };
+
+            // selected-cue inspector
+            let inspector = '';
+            if (_slbTl.sel) {
+                const kind = _slbTl.sel.kind, idx = _slbTl.sel.idx;
+                const cue = (kind === 'sfx' ? sfx : vfx)[idx];
+                if (cue) {
+                    const at = cue.at || 'cast';
+                    const call = (key) => `window._slbTlMut('${kind}',${idx},'${key}',this.value)`;
+                    const tintHex = (() => {
+                        if (cue.tint == null) return null;
+                        if (typeof cue.tint === 'number') return '#' + ('000000' + cue.tint.toString(16)).slice(-6);
+                        return String(cue.tint);
+                    })();
+                    inspector = `<div class="slb-tl-edit">
+                        <span class="slb-tl-edit-name">${_slbTlCueIcon(cue, kind)} ${_slbEsc(kind === 'sfx' ? (cue.sfx || '?') : (cue.fx || '?'))}</span>
+                        ${kind === 'sfx'
+                            ? `<label>sfx</label><select onchange="${call('sfx')}">${_slbTlSfxKeys().map(k => `<option value="${_slbEsc(k)}"${cue.sfx === k ? ' selected' : ''}>${_slbEsc(k)}</option>`).join('')}</select>
+                               <label>vol</label><input type="number" min="0" max="1" step="0.05" value="${cue.volume != null ? cue.volume : ''}" placeholder="auto" onchange="${call('volume')}">`
+                            : `<label>fx</label><input class="slb-tl-fxin" list="slbTlFxAll" value="${_slbEsc(cue.fx || '')}" onchange="${call('fx')}">
+                               <label>anchor@</label><select onchange="window._slbTlMut('${kind}',${idx},'anchor',this.value)">
+                                   ${['target', 'caster', 'midpoint'].map(a => `<option value="${a}"${(cue.anchor || 'target') === a ? ' selected' : ''}>${a}</option>`).join('')}</select>
+                               <label>scale</label><input type="number" min="0.2" max="4" step="0.1" value="${cue.scale != null ? cue.scale : ''}" placeholder="1" onchange="${call('scale')}">
+                               <label>tint</label><input type="color" value="${tintHex || '#ffffff'}" onchange="${call('tint')}">${tintHex ? `<button class="slb-tl-x" title="clear tint" onclick="window._slbTlMut('${kind}',${idx},'tint','')">✕</button>` : ''}
+                               <label>dur</label><input type="number" min="80" max="12000" step="50" value="${cue.durMs != null ? cue.durMs : ''}" placeholder="auto" onchange="${call('durMs')}">`}
+                        <label>time</label><select onchange="window._slbTlSetAnchor('${kind}',${idx},this.value)">
+                            ${['cast', 'launch', 'impact'].map(a => `<option value="${a}"${at === a ? ' selected' : ''}>${a}</option>`).join('')}</select>
+                        <input type="number" step="10" value="${cue.offsetMs || 0}" title="offset from the anchor beat, ms (negative = earlier)" onchange="${call('offsetMs')}"><span class="slb-tl-ms">ms</span>
+                        <button class="slb-tl-btn" title="preview just this cue" onclick="window._slbTlPreviewCue('${kind}',${idx})">▶</button>
+                        <button class="slb-tl-btn slb-tl-del" title="delete cue" onclick="window._slbTlDelete('${kind}',${idx})">✕</button>
+                    </div>`;
+                }
+            }
+
+            const lib = _slbTlCueLib();
+            const cats = {};
+            Object.keys(lib).forEach(k => { (cats[lib[k].cat] = cats[lib[k].cat] || []).push(k); });
+            panel.innerHTML = `
+                <div class="slb-tl-head">
+                    <span class="slb-tl-title">⏱ TIMELINE</span>
+                    <span class="slb-tl-spell">${_slbEsc(def.name || id)}</span>
+                    <span class="slb-tl-beatinfo">${beats.measured ? '● measured beats' : '○ estimated beats — CAST once to measure'}</span>
+                    <select class="slb-tl-add" onchange="if(this.value){window._slbTlAddSfx(this.value);this.value='';}">
+                        <option value="">＋ SFX cue…</option>
+                        ${_slbTlSfxKeys().map(k => `<option value="${_slbEsc(k)}">♪ ${_slbEsc(k)}</option>`).join('')}
+                    </select>
+                    <select class="slb-tl-add" onchange="if(this.value){window._slbTlAddVfx(this.value);this.value='';}">
+                        <option value="">＋ VFX cue…</option>
+                        ${Object.keys(cats).map(c => `<optgroup label="${_slbEsc(c.toUpperCase())}">${cats[c].map(k => `<option value="${_slbEsc(k)}">${_SLB_TL_CAT_ICON[c] || '✨'} ${_slbEsc(lib[k].label || k)}</option>`).join('')}</optgroup>`).join('')}
+                    </select>
+                    <input class="slb-tl-add slb-tl-bankin" list="slbTlFxAll" placeholder="＋ from effect bank… (type to search)"
+                        onchange="if(this.value){window._slbTlAddVfx(this.value);this.value='';}">
+                    <datalist id="slbTlFxAll">${_slbTlFxDatalist()}</datalist>
+                    <button class="slb-tl-btn" title="play every cue without casting (uses current markers)" onclick="window._slbTlPreview()">▶ PREVIEW CUES</button>
+                    <span class="slb-tl-winlabel">window</span>
+                    ${_SLB_TL_WINDOWS.map(w => `<button class="slb-tl-win${_slbTl.windowMs === w ? ' on' : ''}" onclick="window._slbTlSetWindow(${w})">${w / 1000}s</button>`).join('')}
+                </div>
+                <div class="slb-tl-graph" id="slbTlGraph">
+                    <div class="slb-tl-markers">
+                        ${marker('CAST', 0, 'm-cast')}
+                        ${marker('LAUNCH', beats.launchMs, 'm-launch')}
+                        ${marker('IMPACT', beats.impactMs, 'm-impact')}
+                        <div class="slb-tl-playhead" id="slbTlPlayhead"></div>
+                    </div>
+                    <div class="slb-tl-ruler">${ticks}</div>
+                    <div class="slb-tl-track" data-kind="sfx"><span class="slb-tl-lanelabel">SFX</span><div class="slb-tl-lane" id="slbTlLaneSfx">${sfx.map((c, i) => chip(c, 'sfx', i)).join('')}</div></div>
+                    <div class="slb-tl-track" data-kind="vfx"><span class="slb-tl-lanelabel">VFX</span><div class="slb-tl-lane" id="slbTlLaneVfx">${vfx.map((c, i) => chip(c, 'vfx', i)).join('')}</div></div>
+                </div>
+                ${inspector || '<div class="slb-tl-hint">drop cues with the ＋ pickers, drag chips to retime (snaps to the beat markers), click a chip to edit — saved onto the spell, exports with your edits, plays back in real matches AND online</div>'}`;
+
+            panel.querySelectorAll('.slb-tl-cue').forEach(el => {
+                el.onpointerdown = ev => _slbTlDragStart(ev, el);
+            });
+        }
+
+        function _slbTlDragStart(ev, el) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            const kind = el.getAttribute('data-kind');
+            const idx = Number(el.getAttribute('data-idx'));
+            const lane = document.getElementById(kind === 'sfx' ? 'slbTlLaneSfx' : 'slbTlLaneVfx');
+            if (!lane) return;
+            const rect = lane.getBoundingClientRect();
+            const beats = _slbTlBeats();
+            _slbTl.drag = { kind, idx, rect, beats, el, moved: false, t: null, startX: ev.clientX };
+            try { el.setPointerCapture(ev.pointerId); } catch (e) {}
+            el.onpointermove = e2 => _slbTlDragMove(e2);
+            el.onpointerup = e2 => _slbTlDragEnd(e2);
+            el.onpointercancel = e2 => _slbTlDragEnd(e2, true);
+        }
+
+        function _slbTlSnap(t, beats) {
+            const marks = [0, beats.launchMs, beats.impactMs];
+            for (const m of marks) if (Math.abs(t - m) < 70) return m;
+            return Math.round(t / 10) * 10;
+        }
+
+        function _slbTlDragMove(ev) {
+            const d = _slbTl.drag;
+            if (!d) return;
+            if (Math.abs(ev.clientX - d.startX) > 3) d.moved = true;
+            if (!d.moved) return;
+            const frac = Math.max(0, Math.min(1, (ev.clientX - d.rect.left) / Math.max(1, d.rect.width)));
+            d.t = _slbTlSnap(frac * _slbTl.windowMs, d.beats);
+            d.el.style.left = Math.max(0, Math.min(99, d.t / _slbTl.windowMs * 100)) + '%';
+            d.el.title = Math.round(d.t) + 'ms';
+        }
+
+        function _slbTlDragEnd(ev, cancelled) {
+            const d = _slbTl.drag;
+            _slbTl.drag = null;
+            if (!d) return;
+            d.el.onpointermove = null; d.el.onpointerup = null; d.el.onpointercancel = null;
+            try { d.el.releasePointerCapture(ev.pointerId); } catch (e) {}
+            if (cancelled) { _slbTlRender(); return; }
+            if (!d.moved) {
+                const same = _slbTl.sel && _slbTl.sel.kind === d.kind && _slbTl.sel.idx === d.idx;
+                _slbTl.sel = same ? null : { kind: d.kind, idx: d.idx };
+                _slbTlRender();
+                return;
+            }
+            if (d.t == null) { _slbTlRender(); return; }
+            const arr = _slbTlCues(d.kind);
+            const cue = arr[d.idx];
+            if (!cue) { _slbTlRender(); return; }
+            cue.offsetMs = Math.round(d.t - _slbTlAnchorT(cue.at || 'cast', d.beats));
+            _slbTl.sel = { kind: d.kind, idx: d.idx };
+            _slbTlWrite(d.kind, arr);      // persists → mods apply → lab panel + timeline rerender
+        }
+
+        window._slbTlAddSfx = function(key) {
+            if (!key) return;
+            const arr = _slbTlCues('sfx');
+            // guns and other one-shots almost always belong on the launch frame
+            arr.push({ sfx: key, at: 'launch', offsetMs: 0 });
+            _slbTl.sel = { kind: 'sfx', idx: arr.length - 1 };
+            _slbTlWrite('sfx', arr);
+            _slbToast('♪ ' + key + ' added at LAUNCH — drag to retime. Default launch sound is now replaced by your cues.');
+        };
+
+        window._slbTlAddVfx = function(fx) {
+            if (!fx) return;
+            if (fx.indexOf('bank:') !== 0 && !_slbTlCueLib()[fx]) { _slbToast(`✗ unknown fx: "${fx}"`, true); return; }
+            const arr = _slbTlCues('vfx');
+            arr.push({ fx, at: 'impact', offsetMs: 0 });
+            _slbTl.sel = { kind: 'vfx', idx: arr.length - 1 };
+            _slbTlWrite('vfx', arr);
+            _slbToast('✨ ' + fx + ' added at IMPACT — drag to retime');
+        };
+
+        window._slbTlMut = function(kind, idx, key, raw) {
+            const arr = _slbTlCues(kind);
+            if (!arr[idx]) return;
+            if (raw === '' || raw == null) {
+                delete arr[idx][key];
+            } else if (key === 'offsetMs' || key === 'durMs') {
+                const n = Number(raw); if (!isFinite(n)) return;
+                arr[idx][key] = Math.round(n);
+            } else if (key === 'scale' || key === 'volume') {
+                const n = Number(raw); if (!isFinite(n)) return;
+                arr[idx][key] = n;
+            } else {
+                arr[idx][key] = raw;
+            }
+            _slbTlWrite(kind, arr);
+        };
+
+        window._slbTlSetAnchor = function(kind, idx, at) {
+            const beats = _slbTlBeats();
+            const arr = _slbTlCues(kind);
+            if (!arr[idx]) return;
+            // keep the cue's RESOLVED time where it is; only re-base the offset
+            const cur = _slbTlResolve(arr[idx], beats);
+            arr[idx].at = at;
+            arr[idx].offsetMs = Math.round(cur - _slbTlAnchorT(at, beats));
+            _slbTlWrite(kind, arr);
+        };
+
+        window._slbTlDelete = function(kind, idx) {
+            const arr = _slbTlCues(kind);
+            arr.splice(idx, 1);
+            _slbTl.sel = null;
+            _slbTlWrite(kind, arr);
+        };
+
+        function _slbTlCueTiles() {
+            const { caster, dummy } = _slbLabUnits();
+            return {
+                tx: dummy && !dummy.dead ? dummy.x : (caster ? caster.x + 2 : 5),
+                ty: dummy && !dummy.dead ? dummy.y : (caster ? caster.y : 4),
+                sx: caster ? caster.x : 3, sy: caster ? caster.y : 4,
+            };
+        }
+
+        window._slbTlPreviewCue = function(kind, idx) {
+            const cue = _slbTlCues(kind)[idx];
+            if (!cue) return;
+            if (kind === 'sfx') {
+                playSfx(cue.sfx, cue.volume != null ? { volume: cue.volume } : undefined);
+            } else {
+                const t = _slbTlCueTiles();
+                try {
+                    window.VFX3D.fire('cue', _slbTlSpellId(), {
+                        fx: cue.fx, tx: t.tx, ty: t.ty, sx: t.sx, sy: t.sy,
+                        anchor: cue.anchor, scale: cue.scale, tint: cue.tint, durMs: cue.durMs,
+                    });
+                } catch (e) {}
+            }
+        };
+
+        window._slbTlPreview = function() {
+            const beats = _slbTlBeats();
+            const t = _slbTlCueTiles();
+            const id = _slbTlSpellId();
+            _slbTlCues('sfx').forEach(c => {
+                window.setTimeout(() => {
+                    if (!window._spellLabActive) return;
+                    playSfx(c.sfx, c.volume != null ? { volume: c.volume } : undefined);
+                }, _slbTlResolve(c, beats));
+            });
+            _slbTlCues('vfx').forEach(c => {
+                window.setTimeout(() => {
+                    if (!window._spellLabActive) return;
+                    try {
+                        window.VFX3D.fire('cue', id, {
+                            fx: c.fx, tx: t.tx, ty: t.ty, sx: t.sx, sy: t.sy,
+                            anchor: c.anchor, scale: c.scale, tint: c.tint, durMs: c.durMs,
+                        });
+                    } catch (e) {}
+                }, _slbTlResolve(c, beats));
+            });
+            _slbTlPlayhead();
+        };
+
+        function _slbTlPlayhead() {
+            const ph = document.getElementById('slbTlPlayhead');
+            if (!ph) return;
+            const win = _slbTl.windowMs;
+            ph.style.transition = 'none';
+            ph.style.left = '0%';
+            ph.style.opacity = '1';
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                    ph.style.transition = `left ${win}ms linear`;
+                    ph.style.left = '100%';
+                });
+            });
+            window.setTimeout(() => { if (ph.isConnected) ph.style.opacity = '0'; }, win + 60);
         }
 
         // ── ONBOARDING: one-time free first-pick ceremony ──────────────────
