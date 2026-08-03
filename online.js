@@ -337,8 +337,8 @@
         };
 
         const _onlineOrigSelectUnit = selectUnit;
-        selectUnit = function(unitId) {
-            if (!_isOnline() || state._remoteAction) return _onlineOrigSelectUnit(unitId);
+        selectUnit = function(unitId, opts) {
+            if (!_isOnline() || state._remoteAction) return _onlineOrigSelectUnit(unitId, opts);
             const u = state.units.find(function(u) {
                 return u.id === unitId;
             });
@@ -355,7 +355,7 @@
             }
 
             state._remoteAction = true;
-            _onlineOrigSelectUnit(unitId);
+            _onlineOrigSelectUnit(unitId, opts);
             state._remoteAction = false;
 
             if (_isGuest()) {
@@ -4103,7 +4103,7 @@
                                 if (targetUnit) {
 
                                     st._remoteAction = true;
-                                    if (typeof selectUnit === 'function') selectUnit(targetUnit.id);
+                                    if (typeof selectUnit === 'function') selectUnit(targetUnit.id, { _auto: true });
                                     st._remoteAction = false;
                                     if (typeof window.playUnitSwitchChime === 'function') window.playUnitSwitchChime();
                                 } else {
@@ -4202,7 +4202,7 @@
                                     });
                                     if (myU) {
                                         st._remoteAction = true;
-                                        if (typeof selectUnit === 'function') selectUnit(myU.id);
+                                        if (typeof selectUnit === 'function') selectUnit(myU.id, { _auto: true });
                                         st._remoteAction = false;
                                     }
                                 }

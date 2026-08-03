@@ -234,7 +234,7 @@ window._hrlgNoteAction = function (ms) {
 function useMenusHidden(st) {
   const [, setN] = useState(0);
   const ref = useRef({ lastBusy: 0, hidden: false, hiddenSince: 0 });
-  const LINGER = 100;   // debounce so back-to-back anims don't strobe the menu
+  const LINGER = 60;    // debounce so back-to-back anims don't strobe the menu
   /* Failsafe: menu visibility hangs off busy FLAGS — if one ever sticks
      (a VFX that never reports done, a camera that never settles), the whole
      command UI vanishes with no recovery. If we've been hidden for > 4 s
@@ -3738,7 +3738,10 @@ function ActionMenu({ st, hidden }) {
 
   if (st.units.some(u => u._dying)) return null;
 
-  if (st.battleDialogueQueue && st.battleDialogueQueue.length > 0) return null;
+  /* (Battle dialogue no longer hides the menu: the subtitle bar sits
+     bottom-center and the command panels sit left — they never overlap, and
+     gating input on subtitles meant turn-start debuff/defeat notices either
+     blocked the menu for ~2s or got wiped unread. Both now coexist.) */
 
   const fc = getFactionColor(unit);
   const maxAP = typeof getUnitMaxAP === 'function' ? getUnitMaxAP(unit) : 2;

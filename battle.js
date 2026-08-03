@@ -28420,7 +28420,7 @@
             void overlay.offsetWidth;
             overlay.classList.add('visible');
             playSfx('newRound');
-            const showDuration = actionMs(1800);
+            const showDuration = actionMs(1500);
             const fadeDuration = 350;
             setTimeout(() => {
                 overlay.classList.remove('visible');
@@ -29508,6 +29508,25 @@
 
                 if (_roundAdvanceInProgress) return;
 
+                /* ── Spurious-advance guard ──
+                   Every legitimate advance happens with the active unit spent
+                   (AP zeroed by the action/END TURN/Guard), dead, or skipped.
+                   But several action tails ALSO fire endUnitIfDone from
+                   delayed callbacks (inspect's fade timer, scan, reshape…),
+                   which landed here 0.7–1.4s AFTER the next unit had already
+                   activated. getNextBlitzUnit() would return that SAME unit
+                   again, replaying the whole activation — turn banner flicker,
+                   the unit-switch chime playing twice, and a pointless camera
+                   re-glide. If the current activation is still live, this call
+                   has nothing to do: bail before tearing anything down. */
+                if (state._blitzActiveUnitId) {
+                    const _actUnit = state.units.find(u => u.id === state._blitzActiveUnitId);
+                    if (_actUnit && !_actUnit.dead && !_actUnit._dying
+                        && !unitFinished(_actUnit) && !_actUnit._skippedTurn) {
+                        return;
+                    }
+                }
+
                 hideTurnBanner();
                 hidePlayerTurnAnnounce();
 
@@ -29767,9 +29786,19 @@
             // wall-clock per AI action from simulated matches.
             const _turbo = state.devAutoSim && !state._devSimShowAnims;
             const MAX_WAIT = _turbo ? 2000 : 8000;
-            const POST_ANIM_DWELL = 350;
+            // Dwell ONLY after something actually played: a fixed 350ms tax on
+            // every call — including the two or three back-to-back calls in a
+            // single turn handoff where nothing was animating at all — was the
+            // largest single source of "the game pauses between turns". A call
+            // that never observes activity releases after one short grace tick
+            // (still catches an animation that starts on the next frame); a
+            // call that DID wait keeps a brief settle beat.
+            const POST_ANIM_DWELL = 160;
+            const IDLE_GRACE = 90;
             const start = Date.now();
             var _dwellStart = 0;
+            var _sawActivity = false;
+            var _idleChecked = false;
             function check() {
                 if (state.winner) return;
                 if (Date.now() - start > MAX_WAIT) { callback(); return; }
@@ -29784,72 +29813,91 @@
                 }
 
                 if (_walkAnimActive) {
+                    _sawActivity = true;
+                    _dwellStart = 0;
+                    setTimeout(check, 50);
+                    return;
+                }
+
+                if (typeof isCinematicPresent === 'function' && isCinematicPresent()) {
+                    _sawActivity = true;
                     _dwellStart = 0;
                     setTimeout(check, 100);
                     return;
                 }
 
-                if (typeof isCinematicPresent === 'function' && isCinematicPresent()) {
-                    _dwellStart = 0;
-                    setTimeout(check, 200);
-                    return;
-                }
-
                 if (state.units.some(u => u._dying)) {
+                    _sawActivity = true;
                     _dwellStart = 0;
-                    setTimeout(check, 200);
+                    setTimeout(check, 100);
                     return;
                 }
 
                 if (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy()) {
-                    _dwellStart = 0;
-                    setTimeout(check, 200);
-                    return;
-                }
-
-                if ((state.hitFlashIds && state.hitFlashIds.size > 0) ||
-                    (state.healFlashIds && state.healFlashIds.size > 0)) {
+                    _sawActivity = true;
                     _dwellStart = 0;
                     setTimeout(check, 120);
                     return;
                 }
 
-                if (projectileLayerEl && projectileLayerEl.childElementCount > 0) {
+                if ((state.hitFlashIds && state.hitFlashIds.size > 0) ||
+                    (state.healFlashIds && state.healFlashIds.size > 0)) {
+                    _sawActivity = true;
                     _dwellStart = 0;
-                    setTimeout(check, 100);
+                    setTimeout(check, 60);
+                    return;
+                }
+
+                if (projectileLayerEl && projectileLayerEl.childElementCount > 0) {
+                    _sawActivity = true;
+                    _dwellStart = 0;
+                    setTimeout(check, 50);
                     return;
                 }
 
                 if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()
                     && typeof ThreeRenderer.hasActiveAnims === 'function' && ThreeRenderer.hasActiveAnims()) {
+                    _sawActivity = true;
                     _dwellStart = 0;
-                    setTimeout(check, 100);
+                    setTimeout(check, 50);
                     return;
                 }
 
                 if (typeof ThreeVFX !== 'undefined' && typeof ThreeVFX.hasActiveParticles === 'function'
                     && ThreeVFX.hasActiveParticles()) {
+                    _sawActivity = true;
                     _dwellStart = 0;
-                    setTimeout(check, 100);
+                    setTimeout(check, 50);
                     return;
                 }
 
                 if (camera.isBusy()) {
+                    _sawActivity = true;
                     _dwellStart = 0;
-                    setTimeout(check, 80);
+                    setTimeout(check, 50);
                     return;
                 }
 
-                if (!state.devAutoSim && POST_ANIM_DWELL > 0) {
-                    if (_dwellStart === 0) {
-                        _dwellStart = Date.now();
-                        setTimeout(check, POST_ANIM_DWELL);
-                        return;
-                    }
+                if (!state.devAutoSim) {
+                    if (!_sawActivity) {
+                        // Nothing playing: one short grace re-check instead of a
+                        // full dwell, in case an animation kicks off next frame.
+                        if (!_idleChecked) {
+                            _idleChecked = true;
+                            setTimeout(check, IDLE_GRACE);
+                            return;
+                        }
+                    } else if (POST_ANIM_DWELL > 0) {
+                        if (_dwellStart === 0) {
+                            _dwellStart = Date.now();
+                            setTimeout(check, POST_ANIM_DWELL);
+                            return;
+                        }
 
-                    if (Date.now() - _dwellStart < POST_ANIM_DWELL) {
-                        setTimeout(check, 60);
-                        return;
+                        if (Date.now() - _dwellStart < POST_ANIM_DWELL) {
+                            setTimeout(check, 40);
+                            return;
+                        }
                     }
                 }
                 callback();
@@ -30077,10 +30125,16 @@
                     }
                 }
 
-                const delay = state.devAutoSim ? scaleDevSimDelay(400, 4) : (_mdSilent ? 60 : 650);
+                // Activation → first input/act delays. These are pure post-
+                // banner idle time: the turn banner and camera glide play in
+                // PARALLEL with them, so they only need to cover "the banner
+                // has registered", not the whole pan. (650/280/900 read as a
+                // hitch on every single handoff — the #1 "the game feels
+                // laggy even at 120fps" complaint.)
+                const delay = state.devAutoSim ? scaleDevSimDelay(400, 4) : (_mdSilent ? 60 : 500);
 
                 const _tookDmgRecently = !state.devAutoSim && !state.autoPlayers?.[nextUnit.player] && nextUnit._tookDamageThisRound;
-                const humanDelay = state.devAutoSim ? scaleDevSimDelay(400, 4) : (_tookDmgRecently ? 900 : 280);
+                const humanDelay = state.devAutoSim ? scaleDevSimDelay(400, 4) : (_tookDmgRecently ? 500 : 140);
 
                 if (nextUnit._tookDamageThisRound) nextUnit._tookDamageThisRound = false;
                 const pendingUnitId = nextUnit.id;
@@ -30130,7 +30184,7 @@
                                     state._blitzActiveUnitId = pendingUnitId;
                                     state.activePlayer = u.player;
                                     playUnitSwitchChime();
-                                    selectUnit(pendingUnitId);
+                                    selectUnit(pendingUnitId, { _auto: true });
                                 }
                             };
                             markDirty('dialog');
@@ -30215,20 +30269,27 @@
                     if (window._broadcastState) window._broadcastState();
                 } else {
 
+                    // Generation guard, same as the AI/secondary-job branches:
+                    // without it a stale activation timeout (armed before a
+                    // newer maybeAdvanceTurn re-ran the handoff) fired anyway —
+                    // a SECOND chime + selectUnit on top of the real one.
+                    const _humanGen = _blitzTurnGen;
                     window.setTimeout(() => {
-                        if (state.winner) return;
+                        if (_blitzTurnGen !== _humanGen || state.winner) return;
                         const u = state.units.find(u => u.id === pendingUnitId && !u.dead);
                         if (!u || unitFinished(u)) return;
 
-                        if (state.battleDialogueTimer) { clearTimeout(state.battleDialogueTimer); state.battleDialogueTimer = null; }
-                        state.battleDialogueQueue = [];
-                        _lastDialogueHtml = '';
-
+                        // (Turn-start dialogue — debuff reminders, defeat
+                        // notices — used to be wiped right here, ~300ms after
+                        // it was queued: gone before anyone could read it. It
+                        // now runs its own timer and coexists with the action
+                        // menu; the subtitle bar and the command panels don't
+                        // overlap.)
                         state._blitzActiveUnitId = pendingUnitId;
                         state.activePlayer = u.player;
                         _startShotClock();
                         playUnitSwitchChime();
-                        selectUnit(pendingUnitId);
+                        selectUnit(pendingUnitId, { _auto: true });
                     }, humanDelay);
                 }
                 });
@@ -30324,7 +30385,7 @@
 
                 if (_blitzTurnGen !== _rctGen) { state.aiThinking = false; return; }
                 runComputerTurn();
-            }, state.devAutoSim ? scaleDevSimDelay(35, 2) : (_rctHidden ? 60 : 350));
+            }, state.devAutoSim ? scaleDevSimDelay(35, 2) : (_rctHidden ? 60 : 200));
         }
 
         /* Schema 12 — the great prune (2026-07-16):
@@ -32399,7 +32460,11 @@
             _waitForAnimationsThen(() => maybeAdvanceTurn());
         }
 
-        function selectUnit(unitId) {
+        function selectUnit(unitId, opts = {}) {
+            /* opts._auto: the ENGINE is selecting (turn activation), not the
+               player clicking. Skips the cursor-move click so the unit-switch
+               chime is the one and only turn-start sound — the stacked
+               chime+click read as "the turn SFX plays twice". */
             /* Mystery Dungeon hub is free-roam — no unit selection, no action
                menus, no tile targeting. The renderer's hubFreeRoam controller
                owns all input there. */
@@ -32458,7 +32523,7 @@
                 focusUnitPanel(unitId);
                 return;
             }
-            playSfx('uiCursorMove');
+            if (!opts._auto) playSfx('uiCursorMove');
             state.selectedUnitId = unitId;
             state.focusedUnitId = unitId;
             state.hoverUnitId = null;

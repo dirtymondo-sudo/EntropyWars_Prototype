@@ -7180,6 +7180,7 @@
 
         const _centerBannerQueue = [];
         let _centerBannerActive = false;
+        let _centerBannerHoldUntil = 0;
 
         function _queueCenterBanner(buildFn, durationMs) {
             _centerBannerQueue.push({ buildFn, durationMs });
@@ -7202,6 +7203,12 @@
                 return;
             }
             document.body.appendChild(el);
+            // The turn loop only needs the banner's HEADLINE beat — after
+            // ~700ms the message has landed and the next activation can run
+            // underneath while the banner finishes fading on its own. Holding
+            // the whole engine hostage for the full display time meant every
+            // kill froze the match for 2+ seconds AFTER the death animation.
+            _centerBannerHoldUntil = Date.now() + Math.min(durationMs, 700);
             setTimeout(() => {
                 if (el.parentNode) el.remove();
                 _centerBannerActive = false;
@@ -7210,7 +7217,8 @@
         }
 
         function isCenterBannerBusy() {
-            return _centerBannerActive || _centerBannerQueue.length > 0;
+            return (_centerBannerActive && Date.now() < _centerBannerHoldUntil)
+                || _centerBannerQueue.length > 0;
         }
 
         function _realShowDeathBanner_impl(deadUnit, killer) {
@@ -7229,7 +7237,7 @@
           `;
                 banner.style.borderColor = isEnemy ? 'rgba(85,211,138,0.6)' : 'rgba(255,80,80,0.6)';
                 return banner;
-            }, 2200);
+            }, 1600);
         }
 
         function showCombatBanner(title, subtitle, kind) {
@@ -7255,7 +7263,7 @@
             <div class="combat-banner-sub">${subtitle}</div>
           `;
                 return banner;
-            }, 2200);
+            }, 1600);
         }
 
         function createUnit(id, player, x, y, template, loadout = emptyLoadout(), identityOverride = null) {

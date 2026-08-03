@@ -1883,7 +1883,7 @@
             border-radius: 12px;
             padding: 14px 22px;
             pointer-events: none;
-            animation: deathBannerAnim 2.2s ease forwards;
+            animation: deathBannerAnim 1.6s ease forwards;
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
         }
 
@@ -1953,7 +1953,7 @@
             border-radius: 10px;
             padding: 10px 24px;
             pointer-events: none;
-            animation: combatBannerAnim 2.8s ease forwards;
+            animation: combatBannerAnim 1.6s ease forwards;
             box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
             text-align: center;
         }
