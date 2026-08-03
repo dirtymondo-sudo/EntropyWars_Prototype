@@ -901,20 +901,21 @@
 
                     /* Descent-less detonations still need a BLAST to look at —
                        a sonic-boom ring + flash in the spell's palette. */
-                    if (isVisible && !_hasDescentVfx && !ds.markedUnitId && _vfxAllowed
-                        && typeof window !== 'undefined' && window.ThreeVFXEffects) {
-                        try {
-                            const VFX = window.ThreeVFXEffects;
-                            const _blastCol = (ds.spellType === 'anomaly' || ds.spellType === 'arcane') ? 0xcc88ff
-                                : (ds.spellType === 'unholy' ? 0xbb55dd : 0xffaa55);
-                            if (VFX.sigSonicBoom3D) {
-                                VFX.sigSonicBoom3D(ds.x, ds.y, {
-                                    rings: 3, radiusTiles: (ds.aoeRadius || 1) + 1.2,
-                                    color: _blastCol, shake: 'hard',
-                                });
-                            }
-                            if (typeof playSfx === 'function') playSfx('explosion');
-                        } catch (e) {  }
+                    if (isVisible && !_hasDescentVfx && !ds.markedUnitId && _vfxAllowed) {
+                        if (typeof playSfx === 'function') playSfx('explosion');
+                        if (typeof window !== 'undefined' && window.ThreeVFXEffects) {
+                            try {
+                                const VFX = window.ThreeVFXEffects;
+                                const _blastCol = (ds.spellType === 'anomaly' || ds.spellType === 'arcane') ? 0xcc88ff
+                                    : (ds.spellType === 'unholy' ? 0xbb55dd : 0xffaa55);
+                                if (VFX.sigSonicBoom3D) {
+                                    VFX.sigSonicBoom3D(ds.x, ds.y, {
+                                        rings: 3, radiusTiles: (ds.aoeRadius || 1) + 1.2,
+                                        color: _blastCol, shake: 'hard',
+                                    });
+                                }
+                            } catch (e) {  }
+                        }
                     }
 
                     if (isVisible && typeof showBattleDialogue === 'function') {

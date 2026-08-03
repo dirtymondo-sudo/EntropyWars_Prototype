@@ -133,6 +133,11 @@
             uiCursorFocus:   `${_R2_BASE}/SFX/ui_cursorfocus.ogg`,
             uiButtonConfirm: `${_R2_BASE}/SFX/ui_buttonconfirm.ogg`,
             uiError:         `${_R2_BASE}/SFX/ui_error.ogg`,
+            /* uiBack/arrowShot reuse existing clips until dedicated
+               ui_back.ogg / arrow_shot.ogg are uploaded to R2 — swap the
+               paths then. */
+            uiBack:          `${_R2_BASE}/SFX/ui_cursormove.ogg`,
+            arrowShot:       `${_R2_BASE}/SFX/item_throw.ogg`,
             fireball:        `${_R2_BASE}/SFX/fireball.ogg`,
             healRegen:       `${_R2_BASE}/SFX/heal_regen.ogg`,
             manaRegen:       `${_R2_BASE}/SFX/mana_regen.ogg`,
@@ -172,6 +177,8 @@
             uiCursorFocus: "./assets/sfx/ui_cursorfocus.ogg",
             uiButtonConfirm: "./assets/sfx/ui_buttonconfirm.ogg",
             uiError: "./assets/sfx/ui_error.ogg",
+            uiBack: "./assets/sfx/ui_cursormove.ogg",
+            arrowShot: "./assets/sfx/item_throw.ogg",
             fireball: "./assets/sfx/fireball.ogg",
             healRegen: "./assets/sfx/heal_regen.ogg",
             manaRegen: "./assets/sfx/mana_regen.ogg",
@@ -235,6 +242,8 @@
             uiCursorMove: 0.45,
             uiCursorFocus: 0.58,
             uiError: 0.62,
+            uiBack: 0.4,
+            arrowShot: 0.72,
             fireball: 0.82,
             healRegen: 0.74,
             manaRegen: 0.7,
@@ -277,6 +286,8 @@
             uiConfirm: 120,
             uiButtonConfirm: 120,
             uiError: 200,
+            uiBack: 120,
+            arrowShot: 150,
             playerHourglass: 300,
             enemyHourglass: 300,
             death: 200,
