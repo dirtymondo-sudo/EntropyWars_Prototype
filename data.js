@@ -3844,11 +3844,14 @@ const SPELL_LIBRARY = [
     },
     {
         /* 2026-07-18 Warrior/Tank split: the Tank raises real fortifications.
-           Class-spell twin of the SHARED_RAMPART race ability. */
+           Class-spell twin of the SHARED_RAMPART race ability. Named
+           'Bulwark' (2026-08-03): every spell display name must be UNIQUE —
+           parts of the UI resolve the selected spell by name, and a unit
+           carrying both twins could fire the wrong one. */
         id: 'rampart',
         spellType: 'human',
         element: 'earth',
-        name: 'Rampart',
+        name: 'Bulwark',
         type: 'utility',
         cost: 30,
         equipCost: 15,
@@ -5773,7 +5776,9 @@ const SHARED_NEBULA = {
 // Engineer-school now) and lives on as a RACIAL for the machine races — it's
 // their hardware, not spy-school tradecraft.
 const SHARED_EMP_PULSE = {
-    id: 'raceEmpPulse', spellType: 'tech', element: 'lightning', name: 'EMP Burst',
+    /* 'EMP Pulse' (2026-08-03): was 'EMP Burst', which collided with the
+       class spell empBurst — spell display names must be unique. */
+    id: 'raceEmpPulse', spellType: 'tech', element: 'lightning', name: 'EMP Pulse',
     type: 'damage', cost: 40, dmg: 80, range: 0,
     kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
     statusEffects: [{ id: 'jammed', duration: 1 }],
@@ -6796,7 +6801,9 @@ const RACE_ABILITIES = {
     ],
 
     'cyborg': [
-        { id: 'raceOverclock', spellType: 'tech', name: 'Overclock',
+        /* 'Overdrive' (2026-08-03): was 'Overclock', which collided with the
+           class spell of the same name — a cyborg could carry BOTH. */
+        { id: 'raceOverclock', spellType: 'tech', name: 'Overdrive',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
           statStageBoost: { atk: 2, spd: 1 },
@@ -7489,7 +7496,9 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 20, dmg: 120, range: 1,
           kind: 'displacement', damageType: 'physical', pushDistance: 2,
           desc: 'Deals MEDIUM physical damage to a Single Enemy and knocks it back.' },
-        { id: 'raceRampage', spellType: 'unholy', name: 'Rampage',
+        /* 'Unstoppable' (2026-08-03): was 'Rampage', which collided with the
+           Raider class dash of the same name. */
+        { id: 'raceRampage', spellType: 'unholy', name: 'Unstoppable',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
           statStageBoost: { atk: 2, def: 1 },
