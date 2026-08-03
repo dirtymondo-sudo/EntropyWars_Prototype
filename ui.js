@@ -11368,18 +11368,46 @@
             }
 
             if (kind === 'aoePull' && spell.pullToCenter) {
-                const footprint = getSpellAoeFootprint(spell, tx, ty, caster);
-                for (const t of footprint) {
-                    const target = unitAt(t.x, t.y);
-                    if (!target || isAllyUnit(target, caster)) continue;
-                    if (target.x === tx && target.y === ty) continue;
-                    const dx = Math.sign(tx - target.x);
-                    const dy = Math.sign(ty - target.y);
-                    const endX = target.x + dx, endY = target.y + dy;
-                    if (isInside(endX, endY)) {
-                        _drawArrowBetweenTiles(target.x, target.y, endX, endY, PULL, false, false, { arc: 0.18, flow: true });
-                        _showDisplaceGhost(target, endX, endY, PULL_H);
+                /* 2026-08-03 — the preview used to promise a pull for EVERY
+                   enemy in the footprint (one step toward the centre, only
+                   isInside-checked), so Dust Devil drew arrows into walls,
+                   into occupied tiles and onto units that never budge. The
+                   engine (_applyAoeDamage, battle.js) is stricter and it
+                   resolves victims ONE AT A TIME in getSquareArea order, so
+                   an earlier victim's move changes what the next one can do.
+                   Mirror it exactly: same tile order, same canOccupy gate,
+                   same landing z — simulating on the live units (positions
+                   restored before anything is drawn) is the only way to get
+                   the vacate/block chain right. */
+                const _apClash = (typeof _isClashMode === 'function' && _isClashMode());
+                if (!_apClash) {
+                    const footprint = getSpellAoeFootprint(spell, tx, ty, caster);
+                    const plans = new Map();   // unit.id -> { unit, fromX, fromY, x, y }
+                    const undo = [];
+                    for (const t of footprint) {
+                        const target = unitAt(t.x, t.y);
+                        if (!target || target.dead || target._dying) continue;
+                        if (isAllyUnit(target, caster)) continue;
+                        const dx = Math.sign(tx - target.x);
+                        const dy = Math.sign(ty - target.y);
+                        if (!dx && !dy) continue;          // already on the eye
+                        const nx = target.x + dx, ny = target.y + dy;
+                        if (!isInside(nx, ny) || !canOccupy(nx, ny)) continue;
+                        const nz = (typeof nearestWalkableZ === 'function')
+                            ? nearestWalkableZ(nx, ny, target.z) : target.z;
+                        const prev = plans.get(target.id);
+                        if (prev) { prev.x = nx; prev.y = ny; }
+                        else plans.set(target.id, { unit: target, fromX: target.x, fromY: target.y, x: nx, y: ny });
+                        undo.push([target, target.x, target.y, target.z]);
+                        target.x = nx; target.y = ny; target.z = nz;
                     }
+                    for (let i = undo.length - 1; i >= 0; i--) {
+                        undo[i][0].x = undo[i][1]; undo[i][0].y = undo[i][2]; undo[i][0].z = undo[i][3];
+                    }
+                    plans.forEach(p => {
+                        _drawArrowBetweenTiles(p.fromX, p.fromY, p.x, p.y, PULL, false, false, { arc: 0.18, flow: true });
+                        _showDisplaceGhost(p.unit, p.x, p.y, PULL_H);
+                    });
                 }
             }
 

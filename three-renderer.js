@@ -5472,7 +5472,7 @@ const ThreeRenderer = (function () {
        whole thing is driven per-frame by _updateUnitAuras() straight from unit
        STATE — no rebuild coupling, no explicit teardown:
          • killstreak >= 3        → FLOW STATE golden aura (persistent)
-         • _lastStandTriggered    → crimson LAST STAND aura (persistent)
+         • _lastStandTriggered    → icy blue-white LAST STAND aura (persistent)
          • window.EWPowerAura.burst(tx, ty, opts) → timed spell-cast aura
            (three-vfx-effects._fireAura calls this for power-up spells, so it
            rides the existing host→guest vfx3d relay = online parity for free)
@@ -5639,9 +5639,13 @@ const ThreeRenderer = (function () {
             color: 0xffa820, mid: 0xffdf70, core: 0xfff6d8,
             light: 0xffc860, ring: 0xffd070, spark: 0xfff0b0, sparkGlow: 0xffaa33
         },
+        /* 2026-08-03: was crimson (0xff2a1a…) and read as "this unit is ON
+           FIRE" — indistinguishable from a burning status at a glance. Now
+           an icy white-blue so it can never be confused with flame, and so
+           it contrasts hard with the golden FLOW STATE aura above it. */
         laststand: {
-            color: 0xff2a1a, mid: 0xff6a4a, core: 0xffd6c0,
-            light: 0xff5533, ring: 0xff4433, spark: 0xffc0b0, sparkGlow: 0xff3322
+            color: 0x2f7cff, mid: 0x9ed2ff, core: 0xffffff,
+            light: 0x6ab4ff, ring: 0x8cccff, spark: 0xeafcff, sparkGlow: 0x4aa8ff
         }
     };
     var AURA_MAX_LIGHTS = 4;

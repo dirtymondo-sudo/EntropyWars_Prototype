@@ -11000,15 +11000,22 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         aim.rotation.order = 'YXZ';
         root.add(aim);
         var g = _sigBuildGun(kind, ts);
-        /* The gun sits BY THE CASTER at a fixed, person-plausible size —
-           like a weapon they're holding. No distance-based scaling: a gun
-           doesn't grow at long range or shrink at close range. The old 1.3×
-           base made giant firearms whose barrel crossed most of the gap
-           ("the gun goes right up to the target"); 0.85× keeps every model
-           reading as the shooter's weapon. The bullet/tracer is what
-           crosses to the target. */
+        /* The gun sits BY THE CASTER at a fixed size — like a weapon they're
+           holding. No distance-based scaling: a gun doesn't grow at long
+           range or shrink at close range. History: 1.3× base made barrels
+           that crossed most of the gap, so it was cut to 0.85× — which went
+           too far the other way (the guns were unreadable at the diorama
+           camera's zoom, "too small to even see"). 1.6× is the middle
+           ground the SPECTRAL firearms want: clearly legible as a summoned
+           weapon, still anchored at the shooter (a sniper reads ~2.3 tiles
+           long, well short of its 5+ tile range). The bullet/tracer is
+           still what crosses to the target.
+           Console-tunable: window.EW_GUN_SCALE = 1.2 */
         var _gunMuzzleTs = (g.muzzle && g.muzzle.position ? g.muzzle.position.z : ts * 0.9) / ts;
-        var _gunScale = opts.modelScale != null ? opts.modelScale : (opts.sky ? 2.0 : 0.85);
+        var _gunScaleBase = (typeof window !== 'undefined' && window.EW_GUN_SCALE > 0)
+            ? window.EW_GUN_SCALE : 1.6;
+        var _gunScale = opts.modelScale != null ? opts.modelScale
+            : (opts.sky ? _gunScaleBase * 1.75 : _gunScaleBase);
         g.group.scale.setScalar(_gunScale);
         /* px the muzzle tip sits ahead of the caster tile centre, along the
            firing line — the bolt pipeline starts the tracer HERE, so the
@@ -11022,7 +11029,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var glyph = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.15, ts * 1.15), glyphMat);
         glyph.rotation.x = -Math.PI / 2;
         glyph.position.y = -ts * 0.38;
-        glyph.scale.setScalar(Math.min(1, 0.55 + 0.35 * _gunScale));
+        glyph.scale.setScalar(Math.max(0.55, Math.min(1.4, 0.55 + 0.35 * _gunScale)));
         glyph.renderOrder = 156;
         root.add(glyph);
 
