@@ -11188,21 +11188,61 @@
                     // firing in a quiet gap between beats re-centred/zoomed onto
                     // the LAST acting unit mid-tour. Stay out of it.
                     if (typeof _roundAdvanceInProgress !== 'undefined' && _roundAdvanceInProgress) return;
+                    // A pull-back settle IS the shot's return — land on the
+                    // REMEMBERED pre-shot gameplay framing (_preCineView) when
+                    // one is pending, and CONSUME it. Leaving it pending while
+                    // settling to the generic default zoom meant the camera
+                    // first pulled out too wide (default ≈ overview, but the
+                    // player's action-select view is the closer turn framing)
+                    // and then the NEXT camera touch (target-select pan, turn
+                    // activation) "restored" the pre-shot zoom on top of it —
+                    // two opposing zoom moves after every press-refund /
+                    // support cast: the "camera zooms in on my unit and then
+                    // back out again for no reason" bug.
+                    let _pre = null;
+                    if (_pull && this._preCineView) {
+                        _pre = this._preCineView;
+                        this._preCineView = null;
+                    }
                     // Under a contextual TPS hold, "level" means the resting
                     // over-the-shoulder pitch, keeping the current heading —
                     // not the tactical overhead.
-                    const _setTilt = this._tpsHold ? TPS_TURN_TILT : this._restTilt;
-                    const _setYaw  = this._tpsHold ? this.yaw : this._restYaw;
+                    const _setTilt = this._tpsHold ? TPS_TURN_TILT
+                        : (_pre ? Math.min(_pre.tilt, REST_TILT_MAX) : this._restTilt);
+                    const _setYaw  = this._tpsHold ? this.yaw : (_pre ? _pre.yaw : this._restYaw);
                     if (!_pull && this.tilt <= _setTilt + 3) return;
+                    // Settle zoom: the player's own wheel zoom always wins;
+                    // else the remembered pre-shot zoom; else compute for the
+                    // pitch this move is HEADING TO (the live tilt is still
+                    // the shot's craned angle at fire time, and framing for it
+                    // resolved ~2× too tight — the "camera zooms IN on the
+                    // remains instead of back out" bug). With no remembered
+                    // framing, the local player's own active unit settles to
+                    // the same closer TURN framing its activation pan uses, so
+                    // the settle can never land wider than the view the player
+                    // actually plays at.
+                    let _setZoom;
+                    if (isUserZoomEngaged()) {
+                        _setZoom = getUserZoomScale();
+                    } else if (_pre) {
+                        _setZoom = _pre.zoom;
+                    } else {
+                        _setZoom = getDefaultZoomAtTilt(_setTilt);
+                        const _ou = (_owner != null)
+                            ? (state.units || []).find(u => u.id === _owner && !u.dead) : null;
+                        if (_ou && state._blitzActiveUnitId === _ou.id
+                            && state.controllers?.[_ou.player] === CTRL.LOCAL
+                            && !state.autoPlayers?.[_ou.player]
+                            && typeof getViewerPlayer === 'function'
+                            && _ou.player === getViewerPlayer()) {
+                            _setZoom = Math.max(0.15, Math.min(10.0,
+                                _setZoom * TURN_FRAMING_ZOOM_MULT));
+                        }
+                    }
                     this.moveTo({
                         tilt: _setTilt, yaw: _setYaw,
                         ...(_pull ? {
-                            // Compute the restore zoom for the pitch this move
-                            // is HEADING TO — the live tilt is still the shot's
-                            // craned angle at fire time, and framing for it
-                            // resolved ~2× too tight (the "camera zooms IN on
-                            // the remains instead of back out" bug).
-                            zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoomAtTilt(_setTilt),
+                            zoom: _setZoom,
                             _allowZoomChange: true, _bypassCap: true,
                             ...(_px !== undefined ? { x: _px, y: _py } : {})
                         } : {}),
@@ -11244,6 +11284,9 @@
                 if (state.cameraDisabled && !opts._force) return;
                 this._stop();
 
+                // A snap is the user's (or a reset's) own reframe — a pending
+                // auto-settle firing after it would yank the view again.
+                if (this._autoSettleTimer) { clearTimeout(this._autoSettleTimer); this._autoSettleTimer = null; }
                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                 this._busy = false;
                 if (opts.x    !== undefined) this.x    = opts.x;
@@ -11302,6 +11345,13 @@
                 if (!boardStageEl || (state.phase !== 'battle' && state.phase !== 'editor')) return;
 
                 this._stop();
+                // A real camera move takes over from any PENDING auto-settle:
+                // the debounced "come home" must never fire on top of a newer
+                // motion (it used to re-centre/re-zoom mid-target-browse when
+                // the player chained an action inside the settle window). The
+                // settle's own moveTo is safe — it nulls the timer before
+                // calling here; every action re-arms it afterwards.
+                if (this._autoSettleTimer) { clearTimeout(this._autoSettleTimer); this._autoSettleTimer = null; }
                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
 
                 // A real camera move takes over from any hand-pan height latch;
@@ -15012,11 +15062,17 @@
             // third-person hold and clamp the pitch to the overhead ceiling.
             camera._tpsHold = false;
             const _uz = getUserZoomScale();
-            const _fitZoom = Math.max(getFullMapZoom() * EOR_OVERVIEW_MARGIN, getMaxAutoZoomOut());
+            // Frame for the pitch the overview is HEADING to, not the live
+            // tilt — an action/detonation shot can still have the camera
+            // craned when the tour starts, and the live-tilt zoom resolved
+            // ~2× too tight (a zoom-IN masquerading as the "overview").
+            const _ovTilt = Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX);
+            const _fitZoom = Math.max(getFullMapZoom() * EOR_OVERVIEW_MARGIN,
+                _zoomForVisibleTilesAtTilt(MAX_AUTO_ZOOM_OUT_TILES, _ovTilt));
             camera.moveTo({
                 x: Math.floor(bw() / 2), y: Math.floor(bh() / 2),
                 zoom: isUserZoomEngaged() ? _uz : _fitZoom,
-                tilt: Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX),
+                tilt: _ovTilt,
                 yaw: camera._restYaw,
                 // Long, gentle pull-back: the overview is re-issued between
                 // several EOR beats, and a short tween made each re-issue read
@@ -15037,7 +15093,15 @@
         const EOR_FOCUS_ZOOM_MULT = 1.3;
         function getEorFocusZoom() {
             if (isUserZoomEngaged()) return getUserZoomScale();
-            return Math.max(0.15, Math.min(10.0, getDefaultZoom() * EOR_FOCUS_ZOOM_MULT));
+            // Compute for the DESTINATION pitch (every EOR dive moves to the
+            // resting tilt — see eorFocusCamera), never the live tilt: a beat
+            // firing while the camera is still craned from a detonation or
+            // action shot resolved the zoom ~2× too tight, so status ticks /
+            // DoT deaths opened with a surprise zoom-IN on the victim and the
+            // next beat pulled back out again.
+            const _dstTilt = Math.min(camera._restTilt ?? DEFAULT_BOARD_TILT, REST_TILT_MAX);
+            return Math.max(0.15, Math.min(10.0,
+                getDefaultZoomAtTilt(_dstTilt) * EOR_FOCUS_ZOOM_MULT));
         }
         function eorFocusCamera(x, y, opts = {}) {
             if (_skipVisuals() || state.cameraDisabled) return;
@@ -15107,6 +15171,19 @@
 
         function _unitElevZ(unit) {
             if (!unit) return 0;
+            // Real units: derive the height LEVEL from the same px anchor the
+            // renderer actually stands them on (unitElevationZ: walkable roofs,
+            // interior floors below the column top, the flyer's visual hover
+            // height). The old bare-terrain getHeightAt framed a unit standing
+            // on a building roof a full storey low — the action shot's focal
+            // (and its slope-following tilt) pointed at the structure's base /
+            // the unit's feet instead of the unit.
+            if (unit.id != null && typeof unitElevationZ === 'function'
+                && typeof window._getElevationPx === 'function') {
+                const _px = unitElevationZ(unit);
+                const _stepPx = Math.max(1, window._getElevationPx(1));
+                return _px > 0 ? _px / _stepPx : 0;
+            }
             if (typeof canFly === 'function' && canFly(unit)
                 && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) {
                 return unit.z ?? 0;
@@ -15648,6 +15725,12 @@
                 const tilt = Math.max(CINE_TILT_GUARD_MIN,
                     Math.min(CINE_TILT_GUARD_MAX, 90 + slopeDeg - CINE_SHOULDER_ANGLE));
                 let zoom = Math.max(CINE_MIN_ZOOM, CINE_BASE_ZOOM - len * CINE_ZOOM_FALLOFF);
+                // Viewport-aware ceiling: never frame tighter than ~4.5 tiles
+                // tall. The fixed 2.5× base was tuned for large windows — on
+                // smaller viewports it blew straight past the subject and the
+                // shot opened as an extreme close-up of the ground / the
+                // unit's feet.
+                zoom = Math.min(zoom, _cineZoomForTiles(4.5, tilt));
                 if (upGapPx > 0) {
                     const fitTilesTall = (upGapPx / ts) + CINE_VERT_FIT_MARGIN;
                     zoom = Math.max(CINE_MIN_ZOOM, Math.min(zoom, _cineZoomForTiles(fitTilesTall, tilt)));
@@ -28668,10 +28751,17 @@
                         const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
                         const _retYaw = getTurnStartCamYaw(camU,
                             camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
+                        // Returning from a cinematic shot: the zoom must be
+                        // re-applied too (focusOnTiles drops `zoom` without
+                        // _applyZoom), or the plan turn opens stuck at the
+                        // last action's close-up magnification.
+                        const _simCineActive = camera._preCineView != null || camera._cineShotId != null;
                         camera._preCineView = null;
                         camera._releaseCineSubject(actionMs(850));
                         focusBoardCameraOnTiles([{ x: camU.x, y: camU.y }], {
                             zoom,
+                            _applyZoom: _simCineActive,
+                            _bypassCap: _simCineActive,
                             tilt: _retTilt,
                             yaw: _retYaw,
                             holdMs: 99999,
@@ -30215,10 +30305,17 @@
                         const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
                         const _retYaw  = getTurnStartCamYaw(nextUnit,
                             camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
+                        // ...and the ZOOM must ride along when a shot's framing
+                        // was live — focusOnTiles silently drops `zoom` without
+                        // _applyZoom, which left the AI turn opening at the
+                        // previous action's close-up magnification.
+                        const _aiCineActive = camera._preCineView != null || camera._cineShotId != null;
                         camera._preCineView = null;
                         camera._releaseCineSubject(actionMs(850));
                         focusBoardCameraOnTiles([{ x: nextUnit.x, y: nextUnit.y }], {
                             zoom,
+                            _applyZoom: _aiCineActive,
+                            _bypassCap: _aiCineActive,
                             tilt: _retTilt,
                             yaw: _retYaw,
                             holdMs: 99999,
@@ -30249,14 +30346,19 @@
                         const zoom = isUserZoomEngaged() ? baseZoom : getDefaultZoom();
                         // Same turn-handoff rule as the AI branch above: the
                         // activation pan always settles at the resting tactical
-                        // orientation, never at a leftover action angle.
+                        // orientation, never at a leftover action angle — and
+                        // the zoom rides along when a shot's framing was live
+                        // (focusOnTiles drops `zoom` without _applyZoom).
                         const _retTilt = camera._preCineView ? camera._preCineView.tilt : camera._restTilt;
                         const _retYaw  = getTurnStartCamYaw(nextUnit,
                             camera._preCineView ? camera._preCineView.yaw : camera._restYaw);
+                        const _rmCineActive = camera._preCineView != null || camera._cineShotId != null;
                         camera._preCineView = null;
                         camera._releaseCineSubject(actionMs(850));
                         focusBoardCameraOnTiles([{ x: nextUnit.x, y: nextUnit.y }], {
                             zoom,
+                            _applyZoom: _rmCineActive,
+                            _bypassCap: _rmCineActive,
                             tilt: _retTilt,
                             yaw: _retYaw,
                             holdMs: 99999,
@@ -32562,6 +32664,15 @@
                     // yank the camera; the action's own restore handles it.
                 } else {
                     state._deferredTurnPanUnitId = null;
+                    // Captured BEFORE the shot bookkeeping is dropped: was a
+                    // cinematic action shot's framing (close-up zoom) still
+                    // live when this activation took over? If so the zoom must
+                    // be re-applied below even for a non-local turn — "follow
+                    // at whatever zoom the previous framing left" is right
+                    // between plain turns, but inheriting a beat-2 CLOSE-UP
+                    // meant the camera chased the next unit across the map at
+                    // action-shot magnification until something else fixed it.
+                    const _cineZoomActive = camera._cineShotId != null || camera._preCineView != null;
                     camera._cineShotId = null;
                     const baseZoom = getUserZoomScale();
 
@@ -32600,8 +32711,12 @@
                         camera._tpsHold = false;   // AI/auto turns: stock tactical follow
                         focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
                             zoom,
-                            _applyZoom: _localActiveTurn,
-                            _bypassCap: _localActiveTurn,
+                            // Also re-frame when a cinematic shot's close-up
+                            // zoom was still live (see _cineZoomActive above) —
+                            // the angle reset alone left the tactical follow
+                            // stuck at action-shot magnification.
+                            _applyZoom: _localActiveTurn || _cineZoomActive,
+                            _bypassCap: _localActiveTurn || _cineZoomActive,
                             tilt: _retTilt,
                             yaw: _retYaw,
                             holdMs: 99999,
@@ -32721,9 +32836,17 @@
                         const rangeRows = range * 2 + 1;
                         // Fit the spell's range rings and nothing more; only
                         // zoom OUT if the current view doesn't already show
-                        // them — same rule as the Move framing.
-                        const _fitZ = clampAutoZoom(computeZoomForVisibleTiles(rangeRows + 2));
-                        const zoom = Math.min(camera.zoom || _fitZ, Math.max(_fitZ, getDefaultZoom()));
+                        // them — same rule as the Move framing. Computed for
+                        // the DESTINATION pitch (this same move pitches to
+                        // TILE_PICK_TILT): the live-tilt version resolved a
+                        // craned action-shot pitch into a much tighter "fit",
+                        // so arming a spell right after a cast kept close-up
+                        // magnification on the overhead view.
+                        const _fitZ = Math.max(
+                            _zoomForVisibleTilesAtTilt(MAX_AUTO_ZOOM_OUT_TILES, TILE_PICK_TILT),
+                            _zoomForVisibleTilesAtTilt(rangeRows + 2, TILE_PICK_TILT));
+                        const zoom = Math.min(camera.zoom || _fitZ,
+                            Math.max(_fitZ, getDefaultZoomAtTilt(TILE_PICK_TILT)));
                         camera.moveTo({
                             x: unit.x, y: unit.y, zoom,
                             // Same over-the-map overhead as the Move framing.
@@ -33774,10 +33897,14 @@
                 // when the current view doesn't already show it. The old
                 // Math.min(fit, getDefaultZoom()) always pulled out to at
                 // least the full-board view, so arming Move meant re-zooming
-                // in by hand every single time.
-                const _mvFitZ = clampAutoZoom(computeZoomForVisibleTiles(_mvRange * 2 + 4));
+                // in by hand every single time. Computed for the DESTINATION
+                // pitch (TILE_PICK_TILT, set below) — the live-tilt version
+                // resolved a leftover action-shot crane into a too-tight fit.
+                const _mvFitZ = Math.max(
+                    _zoomForVisibleTilesAtTilt(MAX_AUTO_ZOOM_OUT_TILES, TILE_PICK_TILT),
+                    _zoomForVisibleTilesAtTilt(_mvRange * 2 + 4, TILE_PICK_TILT));
                 const _mvZoom = Math.min(camera.zoom || _mvFitZ,
-                    Math.max(_mvFitZ, getDefaultZoom()));
+                    Math.max(_mvFitZ, getDefaultZoomAtTilt(TILE_PICK_TILT)));
                 camera.moveTo({
                     x: unit.x, y: unit.y,
                     // Over-the-map overhead. The old getTacticalTilt() was the

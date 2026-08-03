@@ -4903,7 +4903,12 @@
                     R._prevActiveUnit = st._blitzActiveUnitId;
                     var au = (st.units || []).find(function(u) { return u.id === st._blitzActiveUnitId && !u.dead; });
                     if (au && typeof focusBoardCameraOnTiles === 'function') {
-                        var _dz = (typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1;
+                        /* Honour a wheel-zoom the viewer dialed in — this used
+                           to force getDefaultZoom() on every unit change, so
+                           replays yanked the zoom back out each activation. */
+                        var _dz = (typeof isUserZoomEngaged === 'function' && isUserZoomEngaged()
+                            && typeof getUserZoomScale === 'function') ? getUserZoomScale()
+                            : ((typeof getDefaultZoom === 'function') ? getDefaultZoom() : 1);
                         focusBoardCameraOnTiles([{ x: au.x, y: au.y }], {
                             zoom: _dz, holdMs: 99999, persist: true, transitionMs: 750, _fogAllowed: true
                         });

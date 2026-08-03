@@ -4,7 +4,48 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## 🧠 AI GEN-105 CHAMPION WEIGHTS ADOPTED (2026-07-29, LATEST) — battle.js, index.html
+## 🎥 CAMERA "RANDOM ZOOM-IN" PURGE (2026-08-03, LATEST) — battle.js, ai.js, online.js, index.html
+Token → `20260803b-cors`. Root-caused the long-standing "camera zooms in on a
+unit then back out for no reason" complaints (after press-refund casts, after
+kills, during AI turns, EOR beats). It was never ONE bug — seven independent
+writers were fighting over zoom. All fixed; keep these invariants:
+1. **ai.js runComputerTurn pan had `zoom: 1.35, persist: false, holdMs: 3000`**
+   — zoomed IN on every AI activation and then auto-fired a full
+   `camera.reset()` 3s later (the reset also wiped `_preCineView` mid-turn).
+   Now: zoom OMITTED (inherited) + `persist: true`. Never give an AI follow
+   pan its own zoom or a self-expiring reset timer.
+2. **`_armLevelSettle` (the post-action pull-back) now CONSUMES
+   `camera._preCineView`** and lands on that remembered pre-shot framing
+   (tilt+yaw+zoom) in ONE motion. Before, it pulled out to the generic
+   default zoom and LEFT `_preCineView` pending, so the next camera touch
+   (target-select pan / activation) "restored" the pre-shot zoom on top —
+   the exact in-then-out bounce after every press-refund / support cast.
+   No-pre fallback: local active unit settles to TURN framing (×1.5), not
+   the wide default.
+3. **Pending settles are cancelled by any newer `moveTo()`/`snap()`** — the
+   debounced "come home" can no longer fire on top of a pan the player (or
+   the next beat) already started.
+4. **Zoom must be computed for the DESTINATION tilt, never the live tilt.**
+   A craned action shot (tilt 74–76) makes live-tilt framing resolve ~2×
+   too tight (cos-floor 0.35 vs ~0.77 at rest). Fixed in `getEorFocusZoom`,
+   the EOR overview, `setTool` tile-aim fit, `setActionMode` move-fit (all
+   now use `getDefaultZoomAtTilt`/`_zoomForVisibleTilesAtTilt`).
+5. **`focusOnTiles` silently DROPS `zoom` without `_applyZoom: true`.** Every
+   activation pan that consumes `_preCineView` (selectUnit auto branch,
+   `_continueBlitzWithUnit_impl` AI + REMOTE branches, simul
+   `beginTurnPlanning`) now passes `_applyZoom`/`_bypassCap` when a cine
+   shot's framing was live, so turns can't open stuck at beat-2 close-up
+   magnification. If you add a new activation pan, do the same.
+6. **`_unitElevZ` now derives the shot focal from `unitElevationZ`** (roof
+   walkers, interior floors, flyer visual hover) instead of bare
+   `getHeightAt` — action shots on a unit standing on a building framed the
+   structure's base ("zoomed in on the character's feet").
+7. **2D-fallback action shot** (WebGL off/lost) zoom is now capped by
+   `_cineZoomForTiles(4.5, tilt)` — the fixed 2.5× base was an extreme
+   ground close-up on small viewports.
+Also: online replay auto-cam honours an engaged user zoom now.
+
+## 🧠 AI GEN-105 CHAMPION WEIGHTS ADOPTED (2026-07-29) — battle.js, index.html
 Token → `20260729j-cors`. The schema-12 `AI_WEIGHT_DEFAULTS` values in battle.js
 are now the gen-105 training champion (6144 matches, 8 passes). Unlike gen-100
 (WR 49% = noise) this one is a real gain: the 60-match strength-test gauntlet

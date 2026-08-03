@@ -284,8 +284,15 @@
         g.focusUnitPanel(unit.id);
         if (g.state.autoPlayers?.[unit.player]) g.scheduleBoardRender();
         if (!g.state.cameraDisabled && !g.devAutoSim && g._shouldCameraFollowUnit(unit)) {
+            // Recentre only — zoom is INHERITED (omitted) so the player's
+            // zoom / the tactical framing survives AI activations. The old
+            // hardcoded zoom:1.35 + persist:false pair zoomed IN on every AI
+            // action and then auto-fired a full camera.reset() 3s later,
+            // producing a constant in-then-out zoom bounce during enemy
+            // turns (and the reset also wiped the action shots' remembered
+            // return view mid-turn).
             g.focusBoardCameraOnTiles([{ x: unit.x, y: unit.y }], {
-                zoom: 1.35, holdMs: 3000, persist: false, transitionMs: 500,
+                holdMs: 99999, persist: true, transitionMs: 500,
                 _fogAllowed: true
             });
         }
