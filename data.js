@@ -8212,43 +8212,14 @@ function computeSpellManaCost(s){
 })();
 
 // --- Spell SLOT costs (the loadout budget) ---
-// Every unit has SPELL_SLOT_MAX (8) spell slots, and a spell occupies 1-3 of
-// them based on its power — the derived mana cost above is the power proxy.
-// So a build is "8 cheap tricks" or "a few premium bombs", never both.
-// 3-slot territory is reserved for the marquee spell(s) of each type
-// (Nuke, Meteor, EMP Burst, Judgment, Dragonfire...).
-// An explicit spell.slotCost (1-3) overrides the derivation.
-const SLOT_COST_2_MIN_MANA = 35;
-const SLOT_COST_3_MIN_MANA = 60;
-
-function _spellGrantsPremiumBuff(s) {
-    const eff = [...(s.statusEffects || []), ...(s.allyStatusEffects || [])];
-    return eff.some(e => e && (e.id === 'protect' || e.id === 'invisible'));
-}
-
+// Every unit has SPELL_SLOT_MAX (6) spell slots and every spell occupies
+// exactly ONE of them: one spell = one slot. The power-scaled 1-3 slot
+// costs were retired 2026-08-03; legacy spell.slotCost fields are ignored.
+// (cls/secJob params kept for call-site compatibility.)
 function getSpellSlotCost(spell, cls, secJob) {
     if (!spell) return 0;
     if (spell.kind === 'basicAttack') return 0;
-    let slots;
-    if (typeof spell.slotCost === 'number') {
-        slots = spell.slotCost;
-    } else {
-        const mana = spell.cost || 0;
-        slots = mana >= SLOT_COST_3_MIN_MANA ? 3 : mana >= SLOT_COST_2_MIN_MANA ? 2 : 1;
-        // Mana under-prices game-warping utility (invulnerability, stealth,
-        // revives, extra actions, spell theft) — floor those at 2 slots.
-        if (slots < 2 && (spell.kind === 'revive' || spell.revivePct || spell.reviveHpPct ||
-            spell.kind === 'encore' || spell.stealSpell || _spellGrantsPremiumBuff(spell))) {
-            slots = 2;
-        }
-    }
-    // Cross-class picks (not from your job, secondary job, or race) take an
-    // extra slot to master. Freelancer counts everything as native.
-    if (cls && typeof isSpellNativeToClass === 'function') {
-        const native = isSpellNativeToClass(spell, cls) || (secJob && isSpellNativeToClass(spell, secJob));
-        if (!native) slots += 1;
-    }
-    return Math.max(1, Math.min(3, slots));
+    return 1;
 }
 
 function getSpellIdsSlotCost(spellIds, cls, secJob) {
@@ -8293,7 +8264,7 @@ function getSpellIdsSlotCost(spellIds, cls, secJob) {
 // skipping (not truncating at) anything that no longer fits — the graceful
 // "over budget" path for saved parties built before the budget existed.
 function trimSpellIdsToSlotBudget(spellIds, cls, secJob, budget) {
-    const cap = budget || (typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : 8);
+    const cap = budget || (typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : 6);
     const kept = [];
     const seen = new Set();
     let used = 0;
@@ -12143,7 +12114,7 @@ const BOSS_BUFF_DEFS = {
 
 const BOSS_GOLD_SPLIT_MODE = 'equal';
 
-const SPELL_SLOT_MAX = 8;
+const SPELL_SLOT_MAX = 6;
 
 // ============================================================================
 // Level 100 scaling — single source of truth.

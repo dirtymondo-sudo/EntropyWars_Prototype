@@ -214,7 +214,7 @@ if (!document.getElementById('pb-hover-css')) {
       0%   { background-position: 0% 50%; }
       100% { background-position: 200% 50%; }
     }
-    /* the rack that holds the 8 fixed spell slots */
+    /* the rack that holds the 6 fixed spell slots */
     .pbx-slotrack {
       display: flex; flex-direction: column; gap: 3px;
       flex-shrink: 0; padding: 8px 0 7px;
@@ -614,7 +614,7 @@ function getLearnedSpells(cls, customSpells) {
   return order.map(id => typeof window.getSpellById === 'function' ? window.getSpellById(id) : null).filter(Boolean);
 }
 
-// Slot budget: a spell occupies 1-3 of the SPELL_SLOT_MAX slots based on power.
+// Slot budget: one spell = one of the SPELL_SLOT_MAX (6) slots.
 function spellSlotCost(sp) {
   if (!sp) return 0;
   return typeof window.getSpellSlotCost === 'function' ? window.getSpellSlotCost(sp) : 1;
@@ -628,7 +628,7 @@ function usedSpellSlots(ids) {
 }
 
 function buildDefaultCustomSpells(race, cls, secJob) {
-  const slotCap = typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 8;
+  const slotCap = typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 6;
   const picks = [];
   const seen = new Set();
   let used = 0;
@@ -678,6 +678,27 @@ function buildDefaultCustomSpells(race, cls, secJob) {
     }
   }
   return picks;
+}
+
+// Every spell id this unit may legally equip: its race's abilities (job-gated)
+// plus spells native to its main job, plus non-Tier-III spells native to its
+// secondary job — exactly what the spell pool offers. Used to scrub stale
+// picks left behind by a vessel/job swap or an old saved team.
+function legalCustomSpellIds(race, cls, secJob) {
+  const ok = new Set();
+  const ra = (typeof window.RACE_ABILITIES !== 'undefined' && window.RACE_ABILITIES[race])
+    ? window.RACE_ABILITIES[race].filter(a => (!a.jobRequirement || a.jobRequirement === cls) && a.id && clashSpellOk(a))
+    : [];
+  for (const a of ra) ok.add(a.id);
+  if (typeof window.SPELL_LIBRARY !== 'undefined' && typeof window.isSpellNativeToClass === 'function') {
+    for (const sp of window.SPELL_LIBRARY) {
+      if (!sp || !sp.id || sp.kind === 'basicAttack' || !clashSpellOk(sp)) continue;
+      const isMain = window.isSpellNativeToClass(sp, cls);
+      const isSec = secJob && window.isSpellNativeToClass(sp, secJob) && sp.tier !== 'III';
+      if (isMain || isSec) ok.add(sp.id);
+    }
+  }
+  return ok;
 }
 /* Clash (classic JRPG battle): movement/positioning spells can't be equipped —
    there is nothing for them to do on a formation stage. Mirrors the battle-side
@@ -1410,6 +1431,15 @@ function PartyBuilder() {
     if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
     st.partyMeta[player][slot].customSpells = defaults;
     customSpells = defaults;
+  } else {
+    // Self-heal: drop any equipped spell this unit can't actually learn
+    // (leftovers from a vessel swap, subjob change, or an old saved team).
+    const legal = legalCustomSpellIds(unitRace, clsName, secJob);
+    if (rawCustomSpells.some(id => !legal.has(id))) {
+      const scrubbed = rawCustomSpells.filter(id => legal.has(id));
+      st.partyMeta[player][slot].customSpells = scrubbed;
+      customSpells = scrubbed;
+    }
   }
   const learnedSpells = getLearnedSpells(clsName, customSpells);
   const zodiacNature = typeof window.ZODIAC_NATURES !== 'undefined' ? window.ZODIAC_NATURES[identity.zodiac || 'aries'] : null;
@@ -1457,9 +1487,11 @@ function PartyBuilder() {
 
   function pickRace(raceKey, gender, jobName) {
     if (!st.partyMeta[player]) st.partyMeta[player] = []; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
-    const prevJob = st.partyBuilds[player][slot]; st.partyMeta[player][slot].race = raceKey; st.partyMeta[player][slot].gender = gender;
+    const prevJob = st.partyBuilds[player][slot]; const prevRace = st.partyMeta[player][slot].race; st.partyMeta[player][slot].race = raceKey; st.partyMeta[player][slot].gender = gender;
     if (raceKey === 'homosapien') st.partyBuilds[player][slot] = jobName; else { const lj = window.RACE_DEFAULT_JOBS?.[raceKey]; if (lj) st.partyBuilds[player][slot] = lj; }
-    if (st.partyBuilds[player][slot] !== prevJob) delete st.partyMeta[player][slot].customSpells;
+    // A different vessel OR a different job = a different spell pool — the old
+    // unit's picks (race abilities included) must never carry over.
+    if (st.partyBuilds[player][slot] !== prevJob || raceKey !== prevRace) delete st.partyMeta[player][slot].customSpells;
     if (!st.loadouts[player]) st.loadouts[player] = []; if (!st.loadouts[player][slot]) st.loadouts[player][slot] = typeof window.emptyLoadout === 'function' ? window.emptyLoadout() : {};
     const lo = st.loadouts[player][slot]; if (typeof window.ITEM_RULES !== 'undefined') { lo.items = Object.fromEntries(Object.keys(window.ITEM_RULES).map(k=>[k,0])); lo.items.healPotion=1;lo.items.manaPotion=1;lo.items.panacea=1; }
     lo.equipment = typeof window.getDefaultEquipment === 'function' ? window.getDefaultEquipment(st.partyBuilds[player][slot]) : {};
@@ -1474,7 +1506,7 @@ function PartyBuilder() {
   function selectSlot(i) { setSlot(i); st.builderSelectedSlot=i; st.builderSelectedPlayer=player; sfx('uiCursorMove'); refresh(); }
   function doRandomize() { if (typeof window.randomizeUnitSlot==='function') window.randomizeUnitSlot(player,slot); if (st.builderConfirmedSlots?.[player]) delete st.builderConfirmedSlots[player][slot]; sfx('uiButtonConfirm'); refresh(); }
   function doRandomizeAll() { if (typeof window.randomizeParty==='function') window.randomizeParty(player); if (!st.builderConfirmedSlots) st.builderConfirmedSlots={}; st.builderConfirmedSlots[player]={}; for(let i=0;i<teamSize;i++) st.builderConfirmedSlots[player][i]=true; sfx('uiButtonConfirm'); refresh(); }
-  function doDefaults() { st.builderConfirmedSlots={}; if (typeof window.defaultAllTeams==='function') window.defaultAllTeams();  const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:8; [1,2].forEach(p=>{ if (!st.partyMeta[p]) st.partyMeta[p]=[]; for (let i=0;i<(st.partyBuilds[p]||[]).length;i++){ if (!st.partyMeta[p][i]) st.partyMeta[p][i]={}; const lo=st.loadouts?.[p]?.[i]; if (lo&&Array.isArray(lo.spells)&&lo.spells.filter(Boolean).length>0){ const _ids=lo.spells.filter(Boolean); st.partyMeta[p][i].customSpells=typeof window.trimSpellIdsToSlotBudget==='function'?window.trimSpellIdsToSlotBudget(_ids,st.partyBuilds[p][i]):_ids.slice(0,slotCap); }}}); refresh(); }
+  function doDefaults() { st.builderConfirmedSlots={}; if (typeof window.defaultAllTeams==='function') window.defaultAllTeams();  const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6; [1,2].forEach(p=>{ if (!st.partyMeta[p]) st.partyMeta[p]=[]; for (let i=0;i<(st.partyBuilds[p]||[]).length;i++){ if (!st.partyMeta[p][i]) st.partyMeta[p][i]={}; const lo=st.loadouts?.[p]?.[i]; if (lo&&Array.isArray(lo.spells)&&lo.spells.filter(Boolean).length>0){ const _ids=lo.spells.filter(Boolean); st.partyMeta[p][i].customSpells=typeof window.trimSpellIdsToSlotBudget==='function'?window.trimSpellIdsToSlotBudget(_ids,st.partyBuilds[p][i]):_ids.slice(0,slotCap); }}}); refresh(); }
   function doBack() { if (typeof window.backToModeSelect==='function') window.backToModeSelect(); }
   function doStart() {
     // Block entering a match with a locked vessel on the local player's team.
@@ -1508,12 +1540,12 @@ function PartyBuilder() {
 
       st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(unitRace, mainJob, val);
     st.teamLockedIn=false; refresh(); }
-  function toggleSpell(spellId) { if (!spellId) return; if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:8; const m=st.partyMeta[player][slot]; if (!Array.isArray(m.customSpells)) m.customSpells=[]; const arr=m.customSpells,idx=arr.indexOf(spellId); if(idx>=0)arr.splice(idx,1);else{if(usedSpellSlots(arr)+spellIdSlotCost(spellId)>slotCap){sfx('uiError');return;}arr.push(spellId);} st.teamLockedIn=false; sfx('uiCursorMove'); refresh(); }
+  function toggleSpell(spellId) { if (!spellId) return; if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6; const m=st.partyMeta[player][slot]; if (!Array.isArray(m.customSpells)) m.customSpells=[]; const arr=m.customSpells,idx=arr.indexOf(spellId); if(idx>=0)arr.splice(idx,1);else{if(usedSpellSlots(arr)+spellIdSlotCost(spellId)>slotCap){sfx('uiError');return;}arr.push(spellId);} st.teamLockedIn=false; sfx('uiCursorMove'); refresh(); }
   function resetCustomSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={};
     st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(unitRace, clsName, secJob);
     st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
   function clearAllSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; st.partyMeta[player][slot].customSpells=[]; st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
-  function randomizeSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:8;
+  function randomizeSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6;
 
     const allJobs = typeof window.JOB_MODIFIERS!=='undefined' ? Object.keys(window.JOB_MODIFIERS) : [];
     const mainJob = st.partyBuilds?.[player]?.[slot] || clsName;
@@ -1768,8 +1800,8 @@ function PartyBuilder() {
           !isArena&&h('button',{onClick:resetCustomSpells,className:'pb-btn-ghost',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,color:EW.inkMute,fontSize:9,padding:'3px 8px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'RST'),
           !isArena&&h('button',{onClick:clearAllSpells,className:'pb-btn-danger',style:{background:'transparent',border:`1px solid rgba(255,120,120,0.25)`,color:'rgba(255,120,120,0.7)',fontSize:9,padding:'3px 8px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'CLR')),
 
-        // ── equipped loadout: fixed 8-slot rack; each spell physically occupies
-        //    its cost in slots (taller blade = more slots), green = locked in ──
+        // ── equipped loadout: fixed 6-slot rack; one spell per slot,
+        //    green = locked in ──
         h('div', { className:'pbx-slotrack', style:{ maxHeight:'48%', overflow:'hidden' } },
           h('div', { className:'pbx-slotrack-head' },
             h('span', { style:{ fontSize:10, color:'#79d99a', letterSpacing:'0.16em', fontWeight:700 } }, '🔒 EQUIPPED — SPELL SLOTS'),
