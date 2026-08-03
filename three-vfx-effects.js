@@ -17424,11 +17424,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceKiCharge:      { color: 0x55ccff, durationMs: 2600 },                /* classic ki blue-white */
         warCry:            { color: 0xffb830, durationMs: 2200 },
         raceNordicWarcry:  { color: 0x7fd4ff, durationMs: 2200, radius: 2 },
-        raceRampage:       { color: 0xff3322, durationMs: 2400 },
         raceApeFury:       { color: 0xff7722, durationMs: 2400 },
         raceInnerDemon:    { color: 0x9933ff, durationMs: 2400 },
         overclock:         { color: 0x33ffcc, durationMs: 2000 },
-        raceOverclock:     { color: 0x33ffcc, durationMs: 2000 },
         raceNitroBoost:    { color: 0x3377ff, durationMs: 2000 },
         raceHowl:          { color: 0xbfd4e8, durationMs: 2000 },
         raceAdrenalineRush:{ color: 0xffcc44, durationMs: 2000 }

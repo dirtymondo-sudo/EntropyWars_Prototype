@@ -3844,14 +3844,15 @@ const SPELL_LIBRARY = [
     },
     {
         /* 2026-07-18 Warrior/Tank split: the Tank raises real fortifications.
-           Class-spell twin of the SHARED_RAMPART race ability. Named
-           'Bulwark' (2026-08-03): every spell display name must be UNIQUE —
-           parts of the UI resolve the selected spell by name, and a unit
-           carrying both twins could fire the wrong one. */
+           2026-08-03: THE canonical Rampart — the duplicate SHARED_RAMPART
+           race ability was merged into this one (races borrow it by id via
+           the movepool-share table below; legacy id 'sharedRampart' aliases
+           here). Spell display names must be unique: parts of the UI resolve
+           the selected spell by name. */
         id: 'rampart',
         spellType: 'human',
         element: 'earth',
-        name: 'Bulwark',
+        name: 'Rampart',
         type: 'utility',
         cost: 30,
         equipCost: 15,
@@ -5621,14 +5622,9 @@ const SHARED_WALLS_OF_CAMELOT = {
 
 /* (SHARED_MAELSTROM was CUT 2026-07-26 via the Spell Library.) */
 
-const SHARED_RAMPART = {
-    id: 'sharedRampart', spellType: 'human', element: 'earth', name: 'Rampart',
-    type: 'utility', cost: 30, range: 3, apCost: 1,
-    kind: 'terrainCreate', terrainType: 'mountain', tileCount: 3, orientable: true,
-    dmg: 60, damageType: 'physical',
-    terrainDeform: { centerDelta: 2, edgeDelta: 0 },
-    desc: 'Raise a 3-tile wall of impassable mountain terrain. Enemies on targeted tiles take damage and are pushed aside.'
-};
+/* (SHARED_RAMPART merged into the Tank class spell 'rampart' 2026-08-03 —
+   it was a same-name duplicate. Races borrow 'rampart' by id via the
+   movepool-share table; 'sharedRampart' lives on as an id alias.) */
 
 const SHARED_FISSURE = {
     id: 'sharedFissure', spellType: 'anomaly', element: 'earth', name: 'Fissure',
@@ -5772,18 +5768,10 @@ const SHARED_NEBULA = {
     desc: 'Birth a star over the battlefield and detonate it. The newborn sun swells, collapses, and goes SUPERNOVA — HEAVY magic damage to All Enemies in a 5×5 blast and Burns everything the starfire touches. The nebula left hanging in the air is what remains of them. Cooldown: 2 rounds.'
 };
 
-// 2026-07-13: EMP Burst left the shared Assassin spell pool (data: empBurst is
-// Engineer-school now) and lives on as a RACIAL for the machine races — it's
-// their hardware, not spy-school tradecraft.
-const SHARED_EMP_PULSE = {
-    /* 'EMP Pulse' (2026-08-03): was 'EMP Burst', which collided with the
-       class spell empBurst — spell display names must be unique. */
-    id: 'raceEmpPulse', spellType: 'tech', element: 'lightning', name: 'EMP Pulse',
-    type: 'damage', cost: 40, dmg: 80, range: 0,
-    kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
-    statusEffects: [{ id: 'jammed', duration: 1 }],
-    desc: 'Deals WEAK magic damage to All Enemies around the caster (AOE). Applies Jammed.'
-};
+/* (SHARED_EMP_PULSE merged into the Engineer class spell 'empBurst'
+   2026-08-03 — it was a same-name near-identical duplicate. The machine
+   races borrow 'empBurst' by id via the movepool-share table; the legacy
+   id 'raceEmpPulse' lives on as an alias.) */
 
 
 const SHARED_VORTEX_SLAM = {
@@ -5937,7 +5925,6 @@ const RACE_ABILITIES = {
           kind: 'debuff',
           statStageBoost: { int: -3 },
           desc: 'Turn the target\'s thoughts to stone. Grey creeps up from their skull as the mind petrifies — lowers INT by 3 stages.' },
-        SHARED_RAMPART,
         SHARED_FISSURE,
         SHARED_WING_ATTACK
     ],
@@ -6276,7 +6263,6 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           pushDistance: 2,
           desc: 'Deals MEDIUM physical damage to a Single Enemy.' },
-        SHARED_EMP_PULSE,
     ],
     'android': [
         { id: 'raceNeuralHack', spellType: 'tech', name: 'Neural Hack',
@@ -6292,7 +6278,6 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           statStageBoost: { def: -1 },
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Lowers the target\'s DEF by 1 stage.' },
-        SHARED_EMP_PULSE,
         SHARED_SMOKE_SCREEN,
     ],
 
@@ -6791,7 +6776,6 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 25, dmg: 120, range: 5,
           kind: 'damage', damageType: 'physical', ignoresLineOfSight: true,
           desc: 'Deals MEDIUM physical damage to a Single Enemy.' },
-        SHARED_RAMPART,
         { id: 'raceTitanDrop', spellType: 'anomaly', name: 'Titan Drop',
           type: 'damage', cost: 25, dmg: 80, range: 2, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 25,
@@ -6801,13 +6785,9 @@ const RACE_ABILITIES = {
     ],
 
     'cyborg': [
-        /* 'Overdrive' (2026-08-03): was 'Overclock', which collided with the
-           class spell of the same name — a cyborg could carry BOTH. */
-        { id: 'raceOverclock', spellType: 'tech', name: 'Overdrive',
-          type: 'buff', cost: 25, apCost: 1, range: 0,
-          kind: 'buff',
-          statStageBoost: { atk: 2, spd: 1 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages and SPD by 1 stage.' },
+        /* (raceOverclock merged into the Engineer class spell 'overclock'
+           2026-08-03 — same-name duplicate. Cyborg borrows 'overclock' via
+           the movepool-share table; old id aliases to it.) */
         { id: 'raceEMPGrenade', spellType: 'tech', name: 'EMP Grenade',
           type: 'damage', cost: 30, dmg: 80, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -6957,7 +6937,6 @@ const RACE_ABILITIES = {
           kind: 'cross', damageType: 'magic', crossRadius: 2,
           statusEffects: [{ id: 'burn', duration: 1 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in a cross-shaped AOE. Applies Burn.' },
-        SHARED_RAMPART,
         SHARED_FISSURE,
         SHARED_WING_ATTACK
     ],
@@ -7062,7 +7041,6 @@ const RACE_ABILITIES = {
           terrainDeform: { centerDelta: -2, edgeDelta: -1 },
           desc: 'Marks a zone. After 1 turn, deals HEAVY physical damage to All Enemies inside (AOE). Leaves scorched tiles behind. Reshapes the ground on impact.' },
         SHARED_NUKE,
-        SHARED_RAMPART,
     ],
     'droid': [
         { id: 'raceSystemAnalysis', spellType: 'tech', name: 'System Analysis',
@@ -7079,7 +7057,6 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Deals WEAK magic damage to a Single Enemy. Applies Stagger.' },
-        SHARED_EMP_PULSE,
     ],
     'antihero': [
         { id: 'raceCosmicSlam', spellType: 'human', name: 'Cosmic Slam',
@@ -7261,7 +7238,6 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 20, apCost: 1, range: 3,
           kind: 'aoeShield', aoeRadius: 0, shieldHp: 100,
           desc: 'Grants a damage-absorbing shield to All Allies in an AOE.' },
-        SHARED_RAMPART,
     ],
     'kaiju': [
         { id: 'raceCataclysmStomp', spellType: 'unholy', name: 'Cataclysm Stomp',
@@ -7426,7 +7402,6 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stagger', duration: 1 }],
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           desc: 'Deals WEAK physical damage to All Enemies around the caster (AOE). Applies Stagger. Reshapes the ground on impact.' },
-        SHARED_RAMPART,
         SHARED_FISSURE,
     ],
 
@@ -7496,13 +7471,9 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 20, dmg: 120, range: 1,
           kind: 'displacement', damageType: 'physical', pushDistance: 2,
           desc: 'Deals MEDIUM physical damage to a Single Enemy and knocks it back.' },
-        /* 'Unstoppable' (2026-08-03): was 'Rampage', which collided with the
-           Raider class dash of the same name. */
-        { id: 'raceRampage', spellType: 'unholy', name: 'Unstoppable',
-          type: 'buff', cost: 25, apCost: 1, range: 0,
-          kind: 'buff',
-          statStageBoost: { atk: 2, def: 1 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages and DEF by 1 stage.' }
+        /* (raceRampage merged into the Raider class dash 'rampage'
+           2026-08-03 — same-name duplicate. The juggernaut borrows the real
+           'rampage' via the movepool-share table; old id aliases to it.) */
     ],
 
     'ki fighter': [
@@ -7893,11 +7864,40 @@ for (const [race, ids] of [
     ['machine elves',     ['raceFractalNeedle']],
     ['ice queen',         ['raceFrozenPunch']],
     ['minotaur',          ['raceGoreCharge']],
+    /* 2026-08-03 twin merges — these races used to carry same-name
+       DUPLICATES of class spells (sharedRampart / raceEmpPulse /
+       raceOverclock / raceRampage). The duplicates are gone; the races now
+       borrow the ONE canonical spell by id, king-kong-groundSlam style. */
+    ['gargoyle',          ['rampart']],
+    ['cyclops',           ['rampart']],
+    ['nephilim',          ['rampart']],
+    ['general',           ['rampart']],
+    ['gnome',             ['rampart']],
+    ['golem',             ['rampart']],
+    ['robot',             ['empBurst']],
+    ['android',           ['empBurst']],
+    ['droid',             ['empBurst']],
+    ['cyborg',            ['overclock']],
+    ['juggernaut',        ['rampage']],
 ]) {
     for (const id of ids) {
         const def = RACE_ABILITY_BY_ID[id] || SPELL_BY_ID[id];
         if (!def) { console.warn(`[MovepoolShare] unknown spell id '${id}' for race ${race}`); continue; }
         if (!RACE_ABILITIES[race].some(a => a.id === id)) RACE_ABILITIES[race].push(def);
+    }
+}
+
+/* Legacy id aliases for the 2026-08-03 twin merges: saved parties, replays
+   and exported movepool edits that reference a deleted duplicate id resolve
+   to the surviving canonical spell. */
+for (const [oldId, survivorId] of [
+    ['sharedRampart', 'rampart'],
+    ['raceEmpPulse',  'empBurst'],
+    ['raceOverclock', 'overclock'],
+    ['raceRampage',   'rampage'],
+]) {
+    if (SPELL_BY_ID[survivorId] && !SPELL_BY_ID[oldId]) {
+        SPELL_BY_ID[oldId] = SPELL_BY_ID[survivorId];
     }
 }
 
