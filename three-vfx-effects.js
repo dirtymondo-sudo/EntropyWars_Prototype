@@ -3848,12 +3848,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var from = tilePx(fromTx, fromTy);
         var to = tilePx(toTx, toTy);
         /* Gun spells: the tracer leaves from the spectral gun's MUZZLE, not
-           the caster's chest — "bullet fires from gun". Capped well short of
-           the target so a point-blank shot still visibly crosses the gap. */
+           the caster's chest — "bullet fires from gun". At point-blank the
+           spawn stops a beat short of the target so the shot still visibly
+           crosses the last stretch of the gap. */
         if (_gunMuzzlePx > 0) {
             var _gmdx = to.x - from.x, _gmdy = to.y - from.y;
             var _gmdl = Math.sqrt(_gmdx * _gmdx + _gmdy * _gmdy) || 1;
-            var _gmAdv = Math.min(_gunMuzzlePx, _gmdl * 0.45);
+            var _gmAdv = Math.min(_gunMuzzlePx, Math.max(0, _gmdl - ts * 0.3));
             from.x += (_gmdx / _gmdl) * _gmAdv;
             from.y += (_gmdy / _gmdl) * _gmAdv;
         }
@@ -10999,24 +11000,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         aim.rotation.order = 'YXZ';
         root.add(aim);
         var g = _sigBuildGun(kind, ts);
-        /* Stand-weapon scale, tamed again (2026-08-03): the rig hovers at
-           the CASTER's shoulder and the gun must READ as the caster's — the
-           bullet/tracer is what crosses the gap, never the barrel. The old
-           55%-of-gap budget plus a 0.55 scale floor let a close-range sniper
-           rifle park its muzzle ON the victim ("the gun goes right up to the
-           target"). Now the muzzle tip stays within ~38% of the caster→
-           target distance with NO floor big enough to break that promise —
-           point-blank shots get a small gun at the shooter's side, exactly
-           like a holstered draw. */
+        /* The gun sits BY THE CASTER at a fixed, person-plausible size —
+           like a weapon they're holding. No distance-based scaling: a gun
+           doesn't grow at long range or shrink at close range. The old 1.3×
+           base made giant firearms whose barrel crossed most of the gap
+           ("the gun goes right up to the target"); 0.85× keeps every model
+           reading as the shooter's weapon. The bullet/tracer is what
+           crosses to the target. */
         var _gunMuzzleTs = (g.muzzle && g.muzzle.position ? g.muzzle.position.z : ts * 0.9) / ts;
-        var _gunScale = opts.modelScale != null ? opts.modelScale : (opts.sky ? 2.0 : 1.3);
-        if (!opts.sky) {
-            var _twpS = _worldPos(toTx, toTy);
-            var _sdx = _twpS.x - fw.x, _sdz = _twpS.z - fw.z;
-            var _sdl = Math.sqrt(_sdx * _sdx + _sdz * _sdz) || ts;
-            var _maxScale = ((_sdl / ts) * 0.38 - 0.18) / Math.max(0.3, _gunMuzzleTs);
-            _gunScale = Math.max(0.3, Math.min(_gunScale, _maxScale));
-        }
+        var _gunScale = opts.modelScale != null ? opts.modelScale : (opts.sky ? 2.0 : 0.85);
         g.group.scale.setScalar(_gunScale);
         /* px the muzzle tip sits ahead of the caster tile centre, along the
            firing line — the bolt pipeline starts the tracer HERE, so the

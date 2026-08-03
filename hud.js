@@ -7020,9 +7020,12 @@ function _renderSpellDescBar() {
   const sp = _descBarHover || _descBarBase;
   // cheap no-op: called every HUD render. Combos arrive as a FRESH object
   // per render (getComboForUnits spreads the registry entry), so identity
-  // alone would rebuild the bar every frame — same-name counts as same.
+  // alone would rebuild the bar every frame — same LOGICAL spell counts as
+  // same. Keyed by id/key, NOT name: the library has same-name twins with
+  // different cards (Rampart, Overclock, Rampage, EMP Burst).
+  const _dbKey = (s) => (s.id != null ? 'id:' + s.id : (s.key != null ? 'k:' + s.key : 'n:' + s.name));
   if (_descBarEl && (sp === _descBarShown
-      || (sp && _descBarShown && sp.name === _descBarShown.name))) return;
+      || (sp && _descBarShown && _dbKey(sp) === _dbKey(_descBarShown)))) return;
   _descBarShown = sp;
   const el = _ensureDescBarEl();
   if (!sp || !sp.name) { el.classList.remove('show'); return; }

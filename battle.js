@@ -15680,8 +15680,12 @@
                 // Beam spells (kamehameha rule): the eruption happens at the
                 // CASTER — hold beat 1 through the launch (holdAfterLaunchMs)
                 // so the beam is seen leaving their hands before the cut.
+                // Capped at travel−80ms so the cut ALWAYS lands before the
+                // damage tick — at close range an uncapped hold arrived after
+                // the hit (and after a kill, beat 2 was skipped entirely).
                 const cutMs = shotOpts.holdAfterLaunchMs != null
-                    ? timings.sourceHold + actionMs(shotOpts.holdAfterLaunchMs)
+                    ? timings.sourceHold + Math.min(actionMs(shotOpts.holdAfterLaunchMs),
+                        Math.max(actionMs(120), timings.travelMs - actionMs(80)))
                     : timings.sourceHold
                         + Math.min(actionMs(300), Math.round(timings.travelMs * 0.5));
                 window.setTimeout(() => {
@@ -16191,6 +16195,25 @@
                 } else if (!srcVisible && !tgtVisible) {
                     return { sequenceId: 0, sourceHold: 0, travelMs: 0, targetHold: 0,
                         resetBuffer: 0, totalMs: actionMs(100), zoom: 1 };
+                }
+
+                // Support casts aimed at the actor's OWN team (heal-all /
+                // mana-all) frame ALLY tiles — from the viewer's seat those
+                // are ENEMY positions, routinely fogged. Drop every framed
+                // tile the screen doesn't already show, and if the shot's
+                // named target itself is hidden, don't swing to it — collapse
+                // the shot onto the (visible) caster instead. Runs on host
+                // AND guest replay, each with its own viewer context.
+                if (opts.frameTiles && opts.frameTiles.length) {
+                    const _visTiles = opts.frameTiles.filter(t => {
+                        const _tu = (typeof unitAt === 'function') ? unitAt(t.x, t.y) : null;
+                        return _tu ? _screenSeen(_tu)
+                            : (!state.fogOfWar || _isTileVisibleToViewer(t.x, t.y));
+                    });
+                    opts = { ...opts, frameTiles: _visTiles.length >= 2 ? _visTiles : undefined };
+                }
+                if (srcVisible && !tgtVisible) {
+                    target = sourceUnit;
                 }
 
             }
@@ -42420,7 +42443,11 @@
                             });
                         }, _beamLaunchMs);
                     } else {
-                        window.setTimeout(() => playBeamEffect(unit.x, unit.y, dx, dy, lineRange, spell.spellType, actionMs(500)), _beamLaunchMs);
+                        // Legacy 2D beam: keep it alive through the damage
+                        // tick (launching at release left it expiring ~180ms
+                        // before max-range impacts).
+                        const _beamHoldVisMs = Math.max(actionMs(500), impactDelay - _beamLaunchMs + actionMs(150));
+                        window.setTimeout(() => playBeamEffect(unit.x, unit.y, dx, dy, lineRange, spell.spellType, _beamHoldVisMs), _beamLaunchMs);
                     }
 
                     // Damage resolution
