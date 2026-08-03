@@ -2117,42 +2117,51 @@
                 return actionMs(600);
             }
 
-            // Camera: follow the charger down the path (the camera glides with
-            // the unit from launch to landing, animateDashActionCamera), or
-            // the plain top-down path pan if it declines — mirrors the dash kind.
+            // Camera: THE CHARGE SHOT (2026-08-03) — beat 1 braces on the
+            // charger (letterbox + spell name), hard cut to the low chase cam
+            // at windupMs, focal riding the lane with the run. The move +
+            // strike are deferred to start ON the cut so the rush begins the
+            // moment the chase does. Plain top-down path pan if it declines.
+            let _chargeCam = null;
             if (!state.cameraDisabled && _fogCamTilesVisible({ x: fromX, y: fromY }, { x: landTile.x, y: landTile.y })) {
                 stopBoardCameraAnimation();
                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                const _followed = state.cinematicActionCam && animateDashActionCamera(
+                _chargeCam = state.cinematicActionCam ? animateDashActionCamera(
                     { x: fromX, y: fromY }, { x: landTile.x, y: landTile.y },
-                    { duration: chargeMs, casterId: unit.id, _fogAllowed: true }
-                );
-                if (!_followed) {
+                    { duration: chargeMs, casterId: unit.id, attackName: spell.name, _fogAllowed: true }
+                ) : null;
+                if (!_chargeCam) {
                     animateBoardCameraPath(
                         { x: fromX, y: fromY }, { x: landTile.x, y: landTile.y },
                         { duration: chargeMs, zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
                     );
                 }
             }
+            const _chargeDelay = (_chargeCam && _chargeCam.windupMs) || 0;
 
-            // Move the caster now (model + slide). Flag it so _runPostEffects
-            // doesn't run its own charge hop on top of this (its swapOnHit half
-            // still runs). The strike lands on arrival.
-            unit.x = landTile.x;
-            unit.y = landTile.y;
-            if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(landTile.x, landTile.y, unit.z);
-            unit._trackTilesMoved = (unit._trackTilesMoved || 0) + dist;
+            // Move the caster (model + slide) when the chase cut lands. Flag
+            // it so _runPostEffects doesn't run its own charge hop on top of
+            // this (its swapOnHit half still runs). The strike lands on arrival.
             unit._chargeHandledExternally = true;
-            animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, chargeMs);
-            addLog(`${unitDisplayName(unit)} charges from ${coordLabel(fromX, fromY)} to ${coordLabel(landTile.x, landTile.y)}!`);
+            const _runCharge = () => {
+                unit.x = landTile.x;
+                unit.y = landTile.y;
+                if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(landTile.x, landTile.y, unit.z);
+                unit._trackTilesMoved = (unit._trackTilesMoved || 0) + dist;
+                animateDisplacement(unit, fromX, fromY, landTile.x, landTile.y, chargeMs);
+                addLog(`${unitDisplayName(unit)} charges from ${coordLabel(fromX, fromY)} to ${coordLabel(landTile.x, landTile.y)}!`);
+                scheduleBoardRender();
+            };
+            if (_chargeDelay > 0) window.setTimeout(_runCharge, _chargeDelay);
+            else _runCharge();
 
             window.setTimeout(() => {
                 if (!_skipVisuals()) shakeBoard('normal');
                 _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
                 delete unit._chargeHandledExternally;
-            }, chargeMs);
+            }, _chargeDelay + chargeMs);
 
-            return Math.max(chargeMs + actionMs(360), actionMs(600));
+            return Math.max(_chargeDelay + chargeMs + actionMs(360), actionMs(600));
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -7909,6 +7918,9 @@
             if (sourceUnit && sourceUnit.id !== target.id) grantXP(sourceUnit, XP_HEAL_FLAT, 'heal');
             flashHeal(target);
             showFloatingTextForUnit(target, `+${actual}`, opts.kind || 'heal', opts);
+            // Heal-cinematic corner readout (TOTAL HEALED) — no-ops unless a
+            // heal-flavored action-cam shot is currently live.
+            if (typeof _actionCamTallyHeal === 'function') _actionCamTallyHeal(actual);
 
             if (window.RenderBus) window.RenderBus.emit('unit:healed', { unit: target, amount: actual });
             return actual;
@@ -10536,10 +10548,18 @@
             if (_acChromeState?.hideTimer) clearTimeout(_acChromeState.hideTimer);
             const totalMs = Math.max(600, opts.totalMs ?? actionMs(2600));
             _acChromeState = { heavy: !!opts.heavy, total: 0, shown: 0,
+                tallyKind: opts.tallyKind === 'heal' ? 'heal' : 'damage',
                 until: performance.now() + totalMs + 400, holdUntil: 0,
                 hideTimer: null, rollRaf: null };
             el.classList.remove('light', 'hiding', 'finisher');
             if (!opts.heavy) el.classList.add('light');
+            // Heal-flavored shots (heals / potions / revives) restyle the
+            // corner readout green and re-label it — the healing twin of the
+            // TOTAL DMG counter, fed by applyHealingToUnit via
+            // _actionCamTallyHeal while this chrome is live.
+            el.classList.toggle('heal-tally', _acChromeState.tallyKind === 'heal');
+            const _lblEl = el.querySelector('.acam-dmg-label');
+            if (_lblEl) _lblEl.textContent = _acChromeState.tallyKind === 'heal' ? 'TOTAL HEALED' : 'TOTAL DMG';
             const nameEl = el.querySelector('.acam-spell-name');
             if (nameEl) {
                 nameEl.textContent = opts.name || '';
@@ -10647,6 +10667,7 @@
         function _actionCamTallyDamage(dmg, isCrit) {
             const st = _acChromeState;
             if (!st || !st.heavy) return false;
+            if (st.tallyKind === 'heal') return false;   // heal shots own the readout
             if (!(dmg > 0)) return false;
             if (performance.now() > st.until) return false;
             if (!_acChromeEl || !_acChromeEl.classList.contains('active')) return false;
@@ -10668,6 +10689,35 @@
             st.hideTimer = setTimeout(() => hideActionCamChrome(), HOLD_MS);
             row.classList.add('show');
             if (isCrit) num.classList.add('crit');
+            num.classList.remove('tick');
+            void num.offsetWidth;
+            num.classList.add('tick');
+            _acRollDamageNum();
+            return true;
+        }
+
+        /* The healing twin of _actionCamTallyDamage: rolls restored HP into
+           the corner readout (re-labeled TOTAL HEALED, styled green) while a
+           heal-flavored cinematic shot is live. Fed by applyHealingToUnit, so
+           multi-target heals (Mass Heal's stagger, zone ticks mid-shot)
+           accumulate exactly like multi-hit damage does. */
+        function _actionCamTallyHeal(amount) {
+            const st = _acChromeState;
+            if (!st || !st.heavy || st.tallyKind !== 'heal') return false;
+            if (!(amount > 0)) return false;
+            if (performance.now() > st.until) return false;
+            if (!_acChromeEl || !_acChromeEl.classList.contains('active')) return false;
+            const row = _acChromeEl.querySelector('.acam-dmg-row');
+            const num = _acChromeEl.querySelector('.acam-dmg-num');
+            if (!row || !num) return false;
+            st.total += amount;
+            const HOLD_MS = 1000;
+            const now = performance.now();
+            st.until = Math.max(st.until, now + HOLD_MS + 400);
+            st.holdUntil = now + HOLD_MS;
+            if (st.hideTimer) clearTimeout(st.hideTimer);
+            st.hideTimer = setTimeout(() => hideActionCamChrome(), HOLD_MS);
+            row.classList.add('show');
             num.classList.remove('tick');
             void num.offsetWidth;
             num.classList.add('tick');
@@ -15927,33 +15977,146 @@
         window.playDetonationCinematic = playDetonationCinematic;
 
         // ═══════════════════════════════════════════════════════════════════
-        // animateDashActionCamera() — camera for dash / charge / rush moves.
+        // animateDashActionCamera() — THE CHARGE SHOT for dash / charge /
+        // rush moves (Brave Charge, Sea Charge, every `kind: 'dash'` spell).
         //
-        // The camera FOLLOWS the dasher: it keeps the player's board view
-        // (zoom/tilt/yaw untouched — no over-the-shoulder swing, no zoom
-        // change) and glides the focal point with the unit from launch to
-        // landing, in lockstep with the dash tween. The camera normally
-        // already sits on the caster (it's their turn), so the glide reads
-        // as riding alongside the dash; a short settle tail lets the camera
-        // land WITH the unit instead of parking ahead of it. Dashes onto
-        // higher/lower ground get the focal height for free — moveTo with no
-        // elevZ eases the height onto the landing tile's natural elevation.
-        //
-        // Returns true if it took the camera; false if it declined (the caller
-        // then falls back to the plain path pan).
+        // 2026-08-03 rework: the old version was a flat tactical glide (no
+        // chrome, no beats) — charges read like ordinary walks. Now it speaks
+        // the same camera language as the offensive spell shot:
+        //   BEAT 1 — THE BRACE (~windupMs): low front ¾ shot looking back at
+        //     the charger while they coil, letterbox bars in, spell name
+        //     slams. The staging windup VFX (charge orb, rune circle) fills
+        //     the frame.
+        //   BEAT 2 — THE RUN: hard CUT (dark blink on the chrome) to a low
+        //     CHASE camera looking straight down the dash lane from behind
+        //     the charger, focal gliding launch→landing in lockstep with the
+        //     dash tween. No elevZ on the glide, so the focal height rides
+        //     the terrain down the lane for free.
+        //   LANDING — board kick + a short zoom punch-in as the dust settles.
+        // Callers use the returned timings to delay the actual dash visuals/
+        // damage so the run starts ON the cut: { windupMs, runMs, totalMs }.
+        // Falls back to the legacy follow-glide (windupMs 0) when the 3D rig
+        // is unavailable; returns false only when it declined entirely (the
+        // caller then keeps its plain path pan).
+        // ONLINE (RULE #2): wrapped by online.js — the relay carries from/to/
+        // duration/attackName and the guest replays this same function.
         // ═══════════════════════════════════════════════════════════════════
         function animateDashActionCamera(fromPoint, toPoint, opts = {}) {
             if (!fromPoint || !toPoint || state.phase !== 'battle') return false;
             if (state.cameraDisabled || _skipVisuals()) return false;
             if (camera._fogBlocked(opts._fogAllowed)) return false;
-            const ms = Math.max(actionMs(200), opts.duration ?? actionMs(400));
-            camera.moveTo({
-                x: toPoint.x, y: toPoint.y,
-                duration: ms + actionMs(140),
-                easing: 'easeInOut',
-                _fogAllowed: opts._fogAllowed
+            const runMs = Math.max(actionMs(200), opts.duration ?? actionMs(400));
+
+            const dx = toPoint.x - fromPoint.x, dy = toPoint.y - fromPoint.y;
+            const len = Math.max(1, Math.hypot(dx, dy));
+            const dirx = dx / len, diry = dy / len;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            const unit = (opts.casterId != null)
+                ? (state.units || []).find(u => u.id === opts.casterId && !u.dead) : null;
+
+            // Cinematic charge shot needs the 3D TPS rig + cinematics enabled.
+            const _cineOK = state.cinematicActionCam
+                && !(typeof isCinematicPresent === 'function' && isCinematicPresent())
+                && _cineTpsAnchor(unit || fromPoint, unit || null);
+            if (!_cineOK) {
+                // Legacy follow-glide: keep the player's framing, ride along.
+                camera.moveTo({
+                    x: toPoint.x, y: toPoint.y,
+                    duration: runMs + actionMs(140),
+                    easing: 'easeInOut',
+                    _fogAllowed: opts._fogAllowed
+                });
+                return { windupMs: 0, runMs, totalMs: runMs + actionMs(140) };
+            }
+
+            const sequenceId = ++boardCameraSequenceId;
+            camera._stop();
+            if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+            _captureCineReturnView();
+            camera._cineShotId = sequenceId;
+            camera._cineShotUnitId = unit ? unit.id : null;
+            camera._cineShotTarget = { x: Math.round(toPoint.x), y: Math.round(toPoint.y), id: null };
+            camera._cineKeepSubject = true;
+            camera._busy = true;
+            const camSeq = ++camera._seqId;
+
+            const windupMs = actionMs(opts.windupMs ?? 520);
+            const settleMs = actionMs(680);
+            const totalMs = windupMs + runMs + settleMs;
+            if (camera._busyTimer) clearTimeout(camera._busyTimer);
+            camera._busyTimer = setTimeout(() => {
+                if (camera._seqId === camSeq) camera._busy = false;
+                camera._busyTimer = null;
+            }, totalMs + actionMs(200));
+
+            const fromPx = (typeof window._camGroundPx === 'function')
+                ? window._camGroundPx(Math.round(fromPoint.x), Math.round(fromPoint.y)) : 0;
+
+            // Chase yaw: view direction = travel direction (ThreeCamera view
+            // dir is (-sin yaw, -cos yaw)), with a small off-axis swing so the
+            // lane reads in depth instead of dead-flat.
+            const yawChase = Math.atan2(-dirx, -diry) * (180 / Math.PI) + CINE_CAM_YAW_OFFSET * 0.6;
+
+            showActionCamChrome({ name: opts.attackName || '', heavy: true, totalMs });
+
+            // ── BEAT 1 — THE BRACE: low front ¾, looking back at the charger.
+            _cineBeatMove({
+                x: fromPoint.x + dirx * 0.15, y: fromPoint.y + diry * 0.15,
+                zoom: _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES - 0.4),
+                tilt: CINE_FACE_TILT + 14,
+                yaw: yawChase + 180 - CINE_CAM_YAW_OFFSET * 1.2,
+                elevZ: fromPx + ts * CINE_FOCAL_RISE * 0.6,
+                duration: actionMs(300), easing: 'easeInOut',
+                _allowZoomChange: true, _bypassCap: true,
+                _fogAllowed: opts._fogAllowed || undefined
             });
-            return true;
+
+            // ── BEAT 2 — THE RUN: hard cut behind the charger, chase the lane.
+            const chaseZoom = Math.min(
+                _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES + 0.8),
+                _cineZoomForTiles(Math.min(len + 2.5, 7), CINE_HIT_TILT - 4));
+            window.setTimeout(() => {
+                if (camera._cineShotId !== sequenceId) return;
+                if (sequenceId !== boardCameraSequenceId) return;
+                if (state.phase !== 'battle' || state.cameraDisabled) return;
+                _cineTpsAnchor(unit || fromPoint, (unit && !unit.dead) ? unit : null);
+                _cineHardCut({
+                    x: fromPoint.x - dirx * 0.6, y: fromPoint.y - diry * 0.6,
+                    zoom: chaseZoom, tilt: CINE_HIT_TILT - 4,
+                    yaw: yawChase,
+                    elevZ: fromPx + ts * CINE_FOCAL_RISE
+                });
+                _acChromeFlash('cut');
+                // Ride the lane: no elevZ → the focal height eases onto each
+                // tile's natural elevation as the charger crosses it.
+                _cineBeatMove({
+                    x: toPoint.x, y: toPoint.y,
+                    duration: runMs + actionMs(120), easing: 'easeInOut',
+                    _bypassCap: true, _fogAllowed: opts._fogAllowed || undefined
+                });
+            }, windupMs);
+
+            // ── LANDING — kick + punch-in while the dust settles.
+            window.setTimeout(() => {
+                if (camera._cineShotId !== sequenceId) return;
+                if (state.phase !== 'battle') return;
+                shakeBoard('normal');
+                _cineBeatMove({
+                    zoom: chaseZoom * 1.08,
+                    duration: Math.max(actionMs(260), settleMs - actionMs(160)),
+                    easing: 'linear',
+                    _allowZoomChange: true, _bypassCap: true,
+                    _fogAllowed: opts._fogAllowed || undefined
+                });
+            }, windupMs + runMs);
+
+            boardCameraResetTimer = setTimeout(() => {
+                if (sequenceId !== boardCameraSequenceId) return;
+                const overlay = document.getElementById('turnBannerOverlay');
+                if (overlay && overlay.innerHTML && state.phase === 'battle' && !state.winner) overlay.classList.add('visible');
+            }, totalMs);
+
+            return { windupMs, runMs, totalMs };
         }
 
         function playOffensiveActionCamera(sourceUnit, target, opts = {}) {
@@ -39812,28 +39975,38 @@
                 focusUnitPanel(target.id);
                 playSfx('healRegen');
 
-                // Potion cinematic (ally use): beat 1 on the caster winding up
-                // the throw, beat 2 glides to the ally catching and drinking
-                // it. Self-use / 2D keep the old framing (self already gets
-                // the hero shot via _spellFocusCamera).
-                const _hpCine = _playSupportCineShot(unit, target, { spellName: 'Healing Potion' });
+                // Potion cinematic: ally use gets the full heal two-shot
+                // (letterbox, beat 1 on the caster winding up the throw, hard
+                // cut to the ally catching and drinking it, TOTAL HEALED
+                // readout — _playSupportCineShot heal path). Self-use gets the
+                // letterboxed hero shot with the swig landing on the push-in.
+                const _hpSelf = target.id === unit.id;
+                const _hpCine = _hpSelf ? null
+                    : _playSupportCineShot(unit, target, { spellName: 'Healing Potion', tallyKind: 'heal' });
+                let _hpHero = false;
                 if (!_hpCine) {
-                    if (!state.cameraDisabled && _shouldCameraFollowUnit(unit)) {
-                        focusBoardCameraOnTiles([{ x: target.x, y: target.y }], {
-                            zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(),
-                            holdMs: 99999, persist: true, transitionMs: 350,
-                            _fogAllowed: true
-                        });
-                    } else {
-                        _spellFocusCamera(unit, x, y);
+                    if (_hpSelf) {
+                        _hpHero = _playSelfCastHeroShot(unit, { spellName: 'Healing Potion', tallyKind: 'heal' });
+                    }
+                    if (!_hpHero) {
+                        if (!state.cameraDisabled && _shouldCameraFollowUnit(unit)) {
+                            focusBoardCameraOnTiles([{ x: target.x, y: target.y }], {
+                                zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(),
+                                holdMs: 99999, persist: true, transitionMs: 350,
+                                _fogAllowed: true
+                            });
+                        } else if (!_hpSelf) {
+                            _spellFocusCamera(unit, x, y);
+                        }
                     }
                 }
                 pushUndoSnapshot(true);
                 unit.items.healPotion -= 1;
-                const _hpSelf = target.id === unit.id;
                 const _hpLaunch = _hpCine ? _hpCine.sourceHold : actionMs(150);
                 const _hpTravel = _hpCine ? _hpCine.travelMs : actionMs(380);
-                const _hpArrive = _hpSelf ? actionMs(250) : _hpLaunch + _hpTravel;
+                // Self-swig on the hero shot's push-in peak, so the +HP and
+                // the corner readout land while the close-up is live.
+                const _hpArrive = _hpSelf ? actionMs(_hpHero ? 680 : 250) : _hpLaunch + _hpTravel;
                 if (_hpSelf) {
                     // Rigged models swig the potion (classifySpellAnimKind
                     // 'consume' → castConsume, the UAL2 Consume clip).
@@ -39878,6 +40051,12 @@
                         if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
                         if (camera._cineShotId === _hpCine.sequenceId && !unit.dead) _softResetCameraToUnit(unit);
                     }, _hpCine.totalMs);
+                } else if (_hpHero) {
+                    // Self-swig hero shot: same restore duty on its own clock.
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
+                        if (camera._cineShotUnitId === unit.id && !unit.dead) _softResetCameraToUnit(unit);
+                    }, actionMs(2500));
                 }
             } else if (state.selectedTool === 'manaPotion') {
                 if (unit.items.manaPotion <= 0) {
@@ -39905,25 +40084,33 @@
                 focusUnitPanel(target.id);
                 playSfx('manaRegen');
 
-                // Same two-beat potion cinematic as the Healing Potion.
-                const _mpCine = _playSupportCineShot(unit, target, { spellName: 'Mana Potion' });
+                // Same cinematic language as the Healing Potion: ally use
+                // gets the letterboxed heal two-shot, self-use the hero shot.
+                const _mpSelf = target.id === unit.id;
+                const _mpCine = _mpSelf ? null
+                    : _playSupportCineShot(unit, target, { spellName: 'Mana Potion', tallyKind: 'heal' });
+                let _mpHero = false;
                 if (!_mpCine) {
-                    if (!state.cameraDisabled && _shouldCameraFollowUnit(unit)) {
-                        focusBoardCameraOnTiles([{ x: target.x, y: target.y }], {
-                            zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(),
-                            holdMs: 99999, persist: true, transitionMs: 350,
-                            _fogAllowed: true
-                        });
-                    } else {
-                        _spellFocusCamera(unit, x, y);
+                    if (_mpSelf) {
+                        _mpHero = _playSelfCastHeroShot(unit, { spellName: 'Mana Potion', tallyKind: 'heal' });
+                    }
+                    if (!_mpHero) {
+                        if (!state.cameraDisabled && _shouldCameraFollowUnit(unit)) {
+                            focusBoardCameraOnTiles([{ x: target.x, y: target.y }], {
+                                zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(),
+                                holdMs: 99999, persist: true, transitionMs: 350,
+                                _fogAllowed: true
+                            });
+                        } else if (!_mpSelf) {
+                            _spellFocusCamera(unit, x, y);
+                        }
                     }
                 }
                 pushUndoSnapshot(true);
                 unit.items.manaPotion -= 1;
-                const _mpSelf = target.id === unit.id;
                 const _mpLaunch = _mpCine ? _mpCine.sourceHold : actionMs(150);
                 const _mpTravel = _mpCine ? _mpCine.travelMs : actionMs(380);
-                const _mpArrive = _mpSelf ? actionMs(250) : _mpLaunch + _mpTravel;
+                const _mpArrive = _mpSelf ? actionMs(_mpHero ? 680 : 250) : _mpLaunch + _mpTravel;
                 if (_mpSelf) {
                     triggerCastAnim(unit, { id: 'consumeManaPotion', name: 'Mana Potion' });
                 } else {
@@ -39960,6 +40147,11 @@
                         if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
                         if (camera._cineShotId === _mpCine.sequenceId && !unit.dead) _softResetCameraToUnit(unit);
                     }, _mpCine.totalMs);
+                } else if (_mpHero) {
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || state.winner || state.cameraDisabled) return;
+                        if (camera._cineShotUnitId === unit.id && !unit.dead) _softResetCameraToUnit(unit);
+                    }, actionMs(2500));
                 }
             } else if (state.selectedTool === 'scanner') {
                 if (unit.items.scanner <= 0) {
@@ -40309,8 +40501,12 @@
             });
             // Slow dolly-in while the charge builds — the lens leaning in as
             // the power gathers, releasing when the aura pops (~640ms, where
-            // the staging burst now lands for self-casts).
-            const _selfHold = actionMs(opts.holdMs ?? 1500);
+            // the staging burst now lands for self-casts). Heal-flavored
+            // self-casts (Second Wind, self-potions, Mass Heal) hold longer
+            // and wear the full letterbox + TOTAL HEALED readout, same as the
+            // ally-heal shot — they used to flash by in the light chrome.
+            const _selfHeal = _isHealFlavoredCast(opts);
+            const _selfHold = actionMs(opts.holdMs ?? (_selfHeal ? 1900 : 1500));
             window.setTimeout(() => {
                 if (camera._cineShotId !== sequenceId) return;
                 if (state.phase !== 'battle' || state.cameraDisabled) return;
@@ -40322,7 +40518,8 @@
                 });
             }, actionMs(440));
             if (opts.spellName) {
-                showActionCamChrome({ name: opts.spellName, heavy: false,
+                showActionCamChrome({ name: opts.spellName, heavy: _selfHeal,
+                    tallyKind: _selfHeal ? 'heal' : undefined,
                     totalMs: _selfHold + actionMs(600) });
             }
             return true;
@@ -40332,19 +40529,42 @@
         // call sites still get the spell's name/pacing. Host-local cosmetics.
         let _focusCamSpellCtx = null;
 
+        /* Heal-flavored cast detector for the support/self camera rigs: these
+           get the FULL cinematic treatment (letterbox bars, hard-cut two-shot,
+           TOTAL HEALED readout) instead of the understated light chrome —
+           "healing went by so fast it felt cheap" (2026-08-03). Matches by
+           spell kind, healing payload fields, or name (covers potions, which
+           have no spell def). */
+        const _HEAL_SPELL_KINDS = new Set(['heal', 'healAll', 'selfHeal', 'zoneHeal', 'seedHeal', 'revive']);
+        function _isHealFlavoredCast(opts = {}) {
+            if (opts.tallyKind === 'heal') return true;
+            if (opts.spellId && typeof SPELL_BY_ID !== 'undefined') {
+                const def = SPELL_BY_ID[opts.spellId];
+                if (def && (_HEAL_SPELL_KINDS.has(def.kind)
+                    || (def.heal || 0) > 0 || (def.healAmt || 0) > 0 || def.selfHealPct)) return true;
+            }
+            return /healing potion|mana potion|\bheal\b|\brevive\b/i.test(opts.spellName || '');
+        }
+
         // ═══════════════════════════════════════════════════════════════════
         // _playSupportCineShot() — ALLY-targeted support framing (heals,
-        // potions, shields, buffs on someone else): a gentle two-beat
-        // sequence. BEAT 1 swings in front of the CASTER while they cast /
-        // uncork / throw the gift (same hero framing as the self-cast shot);
-        // BEAT 2 glides across to the RECIPIENT as the projectile/aura
-        // arrives, so the catch/drink/heal lands on camera. No hard cut — a
-        // heal should read as a hand-off, not an impact — and only the light
-        // chrome (name, no letterbox/damage readout). 3D-rig only; returns
-        // null so the caller keeps its tactical focus pan when unavailable.
-        // Returned timings let the caller sync its projectile and effect
-        // application to the beats: fire the gift at .sourceHold, land the
-        // effect at .sourceHold + .travelMs.
+        // potions, shields, buffs on someone else): a two-beat sequence.
+        // BEAT 1 swings in front of the CASTER while they cast / uncork /
+        // throw the gift (same hero framing as the self-cast shot); BEAT 2
+        // brings the RECIPIENT on camera as the projectile/aura arrives, so
+        // the catch/drink/heal lands on screen.
+        //   · HEAL-flavored casts (heals, potions, revives — _isHealFlavored-
+        //     Cast) get the FULL action-cam language: letterbox bars, a HARD
+        //     CUT to the recipient mid-flight (same ¾ reverse framing as the
+        //     offensive hit shot, cut flash included), a slow push-in through
+        //     the restore, and the green TOTAL HEALED corner readout. They
+        //     used to get the featherweight version and read as cheap.
+        //   · Other support gifts (shields, buffs) keep the gentle glide +
+        //     light chrome — a blessing is a hand-off, not an impact.
+        // 3D-rig only; returns null so the caller keeps its tactical focus
+        // pan when unavailable. Returned timings let the caller sync its
+        // projectile and effect application to the beats: fire the gift at
+        // .sourceHold, land the effect at .sourceHold + .travelMs.
         // ═══════════════════════════════════════════════════════════════════
         function _playSupportCineShot(unit, target, opts = {}) {
             // Accepts a bare {x, y} tile as the target too (deploys, zones,
@@ -40383,12 +40603,14 @@
 
             // Holds scale with the spell's staging weight (same table the
             // offensive shot uses) so a big blessing breathes longer than a
-            // cheap utility poke.
+            // cheap utility poke. Heal-flavored casts breathe LONGER — the
+            // restore is the payoff, so beat 2 holds while the number lands.
+            const _supHeal = _isHealFlavoredCast(opts);
             const _supStage = opts.spellId ? _spellStageInfo({ id: opts.spellId }) : null;
             const _supPace = _STAGE_PACE[(_supStage && _supStage.weight) || 'standard'] || _STAGE_PACE.standard;
-            const sourceHold = actionMs(opts.sourceHold ?? Math.round(800 * _supPace.source));
+            const sourceHold = actionMs(opts.sourceHold ?? Math.round((_supHeal ? 1000 : 800) * _supPace.source));
             const travelMs = actionMs(opts.travelMs ?? Math.max(300, Math.min(600, 180 + len * 55)));
-            const targetHold = actionMs(opts.targetHold ?? Math.round(1000 * _supPace.target));
+            const targetHold = actionMs(opts.targetHold ?? Math.round((_supHeal ? 1250 : 1000) * _supPace.target));
             const totalMs = sourceHold + travelMs + targetHold + actionMs(200);
 
             // BEAT 1 — the giver: face the caster while they wind up the gift.
@@ -40401,27 +40623,69 @@
                 _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
             });
 
-            // BEAT 2 — the receiver: glide over WITH the gift and hold while
-            // they consume/absorb it.
-            window.setTimeout(() => {
-                if (camera._cineShotId !== sequenceId) return;
-                if (sequenceId !== boardCameraSequenceId) return;
-                if (state.phase !== 'battle' || state.cameraDisabled) return;
-                _cineTpsAnchor(target, (target.id != null) ? target : null);
-                camera._cineShotTarget = { x: target.x, y: target.y, id: target.id ?? null };
-                _cineBeatMove({
-                    x: target.x, y: target.y,
-                    zoom: _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
-                    tilt: CINE_HIT_TILT,
-                    yaw: yawFwd + CINE_CAM_YAW_OFFSET,
-                    elevZ: tgtPx + ts * CINE_FOCAL_RISE,
-                    duration: Math.max(actionMs(280), travelMs), easing: 'easeInOut',
-                    _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
-                });
-            }, sourceHold);
+            if (_supHeal) {
+                // BEAT 2 (heal) — HARD CUT to the recipient mid-flight, the
+                // same ¾ reverse cut + push-in the offensive hit shot uses,
+                // so a heal reads with the same weight as a nuke. On close
+                // casts the framing widens just enough to keep the caster in
+                // the background (the two-actor pair shot).
+                const cutMs = sourceHold + Math.min(actionMs(300), Math.round(travelMs * 0.5));
+                window.setTimeout(() => {
+                    if (camera._cineShotId !== sequenceId) return;
+                    if (sequenceId !== boardCameraSequenceId) return;
+                    if (state.phase !== 'battle' || state.cameraDisabled) return;
+                    _cineTpsAnchor(target, (target.id != null) ? target : null);
+                    camera._cineShotTarget = { x: target.x, y: target.y, id: target.id ?? null };
+                    const _pairShot = len <= 4.2;
+                    const zoomHit = _pairShot
+                        ? Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
+                                   _cineZoomForTiles(len + 3.0, CINE_HIT_TILT))
+                        : _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES);
+                    _cineHardCut({
+                        x: _pairShot ? target.x - (dx / len) * len * 0.24 : target.x,
+                        y: _pairShot ? target.y - (dy / len) * len * 0.24 : target.y,
+                        zoom: zoomHit, tilt: CINE_HIT_TILT,
+                        yaw: yawFwd + CINE_CAM_YAW_OFFSET
+                            + (_pairShot ? CINE_HIT_SWING * 0.45 : CINE_HIT_SWING),
+                        elevZ: tgtPx + ts * CINE_FOCAL_RISE
+                    });
+                    _acChromeFlash('cut');
+                    // Slow push-in while the drink goes down / the glow blooms.
+                    _cineBeatMove({
+                        zoom: zoomHit * 1.07,
+                        duration: Math.max(actionMs(300),
+                            Math.round(travelMs * 0.5) + targetHold),
+                        easing: 'linear',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                    });
+                }, cutMs);
+            } else {
+                // BEAT 2 (blessing) — the receiver: glide over WITH the gift
+                // and hold while they consume/absorb it. No hard cut — a
+                // buff/shield is a hand-off, not an impact.
+                window.setTimeout(() => {
+                    if (camera._cineShotId !== sequenceId) return;
+                    if (sequenceId !== boardCameraSequenceId) return;
+                    if (state.phase !== 'battle' || state.cameraDisabled) return;
+                    _cineTpsAnchor(target, (target.id != null) ? target : null);
+                    camera._cineShotTarget = { x: target.x, y: target.y, id: target.id ?? null };
+                    _cineBeatMove({
+                        x: target.x, y: target.y,
+                        zoom: _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
+                        tilt: CINE_HIT_TILT,
+                        yaw: yawFwd + CINE_CAM_YAW_OFFSET,
+                        elevZ: tgtPx + ts * CINE_FOCAL_RISE,
+                        duration: Math.max(actionMs(280), travelMs), easing: 'easeInOut',
+                        _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+                    });
+                }, sourceHold);
+            }
 
             if (opts.spellName) {
-                showActionCamChrome({ name: opts.spellName, heavy: false, totalMs });
+                // Heals wear the full letterbox + TOTAL HEALED readout; other
+                // support keeps the understated name-only chrome.
+                showActionCamChrome({ name: opts.spellName, heavy: _supHeal,
+                    tallyKind: _supHeal ? 'heal' : undefined, totalMs });
             }
             return { sequenceId, sourceHold, travelMs, targetHold, totalMs };
         }
@@ -42149,19 +42413,33 @@
                     playErrorSfx();
                     return 0;
                 }
-                playSfx('uiConfirm');
-                _spellFocusCamera(unit, x, y);
+                focusUnitPanel(target.id);
+                playSfx(spellLaunchSfx(spell));
+
+                // ── HOOK SHOT (2026-08-03): pulls/lassos/chains now speak the
+                // full offensive camera language — letterbox + spell name,
+                // beat 1 on the caster winding the rope, hard cut to the
+                // victim as it bites — instead of the old flat focus pan that
+                // made grabs read like menu clicks. The tether launch, bite
+                // and yank are all retimed onto the shot's beats below.
+                const _pullCam = playOffensiveActionCamera(unit, target, {
+                    sourceHold: 850, targetHold: 1000, attackName: spell.name
+                });
+                const _pullCamHold = Math.max(0, _pullCam?.sourceHold ?? 0);
 
                 const _pullTetherKind = _tetherKindForSpell(spell);
                 const _pullIsLasso = _tetherLassoForSpell(spell);
-                const _pullTether = playTetherEffect(unit.x, unit.y, x, y, _pullTetherKind, 0, { persistent: true, shootMs: actionMs(280), hook: _tetherHookForSpell(spell), lasso: _pullIsLasso });
-
-                if (typeof window !== 'undefined' && window.ThreeVFXEffects
-                    && window.ThreeVFXEffects.hasMapping(spell.id, 'pull')) {
-                    if (state.phase === 'battle' && !_skipVisuals()) {
-                        window.ThreeVFXEffects.fire('pull', spell.id, { tx: x, ty: y });
+                let _pullTether = null;
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle') return;
+                    _pullTether = playTetherEffect(unit.x, unit.y, x, y, _pullTetherKind, 0, { persistent: true, shootMs: actionMs(280), hook: _tetherHookForSpell(spell), lasso: _pullIsLasso });
+                    if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                        && window.ThreeVFXEffects.hasMapping(spell.id, 'pull')) {
+                        if (!_skipVisuals()) {
+                            window.ThreeVFXEffects.fire('pull', spell.id, { tx: x, ty: y });
+                        }
                     }
-                }
+                }, _pullCamHold);
                 unit.mp -= effectiveSpellCost;
                 // Weight + Clash gate in one place now (getUnitPushDistance:
                 // feather +1, heavy -1, colossal 0, Clash freezes everyone).
@@ -42174,12 +42452,12 @@
                 const pdx = Math.sign(unit.x - target.x);
                 const pdy = Math.sign(unit.y - target.y);
                 const _pullFromX = target.x, _pullFromY = target.y;
-                /* The yank waits for the rope/vine to visibly fly out and
-                   BITE (shoot + a beat) before the drag starts — the old
-                   instant drag had the victim moving before the tether
-                   even reached them. Lassos linger a touch longer while
-                   the loop cinches. */
-                const _yankDelayMs = actionMs(280) + actionMs(_pullIsLasso ? 220 : 120);
+                /* The yank waits for the camera's cast beat AND the rope/vine
+                   to visibly fly out and BITE (shoot + a beat) before the
+                   drag starts — the old instant drag had the victim moving
+                   before the tether even reached them. Lassos linger a touch
+                   longer while the loop cinches. */
+                const _yankDelayMs = _pullCamHold + actionMs(280) + actionMs(_pullIsLasso ? 220 : 120);
                 // 🎱 The drag, with full slide physics: a wall between you and
                 // the caster is a cushion now (no more phasing through thin
                 // masonry), and a body in the drag lane is a bowling pin. The
@@ -42216,12 +42494,18 @@
                     followUnitFall(target);   // camera rides the drop
                 }
                 if (spell.dmg) {
+                    // The hook's damage lands ON CAMERA — at the bite, right
+                    // as beat 2's cut is holding the victim — not at frame 0
+                    // of the caster's windup like the old instant apply.
                     const dmg = Math.max(16, (spell.dmg || 0) + spellPower);
-                    applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
-                        sourceUnit: unit,
-                        damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
-                    });
+                    window.setTimeout(() => {
+                        if (target.dead || target._dying) return;
+                        applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                            sourceUnit: unit,
+                            damageType: spell.damageType || 'physical',
+                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                        });
+                    }, Math.max(0, _yankDelayMs - actionMs(80)));
                 }
                 addLog(`${unitDisplayName(unit)} pulls ${unitDisplayName(target)} ${pulled} tile${pulled !== 1 ? 's' : ''}.`);
 
@@ -42276,13 +42560,18 @@
                         setTimeout(_ufoStepFx, Math.max(290, _yankDelayMs));
                     }
 
-                    /* Retract + camera follow start when the yank does. */
+                    /* Retract + camera follow start when the yank does. The
+                       LIVE action shot rides with the dragged body to its
+                       landing tile (_cineRetargetShot keeps the cinematic
+                       framing); the flat path pan is only the fallback. */
                     const _pullEndX = target.x, _pullEndY = target.y;
                     window.setTimeout(() => {
                         if (_pullTether) {
                             _pullTether.retract(_pullEndX, _pullEndY, pullAnimMs);
                         }
-                        if (!state.cameraDisabled && state.phase === 'battle') {
+                        if (!state.cameraDisabled && state.phase === 'battle'
+                            && !_cineRetargetShot({ x: _pullEndX, y: _pullEndY }, target,
+                                { duration: pullAnimMs + actionMs(150) })) {
                             stopBoardCameraAnimation();
                             if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                             const _pullZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
@@ -42296,16 +42585,16 @@
                     _pullTotalAnimMs = _yankDelayMs + pullAnimMs + actionMs(250);
                 } else {
 
-                    if (_pullTether) {
-                        const _shootMs = actionMs(280);
-                        window.setTimeout(() => {
+                    window.setTimeout(() => {
+                        if (_pullTether) {
                             _pullTether.retract(unit.x, unit.y, actionMs(250));
-                        }, _shootMs + actionMs(120));
-                    }
-                    if (!state.cameraDisabled) _softResetCameraToUnit(target, { focusTarget: true });
+                        }
+                    }, _pullCamHold + actionMs(280) + actionMs(120));
+                    if (!state.cameraDisabled && !_pullCam) _softResetCameraToUnit(target, { focusTarget: true });
                 }
                 scheduleBoardRender();
-                completionDelay = Math.max(actionMs(600), _pullTotalAnimMs);
+                completionDelay = Math.max(actionMs(600), _pullTotalAnimMs,
+                    (_pullCam?.totalMs ?? 0) + actionMs(120));
             }
 
             else if (spell.kind === 'swap') {
@@ -42315,32 +42604,48 @@
                     playErrorSfx();
                     return 0;
                 }
-                playSfx('uiConfirm');
-                _spellFocusCamera(unit, x, y);
+                focusUnitPanel(target.id);
+                playSfx(spellLaunchSfx(spell));
                 unit.mp -= effectiveSpellCost;
                 const ux = unit.x, uy = unit.y;
                 const tx = target.x, ty = target.y;
-                unit.x = target.x; unit.y = target.y;
-                target.x = ux; target.y = uy;
-                if (typeof nearestWalkableZ === 'function') { unit.z = nearestWalkableZ(unit.x, unit.y, unit.z); target.z = nearestWalkableZ(target.x, target.y, target.z); }
-                addLog(`${unitDisplayName(unit)} swaps positions with ${unitDisplayName(target)}!`);
-                showFloatingTextForUnit(unit, 'SWAP!', 'streak', { durationMs: 800 });
 
-                if (!state.cameraDisabled) {
-                    stopBoardCameraAnimation();
-                    if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                    const _swapZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
-                    animateBoardCameraPath(
-                        { x: ux, y: uy },
-                        { x: tx, y: ty },
-                        { duration: 250, zoom: _swapZoom, _fogAllowed: _fogCamTilesVisible({ x: ux, y: uy }, { x: tx, y: ty }) }
-                    );
-                }
+                // ── SWAP SHOT (2026-08-03): the full two-beat action camera —
+                // beat 1 on the caster invoking, beat 2 a wide reverse cut
+                // framing BOTH actors (frameTiles) as they trade places. The
+                // swap itself is deferred to land on the cut, so the trade
+                // happens on camera instead of before the lens arrives.
+                const _swapCam = playOffensiveActionCamera(unit, target, {
+                    sourceHold: 750, targetHold: 850, attackName: spell.name,
+                    frameTiles: [{ x: ux, y: uy }, { x: tx, y: ty }]
+                });
+                const _swapAt = Math.max(0, _swapCam?.sourceHold ?? 0);
 
-                animateDisplacement(unit, ux, uy, tx, ty, 250);
-                animateDisplacement(target, tx, ty, ux, uy, 250);
-                scheduleBoardRender();
-                completionDelay = actionMs(500);
+                window.setTimeout(() => {
+                    if (unit.dead || target.dead) return;
+                    unit.x = tx; unit.y = ty;
+                    target.x = ux; target.y = uy;
+                    if (typeof nearestWalkableZ === 'function') { unit.z = nearestWalkableZ(unit.x, unit.y, unit.z); target.z = nearestWalkableZ(target.x, target.y, target.z); }
+                    addLog(`${unitDisplayName(unit)} swaps positions with ${unitDisplayName(target)}!`);
+                    showFloatingTextForUnit(unit, 'SWAP!', 'streak', { durationMs: 800 });
+
+                    if (!state.cameraDisabled && camera._cineShotId == null) {
+                        stopBoardCameraAnimation();
+                        if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+                        const _swapZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
+                        animateBoardCameraPath(
+                            { x: ux, y: uy },
+                            { x: tx, y: ty },
+                            { duration: 250, zoom: _swapZoom, _fogAllowed: _fogCamTilesVisible({ x: ux, y: uy }, { x: tx, y: ty }) }
+                        );
+                    }
+
+                    animateDisplacement(unit, ux, uy, tx, ty, 250);
+                    animateDisplacement(target, tx, ty, ux, uy, 250);
+                    scheduleBoardRender();
+                }, _swapAt);
+                completionDelay = Math.max(actionMs(500), _swapAt + actionMs(450),
+                    (_swapCam?.totalMs ?? 0) + actionMs(120));
             }
 
             else if (spell.kind === 'escape') {
@@ -42457,19 +42762,29 @@
                 if (VFX && VFX.hasMapping(spell.id, 'aura')) {
                     if (state.phase === 'battle' && !_skipVisuals()) VFX.fire('aura', spell.id, { tx: unit.x, ty: unit.y });
                 } else { _vfxHeal(unit.x, unit.y); }
-                _spellFocusCamera(unit, x, y);
+                const _shCam = _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
                 const healAmt = spell.selfHealPct ? Math.floor(unit.maxHp * spell.selfHealPct) : (spell.healAmt != null ? spell.healAmt : (spell.heal || 64));
-                // selfHealPct is already a percent of (scaled) max HP — opt it out
-                // of the level scale; the flat heal fallback still scales.
-                applyHealingToUnit(unit, healAmt, unit, spell.selfHealPct ? { preScaled: true } : {});
-                if (spell.cleanse) {
-                    const debuffs = getActiveStatusKeys(unit).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
-                    for (const k of debuffs.slice(0, spell.cleanse)) clearStatus(unit, k);
-                }
-                addLog(`${unitDisplayName(unit)} uses ${spell.name}! Heals ${healAmt} HP.`);
-                showFloatingTextForUnit(unit, `+${healAmt}`, 'heal');
-                completionDelay = actionMs(400);
+                // The HP lands on the hero shot's push-in peak (~aura bloom)
+                // instead of frame one, so the +N and the TOTAL HEALED corner
+                // readout pop while the letterboxed close-up is live.
+                const _shApplyAt = (_shCam && _shCam.mode === 'self') ? actionMs(680) : 0;
+                window.setTimeout(() => {
+                    if (unit.dead) return;
+                    // selfHealPct is already a percent of (scaled) max HP — opt it out
+                    // of the level scale; the flat heal fallback still scales.
+                    applyHealingToUnit(unit, healAmt, unit, spell.selfHealPct ? { preScaled: true } : {});
+                    if (spell.cleanse) {
+                        const debuffs = getActiveStatusKeys(unit).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
+                        for (const k of debuffs.slice(0, spell.cleanse)) clearStatus(unit, k);
+                    }
+                    addLog(`${unitDisplayName(unit)} uses ${spell.name}! Heals ${healAmt} HP.`);
+                    markDirty('hud');
+                    renderIfDirty();
+                }, _shApplyAt);
+                completionDelay = (_shCam && _shCam.mode === 'self')
+                    ? Math.max(actionMs(1500), _shApplyAt + actionMs(600))
+                    : actionMs(400);
             }
 
             else if (spell.kind === 'aoePull') {
@@ -44218,35 +44533,10 @@
                 }
                 pushUndoSnapshot(true);
                 playSfx(spellLaunchSfx(spell));
-                _vfxDash(unit.x, unit.y, x, y);
-                // Spell-specific dash signature (Sleigh Dash snowburst…) —
-                // keyed '<id>:dash' in the _spell3DGeometry registry. The
-                // extra bag carries the LAUNCH tile so travel cinematics
-                // (the 2026-07-25 sleigh GLB ride) can fly the whole line.
-                if (!_skipVisuals() && typeof ThreeVFXEffects !== 'undefined'
-                    && typeof ThreeVFXEffects.fireGeometry === 'function') {
-                    try { ThreeVFXEffects.fireGeometry(spell.id + ':dash', x, y, dist,
-                        { fromX: unit.x, fromY: unit.y }); } catch (e) {}
-                }
                 unit.mp -= effectiveSpellCost;
 
                 const dashPath = getLinePoints(unit.x, unit.y, x, y);
-
-                // 💥 CHARGE breach: a dash is a deliberate ram — any breakable
-                // obstacle crossed mid-path (tree, weak wall) gets smashed
-                // through at charging power (weight class + dash bonus),
-                // scattering debris cubes. Unbreakable obstacles behave as
-                // before (the dash passes over). The landing tile itself is
-                // never demolished — it was validated passable above.
-                const _chargeZ = unit.z ?? getBaseHeightAt(unit.x, unit.y);
-                for (const _cp of dashPath) {
-                    if (_cp.x === x && _cp.y === y) continue;                       // landing tile
-                    if (_cp.x === unit.x && _cp.y === unit.y) continue;             // launch tile
-                    const _cpBlocked = !isTerrainPassable(_cp.x, _cp.y)
-                        || getBaseHeightAt(_cp.x, _cp.y) > _chargeZ + (typeof MAX_CLIMB_HEIGHT !== 'undefined' ? MAX_CLIMB_HEIGHT : 1);
-                    if (!_cpBlocked) continue;
-                    _tryCrashThrough(unit, _cp.x, _cp.y, { byUnit: unit, charging: true });
-                }
+                const casterStartX = unit.x, casterStartY = unit.y;
 
                 // primary target (the tile we land on) takes the spell's full `dmg`
                 // — that's what the tooltip ("DMG …" + "Path DMG …") and the spell
@@ -44256,25 +44546,26 @@
                 const dashPathDmg = spell.dashDamage || spell.dmg || 0;
                 const dashPrimaryDmg = spell.dmg || dashPathDmg;
                 const dashSplitsDamage = (spell.dashDamage != null);
-                let dashHitCount = 0;
-                const casterStartX = unit.x, casterStartY = unit.y;
 
                 // Scale dash travel time with distance so long dashes glide
                 // instead of snapping; keep the camera in lockstep with the unit.
                 const dashAnimMs = Math.max(200, dist * 110);
+
+                // ── THE CHARGE SHOT (2026-08-03): the camera fires FIRST —
+                // beat 1 braces on the charger (letterbox + spell name), the
+                // hard cut to the chase lands at windupMs, and the ENTIRE dash
+                // (VFX, breach, damage, the slide itself) is deferred to start
+                // ON that cut so the run begins the moment the chase cam does.
+                let _dashCam = null;
                 if (!state.cameraDisabled && _fogCamTilesVisible({ x: casterStartX, y: casterStartY }, { x, y })) {
                     stopBoardCameraAnimation();
                     if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                    // With the cinematic action camera on, FOLLOW the dasher —
-                    // the camera glides with the unit from launch to landing in
-                    // lockstep with the dash tween (animateDashActionCamera);
-                    // otherwise keep the plain top-down path pan.
-                    const _dashFollowed = state.cinematicActionCam && animateDashActionCamera(
+                    _dashCam = state.cinematicActionCam ? animateDashActionCamera(
                         { x: casterStartX, y: casterStartY },
                         { x: x, y: y },
-                        { duration: dashAnimMs, casterId: unit.id, _fogAllowed: true }
-                    );
-                    if (!_dashFollowed) {
+                        { duration: dashAnimMs, casterId: unit.id, attackName: spell.name, _fogAllowed: true }
+                    ) : null;
+                    if (!_dashCam) {
                         animateBoardCameraPath(
                             { x: casterStartX, y: casterStartY },
                             { x: x, y: y },
@@ -44282,112 +44573,153 @@
                         );
                     }
                 }
+                const _dashDelay = (_dashCam && _dashCam.windupMs) || 0;
 
-                for (const pt of dashPath) {
-                    const victim = unitAt(pt.x, pt.y);
-                    if (victim && !victim.dead && isEnemyUnit(victim, unit)) {
-                        const isPrimaryTarget = (pt.x === x && pt.y === y);
-                        const hitDmg = (dashSplitsDamage && isPrimaryTarget) ? dashPrimaryDmg : dashPathDmg;
-                        // applyDamageToUnit returns whether the victim was killed
-                        // (a boolean) and already pops its own post-mitigation
-                        // "-N" damage number, so don't render the return value as
-                        // floating text (that's what showed a stray "false").
-                        applyDamageToUnit(victim, hitDmg, `${spell.name}: `, {
-                            sourceUnit: unit,
-                            allowMarkBonus: true,
-                            damageType: spell.damageType || 'physical',
-                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
-                        });
-                        if (spell.statusEffects && spell.statusEffects.length > 0) {
-                            applyStatusEffects(victim, spell.statusEffects, `${spell.name}: `, unit);
-                        }
-                        dashHitCount++;
-                        addLog(`${unitDisplayName(victim)} is hit for ${hitDmg} as ${unitDisplayName(unit)} dashes through!`);
+                const _runDash = () => {
+                    let dashHitCount = 0;
+                    if (!_skipVisuals()) _vfxDash(casterStartX, casterStartY, x, y);
+                    // Spell-specific dash signature (Sleigh Dash snowburst…) —
+                    // keyed '<id>:dash' in the _spell3DGeometry registry. The
+                    // extra bag carries the LAUNCH tile so travel cinematics
+                    // (the 2026-07-25 sleigh GLB ride) can fly the whole line.
+                    if (!_skipVisuals() && typeof ThreeVFXEffects !== 'undefined'
+                        && typeof ThreeVFXEffects.fireGeometry === 'function') {
+                        try { ThreeVFXEffects.fireGeometry(spell.id + ':dash', x, y, dist,
+                            { fromX: casterStartX, fromY: casterStartY }); } catch (e) {}
                     }
-                }
 
-                const destOccupant = (unitAt(x, y, z) || unitAt(x, y));
-                if (destOccupant && !destOccupant.dead) {
+                    // 💥 CHARGE breach: a dash is a deliberate ram — any breakable
+                    // obstacle crossed mid-path (tree, weak wall) gets smashed
+                    // through at charging power (weight class + dash bonus),
+                    // scattering debris cubes. Unbreakable obstacles behave as
+                    // before (the dash passes over). The landing tile itself is
+                    // never demolished — it was validated passable above.
+                    const _chargeZ = unit.z ?? getBaseHeightAt(unit.x, unit.y);
+                    for (const _cp of dashPath) {
+                        if (_cp.x === x && _cp.y === y) continue;                       // landing tile
+                        if (_cp.x === casterStartX && _cp.y === casterStartY) continue; // launch tile
+                        const _cpBlocked = !isTerrainPassable(_cp.x, _cp.y)
+                            || getBaseHeightAt(_cp.x, _cp.y) > _chargeZ + (typeof MAX_CLIMB_HEIGHT !== 'undefined' ? MAX_CLIMB_HEIGHT : 1);
+                        if (!_cpBlocked) continue;
+                        _tryCrashThrough(unit, _cp.x, _cp.y, { byUnit: unit, charging: true });
+                    }
 
-                    const pushAdj = [
-                        { x: x + 1, y: y }, { x: x - 1, y: y },
-                        { x: x, y: y + 1 }, { x: x, y: y - 1 },
-                        { x: x + 1, y: y + 1 }, { x: x - 1, y: y - 1 },
-                        { x: x + 1, y: y - 1 }, { x: x - 1, y: y + 1 }
-                    ];
-                    pushAdj.sort((a, b) => {
-                        const dA = Math.abs(a.x - casterStartX) + Math.abs(a.y - casterStartY);
-                        const dB = Math.abs(b.x - casterStartX) + Math.abs(b.y - casterStartY);
-                        return dB - dA;
-                    });
-                    const pushTo = pushAdj.find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
-                    if (pushTo) {
-                        const _dashPushFromX = destOccupant.x, _dashPushFromY = destOccupant.y;
-                        destOccupant.x = pushTo.x;
-                        destOccupant.y = pushTo.y;
-                        if (typeof nearestWalkableZ === 'function') destOccupant.z = nearestWalkableZ(pushTo.x, pushTo.y, destOccupant.z);
-                        addLog(`${unitDisplayName(destOccupant)} is knocked aside to ${coordLabel(pushTo.x, pushTo.y)}!`);
-                        showFloatingTextForUnit(destOccupant, 'PUSHED!', 'streak', { durationMs: 800 });
-                        animateDisplacement(destOccupant, _dashPushFromX, _dashPushFromY, pushTo.x, pushTo.y, 180);
-                    } else {
+                    for (const pt of dashPath) {
+                        const victim = unitAt(pt.x, pt.y);
+                        if (victim && !victim.dead && isEnemyUnit(victim, unit)) {
+                            const isPrimaryTarget = (pt.x === x && pt.y === y);
+                            const hitDmg = (dashSplitsDamage && isPrimaryTarget) ? dashPrimaryDmg : dashPathDmg;
+                            // applyDamageToUnit returns whether the victim was killed
+                            // (a boolean) and already pops its own post-mitigation
+                            // "-N" damage number, so don't render the return value as
+                            // floating text (that's what showed a stray "false").
+                            applyDamageToUnit(victim, hitDmg, `${spell.name}: `, {
+                                sourceUnit: unit,
+                                allowMarkBonus: true,
+                                damageType: spell.damageType || 'physical',
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                            });
+                            if (spell.statusEffects && spell.statusEffects.length > 0) {
+                                applyStatusEffects(victim, spell.statusEffects, `${spell.name}: `, unit);
+                            }
+                            dashHitCount++;
+                            addLog(`${unitDisplayName(victim)} is hit for ${hitDmg} as ${unitDisplayName(unit)} dashes through!`);
+                        }
+                    }
 
-                        const fullPath = [{ x: casterStartX, y: casterStartY }, ...dashPath];
+                    const destOccupant = (unitAt(x, y, z) || unitAt(x, y));
+                    if (destOccupant && !destOccupant.dead && destOccupant.id !== unit.id) {
 
-                        const occupants = [];
-                        for (let i = 1; i < fullPath.length; i++) {
-                            const occ = unitAt(fullPath[i].x, fullPath[i].y);
-                            if (occ && !occ.dead && occ.id !== unit.id) {
-                                occupants.push({ unit: occ, pathIndex: i });
+                        const pushAdj = [
+                            { x: x + 1, y: y }, { x: x - 1, y: y },
+                            { x: x, y: y + 1 }, { x: x, y: y - 1 },
+                            { x: x + 1, y: y + 1 }, { x: x - 1, y: y - 1 },
+                            { x: x + 1, y: y - 1 }, { x: x - 1, y: y + 1 }
+                        ];
+                        pushAdj.sort((a, b) => {
+                            const dA = Math.abs(a.x - casterStartX) + Math.abs(a.y - casterStartY);
+                            const dB = Math.abs(b.x - casterStartX) + Math.abs(b.y - casterStartY);
+                            return dB - dA;
+                        });
+                        const pushTo = pushAdj.find(t => isInside(t.x, t.y) && canOccupy(t.x, t.y));
+                        if (pushTo) {
+                            const _dashPushFromX = destOccupant.x, _dashPushFromY = destOccupant.y;
+                            destOccupant.x = pushTo.x;
+                            destOccupant.y = pushTo.y;
+                            if (typeof nearestWalkableZ === 'function') destOccupant.z = nearestWalkableZ(pushTo.x, pushTo.y, destOccupant.z);
+                            addLog(`${unitDisplayName(destOccupant)} is knocked aside to ${coordLabel(pushTo.x, pushTo.y)}!`);
+                            showFloatingTextForUnit(destOccupant, 'PUSHED!', 'streak', { durationMs: 800 });
+                            animateDisplacement(destOccupant, _dashPushFromX, _dashPushFromY, pushTo.x, pushTo.y, 180);
+                        } else {
+
+                            const fullPath = [{ x: casterStartX, y: casterStartY }, ...dashPath];
+
+                            const occupants = [];
+                            for (let i = 1; i < fullPath.length; i++) {
+                                const occ = unitAt(fullPath[i].x, fullPath[i].y);
+                                if (occ && !occ.dead && occ.id !== unit.id) {
+                                    occupants.push({ unit: occ, pathIndex: i });
+                                }
+                            }
+
+                            for (const entry of occupants) {
+                                const prevTile = fullPath[entry.pathIndex - 1];
+                                const _shiftFromX = entry.unit.x, _shiftFromY = entry.unit.y;
+                                entry.unit.x = prevTile.x;
+                                entry.unit.y = prevTile.y;
+                                if (typeof nearestWalkableZ === 'function') entry.unit.z = nearestWalkableZ(prevTile.x, prevTile.y, entry.unit.z);
+                                addLog(`${unitDisplayName(entry.unit)} is shoved back to ${coordLabel(prevTile.x, prevTile.y)}!`);
+                                showFloatingTextForUnit(entry.unit, 'SHIFTED!', 'streak', { durationMs: 800 });
+                                animateDisplacement(entry.unit, _shiftFromX, _shiftFromY, prevTile.x, prevTile.y, 180);
                             }
                         }
+                    }
 
-                        for (const entry of occupants) {
-                            const prevTile = fullPath[entry.pathIndex - 1];
-                            const _shiftFromX = entry.unit.x, _shiftFromY = entry.unit.y;
-                            entry.unit.x = prevTile.x;
-                            entry.unit.y = prevTile.y;
-                            if (typeof nearestWalkableZ === 'function') entry.unit.z = nearestWalkableZ(prevTile.x, prevTile.y, entry.unit.z);
-                            addLog(`${unitDisplayName(entry.unit)} is shoved back to ${coordLabel(prevTile.x, prevTile.y)}!`);
-                            showFloatingTextForUnit(entry.unit, 'SHIFTED!', 'streak', { durationMs: 800 });
-                            animateDisplacement(entry.unit, _shiftFromX, _shiftFromY, prevTile.x, prevTile.y, 180);
+                    const oldLabel = coordLabel(casterStartX, casterStartY);
+                    unit.x = x;
+                    unit.y = y;
+                    if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(x, y, unit.z);
+                    unit._trackTilesMoved = (unit._trackTilesMoved || 0) + dist;
+
+                    // ⛸ Ice Slide & co.: a dash that declares leaveTerrain paints
+                    // its wake — every crossed tile except the landing tile (so
+                    // the caster doesn't immediately skid off their own sheet).
+                    // Mirrors the leaveTerrain guard used by the AoE postEffect.
+                    if (spell.leaveTerrain) {
+                        let _dlPainted = 0;
+                        for (const dp of dashPath) {
+                            if (dp.x === x && dp.y === y) continue;
+                            if (!isInside(dp.x, dp.y) || !isTerrainPassable(dp.x, dp.y)) continue;
+                            const _dlCur = getTerrainAt(dp.x, dp.y);
+                            if (_dlCur === 'wall' || _dlCur === spell.leaveTerrain) continue;
+                            setTerrainAt(dp.x, dp.y, spell.leaveTerrain);
+                            _dlPainted++;
+                        }
+                        if (_dlPainted) {
+                            addLog(`❄️ ${spell.name} leaves ${_dlPainted} tile${_dlPainted !== 1 ? 's' : ''} of ${spell.leaveTerrain} in the wake!`);
+                            if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
+                            scheduleBoardRender();
                         }
                     }
-                }
 
-                const oldLabel = coordLabel(casterStartX, casterStartY);
-                unit.x = x;
-                unit.y = y;
-                if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(x, y, unit.z);
-                unit._trackTilesMoved = (unit._trackTilesMoved || 0) + dist;
-
-                // ⛸ Ice Slide & co.: a dash that declares leaveTerrain paints
-                // its wake — every crossed tile except the landing tile (so
-                // the caster doesn't immediately skid off their own sheet).
-                // Mirrors the leaveTerrain guard used by the AoE postEffect.
-                if (spell.leaveTerrain) {
-                    let _dlPainted = 0;
-                    for (const dp of dashPath) {
-                        if (dp.x === x && dp.y === y) continue;
-                        if (!isInside(dp.x, dp.y) || !isTerrainPassable(dp.x, dp.y)) continue;
-                        const _dlCur = getTerrainAt(dp.x, dp.y);
-                        if (_dlCur === 'wall' || _dlCur === spell.leaveTerrain) continue;
-                        setTerrainAt(dp.x, dp.y, spell.leaveTerrain);
-                        _dlPainted++;
+                    animateDisplacement(unit, casterStartX, casterStartY, x, y, dashAnimMs);
+                    if (dashHitCount > 0) {
+                        addLog(`${unitDisplayName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}, hitting ${dashHitCount} ${dashHitCount === 1 ? 'enemy' : 'enemies'}!`);
+                    } else {
+                        addLog(`${unitDisplayName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}.`);
                     }
-                    if (_dlPainted) {
-                        addLog(`❄️ ${spell.name} leaves ${_dlPainted} tile${_dlPainted !== 1 ? 's' : ''} of ${spell.leaveTerrain} in the wake!`);
-                        if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
-                        scheduleBoardRender();
-                    }
-                }
+                    scheduleBoardRender();
+                };
 
-                animateDisplacement(unit, casterStartX, casterStartY, x, y, dashAnimMs);
-                if (dashHitCount > 0) {
-                    addLog(`${unitDisplayName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}, hitting ${dashHitCount} ${dashHitCount === 1 ? 'enemy' : 'enemies'}!`);
-                } else {
-                    addLog(`${unitDisplayName(unit)} dashes from ${oldLabel} to ${coordLabel(x, y)}.`);
-                }
-                completionDelay = actionMs(500);
+                if (_dashDelay > 0) window.setTimeout(_runDash, _dashDelay);
+                else _runDash();
+
+                // Cinematic dashes hold the turn through the windup + run +
+                // settle; the plain path keeps its old snappy 500ms (devsim
+                // included — _skipVisuals never takes the cinematic branch).
+                completionDelay = (_dashCam && _dashCam.windupMs)
+                    ? _dashDelay + dashAnimMs + actionMs(700)
+                    : actionMs(500);
             }
 
             else if (spell.kind === 'skyDrop') {
@@ -44875,17 +45207,20 @@
 
                 const casterFromX = unit.x, casterFromY = unit.y;
 
-                if (!state.cameraDisabled && _fogCamTilesVisible({ x: casterFromX, y: casterFromY }, { x, y })) {
-                    stopBoardCameraAnimation();
-                    if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
-                    animateBoardCameraPath(
-                        { x: casterFromX, y: casterFromY },
-                        { x: x, y: y },
-                        { duration: 250, zoom: isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom(), _fogAllowed: true }
-                    );
-                }
+                // ── DIVE SHOT (2026-08-03): the full two-beat action camera —
+                // beat 1 low on the caster crouched at the ledge lip (lowHero),
+                // hard cut to the victim below as the dive crashes in. The
+                // leap itself launches on beat 1's release so the plunge
+                // happens ON the cut, replacing the old flat 250ms pan.
+                const _lsCam = playOffensiveActionCamera(unit, target, {
+                    sourceHold: 750, targetHold: 950, attackName: spell.name,
+                    shotKind: 'lowHero'
+                });
+                const _lsLaunchAt = Math.max(0, _lsCam?.sourceHold ?? 0);
 
-                _vfxDash(unit.x, unit.y, x, y);
+                window.setTimeout(() => {
+                    if (!_skipVisuals()) _vfxDash(casterFromX, casterFromY, x, y);
+                }, _lsLaunchAt);
 
                 const _lsApplyLanding = (useAnim) => {
                     /* Per-spell landing VFX (Seismic Leap crater, Avalanche
@@ -44958,27 +45293,32 @@
                 const _lsLiftPx = Math.max(_lsTs * 0.8,
                     (typeof window._getElevationPx === 'function') ? window._getElevationPx(1) + _lsTs * 0.5 : _lsTs * 0.9);
                 const _lsLiftMs = actionMs(220), _lsHangMs = actionMs(60), _lsFlingMs = actionMs(230);
-                const _lsUsedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
-                    && window.ThreeAnim.throwArc && !_skipVisuals()
-                    && window.ThreeAnim.throwArc(unit, casterFromX, casterFromY, x, y, {
-                        liftMs: _lsLiftMs, hangMs: _lsHangMs, flingMs: _lsFlingMs,
-                        liftPx: _lsLiftPx, settleMs: 200,
-                        onImpact: () => {
-                            _lsApplyLanding(false);
-                            if (typeof shakeBoard === 'function') shakeBoard('normal');
-                            try {
-                                const VFX = window.ThreeVFXEffects;
-                                if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(x, y, { r0: _lsTs * 0.2, r1: _lsTs * 1.5, ms: 420 });
-                            } catch (e) {}
-                        }
-                    }));
+                const _lsRunDive = () => {
+                    const _lsUsedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
+                        && window.ThreeAnim.throwArc && !_skipVisuals()
+                        && window.ThreeAnim.throwArc(unit, casterFromX, casterFromY, x, y, {
+                            liftMs: _lsLiftMs, hangMs: _lsHangMs, flingMs: _lsFlingMs,
+                            liftPx: _lsLiftPx, settleMs: 200,
+                            onImpact: () => {
+                                _lsApplyLanding(false);
+                                if (typeof shakeBoard === 'function') shakeBoard('normal');
+                                try {
+                                    const VFX = window.ThreeVFXEffects;
+                                    if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(x, y, { r0: _lsTs * 0.2, r1: _lsTs * 1.5, ms: 420 });
+                                } catch (e) {}
+                            }
+                        }));
+                    if (!_lsUsedArc) {
+                        window.setTimeout(() => _lsApplyLanding(true), actionMs(300));
+                    }
+                };
+                if (_lsLaunchAt > 0) window.setTimeout(_lsRunDive, _lsLaunchAt);
+                else _lsRunDive();
 
-                if (_lsUsedArc) {
-                    completionDelay = _lsLiftMs + _lsHangMs + _lsFlingMs + actionMs(450);
-                } else {
-                    window.setTimeout(() => _lsApplyLanding(true), actionMs(300));
-                    completionDelay = actionMs(700);
-                }
+                completionDelay = Math.max(
+                    _lsLaunchAt + _lsLiftMs + _lsHangMs + _lsFlingMs + actionMs(450),
+                    _lsLaunchAt + actionMs(700),
+                    (_lsCam?.totalMs ?? 0) + actionMs(120));
             }
 
             if (panelFocusTarget) focusUnitPanel(panelFocusTarget.id);

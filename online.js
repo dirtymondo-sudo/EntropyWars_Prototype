@@ -1151,7 +1151,11 @@
                     fromX: fromPoint.x, fromY: fromPoint.y,
                     toX: toPoint.x, toY: toPoint.y,
                     duration: (opts && opts.duration) || 0,
-                    casterId: (opts && opts.casterId) || null
+                    casterId: (opts && opts.casterId) || null,
+                    /* charge-shot chrome (2026-08-03): the letterboxed windup→
+                       chase cinematic slams the spell name — without this the
+                       guest's charge shot ran with an empty title card. */
+                    attackName: (opts && opts.attackName) || null
                 });
             }
             return result;
@@ -3213,7 +3217,10 @@
                             window.animateDashActionCamera(
                                 { x: data.fromX, y: data.fromY },
                                 { x: data.toX, y: data.toY },
-                                { duration: data.duration || 0, _fogAllowed: true }
+                                { duration: data.duration || 0,
+                                  casterId: data.casterId != null ? data.casterId : null,
+                                  attackName: data.attackName || '',
+                                  _fogAllowed: true }
                             );
                         }
                     }

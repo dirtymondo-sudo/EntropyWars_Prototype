@@ -18,8 +18,24 @@ const ThreeVFXEffects = (function () {
 
     function tileZ(tx, ty) {
         if (typeof state === 'undefined') return 0;
-        if (typeof window._getElevationPx !== 'function') return 0;
         var ix = Math.round(tx), iy = Math.round(ty);
+        /* GROUND-TRUTH FIX (2026-08-03): the 3D renderer stands units on the
+           SMOOTHED natural-terrain landform (corner-blended heights + organic
+           swell — ThreeRenderer._naturalSurfaceY), which can sit up to a full
+           height level above OR below the raw voxel height. Ground-anchored
+           VFX (rune circles, shock rings, scorch decals, aura footprints)
+           computed from the voxel math floated at knee/waist height on any
+           non-flat map — "runes in the middle of the body". Ask the renderer
+           for the REAL rendered surface first; the voxel math below is only
+           the fallback for the non-3D path. */
+        try {
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive
+                && ThreeRenderer.isActive() && typeof ThreeRenderer.tileTopY === 'function') {
+                var _rty = ThreeRenderer.tileTopY(ix, iy);
+                if (typeof _rty === 'number' && isFinite(_rty)) return _rty;
+            }
+        } catch (e) {}
+        if (typeof window._getElevationPx !== 'function') return 0;
         var baseH = (state.boardHeights && state.boardHeights[iy]) ? state.boardHeights[iy][ix] : 0;
         if (baseH == null && typeof getHeightAt === 'function') baseH = getHeightAt(ix, iy);
         baseH = baseH || 0;
@@ -35,21 +51,36 @@ const ThreeVFXEffects = (function () {
     }
 
     function unitSurfaceZ(tx, ty) {
-        var terrainZ = tileZ(tx, ty);
-        if (typeof state === 'undefined' || !Array.isArray(state.units)) return terrainZ;
-        if (typeof window._getElevationPx !== 'function') return terrainZ;
         var ix = Math.round(tx), iy = Math.round(ty);
 
         var u = null;
-        for (var i = 0; i < state.units.length; i++) {
-            var c = state.units[i];
-            if (c.dead || c._dying) continue;
-            if (c.x === ix && c.y === iy) { u = c; break; }
+        if (typeof state !== 'undefined' && Array.isArray(state.units)) {
+            for (var i = 0; i < state.units.length; i++) {
+                var c = state.units[i];
+                if (c.dead || c._dying) continue;
+                if (c.x === ix && c.y === iy) { u = c; break; }
 
-            if (c._isBoss && c._bossSize === 2 &&
-                (ix === c.x || ix === c.x + 1) && (iy === c.y || iy === c.y + 1)) { u = c; break; }
+                if (c._isBoss && c._bossSize === 2 &&
+                    (ix === c.x || ix === c.x + 1) && (iy === c.y || iy === c.y + 1)) { u = c; break; }
+            }
         }
+
+        /* GROUND-TRUTH FIX (2026-08-03): when a unit stands here, anchor to
+           the SAME surface the renderer stands it on (natural-terrain
+           smoothing, walkable roofs, flyer hover height) — see tileZ above. */
+        if (u) {
+            try {
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive
+                    && ThreeRenderer.isActive() && typeof ThreeRenderer.unitSurfaceY === 'function') {
+                    var _ruy = ThreeRenderer.unitSurfaceY(u);
+                    if (typeof _ruy === 'number' && isFinite(_ruy)) return _ruy;
+                }
+            } catch (e) {}
+        }
+
+        var terrainZ = tileZ(tx, ty);
         if (!u || u.z == null) return terrainZ;
+        if (typeof window._getElevationPx !== 'function') return terrainZ;
         var groundH = 0;
         if (typeof getHeightAt === 'function') groundH = getHeightAt(ix, iy) || 0;
 

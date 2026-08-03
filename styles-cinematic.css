@@ -3579,6 +3579,28 @@
     100% { transform: scale(1); filter: brightness(1); }
 }
 
+/* ── Heal-flavored shots (heals / potions / revives): the corner readout
+      turns restorative green (label re-labeled TOTAL HEALED by battle.js)
+      and the title accent shifts from ember-gold to spring-green ── */
+.acam-chrome.heal-tally .acam-dmg-label { color: rgba(190, 255, 215, .7); }
+.acam-chrome.heal-tally .acam-dmg-num {
+    color: #4dff88;
+    text-shadow:
+        0 0 20px rgba(0, 255, 120, .8),
+        0 0 40px rgba(0, 255, 120, .4),
+        3px 3px 0 #013312;
+}
+.acam-chrome.heal-tally .acam-spell-name {
+    border-left-color: rgba(110, 240, 170, .85);
+    text-shadow:
+        0 0 20px rgba(110, 240, 170, .7),
+        0 0 50px rgba(60, 200, 120, .35),
+        0 3px 0 rgba(0, 0, 0, .6);
+}
+.acam-chrome.heal-tally .acam-vignette {
+    background: radial-gradient(ellipse 75% 65% at 50% 50%, transparent 55%, rgba(0, 14, 6, 0.5) 100%);
+}
+
 /* Title block fades as the bars slide back out. Fade the CONTAINER, not
    the name itself — the name's slam-in animation holds it at opacity 1
    with fill-mode:forwards, which out-prioritizes any transition on the

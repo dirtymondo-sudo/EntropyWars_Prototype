@@ -8363,3 +8363,65 @@ styles-hud.css `.slb-tl-*`). Everything below survives export→bake unchanged
   badge finally clears after an export gets baked.
 - data.js `Object.assign(window,…)` export list now also carries
   SPELL_BY_ID, RACE_ABILITY_BY_ID, STATUS_DEFS (headless tooling parity).
+
+## 2026-08-03 — Movement-spell action cams, heal letterbox cinematic, ground-truth rune VFX (battle.js, online.js, three-vfx-effects.js, styles-cinematic.css)
+
+### Rune/ground VFX floated at body height — ROOT CAUSE + FIX
+- `three-vfx-effects.js` `tileZ`/`unitSurfaceZ` computed ground from RAW
+  VOXEL heights (`_getElevationPx(boardHeights)`), but the renderer stands
+  units on the SMOOTHED natural landform (`ThreeRenderer._naturalSurfaceY` =
+  bilinear corner-mean of the 4 neighbours + organic swell). On any tile
+  whose neighbours are lower, the corner-mean sinks WELL below the voxel top
+  (h2 tile ringed by h0 → mean 0.5 lv, error 1.5 lv ≈ 96px at ts128) — so
+  every "floor" effect (magic circles, shock rings, scorch, target rings,
+  ALL sig ground effects) hovered at knee→chest height. Fix: both fns now
+  prefer `ThreeRenderer.tileTopY(ix,iy)` / `ThreeRenderer.unitSurfaceY(u)`
+  (try/catch, isActive-gated; voxel math kept as the non-3D fallback).
+  EVERY effect routes through these two fns (`_worldPos`, `_spawnEffect`,
+  cue primitives), so the fix is global. If ground VFX ever float again,
+  check THIS mapping first — not the individual effect recipes.
+
+### Heal/potion letterbox cinematic (was: light chrome, felt cheap)
+- `_isHealFlavoredCast(opts)` (battle.js, near _playSupportCineShot): kind ∈
+  {heal, healAll, selfHeal, zoneHeal, seedHeal, revive} OR heal/healAmt/
+  selfHealPct on the def OR /healing potion|mana potion|heal|revive/i on the
+  name (potions have no def). Heal-flavored casts now get the FULL action-
+  cam language; other support (shields/buffs) keeps the light glide.
+- `_playSupportCineShot`: heal path = letterbox (`heavy:true`), HARD CUT to
+  the recipient mid-flight (¾ reverse + pair-shot widening ≤4.2 tiles, cut
+  flash, slow push-in) and longer holds (1000/1250 × stage pace).
+- `_playSelfCastHeroShot`: heal self-casts wear heavy chrome, hold 1900ms.
+- Chrome: `showActionCamChrome({tallyKind:'heal'})` relabels the corner
+  readout TOTAL HEALED (green — `.acam-chrome.heal-tally` in
+  styles-cinematic.css); `_actionCamTallyHeal(n)` fed by applyHealingToUnit
+  (host-side; guests see bars/cuts via the support-cine relay, tally stays
+  host-only). `_actionCamTallyDamage` now refuses heal-mode chrome.
+- selfHeal kind: heal application deferred to the hero shot's push-in
+  (~680ms); removed its duplicate +N floating text (applyHealingToUnit
+  already pops one). Potions: self-use now gets the hero shot (was NO shot
+  at all); swig + HP land at ~680ms; ally use passes tallyKind:'heal'.
+
+### Movement-spell cinematics (charge/dash/pull/swap/leapStrike)
+- `animateDashActionCamera` REWRITTEN as THE CHARGE SHOT (same signature,
+  still online-wrapped): BEAT 1 brace — low front ¾ on the charger,
+  letterbox + name slam (~520ms) → HARD CUT to a low chase cam looking down
+  the dash lane from behind (yaw = travel dir + 0.6·offset, tilt HIT-4),
+  focal gliding launch→landing with NO elevZ (rides terrain) → landing kick
+  + zoom punch. Returns `{windupMs, runMs, totalMs}` (legacy follow-glide
+  returns windupMs:0 when the rig declines; false only on full decline).
+  Callers DEFER the entire dash execution by windupMs so the run starts ON
+  the cut: dash kind wraps everything in `_runDash()` (VFX, breach, path
+  damage, shove, position mutation, leaveTerrain, displacement anim);
+  `_runChargeToTargetSpell` (Brave Charge & co) same via `_runCharge()`.
+  online.js dash-cam-follow relay now carries `attackName` (guest title).
+- pull kind: full `playOffensiveActionCamera` (850/1000) replaces the old
+  uiConfirm + flat pan. Tether/pull-VFX launch at sourceHold, yank waits
+  camHold+shoot+bite, spell.dmg lands at the bite (was frame 0), drag
+  follows via `_cineRetargetShot` (falls back to the path pan).
+- swap kind: offensive cam with `frameTiles` [caster, target] (wide beat-2
+  framing both); swap mutation + displacement anims deferred to sourceHold.
+- leapStrike: offensive cam (lowHero) replaces the flat 250ms pan; the
+  throwArc dive launches on beat 1's release (`_lsRunDive`).
+- Parity notes: all four ride EXISTING online wrappers (camera-events /
+  dash-cam-follow / support-cine / displace-anim / VFX3D.fire), so guests
+  replay everything except tethers (never relayed — pre-existing gap).
