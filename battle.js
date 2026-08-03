@@ -15677,8 +15677,13 @@
                 // re-anchors on the target's own shoulder/ground; a ¾ angle
                 // (OTS offset + extra swing) keeps the caster in the deep
                 // background and the victim front-and-centre for the hit.
-                const cutMs = timings.sourceHold
-                    + Math.min(actionMs(300), Math.round(timings.travelMs * 0.5));
+                // Beam spells (kamehameha rule): the eruption happens at the
+                // CASTER — hold beat 1 through the launch (holdAfterLaunchMs)
+                // so the beam is seen leaving their hands before the cut.
+                const cutMs = shotOpts.holdAfterLaunchMs != null
+                    ? timings.sourceHold + actionMs(shotOpts.holdAfterLaunchMs)
+                    : timings.sourceHold
+                        + Math.min(actionMs(300), Math.round(timings.travelMs * 0.5));
                 window.setTimeout(() => {
                     if (camera._cineShotId !== sequenceId) return;
                     if (sequenceId !== boardCameraSequenceId) return;
@@ -16229,7 +16234,8 @@
                     heavy: true, totalMs: timings.totalMs });
                 _playCineActionShot(sourceUnit, target, timings, _fogPassthrough, sequenceId,
                     { impactMs: _impactMs, frameTiles: opts.frameTiles,
-                      shotKind: opts.shotKind });
+                      shotKind: opts.shotKind,
+                      holdAfterLaunchMs: opts.holdAfterLaunchMs });
             } else {
 
                 const focusX = (sourceUnit.x + target.x) / 2;
@@ -40016,7 +40022,7 @@
                     // swigs on the arrival frame.
                     window.setTimeout(() => {
                         if (state.phase !== 'battle') return;
-                        triggerAttackAnim(unit, target.x, target.y);
+                        triggerAttackAnim(unit, target.x, target.y, 'throw');
                         playSfx('itemThrow');
                         playProjectileToUnit(unit, target, 'heal', _hpTravel);
                     }, _hpLaunch);
@@ -40116,7 +40122,7 @@
                 } else {
                     window.setTimeout(() => {
                         if (state.phase !== 'battle') return;
-                        triggerAttackAnim(unit, target.x, target.y);
+                        triggerAttackAnim(unit, target.x, target.y, 'throw');
                         playSfx('itemThrow');
                         playProjectileToUnit(unit, target, 'heal', _mpTravel);
                     }, _mpLaunch);
@@ -40285,10 +40291,12 @@
                 const _throwDelay = Math.max(0, _baneCam?.sourceHold ?? actionMs(900));
                 const _throwTravelMs = _baneCam?.travelMs ?? actionMs(520);
 
-                // Throw animation (lunge + sprite-sheet) fires together with the
-                // projectile so the wind-up and the thrown bane read as one motion.
+                // Throw animation fires together with the projectile so the
+                // wind-up and the thrown bane read as one motion. 'throw'
+                // forces the OverhandThrow clip on rigged models — without it
+                // banes played the generic melee/ranged attack swing.
                 window.setTimeout(() => {
-                    triggerAttackAnim(unit, target.x, target.y);
+                    triggerAttackAnim(unit, target.x, target.y, 'throw');
                 }, _throwDelay + actionMs(120));
                 window.setTimeout(() => {
                     playSfx('itemThrow');
@@ -41903,9 +41911,33 @@
                     });
             } else if (spell.kind === 'healAll') {
                 playSfx('healRegen');
-                _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
                 const allies = aliveUnitsFor(unit.player);
+
+                // TWO BEATS (2026-08-03): beat 1 — the CAST on the caster;
+                // beat 2 — the camera cuts WIDE to frame every ally while the
+                // heal visibly lands on each of them. The old single
+                // _spellFocusCamera parked the shot on the caster for the
+                // whole spell, so a team-wide heal read as a self-buff.
+                const _haOthers = allies.filter(a => a.id !== unit.id);
+                let _haCam = null;
+                if (_haOthers.length > 0) {
+                    let _haFar = _haOthers[0];
+                    for (const _a of _haOthers) {
+                        if (Math.abs(_a.x - unit.x) + Math.abs(_a.y - unit.y)
+                            > Math.abs(_haFar.x - unit.x) + Math.abs(_haFar.y - unit.y)) _haFar = _a;
+                    }
+                    _haCam = playOffensiveActionCamera(unit, _haFar, {
+                        sourceHold: 1000, targetHold: 1100, attackName: spell.name,
+                        _noCinematic: true,
+                        frameTiles: allies.length > 1 ? allies.map(a => ({ x: a.x, y: a.y })) : undefined
+                    });
+                } else {
+                    _spellFocusCamera(unit, x, y);
+                }
+                // Beat 2 starts when the cast beat ends (the wide cut lands).
+                const _haCastMs = Math.max(actionMs(300), _haCam?.sourceHold ?? actionMs(650));
+                const _haStagger = actionMs(140);
 
                 const _useVfx3dHealAll = (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'descent'));
@@ -41918,7 +41950,7 @@
                     const _allyStagger = actionMs(80);
                     let totalHealed = 0;
                     allies.forEach((ally, idx) => {
-                        const startDelay = idx * _allyStagger;
+                        const startDelay = _haCastMs + idx * _allyStagger;
                         const healLanding = startDelay + actionMs(_descentVfxMs);
 
                         window.setTimeout(() => {
@@ -41939,7 +41971,8 @@
                         }, healLanding);
                     });
                     completionDelay = Math.max(
-                        actionMs(_descentVfxMs) + Math.max(0, (allies.length - 1)) * _allyStagger + actionMs(280),
+                        _haCastMs + actionMs(_descentVfxMs) + Math.max(0, (allies.length - 1)) * _allyStagger + actionMs(280),
+                        (_haCam?.totalMs ?? 0) + actionMs(120),
                         actionMs(800)
                     );
 
@@ -41949,7 +41982,7 @@
                     const _healLandingDelay = actionMs(280);
                     let totalHealed = 0;
                     allies.forEach((ally, idx) => {
-                        const startDelay = idx * _allyStagger;
+                        const startDelay = _haCastMs + idx * _allyStagger;
                         const healLanding = startDelay + _healLandingDelay;
 
                         window.setTimeout(() => {
@@ -41978,65 +42011,107 @@
                         }, healLanding);
                     });
                     completionDelay = Math.max(
-                        Math.max(0, (allies.length - 1)) * _allyStagger + _healLandingDelay + actionMs(300),
+                        _haCastMs + Math.max(0, (allies.length - 1)) * _allyStagger + _healLandingDelay + actionMs(300),
+                        (_haCam?.totalMs ?? 0) + actionMs(120),
                         actionMs(800)
                     );
                     addLog(`${unitDisplayName(unit)} casts ${spell.name}, ${((spell.healAmt != null ? spell.healAmt : (spell.heal || 0)) > 0) ? 'healing' : 'bolstering'} ${allies.length} allies.`);
                 } else {
 
+                    // Beat 1: the cast glow on the caster.
                     _vfxHeal(unit.x, unit.y);
-                    let totalHealed = 0;
-                    for (const ally of allies) {
-                        const _bh2 = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
-                        let healAmount = _bh2 + getEffectiveHealBonus(unit, _bh2, ally) + getHourglassPower(unit);
-                        healAmount = Math.min(healAmount, ally.maxHp - ally.hp);
-                        if (healAmount > 0) {
-                            const healed = applyHealingToUnit(ally, healAmount, unit);
-                            totalHealed += healed;
-                        }
-                    }
-                    /* "restoring 1 total HP across 4 allies" read as a bug —
-                       when the team is basically full the heal is incidental
-                       (the cast was for the buff/cleanse), so only itemize
-                       amounts worth saying out loud. */
-                    addLog(totalHealed >= 5
-                        ? `${unitDisplayName(unit)} casts ${spell.name}, restoring ${totalHealed} total HP across ${allies.length} allies.`
-                        : `${unitDisplayName(unit)} casts ${spell.name}, bolstering ${allies.length} allies.`);
+                    // Beat 2: the heal lands on EVERY ally on screen — green
+                    // burst + floating number per ally, staggered so the wide
+                    // shot reads as a wave washing over the team. (The old
+                    // code healed silently in a sync loop with a single puff
+                    // on the caster — a team heal that showed nobody healed.)
+                    allies.forEach((ally, idx) => {
+                        window.setTimeout(() => {
+                            if (ally.dead) return;
+                            if (state.phase !== 'battle') return;
+                            if (!_skipVisuals()) _vfxHeal(ally.x, ally.y);
+                            const _bh2 = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
+                            let healAmount = _bh2 + getEffectiveHealBonus(unit, _bh2, ally) + getHourglassPower(unit);
+                            healAmount = Math.min(healAmount, ally.maxHp - ally.hp);
+                            if (healAmount > 0) applyHealingToUnit(ally, healAmount, unit);
+                        }, _haCastMs + idx * _haStagger);
+                    });
+                    completionDelay = Math.max(
+                        _haCastMs + Math.max(0, (allies.length - 1)) * _haStagger + actionMs(500),
+                        (_haCam?.totalMs ?? 0) + actionMs(120),
+                        actionMs(800)
+                    );
+                    addLog(`${unitDisplayName(unit)} casts ${spell.name}, healing ${allies.length} allies.`);
                 }
 
                 // Unified team support for healAll: cleanse debuffs + apply a stat
                 // buff to the whole crew. The aura VFX branch already cleanses, so
                 // skip cleanse there to avoid double-dipping; stat buffs apply in all.
+                // Runs at beat 2 so the buff/cleanse floaters pop while the wide
+                // shot frames the team (not during the caster's wind-up).
                 if (spell.statStageBoost || (spell.cleanse && !_useVfx3dHealAllAura)) {
-                    for (const ally of allies) {
-                        if (ally.dead) continue;
-                        if (spell.cleanse && !_useVfx3dHealAllAura) {
-                            const debuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
-                            const cleanseCount = (spell.cleanse === true) ? 1 : spell.cleanse;
-                            for (const k of debuffs.slice(0, cleanseCount)) clearStatus(ally, k);
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle') return;
+                        for (const ally of allies) {
+                            if (ally.dead) continue;
+                            if (spell.cleanse && !_useVfx3dHealAllAura) {
+                                const debuffs = getActiveStatusKeys(ally).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
+                                const cleanseCount = (spell.cleanse === true) ? 1 : spell.cleanse;
+                                for (const k of debuffs.slice(0, cleanseCount)) clearStatus(ally, k);
+                            }
+                            if (spell.statStageBoost) applyStatStageBoost(ally, spell.statStageBoost, `${spell.name}: `, unit);
                         }
-                        if (spell.statStageBoost) applyStatStageBoost(ally, spell.statStageBoost, `${spell.name}: `, unit);
-                    }
+                    }, _haCastMs);
                 }
             } else if (spell.kind === 'manaRestoreAll') {
                 playSfx('manaRegen');
                 _vfxMana(unit.x, unit.y);
-                _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
                 const allies = aliveUnitsFor(unit.player);
+                // Same two-beat structure as healAll: cast on the caster,
+                // then the camera cuts wide and the restore visibly lands on
+                // each ally (blue burst + floating MP), staggered.
+                const _mrTargets = allies.filter(a => a.id !== unit.id);
+                let _mrCam = null;
+                if (_mrTargets.length > 0) {
+                    let _mrFar = _mrTargets[0];
+                    for (const _a of _mrTargets) {
+                        if (Math.abs(_a.x - unit.x) + Math.abs(_a.y - unit.y)
+                            > Math.abs(_mrFar.x - unit.x) + Math.abs(_mrFar.y - unit.y)) _mrFar = _a;
+                    }
+                    _mrCam = playOffensiveActionCamera(unit, _mrFar, {
+                        sourceHold: 1000, targetHold: 1000, attackName: spell.name,
+                        _noCinematic: true,
+                        frameTiles: _mrTargets.length > 1 ? _mrTargets.map(a => ({ x: a.x, y: a.y })) : undefined
+                    });
+                } else {
+                    _spellFocusCamera(unit, x, y);
+                }
+                const _mrCastMs = Math.max(actionMs(300), _mrCam?.sourceHold ?? actionMs(650));
+                const _mrStagger = actionMs(140);
                 let totalRestored = 0;
-                for (const ally of allies) {
+                _mrTargets.forEach((ally, idx) => {
                     // The caster never restores their own MP — otherwise the spell
                     // partially refunds itself and becomes a team-wide mana printer.
-                    if (ally.id === unit.id) continue;
-                    const restoreAmount = Math.min(spell.mpRestore || 40, ally.maxMp - ally.mp);
-                    if (restoreAmount > 0) {
-                        ally.mp += restoreAmount;
-                        totalRestored += restoreAmount;
-                        showFloatingTextForUnit(ally, `+${restoreAmount} MP`, 'buff', { durationMs: 900 });
-                    }
-                }
-                addLog(`${unitDisplayName(unit)} casts ${spell.name}, restoring ${totalRestored} total MP across ${allies.length} allies.`);
+                    window.setTimeout(() => {
+                        if (ally.dead || state.phase !== 'battle') return;
+                        const restoreAmount = Math.min(spell.mpRestore || 40, ally.maxMp - ally.mp);
+                        if (restoreAmount > 0) {
+                            ally.mp += restoreAmount;
+                            totalRestored += restoreAmount;
+                            if (!_skipVisuals()) _vfxMana(ally.x, ally.y);
+                            showFloatingTextForUnit(ally, `+${restoreAmount} MP`, 'buff', { durationMs: 900 });
+                            markDirty('teams', 'selectedUnit', 'hud');
+                            renderIfDirty();
+                        }
+                    }, _mrCastMs + idx * _mrStagger);
+                });
+                completionDelay = Math.max(
+                    _mrCastMs + Math.max(0, (_mrTargets.length - 1)) * _mrStagger + actionMs(500),
+                    (_mrCam?.totalMs ?? 0) + actionMs(120),
+                    actionMs(800)
+                );
+                addLog(`${unitDisplayName(unit)} casts ${spell.name}, restoring MP across the team.`);
             } else if (spell.kind === 'aoe') {
                 // Phase 4 migration: aoe uses shared AoE helpers
                 playSfx(spellLaunchSfx(spell));
@@ -42286,12 +42361,19 @@
                     const _lineCamTarget = _lineFirstHit || { x: unit.x + dx * Math.min(lineRange, 3), y: unit.y + dy * Math.min(lineRange, 3) };
                     const cam = playOffensiveActionCamera(unit, _lineCamTarget, {
                         sourceHold: 1100, targetHold: 900, attackName: spell.name,
+                        // Kamehameha rule: stay ON the caster while the beam
+                        // erupts from their hands, THEN cut to the victims.
+                        holdAfterLaunchMs: 480,
                         extraTargets: _lineHits.length > 1 ? _lineHits.slice(1) : undefined,
                         frameTiles: _lineHits.length > 1
                             ? _lineHits.map(h => ({ x: h.x, y: h.y }))
                             : undefined
                     });
                     const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
+                    // The beam LAUNCHES when the caster releases (end of the
+                    // charge), not at impact — the camera is still behind the
+                    // caster at this point, so the eruption is on screen.
+                    const _beamLaunchMs = Math.max(actionMs(200), cam?.sourceHold ?? actionMs(900));
                     completionDelay = Math.max(impactDelay + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
 
                     // Projectile / Beam VFX. Spells with a projectileOverride
@@ -42336,9 +42418,9 @@
                                 dx, dy, range: lineRange,
                                 hitTiles: _beamTiles
                             });
-                        }, impactDelay - actionMs(100));
+                        }, _beamLaunchMs);
                     } else {
-                        window.setTimeout(() => playBeamEffect(unit.x, unit.y, dx, dy, lineRange, spell.spellType, actionMs(500)), impactDelay - actionMs(100));
+                        window.setTimeout(() => playBeamEffect(unit.x, unit.y, dx, dy, lineRange, spell.spellType, actionMs(500)), _beamLaunchMs);
                     }
 
                     // Damage resolution

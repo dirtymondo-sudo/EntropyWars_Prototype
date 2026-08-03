@@ -3317,7 +3317,10 @@
                 ...combo,
                 key,
                 typeA,
-                typeB
+                typeB,
+                // Marks this as a two-unit combo for the HUD (desc bar swaps
+                // the MP line for the initiator+partner AP cost).
+                _isCombo: true
             };
         }
 

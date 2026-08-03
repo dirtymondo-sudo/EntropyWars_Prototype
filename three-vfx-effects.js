@@ -3837,8 +3837,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 return;
             } catch (e) { /* fall through to the generic bolt */ }
         }
+        var _gunMuzzlePx = 0;
         if (_SIG_GUN_FOR[spellId]) {
-            try { _sigGunRig3D(_SIG_GUN_FOR[spellId], fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs }); } catch (e) {}
+            try { _gunMuzzlePx = _sigGunRig3D(_SIG_GUN_FOR[spellId], fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs }) || 0; } catch (e) {}
         }
         if (_SIG_BOW_FOR[spellId]) {
             try { _sigBowShot3D(fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs }); } catch (e) {}
@@ -3846,6 +3847,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         var from = tilePx(fromTx, fromTy);
         var to = tilePx(toTx, toTy);
+        /* Gun spells: the tracer leaves from the spectral gun's MUZZLE, not
+           the caster's chest — "bullet fires from gun". Capped well short of
+           the target so a point-blank shot still visibly crosses the gap. */
+        if (_gunMuzzlePx > 0) {
+            var _gmdx = to.x - from.x, _gmdy = to.y - from.y;
+            var _gmdl = Math.sqrt(_gmdx * _gmdx + _gmdy * _gmdy) || 1;
+            var _gmAdv = Math.min(_gunMuzzlePx, _gmdl * 0.45);
+            from.x += (_gmdx / _gmdl) * _gmAdv;
+            from.y += (_gmdy / _gmdl) * _gmAdv;
+        }
         var fz = (params.fromZ != null && typeof window._getElevationPx === 'function')
             ? window._getElevationPx(params.fromZ) : unitSurfaceZ(fromTx, fromTy);
         var tz = (params.toZ != null && typeof window._getElevationPx === 'function')
@@ -8929,6 +8940,131 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
+    /* ── SKULL CRACK — the skull itself is the prop: the real Meshy skull
+       (procedural cranium while it streams) drops onto the victim's crown,
+       CRACKS on impact — tips over like a broken egg while enamel shards
+       burst out — then crumbles away. The clang/stun-ring/seeing-stars
+       impact layers (EFFECTS.skullCrack_impact) fire alongside this. */
+    function _sigSkullCrack3D(tx, ty, opts) {
+        opts = opts || {};
+        if (!_canSpawn()) return;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var boneMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('enamel.png', 1, 1),
+            color: new THREE.Color(0xe8e0ca),
+            transparent: true, opacity: 0.95, depthWrite: false,
+        });
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        g.rotation.y = Math.random() * Math.PI * 2;
+
+        /* the skull prop: real GLB when cached, procedural cranium fallback */
+        var prop = new THREE.Group();
+        var sockMat = new THREE.MeshBasicMaterial({
+            color: 0x181410, transparent: true, opacity: 0.95, depthWrite: false });
+        var inst = _wpnReady('skull') ? _wpnInstance('skull', ts * 1.05) : null;
+        if (inst) {
+            prop.add(inst.group);
+            inst.group.rotation.x = 0.5;             /* crown leads the dive */
+        } else {
+            var sR = ts * 0.42;
+            var cran = new THREE.Mesh(new THREE.SphereGeometry(sR, 10, 8), boneMat);
+            cran.scale.set(1, 0.94, 1.06);
+            prop.add(cran);
+            var jaw = new THREE.Mesh(new THREE.BoxGeometry(sR * 1.1, sR * 0.6, sR * 0.95), boneMat);
+            jaw.position.set(0, -sR * 0.55, sR * 0.18);
+            prop.add(jaw);
+            for (var e0 = -1; e0 <= 1; e0 += 2) {
+                var sock = new THREE.Mesh(new THREE.SphereGeometry(sR * 0.22, 6, 5), sockMat);
+                sock.position.set(e0 * sR * 0.36, sR * 0.04, sR * 0.82);
+                prop.add(sock);
+            }
+            prop.rotation.x = 0.5;
+        }
+        g.add(prop);
+
+        /* enamel shards that burst out of the crack (hidden until impact) */
+        var shards = [];
+        for (var i = 0; i < 7; i++) {
+            var shard = new THREE.Mesh(new THREE.BoxGeometry(
+                ts * (0.05 + Math.random() * 0.06),
+                ts * (0.04 + Math.random() * 0.04),
+                ts * (0.05 + Math.random() * 0.06)), boneMat);
+            shard.visible = false;
+            var sa = Math.random() * Math.PI * 2;
+            shards.push({
+                m: shard,
+                vx: Math.cos(sa) * ts * (0.9 + Math.random() * 1.1),
+                vz: Math.sin(sa) * ts * (0.9 + Math.random() * 1.1),
+                vy: ts * (1.2 + Math.random() * 1.6),
+                sx: (Math.random() - 0.5) * 0.5,
+                sz: (Math.random() - 0.5) * 0.5,
+                x: 0, y: 0, z: 0,
+            });
+            g.add(shard);
+        }
+
+        var inMs = 200, beatMs = 80, slamMs = 140, pressMs = 280, fadeMs = 340;
+        var total = inMs + beatMs + slamMs + pressMs + fadeMs;
+        var hiY = ts * 2.4, cockY = ts * 2.9, restY = ts * 0.95;
+        var cracked = false, crackAt = 0;
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty);
+
+        _sigRun(g, total, function (el) {
+            var f = 1;
+            if (el < inMs) {
+                var t = _sigEaseOutCubic(el / inMs);
+                f = Math.min(1, t * 2.2);
+                prop.position.y = hiY + (cockY - hiY) * t;
+            } else if (el < inMs + beatMs) {
+                prop.position.y = cockY;               /* the held breath */
+            } else if (el < inMs + beatMs + slamMs) {
+                var t2 = (el - inMs - beatMs) / slamMs;
+                prop.position.y = cockY + (restY - cockY) * t2 * t2;
+                if (!cracked && t2 > 0.94) {
+                    cracked = true;
+                    crackAt = el;
+                    _sigShockRing3D(tx, ty, { color: 0xf2e6c8, r1: ts * 1.6, ms: 380 });
+                    _sigSparks(tx, ty, 'steel-spark', 10, { vxy: 180, vz0: 40, vz1: 150 });
+                    for (var s2 = 0; s2 < 6; s2++) {
+                        _spawn({
+                            x: c.x + rn(-16, 16), y: c.y + rn(-16, 16), z: bz + 4,
+                            mode: 'billboard', sprite: 'smoke',
+                            ml: rn(320, 540), size0: rn(12, 20), size1: rn(30, 48),
+                            vz: rn(30, 90), drag: 0.7, opacity0: 0.5, opacity1: 0,
+                        });
+                    }
+                    for (var sh0 = 0; sh0 < shards.length; sh0++) {
+                        shards[sh0].m.visible = true;
+                        shards[sh0].y = restY;
+                    }
+                }
+            } else {
+                /* cracked: the skull tips over like a broken egg and sags */
+                var t3 = Math.min(1, (el - inMs - beatMs - slamMs) / pressMs);
+                prop.position.y = restY - ts * 0.18 * t3;
+                prop.rotation.z = 0.6 * _sigEaseOutCubic(t3);
+                if (el > total - fadeMs) f = (total - el) / fadeMs;
+            }
+            if (cracked) {
+                var dt = (el - crackAt) / 1000;
+                for (var j = 0; j < shards.length; j++) {
+                    var p = shards[j];
+                    p.m.position.set(
+                        p.vx * dt,
+                        Math.max(ts * 0.04, restY + p.vy * dt - ts * 4.2 * dt * dt),
+                        p.vz * dt);
+                    p.m.rotation.x += p.sx;
+                    p.m.rotation.z += p.sz;
+                }
+            }
+            boneMat.opacity = f * 0.95;
+            sockMat.opacity = f * 0.95;
+            if (inst) inst.setFade(f);
+        });
+    }
+
     /* ── TAROT DRAW — the deck floats up, three cards rise off the top and
        fan out over the caster, each burning a different augury color, then
        the spread rockets skyward and bursts into sparkles. */
@@ -10852,7 +10988,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var scene = _getVFXScene(); if (!scene) return;
         var key = kind + '@' + Math.round(fromTx) + ',' + Math.round(fromTy) + (opts.sky ? '#sky' : '') + (opts.key || '');
         var live = _sigGunRigs[key];
-        if (live && !live.dead) { live.retarget(toTx, toTy); live.queueShot(); return; }
+        if (live && !live.dead) { live.retarget(toTx, toTy); live.queueShot(); return live.muzzleAdvancePx || 0; }
 
         var fw = _worldPos(fromTx, fromTy);
         var ts = fw.ts;
@@ -10863,21 +10999,29 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         aim.rotation.order = 'YXZ';
         root.add(aim);
         var g = _sigBuildGun(kind, ts);
-        /* Stand-weapon scale, tamed (2026-07-07): the rig hovers at the
-           CASTER's shoulder and must never poke its barrel into the target.
-           Base scale is modest, and for close shots it shrinks further so the
-           muzzle tip stays within ~55% of the caster→target distance — the
-           bullet/tracer (the bolt) is what crosses the gap, not the barrel. */
+        /* Stand-weapon scale, tamed again (2026-08-03): the rig hovers at
+           the CASTER's shoulder and the gun must READ as the caster's — the
+           bullet/tracer is what crosses the gap, never the barrel. The old
+           55%-of-gap budget plus a 0.55 scale floor let a close-range sniper
+           rifle park its muzzle ON the victim ("the gun goes right up to the
+           target"). Now the muzzle tip stays within ~38% of the caster→
+           target distance with NO floor big enough to break that promise —
+           point-blank shots get a small gun at the shooter's side, exactly
+           like a holstered draw. */
         var _gunMuzzleTs = (g.muzzle && g.muzzle.position ? g.muzzle.position.z : ts * 0.9) / ts;
         var _gunScale = opts.modelScale != null ? opts.modelScale : (opts.sky ? 2.0 : 1.3);
         if (!opts.sky) {
             var _twpS = _worldPos(toTx, toTy);
             var _sdx = _twpS.x - fw.x, _sdz = _twpS.z - fw.z;
             var _sdl = Math.sqrt(_sdx * _sdx + _sdz * _sdz) || ts;
-            var _maxScale = ((_sdl / ts) * 0.55 - 0.2) / Math.max(0.3, _gunMuzzleTs);
-            _gunScale = Math.max(0.55, Math.min(_gunScale, _maxScale));
+            var _maxScale = ((_sdl / ts) * 0.38 - 0.18) / Math.max(0.3, _gunMuzzleTs);
+            _gunScale = Math.max(0.3, Math.min(_gunScale, _maxScale));
         }
         g.group.scale.setScalar(_gunScale);
+        /* px the muzzle tip sits ahead of the caster tile centre, along the
+           firing line — the bolt pipeline starts the tracer HERE, so the
+           bullet visibly leaves the gun instead of the caster's chest. */
+        var _muzzleAdvancePx = ts * 0.18 + _gunMuzzleTs * ts * _gunScale;
         aim.add(g.group);
 
         /* flat summon disc spinning under the floating weapon (an upright
@@ -11113,9 +11257,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (entry) entry.finish();
             }
         });
-        if (!entry) return;
+        if (!entry) return 0;
         rig.entry = entry;
+        rig.muzzleAdvancePx = _muzzleAdvancePx;
         _sigGunRigs[key] = rig;
+        return _muzzleAdvancePx;
     }
 
     /* ── HERO: SPECTRAL LONGBOW — Robin Hood's shot. A giant ghost-lit
@@ -16760,6 +16906,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            it streams; the gold knuckle look rides the fallback). */
         reallyGoodPunch: function(tx, ty) { _sigGlbFist3D(tx, ty, { color: 0xffd24a }); },
         haymaker: function(tx, ty) { _sigGlbFist3D(tx, ty, { scale: 0.8, circleColor: 0xff9944, color: 0xffb066 }); },
+        /* SKULL CRACK — the skull model IS the animation: it drops onto the
+           victim's crown and cracks apart (impact layers ride along). */
+        skullCrack: function(tx, ty) { _sigSkullCrack3D(tx, ty); },
         /* THE BURNING CROSS — Fallen Grace drops the wooden cross INVERTED
            and alight: the fallen angel's whole theology in one prop.
            (Judgment / Divine Judgment keep their gold-sword descents; the

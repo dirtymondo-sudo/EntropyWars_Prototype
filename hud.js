@@ -2149,7 +2149,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     right.push(h('span', { key: 'ap', className: 'hrlg-cost' }, pips));
   }
   if (b.count) right.push(h('span', { key: 'ct', className: 'hrlg-cfree' }, b.count));
-  if (b.meta) right.push(h('span', { key: 'mt', className: 'hrlg-meta', style: b.meta.color ? { color: b.meta.color } : undefined }, b.meta.text));
+  if (b.meta) right.push(h('span', { key: 'mt', className: 'hrlg-meta', title: b.meta.title || undefined, style: b.meta.color ? { color: b.meta.color } : undefined }, b.meta.text));
   if (!dead && !b.sub && b.hint) right.push(h('span', { key: 'hn', className: 'hrlg-cfree' }, b.hint));
   if (!dead && b.note) right.push(h('span', { key: 'nt', className: 'hrlg-note' }, b.note));
   if (b.sub && !b.subBelow) right.push(h('span', { key: 'sb', className: 'hrlg-tag' }, b.sub));
@@ -3606,8 +3606,13 @@ function _hrlgComboBlades(unit, st) {
         // The pair's DUAL type badges — the recipe this partner unlocks —
         // riding the name row like every spell's type badge does.
         badges: _hrlgComboTypeBadges(combo, 9),
-        meta: combo ? { text: combo.name, color: '#f0d060' } : null,
-        hint: syn.label ? '×1.3 SYNERGY' : null,
+        // The combo's full card (name + desc + numbers) rides the bottom
+        // description bar via `spell`, like every ability row — the meta
+        // chip is just the at-a-glance name. Synergy folds into the chip
+        // (the old separate '×1.3 SYNERGY' tag crowded long combo names
+        // clean off the row).
+        spell: combo || undefined,
+        meta: combo ? { text: combo.name + (syn.label ? ' ×1.3' : ''), color: '#f0d060', title: combo.name + (syn.label ? ' (' + syn.label + ')' : '') } : null,
         fire: () => {
           state.comboPartner = p;
           state.pendingTarget = null;
@@ -3677,6 +3682,7 @@ function _hrlgComboBlades(unit, st) {
       previewDmg: previewDmg,
       power: previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad } : undefined,
       portrait: _hrlgPortraitData(t.u, unit),
+      spell: combo || undefined,   // desc bar keeps describing the combo while aiming
       meta: { text: t.d + 't' },
       fire: () => {
         if (st._actionExecuting) return;
@@ -3695,10 +3701,15 @@ function _hrlgComboBlades(unit, st) {
   }
   // Title carries the combo's DUAL type badges next to its name — the pair
   // recipe stays visible while aiming, same intel the partner rows showed.
+  // Long combo names shrink to FIT the tab (size + tracking) instead of
+  // ellipsizing — a combo's name is its identity, never cut it off.
+  const _cbNameStyle = (combo && combo.name && combo.name.length > 12)
+    ? { fontSize: combo.name.length > 18 ? 13 : 15, letterSpacing: '0.08em' }
+    : undefined;
   const _cbTitle = combo
     ? { node: h(React.Fragment, null,
         h('span', { className: 'hrlg-view-tab-icon', style: { color: '#f0d060' } }, '◆'),
-        h('span', { className: 'hrlg-view-tab-text' }, combo.name),
+        h('span', { className: 'hrlg-view-tab-text', style: _cbNameStyle, title: combo.name }, combo.name),
         h('span', { className: 'hrlg-badges' },
           _hrlgComboTypeBadges(combo, 9).map((bd, k) =>
             h('span', { key: k, style: bd.style, title: bd.title }, bd.label))),
@@ -7007,7 +7018,11 @@ function _ensureDescBarEl() {
 
 function _renderSpellDescBar() {
   const sp = _descBarHover || _descBarBase;
-  if (_descBarEl && sp === _descBarShown) return;   // cheap: called every HUD render
+  // cheap no-op: called every HUD render. Combos arrive as a FRESH object
+  // per render (getComboForUnits spreads the registry entry), so identity
+  // alone would rebuild the bar every frame — same-name counts as same.
+  if (_descBarEl && (sp === _descBarShown
+      || (sp && _descBarShown && sp.name === _descBarShown.name))) return;
   _descBarShown = sp;
   const el = _ensureDescBarEl();
   if (!sp || !sp.name) { el.classList.remove('show'); return; }
@@ -7044,9 +7059,16 @@ function _renderSpellDescBar() {
   details.push(rng > 0 ? 'Range ' + rng : 'Self-cast');
   if (sp.aoeRadius) details.push('AOE ' + sp.aoeRadius);
   if (sp.teleportDistance) details.push('Leap ' + sp.teleportDistance);
-  const cost = (_dbUnit && typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(_dbUnit, sp) : (sp.cost || 0);
-  const apCost = _tqApCost(sp);
-  details.push(cost + ' MP · ' + apCost + ' AP');
+  if (sp._isCombo) {
+    // Combos cost AP from BOTH dancers, never MP.
+    const _cbIni = (typeof COMBO_AP_COST_INITIATOR !== 'undefined') ? COMBO_AP_COST_INITIATOR : 2;
+    const _cbPar = (typeof COMBO_AP_COST_PARTNER !== 'undefined') ? COMBO_AP_COST_PARTNER : 1;
+    details.push(_cbIni + ' AP + ' + _cbPar + ' partner AP');
+  } else {
+    const cost = (_dbUnit && typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(_dbUnit, sp) : (sp.cost || 0);
+    const apCost = _tqApCost(sp);
+    details.push(cost + ' MP · ' + apCost + ' AP');
+  }
   if (sp.tier) details.push('T·' + sp.tier);
 
   let statusLine = '';
@@ -8381,7 +8403,9 @@ function _injectHudHideStyles() {
       border: 1px solid rgba(79,216,255,0.45); background: rgba(8,7,12,0.7);
       padding: 1px 5px; white-space: nowrap;
     }
-    .hrlg-meta { flex: none; font-size: 10px; letter-spacing: 0.06em; color: #c9c4b4; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+    /* meta may shrink with ellipsis (never hard-clipped mid-letter at the
+       row edge — combo names were getting chopped by overflow:hidden) */
+    .hrlg-meta { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 10px; letter-spacing: 0.06em; color: #c9c4b4; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
     .hrlg-note {
       flex: none; font-size: 7px; font-weight: 700; letter-spacing: 0.1em;
       color: #0a0910; background: #f0d060; padding: 1px 5px; white-space: nowrap;

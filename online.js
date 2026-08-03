@@ -961,6 +961,10 @@
                        the guest opened every relayed cast on the default OTS
                        framing while the host got the anime power shot. */
                     if (opts.shotKind) camEvt.shotKind = opts.shotKind;
+                    /* beam casts hold beat 1 through the launch (kamehameha
+                       rule) — without this the guest cut away before the beam
+                       left the caster's hands. */
+                    if (opts.holdAfterLaunchMs != null) camEvt.holdAfterLaunchMs = opts.holdAfterLaunchMs;
                     /* Basic attacks (and other opted-out actions) must stay
                        tactical on the guest too — dropping these flags made
                        EVERY relayed attack replay as a full cinematic. */
@@ -3090,6 +3094,7 @@
                                 if (camEvt.sourceHold) camOpts.sourceHold = camEvt.sourceHold;
                                 if (camEvt.targetHold) camOpts.targetHold = camEvt.targetHold;
                                 if (camEvt.shotKind) camOpts.shotKind = camEvt.shotKind;
+                                if (camEvt.holdAfterLaunchMs != null) camOpts.holdAfterLaunchMs = camEvt.holdAfterLaunchMs;
                                 if (camEvt.noActionCam) camOpts.noActionCam = true;
                                 if (camEvt._noCinematic) camOpts._noCinematic = true;
                                 if (camEvt.frameTiles && camEvt.frameTiles.length) camOpts.frameTiles = camEvt.frameTiles;
