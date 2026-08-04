@@ -1250,6 +1250,7 @@
             if (!body) return;
             const musicVol = document.getElementById('musicVolumeSlider')?.value || 68;
             const sfxVol = document.getElementById('sfxVolumeSlider')?.value || 90;
+            const ambVol = document.getElementById('ambienceVolumeSlider')?.value || 80;
             const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
 
             body.innerHTML = `
@@ -1268,6 +1269,12 @@
                                 <input type="range" class="pm-vol-slider" min="0" max="100" step="1" value="${sfxVol}"
                                     oninput="const s=document.getElementById('sfxVolumeSlider');if(s){s.value=this.value;s.dispatchEvent(new Event('input'));}this.nextElementSibling.textContent=this.value+'%';">
                                 <span class="pm-vol-val">${sfxVol}%</span>
+                            </div>
+                            <div class="pm-vol-row">
+                                <span class="pm-vol-label">Ambience</span>
+                                <input type="range" class="pm-vol-slider" min="0" max="100" step="1" value="${ambVol}"
+                                    oninput="const s=document.getElementById('ambienceVolumeSlider');if(s){s.value=this.value;s.dispatchEvent(new Event('input'));}this.nextElementSibling.textContent=this.value+'%';">
+                                <span class="pm-vol-val">${ambVol}%</span>
                             </div>
                         </div>
                         <div class="pm-set-row" style="margin-top:10px">

@@ -6310,6 +6310,9 @@
             if (sfxVolumeSlider) {
                 sfxVolumeSlider.disabled = false;
             }
+            if (ambienceVolumeSlider) {
+                ambienceVolumeSlider.disabled = false;
+            }
         }
 
         var _postRenderHook = function() {};
@@ -6715,6 +6718,7 @@
             const isMuted = (state.musicVolume ?? 0.68) <= 0.001;
             const musicVol = Math.round((state.musicVolume ?? 0.68) * 100);
             const sfxVol = Math.round((state.sfxVolume ?? 0.9) * 100);
+            const ambVol = Math.round((state.ambienceVolume ?? 0.8) * 100);
             const trackName = _getTrackDisplayName(currentKey);
             const loopOn = trackObj ? trackObj.loop : false;
 
@@ -6765,15 +6769,20 @@
                 </div>
 
                 <div class="pm-vol-section">
-                    <div class="pm-vol-row">
+                    <div class="pm-vol-row pm-vol-row-music">
                         <span class="pm-vol-label">🎵 Music</span>
                         <input type="range" min="0" max="100" step="1" value="${musicVol}" class="pm-vol-slider" oninput="window._pauseSetMusicVol(this.value)">
                         <span class="pm-vol-val">${musicVol}%</span>
                     </div>
-                    <div class="pm-vol-row">
+                    <div class="pm-vol-row pm-vol-row-sfx">
                         <span class="pm-vol-label">🔊 SFX</span>
                         <input type="range" min="0" max="100" step="1" value="${sfxVol}" class="pm-vol-slider" oninput="window._pauseSetSfxVol(this.value)">
                         <span class="pm-vol-val">${sfxVol}%</span>
+                    </div>
+                    <div class="pm-vol-row pm-vol-row-amb">
+                        <span class="pm-vol-label">🌙 Ambience</span>
+                        <input type="range" min="0" max="100" step="1" value="${ambVol}" class="pm-vol-slider" oninput="window._pauseSetAmbienceVol(this.value)">
+                        <span class="pm-vol-val">${ambVol}%</span>
                     </div>
                 </div>
 
@@ -6870,7 +6879,7 @@
             const s = document.getElementById('musicVolumeSlider');
             if (s) { s.value = val; s.dispatchEvent(new Event('input')); }
 
-            const valEl = document.querySelector('.pm-vol-row:first-child .pm-vol-val');
+            const valEl = document.querySelector('.pm-vol-row-music .pm-vol-val');
             if (valEl) valEl.textContent = val + '%';
         };
         window._pauseSetSfxVol = function(val) {
@@ -6878,7 +6887,16 @@
             refreshVisibleVolumeValues();
             const s = document.getElementById('sfxVolumeSlider');
             if (s) { s.value = val; s.dispatchEvent(new Event('input')); }
-            const valEl = document.querySelector('.pm-vol-row:last-child .pm-vol-val');
+            const valEl = document.querySelector('.pm-vol-row-sfx .pm-vol-val');
+            if (valEl) valEl.textContent = val + '%';
+        };
+        window._pauseSetAmbienceVol = function(val) {
+            state.ambienceVolume = Math.max(0, Math.min(1, Number(val) / 100));
+            applyAmbienceVolumeMix();
+            refreshVisibleVolumeValues();
+            const s = document.getElementById('ambienceVolumeSlider');
+            if (s) { s.value = val; s.dispatchEvent(new Event('input')); }
+            const valEl = document.querySelector('.pm-vol-row-amb .pm-vol-val');
             if (valEl) valEl.textContent = val + '%';
         };
         window._pauseSeekTrack = function(e) {
@@ -11863,6 +11881,14 @@
         if (sfxVolumeSlider) {
             sfxVolumeSlider.addEventListener('input', (event) => {
                 state.sfxVolume = Math.max(0, Math.min(1, Number(event.target.value) / 100));
+                refreshVisibleVolumeValues();
+                renderAudioControls();
+            });
+        }
+        if (ambienceVolumeSlider) {
+            ambienceVolumeSlider.addEventListener('input', (event) => {
+                state.ambienceVolume = Math.max(0, Math.min(1, Number(event.target.value) / 100));
+                applyAmbienceVolumeMix();
                 refreshVisibleVolumeValues();
                 renderAudioControls();
             });

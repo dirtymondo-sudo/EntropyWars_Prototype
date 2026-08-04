@@ -415,8 +415,10 @@
         function refreshVisibleVolumeValues() {
             if (musicVolumeSlider) musicVolumeSlider.value = String(Math.round((state.musicVolume ?? 0.68) * 100));
             if (sfxVolumeSlider) sfxVolumeSlider.value = String(Math.round((state.sfxVolume ?? 0.9) * 100));
+            if (ambienceVolumeSlider) ambienceVolumeSlider.value = String(Math.round((state.ambienceVolume ?? 0.8) * 100));
             if (musicVolumeValue) musicVolumeValue.textContent = `${Math.round((state.musicVolume ?? 0.68) * 100)}%`;
             if (sfxVolumeValue) sfxVolumeValue.textContent = `${Math.round((state.sfxVolume ?? 0.9) * 100)}%`;
+            if (ambienceVolumeValue) ambienceVolumeValue.textContent = `${Math.round((state.ambienceVolume ?? 0.8) * 100)}%`;
         }
 
         function applyMusicVolumeMix() {
@@ -824,11 +826,14 @@
 
         /* ═══════════════════════════════════════════════════════════════════
            AMBIENCE BEDS (SFX_AUDIT §5, assets uploaded 2026-08-04)
-           A second looping channel that sits UNDER the music: exactly one bed
-           at a time, crossfaded when the scene changes. Picked every few
-           seconds from live battle state — weather beats map flavour beats
-           day/night — so it needs no per-event hooks and, online, the guest's
-           synced state drives the same picker locally (no relay needed).
+           A second looping channel that sits UNDER the music. Beds STACK:
+           weather, map flavour and day/night are independent layers (night +
+           thunderstorm plays both), each faded in/out on its own as the scene
+           changes. Picked every few seconds from live battle state, so it
+           needs no per-event hooks and, online, the guest's synced state
+           drives the same picker locally (no relay needed). The whole channel
+           rides its own Ambience slider (state.ambienceVolume), separate from
+           Music and SFX.
            Kill-switch (console): window.EW_DISABLE_AMBIENCE = true.
            ═══════════════════════════════════════════════════════════════ */
         const _R2_AMBIENCE = {
@@ -839,8 +844,8 @@
             ambCavern:       `${_R2_BASE}/SFX/ambCavern.mp3`,
             lavaBubble:      `${_R2_BASE}/SFX/lavaBubble.mp3`,
         };
-        // Quiet by design: beds ride the SFX volume slider but are mixed well
-        // below one-shots so they never fight the music or the impacts.
+        // Quiet by design: beds ride the Ambience volume slider but are mixed
+        // well below one-shots so they never fight the music or the impacts.
         const AMBIENCE_BASE_VOLUMES = {
             thunderAmbience: 0.42,
             ambDay: 0.28,
@@ -852,12 +857,20 @@
         const AMBIENCE_FADE_MS = 1600;
         const AMBIENCE_TICK_MS = 3000;
         const _ambienceTracks = {};          // key -> Audio (lazy, loop=true)
-        let _ambienceKey = null;             // bed currently active (or fading in)
-        let _ambienceFadeToken = 0;          // bumping cancels in-flight fades
+        const _ambienceActive = new Set();   // beds currently playing (or fading in)
+        const _ambienceFadeTokens = {};      // key -> int; bumping cancels that bed's in-flight fade
 
         function _ambienceTargetVol(key) {
             const base = AMBIENCE_BASE_VOLUMES[key] ?? 0.3;
-            return Math.max(0, Math.min(1, base * (state.sfxVolume ?? 0.9)));
+            return Math.max(0, Math.min(1, base * (state.ambienceVolume ?? 0.8)));
+        }
+
+        // Immediate slider response (the 3s tick would otherwise lag it).
+        function applyAmbienceVolumeMix() {
+            _ambienceActive.forEach(key => {
+                const t = _ambienceTracks[key];
+                if (t && !t.paused) { try { t.volume = _ambienceTargetVol(key); } catch (e) {} }
+            });
         }
 
         function _getAmbienceTrack(key) {
@@ -877,12 +890,14 @@
 
         // Tiny dedicated fader — deliberately NOT fadeTrackVolume, whose
         // audioFadeVersion is bumped by every music transition and would
-        // cancel ambience fades mid-flight.
-        function _fadeAmbienceTrack(track, target, ms, token, onDone) {
+        // cancel ambience fades mid-flight. Tokens are PER BED so fading one
+        // layer out never cancels another layer's fade-in.
+        function _fadeAmbienceTrack(key, track, target, ms, onDone) {
+            const token = _ambienceFadeTokens[key] = (_ambienceFadeTokens[key] || 0) + 1;
             const start = Math.max(0, Math.min(1, Number.isFinite(track.volume) ? track.volume : 0));
             const t0 = performance.now();
             function step(now) {
-                if (token !== _ambienceFadeToken) return;
+                if (token !== _ambienceFadeTokens[key]) return;
                 const t = ms > 0 ? Math.min(1, (now - t0) / ms) : 1;
                 try { track.volume = start + (target - start) * t; } catch (e) { return; }
                 if (t >= 1) { if (onDone) onDone(); return; }
@@ -891,25 +906,27 @@
             requestAnimationFrame(step);
         }
 
-        function _setAmbienceBed(key) {
-            if (key === _ambienceKey) return;
-            const token = ++_ambienceFadeToken;
-            const prev = _ambienceKey ? _ambienceTracks[_ambienceKey] : null;
-            _ambienceKey = key;
-            if (prev && !prev.paused) {
-                _fadeAmbienceTrack(prev, 0, AMBIENCE_FADE_MS, token, () => { try { prev.pause(); } catch (e) {} });
-            }
-            if (!key) return;
-            const next = _getAmbienceTrack(key);
-            if (!next) return;
+        function _startAmbienceBed(key) {
+            if (_ambienceActive.has(key)) return;
+            const track = _getAmbienceTrack(key);
+            if (!track) return;
+            _ambienceActive.add(key);
             try {
-                next.volume = 0;
-                next.play().then(() => {
-                    if (token === _ambienceFadeToken) {
-                        _fadeAmbienceTrack(next, _ambienceTargetVol(key), AMBIENCE_FADE_MS, token);
-                    }
-                }).catch(() => { if (token === _ambienceFadeToken) _ambienceKey = null; });
-            } catch (e) { _ambienceKey = null; }
+                if (track.paused) track.volume = 0;
+                track.play().then(() => {
+                    // Stopped again while play() was pending → don't leave it looping at 0.
+                    if (!_ambienceActive.has(key)) { try { track.pause(); } catch (e) {} return; }
+                    _fadeAmbienceTrack(key, track, _ambienceTargetVol(key), AMBIENCE_FADE_MS);
+                }).catch(() => { _ambienceActive.delete(key); });
+            } catch (e) { _ambienceActive.delete(key); }
+        }
+
+        function _stopAmbienceBed(key) {
+            if (!_ambienceActive.has(key)) return;
+            _ambienceActive.delete(key);
+            const track = _ambienceTracks[key];
+            if (!track || track.paused) return;
+            _fadeAmbienceTrack(key, track, 0, AMBIENCE_FADE_MS, () => { try { track.pause(); } catch (e) {} });
         }
 
         // Map flavour scan (cached ~12s — boards are static outside reshapes):
@@ -942,29 +959,40 @@
             return val;
         }
 
-        function _desiredAmbienceKey() {
+        // Stackable layers: weather + map flavour + day/night can all play at
+        // once (night crickets under a thunderstorm). One exception: daytime
+        // birdsong under a raging storm reads wrong, so the storm replaces it.
+        function _desiredAmbienceKeys() {
             try {
-                if (window.EW_DISABLE_AMBIENCE) return null;
-                if (!state.audioUnlocked || state.devAutoSim) return null;
-                if (state.phase !== 'battle' || state.winner) return null;
+                if (window.EW_DISABLE_AMBIENCE) return [];
+                if (!state.audioUnlocked || state.devAutoSim) return [];
+                if (state.phase !== 'battle' || state.winner) return [];
+                const keys = [];
                 const aw = state.activeWeather || [];
-                if (aw.some(w => w && (w.type === 'thunderstorm' || w.type === 'hurricane'))) return 'thunderAmbience';
+                const storm = aw.some(w => w && (w.type === 'thunderstorm' || w.type === 'hurricane'));
+                if (storm) keys.push('thunderAmbience');
                 const flav = _ambienceMapFlavour();
-                if (flav) return flav;
+                if (flav) keys.push(flav);
                 const cyc = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
-                return cyc === 'night' ? 'ambNight' : 'ambDay';
-            } catch (e) { return null; }
+                if (cyc === 'night') keys.push('ambNight');
+                else if (!storm) keys.push('ambDay');
+                return keys;
+            } catch (e) { return []; }
         }
 
         window.setInterval(() => {
-            const want = _desiredAmbienceKey();
-            if (want !== _ambienceKey) {
-                // New battle / new bed → let the flavour cache re-scan promptly.
-                _setAmbienceBed(want);
-            } else if (want && _ambienceTracks[want] && !_ambienceTracks[want].paused) {
-                // Track the SFX volume slider between crossfades.
-                try { _ambienceTracks[want].volume = _ambienceTargetVol(want); } catch (e) {}
-            }
+            const want = new Set(_desiredAmbienceKeys());
+            Array.from(_ambienceActive).forEach(key => {
+                if (!want.has(key)) _stopAmbienceBed(key);
+            });
+            want.forEach(key => {
+                if (!_ambienceActive.has(key)) {
+                    _startAmbienceBed(key);
+                } else if (_ambienceTracks[key] && !_ambienceTracks[key].paused) {
+                    // Track the Ambience volume slider between crossfades.
+                    try { _ambienceTracks[key].volume = _ambienceTargetVol(key); } catch (e) {}
+                }
+            });
         }, AMBIENCE_TICK_MS);
         // A fresh battle deserves a fresh terrain scan (lava/cloud counts).
         window._ewResetAmbienceCache = () => { _ambFlavourCache = { at: 0, val: null }; };

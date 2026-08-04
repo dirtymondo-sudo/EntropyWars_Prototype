@@ -3913,6 +3913,7 @@
             lastBattleTrackKey: null,
             musicVolume: 0.68,
             sfxVolume: 0.9,
+            ambienceVolume: 0.8,
             activePlayer: 1,
             round: 0,
             selectedUnitId: null,
@@ -4973,8 +4974,10 @@
         const enterGameBtn = document.getElementById('enterGameBtn');
         const musicVolumeSlider = document.getElementById('musicVolumeSlider');
         const sfxVolumeSlider = document.getElementById('sfxVolumeSlider');
+        const ambienceVolumeSlider = document.getElementById('ambienceVolumeSlider');
         const musicVolumeValue = document.getElementById('musicVolumeValue');
         const sfxVolumeValue = document.getElementById('sfxVolumeValue');
+        const ambienceVolumeValue = document.getElementById('ambienceVolumeValue');
         const skipTrackBtn = document.getElementById('skipTrackBtn');
 
         let audioTracks;

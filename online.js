@@ -3687,6 +3687,12 @@
                     currentMusic: 1,
                     _remoteAction: 1,
 
+                    /* volume sliders are per-viewer — the host's mix must
+                       never stomp the guest's */
+                    musicVolume: 1,
+                    sfxVolume: 1,
+                    ambienceVolume: 1,
+
                     selectedUnitId: 1,
                     focusedUnitId: 1,
                     hoverUnitId: 1,
@@ -3969,7 +3975,10 @@
                 // too, or the handoff heartbeat closes the guest's open card
                 '_enemyActionTargetId', '_tileActionTarget',
                 // sky-throw destination hover preview — per-viewer hover UI
-                '_skyThrowDestKey'
+                '_skyThrowDestKey',
+                // per-viewer audio mix — snapshots from older builds (and
+                // replays) still carry these; never let them stomp the sliders
+                'musicVolume', 'sfxVolume', 'ambienceVolume'
             ];
 
             function _applyRemoteState(data) {
