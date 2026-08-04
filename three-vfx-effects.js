@@ -2121,6 +2121,673 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceBombArrow'] = Object.assign(SPELL_MAP['raceBombArrow'] || {},
         { aoe: 'raceBombArrow_aoe' });
 
+    /* ═══ 2026-08-04 — THE JRPG VFX UPGRADE PASS ══════════════════════════
+       Two moves in one block:
+       1. REWRITE the shared workhorse recipes that 40+ spells lean on
+          (psychic hit, dark debuff, ranged shot, heavy punch, melee slash,
+          deploy poof, tremor tile, and the flagship fire1 detonation).
+          They were 2-4 layers of gradient blobs; with the shaped sprite
+          pack (three-vfx.js) + spin/wander/seekIn physics they become
+          layered read: white-hot snap → shaped burst → dark contrast →
+          lingering ground truth.
+       2. WIRE bespoke recipes for the iconic spells the coverage audit
+          found riding generics: railgun, assassinate, the dash quartet,
+          thunderstorm + the weather summons, dark pact, veil of light,
+          poison kit, sky-throw kit, mana shield, reassemble, flood, charm,
+          boo, heat death, knights of round, rocket fist, the bard kit.
+       Everything stays inside the existing fire() intents — the online
+       host→guest relay carries all of it with zero new plumbing (RULE #2). */
+
+    /* ── the flagship: FIREBALL. White pop → tumbling fireball billows →
+       licking tongues → ember spray (wandering) → smoke crown → shockwave
+       + cracked scorch. The recipe every fire spell inherits by example. */
+    EFFECTS['fire1_impact'] = {
+        shake: 'normal',
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 2200, z: 1,
+              size0: 100, size1: 118, opacity0: 0.92 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 380, z: 2,
+              size0: 40, size1: 300, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'fire-glow', ml: 700, z: 3,
+              size0: 90, size1: 150, opacity0: 0.65 },
+            { sprite: 'flash', ml: 150, size0: 130, size1: 30 },
+            { count: 5, sprite: 'explosion-orange', ml: [240, 420], offsetXY: 16,
+              z: [-6, 22], vzRange: [10, 60], drag: 0.6,
+              size0: [34, 56], size1: [78, 112], opacity0: 0.95 },
+            { count: 6, anchor: 'floor', mode: 'y-locked', sprite: 'flame', ml: [320, 560],
+              offsetXY: 30, w0: [16, 26], w1: [6, 11], h0: [36, 54], h1: [96, 150],
+              opacity0: 0.95 },
+            { count: 3, anchor: 'floor', mode: 'y-locked', sprite: 'flame-hot', ml: [300, 480],
+              offsetXY: 16, w0: [12, 20], w1: [5, 9], h0: [30, 44], h1: [80, 120],
+              opacity0: 1 },
+            { count: 16, sprite: 'ember', ml: [420, 780], offsetXY: 8,
+              vxRange: 170, vyRange: 170, vzRange: [60, 230], gravity: 340, drag: 1.2,
+              wander: { amp: 30, freq: 2.0 }, size0: [7, 13], size1: 2 },
+            { count: 5, delayMs: 140, sprite: 'smoke', ml: [900, 1500], offsetXY: 20,
+              z: [16, 40], vzRange: [30, 60], drag: 0.4,
+              size0: [36, 52], size1: [100, 150], opacity0: 0.6 },
+        ]
+    };
+
+    /* ── psychic hit (9 spells): interference rings collapsing INTO the
+       skull, pink glint snap, warped wisps — mind pressure, not a poof. */
+    EFFECTS['_psychic_dark_impact'] = {
+        layers: [
+            { sprite: 'flash', ml: 140, size0: 84, size1: 22, tint: 0xff77dd, opacity0: 0.9 },
+            { count: 3, sprite: 'psi-pulse', ml: [260, 420], offsetXY: 4,
+              size0: [90, 120], size1: [16, 30], opacity0: 0.85 },
+            { count: 10, sprite: 'psi-pulse', ml: [340, 520], offsetXY: 46, z: [-20, 30],
+              seekIn: [260, 420], seekSpiral: 150, size0: [10, 16], size1: 3, opacity0: 0.9 },
+            { count: 8, sprite: 'spark-pink', ml: [280, 520], offsetXY: 10,
+              vxRange: 130, vyRange: 130, vzRange: [30, 150], gravity: 260, drag: 1.3,
+              size0: [6, 10], size1: 1 },
+            { count: 5, delayMs: 90, sprite: 'void-mist', ml: [500, 850], offsetXY: 18,
+              vzRange: [15, 45], drag: 0.5, wander: { amp: 34, freq: 1.6 },
+              size0: [16, 26], size1: [38, 58], opacity0: 0.55 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 420, z: 2,
+              tint: 0xcc55bb, size0: 130, size1: 34, opacity0: 0.7 },
+        ]
+    };
+
+    /* ── dark debuff landing (8 spells): the curse CLAMPS — contracting
+       blood ring, dark tongues, sinking violet motes. */
+    EFFECTS['_dark_debuff_impact'] = {
+        layers: [
+            { sprite: 'flash', ml: 150, size0: 70, size1: 20, tint: 0xb066ff, opacity0: 0.6 },
+            { count: 4, anchor: 'floor', mode: 'y-locked', sprite: 'dark-flame', ml: [340, 560],
+              offsetXY: 22, w0: [12, 20], w1: [5, 9], h0: [28, 44], h1: [70, 110],
+              opacity0: 0.9 },
+            { count: 7, sprite: 'void-mist', ml: [420, 760], offsetXY: 16, z: [30, 60],
+              vzRange: [-60, -30], gravity: 60, drag: 0.5, wander: { amp: 24, freq: 1.4 },
+              size0: [14, 24], size1: [30, 46], opacity0: 0.6 },
+            { count: 6, sprite: 'spark-pink', ml: [260, 460], offsetXY: 12, tint: 0x9944ee,
+              vxRange: 90, vyRange: 90, vzRange: [20, 110], gravity: 240, drag: 1.2,
+              size0: [5, 9], size1: 1 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 460, z: 2,
+              size0: 132, size1: 30, opacity0: 0.8 },
+            { delayMs: 220, anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 420, z: 2,
+              size0: 110, size1: 26, opacity0: 0.55 },
+        ]
+    };
+
+    /* ── ranged shot hit (7 spells): a BULLET STRIKE — white glint snap,
+       stone chips, kicked dust, brief tracer flashes. */
+    EFFECTS['_rangedShot_impact'] = {
+        layers: [
+            { sprite: 'flash', ml: 90, size0: 64, size1: 14, opacity0: 1 },
+            { count: 6, sprite: 'steel-spark', ml: [140, 320], offsetXY: 4,
+              vxRange: 240, vyRange: 240, vzRange: [40, 200], gravity: 420, drag: 1.1,
+              size0: [5, 9], size1: 1 },
+            { count: 6, sprite: 'debris', ml: [280, 520], offsetXY: 6,
+              vxRange: 190, vyRange: 190, vzRange: [80, 260], gravity: 560, drag: 0.4,
+              size0: [4, 8], size1: [3, 6], opacity0: 1, opacity1: 0.3 },
+            { count: 3, sprite: 'dust-puff', ml: [320, 560], offsetXY: 10,
+              vzRange: [20, 60], drag: 0.9, size0: [14, 22], size1: [34, 52], opacity0: 0.6 },
+            { count: 2, mode: 'y-locked', sprite: 'flash', ml: [120, 200], offsetXY: 6,
+              w0: 3, w1: 1.5, h0: [30, 50], h1: [16, 26], opacity0: 0.8 },
+        ]
+    };
+
+    /* ── heavy punch (5 spells): CONCUSSION — shock ring, dust skirt,
+       debris, slam sparks, brief ground crack. */
+    EFFECTS['_heavyPunch_impact'] = {
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 130, size0: 100, size1: 24, opacity0: 0.95 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 340, z: 2,
+              size0: 36, size1: 240, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 900, z: 1,
+              size0: 66, size1: 78, opacity0: 0.5 },
+            { count: 8, sprite: 'steel-spark', ml: [180, 380], offsetXY: 8,
+              vxRange: 260, vyRange: 260, vzRange: [40, 220], gravity: 460, drag: 1.1,
+              size0: [6, 10], size1: 1 },
+            { count: 7, anchor: 'floor', sprite: 'dust-puff', ml: [380, 680], offsetXY: 14,
+              z: [2, 10], vxRange: 150, vyRange: 150, vzRange: [15, 55], gravity: 60, drag: 1.0,
+              size0: [16, 26], size1: [40, 62], opacity0: 0.65 },
+            { count: 5, sprite: 'debris', ml: [340, 620], offsetXY: 8,
+              vxRange: 200, vyRange: 200, vzRange: [110, 300], gravity: 560, drag: 0.4,
+              size0: [5, 9], size1: [4, 7], opacity0: 1, opacity1: 0.3 },
+        ]
+    };
+
+    /* ── melee slash (4 spells): steel — crossing streaks + glints. */
+    EFFECTS['_slashMelee_impact'] = {
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 78, size1: 18, opacity0: 0.95 },
+            { count: 2, mode: 'billboard', sprite: 'steel-spark', ml: [140, 220], offsetXY: 4,
+              size0: [40, 60], size1: [12, 20], opacity0: 0.95 },
+            { count: 8, sprite: 'steel-spark', ml: [160, 360], offsetXY: 8,
+              vxRange: 240, vyRange: 240, vzRange: [30, 190], gravity: 420, drag: 1.2,
+              size0: [5, 9], size1: 1 },
+            { count: 2, sprite: 'dust-puff', ml: [300, 480], offsetXY: 10,
+              vzRange: [15, 45], drag: 0.9, size0: [12, 18], size1: [28, 40], opacity0: 0.5 },
+        ]
+    };
+
+    /* ── deploy poof (16 spells): CONSTRUCTION — dust kick, rig sparks,
+       blueprint ring, rising energy. */
+    EFFECTS['_deployObject_burst'] = {
+        layers: [
+            { sprite: 'flash', ml: 140, size0: 60, size1: 16, tint: 0x9ad8ff, opacity0: 0.7 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring-blue', ml: 520, z: 2,
+              size0: 130, size1: 60, opacity0: 0.75 },
+            { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [360, 620], offsetXY: 16,
+              z: [2, 10], vxRange: 110, vyRange: 110, vzRange: [15, 50], gravity: 60, drag: 1.0,
+              size0: [14, 24], size1: [36, 54], opacity0: 0.6 },
+            { count: 7, sprite: 'steel-spark', ml: [200, 420], offsetXY: 12,
+              vxRange: 160, vyRange: 160, vzRange: [50, 200], gravity: 380, drag: 1.2,
+              size0: [5, 8], size1: 1 },
+            { count: 4, mode: 'y-locked', sprite: 'flash', ml: [260, 420], offsetXY: 20,
+              tint: 0x9ad8ff, w0: [2, 4], w1: 1.5, h0: [20, 40], h1: [50, 80],
+              vzRange: [40, 90], opacity0: 0.6 },
+        ]
+    };
+
+    /* ── tremor tile (groundSlam + 3 stomps): the earth OBJECTS — chunks,
+       dust columns, shock ring per tile. */
+    EFFECTS['raceTremorStomp_impact_tile'] = {
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 300, z: 2,
+              tint: 0xd8b070, size0: 30, size1: 170, opacity0: 0.7 },
+            { count: 5, anchor: 'floor', sprite: 'dust-puff', ml: [340, 600], offsetXY: 18,
+              z: [2, 12], vxRange: 120, vyRange: 120, vzRange: [20, 70], gravity: 70, drag: 1.0,
+              size0: [16, 26], size1: [38, 58], opacity0: 0.65 },
+            { count: 5, sprite: 'rock-debris', ml: [340, 620], offsetXY: 12,
+              vxRange: 170, vyRange: 170, vzRange: [120, 300], gravity: 560, drag: 0.4,
+              size0: [6, 11], size1: [5, 8], opacity0: 1, opacity1: 0.35 },
+        ]
+    };
+
+    /* ── ASSASSINATE — the killing dark: monochrome X-slash + arterial
+       flecks. Heavy kinetic staging (already mapped) supplies rush lines;
+       this is the wound itself. */
+    EFFECTS['assassinate_impact'] = {
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 90, size0: 110, size1: 24, opacity0: 1 },
+            { count: 2, mode: 'billboard', sprite: 'steel-spark', ml: [130, 190], offsetXY: 3,
+              tint: 0xd8ccff, size0: [56, 74], size1: [16, 24], opacity0: 1 },
+            { count: 9, sprite: 'blood-fleck', ml: [260, 520], offsetXY: 6,
+              vxRange: 220, vyRange: 220, vzRange: [40, 230], gravity: 520, drag: 0.9,
+              size0: [5, 9], size1: 2 },
+            { count: 4, sprite: 'void-mist', ml: [380, 650], offsetXY: 14,
+              vzRange: [15, 50], drag: 0.6, wander: { amp: 28, freq: 1.6 },
+              size0: [16, 24], size1: [34, 50], opacity0: 0.55 },
+            { anchor: 'floor', mode: 'world', sprite: 'blood-splat', ml: 2600, z: 1,
+              size0: 54, size1: 62, opacity0: 0.85 },
+        ]
+    };
+    SPELL_MAP['assassinate'] = Object.assign(SPELL_MAP['assassinate'] || {},
+        { impact: 'assassinate_impact' });
+
+    /* ── CROSSFIRE — lead in four directions: muzzle storm on the caster
+       tile, bullet strikes on the arms (impact fires per hit). */
+    EFFECTS['crossfire_impact'] = {
+        layers: [
+            { sprite: 'muzzle-flash', ml: 110, size0: 70, size1: 20, opacity0: 1 },
+            { count: 5, sprite: 'steel-spark', ml: [140, 300], offsetXY: 6,
+              vxRange: 260, vyRange: 260, vzRange: [30, 170], gravity: 420, drag: 1.1,
+              size0: [5, 9], size1: 1 },
+            { count: 4, sprite: 'debris', ml: [260, 480], offsetXY: 6,
+              vxRange: 180, vyRange: 180, vzRange: [70, 230], gravity: 540, drag: 0.4,
+              size0: [4, 7], size1: [3, 5], opacity0: 1, opacity1: 0.3 },
+            { count: 2, sprite: 'smoke-soft', ml: [420, 680], offsetXY: 8,
+              vzRange: [20, 50], drag: 0.6, size0: [14, 22], size1: [34, 50], opacity0: 0.5 },
+        ]
+    };
+    SPELL_MAP['crossfire'] = Object.assign(SPELL_MAP['crossfire'] || {},
+        { impact: 'crossfire_impact' });
+
+    /* ── THE DASH QUARTET — each arrival now says what it IS. */
+    EFFECTS['rampage_impact'] = {
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 130, size0: 110, size1: 26, tint: 0xff7744, opacity0: 0.95 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 340, z: 2,
+              size0: 40, size1: 260, opacity0: 0.85 },
+            { count: 8, anchor: 'floor', sprite: 'dust-puff', ml: [380, 660], offsetXY: 16,
+              z: [2, 10], vxRange: 160, vyRange: 160, vzRange: [20, 60], gravity: 60, drag: 1.0,
+              size0: [18, 28], size1: [44, 66], opacity0: 0.65 },
+            { count: 8, sprite: 'ember', ml: [300, 560], offsetXY: 10, tint: 0xff6633,
+              vxRange: 200, vyRange: 200, vzRange: [40, 200], gravity: 380, drag: 1.2,
+              size0: [6, 10], size1: 1 },
+            { count: 4, sprite: 'rock-debris', ml: [340, 600], offsetXY: 10,
+              vxRange: 190, vyRange: 190, vzRange: [110, 280], gravity: 560, drag: 0.4,
+              size0: [5, 9], size1: [4, 7], opacity0: 1, opacity1: 0.3 },
+        ]
+    };
+    SPELL_MAP['rampage'] = Object.assign(SPELL_MAP['rampage'] || {}, { impact: 'rampage_impact' });
+
+    EFFECTS['rocketCharge_impact'] = {
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 130, size0: 100, size1: 24, tint: 0x77bbff, opacity0: 0.95 },
+            { count: 4, sprite: 'explosion-orange', ml: [220, 380], offsetXY: 12,
+              z: [-4, 16], size0: [26, 42], size1: [56, 84], opacity0: 0.9 },
+            { count: 10, sprite: 'ember', ml: [300, 560], offsetXY: 10,
+              vxRange: 220, vyRange: 220, vzRange: [30, 190], gravity: 340, drag: 1.2,
+              size0: [6, 10], size1: 1 },
+            { count: 5, delayMs: 90, sprite: 'smoke', ml: [600, 1000], offsetXY: 14,
+              vzRange: [30, 70], drag: 0.5, size0: [24, 38], size1: [64, 96], opacity0: 0.6 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1400, z: 1,
+              size0: 70, size1: 84, opacity0: 0.7 },
+        ]
+    };
+    SPELL_MAP['rocketCharge'] = Object.assign(SPELL_MAP['rocketCharge'] || {}, { impact: 'rocketCharge_impact' });
+
+    EFFECTS['shadowLunge_impact'] = {
+        layers: [
+            { sprite: 'flash', ml: 120, size0: 90, size1: 20, tint: 0x8844cc, opacity0: 0.8 },
+            { count: 2, mode: 'billboard', sprite: 'steel-spark', ml: [120, 180], offsetXY: 4,
+              tint: 0xbb88ff, size0: [46, 62], size1: [14, 20], opacity0: 0.95 },
+            { count: 9, sprite: 'shadow-wisp', ml: [380, 680], offsetXY: 14,
+              vxRange: 120, vyRange: 120, vzRange: [20, 90], drag: 0.7,
+              wander: { amp: 40, freq: 1.8 }, size0: [16, 26], size1: [30, 46], opacity0: 0.7 },
+            { count: 6, sprite: 'spark-pink', ml: [220, 420], offsetXY: 10, tint: 0xaa66ff,
+              vxRange: 150, vyRange: 150, vzRange: [30, 140], gravity: 280, drag: 1.2,
+              size0: [5, 8], size1: 1 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 380, z: 2,
+              tint: 0x8844cc, size0: 120, size1: 30, opacity0: 0.6 },
+        ]
+    };
+    SPELL_MAP['shadowLunge'] = Object.assign(SPELL_MAP['shadowLunge'] || {}, { impact: 'shadowLunge_impact' });
+
+    EFFECTS['sonicCharge_impact'] = {
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 90, size1: 22, tint: 0x99eeff, opacity0: 0.85 },
+            { count: 3, sprite: 'psi-pulse', ml: [240, 400], offsetXY: 4, tint: 0x99eeff,
+              size0: [26, 40], size1: [110, 150], opacity0: 0.8 },
+            { count: 8, sprite: 'spark-blue', ml: [220, 420], offsetXY: 10,
+              vxRange: 200, vyRange: 200, vzRange: [30, 150], gravity: 300, drag: 1.2,
+              size0: [5, 9], size1: 1 },
+            { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [320, 540], offsetXY: 14,
+              z: [2, 8], vxRange: 130, vyRange: 130, vzRange: [15, 45], drag: 1.0,
+              size0: [14, 22], size1: [34, 50], opacity0: 0.55 },
+        ]
+    };
+    SPELL_MAP['sonicCharge'] = Object.assign(SPELL_MAP['sonicCharge'] || {}, { impact: 'sonicCharge_impact' });
+
+    EFFECTS['raceIceSlide_impact'] = {
+        layers: [
+            { sprite: 'flash', ml: 120, size0: 84, size1: 20, tint: 0xbfeaff, opacity0: 0.85 },
+            { count: 8, sprite: 'ice-shard', ml: [260, 480], offsetXY: 10,
+              vxRange: 190, vyRange: 190, vzRange: [40, 180], gravity: 380, drag: 1.0,
+              size0: [7, 12], size1: 2 },
+            { count: 5, sprite: 'frost-mist', ml: [420, 720], offsetXY: 14,
+              vzRange: [15, 45], drag: 0.6, size0: [18, 28], size1: [40, 60], opacity0: 0.55 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring-blue', ml: 480, z: 2,
+              size0: 40, size1: 170, opacity0: 0.7 },
+        ]
+    };
+    SPELL_MAP['raceIceSlide'] = Object.assign(SPELL_MAP['raceIceSlide'] || {}, { impact: 'raceIceSlide_impact' });
+
+    EFFECTS['raceBoardingRush_impact'] = {
+        layers: [
+            { sprite: 'flash', ml: 120, size0: 90, size1: 22, tint: 0xffd9a0, opacity0: 0.9 },
+            { count: 6, sprite: 'wave-anim', ml: [360, 560], offsetXY: 14,
+              vxRange: 120, vyRange: 120, vzRange: [20, 80], drag: 0.8,
+              size0: [18, 28], size1: [34, 50], opacity0: 0.8 },
+            { count: 7, sprite: 'steel-spark', ml: [200, 400], offsetXY: 10,
+              vxRange: 220, vyRange: 220, vzRange: [30, 170], gravity: 400, drag: 1.2,
+              size0: [5, 9], size1: 1 },
+            { count: 4, sprite: 'water-splash', ml: [300, 520], offsetXY: 12,
+              vxRange: 140, vyRange: 140, vzRange: [40, 140], gravity: 300, drag: 1.0,
+              size0: [12, 20], size1: [24, 36], opacity0: 0.8 },
+        ]
+    };
+    SPELL_MAP['raceBoardingRush'] = Object.assign(SPELL_MAP['raceBoardingRush'] || {}, { impact: 'raceBoardingRush_impact' });
+
+    /* ── WEATHER SUMMONS — the sky is the spell; give the CAST a ritual. */
+    EFFECTS['thunderstorm_aura'] = {
+        layers: [
+            { sprite: 'flash', ml: 220, size0: 90, size1: 240, tint: 0x99ccff, opacity0: 0.55 },
+            { count: 12, sprite: 'spark-elec', ml: [400, 700], offsetXY: 40, z: [60, 160],
+              seekIn: [320, 520], seekInZ: 120, seekSpiral: 200,
+              size0: [6, 11], size1: 2, opacity0: 0.9 },
+            { count: 4, mode: 'y-locked', sprite: 'lightning', ml: [260, 420], offsetXY: 30,
+              z: [40, 120], w0: [4, 7], w1: 2, h0: [60, 110], h1: [30, 60], opacity0: 0.8 },
+            { anchor: 'floor', mode: 'world', sprite: 'stun-ring', ml: 620, z: 2,
+              size0: 60, size1: 240, opacity0: 0.7 },
+        ]
+    };
+    SPELL_MAP['thunderstorm'] = Object.assign(SPELL_MAP['thunderstorm'] || {}, { aura: 'thunderstorm_aura' });
+
+    EFFECTS['sharedSummonSandstorm_aura'] = {
+        layers: [
+            { count: 14, sprite: 'sand-particle', ml: [500, 900], offsetXY: 30, z: [4, 60],
+              vxRange: 60, vyRange: 60, vzRange: [20, 80], drag: 0.4,
+              wander: { amp: 60, freq: 1.8 }, size0: [6, 11], size1: 2, opacity0: 0.9 },
+            { count: 8, sprite: 'dust-puff', ml: [600, 1100], offsetXY: 26, z: [4, 40],
+              vxRange: 90, vyRange: 90, vzRange: [15, 55], drag: 0.5,
+              wander: { amp: 40, freq: 1.2 }, size0: [20, 32], size1: [50, 74], opacity0: 0.6 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring-gold', ml: 640, z: 2,
+              size0: 60, size1: 230, opacity0: 0.6 },
+        ]
+    };
+    SPELL_MAP['sharedSummonSandstorm'] = Object.assign(SPELL_MAP['sharedSummonSandstorm'] || {},
+        { aura: 'sharedSummonSandstorm_aura' });
+
+    EFFECTS['sharedSummonBloodRain_aura'] = {
+        layers: [
+            { sprite: 'flash', ml: 200, size0: 80, size1: 200, tint: 0xcc2233, opacity0: 0.5 },
+            { count: 12, sprite: 'blood-drop', ml: [420, 760], offsetXY: 26, z: [50, 130],
+              vzRange: [-140, -80], gravity: 200, drag: 0.3,
+              size0: [5, 9], size1: 2, opacity0: 0.9 },
+            { count: 6, sprite: 'blood-mist', ml: [500, 900], offsetXY: 20, z: [10, 50],
+              vzRange: [10, 40], drag: 0.5, size0: [18, 28], size1: [40, 60], opacity0: 0.5 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 620, z: 2,
+              size0: 60, size1: 220, opacity0: 0.65 },
+        ]
+    };
+    SPELL_MAP['sharedSummonBloodRain'] = Object.assign(SPELL_MAP['sharedSummonBloodRain'] || {},
+        { aura: 'sharedSummonBloodRain_aura' });
+
+    /* ── POISON KIT — dart sting + seed pod bursts. */
+    EFFECTS['poisonDart_impact'] = {
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 56, size1: 14, tint: 0x9dff5e, opacity0: 0.8 },
+            { count: 6, sprite: 'poison-bubble', ml: [300, 560], offsetXY: 8,
+              vxRange: 90, vyRange: 90, vzRange: [30, 120], gravity: 140, drag: 0.9,
+              size0: [7, 12], size1: [12, 18], opacity0: 0.9 },
+            { count: 4, sprite: 'poison-mist', ml: [420, 720], offsetXY: 10,
+              vzRange: [10, 40], drag: 0.6, wander: { amp: 26, freq: 1.4 },
+              size0: [14, 22], size1: [30, 44], opacity0: 0.55 },
+            { count: 3, sprite: 'blood-drop', ml: [260, 420], offsetXY: 6, tint: 0x66cc22,
+              vxRange: 60, vyRange: 60, vzRange: [-40, 20], gravity: 320, drag: 0.6,
+              size0: [4, 7], size1: 2 },
+        ]
+    };
+    SPELL_MAP['poisonDart'] = Object.assign(SPELL_MAP['poisonDart'] || {},
+        { impact: 'poisonDart_impact', bolt: '_bolt_poison' });
+
+    EFFECTS['_seed_burst_impact'] = {
+        layers: [
+            { sprite: 'flash', ml: 130, size0: 60, size1: 16, tint: 0x9dff5e, opacity0: 0.7 },
+            { count: 6, sprite: 'leaf', ml: [420, 760], offsetXY: 8,
+              vxRange: 120, vyRange: 120, vzRange: [60, 180], gravity: 240, drag: 0.9,
+              size0: [8, 13], size1: [6, 10], opacity0: 0.95, opacity1: 0.2 },
+            { count: 8, sprite: 'vine-green', ml: [300, 540], offsetXY: 10,
+              vxRange: 100, vyRange: 100, vzRange: [40, 150], gravity: 200, drag: 1.0,
+              size0: [7, 11], size1: 2 },
+            { count: 5, sprite: 'poison-mist', ml: [460, 800], offsetXY: 12,
+              vzRange: [10, 40], drag: 0.6, wander: { amp: 24, freq: 1.3 },
+              size0: [14, 22], size1: [32, 46], opacity0: 0.5 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring-green', ml: 520, z: 2,
+              size0: 40, size1: 150, opacity0: 0.7 },
+        ]
+    };
+    SPELL_MAP['poisonSeed'] = Object.assign(SPELL_MAP['poisonSeed'] || {}, { impact: '_seed_burst_impact' });
+    SPELL_MAP['leechSeed'] = Object.assign(SPELL_MAP['leechSeed'] || {}, { impact: '_seed_burst_impact' });
+
+    /* ── VEIL OF LIGHT — the heavens answer: gentle pillar + feathers. */
+    EFFECTS['veilOfLight_aura'] = {
+        layers: [
+            { sprite: 'flash', ml: 300, size0: 60, size1: 170, tint: 0xfff4cc, opacity0: 0.6 },
+            { count: 12, anchor: 'floor', sprite: 'divine-sparkle', ml: [600, 1000], offsetXY: 22,
+              z: [0, 20], vzRange: [60, 130], gravity: -40, drag: 0.4,
+              size0: [7, 12], size1: 2, opacity0: 0.95 },
+            { count: 6, sprite: 'petal', ml: [700, 1200], offsetXY: 24, z: [60, 120], tint: 0xfff0d0,
+              vzRange: [-50, -25], gravity: 30, drag: 0.5, wander: { amp: 36, freq: 1.1 },
+              size0: [8, 13], size1: [6, 10], opacity0: 0.9, opacity1: 0.2 },
+            { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 700, z: 2,
+              size0: 40, size1: 170, opacity0: 0.8 },
+            { delayMs: 300, anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 640, z: 2,
+              size0: 40, size1: 150, opacity0: 0.55 },
+        ]
+    };
+    SPELL_MAP['veilOfLight'] = Object.assign(SPELL_MAP['veilOfLight'] || {}, { aura: 'veilOfLight_aura' });
+
+    /* ── DARK PACT — the contract signs itself in blood. */
+    EFFECTS['darkPact_aura'] = {
+        layers: [
+            { sprite: 'flash', ml: 200, size0: 80, size1: 24, tint: 0xcc2244, opacity0: 0.75 },
+            { count: 10, anchor: 'floor', sprite: 'dark-flame', ml: [420, 720], offsetXY: 20,
+              mode: 'y-locked', w0: [8, 14], w1: [4, 7], h0: [22, 36], h1: [56, 90],
+              z: [0, 6], opacity0: 0.9 },
+            { count: 8, sprite: 'blood-fleck', ml: [380, 640], offsetXY: 16, z: [4, 30],
+              seekIn: [300, 480], seekInZ: 55, seekSpiral: 120,
+              size0: [5, 9], size1: 2, opacity0: 0.9 },
+            { count: 5, sprite: 'void-mist', ml: [520, 880], offsetXY: 16,
+              vzRange: [15, 45], drag: 0.5, wander: { amp: 26, freq: 1.4 },
+              size0: [16, 26], size1: [36, 52], opacity0: 0.55 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 560, z: 2,
+              size0: 150, size1: 60, opacity0: 0.8 },
+        ]
+    };
+    SPELL_MAP['darkPact'] = Object.assign(SPELL_MAP['darkPact'] || {}, { aura: 'darkPact_aura' });
+
+    /* ── RAILGUN — a hypervelocity slug, not a laser show: instant white
+       lance, air-shock rings, metal spall at the far end. The beam intent
+       rides the upgraded volumetric laser (energy-noise sheath). */
+    EFFECTS['railgun_impact_tile'] = {
+        layers: [
+            { sprite: 'flash', ml: 100, size0: 66, size1: 14, tint: 0xd6fff4, opacity0: 0.9 },
+            { count: 4, sprite: 'steel-spark', ml: [140, 300], offsetXY: 6,
+              vxRange: 260, vyRange: 260, vzRange: [30, 190], gravity: 460, drag: 1.1,
+              size0: [5, 9], size1: 1 },
+            { count: 2, sprite: 'smoke-soft', ml: [300, 500], offsetXY: 8,
+              vzRange: [20, 50], drag: 0.7, size0: [12, 18], size1: [26, 38], opacity0: 0.45 },
+        ]
+    };
+    EFFECTS['railgun_beam'] = {
+        chargeMs: 200, beamSprite: 'plasma', beamThickness: 20,
+        beamHeadSprite: 'spark-elec', beamMs: 300, beamType: 'tech',
+        impactTileEffect: 'railgun_impact_tile', leaveScorch: true, shake: 'hard',
+    };
+    SPELL_MAP['railgun'] = Object.assign(SPELL_MAP['railgun'] || {}, { beam: 'railgun_beam' });
+
+    /* ── SKY-THROW KIT — everything hurled or dropped now LANDS. */
+    EFFECTS['_skyfall_impact'] = {
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 130, size0: 110, size1: 26, opacity0: 0.95 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 380, z: 2,
+              tint: 0xd8b070, size0: 44, size1: 300, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1600, z: 1,
+              size0: 84, size1: 100, opacity0: 0.6 },
+            { count: 9, anchor: 'floor', sprite: 'dust-puff', ml: [420, 740], offsetXY: 18,
+              z: [2, 12], vxRange: 170, vyRange: 170, vzRange: [20, 70], gravity: 70, drag: 1.0,
+              size0: [18, 30], size1: [46, 70], opacity0: 0.65 },
+            { count: 7, sprite: 'rock-debris', ml: [380, 680], offsetXY: 12,
+              vxRange: 210, vyRange: 210, vzRange: [120, 320], gravity: 560, drag: 0.4,
+              size0: [6, 11], size1: [5, 8], opacity0: 1, opacity1: 0.35 },
+        ]
+    };
+    ['raceStoneDrop', 'raceDescendingWrath', 'racePredatorDrop', 'raceTitanDrop',
+     'raceGiantSmash', 'raceDragonToss', 'raceBigKick'].forEach(function (dropId) {
+        SPELL_MAP[dropId] = Object.assign(SPELL_MAP[dropId] || {}, { impact: '_skyfall_impact' });
+    });
+    /* the burning and exploding variants get their element on top */
+    EFFECTS['raceInfernalHurl_impact'] = {
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 130, size0: 110, size1: 26, tint: 0xffa544, opacity0: 1 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 380, z: 2,
+              size0: 44, size1: 290, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 2000, z: 1,
+              size0: 92, size1: 110, opacity0: 0.9 },
+            { count: 4, sprite: 'explosion-orange', ml: [240, 420], offsetXY: 14,
+              z: [-4, 18], size0: [30, 48], size1: [66, 96], opacity0: 0.95 },
+            { count: 5, anchor: 'floor', mode: 'y-locked', sprite: 'flame', ml: [320, 560],
+              offsetXY: 26, w0: [14, 24], w1: [6, 10], h0: [32, 50], h1: [86, 130], opacity0: 0.95 },
+            { count: 12, sprite: 'ember', ml: [380, 700], offsetXY: 10,
+              vxRange: 190, vyRange: 190, vzRange: [50, 220], gravity: 360, drag: 1.2,
+              wander: { amp: 26, freq: 1.8 }, size0: [6, 11], size1: 2 },
+            { count: 4, delayMs: 120, sprite: 'smoke', ml: [800, 1300], offsetXY: 16,
+              vzRange: [30, 60], drag: 0.4, size0: [30, 44], size1: [80, 120], opacity0: 0.6 },
+        ]
+    };
+    SPELL_MAP['raceInfernalHurl'] = Object.assign(SPELL_MAP['raceInfernalHurl'] || {},
+        { impact: 'raceInfernalHurl_impact' });
+    SPELL_MAP['raceRocketToss'] = Object.assign(SPELL_MAP['raceRocketToss'] || {},
+        { impact: 'rocketCharge_impact' });
+
+    /* ── MANA SHIELD — an actual bubble (geometry hook adds the dome). */
+    EFFECTS['raceManaShield_aura'] = {
+        layers: [
+            { sprite: 'flash', ml: 220, size0: 70, size1: 140, tint: 0xb060ff, opacity0: 0.6 },
+            { count: 10, sprite: 'psi-pulse', ml: [420, 720], offsetXY: 40, z: [0, 60],
+              seekIn: [340, 560], seekInZ: 50, seekSpiral: 240,
+              size0: [7, 11], size1: 2, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 560, z: 2,
+              tint: 0xb060ff, size0: 140, size1: 70, opacity0: 0.7 },
+        ]
+    };
+    SPELL_MAP['raceManaShield'] = Object.assign(SPELL_MAP['raceManaShield'] || {},
+        { aura: 'raceManaShield_aura' });
+
+    /* ── REASSEMBLE — the skeleton pulls itself back together: bone
+       chips CONVERGE, socket flash, necrotic glow. */
+    EFFECTS['raceReassemble_aura'] = {
+        layers: [
+            { count: 12, sprite: 'debris', ml: [420, 680], offsetXY: 50, z: [0, 40], tint: 0xe8e0d0,
+              seekIn: [340, 560], seekInZ: 45, seekSpiral: 90,
+              size0: [6, 11], size1: [4, 8], opacity0: 0.95, opacity1: 0.4 },
+            { delayMs: 380, sprite: 'flash', ml: 160, size0: 80, size1: 20, tint: 0xbbffcc, opacity0: 0.8 },
+            { count: 6, delayMs: 380, sprite: 'heal-glow', ml: [380, 620], offsetXY: 12, z: [10, 50],
+              vzRange: [20, 60], gravity: -20, drag: 0.5, size0: [10, 16], size1: 3, opacity0: 0.8 },
+            { count: 4, sprite: 'void-mist', ml: [460, 780], offsetXY: 14,
+              vzRange: [10, 40], drag: 0.5, size0: [14, 22], size1: [30, 44], opacity0: 0.5 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring-green', ml: 560, z: 2,
+              size0: 130, size1: 50, opacity0: 0.6 },
+        ]
+    };
+    SPELL_MAP['raceReassemble'] = Object.assign(SPELL_MAP['raceReassemble'] || {},
+        { aura: 'raceReassemble_aura' });
+
+    /* ── GREAT FLOOD — the sea arrives: wave crowns + spray + deep ring. */
+    EFFECTS['raceFlood_aura'] = {
+        layers: [
+            { count: 10, sprite: 'wave-anim', ml: [500, 800], offsetXY: 40, z: [0, 10],
+              vxRange: 100, vyRange: 100, vzRange: [10, 40], drag: 0.5,
+              size0: [26, 40], size1: [50, 74], opacity0: 0.9 },
+            { count: 10, sprite: 'water-splash', ml: [360, 620], offsetXY: 30,
+              vxRange: 140, vyRange: 140, vzRange: [60, 190], gravity: 340, drag: 0.9,
+              size0: [12, 20], size1: [24, 36], opacity0: 0.85 },
+            { count: 6, sprite: 'frost-mist', ml: [520, 880], offsetXY: 26, tint: 0x5fb8f0,
+              vzRange: [15, 45], drag: 0.6, size0: [20, 32], size1: [44, 64], opacity0: 0.5 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring-blue', ml: 680, z: 2,
+              size0: 60, size1: 260, opacity0: 0.75 },
+        ]
+    };
+    SPELL_MAP['raceFlood'] = Object.assign(SPELL_MAP['raceFlood'] || {}, { aura: 'raceFlood_aura' });
+
+    /* ── CHARM — a kiss of pink glints gathering at the heart. */
+    EFFECTS['raceCharm_impact'] = {
+        layers: [
+            { sprite: 'flash', ml: 150, size0: 66, size1: 18, tint: 0xff77bb, opacity0: 0.7 },
+            { count: 9, sprite: 'spark-pink', ml: [380, 620], offsetXY: 40, z: [0, 50],
+              seekIn: [300, 500], seekInZ: 40, seekSpiral: 160,
+              size0: [6, 10], size1: 2, opacity0: 0.95 },
+            { count: 4, sprite: 'psi-pulse', ml: [420, 700], offsetXY: 12, tint: 0xff99cc,
+              vzRange: [15, 45], drag: 0.5, size0: [12, 18], size1: [26, 38], opacity0: 0.5 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 460, z: 2,
+              tint: 0xff77bb, size0: 120, size1: 40, opacity0: 0.65 },
+        ]
+    };
+    SPELL_MAP['raceCharm'] = Object.assign(SPELL_MAP['raceCharm'] || {}, { impact: 'raceCharm_impact' });
+
+    /* ── BOO — the sheet-ghost jump-scare: hard white pop, shriek rings,
+       scattering wisps. Overrides the generic psychic hit it borrowed. */
+    EFFECTS['raceBoo_impact'] = {
+        layers: [
+            { sprite: 'flash', ml: 100, size0: 120, size1: 26, tint: 0xcfe8ff, opacity0: 1 },
+            { count: 3, sprite: 'psi-pulse', ml: [220, 380], offsetXY: 4, tint: 0xbfe0ff,
+              size0: [30, 44], size1: [110, 150], opacity0: 0.85 },
+            { count: 8, sprite: 'shadow-wisp', ml: [360, 640], offsetXY: 12, tint: 0x99bbee,
+              vxRange: 160, vyRange: 160, vzRange: [30, 120], drag: 0.8,
+              wander: { amp: 44, freq: 2.0 }, size0: [14, 24], size1: [28, 42], opacity0: 0.7 },
+            { count: 6, sprite: 'spark-blue', ml: [240, 440], offsetXY: 10,
+              vxRange: 170, vyRange: 170, vzRange: [30, 150], gravity: 260, drag: 1.2,
+              size0: [5, 9], size1: 1 },
+        ]
+    };
+    SPELL_MAP['raceBoo'] = Object.assign(SPELL_MAP['raceBoo'] || {}, { impact: 'raceBoo_impact' });
+
+    /* ── HEAT DEATH — entropy itself: everything falls INTO the cold point,
+       one last ember field, ash. Geometry hook adds the imploding orb. */
+    EFFECTS['raceHeatDeath_impact_center'] = {
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 260, size0: 150, size1: 30, tint: 0xb8a8d8, opacity0: 0.85 },
+            { count: 14, sprite: 'ember', ml: [480, 780], offsetXY: 70, z: [0, 70], tint: 0x9988bb,
+              seekIn: [400, 640], seekInZ: 50, seekSpiral: 260,
+              size0: [6, 11], size1: 1, opacity0: 0.9 },
+            { count: 8, sprite: 'smoke-soft', ml: [700, 1200], offsetXY: 30,
+              vzRange: [10, 40], drag: 0.6, wander: { amp: 26, freq: 1.0 },
+              size0: [22, 36], size1: [50, 76], opacity0: 0.5 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 640, z: 2,
+              tint: 0x9988bb, size0: 240, size1: 60, opacity0: 0.7 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 2400, z: 1,
+              size0: 110, size1: 130, opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['raceHeatDeath_aoe'] = {
+        aoeRadius: 2,
+        impactCenterEffect: 'raceHeatDeath_impact_center',
+        impactTileEffect: '_dark_debuff_impact',
+        layers: []
+    };
+    SPELL_MAP['raceHeatDeath'] = Object.assign(SPELL_MAP['raceHeatDeath'] || {},
+        { aoe: 'raceHeatDeath_aoe' });
+
+    /* ── ROCKET FIST — the fist IS a rocket: exhaust ring + punch blast. */
+    EFFECTS['raceRocketFist_impact'] = {
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 120, size0: 100, size1: 24, opacity0: 1 },
+            { count: 3, sprite: 'explosion-orange', ml: [200, 360], offsetXY: 10,
+              size0: [26, 40], size1: [54, 78], opacity0: 0.95 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 320, z: 2,
+              size0: 36, size1: 230, opacity0: 0.85 },
+            { count: 8, sprite: 'steel-spark', ml: [200, 400], offsetXY: 8,
+              vxRange: 260, vyRange: 260, vzRange: [40, 200], gravity: 440, drag: 1.1,
+              size0: [6, 10], size1: 1 },
+            { count: 4, delayMs: 80, sprite: 'smoke', ml: [500, 850], offsetXY: 12,
+              vzRange: [25, 60], drag: 0.5, size0: [20, 32], size1: [50, 74], opacity0: 0.55 },
+        ]
+    };
+    SPELL_MAP['raceRocketFist'] = Object.assign(SPELL_MAP['raceRocketFist'] || {},
+        { impact: 'raceRocketFist_impact' });
+    SPELL_MAP['raceHydraulicPunch'] = Object.assign(SPELL_MAP['raceHydraulicPunch'] || {},
+        { impact: 'raceRocketFist_impact' });
+
+    /* ── THE BARD KIT — the sonic school finally has a voice. Aura/impact
+       intents also fire the music-note geometry registered for these ids. */
+    EFFECTS['encore_aura'] = {
+        layers: [
+            { sprite: 'flash', ml: 180, size0: 60, size1: 130, tint: 0xffd76a, opacity0: 0.55 },
+            { count: 10, anchor: 'floor', sprite: 'divine-sparkle', ml: [500, 850], offsetXY: 20,
+              z: [0, 16], vzRange: [50, 110], gravity: -30, drag: 0.4,
+              size0: [6, 10], size1: 2, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 560, z: 2,
+              size0: 40, size1: 150, opacity0: 0.65 },
+        ]
+    };
+    SPELL_MAP['encore'] = Object.assign(SPELL_MAP['encore'] || {}, { aura: 'encore_aura' });
+    EFFECTS['fermata_aura'] = {
+        layers: [
+            { sprite: 'flash', ml: 200, size0: 56, size1: 120, tint: 0xa8ffc4, opacity0: 0.5 },
+            { count: 8, anchor: 'floor', sprite: 'heal-glow', ml: [520, 880], offsetXY: 18,
+              z: [0, 14], vzRange: [45, 95], gravity: -25, drag: 0.4,
+              size0: [7, 11], size1: 2, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'target-ring-green', ml: 560, z: 2,
+              size0: 40, size1: 140, opacity0: 0.6 },
+        ]
+    };
+    SPELL_MAP['fermata'] = Object.assign(SPELL_MAP['fermata'] || {}, { aura: 'fermata_aura' });
+    EFFECTS['provoke_impact'] = {
+        layers: [
+            { sprite: 'flash', ml: 130, size0: 80, size1: 20, tint: 0xff9944, opacity0: 0.8 },
+            { count: 3, sprite: 'psi-pulse', ml: [240, 400], offsetXY: 4, tint: 0xffaa55,
+              size0: [24, 36], size1: [96, 130], opacity0: 0.8 },
+            { count: 6, sprite: 'ember', ml: [220, 420], offsetXY: 10, tint: 0xff8833,
+              vxRange: 150, vyRange: 150, vzRange: [30, 130], gravity: 300, drag: 1.2,
+              size0: [5, 9], size1: 1 },
+        ]
+    };
+    SPELL_MAP['provoke'] = Object.assign(SPELL_MAP['provoke'] || {}, { impact: 'provoke_impact' });
+
     if (typeof window !== 'undefined') {
         window.VFX3D_EFFECTS = EFFECTS;
         window.VFX3D_SPELL_MAP = SPELL_MAP;
@@ -2231,8 +2898,23 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (tint != null) opts.tint = tint;
             if (layer._descent) opts.descent = layer._descent;
             if (layer.spriteRot != null) opts.spriteRot = layer.spriteRot;
+            if (layer.spriteSpin != null) opts.spriteSpin = layer.spriteSpin;
+            if (layer.wander) opts.wander = layer.wander;
             if (layer.stretch) opts.stretch = true;
             if (layer.globColor != null) opts.globColor = layer.globColor;
+            /* seekIn: the layer CONVERGES onto the effect anchor (reverse
+               emitter) — spawn at the offset, travel into the center over
+               seekIn ms, optionally spiralling (seekSpiral degrees). Lets
+               data recipes express implosions/gathers without code. */
+            if (layer.seekIn) {
+                opts.seek = {
+                    x: centerPx.x, y: centerPx.y,
+                    z: baseZ + (_rangePick(layer.seekInZ) || 0),
+                    ms: _rangePick(layer.seekIn),
+                    ease: layer.seekEase || 'in',
+                    spiralDeg: layer.seekSpiral || 0,
+                };
+            }
 
             _spawn(opts);
         }
@@ -4750,9 +5432,26 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
 
         var glow = mkCyl(ts * 0.17 * thick, glowColor, 0.24, 210);
-        var mid  = mkCyl(ts * 0.085 * thick, glowColor, 0.55, 211);
         var core = mkCyl(ts * 0.034 * thick, coreColor, 0.98, 212);
-        var layers = [glow, mid, core];
+        var layers = [glow, core];
+
+        /* mid sheath: scrolling energy-noise shell — power visibly FLOWS
+           down the line instead of a static glowing rod (2026-08-04) */
+        var midMat = _sigEnergyMat(glowColor, {
+            opacity: 0.75, gain: 1.7,
+            s1x: 0.03, s1y: -1.6, s2x: -0.05, s2y: -0.8,
+            scale1: 2.0, scale2: 1.0,
+            vFadeLo: 0.03, vFadeHi: 0.96,
+        });
+        var midGeo = new THREE.CylinderGeometry(1, 1, 1, 16, 1, true);
+        var mid = { mesh: new THREE.Mesh(midGeo, midMat), mat: midMat,
+                    baseR: ts * 0.085 * thick, baseOp: 0.75, energy: true };
+        mid.mesh.position.copy(start);
+        mid.mesh.quaternion.copy(quat);
+        mid.mesh.scale.set(0.01, 0.01, 0.01);
+        mid.mesh.renderOrder = 211;
+        scene.add(mid.mesh);
+        layers.splice(1, 0, mid);
 
         /* 2026-07-26: ENERGY RINGS riding the beam — ring-textured discs
            perpendicular to the axis, racing muzzle→target on a loop while
@@ -4801,10 +5500,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
             for (var i = 0; i < layers.length; i++) {
                 var L = layers[i];
-                var r = L.baseR * bloom * (i === 2 ? 1 : flicker);
+                var r = L.baseR * bloom * (L === core ? 1 : flicker);
                 L.mesh.position.copy(mid3);
                 L.mesh.scale.set(r, curLen, r);
-                L.mat.opacity = L.baseOp * op;
+                if (L.energy) {
+                    _sigEnergyTick(L.mat, elapsed, op < 1 ? (1 - op) * 0.8 : 0);
+                    L.mat.uniforms.uOpacity.value = L.baseOp * op;
+                } else {
+                    L.mat.opacity = L.baseOp * op;
+                }
             }
 
             for (var ri2 = 0; ri2 < rings.length; ri2++) {
@@ -4935,10 +5639,23 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
             var outer = mkPillar(ts * 0.42, glowColor, 0.32, 156);
             var inner = mkPillar(ts * 0.16, coreColor, 0.85, 157);
-            var pillars = [outer, inner];
+            /* rising energy-noise sheath between them (2026-08-04) */
+            var sheathMat = _sigEnergyMat(glowColor, {
+                opacity: 0.7, gain: 1.5, s1y: -0.9, s2y: -0.45,
+                scale1: 2.0, scale2: 1.0, vFadeLo: 0.05, vFadeHi: 0.8,
+            });
+            var sheath = {
+                mesh: new THREE.Mesh(new THREE.CylinderGeometry(1, 0.7, 1, 18, 1, true), sheathMat),
+                mat: sheathMat, baseR: ts * 0.3, baseOp: 0.7, energy: true,
+            };
+            sheath.mesh.position.set(wp.x, wp.y + pillarH * 0.5, wp.z);
+            sheath.mesh.scale.set(0.01, 0.01, 0.01);
+            sheath.mesh.renderOrder = 156;
+            scene.add(sheath.mesh);
+            var pillars = [outer, sheath, inner];
             var riseMs = 160, holdMs = 260, pfadeMs = 380;
             var pTotal = riseMs + holdMs + pfadeMs;
-            var pEntry = { meshes: [outer.mesh, inner.mesh], done: false };
+            var pEntry = { meshes: [outer.mesh, sheath.mesh, inner.mesh], done: false };
 
             _animate3D(pEntry, pTotal, function (elapsed) {
                 var grow, op, hgt;
@@ -4958,7 +5675,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     P.mesh.scale.set(P.baseR * grow, pillarH * hgt, P.baseR * grow);
                     P.mesh.position.set(wp.x, wp.y + pillarH * hgt * 0.5, wp.z);
                     P.mesh.rotation.y = elapsed * (i === 0 ? 0.004 : -0.006);
-                    P.mat.opacity = P.baseOp * op;
+                    if (P.energy) {
+                        _sigEnergyTick(P.mat, elapsed, op < 1 ? (1 - op) * 0.8 : 0);
+                        P.mat.uniforms.uOpacity.value = P.baseOp * op;
+                    } else {
+                        P.mat.opacity = P.baseOp * op;
+                    }
                 }
             });
         }
@@ -7613,32 +8335,70 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     function _sigRingTex() {
         return _sigTex('sig-ring', 256, function (ctx, S) {
+            /* v2: crisp main band + thin echo band + leading speckle — a
+               shaped shockwave instead of a fuzzy halo */
             var g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
             g.addColorStop(0.0, 'rgba(255,255,255,0)');
-            g.addColorStop(0.72, 'rgba(255,255,255,0)');
-            g.addColorStop(0.82, 'rgba(255,255,255,0.9)');
-            g.addColorStop(0.9, 'rgba(255,255,255,0.35)');
+            g.addColorStop(0.62, 'rgba(255,255,255,0)');
+            g.addColorStop(0.665, 'rgba(255,255,255,0.35)');
+            g.addColorStop(0.685, 'rgba(255,255,255,0)');
+            g.addColorStop(0.75, 'rgba(255,255,255,0)');
+            g.addColorStop(0.80, 'rgba(255,255,255,0.55)');
+            g.addColorStop(0.84, 'rgba(255,255,255,1)');
+            g.addColorStop(0.88, 'rgba(255,255,255,0.4)');
             g.addColorStop(1.0, 'rgba(255,255,255,0)');
             ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+            var rnd = _sigRand(0x4137);
+            var c = S / 2;
+            for (var i = 0; i < 22; i++) {
+                var a = rnd() * 6.2832, d = S * (0.42 + rnd() * 0.07);
+                var r = 0.8 + rnd() * 2.0;
+                var fg = ctx.createRadialGradient(c + Math.cos(a) * d, c + Math.sin(a) * d, 0,
+                                                  c + Math.cos(a) * d, c + Math.sin(a) * d, r * 2.4);
+                fg.addColorStop(0, 'rgba(255,255,255,' + (0.5 + rnd() * 0.4) + ')');
+                fg.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = fg;
+                ctx.beginPath();
+                ctx.arc(c + Math.cos(a) * d, c + Math.sin(a) * d, r * 2.4, 0, 6.2832);
+                ctx.fill();
+            }
         });
     }
 
     function _sigBurstTex() {
         return _sigTex('sig-burst', 256, function (ctx, S) {
+            /* v2: tapered anime rays (thick at base, needle tips) in two
+               length classes + a hot inner ring — reads as a burst frame,
+               not a scribble */
             var c = S / 2, rnd = _sigRand(0xB0057);
             ctx.clearRect(0, 0, S, S);
-            ctx.strokeStyle = '#ffffff';
-            for (var i = 0; i < 26; i++) {
+            for (var i = 0; i < 30; i++) {
                 var a = rnd() * Math.PI * 2;
-                var r0 = 18 + rnd() * 30, r1 = r0 + 40 + rnd() * 68;
-                ctx.globalAlpha = 0.5 + rnd() * 0.5;
-                ctx.lineWidth = 1.5 + rnd() * 3.5;
+                var long = i % 3 === 0;
+                var r0 = 16 + rnd() * 22;
+                var r1 = r0 + (long ? 78 + rnd() * 46 : 34 + rnd() * 30);
+                var w = (long ? 3.4 : 2.2) + rnd() * 2.6;
+                var g = ctx.createLinearGradient(
+                    c + Math.cos(a) * r0, c + Math.sin(a) * r0,
+                    c + Math.cos(a) * r1, c + Math.sin(a) * r1);
+                g.addColorStop(0, 'rgba(255,255,255,' + (0.75 + rnd() * 0.25) + ')');
+                g.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = g;
                 ctx.beginPath();
-                ctx.moveTo(c + Math.cos(a) * r0, c + Math.sin(a) * r0);
+                var px = Math.cos(a + Math.PI / 2), py = Math.sin(a + Math.PI / 2);
+                ctx.moveTo(c + Math.cos(a) * r0 + px * w, c + Math.sin(a) * r0 + py * w);
                 ctx.lineTo(c + Math.cos(a) * r1, c + Math.sin(a) * r1);
-                ctx.stroke();
+                ctx.lineTo(c + Math.cos(a) * r0 - px * w, c + Math.sin(a) * r0 - py * w);
+                ctx.closePath();
+                ctx.fill();
             }
-            ctx.globalAlpha = 1;
+            var ring = ctx.createRadialGradient(c, c, 0, c, c, S * 0.16);
+            ring.addColorStop(0, 'rgba(255,255,255,0)');
+            ring.addColorStop(0.72, 'rgba(255,255,255,0.25)');
+            ring.addColorStop(0.9, 'rgba(255,255,255,0.85)');
+            ring.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = ring;
+            ctx.beginPath(); ctx.arc(c, c, S * 0.16, 0, 6.2832); ctx.fill();
         });
     }
 
@@ -7669,6 +8429,126 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
             ctx.globalAlpha = 1;
         });
+    }
+
+    /* ── TILING FBM NOISE (2026-08-04) ───────────────────────────────────
+       One 256px seamless value-noise texture, drawn once, shared by every
+       energy-shell shader. Octaves at power-of-two ratios (1/2/4) per the
+       Diablo/JangaFX playbook — arbitrary ratios cause visible phasing. */
+    var _sigNoiseTexture = null;
+    function _sigNoiseTex() {
+        if (_sigNoiseTexture) return _sigNoiseTexture;
+        var S = 256, GRID = 32;
+        var rnd = _sigRand(0xF00D);
+        var grid = new Float32Array(GRID * GRID);
+        for (var gi = 0; gi < grid.length; gi++) grid[gi] = rnd();
+        function sample(x, y, scale) {
+            /* bilinear value noise over a wrapping grid */
+            var gx = (x * scale) % GRID, gy = (y * scale) % GRID;
+            var x0 = Math.floor(gx), y0 = Math.floor(gy);
+            var fx = gx - x0, fy = gy - y0;
+            fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+            var x1 = (x0 + 1) % GRID, y1 = (y0 + 1) % GRID;
+            var a = grid[y0 * GRID + x0], b = grid[y0 * GRID + x1];
+            var c = grid[y1 * GRID + x0], d = grid[y1 * GRID + x1];
+            return a + (b - a) * fx + (c + (d - c) * fx - (a + (b - a) * fx)) * fy;
+        }
+        var cvs = document.createElement('canvas');
+        cvs.width = cvs.height = S;
+        var ctx = cvs.getContext('2d');
+        var img = ctx.createImageData(S, S);
+        for (var py = 0; py < S; py++) {
+            for (var px = 0; px < S; px++) {
+                var u = px / S, v = py / S;
+                var n = sample(u * GRID, v * GRID, 1) * 0.5
+                      + sample(u * GRID, v * GRID, 2) * 0.3
+                      + sample(u * GRID, v * GRID, 4) * 0.2;
+                /* remap around the mids — multiplying raw noise "eats the
+                   action" in the darks (JangaFX) */
+                n = Math.max(0, Math.min(1, (n - 0.22) * 1.55));
+                var b8 = Math.round(n * 255);
+                var idx = (py * S + px) * 4;
+                img.data[idx] = b8; img.data[idx + 1] = b8;
+                img.data[idx + 2] = b8; img.data[idx + 3] = 255;
+            }
+        }
+        ctx.putImageData(img, 0, 0);
+        var tex = new THREE.CanvasTexture(cvs);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.magFilter = THREE.LinearFilter;
+        tex.minFilter = THREE.LinearFilter;
+        tex.needsUpdate = true;
+        _sigNoiseTexture = tex;
+        return tex;
+    }
+
+    /* ── ENERGY SHELL SHADER (2026-08-04) ────────────────────────────────
+       The single biggest "asset-store" upgrade: cylinders/shells stop being
+       flat glowing rods and become FLOWING energy. Two copies of the shared
+       noise scroll at different speeds/scales and multiply (double-panner),
+       the result drives a white-core→color ramp, an erosion threshold
+       dissolves the shell organically (uErode 0→1), and the V axis gets an
+       end-fade so open cylinders never show hard rims. Additive, unlit,
+       cheap: one 256px texture, two samples per fragment.
+       Uniform driving happens inside each effect's _sigRun tick via
+       _sigEnergyTick(mat, elapsedMs [, erode]). */
+    function _sigEnergyMat(color, opts) {
+        opts = opts || {};
+        var c = new THREE.Color(color != null ? color : 0x88bbff);
+        var c2 = new THREE.Color(opts.hot != null ? opts.hot : 0xffffff);
+        var mat = new THREE.ShaderMaterial({
+            uniforms: {
+                uTime:   { value: 0 },
+                uNoise:  { value: _sigNoiseTex() },
+                uColor:  { value: new THREE.Vector3(c.r, c.g, c.b) },
+                uHot:    { value: new THREE.Vector3(c2.r, c2.g, c2.b) },
+                uScroll1:{ value: new THREE.Vector2(opts.s1x != null ? opts.s1x : 0.05, opts.s1y != null ? opts.s1y : -0.55) },
+                uScroll2:{ value: new THREE.Vector2(opts.s2x != null ? opts.s2x : -0.12, opts.s2y != null ? opts.s2y : -0.28) },
+                uScale1: { value: opts.scale1 != null ? opts.scale1 : 2.0 },
+                uScale2: { value: opts.scale2 != null ? opts.scale2 : 1.0 },
+                uErode:  { value: 0 },
+                uOpacity:{ value: opts.opacity != null ? opts.opacity : 1 },
+                uVFadeLo:{ value: opts.vFadeLo != null ? opts.vFadeLo : 0.08 },
+                uVFadeHi:{ value: opts.vFadeHi != null ? opts.vFadeHi : 0.75 },
+                uGain:   { value: opts.gain != null ? opts.gain : 1.6 },
+            },
+            vertexShader: [
+                'varying vec2 vUv;',
+                'void main() {',
+                '  vUv = uv;',
+                '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+                '}'
+            ].join('\n'),
+            fragmentShader: [
+                'uniform sampler2D uNoise;',
+                'uniform float uTime, uScale1, uScale2, uErode, uOpacity, uVFadeLo, uVFadeHi, uGain;',
+                'uniform vec2 uScroll1, uScroll2;',
+                'uniform vec3 uColor, uHot;',
+                'varying vec2 vUv;',
+                'void main() {',
+                '  float n1 = texture2D(uNoise, vUv * vec2(uScale1, uScale1) + uTime * uScroll1).r;',
+                '  float n2 = texture2D(uNoise, vUv * vec2(uScale2, uScale2) + uTime * uScroll2).r;',
+                '  float n = clamp(n1 * n2 * 2.0, 0.0, 1.0);',
+                '  float a = smoothstep(uErode, uErode + 0.3, n);',
+                /* end-fades along V so shells never end in a hard rim */
+                '  a *= smoothstep(0.0, uVFadeLo, vUv.y) * (1.0 - smoothstep(uVFadeHi, 1.0, vUv.y));',
+                '  vec3 col = mix(uColor, uHot, pow(n, 2.2));',
+                '  gl_FragColor = vec4(col * uGain, a * uOpacity);',
+                '  if (gl_FragColor.a < 0.004) discard;',
+                '}'
+            ].join('\n'),
+            transparent: true,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending,
+        });
+        return mat;
+    }
+    function _sigEnergyTick(mat, elapsedMs, erode) {
+        if (!mat || !mat.uniforms) return;
+        mat.uniforms.uTime.value = elapsedMs / 1000;
+        if (erode != null) mat.uniforms.uErode.value = erode;
     }
 
     /* Pixel terrain-sprite cladding — the SAME recipe the 3D trees/turrets
@@ -8059,7 +8939,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
-    /* ── vertical column of light (heaven pillar) ────────────────────────── */
+    /* ── vertical column of light (heaven pillar) ──────────────────────────
+       v2 (2026-08-04): the outer shell is a scrolling energy-noise shader
+       (rising streams of light, erosion burn-off at the end) wrapped
+       around a hot flat core, with a base flare disc + slow ground ring so
+       the column visibly PLANTS in the world instead of hovering. */
     function _sigLightPillar3D(tx, ty, opts) {
         opts = opts || {};
         var scene = _getVFXScene(); if (!scene) return null;
@@ -8068,18 +8952,45 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var h = opts.height != null ? opts.height : 720;
         var r = opts.radius != null ? opts.radius : ts * 0.42;
         var ms = opts.ms != null ? opts.ms : 900;
+        var color = opts.color != null ? opts.color : 0xffe9a8;
 
         var group = new THREE.Group();
         group.position.set(wp.x, wp.y, wp.z);
         var geo = new THREE.CylinderGeometry(1, 1, 1, 20, 1, true);
-        var matOuter = _sigMat(opts.color != null ? opts.color : 0xffe9a8);
+        var matOuter = _sigEnergyMat(color, {
+            opacity: 0.85, gain: 1.35,
+            s1y: -0.5, s2y: -0.24, scale1: 2.0, scale2: 1.0,
+            vFadeLo: 0.06, vFadeHi: 0.7,
+        });
         var outer = new THREE.Mesh(geo, matOuter);
         outer.position.y = h / 2; outer.renderOrder = 157;
         group.add(outer);
+        /* wider, fainter aura shell scrolling slower — depth without cost */
+        var matAura = _sigEnergyMat(color, {
+            opacity: 0.35, gain: 1.1,
+            s1y: -0.22, s2y: -0.12, scale1: 1.0, scale2: 0.5,
+            vFadeLo: 0.05, vFadeHi: 0.62,
+        });
+        var aura = new THREE.Mesh(geo.clone(), matAura);
+        aura.position.y = h / 2; aura.renderOrder = 156;
+        group.add(aura);
         var matCore = _sigMat(opts.coreColor != null ? opts.coreColor : 0xffffff);
         var core = new THREE.Mesh(geo.clone(), matCore);
         core.position.y = h / 2; core.renderOrder = 158;
         group.add(core);
+
+        /* base flare: bright glow pancake where column meets ground */
+        var flareMat = _sigMagicOrbMat(color, _sigGlowTex());
+        var flare = new THREE.Sprite(flareMat);
+        flare.position.y = ts * 0.1;
+        flare.renderOrder = 159;
+        group.add(flare);
+        var ringMat = _sigMat(color, { map: _sigRingTex() });
+        var ring = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), ringMat);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 2;
+        ring.renderOrder = 158;
+        group.add(ring);
 
         return _sigRun(group, ms, function (el) {
             var t = _sigClamp01(el / ms);
@@ -8087,14 +8998,109 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var fade = t > 0.65 ? 1 - (t - 0.65) / 0.35 : 1;
             var breathe = 1 + 0.06 * Math.sin(el * 0.02);
             outer.scale.set(r * grow * breathe, h, r * grow * breathe);
+            aura.scale.set(r * 1.8 * grow * breathe, h, r * 1.8 * grow * breathe);
             core.scale.set(r * 0.45 * grow, h, r * 0.45 * grow);
-            matOuter.opacity = 0.32 * grow * fade;
+            /* erosion ramps in over the last 40% — the column BURNS OFF */
+            var erode = t > 0.6 ? (t - 0.6) / 0.4 * 0.85 : 0;
+            _sigEnergyTick(matOuter, el, erode);
+            _sigEnergyTick(matAura, el, erode * 0.9);
+            matOuter.uniforms.uOpacity.value = 0.85 * grow;
+            matAura.uniforms.uOpacity.value = 0.35 * grow;
             matCore.opacity = 0.5 * grow * fade;
+            flareMat.opacity = 0.85 * grow * fade;
+            var fs = r * (2.4 + 0.5 * Math.sin(el * 0.017)) * grow;
+            flare.scale.set(fs, fs * 0.55, 1);
+            var rs = r * (2.2 + t * 1.6) * grow;
+            ring.scale.set(rs, rs, 1);
+            ringMat.opacity = 0.5 * grow * (1 - t);
             group.rotation.y = el * 0.001;
         });
     }
 
-    /* ── crescent slash arc sweeping through the target ──────────────────── */
+    /* ── slash smear texture: hot leading edge → streaked trail → nothing.
+       U runs along the sweep (leading edge at u≈1), V across the blade.
+       Drawn white for material tinting; edges transparent so ClampToEdge
+       scrolling reveals/retires the smear cleanly (soulercoaster rule). */
+    function _sigSlashSmearTex() {
+        return _sigTex('sig-slash-smear', 256, function (ctx, S) {
+            ctx.clearRect(0, 0, S, S);
+            var rnd = _sigRand(0x51A5);
+            var tmp = document.createElement('canvas');
+            tmp.width = tmp.height = S;
+            var tc = tmp.getContext('2d');
+            /* body: bright at the leading edge, decaying left */
+            var g = tc.createLinearGradient(0, 0, S, 0);
+            g.addColorStop(0.0, 'rgba(255,255,255,0)');
+            g.addColorStop(0.30, 'rgba(255,255,255,0.16)');
+            g.addColorStop(0.62, 'rgba(255,255,255,0.5)');
+            g.addColorStop(0.86, 'rgba(255,255,255,0.86)');
+            g.addColorStop(0.955, 'rgba(255,255,255,1)');
+            g.addColorStop(1.0, 'rgba(255,255,255,0)');
+            tc.fillStyle = g;
+            tc.fillRect(0, 0, S, S);
+            /* streak striations along the trail */
+            tc.globalCompositeOperation = 'destination-out';
+            for (var i = 0; i < 14; i++) {
+                var y = rnd() * S;
+                var hh = 1 + rnd() * 3.5;
+                var xEnd = S * (0.55 + rnd() * 0.4);
+                var sg = tc.createLinearGradient(0, 0, xEnd, 0);
+                sg.addColorStop(0, 'rgba(0,0,0,0.9)');
+                sg.addColorStop(1, 'rgba(0,0,0,0)');
+                tc.fillStyle = sg;
+                tc.fillRect(0, y, xEnd, hh);
+            }
+            /* V falloff: fade across the blade width */
+            var vg = tc.createLinearGradient(0, 0, 0, S);
+            vg.addColorStop(0, 'rgba(0,0,0,1)');
+            vg.addColorStop(0.2, 'rgba(0,0,0,0)');
+            vg.addColorStop(0.8, 'rgba(0,0,0,0)');
+            vg.addColorStop(1, 'rgba(0,0,0,1)');
+            tc.fillStyle = vg;
+            tc.fillRect(0, 0, S, S);
+            ctx.drawImage(tmp, 0, 0);
+        });
+    }
+
+    /* ── curved slash ribbon: an arc strip with sin-tapered width and UVs
+       laid flat along the sweep — the mesh-based swipe every action-RPG
+       VFX pack is built on. Returns { geo, span }. */
+    function _sigSlashRibbonGeo(radius, widthMax, spanRad, segs) {
+        segs = segs || 26;
+        var pos = new Float32Array((segs + 1) * 2 * 3);
+        var uv = new Float32Array((segs + 1) * 2 * 2);
+        var idx = [];
+        for (var i = 0; i <= segs; i++) {
+            var t = i / segs;
+            var a = -spanRad / 2 + spanRad * t;
+            var w = widthMax * Math.pow(Math.sin(t * Math.PI), 0.75);
+            var ca = Math.cos(a), sa = Math.sin(a);
+            var rIn = radius - w, rOut = radius + w;
+            pos[(i * 2) * 3]     = ca * rIn;
+            pos[(i * 2) * 3 + 1] = sa * rIn;
+            pos[(i * 2) * 3 + 2] = 0;
+            pos[(i * 2 + 1) * 3]     = ca * rOut;
+            pos[(i * 2 + 1) * 3 + 1] = sa * rOut;
+            pos[(i * 2 + 1) * 3 + 2] = 0;
+            uv[(i * 2) * 2] = t;     uv[(i * 2) * 2 + 1] = 0;
+            uv[(i * 2 + 1) * 2] = t; uv[(i * 2 + 1) * 2 + 1] = 1;
+            if (i < segs) {
+                var b = i * 2;
+                idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+            }
+        }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+        geo.setIndex(idx);
+        return geo;
+    }
+
+    /* ── crescent slash arc sweeping through the target ──────────────────
+       v2 (2026-08-04): a REAL curved ribbon mesh with a scrolling smear
+       texture (hot edge, streaked trail), a lagging echo ribbon behind it,
+       a white glint riding the leading tip, and spark flecks thrown off
+       the cut. Same signature as v1 — every call site upgrades free. */
     function _sigCrescentSlash3D(tx, ty, opts) {
         opts = opts || {};
         var scene = _getVFXScene(); if (!scene) return null;
@@ -8102,24 +9108,87 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ts = wp.ts;
         var size = opts.size != null ? opts.size : ts * 1.7;
         var ms = opts.ms != null ? opts.ms : 260;
+        var dir = opts.dir || 1;
+        var span = 2.1;
 
         var group = new THREE.Group();
         group.position.set(wp.x, wp.y + (opts.height != null ? opts.height : ts * 0.5), wp.z);
         group.rotation.y = opts.yaw || 0;
-        var mat = _sigMat(opts.color, { map: _sigCrescentTex() });
-        var mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
+
+        var smearTex = _sigSlashSmearTex();
+        smearTex.wrapS = THREE.ClampToEdgeWrapping;
+        smearTex.wrapT = THREE.ClampToEdgeWrapping;
+
+        var R = size * 0.5;
+        var geo = _sigSlashRibbonGeo(R, size * 0.16, span, 26);
+        var mat = _sigMat(opts.color, { map: smearTex });
+        /* per-mesh texture transform needs its own texture instance; the
+           material's dispose (called by _sigRun teardown) reclaims it */
+        mat.map = smearTex.clone();
+        mat.map.needsUpdate = true;
+        mat.map.wrapS = THREE.ClampToEdgeWrapping;
+        var _matDispose = mat.dispose.bind(mat);
+        mat.dispose = function () {
+            if (mat.map && mat.map !== smearTex) mat.map.dispose();
+            _matDispose();
+        };
+        var mesh = new THREE.Mesh(geo, mat);
         mesh.rotation.x = opts.pitch != null ? opts.pitch : -0.5;
         mesh.renderOrder = 165;
         group.add(mesh);
+
+        /* echo ribbon: slightly smaller, lagging behind the main sweep */
+        var mat2 = _sigMat(opts.color, { map: mat.map });
+        var geo2 = _sigSlashRibbonGeo(R * 0.84, size * 0.11, span * 0.9, 22);
+        var echo = new THREE.Mesh(geo2, mat2);
+        echo.rotation.x = mesh.rotation.x;
+        echo.renderOrder = 164;
+        group.add(echo);
+
+        /* white-hot glint riding the leading tip of the arc */
+        var glintMat = _sigMagicOrbMat(0xffffff, _sigGlowTex());
+        var glint = new THREE.Sprite(glintMat);
+        var tipLocal = new THREE.Vector3(Math.cos(span / 2 * dir) * R, Math.sin(span / 2 * dir) * R, 0);
+        glint.position.copy(tipLocal);
+        glint.renderOrder = 166;
+        mesh.add(glint);
+
+        /* spark flecks thrown off the cut */
+        if (_canSpawn() && opts.flecks !== false) {
+            var c = tilePx(tx, ty);
+            var zC = unitSurfaceZ(tx, ty) + (opts.height != null ? opts.height : ts * 0.5);
+            for (var fi = 0; fi < 6; fi++) {
+                var fa = rn(0, 6.2832), fs = rn(120, 320);
+                _spawn({
+                    x: c.x, y: c.y, z: zC + rn(-6, 6),
+                    vx: Math.cos(fa) * fs, vy: Math.sin(fa) * fs, vz: rn(-30, 140),
+                    mode: 'billboard', sprite: 'steel-spark',
+                    tint: opts.color != null ? opts.color : null,
+                    ml: rn(140, 320), size0: rn(4, 8), size1: 1,
+                    opacity0: 1, opacity1: 0, gravity: 300, drag: 1.4,
+                });
+            }
+        }
+
         var sweep = opts.sweep != null ? opts.sweep : 2.4;
+        var roll = opts.roll || 0;
 
         return _sigRun(group, ms, function (el) {
             var t = _sigClamp01(el / ms);
             var e = _sigEaseOutCubic(t);
-            mesh.rotation.z = (opts.roll || 0) + sweep * e * (opts.dir || 1);
-            var s = size * (0.7 + 0.5 * e);
+            mesh.rotation.z = roll + sweep * e * dir;
+            echo.rotation.z = roll + sweep * Math.max(0, e - 0.22) * dir;
+            var s = 0.72 + 0.42 * e;
             mesh.scale.set(s, s, s);
-            mat.opacity = (t < 0.1 ? t / 0.1 : 1 - t * t);
+            echo.scale.set(s, s, s);
+            /* smear slides backward along the ribbon as it sweeps */
+            mat.map.offset.x = 0.55 * (1 - e) - 0.1;
+            var op = (t < 0.08 ? t / 0.08 : 1 - t * t);
+            mat.opacity = op;
+            mat2.opacity = op * 0.5;
+            glintMat.opacity = Math.max(0, 1 - t * 1.8);
+            var gs = size * (0.3 - 0.16 * t);
+            glint.scale.set(gs, gs, 1);
         });
     }
 
@@ -17419,6 +18488,119 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sharedNebula: function(tx, ty, r) {
             _sigSupernova3D(tx, ty, r);
         },
+
+        /* ── 2026-08-04 JRPG VFX pass — geometry for the wired headliners ── */
+
+        /* SUMMON THUNDERSTORM — the ritual that calls the sky down: a storm
+           sigil over the caster, then the NEW re-striking, ground-crawling
+           bolts hammer around the circle while the weather takes hold. */
+        thunderstorm: function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigMagicCircle3D(tx, ty, {
+                color: 0x99ccff, color2: 0xd8ecff, radiusPx: ts0 * 1.3,
+                holdMs: 900, spin: 0.004, opacity: 0.8, rise: 24,
+            });
+            if (window.ThreeLightning && window.ThreeLightning.strikeFromSky) {
+                var offs = [[0, 0], [1, -1], [-1, 1]];
+                for (var si = 0; si < offs.length; si++) {
+                    (function (ox, oy, delay) {
+                        window.setTimeout(function () {
+                            if (_suppressed()) return;
+                            try {
+                                window.ThreeLightning.strikeFromSky(tx + ox, ty + oy, {
+                                    strikes: 2, durationMs: 300,
+                                    impactFlashSize: ts0 * 0.5,
+                                });
+                            } catch (e) {}
+                        }, delay);
+                    })(offs[si][0], offs[si][1], 260 + si * 220);
+                }
+            }
+        },
+
+        /* VEIL OF LIGHT — a gentle curtain: gold circle + soft pillar. */
+        veilOfLight: function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigMagicCircle3D(tx, ty, {
+                color: 0xffe9a8, color2: 0xfff6d8, radiusPx: ts0 * 1.15,
+                holdMs: 800, spin: 0.0018, opacity: 0.7, rise: 40,
+            });
+            _sigLightPillar3D(tx, ty, {
+                color: 0xffeecc, ms: 1000, height: ts0 * 4.6, radius: ts0 * 0.34,
+            });
+        },
+
+        /* DARK PACT — the contract circle, drawn in blood-light. */
+        darkPact: function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigMagicCircle3D(tx, ty, {
+                color: 0xcc2244, color2: 0x8844cc, radiusPx: ts0 * 1.2,
+                holdMs: 950, spin: -0.005, opacity: 0.85,
+            });
+            _sigRuneSphere3D(tx, ty, {
+                color: 0xaa2244, runeColor: 0xdd6688,
+                radiusTiles: 0.7, holdMs: 700, spin: 0.003,
+            });
+        },
+
+        /* KNIGHTS OF ROUND — the king's table answers: a ring of golden
+           blades plants around the banner, under a royal circle + pillar. */
+        raceKnightsOfRound: function(tx, ty) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigMagicCircle3D(tx, ty, {
+                color: 0xffd24d, color2: 0xfff2c0, radiusPx: ts0 * 1.5,
+                holdMs: 1100, spin: 0.0022, opacity: 0.85,
+            });
+            _sigSpearPrison3D(tx, ty, {
+                count: 6, color: 0xffd24d, runeColor: 0xffe9a8,
+                shaftTex: 'gold.png', shaftTint: 0xffe9a8, tipTint: 0xffffff,
+                glowColor: 0xffe083, sparkSprite: 'divine-sparkle',
+                holdMs: 900, finisher: false, lenTiles: 2.2,
+            });
+            _sigLightPillar3D(tx, ty, {
+                color: 0xffe083, ms: 900, height: ts0 * 4.2, radius: ts0 * 0.3,
+            });
+        },
+
+        /* MANA SHIELD — a real arcane bubble snaps over the wizard. */
+        raceManaShield: function(tx, ty, r) {
+            _spawnDome3D(tx, ty, r != null ? r : 0, {
+                outerColor: 0x7744cc, innerColor: 0xb060ff, wireColor: 0xd0a8ff,
+                wireSegments: 8, wireRings: 4, heightRatio: 0.9,
+                outerOpacity: 0.26, innerOpacity: 0.16, wireOpacity: 0.4,
+                wireRotSpeed: 0.0006,
+            });
+        },
+
+        /* HEAT DEATH — the last light gathers into a cold point and dies. */
+        raceHeatDeath: function(tx, ty, r) {
+            var ts0 = _cfg().tileSize || 128;
+            _sigOrbBurst3D(tx, ty, {
+                mode: 'in', color: 0xb8a8d8,
+                r1: ts0 * (1.2 + (r || 2) * 0.3), r0: ts0 * 0.06,
+                ms: 720, opacity: 0.75,
+            });
+            _sigGasCloud3D(tx, ty, {
+                color: 0x554466, coreColor: 0x776699, gentle: true,
+                radiusTiles: (r || 2) + 0.4, count: 12, ms: 1600,
+            });
+        },
+
+        /* THE BARD KIT — music made visible. */
+        encore: function(tx, ty) {
+            _sigMusicNotes3D(tx, ty, { radiusTiles: 1.1, notes: 5, noteColor: 0xffd76a });
+            _sigMagicCircle3D(tx, ty, {
+                color: 0xffd76a, radiusPx: (_cfg().tileSize || 128) * 0.9,
+                holdMs: 800, spin: 0.003, opacity: 0.55, rise: 26,
+            });
+        },
+        fermata: function(tx, ty) {
+            _sigMusicNotes3D(tx, ty, { radiusTiles: 1.0, notes: 4, noteColor: 0xa8ffc4 });
+            _sigRegenPulse3D(tx, ty, { color: 0xa8ffc4, ms: 900 });
+        },
+        provoke: function(tx, ty) {
+            _sigSonicBoom3D(tx, ty, { color: 0xff9944, rings: 3, radiusTiles: 1.2 });
+        },
     };
 
     /* ── Anime power-aura bursts (three-renderer EWPowerAura) ─────────────
@@ -17744,8 +18926,6 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sharedNuke:  { weight: 'ultimate' },
         meteor:      { archetype: 'skyfall', weight: 'ultimate' },
         thunderstorm:{ archetype: 'lightning', weight: 'heavy' },
-        railgun:     { archetype: 'tech', weight: 'heavy' },
-        assassinate: { archetype: 'kinetic', weight: 'heavy' },
         /* consumables read calm, never as an attack */
         consumeHealPotion: { archetype: 'heal', weight: 'light' },
         consumeManaPotion: { archetype: 'tech', weight: 'light' },
@@ -17805,6 +18985,22 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                                 tint: [1.18, 0.85, 1.1], tintAmt: 0.4 } },
         raceCalcify: { archetype: 'rig', weight: 'standard',
                        grade: { chroma: 1.2, tint: [1.0, 0.96, 0.9], tintAmt: 0.5 } },
+
+        /* ── 2026-08-04 JRPG VFX pass ── */
+        /* Heat Death: entropy's ultimate — the world drains toward grey
+           while everything falls into the cold point. */
+        raceHeatDeath: { archetype: 'unholy', weight: 'ultimate',
+                       grade: { trip: 0.15, chroma: 5, hueRate: 0.05,
+                                tint: [0.88, 0.82, 1.02], tintAmt: 0.6 } },
+        raceKnightsOfRound: { archetype: 'divine', weight: 'ultimate' },
+        railgun:     { archetype: 'tech', weight: 'heavy',
+                       grade: { chroma: 8, tint: [0.72, 1.08, 1.2], tintAmt: 0.45 } },
+        darkPact:    { archetype: 'unholy', weight: 'heavy' },
+        veilOfLight: { archetype: 'divine', weight: 'heavy' },
+        raceFlood:   { archetype: 'arcane', weight: 'heavy',
+                       grade: { chroma: 3, tint: [0.7, 0.95, 1.25], tintAmt: 0.5 } },
+        assassinate: { archetype: 'kinetic', weight: 'heavy',
+                       grade: { chroma: 6, tint: [0.82, 0.78, 0.95], tintAmt: 0.55 } },
     };
 
     var _STAGE_TIERS = {

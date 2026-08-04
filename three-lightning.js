@@ -49,17 +49,20 @@ const ThreeLightning = (function () {
         color:          0xf2f8ff,   /* whiter-hot core; the blue lives in the glow */
         glowColor:      0x4488ff,
         coreWidth:      6,
-        glowWidth:      18,
-        segments:        12,
+        glowWidth:      22,
+        segments:        14,
         jitter:          0.35,
-        branchChance:    0.3,
-        branchLength:    0.35,
-        branchSegments:  5,
-        branchDepth:     1,
+        branchChance:    0.42,
+        branchLength:    0.38,
+        branchSegments:  6,
+        branchDepth:     2,      /* recursive forks — real lightning branches its branches */
         durationMs:      280,
         fadeStart:       0.5,
         flicker:         true,
         flickerRate:     0.06,
+        strikes:         1,      /* >1 = re-strikes: fresh jagged paths in quick succession */
+        strikeGapMs:     70,
+        taper:           true,   /* thin toward the strike point (MeshLine widthCallback) */
     };
 
     var _tmpV = null;
@@ -135,11 +138,16 @@ const ThreeLightning = (function () {
         return new Float32Array(pts);
     }
 
-    function _buildBoltMesh(pathArray, width, color, opacity) {
+    /* width taper along the path: fat at the origin, thinning toward the
+       strike point, with a subtle mid-bulge so it doesn't read as a cone */
+    function _taperMain(p) { return 1.0 - 0.55 * p + 0.12 * Math.sin(p * Math.PI); }
+    function _taperBranch(p) { return 1.0 - 0.75 * p; }
+
+    function _buildBoltMesh(pathArray, width, color, opacity, taperFn) {
         var line = new THREE.MeshLine();
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pathArray, 3));
-        line.setGeometry(geo);
+        line.setGeometry(geo, taperFn || null);
 
         var mat = new THREE.MeshLineMaterial({
             color: new THREE.Color(color),
@@ -164,6 +172,7 @@ const ThreeLightning = (function () {
 
     function bolt(from, to, opts) {
         if (!_initialized || !_scene) return null;
+        if (typeof state !== 'undefined' && state && state.devAutoSim) return null;
         opts = opts || {};
 
         var o = {};
@@ -175,12 +184,17 @@ const ThreeLightning = (function () {
         var group = new THREE.Group();
         group.renderOrder = 999;
 
+        var taper = o.taper ? _taperMain : null;
         var corePath = _buildJaggedPath(fromV, toV, o.segments, o.jitter);
-        var core = _buildBoltMesh(corePath, o.coreWidth, o.color, 1.0);
-        group.add(core.mesh);
-
-        var glow = _buildBoltMesh(corePath, o.glowWidth, o.glowColor, 0.45);
+        /* three stacked strokes: wide cool glow → warm mid sheath → white-hot
+           core. The mid layer is what was missing — two-layer bolts read as
+           an outline, three read as a filament inside plasma. */
+        var glow = _buildBoltMesh(corePath, o.glowWidth, o.glowColor, 0.4, taper);
         group.add(glow.mesh);
+        var mid = _buildBoltMesh(corePath, o.coreWidth * 2.1, o.glowColor, 0.6, taper);
+        group.add(mid.mesh);
+        var core = _buildBoltMesh(corePath, o.coreWidth, o.color, 1.0, taper);
+        group.add(core.mesh);
 
         var branches = [];
         if (o.branchChance > 0 && o.branchDepth > 0) {
@@ -192,6 +206,7 @@ const ThreeLightning = (function () {
         var boltEntry = {
             group: group,
             core: core,
+            mid: mid,
             glow: glow,
             branches: branches,
             startTime: performance.now(),
@@ -204,7 +219,56 @@ const ThreeLightning = (function () {
             opts: o,
         };
         _activeBolts.push(boltEntry);
+
+        /* RE-STRIKES: real lightning almost never lands once. Each restrike
+           is a NEW jagged path down the same channel — dimmer, thinner,
+           shorter-lived — a beat apart. Reads as the FFXVI multi-hit. */
+        if (o.strikes > 1) {
+            var nextOpts = {};
+            for (var nk in o) nextOpts[nk] = o[nk];
+            nextOpts.strikes = o.strikes - 1;
+            nextOpts.coreWidth = o.coreWidth * 0.8;
+            nextOpts.glowWidth = o.glowWidth * 0.8;
+            nextOpts.durationMs = Math.max(140, o.durationMs * 0.8);
+            window.setTimeout(function () {
+                if (!_initialized || !_scene) return;
+                bolt(from, to, nextOpts);
+            }, o.strikeGapMs);
+        }
         return boltEntry;
+    }
+
+    /* GROUND CRAWL — short arcs skittering outward along the floor from the
+       strike point (vfx-space px). The detail that sells voltage DUMPING
+       into the earth rather than a sprite touching it. */
+    function crawlVfx(atPx, opts) {
+        opts = opts || {};
+        var cfg = (typeof CONFIG !== 'undefined') ? CONFIG : { tileSize: 128, boardPadding: 2 };
+        var ts = cfg.tileSize || 128;
+        var n = opts.count != null ? opts.count : 4;
+        for (var i = 0; i < n; i++) {
+            var a = (i / n) * Math.PI * 2 + _rn(-0.4, 0.4);
+            var len = ts * _rn(0.35, opts.reach != null ? opts.reach : 0.85);
+            var from = { x: atPx.x, y: atPx.y, z: (atPx.z || 0) + 3 };
+            var to = {
+                x: atPx.x + Math.cos(a) * len,
+                y: atPx.y + Math.sin(a) * len,
+                z: (atPx.z || 0) + _rn(1, 5),
+            };
+            boltVfx(from, to, {
+                segments: 6,
+                jitter: 0.5,
+                branchChance: 0.25,
+                branchDepth: 1,
+                branchSegments: 4,
+                coreWidth: opts.coreWidth != null ? opts.coreWidth : 2.2,
+                glowWidth: opts.glowWidth != null ? opts.glowWidth : 7,
+                durationMs: _rn(150, 240),
+                color: opts.color, glowColor: opts.glowColor,
+                impactFlash: false,
+                strikes: 1,
+            });
+        }
     }
 
     function _addBranches(group, branches, parentPath, o, depth) {
@@ -248,11 +312,21 @@ const ThreeLightning = (function () {
 
             var bPath = _buildJaggedPath(bFrom, bTo, o.branchSegments, o.jitter * 1.2);
 
-            var bCore = _buildBoltMesh(bPath, o.coreWidth * 0.55, o.color, 0.85);
-            var bGlow = _buildBoltMesh(bPath, o.glowWidth * 0.5, o.glowColor, 0.3);
+            var wMul = Math.pow(0.55, depth + 1);
+            var bCore = _buildBoltMesh(bPath, o.coreWidth * wMul, o.color, 0.85, _taperBranch);
+            var bGlow = _buildBoltMesh(bPath, o.glowWidth * wMul * 0.9, o.glowColor, 0.3, _taperBranch);
             group.add(bCore.mesh);
             group.add(bGlow.mesh);
             branches.push({ core: bCore, glow: bGlow });
+
+            /* recurse: branches fork again, thinner and shorter */
+            if (depth + 1 < o.branchDepth) {
+                var so = {};
+                for (var sk in o) so[sk] = o[sk];
+                so.branchChance = o.branchChance * 0.7;
+                so.branchLength = o.branchLength * 0.8;
+                _addBranches(group, branches, bPath, so, depth + 1);
+            }
         }
     }
 
@@ -288,7 +362,10 @@ const ThreeLightning = (function () {
             var opacity = fadeT * flickerMul;
 
             b.core.material.opacity = Math.min(1.0, opacity * 1.0);
-            b.glow.material.opacity = Math.min(1.0, opacity * 0.45);
+            if (b.mid) b.mid.material.opacity = Math.min(1.0, opacity * 0.6);
+            /* glow decays SLOWER than the filament — the afterimage a real
+               strike leaves on the eye */
+            b.glow.material.opacity = Math.min(1.0, Math.pow(fadeT, 0.6) * flickerMul * 0.42);
 
             for (var j = 0; j < b.branches.length; j++) {
                 b.branches[j].core.material.opacity = Math.min(1.0, opacity * 0.85);
@@ -348,6 +425,19 @@ const ThreeLightning = (function () {
             size0: size * 0.5, size1: size * 1.4,
             opacity0: 0.7, opacity1: 0,
         });
+        /* hot electric flecks thrown off the strike point */
+        for (var i = 0; i < 7; i++) {
+            var a = Math.random() * 6.2832, sp = 90 + Math.random() * 240;
+            window.ThreeVFX.spawn({
+                x: px.x, y: px.y, z: px.z + 4,
+                vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: 40 + Math.random() * 190,
+                mode: 'billboard', sprite: 'spark-elec',
+                ml: 160 + Math.random() * 240,
+                size0: 3 + Math.random() * 5, size1: 1,
+                opacity0: 1, opacity1: 0,
+                gravity: 420, drag: 1.4,
+            });
+        }
     }
 
     function boltVfx(fromPx, toPx, opts) {
@@ -389,12 +479,35 @@ const ThreeLightning = (function () {
         var skyOffY = _rn(-ts * 0.3, ts * 0.3);
 
         if (opts.impactFlashSize == null) opts.impactFlashSize = ts * 0.55;
+        /* sky strikes default to the full treatment: double-tap restrike +
+           voltage crawling out along the ground */
+        if (opts.strikes == null) opts.strikes = 2;
 
-        return boltVfx(
+        var impactPx = { x: cx + _rn(-4, 4), y: cy + _rn(-4, 4), z: groundZ + 8 };
+
+        /* sheet-lightning flash up in the cloud layer — the sky answers */
+        if (window.ThreeVFX && window.ThreeVFX.isActive && window.ThreeVFX.isActive()
+            && opts.skyFlash !== false) {
+            window.ThreeVFX.spawn({
+                x: cx + skyOffX, y: cy + skyOffY, z: groundZ + skyHeight * 0.92,
+                mode: 'billboard', sprite: 'flash', tint: 0x9cc8ff,
+                ml: 200, size0: ts * 2.6, size1: ts * 3.4,
+                opacity0: 0.55, opacity1: 0,
+            });
+        }
+
+        var entry = boltVfx(
             { x: cx + skyOffX, y: cy + skyOffY, z: groundZ + skyHeight },
-            { x: cx + _rn(-4, 4), y: cy + _rn(-4, 4), z: groundZ + 8 },
+            impactPx,
             opts
         );
+        if (entry && opts.crawl !== false) {
+            crawlVfx({ x: impactPx.x, y: impactPx.y, z: groundZ }, {
+                count: opts.crawlCount != null ? opts.crawlCount : 4,
+                color: opts.color, glowColor: opts.glowColor,
+            });
+        }
+        return entry;
     }
 
     function chainBolt(fromTx, fromTy, toTx, toTy, opts) {
@@ -439,6 +552,7 @@ const ThreeLightning = (function () {
         init:           init,
         bolt:           bolt,
         boltVfx:        boltVfx,
+        crawlVfx:       crawlVfx,
         strikeFromSky:  strikeFromSky,
         chainBolt:      chainBolt,
         tick:           tick,

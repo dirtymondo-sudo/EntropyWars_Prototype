@@ -177,6 +177,14 @@ const ThreeVFX = (function () {
     var _ringSprites = { 'target-ring': 1, 'target-ring-gold': 1, 'target-ring-blue': 1,
                          'target-ring-green': 1, 'shockwave': 1, 'halo-ring': 1, 'stun-ring': 1 };
 
+    /* sprites that read better tumbling than locked upright (see spawn) */
+    var _AUTO_TUMBLE = {
+        'smoke': 1, 'smoke-soft': 1, 'dust-puff': 1, 'debris': 1, 'rock-debris': 1,
+        'mud-chunk': 1, 'explosion-orange': 1, 'void-mist': 1, 'poison-mist': 1,
+        'shadow-wisp': 1, 'blood-splat': 1, 'leaf': 1, 'petal': 1, 'snowflake': 1,
+        'ice-shard': 1, 'frost-crystal': 1,
+    };
+
     var _WAVE_FRAMES = ['wave-1', 'wave-2', 'wave-3', 'wave-4', 'wave-5', 'wave-6'];
     var _WAVE_FRAME_MS = 120;
 
@@ -490,6 +498,725 @@ const ThreeVFX = (function () {
         ctx.restore();
     }
 
+    /* ═══ SHAPED SPRITE PACK (2026-08-04) ════════════════════════════════
+       Every particle used to be a 64px soft radial/linear gradient — the
+       whole game was built out of fuzzy blobs, which is exactly why spells
+       read as FLAT no matter how well they were staged. This pack redraws
+       the most-used sprites as real SHAPES at hi-res (128–192px): sparks
+       are 4-point anamorphic glints, embers have a hot nucleus and a
+       flickered rim, smoke is a lobed billow with eroded holes, flames are
+       crisp layered tongues, ice is faceted crystal, shockwaves are sharp
+       double bands, scorch is a cracked burn. The textures land in
+       _hiResTextures, which _getSpriteTexture already prefers over the
+       atlas — so every one of the ~600 effect recipes upgrades without a
+       single recipe edit. Colors are BAKED (like the gradient cells they
+       replace) so the existing white-material + optional-tint pipeline is
+       untouched. All drawing is seeded-deterministic: same art every boot.
+       ─────────────────────────────────────────────────────────────────── */
+    function _sRand(seed) {
+        var s = seed >>> 0;
+        return function () {
+            s = (s * 1664525 + 1013904223) >>> 0;
+            return s / 4294967296;
+        };
+    }
+
+    /* soft radial blob at (x,y) — the workhorse under most shapes */
+    function _blob(ctx, x, y, r, stops) {
+        var g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        for (var i = 0; i < stops.length; i++) g.addColorStop(stops[i][0], stops[i][1]);
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+    }
+
+    /* 4-point star glint: two crossed tapered rays + hot core + halo.
+       ratio squashes the vertical pair (anamorphic look), rot tilts it. */
+    function _drawGlint(ctx, S, o) {
+        var c = S / 2;
+        var col = o.col, hot = o.hot || 'rgba(255,255,255,1)';
+        ctx.save();
+        ctx.translate(c, c);
+        if (o.rot) ctx.rotate(o.rot);
+        _blob(ctx, 0, 0, S * (o.halo != null ? o.halo : 0.34),
+              [[0, col.replace('%A', '0.55')], [0.6, col.replace('%A', '0.18')], [1, col.replace('%A', '0')]]);
+        function ray(len, wid, ang) {
+            ctx.save();
+            ctx.rotate(ang);
+            var g = ctx.createLinearGradient(-len, 0, len, 0);
+            g.addColorStop(0.0, col.replace('%A', '0'));
+            g.addColorStop(0.28, col.replace('%A', '0.75'));
+            g.addColorStop(0.5, hot);
+            g.addColorStop(0.72, col.replace('%A', '0.75'));
+            g.addColorStop(1.0, col.replace('%A', '0'));
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.moveTo(-len, 0);
+            ctx.quadraticCurveTo(0, -wid, len, 0);
+            ctx.quadraticCurveTo(0, wid, -len, 0);
+            ctx.fill();
+            ctx.restore();
+        }
+        var L = S * (o.len != null ? o.len : 0.46);
+        var W = S * (o.wid != null ? o.wid : 0.05);
+        var vr = o.vRatio != null ? o.vRatio : 0.72;
+        ray(L, W, 0);
+        ray(L * vr, W, Math.PI / 2);
+        if (o.diag) { ray(L * 0.42, W * 0.7, Math.PI / 4); ray(L * 0.42, W * 0.7, -Math.PI / 4); }
+        _blob(ctx, 0, 0, S * 0.09, [[0, hot], [0.5, col.replace('%A', '0.9')], [1, col.replace('%A', '0')]]);
+        ctx.restore();
+    }
+
+    /* lobed billow: N overlapping blobs around the centre with speckled
+       erosion holes — smoke / dust / explosion cores */
+    function _drawBillow(ctx, S, o) {
+        var c = S / 2, rnd = _sRand(o.seed || 0xB111);
+        var n = o.lobes || 7;
+        for (var i = 0; i < n; i++) {
+            var a = (i / n) * 6.2832 + rnd() * 1.1;
+            var d = S * (0.10 + rnd() * (o.spread != null ? o.spread : 0.16));
+            var r = S * (o.lobeR != null ? o.lobeR : 0.20) * (0.75 + rnd() * 0.5);
+            _blob(ctx, c + Math.cos(a) * d, c + Math.sin(a) * d, r, o.stops);
+        }
+        _blob(ctx, c, c, S * 0.24, o.coreStops || o.stops);
+        if (o.holes) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-out';
+            for (var h = 0; h < o.holes; h++) {
+                var ha = rnd() * 6.2832, hd = S * (0.16 + rnd() * 0.26);
+                var hx = c + Math.cos(ha) * hd, hy = c + Math.sin(ha) * hd;
+                _blob(ctx, hx, hy, S * (0.03 + rnd() * 0.05),
+                      [[0, 'rgba(0,0,0,0.85)'], [1, 'rgba(0,0,0,0)']]);
+            }
+            ctx.restore();
+        }
+    }
+
+    /* crisp flame tongue pointing UP: layered teardrop silhouettes with a
+       wavering edge — outer body, mid heat, white-hot core */
+    function _drawTongue(ctx, S, layers, seed) {
+        var rnd = _sRand(seed || 0xF1A);
+        for (var li = 0; li < layers.length; li++) {
+            var L = layers[li];
+            var w = S * L.w, hTop = S * (1 - L.h), base = S * (L.base != null ? L.base : 0.94);
+            var cx = S / 2 + (L.dx || 0) * S;
+            ctx.fillStyle = L.col;
+            ctx.beginPath();
+            ctx.moveTo(cx, hTop);
+            var side, k, px, py;
+            /* right edge down */
+            for (k = 1; k <= 4; k++) {
+                side = k / 4;
+                px = cx + w * Math.sin(side * Math.PI) * (0.86 + rnd() * 0.3);
+                py = hTop + (base - hTop) * side;
+                ctx.quadraticCurveTo(px + w * 0.16, py - (base - hTop) * 0.1, px, py);
+            }
+            /* left edge back up */
+            for (k = 3; k >= 0; k--) {
+                side = k / 4;
+                px = cx - w * Math.sin(side * Math.PI) * (0.86 + rnd() * 0.3);
+                py = hTop + (base - hTop) * side;
+                ctx.quadraticCurveTo(px - w * 0.16, py + (base - hTop) * 0.06, px, py);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+    }
+
+    /* ring band with optional ticks / second echo band / speckle flecks */
+    function _drawBand(ctx, S, o) {
+        var c = S / 2, rnd = _sRand(o.seed || 0xB43D);
+        function band(rad, thick, col0, col1, alpha) {
+            var inner = Math.max(0, rad - thick), outer = Math.min(c, rad + thick);
+            var g = ctx.createRadialGradient(c, c, inner, c, c, outer);
+            g.addColorStop(0, col1.replace('%A', '0'));
+            g.addColorStop(0.45, col0.replace('%A', String(alpha)));
+            g.addColorStop(0.55, col0.replace('%A', String(alpha)));
+            g.addColorStop(1, col1.replace('%A', '0'));
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.arc(c, c, outer, 0, 6.2832);
+            ctx.arc(c, c, inner, 0, 6.2832, true); ctx.fill();
+        }
+        band(S * o.r, S * o.t, o.hot, o.col, o.a != null ? o.a : 0.95);
+        if (o.echo) band(S * o.echo, S * o.t * 0.45, o.col, o.col, 0.5);
+        if (o.inner) band(S * o.inner, S * o.t * 0.4, o.col, o.col, 0.4);
+        if (o.ticks) {
+            ctx.strokeStyle = o.hot.replace('%A', '0.9');
+            ctx.lineCap = 'round';
+            ctx.lineWidth = S * 0.012;
+            for (var i = 0; i < o.ticks; i++) {
+                var a = (i / o.ticks) * 6.2832;
+                ctx.beginPath();
+                ctx.moveTo(c + Math.cos(a) * S * (o.r - o.t * 1.5), c + Math.sin(a) * S * (o.r - o.t * 1.5));
+                ctx.lineTo(c + Math.cos(a) * S * (o.r + o.t * 1.5), c + Math.sin(a) * S * (o.r + o.t * 1.5));
+                ctx.stroke();
+            }
+        }
+        if (o.flecks) {
+            for (var f = 0; f < o.flecks; f++) {
+                var fa = rnd() * 6.2832, fd = S * (o.r + 0.02 + rnd() * 0.1);
+                if (fd > c * 0.98) continue;
+                _blob(ctx, c + Math.cos(fa) * fd, c + Math.sin(fa) * fd,
+                      S * (0.008 + rnd() * 0.014),
+                      [[0, o.hot.replace('%A', '0.9')], [1, o.hot.replace('%A', '0')]]);
+            }
+        }
+    }
+
+    /* horizontal energy lance: layered halo + white core line + striations.
+       For the 'linear right' beam sprites that get stretched along quads. */
+    function _drawLance(ctx, S, o) {
+        var mid = S / 2;
+        function bar(hh, col0, col1, aPk) {
+            var g = ctx.createLinearGradient(0, 0, S, 0);
+            g.addColorStop(0, col1.replace('%A', '0'));
+            g.addColorStop(0.16, col0.replace('%A', String(aPk * 0.55)));
+            g.addColorStop(0.5, col0.replace('%A', String(aPk)));
+            g.addColorStop(0.84, col0.replace('%A', String(aPk * 0.55)));
+            g.addColorStop(1, col1.replace('%A', '0'));
+            var gv = ctx.createLinearGradient(0, mid - hh, 0, mid + hh);
+            gv.addColorStop(0, 'rgba(0,0,0,0)');
+            gv.addColorStop(0.5, 'rgba(255,255,255,1)');
+            gv.addColorStop(1, 'rgba(0,0,0,0)');
+            var tmp = document.createElement('canvas');
+            tmp.width = S; tmp.height = S;
+            var tc = tmp.getContext('2d');
+            tc.fillStyle = g; tc.fillRect(0, mid - hh, S, hh * 2);
+            tc.globalCompositeOperation = 'destination-in';
+            tc.fillStyle = gv; tc.fillRect(0, mid - hh, S, hh * 2);
+            ctx.drawImage(tmp, 0, 0);
+        }
+        bar(S * (o.halo != null ? o.halo : 0.30), o.col, o.col, 0.55);
+        bar(S * 0.12, o.col, o.col, 0.9);
+        bar(S * 0.035, o.hot || 'rgba(255,255,255,%A)', o.col, 1);
+        if (o.striate) {
+            var rnd = _sRand(o.seed || 0x57A1);
+            ctx.globalCompositeOperation = 'lighter';
+            for (var i = 0; i < o.striate; i++) {
+                var y = mid + (rnd() - 0.5) * S * 0.3;
+                var x0 = rnd() * S * 0.5, len = S * (0.2 + rnd() * 0.4);
+                var g2 = ctx.createLinearGradient(x0, 0, x0 + len, 0);
+                g2.addColorStop(0, o.col.replace('%A', '0'));
+                g2.addColorStop(0.5, o.col.replace('%A', '0.5'));
+                g2.addColorStop(1, o.col.replace('%A', '0'));
+                ctx.fillStyle = g2;
+                ctx.fillRect(x0, y - S * 0.006, len, S * 0.012);
+            }
+            ctx.globalCompositeOperation = 'source-over';
+        }
+    }
+
+    /* faceted crystal star: n sharp tapered arms + facet strokes + core */
+    function _drawCrystal(ctx, S, o) {
+        var c = S / 2, rnd = _sRand(o.seed || 0x1CE);
+        var n = o.arms || 6;
+        for (var i = 0; i < n; i++) {
+            var a = (i / n) * 6.2832 + (o.rot || 0);
+            var len = S * (o.len != null ? o.len : 0.42) * (0.8 + rnd() * 0.35);
+            var wid = S * (o.wid != null ? o.wid : 0.055);
+            ctx.save();
+            ctx.translate(c, c); ctx.rotate(a);
+            var g = ctx.createLinearGradient(0, 0, len, 0);
+            g.addColorStop(0, o.hot);
+            g.addColorStop(0.45, o.col.replace('%A', '0.95'));
+            g.addColorStop(1, o.col.replace('%A', '0.1'));
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.moveTo(0, -wid);
+            ctx.lineTo(len * 0.62, -wid * 0.5);
+            ctx.lineTo(len, 0);
+            ctx.lineTo(len * 0.62, wid * 0.5);
+            ctx.lineTo(0, wid);
+            ctx.closePath();
+            ctx.fill();
+            if (o.branch) {
+                for (var b = 0; b < 2; b++) {
+                    var bt = 0.35 + b * 0.25;
+                    ctx.strokeStyle = o.col.replace('%A', '0.8');
+                    ctx.lineWidth = wid * 0.5;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(len * bt, 0);
+                    ctx.lineTo(len * (bt + 0.14), -len * 0.13);
+                    ctx.moveTo(len * bt, 0);
+                    ctx.lineTo(len * (bt + 0.14), len * 0.13);
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+        _blob(ctx, c, c, S * 0.12, [[0, o.hot], [0.6, o.col.replace('%A', '0.8')], [1, o.col.replace('%A', '0')]]);
+    }
+
+    /* irregular angular chunk with lit/shadow facets (debris / rock) */
+    function _drawChunk(ctx, S, o) {
+        var c = S / 2, rnd = _sRand(o.seed || 0xC4);
+        var n = 7, pts = [];
+        for (var i = 0; i < n; i++) {
+            var a = (i / n) * 6.2832;
+            var r = S * (0.2 + rnd() * 0.17);
+            pts.push([c + Math.cos(a) * r, c + Math.sin(a) * r]);
+        }
+        ctx.fillStyle = o.base;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (var k = 1; k < n; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+        ctx.closePath(); ctx.fill();
+        /* lit top-left facet + shadowed bottom-right facet */
+        ctx.fillStyle = o.lit;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        ctx.lineTo(pts[1][0], pts[1][1]);
+        ctx.lineTo(pts[2][0], pts[2][1]);
+        ctx.lineTo(c, c);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = o.dark;
+        ctx.beginPath();
+        ctx.moveTo(pts[3][0], pts[3][1]);
+        ctx.lineTo(pts[4][0], pts[4][1]);
+        ctx.lineTo(pts[5][0], pts[5][1]);
+        ctx.lineTo(c, c);
+        ctx.closePath(); ctx.fill();
+    }
+
+    /* the pack itself: key → { sz, draw }. Baked colors mirror the gradient
+       cells these replace, so tint/blend behaviour is unchanged. */
+    var _shapedHiResDefs = {
+
+        /* ── impact / light ─────────────────────────────────────────── */
+        'flash': { sz: 160, draw: function (ctx, S) {
+            _blob(ctx, S / 2, S / 2, S * 0.5,
+                  [[0, 'rgba(255,255,255,1)'], [0.2, 'rgba(255,244,200,0.9)'],
+                   [0.45, 'rgba(255,190,90,0.55)'], [0.7, 'rgba(255,120,30,0.2)'], [1, 'rgba(180,60,10,0)']]);
+            _drawGlint(ctx, S, { col: 'rgba(255,232,170,%A)', len: 0.5, wid: 0.035, vRatio: 1.0, diag: true, halo: 0.0 });
+        }},
+        'muzzle-flash': { sz: 128, draw: function (ctx, S) {
+            var c = S / 2, rnd = _sRand(0x30F1A5);
+            for (var i = 0; i < 7; i++) {
+                var a = (i / 7) * 6.2832 + rnd() * 0.5;
+                var len = S * (0.28 + rnd() * 0.2);
+                ctx.save(); ctx.translate(c, c); ctx.rotate(a);
+                var g = ctx.createLinearGradient(0, 0, len, 0);
+                g.addColorStop(0, 'rgba(255,255,240,1)');
+                g.addColorStop(0.5, 'rgba(255,220,110,0.85)');
+                g.addColorStop(1, 'rgba(255,150,40,0)');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.moveTo(0, -S * 0.05); ctx.lineTo(len, 0); ctx.lineTo(0, S * 0.05);
+                ctx.closePath(); ctx.fill();
+                ctx.restore();
+            }
+            _blob(ctx, c, c, S * 0.2, [[0, 'rgba(255,255,255,1)'], [0.6, 'rgba(255,235,160,0.8)'], [1, 'rgba(255,180,60,0)']]);
+        }},
+
+        /* ── sparks: anamorphic glints ──────────────────────────────── */
+        'spark-elec':    { sz: 128, draw: function (ctx, S) { _drawGlint(ctx, S, { col: 'rgba(120,200,255,%A)', len: 0.48, wid: 0.05, diag: true }); }},
+        'spark-blue':    { sz: 128, draw: function (ctx, S) { _drawGlint(ctx, S, { col: 'rgba(80,180,255,%A)', len: 0.44, wid: 0.05 }); }},
+        'spark-pink':    { sz: 128, draw: function (ctx, S) { _drawGlint(ctx, S, { col: 'rgba(255,90,190,%A)', len: 0.44, wid: 0.05 }); }},
+        'steel-spark':   { sz: 128, draw: function (ctx, S) { _drawGlint(ctx, S, { col: 'rgba(255,235,160,%A)', len: 0.55, wid: 0.038, vRatio: 0.45 }); }},
+        'divine-sparkle':{ sz: 128, draw: function (ctx, S) { _drawGlint(ctx, S, { col: 'rgba(255,244,190,%A)', len: 0.5, wid: 0.06, diag: true, halo: 0.3 }); }},
+        'ember': { sz: 96, draw: function (ctx, S) {
+            var c = S / 2, rnd = _sRand(0xE3B);
+            _blob(ctx, c, c, S * 0.42,
+                  [[0, 'rgba(255,220,120,0.7)'], [0.4, 'rgba(255,140,40,0.35)'], [1, 'rgba(180,50,10,0)']]);
+            for (var i = 0; i < 8; i++) {
+                var a = rnd() * 6.2832, d = S * (0.16 + rnd() * 0.14);
+                _blob(ctx, c + Math.cos(a) * d, c + Math.sin(a) * d, S * (0.03 + rnd() * 0.05),
+                      [[0, 'rgba(255,190,80,0.9)'], [1, 'rgba(255,120,30,0)']]);
+            }
+            _blob(ctx, c, c, S * 0.14,
+                  [[0, 'rgba(255,255,240,1)'], [0.55, 'rgba(255,210,110,0.95)'], [1, 'rgba(255,140,40,0)']]);
+        }},
+
+        /* ── smoke / dust: lobed billows with eroded holes ──────────── */
+        'smoke': { sz: 160, draw: function (ctx, S) {
+            _drawBillow(ctx, S, { seed: 0x50A0, lobes: 8, holes: 9, spread: 0.18,
+                stops: [[0, 'rgba(70,60,55,0.8)'], [0.55, 'rgba(45,38,34,0.5)'], [1, 'rgba(25,21,19,0)']],
+                coreStops: [[0, 'rgba(85,74,66,0.85)'], [0.6, 'rgba(50,42,38,0.5)'], [1, 'rgba(25,21,19,0)']] });
+        }},
+        'smoke-soft': { sz: 160, draw: function (ctx, S) {
+            _drawBillow(ctx, S, { seed: 0x50A1, lobes: 8, holes: 7, spread: 0.2,
+                stops: [[0, 'rgba(176,168,158,0.55)'], [0.55, 'rgba(140,132,124,0.34)'], [1, 'rgba(90,86,80,0)']],
+                coreStops: [[0, 'rgba(190,182,170,0.6)'], [0.6, 'rgba(150,142,132,0.36)'], [1, 'rgba(96,92,86,0)']] });
+        }},
+        'dust-puff': { sz: 144, draw: function (ctx, S) {
+            _drawBillow(ctx, S, { seed: 0xD057, lobes: 7, holes: 6, spread: 0.17,
+                stops: [[0, 'rgba(198,180,150,0.7)'], [0.55, 'rgba(162,146,118,0.45)'], [1, 'rgba(110,98,80,0)']] });
+        }},
+        'poison-mist': { sz: 144, draw: function (ctx, S) {
+            _drawBillow(ctx, S, { seed: 0x9013, lobes: 7, holes: 5, spread: 0.18,
+                stops: [[0, 'rgba(120,220,80,0.6)'], [0.55, 'rgba(70,160,50,0.4)'], [1, 'rgba(30,90,25,0)']] });
+            var rnd = _sRand(0x9014), c = S / 2;
+            for (var i = 0; i < 5; i++) {
+                var a = rnd() * 6.2832, d = S * (0.1 + rnd() * 0.2);
+                var x = c + Math.cos(a) * d, y = c + Math.sin(a) * d, r = S * (0.02 + rnd() * 0.025);
+                ctx.strokeStyle = 'rgba(190,255,130,0.8)';
+                ctx.lineWidth = S * 0.008;
+                ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.stroke();
+            }
+        }},
+        'void-mist': { sz: 144, draw: function (ctx, S) {
+            _drawBillow(ctx, S, { seed: 0x701D, lobes: 8, holes: 8, spread: 0.19,
+                stops: [[0, 'rgba(150,80,200,0.65)'], [0.5, 'rgba(96,44,140,0.42)'], [1, 'rgba(30,8,55,0)']],
+                coreStops: [[0, 'rgba(40,14,66,0.8)'], [0.55, 'rgba(80,36,120,0.45)'], [1, 'rgba(24,6,44,0)']] });
+        }},
+        'shadow-wisp': { sz: 144, draw: function (ctx, S) {
+            _drawBillow(ctx, S, { seed: 0x5AD0, lobes: 7, holes: 8, spread: 0.2,
+                stops: [[0, 'rgba(64,44,84,0.7)'], [0.55, 'rgba(40,26,54,0.45)'], [1, 'rgba(16,10,24,0)']] });
+        }},
+        'explosion-orange': { sz: 192, draw: function (ctx, S) {
+            _drawBillow(ctx, S, { seed: 0xB004, lobes: 9, holes: 6, spread: 0.2, lobeR: 0.22,
+                stops: [[0, 'rgba(255,200,90,0.95)'], [0.45, 'rgba(255,120,35,0.75)'], [0.8, 'rgba(150,45,10,0.25)'], [1, 'rgba(60,18,4,0)']],
+                coreStops: [[0, 'rgba(255,255,235,1)'], [0.4, 'rgba(255,225,140,0.95)'], [1, 'rgba(255,140,40,0)']] });
+        }},
+
+        /* ── fire tongues (drawn up; used by y-locked flame quads) ───── */
+        'flame': { sz: 160, draw: function (ctx, S) {
+            _drawTongue(ctx, S, [
+                { w: 0.30, h: 0.86, col: 'rgba(210,60,12,0.85)' },
+                { w: 0.235, h: 0.78, col: 'rgba(255,120,28,0.95)', dx: 0.012 },
+                { w: 0.165, h: 0.62, col: 'rgba(255,190,70,1)', dx: -0.008 },
+                { w: 0.095, h: 0.45, col: 'rgba(255,246,205,1)', base: 0.9 },
+            ], 0xF7A3E);
+        }},
+        'flame-hot': { sz: 160, draw: function (ctx, S) {
+            _drawTongue(ctx, S, [
+                { w: 0.28, h: 0.82, col: 'rgba(255,150,50,0.9)' },
+                { w: 0.20, h: 0.7, col: 'rgba(255,220,120,1)', dx: 0.01 },
+                { w: 0.12, h: 0.5, col: 'rgba(255,252,235,1)', base: 0.9 },
+            ], 0xF7A3F);
+        }},
+        'dark-flame': { sz: 160, draw: function (ctx, S) {
+            _drawTongue(ctx, S, [
+                { w: 0.30, h: 0.84, col: 'rgba(60,16,90,0.9)' },
+                { w: 0.22, h: 0.72, col: 'rgba(120,36,170,0.95)', dx: 0.012 },
+                { w: 0.14, h: 0.55, col: 'rgba(210,110,255,1)', dx: -0.006 },
+                { w: 0.075, h: 0.4, col: 'rgba(255,230,255,1)', base: 0.9 },
+            ], 0xDA4C);
+        }},
+
+        /* ── ice / frost / snow ─────────────────────────────────────── */
+        'ice-shard': { sz: 144, draw: function (ctx, S) {
+            _drawCrystal(ctx, S, { seed: 0x1CE5, arms: 6, len: 0.44, wid: 0.06,
+                col: 'rgba(140,215,255,%A)', hot: 'rgba(255,255,255,1)' });
+        }},
+        'frost-crystal': { sz: 144, draw: function (ctx, S) {
+            _drawCrystal(ctx, S, { seed: 0xF057, arms: 6, len: 0.46, wid: 0.04, branch: true,
+                col: 'rgba(190,235,255,%A)', hot: 'rgba(255,255,255,1)' });
+        }},
+        'snowflake': { sz: 96, draw: function (ctx, S) {
+            _drawCrystal(ctx, S, { seed: 0x5F1A, arms: 6, len: 0.4, wid: 0.03, branch: true,
+                col: 'rgba(235,246,255,%A)', hot: 'rgba(255,255,255,0.95)' });
+        }},
+
+        /* ── rings / shockwaves (world decals) ──────────────────────── */
+        'shockwave': { sz: 192, draw: function (ctx, S) {
+            _drawBand(ctx, S, { seed: 0x540C, r: 0.36, t: 0.045, echo: 0.45, inner: 0.26, flecks: 26,
+                col: 'rgba(255,170,60,%A)', hot: 'rgba(255,240,190,%A)' });
+        }},
+        'target-ring': { sz: 192, draw: function (ctx, S) {
+            _drawBand(ctx, S, { seed: 0x7A61, r: 0.37, t: 0.035, echo: 0.44, ticks: 8,
+                col: 'rgba(255,90,35,%A)', hot: 'rgba(255,170,110,%A)', a: 0.95 });
+        }},
+        'target-ring-gold': { sz: 192, draw: function (ctx, S) {
+            _drawBand(ctx, S, { seed: 0x7A62, r: 0.37, t: 0.035, echo: 0.44, ticks: 12, flecks: 14,
+                col: 'rgba(255,205,70,%A)', hot: 'rgba(255,240,180,%A)', a: 0.95 });
+        }},
+        'target-ring-blue': { sz: 192, draw: function (ctx, S) {
+            _drawBand(ctx, S, { seed: 0x7A63, r: 0.37, t: 0.035, echo: 0.44, ticks: 8,
+                col: 'rgba(60,160,255,%A)', hot: 'rgba(180,225,255,%A)', a: 0.95 });
+        }},
+        'target-ring-green': { sz: 192, draw: function (ctx, S) {
+            _drawBand(ctx, S, { seed: 0x7A64, r: 0.37, t: 0.035, echo: 0.44, ticks: 8,
+                col: 'rgba(60,230,140,%A)', hot: 'rgba(190,255,220,%A)', a: 0.95 });
+        }},
+        'halo-ring': { sz: 192, draw: function (ctx, S) {
+            _drawBand(ctx, S, { seed: 0x4A10, r: 0.38, t: 0.05, inner: 0.28, flecks: 20,
+                col: 'rgba(255,215,90,%A)', hot: 'rgba(255,245,200,%A)', a: 0.95 });
+        }},
+        'stun-ring': { sz: 192, draw: function (ctx, S) {
+            _drawBand(ctx, S, { seed: 0x57C2, r: 0.37, t: 0.04, echo: 0.46, ticks: 6, flecks: 10,
+                col: 'rgba(200,235,255,%A)', hot: 'rgba(255,255,255,%A)', a: 0.95 });
+        }},
+
+        /* ── ground scars ───────────────────────────────────────────── */
+        'scorch': { sz: 192, draw: function (ctx, S) {
+            var c = S / 2, rnd = _sRand(0x5C0C);
+            _drawBillow(ctx, S, { seed: 0x5C0D, lobes: 9, spread: 0.14, lobeR: 0.2,
+                stops: [[0, 'rgba(26,14,8,0.95)'], [0.6, 'rgba(38,22,12,0.75)'], [1, 'rgba(50,30,16,0)']] });
+            /* radial cracks with faintly glowing inner tips */
+            ctx.lineCap = 'round';
+            for (var i = 0; i < 9; i++) {
+                var a = (i / 9) * 6.2832 + rnd() * 0.5;
+                var r0 = S * (0.05 + rnd() * 0.05), r1 = S * (0.26 + rnd() * 0.2);
+                var seg = 3 + Math.floor(rnd() * 2), px = c + Math.cos(a) * r0, py = c + Math.sin(a) * r0;
+                ctx.strokeStyle = 'rgba(255,120,40,' + (0.35 + rnd() * 0.3) + ')';
+                ctx.lineWidth = S * (0.008 + rnd() * 0.008);
+                ctx.beginPath(); ctx.moveTo(px, py);
+                for (var s2 = 1; s2 <= seg; s2++) {
+                    var rr = r0 + (r1 - r0) * (s2 / seg);
+                    var aa = a + (rnd() - 0.5) * 0.5;
+                    px = c + Math.cos(aa) * rr; py = c + Math.sin(aa) * rr;
+                    ctx.lineTo(px, py);
+                }
+                ctx.stroke();
+            }
+            _blob(ctx, c, c, S * 0.14, [[0, 'rgba(255,150,50,0.5)'], [0.6, 'rgba(180,70,20,0.25)'], [1, 'rgba(90,30,8,0)']]);
+        }},
+
+        /* ── energy lances (linear-right quad sprites) ──────────────── */
+        'plasma':    { sz: 160, draw: function (ctx, S) { _drawLance(ctx, S, { col: 'rgba(130,205,255,%A)', striate: 7, seed: 0x9145 }); }},
+        'emp-arc':   { sz: 160, draw: function (ctx, S) { _drawLance(ctx, S, { col: 'rgba(150,215,255,%A)', striate: 5, seed: 0x9146 }); }},
+        'acid-green':{ sz: 160, draw: function (ctx, S) { _drawLance(ctx, S, { col: 'rgba(190,245,90,%A)', striate: 6, seed: 0x9147 }); }},
+        'heat-ray':  { sz: 160, draw: function (ctx, S) { _drawLance(ctx, S, { col: 'rgba(255,130,45,%A)', striate: 7, seed: 0x9148 }); }},
+        'laser-pink':{ sz: 160, draw: function (ctx, S) { _drawLance(ctx, S, { col: 'rgba(255,120,220,%A)', striate: 5, seed: 0x9149 }); }},
+        'laser-red': { sz: 160, draw: function (ctx, S) { _drawLance(ctx, S, { col: 'rgba(255,80,80,%A)', striate: 5, seed: 0x914A }); }},
+        'holy-pillar':{ sz: 160, draw: function (ctx, S) { _drawLance(ctx, S, { col: 'rgba(255,240,190,%A)', striate: 4, seed: 0x914B }); }},
+
+        /* ── jagged lightning streak (vertical, for stretched quads) ── */
+        'lightning': { sz: 160, draw: function (ctx, S) {
+            var rnd = _sRand(0x1147);
+            var passes = [
+                { w: S * 0.10, col: 'rgba(110,180,255,0.35)' },
+                { w: S * 0.045, col: 'rgba(170,220,255,0.8)' },
+                { w: S * 0.018, col: 'rgba(255,255,255,1)' },
+            ];
+            var pts = [];
+            var n = 7;
+            for (var i = 0; i <= n; i++) {
+                var t = i / n;
+                var xo = (i === 0 || i === n) ? 0 : (rnd() - 0.5) * S * 0.34 * Math.sin(t * Math.PI);
+                pts.push([S / 2 + xo, t * S]);
+            }
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            for (var p2 = 0; p2 < passes.length; p2++) {
+                ctx.strokeStyle = passes[p2].col;
+                ctx.lineWidth = passes[p2].w;
+                ctx.beginPath();
+                ctx.moveTo(pts[0][0], pts[0][1]);
+                for (var k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+                ctx.stroke();
+            }
+            /* one fork */
+            ctx.strokeStyle = 'rgba(190,225,255,0.7)';
+            ctx.lineWidth = S * 0.02;
+            ctx.beginPath();
+            ctx.moveTo(pts[3][0], pts[3][1]);
+            ctx.lineTo(pts[3][0] + S * 0.18, pts[3][1] + S * 0.16);
+            ctx.stroke();
+        }},
+
+        /* ── liquids / nature / misc ────────────────────────────────── */
+        'water-splash': { sz: 144, draw: function (ctx, S) {
+            var c = S / 2, rnd = _sRand(0xA04A);
+            _blob(ctx, c, c, S * 0.3, [[0, 'rgba(200,235,255,0.9)'], [0.55, 'rgba(90,170,230,0.55)'], [1, 'rgba(30,90,170,0)']]);
+            /* crown of droplet spikes */
+            for (var i = 0; i < 9; i++) {
+                var a = (i / 9) * 6.2832 + rnd() * 0.3;
+                var d = S * (0.22 + rnd() * 0.14);
+                var x = c + Math.cos(a) * d, y = c + Math.sin(a) * d;
+                _blob(ctx, x, y, S * (0.035 + rnd() * 0.035),
+                      [[0, 'rgba(235,250,255,0.95)'], [0.6, 'rgba(120,195,245,0.6)'], [1, 'rgba(60,130,210,0)']]);
+            }
+            _blob(ctx, c, c, S * 0.1, [[0, 'rgba(255,255,255,1)'], [1, 'rgba(160,215,255,0)']]);
+        }},
+        'poison-bubble': { sz: 112, draw: function (ctx, S) {
+            var c = S / 2;
+            _blob(ctx, c, c, S * 0.4, [[0, 'rgba(140,230,80,0.35)'], [0.75, 'rgba(90,180,50,0.5)'], [1, 'rgba(50,120,30,0)']]);
+            ctx.strokeStyle = 'rgba(200,255,140,0.9)';
+            ctx.lineWidth = S * 0.03;
+            ctx.beginPath(); ctx.arc(c, c, S * 0.34, 0, 6.2832); ctx.stroke();
+            _blob(ctx, c - S * 0.13, c - S * 0.15, S * 0.08,
+                  [[0, 'rgba(240,255,210,0.95)'], [1, 'rgba(200,255,150,0)']]);
+        }},
+        'bubble': { sz: 112, draw: function (ctx, S) {
+            var c = S / 2;
+            _blob(ctx, c, c, S * 0.4, [[0, 'rgba(150,200,255,0.18)'], [0.78, 'rgba(140,190,250,0.4)'], [1, 'rgba(90,140,220,0)']]);
+            ctx.strokeStyle = 'rgba(220,240,255,0.85)';
+            ctx.lineWidth = S * 0.025;
+            ctx.beginPath(); ctx.arc(c, c, S * 0.35, 0, 6.2832); ctx.stroke();
+            _blob(ctx, c - S * 0.14, c - S * 0.15, S * 0.07,
+                  [[0, 'rgba(255,255,255,0.95)'], [1, 'rgba(220,240,255,0)']]);
+        }},
+        'heal-cross': { sz: 128, draw: function (ctx, S) {
+            var c = S / 2, w = S * 0.13, l = S * 0.34;
+            _blob(ctx, c, c, S * 0.42, [[0, 'rgba(140,255,180,0.5)'], [0.6, 'rgba(90,220,130,0.2)'], [1, 'rgba(50,150,80,0)']]);
+            ctx.fillStyle = 'rgba(210,255,225,0.98)';
+            function rrect(x, y, ww, hh) {
+                var r = w * 0.4;
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.arcTo(x + ww, y, x + ww, y + hh, r);
+                ctx.arcTo(x + ww, y + hh, x, y + hh, r);
+                ctx.arcTo(x, y + hh, x, y, r);
+                ctx.arcTo(x, y, x + ww, y, r);
+                ctx.fill();
+            }
+            rrect(c - w / 2, c - l, w, l * 2);
+            rrect(c - l, c - w / 2, l * 2, w);
+            _blob(ctx, c, c, S * 0.1, [[0, 'rgba(255,255,255,1)'], [1, 'rgba(190,255,215,0)']]);
+        }},
+        'holy-light': { sz: 144, draw: function (ctx, S) {
+            _blob(ctx, S / 2, S / 2, S * 0.5,
+                  [[0, 'rgba(255,255,255,1)'], [0.3, 'rgba(255,245,200,0.9)'], [0.6, 'rgba(255,220,120,0.5)'], [1, 'rgba(200,160,60,0)']]);
+            _drawGlint(ctx, S, { col: 'rgba(255,240,180,%A)', len: 0.5, wid: 0.045, vRatio: 1.35, halo: 0 });
+        }},
+        'psi-pulse': { sz: 144, draw: function (ctx, S) {
+            var c = S / 2;
+            _blob(ctx, c, c, S * 0.46,
+                  [[0, 'rgba(255,255,255,0.9)'], [0.3, 'rgba(190,255,210,0.6)'], [0.62, 'rgba(210,90,230,0.4)'], [1, 'rgba(140,40,170,0)']]);
+            for (var i = 1; i <= 3; i++) {
+                ctx.strokeStyle = i % 2 ? 'rgba(230,140,255,' + (0.65 - i * 0.12) + ')'
+                                        : 'rgba(150,255,200,' + (0.6 - i * 0.12) + ')';
+                ctx.lineWidth = S * 0.022;
+                ctx.beginPath(); ctx.arc(c, c, S * (0.12 + i * 0.106), 0, 6.2832); ctx.stroke();
+            }
+        }},
+        'vine-green': { sz: 128, draw: function (ctx, S) {
+            var c = S / 2, rnd = _sRand(0x1EAF);
+            _blob(ctx, c, c, S * 0.34, [[0, 'rgba(215,255,170,0.9)'], [0.55, 'rgba(110,220,80,0.55)'], [1, 'rgba(40,130,40,0)']]);
+            /* leaf pods around the core */
+            for (var i = 0; i < 5; i++) {
+                var a = (i / 5) * 6.2832 + rnd() * 0.4;
+                var d = S * 0.22;
+                ctx.save();
+                ctx.translate(c + Math.cos(a) * d, c + Math.sin(a) * d);
+                ctx.rotate(a + Math.PI / 2);
+                var lg = ctx.createLinearGradient(0, -S * 0.12, 0, S * 0.12);
+                lg.addColorStop(0, 'rgba(190,255,140,0.95)');
+                lg.addColorStop(1, 'rgba(60,160,55,0.5)');
+                ctx.fillStyle = lg;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, S * 0.055, S * 0.12, 0, 0, 6.2832);
+                ctx.fill();
+                ctx.restore();
+            }
+        }},
+        'leaf': { sz: 96, draw: function (ctx, S) {
+            var c = S / 2;
+            ctx.save();
+            ctx.translate(c, c); ctx.rotate(0.6);
+            var g = ctx.createLinearGradient(0, -S * 0.3, 0, S * 0.3);
+            g.addColorStop(0, 'rgba(120,200,70,0.95)');
+            g.addColorStop(1, 'rgba(50,120,35,0.9)');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.moveTo(0, -S * 0.32);
+            ctx.quadraticCurveTo(S * 0.22, -S * 0.05, 0, S * 0.32);
+            ctx.quadraticCurveTo(-S * 0.22, -S * 0.05, 0, -S * 0.32);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(210,255,170,0.7)';
+            ctx.lineWidth = S * 0.018;
+            ctx.beginPath(); ctx.moveTo(0, -S * 0.28); ctx.lineTo(0, S * 0.28); ctx.stroke();
+            ctx.restore();
+        }},
+        'petal': { sz: 96, draw: function (ctx, S) {
+            var c = S / 2;
+            ctx.save();
+            ctx.translate(c, c); ctx.rotate(-0.5);
+            var g = ctx.createLinearGradient(0, -S * 0.3, 0, S * 0.28);
+            g.addColorStop(0, 'rgba(255,225,235,0.95)');
+            g.addColorStop(1, 'rgba(250,150,180,0.85)');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.moveTo(0, -S * 0.3);
+            ctx.bezierCurveTo(S * 0.26, -S * 0.18, S * 0.2, S * 0.2, 0, S * 0.28);
+            ctx.bezierCurveTo(-S * 0.2, S * 0.2, -S * 0.26, -S * 0.18, 0, -S * 0.3);
+            ctx.fill();
+            ctx.restore();
+        }},
+
+        /* ── debris chunks ──────────────────────────────────────────── */
+        'debris': { sz: 96, draw: function (ctx, S) {
+            _drawChunk(ctx, S, { seed: 0xDE8, base: 'rgba(85,70,52,1)', lit: 'rgba(130,108,82,1)', dark: 'rgba(48,38,28,1)' });
+        }},
+        'rock-debris': { sz: 96, draw: function (ctx, S) {
+            _drawChunk(ctx, S, { seed: 0x40CC, base: 'rgba(140,116,86,1)', lit: 'rgba(196,168,128,1)', dark: 'rgba(88,70,50,1)' });
+        }},
+        'mud-chunk': { sz: 96, draw: function (ctx, S) {
+            _drawChunk(ctx, S, { seed: 0x30D, base: 'rgba(96,74,46,1)', lit: 'rgba(130,102,66,1)', dark: 'rgba(58,44,26,1)' });
+        }},
+
+        /* ── meteor: molten rock with a hot leading face ────────────── */
+        'meteor': { sz: 160, draw: function (ctx, S) {
+            var c = S / 2, rnd = _sRand(0x3E7);
+            _blob(ctx, c - S * 0.06, c - S * 0.06, S * 0.5,
+                  [[0, 'rgba(255,240,200,0.95)'], [0.35, 'rgba(255,160,60,0.7)'], [0.7, 'rgba(200,80,20,0.3)'], [1, 'rgba(100,30,8,0)']]);
+            /* rocky body */
+            ctx.fillStyle = 'rgba(52,34,24,0.96)';
+            ctx.beginPath();
+            for (var i = 0; i <= 9; i++) {
+                var a = (i / 9) * 6.2832;
+                var r = S * (0.26 + rnd() * 0.05);
+                var x = c + Math.cos(a) * r, y = c + Math.sin(a) * r;
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.closePath(); ctx.fill();
+            /* glowing cracks */
+            ctx.lineCap = 'round';
+            for (var k = 0; k < 6; k++) {
+                var ka = rnd() * 6.2832;
+                var r0 = S * 0.06, r1 = S * (0.18 + rnd() * 0.1);
+                ctx.strokeStyle = 'rgba(255,150,50,' + (0.6 + rnd() * 0.3) + ')';
+                ctx.lineWidth = S * (0.012 + rnd() * 0.01);
+                ctx.beginPath();
+                ctx.moveTo(c + Math.cos(ka) * r0, c + Math.sin(ka) * r0);
+                ctx.lineTo(c + Math.cos(ka + 0.4) * r1, c + Math.sin(ka + 0.4) * r1);
+                ctx.stroke();
+            }
+            /* hot leading rim (upper-left) */
+            ctx.strokeStyle = 'rgba(255,220,140,0.9)';
+            ctx.lineWidth = S * 0.03;
+            ctx.beginPath();
+            ctx.arc(c, c, S * 0.27, Math.PI * 0.8, Math.PI * 1.6);
+            ctx.stroke();
+        }},
+
+        /* ── blood decals (globs carry the 3D read; these are marks) ── */
+        'blood-splat': { sz: 160, draw: function (ctx, S) {
+            var c = S / 2, rnd = _sRand(0xB100D);
+            _drawBillow(ctx, S, { seed: 0xB10E, lobes: 8, spread: 0.13, lobeR: 0.17,
+                stops: [[0, 'rgba(150,16,16,0.95)'], [0.6, 'rgba(110,10,10,0.8)'], [1, 'rgba(70,5,5,0)']] });
+            for (var i = 0; i < 10; i++) {
+                var a = rnd() * 6.2832, d = S * (0.3 + rnd() * 0.16);
+                _blob(ctx, c + Math.cos(a) * d, c + Math.sin(a) * d, S * (0.015 + rnd() * 0.03),
+                      [[0, 'rgba(140,14,14,0.9)'], [1, 'rgba(90,8,8,0)']]);
+            }
+        }},
+        'blood-pool': { sz: 160, draw: function (ctx, S) {
+            var c = S / 2, rnd = _sRand(0x9001);
+            ctx.fillStyle = 'rgba(90,6,6,0.94)';
+            ctx.beginPath();
+            for (var i = 0; i <= 11; i++) {
+                var a = (i / 11) * 6.2832;
+                var r = S * (0.3 + rnd() * 0.1);
+                var x = c + Math.cos(a) * r, y = c + Math.sin(a) * r * 0.9;
+                if (i === 0) ctx.moveTo(x, y); else ctx.quadraticCurveTo(
+                    c + Math.cos(a - 0.28) * r * 1.08, c + Math.sin(a - 0.28) * r * 0.98, x, y);
+            }
+            ctx.closePath(); ctx.fill();
+            _blob(ctx, c - S * 0.08, c - S * 0.06, S * 0.16,
+                  [[0, 'rgba(180,40,40,0.5)'], [1, 'rgba(120,10,10,0)']]);
+        }},
+    };
+
+    function _buildShapedHiRes() {
+        for (var key in _shapedHiResDefs) {
+            var def = _shapedHiResDefs[key];
+            var cvs = document.createElement('canvas');
+            cvs.width = cvs.height = def.sz;
+            try { def.draw(cvs.getContext('2d'), def.sz); } catch (e) {
+                console.warn('[ThreeVFX] shaped sprite draw failed: ' + key, e);
+                continue;
+            }
+            var tex = new THREE.CanvasTexture(cvs);
+            tex.premultiplyAlpha = false;
+            tex.magFilter = THREE.LinearFilter;
+            tex.minFilter = THREE.LinearFilter;
+            tex.needsUpdate = true;
+            _hiResTextures[key] = tex;
+        }
+    }
+
     function _buildProceduralHiRes() {
         /* crisp 128px crosshair — billboard particles pick the hi-res
            texture over the 64px atlas cell when one exists */
@@ -515,6 +1242,8 @@ const ThreeVFX = (function () {
             tex.needsUpdate = true;
             _hiResTextures[key] = tex;
         }
+
+        _buildShapedHiRes();
     }
 
     function _buildAtlas() {
@@ -969,7 +1698,7 @@ const ThreeVFX = (function () {
                 onComplete: null,
                 _trackHeading: false, _headingOffset: 0,
                 _beamYawDeg: null, _beamPitchDeg: 0,
-                _spriteRot: 0,
+                _spriteRot: 0, _spriteSpin: 0,
                 _uvRect: null,
                 _gsx: 1, _gsy: 1, _gsz: 1,
                 _rot0x: 0, _rot0y: 0, _rot0z: 0,
@@ -1018,6 +1747,7 @@ const ThreeVFX = (function () {
         p._beamYawDeg = null; p._trackHeading = false; p._uvRect = null;
         p._tint = null;
         p._seek = null; p._orbit = null; p._wander = null; p._stretchVel = 0;
+        p._spriteRot = 0; p._spriteSpin = 0;
         p.poolType = null; p.slotIdx = -1;
         _aliveCount = Math.max(0, _aliveCount - 1);
     }
@@ -1103,7 +1833,14 @@ const ThreeVFX = (function () {
         // Normalized to a peak channel of ~1.12 (see _normTint) so tinting
         // recolours a particle instead of just dimming it.
         p._tint = opts.tint != null ? _normTint(opts.tint) : null;
-        p._spriteRot = opts.spriteRot || 0;
+        /* Tumble: cloud/debris billboards pick up a random facing + slow
+           spin by default (shaped textures made identical-rotation spam
+           obvious). Explicit spriteRot/spriteSpin always wins; flame
+           tongues, glints and rings are NOT in the auto set on purpose. */
+        p._spriteRot = opts.spriteRot != null ? opts.spriteRot
+                     : (_AUTO_TUMBLE[sprite] ? _rn(0, 360) : 0);
+        p._spriteSpin = opts.spriteSpin != null ? _rangePick(opts.spriteSpin)
+                      : (_AUTO_TUMBLE[sprite] ? _rn(-55, 55) : 0);
         p._uvRect = _getUvRect(sprite);
 
         if (sprite === 'wave-1' || sprite === 'wave-anim') {
@@ -1303,6 +2040,12 @@ const ThreeVFX = (function () {
         var sz = _lerp(p.size0, p.size1, t);
         entry.sprite.scale.set(sz, sz, 1);
 
+        if (p._spriteRot || p._spriteSpin) {
+            entry.material.rotation = (p._spriteRot + p._spriteSpin * (p.life / 1000)) * 0.017453293;
+        } else if (entry.material.rotation !== 0) {
+            entry.material.rotation = 0;
+        }
+
         var op = _lerp(p.opacity0, p.opacity1, t);
         entry.material.opacity = op;
 
@@ -1337,9 +2080,9 @@ const ThreeVFX = (function () {
         mesh.position.set(w.x, w.y + 0.5, w.z);
 
         mesh.rotation.set(-Math.PI / 2, 0, 0);
-        if (p._spriteRot) {
-
-            mesh.rotation.set(-Math.PI / 2, 0, p._spriteRot * Math.PI / 180);
+        if (p._spriteRot || p._spriteSpin) {
+            mesh.rotation.set(-Math.PI / 2, 0,
+                (p._spriteRot + p._spriteSpin * (p.life / 1000)) * Math.PI / 180);
         }
 
         mesh.scale.set(sw, sh, 1);
@@ -1401,8 +2144,9 @@ const ThreeVFX = (function () {
             else { mesh.quaternion.identity(); }
         }
 
-        if (p._spriteRot) {
-            _tmpQuat2.setFromAxisAngle(_tmpVec.set(0, 0, 1), p._spriteRot * Math.PI / 180);
+        if (p._spriteRot || p._spriteSpin) {
+            _tmpQuat2.setFromAxisAngle(_tmpVec.set(0, 0, 1),
+                (p._spriteRot + p._spriteSpin * (p.life / 1000)) * Math.PI / 180);
             mesh.quaternion.multiply(_tmpQuat2);
         }
 
