@@ -19986,6 +19986,1571 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         window.VFX3D_STAGE_ARCHETYPES = _STAGE_ARCHETYPES;
     }
 
+    /* ════════════════════════════════════════════════════════════════════
+       VFX PASS-3 COVERAGE SECTION (2026-08-04)
+       ════════════════════════════════════════════════════════════════════
+       Every spell that previously had NO visual identity (20 pure theme-
+       fallback spells) or shared a byte-identical SPELL_MAP entry with
+       other spells (42 duplicate groups / 115 spells) gets its own recipe
+       here. Data-only: new EFFECTS descriptors + SPELL_MAP overrides,
+       appended at the tail so every table already exists. Later assignment
+       wins over the earlier shared mappings — the old group recipes stay
+       in place for the one member each was actually designed for (the
+       "namesake" keeps its look; the hitchhikers diverge).
+       Relay/online: everything here rides the existing SPELL_MAP beat
+       pipeline through VFX3D.fire, which online.js already carries
+       host→guest — no new plumbing (RULE #2 holds by construction).
+       Verified by check-vfx-coverage.js: after this section, 0 spells with
+       no identity, 0 multi-member duplicate groups. */
+
+    /* ── DEPLOY DECUPLETS — ten deployables shared one generic puff. Each
+       arrival now says WHAT was placed. ─────────────────────────────────── */
+    EFFECTS['raceCloneDecoy_burst'] = {           /* illusion double: psychic shimmer */
+        layers: [
+            { sprite: 'flash', ml: 140, size0: 54, size1: 16, tint: 0xd898ff, opacity0: 0.7 },
+            { count: 8, sprite: 'psi-pulse', ml: [380, 560], offsetXY: 34, z: [10, 60],
+              seekIn: [300, 480], seekInZ: [20, 55], seekSpiral: 200, size0: [8, 13], size1: 3, opacity0: 0.9 },
+            { count: 2, anchor: 'torso', mode: 'y-locked', sprite: 'shadow-wisp', ml: [420, 600],
+              offsetXY: 14, w0: [16, 22], w1: [8, 12], h0: [46, 60], h1: [70, 92], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceFederationBeacon_burst'] = {     /* alien beacon: tractor pillar + orbiting arcs */
+        layers: [
+            { anchor: 'floor', mode: 'y-locked', sprite: 'ufo-glow', ml: 700, z: 2,
+              w0: 26, w1: 40, h0: 30, h1: 190, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 420, z: 2,
+              tint: 0x66ff99, size0: 30, size1: 150, opacity0: 0.7 },
+            { count: 7, sprite: 'emp-arc', ml: [420, 640], offsetXY: 40, z: [8, 40],
+              seekIn: [360, 560], seekInZ: [30, 120], seekSpiral: 320, size0: [6, 10], size1: 2 },
+            { count: 4, sprite: 'divine-sparkle', ml: [500, 800], offsetXY: 8, z: [120, 200],
+              tint: 0x99ffbb, vzRange: [-70, -30], size0: [5, 8], size1: 2, opacity0: 0.8 },
+        ]
+    };
+    EFFECTS['raceFlashbangMine_burst'] = {        /* armed mine: two clicks, then live */
+        layers: [
+            { sprite: 'muzzle-flash', ml: 90, size0: 34, size1: 10, opacity0: 0.9 },
+            { sprite: 'muzzle-flash', ml: 70, size0: 22, size1: 8, delayMs: 170, opacity0: 0.8 },
+            { count: 6, sprite: 'steel-spark', ml: [160, 300], offsetXY: 8, z: [2, 10],
+              vxRange: 180, vyRange: 180, vzRange: [20, 90], gravity: 420, drag: 1.0, size0: [4, 7], size1: 1 },
+            { count: 2, sprite: 'smoke-soft', ml: [300, 460], offsetXY: 6, z: [4, 10],
+              vzRange: [15, 35], size0: [10, 14], size1: [20, 30], opacity0: 0.4 },
+        ]
+    };
+    EFFECTS['raceGravePassage_burst'] = {         /* grave tunnel: earth erupts, spirits vent */
+        shake: 'normal',
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1600, z: 1, size0: 60, size1: 74, opacity0: 0.6 },
+            { count: 8, sprite: 'mud-chunk', ml: [340, 620], offsetXY: 14, z: [0, 8],
+              vxRange: 150, vyRange: 150, vzRange: [110, 260], gravity: 520, drag: 0.5, size0: [7, 12], size1: 3 },
+            { count: 5, anchor: 'floor', sprite: 'dust-puff', ml: [420, 680], offsetXY: 16, z: [2, 10],
+              vzRange: [20, 60], size0: [16, 26], size1: [36, 54], opacity0: 0.6 },
+            { count: 4, sprite: 'shadow-wisp', ml: [520, 840], offsetXY: 12, z: [10, 30],
+              tint: 0x9fe8a0, vzRange: [40, 90], drag: 0.4, wander: { amp: 26, freq: 1.2 },
+              size0: [12, 18], size1: [24, 34], opacity0: 0.55 },
+        ]
+    };
+    EFFECTS['raceLucidTrap_burst'] = {            /* dream snare: drowsy pink spiral */
+        layers: [
+            { sprite: 'flash', ml: 200, size0: 40, size1: 14, tint: 0xffb0e8, opacity0: 0.5 },
+            { count: 9, sprite: 'spark-pink', ml: [520, 780], offsetXY: 42, z: [6, 50],
+              seekIn: [480, 720], seekInZ: [16, 40], seekSpiral: 420, size0: [6, 10], size1: 2, opacity0: 0.85 },
+            { count: 4, sprite: 'petal', ml: [700, 1000], offsetXY: 20, z: [30, 70], tint: 0xffc8f0,
+              vzRange: [-26, -10], gravity: 20, wander: { amp: 30, freq: 0.8 }, size0: [8, 12], size1: [6, 9], opacity0: 0.8 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 620, z: 2,
+              tint: 0xff9ae0, size0: 26, size1: 110, opacity0: 0.45 },
+        ]
+    };
+    EFFECTS['raceOrichalcumBarrier_burst'] = {    /* forged barrier: anvil snap */
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 62, size1: 18, tint: 0xfff2c8, opacity0: 0.95 },
+            { count: 10, sprite: 'steel-spark', ml: [200, 420], offsetXY: 10, z: [6, 26],
+              vxRange: 240, vyRange: 240, vzRange: [60, 200], gravity: 480, drag: 0.9, size0: [5, 9], size1: 1 },
+            { count: 4, sprite: 'shield-blue', ml: [260, 420], offsetXY: 24, z: [10, 40],
+              tint: 0xffd890, size0: [10, 16], size1: 4, opacity0: 0.8 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 300, z: 2,
+              tint: 0xe8c878, size0: 34, size1: 120, opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['racePhantomDouble_burst'] = {        /* ghost twin: cold plume, slow */
+        layers: [
+            { anchor: 'torso', sprite: 'void-mist', ml: [600, 900], count: 5, offsetXY: 10, z: [-10, 30],
+              tint: 0xcfd8ff, vzRange: [20, 55], drag: 0.6, wander: { amp: 20, freq: 0.9 },
+              size0: [16, 26], size1: [30, 44], opacity0: 0.6 },
+            { sprite: 'flash', ml: 260, size0: 44, size1: 20, tint: 0xdfe6ff, opacity0: 0.4 },
+            { count: 3, anchor: 'torso', mode: 'y-locked', sprite: 'shadow-wisp', ml: [500, 760],
+              offsetXY: 12, tint: 0xb8c4ff, w0: [14, 20], w1: [6, 10], h0: [40, 56], h1: [66, 88], opacity0: 0.45 },
+        ]
+    };
+    EFFECTS['raceStuffedDouble_burst'] = {        /* stuffed decoy: comic pop, stuffing everywhere */
+        layers: [
+            { sprite: 'flash', ml: 100, size0: 46, size1: 14, tint: 0xfff0d0, opacity0: 0.8 },
+            { count: 8, sprite: 'leaf', ml: [420, 700], offsetXY: 10, z: [16, 40], tint: 0xf0e0b8,
+              vxRange: 120, vyRange: 120, vzRange: [60, 160], gravity: 180, drag: 1.3,
+              wander: { amp: 34, freq: 1.6 }, size0: [7, 11], size1: [5, 8], opacity0: 0.95 },
+            { count: 3, sprite: 'dust-puff', ml: [300, 480], offsetXY: 10, z: [6, 18],
+              size0: [14, 20], size1: [26, 38], opacity0: 0.55 },
+        ]
+    };
+    EFFECTS['raceTeslaTrap_burst'] = {            /* tesla trap: caged lightning idles */
+        layers: [
+            { sprite: 'plasma', ml: 150, size0: 40, size1: 12, opacity0: 0.85 },
+            { count: 8, sprite: 'emp-arc', ml: [220, 420], offsetXY: 18, z: [4, 30],
+              vxRange: 90, vyRange: 90, vzRange: [10, 60], drag: 1.4, size0: [6, 11], size1: 2 },
+            { count: 4, sprite: 'spark-elec', ml: [180, 300], offsetXY: 12, z: [2, 16],
+              delayMs: 220, vxRange: 140, vyRange: 140, size0: [5, 8], size1: 1 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 260, z: 2,
+              tint: 0x86c8ff, size0: 26, size1: 96, opacity0: 0.6 },
+        ]
+    };
+    EFFECTS['raceTunnelNetwork_burst'] = {        /* tunnel mouth: sand fountain, low dust */
+        layers: [
+            { count: 7, sprite: 'sand-particle', ml: [300, 560], offsetXY: 12, z: [0, 6],
+              vxRange: 130, vyRange: 130, vzRange: [90, 210], gravity: 460, drag: 0.7, size0: [5, 9], size1: 2 },
+            { count: 5, anchor: 'floor', sprite: 'dust-puff', ml: [420, 700], offsetXY: 18, z: [2, 8],
+              vzRange: [10, 40], size0: [18, 28], size1: [38, 56], opacity0: 0.6 },
+            { count: 3, sprite: 'mud-chunk', ml: [300, 520], offsetXY: 10, z: [0, 6],
+              vxRange: 110, vyRange: 110, vzRange: [80, 180], gravity: 500, size0: [6, 10], size1: 3 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1400, z: 1, size0: 52, size1: 64, opacity0: 0.5 },
+        ]
+    };
+    ['raceCloneDecoy', 'raceFederationBeacon', 'raceFlashbangMine', 'raceGravePassage',
+     'raceLucidTrap', 'raceOrichalcumBarrier', 'racePhantomDouble', 'raceStuffedDouble',
+     'raceTeslaTrap', 'raceTunnelNetwork'].forEach(function (depId) {
+        EFFECTS[depId + '_aura'] = { aoeRadius: 0, impactCenterEffect: depId + '_burst' };
+        SPELL_MAP[depId] = Object.assign({}, SPELL_MAP[depId], { aura: depId + '_aura' });
+    });
+
+    /* ── SKYFALL SEPTUPLETS — seven slams shared one crater. The generic
+       _skyfall_impact stays as the base layer for whoever still wants it;
+       each of the seven now lands with its own signature. ──────────────── */
+    EFFECTS['raceGiantSmash_impact'] = {          /* the fist: knuckle flash + rock spokes */
+        shake: 'hard',
+        layers: [
+            { sprite: 'flash', ml: 130, size0: 130, size1: 30, opacity0: 1 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 380, z: 2,
+              tint: 0xd8b070, size0: 50, size1: 330, opacity0: 0.95 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1800, z: 1, size0: 90, size1: 108, opacity0: 0.65 },
+            { count: 12, sprite: 'rock-debris', ml: [380, 700], offsetXY: 8,
+              vxRange: 300, vyRange: 300, vzRange: [60, 220], gravity: 560, drag: 0.3, size0: [7, 13], size1: 4 },
+            { count: 8, anchor: 'floor', sprite: 'dust-puff', ml: [420, 760], offsetXY: 22, z: [2, 12],
+              vxRange: 200, vyRange: 200, vzRange: [20, 60], gravity: 60, size0: [20, 32], size1: [50, 76], opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['raceDragonToss_impact'] = {          /* hurled prey: skidding furrow + dragonfire licks */
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 92, size1: 22, tint: 0xffcf9a, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1500, z: 1,
+              w0: 130, w1: 150, h0: 60, h1: 70, opacity0: 0.55 },
+            { count: 9, anchor: 'floor', sprite: 'dust-puff', ml: [360, 640], offsetXY: 30, z: [2, 10],
+              vxRange: [40, 240], vyRange: 90, vzRange: [15, 50], size0: [16, 26], size1: [40, 60], opacity0: 0.65 },
+            { count: 4, anchor: 'floor', mode: 'y-locked', sprite: 'fire-glow', ml: [280, 480],
+              offsetXY: 30, w0: [10, 16], w1: [4, 8], h0: [22, 34], h1: [50, 76], opacity0: 0.8 },
+            { count: 6, sprite: 'debris', ml: [320, 560], offsetXY: 16,
+              vxRange: 180, vyRange: 180, vzRange: [60, 170], gravity: 480, size0: [6, 10], size1: 3 },
+        ]
+    };
+    EFFECTS['raceStoneDrop_impact'] = {           /* the monolith: one thud, one column */
+        shake: 'hard',
+        layers: [
+            { sprite: 'flash', ml: 120, size0: 100, size1: 24, tint: 0xe8dcc8, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'y-locked', sprite: 'dust-puff', ml: 900, z: 2,
+              w0: 40, w1: 70, h0: 60, h1: 240, opacity0: 0.75 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 420, z: 2,
+              tint: 0xcabfa8, size0: 40, size1: 250, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 560, z: 2, delayMs: 140,
+              tint: 0xb8ad98, size0: 30, size1: 190, opacity0: 0.5 },
+            { count: 6, sprite: 'rock-debris', ml: [500, 900], offsetXY: 10,
+              vxRange: 140, vyRange: 140, vzRange: [40, 120], gravity: 380, size0: [10, 16], size1: 6 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 2200, z: 1, size0: 96, size1: 110, opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['raceTitanDrop_impact'] = {           /* the titan: aftershock doubles */
+        shake: 'hard',
+        layers: [
+            { sprite: 'flash', ml: 140, size0: 120, size1: 28, opacity0: 1 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 360, z: 2,
+              tint: 0xd8b070, size0: 46, size1: 300, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 460, z: 2, delayMs: 200,
+              tint: 0xd8b070, size0: 60, size1: 380, opacity0: 0.7 },
+            { sprite: 'flash', ml: 90, size0: 70, size1: 18, delayMs: 200, opacity0: 0.7 },
+            { count: 10, sprite: 'rock-debris', ml: [400, 760], offsetXY: 14,
+              vxRange: 240, vyRange: 240, vzRange: [100, 300], gravity: 540, size0: [7, 12], size1: 4 },
+            { count: 9, anchor: 'floor', sprite: 'dust-puff', ml: [460, 820], offsetXY: 24, z: [2, 12],
+              vxRange: 170, vyRange: 170, vzRange: [20, 70], size0: [20, 32], size1: [52, 80], opacity0: 0.7 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 2400, z: 1, size0: 110, size1: 128, opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['racePredatorDrop_impact'] = {        /* the ambush: fast, quiet, claws */
+        layers: [
+            { sprite: 'flash', ml: 80, size0: 60, size1: 16, tint: 0xd8ffd0, opacity0: 0.75 },
+            { count: 3, sprite: 'flash', ml: [140, 200], offsetXY: 12, z: [20, 44],
+              w0: [4, 6], w1: 2, h0: [40, 60], h1: [50, 72], spriteRot: 0.6, opacity0: 0.85, tint: 0xeaffea },
+            { count: 6, sprite: 'leaf', ml: [380, 620], offsetXY: 16, z: [10, 30],
+              vxRange: 130, vyRange: 130, vzRange: [40, 120], gravity: 240, drag: 1.1,
+              wander: { amp: 26, freq: 1.4 }, size0: [7, 10], size1: [5, 8] },
+            { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [280, 440], offsetXY: 12, z: [2, 8],
+              size0: [12, 18], size1: [24, 36], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceBigKick_impact'] = {             /* the punt: snappy comic boot */
+        shake: 'normal',
+        layers: [
+            { sprite: 'muzzle-flash', ml: 90, size0: 96, size1: 20, opacity0: 1 },
+            { count: 10, sprite: 'steel-spark', ml: [160, 320], offsetXY: 8,
+              vxRange: 320, vyRange: 320, vzRange: [40, 160], gravity: 420, drag: 0.7, size0: [5, 9], size1: 1 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 260, z: 2,
+              tint: 0xfff0b8, size0: 40, size1: 210, opacity0: 0.85 },
+            { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [260, 420], offsetXY: 14, z: [2, 8],
+              vxRange: 140, vyRange: 140, size0: [14, 22], size1: [30, 44], opacity0: 0.55 },
+        ]
+    };
+    EFFECTS['raceDescendingWrath_impact'] = {     /* the judgment: light pillar, no dirt */
+        shake: 'normal',
+        layers: [
+            { sprite: 'holy-light', ml: 160, size0: 110, size1: 30, opacity0: 0.95 },
+            { anchor: 'floor', mode: 'y-locked', sprite: 'holy-pillar', ml: 620, z: 2,
+              w0: 54, w1: 30, h0: 120, h1: 260, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 420, z: 2,
+              tint: 0xffe9a8, size0: 44, size1: 260, opacity0: 0.85 },
+            { count: 10, sprite: 'divine-sparkle', ml: [420, 760], offsetXY: 20, z: [60, 170],
+              vzRange: [-160, -60], gravity: 40, size0: [6, 10], size1: 2, opacity0: 0.9 },
+            { count: 4, sprite: 'holy-pillar', ml: [300, 460], offsetXY: 26, z: [4, 20],
+              tint: 0xfff6d8, size0: [10, 16], size1: 4, opacity0: 0.7 },
+        ]
+    };
+    ['raceGiantSmash', 'raceDragonToss', 'raceStoneDrop', 'raceTitanDrop',
+     'racePredatorDrop', 'raceBigKick', 'raceDescendingWrath'].forEach(function (dropId) {
+        SPELL_MAP[dropId] = Object.assign({}, SPELL_MAP[dropId], { impact: dropId + '_impact' });
+    });
+
+    /* ── DIVINE-BUFF QUINTET — five holy buffs shared one golden puff. ── */
+    EFFECTS['raceInvulnerable_burst'] = {         /* aegis: a dome snaps shut */
+        layers: [
+            { sprite: 'flash', ml: 150, size0: 70, size1: 22, tint: 0xffe9a0, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 340, z: 2,
+              tint: 0xffd870, size0: 120, size1: 46, opacity0: 0.85 },
+            { count: 8, sprite: 'shield-blue', ml: [360, 560], offsetXY: 38, z: [10, 60], tint: 0xffd890,
+              seekIn: [320, 480], seekInZ: [24, 60], seekSpiral: 140, size0: [8, 12], size1: 3, opacity0: 0.9 },
+            { count: 5, sprite: 'divine-sparkle', ml: [400, 640], offsetXY: 20, z: [30, 80],
+              vzRange: [10, 40], size0: [6, 9], size1: 2, opacity0: 0.85 },
+        ]
+    };
+    EFFECTS['raceNordicAccord_burst'] = {         /* the accord: aurora curtains, runic cold */
+        layers: [
+            { count: 3, anchor: 'floor', mode: 'y-locked', sprite: 'frost-mist', ml: [600, 860],
+              offsetXY: 24, tint: 0x9fffd8, w0: [18, 26], w1: [10, 16], h0: [60, 90], h1: [140, 200], opacity0: 0.6 },
+            { count: 3, anchor: 'floor', mode: 'y-locked', sprite: 'plasma', ml: [520, 780], delayMs: 120,
+              offsetXY: 28, tint: 0x8fd8ff, w0: [12, 18], w1: [6, 10], h0: [50, 80], h1: [120, 170], opacity0: 0.5 },
+            { count: 7, sprite: 'snowflake', ml: [600, 900], offsetXY: 26, z: [60, 140],
+              vzRange: [-50, -20], wander: { amp: 22, freq: 0.9 }, size0: [6, 9], size1: [4, 7], opacity0: 0.85 },
+            { sprite: 'flash', ml: 200, size0: 50, size1: 18, tint: 0xbfffe8, opacity0: 0.6 },
+        ]
+    };
+    EFFECTS['raceProphecyFulfilled_burst'] = {    /* the prophecy: slow fate halo */
+        layers: [
+            { sprite: 'flash', ml: 320, size0: 56, size1: 26, tint: 0xd8b0ff, opacity0: 0.55 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 700, z: 2,
+              tint: 0xb890ff, size0: 30, size1: 140, opacity0: 0.5 },
+            { count: 9, sprite: 'divine-sparkle', ml: [700, 1100], offsetXY: 34, z: [30, 110], tint: 0xe8ccff,
+              vzRange: [-14, 14], wander: { amp: 14, freq: 0.5 }, size0: [5, 9], size1: 2, opacity0: 0.9 },
+            { count: 3, sprite: 'psi-pulse', ml: [520, 820], offsetXY: 10, z: [50, 90],
+              size0: [12, 18], size1: [26, 36], opacity0: 0.45 },
+        ]
+    };
+    EFFECTS['raceRapture_burst'] = {              /* rapture: everything RISES */
+        layers: [
+            { anchor: 'floor', mode: 'y-locked', sprite: 'holy-pillar', ml: 800, z: 2,
+              w0: 44, w1: 26, h0: 100, h1: 300, opacity0: 0.85 },
+            { count: 12, sprite: 'divine-sparkle', ml: [600, 1000], offsetXY: 26, z: [4, 40],
+              vzRange: [90, 200], drag: 0.3, size0: [6, 10], size1: 2, opacity0: 0.95 },
+            { sprite: 'holy-light', ml: 260, size0: 84, size1: 30, opacity0: 0.8 },
+            { count: 4, sprite: 'holy-light', ml: [400, 640], offsetXY: 18, z: [60, 130],
+              vzRange: [40, 90], size0: [12, 18], size1: [24, 34], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceWingsOfMercy_burst'] = {         /* mercy: feathers flutter down */
+        layers: [
+            { sprite: 'heal-glow', ml: 260, size0: 60, size1: 24, opacity0: 0.75 },
+            { count: 10, sprite: 'petal', ml: [700, 1100], offsetXY: 30, z: [90, 170], tint: 0xffffff,
+              vzRange: [-60, -24], gravity: 26, drag: 0.8, wander: { amp: 36, freq: 1.1 },
+              size0: [8, 12], size1: [6, 9], opacity0: 0.95 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 520, z: 2,
+              tint: 0xdfffe8, size0: 26, size1: 120, opacity0: 0.4 },
+            { count: 4, sprite: 'divine-sparkle', ml: [420, 660], offsetXY: 16, z: [40, 90],
+              size0: [5, 8], size1: 2, opacity0: 0.8 },
+        ]
+    };
+    ['raceInvulnerable', 'raceNordicAccord', 'raceProphecyFulfilled', 'raceRapture',
+     'raceWingsOfMercy'].forEach(function (divId) {
+        EFFECTS[divId + '_aura'] = { aoeRadius: 0, impactCenterEffect: divId + '_burst' };
+        SPELL_MAP[divId] = Object.assign({}, SPELL_MAP[divId], { aura: divId + '_aura' });
+    });
+
+    /* ── CLEANSE TRIO (cleanse keeps the namesake recipe) ─────────────── */
+    EFFECTS['raceHerbalRemedy_burst'] = {         /* poultice: leaves spiral in, sap glow */
+        layers: [
+            { count: 10, sprite: 'leaf', ml: [520, 780], offsetXY: 42, z: [8, 50],
+              seekIn: [440, 660], seekInZ: [20, 50], seekSpiral: 260, size0: [8, 12], size1: 4, opacity0: 0.95 },
+            { sprite: 'heal-glow', ml: 300, size0: 54, size1: 22, opacity0: 0.75 },
+            { count: 4, sprite: 'petal', ml: [520, 800], offsetXY: 18, z: [30, 70],
+              vzRange: [-20, -8], wander: { amp: 24, freq: 1.0 }, size0: [7, 10], size1: 5, opacity0: 0.85 },
+            { count: 3, sprite: 'vine-green', ml: [360, 540], offsetXY: 14, z: [6, 24],
+              size0: [10, 14], size1: [18, 26], opacity0: 0.6 },
+        ]
+    };
+    EFFECTS['raceSpiritChannel_burst'] = {        /* ancestors: a thin cold column of visitors */
+        layers: [
+            { anchor: 'floor', mode: 'y-locked', sprite: 'holy-light', ml: 760, z: 2,
+              w0: 20, w1: 34, h0: 80, h1: 230, opacity0: 0.7 },
+            { count: 6, sprite: 'shadow-wisp', ml: [560, 880], offsetXY: 16, z: [10, 60], tint: 0xd8e8ff,
+              vzRange: [50, 110], drag: 0.5, wander: { amp: 22, freq: 1.0 },
+              size0: [10, 16], size1: [20, 30], opacity0: 0.55 },
+            { count: 6, sprite: 'divine-sparkle', ml: [480, 760], offsetXY: 12, z: [40, 120],
+              vzRange: [30, 70], size0: [5, 8], size1: 2, opacity0: 0.85 },
+        ]
+    };
+    EFFECTS['raceHerbalRemedy_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceHerbalRemedy_burst' };
+    EFFECTS['raceSpiritChannel_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceSpiritChannel_burst' };
+    SPELL_MAP['raceHerbalRemedy'] = Object.assign({}, SPELL_MAP['raceHerbalRemedy'], { aura: 'raceHerbalRemedy_aura' });
+    SPELL_MAP['raceSpiritChannel'] = Object.assign({}, SPELL_MAP['raceSpiritChannel'], { aura: 'raceSpiritChannel_aura' });
+
+    /* ── FORTIFY TRIO (fortify keeps the namesake pillar) ─────────────── */
+    EFFECTS['parryStance_burst'] = {              /* parry: steel glints, martial not magical */
+        layers: [
+            { sprite: 'flash', ml: 100, size0: 44, size1: 14, tint: 0xdfe8f0, opacity0: 0.8 },
+            { count: 8, sprite: 'steel-spark', ml: [200, 360], offsetXY: 26, z: [16, 50],
+              vxRange: 60, vyRange: 60, vzRange: [-20, 20], drag: 1.6, size0: [5, 9], size1: 2, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 240, z: 2,
+              tint: 0xb8d0e8, size0: 90, size1: 40, opacity0: 0.6 },
+            { count: 2, sprite: 'shield-blue', ml: [220, 340], offsetXY: 20, z: [20, 44],
+              size0: [10, 14], size1: 4, opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['racePlotArmor_burst'] = {            /* plot armor: fourth-wall confetti ta-da */
+        layers: [
+            { sprite: 'flash', ml: 130, size0: 58, size1: 18, tint: 0xffd0f0, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 320, z: 2,
+              tint: 0xff9ae0, size0: 28, size1: 130, opacity0: 0.7 },
+            { count: 9, sprite: 'petal', ml: [500, 820], offsetXY: 20, z: [30, 80],
+              tint: 0xffc0e8, vxRange: 90, vyRange: 90, vzRange: [40, 120], gravity: 160, drag: 1.2,
+              wander: { amp: 30, freq: 1.5 }, size0: [7, 10], size1: [5, 8], opacity0: 0.95 },
+            { count: 6, sprite: 'spark-pink', ml: [300, 500], offsetXY: 16, z: [20, 60],
+              size0: [6, 9], size1: 2, opacity0: 0.9 },
+        ]
+    };
+    EFFECTS['parryStance_aura'] = { aoeRadius: 0, impactCenterEffect: 'parryStance_burst' };
+    EFFECTS['racePlotArmor_aura'] = { aoeRadius: 0, impactCenterEffect: 'racePlotArmor_burst' };
+    SPELL_MAP['parryStance'] = Object.assign({}, SPELL_MAP['parryStance'], { aura: 'parryStance_aura' });
+    SPELL_MAP['racePlotArmor'] = Object.assign({}, SPELL_MAP['racePlotArmor'], { aura: 'racePlotArmor_aura' });
+
+    /* ── WAR-CRY TRIO (warCry keeps the namesake) ─────────────────────── */
+    EFFECTS['raceOathOfValor_burst'] = {          /* the oath: a banner of light plants */
+        layers: [
+            { anchor: 'floor', mode: 'y-locked', sprite: 'holy-pillar', ml: 640, z: 2,
+              w0: 22, w1: 14, h0: 70, h1: 200, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 380, z: 2,
+              tint: 0xffd870, size0: 32, size1: 150, opacity0: 0.7 },
+            { count: 8, sprite: 'ember', ml: [460, 720], offsetXY: 20, z: [10, 50], tint: 0xffd890,
+              vzRange: [50, 120], drag: 0.6, size0: [6, 9], size1: 2, opacity0: 0.9 },
+            { sprite: 'flash', ml: 140, size0: 52, size1: 16, tint: 0xfff0c0, opacity0: 0.85 },
+        ]
+    };
+    EFFECTS['raceSadBackstory_burst'] = {         /* the flashback: color drains, rain falls */
+        layers: [
+            { sprite: 'flash', ml: 340, size0: 60, size1: 30, tint: 0x8fa0b8, opacity0: 0.45 },
+            { count: 9, sprite: 'water-splash', ml: [520, 840], offsetXY: 26, z: [80, 150], tint: 0x9fb8d8,
+              vzRange: [-180, -90], gravity: 120, size0: [5, 8], size1: 2, opacity0: 0.8 },
+            { count: 4, sprite: 'frost-mist', ml: [640, 940], offsetXY: 20, z: [10, 40],
+              vzRange: [-14, -4], size0: [16, 24], size1: [30, 44], opacity0: 0.5 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 620, z: 2,
+              tint: 0x8098b8, size0: 100, size1: 40, opacity0: 0.45 },
+        ]
+    };
+    EFFECTS['raceOathOfValor_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceOathOfValor_burst' };
+    EFFECTS['raceSadBackstory_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceSadBackstory_burst' };
+    SPELL_MAP['raceOathOfValor'] = Object.assign({}, SPELL_MAP['raceOathOfValor'], { aura: 'raceOathOfValor_aura' });
+    SPELL_MAP['raceSadBackstory'] = Object.assign({}, SPELL_MAP['raceSadBackstory'], { aura: 'raceSadBackstory_aura' });
+
+    /* ── FORTUNE TRIO (crystal ball keeps its orb apparition) ─────────── */
+    EFFECTS['raceMimicry_burst'] = {              /* mimicry: twin mirrored flashes swap */
+        layers: [
+            { sprite: 'flash', ml: 140, size0: 40, size1: 12, tint: 0xc8b0ff, opacity0: 0.85,
+              offsetXY: 0, z: 30 },
+            { count: 2, sprite: 'psi-pulse', ml: [320, 460], offsetXY: 30, z: [20, 50],
+              seekIn: [280, 400], seekInZ: [24, 44], seekSpiral: 540, size0: [10, 14], size1: 4, opacity0: 0.9 },
+            { count: 6, sprite: 'spark-pink', ml: [280, 460], offsetXY: 24, z: [10, 50],
+              size0: [5, 8], size1: 2, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 300, z: 2,
+              tint: 0xb890ff, size0: 24, size1: 100, opacity0: 0.55 },
+        ]
+    };
+    EFFECTS['raceTarotDraw_burst'] = {            /* tarot: three cards fan out of the deck */
+        layers: [
+            { sprite: 'flash', ml: 120, size0: 30, size1: 10, tint: 0xe8d0ff, opacity0: 0.8, z: 40,
+              w0: 18, w1: 22, h0: 30, h1: 36, spriteRot: -0.35 },
+            { sprite: 'flash', ml: 130, size0: 30, size1: 10, tint: 0xffd0e8, opacity0: 0.85, z: 44,
+              delayMs: 110, w0: 18, w1: 22, h0: 30, h1: 36 },
+            { sprite: 'flash', ml: 140, size0: 30, size1: 10, tint: 0xd0e8ff, opacity0: 0.9, z: 40,
+              delayMs: 220, w0: 18, w1: 22, h0: 30, h1: 36, spriteRot: 0.35 },
+            { count: 8, sprite: 'divine-sparkle', ml: [420, 660], offsetXY: 22, z: [20, 70], tint: 0xd8b8ff,
+              wander: { amp: 18, freq: 1.2 }, size0: [5, 8], size1: 2, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 460, z: 2,
+              tint: 0xa878ff, size0: 26, size1: 120, opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceMimicry_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceMimicry_burst' };
+    EFFECTS['raceTarotDraw_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceTarotDraw_burst' };
+    SPELL_MAP['raceMimicry'] = Object.assign({}, SPELL_MAP['raceMimicry'], { aura: 'raceMimicry_aura' });
+    SPELL_MAP['raceTarotDraw'] = Object.assign({}, SPELL_MAP['raceTarotDraw'], { aura: 'raceTarotDraw_aura' });
+
+    /* ── REMAINING AURA PAIRS — the namesake keeps the old recipe, the
+       partner gets its own ─────────────────────────────────────────────── */
+    EFFECTS['raceClockworkTurret_burst'] = {      /* clockwork: brass ticks assemble it */
+        layers: [
+            { count: 8, sprite: 'ember', ml: [380, 560], offsetXY: 36, z: [6, 40], tint: 0xffca70,
+              seekIn: [320, 480], seekInZ: [10, 34], seekSpiral: 380, size0: [6, 9], size1: 2, opacity0: 0.9 },
+            { count: 3, sprite: 'steel-spark', ml: [140, 220], offsetXY: 10, z: [8, 26],
+              delayMs: 140, size0: [6, 9], size1: 2, opacity0: 0.9 },
+            { count: 3, sprite: 'steel-spark', ml: [140, 220], offsetXY: 10, z: [8, 26],
+              delayMs: 320, size0: [6, 9], size1: 2, opacity0: 0.9 },
+            { sprite: 'muzzle-flash', ml: 90, size0: 30, size1: 10, delayMs: 460, opacity0: 0.85 },
+            { count: 2, sprite: 'dust-puff', ml: [260, 400], offsetXY: 10, z: [2, 8],
+              size0: [12, 18], size1: [22, 32], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['freeEnergy_burst'] = {               /* free energy: the coil overflows */
+        layers: [
+            { sprite: 'plasma', ml: 180, size0: 52, size1: 18, opacity0: 0.9 },
+            { count: 9, sprite: 'emp-arc', ml: [260, 480], offsetXY: 22, z: [6, 50],
+              vxRange: 110, vyRange: 110, vzRange: [20, 80], drag: 1.2, size0: [6, 10], size1: 2, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 320, z: 2,
+              tint: 0x86c8ff, size0: 30, size1: 130, opacity0: 0.65 },
+            { count: 5, sprite: 'spark-elec', ml: [300, 520], offsetXY: 16, z: [30, 80],
+              vzRange: [30, 70], size0: [5, 8], size1: 2, opacity0: 0.85 },
+        ]
+    };
+    EFFECTS['raceTinFoilHat_burst'] = {           /* tin foil: crinkle halo, static off the brim */
+        layers: [
+            { count: 7, sprite: 'steel-spark', ml: [220, 380], offsetXY: 18, z: [46, 66],
+              vxRange: 40, vyRange: 40, vzRange: [-10, 10], drag: 1.8, size0: [4, 7], size1: 2, opacity0: 0.95 },
+            { sprite: 'flash', ml: 120, size0: 34, size1: 12, tint: 0xe8f0f8, opacity0: 0.8, z: 52 },
+            { count: 4, sprite: 'psi-pulse', ml: [300, 480], offsetXY: 14, z: [40, 70],
+              size0: [8, 12], size1: [14, 20], opacity0: 0.5 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 300, z: 2,
+              tint: 0xc8d8e8, size0: 22, size1: 90, opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceDivineLight_burst'] = {          /* divine light: a sunbeam finds you */
+        layers: [
+            { anchor: 'floor', mode: 'y-locked', sprite: 'holy-light', ml: 700, z: 2,
+              w0: 60, w1: 40, h0: 140, h1: 240, opacity0: 0.75 },
+            { count: 9, sprite: 'divine-sparkle', ml: [520, 820], offsetXY: 24, z: [80, 160],
+              vzRange: [-90, -40], size0: [6, 9], size1: 2, opacity0: 0.9 },
+            { sprite: 'holy-light', ml: 240, size0: 74, size1: 28, opacity0: 0.8 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 460, z: 2,
+              tint: 0xfff2c0, size0: 30, size1: 130, opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceDeathPact_burst'] = {            /* death pact: the contract signs itself in blood */
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 460, z: 2,
+              tint: 0xc82838, size0: 110, size1: 44, opacity0: 0.7 },
+            { count: 6, sprite: 'blood-fleck', ml: [360, 560], offsetXY: 22, z: [4, 20],
+              vzRange: [30, 80], gravity: 240, size0: [5, 8], size1: 2, opacity0: 0.85 },
+            { count: 4, anchor: 'floor', mode: 'y-locked', sprite: 'dark-flame', ml: [380, 580],
+              offsetXY: 24, w0: [10, 16], w1: [5, 8], h0: [28, 42], h1: [60, 90], opacity0: 0.85 },
+            { sprite: 'flash', ml: 130, size0: 46, size1: 14, tint: 0xff5060, opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['raceInnerDemon_burst'] = {           /* inner demon: it looks out through you */
+        layers: [
+            { count: 4, anchor: 'torso', sprite: 'void-mist', ml: [520, 820], offsetXY: 12, z: [-8, 26],
+              vzRange: [20, 60], drag: 0.5, wander: { amp: 24, freq: 1.0 },
+              size0: [18, 28], size1: [34, 50], opacity0: 0.65 },
+            { sprite: 'laser-red', ml: 420, size0: 7, size1: 5, z: 46, offsetXY: 0,
+              delayMs: 180, opacity0: 0.95, w0: 7, w1: 6, h0: 7, h1: 6 },
+            { sprite: 'laser-red', ml: 420, size0: 7, size1: 5, z: 46,
+              delayMs: 200, opacity0: 0.95, w0: 7, w1: 6, h0: 7, h1: 6, offsetXY: 10 },
+            { sprite: 'flash', ml: 180, size0: 44, size1: 16, tint: 0x9040c0, opacity0: 0.55 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 380, z: 2,
+              tint: 0x8030b0, size0: 26, size1: 110, opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceKnightsOfRound_burst'] = {       /* the round table: blades rise in a circle */
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 520, z: 2,
+              tint: 0xffd870, size0: 40, size1: 200, opacity0: 0.8 },
+            { count: 6, anchor: 'floor', mode: 'y-locked', sprite: 'flash', ml: [420, 560],
+              offsetXY: 44, tint: 0xf0f4ff, w0: [5, 7], w1: [3, 5], h0: [40, 56], h1: [70, 96], opacity0: 0.9 },
+            { count: 8, sprite: 'divine-sparkle', ml: [460, 720], offsetXY: 30, z: [20, 80],
+              vzRange: [20, 60], size0: [5, 9], size1: 2, opacity0: 0.9 },
+            { sprite: 'holy-light', ml: 220, size0: 66, size1: 24, opacity0: 0.8 },
+        ]
+    };
+    EFFECTS['raceSelfRepairProtocol_burst'] = {   /* nanites: green pips converge, tick by tick */
+        layers: [
+            { count: 9, sprite: 'acid-green', ml: [360, 560], offsetXY: 38, z: [6, 46],
+              seekIn: [300, 480], seekInZ: [16, 40], seekSpiral: 120, size0: [4, 7], size1: 2, opacity0: 0.9 },
+            { count: 3, sprite: 'spark-elec', ml: [140, 220], offsetXY: 12, z: [10, 34],
+              delayMs: 160, size0: [5, 8], size1: 2, opacity0: 0.85 },
+            { count: 3, sprite: 'spark-elec', ml: [140, 220], offsetXY: 12, z: [10, 34],
+              delayMs: 340, size0: [5, 8], size1: 2, opacity0: 0.85 },
+            { sprite: 'heal-glow', ml: 260, size0: 40, size1: 16, tint: 0xa0ffc0, opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['raceTelepathicLink_burst'] = {       /* the link: a thread of thought pings twice */
+        layers: [
+            { anchor: 'floor', mode: 'y-locked', sprite: 'psi-pulse', ml: 560, z: 2,
+              w0: 8, w1: 14, h0: 90, h1: 190, opacity0: 0.7 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 320, z: 2,
+              tint: 0xc078ff, size0: 22, size1: 90, opacity0: 0.6 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 380, z: 2, delayMs: 220,
+              tint: 0xa060e8, size0: 30, size1: 130, opacity0: 0.45 },
+            { count: 6, sprite: 'spark-pink', ml: [340, 560], offsetXY: 18, z: [30, 90],
+              wander: { amp: 16, freq: 1.4 }, size0: [5, 8], size1: 2, opacity0: 0.85 },
+        ]
+    };
+    EFFECTS['raceTemporalTide_burst'] = {         /* temporal tide: clock rings, suspended sand */
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 360, z: 2,
+              tint: 0x70d8ff, size0: 26, size1: 130, opacity0: 0.6 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 420, z: 2, delayMs: 180,
+              tint: 0xffe070, size0: 34, size1: 170, opacity0: 0.5 },
+            { count: 8, sprite: 'sand-particle', ml: [640, 980], offsetXY: 26, z: [24, 90],
+              vzRange: [-12, 12], gravity: 8, wander: { amp: 18, freq: 0.7 },
+              size0: [4, 7], size1: 3, opacity0: 0.85 },
+            { count: 3, sprite: 'frost-mist', ml: [520, 780], offsetXY: 18, z: [16, 50],
+              size0: [14, 22], size1: [26, 38], opacity0: 0.45 },
+        ]
+    };
+    EFFECTS['raceFilibuster_burst'] = {           /* filibuster: droning grey wall of words */
+        layers: [
+            { anchor: 'floor', mode: 'y-locked', sprite: 'smoke-soft', ml: 900, z: 2,
+              w0: 40, w1: 66, h0: 60, h1: 170, opacity0: 0.55 },
+            { count: 1, sprite: 'spark-pink', ml: 260, offsetXY: 10, z: 50, delayMs: 0,
+              tint: 0xd8d8d8, size0: 7, size1: 3, opacity0: 0.9 },
+            { count: 1, sprite: 'spark-pink', ml: 260, offsetXY: 10, z: 58, delayMs: 180,
+              tint: 0xc8c8c8, size0: 7, size1: 3, opacity0: 0.9 },
+            { count: 1, sprite: 'spark-pink', ml: 260, offsetXY: 10, z: 66, delayMs: 360,
+              tint: 0xb8b8b8, size0: 7, size1: 3, opacity0: 0.9 },
+            { count: 1, sprite: 'spark-pink', ml: 260, offsetXY: 10, z: 74, delayMs: 540,
+              tint: 0xa8a8a8, size0: 7, size1: 3, opacity0: 0.9 },
+            { count: 3, sprite: 'smoke-soft', ml: [500, 760], offsetXY: 20, z: [10, 40],
+              vzRange: [10, 30], size0: [16, 24], size1: [30, 44], opacity0: 0.4 },
+        ]
+    };
+    EFFECTS['raceClockworkTurret_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceClockworkTurret_burst' };
+    EFFECTS['freeEnergy_aura'] = { aoeRadius: 0, impactCenterEffect: 'freeEnergy_burst' };
+    EFFECTS['raceTinFoilHat_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceTinFoilHat_burst' };
+    EFFECTS['raceDivineLight_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceDivineLight_burst' };
+    EFFECTS['raceDeathPact_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceDeathPact_burst' };
+    EFFECTS['raceInnerDemon_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceInnerDemon_burst' };
+    EFFECTS['raceKnightsOfRound_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceKnightsOfRound_burst' };
+    EFFECTS['raceSelfRepairProtocol_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceSelfRepairProtocol_burst' };
+    EFFECTS['raceTelepathicLink_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceTelepathicLink_burst' };
+    EFFECTS['raceTemporalTide_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceTemporalTide_burst' };
+    EFFECTS['raceFilibuster_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceFilibuster_burst' };
+    SPELL_MAP['raceClockworkTurret'] = Object.assign({}, SPELL_MAP['raceClockworkTurret'], { aura: 'raceClockworkTurret_aura' });
+    SPELL_MAP['freeEnergy'] = Object.assign({}, SPELL_MAP['freeEnergy'], { aura: 'freeEnergy_aura' });
+    SPELL_MAP['raceTinFoilHat'] = Object.assign({}, SPELL_MAP['raceTinFoilHat'], { aura: 'raceTinFoilHat_aura' });
+    SPELL_MAP['raceDivineLight'] = Object.assign({}, SPELL_MAP['raceDivineLight'], { aura: 'raceDivineLight_aura' });
+    SPELL_MAP['raceDeathPact'] = Object.assign({}, SPELL_MAP['raceDeathPact'], { aura: 'raceDeathPact_aura' });
+    SPELL_MAP['raceInnerDemon'] = Object.assign({}, SPELL_MAP['raceInnerDemon'], { aura: 'raceInnerDemon_aura' });
+    SPELL_MAP['raceKnightsOfRound'] = Object.assign({}, SPELL_MAP['raceKnightsOfRound'], { aura: 'raceKnightsOfRound_aura' });
+    SPELL_MAP['raceSelfRepairProtocol'] = Object.assign({}, SPELL_MAP['raceSelfRepairProtocol'], { aura: 'raceSelfRepairProtocol_aura' });
+    SPELL_MAP['raceTelepathicLink'] = Object.assign({}, SPELL_MAP['raceTelepathicLink'], { aura: 'raceTelepathicLink_aura' });
+    SPELL_MAP['raceTemporalTide'] = Object.assign({}, SPELL_MAP['raceTemporalTide'], { aura: 'raceTemporalTide_aura' });
+    SPELL_MAP['raceFilibuster'] = Object.assign({}, SPELL_MAP['raceFilibuster'], { aura: 'raceFilibuster_aura' });
+
+    /* rampart pair: sharedRampart keeps the stone build; the class version
+       raises a rough earth-and-timber palisade instead */
+    EFFECTS['rampart_tile'] = {
+        shake: 'normal',
+        layers: [
+            { count: 6, sprite: 'mud-chunk', ml: [280, 520], offsetXY: 12, z: [0, 6],
+              vxRange: 90, vyRange: 90, vzRange: [90, 200], gravity: 380, drag: 0.9, size0: [7, 12], size1: 3 },
+            { count: 4, sprite: 'debris', ml: [320, 560], offsetXY: 10, z: [0, 8],
+              vxRange: 70, vyRange: 70, vzRange: [70, 160], gravity: 340, size0: [8, 13], size1: 4 },
+            { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [400, 640], offsetXY: 14, z: [2, 8],
+              size0: [16, 24], size1: [30, 44], opacity0: 0.6 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1200, z: 1, size0: 50, size1: 60, opacity0: 0.4 },
+        ]
+    };
+    SPELL_MAP['rampart'] = Object.assign({}, SPELL_MAP['rampart'], { wall: 'rampart_tile' });
+
+    /* ── BLADE TRIOS (guardSlash and dragonSlash keep their namesakes) ── */
+    EFFECTS['crossSlash_impact'] = {              /* cross slash: two cuts make an X */
+        layers: [
+            { sprite: 'flash', ml: 150, tint: 0xeaf2ff, opacity0: 0.95, z: 34,
+              w0: 90, w1: 110, h0: 7, h1: 4, spriteRot: 0.7 },
+            { sprite: 'flash', ml: 150, tint: 0xeaf2ff, opacity0: 0.95, z: 34,
+              delayMs: 90, w0: 90, w1: 110, h0: 7, h1: 4, spriteRot: -0.7 },
+            { count: 8, sprite: 'steel-spark', ml: [180, 340], offsetXY: 10, z: [16, 44],
+              vxRange: 220, vyRange: 220, vzRange: [20, 120], gravity: 380, size0: [4, 8], size1: 1 },
+            { sprite: 'flash', ml: 90, size0: 48, size1: 14, delayMs: 90, opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['lungingStrike_impact'] = {           /* lunge: one long pierce, dust behind */
+        layers: [
+            { sprite: 'flash', ml: 140, tint: 0xf0f4ff, opacity0: 0.95, z: 30,
+              w0: 130, w1: 160, h0: 5, h1: 3 },
+            { count: 5, sprite: 'steel-spark', ml: [160, 280], offsetXY: 8, z: [20, 40],
+              vxRange: [120, 260], vyRange: 60, vzRange: [10, 70], gravity: 320, size0: [4, 7], size1: 1 },
+            { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [240, 400], offsetXY: 20, z: [2, 8],
+              vxRange: [-160, -40], vyRange: 40, size0: [12, 18], size1: [24, 36], opacity0: 0.5 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 220, z: 2,
+              tint: 0xd8e0f0, size0: 22, size1: 80, opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceToBeContinued_impact'] = {       /* to be continued: the freeze-frame */
+        layers: [
+            { sprite: 'flash', ml: 480, size0: 80, size1: 76, tint: 0xfff0d0, opacity0: 0.5 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 420, z: 2,
+              tint: 0xff9ae0, size0: 30, size1: 130, opacity0: 0.6 },
+            { count: 6, sprite: 'spark-pink', ml: [360, 560], offsetXY: 20, z: [20, 60],
+              wander: { amp: 12, freq: 0.8 }, size0: [6, 9], size1: 3, opacity0: 0.9 },
+            { sprite: 'flash', ml: 120, tint: 0xffffff, opacity0: 0.9, z: 32,
+              w0: 110, w1: 120, h0: 6, h1: 4, spriteRot: 0.25 },
+        ]
+    };
+    EFFECTS['zantetsuken_impact'] = {             /* zantetsuken: one line. then it falls apart */
+        layers: [
+            { sprite: 'flash', ml: 110, tint: 0xffffff, opacity0: 1, z: 36,
+              w0: 170, w1: 210, h0: 3, h1: 2 },
+            { sprite: 'flash', ml: 160, tint: 0xcfe0ff, opacity0: 0.6, z: 36, delayMs: 60,
+              w0: 150, w1: 190, h0: 6, h1: 3 },
+            { count: 7, sprite: 'debris', ml: [260, 460], offsetXY: 14, z: [10, 40], delayMs: 220,
+              vxRange: 90, vyRange: 90, vzRange: [-40, 40], gravity: 420, size0: [5, 9], size1: 3 },
+            { count: 5, sprite: 'steel-spark', ml: [160, 260], offsetXY: 10, z: [16, 40], delayMs: 220,
+              vxRange: 140, vyRange: 140, size0: [4, 7], size1: 1 },
+            { sprite: 'flash', ml: 90, size0: 54, size1: 16, delayMs: 220, opacity0: 0.8 },
+        ]
+    };
+    SPELL_MAP['crossSlash'] = Object.assign({}, SPELL_MAP['crossSlash'], { impact: 'crossSlash_impact' });
+    SPELL_MAP['lungingStrike'] = Object.assign({}, SPELL_MAP['lungingStrike'], { impact: 'lungingStrike_impact' });
+    SPELL_MAP['raceToBeContinued'] = Object.assign({}, SPELL_MAP['raceToBeContinued'], { impact: 'raceToBeContinued_impact' });
+    SPELL_MAP['zantetsuken'] = Object.assign({}, SPELL_MAP['zantetsuken'], { impact: 'zantetsuken_impact' });
+
+    /* ── FIST TRIO (haymaker keeps the heavy punch) ───────────────────── */
+    EFFECTS['ironGrip_impact'] = {                /* iron grip: everything squeezes INWARD */
+        layers: [
+            { count: 8, sprite: 'steel-spark', ml: [320, 480], offsetXY: 40, z: [16, 50],
+              seekIn: [260, 400], seekInZ: [20, 44], seekSpiral: 60, size0: [5, 8], size1: 2, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 340, z: 2,
+              tint: 0xc8d0d8, size0: 130, size1: 40, opacity0: 0.7 },
+            { sprite: 'flash', ml: 110, size0: 40, size1: 20, delayMs: 260, tint: 0xe8eef4, opacity0: 0.9 },
+            { count: 3, sprite: 'dust-puff', ml: [240, 380], offsetXY: 10, z: [4, 14], delayMs: 260,
+              size0: [12, 18], size1: [22, 32], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['pistolWhip_impact'] = {              /* pistol whip: short metallic crack */
+        layers: [
+            { sprite: 'muzzle-flash', ml: 70, size0: 52, size1: 12, opacity0: 1 },
+            { count: 6, sprite: 'steel-spark', ml: [120, 240], offsetXY: 8, z: [20, 40],
+              vxRange: 260, vyRange: 260, vzRange: [10, 90], gravity: 440, size0: [4, 7], size1: 1 },
+            { count: 2, sprite: 'smoke-soft', ml: [200, 320], offsetXY: 8, z: [16, 30],
+              vzRange: [20, 40], size0: [8, 12], size1: [16, 24], opacity0: 0.4 },
+        ]
+    };
+    SPELL_MAP['ironGrip'] = Object.assign({}, SPELL_MAP['ironGrip'], { impact: 'ironGrip_impact' });
+    SPELL_MAP['pistolWhip'] = Object.assign({}, SPELL_MAP['pistolWhip'], { impact: 'pistolWhip_impact' });
+
+    /* ── POUNCE TRIO (racePounce keeps the namesake) ──────────────────── */
+    EFFECTS['raceBloodFrenzy_impact'] = {         /* blood frenzy: red mist and claw rakes */
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 66, size1: 18, tint: 0xff6060, opacity0: 0.85 },
+            { count: 3, sprite: 'laser-red', ml: [160, 240], offsetXY: 10, z: [24, 48],
+              w0: [3, 5], w1: 2, h0: [50, 70], h1: [64, 88], spriteRot: 0.5, opacity0: 0.9 },
+            { count: 7, sprite: 'blood-fleck', ml: [280, 480], offsetXY: 12, z: [20, 44],
+              vxRange: 190, vyRange: 190, vzRange: [30, 130], gravity: 420, size0: [4, 8], size1: 2 },
+            { count: 3, sprite: 'blood-mist', ml: [360, 560], offsetXY: 14, z: [20, 44],
+              size0: [14, 22], size1: [26, 40], opacity0: 0.55 },
+        ]
+    };
+    EFFECTS['raceFeralDive_impact'] = {           /* feral dive: a wedge of dust and one deep cut */
+        layers: [
+            { sprite: 'flash', ml: 120, tint: 0xeaffea, opacity0: 0.9, z: 30,
+              w0: 100, w1: 120, h0: 6, h1: 3, spriteRot: -0.4 },
+            { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [300, 520], offsetXY: 24, z: [2, 10],
+              vxRange: [40, 200], vyRange: 80, size0: [14, 22], size1: [30, 46], opacity0: 0.6 },
+            { count: 5, sprite: 'leaf', ml: [340, 560], offsetXY: 18, z: [16, 40],
+              vxRange: 120, vyRange: 120, vzRange: [30, 100], gravity: 220, drag: 1.2,
+              wander: { amp: 24, freq: 1.3 }, size0: [7, 10], size1: 5 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 260, z: 2,
+              tint: 0xc8e8b8, size0: 26, size1: 100, opacity0: 0.55 },
+        ]
+    };
+    SPELL_MAP['raceBloodFrenzy'] = Object.assign({}, SPELL_MAP['raceBloodFrenzy'], { impact: 'raceBloodFrenzy_impact' });
+    SPELL_MAP['raceFeralDive'] = Object.assign({}, SPELL_MAP['raceFeralDive'], { impact: 'raceFeralDive_impact' });
+
+    /* ── QUAKE TRIO (raceTremorStomp keeps the namesake aoe) ──────────── */
+    EFFECTS['groundSlam_impact_tile'] = {
+        layers: [
+            { count: 2, sprite: 'rock-debris', ml: [280, 480], offsetXY: 12, z: [0, 6],
+              vxRange: 120, vyRange: 120, vzRange: [80, 200], gravity: 520, size0: [6, 10], size1: 3 },
+            { count: 2, anchor: 'floor', sprite: 'dust-puff', ml: [320, 520], offsetXY: 14, z: [2, 8],
+              size0: [12, 18], size1: [26, 40], opacity0: 0.55 },
+        ]
+    };
+    EFFECTS['groundSlam_impact_center'] = {       /* ground slam: one fist, one crater */
+        shake: 'hard',
+        layers: [
+            { sprite: 'flash', ml: 120, size0: 100, size1: 24, opacity0: 0.95 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 380, z: 2,
+              tint: 0xc8a878, size0: 44, size1: 260, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1800, z: 1, size0: 84, size1: 96, opacity0: 0.6 },
+            { count: 8, sprite: 'mud-chunk', ml: [340, 620], offsetXY: 10, z: [0, 8],
+              vxRange: 200, vyRange: 200, vzRange: [100, 260], gravity: 540, size0: [7, 12], size1: 4 },
+        ]
+    };
+    EFFECTS['groundSlam_aoe'] = { aoeRadius: 1, impactTileEffect: 'groundSlam_impact_tile',
+        impactCenterEffect: 'groundSlam_impact_center' };
+    EFFECTS['raceShamblingHorde_impact_tile'] = {
+        layers: [
+            { count: 2, anchor: 'floor', sprite: 'dust-puff', ml: [260, 440], offsetXY: 18, z: [2, 8],
+              delayMs: 120, size0: [10, 16], size1: [20, 32], opacity0: 0.5 },
+            { count: 1, sprite: 'shadow-wisp', ml: [380, 560], offsetXY: 14, z: [6, 24], tint: 0xa8d8a0,
+              vzRange: [20, 50], size0: [12, 18], size1: [22, 32], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceShamblingHorde_impact_center'] = { /* the horde: many ragged footfalls, no clean ring */
+        layers: [
+            { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [260, 420], offsetXY: 26, z: [2, 8],
+              size0: [12, 18], size1: [24, 36], opacity0: 0.55 },
+            { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [260, 420], offsetXY: 26, z: [2, 8],
+              delayMs: 150, size0: [12, 18], size1: [24, 36], opacity0: 0.55 },
+            { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [260, 420], offsetXY: 26, z: [2, 8],
+              delayMs: 300, size0: [12, 18], size1: [24, 36], opacity0: 0.55 },
+            { count: 4, sprite: 'void-mist', ml: [420, 660], offsetXY: 22, z: [10, 40], tint: 0x90c890,
+              vzRange: [16, 44], wander: { amp: 20, freq: 1.1 }, size0: [12, 20], size1: [24, 36], opacity0: 0.5 },
+            { count: 4, sprite: 'blood-fleck', ml: [300, 480], offsetXY: 20, z: [8, 30],
+              vzRange: [20, 70], gravity: 300, size0: [4, 7], size1: 2 },
+        ]
+    };
+    EFFECTS['raceShamblingHorde_aoe'] = { aoeRadius: 1, impactTileEffect: 'raceShamblingHorde_impact_tile',
+        impactCenterEffect: 'raceShamblingHorde_impact_center' };
+    SPELL_MAP['groundSlam'] = Object.assign({}, SPELL_MAP['groundSlam'],
+        { aoe: 'groundSlam_aoe', impact: 'groundSlam_impact_center' });
+    SPELL_MAP['raceShamblingHorde'] = Object.assign({}, SPELL_MAP['raceShamblingHorde'],
+        { aoe: 'raceShamblingHorde_aoe', impact: 'raceShamblingHorde_impact_center' });
+
+    /* ── GUNSLINGER TRIO (raceSuppressingFire keeps the base, plus a
+       triple-tap; the other two get signatures) ────────────────────────── */
+    EFFECTS['raceHighNoon_impact'] = {            /* high noon: one golden shot at the sun */
+        layers: [
+            { sprite: 'flash', ml: 90, size0: 26, size1: 8, tint: 0xffe8a0, opacity0: 0.8 },
+            { sprite: 'muzzle-flash', ml: 130, size0: 96, size1: 22, delayMs: 90, opacity0: 1 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 340, z: 2, delayMs: 90,
+              tint: 0xffd870, size0: 36, size1: 180, opacity0: 0.8 },
+            { count: 7, sprite: 'steel-spark', ml: [200, 360], offsetXY: 10, z: [16, 40], delayMs: 90,
+              vxRange: 240, vyRange: 240, vzRange: [20, 110], gravity: 420, size0: [4, 8], size1: 1 },
+            { count: 3, sprite: 'heat-ray', ml: [300, 460], offsetXY: 14, z: [10, 40], delayMs: 90,
+              size0: [10, 16], size1: [18, 28], opacity0: 0.4 },
+        ]
+    };
+    EFFECTS['raceClassifiedWeapon_impact'] = {    /* classified: redacted bar + off-book energy */
+        layers: [
+            { sprite: 'scorch', ml: 340, z: 40, w0: 70, w1: 76, h0: 12, h1: 12, opacity0: 0.85 },
+            { sprite: 'laser-red', ml: 150, opacity0: 0.95, z: 34, w0: 100, w1: 130, h0: 4, h1: 2 },
+            { count: 6, sprite: 'emp-arc', ml: [220, 380], offsetXY: 14, z: [10, 44],
+              vxRange: 130, vyRange: 130, size0: [6, 10], size1: 2, opacity0: 0.85 },
+            { count: 3, sprite: 'smoke-soft', ml: [320, 500], offsetXY: 12, z: [14, 34],
+              vzRange: [20, 44], size0: [10, 16], size1: [20, 30], opacity0: 0.45 },
+        ]
+    };
+    EFFECTS['raceSuppressingFire_impact'] = {     /* suppressing fire: three staggered hits walk in */
+        layers: [
+            { sprite: 'muzzle-flash', ml: 70, size0: 40, size1: 12, opacity0: 0.95, offsetXY: 14 },
+            { sprite: 'muzzle-flash', ml: 70, size0: 44, size1: 12, delayMs: 110, opacity0: 0.95, offsetXY: 14 },
+            { sprite: 'muzzle-flash', ml: 80, size0: 50, size1: 14, delayMs: 220, opacity0: 1, offsetXY: 8 },
+            { count: 9, sprite: 'steel-spark', ml: [160, 300], offsetXY: 16, z: [8, 32],
+              vxRange: 200, vyRange: 200, vzRange: [10, 90], gravity: 440, size0: [4, 7], size1: 1 },
+            { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [240, 400], offsetXY: 20, z: [2, 8],
+              size0: [10, 16], size1: [20, 32], opacity0: 0.5 },
+        ]
+    };
+    SPELL_MAP['raceHighNoon'] = Object.assign({}, SPELL_MAP['raceHighNoon'], { impact: 'raceHighNoon_impact' });
+    SPELL_MAP['raceClassifiedWeapon'] = Object.assign({}, SPELL_MAP['raceClassifiedWeapon'], { impact: 'raceClassifiedWeapon_impact' });
+    SPELL_MAP['raceSuppressingFire'] = Object.assign({}, SPELL_MAP['raceSuppressingFire'], { impact: 'raceSuppressingFire_impact' });
+
+    /* ── REMAINING PHYSICAL PAIRS (first-named keeps the old recipe) ──── */
+    EFFECTS['raceFrozenPunch_impact'] = {         /* frozen punch: the hit SHATTERS */
+        layers: [
+            { sprite: 'flash', ml: 100, size0: 64, size1: 18, tint: 0xcfe8ff, opacity0: 0.95 },
+            { count: 11, sprite: 'ice-shard', ml: [240, 440], offsetXY: 8, z: [16, 44],
+              vxRange: 240, vyRange: 240, vzRange: [40, 160], gravity: 460, size0: [5, 9], size1: 2 },
+            { count: 5, sprite: 'frost-crystal', ml: [300, 480], offsetXY: 14, z: [10, 40],
+              size0: [6, 10], size1: 3, opacity0: 0.9 },
+            { count: 3, sprite: 'frost-mist', ml: [360, 540], offsetXY: 12, z: [12, 36],
+              size0: [12, 20], size1: [24, 36], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceCliffCharge_impact'] = {         /* cliff charge: a rockslide arrives with you */
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 80, size1: 20, tint: 0xe0d0b8, opacity0: 0.9 },
+            { count: 10, sprite: 'rock-debris', ml: [320, 580], offsetXY: 18, z: [4, 24],
+              vxRange: [60, 260], vyRange: 120, vzRange: [60, 180], gravity: 500, size0: [7, 12], size1: 4 },
+            { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [380, 640], offsetXY: 26, z: [2, 10],
+              vxRange: [40, 180], vyRange: 90, size0: [18, 28], size1: [40, 60], opacity0: 0.65 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 300, z: 2,
+              tint: 0xd0b890, size0: 36, size1: 170, opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['raceHydraulicPunch_impact'] = {      /* hydraulic punch: piston double-hit + steam */
+        layers: [
+            { sprite: 'flash', ml: 90, size0: 60, size1: 16, tint: 0xe8f0f8, opacity0: 0.95 },
+            { sprite: 'flash', ml: 110, size0: 76, size1: 20, delayMs: 130, tint: 0xffffff, opacity0: 1 },
+            { count: 4, sprite: 'smoke-soft', ml: [240, 400], offsetXY: 8, z: [16, 36], tint: 0xf0f4f8,
+              vxRange: [140, 260], vyRange: 40, drag: 1.1, size0: [8, 14], size1: [18, 28], opacity0: 0.6 },
+            { count: 4, sprite: 'smoke-soft', ml: [240, 400], offsetXY: 8, z: [16, 36], tint: 0xf0f4f8, delayMs: 130,
+              vxRange: [-260, -140], vyRange: 40, drag: 1.1, size0: [8, 14], size1: [18, 28], opacity0: 0.6 },
+            { count: 7, sprite: 'steel-spark', ml: [180, 320], offsetXY: 10, z: [12, 36], delayMs: 130,
+              vxRange: 220, vyRange: 220, vzRange: [20, 100], gravity: 420, size0: [4, 8], size1: 1 },
+        ]
+    };
+    EFFECTS['raceLoveBite_impact'] = {            /* love bite: pink puncture, hearts drift up */
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 50, size1: 14, tint: 0xffb0d8, opacity0: 0.85 },
+            { count: 2, sprite: 'blood-drop', ml: [280, 420], offsetXY: 6, z: [26, 40],
+              vzRange: [-60, -20], gravity: 260, size0: [4, 6], size1: 2 },
+            { count: 5, sprite: 'spark-pink', ml: [420, 680], offsetXY: 14, z: [30, 60],
+              vzRange: [30, 70], drag: 0.8, wander: { amp: 18, freq: 1.2 }, size0: [6, 10], size1: 3, opacity0: 0.95 },
+            { count: 3, sprite: 'petal', ml: [460, 720], offsetXY: 12, z: [30, 60], tint: 0xffc8e0,
+              vzRange: [20, 50], wander: { amp: 22, freq: 1.0 }, size0: [7, 10], size1: 5, opacity0: 0.9 },
+        ]
+    };
+    EFFECTS['racePlunder_impact'] = {             /* plunder: steel clash + coins spill */
+        layers: [
+            { sprite: 'flash', ml: 100, size0: 56, size1: 16, tint: 0xfff0c0, opacity0: 0.9 },
+            { count: 8, sprite: 'ember', ml: [340, 600], offsetXY: 10, z: [16, 40], tint: 0xffd24a,
+              vxRange: 170, vyRange: 170, vzRange: [60, 170], gravity: 520, drag: 0.6, size0: [5, 8], size1: 3 },
+            { count: 6, sprite: 'steel-spark', ml: [180, 320], offsetXY: 8, z: [16, 40],
+              vxRange: 220, vyRange: 220, vzRange: [20, 90], gravity: 420, size0: [4, 7], size1: 1 },
+            { count: 2, sprite: 'smoke-soft', ml: [260, 400], offsetXY: 10, z: [12, 28],
+              size0: [10, 14], size1: [18, 26], opacity0: 0.4 },
+        ]
+    };
+    EFFECTS['raceSyntheticBlade_impact'] = {      /* synthetic blade: neon edge, clean burn */
+        layers: [
+            { sprite: 'plasma', ml: 140, opacity0: 0.95, z: 32, w0: 110, w1: 140, h0: 5, h1: 3 },
+            { count: 6, sprite: 'spark-elec', ml: [200, 340], offsetXY: 10, z: [14, 40],
+              vxRange: 190, vyRange: 190, vzRange: [20, 90], size0: [4, 8], size1: 1 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 260, z: 2,
+              tint: 0x60c8ff, size0: 24, size1: 100, opacity0: 0.6 },
+            { sprite: 'flash', ml: 90, size0: 40, size1: 12, tint: 0xa0e0ff, opacity0: 0.8 },
+        ]
+    };
+    EFFECTS['racePredatorLeap_impact'] = {        /* predator leap: twin claw rakes from above */
+        layers: [
+            { count: 2, sprite: 'flash', ml: [140, 180], offsetXY: 8, z: [24, 48], tint: 0xeaffea,
+              w0: [4, 6], w1: 2, h0: [54, 72], h1: [68, 92], spriteRot: 0.45, opacity0: 0.9 },
+            { count: 5, sprite: 'blood-fleck', ml: [260, 440], offsetXY: 12, z: [20, 44],
+              vxRange: 150, vyRange: 150, vzRange: [20, 100], gravity: 400, size0: [4, 7], size1: 2 },
+            { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [260, 420], offsetXY: 16, z: [2, 8],
+              size0: [12, 18], size1: [24, 36], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceRocketToss_impact'] = {          /* rocket toss: lobbed airburst, then rain */
+        shake: 'normal',
+        layers: [
+            { sprite: 'explosion-orange', ml: 200, size0: 70, size1: 110, z: 60, opacity0: 0.95 },
+            { sprite: 'flash', ml: 110, size0: 84, size1: 22, z: 60, opacity0: 1 },
+            { count: 8, sprite: 'ember', ml: [340, 600], offsetXY: 12, z: [40, 70],
+              vxRange: 190, vyRange: 190, vzRange: [-120, -20], gravity: 340, size0: [5, 9], size1: 2 },
+            { count: 5, sprite: 'smoke-soft', ml: [420, 680], offsetXY: 16, z: [30, 60],
+              vzRange: [10, 40], size0: [14, 22], size1: [30, 46], opacity0: 0.55 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 320, z: 2, delayMs: 120,
+              tint: 0xffb060, size0: 34, size1: 160, opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['raceDivineSwoop_impact'] = {         /* divine swoop: a wing of light sweeps through */
+        layers: [
+            { sprite: 'holy-light', ml: 170, opacity0: 0.9, z: 36, w0: 150, w1: 190, h0: 26, h1: 12, spriteRot: 0.2 },
+            { count: 7, sprite: 'petal', ml: [480, 780], offsetXY: 20, z: [40, 90], tint: 0xffffff,
+              vzRange: [-50, -20], gravity: 30, wander: { amp: 30, freq: 1.0 }, size0: [7, 11], size1: 5, opacity0: 0.95 },
+            { count: 6, sprite: 'divine-sparkle', ml: [340, 560], offsetXY: 18, z: [24, 70],
+              size0: [5, 9], size1: 2, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 320, z: 2,
+              tint: 0xffe9a8, size0: 30, size1: 140, opacity0: 0.6 },
+        ]
+    };
+    EFFECTS['raceInfectiousBite_impact_p3'] = {   /* infectious bite: keep the bite, add the disease */
+        layers: [
+            { sprite: 'flash', ml: 100, size0: 52, size1: 14, tint: 0xa8e858, opacity0: 0.85 },
+            { count: 5, sprite: 'poison-bubble', ml: [340, 560], offsetXY: 10, z: [20, 44],
+              vzRange: [-40, -10], gravity: 200, size0: [5, 9], size1: 3, opacity0: 0.9 },
+            { count: 4, sprite: 'poison-mist', ml: [420, 660], offsetXY: 12, z: [16, 40],
+              vzRange: [10, 40], wander: { amp: 20, freq: 1.2 }, size0: [12, 20], size1: [24, 36], opacity0: 0.55 },
+            { count: 2, sprite: 'blood-drop', ml: [260, 400], offsetXY: 6, z: [24, 40],
+              vzRange: [-60, -20], gravity: 280, size0: [4, 6], size1: 2 },
+        ]
+    };
+    SPELL_MAP['raceFrozenPunch'] = Object.assign({}, SPELL_MAP['raceFrozenPunch'], { impact: 'raceFrozenPunch_impact' });
+    SPELL_MAP['raceCliffCharge'] = Object.assign({}, SPELL_MAP['raceCliffCharge'], { impact: 'raceCliffCharge_impact' });
+    SPELL_MAP['raceHydraulicPunch'] = Object.assign({}, SPELL_MAP['raceHydraulicPunch'], { impact: 'raceHydraulicPunch_impact' });
+    SPELL_MAP['raceLoveBite'] = Object.assign({}, SPELL_MAP['raceLoveBite'], { impact: 'raceLoveBite_impact' });
+    SPELL_MAP['racePlunder'] = Object.assign({}, SPELL_MAP['racePlunder'], { impact: 'racePlunder_impact' });
+    SPELL_MAP['raceSyntheticBlade'] = Object.assign({}, SPELL_MAP['raceSyntheticBlade'], { impact: 'raceSyntheticBlade_impact' });
+    SPELL_MAP['racePredatorLeap'] = Object.assign({}, SPELL_MAP['racePredatorLeap'], { impact: 'racePredatorLeap_impact' });
+    SPELL_MAP['raceRocketToss'] = Object.assign({}, SPELL_MAP['raceRocketToss'], { impact: 'raceRocketToss_impact' });
+    SPELL_MAP['raceDivineSwoop'] = Object.assign({}, SPELL_MAP['raceDivineSwoop'], { impact: 'raceDivineSwoop_impact' });
+    SPELL_MAP['raceInfectiousBite'] = Object.assign({}, SPELL_MAP['raceInfectiousBite'], { impact: 'raceInfectiousBite_impact_p3' });
+
+    /* ── TELEPORT PAIRS — disperse/arrive pairs per identity (nimbleDodge
+       and shadowStep keep their namesakes) ─────────────────────────────── */
+    EFFECTS['raceAgentVanish_disperse'] = {       /* agent vanish: the flashbulb and an empty suit */
+        layers: [
+            { sprite: 'flash', ml: 90, size0: 70, size1: 16, opacity0: 1 },
+            { count: 4, sprite: 'smoke-soft', ml: [300, 480], offsetXY: 10, z: [10, 44],
+              vzRange: [10, 30], size0: [12, 18], size1: [24, 36], opacity0: 0.5 },
+            { count: 5, sprite: 'spark-elec', ml: [160, 260], offsetXY: 12, z: [16, 44],
+              size0: [4, 7], size1: 1, opacity0: 0.85 },
+        ]
+    };
+    EFFECTS['raceAgentVanish_arrive'] = {
+        layers: [
+            { sprite: 'flash', ml: 80, size0: 44, size1: 12, opacity0: 0.9 },
+            { count: 3, anchor: 'torso', mode: 'y-locked', sprite: 'plasma', ml: [180, 260],
+              offsetXY: 10, w0: [3, 5], w1: 2, h0: [40, 56], h1: [50, 66], opacity0: 0.6 },
+            { count: 2, sprite: 'smoke-soft', ml: [220, 340], offsetXY: 8, z: [8, 24],
+              size0: [10, 14], size1: [16, 24], opacity0: 0.4 },
+        ]
+    };
+    EFFECTS['raceAgentVanish_teleport'] = { dispersalEffect: 'raceAgentVanish_disperse',
+        arrivalEffect: 'raceAgentVanish_arrive', arrivalDelayMs: 140 };
+    EFFECTS['raceDimensionalFold_disperse'] = {   /* dimensional fold: space creases flat */
+        layers: [
+            { sprite: 'flash', ml: 150, tint: 0xc8b0ff, opacity0: 0.9, z: 30, w0: 90, w1: 4, h0: 90, h1: 96 },
+            { sprite: 'flash', ml: 150, tint: 0xffffff, opacity0: 0.7, z: 30, delayMs: 90,
+              w0: 90, w1: 96, h0: 90, h1: 4 },
+            { count: 6, sprite: 'psi-pulse', ml: [260, 420], offsetXY: 20, z: [10, 50],
+              seekIn: [220, 340], seekInZ: [20, 40], size0: [7, 11], size1: 2, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 280, z: 2,
+              tint: 0xa878ff, size0: 90, size1: 30, opacity0: 0.6 },
+        ]
+    };
+    EFFECTS['raceDimensionalFold_arrive'] = {
+        layers: [
+            { sprite: 'flash', ml: 140, tint: 0xc8b0ff, opacity0: 0.9, z: 30, w0: 4, w1: 90, h0: 96, h1: 90 },
+            { count: 5, sprite: 'divine-sparkle', ml: [240, 400], offsetXY: 16, z: [16, 50], tint: 0xd8c0ff,
+              size0: [5, 8], size1: 2, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 260, z: 2,
+              tint: 0xa878ff, size0: 24, size1: 100, opacity0: 0.55 },
+        ]
+    };
+    EFFECTS['raceDimensionalFold_teleport'] = { dispersalEffect: 'raceDimensionalFold_disperse',
+        arrivalEffect: 'raceDimensionalFold_arrive', arrivalDelayMs: 200 };
+    EFFECTS['raceSkinSwap_disperse'] = {          /* skin swap: something sloughs off and walks */
+        layers: [
+            { count: 5, sprite: 'blood-mist', ml: [340, 540], offsetXY: 10, z: [10, 46],
+              vzRange: [-30, -8], gravity: 120, size0: [10, 16], size1: [20, 30], opacity0: 0.5 },
+            { count: 4, sprite: 'void-mist', ml: [360, 560], offsetXY: 12, z: [12, 44],
+              tint: 0xc8a0d8, vzRange: [10, 36], size0: [12, 18], size1: [24, 34], opacity0: 0.55 },
+            { sprite: 'flash', ml: 130, size0: 44, size1: 14, tint: 0xd8a0c8, opacity0: 0.6 },
+        ]
+    };
+    EFFECTS['raceSkinSwap_arrive'] = {
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 50, size1: 14, tint: 0xffd8e8, opacity0: 0.8 },
+            { count: 4, sprite: 'spark-pink', ml: [240, 400], offsetXY: 14, z: [14, 44],
+              size0: [5, 8], size1: 2, opacity0: 0.9 },
+            { count: 2, sprite: 'blood-fleck', ml: [220, 340], offsetXY: 8, z: [10, 30],
+              vzRange: [10, 40], gravity: 260, size0: [4, 6], size1: 2 },
+        ]
+    };
+    EFFECTS['raceSkinSwap_teleport'] = { dispersalEffect: 'raceSkinSwap_disperse',
+        arrivalEffect: 'raceSkinSwap_arrive', arrivalDelayMs: 240 };
+    EFFECTS['raceSpiritWalk_disperse'] = {        /* spirit walk: step OUT of the body, lights dim */
+        layers: [
+            { count: 5, sprite: 'shadow-wisp', ml: [420, 660], offsetXY: 10, z: [8, 46], tint: 0xd8e8ff,
+              vzRange: [20, 60], drag: 0.6, wander: { amp: 20, freq: 0.9 },
+              size0: [12, 18], size1: [22, 34], opacity0: 0.5 },
+            { sprite: 'holy-light', ml: 220, size0: 46, size1: 18, opacity0: 0.55 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 380, z: 2,
+              tint: 0xa8c8ff, size0: 70, size1: 24, opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceSpiritWalk_arrive'] = {
+        layers: [
+            { sprite: 'holy-light', ml: 200, size0: 40, size1: 16, opacity0: 0.6 },
+            { count: 4, sprite: 'divine-sparkle', ml: [280, 460], offsetXY: 14, z: [16, 50], tint: 0xd8e8ff,
+              vzRange: [-30, -10], size0: [5, 8], size1: 2, opacity0: 0.85 },
+            { count: 3, sprite: 'shadow-wisp', ml: [300, 480], offsetXY: 10, z: [10, 36], tint: 0xc8d8f8,
+              seekIn: [260, 400], seekInZ: [16, 36], size0: [10, 15], size1: 4, opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceSpiritWalk_teleport'] = { dispersalEffect: 'raceSpiritWalk_disperse',
+        arrivalEffect: 'raceSpiritWalk_arrive', arrivalDelayMs: 260 };
+    SPELL_MAP['raceAgentVanish'] = Object.assign({}, SPELL_MAP['raceAgentVanish'], { teleport: 'raceAgentVanish_teleport' });
+    SPELL_MAP['raceDimensionalFold'] = Object.assign({}, SPELL_MAP['raceDimensionalFold'], { teleport: 'raceDimensionalFold_teleport' });
+    SPELL_MAP['raceSkinSwap'] = Object.assign({}, SPELL_MAP['raceSkinSwap'], { teleport: 'raceSkinSwap_teleport' });
+    SPELL_MAP['raceSpiritWalk'] = Object.assign({}, SPELL_MAP['raceSpiritWalk'], { teleport: 'raceSpiritWalk_teleport' });
+
+    /* ── CURSE QUARTET (sharedHexOfToil keeps the dark impact, greened) ── */
+    EFFECTS['raceCurseOfMisfortune_impact'] = {   /* misfortune: the mirror cracks over you */
+        layers: [
+            { sprite: 'flash', ml: 140, size0: 56, size1: 18, tint: 0x9a7cff, opacity0: 0.6 },
+            { count: 3, sprite: 'flash', ml: [180, 260], offsetXY: 16, z: [20, 50], tint: 0xcfd8ff,
+              w0: [3, 5], w1: 2, h0: [30, 50], h1: [40, 62], spriteRot: 1.1, opacity0: 0.8 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 380, z: 2,
+              tint: 0xff5060, size0: 100, size1: 36, opacity0: 0.55 },
+            { count: 6, sprite: 'shadow-wisp', ml: [380, 600], offsetXY: 18, z: [10, 44],
+              wander: { amp: 26, freq: 1.3 }, size0: [10, 16], size1: [18, 28], opacity0: 0.5 },
+            { count: 4, sprite: 'spark-pink', ml: [260, 420], offsetXY: 14, z: [16, 46], tint: 0xff6080,
+              size0: [5, 8], size1: 2, opacity0: 0.85 },
+        ]
+    };
+    EFFECTS['raceExecutiveOrder_impact'] = {      /* executive order: the stamp comes down */
+        layers: [
+            { sprite: 'flash', ml: 110, opacity0: 0.95, z: 30, w0: 64, w1: 70, h0: 44, h1: 48, tint: 0xf4f0e8 },
+            { sprite: 'laser-red', ml: 260, size0: 40, size1: 44, z: 28, delayMs: 110, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 300, z: 2, delayMs: 110,
+              tint: 0xd83848, size0: 30, size1: 120, opacity0: 0.65 },
+            { count: 5, sprite: 'petal', ml: [420, 660], offsetXY: 18, z: [30, 70], tint: 0xf0ead8,
+              vzRange: [-40, -14], gravity: 60, wander: { amp: 28, freq: 1.1 }, size0: [7, 10], size1: 5, opacity0: 0.9 },
+        ]
+    };
+    EFFECTS['raceSandglassPrison_impact'] = {     /* sandglass: time pours onto you from above */
+        layers: [
+            { anchor: 'floor', mode: 'y-locked', sprite: 'sand-particle', ml: 620, z: 2,
+              tint: 0xf0d8a0, w0: 10, w1: 18, h0: 160, h1: 60, opacity0: 0.8 },
+            { count: 10, sprite: 'sand-particle', ml: [380, 620], offsetXY: 14, z: [60, 140],
+              vzRange: [-200, -100], gravity: 200, size0: [4, 7], size1: 2, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 420, z: 2,
+              tint: 0xe8c878, size0: 26, size1: 110, opacity0: 0.6 },
+            { count: 4, sprite: 'frost-crystal', ml: [340, 520], offsetXY: 14, z: [16, 50], tint: 0xffe8b0,
+              size0: [5, 8], size1: 2, opacity0: 0.85 },
+        ]
+    };
+    EFFECTS['sharedHexOfToil_impact'] = {         /* hex of toil: the old dark hit, soured green */
+        layers: [
+            { sprite: 'flash', ml: 150, size0: 66, size1: 20, tint: 0x9fe86a, opacity0: 0.6 },
+            { count: 4, anchor: 'floor', mode: 'y-locked', sprite: 'dark-flame', ml: [340, 560],
+              offsetXY: 22, tint: 0x70c848, w0: [12, 20], w1: [5, 9], h0: [28, 44], h1: [70, 110], opacity0: 0.85 },
+            { count: 6, sprite: 'acid-green', ml: [300, 500], offsetXY: 16, z: [12, 44],
+              wander: { amp: 20, freq: 1.4 }, size0: [5, 9], size1: 2, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 340, z: 2,
+              tint: 0x80d850, size0: 28, size1: 120, opacity0: 0.55 },
+        ]
+    };
+    SPELL_MAP['raceCurseOfMisfortune'] = Object.assign({}, SPELL_MAP['raceCurseOfMisfortune'], { impact: 'raceCurseOfMisfortune_impact' });
+    SPELL_MAP['raceExecutiveOrder'] = Object.assign({}, SPELL_MAP['raceExecutiveOrder'], { impact: 'raceExecutiveOrder_impact' });
+    SPELL_MAP['raceSandglassPrison'] = Object.assign({}, SPELL_MAP['raceSandglassPrison'], { impact: 'raceSandglassPrison_impact' });
+    SPELL_MAP['sharedHexOfToil'] = Object.assign({}, SPELL_MAP['sharedHexOfToil'], { impact: 'sharedHexOfToil_impact' });
+
+    /* ── GLITCH TRIO ──────────────────────────────────────────────────── */
+    EFFECTS['raceBlueScreen_impact'] = {          /* blue screen: the fatal rectangle */
+        layers: [
+            { sprite: 'plasma', ml: 380, opacity0: 0.9, z: 34, w0: 60, w1: 64, h0: 40, h1: 42, tint: 0x3878f8 },
+            { count: 4, sprite: 'spark-elec', ml: [140, 220], offsetXY: 20, z: [20, 50],
+              w0: [20, 34], w1: [26, 40], h0: 2, h1: 2, opacity0: 0.9 },
+            { sprite: 'flash', ml: 90, size0: 70, size1: 20, tint: 0xa0c8ff, opacity0: 0.8 },
+            { count: 3, sprite: 'frost-mist', ml: [320, 500], offsetXY: 14, z: [14, 40], tint: 0x88a8e8,
+              size0: [12, 18], size1: [22, 32], opacity0: 0.45 },
+        ]
+    };
+    EFFECTS['raceDeneuralizer_impact'] = {        /* deneuralizer: don't look at the light */
+        layers: [
+            { sprite: 'flash', ml: 200, size0: 110, size1: 34, opacity0: 1 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 300, z: 2,
+              tint: 0xa8d8ff, size0: 30, size1: 150, opacity0: 0.7 },
+            { count: 5, sprite: 'emp-arc', ml: [220, 380], offsetXY: 14, z: [20, 50],
+              size0: [6, 10], size1: 2, opacity0: 0.85 },
+            { count: 3, sprite: 'smoke-soft', ml: [340, 520], offsetXY: 10, z: [16, 40],
+              vzRange: [10, 30], size0: [10, 16], size1: [18, 28], opacity0: 0.4 },
+        ]
+    };
+    EFFECTS['raceMemoryLeak_impact'] = {          /* memory leak: data drips out of your head */
+        layers: [
+            { sprite: 'flash', ml: 120, size0: 46, size1: 14, tint: 0x8fffb8, opacity0: 0.7 },
+            { count: 8, sprite: 'acid-green', ml: [380, 640], offsetXY: 10, z: [40, 60],
+              vzRange: [-160, -60], gravity: 240, size0: [4, 7], size1: 2, opacity0: 0.9 },
+            { count: 3, sprite: 'plasma', ml: [200, 300], offsetXY: 12, z: [30, 54],
+              delayMs: 160, size0: [6, 10], size1: 3, opacity0: 0.8 },
+            { count: 3, sprite: 'plasma', ml: [200, 300], offsetXY: 12, z: [30, 54],
+              delayMs: 340, size0: [6, 10], size1: 3, opacity0: 0.8 },
+            { count: 2, sprite: 'void-mist', ml: [380, 560], offsetXY: 10, z: [10, 30], tint: 0x60a880,
+              size0: [12, 18], size1: [22, 32], opacity0: 0.45 },
+        ]
+    };
+    SPELL_MAP['raceBlueScreen'] = Object.assign({}, SPELL_MAP['raceBlueScreen'], { impact: 'raceBlueScreen_impact' });
+    SPELL_MAP['raceDeneuralizer'] = Object.assign({}, SPELL_MAP['raceDeneuralizer'], { impact: 'raceDeneuralizer_impact' });
+    SPELL_MAP['raceMemoryLeak'] = Object.assign({}, SPELL_MAP['raceMemoryLeak'], { impact: 'raceMemoryLeak_impact' });
+
+    /* ── MIND-CONTROL TRIO ────────────────────────────────────────────── */
+    EFFECTS['raceBrainwash_impact'] = {           /* brainwash: the spiral drills in */
+        layers: [
+            { count: 10, sprite: 'psi-pulse', ml: [420, 620], offsetXY: 40, z: [30, 60],
+              seekIn: [360, 540], seekInZ: [36, 54], seekSpiral: 640, size0: [7, 11], size1: 2, opacity0: 0.9 },
+            { sprite: 'flash', ml: 140, size0: 44, size1: 14, tint: 0xd898ff, opacity0: 0.7, z: 44 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 340, z: 2,
+              tint: 0xc078ff, size0: 24, size1: 100, opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['racePossession_impact'] = {          /* possession: something climbs inside */
+        layers: [
+            { count: 6, sprite: 'void-mist', ml: [380, 580], offsetXY: 16, z: [70, 120],
+              seekIn: [320, 480], seekInZ: [30, 46], size0: [14, 22], size1: 4, opacity0: 0.7 },
+            { sprite: 'flash', ml: 160, size0: 54, size1: 18, tint: 0x9040c0, opacity0: 0.6 },
+            { count: 4, sprite: 'shadow-wisp', ml: [340, 540], offsetXY: 12, z: [10, 40],
+              vzRange: [-30, -8], size0: [12, 18], size1: [20, 30], opacity0: 0.55 },
+            { count: 2, sprite: 'laser-red', ml: 300, offsetXY: 5, z: 46, delayMs: 260,
+              size0: 6, size1: 4, opacity0: 0.9 },
+        ]
+    };
+    EFFECTS['raceSleepParalysis_impact'] = {      /* sleep paralysis: the weight on your chest */
+        layers: [
+            { sprite: 'flash', ml: 260, size0: 60, size1: 26, tint: 0x6858a8, opacity0: 0.5 },
+            { count: 5, sprite: 'shadow-wisp', ml: [480, 760], offsetXY: 14, z: [50, 90],
+              vzRange: [-60, -24], gravity: 60, size0: [14, 22], size1: [26, 38], opacity0: 0.6 },
+            { count: 1, sprite: 'spark-pink', ml: 300, offsetXY: 8, z: 56, delayMs: 200, tint: 0xb8a8ff,
+              vzRange: [20, 30], size0: 8, size1: 3, opacity0: 0.9 },
+            { count: 1, sprite: 'spark-pink', ml: 300, offsetXY: 8, z: 64, delayMs: 400, tint: 0xb8a8ff,
+              vzRange: [20, 30], size0: 8, size1: 3, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 460, z: 2,
+              tint: 0x7060b8, size0: 90, size1: 30, opacity0: 0.5 },
+        ]
+    };
+    SPELL_MAP['raceBrainwash'] = Object.assign({}, SPELL_MAP['raceBrainwash'], { impact: 'raceBrainwash_impact' });
+    SPELL_MAP['racePossession'] = Object.assign({}, SPELL_MAP['racePossession'], { impact: 'racePossession_impact' });
+    SPELL_MAP['raceSleepParalysis'] = Object.assign({}, SPELL_MAP['raceSleepParalysis'], { impact: 'raceSleepParalysis_impact' });
+
+    /* ── PSYCHIC LOOKS TRIO + GAZE PAIR + MIND PAIR ───────────────────── */
+    EFFECTS['glare_impact'] = {                   /* glare: one red line across the eyes */
+        layers: [
+            { sprite: 'laser-red', ml: 190, opacity0: 0.95, z: 48, w0: 80, w1: 110, h0: 4, h1: 2 },
+            { sprite: 'flash', ml: 110, size0: 40, size1: 12, tint: 0xff8080, opacity0: 0.7, z: 46 },
+            { count: 4, sprite: 'psi-pulse', ml: [260, 420], offsetXY: 12, z: [30, 56], tint: 0xff9090,
+              size0: [6, 10], size1: 2, opacity0: 0.8 },
+        ]
+    };
+    EFFECTS['lullaby_impact'] = {                 /* lullaby: soft notes climb, lids drop */
+        layers: [
+            { count: 1, sprite: 'spark-pink', ml: 340, offsetXY: 10, z: 40, tint: 0xffc0e0,
+              vzRange: [26, 36], size0: 9, size1: 3, opacity0: 0.95 },
+            { count: 1, sprite: 'spark-pink', ml: 340, offsetXY: 10, z: 46, delayMs: 180, tint: 0xc0b0ff,
+              vzRange: [26, 36], size0: 9, size1: 3, opacity0: 0.95 },
+            { count: 1, sprite: 'spark-pink', ml: 340, offsetXY: 10, z: 52, delayMs: 360, tint: 0xa0c8ff,
+              vzRange: [26, 36], size0: 9, size1: 3, opacity0: 0.95 },
+            { count: 3, sprite: 'frost-mist', ml: [420, 640], offsetXY: 14, z: [16, 44], tint: 0xb8c8f0,
+              size0: [12, 18], size1: [22, 32], opacity0: 0.45 },
+            { sprite: 'flash', ml: 240, size0: 44, size1: 20, tint: 0xa8b8e8, opacity0: 0.4 },
+        ]
+    };
+    EFFECTS['raceStarCrossed_impact'] = {         /* star-crossed: your constellation turns on you */
+        layers: [
+            { count: 7, sprite: 'divine-sparkle', ml: [420, 640], offsetXY: 30, z: [40, 90], tint: 0xc8d8ff,
+              size0: [5, 9], size1: 2, opacity0: 0.95 },
+            { count: 3, sprite: 'divine-sparkle', ml: [300, 440], offsetXY: 26, z: [50, 90], tint: 0xffd8a0,
+              delayMs: 200, size0: [6, 10], size1: 2, opacity0: 0.95 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 380, z: 2,
+              tint: 0x8898ff, size0: 26, size1: 120, opacity0: 0.5 },
+            { count: 3, sprite: 'void-mist', ml: [420, 620], offsetXY: 14, z: [16, 44], tint: 0x6878c8,
+              size0: [12, 20], size1: [24, 36], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceHypnoticPulse_impact'] = {       /* hypnotic pulse: rings inside rings */
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 300, z: 2,
+              tint: 0xc078ff, size0: 20, size1: 110, opacity0: 0.65 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 300, z: 2, delayMs: 150,
+              tint: 0xa060e8, size0: 20, size1: 110, opacity0: 0.55 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 300, z: 2, delayMs: 300,
+              tint: 0x8850d0, size0: 20, size1: 110, opacity0: 0.45 },
+            { count: 6, sprite: 'spark-pink', ml: [420, 620], offsetXY: 30, z: [16, 50],
+              seekIn: [360, 540], seekInZ: [20, 44], seekSpiral: 400, size0: [6, 9], size1: 2, opacity0: 0.9 },
+            { sprite: 'psi-pulse', ml: 240, size0: 40, size1: 60, z: 40, opacity0: 0.6 },
+        ]
+    };
+    EFFECTS['raceMindCrush_impact'] = {           /* mind crush: the room gets smaller */
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 340, z: 2,
+              tint: 0xc078ff, size0: 150, size1: 30, opacity0: 0.7 },
+            { count: 9, sprite: 'psi-pulse', ml: [300, 460], offsetXY: 44, z: [20, 60],
+              seekIn: [260, 400], seekInZ: [30, 50], seekSpiral: 80, size0: [8, 12], size1: 2, opacity0: 0.9 },
+            { sprite: 'flash', ml: 100, size0: 60, size1: 16, tint: 0xb090ff, opacity0: 0.85, delayMs: 240 },
+            { count: 5, sprite: 'frost-crystal', ml: [220, 360], offsetXY: 12, z: [24, 54], tint: 0xd8c0ff,
+              delayMs: 240, vxRange: 160, vyRange: 160, vzRange: [20, 90], gravity: 380, size0: [4, 7], size1: 2 },
+        ]
+    };
+    SPELL_MAP['glare'] = Object.assign({}, SPELL_MAP['glare'], { impact: 'glare_impact' });
+    SPELL_MAP['lullaby'] = Object.assign({}, SPELL_MAP['lullaby'], { impact: 'lullaby_impact' });
+    SPELL_MAP['raceStarCrossed'] = Object.assign({}, SPELL_MAP['raceStarCrossed'], { impact: 'raceStarCrossed_impact' });
+    SPELL_MAP['raceHypnoticPulse'] = Object.assign({}, SPELL_MAP['raceHypnoticPulse'], { impact: 'raceHypnoticPulse_impact' });
+    SPELL_MAP['raceMindCrush'] = Object.assign({}, SPELL_MAP['raceMindCrush'], { impact: 'raceMindCrush_impact' });
+
+    /* ── SEED PAIR + CONTRACT PAIR ────────────────────────────────────── */
+    EFFECTS['leechSeed_impact_p3'] = {            /* leech seed: tendrils take root */
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 44, size1: 14, tint: 0x8fe858, opacity0: 0.7 },
+            { count: 5, anchor: 'floor', mode: 'y-locked', sprite: 'vine-green', ml: [420, 640],
+              offsetXY: 18, w0: [5, 8], w1: [3, 5], h0: [20, 34], h1: [54, 84], opacity0: 0.9 },
+            { count: 4, sprite: 'poison-bubble', ml: [360, 560], offsetXY: 14, z: [10, 36],
+              vzRange: [16, 44], size0: [5, 8], size1: 3, opacity0: 0.85 },
+            { count: 3, sprite: 'leaf', ml: [340, 520], offsetXY: 14, z: [12, 36],
+              vzRange: [20, 60], gravity: 200, wander: { amp: 20, freq: 1.2 }, size0: [7, 10], size1: 5 },
+        ]
+    };
+    EFFECTS['poisonSeed_impact'] = {              /* poison seed: the pod bursts wet */
+        layers: [
+            { sprite: 'flash', ml: 100, size0: 48, size1: 14, tint: 0xb8e830, opacity0: 0.75 },
+            { count: 7, sprite: 'acid-green', ml: [280, 460], offsetXY: 8, z: [16, 40],
+              vxRange: 170, vyRange: 170, vzRange: [40, 140], gravity: 380, size0: [4, 8], size1: 2 },
+            { count: 5, sprite: 'poison-mist', ml: [420, 660], offsetXY: 14, z: [8, 34],
+              vzRange: [8, 30], wander: { amp: 22, freq: 1.1 }, size0: [14, 22], size1: [28, 42], opacity0: 0.55 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1200, z: 1, tint: 0x486828,
+              size0: 44, size1: 54, opacity0: 0.45 },
+        ]
+    };
+    EFFECTS['raceContract_impact'] = {            /* the contract: fine print in gold and ash */
+        layers: [
+            { sprite: 'flash', ml: 130, opacity0: 0.85, z: 34, w0: 46, w1: 52, h0: 60, h1: 66, tint: 0xf0e8d0 },
+            { count: 5, sprite: 'ember', ml: [360, 560], offsetXY: 16, z: [20, 54], tint: 0xffd24a,
+              wander: { amp: 16, freq: 1.2 }, size0: [5, 8], size1: 2, opacity0: 0.9 },
+            { count: 4, sprite: 'dark-flame', ml: [300, 480], offsetXY: 12, z: [10, 36],
+              size0: [8, 13], size1: [14, 22], opacity0: 0.7 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 320, z: 2,
+              tint: 0xc8a040, size0: 24, size1: 100, opacity0: 0.55 },
+        ]
+    };
+    EFFECTS['raceInfernalConscription_impact'] = { /* conscription: drafted straight to hell */
+        layers: [
+            { sprite: 'flash', ml: 130, size0: 66, size1: 20, tint: 0xff7040, opacity0: 0.85 },
+            { count: 4, anchor: 'floor', mode: 'y-locked', sprite: 'dark-flame', ml: [380, 600],
+              offsetXY: 20, w0: [12, 18], w1: [6, 10], h0: [30, 48], h1: [80, 120], opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 340, z: 2,
+              tint: 0xd83820, size0: 30, size1: 130, opacity0: 0.65 },
+            { count: 8, sprite: 'ember', ml: [380, 620], offsetXY: 16, z: [10, 40],
+              vzRange: [40, 110], drag: 0.7, size0: [5, 8], size1: 2, opacity0: 0.9 },
+            { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1600, z: 1, size0: 60, size1: 72, opacity0: 0.55 },
+        ]
+    };
+    SPELL_MAP['leechSeed'] = Object.assign({}, SPELL_MAP['leechSeed'], { impact: 'leechSeed_impact_p3' });
+    SPELL_MAP['poisonSeed'] = Object.assign({}, SPELL_MAP['poisonSeed'], { impact: 'poisonSeed_impact' });
+    SPELL_MAP['raceContract'] = Object.assign({}, SPELL_MAP['raceContract'], { impact: 'raceContract_impact' });
+    SPELL_MAP['raceInfernalConscription'] = Object.assign({}, SPELL_MAP['raceInfernalConscription'], { impact: 'raceInfernalConscription_impact' });
+
+    /* ── THE INVISIBLE TWENTY(+1) — spells that had NO visuals at all
+       beyond generic staging. Full identities from scratch. ────────────── */
+    EFFECTS['raceAbduction_impact'] = {           /* abduction: the tractor beam takes you */
+        layers: [
+            { anchor: 'floor', mode: 'y-locked', sprite: 'ufo-glow', ml: 700, z: 2,
+              w0: 60, w1: 34, h0: 240, h1: 120, opacity0: 0.75 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 420, z: 2,
+              tint: 0x66ff99, size0: 90, size1: 34, opacity0: 0.7 },
+            { count: 9, sprite: 'divine-sparkle', ml: [420, 680], offsetXY: 18, z: [4, 40], tint: 0xa0ffc0,
+              vzRange: [80, 190], drag: 0.4, size0: [5, 9], size1: 2, opacity0: 0.9 },
+            { count: 5, sprite: 'emp-arc', ml: [260, 420], offsetXY: 20, z: [30, 90],
+              size0: [6, 10], size1: 2, opacity0: 0.8 },
+            { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [300, 480], offsetXY: 14, z: [2, 8],
+              seekIn: [280, 420], seekInZ: [40, 90], size0: [12, 18], size1: 5, opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceApexCharge_impact'] = {          /* apex charge: the predator arrives first */
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 100, size0: 74, size1: 18, tint: 0xffe8c0, opacity0: 0.95 },
+            { count: 6, sprite: 'flash', ml: [140, 220], offsetXY: 12, z: [16, 44], tint: 0xfff4d8,
+              w0: [30, 50], w1: [40, 64], h0: 3, h1: 2, opacity0: 0.8 },
+            { count: 7, anchor: 'floor', sprite: 'dust-puff', ml: [300, 520], offsetXY: 24, z: [2, 10],
+              vxRange: [60, 220], vyRange: 90, size0: [14, 22], size1: [30, 46], opacity0: 0.6 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 280, z: 2,
+              tint: 0xe8c890, size0: 30, size1: 130, opacity0: 0.65 },
+        ]
+    };
+    EFFECTS['raceChivalry_burst'] = {             /* chivalry: colors raised, shield kissed */
+        layers: [
+            { anchor: 'floor', mode: 'y-locked', sprite: 'holy-pillar', ml: 560, z: 2, tint: 0xa0c8ff,
+              w0: 16, w1: 10, h0: 60, h1: 170, opacity0: 0.8 },
+            { count: 6, sprite: 'shield-blue', ml: [320, 500], offsetXY: 22, z: [16, 56],
+              size0: [8, 12], size1: 3, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 340, z: 2,
+              tint: 0x88b0ff, size0: 28, size1: 120, opacity0: 0.6 },
+            { sprite: 'flash', ml: 130, size0: 44, size1: 14, tint: 0xd8e8ff, opacity0: 0.8 },
+        ]
+    };
+    EFFECTS['raceChivalry_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceChivalry_burst' };
+    EFFECTS['raceEarthenGrasp_impact'] = {        /* earthen grasp: a stone hand closes */
+        shake: 'normal',
+        layers: [
+            { count: 5, anchor: 'floor', mode: 'y-locked', sprite: 'mud-chunk', ml: [380, 540],
+              offsetXY: 22, w0: [10, 16], w1: [8, 12], h0: [20, 30], h1: [60, 90], opacity0: 0.95 },
+            { count: 7, sprite: 'rock-debris', ml: [300, 520], offsetXY: 16, z: [0, 10],
+              vxRange: 120, vyRange: 120, vzRange: [60, 160], gravity: 480, size0: [6, 10], size1: 3 },
+            { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [340, 540], offsetXY: 16, z: [2, 8],
+              size0: [14, 22], size1: [28, 42], opacity0: 0.6 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 320, z: 2,
+              tint: 0xb89868, size0: 100, size1: 36, opacity0: 0.65 },
+        ]
+    };
+    EFFECTS['raceEmpPulse_impact_tile'] = {
+        layers: [
+            { count: 2, sprite: 'emp-arc', ml: [200, 340], offsetXY: 14, z: [8, 36],
+              size0: [6, 10], size1: 2, opacity0: 0.85 },
+            { count: 1, sprite: 'spark-elec', ml: [160, 260], offsetXY: 10, z: [6, 26],
+              size0: [5, 8], size1: 1, opacity0: 0.8 },
+        ]
+    };
+    EFFECTS['raceEmpPulse_impact_center'] = {     /* EMP: blue-white pop, then dead air */
+        layers: [
+            { sprite: 'plasma', ml: 140, size0: 90, size1: 24, opacity0: 1 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 300, z: 2,
+              tint: 0x86c8ff, size0: 36, size1: 200, opacity0: 0.85 },
+            { count: 9, sprite: 'emp-arc', ml: [220, 420], offsetXY: 18, z: [8, 50],
+              vxRange: 140, vyRange: 140, size0: [6, 11], size1: 2, opacity0: 0.9 },
+            { count: 4, sprite: 'smoke-soft', ml: [420, 640], offsetXY: 14, z: [10, 34], delayMs: 200,
+              vzRange: [10, 30], size0: [12, 18], size1: [24, 36], opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceEmpPulse_aoe'] = { aoeRadius: 1, impactTileEffect: 'raceEmpPulse_impact_tile',
+        impactCenterEffect: 'raceEmpPulse_impact_center' };
+    EFFECTS['raceGrapple_impact'] = {             /* grapple: the hook bites and holds */
+        layers: [
+            { sprite: 'flash', ml: 90, size0: 44, size1: 12, tint: 0xe8e0d0, opacity0: 0.9 },
+            { count: 6, sprite: 'steel-spark', ml: [160, 300], offsetXY: 8, z: [14, 38],
+              vxRange: 190, vyRange: 190, vzRange: [20, 90], gravity: 420, size0: [4, 7], size1: 1 },
+            { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [240, 400], offsetXY: 12, z: [2, 8],
+              size0: [10, 16], size1: [20, 30], opacity0: 0.5 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 240, z: 2,
+              tint: 0xc8b898, size0: 60, size1: 24, opacity0: 0.55 },
+        ]
+    };
+    EFFECTS['raceHarvestHook_impact'] = {         /* harvest hook: the reaper collects */
+        layers: [
+            { sprite: 'flash', ml: 130, tint: 0xc8e8b0, opacity0: 0.9, z: 30,
+              w0: 90, w1: 120, h0: 6, h1: 3, spriteRot: -0.9 },
+            { count: 7, sprite: 'leaf', ml: [380, 620], offsetXY: 16, z: [12, 44], tint: 0xd8c060,
+              vxRange: 130, vyRange: 130, vzRange: [30, 110], gravity: 240, drag: 1.1,
+              wander: { amp: 26, freq: 1.3 }, size0: [7, 10], size1: 5 },
+            { count: 4, sprite: 'shadow-wisp', ml: [360, 560], offsetXY: 14, z: [10, 40], tint: 0x88a860,
+              seekIn: [320, 480], seekInZ: [14, 36], size0: [10, 16], size1: 4, opacity0: 0.55 },
+            { count: 4, sprite: 'steel-spark', ml: [160, 280], offsetXY: 8, z: [16, 40],
+              size0: [4, 7], size1: 1, opacity0: 0.85 },
+        ]
+    };
+    EFFECTS['raceHydraulicCrush_impact'] = {      /* hydraulic crush: the press comes down flat */
+        shake: 'hard',
+        layers: [
+            { sprite: 'flash', ml: 110, opacity0: 1, z: 26, w0: 110, w1: 130, h0: 14, h1: 6 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 340, z: 2,
+              tint: 0xc8d0d8, size0: 44, size1: 210, opacity0: 0.85 },
+            { count: 6, sprite: 'smoke-soft', ml: [260, 440], offsetXY: 12, z: [8, 26], tint: 0xf0f4f8,
+              vxRange: [100, 240], vyRange: 60, drag: 1.0, size0: [10, 16], size1: [22, 34], opacity0: 0.6 },
+            { count: 8, sprite: 'steel-spark', ml: [180, 340], offsetXY: 10, z: [8, 30],
+              vxRange: 240, vyRange: 240, vzRange: [10, 80], gravity: 440, size0: [4, 8], size1: 1 },
+            { count: 4, sprite: 'debris', ml: [300, 500], offsetXY: 12, z: [2, 12],
+              vxRange: 150, vyRange: 150, vzRange: [40, 120], gravity: 460, size0: [6, 10], size1: 3 },
+        ]
+    };
+    EFFECTS['raceLasso_impact'] = {               /* lasso: dust ring, rope snap */
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 360, z: 2,
+              tint: 0xe0b878, size0: 110, size1: 40, opacity0: 0.7 },
+            { count: 7, sprite: 'sand-particle', ml: [280, 480], offsetXY: 20, z: [2, 16],
+              vxRange: 150, vyRange: 150, vzRange: [20, 80], gravity: 320, size0: [4, 7], size1: 2 },
+            { sprite: 'flash', ml: 90, size0: 40, size1: 12, tint: 0xf0d8a8, opacity0: 0.85, delayMs: 140 },
+            { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [300, 480], offsetXY: 18, z: [2, 8],
+              size0: [12, 18], size1: [24, 36], opacity0: 0.55 },
+        ]
+    };
+    EFFECTS['racePulseLattice_burst'] = {         /* pulse lattice: the grid switches on */
+        layers: [
+            { count: 9, sprite: 'plasma', ml: [380, 560], offsetXY: 34, z: [10, 50],
+              size0: [6, 9], size1: 3, opacity0: 0.9 },
+            { count: 6, sprite: 'spark-elec', ml: [240, 400], offsetXY: 30, z: [10, 50], delayMs: 160,
+              size0: [4, 7], size1: 1, opacity0: 0.85 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 320, z: 2,
+              tint: 0x60c8ff, size0: 26, size1: 130, opacity0: 0.6 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 360, z: 2, delayMs: 200,
+              tint: 0x4098e8, size0: 40, size1: 170, opacity0: 0.45 },
+        ]
+    };
+    EFFECTS['racePulseLattice_aura'] = { aoeRadius: 1, impactCenterEffect: 'racePulseLattice_burst',
+        impactTileEffect: 'raceEmpPulse_impact_tile' };
+    EFFECTS['raceRealityShift_burst'] = {         /* blurry photo: chromatic ghosting */
+        layers: [
+            { sprite: 'flash', ml: 200, size0: 50, size1: 40, tint: 0xff6060, opacity0: 0.45, offsetXY: 8, z: 30 },
+            { sprite: 'flash', ml: 200, size0: 50, size1: 40, tint: 0x60ff80, opacity0: 0.45, offsetXY: 8, z: 30, delayMs: 70 },
+            { sprite: 'flash', ml: 200, size0: 50, size1: 40, tint: 0x6080ff, opacity0: 0.45, offsetXY: 8, z: 30, delayMs: 140 },
+            { count: 5, sprite: 'void-mist', ml: [420, 640], offsetXY: 16, z: [10, 44], tint: 0xb8c0d8,
+              wander: { amp: 30, freq: 1.6 }, size0: [12, 20], size1: [24, 36], opacity0: 0.5 },
+            { count: 4, sprite: 'psi-pulse', ml: [300, 480], offsetXY: 18, z: [16, 50],
+              size0: [6, 10], size1: 2, opacity0: 0.75 },
+        ]
+    };
+    EFFECTS['raceRealityShift_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceRealityShift_burst' };
+    EFFECTS['raceSystemAnalysis_impact'] = {      /* system analysis: the scan sweeps up */
+        layers: [
+            { sprite: 'plasma', ml: 160, opacity0: 0.8, z: 14, w0: 70, w1: 74, h0: 3, h1: 2 },
+            { sprite: 'plasma', ml: 160, opacity0: 0.8, z: 30, delayMs: 120, w0: 70, w1: 74, h0: 3, h1: 2 },
+            { sprite: 'plasma', ml: 160, opacity0: 0.8, z: 46, delayMs: 240, w0: 70, w1: 74, h0: 3, h1: 2 },
+            { sprite: 'flash', ml: 120, size0: 40, size1: 14, tint: 0x80d8ff, delayMs: 360, opacity0: 0.8, z: 50 },
+            { count: 5, sprite: 'spark-elec', ml: [220, 360], offsetXY: 16, z: [10, 46],
+              size0: [4, 7], size1: 1, opacity0: 0.8 },
+        ]
+    };
+    EFFECTS['raceTrickRoom_burst'] = {            /* trick room: the space turns inside out */
+        layers: [
+            { sprite: 'flash', ml: 160, size0: 30, size1: 90, tint: 0xd8b0ff, opacity0: 0.6, z: 34 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 340, z: 2,
+              tint: 0xc078ff, size0: 130, size1: 40, opacity0: 0.6 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 340, z: 2, delayMs: 170,
+              tint: 0x70d8ff, size0: 40, size1: 150, opacity0: 0.55 },
+            { count: 8, sprite: 'frost-crystal', ml: [420, 640], offsetXY: 30, z: [16, 60], tint: 0xe8d0ff,
+              vzRange: [-16, 16], wander: { amp: 20, freq: 0.9 }, size0: [5, 9], size1: 3, opacity0: 0.85 },
+            { count: 4, sprite: 'psi-pulse', ml: [360, 540], offsetXY: 22, z: [20, 54],
+              size0: [8, 12], size1: [14, 20], opacity0: 0.55 },
+        ]
+    };
+    EFFECTS['raceTrickRoom_aura'] = { aoeRadius: 1, impactCenterEffect: 'raceTrickRoom_burst' };
+    EFFECTS['raceTuneFrequency_burst'] = {        /* tune frequency: dialing through static */
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 260, z: 2,
+              tint: 0x70d8ff, size0: 20, size1: 90, opacity0: 0.6 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 260, z: 2, delayMs: 140,
+              tint: 0x88e0ff, size0: 26, size1: 110, opacity0: 0.55 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 260, z: 2, delayMs: 280,
+              tint: 0xa0e8ff, size0: 32, size1: 130, opacity0: 0.5 },
+            { count: 4, sprite: 'spark-elec', ml: [160, 240], offsetXY: 14, z: [20, 50],
+              delayMs: 100, size0: [4, 7], size1: 1, opacity0: 0.85 },
+            { count: 4, sprite: 'spark-elec', ml: [160, 240], offsetXY: 14, z: [20, 50],
+              delayMs: 320, size0: [4, 7], size1: 1, opacity0: 0.85 },
+            { sprite: 'psi-pulse', ml: 300, size0: 30, size1: 46, z: 40, tint: 0x90e0ff, opacity0: 0.5 },
+        ]
+    };
+    EFFECTS['raceTuneFrequency_aura'] = { aoeRadius: 0, impactCenterEffect: 'raceTuneFrequency_burst' };
+    EFFECTS['raceZombieRush_impact'] = {          /* zombie rush: the pile arrives hungry */
+        layers: [
+            { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [260, 420], offsetXY: 22, z: [2, 8],
+              size0: [12, 18], size1: [24, 36], opacity0: 0.55 },
+            { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [260, 420], offsetXY: 22, z: [2, 8],
+              delayMs: 140, size0: [12, 18], size1: [24, 36], opacity0: 0.55 },
+            { count: 5, sprite: 'blood-fleck', ml: [280, 460], offsetXY: 16, z: [10, 36],
+              vxRange: 150, vyRange: 150, vzRange: [20, 90], gravity: 380, size0: [4, 7], size1: 2 },
+            { count: 4, sprite: 'poison-mist', ml: [380, 580], offsetXY: 18, z: [10, 36],
+              vzRange: [8, 30], size0: [12, 20], size1: [24, 36], opacity0: 0.5 },
+            { sprite: 'flash', ml: 100, size0: 50, size1: 14, tint: 0xa8d890, opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['remoteView_burst'] = {               /* remote view: the third eye opens elsewhere */
+        layers: [
+            { sprite: 'psi-pulse', ml: 380, size0: 16, size1: 52, z: 44, opacity0: 0.75 },
+            { sprite: 'flash', ml: 160, size0: 30, size1: 10, tint: 0xd8b0ff, opacity0: 0.8, z: 44, delayMs: 120 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 420, z: 2,
+              tint: 0xa878ff, size0: 22, size1: 100, opacity0: 0.5 },
+            { count: 6, sprite: 'divine-sparkle', ml: [420, 640], offsetXY: 22, z: [26, 66], tint: 0xd8c0ff,
+              wander: { amp: 14, freq: 0.8 }, size0: [4, 7], size1: 2, opacity0: 0.85 },
+        ]
+    };
+    EFFECTS['remoteView_aura'] = { aoeRadius: 0, impactCenterEffect: 'remoteView_burst' };
+    EFFECTS['sharedGravityCrush_impact_tile'] = {
+        layers: [
+            { count: 2, sprite: 'dust-puff', ml: [300, 480], offsetXY: 16, z: [20, 50],
+              vzRange: [-90, -40], gravity: 160, size0: [10, 16], size1: 5, opacity0: 0.6 },
+            { count: 1, sprite: 'debris', ml: [260, 420], offsetXY: 12, z: [24, 50],
+              vzRange: [-110, -50], gravity: 200, size0: [5, 8], size1: 3 },
+        ]
+    };
+    EFFECTS['sharedGravityCrush_burst'] = {       /* gravity crush: everything gets HEAVY */
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 420, z: 2,
+              tint: 0x8060d8, size0: 170, size1: 40, opacity0: 0.75 },
+            { count: 8, sprite: 'dust-puff', ml: [340, 540], offsetXY: 26, z: [30, 70],
+              vzRange: [-120, -60], gravity: 220, size0: [12, 18], size1: 5, opacity0: 0.6 },
+            { count: 6, sprite: 'void-mist', ml: [380, 580], offsetXY: 22, z: [20, 60], tint: 0x7050c8,
+              seekIn: [340, 520], seekInZ: [6, 20], size0: [14, 22], size1: 5, opacity0: 0.6 },
+            { sprite: 'flash', ml: 140, size0: 70, size1: 20, tint: 0x9070e8, opacity0: 0.6, delayMs: 200 },
+        ]
+    };
+    EFFECTS['sharedGravityCrush_aura'] = { aoeRadius: 1, impactCenterEffect: 'sharedGravityCrush_burst',
+        impactTileEffect: 'sharedGravityCrush_impact_tile' };
+    EFFECTS['sharedLowGravity_impact_tile'] = {
+        layers: [
+            { count: 2, sprite: 'dust-puff', ml: [420, 640], offsetXY: 16, z: [2, 10],
+              vzRange: [40, 90], gravity: -20, drag: 0.5, size0: [10, 16], size1: [16, 24], opacity0: 0.55 },
+            { count: 2, sprite: 'bubble', ml: [460, 700], offsetXY: 14, z: [4, 16],
+              vzRange: [30, 70], drag: 0.4, size0: [5, 8], size1: [7, 10], opacity0: 0.7 },
+        ]
+    };
+    EFFECTS['sharedLowGravity_burst'] = {         /* low gravity: the room forgets to hold on */
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 460, z: 2,
+              tint: 0x70d8ff, size0: 40, size1: 170, opacity0: 0.6 },
+            { count: 9, sprite: 'dust-puff', ml: [520, 820], offsetXY: 26, z: [2, 12],
+              vzRange: [50, 120], gravity: -14, drag: 0.5, size0: [10, 16], size1: [18, 28], opacity0: 0.55 },
+            { count: 6, sprite: 'bubble', ml: [560, 860], offsetXY: 22, z: [4, 20],
+              vzRange: [40, 90], drag: 0.4, wander: { amp: 18, freq: 0.8 }, size0: [5, 9], size1: [8, 12], opacity0: 0.7 },
+            { count: 5, sprite: 'petal', ml: [520, 800], offsetXY: 20, z: [4, 20], tint: 0xc8e8ff,
+              vzRange: [30, 80], gravity: -8, wander: { amp: 24, freq: 1.0 }, size0: [6, 9], size1: [5, 8], opacity0: 0.8 },
+        ]
+    };
+    EFFECTS['sharedLowGravity_aura'] = { aoeRadius: 1, impactCenterEffect: 'sharedLowGravity_burst',
+        impactTileEffect: 'sharedLowGravity_impact_tile' };
+    EFFECTS['sharedShrinkRay_impact'] = {         /* shrink ray: rings close in, tiny pop */
+        layers: [
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 280, z: 2,
+              tint: 0xff70d8, size0: 130, size1: 50, opacity0: 0.65 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 280, z: 2, delayMs: 150,
+              tint: 0xff90e0, size0: 90, size1: 26, opacity0: 0.6 },
+            { count: 6, sprite: 'spark-pink', ml: [240, 400], offsetXY: 26, z: [12, 46],
+              seekIn: [220, 340], seekInZ: [14, 34], seekSpiral: 300, size0: [5, 8], size1: 2, opacity0: 0.9 },
+            { sprite: 'flash', ml: 90, size0: 26, size1: 6, tint: 0xffc0f0, opacity0: 0.95, delayMs: 300 },
+        ]
+    };
+    EFFECTS['trunkThrow_impact'] = {              /* trunk throw: timber. */
+        shake: 'normal',
+        layers: [
+            { sprite: 'flash', ml: 110, size0: 84, size1: 20, tint: 0xe8d0a8, opacity0: 0.9 },
+            { count: 8, sprite: 'debris', ml: [340, 600], offsetXY: 16, z: [4, 20], tint: 0x9a6a3a,
+              vxRange: 190, vyRange: 190, vzRange: [60, 190], gravity: 500, size0: [7, 12], size1: 4 },
+            { count: 5, sprite: 'leaf', ml: [420, 660], offsetXY: 20, z: [16, 50],
+              vxRange: 120, vyRange: 120, vzRange: [30, 100], gravity: 200, drag: 1.2,
+              wander: { amp: 24, freq: 1.2 }, size0: [7, 10], size1: 5 },
+            { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 340, z: 2,
+              tint: 0xc8a878, size0: 40, size1: 180, opacity0: 0.75 },
+            { count: 5, anchor: 'floor', sprite: 'dust-puff', ml: [360, 580], offsetXY: 20, z: [2, 10],
+              size0: [16, 24], size1: [32, 48], opacity0: 0.6 },
+        ]
+    };
+    EFFECTS['raceCalcify_impact'] = {             /* calcify: the crust climbs your legs */
+        layers: [
+            { count: 6, sprite: 'sand-particle', ml: [380, 560], offsetXY: 30, z: [4, 30], tint: 0xd8d0c0,
+              seekIn: [320, 480], seekInZ: [8, 30], size0: [5, 8], size1: 3, opacity0: 0.9 },
+            { count: 4, anchor: 'floor', mode: 'y-locked', sprite: 'dust-puff', ml: [420, 620],
+              offsetXY: 14, tint: 0xc8c0b0, w0: [10, 16], w1: [12, 18], h0: [16, 26], h1: [40, 60], opacity0: 0.7 },
+            { count: 4, sprite: 'frost-crystal', ml: [300, 460], offsetXY: 12, z: [8, 34], tint: 0xe8e0d0,
+              size0: [5, 8], size1: 3, opacity0: 0.85 },
+            { sprite: 'flash', ml: 120, size0: 44, size1: 14, tint: 0xe0d8c8, opacity0: 0.7 },
+        ]
+    };
+    SPELL_MAP['raceAbduction'] = Object.assign({}, SPELL_MAP['raceAbduction'], { impact: 'raceAbduction_impact' });
+    SPELL_MAP['raceApexCharge'] = Object.assign({}, SPELL_MAP['raceApexCharge'], { impact: 'raceApexCharge_impact' });
+    SPELL_MAP['raceChivalry'] = Object.assign({}, SPELL_MAP['raceChivalry'], { aura: 'raceChivalry_aura' });
+    SPELL_MAP['raceEarthenGrasp'] = Object.assign({}, SPELL_MAP['raceEarthenGrasp'], { impact: 'raceEarthenGrasp_impact' });
+    SPELL_MAP['raceEmpPulse'] = Object.assign({}, SPELL_MAP['raceEmpPulse'],
+        { aoe: 'raceEmpPulse_aoe', impact: 'raceEmpPulse_impact_center' });
+    SPELL_MAP['raceGrapple'] = Object.assign({}, SPELL_MAP['raceGrapple'], { impact: 'raceGrapple_impact' });
+    SPELL_MAP['raceHarvestHook'] = Object.assign({}, SPELL_MAP['raceHarvestHook'], { impact: 'raceHarvestHook_impact' });
+    SPELL_MAP['raceHydraulicCrush'] = Object.assign({}, SPELL_MAP['raceHydraulicCrush'], { impact: 'raceHydraulicCrush_impact' });
+    SPELL_MAP['raceLasso'] = Object.assign({}, SPELL_MAP['raceLasso'], { impact: 'raceLasso_impact' });
+    SPELL_MAP['racePulseLattice'] = Object.assign({}, SPELL_MAP['racePulseLattice'], { aura: 'racePulseLattice_aura' });
+    SPELL_MAP['raceRealityShift'] = Object.assign({}, SPELL_MAP['raceRealityShift'], { aura: 'raceRealityShift_aura' });
+    SPELL_MAP['raceSystemAnalysis'] = Object.assign({}, SPELL_MAP['raceSystemAnalysis'], { impact: 'raceSystemAnalysis_impact' });
+    SPELL_MAP['raceTrickRoom'] = Object.assign({}, SPELL_MAP['raceTrickRoom'], { aura: 'raceTrickRoom_aura' });
+    SPELL_MAP['raceTuneFrequency'] = Object.assign({}, SPELL_MAP['raceTuneFrequency'], { aura: 'raceTuneFrequency_aura' });
+    SPELL_MAP['raceZombieRush'] = Object.assign({}, SPELL_MAP['raceZombieRush'], { impact: 'raceZombieRush_impact' });
+    SPELL_MAP['remoteView'] = Object.assign({}, SPELL_MAP['remoteView'], { aura: 'remoteView_aura' });
+    SPELL_MAP['sharedGravityCrush'] = Object.assign({}, SPELL_MAP['sharedGravityCrush'], { aura: 'sharedGravityCrush_aura' });
+    SPELL_MAP['sharedLowGravity'] = Object.assign({}, SPELL_MAP['sharedLowGravity'], { aura: 'sharedLowGravity_aura' });
+    SPELL_MAP['sharedShrinkRay'] = Object.assign({}, SPELL_MAP['sharedShrinkRay'], { impact: 'sharedShrinkRay_impact' });
+    SPELL_MAP['trunkThrow'] = Object.assign({}, SPELL_MAP['trunkThrow'], { impact: 'trunkThrow_impact' });
+    SPELL_MAP['raceCalcify'] = Object.assign({}, SPELL_MAP['raceCalcify'], { impact: 'raceCalcify_impact' });
+
+    /* ═════════ END VFX PASS-3 COVERAGE SECTION ═════════ */
+
     return {
 
         projectile: projectile,
