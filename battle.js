@@ -2552,6 +2552,10 @@
             }
             const HOP_MS = 55;
             let drawn = 0;
+            // ⚡ The charge racing out across the sheet — one fizzing arc
+            // sweep as it starts, another per victim it climbs through
+            // (playSfx's cooldown throttles dense pools).
+            playSfx('conductionArc');
             for (const t of tiles) {
                 const k = key(t.x, t.y);
                 const p = parent.get(k);
@@ -2573,6 +2577,7 @@
                           impactFlash: isVictim || Math.random() < 0.3,
                           impactFlashSize: ts * 0.18 });
                     if (isVictim) {
+                        playSfx('conductionArc');
                         // the charge leaps up through whoever is standing here
                         ThreeLightning.boltVfx(
                             { x: b.x, y: b.y, z: surfZ(t.x, t.y) + 4 },
@@ -3212,6 +3217,7 @@
             unit.y = cy;
             if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(cx, cy, unit.z);
             animateDisplacementPath(unit, fromX, fromY, steps, 90);
+            playSfx('iceSlide');
             showFloatingTextForUnit(unit, '⛸ SLIDES!', 'debuff', { durationMs: 1000 });
             addLog(`⛸ ${unitDisplayName(unit)} hits the ice at ${coordLabel(fromX, fromY)} and slides to ${coordLabel(cx, cy)}!`);
             if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX, fromY });
@@ -4483,7 +4489,8 @@
                 if (second) {
                     playProjectile(first.x, first.y, second.x, second.y,
                         'proj-ricochet', bounceProjectileMs, spell.spellType, null, spell);
-                    playSfx(spellLaunchSfx(spell));
+                    // Lightning chains hop with a rising "bzzt", not a re-cast.
+                    playSfx(_sfxSpellTheme(spell) === 'elec' ? 'chainHop' : spellLaunchSfx(spell));
                     // The camera rides the bounce: hand the live action shot
                     // to the second victim as the projectile flies (fallback:
                     // tactical pan framing both when no shot owns the camera).
@@ -5860,7 +5867,13 @@
                 // Paralysis (stun) flashes the unit yellow the moment it lands.
                 if (payload.id === 'stun') flashUnit(target.id, 'paralysis');
             }
-            if (isEnemyDebuff && !meta.onRoundEnd) playSfx('debuff');
+            // Bespoke status stings (2026-08-04): Discord's dissonant bell,
+            // frozen's creak-and-lock. Everything else keeps the generic clip.
+            if (isEnemyDebuff && !meta.onRoundEnd) {
+                playSfx(payload.id === 'discord' ? 'discord'
+                    : payload.id === 'frozen' ? 'freezeSolid'
+                    : 'debuff');
+            }
 
             if (!target._statusLog) target._statusLog = {};
             target._statusLog[payload.id] = (target._statusLog[payload.id] || 0) + 1;
@@ -6538,6 +6551,8 @@
 
             window.setTimeout(() => {
             shakeBoard('hard');
+            // sustained ground-shake rumble + cracking stone under the slam
+            playSfx('quakeRumble');
 
             const viewer = getViewerPlayer();
             for (const hit of eq.hits) {
@@ -16780,7 +16795,12 @@
                     showFloatingTextForUnit(target, `-${finalDamage}`, _floatKind);
                     if (damageType !== 'dot') {
                         const _isPhysAbility = damageType === 'physical' && !!opts.spellType;
-                        playSfx(damageType !== 'physical' && opts.spellType ? 'spellDamage' : _isPhysAbility ? 'physicalAbilityDamage' : 'damage');
+                        const _isMagicSpellHit = damageType !== 'physical' && !!opts.spellType;
+                        // Elemental impact layer: a lightning/ice/water/earth
+                        // cast lands with its own clip instead of the one
+                        // generic spellDamage thud (SFX_AUDIT §1).
+                        const _elImpact = _isMagicSpellHit ? _sfxImpactKeyFor(sourceUnit, opts.element) : null;
+                        playSfx(_isMagicSpellHit ? (_elImpact || 'spellDamage') : _isPhysAbility ? 'physicalAbilityDamage' : 'damage');
                     }
                 };
                 if (_impactFreezeMs > 0) {
@@ -16861,6 +16881,8 @@
                     // ❄️💧 FLASH-FREEZE: frost on a dripping-wet unit locks it
                     // solid for a turn (soak them first, then bring the cold).
                     applyStatusPayload(target, { id: 'stun', duration: 1 }, '❄️ Flash-frozen: ', sourceUnit);
+                    // creaking ice locking solid with a deep "clunk"
+                    playSfx('freezeSolid');
                 } else if (_comboEl === 'fire' && unitHasStatus(target, 'wet')) {
                     // 🔥💧 The blast steams a soaked unit dry — the NEXT fire
                     // hit burns at full strength and can set them alight.
@@ -40436,6 +40458,54 @@
             renderBattleUpdate();
         }
 
+        // ═══════════════════════════════════════════════════════════════════
+        // ELEMENTAL SFX LAYER (SFX_AUDIT §1, clips uploaded 2026-08-04) —
+        // lightning / ice / water / earth spells stop all sounding like
+        // 'fireball' + 'spellDamage'. Theme sources, in priority order: the
+        // data.js `element` tag, the engine keyword classifier
+        // (lightning/fire/cold), the VFX stage archetype, then a local
+        // water/earth keyword sweep (neither has an engine element class).
+        // ═══════════════════════════════════════════════════════════════════
+        const _SFX_EL_ALIAS = { lightning: 'elec', ice: 'ice', cold: 'ice', fire: 'fire', water: 'water', earth: 'earth' };
+        const _SFX_WATER_RE = /water|tidal|tide\b|flood|tsunami|wave\b|aqua|hydro|geyser|torrent|whirlpool|riptide|deluge|drown|maelstrom/i;
+        const _SFX_EARTH_RE = /earth|quake|tremor|boulder|rock\b|stone|seism|landslide|fissure|gravel/i;
+        function _sfxSpellTheme(spell) {
+            if (!spell) return null;
+            const tag = _SFX_EL_ALIAS[spell.element];
+            if (tag) return tag;
+            const el = (typeof classifySpellElement === 'function') ? classifySpellElement(spell) : null;
+            if (el && _SFX_EL_ALIAS[el]) return _SFX_EL_ALIAS[el];
+            const arch = _spellStageInfo(spell).archetype;
+            if (arch === 'lightning' || arch === 'ice' || arch === 'fire') return _SFX_EL_ALIAS[arch];
+            const s = (spell.id || '') + ' ' + (spell.name || '');
+            if (_SFX_WATER_RE.test(s)) return 'water';
+            if (_SFX_EARTH_RE.test(s)) return 'earth';
+            return null;
+        }
+        // Launch (cast) + impact keys per theme. Fire keeps its legacy pair
+        // (fireball launch / spellDamage impact) until dedicated fire clips
+        // exist — only its beam spells get the new flameJet roar.
+        const _SFX_THEME_IMPACT = { elec: 'lightningStrike', ice: 'iceImpact', water: 'waterImpact', earth: 'earthImpact' };
+
+        // applyDamageToUnit has no spell in scope (its ~80 call sites pass
+        // only the faction spellType), so doSpell records the caster's
+        // elemental theme at cast-commit and the impact router looks it up
+        // by sourceUnit. Module map, NOT a unit field — units are serialized
+        // wholesale into online state-sync (see _stageSpellCast's note).
+        const _sfxCastThemeByUnit = new Map();
+        function _sfxNoteSpellCast(unit, spell) {
+            if (!unit || !spell) return;
+            const theme = _sfxSpellTheme(spell);
+            if (theme) _sfxCastThemeByUnit.set(unit.id, theme);
+            else _sfxCastThemeByUnit.delete(unit.id);
+        }
+        function _sfxImpactKeyFor(sourceUnit, element) {
+            // An explicit opts.element (the 5 sites that pass one) wins over
+            // the recorded cast theme.
+            const theme = _SFX_EL_ALIAS[element] || (sourceUnit ? _sfxCastThemeByUnit.get(sourceUnit.id) : null);
+            return theme ? (_SFX_THEME_IMPACT[theme] || null) : null;
+        }
+
         // Percussive one-shot reports — the sound OF the projectile leaving.
         // These must land on the launch frame (muzzle flash), not at cast
         // start where the aim/windup camera still has a full second to run.
@@ -40458,7 +40528,23 @@
                 || id === 'kneecapShot' || id === 'ricochet1'
                 || id === 'raceFanTheHammer' || id === 'raceHighNoon'
                 || spell?.projectileOverride === 'proj-bullet') return 'gun';
-            return ((spell?.damageType === 'physical') || (spell?.kind === 'dash') || (spell?.kind === 'grapple')) ? 'physicalAbility' : 'fireball';
+            // Tech zaps with bespoke clips (2026-08-04).
+            if (id === 'empBurst' || id === 'raceEMPGrenade') return 'empBurst';
+            if (id === 'raceTaserBolt') return 'taserZap';
+            if (spell?.damageType === 'physical' || spell?.kind === 'dash' || spell?.kind === 'grapple') return 'physicalAbility';
+            // Elemental launch layer: themed casts stop sounding like fireball.
+            const _theme = _sfxSpellTheme(spell);
+            const _isBeamKind = spell?.kind === 'line' || spell?.kind === 'linePush' || spell?.kind === 'splitBeam';
+            if (_theme === 'elec') return 'elecCast';
+            if (_theme === 'ice') return 'iceCast';
+            // Wall-of-water beams and basin floods read as the wave itself.
+            if (_theme === 'water') return (_isBeamKind || spell?.elevationFlood) ? 'tidalWave' : 'waterCast';
+            if (_theme === 'earth') {
+                return /quake|tremor/i.test((spell?.id || '') + (spell?.name || '')) ? 'quakeRumble' : 'earthCast';
+            }
+            // Directional fire roar for line spells (Hellmouth/Dragonfire class).
+            if (_theme === 'fire' && _isBeamKind) return 'flameJet';
+            return 'fireball';
         }
 
         function getSpellStatBonus(unit, spell) {
@@ -41104,6 +41190,11 @@
                gets presented — including the dashes, grabs, sky-drops and traps
                that have their own branches below and no VFX entry at all. */
             _stageSpellCast(unit, spell, x, y);
+
+            /* Elemental impact SFX routing: remember this caster's element
+               so applyDamageToUnit (which never sees the spell) can pick the
+               matching impact clip when the damage lands. */
+            _sfxNoteSpellCast(unit, spell);
 
             /* Focus-camera context: ~35 kind branches below call
                _spellFocusCamera bare — this stash lets it recover the spell

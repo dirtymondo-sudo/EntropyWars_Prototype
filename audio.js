@@ -170,6 +170,26 @@
             jetFlyover:      `${_R2_BASE}/SFX/jet_flyover.ogg`,
             nukeAlarm:       `${_R2_BASE}/SFX/nuke_alarm.ogg`,
             explosion:       `${_R2_BASE}/SFX/explosion.ogg`,
+            /* ── Elemental layer (SFX_AUDIT §1, uploaded 2026-08-04) ── */
+            elecCast:        `${_R2_BASE}/SFX/elecCast.mp3`,
+            lightningStrike: `${_R2_BASE}/SFX/lightningStrike.mp3`,
+            thunderRumble:   `${_R2_BASE}/SFX/thunderRumble.mp3`,
+            chainHop:        `${_R2_BASE}/SFX/chainHop.mp3`,
+            conductionArc:   `${_R2_BASE}/SFX/conductionArc.mp3`,
+            empBurst:        `${_R2_BASE}/SFX/empBurst.mp3`,
+            taserZap:        `${_R2_BASE}/SFX/taserZap.mp3`,
+            flameJet:        `${_R2_BASE}/SFX/flameJet.mp3`,
+            iceCast:         `${_R2_BASE}/SFX/iceCast.mp3`,
+            iceImpact:       `${_R2_BASE}/SFX/iceImpact.mp3`,
+            freezeSolid:     `${_R2_BASE}/SFX/freezeSolid.mp3`,
+            iceSlide:        `${_R2_BASE}/SFX/iceSlide.mp3`,
+            waterCast:       `${_R2_BASE}/SFX/waterCast.mp3`,
+            waterImpact:     `${_R2_BASE}/SFX/waterImpact.mp3`,
+            tidalWave:       `${_R2_BASE}/SFX/tidalWave.mp3`,
+            earthCast:       `${_R2_BASE}/SFX/earthCast.mp3`,
+            earthImpact:     `${_R2_BASE}/SFX/earthImpact.mp3`,
+            quakeRumble:     `${_R2_BASE}/SFX/quakeRumble.mp3`,
+            discord:         `${_R2_BASE}/SFX/discord.mp3`,
         };
         const _LOCAL_SFX = {
             uiConfirm: "./assets/sfx/ui_confirm.ogg",
@@ -210,7 +230,26 @@
             turret: "./assets/sfx/turret.ogg",
             jetFlyover: "./assets/sfx/jet_flyover.ogg",
             nukeAlarm: "./assets/sfx/nuke_alarm.ogg",
-            explosion: "./assets/sfx/explosion.ogg"
+            explosion: "./assets/sfx/explosion.ogg",
+            elecCast: "./assets/sfx/elecCast.mp3",
+            lightningStrike: "./assets/sfx/lightningStrike.mp3",
+            thunderRumble: "./assets/sfx/thunderRumble.mp3",
+            chainHop: "./assets/sfx/chainHop.mp3",
+            conductionArc: "./assets/sfx/conductionArc.mp3",
+            empBurst: "./assets/sfx/empBurst.mp3",
+            taserZap: "./assets/sfx/taserZap.mp3",
+            flameJet: "./assets/sfx/flameJet.mp3",
+            iceCast: "./assets/sfx/iceCast.mp3",
+            iceImpact: "./assets/sfx/iceImpact.mp3",
+            freezeSolid: "./assets/sfx/freezeSolid.mp3",
+            iceSlide: "./assets/sfx/iceSlide.mp3",
+            waterCast: "./assets/sfx/waterCast.mp3",
+            waterImpact: "./assets/sfx/waterImpact.mp3",
+            tidalWave: "./assets/sfx/tidalWave.mp3",
+            earthCast: "./assets/sfx/earthCast.mp3",
+            earthImpact: "./assets/sfx/earthImpact.mp3",
+            quakeRumble: "./assets/sfx/quakeRumble.mp3",
+            discord: "./assets/sfx/discord.mp3"
         };
 
         const _GUNSLINGER_DUEL_R2 = `${_R2_BASE}/SFX/gunslingerduel.mp3`;
@@ -275,7 +314,26 @@
             turret: 0.7,
             jetFlyover: 0.8,
             nukeAlarm: 0.82,
-            explosion: 0.62
+            explosion: 0.62,
+            elecCast: 0.72,
+            lightningStrike: 0.8,
+            thunderRumble: 0.6,
+            chainHop: 0.66,
+            conductionArc: 0.62,
+            empBurst: 0.78,
+            taserZap: 0.7,
+            flameJet: 0.74,
+            iceCast: 0.7,
+            iceImpact: 0.74,
+            freezeSolid: 0.74,
+            iceSlide: 0.6,
+            waterCast: 0.7,
+            waterImpact: 0.74,
+            tidalWave: 0.78,
+            earthCast: 0.72,
+            earthImpact: 0.76,
+            quakeRumble: 0.78,
+            discord: 0.68
         };
         const SFX_COOLDOWNS = {
             uiCursorMove: 70,
@@ -315,7 +373,26 @@
             turret: 90,
             jetFlyover: 600,
             nukeAlarm: 800,
-            explosion: 200
+            explosion: 200,
+            elecCast: 120,
+            lightningStrike: 150,
+            thunderRumble: 900,
+            chainHop: 90,
+            conductionArc: 140,
+            empBurst: 300,
+            taserZap: 150,
+            flameJet: 400,
+            iceCast: 120,
+            iceImpact: 100,
+            freezeSolid: 250,
+            iceSlide: 250,
+            waterCast: 120,
+            waterImpact: 100,
+            tidalWave: 500,
+            earthCast: 120,
+            earthImpact: 100,
+            quakeRumble: 900,
+            discord: 250
         };
         const sfxLastPlayedAt = {};
         const sfxReusableKeys = new Set(['healRegen', 'manaRegen']);
@@ -744,3 +821,150 @@
             } catch (err) {
             }
         }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           AMBIENCE BEDS (SFX_AUDIT §5, assets uploaded 2026-08-04)
+           A second looping channel that sits UNDER the music: exactly one bed
+           at a time, crossfaded when the scene changes. Picked every few
+           seconds from live battle state — weather beats map flavour beats
+           day/night — so it needs no per-event hooks and, online, the guest's
+           synced state drives the same picker locally (no relay needed).
+           Kill-switch (console): window.EW_DISABLE_AMBIENCE = true.
+           ═══════════════════════════════════════════════════════════════ */
+        const _R2_AMBIENCE = {
+            thunderAmbience: `${_R2_BASE}/SFX/thunderAmbience.mp3`,
+            ambDay:          `${_R2_BASE}/SFX/ambDay.mp3`,
+            ambNight:        `${_R2_BASE}/SFX/ambNight.mp3`,
+            ambWindHigh:     `${_R2_BASE}/SFX/ambWindHigh.mp3`,
+            ambCavern:       `${_R2_BASE}/SFX/ambCavern.mp3`,
+            lavaBubble:      `${_R2_BASE}/SFX/lavaBubble.mp3`,
+        };
+        // Quiet by design: beds ride the SFX volume slider but are mixed well
+        // below one-shots so they never fight the music or the impacts.
+        const AMBIENCE_BASE_VOLUMES = {
+            thunderAmbience: 0.42,
+            ambDay: 0.28,
+            ambNight: 0.28,
+            ambWindHigh: 0.32,
+            ambCavern: 0.34,
+            lavaBubble: 0.36,
+        };
+        const AMBIENCE_FADE_MS = 1600;
+        const AMBIENCE_TICK_MS = 3000;
+        const _ambienceTracks = {};          // key -> Audio (lazy, loop=true)
+        let _ambienceKey = null;             // bed currently active (or fading in)
+        let _ambienceFadeToken = 0;          // bumping cancels in-flight fades
+
+        function _ambienceTargetVol(key) {
+            const base = AMBIENCE_BASE_VOLUMES[key] ?? 0.3;
+            return Math.max(0, Math.min(1, base * (state.sfxVolume ?? 0.9)));
+        }
+
+        function _getAmbienceTrack(key) {
+            if (_ambienceTracks[key]) return _ambienceTracks[key];
+            const src = _R2_AMBIENCE[key];
+            if (!src) return null;
+            try {
+                const a = new Audio(src);
+                a.loop = true;
+                a.preload = 'none';
+                // No local fallback exists for the beds — just stop retrying.
+                a.onerror = function() { this.onerror = null; };
+                _ambienceTracks[key] = a;
+                return a;
+            } catch (e) { return null; }
+        }
+
+        // Tiny dedicated fader — deliberately NOT fadeTrackVolume, whose
+        // audioFadeVersion is bumped by every music transition and would
+        // cancel ambience fades mid-flight.
+        function _fadeAmbienceTrack(track, target, ms, token, onDone) {
+            const start = Math.max(0, Math.min(1, Number.isFinite(track.volume) ? track.volume : 0));
+            const t0 = performance.now();
+            function step(now) {
+                if (token !== _ambienceFadeToken) return;
+                const t = ms > 0 ? Math.min(1, (now - t0) / ms) : 1;
+                try { track.volume = start + (target - start) * t; } catch (e) { return; }
+                if (t >= 1) { if (onDone) onDone(); return; }
+                requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+
+        function _setAmbienceBed(key) {
+            if (key === _ambienceKey) return;
+            const token = ++_ambienceFadeToken;
+            const prev = _ambienceKey ? _ambienceTracks[_ambienceKey] : null;
+            _ambienceKey = key;
+            if (prev && !prev.paused) {
+                _fadeAmbienceTrack(prev, 0, AMBIENCE_FADE_MS, token, () => { try { prev.pause(); } catch (e) {} });
+            }
+            if (!key) return;
+            const next = _getAmbienceTrack(key);
+            if (!next) return;
+            try {
+                next.volume = 0;
+                next.play().then(() => {
+                    if (token === _ambienceFadeToken) {
+                        _fadeAmbienceTrack(next, _ambienceTargetVol(key), AMBIENCE_FADE_MS, token);
+                    }
+                }).catch(() => { if (token === _ambienceFadeToken) _ambienceKey = null; });
+            } catch (e) { _ambienceKey = null; }
+        }
+
+        // Map flavour scan (cached ~12s — boards are static outside reshapes):
+        // molten boards bubble, cloud boards get thin altitude wind, crystal
+        // cavern environments get drips + room tone.
+        let _ambFlavourCache = { at: 0, val: null };
+        function _ambienceMapFlavour() {
+            const now = performance.now();
+            if (_ambFlavourCache.at && now - _ambFlavourCache.at < 12000) return _ambFlavourCache.val;
+            let lava = 0, cloud = 0, total = 0;
+            try {
+                if (typeof getTerrainAt === 'function' && typeof bw === 'function' && typeof bh === 'function') {
+                    const W = bw(), H = bh();
+                    for (let y = 0; y < H; y++) {
+                        for (let x = 0; x < W; x++) {
+                            const t = getTerrainAt(x, y);
+                            if (!t) continue;
+                            total++;
+                            if (t === 'lava') lava++;
+                            else if (t.indexOf('cloud') === 0) cloud++;
+                        }
+                    }
+                }
+            } catch (e) {}
+            let val = null;
+            if (lava >= 6) val = 'lavaBubble';
+            else if (total > 0 && cloud / total >= 0.3) val = 'ambWindHigh';
+            else if (state.mapEnv && state.mapEnv.scenery === 'crystals') val = 'ambCavern';
+            _ambFlavourCache = { at: now, val };
+            return val;
+        }
+
+        function _desiredAmbienceKey() {
+            try {
+                if (window.EW_DISABLE_AMBIENCE) return null;
+                if (!state.audioUnlocked || state.devAutoSim) return null;
+                if (state.phase !== 'battle' || state.winner) return null;
+                const aw = state.activeWeather || [];
+                if (aw.some(w => w && (w.type === 'thunderstorm' || w.type === 'hurricane'))) return 'thunderAmbience';
+                const flav = _ambienceMapFlavour();
+                if (flav) return flav;
+                const cyc = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
+                return cyc === 'night' ? 'ambNight' : 'ambDay';
+            } catch (e) { return null; }
+        }
+
+        window.setInterval(() => {
+            const want = _desiredAmbienceKey();
+            if (want !== _ambienceKey) {
+                // New battle / new bed → let the flavour cache re-scan promptly.
+                _setAmbienceBed(want);
+            } else if (want && _ambienceTracks[want] && !_ambienceTracks[want].paused) {
+                // Track the SFX volume slider between crossfades.
+                try { _ambienceTracks[want].volume = _ambienceTargetVol(want); } catch (e) {}
+            }
+        }, AMBIENCE_TICK_MS);
+        // A fresh battle deserves a fresh terrain scan (lava/cloud counts).
+        window._ewResetAmbienceCache = () => { _ambFlavourCache = { at: 0, val: null }; };

@@ -2315,6 +2315,13 @@
                         });
                         if (weather.type === 'thunderstorm' && window.ThreeLightning &&
                             !(state.devAutoSim && !state._devSimShowAnims)) {
+                            // ⚡ close CRACK on the bolt, distant rumble
+                            // rolling in behind it (SFX_AUDIT §1/§5).
+                            if (typeof playSfx === 'function') {
+                                playSfx('lightningStrike');
+                                window.setTimeout(() => playSfx('thunderRumble'),
+                                    450 + Math.floor(Math.random() * 350));
+                            }
                             ThreeLightning.strikeFromSky(unit.x, unit.y, {
                                 durationMs: 300,
                                 segments: 14,
@@ -2535,6 +2542,13 @@
                             });
                             if (weather.type === 'thunderstorm' && window.ThreeLightning &&
                                 !(state.devAutoSim && !state._devSimShowAnims)) {
+                                // ⚡ same crack + delayed rumble as the
+                                // per-turn strike above.
+                                if (typeof playSfx === 'function') {
+                                    playSfx('lightningStrike');
+                                    window.setTimeout(() => playSfx('thunderRumble'),
+                                        450 + Math.floor(Math.random() * 350));
+                                }
                                 ThreeLightning.strikeFromSky(v.x, v.y, {
                                     durationMs: 300,
                                     segments: 14,
