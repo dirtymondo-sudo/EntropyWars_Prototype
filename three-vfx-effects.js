@@ -9241,10 +9241,118 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        mode 'in'  = implode: shell contracts ONTO the target (pre-impact
                     gather / "shrinking on the victim" telegraph)
        mode 'out' = explode: shell blooms OUT of the victim on the hit —
-                    the beat every PS1 summon ends on. */
+                    the beat every PS1 summon ends on.
+
+       REBUILT 2026-08-04 (VFX pass 3). The old orb was two uniform additive
+       sphere shells + a glow sprite scaling up/down — no rim, no surface
+       motion, no impact language: it read as a flat balloon. New stack:
+         shell   fresnel-rim energy sphere (dedicated shader below): bright
+                 silhouette edge, near-transparent interior, the house
+                 double-panner FBM noise flowing across the surface, and an
+                 erosion threshold so it DISSOLVES instead of alpha-fading
+                 ('out') / coalesces from wisps into a solid ('in')
+         core    hot glow + screen-space anamorphic cross flash on the
+                 impact frame ('out') or a charge-overshoot pop ('in')
+         ring    equatorial shockwave (shaped _sigRingTex, slight tilt) —
+                 expands on 'out', tightens onto the victim on 'in'
+         sparks  radial tapered streak spokes racing out ('out')
+         embers  ballistic glow motes with flicker ('out')
+         motes   spiral gather sparks feeding the shell ('in')
+       API-compatible: same signature, same opts (mode/color/ms/r0/r1/
+       height/opacity) and same _sigRun entry return, so every existing
+       call site upgrades for free. New OPTIONAL opts: tint2 (secondary
+       color), ring (false disables) / ringColor, rays (spoke count),
+       debris (ember count), motes (gather count), swirl (noise strength
+       0..1), flash (false disables the cross flash). */
+    var _orbSphereGeoS = null, _orbPlaneGeoS = null;
+    function _orbSphereGeo() {
+        if (!_orbSphereGeoS) {
+            _orbSphereGeoS = new THREE.SphereGeometry(1, 28, 20);
+            _orbSphereGeoS._ew_shared = true;   /* _sigRun disposer skips it */
+        }
+        return _orbSphereGeoS;
+    }
+    function _orbPlaneGeo() {
+        if (!_orbPlaneGeoS) {
+            _orbPlaneGeoS = new THREE.PlaneGeometry(1, 1);
+            _orbPlaneGeoS._ew_shared = true;
+        }
+        return _orbPlaneGeoS;
+    }
+    /* Orb-shell shader: _sigEnergyMat's double-panner noise + a FRESNEL rim
+       term (the piece the flat orb was missing — uniform-opacity spheres
+       have no view-angle falloff, which is exactly what makes them read as
+       flat discs). Uniform names match _sigEnergyMat so _sigEnergyTick
+       drives uTime/uErode on this material too. */
+    function _sigOrbShellMat(color, opts) {
+        opts = opts || {};
+        var c = new THREE.Color(color != null ? color : 0x9a7cff);
+        var c2 = new THREE.Color(opts.hot != null ? opts.hot : 0xffffff);
+        return new THREE.ShaderMaterial({
+            uniforms: {
+                uTime:   { value: 0 },
+                uNoise:  { value: _sigNoiseTex() },
+                uColor:  { value: new THREE.Vector3(c.r, c.g, c.b) },
+                uHot:    { value: new THREE.Vector3(c2.r, c2.g, c2.b) },
+                uScroll1:{ value: new THREE.Vector2(0.22, -0.09) },
+                uScroll2:{ value: new THREE.Vector2(-0.13, 0.06) },
+                uScale1: { value: 2.0 },
+                uScale2: { value: 1.0 },
+                uErode:  { value: 0 },
+                uOpacity:{ value: 0 },
+                uGain:   { value: opts.gain != null ? opts.gain : 1.5 },
+                uRimPow: { value: opts.rimPow != null ? opts.rimPow : 2.6 },
+                uRimGain:{ value: opts.rimGain != null ? opts.rimGain : 1.15 },
+                uFill:   { value: opts.fill != null ? opts.fill : 0.1 },
+                uSwirl:  { value: opts.swirl != null ? opts.swirl : 1.0 },
+            },
+            vertexShader: [
+                'varying vec2 vUv;',
+                'varying vec3 vN;',
+                'varying vec3 vV;',
+                'void main() {',
+                '  vUv = uv;',
+                '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
+                '  vN = normalize(normalMatrix * normal);',
+                '  vV = normalize(-mv.xyz);',
+                '  gl_Position = projectionMatrix * mv;',
+                '}'
+            ].join('\n'),
+            fragmentShader: [
+                'uniform sampler2D uNoise;',
+                'uniform float uTime, uScale1, uScale2, uErode, uOpacity, uGain;',
+                'uniform float uRimPow, uRimGain, uFill, uSwirl;',
+                'uniform vec2 uScroll1, uScroll2;',
+                'uniform vec3 uColor, uHot;',
+                'varying vec2 vUv;',
+                'varying vec3 vN;',
+                'varying vec3 vV;',
+                'void main() {',
+                '  float n1 = texture2D(uNoise, vUv * vec2(uScale1 * 2.0, uScale1) + uTime * uScroll1).r;',
+                '  float n2 = texture2D(uNoise, vUv * vec2(uScale2 * 2.0, uScale2) + uTime * uScroll2).r;',
+                '  float n = clamp(n1 * n2 * 2.0, 0.0, 1.0) * uSwirl;',
+                '  float body = smoothstep(uErode, uErode + 0.3, n);',
+                '  float ndv = abs(dot(normalize(vN), normalize(vV)));',
+                '  float rim = pow(1.0 - ndv, uRimPow);',
+                /* rim breaks up as the noise erodes so death is a dissolve,
+                   never a uniform fade-out */
+                '  float a = rim * uRimGain * (0.45 + 0.55 * body)',
+                '          + body * (uFill + rim * 0.85);',
+                '  vec3 col = mix(uColor, uHot, pow(n, 2.2)) + uHot * rim * 0.55;',
+                '  gl_FragColor = vec4(col * uGain, clamp(a, 0.0, 1.0) * uOpacity);',
+                '  if (gl_FragColor.a < 0.004) discard;',
+                '}'
+            ].join('\n'),
+            transparent: true,
+            depthWrite: false,
+            side: THREE.FrontSide,
+            blending: THREE.AdditiveBlending,
+        });
+    }
     function _sigOrbBurst3D(tx, ty, opts) {
         opts = opts || {};
         var scene = _getVFXScene(); if (!scene) return null;
+        if (_sigActive >= _SIG_MAX_ACTIVE) return null;
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
         var mode = opts.mode === 'in' ? 'in' : 'out';
@@ -9254,23 +9362,105 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var baseY = opts.height != null ? opts.height : ts * 0.5;
         var color = opts.color != null ? opts.color : 0x9a7cff;
         var peak = opts.opacity != null ? opts.opacity : 0.8;
+        var col2 = new THREE.Color(opts.tint2 != null ? opts.tint2 : color);
+        if (opts.tint2 == null) col2.lerp(new THREE.Color(0xffffff), 0.55);
 
         var group = new THREE.Group();
         group.position.set(wp.x, wp.y + baseY, wp.z);
+        var glowTex = _sigGlowTex();
 
-        var shellGeo = new THREE.SphereGeometry(1, 20, 14);
-        var shellMat = _sigMat(color);
-        var shell = new THREE.Mesh(shellGeo, shellMat);
+        /* 1 — fresnel-rim energy shell + faint interior haze */
+        var shellMat = _sigOrbShellMat(color, {
+            hot: col2.getHex(),
+            swirl: opts.swirl != null ? opts.swirl : 1.0,
+        });
+        var shell = new THREE.Mesh(_orbSphereGeo(), shellMat);
         shell.renderOrder = 167;
         group.add(shell);
-        var shell2Mat = _sigMat(0xffffff);
-        var shell2 = new THREE.Mesh(shellGeo.clone(), shell2Mat);
-        shell2.renderOrder = 168;
-        group.add(shell2);
-        var coreMat = _sigMagicOrbMat(0xffffff, _sigGlowTex());
+        var hazeMat = _sigMat(color);
+        var haze = new THREE.Mesh(_orbSphereGeo(), hazeMat);
+        haze.renderOrder = 166;
+        group.add(haze);
+
+        /* 2 — hot core + screen-space anamorphic cross flash */
+        var coreMat = _sigMagicOrbMat(0xffffff, glowTex);
         var core = new THREE.Sprite(coreMat);
         core.renderOrder = 169;
         group.add(core);
+        var flashH = null, flashV = null, flashHMat = null, flashVMat = null;
+        if (opts.flash !== false) {
+            flashHMat = _sigMagicOrbMat(col2, glowTex);
+            flashH = new THREE.Sprite(flashHMat);
+            flashH.renderOrder = 170;
+            group.add(flashH);
+            flashVMat = _sigMagicOrbMat(0xffffff, glowTex);
+            flashV = new THREE.Sprite(flashVMat);
+            flashV.renderOrder = 170;
+            group.add(flashV);
+        }
+
+        /* 3 — equatorial shockwave ring */
+        var ring = null, ringMat = null;
+        if (opts.ring !== false) {
+            ringMat = _sigMat(opts.ringColor != null ? opts.ringColor : col2.getHex(),
+                { map: _sigRingTex() });
+            ring = new THREE.Mesh(_orbPlaneGeo(), ringMat);
+            ring.rotation.x = -Math.PI / 2 + rn(-0.16, 0.16);
+            ring.renderOrder = 165;
+            group.add(ring);
+        }
+
+        /* 4 — radial spark spokes + ballistic embers ('out' only) */
+        var spokes = [], embers = [];
+        if (mode === 'out') {
+            var nRays = opts.rays != null ? opts.rays : (rBig >= ts ? 12 : 8);
+            var streakTex = _sigStreakTex();
+            for (var i = 0; i < nRays; i++) {
+                var az = (i / Math.max(1, nRays)) * 6.2832 + rn(-0.22, 0.22);
+                var elv = rn(-0.5, 0.62);   /* bias toward the horizon */
+                var dir = new THREE.Vector3(
+                    Math.cos(az) * Math.cos(elv),
+                    Math.sin(elv),
+                    Math.sin(az) * Math.cos(elv));
+                var sMat = _sigMat(i % 3 === 0 ? 0xffffff : color, { map: streakTex });
+                var spoke = new THREE.Mesh(_orbPlaneGeo(), sMat);
+                spoke.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), dir);
+                spoke.renderOrder = 168;
+                group.add(spoke);
+                spokes.push({ m: spoke, mat: sMat, dir: dir, speed: rn(0.75, 1.35),
+                    len: rBig * rn(0.5, 0.85), th: rBig * rn(0.05, 0.09) });
+            }
+            var nDeb = opts.debris != null ? opts.debris : (rBig >= ts ? 9 : 6);
+            for (var d = 0; d < nDeb; d++) {
+                var eMat = _sigMagicOrbMat(d % 2 ? color : col2, glowTex);
+                var em = new THREE.Sprite(eMat);
+                em.renderOrder = 168;
+                group.add(em);
+                var azd = rn(0, 6.2832);
+                embers.push({ s: em, mat: eMat,
+                    vx: Math.cos(azd) * rn(0.28, 0.85) * rBig,
+                    vy: rn(0.5, 1.5) * rBig,
+                    vz: Math.sin(azd) * rn(0.28, 0.85) * rBig,
+                    g: rBig * rn(2.2, 3.2),
+                    sz: rn(0.06, 0.12) * rBig + 3, ph: rn(0, 6.28) });
+            }
+        }
+
+        /* 5 — spiral gather motes ('in' only) */
+        var motes = [];
+        if (mode === 'in') {
+            var nM = opts.motes != null ? opts.motes : 12;
+            for (var mi = 0; mi < nM; mi++) {
+                var mMat = _sigMagicOrbMat(mi % 3 === 0 ? 0xffffff : color, glowTex);
+                var mo = new THREE.Sprite(mMat);
+                mo.renderOrder = 168;
+                group.add(mo);
+                motes.push({ s: mo, mat: mMat,
+                    a0: rn(0, 6.2832), spin: rn(2.6, 4.2) * (mi % 2 ? 1 : -1),
+                    r0: rBig * rn(1.05, 1.55), y0: rn(-0.5, 0.6) * rBig,
+                    sz: rn(0.05, 0.1) * rBig + 2.5, dl: rn(0, 0.25) });
+            }
+        }
 
         return _sigRun(group, ms, function (el) {
             var t = _sigClamp01(el / ms);
@@ -9279,22 +9469,90 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var e = _sigEaseInCubic(t);
                 r = rBig + (rSmall - rBig) * e;
                 fade = t < 0.12 ? t / 0.12 : 1;
+                /* wisps coalesce into a solid as the charge completes */
+                _sigEnergyTick(shellMat, -el, 0.04 + 0.6 * (1 - t));
                 coreMat.opacity = peak * t * t;
                 var cs = rSmall * (2.2 + 2.8 * t);
+                if (t > 0.85) cs *= 1 + _sigEaseOutBack((t - 0.85) / 0.15) * 0.5;
                 core.scale.set(cs, cs, 1);
+                if (ring) {
+                    var rr = rBig * 2.1 + (rSmall * 1.8 - rBig * 2.1) * e;
+                    ring.scale.set(rr * 2, rr * 2, 1);
+                    ringMat.opacity = 0.75 * peak * fade * (0.35 + 0.65 * t);
+                }
+                for (var i2 = 0; i2 < motes.length; i2++) {
+                    var mt = motes[i2];
+                    var u = _sigClamp01((t - mt.dl) / (1 - mt.dl));
+                    var rad = mt.r0 * (1 - _sigEaseInCubic(u));
+                    var ang = mt.a0 + mt.spin * u;
+                    mt.s.position.set(Math.cos(ang) * rad, mt.y0 * (1 - u), Math.sin(ang) * rad);
+                    var msz = mt.sz * (0.6 + 0.7 * u);
+                    mt.s.scale.set(msz, msz, 1);
+                    mt.mat.opacity = u >= 0.97 ? 0 : peak * (0.25 + 0.75 * u);
+                }
+                if (flashH) {
+                    /* converging pre-flash on the last 10% — the "charged" pop */
+                    var fu = t < 0.9 ? 0 : (t - 0.9) / 0.1;
+                    var fl = rSmall * 6 * fu;
+                    flashH.scale.set(fl, fl * 0.16, 1);
+                    flashV.scale.set(fl * 0.16, fl, 1);
+                    flashHMat.opacity = peak * fu * 0.9;
+                    flashVMat.opacity = peak * fu * 0.7;
+                }
             } else {
                 var e2 = _sigEaseOutCubic(t);
                 r = rSmall + (rBig - rSmall) * e2;
-                fade = 1 - t * t;
-                coreMat.opacity = peak * (1 - t);
-                var cs2 = rBig * 1.15 * (0.5 + 0.8 * e2);
+                fade = 1 - t * t * 0.7;
+                /* death is an erosion dissolve, not a uniform fade */
+                _sigEnergyTick(shellMat, el, 0.05 + 0.8 * t * t);
+                coreMat.opacity = peak * (t < 0.05 ? t / 0.05 : 1 - _sigEaseInCubic(t) * 0.9);
+                var cs2 = rBig * (1.3 - 0.5 * e2);
                 core.scale.set(cs2, cs2, 1);
+                if (ring) {
+                    var rr2 = rSmall + (rBig * 2.4 - rSmall) * _sigEaseOutCubic(_sigClamp01(t * 1.15));
+                    ring.scale.set(rr2 * 2, rr2 * 2, 1);
+                    ringMat.opacity = 0.9 * peak * Math.max(0, 1 - t * 1.25);
+                }
+                if (flashH) {
+                    var flu = Math.max(0, 1 - t / 0.3);
+                    var fl2 = rBig * (1.6 + 2.6 * _sigEaseOutCubic(_sigClamp01(t / 0.3)));
+                    flashH.scale.set(fl2, fl2 * 0.13, 1);
+                    flashV.scale.set(fl2 * 0.13, fl2, 1);
+                    flashHMat.opacity = peak * flu;
+                    flashVMat.opacity = peak * flu * 0.8;
+                }
+                for (var si = 0; si < spokes.length; si++) {
+                    var sp = spokes[si];
+                    var su = _sigClamp01(t * 1.25);
+                    var dist = rSmall + (rBig * 1.6 - rSmall) * _sigEaseOutCubic(su) * sp.speed;
+                    sp.m.position.set(sp.dir.x * dist, sp.dir.y * dist, sp.dir.z * dist);
+                    sp.m.scale.set(sp.len * (1 - 0.45 * su), sp.th, 1);
+                    sp.mat.opacity = peak * Math.max(0, 0.95 - su * 1.25);
+                }
+                var tSec = el * 0.001;
+                for (var di = 0; di < embers.length; di++) {
+                    var eb = embers[di];
+                    eb.s.position.set(
+                        eb.vx * tSec,
+                        eb.vy * tSec - eb.g * tSec * tSec * 0.5,
+                        eb.vz * tSec);
+                    var esz = eb.sz * (1 - 0.4 * t);
+                    eb.s.scale.set(esz, esz, 1);
+                    eb.mat.opacity = peak * Math.max(0, 1 - t * 1.1)
+                        * (0.72 + 0.28 * Math.sin(el * 0.045 + eb.ph));
+                }
             }
-            shell.scale.set(r, r, r);
-            shell2.scale.set(r * 0.72, r * 0.72, r * 0.72);
-            shellMat.opacity = 0.5 * peak * fade;
-            shell2Mat.opacity = 0.3 * peak * fade;
-            group.rotation.y = el * 0.002;
+            /* tri-axial breathing: the silhouette never reads as a static
+               balloon, and the two extra axes never drift past ~4.5% */
+            var j1 = 1 + 0.045 * Math.sin(el * 0.021);
+            var j2 = 1 + 0.045 * Math.sin(el * 0.017 + 2.1);
+            var j3 = 1 + 0.045 * Math.sin(el * 0.026 + 4.2);
+            shell.scale.set(r * j1, r * j2, r * j3);
+            shellMat.uniforms.uOpacity.value = peak * fade;
+            haze.scale.set(r * 0.62, r * 0.62, r * 0.62);
+            hazeMat.opacity = 0.14 * peak * fade;
+            group.rotation.y = el * (mode === 'in' ? -0.0016 : 0.0022);
+            group.rotation.x = Math.sin(el * 0.0011) * 0.07;
         });
     }
 
