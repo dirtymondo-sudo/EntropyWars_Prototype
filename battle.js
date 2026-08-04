@@ -16796,11 +16796,17 @@
                     if (damageType !== 'dot') {
                         const _isPhysAbility = damageType === 'physical' && !!opts.spellType;
                         const _isMagicSpellHit = damageType !== 'physical' && !!opts.spellType;
-                        // Elemental impact layer: a lightning/ice/water/earth
-                        // cast lands with its own clip instead of the one
-                        // generic spellDamage thud (SFX_AUDIT §1).
-                        const _elImpact = _isMagicSpellHit ? _sfxImpactKeyFor(sourceUnit, opts.element) : null;
-                        playSfx(_isMagicSpellHit ? (_elImpact || 'spellDamage') : _isPhysAbility ? 'physicalAbilityDamage' : 'damage');
+                        // Elemental impact layer (SFX_AUDIT §1): a themed cast
+                        // lands with its own clip instead of the one generic
+                        // spellDamage thud. Physical elemental strikes (Frozen
+                        // Punch, Tidal Slam, Ground Slam…) get it too — their
+                        // LAUNCH stays a body blow, the elemental flavor lands
+                        // on contact. Fire has no impact clip yet and keeps the
+                        // legacy sounds.
+                        const _elImpact = (opts.spellType) ? _sfxImpactKeyFor(sourceUnit, opts.element) : null;
+                        playSfx(_isMagicSpellHit ? (_elImpact || 'spellDamage')
+                            : _isPhysAbility ? (_elImpact || 'physicalAbilityDamage')
+                            : 'damage');
                     }
                 };
                 if (_impactFreezeMs > 0) {
@@ -39652,6 +39658,10 @@
         window._comboPlayPresentation = _comboPlayPresentation;
 
         function doComboAttack(initiator, partner, targetX, targetY, targetZ) {
+            // Combo hits pass spellType but never run doSpell — drop any
+            // elemental theme recorded from the initiator's LAST cast so the
+            // combo impact doesn't inherit a stale ice/water/etc. clip.
+            _sfxCastThemeByUnit.delete(initiator.id);
             /* SIMUL: combos span TWO units' budgets — they don't fit the
                one-unit-per-order planning model yet. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
@@ -40467,10 +40477,24 @@
         // water/earth keyword sweep (neither has an engine element class).
         // ═══════════════════════════════════════════════════════════════════
         const _SFX_EL_ALIAS = { lightning: 'elec', ice: 'ice', cold: 'ice', fire: 'fire', water: 'water', earth: 'earth' };
-        const _SFX_WATER_RE = /water|tidal|tide\b|flood|tsunami|wave\b|aqua|hydro|geyser|torrent|whirlpool|riptide|deluge|drown|maelstrom/i;
+        // 'wave' deliberately absent: Ki Wave / Blue Wave / Shockwave are not water.
+        const _SFX_WATER_RE = /water|tidal|tide\b|flood|tsunami|aqua|hydro|geyser|torrent|whirlpool|riptide|deluge|drown|maelstrom/i;
         const _SFX_EARTH_RE = /earth|quake|tremor|boulder|rock\b|stone|seism|landslide|fissure|gravel/i;
+        // Keyword-collision imposters (audited 2026-08-04): names that trip an
+        // elemental regex but aren't that element. null = no elemental theme.
+        const _SFX_THEME_OVERRIDES = {
+            raceKiWave: null,           // Ki Wave — martial energy, not water
+            sentaiBlueWave: null,       // Blue Wave — sentai beam
+            raceHailMary: null,         // Hail Mary — a football, not hail
+            raceShockwaveClap: null,    // 'shock' ≠ electric, it's an air blast
+            raceFirewallProtocol: null, // tech shield, not fire
+            raceLavaLamp: null,         // psychedelic zone, not lava
+            raceSuppressingFire: null,  // gunfire, not fire
+            radiantBolt: null,          // divine light, 'bolt' ≠ lightning
+        };
         function _sfxSpellTheme(spell) {
             if (!spell) return null;
+            if (spell.id in _SFX_THEME_OVERRIDES) return _SFX_THEME_OVERRIDES[spell.id];
             const tag = _SFX_EL_ALIAS[spell.element];
             if (tag) return tag;
             const el = (typeof classifySpellElement === 'function') ? classifySpellElement(spell) : null;
@@ -40531,17 +40555,23 @@
             // Tech zaps with bespoke clips (2026-08-04).
             if (id === 'empBurst' || id === 'raceEMPGrenade') return 'empBurst';
             if (id === 'raceTaserBolt') return 'taserZap';
-            if (spell?.damageType === 'physical' || spell?.kind === 'dash' || spell?.kind === 'grapple') return 'physicalAbility';
+            if (id === 'raceIceSlide') return 'iceSlide';
             // Elemental launch layer: themed casts stop sounding like fireball.
             const _theme = _sfxSpellTheme(spell);
+            // Quakes rumble whether the stomp is physical or magic.
+            if (_theme === 'earth'
+                && /quake|tremor/i.test((spell?.id || '') + (spell?.name || ''))) return 'quakeRumble';
+            // Physical strikes keep their body-blow launch (the elemental
+            // flavor lands on the IMPACT clip instead — see applyDamageToUnit).
+            // Themed terrainCreate is exempt: raising a rock wall isn't a punch.
+            if ((spell?.damageType === 'physical' && !(spell?.kind === 'terrainCreate' && _theme))
+                || spell?.kind === 'dash' || spell?.kind === 'grapple') return 'physicalAbility';
             const _isBeamKind = spell?.kind === 'line' || spell?.kind === 'linePush' || spell?.kind === 'splitBeam';
             if (_theme === 'elec') return 'elecCast';
             if (_theme === 'ice') return 'iceCast';
             // Wall-of-water beams and basin floods read as the wave itself.
             if (_theme === 'water') return (_isBeamKind || spell?.elevationFlood) ? 'tidalWave' : 'waterCast';
-            if (_theme === 'earth') {
-                return /quake|tremor/i.test((spell?.id || '') + (spell?.name || '')) ? 'quakeRumble' : 'earthCast';
-            }
+            if (_theme === 'earth') return 'earthCast';
             // Directional fire roar for line spells (Hellmouth/Dragonfire class).
             if (_theme === 'fire' && _isBeamKind) return 'flameJet';
             return 'fireball';
