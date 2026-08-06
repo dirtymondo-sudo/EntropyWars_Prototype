@@ -18809,22 +18809,88 @@ const ThreeRenderer = (function () {
     }
 
     function _zwStarTexture() {
+        /* AAA star sprite: hot core + tiered bloom + 4 long cardinal diffraction
+           spikes + 4 short diagonal ones, so each star reads like a cinematic
+           lens-flared point of light instead of a flat blob. Drawn white; the
+           per-star material colour supplies the temperature tint. */
+        var c = document.createElement('canvas'); c.width = c.height = 128;
+        var ctx = c.getContext('2d');
+        var g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+        g.addColorStop(0, 'rgba(255,255,255,1)');
+        g.addColorStop(0.07, 'rgba(255,255,255,0.95)');
+        g.addColorStop(0.2, 'rgba(255,255,255,0.45)');
+        g.addColorStop(0.45, 'rgba(255,255,255,0.12)');
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128);
+        ctx.globalCompositeOperation = 'lighter';
+        var spike = function (angle, len, halfW, alpha) {
+            ctx.save(); ctx.translate(64, 64); ctx.rotate(angle);
+            var sg = ctx.createLinearGradient(-len, 0, len, 0);
+            sg.addColorStop(0, 'rgba(255,255,255,0)');
+            sg.addColorStop(0.5, 'rgba(255,255,255,' + alpha + ')');
+            sg.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = sg;
+            ctx.beginPath();
+            ctx.moveTo(-len, 0); ctx.lineTo(0, -halfW);
+            ctx.lineTo(len, 0); ctx.lineTo(0, halfW);
+            ctx.closePath(); ctx.fill(); ctx.restore();
+        };
+        spike(0, 62, 2.4, 0.85);
+        spike(Math.PI / 2, 62, 2.4, 0.85);
+        spike(Math.PI / 4, 34, 1.6, 0.5);
+        spike(-Math.PI / 4, 34, 1.6, 0.5);
+        var g2 = ctx.createRadialGradient(64, 64, 0, 64, 64, 10);
+        g2.addColorStop(0, 'rgba(255,255,255,1)');
+        g2.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g2;
+        ctx.beginPath(); ctx.arc(64, 64, 10, 0, Math.PI * 2); ctx.fill();
+        var tex = new THREE.CanvasTexture(c);
+        tex.minFilter = THREE.LinearFilter;
+        return tex;
+    }
+
+    function _zwHaloTexture() {
+        /* pure soft bloom disc (no spikes) — layered UNDER bright stars for a
+           bloom-lit atmosphere the additive star sprite alone can't give */
         var c = document.createElement('canvas'); c.width = c.height = 64;
         var ctx = c.getContext('2d');
         var g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-        g.addColorStop(0, 'rgba(255,255,255,1)');
-        g.addColorStop(0.18, 'rgba(255,255,255,0.9)');
-        g.addColorStop(0.42, 'rgba(255,255,255,0.28)');
+        g.addColorStop(0, 'rgba(255,255,255,0.5)');
+        g.addColorStop(0.35, 'rgba(255,255,255,0.22)');
+        g.addColorStop(0.7, 'rgba(255,255,255,0.06)');
         g.addColorStop(1, 'rgba(255,255,255,0)');
         ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
-        /* subtle 4-point flare */
-        ctx.globalCompositeOperation = 'lighter';
-        var g2 = ctx.createLinearGradient(0, 32, 64, 32);
-        g2.addColorStop(0, 'rgba(255,255,255,0)'); g2.addColorStop(0.5, 'rgba(255,255,255,0.55)'); g2.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = g2; ctx.fillRect(0, 30, 64, 4);
-        var g3 = ctx.createLinearGradient(32, 0, 32, 64);
-        g3.addColorStop(0, 'rgba(255,255,255,0)'); g3.addColorStop(0.5, 'rgba(255,255,255,0.55)'); g3.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = g3; ctx.fillRect(30, 0, 4, 64);
+        var tex = new THREE.CanvasTexture(c);
+        tex.minFilter = THREE.LinearFilter;
+        return tex;
+    }
+
+    function _zwNebulaTexture() {
+        /* soft blotchy nebula haze that breathes behind the BLESSED sign only —
+           a handful of overlapping wisps inside a feathered mask, drawn white
+           and tinted by the material colour */
+        var c = document.createElement('canvas'); c.width = c.height = 128;
+        var ctx = c.getContext('2d');
+        var blobs = [
+            [64, 60, 46, 0.30], [42, 74, 30, 0.26], [88, 52, 28, 0.24],
+            [56, 40, 24, 0.2], [80, 82, 26, 0.22], [36, 48, 18, 0.16]
+        ];
+        for (var i = 0; i < blobs.length; i++) {
+            var b = blobs[i];
+            var g = ctx.createRadialGradient(b[0], b[1], 0, b[0], b[1], b[2]);
+            g.addColorStop(0, 'rgba(255,255,255,' + b[3] + ')');
+            g.addColorStop(0.6, 'rgba(255,255,255,' + (b[3] * 0.4) + ')');
+            g.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.arc(b[0], b[1], b[2], 0, Math.PI * 2); ctx.fill();
+        }
+        /* feather the whole cloud so the sprite edge never shows */
+        ctx.globalCompositeOperation = 'destination-in';
+        var m = ctx.createRadialGradient(64, 64, 0, 64, 64, 62);
+        m.addColorStop(0, 'rgba(255,255,255,1)');
+        m.addColorStop(0.62, 'rgba(255,255,255,0.85)');
+        m.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = m; ctx.fillRect(0, 0, 128, 128);
         var tex = new THREE.CanvasTexture(c);
         tex.minFilter = THREE.LinearFilter;
         return tex;
@@ -18834,19 +18900,67 @@ const ThreeRenderer = (function () {
         var c = document.createElement('canvas'); c.width = c.height = 256;
         var ctx = c.getContext('2d');
         ctx.clearRect(0, 0, 256, 256);
+        /* gilded glyph: vertical pale-gold → deep-gold gradient with a warm halo */
+        var fill = ctx.createLinearGradient(0, 40, 0, 216);
+        fill.addColorStop(0, 'rgba(255,240,200,0.98)');
+        fill.addColorStop(0.55, 'rgba(255,220,150,0.95)');
+        fill.addColorStop(1, 'rgba(222,168,92,0.92)');
         ctx.font = '150px "Cinzel", "Times New Roman", serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.shadowColor = 'rgba(255,215,130,0.9)'; ctx.shadowBlur = 26;
-        ctx.fillStyle = 'rgba(255,226,166,0.95)';
+        ctx.fillStyle = fill;
         ctx.fillText(symbol, 128, 134);
-        /* faint enclosing ring so the glyph reads as a seal in the sky */
+        ctx.fillText(symbol, 128, 134);   /* second pass strengthens the halo */
+        /* double enclosing ring + degree ticks so the glyph reads as an
+           engraved celestial seal rather than a floating letter */
         ctx.shadowBlur = 0;
-        ctx.strokeStyle = 'rgba(255,226,166,0.35)'; ctx.lineWidth = 4;
-        ctx.beginPath(); ctx.arc(128, 128, 112, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,226,166,0.4)'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(128, 128, 114, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,226,166,0.2)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(128, 128, 104, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,226,166,0.5)';
+        for (var t = 0; t < 12; t++) {
+            var ta = t / 12 * Math.PI * 2;
+            ctx.beginPath();
+            ctx.arc(128 + Math.cos(ta) * 109, 128 + Math.sin(ta) * 109, 2.4, 0, Math.PI * 2);
+            ctx.fill();
+        }
         var tex = new THREE.CanvasTexture(c);
         tex.minFilter = THREE.LinearFilter;
         return tex;
     }
+
+    /* Constellation link segments as thin additive quads (GL lines are stuck at
+       1px), built at a given half-width so the same links can be laid down twice:
+       a wide soft glow underlay plus a crisp bright core. */
+    function _zwBuildLinkQuads(starDirs, lk, halfW) {
+        var quads = new Float32Array(lk.length * 6 * 3), qo = 0;
+        for (var li = 0; li < lk.length; li++) {
+            var pa = starDirs[lk[li][0]], pb = starDirs[lk[li][1]];
+            var dir = new THREE.Vector3().subVectors(pb, pa);
+            var len = dir.length(); dir.normalize();
+            var gap = Math.min(0.022, len * 0.22);
+            var pa2 = new THREE.Vector3().copy(pa).addScaledVector(dir, gap);
+            var pb2 = new THREE.Vector3().copy(pb).addScaledVector(dir, -gap);
+            var mid = new THREE.Vector3().addVectors(pa2, pb2).multiplyScalar(0.5).normalize();
+            var side = new THREE.Vector3().crossVectors(dir, mid).normalize().multiplyScalar(halfW);
+            var v = [
+                pa2.x - side.x, pa2.y - side.y, pa2.z - side.z,
+                pa2.x + side.x, pa2.y + side.y, pa2.z + side.z,
+                pb2.x + side.x, pb2.y + side.y, pb2.z + side.z,
+                pa2.x - side.x, pa2.y - side.y, pa2.z - side.z,
+                pb2.x + side.x, pb2.y + side.y, pb2.z + side.z,
+                pb2.x - side.x, pb2.y - side.y, pb2.z - side.z
+            ];
+            quads.set(v, qo); qo += 18;
+        }
+        return quads;
+    }
+
+    /* Star colour temperatures — real skies aren't monochrome: blue-white giants,
+       white main-sequence, warm-white and amber stars, keyed deterministically
+       per star so the field looks hand-placed and stays stable across frames. */
+    var _ZW_STAR_TEMPS = [0xa9c3ff, 0xcfe0ff, 0xf2f4ff, 0xfff1d6, 0xffd9a8];
 
     function _initZodiacWheel() {
         if (_zwInited || !scene || typeof THREE === 'undefined') return;
@@ -18855,6 +18969,8 @@ const ThreeRenderer = (function () {
             _ZW_COL_STAR_DIM = new THREE.Color(0x93a5d8); _ZW_COL_STAR_HOT = new THREE.Color(0xffe2a6);
 
             var starTex = _zwStarTexture();
+            var haloTex = _zwHaloTexture();
+            var nebTex = _zwNebulaTexture();
             var icons = (typeof ZODIAC_ICONS !== 'undefined') ? ZODIAC_ICONS : (window.ZODIAC_ICONS || {});
             var ZL = (typeof AVAILABLE_ZODIACS !== 'undefined') ? AVAILABLE_ZODIACS : (window.AVAILABLE_ZODIACS || _ZW_ORDER);
 
@@ -18898,32 +19014,36 @@ const ThreeRenderer = (function () {
                         .addScaledVector(up, st[1] * _ZW_SPREAD).normalize());
                 }
 
-                /* connecting lines as thin additive quads (GL lines are stuck at
-                   1px), one geometry per sign so setDrawRange can DRAW them on
-                   link by link during the reveal */
-                var lk = def.links, quads = new Float32Array(lk.length * 6 * 3);
-                var qo = 0;
-                for (var li = 0; li < lk.length; li++) {
-                    var pa = starDirs[lk[li][0]], pb = starDirs[lk[li][1]];
-                    var dir = new THREE.Vector3().subVectors(pb, pa);
-                    var len = dir.length(); dir.normalize();
-                    var gap = Math.min(0.022, len * 0.22);
-                    var pa2 = new THREE.Vector3().copy(pa).addScaledVector(dir, gap);
-                    var pb2 = new THREE.Vector3().copy(pb).addScaledVector(dir, -gap);
-                    var mid = new THREE.Vector3().addVectors(pa2, pb2).multiplyScalar(0.5).normalize();
-                    var side = new THREE.Vector3().crossVectors(dir, mid).normalize().multiplyScalar(0.005);
-                    var v = [
-                        pa2.x - side.x, pa2.y - side.y, pa2.z - side.z,
-                        pa2.x + side.x, pa2.y + side.y, pa2.z + side.z,
-                        pb2.x + side.x, pb2.y + side.y, pb2.z + side.z,
-                        pa2.x - side.x, pa2.y - side.y, pa2.z - side.z,
-                        pb2.x + side.x, pb2.y + side.y, pb2.z + side.z,
-                        pb2.x - side.x, pb2.y - side.y, pb2.z - side.z
-                    ];
-                    quads.set(v, qo); qo += 18;
-                }
+                /* nebula haze behind the constellation — invisible while idle,
+                   breathes in gold when the sign is blessed */
+                var nebMat = new THREE.SpriteMaterial({
+                    map: nebTex, transparent: true, opacity: 0, color: 0xd9a860,
+                    blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false
+                });
+                var neb = new THREE.Sprite(nebMat);
+                neb.position.copy(cd);
+                neb.scale.set(_ZW_SPREAD * 3.4, _ZW_SPREAD * 3.4, 1);
+                neb.renderOrder = -995; neb.frustumCulled = false;
+                _zwGroup.add(neb);
+
+                /* connecting lines: one geometry per sign so setDrawRange can
+                   DRAW them on link by link during the reveal. Two passes over
+                   the same links — a wide soft glow underlay + a crisp core —
+                   so blessed lines bloom like light instead of reading flat. */
+                var lk = def.links;
+                var glowGeo = new THREE.BufferGeometry();
+                glowGeo.setAttribute('position', new THREE.BufferAttribute(_zwBuildLinkQuads(starDirs, lk, 0.016), 3));
+                var glowMat = new THREE.MeshBasicMaterial({
+                    color: 0x3d4a78, transparent: true, opacity: 0.02,
+                    blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false,
+                    side: THREE.DoubleSide
+                });
+                var glowMesh = new THREE.Mesh(glowGeo, glowMat);
+                glowMesh.renderOrder = -993; glowMesh.frustumCulled = false;
+                _zwGroup.add(glowMesh);
+
                 var lineGeo = new THREE.BufferGeometry();
-                lineGeo.setAttribute('position', new THREE.BufferAttribute(quads, 3));
+                lineGeo.setAttribute('position', new THREE.BufferAttribute(_zwBuildLinkQuads(starDirs, lk, 0.005), 3));
                 var lineMat = new THREE.MeshBasicMaterial({
                     color: 0x3d4a78, transparent: true, opacity: 0.05,
                     blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false,
@@ -18933,21 +19053,42 @@ const ThreeRenderer = (function () {
                 lineMesh.renderOrder = -992; lineMesh.frustumCulled = false;
                 _zwGroup.add(lineMesh);
 
-                /* stars */
-                var starMat = new THREE.SpriteMaterial({
-                    map: starTex, transparent: true, opacity: 0.4, color: 0x93a5d8,
-                    blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false
-                });
+                /* stars — each gets its OWN material so it can carry a colour
+                   temperature and twinkle independently; bright stars also get
+                   a soft bloom halo layered behind the spiked sprite */
                 var stars = [];
                 for (var sk = 0; sk < starDirs.length; sk++) {
-                    var spr = new THREE.Sprite(starMat);
+                    var bright = def.stars[sk][2] || 0.5;
+                    var tempC = new THREE.Color(_ZW_STAR_TEMPS[(i * 5 + sk * 3) % _ZW_STAR_TEMPS.length]);
+                    var dimC = _ZW_COL_STAR_DIM.clone().lerp(tempC, 0.55);
+                    var hotC = _ZW_COL_STAR_HOT.clone().lerp(tempC, 0.3);
+                    var sMat = new THREE.SpriteMaterial({
+                        map: starTex, transparent: true, opacity: 0.4, color: dimC.clone(),
+                        blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false
+                    });
+                    var spr = new THREE.Sprite(sMat);
                     spr.position.copy(starDirs[sk]);
-                    var bs = 0.02 + 0.03 * (def.stars[sk][2] || 0.5);
-                    spr.userData = { bs: bs, tw: 0.6 + ((i * 7 + sk * 13) % 10) * 0.22, ph: (i * 2.3 + sk * 1.7) % 6.28 };
+                    var bs = 0.02 + 0.03 * bright;
+                    spr.userData = {
+                        bs: bs, tw: 0.6 + ((i * 7 + sk * 13) % 10) * 0.22,
+                        ph: (i * 2.3 + sk * 1.7) % 6.28, dim: dimC, hot: hotC, halo: null
+                    };
                     spr.scale.set(bs, bs, 1);
                     spr.renderOrder = -990; spr.frustumCulled = false;
                     _zwGroup.add(spr);
                     stars.push(spr);
+                    if (bright >= 0.65) {
+                        var hMat = new THREE.SpriteMaterial({
+                            map: haloTex, transparent: true, opacity: 0.08, color: dimC.clone(),
+                            blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false
+                        });
+                        var halo = new THREE.Sprite(hMat);
+                        halo.position.copy(starDirs[sk]);
+                        halo.scale.set(bs * 3.2, bs * 3.2, 1);
+                        halo.renderOrder = -994; halo.frustumCulled = false;
+                        _zwGroup.add(halo);
+                        spr.userData.halo = halo;
+                    }
                 }
 
                 /* slot node dot on the rim (the wheel's hub markers) */
@@ -18973,8 +19114,9 @@ const ThreeRenderer = (function () {
                 _zwGroup.add(glyph);
 
                 _zwSigns.push({
-                    key: signKey, lineGeo: lineGeo, lineMat: lineMat, linkCount: lk.length,
-                    starMat: starMat, stars: stars, dotMat: dotMat, glyphMat: glyphMat, act: 0
+                    key: signKey, lineGeo: lineGeo, lineMat: lineMat,
+                    glowGeo: glowGeo, glowMat: glowMat, linkCount: lk.length,
+                    stars: stars, dotMat: dotMat, glyphMat: glyphMat, nebMat: nebMat, act: 0
                 });
             }
 
@@ -19056,23 +19198,42 @@ const ThreeRenderer = (function () {
 
             var visLinks = (i === inSign && drawP < 1) ? Math.ceil(drawP * sg.linkCount) : sg.linkCount;
             sg.lineGeo.setDrawRange(0, 6 * visLinks);
+            sg.glowGeo.setDrawRange(0, 6 * visLinks);
             sg.lineMat.opacity = (0.07 + 0.78 * a2) * vis;
             sg.lineMat.color.copy(_ZW_COL_LINE_DIM).lerp(_ZW_COL_LINE_HOT, a2);
-
-            sg.starMat.opacity = (0.5 + 0.5 * a2) * vis;
-            sg.starMat.color.copy(_ZW_COL_STAR_DIM).lerp(_ZW_COL_STAR_HOT, a2);
+            sg.glowMat.opacity = (0.02 + 0.3 * a2) * vis;
+            sg.glowMat.color.copy(_ZW_COL_LINE_DIM).lerp(_ZW_COL_LINE_HOT, a2);
 
             sg.glyphMat.opacity = (0.06 + 0.5 * a2) * vis;
 
             sg.dotMat.opacity = (0.3 + 0.6 * a2) * vis;
             sg.dotMat.color.copy(_ZW_COL_STAR_DIM).lerp(_ZW_COL_STAR_HOT, a2);
 
-            /* twinkle + swell the blessed constellation's stars */
-            for (var sj = 0; sj < sg.stars.length; sj++) {
-                var sp = sg.stars[sj];
-                var pulse = 1 + 0.16 * a2 * Math.sin(tSec * sp.userData.tw * 2.2 + sp.userData.ph);
-                var bs = sp.userData.bs * (1 + 0.6 * a2) * pulse;
+            /* nebula haze breathes gently behind the blessed sign only */
+            sg.nebMat.opacity = 0.16 * a2 * vis * (0.82 + 0.18 * Math.sin(tSec * 0.5 + i * 1.9));
+
+            /* per-star twinkle + colour: every star shimmers faintly at idle;
+               during the reveal's draw phase the blessed sign's stars IGNITE
+               in sequence, gold sweeping along the figure with the lines */
+            var nStars = sg.stars.length;
+            for (var sj = 0; sj < nStars; sj++) {
+                var sp = sg.stars[sj], ud = sp.userData;
+                var ign = (i === inSign && drawP < 1)
+                    ? Math.max(0, Math.min(1, (drawP * 1.5 - sj / nStars) * 2.5)) : 1;
+                var sa = a2 * ign;
+                var twv = Math.sin(tSec * ud.tw * 2.2 + ud.ph);
+                var pulse = 1 + (0.05 + 0.13 * sa) * twv;
+                var bs = ud.bs * (1 + 0.55 * sa) * pulse;
                 sp.scale.set(bs, bs, 1);
+                sp.material.opacity = (0.45 + 0.55 * sa) * vis
+                    * (0.88 + 0.12 * Math.sin(tSec * ud.tw * 1.4 + ud.ph * 1.9));
+                sp.material.color.copy(ud.dim).lerp(ud.hot, sa);
+                if (ud.halo) {
+                    var hb = bs * 3.2;
+                    ud.halo.scale.set(hb, hb, 1);
+                    ud.halo.material.opacity = (0.06 + 0.24 * sa) * vis * (0.8 + 0.2 * twv);
+                    ud.halo.material.color.copy(ud.dim).lerp(ud.hot, sa);
+                }
             }
         }
         if (_zwRimMat) _zwRimMat.opacity = (0.05 + 0.05 * S.night);
