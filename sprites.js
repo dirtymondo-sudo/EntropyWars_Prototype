@@ -1534,6 +1534,26 @@ const RACE_MODELS_3D = {
       lib: { idle: { clip: 'Idle_10', lib: 2 } },   // brawler sway
     }),
   },
+  // ── 2026-08-06 batch (sprites.js RACE_MODELS_3D — prehistoric predators) ──
+  // Dinosaur (Raider, bruiser) — 4.5m theropod (data.js physique), rendered a
+  // notch under the kraken (12m → 1.55): monster sway, raking talon basics.
+  'dinosaur': {
+    male: _mkUAL('dinosaur/male', 'dinosaur_realistic', {
+      heightRatio: 1.5,
+      basicAttackKind: 'claw',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
+    }),
+  },
+  // Dragon (flyer, SKY_RACES) — 6m wyrm in the colossal tier alongside king
+  // kong (1.65): monster sway, claw basics; breath attacks fire their mapped
+  // beam VFX.
+  'dragon': {
+    male: _mkUAL('dragon/male', 'dragon_realistic', {
+      heightRatio: 1.6,
+      basicAttackKind: 'claw',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
+    }),
+  },
 };
 
 // ── Gendered library defaults (2026-07-11) ─────────────────────────────────
