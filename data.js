@@ -12348,17 +12348,16 @@ function getRaceTreeSpells(race, cls) {
 }
 
 /* Functional adjacency, by node key. Root connects to all three ring-1
-   nodes (Malkhut → Yesod/Hod/Netzach); chains up each pillar; cross-links
-   at ring 2 (S2—R2—P2) and ring 3 (S3—R3—P3); capstones connect ONLY to
-   their own ring-3. */
+   nodes; each pillar is a strict chain (traditional skill-tree order —
+   ring N requires ring N-1 of the SAME pillar). No cross-links: reaching
+   a capstone always costs its full pillar (4 slots), so a second capstone
+   can never fit in the 6-slot budget (4+4 > 6). */
 function getTreeEdges() {
     return [
         ['root', 'R1'], ['root', 'P1'], ['root', 'S1'],
         ['R1', 'R2'], ['R2', 'R3'], ['R3', 'R4'],
         ['P1', 'P2'], ['P2', 'P3'], ['P3', 'P4'],
         ['S1', 'S2'], ['S2', 'S3'], ['S3', 'S4'],
-        ['S2', 'R2'], ['R2', 'P2'],
-        ['S3', 'R3'], ['R3', 'P3'],
     ];
 }
 

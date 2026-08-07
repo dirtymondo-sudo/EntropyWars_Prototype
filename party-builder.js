@@ -1133,8 +1133,11 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
                   : (key === 'root' ? EW.ink : 'rgba(255,255,255,0.2)');
     const isCap = key.endsWith('4');
     const onPath = hoverSet && hoverSet.has(key);
-    // Backgrounds are ALWAYS fully opaque and no state uses element-level
-    // opacity — the connector lines pass BEHIND the chips, never through.
+    // Chips wear their category color as a SOLID fill (no grey body, no
+    // translucent fills, no element-level opacity — connector lines pass
+    // BEHIND the chips, never through). State reads as brightness:
+    // full color = available, dimmed = far/blocked. EQUIPPED is the ONLY
+    // state that glows: a white outline + white glow. Nothing else pulses.
     const base = {
       position: 'absolute', left: x + '%', top: y + '%',
       transform: 'translate(-50%,-50%)',
@@ -1142,44 +1145,45 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: 'Cinzel, serif', fontSize: 13, fontWeight: 700,
       border: '2px solid ' + nc, color: EW.ink,
-      background: TREE_NODE_BG, cursor: 'default',
+      background: nc, cursor: 'default',
       boxSizing: 'border-box', zIndex: 2,
     };
     let style = base, label = sp ? sp.name : '', glyph = '';
     if (st8 === 'root') {
-      style = { ...base, background: _treeMixBg('#ffffff', 0.14), boxShadow: '0 0 12px rgba(255,255,255,0.25)' };
+      // always-equipped: same white outline + glow as equipped nodes.
+      style = { ...base, background: '#e6e9f2', border: '2px solid #ffffff', color: TREE_NODE_BG,
+        boxShadow: '0 0 10px rgba(255,255,255,0.75)' };
       glyph = '⚔'; label = 'Basic Attack';
     } else if (st8 === 'socket') {
       // open wildcard socket: dashed gold ring + the tier(s) it accepts.
       const tiers = (tree.sockets[key] || []).join('·');
       const litAdj = tree.edges.some(([a, b]) =>
         (a === key && connected.has(b)) || (b === key && connected.has(a)));
-      style = { ...base, border: '2px dashed ' + (litAdj ? EW.time : 'rgba(242,196,104,0.35)'),
-        color: litAdj ? EW.time : EW.inkDim, cursor: 'pointer',
-        ...(litAdj ? { animation: 'ewTreeReachPulse 1.6s ease-in-out infinite' } : {}) };
+      style = { ...base, background: TREE_NODE_BG,
+        border: '2px dashed ' + (litAdj ? EW.time : 'rgba(242,196,104,0.35)'),
+        color: litAdj ? EW.time : EW.inkDim, cursor: 'pointer' };
       glyph = '＋'; label = 'WILDCARD ' + tiers;
     } else if (st8 === 'empty') {
-      style = { ...base, border: '2px dashed rgba(255,255,255,0.14)', color: EW.inkDim };
+      style = { ...base, background: TREE_NODE_BG, border: '2px dashed rgba(255,255,255,0.14)', color: EW.inkDim };
     } else if (st8 === 'equipped') {
-      style = { ...base, background: _treeMixBg(nc, 0.34), boxShadow: `0 0 12px ${nc}66`, cursor: 'pointer' };
+      style = { ...base, border: '2px solid #ffffff', color: TREE_NODE_BG, cursor: 'pointer',
+        boxShadow: '0 0 10px rgba(255,255,255,0.75), 0 0 20px rgba(255,255,255,0.35)' };
       glyph = sp ? sp.tier || '' : '';
     } else if (st8 === 'reachable') {
-      style = { ...base, cursor: 'pointer', animation: 'ewTreeReachPulse 1.6s ease-in-out infinite' };
+      style = { ...base, color: TREE_NODE_BG, cursor: 'pointer' };
       glyph = sp ? sp.tier || '' : '';
     } else if (st8 === 'far') {
-      style = { ...base, cursor: 'pointer', color: EW.inkMute,
-        borderColor: onPath ? EW.time : nc + '77' };
+      style = { ...base, cursor: 'pointer', background: _treeMixBg(nc, 0.5),
+        borderColor: onPath ? EW.time : _treeMixBg(nc, 0.6) };
       glyph = sp ? sp.tier || '' : '';
     } else if (st8 === 'sealed') {
-      style = { ...base, borderColor: 'rgba(255,255,255,0.25)', color: EW.inkMute, cursor: 'not-allowed' };
+      style = { ...base, background: TREE_NODE_BG, borderColor: 'rgba(255,255,255,0.25)', color: EW.inkMute, cursor: 'not-allowed' };
       glyph = '🔒';
     } else { // blocked (unreachable through empty sockets)
-      style = { ...base, borderColor: nc + '44', color: EW.inkDim };
+      style = { ...base, background: _treeMixBg(nc, 0.28), borderColor: _treeMixBg(nc, 0.4), color: EW.inkDim };
       glyph = sp ? sp.tier || '' : '';
     }
     if (key === 'R3' && st8 !== 'equipped') style.borderStyle = 'dashed';       // Da'at
-    if (isCap && (st8 === 'equipped' || st8 === 'reachable'))
-      style.animation = (style.animation ? style.animation + ', ' : '') + 'ewTreeCapstoneGlow 2.4s ease-in-out infinite';
     if (shakeKey === key) style.animation = 'ewTreeShake 0.3s linear';
     return h('div', { key, style: { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none' } },
       h('div', {

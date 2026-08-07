@@ -32,6 +32,20 @@ them, never through; lit edges are neutral silver. The secondary-job
 header renders as an explicit gold-bordered button with ▾ and a
 CHANGE/SELECT hint instead of plain text.
 
+**2026-08-07 tree QoL pass 2 (token `20260807l-cors`, user direction):**
+1) Nodes are SOLID category-color chips now — no dark body + colored outline;
+state reads as brightness (full color = equippable, dimmed = far/blocked).
+2) ONLY equipped nodes glow: white outline + white glow. The reachable-node
+pulse and the capstone glow pulse are GONE (they made unequipped nodes look
+selected); `ewTreeReachPulse`/`ewTreeCapstoneGlow` keyframes are now unused.
+3) TRADITIONAL ORDER: the ring-2/ring-3 cross-links are REMOVED from
+`getTreeEdges()` (§1.1 cross-links and §1.2 rule-4 "two capstones = 6" are
+overruled). Each pillar is a strict chain, so a capstone always costs its
+full 4-node pillar and a second capstone can never fit in 6 slots — max ONE
+capstone per unit. Legality/AI/host-validation/UI all derive from
+`getTreeEdges()`, so the change is global; stale cross-link loadouts are
+auto-repaired by the existing `treeLegalSubset` pass.
+
 **Status: PHASE B SHIPPED 2026-08-07** (branch `claude/spell-tree-redesign-ij5n2f`,
 token `20260807k-cors`). Everything from the Phase-A "still open" list landed:
 - **Freelancer wildcard-socket tree** — `classHasSpellTree('Freelancer')` is now

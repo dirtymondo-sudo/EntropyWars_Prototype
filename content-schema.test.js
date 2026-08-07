@@ -212,7 +212,10 @@ test('tree legality: adjacency, connectivity, capstone geometry, random walks', 
     assert.ok(!ok(['raceMistForm']), 'ring-2 without ring-1 illegal');
     assert.ok(!ok(['headshot']), 'capstone alone illegal');
     assert.ok(ok(['kneecapShot', 'camouflage', 'precisionShot', 'headshot']), 'full pillar legal');
-    assert.ok(ok(['raceBite', 'raceMistForm', 'camouflage']), 'ring-2 cross-link legal');
+    assert.ok(!ok(['raceBite', 'raceMistForm', 'camouflage']),
+        'no cross-links — a job ring 2 needs its own ring 1 first');
+    assert.ok(!ok(['kneecapShot', 'camouflage', 'precisionShot', 'headshot', 'raceBite', 'racePredatorDrop']),
+        'two capstones impossible — each needs its full 4-node pillar (4+4 > 6)');
     assert.ok(!ok(['racePredatorDrop', 'headshot', 'rampage']), 'three capstones impossible');
     assert.ok(!ok(['raceBite', 'raceBite']), 'duplicates illegal');
     assert.ok(!ok(['fire1']), 'off-tree spell illegal');
