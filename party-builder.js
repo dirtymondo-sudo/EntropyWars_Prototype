@@ -1006,7 +1006,7 @@ function SpellBlade({ sp, slotLabel, slotNums, heightPx, equippedSlot, pool, equ
 
 /* ══ SPELL TREE — the Tree-of-Life selector (SPELL_TREE_REDESIGN doc) ══
    13 nodes: root (Basic Attack) + three 4-node pillars — RACE (middle),
-   PRIMARY job (right), SECONDARY job (left). Equip = adjacency to an
+   PRIMARY job (LEFT), SECONDARY job (RIGHT). Equip = adjacency to an
    equipped node via a functional path; unequip only if the rest stays
    root-connected. Freelancer keeps the flat pool (wildcard sockets are a
    separate pass — classHasSpellTree routes it to legacy). */
@@ -1016,9 +1016,21 @@ function SpellBlade({ sp, slotLabel, slotNums, heightPx, equippedSlot, pool, equ
 const TREE_NODE_POS = {
   root: [50, 91],
   R1: [50, 70], R2: [50, 51], R3: [50, 32], R4: [50, 9],
-  P1: [81, 75], P2: [81, 56], P3: [81, 37], P4: [81, 14],
-  S1: [19, 75], S2: [19, 56], S3: [19, 37], S4: [19, 14],
+  P1: [19, 75], P2: [19, 56], P3: [19, 37], P4: [19, 14],
+  S1: [81, 75], S2: [81, 56], S3: [81, 37], S4: [81, 14],
 };
+
+/* Node color = what the spell DOES, same coding as the in-battle action
+   menu (_HRLG_CAT in hud.js): red damage, green heal, blue buff, purple
+   debuff, gold utility. Faction/branch identity lives only in the pillar
+   header labels — never on the nodes. */
+const TREE_CAT_C = { damage:'#ff5f5f', heal:'#58d858', buff:'#5cb2ff', debuff:'#a06bff', utility:'#f0d060' };
+const TREE_NODE_BG = '#0d0d13';   // opaque chip fill — lines must never show through a node
+function _treeMixBg(hex, t) {     // blend a #rrggbb toward TREE_NODE_BG at ratio t — stays fully opaque
+  const p = (s, i) => parseInt(s.slice(i, i + 2), 16);
+  const m = (a, b) => Math.round(a * t + b * (1 - t));
+  return 'rgb(' + m(p(hex,1), 13) + ',' + m(p(hex,3), 13) + ',' + m(p(hex,5), 19) + ')';
+}
 
 /* BFS from the connected frontier to targetKey. Returns the node keys that
    must be NEWLY equipped (target last, sealed pass-throughs excluded), [] if
@@ -1066,7 +1078,7 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
   const equippedSet = new Set(equipped || []);
   const connected = (typeof window.treeReachableKeys === 'function')
     ? window.treeReachableKeys(tree, equippedSet) : new Set(['root']);
-  const branchColor = { R: fc, P: EW.space, S: '#8b8ba0', root: EW.ink };
+  const headColor = { P: EW.space };   // pillar HEADER text only — nodes wear category colors
   const hoverSet = hoverPath ? new Set(hoverPath) : null;
   const used = (equipped || []).length;
 
@@ -1083,13 +1095,15 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
   const states = {};
   Object.keys(TREE_NODE_POS).forEach(k => { states[k] = nodeState(k); });
 
-  // path (edge) styling: lit when both endpoints are root-connected
+  // path (edge) styling: lit when both endpoints are root-connected.
+  // Lit = neutral silver (no faction tint); hover-path = gold. Edges render
+  // in the z:1 SVG layer UNDER the opaque z:2 node chips.
   const edgeNodes = tree.edges.map(([a, b], i) => {
     const [x1, y1] = TREE_NODE_POS[a], [x2, y2] = TREE_NODE_POS[b];
     const lit = connected.has(a) && connected.has(b);
     const onHover = hoverSet && (hoverSet.has(a) || a === 'root' || connected.has(a)) && hoverSet.has(b);
     return h('line', { key: i, x1, y1, x2, y2,
-      stroke: onHover ? EW.time : lit ? fc : 'rgba(255,255,255,0.13)',
+      stroke: onHover ? EW.time : lit ? 'rgba(230,233,242,0.55)' : 'rgba(255,255,255,0.13)',
       strokeWidth: onHover ? 1.1 : lit ? 0.8 : 0.45,
       strokeDasharray: lit || onHover ? undefined : '1.6 1.6' });
   });
@@ -1098,40 +1112,45 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
     const st8 = states[key];
     const id = key === 'root' ? null : tree.nodes[key];
     const sp = id && typeof window.getSpellById === 'function' ? window.getSpellById(id) : null;
-    const bc = branchColor[key === 'root' ? 'root' : key[0]];
+    // Category color — SAME coding as the battle action menu (red damage,
+    // green heal, blue buff, purple debuff, gold utility).
+    const nc = sp ? (TREE_CAT_C[classifySpellLocal(sp)] || TREE_CAT_C.utility)
+                  : (key === 'root' ? EW.ink : 'rgba(255,255,255,0.2)');
     const isCap = key.endsWith('4');
     const onPath = hoverSet && hoverSet.has(key);
+    // Backgrounds are ALWAYS fully opaque and no state uses element-level
+    // opacity — the connector lines pass BEHIND the chips, never through.
     const base = {
       position: 'absolute', left: x + '%', top: y + '%',
       transform: 'translate(-50%,-50%)',
       width: 46, height: 46, borderRadius: '50%',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: 'Cinzel, serif', fontSize: 13, fontWeight: 700,
-      border: '2px solid ' + bc, color: EW.ink,
-      background: 'rgba(0,0,0,0.55)', cursor: 'default',
+      border: '2px solid ' + nc, color: EW.ink,
+      background: TREE_NODE_BG, cursor: 'default',
       boxSizing: 'border-box', zIndex: 2,
     };
     let style = base, label = sp ? sp.name : '', glyph = '';
     if (st8 === 'root') {
-      style = { ...base, background: 'rgba(255,255,255,0.12)', boxShadow: '0 0 12px rgba(255,255,255,0.25)' };
+      style = { ...base, background: _treeMixBg('#ffffff', 0.14), boxShadow: '0 0 12px rgba(255,255,255,0.25)' };
       glyph = '⚔'; label = 'Basic Attack';
     } else if (st8 === 'empty') {
-      style = { ...base, border: '2px dashed rgba(255,255,255,0.14)', opacity: 0.3 };
+      style = { ...base, border: '2px dashed rgba(255,255,255,0.14)', color: EW.inkDim };
     } else if (st8 === 'equipped') {
-      style = { ...base, background: bc + '55', boxShadow: `0 0 12px ${bc}66`, cursor: 'pointer' };
+      style = { ...base, background: _treeMixBg(nc, 0.34), boxShadow: `0 0 12px ${nc}66`, cursor: 'pointer' };
       glyph = sp ? sp.tier || '' : '';
     } else if (st8 === 'reachable') {
       style = { ...base, cursor: 'pointer', animation: 'ewTreeReachPulse 1.6s ease-in-out infinite' };
       glyph = sp ? sp.tier || '' : '';
     } else if (st8 === 'far') {
-      style = { ...base, opacity: onPath ? 0.9 : 0.5, cursor: 'pointer',
-        borderColor: onPath ? EW.time : bc + '77' };
+      style = { ...base, cursor: 'pointer', color: EW.inkMute,
+        borderColor: onPath ? EW.time : nc + '77' };
       glyph = sp ? sp.tier || '' : '';
     } else if (st8 === 'sealed') {
-      style = { ...base, opacity: 0.45, borderColor: 'rgba(255,255,255,0.25)', cursor: 'not-allowed' };
+      style = { ...base, borderColor: 'rgba(255,255,255,0.25)', color: EW.inkMute, cursor: 'not-allowed' };
       glyph = '🔒';
     } else { // blocked (unreachable through empty sockets)
-      style = { ...base, opacity: 0.3 };
+      style = { ...base, borderColor: nc + '44', color: EW.inkDim };
       glyph = sp ? sp.tier || '' : '';
     }
     if (key === 'R3' && st8 !== 'equipped') style.borderStyle = 'dashed';       // Da'at
@@ -1145,7 +1164,7 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
         onMouseEnter: sp ? (e) => onNodeHoverIn(key, sp, e) : undefined,
         onMouseLeave: sp ? () => onNodeHoverOut() : undefined,
       },
-        isCap && st8 !== 'empty' ? h('span', { style: { position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', fontSize: 11, color: bc } }, '♛') : null,
+        isCap && st8 !== 'empty' ? h('span', { style: { position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', fontSize: 11, color: nc } }, '♛') : null,
         glyph),
       (st8 !== 'empty') ? h('div', { style: {
         position: 'absolute', left: x + '%', top: 'calc(' + y + '% + 27px)',
@@ -1157,11 +1176,24 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
       } }, label) : null);
   });
 
-  const pillarHead = (x, text, color, onClick) => h('div', { style: {
-    position: 'absolute', left: x + '%', top: '1%', transform: 'translateX(-50%)',
-    fontSize: 9, letterSpacing: '0.16em', color, whiteSpace: 'nowrap',
-    cursor: onClick ? 'pointer' : 'default', pointerEvents: onClick ? 'auto' : 'none',
-  }, onClick }, text);
+  /* Pillar headers. A clickable head (the SUBCLASS picker) must READ as a
+     button — bordered gold chip + ▾ + a CHANGE hint — not as plain text
+     that looks identical to the fixed primary-job label. */
+  const pillarHead = (x, text, color, onClick, sub) => h('div', {
+    style: {
+      position: 'absolute', left: x + '%', top: '1%', transform: 'translateX(-50%)',
+      fontSize: 9, letterSpacing: '0.16em', color, whiteSpace: 'nowrap',
+      textAlign: 'center', zIndex: 3,
+      cursor: onClick ? 'pointer' : 'default', pointerEvents: onClick ? 'auto' : 'none',
+      ...(onClick ? {
+        border: '1px solid rgba(242,196,104,0.5)', background: TREE_NODE_BG,
+        padding: '3px 8px', boxShadow: '0 0 6px rgba(242,196,104,0.18)',
+      } : {}),
+    }, onClick, title: onClick ? 'Subclass — click to change' : undefined,
+  },
+    text,
+    onClick ? h('span', { style: { marginLeft: 5, color: EW.time } }, '▾') : null,
+    onClick ? h('div', { style: { fontSize: 7, letterSpacing: '0.22em', color: EW.time, marginTop: 2 } }, sub) : null);
 
   const pips = [];
   for (let i = 0; i < slotCap; i++) pips.push(h('span', { key: i, style: {
@@ -1172,9 +1204,10 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
   return h('div', { style: { position: 'relative', width: '100%', height: '100%', minHeight: 400 } },
     h('svg', { viewBox: '0 0 100 100', preserveAspectRatio: 'none',
       style: { position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' } }, edgeNodes),
-    pillarHead(19, secJob ? getJobDisplay(secJob).toUpperCase() : '＋ SUBCLASS', secJob ? branchColor.S : EW.inkDim, onOpenSubjob),
+    pillarHead(19, getJobDisplay(clsName).toUpperCase(), headColor.P),
     pillarHead(50, (raceLabel || '').toUpperCase(), fc),
-    pillarHead(81, getJobDisplay(clsName).toUpperCase(), branchColor.P),
+    pillarHead(81, secJob ? getJobDisplay(secJob).toUpperCase() : '＋ SUBCLASS',
+      secJob ? EW.ink : EW.inkMute, onOpenSubjob, secJob ? 'CHANGE' : 'SELECT'),
     chips,
     h('div', { style: { position: 'absolute', left: '50%', top: 'calc(91% + 30px)', transform: 'translateX(-50%)', whiteSpace: 'nowrap', zIndex: 2 } }, pips));
 }

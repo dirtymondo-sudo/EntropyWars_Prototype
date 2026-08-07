@@ -20,6 +20,18 @@ rack/subbar only render in the flat-pool fallback (Freelancer, or when the
 tree fns are unavailable). The 6-slot BUDGET itself stays — capstone
 scarcity (§1.2 rule 4) is geometry × the 6-slot cap, so don't delete
 `SPELL_SLOT_MAX` plumbing.
+**2026-08-07 QoL pass (token `20260807j-cors`, user direction — overrides §6):**
+PRIMARY job pillar moved to the LEFT, secondary to the RIGHT (§1.1's
+Mercy/Severity mapping is overruled). Nodes are NO LONGER faction/branch
+colored — they wear the same category coding as the battle action menu
+(red damage / green heal / blue buff / purple debuff / gold utility,
+`_HRLG_CAT` parity via `TREE_CAT_C` + `classifySpellLocal`); faction color
+survives only in the pillar header labels. Node chips are fully OPAQUE
+(no translucent fills, no element opacity) so connector lines pass behind
+them, never through; lit edges are neutral silver. The secondary-job
+header renders as an explicit gold-bordered button with ▾ and a
+CHANGE/SELECT hint instead of plain text.
+
 **Still open (Phase B):** FREELANCER wildcard-socket tree (deliberately
 deferred — it keeps the flat pool); ~19 new race abilities for the thin races
 (those use the fallback); race-capstone tier-III tags + power passes; the
