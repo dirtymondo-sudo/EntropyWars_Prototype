@@ -11,6 +11,15 @@ job-tree tier retags (ring = tier), §2.1 explicit single-status fixes
 (hexOfToil, curseOfMisfortune, stealFromRich, naughtyList, lavaLamp deleted),
 haymaker→vs-Rooted, chassisSlan typo + suppressive/suppressing merge (legacy
 id aliases added), and content-schema tree tests.
+**2026-08-07 follow-up (token `20260807i-cors`):** the old 6-slot
+"EQUIPPED — SPELL SLOTS" rack and the SUBCLASS bar are REMOVED for tree
+classes (user direction — the tree replaces the slot UI outright; §1.3/§7.7
+"rack stays visible" is overruled). The tree's lit nodes + root pips are the
+loadout display; subclass is picked via the tree's left pillar header. The
+rack/subbar only render in the flat-pool fallback (Freelancer, or when the
+tree fns are unavailable). The 6-slot BUDGET itself stays — capstone
+scarcity (§1.2 rule 4) is geometry × the 6-slot cap, so don't delete
+`SPELL_SLOT_MAX` plumbing.
 **Still open (Phase B):** FREELANCER wildcard-socket tree (deliberately
 deferred — it keeps the flat pool); ~19 new race abilities for the thin races
 (those use the fallback); race-capstone tier-III tags + power passes; the

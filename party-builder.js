@@ -2069,9 +2069,11 @@ function PartyBuilder() {
           !isArena&&h('button',{onClick:resetCustomSpells,className:'pb-btn-ghost',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,color:EW.inkMute,fontSize:9,padding:'3px 8px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'RST'),
           !isArena&&h('button',{onClick:clearAllSpells,className:'pb-btn-danger',style:{background:'transparent',border:`1px solid rgba(255,120,120,0.25)`,color:'rgba(255,120,120,0.7)',fontSize:9,padding:'3px 8px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'CLR')),
 
-        // ── equipped loadout: fixed 6-slot rack; one spell per slot,
-        //    green = locked in ──
-        h('div', { className:'pbx-slotrack', style:{ maxHeight:'48%', overflow:'hidden' } },
+        // ── equipped loadout: fixed 6-slot rack. Tree classes DON'T get
+        //    this — the tree (lit nodes + pips) IS the loadout display;
+        //    the rack only remains for the flat-pool fallback (Freelancer,
+        //    or a race/class the tree fns can't build). ──
+        !(useTree&&unitTree)&&h('div', { className:'pbx-slotrack', style:{ maxHeight:'48%', overflow:'hidden' } },
           h('div', { className:'pbx-slotrack-head' },
             h('span', { style:{ fontSize:10, color:'#79d99a', letterSpacing:'0.16em', fontWeight:700 } }, '🔒 EQUIPPED — SPELL SLOTS'),
             h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } }, spellSlotsUsed, ' / ', slotCap, ' SLOTS FILLED')),
@@ -2096,8 +2098,10 @@ function PartyBuilder() {
             return rows;
           })())),
 
-        // ── SUBCLASS — a second job that feeds the pool below and shifts stats ──
-        !isArena && clsName!=='Freelancer' && h('div', { className:'pbx-subbar', style:{ '--cat': fc, flexShrink:0 }, onClick:()=>{ setEquipPicker('subjob'); sfx('uiCursorMove'); }, title:'A second job: its spells join this spell pool and its training shifts your stats.' },
+        // ── SUBCLASS — a second job that feeds the pool below and shifts
+        //    stats. Tree classes pick their subclass via the tree's left
+        //    pillar header instead — no separate bar. ──
+        !isArena && !(useTree&&unitTree) && clsName!=='Freelancer' && h('div', { className:'pbx-subbar', style:{ '--cat': fc, flexShrink:0 }, onClick:()=>{ setEquipPicker('subjob'); sfx('uiCursorMove'); }, title:'A second job: its spells join this spell pool and its training shifts your stats.' },
           h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.16em', flexShrink:0 } }, 'SUBCLASS'),
           h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:14, fontWeight:700, color:EW.ink, letterSpacing:'0.04em', whiteSpace:'nowrap' } }, secJob ? getJobDisplay(secJob) : '— None —'),
           h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.04em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 } }, 'adds its spells to the pool below · shifts stats'),
