@@ -1035,6 +1035,10 @@ const TREE_NODE_POS = {
    debuff, gold utility. Faction/branch identity lives only in the pillar
    header labels — never on the nodes. */
 const TREE_CAT_C = { damage:'#ff5f5f', heal:'#58d858', buff:'#5cb2ff', debuff:'#a06bff', utility:'#f0d060' };
+// In-chip glyph = the same category ICON the battle action menu uses
+// (_HRLG_CAT in hud.js) — NOT the tier numeral (most race abilities carry
+// no tier tag, which left race chips blank). Name lives under the chip.
+const TREE_CAT_GLYPH = { damage:'⚔', heal:'♥', buff:'▲', debuff:'▼', utility:'◎' };
 const TREE_NODE_BG = '#0d0d13';   // opaque chip fill — lines must never show through a node
 function _treeMixBg(hex, t) {     // blend a #rrggbb toward TREE_NODE_BG at ratio t — stays fully opaque
   const p = (s, i) => parseInt(s.slice(i, i + 2), 16);
@@ -1129,8 +1133,10 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
     const sp = id && typeof window.getSpellById === 'function' ? window.getSpellById(id) : null;
     // Category color — SAME coding as the battle action menu (red damage,
     // green heal, blue buff, purple debuff, gold utility).
-    const nc = sp ? (TREE_CAT_C[classifySpellLocal(sp)] || TREE_CAT_C.utility)
+    const cat = sp ? classifySpellLocal(sp) : null;
+    const nc = cat ? (TREE_CAT_C[cat] || TREE_CAT_C.utility)
                   : (key === 'root' ? EW.ink : 'rgba(255,255,255,0.2)');
+    const catGlyph = cat ? (TREE_CAT_GLYPH[cat] || TREE_CAT_GLYPH.utility) : '';
     const isCap = key.endsWith('4');
     const onPath = hoverSet && hoverSet.has(key);
     // Chips wear their category color as a SOLID fill (no grey body, no
@@ -1143,7 +1149,7 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
       transform: 'translate(-50%,-50%)',
       width: 46, height: 46, borderRadius: '50%',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Cinzel, serif', fontSize: 13, fontWeight: 700,
+      fontFamily: 'Cinzel, serif', fontSize: 16, fontWeight: 700,
       border: '2px solid ' + nc, color: EW.ink,
       background: nc, cursor: 'default',
       boxSizing: 'border-box', zIndex: 2,
@@ -1168,20 +1174,20 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
     } else if (st8 === 'equipped') {
       style = { ...base, border: '2px solid #ffffff', color: TREE_NODE_BG, cursor: 'pointer',
         boxShadow: '0 0 10px rgba(255,255,255,0.75), 0 0 20px rgba(255,255,255,0.35)' };
-      glyph = sp ? sp.tier || '' : '';
+      glyph = catGlyph;
     } else if (st8 === 'reachable') {
       style = { ...base, color: TREE_NODE_BG, cursor: 'pointer' };
-      glyph = sp ? sp.tier || '' : '';
+      glyph = catGlyph;
     } else if (st8 === 'far') {
       style = { ...base, cursor: 'pointer', background: _treeMixBg(nc, 0.5),
         borderColor: onPath ? EW.time : _treeMixBg(nc, 0.6) };
-      glyph = sp ? sp.tier || '' : '';
+      glyph = catGlyph;
     } else if (st8 === 'sealed') {
       style = { ...base, background: TREE_NODE_BG, borderColor: 'rgba(255,255,255,0.25)', color: EW.inkMute, cursor: 'not-allowed' };
       glyph = '🔒';
     } else { // blocked (unreachable through empty sockets)
       style = { ...base, background: _treeMixBg(nc, 0.28), borderColor: _treeMixBg(nc, 0.4), color: EW.inkDim };
-      glyph = sp ? sp.tier || '' : '';
+      glyph = catGlyph;
     }
     if (key === 'R3' && st8 !== 'equipped') style.borderStyle = 'dashed';       // Da'at
     if (shakeKey === key) style.animation = 'ewTreeShake 0.3s linear';
