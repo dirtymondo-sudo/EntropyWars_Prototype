@@ -3731,187 +3731,129 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   TEAM-TECH CUT-INS (ccin-*) — manga-panel caster showcase.
-   Shared by Combo attacks (two big angled panels, one per caster) and the
-   Entropy Strike (up to four small edge panels while the team channels).
-   Pure DOM chrome layered over the live 3D action shot: pointer-events
-   none, self-dismissing, never load-bearing for the damage path.
+   SPLITSCREEN CINEMATIC CHROME (ssq-*) — the dressing over the LIVE
+   multi-camera splitscreen (ThreeSplitscreen, three-renderer.js). Combos
+   split into two caster close-ups; the Entropy Strike into up to four.
+   The overlay is pinned to the 3D canvas rect and each .ssq-pane sits
+   exactly over one scissored viewport: accent frame, anime speed lines,
+   vignette, nameplate — plus the big center name slam and the whiteout
+   that covers the snap back to the action camera. Pure DOM chrome:
+   pointer-events none, self-dismissing, never load-bearing.
    ═══════════════════════════════════════════════════════════════════════ */
-.ccin-overlay {
+.ssq-overlay {
     position: fixed; inset: 0; z-index: 5150;
     pointer-events: none; overflow: hidden;
 }
 
-.ccin-panel {
-    --ccin-accent: #c9a5ff;
+/* One frame per live camera pane. Geometry (left/top/width/height %) is
+   inlined by _ssqShowChrome from the renderer's real pane rects. */
+.ssq-pane {
+    --ssq-accent: #c9a5ff;
     position: absolute;
-    width: min(36vw, 460px); height: min(26vh, 250px);
-    border: 4px solid #f2eefc;
-    box-shadow: 0 0 0 2px #05030a, 0 14px 42px rgba(0, 0, 0, .55),
-                0 0 26px var(--ccin-accent);
-    background:
-        radial-gradient(circle at 76% 38%, rgba(255, 255, 255, .10), rgba(0, 0, 0, 0) 55%),
-        linear-gradient(115deg, rgba(20, 12, 36, .96), #05030a 74%);
-    overflow: hidden;
     opacity: 0;
-    transform: skewX(-9deg) translateX(-160%);
-    will-change: transform, opacity;
+    will-change: opacity;
 }
-.ccin-panel.ccin-from-r { transform: skewX(-9deg) translateX(160%); }
-.ccin-panel.in { animation: ccinSlamL .42s cubic-bezier(.16, 1.28, .3, 1) forwards; }
-.ccin-panel.ccin-from-r.in { animation: ccinSlamR .42s cubic-bezier(.16, 1.28, .3, 1) forwards; }
-.ccin-panel.out { animation: ccinOutL .3s cubic-bezier(.5, 0, .9, .4) forwards; }
-.ccin-panel.ccin-from-r.out { animation: ccinOutR .3s cubic-bezier(.5, 0, .9, .4) forwards; }
-@keyframes ccinSlamL {
-    0%   { opacity: 0; transform: skewX(-9deg) translateX(-160%); }
-    62%  { opacity: 1; transform: skewX(-9deg) translateX(2.5%); }
-    100% { opacity: 1; transform: skewX(-9deg) translateX(0); }
-}
-@keyframes ccinSlamR {
-    0%   { opacity: 0; transform: skewX(-9deg) translateX(160%); }
-    62%  { opacity: 1; transform: skewX(-9deg) translateX(-2.5%); }
-    100% { opacity: 1; transform: skewX(-9deg) translateX(0); }
-}
-@keyframes ccinOutL {
-    0%   { opacity: 1; transform: skewX(-9deg) translateX(0); filter: blur(0); }
-    100% { opacity: 0; transform: skewX(-14deg) translateX(-130%); filter: blur(3px); }
-}
-@keyframes ccinOutR {
-    0%   { opacity: 1; transform: skewX(-9deg) translateX(0); filter: blur(0); }
-    100% { opacity: 0; transform: skewX(-14deg) translateX(130%); filter: blur(3px); }
-}
+.ssq-pane.in  { animation: ssqPaneIn .34s ease-out forwards; }
+.ssq-pane.out { animation: ssqPaneOut .26s ease-in forwards; }
+@keyframes ssqPaneIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ssqPaneOut { from { opacity: 1; } to { opacity: 0; } }
 
-/* animated manga speed lines behind the caster */
-.ccin-speed {
-    position: absolute; inset: -45%;
-    background: repeating-linear-gradient(115deg,
-        rgba(255, 255, 255, 0) 0 16px,
-        rgba(255, 255, 255, .13) 16px 19px,
-        rgba(255, 255, 255, 0) 19px 42px);
-    animation: ccinSpeedSlide .55s linear infinite;
-}
-@keyframes ccinSpeedSlide {
-    0%   { transform: translateX(0); }
-    100% { transform: translateX(-62px); }
-}
-/* accent ribbon along the bottom edge, under the nameplate */
-.ccin-ribbon {
-    position: absolute; left: 0; right: 0; bottom: 0; height: 30%;
-    background: linear-gradient(90deg, var(--ccin-accent), rgba(0, 0, 0, 0) 82%);
-    opacity: .65; mix-blend-mode: screen;
-}
-/* CRT scanlines — the PS1 memory */
-.ccin-scan {
+/* accent frame hugging the pane boundary — adjacent panes double it up
+   into a glowing divider bar, anime-versus style */
+.ssq-frame {
     position: absolute; inset: 0;
-    background: repeating-linear-gradient(0deg,
-        rgba(0, 0, 0, .20) 0 2px, rgba(0, 0, 0, 0) 2px 4px);
-    mix-blend-mode: multiply;
-}
-/* white sheen sweep on entry */
-.ccin-panel::after {
-    content: ''; position: absolute; top: -60%; bottom: -60%;
-    width: 34%; left: -70%;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0),
-        rgba(255, 255, 255, .85), rgba(255, 255, 255, 0));
-    transform: rotate(12deg); opacity: 0;
-}
-.ccin-panel.in::after { animation: ccinSheen .5s .14s ease-out forwards; }
-@keyframes ccinSheen {
-    0%   { left: -70%; opacity: 0; }
-    25%  { opacity: 1; }
-    100% { left: 130%; opacity: 0; }
+    border: 3px solid var(--ssq-accent);
+    box-shadow: inset 0 0 22px rgba(0, 0, 0, .65),
+                inset 0 0 8px var(--ssq-accent),
+                0 0 14px var(--ssq-accent);
 }
 
-/* caster art: dedicated face art fills the panel edge; full-body map
-   sprites stand on the panel floor, chunky-pixel style */
-.ccin-port {
-    position: absolute; transform: skewX(9deg);
-    image-rendering: pixelated;
-    filter: drop-shadow(0 0 12px var(--ccin-accent)) drop-shadow(0 5px 0 rgba(0, 0, 0, .55));
+/* animated manga speed lines streaking the pane edges (center kept clear
+   so the caster reads clean) */
+.ssq-speed {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(115deg,
+        rgba(255, 255, 255, 0) 0 18px,
+        rgba(255, 255, 255, .10) 18px 21px,
+        rgba(255, 255, 255, 0) 21px 46px);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 55%, transparent 38%, #000 86%);
+    mask-image: radial-gradient(ellipse at 50% 55%, transparent 38%, #000 86%);
+    animation: ssqSpeedSlide .5s linear infinite;
 }
-.ccin-port.face {
-    right: 1%; bottom: -6%; height: 118%;
-    -webkit-mask-image: linear-gradient(to left, #000 72%, transparent);
-    mask-image: linear-gradient(to left, #000 72%, transparent);
+@keyframes ssqSpeedSlide {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-64px); }
 }
-.ccin-port.body { right: 7%; bottom: 2%; height: 106%; }
 
-.ccin-nm {
-    position: absolute; left: 5%; bottom: 9%;
-    transform: skewX(9deg);
+/* darkened corners pull the eye to the caster in each pane */
+.ssq-vig {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 52%,
+        rgba(0, 0, 0, 0) 46%, rgba(0, 0, 0, .52) 100%);
+}
+
+/* nameplate riding the bottom edge of its pane */
+.ssq-nm {
+    position: absolute; left: 6%; bottom: 5%;
     font-family: 'Cinzel', serif; font-weight: 900;
-    font-size: clamp(15px, 2.1vw, 26px);
+    font-size: clamp(14px, 1.9vw, 24px);
     color: #fff; letter-spacing: .06em; text-transform: uppercase;
-    text-shadow: 2px 2px 0 #000, 0 0 16px var(--ccin-accent);
-    line-height: 1.05; max-width: 62%;
+    text-shadow: 2px 2px 0 #000, 0 0 16px var(--ssq-accent);
+    line-height: 1.05; max-width: 86%;
+    transform: translateY(8px);
 }
-.ccin-nm small {
+.ssq-nm small {
     display: block; font-size: .48em; font-weight: 700;
     color: #d9d2ea; letter-spacing: .2em;
     text-shadow: 1px 1px 0 #000;
 }
 
-/* combo layout: initiator top-left, partner bottom-right */
-.ccin-combo .ccin-pos-0 { top: 9%;  left: 2.5%; }
-.ccin-combo .ccin-pos-1 { bottom: 13%; right: 2.5%; }
-
-/* team layout (Entropy Strike): four small panels hugging the edges,
-   clear of the ews-* letterbox and center title */
-.ccin-team .ccin-panel { width: min(24vw, 310px); height: min(15vh, 152px); }
-.ccin-team .ccin-pos-0 { top: 15%; left: 1.8%; }
-.ccin-team .ccin-pos-1 { top: 21%; right: 1.8%; }
-.ccin-team .ccin-pos-2 { bottom: 27%; left: 1.8%; }
-.ccin-team .ccin-pos-3 { bottom: 15%; right: 1.8%; }
-.ccin-team .ccin-nm { font-size: clamp(11px, 1.3vw, 17px); }
-
 /* the combo NAME slam — big italic trailer type dead center */
-.ccin-name-wrap {
-    --ccin-accent: #c9a5ff;
+.ssq-name-wrap {
+    --ssq-accent: #c9a5ff;
     position: absolute; left: 50%; top: 43%;
     transform: translate(-50%, -50%);
     text-align: center; opacity: 0; white-space: nowrap;
     will-change: transform, opacity;
 }
-.ccin-name-wrap.in { animation: ccinNameSlam .5s cubic-bezier(.14, 1.35, .34, 1) forwards; }
-.ccin-name-wrap.out { animation: ccinNameOut .28s ease-in forwards; }
-.ccin-name {
+.ssq-name-wrap.in  { animation: ssqNameSlam .5s cubic-bezier(.14, 1.35, .34, 1) forwards; }
+.ssq-name-wrap.out { animation: ssqNameOut .28s ease-in forwards; }
+.ssq-name {
     font-family: 'Cinzel', serif; font-weight: 900; font-style: italic;
     font-size: clamp(30px, 6vw, 74px);
     color: #fff; letter-spacing: .04em; text-transform: uppercase;
     -webkit-text-stroke: 2px rgba(0, 0, 0, .9);
-    text-shadow: 0 0 28px var(--ccin-accent), 4px 4px 0 #000, 0 0 60px var(--ccin-accent);
+    text-shadow: 0 0 28px var(--ssq-accent), 4px 4px 0 #000, 0 0 60px var(--ssq-accent);
 }
-.ccin-name-sub {
+.ssq-name-sub {
     margin-top: .35em;
     font-family: 'Cinzel', serif; font-weight: 700;
     font-size: clamp(12px, 1.5vw, 20px);
     color: #ffd76a; letter-spacing: .34em; text-transform: uppercase;
     text-shadow: 1px 1px 0 #000, 0 0 12px rgba(255, 215, 106, .6);
 }
-@keyframes ccinNameSlam {
+@keyframes ssqNameSlam {
     0%   { opacity: 0; transform: translate(-50%, -50%) scale(2.6) rotate(-3deg); filter: blur(6px); }
     58%  { opacity: 1; transform: translate(-50%, -50%) scale(.96) rotate(-1.5deg); filter: blur(0); }
     100% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-1.5deg); }
 }
-@keyframes ccinNameOut {
+@keyframes ssqNameOut {
     0%   { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-1.5deg); }
     100% { opacity: 0; transform: translate(-50%, -50%) scale(1.35) rotate(-1.5deg); filter: blur(4px); }
 }
 
-/* whiteout as the manga page shatters into the impact cut */
-.ccin-flash {
+/* whiteout as the splitscreen shatters into the impact cut */
+.ssq-flash {
     position: absolute; inset: 0; background: #fff; opacity: 0;
 }
-.ccin-flash.pop { animation: ccinFlashPop .38s ease-out forwards; }
-@keyframes ccinFlashPop {
+.ssq-flash.pop { animation: ssqFlashPop .38s ease-out forwards; }
+@keyframes ssqFlashPop {
     0%   { opacity: 0; }
     18%  { opacity: .82; }
     100% { opacity: 0; }
 }
 
-/* small screens: shed the extra team panels, widen the combo panels */
 @media (max-width: 700px), (max-height: 480px) {
-    .ccin-combo .ccin-panel { width: 46vw; height: 21vh; }
-    .ccin-team .ccin-pos-2, .ccin-team .ccin-pos-3 { display: none; }
-    .ccin-name { font-size: clamp(22px, 8vw, 40px); }
+    .ssq-name { font-size: clamp(22px, 8vw, 40px); }
+    .ssq-nm { font-size: clamp(11px, 2.6vw, 16px); }
 }

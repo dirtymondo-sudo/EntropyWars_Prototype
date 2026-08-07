@@ -8405,12 +8405,15 @@
            ENTROPY STRIKE — the full-gauge team attack.
            Any allied unit can trigger it on its turn once the team's Entropy
            Gauge is full (ends that unit's turn). Every living ally channels;
-           every enemy the
-           team can SEE takes massive anomaly damage. Consumes the whole gauge
-           (refillable). The presentation is the biggest cinematic in the game:
-           letterboxed banner → allies ignite in casting circles → the sky
-           tears open over the battlefield → staggered per-enemy annihilation
-           (lightning / blade / light pillar) → whiteout resolve.
+           every enemy the team can SEE takes massive TYPELESS damage (no
+           element, no weak/resist math — typeEffect 'neutral'). Consumes the
+           whole gauge (refillable). The presentation is the biggest cinematic
+           in the game: letterboxed banner → the screen splits into one live
+           camera per channeling ally (ThreeSplitscreen) while casting
+           circles ignite under them → the grid shatters as the sky tears
+           open → per-enemy camera beats through the staggered annihilation
+           (lightning / blade / light pillar) → whiteout, aftermath crane,
+           settle home.
            ═══════════════════════════════════════════════════════════════════ */
         const ENTROPY_STRIKE_AP_COST   = 1;
         const ENTROPY_STRIKE_BASE_DMG  = 150;  // flat slice per enemy…
@@ -8491,13 +8494,18 @@
             window.setTimeout(() => el.remove(), totalMs + 400);
         }
 
-        /* ── TEAM-TECH CUT-INS (ccin-* in styles-cinematic.css) ─────────────
-           Manga-panel caster showcase shared by Combos (two big angled
-           panels) and the Entropy Strike (up to four small edge panels).
-           Pure DOM chrome over the live 3D shot: pointer-events none,
-           self-dismissing, and best-effort — the damage path never waits
-           on it. Guests replay the same engine call, so the panels render
-           on both screens from each viewer's own fog perspective. */
+        /* ── SPLITSCREEN CINEMATIC CHROME (ssq-* in styles-cinematic.css) ───
+           The caster showcase for Combos (two-way splitscreen) and the
+           Entropy Strike (up to four panes). The 3D renderer scissor-
+           renders one LIVE camera per caster (ThreeSplitscreen, three-
+           renderer.js) — real dollying close-ups of the actual rigs, not
+           2D sprite cards — and _ssqShowChrome lays the anime dressing
+           over the panes: accent frames, speed lines, nameplates, the
+           center name slam and the whiteout that covers the snap back to
+           the action camera. Pure DOM chrome over live viewports:
+           pointer-events none, self-dismissing, best-effort — the damage
+           path never waits on it. Guests replay the same engine call, so
+           both screens build their own panes from their own fog view. */
         const _CCIN_TYPE_COLORS = {
             divine: '#dcaa1e', unholy: '#9632b4', anomaly: '#dc3c82',
             tech: '#28a0be', human: '#a0a0c3', alien: '#32aa50'
@@ -8508,14 +8516,6 @@
             return String(s == null ? '' : s)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        }
-        function _ccinPortrait(u) {
-            let url = null, face = false;
-            try {
-                if (typeof getUnitPortraitUrl === 'function') { url = getUnitPortraitUrl(u); face = !!url; }
-            } catch (err) { /* portrait art is optional */ }
-            if (!url) { try { url = getBattleMapSpriteUrl(u); } catch (err) { url = null; } }
-            return { url, face };
         }
         /* Cut-ins only make sense when the viewer can actually watch the
            moment: skip under dev-sim / camera-off, while the 2D duel
@@ -8532,46 +8532,65 @@
             } catch (err) {}
             return true;
         }
-        /* casters: [{unit, accent}] (max 4). opts: mode 'combo'|'team',
-           name/sub (center slam), accent, startAt/staggerMs (panel slams),
-           nameAt, outAt (shatter), totalMs (overlay removal). */
-        function _ccinShowCutin(casters, opts) {
+        /* casters: [{unit, accent}] in PANE ORDER. ssRes: the result of
+           ThreeSplitscreen.show ({rects,w,h} in canvas CSS px) — pane
+           frames/nameplates are laid exactly over the scissored viewports.
+           Pass ssRes = null for a name-slam-only page (no panes; the
+           fallback when the viewer can't watch every caster through fog).
+           opts: name/sub (center slam), accent, startAt/staggerMs (pane
+           frame draws), nameAt, outAt (whiteout), totalMs (removal), mute. */
+        function _ssqShowChrome(casters, ssRes, opts) {
             opts = opts || {};
-            const old = document.getElementById('comboCutinOverlay');
+            const old = document.getElementById('ssqChromeOverlay');
             if (old) old.remove();
             const el = document.createElement('div');
-            el.id = 'comboCutinOverlay';
-            el.className = 'ccin-overlay ' + (opts.mode === 'team' ? 'ccin-team' : 'ccin-combo');
+            el.id = 'ssqChromeOverlay';
+            el.className = 'ssq-overlay';
+            // Pin the overlay to the 3D canvas so the frames align with the
+            // real pane boundaries underneath (the canvas doesn't fill the
+            // window — HUD chrome surrounds it).
+            try {
+                const cv = document.getElementById('threeCanvas');
+                const r = cv ? cv.getBoundingClientRect() : null;
+                if (r && r.width > 40 && r.height > 40) {
+                    el.style.left = r.left + 'px';
+                    el.style.top = r.top + 'px';
+                    el.style.width = r.width + 'px';
+                    el.style.height = r.height + 'px';
+                }
+            } catch (err) { /* keep the full-viewport default */ }
             const parts = [];
-            (casters || []).slice(0, 4).forEach((c, i) => {
-                const u = c.unit || c;
-                if (!u) return;
-                const accent = c.accent || _ccinColor((u.types || [])[0]);
-                const p = _ccinPortrait(u);
-                const fromR = (i % 2 === 1); // odd panels slide in from the right
-                parts.push(
-                    `<div class="ccin-panel ccin-pos-${i}${fromR ? ' ccin-from-r' : ''}" style="--ccin-accent:${accent}">`
-                    + '<div class="ccin-speed"></div>'
-                    + '<div class="ccin-ribbon"></div>'
-                    + (p.url ? `<img class="ccin-port ${p.face ? 'face' : 'body'}" src="${p.url}" alt="">` : '')
-                    + '<div class="ccin-scan"></div>'
-                    + `<div class="ccin-nm">${_ccinEsc(unitDisplayName(u))}<small>${_ccinEsc(u.cls || '')}</small></div>`
-                    + '</div>');
-            });
+            if (ssRes && ssRes.rects && ssRes.w > 0 && ssRes.h > 0) {
+                const pctX = (v) => (100 * v / ssRes.w).toFixed(3) + '%';
+                const pctY = (v) => (100 * v / ssRes.h).toFixed(3) + '%';
+                ssRes.rects.forEach((r, i) => {
+                    const c = casters && casters[i];
+                    if (!c) return;
+                    const u = c.unit || c;
+                    const accent = c.accent || _ccinColor((u.types || [])[0]);
+                    parts.push(
+                        `<div class="ssq-pane" style="left:${pctX(r.x)};top:${pctY(r.y)};width:${pctX(r.w)};height:${pctY(r.h)};--ssq-accent:${accent}">`
+                        + '<div class="ssq-speed"></div>'
+                        + '<div class="ssq-vig"></div>'
+                        + '<div class="ssq-frame"></div>'
+                        + `<div class="ssq-nm">${_ccinEsc(unitDisplayName(u))}<small>${_ccinEsc(u.cls || '')}</small></div>`
+                        + '</div>');
+                });
+            }
             if (opts.name) {
                 parts.push(
-                    `<div class="ccin-name-wrap" style="--ccin-accent:${opts.accent || '#c9a5ff'}">`
-                    + `<div class="ccin-name">${_ccinEsc(opts.name)}</div>`
-                    + (opts.sub ? `<div class="ccin-name-sub">${_ccinEsc(opts.sub)}</div>` : '')
+                    `<div class="ssq-name-wrap" style="--ssq-accent:${opts.accent || '#c9a5ff'}">`
+                    + `<div class="ssq-name">${_ccinEsc(opts.name)}</div>`
+                    + (opts.sub ? `<div class="ssq-name-sub">${_ccinEsc(opts.sub)}</div>` : '')
                     + '</div>');
             }
-            parts.push('<div class="ccin-flash"></div>');
+            parts.push('<div class="ssq-flash"></div>');
             el.innerHTML = parts.join('');
             document.body.appendChild(el);
-            const panels = Array.from(el.querySelectorAll('.ccin-panel'));
+            const panes = Array.from(el.querySelectorAll('.ssq-pane'));
             const startAt = opts.startAt || 0;
-            const stagger = (opts.staggerMs != null) ? opts.staggerMs : actionMs(300);
-            panels.forEach((pEl, i) => {
+            const stagger = (opts.staggerMs != null) ? opts.staggerMs : actionMs(150);
+            panes.forEach((pEl, i) => {
                 window.setTimeout(() => {
                     pEl.classList.add('in');
                     // guest replays arrive muted — the host's sfx relay
@@ -8579,16 +8598,16 @@
                     if (!opts.mute && i < 2) playSfx(i === 0 ? 'buff' : 'spellDamage');
                 }, startAt + i * stagger);
             });
-            const nameEl = el.querySelector('.ccin-name-wrap');
+            const nameEl = el.querySelector('.ssq-name-wrap');
             if (nameEl && opts.nameAt != null) {
                 window.setTimeout(() => { nameEl.classList.add('in'); if (!opts.mute) playSfx('fireball'); }, opts.nameAt);
             }
             const totalMs = opts.totalMs || actionMs(1600);
             const outAt = (opts.outAt != null) ? opts.outAt : Math.max(0, totalMs - actionMs(260));
             window.setTimeout(() => {
-                panels.forEach(p2 => p2.classList.add('out'));
+                panes.forEach(p2 => p2.classList.add('out'));
                 if (nameEl) nameEl.classList.add('out');
-                const fl = el.querySelector('.ccin-flash');
+                const fl = el.querySelector('.ssq-flash');
                 if (fl) fl.classList.add('pop');
             }, outAt);
             window.setTimeout(() => el.remove(), totalMs + 500);
@@ -8639,10 +8658,14 @@
             const applyHit = (enemy) => {
                 if (!enemy || enemy.dead || enemy._dying) return;
                 const dmg = dmgBase + Math.floor(engineRng() * 30) - 15;
+                /* TYPELESS by design: raw entropy has no element, so no
+                   weak/resist/STAB math ever touches it — typeEffect
+                   'neutral' pins the matchup multiplier at ×1 for every
+                   race on the receiving end. */
                 applyDamageToUnit(enemy, dmg, 'Entropy Strike: ', {
                     sourceUnit: unit,
                     damageType: 'magic',
-                    spellType: 'anomaly'
+                    typeEffect: 'neutral'
                 });
             };
 
@@ -8674,8 +8697,8 @@
         }
         window.doEntropyStrike = doEntropyStrike;
 
-        /* The full Entropy Strike presentation (banner, caster panels,
-           camera, sigils, per-enemy strikes, whiteout). hooks:
+        /* The full Entropy Strike presentation (banner, splitscreen team
+           charge, camera beats, sigils, per-enemy strikes, whiteout). hooks:
            - applyHit(enemy): damage callback, host only — null on guests.
            - mute: suppress local sfx (the host's 'sfx' relay carries them).
            - remote: this is a guest replay of a relayed cinematic.
@@ -8691,9 +8714,22 @@
                 catch (err) { return true; }
             };
             const ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 64;
-            const CHARGE_MS  = actionMs(1700);              // banner + ally circles
-            const STAGGER_MS = actionMs(340);               // between enemy strikes
-            const RESOLVE_MS = actionMs(1500);              // whiteout + settle
+            /* Can the viewer actually WATCH this (camera on, no dev-sim, no
+               2D cinematic, fog lets them see the acting team)? Gates the
+               splitscreen charge AND the per-enemy camera beats below. */
+            const _cineOK = _ccinEligible(allies);
+            /* The team charge is a real multi-camera splitscreen: one live
+               close-up per channeling ally (up to 4, viewer-visible only). */
+            const ssCasters = _cineOK && window.ThreeSplitscreen && ThreeSplitscreen.isAvailable()
+                ? allies.filter(a => a && !a.dead && _see(a)).slice(0, 4) : [];
+            /* Timings are FIXED, never viewer-conditional: the guest replays
+               this same function off the 'entropy-cine' relay, and damage
+               floaters arrive on the HOST's clock via state-sync — a guest
+               whose fog hides the splitscreen must still see each strike
+               land in step with its damage number. */
+            const CHARGE_MS  = actionMs(2600);   // banner + splitscreen team charge
+            const STAGGER_MS = actionMs(640);    // one camera BEAT per enemy strike
+            const RESOLVE_MS = actionMs(1500);                            // whiteout + settle
             const strikesMs  = STAGGER_MS * targets.length;
             const totalMs    = CHARGE_MS + strikesMs + RESOLVE_MS;
             const VFX = (typeof ThreeVFXEffects !== 'undefined') ? ThreeVFXEffects : null;
@@ -8703,40 +8739,64 @@
             _snd('nukeAlarm');
             shakeBoard('normal');
 
-            // Caster showcase: up to four allies slam in as manga cut-in
-            // panels along the screen edges while the team channels — each
-            // ignition synced to that ally's casting circle below — then the
-            // whole page shatters as the sky tears open. Panels reveal
-            // IDENTITY only (roster is public via VS splash + logs), never
-            // positions, so they show through fog on both screens.
-            _ewsSafe(() => {
-                _ccinShowCutin(
-                    allies.slice(0, 4).map(a => ({
-                        unit: a, accent: _ccinColor((a.types || [])[0])
-                    })),
-                    {
-                        mode: 'team', mute: !!hooks.mute,
-                        startAt: actionMs(280), staggerMs: actionMs(150),
-                        outAt: Math.max(actionMs(600), CHARGE_MS - actionMs(520)),
-                        totalMs: CHARGE_MS
+            // Caster showcase: the screen SPLITS into one live camera per
+            // channeling ally (up to four) — real dollying close-ups of the
+            // team winding up, casting circles igniting at their feet inside
+            // their own panes — then the whole grid shatters in a whiteout
+            // as the sky tears open. Panes are fog-gated per ally (_see):
+            // a hidden channeler never gets a camera, so positions can't
+            // leak. If fog (or a dead renderer) leaves nothing watchable,
+            // the banner alone carries the moment — no 2D sprite cards.
+            const splitEnd = Math.max(actionMs(900), CHARGE_MS - actionMs(620));
+            if (ssCasters.length) _ewsSafe(() => {
+                const ssRes = ThreeSplitscreen.show(
+                    ssCasters.map(a => ({ unitId: a.id })),
+                    { durationMs: splitEnd, fov: 34, sideDeg: 20, driftDeg: 6, dist0: 3.3, dist1: 2.35 });
+                if (ssRes) {
+                    _ssqShowChrome(
+                        ssCasters.map(a => ({ unit: a, accent: _ccinColor((a.types || [])[0]) })),
+                        ssRes,
+                        {
+                            mute: !!hooks.mute,
+                            startAt: actionMs(260), staggerMs: actionMs(150),
+                            outAt: Math.max(actionMs(700), splitEnd - actionMs(150)),
+                            totalMs: splitEnd + actionMs(260)
+                        });
+                    // Drop the panes under the whiteout's peak — the cut to
+                    // the wide sky-tear shot hides inside the flash.
+                    window.setTimeout(() => _ewsSafe(() => ThreeSplitscreen.hide()),
+                        Math.max(actionMs(780), splitEnd - actionMs(30)));
+                    // Every ally on camera CHANNELS: staggered cast clips,
+                    // re-fired mid-charge so the panes never go idle.
+                    ssCasters.forEach((a, i) => {
+                        [actionMs(320 + i * 140), actionMs(1350 + i * 140)].forEach(at => {
+                            window.setTimeout(() => _ewsSafe(() => {
+                                if (!a.dead) triggerCastAnim(a, { type: 'damage', dmg: 1 });
+                            }), at);
+                        });
                     });
+                }
             });
 
-            // Camera: dive to the catalyst, then crane out to frame every
-            // target. The dive is skipped when the catalyst is fog-hidden
-            // from THIS viewer (an enemy strike from the dark must not
-            // pinpoint its trigger unit).
+            // Camera (behind the panes): save, then crane out to frame every
+            // target so the splitscreen shatter reveals the battlefield
+            // already framed for the annihilation. Without a splitscreen the
+            // old dive-to-catalyst beat leads the crane instead (fog-gated:
+            // an enemy strike from the dark must not pinpoint its trigger).
             if (camera.save) camera.save();
-            if (_see(unit)) {
-                camera.moveTo({ x: unit.x, y: unit.y, zoom: (typeof getCloseZoom === 'function' ? getCloseZoom() : 1.4), duration: actionMs(520), _fogAllowed: true });
+            const _craneToTargets = (durMs) => _ewsSafe(() => {
+                const pts = targets.filter(t => _see(t)).map(t => ({ x: t.x, y: t.y }))
+                    .concat(_see(unit) ? [{ x: unit.x, y: unit.y }] : []);
+                if (pts.length && camera.focusOnTiles) camera.focusOnTiles(pts, { duration: durMs });
+            });
+            if (ssCasters.length) {
+                window.setTimeout(() => _craneToTargets(actionMs(700)), Math.max(0, splitEnd - actionMs(750)));
+            } else {
+                if (_see(unit)) {
+                    camera.moveTo({ x: unit.x, y: unit.y, zoom: (typeof getCloseZoom === 'function' ? getCloseZoom() : 1.4), duration: actionMs(520), _fogAllowed: true });
+                }
+                window.setTimeout(() => _craneToTargets(actionMs(750)), actionMs(700));
             }
-            window.setTimeout(() => {
-                _ewsSafe(() => {
-                    const pts = targets.filter(t => _see(t)).map(t => ({ x: t.x, y: t.y }))
-                        .concat(_see(unit) ? [{ x: unit.x, y: unit.y }] : []);
-                    if (pts.length && camera.focusOnTiles) camera.focusOnTiles(pts, { duration: actionMs(750) });
-                });
-            }, actionMs(700));
 
             // Charge phase: every ally ignites in a casting circle + thin
             // pillar (fog-gated per ally — hidden channelers stay hidden).
@@ -8767,9 +8827,28 @@
                 _snd('spellDamage');
             }), CHARGE_MS - actionMs(600));
 
-            // Annihilation: staggered per-enemy strikes, three rotating flavors.
+            // Annihilation: staggered per-enemy strikes, three rotating
+            // flavors — and a camera BEAT per enemy, exactly like every
+            // other damage spell's target shot: the camera dives to each
+            // victim right before their strike lands, holds through the
+            // impact, then cuts to the next. Fog-gated per enemy; with the
+            // camera off (or nothing visible) the strikes still land under
+            // the wide crane shot.
             targets.forEach((enemy, i) => {
                 const at = CHARGE_MS + i * STAGGER_MS;
+                if (_cineOK) {
+                    window.setTimeout(() => {
+                        if (state.winner || enemy.dead && enemy._dyingX == null) return;
+                        _ewsSafe(() => {
+                            if (!_see(enemy) || !camera.moveTo) return;
+                            camera.moveTo({
+                                x: enemy._dyingX ?? enemy.x, y: enemy._dyingY ?? enemy.y,
+                                zoom: (typeof getCloseZoom === 'function' ? getCloseZoom() : 1.4) * 0.95,
+                                duration: actionMs(230), _fogAllowed: true
+                            });
+                        });
+                    }, Math.max(CHARGE_MS - actionMs(80), at - actionMs(270)));
+                }
                 window.setTimeout(() => {
                     if (state.winner) return;
                     const ex = enemy._dyingX ?? enemy.x, ey = enemy._dyingY ?? enemy.y;
@@ -8794,11 +8873,13 @@
                 }, at);
             });
 
-            // Resolve: whiteout, one last board-wide ring, settle home.
+            // Resolve: whiteout, one last board-wide ring, pull back out of
+            // the final close-up to survey the aftermath, settle home.
             window.setTimeout(() => _ewsSafe(() => {
                 if (VFX && VFX.sigScreenFlash) VFX.sigScreenFlash('#ffffff', 620, 0.85);
                 const cx = Math.round((bw() - 1) / 2), cy = Math.round((bh() - 1) / 2);
                 if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(cx, cy, { r0: ts * 0.5, r1: ts * Math.max(bw(), bh()), ms: 800 });
+                if (_cineOK) _craneToTargets(actionMs(550));
                 _snd('explosion');
                 shakeBoard('hard');
             }), CHARGE_MS + strikesMs + actionMs(150));
@@ -39550,8 +39631,12 @@
                 catch (err) { return true; }
             };
 
-            // Manga cut-in page — the viewer-relative call: each screen
-            // re-decides panel visibility for its OWN fog view.
+            // Dual-camera splitscreen page — the viewer-relative call: each
+            // screen re-decides for its OWN fog view. Both casters watchable
+            // → the renderer scissor-splits into two LIVE close-up cameras
+            // (initiator left, partner right) while the name slams dead
+            // center; a fog-hidden caster degrades to the name slam alone —
+            // never 2D sprite cards.
             if (T.ccOK && _ccinEligible([initiator, partner, target])) _ewsSafe(() => {
                 let subLabel = '';
                 try {
@@ -39561,20 +39646,46 @@
                     subLabel = (syn && syn.label ? syn.label : '').replace(/!+$/, '').toUpperCase();
                 } catch (err) {}
                 const srcHold = T.sourceHold || actionMs(1750);
-                _ccinShowCutin([
-                    { unit: initiator, accent: _ccinColor((initiator.types || [])[0]) },
-                    { unit: partner, accent: _ccinColor((partner.types || [])[0]) }
-                ], {
-                    mode: 'combo', mute,
-                    name: combo.name,
-                    sub: subLabel || 'DUAL TECH',
-                    accent: _ccinColor(combo.spellType || (initiator.types || [])[0]),
-                    startAt: actionMs(120), staggerMs: actionMs(300),
-                    nameAt: actionMs(780),
-                    outAt: Math.max(actionMs(900), srcHold - actionMs(160)),
-                    totalMs: srcHold + actionMs(200)
-                });
-                // Both casters ignite under their panels while they charge
+                // The page holds until the strikes launch, then shatters in a
+                // whiteout exactly on the hard cut to the victim.
+                const splitEnd = Math.max(actionMs(800), (T.launchAt > 0 ? T.launchAt : srcHold) - actionMs(60));
+                let ssRes = null;
+                if (window.ThreeSplitscreen && ThreeSplitscreen.isAvailable()
+                    && !initiator.dead && !partner.dead && _see(initiator) && _see(partner)) {
+                    ssRes = ThreeSplitscreen.show(
+                        [{ unitId: initiator.id }, { unitId: partner.id }],
+                        { durationMs: splitEnd, fov: 34, sideDeg: 24, driftDeg: 7, dist0: 3.2, dist1: 2.25 });
+                }
+                _ssqShowChrome(
+                    ssRes ? [
+                        { unit: initiator, accent: _ccinColor((initiator.types || [])[0]) },
+                        { unit: partner, accent: _ccinColor((partner.types || [])[0]) }
+                    ] : null,
+                    ssRes,
+                    {
+                        mute,
+                        name: combo.name,
+                        sub: subLabel || 'DUAL TECH',
+                        accent: _ccinColor(combo.spellType || (initiator.types || [])[0]),
+                        startAt: actionMs(100), staggerMs: actionMs(260),
+                        nameAt: actionMs(720),
+                        outAt: Math.max(actionMs(700), splitEnd - actionMs(150)),
+                        totalMs: splitEnd + actionMs(260)
+                    });
+                if (ssRes) {
+                    // Drop the panes under the whiteout's peak so the snap
+                    // back to the action camera hides inside the flash.
+                    window.setTimeout(() => _ewsSafe(() => ThreeSplitscreen.hide()),
+                        Math.max(actionMs(780), splitEnd - actionMs(30)));
+                    // Both casters wind up ON CAMERA: real cast clips inside
+                    // their own panes while they charge.
+                    [[initiator, actionMs(200)], [partner, actionMs(460)]].forEach(([u, at]) => {
+                        window.setTimeout(() => _ewsSafe(() => {
+                            if (!u.dead) triggerCastAnim(u, { type: 'damage', dmg: 1 });
+                        }), at);
+                    });
+                }
+                // Both casters ignite under their cameras while they charge
                 // (fog-gated per caster).
                 const V = (typeof ThreeVFXEffects !== 'undefined') ? ThreeVFXEffects : null;
                 const _cts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 64;
@@ -39772,17 +39883,18 @@
             // DMG readout). Leaps/VFX launch as beat 1 ends and the damage
             // itself lands after the cut to the victim, so the strikes read
             // inside the shot instead of resolving before the camera arrives.
-            // 2026-07-23 DUAL-TECH CINEMATIC: when the shot can be watched,
-            // beat 1 is stretched and dressed as a manga page — both casters
-            // slam in as angled cut-in panels over the live 3D caster shot
-            // (initiator top-left, partner bottom-right), the combo name
-            // slams dead center, then the page shatters in a whiteout
-            // exactly on the hard cut to the victim. The 2D duel cutscene is
-            // suppressed for that path (_noCinematic) — the cut-ins ARE the
-            // cinematic. All of it lives in _comboPlayPresentation, which
-            // online.js relays to the guest ('combo-cine') on this same
-            // clock. Support combos (healAll/shield/buff) stay understated:
-            // the self-cast hero shot with name-only chrome.
+            // 2026-08-07 DUAL-TECH SPLITSCREEN: when the shot can be
+            // watched, beat 1 is stretched into a real two-camera page —
+            // the renderer scissor-splits the screen into LIVE close-ups of
+            // both casters (initiator left, partner right, each with its
+            // own dollying camera), the combo name slams dead center, then
+            // the page shatters in a whiteout exactly on the hard cut to
+            // the victim. The 2D duel cutscene is suppressed for that path
+            // (_noCinematic) — the splitscreen IS the cinematic. All of it
+            // lives in _comboPlayPresentation, which online.js relays to
+            // the guest ('combo-cine') on this same clock. Support combos
+            // (healAll/shield/buff) stay understated: the self-cast hero
+            // shot with name-only chrome.
             let cam = null;
             let _ccOK = false;
             if (isOffensive && target) {

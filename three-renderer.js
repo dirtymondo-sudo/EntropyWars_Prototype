@@ -15275,6 +15275,16 @@ const ThreeRenderer = (function () {
         var cx = cam.position.x, cz = cam.position.z;
         if (cx === _bbLastCamX && cz === _bbLastCamZ) return;
         _bbLastCamX = cx; _bbLastCamZ = cz;
+        _aimBillboardsAt(cx, cz);
+    }
+
+    /* Yaw every camera-facing billboard toward an arbitrary eye position.
+       Split out of _updateBillboards so the splitscreen rig can re-aim
+       sprites at each PANE camera before that pane renders (a flat sprite
+       seen edge-on from a close-up camera is invisible). Callers that
+       bypass the main-camera cache above must poison it (_bbLastCamX=NaN)
+       when they're done so the next normal frame re-syncs. */
+    function _aimBillboardsAt(cx, cz) {
         var _bbSunAz = (typeof ThreePost !== 'undefined' && ThreePost.getSunAzimuth)
             ? ThreePost.getSunAzimuth() : 0;
 
@@ -15285,6 +15295,188 @@ const ThreeRenderer = (function () {
         if (scene) { for (var s = 0; s < scene.children.length; s++) { var sg = scene.children[s]; if (sg.name === 'wardLights' && sg.children) { for (var w = 0; w < sg.children.length; w++) { var wc = sg.children[w]; if (wc._ew_billboard) { wc.rotation.y = Math.atan2(cx - wc.position.x, cz - wc.position.z); } } } } }
 
         for (var _egi = 0; _egi < _ghostGroups.length; _egi++) { var _eg = _ghostGroups[_egi].group; if (_eg && _eg.children) { for (var gi = 0; gi < _eg.children.length; gi++) { var gc = _eg.children[gi]; if (gc._ew_billboard) { gc.rotation.y = Math.atan2(cx - _eg.position.x, cz - _eg.position.z); } } } }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════
+       SPLITSCREEN CINEMATIC RIG — real multi-camera rendering.
+       While active, renderFrame hands the frame to _ssRenderFrame, which
+       scissor-renders the live scene once per pane with a dedicated
+       PerspectiveCamera per subject: a low, slowly dollying-in hero
+       close-up framed on that unit's face (eye placed out along the
+       unit's gameplay facing, looking back at the chest). Drives the
+       combo dual-tech page (2 panes) and the Entropy Strike team charge
+       (up to 4). Post-processing is bypassed for the duration (the
+       composer owns one full-screen target, not N viewports) — the DOM
+       chrome battle.js lays over the panes carries the glow instead.
+       CSS2D nameplates / DOM float overlays are hidden while split (they
+       project through the MAIN camera and would land nonsense positions).
+       Battle code owns fog decisions — it only ever requests panes for
+       units the local viewer can see. Best-effort everywhere: a missing
+       unit freezes its pane's last pose, a forgotten hide() self-kills.
+       ═══════════════════════════════════════════════════════════════════ */
+    var _ss = { active: false, panes: [], t0: 0, durationMs: 0, killTimer: null, hidden: null };
+
+    function _ssLayoutRects(n, w, h) {
+        if (n <= 1) return [{ x: 0, y: 0, w: w, h: h }];
+        if (n === 2) {
+            var w0 = Math.round(w / 2);
+            return [{ x: 0, y: 0, w: w0, h: h }, { x: w0, y: 0, w: w - w0, h: h }];
+        }
+        if (n === 3) {
+            var w1 = Math.round(w / 3), w2 = Math.round(w * 2 / 3);
+            return [
+                { x: 0, y: 0, w: w1, h: h },
+                { x: w1, y: 0, w: w2 - w1, h: h },
+                { x: w2, y: 0, w: w - w2, h: h }
+            ];
+        }
+        var hw = Math.round(w / 2), hh = Math.round(h / 2);
+        return [
+            { x: 0, y: 0, w: hw, h: hh }, { x: hw, y: 0, w: w - hw, h: hh },
+            { x: 0, y: hh, w: hw, h: h - hh }, { x: hw, y: hh, w: w - hw, h: h - hh }
+        ];
+    }
+
+    function _ssFindGroup(uid) {
+        if (!unitGroup) return null;
+        for (var i = 0; i < unitGroup.children.length; i++) {
+            if (unitGroup.children[i]._ew_unitId === uid) return unitGroup.children[i];
+        }
+        return null;
+    }
+
+    function _ssGroundY(wx, wz) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        if (typeof getHeightAt !== 'function') return 0;
+        var hh = 0;
+        try { hh = getHeightAt(Math.floor(wx / ts), Math.floor(wz / ts)); } catch (e) { hh = 0; }
+        return (Number.isFinite(hh) && hh > 0 ? hh : 0) * ts;
+    }
+
+    /* subjects: [{unitId}] (1–4, already fog-filtered by the caller).
+       opts: durationMs (dolly length; pane keeps rendering until hide()),
+       fov, dist0/dist1 (tiles), sideDeg (alternating half-angle off the
+       face axis so a pair reads shot/reverse-shot), driftDeg (slow orbit).
+       Returns { rects, w, h } in canvas CSS px for the DOM chrome, or
+       null when the rig can't run. */
+    function showSplitscreen(subjects, opts) {
+        if (!active || !renderer || !scene || !canvas) return null;
+        opts = opts || {};
+        var list = (subjects || []).slice(0, 4);
+        if (!list.length) return null;
+        hideSplitscreen();   // replace any live rig (also clears its kill timer)
+
+        var w = (_parentEl && _parentEl.clientWidth) || canvas.clientWidth || 960;
+        var h = (_parentEl && _parentEl.clientHeight) || canvas.clientHeight || 540;
+        var rects = _ssLayoutRects(list.length, w, h);
+        var ts = CONFIG.tileSize || BASE_TILE;
+
+        _ss.panes = [];
+        for (var i = 0; i < list.length; i++) {
+            var uid = list[i].unitId != null ? list[i].unitId : list[i];
+            var cam = new THREE.PerspectiveCamera(opts.fov || 34, rects[i].w / Math.max(1, rects[i].h), 1, 20000);
+            _ss.panes.push({
+                unitId: uid,
+                cam: cam,
+                side: ((i % 2 === 0) ? -1 : 1) * (opts.sideDeg != null ? opts.sideDeg : 24) * Math.PI / 180,
+                drift: ((i % 2 === 0) ? 1 : -1) * (opts.driftDeg != null ? opts.driftDeg : 7) * Math.PI / 180,
+                d0: (opts.dist0 != null ? opts.dist0 : 3.2) * ts,
+                d1: (opts.dist1 != null ? opts.dist1 : 2.25) * ts,
+                lastEye: null, lastAim: null
+            });
+        }
+        _ss.t0 = performance.now();
+        _ss.durationMs = Math.max(300, opts.durationMs || 1600);
+        _ss.active = true;
+
+        /* Hide the DOM layers that project through the main camera. */
+        _ss.hidden = [];
+        var doms = [
+            css2dRenderer && css2dRenderer.domElement,
+            _floatDomOverlay,
+            _intentBadgeContainer
+        ];
+        for (var d = 0; d < doms.length; d++) {
+            if (doms[d]) { _ss.hidden.push([doms[d], doms[d].style.display]); doms[d].style.display = 'none'; }
+        }
+
+        /* Self-kill: a caller that dies mid-cinematic must not wedge the
+           whole render path in splitscreen forever. */
+        _ss.killTimer = window.setTimeout(function () { hideSplitscreen(); }, _ss.durationMs + 2500);
+        return { rects: rects, w: w, h: h };
+    }
+
+    function hideSplitscreen() {
+        if (_ss.killTimer) { window.clearTimeout(_ss.killTimer); _ss.killTimer = null; }
+        if (!_ss.active) return;
+        _ss.active = false;
+        _ss.panes = [];
+        if (_ss.hidden) {
+            for (var i = 0; i < _ss.hidden.length; i++) {
+                try { _ss.hidden[i][0].style.display = _ss.hidden[i][1]; } catch (e) {}
+            }
+            _ss.hidden = null;
+        }
+        if (renderer) {
+            try {
+                renderer.setScissorTest(false);
+                var w = (_parentEl && _parentEl.clientWidth) || (canvas && canvas.clientWidth) || 960;
+                var h = (_parentEl && _parentEl.clientHeight) || (canvas && canvas.clientHeight) || 540;
+                renderer.setViewport(0, 0, w, h);
+            } catch (e) {}
+        }
+        _bbLastCamX = NaN;   // main camera re-aims every billboard next frame
+    }
+
+    function isSplitscreenActive() { return _ss.active; }
+
+    function _ssEase(t) { return 1 - Math.pow(1 - t, 3); }   // easeOutCubic
+
+    function _ssRenderFrame() {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var w = (_parentEl && _parentEl.clientWidth) || canvas.clientWidth || 960;
+        var h = (_parentEl && _parentEl.clientHeight) || canvas.clientHeight || 540;
+        var rects = _ssLayoutRects(_ss.panes.length, w, h);
+        var t = Math.min(1, (performance.now() - _ss.t0) / _ss.durationMs);
+        var k = _ssEase(t);
+
+        renderer.setScissorTest(true);
+        for (var i = 0; i < _ss.panes.length; i++) {
+            var p = _ss.panes[i], r = rects[i];
+            var g = _ssFindGroup(p.unitId);
+            var unit = (typeof _findUnit === 'function') ? _findUnit(p.unitId) : null;
+            if (g && unit && !unit.dead) {
+                var px = g.position.x, py = g.position.y, pz = g.position.z;
+                var headH = Math.max(ts * 0.55, (g._ew_spriteTopY || (py + ts)) - py);
+                var az = _unitFacingYaw(unit) + p.side + p.drift * k;
+                var dist = p.d0 + (p.d1 - p.d0) * k;
+                var ex = px + Math.sin(az) * dist;
+                var ez = pz + Math.cos(az) * dist;
+                var ey = py + headH * (0.42 + 0.10 * k);
+                /* Never sink the eye into a slope in front of the unit. */
+                var floor = _ssGroundY(ex, ez) + ts * 0.22;
+                if (ey < floor) ey = floor;
+                p.lastEye = { x: ex, y: ey, z: ez };
+                p.lastAim = { x: px, y: py + headH * 0.62, z: pz };
+            }
+            if (!p.lastEye) continue;   // unit never resolved — leave the pane to its neighbors' clears
+            p.cam.aspect = r.w / Math.max(1, r.h);
+            p.cam.updateProjectionMatrix();
+            p.cam.position.set(p.lastEye.x, p.lastEye.y, p.lastEye.z);
+            p.cam.up.set(0, 1, 0);
+            p.cam.lookAt(p.lastAim.x, p.lastAim.y, p.lastAim.z);
+
+            /* Sprites must face THIS pane's camera while it draws. */
+            _aimBillboardsAt(p.lastEye.x, p.lastEye.z);
+
+            var glY = h - r.y - r.h;   // GL viewport origin is bottom-left
+            renderer.setViewport(r.x, glY, r.w, r.h);
+            renderer.setScissor(r.x, glY, r.w, r.h);
+            renderer.render(scene, p.cam);
+        }
+        renderer.setScissorTest(false);
+        renderer.setViewport(0, 0, w, h);
+        _bbLastCamX = NaN;   // poison the main-cam billboard cache
     }
 
     /* Per-frame gameplay-facing pass: yaws each unit's sprite slab and its
@@ -22440,6 +22632,7 @@ const ThreeRenderer = (function () {
 
     function deactivate() {
         active = false;
+        hideSplitscreen();
         _clearAnimations();
         _fluidTimeSec = 0;
         _fluidTextures = {};
@@ -24304,14 +24497,21 @@ const ThreeRenderer = (function () {
             }
             _shadowMotion = false;
 
-            if (ThreePost && ThreePost.isReady()) {
-                ThreePost.render(cam);
+            if (_ss.active) {
+                /* Splitscreen cinematic owns the frame: one scissored render
+                   per pane camera. Post/CSS2D are bypassed — their overlays
+                   are hidden for the duration (see showSplitscreen). */
+                _ssRenderFrame();
             } else {
-                renderer.render(scene, cam);
-            }
+                if (ThreePost && ThreePost.isReady()) {
+                    ThreePost.render(cam);
+                } else {
+                    renderer.render(scene, cam);
+                }
 
-            if (css2dRenderer) css2dRenderer.render(scene, cam);
-            _scalePlates(cam);
+                if (css2dRenderer) css2dRenderer.render(scene, cam);
+                _scalePlates(cam);
+            }
         }
 
         _updateMinimap();
@@ -25591,6 +25791,8 @@ const ThreeRenderer = (function () {
 
         getSkyShot, playZodiacReveal, playSkyEventReveal,
 
+        showSplitscreen, hideSplitscreen, isSplitscreenActive,
+
         get _scene() { return scene; },
         /* Debug/profiling handle: renderer.info has live draw-call/triangle/
            texture counts. Console: ThreeRenderer._renderer.info.render */
@@ -25625,6 +25827,18 @@ ThreeRenderer.hookCamera();
         console.log('[ThreeRenderer] auto-activated for battle');
     }, 250);
 })();
+
+/* Battle-code facade for the splitscreen cinematic rig. show() returns
+   { rects, w, h } (canvas CSS px) so DOM chrome can align to the panes,
+   or null when the 3D renderer isn't driving the board. */
+window.ThreeSplitscreen = {
+    isAvailable: function () { return ThreeRenderer.isActive(); },
+    show: function (subjects, opts) {
+        return ThreeRenderer.isActive() ? ThreeRenderer.showSplitscreen(subjects, opts) : null;
+    },
+    hide: function () { ThreeRenderer.hideSplitscreen(); },
+    isActive: function () { return ThreeRenderer.isActive() && ThreeRenderer.isSplitscreenActive(); }
+};
 
 window.ThreeAnim = {
 
