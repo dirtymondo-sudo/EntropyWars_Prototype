@@ -18768,33 +18768,50 @@ const ThreeRenderer = (function () {
                      'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces'];
     var _ZW_COL_LINE_DIM = null, _ZW_COL_LINE_HOT = null, _ZW_COL_STAR_DIM = null, _ZW_COL_STAR_HOT = null;
 
-    /* Simplified star maps (x right, y up, [-1..1]; third value = brightness)
-       traced loosely from the real constellations so each sign is readable. */
+    /* Star maps (x right, y up, [-1..1]; third value = brightness 0..1) traced
+       from the real IAU constellation stick figures — the named naked-eye stars
+       in their true relative positions, brightness keyed to real magnitude
+       (Aldebaran/Antares/Regulus/Spica/Pollux burn brightest). Each figure is
+       the recognizable asterism: Taurus' Hyades V-face + long horns, Leo's
+       sickle + hind triangle, the Sagittarius teapot, Scorpius' three-pronged
+       claw fan and hooked stinger tail, the Pisces circlet + cord knot, etc. */
     var _ZW_CONST = {
-        aries:       { stars: [[-0.9,-0.35,0.7],[-0.25,0.18,1.0],[0.35,0.42,0.85],[0.62,0.28,0.5],[0.72,0.02,0.45]],
+        /* Hamal–Sheratan–Mesarthim hook + 41 Ari tail flick */
+        aries:       { stars: [[-0.78,-0.4,0.55],[-0.55,-0.18,0.85],[0.02,0.28,1.0],[0.6,0.16,0.6],[0.74,-0.1,0.45]],
                        links: [[0,1],[1,2],[2,3],[3,4]] },
-        taurus:      { stars: [[-0.15,-0.05,1.0],[-0.42,0.02,0.6],[-0.6,0.18,0.55],[-0.35,-0.28,0.5],[-0.62,-0.42,0.6],[0.55,0.55,0.8],[0.7,-0.28,0.7]],
-                       links: [[2,1],[1,0],[4,3],[3,0],[0,5],[0,6]] },
-        gemini:      { stars: [[-0.28,0.85,0.95],[0.3,0.78,1.0],[-0.32,0.35,0.5],[0.35,0.3,0.55],[-0.4,-0.2,0.5],[0.42,-0.25,0.5],[-0.55,-0.75,0.6],[0.28,-0.8,0.6]],
-                       links: [[0,2],[2,4],[4,6],[1,3],[3,5],[5,7],[2,3]] },
-        cancer:      { stars: [[0.0,0.75,0.5],[0.02,0.2,0.6],[-0.45,-0.35,0.6],[0.5,-0.3,0.7],[-0.7,-0.75,0.5]],
-                       links: [[0,1],[1,2],[1,3],[2,4]] },
-        leo:         { stars: [[0.6,-0.35,1.0],[0.62,0.05,0.5],[0.55,0.3,0.75],[0.3,0.5,0.5],[0.05,0.62,0.5],[-0.02,0.35,0.55],[-0.45,0.18,0.65],[-0.42,-0.18,0.55],[-0.85,-0.05,0.85]],
+        /* Hyades V-face (Aldebaran at the eye), long horns to El Nath/ζ, body to λ/ο */
+        taurus:      { stars: [[0.1,-0.06,1.0],[-0.12,-0.16,0.6],[-0.03,0.0,0.55],[0.06,0.16,0.65],[-0.5,-0.35,0.55],[0.66,0.5,0.7],[0.3,0.72,0.8],[-0.82,-0.44,0.5]],
+                       links: [[1,2],[2,3],[1,0],[3,6],[0,5],[1,4],[4,7]] },
+        /* the Twins: Castor & Pollux heads, two stick bodies joined at the shoulders, Alhena at the foot */
+        gemini:      { stars: [[-0.24,0.82,0.9],[0.26,0.74,1.0],[-0.28,0.42,0.5],[0.3,0.36,0.55],[-0.46,0.06,0.65],[0.32,0.0,0.6],[-0.56,-0.36,0.6],[0.18,-0.74,0.85],[0.52,-0.6,0.5],[-0.66,-0.68,0.55]],
+                       links: [[0,2],[2,4],[4,6],[6,9],[1,3],[3,5],[5,7],[5,8],[2,3]] },
+        /* the faint upside-down Y through the Beehive: ι–γ–δ spine, arms to Acubens & Altarf */
+        cancer:      { stars: [[0.02,0.76,0.5],[0.06,0.28,0.55],[0.0,-0.04,0.6],[0.48,-0.5,0.6],[-0.52,-0.58,0.65]],
+                       links: [[0,1],[1,2],[2,3],[2,4]] },
+        /* the Sickle curling up from Regulus + the hind triangle out to Denebola */
+        leo:         { stars: [[0.42,-0.45,1.0],[0.46,-0.12,0.5],[0.5,0.2,0.8],[0.36,0.46,0.6],[0.08,0.54,0.5],[-0.06,0.34,0.6],[-0.34,0.06,0.6],[-0.28,-0.36,0.55],[-0.84,-0.04,0.85]],
                        links: [[0,1],[1,2],[2,3],[3,4],[4,5],[2,6],[6,8],[8,7],[7,6],[0,7]] },
-        virgo:       { stars: [[0.15,-0.75,1.0],[0.0,-0.3,0.55],[-0.35,0.0,0.6],[-0.7,0.25,0.6],[-0.35,0.45,0.5],[0.1,0.3,0.6],[0.5,0.4,0.55],[0.85,0.2,0.5]],
-                       links: [[0,1],[1,2],[2,3],[2,4],[1,5],[5,6],[6,7]] },
-        libra:       { stars: [[0.0,0.7,0.7],[-0.5,0.25,0.8],[0.45,0.3,0.75],[-0.6,-0.45,0.55],[0.4,-0.55,0.6]],
-                       links: [[0,1],[0,2],[1,2],[1,3],[2,4]] },
-        scorpio:     { stars: [[-0.8,0.55,0.5],[-0.7,0.35,0.55],[-0.75,0.12,0.5],[-0.35,0.2,1.0],[-0.1,0.0,0.55],[0.05,-0.3,0.55],[0.1,-0.6,0.6],[0.35,-0.78,0.6],[0.65,-0.7,0.65],[0.8,-0.45,0.7],[0.68,-0.25,0.55]],
-                       links: [[0,3],[1,3],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10]] },
-        sagittarius: { stars: [[-0.6,-0.1,0.6],[-0.3,0.25,0.65],[0.05,0.4,0.6],[0.4,0.2,0.7],[0.5,-0.25,0.6],[0.1,-0.45,0.65],[-0.25,-0.35,0.6],[-0.85,0.3,0.55],[0.05,0.75,0.5]],
-                       links: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,0],[2,8],[8,3],[0,7],[7,1]] },
-        capricorn:   { stars: [[-0.85,0.3,0.7],[-0.35,-0.05,0.55],[0.15,-0.42,0.6],[0.5,-0.02,0.55],[0.8,0.35,0.75]],
-                       links: [[0,1],[1,2],[2,3],[3,4],[4,0]] },
-        aquarius:    { stars: [[-0.7,0.5,0.6],[-0.35,0.62,0.7],[-0.05,0.45,0.6],[0.3,0.6,0.65],[0.5,0.3,0.5],[0.35,-0.05,0.55],[0.55,-0.4,0.6],[0.2,-0.55,0.5],[0.65,-0.75,0.55]],
-                       links: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[6,8]] },
-        pisces:      { stars: [[-0.85,-0.15,0.6],[-0.7,0.05,0.5],[-0.55,-0.15,0.55],[-0.7,-0.35,0.5],[-0.3,-0.35,0.5],[0.1,-0.55,0.7],[0.4,-0.15,0.5],[0.6,0.2,0.5],[0.5,0.6,0.55],[0.75,0.55,0.6],[0.7,0.85,0.5]],
-                       links: [[0,1],[1,2],[2,3],[3,0],[2,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,8]] }
+        /* Spica anchoring the sprawl: spine to Porrima, arms to Vindemiatrix and Zavijava */
+        virgo:       { stars: [[0.06,-0.68,1.0],[0.16,-0.22,0.55],[-0.12,0.04,0.7],[-0.44,0.12,0.5],[-0.8,0.28,0.6],[0.04,0.34,0.6],[0.34,0.56,0.75],[0.5,-0.42,0.5],[0.7,-0.6,0.55]],
+                       links: [[0,1],[1,2],[2,3],[3,4],[2,5],[5,6],[1,7],[7,8]] },
+        /* the Scales: Zubenelgenubi–Zubeneschamali–γ triangle with both balance arms hanging */
+        libra:       { stars: [[-0.45,-0.1,0.8],[0.0,0.52,0.85],[0.42,0.28,0.6],[-0.38,-0.58,0.55],[0.46,-0.5,0.5],[0.56,-0.7,0.45]],
+                       links: [[0,1],[1,2],[2,0],[0,3],[2,4],[4,5]] },
+        /* the claw fan (β/δ/π) into red Antares, then the long tail sweeping down and hooking up to Shaula's stinger */
+        scorpio:     { stars: [[-0.6,0.62,0.6],[-0.72,0.38,0.7],[-0.8,0.1,0.55],[-0.44,0.3,0.5],[-0.3,0.16,1.0],[-0.2,-0.06,0.5],[-0.14,-0.3,0.65],[-0.04,-0.52,0.5],[0.08,-0.68,0.55],[0.28,-0.78,0.55],[0.48,-0.74,0.65],[0.62,-0.58,0.5],[0.68,-0.38,0.6],[0.62,-0.14,0.8],[0.5,-0.22,0.55]],
+                       links: [[0,1],[1,2],[1,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[11,12],[12,13],[13,14]] },
+        /* the Teapot: spout at γ, lid at λ, handle σ–τ–ζ, Kaus Australis at the base */
+        sagittarius: { stars: [[-0.62,-0.12,0.6],[-0.3,0.06,0.7],[-0.26,-0.42,0.8],[-0.02,0.36,0.6],[0.18,0.12,0.55],[0.46,0.28,0.7],[0.56,-0.04,0.5],[0.34,-0.36,0.65]],
+                       links: [[0,1],[0,2],[1,3],[3,4],[1,4],[4,5],[5,6],[6,7],[7,2],[4,7]] },
+        /* the Sea-Goat's smile: Algedi/Dabih down through the belly, back up to Deneb Algedi */
+        capricorn:   { stars: [[-0.84,0.4,0.7],[-0.62,0.18,0.75],[-0.3,-0.32,0.5],[0.0,-0.46,0.55],[0.3,-0.36,0.5],[0.74,0.36,0.8],[0.52,0.26,0.6],[0.04,0.12,0.5]],
+                       links: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,0]] },
+        /* the Water-Bearer: Sadalsuud–Sadalmelik shoulders, the Y-shaped water jar, the stream zig-zagging down to Skat */
+        aquarius:    { stars: [[-0.84,0.1,0.55],[-0.55,0.32,0.75],[-0.08,0.44,0.8],[0.16,0.5,0.55],[0.3,0.62,0.5],[0.42,0.5,0.5],[0.24,0.36,0.45],[0.3,0.04,0.5],[0.46,-0.26,0.45],[0.5,-0.52,0.5],[0.28,-0.68,0.6]],
+                       links: [[0,1],[1,2],[2,3],[3,4],[4,5],[4,6],[3,7],[7,8],[8,9],[9,10]] },
+        /* two fish on their cords: the western Circlet ring, Alrescha's knot at the V, the northern fish's triangle */
+        pisces:      { stars: [[0.6,-0.64,0.7],[0.32,-0.52,0.45],[0.02,-0.44,0.5],[-0.34,-0.34,0.5],[-0.6,-0.4,0.55],[-0.78,-0.24,0.5],[-0.72,-0.04,0.5],[-0.5,0.0,0.5],[0.56,-0.3,0.45],[0.46,0.06,0.6],[0.32,0.36,0.5],[0.12,0.62,0.5],[0.32,0.72,0.5]],
+                       links: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,3],[0,8],[8,9],[9,10],[10,11],[11,12],[12,10]] }
     };
 
     function _zwSlotAngle(i) { return i / 12 * Math.PI * 2; }
@@ -18930,16 +18947,48 @@ const ThreeRenderer = (function () {
         return tex;
     }
 
+    function _zwLinkTexture() {
+        /* Soft light-thread texture for the constellation links: a hot 1px-ish
+           core feathering to nothing across the width, with both ENDS feathered
+           too so each segment melts into its stars' glow. Without this the link
+           quads render as flat solid rectangles — the "toddler drew it with
+           blocks" look. Drawn white; material colour supplies the tint. */
+        var c = document.createElement('canvas'); c.width = 128; c.height = 32;
+        var ctx = c.getContext('2d');
+        var g = ctx.createLinearGradient(0, 0, 0, 32);
+        g.addColorStop(0, 'rgba(255,255,255,0)');
+        g.addColorStop(0.3, 'rgba(255,255,255,0.18)');
+        g.addColorStop(0.44, 'rgba(255,255,255,0.7)');
+        g.addColorStop(0.5, 'rgba(255,255,255,1)');
+        g.addColorStop(0.56, 'rgba(255,255,255,0.7)');
+        g.addColorStop(0.7, 'rgba(255,255,255,0.18)');
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 32);
+        ctx.globalCompositeOperation = 'destination-in';
+        var m = ctx.createLinearGradient(0, 0, 128, 0);
+        m.addColorStop(0, 'rgba(255,255,255,0)');
+        m.addColorStop(0.14, 'rgba(255,255,255,1)');
+        m.addColorStop(0.86, 'rgba(255,255,255,1)');
+        m.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = m; ctx.fillRect(0, 0, 128, 32);
+        var tex = new THREE.CanvasTexture(c);
+        tex.minFilter = THREE.LinearFilter;
+        return tex;
+    }
+
     /* Constellation link segments as thin additive quads (GL lines are stuck at
        1px), built at a given half-width so the same links can be laid down twice:
-       a wide soft glow underlay plus a crisp bright core. */
+       a wide soft glow underlay plus a crisp bright core. Emits UVs (u along the
+       segment, v across it) so the soft link texture shades each quad — returns
+       { pos, uv } Float32Arrays. */
     function _zwBuildLinkQuads(starDirs, lk, halfW) {
         var quads = new Float32Array(lk.length * 6 * 3), qo = 0;
+        var uvs = new Float32Array(lk.length * 6 * 2), uo = 0;
         for (var li = 0; li < lk.length; li++) {
             var pa = starDirs[lk[li][0]], pb = starDirs[lk[li][1]];
             var dir = new THREE.Vector3().subVectors(pb, pa);
             var len = dir.length(); dir.normalize();
-            var gap = Math.min(0.022, len * 0.22);
+            var gap = Math.min(0.013, len * 0.18);
             var pa2 = new THREE.Vector3().copy(pa).addScaledVector(dir, gap);
             var pb2 = new THREE.Vector3().copy(pb).addScaledVector(dir, -gap);
             var mid = new THREE.Vector3().addVectors(pa2, pb2).multiplyScalar(0.5).normalize();
@@ -18953,8 +19002,9 @@ const ThreeRenderer = (function () {
                 pb2.x - side.x, pb2.y - side.y, pb2.z - side.z
             ];
             quads.set(v, qo); qo += 18;
+            uvs.set([0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0], uo); uo += 12;
         }
-        return quads;
+        return { pos: quads, uv: uvs };
     }
 
     /* Star colour temperatures — real skies aren't monochrome: blue-white giants,
@@ -18971,6 +19021,7 @@ const ThreeRenderer = (function () {
             var starTex = _zwStarTexture();
             var haloTex = _zwHaloTexture();
             var nebTex = _zwNebulaTexture();
+            var linkTex = _zwLinkTexture();
             var icons = (typeof ZODIAC_ICONS !== 'undefined') ? ZODIAC_ICONS : (window.ZODIAC_ICONS || {});
             var ZL = (typeof AVAILABLE_ZODIACS !== 'undefined') ? AVAILABLE_ZODIACS : (window.AVAILABLE_ZODIACS || _ZW_ORDER);
 
@@ -19031,10 +19082,12 @@ const ThreeRenderer = (function () {
                    the same links — a wide soft glow underlay + a crisp core —
                    so blessed lines bloom like light instead of reading flat. */
                 var lk = def.links;
+                var glowBuf = _zwBuildLinkQuads(starDirs, lk, 0.011);
                 var glowGeo = new THREE.BufferGeometry();
-                glowGeo.setAttribute('position', new THREE.BufferAttribute(_zwBuildLinkQuads(starDirs, lk, 0.016), 3));
+                glowGeo.setAttribute('position', new THREE.BufferAttribute(glowBuf.pos, 3));
+                glowGeo.setAttribute('uv', new THREE.BufferAttribute(glowBuf.uv, 2));
                 var glowMat = new THREE.MeshBasicMaterial({
-                    color: 0x3d4a78, transparent: true, opacity: 0.02,
+                    map: linkTex, color: 0x3d4a78, transparent: true, opacity: 0.02,
                     blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false,
                     side: THREE.DoubleSide
                 });
@@ -19042,10 +19095,12 @@ const ThreeRenderer = (function () {
                 glowMesh.renderOrder = -993; glowMesh.frustumCulled = false;
                 _zwGroup.add(glowMesh);
 
+                var lineBuf = _zwBuildLinkQuads(starDirs, lk, 0.0038);
                 var lineGeo = new THREE.BufferGeometry();
-                lineGeo.setAttribute('position', new THREE.BufferAttribute(_zwBuildLinkQuads(starDirs, lk, 0.005), 3));
+                lineGeo.setAttribute('position', new THREE.BufferAttribute(lineBuf.pos, 3));
+                lineGeo.setAttribute('uv', new THREE.BufferAttribute(lineBuf.uv, 2));
                 var lineMat = new THREE.MeshBasicMaterial({
-                    color: 0x3d4a78, transparent: true, opacity: 0.05,
+                    map: linkTex, color: 0x3d4a78, transparent: true, opacity: 0.05,
                     blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false,
                     side: THREE.DoubleSide
                 });
@@ -19068,7 +19123,7 @@ const ThreeRenderer = (function () {
                     });
                     var spr = new THREE.Sprite(sMat);
                     spr.position.copy(starDirs[sk]);
-                    var bs = 0.02 + 0.03 * bright;
+                    var bs = 0.018 + 0.038 * bright;
                     spr.userData = {
                         bs: bs, tw: 0.6 + ((i * 7 + sk * 13) % 10) * 0.22,
                         ph: (i * 2.3 + sk * 1.7) % 6.28, dim: dimC, hot: hotC, halo: null
@@ -19077,14 +19132,14 @@ const ThreeRenderer = (function () {
                     spr.renderOrder = -990; spr.frustumCulled = false;
                     _zwGroup.add(spr);
                     stars.push(spr);
-                    if (bright >= 0.65) {
+                    if (bright >= 0.6) {
                         var hMat = new THREE.SpriteMaterial({
                             map: haloTex, transparent: true, opacity: 0.08, color: dimC.clone(),
                             blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false
                         });
                         var halo = new THREE.Sprite(hMat);
                         halo.position.copy(starDirs[sk]);
-                        halo.scale.set(bs * 3.2, bs * 3.2, 1);
+                        halo.scale.set(bs * 3.8, bs * 3.8, 1);
                         halo.renderOrder = -994; halo.frustumCulled = false;
                         _zwGroup.add(halo);
                         spr.userData.halo = halo;
@@ -19199,9 +19254,9 @@ const ThreeRenderer = (function () {
             var visLinks = (i === inSign && drawP < 1) ? Math.ceil(drawP * sg.linkCount) : sg.linkCount;
             sg.lineGeo.setDrawRange(0, 6 * visLinks);
             sg.glowGeo.setDrawRange(0, 6 * visLinks);
-            sg.lineMat.opacity = (0.07 + 0.78 * a2) * vis;
+            sg.lineMat.opacity = (0.08 + 0.92 * a2) * vis;
             sg.lineMat.color.copy(_ZW_COL_LINE_DIM).lerp(_ZW_COL_LINE_HOT, a2);
-            sg.glowMat.opacity = (0.02 + 0.3 * a2) * vis;
+            sg.glowMat.opacity = (0.03 + 0.42 * a2) * vis;
             sg.glowMat.color.copy(_ZW_COL_LINE_DIM).lerp(_ZW_COL_LINE_HOT, a2);
 
             sg.glyphMat.opacity = (0.06 + 0.5 * a2) * vis;
@@ -19229,7 +19284,7 @@ const ThreeRenderer = (function () {
                     * (0.88 + 0.12 * Math.sin(tSec * ud.tw * 1.4 + ud.ph * 1.9));
                 sp.material.color.copy(ud.dim).lerp(ud.hot, sa);
                 if (ud.halo) {
-                    var hb = bs * 3.2;
+                    var hb = bs * 3.8;
                     ud.halo.scale.set(hb, hb, 1);
                     ud.halo.material.opacity = (0.06 + 0.24 * sa) * vis * (0.8 + 0.2 * twv);
                     ud.halo.material.color.copy(ud.dim).lerp(ud.hot, sa);
