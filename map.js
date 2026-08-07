@@ -7425,12 +7425,20 @@
                 const _customSpells = Array.isArray(identityOverride?.customSpells) ? identityOverride.customSpells : null;
                 if (_customSpells && _customSpells.length > 0) {
                     const _slotCap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
-                    // Slot-budget aware: spells occupy 1-3 slots; over-budget
-                    // saved builds are trimmed gracefully (later picks that no
-                    // longer fit are skipped, earlier picks are kept).
+                    // Slot-budget aware: over-budget saved builds are trimmed
+                    // gracefully (later picks that no longer fit are skipped,
+                    // earlier picks are kept).
                     const _secJobForBudget = newUnit._secondaryJob || identityOverride?.secondaryJob || '';
                     let _validIds;
-                    if (typeof trimSpellIdsToSlotBudget === 'function') {
+                    if (typeof classHasSpellTree === 'function' && classHasSpellTree(template.cls)
+                        && typeof treeLegalSubset === 'function') {
+                        /* Spell-tree classes: THE authority checkpoint (host
+                           builds every unit online — RULE #2). Keeps the
+                           largest root-connected subset of the wish-list, so
+                           an off-tree or disconnected loadout can't reach
+                           battle no matter where it came from. */
+                        _validIds = treeLegalSubset(newUnit.race, template.cls, _secJobForBudget, _customSpells);
+                    } else if (typeof trimSpellIdsToSlotBudget === 'function') {
                         _validIds = trimSpellIdsToSlotBudget(_customSpells, template.cls, _secJobForBudget, _slotCap);
                     } else {
                         const _seen = new Set();
@@ -7479,12 +7487,20 @@
                 const _customSpells = Array.isArray(identityOverride?.customSpells) ? identityOverride.customSpells : null;
                 if (_customSpells && _customSpells.length > 0) {
                     const _slotCap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
-                    // Slot-budget aware: spells occupy 1-3 slots; over-budget
-                    // saved builds are trimmed gracefully (later picks that no
-                    // longer fit are skipped, earlier picks are kept).
+                    // Slot-budget aware: over-budget saved builds are trimmed
+                    // gracefully (later picks that no longer fit are skipped,
+                    // earlier picks are kept).
                     const _secJobForBudget = newUnit._secondaryJob || identityOverride?.secondaryJob || '';
                     let _validIds;
-                    if (typeof trimSpellIdsToSlotBudget === 'function') {
+                    if (typeof classHasSpellTree === 'function' && classHasSpellTree(template.cls)
+                        && typeof treeLegalSubset === 'function') {
+                        /* Spell-tree classes: THE authority checkpoint (host
+                           builds every unit online — RULE #2). Keeps the
+                           largest root-connected subset of the wish-list, so
+                           an off-tree or disconnected loadout can't reach
+                           battle no matter where it came from. */
+                        _validIds = treeLegalSubset(newUnit.race, template.cls, _secJobForBudget, _customSpells);
+                    } else if (typeof trimSpellIdsToSlotBudget === 'function') {
                         _validIds = trimSpellIdsToSlotBudget(_customSpells, template.cls, _secJobForBudget, _slotCap);
                     } else {
                         const _seen = new Set();

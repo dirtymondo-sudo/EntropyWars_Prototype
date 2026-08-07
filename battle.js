@@ -18970,6 +18970,16 @@
 
         function randomSpellLoadoutForClass(cls, race) {
             const loadout = emptyLoadout();
+            /* Spell-tree classes roll a tree-legal random walk (secondary job
+               is picked later in createUnit — a no-secondary walk stays legal
+               once one is added, the tree only ever GAINS nodes). Freelancer
+               keeps the flat-pool roll below. */
+            if (typeof classHasSpellTree === 'function' && classHasSpellTree(cls)
+                && typeof buildTreeLegalLoadout === 'function') {
+                const treeIds = buildTreeLegalLoadout(race, cls, '');
+                treeIds.forEach((tid, ti) => { loadout.spells[ti] = tid; });
+                return _fillRandomLoadoutItems(loadout, cls);
+            }
             const pool = getEligibleSpellsForClass(cls, race).slice().sort(() => Math.random() - 0.5);
             const slotBudget = typeof SPELL_SLOT_MAX !== 'undefined' ? SPELL_SLOT_MAX : CONFIG.unitSkillSlots;
             let slot = 0;
@@ -19004,6 +19014,13 @@
                 }
             }
 
+            return _fillRandomLoadoutItems(loadout, cls);
+        }
+
+        /* Shared tail of randomSpellLoadoutForClass: items + accessories.
+           Split out so the spell-tree branch and the Freelancer flat-pool
+           branch roll identical item/equipment loadouts. */
+        function _fillRandomLoadoutItems(loadout, cls) {
             const allItemKeys = Object.keys(ITEM_RULES);
             let remainingItems = CONFIG.unitItemSlots;
 
@@ -19203,20 +19220,19 @@
                     let crossClassCount = countCrossClassSpells(existingSpells, cls);
                     const usedSpellIds = new Set(existingSpells.filter(Boolean));
 
+                    /* Spell-tree classes: "optimize" = the curated kit — keep
+                       existing picks, top up with the full primary branch +
+                       race r1–r2, and let connectivity repair the rest.
+                       Freelancer falls through to the flat preferred lists. */
+                    if (typeof classHasSpellTree === 'function' && classHasSpellTree(cls)
+                        && typeof treeLegalSubset === 'function') {
+                        const _secJ = state.partyMeta?.[player]?.[idx]?.secondaryJob || '';
+                        const _p = (typeof getClassTreeSpells === 'function' && getClassTreeSpells(cls)) || [];
+                        const _r = (typeof getRaceTreeSpells === 'function' && getRaceTreeSpells(race, cls)) || [];
+                        const _wish = [...existingSpells.filter(Boolean), ..._p, ..._r.slice(0, 2)];
+                        loadout.spells = treeLegalSubset(race, cls, _secJ, _wish);
+                    } else {
                     const preferred = {
-                        'Agent': ['assassinate', 'shadowLunge', 'placeBomb', 'sneakSlash', 'pistolWhip', 'poisonDart', 'knifeThrow'],
-                        'Black Mage': ['meteor', 'wallOfFire', 'thunder1', 'fire1', 'thunderstorm'],
-                        'White Mage': ['healAll', 'revive1', 'heal1', 'protect1'],
-                        'Warrior': ['judgment', 'groundSlam', 'warCry', 'guardSlash'],
-                        'Tank': ['rampart', 'shieldBash', 'provoke', 'fortify'],
-                        'Swordmaster': ['zantetsuken', 'dragonSlash', 'lungingStrike', 'bladeWaltz', 'parryStance', 'swordBeam', 'crossSlash'],
-                        'Gunslinger': ['deadEye', 'shootout', 'doubleShot', 'ricochet1', 'crossfire'],
-                        'Psychic': ['mindShatter', 'psychosis', 'teleport', 'glare', 'warpRune'],
-                        'Harvester': ['lifeDrain', 'trunkThrow', 'leechSeed', 'healingSeed', 'poisonSeed'],
-                        'Engineer': ['fiveGTower', 'overclock', 'empBurst', 'repair', 'plasmaGun', 'deployTurret'],
-                        'Harbinger': ['requiem', 'encore', 'fermata', 'sonicCharge', 'discordance', 'lullaby'],
-                        'Raider': ['rampage', 'skullCrack', 'haymaker', 'ironGrip'],
-                        'Sniper': ['headshot', 'precisionShot', 'spotter', 'camouflage'],
                         'Freelancer': ['jackOfAll', 'improvise', 'reallyGoodPunch']
                     } [cls] || [];
                     const eligible = getEligibleSpellsForClass(cls, race);
@@ -19252,6 +19268,7 @@
                         }
                     }
                     loadout.spells = existingSpells;
+                    }
 
                     const totalItems = Object.values(loadout.items || {}).reduce((a, b) => a + b, 0);
                     let remaining = CONFIG.unitItemSlots - totalItems;
@@ -26932,6 +26949,16 @@
                                 const r = state.partyMeta?.[p]?.[i]?.race || '';
                                 const eq = lo?.equipment || {};
                                 const existingSpells = (lo?.spells || []).slice();
+                                /* Spell-tree classes: top up with a tree-legal
+                                   random walk instead of flat-pool picks. */
+                                if (typeof classHasSpellTree === 'function' && classHasSpellTree(c)
+                                    && typeof treeLegalSubset === 'function') {
+                                    const _afSec = state.partyMeta?.[p]?.[i]?.secondaryJob || '';
+                                    const _afWish = [...existingSpells.filter(Boolean),
+                                        ...buildTreeLegalLoadout(r, c, _afSec)];
+                                    lo.spells = treeLegalSubset(r, c, _afSec, _afWish);
+                                    return;
+                                }
                                 let ccCount = countCrossClassSpells ? countCrossClassSpells(existingSpells, c) : 0;
                                 const usedIds = new Set(existingSpells.filter(Boolean));
                                 const eligible = getEligibleSpellsForClass(c, r)

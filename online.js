@@ -1766,6 +1766,24 @@
             if (data.loadouts) state.loadouts[2] = data.loadouts;
             if (data.name && state.partyNames) state.partyNames[2] = String(data.name).slice(0, 24);
             if (data.meta && state.partyMeta) state.partyMeta[2] = data.meta;
+            /* Spell-tree authority (RULE #2): the HOST re-validates every
+               received loadout against the sender's own tree — off-tree or
+               disconnected picks are dropped here AND again in createUnit
+               (belt and braces; a hacked guest can't smuggle spells). */
+            if (Array.isArray(state.partyMeta?.[2]) && typeof window.treeLegalSubset === 'function'
+                && typeof window.classHasSpellTree === 'function') {
+                state.partyMeta[2].forEach(function (mEntry, mIdx) {
+                    if (!mEntry || !Array.isArray(mEntry.customSpells)) return;
+                    var mCls = state.partyBuilds?.[2]?.[mIdx];
+                    if (!mCls || !window.classHasSpellTree(mCls)) return;
+                    var mFixed = window.treeLegalSubset(mEntry.race || '', mCls, mEntry.secondaryJob || '', mEntry.customSpells);
+                    if (mFixed.length !== mEntry.customSpells.length) {
+                        console.warn('[NET GUARD] spell-tree loadout trimmed for guest slot', mIdx,
+                            mEntry.customSpells.length, '→', mFixed.length);
+                        mEntry.customSpells = mFixed;
+                    }
+                });
+            }
 
             const lock = window._NET._lockState;
             if (lock) lock.guestPartyReceived = true;

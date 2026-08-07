@@ -3865,7 +3865,8 @@ const SPELL_LIBRARY = [
         dmg: 60,
         damageType: 'physical',
         terrainDeform: { centerDelta: 2, edgeDelta: 0 },
-        tier: 'II',
+        /* Tank capstone (ring 4 = tier III, spell-tree redesign). */
+        tier: 'III',
         school: 'Tank',
         classRestriction: 'Tank',
         jobPreference: ['Tank'],
@@ -3967,7 +3968,9 @@ const SPELL_LIBRARY = [
         kind: 'damage',
         damageType: 'physical',
         ignoreArmor: true,
-        tier: 'II',
+        /* Swordmaster capstone — already had capstone stats at tier II; the
+           III tag makes the label honest (spell-tree audit). */
+        tier: 'III',
         school: 'Swordmaster',
         classRestriction: 'Swordmaster',
         jobPreference: ['Swordmaster'],
@@ -4023,7 +4026,8 @@ const SPELL_LIBRARY = [
         equipCost: 15,
         range: 4,
         kind: 'revive',
-        tier: 'II',
+        /* White Mage capstone (ring 4 = tier III) — the classic white ultimate. */
+        tier: 'III',
         school: 'White Mage',
         classRestriction: 'White Mage',
         revivePct: 0.45,
@@ -4373,7 +4377,8 @@ const SPELL_LIBRARY = [
         dmg: 160,
         range: 3,
         kind: 'lifeDrain',
-        tier: 'I',
+        /* Harvester ring-3 payoff (tier II): Poison Seed sets up, this cashes in. */
+        tier: 'II',
         school: 'Harvester',
         classRestriction: 'Harvester',
         drainPct: 0.70,
@@ -4390,7 +4395,8 @@ const SPELL_LIBRARY = [
         equipCost: 20,
         range: 3,
         kind: 'leechSeed',
-        tier: 'II',
+        /* Harvester capstone (ring 4 = tier III). */
+        tier: 'III',
         school: 'Harvester',
         classRestriction: 'Harvester',
         desc: 'Plants a seed on a Single Enemy: drains HP each turn and heals the caster.'
@@ -4512,7 +4518,9 @@ const SPELL_LIBRARY = [
         equipCost: 20,
         range: 3,
         kind: 'buff',
-        tier: 'II',
+        /* Cyborg race capstone since the tree audit (Engineer dropped its
+           copy) — ring 4 = tier III. */
+        tier: 'III',
         school: 'Engineer',
         classRestriction: 'Engineer',
         statusEffects: [{
@@ -4678,7 +4686,8 @@ const SPELL_LIBRARY = [
         range: 4,
         kind: 'damage',
         damageType: 'magic',
-        tier: 'II',
+        /* Harbinger ring-2 tool (tier I): the Slow that feeds Cross Slash. */
+        tier: 'I',
         school: 'Harbinger',
         classRestriction: 'Harbinger',
         statusEffects: [{
@@ -4706,8 +4715,10 @@ const SPELL_LIBRARY = [
         classRestriction: 'Raider',
         jobPreference: ['Raider'],
         statusEffects: [],
-        bonusVsStatus: { status: 'stagger', mult: 1.5 },
-        desc: 'Deals MEDIUM physical damage to a Single Enemy and knocks it back. Deals bonus damage to targets with Stagger. Deals bonus damage if the target slams into a wall or unit.'
+        /* Retuned vs-Stagger → vs-Rooted (SPELL_TREE_REDESIGN §2.2): can't
+           slip a haymaker while rooted — Iron Grip sets it up in-kit. */
+        bonusVsStatus: { status: 'rooted', mult: 1.5 },
+        desc: 'Deals MEDIUM physical damage to a Single Enemy and knocks it back. Deals bonus damage to Rooted targets. Deals bonus damage if the target slams into a wall or unit.'
     },
     {
         id: 'groundSlam',
@@ -4863,7 +4874,8 @@ const SPELL_LIBRARY = [
         equipCost: 10,
         range: 0,
         kind: 'buff',
-        tier: 'II',
+        /* Sniper ring-2 tool (tier I): repositioning stealth. */
+        tier: 'I',
         school: 'Sniper',
         classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
@@ -5155,7 +5167,9 @@ const SPELL_LIBRARY = [
         range: 4,
         kind: 'teleport',
         damageType: 'magic',
-        tier: 'II',
+        /* Shadow-entity race capstone since the tree audit (race-only now;
+           not in the Psychic tree) — ring 4 = tier III. */
+        tier: 'III',
         school: 'Psychic',
         classRestriction: 'Psychic',
         teleportDistance: 4,
@@ -5572,8 +5586,10 @@ const SHARED_HEX_OF_TOIL = {
     id: 'sharedHexOfToil', spellType: 'anomaly', element: 'shadow', name: 'Hex of Agony',
     type: 'debuff', cost: 30, range: 4, apCost: 1,
     kind: 'debuff',
-    statusEffects: [{ id: 'hexed', duration: 3 }, { id: 'poison', duration: 3 }],
-    desc: 'Weakens a Single Enemy. Applies Hexed (they suffer every time they move or cast) and Poison.'
+    /* Single-status rule (SPELL_TREE_REDESIGN §2.1): the Poison rider is
+       gone — Hexed alone (hurts on move AND cast) is already a full effect. */
+    statusEffects: [{ id: 'hexed', duration: 3 }],
+    desc: 'Weakens a Single Enemy. Applies Hexed (they suffer every time they move or cast).'
 };
 
 /* One sanctuary, one name (2026-07-25): the angel's healing zone, the
@@ -6248,7 +6264,9 @@ const RACE_ABILITIES = {
     /* 2026-07-18: Chassis Slam reworked into Kill Mode (360° weapons-free
        barrage) + new Hydraulic Crush — the robot fights like a Warrior now. */
     'robot': [
-        { id: 'raceChassisSlan', spellType: 'tech', element: 'metal', name: 'Kill Mode',
+        /* id typo raceChassisSlan → raceChassisSlam fixed in the spell-tree
+           audit (§7.6); the old id aliases here via the legacy-alias table. */
+        { id: 'raceChassisSlam', spellType: 'tech', element: 'metal', name: 'Kill Mode',
           type: 'damage', cost: 35, dmg: 80, range: 0,
           kind: 'aoe', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
           desc: 'Deals WEAK physical damage to All Enemies around the caster (AOE).' },
@@ -6512,17 +6530,15 @@ const RACE_ABILITIES = {
           desc: 'Project a telekinetic shield onto an ally. Absorbs 150 damage before breaking.' },
         _mkBolt(_DISCORD_BOLT, { id: 'raceBrainwash', spellType: 'anomaly', element: 'psychic', name: 'Brainwash' }),
     ],
+    /* raceSuppressingFire (near-duplicate id of raceSuppressiveFire) was
+       MERGED into this one line spell (spell-tree audit §7.6); the old id
+       aliases here via the legacy-alias table below. */
     'marksman': [
-        { id: 'raceSuppressiveFire', spellType: 'human', element: 'metal', name: 'Bullet Skewer',
+        { id: 'raceSuppressiveFire', spellType: 'human', element: 'metal', name: 'Suppressive Fire',
           type: 'damage', cost: 25, dmg: 80, range: 4,
           kind: 'line', damageType: 'physical', lineWidth: 1,
           statusEffects: [{ id: 'slow', duration: 2 }],
           desc: 'Deals WEAK physical damage to All Enemies in a line. Applies Slow.' },
-        { id: 'raceSuppressingFire', spellType: 'tech', element: 'metal', name: 'Suppressing Fire',
-          type: 'debuff', cost: 20, range: 4,
-          kind: 'debuff',
-          statStageBoost: { atk: -2 },
-          desc: 'Weakens a Single Enemy. Lowers ATK by 2 stages.' },
         SHARED_SMOKE_SCREEN
     ],
     'priest': [
@@ -6576,8 +6592,9 @@ const RACE_ABILITIES = {
         { id: 'raceCurseOfMisfortune', spellType: 'anomaly', element: 'shadow', name: 'Family Curse',
           type: 'debuff', cost: 25, range: 4, apCost: 1,
           kind: 'debuff',
-          statStageBoost: { atk: -1, def: -1 },
-          desc: 'Weakens a Single Enemy. Lowers ATK by 1 stage and DEF by 1 stage.' },
+          /* One stat, deeper stage (§2.1): a curse on your strength. */
+          statStageBoost: { atk: -2 },
+          desc: 'Weakens a Single Enemy. Lowers ATK by 2 stages.' },
         { id: 'raceCrystalBall', spellType: 'anomaly', element: 'arcane', name: 'Crystal Ball',
           type: 'damage', cost: 45, manaCostOverride: 45, dmg: 210, range: 5, apCost: 1,
           kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
@@ -7346,12 +7363,9 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 30, dmg: 120, range: 2,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'burn', duration: 2 }],
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Burn.' },
-        { id: 'raceLavaLamp', spellType: 'anomaly', element: 'poison', name: 'Lava Lamp',
-          type: 'utility', cost: 30, range: 4, apCost: 1,
-          kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 3,
-          statusEffects: [{ id: 'poison', duration: 2 }, { id: 'slow', duration: 1 }],
-          desc: 'Switch on a groovy 3×3 lamp field for 3 rounds — wandering neon globs rise and fall through the zone. Enemies wading through the goo are Poisoned and Slowed. Far out.' }
+          desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Burn.' }
+        /* Lava Lamp DELETED (§2.1 double-status offender, and cut from
+           barbarella's final 4 in the spell-tree audit). */
     ],
 
     'black goo': [
@@ -7670,8 +7684,8 @@ const RACE_ABILITIES = {
         { id: 'raceStealFromRich', spellType: 'human', name: 'Steal from the Rich',
           type: 'utility', cost: 20, range: 3, apCost: 1,
           kind: 'debuff',
-          statStageBoost: { atk: -1, def: -1 },
-          desc: 'Weakens a Single Enemy. Lowers ATK by 1 stage and DEF by 1 stage.' },
+          statStageBoost: { atk: -2 },
+          desc: 'Weakens a Single Enemy. Lowers ATK by 2 stages.' },
         { id: 'raceForestAmbush', spellType: 'human', name: 'Forest Ambush',
           type: 'utility', cost: 15, range: 0, apCost: 1,
           kind: 'buff',
@@ -7700,8 +7714,8 @@ const RACE_ABILITIES = {
         { id: 'raceNaughtyList', spellType: 'anomaly', name: 'Naughty List',
           type: 'debuff', cost: 25, range: 3, apCost: 1,
           kind: 'debuff',
-          statStageBoost: { atk: -1, def: -1 },
-          desc: 'Weakens a Single Enemy. Lowers ATK by 1 stage and DEF by 1 stage.' },
+          statStageBoost: { atk: -2 },
+          desc: 'Weakens a Single Enemy. Lowers ATK by 2 stages.' },
         { id: 'raceBlizzardPresent', spellType: 'anomaly', name: 'Blizzard Present',
           type: 'damage', cost: 30, dmg: 80, range: 4, apCost: 1,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -7892,6 +7906,10 @@ for (const [oldId, survivorId] of [
     ['raceEmpPulse',  'empBurst'],
     ['raceOverclock', 'overclock'],
     ['raceRampage',   'rampage'],
+    /* 2026-08-07 spell-tree audit merges/renames */
+    ['raceSuppressingFire', 'raceSuppressiveFire'],
+    ['raceChassisSlan',     'raceChassisSlam'],
+    ['raceLavaLamp',        'racePlasmaWhip'],
 ]) {
     if (SPELL_BY_ID[survivorId] && !SPELL_BY_ID[oldId]) {
         SPELL_BY_ID[oldId] = SPELL_BY_ID[survivorId];
@@ -12358,23 +12376,343 @@ function getRaceXpYield(race) {
     return Math.round(30 + price * 0.15);
 }
 
+/* Spell-tree redesign (SPELL_TREE_REDESIGN doc §3/§5): each job's learn
+   order IS its tree branch in ring order r1→r2→r3→r4★ (opener → tool →
+   payoff → capstone). CLASS_TREE below is derived from this table.
+   Freelancer is unchanged — its wildcard-socket tree is a separate pass. */
 const CLASS_SPELL_LEARN_ORDER = {
 
-    'Gunslinger':  ['crossfire', 'doubleShot', 'ricochet1', 'shootout', 'deadEye'],
+    'Gunslinger':  ['doubleShot', 'ricochet1', 'crossfire', 'deadEye'],
     'Warrior':     ['guardSlash', 'warCry', 'groundSlam', 'judgment'],
     'Tank':        ['fortify', 'provoke', 'shieldBash', 'rampart'],
-    'Black Mage':  ['fire1', 'thunder1', 'wallOfFire', 'meteor', 'thunderstorm'],
-    'White Mage':  ['heal1', 'radiantBolt', 'veilOfLight', 'cleanse', 'healAll'],
-    'Agent':       ['knifeThrow', 'pistolWhip', 'placeBomb', 'poisonDart', 'sneakSlash', 'shadowLunge', 'assassinate'],
-    'Psychic':     ['kineticHurl', 'glare', 'psychosis', 'mindShatter'],
-    'Harvester':   ['lifeDrain', 'healingSeed', 'poisonSeed', 'trunkThrow', 'leechSeed'],
-    'Engineer':    ['plasmaGun', 'deployTurret', 'repair', 'fiveGTower', 'overclock', 'empBurst'],
-    'Harbinger':   ['lullaby', 'sonicCharge', 'discordance', 'fermata', 'encore', 'requiem'],
+    'Black Mage':  ['fire1', 'thunder1', 'wallOfFire', 'meteor'],
+    'White Mage':  ['heal1', 'cleanse', 'healAll', 'revive1'],
+    'Agent':       ['knifeThrow', 'placeBomb', 'poisonDart', 'sneakSlash'],
+    'Psychic':     ['kineticHurl', 'psychosis', 'teleport', 'mindShatter'],
+    'Harvester':   ['healingSeed', 'poisonSeed', 'lifeDrain', 'leechSeed'],
+    'Engineer':    ['repair', 'deployTurret', 'fiveGTower', 'railgun'],
+    'Harbinger':   ['discordance', 'lullaby', 'encore', 'requiem'],
     'Freelancer':  ['improvise', 'jackOfAll', 'reallyGoodPunch'],
     'Raider':      ['haymaker', 'ironGrip', 'skullCrack', 'rampage'],
-    'Sniper':      ['kneecapShot', 'spotter', 'steadyAim', 'precisionShot', 'headshot'],
-    'Swordmaster': ['crossSlash', 'swordBeam', 'parryStance', 'dragonSlash', 'bladeWaltz', 'lungingStrike', 'zantetsuken'],
+    'Sniper':      ['kneecapShot', 'camouflage', 'precisionShot', 'headshot'],
+    'Swordmaster': ['crossSlash', 'swordBeam', 'bladeWaltz', 'dragonSlash'],
 };
+
+/* ═══════════════ SPELL TREE — the "Tree of Life" selector ═══════════════
+   SPELL_TREE_REDESIGN doc: the party-builder spell pool is a 13-node tree —
+   root (Basic Attack, always known, 0 slots) + three 4-node pillars: RACE
+   (middle), PRIMARY job (right), SECONDARY job (left). A spell can be
+   equipped iff its node is adjacent to an already-equipped node via a
+   functional path (root counts), 1 slot each, SPELL_SLOT_MAX cap; the
+   equipped set must stay connected to the root. Ring index is the tier
+   (r1–2 = I, r3 = II, r4★ = III). Three capstones are impossible by
+   geometry — that's the intended scarcity.
+   FREELANCER IS EXEMPT for now (its wildcard-socket tree is a separate
+   pass) — it keeps the flat pool, and every tree entry point must route
+   through classHasSpellTree() so Freelancer falls through to legacy. */
+
+const CLASS_TREE = {};
+for (const [_job, _order] of Object.entries(CLASS_SPELL_LEARN_ORDER)) {
+    if (_job === 'Freelancer') continue;
+    CLASS_TREE[_job] = _order.slice(0, 4);
+}
+
+/* Curated race branches (ring order r1→r4★) from the doc's §4 audit —
+   only races whose four abilities all exist today. Races that still need
+   new abilities authored (homosapien, fairy, antihero, marksman, knight,
+   cowboy, giant, bigfoot, zombie, skeleton, ai, wizard, orb of light,
+   dreameater, goatman, chosen one, gnome, kaiju… see doc) fall back to
+   their first 4 existing abilities via getRaceTreeSpells until their
+   Phase-B content lands. */
+const RACE_TREE = {
+    'pirate':        ['raceBoardingRush', 'racePlunder', 'raceYoHo', 'raceCannonball'],
+    'swordfighter':  ['raceSadBackstory', 'racePlotArmor', 'raceToBeContinued', 'raceBlessedBlade'],
+    'shaman':        ['raceHerbalRemedy', 'raceSpiritWalk', 'raceBadTrip', 'raceAyahuascaRetreat'],
+    'mad scientist': ['raceTeslaTrap', 'raceCloneDecoy', 'raceOvercharge', 'racePlandemic'],
+    'men in black':  ['raceDeneuralizer', 'raceAgentVanish', 'sharedSmokeScreen', 'raceClassifiedWeapon'],
+    'telepath':      ['raceTelepathicLink', 'racePsychicBarrier', 'raceBrainwash', 'raceMindCrush'],
+    'priest':        ['raceDivineLight', 'raceSanctuary', 'raceSmite', 'exorcism'],
+    'fortune teller': ['raceTarotDraw', 'raceSpiritChannel', 'raceCurseOfMisfortune', 'raceCrystalBall'],
+    'martian':       ['raceHeatRay', 'sharedLowGravity', 'sharedShrinkRay', 'raceWarOfTheWorlds'],
+    'nordic':        ['raceAuroraRay', 'racePleiadianShield', 'raceStasisBeam', 'raceNordicAccord'],
+    'grey':          ['raceProbe', 'raceImplant', 'raceAbductionBeam', 'raceCropCircle'],
+    'shadow entity': ['raceShadowBind', 'sharedSmokeScreen', 'racePhaseShift', 'voidRush'],
+    'reptilian':     ['sharedPoisonSwamp', 'raceShedSkin', 'sharedSmokeScreen', 'raceTailWhip'],
+    'robot':         ['raceRocketFist', 'raceChassisSlam', 'raceHydraulicCrush', 'empBurst'],
+    'android':       ['raceSyntheticBlade', 'raceSelfRepairProtocol', 'raceNeuralHack', 'empBurst'],
+    'angel':         ['raceWingGust', 'raceWingsOfMercy', 'raceSanctuary', 'raceSmite'],
+    'seraphim':      ['raceRapture', 'raceAbsolution', 'raceDivineJudgment', 'raceMerkaba'],
+    'demon':         ['raceContract', 'raceInfernalHurl', 'raceVoidContract', 'raceHellmouth'],
+    'succubus':      ['raceSoulSuck', 'raceCharm', 'raceSleepParalysis', 'raceDrainingEmbrace'],
+    'mech':          ['raceMortarSalvo', 'raceSiegeMode', 'raceEject', 'sharedNuke'],
+    'ghost':         ['raceBoo', 'raceColdSpot', 'sharedFlashFreeze', 'racePossession'],
+    'annunaki':      ['raceGravityWell', 'raceZigguratProtocol', 'sharedGravityCrush', 'raceStarDecree'],
+    'skinwalker':    ['raceBorrowedClaw', 'sharedSmokeScreen', 'raceSkinSwap', 'raceMimicry'],
+    'werewolf':      ['raceBite', 'raceHowl', 'raceFeralDive', 'raceBloodFrenzy'],
+    'gargoyle':      ['raceStonefall', 'racePerchForm', 'raceCalcify', 'raceStoneDrop'],
+    'djinn':         ['raceDustDevil', 'raceSandglassPrison', 'sharedSummonSandstorm', 'raceWishGranted'],
+    'anubis':        ['sharedFissure', 'raceGravePassage', 'sharedSummonSandstorm', 'raceWeighTheHeart'],
+    'catgirl':       ['raceLoveBite', 'raceNimbleDodge', 'raceMeow', 'raceNinefoldScratch'],
+    'mantid':        ['raceMandibleStrike', 'raceChitinArmor', 'raceAmbushLunge', 'raceFractalNeedle'],
+    'antperson':     ['raceFormicAcid', 'sharedPoisonSwamp', 'raceTunnelNetwork', 'raceSwarmSignal'],
+    'mothman':       ['raceRedEyes', 'raceDreadAura', 'raceAbduction', 'raceProphecyOfDisaster'],
+    'siren':         ['raceSonicBoomerang', 'raceRiptide', 'raceDeafeningWail', 'raceCallOfTheDeep'],
+    'scarecrow':     ['raceHarvestHook', 'raceStuffedDouble', 'sharedHexOfToil', 'raceCrowStorm'],
+    'glitch':        ['raceCrashLoop', 'raceMemoryLeak', 'raceBlueScreen', 'raceTimeRewind'],
+    'machine elves': ['raceTuneFrequency', 'racePrismMirror', 'racePulseLattice', 'sharedEgoDeath'],
+    'cyclops':       ['raceStoneThrow', 'raceBalefulGaze', 'raceTitanDrop', 'raceGiantSmash'],
+    'cyborg':        ['raceHydraulicPunch', 'raceEMPGrenade', 'raceRocketToss', 'overclock'],
+    'demon prince':  ['raceDemonicRoar', 'raceInfernalConscription', 'sharedScorchedEarth', 'raceDarkDominion'],
+    'demon princess': ['raceKissOfDecay', 'sharedHexOfToil', 'sharedPoisonSwamp', 'raceDarkLullaby'],
+    'fallen angel':  ['raceFallenGrace', 'raceAbyssalWings', 'raceSanctuary', 'raceDescendingWrath'],
+    'halfdemon':     ['raceDemonicClaw', 'sharedSmokeScreen', 'raceShadowStep', 'raceInnerDemon'],
+    'mermaid':       ['raceSirenSong', 'raceTidalBlessing', 'raceRiptide', 'raceFlood'],
+    'nephilim':      ['raceSmite', 'raceHolyBulwark', 'sharedFissure', 'raceWrathOfTheWatchers'],
+    'vampire':       ['raceBite', 'raceMistForm', 'raceBatSwarm', 'racePredatorDrop'],
+    'voidweaver':    ['raceVenomFang', 'raceWebSnare', 'raceDimensionalWeb', 'sharedBlackHole'],
+    'cosmic wraith': ['raceEntropicBeam', 'racePhaseWalk', 'sharedNebula', 'raceHeatDeath'],
+    'superhero':     ['raceHeroicLeap', 'raceInvulnerable', 'raceShockwaveClap', 'raceLaserBeam'],
+    'general':       ['raceRallyCommand', 'raceIronBulwark', 'raceArtilleryStrike', 'sharedNuke'],
+    'droid':         ['raceTaserBolt', 'raceSystemAnalysis', 'raceFirewallProtocol', 'empBurst'],
+    'conspiracy theorist': ['raceTinFoilHat', 'raceDeadAir', 'sharedSummonSandstorm', 'raceVOXBroadcast'],
+    'overlord':      ['raceHellfireCrown', 'raceInfernalDecree', 'sharedScorchedEarth', 'raceCataclysmDecree'],
+    'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
+    'atlantean':     ['raceRiptide', 'raceOrichalcumBarrier', 'sharedTidalSurge', 'raceTemporalTide'],
+    'dinosaur':      ['raceJurassicJaw', 'raceApexCharge', 'sharedFissure', 'racePrimalRoar'],
+    'dragon':        ['raceWingGust', 'raceDragonfear', 'raceDragonToss', 'raceDragonfire'],
+    'ghoul':         ['raceGhoulishBite', 'raceCorpseCrawl', 'sharedPoisonSwamp', 'raceCarrionFeast'],
+    'kaiju':         ['raceCataclysmStomp', 'raceSeismicLeap', 'raceSkyscraperToss', 'raceAtomicBreath'],
+    'kraken':        ['raceTentacleLash', 'raceInkCloud', 'raceDepthCharge', 'sharedVortexSlam'],
+    'loch ness monster': ['raceRiptide', 'raceDeepDive', 'raceCryptidVanish', 'raceTidalSlam'],
+    'yeti':          ['raceFrozenPunch', 'raceIceSlide', 'racePermafrost', 'raceAvalancheStrike'],
+    'barbarella':    ['raceStunRay', 'raceGravityBoots', 'racePlasmaWhip', 'raceSpaceDisco'],
+    'black goo':     ['raceCorrosiveSplash', 'raceAbsorb', 'raceToxicNova', 'raceMitosisSplit'],
+    'golem':         ['raceBoulderHurl', 'raceStoneSkin', 'sharedFissure', 'raceQuake'],
+    'honda civic':   ['raceRamCharge', 'raceExhaustCloud', 'raceNitroBoost', 'raceMissileBarrage'],
+    'ice queen':     ['raceIceSpear', 'sharedFlashFreeze', 'raceDiamondDust', 'raceAbsoluteZero'],
+    'juggernaut':    ['raceBodyCheck', 'raceThickHide', 'raceBrutalSlam', 'raceUnstoppableCharge'],
+    'ki fighter':    ['raceKiBlast', 'raceKiCharge', 'raceInstantTransmission', 'raceDragonFist'],
+    'king arthur':   ['raceRoyalDecree', 'raceShieldWall', 'raceExcaliburStrike', 'raceKnightsOfRound'],
+    'king kong':     ['raceChestPound', 'raceBoulderHurl', 'raceApeFury', 'racePrimalSmash'],
+    'minotaur':      ['raceHornToss', 'raceLabyrinthRoar', 'raceGoreCharge', 'raceBullRush'],
+    'necromancer':   ['raceSoulDrain', 'racePlaguefield', 'raceBoneBarrage', 'raceRaiseDead'],
+    'occulus':       ['racePsychicBeam', 'raceOmniVision', 'raceHypnoticPulse', 'raceDeathGaze'],
+    'quarterback':   ['raceBulletPass', 'raceBlitz', 'raceAudible', 'raceHailMary'],
+    'robinhood':     ['raceFireArrow', 'raceStealFromRich', 'raceSplittingArrow', 'raceArrowRain'],
+    'santa clause':  ['raceLumpOfCoal', 'raceSleighDash', 'raceNaughtyList', 'raceBlizzardPresent'],
+    'super sentai':  ['sentaiRedSlash', 'sentaiPinkHeal', 'sentaiTeamStrike', 'sentaiMegazordBlast'],
+    'symbiote':      ['raceWebLaunch', 'raceSymbioteArmor', 'raceSymbioticDrain', 'raceTendrilStrike'],
+    'valkraye':      ['raceValkyrieSpear', 'raceShieldMaiden', 'raceDivineSwoop', 'raceChooserOfSlain'],
+    'watcher':       ['raceJudgmentBeam', 'raceCosmicSight', 'raceTemporalShift', 'raceRealityPulse'],
+};
+
+const _JOB_TREE_IDS = new Set();
+for (const _ids of Object.values(CLASS_TREE)) for (const _id of _ids) _JOB_TREE_IDS.add(_id);
+
+function classHasSpellTree(cls) {
+    return !!(cls && cls !== 'Freelancer' && CLASS_TREE[cls]);
+}
+
+function getClassTreeSpells(cls) {
+    return CLASS_TREE[cls] ? CLASS_TREE[cls].slice() : null;
+}
+
+/* Audited races use their curated final-4; everything else falls back to
+   its first 4 existing abilities (job-gated), skipping ids owned by a job
+   tree (rampart/groundSlam/rampage/empBurst stay with their branch owner). */
+function getRaceTreeSpells(race, cls) {
+    if (RACE_TREE[race]) return RACE_TREE[race].slice();
+    const abs = (typeof RACE_ABILITIES !== 'undefined' && RACE_ABILITIES[race]) || [];
+    const out = [];
+    for (const a of abs) {
+        if (!a || !a.id || _JOB_TREE_IDS.has(a.id)) continue;
+        if (a.jobRequirement && cls && a.jobRequirement !== cls) continue;
+        if (!out.includes(a.id)) out.push(a.id);
+        if (out.length >= 4) break;
+    }
+    return out;
+}
+
+/* Functional adjacency, by node key. Root connects to all three ring-1
+   nodes (Malkhut → Yesod/Hod/Netzach); chains up each pillar; cross-links
+   at ring 2 (S2—R2—P2) and ring 3 (S3—R3—P3); capstones connect ONLY to
+   their own ring-3. */
+function getTreeEdges() {
+    return [
+        ['root', 'R1'], ['root', 'P1'], ['root', 'S1'],
+        ['R1', 'R2'], ['R2', 'R3'], ['R3', 'R4'],
+        ['P1', 'P2'], ['P2', 'P3'], ['P3', 'P4'],
+        ['S1', 'S2'], ['S2', 'S3'], ['S3', 'S4'],
+        ['S2', 'R2'], ['R2', 'P2'],
+        ['S3', 'R3'], ['R3', 'P3'],
+    ];
+}
+
+/* One unit's concrete tree: node key → spell id (null = empty socket; an
+   empty socket can never be equipped OR traversed). Dedupes — if an id
+   would appear on two nodes the later node goes empty (authoring rule:
+   no id may live in both a job tree and a race tree). */
+function buildUnitSpellTree(race, cls, secJob) {
+    const nodes = { root: null };
+    const seen = new Set();
+    const fill = (prefix, ids) => {
+        for (let i = 0; i < 4; i++) {
+            const id = (ids && ids[i]) || null;
+            const known = id && (typeof SPELL_BY_ID === 'undefined' || SPELL_BY_ID[id]);
+            if (known && !seen.has(id)) {
+                nodes[prefix + (i + 1)] = id;
+                seen.add(id);
+            } else {
+                nodes[prefix + (i + 1)] = null;
+            }
+        }
+    };
+    fill('R', getRaceTreeSpells(race, cls));
+    fill('P', getClassTreeSpells(cls) || []);
+    fill('S', secJob && secJob !== cls ? (getClassTreeSpells(secJob) || []) : []);
+    return { nodes, edges: getTreeEdges() };
+}
+
+/* Clash bans movement spells. A banned node mid-branch would sever the
+   chain, so banned nodes are "sealed pass-throughs" (doc §6): they cannot
+   be equipped but still count as connected for adjacency. */
+function _treeSealedIds(tree) {
+    const sealed = new Set();
+    const clash = (typeof _isClashMode === 'function' && _isClashMode());
+    const allowFn = (typeof window !== 'undefined' && typeof window._clashSpellAllowed === 'function')
+        ? window._clashSpellAllowed : null;
+    if (!clash || !allowFn) return sealed;
+    for (const id of Object.values(tree.nodes)) {
+        if (!id) continue;
+        const sp = SPELL_BY_ID[id];
+        if (sp && !allowFn(sp)) sealed.add(id);
+    }
+    return sealed;
+}
+
+/* BFS from root over passable nodes (root | equipped | sealed). Returns the
+   set of reached node KEYS. */
+function _treeReachableKeys(tree, equippedIds, sealedIds) {
+    const equipped = equippedIds instanceof Set ? equippedIds : new Set(equippedIds || []);
+    const adj = {};
+    for (const [a, b] of tree.edges) {
+        (adj[a] = adj[a] || []).push(b);
+        (adj[b] = adj[b] || []).push(a);
+    }
+    const passable = (key) => {
+        if (key === 'root') return true;
+        const id = tree.nodes[key];
+        return !!id && (equipped.has(id) || (sealedIds && sealedIds.has(id)));
+    };
+    const reached = new Set(['root']);
+    const stack = ['root'];
+    while (stack.length) {
+        const k = stack.pop();
+        for (const n of (adj[k] || [])) {
+            if (!reached.has(n) && passable(n)) { reached.add(n); stack.push(n); }
+        }
+    }
+    return reached;
+}
+
+/* Public aliases for the UI (party-builder) — same objects, stable names. */
+function treeSealedIds(tree) { return _treeSealedIds(tree); }
+function treeReachableKeys(tree, equippedIds) {
+    return _treeReachableKeys(tree, equippedIds, _treeSealedIds(tree));
+}
+
+/* The subset of equipped ids that are root-connected (through equipped or
+   sealed nodes). Dropping the disconnected rest can never disconnect these. */
+function _treeConnectedEquipped(tree, equippedIds) {
+    const equipped = new Set((equippedIds || []).filter(Boolean));
+    const reached = _treeReachableKeys(tree, equipped, _treeSealedIds(tree));
+    const out = new Set();
+    for (const [key, id] of Object.entries(tree.nodes)) {
+        if (id && equipped.has(id) && reached.has(key)) out.add(id);
+    }
+    return out;
+}
+
+/* THE loadout legality check (builder, createUnit, online host authority):
+   every id is a tree node, no duplicates, within the slot cap, nothing
+   sealed, and the whole equipped set is connected to the root. Freelancer
+   (no tree yet) is always legal here — flat-pool rules cover it. */
+function isTreeLoadoutLegal(race, cls, secJob, spellIds) {
+    if (!classHasSpellTree(cls)) return true;
+    const ids = (spellIds || []).filter(Boolean);
+    const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
+    if (ids.length > cap) return false;
+    if (new Set(ids).size !== ids.length) return false;
+    const tree = buildUnitSpellTree(race, cls, secJob);
+    const inTree = new Set(Object.values(tree.nodes).filter(Boolean));
+    const sealed = _treeSealedIds(tree);
+    for (const id of ids) {
+        if (!inTree.has(id) || sealed.has(id)) return false;
+    }
+    return _treeConnectedEquipped(tree, ids).size === ids.length;
+}
+
+/* Graceful repair for stale saves / vessel swaps: keep the largest
+   root-connected subset of the wish-list (earlier picks win), capped. */
+function treeLegalSubset(race, cls, secJob, spellIds) {
+    const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
+    if (!classHasSpellTree(cls)) return (spellIds || []).filter(Boolean).slice(0, cap);
+    const tree = buildUnitSpellTree(race, cls, secJob);
+    const inTree = new Set(Object.values(tree.nodes).filter(Boolean));
+    const sealed = _treeSealedIds(tree);
+    const seen = new Set();
+    const ids = [];
+    for (const id of (spellIds || [])) {
+        if (!id || seen.has(id) || !inTree.has(id) || sealed.has(id)) continue;
+        seen.add(id);
+        ids.push(id);
+        if (ids.length >= cap) break;
+    }
+    const connected = _treeConnectedEquipped(tree, ids);
+    return ids.filter(id => connected.has(id));
+}
+
+/* Random tree-legal loadout for the AI / randomize buttons: a random walk
+   over currently-reachable nodes. Retries a few times to land at least one
+   damage spell so CPU units never roll an all-utility kit. */
+function buildTreeLegalLoadout(race, cls, secJob, budget, rng) {
+    const cap = Math.min(budget || ((typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6),
+        (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6);
+    if (!classHasSpellTree(cls)) return [];
+    const rand = (typeof rng === 'function') ? rng : Math.random;
+    const tree = buildUnitSpellTree(race, cls, secJob);
+    const sealed = _treeSealedIds(tree);
+    const attempt = () => {
+        const equipped = new Set();
+        const picks = [];
+        while (picks.length < cap) {
+            const reached = _treeReachableKeys(tree, equipped, sealed);
+            const frontier = [];
+            for (const [key, id] of Object.entries(tree.nodes)) {
+                if (!id || equipped.has(id) || sealed.has(id)) continue;
+                // adjacent to any reached node?
+                const adjacent = tree.edges.some(([a, b]) =>
+                    (a === key && reached.has(b)) || (b === key && reached.has(a)));
+                if (adjacent) frontier.push(id);
+            }
+            if (!frontier.length) break;
+            const pick = frontier[Math.floor(rand() * frontier.length)];
+            equipped.add(pick);
+            picks.push(pick);
+        }
+        return picks;
+    };
+    const hasDamage = (ids) => ids.some(id => {
+        const sp = SPELL_BY_ID[id];
+        return sp && (sp.type === 'damage' || sp.kind === 'damage' || sp.dmg > 0);
+    });
+    let best = attempt();
+    for (let t = 0; t < 3 && !hasDamage(best); t++) {
+        const alt = attempt();
+        if (hasDamage(alt) || alt.length > best.length) best = alt;
+    }
+    return best;
+}
 
 const SPELL_SHOP_PRICES = {
     'I':   40,
@@ -12577,6 +12915,10 @@ Object.assign(window, {
   ACCT_UNIT_PRICE, ACCT_BASE_COMPLETE, ACCT_WIN_MULT, ACCT_FLAWLESS_MULT,
   ACCT_WIPEOUT_MULT, ACCT_STARTING_GOLD, ACCT_FREE_TOKENS, ACCT_MATCH_GOLD_CAP,
   ACCT_STARTER_UNITS, ACCT_PVP_MODES, isUnitUnlocked, computeAccountMatchGold,
+  /* spell tree (Tree of Life selector) */
+  CLASS_TREE, RACE_TREE, classHasSpellTree, getClassTreeSpells, getRaceTreeSpells,
+  getTreeEdges, buildUnitSpellTree, isTreeLoadoutLegal, treeLegalSubset,
+  buildTreeLegalLoadout, treeSealedIds, treeReachableKeys,
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════

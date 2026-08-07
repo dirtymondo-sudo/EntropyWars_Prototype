@@ -3721,6 +3721,15 @@
             const secJob = secOptions.length > 0 ? secOptions[randInt(secOptions.length)] : '';
             meta.secondaryJob = secJob;
 
+            /* Spell-tree classes: random loadout = a random walk over the
+               unit's tree (race + primary + secondary pillars, adjacency-
+               legal by construction). Freelancer keeps the flat pools. */
+            if (typeof classHasSpellTree === 'function' && classHasSpellTree(cls)
+                && typeof buildTreeLegalLoadout === 'function') {
+                meta.customSpells = buildTreeLegalLoadout(meta.race || '', cls, secJob);
+                return;
+            }
+
             const isFreelancer = cls === 'Freelancer';
             const mainPool = [];
             const secPool = [];

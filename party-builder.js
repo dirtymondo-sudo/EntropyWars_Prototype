@@ -628,6 +628,18 @@ function usedSpellSlots(ids) {
 }
 
 function buildDefaultCustomSpells(race, cls, secJob) {
+  /* Tree classes: default = full primary branch + race r1–r2 ("master your
+     job, dabble in your blood"), connectivity-repaired so short or sealed
+     branches degrade gracefully. Freelancer falls through to the flat-pool
+     default below. */
+  if (typeof window.classHasSpellTree === 'function' && window.classHasSpellTree(cls)
+      && typeof window.treeLegalSubset === 'function') {
+    const p = (typeof window.getClassTreeSpells === 'function' && window.getClassTreeSpells(cls)) || [];
+    const r = (typeof window.getRaceTreeSpells === 'function' && window.getRaceTreeSpells(race, cls)) || [];
+    const wish = [...p.filter(Boolean), ...r.slice(0, 2).filter(Boolean)];
+    const picks = window.treeLegalSubset(race, cls, secJob, wish);
+    if (picks.length) return picks;
+  }
   const slotCap = typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 6;
   const picks = [];
   const seen = new Set();
@@ -685,6 +697,16 @@ function buildDefaultCustomSpells(race, cls, secJob) {
 // secondary job — exactly what the spell pool offers. Used to scrub stale
 // picks left behind by a vessel/job swap or an old saved team.
 function legalCustomSpellIds(race, cls, secJob) {
+  /* Tree classes: legal = exactly the unit's 12 tree nodes (minus clash-
+     sealed ones) — connectivity is checked separately by treeLegalSubset. */
+  if (typeof window.classHasSpellTree === 'function' && window.classHasSpellTree(cls)
+      && typeof window.buildUnitSpellTree === 'function') {
+    const tree = window.buildUnitSpellTree(race, cls, secJob);
+    const sealed = typeof window.treeSealedIds === 'function' ? window.treeSealedIds(tree) : new Set();
+    const ok = new Set();
+    for (const id of Object.values(tree.nodes)) if (id && !sealed.has(id)) ok.add(id);
+    return ok;
+  }
   const ok = new Set();
   const ra = (typeof window.RACE_ABILITIES !== 'undefined' && window.RACE_ABILITIES[race])
     ? window.RACE_ABILITIES[race].filter(a => (!a.jobRequirement || a.jobRequirement === cls) && a.id && clashSpellOk(a))
@@ -980,6 +1002,181 @@ function SpellBlade({ sp, slotLabel, slotNums, heightPx, equippedSlot, pool, equ
         pw ? h('span', { className:'pbx-pw', style:{ color:pw.color } }, pw.value + ' ' + pw.unit) : null,
         sp.cost ? h('span', { className:'pbx-mp' }, sp.cost + ' MP') : null,
         h('span', { className:'pbx-cost', title: sc + ' loadout slot' + (sc > 1 ? 's' : '') }, pips))));
+}
+
+/* ══ SPELL TREE — the Tree-of-Life selector (SPELL_TREE_REDESIGN doc) ══
+   13 nodes: root (Basic Attack) + three 4-node pillars — RACE (middle),
+   PRIMARY job (right), SECONDARY job (left). Equip = adjacency to an
+   equipped node via a functional path; unequip only if the rest stays
+   root-connected. Freelancer keeps the flat pool (wildcard sockets are a
+   separate pass — classHasSpellTree routes it to legacy). */
+
+/* Node positions in % of the panel (x, y). Middle pillar crests highest
+   (Keter); R3 renders as the dashed Da'at ring. */
+const TREE_NODE_POS = {
+  root: [50, 91],
+  R1: [50, 70], R2: [50, 51], R3: [50, 32], R4: [50, 9],
+  P1: [81, 75], P2: [81, 56], P3: [81, 37], P4: [81, 14],
+  S1: [19, 75], S2: [19, 56], S3: [19, 37], S4: [19, 14],
+};
+
+/* BFS from the connected frontier to targetKey. Returns the node keys that
+   must be NEWLY equipped (target last, sealed pass-throughs excluded), [] if
+   the target is already connected, or null if unreachable (empty sockets
+   block). */
+function computeTreeEquipPath(tree, sealed, equippedIds, targetKey) {
+  const equipped = new Set((equippedIds || []).filter(Boolean));
+  const adj = {};
+  for (const [a, b] of tree.edges) { (adj[a] = adj[a] || []).push(b); (adj[b] = adj[b] || []).push(a); }
+  const start = new Set(['root']);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const k of [...start]) for (const n of adj[k] || []) {
+      if (start.has(n)) continue;
+      const id = tree.nodes[n];
+      if (id && (equipped.has(id) || sealed.has(id))) { start.add(n); grew = true; }
+    }
+  }
+  if (start.has(targetKey)) return [];
+  const prev = {};
+  const seen = new Set(start);
+  const q = [...start];
+  while (q.length) {
+    const k = q.shift();
+    for (const n of adj[k] || []) {
+      if (seen.has(n)) continue;
+      const id = tree.nodes[n];
+      if (!id) continue;
+      seen.add(n); prev[n] = k;
+      q.push(n);
+    }
+  }
+  if (!seen.has(targetKey)) return null;
+  const path = [];
+  for (let k = targetKey; k != null && !start.has(k); k = prev[k]) {
+    const id = tree.nodes[k];
+    if (id && !sealed.has(id)) path.unshift(k);
+  }
+  return path;
+}
+
+function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, raceLabel,
+                          onNodeClick, onNodeHoverIn, onNodeHoverOut, hoverPath, shakeKey, onOpenSubjob }) {
+  const equippedSet = new Set(equipped || []);
+  const connected = (typeof window.treeReachableKeys === 'function')
+    ? window.treeReachableKeys(tree, equippedSet) : new Set(['root']);
+  const branchColor = { R: fc, P: EW.space, S: '#8b8ba0', root: EW.ink };
+  const hoverSet = hoverPath ? new Set(hoverPath) : null;
+  const used = (equipped || []).length;
+
+  const nodeState = (key) => {
+    if (key === 'root') return 'root';
+    const id = tree.nodes[key];
+    if (!id) return 'empty';
+    if (sealed.has(id)) return 'sealed';
+    if (equippedSet.has(id)) return 'equipped';
+    const path = computeTreeEquipPath(tree, sealed, equipped, key);
+    if (!path) return 'blocked';
+    return path.length <= 1 ? 'reachable' : 'far';
+  };
+  const states = {};
+  Object.keys(TREE_NODE_POS).forEach(k => { states[k] = nodeState(k); });
+
+  // path (edge) styling: lit when both endpoints are root-connected
+  const edgeNodes = tree.edges.map(([a, b], i) => {
+    const [x1, y1] = TREE_NODE_POS[a], [x2, y2] = TREE_NODE_POS[b];
+    const lit = connected.has(a) && connected.has(b);
+    const onHover = hoverSet && (hoverSet.has(a) || a === 'root' || connected.has(a)) && hoverSet.has(b);
+    return h('line', { key: i, x1, y1, x2, y2,
+      stroke: onHover ? EW.time : lit ? fc : 'rgba(255,255,255,0.13)',
+      strokeWidth: onHover ? 1.1 : lit ? 0.8 : 0.45,
+      strokeDasharray: lit || onHover ? undefined : '1.6 1.6' });
+  });
+
+  const chips = Object.entries(TREE_NODE_POS).map(([key, [x, y]]) => {
+    const st8 = states[key];
+    const id = key === 'root' ? null : tree.nodes[key];
+    const sp = id && typeof window.getSpellById === 'function' ? window.getSpellById(id) : null;
+    const bc = branchColor[key === 'root' ? 'root' : key[0]];
+    const isCap = key.endsWith('4');
+    const onPath = hoverSet && hoverSet.has(key);
+    const base = {
+      position: 'absolute', left: x + '%', top: y + '%',
+      transform: 'translate(-50%,-50%)',
+      width: 46, height: 46, borderRadius: '50%',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: 'Cinzel, serif', fontSize: 13, fontWeight: 700,
+      border: '2px solid ' + bc, color: EW.ink,
+      background: 'rgba(0,0,0,0.55)', cursor: 'default',
+      boxSizing: 'border-box', zIndex: 2,
+    };
+    let style = base, label = sp ? sp.name : '', glyph = '';
+    if (st8 === 'root') {
+      style = { ...base, background: 'rgba(255,255,255,0.12)', boxShadow: '0 0 12px rgba(255,255,255,0.25)' };
+      glyph = '⚔'; label = 'Basic Attack';
+    } else if (st8 === 'empty') {
+      style = { ...base, border: '2px dashed rgba(255,255,255,0.14)', opacity: 0.3 };
+    } else if (st8 === 'equipped') {
+      style = { ...base, background: bc + '55', boxShadow: `0 0 12px ${bc}66`, cursor: 'pointer' };
+      glyph = sp ? sp.tier || '' : '';
+    } else if (st8 === 'reachable') {
+      style = { ...base, cursor: 'pointer', animation: 'ewTreeReachPulse 1.6s ease-in-out infinite' };
+      glyph = sp ? sp.tier || '' : '';
+    } else if (st8 === 'far') {
+      style = { ...base, opacity: onPath ? 0.9 : 0.5, cursor: 'pointer',
+        borderColor: onPath ? EW.time : bc + '77' };
+      glyph = sp ? sp.tier || '' : '';
+    } else if (st8 === 'sealed') {
+      style = { ...base, opacity: 0.45, borderColor: 'rgba(255,255,255,0.25)', cursor: 'not-allowed' };
+      glyph = '🔒';
+    } else { // blocked (unreachable through empty sockets)
+      style = { ...base, opacity: 0.3 };
+      glyph = sp ? sp.tier || '' : '';
+    }
+    if (key === 'R3' && st8 !== 'equipped') style.borderStyle = 'dashed';       // Da'at
+    if (isCap && (st8 === 'equipped' || st8 === 'reachable'))
+      style.animation = (style.animation ? style.animation + ', ' : '') + 'ewTreeCapstoneGlow 2.4s ease-in-out infinite';
+    if (shakeKey === key) style.animation = 'ewTreeShake 0.3s linear';
+    return h('div', { key, style: { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none' } },
+      h('div', {
+        style: { ...style, pointerEvents: 'auto' },
+        onClick: (st8 === 'equipped' || st8 === 'reachable' || st8 === 'far') ? () => onNodeClick(key) : undefined,
+        onMouseEnter: sp ? (e) => onNodeHoverIn(key, sp, e) : undefined,
+        onMouseLeave: sp ? () => onNodeHoverOut() : undefined,
+      },
+        isCap && st8 !== 'empty' ? h('span', { style: { position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', fontSize: 11, color: bc } }, '♛') : null,
+        glyph),
+      (st8 !== 'empty') ? h('div', { style: {
+        position: 'absolute', left: x + '%', top: 'calc(' + y + '% + 27px)',
+        transform: 'translateX(-50%)', width: 84, textAlign: 'center',
+        fontSize: 8, letterSpacing: '0.05em', lineHeight: 1.15,
+        color: st8 === 'equipped' ? EW.ink : EW.inkMute,
+        opacity: st8 === 'blocked' || st8 === 'sealed' ? 0.5 : 1,
+        pointerEvents: 'none', textShadow: '0 1px 2px #000',
+      } }, label) : null);
+  });
+
+  const pillarHead = (x, text, color, onClick) => h('div', { style: {
+    position: 'absolute', left: x + '%', top: '1%', transform: 'translateX(-50%)',
+    fontSize: 9, letterSpacing: '0.16em', color, whiteSpace: 'nowrap',
+    cursor: onClick ? 'pointer' : 'default', pointerEvents: onClick ? 'auto' : 'none',
+  }, onClick }, text);
+
+  const pips = [];
+  for (let i = 0; i < slotCap; i++) pips.push(h('span', { key: i, style: {
+    width: 7, height: 7, borderRadius: '50%', display: 'inline-block', margin: '0 2px',
+    background: i < used ? EW.time : 'transparent', border: '1px solid ' + (i < used ? EW.time : 'rgba(255,255,255,0.3)'),
+  } }));
+
+  return h('div', { style: { position: 'relative', width: '100%', height: '100%', minHeight: 400 } },
+    h('svg', { viewBox: '0 0 100 100', preserveAspectRatio: 'none',
+      style: { position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' } }, edgeNodes),
+    pillarHead(19, secJob ? getJobDisplay(secJob).toUpperCase() : '＋ SUBCLASS', secJob ? branchColor.S : EW.inkDim, onOpenSubjob),
+    pillarHead(50, (raceLabel || '').toUpperCase(), fc),
+    pillarHead(81, getJobDisplay(clsName).toUpperCase(), branchColor.P),
+    chips,
+    h('div', { style: { position: 'absolute', left: '50%', top: 'calc(91% + 30px)', transform: 'translateX(-50%)', whiteSpace: 'nowrap', zIndex: 2 } }, pips));
 }
 // ── Race traits: passives & terrain rules shown on the hero sheet ──
 // Entries marked CODED are live engine rules (map.js adaptation fns,
@@ -1440,6 +1637,16 @@ function PartyBuilder() {
       st.partyMeta[player][slot].customSpells = scrubbed;
       customSpells = scrubbed;
     }
+    // Tree classes: also enforce root-connectivity (stale saves from the
+    // flat-pool era may hold legal-but-disconnected picks).
+    if (customSpells && typeof window.classHasSpellTree === 'function'
+        && window.classHasSpellTree(clsName) && typeof window.treeLegalSubset === 'function') {
+      const fixed = window.treeLegalSubset(unitRace, clsName, secJob, customSpells);
+      if (fixed.length !== customSpells.length) {
+        st.partyMeta[player][slot].customSpells = fixed;
+        customSpells = fixed;
+      }
+    }
   }
   const learnedSpells = getLearnedSpells(clsName, customSpells);
   const zodiacNature = typeof window.ZODIAC_NATURES !== 'undefined' ? window.ZODIAC_NATURES[identity.zodiac || 'aries'] : null;
@@ -1552,6 +1759,12 @@ function PartyBuilder() {
     const secOptions = allJobs.filter(j => j && j !== mainJob && j !== 'Freelancer');
     if (secOptions.length > 0) { st.partyMeta[player][slot].secondaryJob = secOptions[Math.floor(Math.random()*secOptions.length)]; }
     const curSecJob = st.partyMeta[player][slot].secondaryJob || '';
+    // Tree classes: a random walk over the tree is the randomizer.
+    if (typeof window.classHasSpellTree === 'function' && window.classHasSpellTree(mainJob)
+        && typeof window.buildTreeLegalLoadout === 'function') {
+      st.partyMeta[player][slot].customSpells = window.buildTreeLegalLoadout(unitRace, mainJob, curSecJob);
+      st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); return;
+    }
     const raIds=raceAbilities.filter(a=>a.id&&clashSpellOk(a)).map(a=>a.id);
 
     const freshPool = []; if (typeof window.SPELL_LIBRARY!=='undefined'&&typeof window.isSpellNativeToClass==='function') { for (const sp of Object.values(window.SPELL_LIBRARY)){if(!sp||sp.kind==='basicAttack'||!clashSpellOk(sp))continue;const isM=window.isSpellNativeToClass(sp,mainJob);const isS=curSecJob&&window.isSpellNativeToClass(sp,curSecJob)&&sp.tier!=='III';if(isM||isS){freshPool.push(sp);}}}
@@ -1590,6 +1803,62 @@ function PartyBuilder() {
 
   const mpMode = typeof window.getActiveMultiplayerMode === 'function' ? window.getActiveMultiplayerMode() : null;
   const isArena = false;
+  /* Spell tree (Tree of Life selector): every job except Freelancer picks
+     from its 13-node tree; Freelancer keeps the flat pool below until its
+     wildcard-socket tree ships. */
+  const useTree = !isArena && typeof window.classHasSpellTree === 'function'
+    && window.classHasSpellTree(clsName) && typeof window.buildUnitSpellTree === 'function';
+  const unitTree = React.useMemo(() => useTree
+    ? window.buildUnitSpellTree(unitRace, clsName, secJob) : null, [useTree, unitRace, clsName, secJob, _]);
+  const treeSealed = React.useMemo(() => (unitTree && typeof window.treeSealedIds === 'function')
+    ? window.treeSealedIds(unitTree) : new Set(), [unitTree]);
+  const [treeHoverPath, setTreeHoverPath] = React.useState(null);
+  const [treeShake, setTreeShake] = React.useState(null);
+  const treeShakeTimer = React.useRef(null);
+  const shakeTreeNode = (key) => {
+    setTreeShake(key);
+    if (treeShakeTimer.current) clearTimeout(treeShakeTimer.current);
+    treeShakeTimer.current = setTimeout(() => setTreeShake(null), 350);
+  };
+  function treeNodeClick(nodeKey) {
+    if (!unitTree) return;
+    const id = unitTree.nodes[nodeKey];
+    if (!id || nodeKey === 'root') return;
+    if (treeSealed.has(id)) { sfx('uiError'); return; }
+    if (!st.partyMeta[player]) st.partyMeta[player] = [];
+    if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
+    const m = st.partyMeta[player][slot];
+    if (!Array.isArray(m.customSpells)) m.customSpells = [];
+    const arr = m.customSpells;
+    const idx = arr.indexOf(id);
+    if (idx >= 0) {
+      // unequip only if the rest stays root-connected
+      const candidate = arr.filter(s => s !== id);
+      if (typeof window.isTreeLoadoutLegal === 'function'
+          && !window.isTreeLoadoutLegal(unitRace, clsName, secJob, candidate)) {
+        sfx('uiError'); shakeTreeNode(nodeKey); return;
+      }
+      arr.splice(idx, 1);
+    } else {
+      // equip — one click auto-equips the whole cheapest path (doc §1.3)
+      const path = computeTreeEquipPath(unitTree, treeSealed, arr, nodeKey);
+      if (!path || !path.length) { sfx('uiError'); shakeTreeNode(nodeKey); return; }
+      const newIds = path.map(k => unitTree.nodes[k]).filter(pid => pid && !arr.includes(pid));
+      if (arr.length + newIds.length > slotCap) { sfx('uiError'); shakeTreeNode(nodeKey); return; }
+      for (const pid of newIds) arr.push(pid);
+    }
+    setTreeHoverPath(null);
+    st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
+  }
+  const treeNodeHoverIn = (nodeKey, sp, e) => {
+    showSpellTip(sp, e);
+    const id = unitTree ? unitTree.nodes[nodeKey] : null;
+    if (id && !(customSpells || []).includes(id) && !treeSealed.has(id)) {
+      const path = computeTreeEquipPath(unitTree, treeSealed, customSpells || [], nodeKey);
+      setTreeHoverPath(path && path.length > 1 ? path : null);
+    } else setTreeHoverPath(null);
+  };
+  const treeNodeHoverOut = () => { hideSpellTip(); setTreeHoverPath(null); };
   const spellPool = React.useMemo(() => { if (typeof window.SPELL_LIBRARY==='undefined') return []; const mainJob=clsName,secJ=secJob,pool=[]; for (const sp of Object.values(window.SPELL_LIBRARY)){if(!sp||sp.kind==='basicAttack'||!clashSpellOk(sp))continue;const isM=typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,mainJob);const isS=secJ&&typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,secJ)&&sp.tier!=='III';if(isM||isS){pool.push(sp);}} return pool; }, [clsName, secJob, _]);
 
   const numerals = ['I','II','III','IV','V','VI','VII','VIII'];
@@ -1834,8 +2103,22 @@ function PartyBuilder() {
           h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.04em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 } }, 'adds its spells to the pool below · shifts stats'),
           h('span', { style:{ fontSize:10, color:fc, letterSpacing:'0.1em', flexShrink:0 } }, '▾ CHANGE')),
 
-        // ── the pool ──
-        (!isArena&&(spellPool.length>0||raceAbilities.length>0))&&h(React.Fragment, null,
+        // ── the spell tree (every job but Freelancer) ──
+        useTree&&unitTree&&h(React.Fragment, null,
+          h('div', { style:{ display:'flex', alignItems:'center', gap:6, flexShrink:0, margin:'6px 6px 3px 10px', paddingTop:6, borderTop:`1px solid ${EW.panelEdge}` } },
+            h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.16em' } }, 'SPELL TREE'),
+            h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName), secJob ? ' + ' + getJobDisplay(secJob) : ''),
+            h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } }, 'CLICK A NODE · DISTANT NODES AUTO-EQUIP THE PATH')),
+          h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', paddingTop:6, paddingBottom:4 } },
+            h(SpellTreePanel, { tree: unitTree, sealed: treeSealed, equipped: customSpells || [],
+              slotCap, fc, clsName, secJob,
+              raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
+              onNodeClick: treeNodeClick, onNodeHoverIn: treeNodeHoverIn, onNodeHoverOut: treeNodeHoverOut,
+              hoverPath: treeHoverPath, shakeKey: treeShake,
+              onOpenSubjob: !isArena ? () => { setEquipPicker('subjob'); sfx('uiCursorMove'); } : undefined }))),
+
+        // ── the pool (Freelancer only — flat borrowing is its identity) ──
+        (!useTree&&!isArena&&(spellPool.length>0||raceAbilities.length>0))&&h(React.Fragment, null,
           h('div', { style:{ display:'flex', alignItems:'center', gap:6, flexShrink:0, margin:'6px 6px 3px 10px', paddingTop:6, borderTop:`1px solid ${EW.panelEdge}` } },
             h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.16em' } }, 'SPELL POOL'),
             h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName), secJob ? ' + ' + getJobDisplay(secJob) : ''),

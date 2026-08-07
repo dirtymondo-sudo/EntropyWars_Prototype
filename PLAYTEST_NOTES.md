@@ -4,7 +4,43 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## 🎥 CAMERA "RANDOM ZOOM-IN" PURGE (2026-08-03, LATEST) — battle.js, ai.js, online.js, index.html
+## 🌳 SPELL TREE ("Tree of Life" selector) PHASE A (2026-08-07, LATEST) — data.js, party-builder.js, battle.js, state.js, map.js, online.js, styles-base.css, three-vfx-effects.js, index.html
+
+Spec: `SPELL_TREE_REDESIGN(2).md` (status header there lists what shipped vs
+Phase B). The party-builder flat pool is now a 13-node tree for every job
+EXCEPT Freelancer (kept flat until its wildcard-socket pass): root = Basic
+Attack, middle pillar = race (4), right = primary job, left = secondary job.
+Key wiring (don't re-learn):
+- data.js: `CLASS_TREE` is DERIVED from `CLASS_SPELL_LEARN_ORDER` first-4
+  (learn order IS ring order now — edit the learn order, the tree follows).
+  `RACE_TREE` = curated final-4 for 79 races; other races fall back to
+  `getRaceTreeSpells` (first 4 existing abilities minus job-tree ids).
+  Legality/repair/random: `isTreeLoadoutLegal`, `treeLegalSubset`,
+  `buildTreeLegalLoadout` (all on window + load-data exports; schema tests
+  in content-schema.test.js exercise them).
+- ENFORCEMENT lives in createUnit (map.js — both customSpells trim sites) —
+  that's also the online host-authority chokepoint — plus receipt-time
+  sanitize in online.js party-config, builder self-heal, and every random/
+  optimize/auto-fill loadout roller (state.js applyRandomSpellsAndSecJob,
+  battle.js randomSpellLoadoutForClass / optimizeCurrentTeams / _doAutoFill).
+- Ring = tier (I,I,II,III): retagged rampart/revive1/dragonSlash/leechSeed→III,
+  lifeDrain→II, lullaby/camouflage→I; voidRush & overclock →III (race-only
+  capstones now — cut from Psychic/Engineer learn orders).
+- Clash: banned movement nodes render 🔒 "sealed" — can't equip, DO count
+  as connected (pass-through), both in UI and legality fn.
+- Renames with legacy aliases (SPELL_BY_ID alias table, data.js ~7900):
+  raceChassisSlan→raceChassisSlam (three-vfx-effects.js keys renamed too),
+  raceSuppressingFire→raceSuppressiveFire, raceLavaLamp→racePlasmaWhip
+  (lavaLamp deleted). sharedHexOfToil lost its Poison rider (§2.1);
+  curse/steal/naughty are −2 ATK single-stat now; haymaker pays off vs
+  Rooted (Iron Grip combo), not Stagger.
+- UI: `SpellTreePanel` in party-builder.js (~line 985): % positions in
+  TREE_NODE_POS, SVG line layer, reachable nodes pulse (keyframes in
+  styles-base.css: ewTreeReachPulse/ewTreeCapstoneGlow/ewTreeShake),
+  clicking a far node auto-equips the BFS path, unequip blocks if it would
+  sever (shake + error sfx). Tooltips reuse showSpellTip.
+
+## 🎥 CAMERA "RANDOM ZOOM-IN" PURGE (2026-08-03) — battle.js, ai.js, online.js, index.html
 Token → `20260803b-cors`. Root-caused the long-standing "camera zooms in on a
 unit then back out for no reason" complaints (after press-refund casts, after
 kills, during AI turns, EOR beats). It was never ONE bug — seven independent
