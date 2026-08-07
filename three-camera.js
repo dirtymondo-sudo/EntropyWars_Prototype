@@ -282,7 +282,19 @@ const ThreeCamera = (function () {
            Mode free-roam keeps real collision (the player drives that
            camera and expects it to behave physically). */
         const skipBoomCollide = !!(cam._cineTps && !cam._tpsCollide);
-        if ((isTps || cam._cineKeepSubject) && !skipBoomCollide) {
+        /* TPS rigs ONLY — never for a bare keep-subject flag. While a shot is
+           LIVE, _cineTps is set and skipBoomCollide already suppresses this
+           march; the only frames where "_cineKeepSubject without a rig" ever
+           occurred were the post-action RETURN windows (press-refund hold,
+           settle/restore tweens), where battle.js keeps the flag alive through
+           the un-tilt while _apply() has already auto-released _cineTps. In
+           that window the camera still sits at the shot's near-level pitch, so
+           the almost-horizontal boom skimmed the terrain and this march
+           dollied the eye hard in toward the focal on any raised tile/prop it
+           crossed — the "camera zooms in for no reason while returning from
+           the target to the caster" bug. Those frames now take the tactical
+           hard floor below instead (a lift, never a dolly-zoom). */
+        if (isTps && !skipBoomCollide) {
             const STEPS = 12;
             let f = 1;
             for (let i = 1; i <= STEPS; i++) {
@@ -332,7 +344,11 @@ const ThreeCamera = (function () {
         const subjectLook = !isTps && !cam._cineKeepSubject
             && (focalY - _groundYWorld(focalX, focalZ)) > ts * 0.85;
 
-        if (dirY > 1e-4 || !(isTps || cam._cineKeepSubject)) {
+        /* keep-subject WITHOUT a live rig (post-action return tweens) counts
+           as tactical here: with its boom march gone (above) the floor is the
+           only thing keeping the eye above a ridge mid-return, and a floor
+           lift reads as a small crane — not the dolly zoom-in the march made. */
+        if (dirY > 1e-4 || !isTps) {
             const eg = _groundYWorld(eyeX, eyeZ) + clear;
             if (eyeY < eg) eyeY = eg;
             /* ── SKY-GAZE LIFT (board/tactical modes only) ──
