@@ -15376,9 +15376,9 @@
         // Two-beat JRPG action shot (see _playCineActionShot): boom lengths and
         // angles for the CAST close-up (beat 1, facing the caster) and the HIT
         // reverse cut (beat 2, framing the victim).
-        const CINE_FACE_DIST_TILES = 3.4;  // beat 1 — tight hero framing of the caster
+        const CINE_FACE_DIST_TILES = 2.8;  // beat 1 — tight hero framing of the caster
         const CINE_FACE_TILT       = 76;   // beat 1 pitch: a touch above eye line, looking down
-        const CINE_HIT_DIST_TILES  = 4.4;  // beat 2 — victim framing
+        const CINE_HIT_DIST_TILES  = 3.2;  // beat 2 — victim framing (close JRPG hit shot)
         const CINE_HIT_TILT        = 74;   // beat 2 pitch
         const CINE_HIT_SWING       = 26;   // extra yaw past the OTS offset → ¾ view of the victim
         /* Zoom that encodes an explicit TPS boom length (world tiles). */
@@ -15727,7 +15727,7 @@
                         const _span = Math.max(_maxX - _minX, _maxY - _minY);
                         const _tiltWide = CINE_HIT_TILT - 8;
                         const _zoomWide = Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
-                            _cineZoomForTiles(_span + 4.5, _tiltWide));
+                            _cineZoomForTiles(_span + 3.0, _tiltWide));
                         const _gPx = (typeof window._camGroundPx === 'function')
                             ? window._camGroundPx(Math.round(_wcx), Math.round(_wcy)) : 0;
                         _cineTpsAnchor({ x: _wcx, y: _wcy }, null);
@@ -15765,7 +15765,7 @@
                     const _pairShot = len <= 4.2;
                     const zoomHit = _pairShot
                         ? Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
-                                   _cineZoomForTiles(len + 3.0, CINE_HIT_TILT))
+                                   _cineZoomForTiles(len + 2.0, CINE_HIT_TILT))
                         : _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES);
                     _cineHardCut({
                         x: _pairShot ? tx - dirx * len * 0.24 : tx,
@@ -40786,7 +40786,7 @@
                     const _pairShot = len <= 4.2;
                     const zoomHit = _pairShot
                         ? Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
-                                   _cineZoomForTiles(len + 3.0, CINE_HIT_TILT))
+                                   _cineZoomForTiles(len + 2.0, CINE_HIT_TILT))
                         : _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES);
                     _cineHardCut({
                         x: _pairShot ? target.x - (dx / len) * len * 0.24 : target.x,
