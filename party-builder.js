@@ -634,7 +634,12 @@ function buildDefaultCustomSpells(race, cls, secJob) {
      default below. */
   if (typeof window.classHasSpellTree === 'function' && window.classHasSpellTree(cls)
       && typeof window.treeLegalSubset === 'function') {
-    const p = (typeof window.getClassTreeSpells === 'function' && window.getClassTreeSpells(cls)) || [];
+    /* Freelancer default: its two fixed openers + race r1–r2 (the capstone
+       needs a P3 socket fill, so it drops out via connectivity — sockets
+       are the player's call). */
+    const p = (cls === 'Freelancer')
+      ? Object.values(window.FL_FIXED || {})
+      : ((typeof window.getClassTreeSpells === 'function' && window.getClassTreeSpells(cls)) || []);
     const r = (typeof window.getRaceTreeSpells === 'function' && window.getRaceTreeSpells(race, cls)) || [];
     const wish = [...p.filter(Boolean), ...r.slice(0, 2).filter(Boolean)];
     const picks = window.treeLegalSubset(race, cls, secJob, wish);
@@ -705,6 +710,11 @@ function legalCustomSpellIds(race, cls, secJob) {
     const sealed = typeof window.treeSealedIds === 'function' ? window.treeSealedIds(tree) : new Set();
     const ok = new Set();
     for (const id of Object.values(tree.nodes)) if (id && !sealed.has(id)) ok.add(id);
+    /* Freelancer: any wildcard-pool spell may legally sit in a socket —
+       connectivity is enforced separately by treeLegalSubset. */
+    if (cls === 'Freelancer' && typeof window.flWildcardPool === 'function') {
+      for (const sp of window.flWildcardPool(race)) if (sp.id && clashSpellOk(sp)) ok.add(sp.id);
+    }
     return ok;
   }
   const ok = new Set();
@@ -1074,17 +1084,22 @@ function computeTreeEquipPath(tree, sealed, equippedIds, targetKey) {
 }
 
 function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, raceLabel,
-                          onNodeClick, onNodeHoverIn, onNodeHoverOut, hoverPath, shakeKey, onOpenSubjob }) {
+                          onNodeClick, onNodeHoverIn, onNodeHoverOut, hoverPath, shakeKey, onOpenSubjob,
+                          onSocketClick }) {
   const equippedSet = new Set(equipped || []);
   const connected = (typeof window.treeReachableKeys === 'function')
     ? window.treeReachableKeys(tree, equippedSet) : new Set(['root']);
   const headColor = { P: EW.space };   // pillar HEADER text only — nodes wear category colors
   const hoverSet = hoverPath ? new Set(hoverPath) : null;
   const used = (equipped || []).length;
+  const isFL = !!tree.isFreelancer;
 
   const nodeState = (key) => {
     if (key === 'root') return 'root';
     const id = tree.nodes[key];
+    // Freelancer: an unfilled wildcard socket is its own state — a slot the
+    // player clicks to browse the pool (vs 'empty' = missing branch node).
+    if (!id && isFL && tree.sockets && tree.sockets[key]) return 'socket';
     if (!id) return 'empty';
     if (sealed.has(id)) return 'sealed';
     if (equippedSet.has(id)) return 'equipped';
@@ -1134,6 +1149,15 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
     if (st8 === 'root') {
       style = { ...base, background: _treeMixBg('#ffffff', 0.14), boxShadow: '0 0 12px rgba(255,255,255,0.25)' };
       glyph = '⚔'; label = 'Basic Attack';
+    } else if (st8 === 'socket') {
+      // open wildcard socket: dashed gold ring + the tier(s) it accepts.
+      const tiers = (tree.sockets[key] || []).join('·');
+      const litAdj = tree.edges.some(([a, b]) =>
+        (a === key && connected.has(b)) || (b === key && connected.has(a)));
+      style = { ...base, border: '2px dashed ' + (litAdj ? EW.time : 'rgba(242,196,104,0.35)'),
+        color: litAdj ? EW.time : EW.inkDim, cursor: 'pointer',
+        ...(litAdj ? { animation: 'ewTreeReachPulse 1.6s ease-in-out infinite' } : {}) };
+      glyph = '＋'; label = 'WILDCARD ' + tiers;
     } else if (st8 === 'empty') {
       style = { ...base, border: '2px dashed rgba(255,255,255,0.14)', color: EW.inkDim };
     } else if (st8 === 'equipped') {
@@ -1160,7 +1184,8 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
     return h('div', { key, style: { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none' } },
       h('div', {
         style: { ...style, pointerEvents: 'auto' },
-        onClick: (st8 === 'equipped' || st8 === 'reachable' || st8 === 'far') ? () => onNodeClick(key) : undefined,
+        onClick: st8 === 'socket' ? () => onSocketClick && onSocketClick(key)
+          : (st8 === 'equipped' || st8 === 'reachable' || st8 === 'far') ? () => onNodeClick(key) : undefined,
         onMouseEnter: sp ? (e) => onNodeHoverIn(key, sp, e) : undefined,
         onMouseLeave: sp ? () => onNodeHoverOut() : undefined,
       },
@@ -1206,8 +1231,11 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
       style: { position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, pointerEvents: 'none' } }, edgeNodes),
     pillarHead(19, getJobDisplay(clsName).toUpperCase(), headColor.P),
     pillarHead(50, (raceLabel || '').toUpperCase(), fc),
-    pillarHead(81, secJob ? getJobDisplay(secJob).toUpperCase() : '＋ SUBCLASS',
-      secJob ? EW.ink : EW.inkMute, onOpenSubjob, secJob ? 'CHANGE' : 'SELECT'),
+    isFL
+      // Freelancer has no subclass — the right pillar IS the wildcard rack.
+      ? pillarHead(81, 'WILDCARDS', EW.time)
+      : pillarHead(81, secJob ? getJobDisplay(secJob).toUpperCase() : '＋ SUBCLASS',
+          secJob ? EW.ink : EW.inkMute, onOpenSubjob, secJob ? 'CHANGE' : 'SELECT'),
     chips,
     h('div', { style: { position: 'absolute', left: '50%', top: 'calc(91% + 30px)', transform: 'translateX(-50%)', whiteSpace: 'nowrap', zIndex: 2 } }, pips));
 }
@@ -1841,12 +1869,18 @@ function PartyBuilder() {
      wildcard-socket tree ships. */
   const useTree = !isArena && typeof window.classHasSpellTree === 'function'
     && window.classHasSpellTree(clsName) && typeof window.buildUnitSpellTree === 'function';
+  // Freelancer's tree derives socket placement from the equipped list, so
+  // the equipped ids are part of the tree's identity (other classes ignore them).
   const unitTree = React.useMemo(() => useTree
-    ? window.buildUnitSpellTree(unitRace, clsName, secJob) : null, [useTree, unitRace, clsName, secJob, _]);
+    ? window.buildUnitSpellTree(unitRace, clsName, secJob, customSpells || [])
+    : null, [useTree, unitRace, clsName, secJob, customSpells, _]);
   const treeSealed = React.useMemo(() => (unitTree && typeof window.treeSealedIds === 'function')
     ? window.treeSealedIds(unitTree) : new Set(), [unitTree]);
   const [treeHoverPath, setTreeHoverPath] = React.useState(null);
   const [treeShake, setTreeShake] = React.useState(null);
+  // Freelancer wildcard sockets: which socket's picker is open (node key or null).
+  const [flSocketPick, setFlSocketPick] = React.useState(null);
+  React.useEffect(() => { setFlSocketPick(null); }, [player, slot, clsName, unitRace]);
   const treeShakeTimer = React.useRef(null);
   const shakeTreeNode = (key) => {
     setTreeShake(key);
@@ -1892,6 +1926,34 @@ function PartyBuilder() {
     } else setTreeHoverPath(null);
   };
   const treeNodeHoverOut = () => { hideSpellTip(); setTreeHoverPath(null); };
+  /* Freelancer socket flow: click an open socket → picker overlay; picking a
+     spell equips it (customSpells only — placement re-derives). */
+  function flEquipWildcard(spellId) {
+    if (!spellId) return;
+    if (!st.partyMeta[player]) st.partyMeta[player] = [];
+    if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
+    const m = st.partyMeta[player][slot];
+    if (!Array.isArray(m.customSpells)) m.customSpells = [];
+    const arr = m.customSpells;
+    if (arr.includes(spellId) || arr.length >= slotCap) { sfx('uiError'); return; }
+    const candidate = [...arr, spellId];
+    if (typeof window.isTreeLoadoutLegal === 'function'
+        && !window.isTreeLoadoutLegal(unitRace, clsName, secJob, candidate)) { sfx('uiError'); return; }
+    arr.push(spellId);
+    setFlSocketPick(null);
+    hideSpellTip();
+    st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
+  }
+  const flSocketPool = React.useMemo(() => {
+    if (!flSocketPick || !unitTree || !unitTree.isFreelancer
+        || typeof window.flWildcardPool !== 'function') return [];
+    const tiers = (unitTree.sockets && unitTree.sockets[flSocketPick]) || [];
+    const tierOf = (sp) => sp.tier === 'III' ? 'III' : sp.tier === 'II' ? 'II' : 'I';
+    return window.flWildcardPool(unitRace)
+      .filter(sp => tiers.includes(tierOf(sp)) && clashSpellOk(sp))
+      .sort((a, b) => (tierOf(a) === tierOf(b) ? 0 : tierOf(a) < tierOf(b) ? -1 : 1)
+        || pbCatRank(a) - pbCatRank(b) || (a.name || '').localeCompare(b.name || ''));
+  }, [flSocketPick, unitTree, unitRace, _]);
   const spellPool = React.useMemo(() => { if (typeof window.SPELL_LIBRARY==='undefined') return []; const mainJob=clsName,secJ=secJob,pool=[]; for (const sp of Object.values(window.SPELL_LIBRARY)){if(!sp||sp.kind==='basicAttack'||!clashSpellOk(sp))continue;const isM=typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,mainJob);const isS=secJ&&typeof window.isSpellNativeToClass==='function'&&window.isSpellNativeToClass(sp,secJ)&&sp.tier!=='III';if(isM||isS){pool.push(sp);}} return pool; }, [clsName, secJob, _]);
 
   const numerals = ['I','II','III','IV','V','VI','VII','VIII'];
@@ -2140,21 +2202,46 @@ function PartyBuilder() {
           h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.04em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 } }, 'adds its spells to the pool below · shifts stats'),
           h('span', { style:{ fontSize:10, color:fc, letterSpacing:'0.1em', flexShrink:0 } }, '▾ CHANGE')),
 
-        // ── the spell tree (every job but Freelancer) ──
+        // ── the spell tree (every job — Freelancer gets wildcard sockets) ──
         useTree&&unitTree&&h(React.Fragment, null,
           h('div', { style:{ display:'flex', alignItems:'center', gap:6, flexShrink:0, margin:'6px 6px 3px 10px', paddingTop:6, borderTop:`1px solid ${EW.panelEdge}` } },
             h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.16em' } }, 'SPELL TREE'),
-            h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName), secJob ? ' + ' + getJobDisplay(secJob) : ''),
-            h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } }, 'CLICK A NODE · DISTANT NODES AUTO-EQUIP THE PATH')),
-          h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', paddingTop:6, paddingBottom:4 } },
+            h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName), unitTree.isFreelancer ? ' + WILDCARDS' : (secJob ? ' + ' + getJobDisplay(secJob) : '')),
+            h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } },
+              unitTree.isFreelancer ? 'CLICK A ＋ SOCKET · BORROW ANY JOB\'S SPELL' : 'CLICK A NODE · DISTANT NODES AUTO-EQUIP THE PATH')),
+          h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', paddingTop:6, paddingBottom:4, position:'relative' } },
             h(SpellTreePanel, { tree: unitTree, sealed: treeSealed, equipped: customSpells || [],
               slotCap, fc, clsName, secJob,
               raceLabel: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace),
               onNodeClick: treeNodeClick, onNodeHoverIn: treeNodeHoverIn, onNodeHoverOut: treeNodeHoverOut,
               hoverPath: treeHoverPath, shakeKey: treeShake,
-              onOpenSubjob: !isArena ? () => { setEquipPicker('subjob'); sfx('uiCursorMove'); } : undefined }))),
+              onOpenSubjob: (!isArena && !unitTree.isFreelancer) ? () => { setEquipPicker('subjob'); sfx('uiCursorMove'); } : undefined,
+              onSocketClick: unitTree.isFreelancer ? (key) => { setFlSocketPick(key); sfx('uiCursorMove'); } : undefined }),
+            // ── wildcard socket picker (Freelancer) ──
+            flSocketPick && unitTree.isFreelancer && h('div', {
+              style:{ position:'absolute', inset:0, zIndex:5, background:'rgba(5,5,9,0.88)',
+                display:'flex', flexDirection:'column' },
+              onClick:(e)=>{ if (e.target === e.currentTarget) { setFlSocketPick(null); hideSpellTip(); } } },
+              h('div', { style:{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0 } },
+                h('span', { style:{ fontSize:10, color:EW.time, letterSpacing:'0.16em' } }, '＋ WILDCARD SOCKET'),
+                h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.1em' } },
+                  'TIER ' + (((unitTree.sockets||{})[flSocketPick]||[]).join(' / ')) + ' · ANY JOB'),
+                h('span', { style:{ flex:1 } }),
+                h('span', { style:{ fontSize:10, color:EW.inkDim, cursor:'pointer', padding:'2px 6px', border:`1px solid ${EW.panelEdge}` },
+                  onClick:()=>{ setFlSocketPick(null); hideSpellTip(); } }, '✕ CLOSE')),
+              h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:3, padding:'4px 2px' } },
+                flSocketPool.map(sp => {
+                  const already = (customSpells || []).includes(sp.id);
+                  const cantEquip = already || (customSpells || []).length >= slotCap
+                    || (typeof window.isTreeLoadoutLegal === 'function'
+                        && !window.isTreeLoadoutLegal(unitRace, clsName, secJob, [...(customSpells || []), sp.id]));
+                  return h(SpellBlade, { key: sp.id, sp, pool:true, equipped: already, dim: cantEquip && !already,
+                    onClick: () => flEquipWildcard(sp.id),
+                    onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
+                })))
+          )),
 
-        // ── the pool (Freelancer only — flat borrowing is its identity) ──
+        // ── flat pool — FALLBACK only (tree fns unavailable) ──
         (!useTree&&!isArena&&(spellPool.length>0||raceAbilities.length>0))&&h(React.Fragment, null,
           h('div', { style:{ display:'flex', alignItems:'center', gap:6, flexShrink:0, margin:'6px 6px 3px 10px', paddingTop:6, borderTop:`1px solid ${EW.panelEdge}` } },
             h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.16em' } }, 'SPELL POOL'),

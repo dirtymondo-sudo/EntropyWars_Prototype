@@ -16824,6 +16824,16 @@
                 showFloatingTextForUnit(target, `${_res.absorbed}`, 'mp');
             }
 
+            /* Indomitable Will (homosapien capstone): the first blow that
+               would kill leaves the unit at 1 HP and consumes the status.
+               HP + statuses ride state-sync, so guests see the survival. */
+            if (finalDamage >= target.hp && unitHasStatus(target, 'indomitable')) {
+                finalDamage = Math.max(0, target.hp - 1);
+                clearStatus(target, 'indomitable');
+                addLog(`💢 ${unitDisplayName(target)} refuses to die — Indomitable Will holds them at 1 HP!`);
+                if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(target, '💢 1 HP!', 'buff');
+            }
+
             if (finalDamage > 0) {
                 target.hp -= finalDamage;
                 target._tookDamageThisRound = true;
@@ -18973,7 +18983,8 @@
             /* Spell-tree classes roll a tree-legal random walk (secondary job
                is picked later in createUnit — a no-secondary walk stays legal
                once one is added, the tree only ever GAINS nodes). Freelancer
-               keeps the flat-pool roll below. */
+               rolls its wildcard-socket walk through the same call (Phase B);
+               the flat-pool roll below is only the no-tree fallback. */
             if (typeof classHasSpellTree === 'function' && classHasSpellTree(cls)
                 && typeof buildTreeLegalLoadout === 'function') {
                 const treeIds = buildTreeLegalLoadout(race, cls, '');
@@ -40741,7 +40752,7 @@
         // Percussive one-shot reports — the sound OF the projectile leaving.
         // These must land on the launch frame (muzzle flash), not at cast
         // start where the aim/windup camera still has a full second to run.
-        const _PERCUSSIVE_LAUNCH_SFX = { gun: 1, doubleShot: 1, shootout: 1 };
+        const _PERCUSSIVE_LAUNCH_SFX = { gun: 1, doubleShot: 1 };
 
         function spellLaunchSfx(spell) {
             // Authored SFX cues (Spell Lab timeline) replace the default
@@ -40754,7 +40765,6 @@
             if (id === 'nuke' || id === 'sharedNuke' || id === 'raceArtilleryStrike') return 'nukeAlarm';
             // Gunslinger signature abilities.
             if (id === 'doubleShot') return 'doubleShot';
-            if (id === 'shootout') return 'shootout';
             // Gun / sniper abilities → gunshot report (id list + bullet-projectile fallback).
             if (id === 'shoot' || id === 'headshot' || id === 'precisionShot' || id === 'deadEye'
                 || id === 'kneecapShot' || id === 'ricochet1'
@@ -41782,7 +41792,6 @@
                    with the frozen-light stasis column on the target. ── */
                 const _spiralBeamSpells = {
                     raceStasisBeam: { color: 0x9fe8ff, coreColor: 0xffffff, stasisColumn: 0xbfefff },
-                    glare:          { color: 0xcc88ff, coreColor: 0xffeeff },
                 };
                 const _spiralCfg = _spiralBeamSpells[spell.id];
                 if (_spiralCfg && !_skipVisuals()
@@ -42545,14 +42554,7 @@
                                     return;
                                 }
                                 let dmg = Math.max(32, Math.floor(computeSpellBase(spell, spellPower, { floor: 0 }) * _barrageWaterMult));
-                                if (spell.id === 'shootout' && typeof window !== 'undefined'
-                                    && window.ThreeVFXEffects && window.ThreeVFXEffects.spawnBulletRain3D
-                                    && state.phase === 'battle' && !_skipVisuals()) {
-                                    // Bullet Rain: fire a spray of bullets up that rains down on this target.
-                                    window.ThreeVFXEffects.spawnBulletRain3D(unit.x, unit.y, enemy.x, enemy.y, actionMs(400));
-                                } else {
-                                    playProjectileToUnit(unit, enemy, 'damage', actionMs(380), spell.spellType, spell.projectileOverride || null, spell);
-                                }
+                                playProjectileToUnit(unit, enemy, 'damage', actionMs(380), spell.spellType, spell.projectileOverride || null, spell);
                                 playSfx(spellLaunchSfx(spell));
                                 window.setTimeout(() => {
                                     if (enemy.dead) return;
@@ -44804,11 +44806,15 @@
                     showFloatingTextForUnit(unit, `🎴 ${_card.card}`, 'buff');
                     addLog(`${unitDisplayName(unit)} draws ${_card.card}! The whole team gains +${_stages} ${_card.label}.`);
                 } else {
+                    // §2.1 single-stat rule: a warCry with its own statStageBoost
+                    // applies EXACTLY that (it used to stack on top of the old
+                    // hardcoded +2 ATK/+1 DEF); the default cry is +2 ATK only,
+                    // with a lighter +1 ATK self-boost for the crier.
                     for (const ally of allies) {
-                        // Inspiration is a stat change, not a status: full stages
-                        // for allies, a lighter self-boost for the crier.
-                        applyStatStageBoost(ally, ally.id === unit.id ? { atk: 1 } : { atk: 2, def: 1 }, `${spell.name}: `, unit);
-                        if (spell.statStageBoost) applyStatStageBoost(ally, spell.statStageBoost, `${spell.name}: `, unit);
+                        const boost = spell.statStageBoost
+                            ? spell.statStageBoost
+                            : (ally.id === unit.id ? { atk: 1 } : { atk: 2 });
+                        applyStatStageBoost(ally, boost, `${spell.name}: `, unit);
                         buffCount++;
                     }
                     showFloatingTextForUnit(unit, '🎵', 'buff');

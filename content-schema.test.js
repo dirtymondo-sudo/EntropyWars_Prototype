@@ -142,7 +142,10 @@ test('every CLASS_TREE branch is 4 known spells in ring-tier order (I,I,II,III)'
         }
     }
     assert.ok(Object.keys(D.CLASS_TREE).length >= 13, 'expected 13+ job trees');
-    assert.ok(!D.CLASS_TREE.Freelancer, 'Freelancer must NOT have a tree yet (separate pass)');
+    // Freelancer's tree is part-fixed/part-socket (FL_FIXED + FL_SOCKET_TIERS),
+    // so it has no CLASS_TREE row — but classHasSpellTree must route it in.
+    assert.ok(!D.CLASS_TREE.Freelancer, 'Freelancer has no CLASS_TREE row (socket tree instead)');
+    assert.ok(D.classHasSpellTree('Freelancer'), 'Freelancer must be tree-routed (Phase B)');
     assert.deepStrictEqual(problems, []);
 });
 
@@ -165,17 +168,38 @@ test('every RACE_TREE entry is 4 known abilities of that race, none owned by a j
     assert.deepStrictEqual(problems, []);
 });
 
-test('tree fallback races produce job-tree-free ability lists', () => {
+test('every available race has a curated RACE_TREE row (Phase B: no fallbacks left)', () => {
+    // JSON compare — AVAILABLE_RACES.filter yields a vm-realm Array whose
+    // foreign prototype fails deepStrictEqual against a local [].
+    const missing = D.AVAILABLE_RACES.filter(r => !D.RACE_TREE[r]);
+    assert.strictEqual(JSON.stringify(missing), '[]');
+});
+
+test('every race capstone (ring 4) is tier III; rings 1–3 are not', () => {
     const problems = [];
-    for (const race of D.AVAILABLE_RACES) {
-        if (D.RACE_TREE[race]) continue;
-        const ids = D.getRaceTreeSpells(race, D.RACE_DEFAULT_JOBS[race] || 'Warrior');
-        const jobIds = new Set(Object.values(D.CLASS_TREE).flat());
-        for (const id of ids) {
-            if (!D.SPELL_BY_ID[id]) problems.push(`fallback '${race}' id '${id}' unknown`);
-            if (jobIds.has(id)) problems.push(`fallback '${race}' id '${id}' owned by a job tree`);
+    for (const [race, ids] of Object.entries(D.RACE_TREE)) {
+        const cap = D.SPELL_BY_ID[ids[3]];
+        if (!cap || cap.tier !== 'III') problems.push(`race '${race}' capstone '${ids[3]}' is not tier III`);
+        ids.slice(0, 3).forEach((id, i) => {
+            const sp = D.SPELL_BY_ID[id];
+            if (sp && sp.tier === 'III') problems.push(`race '${race}' ring ${i + 1} '${id}' is tier III`);
+        });
+    }
+    assert.deepStrictEqual(problems, []);
+});
+
+test('§2.1 single-stat rule: only capstones may boost two stats at once', () => {
+    const problems = [];
+    for (const [race, abs] of Object.entries(D.RACE_ABILITIES)) {
+        const capId = (D.RACE_TREE[race] || [])[3];
+        for (const a of abs) {
+            const b = a.statStageBoost || null;
+            if (!b) continue;
+            const raised = Object.keys(b).filter(k => b[k] > 0);
+            if (raised.length >= 2 && a.id !== capId && a.tier !== 'III') {
+                problems.push(`${race} :: ${a.id} raises ${raised.join('+')} (non-capstone)`);
+            }
         }
-        if (ids.length > 4) problems.push(`fallback '${race}' returned ${ids.length} ids`);
     }
     assert.deepStrictEqual(problems, []);
 });
@@ -192,8 +216,6 @@ test('tree legality: adjacency, connectivity, capstone geometry, random walks', 
     assert.ok(!ok(['racePredatorDrop', 'headshot', 'rampage']), 'three capstones impossible');
     assert.ok(!ok(['raceBite', 'raceBite']), 'duplicates illegal');
     assert.ok(!ok(['fire1']), 'off-tree spell illegal');
-    assert.ok(D.isTreeLoadoutLegal('homosapien', 'Freelancer', '', ['fire1', 'meteor']),
-        'Freelancer exempt from tree rules');
     // random walks are always legal, for audited and fallback races alike
     for (const [race, cls, sec] of [['vampire', 'Sniper', 'Raider'], ['homosapien', 'Warrior', 'Tank'],
                                     ['gnome', 'Engineer', ''], ['dragon', 'Warrior', 'Black Mage']]) {
@@ -210,4 +232,35 @@ test('tree legality: adjacency, connectivity, capstone geometry, random walks', 
     assert.strictEqual(
         JSON.stringify(D.treeLegalSubset('vampire', 'Sniper', 'Raider', ['raceBite', 'headshot', 'raceMistForm'])),
         JSON.stringify(['raceBite', 'raceMistForm']));
+});
+
+test('Freelancer wildcard-socket tree: pool, placement, legality, random walks', () => {
+    const fl = (ids) => D.isTreeLoadoutLegal('homosapien', 'Freelancer', '', ids);
+    const pool = D.flWildcardPool('homosapien');
+    assert.ok(pool.length >= 40, 'wildcard pool spans the job trees');
+    assert.ok(pool.every(sp => !['improvise', 'jackOfAll', 'reallyGoodPunch'].includes(sp.id)),
+        'Freelancer fixed spells are not in the pool');
+    const t1 = pool.filter(sp => !sp.tier || sp.tier === 'I').map(sp => sp.id);
+    const t2 = pool.find(sp => sp.tier === 'II').id;
+    const t3 = pool.find(sp => sp.tier === 'III').id;
+    assert.ok(fl([]), 'empty legal');
+    assert.ok(fl(['improvise', 'jackOfAll']), 'fixed chain legal');
+    assert.ok(!fl(['improvise', 'jackOfAll', 'reallyGoodPunch']),
+        'capstone without a P3 socket fill is illegal');
+    assert.ok(fl(['improvise', 'jackOfAll', t2, 'reallyGoodPunch']),
+        'capstone with a tier-II P3 fill legal');
+    assert.ok(fl([t1[0]]), 'a tier-I wildcard sits at S1 (root-adjacent)');
+    assert.ok(!fl([t3]), 'tier-III wildcard without S1–S3 support illegal');
+    assert.ok(fl([t1[0], t1[1], t2, t3]), 'full wildcard pillar to the S4 capstone legal');
+    assert.ok(!fl([t1[0], t1[1], t1[2], t1[3] || 'fire1']),
+        'a fourth tier-I wildcard has no socket (S1, S2, P3 max — and P3 needs P2)');
+    for (let i = 0; i < 20; i++) {
+        const walk = D.buildTreeLegalLoadout('homosapien', 'Freelancer', '');
+        assert.ok(fl(walk), `Freelancer random walk illegal: ${walk.join(',')}`);
+        assert.ok(walk.length <= D.SPELL_SLOT_MAX, 'walk within slot cap');
+    }
+    // repair: off-pool / disconnected ids drop, earlier picks win
+    assert.strictEqual(
+        JSON.stringify(D.treeLegalSubset('homosapien', 'Freelancer', '', ['improvise', 'noSuchSpell', 'reallyGoodPunch', 'jackOfAll', t2])),
+        JSON.stringify(['improvise', 'jackOfAll', t2]));
 });

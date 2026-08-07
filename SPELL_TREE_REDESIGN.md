@@ -32,13 +32,45 @@ them, never through; lit edges are neutral silver. The secondary-job
 header renders as an explicit gold-bordered button with ▾ and a
 CHANGE/SELECT hint instead of plain text.
 
-**Still open (Phase B):** FREELANCER wildcard-socket tree (deliberately
-deferred — it keeps the flat pool); ~19 new race abilities for the thin races
-(those use the fallback); race-capstone tier-III tags + power passes; the
-21-buff two-stat retune; deleting cut job spells outright (they're only
-out of the learn orders/trees today); job-spell→race rehomes (thunderstorm,
-radiantBolt, protect1, trunkThrow — need a homing mechanism that doesn't
-stamp `_isRaceAbility` on library spells).
+**Status: PHASE B SHIPPED 2026-08-07** (branch `claude/spell-tree-redesign-ij5n2f`,
+token `20260807k-cors`). Everything from the Phase-A "still open" list landed:
+- **Freelancer wildcard-socket tree** — `classHasSpellTree('Freelancer')` is now
+  true. data.js: `FL_FIXED` (P1 improvise → P2 jackOfAll → P4 reallyGoodPunch★),
+  `FL_SOCKET_TIERS` (P3 = I/II; S1/S2 = I, S3 = II, S4 = III), `flWildcardPool`
+  (union of all job trees minus the unit's race-tree ids), `buildFreelancerTree`
+  (socket placement is DERIVED from customSpells by backtracking search — no
+  save-format change). isTreeLoadoutLegal / treeLegalSubset / buildTreeLegalLoadout
+  all grew Freelancer branches (host online validation + AI walks included).
+  party-builder: sockets render as dashed-gold ＋ chips; clicking one opens a
+  tier-capped picker overlay of every job's spells; right pillar header reads
+  WILDCARDS (Freelancer has no subclass).
+- **~20 new race abilities** for the 17 thin races (homosapien ×3, antihero ×2,
+  marksman ×2, fairy ×2, knight, cowboy, wizard, giant, bigfoot, ai,
+  orb of light, skeleton, zombie, dreameater, goatman, chosen one, gnome +
+  raceDivineSmite) — every race now has a curated RACE_TREE row; the
+  first-4 fallback is dead. New statuses: `indomitable` (survive-lethal at
+  1 HP, consumed on trigger — hook in battle.js applyDamageToUnit),
+  `pixieDust` (+2 move). NOTE: angel's capstone is the NEW `raceDivineSmite`,
+  not a promoted `raceSmite` — the shared smite sits at ring 1/3 for
+  nephilim/priest and promoting it would have broken ring=tier.
+  Rangefinder reuses the `remoteView` kind (the remoteView spell was deleted;
+  the kind machinery stays).
+- **Capstone pass**: all 96 race capstones are tier III with power passes into
+  the 190–210 band (single-target) / 160–190 (AoE/line) — MP costs re-derive
+  automatically via the load-time mana-cost formula, so the `cost:` literals
+  are seeds only.
+- **§2.1 retune**: 15 non-capstone two-stat buffs are single-stat now; warCry's
+  battle.js hardcode is +2 ATK only AND no longer stacks with a spell's own
+  statStageBoost (it used to double-dip).
+- **Cut job spells DELETED** (18): shootout, darkPact, veilOfLight, pistolWhip,
+  assassinate, shadowLunge, glare, remoteView, bubble, plasmaGun, rocketCharge,
+  sonicCharge, fermata, zantetsuken, parryStance, lungingStrike, spotter,
+  steadyAim (+ its orphaned status/AI-weight entries).
+- **Rehomes** via the existing movepool-share table (borrowed by id — no
+  `_isRaceAbility` stamp, exactly the empBurst/overclock precedent):
+  thunderstorm→mothman, radiantBolt→angel, protect1→priest, trunkThrow→bigfoot.
+- content-schema.test.js: new invariants (curated row for every race, capstone
+  tier III + ring coherence, single-stat rule, Freelancer socket legality).
 
 **Original design doc follows.** This doc was the blueprint for replacing
 the flat spell pool in the party builder with a Kabbalah-style skill tree: **4 race
