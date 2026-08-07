@@ -5543,9 +5543,8 @@ const SHARED_TIDAL_SURGE = {
     id: 'sharedTidalSurge', spellType: 'anomaly', element: 'water', name: 'Water Pulse',
     type: 'damage', cost: 30, dmg: 80, range: 5,
     kind: 'linePush', damageType: 'magic', lineWidth: 1, pushDistance: 2,
-    leaveTerrain: 'water',
     statusEffects: [{ id: 'slow', duration: 1 }],
-    desc: 'Deals WEAK magic damage to All Enemies in a line and pushes them back. Applies Slow. Leaves water tiles behind.'
+    desc: 'Blast a surging torrent of water in a line, dealing WEAK magic damage to All Enemies and pushing them back. Applies Slow.'
 };
 
 /* ── 2026-07-17 spell/status pass: new shared kits ──────────────────────
@@ -7187,9 +7186,8 @@ const RACE_ABILITIES = {
         { id: 'raceDragonfire', spellType: 'unholy', name: 'Dragonfire',
           type: 'damage', cost: 35, dmg: 120, range: 4,
           kind: 'line', damageType: 'magic', lineWidth: 1,
-          leaveTerrain: 'lava',
           statusEffects: [{ id: 'burn', duration: 2 }],
-          desc: 'Deals MEDIUM magic damage to All Enemies in a line. Applies Burn. Leaves lava tiles behind.' },
+          desc: 'Exhale a roaring column of dragonfire, dealing MEDIUM magic damage to All Enemies in a line. Applies Burn.' },
         SHARED_WING_ATTACK,
         { id: 'raceDragonfear', spellType: 'unholy', name: 'Dragonfear',
           type: 'debuff', cost: 25, range: 0, apCost: 1,
@@ -7249,8 +7247,7 @@ const RACE_ABILITIES = {
         { id: 'raceAtomicBreath', spellType: 'tech', name: 'Atomic Breath',
           type: 'damage', cost: 40, dmg: 120, range: 5,
           kind: 'line', damageType: 'magic', lineWidth: 1,
-          leaveTerrain: 'scorched',
-          desc: 'Deals MEDIUM magic damage to All Enemies in a line. Leaves scorched tiles behind.' },
+          desc: 'Unleash a searing torrent of blue atomic fire, dealing MEDIUM magic damage to All Enemies in a line.' },
         { id: 'raceSkyscraperToss', spellType: 'unholy', name: 'Skyscraper Toss',
           type: 'damage', cost: 35, dmg: 120, range: 5,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1, ignoresLineOfSight: true,

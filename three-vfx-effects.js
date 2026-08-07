@@ -1670,6 +1670,41 @@ SPELL_MAP['discordance']      = { impact: '_dark_debuff_impact' };
 SPELL_MAP['spotter']          = { impact: '_dark_mark_impact' };
 SPELL_MAP['freeEnergy']       = { aura: '_buff_tech_aura' };
 
+/* ─── BREATH / SURGE BLASTS (2026-08-07) ────────────────────────────────
+   The breath-and-pulse family (Dragonfire, Atomic Breath, Hellmouth, Water
+   Pulse, Blue Wave, Formic Acid) stops firing the generic volumetric LASER
+   and gets a proper elemental breath instead: _sigBreathBlast3D (three-vfx-
+   effects, beam intent) — nested eroding energy cones flaring muzzle→tip,
+   flame tongues billowing inside, per-tile washes, terminal shock ring.
+   These defs REPLACE the hydrated `<id>_beam` defs wholesale; the bespoke
+   path only reads the fields below. Gameplay note: Dragonfire / Atomic
+   Breath / Water Pulse no longer terraform (leaveTerrain removed in
+   data.js) — the blast is the whole show. */
+EFFECTS['raceDragonfire_beam'] = {
+    beamBreath: true, breathTheme: 'fire', chargeMs: 180, beamMs: 820,
+    impactTileEffect: 'raceDragonfire_impact_tile', shake: 'normal',
+};
+EFFECTS['raceAtomicBreath_beam'] = {
+    beamBreath: true, breathTheme: 'bluefire', chargeMs: 240, beamMs: 880,
+    impactTileEffect: 'raceAtomicBreath_impact_tile', shake: 'hard',
+};
+EFFECTS['raceHellmouth_beam'] = {
+    beamBreath: true, breathTheme: 'hellfire', chargeMs: 160, beamMs: 780,
+    impactTileEffect: 'raceHellmouth_impact_tile', shake: 'normal',
+};
+EFFECTS['sharedTidalSurge_beam'] = {
+    beamBreath: true, breathTheme: 'water', chargeMs: 140, beamMs: 720,
+    impactTileEffect: 'sharedTidalSurge_impact_tile', shake: 'normal',
+};
+EFFECTS['sentaiBlueWave_beam'] = {
+    beamBreath: true, breathTheme: 'water', chargeMs: 160, beamMs: 700,
+    impactTileEffect: 'sentaiBlueWave_impact_tile', shake: 'normal',
+};
+EFFECTS['raceFormicAcid_beam'] = {
+    beamBreath: true, breathTheme: 'acid', chargeMs: 120, beamMs: 680,
+    impactTileEffect: 'raceFormicAcid_impact_tile', shake: 'soft',
+};
+
 /* ─── MACHINE ELVES — prism lattice visual pass (2026-07-09) ─────────────
    The whole kit previously fell through to bare element-tint defaults. Every
    piece of the lattice loop now has a bespoke look:
@@ -4344,6 +4379,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            the bespoke show. */
         if (beamDef.beamBoomerang) {
             try { _sigSonicBoomerang3D(fromX, fromY, hitTiles, beamDef); } catch (e) {}
+            return;
+        }
+
+        /* Breath / surge spells (Dragonfire, Atomic Breath, Water Pulse…)
+           own their ENTIRE travel too: a churning volumetric breath cone
+           instead of the generic laser cylinder. The signature handles its
+           own charge beat, per-tile washes, terminal blast and shake. */
+        if (beamDef.beamBreath) {
+            try { _sigBreathBlast3D(fromX, fromY, hitTiles, beamDef); } catch (e) {}
             return;
         }
 
@@ -16890,6 +16934,217 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        from the caster to the end of the line, crack around, and race home —
        with sonic rings popping on every tile BOTH ways. battle.js lands the
        second damage pass timed to the return. ──────────────────────────── */
+    /* ── BREATH BLAST — Dragonfire / Atomic Breath / Water Pulse family ──
+       A volumetric elemental breath: three nested eroding energy cones lance
+       from the caster's mouth down the line (narrow at the muzzle, flared at
+       the far end), while pooled flame-tongue sprites billow along inside it
+       and every washed tile pops its impact effect as the front passes. No
+       terrain is implied — this is pure exhaled blast, not a terraformer.
+       Themes recolor the same rig: fire (dragon), bluefire (atomic),
+       hellfire, water (surge/pulse), acid (spit). ──────────────────────── */
+    var _BREATH_THEMES = {
+        fire:     { hot: 0xffeec2, mid: 0xff8a24, deep: 0xd8380c,
+                    tongue: 'flame',      tongueTint: null,     spark: 'ember',      tileFlames: true,  water: false, smoke: true },
+        hellfire: { hot: 0xffd9a8, mid: 0xff5218, deep: 0x8a14b8,
+                    tongue: 'flame',      tongueTint: null,     spark: 'dark-flame', tileFlames: true,  water: false, smoke: true },
+        bluefire: { hot: 0xeaffff, mid: 0x55c4ff, deep: 0x1c50e8,
+                    tongue: 'flame-hot',  tongueTint: 0x66ccff, spark: 'spark-blue', tileFlames: false, water: false, smoke: false },
+        water:    { hot: 0xf2fcff, mid: 0x5ab8f0, deep: 0x1a62c8,
+                    tongue: 'wave-1',     tongueTint: null,     spark: 'wave-1',     tileFlames: false, water: true,  smoke: false },
+        acid:     { hot: 0xf6ffd6, mid: 0xa8e832, deep: 0x3f9012,
+                    tongue: 'acid-green', tongueTint: null,     spark: 'acid-green', tileFlames: false, water: false, smoke: false },
+    };
+
+    function _sigBreathBlast3D(fromX, fromY, hitTiles, def) {
+        def = def || {};
+        if (!hitTiles || !hitTiles.length) return;
+        var ts = _cfg().tileSize || 128;
+        var theme = _BREATH_THEMES[def.breathTheme] || _BREATH_THEMES.fire;
+        var chargeMs = def.chargeMs != null ? def.chargeMs : 160;
+        var beamMs   = def.beamMs != null ? def.beamMs : 780;
+        var iteId    = def.impactTileEffect || null;
+        var end = hitTiles[hitTiles.length - 1];
+
+        /* board-px frame (pooled particles) */
+        var castPx = tilePx(fromX, fromY);
+        var endPx  = tilePx(end.x, end.y);
+        var castZ  = unitSurfaceZ(fromX, fromY) + unitZBoost();
+        var pdx = endPx.x - castPx.x, pdy = endPx.y - castPx.y;
+        var lenPx = Math.sqrt(pdx * pdx + pdy * pdy) || 1;
+        var ux = pdx / lenPx, uy = pdy / lenPx;
+        var muzX = castPx.x + ux * ts * 0.32, muzY = castPx.y + uy * ts * 0.32;
+
+        /* charge beat: light gathers at the mouth */
+        _spawn({
+            x: muzX, y: muzY, z: castZ + ts * 0.06,
+            mode: 'billboard', sprite: 'flash', tint: theme.mid,
+            ml: chargeMs + 70,
+            size0: ts * 0.55, size1: ts * 0.14,
+            opacity0: 0.9, opacity1: 0,
+        });
+
+        window.setTimeout(function () {
+            if (_suppressed()) return;
+            if (def.shake) _sigShake(def.shake);
+
+            /* muzzle flash on release */
+            _spawn({
+                x: muzX, y: muzY, z: castZ + ts * 0.06,
+                mode: 'billboard', sprite: 'flash', tint: theme.hot,
+                ml: 200, size0: ts * 0.34, size1: ts * 0.85,
+                opacity0: 0.95, opacity1: 0,
+            });
+
+            /* ── the cone itself (world space) ── */
+            var a = _worldTorso(fromX, fromY);
+            var b = _worldTorso(end.x, end.y);
+            var start = new THREE.Vector3(a.x, a.y, a.z);
+            var tip   = new THREE.Vector3(b.x, b.y, b.z);
+            var dir   = new THREE.Vector3().subVectors(tip, start);
+            var fullLen = dir.length() || 1;
+            dir.normalize();
+            /* start at the mouth, wash slightly past the last tile */
+            start.addScaledVector(dir, ts * 0.30);
+            fullLen = fullLen - ts * 0.30 + ts * 0.35;
+            var quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+
+            var lanceMs = 130;
+            var fadeMs  = Math.max(200, beamMs * 0.34);
+            var holdEnd = beamMs - fadeMs;
+
+            var scene = _getVFXScene();
+            if (scene) {
+                var group = new THREE.Group();
+                function mkCone(rTip, color, hotC, op, gain, scr, order) {
+                    /* CylinderGeometry: top radius (=+Y, the far end) flared,
+                       bottom pinched at the muzzle → baked cone shape */
+                    var geo = new THREE.CylinderGeometry(1, 0.24, 1, 20, 1, true);
+                    var mat = _sigEnergyMat(color, {
+                        hot: hotC, opacity: op, gain: gain,
+                        s1x: 0.04, s1y: -scr, s2x: -0.06, s2y: -scr * 0.5,
+                        scale1: 2.3, scale2: 1.15,
+                        vFadeLo: 0.04, vFadeHi: 0.96,
+                    });
+                    var m = new THREE.Mesh(geo, mat);
+                    m.quaternion.copy(quat);
+                    m.position.copy(start);
+                    m.scale.set(0.01, 0.01, 0.01);
+                    m.renderOrder = order;
+                    group.add(m);
+                    return { mesh: m, mat: mat, baseR: rTip, baseOp: op };
+                }
+                var shells = [
+                    mkCone(ts * 0.50, theme.deep, theme.mid,  0.50, 1.5, 1.4, 210),
+                    mkCone(ts * 0.36, theme.mid,  theme.hot,  0.85, 1.8, 2.0, 211),
+                    mkCone(ts * 0.20, theme.hot,  0xffffff,   0.95, 2.0, 2.6, 212),
+                ];
+                _sigRun(group, beamMs, function (el) {
+                    var ext = _sigEaseOutCubic(_sigClamp01(el / lanceMs));
+                    var curLen = fullLen * ext;
+                    var mid3 = start.clone().addScaledVector(dir, curLen * 0.5);
+                    var pulse = 1 + 0.10 * Math.sin(el * 0.030) + 0.05 * Math.sin(el * 0.011 + 1.7);
+                    var op, erode;
+                    if (el < holdEnd) { op = 1; erode = 0.14; }
+                    else {
+                        var ft = _sigClamp01((el - holdEnd) / fadeMs);
+                        op = 1 - ft; erode = 0.14 + ft * 0.8;
+                    }
+                    for (var i = 0; i < shells.length; i++) {
+                        var L = shells[i];
+                        var r = L.baseR * pulse * (0.72 + 0.28 * ext);
+                        L.mesh.position.copy(mid3);
+                        L.mesh.scale.set(r, Math.max(0.01, curLen), r);
+                        _sigEnergyTick(L.mat, el, erode);
+                        L.mat.uniforms.uOpacity.value = L.baseOp * op;
+                    }
+                });
+            }
+
+            /* ── flame tongues billowing down the inside of the cone ── */
+            var tongueSpd = lenPx / 0.40;                 /* full line in ~400ms */
+            var waveGap = 90;
+            var waves = Math.max(3, Math.floor(holdEnd / waveGap));
+            for (var w = 0; w < waves; w++) {
+                (function (at) {
+                    window.setTimeout(function () {
+                        if (_suppressed() || !_canSpawn()) return;
+                        for (var k = 0; k < 3; k++) {
+                            var sp = tongueSpd * rn(0.75, 1.15);
+                            var travelMs = (lenPx / sp) * 1000;
+                            _spawn({
+                                x: muzX + rn(-6, 6), y: muzY + rn(-6, 6),
+                                z: castZ + rn(-ts * 0.08, ts * 0.14),
+                                vx: ux * sp + -uy * rn(-70, 70),
+                                vy: uy * sp +  ux * rn(-70, 70),
+                                vz: theme.water ? rn(-30, 50) : rn(15, 85),
+                                gravity: theme.water ? 260 : 0,
+                                drag: 0.25,
+                                mode: 'billboard',
+                                sprite: theme.tongue, tint: theme.tongueTint,
+                                ml: travelMs * rn(0.55, 1.05),
+                                size0: ts * rn(0.14, 0.22), size1: ts * rn(0.42, 0.58),
+                                opacity0: 0.85, opacity1: 0,
+                            });
+                        }
+                    }, at);
+                })(w * waveGap);
+            }
+
+            /* ── per-tile washes as the front passes ── */
+            for (var ti = 0; ti < hitTiles.length; ti++) {
+                (function (t2, at) {
+                    window.setTimeout(function () {
+                        if (_suppressed()) return;
+                        if (iteId && EFFECTS[iteId]) {
+                            _spawnEffect(EFFECTS[iteId], { tx: t2.x, ty: t2.y });
+                        }
+                        if (theme.tileFlames && typeof spawnFlameBurst3D === 'function') {
+                            spawnFlameBurst3D(t2.x, t2.y, { lifeMs: 620, hScale: 0.8, rScale: 0.85 });
+                        }
+                        if (theme.water) {
+                            _sigShockRing3D(t2.x, t2.y, {
+                                color: theme.mid, r0: ts * 0.15, r1: ts * 0.8,
+                                ms: 320, height: 6, torus: false,
+                            });
+                            _sigSparks(t2.x, t2.y, theme.spark, 4, {
+                                vxy: 110, vz0: 90, vz1: 220, gravity: 460, z: ts * 0.1 });
+                        }
+                    }, at);
+                })(hitTiles[ti], 40 + lanceMs * (ti + 1) / hitTiles.length);
+            }
+
+            /* ── terminal blast at the far end ── */
+            window.setTimeout(function () {
+                if (_suppressed()) return;
+                _sigShockRing3D(end.x, end.y, {
+                    color: theme.mid, r0: ts * 0.2, r1: ts * 1.35, ms: 420, height: ts * 0.25 });
+                _sigSparks(end.x, end.y, theme.spark, 10, {
+                    vxy: 180, vz0: 60, vz1: 260,
+                    gravity: theme.water ? 480 : 320, z: ts * 0.3 });
+            }, lanceMs + 60);
+
+            /* ── lingering smoke / steam near the far half (fire themes) ── */
+            if (theme.smoke) {
+                window.setTimeout(function () {
+                    if (_suppressed() || !_canSpawn()) return;
+                    for (var s = 0; s < 4; s++) {
+                        var frac = rn(0.5, 1);
+                        _spawn({
+                            x: castPx.x + pdx * frac + rn(-14, 14),
+                            y: castPx.y + pdy * frac + rn(-14, 14),
+                            z: castZ + ts * 0.15,
+                            vz: rn(28, 55), drag: 0.4,
+                            mode: 'y-locked', sprite: 'smoke',
+                            ml: rn(900, 1400),
+                            size0: ts * 0.35, size1: ts * 0.95,
+                            opacity0: 0.5, opacity1: 0,
+                        });
+                    }
+                }, beamMs * 0.5);
+            }
+        }, chargeMs);
+    }
+
     function _sigSonicBoomerang3D(fromX, fromY, hitTiles, def) {
         def = def || {};
         if (!hitTiles || !hitTiles.length) return;
