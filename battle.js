@@ -15462,6 +15462,12 @@
         const CINE_HIT_DIST_TILES  = 3.2;  // beat 2 — victim framing (close JRPG hit shot)
         const CINE_HIT_TILT        = 74;   // beat 2 pitch
         const CINE_HIT_SWING       = 26;   // extra yaw past the OTS offset → ¾ view of the victim
+        // Point-blank casts swap the two OTS beats for ONE side-profile
+        // close-up (camera perpendicular to the caster→target line, both
+        // actors in frame) — under this gap the OTS beats stack the two
+        // bodies front-to-back and the exchange is unreadable (all backs).
+        const CINE_SIDE_SHOT_MAX_TILES = 2.6;
+        const CINE_SIDE_TILT           = 82;   // near-level profile lens
         /* Zoom that encodes an explicit TPS boom length (world tiles). */
         function _tpsZoomForBoomTiles(distTiles) {
             const ts = CONFIG.tileSize || BASE_TILE;
@@ -15735,6 +15741,40 @@
                 // TPS rig and the dolly are shared, so every variant still
                 // reads as the same camera language.
                 const _shot = shotOpts.shotKind || 'ots';
+
+                // ── SIDE-PROFILE CLOSE-UP (2026-08-07): at point-blank range
+                // the OTS beats put both bodies on the lens axis — the player
+                // sees the caster's back in beat 1 and the victim's back in
+                // beat 2, and the exchange between them is unreadable. Under
+                // CINE_SIDE_SHOT_MAX_TILES the whole shot becomes ONE lateral
+                // framing instead: camera perpendicular to the caster→target
+                // line (whichever side the player is already viewing from, so
+                // the swing stays small), both actors in profile with the
+                // caster opening slightly favoured; at the launch beat the
+                // lens drifts onto the victim and punches in through the
+                // impact. No reverse cut — both bodies stay in frame the
+                // whole time. Sky-drop staging keeps its crane (the payload
+                // needs the airspace above the caster); multi-target wide
+                // cuts (frameTiles) keep their group reverse cut.
+                const _sideShot = _shot !== 'sky' && len <= CINE_SIDE_SHOT_MAX_TILES;
+                const _midX = (sx + tx) / 2, _midY = (sy + ty) / 2;
+                const _normYaw = a => ((a + 180) % 360 + 360) % 360 - 180;
+                let _yawSide = 0, _zoomSide = 1, _elevSide = 0;
+                if (_sideShot) {
+                    const _yawA = _normYaw(yawFwd + 90), _yawB = _normYaw(yawFwd - 90);
+                    const _curYaw = _normYaw(camera._tyaw ?? camera.yaw ?? 0);
+                    _yawSide = Math.abs(_normYaw(_yawA - _curYaw)) <= Math.abs(_normYaw(_yawB - _curYaw))
+                        ? _yawA : _yawB;
+                    // Fit the pair: boom covers the gap plus headroom, capped
+                    // so the pair's span PLUS any elevation gap between them
+                    // still fits vertically in frame.
+                    const _vGapTiles = Math.abs(tgtPx - casterPx) / ts;
+                    _zoomSide = Math.min(
+                        _tpsZoomForBoomTiles(len + 2.1),
+                        _cineZoomForTiles(len + _vGapTiles + 2.4, CINE_SIDE_TILT));
+                    _elevSide = (casterPx + tgtPx) / 2 + ts * CINE_FOCAL_RISE * 0.8;
+                }
+
                 const yawFace = yawFwd + 180 - CINE_CAM_YAW_OFFSET;
                 let _faceTilt = CINE_FACE_TILT;
                 let _faceDist = CINE_FACE_DIST_TILES;
@@ -15756,15 +15796,29 @@
                     _faceRise = CINE_FOCAL_RISE * 2.4;
                     _faceMs   = 560;
                 }
-                _cineBeatMove({
-                    x: sx + dirx * 0.1, y: sy + diry * 0.1,
-                    zoom: _tpsZoomForBoomTiles(_faceDist),
-                    tilt: _faceTilt, yaw: yawFace,
-                    elevZ: casterPx + ts * _faceRise,
-                    duration: actionMs(_faceMs), easing: 'easeInOut',
-                    _allowZoomChange: true, _bypassCap: true,
-                    _fogAllowed: fogAllowed || undefined
-                });
+                if (_sideShot) {
+                    // Anchor the rig between the pair; open a touch toward the
+                    // caster so the wind-up reads first.
+                    _cineTpsAnchor({ x: _midX, y: _midY }, sourceUnit);
+                    _cineBeatMove({
+                        x: _midX - dirx * len * 0.15, y: _midY - diry * len * 0.15,
+                        zoom: _zoomSide, tilt: CINE_SIDE_TILT, yaw: _yawSide,
+                        elevZ: _elevSide,
+                        duration: actionMs(420), easing: 'easeInOut',
+                        _allowZoomChange: true, _bypassCap: true,
+                        _fogAllowed: fogAllowed || undefined
+                    });
+                } else {
+                    _cineBeatMove({
+                        x: sx + dirx * 0.1, y: sy + diry * 0.1,
+                        zoom: _tpsZoomForBoomTiles(_faceDist),
+                        tilt: _faceTilt, yaw: yawFace,
+                        elevZ: casterPx + ts * _faceRise,
+                        duration: actionMs(_faceMs), easing: 'easeInOut',
+                        _allowZoomChange: true, _bypassCap: true,
+                        _fogAllowed: fogAllowed || undefined
+                    });
+                }
 
                 // ── BEAT 2 — THE HIT: hard cut to the victim. The cut lands
                 // a beat AFTER launch (projectile mid-flight) so the caster's
@@ -15826,6 +15880,21 @@
                             duration: Math.max(actionMs(300),
                                 Math.round(timings.travelMs * 0.5) + timings.targetHold),
                             easing: 'linear',
+                            _allowZoomChange: true, _bypassCap: true,
+                            _fogAllowed: fogAllowed || undefined
+                        });
+                        return;
+                    }
+                    // Side-profile close-up: both actors are already in frame,
+                    // so no reverse cut — drift the focal onto the victim and
+                    // punch in through the arrival and the impact.
+                    if (_sideShot) {
+                        _cineBeatMove({
+                            x: _midX + dirx * len * 0.18, y: _midY + diry * len * 0.18,
+                            zoom: _zoomSide * 1.12,
+                            duration: Math.max(actionMs(300),
+                                Math.round(timings.travelMs * 0.5) + timings.targetHold),
+                            easing: 'easeInOut',
                             _allowZoomChange: true, _bypassCap: true,
                             _fogAllowed: fogAllowed || undefined
                         });
