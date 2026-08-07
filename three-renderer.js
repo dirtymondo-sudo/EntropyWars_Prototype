@@ -6248,7 +6248,13 @@ const ThreeRenderer = (function () {
                tiles with a clamped vertical stretch/squash. */
             s = ((mon.foot || 3) * ts) / Math.max(size.x, size.z, 1);
             sy = s;
-            if (mon.maxH) {
+            /* tpillar is aspect-authored so the uniform footprint fit lands
+               EXACTLY 2.0 tiles tall — flush with its fixed 2-voxel collision
+               stamp (map.js _MON_COLLISION). Placements carry maxH:3, and
+               stretching to maxH made the mesh a full tile taller than the
+               stamp, so a unit jumping onto the T-head stood buried inside
+               the head. Never let maxH stretch it. */
+            if (mon.maxH && mon.kind !== 'tpillar') {
                 sy = (mon.maxH * ts) / Math.max(size.y, 1);
                 sy = Math.max(s * 0.55, Math.min(s * 1.7, sy));
             }
@@ -13457,6 +13463,45 @@ const ThreeRenderer = (function () {
         return false;
     }
 
+    /* Fogged tiles NOT connected to a board edge through other fogged tiles
+       (4-connectivity). The outer unexplored mass hides its terrain and reads
+       as the intended holo-void; an interior fogged pocket (the LOS shadow
+       behind a pillar or wall) must NOT — hiding those columns punches a
+       literal hole through the middle of the map, exposing the under-strata
+       and lava. Pocket tiles keep their terrain/props/walls rendered; the
+       wire box + per-tile unit/deployable/turret gating still mark them as
+       unseen, so no gameplay information leaks that terrain didn't already. */
+    var _fogInteriorSet = new Set();
+    function _recomputeFogInteriorSet(visible, _bw, _bh) {
+        var outer = new Set();
+        var queue = [];
+        function seed(x, y) {
+            if (x < 0 || y < 0 || x >= _bw || y >= _bh) return;
+            var pk = x + ',' + y;
+            if (visible.has(pk) || outer.has(pk)) return;
+            outer.add(pk);
+            queue.push(x, y);
+        }
+        for (var sx = 0; sx < _bw; sx++) { seed(sx, 0); seed(sx, _bh - 1); }
+        for (var sy = 0; sy < _bh; sy++) { seed(0, sy); seed(_bw - 1, sy); }
+        while (queue.length) {
+            var qy = queue.pop(), qx = queue.pop();
+            seed(qx + 1, qy); seed(qx - 1, qy); seed(qx, qy + 1); seed(qx, qy - 1);
+        }
+        var next = new Set();
+        for (var iy = 0; iy < _bh; iy++) {
+            for (var ix = 0; ix < _bw; ix++) {
+                var ipk = ix + ',' + iy;
+                if (!visible.has(ipk) && !outer.has(ipk)) next.add(ipk);
+            }
+        }
+        _fogInteriorSet = next;
+    }
+    /* Should this tile's TERRAIN render under fog? Seen, or an interior pocket. */
+    function _fogTerrainShown(pk, visible) {
+        return visible.has(pk) || _fogInteriorSet.has(pk);
+    }
+
     var _fogCoreMat = null;
     var _fogEdgeMat = null;
 
@@ -13805,6 +13850,7 @@ const ThreeRenderer = (function () {
         var visible = _introCineActive ? _introAllTilesVisible()
             : (typeof computeVisibleTiles === 'function') ? computeVisibleTiles(vp) : new Set();
         _fogVisibleSet = visible;
+        _recomputeFogInteriorSet(visible, _bw, _bh);
 
         /* Fog grid hidden (Video setting): no boxes, no dimming — just apply
            the vision gate to enemy pieces and let _updateFogPulse keep it fresh. */
@@ -13834,7 +13880,7 @@ const ThreeRenderer = (function () {
         // at its resting target so no spurious transition fires on the next frame.
         _applyFogVisibility(visible);
         tileMeshes.forEach(function (m, pk) {
-            _fogTiles.set(pk, { op: visible.has(pk) ? 1 : 0, swapped: false, meshes: null, tileRef: m });
+            _fogTiles.set(pk, { op: _fogTerrainShown(pk, visible) ? 1 : 0, swapped: false, meshes: null, tileRef: m });
         });
         _fogBuiltBw = _bw; _fogBuiltBh = _bh;
 
@@ -14705,7 +14751,7 @@ const ThreeRenderer = (function () {
         tileMeshes.forEach(function(mesh, pk) {
             var rec = _fogTiles.get(pk);
             if (rec && rec.swapped) return;
-            mesh.visible = visible.has(pk);
+            mesh.visible = _fogTerrainShown(pk, visible);
         });
 
         objectMeshes.forEach(function(mesh, pk) {
@@ -14718,7 +14764,7 @@ const ThreeRenderer = (function () {
             if (mesh._ew_isBuilding) { mesh.visible = _bldgVisibleInFog(pk, visible); return; }
             var rec = _fogTiles.get(pk);
             if (rec && rec.swapped) return;
-            mesh.visible = visible.has(pk);
+            mesh.visible = _fogTerrainShown(pk, visible);
         });
 
         /* Hide terrain decorations (rocks, crystals) in fog */
@@ -14728,7 +14774,7 @@ const ThreeRenderer = (function () {
                 if (deco._ew_decoX !== undefined && deco._ew_decoY !== undefined) {
                     var dRec = _fogTiles.get(deco._ew_decoX + ',' + deco._ew_decoY);
                     if (dRec && dRec.swapped) continue;
-                    deco.visible = visible.has(deco._ew_decoX + ',' + deco._ew_decoY);
+                    deco.visible = _fogTerrainShown(deco._ew_decoX + ',' + deco._ew_decoY, visible);
                 }
             }
         }
@@ -14738,7 +14784,7 @@ const ThreeRenderer = (function () {
         if (wallGroup) {
             for (var wvi = 0; wvi < wallGroup.children.length; wvi++) {
                 var wmesh = wallGroup.children[wvi];
-                wmesh.visible = visible.has(wmesh._ew_wtA) || visible.has(wmesh._ew_wtB);
+                wmesh.visible = _fogTerrainShown(wmesh._ew_wtA, visible) || _fogTerrainShown(wmesh._ew_wtB, visible);
             }
         }
 
@@ -14808,6 +14854,7 @@ const ThreeRenderer = (function () {
         var visible = _introCineActive ? _introAllTilesVisible()
             : (typeof computeVisibleTiles === 'function') ? computeVisibleTiles(vp) : new Set();
         _fogVisibleSet = visible;
+        _recomputeFogInteriorSet(visible, _bw, _bh);
         var ts = CONFIG.tileSize || BASE_TILE;
         for (var y = 0; y < _bh; y++) {
             for (var x = 0; x < _bw; x++) {
@@ -14841,7 +14888,7 @@ const ThreeRenderer = (function () {
     function _updateFogTerrainReveal(visible, k) {
         tileMeshes.forEach(function (tmesh, pk) {
             var rec = _fogTiles.get(pk);
-            var tgt = visible.has(pk) ? 1 : 0;
+            var tgt = _fogTerrainShown(pk, visible) ? 1 : 0;
             if (!rec || rec.tileRef !== tmesh) {
                 /* First sighting, or the tile mesh was rebuilt under us — snap to the
                    resting state (no fade) and make sure the fresh meshes are shown
