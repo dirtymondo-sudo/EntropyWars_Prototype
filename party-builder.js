@@ -442,12 +442,20 @@ const TYPE_C = { human:EW.human, alien:EW.alien, divine:EW.divine, unholy:EW.unh
 // Brightened text for the canonical type badge (legible over any background).
 const TYPE_TEXT_C = { human:'#c8c8e4', divine:'#f2c63c', unholy:'#c566e2', tech:'#4ecbe2', anomaly:'#ff5e98', alien:'#56d178' };
 /* CRT/EVA are official stats (canonical formula in data.js — the same one
-   the in-battle dice roll): CRT derives from AWR+INT, EVA from MOV. They
+   the in-battle dice roll): CRT derives from AWR+M.ATK, EVA from MOV. They
    show and sort like every other stat; hover them for the full math. */
 const STAT_KEYS = ['HP','MP','ATK','DEF','MDEF','INT','SPD','RNG','MOV','CRT','EVA'];
 const STAT_MAX_PB = { HP:900, MP:300, ATK:110, DEF:75, MDEF:75, INT:100, SPD:11, RNG:6, MOV:6, CRT:30, EVA:25 };
 const STAT_MAP = { HP:'hp', MP:'mp', ATK:'atk', DEF:'def', MDEF:'mdef', INT:'int', SPD:'spd', RNG:'range', MOV:'move', CRT:'crt', EVA:'eva' };
 const STAT_PCT = { CRT:true, EVA:true };   // rendered as a % chance
+// Display names — the int stat reads as Magic Attack everywhere in the UI.
+const STAT_LABELS = { INT:'M ATK', MDEF:'M DEF' };
+const statLabel = k => STAT_LABELS[k] || k;
+// ASSESSMENT sheet layout: the four combat numbers get a JRPG quadrant of
+// their own; MOV/RNG already have the diamond footprints, so no bars for them.
+const BAR_KEYS  = ['HP','MP','SPD','CRT','EVA'];
+const QUAD_KEYS = ['ATK','INT','DEF','MDEF'];   // row-major: ATK | M ATK / DEF | M DEF
+const QUAD_C    = { ATK:'#ff8a5c', INT:'#5ab0ff', DEF:'#f2c468', MDEF:'#3ddc84' };
 function _withCritEva(s) {
   if (!s) return s;
   if (typeof window.critChanceFromStats === 'function') s.crt = Math.round(window.critChanceFromStats(s.awr || 0, s.int || 0) * 100);
@@ -506,7 +514,7 @@ const CODEX_LORE = {
   'cyborg': 'Surgically augmented human with integrated combat systems. Cybernetic replacement percentage varies (30%\u201385%). Enhanced subjects retain human adaptability while gaining mechanical durability.',
   'demon prince': 'Infernal royalty. Power output exceeds standard demon classification by factor of 8. Commands lesser infernal entities. Physical form is chosen, not inherent \u2014 true form is [DATA EXPUNGED]. Do not engage without battalion-level support.',
   'demon princess': 'Infernal nobility specializing in curse propagation and aura manipulation. Curse effects compound over time. Charm aura affects even shielded personnel. Containment requires Class-V psionic dampening.',
-  'dreameater': 'Psionic parasite that feeds on REM-state neural activity. Capable of inducing sleep in conscious subjects within 15m radius. Appears as shifting humanoid form that "feels like 3 AM." INT capability rating: highest recorded for parasitic entity.',
+  'dreameater': 'Psionic parasite that feeds on REM-state neural activity. Capable of inducing sleep in conscious subjects within 15m radius. Appears as shifting humanoid form that "feels like 3 AM." M ATK capability rating: highest recorded for parasitic entity.',
   'fallen angel': 'Former celestial entity exhibiting combined divine and infernal energy signatures. Retains angelic power output but unconstrained by divine directive. Energy emissions are unstable. Psychological profile indicates extreme bitterness.',
   'goatman': 'Bipedal caprine-humanoid hybrid. Significantly faster than frame suggests. Occult energy signature detected. Territorial aggression extreme during equinox periods. Documented mimicking human speech to lure subjects.',
   'halfdemon': 'Human-infernal hybrid maintaining sapient cognition with demonic physical augmentation. Agility approaches Shadow Entity benchmarks. Retains human tactical reasoning \u2014 more dangerous than pure demons in strategic contexts.',
@@ -856,7 +864,7 @@ function pbSpellEffects(sp) {
   });
   // Stat changes speak in STAGES (stackable to ±5) — distinct from statuses.
   if (sp.statStageBoost) {
-    const SL = { atk: 'ATK', def: 'DEF', mdef: 'MDEF', spd: 'SPD', int: 'INT' };
+    const SL = { atk: 'ATK', def: 'DEF', mdef: 'M DEF', spd: 'SPD', int: 'M ATK' };
     for (const k in SL) {
       const n = sp.statStageBoost[k] || 0;
       if (n) out.push({ txt: (n > 0 ? '+' : '') + n + ' ' + SL[k] + ' stage' + (Math.abs(n) > 1 ? 's' : ''), color: n > 0 ? EW.good : EW.warn });
@@ -1274,16 +1282,16 @@ const RACE_TRAITS = {
   ],
   'werewolf': [
     { icon: '🌕', name: 'Lunar Shift', desc: 'Walks as a human by day — becomes the beast at night.' },               // CODED
-    { icon: '🌙', name: 'Nocturnal', desc: '+ATK/DEF/INT at night; penalized in daylight.' },                         // CODED
+    { icon: '🌙', name: 'Nocturnal', desc: '+ATK/DEF/M ATK at night; penalized in daylight.' },                         // CODED
     { icon: '🌲', name: 'Forest Adapted', desc: 'Moves through trees at full speed.' },                               // CODED
   ],
   'grey': [
-    { icon: '🌙', name: 'Nocturnal', desc: '+ATK/DEF/INT at night; penalized in daylight.' },                         // CODED
+    { icon: '🌙', name: 'Nocturnal', desc: '+ATK/DEF/M ATK at night; penalized in daylight.' },                         // CODED
     { icon: '🧠', name: 'Telepathic Network', desc: 'Allies gain +1 AWR while a Grey is on the field.' },             // DESIGN
   ],
   'telepath': [
     { icon: '🪽', name: 'Levitation', desc: 'Airborne — floats over hazards and rough ground. Grounded below 25% HP.' },  // CODED
-    { icon: '🌙', name: 'Nocturnal', desc: '+ATK/DEF/INT at night; penalized in daylight.' },                         // CODED
+    { icon: '🌙', name: 'Nocturnal', desc: '+ATK/DEF/M ATK at night; penalized in daylight.' },                         // CODED
     { icon: '🧠', name: 'Unquiet Mind', desc: 'A mind already crowded with voices — immune to Charm and Siren Song.' }, // CODED (PASSIVE_DEFS)
   ],
   'vampire': [
@@ -1332,7 +1340,7 @@ const RACE_TRAITS = {
     { icon: '⚗️', name: 'Volatile Mixtures', desc: 'Thrown items splash to adjacent tiles.' },                        // DESIGN
   ],
   'necromancer': [
-    { icon: '💀', name: 'Deathfeed', desc: 'Intelligence swells with every unit currently dead on the field (+8 INT per corpse, both sides) — all magic spell power grows with the body count.' }, // CODED
+    { icon: '💀', name: 'Deathfeed', desc: 'Magic attack swells with every unit currently dead on the field (+8 M ATK per corpse, both sides) — all magic spell power grows with the body count.' }, // CODED
   ],
   'men in black': [
     { icon: '🕶️', name: 'Redacted', desc: 'Cannot be scanned or revealed.' },                                         // DESIGN
@@ -2088,21 +2096,39 @@ function PartyBuilder() {
               h('button', { className:'pbx-tab'+(heroTab==='stats'?' on':''), onClick:()=>setHeroTab('stats') }, 'ASSESSMENT'),
               h('button', { className:'pbx-tab'+(heroTab==='lore'?' on':''), onClick:()=>setHeroTab('lore') }, 'DOSSIER')),
             heroTab === 'stats'
-              ? h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:6, overflow:'hidden', paddingTop:2 } },
-                  // stat bars (short) + separate MOVE / RANGE footprints
+              ? h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:6, overflowY:'auto', overflowX:'hidden', paddingTop:2 } },
+                  // vitals bars (HP/MP/SPD/CRT/EVA) + separate MOVE / RANGE footprints
                   h('div', { style:{ display:'flex', gap:14, flexShrink:0 } },
                     h('div', { style:{ flex:'0 1 54%', minWidth:0, display:'flex', flexDirection:'column', gap:2 } },
-                      STAT_KEYS.map(k => {
+                      BAR_KEYS.map(k => {
                         const mapped = STAT_MAP[k], val = fullStats[mapped]??fullStats[k]??fullStats[k.toLowerCase()]??0;
                         const d = statDeltas[mapped]??statDeltas[k]??statDeltas[k.toLowerCase()]??0;
                         let zMod = null;
-                        if (zodiacNature && mapped !== 'range' && mapped !== 'move') { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
-                        return h(StatBar, { key:k, label:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod, delta:d,
+                        if (zodiacNature) { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
+                        return h(StatBar, { key:k, label:statLabel(k), val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod, delta:d,
                           suffix: STAT_PCT[k] ? '%' : '', tip: STAT_PCT[k] ? window.STAT_HELP?.[mapped] : null });
                       })),
                     h('div', { style:{ flex:1, display:'flex', gap:14, justifyContent:'center', alignItems:'flex-start', paddingTop:2 } },
                       h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)' }),
                       h(RangeDiamond, { radius: fullStats.range ?? 1, fill:'rgba(255,70,70,0.35)', edge:'rgba(255,70,70,0.6)', label:'RANGE', value: fullStats.range ?? 1, color:'rgba(255,120,120,0.9)' }))),
+                  // combat quadrant — ATK / M ATK / DEF / M DEF, the four numbers
+                  // every JRPG player reads first. Physical column warm, magic cool.
+                  h('div', { style:{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:4, flexShrink:0, paddingRight:2 } },
+                    QUAD_KEYS.map(k => {
+                      const mapped = STAT_MAP[k], c = QUAD_C[k];
+                      const val = fullStats[mapped]??0;
+                      const d = statDeltas[mapped]??0;
+                      let zMod = null;
+                      if (zodiacNature) { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
+                      const valColor = zMod==='up' ? EW.good : zMod==='dn' ? EW.bad : EW.ink;
+                      return h('div', { key:k, style:{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, padding:'5px 9px', background:`linear-gradient(90deg, ${c}14, rgba(0,0,0,0.25))`, border:`1px solid ${c}44`, borderLeft:`3px solid ${c}` } },
+                        h('span', { style:{ fontFamily:'DotGothic16, monospace', fontSize:10, fontWeight:700, letterSpacing:'0.1em', color:c, whiteSpace:'nowrap' } }, statLabel(k),
+                          zMod==='up' ? h('span', { style:{ color:EW.good, fontSize:'0.75em' } }, ' ▲') : null,
+                          zMod==='dn' ? h('span', { style:{ color:EW.bad, fontSize:'0.75em' } }, ' ▼') : null),
+                        h('span', { style:{ display:'flex', alignItems:'baseline', gap:4 } },
+                          h('span', { style:{ fontFamily:'DotGothic16, monospace', fontSize:16, fontWeight:700, lineHeight:1, color:valColor, textShadow:`0 0 10px ${c}55` } }, val),
+                          d !== 0 ? h('span', { style:{ fontSize:9, fontWeight:700, color: d > 0 ? EW.good : EW.bad } }, d > 0 ? '+'+d : ''+d) : null));
+                    })),
                   // race traits: passives & terrain rules unique to this vessel
                   h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:3, overflow:'hidden' } },
                     h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', fontWeight:600, flexShrink:0, borderTop:`1px solid ${EW.panelEdge}`, paddingTop:5 } }, 'RACE TRAITS ', h('span', { style:{ color:EW.inkDim, fontWeight:400 } }, '· PASSIVES & TERRAIN')),
@@ -2130,7 +2156,7 @@ function PartyBuilder() {
             h('span', { style:{ fontSize:10, color:EW.inkDim, letterSpacing:'0.1em', marginRight:6 } }, filteredRoster.length,'/',rosterEntries.length),
             h('input', { placeholder:'Search...', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 10px', width:130 }}),
             h('select', { value:`${sortKey}-${sortDir}`, onChange:e=>{const[k,d]=e.target.value.split('-');setSortKey(k);setSortDir(d);}, style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, color:EW.time, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none' }},
-              ...STAT_KEYS.map(k=>[h('option',{key:`${k}-desc`,value:`${k}-desc`,style:{background:'#000000'}},`${k} ↓`),h('option',{key:`${k}-asc`,value:`${k}-asc`,style:{background:'#000000'}},`${k} ↑`)]).flat(),
+              ...STAT_KEYS.map(k=>[h('option',{key:`${k}-desc`,value:`${k}-desc`,style:{background:'#000000'}},`${statLabel(k)} ↓`),h('option',{key:`${k}-asc`,value:`${k}-asc`,style:{background:'#000000'}},`${statLabel(k)} ↑`)]).flat(),
               h('option',{value:'label-asc',style:{background:'#000000'}},'Name A-Z'), h('option',{value:'label-desc',style:{background:'#000000'}},'Name Z-A')),
             h('select', { value:typeFilter||'', onChange:e=>setTypeFilter(e.target.value||null), title:'Filter by Type', style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${typeFilter?getTypeColor(typeFilter):EW.panelEdge}`, color:typeFilter?getTypeColor(typeFilter):EW.inkMute, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none', cursor:'pointer' }},
               h('option',{value:'',style:{background:'#000000',color:'#ccc'}},'All Types'),

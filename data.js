@@ -137,7 +137,7 @@ const EQUIP_DEFS = {
     'martyrs_talisman': { slot: 'accessory1', label: "Martyr's Talisman", desc: 'Defies the first killing blow each life — survive at 1 HP. Recharges on respawn.' },
     'purity_censer': { slot: 'accessory1', label: 'Censer of Purity', desc: 'Once per round, instantly purges an enemy-inflicted debuff and lashes back at the culprit for 40% of ATK.' },
     'berserkers_brand': { slot: 'accessory1', label: "Berserker's Brand", desc: '+16 ATK, but each life this unit is locked to the first spell it casts until it falls.', stat: 'atk', statVal: 16 },
-    'archons_focus': { slot: 'accessory1', label: "Archon's Focus", desc: '+14 INT, but each life this unit is locked to the first spell it casts until it falls.', stat: 'int', statVal: 14 },
+    'archons_focus': { slot: 'accessory1', label: "Archon's Focus", desc: '+14 M ATK, but each life this unit is locked to the first spell it casts until it falls.', stat: 'int', statVal: 14 },
     'grapnel_gauntlet': { slot: 'accessory1', label: 'Grapnel Gauntlet', desc: 'Built-in grappling hook: grants the Grapple ability — pull an enemy 2 tiles toward you and reel them in for a hit.' },
     'echo_band': { slot: 'accessory1', label: 'Echo Band', desc: 'Basic attacks strike twice — the echo hits for 50% damage.' },
     'hagstone': { slot: 'accessory1', label: 'Hagstone', desc: 'Peer through the veil: at the end of each round, invisible enemies within 4 tiles of the bearer are revealed.' },
@@ -3688,7 +3688,7 @@ const ITEM_RULES = {
         name: 'Bulwark Stim',
         icon: '🧱',
         max: 2,
-        desc: 'Self only. +2 DEF and +2 MDEF stages for 3 rounds.',
+        desc: 'Self only. +2 DEF and +2 M DEF stages for 3 rounds.',
         selfBoost: { def: 2, mdef: 2 },
         shopPrice: 55
     },
@@ -3696,7 +3696,7 @@ const ITEM_RULES = {
         name: 'Psi Stim',
         icon: '🧠',
         max: 2,
-        desc: 'Self only. +2 INT stages for 3 rounds.',
+        desc: 'Self only. +2 M ATK stages for 3 rounds.',
         selfBoost: { int: 2 },
         shopPrice: 55
     }
@@ -3761,7 +3761,7 @@ const ITEM_META = {
     },
     psiStim: {
         icon: '🧠',
-        short: 'INT+'
+        short: 'MATK+'
     }
 };
 
@@ -4270,7 +4270,7 @@ const SPELL_LIBRARY = [
         school: 'Psychic',
         classRestriction: 'Psychic',
         statStageBoost: { mdef: -2 },
-        desc: 'Weakens a Single Enemy. Lowers MDEF by 2 stages.'
+        desc: 'Weakens a Single Enemy. Lowers M DEF by 2 stages.'
     },
 
     {
@@ -4914,7 +4914,7 @@ const SPELL_LIBRARY = [
         turretRange: 4,
         auraDebuff: true,
         auraDefReduction: 8,
-        desc: 'Deploy a 5G radio tower (3 hits to destroy). Its signal scrambles thought — enemies within 4 tiles lose 8 MDEF while it stands. Max 1 per Engineer.'
+        desc: 'Deploy a 5G radio tower (3 hits to destroy). Its signal scrambles thought — enemies within 4 tiles lose 8 M DEF while it stands. Max 1 per Engineer.'
     },
     {
         id: 'repair',
@@ -5598,7 +5598,7 @@ const RACE_ABILITIES = {
           type: 'debuff', cost: 25, range: 3, apCost: 1,
           kind: 'debuff',
           statStageBoost: { int: -3 },
-          desc: 'Turn the target\'s thoughts to stone. Grey creeps up from their skull as the mind petrifies — lowers INT by 3 stages.' },
+          desc: 'Turn the target\'s thoughts to stone. Grey creeps up from their skull as the mind petrifies — lowers M ATK by 3 stages.' },
         SHARED_FISSURE,
         SHARED_WING_ATTACK
     ],
@@ -6075,7 +6075,7 @@ const RACE_ABILITIES = {
           type: 'heal', cost: 35, range: 0, apCost: 2,
           kind: 'healAll', healAmt: 130, cleanse: 2,
           statStageBoost: { atk: 1, int: -1 },
-          desc: 'Restores a MEDIUM amount of HP to All Allies. Lowers INT by 1 stage. Raises ATK by 1 stage.' },
+          desc: 'Restores a MEDIUM amount of HP to All Allies. Lowers M ATK by 1 stage. Raises ATK by 1 stage.' },
         _mkCharge({ id: 'raceBoardingRush', spellType: 'human', element: 'metal', name: 'Land Ho',
           swapOnHit: true,
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Swaps positions with the target on hit.' }),
@@ -6151,7 +6151,7 @@ const RACE_ABILITIES = {
           kind: 'buff',
           selfHealPct: 0.50, cleanse: 99,
           statStageBoost: { def: 1, mdef: 1 },
-          desc: 'Empowers the caster. Raises DEF by 1 stage and MDEF by 1 stage.' },
+          desc: 'Empowers the caster. Raises DEF by 1 stage and M DEF by 1 stage.' },
         { id: 'raceBadTrip', spellType: 'alien', element: 'psychic', name: 'Bad Trip',
           type: 'damage', cost: 30, dmg: 120, range: 3,
           kind: 'damage', damageType: 'magic',
@@ -6234,12 +6234,12 @@ const RACE_ABILITIES = {
           type: 'damage', tier: 'III', cost: 50, dmg: 180, range: 4,
           kind: 'damage', damageType: 'magic',
           statStageBoost: { int: -1 },
-          desc: 'Deals HEAVY magic damage to a Single Enemy. Lowers the target\'s INT by 1 stage.' },
+          desc: 'Deals HEAVY magic damage to a Single Enemy. Lowers the target\'s M ATK by 1 stage.' },
         { id: 'raceTelepathicLink', spellType: 'anomaly', element: 'psychic', name: 'Telepathic Link',
           type: 'buff', cost: 20, range: 3, apCost: 1,
           kind: 'warCry', auraRadius: 3,
           statStageBoost: { int: 2 },
-          desc: 'Empowers All Allies nearby. Raises INT by 2 stages.' },
+          desc: 'Empowers All Allies nearby. Raises M ATK by 2 stages.' },
         { id: 'racePsychicBarrier', spellType: 'anomaly', element: 'psychic', name: 'Psychic Barrier',
           type: 'buff', cost: 25, range: 3, apCost: 1,
           kind: 'buff',
@@ -6309,7 +6309,7 @@ const RACE_ABILITIES = {
           type: 'debuff', cost: 55, range: 4, apCost: 2, tier: 'III',
           kind: 'debuff', cooldownRounds: 3,
           statStageBoost: { atk: -2, int: -2 },
-          desc: 'Transmute an enemy into something small and harmless. Lowers the target\'s ATK by 2 stages and INT by 2 stages. Ribbit.' }
+          desc: 'Transmute an enemy into something small and harmless. Lowers the target\'s ATK by 2 stages and M ATK by 2 stages. Ribbit.' }
     ],
     'fortune teller': [
         { id: 'raceTarotDraw', spellType: 'anomaly', element: 'arcane', name: 'Tarot Draw',
@@ -6421,7 +6421,7 @@ const RACE_ABILITIES = {
           type: 'buff', tier: 'III', cost: 40, apCost: 1, heal: 0, range: 0,
           kind: 'healAll',
           statStageBoost: { mdef: 1, int: 1 },
-          desc: 'Empowers All Allies. Raises MDEF by 1 stage and INT by 1 stage.' }
+          desc: 'Empowers All Allies. Raises M DEF by 1 stage and M ATK by 1 stage.' }
     ],
     'grey': [
         { id: 'raceProbe', spellType: 'alien', element: 'psychic', name: 'Probe',
@@ -6851,7 +6851,7 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 20, apCost: 1, range: 2,
           kind: 'buff',
           statStageBoost: { mdef: 2 },
-          desc: 'Empowers a Single Ally. Raises MDEF by 2 stages.' },
+          desc: 'Empowers a Single Ally. Raises M DEF by 2 stages.' },
         SHARED_SUMMON_SANDSTORM
     ],
     'overlord': [
@@ -12860,7 +12860,7 @@ function evasionChanceFromStats(move) {
   return Math.min(0.25, 0.06 + Math.min(0.10, (move || 0) * 0.018));
 }
 const STAT_HELP = {
-  crt: 'CRT — critical hit chance on basic attacks. 8% base + 1.5% per AWR (max +12%) + 0.4% per INT (max +6%), capped at 30%. A crit deals ×1.8 damage (Gunslinger passive: ×2.0). Spells never crit.',
+  crt: 'CRT — critical hit chance on basic attacks. 8% base + 1.5% per AWR (max +12%) + 0.4% per M ATK (max +6%), capped at 30%. A crit deals ×1.8 damage (Gunslinger passive: ×2.0). Spells never crit.',
   eva: 'EVA — chance to dodge a basic attack. 6% base + 1.8% per MOV (max +10%), capped at 25%. Back-arc attacks can’t be dodged, a blinded attacker always misses, and hard CC (stun/freeze/root) drops EVA to 0. Spells can’t be dodged.',
 };
 
@@ -12928,7 +12928,7 @@ function _dscJoin(list) {
     if (list.length <= 1) return list.join('');
     return list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1];
 }
-const _DSC_STAT_NAMES = { atk: 'ATK', def: 'DEF', mdef: 'MDEF', int: 'INT', spd: 'SPD', mov: 'MOV', awr: 'AWR', rng: 'RNG', hp: 'HP', mp: 'MP' };
+const _DSC_STAT_NAMES = { atk: 'ATK', def: 'DEF', mdef: 'M DEF', int: 'M ATK', spd: 'SPD', mov: 'MOV', awr: 'AWR', rng: 'RNG', hp: 'HP', mp: 'MP' };
 function _dscStages(boost, verbUp, verbDown) {
     const ups = [], downs = [];
     Object.keys(boost || {}).forEach(k => {

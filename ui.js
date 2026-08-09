@@ -3916,9 +3916,9 @@
 
             const statBars =
                 statBar('ATK', effAtk, unit.atk, 200, '#e0705a') +
+                statBar('M ATK', effInt, unit.intStat || 0, 200, '#62c4c9') +
                 statBar('DEF', effDef, unit.def || 0, 200, '#7a9cc8') +
-                statBar('MDEF', effMDef, unit.mdef || 0, 200, '#a98fd6') +
-                statBar('INT', effInt, unit.intStat || 0, 200, '#62c4c9') +
+                statBar('M DEF', effMDef, unit.mdef || 0, 200, '#a98fd6') +
                 statBar('MOV', effMov, unit.move, 8, '#86c47e') +
                 statBar('RNG', effRng, unit.range, 8, '#e0b45a') +
                 // CRT/EVA are official stats (data.js formula, shared with the
@@ -4737,7 +4737,7 @@
                (checkOverwatchTriggers, battle.js). Disarmed by the same round
                reset that clears _guardCounterBonus. */
             unit._overwatchArmed = true;
-            addLog(`${unitDisplayName(unit)} takes a defensive stance! (+DEF/MDEF, +15% Counter — 👁 Overwatch: the first enemy to stop in attack range gets shot)`);
+            addLog(`${unitDisplayName(unit)} takes a defensive stance! (+DEF/M DEF, +15% Counter — 👁 Overwatch: the first enemy to stop in attack range gets shot)`);
             showFloatingTextForUnit(unit, '🛡 GUARD', 'buff', { durationMs: 1200 });
             playSfx('uiConfirm');
 
@@ -7761,9 +7761,9 @@
                         ${_codexBuildStatBar(stats.hp || 0, maxHp, 'HP', '#55bb70')}
                         ${_codexBuildStatBar(stats.mp || 0, maxMp, 'MP', '#5a8898')}
                         ${_codexBuildStatBar(stats.atk || 0, maxAtk, 'ATK', '#c05050')}
+                        ${_codexBuildStatBar(stats.int || 0, maxInt, 'M ATK', '#9080b8')}
                         ${_codexBuildStatBar(stats.def || 0, maxDef, 'DEF', '#b8a060')}
-                        ${_codexBuildStatBar(stats.mdef ?? 0, maxMDef, 'MDEF', '#6f8fc0')}
-                        ${_codexBuildStatBar(stats.int || 0, maxInt, 'INT', '#9080b8')}
+                        ${_codexBuildStatBar(stats.mdef ?? 0, maxMDef, 'M DEF', '#6f8fc0')}
                         ${_codexBuildStatBar(stats.spd || 0, maxSpd, 'SPD', '#d09050')}
                         ${_codexBuildStatBar(stats.move || 0, 5, 'MOV', '#60b8d0')}
                         ${_codexBuildStatBar(stats.awr || 0, 8, 'AWR', '#b0b070')}
@@ -8365,7 +8365,7 @@
             kind:   { t: 'enum', o: _SLB_KINDS, h: 'THE behaviour selector — picks the engine branch in battle.js doSpell.' },
             spellType: { t: 'enum', o: _SLB_SPELLTYPES, h: 'Faction/combo type (keys COMBO_REGISTRY).' },
             element: { t: 'enum', o: _SLB_ELEMENTS, h: 'Flavor element — drives VFX theming, NOT the type chart.' },
-            damageType: { t: 'enum', o: _SLB_DMGTYPES, h: 'physical → DEF, magic → MDEF.' },
+            damageType: { t: 'enum', o: _SLB_DMGTYPES, h: 'physical → DEF, magic → M DEF.' },
             cost:   { t: 'num', h: 'MP cost. Editing pins it (sets manaCostOverride); otherwise the mana formula re-derives it from power fields.' },
             manaCostOverride: { t: 'num', h: 'Pins MP cost, bypassing the derivation formula.' },
             apCost: { t: 'num', h: 'Action points (1 or 2). Missing → engine default.' },
@@ -8387,7 +8387,7 @@
             aoeDmgPct: { t: 'num', h: 'Splash fraction to non-primary targets (0-1).' },
             selfDamagePct: { t: 'num', h: 'RECOIL: caster pays this fraction of MAX HP after the cast resolves (0-1). Never lethal — stops at 1 HP. Also discounts the mana formula.' },
             recoilPct: { t: 'num', h: 'Same recoil mechanic as selfDamagePct (the combo spells use this name): caster pays the fraction of max HP after cast, never lethal. Discounts the mana formula.' },
-            ignoreArmor: { t: 'bool', h: 'Bypass DEF/MDEF.' },
+            ignoreArmor: { t: 'bool', h: 'Bypass DEF/M DEF.' },
             bonusVsStatus: { t: 'json', h: '{status, mult} — e.g. {"status":"burn","mult":1.5}.' },
             bonusVsDebuffed: { t: 'num', h: 'Bonus vs any debuffed target (0-1).' },
             guaranteedCrit: { t: 'bool', h: 'Always crits.' },

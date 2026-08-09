@@ -20136,7 +20136,7 @@
                     const dlgLines = [
                         `<span class="dlg-levelup">⬆ ${escapeHtml(unitDisplayName(unit))} — LEVEL ${newLevel}!</span>`,
                         `<span class="dlg-levelup" style="font-size:15px">HP ${_gain(dHp)} · MP ${_gain(dMp)}</span>`,
-                        `<span class="dlg-levelup" style="font-size:15px">ATK ${_gain(dAtk)} · DEF ${_gain(dDef)} · M.DEF ${_gain(dMdef)} · INT ${_gain(dInt)}</span>`,
+                        `<span class="dlg-levelup" style="font-size:15px">ATK ${_gain(dAtk)} · M.ATK ${_gain(dInt)} · DEF ${_gain(dDef)} · M.DEF ${_gain(dMdef)}</span>`,
                     ];
                     const _newSpells = (unit.spells || []).filter(Boolean)
                         .map(s => s.name).filter(n => !_spellsBefore.includes(n));
@@ -44826,9 +44826,9 @@
                     const _stages = _rtb.stages || 1;
                     const _cardFor = {
                         atk: { card: 'The Chariot', label: 'ATK' },
-                        int: { card: 'The Magician', label: 'INT' },
+                        int: { card: 'The Magician', label: 'M ATK' },
                         def: { card: 'The Tower', label: 'DEF' },
-                        mdef: { card: 'The High Priestess', label: 'MDEF' },
+                        mdef: { card: 'The High Priestess', label: 'M DEF' },
                         spd: { card: 'The Fool', label: 'SPD' },
                     };
                     const _card = _cardFor[_stat] || { card: 'The Star', label: _stat.toUpperCase() };

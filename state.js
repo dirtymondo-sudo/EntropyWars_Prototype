@@ -1628,7 +1628,7 @@
                 tiles: [5, 8],
                 roaming: true,
                 duration: [3, 5],
-                desc: 'Geometric shapes rain from the sky. +10 INT to Anomaly, -8 DEF to Tech. Damages non-Anomaly units.',
+                desc: 'Geometric shapes rain from the sky. +10 M ATK to Anomaly, -8 DEF to Tech. Damages non-Anomaly units.',
                 conditionalStatMod(unit) {
                     const types = unit.types || [];
                     const mods = {};

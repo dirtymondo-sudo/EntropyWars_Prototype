@@ -2366,7 +2366,7 @@ function _hrlgStatusChips(unit) {
   }
   // Stat stages — same ±5 stage read as the nameplate badges.
   if (typeof getStatStageCount === 'function') {
-    for (const [stat, lbl] of [['atk','ATK'],['def','DEF'],['int','INT'],['mdef','MDEF'],['spd','SPD']]) {
+    for (const [stat, lbl] of [['atk','ATK'],['def','DEF'],['int','M ATK'],['mdef','M DEF'],['spd','SPD']]) {
       const n = getStatStageCount(unit, stat);
       if (!n) continue;
       chips.push({
@@ -2477,10 +2477,10 @@ function _hrlgQuickStats(panelKey) {
   const eva  = Math.round((typeof getEvasionChance === 'function' ? getEvasionChance(u) : 0) * 100);
   const HELP = (typeof window !== 'undefined' && window.STAT_HELP) || {};
   const cells = [
-    { k: 'ATK',  v: atk,        base: u.atk || 0 },
-    { k: 'DEF',  v: def,        base: u.def || 0 },
-    { k: 'MDEF', v: mdef,       base: u.mdef || 0 },
-    { k: 'INT',  v: intV,       base: u.intStat || 0 },
+    { k: 'ATK',   v: atk,        base: u.atk || 0 },
+    { k: 'M ATK', v: intV,       base: u.intStat || 0 },
+    { k: 'DEF',   v: def,        base: u.def || 0 },
+    { k: 'M DEF', v: mdef,       base: u.mdef || 0 },
     { k: 'MOV',  v: mov,        base: u.move || 0 },
     { k: 'RNG',  v: rng,        base: u.range || 0 },
     { k: 'CRT',  v: crt + '%',  tip: HELP.crt },
@@ -4473,7 +4473,7 @@ function spellRangeBadge(sp) {
 /* Effect readout for buff/debuff/status spells — the button-level answer to
    "what does this DO?": stat stages ("+1 ATK", stackable to ±5) and status
    applications ("🔥 Burn"), the same way damage spells wear their number. */
-const _FX_STAT_LBL = [['atk', 'ATK'], ['def', 'DEF'], ['mdef', 'MDEF'], ['spd', 'SPD'], ['int', 'INT']];
+const _FX_STAT_LBL = [['atk', 'ATK'], ['def', 'DEF'], ['mdef', 'M DEF'], ['spd', 'SPD'], ['int', 'M ATK']];
 function spellEffectLabel(sp) {
   const parts = [];
   let pos = false, neg = false;
