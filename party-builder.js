@@ -2015,7 +2015,9 @@ function PartyBuilder() {
         h('span', { style:{color:EW.ink} }, standalone ? 'TEAM ARCHIVE' : (mpMode?.label || 'BATTLE').toUpperCase())),
     ),
 
-    h('div', { style:{ display:'grid', gridTemplateColumns:'112px minmax(0,1fr) clamp(340px,28vw,470px)', flex:1, minHeight:0, position:'relative', zIndex:1 } },
+    // abilities/spell-tree column WIDENED (was clamp(340px,28vw,470px)) —
+    // the assessment sheet is width-capped now, so the tree gets the space.
+    h('div', { style:{ display:'grid', gridTemplateColumns:'112px minmax(0,1fr) clamp(380px,36vw,640px)', flex:1, minHeight:0, position:'relative', zIndex:1 } },
 
       h('div', { style:{ display:'flex', flexDirection:'column', gap:6, padding:'10px 6px 10px 8px', borderRight:`1px solid ${EW.panelEdge}`, background:'linear-gradient(90deg, rgba(0,0,0,0.35), transparent)', overflowY:'auto' }},
         h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:11, letterSpacing:'0.16em', color:EW.inkMute, marginBottom:2, flexShrink:0 } }, 'THE PARTY'),
@@ -2050,7 +2052,8 @@ function PartyBuilder() {
         h('div', { style:{ display:'flex', height:'54%', minHeight:0, flexShrink:0, borderBottom:`1px solid ${EW.panelEdge}` } },
 
           // ── the stage: gear rail · big sprite · item rail ──
-          h('div', { style:{ flex:'0 0 46%', minWidth:0, display:'flex', flexDirection:'column', padding:'8px 4px 8px 10px', position:'relative' } },
+          // grows to absorb whatever the width-capped sheet doesn't take
+          h('div', { style:{ flex:'1 1 46%', minWidth:0, display:'flex', flexDirection:'column', padding:'8px 4px 8px 10px', position:'relative' } },
             // the vessel's RACE crowns the stage; the job title lives on the
             // assessment sheet. Slot numeral stays as a small marker.
             h('div', { style:{ display:'flex', alignItems:'baseline', justifyContent:'center', gap:8, flexShrink:0, minWidth:0 } },
@@ -2088,7 +2091,11 @@ function PartyBuilder() {
           ),
 
           // ── identity + assessment sheet ──
-          h('div', { style:{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:5, padding:'10px 12px 8px 10px', borderLeft:`1px solid ${EW.panelEdge}` } },
+          // WIDTH-CAPPED (flex-basis 450px, shrinkable, never grows): the
+          // sheet stays a tight column instead of sprawling — leftover width
+          // goes to the 3D stage, and the whole center column slimmed down
+          // so the spell tree got wider.
+          h('div', { style:{ flex:'0 1 450px', minWidth:0, display:'flex', flexDirection:'column', gap:5, padding:'10px 12px 8px 10px', borderLeft:`1px solid ${EW.panelEdge}` } },
             // the JOB heads the sheet (the race name crowns the 3D stage).
             h('div', { style:{ display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap', flexShrink:0 } },
               h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(20px,2.2vw,32px)', fontWeight:600, lineHeight:1, textShadow:`0 0 30px ${fc}44` } }, getJobDisplay(clsName))),
@@ -2109,36 +2116,34 @@ function PartyBuilder() {
               h('button', { className:'pbx-tab'+(heroTab==='lore'?' on':''), onClick:()=>setHeroTab('lore') }, 'DOSSIER')),
             heroTab === 'stats'
               ? h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:6, overflowY:'auto', overflowX:'hidden', paddingTop:2 } },
-                  // one tight block: vitals bars LEFT, combat quadrant RIGHT
-                  // (ATK / M ATK / DEF / M DEF — physical warm, magic cool),
-                  // then the MOVE / RANGE footprints directly BELOW. Nothing
-                  // drifts off into empty space on its own anymore.
-                  h('div', { style:{ display:'flex', gap:10, flexShrink:0, alignItems:'flex-start' } },
-                    h('div', { style:{ flex:'1 1 55%', minWidth:0, display:'flex', flexDirection:'column', gap:2 } },
-                      BAR_KEYS.map(k => {
-                        const mapped = STAT_MAP[k], val = fullStats[mapped]??fullStats[k]??fullStats[k.toLowerCase()]??0;
-                        const d = statDeltas[mapped]??statDeltas[k]??statDeltas[k.toLowerCase()]??0;
-                        let zMod = null;
-                        if (zodiacNature) { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
-                        return h(StatBar, { key:k, label:statLabel(k), val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod, delta:d,
-                          suffix: STAT_PCT[k] ? '%' : '', tip: STAT_PCT[k] ? window.STAT_HELP?.[mapped] : null });
-                      })),
-                    h('div', { style:{ flex:'1 1 45%', minWidth:0, display:'grid', gridTemplateColumns:'1fr 1fr', gap:3, alignContent:'start' } },
-                      QUAD_KEYS.map(k => {
-                        const mapped = STAT_MAP[k], c = QUAD_C[k];
-                        const val = fullStats[mapped]??0;
-                        const d = statDeltas[mapped]??0;
-                        let zMod = null;
-                        if (zodiacNature) { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
-                        const valColor = zMod==='up' ? EW.good : zMod==='dn' ? EW.bad : EW.ink;
-                        return h('div', { key:k, style:{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:4, padding:'4px 7px', background:`linear-gradient(90deg, ${c}14, rgba(0,0,0,0.25))`, border:`1px solid ${c}44`, borderLeft:`3px solid ${c}` } },
-                          h('span', { style:{ fontFamily:'DotGothic16, monospace', fontSize:10, fontWeight:700, letterSpacing:'0.1em', color:c, whiteSpace:'nowrap' } }, statLabel(k),
-                            zMod==='up' ? h('span', { style:{ color:EW.good, fontSize:'0.75em' } }, ' ▲') : null,
-                            zMod==='dn' ? h('span', { style:{ color:EW.bad, fontSize:'0.75em' } }, ' ▼') : null),
-                          h('span', { style:{ display:'flex', alignItems:'baseline', gap:3 } },
-                            h('span', { style:{ fontFamily:'DotGothic16, monospace', fontSize:14, fontWeight:700, lineHeight:1, color:valColor, textShadow:`0 0 10px ${c}55` } }, val),
-                            d !== 0 ? h('span', { style:{ fontSize:9, fontWeight:700, color: d > 0 ? EW.good : EW.bad } }, d > 0 ? '+'+d : ''+d) : null));
-                      }))),
+                  // stacked & narrow (the sheet itself is width-capped now):
+                  // vitals bars, the ATK / M ATK / DEF / M DEF quadrant right
+                  // beneath them, MOVE / RANGE footprints below that.
+                  h('div', { style:{ display:'flex', flexDirection:'column', gap:2, flexShrink:0 } },
+                    BAR_KEYS.map(k => {
+                      const mapped = STAT_MAP[k], val = fullStats[mapped]??fullStats[k]??fullStats[k.toLowerCase()]??0;
+                      const d = statDeltas[mapped]??statDeltas[k]??statDeltas[k.toLowerCase()]??0;
+                      let zMod = null;
+                      if (zodiacNature) { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
+                      return h(StatBar, { key:k, label:statLabel(k), val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod, delta:d,
+                        suffix: STAT_PCT[k] ? '%' : '', tip: STAT_PCT[k] ? window.STAT_HELP?.[mapped] : null });
+                    })),
+                  h('div', { style:{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:3, flexShrink:0 } },
+                    QUAD_KEYS.map(k => {
+                      const mapped = STAT_MAP[k], c = QUAD_C[k];
+                      const val = fullStats[mapped]??0;
+                      const d = statDeltas[mapped]??0;
+                      let zMod = null;
+                      if (zodiacNature) { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
+                      const valColor = zMod==='up' ? EW.good : zMod==='dn' ? EW.bad : EW.ink;
+                      return h('div', { key:k, style:{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:4, padding:'4px 7px', background:`linear-gradient(90deg, ${c}14, rgba(0,0,0,0.25))`, border:`1px solid ${c}44`, borderLeft:`3px solid ${c}` } },
+                        h('span', { style:{ fontFamily:'DotGothic16, monospace', fontSize:10, fontWeight:700, letterSpacing:'0.1em', color:c, whiteSpace:'nowrap' } }, statLabel(k),
+                          zMod==='up' ? h('span', { style:{ color:EW.good, fontSize:'0.75em' } }, ' ▲') : null,
+                          zMod==='dn' ? h('span', { style:{ color:EW.bad, fontSize:'0.75em' } }, ' ▼') : null),
+                        h('span', { style:{ display:'flex', alignItems:'baseline', gap:3 } },
+                          h('span', { style:{ fontFamily:'DotGothic16, monospace', fontSize:14, fontWeight:700, lineHeight:1, color:valColor, textShadow:`0 0 10px ${c}55` } }, val),
+                          d !== 0 ? h('span', { style:{ fontSize:9, fontWeight:700, color: d > 0 ? EW.good : EW.bad } }, d > 0 ? '+'+d : ''+d) : null));
+                    })),
                   // MOVE / RANGE footprints — under the numbers, side by side
                   h('div', { style:{ display:'flex', gap:26, justifyContent:'center', alignItems:'flex-start', flexShrink:0, paddingTop:2 } },
                     h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)' }),
