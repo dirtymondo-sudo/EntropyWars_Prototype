@@ -836,6 +836,25 @@ function classifySpellLocal(sp) { if (!sp) return 'utility'; if (typeof window.c
 function spellCategoryColor(cat) { return {damage:'rgba(152,80,80,0.7)',heal:'rgba(90,148,86,0.7)',buff:'rgba(80,126,160,0.7)',debuff:'rgba(200,170,70,0.7)',utility:'rgba(140,100,180,0.65)'}[cat]||'rgba(140,100,180,0.65)'; }
 function spellCategoryLabel(cat) { return {damage:'DAMAGE',heal:'HEAL',buff:'BUFF',debuff:'DEBUFF',utility:'UTILITY'}[cat]||'UTILITY'; }
 
+// Pokémon-style damage-kind mark (.ew-dmgicon in styles-hud.css): orange
+// spiked burst = physical (scales with ATK), purple ringed orb = magic
+// (scales with M ATK). Only rendered on spells that actually roll damage —
+// a bare mark on a pure buff/debuff would be the confusion it exists to fix.
+function pbDmgIcon(sp, size) {
+  if (!sp) return null;
+  const dealsDmg = (typeof spellDealsDamage === 'function')
+    ? spellDealsDamage(sp)
+    : !!(sp.dmg || (sp.hitDamages && sp.hitDamages.length) || sp.dotDamage || sp.turretDmg || sp.blastDmg);
+  if (!dealsDmg) return null;
+  const phys = sp.damageType === 'physical';
+  return h('span', {
+    className: 'ew-dmgicon ' + (phys ? 'phys' : 'magic'),
+    style: { width: size, height: size, flexShrink: 0 },
+    title: phys ? 'Physical damage — scales with ATK, blocked by DEF'
+                : 'Magic damage — scales with M ATK, blocked by M DEF',
+  });
+}
+
 // Human-readable area-of-effect footprint from whatever shape fields a spell uses.
 function pbAoeLabel(sp) {
   if (!sp) return null;
@@ -925,7 +944,10 @@ function buildSpellTooltip(sp, x, y) {
         h('span', { style: { fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: catC, border: `1px solid ${catC}66`, background: `${catC}1a`, padding: '1px 6px' } }, spellCategoryLabel(cat)),
         // canonical TYPE badge (same chip as the blades / battle menu) —
         // never a bare colored word
-        sp.spellType && h('span', { style: pbTypeBadgeStyle(sp.spellType, 8) }, sp.spellType))),
+        sp.spellType && h('span', { style: pbTypeBadgeStyle(sp.spellType, 8) }, sp.spellType),
+        // damage-kind mark + word — icon-first so it can't read as a TYPE chip
+        pbDmgIcon(sp, 10) && h('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: sp.damageType === 'physical' ? '#e0944a' : '#b56ce0' } },
+          pbDmgIcon(sp, 10), sp.damageType === 'physical' ? 'PHYSICAL' : 'MAGIC'))),
     h('div', { style: { display: 'flex', gap: 4, flexWrap: 'wrap' } },
       stat('MP', sp.cost != null ? sp.cost : null, 'rgba(120,190,255,0.95)'),
       stat('AP', sp.apCost || 1),
@@ -1012,6 +1034,7 @@ function SpellBlade({ sp, slotLabel, slotNums, heightPx, equippedSlot, pool, equ
       // row 1: name + TYPE badge own the line (matchup intel never clips)
       h('div', { className:'pbx-row1' },
         h('span', { className:'pbx-name' }, sp.name),
+        pbDmgIcon(sp, 10),
         sp.spellType ? h('span', { style: pbTypeBadgeStyle(sp.spellType, 9) }, sp.spellType) : null,
         raceAbility ? h('span', { style:{ flexShrink:0, fontSize:8, letterSpacing:'0.14em', color:'#f2c468', border:'1px solid rgba(242,196,104,0.45)', background:'rgba(8,7,12,0.7)', padding:'1px 5px', whiteSpace:'nowrap' }, title:'Race ability — this vessel’s birthright' }, 'RACE') : null,
         (!pool && onClick) ? h('span', { className:'pbx-x', style:{ marginLeft:'auto' } }, '✕') : null),
@@ -1223,7 +1246,8 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
         label,
         // the canonical TYPE badge rides under the name — matchup intel
         // on the node itself, same chip as the blades / battle menu
-        sp && sp.spellType ? h('div', { style: { marginTop: 2 } },
+        sp && sp.spellType ? h('div', { style: { marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 } },
+          pbDmgIcon(sp, 8),
           h('span', { style: { ...pbTypeBadgeStyle(sp.spellType, 7), padding: '0 4px', letterSpacing: '0.1em' } }, sp.spellType)) : null) : null);
   });
 

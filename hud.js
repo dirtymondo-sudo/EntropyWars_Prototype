@@ -4443,10 +4443,18 @@ function spellDealsDamage(sp) {
 }
 
 // Physical / Magic / Utility delivery badge (the purple "MAGIC" pill in the mockup).
+// `icon` is the .ew-dmgicon modifier class (styles-hud.css): the Pokémon-style
+// burst/orb mark that separates DAMAGE KIND from the elemental TYPE pills.
 function spellDeliveryBadge(sp, cat) {
-  if (!spellDealsDamage(sp)) return { label: 'UTILITY', color: '#d8b24a' };
-  if (sp.damageType === 'physical') return { label: 'PHYSICAL', color: '#e0944a' };
-  return { label: 'MAGIC', color: '#b56ce0' };
+  if (!spellDealsDamage(sp)) return { label: 'UTILITY', color: '#d8b24a', icon: null, title: null };
+  if (sp.damageType === 'physical') return {
+    label: 'PHYSICAL', color: '#e0944a', icon: 'phys',
+    title: 'Physical damage — scales with ATK, blocked by DEF',
+  };
+  return {
+    label: 'MAGIC', color: '#b56ce0', icon: 'magic',
+    title: 'Magic damage — scales with M ATK, blocked by M DEF',
+  };
 }
 
 // Long-range (gravity-assisted) vs close-range delivery class. A RANGED ability
@@ -7115,7 +7123,9 @@ function _renderSpellDescBar() {
     const _tc2 = spellTargetChip(sp);
     chips += _chip(_tc2.label, _tc2.color, _tc2.title);
     const _db = spellDeliveryBadge(sp);
-    chips += _chip(_db.label, _db.color, null);
+    chips += _chip(
+      (_db.icon ? '<span class="ew-dmgicon ' + _db.icon + '" style="margin-right:5px;"></span>' : '') + _db.label,
+      _db.color, _db.title);
     if (spellDealsDamage(sp)) {
       const _rb = spellRangeBadge(sp);
       chips += _chip(_rb.glyph + ' ' + _rb.label, _rb.color, _rb.title);

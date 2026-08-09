@@ -2881,14 +2881,19 @@ const SKY_EVENT_START_ROUND = 6;
 const SKY_EVENT_CHANCE = 0.15;
 const SKY_EVENT_DURATION = 2;
 
+// ATK/INT (and MP for casting) must stay aligned with the race KIT's
+// damageType mix as felt through the race's DEFAULT job modifier — a race
+// whose racials are physical needs enough base ATK to survive a caster
+// job's ATK penalty, and vice versa (kit-vs-stat alignment pass 2026-08-09:
+// kraken had 18 effective ATK under Harbinger with physical racials).
 const RACE_BASE_STATS = {
 
     'giant':         { hp: 635, mp: 30,  atk: 46, def: 48, mdef: 16, move: 2, awr: 2, int: 10, spd: 4 },
     'robot':         { hp: 620, mp: 33,  atk: 44, def: 55, mdef: 14, move: 2, awr: 3, int: 8,  spd: 3 },
-    'mech':          { hp: 605, mp: 34,  atk: 38, def: 47, mdef: 14, move: 2, awr: 2, int: 8,  spd: 2 },
+    'mech':          { hp: 605, mp: 56,  atk: 38, def: 47, mdef: 14, move: 2, awr: 2, int: 30, spd: 2 },
     'gargoyle':      { hp: 585, mp: 45,  atk: 48, def: 44, mdef: 20, move: 2, awr: 3, int: 18, spd: 4 },
     'zombie':        { hp: 660, mp: 25,  atk: 36, def: 50, mdef: 13, move: 2, awr: 1, int: 5,  spd: 2 },
-    'cyclops':       { hp: 630, mp: 31,  atk: 48, def: 45, mdef: 14, move: 2, awr: 3, int: 8,  spd: 6 },
+    'cyclops':       { hp: 630, mp: 48,  atk: 46, def: 45, mdef: 14, move: 2, awr: 3, int: 30, spd: 6 },
 
     'skeleton':      { hp: 570, mp: 48,  atk: 72, def: 28, mdef: 22, move: 3, awr: 2, int: 22, spd: 8 },
     'demon':         { hp: 580, mp: 45,  atk: 72, def: 28, mdef: 22, move: 2, awr: 2, int: 22, spd: 4 },
@@ -2909,7 +2914,7 @@ const RACE_BASE_STATS = {
     'siren':         { hp: 488, mp: 95, atk: 28, def: 25, mdef: 41, move: 2, awr: 3, int: 56, spd: 8 },
 
     'android':       { hp: 518, mp: 71, atk: 60, def: 24, mdef: 31, move: 3, awr: 5, int: 39, spd: 9 },
-    'shadow entity': { hp: 496, mp: 81, atk: 58, def: 20, mdef: 35, move: 3, awr: 5, int: 45, spd: 10 },
+    'shadow entity': { hp: 496, mp: 81, atk: 46, def: 20, mdef: 35, move: 3, awr: 5, int: 58, spd: 10 },
     'reptilian':     { hp: 555, mp: 64, atk: 68, def: 29, mdef: 27, move: 2, awr: 4, int: 30, spd: 7 },
     'catgirl':       { hp: 508, mp: 76, atk: 57, def: 24, mdef: 31, move: 3, awr: 4, int: 38, spd: 8 },
     'mantid':        { hp: 510, mp: 84, atk: 60, def: 22, mdef: 34, move: 3, awr: 5, int: 44, spd: 8 },
@@ -2930,21 +2935,21 @@ const RACE_BASE_STATS = {
     'pirate':        { hp: 560, mp: 60, atk: 62, def: 30, mdef: 23, move: 2, awr: 3, int: 24, spd: 7 },
     'swordfighter':  { hp: 550, mp: 59, atk: 64, def: 32, mdef: 24, move: 3, awr: 3, int: 26, spd: 9 },
 
-    'knight':        { hp: 575, mp: 40,  atk: 52, def: 42, mdef: 22, move: 2, awr: 2, int: 12, spd: 4 },
+    'knight':        { hp: 575, mp: 70,  atk: 48, def: 42, mdef: 22, move: 2, awr: 2, int: 36, spd: 4 },
     'shaman':        { hp: 545, mp: 88, atk: 42, def: 30, mdef: 36, move: 2, awr: 3, int: 58, spd: 5 },
     'mad scientist': { hp: 480, mp: 93, atk: 30, def: 22, mdef: 44, move: 2, awr: 5, int: 62, spd: 8 },
     'cowboy':        { hp: 540, mp: 63, atk: 64, def: 28, mdef: 23, move: 2, awr: 4, int: 24, spd: 7 },
-    'men in black':  { hp: 520, mp: 70, atk: 54, def: 28, mdef: 31, move: 3, awr: 5, int: 38, spd: 9 },
+    'men in black':  { hp: 520, mp: 70, atk: 48, def: 28, mdef: 31, move: 3, awr: 5, int: 48, spd: 9 },
     'telepath':      { hp: 490, mp: 110, atk: 22, def: 24, mdef: 47, move: 2, awr: 6, int: 71, spd: 7 },
     'marksman':      { hp: 505, mp: 65, atk: 62, def: 22, mdef: 22, move: 2, awr: 6, int: 22, spd: 8 },
     'priest':        { hp: 490, mp: 98, atk: 24, def: 30, mdef: 41, move: 2, awr: 4, int: 56, spd: 7 },
     'wizard':        { hp: 475, mp: 110, atk: 22, def: 24, mdef: 49, move: 2, awr: 3, int: 70, spd: 6 },
     'fortune teller':{ hp: 515, mp: 89, atk: 28, def: 26, mdef: 39, move: 2, awr: 6, int: 56, spd: 7 },
 
-    'nephilim':      { hp: 618, mp: 35,  atk: 42, def: 50, mdef: 17, move: 2, awr: 3, int: 12, spd: 3 },
+    'nephilim':      { hp: 618, mp: 68,  atk: 38, def: 50, mdef: 17, move: 2, awr: 3, int: 42, spd: 3 },
 
-    'demon prince':  { hp: 585, mp: 44,  atk: 74, def: 26, mdef: 21, move: 2, awr: 2, int: 20, spd: 3 },
-    'goatman':       { hp: 590, mp: 41,  atk: 70, def: 30, mdef: 20, move: 2, awr: 2, int: 18, spd: 6 },
+    'demon prince':  { hp: 585, mp: 44,  atk: 52, def: 26, mdef: 21, move: 2, awr: 2, int: 46, spd: 3 },
+    'goatman':       { hp: 590, mp: 56,  atk: 70, def: 30, mdef: 20, move: 2, awr: 2, int: 36, spd: 6 },
 
     'mermaid':       { hp: 478, mp: 99, atk: 20, def: 28, mdef: 44, move: 2, awr: 4, int: 62, spd: 8 },
 
@@ -2967,18 +2972,18 @@ const RACE_BASE_STATS = {
     'droid':         { hp: 468, mp: 108, atk: 24, def: 22, mdef: 46, move: 2, awr: 6, int: 66, spd: 7 },
     'antihero':      { hp: 558, mp: 59, atk: 58, def: 36, mdef: 23, move: 3, awr: 3, int: 24, spd: 7 },
     'conspiracy theorist':{ hp: 522, mp: 81, atk: 42, def: 28, mdef: 32, move: 2, awr: 5, int: 40, spd: 6 },
-    'overlord':      { hp: 625, mp: 36,  atk: 76, def: 32, mdef: 18, move: 2, awr: 2, int: 14, spd: 4 },
-    'chosen one':    { hp: 452, mp: 113, atk: 32, def: 24, mdef: 48, move: 2, awr: 5, int: 72, spd: 9 },
-    'politician':    { hp: 548, mp: 69, atk: 42, def: 34, mdef: 30, move: 2, awr: 4, int: 36, spd: 5 },
+    'overlord':      { hp: 625, mp: 64,  atk: 60, def: 32, mdef: 18, move: 2, awr: 2, int: 52, spd: 4 },
+    'chosen one':    { hp: 452, mp: 113, atk: 58, def: 24, mdef: 48, move: 2, awr: 5, int: 58, spd: 9 },
+    'politician':    { hp: 548, mp: 69, atk: 34, def: 34, mdef: 30, move: 2, awr: 4, int: 48, spd: 5 },
 
     'atlantean':     { hp: 524, mp: 85, atk: 46, def: 34, mdef: 33, move: 2, awr: 3, int: 48, spd: 6 },
     'dinosaur':      { hp: 595, mp: 40,  atk: 74, def: 26, mdef: 18, move: 2, awr: 2, int: 14, spd: 7 },
-    'dragon':        { hp: 514, mp: 83, atk: 30, def: 28, mdef: 40, move: 2, awr: 3, int: 55, spd: 3 },
+    'dragon':        { hp: 500, mp: 83, atk: 66, def: 28, mdef: 40, move: 2, awr: 3, int: 50, spd: 3 },
     'ghoul':         { hp: 545, mp: 65, atk: 60, def: 22, mdef: 25, move: 3, awr: 3, int: 28, spd: 9 },
     'gnome':         { hp: 520, mp: 80, atk: 40, def: 28, mdef: 31, move: 2, awr: 4, int: 38, spd: 8 },
-    'kaiju':         { hp: 610, mp: 36,  atk: 76, def: 30, mdef: 13, move: 2, awr: 1, int: 6,  spd: 3 },
-    'kraken':        { hp: 544, mp: 69, atk: 42, def: 36, mdef: 29, move: 2, awr: 3, int: 34, spd: 1 },
-    'loch ness monster':{ hp: 635, mp: 33,  atk: 40, def: 46, mdef: 14, move: 2, awr: 2, int: 8,  spd: 2 },
+    'kaiju':         { hp: 595, mp: 62,  atk: 76, def: 30, mdef: 13, move: 2, awr: 1, int: 30, spd: 3 },
+    'kraken':        { hp: 524, mp: 69, atk: 78, def: 36, mdef: 29, move: 2, awr: 3, int: 30, spd: 1 },
+    'loch ness monster':{ hp: 612, mp: 64,  atk: 40, def: 46, mdef: 14, move: 2, awr: 2, int: 44, spd: 2 },
     'yeti':          { hp: 600, mp: 41,  atk: 70, def: 32, mdef: 16, move: 2, awr: 2, int: 10, spd: 2 },
 
     'barbarella':    { hp: 524, mp: 71, atk: 56, def: 28, mdef: 31, move: 3, awr: 3, int: 38, spd: 8 },
@@ -2995,7 +3000,7 @@ const RACE_BASE_STATS = {
     'occulus':       { hp: 466, mp: 90, atk: 20, def: 24, mdef: 38, move: 3, awr: 5, int: 50, spd: 7 },
     'quarterback':   { hp: 538, mp: 59, atk: 54, def: 30, mdef: 22, move: 3, awr: 3, int: 22, spd: 7 },
     'robinhood':     { hp: 535, mp: 61, atk: 66, def: 26, mdef: 25, move: 3, awr: 4, int: 28, spd: 9 },
-    'santa clause':  { hp: 645, mp: 70, atk: 30, def: 38, mdef: 36, move: 2, awr: 4, int: 30, spd: 4 },
+    'santa clause':  { hp: 645, mp: 70, atk: 36, def: 38, mdef: 36, move: 2, awr: 4, int: 48, spd: 4 },
     'super sentai':  { hp: 620, mp: 45,  atk: 46, def: 44, mdef: 20, move: 2, awr: 3, int: 18, spd: 4 },
     'symbiote':      { hp: 520, mp: 60, atk: 64, def: 26, mdef: 25, move: 3, awr: 3, int: 28, spd: 8 },
     'valkraye':      { hp: 560, mp: 55, atk: 56, def: 34, mdef: 27, move: 3, awr: 3, int: 30, spd: 7 },

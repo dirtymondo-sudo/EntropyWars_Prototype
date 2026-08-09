@@ -4951,3 +4951,36 @@
 @media (max-width: 1100px) {
     .slb-tl { right: 10px; }
 }
+
+/* ── Damage-kind icons (2026-08-09) ──────────────────────────────────────
+   Pokémon-style physical/special split marks so a spell's DAMAGE KIND reads
+   at a glance and can't be confused with the elemental TYPE chips (which are
+   text pills): PHYSICAL = orange spiked impact burst, MAGIC = purple ringed
+   orb. Shared by the battle desc bar (hud.js spellDeliveryBadge) and the
+   party builder (party-builder.js pbDmgIcon) — styles-hud.css loads on every
+   screen, so both can use these classes. Keep them plain background/clip-path
+   (no filter) so they stay safe inside any preserve-3d ancestor. */
+.ew-dmgicon {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    flex: none;
+}
+.ew-dmgicon.phys {
+    background: radial-gradient(circle at 50% 45%,
+        #fff3c4 0%, #ffcf6e 22%, #f08a3c 48%, #d84e1a 72%, #7e2508 100%);
+    clip-path: polygon(50% 0%, 61% 24%, 86% 12%, 76% 37%, 100% 50%,
+        76% 63%, 86% 88%, 61% 76%, 50% 100%, 39% 76%, 14% 88%, 24% 63%,
+        0% 50%, 24% 37%, 14% 12%, 39% 24%);
+}
+.ew-dmgicon.magic {
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        #f3e3ff 0%, #f3e3ff 14%,
+        #5b2b8f 20%, #5b2b8f 30%,
+        #c48cf2 36%, #c48cf2 48%,
+        #3d1a63 54%, #3d1a63 64%,
+        #9a5fd8 70%, #9a5fd8 82%,
+        #2a1145 88%, #2a1145 100%);
+    box-shadow: 0 0 4px rgba(181, 108, 224, 0.5);
+}
