@@ -7730,7 +7730,8 @@
             const profile = RACE_PROFILES[race] || {};
             const types = profile.types || [];
             const lore = _CODEX_LORE[race] || 'No intelligence available. File pending ████████ review.';
-            const maxHp = 700, maxMp = 250, maxAtk = 90, maxDef = 60, maxMDef = 60, maxInt = 80, maxSpd = 12;
+            /* maxMp halved 2026-08-09 with the global MP-pool halving (data.js). */
+            const maxHp = 700, maxMp = 125, maxAtk = 90, maxDef = 60, maxMDef = 60, maxInt = 80, maxSpd = 12;
             const total = (stats.hp || 0) + (stats.mp || 0) + (stats.atk || 0) + (stats.def || 0) + (stats.mdef || 0) + (stats.int || 0) + (stats.spd || 0) + (stats.move || 0) + (stats.awr || 0);
             // ⚖️ Official physique (RACE_PHYSIQUE): height/weight are real game
             // data — the weight class drives push/pull physics, fall damage and

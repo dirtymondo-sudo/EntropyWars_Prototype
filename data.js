@@ -2883,123 +2883,123 @@ const SKY_EVENT_DURATION = 2;
 
 const RACE_BASE_STATS = {
 
-    'giant':         { hp: 635, mp: 60,  atk: 46, def: 48, mdef: 16, move: 2, awr: 2, int: 10, spd: 4 },
-    'robot':         { hp: 620, mp: 65,  atk: 44, def: 55, mdef: 14, move: 2, awr: 3, int: 8,  spd: 3 },
-    'mech':          { hp: 605, mp: 68,  atk: 38, def: 47, mdef: 14, move: 2, awr: 2, int: 8,  spd: 2 },
-    'gargoyle':      { hp: 585, mp: 90,  atk: 48, def: 44, mdef: 20, move: 2, awr: 3, int: 18, spd: 4 },
-    'zombie':        { hp: 660, mp: 50,  atk: 36, def: 50, mdef: 13, move: 2, awr: 1, int: 5,  spd: 2 },
-    'cyclops':       { hp: 630, mp: 62,  atk: 48, def: 45, mdef: 14, move: 2, awr: 3, int: 8,  spd: 6 },
+    'giant':         { hp: 635, mp: 30,  atk: 46, def: 48, mdef: 16, move: 2, awr: 2, int: 10, spd: 4 },
+    'robot':         { hp: 620, mp: 33,  atk: 44, def: 55, mdef: 14, move: 2, awr: 3, int: 8,  spd: 3 },
+    'mech':          { hp: 605, mp: 34,  atk: 38, def: 47, mdef: 14, move: 2, awr: 2, int: 8,  spd: 2 },
+    'gargoyle':      { hp: 585, mp: 45,  atk: 48, def: 44, mdef: 20, move: 2, awr: 3, int: 18, spd: 4 },
+    'zombie':        { hp: 660, mp: 25,  atk: 36, def: 50, mdef: 13, move: 2, awr: 1, int: 5,  spd: 2 },
+    'cyclops':       { hp: 630, mp: 31,  atk: 48, def: 45, mdef: 14, move: 2, awr: 3, int: 8,  spd: 6 },
 
-    'skeleton':      { hp: 570, mp: 95,  atk: 72, def: 28, mdef: 22, move: 3, awr: 2, int: 22, spd: 8 },
-    'demon':         { hp: 580, mp: 90,  atk: 72, def: 28, mdef: 22, move: 2, awr: 2, int: 22, spd: 4 },
-    'bigfoot':       { hp: 605, mp: 78,  atk: 64, def: 30, mdef: 17, move: 2, awr: 2, int: 12, spd: 3 },
-    'antperson':     { hp: 585, mp: 105, atk: 64, def: 28, mdef: 27, move: 2, awr: 3, int: 26, spd: 7 },
-    'werewolf':      { hp: 575, mp: 95,  atk: 70, def: 30, mdef: 18, move: 3, awr: 3, int: 15, spd: 8 },
+    'skeleton':      { hp: 570, mp: 48,  atk: 72, def: 28, mdef: 22, move: 3, awr: 2, int: 22, spd: 8 },
+    'demon':         { hp: 580, mp: 45,  atk: 72, def: 28, mdef: 22, move: 2, awr: 2, int: 22, spd: 4 },
+    'bigfoot':       { hp: 605, mp: 39,  atk: 64, def: 30, mdef: 17, move: 2, awr: 2, int: 12, spd: 3 },
+    'antperson':     { hp: 585, mp: 53, atk: 64, def: 28, mdef: 27, move: 2, awr: 3, int: 26, spd: 7 },
+    'werewolf':      { hp: 575, mp: 48,  atk: 70, def: 30, mdef: 18, move: 3, awr: 3, int: 15, spd: 8 },
 
-    'angel':         { hp: 480, mp: 195, atk: 22, def: 30, mdef: 42, move: 2, awr: 4, int: 59, spd: 8 },
-    'ghost':         { hp: 485, mp: 192, atk: 22, def: 28, mdef: 42, move: 3, awr: 4, int: 58, spd: 8 },
+    'angel':         { hp: 480, mp: 98, atk: 22, def: 30, mdef: 42, move: 2, awr: 4, int: 59, spd: 8 },
+    'ghost':         { hp: 485, mp: 96, atk: 22, def: 28, mdef: 42, move: 3, awr: 4, int: 58, spd: 8 },
 
-    'nordic':        { hp: 560, mp: 142, atk: 54, def: 44, mdef: 29, move: 2, awr: 3, int: 48, spd: 6 },
-    'fairy':         { hp: 466, mp: 208, atk: 24, def: 22, mdef: 44, move: 3, awr: 5, int: 62, spd: 8 },
-    'scarecrow':     { hp: 530, mp: 152, atk: 36, def: 33, mdef: 32, move: 2, awr: 2, int: 40, spd: 5 },
-    'grey':          { hp: 465, mp: 208, atk: 22, def: 24, mdef: 46, move: 2, awr: 6, int: 65, spd: 8 },
-    'succubus':      { hp: 492, mp: 182, atk: 32, def: 26, mdef: 40, move: 2, awr: 3, int: 55, spd: 8 },
-    'orb of light':  { hp: 445, mp: 228, atk: 20, def: 22, mdef: 49, move: 2, awr: 6, int: 70, spd: 7 },
-    'mothman':       { hp: 502, mp: 178, atk: 28, def: 26, mdef: 38, move: 2, awr: 6, int: 50, spd: 8 },
-    'siren':         { hp: 488, mp: 190, atk: 28, def: 25, mdef: 41, move: 2, awr: 3, int: 56, spd: 8 },
+    'nordic':        { hp: 560, mp: 71, atk: 54, def: 44, mdef: 29, move: 2, awr: 3, int: 48, spd: 6 },
+    'fairy':         { hp: 466, mp: 104, atk: 24, def: 22, mdef: 44, move: 3, awr: 5, int: 62, spd: 8 },
+    'scarecrow':     { hp: 530, mp: 76, atk: 36, def: 33, mdef: 32, move: 2, awr: 2, int: 40, spd: 5 },
+    'grey':          { hp: 465, mp: 104, atk: 22, def: 24, mdef: 46, move: 2, awr: 6, int: 65, spd: 8 },
+    'succubus':      { hp: 492, mp: 91, atk: 32, def: 26, mdef: 40, move: 2, awr: 3, int: 55, spd: 8 },
+    'orb of light':  { hp: 445, mp: 114, atk: 20, def: 22, mdef: 49, move: 2, awr: 6, int: 70, spd: 7 },
+    'mothman':       { hp: 502, mp: 89, atk: 28, def: 26, mdef: 38, move: 2, awr: 6, int: 50, spd: 8 },
+    'siren':         { hp: 488, mp: 95, atk: 28, def: 25, mdef: 41, move: 2, awr: 3, int: 56, spd: 8 },
 
-    'android':       { hp: 518, mp: 142, atk: 60, def: 24, mdef: 31, move: 3, awr: 5, int: 39, spd: 9 },
-    'shadow entity': { hp: 496, mp: 162, atk: 58, def: 20, mdef: 35, move: 3, awr: 5, int: 45, spd: 10 },
-    'reptilian':     { hp: 555, mp: 128, atk: 68, def: 29, mdef: 27, move: 2, awr: 4, int: 30, spd: 7 },
-    'catgirl':       { hp: 508, mp: 152, atk: 57, def: 24, mdef: 31, move: 3, awr: 4, int: 38, spd: 8 },
-    'mantid':        { hp: 510, mp: 168, atk: 60, def: 22, mdef: 34, move: 3, awr: 5, int: 44, spd: 8 },
-    'skinwalker':    { hp: 508, mp: 152, atk: 62, def: 30, mdef: 31, move: 3, awr: 5, int: 39, spd: 9 },
+    'android':       { hp: 518, mp: 71, atk: 60, def: 24, mdef: 31, move: 3, awr: 5, int: 39, spd: 9 },
+    'shadow entity': { hp: 496, mp: 81, atk: 58, def: 20, mdef: 35, move: 3, awr: 5, int: 45, spd: 10 },
+    'reptilian':     { hp: 555, mp: 64, atk: 68, def: 29, mdef: 27, move: 2, awr: 4, int: 30, spd: 7 },
+    'catgirl':       { hp: 508, mp: 76, atk: 57, def: 24, mdef: 31, move: 3, awr: 4, int: 38, spd: 8 },
+    'mantid':        { hp: 510, mp: 84, atk: 60, def: 22, mdef: 34, move: 3, awr: 5, int: 44, spd: 8 },
+    'skinwalker':    { hp: 508, mp: 76, atk: 62, def: 30, mdef: 31, move: 3, awr: 5, int: 39, spd: 9 },
 
-    'seraphim':      { hp: 445, mp: 228, atk: 22, def: 22, mdef: 48, move: 2, awr: 4, int: 69, spd: 8 },
-    'djinn':         { hp: 462, mp: 208, atk: 26, def: 28, mdef: 45, move: 2, awr: 3, int: 63, spd: 8 },
-    'anubis':        { hp: 458, mp: 212, atk: 24, def: 28, mdef: 46, move: 2, awr: 4, int: 66, spd: 6 },
+    'seraphim':      { hp: 445, mp: 114, atk: 22, def: 22, mdef: 48, move: 2, awr: 4, int: 69, spd: 8 },
+    'djinn':         { hp: 462, mp: 104, atk: 26, def: 28, mdef: 45, move: 2, awr: 3, int: 63, spd: 8 },
+    'anubis':        { hp: 458, mp: 106, atk: 24, def: 28, mdef: 46, move: 2, awr: 4, int: 66, spd: 6 },
 
-    'martian':       { hp: 520, mp: 155, atk: 66, def: 27, mdef: 31, move: 2, awr: 4, int: 38, spd: 7 },
-    'annunaki':      { hp: 510, mp: 158, atk: 54, def: 32, mdef: 28, move: 2, awr: 3, int: 44, spd: 5 },
+    'martian':       { hp: 520, mp: 78, atk: 66, def: 27, mdef: 31, move: 2, awr: 4, int: 38, spd: 7 },
+    'annunaki':      { hp: 510, mp: 79, atk: 54, def: 32, mdef: 28, move: 2, awr: 3, int: 44, spd: 5 },
 
-    'ai':            { hp: 470, mp: 198, atk: 28, def: 24, mdef: 46, move: 2, awr: 6, int: 65, spd: 7 },
-    'machine elves': { hp: 505, mp: 195, atk: 32, def: 27, mdef: 42, move: 2, awr: 4, int: 58, spd: 7 },
-    'glitch':        { hp: 490, mp: 180, atk: 36, def: 24, mdef: 39, move: 3, awr: 5, int: 53, spd: 9 },
+    'ai':            { hp: 470, mp: 99, atk: 28, def: 24, mdef: 46, move: 2, awr: 6, int: 65, spd: 7 },
+    'machine elves': { hp: 505, mp: 98, atk: 32, def: 27, mdef: 42, move: 2, awr: 4, int: 58, spd: 7 },
+    'glitch':        { hp: 490, mp: 90, atk: 36, def: 24, mdef: 39, move: 3, awr: 5, int: 53, spd: 9 },
 
-    'homosapien':    { hp: 545, mp: 148, atk: 52, def: 32, mdef: 30, move: 2, awr: 3, int: 36, spd: 6 },
-    'pirate':        { hp: 560, mp: 120, atk: 62, def: 30, mdef: 23, move: 2, awr: 3, int: 24, spd: 7 },
-    'swordfighter':  { hp: 550, mp: 118, atk: 64, def: 32, mdef: 24, move: 3, awr: 3, int: 26, spd: 9 },
+    'homosapien':    { hp: 545, mp: 74, atk: 52, def: 32, mdef: 30, move: 2, awr: 3, int: 36, spd: 6 },
+    'pirate':        { hp: 560, mp: 60, atk: 62, def: 30, mdef: 23, move: 2, awr: 3, int: 24, spd: 7 },
+    'swordfighter':  { hp: 550, mp: 59, atk: 64, def: 32, mdef: 24, move: 3, awr: 3, int: 26, spd: 9 },
 
-    'knight':        { hp: 575, mp: 80,  atk: 52, def: 42, mdef: 22, move: 2, awr: 2, int: 12, spd: 4 },
-    'shaman':        { hp: 545, mp: 175, atk: 42, def: 30, mdef: 36, move: 2, awr: 3, int: 58, spd: 5 },
-    'mad scientist': { hp: 480, mp: 185, atk: 30, def: 22, mdef: 44, move: 2, awr: 5, int: 62, spd: 8 },
-    'cowboy':        { hp: 540, mp: 125, atk: 64, def: 28, mdef: 23, move: 2, awr: 4, int: 24, spd: 7 },
-    'men in black':  { hp: 520, mp: 140, atk: 54, def: 28, mdef: 31, move: 3, awr: 5, int: 38, spd: 9 },
-    'telepath':      { hp: 490, mp: 220, atk: 22, def: 24, mdef: 47, move: 2, awr: 6, int: 71, spd: 7 },
-    'marksman':      { hp: 505, mp: 130, atk: 62, def: 22, mdef: 22, move: 2, awr: 6, int: 22, spd: 8 },
-    'priest':        { hp: 490, mp: 195, atk: 24, def: 30, mdef: 41, move: 2, awr: 4, int: 56, spd: 7 },
-    'wizard':        { hp: 475, mp: 220, atk: 22, def: 24, mdef: 49, move: 2, awr: 3, int: 70, spd: 6 },
-    'fortune teller':{ hp: 515, mp: 178, atk: 28, def: 26, mdef: 39, move: 2, awr: 6, int: 56, spd: 7 },
+    'knight':        { hp: 575, mp: 40,  atk: 52, def: 42, mdef: 22, move: 2, awr: 2, int: 12, spd: 4 },
+    'shaman':        { hp: 545, mp: 88, atk: 42, def: 30, mdef: 36, move: 2, awr: 3, int: 58, spd: 5 },
+    'mad scientist': { hp: 480, mp: 93, atk: 30, def: 22, mdef: 44, move: 2, awr: 5, int: 62, spd: 8 },
+    'cowboy':        { hp: 540, mp: 63, atk: 64, def: 28, mdef: 23, move: 2, awr: 4, int: 24, spd: 7 },
+    'men in black':  { hp: 520, mp: 70, atk: 54, def: 28, mdef: 31, move: 3, awr: 5, int: 38, spd: 9 },
+    'telepath':      { hp: 490, mp: 110, atk: 22, def: 24, mdef: 47, move: 2, awr: 6, int: 71, spd: 7 },
+    'marksman':      { hp: 505, mp: 65, atk: 62, def: 22, mdef: 22, move: 2, awr: 6, int: 22, spd: 8 },
+    'priest':        { hp: 490, mp: 98, atk: 24, def: 30, mdef: 41, move: 2, awr: 4, int: 56, spd: 7 },
+    'wizard':        { hp: 475, mp: 110, atk: 22, def: 24, mdef: 49, move: 2, awr: 3, int: 70, spd: 6 },
+    'fortune teller':{ hp: 515, mp: 89, atk: 28, def: 26, mdef: 39, move: 2, awr: 6, int: 56, spd: 7 },
 
-    'nephilim':      { hp: 618, mp: 70,  atk: 42, def: 50, mdef: 17, move: 2, awr: 3, int: 12, spd: 3 },
+    'nephilim':      { hp: 618, mp: 35,  atk: 42, def: 50, mdef: 17, move: 2, awr: 3, int: 12, spd: 3 },
 
-    'demon prince':  { hp: 585, mp: 88,  atk: 74, def: 26, mdef: 21, move: 2, awr: 2, int: 20, spd: 3 },
-    'goatman':       { hp: 590, mp: 82,  atk: 70, def: 30, mdef: 20, move: 2, awr: 2, int: 18, spd: 6 },
+    'demon prince':  { hp: 585, mp: 44,  atk: 74, def: 26, mdef: 21, move: 2, awr: 2, int: 20, spd: 3 },
+    'goatman':       { hp: 590, mp: 41,  atk: 70, def: 30, mdef: 20, move: 2, awr: 2, int: 18, spd: 6 },
 
-    'mermaid':       { hp: 478, mp: 198, atk: 20, def: 28, mdef: 44, move: 2, awr: 4, int: 62, spd: 8 },
+    'mermaid':       { hp: 478, mp: 99, atk: 20, def: 28, mdef: 44, move: 2, awr: 4, int: 62, spd: 8 },
 
-    'demon princess':{ hp: 495, mp: 185, atk: 30, def: 26, mdef: 39, move: 2, awr: 3, int: 52, spd: 7 },
-    'dreameater':    { hp: 490, mp: 190, atk: 22, def: 22, mdef: 44, move: 2, awr: 5, int: 62, spd: 7 },
+    'demon princess':{ hp: 495, mp: 93, atk: 30, def: 26, mdef: 39, move: 2, awr: 3, int: 52, spd: 7 },
+    'dreameater':    { hp: 490, mp: 95, atk: 22, def: 22, mdef: 44, move: 2, awr: 5, int: 62, spd: 7 },
 
-    'halfdemon':     { hp: 535, mp: 145, atk: 64, def: 24, mdef: 30, move: 3, awr: 4, int: 36, spd: 9 },
-    'vampire':       { hp: 480, mp: 158, atk: 55, def: 22, mdef: 25, move: 3, awr: 5, int: 28, spd: 7 },
+    'halfdemon':     { hp: 535, mp: 73, atk: 64, def: 24, mdef: 30, move: 3, awr: 4, int: 36, spd: 9 },
+    'vampire':       { hp: 480, mp: 79, atk: 55, def: 22, mdef: 25, move: 3, awr: 5, int: 28, spd: 7 },
 
-    'fallen angel':  { hp: 452, mp: 218, atk: 24, def: 24, mdef: 47, move: 2, awr: 4, int: 68, spd: 8 },
-    'voidweaver':    { hp: 505, mp: 155, atk: 64, def: 22, mdef: 31, move: 3, awr: 5, int: 38, spd: 8 },
+    'fallen angel':  { hp: 452, mp: 109, atk: 24, def: 24, mdef: 47, move: 2, awr: 4, int: 68, spd: 8 },
+    'voidweaver':    { hp: 505, mp: 78, atk: 64, def: 22, mdef: 31, move: 3, awr: 5, int: 38, spd: 8 },
 
-    'cosmic wraith': { hp: 498, mp: 162, atk: 60, def: 26, mdef: 32, move: 2, awr: 4, int: 40, spd: 8 },
+    'cosmic wraith': { hp: 498, mp: 81, atk: 60, def: 26, mdef: 32, move: 2, awr: 4, int: 40, spd: 8 },
 
-    'cyborg':        { hp: 575, mp: 90,  atk: 65, def: 30, mdef: 22, move: 2, awr: 3, int: 22, spd: 8 },
+    'cyborg':        { hp: 575, mp: 45,  atk: 65, def: 30, mdef: 22, move: 2, awr: 3, int: 22, spd: 8 },
 
-    'superhero':     { hp: 538, mp: 136, atk: 52, def: 34, mdef: 25, move: 3, awr: 3, int: 28, spd: 6 },
+    'superhero':     { hp: 538, mp: 68, atk: 52, def: 34, mdef: 25, move: 3, awr: 3, int: 28, spd: 6 },
 
-    'general':       { hp: 568, mp: 125, atk: 50, def: 38, mdef: 27, move: 2, awr: 3, int: 30, spd: 6 },
-    'droid':         { hp: 468, mp: 215, atk: 24, def: 22, mdef: 46, move: 2, awr: 6, int: 66, spd: 7 },
-    'antihero':      { hp: 558, mp: 118, atk: 58, def: 36, mdef: 23, move: 3, awr: 3, int: 24, spd: 7 },
-    'conspiracy theorist':{ hp: 522, mp: 162, atk: 42, def: 28, mdef: 32, move: 2, awr: 5, int: 40, spd: 6 },
-    'overlord':      { hp: 625, mp: 72,  atk: 76, def: 32, mdef: 18, move: 2, awr: 2, int: 14, spd: 4 },
-    'chosen one':    { hp: 452, mp: 225, atk: 32, def: 24, mdef: 48, move: 2, awr: 5, int: 72, spd: 9 },
-    'politician':    { hp: 548, mp: 138, atk: 42, def: 34, mdef: 30, move: 2, awr: 4, int: 36, spd: 5 },
+    'general':       { hp: 568, mp: 63, atk: 50, def: 38, mdef: 27, move: 2, awr: 3, int: 30, spd: 6 },
+    'droid':         { hp: 468, mp: 108, atk: 24, def: 22, mdef: 46, move: 2, awr: 6, int: 66, spd: 7 },
+    'antihero':      { hp: 558, mp: 59, atk: 58, def: 36, mdef: 23, move: 3, awr: 3, int: 24, spd: 7 },
+    'conspiracy theorist':{ hp: 522, mp: 81, atk: 42, def: 28, mdef: 32, move: 2, awr: 5, int: 40, spd: 6 },
+    'overlord':      { hp: 625, mp: 36,  atk: 76, def: 32, mdef: 18, move: 2, awr: 2, int: 14, spd: 4 },
+    'chosen one':    { hp: 452, mp: 113, atk: 32, def: 24, mdef: 48, move: 2, awr: 5, int: 72, spd: 9 },
+    'politician':    { hp: 548, mp: 69, atk: 42, def: 34, mdef: 30, move: 2, awr: 4, int: 36, spd: 5 },
 
-    'atlantean':     { hp: 524, mp: 170, atk: 46, def: 34, mdef: 33, move: 2, awr: 3, int: 48, spd: 6 },
-    'dinosaur':      { hp: 595, mp: 80,  atk: 74, def: 26, mdef: 18, move: 2, awr: 2, int: 14, spd: 7 },
-    'dragon':        { hp: 514, mp: 165, atk: 30, def: 28, mdef: 40, move: 2, awr: 3, int: 55, spd: 3 },
-    'ghoul':         { hp: 545, mp: 130, atk: 60, def: 22, mdef: 25, move: 3, awr: 3, int: 28, spd: 9 },
-    'gnome':         { hp: 520, mp: 160, atk: 40, def: 28, mdef: 31, move: 2, awr: 4, int: 38, spd: 8 },
-    'kaiju':         { hp: 610, mp: 72,  atk: 76, def: 30, mdef: 13, move: 2, awr: 1, int: 6,  spd: 3 },
-    'kraken':        { hp: 544, mp: 138, atk: 42, def: 36, mdef: 29, move: 2, awr: 3, int: 34, spd: 1 },
-    'loch ness monster':{ hp: 635, mp: 65,  atk: 40, def: 46, mdef: 14, move: 2, awr: 2, int: 8,  spd: 2 },
-    'yeti':          { hp: 600, mp: 82,  atk: 70, def: 32, mdef: 16, move: 2, awr: 2, int: 10, spd: 2 },
+    'atlantean':     { hp: 524, mp: 85, atk: 46, def: 34, mdef: 33, move: 2, awr: 3, int: 48, spd: 6 },
+    'dinosaur':      { hp: 595, mp: 40,  atk: 74, def: 26, mdef: 18, move: 2, awr: 2, int: 14, spd: 7 },
+    'dragon':        { hp: 514, mp: 83, atk: 30, def: 28, mdef: 40, move: 2, awr: 3, int: 55, spd: 3 },
+    'ghoul':         { hp: 545, mp: 65, atk: 60, def: 22, mdef: 25, move: 3, awr: 3, int: 28, spd: 9 },
+    'gnome':         { hp: 520, mp: 80, atk: 40, def: 28, mdef: 31, move: 2, awr: 4, int: 38, spd: 8 },
+    'kaiju':         { hp: 610, mp: 36,  atk: 76, def: 30, mdef: 13, move: 2, awr: 1, int: 6,  spd: 3 },
+    'kraken':        { hp: 544, mp: 69, atk: 42, def: 36, mdef: 29, move: 2, awr: 3, int: 34, spd: 1 },
+    'loch ness monster':{ hp: 635, mp: 33,  atk: 40, def: 46, mdef: 14, move: 2, awr: 2, int: 8,  spd: 2 },
+    'yeti':          { hp: 600, mp: 41,  atk: 70, def: 32, mdef: 16, move: 2, awr: 2, int: 10, spd: 2 },
 
-    'barbarella':    { hp: 524, mp: 142, atk: 56, def: 28, mdef: 31, move: 3, awr: 3, int: 38, spd: 8 },
-    'black goo':     { hp: 540, mp: 140, atk: 38, def: 32, mdef: 33, move: 2, awr: 4, int: 42, spd: 5 },
-    'golem':         { hp: 660, mp: 55,  atk: 42, def: 54, mdef: 13, move: 2, awr: 1, int: 6,  spd: 2 },
-    'honda civic':   { hp: 560, mp: 110, atk: 48, def: 38, mdef: 21, move: 3, awr: 2, int: 20, spd: 6 },
-    'ice queen':     { hp: 470, mp: 200, atk: 22, def: 28, mdef: 44, move: 2, awr: 4, int: 62, spd: 7 },
-    'juggernaut':    { hp: 640, mp: 60,  atk: 72, def: 36, mdef: 14, move: 2, awr: 1, int: 8,  spd: 3 },
-    'ki fighter':    { hp: 545, mp: 130, atk: 64, def: 28, mdef: 23, move: 3, awr: 3, int: 50, spd: 9 },
-    'king arthur':   { hp: 600, mp: 100, atk: 48, def: 48, mdef: 25, move: 2, awr: 3, int: 28, spd: 5 },
-    'king kong':     { hp: 650, mp: 58,  atk: 74, def: 32, mdef: 14, move: 2, awr: 2, int: 8,  spd: 3 },
-    'minotaur':      { hp: 615, mp: 80,  atk: 70, def: 30, mdef: 21, move: 3, awr: 2, int: 12, spd: 6 },
-    'necromancer':   { hp: 485, mp: 195, atk: 24, def: 26, mdef: 42, move: 2, awr: 3, int: 58, spd: 6 },
-    'occulus':       { hp: 466, mp: 180, atk: 20, def: 24, mdef: 38, move: 3, awr: 5, int: 50, spd: 7 },
-    'quarterback':   { hp: 538, mp: 118, atk: 54, def: 30, mdef: 22, move: 3, awr: 3, int: 22, spd: 7 },
-    'robinhood':     { hp: 535, mp: 122, atk: 66, def: 26, mdef: 25, move: 3, awr: 4, int: 28, spd: 9 },
-    'santa clause':  { hp: 645, mp: 140, atk: 30, def: 38, mdef: 36, move: 2, awr: 4, int: 30, spd: 4 },
-    'super sentai':  { hp: 620, mp: 90,  atk: 46, def: 44, mdef: 20, move: 2, awr: 3, int: 18, spd: 4 },
-    'symbiote':      { hp: 520, mp: 120, atk: 64, def: 26, mdef: 25, move: 3, awr: 3, int: 28, spd: 8 },
-    'valkraye':      { hp: 560, mp: 110, atk: 56, def: 34, mdef: 27, move: 3, awr: 3, int: 30, spd: 7 },
-    'watcher':       { hp: 480, mp: 178, atk: 22, def: 28, mdef: 39, move: 2, awr: 5, int: 52, spd: 6 },
+    'barbarella':    { hp: 524, mp: 71, atk: 56, def: 28, mdef: 31, move: 3, awr: 3, int: 38, spd: 8 },
+    'black goo':     { hp: 540, mp: 70, atk: 38, def: 32, mdef: 33, move: 2, awr: 4, int: 42, spd: 5 },
+    'golem':         { hp: 660, mp: 28,  atk: 42, def: 54, mdef: 13, move: 2, awr: 1, int: 6,  spd: 2 },
+    'honda civic':   { hp: 560, mp: 55, atk: 48, def: 38, mdef: 21, move: 3, awr: 2, int: 20, spd: 6 },
+    'ice queen':     { hp: 470, mp: 100, atk: 22, def: 28, mdef: 44, move: 2, awr: 4, int: 62, spd: 7 },
+    'juggernaut':    { hp: 640, mp: 30,  atk: 72, def: 36, mdef: 14, move: 2, awr: 1, int: 8,  spd: 3 },
+    'ki fighter':    { hp: 545, mp: 65, atk: 64, def: 28, mdef: 23, move: 3, awr: 3, int: 50, spd: 9 },
+    'king arthur':   { hp: 600, mp: 50, atk: 48, def: 48, mdef: 25, move: 2, awr: 3, int: 28, spd: 5 },
+    'king kong':     { hp: 650, mp: 29,  atk: 74, def: 32, mdef: 14, move: 2, awr: 2, int: 8,  spd: 3 },
+    'minotaur':      { hp: 615, mp: 40,  atk: 70, def: 30, mdef: 21, move: 3, awr: 2, int: 12, spd: 6 },
+    'necromancer':   { hp: 485, mp: 98, atk: 24, def: 26, mdef: 42, move: 2, awr: 3, int: 58, spd: 6 },
+    'occulus':       { hp: 466, mp: 90, atk: 20, def: 24, mdef: 38, move: 3, awr: 5, int: 50, spd: 7 },
+    'quarterback':   { hp: 538, mp: 59, atk: 54, def: 30, mdef: 22, move: 3, awr: 3, int: 22, spd: 7 },
+    'robinhood':     { hp: 535, mp: 61, atk: 66, def: 26, mdef: 25, move: 3, awr: 4, int: 28, spd: 9 },
+    'santa clause':  { hp: 645, mp: 70, atk: 30, def: 38, mdef: 36, move: 2, awr: 4, int: 30, spd: 4 },
+    'super sentai':  { hp: 620, mp: 45,  atk: 46, def: 44, mdef: 20, move: 2, awr: 3, int: 18, spd: 4 },
+    'symbiote':      { hp: 520, mp: 60, atk: 64, def: 26, mdef: 25, move: 3, awr: 3, int: 28, spd: 8 },
+    'valkraye':      { hp: 560, mp: 55, atk: 56, def: 34, mdef: 27, move: 3, awr: 3, int: 30, spd: 7 },
+    'watcher':       { hp: 480, mp: 89, atk: 22, def: 28, mdef: 39, move: 2, awr: 5, int: 52, spd: 6 },
 };
 
 /* ── RACE_PHYSIQUE (2026-07-07 physique pass) ──────────────────────────────
@@ -3117,7 +3117,7 @@ const JOB_MODIFIERS = {
     // Provoke / Iron Dome) and the Bulwark passive.
     'Warrior': {
         hp: 80,
-        mp: -10,
+        mp: -5,
         atk: 30,
         def: 14,
         mdef: 8,
@@ -3130,7 +3130,7 @@ const JOB_MODIFIERS = {
     },
     'Tank': {
         hp: 160,
-        mp: -20,
+        mp: -10,
         atk: 12,
         def: 30,
         mdef: 16,
@@ -3143,7 +3143,7 @@ const JOB_MODIFIERS = {
     },
     'Gunslinger': {
         hp: 20,
-        mp: -10,
+        mp: -5,
         atk: 14,
         def: 5,
         mdef: 2,
@@ -3156,7 +3156,7 @@ const JOB_MODIFIERS = {
     },
     'Black Mage': {
         hp: -60,
-        mp: 60,
+        mp: 30,
         atk: -24,
         def: -10,
         mdef: 12,
@@ -3169,7 +3169,7 @@ const JOB_MODIFIERS = {
     },
     'White Mage': {
         hp: -30,
-        mp: 50,
+        mp: 25,
         atk: -24,
         def: 0,
         mdef: 14,
@@ -3182,7 +3182,7 @@ const JOB_MODIFIERS = {
     },
     'Agent': {
         hp: -40,
-        mp: 15,
+        mp: 8,
         atk: 4,
         def: 0,
         mdef: 6,
@@ -3195,7 +3195,7 @@ const JOB_MODIFIERS = {
     },
     'Psychic': {
         hp: 15,
-        mp: 70,
+        mp: 35,
         atk: -16,
         def: -5,
         mdef: 14,
@@ -3208,7 +3208,7 @@ const JOB_MODIFIERS = {
     },
     'Harvester': {
         hp: 105,
-        mp: 30,
+        mp: 15,
         atk: 26,
         def: 10,
         mdef: 6,
@@ -3222,7 +3222,7 @@ const JOB_MODIFIERS = {
 
     'Engineer': {
         hp: 80,
-        mp: 10,
+        mp: 5,
         atk: 14,
         def: 16,
         mdef: 10,
@@ -3236,7 +3236,7 @@ const JOB_MODIFIERS = {
 
     'Harbinger': {
         hp: 30,
-        mp: 55,
+        mp: 28,
         atk: -24,
         def: -5,
         mdef: 12,
@@ -3250,7 +3250,7 @@ const JOB_MODIFIERS = {
 
     'Freelancer': {
         hp: 20,
-        mp: 10,
+        mp: 5,
         atk: 8,
         def: 5,
         mdef: 5,
@@ -3276,7 +3276,7 @@ const JOB_MODIFIERS = {
     },
     'Sniper': {
         hp: -5,
-        mp: -5,
+        mp: -3,
         atk: 18,
         def: -8,
         mdef: -5,
@@ -3307,7 +3307,7 @@ function computeUnitStats(race, cls) {
     const job = JOB_MODIFIERS[cls] || JOB_MODIFIERS['Gunslinger'];
     return {
         hp: Math.max(200, base.hp + job.hp),
-        mp: Math.max(25, base.mp + job.mp),
+        mp: Math.max(12, base.mp + job.mp),
         atk: Math.max(8, base.atk + job.atk),
         def: Math.max(0, base.def + job.def),
         mdef: Math.max(0, (base.mdef || 0) + (job.mdef || 0)),
@@ -3360,7 +3360,7 @@ const CLASS_TEMPLATES = {
         cls: 'Gunslinger',
         job: 'Gunslinger',
         hp: 580,
-        mp: 110,
+        mp: 55,
         atk: 80,
         def: 40,
         mdef: 27,
@@ -3374,7 +3374,7 @@ const CLASS_TEMPLATES = {
         cls: 'Warrior',
         job: 'Warrior',
         hp: 620,
-        mp: 110,
+        mp: 55,
         atk: 92,
         def: 45,
         mdef: 22,
@@ -3388,7 +3388,7 @@ const CLASS_TEMPLATES = {
         cls: 'Tank',
         job: 'Tank',
         hp: 720,
-        mp: 100,
+        mp: 50,
         atk: 64,
         def: 65,
         mdef: 26,
@@ -3402,7 +3402,7 @@ const CLASS_TEMPLATES = {
         cls: 'Black Mage',
         job: 'Black Mage',
         hp: 470,
-        mp: 180,
+        mp: 90,
         atk: 32,
         def: 25,
         mdef: 38,
@@ -3416,7 +3416,7 @@ const CLASS_TEMPLATES = {
         cls: 'White Mage',
         job: 'White Mage',
         hp: 520,
-        mp: 170,
+        mp: 85,
         atk: 32,
         def: 35,
         mdef: 35,
@@ -3430,7 +3430,7 @@ const CLASS_TEMPLATES = {
         cls: 'Agent',
         job: 'Agent',
         hp: 550,
-        mp: 135,
+        mp: 68,
         atk: 64,
         def: 35,
         mdef: 32,
@@ -3444,7 +3444,7 @@ const CLASS_TEMPLATES = {
         cls: 'Psychic',
         job: 'Psychic',
         hp: 470,
-        mp: 190,
+        mp: 95,
         atk: 24,
         def: 25,
         mdef: 40,
@@ -3458,7 +3458,7 @@ const CLASS_TEMPLATES = {
         cls: 'Harvester',
         job: 'Harvester',
         hp: 630,
-        mp: 140,
+        mp: 70,
         atk: 72,
         def: 45,
         mdef: 29,
@@ -3472,7 +3472,7 @@ const CLASS_TEMPLATES = {
         cls: 'Engineer',
         job: 'Engineer',
         hp: 600,
-        mp: 130,
+        mp: 65,
         atk: 56,
         def: 45,
         mdef: 29,
@@ -3486,7 +3486,7 @@ const CLASS_TEMPLATES = {
         cls: 'Harbinger',
         job: 'Harbinger',
         hp: 550,
-        mp: 160,
+        mp: 80,
         atk: 48,
         def: 35,
         mdef: 35,
@@ -3500,7 +3500,7 @@ const CLASS_TEMPLATES = {
         cls: 'Freelancer',
         job: 'Freelancer',
         hp: 570,
-        mp: 130,
+        mp: 65,
         atk: 64,
         def: 40,
         mdef: 29,
@@ -3514,7 +3514,7 @@ const CLASS_TEMPLATES = {
         cls: 'Raider',
         job: 'Raider',
         hp: 610,
-        mp: 120,
+        mp: 60,
         atk: 80,
         def: 40,
         mdef: 24,
@@ -3528,7 +3528,7 @@ const CLASS_TEMPLATES = {
         cls: 'Sniper',
         job: 'Sniper',
         hp: 500,
-        mp: 115,
+        mp: 58,
         atk: 72,
         def: 25,
         mdef: 27,
@@ -3542,7 +3542,7 @@ const CLASS_TEMPLATES = {
         cls: 'Swordmaster',
         job: 'Swordmaster',
         hp: 595,
-        mp: 118,
+        mp: 59,
         atk: 88,
         def: 42,
         mdef: 28,
@@ -3900,7 +3900,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 30,
         equipCost: 20,
-        dmg: 120,
+        dmg: 80,
         range: 3,
         kind: 'damage',
         damageType: 'magic',
@@ -3909,11 +3909,10 @@ const SPELL_LIBRARY = [
         classRestriction: 'Black Mage',
         jobPreference: ['Black Mage'],
         projectileOverride: 'proj-fire',
-        statusEffects: [{
-            id: 'burn',
-            duration: 2
-        }],
-        desc: 'Deals MEDIUM magic damage to a Single Enemy. Applies Burn.'
+        /* 2026-08-09 balance pass: weak poke, no Burn — Wall of Fire is the
+           kit's Burn setup now. */
+        statusEffects: [],
+        desc: 'Deals WEAK magic damage to a Single Enemy.'
     },
 
     {
@@ -3963,7 +3962,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 30,
         equipCost: 20,
-        dmg: 210,
+        dmg: 180,
         range: 1,
         kind: 'damage',
         damageType: 'physical',
@@ -3975,7 +3974,7 @@ const SPELL_LIBRARY = [
         classRestriction: 'Swordmaster',
         jobPreference: ['Swordmaster'],
         bonusVsStatus: { status: 'burn', mult: 1.5 },
-        desc: 'Deals SEVERE physical damage to a Single Enemy. Ignores DEF. Deals bonus damage to targets with Burn.'
+        desc: 'Deals HEAVY physical damage to a Single Enemy. Ignores DEF. Deals bonus damage to targets with Burn.'
     },
 
     {
@@ -4098,7 +4097,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 35,
         equipCost: 20,
-        dmg: 100,
+        dmg: 80,
         range: 3,
         kind: 'terrainCreate',
         terrainType: 'scorched',
@@ -4282,7 +4281,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 30,
         equipCost: 20,
-        dmg: 160,
+        dmg: 135,
         range: 3,
         kind: 'lifeDrain',
         /* Harvester ring-3 payoff (tier II): Poison Seed sets up, this cashes in. */
@@ -4291,7 +4290,7 @@ const SPELL_LIBRARY = [
         classRestriction: 'Harvester',
         drainPct: 0.70,
         bonusVsStatus: { status: 'poison', mult: 1.5 },
-        desc: 'Deals HEAVY magic damage to a Single Enemy. Heals the caster for part of the damage dealt. Deals bonus damage to targets with Poison.'
+        desc: 'Deals MEDIUM magic damage to a Single Enemy. Heals the caster for part of the damage dealt. Deals bonus damage to targets with Poison.'
     },
     {
         id: 'leechSeed',
@@ -4428,7 +4427,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 55,
         equipCost: 25,
-        dmg: 210,
+        dmg: 160,
         range: 5,
         kind: 'line',
         damageType: 'physical',
@@ -4437,7 +4436,7 @@ const SPELL_LIBRARY = [
         tier: 'III',
         school: 'Engineer',
         classRestriction: 'Engineer',
-        desc: 'Deals SEVERE physical damage to All Enemies in a line. Ignores DEF.'
+        desc: 'Deals HEAVY physical damage to All Enemies in a line. Ignores DEF.'
     },
     /* freeEnergy moved to the Mad Scientist RACE kit (2026-07-23) — only he
        cracked zero-point energy. See RACE_ABILITIES['mad scientist']. */
@@ -4526,7 +4525,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 25,
         equipCost: 15,
-        dmg: 160,
+        dmg: 135,
         range: 4,
         kind: 'damage',
         damageType: 'magic',
@@ -4538,7 +4537,7 @@ const SPELL_LIBRARY = [
             id: 'slow',
             duration: 2
         }],
-        desc: 'Deals HEAVY magic damage to a Single Enemy. Applies Slow.'
+        desc: 'Deals MEDIUM magic damage to a Single Enemy. Applies Slow.'
     },
 
     {
@@ -4671,7 +4670,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 50,
         equipCost: 25,
-        dmg: 210,
+        dmg: 180,
         range: 5,
         kind: 'damage',
         damageType: 'physical',
@@ -4685,7 +4684,7 @@ const SPELL_LIBRARY = [
         classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
         bonusVsStatus: { status: 'stun', mult: 1.5 },
-        desc: 'Deals SEVERE physical damage to a Single Enemy. Ignores DEF. Deals bonus damage to targets with Stun. Marks the target: the hit lands at the end of the round, but only while your team can still see them.'
+        desc: 'Deals HEAVY physical damage to a Single Enemy. Ignores DEF. Deals bonus damage to targets with Stun. Marks the target: the hit lands at the end of the round, but only while your team can still see them.'
     },
     {
         id: 'camouflage',
@@ -4753,7 +4752,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 15,
         equipCost: 10,
-        dmg: 210,
+        dmg: 180,
         range: 1,
         kind: 'damage',
         damageType: 'physical',
@@ -4761,7 +4760,7 @@ const SPELL_LIBRARY = [
         school: 'Freelancer',
         classRestriction: 'Freelancer',
         jobPreference: ['Freelancer'],
-        desc: 'Deals SEVERE physical damage to a Single Enemy.'
+        desc: 'Deals HEAVY physical damage to a Single Enemy.'
     },
 
     {
@@ -4775,7 +4774,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 50,
         equipCost: 25,
-        dmg: 210,
+        dmg: 160,
         range: 1,
         kind: 'cross',
         crossRadius: 3,
@@ -4783,11 +4782,10 @@ const SPELL_LIBRARY = [
         tier: 'III',
         school: 'Warrior',
         classRestriction: 'Warrior',
-        statusEffects: [{
-            id: 'stun',
-            duration: 1
-        }],
-        desc: 'Deals SEVERE physical damage to All Enemies in a cross-shaped AOE. Applies Stun. Cooldown: 2 rounds.'
+        /* 2026-08-09 balance pass: HEAVY, Stun rider removed — raw damage is
+           the capstone's whole budget now. */
+        statusEffects: [],
+        desc: 'Deals HEAVY physical damage to All Enemies in a cross-shaped AOE. Cooldown: 2 rounds.'
     },
 
     {
@@ -4798,7 +4796,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 50,
         equipCost: 25,
-        dmg: 210,
+        dmg: 180,
         range: 4,
         kind: 'damage',
         damageType: 'physical',
@@ -4812,17 +4810,15 @@ const SPELL_LIBRARY = [
             duration: 2,
             bonusDamage: 40
         }],
-        desc: 'Deals SEVERE physical damage to a Single Enemy. Applies Marked. Always lands a critical hit.'
+        desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Marked. Always lands a critical hit.'
     },
 
     {
-        /* 2026-07-17 shape pass: was yet another 3×3 (16 spells share that
-           footprint). Now the game's first ROUND blast — a 5×5 with the
-           corners sheared off (21 tiles), the crater a falling rock actually
-           leaves. Damage trimmed 192→180 and cost 70→80 to pay for the
-           footprint. */
+        /* 2026-08-09 balance pass: back to a tight 3×3 (the 5×5 round blast
+           covered a quarter of a medium map), typed ALIEN — meteors come from
+           space — and it now slams flyers out of the sky (groundsFlyers). */
         id: 'meteor',
-        spellType: 'unholy',
+        spellType: 'alien',
         element: 'fire',
         name: 'Meteor',
         type: 'damage',
@@ -4831,12 +4827,12 @@ const SPELL_LIBRARY = [
         dmg: 160,
         range: 4,
         kind: 'aoe',
-        aoeShape: 'round',
         damageType: 'magic',
         tier: 'III',
         school: 'Black Mage',
         classRestriction: 'Black Mage',
-        aoeRadius: 2,
+        aoeRadius: 1,
+        groundsFlyers: true,
         leaveTerrain: 'scorched',
         projectileOverride: 'proj-fire',
         statusEffects: [{
@@ -4845,7 +4841,7 @@ const SPELL_LIBRARY = [
         }],
         terrainDeform: { centerDelta: -2, edgeDelta: -1 },
         demolishesBuildings: true,
-        desc: 'Deals HEAVY magic damage to All Enemies in an AOE. Applies Burn. Destroys buildings. Leaves scorched tiles behind. Reshapes the ground on impact. Cooldown: 2 rounds.'
+        desc: 'Deals HEAVY magic damage to All Enemies in a 3×3 AOE. Applies Burn. Knocks flying targets out of the sky. Destroys buildings. Leaves scorched tiles behind. Reshapes the ground on impact. Cooldown: 2 rounds.'
     },
 
 
@@ -4883,7 +4879,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 50,
         equipCost: 25,
-        dmg: 210,
+        dmg: 180,
         range: 3,
         kind: 'damage',
         damageType: 'magic',
@@ -4895,7 +4891,7 @@ const SPELL_LIBRARY = [
             duration: 1
         }],
         bonusVsStatus: { status: 'silence', mult: 1.5 },
-        desc: 'Deals SEVERE magic damage to a Single Enemy. Applies Silence. Deals bonus damage to targets with Silence.'
+        desc: 'Deals HEAVY magic damage to a Single Enemy. Applies Silence. Deals bonus damage to targets with Silence.'
     },
 
     {
@@ -5384,12 +5380,12 @@ const SHARED_SUMMON_BLOOD_RAIN = {
 
 const SHARED_NUKE = {
     id: 'sharedNuke', spellType: 'tech', element: 'fire', name: 'Nuke',
-    type: 'damage', tier: 'III', cost: 45, dmg: 200, range: 5, apCost: 2,
+    type: 'damage', tier: 'III', cost: 45, dmg: 160, range: 5, apCost: 2,
     kind: 'delayed', damageType: 'magic', aoeRadius: 2, delayTurns: 1,
     leaveTerrain: 'scorched',
     terrainDeform: { centerDelta: -3, edgeDelta: -1 },
     demolishesBuildings: true,
-    desc: 'Marks a zone. After 1 turn, deals SEVERE magic damage to All Enemies inside (AOE). Destroys buildings. Leaves scorched tiles behind. Reshapes the ground on impact. Cooldown: 2 rounds.'
+    desc: 'Marks a zone. After 1 turn, deals HEAVY magic damage to All Enemies inside (AOE). Destroys buildings. Leaves scorched tiles behind. Reshapes the ground on impact. Cooldown: 2 rounds.'
 };
 
 
@@ -5410,10 +5406,10 @@ const SHARED_SMOKE_SCREEN = {
    Nebula — cosmic wraith + superhero: the star-cloud concealment field. */
 const SHARED_EGO_DEATH = {
     id: 'sharedEgoDeath', spellType: 'alien', element: 'psychic', name: 'Ego Death',
-    type: 'damage', tier: 'III', cost: 50, dmg: 200, range: 3, apCost: 2, cooldownRounds: 2,
+    type: 'damage', tier: 'III', cost: 50, dmg: 180, range: 3, apCost: 2, cooldownRounds: 2,
     kind: 'damage', damageType: 'magic',
     statusEffects: [{ id: 'stun', duration: 1 }],
-    desc: 'Dissolve the target\'s sense of self entirely. The world drains away, the colour wheel spins, and what is left of "them" implodes into white light. Deals MASSIVE magic damage to a Single Enemy and Stuns them while the pieces reassemble. Cooldown: 2 rounds.'
+    desc: 'Dissolve the target\'s sense of self entirely. The world drains away, the colour wheel spins, and what is left of "them" implodes into white light. Deals HEAVY magic damage to a Single Enemy and Stuns them while the pieces reassemble. Cooldown: 2 rounds.'
 };
 
 const SHARED_BLACK_HOLE = {
@@ -5427,10 +5423,10 @@ const SHARED_BLACK_HOLE = {
 
 const SHARED_NEBULA = {
     id: 'sharedNebula', spellType: 'alien', element: 'light', name: 'Nebula',
-    type: 'damage', cost: 50, dmg: 160, range: 4, apCost: 2, cooldownRounds: 2,
+    type: 'damage', cost: 50, dmg: 135, range: 4, apCost: 2, cooldownRounds: 2,
     kind: 'aoe', aoeRadius: 2, damageType: 'magic',
     statusEffects: [{ id: 'burn', duration: 2 }],
-    desc: 'Birth a star over the battlefield and detonate it. The newborn sun swells, collapses, and goes SUPERNOVA — HEAVY magic damage to All Enemies in a 5×5 blast and Burns everything the starfire touches. The nebula left hanging in the air is what remains of them. Cooldown: 2 rounds.'
+    desc: 'Birth a star over the battlefield and detonate it. The newborn sun swells, collapses, and goes SUPERNOVA — MEDIUM magic damage to All Enemies in a 5×5 blast and Burns everything the starfire touches. The nebula left hanging in the air is what remains of them. Cooldown: 2 rounds.'
 };
 
 /* (SHARED_EMP_PULSE merged into the Engineer class spell 'empBurst'
@@ -5499,10 +5495,10 @@ const RACE_ABILITIES = {
 
     'seraphim': [
         { id: 'raceDivineJudgment', spellType: 'divine', name: 'Divine Judgment',
-          type: 'damage', cost: 40, dmg: 160, range: 4, apCost: 2,
+          type: 'damage', cost: 40, dmg: 135, range: 4, apCost: 2,
           kind: 'cross', damageType: 'magic', crossRadius: 2,
           statusEffects: [{ id: 'burn', duration: 2 }],
-          desc: 'Deals HEAVY magic damage to All Enemies in a cross-shaped AOE. Applies Burn.' },
+          desc: 'Deals MEDIUM magic damage to All Enemies in a cross-shaped AOE. Applies Burn.' },
         { id: 'raceAbsolution', spellType: 'divine', name: 'Absolution',
           type: 'heal', cost: 35, range: 0, apCost: 2,
           kind: 'healAll', healAmt: 130,
@@ -5514,9 +5510,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'protect', duration: 1 }],
           desc: 'Empowers a Single Ally. Applies Protect. Cooldown: 2 rounds.' },
         { id: 'raceMerkaba', spellType: 'divine', element: 'light', name: 'Merkaba',
-          type: 'damage', tier: 'III', cost: 45, dmg: 190, range: 4, apCost: 2, cooldownRounds: 2,
+          type: 'damage', tier: 'III', cost: 45, dmg: 160, range: 4, apCost: 2, cooldownRounds: 2,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
-          desc: 'Summon the sacred chariot: counter-rotating star tetrahedra spin up over the battlefield, gather three rings of light, and collapse into a detonation. Deals SEVERE magic damage to All Enemies in an AOE. Cooldown: 2 rounds.' },
+          desc: 'Summon the sacred chariot: counter-rotating star tetrahedra spin up over the battlefield, gather three rings of light, and collapse into a detonation. Deals HEAVY magic damage to All Enemies in an AOE. Cooldown: 2 rounds.' },
     ],
     'orb of light': [
         { id: 'racePrismBurst', spellType: 'divine', name: 'Prism Burst',
@@ -5569,10 +5565,10 @@ const RACE_ABILITIES = {
            shared Smite, but that id sits at ring 1/3 for nephilim/priest —
            promoting it would break ring=tier. Angel gets its own heavy smite. */
         { id: 'raceDivineSmite', spellType: 'divine', element: 'light', name: 'Divine Smite',
-          type: 'damage', cost: 50, dmg: 200, range: 4, apCost: 2, tier: 'III',
+          type: 'damage', cost: 50, dmg: 180, range: 4, apCost: 2, tier: 'III',
           kind: 'damage', damageType: 'magic',
           unholyBonus: 80,
-          desc: 'Deals SEVERE magic damage to a Single Enemy. Deals bonus damage to Unholy targets. The full weight of heaven, delivered.' },
+          desc: 'Deals HEAVY magic damage to a Single Enemy. Deals bonus damage to Unholy targets. The full weight of heaven, delivered.' },
         SHARED_WING_ATTACK,
     ],
     'gargoyle': [
@@ -5613,10 +5609,10 @@ const RACE_ABILITIES = {
           kind: 'debuff', statusEffects: [{ id: 'contract', duration: 3 }],
           desc: 'Weakens a Single Enemy. Applies Contract.' },
         { id: 'raceHellmouth', spellType: 'unholy', element: 'fire', name: 'Hellmouth',
-          type: 'damage', tier: 'III', cost: 55, dmg: 190, range: 4,
+          type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 4,
           kind: 'line', damageType: 'magic', lineWidth: 1,
           leaveTerrain: 'lava',
-          desc: 'Deals SEVERE magic damage to All Enemies in a line. Leaves lava tiles behind.' },
+          desc: 'Deals HEAVY magic damage to All Enemies in a line. Leaves lava tiles behind.' },
         { id: 'raceVoidContract', spellType: 'unholy', element: 'shadow', name: 'Devour Soul',
           type: 'damage', cost: 40, dmg: 120, range: 3, apCost: 2,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.50,
@@ -5643,9 +5639,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'Weakens a Single Enemy. Applies Charm.' },
         { id: 'raceDrainingEmbrace', spellType: 'unholy', name: 'Draining Embrace',
-          type: 'damage', tier: 'III', cost: 35, dmg: 190, range: 1, apCost: 2,
+          type: 'damage', tier: 'III', cost: 35, dmg: 180, range: 1, apCost: 2,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.60,
-          desc: 'Deals SEVERE magic damage to a Single Enemy. Heals the caster for part of the damage dealt.' },
+          desc: 'Deals HEAVY magic damage to a Single Enemy. Heals the caster for part of the damage dealt.' },
         /* 2026-07-23: Poison Swamp out, Sleep Paralysis in — she sits on
            your chest and you cannot move. */
         { id: 'raceSleepParalysis', spellType: 'unholy', element: 'shadow', name: 'Sleep Paralysis',
@@ -5705,9 +5701,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'discord', duration: 2 }],
           desc: 'Emit a wave of dread. All enemies within 2 tiles suffer Discord for 2 turns.' },
         { id: 'raceProphecyOfDisaster', spellType: 'unholy', name: 'Prophecy of Disaster',
-          type: 'damage', tier: 'III', cost: 50, dmg: 190, range: 5, apCost: 2,
+          type: 'damage', tier: 'III', cost: 50, dmg: 160, range: 5, apCost: 2,
           kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
-          desc: 'Marks a zone. After 1 turn, deals SEVERE magic damage to All Enemies inside (AOE).' },
+          desc: 'Marks a zone. After 1 turn, deals HEAVY magic damage to All Enemies inside (AOE).' },
         { id: 'raceRedEyes', spellType: 'unholy', name: 'Red Eyes',
           type: 'debuff', cost: 20, range: 4, apCost: 1,
           kind: 'debuff',
@@ -5742,8 +5738,8 @@ const RACE_ABILITIES = {
           statStageBoost: { atk: 2 },
           desc: 'Empowers the caster. Raises ATK by 2 stages.' },
         _mkCharge({ id: 'raceBloodFrenzy', spellType: 'unholy', element: 'blood', name: 'Blood Frenzy',
-          tier: 'III', cost: 45, dmg: 200, apCost: 2, range: 6, autoTargetLowestHp: true,
-          desc: 'Deals SEVERE physical damage to a Single Enemy. Automatically strikes the visible enemy with the lowest HP.' }),
+          tier: 'III', cost: 45, dmg: 180, apCost: 2, range: 6, autoTargetLowestHp: true,
+          desc: 'Deals HEAVY physical damage to a Single Enemy. Automatically strikes the visible enemy with the lowest HP.' }),
         { id: 'raceBite', spellType: 'human', element: 'blood', name: 'Bite',
           type: 'damage', cost: 30, dmg: 120, range: 1,
           kind: 'lifeDrain', damageType: 'physical', drainPct: 0.30,
@@ -5794,9 +5790,9 @@ const RACE_ABILITIES = {
     ],
     'skinwalker': [
         { id: 'raceBorrowedClaw', spellType: 'anomaly', name: 'Borrowed Claw',
-          type: 'damage', cost: 25, dmg: 160, range: 1,
+          type: 'damage', cost: 25, dmg: 135, range: 1,
           kind: 'damage', damageType: 'physical', stealSpell: true,
-          desc: 'Deals HEAVY physical damage to a Single Enemy. Steals one of the target\'s spells. Cooldown: 3 rounds.' },
+          desc: 'Deals MEDIUM physical damage to a Single Enemy. Steals one of the target\'s spells. Cooldown: 3 rounds.' },
         { id: 'raceSkinSwap', spellType: 'anomaly', name: 'Skin Swap',
           type: 'utility', cost: 25, range: 4, apCost: 1,
           kind: 'swap', requiresLineOfSight: true,
@@ -5864,10 +5860,10 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           desc: 'Deals MEDIUM physical damage to a Single Enemy.' },
         { id: 'raceSasquatchSmash', spellType: 'anomaly', element: 'earth', name: 'Sasquatch Smash',
-          type: 'damage', cost: 45, dmg: 200, range: 1, apCost: 2, tier: 'III',
+          type: 'damage', cost: 45, dmg: 180, range: 1, apCost: 2, tier: 'III',
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Deals SEVERE physical damage to a Single Enemy. Applies Stagger. The photo would have been blurry anyway.' }
+          desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Stagger. The photo would have been blurry anyway.' }
     ],
     'siren': [
         { id: 'raceSonicBreaker', spellType: 'anomaly', name: 'Sonic Breaker',
@@ -5961,10 +5957,10 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
           desc: 'Deals WEAK physical damage to All Enemies around the caster (AOE).' },
         { id: 'raceHydraulicCrush', spellType: 'tech', element: 'metal', name: 'Hydraulic Crush',
-          type: 'damage', cost: 25, dmg: 160, range: 1,
+          type: 'damage', cost: 25, dmg: 135, range: 1,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Stagger.' },
+          desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Stagger.' },
         { id: 'raceRocketFist', spellType: 'tech', name: 'Rocket Fist',
           type: 'damage', cost: 25, dmg: 120, range: 3,
           kind: 'damage', damageType: 'physical',
@@ -6010,11 +6006,11 @@ const RACE_ABILITIES = {
         /* SHARED_RAMPART removed 2026-07-18 — the giant's default Tank job
            now carries the class-spell Rampart; the race copy was a duplicate. */
         { id: 'raceColossalCrush', spellType: 'human', element: 'earth', name: 'Colossal Crush',
-          type: 'damage', cost: 45, dmg: 200, range: 1, apCost: 2, tier: 'III',
+          type: 'damage', cost: 45, dmg: 180, range: 1, apCost: 2, tier: 'III',
           kind: 'damage', damageType: 'physical',
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Deals SEVERE physical damage to a Single Enemy. Applies Stagger and stamps the ground flat where they stood.' },
+          desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Stagger and stamps the ground flat where they stood.' },
     ],
     'catgirl': [
         { id: 'raceNinefoldScratch', spellType: 'human', element: 'metal', name: 'Ninefold Scratch',
@@ -6109,14 +6105,14 @@ const RACE_ABILITIES = {
           statStageBoost: { def: 2 },
           desc: 'Empowers the caster. Raises DEF by 2 stages.' },
         { id: 'raceToBeContinued', spellType: 'human', element: 'metal', name: 'To Be Continued',
-          type: 'damage', cost: 35, dmg: 210, range: 3, apCost: 1,
+          type: 'damage', cost: 35, dmg: 135, range: 3, apCost: 1,
           kind: 'damage', damageType: 'physical',
           delayedMark: true, markDelayRounds: 1, requireVision: false,
           projectileOverride: 'proj-knife',
           impactSfx: 'physicalAbility',
           markFloatText: '➡ TO BE CONTINUED',
           markLogText: 'freezes the frame on {target} — the episode resumes at the end of the round, and the finishing strike lands with it.',
-          desc: 'Deals SEVERE physical damage to a Single Enemy. Marks the target: the hit lands at the end of the round, but only while your team can still see them.' },
+          desc: 'Deals MEDIUM physical damage to a Single Enemy. Marks the target: the hit lands at the end of the round, but only while your team can still see them.' },
         { id: 'raceBlessedBlade', spellType: 'divine', element: 'light', name: 'Blessed Blade',
           type: 'damage', tier: 'III', cost: 55, dmg: 170, range: 1,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
@@ -6135,10 +6131,10 @@ const RACE_ABILITIES = {
           kind: 'guard', cooldownRounds: 2,
           desc: 'Pledge to protect an ally. The next time that ally is targeted by an attack, you dash to their side and take the hit in their place.' },
         { id: 'raceCrusade', spellType: 'divine', element: 'light', name: 'Crusade',
-          type: 'damage', cost: 60, dmg: 190, range: 4, apCost: 2, tier: 'III',
+          type: 'damage', cost: 60, dmg: 160, range: 4, apCost: 2, tier: 'III',
           kind: 'cross', crossRadius: 2, damageType: 'magic',
           unholyBonus: 60,
-          desc: 'Deals SEVERE magic damage to All Enemies in a cross-shaped AOE. Deals bonus damage to Unholy targets. Deus vult.' }
+          desc: 'Deals HEAVY magic damage to All Enemies in a cross-shaped AOE. Deals bonus damage to Unholy targets. Deus vult.' }
     ],
     'shaman': [
         { id: 'raceSpiritWalk', spellType: 'anomaly', element: 'psychic', name: 'Spirit Walk',
@@ -6214,18 +6210,18 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Deals WEAK physical damage to a Single Enemy. The draw comes so fast the target flinches — applies Stagger.' },
         { id: 'raceHighNoon', spellType: 'human', element: 'metal', name: 'High Noon',
-          type: 'damage', cost: 50, dmg: 200, range: 4, apCost: 2, tier: 'III',
+          type: 'damage', cost: 50, dmg: 180, range: 4, apCost: 2, tier: 'III',
           kind: 'damage', damageType: 'physical',
           guaranteedCrit: true,
           projectileOverride: 'proj-bullet',
-          desc: 'Deals SEVERE physical damage to a Single Enemy. Always lands a critical hit. The clock strikes twelve.' },
+          desc: 'Deals HEAVY physical damage to a Single Enemy. Always lands a critical hit. The clock strikes twelve.' },
     ],
     'men in black': [
         _mkBolt(_JAM_BOLT, { id: 'raceDeneuralizer', spellType: 'tech', element: 'psychic', name: 'Deneuralizer' }),
         { id: 'raceClassifiedWeapon', spellType: 'alien', element: 'lightning', name: 'Classified Weapon',
-          type: 'damage', tier: 'III', cost: 50, dmg: 200, range: 4,
+          type: 'damage', tier: 'III', cost: 50, dmg: 180, range: 4,
           kind: 'damage', damageType: 'magic',
-          desc: 'Deals SEVERE magic damage to a Single Enemy.' },
+          desc: 'Deals HEAVY magic damage to a Single Enemy.' },
         { id: 'raceAgentVanish', spellType: 'tech', element: 'shadow', name: 'Agent Vanish',
           type: 'utility', cost: 15, apCost: 1, range: 0,
           kind: 'escape', teleportDistance: 3,
@@ -6235,10 +6231,10 @@ const RACE_ABILITIES = {
     ],
     'telepath': [
         { id: 'raceMindCrush', spellType: 'anomaly', element: 'psychic', name: 'Migraine',
-          type: 'damage', tier: 'III', cost: 50, dmg: 200, range: 4,
+          type: 'damage', tier: 'III', cost: 50, dmg: 180, range: 4,
           kind: 'damage', damageType: 'magic',
           statStageBoost: { int: -1 },
-          desc: 'Deals SEVERE magic damage to a Single Enemy. Lowers the target\'s INT by 1 stage.' },
+          desc: 'Deals HEAVY magic damage to a Single Enemy. Lowers the target\'s INT by 1 stage.' },
         { id: 'raceTelepathicLink', spellType: 'anomaly', element: 'psychic', name: 'Telepathic Link',
           type: 'buff', cost: 20, range: 3, apCost: 1,
           kind: 'warCry', auraRadius: 3,
@@ -6266,11 +6262,11 @@ const RACE_ABILITIES = {
           kind: 'remoteView',
           desc: 'Glass a distant area of the map, granting vision for several turns. Every barrage starts with a spotter.' },
         { id: 'raceFireForEffect', spellType: 'human', element: 'fire', name: 'Fire for Effect',
-          type: 'damage', cost: 60, dmg: 190, range: 6, apCost: 2, tier: 'III',
+          type: 'damage', cost: 60, dmg: 160, range: 6, apCost: 2, tier: 'III',
           kind: 'delayed', damageType: 'physical', aoeRadius: 2, delayTurns: 1,
           leaveTerrain: 'scorched',
           terrainDeform: { centerDelta: -2, edgeDelta: -1 },
-          desc: 'Calls in the whole battery on a marked grid. After 1 turn, deals SEVERE physical damage to All Enemies inside (AOE). Leaves scorched tiles behind. Reshapes the ground on impact.' }
+          desc: 'Calls in the whole battery on a marked grid. After 1 turn, deals HEAVY physical damage to All Enemies inside (AOE). Leaves scorched tiles behind. Reshapes the ground on impact.' }
     ],
     'priest': [
         { id: 'raceDivineLight', spellType: 'divine', name: 'Divine Light',
@@ -6332,9 +6328,9 @@ const RACE_ABILITIES = {
           statStageBoost: { atk: -2 },
           desc: 'Weakens a Single Enemy. Lowers ATK by 2 stages.' },
         { id: 'raceCrystalBall', spellType: 'anomaly', element: 'arcane', name: 'Crystal Ball',
-          type: 'damage', tier: 'III', cost: 45, manaCostOverride: 45, dmg: 210, range: 5, apCost: 1,
+          type: 'damage', tier: 'III', cost: 45, manaCostOverride: 45, dmg: 160, range: 5, apCost: 1,
           kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
-          desc: 'Marks a zone. After 1 turn, deals SEVERE magic damage to All Enemies inside (AOE).' },
+          desc: 'Marks a zone. After 1 turn, deals HEAVY magic damage to All Enemies inside (AOE).' },
         { id: 'raceSpiritChannel', spellType: 'anomaly', element: 'psychic', name: 'Palm Read',
           type: 'heal', cost: 30, range: 3, apCost: 1,
           kind: 'heal', healAmt: 190, cleanse: 2,
@@ -6346,10 +6342,10 @@ const RACE_ABILITIES = {
         /* 2026-07-23 beam de-duplication: no longer the 4th identical line
            spell — now a focused single-target death ray that burns. */
         { id: 'raceHeatRay', spellType: 'alien', element: 'fire', name: 'Heat Ray',
-          type: 'damage', cost: 30, dmg: 160, range: 5,
+          type: 'damage', cost: 30, dmg: 135, range: 5,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'burn', duration: 2 }],
-          desc: 'Focus the war machine\'s death ray on a Single Enemy. Deals HEAVY physical damage. Applies Burn.' },
+          desc: 'Focus the war machine\'s death ray on a Single Enemy. Deals MEDIUM physical damage. Applies Burn.' },
         { id: 'raceWarOfTheWorlds', spellType: 'alien', element: 'metal', name: 'War of the Worlds',
           type: 'utility', tier: 'III', cost: 35, range: 2, apCost: 1,
           kind: 'deployTurret', turretDmg: 120, turretRange: 3, turretHp: 140,
@@ -6362,9 +6358,9 @@ const RACE_ABILITIES = {
     ],
     'annunaki': [
         { id: 'raceStarDecree', spellType: 'alien', element: 'light', name: 'Star Decree',
-          type: 'damage', tier: 'III', cost: 40, dmg: 200, range: 3,
+          type: 'damage', tier: 'III', cost: 40, dmg: 160, range: 3,
           kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
-          desc: 'Marks a zone. After 1 turn, deals SEVERE magic damage to All Enemies inside (AOE).' },
+          desc: 'Marks a zone. After 1 turn, deals HEAVY magic damage to All Enemies inside (AOE).' },
         { id: 'raceGravityWell', spellType: 'alien', element: 'arcane', name: 'Gravity Well',
           type: 'damage', cost: 30, dmg: 80, range: 4,
           kind: 'aoePull', damageType: 'magic', aoeRadius: 1, pullToCenter: true,
@@ -6389,18 +6385,18 @@ const RACE_ABILITIES = {
           // 2026-07-10 rework: was a 1-wide line beam that rarely caught more
           // than one target (20% win rate in the sim stats). Now a ranged
           // 3×3 sky-strike — a curtain of aurora descends on the marked area.
-          type: 'damage', cost: 50, manaCostOverride: 50, dmg: 160, range: 5,
+          type: 'damage', cost: 50, manaCostOverride: 50, dmg: 135, range: 5,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statStageBoost: { def: -1 },
-          desc: 'Deals HEAVY magic damage to All Enemies in an AOE. Lowers the target\'s DEF by 1 stage.' },
+          desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Lowers the target\'s DEF by 1 stage.' },
         { id: 'raceResonancePulse', spellType: 'alien', element: 'sonic', name: 'Resonance Pulse',
           // 2026-07-10 rework: full diamond nova (Manhattan radius 2, 12 tiles)
           // instead of the old 4-tile cross — `diamond: true` flips the shape.
-          type: 'damage', cost: 25, dmg: 160, range: 0,
+          type: 'damage', cost: 25, dmg: 135, range: 0,
           kind: 'cross', damageType: 'magic', crossRadius: 2, diamond: true, aoeOriginSelf: true,
           pushDistance: 1,
           statusEffects: [{ id: 'slow', duration: 1 }],
-          desc: 'Deals HEAVY magic damage to All Enemies in a diamond-shaped AOE. Applies Slow.' },
+          desc: 'Deals MEDIUM magic damage to All Enemies in a diamond-shaped AOE. Applies Slow.' },
         { id: 'raceStasisBeam', spellType: 'alien', element: 'light', name: 'Stasis Beam',
           type: 'debuff', cost: 30, range: 4, apCost: 1,
           kind: 'debuff',
@@ -6453,8 +6449,8 @@ const RACE_ABILITIES = {
     'mantid': [
         { id: 'raceMandibleStrike', spellType: 'alien', name: 'Mandible Strike',
           type: 'damage', cost: 25, range: 1,
-          kind: 'multiHit', damageType: 'physical', hitDamages: [53, 53, 53],
-          desc: 'Deals HEAVY physical damage to a Single Enemy across 3 hits.' },
+          kind: 'multiHit', damageType: 'physical', hitDamages: [45, 45, 45],
+          desc: 'Deals MEDIUM physical damage to a Single Enemy across 3 hits.' },
         { id: 'raceChitinArmor', spellType: 'alien', name: 'Chitin Armor',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff',
@@ -6651,9 +6647,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'Leaps onto a Single Enemy, dealing WEAK physical damage. Applies Stagger.' },
         { id: 'raceBaphometsRite', spellType: 'unholy', element: 'fire', name: 'Baphomet\'s Rite',
-          type: 'damage', cost: 45, dmg: 190, range: 4, apCost: 2, tier: 'III',
+          type: 'damage', cost: 45, dmg: 160, range: 4, apCost: 2, tier: 'III',
           kind: 'aoe', damageType: 'magic', aoeRadius: 1, selfDamagePct: 0.15,
-          desc: 'Offer your own blood and speak the name. Deals SEVERE magic damage to All Enemies in an AOE. Costs a portion of your HP — the goat always collects.' }
+          desc: 'Offer your own blood and speak the name. Deals HEAVY magic damage to All Enemies in an AOE. Costs a portion of your HP — the goat always collects.' }
     ],
     'halfdemon': [
         _mkBlink('shadow', { id: 'raceShadowStep', spellType: 'unholy', element: 'shadow', name: 'Shadow Step',
@@ -6769,10 +6765,10 @@ const RACE_ABILITIES = {
     'superhero': [
         _mkCharge({ id: 'raceHeroicLeap', spellType: 'human', name: 'Heroic Leap' }),
         { id: 'raceLaserBeam', spellType: 'alien', name: 'Laser Beam',
-          type: 'damage', tier: 'III', cost: 60, dmg: 190, range: 5,
+          type: 'damage', tier: 'III', cost: 60, dmg: 160, range: 5,
           kind: 'line', damageType: 'magic', lineWidth: 1,
           statusEffects: [{ id: 'burn', duration: 1 }],
-          desc: 'Deals SEVERE magic damage to All Enemies in a line. Applies Burn.' },
+          desc: 'Deals HEAVY magic damage to All Enemies in a line. Applies Burn.' },
         { id: 'raceShockwaveClap', spellType: 'human', name: 'Shockwave Clap',
           type: 'damage', cost: 25, dmg: 80, range: 4,
           kind: 'linePush', damageType: 'physical', lineWidth: 1, pushDistance: 2,
@@ -6796,11 +6792,11 @@ const RACE_ABILITIES = {
           statStageBoost: { def: 2 },
           desc: 'Empowers the caster. Raises DEF by 2 stages.' },
         { id: 'raceArtilleryStrike', spellType: 'human', name: 'Artillery Strike',
-          type: 'damage', cost: 40, dmg: 160, range: 6, apCost: 2,
+          type: 'damage', cost: 40, dmg: 135, range: 6, apCost: 2,
           kind: 'delayed', damageType: 'physical', aoeRadius: 1, delayTurns: 1,
           leaveTerrain: 'scorched',
           terrainDeform: { centerDelta: -2, edgeDelta: -1 },
-          desc: 'Marks a zone. After 1 turn, deals HEAVY physical damage to All Enemies inside (AOE). Leaves scorched tiles behind. Reshapes the ground on impact.' },
+          desc: 'Marks a zone. After 1 turn, deals MEDIUM physical damage to All Enemies inside (AOE). Leaves scorched tiles behind. Reshapes the ground on impact.' },
         SHARED_NUKE,
     ],
     'droid': [
@@ -6870,11 +6866,11 @@ const RACE_ABILITIES = {
           statStageBoost: { atk: 2 },
           desc: 'Empowers the caster. Raises ATK by 2 stages.' },
         { id: 'raceCataclysmDecree', spellType: 'unholy', name: 'Cataclysm Decree',
-          type: 'damage', tier: 'III', cost: 40, dmg: 200, range: 5, apCost: 2,
+          type: 'damage', tier: 'III', cost: 40, dmg: 160, range: 5, apCost: 2,
           kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
           leaveTerrain: 'lava',
           terrainDeform: { centerDelta: -2, edgeDelta: -1 },
-          desc: 'Marks a zone. After 1 turn, deals SEVERE magic damage to All Enemies inside (AOE). Leaves lava tiles behind. Reshapes the ground on impact.' },
+          desc: 'Marks a zone. After 1 turn, deals HEAVY magic damage to All Enemies inside (AOE). Leaves lava tiles behind. Reshapes the ground on impact.' },
         SHARED_SCORCHED_EARTH,
         SHARED_NUKE
     ],
@@ -6925,10 +6921,10 @@ const RACE_ABILITIES = {
           kind: 'zoneHeal', aoeRadius: 1, zoneDuration: 2, healPerTurn: 100,
           desc: 'Creates a zone that heals allies standing inside it each turn.' },
         { id: 'raceRiptide', spellType: 'anomaly', element: 'water', name: 'Whirlpool',
-          type: 'damage', cost: 30, dmg: 160, range: 4,
+          type: 'damage', cost: 30, dmg: 135, range: 4,
           kind: 'aoePull', damageType: 'magic', aoeRadius: 1, pullToCenter: true,
           statusEffects: [{ id: 'slow', duration: 1 }],
-          desc: 'Deals HEAVY magic damage to All Enemies in an AOE and pulls them toward the center. Applies Slow.' },
+          desc: 'Deals MEDIUM magic damage to All Enemies in an AOE and pulls them toward the center. Applies Slow.' },
         { id: 'raceFlood', spellType: 'anomaly', element: 'water', name: 'Great Flood',
           type: 'damage', tier: 'III', cost: 45, dmg: 130, range: 4, apCost: 2, cooldownRounds: 2,
           kind: 'terrainCreate', terrainType: 'water', tileCount: 12, elevationFlood: true,
@@ -6961,10 +6957,10 @@ const RACE_ABILITIES = {
     ],
     'dragon': [
         { id: 'raceDragonfire', spellType: 'unholy', name: 'Dragonfire',
-          type: 'damage', tier: 'III', cost: 60, dmg: 190, range: 4,
+          type: 'damage', tier: 'III', cost: 60, dmg: 160, range: 4,
           kind: 'line', damageType: 'magic', lineWidth: 1,
           statusEffects: [{ id: 'burn', duration: 2 }],
-          desc: 'Exhale a roaring column of dragonfire, dealing SEVERE magic damage to All Enemies in a line. Applies Burn.' },
+          desc: 'Exhale a roaring column of dragonfire, dealing HEAVY magic damage to All Enemies in a line. Applies Burn.' },
         SHARED_WING_ATTACK,
         { id: 'raceDragonfear', spellType: 'unholy', name: 'Dragonfear',
           type: 'debuff', cost: 25, range: 0, apCost: 1,
@@ -7026,9 +7022,9 @@ const RACE_ABILITIES = {
           terrainDeform: { centerDelta: -2, edgeDelta: -1 },
           desc: 'Deals MEDIUM physical damage to All Enemies around the caster (AOE). Applies Stagger. Reshapes the ground on impact.' },
         { id: 'raceAtomicBreath', spellType: 'tech', name: 'Atomic Breath',
-          type: 'damage', tier: 'III', cost: 55, dmg: 190, range: 5,
+          type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 5,
           kind: 'line', damageType: 'magic', lineWidth: 1,
-          desc: 'Unleash a searing torrent of blue atomic fire, dealing SEVERE magic damage to All Enemies in a line.' },
+          desc: 'Unleash a searing torrent of blue atomic fire, dealing HEAVY magic damage to All Enemies in a line.' },
         { id: 'raceSkyscraperToss', spellType: 'unholy', name: 'Skyscraper Toss',
           type: 'damage', cost: 35, dmg: 120, range: 5,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1, ignoresLineOfSight: true,
@@ -7190,10 +7186,10 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'discord', duration: 1 }],
           desc: 'Pump toxic exhaust in a 3x3 cloud for 2 turns. Enemies inside are confused.' },
         { id: 'raceRoboPunch', spellType: 'tech', name: 'Robo Punch',
-          type: 'damage', cost: 25, dmg: 160, range: 1,
+          type: 'damage', cost: 25, dmg: 135, range: 1,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Stagger.' },
+          desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Stagger.' },
         { id: 'raceMissileBarrage', spellType: 'tech', name: 'Missile Barrage',
           type: 'damage', tier: 'III', cost: 50, dmg: 160, range: 4, apCost: 2,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -7222,10 +7218,10 @@ const RACE_ABILITIES = {
         SHARED_FLASH_FREEZE,
         SHARED_SUMMON_BLIZZARD,
         { id: 'raceAbsoluteZero', spellType: 'anomaly', element: 'ice', name: 'Absolute Zero',
-          type: 'damage', tier: 'III', cost: 40, dmg: 200, range: 3, apCost: 2, cooldownRounds: 2,
+          type: 'damage', tier: 'III', cost: 40, dmg: 180, range: 3, apCost: 2, cooldownRounds: 2,
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'frozen', duration: 2 }],
-          desc: 'Stop every molecule in the target\'s body. The world whites out, a crystal lattice locks around them, and time itself freezes before the shatter. Deals SEVERE magic damage to a Single Enemy and FREEZES them solid. Cooldown: 2 rounds.' }
+          desc: 'Stop every molecule in the target\'s body. The world whites out, a crystal lattice locks around them, and time itself freezes before the shatter. Deals HEAVY magic damage to a Single Enemy and FREEZES them solid. Cooldown: 2 rounds.' }
     ],
 
     'juggernaut': [
@@ -7255,35 +7251,35 @@ const RACE_ABILITIES = {
         { id: 'raceKiBlast', spellType: 'human', element: 'light', name: 'Ki Volley',
           type: 'damage', cost: 20, range: 3,
           kind: 'multiHit', damageType: 'magic',
-          hitDamages: [53, 53, 53],
-          desc: 'Deals HEAVY magic damage to a Single Enemy across 3 hits.' },
+          hitDamages: [45, 45, 45],
+          desc: 'Deals MEDIUM magic damage to a Single Enemy across 3 hits.' },
         { id: 'raceFlurryOfBlows', spellType: 'human', element: 'wind', name: 'Flurry of Blows',
           type: 'damage', cost: 30, range: 1,
           kind: 'multiHit', damageType: 'physical',
-          hitDamages: [40, 40, 40, 40],
-          desc: 'Deals HEAVY physical damage to a Single Enemy across 4 hits.' },
+          hitDamages: [33, 33, 33, 33],
+          desc: 'Deals MEDIUM physical damage to a Single Enemy across 4 hits.' },
         { id: 'raceKiCharge', spellType: 'human', element: 'light', name: 'Ki Charge',
           type: 'buff', cost: 15, apCost: 1, range: 0,
           kind: 'buff',
           statStageBoost: { atk: 2 },
           desc: 'Empowers the caster. Raises ATK by 2 stages.' },
         { id: 'raceKiWave', spellType: 'human', element: 'light', name: 'Ki Wave',
-          type: 'damage', cost: 35, dmg: 160, range: 5, apCost: 2,
+          type: 'damage', cost: 35, dmg: 135, range: 5, apCost: 2,
           kind: 'line', damageType: 'magic', lineWidth: 1,
-          desc: 'Deals HEAVY magic damage to All Enemies in a line.' },
+          desc: 'Deals MEDIUM magic damage to All Enemies in a line.' },
         _mkCharge({ id: 'raceDragonFist', spellType: 'human', element: 'fire', name: 'Dragon Fist',
-          tier: 'III', cost: 45, dmg: 200, range: 2, statusEffects: _STAGGER_1,
-          desc: 'Deals SEVERE physical damage to a Single Enemy. Applies Stagger.' }),
+          tier: 'III', cost: 45, dmg: 180, range: 2, statusEffects: _STAGGER_1,
+          desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Stagger.' }),
         _mkBlink('long', { id: 'raceInstantTransmission', spellType: 'anomaly', element: 'arcane', name: 'Instant Transmission',
           desc: 'Lock onto a ki signature and teleport up to 5 tiles instantly.' })
     ],
 
     'king arthur': [
         { id: 'raceExcaliburStrike', spellType: 'divine', name: 'Excalibur Strike',
-          type: 'damage', cost: 30, dmg: 160, range: 1,
+          type: 'damage', cost: 30, dmg: 135, range: 1,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'burn', duration: 2 }],
-          desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Burn.' },
+          desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Burn.' },
         { id: 'raceRoyalDecree', spellType: 'divine', name: 'Royal Decree',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'warCry', aoeRadius: 2,
@@ -7303,11 +7299,11 @@ const RACE_ABILITIES = {
           statStageBoost: { def: -1 },
           desc: 'Pound chest with terrifying fury. All enemies within 2 tiles cower — -1 DEF stage.' },
         { id: 'racePrimalSmash', spellType: 'human', name: 'Primal Smash',
-          type: 'damage', tier: 'III', cost: 45, dmg: 200, range: 1,
+          type: 'damage', tier: 'III', cost: 45, dmg: 180, range: 1,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'stagger', duration: 1 }],
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
-          desc: 'Deals SEVERE physical damage to a Single Enemy. Applies Stagger. Reshapes the ground on impact.' },
+          desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Stagger. Reshapes the ground on impact.' },
         { id: 'raceApeFury', spellType: 'anomaly', name: 'Ape Fury',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
@@ -7362,10 +7358,10 @@ const RACE_ABILITIES = {
 
     'occulus': [
         { id: 'raceDeathGaze', spellType: 'anomaly', name: 'Death Gaze',
-          type: 'damage', tier: 'III', cost: 50, dmg: 200, range: 4,
+          type: 'damage', tier: 'III', cost: 50, dmg: 180, range: 4,
           kind: 'damage', damageType: 'magic',
           statStageBoost: { def: -1 },
-          desc: 'Deals SEVERE magic damage to a Single Enemy. Lowers the target\'s DEF by 1 stage.' },
+          desc: 'Deals HEAVY magic damage to a Single Enemy. Lowers the target\'s DEF by 1 stage.' },
         { id: 'raceOmniVision', spellType: 'divine', name: 'Omni-Vision',
           type: 'utility', cost: 20, range: 5, apCost: 1,
           kind: 'scan', scanRadius: 3,
@@ -7394,10 +7390,10 @@ const RACE_ABILITIES = {
 
     'quarterback': [
         { id: 'raceHailMary', spellType: 'human', element: 'wind', name: 'Hail Mary',
-          type: 'damage', tier: 'III', cost: 45, dmg: 190, range: 5,
+          type: 'damage', tier: 'III', cost: 45, dmg: 180, range: 5,
           kind: 'damage', damageType: 'physical',
           projectileOverride: 'proj-football',
-          desc: 'Deals SEVERE physical damage to a Single Enemy.' },
+          desc: 'Deals HEAVY physical damage to a Single Enemy.' },
         { id: 'raceBulletPass', spellType: 'human', element: 'wind', name: 'Bullet Pass',
           type: 'damage', cost: 20, dmg: 80, range: 4,
           kind: 'line', damageType: 'physical', lineWidth: 1,
@@ -7526,9 +7522,9 @@ const RACE_ABILITIES = {
         { id: 'sentaiTeamStrike', spellType: 'human', name: 'Team Strike',
           type: 'damage', cost: 35, range: 1, apCost: 2,
           kind: 'multiHit', damageType: 'physical',
-          hitDamages: [32, 32, 32, 32, 32],
+          hitDamages: [27, 27, 27, 27, 27],
           _sentaiColor: 'megazord',
-          desc: 'Deals HEAVY physical damage to a Single Enemy across 5 hits.' },
+          desc: 'Deals MEDIUM physical damage to a Single Enemy across 5 hits.' },
         { id: 'sentaiMegazordBlast', spellType: 'tech', name: 'Megazord Blast',
           type: 'damage', tier: 'III', cost: 55, dmg: 180, range: 4, apCost: 2,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -7538,10 +7534,10 @@ const RACE_ABILITIES = {
 
     'symbiote': [
         { id: 'raceTendrilStrike', spellType: 'unholy', name: 'Tendril Strike',
-          type: 'damage', tier: 'III', cost: 45, dmg: 200, range: 2,
+          type: 'damage', tier: 'III', cost: 45, dmg: 180, range: 2,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'poison', duration: 2 }],
-          desc: 'Deals SEVERE physical damage to a Single Enemy. Applies Poison.' },
+          desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Poison.' },
         { id: 'raceSymbioticDrain', spellType: 'unholy', name: 'Symbiotic Drain',
           type: 'damage', cost: 30, dmg: 120, range: 2,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.40,
@@ -11900,7 +11896,7 @@ const BOSS_DEFS = {
         spawnRound: 5,
         types: ['divine'],
         hp: 200, maxHp: 200,
-        mp: 30, maxMp: 30,
+        mp: 15, maxMp: 15,
         atk: 10, def: 8,
         move: 3, spd: 4,
         range: 3, awr: 5, int: 8,
@@ -11992,7 +11988,10 @@ function levelScale(level) {
 // which is the classic JRPG budget: enough to open with magic, not enough to
 // spam it. Costs stay FLAT at every level — only the pool moves.
 const EW_MP_L1_FRAC = 0.42;
-const LEVEL_TOTAL_STAT_GAINS = { hp: 360, mp: 108, atk: 58, def: 52, mdef: 43, int: 43 };
+/* 2026-08-09 balance pass: MP pools halved across the board (base stats, job
+   modifiers, class templates and this growth total) — mana was never a real
+   constraint; now potions and regen matter. Spell costs stay FLAT. */
+const LEVEL_TOTAL_STAT_GAINS = { hp: 360, mp: 54, atk: 58, def: 52, mdef: 43, int: 43 };
 function levelStatGains(level, baseHp, baseMp) {
     const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
     const t = LEVEL_CAP <= 1 ? 1 : Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_SCALE_EXP);
