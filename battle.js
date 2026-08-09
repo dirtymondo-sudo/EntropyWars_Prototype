@@ -4769,6 +4769,25 @@
         // linePush spells. Traverses a line from (sx,sy) in direction (dx,dy)
         // hitting enemies, turrets, objects. Returns hitTargets array.
         // ═══════════════════════════════════════════════════════════════════
+
+        // Beams are sight-line weapons: a raised terrain column, wall or
+        // LOS-blocking object in the path stops them exactly like impassable
+        // terrain does. Eye-to-eye check from the caster to each swept cell
+        // (isRangeBlockedByTerrain: 3D voxel ray / blocksRanged rules), so a
+        // cell the caster can plainly SEE along the ray — including a unit
+        // standing ON TOP of a low rise — is still hittable, while the space
+        // BEHIND a tall pillar is not. Every line walk (damage, highlights,
+        // range footprint, VFX route, AI ray scoring) must consult this or
+        // the previews promise hits the engine no longer delivers.
+        function _lineLosBlocked(unit, spell, cx, cy) {
+            if (spell && spell.ignoresLineOfSight === true) return false;
+            if (typeof isRangeBlockedByTerrain !== 'function') return false;
+            // sourceZ null → isRangeBlockedByTerrain infers the caster's true
+            // standing height (unit z / column top) itself.
+            return isRangeBlockedByTerrain(unit.x, unit.y, cx, cy, unit.z ?? null);
+        }
+        window._lineLosBlocked = _lineLosBlocked;
+
         function _applyLineDamage(unit, spell, dx, dy, baseDmg, spellPower) {
             // Beams are capped at the spell's range (3-5 tiles) — they no longer
             // sweep the whole map. Matches the aimed-hover preview (spell.range || 4).
@@ -4787,7 +4806,10 @@
             let cx = unit.x + dx, cy = unit.y + dy;
             for (let i = 0; i < lineRange; i++) {
                 if (!isInside(cx, cy)) break;
-                if (!isTerrainPassable(cx, cy) && !spell.destroysObstacles) {
+                // Impassable terrain OR a wall/pillar tall enough to break the
+                // caster's sight line stops the beam (both can be bored through).
+                if ((!isTerrainPassable(cx, cy) && !spell.destroysObstacles)
+                    || _lineLosBlocked(unit, spell, cx, cy)) {
                     let _bored = false;
                     if (_bores < _boreMax && _borePow > 0 && !unitAt(cx, cy)) {
                         if (typeof _tileHasTree === 'function' && _tileHasTree(cx, cy)) {
@@ -5392,8 +5414,9 @@
 
         // Direction beams (line/linePush): the true castable footprint is the 8
         // rays out of the caster, capped at the spell's range and stopped by
-        // impassable terrain — EXACTLY the walk _applyLineDamage does (minus
-        // breach boring). The generic Manhattan disc both offered misaligned
+        // impassable terrain AND sight-line walls (_lineLosBlocked) — EXACTLY
+        // the walk _applyLineDamage does (minus breach boring). The generic
+        // Manhattan disc both offered misaligned
         // tiles the beam can never touch (casts that hit zero targets) and
         // rejected diagonally-aligned tiles the beam DOES reach (Manhattan
         // distance doubles diagonal steps → bogus "out of range"). Every
@@ -5409,6 +5432,7 @@
                     const cx = unit.x + dx * i, cy = unit.y + dy * i;
                     if (!isInside(cx, cy)) break;
                     if (!isTerrainPassable(cx, cy) && !spell.destroysObstacles) break;
+                    if (_lineLosBlocked(unit, spell, cx, cy)) break;
                     tiles.push({ x: cx, y: cy });
                 }
             }
@@ -7120,8 +7144,12 @@
            at a hypothetical position. Smoke-granted cloaks lapse the moment
            the unit leaves the cloud (updateSmokeZoneCloak), so the simulation
            drops the Invisible status for destinations outside friendly smoke.
-           Returns null when stealth isn't in play (already seen and not
-           cloaked) so the ghost stays badge-free in ordinary play.
+           Badge rules: a currently-HIDDEN (or cloaked) unit gets an eye on
+           every hover (open red = that tile exposes you, closed green = you
+           stay hidden). A currently-SEEN unit gets the closed-green eye only
+           on tiles that would break ALL enemy vision ("move here to hide") —
+           seen→seen hovers return null so ordinary open-field play stays
+           badge-free.
            NOTE: like the nameplate eye, this consults ALL enemy vision —
            including enemies the mover can't currently see. That's consistent
            with the existing eye icon; to make it "fair" (only count enemies
@@ -7130,7 +7158,6 @@
             if (!unit || unit.dead) return null;
             const _cloaked = unitHasStatus(unit, 'invisible');
             const seenNow = isUnitSeenByAnyEnemy(unit);
-            if (seenNow && !_cloaked) return null;   // no cover to lose
             const sx = unit.x, sy = unit.y, sz = unit.z;
             let invisRestore = null;
             let seenThere = seenNow;
@@ -7151,6 +7178,7 @@
                 unit.x = sx; unit.y = sy; unit.z = sz;
                 if (invisRestore !== null && unit.status) unit.status.invisible = invisRestore;
             }
+            if (seenNow && !_cloaked && seenThere) return null;   // seen→seen: nothing to show
             return { seen: seenThere };
         }
 
@@ -42708,6 +42736,7 @@
                         const tx = unit.x + dx * i, ty = unit.y + dy * i;
                         if (!isInside(tx, ty)) break;
                         if (!isTerrainPassable(tx, ty) && !spell.destroysObstacles) break;
+                        if (_lineLosBlocked(unit, spell, tx, ty)) break;
                         const _lu = unitAt(tx, ty);
                         if (_lu && _lu.player !== unit.player && !_lu.dead) _lineHits.push(_lu);
                     }
@@ -42748,6 +42777,9 @@
                             if (!isInside(_ex, _ey)) break;
                             _endX = _ex; _endY = _ey;
                             if (!isTerrainPassable(_ex, _ey) && !spell.destroysObstacles) break;
+                            // Wall in the sight line: the projectile visibly
+                            // thunks into its face (end = the blocked cell).
+                            if (_lineLosBlocked(unit, spell, _ex, _ey)) break;
                         }
                         const _projLaunch = Math.max(0, cam?.sourceHold ?? actionMs(900));
                         const _projFlyMs = Math.max(actionMs(220), impactDelay - _projLaunch);
@@ -42761,6 +42793,7 @@
                             for (let _bi = 0; _bi < lineRange; _bi++) {
                                 if (!isInside(_bx, _by)) break;
                                 if (!isTerrainPassable(_bx, _by) && !spell.destroysObstacles) break;
+                                if (_lineLosBlocked(unit, spell, _bx, _by)) break;
                                 _beamTiles.push({ x: _bx, y: _by });
                                 _bx += dx; _by += dy;
                             }

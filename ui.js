@@ -3029,6 +3029,9 @@
                   const ly = _selectedForHl.y + dir.dy * i;
                   if (lx < 0 || ly < 0 || lx >= bw() || ly >= bh()) break;
                   if (!isTerrainPassable(lx, ly) && !spell.destroysObstacles) break;
+                  // Sight-line walls stop the beam (battle.js _applyLineDamage) —
+                  // never paint "will be hit" behind a pillar the beam can't pierce.
+                  if (typeof _lineLosBlocked === 'function' && _lineLosBlocked(_selectedForHl, spell, lx, ly)) break;
                   const pk = posKey(lx, ly);
                   const target = _liveUnitMap.get(pk);
                   if (target && isEnemyUnit(target, _selectedForHl) && !unitHasStatus(target, 'invisible')) {
@@ -10527,6 +10530,7 @@
                     const ly = casterUnit.y + dy * i;
                     if (lx < 0 || ly < 0 || lx >= bw() || ly >= bh()) break;
                     if (!isTerrainPassable(lx, ly) && !spell.destroysObstacles) break;
+                    if (typeof _lineLosBlocked === 'function' && _lineLosBlocked(casterUnit, spell, lx, ly)) break;
                     tiles.push({ x: lx, y: ly });
                 }
                 return tiles;

@@ -2043,6 +2043,9 @@
                 const tx = unit.x + dx * i, ty = unit.y + dy * i;
                 if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) break;
                 if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty) && !spell.destroysObstacles) break;
+                // Sight-line walls stop the beam (matches _applyLineDamage).
+                if (!spell.ignoresLineOfSight && typeof g.isRangeBlockedByTerrain === 'function'
+                    && g.isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unit.z ?? null)) break;
                 if (v.visibleEnemies.some(e => e.x === tx && e.y === ty)) hits++;
                 if (tx === target.x && ty === target.y) reachedTarget = true;
             }
@@ -4127,6 +4130,11 @@
     // the caster's CURRENT position over CURRENT enemy positions and returns
     // the best aim tile, or null when every ray whiffs (don't waste the AP).
     // Exposed on window so ainew.js's focus-fire path can share it.
+    // FAIR-PLAY GATE: this sweep runs over CURRENT enemy positions at cast
+    // time, so it must only count enemies the AI's team can actually SEE —
+    // concealment (invisible/smoke) AND fog-of-war team vision (the nameplate
+    // eye). Without the vision filter it aimed beams at fog-hidden units the
+    // player's screen said were safe behind cover — a straight wallhack.
     function _reaimLineSpell(unit, spell, preferredTargetId) {
         const g = G();
         if (!g) return null;
@@ -4134,7 +4142,10 @@
                       { dx: 1, dy: 1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: -1, dy: -1 }];
         const len = spell.range || 4;   // beams are range-capped (matches _applyLineDamage)
         const enemies = g.getHostileUnits(unit.player).filter(e => !e.dead &&
-            !(g.unitHasStatus(e, 'invisible') && !g.unitHasStatus(e, 'marked')));
+            !(g.unitHasStatus(e, 'invisible') && !g.unitHasStatus(e, 'marked'))
+            && !(typeof g.isUnitConcealedFrom === 'function' && g.isUnitConcealedFrom(e, unit.player))
+            && (!g.state.fogOfWar || typeof g.isUnitSeenByTeam !== 'function'
+                || g.isUnitSeenByTeam(e, unit.player)));
         let best = null;
         for (const dir of dirs) {
             let hits = 0, first = null, hasPreferred = false;
@@ -4142,6 +4153,8 @@
                 const tx = unit.x + dir.dx * i, ty = unit.y + dir.dy * i;
                 if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) break;
                 if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty) && !spell.destroysObstacles) break;
+                if (!spell.ignoresLineOfSight && typeof g.isRangeBlockedByTerrain === 'function'
+                    && g.isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unit.z ?? null)) break;
                 const e = enemies.find(en => en.x === tx && en.y === ty);
                 if (e) {
                     hits++;
@@ -4564,6 +4577,9 @@
                     const tx = unit.x + dir.dx * i, ty = unit.y + dir.dy * i;
                     if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) break;
                     if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty) && !spell.destroysObstacles) break;
+                    // Sight-line walls stop the beam (matches _applyLineDamage).
+                    if (!spell.ignoresLineOfSight && typeof g.isRangeBlockedByTerrain === 'function'
+                        && g.isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unit.z ?? null)) break;
                     const enemy = v.visibleEnemies.find(e => e.x === tx && e.y === ty);
                     if (enemy) { hits++; if (!firstEnemy) firstEnemy = enemy; }
                 }

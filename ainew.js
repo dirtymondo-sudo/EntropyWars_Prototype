@@ -104,18 +104,25 @@
     const PURE_SUPPORT = new Set(['White Mage', 'Psychic', 'Harbinger']);
     const HEAL_KINDS = new Set(['heal', 'healAll', 'selfHeal', 'revive']);
 
-    // A unit the AI must NOT target: invisible/cloaked, or hidden by an enemy
-    // smoke screen (unless one of our units is adjacent, which reveals them).
-    // The stock ai.js already filters these in buildVision; this focus-fire path
-    // bypasses buildVision, so it has to check concealment itself.
+    // A unit the AI must NOT target: invisible/cloaked, hidden by an enemy
+    // smoke screen (unless one of our units is adjacent, which reveals them),
+    // OR — with fog of war on — simply out of the whole team's sight
+    // (isUnitSeenByTeam: the nameplate-eye truth — per-unit vision + 3D LOS +
+    // wards). The stock ai.js already filters ALL of these in buildVision;
+    // this focus-fire path bypasses buildVision, so it has to apply the same
+    // gates itself. Concealment alone was NOT enough: a unit tucked behind a
+    // pillar (eye closed, not cloaked) was still being focus-targeted — the
+    // AI saw through walls the player's screen showed as solid.
     function isConcealed(g, tg, viewerPlayer) {
         try {
             if (g.unitHasStatus && g.unitHasStatus(tg, 'invisible')) {
                 // honor adjacency reveal so we can still finish a spotted target
-                if (typeof g.isUnitConcealedFrom === 'function') return g.isUnitConcealedFrom(tg, viewerPlayer);
-                return true;
-            }
-            if (typeof g.isUnitConcealedFrom === 'function') return g.isUnitConcealedFrom(tg, viewerPlayer);
+                if (typeof g.isUnitConcealedFrom !== 'function') return true;
+                if (g.isUnitConcealedFrom(tg, viewerPlayer)) return true;
+            } else if (typeof g.isUnitConcealedFrom === 'function'
+                && g.isUnitConcealedFrom(tg, viewerPlayer)) return true;
+            if (g.state.fogOfWar && typeof g.isUnitSeenByTeam === 'function'
+                && !g.isUnitSeenByTeam(tg, viewerPlayer)) return true;
         } catch (e) {}
         return false;
     }
@@ -413,6 +420,13 @@
                             try { passable = !g.isTerrainPassable || g.isTerrainPassable(tx, ty); } catch (e) {}
                             if (tx < 0 || ty < 0 || (g.bw && tx >= g.bw()) || (g.bh && ty >= g.bh())) break;
                             if (!passable && !sp.destroysObstacles) break;
+                            // Sight-line walls stop the beam (matches _applyLineDamage).
+                            let losBlocked = false;
+                            try {
+                                losBlocked = !sp.ignoresLineOfSight && typeof g.isRangeBlockedByTerrain === 'function'
+                                    && g.isRangeBlockedByTerrain(unit.x, unit.y, tx, ty, unit.z ?? null);
+                            } catch (e) {}
+                            if (losBlocked) break;
                             const tg = g.unitAt(tx, ty);
                             if (isEnemyTgt(tg) && spellPreconditionOk(g, unit, sp, tg)) {
                                 rayTargets.push(tg);
