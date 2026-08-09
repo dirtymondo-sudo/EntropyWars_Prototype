@@ -793,12 +793,12 @@ const RACE_MODELS_3D = {
     female: _mk3d('Homosapien/Female/agent', 'beautiful_attractive_', {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 0.95, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),   // quick-draw is 7.33s; show draw+shot fast
+    }, { castTimeScale: 5.0, heightRatio: 0.95 }),   // quick-draw is 7.33s; show draw+shot fast
     // New male model (the old Men_in_Black_CIA_age files were deleted).
     male: _mk3d('Homosapien/Male/agent', 'men_in_black_male_ag', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 1.02, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),   // tall agent
+    }, { castTimeScale: 5.0, heightRatio: 1.02 }),   // tall agent
   },
   // Female Psychic (Telepath) — pilot wiring + the 2026-07-05 Running/Hit
   // uploads (generic Meshy_AI_Animation_* names, no character prefix — her
@@ -864,11 +864,11 @@ const RACE_MODELS_3D = {
     female: _mk3d('Homosapien/Female/engineer', 'female_hot_asian_scie', {
       idle: 'Idle_3', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 0.93, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),
+    }, { castTimeScale: 5.0, heightRatio: 0.93 }),
     male: _mk3d('Homosapien/Male/engineer', 'mad_scientist', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 1.0, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),
+    }, { castTimeScale: 5.0, heightRatio: 1.0 }),
   },
   // Gunslingers — the high-noon quick-draw (MAL lib 2) is their gun action,
   // per the 2026-07-11 slot spec ("Cowboy/Cowgirl/High Noon Shoot Gun").
@@ -877,14 +877,12 @@ const RACE_MODELS_3D = {
       idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
     }, { castTimeScale: 5.0, heightRatio: 0.95,
-         lib: { idle: { clip: 'Pistol_Idle_Loop' },
-                castRanged: { clip: 'Cowboy_Quick_Draw_Shooting', lib: 2, ts: 5.0 } }, }),
+         lib: { castRanged: { clip: 'Cowboy_Quick_Draw_Shooting', lib: 2, ts: 5.0 } }, }),
     male: _mk3d('Homosapien/Male/gunslinger', 'gunslinger_cowboy', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
     }, { castTimeScale: 5.0, heightRatio: 1.0,
-         lib: { idle: { clip: 'Pistol_Idle_Loop' },
-                castRanged: { clip: 'Cowboy_Quick_Draw_Shooting', lib: 2, ts: 5.0 } }, }),
+         lib: { castRanged: { clip: 'Cowboy_Quick_Draw_Shooting', lib: 2, ts: 5.0 } }, }),
   },
   // Female Knight — Thrust_Slash is the basic strike, Triple_Combo_Attack
   // the bigger generic cast flourish (spare alt idle on R2: Idle_8).
@@ -930,7 +928,7 @@ const RACE_MODELS_3D = {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump', hit: 'Face_Punch_Reaction',
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting',
       castRanged: 'Cowboy_Quick_Draw_Shooting', castMagic: 'Charged_Spell_Cast',
-    }, { castTimeScale: 5.0, heightRatio: 0.82, lib: { idle: { clip: 'Pistol_Idle_Loop' } }, }),   // little green man
+    }, { castTimeScale: 5.0, heightRatio: 0.82 }),   // little green man
   },
   // Machine Elf (Engineer, specialist caster) — "DMT_clockwork_elf". A tiny
   // psychedelic clockwork entity: Charged_Spell_Cast is the generic/magic
@@ -1074,8 +1072,7 @@ const RACE_MODELS_3D = {
       death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting',
       castRanged: 'Cowboy_Quick_Draw_Shooting', castMelee: 'Left_Hook_from_Guard',
     }, { castTimeScale: 5.0, castTimeScales: { castMelee: 2.0 }, heightRatio: 0.88,   // petite
-         lib: { idle: { clip: 'Pistol_Idle_Loop' },
-                jump: { clip: 'NinjaJump_Start', lib: 1, ts: 1.6 },   // nimble leap
+         lib: { jump: { clip: 'NinjaJump_Start', lib: 1, ts: 1.6 },   // nimble leap
                 castMelee: { clip: 'Melee_Hook', lib: 1, ts: 0.45 } } }),
   },
   // Female Ki Fighter — punch combo as the generic cast, kung-fu punch for
@@ -1115,10 +1112,9 @@ const RACE_MODELS_3D = {
     }),
     // Female sniper (2026-07-11d batch) — lives in the race's SPRITE folder
     // (Homosapien/Female/sniper), unlike the male whose model sits in
-    // marksman/male. Gun-user idle; rifle shots via the default castRanged.
+    // marksman/male. Standard idle; rifle shots via the default castRanged.
     female: _mkUAL('Homosapien/Female/sniper', 'female_sniper_beauti', {
       heightRatio: 0.96,
-      lib: { idle: { clip: 'Pistol_Idle_Loop' } },
     }),
   },
 
@@ -1199,7 +1195,6 @@ const RACE_MODELS_3D = {
     female: _mkUAL('barbarella', 'hot_space_agent_girl_', {
       heightRatio: 0.95,
       basicAttackKind: 'ranged',
-      lib: { idle: { clip: 'Pistol_Idle_Loop' } },
     }),
   },
   // King Arthur (Warrior, tank) — fencer stance + sword combos, like the
@@ -1559,7 +1554,8 @@ const RACE_MODELS_3D = {
 // ── Gendered library defaults (2026-07-11) ─────────────────────────────────
 // Every `female:` def idles/walks with the female Meshy clips (Idle_11 /
 // Walking_Woman) unless the character claimed the slot itself via opts.lib
-// (agent/cowgirl Pistol_Idle_Loop, vampire folded arms, mermaid swim…).
+// (vampire folded arms, mermaid swim…). The Pistol_Idle_Loop gun-pose idles
+// were retired 2026-08-09 (owner call: nobody mimes holding a gun at rest).
 (function _applyFemaleSlotDefaults() {
   for (const race in RACE_MODELS_3D) {
     const def = RACE_MODELS_3D[race] && RACE_MODELS_3D[race].female;

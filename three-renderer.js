@@ -25475,8 +25475,10 @@ const ThreeRenderer = (function () {
             host: null, raf: 0, clock: new THREE.Clock(),
             model: null, mixer: null, url: null,
             // view state — the model NEVER rotates on its own (owner call
-            // 2026-07-26b): only the player's drag moves it.
-            h: 1, yaw: 0, polar: 0.42, zoom: 1, dist0: 4,
+            // 2026-07-26b): only the player's drag moves it. Default polar 0
+            // = camera dead level with the chest — straight on, no looking
+            // down at the model (owner call 2026-08-09).
+            h: 1, yaw: 0, polar: 0, zoom: 1, dist0: 4,
             dragging: false, px: 0, py: 0,
         };
 
@@ -25490,7 +25492,8 @@ const ThreeRenderer = (function () {
             var dx = e.clientX - _cv.px, dy = e.clientY - _cv.py;
             _cv.px = e.clientX; _cv.py = e.clientY;
             _cv.yaw += dx * 0.012;
-            _cv.polar = Math.max(0.08, Math.min(1.25, _cv.polar + dy * 0.006));
+            // negative polar dips BELOW the model (fliers get looked up at)
+            _cv.polar = Math.max(-0.6, Math.min(1.25, _cv.polar + dy * 0.006));
         });
         function _endDrag(e) {
             _cv.dragging = false;
@@ -25504,7 +25507,7 @@ const ThreeRenderer = (function () {
             _cv.zoom = Math.max(0.55, Math.min(2.8, _cv.zoom * Math.exp(-e.deltaY * 0.0012)));
         }, { passive: false });
         cnv.addEventListener('dblclick', function () {
-            _cv.yaw = 0; _cv.polar = 0.42; _cv.zoom = 1;
+            _cv.yaw = 0; _cv.polar = 0; _cv.zoom = 1;
         });
         return _cv;
     }
@@ -25584,8 +25587,8 @@ const ThreeRenderer = (function () {
         // GLB resolves synchronously below, so the ring never flashes then.
         _cvHostState(host, 'loading');
         v.url = def.model;
-        // fresh mount = fresh framing
-        v.yaw = 0; v.polar = 0.42; v.zoom = 1; v.lastTouch = 0;
+        // fresh mount = fresh framing (straight on — polar 0)
+        v.yaw = 0; v.polar = 0; v.zoom = 1; v.lastTouch = 0;
         var tok = ++_cvToken;
         _loadUnitGLB(def.model, function (entry) {
             if (!_cv || tok !== _cvToken) return;      // stale — user moved on
@@ -25698,7 +25701,7 @@ const ThreeRenderer = (function () {
         },
         resetView: function () {
             if (!_cv) return;
-            _cv.yaw = 0; _cv.polar = 0.42; _cv.zoom = 1; _cv.lastTouch = 0;
+            _cv.yaw = 0; _cv.polar = 0; _cv.zoom = 1; _cv.lastTouch = 0;
         },
         isMounted: function () { return !!(_cv && _cv.host && _cv.host.isConnected); },
     };

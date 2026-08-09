@@ -904,7 +904,6 @@ function pbSpellEffects(sp) {
 function buildSpellTooltip(sp, x, y) {
   if (!sp) return null;
   const cat = classifySpellLocal(sp), catC = spellCategoryColor(cat);
-  const typeC = getTypeColor(sp.spellType || 'human');
   const power = (typeof window.getSpellPowerLabel === 'function') ? (window.getSpellPowerLabel(sp) || '') : '';
   const aoe = pbAoeLabel(sp);
   const effects = pbSpellEffects(sp);
@@ -924,7 +923,9 @@ function buildSpellTooltip(sp, x, y) {
         h('span', { style: { fontSize: 9, color: EW.inkMute, letterSpacing: '0.04em' } }, [sp.school, sp.tier && ('Tier ' + sp.tier)].filter(Boolean).join('  ·  '))),
       h('div', { style: { flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 } },
         h('span', { style: { fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: catC, border: `1px solid ${catC}66`, background: `${catC}1a`, padding: '1px 6px' } }, spellCategoryLabel(cat)),
-        sp.spellType && h('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 8, color: typeC, letterSpacing: '0.08em', textTransform: 'uppercase' } }, h('span', { style: { width: 4, height: 4, background: typeC, borderRadius: '50%' } }), sp.spellType))),
+        // canonical TYPE badge (same chip as the blades / battle menu) —
+        // never a bare colored word
+        sp.spellType && h('span', { style: pbTypeBadgeStyle(sp.spellType, 8) }, sp.spellType))),
     h('div', { style: { display: 'flex', gap: 4, flexWrap: 'wrap' } },
       stat('MP', sp.cost != null ? sp.cost : null, 'rgba(120,190,255,0.95)'),
       stat('AP', sp.apCost || 1),
@@ -1216,7 +1217,14 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
         color: st8 === 'equipped' ? EW.ink : EW.inkMute,
         opacity: st8 === 'blocked' || st8 === 'sealed' ? 0.5 : 1,
         pointerEvents: 'none', textShadow: '0 1px 2px #000',
-      } }, label) : null);
+        // UPPERCASE like the battle action menu — one casing everywhere
+        textTransform: 'uppercase',
+      } },
+        label,
+        // the canonical TYPE badge rides under the name — matchup intel
+        // on the node itself, same chip as the blades / battle menu
+        sp && sp.spellType ? h('div', { style: { marginTop: 2 } },
+          h('span', { style: { ...pbTypeBadgeStyle(sp.spellType, 7), padding: '0 4px', letterSpacing: '0.1em' } }, sp.spellType)) : null) : null);
   });
 
   /* Pillar headers. A clickable head (the SUBCLASS picker) must READ as a
@@ -2043,7 +2051,11 @@ function PartyBuilder() {
 
           // ── the stage: gear rail · big sprite · item rail ──
           h('div', { style:{ flex:'0 0 46%', minWidth:0, display:'flex', flexDirection:'column', padding:'8px 4px 8px 10px', position:'relative' } },
-            h('div', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.18em', flexShrink:0 } }, '· SLOT ', numerals[slot], ' · ', getJobDisplay(clsName).toUpperCase()),
+            // the vessel's RACE crowns the stage; the job title lives on the
+            // assessment sheet. Slot numeral stays as a small marker.
+            h('div', { style:{ display:'flex', alignItems:'baseline', justifyContent:'center', gap:8, flexShrink:0, minWidth:0 } },
+              h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(16px,1.7vw,26px)', fontWeight:600, lineHeight:1.1, textShadow:`0 0 24px ${fc}44`, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, _grl(unitRace, identity.gender) || unitRace),
+              h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.18em', flexShrink:0 } }, '· SLOT ', numerals[slot], ' ·')),
             h('div', { style:{ flex:1, minHeight:0, display:'flex', gap:8, alignItems:'stretch' } },
               h('div', { style:{ display:'flex', flexDirection:'column', justifyContent:'flex-end', gap:7, paddingBottom:12, flexShrink:0 } },
                 h('div', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.16em', textAlign:'center' } }, 'GEAR'),
@@ -2077,9 +2089,9 @@ function PartyBuilder() {
 
           // ── identity + assessment sheet ──
           h('div', { style:{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:5, padding:'10px 12px 8px 10px', borderLeft:`1px solid ${EW.panelEdge}` } },
+            // the JOB heads the sheet (the race name crowns the 3D stage).
             h('div', { style:{ display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap', flexShrink:0 } },
-              h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(24px,2.8vw,40px)', fontWeight:600, lineHeight:1, textShadow:`0 0 30px ${fc}44` } }, _grl(unitRace, identity.gender) || unitRace),
-              h('span', { style:{ fontFamily:'Cinzel, serif', fontStyle:'italic', fontSize:'clamp(11px,1.1vw,16px)', fontWeight:300, color:EW.inkMute } }, 'the ', getJobDisplay(clsName).toLowerCase())),
+              h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(20px,2.2vw,32px)', fontWeight:600, lineHeight:1, textShadow:`0 0 30px ${fc}44` } }, getJobDisplay(clsName))),
             h('div', { style:{ display:'flex', alignItems:'center', gap:5, flexWrap:'wrap', flexShrink:0 } },
               ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:11})),
               h('span', { style:{ fontSize:9, color:`${fc}99`, letterSpacing:'0.14em', marginLeft:4, textTransform:'uppercase' } }, unitFaction, ' alignment', factionBonusTxt ? ' · ' + factionBonusTxt : '')),
@@ -2097,9 +2109,12 @@ function PartyBuilder() {
               h('button', { className:'pbx-tab'+(heroTab==='lore'?' on':''), onClick:()=>setHeroTab('lore') }, 'DOSSIER')),
             heroTab === 'stats'
               ? h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:6, overflowY:'auto', overflowX:'hidden', paddingTop:2 } },
-                  // vitals bars (HP/MP/SPD/CRT/EVA) + separate MOVE / RANGE footprints
-                  h('div', { style:{ display:'flex', gap:14, flexShrink:0 } },
-                    h('div', { style:{ flex:'0 1 54%', minWidth:0, display:'flex', flexDirection:'column', gap:2 } },
+                  // one tight block: vitals bars LEFT, combat quadrant RIGHT
+                  // (ATK / M ATK / DEF / M DEF — physical warm, magic cool),
+                  // then the MOVE / RANGE footprints directly BELOW. Nothing
+                  // drifts off into empty space on its own anymore.
+                  h('div', { style:{ display:'flex', gap:10, flexShrink:0, alignItems:'flex-start' } },
+                    h('div', { style:{ flex:'1 1 55%', minWidth:0, display:'flex', flexDirection:'column', gap:2 } },
                       BAR_KEYS.map(k => {
                         const mapped = STAT_MAP[k], val = fullStats[mapped]??fullStats[k]??fullStats[k.toLowerCase()]??0;
                         const d = statDeltas[mapped]??statDeltas[k]??statDeltas[k.toLowerCase()]??0;
@@ -2108,27 +2123,26 @@ function PartyBuilder() {
                         return h(StatBar, { key:k, label:statLabel(k), val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod, delta:d,
                           suffix: STAT_PCT[k] ? '%' : '', tip: STAT_PCT[k] ? window.STAT_HELP?.[mapped] : null });
                       })),
-                    h('div', { style:{ flex:1, display:'flex', gap:14, justifyContent:'center', alignItems:'flex-start', paddingTop:2 } },
-                      h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)' }),
-                      h(RangeDiamond, { radius: fullStats.range ?? 1, fill:'rgba(255,70,70,0.35)', edge:'rgba(255,70,70,0.6)', label:'RANGE', value: fullStats.range ?? 1, color:'rgba(255,120,120,0.9)' }))),
-                  // combat quadrant — ATK / M ATK / DEF / M DEF, the four numbers
-                  // every JRPG player reads first. Physical column warm, magic cool.
-                  h('div', { style:{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:4, flexShrink:0, paddingRight:2 } },
-                    QUAD_KEYS.map(k => {
-                      const mapped = STAT_MAP[k], c = QUAD_C[k];
-                      const val = fullStats[mapped]??0;
-                      const d = statDeltas[mapped]??0;
-                      let zMod = null;
-                      if (zodiacNature) { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
-                      const valColor = zMod==='up' ? EW.good : zMod==='dn' ? EW.bad : EW.ink;
-                      return h('div', { key:k, style:{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6, padding:'5px 9px', background:`linear-gradient(90deg, ${c}14, rgba(0,0,0,0.25))`, border:`1px solid ${c}44`, borderLeft:`3px solid ${c}` } },
-                        h('span', { style:{ fontFamily:'DotGothic16, monospace', fontSize:10, fontWeight:700, letterSpacing:'0.1em', color:c, whiteSpace:'nowrap' } }, statLabel(k),
-                          zMod==='up' ? h('span', { style:{ color:EW.good, fontSize:'0.75em' } }, ' ▲') : null,
-                          zMod==='dn' ? h('span', { style:{ color:EW.bad, fontSize:'0.75em' } }, ' ▼') : null),
-                        h('span', { style:{ display:'flex', alignItems:'baseline', gap:4 } },
-                          h('span', { style:{ fontFamily:'DotGothic16, monospace', fontSize:16, fontWeight:700, lineHeight:1, color:valColor, textShadow:`0 0 10px ${c}55` } }, val),
-                          d !== 0 ? h('span', { style:{ fontSize:9, fontWeight:700, color: d > 0 ? EW.good : EW.bad } }, d > 0 ? '+'+d : ''+d) : null));
-                    })),
+                    h('div', { style:{ flex:'1 1 45%', minWidth:0, display:'grid', gridTemplateColumns:'1fr 1fr', gap:3, alignContent:'start' } },
+                      QUAD_KEYS.map(k => {
+                        const mapped = STAT_MAP[k], c = QUAD_C[k];
+                        const val = fullStats[mapped]??0;
+                        const d = statDeltas[mapped]??0;
+                        let zMod = null;
+                        if (zodiacNature) { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
+                        const valColor = zMod==='up' ? EW.good : zMod==='dn' ? EW.bad : EW.ink;
+                        return h('div', { key:k, style:{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:4, padding:'4px 7px', background:`linear-gradient(90deg, ${c}14, rgba(0,0,0,0.25))`, border:`1px solid ${c}44`, borderLeft:`3px solid ${c}` } },
+                          h('span', { style:{ fontFamily:'DotGothic16, monospace', fontSize:10, fontWeight:700, letterSpacing:'0.1em', color:c, whiteSpace:'nowrap' } }, statLabel(k),
+                            zMod==='up' ? h('span', { style:{ color:EW.good, fontSize:'0.75em' } }, ' ▲') : null,
+                            zMod==='dn' ? h('span', { style:{ color:EW.bad, fontSize:'0.75em' } }, ' ▼') : null),
+                          h('span', { style:{ display:'flex', alignItems:'baseline', gap:3 } },
+                            h('span', { style:{ fontFamily:'DotGothic16, monospace', fontSize:14, fontWeight:700, lineHeight:1, color:valColor, textShadow:`0 0 10px ${c}55` } }, val),
+                            d !== 0 ? h('span', { style:{ fontSize:9, fontWeight:700, color: d > 0 ? EW.good : EW.bad } }, d > 0 ? '+'+d : ''+d) : null));
+                      }))),
+                  // MOVE / RANGE footprints — under the numbers, side by side
+                  h('div', { style:{ display:'flex', gap:26, justifyContent:'center', alignItems:'flex-start', flexShrink:0, paddingTop:2 } },
+                    h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)' }),
+                    h(RangeDiamond, { radius: fullStats.range ?? 1, fill:'rgba(255,70,70,0.35)', edge:'rgba(255,70,70,0.6)', label:'RANGE', value: fullStats.range ?? 1, color:'rgba(255,120,120,0.9)' })),
                   // race traits: passives & terrain rules unique to this vessel
                   h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:3, overflow:'hidden' } },
                     h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', fontWeight:600, flexShrink:0, borderTop:`1px solid ${EW.panelEdge}`, paddingTop:5 } }, 'RACE TRAITS ', h('span', { style:{ color:EW.inkDim, fontWeight:400 } }, '· PASSIVES & TERRAIN')),
