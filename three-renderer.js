@@ -17254,7 +17254,7 @@ const ThreeRenderer = (function () {
             fontSize = Math.round(fontSize * (mag < 20 ? 0.78 : mag < 45 ? 0.88 : mag < 80 ? 0.96 : 1));
         }
         // Gothic / serif face (loaded in index.html) for that JRPG damage-number look.
-        var fontFamily = "'Cinzel', Georgia, 'Times New Roman', serif";
+        var fontFamily = "'Cormorant SC', Georgia, 'Times New Roman', serif";
         var fontWeight = isNumber ? '900' : '700';
         var letterSpacing = isNumber ? 0 : Math.max(1, Math.round(fontSize * 0.06));
         var fontStr = fontWeight + ' ' + fontSize + 'px ' + fontFamily;
@@ -19162,7 +19162,7 @@ const ThreeRenderer = (function () {
         fill.addColorStop(0, 'rgba(255,240,200,0.98)');
         fill.addColorStop(0.55, 'rgba(255,220,150,0.95)');
         fill.addColorStop(1, 'rgba(222,168,92,0.92)');
-        ctx.font = '150px "Cinzel", "Times New Roman", serif';
+        ctx.font = '150px "Cormorant SC", "Times New Roman", serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.shadowColor = 'rgba(255,215,130,0.9)'; ctx.shadowBlur = 26;
         ctx.fillStyle = fill;
@@ -25743,15 +25743,48 @@ const ThreeRenderer = (function () {
 
         var prevBg = scene.background, prevFog = scene.fog;
         scene.fog = null;
-        scene.background = new THREE.Color(opts.color != null ? opts.color : 0x000000);
+        /* ATMOSPHERE, not a flat colour: the palette's `sky` stops paint a
+           screen-space vertical gradient behind the actors (a CanvasTexture
+           background fills the viewport). Flat colour is only the fallback. */
+        if (opts.sky && opts.sky.length > 1) {
+            var _skyCvs = document.createElement('canvas');
+            _skyCvs.width = 4; _skyCvs.height = 256;
+            var _skyG = _skyCvs.getContext('2d');
+            var _skyGrad = _skyG.createLinearGradient(0, 0, 0, 256);
+            for (var _sgi = 0; _sgi < opts.sky.length; _sgi++) {
+                _skyGrad.addColorStop(_sgi / (opts.sky.length - 1), opts.sky[_sgi]);
+            }
+            _skyG.fillStyle = _skyGrad;
+            _skyG.fillRect(0, 0, 4, 256);
+            var _skyTex = new THREE.CanvasTexture(_skyCvs);
+            if (THREE.SRGBColorSpace) _skyTex.colorSpace = THREE.SRGBColorSpace;
+            scene.background = _skyTex;
+        } else {
+            scene.background = new THREE.Color(opts.color != null ? opts.color : 0x000000);
+        }
 
-        /* A soft radial contact shadow under each actor so they don't float
-           in the void — the one piece of grounding the empty stage needs. */
+        /* Grounding under each actor: a soft radial contact shadow PLUS a
+           palette-tinted glow pool, so the void's colour visibly pools at
+           their feet instead of leaving them pasted on a backdrop. */
         var discs = [];
         var ts = CONFIG.tileSize || BASE_TILE;
+        var glowCol = null;
+        try { glowCol = opts.glow ? new THREE.Color(opts.glow) : null; } catch (e) { glowCol = null; }
         (opts.actors || []).forEach(function (uid) {
             var e = unitEntries.get(uid);
             if (!e || !e.group) return;
+            if (glowCol) {
+                var gl = new THREE.Mesh(
+                    new THREE.CircleGeometry(ts * 1.35, 24),
+                    new THREE.MeshBasicMaterial({ map: _voidGlowTexture(),
+                        color: glowCol, transparent: true, opacity: 0.5,
+                        blending: THREE.AdditiveBlending, depthWrite: false }));
+                gl.rotation.x = -Math.PI / 2;
+                gl.position.set(e.group.position.x, e.group.position.y + 0.4, e.group.position.z);
+                gl.renderOrder = 1;
+                unitGroup.add(gl);
+                discs.push(gl);
+            }
             var g = new THREE.Mesh(
                 new THREE.CircleGeometry(ts * 0.42, 20),
                 new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true,
@@ -25763,22 +25796,51 @@ const ThreeRenderer = (function () {
             discs.push(g);
         });
 
-        /* 'toplight': a single cold key straight down on the actors (the
-           `abyss` palette's execution lighting). */
-        var light = null;
-        if (opts.light === 'toplight' && (opts.actors || []).length) {
-            var e0 = unitEntries.get(opts.actors[0]);
-            if (e0 && e0.group) {
-                light = new THREE.PointLight(0xbfd8ff, 2.6, ts * 14, 2);
-                light.position.set(e0.group.position.x, e0.group.position.y + ts * 4, e0.group.position.z);
-                scene.add(light);
+        /* Lighting: every palette gets a soft tinted fill above the actors so
+           they pick the void's colour up on their models; 'toplight' adds the
+           single cold key straight down (the `abyss` execution lighting). */
+        var lights = [];
+        if ((opts.actors || []).length) {
+            var eA = unitEntries.get(opts.actors[0]);
+            if (eA && eA.group) {
+                if (glowCol) {
+                    var fill = new THREE.PointLight(glowCol, 1.5, ts * 18, 2);
+                    fill.position.set(eA.group.position.x, eA.group.position.y + ts * 3.2,
+                        eA.group.position.z + ts * 1.4);
+                    scene.add(fill);
+                    lights.push(fill);
+                }
+                if (opts.light === 'toplight') {
+                    var key = new THREE.PointLight(0xbfd8ff, 2.6, ts * 14, 2);
+                    key.position.set(eA.group.position.x, eA.group.position.y + ts * 4, eA.group.position.z);
+                    scene.add(key);
+                    lights.push(key);
+                }
             }
         }
 
         _voidStage = { hidden: hidden, hiddenUnits: hiddenUnits, prevBg: prevBg,
-            prevFog: prevFog, discs: discs, light: light, bg: scene.background };
+            prevFog: prevFog, discs: discs, lights: lights, bg: scene.background };
         _shadowsDirty = true;
         return true;
+    }
+
+    /* Shared soft radial falloff for the void glow pools (white core →
+       transparent rim; the material's colour does the palette tint). */
+    var _voidGlowTexCache = null;
+    function _voidGlowTexture() {
+        if (_voidGlowTexCache) return _voidGlowTexCache;
+        var c = document.createElement('canvas');
+        c.width = c.height = 128;
+        var g = c.getContext('2d');
+        var grad = g.createRadialGradient(64, 64, 4, 64, 64, 64);
+        grad.addColorStop(0, 'rgba(255,255,255,0.75)');
+        grad.addColorStop(0.45, 'rgba(255,255,255,0.28)');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 128, 128);
+        _voidGlowTexCache = new THREE.CanvasTexture(c);
+        return _voidGlowTexCache;
     }
 
     function cineVoidExit() {
@@ -25795,7 +25857,10 @@ const ThreeRenderer = (function () {
                 if (d.parent) d.parent.remove(d);
                 try { d.geometry.dispose(); d.material.dispose(); } catch (e) {}
             }
-            if (v.light && v.light.parent) v.light.parent.remove(v.light);
+            for (var l = 0; l < (v.lights || []).length; l++) {
+                var li = v.lights[l];
+                if (li && li.parent) li.parent.remove(li);
+            }
         }
         try { if (v.bg && v.bg.dispose) v.bg.dispose(); } catch (e) {}
         _shadowsDirty = true;

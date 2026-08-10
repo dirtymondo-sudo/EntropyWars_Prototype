@@ -10228,8 +10228,8 @@
                 ov.style.cssText = 'position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(4,3,8,0.82);backdrop-filter:blur(2px)';
                 ov.innerHTML = `
                     <div style="max-width:440px;text-align:center;border:1px solid rgba(184,160,96,0.5);background:linear-gradient(180deg,#15110a,#0c0a06);border-radius:10px;padding:26px 28px;box-shadow:0 12px 60px rgba(0,0,0,0.7)">
-                        <div style="font-family:Cinzel,serif;font-size:13px;letter-spacing:0.2em;color:#b8455a;margin-bottom:6px">CLEARANCE GRANTED</div>
-                        <div style="font-family:Cinzel,serif;font-size:22px;color:#ffd86a;margin-bottom:10px">Choose Your First Vessel</div>
+                        <div style="font-family:Cormorant SC,serif;font-size:13px;letter-spacing:0.2em;color:#b8455a;margin-bottom:6px">CLEARANCE GRANTED</div>
+                        <div style="font-family:Cormorant SC,serif;font-size:22px;color:#ffd86a;margin-bottom:10px">Choose Your First Vessel</div>
                         <div style="font-size:13px;color:#b8b0a0;line-height:1.5;margin-bottom:18px">Welcome, operative. The Division issues every new recruit one <b style="color:#9ad0ff">free declassification token</b> 🎟. Spend it on <i>any</i> vessel in the roster — even the rarest files.</div>
                         <button class="primary" id="ewOnboardGo" style="margin-right:8px">Browse the Roster</button>
                         <button id="ewOnboardLater">Maybe Later</button>

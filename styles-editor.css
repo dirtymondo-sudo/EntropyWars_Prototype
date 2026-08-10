@@ -645,7 +645,7 @@
 }
 
 .ccc-title-text {
-    font-family: 'Cinzel', serif;
+    font-family: 'Cormorant SC', serif;
     font-size: 22px;
     font-weight: 700;
     letter-spacing: 0.14em;
@@ -769,7 +769,7 @@
     color: #e6ddfa;
     font-size: 15px;
     font-weight: 600;
-    font-family: 'Cinzel', serif;
+    font-family: 'Cormorant SC', serif;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     cursor: pointer;
@@ -811,7 +811,7 @@
 }
 
 .cmap-title-text {
-    font-family: 'Cinzel', serif;
+    font-family: 'Cormorant SC', serif;
     font-size: 20px;
     font-weight: 700;
     color: var(--text);
@@ -918,7 +918,7 @@
     display: block;
     width: 100%;
     padding: 14px 0;
-    font-family: 'Cinzel', serif;
+    font-family: 'Cormorant SC', serif;
     font-size: 15px;
     font-weight: 600;
     letter-spacing: 0.14em;
@@ -976,7 +976,7 @@
 }
 
 .cpb-title {
-    font-family: 'Cinzel', serif;
+    font-family: 'Cormorant SC', serif;
     font-size: 18px;
     font-weight: 700;
 }
@@ -1009,7 +1009,7 @@
 }
 
 .cpb-slots-header {
-    font-family: 'Cinzel', serif;
+    font-family: 'Cormorant SC', serif;
     font-size: 14px;
     font-weight: 600;
     color: rgba(255,255,255,0.5);
@@ -1161,7 +1161,7 @@
 }
 
 .cpb-roster-header {
-    font-family: 'Cinzel', serif;
+    font-family: 'Cormorant SC', serif;
     font-size: 14px;
     font-weight: 600;
     color: rgba(255,255,255,0.5);
@@ -1286,7 +1286,7 @@
 
 .cpb-start-btn {
     padding: 12px 32px;
-    font-family: 'Cinzel', serif;
+    font-family: 'Cormorant SC', serif;
     font-size: 15px;
     font-weight: 600;
     letter-spacing: 0.14em;
@@ -1693,7 +1693,7 @@
 }
 
 .chpick-name {
-    font-family: 'Cinzel', serif;
+    font-family: 'Cormorant SC', serif;
     font-size: 19px;
     font-weight: 700;
     color: var(--text);

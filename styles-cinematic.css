@@ -1065,7 +1065,7 @@
             z-index: 20;
             pointer-events: none;
             white-space: nowrap;
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             -webkit-text-stroke: 1px rgba(0, 0, 0, 0.3);
             border-left: 3px solid rgba(255, 200, 60, 0.8);
             padding-left: 12px;
@@ -1105,7 +1105,7 @@
             z-index: 20;
             pointer-events: none;
             opacity: 0;
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             display: flex;
             flex-direction: column;
             gap: 2px;
@@ -1198,7 +1198,7 @@
         }
 
         .cin-player-label .cin-label-hp {
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-size: clamp(10px, 1.5vw, 15px);
             font-weight: 700;
             opacity: 0.55;
@@ -1222,7 +1222,7 @@
             position: absolute;
             z-index: 22;
             pointer-events: none;
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-weight: 900;
             font-size: clamp(48px, 8vw, 80px);
             color: #ff4444;
@@ -1295,7 +1295,7 @@
             position: absolute;
             z-index: 23;
             pointer-events: none;
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-weight: 900;
             font-size: clamp(18px, 3vw, 28px);
             color: #ffcc00;
@@ -1335,7 +1335,7 @@
             position: absolute;
             z-index: 25;
             pointer-events: none;
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-weight: 900;
             font-size: clamp(72px, 14vw, 140px);
             color: #ff2222;
@@ -1397,7 +1397,7 @@
             position: absolute;
             z-index: 24;
             pointer-events: none;
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-weight: 900;
             font-size: clamp(36px, 7vw, 64px);
             color: #88ddff;
@@ -1432,7 +1432,7 @@
             position: absolute;
             z-index: 24;
             pointer-events: none;
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-weight: 900;
             font-size: clamp(32px, 6vw, 56px);
             color: #ffaa22;
@@ -1457,7 +1457,7 @@
             position: absolute;
             z-index: 24;
             pointer-events: none;
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-weight: 700;
             font-size: clamp(14px, 2.5vw, 22px);
             font-style: italic;
@@ -1742,7 +1742,7 @@
         .pt-announce-title {
             position: relative;
             z-index: 2;
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-weight: 900;
             font-size: clamp(34px, 7.2vw, 78px);
             line-height: 1;
@@ -2091,7 +2091,7 @@
             transform: translateX(-50%);
             z-index: 30;
             pointer-events: none;
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-size: clamp(11px, 1.8vw, 15px);
             color: rgba(255,255,255,0.45);
             letter-spacing: 0.15em;
@@ -2590,7 +2590,7 @@
             z-index: 8;
             right: 6%;
             bottom: 46%;
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-size: 56px;
             font-weight: 900;
             color: #ff3333;
@@ -2924,7 +2924,7 @@
     top: 50%;
     left: 50%;
     text-align: center;
-    font-family: 'Cinzel', serif;
+    font-family: 'Cormorant SC', serif;
     font-size: clamp(48px, 11vw, 130px);
     font-weight: 900;
     letter-spacing: 0.18em;
@@ -3098,7 +3098,7 @@
     top: 16vh;
     max-width: 62vw;
     color: #fff;
-    font-family: 'Cinzel', 'Times New Roman', serif;
+    font-family: 'Cormorant SC', 'Times New Roman', serif;
     text-align: left;
     letter-spacing: 0.05em;
     pointer-events: none;
@@ -3365,31 +3365,29 @@
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
 }
+/* Red manga slam type (2026-08-10): the whole-team ultimate reads like an
+   anime attack shout — heavy display face, hard skew, black stroke, red
+   bloom. Same treatment as the combo name slam (.ssq-name). */
 .ews-title {
-    font-family: 'Cinzel', serif;
-    font-weight: 900;
-    font-size: clamp(2.4rem, 7vw, 5.2rem);
-    letter-spacing: 0.14em;
-    line-height: 1.05;
-    color: #f2eaff;
+    font-family: 'Bangers', 'Impact', cursive;
+    font-weight: 400;
+    font-size: clamp(2.8rem, 8vw, 6rem);
+    letter-spacing: 0.06em;
+    line-height: 1.02;
+    color: #ff2432;
+    -webkit-text-stroke: 2px #170408;
+    transform: skewX(-7deg) rotate(-1.2deg);
     text-shadow:
-        0 0 10px rgba(201, 165, 255, 0.95),
-        0 0 34px rgba(163, 108, 255, 0.75),
-        0 4px 0 rgba(20, 8, 40, 0.85);
-}
-.ews-title.ews-p2 {
-    color: #ffe2dc;
-    text-shadow:
-        0 0 10px rgba(255, 138, 118, 0.95),
-        0 0 34px rgba(255, 90, 64, 0.7),
-        0 4px 0 rgba(40, 8, 8, 0.85);
+        4px 4px 0 rgba(12, 2, 4, 0.95),
+        0 0 18px rgba(255, 42, 42, 0.85),
+        0 0 48px rgba(255, 70, 30, 0.55);
 }
 .ews-overlay.ews-charge .ews-title {
     animation: ewsTitlePulse 0.5s ease-in-out infinite alternate;
 }
 @keyframes ewsTitlePulse {
-    from { transform: scale(1);    filter: brightness(1); }
-    to   { transform: scale(1.03); filter: brightness(1.35); }
+    from { transform: skewX(-7deg) rotate(-1.2deg) scale(1);    filter: brightness(1); }
+    to   { transform: skewX(-7deg) rotate(-1.2deg) scale(1.04); filter: brightness(1.35); }
 }
 .ews-sub {
     margin-top: 6px;
@@ -3510,7 +3508,7 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-family: 'Cinzel', serif;
+    font-family: 'Cormorant SC', serif;
     opacity: 1;
     transition: opacity .35s ease;
 }
@@ -3620,7 +3618,7 @@
    OPENING CINEMATIC (match intro) — battle.js playOpeningCinematic
    Grand-staircase march → face rows → push across the map → sun + map
    title → crane down → FIGHT! Retro-JRPG presentation: hard letterbox,
-   CRT grain, Cinzel title cards.
+   CRT grain, Cormorant SC title cards.
    ═══════════════════════════════════════════════════════════════════════ */
 .ewi-overlay {
     position: fixed; inset: 0; z-index: 5900;
@@ -3658,13 +3656,13 @@
 }
 @keyframes ewiTitleOut { to { opacity: 0; transform: scale(1.06); filter: blur(6px); } }
 .ewi-title {
-    font-family: 'Cinzel', serif; font-weight: 900;
+    font-family: 'Cormorant SC', serif; font-weight: 900;
     font-size: clamp(30px, 6vw, 72px); letter-spacing: .22em; text-indent: .22em;
     color: #f3e6c2;
     text-shadow: 0 0 22px rgba(255, 196, 84, .55), 0 3px 0 rgba(60, 30, 0, .8), 0 6px 24px rgba(0, 0, 0, .9);
 }
 .ewi-sub {
-    font-family: 'Cinzel', serif; font-size: clamp(12px, 1.7vw, 20px);
+    font-family: 'Cormorant SC', serif; font-size: clamp(12px, 1.7vw, 20px);
     letter-spacing: .55em; text-indent: .55em; color: rgba(243, 230, 194, .8); margin-top: 6px;
 }
 .ewi-title-rule {
@@ -3673,7 +3671,7 @@
 }
 .ewi-team-tag {
     position: absolute; bottom: 14.5%; left: 6%; z-index: 5; pointer-events: none;
-    font-family: 'Cinzel', serif; font-weight: 700;
+    font-family: 'Cormorant SC', serif; font-weight: 700;
     font-size: clamp(16px, 2.4vw, 30px); letter-spacing: .3em;
     color: #f3e6c2; text-shadow: 0 2px 14px rgba(0, 0, 0, .95), 0 0 26px rgba(255, 196, 84, .3);
     opacity: 0; transform: translateX(-28px);
@@ -3683,7 +3681,7 @@
 .ewi-fight {
     position: absolute; inset: 0; z-index: 6; pointer-events: none;
     display: flex; align-items: center; justify-content: center;
-    /* The game's own face (body / round banners are DotGothic16) — the Cinzel
+    /* The game's own face (body / round banners are DotGothic16) — the Cormorant SC
        movie-poster serif read as a different game entirely. Pixel fonts hate
        text-stroke, so depth comes from the layered shadow instead. */
     font-family: 'DotGothic16', monospace; font-weight: 400;
@@ -3795,8 +3793,8 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 /* nameplate riding the bottom edge of its pane */
 .ssq-nm {
     position: absolute; left: 6%; bottom: 5%;
-    font-family: 'Cinzel', serif; font-weight: 900;
-    font-size: clamp(14px, 1.9vw, 24px);
+    font-family: 'Bangers', 'Impact', cursive; font-weight: 400;
+    font-size: clamp(15px, 2vw, 26px);
     color: #fff; letter-spacing: .06em; text-transform: uppercase;
     text-shadow: 2px 2px 0 #000, 0 0 16px var(--ssq-accent);
     line-height: 1.05; max-width: 86%;
@@ -3818,18 +3816,25 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 }
 .ssq-name-wrap.in  { animation: ssqNameSlam .5s cubic-bezier(.14, 1.35, .34, 1) forwards; }
 .ssq-name-wrap.out { animation: ssqNameOut .28s ease-in forwards; }
+/* Red manga slam type (2026-08-10) — the combo shout, same voice as the
+   Entropy Strike title: hard skew, black stroke, red bloom. */
 .ssq-name {
-    font-family: 'Cinzel', serif; font-weight: 900; font-style: italic;
-    font-size: clamp(30px, 6vw, 74px);
-    color: #fff; letter-spacing: .04em; text-transform: uppercase;
-    -webkit-text-stroke: 2px rgba(0, 0, 0, .9);
-    text-shadow: 0 0 28px var(--ssq-accent), 4px 4px 0 #000, 0 0 60px var(--ssq-accent);
+    display: inline-block;
+    font-family: 'Bangers', 'Impact', cursive; font-weight: 400;
+    font-size: clamp(34px, 6.6vw, 84px);
+    color: #ff2432; letter-spacing: .05em; text-transform: uppercase;
+    -webkit-text-stroke: 2.5px #14040a;
+    transform: skewX(-8deg);
+    text-shadow:
+        5px 5px 0 rgba(10, 2, 4, 0.95),
+        0 0 26px rgba(255, 42, 42, 0.8),
+        0 0 64px rgba(255, 80, 40, 0.5);
 }
 .ssq-name-sub {
     margin-top: .35em;
-    font-family: 'Cinzel', serif; font-weight: 700;
-    font-size: clamp(12px, 1.5vw, 20px);
-    color: #ffd76a; letter-spacing: .34em; text-transform: uppercase;
+    font-family: 'Bangers', 'Impact', cursive; font-weight: 400;
+    font-size: clamp(13px, 1.6vw, 22px);
+    color: #ffd76a; letter-spacing: .3em; text-transform: uppercase;
     text-shadow: 1px 1px 0 #000, 0 0 12px rgba(255, 215, 106, .6);
 }
 @keyframes ssqNameSlam {
@@ -3941,7 +3946,7 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 }
 .cine-insert.on { opacity: 1; }
 .cine-insert-card {
-    font-family: 'Cinzel', serif; font-weight: 900;
+    font-family: 'Cormorant SC', serif; font-weight: 900;
     color: #fff; text-align: center; line-height: 1.25;
     text-shadow: 3px 3px 0 #000, 0 0 24px rgba(0,0,0,.9);
 }
@@ -3954,7 +3959,7 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 .cine-insert.k-tbc .cine-insert-card {
     margin: 0 0 9% 6%;
     padding: .35em 2.2em .35em .9em;
-    font-family: 'Cinzel', serif; font-style: italic; font-size: clamp(18px, 3.4vw, 42px);
+    font-family: 'Cormorant SC', serif; font-style: italic; font-size: clamp(18px, 3.4vw, 42px);
     color: #fff; background: #000;
     clip-path: polygon(0 0, calc(100% - 1.6em) 0, 100% 50%, calc(100% - 1.6em) 100%, 0 100%);
     transform: translateX(-120%);
@@ -3984,10 +3989,12 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 @keyframes cineEyesBlink { 0%,100% { opacity: 1; } 62%,68% { opacity: 0; } }
 
 /* ══════════════════════════════════════════════════════════════════════
-   VOID STAGE — the isolation shot. The 3D half hides the board and swaps
-   scene.background; this half hides the DOM world (tiles, nameplates, HUD
-   chrome) and raises the animated palette layer. Exit is a HARD cut back —
-   no fade — because the return is part of the drama.
+   VOID STAGE — the isolation shot. The 3D half hides the board and paints
+   the palette's gradient sky; this half hides the DOM world (tiles,
+   nameplates, HUD chrome) and raises the animated palette layer. Both
+   directions cross-fade through the palette-tinted .void-veil (battle.js
+   VoidStage) — the world blooms into the void and blooms back out, never
+   a one-frame hard cut.
    ══════════════════════════════════════════════════════════════════════ */
 #game-viewport.void-stage .board-stage > *:not(canvas),
 #game-viewport.void-stage #css2dOverlay,
@@ -3998,25 +4005,58 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 #game-viewport.void-stage #minimapWrap { visibility: hidden; }
 #game-viewport.void-stage .acam-dmg-row { opacity: 0; }
 
+/* The cross-fade veil: battle.js paints it with the palette's sky gradient
+   and toggles .on. Fade IN is quick (the bloom that covers the swap), fade
+   OUT is slower (the reveal breathes). Above the void layer, the grade and
+   the action-cam chrome — while it's up, it IS the frame. */
+.void-veil {
+    position: absolute; inset: 0;
+    z-index: 97;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .46s ease-out;
+}
+.void-veil.on {
+    opacity: 1;
+    transition: opacity .26s ease-in;
+}
+
 .void-layer {
     position: absolute; inset: 0;
     z-index: 92;                 /* under the grade (93) and the chrome (94) */
     pointer-events: none;
     opacity: 0;
+    transition: opacity .4s ease;
 }
 .void-layer.on { opacity: 1; }
 .void-layer .void-fx { position: absolute; inset: 0; opacity: .9; }
+/* Depth vignette: every palette pulls the frame edges down toward its own
+   tone so the void reads as a SPACE with air in it, not a flat backdrop.
+   Bright palettes override the tint below. */
+.void-layer::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 130% 105% at 50% 42%,
+        transparent 38%, var(--void-vig, rgba(0, 0, 0, .6)) 100%);
+}
+.void-layer.vp-bone::after      { --void-vig: rgba(146, 143, 130, .55); }
+.void-layer.vp-valentine::after { --void-vig: rgba(168, 52, 98, .5); }
+.void-layer.vp-bsod::after      { --void-vig: rgba(2, 8, 74, .65); }
+.void-layer.vp-sepia::after     { --void-vig: rgba(16, 11, 5, .7); }
+.void-layer.vp-ocean::after     { --void-vig: rgba(0, 8, 10, .7); }
+.void-layer.vp-dream::after     { --void-vig: rgba(10, 3, 22, .68); }
+.void-layer.vp-hex::after       { --void-vig: rgba(5, 0, 10, .72); }
 .void-layer .void-caption {
     position: absolute; left: 8%; top: 22%;
     max-width: 44%;
     font-family: 'Courier New', monospace; font-weight: 700;
     font-size: clamp(13px, 1.9vw, 26px); line-height: 1.5;
     color: #fff; opacity: 0; text-shadow: 0 2px 10px rgba(0,0,0,.6);
+    transition: opacity .3s ease;
+    z-index: 1;
 }
 .void-layer .void-caption.on { opacity: 1; }
 .void-cap-sub { display: block; margin-top: .6em; font-size: .74em; opacity: .85; }
-.void-cap-red { color: #ff3b3b; }
-.void-cap-list { letter-spacing: .5em; }
 
 /* palette layers — background + two cheap animated passes each */
 .void-layer.vl-glyphsnow .void-fx {

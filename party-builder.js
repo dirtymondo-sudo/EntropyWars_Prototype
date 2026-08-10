@@ -938,7 +938,7 @@ function buildSpellTooltip(sp, x, y) {
   return h('div', { style: { position: 'fixed', left, top, width: W, zIndex: 9999, pointerEvents: 'none', background: 'linear-gradient(180deg,#0d0c18,#08070f)', border: `1px solid ${catC}`, boxShadow: `0 8px 32px rgba(0,0,0,0.85), 0 0 16px ${catC}33`, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 7, animation: 'pbTipIn 0.12s ease-out', fontFamily: 'DotGothic16, monospace' } },
     h('div', { style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, borderBottom: `1px solid ${EW.panelEdge}`, paddingBottom: 6 } },
       h('div', { style: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 } },
-        h('span', { style: { fontFamily: 'Cinzel, serif', fontSize: 15, letterSpacing: '0.06em', color: EW.ink, fontWeight: 600, lineHeight: 1.1 } }, sp.name),
+        h('span', { style: { fontFamily: 'Cormorant SC, serif', fontSize: 15, letterSpacing: '0.06em', color: EW.ink, fontWeight: 600, lineHeight: 1.1 } }, sp.name),
         h('span', { style: { fontSize: 9, color: EW.inkMute, letterSpacing: '0.04em' } }, [sp.school, sp.tier && ('Tier ' + sp.tier)].filter(Boolean).join('  ·  '))),
       h('div', { style: { flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 } },
         h('span', { style: { fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: catC, border: `1px solid ${catC}66`, background: `${catC}1a`, padding: '1px 6px' } }, spellCategoryLabel(cat)),
@@ -1181,7 +1181,7 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
       transform: 'translate(-50%,-50%)',
       width: 46, height: 46, borderRadius: '50%',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Cinzel, serif', fontSize: 16, fontWeight: 700,
+      fontFamily: 'Cormorant SC, serif', fontSize: 16, fontWeight: 700,
       border: '2px solid ' + nc, color: EW.ink,
       background: nc, cursor: 'default',
       boxSizing: 'border-box', zIndex: 2,
@@ -2031,7 +2031,7 @@ function PartyBuilder() {
 
     h('div', { style:{ display:'flex', alignItems:'center', height:46, padding:'0 14px 0 8px', gap:10, borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0, position:'relative', zIndex:2 }},
       h(SigilMark),
-      h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:15, letterSpacing:'0.14em', fontWeight:500 } }, 'ENTROPY WARS'),
+      h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, letterSpacing:'0.14em', fontWeight:500 } }, 'ENTROPY WARS'),
       h('span', { style:{ width:1, height:16, background:EW.panelEdge } }),
       h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.2em' } }, standalone ? 'THE PARTY FORGE' : 'CHOOSE YOUR VESSEL'),
       h('div', { style:{flex:1} }),
@@ -2044,7 +2044,7 @@ function PartyBuilder() {
     h('div', { style:{ display:'grid', gridTemplateColumns:'112px minmax(0,1fr) clamp(380px,36vw,640px)', flex:1, minHeight:0, position:'relative', zIndex:1 } },
 
       h('div', { style:{ display:'flex', flexDirection:'column', gap:6, padding:'10px 6px 10px 8px', borderRight:`1px solid ${EW.panelEdge}`, background:'linear-gradient(90deg, rgba(0,0,0,0.35), transparent)', overflowY:'auto' }},
-        h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:11, letterSpacing:'0.16em', color:EW.inkMute, marginBottom:2, flexShrink:0 } }, 'THE PARTY'),
+        h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:11, letterSpacing:'0.16em', color:EW.inkMute, marginBottom:2, flexShrink:0 } }, 'THE PARTY'),
         Array.from({length: teamSize}).map((_, i) => {
           const cn = typeof window.normalizeClassName==='function' ? window.normalizeClassName(st.partyBuilds?.[player]?.[i], window.DEFAULT_BUILDS?.[player]?.[i]) : (st.partyBuilds?.[player]?.[i]||'Warrior');
           const mt = st.partyMeta?.[player]?.[i] || (typeof window.getArchetypeForJob==='function' ? window.getArchetypeForJob(cn) : {});
@@ -2055,7 +2055,7 @@ function PartyBuilder() {
           return h('div', { key:i, onClick:()=>selectSlot(i), className:'pb-slot-card', style:{ position:'relative', cursor:'pointer', flex:1, minHeight:0, background:isActive?`linear-gradient(180deg,${fCol}18,rgba(0,0,0,0.3))`:'rgba(0,0,0,0.3)', border:`1px solid ${isActive?fCol+'99':EW.panelEdge}`, padding:'4px', display:'flex', flexDirection:'column', alignItems:'center', gap:2, clipPath:'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }},
             isActive && h('div', { style:{ position:'absolute', top:0, bottom:0, left:0, width:3, background:fCol, boxShadow:`0 0 10px ${fCol}` } }),
             confirmed && h('div', { style:{ position:'absolute', top:3, right:4, fontSize:10, color:'rgba(100,200,120,0.7)', fontWeight:700 } }, '✓'),
-            h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:10, fontStyle:'italic', color:isActive?fCol:EW.inkDim, opacity:isActive?0.85:0.45, alignSelf:'flex-end', marginRight:4 } }, numerals[i]),
+            h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:10, fontStyle:'italic', color:isActive?fCol:EW.inkDim, opacity:isActive?0.85:0.45, alignSelf:'flex-end', marginRight:4 } }, numerals[i]),
             /* Portraits are 128×128 art — the box stays a SQUARE no matter the
                party size (the outer flex row absorbs the leftover space). */
             h('div', { style:{ width:'100%', flex:1, minHeight:0, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }},
@@ -2064,7 +2064,7 @@ function PartyBuilder() {
                 h(PortraitSprite, { race:id.race, gender:id.gender||'male', cls:cn, glow:isActive?id.faction:null }),
               ),
             ),
-            h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:10, fontWeight:500, lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textAlign:'center', width:'100%', padding:'0 2px' } }, nm),
+            h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:10, fontWeight:500, lineHeight:1.1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textAlign:'center', width:'100%', padding:'0 2px' } }, nm),
             h('div', { style:{ fontSize:7, color:EW.inkMute, letterSpacing:'0.06em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', textAlign:'center', paddingBottom:1 } }, (_grl(id.race,id.gender)||id.race||'?').toUpperCase(),' · ',getJobDisplay(cn).toUpperCase()),
           );
         }),
@@ -2081,7 +2081,7 @@ function PartyBuilder() {
             // the vessel's RACE crowns the stage; the job title lives on the
             // assessment sheet. Slot numeral stays as a small marker.
             h('div', { style:{ display:'flex', alignItems:'baseline', justifyContent:'center', gap:8, flexShrink:0, minWidth:0 } },
-              h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(16px,1.7vw,26px)', fontWeight:600, lineHeight:1.1, textShadow:`0 0 24px ${fc}44`, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, _grl(unitRace, identity.gender) || unitRace),
+              h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(16px,1.7vw,26px)', fontWeight:600, lineHeight:1.1, textShadow:`0 0 24px ${fc}44`, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } }, _grl(unitRace, identity.gender) || unitRace),
               h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.18em', flexShrink:0 } }, '· SLOT ', numerals[slot], ' ·')),
             h('div', { style:{ flex:1, minHeight:0, display:'flex', gap:8, alignItems:'stretch' } },
               h('div', { style:{ display:'flex', flexDirection:'column', justifyContent:'flex-end', gap:7, paddingBottom:12, flexShrink:0 } },
@@ -2122,7 +2122,7 @@ function PartyBuilder() {
           h('div', { style:{ flex:'0 1 450px', minWidth:0, display:'flex', flexDirection:'column', gap:5, padding:'10px 12px 8px 10px', borderLeft:`1px solid ${EW.panelEdge}` } },
             // the JOB heads the sheet (the race name crowns the 3D stage).
             h('div', { style:{ display:'flex', alignItems:'baseline', gap:10, flexWrap:'wrap', flexShrink:0 } },
-              h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(20px,2.2vw,32px)', fontWeight:600, lineHeight:1, textShadow:`0 0 30px ${fc}44` } }, getJobDisplay(clsName))),
+              h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(20px,2.2vw,32px)', fontWeight:600, lineHeight:1, textShadow:`0 0 30px ${fc}44` } }, getJobDisplay(clsName))),
             h('div', { style:{ display:'flex', alignItems:'center', gap:5, flexWrap:'wrap', flexShrink:0 } },
               ...unitTypes.map((t,i)=>h(TypeChip,{key:i,type:t,size:11})),
               h('span', { style:{ fontSize:9, color:`${fc}99`, letterSpacing:'0.14em', marginLeft:4, textTransform:'uppercase' } }, unitFaction, ' alignment', factionBonusTxt ? ' · ' + factionBonusTxt : '')),
@@ -2187,7 +2187,7 @@ function PartyBuilder() {
                   h('div', { style:{ display:'flex', alignItems:'center', gap:6 } },
                     h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.04em', padding:'2px 6px', border:`1px solid ${EW.panelEdge}`, background:'rgba(0,0,0,0.3)' } }, classLabel),
                     h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.04em' } }, docNum)),
-                  h('div', { style:{ fontSize:11, lineHeight:1.55, color:EW.inkMute, fontFamily:'Cinzel, serif', fontStyle:'italic', borderLeft:`2px solid ${fc}55`, paddingLeft:8 } }, codexLore),
+                  h('div', { style:{ fontSize:11, lineHeight:1.55, color:EW.inkMute, fontFamily:'Cormorant SC, serif', fontStyle:'italic', borderLeft:`2px solid ${fc}55`, paddingLeft:8 } }, codexLore),
                   h('div', { style:{ fontSize:7, color:EW.inkDim, letterSpacing:'0.08em', paddingTop:2 } }, 'TOP SECRET // ████████ // NOFORN')),
           ),
         ),
@@ -2195,7 +2195,7 @@ function PartyBuilder() {
         // ══ ROSTER — compact codex grid; the hero + abilities lead ══
         h('div', { style:{ display:'flex', flexDirection:'column', gap:4, padding:'6px 10px', flex:1, minHeight:0, background:'linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.45))', overflow:'hidden' }},
           h('div', { style:{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', flexShrink:0 } },
-            h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(13px,1.1vw,17px)', letterSpacing:'0.14em', textTransform:'uppercase', color:EW.ink } }, 'Codex of Vessels'),
+            h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(13px,1.1vw,17px)', letterSpacing:'0.14em', textTransform:'uppercase', color:EW.ink } }, 'Codex of Vessels'),
             h('span', { style:{ fontSize:10, color:EW.inkDim, letterSpacing:'0.1em', marginRight:6 } }, filteredRoster.length,'/',rosterEntries.length),
             h('input', { placeholder:'Search...', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 10px', width:130 }}),
             h('select', { value:`${sortKey}-${sortDir}`, onChange:e=>{const[k,d]=e.target.value.split('-');setSortKey(k);setSortDir(d);}, style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, color:EW.time, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none' }},
@@ -2225,7 +2225,7 @@ function PartyBuilder() {
                   h(Sprite, { race:entry.race, gender:entry.gender, cls:entry.cls, size:'85%', style:{width:'85%',height:'85%', filter: locked?'brightness(0.18) grayscale(1)':'none'} }),
                   locked && h('div', { style:{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, color:'rgba(255,216,106,0.9)', textShadow:'0 1px 4px #000' } }, '🔒'),
                   !locked && h('div', { onClick:e=>{e.stopPropagation();toggleFav(entry.race,entry.gender);}, style:{ position:'absolute', top:0, left:0, width:15, height:15, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:11, color:starred?'#dcaa1e':'rgba(255,255,255,0.15)', textShadow:starred?'0 0 6px rgba(220,170,30,0.6)':'none', transition:'color 0.15s, text-shadow 0.15s', zIndex:1 } }, starred?'★':'☆')),
-                h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:9, fontWeight:500, textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', width:'100%', color:isActive?EW.ink:EW.inkMute, lineHeight:1.2 }}, entry.label),
+                h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:9, fontWeight:500, textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', width:'100%', color:isActive?EW.ink:EW.inkMute, lineHeight:1.2 }}, entry.label),
                 h('div', { style:{ fontSize:7, color:EW.inkDim, letterSpacing:'0.04em', textAlign:'center', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', width:'100%' } }, getJobDisplay(entry.cls)),
                 isActive && h('div', { style:{ position:'absolute', inset:-1, border:`1px solid ${entryFc}`, boxShadow:`0 0 8px ${entryFc}44`, pointerEvents:'none' } }),
               );
@@ -2236,7 +2236,7 @@ function PartyBuilder() {
 
       h('div', { style:{ display:'flex', flexDirection:'column', minHeight:0, overflow:'hidden', padding:'8px 6px 8px 4px', borderLeft:`1px solid ${EW.panelEdge}`, background:'linear-gradient(270deg, rgba(0,0,0,0.3), transparent)' }},
         h('div', { style:{ display:'flex', alignItems:'center', gap:8, flexShrink:0, padding:'0 6px 6px 10px', borderBottom:`1px solid ${fc}33` } },
-          h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:17, letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 } }, 'Abilities'),
+          h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:17, letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:600 } }, 'Abilities'),
           h('span', { style:{ fontSize:10, color: spellSlotsUsed>slotCap ? EW.bad : EW.time, letterSpacing:'0.12em', border:`1px solid ${spellSlotsUsed>slotCap?'rgba(255,122,138,0.45)':'rgba(242,196,104,0.35)'}`, background:'rgba(0,0,0,0.35)', padding:'2px 8px', whiteSpace:'nowrap' } }, spellSlotsUsed, '/', slotCap, ' SLOTS'),
           h('div', { style:{flex:1} }),
           !isArena&&h('button',{onClick:randomizeSpells,className:'pb-btn-ghost',style:{background:'transparent',border:`1px solid ${EW.panelEdge}`,color:EW.inkMute,fontSize:9,padding:'3px 8px',fontFamily:'DotGothic16, monospace',cursor:'pointer',letterSpacing:'0.1em'}},'RND'),
@@ -2277,7 +2277,7 @@ function PartyBuilder() {
         //    pillar header instead — no separate bar. ──
         !isArena && !(useTree&&unitTree) && clsName!=='Freelancer' && h('div', { className:'pbx-subbar', style:{ '--cat': fc, flexShrink:0 }, onClick:()=>{ setEquipPicker('subjob'); sfx('uiCursorMove'); }, title:'A second job: its spells join this spell pool and its training shifts your stats.' },
           h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.16em', flexShrink:0 } }, 'SUBCLASS'),
-          h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:14, fontWeight:700, color:EW.ink, letterSpacing:'0.04em', whiteSpace:'nowrap' } }, secJob ? getJobDisplay(secJob) : '— None —'),
+          h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:14, fontWeight:700, color:EW.ink, letterSpacing:'0.04em', whiteSpace:'nowrap' } }, secJob ? getJobDisplay(secJob) : '— None —'),
           h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.04em', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 } }, 'adds its spells to the pool below · shifts stats'),
           h('span', { style:{ fontSize:10, color:fc, letterSpacing:'0.1em', flexShrink:0 } }, '▾ CHANGE')),
 
@@ -2392,11 +2392,11 @@ function PartyBuilder() {
         // ── standalone: name the squad, then archive it — SAVE is the seal ──
         ? h(React.Fragment, null,
             h('span',{style:{fontSize:9,color:EW.inkDim,letterSpacing:'0.14em'}},'TEAM NAME'),
-            h('input',{value:teamNameDraft,onChange:e=>setTeamNameDraft(e.target.value),placeholder:'Name this squad…',maxLength:30,style:{background:'rgba(0,0,0,0.4)',border:`1px solid ${EW.panelEdge}`,color:EW.ink,fontFamily:'Cinzel, serif',fontSize:14,padding:'7px 12px',width:220,letterSpacing:'0.06em'}}),
+            h('input',{value:teamNameDraft,onChange:e=>setTeamNameDraft(e.target.value),placeholder:'Name this squad…',maxLength:30,style:{background:'rgba(0,0,0,0.4)',border:`1px solid ${EW.panelEdge}`,color:EW.ink,fontFamily:'Cormorant SC, serif',fontSize:14,padding:'7px 12px',width:220,letterSpacing:'0.06em'}}),
             h('div',{style:{flex:1}}),
             h('span',{style:{fontSize:10,color:EW.inkMute,letterSpacing:'0.12em'}}, editingTeamId ? 'FORGING · ' + (teamNameDraft || 'UNNAMED').toUpperCase() : 'NEW SQUAD'),
             h('div',{style:{width:1,height:22,background:EW.panelEdge,margin:'0 3px'}}),
-            h('button',{onClick:tbSaveTeam,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(61,220,132,0.22),rgba(61,220,132,0.06))',color:'#3ddc84',border:'1px solid #3ddc84',padding:'12px 34px',fontFamily:'Cinzel, serif',fontSize:18,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 22px rgba(61,220,132,0.3)',display:'flex',alignItems:'center',gap:10}},
+            h('button',{onClick:tbSaveTeam,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(61,220,132,0.22),rgba(61,220,132,0.06))',color:'#3ddc84',border:'1px solid #3ddc84',padding:'12px 34px',fontFamily:'Cormorant SC, serif',fontSize:18,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 22px rgba(61,220,132,0.3)',display:'flex',alignItems:'center',gap:10}},
               '💾 SAVE TEAM'))
         // ── match flow: presets left of the status, the seal on the right ──
         : h(React.Fragment, null,
@@ -2408,14 +2408,14 @@ function PartyBuilder() {
             h('div',{style:{width:1,height:22,background:EW.panelEdge,margin:'0 3px'}}),
             h('button',{onClick:confirmSlot,className:'pb-btn-confirm',title:'Lock this vessel and move to the next open slot',style:{background:'rgba(100,200,120,0.08)',color:'rgba(100,200,120,0.9)',border:'1px solid rgba(100,200,120,0.25)',padding:'9px 16px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.12em',cursor:'pointer',fontWeight:600}},'CONFIRM ', numerals[slot]),
             friendlyHostCanStart
-              ? h('button',{onClick:doStart,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(100,200,120,0.25),rgba(100,200,120,0.08))',color:'rgba(140,240,160,0.95)',border:'1px solid rgba(100,200,120,0.6)',padding:'12px 32px',fontFamily:'Cinzel, serif',fontSize:18,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 22px rgba(100,200,120,0.3)',display:'flex',alignItems:'center',gap:10}},
+              ? h('button',{onClick:doStart,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(100,200,120,0.25),rgba(100,200,120,0.08))',color:'rgba(140,240,160,0.95)',border:'1px solid rgba(100,200,120,0.6)',padding:'12px 32px',fontFamily:'Cormorant SC, serif',fontSize:18,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 22px rgba(100,200,120,0.3)',display:'flex',alignItems:'center',gap:10}},
                   '⚔ START MATCH')
               : isWaitingOnline
-              ? h('button',{disabled:true,className:'pb-btn-primary pb-btn-waiting',style:{background:'linear-gradient(180deg,rgba(100,200,120,0.15),rgba(100,200,120,0.04))',color:'rgba(100,200,120,0.9)',border:'1px solid rgba(100,200,120,0.4)',padding:'12px 30px',fontFamily:'Cinzel, serif',fontSize:15,letterSpacing:'0.18em',fontWeight:500,display:'flex',alignItems:'center',gap:10,cursor:'default',opacity:0.9}},
+              ? h('button',{disabled:true,className:'pb-btn-primary pb-btn-waiting',style:{background:'linear-gradient(180deg,rgba(100,200,120,0.15),rgba(100,200,120,0.04))',color:'rgba(100,200,120,0.9)',border:'1px solid rgba(100,200,120,0.4)',padding:'12px 30px',fontFamily:'Cormorant SC, serif',fontSize:15,letterSpacing:'0.18em',fontWeight:500,display:'flex',alignItems:'center',gap:10,cursor:'default',opacity:0.9}},
                   (isRankedNet && opponentLockedToo) ? 'MATCH STARTING…'
                   : (!isRankedNet && netRole === 'guest' && opponentLockedToo) ? '⌛ WAITING FOR HOST TO START…'
                   : '⌛ WAITING ON OPPONENT…')
-              : h('button',{onClick:doStart,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(61,220,132,0.22),rgba(61,220,132,0.06))',color:'#3ddc84',border:'1px solid #3ddc84',padding:'12px 34px',fontFamily:'Cinzel, serif',fontSize:18,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 22px rgba(61,220,132,0.3)',display:'flex',alignItems:'center',gap:10}},
+              : h('button',{onClick:doStart,className:'pb-btn-primary',style:{background:'linear-gradient(180deg,rgba(61,220,132,0.22),rgba(61,220,132,0.06))',color:'#3ddc84',border:'1px solid #3ddc84',padding:'12px 34px',fontFamily:'Cormorant SC, serif',fontSize:18,letterSpacing:'0.22em',fontWeight:500,cursor:'pointer',boxShadow:'0 0 22px rgba(61,220,132,0.3)',display:'flex',alignItems:'center',gap:10}},
                   'SEAL YOUR FATE',h('span',{style:{fontFamily:'DotGothic16, monospace',fontSize:10,opacity:0.7}},'\u21B5'))),
     ),
 
@@ -2429,26 +2429,26 @@ function PartyBuilder() {
         h(StarField),
         h('div', { style:{ display:'flex', alignItems:'center', height:46, padding:'0 14px 0 8px', gap:10, borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0, position:'relative', zIndex:2 }},
           h(SigilMark),
-          h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:15, letterSpacing:'0.14em', fontWeight:500 } }, 'ENTROPY WARS'),
+          h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, letterSpacing:'0.14em', fontWeight:500 } }, 'ENTROPY WARS'),
           h('span', { style:{ width:1, height:16, background:EW.panelEdge } }),
           h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.2em' } }, 'THE PARTY FORGE'),
           h('div', { style:{flex:1} }),
           h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.14em' } }, presets.length, ' / ', (window.ProfileSystem?.MAX_TEAM_PRESETS || 20), ' SQUADS ARCHIVED')),
         h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', padding:'26px clamp(20px,5vw,80px) 30px', position:'relative', zIndex:1 }},
           h('div', { style:{ marginBottom:18 }},
-            h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:'clamp(22px,2.6vw,34px)', fontWeight:600, letterSpacing:'0.1em', textShadow:`0 0 30px ${EW.time}33` }}, 'TEAM ARCHIVE'),
+            h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(22px,2.6vw,34px)', fontWeight:600, letterSpacing:'0.1em', textShadow:`0 0 30px ${EW.time}33` }}, 'TEAM ARCHIVE'),
             h('div', { style:{ fontSize:11, color:EW.inkMute, letterSpacing:'0.08em', marginTop:4, lineHeight:1.5 }},
               'Forge squads here, before the war finds you. Saved teams appear under ', h('b', {style:{color:'rgba(100,180,255,0.9)'}}, '↑ LOAD'), ' whenever you build a party for any match.')),
           h('div', { style:{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:14, alignContent:'start' }},
             h('div', { className:'pb-team-card new', onClick:tbNewTeam },
               h('div', { style:{ fontSize:34, color:'#3ddc84', lineHeight:1, textShadow:'0 0 18px rgba(61,220,132,0.5)' }}, '+'),
-              h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:17, letterSpacing:'0.14em', color:'#3ddc84', fontWeight:600 }}, 'NEW TEAM'),
+              h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:17, letterSpacing:'0.14em', color:'#3ddc84', fontWeight:600 }}, 'NEW TEAM'),
               h('div', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.1em' }}, 'FORGE A FRESH SQUAD')),
             presets.map(preset => {
               const slots = preset.slots || [];
               return h('div', { key:preset.id, className:'pb-team-card', onClick:()=>tbEditTeam(preset), title:'Open this squad in the forge' },
                 h('div', { style:{ display:'flex', alignItems:'baseline', gap:10 }},
-                  h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:18, fontWeight:600, letterSpacing:'0.06em', color:EW.ink, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 }}, preset.name || 'Unnamed'),
+                  h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:18, fontWeight:600, letterSpacing:'0.06em', color:EW.ink, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', minWidth:0, flex:1 }}, preset.name || 'Unnamed'),
                   h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.1em', flexShrink:0 }}, slots.length, ' VESSELS')),
                 h('div', { style:{ display:'flex', gap:5, flexWrap:'wrap' }},
                   slots.slice(0, 8).map((s, si) => h('div', { key:si, className:'pb-team-mini', title:(_grl(s.race, s.gender)||s.race)+' · '+getJobDisplay(s.cls) },
@@ -2471,7 +2471,7 @@ function PartyBuilder() {
     showTeamModal && h('div', { onClick:()=>setShowTeamModal(false), style:{ position:'absolute', inset:0, background:'rgba(0,0,0,0.75)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }},
       h('div', { onClick:e=>e.stopPropagation(), style:{ background:'#0a0a0a', border:`1px solid ${EW.panelEdge}`, padding:'20px 24px', minWidth:340, maxWidth:480, maxHeight:'70vh', display:'flex', flexDirection:'column', gap:12, boxShadow:'0 8px 40px rgba(0,0,0,0.7)' }},
         h('div', { style:{ display:'flex', alignItems:'center', justifyContent:'space-between' }},
-          h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:16, letterSpacing:'0.16em' }}, showTeamModal === 'save' ? 'SAVE TEAM' : 'LOAD TEAM'),
+          h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:16, letterSpacing:'0.16em' }}, showTeamModal === 'save' ? 'SAVE TEAM' : 'LOAD TEAM'),
           h('button', { onClick:()=>setShowTeamModal(false), style:{ background:'transparent', border:'none', color:EW.inkMute, fontSize:18, cursor:'pointer', lineHeight:1 }}, '\u2715')),
 
         showTeamModal === 'save' && h('div', { style:{ display:'flex', flexDirection:'column', gap:8 }},
@@ -2488,7 +2488,7 @@ function PartyBuilder() {
             : getTeamPresets().map(preset =>
               h('div', { key:preset.id, style:{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, cursor:'pointer' }},
                 h('div', { onClick:()=>loadTeamPreset(preset), style:{ flex:1, display:'flex', flexDirection:'column', gap:2, cursor:'pointer' }},
-                  h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:13, letterSpacing:'0.1em', color:EW.ink }}, preset.name),
+                  h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, letterSpacing:'0.1em', color:EW.ink }}, preset.name),
                   h('div', { style:{ display:'flex', gap:4, flexWrap:'wrap' }},
                     ...(preset.slots||[]).map((s,si)=>{
                       const rl = typeof _grl==='function' ? _grl(s.race,s.gender) : s.race;
@@ -2502,7 +2502,7 @@ function PartyBuilder() {
     equipPicker && h('div', { onClick:()=>setEquipPicker(null), style:{ position:'absolute', inset:0, background:'rgba(0,0,0,0.72)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }},
       h('div', { onClick:e=>e.stopPropagation(), style:{ background:'#0a0a0a', border:`1px solid ${EW.panelEdgeHi}`, padding:'16px 18px', width:430, maxWidth:'92vw', maxHeight:'72vh', display:'flex', flexDirection:'column', gap:10, boxShadow:'0 8px 40px rgba(0,0,0,0.7)' }},
         h('div', { style:{ display:'flex', alignItems:'center', gap:10 }},
-          h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:15, letterSpacing:'0.14em', textTransform:'uppercase' }},
+          h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, letterSpacing:'0.14em', textTransform:'uppercase' }},
             equipPicker === 'item' ? 'Battle Items' : equipPicker === 'subjob' ? 'Choose a Subclass' : 'Gear — Slot ' + (equipPicker === 'accessory1' ? '1' : '2')),
           equipPicker === 'item' && h('span', { style:{ fontSize:10, color: totalItemsUsed >= itemSlotMax ? EW.warn : EW.inkMute, letterSpacing:'0.1em' }}, totalItemsUsed, '/', itemSlotMax, ' CARRIED'),
           equipPicker === 'subjob' && h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.04em' }}, 'its spells join your pool · its training shifts your stats'),
@@ -2524,7 +2524,7 @@ function PartyBuilder() {
                 const rows = [h('div', { key:'__auto', className:'pbx-pick-row', style: autoOn ? { borderColor:fc, background:`${fc}14` } : undefined, onClick:()=>pickJob('') },
                   h('span', { style:{ width:26, textAlign:'center', fontSize:16, flexShrink:0, color:EW.inkMute }}, '◈'),
                   h('div', { style:{ flex:1, minWidth:0 }},
-                    h('div', { style:{ fontFamily:'Cinzel, serif', fontSize:13, fontWeight:700, color: autoOn ? EW.ink : '#c3c8d6' }}, '— None —'),
+                    h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, fontWeight:700, color: autoOn ? EW.ink : '#c3c8d6' }}, '— None —'),
                     h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.35 }}, 'No subclass. Your pool holds main-job spells and race abilities only.')),
                   autoOn ? h('span', { style:{ fontSize:9, color:fc, fontWeight:700, flexShrink:0, letterSpacing:'0.08em' }}, 'CURRENT') : null)];
                 for (const j of jobs) {
@@ -2536,7 +2536,7 @@ function PartyBuilder() {
                       h(Sprite, { race:'homosapien', gender:'male', cls:j, size:'92%', style:{ width:'92%', height:'92%' } })),
                     h('div', { style:{ flex:1, minWidth:0 }},
                       h('div', { style:{ display:'flex', alignItems:'baseline', gap:8 }},
-                        h('span', { style:{ fontFamily:'Cinzel, serif', fontSize:13, fontWeight:700, color: on ? EW.ink : '#c3c8d6' }}, getJobDisplay(j)),
+                        h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, fontWeight:700, color: on ? EW.ink : '#c3c8d6' }}, getJobDisplay(j)),
                         h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em' }}, '+', spellCount(j), ' SPELLS TO POOL')),
                       bs ? h('div', { style:{ fontSize:10, color:EW.inkMute, lineHeight:1.4 }}, ...bs.split('  ').map((tok, ti) => h('span', { key:ti, style:{ color: tok.startsWith('-') ? EW.bad : EW.good, marginRight:8, fontWeight:600 }}, tok))) : null),
                     on ? h('span', { style:{ fontSize:9, color:fc, fontWeight:700, flexShrink:0, letterSpacing:'0.08em' }}, 'CURRENT') : null));

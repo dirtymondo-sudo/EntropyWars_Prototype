@@ -374,7 +374,7 @@ function ModeCard({ m, selected, onClick }) {
     }}, m.icon),
     h('div', { style: { flex: 1, minWidth: 0 } },
       h('div', { style: {
-        fontFamily: '"Cinzel", serif',
+        fontFamily: '"Cormorant SC", serif',
         fontSize: 18, color: EW.ink, lineHeight: 1, letterSpacing: '0.02em',
       }}, m.label,
         m.tag && h('span', { style: {
@@ -414,7 +414,7 @@ function MapCard({ mp, selected, onClick, accent }) {
       ),
       h('div', { style: { flex: 1, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 } },
         h('div', { style: {
-          fontFamily: '"Cinzel", serif', fontSize: 15,
+          fontFamily: '"Cormorant SC", serif', fontSize: 15,
           color: EW.ink, lineHeight: 1, letterSpacing: '0.02em',
         }}, mp.name),
         h('div', { style: {
@@ -686,7 +686,7 @@ function MatchSelect() {
           h('line', { x1: 24, y1: 14, x2: 28, y2: 14, stroke: EW.time, strokeWidth: 1 }),
         ),
         h('div', { style: {
-          fontFamily: '"Cinzel", serif',
+          fontFamily: '"Cormorant SC", serif',
           fontSize: 18, letterSpacing: '0.16em', fontWeight: 500,
         }}, 'ENTROPY WARS'),
         h('div', { style: { width: 1, height: 18, background: EW.panelEdge } }),
@@ -704,7 +704,7 @@ function MatchSelect() {
         ].map((s, i) =>
           h('div', { key: i, style: { display: 'flex', alignItems: 'center', gap: 8 } },
             h('span', { style: {
-              fontFamily: '"Cinzel", serif', fontStyle: 'italic',
+              fontFamily: '"Cormorant SC", serif', fontStyle: 'italic',
               fontSize: 18, color: EW.time, lineHeight: 1,
             }}, s.n),
             h('span', { style: {
@@ -728,7 +728,7 @@ function MatchSelect() {
 
       h('div', { style: { display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 } },
         h('div', { style: {
-          fontFamily: '"Cinzel", serif', fontSize: 15,
+          fontFamily: '"Cormorant SC", serif', fontSize: 15,
           letterSpacing: '0.22em', textTransform: 'uppercase', color: EW.inkMute,
         }}, 'Game Mode'),
         h('div', { style: {
@@ -787,13 +787,13 @@ function MatchSelect() {
             ),
             h('div', null,
               h('div', { style: {
-                fontFamily: '"Cinzel", serif',
+                fontFamily: '"Cormorant SC", serif',
                 fontSize: 48, fontWeight: 400, margin: 0, lineHeight: 0.95,
                 color: EW.ink, textShadow: '0 0 24px ' + accent + '44',
                 letterSpacing: '-0.01em',
               }}, mp.name),
               h('div', { style: {
-                fontFamily: '"Cinzel", serif', fontStyle: 'italic',
+                fontFamily: '"Cormorant SC", serif', fontStyle: 'italic',
                 fontSize: 18, color: EW.inkMute, marginTop: 2,
               }}, mp.isPrebuilt ? '· preset map' : '· procedural'),
             ),
@@ -802,7 +802,7 @@ function MatchSelect() {
               h(Meta, { label: 'SPAWNS', val: (mp.team || 4) + ' per side' }),
             ),
             LORE[mp.name] && h('div', { style: {
-              fontFamily: '"Cinzel", serif', fontSize: 14, lineHeight: 1.5,
+              fontFamily: '"Cormorant SC", serif', fontSize: 14, lineHeight: 1.5,
               color: EW.inkMute, fontStyle: 'italic',
               borderLeft: '2px solid ' + accent + '88', paddingLeft: 12, maxWidth: 520,
             }}, LORE[mp.name]),
@@ -834,7 +834,7 @@ function MatchSelect() {
           display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
         }},
           h('div', { style: {
-            fontFamily: '"Cinzel", serif', fontSize: 15,
+            fontFamily: '"Cormorant SC", serif', fontSize: 15,
             letterSpacing: '0.22em', textTransform: 'uppercase', color: EW.inkMute,
           }},
             'Maps ',
@@ -910,7 +910,7 @@ function MatchSelect() {
       }},
         h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
           h('div', { style: {
-            fontFamily: '"Cinzel", serif', fontSize: 18,
+            fontFamily: '"Cormorant SC", serif', fontSize: 18,
             letterSpacing: '0.2em', textTransform: 'uppercase', color: EW.ink,
           }}, 'Configuration'),
           h('div', { style: {
@@ -1017,7 +1017,7 @@ function MatchSelect() {
             alignItems: 'baseline', marginTop: 4,
           }},
             h('div', { style: {
-              fontFamily: '"Cinzel", serif', fontSize: 20,
+              fontFamily: '"Cormorant SC", serif', fontSize: 20,
               color: EW.ink, lineHeight: 1,
             }}, mp.name),
             h('div', { style: {
@@ -1046,7 +1046,7 @@ function MatchSelect() {
           color: EW.inkDim, letterSpacing: '0.24em',
         }}, 'MATCH SUMMARY'),
         h('div', { style: {
-          fontFamily: '"Cinzel", serif', fontSize: 22,
+          fontFamily: '"Cormorant SC", serif', fontSize: 22,
           color: EW.ink, lineHeight: 1, letterSpacing: '0.01em',
         }},
           gm.label + ' ',
@@ -1090,7 +1090,7 @@ function MatchSelect() {
         },
       },
         h('span', { style: {
-          fontFamily: '"Cinzel", serif', fontSize: 20,
+          fontFamily: '"Cormorant SC", serif', fontSize: 20,
           letterSpacing: '0.24em', fontWeight: 600,
         }}, 'CONFIRM'),
         h('span', { style: {

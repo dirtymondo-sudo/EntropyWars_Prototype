@@ -838,7 +838,7 @@
             background: linear-gradient(180deg, rgba(14,12,6,0.55), rgba(0,0,0,0.2));
         }
         .codex-container .ms-title-text {
-            font-family: 'Cinzel', serif; font-size: 12px;
+            font-family: 'Cormorant SC', serif; font-size: 12px;
             letter-spacing: 3px; color: #a08cc8;
         }
         .codex-body { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
@@ -873,7 +873,7 @@
 
         /* collection meter (right end of the toolbar) */
         .cdx-meter { display: flex; align-items: center; gap: 8px; margin-left: auto; min-width: 200px; }
-        .cdx-meter-label { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.14em; color: #a08cc8; white-space: nowrap; }
+        .cdx-meter-label { font-family: 'Cormorant SC', serif; font-size: 10px; letter-spacing: 0.14em; color: #a08cc8; white-space: nowrap; }
         .cdx-meter-track { flex: 1; height: 6px; min-width: 70px; background: rgba(0,0,0,0.55); border: 1px solid rgba(160,140,200,0.25); border-radius: 3px; overflow: hidden; }
         .cdx-meter-fill { height: 100%; background: linear-gradient(90deg, #8a7030, #ffd86a); box-shadow: 0 0 6px rgba(255,216,106,0.4); }
         .cdx-meter-count { font-size: 11px; color: #ffd86a; font-weight: 600; white-space: nowrap; }
@@ -1036,14 +1036,14 @@
             white-space: nowrap;
         }
         .cdx-subject-name {
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-size: clamp(22px, 2.8vw, 38px); font-weight: 700;
             letter-spacing: 3px; line-height: 1.05; color: #f0e8d0;
             text-shadow: 0 0 26px var(--cdx-fc-glow, rgba(160,140,200,0.25));
             display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
         }
         .cdx-subject-role {
-            font-family: 'Cinzel', serif; font-style: italic; font-weight: 300;
+            font-family: 'Cormorant SC', serif; font-style: italic; font-weight: 300;
             font-size: clamp(11px, 1vw, 15px); letter-spacing: 1px;
             color: rgba(200,190,168,0.65); text-shadow: none;
         }
@@ -1190,7 +1190,7 @@
             scrollbar-width: thin; scrollbar-color: rgba(184,69,90,0.3) transparent;
         }
         .shop-featured-label {
-            font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.18em; color: #e08a9a;
+            font-family: 'Cormorant SC', serif; font-size: 9px; letter-spacing: 0.18em; color: #e08a9a;
             writing-mode: vertical-rl; transform: rotate(180deg);
             text-align: center; flex-shrink: 0; align-self: center;
         }
@@ -4578,7 +4578,7 @@
     flex-shrink: 0;
 }
 .slb-tab {
-    font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 2px;
+    font-family: 'Cormorant SC', serif; font-size: 11px; letter-spacing: 2px;
     background: none; border: 1px solid rgba(160,140,200,0.25); border-bottom: none;
     color: #8d84a8; padding: 7px 18px; cursor: pointer;
     border-radius: 6px 6px 0 0;
@@ -4652,7 +4652,7 @@
 .slb-detail-scroll { flex: 1; overflow-y: auto; padding: 14px 18px 30px; min-height: 0; }
 .slb-empty { padding: 30px; color: #6d6584; font-size: 12px; }
 .slb-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
-.slb-head-name { font-family: 'Cinzel', serif; font-size: 22px; color: #ffd86a; }
+.slb-head-name { font-family: 'Cormorant SC', serif; font-size: 22px; color: #ffd86a; }
 .slb-head-name.deleted { text-decoration: line-through; color: #7d7590; }
 .slb-head-id { font-size: 10px; color: #8d84a8; letter-spacing: 0.08em; }
 .slb-head-actions { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
@@ -4763,7 +4763,7 @@
     max-height: calc(100vh - 80px); overflow-y: auto;
 }
 .slb-lab-head {
-    font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.14em; color: #9ad0ff;
+    font-family: 'Cormorant SC', serif; font-size: 13px; letter-spacing: 0.14em; color: #9ad0ff;
     display: flex; align-items: center; gap: 8px;
 }
 .slb-lab-sub { font: 10px 'DotGothic16', monospace; color: #ffd86a; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: 0; }
@@ -4784,7 +4784,7 @@
 .slb-lab-castbtn {
     flex: 1; background: linear-gradient(180deg, rgba(40,60,110,0.8), rgba(18,26,50,0.9));
     border: 1px solid rgba(110,170,255,0.6); color: #cfe4ff;
-    font: 700 14px 'Cinzel', serif; letter-spacing: 0.2em; padding: 9px 0;
+    font: 700 14px 'Cormorant SC', serif; letter-spacing: 0.2em; padding: 9px 0;
     border-radius: 6px; cursor: pointer;
 }
 .slb-lab-castbtn:hover { border-color: #9ad0ff; color: #ffffff; }
@@ -4863,7 +4863,7 @@
 }
 .slb-tl:empty { display: none; }
 .slb-tl-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.slb-tl-title { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.14em; color: #9ad0ff; }
+.slb-tl-title { font-family: 'Cormorant SC', serif; font-size: 12px; letter-spacing: 0.14em; color: #9ad0ff; }
 .slb-tl-spell { color: #ffd86a; font-size: 10px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slb-tl-beatinfo { font-size: 9px; color: #6d84a8; }
 .slb-tl-add {

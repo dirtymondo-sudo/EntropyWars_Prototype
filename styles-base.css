@@ -2118,7 +2118,7 @@
         }
 
         .lobby-kicker {
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-size: 0.8rem;
             text-transform: uppercase;
             letter-spacing: 0.34em;
@@ -2127,7 +2127,7 @@
         }
 
         .lobby-title {
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-size: 2rem;
             font-weight: 700;
             letter-spacing: 0.06em;
@@ -2155,7 +2155,7 @@
             padding: 12px 28px;
             border: none;
             border-radius: 0;
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-size: 0.95rem;
             font-weight: 600;
             letter-spacing: 0.14em;
@@ -2201,7 +2201,7 @@
         }
 
         .lobby-code-display {
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-size: 2.8rem;
             font-weight: 700;
             letter-spacing: 12px;
@@ -2222,7 +2222,7 @@
         }
 
         .lobby-join-row input {
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-size: 1.4rem;
             font-weight: 700;
             letter-spacing: 6px;
@@ -2688,7 +2688,7 @@
         }
         .md-char-gender.on { border-color: #c9a5ff; color: #e6dbff; background: rgba(201,165,255,0.12); }
         .md-char-start {
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-size: 14px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
             cursor: pointer;
             padding: 11px 26px; border-radius: 0; color: #e6ddfa;
@@ -2748,7 +2748,7 @@
             z-index: 2;
         }
         .void-menu .mm-logo {
-            font-family: 'Cinzel', 'Times New Roman', serif;
+            font-family: 'Cormorant SC', 'Times New Roman', serif;
             font-size: clamp(2.3rem, 6vw, 4.6rem);
             font-weight: 700;
             line-height: 1.04;
@@ -2759,7 +2759,7 @@
             text-shadow: 0 0 34px rgba(214,178,255,0.28);
         }
         .void-menu .mm-sub {
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-size: clamp(0.78rem, 1.3vw, 1.05rem);
             color: #9a7fd1;
             letter-spacing: 0.34em;
@@ -2815,7 +2815,7 @@
         }
         .void-menu .mm-label {
             position: relative;
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-size: clamp(1.02rem, 1.9vw, 1.45rem);
             font-weight: 600;
             letter-spacing: 0.12em;
@@ -2902,7 +2902,7 @@
             margin-bottom: 16px;
         }
         .ms-title-text {
-            font-family: 'Cinzel', serif;
+            font-family: 'Cormorant SC', serif;
             font-size: 13px;
             letter-spacing: 0.3em;
             text-transform: uppercase;

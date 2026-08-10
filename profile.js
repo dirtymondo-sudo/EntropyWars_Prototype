@@ -818,7 +818,7 @@ function StatCard({ label, value, sub, color }) {
     borderRadius: 6, padding: '12px 14px', minWidth: 100,
   }},
     h('div', { style: { fontSize: 11, color: EW.inkMute, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 } }, label),
-    h('div', { style: { fontSize: 22, fontWeight: 700, color: color || EW.ink, fontFamily: 'Cinzel, serif' } }, value),
+    h('div', { style: { fontSize: 22, fontWeight: 700, color: color || EW.ink, fontFamily: 'Cormorant SC, serif' } }, value),
     sub ? h('div', { style: { fontSize: 11, color: EW.inkDim, marginTop: 2 } }, sub) : null
   );
 }
@@ -1041,7 +1041,7 @@ function ChampionsTab({ profile }) {
           background: EW.panel, border: '1px solid ' + EW.panelEdge,
           borderRadius: 6, padding: 12,
         }},
-          h('div', { style: { fontWeight: 700, fontSize: 14, marginBottom: 6, fontFamily: 'Cinzel, serif', color: EW.ink } }, e.cls),
+          h('div', { style: { fontWeight: 700, fontSize: 14, marginBottom: 6, fontFamily: 'Cormorant SC, serif', color: EW.ink } }, e.cls),
           h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 12px', fontSize: 12 } },
             h('span', { style: { color: EW.inkMute } }, 'Played'), h('span', { style: { color: EW.ink } }, e.played),
             h('span', { style: { color: EW.inkMute } }, 'Wins'), h('span', { style: { color: EW.good } }, e.wins),
@@ -1084,7 +1084,7 @@ function AchievementsTab({ profile }) {
         }},
           h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 } },
             h('span', { style: { fontSize: 20 } }, isUnlocked ? def.icon : '🔒'),
-            h('span', { style: { fontWeight: 700, fontSize: 13, color: isUnlocked ? EW.ink : EW.inkDim, fontFamily: 'Cinzel, serif' } }, def.name),
+            h('span', { style: { fontWeight: 700, fontSize: 13, color: isUnlocked ? EW.ink : EW.inkDim, fontFamily: 'Cormorant SC, serif' } }, def.name),
           ),
           h('div', { style: { fontSize: 11, color: EW.inkMute } }, def.desc),
           isUnlocked && u.unlockedAt ? h('div', { style: { fontSize: 10, color: EW.inkDim, marginTop: 4 } },
@@ -1138,7 +1138,7 @@ function CreateProfileModal({ onCreated, onCancel }) {
         color: '#5c5c5c', marginBottom: 8,
       } }, 'INTELLIGENCE DIVISION · NEW FILE'),
       h('div', { style: {
-        fontSize: 20, fontFamily: 'Cinzel, serif', color: '#f2f2f2',
+        fontSize: 20, fontFamily: 'Cormorant SC, serif', color: '#f2f2f2',
         letterSpacing: '0.08em',
       } }, 'OPERATIVE REGISTRATION'),
       h('div', { style: {
@@ -1238,7 +1238,7 @@ function LeaderboardPage() {
           fontSize: 13, fontFamily: 'DotGothic16, monospace',
         }
       }, '← Back'),
-      h('div', { style: { fontSize: 22, fontFamily: 'Cinzel Decorative, Cinzel, serif', fontWeight: 700, letterSpacing: 2 } }, '🏆 LEADERBOARD'),
+      h('div', { style: { fontSize: 22, fontFamily: 'Cinzel Decorative, Cormorant SC, serif', fontWeight: 700, letterSpacing: 2 } }, '🏆 LEADERBOARD'),
       myRank ? h('div', { style: { fontSize: 12, color: EW.inkMute, marginTop: 6 } },
         'Your rank: #' + myRank.rank + ' (' + myRank.elo + ' ELO)'
       ) : null,
@@ -1437,7 +1437,7 @@ function CommunityMapsPage() {
           fontSize: 13, fontFamily: 'DotGothic16, monospace',
         }
       }, '← Back'),
-      h('div', { style: { fontSize: 22, fontFamily: 'Cinzel Decorative, Cinzel, serif', fontWeight: 700, letterSpacing: 2 } }, '🗺️ COMMUNITY MAPS'),
+      h('div', { style: { fontSize: 22, fontFamily: 'Cinzel Decorative, Cormorant SC, serif', fontWeight: 700, letterSpacing: 2 } }, '🗺️ COMMUNITY MAPS'),
       h('div', { style: { fontSize: 12, color: EW.inkMute, marginTop: 4 } }, 'Browse, play, and rate maps made by other players'),
     ),
 
@@ -1464,7 +1464,7 @@ function CommunityMapsPage() {
         background: EW.panel, border: '1px solid ' + EW.panelEdge,
         borderRadius: 8, padding: 16, marginBottom: 16,
       }},
-        h('div', { style: { fontSize: 14, fontFamily: 'Cinzel, serif', fontWeight: 700, marginBottom: 10, color: EW.ink } }, 'Submit Your Map'),
+        h('div', { style: { fontSize: 14, fontFamily: 'Cormorant SC, serif', fontWeight: 700, marginBottom: 10, color: EW.ink } }, 'Submit Your Map'),
         h('div', { style: { fontSize: 11, color: EW.inkMute, marginBottom: 10 } },
           'Export your map from the Map Editor (📋 Export button copies JSON to clipboard), then paste it below.'
         ),
@@ -1523,7 +1523,7 @@ function CommunityMapsPage() {
 
             h('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
               m.featured ? h('span', { style: { fontSize: 14 } }, '✨') : null,
-              h('div', { style: { fontSize: 14, fontFamily: 'Cinzel, serif', fontWeight: 700, color: EW.ink, flex: 1 } }, m.name),
+              h('div', { style: { fontSize: 14, fontFamily: 'Cormorant SC, serif', fontWeight: 700, color: EW.ink, flex: 1 } }, m.name),
             ),
 
             h('div', { style: { fontSize: 11, color: EW.inkMute } },
@@ -1666,7 +1666,7 @@ function ProfilePage() {
       color: tab === id ? EW.ink : EW.inkMute,
       border: tab === id ? '1px solid ' + EW.panelEdge : '1px solid transparent',
       borderBottom: tab === id ? '1px solid transparent' : '1px solid ' + EW.panelEdge,
-      fontFamily: 'Cinzel, serif', fontWeight: tab === id ? 700 : 400,
+      fontFamily: 'Cormorant SC, serif', fontWeight: tab === id ? 700 : 400,
     }
   }, label);
 
@@ -1723,7 +1723,7 @@ function ProfilePage() {
             onKeyDown: e => { if (e.key === 'Enter') handleRename(); if (e.key === 'Escape') setEditingName(false); },
             autoFocus: true, maxLength: 16,
             style: {
-              padding: '6px 12px', fontSize: 18, fontFamily: 'Cinzel, serif',
+              padding: '6px 12px', fontSize: 18, fontFamily: 'Cormorant SC, serif',
               background: 'rgba(255,255,255,0.06)', border: '1px solid ' + EW.panelEdge,
               color: EW.ink, borderRadius: 6, outline: 'none', textAlign: 'center', width: 180,
             }
@@ -1732,7 +1732,7 @@ function ProfilePage() {
           h('button', { onClick: () => setEditingName(false), style: { fontSize: 14, cursor: 'pointer', background: 'none', border: 'none', color: EW.bad } }, '✕'),
         ) : h('div', {
           onClick: () => { setNewName(profile.username); setEditingName(true); },
-          style: { fontSize: 24, fontFamily: 'Cinzel, serif', fontWeight: 700, cursor: 'pointer', display: 'inline-block' },
+          style: { fontSize: 24, fontFamily: 'Cormorant SC, serif', fontWeight: 700, cursor: 'pointer', display: 'inline-block' },
           title: 'Click to edit username',
         }, profile.username),
         h('div', { style: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 8 } },

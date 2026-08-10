@@ -104,13 +104,19 @@ art-direction control for ~1.5 seconds, at almost zero asset cost.
 
 **Implementation sketch (Three renderer):**
 - `VoidStage.enter({ actors: [unitIds], palette: 'bsod', ms: 1600 })`
-- Swap `scene.background` to the palette color/gradient; set `visible = false`
-  on the board root group EXCEPT the actor models; spawn a soft radial shadow
-  disc under each actor so they don't float; kill weather/ambient particles.
+- Swap `scene.background` to the palette's gradient sky (CanvasTexture); set
+  `visible = false` on the board root group EXCEPT the actor models; spawn a
+  soft radial shadow disc + a palette-tinted glow pool under each actor so
+  they don't float, and a tinted fill light so they pick the palette up on
+  their models; kill weather/ambient particles.
 - DOM side: a `body.void-stage` class hides tiles, nametags, and HUD chrome
-  except the actors' own overlays (reuse the dirty-flag render, no rebuild).
-- Exit restores visibility and background in one frame — the hard cut BACK to
-  the real world is part of the drama.
+  except the actors' own overlays (reuse the dirty-flag render, no rebuild);
+  a per-palette vignette keeps the frame edges from reading flat.
+- **Transitions are SMOOTH cross-fades, both ways (2026-08-10):** a
+  palette-tinted veil blooms over the frame (~280ms), the world swap happens
+  fully covered, and the veil parts on the other side (~460ms). Same
+  choreography on exit. A one-frame hard cut reads as a rendering bug, not
+  drama — the fade is mandatory.
 - Palettes are data, not code: background + optional floor glow + optional
   ambient particle set + optional animated layer (static, code-rain, stars).
 - **Online:** relay `{type:'voidStage', palette, actors, ms}` — the guest
@@ -142,7 +148,7 @@ art-direction control for ~1.5 seconds, at almost zero asset cost.
 | `kaleido` | Slow-rotating mirrored color wheel | ✦63 Bad Trip, Ayahuasca Retreat, Space Disco |
 | `hearth` | Warm fireplace glow from frame-left, falling snow frame-right | ✦70 Lump of Coal, Blizzard Present |
 | `stadium` | Night-navy + four floodlight glows from the corners | ✦30 Hail Mary, End Zone Dance |
-| `hex` | Violet-black, a slowly rotating cursed sigil as the floor | ✦69 Hex of Agony, Family Curse, Naughty List (scroll insert) |
+| `hex` | Violet-black, a slowly rotating cursed sigil as the floor | ✦69 Hex of Agony, Family Curse |
 
 One system, sixteen looks, forty-plus spells upgraded. Add palettes freely —
 they're a background + two particle layers each.
@@ -364,19 +370,18 @@ below frame. The victim's next idle loop plays 20% faster. Never show
 anything. Deadpan is the entire bit.
 
 **24. Executive Order** (`raceExecutiveOrder`, Politician) — *stun*
-A desk prop materializes in front of the politician (hard cut, side profile,
-podium flags behind). They sign a document (`castTrap` re-timed), HOLD IT UP
-TO CAMERA — insert shot (**push-in**): the document fills frame, text reads
-"EXECUTIVE ORDER №[round]: [target name] SHALL STOP" — stamp SFX, cut to the
-victim frozen mid-idle with the Stun icon. Bureaucracy as violence.
+~~Document insert shot~~ **CUT (2026-08-10 playtest):** the paper filling the
+frame duplicated the spell-name chrome (every cast already names itself top-
+left) and read as clutter, not comedy. Now takes the standard debuff family
+victim-cam. If this ever gets a second pass, it needs real prop acting (desk,
+signing animation), not a text card.
 
 **25. Naughty List** (`raceNaughtyList`, Santa) — *ATK down*
-Over-the-shoulder on Santa unrolling a scroll prop that unspools past the
-bottom of frame (way too long). The insert shot plays on the `hex` void
-(violet, the sigil floor slowly turning): camera pans down the scroll —
-illegible names — then STOPS on the target's actual unit name in red, a
-checkmark drawn TWICE ("checking it twice" — the second check is the debuff
-proc). Coal-dust puff on the victim. Jingle-bell sting in minor key.
+~~Hex-void scroll insert~~ **CUT (2026-08-10 playtest):** a violet void stage
+on a plain ATK-down was unearned and read as "the screen just went purple" —
+the palette had no connection to the Santa fantasy. Now takes the standard
+debuff family victim-cam. A future version should be built from Santa props
+(the scroll, the double checkmark, coal dust), not from the void system.
 
 **26. Ram Charge** (`raceRamCharge`, Honda Civic) — *dash + stagger*
 The chase cam exists; make it Tokyo Drift: **side dolly** LOW at hubcap

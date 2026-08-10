@@ -2101,7 +2101,10 @@
               - (Math.abs(b.x - fromX) + Math.abs(b.y - fromY)));
             const landTile = adj.find(t => canOccupy(t.x, t.y)) || { x: fromX, y: fromY };
             const dist = Math.abs(landTile.x - fromX) + Math.abs(landTile.y - fromY);
-            const chargeMs = Math.max(200, dist * 110);
+            // 150ms/tile — the renderer's displace tween floors there anyway,
+            // so anything shorter made the strike land before the model did
+            // (and the chase cam finish ahead of its charger).
+            const chargeMs = Math.max(200, dist * 150);
 
             playSfx(spellLaunchSfx(spell));
             focusUnitPanel(target.id);
@@ -16225,7 +16228,7 @@
            stage, a grade stuck on screen, or time running at 0.3×. Every
            layer also self-expires, so this is a safety net, not the mechanism. */
         function _cineReleaseAllFx() {
-            try { VoidStage.exit(); } catch (e) {}
+            try { VoidStage.exit({ instant: true }); } catch (e) {}
             cineGradeClear();
             cineSlowMoClear();
             cineDollyZoomRelease();
@@ -16602,24 +16605,34 @@
            Fog: the void is the safest shot in the game (the world is hidden),
            but the actors themselves must pass the gate or the beat is skipped.
            ═══════════════════════════════════════════════════════════════════ */
+        /* Each palette is a full ATMOSPHERE, not a flat colour: `sky` is a
+           vertical gradient the renderer paints as the void's backdrop,
+           `glow` tints a fill light + a soft floor glow under the actors so
+           they sit IN the palette instead of in front of it, and the DOM
+           `layer` adds the animated particle pass. The veil cross-fade
+           (enter/exit) is derived from the sky colours. */
         const VOID_PALETTES = {
-            bsod:      { color: 0x0827f5, layer: 'glyphsnow' },
-            abyss:     { color: 0x000000, layer: 'none', light: 'toplight' },
-            bone:      { color: 0xf2f2ee, layer: 'none' },
-            bloodlust: { color: 0x2a0206, layer: 'motes' },
-            sepia:     { color: 0x2a2118, layer: 'grain' },
-            starfield: { color: 0x02030a, layer: 'stars' },
-            static:    { color: 0x101010, layer: 'static' },
-            code:      { color: 0x000000, layer: 'coderain' },
-            dream:     { color: 0x2a1250, layer: 'motes' },
-            inferno:   { color: 0x120503, layer: 'embers' },
-            valentine: { color: 0xf2a6bd, layer: 'hearts' },
-            ocean:     { color: 0x03262e, layer: 'caustics' },
-            kaleido:   { color: 0x1a0326, layer: 'kaleido' },
-            hearth:    { color: 0x1d1109, layer: 'snowfire' },
-            stadium:   { color: 0x060b1c, layer: 'floods' },
-            hex:       { color: 0x160320, layer: 'sigil' }
+            bsod:      { color: 0x0827f5, sky: ['#2647ff', '#0827f5', '#041490'], glow: '#5b78ff', layer: 'glyphsnow' },
+            abyss:     { color: 0x000000, sky: ['#141a24', '#050608', '#000000'], glow: '#31445e', layer: 'none', light: 'toplight' },
+            bone:      { color: 0xf2f2ee, sky: ['#ffffff', '#f2f2ee', '#cfccc2'], glow: '#fffbe8', layer: 'none' },
+            bloodlust: { color: 0x2a0206, sky: ['#61070f', '#2a0206', '#0d0102'], glow: '#c1121f', layer: 'motes' },
+            sepia:     { color: 0x2a2118, sky: ['#5c4a2e', '#2a2118', '#14100a'], glow: '#c9a86d', layer: 'grain' },
+            starfield: { color: 0x02030a, sky: ['#0a1030', '#02030a', '#000002'], glow: '#7f9bff', layer: 'stars' },
+            static:    { color: 0x101010, sky: ['#242424', '#101010', '#060606'], glow: '#9a9a9a', layer: 'static' },
+            code:      { color: 0x000000, sky: ['#04180c', '#010703', '#000000'], glow: '#06ff8a', layer: 'coderain' },
+            dream:     { color: 0x2a1250, sky: ['#5b2fa0', '#2a1250', '#12061f'], glow: '#a06bff', layer: 'motes' },
+            inferno:   { color: 0x120503, sky: ['#3d1408', '#120503', '#050101'], glow: '#ff7a2a', layer: 'embers' },
+            valentine: { color: 0xf2a6bd, sky: ['#ffd3e0', '#f2a6bd', '#d76e96'], glow: '#ff8fb3', layer: 'hearts' },
+            ocean:     { color: 0x03262e, sky: ['#0a5261', '#03262e', '#010d10'], glow: '#2ee6c8', layer: 'caustics' },
+            kaleido:   { color: 0x1a0326, sky: ['#341047', '#1a0326', '#0a0110'], glow: '#c86bff', layer: 'kaleido' },
+            hearth:    { color: 0x1d1109, sky: ['#3d2712', '#1d1109', '#0a0503'], glow: '#ffb066', layer: 'snowfire' },
+            stadium:   { color: 0x060b1c, sky: ['#101d40', '#060b1c', '#02040c'], glow: '#f5f0c8', layer: 'floods' },
+            hex:       { color: 0x160320, sky: ['#33094d', '#160320', '#08010d'], glow: '#b45cff', layer: 'sigil' }
         };
+        /* Veil cross-fade timing: the world never hard-cuts. The veil blooms
+           to full cover (IN), the swap happens hidden behind it, then the
+           veil parts on the other side (OUT). Both directions. */
+        const VOID_VEIL_IN_MS = 280;
         const VoidStage = {
             active: false,
             _timer: null,
@@ -16642,24 +16655,61 @@
                 const actors = (opts.actors || []).filter(Boolean);
                 const ids = actors.map(u => (u && u.id != null) ? u.id : u).filter(id => id != null);
                 const ms = Math.max(600, Math.min(2400, opts.ms || 1500));
-                let ok = false;
-                try {
-                    ok = !!(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.cineVoidEnter
-                        && ThreeRenderer.cineVoidEnter({ color: pal.color, actors: ids, light: pal.light }));
-                } catch (e) { ok = false; }
-                // DOM half: hide tiles/nametags/HUD chrome, raise the animated
-                // palette layer. Runs even without the 3D renderer so the beat
-                // still reads (the 2D board simply dims out).
-                const root = document.getElementById('game-viewport') || document.body;
-                root.classList.add('void-stage', 'void-' + (opts.palette || 'abyss'));
-                document.body.classList.add('void-stage-on');
-                this._ensureLayer(pal, opts);
                 this.active = true;
                 this._palette = opts.palette || 'abyss';
+                this._pal = pal;
                 this._lastRound = state.round || 0;
-                if (this._timer) clearTimeout(this._timer);
+                this._clearTimers();
+                // SMOOTH transition in: the palette veil blooms over the real
+                // world, the swap happens fully covered, and the veil parts on
+                // the void already dressed — never a one-frame world-vanish.
+                this._veilShow(pal);
+                this._t1 = window.setTimeout(() => {
+                    this._t1 = null;
+                    if (!this.active) return;
+                    try {
+                        if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.cineVoidEnter) {
+                            ThreeRenderer.cineVoidEnter({ color: pal.color, sky: pal.sky,
+                                glow: pal.glow, actors: ids, light: pal.light });
+                        }
+                    } catch (e) {}
+                    // DOM half: hide tiles/nametags/HUD chrome, raise the animated
+                    // palette layer. Runs even without the 3D renderer so the beat
+                    // still reads (the 2D board simply dims out).
+                    const root = document.getElementById('game-viewport') || document.body;
+                    root.classList.add('void-stage', 'void-' + this._palette);
+                    document.body.classList.add('void-stage-on');
+                    this._ensureLayer(pal, opts);
+                    this._veilHide();
+                }, VOID_VEIL_IN_MS);
                 this._timer = window.setTimeout(() => this.exit(), ms);
-                return ok || true;
+                return true;
+            },
+            _clearTimers() {
+                if (this._timer) { clearTimeout(this._timer); this._timer = null; }
+                if (this._t1) { clearTimeout(this._t1); this._t1 = null; }
+                if (this._t2) { clearTimeout(this._t2); this._t2 = null; }
+            },
+            /* The palette-tinted cross-fade veil. Sits above the void layer
+               and the action-cam chrome; CSS owns the fade timings. */
+            _veilEl: null,
+            _veilShow(pal) {
+                if (!this._veilEl || !this._veilEl.isConnected) {
+                    const el = document.createElement('div');
+                    el.className = 'void-veil';
+                    (document.getElementById('game-viewport') || document.body).appendChild(el);
+                    this._veilEl = el;
+                }
+                const sky = (pal && pal.sky) || ['#000', '#000'];
+                this._veilEl.style.background =
+                    'radial-gradient(120% 95% at 50% 40%, ' + sky[0] + ' 0%, '
+                    + sky[Math.min(1, sky.length - 1)] + ' 55%, '
+                    + sky[sky.length - 1] + ' 100%)';
+                void this._veilEl.offsetWidth;
+                this._veilEl.classList.add('on');
+            },
+            _veilHide() {
+                if (this._veilEl) this._veilEl.classList.remove('on');
             },
             _ensureLayer(pal, opts) {
                 if (!this._layerEl || !this._layerEl.isConnected) {
@@ -16685,19 +16735,34 @@
                 cap.innerHTML = String(html == null ? '' : html);
                 cap.classList.toggle('on', !!html);
             },
-            /* The hard cut BACK to the real world is part of the drama — one
-               frame, no fade. */
-            exit() {
-                if (this._timer) { clearTimeout(this._timer); this._timer = null; }
+            /* The way back mirrors the way in: veil blooms over the void, the
+               world is restored behind it, the veil parts on reality. Pass
+               { instant: true } for safety-net cleanup (match over, shot
+               cancelled) where a lingering fade could mask live gameplay. */
+            exit(opts = {}) {
+                this._clearTimers();
                 if (!this.active) return;
                 this.active = false;
+                const instant = !!opts.instant || _skipVisuals() || state.phase !== 'battle';
+                if (instant) {
+                    this._restoreWorld();
+                    if (this._veilEl) this._veilEl.classList.remove('on');
+                    return;
+                }
+                this._veilShow(this._pal);
+                this._t2 = window.setTimeout(() => {
+                    this._t2 = null;
+                    this._restoreWorld();
+                    this._veilHide();
+                }, VOID_VEIL_IN_MS);
+            },
+            _restoreWorld() {
                 try { ThreeRenderer?.cineVoidExit?.(); } catch (e) {}
                 const root = document.getElementById('game-viewport') || document.body;
                 root.classList.remove('void-stage');
                 Object.keys(VOID_PALETTES).forEach(p => root.classList.remove('void-' + p));
                 document.body.classList.remove('void-stage-on');
                 if (this._layerEl) this._layerEl.classList.remove('on');
-                _acChromeFlash('cut');
             }
         };
 
@@ -16882,10 +16947,15 @@
                     break;
                 }
 
-                /* Leap strikes: crane with the leap, hang at the apex in
-                   slow-mo, hard cut to the victim's reverse OTS as the shadow
-                   grows on their tile. */
+                /* Leap strikes: crane UP with the leap so the takeoff plays in
+                   third person (2026-08-10 — the old version cut straight to
+                   the victim and the jump itself was never on screen), hang at
+                   the apex in slow-mo, then hard cut to the victim's reverse
+                   OTS as the shadow grows on their tile. */
                 case 'leap': {
+                    _cineAt(actionMs(100), sequenceId, () => cineCrane(caster, {
+                        duration: Math.max(actionMs(420), timings.sourceHold - actionMs(140))
+                    }));
                     _cineAt(Math.max(0, timings.sourceHold - actionMs(120)), sequenceId,
                         () => cineSlowMo(0.35, 220));
                     _cineAt(cut, sequenceId, () => cineReverseOts(target, caster, {}));
@@ -17020,9 +17090,10 @@
            gallery: one palette + one beat of blocking each.
            ═══════════════════════════════════════════════════════════════════ */
 
-        /* The gallery shorthand: world vanishes → the beat plays against the
-           palette → hard cut back. Falls back to the plain shot when the
-           round's void budget is spent (scarcity keeps it special). */
+        /* The gallery shorthand: the world cross-fades away → the beat plays
+           against the palette → cross-fades back. Falls back to the plain
+           shot when the round's void budget is spent (scarcity keeps it
+           special). */
         function _voidBeat(palette, ctx, opts = {}) {
             const { caster, target, timings, sequenceId } = ctx;
             const at = opts.at != null ? opts.at : _cineCutMs(timings, ctx.shotOpts || {});
@@ -17336,29 +17407,11 @@
                 return true;
             },
 
-            /* ── #24 Executive Order — bureaucracy as violence. */
-            raceExecutiveOrder(ctx) {
-                const { caster, target, timings, sequenceId } = ctx;
-                _cineAt(timings.sourceHold - actionMs(300), sequenceId, () => {
-                    cineFaceCam(caster, { dist: 2.4, tilt: 80 });
-                    cineInsert('EXECUTIVE ORDER №' + (state.round || 1) + '<br>'
-                        + '<span class="cine-insert-sub">'
-                        + (typeof unitDisplayName === 'function' ? unitDisplayName(target) : 'TARGET')
-                        + ' SHALL STOP</span>', 'document', 1400);
-                });
-                return true;
-            },
-
-            /* ── #25 Naughty List — checking it twice; the second check is the
-               debuff proc. */
-            raceNaughtyList(ctx) {
-                _voidBeat('hex', ctx, {
-                    ms: 1500, subject: 'target', tilt: 76,
-                    caption: '<span class="void-cap-list">…………<br>…………<br>'
-                        + '<b class="void-cap-red">✔✔</b></span>'
-                });
-                return true;
-            },
+            /* ── #24 Executive Order / #25 Naughty List — both dropped their
+               bespoke beats (2026-08-10): the document insert duplicated the
+               spell-name chrome and the hex void read as a flat purple non-
+               sequitur on a plain ATK-down. Both now take the standard debuff
+               family victim-cam, which is the right size for what they do. */
 
             /* ── #26 Ram Charge — Tokyo Drift. */
             raceRamCharge(ctx) {
@@ -18166,11 +18219,16 @@
             if (!fromPoint || !toPoint || state.phase !== 'battle') return false;
             if (state.cameraDisabled || _skipVisuals()) return false;
             if (camera._fogBlocked(opts._fogAllowed)) return false;
-            const runMs = Math.max(actionMs(200), opts.duration ?? actionMs(400));
-
             const dx = toPoint.x - fromPoint.x, dy = toPoint.y - fromPoint.y;
             const len = Math.max(1, Math.hypot(dx, dy));
             const dirx = dx / len, diry = dy / len;
+            // The unit's REAL slide duration: the renderer's displace tween
+            // floors at 150ms/tile (manhattan), whatever the caller passed.
+            // Every camera beat below keys off this so the chase, the landing
+            // kick and the restore all land with the model, not before it.
+            const manhattan = Math.abs(dx) + Math.abs(dy);
+            const runMs = Math.max(actionMs(200), opts.duration ?? actionMs(400),
+                manhattan * 150);
             const ts = CONFIG.tileSize || BASE_TILE;
             const unit = (opts.casterId != null)
                 ? (state.units || []).find(u => u.id === opts.casterId && !u.dead) : null;
@@ -18248,11 +18306,20 @@
                     elevZ: fromPx + ts * CINE_FOCAL_RISE
                 });
                 _acChromeFlash('cut');
-                // Ride the lane: no elevZ → the focal height eases onto each
-                // tile's natural elevation as the charger crosses it.
+                // TRUE THIRD-PERSON CHASE (2026-08-10): the focal glide runs in
+                // LOCKSTEP with the unit's actual slide. The renderer's
+                // displace tween lasts max(runMs, manhattan*150, 200) with a
+                // cubic ease-out — the old beat here used easeInOut over a
+                // 110ms/tile duration, so the charger launched at full speed
+                // while the camera was still accelerating and simply ran out
+                // of the frame; the "chase" arrived at the landing alone.
+                // Matching curve + duration keeps the charger centred for the
+                // ENTIRE run. No elevZ → the focal height rides each tile's
+                // natural elevation down the lane for free.
                 _cineBeatMove({
                     x: toPoint.x, y: toPoint.y,
-                    duration: runMs + actionMs(120), easing: 'easeInOut',
+                    duration: runMs,
+                    easing: 'easeOut',
                     _bypassCap: true, _fogAllowed: opts._fogAllowed || undefined
                 });
             }, windupMs);
@@ -24842,7 +24909,7 @@
             const balanceLine = `<div id="vgbBalance" style="font-size:12px;color:#b8a060;margin-top:3px">Adding to wallet…</div>`;
             el.innerHTML = `
                 <div style="display:inline-flex;flex-direction:column;align-items:center;gap:5px;background:linear-gradient(168deg,rgba(34,26,10,0.82),rgba(20,16,8,0.82));border:1px solid rgba(184,160,96,0.45);border-radius:10px;padding:12px 26px;margin:0 auto;box-shadow:0 8px 30px rgba(0,0,0,0.45)">
-                    <div style="font-family:Cinzel,serif;font-size:12px;letter-spacing:0.2em;color:#ffd86a">💰 GOLD EARNED</div>
+                    <div style="font-family:Cormorant SC,serif;font-size:12px;letter-spacing:0.2em;color:#ffd86a">💰 GOLD EARNED</div>
                     <div style="font-size:38px;font-weight:800;color:#ffd86a;line-height:1;text-shadow:0 0 18px rgba(255,200,80,0.55)">+<span id="vgbTotalNum">0</span></div>
                     <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:5px;font-size:12px;color:#d8cfa8">${parts.join(sep)}</div>
                     ${balanceLine}
@@ -31015,7 +31082,7 @@
                     el.style.cssText = 'position:fixed;top:84px;left:50%;transform:translateX(-50%);'
                         + 'z-index:1200;pointer-events:none;background:rgba(10,6,18,0.72);'
                         + 'border:1px solid rgba(190,150,255,0.55);color:#e8ddff;'
-                        + 'font-family:"Cinzel",serif;font-size:13px;letter-spacing:0.12em;'
+                        + 'font-family:"Cormorant SC",serif;font-size:13px;letter-spacing:0.12em;'
                         + 'padding:5px 16px;text-shadow:0 0 8px rgba(190,150,255,0.6);white-space:nowrap;';
                     document.body.appendChild(el);
                     /* Janitor: the pill must never survive into menus/other modes.
@@ -47042,8 +47109,11 @@
                 const dashSplitsDamage = (spell.dashDamage != null);
 
                 // Scale dash travel time with distance so long dashes glide
-                // instead of snapping; keep the camera in lockstep with the unit.
-                const dashAnimMs = Math.max(200, dist * 110);
+                // instead of snapping; keep the camera in lockstep with the
+                // unit. 150ms/tile matches the renderer's displace-tween floor
+                // exactly — at 110 the damage/VFX fired before the model
+                // arrived and the chase cam outran its own charger.
+                const dashAnimMs = Math.max(200, dist * 150);
 
                 // ── THE CHARGE SHOT (2026-08-03): the camera fires FIRST —
                 // beat 1 braces on the charger (letterbox + spell name), the
