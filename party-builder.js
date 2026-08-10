@@ -842,8 +842,12 @@ function spellCategoryLabel(cat) { return {damage:'DAMAGE',heal:'HEAL',buff:'BUF
 // a bare mark on a pure buff/debuff would be the confusion it exists to fix.
 function pbDmgIcon(sp, size) {
   if (!sp) return null;
-  const dealsDmg = (typeof spellDealsDamage === 'function')
-    ? spellDealsDamage(sp)
+  // hudSpellShowsDamage = the UI "shows damage numbers" judgment (hud.js).
+  // NOT the engine's spellDealsDamage — that one answers "does the cast end
+  // the turn" and deliberately excludes deployables (bombs/mines), which DO
+  // deserve a damage badge here.
+  const dealsDmg = (typeof hudSpellShowsDamage === 'function')
+    ? hudSpellShowsDamage(sp)
     : !!(sp.dmg || (sp.hitDamages && sp.hitDamages.length) || sp.dotDamage || sp.turretDmg || sp.blastDmg);
   if (!dealsDmg) return null;
   const phys = sp.damageType === 'physical';

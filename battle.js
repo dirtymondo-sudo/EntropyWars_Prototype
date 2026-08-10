@@ -8364,6 +8364,14 @@
                         damageType: 'physical',
                         spellType: 'tech'
                     });
+                    // Blast riders (Flashbang Mine's Stagger…) land on every
+                    // unit the blast damages — they were defined on the spell
+                    // but never applied through this path.
+                    if (!hit.dead) {
+                        for (const eff of (obj.statusEffects || [])) {
+                            if (eff && eff.id) applyStatusPayload(hit, { id: eff.id, duration: eff.duration || 1 }, `${obj.spellName || 'Blast'} → `, sourceUnit || null);
+                        }
+                    }
                 }
 
                 damageTurretAt(tile.x, tile.y, dmg, sourceUnit);
@@ -22469,21 +22477,30 @@
         // spellIsPureStatus / _PRESS_SPELL_KINDS).
         function spellDealsDamage(spell) {
             if (!spell) return false;
-            // Deployables (Place Bomb) carry a dmg value but detonate LATER —
-            // placing one is a 1-AP support action, not a damaging cast, so it
-            // must NOT end the turn via spendAllAP.
-            if (spell.kind === 'bomb') return false;
+            // Deployables (Place Bomb, Tesla Coil, Flashbang Mine…) carry a
+            // dmg/blast value but detonate LATER — placing one is a 1-AP setup
+            // action, not a damaging cast, so it must NOT end the turn via
+            // spendAllAP. (A placement straight ONTO an enemy activates on
+            // contact and DOES resolve as an offensive act — the doSpell
+            // placement branches flag that at runtime: see _placementStruck.)
+            if (spell.kind === 'bomb' || spell.kind === 'deployObject') return false;
             if (spell.dmg || spell.hitDamages || spell.dotDamage || spell.dashDamage) return true;
             return _PRESS_SPELL_KINDS.has(spell.kind);
         }
 
-        /* Setup placements (Place Bomb, Prism Mirror) cost their normal 1 AP
-           but never consume the one-spell-per-turn slot or the same-spell
-           repeat lock — placing one must NOT spend the rest of the turn. So
-           with 2 AP a unit can place two, or place one and still Detonate /
-           Pulse Lattice / attack / move. */
+        /* Setup placements (Place Bomb, Prism Mirror, traps/mines, decoys,
+           pylons, gate pairs) cost their normal 1 AP but never consume the
+           one-spell-per-turn slot or the same-spell repeat lock — placing one
+           must NOT spend the rest of the turn. So with 2 AP a unit can place
+           two, or place one and still Detonate / Pulse Lattice / attack /
+           move. Turrets are deliberately NOT setup: they auto-fire the same
+           round, so deploying one IS the turn's spell. Contact placements
+           (deployable dropped straight onto an enemy) activate immediately
+           and retroactively resolve as an offensive act — see
+           _placementStruck in doSpell. */
         function spellIsSetupPlacement(spell) {
-            return !!spell && (spell.kind === 'bomb' || spell.kind === 'placeMirror');
+            return !!spell && (spell.kind === 'bomb' || spell.kind === 'placeMirror'
+                || spell.kind === 'deployObject' || spell.kind === 'deployPair');
         }
         // Any spell that grants Protect ends the caster's turn outright —
         // shielding up IS the whole turn (no protect-then-act / protect-then-move).
@@ -22503,11 +22520,13 @@
            unit._spellsUsedThisTurn (cleared with the other turn flags);
            enforced in getSpellBlockReason so every menu greys it and every
            cast path rejects it. Basic attacks are exempt. */
-        function _markSpellUsedThisTurn(unit, spell) {
+        function _markSpellUsedThisTurn(unit, spell, force) {
             if (!unit || !spell) return;
             // Setup placements never lock the spell slot — repeat away
-            // (each still costs its 1 AP).
-            if (spellIsSetupPlacement(spell)) return;
+            // (each still costs its 1 AP). EXCEPTION: a contact placement
+            // (deployable activated instantly on an enemy) passes force=true —
+            // that cast resolved as an offensive act and is recorded normally.
+            if (spellIsSetupPlacement(spell) && !force) return;
             const key = spell.id || spell.name;
             if (!key) return;
             if (!unit._spellsUsedThisTurn) unit._spellsUsedThisTurn = {};
@@ -22592,9 +22611,12 @@
                 // committed cast marks exactly one key). The only exemption: a
                 // press refund (weakness/crit) hands back a full fresh action,
                 // which may be a second cast.
-                // Setup placements (bombs, prisms) are exempt from the per-turn
-                // cast cap — they neither count toward it nor get blocked by it
+                // Setup placements (bombs, prisms, traps/mines, decoys,
+                // pylons, gate pairs) are exempt from the per-turn cast cap —
+                // they neither count toward it nor get blocked by it
                 // (see spellIsSetupPlacement); AP is their only limiter.
+                // (A CONTACT placement onto an enemy still ends the turn when
+                // it resolves — enforced in doSpell, not here.)
                 if (!spellIsSetupPlacement(spell)) {
                     const _castsUsed = unit._spellsUsedThisTurn
                         ? Object.keys(unit._spellsUsedThisTurn).length : 0;
@@ -43585,6 +43607,13 @@
             let panelFocusTarget = null;
             let completionDelay = 0;
             const spellApCost = getSpellApCost(spell);
+            /* Contact placement: set by the bomb / deployObject branches when
+               the deployable landed straight ON an enemy and activated
+               immediately. The cast then resolves like an attack — it is
+               recorded against the spell-per-turn slot AND ends the turn
+               (spendAllAP in finishAction). Empty-tile placements stay pure
+               setup: 1 AP, no slot, turn alive. */
+            let _placementStruck = false;
 
             // Press Turn: arm a collector so press is resolved from EVERY enemy
             // the spell actually damages (AoE worst-case — one resist or dodge
@@ -43635,11 +43664,13 @@
                 }
 
                 state._lastSpellCast = { spellId: spell.id, caster: unit.id, player: unit.player };
-                _markSpellUsedThisTurn(unit, spell);
+                _markSpellUsedThisTurn(unit, spell, _placementStruck);
                 // Damaging casts — and Protect-granting casts — end the turn
                 // (only a press hands AP back); other support casts spend
-                // their AP cost and leave the turn alive.
-                if (spellEndsTurn(spell)) spendAllAP(unit);
+                // their AP cost and leave the turn alive. A contact placement
+                // (deployable activated instantly on an enemy) is attack-grade:
+                // it ends the turn too.
+                if (spellEndsTurn(spell) || _placementStruck) spendAllAP(unit);
                 else spendAP(unit, spellApCost);
                 const _spellPressRes = _consumePressCollector(unit, spellApCost);
                 _showPressFeedback(unit, _spellPressRes);
@@ -44068,8 +44099,6 @@
             } else if (spell.kind === 'bomb') {
                 // Allies may stand on a bomb tile — only the caster's own bombs
                 // are safe to share a tile with (enemy bombs still trigger on step).
-                const ownedBombs = state.bombs.filter(b => b.ownerUnitId === unit.id);
-                if (ownedBombs.length >= (spell.maxActivePerCaster || 2)) state.bombs = state.bombs.filter(b => b !== ownedBombs[0]);
                 if (state.bombs.some(b => b.x === x && b.y === y)) {
                     addLog('There is already a bomb on that tile.');
                     playErrorSfx();
@@ -44078,7 +44107,7 @@
                 playSfx('uiConfirm');
                 _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                state.bombs.push({
+                const _newBomb = {
                     x,
                     y,
                     z,
@@ -44086,8 +44115,28 @@
                     ownerUnitId: unit.id,
                     dmg: spell.dmg + spellPower,
                     radius: spell.blastRadius || 1
-                });
-                addLog(`${unitDisplayName(unit)} places a bomb at ${coordLabel(x, y)}.`, unit.player);
+                };
+                /* Contact detonation: a bomb placed straight onto a grounded
+                   enemy goes off immediately — no Detonate needed. This
+                   resolves like an attack (spell slot + turn end): see
+                   _placementStruck. Allies/self can still share a tile with
+                   the caster's own bombs, and a bomb under an AIRBORNE enemy
+                   stays armed on the ground instead of popping mid-air. */
+                const _bOcc = unitAt(x, y);
+                if (_bOcc && !_bOcc.dead && _bOcc.player !== unit.player
+                    && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_bOcc))) {
+                    addLog(`${unitDisplayName(unit)} plants a bomb right under ${unitDisplayName(_bOcc)}!`, unit.player);
+                    detonateBomb(_newBomb, `💥 Contact detonation at ${coordLabel(x, y)}!`);
+                    _placementStruck = true;
+                    completionDelay = actionMs(900);
+                } else {
+                    // Field placement: evict the oldest bomb only when this one
+                    // actually occupies a field slot (contact bombs never do).
+                    const ownedBombs = state.bombs.filter(b => b.ownerUnitId === unit.id);
+                    if (ownedBombs.length >= (spell.maxActivePerCaster || 2)) state.bombs = state.bombs.filter(b => b !== ownedBombs[0]);
+                    state.bombs.push(_newBomb);
+                    addLog(`${unitDisplayName(unit)} places a bomb at ${coordLabel(x, y)}.`, unit.player);
+                }
             } else if (spell.kind === 'placeMirror') {
                 if (unitAt(x, y, z) || unitAt(x, y)) {
                     addLog('Cannot fold a prism onto an occupied tile.');
@@ -45507,7 +45556,17 @@
             }
 
             else if (spell.kind === 'deployObject') {
-                if (unitAt(x, y)) {
+                /* Contact placement: a detonateOnStep trap (Tesla Coil,
+                   Flashbang Mine, Lucid Trap) thrown straight onto a grounded
+                   enemy springs on contact — it never enters the field. This
+                   resolves like an attack (spell slot + turn end): see
+                   _placementStruck. Decoys, pylons and barriers are physical
+                   objects and still need an empty tile. */
+                const _dOcc = unitAt(x, y);
+                const _dContact = !!(_dOcc && spell.detonateOnStep && !_dOcc.dead
+                    && _dOcc.player !== unit.player
+                    && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_dOcc)));
+                if (_dOcc && !_dContact) {
                     addLog('Cannot deploy on an occupied tile.');
                     playErrorSfx();
                     return 0;
@@ -45517,6 +45576,29 @@
                 unit.mp -= effectiveSpellCost;
                 if (!state._deployedObjects) state._deployedObjects = [];
 
+                if (_dContact) {
+                    addLog(`${unitDisplayName(unit)} throws ${spell.name} right onto ${unitDisplayName(_dOcc)}!`, unit.player);
+                    if ((spell.blastRadius || 0) > 0 && (spell.blastDmg || 0) > 0) {
+                        // Blast trap: full detonation on the occupant's tile.
+                        detonateDeployedObject({
+                            x, y, z,
+                            ownerUnitId: unit.id, ownerId: unit.id, ownerPlayer: unit.player,
+                            blastRadius: spell.blastRadius, blastDmg: spell.blastDmg,
+                            statusEffects: spell.statusEffects || [],
+                            spellId: spell.id, spellName: spell.name
+                        }, unit);
+                    } else {
+                        // Status snare (Lucid Trap): spring the effects directly.
+                        for (const eff of (spell.statusEffects || [])) {
+                            if (eff && eff.id) applyStatusPayload(_dOcc, { id: eff.id, duration: eff.duration || 1 }, `${spell.name} → `, unit);
+                        }
+                        showFloatingTextForUnit(_dOcc, spell.name, 'damage');
+                        playSfx('debuff');
+                    }
+                    _placementStruck = true;
+                    scheduleBoardRender();
+                    completionDelay = actionMs(700);
+                } else {
                 const _ownedObjs = state._deployedObjects.filter(o => o.ownerUnitId === unit.id);
                 const _maxActive = spell.maxActivePerCaster || 3;
                 while (_ownedObjs.length >= _maxActive) {
@@ -45558,6 +45640,7 @@
                 }
                 scheduleBoardRender();
                 completionDelay = actionMs(400);
+                }
             }
 
             else if (spell.kind === 'deployPair') {

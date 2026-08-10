@@ -2258,6 +2258,12 @@
                 if (tDist <= 4) s += 32;
             }
             if (spell.drawsRangedAttack) s += 32;
+            // Contact placement (trap thrown straight onto an enemy) is a
+            // guaranteed instant trigger — score it like a direct hit. Note
+            // it consumes the trap, so max-active doesn't gate it.
+            const _contactE = spell.detonateOnStep
+                && g.state.units.find(u => !u.dead && u.x === target.x && u.y === target.y && u.player !== unit.player);
+            if (_contactE) return s + 30 + (spell.blastDmg || 0) * 0.4;
             const active = (g.state._deployedObjects || []).filter(o => o.ownerUnitId === unit.id).length;
             if (active >= (spell.maxActivePerCaster || 2)) return 0;
             return s;
@@ -4734,9 +4740,17 @@
                     const terrain = g.getTerrainAt(tx, ty);
                     const rule = g.getTerrainRule(terrain);
                     if (rule.impassable) continue;
-                    const occupied = g.state.units.some(u => !u.dead && u.x === tx && u.y === ty);
-                    if (occupied) continue;
+                    const occUnit = g.state.units.find(u => !u.dead && u.x === tx && u.y === ty);
+                    // Contact placement: a detonateOnStep trap thrown straight
+                    // onto a grounded enemy springs instantly — every other
+                    // deployable still needs an empty tile.
+                    if (occUnit) {
+                        const _contactOk = spell.detonateOnStep && occUnit.player !== unit.player
+                            && !(typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(occUnit));
+                        if (!_contactOk) continue;
+                    }
                     let score = 5;
+                    if (occUnit) score += 25 + (spell.blastDmg || 0) * 0.2;
 
                     for (const e of v.visibleEnemies) {
                         const eDist = Math.abs(e.x - tx) + Math.abs(e.y - ty);

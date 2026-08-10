@@ -3421,7 +3421,7 @@ function _hrlgTargetBlades(unit, st, mode) {
     let superEff = false, typeAdv = '';
     // Matchup markers only make sense for casts that actually DEAL damage —
     // a pure debuff/utility can't be "super effective".
-    if (tUnit && isOffensive && (mode === 'attack' || (spell && spellDealsDamage(spell)))
+    if (tUnit && isOffensive && (mode === 'attack' || (spell && hudSpellShowsDamage(spell)))
         && typeof getTypeDamageMultiplier === 'function'
         && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)) {
       const _spType = spell ? (spell.spellType || null) : null;
@@ -4433,10 +4433,18 @@ function spellTargetMode(sp) {
   return 'Single Target';
 }
 
-// Does this spell actually deal damage? PHYSICAL/MAGIC and MELEE/RANGED
-// badges only make sense for spells that hit something — a pure debuff or
-// utility labeled "MELEE" or "MAGIC" is just confusing.
-function spellDealsDamage(sp) {
+// Does this spell SHOW damage (badge/tooltip semantics)? PHYSICAL/MAGIC and
+// MELEE/RANGED badges only make sense for spells that hit something — a pure
+// debuff or utility labeled "MELEE" or "MAGIC" is just confusing.
+// ⚠️ NAMED hudSpellShowsDamage ON PURPOSE: every game script shares ONE global
+// scope, and this file loads LAST. When this was called spellDealsDamage it
+// silently REPLACED battle.js's engine function of the same name — whose
+// answer decides whether a cast ENDS THE TURN (spendAllAP). Deployables
+// (Place Bomb dmg, Tesla Coil blastDmg, turrets turretDmg) then drained the
+// whole turn on placement. UI wants "does it show damage numbers"; the engine
+// wants "does the CAST hurt someone right now" — different questions, so they
+// must keep different names. Do NOT rename this back.
+function hudSpellShowsDamage(sp) {
   if (sp.noDamage) return false;
   if (sp.dmg || (sp.hitDamages && sp.hitDamages.length) || sp.dotDamage || sp.turretDmg || sp.blastDmg) return true;
   // Kinds that always roll damage even without an explicit dmg field.
@@ -4447,7 +4455,7 @@ function spellDealsDamage(sp) {
 // `icon` is the .ew-dmgicon modifier class (styles-hud.css): the Pokémon-style
 // burst/orb mark that separates DAMAGE KIND from the elemental TYPE pills.
 function spellDeliveryBadge(sp, cat) {
-  if (!spellDealsDamage(sp)) return { label: 'UTILITY', color: '#d8b24a', icon: null, title: null };
+  if (!hudSpellShowsDamage(sp)) return { label: 'UTILITY', color: '#d8b24a', icon: null, title: null };
   if (sp.damageType === 'physical') return {
     label: 'PHYSICAL', color: '#e0944a', icon: 'phys',
     title: 'Physical damage — scales with ATK, blocked by DEF',
@@ -5087,7 +5095,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         powerLabel: powerLabel,
         // Matchup note only for damaging casts — a debuff can't be
         // "super effective" (no damage), so no green ! / ▼ on those rows.
-        typeNote: (spellDealsDamage(sp) && typeof getTypeCombatNote === 'function')
+        typeNote: (hudSpellShowsDamage(sp) && typeof getTypeCombatNote === 'function')
           ? getTypeCombatNote(actingUnit, targetUnit, sp.spellType) : '',
         available: true,
         spell: sp,
@@ -7127,7 +7135,7 @@ function _renderSpellDescBar() {
     chips += _chip(
       (_db.icon ? '<span class="ew-dmgicon ' + _db.icon + '" style="margin-right:5px;"></span>' : '') + _db.label,
       _db.color, _db.title);
-    if (spellDealsDamage(sp)) {
+    if (hudSpellShowsDamage(sp)) {
       const _rb = spellRangeBadge(sp);
       chips += _chip(_rb.glyph + ' ' + _rb.label, _rb.color, _rb.title);
     }
