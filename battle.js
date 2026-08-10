@@ -5400,10 +5400,16 @@
             if ((spell.range || 0) > 0 && typeof _isClashMode === 'function' && _isClashMode()) return 99;
             let range = spell.range || 0;
 
-            if (HIGH_GROUND_RANGE_BONUS && range >= 2) {
-                const unitH = (typeof getUnitStandingHeight === 'function') ? getUnitStandingHeight(unit) : (unit.z ?? 0);
-                if (unitH >= 2) range += HIGH_GROUND_RANGE_BONUS;
-            }
+            // 2026-08-10: NO high-ground bonus on spell range. The old +1 here
+            // keyed off the caster's ABSOLUTE standing height (>= 2) with no
+            // comparison to the target, so hills, roofs, pillars and every
+            // airborne flyer (flight altitude starts at 2) silently stretched
+            // ALL spell ranges one past the number printed on the spell card —
+            // even against a target on the same plateau. A spell's effective
+            // range must equal its listed range; the only modifiers allowed
+            // are class passives whose own descriptions state them (below).
+            // High ground still pays via damage/defense/vision, and basic
+            // attacks keep their bonus because the HUD RNG stat shows it live.
             // Grace (White Mage passive): heal and revive spells reach +2.
             if (range > 0 && unit.cls === 'White Mage'
                 && (spell.heal || spell.healAmt || spell.kind === 'heal'
