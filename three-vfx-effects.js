@@ -3591,25 +3591,33 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        restore, status applications, and any spell without a bespoke aura all
        land here. Same signature language as the staged support burst (see
        _sigSupportAura3D), so a heal is GREEN-and-rising everywhere it
-       happens. opts.soft = the quiet end-of-round variant. */
+       happens. opts.soft = the quiet end-of-round variant; opts.big = the
+       heavy landing (rank 2 — heals plant the light pillar): team-wide
+       casts use it so the payoff lands on each RECIPIENT, not the caster.
+       opts rides the online relay as a primitive-field object. */
+    function _supRank(opts) {
+        if (opts && opts.soft) return 0;
+        if (opts && opts.big) return 2;
+        return 1;
+    }
     function fireHeal(tx, ty, opts) {
         if (_suppressed() || _catOff('healing')) return;
-        _sigSupportAura3D(tx, ty, 'heal', { rank: (opts && opts.soft) ? 0 : 1 });
+        _sigSupportAura3D(tx, ty, 'heal', { rank: _supRank(opts) });
     }
 
     function fireMana(tx, ty, opts) {
         if (_suppressed() || _catOff('healing')) return;
-        _sigSupportAura3D(tx, ty, 'mana', { rank: (opts && opts.soft) ? 0 : 1 });
+        _sigSupportAura3D(tx, ty, 'mana', { rank: _supRank(opts) });
     }
 
     function fireBuff(tx, ty, opts) {
         if (_suppressed() || _catOff('buffs')) return;
-        _sigSupportAura3D(tx, ty, 'buff', { rank: (opts && opts.soft) ? 0 : 1 });
+        _sigSupportAura3D(tx, ty, 'buff', { rank: _supRank(opts) });
     }
 
     function fireDebuff(tx, ty, opts) {
         if (_suppressed() || _catOff('buffs')) return;
-        _sigSupportAura3D(tx, ty, 'debuff', { rank: (opts && opts.soft) ? 0 : 1 });
+        _sigSupportAura3D(tx, ty, 'debuff', { rank: _supRank(opts) });
     }
 
     var _statusEffectMap = {
@@ -20093,12 +20101,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        (VFX3D.fire + the sibling wrapper), so the guest replays these with
        zero new plumbing. */
     var _SUPPORT_FAMS = {
+        /* moteScale: heal/mana motes run larger — with no body rings, the
+           floating green crosses / blue sparks ARE the family's identity,
+           so they must read even from the wide team shot */
         heal:   { hi: 0x9fffc0, mid: 0x54e888, deep: 0x1f9e55, mote: 'heal-cross',
                   ringSprite: 'target-ring-green', ring: 0x54e888, glow: 0x38d474,
-                  shaft: 'heal-glow', dir: 1 },
+                  shaft: 'heal-glow', dir: 1, moteScale: 1.5 },
         mana:   { hi: 0xbfe0ff, mid: 0x5fa8ff, deep: 0x2f62d8, mote: 'spark-blue',
                   ringSprite: 'target-ring-blue', ring: 0x5fa8ff, glow: 0x3f7fe8,
-                  shaft: 'plasma', dir: 1 },
+                  shaft: 'plasma', dir: 1, moteScale: 1.35 },
         buff:   { hi: 0xfff2c0, mid: 0xffd76a, deep: 0xdf9f2f, mote: 'divine-sparkle',
                   ringSprite: 'target-ring-gold', ring: 0xffd76a, glow: 0xffc84d,
                   shaft: 'holy-light', dir: 1 },
@@ -20192,21 +20203,27 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var k = 0.8 + 0.2 * rank;
         var i, a, rr;
 
-        /* travelling body rings — buffs climb, debuffs sink; heals/mana get
-           a lighter pass so their read stays "light rising", not "power up" */
+        /* travelling body rings — THE stat-change signifier, and ONLY that.
+           Buffs climb, debuffs sink. Heals and mana NEVER get body rings
+           (2026-08-10: they used to get a "lighter pass" of the same rings,
+           which read as a buff/debuff landing — a heal must never look like
+           a stat change; its language is crosses/sparks + flat ground
+           ripples instead). */
         var isStat = (family === 'buff' || family === 'debuff');
-        try {
-            _sigStatRings3D(tx, ty, {
-                dir: F.dir,
-                rings: isStat ? (rank >= 2 ? 4 : 3) : 2,
-                color: F.ring,
-                radius: ts * (isStat ? 0.36 : 0.30) * k,
-                travel: ts * (0.95 + 0.2 * rank),
-                ms: isStat ? 640 : 720,
-                staggerMs: isStat ? 140 : 220,
-                opacity: isStat ? 0.9 : 0.5
-            });
-        } catch (e) {}
+        if (isStat) {
+            try {
+                _sigStatRings3D(tx, ty, {
+                    dir: F.dir,
+                    rings: rank >= 2 ? 4 : 3,
+                    color: F.ring,
+                    radius: ts * 0.36 * k,
+                    travel: ts * (0.95 + 0.2 * rank),
+                    ms: 640,
+                    staggerMs: 140,
+                    opacity: 0.9
+                });
+            } catch (e) {}
+        }
 
         if (!_canSpawn()) return;
 
@@ -20276,6 +20293,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* family motes: green plus-signs / blue sparks / gold sparkles rise
            with a gentle sway; violet wisps sink and settle */
         var nM = 10 + 4 * rank;
+        var mS = F.moteScale || 1;
         for (i = 0; i < nM; i++) {
             a = rn(0, 6.2832); rr = ts * rn(0.08, 0.36);
             if (up) {
@@ -20286,7 +20304,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     gravity: -40, drag: 0.35,
                     mode: 'billboard', sprite: F.mote,
                     ml: rn(560, 980),
-                    size0: rn(7, 13) * k, size1: 2,
+                    size0: rn(7, 13) * k * mS, size1: 2,
                     opacity0: 0.95, opacity1: 0,
                     wander: { amp: 18, freq: 0.8 },
                 });
@@ -20374,7 +20392,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (rank >= 1) {
             try { _sigScreenFlash(P.flash, 150, Math.min(0.14, T.flashPeak * 0.55)); } catch (e) {}
         }
-        try { _sigSupportAura3D(tx, ty, P.support, { rank: rank }); } catch (e) {}
+        /* Team-wide casts (healAll / manaRestoreAll) stage on the CASTER
+           tile — but the caster is just the sender. A heavy rank here used
+           to plant the light pillar on the caster while the recipients got
+           nothing louder than the generic rank-1 aura ("who actually got
+           healed?"). Cap the caster beat to a soft cast shimmer; battle.js
+           fires the full-rank aura on each RECIPIENT as the wave lands. */
+        var auraRank = rank;
+        try {
+            var _sdef = _spellDefFor(spellId);
+            if (_sdef && (_sdef.kind === 'healAll' || _sdef.kind === 'manaRestoreAll')) auraRank = 0;
+        } catch (e) {}
+        try { _sigSupportAura3D(tx, ty, P.support, { rank: auraRank }); } catch (e) {}
         if (p && p.bloomPulse) p.bloomPulse(Math.min(0.4, T.bloom * 0.65), 300);
         _stageGrade(spellId, 'burst', params, info);
         /* no shock ring, no expanding orb, no rush lines, no shake —

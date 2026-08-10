@@ -41806,8 +41806,19 @@
                 });
                 if (!_buffResult) return 0;
                 panelFocusTarget = _buffResult.target;
-                applyStatusEffects(_buffResult.target, spell.statusEffects, `${spell.name}: `, unit);
-                if (spell.statStageBoost) applyStatStageBoost(_buffResult.target, spell.statStageBoost, `${spell.name}: `, unit);
+                // The buff lands when the gift ARRIVES (support cinematic beat
+                // 2), same as heal. Applying it at frame one fired the gold
+                // climbing rings on the recipient while the camera was still
+                // on the CASTER — and the (family, tile) VFX gate then
+                // swallowed the on-camera replay, so buffs like Pixie Dust
+                // looked like they had no VFX at all.
+                const _bt = _buffResult.target;
+                window.setTimeout(() => {
+                    applyStatusEffects(_bt, spell.statusEffects, `${spell.name}: `, unit);
+                    if (spell.statStageBoost) applyStatStageBoost(_bt, spell.statStageBoost, `${spell.name}: `, unit);
+                    markDirty('hud');
+                    renderIfDirty();
+                }, _buffResult.applyAt || 0);
                 completionDelay = Math.max(completionDelay, _buffResult.completionDelay);
             } else if (spell.kind === 'debuff') {
                 const target = (unitAt(x, y, z) || unitAt(x, y));
@@ -42438,18 +42449,21 @@
                     addLog(`${unitDisplayName(unit)} casts ${spell.name}, ${((spell.healAmt != null ? spell.healAmt : (spell.heal || 0)) > 0) ? 'healing' : 'bolstering'} ${allies.length} allies.`);
                 } else {
 
-                    // Beat 1: the cast glow on the caster.
-                    _vfxHeal(unit.x, unit.y);
-                    // Beat 2: the heal lands on EVERY ally on screen — green
-                    // burst + floating number per ally, staggered so the wide
-                    // shot reads as a wave washing over the team. (The old
-                    // code healed silently in a sync loop with a single puff
-                    // on the caster — a team heal that showed nobody healed.)
+                    // Beat 1: a SOFT cast glow on the caster — the caster is
+                    // the sender, not the payoff; the staged burst is capped
+                    // to the same soft shimmer (no more light pillar planted
+                    // on the caster while the recipients got table scraps).
+                    _vfxHeal(unit.x, unit.y, { soft: true });
+                    // Beat 2: the heal lands FULL-STRENGTH on every ally on
+                    // screen — green cross burst per ally (heavy casts plant
+                    // the light pillar on each recipient), staggered so the
+                    // wide shot reads as a wave washing over the team.
+                    const _haBigVfx = ['heavy', 'ultimate'].includes(_spellStageInfo(spell).weight);
                     allies.forEach((ally, idx) => {
                         window.setTimeout(() => {
                             if (ally.dead) return;
                             if (state.phase !== 'battle') return;
-                            if (!_skipVisuals()) _vfxHeal(ally.x, ally.y);
+                            if (!_skipVisuals()) _vfxHeal(ally.x, ally.y, _haBigVfx ? { big: true } : undefined);
                             const _bh2 = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
                             let healAmount = _bh2 + getEffectiveHealBonus(unit, _bh2, ally) + getHourglassPower(unit);
                             healAmount = Math.min(healAmount, ally.maxHp - ally.hp);
@@ -42485,7 +42499,10 @@
                 }
             } else if (spell.kind === 'manaRestoreAll') {
                 playSfx('manaRegen');
-                _vfxMana(unit.x, unit.y);
+                // Soft cast shimmer on the caster — the recipients get the
+                // full-strength aura when the restore lands (same shape as
+                // healAll: sender ≠ payoff).
+                _vfxMana(unit.x, unit.y, { soft: true });
                 unit.mp -= effectiveSpellCost;
                 const allies = aliveUnitsFor(unit.player);
                 // Same two-beat structure as healAll: cast on the caster,
@@ -42509,6 +42526,7 @@
                 }
                 const _mrCastMs = Math.max(actionMs(300), _mrCam?.sourceHold ?? actionMs(650));
                 const _mrStagger = actionMs(140);
+                const _mrBigVfx = ['heavy', 'ultimate'].includes(_spellStageInfo(spell).weight);
                 let totalRestored = 0;
                 _mrTargets.forEach((ally, idx) => {
                     // The caster never restores their own MP — otherwise the spell
@@ -42519,7 +42537,7 @@
                         if (restoreAmount > 0) {
                             ally.mp += restoreAmount;
                             totalRestored += restoreAmount;
-                            if (!_skipVisuals()) _vfxMana(ally.x, ally.y);
+                            if (!_skipVisuals()) _vfxMana(ally.x, ally.y, _mrBigVfx ? { big: true } : undefined);
                             showFloatingTextForUnit(ally, `+${restoreAmount} MP`, 'buff', { durationMs: 900 });
                             markDirty('teams', 'selectedUnit', 'hud');
                             renderIfDirty();
