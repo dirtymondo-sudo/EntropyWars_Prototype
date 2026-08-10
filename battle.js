@@ -6,21 +6,23 @@
             return !!state.animationsDisabled;
         }
 
-        function _vfxHeal(tx, ty) {
+        // opts: { soft: true } = the quiet variant (end-of-round regen ticks,
+        // zone ambience). Rides the online relay as a primitive-field object.
+        function _vfxHeal(tx, ty, opts) {
             if (_skipVisuals()) return;
-            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireHeal) ThreeVFXEffects.fireHeal(tx, ty);
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireHeal) ThreeVFXEffects.fireHeal(tx, ty, opts);
         }
-        function _vfxMana(tx, ty) {
+        function _vfxMana(tx, ty, opts) {
             if (_skipVisuals()) return;
-            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireMana) ThreeVFXEffects.fireMana(tx, ty);
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireMana) ThreeVFXEffects.fireMana(tx, ty, opts);
         }
-        function _vfxBuff(tx, ty) {
+        function _vfxBuff(tx, ty, opts) {
             if (_skipVisuals()) return;
-            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireBuff) ThreeVFXEffects.fireBuff(tx, ty);
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireBuff) ThreeVFXEffects.fireBuff(tx, ty, opts);
         }
-        function _vfxDebuff(tx, ty) {
+        function _vfxDebuff(tx, ty, opts) {
             if (_skipVisuals()) return;
-            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireDebuff) ThreeVFXEffects.fireDebuff(tx, ty);
+            if (typeof ThreeVFXEffects !== 'undefined' && ThreeVFXEffects.fireDebuff) ThreeVFXEffects.fireDebuff(tx, ty, opts);
         }
         function _vfxStatus(statusId, tx, ty) {
             if (_skipVisuals()) return;
@@ -5888,6 +5890,15 @@
             if (!_skipVisuals()) {
                 const vfxStatusMap = { poison:1, burn:1, stun:1, slow:1, bleed:1, silence:1, discord:1 };
                 if (vfxStatusMap[payload.id]) _vfxStatus(payload.id, target.x, target.y);
+                // Every OTHER buff/debuff status landing plays the generic
+                // support aura — gold rings climbing the body / violet rings
+                // sinking down it — so a stat change is never invisible.
+                // statUp/statDown (the stat-stage carriers) route through
+                // here too, which covers every statStageBoost for free. The
+                // (family, tile) gate inside the VFX dedupes this against a
+                // spell's own staged burst when both fire for one cast.
+                else if (meta.kind === 'debuff') _vfxDebuff(target.x, target.y);
+                else if (meta.kind === 'buff') _vfxBuff(target.x, target.y);
                 // Paralysis (stun) flashes the unit yellow the moment it lands.
                 if (payload.id === 'stun') flashUnit(target.id, 'paralysis');
             }
@@ -6097,7 +6108,7 @@
                         dlgMsgs.push(`<span class="dlg-heal">${def.icon || '💚'} ${unitDisplayName(unit)} heals ${Math.abs(hpLost)} from ${def.label || key}</span>`);
                         if (isVisible) {
                             // applyHealingToUnit (called by onRoundEnd) already shows the "+N".
-                            _vfxHeal(unit.x, unit.y);
+                            _vfxHeal(unit.x, unit.y, { soft: true });
                         }
                     }
                 }
@@ -6313,6 +6324,7 @@
                             }
                             if (manaAmt > 0) {
                                 evt.msgs.push(`<span class="dlg-heal">🏠 Spawn zone restores ${unitDisplayName(unit)} ${manaAmt} MP</span>`);
+                                evt.didMana = true; // blue restore signature in _showFieldEffects
                             }
                             if (cleansedAny) {
                                 evt.msgs.push(`<span class="dlg-heal">🏠 Spawn zone cleanses ${unitDisplayName(unit)}</span>`);
@@ -6382,7 +6394,13 @@
                     }
                     if (evt.didHeal) {
                         flashHeal(evt.unit);
-                        _vfxHeal(evt.unit.x, evt.unit.y);
+                        _vfxHeal(evt.unit.x, evt.unit.y, { soft: true });
+                    }
+                    // MP-only restore (spawn zone / mana veins): the blue
+                    // sibling. When HP also regenerated, one green aura is
+                    // enough — don't stack two auras on the same unit.
+                    if (evt.didMana && !evt.didHeal) {
+                        _vfxMana(evt.unit.x, evt.unit.y, { soft: true });
                     }
                     if (evt.floats.some(f => f.type === 'damage')) {
                         triggerStatusWiggle(evt.unit);
@@ -6505,12 +6523,9 @@
                         showFloatingTextForUnit(h.unit, `+${h.amount}`, 'heal', { durationMs: 1200 });
                         flashHeal(h.unit);
 
-                        if (typeof window !== 'undefined' && window.ThreeVFXEffects
-                            && window.ThreeVFXEffects.hasMapping('_eorHpRegen', 'aura')) {
-                            window.ThreeVFXEffects.fire('aura', '_eorHpRegen', { tx: h.unit.x, ty: h.unit.y });
-                        } else {
-                            _vfxHeal(h.unit.x, h.unit.y);
-                        }
+                        // The soft green rising-light signature — same language
+                        // as spell heals, quieter (see _sigSupportAura3D).
+                        _vfxHeal(h.unit.x, h.unit.y, { soft: true });
                     }
                 } else if (h.tower) {
                     showFloatingTextAtTile(h.tower.x, h.tower.y, `+${h.amount}`, 'heal', { durationMs: 1200 });
@@ -6524,12 +6539,8 @@
                     const hasHpRegen = healed.some(h => h.unit === m.unit);
                     showFloatingTextForUnit(m.unit, `+${m.amount} MP`, 'mp', { durationMs: 1200, jitterY: hasHpRegen ? -18 : undefined });
 
-                    if (typeof window !== 'undefined' && window.ThreeVFXEffects
-                        && window.ThreeVFXEffects.hasMapping('_eorMpRegen', 'aura')) {
-                        window.ThreeVFXEffects.fire('aura', '_eorMpRegen', { tx: m.unit.x, ty: m.unit.y });
-                    } else {
-                        _vfxMana(m.unit.x, m.unit.y);
-                    }
+                    // Soft blue rising-light signature — the heal's cool sibling.
+                    _vfxMana(m.unit.x, m.unit.y, { soft: true });
                 }
             }
             if (manaRestored.length > 0) {
@@ -30643,7 +30654,7 @@
                                 const _bcnUnitId = nextUnit.id;
                                 window.setTimeout(() => {
                                     const _u = state.units.find(u => u.id === _bcnUnitId && !u.dead);
-                                    if (_u && ThreeVFXEffects.fireHeal) ThreeVFXEffects.fireHeal(_u.x, _u.y);
+                                    if (_u && ThreeVFXEffects.fireHeal) ThreeVFXEffects.fireHeal(_u.x, _u.y, { soft: true });
                                 }, 320);
                             }
                             scheduleBoardRender();
@@ -40426,7 +40437,9 @@
                         if (state.phase !== 'battle') return;
                         triggerAttackAnim(unit, target.x, target.y, 'throw');
                         playSfx('itemThrow');
-                        playProjectileToUnit(unit, target, 'heal', _mpTravel);
+                        // spellMeta routes the particle theme to MANA-blue
+                        // (the bottle sprite still flies the heal arc).
+                        playProjectileToUnit(unit, target, 'heal', _mpTravel, null, null, { id: 'consumeManaPotion', name: 'Mana Potion' });
                     }, _mpLaunch);
                     window.setTimeout(() => {
                         if (state.phase !== 'battle' || target.dead) return;
@@ -44604,7 +44617,11 @@
                     if (unit.cls === 'Harvester') drainMult *= 1.20;
                     const healAmt = Math.max(1, Math.round(dmg * drainMult));
                     const healed = applyHealingToUnit(unit, healAmt, unit);
-                    if (healed > 0) addLog(`${unitDisplayName(unit)} absorbs ${healed} HP.`);
+                    if (healed > 0) {
+                        addLog(`${unitDisplayName(unit)} absorbs ${healed} HP.`);
+                        // the absorbed life blooms green on the caster
+                        _vfxHeal(unit.x, unit.y, { soft: true });
+                    }
                 }, impactDelay);
 
                 const _useVfx3dDrain = (typeof window !== 'undefined' && window.ThreeVFXEffects

@@ -135,6 +135,7 @@ const ThreeVFXEffects = (function () {
         anomaly:   { core: 'psi-pulse',     trail: 'laser-pink', burst: 'void-mist',        ring: 'target-ring',       glow: 0xff77dd },
         human:     { core: 'flash',         trail: 'ember',      burst: 'dust-puff',        ring: 'target-ring',       glow: 0xffd9a0 },
         heal:      { core: 'heal-cross',    trail: 'heal-glow',  burst: 'divine-sparkle',   ring: 'target-ring-green', glow: 0xa8ffc4 },
+        mana:      { core: 'spark-blue',    trail: 'frost-mist', burst: 'spark-blue',       ring: 'target-ring-blue',  glow: 0x6faeff },
         poison:    { core: 'poison-bubble', trail: 'poison-mist', burst: 'acid-green',      ring: 'target-ring-green', glow: 0x9dff5e },
     };
 
@@ -167,6 +168,7 @@ const ThreeVFXEffects = (function () {
         if (/ice|frost|blizzard|freeze|cryo|cold|glacial|frozen|chill/.test(s)) return _THEME_MAP.ice;
         if (/lightning|thunder|bolt|shock|electr|chain|static|spark|emp/.test(s)) return _THEME_MAP.lightning;
         if (/poison|toxic|venom|acid|plague/.test(s)) return _THEME_MAP.poison;
+        if (/mana|aether/.test(s)) return _THEME_MAP.mana;
         if (/heal|restore|mend|rejuv|sanctuary|tidal|blessing/.test(s)) return _THEME_MAP.heal;
         return _THEME_MAP[spellType] || _THEME_MAP.human;
     }
@@ -256,7 +258,10 @@ const ThreeVFXEffects = (function () {
                 for (var j = 0; j < 6; j++) {
                     _spawn({
                         x: tx + rn(-4, 4), y: ty + rn(-4, 4), z: tz2 + rn(-4, 4),
-                        mode: 'billboard', sprite: 'flash',
+                        /* colour-true pop: tinted with the theme's light so a
+                           heal arrival flashes GREEN, mana BLUE, fire orange —
+                           never the old anonymous white slam */
+                        mode: 'billboard', sprite: 'flash', tint: e.theme.glow,
                         ml: 80 + rn(0, 40),
                         size0: e.ts * 0.15 + rn(0, e.ts * 0.08),
                         size1: e.ts * 0.02,
@@ -1145,41 +1150,10 @@ function _hydrateEffects() {
 var EFFECTS = _hydrateEffects();
 var SPELL_MAP = _EFX_DATA.S;
 
-/* ─── DEBUFF BURST — the negative counterpart of _buff_burst / _heal_burst ──
-   Debuffs used to fly a green DOM "proj-debuff" sprite at the enemy. This is
-   the same target-anchored aura burst the buffs/heals use, recoloured and
-   re-choreographed to read as CORRUPTION rather than blessing:
-     • buffs pop a BRIGHT flash + GOLD/GREEN sparkles that RISE and calm
-       EXPANDING rings; here the flash is dim, the motes are dark purple
-       (void-mist / dark-flame) that RAIN DOWN onto the target, and the rings
-       are blood-red and CONTRACT (closing in / binding).
-   Fired via ThreeVFXEffects.fireDebuff(tx, ty). */
-EFFECTS['_debuff_burst'] = {
-    layers: [
-        /* dim, muted pop — the opposite of the buff's bright flash */
-        { sprite: 'flash', ml: 160, size0: 48, size1: 14, opacity0: 0.5 },
-        /* corrupt motes raining DOWN onto the target (buff sparkles rise —
-           these sink to feel oppressive); start high, fall, accelerate */
-        { count: 22, anchor: 'floor', sprite: 'void-mist', ml: [500, 900], offsetXY: 16,
-          z: [45, 80], vxRange: 12, vyRange: 12, vzRange: [-70, -45], gravity: 45, drag: 0.4,
-          size0: [7, 12], size1: 2, opacity0: 0.85 },
-        /* second, delayed fall — dark-flame embers of decay */
-        { count: 16, delayMs: 300, anchor: 'floor', sprite: 'dark-flame', ml: [400, 700], offsetXY: 14,
-          z: [45, 80], vxRange: 12, vyRange: 12, vzRange: [-70, -45], gravity: 45, drag: 0.4,
-          size0: [7, 12], size1: 2, opacity0: 0.85 },
-        /* low psi haze swirling and settling around the feet */
-        { count: 14, anchor: 'floor', sprite: 'psi-pulse', ml: [400, 800], offsetXY: 22,
-          z: [4, 26], vxRange: 22, vyRange: 22, vzRange: [-12, 8], gravity: 25, drag: 0.5,
-          size0: [4, 8], size1: 1, opacity0: 0.7 },
-        /* blood-red rings that CONTRACT inward (bind / clamp) — mirror of the
-           heal's calm expanding green rings */
-        { anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 450, z: 2, size0: 110, size1: 24, opacity0: 0.75 },
-        { delayMs: 300, anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 450, z: 2, size0: 110, size1: 24, opacity0: 0.6 },
-        { delayMs: 600, anchor: 'floor', mode: 'world', sprite: 'target-ring', ml: 450, z: 2, size0: 110, size1: 24, opacity0: 0.5 },
-        /* lingering dark pall over the target */
-        { anchor: 'floor', mode: 'world', sprite: 'void-mist', ml: 1200, z: 1, size0: 90, size1: 76, opacity0: 0.4 },
-    ]
-};
+/* (2026-08-10: the old readable _debuff_burst recipe was deleted — the
+   generic heal/mana/buff/debuff bursts are procedural signatures now, see
+   _sigSupportAura3D in the SUPPORT GRAMMAR block. The compact-blob
+   _heal_burst/_mana_burst/_buff_burst entries are likewise inert.) */
 
 /* ═══ CONSUMABLE ITEMS — potions had NO VFX AT ALL ══════════════════════
    The potion path in doItem played an SFX, threw a bottle, ran a drink
@@ -3613,24 +3587,29 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return true;
     }
 
-    function fireHeal(tx, ty) {
+    /* Generic support fallbacks — potions, end-of-round regen, spawn-zone
+       restore, status applications, and any spell without a bespoke aura all
+       land here. Same signature language as the staged support burst (see
+       _sigSupportAura3D), so a heal is GREEN-and-rising everywhere it
+       happens. opts.soft = the quiet end-of-round variant. */
+    function fireHeal(tx, ty, opts) {
         if (_suppressed() || _catOff('healing')) return;
-        _fireUtility('_heal_burst', { tx: tx, ty: ty });
+        _sigSupportAura3D(tx, ty, 'heal', { rank: (opts && opts.soft) ? 0 : 1 });
     }
 
-    function fireMana(tx, ty) {
+    function fireMana(tx, ty, opts) {
         if (_suppressed() || _catOff('healing')) return;
-        _fireUtility('_mana_burst', { tx: tx, ty: ty });
+        _sigSupportAura3D(tx, ty, 'mana', { rank: (opts && opts.soft) ? 0 : 1 });
     }
 
-    function fireBuff(tx, ty) {
+    function fireBuff(tx, ty, opts) {
         if (_suppressed() || _catOff('buffs')) return;
-        _fireUtility('_buff_burst', { tx: tx, ty: ty });
+        _sigSupportAura3D(tx, ty, 'buff', { rank: (opts && opts.soft) ? 0 : 1 });
     }
 
-    function fireDebuff(tx, ty) {
+    function fireDebuff(tx, ty, opts) {
         if (_suppressed() || _catOff('buffs')) return;
-        _fireUtility('_debuff_burst', { tx: tx, ty: ty });
+        _sigSupportAura3D(tx, ty, 'debuff', { rank: (opts && opts.soft) ? 0 : 1 });
     }
 
     var _statusEffectMap = {
@@ -19388,7 +19367,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         alien:    { orb: 0x86ff7a, ring: 0x55dd66, flash: '#c8ffbe', mote: 'acid-green',     glyph: false, slash: false, lineColor: '#b6ffa8' },
         anomaly:  { orb: 0xff77dd, ring: 0xcc44aa, flash: '#ffc0f0', mote: 'laser-pink',     glyph: true,  slash: false, lineColor: '#ffb0ee' },
         poison:   { orb: 0x9dff5e, ring: 0x66bb33, flash: '#d8ffb0', mote: 'poison-bubble',  glyph: false, slash: false, lineColor: '#c4ff90' },
-        heal:     { orb: 0xa8ffc4, ring: 0x66dd99, flash: '#d8ffe8', mote: 'heal-cross',     glyph: true,  slash: false, lineColor: '#b8ffd4', gentle: true },
+        heal:     { orb: 0xa8ffc4, ring: 0x66dd99, flash: '#d8ffe8', mote: 'heal-cross',     glyph: true,  slash: false, lineColor: '#b8ffd4', gentle: true, support: 'heal' },
+        /* mana: MP restoration — deep arcane blue, the heal's cool sibling.
+           Distinct from tech-cyan so "mana" always reads as a resource gift. */
+        mana:     { orb: 0x6faeff, ring: 0x3f86f0, flash: '#cfe2ff', mote: 'spark-blue',     glyph: true,  slash: false, lineColor: '#bcd8ff', gentle: true, support: 'mana', moteTint: 0x8fc0ff },
+        /* hex: stat-down debuffs — violet corruption SINKING onto the victim.
+           The support grammar plays this family's rings DOWNWARD. */
+        hex:      { orb: 0xb066ff, ring: 0x9944ee, flash: '#e0c4ff', mote: 'void-mist',      glyph: true,  slash: false, lineColor: '#d0a8ff', gentle: true, support: 'debuff', moteTint: 0xbb77ff },
         human:    { orb: 0xffd9a0, ring: 0xffc880, flash: '#ffe8c8', mote: 'dust-puff',      glyph: false, slash: false, lineColor: '#ffdcb0' },
         /* ── mechanical families that had NO visuals at all ── */
         kinetic:  { orb: 0xffd9a0, ring: 0xffe0b0, flash: '#fff0d8', mote: 'dust-puff',      glyph: false, slash: true,  lineColor: '#ffe4bc', groundRush: true },
@@ -19402,7 +19387,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         ki:       { orb: 0xffe083, ring: 0xffd24d, flash: '#fff2c0', mote: 'ember',          glyph: false, slash: true,  lineColor: '#ffe9a8', groundRush: true, aura: true, moteTint: 0xffd24d },
         /* aura: buffs/shields/war-cries — warm gold blessing, distinct from
            heal-green and divine-cream so a buff never reads as a heal */
-        aura:     { orb: 0xffd76a, ring: 0xffe9a8, flash: '#fff3cc', mote: 'divine-sparkle', glyph: true,  slash: false, lineColor: '#ffeec0', gentle: true, moteTint: 0xffd76a },
+        aura:     { orb: 0xffd76a, ring: 0xffe9a8, flash: '#fff3cc', mote: 'divine-sparkle', glyph: true,  slash: false, lineColor: '#ffeec0', gentle: true, moteTint: 0xffd76a, support: 'buff' },
     };
 
     /* Mechanical kind → archetype. This is what finally covers the ~60
@@ -19419,14 +19404,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         placeTrap: 'rig', deployObject: 'rig', deployTurret: 'rig',
         deployPair: 'rig', terrainCreate: 'rig', warpRune: 'rig',
         remoteView: 'mind', scan: 'mind', trickRoom: 'mind',
-        encore: 'mind', tuneFrequency: 'mind', pulseLattice: 'mind',
+        tuneFrequency: 'mind', pulseLattice: 'mind',
         guard: 'rig',
         heal: 'heal', healAll: 'heal', selfHeal: 'heal', seedHeal: 'heal',
         zoneHeal: 'heal', revive: 'divine', cleanse: 'divine',
+        manaRestoreAll: 'mana',
         leechSeed: 'poison', seedPoison: 'poison',
         /* buffs used to fall through to the name-regex and mostly landed on
-           'arcane' — now every blessing stages as the warm gold aura family */
+           'arcane' — now every blessing stages as the warm gold aura family.
+           Encore is a blessing too (an extra turn), so it joined the family. */
         buff: 'aura', shield: 'aura', aoeShield: 'aura', warCry: 'aura',
+        encore: 'aura',
+        /* debuffs used to fall through to their ELEMENT and stage like a
+           damage hit (Discordance staged as an anomaly blast) — every
+           stat-down now plays the sinking violet hex grammar instead */
+        debuff: 'hex', zoneDebuff: 'hex',
     };
 
     /* Explicit per-spell overrides. THIS is the extension point — one line
@@ -19441,7 +19433,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         thunderstorm:{ archetype: 'lightning', weight: 'heavy' },
         /* consumables read calm, never as an attack */
         consumeHealPotion: { archetype: 'heal', weight: 'light' },
-        consumeManaPotion: { archetype: 'tech', weight: 'light' },
+        consumeManaPotion: { archetype: 'mana', weight: 'light' },
 
         /* ── the psychedelic bench (2026-07-25) ──────────────────────────
            These four are the spells the grade was built for: the world goes
@@ -19989,7 +19981,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            never on self-casts. Rides the relayed windup beat, so the
            guest gets it for free; params.tx/ty are already fog anchors. */
         var _isKineticFam = P.slash || P.groundRush || P.heavyLand;
-        if (!_isKineticFam && _rank >= 1 && !_isGunSpell(spellId)
+        /* support families (heal/mana/buff/debuff) skip the imploding orb —
+           an ally about to be blessed must never look like a target locked
+           for a hit; their payoff is the support burst on arrival */
+        if (!_isKineticFam && !P.support && _rank >= 1 && !_isGunSpell(spellId)
             && params.tx != null && params.ty != null
             && !(params.tx === tx && params.ty === ty)) {
             var _teleMs = Math.max(260, Math.min(620, holdMs * 0.45));
@@ -20038,6 +20033,321 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }, info);
     }
 
+    /* ════════════════════════════════════════════════════════════════════
+       SUPPORT GRAMMAR (2026-08-10) — heals, mana, buffs, debuffs.
+       ════════════════════════════════════════════════════════════════════
+       Support casts used to ride the same burst grammar as damage: white
+       screen kiss, expanding shock ring, translucent orb shell blooming out
+       of the target — a heal looked like the ally TAKING A HIT. This is the
+       JRPG support language instead, one family each:
+
+         heal    GREEN — rising light streaks, floating plus-signs, a soft
+                 green aura column breathing up the body
+         mana    BLUE — the identical rising language recoloured (never
+                 mistakable for a heal, obviously its sibling)
+         buff    GOLD — rings that CLIMB the body (the power-up read),
+                 golden streaks + sparkles lifting off
+         debuff  VIOLET — the same rings SINKING down the body (power
+                 draining), motes raining onto the victim, a ground ring
+                 contracting closed (binding)
+
+       Every path funnels here: the staged burst (all heal/buff/debuff/mana
+       KINDS), the generic fireHeal/fireMana/fireBuff/fireDebuff fallbacks
+       (potions, end-of-round regen, spawn-zone restore, status
+       applications), so the language is identical everywhere. A per-
+       (family,tile) gate dedupes the funnels when two fire for the same
+       game moment. Online: all entry points already ride the relay
+       (VFX3D.fire + the sibling wrapper), so the guest replays these with
+       zero new plumbing. */
+    var _SUPPORT_FAMS = {
+        heal:   { hi: 0x9fffc0, mid: 0x54e888, deep: 0x1f9e55, mote: 'heal-cross',
+                  ringSprite: 'target-ring-green', ring: 0x54e888, glow: 0x38d474,
+                  shaft: 'heal-glow', dir: 1 },
+        mana:   { hi: 0xbfe0ff, mid: 0x5fa8ff, deep: 0x2f62d8, mote: 'spark-blue',
+                  ringSprite: 'target-ring-blue', ring: 0x5fa8ff, glow: 0x3f7fe8,
+                  shaft: 'plasma', dir: 1 },
+        buff:   { hi: 0xfff2c0, mid: 0xffd76a, deep: 0xdf9f2f, mote: 'divine-sparkle',
+                  ringSprite: 'target-ring-gold', ring: 0xffd76a, glow: 0xffc84d,
+                  shaft: 'holy-light', dir: 1 },
+        debuff: { hi: 0xe2bbff, mid: 0xb066ff, deep: 0x6f22c0, mote: 'void-mist',
+                  ringSprite: 'target-ring', ring: 0xa955f0, glow: 0x8a3fd8,
+                  shaft: 'void-mist', dir: -1 },
+    };
+
+    /* ── travelling body rings — THE stat-change signifier ───────────────
+       A stack of glowing rings that traverse the unit's body: dir:+1 climbs
+       feet→crown (buff), dir:-1 sinks crown→feet (debuff). Rings cinch
+       slightly tighter as they travel so the motion reads even from the
+       overhead camera. */
+    function _sigStatRings3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return null;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var dir = opts.dir != null ? opts.dir : 1;
+        var n = opts.rings != null ? opts.rings : 3;
+        var ms = opts.ms != null ? opts.ms : 620;
+        var stagger = opts.staggerMs != null ? opts.staggerMs : 140;
+        var travel = opts.travel != null ? opts.travel : ts * 1.05;
+        var r = opts.radius != null ? opts.radius : ts * 0.34;
+        var y0 = dir > 0 ? ts * 0.05 : ts * 0.05 + travel;
+        var color = opts.color != null ? opts.color : 0xffd76a;
+        var peak = opts.opacity != null ? opts.opacity : 0.85;
+        var total = ms + stagger * (n - 1);
+
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y, wp.z);
+        var rings = [];
+        for (var i = 0; i < n; i++) {
+            var mat = _sigMat(color, { map: _sigRingTex() });
+            var mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
+            mesh.rotation.x = -Math.PI / 2;
+            mesh.renderOrder = 160;
+            mesh.visible = false;
+            var torMat = _sigMat(color);
+            var tor = new THREE.Mesh(new THREE.TorusGeometry(1, 0.05, 8, 36), torMat);
+            tor.rotation.x = -Math.PI / 2;
+            tor.renderOrder = 160;
+            tor.visible = false;
+            group.add(mesh);
+            group.add(tor);
+            rings.push({ mesh: mesh, mat: mat, tor: tor, torMat: torMat, at: i * stagger });
+        }
+        return _sigRun(group, total, function (el) {
+            for (var i = 0; i < rings.length; i++) {
+                var rg = rings[i];
+                var t = (el - rg.at) / ms;
+                if (t < 0 || t > 1) { rg.mesh.visible = false; rg.tor.visible = false; continue; }
+                rg.mesh.visible = true; rg.tor.visible = true;
+                var e = _sigEaseOutCubic(t);
+                var y = y0 + dir * travel * e;
+                var rr = r * (1.15 - 0.35 * e);
+                rg.mesh.position.y = y; rg.tor.position.y = y;
+                rg.mesh.scale.set(rr, rr, rr);
+                var tw = rr * 0.94;
+                rg.tor.scale.set(tw, tw, tw);
+                var fade = Math.min(1, t / 0.12) * (1 - _sigEaseInCubic(t));
+                rg.mat.opacity = peak * 0.7 * fade;
+                rg.torMat.opacity = peak * fade;
+            }
+        });
+    }
+
+    /* ── the full support aura — one call, one family ─────────────────────
+       rank 0 = soft (end-of-round regen ticks, per-unit ambience)
+       rank 1 = standard (potions, single-target casts, status lands)
+       rank 2+ = heavy/ultimate staged casts (adds the light pillar). */
+    var _supGateAt = {};
+    function _sigSupportAura3D(tx, ty, family, opts) {
+        opts = opts || {};
+        var F = _SUPPORT_FAMS[family];
+        if (!F || tx == null || ty == null) return;
+
+        /* one aura per (family, tile) per beat — the staged burst, the
+           generic fire*() fallbacks and the status-application hook can all
+           fire for the same game moment; first one in wins the window */
+        var gk = family + ':' + Math.round(tx) + ',' + Math.round(ty);
+        var nowT = performance.now();
+        if (!opts.force && _supGateAt[gk] && (nowT - _supGateAt[gk]) < 900) return;
+        _supGateAt[gk] = nowT;
+
+        var rank = opts.rank != null ? opts.rank : 1;
+        var ts = _cfg().tileSize || 128;
+        var c = tilePx(tx, ty);
+        var zf = unitSurfaceZ(tx, ty);
+        var up = F.dir > 0;
+        var k = 0.8 + 0.2 * rank;
+        var i, a, rr;
+
+        /* travelling body rings — buffs climb, debuffs sink; heals/mana get
+           a lighter pass so their read stays "light rising", not "power up" */
+        var isStat = (family === 'buff' || family === 'debuff');
+        try {
+            _sigStatRings3D(tx, ty, {
+                dir: F.dir,
+                rings: isStat ? (rank >= 2 ? 4 : 3) : 2,
+                color: F.ring,
+                radius: ts * (isStat ? 0.36 : 0.30) * k,
+                travel: ts * (0.95 + 0.2 * rank),
+                ms: isStat ? 640 : 720,
+                staggerMs: isStat ? 140 : 220,
+                opacity: isStat ? 0.9 : 0.5
+            });
+        } catch (e) {}
+
+        if (!_canSpawn()) return;
+
+        /* soft coloured pool blooming on the ground under the target */
+        _spawn({
+            x: c.x, y: c.y, z: zf + 2,
+            mode: 'world', sprite: 'fire-glow', tint: F.glow,
+            ml: 900, size0: ts * 0.7 * k, size1: ts * 1.2 * k,
+            opacity0: up ? 0.32 : 0.28, opacity1: 0,
+        });
+
+        /* calm expanding ground rings (heal/mana) or one CONTRACTING ring
+           (debuff — the bind closing). Buffs skip these: their travelling
+           gold rings already own the ring language. */
+        if (family === 'heal' || family === 'mana') {
+            for (i = 0; i < 2; i++) {
+                (function (idx) {
+                    var go = function () {
+                        if (_suppressed() || !_canSpawn()) return;
+                        _spawn({
+                            x: c.x, y: c.y, z: zf + 2,
+                            mode: 'world', sprite: F.ringSprite,
+                            ml: 560, size0: ts * 0.22, size1: ts * (0.95 + 0.15 * rank),
+                            opacity0: 0.62 - idx * 0.18, opacity1: 0,
+                        });
+                    };
+                    if (idx === 0) go(); else window.setTimeout(go, idx * 260);
+                })(i);
+            }
+        } else if (family === 'debuff') {
+            _spawn({
+                x: c.x, y: c.y, z: zf + 2,
+                mode: 'world', sprite: 'target-ring', tint: F.ring,
+                ml: 480, size0: ts * 1.25 * k, size1: ts * 0.3,
+                opacity0: 0.65, opacity1: 0.1,
+            });
+        }
+
+        /* the streak column — thin vertical light slivers. Up for blessings
+           (accelerating skyward), down for hexes (raining onto the victim). */
+        var nS = 8 + 4 * rank;
+        for (i = 0; i < nS; i++) {
+            a = rn(0, 6.2832); rr = ts * rn(0.14, 0.34);
+            if (up) {
+                _spawn({
+                    x: c.x + Math.cos(a) * rr, y: c.y + Math.sin(a) * rr,
+                    z: zf + rn(0, 16),
+                    vz: rn(95, 185), gravity: -140, drag: 0.3,
+                    mode: 'y-locked', sprite: 'flash', tint: F.mid,
+                    ml: rn(420, 760),
+                    w0: rn(2.5, 5), w1: 1.2, h0: rn(16, 34), h1: rn(55, 95),
+                    opacity0: 0.8, opacity1: 0,
+                });
+            } else {
+                _spawn({
+                    x: c.x + Math.cos(a) * rr, y: c.y + Math.sin(a) * rr,
+                    z: zf + ts * rn(0.9, 1.45),
+                    vz: rn(-165, -85), gravity: 130, drag: 0.3,
+                    mode: 'y-locked', sprite: 'flash', tint: F.mid,
+                    ml: rn(380, 640),
+                    w0: rn(2.5, 5), w1: 1.2, h0: rn(16, 34), h1: rn(50, 85),
+                    opacity0: 0.75, opacity1: 0,
+                });
+            }
+        }
+
+        /* family motes: green plus-signs / blue sparks / gold sparkles rise
+           with a gentle sway; violet wisps sink and settle */
+        var nM = 10 + 4 * rank;
+        for (i = 0; i < nM; i++) {
+            a = rn(0, 6.2832); rr = ts * rn(0.08, 0.36);
+            if (up) {
+                _spawn({
+                    x: c.x + Math.cos(a) * rr, y: c.y + Math.sin(a) * rr,
+                    z: zf + rn(2, 20),
+                    vx: rn(-12, 12), vy: rn(-12, 12), vz: rn(65, 130),
+                    gravity: -40, drag: 0.35,
+                    mode: 'billboard', sprite: F.mote,
+                    ml: rn(560, 980),
+                    size0: rn(7, 13) * k, size1: 2,
+                    opacity0: 0.95, opacity1: 0,
+                    wander: { amp: 18, freq: 0.8 },
+                });
+            } else {
+                _spawn({
+                    x: c.x + Math.cos(a) * rr, y: c.y + Math.sin(a) * rr,
+                    z: zf + ts * rn(0.7, 1.3),
+                    vx: rn(-10, 10), vy: rn(-10, 10), vz: rn(-70, -25),
+                    gravity: 60, drag: 0.4,
+                    mode: 'billboard', sprite: F.mote, tint: F.hi,
+                    ml: rn(520, 900),
+                    size0: rn(8, 15) * k, size1: rn(16, 26),
+                    opacity0: 0.7, opacity1: 0,
+                    wander: { amp: 14, freq: 0.7 },
+                });
+            }
+        }
+
+        /* the rising light aura — two soft vertical glow shafts breathing up
+           the body (cheap: pooled y-locked planes, no shader) */
+        if (up) {
+            for (i = 0; i < 2; i++) {
+                (function (idx) {
+                    var go = function () {
+                        if (_suppressed() || !_canSpawn()) return;
+                        _spawn({
+                            x: c.x, y: c.y, z: zf + 4,
+                            vz: 26, drag: 0.2,
+                            mode: 'y-locked', sprite: F.shaft,
+                            tint: family === 'buff' ? F.mid : null,
+                            ml: 720,
+                            w0: ts * 0.5, w1: ts * 0.34,
+                            h0: ts * 0.85, h1: ts * 1.35,
+                            opacity0: 0.26, opacity1: 0,
+                        });
+                    };
+                    if (idx === 0) go(); else window.setTimeout(go, idx * 120);
+                })(i);
+            }
+        } else {
+            /* debuff: a dim violet shroud pressing DOWN instead */
+            _spawn({
+                x: c.x, y: c.y, z: zf + ts * 0.9,
+                vz: -30, drag: 0.2,
+                mode: 'y-locked', sprite: 'void-mist', tint: F.mid,
+                ml: 700,
+                w0: ts * 0.55, w1: ts * 0.7,
+                h0: ts * 0.9, h1: ts * 0.6,
+                opacity0: 0.3, opacity1: 0,
+            });
+        }
+
+        /* buffs crown with a lifting halo; big heals plant a light pillar */
+        if (family === 'buff' && rank >= 1) {
+            window.setTimeout(function () {
+                if (_suppressed() || !_canSpawn()) return;
+                _spawn({
+                    x: c.x, y: c.y, z: zf + ts * 0.75,
+                    vz: 40, drag: 0.4,
+                    mode: 'billboard', sprite: 'halo-ring',
+                    ml: 620, size0: ts * 0.4, size1: ts * 0.8,
+                    opacity0: 0.75, opacity1: 0,
+                });
+            }, 300);
+        }
+        if ((family === 'heal' || family === 'mana') && rank >= 2) {
+            try {
+                _sigLightPillar3D(tx, ty, {
+                    color: F.mid, coreColor: 0xeafff2,
+                    height: ts * (2.6 + 0.6 * rank), radius: ts * 0.28,
+                    ms: 780
+                });
+            } catch (e) {}
+        }
+    }
+
+    /* the burst beat, support edition — colour-true and impact-free */
+    function _stageSupportBurst(spellId, params, info) {
+        var tx = params.tx, ty = params.ty;
+        if (tx == null || ty == null) return;
+        var T = info.tier, P = info.palette;
+        var rank = _TIER_ORDER[info.weight] || 0;
+        var p = _post();
+        /* a soft colour-true kiss on the big ones — support never slams white */
+        if (rank >= 1) {
+            try { _sigScreenFlash(P.flash, 150, Math.min(0.14, T.flashPeak * 0.55)); } catch (e) {}
+        }
+        try { _sigSupportAura3D(tx, ty, P.support, { rank: rank }); } catch (e) {}
+        if (p && p.bloomPulse) p.bloomPulse(Math.min(0.4, T.bloom * 0.65), 300);
+        _stageGrade(spellId, 'burst', params, info);
+        /* no shock ring, no expanding orb, no rush lines, no shake —
+           a blessing (or a hex) is not an impact */
+    }
+
     /* ── BEAT 2: BURST (target tile) ─────────────────────────────────────
        The frame the hit registers. Flash → rush lines → shock ring →
        slash/sparks → bloom kick → shake. Everything here is ONE frame's
@@ -20048,6 +20358,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (tx == null || ty == null) return;
         var info = stageInfo(spellId);
         var T = info.tier, P = info.palette;
+        /* support families exit to their own grammar — see the block above */
+        if (P.support) { _stageSupportBurst(spellId, params, info); return; }
         var cfg2 = _cfg(), ts = cfg2.tileSize || 128;
         var p = _post();
 
@@ -21885,6 +22197,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigAuroraCurtain3D: _sigAuroraCurtain3D,
         sigSpiralBeam3D: _sigSpiralBeam3D,
         sigRegenPulse3D: _sigRegenPulse3D,
+        sigSupportAura3D: _sigSupportAura3D,
+        sigStatRings3D: _sigStatRings3D,
 
         /* prismatic / psychedelic kit (2026-07-25) — general-purpose, see the
            catalogue block above their definitions */
