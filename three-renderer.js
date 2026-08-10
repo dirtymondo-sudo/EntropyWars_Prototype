@@ -17254,7 +17254,10 @@ const ThreeRenderer = (function () {
             fontSize = Math.round(fontSize * (mag < 20 ? 0.78 : mag < 45 ? 0.88 : mag < 80 ? 0.96 : 1));
         }
         // Gothic / serif face (loaded in index.html) for that JRPG damage-number look.
-        var fontFamily = "'Cormorant SC', Georgia, 'Times New Roman', serif";
+        /* Cinzel is BANNED for words everywhere else in the game (2026-08-10)
+           but this is the damage-number face — numbers are exactly where its
+           carved-capital look works. Keep it HERE and nowhere word-shaped. */
+        var fontFamily = "'Cinzel', Georgia, 'Times New Roman', serif";
         var fontWeight = isNumber ? '900' : '700';
         var letterSpacing = isNumber ? 0 : Math.max(1, Math.round(fontSize * 0.06));
         var fontStr = fontWeight + ' ' + fontSize + 'px ' + fontFamily;
@@ -19162,7 +19165,7 @@ const ThreeRenderer = (function () {
         fill.addColorStop(0, 'rgba(255,240,200,0.98)');
         fill.addColorStop(0.55, 'rgba(255,220,150,0.95)');
         fill.addColorStop(1, 'rgba(222,168,92,0.92)');
-        ctx.font = '150px "Cormorant SC", "Times New Roman", serif';
+        ctx.font = '150px "Cinzel", "Times New Roman", serif';   /* single glyph, not words — Cinzel OK here */
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.shadowColor = 'rgba(255,215,130,0.9)'; ctx.shadowBlur = 26;
         ctx.fillStyle = fill;
