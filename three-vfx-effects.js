@@ -8454,10 +8454,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
-    /* ── TILING FBM NOISE (2026-08-04) ───────────────────────────────────
+    /* ── TILING FBM NOISE (2026-08-04, rebuilt 2026-08-10) ───────────────
        One 256px seamless value-noise texture, drawn once, shared by every
-       energy-shell shader. Octaves at power-of-two ratios (1/2/4) per the
-       Diablo/JangaFX playbook — arbitrary ratios cause visible phasing. */
+       energy-shell shader. Octaves at power-of-two ratios per the
+       Diablo/JangaFX playbook — arbitrary ratios cause visible phasing.
+       v2: the original based out at 32 cells across the texture (8px
+       features) — pure high-frequency speckle, which the shaders' erosion
+       threshold then punched into hard-edged pinholes: the infamous
+       "soap bubble / swiss cheese" read on orbs and light pillars. The
+       base octave is now 4 cells (big billows) with detail octaves at
+       8/16/32 fading out underneath, and the remap keeps contrast without
+       flooring the darks to zero (zero-floored darks = holes). */
     var _sigNoiseTexture = null;
     function _sigNoiseTex() {
         if (_sigNoiseTexture) return _sigNoiseTexture;
@@ -8465,16 +8472,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var rnd = _sigRand(0xF00D);
         var grid = new Float32Array(GRID * GRID);
         for (var gi = 0; gi < grid.length; gi++) grid[gi] = rnd();
-        function sample(x, y, scale) {
-            /* bilinear value noise over a wrapping grid */
-            var gx = (x * scale) % GRID, gy = (y * scale) % GRID;
-            var x0 = Math.floor(gx), y0 = Math.floor(gy);
-            var fx = gx - x0, fy = gy - y0;
+        function sample(u, v, freq, off) {
+            /* bilinear value noise, seamless: cell indices wrap at freq,
+               `off` decorrelates octaves by shifting into the shared grid */
+            var gx = u * freq, gy = v * freq;
+            var x0 = Math.floor(gx) % freq, y0 = Math.floor(gy) % freq;
+            var fx = gx - Math.floor(gx), fy = gy - Math.floor(gy);
             fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
-            var x1 = (x0 + 1) % GRID, y1 = (y0 + 1) % GRID;
-            var a = grid[y0 * GRID + x0], b = grid[y0 * GRID + x1];
-            var c = grid[y1 * GRID + x0], d = grid[y1 * GRID + x1];
-            return a + (b - a) * fx + (c + (d - c) * fx - (a + (b - a) * fx)) * fy;
+            var x1 = (x0 + 1) % freq, y1 = (y0 + 1) % freq;
+            var r0 = ((y0 + off) % GRID) * GRID, r1 = ((y1 + off) % GRID) * GRID;
+            var a = grid[r0 + (x0 + off) % GRID], b = grid[r0 + (x1 + off) % GRID];
+            var c = grid[r1 + (x0 + off) % GRID], d = grid[r1 + (x1 + off) % GRID];
+            var ab = a + (b - a) * fx, cd = c + (d - c) * fx;
+            return ab + (cd - ab) * fy;
         }
         var cvs = document.createElement('canvas');
         cvs.width = cvs.height = S;
@@ -8483,12 +8493,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var py = 0; py < S; py++) {
             for (var px = 0; px < S; px++) {
                 var u = px / S, v = py / S;
-                var n = sample(u * GRID, v * GRID, 1) * 0.5
-                      + sample(u * GRID, v * GRID, 2) * 0.3
-                      + sample(u * GRID, v * GRID, 4) * 0.2;
-                /* remap around the mids — multiplying raw noise "eats the
-                   action" in the darks (JangaFX) */
-                n = Math.max(0, Math.min(1, (n - 0.22) * 1.55));
+                var n = sample(u, v, 4, 0) * 0.44
+                      + sample(u, v, 8, 5) * 0.28
+                      + sample(u, v, 16, 11) * 0.17
+                      + sample(u, v, 32, 19) * 0.11;
+                /* contrast around the mids only — clamping the darks flat
+                   to 0 is exactly what cut holes across every shell */
+                n = Math.max(0, Math.min(1, (n - 0.5) * 1.7 + 0.5));
                 var b8 = Math.round(n * 255);
                 var idx = (py * S + px) * 4;
                 img.data[idx] = b8; img.data[idx + 1] = b8;
@@ -8553,7 +8564,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 '  float n1 = texture2D(uNoise, vUv * vec2(uScale1, uScale1) + uTime * uScroll1).r;',
                 '  float n2 = texture2D(uNoise, vUv * vec2(uScale2, uScale2) + uTime * uScroll2).r;',
                 '  float n = clamp(n1 * n2 * 2.0, 0.0, 1.0);',
-                '  float a = smoothstep(uErode, uErode + 0.3, n);',
+                /* wide smoothstep window: erosion edges stay feathered —
+                   a tight window makes hard-rimmed holes (swiss cheese) */
+                '  float a = smoothstep(uErode, uErode + 0.45, n);',
                 /* end-fades along V so shells never end in a hard rim */
                 '  a *= smoothstep(0.0, uVFadeLo, vUv.y) * (1.0 - smoothstep(uVFadeHi, 1.0, vUv.y));',
                 '  vec3 col = mix(uColor, uHot, pow(n, 2.2));',
@@ -9027,8 +9040,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var erode = t > 0.6 ? (t - 0.6) / 0.4 * 0.85 : 0;
             _sigEnergyTick(matOuter, el, erode);
             _sigEnergyTick(matAura, el, erode * 0.9);
-            matOuter.uniforms.uOpacity.value = 0.85 * grow;
-            matAura.uniforms.uOpacity.value = 0.35 * grow;
+            matOuter.uniforms.uOpacity.value = 0.85 * grow * fade;
+            matAura.uniforms.uOpacity.value = 0.35 * grow * fade;
             matCore.opacity = 0.5 * grow * fade;
             flareMat.opacity = 0.85 * grow * fade;
             var fs = r * (2.4 + 0.5 * Math.sin(el * 0.017)) * grow;
@@ -9354,7 +9367,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 '  float n1 = texture2D(uNoise, vUv * vec2(uScale1 * 2.0, uScale1) + uTime * uScroll1).r;',
                 '  float n2 = texture2D(uNoise, vUv * vec2(uScale2 * 2.0, uScale2) + uTime * uScroll2).r;',
                 '  float n = clamp(n1 * n2 * 2.0, 0.0, 1.0) * uSwirl;',
-                '  float body = smoothstep(uErode, uErode + 0.3, n);',
+                /* wide feathered erosion window — see _sigEnergyMat */
+                '  float body = smoothstep(uErode, uErode + 0.45, n);',
                 '  float ndv = abs(dot(normalize(vN), normalize(vV)));',
                 '  float rim = pow(1.0 - ndv, uRimPow);',
                 /* rim breaks up as the noise erodes so death is a dissolve,
@@ -9525,7 +9539,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             } else {
                 var e2 = _sigEaseOutCubic(t);
                 r = rSmall + (rBig - rSmall) * e2;
-                fade = 1 - t * t * 0.7;
+                /* soft-eroded shells leave residual — force a clean zero at
+                   the end so the dissolve never pops off mid-opacity */
+                fade = (1 - t * t * 0.7) * (t > 0.8 ? 1 - (t - 0.8) / 0.2 : 1);
                 /* death is an erosion dissolve, not a uniform fade */
                 _sigEnergyTick(shellMat, el, 0.05 + 0.8 * t * t);
                 coreMat.opacity = peak * (t < 0.05 ? t / 0.05 : 1 - _sigEaseInCubic(t) * 0.9);
@@ -19892,18 +19908,29 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var cfg2 = _cfg(), ts = cfg2.tileSize || 128;
         var holdMs = params.holdMs || 700;
 
-        try {
-            _sigMagicOrb3D(tx, ty, {
-                color: P.orb,
-                r0: ts * 0.10 * T.orbScale,
-                r1: ts * 0.52 * T.orbScale,
-                ms: Math.max(260, holdMs * 0.85),
-                rise: ts * 0.30,
-                height: ts * 0.50
-            });
-        } catch (e) {}
+        /* Physical casts don't conjure. A sword arm, a grab or a leap that
+           charges the same glowing magic orb as a fireball is why every
+           ability read identically — muscle-powered spells keep the motes/
+           dust/aura language and skip the orb + glyph entirely. */
+        var _wDef = _spellDefFor(spellId);
+        var _isKineticFam = P.slash || P.groundRush || P.heavyLand;
+        var _physCast = _isKineticFam || _isGunSpell(spellId)
+            || (_wDef && _wDef.damageType === 'physical');
 
-        if (P.glyph && T.glyph) {
+        if (!_physCast) {
+            try {
+                _sigMagicOrb3D(tx, ty, {
+                    color: P.orb,
+                    r0: ts * 0.10 * T.orbScale,
+                    r1: ts * 0.52 * T.orbScale,
+                    ms: Math.max(260, holdMs * 0.85),
+                    rise: ts * 0.30,
+                    height: ts * 0.50
+                });
+            } catch (e) {}
+        }
+
+        if (P.glyph && T.glyph && !_physCast) {
             try {
                 _sigMagicCircle3D(tx, ty, {
                     radiusPx: ts * (0.85 + 0.30 * T.orbScale),
@@ -19980,26 +20007,32 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            only (kinetic dashes/grabs/sky-drops keep their clean read),
            never on self-casts. Rides the relayed windup beat, so the
            guest gets it for free; params.tx/ty are already fog anchors. */
-        var _isKineticFam = P.slash || P.groundRush || P.heavyLand;
         /* support families (heal/mana/buff/debuff) skip the imploding orb —
            an ally about to be blessed must never look like a target locked
-           for a hit; their payoff is the support burst on arrival */
-        if (!_isKineticFam && !P.support && _rank >= 1 && !_isGunSpell(spellId)
+           for a hit; their payoff is the support burst on arrival.
+           2026-08-10: the imploding orb is now HEAVY+ magic only — on every
+           standard cast it made all spells open identically. Standard casts
+           keep the contracting ground ring (informative, quiet). Delayed
+           marks (params.mark) never orb: nothing is hitting yet. */
+        if (!_physCast && !P.support && _rank >= 1
             && params.tx != null && params.ty != null
             && !(params.tx === tx && params.ty === ty)) {
             var _teleMs = Math.max(260, Math.min(620, holdMs * 0.45));
             var _teleAt = Math.max(80, holdMs - _teleMs);
             var _ttx = params.tx, _tty = params.ty;
             var _teleRing = P.ring, _teleOrb = P.orb, _teleScale = T.orbScale;
+            var _teleOrbOK = _rank >= 2 && !params.mark;
             window.setTimeout(function () {
                 if (_suppressed() || !_canSpawn()) return;
-                try {
-                    _sigOrbBurst3D(_ttx, _tty, {
-                        mode: 'in', color: _teleOrb, ms: _teleMs,
-                        r1: ts * (0.65 + 0.3 * _teleScale),
-                        r0: ts * 0.1, opacity: 0.55
-                    });
-                } catch (e) {}
+                if (_teleOrbOK) {
+                    try {
+                        _sigOrbBurst3D(_ttx, _tty, {
+                            mode: 'in', color: _teleOrb, ms: _teleMs,
+                            r1: ts * (0.65 + 0.3 * _teleScale),
+                            r0: ts * 0.1, opacity: 0.55
+                        });
+                    } catch (e) {}
+                }
                 var tc = tilePx(_ttx, _tty);
                 _spawn({
                     x: tc.x, y: tc.y, z: tileZ(_ttx, _tty) + 2,
@@ -20362,6 +20395,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (P.support) { _stageSupportBurst(spellId, params, info); return; }
         var cfg2 = _cfg(), ts = cfg2.tileSize || 128;
         var p = _post();
+        /* physical hits land with impact language (flash, ring, sparks,
+           slashes, speed burst) — never the magic orb shell */
+        var _bDef = _spellDefFor(spellId);
+        var _physHit = P.slash || P.groundRush || P.heavyLand || _isGunSpell(spellId)
+            || (_bDef && _bDef.damageType === 'physical');
 
         /* full-viewport kiss of light — small on pokes, a real hit on ults */
         try { _sigScreenFlash(P.flash, T.flashPeak > 0.3 ? 190 : 130, T.flashPeak); } catch (e) {}
@@ -20414,16 +20452,27 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             } catch (e) {}
 
             /* the EXPANDING ORB — a translucent sphere shell blooming out of
-               the victim on magical hits (the beat every PS1 summon ends
-               on). Kinetic families keep their slash-led read instead. */
+               the victim (the beat every PS1 summon ends on). 2026-08-10:
+               HEAVY+ MAGIC ONLY. It used to fire on every standard-weight
+               spell of every family, which made every hit in the game read
+               identically; now it's the signature of a BIG magical hit.
+               Physical hits take a hard anime speed-burst frame instead. */
             var _bRank = _TIER_ORDER[info.weight] || 0;
-            if (!P.slash && !P.heavyLand && _bRank >= 1) {
+            if (!_physHit && _bRank >= 2) {
                 try {
                     _sigOrbBurst3D(tx, ty, {
                         mode: 'out', color: P.orb,
                         r0: ts * 0.12, r1: ts * (0.75 + 0.5 * T.ringScale),
                         ms: 380 + 90 * _bRank,
                         opacity: P.gentle ? 0.5 : 0.7
+                    });
+                } catch (e) {}
+            }
+            if (_physHit && _bRank >= 1) {
+                try {
+                    _sigSpeedBurst3D(tx, ty, {
+                        color: P.ring, ms: 240,
+                        size: ts * (1.1 + 0.4 * T.ringScale)
                     });
                 } catch (e) {}
             }

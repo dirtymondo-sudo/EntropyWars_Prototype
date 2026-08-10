@@ -5109,9 +5109,17 @@
             _stageLive.set(seq, rec);
             _stageByUnit.set(unit.id, seq);
 
+            // 'delayed' (artillery marks) does NOT hit at cast — the payload
+            // lands rounds later via processDelayedSpellDetonations, which
+            // owns the real blast (descent VFX / sonic boom + explosion SFX).
+            // Cast-time staging is therefore windup + tile mark ONLY: no
+            // impact burst, no finish. The mark flag rides the relayed
+            // windup beat so the guest renders the same telegraph (RULE #2).
+            const _marksOnly = spell.kind === 'delayed';
+
             _fireStageBeat('windup', spell, {
                 sx: unit.x, sy: unit.y, tx: stx, ty: sty,
-                holdMs: Math.max(240, impactMs)
+                holdMs: Math.max(240, impactMs), mark: _marksOnly
             });
 
             const burst = () => {
@@ -5125,7 +5133,17 @@
                 }, actionMs(520)));
             };
             rec.burst = burst;
-            rec.timers.push(window.setTimeout(burst, impactMs));
+            if (_marksOnly) {
+                // No burst will ever fire for a mark — arm rec.fired so a
+                // stray retime can't resurrect it, and just clean up.
+                rec.fired = true;
+                rec.timers.push(window.setTimeout(() => {
+                    _stageLive.delete(seq);
+                    if (_stageByUnit.get(unit.id) === seq) _stageByUnit.delete(unit.id);
+                }, impactMs));
+            } else {
+                rec.timers.push(window.setTimeout(burst, impactMs));
+            }
 
             /* ── TIMELINE CUES (Spell Lab, 2026-08-02) ──────────────────────
                Authored per-spell audio/visual cues: `sfxCues` and `vfxCues`
