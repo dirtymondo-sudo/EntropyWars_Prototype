@@ -49,8 +49,14 @@
         /* Real status effects: gates the end-of-round onRoundEnd dispatcher and
            the nameplate status badges. 'regen' was defined with a heal tick but
            missing here, so it never actually ticked (dead code bug — fixed);
-           'charm' is hard CC (blockMove) and belongs on the nameplate. */
-        const _STATUS_EFFECT_IDS = new Set(['burn','poison','silence','stun','stagger','marked','lasered','jammed','drowning','protect','regen','charm',
+           'charm' is hard CC (blockMove) and belongs on the nameplate.
+           2026-08-10 status pass: 'lasered' dropped (the on-screen laser beam
+           IS the indicator — and the status was never even applied); 'root'
+           and 'contract' added — real conditions that were missing their
+           nameplate badge. Pure stat changes (Discord, Overclock, Pixie Dust,
+           Jack of All, Empowered/Weakened) never belong in this set — they
+           read through the stat-change chips. */
+        const _STATUS_EFFECT_IDS = new Set(['burn','poison','silence','stun','root','stagger','marked','jammed','drowning','protect','regen','charm','contract',
             // 2026-07-17 spell/status pass: taunt (Provoke), minimize (Shrink
             // Ray), statLock (Fermata), hexed (Hex of Toil).
             'taunt','minimize','statLock','hexed',
@@ -609,11 +615,19 @@
                 if (u.dead || u._dying) continue;
                 if (unitFinished(u)) continue;
                 if (u._skippedTurn) continue;
-                // 🧊 Frozen units lose their whole activation — the ice keeps
-                // them out of the rotation until it melts or is thawed.
+                // 🧊/⚡ Hard CC skips the whole activation — frozen units stay
+                // iced out of the rotation until thawed, and a stunned unit
+                // (2026-08-10: stun is blockMove + blockAction now, the real
+                // "lose a turn" — Rooted is the move-only lockdown) sits out
+                // the one activation its stun covers.
                 if (u.status && (u.status.frozen | 0) > 0) {
                     u._skippedTurn = true;
                     if (typeof addLog === 'function') addLog(`🧊 ${unitDisplayName(u)} is frozen solid — turn skipped!`);
+                    continue;
+                }
+                if (u.status && (u.status.stun | 0) > 0) {
+                    u._skippedTurn = true;
+                    if (typeof addLog === 'function') addLog(`⚡ ${unitDisplayName(u)} is stunned — turn skipped!`);
                     continue;
                 }
                 _blitzTurnIndex = i;
@@ -947,7 +961,6 @@
             // of sight (move out of awareness / into smoke) and the shot is lost.
             if (ds.markedUnitId) {
                 const mark = state.units.find(u => u.id === ds.markedUnitId);
-                if (mark && typeof clearStatus === 'function') clearStatus(mark, 'lasered');
                 if (!mark || mark.dead) {
                     addLog(`🔴 ${ds.spellName}: the target is already down — the shot is wasted.`);
                     return;
@@ -3313,7 +3326,6 @@
                 freeze: 0.84,
                 frozen: 0.84,
                 blind: 0.9,
-                sirenSong: 0.8,
                 stagger: 0.9,
                 slow: 0.9,
                 root: 0.86,

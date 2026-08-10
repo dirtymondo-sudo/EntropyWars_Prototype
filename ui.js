@@ -3761,7 +3761,8 @@
             lava_burn: { bg: '#d35400', color: '#fff' },
             protect:   { bg: '#3498db', color: '#fff' },
             charm:     { bg: '#e84393', color: '#fff' },
-            sirenSong: { bg: '#6c5ce7', color: '#fff' }
+            root:      { bg: '#d4b45a', color: '#1a1a1a' },
+            contract:  { bg: '#d45a5a', color: '#fff' }
         };
 
         function _buildBatSwarmHtml(unit) {
@@ -4081,7 +4082,7 @@
                 <div class="mini-vital"><span class="mini-lbl">HP</span><div class="mini-track"><div class="mini-fill-hp${u.player === getViewerPlayer() ? '' : ' enemy'}" style="width:${hpPct}%"></div></div><span class="mini-num">${u.hp}/${u.maxHp}</span></div>
                 <div class="mini-vital"><span class="mini-lbl mp">MP</span><div class="mini-track"><div class="mini-fill-mp" style="width:${mpPct}%"></div></div><span class="mini-num">${u.mp}/${u.maxMp}</span></div>
                 ${u.hourglasses ? `<div class="roster-stats"><span>⏳${u.hourglasses}</span></div>` : ''}
-                ${getActiveStatusKeys(u).length > 0 ? `<div class="type-badges-block" style="margin-top:2px">${getActiveStatusKeys(u).map(k => { const m = STATUS_DEFS[k]; return m ? `<span style="font-size:8px;background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px;color:var(--muted)">${m.icon || '•'} ${m.short || k}</span>` : ''; }).join('')}</div>` : ''}
+                ${getActiveStatusKeys(u).length > 0 ? `<div class="type-badges-block" style="margin-top:2px">${getActiveStatusKeys(u).map(k => { const m = STATUS_DEFS[k]; return (m && !m.statChange) ? `<span style="font-size:8px;background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px;color:var(--muted)">${m.icon || '•'} ${m.short || k}</span>` : ''; }).join('')}</div>` : ''}
                 ${rosterItemsHtml(u)}
               </div>
               ${actionHtml}
@@ -6481,7 +6482,10 @@
             ];
             let html = '<div class="pause-status-lib" style="max-height:52vh;overflow-y:auto;text-align:left;padding-right:6px;">';
             for (const g of groups) {
-                const rows = Object.entries(STATUS_DEFS).filter(([id, d]) => d && g.match(d) && descs[id]);
+                // statChange carriers are stat changes, not status effects —
+                // they never list here (belt and braces on top of the missing
+                // STATUS_LIBRARY_DESCS entry).
+                const rows = Object.entries(STATUS_DEFS).filter(([id, d]) => d && !d.statChange && g.match(d) && descs[id]);
                 if (!rows.length) continue;
                 html += `<div style="font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:11px;opacity:.65;margin:10px 2px 6px;">${g.title}</div>`;
                 for (const [id, d] of rows) {
@@ -10807,7 +10811,9 @@
                     offMult *= getRangeDamageMult(caster, target);
                 }
                 if (spell.bonusVsStatus && spell.bonusVsStatus.status
-                    && unitHasStatus(target, spell.bonusVsStatus.status)) {
+                    && (typeof bonusStatusMatches === 'function'
+                        ? bonusStatusMatches(target, spell.bonusVsStatus.status)
+                        : unitHasStatus(target, spell.bonusVsStatus.status))) {
                     offMult *= spell.bonusVsStatus.mult || 1.5;
                 }
                 offMult = Math.min(offMult, typeof MAX_OFFENSIVE_MULT !== 'undefined' ? MAX_OFFENSIVE_MULT : 3);

@@ -2521,7 +2521,7 @@
             return isCaster ? 70 + dur * 10 : 8;
         }
 
-        if (id === 'sleep' || id === 'freeze' || id === 'charm' || id === 'sirenSong') {
+        if (id === 'sleep' || id === 'freeze' || id === 'charm') {
             const hasActed = (target.ap || 0) === 0;
             return hasActed ? 12 : 55 + dur * 15;
         }

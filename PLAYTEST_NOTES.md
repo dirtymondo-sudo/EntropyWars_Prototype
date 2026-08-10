@@ -8522,3 +8522,81 @@ styles-hud.css `.slb-tl-*`). Everything below survives export→bake unchanged
 - Parity notes: all four ride EXISTING online wrappers (camera-events /
   dash-cam-follow / support-cine / displace-anim / VFX3D.fire), so guests
   replay everything except tethers (never relayed — pre-existing gap).
+
+## 2026-08-10 — STATUS EFFECT PASS ("a stat change is not a status effect")
+Design rule locked in this pass: **a badge/library entry is only for real
+status effects** (DoT, CC, unique mechanics). Anything whose whole story is
+"a stat goes up/down" reads through the existing stat-change chips
+(+1 ATK / MOV+2 / …) instead. Implemented via `statChange: true` on the
+STATUS_DEFS entry — such carriers keep working internally (durations,
+moveDelta/rangeDelta/stageMod, resist rolls) but are filtered out of the
+pause-menu Status Library (ui.js), unit-panel status entries
+(battle.js getStatusEntries), the mini roster badges (ui.js), and were never
+in `_STATUS_EFFECT_IDS` (nameplate badges / Horologe chips).
+- statChange carriers: `discord` (also LOST its hidden +10 MP spell-cost tax
+  — getStatusMpCostDelta plumbing remains but nothing sets mpCostDelta now),
+  `overclock`, `pixieDust`, `jackOfAll`, `statUp`, `statDown`. All the
+  "Applies Discord/Overclock/Jack of All" spell descs were rewritten to say
+  what the stats actually do, and the codex auto-desc generator
+  (`_dscStatChange` in data.js) now renders statChange appliers as stat text.
+- DELETED statuses: `lasered` (was never even applied — the delayed-shot
+  system uses `state._delayedSpells` + the 3D laser beam; badge was pure
+  noise) and `sirenSong` (see below).
+- **Siren Song** (mermaid raceSirenSong) is now a hook: `kind:'pull'`,
+  pullDistance 3, `pullThroughHazards` (sirens lure you onto the rocks),
+  `groundsFlyers`. The end-of-round "lured 1 tile" block in battle.js and
+  every sirenSong reference (immunity passives, resist table, AI hard-CC
+  sets, color maps) are gone.
+- **Contract FIXED** (was backwards): it now heals the contract-holder for
+  40% of damage the CONTRACTED unit DEALS (applyDamageToUnit, keyed off
+  `opts.sourceUnit` having the status + `_contractCasterId`). Previously it
+  healed when the contracted unit TOOK damage. DoT ticks never proc (no
+  sourceUnit). `contract` and `root` were also added to `_STATUS_EFFECT_IDS`
+  + badge color maps — real conditions that never showed a badge before.
+- **Stun vs Rooted differentiated**: stun = hard CC (`blockMove` +
+  `blockAction`, and getNextBlitzUnit in state.js now skips a stunned unit's
+  whole activation, mirroring frozen — all stun appliers are duration 1 =
+  "lose one turn"). Rooted stays move-only (can still attack/cast; flyers
+  yanked to the ground). doAttack/doSpell blockAction messages are now
+  status-aware (say "stunned" vs "frozen solid").
+- `bonusVsStatus` upgrades: new global `bonusStatusMatches(target, id)`
+  (battle.js, also used by ui.js intent preview) — `'statDown'` matches the
+  Weakened carrier OR any negative stat stage. Exorcism switched from
+  vs-discord to vs-statDown. FIXED: Haymaker's bonus was
+  `status:'rooted'` (id is `root`) — it never fired.
+- Census after the pass (unique class spells + race abilities = 445):
+  **157 apply a real status effect, 9 deal bonus damage vs a status
+  (1 overlap → 165 total status-interacting spells)**; 19 more apply only
+  stat-change carriers. Per-status applier counts: stagger 37, slow 26,
+  burn 19, poison 13, stun 10, invisible 10, protect 7, marked 7, root 6,
+  silence 6, jammed 5, regen 2, frozen 2, taunt/charm/hexed/contract/
+  indomitable/minimize/scanner 1 each.
+
+### 2026-08-10 addendum — STATUS COMBO WEB (same delivery)
+Design rule: every kit's basic combo is "apply your status → hit it with your
+finisher". Implemented across the whole roster:
+- `bonusVsStatus` is now UNIFORM ×1.5 (Frozen Punch was ×2 — normalized) and
+  `status` accepts a LIST (any match triggers): Exorcism is the anti-curse
+  finisher, `['contract','hexed']` — per design, NOT statDown/Weakened.
+  Engine: `bonusStatusMatches` (battle.js) handles arrays; the combat-log
+  callout and codex auto-desc render lists.
+- 71 finisher spells now carry bonusVsStatus (was 9), every one keyed to a
+  status its own kit (or its shared applier) can apply — e.g. demon Contract →
+  Devour Soul; succubus Charm → Draining Embrace; dreameater sleep-stun →
+  Dream Siphon; pirate Anchor root → Land Ho; annunaki Gravity Well slow →
+  Star Decree; cowboy Lasso stagger → High Noon; Engineer EMP → Railgun;
+  Black Mage burn → Meteor; Harbinger Lullaby → Requiem. Finisher targets:
+  stagger 18, slow 11, stun 8, poison 8, burn 6, jammed 6, hexed 5, root 4,
+  contract 2, silence 2, charm 1, frozen 1. No finisher is a SHARED_ spell.
+- STAGGER TRIM: 37 appliers → 19. The rider came OFF generic charges/filler
+  (Bull Rush, Quick Draw, Robo Punch, Brutal Slam, Dragon Fist, Feral Dive,
+  Avalanche Strike, Sneak Slash, Colossal Crush, Sasquatch Smash, Stone Drop,
+  Titan Drop, Cliff Charge, Nightmare Pulse, Spike the Ball, Primal Smash,
+  boulder hurls, Taser Bolt, Hydraulic Crush) — descs updated. It stays only
+  on each kit's designated setup (Tremor Stomp, Stonefall, Lasso, Blitz,
+  Flashbang Mine, Cataclysm Stomp, Quake, Ram Charge, Unstoppable Charge,
+  Gore Charge, Apex Charge, Titan Step, Demonic Roar, Neural Hack, Boo,
+  Cosmic Slam, Yellow Thunder, sharedFissure) — most of which now feed that
+  kit's stagger finisher.
+- Census: 139 spells apply a real status, 71 punish one → 199 of 445 total
+  spells interact with the status system.

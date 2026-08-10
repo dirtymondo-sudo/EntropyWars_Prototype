@@ -2345,8 +2345,9 @@ function _HrlgRmbIcon() {
    'unit:damaged' RenderBus events force immediately). */
 const _HRLG_SB_COLORS = {
   burn:'#c0392b',poison:'#9b59b6',silence:'#7f8c8d',stun:'#f39c12',
-  stagger:'#e67e22',marked:'#e74c6f',lasered:'#ff2b2b',jammed:'#8e44ad',drowning:'#2980b9',
-  lava_burn:'#d35400',protect:'#3498db',charm:'#e84393',sirenSong:'#6c5ce7',
+  stagger:'#e67e22',marked:'#e74c6f',jammed:'#8e44ad',drowning:'#2980b9',
+  lava_burn:'#d35400',protect:'#3498db',charm:'#e84393',
+  root:'#d4b45a',contract:'#d45a5a',
   invisible:'#1a7a4a',regen:'#2ecc71',
   taunt:'#ff8a50',minimize:'#5ab0d4',statLock:'#a88ae0',hexed:'#b06ad3',
   frozen:'#7fd7ff',blind:'#9aa8b5'

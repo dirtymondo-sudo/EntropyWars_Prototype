@@ -5673,6 +5673,15 @@
             return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.moveDelta || 0), 0);
         }
 
+        /* bonusVsStatus matcher (2026-08-10): `status` may be one id or a
+           small list (e.g. Exorcism vs ['contract','hexed']) — any match
+           triggers the bonus. Shared with the intent preview in ui.js. */
+        function bonusStatusMatches(target, statusId) {
+            if (!target || !statusId) return false;
+            if (Array.isArray(statusId)) return statusId.some(id => bonusStatusMatches(target, id));
+            return unitHasStatus(target, statusId);
+        }
+
         function getStatusMpCostDelta(unit) {
             return getActiveStatusKeys(unit).reduce((sum, key) => sum + (STATUS_DEFS[key]?.mpCostDelta || 0), 0);
         }
@@ -5694,6 +5703,10 @@
             for (const key of getActiveStatusKeys(unit)) {
                 if (_STATUS_EFFECT_IDS.has(key)) continue;
                 const meta = STATUS_DEFS[key];
+                // statChange carriers (Discord, Overclock, Pixie Dust, Jack of
+                // All, Empowered/Weakened) are stat changes, not statuses —
+                // the stat chips (+1 ATK / MOV+2 / …) are their display.
+                if (meta.statChange) continue;
                 const value = getStatusValue(unit, key);
                 entries.push({
                     key,
@@ -5757,8 +5770,8 @@
                 .replace(/\bStagger(?:ed)?\b/gi, m => iconBadge('stagger', m))
                 .replace(/\bPoison(?:ed)?\b/gi, m => iconBadge('poison', m))
                 .replace(/\bGuard(?:ing)\b/gi, m => iconBadge('guarding', m))
-                .replace(/\bOverclock(?:ed)?\b/gi, m => iconBadge('overclock', m))
-                .replace(/\bDiscord(?:ant)?\b/gi, m => iconBadge('discord', m))
+                // (Overclock/Discord log badges dropped 2026-08-10 — they are
+                // stat changes now, not badge-worthy statuses.)
                 .replace(/\bJammed\b/gi, m => iconBadge('jammed', m))
                 .replace(/\bDrowning\b/gi, m => iconBadge('drowning', m))
                 .replace(/\bProtect(?:ed)?\b/gi, m => iconBadge('protect', m))
@@ -5900,7 +5913,6 @@
                 target.markBonus = Math.max(Number(target.markBonus || 0), Number(payload.bonusDamage || 0));
             }
             /* Track caster for mechanics that need it */
-            if (payload.id === 'sirenSong' && sourceUnit) target._sirenCasterId = sourceUnit.id;
             if (payload.id === 'contract' && sourceUnit) target._contractCasterId = sourceUnit.id;
             // 2026-07-17: taunt needs its challenger (forced targeting), hexed
             // its curse-layer (kill credit on hex procs).
@@ -6248,28 +6260,8 @@
                 }
             }
 
-            /* ── Siren Song pull: move afflicted enemies 1 tile toward the caster ── */
-            for (const unit of state.units) {
-                if (unit.dead) continue;
-                if (!unitHasStatus(unit, 'sirenSong')) continue;
-                const casterId = unit._sirenCasterId;
-                const caster = casterId ? state.units.find(u => u.id === casterId && !u.dead) : null;
-                if (!caster) continue;
-                const dx = caster.x - unit.x, dy = caster.y - unit.y;
-                if (dx === 0 && dy === 0) continue;
-                let stepX = 0, stepY = 0;
-                if (Math.abs(dx) >= Math.abs(dy)) stepX = dx > 0 ? 1 : -1;
-                else stepY = dy > 0 ? 1 : -1;
-                const nx = unit.x + stepX, ny = unit.y + stepY;
-                if (isInside(nx, ny) && !unitAt(nx, ny) && canOccupy(nx, ny)) {
-                    const oldX = unit.x, oldY = unit.y;
-                    unit.x = nx; unit.y = ny;
-                    let evt = events.find(e => e.unit === unit);
-                    if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
-                    evt.msgs.push(`<span class="dlg-damage">🎵 Siren Song pulls ${unitDisplayName(unit)} toward ${unitDisplayName(caster)}</span>`);
-                    addLog(`Siren Song pulls ${unitDisplayName(unit)} from ${coordLabel(oldX, oldY)} to ${coordLabel(nx, ny)}.`);
-                }
-            }
+            /* (Siren Song's end-of-round lure was deleted 2026-08-10 — the
+               spell is an honest kind:'pull' hook now, resolved on cast.) */
 
             /* ── Totem aura healing: deployed objects with auraHeal ──
                (healOnTurnStart objects — Federation Beacon — pulse at the start
@@ -18780,10 +18772,13 @@
             // as opts.bonusVsStatus by the spell resolvers.
             const _bvs = opts.bonusVsStatus || null;
             if (_bvs && _bvs.status && finalDamage > 0 && sourceUnit
-                && isEnemyUnit(sourceUnit, target) && unitHasStatus(target, _bvs.status)) {
+                && isEnemyUnit(sourceUnit, target) && bonusStatusMatches(target, _bvs.status)) {
                 const _bvsMult = _bvs.mult || 1.5;
                 _offMult *= _bvsMult;
-                const _bvsName = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[_bvs.status]?.name) || _bvs.status;
+                const _bvsName = [].concat(_bvs.status)
+                    .filter(id => bonusStatusMatches(target, id))
+                    .map(id => (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[id]?.label) || id)
+                    .join(' + ') || String(_bvs.status);
                 if (damageType !== 'dot' && !_skipVisuals()) {
                     showFloatingTextForUnit(target, `⚗ ×${(+_bvsMult.toFixed(2))} COMBO!`, 'mult', { durationMs: 1100 });
                 }
@@ -18976,18 +18971,24 @@
                         }
                     }
                 }
-                /* ── Contract lifesteal: caster heals 40% of damage dealt to contracted target ── */
-                if (unitHasStatus(target, 'contract') && target._contractCasterId) {
-                    const contractor = state.units.find(u => u.id === target._contractCasterId && !u.dead);
-                    if (contractor && contractor.player !== target.player) {
+                /* ── 📜 Contract (fixed 2026-08-10): the contracted unit's own
+                   violence feeds the fiend — every time a CONTRACTED unit
+                   DEALS damage, the contract-holder siphons 40% of it as
+                   healing. (The old code had it backwards: it healed the
+                   caster when the contracted target TOOK damage.) DoT ticks
+                   carry no sourceUnit, so they never proc. */
+                if (sourceUnit && finalDamage > 0
+                    && unitHasStatus(sourceUnit, 'contract') && sourceUnit._contractCasterId) {
+                    const contractor = state.units.find(u => u.id === sourceUnit._contractCasterId && !u.dead);
+                    if (contractor && contractor.id !== sourceUnit.id) {
                         const contractHeal = Math.round(finalDamage * 0.4);
                         if (contractHeal > 0) {
                             const hpBefore = contractor.hp;
                             applyHealingToUnit(contractor, contractHeal, null);
                             const healed = contractor.hp - hpBefore;
                             if (healed > 0) {
-                                addLog(`Contract: ${unitDisplayName(contractor)} drains ${healed} HP from ${unitDisplayName(target)}'s suffering.`);
-                                showFloatingTextForUnit(contractor, `+${healed}`, 'heal');
+                                addLog(`📜 Contract: ${unitDisplayName(sourceUnit)}'s violence feeds ${unitDisplayName(contractor)} for ${healed} HP.`);
+                                showFloatingTextForUnit(contractor, `📜 +${healed}`, 'heal');
                             }
                         }
                     }
@@ -39458,10 +39459,13 @@
                 addLog('That unit already acted this round.');
                 return 0;
             }
-            if (getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockAction)) {
-                addLog(`${unitDisplayName(unit)} is frozen solid and cannot act!`);
-                playErrorSfx();
-                return 0;
+            {
+                const _actBlock = getActiveStatusKeys(unit).find(k => STATUS_DEFS[k]?.blockAction);
+                if (_actBlock) {
+                    addLog(`${unitDisplayName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`);
+                    playErrorSfx();
+                    return 0;
+                }
             }
             // Balance Lab: a basic attack must never be attributed to a spell
             // whose cast fizzled earlier without reaching finishAction.
@@ -43237,10 +43241,13 @@
                 addLog('That unit already acted this round.');
                 return 0;
             }
-            if (getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockAction)) {
-                addLog(`${unitDisplayName(unit)} is frozen solid and cannot act!`);
-                playErrorSfx();
-                return 0;
+            {
+                const _actBlock = getActiveStatusKeys(unit).find(k => STATUS_DEFS[k]?.blockAction);
+                if (_actBlock) {
+                    addLog(`${unitDisplayName(unit)} is ${STATUS_DEFS[_actBlock]?.colorText || 'incapacitated'} and cannot act!`);
+                    playErrorSfx();
+                    return 0;
+                }
             }
             const spell = (unit.spells || []).find(s => s.name === state.selectedTool) || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
             /* Clash final authority: movement/positioning spells can never
@@ -43462,12 +43469,12 @@
                 playErrorSfx();
                 return 0;
             }
-            const discordPenalty = getStatusMpCostDelta(unit);
+            const mpPenalty = getStatusMpCostDelta(unit);
             // Shared formula (earth-sign terraform discount + status deltas) —
             // the same number every menu used to light the row up.
             const effectiveSpellCost = getSpellMpCostFor(unit, spell);
             if (unit.mp < effectiveSpellCost) {
-                addLog(discordPenalty > 0 ? `Not enough MP. Discord increases spell cost by ${discordPenalty}.` : 'Not enough MP.');
+                addLog(mpPenalty > 0 ? `Not enough MP. A status is increasing spell costs by ${mpPenalty}.` : 'Not enough MP.');
                 state._teleportingUnit = null;
                 playErrorSfx();
                 return 0;
