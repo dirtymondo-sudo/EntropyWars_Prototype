@@ -15532,6 +15532,31 @@
                 ? ThreeCamera.getBaseDist() : 800;
             return Math.max(0.15, Math.min(10.0, base / (ts * Math.max(0.5, distTiles))));
         }
+        /* TPS-dialect screen fit: the zoom whose boom frames `tilesTall`
+           world-tiles vertically and `tilesWide` horizontally, from the
+           renderer's REAL FOV + canvas aspect. The cine shots used to cap
+           their "fit both actors" zoom with _cineZoomForTiles, but that
+           helper speaks the 2D dialect (parentH / tiles) while inside the
+           TPS rig zoom means boom = baseDist / zoom — baseDist is the
+           canvas DIAGONAL × 1.2, ~2.4× parentH, so the same number of
+           tiles resolved to a boom ~2× longer than asked. min() always
+           picked that wider cap, which is why close-range casts stopped
+           zooming in at all (a point-blank side shot boomed out to ~8
+           tiles instead of ~3). */
+        function _tpsZoomFitTiles(tilesTall, tilesWide) {
+            const halfFovDeg = (((typeof ThreeCamera !== 'undefined' && ThreeCamera.getFOV)
+                ? ThreeCamera.getFOV() : 45) || 45) / 2;
+            const halfTan = Math.max(0.2, Math.tan(halfFovDeg * Math.PI / 180));
+            const vW = _layoutCache.valid ? _layoutCache.parentW
+                : (boardStageEl?.parentElement?.clientWidth || window.innerWidth);
+            const vH = _layoutCache.valid ? _layoutCache.parentH
+                : (boardStageEl?.parentElement?.clientHeight || window.innerHeight);
+            const aspect = (vW > 0 && vH > 0) ? vW / vH : 16 / 9;
+            const boomTiles = Math.max(
+                (tilesTall || 0) / (2 * halfTan),
+                (tilesWide || 0) / (2 * halfTan * aspect));
+            return _tpsZoomForBoomTiles(Math.max(1.2, boomTiles));
+        }
         function _tpsBoomZoom(lenTiles) {
             const distTiles = Math.min(CINE_TPS_DIST_MAX,
                 CINE_TPS_DIST_TILES + Math.max(0, (lenTiles || 0) - 1) * CINE_TPS_DIST_GROW);
@@ -15823,12 +15848,14 @@
                     _yawSide = Math.abs(_normYaw(_yawA - _curYaw)) <= Math.abs(_normYaw(_yawB - _curYaw))
                         ? _yawA : _yawB;
                     // Fit the pair: boom covers the gap plus headroom, capped
-                    // so the pair's span PLUS any elevation gap between them
-                    // still fits vertically in frame.
+                    // so the pair's span (screen-horizontal in a profile
+                    // shot) PLUS any elevation gap between them (vertical)
+                    // still fits in frame — in TPS boom units, so the cap
+                    // only bites when it genuinely must.
                     const _vGapTiles = Math.abs(tgtPx - casterPx) / ts;
                     _zoomSide = Math.min(
                         _tpsZoomForBoomTiles(len + 2.1),
-                        _cineZoomForTiles(len + _vGapTiles + 2.4, CINE_SIDE_TILT));
+                        _tpsZoomFitTiles(_vGapTiles + 2.4, len + 2.4));
                     _elevSide = (casterPx + tgtPx) / 2 + ts * CINE_FOCAL_RISE * 0.8;
                 }
 
@@ -15919,7 +15946,7 @@
                         const _span = Math.max(_maxX - _minX, _maxY - _minY);
                         const _tiltWide = CINE_HIT_TILT - 8;
                         const _zoomWide = Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
-                            _cineZoomForTiles(_span + 3.0, _tiltWide));
+                            _tpsZoomFitTiles((_span + 3.0) * 0.5, _span + 3.0));
                         const _gPx = (typeof window._camGroundPx === 'function')
                             ? window._camGroundPx(Math.round(_wcx), Math.round(_wcy)) : 0;
                         _cineTpsAnchor({ x: _wcx, y: _wcy }, null);
@@ -15972,7 +15999,7 @@
                     const _pairShot = len <= 4.2;
                     const zoomHit = _pairShot
                         ? Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
-                                   _cineZoomForTiles(len + 2.0, CINE_HIT_TILT))
+                                   _tpsZoomFitTiles(2.6, len + 2.0))
                         : _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES);
                     _cineHardCut({
                         x: _pairShot ? tx - dirx * len * 0.24 : tx,
@@ -16305,7 +16332,7 @@
             // ── BEAT 2 — THE RUN: hard cut behind the charger, chase the lane.
             const chaseZoom = Math.min(
                 _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES + 0.8),
-                _cineZoomForTiles(Math.min(len + 2.5, 7), CINE_HIT_TILT - 4));
+                _tpsZoomFitTiles(3.0, Math.min(len + 2.5, 7)));
             window.setTimeout(() => {
                 if (camera._cineShotId !== sequenceId) return;
                 if (sequenceId !== boardCameraSequenceId) return;
@@ -41063,7 +41090,7 @@
                     const _pairShot = len <= 4.2;
                     const zoomHit = _pairShot
                         ? Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
-                                   _cineZoomForTiles(len + 2.0, CINE_HIT_TILT))
+                                   _tpsZoomFitTiles(2.6, len + 2.0))
                         : _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES);
                     _cineHardCut({
                         x: _pairShot ? target.x - (dx / len) * len * 0.24 : target.x,
