@@ -10582,6 +10582,7 @@ const ThreeRenderer = (function () {
                 want = (entry._ew_sprinting && entry.actions && entry.actions.run)
                     ? 'run' : 'walk';
             else want = 'idle';
+            if (entry._ew_animPaused) return;   // cine freeze (Blue Screen)
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
             entry.mixer.update(dt);
             var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
@@ -25705,6 +25706,145 @@ const ThreeRenderer = (function () {
         },
         isMounted: function () { return !!(_cv && _cv.host && _cv.host.isConnected); },
     };
+
+    /* ═══════════════════════════════════════════════════════════════════
+       SPELL CINEMATICS — renderer half (SPELL_CINEMATICS.md).
+
+       Three primitives the DOM/camera layer in battle.js cannot do on its
+       own: the VOID STAGE (hide the entire world except the named actors and
+       swap the background for a flat palette), the CASTER FADE (dissolve a
+       unit's model through material opacity), and the ANIM PAUSE (freeze one
+       unit's mixer so it tips over like a mannequin — Blue Screen).
+       ═══════════════════════════════════════════════════════════════════ */
+    var _voidStage = null;
+
+    function cineVoidEnter(opts) {
+        if (!active || !scene) return false;
+        if (_voidStage) cineVoidExit();
+        opts = opts || {};
+        var keep = {};
+        (opts.actors || []).forEach(function (id) { keep[id] = true; });
+
+        /* Hide every scene child except the unit group and the lights — the
+           actors still need to be lit, and a hidden light would black them
+           out along with the world. */
+        var hidden = [];
+        for (var i = 0; i < scene.children.length; i++) {
+            var ch = scene.children[i];
+            if (ch === unitGroup || ch.isLight) continue;
+            if (ch.visible) { hidden.push(ch); ch.visible = false; }
+        }
+        /* …and every unit that isn't in the scene. */
+        var hiddenUnits = [];
+        unitEntries.forEach(function (entry, uid) {
+            if (keep[uid] || !entry || !entry.group) return;
+            if (entry.group.visible) { hiddenUnits.push(entry.group); entry.group.visible = false; }
+        });
+
+        var prevBg = scene.background, prevFog = scene.fog;
+        scene.fog = null;
+        scene.background = new THREE.Color(opts.color != null ? opts.color : 0x000000);
+
+        /* A soft radial contact shadow under each actor so they don't float
+           in the void — the one piece of grounding the empty stage needs. */
+        var discs = [];
+        var ts = CONFIG.tileSize || BASE_TILE;
+        (opts.actors || []).forEach(function (uid) {
+            var e = unitEntries.get(uid);
+            if (!e || !e.group) return;
+            var g = new THREE.Mesh(
+                new THREE.CircleGeometry(ts * 0.42, 20),
+                new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true,
+                    opacity: 0.34, depthWrite: false }));
+            g.rotation.x = -Math.PI / 2;
+            g.position.set(e.group.position.x, e.group.position.y + 0.6, e.group.position.z);
+            g.renderOrder = 2;
+            unitGroup.add(g);
+            discs.push(g);
+        });
+
+        /* 'toplight': a single cold key straight down on the actors (the
+           `abyss` palette's execution lighting). */
+        var light = null;
+        if (opts.light === 'toplight' && (opts.actors || []).length) {
+            var e0 = unitEntries.get(opts.actors[0]);
+            if (e0 && e0.group) {
+                light = new THREE.PointLight(0xbfd8ff, 2.6, ts * 14, 2);
+                light.position.set(e0.group.position.x, e0.group.position.y + ts * 4, e0.group.position.z);
+                scene.add(light);
+            }
+        }
+
+        _voidStage = { hidden: hidden, hiddenUnits: hiddenUnits, prevBg: prevBg,
+            prevFog: prevFog, discs: discs, light: light, bg: scene.background };
+        _shadowsDirty = true;
+        return true;
+    }
+
+    function cineVoidExit() {
+        if (!_voidStage) return false;
+        var v = _voidStage;
+        _voidStage = null;
+        for (var i = 0; i < v.hidden.length; i++) v.hidden[i].visible = true;
+        for (var j = 0; j < v.hiddenUnits.length; j++) v.hiddenUnits[j].visible = true;
+        if (scene) {
+            scene.background = v.prevBg;
+            scene.fog = v.prevFog;
+            for (var k = 0; k < v.discs.length; k++) {
+                var d = v.discs[k];
+                if (d.parent) d.parent.remove(d);
+                try { d.geometry.dispose(); d.material.dispose(); } catch (e) {}
+            }
+            if (v.light && v.light.parent) v.light.parent.remove(v.light);
+        }
+        try { if (v.bg && v.bg.dispose) v.bg.dispose(); } catch (e) {}
+        _shadowsDirty = true;
+        return true;
+    }
+
+    /* [NEW: caster fade] — dissolve/reform a unit's model. alpha >= 1 puts
+       every material back exactly as it was (the original `transparent` flag
+       matters: forcing it on permanently would re-sort the unit into the
+       transparent pass and change how it reads against terrain). */
+    function cineSetUnitFade(uid, alpha) {
+        var e = unitEntries.get(uid);
+        if (!e || !e.group) return false;
+        var a = Math.max(0, Math.min(1, Number(alpha)));
+        e.group.traverse(function (o) {
+            if (!o.material) return;
+            var mats = Array.isArray(o.material) ? o.material : [o.material];
+            for (var i = 0; i < mats.length; i++) {
+                var m = mats[i];
+                if (!m) continue;
+                if (m._ew_cineOpacity === undefined) {
+                    m._ew_cineOpacity = m.opacity;
+                    m._ew_cineTrans = m.transparent;
+                }
+                if (a >= 1) {
+                    m.opacity = m._ew_cineOpacity;
+                    m.transparent = m._ew_cineTrans;
+                    m._ew_cineOpacity = undefined;
+                } else {
+                    m.transparent = true;
+                    m.opacity = m._ew_cineOpacity * a;
+                }
+                m.needsUpdate = true;
+            }
+        });
+        if (e.group.visible !== (a > 0.001)) e.group.visible = a > 0.001;
+        return true;
+    }
+
+    /* Freeze ONE unit's animation mixer (Blue Screen's mannequin). The
+       per-frame driver skips both the clip switch and mixer.update while
+       this is set, so the model holds the exact pose it crashed on. */
+    function cineSetUnitAnimPaused(uid, on) {
+        var e = unitEntries.get(uid);
+        if (!e) return false;
+        e._ew_animPaused = !!on;
+        return true;
+    }
+
     // menu screens (ui.js codex/shop, party-builder.js) reach it here:
     if (typeof window !== 'undefined') window.EWCharViewer = charViewer;
 
@@ -25828,6 +25968,10 @@ const ThreeRenderer = (function () {
         isFogGridOn: function () { return _perfSettings.fogGrid !== false; },
 
         setHorizonFog,
+
+        /* Spell cinematics (SPELL_CINEMATICS.md): void stage, caster fade,
+           per-unit animation freeze. battle.js CineFX drives all three. */
+        cineVoidEnter, cineVoidExit, cineSetUnitFade, cineSetUnitAnimPaused,
 
         /* Cosmetic hook for VFX layers: a clone of a cached /Assets/misc GLB
            (unlit materials keeping the embedded texture), normalized to

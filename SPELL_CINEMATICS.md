@@ -1,5 +1,15 @@
 # Spell Cinematics — Signature Camera / Animation / VFX Candidates
 
+> **STATUS (2026-08-10): v1 SHIPPED.** The primitive layer, the Void Stage
+> (16 palettes), the named shot library, the family treatments for every
+> `kind`, and 77 bespoke sequences (the named candidates plus the honorable
+> mentions) are implemented in
+> `battle.js` / `three-renderer.js` / `online.js` / `state.js` /
+> `styles-cinematic.css`. See PLAYTEST_NOTES.md "SPELL CINEMATICS v1" for the
+> wiring. What is still open is art-dependent: new props, new animation clips,
+> reversed-clip playback, and the tile-by-tile terrain builds. Entries marked
+> `[NEW: …]` below are all built except where that note says otherwise.
+
 Entropy Wars has 445 spells and race abilities, and nearly all of them fire
 through the same generic pipeline: two-beat OTS action shot, a `cast*` clip,
 a particle burst from `three-vfx-effects.js`. That pipeline is *good* — but it

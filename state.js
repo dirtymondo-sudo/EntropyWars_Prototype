@@ -986,6 +986,13 @@
                         if (typeof playSfx === 'function') playSfx(ds.impactSfx || 'gun');
                     } catch (e) {  }
                 }
+                /* Spell cinematics (SPELL_CINEMATICS.md #47 Take Aim): the
+                   payoff beat for a marked shot. Relayed by name through
+                   CineFX.play, so the guest gets the same moment. */
+                if (typeof window !== 'undefined' && window.CineFX && ds.spellId === 'headshot') {
+                    window.CineFX.play('slowMo', { scale: 0.4, ms: 700 });
+                    window.CineFX.play('grade', { kind: 'scope', ms: 700 });
+                }
                 applyDamageToUnit(mark, ds.dmg, `${ds.spellName} strikes `, {
                     sourceUnit,
                     damageType: ds.damageType || 'physical',
@@ -996,6 +1003,13 @@
                 });
                 for (const eff of (ds.statusEffects || [])) {
                     if (sourceUnit && !mark.dead) applyStatusPayload(mark, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${ds.spellName}: `, sourceUnit);
+                }
+                /* #21 To Be Continued — the delayed hit LANDS: freeze the
+                   victim mid-reaction, sepia grade, arrow banner, sting. The
+                   whole joke is one freeze and one overlay. */
+                if (typeof window !== 'undefined' && window.CineFX
+                    && ds.spellId === 'raceToBeContinued') {
+                    window.CineFX.play('toBeContinued', { unitId: mark.id });
                 }
                 addLog(`🎯 ${ds.spellName} lands on ${unitDisplayName(mark)}!`, ds.sourcePlayer);
                 return;

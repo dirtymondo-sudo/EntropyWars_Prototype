@@ -961,6 +961,13 @@
                        the guest opened every relayed cast on the default OTS
                        framing while the host got the anime power shot. */
                     if (opts.shotKind) camEvt.shotKind = opts.shotKind;
+                    /* SPELL CINEMATICS (SPELL_CINEMATICS.md): the id of the
+                       spell this shot belongs to. ONE field carries all 70
+                       bespoke sequences plus every family treatment — the
+                       guest re-resolves the same sequence locally off the id,
+                       so a void stage / grade / side dolly that fires on the
+                       host fires on the guest too (RULE #2). */
+                    if (opts.spellId) camEvt.spellId = opts.spellId;
                     /* beam casts hold beat 1 through the launch (kamehameha
                        rule) — without this the guest cut away before the beam
                        left the caster's hands. */
@@ -1824,6 +1831,24 @@
         window.focusBoardCameraOnTiles = focusBoardCameraOnTiles;
         window.resetBoardCamera = resetBoardCamera;
         window.playOffensiveActionCamera = playOffensiveActionCamera;
+
+        /* ── SPELL CINEMATICS: standalone beats (SPELL_CINEMATICS.md) ──
+           Moments that fire OUTSIDE a cast — the To Be Continued freeze when
+           the delayed hit lands at end of round, the Indomitable Will save,
+           the Red Eyes glyph. The engine only runs on the HOST, so without
+           this wrapper the guest would simply never see them. Payloads are
+           plain serialisable data by design. */
+        if (window.CineFX && typeof window.CineFX.play === 'function' && !window.CineFX._netWrapped) {
+            const _origCineFxPlay = window.CineFX.play;
+            window.CineFX.play = function(name, payload) {
+                _origCineFxPlay.call(window.CineFX, name, payload);
+                var _netOn = window._NET && window._NET.online;
+                if ((_netOn && _isHost()) || _ewRecOn()) {
+                    _emit('relay', { type: 'cine-fx', fx: name, payload: payload || {} });
+                }
+            };
+            window.CineFX._netWrapped = true;
+        }
         window.getUserZoomScale = getUserZoomScale;
         window.unitFromId = unitFromId;
         window.showAnnouncementBanner = showAnnouncementBanner;
@@ -3112,6 +3137,7 @@
                                 if (camEvt.sourceHold) camOpts.sourceHold = camEvt.sourceHold;
                                 if (camEvt.targetHold) camOpts.targetHold = camEvt.targetHold;
                                 if (camEvt.shotKind) camOpts.shotKind = camEvt.shotKind;
+                                if (camEvt.spellId) camOpts.spellId = camEvt.spellId;
                                 if (camEvt.holdAfterLaunchMs != null) camOpts.holdAfterLaunchMs = camEvt.holdAfterLaunchMs;
                                 if (camEvt.noActionCam) camOpts.noActionCam = true;
                                 if (camEvt._noCinematic) camOpts._noCinematic = true;
@@ -3129,6 +3155,14 @@
                                     window.playOffensiveActionCamera(src, tgt, camOpts);
                                 }
                             }
+                        }
+                    }
+
+                    /* Standalone cinematic beat (freeze-frame / grade /
+                       slow-mo / insert card) replayed locally by the guest. */
+                    if (data.type === 'cine-fx' && _ewMirrorView()) {
+                        if (window.CineFX && typeof window.CineFX.play === 'function') {
+                            window.CineFX.play(data.fx, data.payload || {});
                         }
                     }
 

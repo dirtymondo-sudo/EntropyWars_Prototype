@@ -3857,3 +3857,257 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
     .ssq-name { font-size: clamp(22px, 8vw, 40px); }
     .ssq-nm { font-size: clamp(11px, 2.6vw, 16px); }
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   SPELL CINEMATICS (SPELL_CINEMATICS.md) — the DOM half of the primitive
+   layer: the colour GRADE, the INSERT card, the freeze tell, and the VOID
+   STAGE palettes. All of it is pointer-events:none chrome above the WebGL
+   canvas and below the turn banners, driven by battle.js window.CineFX.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── [NEW: grade] ── full-screen colour grade. The tint layer paints, the
+   backdrop filter re-grades whatever is behind it (canvas included), so one
+   element covers sepia / desat / invert / hue / bone without touching the
+   renderer. Never strobes: opacity transitions only. */
+.cine-grade {
+    position: absolute; inset: 0;
+    z-index: 93;                 /* under the action-cam chrome (94) */
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .18s ease-out;
+    --cine-grade-str: 1;
+}
+.cine-grade.on { opacity: 1; }
+.cine-grade .cine-grade-tint,
+.cine-grade .cine-grade-lines,
+.cine-grade .cine-grade-vig { position: absolute; inset: 0; opacity: 0; }
+
+/* tint + filter recipes */
+.cine-grade.g-sepia   { backdrop-filter: sepia(.85) contrast(1.08) saturate(.7); }
+.cine-grade.g-sepia   .cine-grade-tint { opacity: .22; background: #d8b483; mix-blend-mode: multiply; }
+.cine-grade.g-bone    { backdrop-filter: grayscale(.55) brightness(1.35) contrast(.92); }
+.cine-grade.g-bone    .cine-grade-tint { opacity: .3; background: #fff; }
+.cine-grade.g-desat   { backdrop-filter: grayscale(.9) contrast(1.1); }
+.cine-grade.g-invert  { backdrop-filter: invert(1) hue-rotate(180deg); }
+.cine-grade.g-dim     .cine-grade-tint { opacity: .42; background: #050813; }
+.cine-grade.g-hue     { backdrop-filter: hue-rotate(150deg) saturate(1.6); }
+.cine-grade.g-cool    .cine-grade-tint { opacity: .28; background: #2a4a8c; mix-blend-mode: screen; }
+.cine-grade.g-crimson .cine-grade-tint { opacity: .34; background: #6d0410; mix-blend-mode: multiply; }
+.cine-grade.g-heat    .cine-grade-tint {
+    opacity: .3;
+    background: radial-gradient(circle at 50% 65%, rgba(255,150,40,.0) 40%, rgba(255,110,20,.55) 100%);
+}
+.cine-grade.g-terminal { backdrop-filter: hue-rotate(75deg) saturate(1.4) contrast(1.15); }
+.cine-grade.g-terminal .cine-grade-tint { opacity: .18; background: #06ff8a; mix-blend-mode: overlay; }
+.cine-grade.g-whiteout .cine-grade-tint { opacity: .92; background: #fff; }
+.cine-grade.g-vignette .cine-grade-vig {
+    opacity: 1;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 42%, rgba(0,0,0,.85) 100%);
+}
+.cine-grade.g-scope .cine-grade-vig {
+    opacity: 1;
+    background: radial-gradient(circle at center, rgba(0,0,0,0) 26%, rgba(0,0,0,.94) 46%);
+}
+.cine-grade.g-scope .cine-grade-lines {
+    opacity: .8;
+    background:
+        linear-gradient(to right, transparent calc(50% - 1px), rgba(255,60,60,.7) 50%, transparent calc(50% + 1px)),
+        linear-gradient(to bottom, transparent calc(50% - 1px), rgba(255,60,60,.7) 50%, transparent calc(50% + 1px));
+}
+/* motion-blur speed lines at the frame edges (Ram Charge, dashes) */
+.cine-grade.g-speedlines .cine-grade-lines {
+    opacity: .75;
+    background:
+        repeating-linear-gradient(to right, rgba(255,255,255,.0) 0 6px, rgba(255,255,255,.35) 6px 8px);
+    -webkit-mask-image: radial-gradient(ellipse at center, transparent 34%, #000 76%);
+            mask-image: radial-gradient(ellipse at center, transparent 34%, #000 76%);
+    animation: cineSpeedLines .35s linear infinite;
+}
+@keyframes cineSpeedLines { from { background-position: 0 0; } to { background-position: -64px 0; } }
+
+/* ── [NEW: freeze-frame] tell — a hair of extra contrast while the
+   renderer's clock is stopped, so the hold reads as deliberate. */
+#game-viewport.cine-frozen .board-stage,
+#game-viewport.cine-frozen canvas { filter: contrast(1.12) saturate(1.06); }
+
+/* ── INSERT CARD ── the "document held up to camera" beat: To Be Continued,
+   the Executive Order, the clock face, the red eyes. */
+.cine-insert {
+    position: absolute; inset: 0;
+    z-index: 96;                 /* over the letterbox chrome — it IS the shot */
+    pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity .16s ease-out;
+}
+.cine-insert.on { opacity: 1; }
+.cine-insert-card {
+    font-family: 'Cinzel', serif; font-weight: 900;
+    color: #fff; text-align: center; line-height: 1.25;
+    text-shadow: 3px 3px 0 #000, 0 0 24px rgba(0,0,0,.9);
+}
+.cine-insert-sub {
+    display: block; margin-top: .4em;
+    font-size: .52em; font-weight: 700; letter-spacing: .18em;
+}
+/* To Be Continued: the black arrow banner, bottom-left, sliding in. */
+.cine-insert.k-tbc { align-items: flex-end; justify-content: flex-start; }
+.cine-insert.k-tbc .cine-insert-card {
+    margin: 0 0 9% 6%;
+    padding: .35em 2.2em .35em .9em;
+    font-family: 'Cinzel', serif; font-style: italic; font-size: clamp(18px, 3.4vw, 42px);
+    color: #fff; background: #000;
+    clip-path: polygon(0 0, calc(100% - 1.6em) 0, 100% 50%, calc(100% - 1.6em) 100%, 0 100%);
+    transform: translateX(-120%);
+    animation: cineTbcIn .42s cubic-bezier(.22,1,.36,1) forwards;
+}
+@keyframes cineTbcIn { to { transform: translateX(0); } }
+.cine-insert.k-clock .cine-insert-card {
+    font-size: clamp(48px, 12vw, 150px);
+    animation: cineClockPulse 1.2s ease-in-out;
+}
+@keyframes cineClockPulse {
+    0% { opacity: 0; transform: scale(.7); } 30% { opacity: 1; transform: scale(1); }
+    100% { opacity: .85; transform: scale(1.04); }
+}
+.cine-insert.k-document .cine-insert-card {
+    padding: 1.1em 1.6em;
+    font-size: clamp(14px, 2.2vw, 30px);
+    color: #241c10; background: #efe4c8;
+    border: 3px solid #b9a578; box-shadow: 0 18px 40px rgba(0,0,0,.65);
+    transform: rotate(-1.5deg);
+}
+.cine-insert.k-eyes .cine-insert-card {
+    font-size: clamp(26px, 5vw, 64px);
+    color: #ff2a2a; text-shadow: 0 0 30px rgba(255,0,0,.9);
+    animation: cineEyesBlink .7s steps(1, end);
+}
+@keyframes cineEyesBlink { 0%,100% { opacity: 1; } 62%,68% { opacity: 0; } }
+
+/* ══════════════════════════════════════════════════════════════════════
+   VOID STAGE — the isolation shot. The 3D half hides the board and swaps
+   scene.background; this half hides the DOM world (tiles, nameplates, HUD
+   chrome) and raises the animated palette layer. Exit is a HARD cut back —
+   no fade — because the return is part of the drama.
+   ══════════════════════════════════════════════════════════════════════ */
+#game-viewport.void-stage .board-stage > *:not(canvas),
+#game-viewport.void-stage #css2dOverlay,
+#game-viewport.void-stage .hud-hourglass-bar,
+#game-viewport.void-stage .turn-clock,
+#game-viewport.void-stage .unit-plate,
+#game-viewport.void-stage .float-hp,
+#game-viewport.void-stage #minimapWrap { visibility: hidden; }
+#game-viewport.void-stage .acam-dmg-row { opacity: 0; }
+
+.void-layer {
+    position: absolute; inset: 0;
+    z-index: 92;                 /* under the grade (93) and the chrome (94) */
+    pointer-events: none;
+    opacity: 0;
+}
+.void-layer.on { opacity: 1; }
+.void-layer .void-fx { position: absolute; inset: 0; opacity: .9; }
+.void-layer .void-caption {
+    position: absolute; left: 8%; top: 22%;
+    max-width: 44%;
+    font-family: 'Courier New', monospace; font-weight: 700;
+    font-size: clamp(13px, 1.9vw, 26px); line-height: 1.5;
+    color: #fff; opacity: 0; text-shadow: 0 2px 10px rgba(0,0,0,.6);
+}
+.void-layer .void-caption.on { opacity: 1; }
+.void-cap-sub { display: block; margin-top: .6em; font-size: .74em; opacity: .85; }
+.void-cap-red { color: #ff3b3b; }
+.void-cap-list { letter-spacing: .5em; }
+
+/* palette layers — background + two cheap animated passes each */
+.void-layer.vl-glyphsnow .void-fx {
+    background-image: radial-gradient(circle, rgba(255,255,255,.85) 1px, transparent 1.6px);
+    background-size: 42px 42px;
+    animation: voidSnow 5s linear infinite;
+}
+@keyframes voidSnow { from { background-position: 0 -42px; } to { background-position: 0 100vh; } }
+.void-layer.vl-coderain .void-fx {
+    background-image: repeating-linear-gradient(to bottom,
+        rgba(0,255,120,.55) 0 8px, rgba(0,255,120,0) 8px 34px);
+    background-size: 26px 220px;
+    opacity: .38;
+    animation: voidRain 1.9s linear infinite;
+}
+@keyframes voidRain { from { background-position: 0 0; } to { background-position: 0 220px; } }
+.void-layer.vl-stars .void-fx {
+    background-image:
+        radial-gradient(circle, rgba(255,255,255,.95) .9px, transparent 1.4px),
+        radial-gradient(circle, rgba(180,200,255,.6) .7px, transparent 1.2px);
+    background-size: 120px 120px, 61px 61px;
+    animation: voidStars 26s linear infinite;
+}
+@keyframes voidStars { from { background-position: 0 0, 0 0; } to { background-position: 120px 40px, -61px 22px; } }
+.void-layer.vl-static .void-fx {
+    background-image: repeating-conic-gradient(rgba(255,255,255,.5) 0% 25%, rgba(0,0,0,.5) 0% 50%);
+    background-size: 4px 4px; opacity: .22;
+    animation: voidStatic .34s steps(3, end) infinite;   /* ~3Hz, flash-safe */
+}
+@keyframes voidStatic {
+    0% { background-position: 0 0; } 33% { background-position: 2px 1px; }
+    66% { background-position: 1px 3px; } 100% { background-position: 3px 2px; }
+}
+.void-layer.vl-motes .void-fx {
+    background-image: radial-gradient(circle, rgba(255,255,255,.5) 2px, transparent 3px);
+    background-size: 150px 150px; opacity: .3;
+    animation: voidMotes 14s linear infinite;
+}
+@keyframes voidMotes { from { background-position: 0 100vh; } to { background-position: 40px -150px; } }
+.void-layer.vl-embers .void-fx {
+    background-image: radial-gradient(circle, rgba(255,140,40,.85) 1.6px, transparent 2.4px);
+    background-size: 90px 90px;
+    animation: voidMotes 7s linear infinite;
+}
+.void-layer.vl-hearts .void-fx {
+    background-image: radial-gradient(circle, rgba(255,120,170,.7) 3px, transparent 4px);
+    background-size: 110px 110px; opacity: .55;
+    animation: voidMotes 11s linear infinite;
+}
+.void-layer.vl-snowfire .void-fx {
+    background:
+        radial-gradient(circle at 8% 60%, rgba(255,160,60,.5) 0%, transparent 42%),
+        radial-gradient(circle, rgba(255,255,255,.8) 1.2px, transparent 2px) 0 0 / 70px 70px;
+    animation: voidSnow 7s linear infinite;
+}
+.void-layer.vl-floods .void-fx {
+    background:
+        radial-gradient(circle at 6% 8%,  rgba(255,255,230,.45) 0%, transparent 26%),
+        radial-gradient(circle at 94% 8%, rgba(255,255,230,.45) 0%, transparent 26%),
+        radial-gradient(circle at 6% 92%, rgba(255,255,230,.35) 0%, transparent 26%),
+        radial-gradient(circle at 94% 92%,rgba(255,255,230,.35) 0%, transparent 26%);
+}
+.void-layer.vl-caustics .void-fx {
+    background: repeating-linear-gradient(115deg,
+        rgba(140,255,240,.16) 0 12px, rgba(0,0,0,0) 12px 40px);
+    animation: voidCaustics 6s ease-in-out infinite alternate;
+}
+@keyframes voidCaustics { from { transform: translateX(-3%); } to { transform: translateX(3%); } }
+.void-layer.vl-kaleido .void-fx {
+    background: conic-gradient(#ff3d81, #ffd23d, #3dffb0, #3d8bff, #b03dff, #ff3d81);
+    opacity: .3;
+    animation: voidKaleido 9s linear infinite;
+}
+@keyframes voidKaleido { to { transform: rotate(360deg); } }
+.void-layer.vl-sigil .void-fx {
+    background:
+        conic-gradient(from 0deg, rgba(190,90,255,.28) 0 8%, transparent 8% 12%,
+                       rgba(190,90,255,.28) 12% 20%, transparent 20% 25%);
+    -webkit-mask-image: radial-gradient(circle at center, #000 0 34%, transparent 46%);
+            mask-image: radial-gradient(circle at center, #000 0 34%, transparent 46%);
+    animation: voidKaleido 18s linear infinite;
+}
+.void-layer.vl-grain .void-fx {
+    background-image: radial-gradient(circle, rgba(0,0,0,.5) .6px, transparent 1px);
+    background-size: 3px 3px; opacity: .3;
+}
+.void-layer.vl-none .void-fx { background: none; }
+
+/* Reduced motion: the animated palettes hold a still frame (the doc's
+   flash-safety rule — `static` and `kaleido` are the ones that matter). */
+@media (prefers-reduced-motion: reduce) {
+    .void-layer .void-fx,
+    .cine-grade .cine-grade-lines { animation: none !important; }
+}

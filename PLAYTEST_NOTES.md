@@ -4,6 +4,67 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## 🎬 SPELL CINEMATICS v1 (2026-08-10, LATEST) — battle.js, three-renderer.js, online.js, state.js, styles-cinematic.css, index.html
+
+Implements `SPELL_CINEMATICS.md`. The generic two-beat action shot is still
+the base for every cast; on top of it there are now three layers, all resolved
+from ONE piece of relayed data (the spell id):
+
+1. **Primitives** (battle.js, in the cine-camera block right after
+   `_cineRetargetShot`) — `cineSlowMo` (folded into `actionMs()` via
+   `_cineTimeScaleNow`, so EVERY delay scheduled during a ramp stretches
+   together), `cineFreezeFrame` (→ `ThreeAnim.hitstop`), `cineGrade`
+   (`.cine-grade` DOM overlay, 14 recipes), `cineInsert` (insert cards:
+   To Be Continued arrow, Executive Order document, clock, red eyes),
+   `cineUnitFade` (caster dissolve), `cineDollyZoom` (ThreeCamera.setFOV vs
+   boom), and the named shot library `CINE_SHOTS`: faceCam, glam, reverseOts,
+   **sideDolly** (the beam fix), bulletCam, witness, crane, godShot, pushIn,
+   plus `cineEndCapReverse`.
+2. **VOID STAGE** — `VoidStage.enter({palette, actors, ms, caption})`. 3D half
+   is `ThreeRenderer.cineVoidEnter/cineVoidExit` (hides every scene child except
+   unitGroup + lights, hides non-actor unit groups, swaps `scene.background`,
+   drops contact-shadow discs, optional cold top-light); DOM half is
+   `#game-viewport.void-stage` + `.void-layer.vl-<layer>` (16 palettes in
+   `VOID_PALETTES`). Budget: ONE per round, signature casts only, 0.6–2.4s,
+   actors must pass the fog gate — otherwise the beat falls back to the normal
+   shot. Reduced-motion holds the animated layers still (flash safety).
+3. **Sequences + families** — `CINE_SEQUENCES[spellId]` (77 bespoke entries:
+   Boo, Blue Screen, High Noon, No Mercy, Absolute Zero, Railgun, the beam
+   reel, the whole void gallery…) and, when a spell has none,
+   `CINE_FAMILY_BY_KIND[kind]` → `_cineApplyFamily` (strike / groundAoe /
+   selfNova / beam / drain / dash / leap / sky / blink / terrain / zone /
+   delayed / support / buff / partyCry / debuff / displace / multiHit /
+   weather / recon). Sequences return `false` to decline (e.g. No Mercy above
+   30% HP) and fall through to their family.
+
+Wiring (don't re-learn):
+- `_cineNoteCast(unit, spell)` fires at the universal cast-commit point in
+  doSpell (next to `_stageSpellCast`), so all ~20 `playOffensiveActionCamera`
+  call sites inherit the spell id without threading it. The camera fn resolves
+  it at the TOP (before the fog branch re-binds `opts`) and writes it back onto
+  `opts.spellId` so online.js's wrapper can relay it.
+- **Online (RULE #2):** `camEvt.spellId` rides the existing `camera-events`
+  relay → the guest replays `playOffensiveActionCamera` and re-resolves the
+  SAME sequence locally. Beats that fire OUTSIDE a cast (To Be Continued's
+  delayed hit in state.js `_detonateDelayedSpell`, Indomitable Will's save,
+  Take Aim's payoff) go through `window.CineFX.play(name, payload)`, wrapped in
+  online.js into a `cine-fx` relay with a guest handler.
+- Every beat is scheduled via `_cineAt(ms, sequenceId, fn)` → `_cineBeatOk`
+  (shot still owns the camera, match live, visuals on). Enemy-framing beats
+  gate on `_cineActorVisible` (concealment + the fog renderer's visible set).
+- `_cineReleaseAllFx()` runs from `camera.restore()` / `reset()` — safety net
+  so a shot cut short can never strand a void stage, a grade or a 0.3× clock.
+- Repeat camera calls in one cast dedupe through `_cineClaimCast` (the guest
+  adopts the id it was relayed).
+- Kill-switches (console): `EW_DISABLE_CINE_FX`, `EW_DISABLE_CINE_FAMILIES`,
+  `EW_DISABLE_VOID_STAGE`. The FX layer honours `state.cinematicActionCam`
+  (NOT `cinematicMode` — that flag owns the separate duel cinematic).
+
+Not yet built from the doc: per-spell props (plank, scale, scroll, frog model,
+desk), new animation clips (howl, castCharge, quick-draw), the reversed-clip
+playback for Time Rewind, and the terrain-staggered Great Flood. Those need
+art/animation, not camera work.
+
 ## 🌳 SPELL TREE ("Tree of Life" selector) PHASE A (2026-08-07, LATEST) — data.js, party-builder.js, battle.js, state.js, map.js, online.js, styles-base.css, three-vfx-effects.js, index.html
 
 Spec: `SPELL_TREE_REDESIGN(2).md` (status header there lists what shipped vs
