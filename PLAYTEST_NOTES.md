@@ -4,6 +4,100 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## ⚔ MELEE STRIKE-APPROACH: run/jump in, swing, hop back (2026-08-12, LATEST) — three-renderer.js, battle.js, online.js
+
+The "little lunge" is obsolete for rigged models: contact strikes now RUN to
+the target (JUMPING up/down when elevations differ), swing the real clip at
+arm's reach (~0.62 tiles short of the target center), and back-hop home still
+facing the victim. Sprite slabs keep the classic ghost-arc leap; the sprite
+lunge tween also survives as their fallback only.
+
+- **Renderer core (three-renderer.js)**: `_strikePlanFor(unit,tx,ty,kind,opts)`
+  builds a deterministic plan from board state — phases run(≤520ms @150ms/tile)
+  → jump(330–500ms, armed when |ΔsurfaceY| ≥ 0.75 elevation steps; arc clears
+  max end + 0.35–0.5 tile) → strike (real chain-clip duration clamped
+  420–900ms, impact lands at 45% ≤380ms in) → back-hop (240–380ms). Exposed as
+  `ThreeAnim.planStrike` (null ⇒ caller uses the legacy 260/70/220 clock) and
+  `ThreeAnim.hasStrikeApproach(uid)`. `startStrikeLeapTween` branches on
+  **opts.kind**: kind present + rigged model + not airborne-flyer + dist ≥0.75
+  ⇒ approach tween (`tw.model=true` in `_strikeTweens`); else legacy leap.
+  `_updateStrikeApproach` drives position/phases; `tw._want` (run/jump/idle)
+  feeds the model state machine; the swing itself is a one-shot via the shared
+  `_animChainForKind(kind,isCast)` table (REFACTOR: `_syncCombatAnims`'s two
+  inline chain ternaries now call it too). Facing: `_updateUnitFacing` squares
+  approach tweens on the target (covers chop/smash where the engine never set
+  facing). Multi-hit (opts.hits/hitGapMs): tween re-triggers the swing every
+  hitGap at the hold — `_applyMultiHitDamage` skips its per-hit re-leaps when
+  `hasStrikeApproach` (re-leaping would teleport the body home mid-flurry).
+- **Guards**: `_syncCombatAnims` attack AND cast branches `continue` when a
+  model strike tween is live (no in-place double-swing from
+  attackAnimIds/castAnimIds); tween start clears a just-released `cast*`
+  one-shot; `_deathTweens` drops the approach instantly; stalled frames still
+  fire onImpact at completion.
+- **battle.js**: `_basicAttackAnimKind` (extracted from triggerAttackAnim),
+  `_CONTACT_ATTACK_KINDS` = melee/punch/claw/kick/chop/slam,
+  `_meleeApproachPlan` (skipVisuals→null, non-contact→null — casters still
+  zap adjacent enemies IN PLACE), `_playObjectStrikeVisual` (towers, mirrors,
+  turrets, deployables, seeds). Wired: doAttack melee branch (impactDelay =
+  projectileDelay + actionMs(plan.impactMs) instead of flat 260; totalDelay
+  extended past plan.totalMs; Clash gap-closer coerces non-contact kinds to
+  'melee'), TRAVEL_HANDLERS.strikeLeap (spells; hits from spell.hitDamages),
+  tree chop (kind 'chop'), terrain smash (kind 'slam' → Charged_Ground_Slam!),
+  overwatch melee, counter riposte + follow-up pincer + Echo Band (all now
+  dash in; their damage is DELAYED to plan.impactMs so numbers land
+  mid-swing; echo waits totalMs−impactMs+140 so it never re-leaps mid-return),
+  `_fireAoeVfx` useStrikeLeap (kind only, keeps its own impact clock — swing
+  lands within ~200ms of the burst). Dig-tool ops intentionally stay in-place
+  (rapid-fire build flow). Damage-before-visual sites (mirror/turret/seed/
+  chop/smash) still resolve state instantly — same as the old leap.
+- **Online (RULE #2)**: the `strike-leap` relay now carries
+  {kind, hits, hitGapMs}; the guest re-plans the identical motion from its own
+  board state (fog gate unchanged: either endpoint visible). Host stops
+  calling triggerAttackAnim for approach strikes, so no attackAnimIds echo.
+- **Tuning knobs** (three-renderer.js): STRIKE_GAP_TILES 0.62,
+  STRIKE_RUN_MS_PER_TILE 150, STRIKE_JUMP_SPAN_TILES 1.05; plan clamps in
+  `_strikePlanFor`. Representative timings: adjacent flat impact ~483ms/total
+  ~1080ms; adjacent 1-up jump impact ~623ms; clash d=6 impact ~813ms/total
+  ~1550ms (fits the basic-attack camera window ≈1520ms after sourceHold plus
+  the extended totalDelay).
+- Offline validation only (RULE #1c): plan-math invariants scripted
+  (scratchpad plan_math_check.js — phase sums, impact inside first swing,
+  multi-hit cadence alignment vs battle.js idx*hitGap), node --check + npm
+  test green. NOT visually verified in-browser yet.
+- **MAL2 round (same day)**: user uploaded 6 new Meshy sniper exports to R2
+  Assets/Models (generic `Meshy_AI_Animation_<Name>_withSkin.glb` stems, 8MB
+  each): Back_Jump, Basic_Jump (= the jump/lunge ATTACK per user),
+  Charged_Spell_Cast (dupe of MAL1's — ignore), Punch_Combo, Punch_Combo_1,
+  Punch_Combo_5. Wired AHEAD of consolidation (all fallback-safe while
+  `MAL2_Sniper.glb` is absent): EW_ANIM_LIB_URLS[3] = MAL2_Sniper.glb; new
+  UAL_SLOTS `jumpStrike` (Basic_Jump — one-shot spanning the approach's
+  jump+strike phases, replaces jump-then-swing), `jumpBack` (Back_Jump —
+  the back-hop; _playUnitModelAnim falls back jumpBack→jump→walk→idle),
+  `castPunchCombo` (Punch_Combo — multi-hit punch strikes play ONE combo,
+  flurry restarts skipped via tw.comboUsed), `castMeleeCombo`
+  (UAL2 Sword_Regular_Combo @2.2 — same for multi-hit sword; claw/kick keep
+  restarts). ts values for the 3 MAL2 slots are PROVISIONAL (targets: leap
+  ≈1.0s, hop ≈0.4s, combo ≈1.4s) — finalize against real durations when
+  MAL2 is built. _wireSlot one-shot list grew jumpStrike/jumpBack.
+- **MAL2_Sniper.glb BUILT (871KB, repo root — upload to R2
+  `Assets/Models/MAL2_Sniper.glb`)**: user committed the 6 withSkin exports
+  to the repo (this sandbox's egress firewall 403s cdn.entropywars.net, so
+  git was the transfer path); built with repo-root `build_mal2.js`
+  (`npm install --no-save @gltf-transform/core && node build_mal2.js
+  <dir-of-withSkin-glbs> MAL2_Sniper.glb MAL1_Sniper.glb`). NOTE: core's
+  `Document.merge` is functions-gated in current @gltf-transform — the
+  builder hand-copies each clip (new accessors/samplers/channels retargeted
+  onto the base skeleton by NODE NAME). Verified: 26 joints all present in
+  MAL1's rig, 0 meshes/skins/textures, 1 scene, 5 clips × 72 live channels.
+  Clip durations + root travel (hips rest ≈96u): Basic_Jump 5.93s (Y range
+  179, net +138 FORWARD → pinHips), Back_Jump 0.97s (net −252 BACKWARD →
+  pinHips), Punch_Combo 2.50 / _1 2.27 / _5 3.87 (all in-place, no pin).
+  Charged_Spell_Cast upload was an exact dupe of MAL1's (2.70s) — excluded.
+  Final ts: jumpStrike 4.5 (→1.32s; source clip is LONG — if it reads
+  rushed in-game drop toward 3.5), jumpBack 2.6 (→0.37s), castPunchCombo
+  1.8 (→1.39s). The 6 source GLBs live on repo main (48MB — consider
+  pruning once MAL2 is confirmed good in-game).
+
 ## Horologe PS1 material pass + VESSEL DATA (2026-08-12) — hud.js only
 
 Visual/UX pass on the action menu, all in hud.js (component + embedded CSS):

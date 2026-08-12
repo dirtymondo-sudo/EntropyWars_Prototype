@@ -618,6 +618,12 @@ const EW_ANIM_LIB_URLS = [
   'https://cdn.entropywars.net/Assets/Models/UAL1_Standard.glb',
   'https://cdn.entropywars.net/Assets/Models/UAL2_Standard.glb',
   'https://cdn.entropywars.net/Assets/Models/MAL1_Sniper.glb',
+  // lib 3 — MAL2_Sniper.glb (2026-08-12): second consolidated Meshy batch
+  // (Back_Jump / Basic_Jump / Punch_Combo×3), built the same way as MAL1
+  // from the 8MB withSkin exports. Until this file is uploaded to R2 the
+  // bake skips lib-3 slots and every fallback chain covers them — wiring is
+  // safe to ship ahead of the asset.
+  'https://cdn.entropywars.net/Assets/Models/MAL2_Sniper.glb',
 ];
 
 // Game slot → library clip (+ which library file) + timeScale. Durations are
@@ -688,6 +694,28 @@ const UAL_SLOTS = {
   // def.basicAttackKind).
   castPunch:   { clip: 'Punch_Cross',            lib: 0, ts: 1.2  },
   castClaw:    { clip: 'Zombie_Scratch',         lib: 1, ts: 1.5  },
+  // 2026-08-12 — strike-approach set (MAL2_Sniper.glb lib 3 + one UAL2
+  // freebie). MAL2 clip inventory (dur s): Basic_Jump 5.93 / Back_Jump 0.97 /
+  // Punch_Combo 2.50 / Punch_Combo_1 2.27 / Punch_Combo_5 3.87 (the last two
+  // are unwired spares for per-character `lib:` flavor).
+  //   jumpStrike Basic_Jump @4.5 (→~1.32s) — the leap/lunge ATTACK. Plays
+  //   across the jump+strike phases of a melee approach that has to leap
+  //   up/down to its target (three-renderer.js _updateStrikeApproach); the
+  //   plain Regular_Jump + kind-chain swing remain the fallback. pinHips:
+  //   the export root-travels +1.4×hips forward with a 1.9×hips rise — the
+  //   board tween owns the arc, so only the body language is kept. NOTE the
+  //   source clip is long (5.93s); if 4.5× reads rushed in-game, try 3.5–4.
+  //   jumpBack Back_Jump @2.6 (→~0.37s) — the back-hop home after the swing
+  //   (falls back to the forward jump clip when unwired). pinHips: the
+  //   export root-travels −2.6×hips backward; the tween owns the hop.
+  //   castPunchCombo Punch_Combo @1.8 (→~1.39s, in-place export) — multi-hit
+  //   PUNCH strikes play one real combo instead of restarting Punch_Cross
+  //   per hit. castMeleeCombo Sword_Regular_Combo (UAL2) @2.2 — same for
+  //   multi-hit sword strikes; claw/kick flurries keep the restart look.
+  jumpStrike:     { clip: 'Basic_Jump',          lib: 3, ts: 4.5, pinHips: true },
+  jumpBack:       { clip: 'Back_Jump',           lib: 3, ts: 2.6, pinHips: true },
+  castPunchCombo: { clip: 'Punch_Combo',         lib: 3, ts: 1.8  },
+  castMeleeCombo: { clip: 'Sword_Regular_Combo', lib: 1, ts: 2.2  },
 };
 // Female body-language defaults — applied to every `female:` def after
 // RACE_MODELS_3D is built (see _applyFemaleSlotDefaults) unless the
