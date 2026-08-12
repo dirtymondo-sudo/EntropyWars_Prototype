@@ -448,7 +448,12 @@ const TYPE_TEXT_C = { human:'#c8c8e4', divine:'#f2c63c', unholy:'#c566e2', tech:
    — NOT sight range, which is pure line of sight); several accessories
    grant it, so it shows on the sheet like everything else. */
 const STAT_KEYS = ['HP','MP','ATK','DEF','MDEF','INT','SPD','AWR','RNG','MOV','CRT','EVA'];
-const STAT_MAX_PB = { HP:900, MP:300, ATK:110, DEF:75, MDEF:75, INT:100, SPD:11, AWR:8, RNG:6, MOV:6, CRT:30, EVA:25 };
+/* MP bar scale (2026-08-12): tuned to the tree-cost MP rebalance — the top
+   caster combos (orb of light / seraphim / wizard + Psychic / Black Mage)
+   land at 250–270 displayed MP, so 250 renders them pegged full/green
+   (StatBar clamps at 100%). Keep this in sync with RACE_BASE_STATS +
+   JOB_MODIFIERS whenever the MP economy moves again. */
+const STAT_MAX_PB = { HP:900, MP:250, ATK:110, DEF:75, MDEF:75, INT:100, SPD:11, AWR:8, RNG:6, MOV:6, CRT:30, EVA:25 };
 const STAT_MAP = { HP:'hp', MP:'mp', ATK:'atk', DEF:'def', MDEF:'mdef', INT:'int', SPD:'spd', AWR:'awr', RNG:'range', MOV:'move', CRT:'crt', EVA:'eva' };
 const STAT_PCT = { CRT:true, EVA:true };   // rendered as a % chance
 // Display names — the int stat reads as Magic Attack everywhere in the UI.

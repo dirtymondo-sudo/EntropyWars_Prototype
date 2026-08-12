@@ -2888,123 +2888,123 @@ const SKY_EVENT_DURATION = 2;
 // kraken had 18 effective ATK under Harbinger with physical racials).
 const RACE_BASE_STATS = {
 
-    'giant':         { hp: 635, mp: 30,  atk: 46, def: 48, mdef: 16, move: 2, awr: 2, int: 10, spd: 4 },
-    'robot':         { hp: 620, mp: 33,  atk: 44, def: 55, mdef: 14, move: 2, awr: 3, int: 8,  spd: 3 },
-    'mech':          { hp: 605, mp: 56,  atk: 38, def: 47, mdef: 14, move: 2, awr: 2, int: 30, spd: 2 },
-    'gargoyle':      { hp: 585, mp: 45,  atk: 48, def: 44, mdef: 20, move: 2, awr: 3, int: 18, spd: 4 },
-    'zombie':        { hp: 660, mp: 25,  atk: 36, def: 50, mdef: 13, move: 2, awr: 1, int: 5,  spd: 2 },
-    'cyclops':       { hp: 630, mp: 48,  atk: 46, def: 45, mdef: 14, move: 2, awr: 3, int: 30, spd: 6 },
+    'giant':         { hp: 635, mp: 55,  atk: 46, def: 48, mdef: 16, move: 2, awr: 2, int: 10, spd: 4 },
+    'robot':         { hp: 620, mp: 60,  atk: 44, def: 55, mdef: 14, move: 2, awr: 3, int: 8,  spd: 3 },
+    'mech':          { hp: 605, mp: 100,  atk: 38, def: 47, mdef: 14, move: 2, awr: 2, int: 30, spd: 2 },
+    'gargoyle':      { hp: 585, mp: 80,  atk: 48, def: 44, mdef: 20, move: 2, awr: 3, int: 18, spd: 4 },
+    'zombie':        { hp: 660, mp: 45,  atk: 36, def: 50, mdef: 13, move: 2, awr: 1, int: 5,  spd: 2 },
+    'cyclops':       { hp: 630, mp: 85,  atk: 46, def: 45, mdef: 14, move: 2, awr: 3, int: 30, spd: 6 },
 
-    'skeleton':      { hp: 570, mp: 48,  atk: 72, def: 28, mdef: 22, move: 3, awr: 2, int: 22, spd: 8 },
-    'demon':         { hp: 580, mp: 45,  atk: 72, def: 28, mdef: 22, move: 2, awr: 2, int: 22, spd: 4 },
-    'bigfoot':       { hp: 605, mp: 39,  atk: 64, def: 30, mdef: 17, move: 2, awr: 2, int: 12, spd: 3 },
-    'antperson':     { hp: 585, mp: 53, atk: 64, def: 28, mdef: 27, move: 2, awr: 3, int: 26, spd: 7 },
-    'werewolf':      { hp: 575, mp: 48,  atk: 70, def: 30, mdef: 18, move: 3, awr: 3, int: 15, spd: 8 },
+    'skeleton':      { hp: 570, mp: 85,  atk: 72, def: 28, mdef: 22, move: 3, awr: 2, int: 22, spd: 8 },
+    'demon':         { hp: 580, mp: 80,  atk: 72, def: 28, mdef: 22, move: 2, awr: 2, int: 22, spd: 4 },
+    'bigfoot':       { hp: 605, mp: 70,  atk: 64, def: 30, mdef: 17, move: 2, awr: 2, int: 12, spd: 3 },
+    'antperson':     { hp: 585, mp: 95, atk: 64, def: 28, mdef: 27, move: 2, awr: 3, int: 26, spd: 7 },
+    'werewolf':      { hp: 575, mp: 85,  atk: 70, def: 30, mdef: 18, move: 3, awr: 3, int: 15, spd: 8 },
 
-    'angel':         { hp: 480, mp: 98, atk: 22, def: 30, mdef: 42, move: 2, awr: 4, int: 59, spd: 8 },
-    'ghost':         { hp: 485, mp: 96, atk: 22, def: 28, mdef: 42, move: 3, awr: 4, int: 58, spd: 8 },
+    'angel':         { hp: 480, mp: 175, atk: 22, def: 30, mdef: 42, move: 2, awr: 4, int: 59, spd: 8 },
+    'ghost':         { hp: 485, mp: 175, atk: 22, def: 28, mdef: 42, move: 3, awr: 4, int: 58, spd: 8 },
 
-    'nordic':        { hp: 560, mp: 71, atk: 54, def: 44, mdef: 29, move: 2, awr: 3, int: 48, spd: 6 },
-    'fairy':         { hp: 466, mp: 104, atk: 24, def: 22, mdef: 44, move: 3, awr: 5, int: 62, spd: 8 },
-    'scarecrow':     { hp: 530, mp: 76, atk: 36, def: 33, mdef: 32, move: 2, awr: 2, int: 40, spd: 5 },
-    'grey':          { hp: 465, mp: 104, atk: 22, def: 24, mdef: 46, move: 2, awr: 6, int: 65, spd: 8 },
-    'succubus':      { hp: 492, mp: 91, atk: 32, def: 26, mdef: 40, move: 2, awr: 3, int: 55, spd: 8 },
-    'orb of light':  { hp: 445, mp: 114, atk: 20, def: 22, mdef: 49, move: 2, awr: 6, int: 70, spd: 7 },
-    'mothman':       { hp: 502, mp: 89, atk: 28, def: 26, mdef: 38, move: 2, awr: 6, int: 50, spd: 8 },
-    'siren':         { hp: 488, mp: 95, atk: 28, def: 25, mdef: 41, move: 2, awr: 3, int: 56, spd: 8 },
+    'nordic':        { hp: 560, mp: 130, atk: 54, def: 44, mdef: 29, move: 2, awr: 3, int: 48, spd: 6 },
+    'fairy':         { hp: 466, mp: 185, atk: 24, def: 22, mdef: 44, move: 3, awr: 5, int: 62, spd: 8 },
+    'scarecrow':     { hp: 530, mp: 135, atk: 36, def: 33, mdef: 32, move: 2, awr: 2, int: 40, spd: 5 },
+    'grey':          { hp: 465, mp: 185, atk: 22, def: 24, mdef: 46, move: 2, awr: 6, int: 65, spd: 8 },
+    'succubus':      { hp: 492, mp: 165, atk: 32, def: 26, mdef: 40, move: 2, awr: 3, int: 55, spd: 8 },
+    'orb of light':  { hp: 445, mp: 205, atk: 20, def: 22, mdef: 49, move: 2, awr: 6, int: 70, spd: 7 },
+    'mothman':       { hp: 502, mp: 160, atk: 28, def: 26, mdef: 38, move: 2, awr: 6, int: 50, spd: 8 },
+    'siren':         { hp: 488, mp: 170, atk: 28, def: 25, mdef: 41, move: 2, awr: 3, int: 56, spd: 8 },
 
-    'android':       { hp: 518, mp: 71, atk: 60, def: 24, mdef: 31, move: 3, awr: 5, int: 39, spd: 9 },
-    'shadow entity': { hp: 496, mp: 81, atk: 46, def: 20, mdef: 35, move: 3, awr: 5, int: 58, spd: 10 },
-    'reptilian':     { hp: 555, mp: 64, atk: 68, def: 29, mdef: 27, move: 2, awr: 4, int: 30, spd: 7 },
-    'catgirl':       { hp: 508, mp: 76, atk: 57, def: 24, mdef: 31, move: 3, awr: 4, int: 38, spd: 8 },
-    'mantid':        { hp: 510, mp: 84, atk: 60, def: 22, mdef: 34, move: 3, awr: 5, int: 44, spd: 8 },
-    'skinwalker':    { hp: 508, mp: 76, atk: 62, def: 30, mdef: 31, move: 3, awr: 5, int: 39, spd: 9 },
+    'android':       { hp: 518, mp: 130, atk: 60, def: 24, mdef: 31, move: 3, awr: 5, int: 39, spd: 9 },
+    'shadow entity': { hp: 496, mp: 145, atk: 46, def: 20, mdef: 35, move: 3, awr: 5, int: 58, spd: 10 },
+    'reptilian':     { hp: 555, mp: 115, atk: 68, def: 29, mdef: 27, move: 2, awr: 4, int: 30, spd: 7 },
+    'catgirl':       { hp: 508, mp: 135, atk: 57, def: 24, mdef: 31, move: 3, awr: 4, int: 38, spd: 8 },
+    'mantid':        { hp: 510, mp: 150, atk: 60, def: 22, mdef: 34, move: 3, awr: 5, int: 44, spd: 8 },
+    'skinwalker':    { hp: 508, mp: 135, atk: 62, def: 30, mdef: 31, move: 3, awr: 5, int: 39, spd: 9 },
 
-    'seraphim':      { hp: 445, mp: 114, atk: 22, def: 22, mdef: 48, move: 2, awr: 4, int: 69, spd: 8 },
-    'djinn':         { hp: 462, mp: 104, atk: 26, def: 28, mdef: 45, move: 2, awr: 3, int: 63, spd: 8 },
-    'anubis':        { hp: 458, mp: 106, atk: 24, def: 28, mdef: 46, move: 2, awr: 4, int: 66, spd: 6 },
+    'seraphim':      { hp: 445, mp: 205, atk: 22, def: 22, mdef: 48, move: 2, awr: 4, int: 69, spd: 8 },
+    'djinn':         { hp: 462, mp: 185, atk: 26, def: 28, mdef: 45, move: 2, awr: 3, int: 63, spd: 8 },
+    'anubis':        { hp: 458, mp: 190, atk: 24, def: 28, mdef: 46, move: 2, awr: 4, int: 66, spd: 6 },
 
-    'martian':       { hp: 520, mp: 78, atk: 66, def: 27, mdef: 31, move: 2, awr: 4, int: 38, spd: 7 },
-    'annunaki':      { hp: 510, mp: 79, atk: 54, def: 32, mdef: 28, move: 2, awr: 3, int: 44, spd: 5 },
+    'martian':       { hp: 520, mp: 140, atk: 66, def: 27, mdef: 31, move: 2, awr: 4, int: 38, spd: 7 },
+    'annunaki':      { hp: 510, mp: 140, atk: 54, def: 32, mdef: 28, move: 2, awr: 3, int: 44, spd: 5 },
 
-    'ai':            { hp: 470, mp: 99, atk: 28, def: 24, mdef: 46, move: 2, awr: 6, int: 65, spd: 7 },
-    'machine elves': { hp: 505, mp: 98, atk: 32, def: 27, mdef: 42, move: 2, awr: 4, int: 58, spd: 7 },
-    'glitch':        { hp: 490, mp: 90, atk: 36, def: 24, mdef: 39, move: 3, awr: 5, int: 53, spd: 9 },
+    'ai':            { hp: 470, mp: 180, atk: 28, def: 24, mdef: 46, move: 2, awr: 6, int: 65, spd: 7 },
+    'machine elves': { hp: 505, mp: 175, atk: 32, def: 27, mdef: 42, move: 2, awr: 4, int: 58, spd: 7 },
+    'glitch':        { hp: 490, mp: 160, atk: 36, def: 24, mdef: 39, move: 3, awr: 5, int: 53, spd: 9 },
 
-    'homosapien':    { hp: 545, mp: 74, atk: 52, def: 32, mdef: 30, move: 2, awr: 3, int: 36, spd: 6 },
-    'pirate':        { hp: 560, mp: 60, atk: 62, def: 30, mdef: 23, move: 2, awr: 3, int: 24, spd: 7 },
-    'swordfighter':  { hp: 550, mp: 59, atk: 64, def: 32, mdef: 24, move: 3, awr: 3, int: 26, spd: 9 },
+    'homosapien':    { hp: 545, mp: 135, atk: 52, def: 32, mdef: 30, move: 2, awr: 3, int: 36, spd: 6 },
+    'pirate':        { hp: 560, mp: 110, atk: 62, def: 30, mdef: 23, move: 2, awr: 3, int: 24, spd: 7 },
+    'swordfighter':  { hp: 550, mp: 105, atk: 64, def: 32, mdef: 24, move: 3, awr: 3, int: 26, spd: 9 },
 
-    'knight':        { hp: 575, mp: 70,  atk: 48, def: 42, mdef: 22, move: 2, awr: 2, int: 36, spd: 4 },
-    'shaman':        { hp: 545, mp: 88, atk: 42, def: 30, mdef: 36, move: 2, awr: 3, int: 58, spd: 5 },
-    'mad scientist': { hp: 480, mp: 93, atk: 30, def: 22, mdef: 44, move: 2, awr: 5, int: 62, spd: 8 },
-    'cowboy':        { hp: 540, mp: 63, atk: 64, def: 28, mdef: 23, move: 2, awr: 4, int: 24, spd: 7 },
-    'men in black':  { hp: 520, mp: 70, atk: 48, def: 28, mdef: 31, move: 3, awr: 5, int: 48, spd: 9 },
-    'telepath':      { hp: 490, mp: 110, atk: 22, def: 24, mdef: 47, move: 2, awr: 6, int: 71, spd: 7 },
-    'marksman':      { hp: 505, mp: 65, atk: 62, def: 22, mdef: 22, move: 2, awr: 6, int: 22, spd: 8 },
-    'priest':        { hp: 490, mp: 98, atk: 24, def: 30, mdef: 41, move: 2, awr: 4, int: 56, spd: 7 },
-    'wizard':        { hp: 475, mp: 110, atk: 22, def: 24, mdef: 49, move: 2, awr: 3, int: 70, spd: 6 },
-    'fortune teller':{ hp: 515, mp: 89, atk: 28, def: 26, mdef: 39, move: 2, awr: 6, int: 56, spd: 7 },
+    'knight':        { hp: 575, mp: 125,  atk: 48, def: 42, mdef: 22, move: 2, awr: 2, int: 36, spd: 4 },
+    'shaman':        { hp: 545, mp: 160, atk: 42, def: 30, mdef: 36, move: 2, awr: 3, int: 58, spd: 5 },
+    'mad scientist': { hp: 480, mp: 165, atk: 30, def: 22, mdef: 44, move: 2, awr: 5, int: 62, spd: 8 },
+    'cowboy':        { hp: 540, mp: 115, atk: 64, def: 28, mdef: 23, move: 2, awr: 4, int: 24, spd: 7 },
+    'men in black':  { hp: 520, mp: 125, atk: 48, def: 28, mdef: 31, move: 3, awr: 5, int: 48, spd: 9 },
+    'telepath':      { hp: 490, mp: 200, atk: 22, def: 24, mdef: 47, move: 2, awr: 6, int: 71, spd: 7 },
+    'marksman':      { hp: 505, mp: 115, atk: 62, def: 22, mdef: 22, move: 2, awr: 6, int: 22, spd: 8 },
+    'priest':        { hp: 490, mp: 175, atk: 24, def: 30, mdef: 41, move: 2, awr: 4, int: 56, spd: 7 },
+    'wizard':        { hp: 475, mp: 200, atk: 22, def: 24, mdef: 49, move: 2, awr: 3, int: 70, spd: 6 },
+    'fortune teller':{ hp: 515, mp: 160, atk: 28, def: 26, mdef: 39, move: 2, awr: 6, int: 56, spd: 7 },
 
-    'nephilim':      { hp: 618, mp: 68,  atk: 38, def: 50, mdef: 17, move: 2, awr: 3, int: 42, spd: 3 },
+    'nephilim':      { hp: 618, mp: 120,  atk: 38, def: 50, mdef: 17, move: 2, awr: 3, int: 42, spd: 3 },
 
-    'demon prince':  { hp: 585, mp: 44,  atk: 52, def: 26, mdef: 21, move: 2, awr: 2, int: 46, spd: 3 },
-    'goatman':       { hp: 590, mp: 56,  atk: 70, def: 30, mdef: 20, move: 2, awr: 2, int: 36, spd: 6 },
+    'demon prince':  { hp: 585, mp: 80,  atk: 52, def: 26, mdef: 21, move: 2, awr: 2, int: 46, spd: 3 },
+    'goatman':       { hp: 590, mp: 100,  atk: 70, def: 30, mdef: 20, move: 2, awr: 2, int: 36, spd: 6 },
 
-    'mermaid':       { hp: 478, mp: 99, atk: 20, def: 28, mdef: 44, move: 2, awr: 4, int: 62, spd: 8 },
+    'mermaid':       { hp: 478, mp: 180, atk: 20, def: 28, mdef: 44, move: 2, awr: 4, int: 62, spd: 8 },
 
-    'demon princess':{ hp: 495, mp: 93, atk: 30, def: 26, mdef: 39, move: 2, awr: 3, int: 52, spd: 7 },
-    'dreameater':    { hp: 490, mp: 95, atk: 22, def: 22, mdef: 44, move: 2, awr: 5, int: 62, spd: 7 },
+    'demon princess':{ hp: 495, mp: 165, atk: 30, def: 26, mdef: 39, move: 2, awr: 3, int: 52, spd: 7 },
+    'dreameater':    { hp: 490, mp: 170, atk: 22, def: 22, mdef: 44, move: 2, awr: 5, int: 62, spd: 7 },
 
-    'halfdemon':     { hp: 535, mp: 73, atk: 64, def: 24, mdef: 30, move: 3, awr: 4, int: 36, spd: 9 },
-    'vampire':       { hp: 480, mp: 79, atk: 55, def: 22, mdef: 25, move: 3, awr: 5, int: 28, spd: 7 },
+    'halfdemon':     { hp: 535, mp: 130, atk: 64, def: 24, mdef: 30, move: 3, awr: 4, int: 36, spd: 9 },
+    'vampire':       { hp: 480, mp: 140, atk: 55, def: 22, mdef: 25, move: 3, awr: 5, int: 28, spd: 7 },
 
-    'fallen angel':  { hp: 452, mp: 109, atk: 24, def: 24, mdef: 47, move: 2, awr: 4, int: 68, spd: 8 },
-    'voidweaver':    { hp: 505, mp: 78, atk: 64, def: 22, mdef: 31, move: 3, awr: 5, int: 38, spd: 8 },
+    'fallen angel':  { hp: 452, mp: 195, atk: 24, def: 24, mdef: 47, move: 2, awr: 4, int: 68, spd: 8 },
+    'voidweaver':    { hp: 505, mp: 140, atk: 64, def: 22, mdef: 31, move: 3, awr: 5, int: 38, spd: 8 },
 
-    'cosmic wraith': { hp: 498, mp: 81, atk: 60, def: 26, mdef: 32, move: 2, awr: 4, int: 40, spd: 8 },
+    'cosmic wraith': { hp: 498, mp: 145, atk: 60, def: 26, mdef: 32, move: 2, awr: 4, int: 40, spd: 8 },
 
-    'cyborg':        { hp: 575, mp: 45,  atk: 65, def: 30, mdef: 22, move: 2, awr: 3, int: 22, spd: 8 },
+    'cyborg':        { hp: 575, mp: 80,  atk: 65, def: 30, mdef: 22, move: 2, awr: 3, int: 22, spd: 8 },
 
-    'superhero':     { hp: 538, mp: 68, atk: 52, def: 34, mdef: 25, move: 3, awr: 3, int: 28, spd: 6 },
+    'superhero':     { hp: 538, mp: 120, atk: 52, def: 34, mdef: 25, move: 3, awr: 3, int: 28, spd: 6 },
 
-    'general':       { hp: 568, mp: 63, atk: 50, def: 38, mdef: 27, move: 2, awr: 3, int: 30, spd: 6 },
-    'droid':         { hp: 468, mp: 108, atk: 24, def: 22, mdef: 46, move: 2, awr: 6, int: 66, spd: 7 },
-    'antihero':      { hp: 558, mp: 59, atk: 58, def: 36, mdef: 23, move: 3, awr: 3, int: 24, spd: 7 },
-    'conspiracy theorist':{ hp: 522, mp: 81, atk: 42, def: 28, mdef: 32, move: 2, awr: 5, int: 40, spd: 6 },
-    'overlord':      { hp: 625, mp: 64,  atk: 60, def: 32, mdef: 18, move: 2, awr: 2, int: 52, spd: 4 },
-    'chosen one':    { hp: 452, mp: 113, atk: 58, def: 24, mdef: 48, move: 2, awr: 5, int: 58, spd: 9 },
-    'politician':    { hp: 548, mp: 69, atk: 34, def: 34, mdef: 30, move: 2, awr: 4, int: 48, spd: 5 },
+    'general':       { hp: 568, mp: 115, atk: 50, def: 38, mdef: 27, move: 2, awr: 3, int: 30, spd: 6 },
+    'droid':         { hp: 468, mp: 195, atk: 24, def: 22, mdef: 46, move: 2, awr: 6, int: 66, spd: 7 },
+    'antihero':      { hp: 558, mp: 105, atk: 58, def: 36, mdef: 23, move: 3, awr: 3, int: 24, spd: 7 },
+    'conspiracy theorist':{ hp: 522, mp: 145, atk: 42, def: 28, mdef: 32, move: 2, awr: 5, int: 40, spd: 6 },
+    'overlord':      { hp: 625, mp: 115,  atk: 60, def: 32, mdef: 18, move: 2, awr: 2, int: 52, spd: 4 },
+    'chosen one':    { hp: 452, mp: 205, atk: 58, def: 24, mdef: 48, move: 2, awr: 5, int: 58, spd: 9 },
+    'politician':    { hp: 548, mp: 125, atk: 34, def: 34, mdef: 30, move: 2, awr: 4, int: 48, spd: 5 },
 
-    'atlantean':     { hp: 524, mp: 85, atk: 46, def: 34, mdef: 33, move: 2, awr: 3, int: 48, spd: 6 },
-    'dinosaur':      { hp: 595, mp: 40,  atk: 74, def: 26, mdef: 18, move: 2, awr: 2, int: 14, spd: 7 },
-    'dragon':        { hp: 500, mp: 83, atk: 66, def: 28, mdef: 40, move: 2, awr: 3, int: 50, spd: 3 },
-    'ghoul':         { hp: 545, mp: 65, atk: 60, def: 22, mdef: 25, move: 3, awr: 3, int: 28, spd: 9 },
-    'gnome':         { hp: 520, mp: 80, atk: 40, def: 28, mdef: 31, move: 2, awr: 4, int: 38, spd: 8 },
-    'kaiju':         { hp: 595, mp: 62,  atk: 76, def: 30, mdef: 13, move: 2, awr: 1, int: 30, spd: 3 },
-    'kraken':        { hp: 524, mp: 69, atk: 78, def: 36, mdef: 29, move: 2, awr: 3, int: 30, spd: 1 },
-    'loch ness monster':{ hp: 612, mp: 64,  atk: 40, def: 46, mdef: 14, move: 2, awr: 2, int: 44, spd: 2 },
-    'yeti':          { hp: 600, mp: 41,  atk: 70, def: 32, mdef: 16, move: 2, awr: 2, int: 10, spd: 2 },
+    'atlantean':     { hp: 524, mp: 155, atk: 46, def: 34, mdef: 33, move: 2, awr: 3, int: 48, spd: 6 },
+    'dinosaur':      { hp: 595, mp: 70,  atk: 74, def: 26, mdef: 18, move: 2, awr: 2, int: 14, spd: 7 },
+    'dragon':        { hp: 500, mp: 150, atk: 66, def: 28, mdef: 40, move: 2, awr: 3, int: 50, spd: 3 },
+    'ghoul':         { hp: 545, mp: 115, atk: 60, def: 22, mdef: 25, move: 3, awr: 3, int: 28, spd: 9 },
+    'gnome':         { hp: 520, mp: 145, atk: 40, def: 28, mdef: 31, move: 2, awr: 4, int: 38, spd: 8 },
+    'kaiju':         { hp: 595, mp: 110,  atk: 76, def: 30, mdef: 13, move: 2, awr: 1, int: 30, spd: 3 },
+    'kraken':        { hp: 524, mp: 125, atk: 78, def: 36, mdef: 29, move: 2, awr: 3, int: 30, spd: 1 },
+    'loch ness monster':{ hp: 612, mp: 115,  atk: 40, def: 46, mdef: 14, move: 2, awr: 2, int: 44, spd: 2 },
+    'yeti':          { hp: 600, mp: 75,  atk: 70, def: 32, mdef: 16, move: 2, awr: 2, int: 10, spd: 2 },
 
-    'barbarella':    { hp: 524, mp: 71, atk: 56, def: 28, mdef: 31, move: 3, awr: 3, int: 38, spd: 8 },
-    'black goo':     { hp: 540, mp: 70, atk: 38, def: 32, mdef: 33, move: 2, awr: 4, int: 42, spd: 5 },
-    'golem':         { hp: 660, mp: 28,  atk: 42, def: 54, mdef: 13, move: 2, awr: 1, int: 6,  spd: 2 },
-    'honda civic':   { hp: 560, mp: 55, atk: 48, def: 38, mdef: 21, move: 3, awr: 2, int: 20, spd: 6 },
-    'ice queen':     { hp: 470, mp: 100, atk: 22, def: 28, mdef: 44, move: 2, awr: 4, int: 62, spd: 7 },
-    'juggernaut':    { hp: 640, mp: 30,  atk: 72, def: 36, mdef: 14, move: 2, awr: 1, int: 8,  spd: 3 },
-    'ki fighter':    { hp: 545, mp: 65, atk: 64, def: 28, mdef: 23, move: 3, awr: 3, int: 50, spd: 9 },
-    'king arthur':   { hp: 600, mp: 50, atk: 48, def: 48, mdef: 25, move: 2, awr: 3, int: 28, spd: 5 },
-    'king kong':     { hp: 650, mp: 29,  atk: 74, def: 32, mdef: 14, move: 2, awr: 2, int: 8,  spd: 3 },
-    'minotaur':      { hp: 615, mp: 40,  atk: 70, def: 30, mdef: 21, move: 3, awr: 2, int: 12, spd: 6 },
-    'necromancer':   { hp: 485, mp: 98, atk: 24, def: 26, mdef: 42, move: 2, awr: 3, int: 58, spd: 6 },
-    'occulus':       { hp: 466, mp: 90, atk: 20, def: 24, mdef: 38, move: 3, awr: 5, int: 50, spd: 7 },
-    'quarterback':   { hp: 538, mp: 59, atk: 54, def: 30, mdef: 22, move: 3, awr: 3, int: 22, spd: 7 },
-    'robinhood':     { hp: 535, mp: 61, atk: 66, def: 26, mdef: 25, move: 3, awr: 4, int: 28, spd: 9 },
-    'santa clause':  { hp: 645, mp: 70, atk: 36, def: 38, mdef: 36, move: 2, awr: 4, int: 48, spd: 4 },
-    'super sentai':  { hp: 620, mp: 45,  atk: 46, def: 44, mdef: 20, move: 2, awr: 3, int: 18, spd: 4 },
-    'symbiote':      { hp: 520, mp: 60, atk: 64, def: 26, mdef: 25, move: 3, awr: 3, int: 28, spd: 8 },
-    'valkraye':      { hp: 560, mp: 55, atk: 56, def: 34, mdef: 27, move: 3, awr: 3, int: 30, spd: 7 },
-    'watcher':       { hp: 480, mp: 89, atk: 22, def: 28, mdef: 39, move: 2, awr: 5, int: 52, spd: 6 },
+    'barbarella':    { hp: 524, mp: 130, atk: 56, def: 28, mdef: 31, move: 3, awr: 3, int: 38, spd: 8 },
+    'black goo':     { hp: 540, mp: 125, atk: 38, def: 32, mdef: 33, move: 2, awr: 4, int: 42, spd: 5 },
+    'golem':         { hp: 660, mp: 50,  atk: 42, def: 54, mdef: 13, move: 2, awr: 1, int: 6,  spd: 2 },
+    'honda civic':   { hp: 560, mp: 100, atk: 48, def: 38, mdef: 21, move: 3, awr: 2, int: 20, spd: 6 },
+    'ice queen':     { hp: 470, mp: 180, atk: 22, def: 28, mdef: 44, move: 2, awr: 4, int: 62, spd: 7 },
+    'juggernaut':    { hp: 640, mp: 55,  atk: 72, def: 36, mdef: 14, move: 2, awr: 1, int: 8,  spd: 3 },
+    'ki fighter':    { hp: 545, mp: 115, atk: 64, def: 28, mdef: 23, move: 3, awr: 3, int: 50, spd: 9 },
+    'king arthur':   { hp: 600, mp: 90, atk: 48, def: 48, mdef: 25, move: 2, awr: 3, int: 28, spd: 5 },
+    'king kong':     { hp: 650, mp: 50,  atk: 74, def: 32, mdef: 14, move: 2, awr: 2, int: 8,  spd: 3 },
+    'minotaur':      { hp: 615, mp: 70,  atk: 70, def: 30, mdef: 21, move: 3, awr: 2, int: 12, spd: 6 },
+    'necromancer':   { hp: 485, mp: 175, atk: 24, def: 26, mdef: 42, move: 2, awr: 3, int: 58, spd: 6 },
+    'occulus':       { hp: 466, mp: 160, atk: 20, def: 24, mdef: 38, move: 3, awr: 5, int: 50, spd: 7 },
+    'quarterback':   { hp: 538, mp: 105, atk: 54, def: 30, mdef: 22, move: 3, awr: 3, int: 22, spd: 7 },
+    'robinhood':     { hp: 535, mp: 110, atk: 66, def: 26, mdef: 25, move: 3, awr: 4, int: 28, spd: 9 },
+    'santa clause':  { hp: 645, mp: 125, atk: 36, def: 38, mdef: 36, move: 2, awr: 4, int: 48, spd: 4 },
+    'super sentai':  { hp: 620, mp: 80,  atk: 46, def: 44, mdef: 20, move: 2, awr: 3, int: 18, spd: 4 },
+    'symbiote':      { hp: 520, mp: 110, atk: 64, def: 26, mdef: 25, move: 3, awr: 3, int: 28, spd: 8 },
+    'valkraye':      { hp: 560, mp: 100, atk: 56, def: 34, mdef: 27, move: 3, awr: 3, int: 30, spd: 7 },
+    'watcher':       { hp: 480, mp: 160, atk: 22, def: 28, mdef: 39, move: 2, awr: 5, int: 52, spd: 6 },
 };
 
 /* ── RACE_PHYSIQUE (2026-07-07 physique pass) ──────────────────────────────
@@ -3122,7 +3122,7 @@ const JOB_MODIFIERS = {
     // Provoke / Iron Dome) and the Bulwark passive.
     'Warrior': {
         hp: 80,
-        mp: -5,
+        mp: -10,
         atk: 30,
         def: 14,
         mdef: 8,
@@ -3135,7 +3135,7 @@ const JOB_MODIFIERS = {
     },
     'Tank': {
         hp: 160,
-        mp: -10,
+        mp: -20,
         atk: 12,
         def: 30,
         mdef: 16,
@@ -3148,7 +3148,7 @@ const JOB_MODIFIERS = {
     },
     'Gunslinger': {
         hp: 20,
-        mp: -5,
+        mp: -10,
         atk: 14,
         def: 5,
         mdef: 2,
@@ -3161,7 +3161,7 @@ const JOB_MODIFIERS = {
     },
     'Black Mage': {
         hp: -60,
-        mp: 30,
+        mp: 55,
         atk: -24,
         def: -10,
         mdef: 12,
@@ -3174,7 +3174,7 @@ const JOB_MODIFIERS = {
     },
     'White Mage': {
         hp: -30,
-        mp: 25,
+        mp: 45,
         atk: -24,
         def: 0,
         mdef: 14,
@@ -3187,7 +3187,7 @@ const JOB_MODIFIERS = {
     },
     'Agent': {
         hp: -40,
-        mp: 8,
+        mp: 15,
         atk: 4,
         def: 0,
         mdef: 6,
@@ -3200,7 +3200,7 @@ const JOB_MODIFIERS = {
     },
     'Psychic': {
         hp: 15,
-        mp: 35,
+        mp: 65,
         atk: -16,
         def: -5,
         mdef: 14,
@@ -3213,7 +3213,7 @@ const JOB_MODIFIERS = {
     },
     'Harvester': {
         hp: 105,
-        mp: 15,
+        mp: 25,
         atk: 26,
         def: 10,
         mdef: 6,
@@ -3227,7 +3227,7 @@ const JOB_MODIFIERS = {
 
     'Engineer': {
         hp: 80,
-        mp: 5,
+        mp: 10,
         atk: 14,
         def: 16,
         mdef: 10,
@@ -3241,7 +3241,7 @@ const JOB_MODIFIERS = {
 
     'Harbinger': {
         hp: 30,
-        mp: 28,
+        mp: 50,
         atk: -24,
         def: -5,
         mdef: 12,
@@ -3255,7 +3255,7 @@ const JOB_MODIFIERS = {
 
     'Freelancer': {
         hp: 20,
-        mp: 5,
+        mp: 10,
         atk: 8,
         def: 5,
         mdef: 5,
@@ -3281,7 +3281,7 @@ const JOB_MODIFIERS = {
     },
     'Sniper': {
         hp: -5,
-        mp: -3,
+        mp: -5,
         atk: 18,
         def: -8,
         mdef: -5,
@@ -3312,7 +3312,9 @@ function computeUnitStats(race, cls) {
     const job = JOB_MODIFIERS[cls] || JOB_MODIFIERS['Gunslinger'];
     return {
         hp: Math.max(200, base.hp + job.hp),
-        mp: Math.max(12, base.mp + job.mp),
+        // Floor = one ring-1 cast (25 MP) — no build can be locked out of
+        // its cheapest spell entirely.
+        mp: Math.max(25, base.mp + job.mp),
         atk: Math.max(8, base.atk + job.atk),
         def: Math.max(0, base.def + job.def),
         mdef: Math.max(0, (base.mdef || 0) + (job.mdef || 0)),
@@ -3365,7 +3367,7 @@ const CLASS_TEMPLATES = {
         cls: 'Gunslinger',
         job: 'Gunslinger',
         hp: 580,
-        mp: 55,
+        mp: 100,
         atk: 80,
         def: 40,
         mdef: 27,
@@ -3379,7 +3381,7 @@ const CLASS_TEMPLATES = {
         cls: 'Warrior',
         job: 'Warrior',
         hp: 620,
-        mp: 55,
+        mp: 100,
         atk: 92,
         def: 45,
         mdef: 22,
@@ -3393,7 +3395,7 @@ const CLASS_TEMPLATES = {
         cls: 'Tank',
         job: 'Tank',
         hp: 720,
-        mp: 50,
+        mp: 90,
         atk: 64,
         def: 65,
         mdef: 26,
@@ -3407,7 +3409,7 @@ const CLASS_TEMPLATES = {
         cls: 'Black Mage',
         job: 'Black Mage',
         hp: 470,
-        mp: 90,
+        mp: 160,
         atk: 32,
         def: 25,
         mdef: 38,
@@ -3421,7 +3423,7 @@ const CLASS_TEMPLATES = {
         cls: 'White Mage',
         job: 'White Mage',
         hp: 520,
-        mp: 85,
+        mp: 155,
         atk: 32,
         def: 35,
         mdef: 35,
@@ -3435,7 +3437,7 @@ const CLASS_TEMPLATES = {
         cls: 'Agent',
         job: 'Agent',
         hp: 550,
-        mp: 68,
+        mp: 120,
         atk: 64,
         def: 35,
         mdef: 32,
@@ -3449,7 +3451,7 @@ const CLASS_TEMPLATES = {
         cls: 'Psychic',
         job: 'Psychic',
         hp: 470,
-        mp: 95,
+        mp: 170,
         atk: 24,
         def: 25,
         mdef: 40,
@@ -3463,7 +3465,7 @@ const CLASS_TEMPLATES = {
         cls: 'Harvester',
         job: 'Harvester',
         hp: 630,
-        mp: 70,
+        mp: 125,
         atk: 72,
         def: 45,
         mdef: 29,
@@ -3477,7 +3479,7 @@ const CLASS_TEMPLATES = {
         cls: 'Engineer',
         job: 'Engineer',
         hp: 600,
-        mp: 65,
+        mp: 115,
         atk: 56,
         def: 45,
         mdef: 29,
@@ -3491,7 +3493,7 @@ const CLASS_TEMPLATES = {
         cls: 'Harbinger',
         job: 'Harbinger',
         hp: 550,
-        mp: 80,
+        mp: 145,
         atk: 48,
         def: 35,
         mdef: 35,
@@ -3505,7 +3507,7 @@ const CLASS_TEMPLATES = {
         cls: 'Freelancer',
         job: 'Freelancer',
         hp: 570,
-        mp: 65,
+        mp: 115,
         atk: 64,
         def: 40,
         mdef: 29,
@@ -3519,7 +3521,7 @@ const CLASS_TEMPLATES = {
         cls: 'Raider',
         job: 'Raider',
         hp: 610,
-        mp: 60,
+        mp: 110,
         atk: 80,
         def: 40,
         mdef: 24,
@@ -3533,7 +3535,7 @@ const CLASS_TEMPLATES = {
         cls: 'Sniper',
         job: 'Sniper',
         hp: 500,
-        mp: 58,
+        mp: 105,
         atk: 72,
         def: 25,
         mdef: 27,
@@ -3547,7 +3549,7 @@ const CLASS_TEMPLATES = {
         cls: 'Swordmaster',
         job: 'Swordmaster',
         hp: 595,
-        mp: 59,
+        mp: 105,
         atk: 88,
         def: 42,
         mdef: 28,
@@ -6200,7 +6202,7 @@ const RACE_ABILITIES = {
           drawsRangedAttack: true, drawsMeleeAttack: true,
           desc: 'Print a decoy clone on an adjacent tile. It draws enemy attention but cannot attack. Placing never uses your spell slot.' },
         { id: 'raceOvercharge', spellType: 'tech', element: 'poison', name: 'Chemical Bath',
-          type: 'damage', cost: 40, manaCostOverride: 40, dmg: 120, range: 3,
+          type: 'damage', cost: 75, dmg: 120, range: 3,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'burn', duration: 2 }],
           bonusVsStatus: { status: 'poison', mult: 1.5 },
@@ -6354,7 +6356,7 @@ const RACE_ABILITIES = {
           statStageBoost: { atk: -2 },
           desc: 'Weakens a Single Enemy. Lowers ATK by 2 stages.' },
         { id: 'raceCrystalBall', spellType: 'anomaly', element: 'arcane', name: 'Crystal Ball',
-          type: 'damage', tier: 'III', cost: 45, manaCostOverride: 45, dmg: 160, range: 5, apCost: 1,
+          type: 'damage', tier: 'III', cost: 100, dmg: 160, range: 5, apCost: 1,
           kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
           bonusVsStatus: { status: 'hexed', mult: 1.5 },
           desc: 'Marks a zone. After 1 turn, deals HEAVY magic damage to All Enemies inside (AOE). Deals bonus damage to Hexed targets.' },
@@ -6413,7 +6415,7 @@ const RACE_ABILITIES = {
           // 2026-07-10 rework: was a 1-wide line beam that rarely caught more
           // than one target (20% win rate in the sim stats). Now a ranged
           // 3×3 sky-strike — a curtain of aurora descends on the marked area.
-          type: 'damage', cost: 50, manaCostOverride: 50, dmg: 135, range: 5,
+          type: 'damage', cost: 25, dmg: 135, range: 5,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statStageBoost: { def: -1 },
           bonusVsStatus: { status: 'stun', mult: 1.5 },
@@ -6790,7 +6792,7 @@ const RACE_ABILITIES = {
         _mkBlink('short', { id: 'racePhaseWalk', spellType: 'tech', name: 'Phase Walk',
           desc: 'Phase through reality up to 3 tiles. Repositioning tool.' }),
         { id: 'raceHeatDeath', spellType: 'alien', name: 'Heat Death',
-          type: 'damage', tier: 'III', cost: 60, manaCostOverride: 60, dmg: 180, range: 4, apCost: 2,
+          type: 'damage', tier: 'III', cost: 100, dmg: 180, range: 4, apCost: 2,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1, zoneDuration: 2,
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Impose entropy on a 3×3 area for 2 turns — everything inside takes HEAVY damage.' },
@@ -7836,19 +7838,15 @@ const SIM_DEFAULTS = {
 })();
 
 // ===========================================================================
-// MANA ECONOMY — unified spell-cost formula
+// MANA ECONOMY — power formula (OFF-TREE FALLBACK ONLY since 2026-08-12)
 // ---------------------------------------------------------------------------
-// Every spell's mana `cost` is DERIVED from what the spell actually does, so a
-// devastating area nuke costs well over half a caster's pool while a cheap
-// utility stays affordable. This makes mana a real resource: you can't spam
-// your best spell, and restoring mana (potions, end-of-round regen, recalling
-// to your spawn zone) becomes a genuine strategic decision.
-//
-// The cost is the sum of weighted "power" contributions — damage, healing,
-// shields, mana restored, status effects, buffs/debuffs, displacement, range,
-// zone control — scaled by how many units the spell can realistically hit.
-// Tune the constants below to reshape the whole economy from one place. Any
-// spell may opt out by setting an explicit numeric `manaCostOverride`.
+// Spell MP costs are now TREE-POSITION based: ring 1 = 25, ring 2 = 50,
+// ring 3 = 75, capstone = 100 (see applyTreeRingCosts, defined with the
+// tree tables below — it runs AFTER this pass and overwrites tree spells).
+// This formula still stamps a power-derived cost on every spell first, but
+// it only survives on OFF-TREE spells (extra race abilities / legacy pool),
+// and even those get snapped to the 25/50/75/100 ladder. Any spell may
+// still opt out entirely with an explicit numeric `manaCostOverride`.
 // ===========================================================================
 const MANA_FORMULA = {
     BASE: 8,            // floor a spell starts from before its power is added
@@ -11998,9 +11996,9 @@ const SPELL_SLOT_MAX = 6;
 // MP is the classic FF/DQ/SMT model (owner request, 2026-07-24 — "standard
 // JRPG leveling"): spell MP costs are FLAT AT ALL LEVELS (Fire costs the
 // same at level 1 and 99 — never scale costs), and the POOL compresses
-// instead, from EW_MP_L1_FRAC (20%) at level 1 to full size at the cap. The
+// instead, from EW_MP_L1_FRAC (30%) at level 1 to full size at the cap. The
 // floor is gentler than HP's 5% precisely so a fresh unit can afford its
-// starter spells 1–3 times; casts-per-pool then grows with level, which is
+// starter spells 2–4 times; casts-per-pool then grows with level, which is
 // the standard JRPG feel. Flat MP restores (Mana Rain, Supercharge, pixie
 // dust, shrines) stay FLAT for the same reason — an Ether is huge early and
 // modest late. %-of-maxMp effects (potions, regen) track the pool for free.
@@ -12027,24 +12025,25 @@ function levelScale(level) {
 // Stat growth. atk/def/mdef/int grow additively at classic scale (totals =
 // the exact column sums of the retired Lv2–10 LEVEL_UP_GAINS table, so level
 // 100 == the old level 10). HP follows the 5%→100% curve; MP follows the
-// same curve SHAPE but with a 20% floor (EW_MP_L1_FRAC) because spell costs
-// are flat — the floor is tuned so starter spells (20–30 MP) are castable
-// 1–3 times at level 1. The gain is whatever delta brings the stat to
+// same curve SHAPE but with a 30% floor (EW_MP_L1_FRAC) because spell costs
+// are flat — the floor is tuned so ring-1 spells (flat 25 MP) are castable
+// 2–4 times at level 1. The gain is whatever delta brings the stat to
 // (base + total) × curve(L) — NEGATIVE below the level where the curve
 // crosses the race's base, which is what compresses a fresh Mystery Dungeon
 // unit down to ~50 HP and a fraction of its mana.
-// 2026-07-25: raised 0.20 → 0.42. At 20% a level-1 Black Mage held 63 MP
-// against a flat 30-MP Fire — TWO casts for the whole battle, after which the
-// only option left was a basic attack, and 3%-of-pool regen refunded 2 MP a
-// round. That is the single biggest reason challenge Battle 1 ran past twelve
-// rounds. 42% gives a fresh unit 4–5 casts of a starter spell (plus regen),
-// which is the classic JRPG budget: enough to open with magic, not enough to
-// spam it. Costs stay FLAT at every level — only the pool moves.
-const EW_MP_L1_FRAC = 0.42;
-/* 2026-08-09 balance pass: MP pools halved across the board (base stats, job
-   modifiers, class templates and this growth total) — mana was never a real
-   constraint; now potions and regen matter. Spell costs stay FLAT. */
-const LEVEL_TOTAL_STAT_GAINS = { hp: 360, mp: 54, atk: 58, def: 52, mdef: 43, int: 43 };
+// 2026-07-25: raised 0.20 → 0.42 (starter spells were 20–30 MP then).
+// 2026-08-12: retuned 0.42 → 0.30 for the tree-position cost ladder — every
+// ring-1 spell is now a flat 25 MP and pools grew ~×1.8 to match, so 30%
+// keeps the same classic JRPG budget: a fresh caster opens with ~4 casts of
+// its starter spell, a fresh martial gets ~2, and casts-per-pool grow with
+// level. Costs stay FLAT at every level — only the pool moves.
+const EW_MP_L1_FRAC = 0.30;
+/* 2026-08-12 tree-cost redesign: MP pools rescaled ×1.8 across the board
+   (base stats, job modifiers, class templates and this growth total) to
+   match the 25/50/75/100 ring ladder — a full 4-node pillar now sums to
+   250 MP vs ~133 under the old derived costs. (History: pools were halved
+   2026-08-09 to make mana a real constraint; that ratio is preserved.) */
+const LEVEL_TOTAL_STAT_GAINS = { hp: 360, mp: 100, atk: 58, def: 52, mdef: 43, int: 43 };
 function levelStatGains(level, baseHp, baseMp) {
     const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
     const t = LEVEL_CAP <= 1 ? 1 : Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_SCALE_EXP);
@@ -12370,6 +12369,85 @@ const RACE_TREE = {
 
 const _JOB_TREE_IDS = new Set();
 for (const _ids of Object.values(CLASS_TREE)) for (const _id of _ids) _JOB_TREE_IDS.add(_id);
+
+/* ═══════════ TREE-POSITION MP COSTS (owner request 2026-08-12) ═══════════
+   MP costs no longer derive from what a spell does — they read straight off
+   the spell's NODE POSITION in its pillar:
+       ring 1 = 25 · ring 2 = 50 · ring 3 = 75 · capstone = 100
+   The mana formula above still runs first at load, but only as the pricer
+   of OFF-TREE spells (extra race abilities, legacy pool) — and even those
+   get snapped to the same 25/50/75/100 ladder so every cost in the game is
+   one of four legible numbers. An explicit numeric `manaCostOverride`
+   still wins everywhere (owner opt-out / editor-pinned costs). */
+const TREE_RING_MP_COSTS = [25, 50, 75, 100];
+
+function snapCostToLadder(cost) {
+    const c = +cost || 0;
+    if (c <= 37) return 25;
+    if (c <= 62) return 50;
+    if (c <= 87) return 75;
+    return 100;
+}
+
+/* spellId → ring index (0–3) across every job learn order + curated race
+   tree. The LAST entry of a pillar is its capstone (ring 3) — that's what
+   prices Freelancer's 3-spell order improvise/jackOfAll/reallyGoodPunch as
+   25/50/100, matching its P1/P2/P4 fixed nodes. A shared spell that sits
+   on different rings in different trees takes its LOWEST ring — the
+   cheapest node it occupies must stay affordable at that position. */
+function buildTreeRingIndex() {
+    const rings = {};
+    const noteOrder = (order) => {
+        if (!Array.isArray(order)) return;
+        order.forEach((id, i) => {
+            if (!id) return;
+            const ring = (i >= order.length - 1) ? 3 : Math.min(i, 2);
+            if (rings[id] == null || ring < rings[id]) rings[id] = ring;
+        });
+    };
+    for (const order of Object.values(CLASS_SPELL_LEARN_ORDER)) noteOrder(order);
+    for (const order of Object.values(RACE_TREE)) noteOrder(order);
+    return rings;
+}
+
+// Ladder price for one spell id, or null when the id is on no tree.
+function getTreeRingCost(id, rings) {
+    if (!id) return null;
+    const r = (rings || buildTreeRingIndex())[id];
+    return r == null ? null : TREE_RING_MP_COSTS[r];
+}
+
+/* Stamp every spell with its ladder price. Re-runnable: EWSpellMods calls
+   it after applying custom-content docs so learnset moves re-position
+   costs (skipIds = ids whose cost the doc pinned explicitly). snapOffTree
+   is only set on the boot pass — re-applies must not trample explicit
+   editor costs on off-tree spells. */
+function applyTreeRingCosts(skipIds, snapOffTree) {
+    const rings = buildTreeRingIndex();
+    const seen = new Set();
+    const all = [];
+    for (const sp of SPELL_LIBRARY) if (!seen.has(sp)) { seen.add(sp); all.push(sp); }
+    for (const _abl of Object.values(RACE_ABILITIES)) {
+        for (const ab of _abl) if (!seen.has(ab)) { seen.add(ab); all.push(ab); }
+    }
+    let treed = 0, snapped = 0;
+    for (const sp of all) {
+        if (!sp || sp.kind === 'basicAttack') continue;
+        if (skipIds && sp.id && skipIds.has(sp.id)) continue;
+        if (typeof sp.manaCostOverride === 'number') { sp.cost = sp.manaCostOverride; continue; }
+        const ring = sp.id != null ? rings[sp.id] : null;
+        if (ring != null) { sp.cost = TREE_RING_MP_COSTS[ring]; treed++; }
+        else if (snapOffTree && typeof sp.cost === 'number' && sp.cost > 0) {
+            sp.cost = snapCostToLadder(sp.cost); snapped++;
+        }
+    }
+    return { treed, snapped };
+}
+
+(function _applyTreeRingCostsAtBoot() {
+    const n = applyTreeRingCosts(null, true);
+    console.log(`[ManaEconomy] Tree-position MP costs: ${n.treed} tree spells priced 25/50/75/100 by ring, ${n.snapped} off-tree spells snapped to the ladder`);
+})();
 
 function classHasSpellTree(cls) {
     /* Freelancer joined the tree in Phase B (wildcard sockets, see the
@@ -12944,6 +13022,7 @@ Object.assign(window, {
   ACCT_STARTER_UNITS, ACCT_PVP_MODES, isUnitUnlocked, computeAccountMatchGold,
   /* spell tree (Tree of Life selector) */
   CLASS_TREE, RACE_TREE, classHasSpellTree, getClassTreeSpells, getRaceTreeSpells,
+  TREE_RING_MP_COSTS, buildTreeRingIndex, getTreeRingCost, applyTreeRingCosts, snapCostToLadder,
   getTreeEdges, buildUnitSpellTree, isTreeLoadoutLegal, treeLegalSubset,
   buildTreeLegalLoadout, treeSealedIds, treeReachableKeys,
   /* Freelancer wildcard sockets (Phase B) */
@@ -13170,7 +13249,10 @@ window.describeSpell = describeSpell;
    }
    Parity rules applied per touched spell (mirrors the load passes above):
    - manaCostOverride set        → cost = manaCostOverride
-   - power fields touched, no explicit cost → cost = computeSpellManaCost()
+   - spell sits on a tree        → cost = ring price (25/50/75/100) — power
+     edits never move a tree spell's cost, only its node position does
+   - off-tree + power fields touched, no explicit cost →
+     cost = snapCostToLadder(computeSpellManaCost())
    - kind touched                → simTargeting/simPhase/simFallback restamped
    apply() is idempotent: it restores the pristine tables first, then applies
    the current doc, so the editor can re-apply live after every save.
@@ -13289,9 +13371,13 @@ window.EWSpellMods = (function () {
         }
         if (typeof sp.manaCostOverride === 'number') { sp.cost = sp.manaCostOverride; return; }
         const explicitCost = mod && Object.prototype.hasOwnProperty.call(mod, 'cost');
+        if (explicitCost) return;
+        // Tree spells are position-priced — power edits never move their cost.
+        const ringCost = (typeof getTreeRingCost === 'function') ? getTreeRingCost(sp.id) : null;
+        if (ringCost != null) { sp.cost = ringCost; return; }
         const touchesPower = mod && POWER_FIELDS.some(f => Object.prototype.hasOwnProperty.call(mod, f));
-        if (!explicitCost && touchesPower && typeof computeSpellManaCost === 'function') {
-            sp.cost = computeSpellManaCost(sp);
+        if (touchesPower && typeof computeSpellManaCost === 'function') {
+            sp.cost = snapCostToLadder(computeSpellManaCost(sp));
         }
     }
 
@@ -13334,7 +13420,7 @@ window.EWSpellMods = (function () {
                 if (def.simFallback == null) def.simFallback = sd.simFallback;
             }
             if (typeof def.manaCostOverride === 'number') def.cost = def.manaCostOverride;
-            else if (typeof def.cost !== 'number' && typeof computeSpellManaCost === 'function') def.cost = computeSpellManaCost(def);
+            else if (typeof def.cost !== 'number' && typeof computeSpellManaCost === 'function') def.cost = snapCostToLadder(computeSpellManaCost(def));
         });
         // field mods
         Object.keys(doc.modified).forEach(id => {
@@ -13390,6 +13476,21 @@ window.EWSpellMods = (function () {
         capturePristine();
         restoreAll();
         if (doc && doc.enabled) applyDoc();
+        // Restamp tree-position costs LAST: learnset replacements change ring
+        // positions, and a disabled/emptied doc must fall back to the boot
+        // pricing. Costs the doc pins explicitly (cost / manaCostOverride
+        // mods) are skipped; off-tree spells are never re-snapped here.
+        if (typeof applyTreeRingCosts === 'function') {
+            const pinned = new Set();
+            if (doc && doc.enabled) {
+                Object.keys(doc.modified).forEach(id => {
+                    const m = doc.modified[id];
+                    if (m && (Object.prototype.hasOwnProperty.call(m, 'cost')
+                        || Object.prototype.hasOwnProperty.call(m, 'manaCostOverride'))) pinned.add(id);
+                });
+            }
+            applyTreeRingCosts(pinned, false);
+        }
     }
 
     function counts() {

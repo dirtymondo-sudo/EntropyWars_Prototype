@@ -403,3 +403,28 @@ is a real strategic axis or dead weight the AI ignores.
 - building.opsPerMatch — if ~0, the AI never builds and the whole material
   economy needs an AI pass, not a balance pass.
 - Teleport pick/cast rate at 25 MP.
+
+# MP Redesign — 2026-08-12 (tree-position costs)
+
+Owner request: scrap the derived-cost mana formula for a **flat position
+ladder** — a spell costs what its NODE costs, full stop:
+**ring 1 = 25 · ring 2 = 50 · ring 3 = 75 · capstone = 100 MP.**
+
+- `applyTreeRingCosts` (data.js, beside the tree tables) stamps every spell
+  after load from CLASS_SPELL_LEARN_ORDER + RACE_TREE (last entry of a
+  pillar = capstone, so Freelancer's 3-spell order prices 25/50/100). A
+  spell sitting on different rings in different trees takes its LOWEST
+  ring. The old formula (`computeSpellManaCost`) survives only to price
+  OFF-TREE spells, and those snap to the same ladder (`snapCostToLadder`)
+  — every cost in the game is now one of four numbers. `manaCostOverride`
+  still wins everywhere; the 4 stale overrides were deleted. EWSpellMods
+  re-stamps after every apply(), so editor learnset moves re-price.
+- **Pools rescaled ×1.8** to match (a full pillar now sums 250 MP vs ~133):
+  RACE_BASE_STATS mp (zombie 25→45 … orb of light/seraphim 114→205), job
+  mp mods (BM +30→+55, Psychic +35→+65, Tank −10→−20 …), CLASS_TEMPLATES,
+  LEVEL_TOTAL_STAT_GAINS.mp 54→100, computeUnitStats floor 12→25 (one r1
+  cast), EW_MP_L1_FRAC 0.42→0.30 (fresh caster ≈4 starter casts, martial
+  ≈2 — same budget as before in casts).
+- Party-builder fix: STAT_MAX_PB.MP 300→250 — the bar physically could not
+  fill after the 08-09 halving (max displayable was ~149/300); now the top
+  caster combos (205-base races + Psychic/BM) peg it full/green.
