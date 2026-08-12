@@ -85,7 +85,7 @@ function typeBadgeStyle(base, opts) {
     fontFamily: '"IBM Plex Mono", monospace', fontSize: opts.fontSize || 9, fontWeight: 500,
     letterSpacing: '0.14em', textTransform: 'uppercase', lineHeight: 1.3,
     color: opts.text || base,
-    background: 'rgba(8,7,12,0.72)',
+    background: '#100d19',
     border: '1px solid ' + base,
     padding: opts.padding || '1px 6px',
     textShadow: '0 1px 2px rgba(0,0,0,0.85)',
@@ -2500,7 +2500,7 @@ function _hrlgQuickStats(panelKey) {
   );
 }
 
-function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, portraitUrl, portraitIsFace, onPortraitClick, infoOpen, onInfo, unitKey, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, xp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
+function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, unitTypes, portraitUrl, portraitIsFace, onPortraitClick, infoOpen, onInfo, unitKey, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, xp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
   const listRef = useRef(null);
@@ -2746,7 +2746,8 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
       const live = p.available !== false;
       toolRows.push(h('div', {
         key: p.id,
-        className: 'hrlg-push' + (live ? ' live pulse' : ' off') + (p.active ? ' armed' : ''),
+        className: 'hrlg-push' + (live ? ' live pulse' : ' off') + (p.active ? ' armed' : '')
+          + (p.id === 'entropyStrike' ? ' entropy' : ''),
         style: { '--pc': p.color, '--pc-soft': p.color + '88', '--pc-faint': p.color + '22' },
         title: live ? (p.title || p.label) : ((p.title || p.label) + ' — ' + (p.sub || 'Unavailable')),
         onClick: () => {
@@ -2813,6 +2814,11 @@ function HorologeMenu({ view, panels, fc, factionKey, roman, unitName, subLine, 
       ),
       /* identity sub-line — Lv · race · job, in real type, in flow */
       subLine ? h('div', { className: 'hrlg-core-sub' }, subLine) : null,
+      /* the unit's TYPE badge(s) — same canonical chips the target rows
+         wear, so the player's own matchup profile reads at a glance */
+      (unitTypes && unitTypes.length) ? h('div', { className: 'hrlg-typerow' },
+        unitTypes.map(t => h(TypeChip, { key: t, name: t })),
+      ) : null,
       /* HP/MP vitals directly under the portrait, then AP under those —
          the reading order the player actually wants. */
       maxHp > 0 && h('div', { className: 'hrlg-vitals' },
@@ -3982,13 +3988,18 @@ function ActionMenu({ st, hidden }) {
   if (typeof window.canUseEntropyStrike === 'function' && window.canUseEntropyStrike(unit)) {
     pushers.push({
       id: 'entropyStrike', glyph: '⚛', label: 'ENTROPY', color: '#c9a5ff',
+      hint: 'READY',
       title: 'ENTROPY STRIKE — the whole team hammers every visible enemy (1 AP, drains the gauge)',
       fire: () => { if (typeof window.doEntropyStrike === 'function' && typeof getSelectedUnit === 'function') window.doEntropyStrike(getSelectedUnit()); },
     });
   }
-  // ⬡ CHANNEL is a PERMANENT tool row now — always on the column, greyed
-  // with the reason whenever it can't fire (matches BUILD's behavior).
-  if (typeof getNexusAtUnit === 'function') {
+  // ⬡ CHANNEL is a PERMANENT tool row — always on the column, greyed with
+  // the reason whenever it can't fire (matches BUILD's behavior) — but ONLY
+  // in modes that HAVE nexuses (Arena). TDM/Clash/etc. have no nexus tiles,
+  // so a forever-grey "Not on a nexus" row there was pure noise.
+  const _modeHasNexus = typeof getActiveMultiplayerMode === 'function'
+    ? !!(getActiveMultiplayerMode() || {}).hasNexus : true;
+  if (_modeHasNexus && typeof getNexusAtUnit === 'function') {
     const _nex = getNexusAtUnit(unit);
     const _chCost = typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1;
     const _capturable = _nex && (!_nex.nexus.owner || _nex.nexus.owner !== unit.player);
@@ -4304,6 +4315,7 @@ function ActionMenu({ st, hidden }) {
     factionKey: (typeof getUnitFaction === 'function' ? getUnitFaction(unit) : null) || 'space',
     roman: roman, unitName: unitName, unitKey: unit.id,
     subLine: subLine,
+    unitTypes: (unit.types || []).slice(0, 2),
     portraitUrl: _portUrl,
     portraitIsFace: _portIsFace,
     // clicking the clock portrait re-centers the camera on the unit — the
@@ -7896,15 +7908,28 @@ function _injectHudHideStyles() {
       position: relative; width: 216px; z-index: 10;
       display: flex; flex-direction: column; gap: 7px;
       pointer-events: auto;
-      background: rgba(8,7,12,0.88);
-      border: 1px solid #3a3548;
+      /* OPAQUE plate — PS1 window material: faint scanline dither over a
+         vertical steel gradient, double frame (bright rim + dark seam),
+         and a hard pixel-era drop shadow. No see-through anywhere. */
+      background:
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, rgba(0,0,0,0.06) 1px 2px, transparent 2px 3px),
+        linear-gradient(180deg, #1c1929 0%, #14111f 45%, #0d0b15 100%);
+      border: 1px solid #565070;
+      box-shadow:
+        inset 0 0 0 1px #080710,
+        inset 0 2px 0 rgba(255,255,255,0.05),
+        0 3px 0 rgba(0,0,0,0.55),
+        0 8px 18px rgba(0,0,0,0.45);
       padding: 24px 10px 10px;
     }
     .hrlg-side::before {
-      content: 'ENTITY DATA'; position: absolute; top: 0; left: 0; right: 0;
+      content: 'VESSEL DATA'; position: absolute; top: 0; left: 0; right: 0;
       height: 19px; display: flex; align-items: center; padding: 0 10px;
-      font-size: 9px; letter-spacing: 0.38em; color: #7a7490;
-      border-bottom: 1px solid #262233; pointer-events: none;
+      font-size: 9px; letter-spacing: 0.38em; color: #9a93b5;
+      background: linear-gradient(180deg, #272238 0%, #1a1728 100%);
+      border-bottom: 1px solid #08070f;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
+      pointer-events: none;
     }
     .hrlg-side::after {
       content: '▮ ACTIVE'; position: absolute; top: 0; right: 0;
@@ -7965,8 +7990,11 @@ function _injectHudHideStyles() {
       position: relative; width: 100%; height: 34px; flex: none;
       display: flex; align-items: center; gap: 9px; padding: 0 13px;
       cursor: pointer; pointer-events: auto;
-      background: linear-gradient(100deg, var(--pc-faint), rgba(8,7,12,0.6)), #0b0a12;
-      border: 1px solid #2b2838; border-left: 3px solid var(--pc);
+      background:
+        linear-gradient(100deg, var(--pc-faint), rgba(8,7,12,0)),
+        linear-gradient(180deg, #1b1826 0%, #110f1b 100%);
+      border: 1px solid #3f3a52; border-left: 3px solid var(--pc);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.55), 0 2px 0 rgba(0,0,0,0.5);
       transition: transform 0.1s ease, box-shadow 0.12s ease, filter 0.1s ease;
       animation: hrlgRowIn 0.16s cubic-bezier(0.2,1,0.3,1) backwards;
     }
@@ -7985,8 +8013,42 @@ function _injectHudHideStyles() {
       animation: hrlgPushPulse 1.4s ease-in-out infinite;
     }
     @keyframes hrlgPushPulse {
-      0%, 100% { box-shadow: 0 0 4px var(--pc-faint); }
-      50%      { box-shadow: 0 0 16px var(--pc-soft); }
+      0%, 100% { box-shadow: 0 0 4px var(--pc-faint), inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 0 rgba(0,0,0,0.5); }
+      50%      { box-shadow: 0 0 16px var(--pc-soft), inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 0 rgba(0,0,0,0.5); }
+    }
+    /* ⚛ ENTROPY READY — the team super. When this row exists the gauge is
+       FULL: it reads like a Limit Break prompt, not another tool row —
+       taller, throbbing violet, spinning glyph, sheen sweep, gold READY tag. */
+    .hrlg-push.entropy {
+      height: 46px; overflow: hidden;
+      border-color: #c9a5ff; border-left-width: 4px;
+      background: linear-gradient(180deg, #35244f 0%, #221537 55%, #170e26 100%);
+      animation: hrlgEntropyThrob 0.9s ease-in-out infinite;
+    }
+    .hrlg-push.entropy::after {
+      content: ''; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%;
+      background: linear-gradient(100deg, transparent 0%, rgba(255,255,255,0.22) 50%, transparent 100%);
+      animation: hrlgEntropySheen 1.6s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes hrlgEntropySheen { 0% { left: -60%; } 100% { left: 120%; } }
+    .hrlg-push.entropy .hrlg-push-glyph {
+      font-size: 22px; animation: hrlgEntropySpin 3s linear infinite;
+    }
+    @keyframes hrlgEntropySpin { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
+    .hrlg-push.entropy .hrlg-push-lbl {
+      font-size: 13px; letter-spacing: 0.3em; color: #fff;
+      text-shadow: 0 0 10px #c9a5ff, 0 0 22px #c9a5ff;
+    }
+    .hrlg-push.entropy .hrlg-push-sub {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.2em; color: #0a0910;
+      background: #f0d060; padding: 2px 6px; overflow: visible;
+      box-shadow: 0 0 10px rgba(240,208,96,0.7);
+      animation: hrlgSpend 0.9s ease-in-out infinite;
+    }
+    @keyframes hrlgEntropyThrob {
+      0%, 100% { box-shadow: 0 0 10px rgba(201,165,255,0.45), inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 0 rgba(0,0,0,0.5); }
+      50%      { box-shadow: 0 0 28px rgba(201,165,255,0.95), inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 0 rgba(0,0,0,0.5); }
     }
     /* unit name + identity under the watch — real flow, no overlaps */
     /* status / stat-change chips under the watch — nameplate badge palette */
@@ -8020,13 +8082,19 @@ function _injectHudHideStyles() {
       pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       margin-top: -4px;
     }
+    /* the unit's TYPE badge(s) — same canonical chips as the target rows,
+       centered under the identity line inside the VESSEL DATA plate */
+    .hrlg-typerow {
+      display: flex; justify-content: center; gap: 5px;
+      margin-top: -1px; pointer-events: none;
+    }
     /* ⓘ INFO — the little stat-card button beside the unit name on the
        clock column, and next to the target's name on quick-cast tabs */
     .hrlg-infobtn {
       display: inline-flex; align-items: center; justify-content: center;
       width: 19px; height: 19px; margin-left: 7px; flex: none;
       border-radius: 50%; border: 1px solid var(--hfc-soft);
-      background: rgba(0,0,0,0.55); color: var(--hfc);
+      background: #0c0a14; color: var(--hfc);
       font-size: 12px; line-height: 1; cursor: pointer; pointer-events: auto;
       vertical-align: -3px;
       transition: transform 0.1s ease, box-shadow 0.12s ease, border-color 0.12s ease;
@@ -8050,8 +8118,9 @@ function _injectHudHideStyles() {
     .hrlg-vrow.hp { margin: 5px 0 3px; }
     .hrlg-vbar {
       position: relative; flex: 1 1 auto; min-width: 0; height: 12px;
-      background: rgba(0,0,0,0.62);
-      border: 1px solid #2b2838;
+      background: #07060b;
+      border: 1px solid #3a3448;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.8);
     }
     .hrlg-vbar.mp { height: 10px; }
     .hrlg-vfill {
@@ -8123,7 +8192,9 @@ function _injectHudHideStyles() {
     .hrlg-item-slot {
       position: relative; width: 48px; height: 48px; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      background: #100e17; border: 1px solid #33303f;
+      background: linear-gradient(180deg, #191624 0%, #100e17 100%);
+      border: 1px solid #403a55;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.5), 0 2px 0 rgba(0,0,0,0.45);
       transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
     }
     .hrlg-item-slot:hover:not(.empty):not(.off) {
@@ -8174,7 +8245,7 @@ function _injectHudHideStyles() {
       100% { opacity: 1; transform: translateX(0); }
     }
     .hrlg-panel.bg {
-      opacity: 0.45; filter: saturate(0.7) brightness(0.85);
+      opacity: 0.58; filter: saturate(0.7) brightness(0.85);
       transform: scale(0.96); transform-origin: 0 100%;
       cursor: pointer; transition: opacity 0.12s ease, filter 0.12s ease;
       animation: none;
@@ -8217,9 +8288,11 @@ function _injectHudHideStyles() {
     .hrlg-thead {
       position: relative; margin: 0 7px 0 5px; flex: none;
       display: flex; flex-direction: column;
-      background: rgba(8,7,12,0.88);
-      border: 1px solid #3a3548; border-left: 3px solid var(--hfc);
-      box-shadow: 0 0 18px rgba(0,0,0,0.45);
+      background:
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, rgba(0,0,0,0.06) 1px 2px, transparent 2px 3px),
+        linear-gradient(180deg, #1c1929 0%, #131120 50%, #0d0b15 100%);
+      border: 1px solid #565070; border-left: 3px solid var(--hfc);
+      box-shadow: inset 0 0 0 1px #080710, inset 0 1px 0 rgba(255,255,255,0.05), 0 3px 0 rgba(0,0,0,0.55);
       pointer-events: none; z-index: 2;
     }
     .hrlg-thead.enemy { border-left-color: #ff4a56; }
@@ -8292,8 +8365,10 @@ function _injectHudHideStyles() {
     .hrlg-mode {
       position: relative; margin: 0 7px 0 5px; padding: 7px 16px; flex: none;
       text-align: center; font-size: 11px; letter-spacing: 0.28em; color: #e8e4d8;
-      background: rgba(8,7,12,0.9); border: 1px solid #3a3548;
+      background: linear-gradient(180deg, #1c1929 0%, #121020 60%, #0d0b15 100%);
+      border: 1px solid #565070;
       border-left: 3px solid #f0d060;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 0 rgba(0,0,0,0.5);
       text-shadow: 0 1px 2px rgba(0,0,0,0.9); pointer-events: none;
     }
     .hrlg-mode.lone { min-width: 250px; margin: 0; }
@@ -8319,8 +8394,13 @@ function _injectHudHideStyles() {
     .hrlg-body {
       position: relative; height: 100%; flex: 1; min-width: 0;
       display: flex; align-items: center; gap: 8px; padding: 0 12px;
-      background: linear-gradient(100deg, var(--bc-hi, var(--hfc-faint)) 0%, var(--bc-lo, rgba(255,255,255,0.02)) 100%), rgba(12,10,18,0.85);
-      border: 1px solid #2b2838; border-left: 3px solid var(--bc, var(--hfc));
+      /* OPAQUE row material: category tint wash over a solid vertical
+         gradient, beveled top/bottom edges, hard 2px drop shadow. */
+      background:
+        linear-gradient(100deg, var(--bc-hi, var(--hfc-faint)) 0%, var(--bc-lo, rgba(255,255,255,0.02)) 100%),
+        linear-gradient(180deg, #1a1725 0%, #121020 55%, #0d0b16 100%);
+      border: 1px solid #403a55; border-left: 3px solid var(--bc, var(--hfc));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.5), 0 2px 0 rgba(0,0,0,0.5);
       transition: transform 0.09s ease, box-shadow 0.1s ease, filter 0.09s ease, border-color 0.09s ease;
     }
     /* danger rows (END TURN / CANCEL) wear red the same way */
@@ -8379,7 +8459,8 @@ function _injectHudHideStyles() {
     .hrlg-trow .hrlg-thp { flex: 1 1 auto; min-width: 0; }
     .hrlg-thp {
       position: relative; height: 10px;
-      background: rgba(0,0,0,0.62); border: 1px solid #2b2838;
+      background: #07060b; border: 1px solid #3a3448;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.8);
     }
     .hrlg-thp.mp { height: 8px; }
     .hrlg-thp-fill {
@@ -8420,13 +8501,13 @@ function _injectHudHideStyles() {
     .hrlg-tag {
       flex: none; font-size: 8px; letter-spacing: 0.14em; color: #ff8a97;
       border: 1px solid rgba(255,95,95,0.55); padding: 1px 4px;
-      background: rgba(8,7,12,0.75); white-space: nowrap;
+      background: #16121e; white-space: nowrap;
     }
     /* right-side detail chips shared by every row */
     .hrlg-pw   { flex: none; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
     .hrlg-chip {
       flex: none; font-size: 9px; letter-spacing: 0.08em; color: #8fd0e8;
-      border: 1px solid rgba(79,216,255,0.45); background: rgba(8,7,12,0.7);
+      border: 1px solid rgba(79,216,255,0.45); background: #10141d;
       padding: 1px 5px; white-space: nowrap;
     }
     /* meta may shrink with ellipsis (never hard-clipped mid-letter at the
@@ -8449,9 +8530,11 @@ function _injectHudHideStyles() {
       /* grow in place — no sideways shove, so the row's right edge (badges,
          chips) is never pushed out of the panel and clipped */
       transform: scaleY(1.04);
-      background: linear-gradient(100deg, var(--bc-hi, var(--hfc-faint)) 0%, var(--bc-lo, rgba(255,255,255,0.02)) 100%), rgba(232,228,216,0.05);
+      background:
+        linear-gradient(100deg, var(--bc-hi, var(--hfc-faint)) 0%, var(--bc-lo, rgba(255,255,255,0.02)) 100%),
+        linear-gradient(180deg, #272236 0%, #1a1729 55%, #141122 100%);
       border-color: rgba(232,228,216,0.9); border-left-color: var(--bc, var(--hfc));
-      box-shadow: 0 0 16px var(--bc-faint, var(--hfc-faint)), inset 3px 0 0 var(--bc, var(--hfc));
+      box-shadow: 0 0 16px var(--bc-faint, var(--hfc-faint)), inset 3px 0 0 var(--bc, var(--hfc)), inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 0 rgba(0,0,0,0.5);
       z-index: 3;
     }
     .hrlg-blade.sel .hrlg-body { animation: hrlgSelGlow 1.4s ease-in-out infinite; }
@@ -8478,8 +8561,8 @@ function _injectHudHideStyles() {
     /* armed verb keeps pulsing while aiming */
     .hrlg-blade.active .hrlg-body { border-color: var(--bc, var(--hfc)); animation: hrlgActive 1.5s ease-in-out infinite; }
     @keyframes hrlgActive {
-      0%, 100% { box-shadow: -2px 0 10px var(--bc-soft, var(--hfc-soft)), inset 3px 0 0 var(--bc, var(--hfc)); }
-      50%      { box-shadow: -2px 0 24px var(--bc, var(--hfc)), inset 3px 0 0 var(--bc, var(--hfc)); }
+      0%, 100% { box-shadow: -2px 0 10px var(--bc-soft, var(--hfc-soft)), inset 3px 0 0 var(--bc, var(--hfc)), 0 2px 0 rgba(0,0,0,0.5); }
+      50%      { box-shadow: -2px 0 24px var(--bc, var(--hfc)), inset 3px 0 0 var(--bc, var(--hfc)), 0 2px 0 rgba(0,0,0,0.5); }
     }
     /* the PENDING (✓ picked) target row reads unmistakably armed: green
        edge + glow, whatever else is going on in the list */
@@ -8489,8 +8572,8 @@ function _injectHudHideStyles() {
       animation: hrlgPendPulse 1.2s ease-in-out infinite;
     }
     @keyframes hrlgPendPulse {
-      0%, 100% { box-shadow: -2px 0 14px rgba(87,217,138,0.3), inset 3px 0 0 #57d98a; }
-      50%      { box-shadow: -2px 0 28px rgba(87,217,138,0.65), inset 3px 0 0 #57d98a; }
+      0%, 100% { box-shadow: -2px 0 14px rgba(87,217,138,0.3), inset 3px 0 0 #57d98a, 0 2px 0 rgba(0,0,0,0.5); }
+      50%      { box-shadow: -2px 0 28px rgba(87,217,138,0.65), inset 3px 0 0 #57d98a, 0 2px 0 rgba(0,0,0,0.5); }
     }
     .hrlg-blade.dead { cursor: default; }
     /* .dead = inert; .ghost = greyed but still clickable (opens the list so
@@ -8532,8 +8615,8 @@ function _injectHudHideStyles() {
     .hrlg-confirm:hover { animation: none; filter: brightness(1.35); }
     .hrlg-confirm:active { transform: translateY(2px); }
     @keyframes hrlgConfirmPulse {
-      0%, 100% { box-shadow: -2px 0 14px rgba(87,217,138,0.35); }
-      50%      { box-shadow: -2px 0 30px rgba(87,217,138,0.8); }
+      0%, 100% { box-shadow: -2px 0 14px rgba(87,217,138,0.35), inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 0 rgba(0,0,0,0.5); }
+      50%      { box-shadow: -2px 0 30px rgba(87,217,138,0.8), inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 0 rgba(0,0,0,0.5); }
     }
     .hrlg-confirm-check {
       flex: none; width: 24px; height: 24px; border-radius: 50%;
@@ -8578,8 +8661,9 @@ function _injectHudHideStyles() {
       height: 24px; padding: 0 10px;
       cursor: pointer; pointer-events: auto; z-index: 3;
       font-size: 10px; font-weight: 700; letter-spacing: 0.16em; color: #ff9184;
-      background: rgba(8,7,12,0.88);
+      background: linear-gradient(180deg, #1d1421 0%, #120c15 100%);
       border: 1px solid rgba(255,95,95,0.55);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 0 rgba(0,0,0,0.5);
       text-shadow: 0 0 8px rgba(255,95,95,0.5);
       transition: filter 0.1s ease, transform 0.1s ease;
     }

@@ -4,6 +4,34 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## Horologe PS1 material pass + VESSEL DATA (2026-08-12) — hud.js only
+
+Visual/UX pass on the action menu, all in hud.js (component + embedded CSS):
+
+- **"ENTITY DATA" → "VESSEL DATA"** (`.hrlg-side::before`), header strip got
+  its own gradient plate.
+- **Unit TYPE badge(s)** now render inside the Vessel Data column: new
+  `unitTypes` prop on `HorologeMenu` (fed `unit.types.slice(0,2)` from
+  `ActionMenu`), rendered as canonical `TypeChip`s in a `.hrlg-typerow`
+  under the Lv·race·job sub-line.
+- **OPAQUE menu material everywhere** (the "vibecoded transparency" fix):
+  `.hrlg-side`, `.hrlg-body` (all blades incl. sub/quick menus), `.hrlg-push`,
+  `.hrlg-thead`, `.hrlg-mode`, `.hrlg-backchip`, `.hrlg-item-slot`, tags/chips
+  and `typeBadgeStyle` all sit on solid vertical gradients now — plus PS1-era
+  detailing: 1px bright rim + dark inner seam double frame, inset top bevel
+  highlight / bottom shade, HARD 2px un-blurred drop shadows, faint scanline
+  dither on the big plates. Dimmed parent panels raised 0.45 → 0.58 opacity.
+  NOTE: several state animations (hrlgActive/hrlgPendPulse/hrlgConfirmPulse/
+  hrlgPushPulse) declare full `box-shadow` frames — the bevel+drop shadow is
+  APPENDED inside every keyframe, so editing those means keeping the
+  `0 2px 0 rgba(0,0,0,0.5)` tail or rows go flat while animating.
+- **⚛ ENTROPY row is now a Limit-Break prompt** (`.hrlg-push.entropy`,
+  keyed off pusher id `entropyStrike`): 46px tall, violet gradient, throbbing
+  glow, spinning glyph, sheen sweep, gold blinking READY chip (`hint:'READY'`).
+- **⬡ CHANNEL row is Arena-only**: the permanent pusher now gates on
+  `getActiveMultiplayerMode().hasNexus` — TDM/Clash/Simul/Gauntlet/MD have no
+  nexus tiles, so the forever-grey "Not on a nexus" row there was noise.
+
 ## 👁 AWR REDESIGN: perception stat, NOT sight range (2026-08-12, LATEST) — battle.js, map.js, data.js, party-builder.js, hud.js
 
 Vision was ALREADY pure line of sight (`LOS_ONLY_VISION = true`, map.js since
