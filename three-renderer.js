@@ -25442,13 +25442,9 @@ const ThreeRenderer = (function () {
             r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         } catch (e) { return null; }
         r.setClearColor(0x000000, 0);
-        // Match the game's non-colour-managed pipeline: textures keep their
-        // raw sRGB numbers (the board flips the SHARED cached GLB textures to
-        // LinearEncoding) and output stays linear. The old sRGB output +
-        // ACES combo re-encoded those already-encoded pixels — a double
-        // gamma lift that washed viewer blacks to flat grey.
-        r.toneMapping = THREE.LinearToneMapping;
-        r.toneMappingExposure = 1.0;
+        r.outputEncoding = THREE.sRGBEncoding;
+        r.toneMapping = THREE.ACESFilmicToneMapping;
+        r.toneMappingExposure = 1.05;
         // Mobile: the viewer is a SECOND WebGL context living alongside the
         // board renderer — keep it at 1x there so it can't tip a phone over.
         r.setPixelRatio(window.EW_MOBILE ? 1 : Math.min(window.devicePixelRatio || 1, 2));
@@ -25464,15 +25460,11 @@ const ThreeRenderer = (function () {
 
         var scene = new THREE.Scene();
         var cam = new THREE.PerspectiveCamera(26, 1, 0.05, 60);
-        // Intensities tuned for the matte Lambert conversion + linear output
-        // (see _cvMount): total light on key-lit surfaces stays near 1.0 so
-        // the texture shows at its authored brightness (old PBR-era values
-        // 0.9/1.2/0.6 pushed matte materials well past white).
-        scene.add(new THREE.HemisphereLight(0xcfd8ff, 0x191024, 0.55));
-        var key = new THREE.DirectionalLight(0xfff1da, 0.75);
+        scene.add(new THREE.HemisphereLight(0xcfd8ff, 0x191024, 0.9));
+        var key = new THREE.DirectionalLight(0xfff1da, 1.2);
         key.position.set(1.7, 2.7, 2.2);
         scene.add(key);
-        var rim = new THREE.DirectionalLight(0x9a7bff, 0.38);
+        var rim = new THREE.DirectionalLight(0x9a7bff, 0.6);
         rim.position.set(-2.2, 1.6, -2.5);
         scene.add(rim);
 
@@ -25565,13 +25557,21 @@ const ThreeRenderer = (function () {
             // dispose them here; just drop the references.
             _cv.model = null;
         }
-        // The viewer-owned Lambert replacements (built in the mount traverse)
-        // ARE ours to dispose; their textures stay cache-shared and live on.
-        if (_cv.modelMats) {
-            for (var _mi = 0; _mi < _cv.modelMats.length; _mi++) {
-                try { _cv.modelMats[_mi].dispose(); } catch (_e) {}
+        // Viewer-owned material/texture CLONES (built in the mount traverse
+        // when the board had already re-tagged the shared map) ARE ours to
+        // dispose — the texture clones hold their own GPU upload. The shared
+        // image and the cache's originals live on untouched.
+        if (_cv.ownedMats) {
+            for (var _mi = 0; _mi < _cv.ownedMats.length; _mi++) {
+                try { _cv.ownedMats[_mi].dispose(); } catch (_e) {}
             }
-            _cv.modelMats = null;
+            _cv.ownedMats = null;
+        }
+        if (_cv.ownedTex) {
+            for (var _ti = 0; _ti < _cv.ownedTex.length; _ti++) {
+                try { _cv.ownedTex[_ti].dispose(); } catch (_e) {}
+            }
+            _cv.ownedTex = null;
         }
         if (_cv.mixer) { try { _cv.mixer.stopAllAction(); } catch (_e) {} _cv.mixer = null; }
         _cv.url = null;
@@ -25651,33 +25651,38 @@ const ThreeRenderer = (function () {
                 -((bb.min.z + bb.max.z) * 0.5) * s
             );
             var hasSkin = false;
-            // Same matte Lambert conversion as the board (_attachUnitModel):
-            // the raw Meshy PBR materials carry metallic/roughness values that
-            // specular-highlight ("gloss") under the key light, and they
-            // expect a colour-managed pipeline this viewer doesn't run.
-            // Also forces the texture to LinearEncoding here so the viewer
-            // looks right even when it loads a GLB before the board does.
-            // The replacement materials are viewer-owned — tracked on
-            // v.modelMats and disposed in _cvClearModel (the ORIGINALS are
-            // cache-shared and must never be disposed).
-            v.modelMats = [];
+            // The viewer keeps the original Meshy PBR materials: this is a
+            // close-up turntable, and the board's matte Lambert conversion
+            // reads terribly here (vertex-lit shading exposes the low-poly
+            // facets; losing the normal/PBR maps flattens the faces). PBR +
+            // sRGB output + ACES is the proper colour-managed pipeline —
+            // PROVIDED the diffuse map still carries its glTF sRGB tag. The
+            // board flips the SHARED cached texture to LinearEncoding for its
+            // own non-managed pipeline, which double-brightens it in this
+            // renderer (blacks wash to flat grey). So when a map arrives
+            // already flipped, hand the viewer its own sRGB-tagged CLONE on a
+            // viewer-owned material copy — never mutate anything cache-shared.
+            // Owned copies are disposed in _cvClearModel.
+            v.ownedMats = []; v.ownedTex = [];
             m.traverse(function (n) {
                 if (!n.isMesh) return;
                 n.frustumCulled = false;
                 if (n.isSkinnedMesh) hasSkin = true;
                 var src = Array.isArray(n.material) ? n.material : [n.material];
+                var changed = false;
                 var out = src.map(function (sm) {
-                    var tex = (sm && sm.map) ? sm.map : null;
-                    if (tex && tex.encoding !== THREE.LinearEncoding) {
-                        tex.encoding = THREE.LinearEncoding;
-                        tex.needsUpdate = true;
-                    }
-                    var lm = new THREE.MeshLambertMaterial({ map: tex });
-                    if (n.isSkinnedMesh) lm.skinning = true;
-                    v.modelMats.push(lm);
-                    return lm;
+                    if (!sm || !sm.map || sm.map.encoding === THREE.sRGBEncoding) return sm;
+                    var mat2 = sm.clone();
+                    var tex2 = sm.map.clone();
+                    tex2.encoding = THREE.sRGBEncoding;
+                    tex2.needsUpdate = true;
+                    mat2.map = tex2;
+                    if (sm.emissiveMap === sm.map) mat2.emissiveMap = tex2;
+                    v.ownedMats.push(mat2); v.ownedTex.push(tex2);
+                    changed = true;
+                    return mat2;
                 });
-                n.material = Array.isArray(n.material) ? out : out[0];
+                if (changed) n.material = Array.isArray(n.material) ? out : out[0];
             });
             // wrap (frame-loop yaw) → inner (authored yawOffset) → model —
             // same nesting as the board, so the turntable never clobbers a
