@@ -10726,7 +10726,16 @@
             // bursts and can't draw the new shapes at all. Auras (warCry/
             // barrage/healAll/scan) keep the Manhattan wash: that IS their rule.
             let tiles = [];
-            if (spell.aoeOriginSelf && (kind === 'aoe' || kind === 'cross')) {
+            if (spell.hitsWetOnly && typeof _isWetTile === 'function') {
+                // Wet-only novae (Poseidon's Wrath): the TRUE footprint is
+                // "every wet tile" — a map-wide radius-99 red wash would lie
+                // about who's actually in danger. Paint the water instead.
+                for (let wy = 0; wy < bh(); wy++) {
+                    for (let wx = 0; wx < bw(); wx++) {
+                        if (_isWetTile(wx, wy)) tiles.push({ x: wx, y: wy });
+                    }
+                }
+            } else if (spell.aoeOriginSelf && (kind === 'aoe' || kind === 'cross')) {
                 tiles = getSpellAoeFootprint(spell, unit.x, unit.y, unit);
             } else {
             for (let dy = -radius; dy <= radius; dy++) {

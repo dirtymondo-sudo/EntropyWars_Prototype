@@ -17873,9 +17873,69 @@
                     () => cineBulletCam(caster, target, { travelMs: Math.max(actionMs(260), timings.travelMs) }));
                 return true;
             },
-            raceWarOfTheWorlds(ctx) {   // crane up the tripod's full height
-                const { caster, sequenceId } = ctx;
+            /* 2026-08-12 rework: the tripod deploy became a UFO-swarm strike —
+               the crane now looks UP into the saucer-filled sky, then slams
+               straight down onto the strafed zone as the beams land. */
+            raceWarOfTheWorlds(ctx) {
+                const { caster, target, timings, sequenceId } = ctx;
                 _cineAt(actionMs(60), sequenceId, () => cineCrane(caster, { duration: 1000, tilt: 110, rise: 3.6 }));
+                _cineAt(timings.sourceHold + timings.travelMs, sequenceId, () => {
+                    cineGodShot(target || caster, (ctx.spell?.aoeRadius || 2) * 2 + 4, { tilt: 30 });
+                    cineGrade('dim', 900);
+                });
+                return true;
+            },
+            /* Fae Ring — the SHAPE is the story: straight down so the ring of
+               toadstools (and the spared center) reads at a glance. */
+            raceFaeRing(ctx) {
+                const { caster, target, timings, sequenceId } = ctx;
+                _cineAt(timings.sourceHold + timings.travelMs, sequenceId, () => {
+                    cineGodShot(target || caster, (ctx.spell?.aoeRadius || 2) * 2 + 4, { tilt: 18 });
+                    cineGrade('hue', 800);
+                });
+                return true;
+            },
+            /* Poseidon's Wrath — the sea rises in judgment: hero shot on the
+               atlantean while the tide answers, cool grade over the whole beat
+               (the barrage camera itself frames every drowning victim). */
+            racePoseidonsWrath(ctx) {
+                const { caster, timings, sequenceId } = ctx;
+                _cineAt(actionMs(60), sequenceId, () => {
+                    cineGlamCam(caster, { drift: 26, driftMs: timings.sourceHold });
+                    cineGrade('cool', timings.sourceHold + 1400);
+                });
+                return true;
+            },
+            /* Hocus Pocus — the old words, spoken like they mean it: hold the
+               wizard's face through the incantation, then let the stock
+               reverse cut deliver the blast. */
+            raceHocusPocus(ctx) {
+                const { caster, timings, sequenceId } = ctx;
+                _cineAt(Math.max(0, timings.sourceHold - actionMs(480)), sequenceId, () => {
+                    cineFaceCam(caster, { dist: 1.9, tilt: 78 });
+                    cinePushIn(1.18, Math.max(actionMs(300), timings.sourceHold));
+                });
+                return true;
+            },
+            /* Ancient Magic — older than the lamp: the victim sees it arrive. */
+            raceAncientMagic(ctx) {
+                const { caster, target, timings, sequenceId } = ctx;
+                _cineAt(timings.sourceHold, sequenceId, () => cineBulletCam(caster, target,
+                    { travelMs: Math.max(actionMs(340), timings.travelMs) }));
+                _cineAt(timings.sourceHold + timings.travelMs + actionMs(40), sequenceId,
+                    () => cineFreezeFrame(actionMs(140), { grade: 'sepia' }));
+                return true;
+            },
+            /* Truth Bomb — the truth hurts: slow-mo delivery, hard freeze on
+               the detonation. */
+            raceTruthBomb(ctx) {
+                const { caster, target, timings, sequenceId } = ctx;
+                _cineAt(timings.sourceHold, sequenceId, () => {
+                    cineSlowMo(0.45, 700);
+                    cineBulletCam(caster, target, { travelMs: Math.max(actionMs(340), timings.travelMs) });
+                });
+                _cineAt(timings.sourceHold + timings.travelMs + actionMs(40), sequenceId,
+                    () => cineFreezeFrame(actionMs(150)));
                 return true;
             },
             raceBloodFrenzy(ctx) {      // predator cam: sweep, then lock the weakest
@@ -23305,10 +23365,65 @@
             return false;
         }
 
+        /* Enemies a barrage nova would actually hit from where `unit` stands —
+           ONE filter shared by doSpell's 'barrage' handler, the menu greying
+           (hasSpellTargetInRange) and the quick-cast rows, so "the blade is
+           lit" and "the cast connects" can never disagree. Mirrors the reach
+           rules of the handler exactly: hitsWetOnly (Poseidon's Wrath) needs
+           the victim standing in water/deep water/wet spread-flow, 3D reach
+           counts elevation, LOS applies unless the spell ignores it. */
+        function _barrageTargets(unit, spell) {
+            if (!unit || !spell) return [];
+            const barrageRange = (spell.aoeOriginSelf && spell.aoeRadius)
+                ? spell.aoeRadius : getEffectiveSpellRange(unit, spell);
+            const srcZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
+            const longR = isLongRangeSpell(spell);
+            return aliveUnitsFor(enemyOf(unit.player)).filter(e => {
+                if (spell.hitsWetOnly && !_isWetTile(e.x, e.y)) return false;
+                const dist = (typeof combatReach === 'function')
+                    ? combatReach(unit.x, unit.y, srcZ, e.x, e.y, e.z ?? 0, longR)
+                    : Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
+                return dist >= 1 && dist <= barrageRange
+                    && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, srcZ));
+            });
+        }
+
+        /* Ring-shaped AOEs (Fae Ring) spare their center tile — aiming the
+           cast AT an enemy guarantees a miss. Given the enemy the player (or
+           AI) actually wants hit, pick the legal cast center whose ring rim
+           covers that tile: candidates come from getSpellRangeTiles (range +
+           LOS + fog authoritative), scored by how many enemies land on the
+           rim. Returns {x, y} or null when no legal center covers the target.
+           Shared by the quick-cast menu (hud.js) and the AI. */
+        function findAoeCastCenterForTarget(unit, spell, tx, ty) {
+            if (!unit || !spell) return null;
+            if (spell.aoeShape !== 'ring') return { x: tx, y: ty };
+            const enemies = aliveUnitsFor(enemyOf(unit.player));
+            let best = null, bestScore = -Infinity;
+            for (const c of getSpellRangeTiles(unit, spell)) {
+                const area = getSpellAoeArea(spell, c.x, c.y);
+                if (!area.some(a => a.x === tx && a.y === ty)) continue;
+                const hits = area.filter(a => enemies.some(e => e.x === a.x && e.y === a.y)).length;
+                // Most enemies on the rim wins; nearer-to-victim centers break ties
+                // so the blast reads as aimed at them, not at empty ground.
+                const score = hits * 10 - (Math.abs(c.x - tx) + Math.abs(c.y - ty)) * 0.1;
+                if (score > bestScore) { bestScore = score; best = { x: c.x, y: c.y }; }
+            }
+            return best;
+        }
+        window.findAoeCastCenterForTarget = findAoeCastCenterForTarget;
+
         function hasSpellTargetInRange(unit, spell) {
             if (!spell) return false;
             const kind = spell.kind;
             const range = getEffectiveSpellRange(unit, spell) || 1;
+
+            // Conditional barrages (Poseidon's Wrath, hitsWetOnly): the nova only
+            // touches enemies matching its condition — with none on the board the
+            // cast hits nothing, so the menus grey it instead of letting a dead
+            // cast through. Plain barrages keep the blanket pass (their radius is
+            // the caster's problem, and casting into empty air is a player choice).
+            if (kind === 'barrage' && spell.hitsWetOnly) return _barrageTargets(unit, spell).length > 0;
 
             if (['healAll', 'manaRestoreAll', 'warCry', 'scan', 'barrage', 'remoteView', 'selfHeal', 'escape'].includes(kind)) return true;
 
@@ -44667,6 +44782,16 @@
                     if (hitCount === 0) addLog(`${spell.name} hits no enemies in the area.`);
                 }, timing.impactDelay);
             } else if (spell.kind === 'barrage') {
+                // Conditional barrages (hitsWetOnly — Poseidon's Wrath): reject
+                // BEFORE any MP is spent when no enemy meets the condition. The
+                // menus grey this case out (hasSpellTargetInRange), but a board
+                // click could still reach here and used to burn 55 MP on a nova
+                // that hit nothing.
+                if (spell.hitsWetOnly && _barrageTargets(unit, spell).length === 0) {
+                    addLog(`${spell.name}: no enemies are standing in water.`);
+                    playErrorSfx();
+                    return 0;
+                }
                 playSfx(spellLaunchSfx(spell));
                 unit.mp -= effectiveSpellCost;
 
@@ -44680,23 +44805,10 @@
                     }
                 }
                 const _barrageWaterMult = (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
-                const barrageRange = (spell.aoeOriginSelf && spell.aoeRadius) ? spell.aoeRadius : getEffectiveSpellRange(unit, spell);
-                const _barrageSrcZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
-                const _barrageLong = isLongRangeSpell(spell);
-                const enemies = aliveUnitsFor(enemyOf(unit.player)).filter(e => {
-                    // hitsWetOnly (2026-08-12, Poseidon's Wrath): the nova only
-                    // touches enemies standing in water / deep water / the wet
-                    // spread-flow at a pool's edge — wherever they are (pair it
-                    // with aoeRadius 99 + ignoresLineOfSight for map-wide).
-                    if (spell.hitsWetOnly && !_isWetTile(e.x, e.y)) return false;
-                    // 3D reach (elevation counts) so a self-centered nova doesn't hit
-                    // an enemy stacked several levels above/below just because it's
-                    // adjacent on the grid — matches the action-menu range check.
-                    const dist = (typeof combatReach === 'function')
-                        ? combatReach(unit.x, unit.y, _barrageSrcZ, e.x, e.y, e.z ?? 0, _barrageLong)
-                        : Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
-                    return dist >= 1 && dist <= barrageRange && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, _barrageSrcZ));
-                });
+                // Victim list comes from the ONE shared filter (_barrageTargets):
+                // hitsWetOnly, 3D reach and LOS rules live there, so this handler
+                // and the menu greying can never disagree about who gets hit.
+                const enemies = _barrageTargets(unit, spell);
                 if (enemies.length === 0) {
                     _spellFocusCamera(unit, x, y);
                     addLog(`${unitDisplayName(unit)} casts ${spell.name} but no enemies are in range.`);

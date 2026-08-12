@@ -3188,6 +3188,9 @@ function _hrlgSpellBlades(unit, st) {
         reason = 'Need ' + (typeof materialCostLabel === 'function' ? materialCostLabel(sp.materialCost) : 'materials');
       }
       else if (typeof _mirrorSpellBlockReason === 'function' && _mirrorSpellBlockReason(unit, sp)) reason = _mirrorSpellBlockReason(unit, sp);
+      // Wet-only novae (Poseidon's Wrath) grey with the actual condition —
+      // "No target" reads as a range problem, this is a terrain one.
+      else if (sp.hitsWetOnly && !hasTarget) reason = 'No enemies in water';
       // Pure-status spells also grey out when every target in range already
       // carries the status (statuses don't stack) — say so.
       else if (!hasTarget) reason = (typeof spellIsPureStatus === 'function' && spellIsPureStatus(sp)) ? 'No valid target' : 'No target';
@@ -4941,6 +4944,14 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       // so treat it as out of range (a move-into-range step is offered below).
       const barrageRadius = isAoeOriginSelf ? (sp.aoeRadius || 1) : spRange;
       inSpellRange = dist >= 1 && dist <= barrageRadius && (sp.ignoresLineOfSight || !spLos);
+      // Conditional barrages (Poseidon's Wrath, hitsWetOnly): the nova only
+      // touches enemies standing in water — a dry clicked enemy can never be
+      // hit no matter where the caster walks, so the row greys with its own
+      // reason instead of pretending it's a range problem.
+      if (inSpellRange && sp.hitsWetOnly
+          && !(typeof _isWetTile === 'function' && _isWetTile(tx, ty))) {
+        inSpellRange = false;
+      }
     } else if (isAoeOriginSelf) {
 
       // Cross novae gate on the true arm footprint (X / cross / diamond) —
@@ -4974,6 +4985,13 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         ? (targetUnit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(tx, ty) : 0))
         : 0;
       inSpellRange = !!targetUnit && dist >= 1 && dist <= spRange && !spLos && _csh > _tsh;
+    } else if (sp.aoeShape === 'ring' && typeof findAoeCastCenterForTarget === 'function') {
+
+      // Ring-shaped AOEs (Fae Ring) spare their center: "castable on this
+      // enemy" = a legal cast CENTER exists whose rim covers them — NOT the
+      // enemy tile being in range (centering the ring on them is the one aim
+      // that guarantees a miss). The executor re-resolves the same center.
+      inSpellRange = _fogSees && !!findAoeCastCenterForTarget(actingUnit, sp, tx, ty);
     } else {
 
       const minRange = ['aoe', 'cross', 'aoePull'].includes(sp.kind) ? 0 : 1;
@@ -4993,7 +5011,12 @@ function _computeEnemyActions(actingUnit, targetUnit) {
 
     let spMoveTile = null;
     if (canAfford && tierOk && !inSpellRange) {
-      if (isBarrage) {
+      if (isBarrage && sp.hitsWetOnly
+          && !(typeof _isWetTile === 'function' && _isWetTile(tx, ty))) {
+        // Dry enemy vs a wet-only nova: no amount of walking fixes the
+        // TARGET's terrain — never offer a MOVE→CAST that still whiffs.
+        spMoveTile = null;
+      } else if (isBarrage) {
         // Walk the caster close enough that the clicked enemy falls inside the
         // self-centered blast, so the player gets a one-click "move then nova".
         const barrageRadius = isAoeOriginSelf ? (sp.aoeRadius || 1) : spRange;
@@ -5128,7 +5151,9 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         powerLabel: powerLabel,
         typeNote: '',
         available: false,
-        reason: spLos ? 'No line of sight' : 'Out of range',
+        reason: (sp.hitsWetOnly && !(typeof _isWetTile === 'function' && _isWetTile(tx, ty)))
+          ? 'Not in water'
+          : spLos ? 'No line of sight' : 'Out of range',
         spell: sp,
       });
     }
@@ -5959,9 +5984,19 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
       // nova as "out of range" — exactly as the spellbook flow does when
       // you click your own tile.
       const _selfCast = typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell);
+      // Ring-shaped AOEs (Fae Ring) spare their center tile — the clicked
+      // enemy is who the player wants HIT, so aim the cast at the center
+      // whose rim covers them (resolved from the caster's CURRENT tile, i.e.
+      // after any move-then-cast walk above). Aiming at the enemy themselves
+      // would put them in the ring's hole and guarantee a miss.
+      let _aimX = tx, _aimY = ty, _aimZ = tz;
+      if (spell.aoeShape === 'ring' && typeof findAoeCastCenterForTarget === 'function') {
+        const _rc = findAoeCastCenterForTarget(actingUnit, spell, tx, ty);
+        if (_rc) { _aimX = _rc.x; _aimY = _rc.y; _aimZ = undefined; }
+      }
       if (typeof doSpell === 'function') {
         if (_selfCast) _run(() => doSpell(actingUnit, actingUnit.x, actingUnit.y, actingUnit.z));
-        else _run(() => doSpell(actingUnit, tx, ty, tz));
+        else _run(() => doSpell(actingUnit, _aimX, _aimY, _aimZ));
       }
     } else if (actionId.startsWith('item:')) {
 
@@ -6781,8 +6816,13 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     else if (!inRange) reason = _isDirBeam ? (_beamOnAxis ? 'Out of range' : 'Not in line with caster') : 'Out of range';
     else if (losBlocked) reason = 'No line of sight';
     else if (placeReason) reason = placeReason;
+    // Wet-only novae (Poseidon's Wrath): no enemy standing in water = the
+    // cast can't touch anyone — grey with the real condition.
+    const _needsWet = sp.hitsWetOnly && typeof hasSpellTargetInRange === 'function'
+      && !hasSpellTargetInRange(actingUnit, sp);
+    if (!reason && _needsWet) reason = 'No enemies in water';
 
-    const canCast = canAfford && tierOk && inRange && !losBlocked && !placeReason;
+    const canCast = canAfford && tierOk && inRange && !losBlocked && !placeReason && !_needsWet;
 
     actions.push({
       id: 'spell:' + sp.name, label: sp.name, icon: '✦', category: 'spells',

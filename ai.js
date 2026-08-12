@@ -4225,6 +4225,28 @@
                 const hits = area.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
                 return hits > 0 ? { x: unit.x, y: unit.y } : null;
             }
+            // Ring-shaped AOEs (Fae Ring) spare their CENTER — aiming at an
+            // enemy unit guarantees that enemy is the one tile the blast
+            // skips. Aim at a cast-center TILE instead: enumerate tiles in
+            // range and score by how many enemies land on the rim.
+            if (spell.aoeShape === 'ring') {
+                const rng = _effRange(unit, spell);
+                let bestT = null, bestTS = 0;
+                for (let dy = -rng; dy <= rng; dy++) {
+                    for (let dx = -rng; dx <= rng; dx++) {
+                        const cx = unit.x + dx, cy = unit.y + dy;
+                        if (Math.abs(dx) + Math.abs(dy) > rng) continue;
+                        if (cx < 0 || cy < 0 || cx >= g.bw() || cy >= g.bh()) continue;
+                        if (!spell.ignoresLineOfSight && g.isRangeBlockedByTerrain(unit.x, unit.y, cx, cy)) continue;
+                        const area = getSpellAoeAreaAI(spell, cx, cy);
+                        const hits = area.filter(t => v.visibleEnemies.some(en => en.x === t.x && en.y === t.y)).length;
+                        const allyHits = area.filter(t => v.allies.some(a => a.x === t.x && a.y === t.y) || (unit.x === t.x && unit.y === t.y)).length;
+                        const score = hits * 10 - allyHits * 15;
+                        if (score > bestTS) { bestTS = score; bestT = { x: cx, y: cy }; }
+                    }
+                }
+                return bestT;
+            }
             let best = null, bestScore = 0;
             for (const e of v.visibleEnemies) {
                 const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
