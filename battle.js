@@ -7004,41 +7004,30 @@
         function _isUnitVisibleToViewer(unit, viewer) {
             if (!unit) return false;
             if (unit.player === viewer) return true;
-            /* Invisibility / smoke concealment hides enemy units even with fog OFF. */
+            /* Invisibility / smoke concealment hides enemy units even with fog OFF
+               (isUnitConcealedFrom also handles the smoke adjacency reveal). */
             if (isUnitConcealedFrom(unit, viewer)) return false;
             if (!state.fogOfWar) return true;
 
-            /* ── Smoke concealment: enemy units inside their own smoke zones are hidden unless viewer is adjacent ── */
-            if (state._activeZones?.length) {
-                for (const zone of state._activeZones) {
-                    if (!zone.smokeConcealment || zone.ownerPlayer === viewer) continue;
-                    const r = zone.radius || 1;
-                    if (Math.abs(unit.x - zone.x) <= r && Math.abs(unit.y - zone.y) <= r) {
-                        const friendlies = state.units.filter(u => !u.dead && u.player === viewer);
-                        let adj = false;
-                        for (const f of friendlies) {
-                            if (Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y) <= 1) { adj = true; break; }
-                        }
-                        if (!adj) return false;
-                    }
-                }
+            /* Screen-true fog gate (2026-08-12): vision is pure line of sight
+               (LOS_ONLY_VISION) — AWR is a perception stat and never gates how
+               FAR a unit can see. Read the SAME visibility set the fog renderer
+               draws (LOS sweep + wards + towers + reveal tiles + smoke removal)
+               so this check can never disagree with the viewer's screen. The
+               old flat awareness-radius scan disagreed in BOTH directions: it
+               saw through walls and missed far tiles open LOS plainly shows. */
+            if (typeof computeVisibleTilesCached === 'function' && typeof posKey === 'function') {
+                return computeVisibleTilesCached(viewer).has(posKey(unit.x, unit.y));
             }
 
-            /* The awareness radius is a RADIUS, not x-ray vision (2026-07-24).
-               It used to grant sight of any enemy within `awr` tiles regardless
-               of what stood between — which on multi-floor maps meant units
-               spotted (and shot) each other through walls, floors and roofs.
-               The radius still gates the range; true 3D line of sight decides
-               whether the spot lands. wallVision units keep their x-ray. */
+            /* Fallback (no fog cache): any living friendly — or vision ward —
+               with a clear line of sight spots the unit; distance never limits it. */
             const _losOk = (sx, sy, sz) => {
                 if (typeof isVisionBlockedByTerrain !== 'function') return true;
                 return !isVisionBlockedByTerrain(sx, sy, unit.x, unit.y, sz, unit.z ?? null);
             };
             const friendlies = state.units.filter(u => !u.dead && u.player === viewer);
             for (const f of friendlies) {
-                const dist = Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y);
-                const awr = f.awr || 3;
-                if (dist > awr) continue;
                 if (f.wallVision || _losOk(f.x, f.y, f.z ?? null)) return true;
             }
 
@@ -7093,8 +7082,9 @@
                     if (f.dead || f.player !== viewer) continue;
                     /* Keen senses pierce the haze: units with exceptional
                        awareness (AWR 6+ — greys, telepaths, seers) spot
-                       smoke-hidden enemies from 2 tiles instead of 1. */
-                    const detectR = (f.awr || 3) >= 6 ? 2 : 1;
+                       smoke-hidden enemies from 2 tiles instead of 1. LIVE
+                       awareness — a jammed/blinded unit loses the edge. */
+                    const detectR = ((typeof getEffectiveAwr === 'function' ? getEffectiveAwr(f) : (f.awr || 3)) >= 6) ? 2 : 1;
                     if (Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y) <= detectR) return false;
                 }
             }
@@ -7143,15 +7133,10 @@
                     /* Fog OFF: isInVision short-circuits TRUE for the whole
                        board, which made this gate vacuous — Take Aim landed
                        through solid walls in every fog-less mode because the
-                       target was always "seen". Run the same per-unit
-                       vision-range + true 3D terrain-LOS test the fog renderer
-                       applies, so "break line of sight" actually breaks the
-                       lock with fog disabled too. */
-                    const vr = (typeof getUnitVisionRange === 'function')
-                        ? getUnitVisionRange(f) : ((f.awr || 3) + 2);
-                    const d = Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y);
-                    const losOnly = (typeof LOS_ONLY_VISION !== 'undefined' && LOS_ONLY_VISION);
-                    if (!losOnly && d > vr) continue;
+                       target was always "seen". Vision is LOS-only: run the
+                       same true 3D terrain-LOS test the fog renderer applies
+                       (distance never gates sight), so "break line of sight"
+                       actually breaks the lock with fog disabled too. */
                     if (f.wallVision) return true;
                     if (typeof isVisionBlockedByTerrain !== 'function'
                         || !isVisionBlockedByTerrain(f.x, f.y, unit.x, unit.y, f.z ?? null, unit.z ?? null)) return true;
@@ -7294,8 +7279,9 @@
                 for (const f of candidates) {
                     if (f.dead || f.player === u.player) continue;
                     /* High-awareness units (AWR 6+) sense cloaked enemies from
-                       2 tiles away — the seer's answer to invisibility. */
-                    const detectR = (f.awr || 3) >= 6 ? 2 : 1;
+                       2 tiles away — the seer's answer to invisibility. LIVE
+                       awareness — a jammed/blinded unit loses the edge. */
+                    const detectR = ((typeof getEffectiveAwr === 'function' ? getEffectiveAwr(f) : (f.awr || 3)) >= 6) ? 2 : 1;
                     if (Math.abs(f.x - u.x) + Math.abs(f.y - u.y) <= detectR) { revealer = f; break; }
                 }
                 if (!revealer) continue;
@@ -7363,11 +7349,11 @@
             if (typeof computeVisibleTilesCached === 'function' && typeof posKey === 'function') {
                 if (computeVisibleTilesCached(viewer).has(posKey(tx, ty))) return true;
             } else {
+                /* No fog cache: LOS-only fallback — distance never gates sight. */
                 const friendlies = state.units.filter(u => !u.dead && u.player === viewer);
                 for (const f of friendlies) {
-                    const dist = Math.abs(f.x - tx) + Math.abs(f.y - ty);
-                    const awr = f.awr || 3;
-                    if (dist <= awr) return true;
+                    if (f.wallVision || typeof isVisionBlockedByTerrain !== 'function'
+                        || !isVisionBlockedByTerrain(f.x, f.y, tx, ty, f.z ?? null)) return true;
                 }
             }
             if (state._visionWards?.length) {
@@ -8047,7 +8033,7 @@
            effective stats (buffs, terrain, weather, zodiac) + status gates. */
         function getCritChance(unit) {
             if (!unit) return 0;
-            return critChanceFromStats(getEffectiveAwr(unit) || 0, getEffectiveInt(unit) || 0);
+            return critChanceFromStats(getEffectiveAwr(unit) || 0);
         }
 
         function getCritMultiplier(unit) {

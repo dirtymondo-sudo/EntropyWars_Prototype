@@ -442,23 +442,26 @@ const TYPE_C = { human:EW.human, alien:EW.alien, divine:EW.divine, unholy:EW.unh
 // Brightened text for the canonical type badge (legible over any background).
 const TYPE_TEXT_C = { human:'#c8c8e4', divine:'#f2c63c', unholy:'#c566e2', tech:'#4ecbe2', anomaly:'#ff5e98', alien:'#56d178' };
 /* CRT/EVA are official stats (canonical formula in data.js — the same one
-   the in-battle dice roll): CRT derives from AWR+M.ATK, EVA from MOV. They
-   show and sort like every other stat; hover them for the full math. */
-const STAT_KEYS = ['HP','MP','ATK','DEF','MDEF','INT','SPD','RNG','MOV','CRT','EVA'];
-const STAT_MAX_PB = { HP:900, MP:300, ATK:110, DEF:75, MDEF:75, INT:100, SPD:11, RNG:6, MOV:6, CRT:30, EVA:25 };
-const STAT_MAP = { HP:'hp', MP:'mp', ATK:'atk', DEF:'def', MDEF:'mdef', INT:'int', SPD:'spd', RNG:'range', MOV:'move', CRT:'crt', EVA:'eva' };
+   the in-battle dice roll): CRT derives from AWR alone, EVA from MOV. They
+   show and sort like every other stat; hover them for the full math.
+   AWR is the perception stat (crit, stealth detection, opportunity attacks
+   — NOT sight range, which is pure line of sight); several accessories
+   grant it, so it shows on the sheet like everything else. */
+const STAT_KEYS = ['HP','MP','ATK','DEF','MDEF','INT','SPD','AWR','RNG','MOV','CRT','EVA'];
+const STAT_MAX_PB = { HP:900, MP:300, ATK:110, DEF:75, MDEF:75, INT:100, SPD:11, AWR:8, RNG:6, MOV:6, CRT:30, EVA:25 };
+const STAT_MAP = { HP:'hp', MP:'mp', ATK:'atk', DEF:'def', MDEF:'mdef', INT:'int', SPD:'spd', AWR:'awr', RNG:'range', MOV:'move', CRT:'crt', EVA:'eva' };
 const STAT_PCT = { CRT:true, EVA:true };   // rendered as a % chance
 // Display names — the int stat reads as Magic Attack everywhere in the UI.
 const STAT_LABELS = { INT:'M ATK', MDEF:'M DEF' };
 const statLabel = k => STAT_LABELS[k] || k;
 // ASSESSMENT sheet layout: the four combat numbers get a JRPG quadrant of
 // their own; MOV/RNG already have the diamond footprints, so no bars for them.
-const BAR_KEYS  = ['HP','MP','SPD','CRT','EVA'];
+const BAR_KEYS  = ['HP','MP','SPD','AWR','CRT','EVA'];
 const QUAD_KEYS = ['ATK','INT','DEF','MDEF'];   // row-major: ATK | M ATK / DEF | M DEF
 const QUAD_C    = { ATK:'#ff8a5c', INT:'#5ab0ff', DEF:'#f2c468', MDEF:'#3ddc84' };
 function _withCritEva(s) {
   if (!s) return s;
-  if (typeof window.critChanceFromStats === 'function') s.crt = Math.round(window.critChanceFromStats(s.awr || 0, s.int || 0) * 100);
+  if (typeof window.critChanceFromStats === 'function') s.crt = Math.round(window.critChanceFromStats(s.awr || 0) * 100);
   if (typeof window.evasionChanceFromStats === 'function') s.eva = Math.round(window.evasionChanceFromStats(s.move || 0) * 100);
   return s;
 }
@@ -606,7 +609,7 @@ function computeFullStats(race, cls, secJob, equipment) {
   final.inspect = base.inspect || 1;
   delta.range = 0;
   delta.inspect = 0;
-  // CRT/EVA follow the stats they derive from, so gear/sub-job AWR/INT/MOV
+  // CRT/EVA follow the stats they derive from, so gear/sub-job AWR/MOV
   // changes surface as a visible ± delta on the percent too.
   _withCritEva(final);
   delta.crt = (final.crt || 0) - (base.crt || 0);
@@ -2154,7 +2157,7 @@ function PartyBuilder() {
                       let zMod = null;
                       if (zodiacNature) { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
                       return h(StatBar, { key:k, label:statLabel(k), val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod, delta:d,
-                        suffix: STAT_PCT[k] ? '%' : '', tip: STAT_PCT[k] ? window.STAT_HELP?.[mapped] : null });
+                        suffix: STAT_PCT[k] ? '%' : '', tip: window.STAT_HELP?.[mapped] || null });
                     })),
                   h('div', { style:{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:3, flexShrink:0 } },
                     QUAD_KEYS.map(k => {

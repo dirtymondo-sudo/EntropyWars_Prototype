@@ -125,11 +125,11 @@ const FLYING_ALTITUDE_CONFIG = {
 const EQUIPMENT_SLOTS = ['accessory1', 'accessory2'];
 
 const EQUIP_DEFS = {
-    'binoculars': { slot: 'accessory1', label: 'Binoculars', desc: '+2 vision range. See further across the battlefield.', stat: 'awr', statVal: 2 },
-    'walkie_talkie': { slot: 'accessory1', label: 'Walkie Talkie', desc: 'Extends communication range with allies.', stat: 'awr', statVal: 1 },
-    'flair': { slot: 'accessory1', label: 'Signal Flare', desc: 'One-use flare to reveal an area of the map.', stat: 'awr', statVal: 1 },
-    'ward': { slot: 'accessory1', label: 'Ward Totem', desc: 'Deployable ward that grants vision in an area.', stat: 'awr', statVal: 1 },
-    'telescope': { slot: 'accessory1', label: 'Telescope', desc: 'Long-range scouting tool. Reveals distant tiles.', stat: 'awr', statVal: 2 },
+    'binoculars': { slot: 'accessory1', label: 'Binoculars', desc: '+2 AWR. Sharper perception: higher crit chance, and at AWR 6+ senses hidden enemies from 2 tiles.', stat: 'awr', statVal: 2 },
+    'walkie_talkie': { slot: 'accessory1', label: 'Walkie Talkie', desc: 'Shares line of sight with allied Walkie Talkie carriers. +1 AWR.', stat: 'awr', statVal: 1 },
+    'flair': { slot: 'accessory1', label: 'Signal Flare', desc: 'One-use flare that reveals an area of the map. +1 AWR.', stat: 'awr', statVal: 1 },
+    'ward': { slot: 'accessory1', label: 'Ward Totem', desc: 'Deployable ward (place within 3 tiles) that grants vision in an area. +1 AWR.', stat: 'awr', statVal: 1 },
+    'telescope': { slot: 'accessory1', label: 'Telescope', desc: 'Spot and target enemies in the sky from the ground (range 5). +2 AWR.', stat: 'awr', statVal: 2 },
     'jetpack': { slot: 'accessory1', label: 'Jetpack', desc: 'Fly to the sky without nexus control. Ignores terrain movement cost.', stat: 'move', statVal: 1 },
     'spelunking_gear': { slot: 'accessory1', label: 'Spelunking Gear', desc: 'Descend underground without nexus control. +1 AWR.', stat: 'awr', statVal: 1 },
     // ── Combat & utility accessories (held-item effects, hooked in battle.js/map.js) ──
@@ -12898,22 +12898,24 @@ const CAMPAIGN_REGION_THEMES = {
    INFO stat card and the party builder / codex all read these two
    functions, so the number the player sees is the number the dice use.
    Both derive from stats the player already builds around:
-     CRT = 8% + 1.5%/AWR (max +12%) + 0.4%/INT (max +6%), cap 30%
+     CRT = 8% + 2%/AWR (max +18%), cap 30%
      EVA = 6% + 1.8%/MOV (max +10%), cap 25%
+   CRT is pure perception: AWR alone drives it (2026-08-12 — the old
+   +0.4%/INT rider made magic attack raise basic-attack crits, which
+   made no sense when spells can't crit; casters lost that freebie).
    Combat context on top (battle.js): a crit deals ×1.8 damage
    (Gunslinger ×2.0); back-arc attacks can't be dodged; a blinded
    attacker always misses; hard CC (stun/freeze/root) sets EVA to 0;
    spells never crit and can't be dodged. */
-function critChanceFromStats(awr, intStat) {
-  return Math.min(0.30, 0.08
-    + Math.min(0.12, (awr || 0) * 0.015)
-    + Math.min(0.06, (intStat || 0) * 0.004));
+function critChanceFromStats(awr) {
+  return Math.min(0.30, 0.08 + Math.min(0.18, (awr || 0) * 0.02));
 }
 function evasionChanceFromStats(move) {
   return Math.min(0.25, 0.06 + Math.min(0.10, (move || 0) * 0.018));
 }
 const STAT_HELP = {
-  crt: 'CRT — critical hit chance on basic attacks. 8% base + 1.5% per AWR (max +12%) + 0.4% per M ATK (max +6%), capped at 30%. A crit deals ×1.8 damage (Gunslinger passive: ×2.0). Spells never crit.',
+  awr: 'AWR — perception. Drives critical chance (+2% per AWR), lets keen units (AWR 6+) sense cloaked or smoke-hidden enemies from 2 tiles instead of 1, and raises the chance to land opportunity attacks on retreating enemies. Sight itself is pure line of sight — AWR does NOT extend how far a unit sees.',
+  crt: 'CRT — critical hit chance on basic attacks. 8% base + 2% per AWR (max +18%), capped at 30%. A crit deals ×1.8 damage (Gunslinger passive: ×2.0). Spells never crit.',
   eva: 'EVA — chance to dodge a basic attack. 6% base + 1.8% per MOV (max +10%), capped at 25%. Back-arc attacks can’t be dodged, a blinded attacker always misses, and hard CC (stun/freeze/root) drops EVA to 0. Spells can’t be dodged.',
 };
 

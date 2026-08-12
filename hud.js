@@ -2474,6 +2474,7 @@ function _hrlgQuickStats(panelKey) {
   const intV = typeof getEffectiveInt === 'function' ? getEffectiveInt(u) : (u.intStat || 0);
   const mov  = typeof getEffectiveMove === 'function' ? getEffectiveMove(u) : (u.move || 0);
   const rng  = typeof getEffectiveRange === 'function' ? getEffectiveRange(u) : (u.range || 0);
+  const awr  = typeof getEffectiveAwr === 'function' ? getEffectiveAwr(u) : (u.awr || 0);
   const crt  = Math.round((typeof getCritChance === 'function' ? getCritChance(u) : 0) * 100);
   const eva  = Math.round((typeof getEvasionChance === 'function' ? getEvasionChance(u) : 0) * 100);
   const HELP = (typeof window !== 'undefined' && window.STAT_HELP) || {};
@@ -2484,6 +2485,7 @@ function _hrlgQuickStats(panelKey) {
     { k: 'M DEF', v: mdef,       base: u.mdef || 0 },
     { k: 'MOV',  v: mov,        base: u.move || 0 },
     { k: 'RNG',  v: rng,        base: u.range || 0 },
+    { k: 'AWR',  v: awr,        base: u.awr || 0, tip: HELP.awr },
     { k: 'CRT',  v: crt + '%',  tip: HELP.crt },
     { k: 'EVA',  v: eva + '%',  tip: HELP.eva },
   ];
@@ -6787,8 +6789,10 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
   }
 
   if (typeof doWard === 'function' && unitAP >= 1 && !onSelf) {
-    const awrRange = typeof getEffectiveAwr === 'function' ? getEffectiveAwr(actingUnit) : 3;
-    const inWardRange = dist <= awrRange;
+    /* Fixed reach 3 — the SAME check doWard enforces (ui.js). The menu used
+       to gate on AWR, so low-AWR units couldn't pick a tile doWard allows
+       and high-AWR units picked tiles doWard then rejected. */
+    const inWardRange = dist <= 3;
     const hasWard = typeof unitHasWard === 'function' && unitHasWard(actingUnit) && !actingUnit._usedWard;
     if (hasWard) {
       actions.push({

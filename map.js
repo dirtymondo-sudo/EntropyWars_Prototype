@@ -4883,31 +4883,13 @@
             buildColumnsFromLegacy();
         }
 
+        /* Fog vision is pure line of sight (LOS_ONLY_VISION) — no stat extends
+           or caps how far a unit sees, so this is NOT sight range anymore. It
+           survives only as the bounded reach of gear that explicitly needs one
+           (the telescope's earth→sky spotting) and legacy bounded callers.
+           Fixed — AWR does not feed it. */
         function getUnitVisionRange(unit) {
-
-            const eAwr = getEffectiveAwr(unit);
-            const base = (unit.inspect || 1) + Math.floor(eAwr / 3) + 1;
-            let bonus = 0;
-
-            if (getTerrainAt(unit.x, unit.y) === 'mountain') bonus += 1;
-
-            const _visObj = (typeof getObjectAt === 'function') ? getObjectAt(unit.x, unit.y) : null;
-            if (getTerrainAt(unit.x, unit.y) === 'mountain_top' || _visObj === 'mountain_top') bonus += 1;
-
-            if (getTerrainAt(unit.x, unit.y) === 'crystal') bonus += 1;
-
-            if (getTerrainAt(unit.x, unit.y) === 'sky_ruin') bonus += 1;
-
-            if (unit.z > 0 && typeof getUnitStandingHeight === 'function') {
-                bonus += Math.floor(getUnitStandingHeight(unit) / 2);
-            }
-
-            if (unitHasBinoculars(unit)) bonus += 2;
-
-            bonus += getSectionBuffs(unit).vision;
-
-            if (getTerrainAt(unit.x, unit.y) === 'cloud_thick') bonus -= 1;
-            return Math.max(2, base + bonus);
+            return 5 + getSectionBuffs(unit).vision;
         }
 
         function isVisionBlockedByTerrain(x1, y1, x2, y2, sourceZ, targetZ) {

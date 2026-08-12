@@ -4,7 +4,41 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## 🎬 SPELL CINEMATICS v1 (2026-08-10, LATEST) — battle.js, three-renderer.js, online.js, state.js, styles-cinematic.css, index.html
+## 👁 AWR REDESIGN: perception stat, NOT sight range (2026-08-12, LATEST) — battle.js, map.js, data.js, party-builder.js, hud.js
+
+Vision was ALREADY pure line of sight (`LOS_ONLY_VISION = true`, map.js since
+2026-07) but half the codebase still pretended AWR was a sight radius. This
+pass makes the design coherent: **sight = LOS only, AWR = perception** (crit,
+stealth detection, opportunity attacks, RT-mode accuracy, campaign aggro
+alertness — never how FAR a unit sees).
+
+- **Legacy awr-radius vision paths purged**: `_isUnitVisibleToViewer`
+  (battle.js) now reads the fog renderer's own `computeVisibleTilesCached`
+  set (screen-true; wards/towers/reveals/smoke included) instead of a flat
+  awr-Manhattan scan; its redundant inline smoke block dropped
+  (`isUnitConcealedFrom` covers it). `_isTileVisibleToViewer`'s no-cache
+  fallback and `isUnitSeenByTeam`'s fog-off branch are LOS-only (distance
+  never gates sight). `getUnitVisionRange` (map.js) no longer reads
+  AWR/binoculars — it survives ONLY as the telescope's fixed earth→sky reach
+  (5 + section vision buff).
+- **CRT = AWR alone**: `critChanceFromStats(awr)` = 8% +2%/AWR (cap +18%),
+  max 30%. The +0.4%/INT rider is gone — M.ATK boosting basic-attack crit
+  made no sense when spells can't crit. Callers updated (battle.js
+  `getCritChance`, party-builder `_withCritEva`).
+- **Stealth/smoke detection (AWR 6+ senses from 2 tiles)** now uses
+  `getEffectiveAwr` — jammed/blinded units lose the edge.
+- **Accessory descriptions tell the truth** (data.js EQUIP_DEFS): binoculars/
+  telescope no longer claim "+vision range"; walkie = shares LOS with other
+  carriers, ward = deploy within 3, flare = one-use reveal, telescope =
+  sky-spotting range 5. All keep their `stat: awr` bonus.
+- **Ward menu range bug fixed** (hud.js): the quick-menu gated Ward placement
+  on `getEffectiveAwr` while `doWard` (ui.js) enforces a fixed 3 — menu and
+  action now agree on 3.
+- **AWR is visible**: party builder STAT_KEYS/BAR_KEYS/STAT_MAP/STAT_MAX_PB
+  (max 8) + roster sort; in-battle quick-menu stat grid gained an AWR cell;
+  `STAT_HELP.awr` (data.js) is the hover text everywhere.
+
+## 🎬 SPELL CINEMATICS v1 (2026-08-10) — battle.js, three-renderer.js, online.js, state.js, styles-cinematic.css, index.html
 
 Implements `SPELL_CINEMATICS.md`. The generic two-beat action shot is still
 the base for every cast; on top of it there are now three layers, all resolved
@@ -1025,8 +1059,9 @@ Token `20260724c` → `20260724d`.
 - **ⓘ tab INFO button REMOVED** (`_hrlgTabInfoBtn` deleted, both quick menus);
   the clock-side INFO button for the ACTIVE unit still exists.
 - **CRT/EVA are official stats now**: canonical formula lives ONCE in data.js —
-  `critChanceFromStats(awr,int)` = 8% +1.5%/AWR (cap +12%) +0.4%/INT (cap +6%),
-  max 30%; `evasionChanceFromStats(move)` = 6% +1.8%/MOV (cap +10%), max 25%.
+  `critChanceFromStats(awr)` = 8% +2%/AWR (cap +18%), max 30% (2026-08-12: the
+  old +0.4%/INT rider is GONE — magic attack no longer raises basic-attack
+  crit); `evasionChanceFromStats(move)` = 6% +1.8%/MOV (cap +10%), max 25%.
   battle.js `getCritChance`/`getEvasionChance` delegate (keeping the effective-
   stat feed + hard-CC → EVA 0 gate). Crit mult ×1.8 (Gunslinger ×2.0); back-arc
   can't dodge; blind attacker auto-misses; spells never crit/dodge.
