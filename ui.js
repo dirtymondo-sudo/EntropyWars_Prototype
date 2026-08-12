@@ -10492,6 +10492,13 @@
                 if (spell.aoeShape === 'diamond' && typeof getDiamondArea === 'function') {
                     return getDiamondArea(cx, cy, spell.aoeRadius || 1);
                 }
+                // 'ring' (Fae Ring) — perimeter only, must mirror battle.js
+                // getRingArea: Chebyshev distance exactly == radius.
+                if (spell.aoeShape === 'ring') {
+                    const rr = spell.aoeRadius || 1;
+                    return getSquareArea(cx, cy, rr).filter(t =>
+                        Math.max(Math.abs(t.x - cx), Math.abs(t.y - cy)) === rr);
+                }
                 return getSquareArea(cx, cy, spell.aoeRadius || 1);
             }
             if (spell.kind === 'bomb') {

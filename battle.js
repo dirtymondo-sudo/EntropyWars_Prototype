@@ -20057,13 +20057,23 @@
             return out;
         }
 
+        /* Ring footprint (2026-08-12, Fae Ring): only the PERIMETER of the
+           square at exactly Chebyshev distance `radius` — the center and
+           everything inside it are spared. */
+        function getRingArea(cx, cy, radius = 1) {
+            return getSquareArea(cx, cy, radius).filter(t =>
+                Math.max(Math.abs(t.x - cx), Math.abs(t.y - cy)) === radius);
+        }
+
         /* One dispatcher for every kind:'aoe' footprint so the handler, the
            hover preview and the AI all agree: aoeShape 'round' → getRoundArea,
-           'diamond' → getDiamondArea, default → the classic square. */
+           'diamond' → getDiamondArea, 'ring' → getRingArea (perimeter only),
+           default → the classic square. */
         function getSpellAoeArea(spell, cx, cy) {
             const r = spell.aoeRadius || 1;
             if (spell.aoeShape === 'round') return getRoundArea(cx, cy, r);
             if (spell.aoeShape === 'diamond') return getDiamondArea(cx, cy, r);
+            if (spell.aoeShape === 'ring') return getRingArea(cx, cy, r);
             return getSquareArea(cx, cy, r);
         }
 
@@ -44674,6 +44684,11 @@
                 const _barrageSrcZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);
                 const _barrageLong = isLongRangeSpell(spell);
                 const enemies = aliveUnitsFor(enemyOf(unit.player)).filter(e => {
+                    // hitsWetOnly (2026-08-12, Poseidon's Wrath): the nova only
+                    // touches enemies standing in water / deep water / the wet
+                    // spread-flow at a pool's edge — wherever they are (pair it
+                    // with aoeRadius 99 + ignoresLineOfSight for map-wide).
+                    if (spell.hitsWetOnly && !_isWetTile(e.x, e.y)) return false;
                     // 3D reach (elevation counts) so a self-centered nova doesn't hit
                     // an enemy stacked several levels above/below just because it's
                     // adjacent on the grid — matches the action-menu range check.

@@ -4412,9 +4412,10 @@ const SPELL_LIBRARY = [
         equipCost: 20,
         range: 3,
         kind: 'buff',
-        /* Cyborg race capstone since the tree audit (Engineer dropped its
-           copy) — ring 4 = tier III. */
-        tier: 'III',
+        /* Was the cyborg race capstone after the tree audit; demoted in the
+           2026-08-12 capstone pass (Rocket Toss is the capstone now) — sits
+           at cyborg ring 3 / robot ring 2, so tier II. */
+        tier: 'II',
         school: 'Engineer',
         classRestriction: 'Engineer',
         statusEffects: [{
@@ -4862,7 +4863,9 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 50,
         equipCost: 25,
-        dmg: 80,
+        /* android/droid race capstone — heavy band since the 2026-08-12
+           capstone pass (robot's capstone is Kill Mode now). */
+        dmg: 160,
         range: 0,
         kind: 'aoe',
         damageType: 'magic',
@@ -4877,7 +4880,7 @@ const SPELL_LIBRARY = [
             id: 'jammed',
             duration: 1
         }],
-        desc: 'Deals WEAK magic damage to All Enemies around the caster (AOE). Applies Jammed.'
+        desc: 'Deals HEAVY magic damage to All Enemies around the caster (AOE). Applies Jammed.'
     },
 
     {
@@ -4952,7 +4955,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 60,
         equipCost: 25,
-        dmg: 120,
+        dmg: 160,
         range: 4,
         kind: 'barrage',
         damageType: 'magic',
@@ -4964,7 +4967,7 @@ const SPELL_LIBRARY = [
             duration: 2
         }],
         bonusVsStatus: { status: 'slow', mult: 1.5 },
-        desc: 'Deals MEDIUM magic damage to All Enemies in an AOE and lowers ATK by 2 stages and DEF by 1 stage. Deals bonus damage to Slowed targets.'
+        desc: 'Deals HEAVY magic damage to All Enemies in an AOE and lowers ATK by 2 stages and DEF by 1 stage. Deals bonus damage to Slowed targets.'
     },
 
 
@@ -4976,7 +4979,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 30,
         equipCost: 20,
-        dmg: 120,
+        dmg: 160,
         range: 4,
         kind: 'teleport',
         damageType: 'magic',
@@ -4988,7 +4991,7 @@ const SPELL_LIBRARY = [
         teleportDistance: 4,
         aoeRadius: 1,
         aoeOnArrival: true,
-        desc: 'Teleports the caster, then deals MEDIUM magic damage to All Enemies around the arrival tile (AOE).'
+        desc: 'Teleports the caster, then deals HEAVY magic damage to All Enemies around the arrival tile (AOE).'
     },
 
 
@@ -5543,7 +5546,7 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 55, dmg: 170, range: 0, apCost: 2, tier: 'III',
           kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
           statStageBoost: { def: -1 },
-          desc: 'The orb goes supernova. Deals SEVERE magic damage to All Enemies around the caster (AOE) and sears their armor, lowering DEF by 1 stage.' },
+          desc: 'The orb goes supernova. Deals HEAVY magic damage to All Enemies around the caster (AOE) and sears their armor, lowering DEF by 1 stage.' },
     ],
     /* 2026-07-23 ghost rework: Human+Anomaly Psychic now. Spectral Passage
        stopped being a spell and became the race PASSIVE (ghosts phase through
@@ -5551,17 +5554,18 @@ const RACE_ABILITIES = {
        map.js + the getMoveTiles/findMovePath hooks in battle.js). Boo is the
        new jump-scare nuke. */
     'ghost': [
+        /* Ghost capstone since the 2026-08-12 capstone pass (was Possession). */
         { id: 'raceBoo', spellType: 'anomaly', element: 'psychic', name: 'Boo',
-          type: 'damage', cost: 25, dmg: 120, range: 2,
+          type: 'damage', tier: 'III', cost: 55, dmg: 180, range: 2,
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Materialize with a shriek. Deals MEDIUM magic damage to a Single Enemy. Applies Stagger.' },
+          desc: 'Materialize with a shriek. Deals HEAVY magic damage to a Single Enemy. Applies Stagger.' },
         { id: 'raceColdSpot', spellType: 'anomaly', name: 'Cold Spot',
           type: 'utility', cost: 30, range: 4, apCost: 1,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Haunt a 3x3 area for 2 turns. Enemies inside are slowed and cannot counterattack.' },
-        _mkBolt(_JAM_BOLT, { id: 'racePossession', spellType: 'anomaly', name: 'Possession', tier: 'III' }),
+        _mkBolt(_JAM_BOLT, { id: 'racePossession', spellType: 'anomaly', name: 'Possession' }),
         SHARED_FLASH_FREEZE
     ],
     'angel': [
@@ -5599,12 +5603,12 @@ const RACE_ABILITIES = {
           terrainDeform: { centerDelta: 2, edgeDelta: 0 },
           desc: 'Raise 2 tiles of stone wall. Cheaper than Rampart but smaller. The cathedral grows.' },
         { id: 'raceStoneDrop', spellType: 'unholy', name: 'Stone Drop',
-          type: 'damage', tier: 'III', cost: 25, dmg: 100, range: 1, apCost: 1,
+          type: 'damage', tier: 'III', cost: 25, dmg: 130, range: 1, apCost: 1,
           kind: 'skyDrop', damageType: 'physical', carryHeight: 4, dmgPerLevel: 25,
           requiresFlight: true,
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
-          desc: 'Grab an adjacent enemy and release them from above. Damage scales with elevation delta. Deals bonus damage to Staggered targets.' },
+          desc: 'Grab an adjacent enemy and release them from above. Deals HEAVY physical damage at full height — damage scales with elevation delta. Deals bonus damage to Staggered targets.' },
         { id: 'raceCalcify', spellType: 'unholy', element: 'earth', name: 'Calcify',
           type: 'debuff', cost: 25, range: 3, apCost: 1,
           kind: 'debuff',
@@ -5668,13 +5672,14 @@ const RACE_ABILITIES = {
        tramples the target area), and Zombie Rush is the new gap closer. */
     'zombie': [
         SHARED_INFECTIOUS_BITE,
+        /* Zombie capstone since the 2026-08-12 capstone pass (was Outbreak). */
         { id: 'raceShamblingHorde', spellType: 'unholy', name: 'Shambling Horde',
-          type: 'damage', cost: 30, dmg: 80, range: 3, apCost: 1,
+          type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 3, apCost: 2,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
-          desc: 'Deals WEAK physical damage to All Enemies in an AOE.' },
+          desc: 'The horde descends. Deals HEAVY physical damage to All Enemies in an AOE.' },
         _mkCharge({ id: 'raceZombieRush', spellType: 'unholy', name: 'Zombie Rush' }),
         { id: 'raceOutbreak', spellType: 'unholy', element: 'poison', name: 'Outbreak',
-          type: 'debuff', cost: 55, range: 4, apCost: 2, tier: 'III',
+          type: 'debuff', cost: 55, range: 4, apCost: 2,
           kind: 'zoneDebuff', aoeRadius: 2, zoneDuration: 3,
           statusEffects: [{ id: 'poison', duration: 2 }],
           bonusVsStatus: { status: 'poison', mult: 1.5 },
@@ -5682,10 +5687,10 @@ const RACE_ABILITIES = {
     ],
     'anubis': [
         { id: 'raceWeighTheHeart', spellType: 'unholy', name: 'Weigh the Heart',
-          type: 'damage', tier: 'III', cost: 40, dmg: 140, range: 4,
+          type: 'damage', tier: 'III', cost: 40, dmg: 180, range: 4,
           kind: 'damage', damageType: 'magic', executeBonusPct: 0.5,
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
-          desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals more damage the lower the target\'s HP. Deals bonus damage to Staggered targets.' },
+          desc: 'Deals HEAVY magic damage to a Single Enemy. Deals more damage the lower the target\'s HP. Deals bonus damage to Staggered targets.' },
         { id: 'raceGravePassage', spellType: 'unholy', name: 'Grave Passage',
           type: 'utility', cost: 30, range: 4, apCost: 1,
           kind: 'deployPair', maxActivePerCaster: 1,
@@ -5716,7 +5721,7 @@ const RACE_ABILITIES = {
           kind: 'barrage', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'discord', duration: 2 }],
           desc: 'Emit a wave of dread. For 2 turns, all enemies within 2 tiles have their ATK lowered by 2 stages and DEF by 1 stage.' },
-        { id: 'raceProphecyOfDisaster', spellType: 'unholy', name: 'Prophecy of Disaster',
+        { id: 'raceProphecyOfDisaster', spellType: 'anomaly', name: 'Prophecy of Disaster',
           type: 'damage', tier: 'III', cost: 50, dmg: 160, range: 5, apCost: 2,
           kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
           desc: 'Marks a zone. After 1 turn, deals HEAVY magic damage to All Enemies inside (AOE).' },
@@ -5785,10 +5790,13 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statusEffects: [{ id: 'pixieDust', duration: 2 }],
           desc: 'Sprinkle an ally with pixie dust. For 2 turns they move 2 tiles further — a happy thought and off the ground they go.' },
+        /* 2026-08-12: reworked from a heal zone into the fairy's damage
+           capstone — a ring-shaped blast (aoeShape 'ring': only the 16
+           perimeter tiles of the 5×5, the inside is spared). */
         { id: 'raceFaeRing', spellType: 'anomaly', element: 'nature', name: 'Fae Ring',
-          type: 'heal', cost: 50, range: 4, apCost: 2, tier: 'III',
-          kind: 'zoneHeal', aoeRadius: 1, zoneDuration: 3, healPerTurn: 60,
-          desc: 'Raise a ring of toadstools over a 3×3 area for 3 rounds. Allies standing inside heal each round. Step in, mortals — the fair folk are feeling generous.' }
+          type: 'damage', cost: 55, dmg: 160, range: 4, apCost: 2, tier: 'III',
+          kind: 'aoe', aoeShape: 'ring', aoeRadius: 2, damageType: 'magic',
+          desc: 'A ring of toadstools erupts. Deals HEAVY magic damage to All Enemies standing on the ring (the rim of a 5×5 — the center is spared). Never step inside a fairy ring; never stand on one either.' }
     ],
     'reptilian': [
         { id: 'raceShedSkin', spellType: 'anomaly', name: 'Shed Skin',
@@ -5852,7 +5860,7 @@ const RACE_ABILITIES = {
           kind: 'deployObject', objectHp: 1, blocksMovement: true,
           drawsRangedAttack: true, drawsMeleeAttack: true, maxActivePerCaster: 1,
           desc: 'Place a scarecrow decoy. Blocks movement, absorbs 1 hit. Placing never uses your spell slot.' },
-        { id: 'raceCrowStorm', spellType: 'anomaly', name: 'Crow Storm',
+        { id: 'raceCrowStorm', spellType: 'unholy', name: 'Crow Storm',
           type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'discord', duration: 2 }],
@@ -5890,10 +5898,10 @@ const RACE_ABILITIES = {
           bonusVsStatus: { status: 'silence', mult: 1.5 },
           desc: 'Deals MEDIUM magic damage to All Enemies in a line and pushes them back. Deals bonus damage to Silenced targets.' },
         { id: 'raceCallOfTheDeep', spellType: 'anomaly', name: 'Call of the Deep',
-          type: 'damage', tier: 'III', cost: 40, dmg: 140, range: 3, apCost: 2,
+          type: 'damage', tier: 'III', cost: 40, dmg: 160, range: 3, apCost: 2,
           kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 1,
           damageType: 'magic',
-          desc: 'Call the deep up through one tile. The water overflows the ground around it and runs downhill, damaging enemies caught in the surge.' },
+          desc: 'Call the deep up through one tile. The water overflows the ground around it and runs downhill, dealing HEAVY magic damage to enemies caught in the surge.' },
         { id: 'raceDeafeningWail', spellType: 'anomaly', name: 'Deafening Wail',
           type: 'damage', cost: 30, dmg: 80, range: 0,
           kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
@@ -5941,10 +5949,10 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Weakens a Single Enemy. Applies Stun.' },
         { id: 'raceTimeRewind', spellType: 'anomaly', element: 'psychic', name: 'Time Rewind',
-          type: 'damage', tier: 'III', cost: 35, dmg: 120, range: 4, apCost: 1,
+          type: 'damage', tier: 'III', cost: 35, dmg: 160, range: 4, apCost: 1,
           kind: 'damage', damageType: 'magic',
           echoLastDealt: true,
-          desc: 'Corrupt the target\'s timeline and play their last blow BACKWARD — they take the same damage their most recent hit dealt (never less than MEDIUM). The harder they hit, the harder the rewind.' },
+          desc: 'Corrupt the target\'s timeline and play their last blow BACKWARD — they take the same damage their most recent hit dealt (never less than HEAVY). The harder they hit, the harder the rewind.' },
         SHARED_FISSURE
     ],
     'ai': [
@@ -5972,10 +5980,13 @@ const RACE_ABILITIES = {
     'robot': [
         /* id typo raceChassisSlan → raceChassisSlam fixed in the spell-tree
            audit (§7.6); the old id aliases here via the legacy-alias table. */
+        /* Robot capstone since the 2026-08-12 capstone pass (empBurst moved to
+           the android/droid capstone slot only; robot borrows overclock for
+           its ring 2 instead). */
         { id: 'raceChassisSlam', spellType: 'tech', element: 'metal', name: 'Kill Mode',
-          type: 'damage', cost: 35, dmg: 80, range: 0,
+          type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 0, apCost: 2,
           kind: 'aoe', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
-          desc: 'Deals WEAK physical damage to All Enemies around the caster (AOE).' },
+          desc: 'Weapons free. Deals HEAVY physical damage to All Enemies around the caster (AOE).' },
         { id: 'raceHydraulicCrush', spellType: 'tech', element: 'metal', name: 'Hydraulic Crush',
           type: 'damage', cost: 25, dmg: 135, range: 1,
           kind: 'damage', damageType: 'physical',
@@ -6168,18 +6179,21 @@ const RACE_ABILITIES = {
           type: 'heal', cost: 25, range: 3, apCost: 1,
           kind: 'heal', healAmt: 160, cleanse: 2,
           desc: 'Restores a MEDIUM amount of HP to a Single Ally.' },
+        /* Demoted from capstone 2026-08-12 (Bad Trip is the capstone now) —
+           single-stat per §2.1, the heal+cleanse stays its identity. */
         { id: 'raceAyahuascaRetreat', spellType: 'anomaly', element: 'nature', name: 'Ayahuasca Retreat',
-          type: 'buff', tier: 'III', cost: 35, apCost: 2, range: 0,
+          type: 'buff', cost: 35, apCost: 2, range: 0,
           kind: 'buff',
           selfHealPct: 0.50, cleanse: 99,
-          statStageBoost: { def: 1, mdef: 1 },
-          desc: 'Empowers the caster. Raises DEF by 1 stage and M DEF by 1 stage.' },
-        { id: 'raceBadTrip', spellType: 'alien', element: 'psychic', name: 'Bad Trip',
-          type: 'damage', cost: 30, dmg: 120, range: 3,
+          statStageBoost: { mdef: 2 },
+          desc: 'Empowers the caster. Raises M DEF by 2 stages.' },
+        /* Shaman capstone since the 2026-08-12 capstone pass. */
+        { id: 'raceBadTrip', spellType: 'anomaly', element: 'psychic', name: 'Bad Trip',
+          type: 'damage', tier: 'III', cost: 55, dmg: 180, range: 3,
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'slow', duration: 1 }],
           bonusVsStatus: { status: 'hexed', mult: 1.5 },
-          desc: 'Deals MEDIUM magic damage to a Single Enemy. Applies Slow. Deals bonus damage to Hexed targets.' },
+          desc: 'Deals HEAVY magic damage to a Single Enemy. Applies Slow. Deals bonus damage to Hexed targets.' },
         SHARED_HEX_OF_TOIL,
         SHARED_EGO_DEATH,
     ],
@@ -6191,10 +6205,10 @@ const RACE_ABILITIES = {
           detonateOnStep: true, maxActivePerCaster: 3,
           desc: 'Deploy an electrified coil. Detonates when an enemy steps on it. 3×3 shock damage. Placing on an empty tile never ends your turn or uses your spell slot; throwing it directly onto an enemy shocks them on contact and ends your turn.' },
         { id: 'racePlandemic', spellType: 'tech', element: 'poison', name: 'Plandemic',
-          type: 'damage', tier: 'III', cost: 55, dmg: 140, range: 4,
+          type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'poison', duration: 3 }],
-          desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Poison.' },
+          desc: 'Deals HEAVY magic damage to All Enemies in an AOE. Applies Poison.' },
         { id: 'raceCloneDecoy', spellType: 'tech', element: 'metal', name: 'Cloning Machine',
           type: 'utility', cost: 20, apCost: 1, range: 1,
           kind: 'deployObject',
@@ -6242,7 +6256,7 @@ const RACE_ABILITIES = {
     ],
     'men in black': [
         _mkBolt(_JAM_BOLT, { id: 'raceDeneuralizer', spellType: 'tech', element: 'psychic', name: 'Deneuralizer' }),
-        { id: 'raceClassifiedWeapon', spellType: 'alien', element: 'lightning', name: 'Classified Weapon',
+        { id: 'raceClassifiedWeapon', spellType: 'tech', element: 'lightning', name: 'Classified Weapon',
           type: 'damage', tier: 'III', cost: 50, dmg: 180, range: 4,
           kind: 'damage', damageType: 'magic',
           bonusVsStatus: { status: 'jammed', mult: 1.5 },
@@ -6328,16 +6342,17 @@ const RACE_ABILITIES = {
           type: 'debuff', cost: 25, range: 4, apCost: 1, cooldownRounds: 3,
           kind: 'debuff', stealSpell: true,
           desc: 'Reach into an enemy\'s mind and rip out a spell. Steal one of the target\'s spells — they lose it, you learn it.' },
-        { id: 'raceManaShield', spellType: 'unholy', element: 'arcane', name: 'Mana Shield',
-          type: 'buff', cost: 20, range: 0, apCost: 1,
-          kind: 'shield',
-          shield: 200,
-          desc: 'Grants a damage-absorbing shield to a Single Ally.' },
+        /* (Mana Shield deleted 2026-08-12 — Hocus Pocus took its tree slot.) */
         { id: 'racePolymorph', spellType: 'unholy', element: 'arcane', name: 'Polymorph',
-          type: 'debuff', cost: 55, range: 4, apCost: 2, tier: 'III',
+          type: 'debuff', cost: 55, range: 4, apCost: 2,
           kind: 'debuff', cooldownRounds: 3,
           statStageBoost: { atk: -2, int: -2 },
-          desc: 'Transmute an enemy into something small and harmless. Lowers the target\'s ATK by 2 stages and M ATK by 2 stages. Ribbit.' }
+          desc: 'Transmute an enemy into something small and harmless. Lowers the target\'s ATK by 2 stages and M ATK by 2 stages. Ribbit.' },
+        /* Wizard capstone since the 2026-08-12 capstone pass (was Polymorph). */
+        { id: 'raceHocusPocus', spellType: 'unholy', element: 'arcane', name: 'Hocus Pocus',
+          type: 'damage', tier: 'III', cost: 55, dmg: 180, range: 4,
+          kind: 'damage', damageType: 'magic',
+          desc: 'The old words, spoken like they mean it. Deals HEAVY magic damage to a Single Enemy.' }
     ],
     'fortune teller': [
         { id: 'raceTarotDraw', spellType: 'anomaly', element: 'arcane', name: 'Tarot Draw',
@@ -6375,11 +6390,12 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'burn', duration: 2 }],
           desc: 'Focus the war machine\'s death ray on a Single Enemy. Deals MEDIUM physical damage. Applies Burn.' },
+        /* 2026-08-12: reworked from a tripod turret deploy into the UFO-swarm
+           strike the name always promised (round 5×5-minus-corners AOE). */
         { id: 'raceWarOfTheWorlds', spellType: 'alien', element: 'metal', name: 'War of the Worlds',
-          type: 'utility', tier: 'III', cost: 35, range: 2, apCost: 1,
-          kind: 'deployTurret', turretDmg: 120, turretRange: 3, turretHp: 140,
-          maxActivePerCaster: 1,
-          desc: 'Deploy a tripod turret. Auto-fires at nearest enemy each round. 120 damage, 3 range.' },
+          type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 4, apCost: 2,
+          kind: 'aoe', aoeShape: 'round', aoeRadius: 2, damageType: 'magic',
+          desc: 'The sky fills with saucers. A UFO swarm strafes the zone, dealing HEAVY magic damage to All Enemies in a wide AOE. No one would have believed it.' },
         SHARED_SHRINK_RAY,
         SHARED_LOW_GRAVITY,
         SHARED_SCORCHED_EARTH,
@@ -6502,16 +6518,19 @@ const RACE_ABILITIES = {
           kind: 'aoePull', damageType: 'magic', aoeRadius: 1, pullToCenter: true,
           bonusVsStatus: { status: 'stun', mult: 1.5 },
           desc: 'Deals WEAK magic damage to All Enemies in an AOE and pulls them toward the center. Deals bonus damage to Stunned targets.' },
+        /* Demoted from capstone 2026-08-12 (Ancient Magic is the capstone now)
+           — single-stat per §2.1. */
         { id: 'raceWishGranted', spellType: 'divine', name: 'Wish Granted',
-          type: 'buff', tier: 'III', cost: 30, apCost: 1, range: 3,
+          type: 'buff', cost: 30, apCost: 1, range: 3,
           kind: 'buff', cleanse: 2,
-          statStageBoost: { atk: 2, def: 1 },
-          desc: 'Empowers a Single Ally. Raises ATK by 2 stages and DEF by 1 stage.' },
-        { id: 'raceSandglassPrison', spellType: 'alien', name: 'Sandglass Prison',
-          type: 'debuff', cost: 30, range: 3, apCost: 1,
-          kind: 'debuff',
-          statusEffects: [{ id: 'stun', duration: 1 }],
-          desc: 'Weakens a Single Enemy. Applies Stun.' },
+          statStageBoost: { atk: 2 },
+          desc: 'Empowers a Single Ally. Raises ATK by 2 stages.' },
+        /* (Sandglass Prison deleted 2026-08-12 — Ancient Magic took its tree
+           slot.) Djinn capstone since the 2026-08-12 capstone pass. */
+        { id: 'raceAncientMagic', spellType: 'divine', name: 'Ancient Magic',
+          type: 'damage', tier: 'III', cost: 55, dmg: 180, range: 4,
+          kind: 'damage', damageType: 'magic',
+          desc: 'Magic older than the lamp, older than the sands. Deals HEAVY magic damage to a Single Enemy.' },
         SHARED_SUMMON_SANDSTORM,
     ],
     /* Machine Elves = the clockwork "machine elves" of DMT hyperspace, who
@@ -6580,12 +6599,13 @@ const RACE_ABILITIES = {
           pushDistance: 2,
           bonusVsStatus: { status: 'jammed', mult: 1.5 },
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Deals bonus damage to Jammed targets.' },
+        /* Cyborg capstone since the 2026-08-12 capstone pass (was overclock). */
         { id: 'raceRocketToss', spellType: 'tech', name: 'Rocket Toss',
-          type: 'damage', cost: 30, dmg: 65, range: 1, apCost: 1,
+          type: 'damage', tier: 'III', cost: 55, dmg: 110, range: 1, apCost: 1,
           kind: 'skyThrow', damageType: 'physical', carryHeight: 4, dmgPerLevel: 25,
           throwRange: 3, collisionBonus: 50,
           requiresFlight: true,
-          desc: 'Engage thrusters, grab an adjacent enemy, and launch them up to 3 tiles. Jet-powered precision delivery.' },
+          desc: 'Engage thrusters, grab an adjacent enemy, and launch them up to 3 tiles. Deals HEAVY physical damage at full height — jet-powered precision delivery.' },
     ],
     'demon prince': [
         { id: 'raceDarkDominion', spellType: 'unholy', name: 'Dark Dominion',
@@ -6610,10 +6630,10 @@ const RACE_ABILITIES = {
     'demon princess': [
         SHARED_HEX_OF_TOIL,
         { id: 'raceDarkLullaby', spellType: 'unholy', name: 'Dark Lullaby',
-          type: 'damage', tier: 'III', cost: 55, dmg: 140, range: 4,
+          type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'silence', duration: 1 }],
-          desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Silence.' },
+          desc: 'Deals HEAVY magic damage to All Enemies in an AOE. Applies Silence.' },
         { id: 'raceKissOfDecay', spellType: 'unholy', name: 'Kiss of Decay',
           type: 'damage', cost: 30, dmg: 120, range: 2,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.40,
@@ -6641,10 +6661,10 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Place a dream snare. First enemy to step on it is stunned 1 turn. Placing on an empty tile never ends your turn or uses your spell slot; placing it directly onto an enemy springs it instantly and ends your turn. You\'re still dreaming.' },
         { id: 'raceEternalSlumber', spellType: 'alien', element: 'psychic', name: 'Eternal Slumber',
-          type: 'damage', cost: 60, dmg: 130, range: 4, apCost: 2, tier: 'III',
+          type: 'damage', cost: 60, dmg: 160, range: 4, apCost: 2, tier: 'III',
           kind: 'aoe', damageType: 'magic', aoeRadius: 2, cooldownRounds: 2,
           statusEffects: [{ id: 'stun', duration: 1 }],
-          desc: 'Deals MEDIUM magic damage to All Enemies in an AOE and drags them under — Stunned for 1 turn. Sleep now. The dream will finish eating on its own.' }
+          desc: 'Deals HEAVY magic damage to All Enemies in an AOE and drags them under — Stunned for 1 turn. Sleep now. The dream will finish eating on its own.' }
     ],
     'fallen angel': [
         { id: 'raceFallenGrace', spellType: 'divine', name: 'Fallen Grace',
@@ -6658,12 +6678,12 @@ const RACE_ABILITIES = {
           desc: 'Empowers the caster. Applies Protect. Cooldown: 2 rounds.' },
         SHARED_SANCTUARY,
         { id: 'raceDescendingWrath', spellType: 'unholy', name: 'Descending Wrath',
-          type: 'damage', tier: 'III', cost: 35, dmg: 120, range: 1, apCost: 2,
+          type: 'damage', tier: 'III', cost: 35, dmg: 160, range: 1, apCost: 2,
           kind: 'skySlam', damageType: 'magic', carryHeight: 5, dmgPerLevel: 25,
           requiresFlight: true,
           statusEffects: [{ id: 'burn', duration: 2 }],
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
-          desc: 'Slams down from the sky, dealing MEDIUM magic damage in an AOE. Applies Burn. Usable only while flying. Reshapes the ground on impact.' },
+          desc: 'Slams down from the sky, dealing HEAVY magic damage in an AOE. Applies Burn. Usable only while flying. Reshapes the ground on impact.' },
         SHARED_SUMMON_BLOOD_RAIN,
         SHARED_SCORCHED_EARTH,
         SHARED_WING_ATTACK
@@ -6690,19 +6710,23 @@ const RACE_ABILITIES = {
     'halfdemon': [
         _mkBlink('shadow', { id: 'raceShadowStep', spellType: 'unholy', element: 'shadow', name: 'Shadow Step',
           desc: 'Blink through shadow up to 4 tiles. Ignores line of sight. Needs 2 rounds to gather shadow between blinks.' }),
+        /* Halfdemon capstone since the 2026-08-12 capstone pass (was Inner
+           Demon). */
         { id: 'raceDemonicClaw', spellType: 'human', element: 'shadow', name: 'Demonic Claw',
-          type: 'damage', cost: 25, dmg: 120, range: 1,
+          type: 'damage', tier: 'III', cost: 55, dmg: 180, range: 1,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 30 }],
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Marked.' },
+          desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Marked.' },
         _mkCharge({ id: 'raceShadowInfiltration', spellType: 'unholy', element: 'shadow', name: 'Shadow Infiltration',
           kind: 'dash', apCost: 2, statusEffects: [{ id: 'poison', duration: 3 }],
           desc: 'Charges at a Single Enemy, dealing MEDIUM physical damage. Applies Poison.' }),
+        /* Demoted from capstone 2026-08-12 (Demonic Claw is the capstone now)
+           — single-stat per §2.1. */
         { id: 'raceInnerDemon', spellType: 'unholy', element: 'shadow', name: 'Inner Demon',
-          type: 'buff', tier: 'III', cost: 25, apCost: 1, range: 0, cooldownRounds: 2,
+          type: 'buff', cost: 25, apCost: 1, range: 0, cooldownRounds: 2,
           kind: 'buff', selfDamagePct: 0.20,
-          statStageBoost: { atk: 2, def: 1 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages and DEF by 1 stage. Costs a portion of your HP. Cooldown: 2 rounds.' },
+          statStageBoost: { atk: 2 },
+          desc: 'Empowers the caster. Raises ATK by 2 stages. Costs a portion of your HP. Cooldown: 2 rounds.' },
         SHARED_SCORCHED_EARTH,
         SHARED_SMOKE_SCREEN
     ],
@@ -6750,10 +6774,10 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'invisible', duration: 1 }],
           desc: 'Dissolve into mist. Teleport 3 tiles and become invisible for 1 turn.' },
         { id: 'racePredatorDrop', spellType: 'unholy', element: 'blood', name: 'Predator Drop',
-          type: 'damage', tier: 'III', cost: 25, dmg: 80, range: 1, apCost: 1,
+          type: 'damage', tier: 'III', cost: 25, dmg: 130, range: 1, apCost: 1,
           kind: 'skyDrop', damageType: 'physical', carryHeight: 4, dmgPerLevel: 15,
           requiresFlight: true, drainPct: 0.20,
-          desc: 'Swoop down, grab a nearby enemy, and release them from above. Heals 20% of damage dealt. The night hunts.' },
+          desc: 'Swoop down, grab a nearby enemy, and release them from above. Deals HEAVY physical damage at full height. Heals 20% of damage dealt. The night hunts.' },
         SHARED_SUMMON_BLOOD_RAIN,
         SHARED_SMOKE_SCREEN
     ],
@@ -6875,25 +6899,35 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 45, dmg: 180, range: 1, apCost: 2, tier: 'III',
           kind: 'damage', damageType: 'physical', executeBonusPct: 0.75,
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
-          desc: 'Deals SEVERE physical damage to a Single Enemy. Deals far more damage the lower the target\'s HP. They had it coming. Deals bonus damage to Staggered targets.' },
+          desc: 'Deals HEAVY physical damage to a Single Enemy. Deals far more damage the lower the target\'s HP. They had it coming. Deals bonus damage to Staggered targets.' },
     ],
+    /* 2026-08-12 kit rework: VOX Broadcast, Dead Air and the borrowed
+       Summon Sandstorm are GONE. The new kit is a status-combo engine —
+       poison them (Chemtrails), silence them (Fluoride Water), then drop
+       the Truth Bomb on anyone carrying either status. */
     'conspiracy theorist': [
-        { id: 'raceVOXBroadcast', spellType: 'human', name: 'VOX Broadcast',
-          type: 'buff', tier: 'III', cost: 30, range: 0, apCost: 2,
-          kind: 'warCry', aoeRadius: 2,
-          statStageBoost: { atk: 2, def: 1 },
-          desc: 'Empowers All Allies nearby. Raises ATK by 2 stages and DEF by 1 stage.' },
-        { id: 'raceDeadAir', spellType: 'human', name: 'Dead Air',
-          type: 'utility', cost: 30, range: 3, apCost: 2,
-          kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
-          statusEffects: [{ id: 'silence', duration: 1 }],
-          desc: 'Kill the signal in a 3×3 area for 2 turns. Enemies inside are silenced.' },
         { id: 'raceTinFoilHat', spellType: 'human', element: 'metal', name: 'Tin Foil Hat',
           type: 'buff', cost: 20, apCost: 1, range: 2,
           kind: 'buff',
           statStageBoost: { mdef: 2 },
           desc: 'Empowers a Single Ally. Raises M DEF by 2 stages.' },
-        SHARED_SUMMON_SANDSTORM
+        { id: 'raceChemtrails', spellType: 'human', element: 'poison', name: 'Chemtrails',
+          type: 'damage', cost: 25, dmg: 80, range: 4,
+          kind: 'line', damageType: 'magic', lineWidth: 1,
+          statusEffects: [{ id: 'poison', duration: 2 }],
+          leaveTerrain: 'poison',
+          desc: 'A low pass lays a chemical trail. Deals WEAK magic damage to All Enemies in a line. Applies Poison. Leaves poison tiles behind. Look up.' },
+        { id: 'raceFluorideWater', spellType: 'human', element: 'water', name: 'Fluoride Water',
+          type: 'damage', cost: 50, dmg: 120, range: 3,
+          kind: 'aoe', damageType: 'magic', aoeRadius: 1,
+          statusEffects: [{ id: 'silence', duration: 2 }],
+          desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Silence. It\'s in the water supply.' },
+        /* Conspiracy theorist capstone since the 2026-08-12 kit rework. */
+        { id: 'raceTruthBomb', spellType: 'human', name: 'Truth Bomb',
+          type: 'damage', tier: 'III', cost: 55, dmg: 180, range: 4,
+          kind: 'damage', damageType: 'magic',
+          bonusVsStatus: { status: ['silence', 'poison'], mult: 1.5 },
+          desc: 'Deals HEAVY magic damage to a Single Enemy. Deals bonus damage to Silenced or Poisoned targets. The truth hurts.' },
     ],
     'overlord': [
         { id: 'raceInfernalDecree', spellType: 'unholy', name: 'Infernal Decree',
@@ -6959,7 +6993,7 @@ const RACE_ABILITIES = {
 
     'atlantean': [
         { id: 'raceTemporalTide', spellType: 'anomaly', element: 'water', name: 'Temporal Tide',
-          type: 'heal', tier: 'III', cost: 30, range: 3, apCost: 1,
+          type: 'heal', cost: 30, range: 3, apCost: 1,
           kind: 'zoneHeal', aoeRadius: 1, zoneDuration: 2, healPerTurn: 100,
           desc: 'Creates a zone that heals allies standing inside it each turn.' },
         { id: 'raceRiptide', spellType: 'anomaly', element: 'water', name: 'Whirlpool',
@@ -6968,16 +7002,20 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE and pulls them toward the center. Applies Slow.' },
         { id: 'raceFlood', spellType: 'anomaly', element: 'water', name: 'Great Flood',
-          type: 'damage', tier: 'III', cost: 45, dmg: 130, range: 4, apCost: 2, cooldownRounds: 2,
+          type: 'damage', tier: 'III', cost: 45, dmg: 160, range: 4, apCost: 2, cooldownRounds: 2,
           kind: 'terrainCreate', terrainType: 'water', tileCount: 12, elevationFlood: true,
           damageType: 'magic',
           statusEffects: [{ id: 'slow', duration: 1 }],
-          desc: 'Call the drowned deep. Water pours into the target tile and RISES to fill the surrounding basin (up to 12 tiles) — meteor craters and trenches flood to the rim, chasms become deep water. Enemies caught take damage, are slowed, and can start to drown.' },
-        { id: 'raceOrichalcumBarrier', spellType: 'anomaly', element: 'earth', name: 'Pillar of Atlantis',
-          type: 'utility', cost: 25, range: 2, apCost: 1,
-          kind: 'deployObject', objectHp: 80, blocksMovement: true,
-          maxActivePerCaster: 1,
-          desc: 'Raise a drowned temple pillar from the deep. Blocks movement and ranged fire. Placing never uses your spell slot. It held up a lost empire; it can hold a chokepoint.' },
+          desc: 'Call the drowned deep. Water pours into the target tile and RISES to fill the surrounding basin (up to 12 tiles) — meteor craters and trenches flood to the rim, chasms become deep water. Enemies caught take HEAVY magic damage, are slowed, and can start to drown.' },
+        /* Atlantean capstone since the 2026-08-12 capstone pass (Pillar of
+           Atlantis deleted to make room). kind 'barrage' + hitsWetOnly: hits
+           every enemy standing in water/deep water or the wet spread-flow at
+           a pool's edge (battle.js _isWetTile), anywhere on the map. */
+        { id: 'racePoseidonsWrath', spellType: 'anomaly', element: 'water', name: 'Poseidon\'s Wrath',
+          type: 'damage', tier: 'III', cost: 55, dmg: 170, range: 0, apCost: 2,
+          kind: 'barrage', damageType: 'magic', aoeOriginSelf: true, aoeRadius: 99,
+          hitsWetOnly: true, ignoresLineOfSight: true,
+          desc: 'The sea rises in judgment. Deals HEAVY magic damage to ALL Enemies standing in water, anywhere on the battlefield. The deep remembers what it is owed.' },
         SHARED_FLASH_FREEZE,
         SHARED_TIDAL_SURGE,
     ],
@@ -6986,16 +7024,17 @@ const RACE_ABILITIES = {
           kind: 'dash', cost: 30, apCost: 2, statusEffects: _STAGGER_1,
           desc: 'Charges at a Single Enemy, dealing MEDIUM physical damage. Applies Stagger.' }),
         { id: 'racePrimalRoar', spellType: 'anomaly', name: 'Primal Roar',
-          type: 'debuff', tier: 'III', cost: 20, range: 0, apCost: 1,
+          type: 'debuff', cost: 20, range: 0, apCost: 1,
           kind: 'aoe', aoeRadius: 1, aoeOriginSelf: true,
           damageType: 'physical', dmg: 0,
           statusEffects: [{ id: 'discord', duration: 2 }],
           desc: 'Ear-splitting roar. All enemies in 3×3 around self have their ATK lowered by 2 stages and DEF by 1 stage for 2 turns.' },
+        /* Dinosaur capstone since the 2026-08-12 capstone pass (was Primal Roar). */
         { id: 'raceJurassicJaw', spellType: 'anomaly', name: 'Jurassic Jaw',
-          type: 'damage', cost: 25, dmg: 120, range: 1,
+          type: 'damage', tier: 'III', cost: 55, dmg: 180, range: 1,
           kind: 'damage', damageType: 'physical', ignoreArmor: true,
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Ignores DEF. Deals bonus damage to Staggered targets.' },
+          desc: 'Deals HEAVY physical damage to a Single Enemy. Ignores DEF. Deals bonus damage to Staggered targets.' },
         SHARED_FISSURE,
     ],
     'dragon': [
@@ -7158,11 +7197,11 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Applies Stun.' },
         { id: 'raceSpaceDisco', spellType: 'anomaly', name: 'Space Disco',
-          type: 'damage', tier: 'III', cost: 50, dmg: 140, range: 0, apCost: 1,
+          type: 'damage', tier: 'III', cost: 50, dmg: 160, range: 0, apCost: 1,
           kind: 'barrage', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'discord', duration: 1 }],
           bonusVsStatus: { status: 'stun', mult: 1.5 },
-          desc: 'Deals MEDIUM magic damage to All Enemies around the caster (AOE) and lowers ATK by 2 stages and DEF by 1 stage. Deals bonus damage to Stunned targets.' },
+          desc: 'Deals HEAVY magic damage to All Enemies around the caster (AOE) and lowers ATK by 2 stages and DEF by 1 stage. Deals bonus damage to Stunned targets.' },
         _mkBlink('short', { id: 'raceGravityBoots', spellType: 'tech', name: 'Gravity Boots',
           desc: 'Activate anti-gravity boots to reposition up to 3 tiles. Far out.' }),
         { id: 'racePlasmaWhip', spellType: 'tech', name: 'Plasma Whip',
@@ -7215,11 +7254,11 @@ const RACE_ABILITIES = {
           statStageBoost: { def: 2 },
           desc: 'Empowers the caster. Raises DEF by 2 stages.' },
         { id: 'raceQuake', spellType: 'human', name: 'Quake',
-          type: 'damage', tier: 'III', cost: 55, dmg: 150, range: 0, apCost: 2,
+          type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 0, apCost: 2,
           kind: 'barrage', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
-          desc: 'Deals MEDIUM physical damage to All Enemies around the caster (AOE). Applies Stagger. Reshapes the ground on impact.' },
+          desc: 'Deals HEAVY physical damage to All Enemies around the caster (AOE). Applies Stagger. Reshapes the ground on impact.' },
         SHARED_FISSURE,
     ],
 
@@ -7237,10 +7276,11 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Deals bonus damage to Staggered targets.' },
-        { id: 'raceMissileBarrage', spellType: 'tech', name: 'Missile Barrage',
+        /* 2026-08-12: renamed from Missile Barrage (id kept for VFX/saves). */
+        { id: 'raceMissileBarrage', spellType: 'tech', name: 'Vehicular Manslaughter',
           type: 'damage', tier: 'III', cost: 50, dmg: 160, range: 4, apCost: 2,
-          kind: 'aoe', damageType: 'magic', aoeRadius: 1,
-          desc: 'Deals HEAVY magic damage to All Enemies in an AOE.' },
+          kind: 'aoe', damageType: 'physical', aoeRadius: 1,
+          desc: 'Floor it through the crowd. Deals HEAVY physical damage to All Enemies in an AOE.' },
         { id: 'raceNitroBoost', spellType: 'tech', name: 'Nitro Boost',
           type: 'buff', cost: 15, apCost: 1, range: 0,
           kind: 'buff',
@@ -7322,11 +7362,13 @@ const RACE_ABILITIES = {
     ],
 
     'king arthur': [
+        /* King Arthur capstone since the 2026-08-12 capstone pass (was Knights
+           of Round). */
         { id: 'raceExcaliburStrike', spellType: 'divine', name: 'Excalibur Strike',
-          type: 'damage', cost: 30, dmg: 135, range: 1,
+          type: 'damage', tier: 'III', cost: 55, dmg: 180, range: 1,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'burn', duration: 2 }],
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Burn.' },
+          desc: 'Deals HEAVY physical damage to a Single Enemy. Applies Burn.' },
         { id: 'raceRoyalDecree', spellType: 'divine', name: 'Royal Decree',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'warCry', aoeRadius: 2,
@@ -7334,7 +7376,7 @@ const RACE_ABILITIES = {
           desc: 'Empowers All Allies nearby. Raises ATK by 2 stages.' },
         SHARED_WALLS_OF_CAMELOT,
         { id: 'raceKnightsOfRound', spellType: 'divine', name: 'Knights of Round',
-          type: 'utility', tier: 'III', cost: 30, range: 0, apCost: 1,
+          type: 'utility', cost: 30, range: 0, apCost: 1,
           kind: 'rallyPull',
           desc: 'Convene the Round Table — every ally on the field is pulled to the King\'s side. Rooted knights cannot answer the call.' }
     ],
@@ -7345,13 +7387,15 @@ const RACE_ABILITIES = {
           kind: 'barrage', aoeRadius: 2, aoeOriginSelf: true,
           statStageBoost: { def: -1 },
           desc: 'Pound chest with terrifying fury. All enemies within 2 tiles cower — -1 DEF stage.' },
-        { id: 'racePrimalSmash', spellType: 'human', name: 'Primal Smash',
+        /* 2026-08-12: capstone renamed Primal Smash → Ape Fury (id kept for
+           VFX/saves); the old Ape Fury buff below is Monkey Business now. */
+        { id: 'racePrimalSmash', spellType: 'anomaly', name: 'Ape Fury',
           type: 'damage', tier: 'III', cost: 45, dmg: 180, range: 1,
           kind: 'damage', damageType: 'physical',
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           bonusVsStatus: { status: 'slow', mult: 1.5 },
           desc: 'Deals HEAVY physical damage to a Single Enemy. Reshapes the ground on impact. Deals bonus damage to Slowed targets.' },
-        { id: 'raceApeFury', spellType: 'anomaly', name: 'Ape Fury',
+        { id: 'raceApeFury', spellType: 'anomaly', name: 'Monkey Business',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
           statStageBoost: { atk: 2 },
@@ -7529,11 +7573,11 @@ const RACE_ABILITIES = {
           statStageBoost: { atk: -2 },
           desc: 'Weakens a Single Enemy. Lowers ATK by 2 stages.' },
         { id: 'raceBlizzardPresent', spellType: 'anomaly', name: 'Blizzard Present',
-          type: 'damage', tier: 'III', cost: 55, dmg: 150, range: 4, apCost: 1,
+          type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 4, apCost: 1,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'slow', duration: 2 }],
           leaveTerrain: 'ice',
-          desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Slow. Leaves ice tiles behind.' }
+          desc: 'Deals HEAVY magic damage to All Enemies in an AOE. Applies Slow. Leaves ice tiles behind.' }
     ],
 
     'super sentai': [
@@ -7699,7 +7743,9 @@ for (const [race, ids] of [
     ['general',           ['rampart']],
     ['gnome',             ['rampart']],
     ['golem',             ['rampart']],
-    ['robot',             ['empBurst']],
+    /* robot borrows overclock for its tree's ring 2 since 2026-08-12 (Kill
+       Mode took the capstone; empBurst stays an off-tree extra). */
+    ['robot',             ['empBurst', 'overclock']],
     ['android',           ['empBurst']],
     ['droid',             ['empBurst']],
     ['cyborg',            ['overclock']],
@@ -12273,22 +12319,22 @@ const RACE_TREE = {
     'knight':        ['raceChivalry', 'raceShieldWall', 'raceOathOfValor', 'raceCrusade'],
     'cowboy':        ['raceLasso', 'raceFanTheHammer', 'raceQuickDraw', 'raceHighNoon'],
     'marksman':      ['raceSuppressiveFire', 'sharedSmokeScreen', 'raceRangefinder', 'raceFireForEffect'],
-    'wizard':        ['raceArcaneBlast', 'raceManaShield', 'raceSpellsteal', 'racePolymorph'],
+    'wizard':        ['raceArcaneBlast', 'raceSpellsteal', 'racePolymorph', 'raceHocusPocus'],
     'giant':         ['raceBoulderHurl', 'raceEarthenGrasp', 'raceTitanStep', 'raceColossalCrush'],
-    'fairy':         ['raceGlitterburst', 'racePixieDust', 'raceTrickRoom', 'raceFaeRing'],
+    'fairy':         ['raceGlitterburst', 'racePixieDust', 'raceTrickRoom', 'raceFaeRing'],  // Fae Ring is a ring-shaped damage capstone since 2026-08-12
     'bigfoot':       ['trunkThrow', 'raceRealityShift', 'raceTremorStomp', 'raceSasquatchSmash'],
     'ai':            ['racePredictiveModel', 'raceOvercalculate', 'raceRecursiveLoop', 'raceSingularity'],
     'orb of light':  ['racePhotonScatter', 'raceLuminousShield', 'racePrismBurst', 'raceSupernova'],
     'skeleton':      ['raceBoneToss', 'raceReassemble', 'sharedPoisonSwamp', 'raceMarrowstorm'],
-    'zombie':        ['raceInfectiousBite', 'raceZombieRush', 'raceShamblingHorde', 'raceOutbreak'],
+    'zombie':        ['raceInfectiousBite', 'raceZombieRush', 'raceOutbreak', 'raceShamblingHorde'],
     'dreameater':    ['raceDreamSiphon', 'raceLucidTrap', 'raceNightmarePulse', 'raceEternalSlumber'],
     'goatman':       ['raceGoreCharge', 'raceCliffCharge', 'raceBloodRitual', 'raceBaphometsRite'],
     'antihero':      ['raceDarkJustice', 'raceGrimResolve', 'raceCosmicSlam', 'raceNoMercy'],
     'chosen one':    ['raceDarkFeather', 'racePhantomDouble', 'raceProphecyFulfilled', 'raceAwakening'],
     'gnome':         ['raceFlashbangMine', 'raceTinkersContraption', 'raceClockworkTurret', 'raceOvertinker'],
-    'pirate':        ['raceBoardingRush', 'racePlunder', 'raceYoHo', 'raceCannonball'],
+    'pirate':        ['racePlunder', 'raceBoardingRush', 'raceYoHo', 'raceCannonball'],
     'swordfighter':  ['raceSadBackstory', 'racePlotArmor', 'raceToBeContinued', 'raceBlessedBlade'],
-    'shaman':        ['raceHerbalRemedy', 'raceSpiritWalk', 'raceBadTrip', 'raceAyahuascaRetreat'],
+    'shaman':        ['raceHerbalRemedy', 'raceSpiritWalk', 'raceAyahuascaRetreat', 'raceBadTrip'],
     'mad scientist': ['raceTeslaTrap', 'raceCloneDecoy', 'raceOvercharge', 'racePlandemic'],
     'men in black':  ['raceDeneuralizer', 'raceAgentVanish', 'sharedSmokeScreen', 'raceClassifiedWeapon'],
     'telepath':      ['raceTelepathicLink', 'racePsychicBarrier', 'raceBrainwash', 'raceMindCrush'],
@@ -12299,19 +12345,19 @@ const RACE_TREE = {
     'grey':          ['raceProbe', 'raceImplant', 'raceAbductionBeam', 'raceCropCircle'],
     'shadow entity': ['raceShadowBind', 'sharedSmokeScreen', 'racePhaseShift', 'voidRush'],
     'reptilian':     ['sharedPoisonSwamp', 'raceShedSkin', 'sharedSmokeScreen', 'raceTailWhip'],
-    'robot':         ['raceRocketFist', 'raceChassisSlam', 'raceHydraulicCrush', 'empBurst'],
+    'robot':         ['raceRocketFist', 'overclock', 'raceHydraulicCrush', 'raceChassisSlam'],
     'android':       ['raceSyntheticBlade', 'raceSelfRepairProtocol', 'raceNeuralHack', 'empBurst'],
     'angel':         ['radiantBolt', 'raceWingsOfMercy', 'raceSanctuary', 'raceDivineSmite'],
     'seraphim':      ['raceRapture', 'raceAbsolution', 'raceDivineJudgment', 'raceMerkaba'],
     'demon':         ['raceContract', 'raceInfernalHurl', 'raceVoidContract', 'raceHellmouth'],
     'succubus':      ['raceSoulSuck', 'raceCharm', 'raceSleepParalysis', 'raceDrainingEmbrace'],
     'mech':          ['raceMortarSalvo', 'raceSiegeMode', 'raceEject', 'sharedNuke'],
-    'ghost':         ['raceBoo', 'raceColdSpot', 'sharedFlashFreeze', 'racePossession'],
+    'ghost':         ['racePossession', 'raceColdSpot', 'sharedFlashFreeze', 'raceBoo'],
     'annunaki':      ['raceGravityWell', 'raceZigguratProtocol', 'sharedGravityCrush', 'raceStarDecree'],
     'skinwalker':    ['raceBorrowedClaw', 'sharedSmokeScreen', 'raceSkinSwap', 'raceMimicry'],
     'werewolf':      ['raceBite', 'raceHowl', 'raceFeralDive', 'raceBloodFrenzy'],
     'gargoyle':      ['raceStonefall', 'racePerchForm', 'raceCalcify', 'raceStoneDrop'],
-    'djinn':         ['raceDustDevil', 'raceSandglassPrison', 'sharedSummonSandstorm', 'raceWishGranted'],
+    'djinn':         ['raceDustDevil', 'sharedSummonSandstorm', 'raceWishGranted', 'raceAncientMagic'],
     'anubis':        ['sharedFissure', 'raceGravePassage', 'sharedSummonSandstorm', 'raceWeighTheHeart'],
     'catgirl':       ['raceLoveBite', 'raceNimbleDodge', 'raceMeow', 'raceNinefoldScratch'],
     'mantid':        ['raceMandibleStrike', 'raceChitinArmor', 'raceAmbushLunge', 'raceFractalNeedle'],
@@ -12320,13 +12366,13 @@ const RACE_TREE = {
     'siren':         ['raceSonicBoomerang', 'raceRiptide', 'raceDeafeningWail', 'raceCallOfTheDeep'],
     'scarecrow':     ['raceHarvestHook', 'raceStuffedDouble', 'sharedHexOfToil', 'raceCrowStorm'],
     'glitch':        ['raceCrashLoop', 'raceMemoryLeak', 'raceBlueScreen', 'raceTimeRewind'],
-    'machine elves': ['raceTuneFrequency', 'racePrismMirror', 'racePulseLattice', 'sharedEgoDeath'],
+    'machine elves': ['racePrismMirror', 'racePulseLattice', 'raceTuneFrequency', 'sharedEgoDeath'],
     'cyclops':       ['raceStoneThrow', 'raceBalefulGaze', 'raceTitanDrop', 'raceGiantSmash'],
-    'cyborg':        ['raceHydraulicPunch', 'raceEMPGrenade', 'raceRocketToss', 'overclock'],
+    'cyborg':        ['raceHydraulicPunch', 'raceEMPGrenade', 'overclock', 'raceRocketToss'],
     'demon prince':  ['raceDemonicRoar', 'raceInfernalConscription', 'sharedScorchedEarth', 'raceDarkDominion'],
     'demon princess': ['raceKissOfDecay', 'sharedHexOfToil', 'sharedPoisonSwamp', 'raceDarkLullaby'],
     'fallen angel':  ['raceFallenGrace', 'raceAbyssalWings', 'raceSanctuary', 'raceDescendingWrath'],
-    'halfdemon':     ['raceDemonicClaw', 'sharedSmokeScreen', 'raceShadowStep', 'raceInnerDemon'],
+    'halfdemon':     ['raceInnerDemon', 'sharedSmokeScreen', 'raceShadowStep', 'raceDemonicClaw'],
     'mermaid':       ['raceSirenSong', 'raceTidalBlessing', 'raceRiptide', 'raceFlood'],
     'nephilim':      ['raceSmite', 'raceHolyBulwark', 'sharedFissure', 'raceWrathOfTheWatchers'],
     'vampire':       ['raceBite', 'raceMistForm', 'raceBatSwarm', 'racePredatorDrop'],
@@ -12335,11 +12381,11 @@ const RACE_TREE = {
     'superhero':     ['raceHeroicLeap', 'raceInvulnerable', 'raceShockwaveClap', 'raceLaserBeam'],
     'general':       ['raceRallyCommand', 'raceIronBulwark', 'raceArtilleryStrike', 'sharedNuke'],
     'droid':         ['raceTaserBolt', 'raceSystemAnalysis', 'raceFirewallProtocol', 'empBurst'],
-    'conspiracy theorist': ['raceTinFoilHat', 'raceDeadAir', 'sharedSummonSandstorm', 'raceVOXBroadcast'],
+    'conspiracy theorist': ['raceTinFoilHat', 'raceChemtrails', 'raceFluorideWater', 'raceTruthBomb'],
     'overlord':      ['raceHellfireCrown', 'raceInfernalDecree', 'sharedScorchedEarth', 'raceCataclysmDecree'],
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
-    'atlantean':     ['raceRiptide', 'raceOrichalcumBarrier', 'sharedTidalSurge', 'raceTemporalTide'],
-    'dinosaur':      ['raceJurassicJaw', 'raceApexCharge', 'sharedFissure', 'racePrimalRoar'],
+    'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', 'racePoseidonsWrath'],
+    'dinosaur':      ['racePrimalRoar', 'raceApexCharge', 'sharedFissure', 'raceJurassicJaw'],
     'dragon':        ['raceWingGust', 'raceDragonfear', 'raceDragonToss', 'raceDragonfire'],
     'ghoul':         ['raceGhoulishBite', 'raceCorpseCrawl', 'sharedPoisonSwamp', 'raceCarrionFeast'],
     'kaiju':         ['raceCataclysmStomp', 'raceSeismicLeap', 'raceSkyscraperToss', 'raceAtomicBreath'],
@@ -12353,7 +12399,7 @@ const RACE_TREE = {
     'ice queen':     ['raceIceSpear', 'sharedFlashFreeze', 'raceDiamondDust', 'raceAbsoluteZero'],
     'juggernaut':    ['raceBodyCheck', 'raceThickHide', 'raceBrutalSlam', 'raceUnstoppableCharge'],
     'ki fighter':    ['raceKiBlast', 'raceKiCharge', 'raceInstantTransmission', 'raceDragonFist'],
-    'king arthur':   ['raceRoyalDecree', 'raceShieldWall', 'raceExcaliburStrike', 'raceKnightsOfRound'],
+    'king arthur':   ['raceRoyalDecree', 'raceShieldWall', 'raceKnightsOfRound', 'raceExcaliburStrike'],
     'king kong':     ['raceChestPound', 'raceBoulderHurl', 'raceApeFury', 'racePrimalSmash'],
     'minotaur':      ['raceHornToss', 'raceLabyrinthRoar', 'raceGoreCharge', 'raceBullRush'],
     'necromancer':   ['raceSoulDrain', 'racePlaguefield', 'raceBoneBarrage', 'raceRaiseDead'],

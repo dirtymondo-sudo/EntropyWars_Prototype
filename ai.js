@@ -1742,9 +1742,14 @@
             return 0;
         }
         if (kind === 'barrage') {
+            // Self-origin novas (Kill Mode, Quake, Poseidon's Wrath) reach
+            // aoeRadius, not the spell's cast range — mirror the battle.js
+            // barrage handler, including the wet-only and no-LOS flags.
+            const bRange = (spell.aoeOriginSelf && spell.aoeRadius) ? spell.aoeRadius : _effRange(unit, spell);
             const targets = v.visibleEnemies.filter(e => {
+                if (spell.hitsWetOnly && !(typeof g._isWetTile === 'function' && g._isWetTile(e.x, e.y))) return false;
                 const d = g.combatDist ? g.combatDist(e.x, e.y, e.z ?? 0, unit.x, unit.y, unit.z ?? 0) : (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y));
-                return d >= 1 && d <= _effRange(unit, spell) && !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y);
+                return d >= 1 && d <= bRange && (spell.ignoresLineOfSight || !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y));
             });
             let s = (spell.dmg || 10) * targets.length;
             if (targets.length < 2) s *= 0.3;
@@ -5396,6 +5401,10 @@
         if (spell.aoeShape === 'round') return getRoundArea(cx, cy, r);
         if (spell.aoeShape === 'diamond') {
             return getSquareArea(cx, cy, r).filter(t => Math.abs(t.x - cx) + Math.abs(t.y - cy) <= r);
+        }
+        // 'ring' (Fae Ring) — perimeter only, mirrors battle.js getRingArea.
+        if (spell.aoeShape === 'ring') {
+            return getSquareArea(cx, cy, r).filter(t => Math.max(Math.abs(t.x - cx), Math.abs(t.y - cy)) === r);
         }
         return getSquareArea(cx, cy, r);
     }
