@@ -9402,6 +9402,24 @@ const ThreeRenderer = (function () {
        made every unit 85% self-lit at night, which is most of why nights
        never read as dark. */
     var UNIT_SELFGLOW_NIGHT_DEEP = 0.30;
+    /* ── 3D model diffuse compensation ───────────────────────────────────
+       The board's day lighting (sun 1.0 + hemi 0.45 + ambient 0.38 in
+       three-post.js) sums to ~1.8x on sun-facing surfaces. Sprite slabs
+       stand vertical, so the high sun only grazes them — but a 3D model's
+       up-facing surfaces catch the full stack, washing the Meshy texture
+       bakes out (dark texels read grey, mids blow toward white). Scene
+       lights stay untouched (terrain/props/sprites were tuned against
+       them); instead every model material's Lambert diffuse is scaled by
+       this factor so the models keep their authored darks. Applied at
+       every .color write site (build, rig-reattach, per-frame AP tint,
+       hit-flash) because those systems own .color between them.
+       Live-tune from the console: window.EW_MODEL_DIFFUSE = 0..1
+       (1 = old behavior; the per-frame AP tint picks it up next frame). */
+    var UNIT_MODEL_DIFFUSE = 0.65;
+    function _modelDiffuseScale() {
+        var v = (typeof window !== 'undefined') ? window.EW_MODEL_DIFFUSE : null;
+        return (typeof v === 'number' && v >= 0 && v <= 2) ? v : UNIT_MODEL_DIFFUSE;
+    }
     function _unitSelfGlowIntensity(unit) {
         var cycle = (document.body && document.body.dataset && document.body.dataset.cycle) || 'day';
         var base;
@@ -10149,7 +10167,7 @@ const ThreeRenderer = (function () {
             var _rst = _modelAnimState.get(unit.id);
             if (_rst && _rst.name) entry._ew_curAnim = _rst.name;
             // Refresh the state-tint the fresh build path would have applied.
-            var _rg = apSpent ? 0.5 : 1;
+            var _rg = (apSpent ? 0.5 : 1) * _modelDiffuseScale();
             for (var _ri = 0; _ri < entry.modelMats.length; _ri++) {
                 entry.modelMats[_ri].color.setRGB(_rg, _rg, _rg);
                 if (entry.modelMats[_ri].emissiveMap) entry.modelMats[_ri].emissiveIntensity = glow;
@@ -10181,6 +10199,7 @@ const ThreeRenderer = (function () {
 
             var hasSkin = false;
             var _stRef = _unitStencilRef(unit.id);
+            var _mdiff = _modelDiffuseScale() * (apSpent ? 0.5 : 1);
             m.traverse(function (n) {
                 if (!n.isMesh) return;
                 if (n.isSkinnedMesh) hasSkin = true;
@@ -10206,7 +10225,7 @@ const ThreeRenderer = (function () {
                     }
                     var lm = new THREE.MeshLambertMaterial({ map: tex });
                     if (n.isSkinnedMesh) lm.skinning = true;
-                    if (apSpent) lm.color.setRGB(0.5, 0.5, 0.5);
+                    lm.color.setRGB(_mdiff, _mdiff, _mdiff);
                     // Body pixels stamp this unit's stencil ref so the team-
                     // outline hull (below) can mask itself down to the true
                     // screen-space perimeter.
@@ -10485,7 +10504,7 @@ const ThreeRenderer = (function () {
             if (entry.modelMats && entry.modelMats.length
                 && !_flashTweens.has(uid) && !_deathTweens.has(uid)) {
                 var unitG = _findUnit(uid);
-                var grey = (unitG && unitG.ap <= 0) ? 0.5 : 1;
+                var grey = ((unitG && unitG.ap <= 0) ? 0.5 : 1) * _modelDiffuseScale();
                 for (var gi = 0; gi < entry.modelMats.length; gi++) {
                     if (entry.modelMats[gi].color.r !== grey) {
                         entry.modelMats[gi].color.setRGB(grey, grey, grey);
@@ -18025,7 +18044,7 @@ const ThreeRenderer = (function () {
             return { mats: [ue.sprite.material], node: ue.sprite, baseY: ue.sprite._ew_baseY || 0 };
         }
         if (ue.model && ue.modelMats && ue.modelMats.length) {
-            return { mats: ue.modelMats, node: ue.model, baseY: ue.model._ew_baseY || 0 };
+            return { mats: ue.modelMats, node: ue.model, baseY: ue.model._ew_baseY || 0, model: true };
         }
         return null;
     }
@@ -18061,7 +18080,11 @@ const ThreeRenderer = (function () {
                     // 'hit' / 'damage' — plain white flash.
                     fr = 1 + flash * 1.5; fg = 1 + flash * 1.5; fb = 1 + flash * 1.5;
                 }
-                for (var mi = 0; mi < ft.mats.length; mi++) ft.mats[mi].color.setRGB(fr, fg, fb);
+                // Model materials rest at the compensated diffuse (see
+                // UNIT_MODEL_DIFFUSE) — flash around that base, not 1, so
+                // the tween's endpoints don't pop the model brighter.
+                var _fsc = ft.model ? _modelDiffuseScale() : 1;
+                for (var mi = 0; mi < ft.mats.length; mi++) ft.mats[mi].color.setRGB(fr * _fsc, fg * _fsc, fb * _fsc);
 
                 // No impact shake on heals (nothing hit) or blocks (the whole
                 // point is that the hit didn't land).
@@ -25419,9 +25442,13 @@ const ThreeRenderer = (function () {
             r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         } catch (e) { return null; }
         r.setClearColor(0x000000, 0);
-        r.outputEncoding = THREE.sRGBEncoding;
-        r.toneMapping = THREE.ACESFilmicToneMapping;
-        r.toneMappingExposure = 1.05;
+        // Match the game's non-colour-managed pipeline: textures keep their
+        // raw sRGB numbers (the board flips the SHARED cached GLB textures to
+        // LinearEncoding) and output stays linear. The old sRGB output +
+        // ACES combo re-encoded those already-encoded pixels — a double
+        // gamma lift that washed viewer blacks to flat grey.
+        r.toneMapping = THREE.LinearToneMapping;
+        r.toneMappingExposure = 1.0;
         // Mobile: the viewer is a SECOND WebGL context living alongside the
         // board renderer — keep it at 1x there so it can't tip a phone over.
         r.setPixelRatio(window.EW_MOBILE ? 1 : Math.min(window.devicePixelRatio || 1, 2));
@@ -25437,11 +25464,15 @@ const ThreeRenderer = (function () {
 
         var scene = new THREE.Scene();
         var cam = new THREE.PerspectiveCamera(26, 1, 0.05, 60);
-        scene.add(new THREE.HemisphereLight(0xcfd8ff, 0x191024, 0.9));
-        var key = new THREE.DirectionalLight(0xfff1da, 1.2);
+        // Intensities tuned for the matte Lambert conversion + linear output
+        // (see _cvMount): total light on key-lit surfaces stays near 1.0 so
+        // the texture shows at its authored brightness (old PBR-era values
+        // 0.9/1.2/0.6 pushed matte materials well past white).
+        scene.add(new THREE.HemisphereLight(0xcfd8ff, 0x191024, 0.55));
+        var key = new THREE.DirectionalLight(0xfff1da, 0.75);
         key.position.set(1.7, 2.7, 2.2);
         scene.add(key);
-        var rim = new THREE.DirectionalLight(0x9a7bff, 0.6);
+        var rim = new THREE.DirectionalLight(0x9a7bff, 0.38);
         rim.position.set(-2.2, 1.6, -2.5);
         scene.add(rim);
 
@@ -25534,6 +25565,14 @@ const ThreeRenderer = (function () {
             // dispose them here; just drop the references.
             _cv.model = null;
         }
+        // The viewer-owned Lambert replacements (built in the mount traverse)
+        // ARE ours to dispose; their textures stay cache-shared and live on.
+        if (_cv.modelMats) {
+            for (var _mi = 0; _mi < _cv.modelMats.length; _mi++) {
+                try { _cv.modelMats[_mi].dispose(); } catch (_e) {}
+            }
+            _cv.modelMats = null;
+        }
         if (_cv.mixer) { try { _cv.mixer.stopAllAction(); } catch (_e) {} _cv.mixer = null; }
         _cv.url = null;
     }
@@ -25612,11 +25651,33 @@ const ThreeRenderer = (function () {
                 -((bb.min.z + bb.max.z) * 0.5) * s
             );
             var hasSkin = false;
+            // Same matte Lambert conversion as the board (_attachUnitModel):
+            // the raw Meshy PBR materials carry metallic/roughness values that
+            // specular-highlight ("gloss") under the key light, and they
+            // expect a colour-managed pipeline this viewer doesn't run.
+            // Also forces the texture to LinearEncoding here so the viewer
+            // looks right even when it loads a GLB before the board does.
+            // The replacement materials are viewer-owned — tracked on
+            // v.modelMats and disposed in _cvClearModel (the ORIGINALS are
+            // cache-shared and must never be disposed).
+            v.modelMats = [];
             m.traverse(function (n) {
-                if (n.isMesh) {
-                    n.frustumCulled = false;
-                    if (n.isSkinnedMesh) hasSkin = true;
-                }
+                if (!n.isMesh) return;
+                n.frustumCulled = false;
+                if (n.isSkinnedMesh) hasSkin = true;
+                var src = Array.isArray(n.material) ? n.material : [n.material];
+                var out = src.map(function (sm) {
+                    var tex = (sm && sm.map) ? sm.map : null;
+                    if (tex && tex.encoding !== THREE.LinearEncoding) {
+                        tex.encoding = THREE.LinearEncoding;
+                        tex.needsUpdate = true;
+                    }
+                    var lm = new THREE.MeshLambertMaterial({ map: tex });
+                    if (n.isSkinnedMesh) lm.skinning = true;
+                    v.modelMats.push(lm);
+                    return lm;
+                });
+                n.material = Array.isArray(n.material) ? out : out[0];
             });
             // wrap (frame-loop yaw) → inner (authored yawOffset) → model —
             // same nesting as the board, so the turntable never clobbers a
