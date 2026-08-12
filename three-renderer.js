@@ -16368,6 +16368,7 @@ const ThreeRenderer = (function () {
        "bounce off the victim onto the next tile" beat for slams.
        opts: liftMs/hangMs/flingMs/settleMs, liftPx (world px of carry height),
              drop (true = no horizontal travel, straight drop in place),
+             spinTurns (full body revolutions over the flight — vortex hurls),
              onLift (fired once at the top of the lift), onImpact. */
     function startThrowArcTween(unit, fromX, fromY, toX, toY, opts) {
         if (!unit) return;
@@ -16389,6 +16390,7 @@ const ThreeRenderer = (function () {
             liftPx: liftPx,
             drop: !!opts.drop,
             carry: !!opts.carry,
+            spinTurns: opts.spinTurns || 0,
             liftFired: false, impactFired: false,
             impactPos: null, settleStart: 0,
             onLift: opts.onLift || null,
@@ -16532,6 +16534,20 @@ const ThreeRenderer = (function () {
             if (ue && ue.group) {
                 ue.group.position.set(wx, wy, wz);
                 ue.group._ew_spriteTopY = wy + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
+            }
+            /* Spin the whole body around the vertical axis while airborne
+               (facing writes go to _ew_facingSprite children, never the outer
+               group, so this composes cleanly). Quadratic ramp: the spin winds
+               up through the lift and is at its wildest during the fling.
+               Whole spinTurns land at rotation ≡ 0, so zeroing on touchdown
+               is seamless. */
+            if (tw.spinTurns && ue && ue.group) {
+                if (elapsed < tw.totalMs) {
+                    var _spt = elapsed / tw.totalMs;
+                    ue.group.rotation.y = tw.spinTurns * Math.PI * 2 * _spt * _spt;
+                } else {
+                    ue.group.rotation.y = 0;
+                }
             }
         }
         for (var r = 0; r < toRemove.length; r++) _throwTweens.delete(toRemove[r]);
@@ -22736,6 +22752,14 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < _tornadoBillboards.length; i++) {
             if (weatherGroup) weatherGroup.remove(_tornadoBillboards[i].mesh);
             _tornadoBillboards[i].mat.dispose();
+            var _tdFx = _tornadoBillboards[i].fx;
+            if (_tdFx) {
+                if (weatherGroup) weatherGroup.remove(_tdFx.group);
+                _tdFx.group.traverse(function(child) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                });
+            }
         }
         _tornadoBillboards.length = 0;
         _lastWeatherOverlayKey = '';
@@ -23359,9 +23383,84 @@ const ThreeRenderer = (function () {
     function _tornadoPlaneSize(ts) {
 
         var aspect = _tornadoNativeAspect || 0.57;
-        var spriteH = ts * 3.5;
+        var spriteH = ts * 4.2;
         var spriteW = spriteH * aspect;
         return { w: spriteW, h: spriteH };
+    }
+
+    // Debris + ground-dust companion rig for the tornado flipbook: the sprite
+    // alone read as a flat decal — a spinning dust ring at the base and junk
+    // chunks corkscrewing up the funnel ground it in the scene. Kept as a
+    // SEPARATE group (not a child of the billboard) because the billboard
+    // yaw-tracks the camera every frame.
+    function _buildTornadoFxGroup(ts, spriteH) {
+        var group = new THREE.Group();
+
+        var dustGeo = new THREE.TorusGeometry(ts * 0.55, ts * 0.1, 6, 16);
+        var dustMat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0x9a8f78),
+            transparent: true, opacity: 0.32,
+            depthWrite: false,
+        });
+        var dust = new THREE.Mesh(dustGeo, dustMat);
+        dust.rotation.x = Math.PI / 2;
+        dust.position.y = 5;
+        dust.renderOrder = 144;
+        group.add(dust);
+
+        var dust2Geo = new THREE.TorusGeometry(ts * 0.95, ts * 0.07, 6, 18);
+        var dust2Mat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0x878072),
+            transparent: true, opacity: 0.2,
+            depthWrite: false,
+        });
+        var dust2 = new THREE.Mesh(dust2Geo, dust2Mat);
+        dust2.rotation.x = Math.PI / 2;
+        dust2.position.y = 9;
+        dust2.renderOrder = 144;
+        group.add(dust2);
+
+        var debris = [];
+        for (var i = 0; i < 7; i++) {
+            var dbGeo = new THREE.BoxGeometry(ts * 0.07, ts * 0.05, ts * 0.06);
+            var dbMat = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(i % 2 ? 0x8a7f66 : 0x6f6a5e),
+                transparent: true, opacity: 0.85,
+                depthWrite: false,
+            });
+            var db = new THREE.Mesh(dbGeo, dbMat);
+            db.renderOrder = 149;
+            group.add(db);
+            debris.push({
+                mesh: db,
+                angle: (i / 7) * Math.PI * 2,
+                yOff: Math.random(),
+                orbitR: 0.6 + Math.random() * 0.4
+            });
+        }
+
+        return { group: group, dust: dust, dust2: dust2, debris: debris, spriteH: spriteH, ts: ts };
+    }
+
+    function _tickTornadoFxGroup(fx, now) {
+        var spin = now * 0.004;
+        fx.dust.rotation.z = -spin;
+        var dustPulse = 1 + 0.1 * Math.sin(now * 0.008);
+        fx.dust.scale.set(dustPulse, dustPulse, 1);
+        fx.dust2.rotation.z = spin * 0.6;
+
+        var h = fx.spriteH * 0.8;
+        for (var i = 0; i < fx.debris.length; i++) {
+            var db = fx.debris[i];
+            var t = ((now * 0.0032) + db.angle) % (Math.PI * 2);
+            // corkscrew upward, wrap back to the base
+            var yNorm = ((now * 0.00045) + db.yOff) % 1;
+            var dbY = h * 0.05 + h * 0.85 * yNorm;
+            var orbitR = (fx.ts * 0.12 + fx.ts * 0.75 * yNorm) * db.orbitR;
+            db.mesh.position.set(Math.cos(t) * orbitR, dbY, Math.sin(t) * orbitR);
+            db.mesh.rotation.x = now * 0.005 + i;
+            db.mesh.rotation.z = now * 0.004 + i * 0.7;
+        }
     }
 
     function _syncTornadoBillboards(zones) {
@@ -23379,6 +23478,14 @@ const ThreeRenderer = (function () {
             if (!needed[_tornadoBillboards[j].zoneId]) {
                 weatherGroup.remove(_tornadoBillboards[j].mesh);
                 _tornadoBillboards[j].mat.dispose();
+                var _oldFx = _tornadoBillboards[j].fx;
+                if (_oldFx) {
+                    weatherGroup.remove(_oldFx.group);
+                    _oldFx.group.traverse(function(child) {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) child.material.dispose();
+                    });
+                }
                 _tornadoBillboards.splice(j, 1);
             }
         }
@@ -23421,8 +23528,12 @@ const ThreeRenderer = (function () {
             mesh.position.set(cx, cy + sz.h / 2, cz);
             weatherGroup.add(mesh);
 
+            var fx = _buildTornadoFxGroup(ts, sz.h);
+            fx.group.position.set(cx, cy, cz);
+            weatherGroup.add(fx.group);
+
             _tornadoBillboards.push({
-                mesh: mesh, mat: mat,
+                mesh: mesh, mat: mat, fx: fx,
                 zoneId: zid2, frameIdx: 0, lastFrameTime: performance.now(),
                 lastAspect: _tornadoNativeAspect
             });
@@ -23439,6 +23550,16 @@ const ThreeRenderer = (function () {
             var tb = _tornadoBillboards[i];
 
             _vortexSlideTick(tb, tb.mesh);
+            // debris rig shadows the billboard's ground point
+            if (tb.fx) {
+                var _sz = _tornadoPlaneSize(ts);
+                tb.fx.group.position.set(
+                    tb.mesh.position.x,
+                    tb.mesh.position.y - _sz.h / 2,
+                    tb.mesh.position.z
+                );
+                _tickTornadoFxGroup(tb.fx, now);
+            }
 
             if (now - tb.lastFrameTime >= _TORNADO_FRAME_MS) {
                 var elapsed = now - tb.lastFrameTime;
@@ -23465,6 +23586,48 @@ const ThreeRenderer = (function () {
                 tb.mesh.geometry.dispose();
                 tb.mesh.geometry = new THREE.PlaneGeometry(sz.w, sz.h);
             }
+        }
+    }
+
+    // ── Idle storm ambience ──────────────────────────────────────────────
+    // Thunderstorms flicker with cheap background bolts over their own tiles
+    // between the real (damaging) strikes, so an active storm looks alive
+    // instead of like a blue decal. Purely cosmetic: Math.random pacing,
+    // ThreeLightning.bolt() already no-ops in devAutoSim, and weather zones
+    // are public info (no fog leak). Keyed per zone id; entries self-clean.
+    var _stormAmbienceNext = {};
+    function _updateWeatherAmbience() {
+        if (!window.ThreeLightning || typeof state === 'undefined' || state.phase !== 'battle') return;
+        var aw = state.activeWeather;
+        if (!aw || !aw.length) {
+            _stormAmbienceNext = {};
+            return;
+        }
+        var now = performance.now();
+        var liveIds = {};
+        for (var i = 0; i < aw.length; i++) {
+            var w = aw[i];
+            if (w.type !== 'thunderstorm' || !w.tiles || !w.tiles.length) continue;
+            var zid = w.id || ('ts_' + i);
+            liveIds[zid] = true;
+            if (_stormAmbienceNext[zid] == null) {
+                _stormAmbienceNext[zid] = now + 800 + Math.random() * 2200;
+                continue;
+            }
+            if (now < _stormAmbienceNext[zid]) continue;
+            _stormAmbienceNext[zid] = now + 2200 + Math.random() * 3400;
+            var t = w.tiles[Math.floor(Math.random() * w.tiles.length)];
+            try {
+                ThreeLightning.strikeFromSky(t.x, t.y, {
+                    durationMs: 180, segments: 10, jitter: 0.35,
+                    branchChance: 0.2, branchDepth: 1,
+                    coreWidth: 3, glowWidth: 10, strikes: 1,
+                    skyHeight: 520, crawl: false,
+                });
+            } catch (e) { /* cosmetic */ }
+        }
+        for (var zid2 in _stormAmbienceNext) {
+            if (!liveIds[zid2]) delete _stormAmbienceNext[zid2];
         }
     }
 
@@ -24533,6 +24696,7 @@ const ThreeRenderer = (function () {
         _updateHurricaneVortices();
         _updateBlizzardVortices();
         _updateSandstormVortices();
+        _updateWeatherAmbience();
 
         if (_parentEl) {
             var w = _parentEl.clientWidth, h = _parentEl.clientHeight;

@@ -1215,6 +1215,40 @@
                 return result;
             };
         }
+        /* Vortex fling (tornado/hurricane displacement, battle.js
+           playVortexFlingFx): runs inside processHomingWeather — HOST-only
+           online — so relay it; the guest replays the lift/spin/hurl with a
+           cosmetic impact (positions arrive via state-sync). */
+        if (typeof window.playVortexFlingFx === 'function') {
+            const _origPlayVortexFlingFx = window.playVortexFlingFx;
+            window.playVortexFlingFx = function(target, fromX, fromY, toX, toY, kind, opts) {
+                var result = _origPlayVortexFlingFx(target, fromX, fromY, toX, toY, kind, opts);
+                var _netOn = window._NET && window._NET.online;
+                if ((_netOn && _isHost() || _ewRecOn()) && target && state.phase === 'battle') {
+                    _emit('relay', {
+                        type: 'vortex-fling-fx',
+                        targetId: target.id,
+                        fromX: fromX, fromY: fromY, toX: toX, toY: toY,
+                        kind: kind || null
+                    });
+                }
+                return result;
+            };
+        }
+
+        /* Storm lightning (state.js playStormLightningFx): thunderstorm bolts
+           fire from the HOST engine (weather ticks + homing strikes), so
+           relay them; the guest replays the bolt fog-gated. */
+        if (typeof window.playStormLightningFx === 'function') {
+            const _origPlayStormLightningFx = window.playStormLightningFx;
+            window.playStormLightningFx = function(x, y) {
+                _origPlayStormLightningFx(x, y);
+                var _netOn = window._NET && window._NET.online;
+                if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
+                    _emit('relay', { type: 'storm-lightning-fx', x: x, y: y });
+                }
+            };
+        }
 
         _postRenderHook = function() {
             _injectTurnBanner();
@@ -3503,6 +3537,31 @@
                                     if (typeof window.shakeBoard === 'function') window.shakeBoard('normal');
                                 }
                             });
+                        }
+                    }
+
+                    /* Storm lightning: replay the thunderstorm bolt on the
+                       victim's tile — fog-gated so a strike inside the fog
+                       doesn't pinpoint a hidden unit. */
+                    if (data.type === 'storm-lightning-fx' && _ewMirrorView()) {
+                        var _slVis = !st || !st.fogOfWar || typeof window._isTileVisibleToViewer !== 'function'
+                            || window._isTileVisibleToViewer(data.x, data.y);
+                        if (_slVis && typeof window.playStormLightningFx === 'function') {
+                            window.playStormLightningFx(data.x, data.y);
+                        }
+                    }
+
+                    /* Vortex fling: replay the tornado/hurricane lift-spin-hurl
+                       so the guest sees the body fly instead of a sync snap.
+                       Cosmetic only — damage/position arrive via state-sync.
+                       Visible if either endpoint is in view. */
+                    if (data.type === 'vortex-fling-fx' && _ewMirrorView()) {
+                        var _vfT = st && st.units ? st.units.find(function(u) { return u.id === data.targetId; }) : null;
+                        var _vfVis = !st || !st.fogOfWar || typeof window._isTileVisibleToViewer !== 'function'
+                            || window._isTileVisibleToViewer(data.fromX, data.fromY)
+                            || window._isTileVisibleToViewer(data.toX, data.toY);
+                        if (_vfT && _vfVis && typeof window.playVortexFlingFx === 'function') {
+                            window.playVortexFlingFx(_vfT, data.fromX, data.fromY, data.toX, data.toY, data.kind, {});
                         }
                     }
 

@@ -6678,9 +6678,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var scene = _getVFXScene();
         if (!scene) return null;
 
-        var vortexH  = ts * 3.2;
+        // 2026-08: beefed up — taller/wider funnel, double the density, real
+        // differential shear, orbiting debris and a second ground-churn ring.
+        // The old build read as near-invisible haze (opacities 0.12–0.25).
+        var vortexH  = ts * 4.0;
         var botR     = ts * 0.15;
-        var topR     = ts * 1.2;
+        var topR     = ts * 1.5;
 
         var group = new THREE.Group();
         group.position.set(worldX, worldY, worldZ);
@@ -6688,7 +6691,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var funnelGeo = new THREE.CylinderGeometry(topR, botR, vortexH, 24, 8, true);
         var matFunnel = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0x5588bb),
-            transparent: true, opacity: 0.18,
+            transparent: true, opacity: 0.3,
             side: THREE.DoubleSide,
             blending: THREE.NormalBlending,
             depthWrite: false,
@@ -6701,7 +6704,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var innerGeo = new THREE.CylinderGeometry(topR * 0.7, botR * 0.5, vortexH * 0.95, 20, 6, true);
         var matInner = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0x88ccff),
-            transparent: true, opacity: 0.12,
+            transparent: true, opacity: 0.2,
             side: THREE.BackSide,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
@@ -6714,7 +6717,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var wireGeo = new THREE.CylinderGeometry(topR * 1.05, botR * 1.1, vortexH * 1.02, 12, 4, true);
         var matWire = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0xaaddff),
-            transparent: true, opacity: 0.2,
+            transparent: true, opacity: 0.28,
             wireframe: true,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
@@ -6727,7 +6730,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var mouthGeo = new THREE.TorusGeometry(topR, topR * 0.06, 8, 24);
         var matMouth = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0x99bbdd),
-            transparent: true, opacity: 0.25,
+            transparent: true, opacity: 0.35,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
         });
@@ -6737,10 +6740,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         mouth.renderOrder = 148;
         group.add(mouth);
 
-        var dustGeo = new THREE.TorusGeometry(ts * 0.5, ts * 0.08, 6, 16);
+        var dustGeo = new THREE.TorusGeometry(ts * 0.6, ts * 0.1, 6, 16);
         var matDust = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0xbbaa88),
-            transparent: true, opacity: 0.2,
+            transparent: true, opacity: 0.3,
             blending: THREE.NormalBlending,
             depthWrite: false,
         });
@@ -6749,6 +6752,38 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         dust.position.y = 4;
         dust.renderOrder = 144;
         group.add(dust);
+
+        // Second, wider churn ring counter-rotating at the base — sells the
+        // storm tearing at the ground.
+        var dust2Geo = new THREE.TorusGeometry(ts * 1.0, ts * 0.07, 6, 18);
+        var matDust2 = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0x8899aa),
+            transparent: true, opacity: 0.18,
+            blending: THREE.NormalBlending,
+            depthWrite: false,
+        });
+        var dust2 = new THREE.Mesh(dust2Geo, matDust2);
+        dust2.rotation.x = Math.PI / 2;
+        dust2.position.y = 8;
+        dust2.renderOrder = 144;
+        group.add(dust2);
+
+        // Torn-loose debris riding the funnel wall (same orbit rig as the
+        // blizzard's ice shards, but junk-colored chunks).
+        var debris = [];
+        var debrisCount = 8;
+        for (var i = 0; i < debrisCount; i++) {
+            var dbGeo = new THREE.BoxGeometry(ts * 0.07, ts * 0.05, ts * 0.06);
+            var dbMat = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(i % 2 ? 0x778899 : 0x6b6352),
+                transparent: true, opacity: 0.8,
+                depthWrite: false,
+            });
+            var db = new THREE.Mesh(dbGeo, dbMat);
+            db.renderOrder = 149;
+            group.add(db);
+            debris.push({ mesh: db, angle: (i / debrisCount) * Math.PI * 2, yOff: 0.3 + Math.random() * 0.5, orbitR: 0.5 + Math.random() * 0.4 });
+        }
 
         scene.add(group);
 
@@ -6759,6 +6794,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             wire: wire, matWire: matWire,
             mouth: mouth, matMouth: matMouth,
             dust: dust, matDust: matDust,
+            dust2: dust2, matDust2: matDust2,
+            debris: debris,
             vortexH: vortexH, topR: topR, botR: botR, ts: ts,
             birthTime: performance.now(),
         };
@@ -6766,27 +6803,48 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     function _tickHurricaneVortex(vortex, now) {
         var elapsed = now - vortex.birthTime;
-        var spin = elapsed * 0.002;
+        var spin = elapsed * 0.0034;
 
         vortex.funnel.rotation.y = spin;
         var pulse = 1 + 0.04 * Math.sin(elapsed * 0.003);
-        vortex.matFunnel.opacity = 0.18 * pulse;
+        vortex.matFunnel.opacity = 0.3 * pulse;
 
-        vortex.inner.rotation.y = -spin * 1.6;
-        vortex.matInner.opacity = 0.12 * (1 + 0.06 * Math.sin(elapsed * 0.005));
+        vortex.inner.rotation.y = -spin * 1.9;
+        vortex.matInner.opacity = 0.2 * (1 + 0.06 * Math.sin(elapsed * 0.005));
 
-        vortex.wire.rotation.y = spin * 2.2;
-        vortex.wire.rotation.z = Math.sin(elapsed * 0.0015) * 0.04;
-        vortex.matWire.opacity = 0.2 + 0.08 * Math.sin(elapsed * 0.004);
+        vortex.wire.rotation.y = spin * 2.6;
+        vortex.wire.rotation.z = Math.sin(elapsed * 0.0015) * 0.05;
+        vortex.matWire.opacity = 0.28 + 0.1 * Math.sin(elapsed * 0.004);
 
         vortex.mouth.rotation.z = spin * 0.8;
         var mouthPulse = 1 + 0.06 * Math.sin(elapsed * 0.006);
         vortex.mouth.scale.set(mouthPulse, mouthPulse, 1);
 
-        vortex.dust.rotation.z = -spin * 3;
+        vortex.dust.rotation.z = -spin * 3.4;
         var dustPulse = 1 + 0.1 * Math.sin(elapsed * 0.008);
         vortex.dust.scale.set(dustPulse, dustPulse, 1);
-        vortex.matDust.opacity = 0.2 * dustPulse;
+        vortex.matDust.opacity = 0.3 * dustPulse;
+
+        if (vortex.dust2) {
+            vortex.dust2.rotation.z = spin * 2.2;
+            var d2Pulse = 1 + 0.12 * Math.sin(elapsed * 0.006 + 1.7);
+            vortex.dust2.scale.set(d2Pulse, d2Pulse, 1);
+            vortex.matDust2.opacity = 0.18 * d2Pulse;
+        }
+
+        if (vortex.debris) {
+            var h = vortex.vortexH;
+            for (var i = 0; i < vortex.debris.length; i++) {
+                var db = vortex.debris[i];
+                var t = ((elapsed * 0.0026) + db.angle) % (Math.PI * 2);
+                var yNorm = (Math.sin(elapsed * 0.0009 + db.yOff * 6) * 0.5 + 0.5);
+                var dbY = h * 0.1 + h * 0.75 * yNorm;
+                var orbitR = (vortex.botR + (vortex.topR - vortex.botR) * yNorm) * db.orbitR;
+                db.mesh.position.set(Math.cos(t) * orbitR, dbY, Math.sin(t) * orbitR);
+                db.mesh.rotation.x = elapsed * 0.004 + i;
+                db.mesh.rotation.z = elapsed * 0.003 + i * 0.7;
+            }
+        }
     }
 
     function _disposeHurricaneVortex(vortex) {
@@ -6813,7 +6871,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var funnelGeo = new THREE.CylinderGeometry(topR, botR, vortexH, 20, 6, true);
         var matFunnel = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0x88ccff),
-            transparent: true, opacity: 0.14,
+            transparent: true, opacity: 0.22,
             side: THREE.DoubleSide,
             blending: THREE.NormalBlending,
             depthWrite: false,
@@ -6826,7 +6884,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var innerGeo = new THREE.CylinderGeometry(topR * 0.6, botR * 0.4, vortexH * 0.9, 16, 5, true);
         var matInner = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0xcceeFF),
-            transparent: true, opacity: 0.1,
+            transparent: true, opacity: 0.16,
             side: THREE.BackSide,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
@@ -6839,7 +6897,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var wireGeo = new THREE.CylinderGeometry(topR * 1.02, botR * 1.05, vortexH * 0.98, 10, 3, true);
         var matWire = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0xaaddff),
-            transparent: true, opacity: 0.16,
+            transparent: true, opacity: 0.22,
             wireframe: true,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
@@ -6877,12 +6935,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         var iceTex = _getIceTexture();
         var shards = [];
-        var shardCount = 5;
+        var shardCount = 9;
         for (var i = 0; i < shardCount; i++) {
-            var shGeo = new THREE.OctahedronGeometry(ts * 0.05, 0);
+            var shGeo = new THREE.OctahedronGeometry(ts * 0.06, 0);
             var shMat = new THREE.MeshBasicMaterial({
                 map: iceTex,
-                transparent: true, opacity: 0.7,
+                transparent: true, opacity: 0.75,
                 depthWrite: false,
             });
             var sh = new THREE.Mesh(shGeo, shMat);
@@ -6908,18 +6966,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     function _tickBlizzardVortex(vortex, now) {
         var elapsed = now - vortex.birthTime;
-        var spin = elapsed * 0.0015;
+        var spin = elapsed * 0.0024;
 
         vortex.funnel.rotation.y = spin;
         var pulse = 1 + 0.03 * Math.sin(elapsed * 0.003);
-        vortex.matFunnel.opacity = 0.14 * pulse;
+        vortex.matFunnel.opacity = 0.22 * pulse;
 
-        vortex.inner.rotation.y = -spin * 1.4;
-        vortex.matInner.opacity = 0.1 * (1 + 0.05 * Math.sin(elapsed * 0.005));
+        vortex.inner.rotation.y = -spin * 1.6;
+        vortex.matInner.opacity = 0.16 * (1 + 0.05 * Math.sin(elapsed * 0.005));
 
-        vortex.wire.rotation.y = spin * 2;
+        vortex.wire.rotation.y = spin * 2.2;
         vortex.wire.rotation.z = Math.sin(elapsed * 0.0012) * 0.03;
-        vortex.matWire.opacity = 0.16 + 0.06 * Math.sin(elapsed * 0.004);
+        vortex.matWire.opacity = 0.22 + 0.08 * Math.sin(elapsed * 0.004);
 
         vortex.mouth.rotation.z = spin * 0.6;
         var mouthPulse = 1 + 0.04 * Math.sin(elapsed * 0.005);
@@ -6928,12 +6986,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         vortex.frost.rotation.z = -spin * 2.5;
         var frostPulse = 1 + 0.08 * Math.sin(elapsed * 0.007);
         vortex.frost.scale.set(frostPulse, frostPulse, 1);
-        vortex.matFrost.opacity = 0.18 * frostPulse;
+        vortex.matFrost.opacity = 0.22 * frostPulse;
 
         var h = vortex.vortexH;
         for (var i = 0; i < vortex.shards.length; i++) {
             var sd = vortex.shards[i];
-            var t = ((elapsed * 0.001) + sd.angle) % (Math.PI * 2);
+            var t = ((elapsed * 0.0018) + sd.angle) % (Math.PI * 2);
             var yNorm = (Math.sin(elapsed * 0.0008 + sd.yOff * 6) * 0.5 + 0.5);
             var shardY = h * 0.15 + h * 0.7 * yNorm;
 
@@ -7062,8 +7120,47 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         };
     }
 
+    // Sandstorm gets its OWN tick (it used to borrow the blizzard's, which
+    // both overwrote its sandy opacities with the blizzard's paler bases and
+    // made it read as a recolored blizzard): a harder, faster churn with grit
+    // that streams UPWARD through the funnel instead of orbiting in place.
     function _tickSandstormVortex(vortex, now) {
-        _tickBlizzardVortex(vortex, now);
+        var elapsed = now - vortex.birthTime;
+        var spin = elapsed * 0.003;
+
+        vortex.funnel.rotation.y = spin;
+        var pulse = 1 + 0.04 * Math.sin(elapsed * 0.004);
+        vortex.matFunnel.opacity = 0.22 * pulse;
+
+        vortex.inner.rotation.y = -spin * 1.8;
+        vortex.matInner.opacity = 0.14 * (1 + 0.06 * Math.sin(elapsed * 0.006));
+
+        vortex.wire.rotation.y = spin * 2.4;
+        vortex.wire.rotation.z = Math.sin(elapsed * 0.0015) * 0.04;
+        vortex.matWire.opacity = 0.18 + 0.07 * Math.sin(elapsed * 0.005);
+
+        vortex.mouth.rotation.z = spin * 0.7;
+        var mouthPulse = 1 + 0.05 * Math.sin(elapsed * 0.006);
+        vortex.mouth.scale.set(mouthPulse, mouthPulse, 1);
+
+        vortex.frost.rotation.z = -spin * 3;
+        var dustPulse = 1 + 0.1 * Math.sin(elapsed * 0.008);
+        vortex.frost.scale.set(dustPulse, dustPulse, 1);
+        vortex.matFrost.opacity = 0.26 * dustPulse;
+
+        var h = vortex.vortexH;
+        for (var i = 0; i < vortex.shards.length; i++) {
+            var sd = vortex.shards[i];
+            var t = ((elapsed * 0.0028) + sd.angle) % (Math.PI * 2);
+            // Grit climbs the funnel and wraps back to the base — a rising
+            // stream, not a suspended orbit.
+            var yNorm = ((elapsed * 0.0004) + sd.yOff) % 1;
+            var shardY = h * 0.05 + h * 0.85 * yNorm;
+            var orbitR = (vortex.botR + (vortex.topR - vortex.botR) * yNorm) * sd.orbitR;
+            sd.mesh.position.set(Math.cos(t) * orbitR, shardY, Math.sin(t) * orbitR);
+            sd.mesh.rotation.x = elapsed * 0.005 + i;
+            sd.mesh.rotation.z = elapsed * 0.004 + i * 0.5;
+        }
     }
 
     function _disposeSandstormVortex(vortex) {

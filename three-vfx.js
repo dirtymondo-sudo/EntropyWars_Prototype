@@ -1512,6 +1512,20 @@ const ThreeVFX = (function () {
             splashSize0: 6, splashSize1: 26, splashMs: [250, 420],
             skyHeight: 320,
         },
+        // Blizzards used to fall through to the thunderstorm entry and rain
+        // WATER; now they drift slow spinning snowflakes with heavy sideways
+        // wind and no splash.
+        blizzard: {
+            dropCount: 34, dropW: 0, dropH0: 0, dropH1: 0,
+            shapeMode: true,
+            shapeSprites: ['snowflake'],
+            shapeSize: [5, 11], shapeSpin: [40, 160],
+            fallSpeed: [70, 150], driftVx: [-45, 45], driftVz: [-25, 25],
+            dropSprite: 'snowflake',
+            splashChance: 0, splashSprite: 'rain-splash',
+            splashSize0: 0, splashSize1: 0, splashMs: [150, 250],
+            skyHeight: 300,
+        },
     };
 
     /* Tesseract-storm sprites render through the rain mesh pools (which

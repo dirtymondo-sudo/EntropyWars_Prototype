@@ -1395,7 +1395,27 @@ function MatchMeta({ st }) {
       fontFamily: '"IBM Plex Mono", monospace', fontSize: 11,
       letterSpacing: '0.12em', color: EW.inkMute,
     }},
-      h('span', { style: { color: EW.ink }}, weatherText),
+      /* Weather chip — hover for a breakdown of every active weather's
+         effects (icon, label, rounds left, what it actually does). */
+      h('span', { className: 'ew-weather-chip', style: { color: EW.ink }},
+        weatherText,
+        h('div', { className: 'ew-weather-tip' },
+          weather.length === 0 && h('div', { className: 'ew-weather-tip-desc' },
+            'No active weather. Storms can roll in from round 2 onward.'),
+          weather.map((w, i) => {
+            const def = typeof WEATHER_REGISTRY !== 'undefined' ? WEATHER_REGISTRY[w.type] : null;
+            if (!def) return null;
+            return h('div', { key: w.id || i, className: 'ew-weather-tip-row' },
+              h('div', { className: 'ew-weather-tip-head' },
+                h('span', null, def.icon + ' ' + def.label),
+                (w.remaining != null) && h('span', { className: 'ew-weather-tip-rounds' },
+                  w.remaining + (w.remaining === 1 ? ' rnd left' : ' rnds left')),
+              ),
+              h('div', { className: 'ew-weather-tip-desc' }, def.desc),
+            );
+          }),
+        ),
+      ),
       h('span', { style: { width: 1, height: 10, background: EW.panelEdge }}),
       h('span', { style: { display: 'flex', alignItems: 'center', gap: 4 },
         title: zodiacBlessed ? zodiacLabel + ' reigns — matching units gain +10%' : zodiacLabel + ' reigns' },
@@ -7779,6 +7799,30 @@ function _injectHudHideStyles() {
     }
     .ew-scoreboard-sheen { animation: ewSheen 5s ease-in-out infinite; }
     @keyframes ewSheen { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+
+    /* ── Match-meta weather chip: hover tooltip with active weather effects ── */
+    .ew-weather-chip { position: relative; cursor: help; }
+    .ew-weather-tip {
+      display: none; position: absolute; top: calc(100% + 12px); right: -12px;
+      width: 250px; padding: 8px 10px; z-index: 120;
+      background: rgba(8,7,12,0.96); border: 1px solid #3a3548;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+      font-family: "IBM Plex Mono", monospace; font-size: 10px;
+      letter-spacing: 0.03em; line-height: 1.5; color: #c9c4b4;
+      text-transform: none; white-space: normal; text-align: left;
+      pointer-events: none;
+    }
+    .ew-weather-chip:hover .ew-weather-tip { display: block; }
+    .ew-weather-tip-row + .ew-weather-tip-row {
+      margin-top: 7px; padding-top: 7px;
+      border-top: 1px solid rgba(58,53,72,0.65);
+    }
+    .ew-weather-tip-head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 8px; color: #e8e4d8; font-weight: 600;
+    }
+    .ew-weather-tip-rounds { color: #f0d060; flex-shrink: 0; font-size: 9px; }
+    .ew-weather-tip-desc { margin-top: 2px; color: #a8a295; }
 
     /* Hide Sky Shader debug GUI */
     .lil-gui.root { display: none !important; }

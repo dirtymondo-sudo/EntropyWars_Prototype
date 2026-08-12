@@ -6302,6 +6302,11 @@
             }
 
             /* ── Spawn Zone end-of-round effects ── */
+            // Enemy trespassers are collected here and scorched one at a time
+            // in the paced beat below (camera dive + zap + dialogue per
+            // victim) — previously the damage resolved invisibly inside the
+            // shared field-effects batch and read as "my HP just vanished".
+            const spawnHits = [];
             if (state.spawnZones) {
                 // Friendly spawn-zone regen is summarized into a single combat
                 // log line at the end (per-unit "+HP/+MP" floats still show on
@@ -6352,20 +6357,10 @@
                             if (cleansedAny) _szCleanseUnits++;
                         }
                     } else {
-                        /* Enemy in opponent's spawn zone: 35% maxHP damage.
-                           Routed through applyDamageToUnit so a death here is
-                           a real kill: credit (XP/gold/assists/matchKills)
-                           falls back to the last enemy who damaged the victim,
-                           not an arbitrary zone-owner unit. */
-                        const dmgAmt = Math.max(1, Math.floor(unit.maxHp * SPAWN_ZONE_ENEMY_DMG_PCT));
-                        const hpBefore = unit.hp;
-                        applyDamageToUnit(unit, dmgAmt, 'Spawn zone: ', { ignoreArmor: true });
-                        const dealt = hpBefore - Math.max(0, unit.hp);
-
-                        let evt = events.find(e => e.unit === unit);
-                        if (!evt) { evt = { unit, msgs: [], floats: [] }; events.push(evt); }
-                        evt.msgs.push(`<span class="dlg-damage">⚡ Spawn zone scorches ${unitDisplayName(unit)} for ${dealt} damage!</span>`);
-                        addLog(`Enemy spawn zone deals ${dealt} damage to ${unitDisplayName(unit)}.`);
+                        /* Enemy in opponent's spawn zone: 35% maxHP damage —
+                           deferred to the paced beat below so the hit lands
+                           while the camera is on the victim. */
+                        spawnHits.push(unit);
                     }
                 }
                 if (_szRegenUnits > 0 || _szCleanseUnits > 0) {
@@ -6377,8 +6372,77 @@
                 }
             }
 
-            if (!events.length || _skipVisuals()) {
+            /* Applies one deferred spawn-zone scorch. Routed through
+               applyDamageToUnit so a death here is a real kill: credit
+               (XP/gold/assists/matchKills) falls back to the last enemy who
+               damaged the victim, not an arbitrary zone-owner unit. */
+            function _applySpawnScorch(unit) {
+                const dmgAmt = Math.max(1, Math.floor(unit.maxHp * SPAWN_ZONE_ENEMY_DMG_PCT));
+                const hpBefore = unit.hp;
+                applyDamageToUnit(unit, dmgAmt, 'Spawn zone: ', { ignoreArmor: true });
+                const dealt = hpBefore - Math.max(0, unit.hp);
+                addLog(`Enemy spawn zone deals ${dealt} damage to ${unitDisplayName(unit)}.`);
+                return dealt;
+            }
+
+            /* Serial spawn-zone beat: dive onto each trespasser, zap, let the
+               number read, then the next — the same shape as the DoT phase. */
+            function _playSpawnZoneScorches(done) {
+                if (!spawnHits.length || state.winner) {
+                    // Winner already decided → resolve remaining scorches
+                    // instantly (gameplay must not depend on presentation).
+                    for (const u of spawnHits) if (u && !u.dead) _applySpawnScorch(u);
+                    if (spawnHits.length) { scheduleBoardRender(); checkWin(); }
+                    done();
+                    return;
+                }
+                const viewer = getViewerPlayer();
+                let i = 0;
+                function nextScorch() {
+                    if (i >= spawnHits.length || state.winner) {
+                        // same instant-resolve guard for anything left behind a win
+                        for (let r = i; r < spawnHits.length; r++) {
+                            const u = spawnHits[r];
+                            if (u && !u.dead) _applySpawnScorch(u);
+                        }
+                        done();
+                        return;
+                    }
+                    const unit = spawnHits[i++];
+                    if (!unit || unit.dead) { nextScorch(); return; }
+                    const isVisible = _isUnitVisibleToViewer(unit, viewer);
+                    const willDive = isVisible && !state.cameraDisabled && !_skipVisuals();
+                    if (willDive) {
+                        _eorPhaseLabel('End of Round — Spawn Zone');
+                        eorFocusCamera(unit.x, unit.y, { duration: 520 });
+                    }
+                    const _applyBeat = () => {
+                        const dealt = _applySpawnScorch(unit);
+                        if (isVisible && !_skipVisuals()) {
+                            playHitEffect(unit.x, unit.y, {});
+                            triggerStatusWiggle(unit);
+                            showBattleDialogue([`<span class="dlg-damage">⚡ Spawn zone scorches ${unitDisplayName(unit)} for ${dealt} damage!</span>`], 1400);
+                        }
+                        scheduleBoardRender();
+                        checkWin();
+                        window.setTimeout(nextScorch,
+                            willDive ? actionMs(950) : (isVisible && !_skipVisuals() ? actionMs(650) : 0));
+                    };
+                    if (willDive) window.setTimeout(_applyBeat, 560);
+                    else _applyBeat();
+                }
+                nextScorch();
+            }
+
+            if (_skipVisuals()) {
+                // Fast path (auto-sim / quiet upkeep): resolve everything now.
+                for (const u of spawnHits) if (u && !u.dead) _applySpawnScorch(u);
+                if (spawnHits.length) checkWin();
                 if (onDone) onDone();
+                return;
+            }
+            if (!events.length) {
+                _playSpawnZoneScorches(() => { if (onDone) onDone(); });
                 return;
             }
 
@@ -6434,12 +6498,12 @@
 
             scheduleBoardRender();
             checkWin();
-            if (state.winner) { if (onDone) onDone(); return; }
+            if (state.winner) { _playSpawnZoneScorches(() => { if (onDone) onDone(); }); return; }
 
             const delay = allMsgs.length > 0 ? (1600 + Math.min(allMsgs.length, 8) * 250) : 600;
             window.setTimeout(() => {
                 scheduleBoardRender();
-                if (onDone) onDone();
+                _playSpawnZoneScorches(() => { if (onDone) onDone(); });
             }, delay);
             }
 
@@ -19436,6 +19500,13 @@
                 // EOR framing (resting tilt/yaw, one tour zoom) — action-cam
                 // pacing without leaving the tactical view.
                 const _turretCam = isVisible && !state.cameraDisabled && typeof camera !== 'undefined';
+                // Per-shot caption naming the victim — with several turrets
+                // firing back-to-back this is what keeps each hit attributable.
+                if (isVisible) {
+                    _eorPhaseLabel(s.zombie
+                        ? `🧟 Zombie mauls ${unitDisplayName(s.target)}`
+                        : `🔧 Turret fires at ${unitDisplayName(s.target)}`);
+                }
                 if (_turretCam) {
                     eorFocusCamera(s.turret.x, s.turret.y, { duration: 380 });
                 }
@@ -19467,11 +19538,17 @@
                     window.setTimeout(() => {
                         if (state.winner) { if (onDone) onDone(); return; }
                         applyShot(s);
+                        // Impact feedback: spark + stagger on the victim so the
+                        // hit reads as an attack, not a silent HP drop.
+                        if (isVisible) {
+                            playHitEffect(s.target.x, s.target.y, {});
+                            triggerStatusWiggle(s.target);
+                        }
                         scheduleBoardRender();
                         if (typeof renderBattleUpdate === 'function') renderBattleUpdate();
                         checkWin();
                         if (state.winner) { if (onDone) onDone(); return; }
-                        window.setTimeout(fireNext, actionMs(520));
+                        window.setTimeout(fireNext, actionMs(680));
                     }, actionMs(300));
                 }, _turretCam ? actionMs(760) : actionMs(420));
             }
@@ -24427,6 +24504,44 @@
                 window.releaseSkyGrabFx(target.id);
             }
             return { usedArc: usedArc, carryMs: carryMs, flingMs: flingMs };
+        };
+
+        /* ── Vortex fling (tornado / hurricane victims): the body is sucked UP
+           into the funnel, spun around, and hurled to its landing tile —
+           replaces the old instant snap that made storm displacement
+           unreadable. Rides the same throw-arc tween as sky throws, plus
+           spinTurns. kind = weather type ('tornado'|'hurricane') for flavor.
+           Global + argument-pure for the online relay (RULE #2): the guest
+           replays it with a cosmetic impact; positions arrive via state-sync.
+           Returns { usedArc, totalMs } so the caller can pace the round. ── */
+        window.playVortexFlingFx = function (target, fromX, fromY, toX, toY, kind, opts) {
+            opts = opts || {};
+            const ts = CONFIG.tileSize || BASE_TILE;
+            if (!target || _skipVisuals()) return { usedArc: false, totalMs: 0 };
+            const isTornado = kind === 'tornado';
+            const liftMs = actionMs(420);
+            const hangMs = actionMs(isTornado ? 340 : 260);
+            const dist = Math.max(Math.abs(toX - fromX), Math.abs(toY - fromY));
+            const flingMs = actionMs(Math.max(300, 220 + 90 * dist));
+            const settleMs = 180;
+            const usedArc = !!(window.ThreeAnim && window.ThreeAnim.isActive()
+                && window.ThreeAnim.throwArc
+                && window.ThreeAnim.throwArc(target, fromX, fromY, toX, toY, {
+                    liftMs: liftMs, hangMs: hangMs, flingMs: flingMs, settleMs: settleMs,
+                    liftPx: ts * (isTornado ? 2.8 : 2.2),
+                    spinTurns: isTornado ? 3 : 2,
+                    onImpact: () => {
+                        if (opts.onImpact) try { opts.onImpact(); } catch (e) {}
+                        try {
+                            const VFX = window.ThreeVFXEffects;
+                            if (VFX && VFX.sigShockRing3D && !_skipVisuals()) {
+                                VFX.sigShockRing3D(toX, toY, { r0: ts * 0.2, r1: ts * 1.2, ms: 380 });
+                            }
+                            if (typeof shakeBoard === 'function') shakeBoard();
+                        } catch (e) {}
+                    }
+                }));
+            return { usedArc: usedArc, totalMs: usedArc ? (liftMs + hangMs + flingMs + settleMs) : 0 };
         };
 
         function _drawSpellApproachPreview(unit, approach, tx, ty) {

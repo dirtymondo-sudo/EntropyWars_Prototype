@@ -698,6 +698,11 @@
                     case 'boardRender':
                         scheduleBoardRender();
                         break;
+                    case 'lightning':
+                        // ⚡ storm bolt deferred from applyWeatherTurnEffects —
+                        // cracks now, with the camera on the victim.
+                        if (window.playStormLightningFx) window.playStormLightningFx(evt.x, evt.y);
+                        break;
                 }
             }
 
@@ -756,29 +761,38 @@
                 // floats fire — same shared framing as every end-of-round beat.
                 // Skip the pan for tiles the viewer can't see under fog.
                 const focal = _reGroupFocal(group);
+                const _focalVisible = !focal || !state.fogOfWar
+                    || typeof _isTileVisibleToViewer !== 'function'
+                    || _isTileVisibleToViewer(focal.x, focal.y);
                 const camOk = focal && !state.cameraDisabled
                     && typeof eorFocusCamera === 'function'
                     && !(typeof _skipVisuals === 'function' && _skipVisuals())
-                    && (!state.fogOfWar
-                        || typeof _isTileVisibleToViewer !== 'function'
-                        || _isTileVisibleToViewer(focal.x, focal.y));
+                    && _focalVisible;
+                // The label shows whenever it can't leak a fogged position —
+                // with the camera parked (camera-off toggle) it's the only
+                // thing telling the player WHAT is resolving right now.
+                if (_focalVisible && typeof _eorPhaseLabel === 'function' && group.label) {
+                    _eorPhaseLabel(group.label);
+                }
                 if (camOk) {
-                    if (typeof _eorPhaseLabel === 'function' && group.label) _eorPhaseLabel(group.label);
                     eorFocusCamera(focal.x, focal.y, { duration: 380 });
                 }
 
                 window.setTimeout(() => {
                 _rePlayGroup(group);
 
+                // Per-beat dwell: long enough to read WHO got hit and by WHAT
+                // before the camera moves on (these beats are the whole story
+                // of the round for weather / terrain / respawn effects).
                 let delayMs = actionMs(420);
                 const hasKill = group.events.some(e => e.type === 'deathBanner');
                 const hasShake = group.events.some(e => e.type === 'shake');
-                const hasDmg = group.events.some(e => e.type === 'floatingText' && e.kind === 'damage');
+                const hasDmg = group.events.some(e => (e.type === 'floatingText' && e.kind === 'damage') || e.type === 'lightning');
                 if (hasKill) delayMs = actionMs(1400);
-                else if (hasShake) delayMs = actionMs(700);
-                else if (hasDmg) delayMs = actionMs(550);
+                else if (hasShake) delayMs = actionMs(850);
+                else if (hasDmg) delayMs = actionMs(800);
                 window.setTimeout(playNext, delayMs);
-                }, camOk ? 360 : 0);
+                }, camOk ? 420 : 0);
             }
             playNext();
         }
@@ -1525,7 +1539,7 @@
                 displaceTiles: 2,
                 duration: [3, 5],
                 ignoresTerrain: true,
-                desc: 'Chases the nearest unit (up to 3 tiles/round); shreds and hurls anyone it catches.',
+                desc: 'Hunts the nearest unit (3 tiles/rnd); shreds and hurls whoever it catches.',
                 homingDamage(unit) {
                     return {
                         amount: engineRandInt(40) + 32,
@@ -1559,7 +1573,7 @@
                 displaces: true,
                 displaceTiles: 3,
                 duration: [3, 5],
-                desc: 'Chases the nearest unit (up to 2 tiles/round); batters, soaks and hurls anyone it catches. -10 DEF on the eye.',
+                desc: 'Hunts the nearest unit (2 tiles/rnd); soaks and hurls whoever it catches. -10 DEF in the eye.',
                 soaks: true,
                 statMod: {
                     def: -10
@@ -1636,7 +1650,7 @@
                 homing: true,
                 homingSpeed: 2,
                 duration: [3, 4],
-                desc: 'Chases the nearest unit (up to 2 tiles/round); soaks and blasts anyone it catches with lightning — soaked (or swimming) victims fry, tech units supercharge. -5 DEF on the eye.',
+                desc: 'Hunts the nearest unit (2 tiles/rnd); soaks and strikes with lightning — deadly to the wet. -5 DEF in the eye.',
                 element: 'lightning',
                 soaks: true,
                 statMod: {
@@ -1655,7 +1669,7 @@
                 tiles: [5, 8],
                 roaming: true,
                 duration: [3, 5],
-                desc: 'Geometric shapes rain from the sky. +10 M ATK to Anomaly, -8 DEF to Tech. Damages non-Anomaly units.',
+                desc: 'Raining geometry shreds non-Anomaly units. +10 M ATK to Anomaly, -8 DEF to Tech.',
                 conditionalStatMod(unit) {
                     const types = unit.types || [];
                     const mods = {};
@@ -1687,7 +1701,7 @@
                 homing: true,
                 homingSpeed: 2,
                 duration: [3, 4],
-                desc: 'Chases the nearest unit (up to 2 tiles/round), freezing a trail of ice; batters and BLINDS non-Anomaly units it catches — Frozen victims take extra damage, soaked victims freeze solid. -8 DEF on the eye.',
+                desc: 'Hunts the nearest unit (2 tiles/rnd), freezing a trail of ice; batters and blinds whoever it catches — worse if Frozen. -8 DEF in the eye.',
                 element: 'cold',
                 statMod: {
                     def: -8
@@ -1718,7 +1732,7 @@
                 homing: true,
                 homingSpeed: 2,
                 duration: [3, 5],
-                desc: 'Chases the nearest unit (up to 2 tiles/round); scours non-Human units it catches. -5 AWR on the eye.',
+                desc: 'Hunts the nearest unit (2 tiles/rnd); scours non-Humans it catches. -5 AWR in the eye.',
                 statMod: {
                     awr: -5
                 },
@@ -1732,6 +1746,30 @@
                 }
             }
         };
+        // ⚡ One storm lightning strike (thunderstorm per-turn tick + homing
+        // strike): close CRACK on the bolt, distant rumble rolling in behind
+        // it (SFX_AUDIT §1/§5). Global + argument-pure so online.js can relay
+        // it and the guest sees the bolt too (RULE #2).
+        window.playStormLightningFx = function (x, y) {
+            if (!window.ThreeLightning) return;
+            if (state.devAutoSim && !state._devSimShowAnims) return;
+            if (typeof playSfx === 'function') {
+                playSfx('lightningStrike');
+                window.setTimeout(() => playSfx('thunderRumble'),
+                    450 + Math.floor(Math.random() * 350));
+            }
+            ThreeLightning.strikeFromSky(x, y, {
+                durationMs: 300,
+                segments: 14,
+                jitter: 0.3,
+                branchChance: 0.35,
+                branchDepth: 1,
+                coreWidth: 6,
+                glowWidth: 18,
+                skyHeight: 650,
+            });
+        };
+
         const WEATHER_KEYS = Object.keys(WEATHER_REGISTRY);
         const WEATHER_SPAWN_ROUND = 2;
         const WEATHER_SPAWN_CHANCE = 0.42;
@@ -1943,7 +1981,10 @@
 
         const BLOWBACK_DAMAGE = 3;
 
-        function applyBlowback(unit, sourceX, sourceY, logPrefix) {
+        // opts.noAnim: skip the per-step displacement slide — the caller plays
+        // its own full-path animation instead (vortex lift/spin/fling).
+        function applyBlowback(unit, sourceX, sourceY, logPrefix, opts) {
+            opts = opts || {};
             if (!unit || unit.dead) return null;
             // ⚖️ Colossal races (RACE_PHYSIQUE ≥ 1000 kg) cannot be blown back.
             if (typeof getUnitWeightClass === 'function' && getUnitWeightClass(unit) === 'colossal') {
@@ -2016,7 +2057,7 @@
                         _fanFlamesAlongPush(unit, [{ x: c.x, y: c.y }], c.x - fromX, c.y - fromY, null);
                     }
 
-                    if (typeof animateDisplacement === 'function') {
+                    if (!opts.noAnim && typeof animateDisplacement === 'function') {
                         // blast lands first, THEN the body is thrown (post-impact beat)
                         animateDisplacement(unit, fromX, fromY, c.x, c.y, 200, { delayMs: 300 });
                     }
@@ -2059,7 +2100,7 @@
                 if (typeof _fanFlamesAlongPush === 'function') {
                     _fanFlamesAlongPush(unit, [{ x: _bc.x, y: _bc.y }], _bc.x - fromX, _bc.y - fromY, null);
                 }
-                if (typeof animateDisplacement === 'function') {
+                if (!opts.noAnim && typeof animateDisplacement === 'function') {
                     // blast lands first, THEN the body is blasted through (post-impact beat)
                     animateDisplacement(unit, fromX, fromY, _bc.x, _bc.y, 200, { delayMs: 300 });
                 }
@@ -2340,25 +2381,16 @@
                             // victim's level so storms stay dangerous at L100.
                             scaleByTargetLevel: true
                         });
-                        if (weather.type === 'thunderstorm' && window.ThreeLightning &&
-                            !(state.devAutoSim && !state._devSimShowAnims)) {
-                            // ⚡ close CRACK on the bolt, distant rumble
-                            // rolling in behind it (SFX_AUDIT §1/§5).
-                            if (typeof playSfx === 'function') {
-                                playSfx('lightningStrike');
-                                window.setTimeout(() => playSfx('thunderRumble'),
-                                    450 + Math.floor(Math.random() * 350));
+                        if (weather.type === 'thunderstorm') {
+                            // ⚡ While round events are buffered the bolt is
+                            // deferred too, so it cracks when the camera is ON
+                            // the victim during the replay — not seconds early
+                            // while the board is still resolving off-screen.
+                            if (_bufferingRoundEvents) {
+                                _rePushEvent({ type: 'lightning', x: unit.x, y: unit.y });
+                            } else if (window.playStormLightningFx) {
+                                window.playStormLightningFx(unit.x, unit.y);
                             }
-                            ThreeLightning.strikeFromSky(unit.x, unit.y, {
-                                durationMs: 300,
-                                segments: 14,
-                                jitter: 0.3,
-                                branchChance: 0.35,
-                                branchDepth: 1,
-                                coreWidth: 6,
-                                glowWidth: 18,
-                                skyHeight: 650,
-                            });
                         }
                     } else if (eff.type === 'heal') {
                         if (eff.hpAmount) applyHealingToUnit(unit, eff.hpAmount, null, { scaleByTargetLevel: true });
@@ -2529,6 +2561,7 @@
             // they swept over.
             const applyStrikes = () => {
                 let actedVisibly = false;
+                let maxFlingMs = 0;
                 for (const ps of pendingStrikes) {
                     const { weather, def, caster, nx, ny, struck } = ps;
                     if (_bufferingRoundEvents) _reBeginGroup(`${def.icon} ${def.label} strikes`);
@@ -2567,33 +2600,36 @@
                                 // victim's level (see applyWeatherTurnEffects).
                                 scaleByTargetLevel: true
                             });
-                            if (weather.type === 'thunderstorm' && window.ThreeLightning &&
-                                !(state.devAutoSim && !state._devSimShowAnims)) {
+                            if (weather.type === 'thunderstorm' && window.playStormLightningFx) {
                                 // ⚡ same crack + delayed rumble as the
-                                // per-turn strike above.
-                                if (typeof playSfx === 'function') {
-                                    playSfx('lightningStrike');
-                                    window.setTimeout(() => playSfx('thunderRumble'),
-                                        450 + Math.floor(Math.random() * 350));
-                                }
-                                ThreeLightning.strikeFromSky(v.x, v.y, {
-                                    durationMs: 300,
-                                    segments: 14,
-                                    jitter: 0.3,
-                                    branchChance: 0.35,
-                                    branchDepth: 1,
-                                    coreWidth: 6,
-                                    glowWidth: 18,
-                                    skyHeight: 650,
-                                });
+                                // per-turn strike above — fires live here (the
+                                // camera is already following the storm).
+                                window.playStormLightningFx(v.x, v.y);
                             }
                         }
                         if (def.displaces && !v.dead) {
+                            // Resolve the whole multi-tile blowback chain with the
+                            // per-step slides suppressed, then play ONE readable
+                            // lift → spin → hurl arc from where the vortex caught
+                            // them to where they finally land (RULE: no more
+                            // "they just snap to where they land").
                             const pushes = def.displaceTiles || 2;
+                            const startX = v.x, startY = v.y;
                             for (let p = 0; p < pushes; p++) {
-                                const res = applyBlowback(v, nx, ny, `${def.icon} `);
+                                const res = applyBlowback(v, nx, ny, `${def.icon} `, { noAnim: true });
                                 if (!res || !res.pushed) break;
                                 actedVisibly = true;
+                            }
+                            if ((v.x !== startX || v.y !== startY) && !v.dead) {
+                                const fling = (typeof window !== 'undefined' && typeof window.playVortexFlingFx === 'function')
+                                    ? window.playVortexFlingFx(v, startX, startY, v.x, v.y, weather.type)
+                                    : { usedArc: false, totalMs: 0 };
+                                if (fling && fling.usedArc) {
+                                    maxFlingMs = Math.max(maxFlingMs, fling.totalMs);
+                                } else if (typeof animateDisplacement === 'function') {
+                                    // 2D fallback: a single full-path ghost slide.
+                                    animateDisplacement(v, startX, startY, v.x, v.y, 320, { delayMs: 150 });
+                                }
                             }
                         }
                     }
@@ -2602,7 +2638,9 @@
                 if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
 
                 if (actedVisibly && !_skipVisuals()) {
-                    window.setTimeout(finish, 750);
+                    // Wait out the longest fling so the round doesn't move on
+                    // while a body is still mid-air.
+                    window.setTimeout(finish, Math.max(750, maxFlingMs + 200));
                 } else {
                     finish();
                 }
