@@ -1577,6 +1577,87 @@ const RACE_MODELS_3D = {
       lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
     }),
   },
+  // ── 2026-08-13 batch (user upload — horrors, cryptids & the general) ──────
+  // Black Goo (Psychic, specialist) — 1.5m amorphous one-eyed mass. Model sits
+  // directly in Races/blackgoo/ (no gender subfolder). Corrosive splash /
+  // toxic nova kit → magic basics, never a sword swing.
+  'black goo': {
+    male: _mkUAL('blackgoo', 'black_goo_with_one_ey', {
+      heightRatio: 0.9,
+      basicAttackKind: 'magic',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
+    }),
+  },
+  // Cosmic Wraith (Sniper, ranged) — 2.2m spectral horror (djinn 2.3m → 1.25):
+  // entropic beams / heat death → magic basics.
+  'cosmic wraith': {
+    male: _mkUAL('cosmicwraith/male', 'cosmic_wraith_realis', {
+      heightRatio: 1.2,
+      basicAttackKind: 'magic',
+    }),
+  },
+  // Dreameater (Psychic, support, SKY_RACES) — 2.0m alien entity that feeds
+  // on sleep: dream siphons / nightmare pulses → magic basics.
+  'dreameater': {
+    male: _mkUAL('dreameater/male', 'dream_eater_alien_ent', {
+      heightRatio: 1.15,
+      basicAttackKind: 'magic',
+    }),
+  },
+  // Gargoyle (Sniper chassis, tank block, SKY_RACES) — 1.9m living stone,
+  // female model: raking claw basics + monster sway instead of the default
+  // feminine idle.
+  'gargoyle': {
+    female: _mkUAL('gargoyle/female', 'female_gargoyle_real', {
+      heightRatio: 1.05,
+      basicAttackKind: 'claw',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },   // stone-beast sway
+    }),
+  },
+  // Ghoul (Agent, assassin) — 1.8m graveyard feeder: bite/claw basics.
+  'ghoul': {
+    male: _mkUAL('ghoul/male', 'ghoul_realistic', {
+      heightRatio: 1.0,
+      basicAttackKind: 'claw',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },   // hunched sway
+    }),
+  },
+  // Glitch (Engineer, specialist, SKY_RACES) — 1.7m holographic entity:
+  // crash loops / blue screens → magic zap basics.
+  'glitch': {
+    male: _mkUAL('glitch/male', 'glitch_entity_hologr', {
+      heightRatio: 0.98,
+      basicAttackKind: 'magic',
+    }),
+  },
+  // Golem (Tank, bruiser) — 2.6m animated stone (overlord 2.4m → 1.3). Model
+  // sits directly in Races/golem/ (no gender subfolder). Boulder fists →
+  // punch basics.
+  'golem': {
+    male: _mkUAL('golem', 'golem_realistic', {
+      heightRatio: 1.35,
+      basicAttackKind: 'punch',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
+    }),
+  },
+  // Loch Ness Monster (Tank) — 10m lake cryptid surfaced on land, rendered in
+  // the colossal tier just under the kraken (12m → 1.55): monster sway,
+  // raking flipper/maw basics.
+  'loch ness monster': {
+    male: _mkUAL('lochnessmonster/male', 'loch_ness_monster_re', {
+      heightRatio: 1.5,
+      basicAttackKind: 'claw',
+      lib: { idle: { clip: 'Idle_10', lib: 2 } },   // monster sway
+    }),
+  },
+  // General (Warrior, tank block) — General Voss, 1.8m human officer. Model
+  // sits directly in Races/general/ (no gender subfolder). Plain melee
+  // basics; Rally Command / Artillery Strike fire their mapped VFX.
+  'general': {
+    male: _mkUAL('general', 'military_general_rea', {
+      heightRatio: 1.0,
+    }),
+  },
 };
 
 // ── Gendered library defaults (2026-07-11) ─────────────────────────────────

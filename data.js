@@ -9169,6 +9169,16 @@ const ACCT_STARTER_UNITS = [
   // 2026-08-06 batch (sprites.js RACE_MODELS_3D — prehistoric predators):
   'dinosaur',       // Raider (3D — male only)
   'dragon',         // flyer (3D — male only)
+  // 2026-08-13 batch (sprites.js RACE_MODELS_3D — horrors, cryptids & the general):
+  'black goo',      // Psychic (3D — male only)
+  'cosmic wraith',  // Sniper (3D — male only)
+  'dreameater',     // Psychic (3D — male only)
+  'gargoyle',       // Sniper (3D — female only)
+  'ghoul',          // Agent (3D — male only)
+  'glitch',         // Engineer (3D — male only)
+  'golem',          // Tank (3D — male only)
+  'loch ness monster', // Tank (3D — male only)
+  'general',        // Warrior (3D — male only)
   // NOTE: every race with a rigged 3D model in sprites.js RACE_MODELS_3D is a
   // starter, and the 3D-only gate in isUnitUnlocked() keeps anything listed
   // here shelved until its model ships. Keep server.js ACCT_STARTER_UNITS in
