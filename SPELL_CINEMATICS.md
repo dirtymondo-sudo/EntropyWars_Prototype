@@ -799,7 +799,7 @@ moments in the game), then Teleports (the no-ease rule is nearly free).
 | `raceChivalry` (Knight) | Reactive intercept: slow-mo dash INTO the attack's path when the pledge triggers |
 | `raceSpellsteal` (Wizard) | The stolen spell's icon physically yanked out of the victim's head on a thread |
 | `racePulseLattice` (Machine Elves) | Beam network lights prism-to-prism in sequence before the burst — show the graph |
-| `raceWarOfTheWorlds` (Martian) | Tripod unfolds leg-by-leg with the two-note horn; camera cranes up its full height |
+| `raceWarOfTheWorlds` (Martian) | Camera cranes up into a sky filling with 3D saucers; the V-formation strafes the zone raining heat-rays as the god shot slams down |
 | `raceDeathGaze` (Occulus) | Extreme close-up of the iris dilating; the beam fires FROM the camera's position |
 | `raceCropCircle` (Grey) | Straight-down God shot as the pattern mows itself in concentric strokes |
 | `raceRocketFist` (Robot) | Fist-cam: track the flying fist, knuckles in foreground, victim growing in frame |

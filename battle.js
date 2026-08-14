@@ -4752,9 +4752,20 @@
                     VFX.fire('descent', spell.id, { tx, ty });
                 }, projectileDelay);
             } else if (hasAoe) {
-                // Self-centered novas (Kill Mode & co): from-tile === to-tile
-                // used to fire a degenerate zero-length projectile every cast.
-                if (unit.x !== tx || unit.y !== ty) {
+                if (spell.id === 'raceWarOfTheWorlds' && typeof VFX.sigUFOFleet3D === 'function') {
+                    // The saucer fleet IS the projectile: the 3D formation
+                    // streaks in overhead during the caster hold (filling the
+                    // crane-up sky shot) and its heat-rays switch on exactly on
+                    // the impact beat, when the per-tile bursts land.
+                    const fleetLead = Math.min(impactDelay, actionMs(1100));
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || _skipVisuals()) return;
+                        VFX.sigUFOFleet3D(tx, ty, spell.aoeRadius || 2,
+                            { beamDelayMs: fleetLead, beamMs: actionMs(950) });
+                    }, impactDelay - fleetLead);
+                } else if (unit.x !== tx || unit.y !== ty) {
+                    // Self-centered novas (Kill Mode & co): from-tile === to-tile
+                    // used to fire a degenerate zero-length projectile every cast.
                     window.setTimeout(() => playProjectile(unit.x, unit.y, tx, ty, 'damage', cam?.travelMs ?? actionMs(480), spell.spellType, spell.projectileOverride || null, spell), projectileDelay);
                 }
                 window.setTimeout(() => {

@@ -2144,6 +2144,12 @@
                 projectile:         [[0, 1], [2, 3]],
                 beam:               [[0, 1], [2, 3]],
                 aoe:                [[0, 1]],
+                /* hand-authored 3D saucers called directly from battle.js
+                   (host-only online): the War of the Worlds fleet and the
+                   Probe's hovering craft. Args are (tx, ty, ...primitives),
+                   so the generic wrapper serializes them as-is. */
+                sigUFOFleet3D:      [[0, 1]],
+                spawnProbeDescent3D:[[0, 1]],
             };
             Object.keys(window._VFXX_ANCHORS).forEach(function(fnName) {
                 var _origSib = VFX3D[fnName];
