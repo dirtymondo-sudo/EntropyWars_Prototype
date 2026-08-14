@@ -3437,7 +3437,7 @@ function _hrlgTargetBlades(unit, st, mode) {
       label = typeof unitDisplayName === 'function' ? unitDisplayName(tUnit) : (tUnit.name || tUnit.cls);
       hpVal = tUnit.hp; hpMax = tUnit.maxHp;
     } else if (t.kind === 'tower') { label = '⬡ Cube'; hpVal = t.tower.hp; hpMax = t.tower.maxHp || t.tower.hp; }
-    else if (t.kind === 'turret') { label = '🔧 Turret'; hpVal = t.turret.hp; hpMax = t.turret.maxHp || t.turret.hp; }
+    else if (t.kind === 'turret') { label = '🔧 ' + _turretDisplayName(t.turret); hpVal = t.turret.hp; hpMax = t.turret.maxHp || t.turret.hp; }
     else if (t.kind === 'deployedObj') { label = '📦 ' + (t.deployedObj.spellName || 'Object'); hpVal = t.deployedObj.hp; hpMax = t.deployedObj.maxHp || t.deployedObj.hp; }
     else if (t.kind === 'seed') { label = '🌱 ' + (t.seedName || 'Seed'); }
     else if (t.kind === 'tree') { label = '🪓 Chop Tree'; }
@@ -6517,9 +6517,133 @@ function _hrlgAllyBlades(actingUnit, st) {
   return { title, blades };
 }
 
-// The clicked tile's actions (move here / cast here / smash / inspect …)
-// as drum blades, grouped movement → spells → attack → other with the
-// unavailable ones sinking within each group.
+/* ── TILE OBJECT CARDS ───────────────────────────────────────────────
+   Identity card for the structure standing on a clicked tile — turret /
+   5G tower / the Cube / deployed object / planted seed. Powers the
+   object-first tile quick menu: the object headlines the panel title,
+   its attack row rides on TOP of the list (not buried under move/spell
+   rows), and the bottom description bar reads out what the thing
+   actually is and does. Objects are clickable. */
+function _turretDisplayName(t) {
+  const sp = (typeof SPELL_BY_ID !== 'undefined' && t.spellId) ? SPELL_BY_ID[t.spellId] : null;
+  const name = t.spellName || (sp && sp.name) || 'Turret';
+  // "Deploy Turret" is the SPELL's name — the standing object is just "Turret"
+  return name.replace(/^Deploy\s+/i, '');
+}
+
+function _tileQuickObjectInfo(actingUnit, tx, ty) {
+  const s = (typeof state !== 'undefined') ? state : null;
+  if (!s) return null;
+  const _plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+  const _mkHpLabel = (hp, maxHp, hits) => Math.max(0, Math.round(hp)) + '/' + (maxHp || hp) + (hits ? ' hits' : ' HP');
+
+  // ⬡ The Cube (base tower) — either team's
+  if (s.towers) {
+    for (const p of [1, 2]) {
+      const tw = s.towers[p];
+      if (tw && tw.hp > 0 && tw.x === tx && tw.y === ty) {
+        const enemy = actingUnit ? p !== actingUnit.player : false;
+        return {
+          kind: 'tower', name: 'Cube', icon: '⬡', enemy,
+          hp: Math.max(0, Math.round(tw.hp)), maxHp: tw.maxHp || tw.hp,
+          hpLabel: _mkHpLabel(tw.hp, tw.maxHp),
+          desc: enemy
+            ? 'The enemy team\'s black Cube — their power core. Destroy it to win the match.'
+            : 'Your team\'s black Cube — your power core. If it is destroyed, you lose the match. Keep enemies away from it.',
+        };
+      }
+    }
+  }
+
+  // 🔧 Turret family (Deploy Turret / 5G Tower / Clockwork Turret / Zombie…)
+  const tr = (s.turrets || []).find(t => t.x === tx && t.y === ty && t.hp > 0);
+  if (tr) {
+    const sp = (typeof SPELL_BY_ID !== 'undefined' && tr.spellId) ? SPELL_BY_ID[tr.spellId] : null;
+    const name = _turretDisplayName(tr);
+    const enemy = actingUnit ? tr.owner !== actingUnit.player : false;
+    const hits = !!tr.hitsToKill;
+    let desc;
+    if (tr.zombie) {
+      desc = 'A shambling raised corpse. It bites the nearest enemy within '
+        + _plural(tr.range || 1, 'tile') + ' for ' + (tr.dmg || 0) + ' damage at the end of each round. '
+        + _plural(Math.max(0, Math.round(tr.hp)), 'hit') + ' left to put it down.';
+    } else if (sp && sp.auraDebuff) {
+      desc = 'A radio mast whose signal scrambles thought — enemies within '
+        + _plural(tr.range || 4, 'tile') + ' lose ' + (sp.auraDefReduction || 8)
+        + ' M DEF while it stands. ' + _plural(Math.max(0, Math.round(tr.hp)), 'hit') + ' to destroy.';
+    } else {
+      desc = 'An automated turret. It paints the nearest enemy within '
+        + _plural(tr.range || 3, 'tile') + ' and fires at the end of the round for '
+        + (tr.dmg || 0) + ' damage.';
+    }
+    return {
+      kind: 'turret', name, icon: /5g/i.test(name) ? '📡' : (tr.zombie ? '🧟' : '🔧'), enemy,
+      hp: Math.max(0, Math.round(tr.hp)), maxHp: tr.maxHp || tr.hp,
+      hpLabel: _mkHpLabel(tr.hp, tr.maxHp, hits), desc,
+    };
+  }
+
+  // 📦 Deployed objects (kegs / mines / decoys / aura pylons…). ENEMY decoys
+  // are excluded on purpose: they render as units, and an object card naming
+  // them "Decoy" would give the trick away for free.
+  const dep = (s._deployedObjects || []).find(o => o.x === tx && o.y === ty && o.hp > 0);
+  if (dep && !(dep.isDecoy && actingUnit && dep.ownerPlayer !== actingUnit.player)) {
+    const sp = (typeof SPELL_BY_ID !== 'undefined' && dep.spellId) ? SPELL_BY_ID[dep.spellId] : null;
+    const enemy = actingUnit ? dep.ownerPlayer !== actingUnit.player : false;
+    let desc;
+    if (dep.isDecoy) desc = 'Your decoy. It draws enemy attacks meant for the real unit and shatters after one hit.';
+    else if (dep.detonateOnStep && dep.blastRadius > 0) {
+      desc = 'A planted charge — it detonates when stepped on'
+        + (dep.detonateOnAttack ? ' or struck' : '') + ': ' + (dep.blastDmg || 0)
+        + ' damage in a ' + dep.blastRadius + '-tile blast.';
+    } else if (dep.detonateOnAttack && dep.blastRadius > 0) {
+      desc = 'It explodes when struck: ' + (dep.blastDmg || 0) + ' damage in a '
+        + dep.blastRadius + '-tile blast. Detonate it while enemies stand close.';
+    } else if (dep.auraHeal > 0) {
+      desc = 'It restores ' + dep.auraHeal + ' HP to nearby units within '
+        + _plural(dep.auraRadius || 1, 'tile') + ' each round while it stands.';
+    } else desc = (sp && sp.desc) || 'A deployed structure. It blocks movement until destroyed.';
+    return {
+      kind: 'deploy', name: dep.spellName || 'Object', icon: dep.isDecoy ? '🎭' : '📦', enemy,
+      hp: Math.max(0, Math.round(dep.hp)), maxHp: dep.maxHp || dep.hp,
+      hpLabel: _mkHpLabel(dep.hp, dep.maxHp), desc,
+    };
+  }
+
+  // 🌱 Planted seeds
+  const sd = (s.plantedSeeds || []).find(q => q.x === tx && q.y === ty);
+  if (sd) {
+    const enemy = actingUnit ? sd.owner !== actingUnit.player : false;
+    const name = sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
+    const desc = sd.type === 'heal'
+      ? 'A planted seed growing into a Healing Tree that restores nearby units each round. One hit destroys it before it matures.'
+      : sd.type === 'poison'
+        ? 'A planted seed growing into a Toxin Tree that poisons nearby units each round. One hit destroys it before it matures.'
+        : 'A parasitic seed — it latches onto units that come near and drains their HP each round. One hit destroys it.';
+    return { kind: 'seed', name, icon: '🌱', enemy, hp: null, maxHp: null, hpLabel: null, desc };
+  }
+
+  return null;
+}
+
+// The card rides the blade's `spell` slot so the SMT description bar picks it
+// up on selection/hover exactly like a spell card would (see _renderSpellDescBar
+// — the _objectCard flag routes it past the MP/range fine-print machinery).
+function _objCardSpell(objInfo, tx, ty) {
+  return {
+    id: 'objcard:' + objInfo.kind + ':' + tx + ',' + ty + ':' + (objInfo.hp != null ? objInfo.hp : '-'),
+    name: objInfo.name,
+    desc: objInfo.desc,
+    _objectCard: true,
+    _hpLine: objInfo.hpLabel || '',
+  };
+}
+
+// The clicked tile's actions as drum blades. Plain ground groups
+// movement → spells → attack → other; a tile with an OBJECT on it
+// (turret / Cube / deployed structure / seed) leads with the object
+// instead — its attack row first, the object's name + HP on the view
+// tab, and its description in the bottom bar.
 function _hrlgTileBlades(actingUnit, st) {
   const target = st._tileActionTarget;
   if (!target) return { title: null, blades: [] };
@@ -6532,47 +6656,86 @@ function _hrlgTileBlades(actingUnit, st) {
   const height = typeof getHeightAt === 'function' ? getHeightAt(tx, ty) : 0;
   const posLabel = typeof coordLabel === 'function' ? coordLabel(tx, ty) : tx + ',' + ty;
 
-  const _availFirst = (a, b) => (a.available ? 0 : 1) - (b.available ? 0 : 1);
-  const ordered = [
-    ...actions.filter(a => a.category === 'movement').sort(_availFirst),
-    ...actions.filter(a => a.category === 'spells').sort(_availFirst),
-    ...actions.filter(a => a.category === 'attack').sort(_availFirst),
-    ...actions.filter(a => a.category === 'actions' || a.category === 'utility').sort(_availFirst),
-  ];
+  const objInfo = _tileQuickObjectInfo(actingUnit, tx, ty);
+  const objCard = objInfo ? _objCardSpell(objInfo, tx, ty) : null;
+  // which attack row is ABOUT the featured object (carries its card + HP)
+  const _objAtkId = objInfo
+    ? ({ tower: 'attack:tower', turret: 'attack:turret', deploy: 'attack:deploy', seed: 'attack:seed' })[objInfo.kind]
+    : null;
 
-  const blades = ordered.map((a, i) => ({
-    id: 'ta:' + a.id + ':' + i,
-    icon: a.icon,
-    iconColor: a.category === 'attack' ? '#ff5340' : undefined,
-    label: a.label,
-    available: a.available,
-    spell: a.spell || null,
-    catColor: a.spell ? (_HRLG_CAT[typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage'] || _HRLG_CAT.damage).color : undefined,
-    badges: a.spell ? _hrlgSpellBadges(a.spell, typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage', true) : undefined,
-    mp: a.mpCost || null,
-    cost: a.available && a.apCost ? a.apCost : null,
-    sub: !a.available ? (a.reason || 'Unavailable') : null,
-    fire: () => {
-      hideSpellTooltip();
-      if (a.id === 'moveTowards') _clearMoveArrowPreview();
-      if (a.available && a.handler) a.handler();
-    },
-    hoverIn: (e) => {
-      if (a.spell) showSpellTooltip(a.spell, e);
-      if (a.id === 'moveTowards' && a.available) _showTileMoveTowardsPreview(actingUnit, a);
-    },
-    hoverOut: () => {
-      hideSpellTooltip();
-      if (a.id === 'moveTowards') _clearMoveArrowPreview();
-    },
-  }));
+  const _availFirst = (a, b) => (a.available ? 0 : 1) - (b.available ? 0 : 1);
+  const _grp = (cat) => actions.filter(a => cat === 'other'
+    ? (a.category === 'actions' || a.category === 'utility')
+    : a.category === cat).sort(_availFirst);
+  const ordered = objInfo
+    // object tile → the object IS the menu's subject: attack leads
+    ? [..._grp('attack'), ..._grp('movement'), ..._grp('spells'), ..._grp('other')]
+    : [..._grp('movement'), ..._grp('spells'), ..._grp('attack'), ..._grp('other')];
+
+  const blades = ordered.map((a, i) => {
+    const isObjAtk = !!(objCard && a.id === _objAtkId);
+    return {
+      id: 'ta:' + a.id + ':' + i,
+      icon: a.icon,
+      iconColor: a.category === 'attack' ? '#ff5340' : undefined,
+      label: a.label,
+      available: a.available,
+      spell: a.spell || (isObjAtk ? objCard : null),
+      catColor: a.spell ? (_HRLG_CAT[typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage'] || _HRLG_CAT.damage).color : undefined,
+      badges: a.spell ? _hrlgSpellBadges(a.spell, typeof classifySpell === 'function' ? classifySpell(a.spell) : 'damage', true) : undefined,
+      meta: (isObjAtk && objInfo.hpLabel) ? { text: objInfo.hpLabel, color: objInfo.enemy ? '#ee6655' : '#7fd67f' } : null,
+      mp: a.mpCost || null,
+      cost: a.available && a.apCost ? a.apCost : null,
+      sub: !a.available ? (a.reason || 'Unavailable') : null,
+      fire: () => {
+        hideSpellTooltip();
+        if (a.id === 'moveTowards') _clearMoveArrowPreview();
+        if (a.available && a.handler) a.handler();
+      },
+      hoverIn: (e) => {
+        if (a.spell) showSpellTooltip(a.spell, e);
+        else if (isObjAtk) showSpellTooltip(objCard, e);
+        if (a.id === 'moveTowards' && a.available) _showTileMoveTowardsPreview(actingUnit, a);
+      },
+      hoverOut: () => {
+        hideSpellTooltip();
+        if (a.id === 'moveTowards') _clearMoveArrowPreview();
+      },
+    };
+  });
+
+  // No attack row carries the card (your OWN turret/Cube/keg, or the attack
+  // row got filtered out) → lead with a pure identity row so clicking the
+  // object still tells you what it is. Inert on purpose — it's a card.
+  if (objCard && !ordered.some(a => a.id === _objAtkId)) {
+    blades.unshift({
+      id: 'objcard',
+      icon: objInfo.icon,
+      label: objInfo.name,
+      available: true,
+      spell: objCard,
+      meta: objInfo.hpLabel ? { text: objInfo.hpLabel, color: objInfo.enemy ? '#ee6655' : '#7fd67f' } : null,
+      fire: () => {},
+      hoverIn: (e) => showSpellTooltip(objCard, e),
+      hoverOut: () => hideSpellTooltip(),
+    });
+  }
   if (!blades.length) blades.push({ id: 'none', icon: '⬚', label: 'Nothing to do here', available: false });
 
-  const title = { node: h(React.Fragment, null,
-    h('span', { className: 'hrlg-view-tab-icon' }, '⬚'),
-    h('span', { className: 'hrlg-view-tab-text' }, tRule.label || terrain),
-    h('span', { className: 'hrlg-view-tab-count' }, posLabel + (height > 0 ? ' · h' + height : '') + ' · ' + dist + 't'),
-  ) };
+  // Object tiles headline the OBJECT (icon + name + HP), plain ground keeps
+  // the terrain readout.
+  const title = objInfo
+    ? { node: h(React.Fragment, null,
+        h('span', { className: 'hrlg-view-tab-icon', style: objInfo.enemy ? { color: '#ee6655' } : undefined }, objInfo.icon),
+        h('span', { className: 'hrlg-view-tab-text' }, objInfo.name),
+        h('span', { className: 'hrlg-view-tab-count' },
+          (objInfo.hpLabel ? objInfo.hpLabel + ' · ' : '') + posLabel + ' · ' + dist + 't'),
+      ) }
+    : { node: h(React.Fragment, null,
+        h('span', { className: 'hrlg-view-tab-icon' }, '⬚'),
+        h('span', { className: 'hrlg-view-tab-text' }, tRule.label || terrain),
+        h('span', { className: 'hrlg-view-tab-count' }, posLabel + (height > 0 ? ' · h' + height : '') + ' · ' + dist + 't'),
+      ) };
   return { title, blades };
 }
 
@@ -6925,7 +7088,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     if (turret) {
       const canAtk = inRange && !losBlocked;
       actions.push({
-        id: 'attack:turret', label: 'Attack Turret', icon: '⚔', category: 'attack',
+        id: 'attack:turret', label: 'Attack ' + _turretDisplayName(turret), icon: '⚔', category: 'attack',
         apCost: 1, available: canAtk, reason: canAtk ? '' : (losBlocked ? 'No LOS' : 'Out of range'),
         handler: canAtk ? () => {
           state._tileActionTarget = null;
@@ -7122,6 +7285,21 @@ function _renderSpellDescBar() {
   _descBarShown = sp;
   const el = _ensureDescBarEl();
   if (!sp || !sp.name) { el.classList.remove('show'); return; }
+
+  // Object identity cards (tile quick menu: turret / Cube / deployed
+  // structure / seed) — name, HP and what-it-does only. The spell
+  // fine-print machinery below would invent MP/AP costs and a "Self-cast"
+  // range the object doesn't have.
+  if (sp._objectCard) {
+    el.innerHTML =
+      '<div class="ew-descbar-inner">' +
+        '<span class="ew-descbar-name">' + (sp.name || '') + '</span>' +
+        (sp._hpLine ? '<span class="ew-descbar-stats">' + sp._hpLine + '</span>' : '') +
+        (sp.desc ? '<span class="ew-descbar-desc">' + sp.desc + '</span>' : '') +
+      '</div>';
+    el.classList.add('show');
+    return;
+  }
 
   const tc = TYPE_COLORS[(sp.spellType || '').toLowerCase()] || EW.inkMute;
   const tcText = TYPE_TEXT_COLORS[(sp.spellType || '').toLowerCase()] || tc;

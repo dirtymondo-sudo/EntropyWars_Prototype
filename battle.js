@@ -37352,27 +37352,12 @@
                     return;
                 }
 
-                if (canControl && !clickedUnit && state._deployedObjects) {
-                    const _clickedDeploy = state._deployedObjects.find(o => o.x === x && o.y === y && o.hp > 0 && o.ownerPlayer !== actingUnit.player);
-                    if (_clickedDeploy) {
-                        const dDist = Math.abs(actingUnit.x - x) + Math.abs(actingUnit.y - y);
-                        const dRange = getEffectiveRange(actingUnit);
-                        if (dDist >= 1 && dDist <= dRange && !isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, x, y, actingUnit.z)) {
-                            return doAttack(actingUnit, x, y);
-                        }
-
-                        state._enemyActionTargetId = null;
-                        if (state._tileActionTarget && state._tileActionTarget.x === x && state._tileActionTarget.y === y) {
-                            state._tileActionTarget = null;
-                        } else {
-                            state._tileActionTarget = { x, y, z: state._clickedZ };
-                        }
-                        playSfx('uiCursorFocus');
-                        markDirty('hud');
-                        renderIfDirty();
-                        return;
-                    }
-                }
+                /* Clicking an enemy deployable used to attack it INSTANTLY when in
+                   range — no menu, no info, and one stray click could waste the AP.
+                   Deployables now behave like every other object tile (turret /
+                   Cube / seed): the click falls through to the tile quick menu
+                   below, which leads with the object's identity card + a one-click
+                   Attack row on top (_hrlgTileBlades / _tileQuickObjectInfo, hud.js). */
 
                 if (!clickedUnit) {
                     state._enemyActionTargetId = null;
