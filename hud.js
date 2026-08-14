@@ -6623,6 +6623,37 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
     return { kind: 'seed', name, icon: '🌱', enemy, hp: null, maxHp: null, hpLabel: null, desc };
   }
 
+  // 🌳 Grown aura trees (Healing / Toxin / Leech) — checked BEFORE plain
+  // trees so the sprouted grove reads as what it is, not scenery.
+  const pt = (s.plantedTrees || []).find(q => q.x === tx && q.y === ty);
+  if (pt) {
+    const enemy = actingUnit ? pt.owner !== actingUnit.player : false;
+    const name = (typeof _auraTreeName === 'function') ? _auraTreeName(pt.aura)
+      : (pt.aura === 'poison' ? 'Toxin Tree' : pt.aura === 'leech' ? 'Leech Tree' : 'Healing Tree');
+    const desc = (pt.aura === 'poison'
+      ? 'A grown Toxin Tree — its aura poisons nearby units every round'
+      : pt.aura === 'leech'
+        ? 'A grown Leech Tree — its aura drains HP from nearby units every round'
+        : 'A grown Healing Tree — its aura restores nearby units every round')
+      + ', and its planter fights harder while their grove stands. One chop fells it.';
+    return { kind: 'tree', name, icon: '🌳', enemy, hp: null, maxHp: null, hpLabel: null, desc };
+  }
+
+  // 🌲 Plain trees / forest — choppable by anyone with a basic attack. A
+  // standalone tree OBJECT blocks the tile and gets the full object-first
+  // treatment; walkable forest TERRAIN is first and foremost ground you can
+  // move into, so its card is `soft`: the chop row rides just under the
+  // movement rows and the view tab keeps the terrain readout.
+  if (typeof _tileHasTree === 'function' && _tileHasTree(tx, ty)) {
+    const _treeObj = (typeof getObjectAt === 'function') ? getObjectAt(tx, ty) : null;
+    const isObjTree = !!(_treeObj && /^tree/.test(_treeObj));
+    return {
+      kind: 'tree', name: 'Tree', icon: '🌲', enemy: false, hp: null, maxHp: null, hpLabel: null,
+      soft: !isObjTree,
+      desc: 'A fellable tree. Chopping it banks 1 lumber and 1 wood for your team and clears the cover it provides. One chop fells it.',
+    };
+  }
+
   return null;
 }
 
@@ -6660,17 +6691,21 @@ function _hrlgTileBlades(actingUnit, st) {
   const objCard = objInfo ? _objCardSpell(objInfo, tx, ty) : null;
   // which attack row is ABOUT the featured object (carries its card + HP)
   const _objAtkId = objInfo
-    ? ({ tower: 'attack:tower', turret: 'attack:turret', deploy: 'attack:deploy', seed: 'attack:seed' })[objInfo.kind]
+    ? ({ tower: 'attack:tower', turret: 'attack:turret', deploy: 'attack:deploy', seed: 'attack:seed', tree: 'attack:tree' })[objInfo.kind]
     : null;
 
   const _availFirst = (a, b) => (a.available ? 0 : 1) - (b.available ? 0 : 1);
   const _grp = (cat) => actions.filter(a => cat === 'other'
     ? (a.category === 'actions' || a.category === 'utility')
     : a.category === cat).sort(_availFirst);
-  const ordered = objInfo
+  const ordered = (objInfo && !objInfo.soft)
     // object tile → the object IS the menu's subject: attack leads
     ? [..._grp('attack'), ..._grp('movement'), ..._grp('spells'), ..._grp('other')]
-    : [..._grp('movement'), ..._grp('spells'), ..._grp('attack'), ..._grp('other')];
+    : objInfo
+      // soft card (walkable forest): moving in stays primary, chop rides
+      // directly under it — never buried beneath the spell rows
+      ? [..._grp('movement'), ..._grp('attack'), ..._grp('spells'), ..._grp('other')]
+      : [..._grp('movement'), ..._grp('spells'), ..._grp('attack'), ..._grp('other')];
 
   const blades = ordered.map((a, i) => {
     const isObjAtk = !!(objCard && a.id === _objAtkId);
@@ -6707,7 +6742,9 @@ function _hrlgTileBlades(actingUnit, st) {
   // No attack row carries the card (your OWN turret/Cube/keg, or the attack
   // row got filtered out) → lead with a pure identity row so clicking the
   // object still tells you what it is. Inert on purpose — it's a card.
-  if (objCard && !ordered.some(a => a.id === _objAtkId)) {
+  // Soft cards (walkable forest) skip this: without a chop row the tile is
+  // just ground, and a "Tree" row above "Move here" would be in the way.
+  if (objCard && !objInfo.soft && !ordered.some(a => a.id === _objAtkId)) {
     blades.unshift({
       id: 'objcard',
       icon: objInfo.icon,
@@ -6722,9 +6759,10 @@ function _hrlgTileBlades(actingUnit, st) {
   }
   if (!blades.length) blades.push({ id: 'none', icon: '⬚', label: 'Nothing to do here', available: false });
 
-  // Object tiles headline the OBJECT (icon + name + HP), plain ground keeps
-  // the terrain readout.
-  const title = objInfo
+  // Object tiles headline the OBJECT (icon + name + HP); plain ground — and
+  // walkable forest, where the tile is still mainly ground — keep the
+  // terrain readout.
+  const title = (objInfo && !objInfo.soft)
     ? { node: h(React.Fragment, null,
         h('span', { className: 'hrlg-view-tab-icon', style: objInfo.enemy ? { color: '#ee6655' } : undefined }, objInfo.icon),
         h('span', { className: 'hrlg-view-tab-text' }, objInfo.name),
