@@ -4,7 +4,51 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## ⚔ MELEE STRIKE-APPROACH: run/jump in, swing, hop back (2026-08-12, LATEST) — three-renderer.js, battle.js, online.js
+## 🔬 AUTO-SIM FREEZE FIX + SIM VISUAL DEFAULTS (2026-08-14, LATEST) — battle.js, map.js, online.js
+
+User report: "Balance Lab auto sim crashes after a few matches — freezes on a
+new match", plus having to manually turn off camera follow + animations every
+sim run. Root cause class: the between-match chain (finalizeMatch →
+POST_MATCH → restartDevSimFromBuilder → randomize → applyPartyBuild →
+startMatch → VS-splash/intro-cinematic → beginBlitzRound) is a long
+event-driven chain with NO watchdog outside a live battle — the 15s
+no-active-unit watchdog bails when `state.winner` is set or `phase !==
+'battle'`, and the restart chain's catch blocks logged the error and gave up.
+Worst link: with sim animations ON, every auto-sim match played the FULL
+opening cinematic (`showVSSplash` → `playOpeningCinematic`) at x64 turbo; any
+dropped completion callback = new match never boots = frozen fresh board.
+Also: `applyPartyBuild(false)`/`startMatch` fail SILENTLY (no throw) when
+`validateBuilderLoadouts` rejects a randomized loadout. Fixes (battle.js):
+
+- **`_applySimVisualDefaults()` / `_restoreSimVisualDefaults()`**: every sim
+  entry (the three Settings→Developer launchers in map.js `_selectMode`, and
+  `setDevAutoSim(true)`) forces `cameraDisabled=true`,
+  `animationsDisabled=true`, `_devSimShowAnims=false` and unchecks the
+  settings checkboxes; pre-sim prefs are saved in `state._preSimVisualPrefs`
+  (added to online.js `_serializeState` skip list, as is `_devSimShowAnims`)
+  and restored by `setDevAutoSim(false)`, `resetGame`, and `_selectMode` of
+  any non-sim mode. Checkboxes can still re-enable visuals mid-sim.
+- **`showVSSplash` skips entirely when `state.devAutoSim`** — sims never play
+  the intro cinematic/VS card even with anims re-enabled.
+- **finalizeMatch sim telemetry wrapped in try/catch** — a
+  record*/renderDashboard throw used to leave `_finalizing` latched true,
+  making every later finalizeMatch a no-op (sim parks forever).
+- **`_devSimRetryRestart()`**: every catch in `restartDevSimFromBuilder`, and
+  the silent `applyPartyBuild === false` case, now re-roll + retry with
+  backoff (gives up loudly after 8 consecutive failures via setDevAutoSim(false)).
+- **AUTO-SIM LIMBO WATCHDOG** (setInterval 3s, next to the no-active-unit
+  watchdog): devAutoSim on + NOT in a live winnerless battle + no
+  devSimTimer + state signature frozen 12s ⇒ clears `_finalizing`, forces
+  `restartDevSimFromBuilder(50)`. Catch-all for any dropped between-match
+  callback, incl. cinematic wedges when the user re-enables anims.
+
+Verified headless (Playwright + local file routing): Balance Lab with new
+defaults launches with cam off/anims off and runs matches back-to-back.
+Playwright-through-proxy note: chromium can't do the agent-proxy TLS; route
+`cdn.entropywars.net/*` to local repo files + curl-cache other CDNs (see
+session scratchpad repro-balance.js pattern).
+
+## ⚔ MELEE STRIKE-APPROACH: run/jump in, swing, hop back (2026-08-12) — three-renderer.js, battle.js, online.js
 
 The "little lunge" is obsolete for rigged models: contact strikes now RUN to
 the target (JUMPING up/down when elevations differ), swing the real clip at

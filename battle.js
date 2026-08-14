@@ -25016,6 +25016,46 @@
             render();
         }
 
+        /* Sim-mode visual defaults: every auto-sim (manual Dev Sim, AI
+           Training, Balance Lab, Strength Test) starts with the follow
+           camera and animations OFF — at turbo speeds the camera whipping
+           between AI units is pure noise, and the user shouldn't have to
+           dig into settings every run. The pre-sim preferences are restored
+           when the sim ends; the settings checkboxes can still re-enable
+           either one mid-sim. */
+        function _applySimVisualDefaults() {
+            if (state._preSimVisualPrefs == null) {
+                state._preSimVisualPrefs = {
+                    cameraDisabled: !!state.cameraDisabled,
+                    animationsDisabled: !!state.animationsDisabled,
+                };
+            }
+            state.cameraDisabled = true;
+            state.animationsDisabled = true;
+            state._devSimShowAnims = false;
+            ['cameraToggleBuilder', 'cameraToggleBuilder2', 'cameraToggleBattle',
+             'animToggleBuilder', 'animToggleBuilder2', 'animToggleBattle'].forEach(id => {
+                const cb = document.getElementById(id);
+                if (cb) cb.checked = false;
+            });
+        }
+
+        function _restoreSimVisualDefaults() {
+            const saved = state._preSimVisualPrefs;
+            if (!saved) return;
+            state._preSimVisualPrefs = null;
+            state.cameraDisabled = !!saved.cameraDisabled;
+            state.animationsDisabled = !!saved.animationsDisabled;
+            ['cameraToggleBuilder', 'cameraToggleBuilder2', 'cameraToggleBattle'].forEach(id => {
+                const cb = document.getElementById(id);
+                if (cb) cb.checked = !state.cameraDisabled;
+            });
+            ['animToggleBuilder', 'animToggleBuilder2', 'animToggleBattle'].forEach(id => {
+                const cb = document.getElementById(id);
+                if (cb) cb.checked = !state.animationsDisabled;
+            });
+        }
+
         function setDevAutoSim(enabled) {
             if (isOnlineMatch() && enabled) return;
             state.devAutoSim = !!enabled;
@@ -25025,7 +25065,7 @@
             }
             if (state.devAutoSim) {
 
-                state._devSimShowAnims = false;
+                _applySimVisualDefaults();
 
                 state._preDevSimControllers = {
                     ...state.controllers
@@ -25034,6 +25074,7 @@
                 state.controllers[2] = CTRL.AI;
             } else if (state._preDevSimControllers) {
                 state._devSimShowAnims = false;
+                _restoreSimVisualDefaults();
 
                 state.controllers[1] = state._preDevSimControllers[1] || CTRL.LOCAL;
                 state.controllers[2] = state._preDevSimControllers[2] || CTRL.AI;
@@ -25120,23 +25161,56 @@
                     window.setTimeout(() => {
                         if (!state.devAutoSim) return;
                         try {
-                            applyPartyBuild(false);
+                            /* applyPartyBuild/startMatch fail SILENTLY on an
+                               invalid loadout (validateBuilderLoadouts returns
+                               false, no throw) — treat that like a crash and
+                               re-roll, or the sim parks in the builder. */
+                            if (applyPartyBuild(false) === false) {
+                                console.warn('Dev auto-sim: randomized builds failed validation — re-rolling.');
+                                _devSimRetryRestart();
+                                return;
+                            }
                             window.setTimeout(() => {
                                 if (!state.devAutoSim) return;
                                 try {
                                     startMatch();
+                                    _devSimRestartFails = 0;
                                 } catch (err) {
                                     console.error('Dev auto-sim failed to start the match from builder.', err);
+                                    _devSimRetryRestart();
                                 }
                             }, 35);
                         } catch (err) {
                             console.error('Dev auto-sim failed to apply builds from builder.', err);
+                            _devSimRetryRestart();
                         }
                     }, 35);
                 } catch (err) {
                     console.error('Dev auto-sim failed to restart from builder.', err);
+                    _devSimRetryRestart();
                 }
             }, queuedDelay);
+        }
+
+        /* Auto-sim self-heal: an exception anywhere in the between-match
+           restart chain used to log once and end the run — the sim just sat
+           on a frozen builder/board forever. Retrying re-rolls the teams
+           (and, in Balance Lab, rotates the map), so a poisoned
+           team/map/loadout combination cannot wedge the loop. Backs off and
+           gives up loudly only after several consecutive failures. */
+        let _devSimRestartFails = 0;
+        function _devSimRetryRestart() {
+            if (!state.devAutoSim) return;
+            _devSimRestartFails++;
+            if (_devSimRestartFails > 8) {
+                addLog('Auto-sim stopped: 8 consecutive restart failures — see console for the error.');
+                console.error('Dev auto-sim giving up after 8 consecutive restart failures.');
+                setDevAutoSim(false);
+                return;
+            }
+            const backoff = Math.min(4000, 500 * _devSimRestartFails);
+            console.warn(`Dev auto-sim retrying restart (attempt ${_devSimRestartFails}) in ${backoff}ms.`);
+            restartDevSimFromBuilder(backoff);
         }
 
         function toggleDevAutoSim() {
@@ -28427,19 +28501,28 @@
             clearAiSafetyTimer();
             recordCompletedMatch();
 
-            if (_aiTrainingMode && state.winner != null) {
-                recordTrainingMatch(state.winner);
-                renderTrainingDashboard();
-            }
+            /* Sim telemetry must never kill the match-end sequence: an
+               exception here used to leave _finalizing latched true, which
+               silently parked the auto-sim forever (finalizeMatch becomes a
+               no-op, no new match is ever queued). Record/render errors are
+               logged and the loop carries on. */
+            try {
+                if (_aiTrainingMode && state.winner != null) {
+                    recordTrainingMatch(state.winner);
+                    renderTrainingDashboard();
+                }
 
-            if (_balanceSimMode && state.winner != null) {
-                recordBalanceMatch();
-                renderBalanceDashboard();
-            }
+                if (_balanceSimMode && state.winner != null) {
+                    recordBalanceMatch();
+                    renderBalanceDashboard();
+                }
 
-            if (_strengthTestMode && state.winner != null) {
-                recordStrengthMatch(state.winner);
-                renderStrengthDashboard();
+                if (_strengthTestMode && state.winner != null) {
+                    recordStrengthMatch(state.winner);
+                    renderStrengthDashboard();
+                }
+            } catch (err) {
+                console.error('Sim telemetry failed at match end (continuing):', err);
             }
 
             // Auto-export raw match logs for offline analysis — Balance Lab
@@ -29229,6 +29312,7 @@
             state.selectedPanelFlash = null;
 
             state.devAutoSim = false;
+            _restoreSimVisualDefaults();
             if (state.devSimTimer) {
                 clearTimeout(state.devSimTimer);
                 state.devSimTimer = null;
@@ -30474,6 +30558,15 @@
         window.playOpeningCinematic = playOpeningCinematic;
 
         function showVSSplash(onDone) {
+
+            /* Auto-sim (AI Training / Balance Lab / Strength Test / manual
+               Dev Sim) NEVER plays the intro cinematic or VS card — even when
+               the user re-enables battle animations mid-sim. At turbo speeds
+               the per-match opening cinematic was both pure wasted wall-clock
+               and the least reliable link in the match-boot chain: if its
+               completion callback dropped, the new match never started and
+               the sim froze on the fresh board. */
+            if (state.devAutoSim) { if (onDone) onDone(); return; }
 
             if (_skipVisuals()) { if (onDone) onDone(); return; }
 
@@ -32806,6 +32899,49 @@
                 maybeAdvanceTurn();
             } catch (e) { /* the watchdog must never throw */ }
         }, 2000);
+
+        /* ── AUTO-SIM LIMBO WATCHDOG ─────────────────────────────────────────
+           The watchdog above only covers a live battle (it bails on a set
+           winner / non-battle phase), and the AI safety timer only covers an
+           active unit. That left the auto-sim's between-match hops with NO
+           recovery at all: if the finalize → post-match → builder →
+           startMatch chain is ever dropped (an exception in match-end
+           bookkeeping, a failed restart), the sim parks forever on a frozen
+           screen — the exact "auto sim freezes on a new match" report. This
+           one watches for the sim sitting outside a live battle with no
+           restart timer pending and no state movement, and forces the next
+           match (restartDevSimFromBuilder re-rolls teams, so a poisoned
+           combination can't wedge it twice). */
+        let _simLimboSig = '';
+        let _simLimboSince = 0;
+        setInterval(function _devSimLimboWatchdog() {
+            try {
+                if (!state || !state.devAutoSim) { _simLimboSince = 0; return; }
+                if (typeof document !== 'undefined' && document.hidden) { _simLimboSince = 0; return; }
+                const inLiveBattle = state.phase === 'battle'
+                    && state.gameState !== GS.POST_MATCH && state.winner == null;
+                const sig = [state.gameState, state.phase, state.round, state.matchNumber,
+                    state._blitzActiveUnitId || '', state.winner == null ? 'w-' : state.winner,
+                    state.devSimTimer ? 't1' : 't0'].join('|');
+                if (inLiveBattle || state.devSimTimer || sig !== _simLimboSig) {
+                    _simLimboSig = sig;
+                    _simLimboSince = 0;
+                    return;
+                }
+                const now = Date.now();
+                if (!_simLimboSince) { _simLimboSince = now; return; }
+                if (now - _simLimboSince < 12000) return;
+                console.warn('[SIM WATCHDOG] Auto-sim stalled outside a live battle for 12s — forcing the next match.',
+                    { gameState: state.gameState, phase: state.phase, winner: state.winner, finalizing: _finalizing });
+                _simLimboSince = 0;
+                _finalizing = false;
+                state._actionExecuting = false;
+                state.aiThinking = false;
+                state.winner = null;
+                state._winLogged = false;
+                restartDevSimFromBuilder(50);
+            } catch (e) { /* the watchdog must never throw */ }
+        }, 3000);
 
         function _continueBlitzWithUnit(nextUnit) {
                 if (state.winner) return;

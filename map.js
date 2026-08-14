@@ -1855,6 +1855,9 @@
                 _aiTrainingMode = false;
                 _balanceSimMode = false;
                 _strengthTestMode = false;
+                // Leaving sim land: give the user back their camera/animation
+                // preferences (the sim launchers force both off by default).
+                if (typeof _restoreSimVisualDefaults === 'function') _restoreSimVisualDefaults();
             }
 
             if (mode === 'aitrain') {
@@ -1868,6 +1871,7 @@
                 _strengthTestMode = false;
                 state.devAutoSim = true;
                 state.devSimSpeed = 16;   // turbo: renderer + waits are gated in dev-sim
+                _applySimVisualDefaults();  // camera follow + anims OFF by default in sims
 
                 activeMultiplayerMode = _trainModeSetting;
 
@@ -1910,6 +1914,7 @@
                 _strengthTestMode = false;
                 state.devAutoSim = true;
                 state.devSimSpeed = 16;   // turbo: renderer + waits are gated in dev-sim
+                _applySimVisualDefaults();  // camera follow + anims OFF by default in sims
 
                 activeMultiplayerMode = _trainModeSetting;
 
@@ -1954,6 +1959,7 @@
                 _strengthTestMode = true;
                 state.devAutoSim = true;
                 state.devSimSpeed = 16;
+                _applySimVisualDefaults();  // camera follow + anims OFF by default in sims
 
                 activeMultiplayerMode = _trainModeSetting;
 

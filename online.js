@@ -3835,6 +3835,8 @@
                     devAutoSim: 1,
                     devSimTimer: 1,
                     devSimSpeed: 1,
+                    _devSimShowAnims: 1,
+                    _preSimVisualPrefs: 1,
 
                     _fogAnchorUnitId: 1,
                     _fogRevealTiles: 1,
