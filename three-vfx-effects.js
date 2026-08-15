@@ -10030,6 +10030,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         tarot2:      { file: 'Meshy_AI_tarot_card_realistic_0725071340_texture.glb',        axis: 'y' },
         tarotDeck:   { file: 'Meshy_AI_tarot_card_deck_real_0725070146_texture.glb',        axis: 'y' },
         cross:       { file: 'Meshy_AI_wooden_cross_realist_0725070928_texture.glb',        axis: 'y' },
+        /* 2026-08-15: the Triangle UFO already living in Assets/misc (the
+           horizon decoration batch) doubles as the gameplay saucer — GLB-
+           first hull in _sigBuildUFO, procedural saucer stays the fallback.
+           axis 'flat': upright, sized by horizontal FOOTPRINT (it's a wide
+           flat craft — height-normalizing would blow it up huge). */
+        ufo:         { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb',
+                       axis: 'flat' },
     };
     var _wpnCache = {};   /* key → { root, size, center, loading, failed } */
 
@@ -10046,7 +10053,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (e) return e;
         e = _wpnCache[key] = { root: null, size: null, center: null, loading: true, failed: false };
         try {
-            new THREE.GLTFLoader().load(_WPN_BASE + def.file, function (gltf) {
+            /* def.url = absolute override for props living outside the
+               weapons folder (the misc-bucket UFO) */
+            new THREE.GLTFLoader().load(def.url || (_WPN_BASE + def.file), function (gltf) {
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
                 if (!root) { e.loading = false; e.failed = true; return; }
                 root.traverse(function (n) {
@@ -10107,6 +10116,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (want === 'y') {
             /* keep upright, scale by height */
             normLen = sz.y || 1;
+        } else if (want === 'flat') {
+            /* keep upright, scale by horizontal FOOTPRINT (saucers, wide
+               flat craft — height would be the wrong yardstick) */
+            normLen = Math.max(sz.x, sz.z) || 1;
         } else {
             /* swing the measured LONG axis onto +Z */
             var longAxis = (sz.x >= sz.y && sz.x >= sz.z) ? 'x' : (sz.y >= sz.z ? 'y' : 'z');
@@ -13674,6 +13687,49 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _sigBuildUFO(radiusPx) {
         var group = new THREE.Group();
 
+        /* GLB-first (2026-08-15): the misc-bucket Triangle UFO is the hull
+           when cached; the procedural lathe saucer below stays the cold-
+           cache fallback. The running-light ring + under-glow are kept as
+           procedural accents around the model, and hullMat becomes a proxy
+           whose .opacity writes drive the GLB's fade — so the three flight
+           rigs (_sigUFO3D / _sigUFOHold3D / _sigUFOFleet3D) animate both
+           builds through the exact same contract. */
+        if (_wpnReady('ufo')) {
+            var inst = _wpnInstance('ufo', 2);   /* footprint 2 = radius 1, like the lathe hull */
+            if (inst) {
+                group.add(inst.group);
+                var lightsG = [];
+                for (var li = 0; li < 10; li++) {
+                    var lmG = _sigMat(0xaaffcc);
+                    var liteG = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 6), lmG);
+                    var aG = li * Math.PI * 2 / 10;
+                    liteG.position.set(Math.cos(aG) * 0.88, -0.02, Math.sin(aG) * 0.88);
+                    liteG.renderOrder = 162;
+                    group.add(liteG);
+                    lightsG.push(lmG);
+                }
+                var glowMatG = _sigMat(0x66ff99, { map: _sigGlowTex() });
+                var glowG = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), glowMatG);
+                glowG.rotation.x = -Math.PI / 2;
+                glowG.position.y = -0.17;
+                glowG.scale.set(0.8, 0.8, 0.8);
+                glowG.renderOrder = 159;
+                group.add(glowG);
+                group.scale.set(radiusPx, radiusPx, radiusPx);
+                inst.setFade(1);
+                var hullProxy = {
+                    _o: 1,
+                    get opacity() { return this._o; },
+                    set opacity(v) { this._o = v; inst.setFade(v); },
+                };
+                return {
+                    group: group, lights: lightsG,
+                    hullMat: hullProxy, rimMat: { opacity: 0 },
+                    domeMat: { opacity: 0 }, glowMat: glowMatG,
+                };
+            }
+        }
+
         var pts = [
             new THREE.Vector2(0.0, -0.16),
             new THREE.Vector2(0.35, -0.14),
@@ -13730,6 +13786,79 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             group: group, lights: lights,
             hullMat: hullMat, rimMat: rimMat, domeMat: domeMat, glowMat: glowMat,
         };
+    }
+
+    /* ── WALK THE PLANK — a wood_planks.png springboard juts out over the
+       erupting deep-water tile, springs twice under an invisible last step,
+       and withdraws. No model needed: one edge-anchored rectangular prism
+       clad in the terrain sprite. Fires through the wall intent's
+       _spell3DGeometry hook, so it's relayed online for free. ──────────── */
+    function _sigPlank3D(tx, ty, opts) {
+        opts = opts || {};
+        var scene = _getVFXScene(); if (!scene) return;
+        var wp = _worldPos(tx, ty);
+        var ts = wp.ts;
+        var len = ts * (opts.lenTiles || 1.35);
+        var wid = ts * 0.30, thick = ts * 0.055;
+
+        /* extend along screen-right so the board always reads it side-on
+           (same trick as the jet flyover / saucer entries) */
+        var rt = _camRightBoardDir();
+        var sgn = Math.random() < 0.5 ? 1 : -1;
+        var dvx = rt.x * sgn, dvy = rt.y * sgn;
+
+        var pivot = new THREE.Group();
+        pivot.position.set(wp.x - dvx * ts * 0.62, wp.y + ts * 0.45, wp.z - dvy * ts * 0.62);
+        pivot.rotation.y = Math.atan2(dvx, dvy);
+
+        var woodMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('wood_planks.png', 1, 2),
+            color: new THREE.Color(0xa98a5e),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        /* origin at the anchored end so scale.z EXTENDS it outward */
+        var boardGeo = new THREE.BoxGeometry(wid, thick, len);
+        boardGeo.translate(0, 0, len / 2);
+        var board = new THREE.Mesh(boardGeo, woodMat);
+        board.renderOrder = 160;
+        pivot.add(board);
+        /* iron strap at the anchored end */
+        var strapMat = new THREE.MeshBasicMaterial({
+            map: _sigTerrainTex('gunmetal.png', 1, 1),
+            color: new THREE.Color(0x8b929e),
+            transparent: true, opacity: 0, depthWrite: true,
+        });
+        var strap = new THREE.Mesh(
+            new THREE.BoxGeometry(wid * 1.12, thick * 1.5, ts * 0.07), strapMat);
+        strap.position.z = ts * 0.05;
+        strap.renderOrder = 161;
+        pivot.add(strap);
+
+        var extendMs = opts.extendMs != null ? opts.extendMs : 280;
+        var holdMs = opts.holdMs != null ? opts.holdMs : 1250;
+        var retractMs = opts.retractMs != null ? opts.retractMs : 420;
+        var total = extendMs + holdMs + retractMs;
+
+        _sigRun(pivot, total, function (el) {
+            if (el < extendMs) {
+                var t = el / extendMs;
+                board.scale.z = Math.max(0.01, _sigEaseOutBack(t));
+                woodMat.opacity = Math.min(1, t * 2);
+                strapMat.opacity = Math.min(1, t * 2);
+                pivot.rotation.x = 0;
+            } else if (el < extendMs + holdMs) {
+                board.scale.z = 1;
+                woodMat.opacity = 1; strapMat.opacity = 1;
+                /* damped springboard bounce — the last step off the end */
+                var bt = (el - extendMs) / 1000;
+                pivot.rotation.x = 0.14 * Math.sin(bt * Math.PI * 3.2) * Math.exp(-bt * 2.2);
+            } else {
+                var t3 = (el - extendMs - holdMs) / retractMs;
+                board.scale.z = Math.max(0.01, 1 - t3);
+                woodMat.opacity = 1 - t3;
+                strapMat.opacity = 1 - t3;
+            }
+        });
     }
 
     /* ── HERO: saucer flight sequence — swoops in banking, hovers with
@@ -18413,6 +18542,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* Whirlpool's real spell id is raceRiptide (data.js) — the old
            'raceWhirlpool' key never matched, so the vortex never fired */
         raceRiptide:         function(tx, ty, r) { _spawnWhirlpool3D(tx, ty, r); },
+        /* Walk the Plank (#29): the plank springboard over the deep-water
+           eruption — fires via the wall intent's geometry hook */
+        raceWalkThePlank:    function(tx, ty) { _sigPlank3D(tx, ty, {}); },
 
         raceDustDevil:       function(tx, ty, r) { _spawnDustDevil3D(tx, ty, r); },
 

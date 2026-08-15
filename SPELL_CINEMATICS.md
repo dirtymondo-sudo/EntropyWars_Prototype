@@ -821,13 +821,21 @@ builds that already read fine. What's still MISSING, in priority order
 | **Frog** (tiny, rigged or static) | #49 Polymorph — the whole gag is the model swap | One shared frog for every race; static is fine (hop = scale-bounce) |
 | **Ice crystal shell / lattice** | #2 Absolute Zero pre-shatter hold; Permafrost flavor | A jagged translucent shell that can scale up around a unit; static |
 | **Golden balance scale** | #37 Weigh the Heart — the player reads damage off the prop | Two-pan scale, pans as separate nodes so they can tip |
-| **Wooden plank** | #29 Walk the Plank execute | Static board; extends from the victim's tile edge |
 | **Ejection seat + parachute** | #22 Eject! | Seat + canopy chute (two files ok); cartoon proportions welcome |
 | **Stone jaw / fanged maw** (per-tile) | #56 Hellmouth's tooth-by-tooth unzip | One tileable jaw prop, instanced per tile |
 | **Scroll / contract parchment** | #60 Contract, Naughty List second pass | Rolled + unrolled states (or just unrolled) |
 | **Meteor rock** (cratered, fiery) | #9 Meteor payload upgrade | Currently a procedural sphere; a real scorched rock reads bigger |
 | **Coal lump** | #68/70 Lump of Coal deluxe | OPTIONAL now — the coal-styled boulder shipped 2026-08-15 |
-| **UFO saucer** | #16 Abduction Beam, War of the Worlds fleet | OPTIONAL — procedural saucer exists; a textured one would pop |
+
+Handled with EXISTING assets (2026-08-15, no new models needed):
+- **UFO** — the Triangle UFO already in `Assets/misc/` is now the GLB-first
+  hull for every saucer rig (`_sigBuildUFO`: abduction beam, probe, crop
+  circle, War of the Worlds fleet); the procedural lathe saucer stays the
+  cold-cache fallback.
+- **Wooden plank** (#29 Walk the Plank) — a `wood_planks.png`-clad
+  rectangular prism (`_sigPlank3D`): edge-anchored springboard that extends
+  over the deep-water eruption, bounces twice, withdraws. Fires through the
+  wall intent's geometry hook, so it relays online for free.
 
 Animation clips still wanted (consolidate into the MAL library, never
 per-character): `castCharge` hands-cupped charge (#13 Ki Wave), `howl` head
