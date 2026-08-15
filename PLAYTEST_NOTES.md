@@ -345,6 +345,44 @@ alertness — never how FAR a unit sees).
   (max 8) + roster sort; in-battle quick-menu stat grid gained an AWR cell;
   `STAT_HELP.awr` (data.js) is the hover text everywhere.
 
+## 🎬 SPELL CINEMATICS v1.1 fix pass (2026-08-15) — battle.js, three-vfx-effects.js, online.js
+
+Six user-reported issues, root causes worth remembering:
+- **Whirlpool never fired**: `_spell3DGeometry` was keyed `raceWhirlpool` but
+  the spell id is `raceRiptide` (name "Whirlpool", data.js). Lesson: geometry
+  map keys are SPELL IDS, not names — verify with data.js before wiring.
+  The effect itself was rebuilt from three flat tori into a real vortex
+  (inverted funnel shells w/ differential shear + foam ring + spray).
+- **Descent-spell bespoke timing**: `timings.travelMs` is the GENERIC travel
+  (260–600ms); a descent spell really lands at `shotOpts.impactMs`
+  (sourceHold + telegraph + descent, ~1.5s later). Meteor/Nuke god-shot &
+  whiteout fired early and read as a bug. Any future descent sequence must
+  key off `ctx.shotOpts.impactMs`. Also never schedule a camera move at
+  ~100ms — it fights the still-swooping beat-1 cast shot; ride
+  `_cineCutMs()` instead.
+- **"Gun appears at the target"**: playProjectile's fog clamp moved EVERY
+  enemy shot origin to 1.5 tiles off the victim, even when the shooter was
+  plainly visible — and the spectral gun/bow/cannon rigs anchor at the
+  (clamped) from-coords. Clamp now only applies when the shooter tile is
+  screen-hidden (`_isTileVisibleToViewer` + concealment), and a clamped
+  origin passes `hideGunRig` through the bolt params so no rig materializes
+  next to the victim.
+- **Place Bomb contact vs field**: contact placement (onto a grounded enemy)
+  now plays the full attack presentation — offensive action cam + overhand
+  toss (`proj-bomb` 3D prop) + detonation on arrival (damage delayed to
+  impact, still inside the press-collector window since finishAction runs at
+  completionDelay). Field placement stays quiet: focus dip, short lob onto
+  the tile, "💣 Armed" tag.
+- **Jet flew backwards / warhead upside-down**: the Meshy F-22 and missile
+  exports come in nose-BACKWARD like every Meshy gun — baked `ry: Math.PI`
+  tweaks in `_WPN_MODELS` (same fix as the firearms).
+- **Lump of Coal**: now a real 3D rock via `_BOULDER_SPELL_IDS` +
+  `_spawnBoulderProjectile3D` coal styling (near-black tint, inner ember
+  glow, soot/ember trail). `spawnBoulderProjectile3D` takes `(…, opts)` with
+  `{spellId}` now, and it + `spawnIceSpearProjectile3D` are relayed online
+  via `_VFXX_ANCHORS` (they were host-only before — guests only saw the
+  particle stream).
+
 ## 🎬 SPELL CINEMATICS v1 (2026-08-10) — battle.js, three-renderer.js, online.js, state.js, styles-cinematic.css, index.html
 
 Implements `SPELL_CINEMATICS.md`. The generic two-beat action shot is still

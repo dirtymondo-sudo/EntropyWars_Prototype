@@ -2144,6 +2144,12 @@
                 projectile:         [[0, 1], [2, 3]],
                 beam:               [[0, 1], [2, 3]],
                 aoe:                [[0, 1]],
+                /* real 3D rock / ice-spear projectiles (boulder hurl, lump of
+                   coal, ice lance…) — host-only before 2026-08-15, guests only
+                   got the particle stream. Trailing opts ({spellId}) is
+                   primitives-only, so the generic serializer carries it. */
+                spawnBoulderProjectile3D: [[0, 1], [2, 3]],
+                spawnIceSpearProjectile3D: [[0, 1], [2, 3]],
                 /* hand-authored 3D saucers called directly from battle.js
                    (host-only online): the War of the Worlds fleet and the
                    Probe's hovering craft. Args are (tx, ty, ...primitives),

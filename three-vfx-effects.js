@@ -4547,7 +4547,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            The cannon replaces the bolt entirely (it flies its own iron ball
            and detonates on landing); the guns are summoned alongside the
            bolt, which stays on as tracer + impact. ─────────────────────── */
-        if (spellId === 'raceCannonball') {
+        /* params.hideGunRig (battle.js playProjectile): the shooter is fog-
+           hidden, so the from-coords were CLAMPED next to the victim — a
+           summoned cannon/gun/bow materializing there looked like "the gun
+           appears right at the target" AND leaks that something fired from
+           the dark. Tracer + impact still play from the clamped origin. */
+        if (spellId === 'raceCannonball' && !params.hideGunRig) {
             try {
                 _sigCannonShot3D(fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs, aoeRadius: 1 });
                 return;
@@ -4569,10 +4574,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             } catch (e) { /* fall through to the generic bolt */ }
         }
         var _gunMuzzlePx = 0;
-        if (_SIG_GUN_FOR[spellId]) {
+        if (_SIG_GUN_FOR[spellId] && !params.hideGunRig) {
             try { _gunMuzzlePx = _sigGunRig3D(_SIG_GUN_FOR[spellId], fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs }) || 0; } catch (e) {}
         }
-        if (_SIG_BOW_FOR[spellId]) {
+        if (_SIG_BOW_FOR[spellId] && !params.hideGunRig) {
             try { _sigBowShot3D(fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs }); } catch (e) {}
         }
 
@@ -5956,92 +5961,131 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
 
     function _spawnWhirlpool3D(tx, ty, aoeRadius) {
+        /* 2026-08-15 rebuild: the old build was three flat spinning tori —
+           read as abstract rings, not water. Now a real watery VORTEX: an
+           inverted spiral funnel sunk into the ground (wide churning rim at
+           the surface, throat narrowing away below), three co-rotating
+           shells at different speeds for visible shear, a foam ring riding
+           the rim, expanding surface ripples, and spray droplets flung off
+           the rotation then dragged down the drain. */
         var scene = _getVFXScene();
         if (!scene) return;
 
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
         var footprint = (aoeRadius * 2 + 1) * ts;
-        var torusRadius = footprint * 0.45;
-        var tubeRadius = torusRadius * 0.25;
+        var rimR = footprint * 0.48;
+        var depth = ts * 1.05;
 
-        var torusGeo = new THREE.TorusGeometry(1, 0.25, 12, 32);
-        var matTorus = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(0x2288cc),
-            transparent: true, opacity: 0.0,
-            side: THREE.DoubleSide,
-            blending: THREE.NormalBlending,
-            depthWrite: false,
+        var group = new THREE.Group();
+        group.position.set(wp.x, wp.y + 3, wp.z);
+        scene.add(group);
+
+        /* funnel shells: open cones, wide rim UP at the surface, throat
+           sunk below ground. CylinderGeometry's axis is Y, so a plain
+           rotation.y is the swirl. */
+        function shell(rTop, rBot, h, yTop, color, opacityMax, blending, wireframe) {
+            var geo = new THREE.CylinderGeometry(rTop, rBot, h, 28, 6, true);
+            var mat = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(color),
+                transparent: true, opacity: 0,
+                side: THREE.DoubleSide,
+                blending: blending || THREE.NormalBlending,
+                wireframe: !!wireframe,
+                depthWrite: false,
+            });
+            var m = new THREE.Mesh(geo, mat);
+            m.position.y = yTop - h / 2;      /* rim at yTop, throat below */
+            m.renderOrder = 150;
+            m._omax = opacityMax;
+            group.add(m);
+            return m;
+        }
+        /* deep body → mid water → bright inner throat → foam-line wireframe */
+        var body  = shell(rimR,        rimR * 0.10, depth,        ts * 0.10, 0x1a5f9e, 0.42);
+        var mid   = shell(rimR * 0.80, rimR * 0.07, depth * 0.92, ts * 0.06, 0x2f8fd0, 0.34);
+        var core  = shell(rimR * 0.55, rimR * 0.05, depth * 0.85, ts * 0.02, 0x8fe0ff, 0.30, THREE.AdditiveBlending);
+        var lines = shell(rimR * 1.02, rimR * 0.08, depth,        ts * 0.12, 0xd8f4ff, 0.30, THREE.AdditiveBlending, true);
+
+        /* foam collar riding the rim */
+        var foamMat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0xeaf8ff), transparent: true, opacity: 0,
+            blending: THREE.AdditiveBlending, depthWrite: false,
         });
-        var torus = new THREE.Mesh(torusGeo, matTorus);
-        torus.scale.set(0.01, 0.01, 0.01);
-        torus.position.set(wp.x, wp.y + 4, wp.z);
-        torus.rotation.x = Math.PI * 0.5;
-        torus.renderOrder = 150;
-        scene.add(torus);
+        var foam = new THREE.Mesh(new THREE.TorusGeometry(rimR * 0.96, rimR * 0.055, 8, 36), foamMat);
+        foam.rotation.x = Math.PI * 0.5;
+        foam.position.y = ts * 0.10;
+        foam.renderOrder = 153;
+        group.add(foam);
 
-        var matInner = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(0x66ccff),
-            transparent: true, opacity: 0.0,
-            side: THREE.DoubleSide,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-        });
-        var torusInner = new THREE.Mesh(torusGeo, matInner);
-        torusInner.scale.set(0.01, 0.01, 0.01);
-        torusInner.position.set(wp.x, wp.y + 6, wp.z);
-        torusInner.rotation.x = Math.PI * 0.5;
-        torusInner.renderOrder = 151;
-        scene.add(torusInner);
-
-        var wfGeo = new THREE.TorusGeometry(1, 0.15, 6, 16);
-        var matWf = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(0xaaddff),
-            transparent: true, opacity: 0.0,
-            wireframe: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-        });
-        var torusWf = new THREE.Mesh(wfGeo, matWf);
-        torusWf.scale.set(0.01, 0.01, 0.01);
-        torusWf.position.set(wp.x, wp.y + 2, wp.z);
-        torusWf.rotation.x = Math.PI * 0.5;
-        torusWf.renderOrder = 152;
-        scene.add(torusWf);
-
-        var expandMs = 300, holdMs = 600, fadeMs = 500;
+        var expandMs = 350, holdMs = 900, fadeMs = 450;
         var totalMs = expandMs + holdMs + fadeMs;
 
-        var entry = { meshes: [torus, torusInner, torusWf], done: false };
+        /* surface spray: droplets flung off the rim, pulled back down the
+           drain by gravity; a few ripple rings widen out past the rim */
+        if (_canSpawn()) {
+            var c = tilePx(tx, ty), bz = unitSurfaceZ(tx, ty);
+            for (var w = 0; w < 5; w++) {
+                (function(wave) {
+                    window.setTimeout(function() {
+                        if (_suppressed()) return;
+                        for (var d = 0; d < 6; d++) {
+                            var a = rn(0, Math.PI * 2);
+                            var rr = rimR * rn(0.55, 0.95);
+                            /* tangential fling = visible rotation */
+                            _spawn({
+                                x: c.x + Math.cos(a) * rr, y: c.y + Math.sin(a) * rr, z: bz + rn(4, 16),
+                                vx: -Math.sin(a) * rn(90, 160), vy: Math.cos(a) * rn(90, 160), vz: rn(30, 80),
+                                mode: 'billboard', sprite: 'water-splash',
+                                ml: rn(320, 560), size0: rn(7, 12), size1: 2,
+                                gravity: 320, drag: 1.1, opacity0: 0.9, opacity1: 0,
+                            });
+                        }
+                        _spawn({
+                            x: c.x, y: c.y, z: bz + 2,
+                            mode: 'world', sprite: 'wave-1',
+                            ml: 620, size0: rimR * 1.3, size1: rimR * 2.4,
+                            opacity0: 0.55, opacity1: 0,
+                        });
+                    }, 120 + wave * ((expandMs + holdMs) / 5));
+                })(w);
+            }
+        }
+
+        /* register the GROUP (not the children) — _cleanup3D removes entry
+           meshes from the scene, and the shells live under the group */
+        var entry = { meshes: [group], done: false };
 
         _animate3D(entry, totalMs, function(elapsed) {
             var t, s, opacity;
             if (elapsed < expandMs) {
                 t = elapsed / expandMs;
-                s = 1 - Math.pow(1 - t, 3); opacity = s * 0.9;
+                s = 1 - Math.pow(1 - t, 3); opacity = s;
             } else if (elapsed < expandMs + holdMs) {
                 t = (elapsed - expandMs) / holdMs;
-                s = 1 + 0.03 * Math.sin(t * Math.PI * 4);
-                opacity = 0.9;
+                s = 1 + 0.03 * Math.sin(t * Math.PI * 5);
+                opacity = 1;
             } else {
                 t = (elapsed - expandMs - holdMs) / fadeMs;
-                s = 1 + t * 0.05; opacity = 0.9 * (1 - t);
+                s = 1 - t * 0.25; opacity = 1 - t;   /* drains away as it dies */
             }
 
-            var spin = elapsed * 0.004;
+            var spin = elapsed * 0.006;              /* one direction — a drain, not a mixer */
+            group.scale.set(s, Math.max(0.35, s), s);
 
-            torus.scale.set(torusRadius * s, torusRadius * s, tubeRadius * s);
-            torus.rotation.z = spin;
-            matTorus.opacity = opacity * 0.35;
+            body.rotation.y  = spin;
+            mid.rotation.y   = spin * 1.5;           /* differential shear */
+            core.rotation.y  = spin * 2.2;
+            lines.rotation.y = spin * 2.8;
+            foam.rotation.z  = -spin * 1.8;
 
-            var innerS = s * 0.65;
-            torusInner.scale.set(torusRadius * innerS, torusRadius * innerS, tubeRadius * innerS * 0.8);
-            torusInner.rotation.z = -spin * 1.6;
-            matInner.opacity = opacity * 0.25;
-
-            torusWf.scale.set(torusRadius * s * 1.1, torusRadius * s * 1.1, tubeRadius * s * 0.6);
-            torusWf.rotation.z = spin * 2.2;
-            matWf.opacity = opacity * 0.3;
+            body.material.opacity  = opacity * body._omax;
+            mid.material.opacity   = opacity * mid._omax;
+            core.material.opacity  = opacity * core._omax * (0.85 + 0.15 * Math.sin(elapsed * 0.012));
+            lines.material.opacity = opacity * lines._omax;
+            foamMat.opacity        = opacity * 0.5;
+            /* foam bobs with the churn */
+            foam.position.y = ts * 0.10 + Math.sin(elapsed * 0.01) * ts * 0.02;
         });
     }
 
@@ -6597,15 +6641,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return _bulletTexCache;
     }
 
-    function _spawnBoulderProjectile3D(fromTx, fromTy, toTx, toTy, travelMs) {
+    function _spawnBoulderProjectile3D(fromTx, fromTy, toTx, toTy, travelMs, opts) {
         var scene = _getVFXScene();
         if (!scene) return;
+        opts = opts || {};
+        /* coal styling (Lump of Coal): smaller near-black lump with a live
+           ember glow inside and a soot/ember trail — same flight machinery */
+        var isCoal = !!opts.coal || opts.spellId === 'raceLumpOfCoal';
 
         var wp0 = _worldPos(fromTx, fromTy);
         var wp1 = _worldPos(toTx, toTy);
         var ts  = wp0.ts;
 
-        var rockRadius = ts * 0.22;
+        var rockRadius = ts * (isCoal ? 0.15 : 0.22);
 
         var baseGeo = new THREE.IcosahedronGeometry(1, 1);
         var posAttr = baseGeo.getAttribute('position');
@@ -6623,11 +6671,25 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var rockTex = _getBoulderTexture();
         var matRock = new THREE.MeshBasicMaterial({
             map: rockTex,
+            /* coal: crush the rock sprite to a glossy near-black */
+            color: new THREE.Color(isCoal ? 0x2b2b30 : 0xffffff),
             transparent: false,
             depthWrite: true,
         });
         var rock = new THREE.Mesh(baseGeo, matRock);
         rock.scale.set(rockRadius, rockRadius, rockRadius);
+        var emberMat = null;
+        if (isCoal) {
+            /* inner ember: an additive glow core peeking through the cracks */
+            emberMat = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(0xff5a22),
+                transparent: true, opacity: 0.55,
+                blending: THREE.AdditiveBlending, depthWrite: false,
+            });
+            var ember = new THREE.Mesh(new THREE.IcosahedronGeometry(0.82, 1), emberMat);
+            ember.renderOrder = 161;
+            rock.add(ember);
+        }
 
         var boost = unitZBoost();
         rock.position.set(wp0.x, wp0.y + boost, wp0.z);
@@ -6651,6 +6713,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var dx = wp1.x - wp0.x, dz = wp1.z - wp0.z;
         var flatDist = Math.sqrt(dx * dx + dz * dz);
         var arcPeak = Math.max(ts * 1.5, flatDist * 0.4);
+        var lastTrailAt = 0;
 
         _animate3D(entry, durMs, function(elapsed) {
             var t = Math.min(elapsed / durMs, 1);
@@ -6667,6 +6730,23 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             rock.rotation.x = elapsed * 0.006;
             rock.rotation.z = elapsed * 0.004;
             rock.rotation.y = elapsed * 0.003;
+
+            if (isCoal) {
+                /* ember breathes; soot + sparks stream off the arc */
+                if (emberMat) emberMat.opacity = 0.4 + 0.25 * Math.sin(elapsed * 0.02);
+                if (elapsed - lastTrailAt > 55 && _canSpawn()) {
+                    lastTrailAt = elapsed;
+                    var sp = _sigWorldToSpawn(rock.position);
+                    _spawn({ x: sp.x + rn(-4, 4), y: sp.y + rn(-4, 4), z: sp.z,
+                             mode: 'billboard', sprite: 'ember',
+                             ml: rn(220, 380), size0: rn(6, 10), size1: 2,
+                             vz: rn(-20, 20), gravity: 120, opacity0: 0.9, opacity1: 0 });
+                    _spawn({ x: sp.x + rn(-5, 5), y: sp.y + rn(-5, 5), z: sp.z + rn(0, 8),
+                             mode: 'billboard', sprite: 'smoke',
+                             ml: rn(320, 520), size0: rn(8, 12), size1: rn(20, 32),
+                             vz: rn(8, 24), drag: 0.6, opacity0: 0.35, opacity1: 0 });
+                }
+            }
 
             var groundY = wp0.y + (wp1.y - wp0.y) * t;
             shadow.position.set(cx, groundY + 2, cz);
@@ -8256,6 +8336,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceBoulderHurl: true,
         raceBoulderThrow: true,
         raceStoneThrow: true,
+        raceLumpOfCoal: true,     /* Santa's coal — real 3D rock, coal-styled */
     };
 
     function hasBoulderProjectile(spellId) {
@@ -9911,7 +9992,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         arrow:       { file: 'Meshy_AI_arrow_0713025846_texture.glb',             axis: 'z' },
         cauldron:    { file: 'Meshy_AI_black_cauldron_0713025916_texture.glb',    axis: 'y' },
         crystalBall: { file: 'Meshy_AI_crystal_ball_0713025648_texture.glb',      axis: 'y' },
-        jet:         { file: 'Meshy_AI_f22_fighter_jett_0713025555_texture.glb',  axis: 'z' },
+        /* the jet export comes in nose-BACKWARD like the guns (flew tail-
+           first across the strike box) — bake the same ry flip */
+        jet:         { file: 'Meshy_AI_f22_fighter_jett_0713025555_texture.glb',  axis: 'z',
+                       tweak: { ry: Math.PI } },
         /* the Meshy export is authored tip-DOWN — the baked rx flip makes
            the normalized instance tip-UP, which is what every sword effect
            assumes (Excalibur/iai flip/lay it themselves from there) */
@@ -9923,7 +10007,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            muzzle-BACKWARD like every other Meshy firearm (baked ry flip);
            the long props are X-long and swing onto +Z automatically. */
         bullet:      { file: 'Meshy_AI_bullet_realistic_0725070829_texture.glb',            axis: 'z' },
-        missile:     { file: 'Meshy_AI_missle_0725070818_texture.glb',                      axis: 'z' },
+        /* nose comes in on -Z after the long-axis swing (the nuke warhead
+           plunged tail-first / "upside down") — same ry flip as the guns */
+        missile:     { file: 'Meshy_AI_missle_0725070818_texture.glb',                      axis: 'z',
+                       tweak: { ry: Math.PI } },
         shotgun:     { file: 'Meshy_AI_shotgun_realistic_0725070540_texture.glb',           axis: 'z',
                        tweak: { ry: Math.PI } },
         sniper:      { file: 'Meshy_AI_sniper_rifle_realist_0725070547_texture.glb',        axis: 'z',
@@ -18323,7 +18410,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }); },
 
         raceGravityWell:     function(tx, ty, r) { _spawnGravityWell3D(tx, ty, r); },
-        raceWhirlpool:       function(tx, ty, r) { _spawnWhirlpool3D(tx, ty, r); },
+        /* Whirlpool's real spell id is raceRiptide (data.js) — the old
+           'raceWhirlpool' key never matched, so the vortex never fired */
+        raceRiptide:         function(tx, ty, r) { _spawnWhirlpool3D(tx, ty, r); },
 
         raceDustDevil:       function(tx, ty, r) { _spawnDustDevil3D(tx, ty, r); },
 

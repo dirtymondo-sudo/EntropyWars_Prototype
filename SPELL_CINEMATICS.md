@@ -807,6 +807,33 @@ moments in the game), then Teleports (the no-ease rule is nearly free).
 | `raceTuneFrequency` (Machine Elves) | The whole lattice re-colors in a wave from the caster outward, one prism per beat |
 | `raceBloodFrenzy` (Werewolf) | Auto-targets lowest HP: predator cam sweeps across ALL visible enemies, locks the weakest |
 
+## Model wishlist (2026-08-15) — GLBs to source for the open entries
+
+The prop library (`_WPN_MODELS`, three-vfx-effects.js) currently holds:
+guns ×5, bullet, missile, jet, arrow, sword, football, cauldron, crystal
+ball, fist, sleigh, femur/ulna/skull, candles ×3, tarot ×3, cross. Bombs,
+grenades, the UFO saucer, the gift box and the gravestone are procedural
+builds that already read fine. What's still MISSING, in priority order
+(payoff × how often players would see it):
+
+| Model | Unlocks | Notes |
+|---|---|---|
+| **Frog** (tiny, rigged or static) | #49 Polymorph — the whole gag is the model swap | One shared frog for every race; static is fine (hop = scale-bounce) |
+| **Ice crystal shell / lattice** | #2 Absolute Zero pre-shatter hold; Permafrost flavor | A jagged translucent shell that can scale up around a unit; static |
+| **Golden balance scale** | #37 Weigh the Heart — the player reads damage off the prop | Two-pan scale, pans as separate nodes so they can tip |
+| **Wooden plank** | #29 Walk the Plank execute | Static board; extends from the victim's tile edge |
+| **Ejection seat + parachute** | #22 Eject! | Seat + canopy chute (two files ok); cartoon proportions welcome |
+| **Stone jaw / fanged maw** (per-tile) | #56 Hellmouth's tooth-by-tooth unzip | One tileable jaw prop, instanced per tile |
+| **Scroll / contract parchment** | #60 Contract, Naughty List second pass | Rolled + unrolled states (or just unrolled) |
+| **Meteor rock** (cratered, fiery) | #9 Meteor payload upgrade | Currently a procedural sphere; a real scorched rock reads bigger |
+| **Coal lump** | #68/70 Lump of Coal deluxe | OPTIONAL now — the coal-styled boulder shipped 2026-08-15 |
+| **UFO saucer** | #16 Abduction Beam, War of the Worlds fleet | OPTIONAL — procedural saucer exists; a textured one would pop |
+
+Animation clips still wanted (consolidate into the MAL library, never
+per-character): `castCharge` hands-cupped charge (#13 Ki Wave), `howl` head
+thrown back (#40 Howl), a two-finger forehead touch (#41 Instant
+Transmission — castSupport re-time covers it meanwhile).
+
 ## Suggested build order
 
 1. **`[NEW: side dolly]` + the Beam Reel defaults** — fixes a CURRENT

@@ -1661,7 +1661,8 @@
                     if (state.phase !== 'battle' || _skipVisuals()) return;
                     const VFX = window.ThreeVFXEffects;
                     VFX.spawnBoulderProjectile3D(
-                        unit.x, unit.y, target.x, target.y, travelMs);
+                        unit.x, unit.y, target.x, target.y, travelMs,
+                        { spellId: spell.id });   /* coal-styles Lump of Coal */
                     if (VFX.projectile) {
                         VFX.projectile(
                             unit.x, unit.y, target.x, target.y,
@@ -9440,16 +9441,30 @@
 
             if (_skipVisuals()) return;
 
+            let _srcClamped = false;
             if (state.fogOfWar && state.activePlayer !== getViewerPlayer()) {
                 const viewer = getViewerPlayer();
                 const targetUnit = state.units.find(u => !u.dead && u.x === toX && u.y === toY && u.player === viewer);
                 if (!targetUnit) return;
 
-                const dx = fromX - toX, dy = fromY - toY;
-                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                const clampDist = 1.5;
-                fromX = toX + (dx / dist) * clampDist;
-                fromY = toY + (dy / dist) * clampDist;
+                /* Only clamp when the SHOOTER is actually hidden from the
+                   viewer (fogged tile or concealment). The old unconditional
+                   clamp moved every enemy shot's origin to 1.5 tiles off the
+                   victim — so a plainly VISIBLE enemy gunslinger's summoned
+                   revolver spawned "right at the target" instead of by the
+                   caster. Screen-true check, same as the camera fog gate. */
+                const _srcU = unitAt(Math.round(fromX), Math.round(fromY));
+                const _srcHidden = !_isTileVisibleToViewer(Math.round(fromX), Math.round(fromY))
+                    || (_srcU && typeof isUnitConcealedFrom === 'function'
+                        && isUnitConcealedFrom(_srcU, viewer));
+                if (_srcHidden) {
+                    const dx = fromX - toX, dy = fromY - toY;
+                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                    const clampDist = 1.5;
+                    fromX = toX + (dx / dist) * clampDist;
+                    fromY = toY + (dy / dist) * clampDist;
+                    _srcClamped = true;
+                }
             }
             const flyMs = Math.max(40, Number(durationMs) || 320);
             const _projCaster = unitAt(Math.round(fromX), Math.round(fromY));
@@ -9480,11 +9495,14 @@
                 // bolt then only contributes muzzle flash, spark trail, and impact.
                 const _boltHeadGlow = _spriteOverride ? false : null;
                 if (_hasSpellBolt) {
-                    // Per-spell bolt: standard path
+                    // Per-spell bolt: standard path. hideGunRig: a fog-clamped
+                    // origin must not summon the spectral gun/bow/cannon next
+                    // to the victim (tracer + impact still play).
                     window.ThreeVFXEffects.fire('bolt', spellMeta.id, {
                         fromX: fromX, fromY: fromY, toX: toX, toY: toY,
                         fromZ: _boltFromU?.z, toZ: _boltToU?.z, flyMs: flyMs,
-                        headGlow: _boltHeadGlow
+                        headGlow: _boltHeadGlow,
+                        hideGunRig: _srcClamped || undefined
                     });
                 } else {
                     // Per-unit bolt override: fire directly with the preset
@@ -17502,10 +17520,14 @@
                 return true;
             },
 
-            /* ── #8 Nuke — the silhouette flash is the signature frame. */
+            /* ── #8 Nuke — the silhouette flash is the signature frame.
+               Timing keys off shotOpts.impactMs (telegraph + warhead fall):
+               the generic sourceHold+travelMs fired the whiteout while the
+               missile was still in the air. */
             sharedNuke(ctx) {
-                const { target, timings, sequenceId } = ctx;
-                const impact = timings.sourceHold + timings.travelMs;
+                const { target, timings, sequenceId, shotOpts } = ctx;
+                const impact = shotOpts?.impactMs
+                    ?? (timings.sourceHold + timings.travelMs);
                 _cineAt(impact, sequenceId, () => {
                     cineGrade('whiteout', 300);
                     shakeBoard('heavy');
@@ -17519,11 +17541,23 @@
                 return true;
             },
 
-            /* ── #9 Meteor — one camera flip makes it feel twice as big. */
+            /* ── #9 Meteor — one camera flip makes it feel twice as big.
+               2026-08-15 rebeat: the old build cut three ways in quick
+               succession and read as a bug — a crane at 100ms fought the
+               still-swooping beat-1 cast shot, the standard beat-2 cut
+               yanked the frame back, and the god shot fired at the GENERIC
+               travel time, hundreds of ms before the meteor actually lands
+               (descent spells fall for telegraph+descent, carried in
+               shotOpts.impactMs). Now: beat 1 plays out untouched, the
+               "duck!" sky crane rides the shot's own cut frame, and the god
+               shot + kick land exactly with the impact. */
             meteor(ctx) {
-                const { target, timings, sequenceId } = ctx;
-                _cineAt(actionMs(100), sequenceId, () => cineCrane(target, { duration: 700, tilt: 118 }));
-                _cineAt(timings.sourceHold + timings.travelMs, sequenceId, () => {
+                const { target, timings, sequenceId, shotOpts } = ctx;
+                const impact = shotOpts?.impactMs
+                    ?? (timings.sourceHold + timings.travelMs);
+                _cineAt(_cineCutMs(timings, shotOpts || {}), sequenceId,
+                    () => cineCrane(target, { duration: 700, tilt: 118 }));
+                _cineAt(impact, sequenceId, () => {
                     cineGodShot(target, 8, {});
                     shakeBoard('heavy');
                 });
@@ -44745,7 +44779,6 @@
                     return 0;
                 }
                 playSfx('uiConfirm');
-                _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
                 const _newBomb = {
                     x,
@@ -44762,21 +44795,54 @@
                    resolves like an attack (spell slot + turn end): see
                    _placementStruck. Allies/self can still share a tile with
                    the caster's own bombs, and a bomb under an AIRBORNE enemy
-                   stays armed on the ground instead of popping mid-air. */
+                   stays armed on the ground instead of popping mid-air.
+                   2026-08-15: the two placements now LOOK different too —
+                   contact gets the full attack presentation (two-beat action
+                   cam, overhand toss of the 3D bomb prop, blast on arrival);
+                   an empty-tile placement stays quiet tactical setup (short
+                   focus dip, a lobbed arc onto the tile, an ARMED tag). */
                 const _bOcc = unitAt(x, y);
                 if (_bOcc && !_bOcc.dead && _bOcc.player !== unit.player
                     && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_bOcc))) {
-                    addLog(`${unitDisplayName(unit)} plants a bomb right under ${unitDisplayName(_bOcc)}!`, unit.player);
-                    detonateBomb(_newBomb, `💥 Contact detonation at ${coordLabel(x, y)}!`);
+                    addLog(`${unitDisplayName(unit)} hurls a bomb right at ${unitDisplayName(_bOcc)}!`, unit.player);
+                    const cam = playOffensiveActionCamera(unit, _bOcc, {
+                        attackName: spell.name, spellId: spell.id
+                    });
+                    const _tossDelay = Math.max(0, cam?.sourceHold ?? actionMs(900));
+                    const _tossMs = cam?.travelMs ?? actionMs(420);
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || _skipVisuals()) return;
+                        playSfx(spellLaunchSfx(spell));
+                        playProjectileToUnit(unit, _bOcc, 'bomb', _tossMs,
+                            spell.spellType, 'proj-bomb', spell);
+                    }, _tossDelay);
+                    const _blastDelay = _tossDelay + _tossMs + actionMs(60);
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle') return;
+                        detonateBomb(_newBomb, `💥 Contact detonation at ${coordLabel(x, y)}!`);
+                        scheduleBoardRender();
+                    }, _blastDelay);
                     _placementStruck = true;
-                    completionDelay = actionMs(900);
+                    completionDelay = Math.max(_blastDelay + actionMs(700),
+                        (cam?.totalMs ?? 0) + actionMs(120));
                 } else {
+                    _spellFocusCamera(unit, x, y);
                     // Field placement: evict the oldest bomb only when this one
                     // actually occupies a field slot (contact bombs never do).
                     const ownedBombs = state.bombs.filter(b => b.ownerUnitId === unit.id);
                     if (ownedBombs.length >= (spell.maxActivePerCaster || 2)) state.bombs = state.bombs.filter(b => b !== ownedBombs[0]);
                     state.bombs.push(_newBomb);
                     addLog(`${unitDisplayName(unit)} places a bomb at ${coordLabel(x, y)}.`, unit.player);
+                    /* the caster's OverhandThrow clip already plays (classify
+                       →'throw') — give it a bomb to actually throw: a short
+                       lobbed arc onto the tile, ARMED tag as it settles */
+                    const _placeMs = actionMs(380);
+                    playProjectile(unit.x, unit.y, x, y, 'bomb', _placeMs,
+                        spell.spellType, 'proj-bomb', spell);
+                    window.setTimeout(() => {
+                        if (state.phase !== 'battle' || _skipVisuals()) return;
+                        showFloatingTextAtTile(x, y, '💣 Armed', 'status', { durationMs: 900 });
+                    }, _placeMs);
                 }
             } else if (spell.kind === 'placeMirror') {
                 if (unitAt(x, y, z) || unitAt(x, y)) {
