@@ -117,28 +117,22 @@
         const HIGH_GROUND_DEF_BONUS = 5;
         const DOWNHILL_DAMAGE_BONUS = 0.1;
 
-        // ── Range profile (2026-07-16) — deterministic damage-by-distance ──
-        // The sweet spot is 3 tiles: every tile CLOSER lands +10% harder
-        // (capped +20% point-blank), every tile FARTHER −10% (floored −20%).
-        // Rewards committing to the engagement instead of max-range poking.
-        // Snipers INVERT the curve (Bullet Drop passive, data.js JOB_PASSIVES):
-        // −40% point-blank, climbing +15%/tile to +20% from 5+ tiles out.
+        // ── Range profile (reworked 2026-08-15) — deterministic falloff ──
+        // Every attack/ability/spell lands at FULL strength at close range
+        // (dist 1) and tapers −10% per tile beyond, floored at −20% from
+        // 3 tiles out. There is no longer any range BONUS anywhere, and the
+        // old Sniper "Bullet Drop" inversion is GONE — Snipers ride the same
+        // curve as everyone else (their edge is reach, not a multiplier).
         // Deliberately a damage multiplier, NOT an accuracy roll — outcomes
         // stay deterministic (no XCOM 95%-miss moments).
-        const RANGE_SWEET_SPOT = 3;
         const RANGE_DAMAGE_STEP = 0.10;
-        const RANGE_MULT_MIN = 0.8, RANGE_MULT_MAX = 1.2;
-        const SNIPER_RANGE_STEP = 0.15;
-        const SNIPER_RANGE_MULT_MIN = 0.6, SNIPER_RANGE_MULT_MAX = 1.2;
+        const RANGE_MULT_MIN = 0.8, RANGE_MULT_MAX = 1.0;
         function getRangeDamageMult(sourceUnit, target) {
             if (!sourceUnit || !target) return 1;
             const dist = Math.abs(sourceUnit.x - target.x) + Math.abs(sourceUnit.y - target.y);
             return calcRangeMult(dist, {
-                sniper: sourceUnit.cls === 'Sniper',
-                sweetSpot: RANGE_SWEET_SPOT, step: RANGE_DAMAGE_STEP,
+                step: RANGE_DAMAGE_STEP,
                 min: RANGE_MULT_MIN, max: RANGE_MULT_MAX,
-                sniperStep: SNIPER_RANGE_STEP,
-                sniperMin: SNIPER_RANGE_MULT_MIN, sniperMax: SNIPER_RANGE_MULT_MAX,
             });
         }
 
@@ -166,16 +160,13 @@
            them in isolation — referencing ANY outer name breaks the suite.
            Tuning constants are passed in by the wrappers, never read here. */
 
-        // Damage-by-distance curve. p: { sniper, sweetSpot, step, min, max,
-        // sniperStep, sniperMin, sniperMax }. dist <= 0 (self/adjacent-0) → 1.
+        // Damage-by-distance curve. p: { step, min, max }. Full damage at
+        // dist 1, −step per tile beyond, clamped to [min, max].
+        // dist <= 0 (self/adjacent-0) → 1.
         function calcRangeMult(dist, p) {
             if (!(dist > 0)) return 1;
-            if (p.sniper) {
-                return Math.max(p.sniperMin, Math.min(p.sniperMax,
-                    p.sniperMin + p.sniperStep * (dist - 1)));
-            }
             return Math.max(p.min, Math.min(p.max,
-                1 + p.step * (p.sweetSpot - dist)));
+                1 - p.step * (dist - 1)));
         }
 
         // Caster-side base-damage roll. rand is a [0,1) draw supplied by the
@@ -18875,24 +18866,18 @@
                     }
                 }
 
-                // ── 🎯 RANGE PROFILE (2026-07-16) ──────────────────────────
-                // Deterministic damage-by-distance: +10%/tile inside the
-                // 3-tile sweet spot, −10%/tile beyond (clamped ±20%). Snipers
-                // invert the curve (Bullet Drop: −40% point-blank → +20% at
-                // 5+ tiles). Skipped for DoT ticks and for indirect sources
-                // (turrets, traps, terrain reactions — opts.noRangeMult)
-                // where "distance to the caster" is meaningless.
+                // ── 🎯 RANGE FALLOFF (reworked 2026-08-15) ─────────────────
+                // Deterministic damage-by-distance: full damage at close
+                // range (dist 1), −10%/tile beyond, floored −20%. No bonus
+                // side and no Sniper inversion anymore. Skipped for DoT
+                // ticks and for indirect sources (turrets, traps, terrain
+                // reactions — opts.noRangeMult) where "distance to the
+                // caster" is meaningless.
                 if (damageType !== 'dot' && !opts.noRangeMult) {
                     const _rangeMult = getRangeDamageMult(sourceUnit, target);
                     if (_rangeMult !== 1) {
                         _offMult *= _rangeMult;
-                        if (sourceUnit.cls === 'Sniper') {
-                            _multCallout(sourceUnit, `🎯 BULLET DROP ${_fmtMult(_rangeMult)}`, 1000);
-                        } else if (_rangeMult > 1) {
-                            _multCallout(sourceUnit, `⚔ CLOSE RANGE ${_fmtMult(_rangeMult)}`, 1000);
-                        } else {
-                            _multCallout(sourceUnit, `↘ LONG SHOT ${_fmtMult(_rangeMult)}`, 1000);
-                        }
+                        _multCallout(sourceUnit, `↘ LONG SHOT ${_fmtMult(_rangeMult)}`, 1000);
                     }
                 }
             }
@@ -29667,8 +29652,7 @@
             { t: 'FIELD MANUAL', q: 'Spells cost MP. Moving and acting cost AP. Bankruptcy on either is how vessels die.' },
             { t: 'FIELD MANUAL', q: 'Werewolves walk the field as ordinary humans by day. Keep one eye on the sky’s cycle.' },
             { t: 'FIELD MANUAL', q: 'The zodiac wheel turns as rounds pass. When the sky changes, the battlefield changes with it.' },
-            { t: 'FIELD MANUAL', q: 'Distance is damage. Hits land 10% harder for every tile inside 3 range — and 10% softer for every tile beyond. Commit to the engagement.' },
-            { t: 'FIELD MANUAL', q: 'Snipers defy the range rule: their shots STRENGTHEN with distance and go soft point-blank. Never let one sit at the horizon — and never be the one cornering them slowly.' },
+            { t: 'FIELD MANUAL', q: 'Distance is damage. Every hit lands at full strength up close — and sheds 10% per tile beyond the first, down to 80%. Close the gap or pay the toll.' },
             { t: 'FIELD MANUAL', q: 'Ping the field. A marked tile speaks louder than a typed apology.' },
             { t: 'FIELD MANUAL', q: 'Victory pays gold, and gold buys new vessels in the shop. Defeat pays considerably less.' },
             { t: 'FIELD MANUAL', q: 'Cinematics can be skipped with a tap. So can this screen — once the data is in.' },

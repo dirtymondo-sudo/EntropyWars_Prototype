@@ -4,7 +4,28 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## 🧊 BALANCE LAB FREEZE — ACTUAL ROOT CAUSE (2026-08-14 second pass, LATEST) — battle.js
+## 🎯 RANGE FALLOFF REWORK + BULLET DROP REMOVED (2026-08-15, LATEST) — battle.js / ai.js / data.js
+
+Owner call: the range profile is now a simple falloff — **full damage at close
+range (dist 1), −10%/tile beyond, floored at −20% (×0.8 from 3+ tiles)**. There
+is no range BONUS anywhere anymore (old curve peaked ×1.2 point-blank around a
+3-tile sweet spot), and the **Sniper "Bullet Drop" passive is GONE** (the
+0.6→1.2 inverted curve AND its data.js JOB_PASSIVES entry — Sniper now has NO
+job passive; nothing consumed JOB_PASSIVES outside data.js so no UI fallout).
+- battle.js: `RANGE_DAMAGE_STEP=0.10`, `RANGE_MULT_MIN=0.8`,
+  `RANGE_MULT_MAX=1.0`; `RANGE_SWEET_SPOT` + all `SNIPER_RANGE_*` consts
+  deleted; `calcRangeMult(dist, {step,min,max})` signature slimmed. Callouts:
+  only `↘ LONG SHOT ×N` remains (`⚔ CLOSE RANGE` / `🎯 BULLET DROP` deleted —
+  mult can never exceed 1). Field-manual tips updated (sniper tip deleted).
+- ai.js `_rangeMult` mirror updated to the same curve (its `u` param is now
+  unused but kept for signature compat).
+- ui.js forecast previews needed NO edit — they call `getRangeDamageMult`.
+- damage.test.js updated (constants list, curve tests, sniper test deleted).
+- Balance watch: Sniper was already the top job (58.4% WR in stats15) and this
+  REMOVES its point-blank weakness while capping everyone's poke damage at ×1
+  — expect Sniper to strengthen; revisit after the next balance-lab run.
+
+## 🧊 BALANCE LAB FREEZE — ACTUAL ROOT CAUSE (2026-08-14 second pass) — battle.js
 
 User: "still freezing" after the watchdog pass below. Reproduced headlessly on
 current code: match #1 booted (RNG seeded, spawn zones logged, units placed)
@@ -2153,17 +2174,15 @@ Token `20260716a`. The damage pipeline is now explicitly two halves:
   Penalty products (<×1) are deliberately uncapped. Marked is now a flat rider
   added AFTER the product (card value = hit value). Defender height advantage
   (−5/step) moved to the armor stage so it stays truly flat.
-- **🎯 RANGE PROFILE (new, deterministic — damage, NOT accuracy)**:
+- **🎯 RANGE PROFILE (new, deterministic — damage, NOT accuracy)**
+  *(SUPERSEDED 2026-08-15 — see the top entry: now a pure falloff, max at
+  dist 1, and the Sniper inversion/Bullet Drop passive is deleted)*:
   `getRangeDamageMult(source, target)` (battle.js, next to the HIGH_GROUND
-  consts; exported on GAME). Sweet spot 3 tiles: +10%/tile closer (cap +20%
-  point-blank), −10%/tile farther (floor −20%). **Snipers invert** — this IS
-  the previously-uncoded Bullet Drop passive: 0.6 at dist 1, +0.15/tile,
-  1.2 at 5+. Applies to basic attacks AND spells; skipped for `damageType
-  'dot'` and `opts.noRangeMult` (turret shots, traps/mines, bombs/explosion
-  objects, terrain conduction/oil/crystal reactions, laser beams/lattice,
-  censer lashback, block-erupt — anywhere caster distance is meaningless).
-  Callouts: `🎯 BULLET DROP ×N` / `⚔ CLOSE RANGE ×N` / `↘ LONG SHOT ×N` over
-  the attacker. Two FIELD MANUAL tips added.
+  consts; exported on GAME). Applies to basic attacks AND spells; skipped for
+  `damageType 'dot'` and `opts.noRangeMult` (turret shots, traps/mines,
+  bombs/explosion objects, terrain conduction/oil/crystal reactions, laser
+  beams/lattice, censer lashback, block-erupt — anywhere caster distance is
+  meaningless). Callout over the attacker.
 - **Passives audit** (data.js JOB_PASSIVES text vs code) — wired the missing:
   Bulwark (Warrior −8 flat, armor stage), Brute Force (Raider basic ×1.2, TB
   + RT), Arcane Surge (`getJobPassiveSpellBonus` +8 into both spellPower

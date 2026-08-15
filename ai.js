@@ -304,12 +304,12 @@
         if (sp.hitDamages) return sp.hitDamages.reduce((a, b) => a + b, 0);
         return sp.dmg || 0;
     }
-    // Range-profile multiplier (battle.js calcRangeMult constants mirrored:
-    // sweet spot 3, ±10%/tile clamped 0.8–1.2; Sniper inverted 0.6–1.2).
+    // Range-falloff multiplier (battle.js calcRangeMult constants mirrored:
+    // full damage at dist 1, −10%/tile beyond, floored 0.8. No Sniper
+    // inversion anymore — everyone rides the same curve).
     function _rangeMult(u, dist) {
         if (!(dist > 0)) return 1;
-        if (u && u.cls === 'Sniper') return Math.max(0.6, Math.min(1.2, 0.6 + 0.15 * (dist - 1)));
-        return Math.max(0.8, Math.min(1.2, 1 + 0.10 * (3 - dist)));
+        return Math.max(0.8, Math.min(1.0, 1 - 0.10 * (dist - 1)));
     }
     function _armorOf(tg, damageType) {
         if (typeof getEffectiveArmor === 'function') {

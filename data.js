@@ -3631,8 +3631,11 @@ const ITEM_META = {
 // These are SEPARATE from the flat stat deltas in JOB_MODIFIERS — a passive is a
 // rule, not a number. This registry is the single source of truth for the name +
 // description surfaced in the party builder and unit panels; the mechanics for
-// the focus jobs are wired in battle.js (Sniper / Harvester) and map.js
-// (Freelancer). `id` lets combat code branch on a passive without matching text.
+// the focus jobs are wired in battle.js (Harvester) and map.js (Freelancer).
+// `id` lets combat code branch on a passive without matching text.
+// 2026-08-15: Sniper's "Bullet Drop" passive was REMOVED — the range curve is
+// now the same universal close-range falloff for every job (battle.js
+// calcRangeMult), so Snipers no longer invert it. Sniper has no job passive.
 const JOB_PASSIVES = {
     Gunslinger:  { id: 'deadeye',        name: 'Deadeye',         desc: '+1 SPD. Always ready to draw first.' },
     Warrior:     { id: 'warpath',        name: 'Warpath',         desc: 'Basic attacks hit +15% harder, and the Warrior counterattacks at a hardened 30% rate. Born for the front line.' },
@@ -3646,7 +3649,6 @@ const JOB_PASSIVES = {
     Harbinger:   { id: 'crescendo',      name: 'Crescendo',       desc: "This unit's buffs last +1 turn. Lullaby has +1 range." },
     Freelancer:  { id: 'adaptable',      name: 'Adaptable',       desc: 'No school restrictions — can learn and equip spells from ANY job pool. A blank slate that borrows every playstyle.' },
     Raider:      { id: 'bruteForce',     name: 'Brute Force',     desc: 'Basic attacks deal +20% damage. Gains +8 DEF while below 50% HP.' },
-    Sniper:      { id: 'bulletDrop',     name: 'Bullet Drop',     desc: 'Attacks, abilities and spells scale with range to the target: −40% at point-blank, climbing to +20% from 5+ tiles away. Reward the long shot; never get cornered.' },
     Swordmaster: { id: 'riposte',        name: 'Riposte',         desc: '35% chance to counterattack when struck in melee, and counters swing at full sword strength (60% ATK instead of 40%).' },
 };
 // Back-compat: some older lookups expect a flat "Name: desc" string map.

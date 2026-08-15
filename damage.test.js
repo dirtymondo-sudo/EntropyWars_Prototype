@@ -84,9 +84,8 @@ const calcStatusDurationTick = extractFn(battleSrc, 'calcStatusDurationTick');
 
 // Tuning constants the wrappers feed the pure functions.
 const C = {};
-for (const name of ['RANGE_SWEET_SPOT', 'RANGE_DAMAGE_STEP', 'RANGE_MULT_MIN',
-    'RANGE_MULT_MAX', 'SNIPER_RANGE_STEP', 'SNIPER_RANGE_MULT_MIN',
-    'SNIPER_RANGE_MULT_MAX', 'MAX_OFFENSIVE_MULT', 'SPELL_DMG_VARIANCE']) {
+for (const name of ['RANGE_DAMAGE_STEP', 'RANGE_MULT_MIN',
+    'RANGE_MULT_MAX', 'MAX_OFFENSIVE_MULT', 'SPELL_DMG_VARIANCE']) {
     C[name] = extractNumConst(battleSrc, name);
 }
 
@@ -138,48 +137,31 @@ test('resolver wrappers delegate to the stage-2 cores (no forked math)', () => {
 });
 
 test('tuning constants hold their balanced values', () => {
-    assert.strictEqual(C.RANGE_SWEET_SPOT, 3);
     approx(C.RANGE_DAMAGE_STEP, 0.10, 'RANGE_DAMAGE_STEP');
     approx(C.RANGE_MULT_MIN, 0.8, 'RANGE_MULT_MIN');
-    approx(C.RANGE_MULT_MAX, 1.2, 'RANGE_MULT_MAX');
-    approx(C.SNIPER_RANGE_STEP, 0.15, 'SNIPER_RANGE_STEP');
-    approx(C.SNIPER_RANGE_MULT_MIN, 0.6, 'SNIPER_RANGE_MULT_MIN');
-    approx(C.SNIPER_RANGE_MULT_MAX, 1.2, 'SNIPER_RANGE_MULT_MAX');
+    approx(C.RANGE_MULT_MAX, 1.0, 'RANGE_MULT_MAX');
     approx(C.MAX_OFFENSIVE_MULT, 3.0, 'MAX_OFFENSIVE_MULT');
     assert.strictEqual(C.SPELL_DMG_VARIANCE, 8);
 });
 
-// The params getRangeDamageMult passes for a normal unit / a Sniper.
-const RP = (sniper) => ({
-    sniper,
-    sweetSpot: C.RANGE_SWEET_SPOT, step: C.RANGE_DAMAGE_STEP,
+// The params getRangeDamageMult passes (2026-08-15 rework: one universal
+// curve for every job — the Sniper inversion is gone).
+const RP = () => ({
+    step: C.RANGE_DAMAGE_STEP,
     min: C.RANGE_MULT_MIN, max: C.RANGE_MULT_MAX,
-    sniperStep: C.SNIPER_RANGE_STEP,
-    sniperMin: C.SNIPER_RANGE_MULT_MIN, sniperMax: C.SNIPER_RANGE_MULT_MAX,
 });
 
-test('range curve: sweet spot 3, ±10%/tile, clamped ±20%', () => {
-    approx(calcRangeMult(0, RP(false)), 1, 'dist 0 (self) is neutral');
-    approx(calcRangeMult(1, RP(false)), 1.2, 'point-blank hits the +20% cap');
-    approx(calcRangeMult(2, RP(false)), 1.1, 'one inside the sweet spot: +10%');
-    approx(calcRangeMult(3, RP(false)), 1.0, 'sweet spot is neutral');
-    approx(calcRangeMult(4, RP(false)), 0.9, 'one beyond: −10%');
-    approx(calcRangeMult(5, RP(false)), 0.8, 'two beyond hits the −20% floor');
-    approx(calcRangeMult(12, RP(false)), 0.8, 'floor holds at any range');
+test('range curve: max damage at dist 1, −10%/tile beyond, floored −20%', () => {
+    approx(calcRangeMult(0, RP()), 1, 'dist 0 (self) is neutral');
+    approx(calcRangeMult(1, RP()), 1.0, 'close range (1) deals full damage');
+    approx(calcRangeMult(2, RP()), 0.9, 'one beyond: −10%');
+    approx(calcRangeMult(3, RP()), 0.8, 'two beyond hits the −20% floor');
+    approx(calcRangeMult(12, RP()), 0.8, 'floor holds at any range');
     for (let d = 1; d < 12; d++) {
-        assert.ok(calcRangeMult(d, RP(false)) >= calcRangeMult(d + 1, RP(false)) - 1e-9,
-            `non-sniper curve must be non-increasing (dist ${d})`);
-    }
-});
-
-test('sniper range curve inverts: −40% point-blank → +20% at 5+ tiles', () => {
-    approx(calcRangeMult(1, RP(true)), 0.6, 'sniper point-blank floor');
-    approx(calcRangeMult(2, RP(true)), 0.75, 'sniper +15%/tile climb');
-    approx(calcRangeMult(5, RP(true)), 1.2, 'sniper reaches the cap at 5');
-    approx(calcRangeMult(9, RP(true)), 1.2, 'sniper cap holds beyond 5');
-    for (let d = 1; d < 12; d++) {
-        assert.ok(calcRangeMult(d, RP(true)) <= calcRangeMult(d + 1, RP(true)) + 1e-9,
-            `sniper curve must be non-decreasing (dist ${d})`);
+        assert.ok(calcRangeMult(d, RP()) >= calcRangeMult(d + 1, RP()) - 1e-9,
+            `curve must be non-increasing (dist ${d})`);
+        assert.ok(calcRangeMult(d, RP()) <= 1 + 1e-9,
+            `curve must never exceed ×1 (dist ${d})`);
     }
 });
 
