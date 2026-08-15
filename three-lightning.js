@@ -63,6 +63,10 @@ const ThreeLightning = (function () {
         strikes:         1,      /* >1 = re-strikes: fresh jagged paths in quick succession */
         strikeGapMs:     70,
         taper:           true,   /* thin toward the strike point (MeshLine widthCallback) */
+        ambient:         false,  /* cosmetic idle-ambience bolt: its VFX sprites spawn as
+                                    _zone particles so ThreeVFX.hasActiveParticles() (the
+                                    HUD's boardBusy gate) ignores them — otherwise every
+                                    background storm flicker hides the action menu */
     };
 
     var _tmpV = null;
@@ -267,6 +271,7 @@ const ThreeLightning = (function () {
                 color: opts.color, glowColor: opts.glowColor,
                 impactFlash: false,
                 strikes: 1,
+                ambient: !!opts.ambient,
             });
         }
     }
@@ -409,7 +414,7 @@ const ThreeLightning = (function () {
        the shared ThreeVFX sprite pool (additive 'flash'/'spark-elec', so it
        catches the bloom pass). px is in vfx space (x/y tile-px, z up) — the
        same space boltVfx receives. Subtle: two short-lived sprites. */
-    function _impactFlash(px, size) {
+    function _impactFlash(px, size, ambient) {
         if (!window.ThreeVFX || !window.ThreeVFX.isActive || !window.ThreeVFX.isActive()) return;
         window.ThreeVFX.spawn({
             x: px.x, y: px.y, z: px.z + 4,
@@ -417,6 +422,7 @@ const ThreeLightning = (function () {
             ml: 130,
             size0: size, size1: size * 0.25,
             opacity0: 1, opacity1: 0,
+            _zone: !!ambient,
         });
         window.ThreeVFX.spawn({
             x: px.x, y: px.y, z: px.z + 4,
@@ -424,6 +430,7 @@ const ThreeLightning = (function () {
             ml: 220,
             size0: size * 0.5, size1: size * 1.4,
             opacity0: 0.7, opacity1: 0,
+            _zone: !!ambient,
         });
         /* hot electric flecks thrown off the strike point */
         for (var i = 0; i < 7; i++) {
@@ -436,6 +443,7 @@ const ThreeLightning = (function () {
                 size0: 3 + Math.random() * 5, size1: 1,
                 opacity0: 1, opacity1: 0,
                 gravity: 420, drag: 1.4,
+                _zone: !!ambient,
             });
         }
     }
@@ -457,7 +465,7 @@ const ThreeLightning = (function () {
         var entry = bolt(from, to, opts);
         if (entry && !(opts && opts.impactFlash === false)) {
             var ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) ? CONFIG.tileSize : 128;
-            _impactFlash(toPx, (opts && opts.impactFlashSize) || ts * 0.3);
+            _impactFlash(toPx, (opts && opts.impactFlashSize) || ts * 0.3, !!(opts && opts.ambient));
         }
         return entry;
     }
@@ -493,6 +501,7 @@ const ThreeLightning = (function () {
                 mode: 'billboard', sprite: 'flash', tint: 0x9cc8ff,
                 ml: 200, size0: ts * 2.6, size1: ts * 3.4,
                 opacity0: 0.55, opacity1: 0,
+                _zone: !!opts.ambient,
             });
         }
 
@@ -505,6 +514,7 @@ const ThreeLightning = (function () {
             crawlVfx({ x: impactPx.x, y: impactPx.y, z: groundZ }, {
                 count: opts.crawlCount != null ? opts.crawlCount : 4,
                 color: opts.color, glowColor: opts.glowColor,
+                ambient: !!opts.ambient,
             });
         }
         return entry;

@@ -23623,6 +23623,10 @@ const ThreeRenderer = (function () {
                     branchChance: 0.2, branchDepth: 1,
                     coreWidth: 3, glowWidth: 10, strikes: 1,
                     skyHeight: 520, crawl: false,
+                    /* ambient: cosmetic idle flicker — its flash/spark sprites
+                       spawn as _zone particles so boardBusy() ignores them and
+                       the action menu doesn't blink out on every strike */
+                    ambient: true,
                 });
             } catch (e) { /* cosmetic */ }
         }
