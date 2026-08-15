@@ -428,3 +428,67 @@ ladder** — a spell costs what its NODE costs, full stop:
 - Party-builder fix: STAT_MAX_PB.MP 300→250 — the bar physically could not
   fill after the 08-09 halving (max displayable was ~149/300); now the top
   caster combos (205-base races + Psychic/BM) peg it full/green.
+
+---
+
+# Balance Pass — 2026-08-15 (tree-wide structural pass: types, ring power, status economy)
+
+Owner-directed structural pass on the spell trees (152 field edits across 140
+spells, applied by codemod + `describeSpell` desc regeneration; token
+`20260815a-cors`). Three goals, all verified against the loaded data:
+
+## 1. Spell-type supply rebalance (anomaly glut)
+Race-tree spellType counts went **anomaly 102 → 84** (alien 38→40, tech 49→52,
+divine 43→48, unholy 77→82, human 75→78); max:min spread 2.7 → 2.1. Method:
+retype cross-typed spells toward their owner race's own types (STAB-preserving)
+plus obvious flavor fixes — e.g. `sharedHexOfToil`/siren kit → unholy,
+`sharedFissure` → divine (anubis/nephilim/golem), `raceTimeRewind` +
+`overclock` → tech, antperson acid/tunnels → alien, `raceDiamondDust`/
+`raceLumpOfCoal` → divine. INVARIANT KEPT: **every race retains ≥1 STAB damage
+move** in race tree ∪ primary job tree (Freelancer primaries count improvise/
+reallyGoodPunch, both human) — verified 96/96.
+
+## 2. Ring damage bands — averages now ASCEND toward the capstone
+Rings were inverted (r1 avg 108 > r3 avg 100). New bands keyed to the ring MP
+ladder, shared spells banded at their LOWEST ring (same rule as MP):
+**r1 ≤100 · r2 100–130 · r3 125–150 · r4 150–190.** Utility/terrain hybrids
+(terrainCreate, deploys, teleport, pull; skyThrow/skyDrop below r4) are exempt
+from floors, still capped; three got manual nudges (Infernal Hurl 70→90,
+Ziggurat Protocol 60→80, Walls of Camelot 40→60). Post-pass averages:
+- JOB pools:  r1 94 · r2 118 · r3 121 · r4 158 (was 109/107/102/158)
+- RACE pools: r1 94 · r2 102 · r3 113 · r4 168 (was 108/91/100/167)
+Biggest movers: the four 135-dmg ring-1 outliers (Heat Ray, Aurora Ray,
+Borrowed Claw, Whirlpool) → 100; all 120-dmg openers → 100; ring-3 80-dmg
+"payoff" spells → 125 (they cost 75 MP — they now hit like it); sky-drop
+capstones (Stone Drop/Predator Drop 130, Rocket Toss 110) → 150. WATCHLIST:
+ring-3 spells got a broad buff wave and ring-1 pokes a broad nerf — re-check
+job WRs (esp. Sniper/Agent, who lean on ring-1 chip) on the next dataset.
+
+## 3. Setup→payoff economy normalization
+Before: stagger bloated (22 setups/20 payoffs), discord dead-ended (13/0),
+hexed inverted (2/5), frozen/silence/charm starved. After (setups:payoffs,
+ratio): slow 20:9, burn 19:9, stagger 19:17, discord 14:6, poison 12:10,
+stun 10:8, jammed 7:7, silence 6:4, root 6:5, frozen 6:3, hexed 3:3,
+charm 2:1. No new spells — only rider swaps, bonusVs retargets, and bonusVs
+additions on existing spells:
+- **Rider swaps** (status + canonical duration): Neural Hack stagger→jammed,
+  Flash Freeze/Cold Spot/Blizzard Present slow→frozen, Web Snare/Web Launch
+  slow→root, Soul Suck slow→charm (feeds Draining Embrace), Flashbang Mine
+  stagger→stun (it's a flashbang), Boo stagger→discord, Family Curse
+  −2 ATK→applies Hexed (feeds Crystal Ball internally).
+- **Payoff retargets**: Requiem vs slow→**vs discord** (Discordance→Requiem is
+  finally the Harbinger internal combo), Megazord Blast→vs burn (Red Slash
+  sets it), Marrowstorm→vs poison (swamp sets it), Synthetic Blade→vs jammed
+  (android jam kit), Sleigh Dash→vs frozen, Venom Fang→vs root, Depth
+  Charge→vs discord (Ink Cloud sets it), Bad Trip→vs slow (self-loop),
+  Kiss of Decay→vs poison (self-loop), Splitting Arrow→vs burn (Fire Arrow).
+- **Payoff additions** (×1.5, internal-combo completions): Avalanche Strike vs
+  frozen (Permafrost), Bull Rush vs discord (Labyrinth Roar), Mind Crush vs
+  discord (Brainwash), Prophecy of Disaster vs discord (Abduction), Dark
+  Lullaby vs silence (self-loop), Call of the Deep vs silence (Deafening
+  Wail), Tidal Slam vs slow (Whirlpool), Descending Wrath vs burn (Fallen
+  Grace), Missile Barrage vs discord (Exhaust Cloud).
+
+`npm test` green (47 pass). Descs regenerated via describeSpell for every
+edited spell (121 regenerated; 19 already accurate). MP costs untouched —
+the ring ladder re-stamps at load.
