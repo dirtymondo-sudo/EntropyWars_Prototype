@@ -19453,6 +19453,7 @@
                     return;
                 }
                 addLog(`🔧 Turret at ${coordLabel(s.turret.x, s.turret.y)} fires at ${unitDisplayName(s.target)} for ${s.dmg} damage!`);
+                const _hpBefore = s.target.hp;
                 applyDamageToUnit(s.target, s.dmg, `🔧 Turret blast: `, {
                     ignoreArmor: false,
                     damageType: 'physical',
@@ -19463,6 +19464,14 @@
                     scaleByTargetLevel: true,
                     flashColor: 'hit'
                 });
+                // Balance telemetry: turret damage/kills belong to the spell
+                // that deployed it (sourceUnit already credits the CASTER's
+                // personal kills/XP/damage — this covers the spellUse table).
+                if (typeof _balAddSpellEffect === 'function') {
+                    const _applied = Math.max(0, _hpBefore - Math.max(0, s.target.hp || 0));
+                    const _killed = (s.target.dead || s.target._dying || (s.target.hp || 0) <= 0) ? 1 : 0;
+                    _balAddSpellEffect(s.turret.spellId || 'deployTurret', _applied, _killed);
+                }
             }
 
             if (state.devAutoSim || _skipVisuals()) {
@@ -34575,6 +34584,23 @@
             // Whiff = a damage-kind cast that hit nothing (aimed at nobody /
             // dodged / fizzled). Utility casts (heals, buffs) never whiff here.
             if (c.isDmg && !c.dmg && !c.targetsHit) b.whiffs++;
+        }
+
+        /* Post-cast effect attribution: deployables deal their damage rounds
+           AFTER the cast resolved, so the per-cast collector never sees it and
+           Deploy Turret read as 0 dmg / 0 kills in every export. Fold turret
+           shot results back into the deploying spell's efficiency row. */
+        function _balAddSpellEffect(spellId, dmg, kills) {
+            if (!_balanceSimMode) return;
+            if (!spellId || (!dmg && !kills)) return;
+            const sp = (typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[spellId]) || null;
+            const name = (sp && sp.name) || spellId;
+            ensureBalanceStats();
+            const m = _balanceStats.spellUse;
+            if (!m[name]) m[name] = { casts: 0, mp: 0, dmg: 0, kills: 0, targetsHit: 0, whiffs: 0 };
+            m[name].dmg += dmg || 0;
+            m[name].kills += kills || 0;
+            if (dmg > 0) m[name].targetsHit += 1;
         }
 
         // Tally one successful BUILD op (dig / tree chop / block place) so

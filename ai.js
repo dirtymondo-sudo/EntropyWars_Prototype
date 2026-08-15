@@ -111,7 +111,7 @@
         killBase: 70,               // flat premium for removing a unit (on top of its denied output)
         killOutputTurns: 1.6,       // turns of the victim's output a kill denies (they'd respawn/act ~1.6 more times near-term)
         supportKillPremium: 130,    // extra for killing a healer/reviver kit
-        mpValuePerPoint: 0.9,       // HP-equivalent value of 1 MP (opportunity cost of casting)
+        mpValuePerPoint: 0.5,       // HP-equivalent value of 1 MP (opportunity cost of casting; 0.9 caused MP hoarding — 59% of sim units ended matches >90% MP)
         pressActionValue: 150,      // floor value of the free action a press refund grants
         overkillWaste: 1.0,         // damage past the target's effective HP is worth 0 (cap factor)
         focusCommitBonus: 90,       // bonus for hitting the team's shared focus target
@@ -125,7 +125,7 @@
         buffTurnsHorizon: 2.2,      // expected turns a buff stays relevant
         delayedEscapeStatic: 0.35,  // P(target still in blast) for ground-tile delayed casts
         delayedEscapeTracking: 0.75,// P for unit-tracking delayed marks
-        threatCostFactor: 0.35,     // fraction of expected incoming damage charged to a tile
+        threatCostFactor: 0.25,     // fraction of expected incoming damage charged to a tile (0.35 made both AIs too timid to ever close — mutual standoff)
         deathRiskFactor: 0.9,       // × own kill-value charged when a tile's threat covers our whole HP bar
         jointSearchDiscount: 0.92,  // move-then-act value discount vs acting right now
         // ── kept legacy knobs (movement / modes / items) ──
@@ -1212,12 +1212,18 @@
             if (!_skipMove && g.canUnitMove(unit)) {
                 const moveTiles = g.TargetQuery.moveTiles(unit);
                 if (moveTiles.length > 0) {
-                    // safest fresh tile, not a random one
+                    // Safest fresh tile that still makes PROGRESS — idle units
+                    // drift toward the enemy tower (or mid) instead of the
+                    // corner shuffle the sim logs were full of.
                     const recent = new Set(unit._aiRecentTiles || []);
+                    const _obj = (vision.enemyTower && vision.enemyTower.hp > 0)
+                        ? vision.enemyTower
+                        : { x: Math.floor(g.bw() / 2), y: Math.floor(g.bh() / 2) };
                     let pick = null, pickCost = Infinity;
                     for (const t of moveTiles) {
                         const cost = tileDangerCost(g, unit, vision, t.x, t.y, t.z)
-                            + (recent.has(g.posKey(t.x, t.y)) ? 40 : 0);
+                            + (recent.has(g.posKey(t.x, t.y)) ? 40 : 0)
+                            + (Math.abs(t.x - _obj.x) + Math.abs(t.y - _obj.y)) * 3;
                         if (cost < pickCost) { pickCost = cost; pick = t; }
                     }
                     if (pick) best = { type: 'move', x: pick.x, y: pick.y, z: pick.z, score: 1 };
@@ -2195,20 +2201,24 @@
             if (spell.auraDebuff) {
                 const enemiesInRange = v.visibleEnemies.filter(e =>
                     Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= tRange).length;
+                if (enemiesInRange === 0) return 0;   // no blind aura deploys
                 let s = enemiesInRange * 100 + 50;
                 if (enemiesInRange >= 3) s *= 1.4;
                 return s;
             }
             const tDmg = spell.turretDmg || 8;
-            // a turret pays its damage every round for a few rounds
-            let s = tDmg * 3 * _offScale(unit, v.closestEnemy || unit);
             const enemiesInRange = v.visibleEnemies.filter(e =>
                 Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= tRange).length;
+            const towerInRange = !!(v.enemyTower && v.enemyTower.hp > 0 &&
+                Math.abs(v.enemyTower.x - target.x) + Math.abs(v.enemyTower.y - target.y) <= tRange);
+            // A turret that can't shoot anything is 50 MP of scenery — the sim
+            // batch showed thousands of corner deploys that never fired a
+            // killing shot. Only deploy where it has a target NOW.
+            if (enemiesInRange === 0 && !towerInRange) return 0;
+            // a turret pays its damage every round for a few rounds
+            let s = tDmg * 2 * _offScale(unit, v.closestEnemy || unit);
             s += enemiesInRange * 90;
-            if (v.enemyTower && v.enemyTower.hp > 0) {
-                const tDist = Math.abs(v.enemyTower.x - target.x) + Math.abs(v.enemyTower.y - target.y);
-                if (tDist <= tRange) s += 200;
-            }
+            if (towerInRange) s += 200;
             if (spell.id === 'siegeTurret') s *= 1.4;
             return s;
         }
@@ -2249,7 +2259,8 @@
             const round = g.state.round || 0;
             if (v.visibleEnemies.length === 0 && round <= 3) return 0;
             let s = 70;
-            const active = (g.state._gatePairs || []).filter(gp => gp.ownerUnitId === unit.id).length;
+            // Gate pairs are stamped with ownerId (battle.js doSpell).
+            const active = (g.state._gatePairs || []).filter(gp => gp.ownerId === unit.id).length;
             if (active >= (spell.maxActivePerCaster || 1)) return 0;
             const avgAllyDist = v.allies.length > 0
                 ? v.allies.reduce((sum, a) => sum + Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y), 0) / v.allies.length
@@ -2919,7 +2930,10 @@
                 const d = _dist(g, unit.x, unit.y, unit.z, e);
                 if (p > bestPriority + 30 && d < 12) { bestPriority = p; bestTarget = e; }
             }
-            let s = 75;
+            // Closing on a visible enemy IS the core of playing well — at 75
+            // this always lost to zone/hourglass camping and both AIs sat at
+            // range for entire matches (sim: 2.7 kills/match, 90% end HP).
+            let s = 160;
             if (v.enemyTower && v.enemyTower.hp > 0) {
                 const eDist = Math.abs(bestTarget.x - v.enemyTower.x) + Math.abs(bestTarget.y - v.enemyTower.y);
                 if (eDist <= 4) s += 40;
@@ -3752,7 +3766,10 @@
         }
 
         if (kind === 'deployTurret') {
-            const active = (g.state.turrets || []).filter(t => t.ownerUnitId === unit.id).length;
+            // Turrets are stamped with casterUnitId (battle.js doSpell) — the
+            // old ownerUnitId read always counted 0, so the AI never saw its
+            // own cap and re-deployed every turn, dismantling its own turrets.
+            const active = (g.state.turrets || []).filter(t => t.casterUnitId === unit.id).length;
             if (active >= (spell.maxActivePerCaster || 2)) return null;
             const R = _effRange(unit, spell) || 2;
             let bestTile = null, bestScore = -1;
@@ -4204,7 +4221,7 @@
         }
 
         if (kind === 'deployPair') {
-            const active = (g.state._gatePairs || []).filter(gp => gp.ownerUnitId === unit.id).length;
+            const active = (g.state._gatePairs || []).filter(gp => gp.ownerId === unit.id).length;
             if (active >= (spell.maxActivePerCaster || 1)) return null;
             const R = _effRange(unit, spell) || 4;
             let bestTile = null, bestScore = -1;
