@@ -18,16 +18,30 @@ a jump cut." Final state:
   beat 2 into a jump cut, since the target is already on screen).
 - **Point-blank side-profile close-up DELETED** (`CINE_SIDE_SHOT_MAX_TILES`/
   `CINE_SIDE_TILT` gone — do NOT reintroduce a "Skyrim execution cam").
-  Replaced at the same range (`CINE_OTS_MAX_TILES` 2.6, 'sky' excepted) by a
-  behind-the-shoulder PAIR frame: camera behind the caster, yaw = line ±
-  `CINE_OTS_SWING` (26°, side nearest the viewer's current yaw —
-  viewer-local, fine online), slope-following pitch
-  (`90 + slope − CINE_SHOULDER_ANGLE`), zoom =
-  min(hero boom, `_tpsZoomFitTiles(vGap+3.0, len+2.6)`). Caster foreground
-  off to one side, victim visible across frame ("Pokémon battle" frame).
-  Its hit beat is a **DRIFT onto the victim (never a hard cut)** — both
-  actors are already in frame, so a cut there reads as a jump cut. lowHero
-  at point-blank = same frame, +12 tilt, chest-height focal.
+  The behind-the-shoulder PAIR frame fires in exactly TWO cases (round 3
+  owner call: "2.6 is not point blank, 1 is" + "OTS for any and all
+  gun/bullet spells"):
+  (a) TRUE point-blank — `CINE_OTS_MAX_TILES` **1.45** = the adjacent ring
+  incl. the √2 diagonal, NOT a 2.6 radius; (b) **gun/bullet spells at ANY
+  range** — `CINE_GUN_SPELLS` in battle.js (doubleShot, precisionShot,
+  headshot, deadEye, kneecapShot, requiem, ricochet1, railgun,
+  raceQuickDraw, raceFanTheHammer, raceHighNoon, raceSuppressiveFire,
+  raceClassifiedWeapon, raceStunRay — the VFX layer's gun tables
+  cross-checked against data.js; its `_bolt_bullet`/`_SIG_GUN_FOR` maps
+  still carry CUT ids: shoot, shootout, mark1, plasmaGun, raceHeadshot).
+  `_playCineActionShot` learns the spell via `shotOpts.spellId` (threaded
+  from `playOffensiveActionCamera`, relayed → guest parity free).
+  The frame: camera behind the caster, yaw = line ± `CINE_OTS_SWING` (26°,
+  side nearest the viewer's current yaw — viewer-local, fine online),
+  slope-following pitch (`90 + slope − CINE_SHOULDER_ANGLE`), zoom =
+  min(hero boom, `_tpsZoomFitTiles(vGap+3.0, len+2.6)`), focal lead
+  `min(1.3, len*0.38)`. Caster foreground off to one side, victim visible
+  across frame ("Pokémon battle" / aim-cam frame). Its hit beat is a
+  **DRIFT onto the victim (never a hard cut)** — both actors are already in
+  frame, so a cut there reads as a jump cut; EXCEPT gun spells with a
+  bespoke sequence (railgun, headshot/Take Aim, raceHighNoon…) skip even
+  the drift — their bullet-cam/sequence owns the flight and a competing
+  glide would yank the ride. lowHero = same frame, +12 tilt, chest focal.
 - **Beat-2 reverse cut is elevation-aware**: pair fit is `2.6+vGap` tall and
   the focal leans 0.22×gap toward the caster's height (a ledge caster used
   to resolve above the frame). Same fix in `_playSupportCineShot`'s heal cut.

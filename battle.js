@@ -15618,22 +15618,38 @@
         const CINE_HIT_DIST_TILES  = 3.2;  // beat 2 — victim framing (close JRPG hit shot)
         const CINE_HIT_TILT        = 74;   // beat 2 pitch
         const CINE_HIT_SWING       = 26;   // extra yaw past the OTS offset → ¾ view of the victim
-        // POINT-BLANK behind-the-shoulder frame (SPELL_CINEMATICS.md keeps
-        // the standard grammar "cast close-up on caster → reverse cut on the
-        // victim" for everything else): under CINE_OTS_MAX_TILES the face→
-        // reverse pair of beats stacks the two bodies on the lens axis, so
-        // those casts open on ONE modern-TPS frame instead — camera BEHIND
-        // the caster, swung CINE_OTS_SWING degrees off the caster→target
-        // line, caster riding the foreground off to one side, target visible
-        // downrange (the "Pokémon battle" frame). Because both actors are
-        // already on screen, the hit beat is a DRIFT onto the victim, never
-        // a hard cut (a cut between two framings of the same pair reads as a
-        // jump cut, not a reverse).
+        // Behind-the-shoulder frame (SPELL_CINEMATICS.md keeps the standard
+        // grammar "cast close-up on caster → reverse cut on the victim" for
+        // everything else). It fires in exactly two cases:
+        //   · TRUE point-blank — the ADJACENT ring only (1 tile; 1.45 covers
+        //     the √2 diagonal, which is the same melee adjacency — NOT the
+        //     old 2.6-tile radius). At this range the face→reverse pair
+        //     stacks the two bodies on the lens axis.
+        //   · Gun/bullet casts (CINE_GUN_SPELLS) at ANY range — a shooter
+        //     aiming downrange is an aim cam, not a face close-up.
+        // The frame: camera BEHIND the caster, swung CINE_OTS_SWING degrees
+        // off the caster→target line, caster riding the foreground off to
+        // one side, target visible downrange (the "Pokémon battle" frame).
+        // Because both actors are already on screen, the hit beat is a DRIFT
+        // onto the victim, never a hard cut (a cut between two framings of
+        // the same pair reads as a jump cut, not a reverse).
         // (2026-08-15: this REPLACES the side-profile "execution" close-up
-        // that used to fire at this range — that shot centred the pair,
+        // that used to fire under 2.6 tiles — that shot centred the pair,
         // made every melee spell look identical, and is deleted for good.)
-        const CINE_OTS_MAX_TILES = 2.6;
+        const CINE_OTS_MAX_TILES = 1.45;
         const CINE_OTS_SWING     = 26;
+        // The game's LIVE gun/bullet spells — the VFX layer's gun tables
+        // (three-vfx-effects.js `_bolt_bullet` entries / _SIG_GUN_FOR rigs)
+        // cross-checked against data.js (those tables still carry cut ids —
+        // shoot, shootout, mark1, plasmaGun, raceHeadshot — and the old
+        // raceSuppressingFire alias), plus the cowboy revolver kit. Keep in
+        // sync when adding a gun spell.
+        const CINE_GUN_SPELLS = new Set([
+            'doubleShot', 'precisionShot', 'headshot', 'deadEye',
+            'kneecapShot', 'requiem', 'ricochet1', 'railgun',
+            'raceQuickDraw', 'raceFanTheHammer', 'raceHighNoon',
+            'raceSuppressiveFire', 'raceClassifiedWeapon', 'raceStunRay'
+        ]);
         /* Zoom that encodes an explicit TPS boom length (world tiles). */
         function _tpsZoomForBoomTiles(distTiles) {
             const ts = CONFIG.tileSize || BASE_TILE;
@@ -15847,11 +15863,11 @@
         //   BEAT 1 — THE CAST: the camera swoops around IN FRONT of the caster
         //     and faces them while the cast animation winds up. Holds for
         //     timings.sourceHold — the exact moment the projectile/VFX
-        //     launches, so the beat ends on the release frame. EXCEPTION:
-        //     point-blank casts (≤CINE_OTS_MAX_TILES) open on a behind-the-
-        //     shoulder pair frame instead and DRIFT through the hit (see the
-        //     beat-1 comment) — the close-up→reverse pair stacks bodies on
-        //     the lens axis at that range.
+        //     launches, so the beat ends on the release frame. EXCEPTIONS:
+        //     point-blank casts (adjacent ring, ≤CINE_OTS_MAX_TILES) and
+        //     gun/bullet spells (CINE_GUN_SPELLS, any range) open on a
+        //     behind-the-shoulder pair frame instead and DRIFT through the
+        //     hit (see the beat-1 comment).
         //   BEAT 2 — THE HIT: a hard CUT (white impact frame on the chrome)
         //     to a ¾ shot of the victim as the effect arrives, with a slow
         //     push-in riding through the impact. The board kicks at impactMs
@@ -15930,19 +15946,24 @@
                 //              and sky-drops aren't framed at shoulder height
                 //              pointing at empty ground.
                 //
-                // 2026-08-15 — POINT-BLANK EXCEPTION. Under CINE_OTS_MAX_TILES
-                // the close-up→reverse pair stacks the two bodies on the lens
-                // axis, so those casts (melee strikes, Robo Punch & co) open
-                // on ONE behind-the-shoulder frame instead: caster foreground
-                // off to one side (never dead-centre), victim visible across
-                // the frame; the hit beat DRIFTS onto the victim — no hard
-                // cut, both actors stay on screen the whole exchange. This
-                // replaces the deleted side-profile "execution" close-up.
+                // 2026-08-15 — OTS PAIR FRAME. Two cases open on ONE
+                // behind-the-shoulder frame instead of the close-up→reverse
+                // pair: TRUE point-blank (adjacent ring — the pair of beats
+                // stacks the two bodies on the lens axis there; Robo Punch &
+                // every melee strike), and GUN/BULLET spells at any range
+                // (the aim cam — a shooter lines up the shot downrange).
+                // Caster foreground off to one side (never dead-centre),
+                // victim visible across the frame; the hit beat DRIFTS onto
+                // the victim — no hard cut, both actors stay on screen the
+                // whole exchange. This replaces the deleted side-profile
+                // "execution" close-up.
                 const _shot = shotOpts.shotKind || 'ots';
-                const _otsPair = _shot !== 'sky' && len <= CINE_OTS_MAX_TILES;
+                const _isGun = !!(shotOpts.spellId && CINE_GUN_SPELLS.has(shotOpts.spellId));
+                const _otsPair = _shot !== 'sky'
+                    && (_isGun || len <= CINE_OTS_MAX_TILES);
                 const _normYaw = a => ((a + 180) % 360 + 360) % 360 - 180;
                 const _vGapTiles = Math.abs(tgtPx - casterPx) / ts;
-                let _sideSign = 1, _castZoom = 1;
+                let _sideSign = 1, _castZoom = 1, _leadFrac = 0.38;
                 if (_otsPair) {
                     // Swing side nearer the player's current view keeps the
                     // swoop short; the drift beat inherits the same frame.
@@ -15957,7 +15978,10 @@
                     const _slopeDeg = Math.atan2(tgtPx - casterPx, _horiz) * (180 / Math.PI);
                     const _lineTilt = Math.max(CINE_TILT_GUARD_MIN, Math.min(CINE_TILT_GUARD_MAX,
                         90 + _slopeDeg - CINE_SHOULDER_ANGLE));
-                    const _lead = len * 0.38;
+                    // Fixed-cap lead: the caster holds the same foreground
+                    // position whether the shot is 1 tile or 5.
+                    const _lead = Math.min(1.3, len * 0.38);
+                    _leadFrac = _lead / len;
                     _castZoom = Math.min(
                         _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES + len * 0.35),
                         _tpsZoomFitTiles(_vGapTiles + 3.0, len + 2.6));
@@ -15965,14 +15989,14 @@
                     _cineBeatMove({
                         x: sx + dirx * _lead, y: sy + diry * _lead,
                         zoom: _castZoom,
-                        // lowHero flavour survives at point-blank: the lens
-                        // drops and looks UP the line (HIGHER tilt = more
-                        // level/upward in this engine).
+                        // lowHero flavour survives here: the lens drops and
+                        // looks UP the line (HIGHER tilt = more level/upward
+                        // in this engine).
                         tilt: _low
                             ? Math.min(CINE_TILT_GUARD_MAX, _lineTilt + 12)
                             : _lineTilt,
                         yaw: yawFwd + _sideSign * CINE_OTS_SWING,
-                        elevZ: casterPx + (tgtPx - casterPx) * 0.38
+                        elevZ: casterPx + (tgtPx - casterPx) * _leadFrac
                             + ts * CINE_FOCAL_RISE * (_low ? 0.4 : 1),
                         duration: actionMs(_low ? 520 : 420), easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true,
@@ -16074,12 +16098,18 @@
                         });
                         return;
                     }
-                    // Point-blank OTS pair frame: both actors are ALREADY in
-                    // frame, so a hard cut here reads as a jump cut, not a
-                    // reverse. DRIFT instead — the focal slides onto the
-                    // victim and punches in through the arrival and impact,
-                    // holding the same yaw/tilt the exchange opened on.
+                    // OTS pair frame: both actors are ALREADY in frame, so a
+                    // hard cut here reads as a jump cut, not a reverse. DRIFT
+                    // instead — the focal slides onto the victim and punches
+                    // in through the arrival and impact, holding the same
+                    // yaw/tilt the exchange opened on. Gun spells with a
+                    // BESPOKE sequence (Railgun's bullet cam, Take Aim's
+                    // scope ride…) skip even the drift: the sequence owns the
+                    // flight, and a competing focal glide would yank its ride.
                     if (_otsPair) {
+                        if (_isGun && shotOpts.spellId
+                            && typeof CINE_SEQUENCES !== 'undefined'
+                            && CINE_SEQUENCES[shotOpts.spellId]) return;
                         _cineBeatMove({
                             x: tx - dirx * 0.18, y: ty - diry * 0.18,
                             zoom: _castZoom * 1.12,
@@ -18693,7 +18723,7 @@
                 showActionCamChrome({ name: opts.attackName || '',
                     heavy: true, totalMs: timings.totalMs });
                 const _shotOpts = { impactMs: _impactMs, frameTiles: opts.frameTiles,
-                      shotKind: opts.shotKind,
+                      shotKind: opts.shotKind, spellId: _cineSpellIdForShot,
                       holdAfterLaunchMs: opts.holdAfterLaunchMs };
                 _playCineActionShot(sourceUnit, target, timings, _fogPassthrough, sequenceId, _shotOpts);
                 /* SPELL CINEMATICS — layer the spell's own sequence (or, for
