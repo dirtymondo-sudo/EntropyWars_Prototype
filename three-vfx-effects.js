@@ -3518,7 +3518,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            the descent pipeline — don't double-fire it on the impact intent. */
         if (_spell3DGeometry[spellId] && intent === 'impact'
             && !(SPELL_MAP[spellId] && SPELL_MAP[spellId].descent)) {
-            _spell3DGeometry[spellId](params.tx, params.ty);
+            /* arg 4 = the full fire() params, so directional signatures (the
+               punches) can aim from the caster (params.fromX/fromY) when the
+               call site provides it. arg 3 stays the aoeRadius slot. */
+            _spell3DGeometry[spellId](params.tx, params.ty, undefined, params);
         }
 
         if (window.ThreeLightning && intent === 'impact' &&
@@ -10354,6 +10357,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        in the sky and drives the target into the dirt. Speed lines, shock
        ring, dust, one frame of white. Falls back to the stone-golem fist
        while the GLB streams. */
+    /* 2026-08-15: was a sky-drop ground-pound; punches now read as PUNCHES —
+       the fist rides the caster→target line horizontally at torso height
+       (opts.fromTx/fromTy aim it; unknown caster → random side). opts.arc
+       curls the travel like a hook for the haymaker. */
     function _sigGlbFist3D(tx, ty, opts) {
         opts = opts || {};
         if (!_canSpawn()) return;
@@ -10365,15 +10372,29 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!inst) { _sigStandFist3D(tx, ty, opts); return; }
         var g = new THREE.Group();
         g.position.set(wp.x, wp.y, wp.z);
-        g.rotation.y = Math.random() * Math.PI * 2;
+        /* local +Z = punch travel direction (caster → target) */
+        var yaw;
+        if (opts.fromTx != null && opts.fromTy != null
+            && (opts.fromTx !== tx || opts.fromTy !== ty)) {
+            var cw = _worldPos(opts.fromTx, opts.fromTy);
+            yaw = Math.atan2(wp.x - cw.x, wp.z - cw.z);
+        } else {
+            yaw = Math.random() * Math.PI * 2;
+        }
+        g.rotation.y = yaw;
         var arm = new THREE.Group();
         arm.add(inst.group);
-        inst.group.rotation.x = Math.PI;     /* knuckles to the earth */
+        inst.group.rotation.x = Math.PI / 2;   /* knuckles lead the way */
         g.add(arm);
 
         var cockMs = 240, beatMs = 90, slamMs = 130, pressMs = 200, springMs = 300;
         var total = cockMs + beatMs + slamMs + pressMs + springMs;
-        var hiY = ts * 2.5, cockY = ts * 3.1, restY = h * 0.42;
+        /* the punch line: torso height, cocked back over the caster's
+           shoulder, driven THROUGH the target's center */
+        var punchY = ts * 0.55, hitZ = h * 0.1;
+        var nearZ = -ts * 1.35, cockZ = -ts * 2.05;
+        var arcAmp = opts.arc ? ts * 0.55 : 0;   /* hook swings wide, then in */
+        var wristCock = opts.arc ? -0.5 : -0.28;
         var slammed = false;
         var c = tilePx(tx, ty), bz = tileZ(tx, ty);
 
@@ -10385,17 +10406,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         _sigRun(g, total, function (el) {
             var f = 1;
+            arm.position.y = punchY;
             if (el < cockMs) {
                 var t = _sigEaseOutCubic(el / cockMs);
                 f = Math.min(1, t * 2.2);
-                arm.position.y = hiY + (cockY - hiY) * t;
-                arm.rotation.z = -0.28 * t;
+                arm.position.z = nearZ + (cockZ - nearZ) * t;
+                arm.position.x = arcAmp * t;
+                arm.rotation.z = wristCock * t;            /* wind the wrist */
             } else if (el < cockMs + beatMs) {
-                arm.position.y = cockY;                    /* the held breath */
+                arm.position.z = cockZ;                    /* the held breath */
+                arm.position.x = arcAmp;
             } else if (el < cockMs + beatMs + slamMs) {
                 var t2 = (el - cockMs - beatMs) / slamMs;
-                arm.position.y = cockY + (restY - cockY) * t2 * t2;
-                arm.rotation.z = -0.28 * (1 - t2);
+                arm.position.z = cockZ + (hitZ - cockZ) * t2 * t2;
+                arm.position.x = arcAmp * (1 - t2 * t2);   /* hook curls back in */
+                arm.rotation.z = wristCock * (1 - t2);
                 if (!slammed && t2 > 0.94) {
                     slammed = true;
                     _sigShockRing3D(tx, ty, { color: 0xffe2b0, r1: ts * 1.8, ms: 420 });
@@ -10417,10 +10442,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     } catch (e3) {}
                 }
             } else if (el < cockMs + beatMs + slamMs + pressMs) {
-                arm.position.y = restY;                    /* pressed in */
+                arm.position.z = hitZ;                     /* pressed in */
             } else {
                 var t3 = (el - cockMs - beatMs - slamMs - pressMs) / springMs;
-                arm.position.y = restY + ts * 1.6 * t3 * t3;
+                arm.position.z = hitZ - ts * 1.2 * t3 * t3;   /* recoil back */
                 f = 1 - t3;
             }
             inst.setFade(f);
@@ -11174,7 +11199,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         var group = new THREE.Group();
         group.position.set(wp.x, wp.y, wp.z);
-        group.rotation.y = rn(0, Math.PI * 2);
+        /* local +Z = punch travel direction (caster → target); no caster
+           known → random side (2026-08-15: horizontal punch, was sky-drop) */
+        if (opts.fromTx != null && opts.fromTy != null
+            && (opts.fromTx !== tx || opts.fromTy !== ty)) {
+            var cwp = _worldPos(opts.fromTx, opts.fromTy);
+            group.rotation.y = Math.atan2(wp.x - cwp.x, wp.z - cwp.z);
+        } else {
+            group.rotation.y = rn(0, Math.PI * 2);
+        }
 
         var fist = new THREE.Group();
         /* colossus fist clad in the dedicated skin sprite (pass rockTex:
@@ -11212,7 +11245,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         part(new THREE.BoxGeometry(82, 62, 78), 0, 34, 0);
         part(new THREE.SphereGeometry(40, 9, 7), 0, 40, -30, 0, 0, 0, null, 1.15, 0.85, 0.7);
         part(new THREE.SphereGeometry(38, 9, 7), 0, 22, 26, 0, 0, 0, null, 1.12, 0.8, 0.75);
-        /* four curled fingers, knuckles DOWN (this fist punches the earth):
+        /* four curled fingers, knuckles at −Y (pitched to face the target):
            each finger = round knuckle + two angled segments folding under */
         for (var f = 0; f < 4; f++) {
             var fx = -31 + f * 21;
@@ -11238,39 +11271,43 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         fist.scale.set(unit, unit, unit);
         group.add(fist);
 
-        var skyH = opts.skyH != null ? opts.skyH : 700;
-        var groundY = ts * 0.42;
+        /* horizontal punch line: knuckles (−Y in the rig) swing to +Z — the
+           travel direction — with the forearm trailing back toward the caster */
+        var basePitch = -Math.PI / 2;
+        var punchY = ts * 0.5, hitZ = ts * 0.12;
+        var nearZ = -ts * 1.6, cockZ = -ts * 2.8;
         var windMs = opts.windMs != null ? opts.windMs : 200;
-        var dropMs = opts.dropMs != null ? opts.dropMs : 130;
+        var driveMs = opts.dropMs != null ? opts.dropMs : 130;
         var squashMs = 90;
         var holdMs = opts.holdMs != null ? opts.holdMs : 280;
-        var riseMs = opts.riseMs != null ? opts.riseMs : 260;
-        var total = windMs + dropMs + squashMs + holdMs + riseMs;
+        var retreatMs = opts.riseMs != null ? opts.riseMs : 260;
+        var total = windMs + driveMs + squashMs + holdMs + retreatMs;
 
         _sigMagicCircle3D(tx, ty, {
-            color: color, radiusPx: ts * 1.2, height: skyH * 0.55,
-            growMs: 100, holdMs: windMs + dropMs + holdMs, fadeMs: 220,
+            color: color, radiusPx: ts * 1.2, height: ts * 1.4,
+            growMs: 100, holdMs: windMs + driveMs + holdMs, fadeMs: 220,
             spin: 0.005, opacity: 0.7,
         });
 
         var impactFired = false;
         _sigRun(group, total, function (el) {
             var vis = 1;
+            fist.position.y = punchY;
             if (el < windMs) {
-                /* wind-up: fade in high, cock back and coil upward slightly */
+                /* wind-up: fade in behind the shoulder, cock further back */
                 var tw = el / windMs;
                 var ew = _sigEaseOutCubic(tw);
-                fist.position.y = skyH * (0.86 + 0.14 * ew);
-                fist.rotation.x = -0.5 * ew;
+                fist.position.z = nearZ + (cockZ - nearZ) * ew;
+                fist.rotation.x = basePitch - 0.5 * ew;
                 fist.scale.set(unit, unit, unit);
                 vis = Math.min(1, tw * 2.2);
-            } else if (el < windMs + dropMs) {
-                var t = (el - windMs) / dropMs;
-                fist.position.y = skyH - (skyH - groundY) * _sigEaseInCubic(t);
-                fist.rotation.x = -0.5 * (1 - t);
-                fist.scale.set(unit, unit * (1 + 0.25 * t), unit);   /* speed-stretch */
+            } else if (el < windMs + driveMs) {
+                var t = (el - windMs) / driveMs;
+                fist.position.z = cockZ + (hitZ - cockZ) * _sigEaseInCubic(t);
+                fist.rotation.x = basePitch - 0.5 * (1 - t);
+                fist.scale.set(unit, unit, unit * (1 + 0.25 * t));   /* speed-stretch */
                 vis = 1;
-            } else if (el < windMs + dropMs + squashMs) {
+            } else if (el < windMs + driveMs + squashMs) {
                 if (!impactFired) {
                     impactFired = true;
                     _sigShake('hard');
@@ -11281,18 +11318,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     _sigSparks(tx, ty, 'rock-debris', 10, { vxy: 240, vz0: 60, vz1: 260, gravity: 420 });
                     _sigSparks(tx, ty, opts.sparkSprite || 'spark-blue', 12);
                 }
-                var t2 = (el - windMs - dropMs) / squashMs;
+                var t2 = (el - windMs - driveMs) / squashMs;
                 var sq = Math.sin(t2 * Math.PI);
-                fist.rotation.x = 0;
-                fist.position.y = groundY * (1 - 0.25 * sq);
-                fist.scale.set(unit * (1 + 0.12 * sq), unit * (1 - 0.18 * sq), unit * (1 + 0.12 * sq));
-            } else if (el < windMs + dropMs + squashMs + holdMs) {
-                var elH = el - windMs - dropMs - squashMs;
-                fist.position.y = groundY + Math.sin(elH * 0.09) * 1.5;
+                fist.rotation.x = basePitch;
+                fist.position.z = hitZ;
+                fist.scale.set(unit * (1 + 0.12 * sq), unit * (1 + 0.12 * sq), unit * (1 - 0.18 * sq));
+            } else if (el < windMs + driveMs + squashMs + holdMs) {
+                var elH = el - windMs - driveMs - squashMs;
+                fist.rotation.x = basePitch;
+                fist.position.z = hitZ + Math.sin(elH * 0.09) * 1.5;
                 fist.scale.set(unit, unit, unit);
             } else {
-                var t3 = (el - windMs - dropMs - squashMs - holdMs) / riseMs;
-                fist.position.y = groundY + (skyH * 0.7 - groundY) * _sigEaseInCubic(t3);
+                var t3 = (el - windMs - driveMs - squashMs - holdMs) / retreatMs;
+                fist.rotation.x = basePitch;
+                fist.position.z = hitZ + (cockZ * 0.7 - hitZ) * _sigEaseInCubic(t3);
                 vis = 1 - t3;
             }
             rockMat.opacity = vis;
@@ -18761,8 +18800,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* A REALLY GOOD PUNCH — it is. */
         /* A REALLY GOOD PUNCH — the real Meshy fist (stone-golem fist while
            it streams; the gold knuckle look rides the fallback). */
-        reallyGoodPunch: function(tx, ty) { _sigGlbFist3D(tx, ty, { color: 0xffd24a }); },
-        haymaker: function(tx, ty) { _sigGlbFist3D(tx, ty, { scale: 0.8, circleColor: 0xff9944, color: 0xffb066 }); },
+        reallyGoodPunch: function(tx, ty, _r, p) { _sigGlbFist3D(tx, ty, { color: 0xffd24a,
+            fromTx: p && p.fromX, fromTy: p && p.fromY }); },
+        haymaker: function(tx, ty, _r, p) { _sigGlbFist3D(tx, ty, { scale: 0.8, circleColor: 0xff9944, color: 0xffb066,
+            arc: 1, fromTx: p && p.fromX, fromTy: p && p.fromY }); },
         /* SKULL CRACK — the skull model IS the animation: it drops onto the
            victim's crown and cracks apart (impact layers ride along). */
         skullCrack: function(tx, ty) { _sigSkullCrack3D(tx, ty); },

@@ -1625,7 +1625,7 @@
                 if (VFX && VFX.hasMapping(spell.id, 'impact')) {
                     window.setTimeout(() => {
                         if (state.phase !== 'battle' || _skipVisuals()) return;
-                        VFX.fire('impact', spell.id, { tx: target.x, ty: target.y });
+                        VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
                     }, impactDelay);
                 }
 
@@ -4412,7 +4412,7 @@
                     if (target.dead) return;
                     if (_useStrikeLeap && _useVfx3dImpact
                         && state.phase === 'battle' && !_skipVisuals()) {
-                        window.ThreeVFXEffects.fire('impact', spell.id, { tx: target.x, ty: target.y });
+                        window.ThreeVFXEffects.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
                     }
                     const dmg = calcMultiHitDamage({
                         base,
@@ -9544,7 +9544,7 @@
                 if (_useVfx3dImpact) {
                     window.setTimeout(() => {
                         if (state.phase !== 'battle' || _skipVisuals()) return;
-                        window.ThreeVFXEffects.fire('impact', spellMeta.id, { tx: toX, ty: toY });
+                        window.ThreeVFXEffects.fire('impact', spellMeta.id, { tx: toX, ty: toY, fromX: fromX, fromY: fromY });
                     }, flyMs);
                 } else if (kind !== 'attack' && !(kind && kind.indexOf('proj-bane') === 0)) {
 

@@ -1099,9 +1099,15 @@ via `window.EW_WPN_TWEAK = { sleigh: { ry: Math.PI } }` etc.
   runner streaks, brake flare) — `fireGeometry` grew an `extra` 5th param and
   battle.js passes `{fromX, fromY}` on the `:dash` key; the landing burst
   waits for the runners to arrive.
-- **A Really Good Punch / Haymaker**: `_sigGlbFist3D` — the Meshy fist cocks
-  back in the sky and drives the target into the dirt (stone-golem fist
-  stays as the streaming fallback).
+- **A Really Good Punch / Haymaker**: `_sigGlbFist3D` — 2026-08-15: now a
+  SIDEWAYS punch (was a sky-drop): the Meshy fist cocks back over the
+  caster's shoulder at torso height and drives horizontally through the
+  target; haymaker adds a hook arc (`arc: 1`). Aim comes from
+  `params.fromX/fromY`, which `fire('impact', …)` call sites in battle.js
+  now pass (strikeLeap handler, multiHit, playProjectile) and which
+  `fire()` forwards to `_spell3DGeometry` fns as a 4th arg — no caster
+  known → random horizontal direction. The stone-golem streaming fallback
+  (`_sigStandFist3D`) got the same horizontal treatment.
 - **Grave props** (three-renderer.js): enemy remains = scattered femur/ulna
   GLBs + skull GLB (`_boneGlbClone` over the misc-model cache, materials
   flagged _ew_shared so deployable rebuilds don't dispose them); the unholy
