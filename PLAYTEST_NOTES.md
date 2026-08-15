@@ -4,7 +4,37 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## 🎯 RANGE FALLOFF REWORK + BULLET DROP REMOVED (2026-08-15, LATEST) — battle.js / ai.js / data.js
+## 🎥 SPELL-CAM REWORK: OTS/POKÉMON BEAT 1, SIDE-SHOT DELETED (2026-08-15, LATEST) — battle.js
+
+Owner call after "the closeup never looked how I wanted / caster dead-centre
+blocks the view / elevation shots are buggy":
+- **Point-blank side-profile close-up DELETED** (`CINE_SIDE_SHOT_MAX_TILES`
+  2.6 + `CINE_SIDE_TILT` are gone; there is no special point-blank framing
+  anymore — do NOT reintroduce a "Skyrim execution cam").
+- **Beat 1 of `_playCineActionShot` is now behind-the-shoulder**: camera
+  BEHIND the caster, yaw = line ± `CINE_OTS_SWING` (26°, side picked nearest
+  the viewer's current yaw — viewer-local, fine online), focal a short lead
+  down the line (`min(1.3, len*0.38)` tiles) with its height blended the same
+  fraction between the two actors' elevations. Caster = foreground off to one
+  side, target visible downrange (the "Pokémon battle" frame the owner asked
+  for). Pitch is slope-following (`90 + slope − CINE_SHOULDER_ANGLE`), zoom =
+  min(hero boom, `_tpsZoomFitTiles(vGap+3.0, len+2.6)`) so both actors always
+  fit at any elevation gap. The old face-the-caster swoop is GONE for damaging
+  casts ('sky' crane kept verbatim; 'lowHero' is now the same OTS frame with
+  +12 tilt and a chest-height focal). Beat 2 reuses beat 1's `_sideSign` so
+  cuts never jump the 180° axis, and the pair-shot fit now includes the
+  vertical gap (`2.6+vGap` tall) + leans the focal 0.22×gap toward the caster.
+- **`cineBulletCam` is off-axis now** (Railgun/Take Aim/Hail Mary): ±14° yaw
+  swing + 0.5-tile lateral focal push (TPS shoulder maths) so the shooter no
+  longer fills screen-centre; default boom 1.6→2.2 (railgun's bespoke 1.4→2.4);
+  focal height glides muzzle-ground → target-ground.
+- **Elevation fixes elsewhere**: `cineSideDolly` fits/rides both endpoint
+  heights (hold fits `3.2+vGap`, travel glides px0→px1); `cineEndCapReverse`
+  cranes with the line slope looking back at an elevated shooter;
+  `_playSupportCineShot`'s heal cut got the same vGap pair fit.
+- Self/support beat 1 still faces the caster on purpose (no target to show).
+
+## 🎯 RANGE FALLOFF REWORK + BULLET DROP REMOVED (2026-08-15) — battle.js / ai.js / data.js
 
 Owner call: the range profile is now a simple falloff — **full damage at close
 range (dist 1), −10%/tile beyond, floored at −20% (×0.8 from 3+ tiles)**. There

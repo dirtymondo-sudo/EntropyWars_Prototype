@@ -15618,12 +15618,16 @@
         const CINE_HIT_DIST_TILES  = 3.2;  // beat 2 — victim framing (close JRPG hit shot)
         const CINE_HIT_TILT        = 74;   // beat 2 pitch
         const CINE_HIT_SWING       = 26;   // extra yaw past the OTS offset → ¾ view of the victim
-        // Point-blank casts swap the two OTS beats for ONE side-profile
-        // close-up (camera perpendicular to the caster→target line, both
-        // actors in frame) — under this gap the OTS beats stack the two
-        // bodies front-to-back and the exchange is unreadable (all backs).
-        const CINE_SIDE_SHOT_MAX_TILES = 2.6;
-        const CINE_SIDE_TILT           = 82;   // near-level profile lens
+        // Behind-the-shoulder cast framing (beat 1): the camera sits BEHIND
+        // the caster, swung this many degrees off the caster→target line, so
+        // the caster rides the foreground off to ONE SIDE of frame (never
+        // dead-centre blocking the lens) and the target stands visible
+        // downrange — the modern-TPS / "Pokémon battle" opening frame.
+        // (2026-08-15: the point-blank side-profile "execution" close-up that
+        // used to replace the beats under 2.6 tiles is DELETED — it centred
+        // the pair, made every melee spell look identical, and never read as
+        // intended. This framing works at every range including point-blank.)
+        const CINE_OTS_SWING = 26;
         /* Zoom that encodes an explicit TPS boom length (world tiles). */
         function _tpsZoomForBoomTiles(distTiles) {
             const ts = CONFIG.tileSize || BASE_TILE;
@@ -15834,10 +15838,11 @@
         // _playCineActionShot() — THE standard spell shot. ONE rig for every
         // damaging cast (meteors and sky-strikes included — the per-spell
         // descent camera is gone): a classic two-beat JRPG sequence.
-        //   BEAT 1 — THE CAST: the camera swoops around IN FRONT of the caster
-        //     and faces them while the cast animation winds up. Holds for
-        //     timings.sourceHold — the exact moment the projectile/VFX
-        //     launches, so the beat ends on the release frame.
+        //   BEAT 1 — THE CAST: behind-the-shoulder frame — caster foreground
+        //     off to one side, target visible downrange — while the cast
+        //     animation winds up. Holds for timings.sourceHold — the exact
+        //     moment the projectile/VFX launches, so the launch crosses the
+        //     frame on screen between the two actors.
         //   BEAT 2 — THE HIT: a hard CUT (white impact frame on the chrome)
         //     to a ¾ shot of the victim as the effect arrives, with a slow
         //     push-in riding through the impact. The board kicks at impactMs
@@ -15900,104 +15905,95 @@
             camera._cineKeepSubject = true;
 
             if (_cineTpsAnchor(sourceUnit, sourceUnit)) {
-                // ── BEAT 1 — THE CAST: swoop around and face the caster while
-                // they wind up. The camera eye sits toward the TARGET's side of
-                // the line looking back, so the cut to beat 2 reverses cleanly.
+                // ── BEAT 1 — THE CAST (2026-08-15 rework): a true modern-TPS
+                // opening frame. The camera sits BEHIND the caster, swung
+                // CINE_OTS_SWING degrees off the caster→target line (whichever
+                // side needs the smaller swing from where the player is
+                // already looking), with the focal pushed a short lead down
+                // the line — so the caster rides the FOREGROUND off to one
+                // side, the target stands in the background across the frame,
+                // and the launch plays out ON SCREEN between them. This
+                // replaced two framings that hid the exchange:
+                //   · the face-the-caster swoop (caster dead-centre, target
+                //     BEHIND the lens — you never saw what they were aiming at)
+                //   · the point-blank side-profile close-up (≤2.6 tiles), the
+                //     failed "execution cam" — deleted outright.
+                // PITCH follows the caster→target line's slope (the same rig
+                // maths as the 2D fallback: ride CINE_SHOULDER_ANGLE above the
+                // line), so an uphill/downhill cast cranes to keep both actors
+                // framed instead of staring level into a cliff face; ZOOM is
+                // fitted to the pair's horizontal span AND vertical gap, so
+                // neither actor can resolve off-frame whatever the geometry.
                 //
-                // 2026-07-24 — SHOT VARIANTS. Beat 1 used to be one framing for
-                // the entire spell library, so a 12 MP hex and a screen-clearing
-                // ultimate were shot identically. shotOpts.shotKind (resolved
-                // from the staging weight — see _spellShotKind) now picks:
-                //
-                //   'ots'      the standard over-the-shoulder hero framing
-                //   'lowHero'  camera drops toward the ground and looks UP at
-                //              the caster while they charge — the anime power
-                //              shot. Heavy + ultimate spells.
+                // shotOpts.shotKind variants (resolved from the staging
+                // weight — see _spellShotKind) restyle the same frame:
+                //   'ots'      the standard behind-the-shoulder framing
+                //   'lowHero'  the lens drops toward the deck and looks UP
+                //              the line while the caster charges — the anime
+                //              power shot, target still in frame.
                 //   'sky'      cranes UP off the caster to reveal the airspace
-                //              the payload is about to fall out of, so meteors
-                //              and sky-drops aren't framed at shoulder height
-                //              pointing at empty ground.
-                //
-                // Only the beat-1 numbers move — the beat-2 reverse cut, the
-                // TPS rig and the dolly are shared, so every variant still
-                // reads as the same camera language.
+                //              the payload is about to fall out of (meteors,
+                //              sky-drops) — unchanged, the payload needs air.
                 const _shot = shotOpts.shotKind || 'ots';
-
-                // ── SIDE-PROFILE CLOSE-UP (2026-08-07): at point-blank range
-                // the OTS beats put both bodies on the lens axis — the player
-                // sees the caster's back in beat 1 and the victim's back in
-                // beat 2, and the exchange between them is unreadable. Under
-                // CINE_SIDE_SHOT_MAX_TILES the whole shot becomes ONE lateral
-                // framing instead: camera perpendicular to the caster→target
-                // line (whichever side the player is already viewing from, so
-                // the swing stays small), both actors in profile with the
-                // caster opening slightly favoured; at the launch beat the
-                // lens drifts onto the victim and punches in through the
-                // impact. No reverse cut — both bodies stay in frame the
-                // whole time. Sky-drop staging keeps its crane (the payload
-                // needs the airspace above the caster); multi-target wide
-                // cuts (frameTiles) keep their group reverse cut.
-                const _sideShot = _shot !== 'sky' && len <= CINE_SIDE_SHOT_MAX_TILES;
-                const _midX = (sx + tx) / 2, _midY = (sy + ty) / 2;
                 const _normYaw = a => ((a + 180) % 360 + 360) % 360 - 180;
-                let _yawSide = 0, _zoomSide = 1, _elevSide = 0;
-                if (_sideShot) {
-                    const _yawA = _normYaw(yawFwd + 90), _yawB = _normYaw(yawFwd - 90);
-                    const _curYaw = _normYaw(camera._tyaw ?? camera.yaw ?? 0);
-                    _yawSide = Math.abs(_normYaw(_yawA - _curYaw)) <= Math.abs(_normYaw(_yawB - _curYaw))
-                        ? _yawA : _yawB;
-                    // Fit the pair: boom covers the gap plus headroom, capped
-                    // so the pair's span (screen-horizontal in a profile
-                    // shot) PLUS any elevation gap between them (vertical)
-                    // still fits in frame — in TPS boom units, so the cap
-                    // only bites when it genuinely must.
-                    const _vGapTiles = Math.abs(tgtPx - casterPx) / ts;
-                    _zoomSide = Math.min(
-                        _tpsZoomForBoomTiles(len + 2.1),
-                        _tpsZoomFitTiles(_vGapTiles + 2.4, len + 2.4));
-                    _elevSide = (casterPx + tgtPx) / 2 + ts * CINE_FOCAL_RISE * 0.8;
-                }
+                const _curYaw = _normYaw(camera._tyaw ?? camera.yaw ?? 0);
+                // Side pick: the swing nearer the player's current view keeps
+                // the swoop short. Beat 2's ¾ hit angle reuses the SAME sign,
+                // so the cut never jumps the action axis (the 180° rule).
+                const _sideSign = Math.abs(_normYaw((yawFwd + CINE_OTS_SWING) - _curYaw))
+                    <= Math.abs(_normYaw((yawFwd - CINE_OTS_SWING) - _curYaw)) ? 1 : -1;
+                const _vGapTiles = Math.abs(tgtPx - casterPx) / ts;
+                // Slope-following pitch — clamped only against a degenerate flip.
+                const _horiz = Math.max(ts * 0.5, len * ts);
+                const _slopeDeg = Math.atan2(tgtPx - casterPx, _horiz) * (180 / Math.PI);
+                const _lineTilt = Math.max(CINE_TILT_GUARD_MIN, Math.min(CINE_TILT_GUARD_MAX,
+                    90 + _slopeDeg - CINE_SHOULDER_ANGLE));
+                // Focal: a short fixed-ish lead down the line — the caster
+                // holds the same foreground position at any range — with its
+                // HEIGHT blended the same fraction along the line, so a ledge
+                // target can't park screen-centre in empty sky.
+                const _lead = Math.min(1.3, len * 0.38);
+                const _leadFrac = _lead / len;
+                const _castElev = casterPx + (tgtPx - casterPx) * _leadFrac
+                    + ts * CINE_FOCAL_RISE;
+                // Fit BOTH actors: a hero boom that eases back with range,
+                // never tighter than the pair's span + headroom (horizontal)
+                // and the elevation gap + headroom (vertical).
+                const _castZoom = Math.min(
+                    _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES + len * 0.35),
+                    _tpsZoomFitTiles(_vGapTiles + 3.0, len + 2.6));
 
-                const yawFace = yawFwd + 180 - CINE_CAM_YAW_OFFSET;
-                let _faceTilt = CINE_FACE_TILT;
-                let _faceDist = CINE_FACE_DIST_TILES;
-                let _faceRise = CINE_FOCAL_RISE;
-                let _faceMs   = 420;
-                if (_shot === 'lowHero') {
-                    // Sit low and look up the caster's body. In this engine a
-                    // HIGHER tilt number is a more level / upward lens, so the
-                    // low angle is +degrees, not -.
-                    _faceTilt = CINE_FACE_TILT + 16;
-                    _faceDist = CINE_FACE_DIST_TILES - 0.5;   // step in closer
-                    _faceRise = CINE_FOCAL_RISE * 0.35;       // aim at the chest
-                    _faceMs   = 520;                          // slower swoop
-                } else if (_shot === 'sky') {
+                if (_shot === 'sky') {
                     // Crane up and back so the caster sits low in frame with a
                     // lot of air above them — the payload arrives INTO the shot.
-                    _faceTilt = CINE_FACE_TILT + 26;
-                    _faceDist = CINE_FACE_DIST_TILES + 1.6;
-                    _faceRise = CINE_FOCAL_RISE * 2.4;
-                    _faceMs   = 560;
-                }
-                if (_sideShot) {
-                    // Anchor the rig between the pair; open a touch toward the
-                    // caster so the wind-up reads first.
-                    _cineTpsAnchor({ x: _midX, y: _midY }, sourceUnit);
                     _cineBeatMove({
-                        x: _midX - dirx * len * 0.15, y: _midY - diry * len * 0.15,
-                        zoom: _zoomSide, tilt: CINE_SIDE_TILT, yaw: _yawSide,
-                        elevZ: _elevSide,
-                        duration: actionMs(420), easing: 'easeInOut',
+                        x: sx + dirx * 0.1, y: sy + diry * 0.1,
+                        zoom: _tpsZoomForBoomTiles(CINE_FACE_DIST_TILES + 1.6),
+                        tilt: CINE_FACE_TILT + 26,
+                        yaw: yawFwd + 180 - CINE_CAM_YAW_OFFSET,
+                        elevZ: casterPx + ts * CINE_FOCAL_RISE * 2.4,
+                        duration: actionMs(560), easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true,
                         _fogAllowed: fogAllowed || undefined
                     });
                 } else {
+                    const _low = _shot === 'lowHero';
                     _cineBeatMove({
-                        x: sx + dirx * 0.1, y: sy + diry * 0.1,
-                        zoom: _tpsZoomForBoomTiles(_faceDist),
-                        tilt: _faceTilt, yaw: yawFace,
-                        elevZ: casterPx + ts * _faceRise,
-                        duration: actionMs(_faceMs), easing: 'easeInOut',
+                        x: sx + dirx * _lead, y: sy + diry * _lead,
+                        zoom: _castZoom,
+                        // lowHero: drop the lens and look UP the line (in this
+                        // engine a HIGHER tilt number is a more level/upward
+                        // lens) — the charge towers in the foreground while
+                        // the target waits downrange.
+                        tilt: _low
+                            ? Math.min(CINE_TILT_GUARD_MAX, _lineTilt + 12)
+                            : _lineTilt,
+                        yaw: yawFwd + _sideSign * CINE_OTS_SWING,
+                        elevZ: _low
+                            ? casterPx + (tgtPx - casterPx) * _leadFrac
+                                + ts * CINE_FOCAL_RISE * 0.4
+                            : _castElev,
+                        duration: actionMs(_low ? 520 : 420), easing: 'easeInOut',
                         _allowZoomChange: true, _bypassCap: true,
                         _fogAllowed: fogAllowed || undefined
                     });
@@ -16051,7 +16047,7 @@
                         _cineHardCut({
                             x: _wcx, y: _wcy,
                             zoom: _zoomWide, tilt: _tiltWide,
-                            yaw: yawFwd + CINE_CAM_YAW_OFFSET + CINE_HIT_SWING,
+                            yaw: yawFwd + _sideSign * (CINE_CAM_YAW_OFFSET + CINE_HIT_SWING),
                             elevZ: _gPx + ts * CINE_FOCAL_RISE
                         });
                         _acChromeFlash('cut');
@@ -16061,21 +16057,6 @@
                             duration: Math.max(actionMs(300),
                                 Math.round(timings.travelMs * 0.5) + timings.targetHold),
                             easing: 'linear',
-                            _allowZoomChange: true, _bypassCap: true,
-                            _fogAllowed: fogAllowed || undefined
-                        });
-                        return;
-                    }
-                    // Side-profile close-up: both actors are already in frame,
-                    // so no reverse cut — drift the focal onto the victim and
-                    // punch in through the arrival and the impact.
-                    if (_sideShot) {
-                        _cineBeatMove({
-                            x: _midX + dirx * len * 0.18, y: _midY + diry * len * 0.18,
-                            zoom: _zoomSide * 1.12,
-                            duration: Math.max(actionMs(300),
-                                Math.round(timings.travelMs * 0.5) + timings.targetHold),
-                            easing: 'easeInOut',
                             _allowZoomChange: true, _bypassCap: true,
                             _fogAllowed: fogAllowed || undefined
                         });
@@ -16094,17 +16075,24 @@
                     // victim at the caster) and the zoom widened just enough
                     // to fit both. Long casts keep the tight victim close-up.
                     const _pairShot = len <= 4.2;
+                    // Pair fit includes the pair's ELEVATION gap (vertical
+                    // span) as well as the horizontal one — a caster firing
+                    // down from a ledge used to resolve above the top of the
+                    // hit frame. The focal height leans a fraction of the gap
+                    // toward the caster for the same reason (victim still the
+                    // anchor and the subject).
                     const zoomHit = _pairShot
                         ? Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
-                                   _tpsZoomFitTiles(2.6, len + 2.0))
+                                   _tpsZoomFitTiles(2.6 + _vGapTiles, len + 2.0))
                         : _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES);
                     _cineHardCut({
                         x: _pairShot ? tx - dirx * len * 0.24 : tx,
                         y: _pairShot ? ty - diry * len * 0.24 : ty,
                         zoom: zoomHit, tilt: CINE_HIT_TILT,
-                        yaw: yawFwd + CINE_CAM_YAW_OFFSET
-                            + (_pairShot ? CINE_HIT_SWING * 0.45 : CINE_HIT_SWING),
-                        elevZ: tgtPx + ts * CINE_FOCAL_RISE
+                        yaw: yawFwd + _sideSign * (CINE_CAM_YAW_OFFSET
+                            + (_pairShot ? CINE_HIT_SWING * 0.45 : CINE_HIT_SWING)),
+                        elevZ: tgtPx + (_pairShot ? (casterPx - tgtPx) * 0.22 : 0)
+                            + ts * CINE_FOCAL_RISE
                     });
                     _acChromeFlash('cut');
                     // Slow push-in through the arrival and the impact.
@@ -16470,58 +16458,87 @@
             const yaw = opts.yaw != null ? opts.yaw
                 : (Math.abs(_norm(yawA - cur)) <= Math.abs(_norm(yawB - cur)) ? yawA : yawB);
             const midX = (from.x + to.x) / 2, midY = (from.y + to.y) / 2;
-            let px = 0;
+            // BOTH endpoint heights: a hold shot must fit the line's vertical
+            // drop as well as its length, and a travel shot must RIDE the
+            // slope — a single midpoint height left uphill/downhill beams
+            // exiting the top/bottom of frame.
+            let px0 = 0, px1 = 0;
             if (typeof window._camGroundPx === 'function') {
-                px = window._camGroundPx(Math.round(midX), Math.round(midY)) || 0;
+                px0 = window._camGroundPx(Math.round(from.x), Math.round(from.y)) || 0;
+                px1 = window._camGroundPx(Math.round(to.x), Math.round(to.y)) || 0;
             }
+            const vGapTiles = Math.abs(px1 - px0) / ts;
             const hold = opts.mode === 'hold' || len <= 4;
             const zoom = hold
-                ? Math.min(_tpsZoomForBoomTiles(len + 2.6), _tpsZoomFitTiles(3.2, len + 2.4))
+                ? Math.min(_tpsZoomForBoomTiles(len + 2.6),
+                           _tpsZoomFitTiles(3.2 + vGapTiles, len + 2.4))
                 : _tpsZoomForBoomTiles(opts.dist ?? 4.0);
             const tilt = opts.tilt ?? 80;
-            const elevZ = px + ts * (opts.rise ?? 0.7);
+            const rise = ts * (opts.rise ?? 0.7);
             if (hold) {
                 _cineTpsAnchor({ x: midX, y: midY }, null);
-                _cineHardCut({ x: midX, y: midY, zoom, tilt, yaw, elevZ });
+                _cineHardCut({ x: midX, y: midY, zoom, tilt, yaw,
+                    elevZ: (px0 + px1) / 2 + rise });
                 _acChromeFlash('cut');
                 return true;
             }
-            // TRAVEL: cut in at the head's start, then glide with the head.
+            // TRAVEL: cut in at the head's start, then glide with the head
+            // (focal height glides start-ground → end-ground with it).
             const lead = opts.lead ?? 0.6;
             _cineTpsAnchor({ x: from.x, y: from.y }, null);
-            _cineHardCut({ x: from.x + dirx * lead, y: from.y + diry * lead, zoom, tilt, yaw, elevZ });
+            _cineHardCut({ x: from.x + dirx * lead, y: from.y + diry * lead, zoom, tilt, yaw,
+                elevZ: px0 + rise });
             _acChromeFlash('cut');
             const travelMs = Math.max(actionMs(240), opts.travelMs ?? actionMs(90 * len));
             _cineBeatMove({
                 x: to.x + dirx * lead, y: to.y + diry * lead,
-                elevZ, duration: travelMs, easing: opts.easing || 'linear',
+                elevZ: px1 + rise, duration: travelMs, easing: opts.easing || 'linear',
                 _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
             });
             return true;
         }
 
         /* ── Bullet cam ── the camera rides just BEHIND a projectile down its
-           path (Railgun, Take Aim, Hail Mary). Same rig as the side dolly but
-           ON the axis, looking down it, close to the deck. */
+           path (Railgun, Take Aim, Hail Mary). 2026-08-15 rework: it used to
+           sit dead ON the axis, which parked the SHOOTER dead-centre filling
+           the frame — the whole flight was hidden behind their back. Now it
+           rides OVER THE SHOULDER of the line: a small yaw swing off the axis
+           plus a lateral focal offset keep the flight path crossing the frame
+           off-centre (shooter foreground-side at the cut, victim visible
+           downrange), and the focal HEIGHT glides from the muzzle's ground to
+           the target's ground so an uphill/downhill shot stays framed. */
         function cineBulletCam(from, to, opts = {}) {
             if (!from || !to) return false;
             const ts = CONFIG.tileSize || BASE_TILE;
             const dx = to.x - from.x, dy = to.y - from.y;
             const len = Math.max(0.8, Math.hypot(dx, dy));
             const dirx = dx / len, diry = dy / len;
-            const yaw = Math.atan2(-dx, -dy) * (180 / Math.PI);
-            let px = 0;
+            const _norm = a => ((a + 180) % 360 + 360) % 360 - 180;
+            const yawFwd = Math.atan2(-dx, -dy) * (180 / Math.PI);
+            const swing = opts.swing ?? 14;
+            // Swing toward whichever side the player is already viewing from.
+            const cur = _norm(camera._tyaw ?? camera.yaw ?? 0);
+            const side = opts.side ?? (Math.abs(_norm((yawFwd + swing) - cur))
+                <= Math.abs(_norm((yawFwd - swing) - cur)) ? 1 : -1);
+            const yaw = yawFwd + side * swing;
+            // Screen-lateral focal push for this yaw (same maths as the TPS
+            // shoulder offset) → the line rides off-centre, not through the
+            // crosshair.
+            const _psi = yaw * Math.PI / 180;
+            const shX = Math.cos(_psi) * 0.5 * side, shY = -Math.sin(_psi) * 0.5 * side;
+            let px0 = 0, px1 = 0;
             if (typeof window._camGroundPx === 'function') {
-                px = window._camGroundPx(Math.round(from.x), Math.round(from.y)) || 0;
+                px0 = window._camGroundPx(Math.round(from.x), Math.round(from.y)) || 0;
+                px1 = window._camGroundPx(Math.round(to.x), Math.round(to.y)) || 0;
             }
-            const zoom = _tpsZoomForBoomTiles(opts.dist ?? 1.6);
-            const elevZ = px + ts * (opts.rise ?? 0.85);
+            const zoom = _tpsZoomForBoomTiles(opts.dist ?? 2.2);
+            const rise = ts * (opts.rise ?? 0.85);
             _cineTpsAnchor({ x: from.x, y: from.y }, null);
-            _cineHardCut({ x: from.x + dirx * 0.5, y: from.y + diry * 0.5,
-                zoom, tilt: opts.tilt ?? 86, yaw, elevZ });
+            _cineHardCut({ x: from.x + dirx * 0.5 + shX, y: from.y + diry * 0.5 + shY,
+                zoom, tilt: opts.tilt ?? 86, yaw, elevZ: px0 + rise });
             _acChromeFlash('cut');
             _cineBeatMove({
-                x: to.x, y: to.y, elevZ,
+                x: to.x + shX, y: to.y + shY, elevZ: px1 + rise,
                 duration: Math.max(actionMs(260), opts.travelMs ?? actionMs(110 * len)),
                 easing: 'linear', _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
             });
@@ -16897,15 +16914,22 @@
             const len = Math.max(1, Math.hypot(dx, dy));
             const dirx = dx / len, diry = dy / len;
             const yawBack = Math.atan2(dx, dy) * (180 / Math.PI);   // looking back UP the line
-            let px = 0;
+            let px = 0, px0 = 0;
             if (typeof window._camGroundPx === 'function') {
                 px = window._camGroundPx(Math.round(to.x), Math.round(to.y)) || 0;
+                px0 = window._camGroundPx(Math.round(from.x), Math.round(from.y)) || 0;
             }
+            // Crane with the line: a shooter firing down from a ledge is UP
+            // the slope this shot stares back into — without following it the
+            // fixed pitch framed empty ground under them.
+            const slopeBack = Math.atan2(px0 - px, Math.max(ts * 0.5, len * ts)) * (180 / Math.PI);
             _cineTpsAnchor({ x: to.x + dirx * 0.8, y: to.y + diry * 0.8 }, null);
             _cineHardCut({
                 x: to.x + dirx * 0.8, y: to.y + diry * 0.8,
                 zoom: _tpsZoomForBoomTiles(opts.dist ?? 2.6),
-                tilt: opts.tilt ?? 84, yaw: yawBack, elevZ: px + ts * 0.85
+                tilt: opts.tilt ?? Math.max(CINE_TILT_GUARD_MIN,
+                    Math.min(CINE_TILT_GUARD_MAX, 84 + slopeBack)),
+                yaw: yawBack, elevZ: px + ts * 0.85
             });
             _acChromeFlash('cut');
             return true;
@@ -17672,8 +17696,10 @@
             railgun(ctx) {
                 const { caster, target, timings, sequenceId } = ctx;
                 _cineAt(timings.sourceHold, sequenceId, () => {
+                    // dist was 1.4 — the boom sat INSIDE the shooter's model
+                    // and the slug's whole flight was a blur of their back.
                     cineBulletCam(caster, target, {
-                        travelMs: Math.max(actionMs(300), timings.travelMs), tilt: 87, dist: 1.4
+                        travelMs: Math.max(actionMs(300), timings.travelMs), tilt: 87, dist: 2.4
                     });
                 });
                 _cineAt(timings.sourceHold + timings.travelMs, sequenceId,
@@ -43661,9 +43687,13 @@
                     _cineTpsAnchor(target, (target.id != null) ? target : null);
                     camera._cineShotTarget = { x: target.x, y: target.y, id: target.id ?? null };
                     const _pairShot = len <= 4.2;
+                    // Same elevation-aware pair fit as the offensive hit cut:
+                    // vertical gap folded into the frame, focal leaned a
+                    // fraction toward the giver's height.
+                    const _vGap = Math.abs(tgtPx - casterPx) / ts;
                     const zoomHit = _pairShot
                         ? Math.min(_tpsZoomForBoomTiles(CINE_HIT_DIST_TILES),
-                                   _tpsZoomFitTiles(2.6, len + 2.0))
+                                   _tpsZoomFitTiles(2.6 + _vGap, len + 2.0))
                         : _tpsZoomForBoomTiles(CINE_HIT_DIST_TILES);
                     _cineHardCut({
                         x: _pairShot ? target.x - (dx / len) * len * 0.24 : target.x,
@@ -43671,7 +43701,8 @@
                         zoom: zoomHit, tilt: CINE_HIT_TILT,
                         yaw: yawFwd + CINE_CAM_YAW_OFFSET
                             + (_pairShot ? CINE_HIT_SWING * 0.45 : CINE_HIT_SWING),
-                        elevZ: tgtPx + ts * CINE_FOCAL_RISE
+                        elevZ: tgtPx + (_pairShot ? (casterPx - tgtPx) * 0.22 : 0)
+                            + ts * CINE_FOCAL_RISE
                     });
                     _acChromeFlash('cut');
                     // Slow push-in while the drink goes down / the glow blooms.
