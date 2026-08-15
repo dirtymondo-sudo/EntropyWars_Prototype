@@ -29843,6 +29843,26 @@
                 }))));
             }
 
+            /* AUTO-SIM: never gate the match boot on asset warming. Sims run
+               with the VS splash skipped and (by default) animations off, so
+               this gate bought them nothing — but it COST them a dead, frozen
+               board at the start of any match whose warm-up stalled: THREE's
+               loaders have no network timeout, so one hung GLB fetch held the
+               boot for the full LS_MAX_WAIT_MS (45s) with NOTHING on screen —
+               the exact "Balance Lab freezes on a new match" report (balance
+               lab rolls random races every match, so cold GLBs recur forever).
+               Worse, the no-active-unit watchdog would force the turn loop at
+               15s on the half-booted match and the late gate then re-entered
+               beginBlitzRound mid-play. The warmers above still fire — the
+               caches heat in the background and the renderer swaps models in
+               as they land — but the sim boots NOW (microtask, identical to
+               the hot-cache path). devAutoSim is never true online, so the
+               start barrier below is not being skipped for a real opponent. */
+            if (state.devAutoSim) {
+                Promise.resolve().then(finish);
+                return;
+            }
+
             const assetsReady = Promise.race([
                 Promise.all(warmers),
                 new Promise(res => setTimeout(res, LS_MAX_WAIT_MS)),
@@ -29850,8 +29870,15 @@
 
             if (_skipVisuals()) {
                 /* No visuals, but online still honors the start barrier so a
-                   dev/animations-off client can't race ahead of its opponent. */
-                assetsReady.then(() => _lsAwaitRemoteReady()).then(finish);
+                   dev/animations-off client can't race ahead of its opponent.
+                   The catch is load-bearing: an exception anywhere in this
+                   chain used to drop finish() silently — no round 1, frozen
+                   board, nothing in the console but an unhandled rejection. */
+                assetsReady.then(() => _lsAwaitRemoteReady()).then(finish)
+                    .catch(err => {
+                        console.error('[LoadingScreen] boot gate failed — starting the match anyway:', err);
+                        finish();
+                    });
                 return;
             }
 
@@ -30025,6 +30052,12 @@
                         playSfx('uiCursorFocus');
                         setTimeout(dismiss, 900);
                     });
+                }).catch(err => {
+                    /* Same contract as the skip-visuals chain: presentation or
+                       barrier errors must never strand the match un-booted. */
+                    console.error('[LoadingScreen] boot gate failed — dismissing and starting:', err);
+                    ready = true;
+                    dismiss();
                 });
 
                 document.body.appendChild(overlay);
@@ -30790,6 +30823,14 @@
             });
         }
 
+        /* Non-zero while a started match is still inside its boot chain
+           (loading gate → VS splash/intro → _afterVSSplash). startMatch sets
+           phase='battle' up front, so without this flag the no-active-unit
+           watchdog reads the un-booted match as a 15s stall and forces
+           maybeAdvanceTurn on a board with NO turn order built — then the
+           real boot lands later and re-runs beginBlitzRound mid-play. */
+        let _matchBootPendingSince = 0;
+
         function startMatch() {
             state.startTime = Date.now();
 
@@ -30900,6 +30941,8 @@
             }
             function _afterVSSplash() {
 
+            _matchBootPendingSince = 0;   // boot chain complete — watchdogs may drive again
+
             if (mpMode.hasFlags) {
                 /* Place flags at the center of each team's spawn zone */
                 const z1 = state.spawnZones?.[1] || [];
@@ -31001,6 +31044,7 @@
             // sprites), then the VS splash plays as a pure cinematic over a
             // hot cache. See showBattleLoadingScreen above (ROADMAP §3.1/§3.2).
             const _launchIntro = () => showBattleLoadingScreen(_launchVSSplash);
+            _matchBootPendingSince = Date.now();
             if (_cutsceneScript) {
                 playCutscene(_cutsceneScript, _launchIntro);
             } else {
@@ -32876,7 +32920,18 @@
                 if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return reset();
                 if (state._spellLabMode) return reset();
                 if (_gauntletAwaitingHumanReplace()) return reset();
-                if (state._blitzActiveUnitId) return reset();
+                /* Match still booting (loading gate / VS splash / intro):
+                   round 1 has not been built yet, so "no active unit" is
+                   expected, not a stall. Forcing maybeAdvanceTurn here starts
+                   a half-booted match (no buildBlitzTurnOrder) and the real
+                   boot then re-enters beginBlitzRound mid-play. The gate
+                   always settles within LS_MAX_WAIT_MS; 60s is catastrophe
+                   insurance only. */
+                if (_matchBootPendingSince) {
+                    if (Date.now() - _matchBootPendingSince < 60000) return reset();
+                    console.warn('[WATCHDOG] Match boot pending for 60s+ — forcing the turn loop.');
+                    _matchBootPendingSince = 0;
+                }
                 /* Visible activity = the engine is mid-sequence, not stuck. */
                 if (_walkAnimActive
                     || (typeof isCinematicPresent === 'function' && isCinematicPresent())
@@ -32884,6 +32939,37 @@
                     || state.units.some(u => u._dying)
                     || (camera && camera.isBusy && camera.isBusy())) return reset();
                 const now = Date.now();
+                if (state._blitzActiveUnitId) {
+                    /* ACTIVE unit branch — the freeze the old watchdog was
+                       blind to (it bailed whenever a unit was active): an AI
+                       activation whose kick timer was gen-dropped sits forever
+                       with aiThinking=false, no _runComputerTurnTimer, no
+                       safety timer, and the shot clock stopped. Nothing else
+                       in the engine recovers that state. Count the stall only
+                       while the active unit is AI-owned and truly cold; a
+                       human player thinking on their turn never trips this. */
+                    const au = state.units.find(u => u.id === state._blitzActiveUnitId);
+                    const aiOwned = au && !au.dead && !au._dying
+                        && (state.controllers?.[au.player] === CTRL.AI
+                            || (typeof _mdUnitAuto === 'function' && _mdUnitAuto(au)));
+                    if (!aiOwned || state.aiThinking || state._actionExecuting
+                        || state._runComputerTurnTimer || _aiSafetyTimer) return reset();
+                    if (!_ewStallSince || _ewStallRound !== state.round) {
+                        _ewStallSince = now;
+                        _ewStallRound = state.round;
+                        return;
+                    }
+                    /* A cold AI activation is pathological the moment every
+                       timer is gone — at turbo a 15s hold IS the freeze the
+                       user sees, so sims re-kick fast; normal play keeps a
+                       generous window. */
+                    if (now - _ewStallSince < (state.devAutoSim ? 5000 : 15000)) return;
+                    console.warn('[WATCHDOG] Active AI unit cold (no AI drive) — re-kicking.',
+                        { unit: state._blitzActiveUnitId, round: state.round });
+                    _ewStallSince = 0;
+                    maybeTriggerComputerTurn();
+                    return;
+                }
                 if (!_ewStallSince || _ewStallRound !== state.round) {
                     _ewStallSince = now;
                     _ewStallRound = state.round;
@@ -33218,7 +33304,24 @@
                     }
                     const gen = _blitzTurnGen;
                     window.setTimeout(() => {
-                        if (_blitzTurnGen !== gen) return;
+                        if (_blitzTurnGen !== gen) {
+                            /* The gen moved while this kick was in flight.
+                               Usually that means a newer handoff owns the
+                               board — but round/match bookkeeping and stale
+                               turbo timers from the PREVIOUS match also bump
+                               the gen, and blindly dropping the kick then
+                               PARKED the match forever: this unit stayed
+                               active with aiThinking=false, no AI timer
+                               pending and the shot clock stopped (AI
+                               activations stop it above) — a state no
+                               watchdog covered. Stand down only if the board
+                               genuinely moved on; otherwise re-kick —
+                               maybeTriggerComputerTurn no-ops when a real
+                               newer activation is running. */
+                            if (state._blitzActiveUnitId !== nextUnit.id
+                                || state.aiThinking || state._actionExecuting
+                                || state.winner || state.phase !== 'battle') return;
+                        }
                         maybeTriggerComputerTurn();
                     }, delay);
                 } else if (state.controllers?.[nextUnit.player] === CTRL.REMOTE) {
@@ -33370,6 +33473,7 @@
 
             if (state._runComputerTurnTimer) clearTimeout(state._runComputerTurnTimer);
             const _rctGen = _blitzTurnGen;
+            const _rctUnit = state._blitzActiveUnitId;
             /* Hidden dungeon monsters "think" instantly — no reason to make
                the player wait 350ms per fogged enemy in a far-away room. */
             const _rctHidden = typeof _mdHiddenEnemyTurn === 'function' && state._blitzActiveUnitId
@@ -33377,7 +33481,17 @@
             state._runComputerTurnTimer = setTimeout(() => {
                 state._runComputerTurnTimer = null;
 
-                if (_blitzTurnGen !== _rctGen) { state.aiThinking = false; return; }
+                if (_blitzTurnGen !== _rctGen) {
+                    /* Same dropped-kick hazard as the activation timer: a gen
+                       bump from unrelated bookkeeping must not strand the
+                       still-active unit with aiThinking latched off. Proceed
+                       when this exact activation is still the live one. */
+                    if (state._blitzActiveUnitId !== _rctUnit || state.winner
+                        || state.phase !== 'battle' || state._actionExecuting) {
+                        state.aiThinking = false;
+                        return;
+                    }
+                }
                 runComputerTurn();
             }, state.devAutoSim ? scaleDevSimDelay(35, 2) : (_rctHidden ? 60 : 200));
         }

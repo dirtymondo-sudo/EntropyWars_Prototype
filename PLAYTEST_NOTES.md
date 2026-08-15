@@ -4,7 +4,77 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## 🔬 AUTO-SIM FREEZE FIX + SIM VISUAL DEFAULTS (2026-08-14, LATEST) — battle.js, map.js, online.js
+## 🧊 BALANCE LAB FREEZE — ACTUAL ROOT CAUSE (2026-08-14 second pass, LATEST) — battle.js
+
+User: "still freezing" after the watchdog pass below. Reproduced headlessly on
+current code: match #1 booted (RNG seeded, spawn zones logged, units placed)
+then sat 24s+ with `_blitzActiveUnitId=null` and combat log stuck at 1 entry —
+`_afterVSSplash` (buildBlitzTurnOrder → beginBlitzRound → round banner →
+maybeAdvanceTurn) had never run. The **real mechanism, all in battle.js**:
+
+- `startMatch` sets `phase='battle'` immediately, but round 1 only boots after
+  `showBattleLoadingScreen`'s ASSET-WARMING GATE settles. That gate re-runs
+  EVERY sim match, and Balance Lab randomizes races every match ⇒ cold GLB
+  fetches forever. THREE's loaders have **no network timeout**, so one stalled
+  GLB request holds `preloadUnitModels` un-settled and the boot waits the full
+  `LS_MAX_WAIT_MS` (45s) — with **nothing on screen** in the `_skipVisuals()`
+  path (sims force anims off). That IS the "freezes on a new match" report.
+- Since the watchdog pass, it got worse, not better: at 15s the no-active-unit
+  watchdog force-ran `maybeAdvanceTurn` on the HALF-BOOTED match (no
+  buildBlitzTurnOrder — round 1 skipped straight to round 2), then the gate's
+  late completion re-entered `beginBlitzRound` MID-PLAY — two turn drivers on
+  one match, the loop-corruption generator behind the "new freeze every week"
+  pattern.
+- Also: both loading-gate promise chains had **no .catch** — any throw inside
+  them dropped `finish()` silently (frozen board, unhandled rejection only).
+
+Fixes (battle.js only):
+1. `showBattleLoadingScreen`: `if (state.devAutoSim) { Promise.resolve().then(finish); return; }`
+   right after the warmers are created — sims NEVER gate the boot on asset
+   warming (warmers still fire, caches heat in the background, renderer swaps
+   models in as they land via invalidateUnits). Identical to the existing
+   hot-cache instant path; devAutoSim is never true online so no barrier skip.
+2. `.catch(... finish())` on the skip-visuals chain, `.catch(... dismiss())`
+   on the visible-overlay chain — a boot-gate error can no longer strand a
+   match un-booted.
+3. `_matchBootPendingSince` (set at startMatch's intro launch, cleared first
+   thing in `_afterVSSplash`): the no-active-unit watchdog treats a pending
+   boot as activity (resets stall timer) instead of force-starting a
+   half-booted match; 60s catastrophe valve keeps the old behavior as backstop.
+
+**Root cause #2 — the DROPPED AI KICK (found by the same headless trace, and
+it is the freeze no watchdog could see).** With boot instant, the harness still
+caught a match booting into `blitz='1-2', aiThinking=false, logN frozen` for
+90s+, ZERO watchdog fires. Mechanism: `_continueBlitzWithUnit_impl`'s AI branch
+arms the one setTimeout that starts the AI (`maybeTriggerComputerTurn`) behind
+a `_blitzTurnGen` guard — and `maybeAdvanceTurn`'s end-of-round path bumps that
+gen. At turbo, EOR/end-of-match callbacks from the PREVIOUS match routinely
+land inside the new activation's kick window ⇒ kick silently dropped ⇒ active
+unit forever, aiThinking false, no timer pending, shot clock STOPPED (the AI
+branch stops it at activation), and the no-active-unit watchdog BAILS because
+a unit IS active. Same class exists one level down: `_runComputerTurnTimer`'s
+gen-bail set `aiThinking=false` and returned. Fixes (battle.js):
+4. Both gen-guarded timers now STATE-CHECK instead of blindly dropping: if the
+   armed unit is still the live active unit (same id, no aiThinking, no
+   `_actionExecuting`, no winner, phase battle) the kick proceeds even on a gen
+   mismatch — `maybeTriggerComputerTurn` no-ops when a real newer activation
+   owns the board.
+5. No-active-unit watchdog grew an ACTIVE-unit branch: an AI-owned active unit
+   that is truly cold (no aiThinking, no `_runComputerTurnTimer`, no
+   `_aiSafetyTimer`, no `_actionExecuting`) gets re-kicked via
+   `maybeTriggerComputerTurn` after 5s in sims / 15s in normal play. Human
+   turns can never trip it (aiOwned gate).
+Verified headless (verify-fix2 harness, local file routing): match #1 boots in
+~6s wall (was 24s+ dead + watchdog kick), 5 forced back-to-back match cycles
+all complete — the cold-activation park still occurs on some boots (the match
+boot has multiple concurrent turn drivers; gen bumps in the first-activation
+window remain possible) but the watchdog now recovers every one, so the sim
+NEVER permanently freezes. Normal (non-sim) matches keep the loading
+screen/gate exactly as before. If a future session wants the park gone
+entirely (not just self-healed), instrument who bumps `_blitzTurnGen` between
+the first activation and its kick timer at turbo — that's the remaining race.
+
+## 🔬 AUTO-SIM FREEZE FIX + SIM VISUAL DEFAULTS (2026-08-14, earlier same day) — battle.js, map.js, online.js
 
 User report: "Balance Lab auto sim crashes after a few matches — freezes on a
 new match", plus having to manually turn off camera follow + animations every
