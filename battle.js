@@ -5926,6 +5926,14 @@
             // its curse-layer (kill credit on hex procs).
             if (payload.id === 'taunt' && sourceUnit) target._tauntCasterId = sourceUnit.id;
             if (payload.id === 'hexed' && sourceUnit) target._hexCasterId = sourceUnit.id;
+            // DOT appliers get credit for their ticks: poison/burn end-of-round
+            // damage resolves source-less (STATUS_DEFS onRoundEnd), so the
+            // applier is remembered here and credited at tick time.
+            if ((payload.id === 'poison' || payload.id === 'burn') && sourceUnit
+                && sourceUnit.player !== target.player) {
+                target._statusSrc = target._statusSrc || {};
+                target._statusSrc[payload.id] = sourceUnit.id;
+            }
             addLog(`${sourceLabel}${unitDisplayName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
 
             if (!_skipVisuals()) {
@@ -6228,10 +6236,15 @@
                             }
                         } else {
                         const enemies = state.units.filter(u => !u.dead && u.player !== zone.ownerPlayer);
+                        // Resolve the zone's caster so DOTs it applies (poison
+                        // clouds…) credit them for tick damage and kills.
+                        const _zoneCaster = zone.casterUnitId
+                            ? state.units.find(u => u.id === zone.casterUnitId && !u.dead) || null
+                            : null;
                         for (const enemy of enemies) {
                             if (area.some(t => t.x === enemy.x && t.y === enemy.y)) {
                                 for (const eff of (zone.statusEffects || [])) {
-                                    applyStatusPayload(enemy, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${zone.spellName} → `);
+                                    applyStatusPayload(enemy, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${zone.spellName} → `, _zoneCaster);
                                 }
                                 let evt = events.find(e => e.unit === enemy);
                                 if (!evt) { evt = { unit: enemy, msgs: [], floats: [] }; events.push(evt); }
@@ -6771,12 +6784,17 @@
                 const caster = unitFromId(seed.casterUnitId);
                 const hpBefore = unit.hp;
                 const dmgAmt = Math.max(_lvlScaledMin(16, unit), Math.round(unit.maxHp * SEED_POISON_PCT));
+                // Credit-only (no sourceUnit: that would add atk/type mults to
+                // the tick): _lastDamageSource routes the kill to the planter.
+                if (caster && !caster.dead) unit._lastDamageSource = caster;
                 applyDamageToUnit(unit, dmgAmt, `🌿 Poison Seed stings ${unitDisplayName(unit)}: `, {
                     ignoreArmor: true,
                     damageType: 'dot',
                     consumeMarked: false
                 });
                 const dmg = hpBefore - unit.hp;
+                if (caster && !caster.dead && dmg > 0) caster._trackDmgDealt = (caster._trackDmgDealt || 0) + dmg;
+                if (typeof _balAddSpellEffect === 'function') _balAddSpellEffect('poisonSeed', dmg, unit.dead ? 1 : 0);
                 if (!unit.dead) {
                     applyStatusPayload(unit, { id: 'poison', duration: 2 }, '🌿 Poison Seed: ', caster);
                 }
@@ -6790,14 +6808,18 @@
 
             if (seed.type === 'leech') {
                 if (unit.player !== seed.owner) {
+                    const caster = unitFromId(seed.casterUnitId);
                     const hpBefore = unit.hp;
                     const drainAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * SEED_LEECH_PCT));
+                    if (caster && !caster.dead) unit._lastDamageSource = caster;
                     applyDamageToUnit(unit, drainAmt, `🌿 Leech Seed drains ${unitDisplayName(unit)}: `, {
                         ignoreArmor: true,
                         damageType: 'dot',
                         consumeMarked: false
                     });
                     const dmg = hpBefore - unit.hp;
+                    if (caster && !caster.dead && dmg > 0) caster._trackDmgDealt = (caster._trackDmgDealt || 0) + dmg;
+                    if (typeof _balAddSpellEffect === 'function') _balAddSpellEffect('leechSeed', dmg, unit.dead ? 1 : 0);
                     if (dmg > 0) {
                         pushEvt(unit, `<span class="dlg-damage">🌿 Leech Seed drains ${unitDisplayName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
                     }
@@ -6958,12 +6980,15 @@
                 const caster = unitFromId(tree.casterUnitId);
                 const hpBefore = unit.hp;
                 const dmgAmt = Math.max(_lvlScaledMin(14, unit), Math.round(unit.maxHp * TREE_AURA_POISON_PCT));
+                if (caster && !caster.dead) unit._lastDamageSource = caster;
                 applyDamageToUnit(unit, dmgAmt, `🌳 Toxin Tree sickens ${unitDisplayName(unit)}: `, {
                     ignoreArmor: true,
                     damageType: 'dot',
                     consumeMarked: false
                 });
                 const dmg = hpBefore - unit.hp;
+                if (caster && !caster.dead && dmg > 0) caster._trackDmgDealt = (caster._trackDmgDealt || 0) + dmg;
+                if (typeof _balAddSpellEffect === 'function') _balAddSpellEffect('poisonSeed', dmg, unit.dead ? 1 : 0);
                 if (!unit.dead) {
                     applyStatusPayload(unit, { id: 'poison', duration: 2 }, '🌳 Toxin Tree: ', caster);
                 }
@@ -6976,14 +7001,18 @@
             }
 
             if (tree.aura === 'leech' && unit.player !== tree.owner) {
+                const caster = unitFromId(tree.casterUnitId);
                 const hpBefore = unit.hp;
                 const drainAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * TREE_AURA_LEECH_PCT));
+                if (caster && !caster.dead) unit._lastDamageSource = caster;
                 applyDamageToUnit(unit, drainAmt, `🌳 Leech Tree saps ${unitDisplayName(unit)}: `, {
                     ignoreArmor: true,
                     damageType: 'dot',
                     consumeMarked: false
                 });
                 const dmg = hpBefore - unit.hp;
+                if (caster && !caster.dead && dmg > 0) caster._trackDmgDealt = (caster._trackDmgDealt || 0) + dmg;
+                if (typeof _balAddSpellEffect === 'function') _balAddSpellEffect('leechSeed', dmg, unit.dead ? 1 : 0);
                 if (dmg > 0) {
                     pushEvt(unit, `<span class="dlg-damage">🌳 Leech Tree saps ${unitDisplayName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
                 }
@@ -8410,12 +8439,19 @@
                 const hit = unitAt(tile.x, tile.y);
                 if (hit && !hit.dead) {
                     const blastDmg = dmg + Math.floor(engineRng() * 20) - 10;
+                    const _hpBefore = hit.hp;
                     applyDamageToUnit(hit, blastDmg, `${obj.spellName || 'Explosion'}: `, {
                         sourceUnit: sourceUnit || null,
                         noRangeMult: true,
                         damageType: 'physical',
                         spellType: 'tech'
                     });
+                    // Balance telemetry: the blast belongs to the spell that
+                    // deployed the object, whenever it goes off.
+                    if (typeof _balAddSpellEffect === 'function' && obj.spellId) {
+                        const _applied = Math.max(0, _hpBefore - Math.max(0, hit.hp || 0));
+                        _balAddSpellEffect(obj.spellId, _applied, (hit.dead || (hit.hp || 0) <= 0) ? 1 : 0);
+                    }
                     // Blast riders (Flashbang Mine's Stagger…) land on every
                     // unit the blast damages — they were defined on the spell
                     // but never applied through this path.
@@ -20835,9 +20871,12 @@
                         const trap = state._deployedObjects[trapIdx];
                         trap._detonated = true;
                         addLog(`${trap.spellName || 'Trap'} triggers on ${unitDisplayName(unit)} at ${coordLabel(x, y)}!`);
-                        /* Apply blast damage if any */
+                        /* Apply blast damage if any — credited to the trap's
+                           OWNER (the old code passed the victim who stepped on
+                           it, so mine kills credited nobody). */
                         if (trap.blastRadius > 0 && trap.blastDmg > 0) {
-                            detonateDeployedObject(trap, unit);
+                            const _trapOwner = state.units.find(u => u.id === trap.ownerId && !u.dead) || null;
+                            detonateDeployedObject(trap, _trapOwner);
                         } else {
                             /* Apply status effects from the trap's spell data */
                             const spellDef = (typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[trap.spellId] : null;
@@ -38093,12 +38132,27 @@
                 }
             }
             const area = getSquareArea(bomb.x, bomb.y, 1);
+            // Credit the placer WITHOUT changing the damage math: passing
+            // sourceUnit into applyDamageToUnit would add atk-bonus/type
+            // multipliers the blast never had. Setting _lastDamageSource lets
+            // the death block's chip-credit fallback award the kill/XP/gold,
+            // and the tracked-damage counter is bumped by hand.
+            const _bombCaster = bomb.ownerUnitId
+                ? state.units.find(u => u.id === bomb.ownerUnitId && !u.dead) || null
+                : null;
             for (const tile of area) {
                 const target = unitAt(tile.x, tile.y);
                 if (target && target.player !== bomb.owner) {
+                    const _hpBefore = target.hp;
+                    if (_bombCaster) target._lastDamageSource = _bombCaster;
                     applyDamageToUnit(target, bomb.dmg, `Bomb blast at ${coordLabel(bomb.x, bomb.y)}: `, {
                         allowMarkBonus: false
                     });
+                    const _applied = Math.max(0, _hpBefore - Math.max(0, target.hp || 0));
+                    if (_bombCaster && _applied > 0) _bombCaster._trackDmgDealt = (_bombCaster._trackDmgDealt || 0) + _applied;
+                    if (typeof _balAddSpellEffect === 'function') {
+                        _balAddSpellEffect(bomb.spellId || 'placeBomb', _applied, (target.dead || (target.hp || 0) <= 0) ? 1 : 0);
+                    }
                 }
             }
 
@@ -38283,6 +38337,7 @@
 
         function _springTrap(trap, victim) {
             const owner = state.units.find(u => u.id === trap.casterUnitId) || null;
+            const _trapHpBefore = victim.hp;
             addLog(`🪤 ${unitDisplayName(victim)} springs a hidden ${trap.spellName || 'trap'} at ${coordLabel(trap.x, trap.y)}!`);
             showFloatingTextForUnit(victim, '🪤 TRAP!', 'damage', { durationMs: 1100 });
             playSfx('damage');
@@ -38359,6 +38414,12 @@
                         || { name: trap.spellName || 'Magnet Mine', element: 'lightning', dmg };
                     triggerTerrainSpellReaction(owner, _mgSpell, [{ x: trap.x, y: trap.y }]);
                 }
+            }
+            // Balance telemetry: the sprung trap's damage belongs to the
+            // spell that placed it (covers all trapType branches above).
+            if (typeof _balAddSpellEffect === 'function' && trap.spellId) {
+                const _applied = Math.max(0, _trapHpBefore - Math.max(0, victim.hp || 0));
+                _balAddSpellEffect(trap.spellId, _applied, (victim.dead || (victim.hp || 0) <= 0) ? 1 : 0);
             }
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
             scheduleBoardRender();
@@ -44115,7 +44176,12 @@
                 _balSpellCollector = {
                     casterId: unit.id, name: spell.name,
                     mp: spell.cost || 0,
-                    isDmg: _PRESS_SPELL_KINDS.has(spell.kind),
+                    // Delayed casts (Take Aim's mark, kind:'delayed' nukes)
+                    // land at END of round — the cast itself resolves without
+                    // damage by design, so it must not count as a whiff (the
+                    // hit is credited later through _balAddSpellEffect in
+                    // _detonateDelayedSpell).
+                    isDmg: _PRESS_SPELL_KINDS.has(spell.kind) && !spell.delayedMark && spell.kind !== 'delayed',
                     dmg: 0, kills: 0, targetsHit: 0,
                 };
             }
@@ -44596,7 +44662,8 @@
                     owner: unit.player,
                     ownerUnitId: unit.id,
                     dmg: spell.dmg + spellPower,
-                    radius: spell.blastRadius || 1
+                    radius: spell.blastRadius || 1,
+                    spellId: spell.id
                 };
                 /* Contact detonation: a bomb placed straight onto a grounded
                    enemy goes off immediately — no Detonate needed. This
@@ -46189,6 +46256,7 @@
                     radius: spell.aoeRadius || 1,
                     type: 'debuff',
                     ownerPlayer: unit.player,
+                    casterUnitId: unit.id,
                     duration: spell.zoneDuration || 2,
                     statusEffects: spell.statusEffects || [],
                     allyStatusEffects: spell.allyStatusEffects || [],

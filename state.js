@@ -1020,6 +1020,7 @@
                     window.CineFX.play('slowMo', { scale: 0.4, ms: 700 });
                     window.CineFX.play('grade', { kind: 'scope', ms: 700 });
                 }
+                const _dsHpB = mark.hp;
                 applyDamageToUnit(mark, ds.dmg, `${ds.spellName} strikes `, {
                     sourceUnit,
                     damageType: ds.damageType || 'physical',
@@ -1028,6 +1029,13 @@
                     ignoreArmor: !!ds.ignoreArmor,
                     flashColor: 'hit'
                 });
+                // Balance telemetry: the landed shot belongs to the spell that
+                // painted the mark (its cast resolved damage-less by design).
+                if (typeof _balAddSpellEffect === 'function' && ds.spellId) {
+                    _balAddSpellEffect(ds.spellId,
+                        Math.max(0, _dsHpB - Math.max(0, mark.hp || 0)),
+                        (mark.dead || (mark.hp || 0) <= 0) ? 1 : 0);
+                }
                 for (const eff of (ds.statusEffects || [])) {
                     if (sourceUnit && !mark.dead) applyStatusPayload(mark, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${ds.spellName}: `, sourceUnit);
                 }
@@ -1047,12 +1055,20 @@
             for (const tile of area) {
                 const hit = allUnits.find(u => u.x === tile.x && u.y === tile.y && (ds.friendlyFire || u.player !== ds.sourcePlayer));
                 if (hit && !hit.dead) {
+                    const _dsHpB = hit.hp;
                     applyDamageToUnit(hit, ds.dmg, `${ds.spellName} detonates: `, {
                         sourceUnit,
                         damageType: ds.damageType || 'magic',
                         spellType: ds.spellType || null,
                         bonusVsStatus: ds.bonusVsStatus || null
                     });
+                    // Balance telemetry: delayed blasts land rounds after the
+                    // cast — credit the originating spell's efficiency row.
+                    if (typeof _balAddSpellEffect === 'function' && ds.spellId) {
+                        _balAddSpellEffect(ds.spellId,
+                            Math.max(0, _dsHpB - Math.max(0, hit.hp || 0)),
+                            (hit.dead || (hit.hp || 0) <= 0) ? 1 : 0);
+                    }
                     for (const eff of (ds.statusEffects || [])) {
                         if (sourceUnit && !hit.dead) applyStatusPayload(hit, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${ds.spellName}: `, sourceUnit);
                     }

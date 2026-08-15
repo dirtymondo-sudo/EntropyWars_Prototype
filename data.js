@@ -8305,6 +8305,12 @@ const STATUS_DEFS = {
             const label = stacks > 0
                 ? `${unitDisplayName(unit)} is burning in lava (×${stacks}): `
                 : `Burn sears ${unitDisplayName(unit)}: `;
+            // Spell-applied burns credit their applier (lava burns stay
+            // environmental). Credit-only: damage math stays source-less.
+            const _srcId = stacks === 0 && unit._statusSrc ? unit._statusSrc.burn : null;
+            const _src = (_srcId && typeof unitFromId === 'function') ? unitFromId(_srcId) : null;
+            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSource = _src;
+            const _hpB = unit.hp;
             applyDamageToUnit(unit, dmg, label, {
                 ignoreArmor: true,
                 damageType: 'dot',
@@ -8317,6 +8323,10 @@ const STATUS_DEFS = {
                 // passive (Thermal Regen) turns any stray tick into healing.
                 element: 'fire'
             });
+            const _dealt = _hpB - unit.hp;
+            if (_src && !_src.dead && _src.player !== unit.player && _dealt > 0) {
+                _src._trackDmgDealt = (_src._trackDmgDealt || 0) + _dealt;
+            }
         }
     },
     poison: {
@@ -8333,6 +8343,13 @@ const STATUS_DEFS = {
         spriteSrc: 'https://cdn.entropywars.net/Assets/Sprites/Status/poison.png',
         iconSrc: createStatusIconDataUri('☠', '#2a1c34', '#efdcff', '#b06ad3'),
         onRoundEnd(unit) {
+            // Credit the applier (tracked in battle.js applyStatusPayload):
+            // _lastDamageSource routes a tick kill to them; damage math stays
+            // source-less on purpose (no atk/type multipliers on DOTs).
+            const _srcId = unit._statusSrc && unit._statusSrc.poison;
+            const _src = (_srcId && typeof unitFromId === 'function') ? unitFromId(_srcId) : null;
+            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSource = _src;
+            const _hpB = unit.hp;
             applyDamageToUnit(unit, 32, `Poison harms ${unitDisplayName(unit)}: `, {
                 ignoreArmor: true,
                 damageType: 'dot',
@@ -8340,6 +8357,10 @@ const STATUS_DEFS = {
                 scaleByTargetLevel: true,
                 flashColor: 'poison'
             });
+            const _dealt = _hpB - unit.hp;
+            if (_src && !_src.dead && _src.player !== unit.player && _dealt > 0) {
+                _src._trackDmgDealt = (_src._trackDmgDealt || 0) + _dealt;
+            }
         }
     },
     silence: {
