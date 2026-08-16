@@ -4370,11 +4370,12 @@ const SPELL_LIBRARY = [
         element: 'sonic',
         name: 'Encore',
         type: 'buff',
-        cost: 35,
+        cost: 50,
         equipCost: 20,
         range: 3,
         kind: 'encore',
-        tier: 'II',
+        /* Harbinger ring-2 tool since 2026-08-16 (swapped with Lullaby). */
+        tier: 'I',
         school: 'Harbinger',
         classRestriction: 'Harbinger',
         desc: 'Grant a friendly unit that already acted this turn 1 bonus AP, letting them take one more action. Each unit can only receive Encore once per round.'
@@ -4385,14 +4386,16 @@ const SPELL_LIBRARY = [
         element: 'sonic',
         name: 'Lullaby',
         type: 'damage',
-        cost: 25,
+        cost: 75,
         equipCost: 15,
         dmg: 130,
         range: 4,
         kind: 'damage',
         damageType: 'magic',
-        /* Harbinger ring-2 tool (tier I): the Slow that feeds Cross Slash. */
-        tier: 'I',
+        /* Harbinger ring-3 payoff since 2026-08-16 (was ring 2 — stats18
+           showed it as the game's most-cast spell at 50 MP): the Slow that
+           feeds Cross Slash now costs a real 75 MP. */
+        tier: 'II',
         school: 'Harbinger',
         classRestriction: 'Harbinger',
         statusEffects: [{
@@ -4809,10 +4812,19 @@ const SPELL_LIBRARY = [
         element: 'sonic',
         name: 'Requiem',
         type: 'damage',
-        cost: 60,
+        cost: 100,
         equipCost: 25,
         dmg: 160,
-        range: 4,
+        /* 2026-08-16 (stats18 whiff audit): normalized to the self-origin
+           nova shape every other barrage uses (aoeOriginSelf + aoeRadius)
+           instead of leaning on the range-fallback path — Requiem was the
+           only barrage without it. Radius 4 keeps its old reach. NOTE: the
+           77% whiff rate in stats17/18 could NOT be reproduced against the
+           current repo engine (forced-Requiem sim: 0 whiffs) — it is almost
+           certainly a stale battle.js on R2; redeploy with a cache-bust. */
+        range: 0,
+        aoeOriginSelf: true,
+        aoeRadius: 4,
         kind: 'barrage',
         damageType: 'magic',
         tier: 'III',
@@ -6493,8 +6505,10 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'silence', duration: 1 }],
           bonusVsStatus: { status: 'silence', mult: 1.5 },
           desc: 'Deals HEAVY magic damage to All Enemies in an AOE. Applies Silence. Deals bonus damage to targets with Silence.' },
+        /* Ring-3 payoff since 2026-08-16 (was ring 1 — top-10 dmg/MP in
+           stats18 at 25 MP): the drain kiss now prices as tier II. */
         { id: 'raceKissOfDecay', spellType: 'unholy', name: 'Kiss of Decay',
-          type: 'damage', cost: 30, dmg: 100, range: 2,
+          type: 'damage', cost: 75, dmg: 100, range: 2, tier: 'II',
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.40,
           statusEffects: [{ id: 'poison', duration: 2 }],
           bonusVsStatus: { status: 'poison', mult: 1.5 },
@@ -7028,22 +7042,35 @@ const RACE_ABILITIES = {
     /* Yeti (reworked 2026-07-23) — full frost kit built around the new Frozen
        status and slippery ice terrain. */
     'yeti': [
+        /* 2026-08-16 balance (stats18): 1 cast in 362 matches — the AI's
+           terrainCreate scorer only values raw dmg (40 read as worthless next
+           to the ring-3 75 MP + 2 AP price). Damage raised to MEDIUM so the
+           freeze actually gets cast; tier stamped to match its ring. */
         { id: 'racePermafrost', spellType: 'anomaly', element: 'ice', name: 'Permafrost',
-          type: 'damage', cost: 35, dmg: 40, range: 3, apCost: 2,
+          type: 'damage', cost: 75, dmg: 120, range: 3, apCost: 2, tier: 'II',
           kind: 'terrainCreate', terrainType: 'ice', squareFlood: true, aoeRadius: 1,
           damageType: 'magic', witherTrees: true,
           statusEffects: [{ id: 'frozen', duration: 2 }],
-          desc: 'Deep-freezes a 3×3 area into ice terrain. Enemies caught take WEAK magic damage and are FROZEN solid. Seeds and deployables in the area are destroyed; living trees die on the spot.' },
-        { id: 'raceAvalancheStrike', spellType: 'anomaly', element: 'ice', name: 'Avalanche Strike',
-          type: 'damage', tier: 'III', cost: 45, dmg: 170, range: 2, apCost: 1,
-          kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 20,
+          desc: 'Deep-freezes a 3×3 area into ice terrain. Enemies caught take MEDIUM magic damage and are FROZEN solid. Seeds and deployables in the area are destroyed; living trees die on the spot.' },
+        /* 2026-08-16 balance (stats18): yeti sat at 28.9% WR and this capstone
+           had ZERO casts in 362 matches — kind 'leapStrike' requires standing
+           STRICTLY ABOVE the target (AI + engine both gate on it), which never
+           happens on flat rotation maps. Reworked into the bruiser charge the
+           kit wanted (Gore Charge / Bull Rush family) and it now APPLIES
+           Frozen, so Frozen Punch's 1.5× rider finally has an in-kit setup. */
+        _mkCharge({ id: 'raceAvalancheStrike', spellType: 'anomaly', element: 'ice', name: 'Avalanche Strike',
+          tier: 'III', cost: 100, dmg: 180, range: 3, apCost: 1,
+          statusEffects: [{ id: 'frozen', duration: 1 }],
           bonusVsStatus: { status: 'frozen', mult: 1.5 },
-          desc: 'Leaps to a Single Enemy, dealing HEAVY physical damage. Deals bonus damage to targets with Frozen.' },
+          desc: 'Charges into melee in a wall of snow, dealing HEAVY physical damage to a Single Enemy and freezing it solid for 1 turn. Deals bonus damage to targets already Frozen.' }),
+        /* 2026-08-16 balance (stats18): at its ring-2 ladder price (50 MP)
+           this was ~2 dmg/MP, bottom of the game — numbers raised to earn
+           the slot. */
         { id: 'raceIceSlide', spellType: 'anomaly', element: 'ice', name: 'Ice Slide',
-          type: 'damage', cost: 20, dmg: 100, range: 4, apCost: 1,
-          kind: 'dash', damageType: 'physical', dashDamage: 50,
+          type: 'damage', cost: 50, dmg: 140, range: 4, apCost: 1,
+          kind: 'dash', damageType: 'physical', dashDamage: 70,
           leaveTerrain: 'ice',
-          desc: 'Dashes through the battlefield, dealing WEAK physical damage to enemies along the path. Leaves ice behind.' },
+          desc: 'Dashes through the battlefield, dealing MEDIUM physical damage to enemies along the path. Leaves ice behind.' },
         { id: 'raceFrozenPunch', spellType: 'anomaly', element: 'ice', name: 'Frozen Punch',
           type: 'damage', cost: 15, dmg: 90, range: 1, apCost: 1,
           kind: 'damage', damageType: 'physical',
@@ -12174,7 +12201,10 @@ const CLASS_SPELL_LEARN_ORDER = {
     'Psychic':     ['kineticHurl', 'psychosis', 'teleport', 'mindShatter'],
     'Harvester':   ['healingSeed', 'poisonSeed', 'lifeDrain', 'leechSeed'],
     'Engineer':    ['repair', 'deployTurret', 'fiveGTower', 'railgun'],
-    'Harbinger':   ['discordance', 'lullaby', 'encore', 'requiem'],
+    /* 2026-08-16 balance (stats18): Lullaby was the most-cast spell in the
+       lab at ring 2 / 50 MP with a 57% pick-winrate — promoted to ring 3
+       (75 MP, tier II); Encore drops to ring 2 (50 MP, tier I). */
+    'Harbinger':   ['discordance', 'encore', 'lullaby', 'requiem'],
     'Freelancer':  ['improvise', 'jackOfAll', 'reallyGoodPunch'],
     'Raider':      ['haymaker', 'ironGrip', 'skullCrack', 'rampage'],
     'Sniper':      ['kneecapShot', 'camouflage', 'precisionShot', 'headshot'],
@@ -12265,7 +12295,11 @@ const RACE_TREE = {
     'cyclops':       ['raceStoneThrow', 'raceBalefulGaze', 'raceTitanDrop', 'raceGiantSmash'],
     'cyborg':        ['raceHydraulicPunch', 'raceEMPGrenade', 'overclock', 'raceRocketToss'],
     'demon prince':  ['raceDemonicRoar', 'raceInfernalConscription', 'sharedScorchedEarth', 'raceDarkDominion'],
-    'demon princess': ['raceKissOfDecay', 'sharedHexOfToil', 'sharedPoisonSwamp', 'raceDarkLullaby'],
+    /* 2026-08-16 balance (stats18): demon princess ran +16.6 residual — Kiss
+       of Decay (top-10 dmg/MP at 25 MP) moves to ring 3 (75 MP, tier II);
+       Poison Swamp opens the pillar at ring 1 (it already prices as ring 1
+       via its reptilian slot — shared ids take their lowest ring). */
+    'demon princess': ['sharedPoisonSwamp', 'sharedHexOfToil', 'raceKissOfDecay', 'raceDarkLullaby'],
     'fallen angel':  ['raceFallenGrace', 'raceAbyssalWings', 'raceSanctuary', 'raceDescendingWrath'],
     'halfdemon':     ['raceInnerDemon', 'sharedSmokeScreen', 'raceShadowStep', 'raceDemonicClaw'],
     'mermaid':       ['raceSirenSong', 'raceTidalBlessing', 'raceRiptide', 'raceFlood'],

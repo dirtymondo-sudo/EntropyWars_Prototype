@@ -15662,9 +15662,11 @@
         // shoot, shootout, mark1, plasmaGun, raceHeadshot — and the old
         // raceSuppressingFire alias), plus the cowboy revolver kit. Keep in
         // sync when adding a gun spell.
+        /* (2026-08-16: 'requiem' removed — it's a sonic nova, not a gun;
+           the aim-cam framing never fit it.) */
         const CINE_GUN_SPELLS = new Set([
             'doubleShot', 'precisionShot', 'headshot', 'deadEye',
-            'kneecapShot', 'requiem', 'ricochet1', 'railgun',
+            'kneecapShot', 'ricochet1', 'railgun',
             'raceQuickDraw', 'raceFanTheHammer', 'raceHighNoon',
             'raceSuppressiveFire', 'raceClassifiedWeapon', 'raceStunRay'
         ]);
