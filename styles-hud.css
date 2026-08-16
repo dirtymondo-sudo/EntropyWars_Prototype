@@ -1455,6 +1455,149 @@
             background: rgba(200,80,80,0.12);
             border-color: rgba(200,80,80,0.3);
         }
+        /* ── Balance Lab variant: wider + user-resizable (drag the corner),
+              so long build names and the extra columns actually fit. ── */
+        .training-panel.balance-wide {
+            width: min(540px, 94vw);
+            min-width: 320px;
+            max-width: 94vw;
+            resize: horizontal;
+            overflow: auto;
+        }
+        .training-panel.balance-wide .train-cards {
+            grid-template-columns: repeat(4, 1fr);
+        }
+        .bal-tab-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+        .bal-controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .bal-filter {
+            flex: 1;
+            min-width: 0;
+            padding: 5px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(140,140,200,0.12);
+            background: rgba(0,0,0,0.3);
+            color: var(--text);
+            font-size: 11px;
+            font-family: inherit;
+        }
+        .bal-filter:focus { outline: none; border-color: rgba(140,140,200,0.35); }
+        .bal-sort-group { display: flex; gap: 2px; }
+        .bal-sort-btn {
+            padding: 4px 8px;
+            border-radius: 5px;
+            border: 1px solid rgba(140,140,200,0.08);
+            background: rgba(140,140,200,0.04);
+            color: var(--muted);
+            font-size: 9px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .bal-sort-btn.active {
+            color: var(--gold);
+            border-color: rgba(200,180,120,0.35);
+            background: rgba(200,180,120,0.08);
+        }
+        /* Generic breakdown row: name gets all spare width and WRAPS instead
+           of ellipsizing (the old builds tab was unreadable at 320px). */
+        .bal-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 4px;
+            border-radius: 4px;
+            background: rgba(140,140,200,0.02);
+        }
+        .bal-row-name {
+            flex: 1;
+            min-width: 0;
+            font-size: 10px;
+            color: var(--text);
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+        }
+        /* Builds tab: expandable rows with the loadout list inside. */
+        .bal-build {
+            border-radius: 4px;
+            background: rgba(140,140,200,0.02);
+            border: 1px solid transparent;
+        }
+        .bal-build[open] { border-color: rgba(140,140,200,0.1); background: rgba(140,140,200,0.04); }
+        .bal-build > summary {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 6px;
+            cursor: pointer;
+            list-style: none;
+        }
+        .bal-build > summary::-webkit-details-marker { display: none; }
+        .bal-build > summary::before {
+            content: '▸';
+            color: var(--muted);
+            font-size: 9px;
+            flex: 0 0 auto;
+        }
+        .bal-build[open] > summary::before { content: '▾'; }
+        .bal-build-name {
+            flex: 1;
+            min-width: 0;
+            font-size: 10px;
+            color: var(--text);
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+        }
+        .bal-build-body {
+            padding: 2px 8px 6px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .bal-loadout-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            font-size: 9px;
+        }
+        .bal-loadout-spells {
+            flex: 1;
+            min-width: 0;
+            color: var(--muted);
+            line-height: 1.3;
+            overflow-wrap: anywhere;
+        }
+        .bal-loadout-meta {
+            flex: 0 0 auto;
+            color: var(--gold);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        /* Tree tab roll-up lines (archetype / capstone pillar). */
+        .bal-tree-agg {
+            font-size: 9px;
+            color: var(--text);
+            line-height: 1.5;
+            margin-bottom: 4px;
+            overflow-wrap: anywhere;
+        }
+        .bal-tree-agg-label {
+            display: inline-block;
+            min-width: 62px;
+            color: rgba(160,140,200,0.6);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
 
         /* Page 3: Lobby (reuses existing lobby styles) */
         .lobby-inner {

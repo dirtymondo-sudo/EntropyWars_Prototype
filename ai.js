@@ -63,6 +63,12 @@
         return (sp && sp.cost) || 0;
     }
 
+    // Version stamp — the Balance Lab writes this into every export's _meta
+    // so a stats file can never again be ambiguous about WHICH brain played
+    // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
+    // any behavior-relevant ai.js change.
+    try { window.EW_AI_VERSION = 'v4.1-2026-08-15'; } catch (e) {}
+
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
     // stats (the XCOM model: below Normal remove capabilities, never add
@@ -106,6 +112,10 @@
     // swing) or is a dimensionless probability/fraction. Legacy movement /
     // mode knobs that survived the rewrite keep their old names so the
     // A/B trainer's history still maps.
+    // NOTE (schema 13): the keys listed in _TUNE_TRAINED_KEYS (below the
+    // value model) are TRAINABLE — read them via tuneW(g, key), never
+    // directly, so A/B experiments / trained champions / the strength-test
+    // baseline all apply. The values here stay the canonical defaults.
     const AI_TUNE = {
         // ── value model ──
         killBase: 70,               // flat premium for removing a unit (on top of its denied output)
@@ -468,7 +478,7 @@
         const critP = (opts.canCrit && typeof g.getCritChance === 'function')
             ? (g.getCritChance(unit) || 0) : 0;
         const landP = opts.landP != null ? opts.landP : 1;
-        const refund = Math.max(AI_TUNE.pressActionValue, (wght(g, 'pressRefundValue_v1', 96) || 0) * 1.5);
+        const refund = Math.max(tuneW(g, 'pressActionValue'), (wght(g, 'pressRefundValue_v1', 96) || 0) * 1.5);
         const pressP = Math.min(1, landP * (tier > 0 ? 1 : critP));
         let v = 0;
         if (pressP > 0) v += pressP * (alreadyPressed ? refund * 0.15 : refund);
@@ -478,6 +488,33 @@
     }
     function wght(g, key, dflt) {
         try { const v = g.getAIWeight(key); return (v == null || isNaN(v)) ? dflt : v; } catch (e) { return dflt; }
+    }
+
+    /* Trainable AI_TUNE knobs (schema 13, 2026-08-15): the highest-leverage
+       value-model constants are routed through the A/B trainer so AI
+       Training tunes the v4 brain instead of only its legacy periphery.
+       getAIWeight also handles the strength-test baseline side (pinned to
+       defaults) and campaign difficulty noMult rules, so every consumer of
+       tuneW() participates in those automatically. Defaults in
+       battle.js AI_WEIGHT_DEFAULTS MUST mirror AI_TUNE — an untrained
+       install must play exactly the shipped constants. */
+    const _TUNE_TRAINED_KEYS = {
+        mpValuePerPoint:    'mpValuePerPoint_v4',
+        threatCostFactor:   'threatCostFactor_v4',
+        killBase:           'killBase_v4',
+        supportKillPremium: 'supportKillPremium_v4',
+        pressActionValue:   'pressActionValue_v4',
+        focusCommitBonus:   'focusCommitBonus_v4',
+    };
+    function tuneW(g, key) {
+        const wk = _TUNE_TRAINED_KEYS[key];
+        if (wk) {
+            try {
+                const v = g.getAIWeight(wk);
+                if (v != null && !isNaN(v)) return v;
+            } catch (e) {}
+        }
+        return AI_TUNE[key];
     }
 
     // ═════════════════════════════════════════════════════════════════════
@@ -518,8 +555,8 @@
     // Value of REMOVING tg from the board (the kill premium, added on top
     // of the damage that does it).
     function killValue(g, unit, tg, v) {
-        let val = AI_TUNE.killBase + AI_TUNE.killOutputTurns * unitThreatOutput(g, tg, unit);
-        if (unitIsHealerKit(tg)) val += AI_TUNE.supportKillPremium;
+        let val = tuneW(g, 'killBase') + AI_TUNE.killOutputTurns * unitThreatOutput(g, tg, unit);
+        if (unitIsHealerKit(tg)) val += tuneW(g, 'supportKillPremium');
         val += Math.min(150, (tg.intStat || tg.int || 0) * 1.2);   // big casters
         if ((tg.hourglasses || 0) > 0) val += AI_TUNE.hourglassTargetBonus + tg.hourglasses * 12;
         // Kills are uncapped points in TDM/FFA/arena composite scoring.
@@ -693,7 +730,7 @@
         priority += Math.min(90, (target.intStat || target.int || 0) * 0.8);
 
         // Team focus + invested damage: convert pokes into kills.
-        if (v && v.focus && target.id === v.focus.id) priority += AI_TUNE.focusCommitBonus;
+        if (v && v.focus && target.id === v.focus.id) priority += tuneW(g, 'focusCommitBonus');
         const dmgLog = getTeamDamageLog();
         const priorDmg = dmgLog[target.id] || 0;
         if (priorDmg > 0) {
@@ -839,11 +876,11 @@
     // ground. Subtracted from every candidate by endTileCost() below.
     function tileDangerCost(g, unit, v, x, y, z) {
         const t = v.threatFn(x, y, z);
-        let cost = t.totalDmg * AI_TUNE.threatCostFactor;
+        let cost = t.totalDmg * tuneW(g, 'threatCostFactor');
         const mine = effHp(unit);
         if (t.totalDmg >= mine && t.count >= 1 && mine > 0) {
             cost += AI_TUNE.deathRiskFactor *
-                (AI_TUNE.killBase + AI_TUNE.killOutputTurns * unitThreatOutput(g, unit, v.closestEnemy || unit));
+                (tuneW(g, 'killBase') + AI_TUNE.killOutputTurns * unitThreatOutput(g, unit, v.closestEnemy || unit));
         }
         // Fragile units fear crowded pockets more.
         const hpFrac = unit.hp / (unit.maxHp || 1);
@@ -1454,7 +1491,7 @@
                         if (val > bestUnlock) bestUnlock = val;
                     }
                 }
-                let score = AI_TUNE.mpPotionBase + (mpAfter - ally.mp) * AI_TUNE.mpValuePerPoint * 0.6;
+                let score = AI_TUNE.mpPotionBase + (mpAfter - ally.mp) * tuneW(g, 'mpValuePerPoint') * 0.6;
                 if (unlocked > 0) score += bestUnlock * 0.5 + unlocked * 15;
                 if (ally.mp === 0 && (ally.spells || []).length) score += 60;
                 if (score > bestScore) { bestScore = score; bestTarget = ally; }
@@ -1680,7 +1717,7 @@
             if (score <= 0) continue;
 
             // MP is a real lever: every cast pays its cost in the currency.
-            score -= _mpCost(unit, spell) * AI_TUNE.mpValuePerPoint;
+            score -= _mpCost(unit, spell) * tuneW(g, 'mpValuePerPoint');
             if (score <= 0) continue;
 
             out.push({ type: 'spell', spell, target, score, apCost });
@@ -2397,7 +2434,7 @@
             const mpRestore = spell.mpRestore || 40;
             const lowMana = allies.filter(a => (a.maxMp || 0) > 0 && a.mp < a.maxMp * 0.4);
             const totalRestored = allies.reduce((s2, a) => s2 + Math.min(mpRestore, (a.maxMp || 0) - a.mp), 0);
-            let s = totalRestored * AI_TUNE.mpValuePerPoint * 0.7;
+            let s = totalRestored * tuneW(g, 'mpValuePerPoint') * 0.7;
             if (lowMana.length >= 2) s *= 1.5;
             if (lowMana.length === 0) s *= 0.1;
             return s;
@@ -2608,7 +2645,7 @@
                     if (reach > ds.er) continue;
                     if (!ds.sp.ignoresLineOfSight && blocked(t.x, t.y, e)) continue;
                     const hit = scoreOffensiveHit(g, unit, e, ds.sp, v, { fromX: t.x, fromY: t.y, fromH: th, splash: false });
-                    const val = hit.val - ds.mp * AI_TUNE.mpValuePerPoint;
+                    const val = hit.val - ds.mp * tuneW(g, 'mpValuePerPoint');
                     if (val > bestShot) bestShot = val;
                 }
             }

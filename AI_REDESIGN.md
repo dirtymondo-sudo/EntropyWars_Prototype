@@ -136,6 +136,24 @@ schema-12 weights in battle.js (`AI_WEIGHT_DEFAULTS`) still apply where they
 map cleanly (kill bonus, press refund, tower/nexus/hourglass priorities,
 engage threshold, anti-oscillation); dead references were dropped.
 
+### Schema 13 (2026-08-15, same-day follow-up)
+
+The trainer was rebased onto v4: the 4 schema-12 keys with no remaining
+code path (healPotionHpPct, statusEffectBonus, safeEnemyDistWeight,
+healAllyThreshold) are deleted, and 6 AI_TUNE value-model knobs are now
+TRAINABLE `_v4` keys (mpValuePerPoint, threatCostFactor, killBase,
+supportKillPremium, pressActionValue, focusCommitBonus) — ai.js reads them
+via `tuneW(g, key)`, which routes through battle.js `getAIWeight`, so A/B
+experiments, the trained champion, the strength-test baseline pin AND
+campaign difficulty multipliers all apply automatically. RULE: never read
+those six via `AI_TUNE.x` directly, and keep `AI_WEIGHT_DEFAULTS` `_v4`
+defaults byte-identical to AI_TUNE (an untrained install must play the
+shipped constants; there's a delivered check for it). v12 trained weights
+migrate forward (surviving keys keep values, pruned keys dropped).
+`window.EW_AI_VERSION` stamps every Balance Lab export's `_meta.aiVersion`
+— reset balance data after any AI change or exports mix brains (stats17
+did).
+
 ## Validation
 
 - `npm test` (syntax + schema + parity) must pass.

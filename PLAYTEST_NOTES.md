@@ -4,7 +4,58 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
-## 🎥 SPELL-CAM: SIDE-SHOT DELETED, POINT-BLANK OTS PAIR FRAME, ELEVATION FITS (2026-08-15, LATEST) — battle.js
+## 🧪 BALANCE LAB v4 + SIM-MODE REBASE (2026-08-15, LATEST) — battle.js, ai.js, map.js, styles-hud.css
+
+Owner asks: stats17 analysis, track/export spell-tree shapes, fix the
+unreadable Builds tab, audit AI Training against the v4 brain, make every
+sim mode reflect the current game. Landed:
+- **Balance stats v4** (`ew-balance-stats-v4`, v3/v2/v1 migrate forward):
+  new `treeShapes` bucket — every tree-class unit's loadout reduced to
+  Tree-of-Life pillar depths (`R2·P3·S1`; R/P/S = race/primary/secondary,
+  4 = capstone) via `_balUnitTreeShape` (buildUnitSpellTree + equipped-id
+  intersection; validated 3844/3844 units mapped on the stats17 matchLog).
+  matchLog team entries + build loadout rows carry the sig. Export JSON
+  gains `analysis.treeShapes` (byShape / byArchetype / byCapstonePillar,
+  all Wilson-CI'd), a `spellTrees` definitions dump, `_meta.aiVersion`
+  (from `window.EW_AI_VERSION`, stamped in ai.js — reset stats after AI
+  changes, stats17 mixed brains), and `_meta.modeSetting`; CSV gains
+  `treeShape` rows; new **Export Trees** button dumps just the tree defs.
+- **Dashboard overhaul**: Balance Lab panel is wide (540px) + CSS-resizable
+  (`.training-panel.balance-wide`; training/strength renders remove the
+  class), tab bar wraps (new **Tree** tab with archetype/capstone roll-up
+  lines), filter box (focus survives the per-match re-render via
+  `_balanceFilterFocused`), Δ50%/WR/Games sort toggle, win rates show
+  ±Wilson half-width, and the **Builds tab rows are `<details>` — full
+  name wraps, expanding lists that build's actual spell loadouts**
+  (`_balanceOpenBuilds` keeps rows open across re-renders). Per-20-match
+  auto-download is now opt-in (`window.EW_BAL_AUTO_EXPORT = true`).
+- **AI weight schema 13**: pruned the 4 keys v4 orphaned (healPotionHpPct,
+  statusEffectBonus, safeEnemyDistWeight, healAllyThreshold — audit:
+  zero call sites), added 6 trainable AI_TUNE knobs (`*_v4`: mpValuePerPoint,
+  threatCostFactor, killBase, supportKillPremium, pressActionValue,
+  focusCommitBonus) read in ai.js via `tuneW(g, key)` → getAIWeight, so
+  training/strength-baseline/campaign-mult all route through them. v12
+  weights migrate (unknown keys dropped, values clamped). Defaults MUST
+  mirror AI_TUNE.
+- **Strength test honesty**: ainew.js overlay references purged — both
+  sides run the same v4 brain; champion = trained weights, baseline =
+  schema defaults via getAIWeight. Dashboard warns when every weight is
+  still default (champion ≡ baseline → the run measures noise).
+- **Sim modes**: settings Mode dropdown now offers Arena / TDM / Clash /
+  Gauntlet / Simul (experimental) / "Rotate modes" (Balance Lab cycles
+  arena→tdm→clash→gauntlet per match; training/strength coerce rotate→
+  arena — mirror A/B needs one mode). `_simApplyModeAndMap()` (map.js,
+  also on window for battle.js's between-match restart) centralizes the
+  mode/map fixups _msConfirm does for humans: clash forces its fixed 4v4
+  stage, gauntlet forces roster 8 / deploy 4 spawns and rotates only
+  full-size maps. NOTE: clash/gauntlet/simul under turbo auto-sim are
+  newly enabled and NOT playtested (RULE #1c) — if one wedges, the
+  auto-sim self-heal re-rolls and gives up loudly after 8 failures.
+- stats17 findings: BALANCE_ANALYSIS_stats17.md (Sniper 62.3% CI-clear,
+  race capstones 56%, 91% of arenas end on time, healing never pays —
+  but see its provenance caveat before nerfing anything).
+
+## 🎥 SPELL-CAM: SIDE-SHOT DELETED, POINT-BLANK OTS PAIR FRAME, ELEVATION FITS (2026-08-15) — battle.js
 
 Owner calls, two rounds. Round 1: "the ≤2.6-tile closeup never looked how I
 wanted / railgun & robo punch park a unit dead-centre / elevation shots are

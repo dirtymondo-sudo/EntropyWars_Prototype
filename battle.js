@@ -25295,13 +25295,16 @@
 
                 try {
 
-                    // Balance Lab honours the map dropdown between matches —
-                    // "rotate" cycles the prebuilt pool so balance data isn't
-                    // skewed by one board's quirks. (Training keeps its own
-                    // launch-time map; this branch is gated on balance mode.)
-                    if (_balanceSimMode && _trainMapSetting === 'rotate') {
-                        const nextMap = _TRAIN_MAP_POOL[_trainMapIndex++ % _TRAIN_MAP_POOL.length];
-                        applyGameMode(nextMap);
+                    // Balance Lab honours the mode/map dropdowns between
+                    // matches — "rotate" cycles the mode pool and/or the
+                    // prebuilt map pool so balance data isn't skewed by one
+                    // board's (or one mode's) quirks. The helper also
+                    // re-applies clash/gauntlet board fixups. (Training keeps
+                    // its launch-time mode+map; this is balance-mode only.)
+                    if (_balanceSimMode && typeof window._simApplyModeAndMap === 'function'
+                        && (_trainMapSetting === 'rotate' || _trainModeSetting === 'rotate'
+                            || _trainModeSetting === 'clash' || _trainModeSetting === 'gauntlet')) {
+                        window._simApplyModeAndMap();
                     }
 
                     if (_aiTrainingMode || _strengthTestMode) {
@@ -28679,11 +28682,12 @@
                 console.error('Sim telemetry failed at match end (continuing):', err);
             }
 
-            // Auto-export raw match logs for offline analysis — Balance Lab
-            // only (mirror-match training/strength logs aren't balance data,
-            // and at turbo speeds the every-20-matches download spam was
-            // drowning the browser during long training runs).
-            if (_balanceSimMode && state.devAutoSim && state.matchHistory && state.matchHistory.length > 0 && state.matchHistory.length % 20 === 0) {
+            // Auto-export raw match logs for offline analysis — OPT-IN now
+            // (`window.EW_BAL_AUTO_EXPORT = true` in the console): the
+            // every-20-matches download spam buried long Balance Lab runs in
+            // hundreds of files, and the capped in-stats matchLog + the
+            // Export JSON button cover the same need.
+            if (window.EW_BAL_AUTO_EXPORT === true && _balanceSimMode && state.devAutoSim && state.matchHistory && state.matchHistory.length > 0 && state.matchHistory.length % 20 === 0) {
                 try {
                     downloadJson(`entropy-wars-batch-${state.matchHistory.length}.json`, state.matchHistory);
                 } catch (e) {
@@ -33649,55 +33653,53 @@
             }, state.devAutoSim ? scaleDevSimDelay(35, 2) : (_rctHidden ? 60 : 200));
         }
 
-        /* Schema 12 — the great prune (2026-07-16):
-           The gen-100 A/B run (5652 matches) proved most of the old 45-key
-           table untrainable: the jump family + enemySpawnZonePenalty were
-           referenced by NO code at all, the level weights guarded dead code
-           (unit.level / g.xpForLevel never existed), and half a dozen more
-           sat pinned against a range edge through every experiment. Those
-           are now frozen constants in ai.js (AI_TUNE) or deleted outright.
-           What remains is the curated set with a live code path and room to
-           move — 15 weights instead of 45, so each training pass costs ~1/3
-           as many matches and every experiment tests something real.
-           Values are the gen-105 champion weights (adopted 2026-07-29 after
-           6144 training matches; the 60-match strength-test gauntlet against
-           the previous gen-100 defaults returned 40W-20L = 66.7% champion win
-           rate, Wilson-95 [54.1%, 77.3%], ~+120 Elo, significant at 95%).
-           Keys whose code paths
-           only exist on some boards carry a `probe` tag — _weightRelevantNow()
-           skips their experiments when the training board can't exercise
-           them. `noMult: true` marks thresholds/comparators the campaign
-           _challengeAiMult must NOT scale (multiplying a heal threshold or a
-           negative engage threshold changes behavior non-monotonically). */
-        const AI_WEIGHT_SCHEMA_VERSION = 12;
+        /* Schema 13 — the AI v4 rebase (2026-08-15):
+           ai.js was rewritten around ONE currency (expected effective-HP
+           swing, see AI_REDESIGN.md) and the ainew.js overlay was deleted.
+           The audit against the new brain found 4 schema-12 keys with NO
+           remaining code path (healPotionHpPct, statusEffectBonus,
+           safeEnemyDistWeight, healAllyThreshold — their jobs are done by
+           the value model itself now); training them was pure coin-flipping,
+           so they're gone. In exchange the highest-leverage v4 value-model
+           knobs (AI_TUNE) are now TRAINABLE via the `_v4` keys below —
+           ai.js routes those constants through getAIWeight (see its
+           `tuneW()` helper), so the A/B trainer finally tunes the brain
+           that actually plays.
+           Schema-12 keys that survived keep their gen-105 champion values.
+           Keys whose code paths only exist on some boards carry a `probe`
+           tag — _weightRelevantNow() skips their experiments when the
+           training board can't exercise them. `noMult: true` marks
+           thresholds/comparators/conversion-rates the campaign
+           _challengeAiMult must NOT scale (multiplying a threshold or a
+           cost-conversion changes behavior non-monotonically). */
+        const AI_WEIGHT_SCHEMA_VERSION = 13;
 
         const AI_WEIGHT_DEFAULTS = {
             // NOTE: these defaults are also the BASELINE side of the
             // strength-test gauntlet — adopting a new export moves that goalpost.
-            healPotionHpPct_v1:       { value: 0.325, min: 0.20, max: 0.70, noMult: true, label: 'Heal Potion HP%', desc: 'Use heal potion when HP below this %' },
 
-            killBonusScore_v1:        { value: 97.188, min: 10,  max: 120,  label: 'Kill Bonus', desc: 'Score bonus for attacks that would kill' },
+            // ── kept schema-12 keys (live code paths in ai.js v4) ──
+            killBonusScore_v1:        { value: 97.188, min: 10,  max: 120,  label: 'Kill Bonus', desc: 'Flat score bonus added to attacks that would kill (on top of the kill value model)' },
             comboSynergyBonus_v1:     { value: 23.953, min: 4,   max: 40,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
             comboKillBonus_v1:        { value: 13.688, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
-            statusEffectBonus_v1:     { value: 29.85, min: 2,    max: 60,   label: 'Status Effect Bonus', desc: 'Score bonus for spells/combos with status effects' },
-
-            pressRefundValue_v1:      { value: 96.379, min: 10,  max: 140,  label: 'Press: Refund Value', desc: 'Score bonus for an offensive action expected to press (hit a type weakness or crit) and grant a free action this turn' },
-
-            engageAdvantage_v1:       { value: -0.45, min: -1.0, max: 0.3,  noMult: true, label: 'Engage Threshold', desc: 'Min advantage score to engage enemies (range widened: gen-100 pinned the old -0.5 floor twice)' },
-
-            safeEnemyDistWeight_v1:   { value: 5.438, min: 3,   max: 18,   label: 'Safe Move: Enemy Distance Weight', desc: 'How much to value distance from enemies when retreating' },
-
+            pressRefundValue_v1:      { value: 96.379, min: 10,  max: 140,  label: 'Press: Refund Value', desc: 'Feeds the expected press-refund value (×1.5, floored at pressActionValue_v4) for actions likely to hit a weakness/crit' },
+            engageAdvantage_v1:       { value: -0.45, min: -1.0, max: 0.3,  noMult: true, label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
             towerBaseBonus_v1:       { value: 39.112, min: 10,   max: 60,   label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
             towerDefendBonus_v1:     { value: 47.899, min: 10,   max: 55,   label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
-
-            hgSeekPriority_v1:       { value: 4,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'Movement pull toward visible loose hourglasses (reachable since schema 12 — used to be shadowed by the engage branch)' },
+            hgSeekPriority_v1:       { value: 4,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'Movement pull toward visible loose hourglasses' },
             scannerPriority_v1:      { value: 12.032, min: 5,   max: 35,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
-
             antiOscillationPen_v1:   { value: -1.663, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
-
             nexusCapBonus_v1:        { value: 19.469, min: 10,  max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
 
-            healAllyThreshold_v1:    { value: 0.8,   min: 0.3,  max: 0.8,  noMult: true, label: 'Heal Ally Threshold', desc: 'HP% below which units prefer self-heal/lifeDrain actions' },
+            // ── NEW v4 value-model knobs (AI_TUNE routed through the
+            //    trainer — defaults MUST equal ai.js AI_TUNE or an untrained
+            //    install changes behavior) ──
+            mpValuePerPoint_v4:      { value: 0.5,   min: 0.15, max: 1.1,  noMult: true, label: 'MP Value / Point', desc: 'HP-equivalent opportunity cost of 1 MP per cast (0.9 caused MP hoarding; 0 = spam every cast)' },
+            threatCostFactor_v4:     { value: 0.25,  min: 0.08, max: 0.45, noMult: true, label: 'Threat Cost Factor', desc: 'Fraction of expected incoming damage charged against a destination tile (0.35 made both sides too timid to close)' },
+            killBase_v4:             { value: 70,    min: 30,   max: 140,  label: 'Kill Base Premium', desc: 'Flat currency premium for removing a unit, on top of its denied per-turn output' },
+            supportKillPremium_v4:   { value: 130,   min: 40,   max: 260,  label: 'Support Kill Premium', desc: 'Extra kill value on healer/reviver kits' },
+            pressActionValue_v4:     { value: 150,   min: 60,   max: 260,  label: 'Press Action Floor', desc: 'Floor value of the free action a press refund grants' },
+            focusCommitBonus_v4:     { value: 90,    min: 20,   max: 180,  label: 'Focus-Fire Bonus', desc: 'Bonus for hitting the team’s shared focus target (target spreading vs focus-firing)' },
         };
 
         let _aiTrainedWeights = null;
@@ -33715,11 +33717,14 @@
         let _abCompletedExperiments = [];
 
         // ── AI STRENGTH TEST (champion vs baseline gauntlet) ────────────────
-        // Chess-engine-style self-play gating: mirror teams, one side plays the
-        // full current AI (trained weights + ainew overlay), the other plays
-        // the BASELINE (default weights, stock ai.js only — ainew delegates).
-        // Sides alternate every match. The win rate + Elo estimate is the
-        // proof that a training run / AI change actually made the CPU harder.
+        // Chess-engine-style self-play gating: mirror teams, both sides run
+        // the SAME v4 brain (the ainew.js overlay is gone since 2026-08-15) —
+        // the CHAMPION side plays the trained weight set, the BASELINE side is
+        // pinned to the schema defaults via getAIWeight below. That covers the
+        // v4 tuned knobs too (ai.js tuneW() routes AI_TUNE through
+        // getAIWeight), so this measures exactly what training changed.
+        // Sides alternate every two matches. The win rate + Elo estimate is
+        // the proof that a training run actually made the CPU harder.
         let _strengthTestMode = false;
         let _strengthStats = null;
 
@@ -33731,7 +33736,8 @@
             // roles with and without the first move.
             return (Math.floor((state.matchNumber || 1) / 2) % 2 === 0) ? 1 : 2;
         }
-        // ainew.js consults this to route baseline-side units to the stock AI.
+        // Exposed for tooling/console inspection (the baseline routing itself
+        // happens inside getAIWeight — nothing else needs to consult this).
         window._ewStrengthBaseline = _strengthBaselinePlayer;
 
         // Some weights only have live code paths on certain boards (hourglass
@@ -33909,8 +33915,22 @@
 
         async function loadAIWeights() {
             try {
-                const raw = await _aiStorageGet('ai-weights-v' + AI_WEIGHT_SCHEMA_VERSION);
+                let raw = await _aiStorageGet('ai-weights-v' + AI_WEIGHT_SCHEMA_VERSION);
+                // Schema 12 → 13 carry-over: surviving keys keep their trained
+                // values; pruned keys are dropped and the new _v4 knobs start
+                // at their defaults. Saves land on the v13 key from then on.
+                if (!raw) raw = await _aiStorageGet('ai-weights-v12');
                 if (raw) _aiTrainedWeights = JSON.parse(raw);
+                if (_aiTrainedWeights) {
+                    for (const k of Object.keys(_aiTrainedWeights)) {
+                        if (!AI_WEIGHT_DEFAULTS[k]) delete _aiTrainedWeights[k];
+                        else {
+                            const def = AI_WEIGHT_DEFAULTS[k];
+                            const v = Number(_aiTrainedWeights[k]);
+                            _aiTrainedWeights[k] = isNaN(v) ? def.value : Math.max(def.min, Math.min(def.max, v));
+                        }
+                    }
+                }
             } catch (e) {
                 _aiTrainedWeights = null;
             }
@@ -34170,6 +34190,7 @@
         function renderTrainingDashboard() {
             const panel = document.getElementById('trainingPanel');
             if (!panel) return;
+            panel.classList.remove('balance-wide');
             const stats = _aiTrainingStats || {};
             const gen = stats.generation || 0;
             const totalM = stats.totalMatches || 0;
@@ -34490,11 +34511,11 @@
         // ════════════════════════════════════════════════════════════════════
         // AI STRENGTH TEST — champion vs baseline gauntlet (mirror teams).
         // The verification arm of the training pipeline: it does not tune
-        // anything, it MEASURES whether the current AI (trained weights +
-        // ainew.js overlay) actually beats the untouched baseline (default
-        // weights, stock ai.js), and by how many Elo. Run it after a training
-        // pass or an AI code change; if the champion isn't clearly >50% here,
-        // the "improvement" was noise.
+        // anything, it MEASURES whether the trained weight set beats the
+        // schema-13 defaults (same v4 brain on both sides), and by how many
+        // Elo. Run it after a training pass; if the champion isn't clearly
+        // >50% here, the "improvement" was noise. If no weight has moved from
+        // its default the two sides are literally identical — train first.
         // ════════════════════════════════════════════════════════════════════
         function _freshStrengthStats() {
             return { matches: 0, champWins: 0, baseWins: 0, noContests: 0, byMatch: [], startedAt: Date.now() };
@@ -34538,6 +34559,7 @@
         function renderStrengthDashboard() {
             const panel = document.getElementById('trainingPanel');
             if (!panel) return;
+            panel.classList.remove('balance-wide');
             const s = _strengthStats || _freshStrengthStats();
             const n = s.matches || 0;
             const wr = n > 0 ? s.champWins / n : 0.5;
@@ -34548,6 +34570,20 @@
 
             const dots = (s.byMatch || []).slice(-60).map(w =>
                 `<span class="train-batch-dot" style="background:${w ? 'var(--green)' : 'var(--red)'}"></span>`).join('');
+
+            // Champion ≡ baseline guard: with every weight still at its
+            // default the two sides are the same AI and the gauntlet can only
+            // ever measure noise — say so instead of letting it run blind.
+            let allDefault = true;
+            try {
+                for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
+                    const v = _aiTrainedWeights ? _aiTrainedWeights[k] : null;
+                    if (v != null && Math.abs(v - AI_WEIGHT_DEFAULTS[k].value) > 0.005) { allDefault = false; break; }
+                }
+            } catch (e) { allDefault = false; }
+            const sameSideWarn = allDefault
+                ? `<div style="text-align:center;color:var(--red);font-size:10px;padding:4px 0 8px">⚠ Every trained weight equals its default — champion and baseline are IDENTICAL. Run AI Training first, then gauntlet the result.</div>`
+                : '';
 
             let verdict;
             if (n < 10) verdict = `<span style="color:var(--muted)">Collecting data… (${n} matches)</span>`;
@@ -34560,7 +34596,7 @@
                     <div class="train-title" style="margin:0">AI Strength Test</div>
                     <span class="train-drag-grip">⠿ drag</span>
                 </div>
-                <div class="train-subtitle">Champion (trained + overlay) vs Baseline (defaults, stock AI) · mirror teams · sides alternate</div>
+                <div class="train-subtitle">Champion (trained weights) vs Baseline (schema defaults) · same v4 brain · mirror teams · sides alternate</div>
 
                 <div class="train-cards">
                     <div class="train-card"><span class="train-card-label">Matches</span><span class="train-card-value">${n}</span></div>
@@ -34569,6 +34605,7 @@
                     <div class="train-card"><span class="train-card-label">No-Contest</span><span class="train-card-value">${s.noContests || 0}</span></div>
                 </div>
 
+                ${sameSideWarn}
                 <div class="train-group">
                     <div class="train-group-title">Verdict</div>
                     <div style="text-align:center;font-size:11px;padding:6px 0">${verdict}</div>
@@ -34633,17 +34670,23 @@
         // the old spells bucket only knew "a unit fielding this spell won",
         // which BALANCE_NOTES repeatedly had to correct for by hand.
         let _balSpellCollector = null;
-        const BALANCE_STATS_VERSION = 3;
+        const BALANCE_STATS_VERSION = 4;
         const BALANCE_MIN_SAMPLE = 12;   // games before an entry is trusted/flagged
         const BALANCE_MATCH_LOG_CAP = 400; // raw per-match records kept for offline analysis
         const _BAL_TABS = [
             { id: 'jobs', label: 'Jobs' },
             { id: 'races', label: 'Races' },
             { id: 'builds', label: 'Builds' },
+            { id: 'treeShapes', label: 'Tree' },
             { id: 'spells', label: 'Spells' },
             { id: 'spellUse', label: 'Casts' },
             { id: 'secondaryJobs', label: '2nd Job' },
         ];
+        // Dashboard view state (survives the per-match re-render).
+        let _balanceFilter = '';
+        let _balanceFilterFocused = false;
+        let _balanceSort = 'imbalance';   // 'imbalance' | 'games' | 'wr'
+        const _balanceOpenBuilds = new Set();
 
         /* v2 additions (2026-07-07 balance pass):
            • builds — bucket per "race | job (+ secondary)" combo, each with a
@@ -34655,7 +34698,14 @@
              kill, first death, comeback flag. Opponent-composition and
              build-vs-build questions get answered offline from this.
            • roundsTotal / comebackWins / firstKillWins — match-length and
-             momentum aggregates (comeback = winner trailed by ≥2 kills). */
+             momentum aggregates (comeback = winner trailed by ≥2 kills).
+           v4 additions (2026-08-15 tree-shape pass):
+           • treeShapes — each tree-class unit's loadout reduced to pillar
+             depths over the Tree-of-Life (R=race, P=primary, S=secondary;
+             depth 4 = capstone). Keyed `R2·P3·S1`; stats15/17 showed the
+             SHAPE (esp. race capstones) is its own balance axis, so it's
+             now first-class telemetry instead of an offline back-compute.
+             matchLog team entries carry the same sig per unit (`shape`). */
         function _freshBalanceStats() {
             return {
                 version: BALANCE_STATS_VERSION,
@@ -34666,6 +34716,7 @@
                 firstKillWins: 0,
                 jobs: {}, races: {}, secondaryJobs: {}, spells: {}, modes: {},
                 builds: {},
+                treeShapes: {},
                 spellUse: {},
                 // BUILD-verb telemetry (2026-07-13): the universal place/dig
                 // action was invisible to every prior dataset — no way to tell
@@ -34678,7 +34729,7 @@
 
         function ensureBalanceStats() {
             if (!_balanceStats) _balanceStats = _freshBalanceStats();
-            for (const k of ['jobs', 'races', 'secondaryJobs', 'spells', 'modes', 'builds', 'spellUse']) {
+            for (const k of ['jobs', 'races', 'secondaryJobs', 'spells', 'modes', 'builds', 'treeShapes', 'spellUse']) {
                 if (!_balanceStats[k]) _balanceStats[k] = {};
             }
             if (!Array.isArray(_balanceStats.matchLog)) _balanceStats.matchLog = [];
@@ -34776,11 +34827,71 @@
             if (jobKey) bu.jobs[jobKey] = (bu.jobs[jobKey] || 0) + 1;
         }
 
+        /* Reduce one unit's equipped spells to its Tree-of-Life shape:
+           pillar depths R/P/S (strict chains since 2026-08-07, so a legal
+           loadout's depth = its equipped-node count per pillar; depth 4 =
+           capstone). Returns null for non-tree classes or when the tree fns
+           aren't loaded. Race abilities/job spells that aren't tree nodes
+           simply don't map — with tree-legal random loadouts every unit
+           maps 6/6 (verified over the full stats17 match log). */
+        function _balUnitTreeShape(u) {
+            try {
+                const cls = u.cls || u.job;
+                if (typeof classHasSpellTree !== 'function' || !classHasSpellTree(cls)) return null;
+                if (typeof buildUnitSpellTree !== 'function') return null;
+                const ids = (u.spells || []).map(s => s && s.id).filter(Boolean);
+                if (!ids.length) return null;
+                const tree = buildUnitSpellTree(u.race || '', cls, u._secondaryJob || '', ids);
+                if (!tree || !tree.nodes) return null;
+                const eq = new Set(ids);
+                const d = { R: 0, P: 0, S: 0 };
+                for (const pf of ['R', 'P', 'S']) {
+                    for (let i = 1; i <= 4; i++) {
+                        const nid = tree.nodes[pf + i];
+                        if (nid && eq.has(nid)) d[pf]++;
+                    }
+                }
+                if (!d.R && !d.P && !d.S) return null;
+                return {
+                    sig: `R${d.R}·P${d.P}·S${d.S}`,
+                    sorted: [d.R, d.P, d.S].sort((a, b) => b - a).join('-'),
+                    cap: d.R === 4 ? 'R' : d.P === 4 ? 'P' : d.S === 4 ? 'S' : null,
+                };
+            } catch (e) { return null; }
+        }
+
+        /* Static dump of the current tree DEFINITIONS (what sits on every
+           node of every job/race pillar) — shipped with the JSON export so
+           offline analysis can join shape/win data back to actual spells,
+           and so tree redesigns are diffable across exports. */
+        function _balSpellTreeDefs() {
+            const defs = { jobs: {}, races: {}, freelancer: null };
+            try {
+                const nameOf = id => (typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[id] && SPELL_BY_ID[id].name) || id;
+                if (typeof CLASS_TREE !== 'undefined') {
+                    for (const job of Object.keys(CLASS_TREE)) {
+                        defs.jobs[job] = CLASS_TREE[job].map((id, i) => ({ node: 'P' + (i + 1), id, name: nameOf(id) }));
+                    }
+                }
+                if (typeof getRaceTreeSpells === 'function' && typeof AVAILABLE_RACES !== 'undefined') {
+                    for (const race of AVAILABLE_RACES) {
+                        const ids = getRaceTreeSpells(race, (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || null) || [];
+                        defs.races[race] = ids.map((id, i) => ({ node: 'R' + (i + 1), id, name: nameOf(id) }));
+                    }
+                }
+                if (typeof FL_FIXED !== 'undefined') {
+                    defs.freelancer = { fixed: FL_FIXED, socketTiers: (typeof FL_SOCKET_TIERS !== 'undefined') ? FL_SOCKET_TIERS : null };
+                }
+            } catch (e) {}
+            return defs;
+        }
+
         async function loadBalanceStats() {
             try {
                 let raw = await _aiStorageGet('ew-balance-stats-v' + BALANCE_STATS_VERSION);
                 // Carry older aggregates forward (ensureBalanceStats backfills
                 // the new fields); saves land on the current key from then on.
+                if (!raw) raw = await _aiStorageGet('ew-balance-stats-v3');
                 if (!raw) raw = await _aiStorageGet('ew-balance-stats-v2');
                 if (!raw) raw = await _aiStorageGet('ew-balance-stats-v1');
                 if (raw) _balanceStats = JSON.parse(raw);
@@ -34848,6 +34959,11 @@
                 const spellNames = (u.spells || []).map(s => s && s.name).filter(Boolean);
                 const buildKey = `${u.race || '?'} | ${u.cls || u.job || '?'}${u._secondaryJob ? ' + ' + u._secondaryJob : ''}`;
                 _balAdd(_balanceStats.builds, buildKey, won, kills, dd, dt, died);
+                // Tree shape: pillar depths as their own bucket, the same
+                // sig stamped on the build's loadout row and the match log.
+                const shape = _balUnitTreeShape(u);
+                if (shape) _balAdd(_balanceStats.treeShapes, shape.sig, won, kills, dd, dt, died);
+
                 const bb = _balanceStats.builds[buildKey];
                 if (bb) {
                     if (!bb.loadouts) bb.loadouts = {};
@@ -34855,6 +34971,7 @@
                     if (!bb.loadouts[loKey]) bb.loadouts[loKey] = { games: 0, wins: 0 };
                     bb.loadouts[loKey].games++;
                     bb.loadouts[loKey].wins += won;
+                    if (shape && !bb.loadouts[loKey].shape) bb.loadouts[loKey].shape = shape.sig;
                 }
 
                 teams[u.player].push({
@@ -34862,6 +34979,7 @@
                     job: u.cls || u.job || null,
                     sec: u._secondaryJob || null,
                     spells: spellNames,
+                    shape: shape ? shape.sig : null,
                 });
 
                 // A spell can sit on units on both teams; count each unit that
@@ -34900,10 +35018,13 @@
             for (const key of Object.keys(map || {})) {
                 const b = map[key];
                 if (!b || !b.games) continue;
+                const ci = _wilson(b.wins, b.games);
                 rows.push({
                     key,
                     games: b.games,
                     wr: b.wins / b.games,
+                    ciHalf: (ci.hi - ci.lo) / 2,
+                    ciLo: ci.lo, ciHi: ci.hi,
                     kpg: b.kills / b.games,
                     survival: 1 - (b.deaths / b.games),
                 });
@@ -34911,9 +35032,118 @@
             return rows;
         }
 
+        // Dashboard view-state setters (wired to the inline handlers below).
+        function _balSetFilter(v) {
+            _balanceFilter = String(v || '');
+            renderBalanceDashboard();
+        }
+        function _balSetSort(v) {
+            _balanceSort = v;
+            renderBalanceDashboard();
+        }
+        function _balToggleBuild(el) {
+            const key = el && el.dataset ? el.dataset.balKey : null;
+            if (!key) return;
+            if (el.open) _balanceOpenBuilds.add(key); else _balanceOpenBuilds.delete(key);
+        }
+
+        function _balSortRows(rows) {
+            const bySample = (a, b) => {
+                const aw = a.games >= BALANCE_MIN_SAMPLE ? 1 : 0;
+                const bw = b.games >= BALANCE_MIN_SAMPLE ? 1 : 0;
+                return bw - aw;
+            };
+            if (_balanceSort === 'games') return rows.sort((a, b) => b.games - a.games);
+            if (_balanceSort === 'wr') return rows.sort((a, b) => bySample(a, b) || b.wr - a.wr);
+            return rows.sort((a, b) => bySample(a, b) || (Math.abs(b.wr - 0.5) - Math.abs(a.wr - 0.5)));
+        }
+
+        function _balEsc(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+        }
+
+        // One win-rate row (name · wr%±CI · bar · games · kills/survival).
+        function _balRowHtml(r, showPerf) {
+            const pct = Math.round(r.wr * 100);
+            const low = r.games < BALANCE_MIN_SAMPLE;
+            let col = 'var(--muted)';
+            if (!low) col = r.ciLo > 0.5 ? 'var(--green)' : (r.ciHi < 0.5 ? 'var(--red)' : 'var(--gold)');
+            const ci = low ? '' : `<span style="color:var(--muted);font-weight:400">±${Math.round(r.ciHalf * 100)}</span>`;
+            const perf = showPerf
+                ? `<span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:58px;text-align:right">${r.kpg.toFixed(2)}k·${Math.round(r.survival * 100)}%s</span>`
+                : '';
+            return `<div class="bal-row"${low ? ' style="opacity:0.5"' : ''} title="${r.games} games · Wilson-95 [${Math.round(r.ciLo * 100)}%, ${Math.round(r.ciHi * 100)}%]${low ? ' — low sample' : ''}">
+                <span class="bal-row-name">${_balEsc(r.key)}</span>
+                <span class="train-wt-val" style="color:${col};min-width:52px;text-align:right">${pct}% ${ci}</span>
+                <div class="train-wt-bar-wrap" style="width:42px"><div class="train-wt-bar" style="width:${pct}%;background:${col}"></div></div>
+                <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:28px;text-align:right">${r.games}g</span>
+                ${perf}
+            </div>`;
+        }
+
+        // Builds tab: expandable rows — the full build name wraps (never
+        // truncates), and opening a row lists its actual spell loadouts.
+        function _balBuildsHtml(rows, buildsMap) {
+            return rows.map(r => {
+                const pct = Math.round(r.wr * 100);
+                const low = r.games < BALANCE_MIN_SAMPLE;
+                let col = 'var(--muted)';
+                if (!low) col = r.ciLo > 0.5 ? 'var(--green)' : (r.ciHi < 0.5 ? 'var(--red)' : 'var(--gold)');
+                const open = _balanceOpenBuilds.has(r.key);
+                const b = buildsMap[r.key] || {};
+                const lo = b.loadouts || {};
+                const loRows = Object.keys(lo)
+                    .map(k => ({ k, g: lo[k].games || 0, w: lo[k].wins || 0, shape: lo[k].shape || '' }))
+                    .sort((a, b2) => b2.g - a.g)
+                    .slice(0, 10)
+                    .map(l => `<div class="bal-loadout-row">
+                        <span class="bal-loadout-spells">${_balEsc(l.k)}</span>
+                        <span class="bal-loadout-meta">${l.shape ? _balEsc(l.shape) + ' · ' : ''}${l.g ? Math.round(l.w / l.g * 100) : 0}% · ${l.g}g</span>
+                    </div>`).join('');
+                return `<details class="bal-build"${open ? ' open' : ''} data-bal-key="${_balEsc(r.key)}" ontoggle="_balToggleBuild(this)">
+                    <summary${low ? ' style="opacity:0.5"' : ''} title="${r.games} games · Wilson-95 [${Math.round(r.ciLo * 100)}%, ${Math.round(r.ciHi * 100)}%]${low ? ' — low sample' : ''}">
+                        <span class="bal-build-name">${_balEsc(r.key)}</span>
+                        <span class="train-wt-val" style="color:${col};min-width:52px;text-align:right">${pct}%${low ? '' : ' <span style=\'color:var(--muted);font-weight:400\'>±' + Math.round(r.ciHalf * 100) + '</span>'}</span>
+                        <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:28px;text-align:right">${r.games}g</span>
+                    </summary>
+                    <div class="bal-build-body">${loRows || '<div class="bal-loadout-row"><span class="bal-loadout-spells" style="color:var(--muted)">no loadout records</span></div>'}</div>
+                </details>`;
+            }).join('');
+        }
+
+        // Tree tab: archetype + capstone-pillar summary above the concrete
+        // shape rows (R=race pillar depth, P=primary job, S=secondary job).
+        function _balTreeSummaryHtml(shapeMap) {
+            const agg = { archetype: {}, cap: { R: null, P: null, S: null, none: null } };
+            const bump = (map, k, b) => {
+                if (!map[k]) map[k] = { games: 0, wins: 0 };
+                map[k].games += b.games; map[k].wins += b.wins;
+            };
+            const capAgg = {};
+            for (const sig of Object.keys(shapeMap || {})) {
+                const b = shapeMap[sig];
+                if (!b || !b.games) continue;
+                const m = sig.match(/^R(\d)·P(\d)·S(\d)$/);
+                if (!m) continue;
+                const d = [Number(m[1]), Number(m[2]), Number(m[3])];
+                bump(agg.archetype, d.slice().sort((a, b2) => b2 - a).join('-'), b);
+                const cap = d[0] === 4 ? 'R (race)' : d[1] === 4 ? 'P (primary)' : d[2] === 4 ? 'S (secondary)' : 'no capstone';
+                bump(capAgg, cap, b);
+            }
+            const line = (label, map) => {
+                const bits = Object.keys(map).sort((a, b2) => map[b2].games - map[a].games).map(k => {
+                    const v = map[k];
+                    return `${k} <b>${Math.round(v.wins / v.games * 100)}%</b><span style="color:var(--muted)">·${v.games}g</span>`;
+                });
+                return bits.length ? `<div class="bal-tree-agg"><span class="bal-tree-agg-label">${label}</span>${bits.join('<span style="color:var(--muted)"> | </span>')}</div>` : '';
+            };
+            return line('Archetype', agg.archetype) + line('Capstone', capAgg);
+        }
+
         function renderBalanceDashboard() {
             const panel = document.getElementById('trainingPanel');
             if (!panel) return;
+            panel.classList.add('balance-wide');
             ensureBalanceStats();
             const s = _balanceStats;
             const totalM = s.totalMatches || 0;
@@ -34952,15 +35182,20 @@
                 }).join('');
             }
 
-            // Active breakdown tab — sorted most-imbalanced first, with
-            // well-sampled rows ahead of low-sample ones.
+            // Active breakdown tab.
             const map = s[_balanceTab] || {};
             const showPerf = _balanceTab !== 'spells';
+            const filter = (_balanceFilter || '').trim().toLowerCase();
+            const matchesFilter = k => !filter || String(k).toLowerCase().includes(filter);
 
-            // "Casts" tab: real per-cast spell efficiency (dmg/MP, kills/100MP,
-            // whiff rate) — a different table shape from the win-rate buckets.
+            let tableHtml = null;
+            let treeAggHtml = '';
+            let totalRows = 0, shownRows = 0;
+
             if (_balanceTab === 'spellUse') {
-                const useRows = Object.keys(map).map(k => {
+                // "Casts" tab: real per-cast spell efficiency (dmg/MP,
+                // kills/100MP, whiff rate) — its own table shape.
+                let useRows = Object.keys(map).map(k => {
                     const u = map[k];
                     if (!u || !u.casts) return null;
                     return {
@@ -34970,76 +35205,72 @@
                         kp100: u.mp > 0 ? u.kills / u.mp * 100 : 0,
                         whiff: u.whiffs / u.casts,
                     };
-                }).filter(Boolean).sort((a, b) => b.dpm - a.dpm);
-                let useHtml;
+                }).filter(Boolean);
+                totalRows = useRows.length;
+                useRows = useRows.filter(r => matchesFilter(r.key));
+                if (_balanceSort === 'games') useRows.sort((a, b) => b.casts - a.casts);
+                else useRows.sort((a, b) => b.dpm - a.dpm);
+                shownRows = Math.min(useRows.length, 120);
                 if (!useRows.length) {
-                    useHtml = `<div style="text-align:center;color:var(--muted);font-size:10px;padding:12px 0">No cast data yet (records as spells resolve).</div>`;
+                    tableHtml = `<div style="text-align:center;color:var(--muted);font-size:10px;padding:12px 0">${totalRows ? 'No spells match the filter.' : 'No cast data yet (records as spells resolve).'}</div>`;
                 } else {
-                    useHtml = useRows.slice(0, 80).map(r => `<div class="train-wt-row" title="${r.casts} casts">
-                        <span class="train-wt-name" style="flex:1">${r.key}</span>
+                    tableHtml = useRows.slice(0, 120).map(r => `<div class="bal-row" title="${r.casts} casts">
+                        <span class="bal-row-name">${_balEsc(r.key)}</span>
                         <span class="train-wt-val" style="min-width:38px;text-align:right">${r.dpc.toFixed(0)}d</span>
-                        <span class="train-wt-val" style="color:var(--gold);min-width:44px;text-align:right">${r.dpm.toFixed(1)}d/mp</span>
-                        <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:52px;text-align:right">${r.kp100.toFixed(1)}k·${Math.round(r.whiff * 100)}%w</span>
-                        <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:28px;text-align:right">${r.casts}c</span>
+                        <span class="train-wt-val" style="color:var(--gold);min-width:48px;text-align:right">${r.dpm.toFixed(1)}d/mp</span>
+                        <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:56px;text-align:right">${r.kp100.toFixed(1)}k·${Math.round(r.whiff * 100)}%w</span>
+                        <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:32px;text-align:right">${r.casts}c</span>
                     </div>`).join('');
                 }
-                // fall through to the shared panel shell below with this table
-                var _spellUseTable = { tableHtml: useHtml };
-            }
-
-            const rows = _balRows(map).sort((a, b) => {
-                const aw = a.games >= BALANCE_MIN_SAMPLE ? 1 : 0;
-                const bw = b.games >= BALANCE_MIN_SAMPLE ? 1 : 0;
-                if (aw !== bw) return bw - aw;
-                return Math.abs(b.wr - 0.5) - Math.abs(a.wr - 0.5);
-            });
-
-            let tableHtml;
-            if (_spellUseTable) {
-                tableHtml = _spellUseTable.tableHtml;
-            } else if (rows.length === 0) {
-                tableHtml = `<div style="text-align:center;color:var(--muted);font-size:10px;padding:12px 0">No data yet.</div>`;
             } else {
-                tableHtml = rows.slice(0, 80).map(r => {
-                    const pct = Math.round(r.wr * 100);
-                    const low = r.games < BALANCE_MIN_SAMPLE;
-                    let col = 'var(--muted)';
-                    if (!low) col = r.wr >= 0.56 ? 'var(--green)' : (r.wr <= 0.44 ? 'var(--red)' : 'var(--gold)');
-                    const perf = showPerf
-                        ? `<span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:58px;text-align:right">${r.kpg.toFixed(2)}k·${Math.round(r.survival * 100)}%s</span>`
-                        : '';
-                    return `<div class="train-wt-row"${low ? ' style="opacity:0.5"' : ''} title="${r.games} games${low ? ' — low sample' : ''}">
-                        <span class="train-wt-name" style="flex:1">${r.key}</span>
-                        <span class="train-wt-val" style="color:${col};min-width:32px;text-align:right">${pct}%</span>
-                        <div class="train-wt-bar-wrap" style="width:42px"><div class="train-wt-bar" style="width:${pct}%;background:${col}"></div></div>
-                        <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:24px;text-align:right">${r.games}g</span>
-                        ${perf}
-                    </div>`;
-                }).join('');
+                let rows = _balRows(map);
+                totalRows = rows.length;
+                rows = rows.filter(r => matchesFilter(r.key));
+                _balSortRows(rows);
+                shownRows = Math.min(rows.length, 120);
+                if (rows.length === 0) {
+                    tableHtml = `<div style="text-align:center;color:var(--muted);font-size:10px;padding:12px 0">${totalRows ? 'Nothing matches the filter.' : 'No data yet.'}</div>`;
+                } else if (_balanceTab === 'builds') {
+                    tableHtml = _balBuildsHtml(rows.slice(0, 120), map);
+                } else {
+                    tableHtml = rows.slice(0, 120).map(r => _balRowHtml(r, showPerf)).join('');
+                }
+                if (_balanceTab === 'treeShapes') treeAggHtml = _balTreeSummaryHtml(map);
             }
 
             const tabsHtml = _BAL_TABS.map(t =>
-                `<button class="train-btn${_balanceTab === t.id ? ' active' : ''}" style="flex:1;padding:4px 2px;font-size:10px" onclick="_balanceTab='${t.id}';renderBalanceDashboard()">${t.label}</button>`
+                `<button class="train-btn${_balanceTab === t.id ? ' active' : ''}" style="flex:1 1 auto;padding:4px 6px;font-size:10px" onclick="_balanceTab='${t.id}';renderBalanceDashboard()">${t.label}</button>`
             ).join('');
+            const sortBtn = (id, label) =>
+                `<button class="bal-sort-btn${_balanceSort === id ? ' active' : ''}" onclick="_balSetSort('${id}')">${label}</button>`;
 
             const mode = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode());
             const modeName = mode ? (mode.label || mode.id) : '';
+            const modeLabel = _trainModeSetting === 'rotate' ? 'mode rotation' : modeName;
             const mapLabel = _trainMapSetting === 'rotate' ? 'map rotation' : _trainMapSetting;
+
+            const legend = _balanceTab === 'spellUse'
+                ? 'd = dmg/cast · d/mp = dmg per MP · k = kills/100MP · w = whiff rate · c = casts'
+                : _balanceTab === 'treeShapes'
+                ? 'R/P/S = race / primary / secondary pillar depth · 4 = capstone · % ±CI = win rate (Wilson-95)'
+                : _balanceTab === 'builds'
+                ? 'click a build to see its spell loadouts · % ±CI = win rate · g = games'
+                : showPerf
+                ? '% ±CI = win rate (Wilson-95) · g = games · k = avg kills · s = survival'
+                : '% = win rate of teams fielding the spell · g = games';
 
             panel.innerHTML = `
                 <div class="train-drag-handle" id="trainDragHandle">
                     <div class="train-title" style="margin:0">Balance Lab — Non-Mirror</div>
                     <span class="train-drag-grip">⠿ drag</span>
                 </div>
-                <div class="train-subtitle">Equal AI · random teams · ${modeName} · ${mapLabel}</div>
+                <div class="train-subtitle">Equal AI · random tree-legal teams · ${modeLabel} · ${mapLabel}</div>
 
-                <div class="train-cards">
+                <div class="train-cards" style="grid-template-columns:1fr 1fr 1fr 1fr">
                     <div class="train-card"><span class="train-card-label">Matches</span><span class="train-card-value">${totalM}</span></div>
                     <div class="train-card"><span class="train-card-label">Decisive</span><span class="train-card-value">${decisive}</span></div>
                     <div class="train-card"><span class="train-card-label">No-Contest</span><span class="train-card-value">${nc}</span></div>
                     <div class="train-card"><span class="train-card-label">Flags</span><span class="train-card-value">${flags.length}</span></div>
-                </div>
-                <div class="train-cards">
                     <div class="train-card" title="average rounds per decisive match"><span class="train-card-label">Avg Len</span><span class="train-card-value">${decisive > 0 ? ((s.roundsTotal || 0) / decisive).toFixed(1) : '—'}r</span></div>
                     <div class="train-card" title="winner trailed by 2+ kills at some point"><span class="train-card-label">Comebacks</span><span class="train-card-value">${decisive > 0 ? Math.round(((s.comebackWins || 0) / decisive) * 100) + '%' : '—'}</span></div>
                     <div class="train-card" title="how often the first-blood team goes on to win"><span class="train-card-label">FK→Win</span><span class="train-card-value">${decisive > 0 ? Math.round(((s.firstKillWins || 0) / decisive) * 100) + '%' : '—'}</span></div>
@@ -35053,21 +35284,37 @@
 
                 <div class="train-group">
                     <div class="train-group-title">Breakdown</div>
-                    <div style="display:flex;gap:4px;margin-bottom:8px">${tabsHtml}</div>
+                    <div class="bal-tab-bar">${tabsHtml}</div>
+                    <div class="bal-controls">
+                        <input id="balFilterInput" class="bal-filter" type="text" placeholder="filter…" value="${_balEsc(_balanceFilter)}"
+                            oninput="_balSetFilter(this.value)" onfocus="_balanceFilterFocused=true" onblur="_balanceFilterFocused=false">
+                        <div class="bal-sort-group">
+                            ${sortBtn('imbalance', 'Δ50%')}${sortBtn('wr', 'WR')}${sortBtn('games', _balanceTab === 'spellUse' ? 'Casts' : 'Games')}
+                        </div>
+                    </div>
+                    ${treeAggHtml}
                     <div class="train-wt-list">${tableHtml}</div>
-                    <div style="font-size:9px;color:var(--muted);margin-top:6px;text-align:center">${_balanceTab === 'spellUse'
-                        ? 'd = dmg/cast · d/mp = dmg per MP · k = kills/100MP · w = whiff rate · c = casts'
-                        : showPerf
-                        ? '% = win rate · g = games · k = avg kills · s = survival'
-                        : '% = win rate of teams fielding the spell · g = games'}</div>
+                    <div style="font-size:9px;color:var(--muted);margin-top:6px;text-align:center">${legend}${totalRows > shownRows ? ` · showing ${shownRows} of ${totalRows} — filter to narrow` : ''}</div>
                 </div>
 
                 <div class="train-btns">
                     <button class="train-btn danger" onclick="if(confirm('Reset all balance data?')){resetBalanceStats().then(()=>{renderBalanceDashboard();addLog('Balance data reset.');});}">Reset</button>
                     <button class="train-btn" onclick="_exportBalanceStats()">Export JSON</button>
                     <button class="train-btn" onclick="_exportBalanceCsv()">Export CSV</button>
+                    <button class="train-btn" title="dump the spell-tree definitions (every job/race pillar) as JSON" onclick="_exportSpellTrees()">Export Trees</button>
                 </div>
             `;
+
+            // Re-rendering happens after every match — don't let it eat the
+            // filter box focus mid-typing.
+            if (_balanceFilterFocused) {
+                const inp = document.getElementById('balFilterInput');
+                if (inp) {
+                    inp.focus();
+                    const n = inp.value.length;
+                    try { inp.setSelectionRange(n, n); } catch (e) {}
+                }
+            }
 
             _initTrainPanelDrag(panel);
         }
@@ -35133,6 +35380,46 @@
             const bu = s.buildUse || { tools: {}, jobs: {} };
             let buildOps = 0;
             for (const k of Object.keys(bu.tools || {})) buildOps += bu.tools[k];
+
+            // Tree shapes: concrete sigs with CIs, plus the two roll-ups that
+            // the stats17 pass had to compute offline (archetype = sorted
+            // pillar depths; capstone pillar = which branch, if any, hit 4).
+            const shapeSigs = {};
+            const shapeArch = {};
+            const shapeCap = {};
+            const bumpAgg = (map, k, b) => {
+                if (!map[k]) map[k] = { games: 0, wins: 0 };
+                map[k].games += b.games; map[k].wins += b.wins;
+            };
+            for (const sig of Object.keys(s.treeShapes || {})) {
+                const b = s.treeShapes[sig];
+                if (!b || !b.games) continue;
+                const ci = _wilson(b.wins, b.games);
+                shapeSigs[sig] = {
+                    games: b.games, wr: Number((b.wins / b.games).toFixed(4)),
+                    wilson95: [Number(ci.lo.toFixed(4)), Number(ci.hi.toFixed(4))],
+                    kpg: Number((b.kills / b.games).toFixed(2)),
+                    survival: Number((1 - b.deaths / b.games).toFixed(3)),
+                };
+                const m = sig.match(/^R(\d)·P(\d)·S(\d)$/);
+                if (!m) continue;
+                const d = [Number(m[1]), Number(m[2]), Number(m[3])];
+                bumpAgg(shapeArch, d.slice().sort((a, b2) => b2 - a).join('-'), b);
+                bumpAgg(shapeCap, d[0] === 4 ? 'race' : d[1] === 4 ? 'primary' : d[2] === 4 ? 'secondary' : 'none', b);
+            }
+            const finishAgg = (map) => {
+                const out = {};
+                for (const k of Object.keys(map)) {
+                    const v = map[k];
+                    const ci = _wilson(v.wins, v.games);
+                    out[k] = {
+                        games: v.games, wr: Number((v.wins / v.games).toFixed(4)),
+                        wilson95: [Number(ci.lo.toFixed(4)), Number(ci.hi.toFixed(4))],
+                    };
+                }
+                return out;
+            };
+
             return {
                 decisiveMatches: decisive,
                 avgRounds: decisive > 0 ? Number(((s.roundsTotal || 0) / decisive).toFixed(2)) : null,
@@ -35141,6 +35428,11 @@
                 jobs: jobRows,
                 races: raceRows,
                 spellEfficiency: spellEff,
+                treeShapes: {
+                    byShape: shapeSigs,
+                    byArchetype: finishAgg(shapeArch),
+                    byCapstonePillar: finishAgg(shapeCap),
+                },
                 building: {
                     totalOps: buildOps,
                     opsPerMatch: decisive > 0 ? Number((buildOps / decisive).toFixed(2)) : null,
@@ -35148,6 +35440,24 @@
                     byJob: bu.jobs || {},
                 },
             };
+        }
+
+        // Standalone spell-tree definition dump ("Export Trees" button):
+        // every job pillar, every race pillar, the Freelancer socket rules —
+        // the reference file that shape sigs and node ids join against.
+        function _exportSpellTrees() {
+            const data = {
+                _meta: {
+                    game: 'Entropy Wars',
+                    kind: 'spell-trees',
+                    exportedAt: new Date().toISOString(),
+                    note: 'Node keys: R1-R4 race pillar, P1-P4 primary-job pillar, S1-S4 secondary-job pillar; ring 4 = capstone (tier III). Pillars are strict chains from the root (Basic Attack).',
+                },
+                edges: (typeof getTreeEdges === 'function') ? getTreeEdges() : null,
+                trees: _balSpellTreeDefs(),
+            };
+            downloadJson('ew-spell-trees.json', data);
+            addLog('Exported spell-tree definitions to ew-spell-trees.json');
         }
 
         function _exportBalanceStats() {
@@ -35161,10 +35471,16 @@
                     noContests: _balanceStats.noContests,
                     mode: (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode())
                         ? getActiveMultiplayerMode().id : null,
+                    modeSetting: (typeof _trainModeSetting !== 'undefined') ? _trainModeSetting : null,
                     mapSetting: (typeof _trainMapSetting !== 'undefined') ? _trainMapSetting : null,
+                    // WHICH brain played these matches (see ai.js stamp) —
+                    // note an aggregate can still span AI versions; reset
+                    // balance data after an AI change for clean reads.
+                    aiVersion: (typeof window !== 'undefined' && window.EW_AI_VERSION) || 'pre-v4',
                     exportedAt: new Date().toISOString(),
                 },
                 analysis: _balBuildAnalysis(),
+                spellTrees: _balSpellTreeDefs(),
                 stats: _balanceStats,
             };
             downloadJson('ew-balance-stats.json', data);
@@ -35177,7 +35493,7 @@
             const cats = [
                 ['job', _balanceStats.jobs], ['race', _balanceStats.races],
                 ['secondaryJob', _balanceStats.secondaryJobs], ['spell', _balanceStats.spells],
-                ['build', _balanceStats.builds],
+                ['build', _balanceStats.builds], ['treeShape', _balanceStats.treeShapes],
             ];
             const jm = _balanceStats.jobs || {};
             for (const [cat, m] of cats) {

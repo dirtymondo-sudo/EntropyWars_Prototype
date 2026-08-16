@@ -1300,12 +1300,16 @@
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn${window._DEV_UNLOCK_ALL ? ' active' : ''}" id="mmUnlockAllBtn" onclick="window._toggleUnlockAll()">${window._DEV_UNLOCK_ALL ? 'Unlock All Vessels: ON' : 'Unlock All Vessels: OFF'}</button>
                         </div>
-                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Run AI vs AI matches to tune decision weights. Champion weights compete against randomized challengers — winners shape the next generation.</div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">AI Training A/B-tests the v4 brain's decision weights one at a time (mirror teams, SPRT early stop) — including the value-model knobs (MP cost, kill premium, threat aversion…). Winners become the champion weight set.</div>
                         <div class="pm-set-row" style="margin-bottom:6px;align-items:center;gap:8px">
                             <span class="pm-vol-label">Mode</span>
                             <select class="pm-nametag-select" id="mmTrainMode" style="flex:1">
                                 <option value="arena" selected>Arena</option>
                                 <option value="tdm">Team Deathmatch</option>
+                                <option value="clash">Clash (4v4, fixed stage)</option>
+                                <option value="gauntlet">Gauntlet (roster 8)</option>
+                                <option value="simul">Simul (experimental)</option>
+                                <option value="rotate">Rotate modes (Balance Lab)</option>
                             </select>
                         </div>
                         <div class="pm-set-row" style="margin-bottom:8px;align-items:center;gap:8px">
@@ -1320,11 +1324,11 @@
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._launchAITraining()">Launch AI Training</button>
                         </div>
-                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Balance Lab runs AI vs AI with EQUAL weights and random, non-mirror teams — so job, race and spell win rates measure game balance, not AI skill. Uses the Mode / Map above. Live dashboard + JSON/CSV export.</div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Balance Lab runs AI vs AI with EQUAL weights and random, non-mirror, tree-legal teams — job / race / spell / tree-shape win rates measure game balance, not AI skill. Uses the Mode / Map above ("Rotate modes" cycles Arena → TDM → Clash → Gauntlet per match). Live dashboard + JSON/CSV/tree export.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._launchBalanceSim()">Launch Balance Lab</button>
                         </div>
-                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Strength Test proves the AI actually got harder: the current AI (trained weights + combat overlay) plays mirror matches against the untouched baseline AI, sides alternating. Win rate + Elo with a confidence interval — run it after training or an AI change.</div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Strength Test verifies a training run: mirror matches, both sides on the SAME v4 brain — champion plays the trained weights, baseline is pinned to the schema defaults, sides alternating. Win rate + Elo with a confidence interval.</div>
                         <div class="pm-set-row">
                             <button class="pm-set-btn" onclick="window._launchAIStrengthTest()">Launch AI Strength Test</button>
                         </div>
@@ -1342,6 +1346,68 @@
         let _trainMapIndex = 0;
         let _trainMapSetting = 'rotate';
         let _trainModeSetting = 'arena';
+
+        /* Gauntlet fields 8-unit rosters — official compatibleMaps exclude
+           the cramped Δ boards, so its rotation only draws the full maps. */
+        const _TRAIN_MAP_POOL_FULL = _TRAIN_MAP_POOL.filter(id => !/_delta$/.test(id));
+        /* Balance Lab "Rotate modes": cycles the AI-playable PvP modes so one
+           export covers the whole game (Simul stays opt-in — experimental). */
+        const _TRAIN_MODE_POOL = ['arena', 'tdm', 'clash', 'gauntlet'];
+        let _trainModeIndex = 0;
+
+        /* Resolve + apply the sim harness's mode and map for the next match.
+           This mirrors the mode-specific board fixups _msConfirm performs for
+           human launches (clash = fixed 4v4 stage; gauntlet = roster 8,
+           deploy 4) so every sim mode plays the same rules the players get.
+           Called at sim launch AND between Balance Lab matches (battle.js
+           restartDevSimFromBuilder), where mode/map rotation advances. */
+        function _simApplyModeAndMap() {
+            let modeId = _trainModeSetting;
+            if (modeId === 'rotate') modeId = _TRAIN_MODE_POOL[_trainModeIndex++ % _TRAIN_MODE_POOL.length];
+            if (typeof MULTIPLAYER_MODES !== 'undefined' && !MULTIPLAYER_MODES[modeId]) modeId = 'arena';
+            activeMultiplayerMode = modeId;
+
+            let mapId;
+            if (modeId === 'clash') {
+                mapId = 'clash_stage';   // Clash always plays its fixed stage
+            } else if (_trainMapSetting === 'rotate') {
+                const pool = modeId === 'gauntlet' ? _TRAIN_MAP_POOL_FULL : _TRAIN_MAP_POOL;
+                mapId = pool[_trainMapIndex++ % pool.length];
+            } else {
+                mapId = _trainMapSetting;
+            }
+            applyGameMode(mapId);
+
+            if (modeId === 'gauntlet') {
+                // Roster/deploy/spawn fixups (applyGameMode just set
+                // CONFIG.teamSize to the MAP's team size — gauntlet overrides
+                // it with its roster; only DEPLOY spawn tiles are needed).
+                const mode = GAME_MODES[mapId];
+                const mpMode = MULTIPLAYER_MODES.gauntlet;
+                const ROSTER = (mpMode && mpMode.rosterSize) || 8;
+                const DEPLOY = (mpMode && mpMode.deploySize) || 4;
+                CONFIG.teamSize = ROSTER;
+                CONFIG.gauntletDeploy = DEPLOY;
+                const bw = mode.boardWidth || mode.boardSize || 8;
+                const bh = mode.boardHeight || mode.boardSize || 8;
+                SPAWNS[1] = (mode.spawns[1] || []).slice(0, DEPLOY);
+                SPAWNS[2] = (mode.spawns[2] || []).slice(0, DEPLOY);
+                while (SPAWNS[1].length < DEPLOY) {
+                    const idx = SPAWNS[1].length;
+                    SPAWNS[1].push({ x: idx % 2, y: Math.min(Math.floor(idx / 2), bh - 1) });
+                }
+                while (SPAWNS[2].length < DEPLOY) {
+                    const idx = SPAWNS[2].length;
+                    SPAWNS[2].push({ x: bw - 1 - idx % 2, y: Math.min(bh - 1 - Math.floor(idx / 2), bh - 1) });
+                }
+            } else {
+                CONFIG.gauntletDeploy = 0;
+            }
+            return modeId;
+        }
+        // battle.js (restartDevSimFromBuilder) calls this between Balance Lab
+        // matches so mode/map rotation keeps advancing through a long run.
+        window._simApplyModeAndMap = _simApplyModeAndMap;
 
         // Settings → Developer: flip the view-layer unlock-all flag. Never
         // writes to the profile/server — isUnitUnlocked() just reads true while
@@ -1873,12 +1939,10 @@
                 state.devSimSpeed = 16;   // turbo: renderer + waits are gated in dev-sim
                 _applySimVisualDefaults();  // camera follow + anims OFF by default in sims
 
-                activeMultiplayerMode = _trainModeSetting;
-
-                const trainMap = _trainMapSetting === 'rotate'
-                    ? _TRAIN_MAP_POOL[_trainMapIndex++ % _TRAIN_MAP_POOL.length]
-                    : _trainMapSetting;
-                applyGameMode(trainMap);
+                // Mirror-team A/B needs ONE consistent mode per run — mode
+                // rotation would add per-experiment noise, so coerce it.
+                if (_trainModeSetting === 'rotate') _trainModeSetting = 'arena';
+                _simApplyModeAndMap();
 
                 loadAIWeights().then(() => {
 
@@ -1916,12 +1980,7 @@
                 state.devSimSpeed = 16;   // turbo: renderer + waits are gated in dev-sim
                 _applySimVisualDefaults();  // camera follow + anims OFF by default in sims
 
-                activeMultiplayerMode = _trainModeSetting;
-
-                const balMap = _trainMapSetting === 'rotate'
-                    ? _TRAIN_MAP_POOL[_trainMapIndex++ % _TRAIN_MAP_POOL.length]
-                    : _trainMapSetting;
-                applyGameMode(balMap);
+                _simApplyModeAndMap();
 
                 Promise.all([loadAIWeights(), loadBalanceStats()]).then(() => {
                     dismissTitleScreen();
@@ -1946,10 +2005,11 @@
 
             if (mode === 'aistrength') {
 
-                // Champion-vs-baseline strength gauntlet: mirror teams, one side
-                // plays the full current AI (trained weights + ainew overlay),
-                // the other the untouched baseline (defaults + stock ai.js).
-                // Sides alternate every match; the dashboard reports WR/Elo/CI.
+                // Champion-vs-baseline strength gauntlet: mirror teams, both
+                // sides on the same v4 brain — champion plays the trained
+                // weights, baseline is pinned to the schema defaults (via
+                // getAIWeight). Sides alternate; the dashboard reports
+                // WR/Elo/CI.
                 state.controllers[1] = CTRL.AI;
                 state.controllers[2] = CTRL.AI;
                 state.showPlayer2Builder = false;
@@ -1961,12 +2021,9 @@
                 state.devSimSpeed = 16;
                 _applySimVisualDefaults();  // camera follow + anims OFF by default in sims
 
-                activeMultiplayerMode = _trainModeSetting;
-
-                const stMap = _trainMapSetting === 'rotate'
-                    ? _TRAIN_MAP_POOL[_trainMapIndex++ % _TRAIN_MAP_POOL.length]
-                    : _trainMapSetting;
-                applyGameMode(stMap);
+                // Same coercion as training: the gauntlet needs one mode.
+                if (_trainModeSetting === 'rotate') _trainModeSetting = 'arena';
+                _simApplyModeAndMap();
 
                 Promise.all([loadAIWeights(), loadStrengthStats()]).then(() => {
                     dismissTitleScreen();
