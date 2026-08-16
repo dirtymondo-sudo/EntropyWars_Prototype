@@ -2065,7 +2065,22 @@
                         });
                     }
 
-                    applyFallDamage(unit, fromZ, unit.z ?? 0, prefix, { byEnemy: true });
+                    /* Fall/splash pop rides the throw animation (300ms post-
+                       impact beat + 200ms slide) so it lands WITH the body,
+                       not at frame 0 of the blast. Sync when nothing animates. */
+                    const _bbAnimated = !opts.noAnim && typeof animateDisplacement === 'function'
+                        && !_bufferingRoundEvents
+                        && !(typeof _skipVisuals === 'function' && _skipVisuals());
+                    if (_bbAnimated) {
+                        const _bbFromZ = fromZ, _bbToZ = unit.z ?? 0;
+                        window.setTimeout(() => {
+                            applyFallDamage(unit, _bbFromZ, _bbToZ, prefix, { byEnemy: true });
+                            // A lethal drop landing after the caller's checkWin.
+                            if (typeof checkWin === 'function') checkWin();
+                        }, 520);
+                    } else {
+                        applyFallDamage(unit, fromZ, unit.z ?? 0, prefix, { byEnemy: true });
+                    }
 
                     // 💨 Blown across/into ground fire: embers catch, and the
                     // gust fans the blaze a tile downwind (battle.js helper).
@@ -2112,7 +2127,19 @@
                         scaleByTargetLevel: true
                     });
                 }
-                applyFallDamage(unit, fromZ, unit.z ?? 0, prefix, { byEnemy: true });
+                /* Same landing-beat deferral as the open-tile branch above. */
+                const _bcAnimated = !opts.noAnim && typeof animateDisplacement === 'function'
+                    && !_bufferingRoundEvents
+                    && !(typeof _skipVisuals === 'function' && _skipVisuals());
+                if (_bcAnimated) {
+                    const _bcFromZ = fromZ, _bcToZ = unit.z ?? 0;
+                    window.setTimeout(() => {
+                        applyFallDamage(unit, _bcFromZ, _bcToZ, prefix, { byEnemy: true });
+                        if (typeof checkWin === 'function') checkWin();
+                    }, 520);
+                } else {
+                    applyFallDamage(unit, fromZ, unit.z ?? 0, prefix, { byEnemy: true });
+                }
                 if (typeof _fanFlamesAlongPush === 'function') {
                     _fanFlamesAlongPush(unit, [{ x: _bc.x, y: _bc.y }], _bc.x - fromX, _bc.y - fromY, null);
                 }

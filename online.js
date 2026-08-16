@@ -1118,6 +1118,34 @@
         };
         window.followUnitFall = followUnitFall;
 
+        /* Forced-grounding drop tween (battle.js playForcedFallAnim): the
+           engine-side slam (Anchor/Lasso/Gravity Well, the wounded crash)
+           now rides the rig down before the "GROUNDED!" pop. Host-only —
+           relay it so the guest's unit visibly falls too instead of holding
+           its airborne pose until the next state-sync snap. fromZ is read
+           BEFORE the engine assigns the grounded z (the wrapper runs at the
+           same point), so the guest can replay the same start altitude. The
+           GROUNDED floating text itself already rides the floating-text
+           relay at touchdown — no extra timing plumbing needed here. */
+        const _origPlayForcedFallAnim = playForcedFallAnim;
+        playForcedFallAnim = function(unit, toZ) {
+            var _netOn = window._NET && window._NET.online;
+            // Buffered end-of-round processing: the host tween doesn't run
+            // (the buffered replay owns pacing) — don't tween the guest early.
+            if ((_netOn && _isHost() || _ewRecOn()) && unit && state.phase === 'battle'
+                && !(typeof _bufferingRoundEvents !== 'undefined' && _bufferingRoundEvents)) {
+                _emit('relay', {
+                    type: 'forced-fall-anim',
+                    unitId: unit.id,
+                    x: unit.x, y: unit.y,
+                    fromZ: unit.z ?? 0,
+                    toZ: toZ ?? 0
+                });
+            }
+            return _origPlayForcedFallAnim(unit, toZ);
+        };
+        window.playForcedFallAnim = playForcedFallAnim;
+
         /* Post-action camera settle (battle.js armActionCamSettle): the
            debounced "come home from the action shot" return that pulls the
            camera off beat 2's close-up of the target and back onto the ACTOR.
@@ -3280,6 +3308,33 @@
                             ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
                         if (_fallU && typeof window.followUnitFall === 'function') {
                             window.followUnitFall(_fallU, data.duration ? { duration: data.duration } : {});
+                        }
+                    }
+
+                    if (data.type === 'forced-fall-anim' && _ewMirrorView()) {
+                        /* Forced grounding: ride the rig down from flight
+                           altitude so the guest sees the fall the moment the
+                           host does, instead of an airborne pose snapping to
+                           the dirt on the next state-sync. Fog gate: never
+                           trace a hidden enemy's drop. Same save/restore
+                           dance as walk-anim — the tween's start node reads
+                           unit.z, which the sync may already have grounded. */
+                        var _ffU = st && st.units
+                            ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
+                        var _ffShow = true;
+                        if (_ffU && st.fogOfWar && _ffU.player !== NET.myPlayer
+                            && typeof window._isTileVisibleToViewer === 'function') {
+                            _ffShow = window._isTileVisibleToViewer(data.x, data.y);
+                        }
+                        if (_ffU && _ffShow && window.ThreeAnim && window.ThreeAnim.isActive()) {
+                            var _ffSX = _ffU.x, _ffSY = _ffU.y, _ffSZ = _ffU.z;
+                            _ffU.x = data.x;
+                            _ffU.y = data.y;
+                            _ffU.z = data.fromZ ?? 0;
+                            window.ThreeAnim.walkPath(_ffU, [{ x: data.x, y: data.y, z: data.toZ ?? 0 }]);
+                            _ffU.x = _ffSX;
+                            _ffU.y = _ffSY;
+                            _ffU.z = _ffSZ;
                         }
                     }
 

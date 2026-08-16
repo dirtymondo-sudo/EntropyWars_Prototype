@@ -3837,18 +3837,6 @@
             res.x = cx; res.y = cy; res.z = cz;
 
             if (!simulate) {
-                // Landing consequences — but only if a chained re-knock didn't
-                // already move the body again (its own slide handled them).
-                if (target.x === cx && target.y === cy) {
-                    if (!opts.noFall && typeof applyFallDamage === 'function') {
-                        applyFallDamage(target, res.fromZ, cz, opts.label || '', { byEnemy: true });
-                    }
-                    if (res.moved > 0) {
-                        _applyKnockbackHazard(target);
-                        _fanFlamesAlongPush(target, res.steps.filter(s => !s.bump), dx, dy, opts.byUnit || null);
-                    }
-                }
-
                 if (res.steps.length) {
                     res.animMs = baseDelay + res.steps.length * perStepMs;
                     if (opts.animate !== false) {
@@ -3863,6 +3851,31 @@
                         } else if (typeof animateDisplacementPath === 'function') {
                             animateDisplacementPath(target, res.fromX, res.fromY, res.steps, perStepMs, { delayMs: baseDelay });
                         }
+                    }
+                }
+
+                // Landing consequences — but only if a chained re-knock didn't
+                // already move the body again (its own slide handled them).
+                // (Runs AFTER the animation setup so the fall-damage pop can be
+                // timed to the slide's touchdown instead of frame 0.)
+                if (target.x === cx && target.y === cy) {
+                    if (!opts.noFall && typeof applyFallDamage === 'function') {
+                        const _fsFallDelay = (opts.animate !== false && !_skipVisuals()
+                            && !_bufferingRoundEvents) ? (res.animMs || 0) : 0;
+                        if (_fsFallDelay > 0) {
+                            window.setTimeout(() => {
+                                applyFallDamage(target, res.fromZ, cz, opts.label || '', { byEnemy: true });
+                                // Landing after the caller's own checkWin already
+                                // ran — a lethal drop must still end the match.
+                                if (typeof checkWin === 'function') checkWin();
+                            }, _fsFallDelay);
+                        } else {
+                            applyFallDamage(target, res.fromZ, cz, opts.label || '', { byEnemy: true });
+                        }
+                    }
+                    if (res.moved > 0) {
+                        _applyKnockbackHazard(target);
+                        _fanFlamesAlongPush(target, res.steps.filter(s => !s.bump), dx, dy, opts.byUnit || null);
                     }
                 }
                 for (const imp of impacts) {
@@ -4582,16 +4595,25 @@
                         const _landedZ = (typeof resolveDescentCollision === 'function')
                             ? resolveDescentCollision(target, _gz, { byLabel: `as ${unitDisplayName(target)} crashes down` })
                             : _gz;
-                        target.z = (_landedZ === null) ? _gz : _landedZ;
-                        showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
+                        const _gaToZ = (_landedZ === null) ? _gz : _landedZ;
+                        // Visible drop first (the tween reads target.z), THEN the
+                        // logic z — the pop + fall damage land at touchdown.
+                        const _gaFallMs = playForcedFallAnim(target, _gaToZ);
+                        target.z = _gaToZ;
+                        if (typeof triggerFallAnim === 'function') triggerFallAnim(target);
                         addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
-                        // 2026-07-17 fix: the yank now deals forced fall damage
-                        // (Gravity Well's whole pitch) — same rule as
-                        // forceGroundUnit, flyer immunity bypassed.
-                        if (typeof applyFallDamage === 'function') {
-                            applyFallDamage(target, _gaFromZ, target.z ?? 0,
-                                `${spell.name}: `, { byEnemy: true, forced: true });
-                        }
+                        const _gaLandFx = () => {
+                            showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
+                            // 2026-07-17 fix: the yank now deals forced fall damage
+                            // (Gravity Well's whole pitch) — same rule as
+                            // forceGroundUnit, flyer immunity bypassed.
+                            if (typeof applyFallDamage === 'function') {
+                                applyFallDamage(target, _gaFromZ, target.z ?? 0,
+                                    `${spell.name}: `, { byEnemy: true, forced: true });
+                                if (_gaFallMs > 0 && typeof checkWin === 'function') checkWin();
+                            }
+                        };
+                        if (_gaFallMs > 0) window.setTimeout(_gaLandFx, _gaFallMs); else _gaLandFx();
                         _groundedThisBlast.push(target);
                     }
                     hitCount++;
@@ -7751,6 +7773,30 @@
                 if (!_v2) scheduleBoardRender();
             }, 1100);
         }
+
+        /* Forced-grounding drop tween (2026-08-16 floating-text timing pass):
+           slams used to change unit.z with NO tween — the 3D rig held its
+           airborne pose until the next structural rebuild (which is deferred
+           while ANY other tween runs), so "⬇ GROUNDED!" popped while the
+           victim was still visibly hovering. Fire this BEFORE assigning the
+           new z (the tween's start node reads unit.z — same contract as
+           doAltitudeChange's descent) and it rides the unit straight down to
+           toZ. Returns the ms until touchdown so the landing pop / fall
+           damage / thud can be scheduled to land WITH the body; 0 = no tween
+           ran (visuals skipped, buffered end-of-round replay owns the pacing,
+           or the 2D board where the sprite repositions on the next render
+           anyway — callers then fire their landing FX synchronously, exactly
+           the old behavior). online.js wraps this so the guest rides the
+           same drop (RULE #2). */
+        function playForcedFallAnim(unit, toZ) {
+            if (!unit || unit.dead || _skipVisuals() || _bufferingRoundEvents) return 0;
+            if (window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive()) {
+                window.ThreeAnim.walkPath(unit, [{ x: unit.x, y: unit.y, z: toZ }]);
+                return actionMs(260);   // 1-segment walk tween ≈ 205ms + a landing beat
+            }
+            return 0;
+        }
+        window.playForcedFallAnim = playForcedFallAnim;
 
         const HIT_EFFECT_URLS = {
             hit04: 'https://cdn.entropywars.net/Assets/Sprites/Effects/hit04.png',
@@ -20919,7 +20965,24 @@
             }
 
             if (!_wasAirborne && (unit.z ?? 0) < _fromZ && typeof applyFallDamage === 'function') {
-                applyFallDamage(unit, _fromZ, unit.z ?? 0, 'Fall: ');
+                /* Ledge drop at the end of a walk: the damage pop lands when
+                   the walk tween steps off the edge, not at frame 0 of a
+                   multi-tile glide (finishMoveAt runs the instant the tween
+                   STARTS). Move logic — AP spend, overwatch, turn flow —
+                   stays synchronous; only the impact rides the animation. */
+                const _fmFallFrom = _fromZ, _fmFallTo = unit.z ?? 0;
+                const _fmFallDelay = (!_skipVisuals() && !_bufferingRoundEvents
+                    && _walkAnimActive && _walkAnimUnitId === unit.id)
+                    ? Math.max(0, _walkAnimEndAt - Date.now()) : 0;
+                if (_fmFallDelay > 0) {
+                    window.setTimeout(() => {
+                        applyFallDamage(unit, _fmFallFrom, _fmFallTo, 'Fall: ');
+                        // A lethal drop landing after the move's own checkWin.
+                        if (typeof checkWin === 'function') checkWin();
+                    }, _fmFallDelay);
+                } else {
+                    applyFallDamage(unit, _fromZ, unit.z ?? 0, 'Fall: ');
+                }
             }
 
             if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX: _originX, fromY: _originY });
@@ -38902,6 +38965,10 @@
 
         let _walkAnimActive = false;
         let _walkAnimUnitId = null;
+        // When the running walk animation touches down (epoch ms) — lets
+        // finishMoveAt time a ledge-drop's fall damage/pop to the landing
+        // instead of frame 0 of the glide.
+        let _walkAnimEndAt = 0;
 
         /* Mirror the walk flag onto state and ping the React HUD so the
            action menu drops the INSTANT a walk starts (and returns the
@@ -38980,6 +39047,7 @@
                 _setWalkAnimActive(true);
                 const stepMs = Math.max(140, Math.min(220, 200 - path.length * 5));
                 const totalMs = stepMs * path.length + 120;
+                _walkAnimEndAt = Date.now() + totalMs;
                 setTimeout(() => {
                     _setWalkAnimActive(false);
                     _walkAnimUnitId = null;
@@ -38992,6 +39060,8 @@
                 return;
             }
             _setWalkAnimActive(true);
+            _walkAnimEndAt = Date.now()
+                + Math.max(140, Math.min(220, 200 - path.length * 5)) * path.length + 120;
 
             const sprite = getBattleMapSpriteUrl(unit);
             const tileSize = CONFIG.tileSize || 64;
@@ -40212,32 +40282,49 @@
             const landedZ = (typeof resolveDescentCollision === 'function')
                 ? resolveDescentCollision(unit, groundZ, { byLabel: opts.byLabel || '' })
                 : groundZ;
-            unit.z = (landedZ === null) ? groundZ : landedZ;
+            const _fgToZ = (landedZ === null) ? groundZ : landedZ;
+            /* Visible drop: tween the rig down (reads unit.z, so fire BEFORE
+               the assignment). The pop / fall damage / thud below are then
+               scheduled for touchdown, so "GROUNDED!" no longer reads while
+               the victim is still hovering. */
+            const _fgFallMs = playForcedFallAnim(unit, _fgToZ);
+            unit.z = _fgToZ;
             if (unit.race === 'vampire' && typeof _triggerBatTransform === 'function') _triggerBatTransform(unit, 'out');
             triggerFallAnim(unit);   // rigged models flail on the way down
             followUnitFall(unit);    // camera rides the drop to the ground
             if (opts.reason === 'wounded') {
-                showFloatingTextForUnit(unit, '💥 CRASH!', 'debuff', { durationMs: 1100 });
                 addLog(`${unitDisplayName(unit)} is too wounded to stay airborne and crashes to the ground!`);
             } else {
-                showFloatingTextForUnit(unit, '⬇ GROUNDED!', 'debuff', { durationMs: 1100 });
                 addLog(`${unitDisplayName(unit)} is forced out of the sky${opts.byLabel ? ' ' + opts.byLabel : ''}!`);
             }
-            /* 🪝 2026-07-17 fix: being slammed out of the sky now HURTS.
-               forceGroundUnit dropped unit.z but never called applyFallDamage —
-               and applyFallDamage's canFly early-return zeroed it anyway, so
-               Anchor/Lasso/Stasis Beam groundings were always free. opts.forced
-               bypasses the flyer immunity and counts every level of the drop.
-               The wounded-crash path stays free: that unit is already at <25%
-               HP, and pre-fix behavior charged nothing for it. */
-            if (opts.reason !== 'wounded' && typeof applyFallDamage === 'function') {
-                applyFallDamage(unit, _fgFromZ, unit.z ?? 0,
-                    opts.byLabel ? `Slammed down ${opts.byLabel}: ` : 'Slammed down: ',
-                    { byEnemy: true, forced: true });
-            }
-            // 💧 Slammed down into water → soaked, burn doused.
+            const _fgLandFx = () => {
+                if (opts.reason === 'wounded') {
+                    showFloatingTextForUnit(unit, '💥 CRASH!', 'debuff', { durationMs: 1100 });
+                } else {
+                    showFloatingTextForUnit(unit, '⬇ GROUNDED!', 'debuff', { durationMs: 1100 });
+                }
+                /* 🪝 2026-07-17 fix: being slammed out of the sky now HURTS.
+                   forceGroundUnit dropped unit.z but never called applyFallDamage —
+                   and applyFallDamage's canFly early-return zeroed it anyway, so
+                   Anchor/Lasso/Stasis Beam groundings were always free. opts.forced
+                   bypasses the flyer immunity and counts every level of the drop.
+                   The wounded-crash path stays free: that unit is already at <25%
+                   HP, and pre-fix behavior charged nothing for it. */
+                if (opts.reason !== 'wounded' && typeof applyFallDamage === 'function') {
+                    applyFallDamage(unit, _fgFromZ, unit.z ?? 0,
+                        opts.byLabel ? `Slammed down ${opts.byLabel}: ` : 'Slammed down: ',
+                        { byEnemy: true, forced: true });
+                    // The impact can kill — when it lands after the caller's own
+                    // checkWin has already run (deferred touchdown), close the loop.
+                    if (_fgFallMs > 0 && typeof checkWin === 'function') checkWin();
+                }
+                playSfx('debuff');
+                scheduleBoardRender();
+            };
+            if (_fgFallMs > 0) window.setTimeout(_fgLandFx, _fgFallMs); else _fgLandFx();
+            // 💧 Slammed down into water → soaked, burn doused. (The unit is
+            // logically grounded NOW — only the landing FX ride the tween.)
             _onFlyerLanded(unit);
-            playSfx('debuff');
             scheduleBoardRender();
             return true;
         }
@@ -41687,12 +41774,22 @@
                 }
                 // Visible descent: tween the rig down to the ground (start z
                 // is captured from unit.z, so fire BEFORE the assignment).
+                let _landTweenMs = 0;
                 if (window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive() && !_skipVisuals()) {
                     window.ThreeAnim.walkPath(unit, [{ x: unit.x, y: unit.y, z: _finalZ }]);
+                    _landTweenMs = actionMs(260);   // 1-segment walk tween ≈ 205ms
                 }
                 unit.z = _finalZ;
                 playSfx('moveStep');
-                showFloatingTextForUnit(unit, '⬇ LAND', 'neutral', { durationMs: 900 });
+                // "⬇ LAND" pops when the feet actually touch down, not at the
+                // first frame of the descent glide.
+                if (_landTweenMs > 0) {
+                    window.setTimeout(() => {
+                        showFloatingTextForUnit(unit, '⬇ LAND', 'neutral', { durationMs: 900 });
+                    }, _landTweenMs);
+                } else {
+                    showFloatingTextForUnit(unit, '⬇ LAND', 'neutral', { durationMs: 900 });
+                }
                 addLog(`${unitDisplayName(unit)} lands on the ground! (Z ${oldZ} → ${_finalZ})`);
                 // 💧 Touching down in water soaks the lander & douses burn.
                 _onFlyerLanded(unit);
@@ -46126,15 +46223,30 @@
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(target)) {
                     const _pullAirZ = target.z ?? 0;
                     const _pullGroundZ = getHeightAt(target.x, target.y);
-                    target.z = _pullGroundZ;
-                    showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
-                    addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
-                    // 2026-07-17 fix: the drop from flight altitude now deals
-                    // forced fall damage (the normal call above ran while the
-                    // target still counted as a flyer, so it always returned 0).
-                    if (typeof applyFallDamage === 'function') {
-                        applyFallDamage(target, _pullAirZ, _pullGroundZ, `${spell.name}: `, { byEnemy: true, forced: true });
+                    /* Landing beat: when the victim actually moved, the drag
+                       tween queued above (on the _yankDelayMs cadence) captured
+                       the airborne z and glides down to ground level — the drag
+                       IS the fall, so the pop + fall damage wait for it. A
+                       0-tile pull gets its own straight drop tween instead. */
+                    let _pullFallMs = 0;
+                    if (_pullSteps.length > 0) {
+                        _pullFallMs = _skipVisuals() ? 0 : (_yankDelayMs + _pullSteps.length * 120);
+                    } else {
+                        _pullFallMs = playForcedFallAnim(target, _pullGroundZ);
                     }
+                    target.z = _pullGroundZ;
+                    addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
+                    const _pullLandFx = () => {
+                        showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
+                        // 2026-07-17 fix: the drop from flight altitude now deals
+                        // forced fall damage (the normal call above ran while the
+                        // target still counted as a flyer, so it always returned 0).
+                        if (typeof applyFallDamage === 'function') {
+                            applyFallDamage(target, _pullAirZ, _pullGroundZ, `${spell.name}: `, { byEnemy: true, forced: true });
+                            if (_pullFallMs > 0 && typeof checkWin === 'function') checkWin();
+                        }
+                    };
+                    if (_pullFallMs > 0) window.setTimeout(_pullLandFx, _pullFallMs); else _pullLandFx();
                     followUnitFall(target);   // camera rides the drop
                 }
                 if (spell.dmg) {
@@ -47271,9 +47383,23 @@
 
                             if (typeof isUnitAirborne === 'function' && isUnitAirborne(target)) {
                                 const _grGroundZ = getHeightAt(target.x, target.y);
+                                /* Landing beat: the reel-in tween just queued by
+                                   resolveForcedSlide carries the victim down —
+                                   pop "GROUNDED!" when it lands, not at the
+                                   first frame of the drag. 0-tile reels get
+                                   their own straight drop tween. */
+                                let _grFallMs = 0;
+                                if (_grSteps.length > 0) {
+                                    _grFallMs = _skipVisuals() ? 0 : (_grSteps.length * 120);
+                                } else {
+                                    _grFallMs = playForcedFallAnim(target, _grGroundZ);
+                                }
                                 target.z = _grGroundZ;
-                                showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
                                 addLog(`${unitDisplayName(target)} is yanked out of the sky!`);
+                                const _grLandFx = () => {
+                                    showFloatingTextForUnit(target, 'GROUNDED!', 'debuff', { durationMs: 1100 });
+                                };
+                                if (_grFallMs > 0) window.setTimeout(_grLandFx, _grFallMs); else _grLandFx();
                                 followUnitFall(target);   // camera rides the drop
                             }
 

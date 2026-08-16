@@ -9035,3 +9035,42 @@ finisher". Implemented across the whole roster:
   kit's stagger finisher.
 - Census: 139 spells apply a real status, 71 punish one → 199 of 445 total
   spells interact with the status system.
+
+### 2026-08-16 — FLOATING-TEXT TIMING: falls/groundings land WITH the body
+User report: "⬇ GROUNDED!" popped before the unit visibly fell. Root cause:
+forced groundings changed `unit.z` with NO tween — the 3D renderer defers
+structural rebuilds while ANY tween runs (three-renderer.js ~24657), so the
+victim held its airborne pose (often for a whole action-cam beat) while the
+pop fired at frame 0. Fixes (battle.js/state.js/online.js):
+- NEW `playForcedFallAnim(unit, toZ)` (battle.js, next to triggerFallAnim,
+  exported on window): fires a 1-segment `ThreeAnim.walkPath` drop — call it
+  BEFORE assigning the new z (start node reads unit.z, same contract as
+  doAltitudeChange's descent) — and returns the ms until touchdown
+  (actionMs(260); 0 when visuals are skipped, during buffered EOR replay, or
+  on the 2D board → callers then fire landing FX synchronously = old
+  behavior). ONLINE: online.js wraps it into a `forced-fall-anim` relay
+  (fromZ/toZ + walk-anim save/restore dance on the guest, fog-gated), so the
+  guest rides the same drop; the pops arrive via the floating-text relay at
+  touchdown automatically.
+- All grounding sites now schedule pop + forced fall damage at touchdown:
+  forceGroundUnit (⬇ GROUNDED!/💥 CRASH! + thud sfx), _applyAoeDamage
+  groundAirborne, pull spells (timed to the drag tween end — the drag IS the
+  descent when steps > 0), Grapple (timed to the reel-in). Deferred branches
+  call checkWin() after the damage (lethal impacts land after the caller's
+  own checkWin); synchronous branches keep the exact old order. Logic stays
+  synchronous throughout: z/_onFlyerLanded/AP/turn flow unchanged — ONLY the
+  landing FX + fall damage ride the animation delay.
+- Voluntary '⬇ LAND' (doAltitudeChange) pops at descent end, matching the
+  jump path's existing 420ms-delayed JUMP/DROP text.
+- Knock-off falls: resolveForcedSlide's landing fall damage now fires at
+  res.animMs (landing-consequences block moved BELOW the animation setup);
+  applyBlowback (state.js) defers its fall/splash pop by 520ms (300ms
+  post-impact beat + 200ms ghost slide). Flyer immunity makes the inner
+  slide-fall call still return 0 for pulled flyers — no double damage.
+- finishMoveAt ledge drops: new module-local `_walkAnimEndAt` (battle.js,
+  set by both animateWalkPath branches) times the 'Fall:' damage to the walk
+  tween's touchdown. NOT a state.* field — nothing to add to sync skip lists.
+- Collision 🎳 CRASH!/💥 SLAM! pops were already timed (playCollisionImpactFx
+  delayMs=atMs); crash-through 💥 CRASH! coincides with the wall visibly
+  breaking — left alone. _slideSlamDamage stays synchronous ON PURPOSE: the
+  bounce loop's dead-checks depend on it (deferring would change mechanics).
