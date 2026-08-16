@@ -827,6 +827,91 @@ const ThreeRenderer = (function () {
         });
     }
 
+    /* ── Team reticle ─────────────────────────────────────────────────────
+       ONE shader plane per unit replaces the old flat team ring + separate
+       facing wedge (the wedge crossed the ring line and read as two shapes
+       slapped together). The shader draws, in the plane's UV space:
+       - a thin hot-core ring with a soft glow halo,
+       - a gap cut into the ring at the facing heading, and a chevron
+         pointer riding OUTSIDE the ring line in that gap (never crossing
+         it), with a smaller echo chevron tucked between it and the ring,
+       - short tick marks crossing the ring at the side/rear headings,
+       - a faint dashed accent arc drifting inside the ring for the holo
+         feel.
+       The plane lives in the facing wrapper group (_ew_facingIndicator),
+       so the gap + pointer rotate with unit facing, rate-limited each
+       frame in _updateUnitFacing. +v in UV space = the facing direction
+       (plane rotation.x = +π/2, wrapper yaw = _unitFacingYaw). RETICLE_SPAN
+       must match the `* 1.30` UV→tile scale inside the shader. */
+    var RETICLE_SPAN = 1.30;
+
+    var _reticleFragmentShader = [
+        'uniform vec3 uColor;',
+        'uniform float uOpacity;',
+        'uniform float uTime;',
+        'uniform float uPhase;',
+        'varying vec2 vUv;',
+        'float segDist(vec2 p, vec2 a, vec2 b) {',
+        '  vec2 pa = p - a, ba = b - a;',
+        '  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);',
+        '  return length(pa - ba * h);',
+        '}',
+        'void main() {',
+        '  vec2 p = (vUv - 0.5) * 1.30;',        // tile-space coords, facing = +y
+        '  float d = length(p);',
+        '  float ang = atan(p.x, p.y);',          // 0 at the facing heading
+        '  float pulse = 0.88 + 0.12 * sin(uTime * 2.2 + uPhase);',
+        /* main ring — crisp core line + gaussian glow, gapped toward facing */
+        '  float R = 0.42;',
+        '  float rd = abs(d - R);',
+        '  float core = 1.0 - smoothstep(0.006, 0.018, rd);',
+        '  float glow = exp(-rd * rd * 520.0) * 0.42;',
+        '  float gap = smoothstep(0.34, 0.58, abs(ang));',
+        '  float ring = (core * 0.95 + glow * pulse) * gap;',
+        /* tick marks crossing the ring at ±90° and 180° */
+        '  float tickAng = min(abs(abs(ang) - 1.5708), 3.1416 - abs(ang));',
+        '  float tickArc = 1.0 - smoothstep(0.045, 0.085, tickAng);',
+        '  float tickRad = 1.0 - smoothstep(0.030, 0.052, rd);',
+        '  float tick = tickArc * tickRad * 0.85;',
+        /* facing chevron OUTSIDE the ring line, in the gap */
+        '  float ch = min(segDist(p, vec2(0.0, 0.60), vec2(-0.105, 0.455)),',
+        '                 segDist(p, vec2(0.0, 0.60), vec2( 0.105, 0.455)));',
+        '  float chCore = 1.0 - smoothstep(0.008, 0.022, ch);',
+        '  float chGlow = exp(-ch * ch * 420.0) * 0.5;',
+        /* smaller echo chevron tucked between the pointer and the ring */
+        '  float ch2 = min(segDist(p, vec2(0.0, 0.525), vec2(-0.075, 0.425)),',
+        '                  segDist(p, vec2(0.0, 0.525), vec2( 0.075, 0.425)));',
+        '  float ch2Core = (1.0 - smoothstep(0.006, 0.016, ch2)) * 0.55;',
+        '  float chev = chCore + chGlow * pulse + ch2Core;',
+        /* dashed accent arc drifting inside the ring (14 dashes — an
+           integer count keeps the seam at ±π continuous) */
+        '  float ad = abs(d - 0.345);',
+        '  float dash = step(0.45, fract(ang * 2.2282 - uTime * 0.25 + uPhase));',
+        '  float arc = (1.0 - smoothstep(0.004, 0.013, ad)) * dash * 0.28;',
+        /* compose — line cores lift toward white so they read hot/neon */
+        '  float hot = clamp(core * gap + chCore + ch2Core, 0.0, 1.0);',
+        '  vec3 col = mix(uColor, vec3(1.0), hot * 0.45);',
+        '  float alpha = min((ring + tick + chev + arc) * uOpacity, 1.0);',
+        '  gl_FragColor = vec4(col, alpha);',
+        '}'
+    ].join('\n');
+
+    function _makeTeamReticleMaterial(color, phase) {
+        return new THREE.ShaderMaterial({
+            uniforms: {
+                uColor:   { value: new THREE.Color(color) },
+                uOpacity: { value: 1.0 },
+                uTime:    _hlGlobalTime,
+                uPhase:   { value: phase || 0.0 }
+            },
+            vertexShader: _ringVertexShader,
+            fragmentShader: _reticleFragmentShader,
+            transparent: true,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
+    }
+
     // ════════════════════════════════════════════════════════════════════
     // OCCLUDED-UNIT X-RAY SILHOUETTE
     // A holographic ghost of each unit's sprite, drawn ONLY where the unit is
@@ -10814,45 +10899,30 @@ const ThreeRenderer = (function () {
 
         var ringCol = _isAllyPlayer(unit.player) ? TEAM_RING_ALLY_COLOR : TEAM_RING_ENEMY_COLOR;
 
-        /* ONE team ring per unit. There used to be an inner + outer pair here
-           and a selection glow + halo below, which — stacked with the turn
-           beacon's base ring — put four concentric circles under the active
-           unit. The foot is now: this single ring, the tile-under highlight,
-           and the beacon's one expanding pulse. */
-        var innerRing = new THREE.Mesh(
-            new THREE.RingGeometry(ts * 0.40, ts * 0.455, 48),
-            new THREE.MeshBasicMaterial({ color: ringCol, transparent: true, opacity: 1.0, side: THREE.DoubleSide, depthWrite: false })
+        /* ONE team reticle per unit — a single shader plane carrying the
+           team ring AND the facing pointer (see _makeTeamReticleMaterial).
+           The pointer sits in a gap cut into the ring, outside the ring
+           line, so the two never overlap; read enemy pointers to line up
+           flank/back attacks. The plane lives in the facing wrapper group
+           so yaw (rotation.y, updated every frame in _updateUnitFacing)
+           composes cleanly with the flatten rotation. uPhase is hashed off
+           the unit id so neighbouring reticles don't pulse in lockstep. */
+        var _rpHash = 0, _rpStr = String(unit.id);
+        for (var _rpI = 0; _rpI < _rpStr.length; _rpI++) _rpHash = (_rpHash * 31 + _rpStr.charCodeAt(_rpI)) % 997;
+        var reticle = new THREE.Mesh(
+            new THREE.PlaneGeometry(ts * RETICLE_SPAN, ts * RETICLE_SPAN),
+            _makeTeamReticleMaterial(ringCol, (_rpHash % 63) * 0.1)
         );
-        innerRing.rotation.x = -Math.PI / 2;
-        innerRing.position.y = SELECTED_RING_OFFSET;
-        /* Team ring / facing wedge are decoration, not the unit: they're wide
-           horizontal discs at foot level, and from an angled camera an
-           ELEVATED unit's discs project down over the tile at the base of its
-           column — eating clicks aimed at a unit standing beneath. Same no-op
+        reticle.rotation.x = Math.PI / 2;   // flatten; shader +v → world +Z
+        /* The reticle is decoration, not the unit: it's a wide horizontal
+           plane at foot level, and from an angled camera an ELEVATED unit's
+           plane projects down over the tile at the base of its column —
+           eating clicks aimed at a unit standing beneath. Same no-op
            raycast guard as silhouettes/shadow proxies. */
-        innerRing.raycast = function () {};
-        group.add(innerRing);
-
-        // Facing indicator: a wedge on the team ring pointing the way the
-        // unit faces — read enemy wedges to line up flank/back attacks. The
-        // wedge lives in a wrapper group so yaw (rotation.y, updated every
-        // frame in _updateUnitFacing) composes cleanly with the flatten
-        // rotation.
-        var _fiW = ts * 0.10, _fiInner = ts * 0.36, _fiTip = ts * 0.62;
-        var _fiShape = new THREE.Shape();
-        _fiShape.moveTo(0, _fiTip);
-        _fiShape.lineTo(-_fiW, _fiInner);
-        _fiShape.lineTo(_fiW, _fiInner);
-        _fiShape.closePath();
-        var facingWedge = new THREE.Mesh(
-            new THREE.ShapeGeometry(_fiShape),
-            new THREE.MeshBasicMaterial({ color: ringCol, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false })
-        );
-        facingWedge.rotation.x = Math.PI / 2;   // flatten; shape +Y → world +Z
-        facingWedge.raycast = function () {};   // never block unit picking
+        reticle.raycast = function () {};
         var facingGroup = new THREE.Group();
-        facingGroup.add(facingWedge);
-        facingGroup.position.y = SELECTED_RING_OFFSET + 0.05;
+        facingGroup.add(reticle);
+        facingGroup.position.y = SELECTED_RING_OFFSET;
         facingGroup.rotation.y = _unitFacingYaw(unit);
         facingGroup._ew_facingIndicator = true;
         group.add(facingGroup);
@@ -13149,73 +13219,75 @@ const ThreeRenderer = (function () {
         return state.selectedUnitId || null;
     }
 
-    function _chevGeometry(w, h, t) {
-        /* Bold solid V (arrowhead pointing DOWN at the unit's head). Outer V
-           down to the tip, back up along the inner edge — a thick stroke,
-           not the old hairline. */
+    function _cursorTriGeometry(w, h) {
+        /* Solid triangle pointing DOWN at the unit's head: tip at the local
+           origin, flat top edge at y = h. CCW winding so the front face is
+           +Z (the billboard pass yaws +Z toward the camera). */
         var s = new THREE.Shape();
-        s.moveTo(-w, h);
-        s.lineTo(0, 0);
+        s.moveTo(0, 0);
         s.lineTo(w, h);
-        s.lineTo(w, h + t);
-        s.lineTo(0, t * 1.15);
-        s.lineTo(-w, h + t);
+        s.lineTo(-w, h);
         s.closePath();
         return new THREE.ShapeGeometry(s);
     }
 
     function _buildSelectionChevron(ts, colorHex) {
         var col = (colorHex != null) ? colorHex : TURN_COLOR_OWN;
-        /* Compact marker: ~2/3 the old footprint. Still a bold solid V, but
-           it hugs the nameplate instead of towering over the unit. */
-        var w = ts * 0.20;
-        var h = ts * 0.17;
-        var t = ts * 0.09;
+        /* Classic FF/FE cursor: ONE small solid triangle pointing down —
+           gold for your unit, red for the enemy's — with a baked top-light
+           gradient (lit top edge → shaded tip), a dark outline so it pops
+           on any terrain, and a soft offset drop shadow, matching the
+           action menu's ▶ prompt cursor. Replaces the old oversized flat
+           double chevron. Steady body (no opacity pulse — only the halo
+           breathes) + the existing bob = the classic look. */
+        var w = ts * 0.115;   // half-width — full marker ≈ 0.23 × 0.15 tiles
+        var h = ts * 0.15;
 
         var grp = new THREE.Group();
         grp._ew_billboard = true;
-        grp._ew_mats = [];       // solid chevrons (opacity pulsed each frame)
-        grp._ew_glowMats = [];   // additive halos (pulsed at lower strength)
+        grp._ew_mats = [];       // opacity-pulsed each frame (kept empty: body stays solid)
+        grp._ew_glowMats = [];   // additive halo (gently pulsed)
 
-        var mainGeo = _chevGeometry(w, h, t);
-        /* Second, smaller chevron stacked above — the classic double-chevron
-           "you are HERE" marker; reads at a glance even on a busy board.
-           Tucked tighter to the main V so the whole marker stays compact. */
-        var stackGeo = _chevGeometry(w * 0.68, h * 0.68, t * 0.8);
+        var c = new THREE.Color(col);
+        var topCol = c.clone().lerp(new THREE.Color(0xffffff), 0.38);
+        var tipCol = c.clone().multiplyScalar(0.78);
 
-        function _mkSolid(geo, y) {
-            var mat = new THREE.MeshBasicMaterial({
-                color: col, transparent: true, opacity: 0.95,
-                side: THREE.DoubleSide, depthWrite: false, depthTest: false
-            });
-            var m = new THREE.Mesh(geo, mat);
-            m.position.y = y;
-            m.renderOrder = 10000;   // always readable, never buried in terrain
-            m.raycast = function () {};
-            grp._ew_mats.push(mat);
-            grp.add(m);
-            return m;
+        var geo = _cursorTriGeometry(w, h);
+        /* bake the vertical gradient in as vertex colors */
+        var pos = geo.attributes.position, vcol = [];
+        for (var vi = 0; vi < pos.count; vi++) {
+            var vt = Math.max(0, Math.min(1, pos.getY(vi) / h));
+            var vc = tipCol.clone().lerp(topCol, vt);
+            vcol.push(vc.r, vc.g, vc.b);
         }
-        function _mkGlow(geo, y, scale) {
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(vcol, 3));
+
+        /* Layers share the one geometry; scaled copies recenter on y = h/2
+           so the outline/halo border stays even top and bottom. Draw order
+           (renderOrder, depthTest off): halo → shadow → outline → body. */
+        function _mkLayer(o) {
             var mat = new THREE.MeshBasicMaterial({
-                color: col, transparent: true, opacity: 0.30,
+                color: (o.color != null) ? o.color : 0xffffff,
+                vertexColors: !!o.vertexColors,
+                transparent: true, opacity: o.opacity,
                 side: THREE.DoubleSide, depthWrite: false, depthTest: false,
-                blending: THREE.AdditiveBlending
+                blending: o.additive ? THREE.AdditiveBlending : THREE.NormalBlending
             });
             var m = new THREE.Mesh(geo, mat);
-            m.position.y = y;
-            m.scale.setScalar(scale);
-            m.renderOrder = 9999;
+            var sc = o.scale || 1;
+            m.scale.setScalar(sc);
+            m.position.set(o.x || 0, (o.y || 0) + (1 - sc) * h * 0.5, 0);
+            m.renderOrder = o.order;
             m.raycast = function () {};
-            grp._ew_glowMats.push(mat);
+            if (o.glow) grp._ew_glowMats.push(mat);
             grp.add(m);
             return m;
         }
 
-        _mkGlow(mainGeo, -h * 0.18, 1.3);
-        _mkGlow(stackGeo, h + t * 1.1, 1.3);
-        _mkSolid(mainGeo, 0);
-        _mkSolid(stackGeo, h + t * 1.25);
+        _mkLayer({ color: col, opacity: 0.22, scale: 1.6, additive: true, glow: true, order: 9996 });
+        _mkLayer({ color: 0x000000, opacity: 0.35, scale: 1.28, x: w * 0.42, y: -h * 0.26, order: 9997 });
+        _mkLayer({ color: 0x1c1206, opacity: 0.92, scale: 1.28, order: 9998 });
+        _mkLayer({ vertexColors: true, opacity: 1.0, order: 10000 });
         return grp;
     }
 
