@@ -19034,7 +19034,9 @@
                     const _rangeMult = getRangeDamageMult(sourceUnit, target);
                     if (_rangeMult !== 1) {
                         _offMult *= _rangeMult;
-                        _multCallout(sourceUnit, `↘ LONG SHOT ${_fmtMult(_rangeMult)}`, 1000);
+                        // No callout: falloff hits nearly every ranged action,
+                        // so the "LONG SHOT" popup was pure noise. The forecast
+                        // previews (ui.js) still surface the multiplier.
                     }
                 }
             }
