@@ -456,6 +456,14 @@ const STAT_KEYS = ['HP','MP','ATK','DEF','MDEF','INT','SPD','AWR','RNG','MOV','C
 // 2026-08-29 stat rework: the six core stats share the 0-100 ruler (a bit
 // of headroom for gear/natures that push past it); MOV caps at 5 (+1 jetpack).
 const STAT_MAX_PB = { HP:900, MP:250, ATK:110, DEF:105, MDEF:105, INT:110, SPD:105, AWR:110, RNG:6, MOV:6, CRT:30, EVA:25 };
+/* Canonical vital-bar palette — MUST stay in sync with hud.js
+   (HP_ALLY_FILL / MP_FILL / *_GLOW; party-builder.js loads BEFORE hud.js so
+   the constants can't be referenced directly). The builder always shows YOUR
+   unit, so HP is always the ally green — never the enemy red. */
+const PB_VITAL = {
+  hp: { fill:'linear-gradient(90deg, #1fae4b 0%, #2ed158 60%, #7df0a5 100%)', glow:'0 0 6px rgba(46,209,88,0.45)' },
+  mp: { fill:'linear-gradient(90deg, #1f7fd6 0%, #2f9dff 60%, #8fd0ff 100%)', glow:'0 0 6px rgba(47,157,255,0.4)' },
+};
 const STAT_MAP = { HP:'hp', MP:'mp', ATK:'atk', DEF:'def', MDEF:'mdef', INT:'int', SPD:'spd', AWR:'awr', RNG:'range', MOV:'move', CRT:'crt', EVA:'eva' };
 const STAT_PCT = { CRT:true, EVA:true };   // rendered as a % chance
 // Display names — the int stat reads as Magic Attack everywhere in the UI.
@@ -830,19 +838,23 @@ function GradeChip({ statKey, val }) {
     fontSize:10, fontWeight:700, lineHeight:'12px', color:c, border:`1px solid ${c}66`,
     background:`${c}1a`, borderRadius:2 } }, g);
 }
-function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip, gradeKey }) {
+function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip, gradeKey, vital }) {
   const pct = Math.min(100, (val / max) * 100);
   const tone = pct >= 70 ? EW.good : pct >= 40 ? EW.warn : EW.bad;
   let barColor = tone, labelColor = EW.inkMute, valColor = EW.ink;
   if (zodiacMod === 'up') { barColor = EW.good; labelColor = EW.good; valColor = EW.good; }
   if (zodiacMod === 'dn') { barColor = EW.bad; labelColor = EW.bad; valColor = EW.bad; }
   const deltaNum = delta || 0;
+  // HP/MP render with the battle nameplate fills (PB_VITAL) so the sheet
+  // speaks the same green/blue language as combat; zodiac still recolors the
+  // label/value text, but the fill itself stays canonical.
+  const vd = vital ? PB_VITAL[vital] : null;
   return h('div', { title: tip || undefined, style:{ display:'flex', alignItems:'center', gap:4, fontFamily:'DotGothic16, monospace', fontSize:11 } },
     h('span', { style:{ width:30, color:labelColor, letterSpacing:'0.04em', fontSize:10 } }, label,
       zodiacMod === 'up' ? h('span', { style:{color:EW.good, fontSize:'0.7em'} }, ' \u25B2') : null,
       zodiacMod === 'dn' ? h('span', { style:{color:EW.bad, fontSize:'0.7em'} }, ' \u25BC') : null),
-    h('div', { style:{ flex:1, position:'relative', height: compact?5:7, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)' } },
-      h('div', { style:{ position:'absolute', inset:0, width:`${pct}%`, background:`linear-gradient(90deg, ${barColor}, ${barColor}aa)` } })),
+    h('div', { style:{ flex:1, position:'relative', height: compact?5:7, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)', overflow:'hidden' } },
+      h('div', { style:{ position:'absolute', inset:0, width:`${pct}%`, background: vd ? vd.fill : `linear-gradient(90deg, ${barColor}, ${barColor}aa)`, boxShadow: vd ? vd.glow : undefined } })),
     gradeKey ? h(GradeChip, { statKey: gradeKey, val }) : null,
     h('span', { style:{ width:32, textAlign:'right', color:valColor, fontWeight:600, fontSize:11 } }, val + (suffix || '')),
     deltaNum !== 0 ? h('span', { style:{ width:28, textAlign:'right', fontSize:9, fontWeight:700, color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+'+deltaNum : ''+deltaNum) : h('span', { style:{ width:28 } }));
@@ -2181,7 +2193,8 @@ function PartyBuilder() {
                       let zMod = null;
                       if (zodiacNature) { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
                       return h(StatBar, { key:k, label:statLabel(k), val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod, delta:d,
-                        suffix: STAT_PCT[k] ? '%' : '', tip: window.STAT_HELP?.[mapped] || null, gradeKey: mapped });
+                        suffix: STAT_PCT[k] ? '%' : '', tip: window.STAT_HELP?.[mapped] || null, gradeKey: mapped,
+                        vital: k === 'HP' ? 'hp' : k === 'MP' ? 'mp' : null });
                     })),
                   h('div', { style:{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:3, flexShrink:0 } },
                     QUAD_KEYS.map(k => {
