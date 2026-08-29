@@ -4,6 +4,44 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## 📏 STAT REWORK LANDED (2026-08-29, LATEST) — data/battle/state/map/ai/ui/hud/party-builder/three-renderer/styles-base
+
+STAT_REWORK.md phases 1–3 are implemented (see its STATUS header for the
+full inventory). What a future session must know to not fight it:
+- **The six core stats (ATK/M ATK/DEF/M DEF/SPD/AWR) live on ONE 0–100
+  ruler**; letter = `ceil(stat/20)` (F·C·B·A·S), `statGrade()`/
+  `statGradeChipHtml()` in data.js, `.stat-grade` CSS chips. HP/MP keep
+  bespoke bands. `npm run grades` prints the roster sheet.
+- **MOV is DERIVED from SPD** (`moveFromSpd`: 1 tile per 20 SPD, cap 5,
+  floor 1). `RACE_BASE_STATS` has NO `move` field. Flat tile bonuses
+  (jetpack) live on `unit._equipMoveBonus`; `unit.move` is a display
+  baseline recomputed after SPD-changing steps (unit factory, sec-job).
+  The SECOND move of a turn covers `ceil(move/2)` tiles —
+  `getMoveRangeThisTurn` (used by getMoveTiles/findMovePath); never apply
+  the halving inside `getEffectiveMove` (EVA/fog/AI read the full stat).
+- **Stat stages: ±20 = one letter, NO count cap.** Magnitudes live on the
+  `unit.statStageMods` ledger (`[{stat, n, left}]`, per-application
+  timers). `getStatStageDelta` is the ONE chokepoint that ruler-clamps
+  (100 ceiling, floor 0 / 1-for-SPD, widened for bases past 100 like the
+  104-ATK orb). statUp/statDown are DERIVED badges — remove them via
+  `clearStatus` and the ledger entries of that sign drop with them.
+  `unit.statStages` is dead; three-renderer/hud/ai all read through
+  `getStatStageCount`/`getStatStageDelta`.
+- **Compensators, do not "simplify" them away**: armor folds ÷1.2/÷1.6
+  (DEF_ARMOR_FOLD/MDEF_ARMOR_FOLD in state.js + spaceArmor + ai fallback),
+  crit ×(0.02/14), opp-attack ×(0.03/10)/×(0.02/14), RT cooldown ×0.9,
+  RT accuracy ×(0.008/14), keen-sense gate AWR≥84, inspect tiles ÷14, MD
+  alert radius ÷14, sandstorm −70 AWR, terrain/sleep AWR mods ±14,
+  fog_dense −14. LEVEL_TOTAL_STAT_GAINS def 62 / mdef 69 ride the scale.
+- **Jump**: gate is SPD≥90, and the old spd-9+ crowd keeps jump 2 via
+  `RACE_NIMBLE_JUMP` (battle.js, next to RACE_JUMP_OVERRIDE).
+- **Accepted changes** (by design, don't "fix"): global initiative — tiles
+  outrank raw speed (marksman/mothman/robinhood act later; knight/kaiju
+  earlier); SPD job-natures (±20) now shift a tile; double-move totals
+  dropped (2nd move halved); stage strength grew (ATK/INT ~1.5×,
+  DEF/MDEF ~2.2×); ~37 race abilities grant 2 stages and are now stronger
+  — re-cost in the separate tuning pass, not by reverting the step.
+
 ## 🧪 BALANCE LAB v4 + SIM-MODE REBASE (2026-08-15, LATEST) — battle.js, ai.js, map.js, styles-hud.css
 
 Owner asks: stats17 analysis, track/export spell-tree shapes, fix the

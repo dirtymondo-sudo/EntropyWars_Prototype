@@ -8931,10 +8931,17 @@ const ThreeRenderer = (function () {
                hourglass power and killstreak heat. Without these a pure
                stage/streak change never dirtied the serial, so the plate's
                badge row sat stale until the unit next moved. */
-            if (u.statStages) {
-                h = _hashInt(h, u.statStages.atk || 0); h = _hashInt(h, u.statStages.def || 0);
-                h = _hashInt(h, u.statStages.mdef || 0); h = _hashInt(h, u.statStages.spd || 0);
-                h = _hashInt(h, u.statStages.int || 0);
+            if (typeof getStatStageCount === 'function') {
+                // 2026-08-29 rework: stages live on the statStageMods ledger;
+                // the engine getter folds ledger entries + stageMod statuses.
+                h = _hashInt(h, getStatStageCount(u, 'atk') || 0); h = _hashInt(h, getStatStageCount(u, 'def') || 0);
+                h = _hashInt(h, getStatStageCount(u, 'mdef') || 0); h = _hashInt(h, getStatStageCount(u, 'spd') || 0);
+                h = _hashInt(h, getStatStageCount(u, 'int') || 0);
+            } else if (Array.isArray(u.statStageMods)) {
+                for (var mi = 0; mi < u.statStageMods.length; mi++) {
+                    var mm = u.statStageMods[mi];
+                    if (mm && (mm.left || 0) > 0) { h = _hashStr(h, mm.stat || ''); h = _hashInt(h, mm.n || 0); }
+                }
             }
             h = _hashInt(h, u.hourglassBuff || 0);
             h = _hashInt(h, u._killStreak || 0);

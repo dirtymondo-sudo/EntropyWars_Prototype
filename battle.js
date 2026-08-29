@@ -409,14 +409,26 @@
             'minotaur': 2, 'nephilim': 2, 'golem': 2, 'mech': 2,
             'goatman': 2, 'symbiote': 2,
         };
+        // 2026-08-29 stat rework: the nimble races that cleared 2-high walls on
+        // the old ruler (spd 9-10 of 10) keep that identity explicitly — the
+        // MOV-preserving SPD migration ordered the new values by tiles first,
+        // so a raw threshold alone would have silently stripped their jump.
+        const RACE_NIMBLE_JUMP = new Set([
+            'skeleton', 'werewolf', 'mothman', 'siren', 'android',
+            'shadow entity', 'catgirl', 'mantid', 'skinwalker', 'glitch',
+            'pirate', 'swordfighter', 'men in black', 'marksman', 'halfdemon',
+            'fallen angel', 'cosmic wraith', 'cyborg', 'chosen one', 'ghoul',
+            'barbarella', 'ki fighter', 'robinhood', 'symbiote', 'valkraye',
+        ]);
         function getUnitJumpStat(unit) {
             if (!unit) return 1;
             if (unit.jump != null) return unit.jump;        // explicit designer override
             const sizeJump = RACE_JUMP_OVERRIDE[unit.race]; // huge bodies out-leap their spd
             if (sizeJump != null) return sizeJump;
-            const spd = unit.spd ?? 6;
-            if (spd <= 8) return 1;   // the broad majority: 2-high walls stop them
-            return 2;                 // truly nimble (spd 9+): beasts, rogues, assassins
+            if (RACE_NIMBLE_JUMP.has(unit.race)) return 2;  // legacy spd-9+ crowd
+            const spd = unit.spd ?? 50;
+            if (spd < 90) return 1;   // the broad majority: 2-high walls stop them
+            return 2;                 // truly nimble (S-band, SPD 90+)
         }
         // Max height a unit can hop UP in a single jump (and during a Move's jump
         // legs). 2026-07-23: no more flat JUMP_HEIGHT=2 floor — the jump stat IS
@@ -491,12 +503,46 @@
             return (unit?.hourglassBuff || 0) * HOURGLASS_POWER_PER_LEVEL;
         }
 
+        // SPD after stat stages, bound-clamped by the stage chokepoint
+        // (getStatStageDelta saturates at the 0-100 ruler; SPD floors at 1
+        // because movement, turn order and cooldown divisions all feed on it).
+        function getEffectiveSpd(unit) {
+            if (!unit) return 1;
+            return Math.max(1, (unit.spd || 1) + getStatStageDelta(unit, 'spd'));
+        }
+
+        /* 2026-08-29 stat rework, phase 3: base movement DERIVES from SPD —
+           one letter band = one tile (moveFromSpd, data.js). Order of
+           operations: SPD (base + stages, bound-clamped) → band lookup →
+           tile-space modifiers (gear, hourglass, statuses, terrain, weather,
+           floor buffs, zodiac) → floor 1, CAP 5. The cap lands AFTER every
+           modifier on purpose: Pixie Dust on an S-speedster is saturated,
+           same philosophy as the stat clamp. The halved SECOND move lives in
+           getMoveRangeThisTurn (range computation only), NOT here — EVA, fog
+           camera gates and AI threat estimates must not see the stat drop
+           mid-turn. */
+        const MOVE_TILE_CAP = 5;
         function getEffectiveMove(unit) {
             const weatherMod = getWeatherStatMod(unit).move || 0;
             const floorMoveBonus = getSectionBuffs(unit).move || 0;
-            const base = Math.max(1, (unit.move || 1) + getHourglassMoveBonus(unit) + getStatusMoveDelta(unit) + (getTerrainPreferenceModifier(unit).move || 0) + weatherMod + floorMoveBonus);
+            const bandMove = (typeof moveFromSpd === 'function')
+                ? moveFromSpd(getEffectiveSpd(unit))
+                : Math.max(1, Math.min(MOVE_TILE_CAP, Math.ceil(getEffectiveSpd(unit) / 20)));
+            const base = Math.max(1, bandMove + (unit._equipMoveBonus || 0) + getHourglassMoveBonus(unit) + getStatusMoveDelta(unit) + (getTerrainPreferenceModifier(unit).move || 0) + weatherMod + floorMoveBonus);
             let total = Math.max(1, Math.round(base * getZodiacBonus(unit).mult));
-            return total;
+            return Math.min(MOVE_TILE_CAP, total);
+        }
+
+        /* Movement RANGE for the current move action. The second move of a
+           turn covers only ceil(move / 2) tiles — the guard that replaces the
+           old move-3 hard cap (rev 3): baseline A/S speed is allowed, but the
+           retreat-double-move can no longer cross the map. Ceil (not floor)
+           keeps every band distinct where 96% of the roster lives
+           (1/1/2/2/3). Keyed off the SYNCED movesThisTurn field so host and
+           guest ranges always agree (RULE #2). */
+        function getMoveRangeThisTurn(unit) {
+            const m = getEffectiveMove(unit);
+            return ((unit && unit.movesThisTurn) || 0) >= 1 ? Math.ceil(m / 2) : m;
         }
 
         function checkOpportunityAttack(unit, fromX, fromY) {
@@ -515,9 +561,12 @@
                 if (unitHasStatus(enemy, 'stun') || unitHasStatus(enemy, 'frozen') ||
                     unitHasStatus(enemy, 'sleep') || enemy.dead) continue;
 
-                const spdDiff = ((enemy.spd || 0) + getStatStageDelta(enemy, 'spd')) - ((unit.spd || 0) + getStatStageDelta(unit, 'spd'));
+                // 2026-08-29 rescale compensators: SPD is ×10, AWR ×14 — the
+                // per-point weights divide by the same factors, so the odds
+                // math is unchanged.
+                const spdDiff = getEffectiveSpd(enemy) - getEffectiveSpd(unit);
                 const awrDiff = (getEffectiveAwr(enemy) || 0) - (getEffectiveAwr(unit) || 0);
-                const chance = Math.min(0.70, Math.max(0.10, 0.30 + spdDiff * 0.03 + awrDiff * 0.02));
+                const chance = Math.min(0.70, Math.max(0.10, 0.30 + spdDiff * (0.03 / 10) + awrDiff * (0.02 / 14)));
                 if (engineRng() >= chance) continue;
 
                 const baseDmg = Math.max(1, Math.round(pwrAtk(enemy) * 0.5));
@@ -5590,6 +5639,15 @@
             // Burn is the one status lava escalates — when it ends (expiry,
             // douse, cleanse), the lava escalation resets with it.
             if (key === 'burn') unit._lavaBurnStacks = 0;
+            // statUp/statDown are derived badges over the stat-stage ledger:
+            // removing the badge (cleanse, censer purge, dispel) removes the
+            // ledger entries of that sign too — every removal path funnels
+            // through here, so cleanse never leaves invisible live stages.
+            if ((key === 'statUp' || key === 'statDown') && Array.isArray(unit.statStageMods)) {
+                const dropPos = key === 'statUp';
+                unit.statStageMods = unit.statStageMods.filter(m => m && (dropPos ? m.n < 0 : m.n > 0));
+                if (!unit.statStageMods.length) delete unit.statStageMods;
+            }
             // Every removal path (tick expiry, cleanse, censer purge, …) funnels
             // through here — announce it so the HUD repaints the very same frame.
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
@@ -5620,37 +5678,96 @@
                 + getStatStageDelta(unit, 'int');
         }
 
-        // ── Stat-stage buffs (statStageBoost) ─────────────────────────────────
-        // EVERY spell/status stat modifier speaks in STAGES. One stage is a
-        // fixed, meaningful chunk of the stat (below); a unit's total stages per
-        // stat — statStageBoost stages PLUS any status carrying `stageMod`
-        // (Overclock, Inspired, Discord, Glare, …) — is clamped to ±STAT_STAGE_CAP.
-        // The nameplate badge shows the stage count ("ATK+2" = 2 stages = +28 pts),
-        // so what the player reads is exactly what the math does.
-        const STAT_STAGE_STEP = { atk: 14, def: 9, mdef: 9, spd: 3, int: 12 };
+        // ── Stat-stage buffs (statStageBoost) — 2026-08-29 stat rework ────────
+        // EVERY spell/status stat modifier speaks in STAGES. One stage is
+        // ±20 points on the 0-100 ruler = EXACTLY one letter grade — and for
+        // SPD, exactly one movement tile ("ATK B → A" is literally what a
+        // stage does). There is NO stage-count cap any more: stages stack
+        // freely until the effective stat saturates at the ruler itself —
+        // 100 up top, 0 on the floor (1 for SPD: movement, turn order and
+        // cooldown divisions all divide/scale by it). Buffing an F unit to S,
+        // or grinding an S stat down to F, is legal by design; the
+        // counterplay is cleanse/dispel and the stage timers.
+        //
+        // Applications live on a LEDGER — unit.statStageMods = [{stat, n,
+        // left}] — each with its OWN countdown (the old shared statUp/statDown
+        // timer let a cheap +1 top-up refresh a whole maxed stack forever,
+        // and a live debuff timer kept expired buffs working). statUp/
+        // statDown are now DERIVED badges: visible while any entry of their
+        // sign is live; their icon, VFX and the Fermata gate all stay.
+        // The ledger is plain unit data, so it state-syncs to the guest
+        // exactly like statStages did.
+        const STAT_STAGE_STEP = { atk: 20, def: 20, mdef: 20, spd: 20, int: 20 };
         const STAT_STAGE_KEYS = ['atk', 'def', 'mdef', 'spd', 'int'];
         const STAT_STAGE_DURATION = 3;
-        const STAT_STAGE_CAP = 5;
 
-        // Total live stages for one stat: carrier-status stages + per-status
-        // stageMod contributions, clamped to ±STAT_STAGE_CAP.
+        // The unit's CURRENT base value for a staged stat (pre-stage, pre-
+        // terrain/weather — the stored stat the ruler clamp is measured from).
+        function _statStageBase(unit, stat) {
+            if (!unit) return 0;
+            return (stat === 'int' ? unit.intStat : unit[stat]) || 0;
+        }
+        // Ruler bounds for the clamp. A base already outside 0-100 (e.g. the
+        // 104-ATK orb of light) widens its own bound so a buff/debuff never
+        // reads as the WRONG sign.
+        function _statStageFloor(unit, stat) {
+            const floor = stat === 'spd' ? 1 : 0;
+            return Math.min(floor, _statStageBase(unit, stat));
+        }
+        function _statStageCeil(unit, stat) {
+            return Math.max(100, _statStageBase(unit, stat));
+        }
+
+        // Total live stages for one stat: ledger entries + per-status
+        // stageMod contributions (Overclock, Inspired, Discord, Glare, …).
+        // NOT clamped here — the ONE chokepoint below (getStatStageDelta)
+        // bounds the effective value, so every consumer (damage, opp-attack,
+        // turn order, the move bands) inherits the ruler clamp for free.
         function getStatStageCount(unit, stat) {
             if (!unit) return 0;
             let stages = 0;
-            // Stages on the carrier only count while it is live; once it ticks
-            // away the accumulated numbers are stale and contribute nothing.
-            if (unit.statStages && (unitHasStatus(unit, 'statUp') || unitHasStatus(unit, 'statDown'))) {
-                stages += unit.statStages[stat] || 0;
+            if (Array.isArray(unit.statStageMods)) {
+                for (const m of unit.statStageMods) {
+                    if (m && m.stat === stat && (m.left || 0) > 0) stages += (m.n || 0);
+                }
             }
             for (const key of getActiveStatusKeys(unit)) {
                 const mod = STATUS_DEFS[key]?.stageMod;
                 if (mod && mod[stat]) stages += mod[stat];
             }
-            return Math.max(-STAT_STAGE_CAP, Math.min(STAT_STAGE_CAP, stages));
+            return stages;
         }
 
         function getStatStageDelta(unit, stat) {
-            return getStatStageCount(unit, stat) * (STAT_STAGE_STEP[stat] || 0);
+            const step = STAT_STAGE_STEP[stat] || 0;
+            if (!step || !unit) return 0;
+            const stages = getStatStageCount(unit, stat);
+            if (!stages) return 0;
+            const base = _statStageBase(unit, stat);
+            const bounded = Math.max(_statStageFloor(unit, stat),
+                Math.min(_statStageCeil(unit, stat), base + stages * step));
+            return bounded - base;
+        }
+
+        // Derived statUp/statDown badges: value = longest remaining countdown
+        // among live ledger entries of that sign (so the badge timer always
+        // reads true). Called after every ledger mutation (apply/tick/cleanse).
+        function _syncStatStageBadges(unit) {
+            if (!unit) return;
+            let posLeft = 0, negLeft = 0;
+            if (Array.isArray(unit.statStageMods)) {
+                unit.statStageMods = unit.statStageMods.filter(m => m && (m.left || 0) > 0 && (m.n || 0) !== 0);
+                for (const m of unit.statStageMods) {
+                    if (m.n > 0) posLeft = Math.max(posLeft, m.left);
+                    else negLeft = Math.max(negLeft, m.left);
+                }
+                if (!unit.statStageMods.length) delete unit.statStageMods;
+            }
+            const status = ensureUnitStatus(unit);
+            if (posLeft > 0) status.statUp = posLeft;
+            else if (status.statUp) clearStatus(unit, 'statUp');
+            if (negLeft > 0) status.statDown = negLeft;
+            else if (status.statDown) clearStatus(unit, 'statDown');
         }
 
         function applyStatStageBoost(target, boost, sourceLabel = '', sourceUnit = null) {
@@ -5667,32 +5784,57 @@
                 }
                 return;
             }
-            // Fresh application (no live carrier): clear any stale magnitudes.
-            if (!unitHasStatus(target, 'statUp') && !unitHasStatus(target, 'statDown')) {
-                target.statStages = { atk: 0, def: 0, mdef: 0, spd: 0, int: 0 };
-            } else if (!target.statStages) {
-                target.statStages = { atk: 0, def: 0, mdef: 0, spd: 0, int: 0 };
-            }
-            const st = target.statStages;
+            if (!Array.isArray(target.statStageMods)) target.statStageMods = [];
+            // Per-application countdown; Third Eye / Crescendo lengthen THIS
+            // entry only (mirrors the old applyStatusPayload carrier rules).
+            const isEnemy = !!sourceUnit && isEnemyUnit(sourceUnit, target);
+            const isAllyBuff = !!sourceUnit && !isEnemyUnit(sourceUnit, target);
             const parts = [];
+            let anyPos = false, anyNeg = false;
             for (const stat of STAT_STAGE_KEYS) {
                 const n = boost[stat] || 0;
                 if (!n) continue;
-                const before = st[stat] || 0;
-                const after = Math.max(-STAT_STAGE_CAP, Math.min(STAT_STAGE_CAP, before + n));
-                st[stat] = after;
-                const applied = after - before;
+                // Clamp at APPLY time, not just read time: cap the STORED
+                // stages at whatever count reaches the ruler bound from the
+                // unit's current base + live stages (one final stage may
+                // partially apply to touch 100/0 exactly). Otherwise an
+                // overstacked buff becomes an invisible buffer that shrugs
+                // off debuffs with no visible change. "+2 ATK (maxed)" must
+                // mean maxed.
+                const step = STAT_STAGE_STEP[stat] || 20;
+                const base = _statStageBase(target, stat);
+                const cur = base + getStatStageCount(target, stat) * step;
+                const lo = _statStageFloor(target, stat);
+                const hi = _statStageCeil(target, stat);
+                let applied;
+                if (n > 0) {
+                    const room = Math.max(0, hi - Math.max(lo, Math.min(hi, cur)));
+                    applied = Math.min(n, Math.ceil(room / step));
+                } else {
+                    const room = Math.max(0, Math.max(lo, Math.min(hi, cur)) - lo);
+                    applied = -Math.min(-n, Math.ceil(room / step));
+                }
                 if (!applied) {
                     parts.push(`${stat.toUpperCase()} ${n > 0 ? 'maxed' : 'floored'}`);
                     continue;
                 }
-                parts.push(`${applied > 0 ? '+' : ''}${applied} ${stat.toUpperCase()}${after === STAT_STAGE_CAP || after === -STAT_STAGE_CAP ? ' (max)' : ''}`);
+                let left = STAT_STAGE_DURATION;
+                if (applied < 0 && isEnemy && sourceUnit.cls === 'Psychic') left += 1;      // Third Eye
+                if (applied > 0 && isAllyBuff && sourceUnit.cls === 'Harbinger') left += 1; // Crescendo
+                target.statStageMods.push({ stat, n: applied, left });
+                if (applied > 0) anyPos = true; else anyNeg = true;
+                const atBound = (base + getStatStageCount(target, stat) * step) >= hi
+                    || (base + getStatStageCount(target, stat) * step) <= lo;
+                parts.push(`${applied > 0 ? '+' : ''}${applied} ${stat.toUpperCase()}${atBound ? ' (max)' : ''}`);
             }
             if (!parts.length) return;
-            const anyPos = STAT_STAGE_KEYS.some(s => (st[s] || 0) > 0);
-            const anyNeg = STAT_STAGE_KEYS.some(s => (st[s] || 0) < 0);
+            // Carrier badges: applyStatusPayload keeps the log/VFX/Censer
+            // behavior (a censer purge of statDown clears the fresh negative
+            // entries through the clearStatus funnel), then the sync below
+            // makes the badge timer the ledger's own maximum.
             if (anyPos) applyStatusPayload(target, { id: 'statUp', duration: STAT_STAGE_DURATION }, sourceLabel, sourceUnit);
             if (anyNeg) applyStatusPayload(target, { id: 'statDown', duration: STAT_STAGE_DURATION }, sourceLabel, sourceUnit);
+            _syncStatStageBadges(target);
             const net = STAT_STAGE_KEYS.reduce((s, k) => s + (boost[k] || 0), 0);
             if (typeof showFloatingTextForUnit === 'function') {
                 showFloatingTextForUnit(target, parts.join(' '), net >= 0 ? 'buff' : 'debuff', { durationMs: 1200 });
@@ -5871,6 +6013,9 @@
                 if (unit.status[key] > 0) removed += 1;
                 unit.status[key] = 0;
             });
+            // Both stat-stage carriers just died with the rest — drop their
+            // ledger too (pre-rework the magnitudes went inert the same way).
+            delete unit.statStageMods;
             return removed;
         }
 
@@ -6365,13 +6510,15 @@
                         if (unit.mp < unit.maxMp) {
                             unit.mp = Math.min(unit.maxMp, unit.mp + manaAmt);
                         }
-                        /* Debuff cleanse */
+                        /* Debuff cleanse — route through clearStatus so the
+                           statDown badge also drops its stat-stage ledger
+                           entries (and burn resets its lava stacks). */
                         let cleansedAny = false;
                         if (unit.status) {
                             for (const sid of Object.keys(unit.status)) {
                                 const sdef = typeof STATUS_EFFECTS !== 'undefined' ? STATUS_EFFECTS[sid] : null;
                                 if (sdef && (sdef.category === 'debuff' || sdef.kind === 'debuff')) {
-                                    delete unit.status[sid];
+                                    clearStatus(unit, sid);
                                     cleansedAny = true;
                                 }
                             }
@@ -7202,7 +7349,7 @@
                        awareness (AWR 6+ — greys, telepaths, seers) spot
                        smoke-hidden enemies from 2 tiles instead of 1. LIVE
                        awareness — a jammed/blinded unit loses the edge. */
-                    const detectR = ((typeof getEffectiveAwr === 'function' ? getEffectiveAwr(f) : (f.awr || 3)) >= 6) ? 2 : 1;
+                    const detectR = ((typeof getEffectiveAwr === 'function' ? getEffectiveAwr(f) : (f.awr || 42)) >= 84) ? 2 : 1;
                     if (Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y) <= detectR) return false;
                 }
             }
@@ -7399,7 +7546,7 @@
                     /* High-awareness units (AWR 6+) sense cloaked enemies from
                        2 tiles away — the seer's answer to invisibility. LIVE
                        awareness — a jammed/blinded unit loses the edge. */
-                    const detectR = ((typeof getEffectiveAwr === 'function' ? getEffectiveAwr(f) : (f.awr || 3)) >= 6) ? 2 : 1;
+                    const detectR = ((typeof getEffectiveAwr === 'function' ? getEffectiveAwr(f) : (f.awr || 42)) >= 84) ? 2 : 1;
                     if (Math.abs(f.x - u.x) + Math.abs(f.y - u.y) <= detectR) { revealer = f; break; }
                 }
                 if (!revealer) continue;
@@ -7517,8 +7664,23 @@
                     clearStatus(u, key);
                     addLog(`${def.icon || '✓'} ${unitDisplayName(u)}'s ${def.label || key} wore off.`);
                 }
-                // Drop stale stat-stage magnitudes once both carriers expire.
-                if (u.statStages && !unitHasStatus(u, 'statUp') && !unitHasStatus(u, 'statDown')) {
+                // Stat-stage ledger tick: every application counts down on its
+                // OWN timer — the old +3 falls off on schedule while a later
+                // +1 lives out its own rounds. The badge sync then re-derives
+                // statUp/statDown from what survived (and clears them when
+                // nothing did), overriding the generic status tick above so
+                // the badge timer always equals the ledger's longest countdown.
+                if (Array.isArray(u.statStageMods) && u.statStageMods.length) {
+                    let expired = false;
+                    for (const m of u.statStageMods) {
+                        m.left = (m.left || 0) - 1;
+                        if (m.left <= 0) expired = true;
+                    }
+                    _syncStatStageBadges(u);
+                    if (expired && window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: u });
+                } else if (u.statStages) {
+                    // Legacy field from an old snapshot — inert since the
+                    // 2026-08-29 ledger rework; drop it.
                     delete u.statStages;
                 }
             }
@@ -14617,7 +14779,7 @@
             }
 
             /* ═══ BASIC ATTACKS ═══ */
-            function _atkCdMs(u) { return Math.max(700, 1600 - (u.spd || 0) * 9); }
+            function _atkCdMs(u) { return Math.max(700, 1600 - (u.spd || 0) * 0.9); }
             function _basicAttack(att, tgt, willHit, aimGround) {
                 const now = _now();
                 const cd = _atkCdMs(att);
@@ -14840,7 +15002,7 @@
                 /* basic attack between casts */
                 const rng = Math.max(1, (typeof getEffectiveRange === 'function') ? getEffectiveRange(u) : (u.range || 1));
                 if (now >= (u._rtAtkAt || 0) && dist <= rng + 0.6 && _los(u, tgt)) {
-                    const acc = 0.72 + Math.min(0.2, (u.awr || 0) * 0.008);
+                    const acc = 0.72 + Math.min(0.2, (u.awr || 0) * (0.008 / 14));
                     _basicAttack(u, tgt, Math.random() <= acc, null);
                 }
             }
@@ -14934,6 +15096,7 @@
                 u.dead = false; u._dying = false;
                 u.hp = u.maxHp; u.mp = u.maxMp; u.shield = 0;
                 u.status = { spawnGuard: 1 };
+                delete u.statStageMods;   // fresh life — no carried stat stages
                 /* fresh life → drop Last Stand / kill-streak so the respawn
                    doesn't wear the crimson or golden aura (see map.js) */
                 if (typeof resetUnitPowerState === 'function') resetUnitPowerState(u);
@@ -20670,7 +20833,7 @@
             /* Route mode (findRouteTo): same walls/climb/stairs rules, but the
                move budget stops capping the search — the caller wants the REAL
                route to a far destination, not just this turn's reach. */
-            const maxMove = (_routeOpts && _routeOpts.maxMove) || getEffectiveMove(unit);
+            const maxMove = (_routeOpts && _routeOpts.maxMove) || getMoveRangeThisTurn(unit);
             while (open.length) {
                 let minI = 0;
                 for (let i = 1; i < open.length; i++) {
@@ -22690,8 +22853,12 @@
                 unit.maxMp += b.mp; unit.mp = Math.min(unit.mp + Math.max(0, b.mp), unit.maxMp);
                 unit.atk += b.atk; unit.def += b.def;
                 unit.mdef = (unit.mdef || 0) + (b.mdef || 0);
-                unit.intStat += b.int; unit.spd += b.spd;
-                unit.move = Math.max(1, unit.move + b.move);
+                unit.intStat += b.int;
+                unit.spd = Math.max(1, unit.spd + b.spd);
+                // MOV derives from SPD (2026-08-29 rework): a +/-20 SPD nature
+                // is exactly one letter band = one tile. Re-derive the stored
+                // baseline (gear tile bonuses ride on top).
+                unit.move = (typeof moveFromSpd === 'function' ? moveFromSpd(unit.spd) : Math.max(1, Math.min(5, Math.ceil(unit.spd / 20)))) + (unit._equipMoveBonus || 0) + (b.move || 0);
                 unit.awr = Math.max(1, unit.awr + b.awr);
             }
 
@@ -26745,8 +26912,8 @@
             for (const p of party) {
                 if (_mdRoomContains(unit._mdHomeRoom, p.x, p.y)) return 'room';
                 const d = Math.abs(p.x - unit.x) + Math.abs(p.y - unit.y);
-                const awr = (typeof getEffectiveAwr === 'function' ? getEffectiveAwr(unit) : unit.awr) || 3;
-                if (d <= Math.max(2, awr) && typeof isInVision === 'function' && isInVision(unit, p.x, p.y)) return 'sight';
+                const awr = (typeof getEffectiveAwr === 'function' ? getEffectiveAwr(unit) : unit.awr) || 42;
+                if (d <= Math.max(2, Math.round(awr / 14)) && typeof isInVision === 'function' && isInVision(unit, p.x, p.y)) return 'sight';
             }
             return null;
         }
@@ -29115,7 +29282,7 @@
                 if (mods.includes('fog_dense')) {
 
                     for (const u of state.units) {
-                        u.awr = Math.max(1, (u.awr || 3) - 1);
+                        u.awr = Math.max(1, (u.awr || 42) - 14);
                     }
                 }
                 if (mods.includes('weather_storm')) {
@@ -35790,7 +35957,8 @@
             engineRng, engineRandInt, seedEngineRng,
             getEffectiveAttackBonus, getHourglassPower, getSpellStatBonus,
             getStatusArmorDelta, getStatusMdefDelta, getStatusAtkDelta, getStatusIntDelta,
-            getStatStageCount, applyStatStageBoost,
+            getStatStageCount, getStatStageDelta, applyStatStageBoost,
+            getEffectiveSpd, getMoveRangeThisTurn,
             getUnitLevel, getXPProgressPct, xpProgressionActive,
 
             canUnitAct, canUnitMove,
@@ -49787,7 +49955,8 @@
             /* Clash: no movement — empty set greys the Move button
                (getActionPanelCache) and kills every range overlay/preview. */
             if (typeof _isClashMode === 'function' && _isClashMode()) return [];
-            const maxCost = getEffectiveMove(unit);
+            /* Halved second move (2026-08-29 rework): range, not stat. */
+            const maxCost = getMoveRangeThisTurn(unit);
             const tiles = [];
             const tileSet = new Set();
             const _unitFlies = canFly(unit);

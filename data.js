@@ -125,13 +125,13 @@ const FLYING_ALTITUDE_CONFIG = {
 const EQUIPMENT_SLOTS = ['accessory1', 'accessory2'];
 
 const EQUIP_DEFS = {
-    'binoculars': { slot: 'accessory1', label: 'Binoculars', desc: '+2 AWR. Sharper perception: higher crit chance, and at AWR 6+ senses hidden enemies from 2 tiles.', stat: 'awr', statVal: 2 },
-    'walkie_talkie': { slot: 'accessory1', label: 'Walkie Talkie', desc: 'Shares line of sight with allied Walkie Talkie carriers. +1 AWR.', stat: 'awr', statVal: 1 },
-    'flair': { slot: 'accessory1', label: 'Signal Flare', desc: 'One-use flare that reveals an area of the map. +1 AWR.', stat: 'awr', statVal: 1 },
-    'ward': { slot: 'accessory1', label: 'Ward Totem', desc: 'Deployable ward (place within 3 tiles) that grants vision in an area. +1 AWR.', stat: 'awr', statVal: 1 },
-    'telescope': { slot: 'accessory1', label: 'Telescope', desc: 'Spot and target enemies in the sky from the ground (range 5). +2 AWR.', stat: 'awr', statVal: 2 },
-    'jetpack': { slot: 'accessory1', label: 'Jetpack', desc: 'Fly to the sky without nexus control. Ignores terrain movement cost.', stat: 'move', statVal: 1 },
-    'spelunking_gear': { slot: 'accessory1', label: 'Spelunking Gear', desc: 'Descend underground without nexus control. +1 AWR.', stat: 'awr', statVal: 1 },
+    'binoculars': { slot: 'accessory1', label: 'Binoculars', desc: '+28 AWR. Sharper perception: higher crit chance, and at AWR 84+ senses hidden enemies from 2 tiles.', stat: 'awr', statVal: 28 },
+    'walkie_talkie': { slot: 'accessory1', label: 'Walkie Talkie', desc: 'Shares line of sight with allied Walkie Talkie carriers. +14 AWR.', stat: 'awr', statVal: 14 },
+    'flair': { slot: 'accessory1', label: 'Signal Flare', desc: 'One-use flare that reveals an area of the map. +14 AWR.', stat: 'awr', statVal: 14 },
+    'ward': { slot: 'accessory1', label: 'Ward Totem', desc: 'Deployable ward (place within 3 tiles) that grants vision in an area. +14 AWR.', stat: 'awr', statVal: 14 },
+    'telescope': { slot: 'accessory1', label: 'Telescope', desc: 'Spot and target enemies in the sky from the ground (range 5). +28 AWR.', stat: 'awr', statVal: 28 },
+    'jetpack': { slot: 'accessory1', label: 'Jetpack', desc: 'Fly to the sky without nexus control. Ignores terrain movement cost. +1 MOV.', stat: 'move', statVal: 1 },
+    'spelunking_gear': { slot: 'accessory1', label: 'Spelunking Gear', desc: 'Descend underground without nexus control. +14 AWR.', stat: 'awr', statVal: 14 },
     // ── Combat & utility accessories (held-item effects, hooked in battle.js/map.js) ──
     'chrono_locket': { slot: 'accessory1', label: 'Chrono Locket', desc: 'A sliver of borrowed time. Regenerates an extra 5% max HP at the end of every round.' },
     'martyrs_talisman': { slot: 'accessory1', label: "Martyr's Talisman", desc: 'Defies the first killing blow each life — survive at 1 HP. Recharges on respawn.' },
@@ -2899,103 +2899,114 @@ const SKY_EVENT_DURATION = 2;
 //     keeps the ATK to use them (and vice versa); an all-magic kit on a
 //     martial race keeps INT ≥ 45 (magic-knight floor) — kit-vs-stat pass
 //     2026-08-09 stays honored.
+// ── 2026-08-29 STAT REWORK (STAT_REWORK.md) ────────────────────────────────
+// The six core stats (ATK/INT/DEF/MDEF/SPD/AWR) live on ONE 0–100 ruler:
+// letter grade = ceil(stat/20) → F 1–20 · C 21–40 · B 41–60 · A 61–80 ·
+// S 81–100 (see STAT_GRADE_BANDS). HP/MP stay raw pools with bespoke bands.
+// This was a mechanical rescale, NOT a rebalance: DEF ×1.2, MDEF ×1.6,
+// AWR ×14 (battle/state formulas carry inverse compensators, so combat math
+// is unchanged). MOVE is no longer stored — it derives from SPD via
+// moveFromSpd(): 1 tile per 20 SPD (F walks 1, S walks 5). The migration
+// preserved every race's exact tile count: newSpd = bandFloor(oldMove) +
+// round((oldSpd−2)/8·19), so act order within a band follows old SPD, and
+// tiles-outrank-raw-speed is the one accepted initiative change.
 const RACE_BASE_STATS = {
-    'giant':              { hp: 795, mp:  40, atk:  58, def: 78, mdef: 32, int:   0, move: 2, awr: 1, spd:  4 },
-    'robot':              { hp: 700, mp:  50, atk:  74, def: 69, mdef: 22, int:   3, move: 3, awr: 3, spd:  3 },
-    'mech':               { hp: 625, mp:  90, atk:  52, def: 52, mdef: 16, int:  30, move: 2, awr: 2, spd:  3 },
-    'gargoyle':           { hp: 580, mp:  75, atk:  66, def: 36, mdef: 15, int:  18, move: 1, awr: 6, spd:  5 },
-    'zombie':             { hp: 720, mp:  45, atk:  60, def: 55, mdef: 15, int:   0, move: 3, awr: 1, spd:  3 },
-    'cyclops':            { hp: 710, mp:  75, atk:  76, def: 59, mdef: 22, int:  25, move: 3, awr: 3, spd:  6 },
-    'skeleton':           { hp: 615, mp:  85, atk:  96, def: 38, mdef: 26, int:  22, move: 3, awr: 3, spd: 10 },
-    'demon':              { hp: 520, mp: 145, atk:  36, def: 18, mdef: 34, int:  52, move: 2, awr: 2, spd:  4 },
-    'bigfoot':            { hp: 710, mp:  95, atk:  90, def: 40, mdef: 23, int:  24, move: 2, awr: 2, spd:  2 },
-    'antperson':          { hp: 730, mp: 120, atk:  94, def: 38, mdef: 33, int:  31, move: 2, awr: 3, spd:  6 },
-    'werewolf':           { hp: 635, mp:  85, atk:  94, def: 35, mdef: 20, int:  10, move: 3, awr: 3, spd:  9 },
-    'angel':              { hp: 450, mp: 220, atk:   8, def: 30, mdef: 56, int:  74, move: 2, awr: 4, spd:  8 },
-    'ghost':              { hp: 500, mp: 240, atk:   8, def: 23, mdef: 56, int:  92, move: 3, awr: 5, spd:  7 },
-    'nordic':             { hp: 590, mp: 210, atk:  22, def: 26, mdef: 50, int:  88, move: 2, awr: 4, spd:  6 },
-    'fairy':              { hp: 435, mp: 230, atk:   8, def: 22, mdef: 58, int:  79, move: 3, awr: 5, spd:  7 },
-    'scarecrow':          { hp: 660, mp: 160, atk:  84, def: 48, mdef: 34, int:  30, move: 2, awr: 2, spd:  3 },
-    'grey':               { hp: 480, mp: 250, atk:   8, def: 19, mdef: 60, int:  99, move: 2, awr: 7, spd:  7 },
-    'succubus':           { hp: 505, mp: 230, atk:  16, def: 21, mdef: 54, int:  87, move: 2, awr: 4, spd:  8 },
-    'orb of light':       { hp: 475, mp: 255, atk:   8, def: 17, mdef: 61, int: 104, move: 2, awr: 7, spd:  7 },
-    'mothman':            { hp: 490, mp: 215, atk:   8, def: 21, mdef: 46, int:  84, move: 2, awr: 7, spd:  9 },
-    'siren':              { hp: 520, mp: 220, atk:   8, def: 20, mdef: 53, int:  88, move: 2, awr: 4, spd:  9 },
-    'android':            { hp: 480, mp: 145, atk:  77, def: 24, mdef: 37, int:  31, move: 3, awr: 7, spd: 10 },
-    'shadow entity':      { hp: 455, mp: 160, atk:  44, def: 20, mdef: 41, int:  70, move: 3, awr: 7, spd: 10 },
-    'reptilian':          { hp: 470, mp: 130, atk:  86, def: 26, mdef: 26, int:  31, move: 3, awr: 6, spd:  8 },
-    'catgirl':            { hp: 485, mp: 110, atk:  88, def: 25, mdef: 26, int:  26, move: 3, awr: 5, spd: 10 },
-    'mantid':             { hp: 480, mp: 220, atk:  30, def: 17, mdef: 36, int:  94, move: 3, awr: 6, spd:  9 },
-    'skinwalker':         { hp: 480, mp: 190, atk:  34, def: 22, mdef: 40, int:  88, move: 3, awr: 6, spd: 10 },
-    'seraphim':           { hp: 385, mp: 260, atk:   8, def: 12, mdef: 60, int:  89, move: 2, awr: 4, spd:  8 },
-    'djinn':              { hp: 400, mp: 240, atk:   8, def: 18, mdef: 57, int:  83, move: 2, awr: 3, spd:  8 },
-    'anubis':             { hp: 400, mp: 245, atk:   8, def: 18, mdef: 58, int:  86, move: 2, awr: 4, spd:  6 },
-    'martian':            { hp: 515, mp: 140, atk:  88, def: 26, mdef: 30, int:  30, move: 2, awr: 6, spd:  8 },
-    'annunaki':           { hp: 555, mp: 135, atk:  80, def: 24, mdef: 23, int:  31, move: 1, awr: 6, spd:  6 },
-    'ai':                 { hp: 545, mp: 230, atk:  18, def: 36, mdef: 60, int:  92, move: 2, awr: 6, spd:  5 },
-    'machine elves':      { hp: 580, mp: 240, atk:  18, def: 22, mdef: 54, int:  92, move: 2, awr: 5, spd:  7 },
-    'glitch':             { hp: 520, mp: 200, atk:  30, def: 26, mdef: 46, int:  84, move: 3, awr: 5, spd: 10 },
-    'homosapien':         { hp: 595, mp: 140, atk:  70, def: 42, mdef: 28, int:  28, move: 2, awr: 5, spd:  7 },
-    'pirate':             { hp: 605, mp: 110, atk:  86, def: 40, mdef: 27, int:  24, move: 3, awr: 4, spd:  9 },
-    'swordfighter':       { hp: 595, mp: 105, atk:  88, def: 42, mdef: 28, int:  26, move: 3, awr: 4, spd: 10 },
-    'knight':             { hp: 655, mp: 115, atk:  78, def: 56, mdef: 30, int:  31, move: 3, awr: 2, spd:  4 },
-    'shaman':             { hp: 650, mp: 240, atk:  36, def: 32, mdef: 54, int:  84, move: 2, awr: 4, spd:  4 },
-    'mad scientist':      { hp: 480, mp: 205, atk:  20, def: 28, mdef: 54, int:  90, move: 2, awr: 7, spd:  7 },
-    'cowboy':             { hp: 560, mp: 105, atk:  78, def: 33, mdef: 25, int:  24, move: 2, awr: 4, spd:  8 },
-    'men in black':       { hp: 450, mp: 155, atk:  40, def: 24, mdef: 38, int:  66, move: 3, awr: 7, spd: 10 },
-    'telepath':           { hp: 505, mp: 265, atk:   8, def: 19, mdef: 61, int: 103, move: 2, awr: 7, spd:  7 },
-    'marksman':           { hp: 500, mp: 110, atk:  80, def: 14, mdef: 17, int:  22, move: 1, awr: 7, spd:  9 },
-    'priest':             { hp: 460, mp: 220, atk:   8, def: 30, mdef: 55, int:  71, move: 2, awr: 4, spd:  7 },
-    'wizard':             { hp: 415, mp: 255, atk:   8, def: 14, mdef: 61, int:  90, move: 2, awr: 3, spd:  6 },
-    'fortune teller':     { hp: 545, mp: 210, atk:   8, def: 21, mdef: 51, int:  90, move: 2, awr: 7, spd:  7 },
-    'nephilim':           { hp: 700, mp: 110, atk:  72, def: 64, mdef: 25, int:  31, move: 3, awr: 3, spd:  3 },
-    'demon prince':       { hp: 525, mp: 135, atk:  28, def: 16, mdef: 33, int:  66, move: 2, awr: 2, spd:  3 },
-    'goatman':            { hp: 650, mp: 100, atk:  94, def: 35, mdef: 22, int:  31, move: 3, awr: 2, spd:  7 },
-    'mermaid':            { hp: 450, mp: 225, atk:   8, def: 28, mdef: 58, int:  77, move: 2, awr: 4, spd:  8 },
-    'demon princess':     { hp: 525, mp: 215, atk:   8, def: 21, mdef: 51, int:  84, move: 2, awr: 4, spd:  8 },
-    'dreameater':         { hp: 505, mp: 235, atk:   8, def: 17, mdef: 58, int:  94, move: 2, awr: 6, spd:  7 },
-    'halfdemon':          { hp: 495, mp: 145, atk:  79, def: 24, mdef: 36, int:  31, move: 3, awr: 6, spd: 10 },
-    'vampire':            { hp: 440, mp: 155, atk:  61, def: 22, mdef: 31, int:  31, move: 3, awr: 7, spd:  8 },
-    'fallen angel':       { hp: 480, mp: 245, atk:   8, def: 19, mdef: 59, int: 102, move: 2, awr: 4, spd:  9 },
-    'voidweaver':         { hp: 445, mp: 195, atk:  40, def: 12, mdef: 43, int:  58, move: 3, awr: 5, spd:  8 },
-    'cosmic wraith':      { hp: 540, mp: 140, atk:  83, def: 18, mdef: 27, int:  31, move: 1, awr: 7, spd:  9 },
-    'cyborg':             { hp: 635, mp:  80, atk:  89, def: 35, mdef: 24, int:  17, move: 3, awr: 3, spd:  9 },
-    'superhero':          { hp: 580, mp: 120, atk:  68, def: 42, mdef: 28, int:  26, move: 3, awr: 4, spd:  7 },
-    'general':            { hp: 650, mp: 105, atk:  80, def: 52, mdef: 35, int:  25, move: 3, awr: 3, spd:  6 },
-    'droid':              { hp: 555, mp: 250, atk:  15, def: 36, mdef: 60, int:  90, move: 2, awr: 5, spd:  5 },
-    'antihero':           { hp: 580, mp: 115, atk:  66, def: 41, mdef: 28, int:  29, move: 3, awr: 4, spd:  8 },
-    'conspiracy theorist':{ hp: 550, mp: 195, atk:  18, def: 23, mdef: 44, int:  72, move: 2, awr: 6, spd:  7 },
-    'overlord':           { hp: 705, mp: 105, atk:  90, def: 46, mdef: 26, int:  45, move: 3, awr: 2, spd:  4 },
-    'chosen one':         { hp: 430, mp: 200, atk:  68, def: 20, mdef: 44, int:  68, move: 3, awr: 7, spd: 10 },
-    'politician':         { hp: 570, mp: 165, atk:  22, def: 38, mdef: 40, int:  66, move: 2, awr: 6, spd:  5 },
-    'atlantean':          { hp: 495, mp: 200, atk:  22, def: 34, mdef: 47, int:  63, move: 2, awr: 3, spd:  6 },
-    'dinosaur':           { hp: 655, mp:  70, atk:  98, def: 31, mdef: 20, int:   9, move: 3, awr: 2, spd:  8 },
-    'dragon':             { hp: 440, mp: 205, atk:  40, def: 18, mdef: 52, int:  70, move: 2, awr: 3, spd:  3 },
-    'ghoul':              { hp: 505, mp: 130, atk:  66, def: 22, mdef: 31, int:  31, move: 3, awr: 5, spd: 10 },
-    'gnome':              { hp: 580, mp: 205, atk:  34, def: 60, mdef: 56, int:  36, move: 2, awr: 5, spd:  5 },
-    'kaiju':              { hp: 655, mp: 110, atk: 100, def: 35, mdef: 15, int:  25, move: 3, awr: 1, spd:  4 },
-    'kraken':             { hp: 555, mp: 205, atk:  40, def: 31, mdef: 44, int:  69, move: 2, awr: 4, spd:  2 },
-    'loch ness monster':  { hp: 770, mp:  95, atk:  54, def: 76, mdef: 30, int:  31, move: 2, awr: 1, spd:  2 },
-    'yeti':               { hp: 660, mp:  75, atk:  94, def: 37, mdef: 18, int:   5, move: 3, awr: 2, spd:  3 },
-    'barbarella':         { hp: 485, mp: 145, atk:  72, def: 28, mdef: 37, int:  31, move: 3, awr: 5, spd:  9 },
-    'black goo':          { hp: 555, mp: 190, atk:  22, def: 27, mdef: 47, int:  74, move: 2, awr: 5, spd:  5 },
-    'golem':              { hp: 820, mp:  40, atk:  54, def: 84, mdef: 29, int:   0, move: 2, awr: 1, spd:  2 },
-    'honda civic':        { hp: 640, mp: 110, atk:  62, def: 54, mdef: 31, int:  25, move: 3, awr: 2, spd:  6 },
-    'ice queen':          { hp: 410, mp: 235, atk:   8, def: 18, mdef: 56, int:  82, move: 2, awr: 4, spd:  7 },
-    'juggernaut':         { hp: 800, mp:  40, atk:  84, def: 66, mdef: 30, int:   0, move: 2, awr: 1, spd:  3 },
-    'ki fighter':         { hp: 665, mp: 115, atk:  96, def: 33, mdef: 25, int:  31, move: 3, awr: 3, spd: 10 },
-    'king arthur':        { hp: 645, mp:  90, atk:  72, def: 58, mdef: 29, int:  28, move: 3, awr: 4, spd:  7 },
-    'king kong':          { hp: 755, mp:  75, atk: 100, def: 42, mdef: 20, int:  20, move: 2, awr: 2, spd:  2 },
-    'minotaur':           { hp: 675, mp:  70, atk:  94, def: 35, mdef: 23, int:   7, move: 3, awr: 2, spd:  7 },
-    'necromancer':        { hp: 425, mp: 230, atk:   8, def: 16, mdef: 54, int:  78, move: 2, awr: 3, spd:  6 },
-    'occulus':            { hp: 495, mp: 210, atk:   8, def: 19, mdef: 50, int:  84, move: 3, awr: 6, spd:  7 },
-    'quarterback':        { hp: 535, mp: 100, atk:  72, def: 22, mdef: 17, int:  22, move: 2, awr: 6, spd:  8 },
-    'robinhood':          { hp: 530, mp: 105, atk:  84, def: 18, mdef: 20, int:  28, move: 2, awr: 7, spd: 10 },
-    'santa clause':       { hp: 805, mp: 110, atk:  52, def: 68, mdef: 52, int:  31, move: 2, awr: 3, spd:  4 },
-    'super sentai':       { hp: 640, mp:  90, atk:  54, def: 49, mdef: 25, int:  23, move: 2, awr: 4, spd:  5 },
-    'symbiote':           { hp: 480, mp: 125, atk:  70, def: 26, mdef: 31, int:  31, move: 3, awr: 5, spd:  9 },
-    'valkraye':           { hp: 605, mp: 100, atk:  80, def: 44, mdef: 31, int:  30, move: 3, awr: 4, spd:  9 },
-    'watcher':            { hp: 510, mp: 210, atk:   8, def: 23, mdef: 51, int:  84, move: 2, awr: 6, spd:  7 },
+    'giant':              { hp: 795, mp:  40, atk:  58, def:  94, mdef:  52, int:   0, awr: 14, spd: 26 },
+    'robot':              { hp: 700, mp:  50, atk:  74, def:  83, mdef:  35, int:   3, awr: 42, spd: 43 },
+    'mech':               { hp: 625, mp:  90, atk:  52, def:  63, mdef:  26, int:  30, awr: 28, spd: 23 },
+    'gargoyle':           { hp: 580, mp:  75, atk:  66, def:  44, mdef:  24, int:  18, awr: 84, spd:  8 },
+    'zombie':             { hp: 720, mp:  45, atk:  60, def:  66, mdef:  24, int:   0, awr: 14, spd: 43 },
+    'cyclops':            { hp: 710, mp:  75, atk:  76, def:  71, mdef:  35, int:  25, awr: 42, spd: 51 },
+    'skeleton':           { hp: 615, mp:  85, atk:  96, def:  46, mdef:  42, int:  22, awr: 42, spd: 60 },
+    'demon':              { hp: 520, mp: 145, atk:  36, def:  22, mdef:  54, int:  52, awr: 28, spd: 26 },
+    'bigfoot':            { hp: 710, mp:  95, atk:  90, def:  48, mdef:  37, int:  24, awr: 28, spd: 21 },
+    'antperson':          { hp: 730, mp: 120, atk:  94, def:  46, mdef:  53, int:  31, awr: 42, spd: 31 },
+    'werewolf':           { hp: 635, mp:  85, atk:  94, def:  42, mdef:  32, int:  10, awr: 42, spd: 58 },
+    'angel':              { hp: 450, mp: 220, atk:   8, def:  36, mdef:  90, int:  74, awr: 56, spd: 35 },
+    'ghost':              { hp: 500, mp: 240, atk:   8, def:  28, mdef:  90, int:  92, awr: 70, spd: 53 },
+    'nordic':             { hp: 590, mp: 210, atk:  22, def:  31, mdef:  80, int:  88, awr: 56, spd: 31 },
+    'fairy':              { hp: 435, mp: 230, atk:   8, def:  26, mdef:  93, int:  79, awr: 70, spd: 53 },
+    'scarecrow':          { hp: 660, mp: 160, atk:  84, def:  58, mdef:  54, int:  30, awr: 28, spd: 23 },
+    'grey':               { hp: 480, mp: 250, atk:   8, def:  23, mdef:  96, int:  99, awr: 98, spd: 33 },
+    'succubus':           { hp: 505, mp: 230, atk:  16, def:  25, mdef:  86, int:  87, awr: 56, spd: 35 },
+    'orb of light':       { hp: 475, mp: 255, atk:   8, def:  20, mdef:  98, int: 104, awr: 98, spd: 33 },
+    'mothman':            { hp: 490, mp: 215, atk:   8, def:  25, mdef:  74, int:  84, awr: 98, spd: 38 },
+    'siren':              { hp: 520, mp: 220, atk:   8, def:  24, mdef:  85, int:  88, awr: 56, spd: 38 },
+    'android':            { hp: 480, mp: 145, atk:  77, def:  29, mdef:  59, int:  31, awr: 98, spd: 60 },
+    'shadow entity':      { hp: 455, mp: 160, atk:  44, def:  24, mdef:  66, int:  70, awr: 98, spd: 60 },
+    'reptilian':          { hp: 470, mp: 130, atk:  86, def:  31, mdef:  42, int:  31, awr: 84, spd: 55 },
+    'catgirl':            { hp: 485, mp: 110, atk:  88, def:  30, mdef:  42, int:  26, awr: 70, spd: 60 },
+    'mantid':             { hp: 480, mp: 220, atk:  30, def:  20, mdef:  58, int:  94, awr: 84, spd: 58 },
+    'skinwalker':         { hp: 480, mp: 190, atk:  34, def:  26, mdef:  64, int:  88, awr: 84, spd: 60 },
+    'seraphim':           { hp: 385, mp: 260, atk:   8, def:  15, mdef:  96, int:  89, awr: 56, spd: 35 },
+    'djinn':              { hp: 400, mp: 240, atk:   8, def:  22, mdef:  91, int:  83, awr: 42, spd: 35 },
+    'anubis':             { hp: 400, mp: 245, atk:   8, def:  22, mdef:  93, int:  86, awr: 56, spd: 31 },
+    'martian':            { hp: 515, mp: 140, atk:  88, def:  31, mdef:  48, int:  30, awr: 84, spd: 35 },
+    'annunaki':           { hp: 555, mp: 135, atk:  80, def:  29, mdef:  37, int:  31, awr: 84, spd: 11 },
+    'ai':                 { hp: 545, mp: 230, atk:  18, def:  44, mdef:  96, int:  92, awr: 84, spd: 28 },
+    'machine elves':      { hp: 580, mp: 240, atk:  18, def:  26, mdef:  86, int:  92, awr: 70, spd: 33 },
+    'glitch':             { hp: 520, mp: 200, atk:  30, def:  31, mdef:  74, int:  84, awr: 70, spd: 60 },
+    'homosapien':         { hp: 595, mp: 140, atk:  70, def:  50, mdef:  45, int:  28, awr: 70, spd: 33 },
+    'pirate':             { hp: 605, mp: 110, atk:  86, def:  48, mdef:  43, int:  24, awr: 56, spd: 58 },
+    'swordfighter':       { hp: 595, mp: 105, atk:  88, def:  50, mdef:  45, int:  26, awr: 56, spd: 60 },
+    'knight':             { hp: 655, mp: 115, atk:  78, def:  68, mdef:  48, int:  31, awr: 28, spd: 46 },
+    'shaman':             { hp: 650, mp: 240, atk:  36, def:  39, mdef:  86, int:  84, awr: 56, spd: 26 },
+    'mad scientist':      { hp: 480, mp: 205, atk:  20, def:  34, mdef:  86, int:  90, awr: 98, spd: 33 },
+    'cowboy':             { hp: 560, mp: 105, atk:  78, def:  40, mdef:  40, int:  24, awr: 56, spd: 35 },
+    'men in black':       { hp: 450, mp: 155, atk:  40, def:  29, mdef:  61, int:  66, awr: 98, spd: 60 },
+    'telepath':           { hp: 505, mp: 265, atk:   8, def:  23, mdef:  98, int: 103, awr: 98, spd: 33 },
+    'marksman':           { hp: 500, mp: 110, atk:  80, def:  17, mdef:  27, int:  22, awr: 98, spd: 18 },
+    'priest':             { hp: 460, mp: 220, atk:   8, def:  36, mdef:  88, int:  71, awr: 56, spd: 33 },
+    'wizard':             { hp: 415, mp: 255, atk:   8, def:  17, mdef:  98, int:  90, awr: 42, spd: 31 },
+    'fortune teller':     { hp: 545, mp: 210, atk:   8, def:  25, mdef:  82, int:  90, awr: 98, spd: 33 },
+    'nephilim':           { hp: 700, mp: 110, atk:  72, def:  77, mdef:  40, int:  31, awr: 42, spd: 43 },
+    'demon prince':       { hp: 525, mp: 135, atk:  28, def:  20, mdef:  53, int:  66, awr: 28, spd: 23 },
+    'goatman':            { hp: 650, mp: 100, atk:  94, def:  42, mdef:  35, int:  31, awr: 28, spd: 53 },
+    'mermaid':            { hp: 450, mp: 225, atk:   8, def:  34, mdef:  93, int:  77, awr: 56, spd: 35 },
+    'demon princess':     { hp: 525, mp: 215, atk:   8, def:  25, mdef:  82, int:  84, awr: 56, spd: 35 },
+    'dreameater':         { hp: 505, mp: 235, atk:   8, def:  20, mdef:  93, int:  94, awr: 84, spd: 33 },
+    'halfdemon':          { hp: 495, mp: 145, atk:  79, def:  29, mdef:  58, int:  31, awr: 84, spd: 60 },
+    'vampire':            { hp: 440, mp: 155, atk:  61, def:  26, mdef:  50, int:  31, awr: 98, spd: 55 },
+    'fallen angel':       { hp: 480, mp: 245, atk:   8, def:  23, mdef:  94, int: 102, awr: 56, spd: 38 },
+    'voidweaver':         { hp: 445, mp: 195, atk:  40, def:  15, mdef:  69, int:  58, awr: 70, spd: 55 },
+    'cosmic wraith':      { hp: 540, mp: 140, atk:  83, def:  22, mdef:  43, int:  31, awr: 98, spd: 18 },
+    'cyborg':             { hp: 635, mp:  80, atk:  89, def:  42, mdef:  39, int:  17, awr: 42, spd: 58 },
+    'superhero':          { hp: 580, mp: 120, atk:  68, def:  50, mdef:  45, int:  26, awr: 56, spd: 53 },
+    'general':            { hp: 650, mp: 105, atk:  80, def:  63, mdef:  56, int:  25, awr: 42, spd: 51 },
+    'droid':              { hp: 555, mp: 250, atk:  15, def:  44, mdef:  96, int:  90, awr: 70, spd: 28 },
+    'antihero':           { hp: 580, mp: 115, atk:  66, def:  49, mdef:  45, int:  29, awr: 56, spd: 55 },
+    'conspiracy theorist':{ hp: 550, mp: 195, atk:  18, def:  28, mdef:  71, int:  72, awr: 84, spd: 33 },
+    'overlord':           { hp: 705, mp: 105, atk:  90, def:  55, mdef:  42, int:  45, awr: 28, spd: 46 },
+    'chosen one':         { hp: 430, mp: 200, atk:  68, def:  24, mdef:  71, int:  68, awr: 98, spd: 60 },
+    'politician':         { hp: 570, mp: 165, atk:  22, def:  46, mdef:  64, int:  66, awr: 84, spd: 28 },
+    'atlantean':          { hp: 495, mp: 200, atk:  22, def:  41, mdef:  75, int:  63, awr: 42, spd: 31 },
+    'dinosaur':           { hp: 655, mp:  70, atk:  98, def:  37, mdef:  32, int:   9, awr: 28, spd: 55 },
+    'dragon':             { hp: 440, mp: 205, atk:  40, def:  22, mdef:  84, int:  70, awr: 42, spd: 23 },
+    'ghoul':              { hp: 505, mp: 130, atk:  66, def:  26, mdef:  50, int:  31, awr: 70, spd: 60 },
+    'gnome':              { hp: 580, mp: 205, atk:  34, def:  72, mdef:  90, int:  36, awr: 70, spd: 28 },
+    'kaiju':              { hp: 655, mp: 110, atk: 100, def:  42, mdef:  24, int:  25, awr: 14, spd: 46 },
+    'kraken':             { hp: 555, mp: 205, atk:  40, def:  37, mdef:  71, int:  69, awr: 56, spd: 21 },
+    'loch ness monster':  { hp: 770, mp:  95, atk:  54, def:  92, mdef:  48, int:  31, awr: 14, spd: 21 },
+    'yeti':               { hp: 660, mp:  75, atk:  94, def:  44, mdef:  29, int:   5, awr: 28, spd: 43 },
+    'barbarella':         { hp: 485, mp: 145, atk:  72, def:  34, mdef:  59, int:  31, awr: 70, spd: 58 },
+    'black goo':          { hp: 555, mp: 190, atk:  22, def:  32, mdef:  75, int:  74, awr: 70, spd: 28 },
+    'golem':              { hp: 820, mp:  40, atk:  54, def: 101, mdef:  46, int:   0, awr: 14, spd: 21 },
+    'honda civic':        { hp: 640, mp: 110, atk:  62, def:  65, mdef:  50, int:  25, awr: 28, spd: 51 },
+    'ice queen':          { hp: 410, mp: 235, atk:   8, def:  22, mdef:  90, int:  82, awr: 56, spd: 33 },
+    'juggernaut':         { hp: 800, mp:  40, atk:  84, def:  79, mdef:  48, int:   0, awr: 14, spd: 23 },
+    'ki fighter':         { hp: 665, mp: 115, atk:  96, def:  40, mdef:  40, int:  31, awr: 42, spd: 60 },
+    'king arthur':        { hp: 645, mp:  90, atk:  72, def:  70, mdef:  46, int:  28, awr: 56, spd: 53 },
+    'king kong':          { hp: 755, mp:  75, atk: 100, def:  50, mdef:  32, int:  20, awr: 28, spd: 21 },
+    'minotaur':           { hp: 675, mp:  70, atk:  94, def:  42, mdef:  37, int:   7, awr: 28, spd: 53 },
+    'necromancer':        { hp: 425, mp: 230, atk:   8, def:  20, mdef:  86, int:  78, awr: 42, spd: 31 },
+    'occulus':            { hp: 495, mp: 210, atk:   8, def:  23, mdef:  80, int:  84, awr: 84, spd: 53 },
+    'quarterback':        { hp: 535, mp: 100, atk:  72, def:  26, mdef:  27, int:  22, awr: 84, spd: 35 },
+    'robinhood':          { hp: 530, mp: 105, atk:  84, def:  22, mdef:  32, int:  28, awr: 98, spd: 40 },
+    'santa clause':       { hp: 805, mp: 110, atk:  52, def:  82, mdef:  84, int:  31, awr: 42, spd: 26 },
+    'super sentai':       { hp: 640, mp:  90, atk:  54, def:  59, mdef:  40, int:  23, awr: 56, spd: 28 },
+    'symbiote':           { hp: 480, mp: 125, atk:  70, def:  31, mdef:  50, int:  31, awr: 70, spd: 58 },
+    'valkraye':           { hp: 605, mp: 100, atk:  80, def:  53, mdef:  50, int:  30, awr: 56, spd: 58 },
+    'watcher':            { hp: 510, mp: 210, atk:   8, def:  28, mdef:  82, int:  84, awr: 84, spd: 33 },
 };
 
 /* ── RACE_PHYSIQUE (2026-07-07 physique pass) ──────────────────────────────
@@ -3130,37 +3141,54 @@ const JOB_KITS = {
 /* ── JOB MODIFIERS (2026-08-14 rework) — secondary-job training ─────────
    Pokémon-nature-style: every job boosts EXACTLY two stats and cuts two
    stats of equal worth — never all-positive, never a ±1 rounding error.
-   One grade = ±80 HP / ±40 MP / ±12 ATK / ±12 DEF / ±12 MDEF / ±12 INT /
-   ±2 SPD / ±2 AWR (equal value in the budget currency above, and each is
-   a FELT difference: 12 ATK ≈ +8 dmg per basic attack, 40 MP = an extra
-   ring-1 cast + change, 12 DEF ≈ 3 armor soak per hit, 2 AWR = +4% crit).
+   One grade = ±80 HP / ±40 MP / ±12 ATK / ±14 DEF / ±19 MDEF / ±12 INT /
+   ±20 SPD / ±28 AWR (the 2026-08-29 stat rework rescaled DEF ×1.2,
+   MDEF ×1.6, SPD ×10, AWR ×14 — same felt strength as the old
+   ±12/±12/±2/±2: 12 ATK ≈ +8 dmg per basic attack, 40 MP = an extra
+   ring-1 cast + change, 14 DEF ≈ 3 armor soak per hit, 28 AWR = +4% crit.
+   NOTE the one real change the rework brings: ±20 SPD is exactly one
+   letter band, so a SPD-modifying nature now also means ±1 movement tile
+   — SPD *is* movement now).
    These apply ONLY through the secondary job (applySecondaryJob /
    computeSecJobBonuses, at FULL value) — the primary job is identity, not
    a modifier: its influence is baked into RACE_BASE_STATS. MOVE is never
-   modified (hard-capped board stat). Freelancer is the neutral nature.
+   modified directly (it derives from SPD). Freelancer is the neutral nature.
    2026-07-18 note still applies: 'Warrior' is the offensive front-liner,
    'Tank' the wall; 'Agent' displays as "Assassin", 'Raider' as "Bruiser"
    (JOB_DISPLAY_NAMES). */
 const JOB_MODIFIERS = {
     'Warrior':     { atk: 12, hp: 80,  mp: -40, int: -12 },
-    'Tank':        { def: 12, hp: 80,  spd: -2, int: -12 },
-    'Gunslinger':  { atk: 12, spd: 2,  def: -12, mp: -40 },
+    'Tank':        { def: 14, hp: 80,  spd: -20, int: -12 },
+    'Gunslinger':  { atk: 12, spd: 20,  def: -14, mp: -40 },
     'Black Mage':  { int: 12, mp: 40,  atk: -12, hp: -80 },
-    'White Mage':  { mdef: 12, mp: 40, atk: -12, def: -12 },
-    'Agent':       { spd: 2,  awr: 2,  hp: -80, def: -12 },
-    'Psychic':     { int: 12, mdef: 12, atk: -12, def: -12 },
-    'Harvester':   { hp: 80,  mp: 40,  spd: -2, awr: -2 },
-    'Engineer':    { def: 12, mdef: 12, atk: -12, spd: -2 },
-    'Harbinger':   { int: 12, spd: 2,  hp: -80, def: -12 },
+    'White Mage':  { mdef: 19, mp: 40, atk: -12, def: -14 },
+    'Agent':       { spd: 20,  awr: 28,  hp: -80, def: -14 },
+    'Psychic':     { int: 12, mdef: 19, atk: -12, def: -14 },
+    'Harvester':   { hp: 80,  mp: 40,  spd: -20, awr: -28 },
+    'Engineer':    { def: 14, mdef: 19, atk: -12, spd: -20 },
+    'Harbinger':   { int: 12, spd: 20,  hp: -80, def: -14 },
     'Freelancer':  {},
-    'Raider':      { atk: 12, hp: 80,  mdef: -12, awr: -2 },
-    'Sniper':      { atk: 12, awr: 2,  hp: -80, mdef: -12 },
-    'Swordmaster': { atk: 12, spd: 2,  int: -12, mdef: -12 }
+    'Raider':      { atk: 12, hp: 80,  mdef: -19, awr: -28 },
+    'Sniper':      { atk: 12, awr: 28,  hp: -80, mdef: -19 },
+    'Swordmaster': { atk: 12, spd: 20,  int: -12, mdef: -19 }
 };
+
+/* ── SPD → MOVE (2026-08-29 stat rework, phase 3) ──────────────────────────
+   Movement range is no longer a stored stat: one letter of SPD = one tile.
+     SPD 1–20 (F) → 1 · 21–40 (C) → 2 · 41–60 (B) → 3 · 61–80 (A) → 4 ·
+     81–100 (S) → 5.
+   The old move-3 hard cap (2026-07-13: move 4+ crossed an 8×8 map in one
+   turn) is replaced by a move-5 ceiling plus a halved SECOND move
+   (ceil(move/2) tiles — see getMoveTiles in battle.js), so baseline A/S
+   speedsters are allowed without restoring the map-crossing double-move. */
+function moveFromSpd(spd) {
+    return Math.max(1, Math.min(5, Math.ceil(Math.max(1, spd || 1) / 20)));
+}
 
 function computeUnitStats(race, cls) {
     const base = RACE_BASE_STATS[race] || RACE_BASE_STATS['homosapien'];
     const kit = JOB_KITS[cls] || JOB_KITS['Freelancer'];
+    const spd = Math.max(1, Math.min(100, base.spd || 50));
     return {
         // Base stats are FINAL — the primary job is baked into
         // RACE_BASE_STATS (2026-08-14 rework); only the job's kit
@@ -3170,13 +3198,11 @@ function computeUnitStats(race, cls) {
         atk: base.atk,
         def: base.def,
         mdef: base.mdef || 0,
-        // Movement is hard-capped at 3 (2026-07-13 balance pass): with 1 AP
-        // double-moves (plus jump), move 4+ crossed an entire 8x8 map in one
-        // turn, which trivialized positioning and made teleports pointless.
-        move: Math.max(1, Math.min(3, base.move)),
+        // Derived, never stored: base tiles from the SPD band (rework 2026-08-29).
+        move: moveFromSpd(spd),
         awr: Math.max(1, base.awr),
         int: base.int,
-        spd: Math.max(1, base.spd || 5),
+        spd,
         range: kit.range,
         inspect: kit.inspect
     };
@@ -8681,9 +8707,12 @@ const STATUS_DEFS = {
     },
 
     // Carrier statuses for stat-stage buffs/debuffs (statStageBoost). The actual
-    // ATK/DEF/SPD/INT magnitude lives on unit.statStages; these only provide the
-    // duration tick and "empowered/weakened" log wording. statChange: they are
-    // stat changes, not status effects — the ±N stat chips are the display.
+    // ATK/DEF/SPD/INT magnitude lives on the unit.statStageMods ledger (each
+    // application its own entry + countdown — battle.js applyStatStageBoost);
+    // these carriers are DERIVED badges: visible while any entry of their sign
+    // is live, providing only the icon/VFX and "empowered/weakened" wording.
+    // statChange: they are stat changes, not status effects — the ±N stat
+    // chips are the display.
     statUp: {
         icon: '⬆️',
         glyph: '⬆',
@@ -12011,7 +12040,9 @@ const EW_MP_L1_FRAC = 0.30;
    match the 25/50/75/100 ring ladder — a full 4-node pillar now sums to
    250 MP vs ~133 under the old derived costs. (History: pools were halved
    2026-08-09 to make mana a real constraint; that ratio is preserved.) */
-const LEVEL_TOTAL_STAT_GAINS = { hp: 360, mp: 100, atk: 58, def: 52, mdef: 43, int: 43 };
+// def/mdef ride the 2026-08-29 rescale (×1.2 / ×1.6) so the armor fold's
+// inverse compensators (getEffectiveArmor) keep level armor unchanged.
+const LEVEL_TOTAL_STAT_GAINS = { hp: 360, mp: 100, atk: 58, def: 62, mdef: 69, int: 43 };
 function levelStatGains(level, baseHp, baseMp) {
     const L = Math.max(1, Math.min(LEVEL_CAP, level || 1));
     const t = LEVEL_CAP <= 1 ? 1 : Math.pow((L - 1) / (LEVEL_CAP - 1), LEVEL_SCALE_EXP);
@@ -12961,32 +12992,74 @@ const CAMPAIGN_REGION_THEMES = {
    attacker always misses; hard CC (stun/freeze/root) sets EVA to 0;
    spells never crit and can't be dodged. */
 function critChanceFromStats(awr) {
-  return Math.min(0.30, 0.08 + Math.min(0.18, (awr || 0) * 0.02));
+  // 2026-08-29 rescale: AWR lives on 0–100 (×14) — same curve, compensated.
+  return Math.min(0.30, 0.08 + Math.min(0.18, (awr || 0) * (0.02 / 14)));
 }
 function evasionChanceFromStats(move) {
   return Math.min(0.25, 0.06 + Math.min(0.10, (move || 0) * 0.018));
 }
+
+/* ── STAT LETTER GRADES (2026-08-29 stat rework, STAT_REWORK.md) ───────────
+   Five letters, low→high F · C · B · A · S, shown BESIDE the number (never
+   replacing it). The six core stats live on one 0–100 ruler, so their letter
+   is simply ceil(stat/20): F 1–20 · C 21–40 · B 41–60 · A 61–80 · S 81–100.
+   HP/MP stay raw resource pools (600 HP reads better than "HP 54") and get
+   bespoke absolute bands anchored on the measured roster distribution
+   (B straddles the roster average, S ≈ top decile).
+   Deliberate NON-grades: MOV and RNG (tiny numbers with diamond footprints),
+   CRT/EVA (already a % — a grade would double-encode). Grades are computed
+   from the FINAL displayed value, so gear/sub-job genuinely move letters. */
+const STAT_GRADE_LETTERS = ['S', 'A', 'B', 'C'];   // high → low, else F
+const STAT_GRADE_BANDS = {
+  //        S     A     B     C   (else F)
+  hp:    [700,  620,  540,  460],
+  mp:    [235,  190,  140,   80],
+  atk:   [ 81,   61,   41,   21],
+  int:   [ 81,   61,   41,   21],
+  def:   [ 81,   61,   41,   21],
+  mdef:  [ 81,   61,   41,   21],
+  spd:   [ 81,   61,   41,   21],
+  awr:   [ 81,   61,   41,   21],
+};
+// One chip color per grade — the same visual language at every display site.
+const STAT_GRADE_COLORS = { S: '#f2c63c', A: '#3ddc84', B: '#4ecbe2', C: '#c8c8e4', F: '#ff5e5e' };
+function statGrade(key, val) {
+  const bands = STAT_GRADE_BANDS[key];
+  if (!bands) return null;                      // move/range/crt/eva: no grade
+  for (let i = 0; i < bands.length; i++) if (val >= bands[i]) return STAT_GRADE_LETTERS[i];
+  return 'F';
+}
+/* Shared HTML chip (ui.js / hud.js string-built sites; party-builder builds
+   its React twin from STAT_GRADE_COLORS). Returns '' for ungraded keys. */
+function statGradeChipHtml(key, val) {
+  const g = statGrade(key, val);
+  if (!g) return '';
+  return `<span class="stat-grade grade-${g.toLowerCase()}">${g}</span>`;
+}
+
 /* Player-facing stat explainers — the ONE hover-tooltip text for every stat,
    shared by the party builder (bars, quadrant, MOVE/RANGE footprints), the
    codex dossier, the in-battle INFO stat card and the quick-menu stat grid.
    Keep the numbers in sync with battle.js when formulas move. */
 const STAT_HELP = {
-  hp: 'HP — hit points. The unit dies when HP reaches 0. Restored by healing spells, some terrain, and resting in your own spawn zone (15% per round).',
-  mp: 'MP — mana, spent to cast spells. Every unit trickles back ~3% of max MP each round (15% in your own spawn zone), so a deep pool means more casts before running dry.',
-  atk: 'ATK — physical power. Basic attacks deal about 65% of ATK (minus the target’s DEF), and physical spells add 35% of ATK to their damage. Blocked by DEF, never by M DEF.',
-  int: 'M ATK — magic power. Magic spells add 35% of M ATK to their damage, and healing spells heal more with it too. Blocked by M DEF, never by DEF.',
-  def: 'DEF — physical armor. Subtracted flat from every incoming basic attack and physical spell. Does nothing against magic damage.',
-  mdef: 'M DEF — magic armor. Soaks incoming magic spell damage the way DEF soaks physical hits. Does nothing against physical damage.',
-  spd: 'SPD — quickness. Faster units act earlier each round, land (and slip away from) opportunity attacks more often, and the truly nimble (SPD 9+) can leap 2-high walls instead of 1.',
-  move: 'MOV — movement range: how many tiles the unit can walk per turn. Also feeds dodge chance (+1.8% EVA per MOV).',
+  hp: 'HP — hit points. The unit dies when HP reaches 0. Restored by healing spells, some terrain, and resting in your own spawn zone (15% per round). Grades: S ≥700 · A ≥620 · B ≥540 · C ≥460 · F below.',
+  mp: 'MP — mana, spent to cast spells. Every unit trickles back ~3% of max MP each round (15% in your own spawn zone), so a deep pool means more casts before running dry. Grades: S ≥235 · A ≥190 · B ≥140 · C ≥80 · F below.',
+  atk: 'ATK — physical power, on the 0–100 ruler (letter = each 20: S 81+ · A 61+ · B 41+ · C 21+ · F below). Basic attacks deal about 65% of ATK (minus the target’s DEF), and physical spells add 35% of ATK to their damage. Blocked by DEF, never by M DEF.',
+  int: 'M ATK — magic power, on the 0–100 ruler (S 81+ · A 61+ · B 41+ · C 21+ · F below). Magic spells add 35% of M ATK to their damage, and healing spells heal more with it too. Blocked by M DEF, never by DEF.',
+  def: 'DEF — physical armor, on the 0–100 ruler (S 81+ · A 61+ · B 41+ · C 21+ · F below). Soaks a flat share of every incoming basic attack and physical spell. Does nothing against magic damage.',
+  mdef: 'M DEF — magic armor, on the 0–100 ruler (S 81+ · A 61+ · B 41+ · C 21+ · F below). Soaks incoming magic spell damage the way DEF soaks physical hits. Does nothing against physical damage.',
+  spd: 'SPD — quickness, on the 0–100 ruler. One letter = one movement tile: F (1–20) walks 1 · C (21–40) 2 · B (41–60) 3 · A (61–80) 4 · S (81–100) 5. Faster units also act earlier each round, land (and slip away from) opportunity attacks more often, and the truly nimble (SPD 90+) can leap 2-high walls instead of 1.',
+  move: 'MOV — movement range in tiles, derived from SPD (1 tile per 20 SPD: F 1 · C 2 · B 3 · A 4 · S 5), then modified by statuses, terrain and weather. The SECOND move of a turn covers only half the tiles (rounded up) and spends all remaining AP. Also feeds dodge chance (+1.8% EVA per MOV).',
   range: 'RNG — basic attack reach in tiles. 1 = melee only; higher lets the unit strike from a distance. Spells carry their own separate ranges.',
-  awr: 'AWR — perception. Drives critical chance (+2% per AWR), lets keen units (AWR 6+) sense cloaked or smoke-hidden enemies from 2 tiles instead of 1, and raises the chance to land opportunity attacks on retreating enemies. Sight itself is pure line of sight — AWR does NOT extend how far a unit sees.',
-  crt: 'CRT — critical hit chance on basic attacks. 8% base + 2% per AWR (max +18%), capped at 30%. A crit deals ×1.8 damage (Gunslinger passive: ×2.0). Spells never crit.',
+  awr: 'AWR — perception, on the 0–100 ruler (S 81+ · A 61+ · B 41+ · C 21+ · F below). Drives critical chance (+2% per 14 AWR), lets keen units (AWR 84+) sense cloaked or smoke-hidden enemies from 2 tiles instead of 1, and raises the chance to land opportunity attacks on retreating enemies. Sight itself is pure line of sight — AWR does NOT extend how far a unit sees.',
+  crt: 'CRT — critical hit chance on basic attacks. 8% base + 2% per 14 AWR (max +18%), capped at 30%. A crit deals ×1.8 damage (Gunslinger passive: ×2.0). Spells never crit.',
   eva: 'EVA — chance to dodge a basic attack. 6% base + 1.8% per MOV (max +10%), capped at 25%. Back-arc attacks can’t be dodged, a blinded attacker always misses, and hard CC (stun/freeze/root) drops EVA to 0. Spells can’t be dodged.',
 };
 
 Object.assign(window, {
   critChanceFromStats, evasionChanceFromStats, STAT_HELP,
+  STAT_GRADE_LETTERS, STAT_GRADE_BANDS, STAT_GRADE_COLORS, statGrade, statGradeChipHtml,
+  moveFromSpd, RACE_BASE_STATS,
   CONFIG, EQUIP_DEFS, RACE_PROFILES, AVAILABLE_RACES, RACE_DEFAULT_JOBS,
   MAX_UNIT_PASSIVES, PASSIVE_DEFS, RACE_PASSIVES,
   getUnitPassives, unitHasPassive, unitPassiveValue, unitPassiveBlocksStatus,

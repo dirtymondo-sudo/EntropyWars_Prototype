@@ -8,6 +8,7 @@
     "test": "node --test *.test.js",
     "test:syntax": "node check-syntax.js",
     "test:parity": "node check-data-parity.js",
+    "grades": "node check-grades.js",
     "deploy": "node deploy.js",
     "bots": "node bots.js",
     "bots:register": "node bot_register.js"

@@ -1748,9 +1748,9 @@
                 homing: true,
                 homingSpeed: 2,
                 duration: [3, 5],
-                desc: 'Hunts the nearest unit (2 tiles/rnd); scours non-Humans it catches. -5 AWR in the eye.',
+                desc: 'Hunts the nearest unit (2 tiles/rnd); scours non-Humans it catches. -70 AWR in the eye.',
                 statMod: {
-                    awr: -5
+                    awr: -70
                 },
                 homingDamage(unit) {
                     const isHuman = (unit.types || []).includes('human');
@@ -3112,7 +3112,7 @@
                 atk: 8,
                 armor: 0,
                 int: 0,
-                awr: 1,
+                awr: 14,
                 move: 1,
                 label
             };
@@ -3120,7 +3120,7 @@
                 atk: 0,
                 armor: 5,
                 int: 5,
-                awr: 1,
+                awr: 14,
                 move: 0,
                 label
             };
@@ -3128,7 +3128,7 @@
                 atk: 0,
                 armor: 5,
                 int: 5,
-                awr: 1,
+                awr: 14,
                 move: 1,
                 label
             };
@@ -3144,7 +3144,7 @@
                 atk: 0,
                 armor: 5,
                 int: 0,
-                awr: 1,
+                awr: 14,
                 move: 1,
                 label
             };
@@ -3251,7 +3251,12 @@
 
         // Flat damage soaked per point of the relevant defense stat. Physical
         // attacks are mitigated by DEF, magical attacks by MDEF.
+        // 2026-08-29 stat rework: DEF/MDEF now live on the 0–100 ruler
+        // (stored ×1.2 / ×1.6), so the fold divides the old 0.25 by the same
+        // factor — armor soak per HIT is byte-identical to pre-rework.
         const DEFENSE_DAMAGE_REDUCTION = 0.25;
+        const DEF_ARMOR_FOLD  = DEFENSE_DAMAGE_REDUCTION / 1.2;   // physical soak per DEF point
+        const MDEF_ARMOR_FOLD = DEFENSE_DAMAGE_REDUCTION / 1.6;   // magic soak per MDEF point
 
         // damageType: 'physical' (default) folds DEF into armor, 'magic' folds
         // MDEF in, anything else (e.g. 'dot', 'none') adds no defense-stat soak
@@ -3266,7 +3271,7 @@
             const sleepMod = getSleepAffinityModifier(unit).armor || 0;
             const terrainMod = getTerrainPreferenceModifier(unit).armor || 0;
             const weatherMod = getWeatherStatMod(unit).def || 0;
-            const spaceArmor = (!unit || unit.faction !== 'space' || !hasFactionSynergy(unit.player, 'space')) ? 0 : Math.max(1, Math.round((unit.def || 0) * 0.20));
+            const spaceArmor = (!unit || unit.faction !== 'space' || !hasFactionSynergy(unit.player, 'space')) ? 0 : Math.max(1, Math.round((unit.def || 0) * (0.20 / 1.2)));
             const timeArmor = (!unit || unit.faction !== 'time' || !hasFactionSynergy(unit.player, 'time')) ? 0 : 1;
 
             // 5G towers broadcast a mind-scrambling signal: MDEF-only penalty.
@@ -3301,10 +3306,10 @@
             // Adds exactly 0 at the cap, so PvP armour is unchanged.
             if (dt === 'physical') {
                 const _pDef = (typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'def') : (unit?.def || 0);
-                armor += Math.floor(_pDef * DEFENSE_DAMAGE_REDUCTION);
+                armor += Math.floor(_pDef * DEF_ARMOR_FOLD);
             } else if (dt === 'magic') {
                 const _pMdef = (typeof levelPowerStat === 'function') ? levelPowerStat(unit, 'mdef') : (unit?.mdef || 0);
-                armor += Math.floor(_pMdef * DEFENSE_DAMAGE_REDUCTION);
+                armor += Math.floor(_pMdef * MDEF_ARMOR_FOLD);
             }
             return Math.max(0, armor);
         }
@@ -3385,7 +3390,9 @@
 
         function getInspectTileCount(unit) {
             if (!unit) return 1;
-            return Math.max(1, getEffectiveAwr(unit));
+            // AWR lives on the 0-100 ruler (x14 rescale); /14 recovers the
+            // old tile count exactly, so Inspect coverage is unchanged.
+            return Math.max(1, Math.round(getEffectiveAwr(unit) / 14));
         }
 
         function getDebuffIntModifier(sourceUnit, targetUnit) {

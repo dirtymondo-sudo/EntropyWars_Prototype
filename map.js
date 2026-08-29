@@ -6320,14 +6320,14 @@
                         atk: 8,
                         armor: 5,
                         int: 5,
-                        awr: 1,
+                        awr: 14,
                         label: 'Nocturnal Favored'
                     } :
                     {
                         atk: -8,
                         armor: -5,
                         int: -5,
-                        awr: -1,
+                        awr: -14,
                         label: 'Nocturnal Penalty'
                     };
             }
@@ -6337,14 +6337,14 @@
                         atk: 8,
                         armor: 5,
                         int: 5,
-                        awr: 1,
+                        awr: 14,
                         label: 'Daywalker Favored'
                     } :
                     {
                         atk: -8,
                         armor: -5,
                         int: -5,
-                        awr: -1,
+                        awr: -14,
                         label: 'Daywalker Penalty'
                     };
             }
@@ -7112,6 +7112,7 @@
                         unit.shield = 0;
                         unit.ap = 0;
                         unit.status = { spawnGuard: 1 };
+                        delete unit.statStageMods;   // fresh life — no carried stat stages
                         unit._respawnIn = null;
                         unit._justRespawned = true;
                         unit._showRespawnBanner = true;
@@ -7157,6 +7158,7 @@
                                 unit.shield = 0;
                                 unit.ap = 0;
                                 unit.status = { spawnGuard: 1 };
+                                delete unit.statStageMods;   // fresh life — no carried stat stages
                                 unit._respawnIn = null;
                                 unit._justRespawned = true;
                                 unit._showRespawnBanner = true;
@@ -7205,6 +7207,7 @@
                     unit.shield = 0;
                     unit.ap = 0;
                     unit.status = { spawnGuard: 1 };
+                    delete unit.statStageMods;   // fresh life — no carried stat stages
                     unit._respawnIn = null;
                     unit._justRespawned = true;
                     unit._showRespawnBanner = true;
@@ -7362,11 +7365,13 @@
                 def: stats.def,
                 mdef: stats.mdef || 0,
                 range: stats.range + (template.cls === 'Sniper' ? 1 : 0),
+                // move derives from SPD (2026-08-29 rework) — recomputed below
+                // once every SPD bonus (job kicker, gear, sec-job) has landed.
                 move: stats.move,
                 inspect: stats.inspect,
                 awr: stats.awr,
                 intStat: stats.int,
-                spd: stats.spd + (template.cls === 'Gunslinger' ? 1 : 0),
+                spd: stats.spd + (template.cls === 'Gunslinger' ? 10 : 0),
                 armor: (template.cls === 'Warrior' || template.cls === 'Tank') ? 5 : 0,
                 spellPower: template.cls === 'Black Mage' ? 8 : 0,
                 healBonus: template.cls === 'White Mage' ? 24 : 0,
@@ -7388,11 +7393,7 @@
                 dead: false,
                 status: {},
                 reviveLocked: false,
-                statStages: {
-                    atk: 0,
-                    def: 0,
-                    spd: 0
-                },
+                statStageMods: [],
                 shield: 0,
                 equipment: equip,
                 floor: 'ground',
@@ -7586,10 +7587,19 @@
                 newUnit.atk += _eqB.atk || 0;
                 newUnit.def += _eqB.def || 0;
                 newUnit.mdef = (newUnit.mdef || 0) + (_eqB.mdef || 0);
-                newUnit.move += _eqB.move || 0;
+                // MOV gear (jetpack) is a flat TILE bonus applied after the
+                // SPD band lookup (getEffectiveMove) - never folded into SPD.
+                newUnit._equipMoveBonus = (newUnit._equipMoveBonus || 0) + (_eqB.move || 0);
                 newUnit.awr = (newUnit.awr || 0) + (_eqB.awr || 0);
                 newUnit.intStat = (newUnit.intStat || 0) + (_eqB.int || 0);
                 newUnit.spd = (newUnit.spd || 0) + (_eqB.spd || 0);
+            }
+            // SPD is settled (job kicker + gear): derive the stored base move.
+            // Live movement always re-derives from SPD in getEffectiveMove
+            // (stages included); this field is the display/fallback baseline.
+            if (typeof moveFromSpd === 'function') {
+                newUnit.spd = Math.max(1, newUnit.spd || 1);
+                newUnit.move = moveFromSpd(newUnit.spd) + (newUnit._equipMoveBonus || 0);
             }
 
             // Grapnel Gauntlet: the accessory bakes the Grapple ability into the

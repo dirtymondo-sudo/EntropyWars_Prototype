@@ -1,5 +1,28 @@
 # STAT REWORK — letter grades, readable numbers, SPD⇄MOV consolidation
 
+> **STATUS 2026-08-29: IMPLEMENTED (phases 1–3 + rev 3a, one delivery).**
+> Letter grades live at all five display sites (`statGrade`/`STAT_GRADE_BANDS`
+> in data.js, `.stat-grade` chips in styles-base.css); the six core stats sit
+> on the 0–100 ruler (`RACE_BASE_STATS` migrated: DEF ×1.2, MDEF ×1.6,
+> AWR ×14, SPD via the MOV-preserving band formula — every race kept its
+> exact tile count, and DEF/MDEF got a ±1 "parity nudge" where the ×0.25
+> armor fold would otherwise have lost a point through the compensator);
+> inverse compensators sit at every consumption point (armor folds, crit,
+> opp-attack, RT cooldown/accuracy, keen-sense 84+, inspect ÷14, MD alert
+> radius); stages are ±20 = one letter with NO count cap, ruler-clamped at
+> apply AND read time, on the per-application `unit.statStageMods` ledger
+> (statUp/statDown are derived badges; cleanse/censer funnel through
+> `clearStatus`); MOV derives from SPD (`moveFromSpd`, cap 5) with the
+> halved second move in `getMoveRangeThisTurn`; the legacy spd-9+ jump-2
+> crowd is preserved in `RACE_JUMP_OVERRIDE`'s companion `RACE_NIMBLE_JUMP`
+> and the gate moved to SPD 90+; ai.js got the rev-3a audit (bound-aware
+> stage valuation via `stageRoom`, re-priced per-stage worth, halved
+> double-move projection, follow-up-debuff bonus). `npm run grades` prints
+> the roster grade sheet. Deliberately NOT done (separate tuning pass, §5
+> item 5): SPD jitter within bands, outlier hand-nudges (marksman band-top
+> etc.), and re-costing the ~37 two-stage race abilities the step change
+> strengthened (grep `check-grades`/`STAT_REWORK` notes below).
+
 *2026-08-29 — analysis + step-by-step plan (rev 3: stages clamp at the
 RULER'S bounds, not at ±2 stages; baseline S speed is allowed and the
 map-crossing guard moves to a halved second move).

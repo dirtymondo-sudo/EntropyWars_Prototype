@@ -1443,6 +1443,30 @@
             clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px);
         }
 
+        /* ── STAT LETTER GRADE CHIP (2026-08-29 stat rework) ──────────────
+           One 10px chip beside the number, one color per grade — the same
+           visual language at every site (party builder, INFO card, quick
+           menu, codex). S gold · A green · B teal · C neutral · F red;
+           colors mirror STAT_GRADE_COLORS in data.js. */
+        .stat-grade {
+            display: inline-block;
+            flex: 0 0 auto;
+            width: 13px;
+            font-family: 'DotGothic16', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 12px;
+            text-align: center;
+            border-radius: 2px;
+            margin: 0 2px;
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+        }
+        .stat-grade.grade-s { color: #f2c63c; border: 1px solid #f2c63c66; background: #f2c63c1a; }
+        .stat-grade.grade-a { color: #3ddc84; border: 1px solid #3ddc8466; background: #3ddc841a; }
+        .stat-grade.grade-b { color: #4ecbe2; border: 1px solid #4ecbe266; background: #4ecbe21a; }
+        .stat-grade.grade-c { color: #c8c8e4; border: 1px solid #c8c8e466; background: #c8c8e41a; }
+        .stat-grade.grade-f { color: #ff5e5e; border: 1px solid #ff5e5e66; background: #ff5e5e1a; }
+
         .type-badge.type-human {
             color: #c8c8e4;
             background: linear-gradient(#a0a0c322, #a0a0c322), rgba(9, 11, 17, 0.82);

@@ -3902,25 +3902,30 @@
             // FFT-style horizontal stat bar: length reads at a glance, exact
             // number at the end. Buffed/debuffed values tint green/red with a
             // white tick marking the unbuffed base on the bar.
-            function statBar(label, val, base, cap, color, isPct, tip) {
+            function statBar(label, val, base, cap, color, isPct, tip, gradeKey) {
                 const diff = val - base;
                 const cls = diff > 0 ? 'up' : diff < 0 ? 'down' : '';
                 const scale = Math.max(cap, val, base, 1);
                 const w = Math.max(2, Math.min(100, (Math.max(0, val) / scale) * 100));
                 const baseW = Math.max(0, Math.min(100, (Math.max(0, base) / scale) * 100));
+                // Letter grade beside the number (2026-08-29 stat rework):
+                // computed from the FINAL effective value, so buffs/gear
+                // genuinely move a unit from B to A. Ungraded keys render ''.
+                const chip = (gradeKey && typeof statGradeChipHtml === 'function') ? statGradeChipHtml(gradeKey, val) : '';
                 return `<div class="ins-stat"${tip ? ` title="${escapeHtml(tip)}"` : ''}>` +
                     `<span class="ins-stat-label">${label}</span>` +
                     `<span class="ins-stat-track"><span class="ins-stat-fill ${cls}" style="width:${w}%;background:${color}"></span>${diff !== 0 ? `<span class="ins-stat-base" style="left:${baseW}%"></span>` : ''}</span>` +
+                    chip +
                     `<span class="ins-stat-val ${cls}">${val}${isPct ? '%' : ''}</span>` +
                     `</div>`;
             }
 
             const statBars =
-                statBar('ATK', effAtk, unit.atk, 200, '#e0705a', false, window.STAT_HELP?.atk) +
-                statBar('M ATK', effInt, unit.intStat || 0, 200, '#62c4c9', false, window.STAT_HELP?.int) +
-                statBar('DEF', effDef, unit.def || 0, 200, '#7a9cc8', false, window.STAT_HELP?.def) +
-                statBar('M DEF', effMDef, unit.mdef || 0, 200, '#a98fd6', false, window.STAT_HELP?.mdef) +
-                statBar('MOV', effMov, unit.move, 8, '#86c47e', false, window.STAT_HELP?.move) +
+                statBar('ATK', effAtk, unit.atk, 110, '#e0705a', false, window.STAT_HELP?.atk, 'atk') +
+                statBar('M ATK', effInt, unit.intStat || 0, 110, '#62c4c9', false, window.STAT_HELP?.int, 'int') +
+                statBar('DEF', effDef, unit.def || 0, 110, '#7a9cc8', false, window.STAT_HELP?.def, 'def') +
+                statBar('M DEF', effMDef, unit.mdef || 0, 110, '#a98fd6', false, window.STAT_HELP?.mdef, 'mdef') +
+                statBar('MOV', effMov, unit.move, 6, '#86c47e', false, window.STAT_HELP?.move) +
                 statBar('RNG', effRng, unit.range, 8, '#e0b45a', false, window.STAT_HELP?.range) +
                 // CRT/EVA are official stats (data.js formula, shared with the
                 // combat rolls) — hover the row for the full math.
@@ -7580,12 +7585,13 @@
             return getR2RaceSpriteUrl(race, g, cls);
         }
 
-        function _codexBuildStatBar(val, max, label, color, tip) {
+        function _codexBuildStatBar(val, max, label, color, tip, gradeKey) {
             const pct = Math.min(100, (val / max) * 100);
+            const chip = (gradeKey && typeof statGradeChipHtml === 'function') ? statGradeChipHtml(gradeKey, val) : '';
             return `<div class="cdx-stat-row"${tip ? ` title="${escapeHtml(tip)}"` : ''}>
                 <span class="cdx-stat-label">${label}</span>
                 <div class="cdx-stat-bar-track"><div class="cdx-stat-bar-fill" style="width:${pct}%;background:${color}"></div></div>
-                <span class="cdx-stat-val">${val}</span>
+                ${chip}<span class="cdx-stat-val">${val}</span>
             </div>`;
         }
 
@@ -7735,7 +7741,8 @@
             const types = profile.types || [];
             const lore = _CODEX_LORE[race] || 'No intelligence available. File pending ████████ review.';
             /* maxMp halved 2026-08-09 with the global MP-pool halving (data.js). */
-            const maxHp = 700, maxMp = 125, maxAtk = 90, maxDef = 60, maxMDef = 60, maxInt = 80, maxSpd = 12;
+            // 2026-08-29 stat rework: the six core stats share the 0-100 ruler.
+            const maxHp = 820, maxMp = 265, maxAtk = 105, maxDef = 105, maxMDef = 105, maxInt = 105, maxSpd = 105;
             const total = (stats.hp || 0) + (stats.mp || 0) + (stats.atk || 0) + (stats.def || 0) + (stats.mdef || 0) + (stats.int || 0) + (stats.spd || 0) + (stats.move || 0) + (stats.awr || 0);
             // ⚖️ Official physique (RACE_PHYSIQUE): height/weight are real game
             // data — the weight class drives push/pull physics, fall damage and
@@ -7762,15 +7769,15 @@
                     <div class="cdx-section-header">2. &nbsp;PHYSIOLOGICAL ASSESSMENT:</div>
                     ${physHtml}
                     <div class="cdx-stats-grid">
-                        ${_codexBuildStatBar(stats.hp || 0, maxHp, 'HP', '#55bb70', window.STAT_HELP?.hp)}
-                        ${_codexBuildStatBar(stats.mp || 0, maxMp, 'MP', '#5a8898', window.STAT_HELP?.mp)}
-                        ${_codexBuildStatBar(stats.atk || 0, maxAtk, 'ATK', '#c05050', window.STAT_HELP?.atk)}
-                        ${_codexBuildStatBar(stats.int || 0, maxInt, 'M ATK', '#9080b8', window.STAT_HELP?.int)}
-                        ${_codexBuildStatBar(stats.def || 0, maxDef, 'DEF', '#b8a060', window.STAT_HELP?.def)}
-                        ${_codexBuildStatBar(stats.mdef ?? 0, maxMDef, 'M DEF', '#6f8fc0', window.STAT_HELP?.mdef)}
-                        ${_codexBuildStatBar(stats.spd || 0, maxSpd, 'SPD', '#d09050', window.STAT_HELP?.spd)}
+                        ${_codexBuildStatBar(stats.hp || 0, maxHp, 'HP', '#55bb70', window.STAT_HELP?.hp, 'hp')}
+                        ${_codexBuildStatBar(stats.mp || 0, maxMp, 'MP', '#5a8898', window.STAT_HELP?.mp, 'mp')}
+                        ${_codexBuildStatBar(stats.atk || 0, maxAtk, 'ATK', '#c05050', window.STAT_HELP?.atk, 'atk')}
+                        ${_codexBuildStatBar(stats.int || 0, maxInt, 'M ATK', '#9080b8', window.STAT_HELP?.int, 'int')}
+                        ${_codexBuildStatBar(stats.def || 0, maxDef, 'DEF', '#b8a060', window.STAT_HELP?.def, 'def')}
+                        ${_codexBuildStatBar(stats.mdef ?? 0, maxMDef, 'M DEF', '#6f8fc0', window.STAT_HELP?.mdef, 'mdef')}
+                        ${_codexBuildStatBar(stats.spd || 0, maxSpd, 'SPD', '#d09050', window.STAT_HELP?.spd, 'spd')}
                         ${_codexBuildStatBar(stats.move || 0, 5, 'MOV', '#60b8d0', window.STAT_HELP?.move)}
-                        ${_codexBuildStatBar(stats.awr || 0, 8, 'AWR', '#b0b070', window.STAT_HELP?.awr)}
+                        ${_codexBuildStatBar(stats.awr || 0, 105, 'AWR', '#b0b070', window.STAT_HELP?.awr, 'awr')}
                     </div>
                     <div class="cdx-stat-total">TOTAL STAT POINTS: ${total}</div>
                 </div>
@@ -9646,7 +9653,7 @@
             [caster, dummy].forEach(u => {
                 if (!u) return;
                 u.status = {};
-                Object.keys(u.statStages || {}).forEach(k => { u.statStages[k] = 0; });
+                u.statStageMods = [];
                 u.shield = 0;
             });
             try { GAME.markDirty(); GAME.renderIfDirty && GAME.renderIfDirty(); } catch (e) {}

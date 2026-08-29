@@ -131,7 +131,7 @@
         reviveBase: 320,            // reviving a unit ≈ a kill in reverse
         ccOutputFactor: 0.8,        // fraction of a denied unit's per-turn output a hard CC is worth per denied turn
         statusSetupFactor: 0.5,     // fraction of a teammate's bonusVsStatus payoff credited to the setup cast
-        buffStageFactor: 0.10,      // one offensive stat stage ≈ +10% of recipient output per remaining turn
+        buffStageFactor: 0.14,      // one offensive stat stage (±20 on the 0-100 ruler since 2026-08-29) ≈ +14% of recipient output per remaining turn
         buffTurnsHorizon: 2.2,      // expected turns a buff stays relevant
         delayedEscapeStatic: 0.35,  // P(target still in blast) for ground-tile delayed casts
         delayedEscapeTracking: 0.75,// P for unit-tracking delayed marks
@@ -325,9 +325,10 @@
         if (typeof getEffectiveArmor === 'function') {
             try { return getEffectiveArmor(tg, damageType) || 0; } catch (e) {}
         }
-        // fallback: 0.25 × the matching defense stat at cap
+        // fallback: the armor fold at cap — 0.25 ÷ the 2026-08-29 rescale
+        // factor for the matching defense stat (×1.2 DEF / ×1.6 MDEF).
         const stat = damageType === 'magic' ? (tg.mdef || 0) : (tg.def || 0);
-        return Math.floor(stat * 0.25);
+        return Math.floor(stat * 0.25 / (damageType === 'magic' ? 1.6 : 1.2));
     }
     function _bonusVsMatches(tg, bvs) {
         if (!bvs || !bvs.status) return false;
@@ -586,7 +587,8 @@
                 let er = 1, em = 2;
                 try { er = g.getEffectiveRange(e) || (e.range || 1); } catch (q) {}
                 try { em = g.getEffectiveMove(e) || (e.move || 2); } catch (q) {}
-                if (_dist(g, tg.x, tg.y, tg.z, e) <= em * 2 + er) { reality = 1; break; }
+                // Full-turn reach: first move + HALVED second move (2026-08-29 rework).
+                if (_dist(g, tg.x, tg.y, tg.z, e) <= em + Math.ceil(em / 2) + er) { reality = 1; break; }
             }
         }
         let val = actual * urgency * reality;
@@ -682,11 +684,34 @@
                       + statusSetupValue(g, unit, tg, eff.id, v));
         }
         if (spell.statStageBoost) {
-            // offensive casts carrying stat DEBUFF stages
-            const stages = Object.values(spell.statStageBoost).reduce((n, st) => n + Math.abs(st || 0), 0);
+            // offensive casts carrying stat DEBUFF stages — bound-aware: a
+            // stat already ground to the ruler floor contributes nothing.
+            let stages = 0;
+            for (const k of Object.keys(spell.statStageBoost)) {
+                stages += Math.abs(stageRoom(g, tg, k, spell.statStageBoost[k] || 0));
+            }
             val += stages * 0.12 * unitThreatOutput(g, tg, unit);
         }
         return val;
+    }
+
+    /* 2026-08-29 stat rework: stages are ±20 on the shared 0-100 ruler with
+       NO stage-count cap — the EFFECTIVE stat saturates at 100 / its floor
+       (1 for spd, 0 otherwise) instead. This returns how many of `n`
+       requested stages would actually move the target's stat, so the AI
+       never spends a cast buffing a stat already at 100 or debuffing one at
+       the floor (the engine's apply-time clamp makes those literal no-ops). */
+    function stageRoom(g, tg, k, n) {
+        if (!n || !tg) return 0;
+        const base = (k === 'int' ? (tg.intStat != null ? tg.intStat : tg.int) : tg[k]) || 0;
+        let cur = 0;
+        try { cur = g.getStatStageCount ? (g.getStatStageCount(tg, k) || 0) : 0; } catch (e) {}
+        const step = 20;
+        const lo = Math.min(k === 'spd' ? 1 : 0, base);
+        const hi = Math.max(100, base);
+        const now = Math.max(lo, Math.min(hi, base + cur * step));
+        if (n > 0) return Math.min(n, Math.ceil(Math.max(0, hi - now) / step));
+        return -Math.min(-n, Math.ceil(Math.max(0, now - lo) / step));
     }
 
     // Value of buff stages on ally `tg`.
@@ -696,7 +721,9 @@
         let val = 0;
         const horizon = AI_TUNE.buffTurnsHorizon;
         for (const k of Object.keys(boost)) {
-            const stages = Math.abs(boost[k] || 0);
+            // Bound-aware headroom replaces the old ">= 5 stages is wasted"
+            // check: only the stages that would actually land are credited.
+            const stages = Math.abs(stageRoom(g, tg, k, boost[k] || 0));
             if (!stages) continue;
             if (k === 'atk' || k === 'int') {
                 // only credit the axis the recipient actually uses
@@ -704,17 +731,15 @@
                 const axisFits = (k === 'atk') === physKit;
                 val += stages * AI_TUNE.buffStageFactor * output * horizon * (axisFits ? 1 : 0.25);
             } else if (k === 'def' || k === 'mdef') {
-                val += stages * 30 * horizon * 0.5;
+                // one stage = 20 flat armor since the rework (was 9) — ~2.2×
+                // the old per-stage soak, priced accordingly.
+                val += stages * 65 * horizon * 0.5;
             } else {
-                val += stages * 25;
+                // spd stages now shift movement bands AND initiative AND
+                // evasion — worth more than the old 3-point spd step.
+                val += stages * 35;
             }
         }
-        // stage headroom: stacking past +5 is wasted
-        try {
-            const cur = tg.statStages || {};
-            const overStacked = Object.keys(boost).every(k => (cur[k] || 0) >= 5);
-            if (overStacked) return 0;
-        } catch (e) {}
         return val;
     }
 
@@ -2097,13 +2122,15 @@
             // Fermata (statLock): lock in live buff stages.
             if (spell.teamStatusEffects) {
                 const lockable = inRange.filter(a => !g.unitHasStatus(a, 'statLock'));
-                const buffed = lockable.filter(a => a.statStages
-                    && ['atk', 'def', 'mdef', 'spd', 'int'].some(k => (a.statStages[k] || 0) > 0));
+                const buffed = lockable.filter(a =>
+                    ['atk', 'def', 'mdef', 'spd', 'int'].some(k => {
+                        try { return g.getStatStageCount && g.getStatStageCount(a, k) > 0; } catch (e) { return false; }
+                    }));
                 return buffed.length >= 2 ? 60 + buffed.length * 45 : (buffed.length === 1 ? 35 : 0);
             }
             let s = 0;
             for (const a of inRange) {
-                if (a.statStages && (a.statStages.atk || 0) >= 5) continue;
+                if (!stageRoom(g, a, 'atk', 1)) continue;   // ATK already at the ruler cap
                 s += buffStageValue(g, unit, a, Object.assign({ statStageBoost: { atk: 1 } }, spell), v) * 0.8;
             }
             if (!v.visibleEnemies.length) s *= 0.25;
@@ -2137,8 +2164,18 @@
         if (kind === 'debuff' && target) {
             let s = statusRiderValue(g, unit, target, spell, v);
             if (spell.statStageBoost) {
-                const stages = Object.values(spell.statStageBoost).reduce((n, st) => n + Math.abs(st || 0), 0);
-                s += stages * 0.1 * unitThreatOutput(g, target, unit);
+                // Bound-aware (floored stats contribute nothing), and stacking
+                // is a real line of play now (no stage cap): a follow-up
+                // debuff on an already-debuffed target is worth MORE, not less.
+                let stages = 0, alreadyDown = 0;
+                for (const k of Object.keys(spell.statStageBoost)) {
+                    stages += Math.abs(stageRoom(g, target, k, spell.statStageBoost[k] || 0));
+                    try {
+                        const cur = g.getStatStageCount ? (g.getStatStageCount(target, k) || 0) : 0;
+                        if (cur < 0) alreadyDown += -cur;
+                    } catch (e) {}
+                }
+                s += stages * 0.1 * unitThreatOutput(g, target, unit) * (1 + Math.min(0.5, alreadyDown * 0.15));
             }
             if (spell.dmg) s += scoreOffensiveHit(g, unit, target, spell, v, { splash: true }).val * 0.8;
             s += getTargetPriority(target, unit, v) * 0.2;

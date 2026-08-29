@@ -2385,14 +2385,24 @@ function _hrlgStatusChips(unit) {
       title: (sDef.label || sk) + (turns > 0 ? ' — ' + turns + ' turn' + (turns > 1 ? 's' : '') + ' left' : ''),
     });
   }
-  // Stat stages — same ±5 stage read as the nameplate badges.
+  // Stat stages — one stage = ±20 on the 0-100 ruler = one letter grade
+  // (2026-08-29 rework). The chip shows the EFFECTIVE stages after the
+  // ruler clamp (getStatStageDelta saturates at 100 / the floor), so a
+  // maxed stat honestly reads as maxed instead of advertising dead stacks.
   if (typeof getStatStageCount === 'function') {
     for (const [stat, lbl] of [['atk','ATK'],['def','DEF'],['int','M ATK'],['mdef','M DEF'],['spd','SPD']]) {
-      const n = getStatStageCount(unit, stat);
-      if (!n) continue;
+      const raw = getStatStageCount(unit, stat);
+      if (!raw) continue;
+      let n = raw;
+      if (typeof getStatStageDelta === 'function') {
+        const d = getStatStageDelta(unit, stat);
+        n = d > 0 ? Math.max(1, Math.round(d / 20)) : d < 0 ? Math.min(-1, Math.round(d / 20)) : 0;
+        if (!n) continue;   // fully saturated: the stat can't move this way
+      }
+      const capped = Math.abs(n) < Math.abs(raw);
       chips.push({
-        key: 'stg-' + stat, label: (n > 0 ? '+' : '') + n + ' ' + lbl, kind: n > 0 ? 'up' : 'dn',
-        title: n + ' ' + lbl + ' stage' + (Math.abs(n) > 1 ? 's' : '') + ' (max ±5)',
+        key: 'stg-' + stat, label: (n > 0 ? '+' : '') + n + ' ' + lbl + (capped ? (n > 0 ? ' (maxed)' : ' (floored)') : ''), kind: n > 0 ? 'up' : 'dn',
+        title: n + ' ' + lbl + ' stage' + (Math.abs(n) > 1 ? 's' : '') + ' — one stage = one letter grade (±20)',
       });
     }
   }
@@ -2499,23 +2509,28 @@ function _hrlgQuickStats(panelKey) {
   const eva  = Math.round((typeof getEvasionChance === 'function' ? getEvasionChance(u) : 0) * 100);
   const HELP = (typeof window !== 'undefined' && window.STAT_HELP) || {};
   const cells = [
-    { k: 'ATK',   v: atk,        base: u.atk || 0,     tip: HELP.atk },
-    { k: 'M ATK', v: intV,       base: u.intStat || 0, tip: HELP.int },
-    { k: 'DEF',   v: def,        base: u.def || 0,     tip: HELP.def },
-    { k: 'M DEF', v: mdef,       base: u.mdef || 0,    tip: HELP.mdef },
+    { k: 'ATK',   v: atk,        base: u.atk || 0,     tip: HELP.atk,  g: 'atk' },
+    { k: 'M ATK', v: intV,       base: u.intStat || 0, tip: HELP.int,  g: 'int' },
+    { k: 'DEF',   v: def,        base: u.def || 0,     tip: HELP.def,  g: 'def' },
+    { k: 'M DEF', v: mdef,       base: u.mdef || 0,    tip: HELP.mdef, g: 'mdef' },
     { k: 'MOV',  v: mov,        base: u.move || 0,    tip: HELP.move },
     { k: 'RNG',  v: rng,        base: u.range || 0,   tip: HELP.range },
-    { k: 'AWR',  v: awr,        base: u.awr || 0, tip: HELP.awr },
+    { k: 'AWR',  v: awr,        base: u.awr || 0, tip: HELP.awr, g: 'awr' },
     { k: 'CRT',  v: crt + '%',  tip: HELP.crt },
     { k: 'EVA',  v: eva + '%',  tip: HELP.eva },
   ];
+  // Letter grade beside the number (2026-08-29 stat rework) — computed from
+  // the displayed EFFECTIVE value; ungraded keys (MOV/RNG/CRT/EVA) get none.
+  const _grade = (typeof window !== 'undefined' && typeof window.statGrade === 'function') ? window.statGrade : null;
   return h('div', { key: 'qs', className: 'hrlg-qstats' },
     cells.map(c => {
       const cls = (typeof c.v === 'number' && c.base != null)
         ? (c.v > c.base ? ' up' : c.v < c.base ? ' dn' : '') : '';
+      const g = (c.g && _grade && typeof c.v === 'number') ? _grade(c.g, c.v) : null;
       return h('span', { key: c.k, className: 'hrlg-qstat' + cls, title: c.tip || undefined },
         h('span', { className: 'hrlg-qstat-lbl' }, c.k),
-        h('span', { className: 'hrlg-qstat-val' }, String(c.v)));
+        h('span', { className: 'hrlg-qstat-val' }, String(c.v)),
+        g ? h('span', { className: 'stat-grade grade-' + g.toLowerCase() }, g) : null);
     }),
   );
 }

@@ -453,7 +453,9 @@ const STAT_KEYS = ['HP','MP','ATK','DEF','MDEF','INT','SPD','AWR','RNG','MOV','C
    land at 250–270 displayed MP, so 250 renders them pegged full/green
    (StatBar clamps at 100%). Keep this in sync with RACE_BASE_STATS +
    JOB_MODIFIERS whenever the MP economy moves again. */
-const STAT_MAX_PB = { HP:900, MP:250, ATK:110, DEF:75, MDEF:75, INT:100, SPD:11, AWR:8, RNG:6, MOV:6, CRT:30, EVA:25 };
+// 2026-08-29 stat rework: the six core stats share the 0-100 ruler (a bit
+// of headroom for gear/natures that push past it); MOV caps at 5 (+1 jetpack).
+const STAT_MAX_PB = { HP:900, MP:250, ATK:110, DEF:105, MDEF:105, INT:110, SPD:105, AWR:110, RNG:6, MOV:6, CRT:30, EVA:25 };
 const STAT_MAP = { HP:'hp', MP:'mp', ATK:'atk', DEF:'def', MDEF:'mdef', INT:'int', SPD:'spd', AWR:'awr', RNG:'range', MOV:'move', CRT:'crt', EVA:'eva' };
 const STAT_PCT = { CRT:true, EVA:true };   // rendered as a % chance
 // Display names — the int stat reads as Magic Attack everywhere in the UI.
@@ -604,12 +606,17 @@ function computeFullStats(race, cls, secJob, equipment) {
   const eqB = (equipment && typeof window.computeEquipBonuses === 'function') ? window.computeEquipBonuses(equipment) : { hp:0,mp:0,atk:0,def:0,mdef:0,move:0,awr:0,int:0,spd:0 };
   const delta = {};
   const final = {};
-  for (const k of ['hp','mp','atk','def','mdef','move','awr','int','spd']) {
+  for (const k of ['hp','mp','atk','def','mdef','awr','int','spd']) {
     const b = base[k] || 0;
     const d = (secB[k]||0) + (eqB[k]||0);
     delta[k] = d;
-    final[k] = Math.max(k==='move'||k==='awr'||k==='spd'?1:0, b + d);
+    final[k] = Math.max(k==='awr'||k==='spd'?1:0, b + d);
   }
+  // MOV derives from SPD (2026-08-29 rework: 1 tile per 20 SPD, cap 5);
+  // gear MOV (jetpack) is a flat tile bonus on top of the band.
+  const bandOf = sp => (typeof window.moveFromSpd === 'function') ? window.moveFromSpd(sp) : Math.max(1, Math.min(5, Math.ceil(Math.max(1, sp) / 20)));
+  final.move = bandOf(final.spd) + (eqB.move || 0) + (secB.move || 0);
+  delta.move = final.move - bandOf(base.spd || 1);
   final.range = base.range || 1;
   final.inspect = base.inspect || 1;
   delta.range = 0;
@@ -812,7 +819,18 @@ function TypeChip({ type, size }) {
   const fs = size || 10;
   return h('span', { style: { display:'inline-flex', alignItems:'center', fontFamily:'DotGothic16, monospace', fontSize:fs, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', lineHeight:1.3, color:text, padding: fs >= 11 ? '3px 10px' : '2px 8px', border:`1px solid ${c}aa`, background:`linear-gradient(${c}22,${c}22), rgba(9,11,17,0.82)`, textShadow:'0 1px 2px rgba(0,0,0,0.85)', clipPath:'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)' }}, type);
 }
-function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip }) {
+/* Letter-grade chip (2026-08-29 stat rework): the React twin of the
+   .stat-grade HTML chip — one 10px chip, one color per grade, shown BESIDE
+   the number at every display site so the language is learned once. */
+function GradeChip({ statKey, val }) {
+  const g = (typeof window.statGrade === 'function') ? window.statGrade(statKey, val) : null;
+  if (!g) return h('span', { style:{ width:14 } });
+  const c = (window.STAT_GRADE_COLORS || {})[g] || '#c8c8e4';
+  return h('span', { style:{ width:14, textAlign:'center', fontFamily:'DotGothic16, monospace',
+    fontSize:10, fontWeight:700, lineHeight:'12px', color:c, border:`1px solid ${c}66`,
+    background:`${c}1a`, borderRadius:2 } }, g);
+}
+function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip, gradeKey }) {
   const pct = Math.min(100, (val / max) * 100);
   const tone = pct >= 70 ? EW.good : pct >= 40 ? EW.warn : EW.bad;
   let barColor = tone, labelColor = EW.inkMute, valColor = EW.ink;
@@ -825,6 +843,7 @@ function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip }) {
       zodiacMod === 'dn' ? h('span', { style:{color:EW.bad, fontSize:'0.7em'} }, ' \u25BC') : null),
     h('div', { style:{ flex:1, position:'relative', height: compact?5:7, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)' } },
       h('div', { style:{ position:'absolute', inset:0, width:`${pct}%`, background:`linear-gradient(90deg, ${barColor}, ${barColor}aa)` } })),
+    gradeKey ? h(GradeChip, { statKey: gradeKey, val }) : null,
     h('span', { style:{ width:32, textAlign:'right', color:valColor, fontWeight:600, fontSize:11 } }, val + (suffix || '')),
     deltaNum !== 0 ? h('span', { style:{ width:28, textAlign:'right', fontSize:9, fontWeight:700, color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+'+deltaNum : ''+deltaNum) : h('span', { style:{ width:28 } }));
 }
@@ -2162,7 +2181,7 @@ function PartyBuilder() {
                       let zMod = null;
                       if (zodiacNature) { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
                       return h(StatBar, { key:k, label:statLabel(k), val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod, delta:d,
-                        suffix: STAT_PCT[k] ? '%' : '', tip: window.STAT_HELP?.[mapped] || null });
+                        suffix: STAT_PCT[k] ? '%' : '', tip: window.STAT_HELP?.[mapped] || null, gradeKey: mapped });
                     })),
                   h('div', { style:{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:3, flexShrink:0 } },
                     QUAD_KEYS.map(k => {
@@ -2177,12 +2196,13 @@ function PartyBuilder() {
                           zMod==='up' ? h('span', { style:{ color:EW.good, fontSize:'0.75em' } }, ' ▲') : null,
                           zMod==='dn' ? h('span', { style:{ color:EW.bad, fontSize:'0.75em' } }, ' ▼') : null),
                         h('span', { style:{ display:'flex', alignItems:'baseline', gap:3 } },
+                          h(GradeChip, { statKey: mapped, val }),
                           h('span', { style:{ fontFamily:'DotGothic16, monospace', fontSize:14, fontWeight:700, lineHeight:1, color:valColor, textShadow:`0 0 10px ${c}55` } }, val),
                           d !== 0 ? h('span', { style:{ fontSize:9, fontWeight:700, color: d > 0 ? EW.good : EW.bad } }, d > 0 ? '+'+d : ''+d) : null));
                     })),
                   // MOVE / RANGE footprints — under the numbers, side by side
                   h('div', { style:{ display:'flex', gap:26, justifyContent:'center', alignItems:'flex-start', flexShrink:0, paddingTop:2 } },
-                    h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)', tip: window.STAT_HELP?.move }),
+                    h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE (SPD)', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)', tip: window.STAT_HELP?.move }),
                     h(RangeDiamond, { radius: fullStats.range ?? 1, fill:'rgba(255,70,70,0.35)', edge:'rgba(255,70,70,0.6)', label:'RANGE', value: fullStats.range ?? 1, color:'rgba(255,120,120,0.9)', tip: window.STAT_HELP?.range })),
                   // race traits: passives & terrain rules unique to this vessel
                   h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:3, overflow:'hidden' } },
