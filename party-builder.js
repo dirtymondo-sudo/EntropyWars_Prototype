@@ -1455,7 +1455,7 @@ if (typeof window !== 'undefined' && window.RACE_PASSIVES && window.PASSIVE_DEFS
 if (typeof window !== 'undefined') window.RACE_TRAITS = RACE_TRAITS;
 
 // Compact tactical diamond: MOV and RNG each get their own footprint.
-function RangeDiamond({ radius, fill, edge, label, value, color }) {
+function RangeDiamond({ radius, fill, edge, label, value, color, tip }) {
   const r = Math.max(0, Math.floor(radius) || 0);
   const size = r * 2 + 1;
   const cellPx = Math.max(4, Math.min(Math.floor(64 / size), 9));
@@ -1468,7 +1468,7 @@ function RangeDiamond({ radius, fill, edge, label, value, color }) {
       cells.push(h('div', { key: gx + '-' + gy, style: { position:'absolute', left: gx * cellPx, top: gy * cellPx, width: cellPx - 1, height: cellPx - 1, background: isC ? '#fff' : fill, border: `1px solid ${isC ? '#fff' : edge}`, boxSizing: 'border-box' } }));
     }
   }
-  return h('div', { style: { display:'flex', flexDirection:'column', alignItems:'center', gap:3, flexShrink:0 } },
+  return h('div', { title: tip || undefined, style: { display:'flex', flexDirection:'column', alignItems:'center', gap:3, flexShrink:0 } },
     h('div', { style: { position:'relative', width: size * cellPx, height: size * cellPx } }, ...cells),
     h('div', { style: { fontSize:9, color, letterSpacing:'0.1em', fontWeight:600, whiteSpace:'nowrap' } }, label, ' ', h('span', { style:{ color:'#e6e9f2' } }, value)));
 }
@@ -2172,7 +2172,7 @@ function PartyBuilder() {
                       let zMod = null;
                       if (zodiacNature) { if (zodiacNature.buff===mapped) zMod='up'; else if (zodiacNature.debuff===mapped) zMod='dn'; }
                       const valColor = zMod==='up' ? EW.good : zMod==='dn' ? EW.bad : EW.ink;
-                      return h('div', { key:k, style:{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:4, padding:'4px 7px', background:`linear-gradient(90deg, ${c}14, rgba(0,0,0,0.25))`, border:`1px solid ${c}44`, borderLeft:`3px solid ${c}` } },
+                      return h('div', { key:k, title: window.STAT_HELP?.[mapped] || undefined, style:{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:4, padding:'4px 7px', background:`linear-gradient(90deg, ${c}14, rgba(0,0,0,0.25))`, border:`1px solid ${c}44`, borderLeft:`3px solid ${c}` } },
                         h('span', { style:{ fontFamily:'DotGothic16, monospace', fontSize:10, fontWeight:700, letterSpacing:'0.1em', color:c, whiteSpace:'nowrap' } }, statLabel(k),
                           zMod==='up' ? h('span', { style:{ color:EW.good, fontSize:'0.75em' } }, ' ▲') : null,
                           zMod==='dn' ? h('span', { style:{ color:EW.bad, fontSize:'0.75em' } }, ' ▼') : null),
@@ -2182,8 +2182,8 @@ function PartyBuilder() {
                     })),
                   // MOVE / RANGE footprints — under the numbers, side by side
                   h('div', { style:{ display:'flex', gap:26, justifyContent:'center', alignItems:'flex-start', flexShrink:0, paddingTop:2 } },
-                    h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)' }),
-                    h(RangeDiamond, { radius: fullStats.range ?? 1, fill:'rgba(255,70,70,0.35)', edge:'rgba(255,70,70,0.6)', label:'RANGE', value: fullStats.range ?? 1, color:'rgba(255,120,120,0.9)' })),
+                    h(RangeDiamond, { radius: fullStats.move ?? 3, fill:'rgba(80,160,255,0.45)', edge:'rgba(80,160,255,0.7)', label:'MOVE', value: fullStats.move ?? 3, color:'rgba(120,180,255,0.9)', tip: window.STAT_HELP?.move }),
+                    h(RangeDiamond, { radius: fullStats.range ?? 1, fill:'rgba(255,70,70,0.35)', edge:'rgba(255,70,70,0.6)', label:'RANGE', value: fullStats.range ?? 1, color:'rgba(255,120,120,0.9)', tip: window.STAT_HELP?.range })),
                   // race traits: passives & terrain rules unique to this vessel
                   h('div', { style:{ flex:1, minHeight:0, display:'flex', flexDirection:'column', gap:3, overflow:'hidden' } },
                     h('div', { style:{ fontSize:9, color:fc, letterSpacing:'0.14em', fontWeight:600, flexShrink:0, borderTop:`1px solid ${EW.panelEdge}`, paddingTop:5 } }, 'RACE TRAITS ', h('span', { style:{ color:EW.inkDim, fontWeight:400 } }, '· PASSIVES & TERRAIN')),

@@ -3916,12 +3916,12 @@
             }
 
             const statBars =
-                statBar('ATK', effAtk, unit.atk, 200, '#e0705a') +
-                statBar('M ATK', effInt, unit.intStat || 0, 200, '#62c4c9') +
-                statBar('DEF', effDef, unit.def || 0, 200, '#7a9cc8') +
-                statBar('M DEF', effMDef, unit.mdef || 0, 200, '#a98fd6') +
-                statBar('MOV', effMov, unit.move, 8, '#86c47e') +
-                statBar('RNG', effRng, unit.range, 8, '#e0b45a') +
+                statBar('ATK', effAtk, unit.atk, 200, '#e0705a', false, window.STAT_HELP?.atk) +
+                statBar('M ATK', effInt, unit.intStat || 0, 200, '#62c4c9', false, window.STAT_HELP?.int) +
+                statBar('DEF', effDef, unit.def || 0, 200, '#7a9cc8', false, window.STAT_HELP?.def) +
+                statBar('M DEF', effMDef, unit.mdef || 0, 200, '#a98fd6', false, window.STAT_HELP?.mdef) +
+                statBar('MOV', effMov, unit.move, 8, '#86c47e', false, window.STAT_HELP?.move) +
+                statBar('RNG', effRng, unit.range, 8, '#e0b45a', false, window.STAT_HELP?.range) +
                 // CRT/EVA are official stats (data.js formula, shared with the
                 // combat rolls) — hover the row for the full math.
                 statBar('CRT', Math.round(getCritChance(unit) * 100), Math.round(getCritChance(unit) * 100), 100, '#d9c06a', true, window.STAT_HELP?.crt) +
@@ -7580,9 +7580,9 @@
             return getR2RaceSpriteUrl(race, g, cls);
         }
 
-        function _codexBuildStatBar(val, max, label, color) {
+        function _codexBuildStatBar(val, max, label, color, tip) {
             const pct = Math.min(100, (val / max) * 100);
-            return `<div class="cdx-stat-row">
+            return `<div class="cdx-stat-row"${tip ? ` title="${escapeHtml(tip)}"` : ''}>
                 <span class="cdx-stat-label">${label}</span>
                 <div class="cdx-stat-bar-track"><div class="cdx-stat-bar-fill" style="width:${pct}%;background:${color}"></div></div>
                 <span class="cdx-stat-val">${val}</span>
@@ -7762,15 +7762,15 @@
                     <div class="cdx-section-header">2. &nbsp;PHYSIOLOGICAL ASSESSMENT:</div>
                     ${physHtml}
                     <div class="cdx-stats-grid">
-                        ${_codexBuildStatBar(stats.hp || 0, maxHp, 'HP', '#55bb70')}
-                        ${_codexBuildStatBar(stats.mp || 0, maxMp, 'MP', '#5a8898')}
-                        ${_codexBuildStatBar(stats.atk || 0, maxAtk, 'ATK', '#c05050')}
-                        ${_codexBuildStatBar(stats.int || 0, maxInt, 'M ATK', '#9080b8')}
-                        ${_codexBuildStatBar(stats.def || 0, maxDef, 'DEF', '#b8a060')}
-                        ${_codexBuildStatBar(stats.mdef ?? 0, maxMDef, 'M DEF', '#6f8fc0')}
-                        ${_codexBuildStatBar(stats.spd || 0, maxSpd, 'SPD', '#d09050')}
-                        ${_codexBuildStatBar(stats.move || 0, 5, 'MOV', '#60b8d0')}
-                        ${_codexBuildStatBar(stats.awr || 0, 8, 'AWR', '#b0b070')}
+                        ${_codexBuildStatBar(stats.hp || 0, maxHp, 'HP', '#55bb70', window.STAT_HELP?.hp)}
+                        ${_codexBuildStatBar(stats.mp || 0, maxMp, 'MP', '#5a8898', window.STAT_HELP?.mp)}
+                        ${_codexBuildStatBar(stats.atk || 0, maxAtk, 'ATK', '#c05050', window.STAT_HELP?.atk)}
+                        ${_codexBuildStatBar(stats.int || 0, maxInt, 'M ATK', '#9080b8', window.STAT_HELP?.int)}
+                        ${_codexBuildStatBar(stats.def || 0, maxDef, 'DEF', '#b8a060', window.STAT_HELP?.def)}
+                        ${_codexBuildStatBar(stats.mdef ?? 0, maxMDef, 'M DEF', '#6f8fc0', window.STAT_HELP?.mdef)}
+                        ${_codexBuildStatBar(stats.spd || 0, maxSpd, 'SPD', '#d09050', window.STAT_HELP?.spd)}
+                        ${_codexBuildStatBar(stats.move || 0, 5, 'MOV', '#60b8d0', window.STAT_HELP?.move)}
+                        ${_codexBuildStatBar(stats.awr || 0, 8, 'AWR', '#b0b070', window.STAT_HELP?.awr)}
                     </div>
                     <div class="cdx-stat-total">TOTAL STAT POINTS: ${total}</div>
                 </div>

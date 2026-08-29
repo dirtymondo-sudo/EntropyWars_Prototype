@@ -2499,12 +2499,12 @@ function _hrlgQuickStats(panelKey) {
   const eva  = Math.round((typeof getEvasionChance === 'function' ? getEvasionChance(u) : 0) * 100);
   const HELP = (typeof window !== 'undefined' && window.STAT_HELP) || {};
   const cells = [
-    { k: 'ATK',   v: atk,        base: u.atk || 0 },
-    { k: 'M ATK', v: intV,       base: u.intStat || 0 },
-    { k: 'DEF',   v: def,        base: u.def || 0 },
-    { k: 'M DEF', v: mdef,       base: u.mdef || 0 },
-    { k: 'MOV',  v: mov,        base: u.move || 0 },
-    { k: 'RNG',  v: rng,        base: u.range || 0 },
+    { k: 'ATK',   v: atk,        base: u.atk || 0,     tip: HELP.atk },
+    { k: 'M ATK', v: intV,       base: u.intStat || 0, tip: HELP.int },
+    { k: 'DEF',   v: def,        base: u.def || 0,     tip: HELP.def },
+    { k: 'M DEF', v: mdef,       base: u.mdef || 0,    tip: HELP.mdef },
+    { k: 'MOV',  v: mov,        base: u.move || 0,    tip: HELP.move },
+    { k: 'RNG',  v: rng,        base: u.range || 0,   tip: HELP.range },
     { k: 'AWR',  v: awr,        base: u.awr || 0, tip: HELP.awr },
     { k: 'CRT',  v: crt + '%',  tip: HELP.crt },
     { k: 'EVA',  v: eva + '%',  tip: HELP.eva },

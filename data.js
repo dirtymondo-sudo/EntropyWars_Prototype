@@ -12966,7 +12966,20 @@ function critChanceFromStats(awr) {
 function evasionChanceFromStats(move) {
   return Math.min(0.25, 0.06 + Math.min(0.10, (move || 0) * 0.018));
 }
+/* Player-facing stat explainers — the ONE hover-tooltip text for every stat,
+   shared by the party builder (bars, quadrant, MOVE/RANGE footprints), the
+   codex dossier, the in-battle INFO stat card and the quick-menu stat grid.
+   Keep the numbers in sync with battle.js when formulas move. */
 const STAT_HELP = {
+  hp: 'HP — hit points. The unit dies when HP reaches 0. Restored by healing spells, some terrain, and resting in your own spawn zone (15% per round).',
+  mp: 'MP — mana, spent to cast spells. Every unit trickles back ~3% of max MP each round (15% in your own spawn zone), so a deep pool means more casts before running dry.',
+  atk: 'ATK — physical power. Basic attacks deal about 65% of ATK (minus the target’s DEF), and physical spells add 35% of ATK to their damage. Blocked by DEF, never by M DEF.',
+  int: 'M ATK — magic power. Magic spells add 35% of M ATK to their damage, and healing spells heal more with it too. Blocked by M DEF, never by DEF.',
+  def: 'DEF — physical armor. Subtracted flat from every incoming basic attack and physical spell. Does nothing against magic damage.',
+  mdef: 'M DEF — magic armor. Soaks incoming magic spell damage the way DEF soaks physical hits. Does nothing against physical damage.',
+  spd: 'SPD — quickness. Faster units act earlier each round, land (and slip away from) opportunity attacks more often, and the truly nimble (SPD 9+) can leap 2-high walls instead of 1.',
+  move: 'MOV — movement range: how many tiles the unit can walk per turn. Also feeds dodge chance (+1.8% EVA per MOV).',
+  range: 'RNG — basic attack reach in tiles. 1 = melee only; higher lets the unit strike from a distance. Spells carry their own separate ranges.',
   awr: 'AWR — perception. Drives critical chance (+2% per AWR), lets keen units (AWR 6+) sense cloaked or smoke-hidden enemies from 2 tiles instead of 1, and raises the chance to land opportunity attacks on retreating enemies. Sight itself is pure line of sight — AWR does NOT extend how far a unit sees.',
   crt: 'CRT — critical hit chance on basic attacks. 8% base + 2% per AWR (max +18%), capped at 30%. A crit deals ×1.8 damage (Gunslinger passive: ×2.0). Spells never crit.',
   eva: 'EVA — chance to dodge a basic attack. 6% base + 1.8% per MOV (max +10%), capped at 25%. Back-arc attacks can’t be dodged, a blinded attacker always misses, and hard CC (stun/freeze/root) drops EVA to 0. Spells can’t be dodged.',
