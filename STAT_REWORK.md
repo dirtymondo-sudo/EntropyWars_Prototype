@@ -1,6 +1,8 @@
 # STAT REWORK — letter grades, readable numbers, SPD⇄MOV consolidation
 
-*2026-08-29 — analysis + step-by-step plan (rev 2: unified 20-point bands).
+*2026-08-29 — analysis + step-by-step plan (rev 3: stages clamp at the
+RULER'S bounds, not at ±2 stages; baseline S speed is allowed and the
+map-crossing guard moves to a halved second move).
 Goal: make stats easy to read and grade (letters shown BESIDE the number,
 never replacing it), and fold movement range into the speed stat — WITHOUT
 rebalancing the game. Individual unit tuning comes later, on top of this.*
@@ -180,9 +182,51 @@ letter grade up or down, full stop — the buff/debuff UI can literally say
 strength change per stage (ATK/M ATK buffs ~1.5× stronger than today,
 DEF/M DEF roughly 2×, SPD slightly weaker) — fine, it's the readable number,
 retune individual spell durations later if something screams; (b) stages
-currently stack to ±5, which on a ±20 step is ±100 — the whole ruler. Clamp
-stage stacking to **±2** (two letters) when the step changes; ±2 also caps
-speed-stage swings at ±2 tiles.
+currently stack to ±5, which on a ±20 step is ±100 — the whole ruler.
+**That is allowed (rev 3 decision): there is NO stage-count clamp.** The
+only clamp is the ruler itself — the effective stat saturates at **100**
+and at the floor (**0** for atk/int/def/mdef, **1** for spd — spd feeds
+movement, turn order and cooldown divisions, so it never reaches 0).
+Buffing an F unit to S, or grinding an enemy's S stat down to F, is legal
+by design; the counterplay is cleanse/dispel and the 3-turn stage timer,
+which is on the OPPONENT to use. Two implementation rules keep the open
+clamp honest:
+
+1. **Clamp at APPLY time, not just read time.** Cap the STORED stage count
+   at whatever count reaches the bound from the unit's current base (allow
+   one final partial-value stage to touch 100/0 exactly). Otherwise
+   overstacked buffs become an invisible buffer — a unit "at 100" that
+   secretly holds +5 stages shrugs off the first few debuffs with no
+   visible change, which reads as a bug. "+2 ATK (maxed)" must mean maxed.
+   The existing `applyStatStageBoost` clamp line and its `(max)` log
+   message are the spot — they become base-relative instead of ±CAP.
+2. **One chokepoint.** `getStatStageDelta` returns
+   `clamp(base + 20·stages, floor, 100) − base` so every consumer (damage,
+   opp-attack, turn order, the Phase-3 move bands) inherits the bound for
+   free. `STAT_STAGE_CAP = 5` dies with the rework.
+3. **Per-application timers (rev 3a — DECIDED, ships with the step
+   change).** Today all of a unit's stages ride ONE `statUp`/`statDown`
+   carrier status; re-applying the carrier does `max(remaining, 3)`
+   (applyStatusPayload's stack rule), so buffing +1 ATK onto an
+   about-to-expire +3 refreshes the unit's WHOLE stage stack to 3 fresh
+   rounds — and
+   `getStatStageCount` counts stages of both signs while EITHER carrier is
+   alive, so a live debuff timer keeps expired buffs working. Both wrong;
+   with uncapped stacking they'd let a player keep a maxed stat alive
+   forever with cheap +1 top-ups. Fix: replace `unit.statStages` with a
+   ledger — `unit.statStageMods = [{stat, n, left}]`. Each application is
+   its own entry with its own countdown (Psychic/Harbinger ±1-duration
+   passives adjust that entry's `left`); the round tick decrements every
+   entry and drops the expired ones, so the old +3 falls off on schedule
+   while the later +1 lives out its own 3 rounds. Effective stage count =
+   sum of live entries for that stat, then the chokepoint bound-clamp; the
+   apply-time cap (rule 1) sizes the NEW entry against base + live sum.
+   `statUp`/`statDown` stop being sources of truth and become derived
+   badges (visible while any entry of that sign is live — their icon,
+   VFX and statLock/Fermata gating all stay); cleanse deletes the entries
+   of the targeted sign. It's plain unit data, so it state-syncs to the
+   guest exactly like `statStages` did (still verify it's not on
+   `_serializeState`'s skip list).
 
 Real win hiding here: SPD currently has only 9 distinct values (13 races
 share SPD 10). On the ×10 scale you can jitter within bands (98, 94, 91…)
@@ -209,17 +253,50 @@ the letter grades:
 weather, hourglass, floor bonus — see next point), still floored at 1 and
 now capped at 5.
 
-**About re-opening move 4–5:** the old cap existed because move 4+, with
-1-AP double-moves plus jump, crossed an entire 8×8 map in one turn and
-trivialized positioning/teleports. The migration below keeps every unit's
-CURRENT tile count, so at launch the roster occupies bands F–B (1–3 tiles)
-only — bands A and S ship as **headroom**: a +1-stage speed buff is what
-gets a unit to 4 tiles, temporarily. That keeps the map-crossing problem
-out of the baseline game. Corollary to be aware of: until you deliberately
-promote someone in tuning, **no unit grades A or S in SPD at baseline** —
-if you want a couple of flagship speedsters living at 4 tiles permanently,
-that's a conscious buff to make later (and the moment you do, revisit
-whether double-move needs a rule like "second move costs 2 AP at move ≥4").
+**About re-opening move 4–5 (rev 3):** the old cap existed because move 4+,
+with double-moves plus jump, crossed an entire 8×8 map in one turn and
+trivialized positioning/teleports. Rev 3 decision: **baseline A/S speed is
+allowed — there SHOULD be S-speed units.** The guard moves from "cap the
+stat" to "cap the double-move": **the second move of a unit's turn covers
+`ceil(effectiveMove / 2)` tiles**:
+
+| eff. move | 1st move | 2nd move | turn total (was) |
+|-----------|---------:|---------:|------------------|
+| 1 (F) | 1 | 1 | 2 (2) |
+| 2 (C) | 2 | 1 | 3 (4) |
+| 3 (B) | 3 | 2 | 5 (6) |
+| 4 (A) | 4 | 2 | 6 (—) |
+| 5 (S) | 5 | 3 | 8 (—) |
+
+Round **up**, not down: ceil needs no special case to keep move-1 units at
+1 (2.5→3, 1.5→2, 0.5→1), and floor would collapse move 1/2/3 all onto a
+1-tile second move, erasing the band differences exactly where 96% of the
+roster lives. Ceil keeps every other band distinct (1/1/2/2/3). Accepted
+side effect: this is a real (small) nerf to today's double-move plays —
+move-2 units drop 4→3 total tiles, move-3 drop 6→5. That's fine; the
+retreat-double-move was strong anyway, and the second move already costs
+ALL remaining AP (it ends the turn) — keep that rule too, the two stack.
+
+Implementation notes for the halving:
+- Apply it in the movement-RANGE computation (the `maxMove` the overlay /
+  pathfinder / `movesThisTurn >= 1` branch uses), **NOT inside
+  `getEffectiveMove` itself** — EVA (`getEvasionChance` reads
+  `getEffectiveMove`), fog camera gates, and AI threat estimates must not
+  see the stat drop mid-turn.
+- Order of operations: SPD (base + stages, bound-clamped) → band lookup →
+  tile-space `moveDelta` statuses / terrain / weather / hourglass →
+  floor 1, **cap 5** → THEN halve if `movesThisTurn ≥ 1`. Keeping the
+  hard cap 5 after modifiers means Pixie Dust/hourglass on an S-speedster
+  is wasted — same philosophy as the stat clamp, buffs saturate at S.
+- **AI must learn the rule**: ai.js projects double-move reach and enemy
+  threat as `move × 2`-ish today (kite ranges, zone-reach checks); with
+  halving those estimates over-count by up to 2 tiles and the AI will
+  plan unreachable retreats. Audit the `getEffectiveMove` call sites in
+  ai.js when this lands.
+- **Jump and teleport need the same scrutiny** — the 2026-07-13 complaint
+  was move PLUS jump. An S-speed unit with jump is the new map-crosser;
+  jump distance should not scale past the cap-5 spirit, and the SPD jump
+  gate (90+ after rescale) now admits baseline units, not just buffed ones.
 
 **Keep every move buff/debuff working by NOT converting them.** The five
 `moveDelta` statuses (Slow −2, Drowning −1, Overclock +1, Pixie Dust +2,
@@ -228,8 +305,9 @@ the band lookup** — exactly as today. Only the BASE move is derived from
 SPD. This is the "don't give yourself more work" path: zero spell rebalance,
 zero relay changes, and "Slow" still visibly means "2 fewer tiles".
 SPD *stage* spells (4 exist) apply BEFORE the band lookup with the ±20
-step — so **one speed stage = one letter = exactly one tile**, always,
-no matter where in the band you sit. (This is the payoff of aligning
+step — so **one speed stage = one letter = exactly one tile** on the
+first move, no matter where in the band you sit (the halved second move
+compresses it: +2 stages there = +1 tile). (This is the payoff of aligning
 stages, letters, and bands: no more "the buff did nothing because I was
 mid-band".)
 
@@ -280,12 +358,75 @@ tooltip show the band table.
 - No re-statting units to "fix" their grades — the grades REVEAL the
   statlines, they don't judge them. (22 F-ATK casters is correct output.)
 - HP / MP / RNG never join the 0–100 ruler; RNG and CRT/EVA never get letters.
-- Move ceiling is 5 (band-aligned), but bands A/S (4–5 tiles) ship EMPTY at
-  baseline — reachable only via speed buffs. Putting a unit's base statline
-  in those bands is a deliberate later tuning decision, made with the
-  2026-07-13 double-move concern in front of you, never a migration side
-  effect.
-- Stage stacking clamps to ±2 (two letters / two tiles) when the ±20 step
-  lands.
+- Move ceiling is 5 (band-aligned), applied AFTER all modifiers. The
+  MIGRATION never promotes anyone past their current tile count — units
+  entering bands A/S at baseline is a deliberate tuning decision (now
+  sanctioned — flagship speedsters SHOULD exist), guarded by the halved
+  second move, never a migration side effect.
+- No stage-count clamp — stages stack freely until the stat saturates at
+  100 / its floor (0, or 1 for SPD). Clamp at apply time so maxed means
+  maxed (no hidden overstack buffer).
 - Phases 2–3 land as pure refactors first; tuning (SPD spread within bands,
   outlier nudges) is a separate, later commit so diffs stay reviewable.
+
+## 7. Known risks of the open clamp + S-speed decisions (rev 3)
+
+Two of these graduated to required work in rev 3a (marked); the rest are
+accepted trade-offs to monitor once live, not reasons to reverse course:
+
+- ~~The all-at-once expiry cliff~~ — **promoted from risk to required fix
+  (rev 3a)**: the shared-timer model (re-buff refreshes the unit's whole
+  stage stack,
+  either carrier keeps both signs alive) is replaced by the
+  per-application ledger in Phase 2 rule 3 above. Not optional, not
+  "decide after play".
+- **SPD debuffs triple-dip.** Post-consolidation one SPD debuff cuts
+  movement (tiles), evasion (EVA derives from move), turn order, AND
+  opp-attack odds. Uncapped stacking makes "speed down" plausibly the best
+  debuff in the game. Counterweight already in the design: move floors at
+  1, EVA floors at its 6% base, spd floors at 1 (never 0 — RT cooldown and
+  opp-attack math divide/scale by it). Watch it; retune the 4 spd-stage
+  spells' durations/costs first if it dominates.
+- **Multi-stage spells got a hidden buff twice over.** Step 14→20 (atk;
+  more for def/mdef) AND no ±cap means warCry/randomTeamBuff-style effects
+  that grant 2+ stages, team-wide, are much stronger than authored. Sweep
+  every `statStageBoost` payload with stages ≥ 2 during Phase 2 and
+  re-cost deliberately.
+- **AI audit is REQUIRED work, not drift to tolerate (rev 3a).** The
+  rework does not ship a phase until ai.js is updated for it in the same
+  delivery: (a) stage valuation at step 20 with bound awareness — never
+  spend a cast buffing a stat already at 100 or debuffing one at the
+  floor (the apply-time clamp makes those casts literal no-ops, and an AI
+  that wastes turns on them looks broken); (b) reach/retreat/threat
+  projections must use the halved second move, both for its own units and
+  when projecting enemy threat ranges; (c) debuff-stacking is now a real
+  line of play — the AI should at least recognize follow-up debuffs on an
+  already-debuffed target as higher value, not lower.
+- **Bound-clamp UX.** A +1 stage on a base-90 stat applies as +10
+  "(maxed)" — the "B → A one letter per stage" promise bends at the
+  ruler's ends. The buff UI should show the clamped result honestly
+  ("ATK S (maxed)"), and the log line already has the `(max)` suffix hook.
+- **Online parity is already safe** for stages (host computes, guest
+  mirrors state) but the halved second move must live in shared range
+  code keyed off synced fields (`movesThisTurn`), never in guest-local UI
+  guesses — verify `movesThisTurn` isn't on `_serializeState`'s skip list.
+
+## 8. HP / MP letter grades (the "not on the 100 scale" answer)
+
+HP and MP never join the 0–100 ruler — they stay raw pools (600 HP reads
+better than "HP 54") and get letters from **bespoke absolute bands** in the
+same `STAT_GRADE_BANDS` table, chosen off the measured roster distribution
+in §2 so the letters mean the same thing as everywhere else ("B ≈ roster
+average, S ≈ top decile"):
+
+|    | S    | A    | B    | C    | F     | anchoring |
+|----|------|------|------|------|-------|-----------|
+| HP | ≥700 | ≥620 | ≥540 | ≥460 | <460  | B straddles the mean (563); S ≈ p90 (708) |
+| MP | ≥235 | ≥190 | ≥140 | ≥80  | <80   | B straddles the median (145); S ≈ p90 (240); F = martial dump |
+
+Same `statGrade()` helper, different threshold array — the letter language
+stays one language. These bands are hand-anchored, so a future HP/MP-wide
+rebalance means re-anchoring them by rerunning the §2 distribution script;
+`check-grades.js` should print a warning if >35% of the roster lands in a
+single HP/MP band. HP/MP are not staged stats, so the clamp questions
+don't arise for them.
