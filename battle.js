@@ -577,6 +577,7 @@
                     damageType: 'physical'
                 });
                 addLog(`⚔️ ${unitDisplayName(enemy)} lands an opportunity attack on ${unitDisplayName(unit)} for ${dmg} damage!`, enemy.player);
+                enemy._matchOppStrikes = (enemy._matchOppStrikes || 0) + 1;
                 if (!_skipVisuals()) {
                     showCombatBanner(`⚔️ Opportunity Attack!`, `${unitDisplayName(enemy)} punishes ${unitDisplayName(unit)}'s retreat`, 'opp-attack');
                     playSfx('physicalAttack');
@@ -3884,6 +3885,15 @@
             }
 
             res.x = cx; res.y = cy; res.z = cz;
+
+            /* Achievement counter: an ENEMY body actually moved by your push/
+               pull/hurl. Chained bowling-pin knocks recurse through here with
+               the same byUnit, so every displaced enemy counts once. Preview
+               slides pass opts.simulate and never land here. */
+            if (!simulate && res.moved > 0 && opts.byUnit
+                && (typeof isEnemyUnit === 'function' ? isEnemyUnit(opts.byUnit, target) : opts.byUnit.player !== target.player)) {
+                opts.byUnit._matchDisplacements = (opts.byUnit._matchDisplacements || 0) + 1;
+            }
 
             if (!simulate) {
                 if (res.steps.length) {
@@ -8278,7 +8288,14 @@
             if (sourceUnit) sourceUnit._trackHealDone = (sourceUnit._trackHealDone || 0) + actual;
             target._trackHealReceived = (target._trackHealReceived || 0) + actual;
 
-            if (sourceUnit && sourceUnit.id !== target.id) grantXP(sourceUnit, XP_HEAL_FLAT, 'heal');
+            if (sourceUnit && sourceUnit.id !== target.id) {
+                grantXP(sourceUnit, XP_HEAL_FLAT, 'heal');
+                /* Achievement counter: heal applications on OTHERS (self-heals
+                   are farmable and excluded by design). */
+                if (!(typeof isEnemyUnit === 'function' && isEnemyUnit(sourceUnit, target))) {
+                    sourceUnit._matchHealCasts = (sourceUnit._matchHealCasts || 0) + 1;
+                }
+            }
             flashHeal(target);
             showFloatingTextForUnit(target, `+${actual}`, opts.kind || 'heal', opts);
             // Heal-cinematic corner readout (TOTAL HEALED) — no-ops unless a
@@ -9403,38 +9420,20 @@
         };
         window.ACHIEVEMENT_DEFS = ACHIEVEMENT_DEFS;
 
-        /* One-time store repair (2026-07-27): checkAchievement used to fire on
-           OPPONENT/CPU actions too (an enemy double-kill unlocked YOUR "Double
-           Kill"), so every store quietly filled to 14/14 and the end-screen
-           count was meaningless. All pre-fix unlocks are therefore suspect —
-           drop any entry unlocked before the fix shipped so the roster is
-           re-earned under the owner-gated rules below. Timestamp comparison on
-           the ISO strings is lexicographic-safe and idempotent, and running it
-           inside loadAchievements() repairs every profile slot as it is used. */
-        const _ACH_REPAIR_CUTOFF = '2026-07-27T12:00:00Z';
-        function _repairAchievementStore(store) {
-            let changed = false;
-            for (const k of Object.keys(store)) {
-                const at = store[k] && store[k].unlockedAt;
-                if (!at || at < _ACH_REPAIR_CUTOFF) { delete store[k]; changed = true; }
-            }
-            return changed;
-        }
-
+        /* (2026-08-31) The one-time 2026-07-27 store repair that lived here
+           deleted every unlock dated before its cutoff ON EVERY LOAD — long
+           after the owner-gating fix it existed for. It has done its job;
+           unlocks now persist untouched. */
         function loadAchievements() {
-            let store;
             if (window.ProfileSystem) {
-                store = window.ProfileSystem.loadAchievements() || {};
-            } else {
-                try {
-                    const raw = localStorage.getItem('entropy-wars-achievements-v1');
-                    store = raw ? JSON.parse(raw) : {};
-                } catch {
-                    store = {};
-                }
+                return window.ProfileSystem.loadAchievements() || {};
             }
-            if (_repairAchievementStore(store)) saveAchievements(store);
-            return store;
+            try {
+                const raw = localStorage.getItem('entropy-wars-achievements-v1');
+                return raw ? JSON.parse(raw) : {};
+            } catch {
+                return {};
+            }
         }
 
         function saveAchievements(achievements) {
@@ -9442,6 +9441,223 @@
             try {
                 localStorage.setItem('entropy-wars-achievements-v1', JSON.stringify(achievements));
             } catch {}
+        }
+
+        /* ═══ TIERED ACHIEVEMENT PROGRESS (ACHIEVEMENTS_PLAN.md Phase 1) ═══
+           The catalog lives in data.js (ACH_CATALOG / ACH_CHAMP_LINES); the
+           persistent store is profile.progress (profile.js). This runtime
+           folds the per-unit _match* counters into the store ONCE per
+           completed match — at every terminal path — then evaluates tier
+           crossings and toasts new unlocks.
+
+           ONLINE PARITY (RULE #2): the counters folded here are per-UNIT
+           fields, which reach the guest through normal state-sync unit
+           snapshots — so both clients commit their OWN side against their
+           own local profile with zero new relay traffic, exactly like
+           career stats. Abandoned matches never reach a terminal path and
+           commit nothing (natural anti-farm).
+
+           The once-per-match guard keys on match IDENTITY (matchNumber +
+           startTime, both of which ride state-sync) instead of a reset-at-
+           match-start flag, because the online GUEST never runs the local
+           match-boot paths — a plain boolean would latch after its first
+           online match and silently skip every later commit. */
+        let _achCommittedMatchKey = null;
+
+        function _achProgressAvailable() {
+            return !!(window.ProfileSystem
+                && typeof window.ProfileSystem.loadProgress === 'function'
+                && typeof window.ProfileSystem.saveProgress === 'function'
+                && typeof window.ACH_CATALOG !== 'undefined');
+        }
+
+        function commitAchProgress() {
+            try {
+                const _matchKey = (state.matchNumber || 0) + ':' + (state.startTime || 0);
+                if (_achCommittedMatchKey === _matchKey) return;
+                if (state.devAutoSim) return;
+                if (typeof _balanceSimMode !== 'undefined' && _balanceSimMode) return;
+                if (typeof _aiTrainingMode !== 'undefined' && _aiTrainingMode) return;
+                if (typeof _strengthTestMode !== 'undefined' && _strengthTestMode) return;
+                if (!_achProgressAvailable()) return;
+                if (state.winner === null || state.winner === undefined || state.winner === 0) {
+                    window._lastAchTierUnlocks = []; // no contest — don't show a stale list
+                    return;
+                }
+                _achCommittedMatchKey = _matchKey;
+
+                const viewer = getViewerPlayer();
+                const won = state.winner === viewer;
+                const isMd = !!state._mdRun;
+                const isCampaign = !!state.isCampaign;
+                const kind = isMd ? 'md' : (isCampaign ? 'campaign' : 'match');
+                const bucket = (typeof isOnlineMatch === 'function' && isOnlineMatch()) ? 'pvp' : 'cpu';
+
+                const prog = window.ProfileSystem.loadProgress();
+                if (!prog || !prog.counters) return;
+
+                const add = (metric, n) => {
+                    n = Math.max(0, Math.round(n || 0));
+                    if (!n) return;
+                    const c = prog.counters[metric] || (prog.counters[metric] = { pvp: 0, cpu: 0, legacy: 0 });
+                    c[bucket] = (c[bucket] || 0) + n;
+                };
+                const hw = (metric, v) => {
+                    v = Math.max(0, Math.round(v || 0));
+                    if (!v) return;
+                    const c = prog.counters[metric] || (prog.counters[metric] = { pvp: 0, cpu: 0, legacy: 0 });
+                    if (v > (c[bucket] || 0)) c[bucket] = v;
+                };
+                const champAdd = (race, metric, n) => {
+                    if (!race || !n) return;
+                    const bag = prog.champs[race] || (prog.champs[race] = {});
+                    const c = bag[metric] || (bag[metric] = { pvp: 0, cpu: 0, legacy: 0 });
+                    c[bucket] = (c[bucket] || 0) + n;
+                };
+
+                const mine = (state.units || []).filter(u => u.player === viewer && !u._mdNpc);
+                for (const u of mine) {
+                    const kills = u._matchKills || 0;
+                    add('kills', kills);
+                    champAdd(u.race, 'kills', kills);
+                    add('critsLanded', u._matchCrits || 0);
+                    add('attacksDodged', u._matchTrueDodges || 0);
+                    add('combosDone', u._matchCombos || 0);
+                    add('followUps', u._matchFollowUps || 0);
+                    add('cleansesDone', u._matchCleanses || 0);
+                    add('backstabs', u._matchBackstabs || 0);
+                    add('oppStrikes', u._matchOppStrikes || 0);
+                    add('superBanes', u._matchSuperBanes || 0);
+                    add('displacements', u._matchDisplacements || 0);
+                    add('stormsSummoned', u._matchStorms || 0);
+                    add('healsApplied', u._matchHealCasts || 0);
+                    add('tilesScanned', u._matchScans || 0);
+                    add('hourglasses', u._matchHourglasses || 0);
+                    add('firstBloods', u._matchFirstBloods || 0);
+                    let sAll = 0, sBuff = 0, sDebuff = 0;
+                    for (const sid of Object.keys(u._statusesApplied || {})) {
+                        const n = u._statusesApplied[sid] || 0;
+                        sAll += n;
+                        const k = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[sid]) ? STATUS_DEFS[sid].kind : null;
+                        if (k === 'buff') sBuff += n;
+                        else if (k === 'debuff') sDebuff += n;
+                    }
+                    add('statusesApplied', sAll);
+                    add('buffsApplied', sBuff);
+                    add('debuffsApplied', sDebuff);
+                }
+                add('entropyStrikes', (state._entropyStrikeCount && state._entropyStrikeCount[viewer]) || 0);
+
+                if (won) {
+                    if (kind === 'match') {
+                        add('wins_total', 1);
+                        const mpMode = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
+                        const modeMetric = { arena: 'wins_arena', tdm: 'wins_tdm', clash: 'wins_clash', simul: 'wins_simul', gauntlet: 'wins_gauntlet' }[mpMode && mpMode.id];
+                        if (modeMetric) add(modeMetric, 1);
+                        const condMetric = {
+                            wipeout: 'wins_wipeout', tower_destroyed: 'wins_tower',
+                            hourglasses_collected: 'wins_hourglass', nexus_dominance: 'wins_nexus',
+                            arena_composite: 'wins_composite', most_points: 'wins_composite',
+                            sudden_death: 'wins_suddenDeath', flag_captures: 'wins_flags',
+                        }[state._winCondition];
+                        if (condMetric) add(condMetric, 1);
+                        // Per-champ wins + deathless (deathless requires the WIN —
+                        // hiding a unit in a corner of a lost match earns nothing).
+                        const byRace = {};
+                        for (const u of mine) { if (u.race) (byRace[u.race] = byRace[u.race] || []).push(u); }
+                        for (const race of Object.keys(byRace)) {
+                            champAdd(race, 'wins', 1);
+                            if (byRace[race].every(u => !u.dead && (u._matchDeaths || 0) === 0)) {
+                                champAdd(race, 'deathless', 1);
+                            }
+                        }
+                    } else if (kind === 'md') {
+                        add('md_clears', 1);
+                    }
+                    // campaign (Challenge) wins feed their own future lines, not
+                    // the PvP-mode ladders — combat counters above still count.
+                }
+                if (kind === 'match') {
+                    const cs = (typeof loadCareerStats === 'function') ? loadCareerStats() : null;
+                    if (cs) hw('bestStreak', cs.currentWinStreak || 0);
+                }
+
+                const newly = _achEvaluateTiers(prog);
+                window.ProfileSystem.saveProgress(prog);
+                /* Viewer-local (NOT on state — must never ride state-sync):
+                   the victory screen reads this to render unlock cards. */
+                window._lastAchTierUnlocks = newly;
+                _achToastNewTiers(newly);
+            } catch (e) { console.error('[ACH] commit failed:', e); }
+        }
+
+        /* Tier crossings against the whole store. Standard lines sum the
+           {pvp,cpu,legacy} buckets; hw lines take the max. Returns the newly
+           unlocked entries (also stamped into prog.unlocked). */
+        function _achEvaluateTiers(prog) {
+            const newly = [];
+            const now = Date.now();
+            const catalog = window.ACH_CATALOG || [];
+            for (const line of catalog) {
+                const c = prog.counters[line.metric];
+                if (!c) continue;
+                const total = line.hw
+                    ? Math.max(c.pvp || 0, c.cpu || 0, c.legacy || 0)
+                    : (c.pvp || 0) + (c.cpu || 0) + (c.legacy || 0);
+                (line.tiers || []).forEach((th, i) => {
+                    const key = line.id + '.' + i;
+                    if (total >= th && !prog.unlocked[key]) {
+                        prog.unlocked[key] = now;
+                        newly.push({ icon: line.icon, name: line.name, tier: i, desc: line.desc, threshold: th });
+                    }
+                });
+            }
+            const champLines = window.ACH_CHAMP_LINES || [];
+            for (const race of Object.keys(prog.champs || {})) {
+                const bag = prog.champs[race];
+                for (const spec of champLines) {
+                    const c = bag[spec.metric];
+                    if (!c) continue;
+                    const total = (c.pvp || 0) + (c.cpu || 0) + (c.legacy || 0);
+                    (spec.tiers || []).forEach((th, i) => {
+                        const key = 'champ.' + race + '.' + spec.metric + '.' + i;
+                        if (total >= th && !prog.unlocked[key]) {
+                            prog.unlocked[key] = now;
+                            const raceLabel = (typeof getRaceLabel === 'function') ? getRaceLabel(race) : race;
+                            newly.push({ icon: spec.icon, name: raceLabel + ' — ' + spec.name, tier: i, desc: spec.name + ' with ' + raceLabel, threshold: th });
+                        }
+                    });
+                }
+            }
+            return newly;
+        }
+
+        /* Staggered toasts, capped so a big commit (career-seeded veterans'
+           first match) can't wallpaper the end screen. */
+        function _achToastNewTiers(newly) {
+            if (!newly || !newly.length || _skipVisuals()) return;
+            const tierNames = window.ACH_TIER_NAMES || ['I', 'II', 'III', 'IV', 'V', 'VI'];
+            const tierColors = window.ACH_TIER_COLORS || [];
+            const MAX_TOASTS = 4;
+            newly.slice(0, MAX_TOASTS).forEach((n, idx) => {
+                window.setTimeout(() => {
+                    const toast = document.createElement('div');
+                    toast.className = 'achieve-toast';
+                    const tint = tierColors[n.tier] || '#ffd700';
+                    toast.innerHTML = `<div class="achieve-toast-icon">${n.icon || '🏆'}</div><div><div class="achieve-toast-text" style="color:${tint}">Achievement Tier ${tierNames[n.tier] || (n.tier + 1)}</div><div class="achieve-toast-sub">${n.name} — ${n.desc} (${n.threshold.toLocaleString()})</div></div>`;
+                    (document.getElementById('game-viewport') || document.body).appendChild(toast);
+                    window.setTimeout(() => toast.remove(), 4000);
+                }, idx * 1100);
+            });
+            if (newly.length > MAX_TOASTS) {
+                window.setTimeout(() => {
+                    const toast = document.createElement('div');
+                    toast.className = 'achieve-toast';
+                    toast.innerHTML = `<div class="achieve-toast-icon">🏆</div><div><div class="achieve-toast-text">+${newly.length - MAX_TOASTS} more achievements</div><div class="achieve-toast-sub">See Profile → Achievements</div></div>`;
+                    (document.getElementById('game-viewport') || document.body).appendChild(toast);
+                    window.setTimeout(() => toast.remove(), 4000);
+                }, MAX_TOASTS * 1100);
+            }
         }
 
         function checkAchievement(id, unit) {
@@ -14672,9 +14888,12 @@
             function _cleanseUnit(caster, sp, target) {
                 try {
                     if (target.status && typeof STATUS_DEFS !== 'undefined') {
+                        let _rtCleansed = 0;
                         for (const k of Object.keys(target.status)) {
-                            if (STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'debuff') delete target.status[k];
+                            if (STATUS_DEFS[k] && STATUS_DEFS[k].kind === 'debuff') { delete target.status[k]; _rtCleansed++; }
                         }
+                        /* parity with the turn-based cleanse: count removals */
+                        if (_rtCleansed > 0 && caster) caster._matchCleanses = (caster._matchCleanses || 0) + _rtCleansed;
                     }
                 } catch (e) {}
                 try { playSfx('healRegen', { volume: 0.7 }); } catch (e) {}
@@ -14825,6 +15044,9 @@
                     if (typeof rollCrit === 'function' && rollCrit(att)) {
                         isCrit = true;
                         dmg = Math.floor(dmg * ((typeof getCritMultiplier === 'function') ? getCritMultiplier(att) : 1.8));
+                        /* parity with the turn-based crit path: count it */
+                        att._matchCrits = (att._matchCrits || 0) + 1;
+                        if (att._matchCrits >= 3) checkAchievement('critMaster', att);
                     }
                 } catch (e) {}
                 _dmg(tgt, dmg, 'Attack', { sourceUnit: att, damageType: 'physical', isCrit });
@@ -19707,7 +19929,10 @@
                     processOverkill(killer, target, Math.abs(target.hp));
 
                     const totalKillsThisMatch = state.units.reduce((s, u) => s + (u._matchKills || 0), 0);
-                    if (totalKillsThisMatch === 1) checkAchievement('firstBlood', killer);
+                    if (totalKillsThisMatch === 1) {
+                        checkAchievement('firstBlood', killer);
+                        killer._matchFirstBloods = (killer._matchFirstBloods || 0) + 1;
+                    }
                 }
 
                 if (target._isBoss) {
@@ -25634,8 +25859,8 @@
             parts.push(`<span style="white-space:nowrap">Match Complete <b style="color:#ffe9a8">+${calc.base}</b></span>`);
             if (calc.collected > 0) parts.push(`<span style="white-space:nowrap">Gold Collected <b style="color:#ffe9a8">+${calc.collected}</b></span>`);
             if (calc.winMult > 1) parts.push(`<span style="white-space:nowrap;color:#9fe0a0">Win ×${calc.winMult}</span>`);
-            if (calc.flawless) parts.push(`<span style="white-space:nowrap;color:#9fe0a0">Flawless ×1.25</span>`);
-            if (calc.wipeout) parts.push(`<span style="white-space:nowrap;color:#9fe0a0">Wipeout ×1.25</span>`);
+            if (calc.flawless) parts.push(`<span style="white-space:nowrap;color:#9fe0a0" title="Won without losing a single unit — no friendly deaths all match">Deathless ×1.25</span>`);
+            if (calc.wipeout) parts.push(`<span style="white-space:nowrap;color:#9fe0a0" title="Won by wiping the enemy team">Wipeout ×1.25</span>`);
             const sep = '<span style="color:#7a6f4a;margin:0 2px">·</span>';
             const balanceLine = `<div id="vgbBalance" style="font-size:12px;color:#b8a060;margin-top:3px">Adding to wallet…</div>`;
             el.innerHTML = `
@@ -25687,8 +25912,17 @@
                 const enemyUnits = (state.units || []).filter(u => u.player !== viewer && u.player !== 0);
                 const collected = viewerUnits.reduce((s, u) => s + (u.gold || 0), 0);
                 const playerWon = ONLINE_RULES.active ? (state.winner === viewer) : (state.winner === 1);
-                const noFriendlyDeaths = viewerUnits.length > 0 && viewerUnits.every(u => !u.dead);
-                const allEnemiesDead = enemyUnits.length > 0 && enemyUnits.every(u => u.dead);
+                // Deathless bonus: every ACCT_PVP_MODE has respawns, so an
+                // end-of-match `!u.dead` scan misses every death that respawned
+                // (units come back alive at full HP) — that's how "Flawless"
+                // kept paying out on matches with plenty of friendly deaths.
+                // _matchDeaths is the per-life counter defeatUnit() increments
+                // and respawns never clear, so it's the honest signal.
+                const noFriendlyDeaths = viewerUnits.length > 0
+                    && viewerUnits.every(u => !u.dead)
+                    && viewerUnits.reduce((s, u) => s + (u._matchDeaths || 0), 0) === 0;
+                const allEnemiesDead = (state._winCondition === 'wipeout' && playerWon)
+                    || (enemyUnits.length > 0 && enemyUnits.every(u => u.dead));
 
                 const calc = (typeof computeAccountMatchGold === 'function')
                     ? computeAccountMatchGold({ collected, playerWon, noFriendlyDeaths, allEnemiesDead })
@@ -26018,16 +26252,32 @@
                 for (const id of matchAchs) {
                     const def = ACHIEVEMENT_DEFS[id];
                     if (!def) continue;
-                    achHtml += `<div class="vic-ach-item"><span class="vic-ach-icon">${def.icon}</span><span class="vic-ach-name">${def.name}</span></div>`;
+                    achHtml += `<div class="vic-ach-item" title="${escapeHtml(def.desc)}"><span class="vic-ach-icon">${def.icon}</span><span class="vic-ach-name">${def.name}</span></div>`;
                 }
                 achHtml += '</div></div>';
                 vicAwards.innerHTML += achHtml;
             }
 
-            /* Career progress: one honest line. The old full 14-item grid read
-               as "you earned all of these THIS match" (and the polluted store
-               pinned it at 14/14 forever) — the full trophy case lives in the
-               Profile screen, not here. */
+            /* Tiered achievement unlocks from this match's commit (set by
+               commitAchProgress just before the screen builds). */
+            const tierUnlocks = window._lastAchTierUnlocks || [];
+            if (tierUnlocks.length > 0) {
+                const tierNames = window.ACH_TIER_NAMES || ['I', 'II', 'III', 'IV', 'V', 'VI'];
+                const tierColors = window.ACH_TIER_COLORS || [];
+                let tHtml = '<div class="vic-achievements"><div class="vic-ach-title">New Achievement Tiers</div><div class="vic-ach-grid">';
+                for (const n of tierUnlocks.slice(0, 8)) {
+                    const tint = tierColors[n.tier] || '#ffd700';
+                    tHtml += `<div class="vic-ach-item" title="${escapeHtml(n.desc)} (${n.threshold.toLocaleString()})"><span class="vic-ach-icon">${n.icon || '🏆'}</span><span class="vic-ach-name">${escapeHtml(n.name)} <b style="color:${tint}">${tierNames[n.tier] || ''}</b></span></div>`;
+                }
+                if (tierUnlocks.length > 8) tHtml += `<div class="vic-ach-item"><span class="vic-ach-icon">➕</span><span class="vic-ach-name">${tierUnlocks.length - 8} more</span></div>`;
+                tHtml += '</div></div>';
+                vicAwards.innerHTML += tHtml;
+            }
+
+            /* Career progress: one honest line (the store now actually
+               persists — see profile.js ensureActiveProfile), plus a pointer
+               to where the full named list lives, which the bare count never
+               gave players. */
             const allAchs = loadAchievements();
             const totalUnlocked = Object.keys(allAchs).length;
             const totalPossible = Object.keys(ACHIEVEMENT_DEFS).length;
@@ -26035,6 +26285,7 @@
                 <span class="vic-career-ach-label">✦ Career Achievements</span>
                 <span class="vic-career-ach-count"><b>${totalUnlocked}</b> / ${totalPossible}</span>
                 <div class="vic-career-ach-bar"><div class="vic-career-ach-fill" style="width:${Math.round(totalUnlocked / Math.max(1, totalPossible) * 100)}%"></div></div>
+                <span style="display:block;font-size:11px;color:var(--muted,#8a93a8);margin-top:2px">Full list: Profile → Achievements</span>
             </div>`;
 
             /* MVP plate under the podium: top of the winning team. */
@@ -28310,6 +28561,10 @@
             addLog(victory
                 ? `🏆 ${D.label} CLEARED! All ${D.floors} floors conquered. +${gold} gold.`
                 : `☠️ The party has fallen on Floor ${run.floor}. Floors cleared: ${floorsCleared}. +${gold} gold.`);
+
+            /* Dungeon runs never reach finalizeMatch — commit here (whole-run
+               combat counters + md_clears on victory). */
+            commitAchProgress();
             if (!state.devAutoSim) { try { playStinger(victory ? 'victory' : 'defeat'); } catch (e) {} }
             setTimeout(() => _mdShowResultOverlay(victory, floorsCleared, gold, sv), victory ? 600 : 1100);
         }
@@ -28453,6 +28708,11 @@
 
             const viewer = getViewerPlayer();
             const playerWon = state.winner === viewer;
+
+            /* Challenge battles are a terminal path of their own (checkWin
+               never routes them to finalizeMatch) — commit achievement
+               counters here. Mode-win ladders stay untouched (§3.4). */
+            commitAchProgress();
 
             const unitResults = [];
             const p1Units = (state.units || []).filter(u => u.player === 1);
@@ -28931,9 +29191,17 @@
 
             const _viewer = getViewerPlayer();
             if (state.winner === _viewer) {
-                checkAchievement('ace', null);
+                /* Ace says "win by elimination" — gate it on the actual win
+                   condition instead of firing on every win. */
+                if (state._winCondition === 'wipeout') checkAchievement('ace', null);
 
-                if (aliveUnitsFor(_viewer).length === state.units.filter(u => u.player === _viewer).length) {
+                /* Perfect Victory = no friendly deaths ALL match. Respawn
+                   modes revive the fallen, so counting currently-alive units
+                   is not enough — check the per-life _matchDeaths counter
+                   (incremented in defeatUnit, never reset by respawns). */
+                const _viewerUnits = state.units.filter(u => u.player === _viewer);
+                const _viewerDeaths = _viewerUnits.reduce((s, u) => s + (u._matchDeaths || 0), 0);
+                if (_viewerDeaths === 0 && aliveUnitsFor(_viewer).length === _viewerUnits.length) {
                     checkAchievement('perfectVictory', null);
                 }
 
@@ -28950,6 +29218,8 @@
             }
 
             updateCareerStatsAfterMatch();
+            /* AFTER career stats so the bestStreak high-water sees this win. */
+            commitAchProgress();
 
             transitionTo(GS.POST_MATCH);
 
@@ -41229,6 +41499,9 @@
                 if (evaded) {
 
                     target._matchDodges = (target._matchDodges || 0) + 1;
+                    /* True dodges only for the achievement line — a blind
+                       attacker whiffing is the enemy's debuff, not your feet. */
+                    if (!_blindMiss) target._matchTrueDodges = (target._matchTrueDodges || 0) + 1;
 
                     grantXP(target, XP_DODGE, 'dodge');
                     addLog(`${unitDisplayName(target)} dodges ${unitDisplayName(unit)}'s attack!`);
@@ -41244,6 +41517,7 @@
 
                     const preHp = target.hp;
                     if (_atkArc === 'back') {
+                        unit._matchBackstabs = (unit._matchBackstabs || 0) + 1;
                         addLog(`🗡️ BACKSTAB! ${unitDisplayName(unit)} strikes ${unitDisplayName(target)} from behind (+25% damage)!`);
                         showFloatingTextForUnit(target, 'BACKSTAB!', 'crit', { durationMs: 1100, jitterY: -14 });
                     } else if (_atkArc === 'side') {
@@ -41525,6 +41799,7 @@
             let lootedNow = 0;
             for (const tile of toReveal) {
                 const key = scanKey(tile.x, tile.y);
+                if (!state.scannedByPlayer[unit.player].has(key)) unit._matchScans = (unit._matchScans || 0) + 1;
                 state.scannedByPlayer[unit.player].add(key);
 
                 const tileHG = state.hourglasses.filter(h => h.carriedBy === null && h.x === tile.x && h.y === tile.y);
@@ -41566,6 +41841,7 @@
             }
 
             if (totalHourglasses > 0) {
+                unit._matchHourglasses = (unit._matchHourglasses || 0) + totalHourglasses;
                 const newLevel = unit.hourglassBuff || 0;
                 const buffDesc = `+${newLevel * HOURGLASS_POWER_PER_LEVEL} DMG, -${newLevel * HOURGLASS_POWER_PER_LEVEL} DMG taken, +${Math.floor(newLevel/2)} MOV`;
                 grantXP(unit, XP_COLLECT_HOURGLASS * totalHourglasses, 'collectHourglass');
@@ -43821,10 +44097,13 @@
                 unit.items.scanner -= 1;
                 const scanRadius = 1;
                 const area = getSquareArea(x, y, scanRadius);
+                let _newScanTiles = 0;
                 for (const tile of area) {
                     const key = scanKey(tile.x, tile.y);
+                    if (!state.scannedByPlayer[unit.player].has(key)) _newScanTiles++;
                     state.scannedByPlayer[unit.player].add(key);
                 }
+                if (_newScanTiles > 0) unit._matchScans = (unit._matchScans || 0) + _newScanTiles;
                 const side = scanRadius * 2 + 1;
 
                 grantXP(unit, XP_SCAN, 'scan');
@@ -43953,6 +44232,7 @@
                         typeEffect: isBaneEffective ? 'super' : 'neutral'
                     });
                     if (isBaneEffective) {
+                        unit._matchSuperBanes = (unit._matchSuperBanes || 0) + 1;
                         const _bSprite = baneRule.baneType ? `<div class="bane-sprite bane-${baneRule.baneType}" style="width:16px;height:16px;background-size:16px 16px;display:inline-block;vertical-align:middle"></div>` : '';
                         addLog(`${_bSprite} It's super effective against ${target.types.join('/')} type!`, unit.player);
 
@@ -45650,6 +45930,7 @@
                 };
                 if (!state.activeWeather) state.activeWeather = [];
                 weather._casterUnitId = unit?.id ?? null;
+                if (unit) unit._matchStorms = (unit._matchStorms || 0) + 1;
                 state.activeWeather.push(weather);
                 addLog(`${unitDisplayName(unit)} casts ${spell.name}! A ${wDef.label} ${wDef.icon} forms at ${coordLabel(x, y)}. ${wDef.desc}`);
                 queueAnnouncement(`${wDef.icon} ${wDef.label}`, `Summoned by ${unitDisplayName(unit)}`, 'weather');
@@ -46062,6 +46343,7 @@
                     clearStatus(_ct, key);
                     cleansedCount++;
                 }
+                if (cleansedCount > 0) unit._matchCleanses = (unit._matchCleanses || 0) + cleansedCount;
                 addLog(`${unitDisplayName(unit)} cleanses ${unitDisplayName(_ct)}! Removed ${cleansedCount} debuff${cleansedCount !== 1 ? 's' : ''}.`);
                 showFloatingTextForUnit(_ct, `✨ CLEANSED`, 'heal', { durationMs: 1200 });
                 flashUnit(_ct.id, 'heal');

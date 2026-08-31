@@ -90,6 +90,7 @@ function backfillProfile(p) {
     const grant = (typeof window !== 'undefined' && typeof window.ACCT_FREE_TOKENS === 'number') ? window.ACCT_FREE_TOKENS : 1;
     if ((p.account.freeTokens || 0) < grant) p.account.freeTokens = grant;
   }
+  ensureProgress(p);
   return p;
 }
 
@@ -149,6 +150,39 @@ function createProfile(username) {
     }
   }
   return null;
+}
+
+/* Guarantee an active profile slot. Historically, with no slot selected every
+   post-match save (achievements, career, history, gold) SILENTLY dropped its
+   data — that's why "Perfect Victory" re-toasted on every win and the career
+   counter sat at 0/14 forever. Runs at boot, after migrateOldData(): activate
+   an existing slot if any is populated, otherwise create slot-named "Player"
+   (the profile screen offers rename). */
+function ensureActiveProfile() {
+  try {
+    if (getActiveProfileIndex() === null || !getActiveProfile()) {
+      let activated = false;
+      for (let i = 0; i < MAX_PROFILES; i++) {
+        if (loadProfile(i)) { setActiveProfileIndex(i); activated = true; break; }
+      }
+      if (!activated && createProfile('Player') !== null) window._profileNeedsRename = true;
+    }
+    // Adopt any unlocks that landed in the no-profile fallback store (union,
+    // profile entries win), then clear it.
+    const rawFb = localStorage.getItem('ew-achievements-global');
+    const idx = getActiveProfileIndex();
+    if (rawFb && idx !== null) {
+      const p = loadProfile(idx);
+      if (p) {
+        try {
+          const fb = JSON.parse(rawFb);
+          p.achievements = Object.assign({}, fb, p.achievements || {});
+          saveProfile(idx, p);
+        } catch {}
+        localStorage.removeItem('ew-achievements-global');
+      }
+    }
+  } catch (e) { console.error('ensureActiveProfile failed:', e); }
 }
 
 function isValidUsername(s) {
@@ -311,17 +345,125 @@ function profileSaveCareerStats(stats) {
   saveProfile(idx, p);
 }
 
+/* Achievement store fallback: if no profile slot is active (should not happen
+   post-ensureActiveProfile, but belt and braces) persist to a global key
+   instead of silently dropping the unlock. */
+const ACH_FALLBACK_KEY = 'ew-achievements-global';
+
 function profileLoadAchievements() {
   const p = getActiveProfile();
-  return p ? p.achievements : {};
+  if (p) return p.achievements;
+  try {
+    const raw = localStorage.getItem(ACH_FALLBACK_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
 }
 
 function profileSaveAchievements(achievements) {
   const idx = getActiveProfileIndex();
+  const p = idx !== null ? loadProfile(idx) : null;
+  if (!p) {
+    try { localStorage.setItem(ACH_FALLBACK_KEY, JSON.stringify(achievements)); } catch {}
+    return;
+  }
+  p.achievements = achievements;
+  saveProfile(idx, p);
+}
+
+/* ── Tiered achievement progress store (ACHIEVEMENTS_PLAN.md Phase 1) ──────
+   Schema v2. Counters are monotonic {pvp, cpu, legacy} bags (legacy = the
+   one-time seed from pre-progress career stats), champs is per-race sub-bags,
+   unlocked maps `${lineId}.${tierIdx}` → unlock timestamp. Everything only
+   ever grows, so a future server sync can merge with per-key max/union
+   (G-counter CRDT — see plan §2.3/§7). */
+function defaultProgress() {
+  return { v: 2, counters: {}, champs: {}, records: {}, unlocked: {} };
+}
+
+function ensureProgress(p) {
+  if (!p) return p;
+  if (p.progress && p.progress.v >= 2) return p;
+  const prog = defaultProgress();
+
+  // Seed from career aggregates so long-time players don't restart at zero.
+  // Seeds land in the 'legacy' bucket: they count toward tiers but stay out
+  // of both the future PvP and vs-CPU record boards.
+  const seed = (metric, n) => {
+    n = Math.max(0, Math.round(n || 0));
+    if (n > 0) prog.counters[metric] = { pvp: 0, cpu: 0, legacy: n };
+  };
+  const career = p.career || {};
+  seed('kills', career.totalKills);
+  seed('critsLanded', career.totalCrits);
+  seed('attacksDodged', career.totalDodges);
+  seed('wins_total', career.wins);
+  seed('bestStreak', career.bestWinStreak);
+  for (const race of Object.keys(p.raceStats || {})) {
+    const w = Math.max(0, Math.round((p.raceStats[race] || {}).wins || 0));
+    if (w > 0) prog.champs[race] = { wins: { pvp: 0, cpu: 0, legacy: w } };
+  }
+
+  // Grandfather the legacy one-shot achievements (they keep working through
+  // their own store too — this mirror is for the future unified trophy case).
+  for (const [id, a] of Object.entries(p.achievements || {})) {
+    const ts = a && a.unlockedAt ? (Date.parse(a.unlockedAt) || Date.now()) : Date.now();
+    prog.unlocked['feat_' + id] = ts;
+  }
+
+  // Pre-mark tiers the seed already crosses, SILENTLY — otherwise a
+  // veteran's first post-update match ends under a toast avalanche.
+  try {
+    const cat = (typeof window !== 'undefined' && Array.isArray(window.ACH_CATALOG)) ? window.ACH_CATALOG : [];
+    const now = Date.now();
+    for (const line of cat) {
+      const c = prog.counters[line.metric];
+      if (!c) continue;
+      const total = line.hw ? Math.max(c.pvp, c.cpu, c.legacy) : c.pvp + c.cpu + c.legacy;
+      (line.tiers || []).forEach((th, i) => {
+        if (total >= th) prog.unlocked[line.id + '.' + i] = now;
+      });
+    }
+    const champLines = (typeof window !== 'undefined' && Array.isArray(window.ACH_CHAMP_LINES)) ? window.ACH_CHAMP_LINES : [];
+    for (const race of Object.keys(prog.champs)) {
+      for (const spec of champLines) {
+        const c = prog.champs[race][spec.metric];
+        if (!c) continue;
+        const total = c.pvp + c.cpu + c.legacy;
+        (spec.tiers || []).forEach((th, i) => {
+          if (total >= th) prog.unlocked['champ.' + race + '.' + spec.metric + '.' + i] = now;
+        });
+      }
+    }
+  } catch {}
+
+  p.progress = prog;
+  return p;
+}
+
+function profileLoadProgress() {
+  const idx = getActiveProfileIndex();
+  if (idx === null) return defaultProgress();
+  const p = loadProfile(idx);
+  if (!p) return defaultProgress();
+  if (!p.progress || p.progress.v < 2) {
+    ensureProgress(p);
+    saveProfile(idx, p);
+  }
+  // Shape guards for hand-edited / partial blobs.
+  const prog = p.progress;
+  if (!prog.counters) prog.counters = {};
+  if (!prog.champs) prog.champs = {};
+  if (!prog.records) prog.records = {};
+  if (!prog.unlocked) prog.unlocked = {};
+  return prog;
+}
+
+function profileSaveProgress(progress) {
+  const idx = getActiveProfileIndex();
   if (idx === null) return;
   const p = loadProfile(idx);
   if (!p) return;
-  p.achievements = achievements;
+  p.progress = progress;
   saveProfile(idx, p);
 }
 
@@ -630,11 +772,14 @@ window.ProfileSystem = {
   loadProfile, saveProfile, deleteProfile,
   getActiveProfileIndex, setActiveProfileIndex,
   getActiveProfile, createProfile, isValidUsername,
-  migrateOldData, defaultProfile, backfillProfile,
+  migrateOldData, ensureActiveProfile, defaultProfile, backfillProfile,
   loadCareerStats: profileLoadCareerStats,
   saveCareerStats: profileSaveCareerStats,
   loadAchievements: profileLoadAchievements,
   saveAchievements: profileSaveAchievements,
+  loadProgress: profileLoadProgress,
+  saveProgress: profileSaveProgress,
+  defaultProgress, ensureProgress,
   updatePostMatch: profileUpdatePostMatch,
   MAX_PROFILES, MAX_MATCH_HISTORY, MAX_ELO_HISTORY,
   MAX_UNIT_BUILDS, MAX_TEAM_PRESETS,
@@ -670,14 +815,17 @@ function buildProfileMatchSummary() {
   score.p1 = viewerUnits.reduce((s, u) => s + (u._matchKills || 0), 0);
   score.p2 = oppUnits.reduce((s, u) => s + (u._matchKills || 0), 0);
 
-  let winCond = 'elimination';
+  /* Store the ENGINE's win-condition string verbatim ('wipeout',
+     'tower_destroyed', 'hourglasses_collected', 'nexus_dominance',
+     'most_kills', 'arena_composite', …). The old code here mapped against a
+     set of strings the engine never emits ('tower_destruction',
+     'score_limit', …), so nearly every history entry recorded 'elimination'.
+     Display-mapping belongs in the UI, not the record. */
+  let winCond = 'unknown';
   if (typeof getCurrentWinCondition === 'function') {
-    const wc = getCurrentWinCondition();
-    if (wc === 'tower_destruction') winCond = 'nexus';
-    else if (wc === 'score_limit') winCond = 'score';
-    else if (wc === 'stalemate' || wc === 'sudden_death') winCond = 'sudden_death';
-    else if (wc === 'time_limit') winCond = 'time';
-    else winCond = 'elimination';
+    winCond = getCurrentWinCondition() || 'unknown';
+  } else if (st._winCondition) {
+    winCond = st._winCondition;
   }
 
   const units = viewerUnits.map(u => {
@@ -1839,6 +1987,7 @@ window._unmountCommunityMaps = function() {
 };
 
 migrateOldData();
+ensureActiveProfile();
 
 try {
   serverAutoLogin();

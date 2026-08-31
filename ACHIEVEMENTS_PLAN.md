@@ -34,13 +34,22 @@ a clear story for Steam.
 ## 0. Direct answers to the questions in the request
 
 **"It constantly says Flawless Victory when the games definitely weren't flawless."**
-Two unrelated things stack on the victory screen and only one is an achievement:
-(a) a *gold-bonus chip* labeled `Flawless ×1.25` that appears whenever you win
-without losing a single unit (battle.js:25637, condition data.js:9170 — "no
-friendly deaths", which is easy vs CPU), and (b) the `Perfect Victory`
-*achievement* which re-unlocks **every single win** because of a persistence bug
-(§1.2). Neither means "you played perfectly"; (a) means "none of your units
-died", (b) is the same condition plus the bug. Fix plan in §1.2 / Phase 0.
+*(Corrected 2026-08-31 — the user's skepticism was right; the original answer
+here was incomplete.)* Two things stack on the victory screen and BOTH were
+bugged:
+(a) The *gold-bonus chip* labeled `Flawless ×1.25` claimed "no friendly unit
+died" but tested it by scanning `u.dead` **at match end**
+(battle.js `_accountBankMatchGold`). Every economy mode (arena/tdm/clash) has
+respawns — `defeatUnit` schedules `_respawnIn` and `processRespawns` revives
+the unit with `dead = false` at full HP — so any unit that died and respawned
+passed the check. **The chip fired on matches with any number of friendly
+deaths, as long as nobody was mid-respawn at the final buzzer.** Fixed: the
+condition now requires the per-life counter `_matchDeaths` (incremented in
+`defeatUnit`, never cleared by respawn) to sum to 0 across the viewer's team,
+and the chip is renamed `Deathless ×1.25`.
+(b) The `Perfect Victory` *achievement* had the SAME respawn-blind check
+(`aliveUnitsFor(...)` count) **plus** the persistence bug (§1.2) that made it
+re-toast every win. Both fixed.
 
 **"It says x/14 achievements but doesn't say what they are."**
 There ARE 14 defined achievements with names and descriptions
@@ -141,6 +150,13 @@ Also already in place and directly reusable:
   shaped for event tracking.
 
 ### 1.2 The bugs (fix these before building anything — Phase 0)
+
+> **Status 2026-08-31: Phase 0 implemented.** All seven items below are fixed,
+> plus an eighth found during implementation: **the "no friendly deaths" test
+> itself was respawn-blind** (see §0 first answer). Both the economy chip and
+> `perfectVictory` now sum per-life `_matchDeaths` instead of scanning `u.dead`
+> at match end, and the wipeout chip / `ace` key on
+> `state._winCondition === 'wipeout'`.
 
 1. **Achievements never persist without an active profile slot.**
    `profileSaveAchievements` silently bails when `getActiveProfileIndex()` is
@@ -771,6 +787,35 @@ In-game catalog is unlimited; Steam gets the *shape* of it:
 Each phase = deliverable full files in chat per RULE #1, `npm test` before
 delivery, index.html `?v=` bump per RULE #1b, and a RULE #2 "what does the
 guest see?" pass. No playtesting unless explicitly requested (RULE #1c).
+
+> **Status 2026-08-31: Phases 0 and 1 implemented.** Phase 1 notes / deliberate
+> deviations from the design above:
+>
+> - **No `state._achTally` / live `trackAch` yet.** Every Phase-1 metric turned
+>   out to be foldable from per-unit `_match*` counters at commit time (several
+>   new ones were added: `_matchBackstabs`, `_matchOppStrikes`,
+>   `_matchCleanses`, `_matchSuperBanes`, `_matchDisplacements`,
+>   `_matchStorms`, `_matchHealCasts`, `_matchScans`, `_matchHourglasses`,
+>   `_matchFirstBloods`, `_matchTrueDodges`). Per-unit counters ride online
+>   unit snapshots automatically, so the guest commits its own side with ZERO
+>   new relay code — the tally becomes necessary only for Phase 2's live
+>   mid-match popups.
+> - **Commit guard keys on match identity** (`matchNumber:startTime`, both
+>   synced) instead of a reset-at-boot flag — the online guest never runs the
+>   local match-boot paths.
+> - Commit points live in `finalizeMatch` (also reached by Strike-RT via
+>   `checkWin`), `finalizeCampaignBattle`, and `_mdEndRun`.
+> - `profile.progress` v2 ships as designed (§3.5), with the career seed in a
+>   `legacy` bucket and seed-crossed tiers pre-unlocked silently (no toast
+>   avalanche on a veteran's first match).
+> - Implemented catalog: 33 profile-wide lines + the 3 per-champ ladders.
+>   **Deferred to later phases:** `tilesChanged`, `flyersGrounded` (needs
+>   `opts.byUnit` plumbing), `comebacks` (§4.5.1 armed-flag), challenge/
+>   survival lines, records (§5), tier gold rewards (§4.7), champion-mastery
+>   meta line, profile UI ladders (§6.3), server sync (§7).
+> - Interim UI: tier unlocks toast in-match (capped at 4 + "+N more") and
+>   render as cards on the victory screen; the full trophy-case rework stays
+>   Phase 2/4.
 
 | phase | content | files touched | size |
 |---|---|---|---|

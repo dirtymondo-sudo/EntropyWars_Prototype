@@ -9175,6 +9175,74 @@ function computeAccountMatchGold(opts) {
   };
 }
 
+// ── ACHIEVEMENT CATALOG (2026-08-31, ACHIEVEMENTS_PLAN.md Phase 1) ────────
+// Registry only — data.js is the registry home so achievements.test.js can
+// validate it headlessly via load-data.js. Runtime (counter folding at match
+// commit, tier evaluation, toasts) lives in battle.js; persistence
+// (profile.progress) lives in profile.js.
+//
+// Each line: { id, metric, cat, icon, name, desc, tiers } — `metric` names a
+// counter in profile.progress.counters (stored {pvp, cpu, legacy}); tiers are
+// strictly-ascending thresholds evaluated against the SUM of the buckets
+// (offline play is first-class). `hw: true` marks high-water metrics (best
+// streak): evaluated on the MAX bucket, merged by max() instead of addition.
+// Unlock keys in profile.progress.unlocked are `${id}.${tierIdx}`.
+const ACH_TIER_NAMES  = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+// Bronze / Silver / Gold / Diamond / Entropic (+ Entropic again for 6-step)
+const ACH_TIER_COLORS = ['#cd7f32', '#c0c0c0', '#ffd700', '#b9f2ff', '#b06af0', '#b06af0'];
+
+const ACH_CATALOG = [
+  // ── Combat ──────────────────────────────────────────────────────────────
+  { id: 'kills',           metric: 'kills',           cat: 'combat',      icon: '⚔️', name: 'Reaper',            desc: 'Defeat enemy units',                       tiers: [1, 10, 100, 500, 1000, 10000] },
+  { id: 'critsLanded',     metric: 'critsLanded',     cat: 'combat',      icon: '⚡', name: 'Critical Mass',     desc: 'Land critical hits',                       tiers: [1, 10, 100, 500, 1000, 10000] },
+  { id: 'attacksDodged',   metric: 'attacksDodged',   cat: 'combat',      icon: '💨', name: 'Phantom Step',      desc: 'Dodge enemy attacks',                      tiers: [1, 10, 100, 500, 1000, 10000] },
+  { id: 'backstabs',       metric: 'backstabs',       cat: 'combat',      icon: '🗡️', name: 'Shadow Dancer',     desc: 'Strike enemies from behind',               tiers: [1, 10, 100, 500, 1000] },
+  { id: 'oppStrikes',      metric: 'oppStrikes',      cat: 'combat',      icon: '⚔️', name: 'No Escape',         desc: 'Punish retreats with opportunity strikes', tiers: [1, 10, 100, 500, 1000] },
+  { id: 'followUps',       metric: 'followUps',       cat: 'combat',      icon: '🤜', name: 'Pincer Attack',     desc: 'Land follow-up attacks with an ally',      tiers: [1, 10, 100, 500, 1000] },
+  { id: 'combosDone',      metric: 'combosDone',      cat: 'combat',      icon: '🤝', name: 'In Concert',        desc: 'Execute combo attacks',                    tiers: [1, 10, 100, 500, 1000] },
+  { id: 'superBanes',      metric: 'superBanes',      cat: 'combat',      icon: '🧪', name: 'Bane Sommelier',    desc: 'Hit type weaknesses with banes',           tiers: [1, 10, 100, 500, 1000] },
+  { id: 'firstBloods',     metric: 'firstBloods',     cat: 'combat',      icon: '🩸', name: 'Pathfinder of Ruin', desc: 'Draw first blood in a match',             tiers: [1, 10, 100, 500, 1000] },
+  // ── Support ─────────────────────────────────────────────────────────────
+  { id: 'statusesApplied', metric: 'statusesApplied', cat: 'support',     icon: '🌀', name: 'Alchemist of Fate', desc: 'Apply status effects',                     tiers: [1, 10, 100, 500, 1000, 10000] },
+  { id: 'buffsApplied',    metric: 'buffsApplied',    cat: 'support',     icon: '✨', name: 'Warden',            desc: 'Grant buffs',                              tiers: [1, 10, 100, 500, 1000, 10000] },
+  { id: 'debuffsApplied',  metric: 'debuffsApplied',  cat: 'support',     icon: '☠️', name: 'Hexweaver',         desc: 'Land debuffs',                             tiers: [1, 10, 100, 500, 1000, 10000] },
+  { id: 'healsApplied',    metric: 'healsApplied',    cat: 'support',     icon: '💚', name: 'Lifeline',          desc: 'Heal allied units',                        tiers: [1, 10, 100, 500, 1000] },
+  { id: 'cleansesDone',    metric: 'cleansesDone',    cat: 'support',     icon: '🕊️', name: 'Purifier',          desc: 'Cleanse debuffs from allies',              tiers: [1, 10, 100, 500, 1000] },
+  // ── Battlefield manipulation (the identity category) ────────────────────
+  { id: 'entropyStrikes',  metric: 'entropyStrikes',  cat: 'battlefield', icon: '🌌', name: 'Agent of Entropy',  desc: 'Unleash Entropy Strikes',                  tiers: [1, 10, 100, 500, 1000] },
+  { id: 'stormsSummoned',  metric: 'stormsSummoned',  cat: 'battlefield', icon: '🌪️', name: 'Weathermancer',     desc: 'Summon weather systems',                   tiers: [1, 10, 100, 500, 1000] },
+  { id: 'displacements',   metric: 'displacements',   cat: 'battlefield', icon: '🎳', name: 'Force of Nature',   desc: 'Displace enemy units',                     tiers: [1, 10, 100, 500, 1000] },
+  // ── Objectives ──────────────────────────────────────────────────────────
+  { id: 'tilesScanned',    metric: 'tilesScanned',    cat: 'objectives',  icon: '📡', name: 'Cartographer',      desc: 'Scan battlefield tiles',                   tiers: [1, 10, 100, 500, 1000, 10000] },
+  { id: 'hourglasses',     metric: 'hourglasses',     cat: 'objectives',  icon: '⏳', name: 'Sands of Time',     desc: 'Collect hourglasses',                      tiers: [1, 10, 50, 100, 500, 1000] },
+  { id: 'wins_hourglass',  metric: 'wins_hourglass',  cat: 'objectives',  icon: '⏳', name: 'Timekeeper',        desc: 'Win by collecting the hourglasses',        tiers: [1, 10, 100, 500, 1000] },
+  { id: 'wins_wipeout',    metric: 'wins_wipeout',    cat: 'objectives',  icon: '💀', name: 'Annihilator',       desc: 'Win by wiping the enemy team',             tiers: [1, 10, 100, 500, 1000] },
+  { id: 'wins_tower',      metric: 'wins_tower',      cat: 'objectives',  icon: '🗼', name: 'Cube Breaker',      desc: 'Win by destroying the Black Cube',         tiers: [1, 10, 100, 500, 1000] },
+  { id: 'wins_nexus',      metric: 'wins_nexus',      cat: 'objectives',  icon: '🔮', name: 'Nexus Sovereign',   desc: 'Win by Nexus control',                     tiers: [1, 10, 100, 500, 1000] },
+  { id: 'wins_composite',  metric: 'wins_composite',  cat: 'objectives',  icon: '🏛️', name: 'On Points',         desc: 'Win by aggregate score',                   tiers: [1, 10, 100, 500, 1000] },
+  { id: 'wins_suddenDeath', metric: 'wins_suddenDeath', cat: 'objectives', icon: '⚡', name: 'Clutch',           desc: 'Win in sudden death',                      tiers: [1, 10, 50, 100] },
+  { id: 'wins_flags',      metric: 'wins_flags',      cat: 'objectives',  icon: '🚩', name: 'Flagbearer',        desc: 'Win by flag captures',                     tiers: [1, 10, 100, 500] },
+  // ── Modes ───────────────────────────────────────────────────────────────
+  { id: 'wins_total',      metric: 'wins_total',      cat: 'modes',       icon: '🏆', name: 'Conqueror',         desc: 'Win matches — any mode',                   tiers: [1, 10, 100, 500, 1000, 10000] },
+  { id: 'wins_arena',      metric: 'wins_arena',      cat: 'modes',       icon: '🏰', name: 'Arena Champion',    desc: 'Win Arena matches',                        tiers: [1, 10, 100, 500, 1000] },
+  { id: 'wins_tdm',        metric: 'wins_tdm',        cat: 'modes',       icon: '💀', name: 'Deathmatch Legend', desc: 'Win Team Deathmatch matches',              tiers: [1, 10, 100, 500, 1000] },
+  { id: 'wins_clash',      metric: 'wins_clash',      cat: 'modes',       icon: '🎴', name: 'Clash Master',      desc: 'Win Clash battles',                        tiers: [1, 10, 100, 500] },
+  { id: 'wins_simul',      metric: 'wins_simul',      cat: 'modes',       icon: '♟️', name: 'Simul Grandmaster', desc: 'Win Simul matches',                        tiers: [1, 10, 100, 500] },
+  { id: 'wins_gauntlet',   metric: 'wins_gauntlet',   cat: 'modes',       icon: '⚔️', name: 'Gauntlet Runner',   desc: 'Win Gauntlet matches',                     tiers: [1, 10, 100, 500] },
+  { id: 'md_clears',       metric: 'md_clears',       cat: 'modes',       icon: '🗝️', name: 'Depthdelver',       desc: 'Clear Mystery Dungeon runs',               tiers: [1, 5, 10, 25] },
+  { id: 'bestStreak',      metric: 'bestStreak',      cat: 'modes',       icon: '🔥', name: 'Perpetual Motion',  desc: 'Best win streak',                          tiers: [3, 5, 10, 15, 20], hw: true },
+];
+
+// Per-champ mastery ladders — applied to EVERY race key in AVAILABLE_RACES
+// (96 lines × 3 would bloat the catalog; the spec is the source of truth).
+// Progress lives in profile.progress.champs[race][metric] ({pvp,cpu,legacy});
+// unlock keys are `champ.${race}.${metric}.${tierIdx}`.
+const ACH_CHAMP_LINES = [
+  { metric: 'kills',     name: 'Kills',           icon: '⚔️', tiers: [1, 10, 100, 500, 1000] },
+  { metric: 'wins',      name: 'Wins',            icon: '🏆', tiers: [1, 10, 100, 500, 1000] },
+  { metric: 'deathless', name: 'Deathless Wins',  icon: '✨', tiers: [1, 10, 50, 100] },
+];
+
 const MAP_LAYOUT_PRESETS = {
     prebuilt_custommap: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 19, label: 'Earth', baseTerrain: 'grass_2' }, buffer2: null, below: null },
@@ -13081,6 +13149,7 @@ Object.assign(window, {
   ACCT_UNIT_PRICE, ACCT_BASE_COMPLETE, ACCT_WIN_MULT, ACCT_FLAWLESS_MULT,
   ACCT_WIPEOUT_MULT, ACCT_STARTING_GOLD, ACCT_FREE_TOKENS, ACCT_MATCH_GOLD_CAP,
   ACCT_STARTER_UNITS, ACCT_PVP_MODES, isUnitUnlocked, computeAccountMatchGold,
+  ACH_CATALOG, ACH_CHAMP_LINES, ACH_TIER_NAMES, ACH_TIER_COLORS,
   /* spell tree (Tree of Life selector) */
   CLASS_TREE, RACE_TREE, classHasSpellTree, getClassTreeSpells, getRaceTreeSpells,
   TREE_RING_MP_COSTS, buildTreeRingIndex, getTreeRingCost, applyTreeRingCosts, snapCostToLadder,

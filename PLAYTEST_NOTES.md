@@ -9112,3 +9112,37 @@ pop fired at frame 0. Fixes (battle.js/state.js/online.js):
   delayMs=atMs); crash-through 💥 CRASH! coincides with the wall visibly
   breaking — left alone. _slideSlamDamage stays synchronous ON PURPOSE: the
   bounce loop's dead-checks depend on it (deferring would change mechanics).
+
+## Achievements spine (2026-08-31 — ACHIEVEMENTS_PLAN.md Phases 0+1)
+- **The "Flawless" mystery is SOLVED and it was a real bug, not a persistence
+  artifact**: every economy mode (arena/tdm/clash) has respawns — defeatUnit
+  schedules `_respawnIn`, processRespawns revives with `dead=false` — so the
+  old end-of-match `u.dead` scans in `_accountBankMatchGold` and the
+  perfectVictory check missed every death that respawned. The honest signal
+  is per-life `u._matchDeaths` (incremented in defeatUnit map.js, NEVER
+  cleared by respawn). Both now sum `_matchDeaths===0`; the chip is renamed
+  "Deathless ×1.25". If you ever add a new "no deaths" condition, use
+  `_matchDeaths`, not `dead` flags.
+- Profile persistence: `ensureActiveProfile()` (profile.js, runs at boot
+  after migrateOldData) guarantees an active slot — before this, EVERY
+  post-match save silently dropped when no profile was selected (the 0/14 +
+  re-toasting-achievements bug).
+- Tiered achievements: catalog in data.js (`ACH_CATALOG`/`ACH_CHAMP_LINES`,
+  validated by achievements.test.js), runtime `commitAchProgress()` in
+  battle.js (called from finalizeMatch / finalizeCampaignBattle / _mdEndRun),
+  store `profile.progress` v2 (profile.js, career seeds in a `legacy`
+  bucket). Everything folds from per-unit `_match*` counters at commit — NO
+  live tally, NO new relay events; the guest gets counters via unit
+  state-sync and commits its own side in its finalizeMatch call (online.js
+  already invokes finalizeMatch when a synced snapshot carries a winner).
+  The once-per-match guard keys on `matchNumber:startTime` (both synced)
+  because the guest never runs startMatch.
+- New per-unit counters (auto-reset with unit rebuild, ride state-sync):
+  `_matchBackstabs, _matchOppStrikes, _matchCleanses, _matchSuperBanes,
+  _matchDisplacements, _matchStorms, _matchHealCasts, _matchScans,
+  _matchHourglasses, _matchFirstBloods, _matchTrueDodges` (true dodge =
+  excludes `_blindMiss`).
+- `state._winCondition` engine strings are now stored VERBATIM in match
+  history (profile.js buildProfileMatchSummary) — the old mapping compared
+  against strings the engine never emits and recorded 'elimination' for
+  nearly everything. Do display-mapping in the UI (`_winCondLabels`).
