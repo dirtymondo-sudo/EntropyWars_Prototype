@@ -1647,6 +1647,14 @@ const ThreeRenderer = (function () {
         'debuff':        { color: '#d68cff', stroke: '#22103a', fontSize: 37, label: true },
         'status':        { color: '#ffd86b', stroke: '#3a2600', fontSize: 36, label: true },
         'neutral':       { color: '#f0f0f0', stroke: '#101010', fontSize: 37, label: true },
+        /* Personal-record damage numbers (ACHIEVEMENTS_PLAN §5.2 Phase 3):
+           'record' = the hit that breaks the viewer's Biggest Hit board —
+           ~1.6× the base damage size with a white→gold gradient; the display
+           layer (battle.js) also extends its float duration and shakes the
+           board. 'record-near' = within 90% of the record — a subtle golden
+           shimmer at near-normal size, no fanfare. */
+        'record':        { color: '#ffe27a', grad: ['#ffffff', '#ffe27a', '#e0a000'], stroke: '#3a2600', fontSize: 74 },
+        'record-near':   { color: '#ffd86b', grad: ['#fff8dc', '#ffd86b', '#c88a00'], stroke: '#3a2600', fontSize: 50 },
     };
 
     var hitFxGroup = null;
@@ -17521,7 +17529,7 @@ const ThreeRenderer = (function () {
         var wx = tileX * ts + ts / 2 + jx;
         var wz = tileY * ts + ts / 2 + jy;
 
-        var isBig = (kind === 'crit' || kind === 'overkill' || kind === 'levelup' || kind === 'laststd' || kind === 'total');
+        var isBig = (kind === 'crit' || kind === 'overkill' || kind === 'levelup' || kind === 'laststd' || kind === 'total' || kind === 'record');
 
         var tw = {
             id: ++_floatIdCounter,

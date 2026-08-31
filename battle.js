@@ -8192,6 +8192,25 @@
                 }
             }
 
+            /* Record juice (plan §5.2 #1): a damage number that beats the
+               VIEWER's own Biggest Hit board grows, glows and kicks the
+               screen; ≥90% of the best gets only a subtle golden shimmer.
+               Decided HERE at the display layer, from {_dmgAmt,_dmgBy} opts
+               (which ride the online floating-text relay), so host and guest
+               each style their OWN record moments — never each other's
+               (RULE #2). Fresh, unseeded boards stay silent. */
+            if (opts._dmgAmt > 0 && typeof _recFloatCheck === 'function') {
+                const _rk = _recFloatCheck(opts._dmgAmt, opts._dmgBy);
+                if (_rk === 'record') {
+                    kind = 'record';
+                    opts = { ...opts, durationMs:
+                        Math.round((Number(opts.durationMs) || (state.animationsDisabled ? 500 : actionMs(900))) * 1.5) };
+                    shakeBoard('hard');
+                } else if (_rk === 'near') {
+                    kind = 'record-near';
+                }
+            }
+
             const durationMs = Math.max(400, Number(opts.durationMs) || (state.animationsDisabled ? 500 : actionMs(900)));
             const jitterX = Number.isFinite(opts.jitterX) ? opts.jitterX : (Math.random() * 18 - 9);
             const jitterY = Number.isFinite(opts.jitterY) ? opts.jitterY : (Math.random() * 10 - 5);
@@ -8707,6 +8726,11 @@
             if (!killer || killer.dead) return;
             killer._killStreak = (killer._killStreak || 0) + 1;
             killer._matchKills = (killer._matchKills || 0) + 1;
+            /* Records (plan §5): _killStreak resets on death — keep the
+               match-long high-water for the "Kill Streak" record board. */
+            if (killer._killStreak > (killer._matchBestKillStreak || 0)) {
+                killer._matchBestKillStreak = killer._killStreak;
+            }
 
             killer._turnKills = (killer._turnKills || 0) + 1;
 
@@ -9542,6 +9566,7 @@
                 if (state.winner === null || state.winner === undefined || state.winner === 0) {
                     window._lastAchTierUnlocks = []; // no contest — don't show a stale list
                     window._lastAchDeltas = {};      // …nor stale "almost there" rows
+                    window._lastRecordsBroken = [];
                     return;
                 }
                 _achCommittedMatchKey = _matchKey;
@@ -9667,12 +9692,18 @@
                     window.ProfileSystem.creditLocalGold(_achGold);
                 }
 
+                /* Personal records (§5): fold this match's bests into the
+                   bucket's board. Standard matches only (the helper gates on
+                   kind); a blank board seeds silently. */
+                const recordsBroken = _recCommitRecords(prog, viewer, bucket, kind, won, mine);
+
                 window.ProfileSystem.saveProgress(prog);
                 /* Viewer-local (NOT on state — must never ride state-sync):
-                   the end-of-match screens read these to render unlock cards
-                   and the "Almost there" progress rows. */
+                   the end-of-match screens read these to render unlock cards,
+                   the "Records Broken" rows and the "Almost there" progress. */
                 window._lastAchTierUnlocks = newly;
                 window._lastAchDeltas = folded.deltas;
+                window._lastRecordsBroken = recordsBroken;
                 _achAnnounceUnlocks(newly);
             } catch (e) { console.error('[ACH] commit failed:', e); }
         }
@@ -9759,6 +9790,31 @@
                         html += `<div class="ach-card"><span class="ach-card-icon">➕</span><span class="ach-card-main"><span class="ach-card-name">${unlocks.length - 10} more — Profile → Achievements</span></span></div>`;
                     }
                     html += '</div></div>';
+                }
+
+                /* Records broken (§6.2 row 2): old → new with a count-up.
+                   Match-end records (fastest win, most kills…) get their only
+                   fanfare here — they can't pop mid-match. */
+                const recs = window._lastRecordsBroken || [];
+                if (recs.length) {
+                    html += '<div class="vic-achievements"><div class="vic-ach-title">📊 Records Broken</div><div class="rec-broken-list">';
+                    for (const r of recs.slice(0, 8)) {
+                        html += `<div class="rec-broken-row">`
+                            + `<span class="rec-broken-icon">${r.icon || '🏆'}</span>`
+                            + `<span class="rec-broken-main">`
+                            + `<span class="rec-broken-name">${escapeHtml(r.name)}</span>`
+                            + `<span class="rec-broken-desc">${escapeHtml(r.desc || '')}</span></span>`
+                            + `<span class="rec-broken-vals">${_recFmt(r, r.old)} → `
+                            + `<b class="rec-broken-new" data-fmt="${r.fmt || ''}" data-from="${r.old}" data-to="${r.val}">${_recFmt(r, r.val)}</b></span>`
+                            + `</div>`;
+                    }
+                    html += '</div></div>';
+                    /* The rows render the FINAL value as static text, so the
+                       count-up is pure decoration: if the overlay lands in
+                       the DOM after both attempts, the numbers are still
+                       right (data-run keeps the retry idempotent). */
+                    window.setTimeout(_recAnimateCountups, 400);
+                    window.setTimeout(_recAnimateCountups, 1600);
                 }
 
                 const prog = window.ProfileSystem.loadProgress();
@@ -10006,9 +10062,259 @@
                         });
                     }
                 }
+
+                /* Personal records ride the same beat (viewer-local, §5). */
+                _recLivePoll();
             } catch (e) { /* popups must never break the game loop */ }
         }
         window.setInterval(_achLivePoll, 2000);
+
+        /* ═══ PERSONAL RECORDS (ACHIEVEMENTS_PLAN.md §5, Phase 3) ═══════════
+           Defs live in data.js (ACH_RECORD_DEFS); storage is
+           profile.progress.records[id][bucket] = {value, ts, meta} with
+           separate pvp / cpu boards. Standard matches only — Challenge and
+           Mystery Dungeon have their own achievement ladders.
+
+           ONLINE PARITY (RULE #2): the engine (host) writes everything to
+           per-unit _match* fields and state._recDmg, both of which ride
+           normal state-sync. Record DETECTION is viewer-local — each client
+           compares the synced values against ITS OWN profile's boards — so
+           host and guest celebrate their own records with zero relay logic
+           (the one relay change: damage floats carry {_dmgAmt,_dmgBy} so the
+           guest's display layer can restyle its own record-breaking hits). */
+
+        /* Per-action damage burst (Biggest Hit): multi-hit spells, AoE sweeps
+           and combo exchanges sum into ONE total per acting unit; a 1.2s
+           settle window (same rhythm as _tallyDamage's "N TOTAL!" pop) is
+           the action boundary. DoT ticks are bleeds, not actions. */
+        const _recActionBursts = {};
+
+        function _recTrackDamage(src, target, dmg, damageType) {
+            try {
+                if (!src || !target || !(dmg > 0)) return;
+                if (state._mdRun || state.isCampaign) return;
+                if (typeof isEnemyUnit === 'function' ? !isEnemyUnit(src, target)
+                    : src.player === target.player) return;
+                if (damageType !== 'dot') {
+                    const b = _recActionBursts[src.id]
+                        || (_recActionBursts[src.id] = { total: 0, timer: null, unit: src });
+                    b.total += dmg;
+                    if (b.timer) clearTimeout(b.timer);
+                    b.timer = window.setTimeout(() => {
+                        delete _recActionBursts[src.id];
+                        _recSettleBurst(b);
+                    }, 1200);
+                }
+                /* Per-turn / per-round high-waters. Lazy key-reset instead of
+                   boundary hooks: the keys change when the turn/round/match
+                   identity changes, so no reset call sites are needed and the
+                   bags stay correct on the guest (which never runs the local
+                   turn-advance paths). */
+                const rd = state._recDmg || (state._recDmg = {});
+                const bag = rd[src.player] || (rd[src.player] = {});
+                const mk = (state.matchNumber || 0) + ':' + (state.startTime || 0);
+                const rk = mk + ':' + (state.round || 0);
+                const tk = rk + ':' + (state._blitzActiveUnitId || '');
+                if (bag.mk !== mk) { bag.mk = mk; bag.turnBest = 0; bag.roundBest = 0; }
+                if (bag.tk !== tk) { bag.tk = tk; bag.turn = 0; }
+                if (bag.rk !== rk) { bag.rk = rk; bag.round = 0; }
+                bag.turn += dmg;
+                bag.round += dmg;
+                if (bag.turn > (bag.turnBest || 0)) bag.turnBest = bag.turn;
+                if (bag.round > (bag.roundBest || 0)) bag.roundBest = bag.round;
+            } catch (e) { /* bookkeeping must never break combat */ }
+        }
+
+        function _recSettleBurst(b) {
+            if (b && b.unit && b.total > (b.unit._matchBiggestHit || 0)) {
+                b.unit._matchBiggestHit = b.total;
+            }
+        }
+
+        /* Commit runs before pending settle timers fire — fold them now. */
+        function _recFlushBursts() {
+            for (const k of Object.keys(_recActionBursts)) {
+                const b = _recActionBursts[k];
+                if (b.timer) clearTimeout(b.timer);
+                _recSettleBurst(b);
+                delete _recActionBursts[k];
+            }
+        }
+
+        function _recAvailable() {
+            return _achProgressAvailable() && Array.isArray(window.ACH_RECORD_DEFS);
+        }
+
+        /* Viewer-local per-match cache: the profile's current bests for the
+           match's bucket, loaded once (loadProgress parses the whole profile
+           blob — too heavy per poll tick / per damage float).
+           best[id] === null means the board is unseeded: the first completed
+           match seeds it SILENTLY (§5.2 #3 — no fanfare for "new record:
+           7 damage" on a fresh profile). */
+        let _recLive = null;   // { matchKey, bucket, best, shown, floatBest, banners }
+
+        function _recEnsureLive() {
+            if (!_recAvailable() || state._mdRun || state.isCampaign) return null;
+            const matchKey = (state.matchNumber || 0) + ':' + (state.startTime || 0);
+            if (_recLive && _recLive.matchKey === matchKey) return _recLive;
+            const prog = window.ProfileSystem.loadProgress();
+            const bucket = (typeof isOnlineMatch === 'function' && isOnlineMatch()) ? 'pvp' : 'cpu';
+            const best = {};
+            for (const def of window.ACH_RECORD_DEFS) {
+                const cur = prog.records && prog.records[def.id] && prog.records[def.id][bucket];
+                best[def.id] = cur ? cur.value : null;
+            }
+            _recLive = { matchKey, bucket, best, shown: {}, floatBest: 0, banners: 0 };
+            return _recLive;
+        }
+
+        /* This match's live record values for one side, from synced fields
+           only — works identically for host and guest. */
+        function _recLiveMatchValues(viewer) {
+            const mine = (state.units || []).filter(u => u.player === viewer && !u._mdNpc);
+            const mx = f => mine.reduce((m, u) => Math.max(m, u[f] || 0), 0);
+            const bag = (state._recDmg && state._recDmg[viewer]) || {};
+            /* Include the still-settling burst so the host's poll isn't 1.2s
+               late (the guest simply reads the settled synced field). */
+            let burst = 0;
+            for (const k of Object.keys(_recActionBursts)) {
+                const b = _recActionBursts[k];
+                if (b.unit && b.unit.player === viewer && b.total > burst) burst = b.total;
+            }
+            return {
+                biggestHit: Math.max(mx('_matchBiggestHit'), burst),
+                dmgTurn: bag.turnBest || 0,
+                dmgRound: bag.roundBest || 0,
+                killStreak: mx('_matchBestKillStreak'),
+                biggestOverkill: mx('_matchBiggestOverkill'),
+            };
+        }
+
+        function _recFmt(def, v) {
+            if (def && def.fmt === 'ms') {
+                const s = Math.max(0, Math.round((Number(v) || 0) / 1000));
+                return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+            }
+            return Math.round(Number(v) || 0).toLocaleString();
+        }
+
+        /* Display-layer check for a damage float (plan §5.2 #1): 'record' =
+           this single number alone beats the viewer's Biggest Hit best (the
+           action total is ≥ the single hit, so the record is truly falling
+           right now); 'near' = ≥90% of the best → subtle shimmer, no banner. */
+        function _recFloatCheck(amt, byPlayer) {
+            try {
+                if (!(amt > 0) || state.winner) return null;
+                if (typeof getViewerPlayer !== 'function' || byPlayer !== getViewerPlayer()) return null;
+                const live = _recEnsureLive();
+                if (!live) return null;
+                const best = live.best.biggestHit;
+                if (!(best > 0)) return null;
+                const eff = Math.max(best, live.floatBest || 0, live.shown.biggestHit || 0);
+                if (amt > eff) { live.floatBest = amt; return 'record'; }
+                if (amt >= eff * 0.9) return 'near';
+                return null;
+            } catch (e) { return null; }
+        }
+
+        /* Live record-break banners for the mid-match-measurable records.
+           Escalation discipline (§5.2 #3): one banner per poll beat (highest
+           priority record wins — defs are in priority order), and a hard cap
+           per match so a blowout can't wallpaper the screen. Match-end
+           records (fastest win, most kills…) never banner here — they get
+           their moment on the post-match Records panel. */
+        function _recLivePoll() {
+            const live = _recEnsureLive();
+            if (!live || live.banners >= 6) return;
+            const viewer = getViewerPlayer();
+            const vals = _recLiveMatchValues(viewer);
+            for (const def of window.ACH_RECORD_DEFS) {
+                if (def.end || def.min) continue;
+                const v = vals[def.id] || 0;
+                const best = live.best[def.id];
+                if (!(best > 0)) continue;                       // unseeded → silent
+                if (v <= best || v <= (live.shown[def.id] || 0)) continue;
+                live.shown[def.id] = v;
+                live.banners++;
+                if (typeof showCombatBanner === 'function') {
+                    showCombatBanner(`🏆 NEW RECORD — ${def.name}`,
+                        `${def.desc}: ${_recFmt(def, v)} (was ${_recFmt(def, best)})`,
+                        'record');
+                }
+                if (typeof playSfx === 'function') playSfx('levelUp');
+                break;
+            }
+        }
+
+        /* Match-commit: fold this match's values into the profile's record
+           boards. Returns the entries that beat a REAL prior best (seeding a
+           blank board is silent) for the post-match panel. */
+        function _recCommitRecords(prog, viewer, bucket, kind, won, mine) {
+            try {
+                if (kind !== 'match' || !_recAvailable()) return [];
+                _recFlushBursts();
+                if (!prog.records) prog.records = {};
+                const mx = f => mine.reduce((m, u) => Math.max(m, u[f] || 0), 0);
+                const sum = f => mine.reduce((s, u) => s + (u[f] || 0), 0);
+                const bag = (state._recDmg && state._recDmg[viewer]) || {};
+                const durationMs = state.startTime ? Date.now() - state.startTime : 0;
+                const vals = {
+                    biggestHit: mx('_matchBiggestHit'),
+                    dmgTurn: bag.turnBest || 0,
+                    dmgRound: bag.roundBest || 0,
+                    killStreak: mx('_matchBestKillStreak'),
+                    biggestOverkill: mx('_matchBiggestOverkill'),
+                    mostKills: sum('_matchKills'),
+                    mostHealing: sum('_trackHealDone'),
+                    towerDmg: sum('_matchTowerDmg'),
+                    /* Sanity floor: an opponent's 20-second forfeit is not a
+                       speedrun — fastest-win needs a real match behind it. */
+                    fastestWin: (won && durationMs >= 60000) ? durationMs : 0,
+                    longestMatch: durationMs,
+                };
+                const mpMode = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
+                const now = Date.now();
+                const broken = [];
+                for (const def of window.ACH_RECORD_DEFS) {
+                    const v = Math.round(vals[def.id] || 0);
+                    if (v <= 0) continue;
+                    const board = prog.records[def.id] || (prog.records[def.id] = {});
+                    const cur = board[bucket];
+                    const better = cur ? (def.min ? v < cur.value : v > cur.value) : true;
+                    if (!better) continue;
+                    board[bucket] = { value: v, ts: now, meta: { mode: (mpMode && mpMode.id) || null } };
+                    if (cur) {
+                        broken.push({ id: def.id, icon: def.icon, name: def.name,
+                            desc: def.desc, fmt: def.fmt, old: cur.value, val: v });
+                    }
+                }
+                return broken;
+            } catch (e) { console.error('[REC] commit failed:', e); return []; }
+        }
+
+        /* Old → new count-up on the post-match "Records Broken" rows. Called
+           on a delay after the panel HTML lands in the DOM; data-run guards
+           against double-animation when several end screens rebuild. */
+        function _recAnimateCountups() {
+            try {
+                const els = document.querySelectorAll('.rec-broken-new[data-to]:not([data-run])');
+                els.forEach(el => {
+                    el.setAttribute('data-run', '1');
+                    const from = Number(el.getAttribute('data-from')) || 0;
+                    const to = Number(el.getAttribute('data-to')) || 0;
+                    const def = { fmt: el.getAttribute('data-fmt') || '' };
+                    const t0 = performance.now(), dur = 900;
+                    const step = (t) => {
+                        const k = Math.min(1, (t - t0) / dur);
+                        const ease = 1 - Math.pow(1 - k, 3);
+                        el.textContent = _recFmt(def, from + (to - from) * ease);
+                        if (k < 1) requestAnimationFrame(step);
+                        else el.classList.add('rec-broken-done');
+                    };
+                    requestAnimationFrame(step);
+                });
+            } catch (e) {}
+        }
 
         function checkAchievement(id, unit) {
             if (!ACHIEVEMENT_DEFS[id]) return;
@@ -19994,6 +20300,12 @@
                         sourceUnit._lastHitDealt = finalDamage;
                     }
 
+                    /* Personal records (plan §5): per-action damage burst +
+                       per-turn/per-round accumulators. Host-authoritative;
+                       everything lands on unit fields / state._recDmg, which
+                       ride state-sync to the guest like the _match* family. */
+                    _recTrackDamage(sourceUnit, target, finalDamage, damageType);
+
                     // Balance Lab per-cast telemetry: attribute enemy damage to
                     // the spell currently resolving for this caster.
                     if (_balSpellCollector && sourceUnit.id === _balSpellCollector.casterId
@@ -20091,7 +20403,13 @@
                     // the corner TOTAL DMG counter; the floating "-N" over the
                     // unit still pops either way (both layers, classic JRPG).
                     _actionCamTallyDamage(finalDamage, _floatKind === 'critdmg');
-                    showFloatingTextForUnit(target, `-${finalDamage}`, _floatKind);
+                    /* Attribution opts for the record-juice display check
+                       (plan §5.2): enemy hits only, DoT excluded — mirrors
+                       the Biggest Hit burst rules. */
+                    const _recOpts = (damageType !== 'dot' && sourceUnit
+                        && isEnemyUnit(sourceUnit, target))
+                        ? { _dmgAmt: finalDamage, _dmgBy: sourceUnit.player } : {};
+                    showFloatingTextForUnit(target, `-${finalDamage}`, _floatKind, _recOpts);
                     if (damageType !== 'dot') {
                         const _isPhysAbility = damageType === 'physical' && !!opts.spellType;
                         const _isMagicSpellHit = damageType !== 'physical' && !!opts.spellType;
@@ -20277,6 +20595,13 @@
                     processKillStreak(killer);
 
                     processOverkill(killer, target, Math.abs(target.hp));
+                    /* Records (plan §5): biggest overkill = excess damage on
+                       the killing blow, tracked below processOverkill's 50%
+                       gate — the record board wants the raw best, not just
+                       the achievement-worthy ones. */
+                    if (Math.abs(target.hp) > (killer._matchBiggestOverkill || 0)) {
+                        killer._matchBiggestOverkill = Math.abs(target.hp);
+                    }
 
                     const totalKillsThisMatch = state.units.reduce((s, u) => s + (u._matchKills || 0), 0);
                     if (totalKillsThisMatch === 1) {
@@ -41493,6 +41818,7 @@
 
                 if (state.cameraDisabled) {
                     tw.hp = Math.max(0, tw.hp - damage);
+                    unit._matchTowerDmg = (unit._matchTowerDmg || 0) + damage;
                     addLog(`⬡ ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Cube for ${damage} damage! (Cube HP: ${tw.hp}/${tw.maxHp})`);
                     grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
                     addEntropy(unit.player, ENTROPY_PTS.destructTerrain, 'towerHit', null);
@@ -41541,6 +41867,7 @@
                     if (state.winner) return;
                     camera.snap({ x: x, y: y, zoom: towerCamZoom });
                     tw.hp = Math.max(0, tw.hp - damage);
+                    unit._matchTowerDmg = (unit._matchTowerDmg || 0) + damage;
                     addLog(`⬡ ${unitDisplayName(unit)} attacks Player ${tw.owner}'s Cube for ${damage} damage! (Cube HP: ${tw.hp}/${tw.maxHp})`);
                     grantXP(unit, XP_TOWER_DAMAGE_FLAT, 'towerDmg');
                     addEntropy(unit.player, ENTROPY_PTS.destructTerrain, 'towerHit', null);

@@ -1,5 +1,6 @@
-// achievements.test.js — validates the ACH_CATALOG / ACH_CHAMP_LINES registry
-// in data.js (ACHIEVEMENTS_PLAN.md Phase 1). Runs via `npm test` (node --test).
+// achievements.test.js — validates the ACH_CATALOG / ACH_CHAMP_LINES /
+// ACH_RECORD_DEFS registries in data.js (ACHIEVEMENTS_PLAN.md Phases 1-3).
+// Runs via `npm test` (node --test).
 // Zero dependencies; loads the REAL data.js through load-data.js.
 
 'use strict';
@@ -142,4 +143,43 @@ test('mastery bar matches the champ ladders (§4.1)', () => {
     const heatDeath = data.ACH_CATALOG.find(l => l.metric === 'champsMastered');
     assert.strictEqual(heatDeath.tiers[heatDeath.tiers.length - 1], data.AVAILABLE_RACES.length,
         'champsMastered top tier must equal the champ roster size');
+});
+
+test('record defs are well-formed (§5, Phase 3)', () => {
+    const defs = data.ACH_RECORD_DEFS;
+    assert.ok(Array.isArray(defs) && defs.length >= 8, 'ACH_RECORD_DEFS missing or too small');
+    const ids = new Set();
+    for (const def of defs) {
+        assert.ok(def.id && typeof def.id === 'string', 'record def missing id');
+        assert.ok(!ids.has(def.id), `duplicate record id: ${def.id}`);
+        ids.add(def.id);
+        assert.ok(def.name && def.desc && def.icon, `${def.id}: missing name/desc/icon`);
+        assert.ok(['dmg', 'count', 'hp', 'ms'].includes(def.fmt), `${def.id}: unknown fmt ${def.fmt}`);
+        // min (lower-is-better) records can't be judged mid-match — they
+        // must be end-only or the live poll would banner every early value.
+        if (def.min) assert.strictEqual(def.end, true, `${def.id}: min records must be end-only`);
+    }
+    // The records battle.js commits (commitAchProgress → _recCommitRecords)
+    // and polls live (_recLiveMatchValues) — every one must exist here, and
+    // the live set must not be marked end-only.
+    const LIVE = ['biggestHit', 'dmgTurn', 'dmgRound', 'killStreak', 'biggestOverkill'];
+    const END = ['mostKills', 'mostHealing', 'towerDmg', 'fastestWin', 'longestMatch'];
+    for (const id of LIVE) {
+        const def = defs.find(d => d.id === id);
+        assert.ok(def, `record def missing: ${id}`);
+        assert.ok(!def.end, `${id} is measured live — must not be end-only`);
+    }
+    for (const id of END) {
+        const def = defs.find(d => d.id === id);
+        assert.ok(def, `record def missing: ${id}`);
+        assert.strictEqual(def.end, true, `${id} is only measurable at match end`);
+    }
+    assert.strictEqual(defs.length, LIVE.length + END.length,
+        'record defs added in data.js without a matching value source in battle.js');
+    // Record ids share profile.progress with nothing else, but keep the
+    // namespaces clean anyway (future unified trophy case).
+    for (const def of defs) {
+        assert.ok(!def.id.startsWith('champ.') && !def.id.startsWith('feat_'),
+            `${def.id}: id collides with a reserved namespace`);
+    }
 });

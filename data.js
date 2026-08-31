@@ -9263,6 +9263,28 @@ const ACH_CHAMP_LINES = [
   { metric: 'deathless', name: 'Deathless Wins',  icon: '✨', tiers: [1, 10, 50, 100] },
 ];
 
+// Personal records (ACHIEVEMENTS_PLAN.md §5, Phase 3). Stored in
+// profile.progress.records[id][bucket] = { value, ts, meta } with SEPARATE
+// pvp and cpu boards (a best farmed vs Easy CPU never overwrites a real PvP
+// best). Standard matches only — Challenge/Dungeon have their own ladders.
+// `fmt: 'ms'` renders as m:ss; `min: true` = lower is better (fastest win);
+// `end: true` = only measurable at match end (no mid-match fanfare — these
+// get their moment on the post-match Records panel instead).
+const ACH_RECORD_DEFS = [
+  // Live records — can break (and celebrate) mid-match, in priority order:
+  { id: 'biggestHit',      icon: '💥', name: 'Biggest Hit',      desc: 'Most damage in one action',            fmt: 'dmg' },
+  { id: 'dmgTurn',         icon: '⚔️', name: 'Turn Damage',      desc: 'Most damage in one turn',              fmt: 'dmg' },
+  { id: 'dmgRound',        icon: '🔥', name: 'Round Damage',     desc: 'Most damage in one round',             fmt: 'dmg' },
+  { id: 'killStreak',      icon: '☠️', name: 'Kill Streak',      desc: 'Longest kill streak by one unit',      fmt: 'count' },
+  { id: 'biggestOverkill', icon: '💀', name: 'Biggest Overkill', desc: 'Most excess damage on a killing blow', fmt: 'dmg' },
+  // Match-end records:
+  { id: 'mostKills',       icon: '🏆', name: 'Match Kills',      desc: 'Most kills in one match',              fmt: 'count', end: true },
+  { id: 'mostHealing',     icon: '💚', name: 'Match Healing',    desc: 'Most healing in one match',            fmt: 'hp',    end: true },
+  { id: 'towerDmg',        icon: '🗼', name: 'Cube Damage',      desc: 'Most Black Cube damage in one match',  fmt: 'dmg',   end: true },
+  { id: 'fastestWin',      icon: '⚡', name: 'Fastest Win',      desc: 'Quickest victory',                     fmt: 'ms',    end: true, min: true },
+  { id: 'longestMatch',    icon: '⏱️', name: 'Longest Match',    desc: 'Longest completed match',              fmt: 'ms',    end: true },
+];
+
 const MAP_LAYOUT_PRESETS = {
     prebuilt_custommap: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 19, label: 'Earth', baseTerrain: 'grass_2' }, buffer2: null, below: null },
@@ -13170,7 +13192,7 @@ Object.assign(window, {
   ACCT_WIPEOUT_MULT, ACCT_STARTING_GOLD, ACCT_FREE_TOKENS, ACCT_MATCH_GOLD_CAP,
   ACCT_STARTER_UNITS, ACCT_PVP_MODES, isUnitUnlocked, computeAccountMatchGold,
   ACH_CATALOG, ACH_CHAMP_LINES, ACH_TIER_NAMES, ACH_TIER_COLORS,
-  ACH_MASTERY, ACH_TIER_REWARDS,
+  ACH_MASTERY, ACH_TIER_REWARDS, ACH_RECORD_DEFS,
   /* spell tree (Tree of Life selector) */
   CLASS_TREE, RACE_TREE, classHasSpellTree, getClassTreeSpells, getRaceTreeSpells,
   TREE_RING_MP_COSTS, buildTreeRingIndex, getTreeRingCost, applyTreeRingCosts, snapCostToLadder,

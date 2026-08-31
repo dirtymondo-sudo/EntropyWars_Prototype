@@ -868,6 +868,58 @@ guest see?" pass. No playtesting unless explicitly requested (RULE #1c).
 >   tab rework (§6.3, Phase 4), server sync (§7, Phase 5), remaining feats
 >   (§4.6).
 
+> **Status 2026-08-31 (later session): Phase 3 implemented.** Notes /
+> deviations:
+>
+> - **Record defs** live in data.js `ACH_RECORD_DEFS` (10 records; the plan's
+>   "Best challenge run" row is NOT a record — `challenge_runWins` /
+>   `survival_bestStreak` hw counters already carry it and the §6.3 boards
+>   can render them from there). Storage is the §3.5
+>   `progress.records[id][bucket] = {value, ts, meta:{mode}}` shape —
+>   profile.js needed zero changes (Phase 1 shipped the store).
+>   Records are **standard-match only** (Challenge/Dungeon are gated out —
+>   they have their own ladders and level-1 dungeon numbers would be noise).
+> - **Engine accumulators** (host-side, everything rides state-sync):
+>   `_matchBiggestHit` per action via a per-source 1.2s settle burst
+>   (`_recTrackDamage` at the damage chokepoint — enemy damage only, DoT
+>   excluded, multi-hit/AoE aggregates like `_tallyDamage`); turn/round
+>   damage in `state._recDmg[player]` with LAZY key-reset (match:round:
+>   activeUnit identity keys instead of boundary hooks — correct on the
+>   guest, which never runs local turn-advance paths); `_matchBestKillStreak`
+>   (in `processKillStreak`); `_matchBiggestOverkill` (kill-credit block,
+>   below processOverkill's 50% gate); `_matchTowerDmg` (both Cube-attack
+>   damage sites). `fastestWin` has a 60s sanity floor (a forfeit is not a
+>   speedrun) and counts wins only.
+> - **Detection is viewer-local at the display layer** (RULE #2 as §3.3
+>   prescribed): `_recEnsureLive` caches the profile's boards once per match
+>   (bucket = pvp/cpu via `isOnlineMatch`), `_recLivePoll` rides the existing
+>   2s `_achLivePoll` beat on BOTH clients (guest values arrive via
+>   state-sync). The one relay change: the floating-text relay (online.js)
+>   now carries `{dmgAmt, dmgBy}` and the guest handler passes them through,
+>   so each client restyles its OWN record-breaking numbers — the relayed
+>   kind is the pre-restyle one (the wrapper sits upstream of the display
+>   impl), so the host's styling can never leak to the guest.
+> - **Juice per §5.2:** float kinds `record` (~1.6× white→gold gradient in
+>   three-renderer.js `_FLOAT_STYLES` + isBig slam, +50% duration,
+>   `shakeBoard('hard')`; 2D-board fallback CSS in styles-animations.css)
+>   and `record-near` (≥90% of best — shimmer only). Center banner
+>   `🏆 NEW RECORD` through the queued `showCombatBanner` kind `'record'`
+>   (gold glow, `levelUp` SFX). Escalation discipline: one banner per poll
+>   beat (defs are in priority order), hard cap 6/match, fresh boards seed
+>   silently (fanfare requires a real prior best), match-end records
+>   (fastest win, most kills…) only celebrate on the post-match panel.
+> - **§6.2 row 2 shipped:** "📊 Records Broken" rows (old → new with a
+>   count-up that lands with a golden flare) on the shared end-of-match
+>   panel; rows render the final value as static text so the count-up is
+>   pure decoration if an overlay lands late.
+> - achievements.test.js extended: ACH_RECORD_DEFS shape, fmt whitelist,
+>   min⇒end rule, and an exact live/end id split pinned to battle.js's
+>   value sources.
+> - **Still deferred:** profile trophy-case tab rework incl. the records
+>   boards UI (§6.3, Phase 4), server sync (§7, Phase 5 — merge records by
+>   per-board max, keeping min-semantics for fastestWin), remaining feats
+>   (§4.6).
+
 | phase | content | files touched | size |
 |---|---|---|---|
 | **0 — Kill the slop** | §1.2 fixes: profile auto-create + persistence fallback, `ace` gate, remove `_repairAchievementStore`, win-condition mapping fix, rename Flawless chip, RT-mode crit/cleanse counters, interim victory-screen cleanup (drop bare N/14, show names for new unlocks) | battle.js, profile.js, (index.html bump) | small — **one session, do first, ships value alone** |

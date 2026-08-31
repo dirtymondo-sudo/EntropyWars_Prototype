@@ -1090,11 +1090,19 @@
             _origShowFloatingTextAtTile(x, y, textValue, kind, opts);
             var _netOn = window._NET && window._NET.online;
             if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
+                /* Damage-attribution opts (ACHIEVEMENTS_PLAN §5.2 Phase 3):
+                   {_dmgAmt,_dmgBy} let the GUEST's display layer restyle a
+                   number that breaks ITS OWN Biggest Hit record — the check
+                   is viewer-local on both ends, so the host's record styling
+                   never leaks across (the relayed kind is the pre-restyle
+                   one: this wrapper runs upstream of the display impl). */
                 _emit('relay', {
                     type: 'floating-text',
                     x: x, y: y,
                     text: String(textValue ?? ''),
-                    kind: kind || 'damage'
+                    kind: kind || 'damage',
+                    dmgAmt: (opts && opts._dmgAmt > 0) ? opts._dmgAmt : undefined,
+                    dmgBy: (opts && opts._dmgAmt > 0) ? opts._dmgBy : undefined
                 });
             }
         };
@@ -3295,7 +3303,11 @@
                             _ftVisible = window._isTileVisibleToViewer(data.x, data.y);
                         }
                         if (_ftVisible && typeof window.showFloatingTextAtTile === 'function') {
-                            window.showFloatingTextAtTile(data.x, data.y, data.text, data.kind);
+                            /* Rebuild the record-juice attribution opts so the
+                               guest's display layer can restyle a number that
+                               breaks the GUEST's own Biggest Hit record. */
+                            window.showFloatingTextAtTile(data.x, data.y, data.text, data.kind,
+                                (data.dmgAmt > 0) ? { _dmgAmt: data.dmgAmt, _dmgBy: data.dmgBy } : {});
                         }
                     }
 

@@ -743,3 +743,27 @@
             from { opacity: 1; transform: translateX(0); }
             to   { opacity: 0; transform: translateX(48px); }
         }
+
+        /* ═══ Record-break damage numbers (ACHIEVEMENTS_PLAN.md §5.2 Phase 3)
+           2D-board fallback for the 'record' / 'record-near' float kinds —
+           the primary treatment lives in three-renderer.js _FLOAT_STYLES
+           (the 3D renderer owns battle rendering by default). */
+        .dio-float-text.record {
+            font-size: 1.6em;
+            font-weight: 900;
+            color: #ffe27a;
+            background: linear-gradient(180deg, #ffffff, #ffe27a 55%, #e0a000);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.75));
+            animation: recFloatPulse 0.5s ease-in-out 2;
+        }
+        .dio-float-text.record-near {
+            color: #ffd86b;
+            text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+        }
+        @keyframes recFloatPulse {
+            0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.5)); }
+            50% { filter: drop-shadow(0 0 14px rgba(255, 225, 80, 0.95)); }
+        }

@@ -7316,8 +7316,11 @@
                     kind === 'ach-gold' ? 'rgba(255,215,0,0.75)' :
                     kind === 'ach-diamond' ? 'rgba(185,242,255,0.75)' :
                     kind === 'ach-entropic' ? 'rgba(176,106,240,0.8)' :
+                    /* Personal-record break (battle.js _recLivePoll, plan §5.2) */
+                    kind === 'record' ? 'rgba(255,215,0,0.9)' :
                     'rgba(200,180,150,0.5)';
                 banner.style.borderColor = borderColor;
+                if (kind === 'record') banner.classList.add('combat-banner-record');
                 banner.innerHTML = `
             <div class="combat-banner-title">${title}</div>
             <div class="combat-banner-sub">${subtitle}</div>

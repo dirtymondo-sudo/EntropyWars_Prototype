@@ -4249,3 +4249,80 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
             font-size: 11px;
             color: #8a93a8;
         }
+
+        /* ═══ Records Broken panel rows (ACHIEVEMENTS_PLAN.md §5/§6.2 Phase 3)
+           "Biggest Hit  388 → 412" — the new value counts up (battle.js
+           _recAnimateCountups) and lands with a golden flare. */
+        .rec-broken-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .rec-broken-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 7px 10px;
+            border: 1px solid rgba(255, 215, 0, 0.45);
+            border-left-width: 4px;
+            border-radius: 8px;
+            background: linear-gradient(160deg, rgba(30, 25, 12, 0.6), rgba(12, 12, 20, 0.55));
+            text-align: left;
+        }
+        .rec-broken-icon {
+            font-size: 20px;
+            line-height: 1;
+            filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.55));
+        }
+        .rec-broken-main {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            flex: 1;
+        }
+        .rec-broken-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #ffe9a8;
+        }
+        .rec-broken-desc {
+            font-size: 11px;
+            color: #9aa2b8;
+        }
+        .rec-broken-vals {
+            flex-shrink: 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: #8a93a8;
+            white-space: nowrap;
+        }
+        .rec-broken-new {
+            font-size: 15px;
+            font-weight: 800;
+            color: #ffd700;
+        }
+        .rec-broken-new.rec-broken-done {
+            animation: recBrokenLand 0.45s cubic-bezier(0.2, 1.2, 0.3, 1) both;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+        }
+        @keyframes recBrokenLand {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.35); }
+            100% { transform: scale(1); }
+        }
+
+        /* Record-break center banner (map.js kind 'record'): the standard
+           combat banner plus a pulsing golden aura. */
+        .combat-banner.combat-banner-record {
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.5), 0 0 22px rgba(255, 215, 0, 0.35);
+            animation: combatBannerAnim 1.6s ease forwards, recBannerGlow 0.9s ease-in-out 2;
+        }
+        .combat-banner.combat-banner-record .combat-banner-title {
+            color: #ffd700;
+            text-shadow: 0 0 12px rgba(255, 215, 0, 0.55);
+        }
+        @keyframes recBannerGlow {
+            0%, 100% { box-shadow: 0 0 25px rgba(0, 0, 0, 0.5), 0 0 18px rgba(255, 215, 0, 0.25); }
+            50% { box-shadow: 0 0 25px rgba(0, 0, 0, 0.5), 0 0 34px rgba(255, 215, 0, 0.6); }
+        }
