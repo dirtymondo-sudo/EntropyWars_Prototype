@@ -7311,6 +7311,11 @@
                 const borderColor = kind === 'protect' ? 'rgba(95,199,255,0.7)' :
                     kind === 'pickup-friendly' ? 'rgba(184,160,96,0.7)' :
                     kind === 'pickup-enemy' ? 'rgba(152,80,80,0.7)' :
+                    /* Achievement tier banners (battle.js §6.1 popups) —
+                       gold / diamond / entropic-purple tier tints. */
+                    kind === 'ach-gold' ? 'rgba(255,215,0,0.75)' :
+                    kind === 'ach-diamond' ? 'rgba(185,242,255,0.75)' :
+                    kind === 'ach-entropic' ? 'rgba(176,106,240,0.8)' :
                     'rgba(200,180,150,0.5)';
                 banner.style.borderColor = borderColor;
                 banner.innerHTML = `

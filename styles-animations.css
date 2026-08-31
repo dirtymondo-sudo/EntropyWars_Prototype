@@ -679,3 +679,67 @@
             50% { opacity: 0.95; }
         }
 
+
+        /* ═══ Achievement popups (ACHIEVEMENTS_PLAN.md §6.1, Phase 2) ═══
+           Corner toast for Bronze/Silver tier unlocks — Gold+ tiers go
+           through the center combat banner instead (map.js 'ach-*' kinds).
+           --ach-tint is set inline per tier (data.js ACH_TIER_COLORS). */
+        .achieve-toast {
+            position: absolute;
+            top: 76px;
+            right: 14px;
+            z-index: 90;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 340px;
+            padding: 10px 14px;
+            border: 1px solid var(--ach-tint, #ffd700);
+            border-left-width: 4px;
+            border-radius: 10px;
+            background: linear-gradient(160deg, rgba(24, 22, 34, 0.96), rgba(14, 13, 22, 0.96));
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55),
+                        0 0 14px color-mix(in srgb, var(--ach-tint, #ffd700) 35%, transparent);
+            pointer-events: none;
+            animation: achieveToastIn 0.38s cubic-bezier(0.2, 1.1, 0.3, 1) both;
+        }
+        .achieve-toast-icon {
+            font-size: 26px;
+            line-height: 1;
+            filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ach-tint, #ffd700) 60%, transparent));
+        }
+        .achieve-toast-body { min-width: 0; }
+        .achieve-toast-text {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--ach-tint, #ffd700);
+        }
+        .achieve-toast-sub {
+            font-size: 12px;
+            color: #cfd4e4;
+            margin-top: 2px;
+        }
+        .achieve-toast-reward {
+            display: inline-block;
+            margin-top: 4px;
+            padding: 1px 7px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #ffe9a8;
+            background: rgba(184, 150, 60, 0.25);
+            border: 1px solid rgba(212, 178, 90, 0.45);
+        }
+        .achieve-toast-out {
+            animation: achieveToastOut 0.35s ease-in forwards;
+        }
+        @keyframes achieveToastIn {
+            from { opacity: 0; transform: translateX(40px) scale(0.92); }
+            to   { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        @keyframes achieveToastOut {
+            from { opacity: 1; transform: translateX(0); }
+            to   { opacity: 0; transform: translateX(48px); }
+        }

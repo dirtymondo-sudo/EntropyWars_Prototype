@@ -9212,6 +9212,8 @@ const ACH_CATALOG = [
   { id: 'entropyStrikes',  metric: 'entropyStrikes',  cat: 'battlefield', icon: '🌌', name: 'Agent of Entropy',  desc: 'Unleash Entropy Strikes',                  tiers: [1, 10, 100, 500, 1000] },
   { id: 'stormsSummoned',  metric: 'stormsSummoned',  cat: 'battlefield', icon: '🌪️', name: 'Weathermancer',     desc: 'Summon weather systems',                   tiers: [1, 10, 100, 500, 1000] },
   { id: 'displacements',   metric: 'displacements',   cat: 'battlefield', icon: '🎳', name: 'Force of Nature',   desc: 'Displace enemy units',                     tiers: [1, 10, 100, 500, 1000] },
+  { id: 'tilesChanged',    metric: 'tilesChanged',    cat: 'battlefield', icon: '⛰️', name: 'Landscaper',        desc: 'Reshape battlefield tiles',                tiers: [1, 10, 100, 500, 1000, 10000] },
+  { id: 'flyersGrounded',  metric: 'flyersGrounded',  cat: 'battlefield', icon: '🕸️', name: 'Air Traffic Control', desc: 'Slam enemy flyers out of the sky',       tiers: [1, 10, 100, 500, 1000] },
   // ── Objectives ──────────────────────────────────────────────────────────
   { id: 'tilesScanned',    metric: 'tilesScanned',    cat: 'objectives',  icon: '📡', name: 'Cartographer',      desc: 'Scan battlefield tiles',                   tiers: [1, 10, 100, 500, 1000, 10000] },
   { id: 'hourglasses',     metric: 'hourglasses',     cat: 'objectives',  icon: '⏳', name: 'Sands of Time',     desc: 'Collect hourglasses',                      tiers: [1, 10, 50, 100, 500, 1000] },
@@ -9231,7 +9233,25 @@ const ACH_CATALOG = [
   { id: 'wins_gauntlet',   metric: 'wins_gauntlet',   cat: 'modes',       icon: '⚔️', name: 'Gauntlet Runner',   desc: 'Win Gauntlet matches',                     tiers: [1, 10, 100, 500] },
   { id: 'md_clears',       metric: 'md_clears',       cat: 'modes',       icon: '🗝️', name: 'Depthdelver',       desc: 'Clear Mystery Dungeon runs',               tiers: [1, 5, 10, 25] },
   { id: 'bestStreak',      metric: 'bestStreak',      cat: 'modes',       icon: '🔥', name: 'Perpetual Motion',  desc: 'Best win streak',                          tiers: [3, 5, 10, 15, 20], hw: true },
+  { id: 'comebacks',       metric: 'comebacks',       cat: 'modes',       icon: '🔄', name: 'Against the Odds',  desc: 'Win matches you were clearly losing',      tiers: [1, 10, 100, 500, 1000] },
+  { id: 'challenge_runWins',    metric: 'challenge_runWins',    cat: 'modes', icon: '🛡️', name: 'Gauntlet Ironman', desc: 'Best Gauntlet run (wins in one run)',   tiers: [5, 10, 15, 20, 25], hw: true },
+  { id: 'survival_bestStreak',  metric: 'survival_bestStreak',  cat: 'modes', icon: '🌊', name: 'Last Bastion',     desc: 'Best Survival streak',                  tiers: [3, 5, 10, 15, 20], hw: true },
+  { id: 'md_bestFloor',    metric: 'md_bestFloor',    cat: 'modes',       icon: '🕳️', name: 'Deep Delver',       desc: 'Deepest Mystery Dungeon floor cleared',    tiers: [5, 10, 15, 20], hw: true },
+  // Champion-mastery meta (§4.1): a champ is Mastered at kills ≥ ACH_MASTERY.kills
+  // + wins ≥ ACH_MASTERY.wins + deathless ≥ ACH_MASTERY.deathless. This line
+  // counts mastered champs (evaluated at match commit, stored high-water).
+  { id: 'champsMastered',  metric: 'champsMastered',  cat: 'modes',       icon: '👑', name: 'Heat Death',        desc: 'Fully master champions (100 kills · 100 wins · 10 deathless each)', tiers: [1, 5, 10, 25, 50, 96], hw: true },
 ];
+
+// What a champ must reach on each mastery ladder to count as Mastered
+// (deliberately tier III / III / II — see plan §4.1: the meta-chase must not
+// require the inhuman 1000-win tiers).
+const ACH_MASTERY = { kills: 100, wins: 100, deathless: 10 };
+
+// Gold paid per tier unlocked (§4.7 — Bronze/Silver/Gold/Diamond/Entropic;
+// index = tierIdx). Paid through creditLocalGold at match commit; the silent
+// career-seed pre-unlocks never pay (they are stamped before any commit).
+const ACH_TIER_REWARDS = [100, 250, 750, 2000, 5000, 5000];
 
 // Per-champ mastery ladders — applied to EVERY race key in AVAILABLE_RACES
 // (96 lines × 3 would bloat the catalog; the spec is the source of truth).
@@ -13150,6 +13170,7 @@ Object.assign(window, {
   ACCT_WIPEOUT_MULT, ACCT_STARTING_GOLD, ACCT_FREE_TOKENS, ACCT_MATCH_GOLD_CAP,
   ACCT_STARTER_UNITS, ACCT_PVP_MODES, isUnitUnlocked, computeAccountMatchGold,
   ACH_CATALOG, ACH_CHAMP_LINES, ACH_TIER_NAMES, ACH_TIER_COLORS,
+  ACH_MASTERY, ACH_TIER_REWARDS,
   /* spell tree (Tree of Life selector) */
   CLASS_TREE, RACE_TREE, classHasSpellTree, getClassTreeSpells, getRaceTreeSpells,
   TREE_RING_MP_COSTS, buildTreeRingIndex, getTreeRingCost, applyTreeRingCosts, snapCostToLadder,

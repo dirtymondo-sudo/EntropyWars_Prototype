@@ -668,6 +668,24 @@ function creditLocalGold(amount) {
   return p.account.gold;
 }
 
+// Free unit-unlock tokens, same local-mirror contract as creditLocalGold —
+// champion-mastery payouts (ACHIEVEMENTS_PLAN.md §4.7: the milestone token
+// drip from unitunlockeconomy.md, delivered through achievements). A server
+// account stays authoritative and reconciles on its own sync.
+function creditLocalFreeTokens(count) {
+  count = Math.max(0, Math.round(Number(count) || 0));
+  if (!count) return 0;
+  const idx = getActiveProfileIndex();
+  if (idx === null) return 0;
+  const p = loadProfile(idx);
+  if (!p) return 0;
+  if (!p.account) p.account = { gold: 0, unlockedUnits: [], freeTokens: 0 };
+  p.account.freeTokens = (p.account.freeTokens || 0) + count;
+  saveProfile(idx, p);
+  try { if (typeof window !== 'undefined' && typeof window._refreshWallets === 'function') window._refreshWallets(); } catch {}
+  return p.account.freeTokens;
+}
+
 async function serverFetchEconomy() {
   const token = getServerToken();
   const id = getServerId();
@@ -798,6 +816,7 @@ window.ProfileSystem = {
   serverPurchaseUnit,
   localPurchaseUnit,
   creditLocalGold,
+  creditLocalFreeTokens,
 };
 
 function buildProfileMatchSummary() {

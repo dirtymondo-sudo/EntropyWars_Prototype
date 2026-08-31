@@ -4707,6 +4707,7 @@
                     const current = getTerrainAt(tile.x, tile.y);
                     if (current !== 'wall' && current !== spell.leaveTerrain) {
                         setTerrainAt(tile.x, tile.y, spell.leaveTerrain);
+                        trackTilesChanged(unit, 1);
                     }
                 }
             }
@@ -4949,7 +4950,10 @@
                         }
                     }
                 }
-                if (spell.leaveTerrain) setTerrainAt(cx, cy, spell.leaveTerrain);
+                if (spell.leaveTerrain && getTerrainAt(cx, cy) !== spell.leaveTerrain) {
+                    setTerrainAt(cx, cy, spell.leaveTerrain);
+                    trackTilesChanged(unit, 1);
+                }
                 cx += dx; cy += dy;
             }
             const dmgBase = calcFlatSpellDamage(baseDmg, spellPower, 32);
@@ -6195,7 +6199,7 @@
             // canChangeAltitude already refuses ascend while move-blocked.)
             if (payload.id === 'root' && unitHasStatus(target, 'root')
                 && typeof forceGroundUnit === 'function') {
-                forceGroundUnit(target, { byLabel: 'by the roots' });
+                forceGroundUnit(target, { byLabel: 'by the roots', byUnit: sourceUnit });
             }
 
             // 💫 Stagger takes its AP the moment it lands. If the target already
@@ -6408,7 +6412,8 @@
                                 for (const _gzU of state.units.filter(u => !u.dead && !u._dying)) {
                                     if (!area.some(t => t.x === _gzU.x && t.y === _gzU.y)) continue;
                                     if (canFly(_gzU) && isUnitAirborne(_gzU)) {
-                                        forceGroundUnit(_gzU, { byLabel: `by ${zone.spellName}` });
+                                        forceGroundUnit(_gzU, { byLabel: `by ${zone.spellName}`,
+                                            byUnit: (state.units || []).find(u => u.id === zone.casterUnitId && !u.dead) || null });
                                     }
                                 }
                             }
@@ -9346,6 +9351,17 @@
             addEntropy(killer.player, ENTROPY_PTS.overkill, 'overkill', null);
         }
 
+        /* Terrain-change attribution (plan §4.3 "Landscaper"): every
+           deliberate, player-driven tile reshape credits the acting unit's
+           per-match counter (rides unit snapshots online like the rest of the
+           _match* family; folded into profile.progress at match commit).
+           Ambient changes — weather, fire spread, water settling, natural
+           melts — are NOT player actions and never call this. */
+        function trackTilesChanged(unit, n) {
+            if (!unit || !n || n <= 0) return;
+            unit._matchTilesChanged = (unit._matchTilesChanged || 0) + n;
+        }
+
         const ACHIEVEMENT_DEFS = {
             firstBlood: {
                 icon: '🩸',
@@ -9464,6 +9480,49 @@
            online match and silently skip every later commit. */
         let _achCommittedMatchKey = null;
 
+        /* ── Comeback detection (plan §4.5.1) ──────────────────────────────
+           Called by the HOST once per round advance. When a player is
+           "clearly losing" (per mode family) the armed flag latches; if the
+           armed player then WINS, commit counts a comeback. state._comebackArmed
+           rides state-sync (it is NOT on the serializer skip list), so the
+           online guest commits its own side with no relay work (RULE #2).
+           Definitions are deliberately generous-but-honest — players should
+           recognize the matches this fires on:
+           - kill-score modes (TDM/Simul): trailing by ≥3 kills
+           - Arena: your Cube <30% while theirs is >60%, or trailing ≥3 kills
+             (the composite scorer is scoped inside the timer-expiry path, so
+             kills — its dominant term — stand in for it mid-match)
+           - everything else (wipeout family): your living units ≤ half of the
+             opponent's (opponent ≥2 alive), or you're down to your last unit
+             while they have ≥2. Checked from round 3 so openings don't arm. */
+        function _checkComebackArmed() {
+            try {
+                if ((state.round || 0) < 3 || state.winner) return;
+                if (state._mdRun || state.isCampaign) return;   // their own ladders, not comeback territory
+                if (!state._comebackArmed) state._comebackArmed = {};
+                const mpMode = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
+                for (const p of [1, 2]) {
+                    if (state._comebackArmed[p]) continue;
+                    const e = enemyOf(p);
+                    let losing = false;
+                    const killDeficit = (state.matchKills?.[e] || 0) - (state.matchKills?.[p] || 0);
+                    if (mpMode && mpMode.scoringType === 'kills') {
+                        losing = killDeficit >= 3;
+                    } else if (mpMode && mpMode.id === 'arena') {
+                        const myTw = state.towers?.[p], opTw = state.towers?.[e];
+                        losing = killDeficit >= 3
+                            || !!(myTw && opTw && myTw.hp < (myTw.maxHp || 1500) * 0.3
+                                && opTw.hp > (opTw.maxHp || 1500) * 0.6);
+                    } else {
+                        const myAlive = aliveUnitsFor(p).length;
+                        const opAlive = aliveUnitsFor(e).length;
+                        losing = opAlive >= 2 && (myAlive * 2 <= opAlive || myAlive === 1);
+                    }
+                    if (losing) state._comebackArmed[p] = true;
+                }
+            } catch (e) { /* never let bookkeeping break the round loop */ }
+        }
+
         function _achProgressAvailable() {
             return !!(window.ProfileSystem
                 && typeof window.ProfileSystem.loadProgress === 'function'
@@ -9482,6 +9541,7 @@
                 if (!_achProgressAvailable()) return;
                 if (state.winner === null || state.winner === undefined || state.winner === 0) {
                     window._lastAchTierUnlocks = []; // no contest — don't show a stale list
+                    window._lastAchDeltas = {};      // …nor stale "almost there" rows
                     return;
                 }
                 _achCommittedMatchKey = _matchKey;
@@ -9515,42 +9575,23 @@
                     c[bucket] = (c[bucket] || 0) + n;
                 };
 
-                const mine = (state.units || []).filter(u => u.player === viewer && !u._mdNpc);
-                for (const u of mine) {
-                    const kills = u._matchKills || 0;
-                    add('kills', kills);
-                    champAdd(u.race, 'kills', kills);
-                    add('critsLanded', u._matchCrits || 0);
-                    add('attacksDodged', u._matchTrueDodges || 0);
-                    add('combosDone', u._matchCombos || 0);
-                    add('followUps', u._matchFollowUps || 0);
-                    add('cleansesDone', u._matchCleanses || 0);
-                    add('backstabs', u._matchBackstabs || 0);
-                    add('oppStrikes', u._matchOppStrikes || 0);
-                    add('superBanes', u._matchSuperBanes || 0);
-                    add('displacements', u._matchDisplacements || 0);
-                    add('stormsSummoned', u._matchStorms || 0);
-                    add('healsApplied', u._matchHealCasts || 0);
-                    add('tilesScanned', u._matchScans || 0);
-                    add('hourglasses', u._matchHourglasses || 0);
-                    add('firstBloods', u._matchFirstBloods || 0);
-                    let sAll = 0, sBuff = 0, sDebuff = 0;
-                    for (const sid of Object.keys(u._statusesApplied || {})) {
-                        const n = u._statusesApplied[sid] || 0;
-                        sAll += n;
-                        const k = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[sid]) ? STATUS_DEFS[sid].kind : null;
-                        if (k === 'buff') sBuff += n;
-                        else if (k === 'debuff') sDebuff += n;
+                /* Mastery snapshot BEFORE folding — newly-mastered champs
+                   (post minus pre) earn a free unlock token (§4.7). */
+                const preMastered = _achCountMastered(prog);
+
+                const folded = _achFoldMatchDeltas(viewer);
+                for (const m of Object.keys(folded.deltas)) add(m, folded.deltas[m]);
+                for (const race of Object.keys(folded.champs)) {
+                    for (const m of Object.keys(folded.champs[race])) {
+                        champAdd(race, m, folded.champs[race][m]);
                     }
-                    add('statusesApplied', sAll);
-                    add('buffsApplied', sBuff);
-                    add('debuffsApplied', sDebuff);
                 }
-                add('entropyStrikes', (state._entropyStrikeCount && state._entropyStrikeCount[viewer]) || 0);
+                const mine = (state.units || []).filter(u => u.player === viewer && !u._mdNpc);
 
                 if (won) {
                     if (kind === 'match') {
                         add('wins_total', 1);
+                        if (state._comebackArmed && state._comebackArmed[viewer]) add('comebacks', 1);
                         const mpMode = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
                         const modeMetric = { arena: 'wins_arena', tdm: 'wins_tdm', clash: 'wins_clash', simul: 'wins_simul', gauntlet: 'wins_gauntlet' }[mpMode && mpMode.id];
                         if (modeMetric) add(modeMetric, 1);
@@ -9574,21 +9615,205 @@
                     } else if (kind === 'md') {
                         add('md_clears', 1);
                     }
-                    // campaign (Challenge) wins feed their own future lines, not
-                    // the PvP-mode ladders — combat counters above still count.
+                    // campaign (Challenge) wins feed the run-streak ladders
+                    // below, not the PvP-mode ladders — combat counters count.
                 }
                 if (kind === 'match') {
                     const cs = (typeof loadCareerStats === 'function') ? loadCareerStats() : null;
                     if (cs) hw('bestStreak', cs.currentWinStreak || 0);
+                } else if (kind === 'campaign') {
+                    /* Challenge run streaks (§4.5). Commit runs BEFORE
+                       finalizeCampaignBattle bumps save.runWins for a win, so
+                       fold this battle in by hand; bestStreak already carries
+                       the save's own high-water for past runs. */
+                    const sv = state.campaignSave;
+                    if (sv) {
+                        const streak = Math.max(sv.bestStreak || 0, (sv.runWins || 0) + (won ? 1 : 0));
+                        hw(sv.challengeType === 'gauntlet' ? 'challenge_runWins' : 'survival_bestStreak', streak);
+                    }
+                } else if (kind === 'md') {
+                    /* _mdEndRun saves bestFloor before committing. */
+                    try {
+                        const msv = (typeof loadMdSave === 'function') ? loadMdSave() : null;
+                        if (msv) hw('md_bestFloor', msv.bestFloor || 0);
+                    } catch (e) {}
+                }
+
+                /* Champion-mastery meta ("Heat Death", §4.1) + free-token
+                   payout for each champ newly pushed over the mastery bar. */
+                const postMastered = _achCountMastered(prog);
+                hw('champsMastered', postMastered);
+                if (postMastered > preMastered && window.ProfileSystem
+                    && typeof window.ProfileSystem.creditLocalFreeTokens === 'function') {
+                    window.ProfileSystem.creditLocalFreeTokens(postMastered - preMastered);
+                    addLog(`👑 Champion mastered! +${postMastered - preMastered} free unlock token${postMastered - preMastered !== 1 ? 's' : ''}.`);
                 }
 
                 const newly = _achEvaluateTiers(prog);
+
+                /* Tier gold (§4.7). Only real unlocks reach here — the silent
+                   career-seed pre-unlocks were stamped at migration, before
+                   any commit — so paying every `newly` entry is safe. Credit
+                   is local-mirror only (like MD gold); a server account stays
+                   authoritative and reconciles on its own sync. */
+                const _achRewards = window.ACH_TIER_REWARDS || [];
+                let _achGold = 0;
+                for (const n of newly) {
+                    n.reward = _achRewards[n.tier] || 0;
+                    _achGold += n.reward;
+                }
+                if (_achGold > 0 && window.ProfileSystem
+                    && typeof window.ProfileSystem.creditLocalGold === 'function') {
+                    window.ProfileSystem.creditLocalGold(_achGold);
+                }
+
                 window.ProfileSystem.saveProgress(prog);
                 /* Viewer-local (NOT on state — must never ride state-sync):
-                   the victory screen reads this to render unlock cards. */
+                   the end-of-match screens read these to render unlock cards
+                   and the "Almost there" progress rows. */
                 window._lastAchTierUnlocks = newly;
-                _achToastNewTiers(newly);
+                window._lastAchDeltas = folded.deltas;
+                _achAnnounceUnlocks(newly);
             } catch (e) { console.error('[ACH] commit failed:', e); }
+        }
+
+        /* Fold the viewer's per-unit _match* counters into flat delta bags.
+           Shared by commitAchProgress (which persists them) and the live
+           popup poll (base + deltas vs thresholds mid-match) so the two can
+           never drift. Win/streak/run metrics are commit-only and do not
+           appear here. Returns { deltas: {metric: n}, champs: {race: {metric: n}} }. */
+        function _achFoldMatchDeltas(viewer) {
+            const deltas = {}, champs = {};
+            const bump = (m, n) => {
+                n = Math.max(0, Math.round(n || 0));
+                if (n) deltas[m] = (deltas[m] || 0) + n;
+            };
+            const mine = (state.units || []).filter(u => u.player === viewer && !u._mdNpc);
+            for (const u of mine) {
+                const kills = u._matchKills || 0;
+                bump('kills', kills);
+                if (u.race && kills) {
+                    (champs[u.race] = champs[u.race] || {}).kills = (champs[u.race].kills || 0) + kills;
+                }
+                bump('critsLanded', u._matchCrits || 0);
+                bump('attacksDodged', u._matchTrueDodges || 0);
+                bump('combosDone', u._matchCombos || 0);
+                bump('followUps', u._matchFollowUps || 0);
+                bump('cleansesDone', u._matchCleanses || 0);
+                bump('backstabs', u._matchBackstabs || 0);
+                bump('oppStrikes', u._matchOppStrikes || 0);
+                bump('superBanes', u._matchSuperBanes || 0);
+                bump('displacements', u._matchDisplacements || 0);
+                bump('stormsSummoned', u._matchStorms || 0);
+                bump('healsApplied', u._matchHealCasts || 0);
+                bump('tilesScanned', u._matchScans || 0);
+                bump('hourglasses', u._matchHourglasses || 0);
+                bump('firstBloods', u._matchFirstBloods || 0);
+                bump('tilesChanged', u._matchTilesChanged || 0);
+                bump('flyersGrounded', u._matchGroundings || 0);
+                let sAll = 0, sBuff = 0, sDebuff = 0;
+                for (const sid of Object.keys(u._statusesApplied || {})) {
+                    const n = u._statusesApplied[sid] || 0;
+                    sAll += n;
+                    const k = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[sid]) ? STATUS_DEFS[sid].kind : null;
+                    if (k === 'buff') sBuff += n;
+                    else if (k === 'debuff') sDebuff += n;
+                }
+                bump('statusesApplied', sAll);
+                bump('buffsApplied', sBuff);
+                bump('debuffsApplied', sDebuff);
+            }
+            bump('entropyStrikes', (state._entropyStrikeCount && state._entropyStrikeCount[viewer]) || 0);
+            return { deltas, champs };
+        }
+
+        /* ── Post-match achievements panel (§6.2) ──────────────────────────
+           Shared by the PvP victory screen, the Challenge result overlay and
+           the Mystery Dungeon overlay (all three terminal paths commit, so
+           all three deserve the payoff). Renders:
+           1. full unlock cards for this match's new tiers (icon / name /
+              tier color / reward), replacing the old name-only chips;
+           2. "Almost there" — the 2-3 nearest locked tiers with progress
+              bars and this-match delta: the "one more match" hook. */
+        function _achBuildEndOfMatchHtml() {
+            try {
+                if (!_achProgressAvailable()) return '';
+                const tierNames = window.ACH_TIER_NAMES || ['I', 'II', 'III', 'IV', 'V', 'VI'];
+                const tierColors = window.ACH_TIER_COLORS || [];
+                const unlocks = window._lastAchTierUnlocks || [];
+                const deltas = window._lastAchDeltas || {};
+                let html = '';
+
+                if (unlocks.length) {
+                    html += '<div class="vic-achievements"><div class="vic-ach-title">🏆 Achievements Unlocked</div><div class="ach-card-list">';
+                    for (const n of unlocks.slice(0, 10)) {
+                        const tint = tierColors[n.tier] || '#ffd700';
+                        html += `<div class="ach-card" style="--ach-tint:${tint}">`
+                            + `<span class="ach-card-icon">${n.icon || '🏆'}</span>`
+                            + `<span class="ach-card-main"><span class="ach-card-name">${escapeHtml(n.name)} <b class="ach-card-tier">${tierNames[n.tier] || ''}</b></span>`
+                            + `<span class="ach-card-desc">${escapeHtml(n.desc)} (${(n.threshold || 0).toLocaleString()})</span></span>`
+                            + `${n.reward ? `<span class="ach-card-reward">+${n.reward.toLocaleString()}g</span>` : ''}`
+                            + `</div>`;
+                    }
+                    if (unlocks.length > 10) {
+                        html += `<div class="ach-card"><span class="ach-card-icon">➕</span><span class="ach-card-main"><span class="ach-card-name">${unlocks.length - 10} more — Profile → Achievements</span></span></div>`;
+                    }
+                    html += '</div></div>';
+                }
+
+                const prog = window.ProfileSystem.loadProgress();
+                const rows = [];
+                for (const line of (window.ACH_CATALOG || [])) {
+                    const c = prog.counters[line.metric];
+                    const total = c
+                        ? (line.hw ? Math.max(c.pvp || 0, c.cpu || 0, c.legacy || 0)
+                                   : (c.pvp || 0) + (c.cpu || 0) + (c.legacy || 0))
+                        : 0;
+                    let next = null, ni = -1;
+                    (line.tiers || []).some((th, i) => {
+                        if (!prog.unlocked[line.id + '.' + i]) { next = th; ni = i; return true; }
+                        return false;
+                    });
+                    if (next === null || total <= 0) continue;
+                    const d = deltas[line.metric] || 0;
+                    rows.push({ line, total, next, ni, d, pct: Math.min(1, total / next) });
+                }
+                /* Lines this match actually advanced first, then closest. */
+                rows.sort((a, b) => ((b.d > 0) - (a.d > 0)) || (b.pct - a.pct));
+                const near = rows.slice(0, 3);
+                if (near.length) {
+                    html += '<div class="vic-achievements"><div class="vic-ach-title">📈 Almost There</div><div class="ach-near-list">';
+                    for (const r of near) {
+                        const tint = tierColors[r.ni] || '#ffd700';
+                        html += `<div class="ach-near-row">`
+                            + `<span class="ach-near-icon">${r.line.icon}</span>`
+                            + `<span class="ach-near-main">`
+                            + `<span class="ach-near-label">${escapeHtml(r.line.name)} ${tierNames[r.ni] || ''}`
+                            + `<span class="ach-near-count">${r.total.toLocaleString()} / ${r.next.toLocaleString()}${r.d > 0 ? ` · +${r.d.toLocaleString()} this match` : ''}</span></span>`
+                            + `<span class="ach-near-bar"><span class="ach-near-fill" style="width:${Math.round(r.pct * 100)}%;background:${tint}"></span></span>`
+                            + `</span></div>`;
+                    }
+                    html += '</div><div class="ach-panel-link">Full trophy case: Profile → Achievements</div></div>';
+                }
+                return html;
+            } catch (e) { return ''; }
+        }
+
+        /* How many champs meet the full mastery bar (ACH_MASTERY, §4.1). */
+        function _achCountMastered(prog) {
+            try {
+                const ML = window.ACH_MASTERY || { kills: 100, wins: 100, deathless: 10 };
+                let mastered = 0;
+                for (const race of Object.keys(prog.champs || {})) {
+                    const bag = prog.champs[race] || {};
+                    const tot = m => {
+                        const c = bag[m];
+                        return c ? (c.pvp || 0) + (c.cpu || 0) + (c.legacy || 0) : 0;
+                    };
+                    if (tot('kills') >= ML.kills && tot('wins') >= ML.wins && tot('deathless') >= ML.deathless) mastered++;
+                }
+                return mastered;
+            } catch (e) { return 0; }
         }
 
         /* Tier crossings against the whole store. Standard lines sum the
@@ -9608,7 +9833,7 @@
                     const key = line.id + '.' + i;
                     if (total >= th && !prog.unlocked[key]) {
                         prog.unlocked[key] = now;
-                        newly.push({ icon: line.icon, name: line.name, tier: i, desc: line.desc, threshold: th });
+                        newly.push({ key, icon: line.icon, name: line.name, tier: i, desc: line.desc, threshold: th });
                     }
                 });
             }
@@ -9624,7 +9849,7 @@
                         if (total >= th && !prog.unlocked[key]) {
                             prog.unlocked[key] = now;
                             const raceLabel = (typeof getRaceLabel === 'function') ? getRaceLabel(race) : race;
-                            newly.push({ icon: spec.icon, name: raceLabel + ' — ' + spec.name, tier: i, desc: spec.name + ' with ' + raceLabel, threshold: th });
+                            newly.push({ key, icon: spec.icon, name: raceLabel + ' — ' + spec.name, tier: i, desc: spec.name + ' with ' + raceLabel, threshold: th });
                         }
                     });
                 }
@@ -9632,33 +9857,158 @@
             return newly;
         }
 
-        /* Staggered toasts, capped so a big commit (career-seeded veterans'
-           first match) can't wallpaper the end screen. */
-        function _achToastNewTiers(newly) {
-            if (!newly || !newly.length || _skipVisuals()) return;
+        /* ═══ ACHIEVEMENT POPUPS (§6.1) ════════════════════════════════════
+           One queue, two intensities:
+           - Bronze/Silver tiers → compact corner toast (.achieve-toast,
+             styled in styles-animations.css), one on screen at a time.
+           - Gold/Diamond/Entropic tiers → center banner through map.js's
+             queued showCombatBanner (kinds 'ach-gold' / 'ach-diamond' /
+             'ach-entropic'), so they never collide with turn/kill banners.
+           Every popup is VIEWER-LOCAL: each client announces its own
+           unlocks from its own profile — nothing is relayed, so nothing can
+           leak to the opponent (RULE #2 by construction). */
+        const _achPopupQueue = [];
+        let _achPopupActive = false;
+
+        function _achEnqueuePopup(entry) {
+            if (_skipVisuals()) return;
+            _achPopupQueue.push(entry);
+            _achDrainPopups();
+        }
+
+        function _achDrainPopups() {
+            if (_achPopupActive || _achPopupQueue.length === 0) return;
+            if (typeof isCinematicActive === 'function' && isCinematicActive()) {
+                window.setTimeout(_achDrainPopups, 500);
+                return;
+            }
+            _achPopupActive = true;
+            const n = _achPopupQueue.shift();
             const tierNames = window.ACH_TIER_NAMES || ['I', 'II', 'III', 'IV', 'V', 'VI'];
             const tierColors = window.ACH_TIER_COLORS || [];
-            const MAX_TOASTS = 4;
-            newly.slice(0, MAX_TOASTS).forEach((n, idx) => {
+
+            if (!n.summary && n.tier >= 2 && typeof showCombatBanner === 'function') {
+                const kind = n.tier >= 4 ? 'ach-entropic' : (n.tier === 3 ? 'ach-diamond' : 'ach-gold');
+                showCombatBanner(`🏆 ${n.name} ${tierNames[n.tier] || ''}`,
+                    `${n.desc} — ${(n.threshold || 0).toLocaleString()}${n.reward ? ` · +${n.reward.toLocaleString()}g` : ''}`,
+                    kind);
+                window.setTimeout(() => { _achPopupActive = false; _achDrainPopups(); }, 1400);
+                return;
+            }
+
+            const tint = tierColors[n.tier] || '#ffd700';
+            const toast = document.createElement('div');
+            toast.className = 'achieve-toast';
+            toast.style.setProperty('--ach-tint', tint);
+            toast.innerHTML = `<div class="achieve-toast-icon">${n.icon || '🏆'}</div><div class="achieve-toast-body">`
+                + `<div class="achieve-toast-text">${n.summary ? n.name : `Achievement — Tier ${tierNames[n.tier] || (n.tier + 1)}`}</div>`
+                + `<div class="achieve-toast-sub">${n.summary ? n.desc : `${n.name} · ${n.desc} (${(n.threshold || 0).toLocaleString()})`}</div>`
+                + `${n.reward ? `<div class="achieve-toast-reward">+${n.reward.toLocaleString()}g</div>` : ''}</div>`;
+            (document.getElementById('game-viewport') || document.body).appendChild(toast);
+            window.setTimeout(() => {
+                toast.classList.add('achieve-toast-out');
                 window.setTimeout(() => {
-                    const toast = document.createElement('div');
-                    toast.className = 'achieve-toast';
-                    const tint = tierColors[n.tier] || '#ffd700';
-                    toast.innerHTML = `<div class="achieve-toast-icon">${n.icon || '🏆'}</div><div><div class="achieve-toast-text" style="color:${tint}">Achievement Tier ${tierNames[n.tier] || (n.tier + 1)}</div><div class="achieve-toast-sub">${n.name} — ${n.desc} (${n.threshold.toLocaleString()})</div></div>`;
-                    (document.getElementById('game-viewport') || document.body).appendChild(toast);
-                    window.setTimeout(() => toast.remove(), 4000);
-                }, idx * 1100);
-            });
-            if (newly.length > MAX_TOASTS) {
-                window.setTimeout(() => {
-                    const toast = document.createElement('div');
-                    toast.className = 'achieve-toast';
-                    toast.innerHTML = `<div class="achieve-toast-icon">🏆</div><div><div class="achieve-toast-text">+${newly.length - MAX_TOASTS} more achievements</div><div class="achieve-toast-sub">See Profile → Achievements</div></div>`;
-                    (document.getElementById('game-viewport') || document.body).appendChild(toast);
-                    window.setTimeout(() => toast.remove(), 4000);
-                }, MAX_TOASTS * 1100);
+                    toast.remove();
+                    _achPopupActive = false;
+                    _achDrainPopups();
+                }, 380);
+            }, 3200);
+        }
+
+        /* Commit-time announcements: skip anything already popped live this
+           match, cap the burst so a big commit can't wallpaper the screen
+           (the victory screen still shows every card, §6.2). */
+        function _achAnnounceUnlocks(newly) {
+            if (!newly || !newly.length || _skipVisuals()) return;
+            const matchKey = (state.matchNumber || 0) + ':' + (state.startTime || 0);
+            const poppedLive = (_achLive && _achLive.matchKey === matchKey) ? _achLive.popped : null;
+            const fresh = newly.filter(n => !(poppedLive && n.key && poppedLive.has(n.key)));
+            const MAX = 5;
+            fresh.slice(0, MAX).forEach(n => _achEnqueuePopup(n));
+            if (fresh.length > MAX) {
+                _achEnqueuePopup({ summary: true, tier: 0, icon: '🏆',
+                    name: `+${fresh.length - MAX} more achievements`,
+                    desc: 'Full list: Profile → Achievements' });
             }
         }
+
+        /* ── Live mid-match tier popups ────────────────────────────────────
+           "The 100th kill pops the moment it happens, not at match end."
+           A light 2s poll (both clients run it — the guest's per-unit
+           counters arrive via state-sync, so its totals are at most one sync
+           tick stale) compares profile base + this-match deltas against the
+           tier thresholds. Display-only: nothing is written to the profile
+           until commit, so an abandoned match still commits nothing; the
+           popped-set only suppresses the duplicate commit-time popup. */
+        let _achLive = null;   // { matchKey, base, champKillsBase, unlockedSnapshot, popped }
+
+        function _achLivePoll() {
+            try {
+                if (!state || state.phase !== 'battle' || state.winner) return;
+                if (state.devAutoSim) return;
+                if (typeof _balanceSimMode !== 'undefined' && _balanceSimMode) return;
+                if (typeof _aiTrainingMode !== 'undefined' && _aiTrainingMode) return;
+                if (typeof _strengthTestMode !== 'undefined' && _strengthTestMode) return;
+                if (!_achProgressAvailable() || _skipVisuals()) return;
+                const matchKey = (state.matchNumber || 0) + ':' + (state.startTime || 0);
+                const viewer = getViewerPlayer();
+
+                if (!_achLive || _achLive.matchKey !== matchKey) {
+                    /* Cache the profile base once per match — loadProgress
+                       parses the whole profile blob, too heavy for a 2s tick. */
+                    const prog = window.ProfileSystem.loadProgress();
+                    const base = {};
+                    for (const line of (window.ACH_CATALOG || [])) {
+                        if (line.hw) continue;                 // hw lines never move mid-match
+                        const c = prog.counters[line.metric];
+                        base[line.metric] = c ? (c.pvp || 0) + (c.cpu || 0) + (c.legacy || 0) : 0;
+                    }
+                    const champKillsBase = {};
+                    for (const race of Object.keys(prog.champs || {})) {
+                        const c = (prog.champs[race] || {}).kills;
+                        champKillsBase[race] = c ? (c.pvp || 0) + (c.cpu || 0) + (c.legacy || 0) : 0;
+                    }
+                    _achLive = { matchKey, base, champKillsBase,
+                        unlockedSnapshot: new Set(Object.keys(prog.unlocked || {})),
+                        popped: new Set() };
+                }
+
+                const folded = _achFoldMatchDeltas(viewer);
+                const rewards = window.ACH_TIER_REWARDS || [];
+                for (const line of (window.ACH_CATALOG || [])) {
+                    if (line.hw) continue;
+                    const d = folded.deltas[line.metric] || 0;
+                    if (!d) continue;
+                    const total = (_achLive.base[line.metric] || 0) + d;
+                    (line.tiers || []).forEach((th, i) => {
+                        const key = line.id + '.' + i;
+                        if (total >= th && !_achLive.unlockedSnapshot.has(key) && !_achLive.popped.has(key)) {
+                            _achLive.popped.add(key);
+                            _achEnqueuePopup({ key, icon: line.icon, name: line.name, tier: i,
+                                desc: line.desc, threshold: th, reward: rewards[i] || 0 });
+                        }
+                    });
+                }
+                const killsSpec = (window.ACH_CHAMP_LINES || []).find(s => s.metric === 'kills');
+                if (killsSpec) {
+                    for (const race of Object.keys(folded.champs)) {
+                        const d = folded.champs[race].kills || 0;
+                        if (!d) continue;
+                        const total = (_achLive.champKillsBase[race] || 0) + d;
+                        (killsSpec.tiers || []).forEach((th, i) => {
+                            const key = 'champ.' + race + '.kills.' + i;
+                            if (total >= th && !_achLive.unlockedSnapshot.has(key) && !_achLive.popped.has(key)) {
+                                _achLive.popped.add(key);
+                                const raceLabel = (typeof getRaceLabel === 'function') ? getRaceLabel(race) : race;
+                                _achEnqueuePopup({ key, icon: killsSpec.icon, name: raceLabel + ' — Kills',
+                                    tier: i, desc: 'Kills with ' + raceLabel, threshold: th, reward: rewards[i] || 0 });
+                            }
+                        });
+                    }
+                }
+            } catch (e) { /* popups must never break the game loop */ }
+        }
+        window.setInterval(_achLivePoll, 2000);
 
         function checkAchievement(id, unit) {
             if (!ACHIEVEMENT_DEFS[id]) return;
@@ -26258,21 +26608,9 @@
                 vicAwards.innerHTML += achHtml;
             }
 
-            /* Tiered achievement unlocks from this match's commit (set by
-               commitAchProgress just before the screen builds). */
-            const tierUnlocks = window._lastAchTierUnlocks || [];
-            if (tierUnlocks.length > 0) {
-                const tierNames = window.ACH_TIER_NAMES || ['I', 'II', 'III', 'IV', 'V', 'VI'];
-                const tierColors = window.ACH_TIER_COLORS || [];
-                let tHtml = '<div class="vic-achievements"><div class="vic-ach-title">New Achievement Tiers</div><div class="vic-ach-grid">';
-                for (const n of tierUnlocks.slice(0, 8)) {
-                    const tint = tierColors[n.tier] || '#ffd700';
-                    tHtml += `<div class="vic-ach-item" title="${escapeHtml(n.desc)} (${n.threshold.toLocaleString()})"><span class="vic-ach-icon">${n.icon || '🏆'}</span><span class="vic-ach-name">${escapeHtml(n.name)} <b style="color:${tint}">${tierNames[n.tier] || ''}</b></span></div>`;
-                }
-                if (tierUnlocks.length > 8) tHtml += `<div class="vic-ach-item"><span class="vic-ach-icon">➕</span><span class="vic-ach-name">${tierUnlocks.length - 8} more</span></div>`;
-                tHtml += '</div></div>';
-                vicAwards.innerHTML += tHtml;
-            }
+            /* Post-match achievements panel (§6.2): full unlock cards +
+               "Almost there" progress rows, from this match's commit. */
+            vicAwards.innerHTML += _achBuildEndOfMatchHtml();
 
             /* Career progress: one honest line (the store now actually
                persists — see profile.js ensureActiveProfile), plus a pointer
@@ -28633,7 +28971,9 @@
                 }
                 vicParty.innerHTML = partyHtml;
             }
-            if (vicAwards) vicAwards.innerHTML = '';
+            /* Dungeon runs commit achievement progress (whole-run counters +
+               md_clears / md_bestFloor) — give them the §6.2 panel as well. */
+            if (vicAwards) vicAwards.innerHTML = _achBuildEndOfMatchHtml();
             ['vicEloBadge', 'vicTeamDmgBar', 'vicTeamDmgLabels', 'vicStatsTableWrap'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.innerHTML = '';
@@ -28923,6 +29263,9 @@
                     </div>`;
                 }
             }
+            /* Challenge battles commit achievement progress too (§6.2) —
+               show the same unlock cards + nearest-tier rows here. */
+            infoHtml += _achBuildEndOfMatchHtml();
             vicMatchInfo.innerHTML = infoHtml;
 
             const winnerPlayer = state.winner;
@@ -33261,6 +33604,7 @@
                     meltIceNearLava();
                     _checkFrozenThaws();
                     state.round += 1;
+                    _checkComebackArmed();
                     tickMatchClock();
                     checkZodiacRotation();
                     checkNewSkyEvent();
@@ -40711,6 +41055,13 @@
             if (!unit || unit.dead || unit._dying) return false;
             if (typeof canFly !== 'function' || !canFly(unit)) return false;
             if (typeof isUnitAirborne !== 'function' || !isUnitAirborne(unit)) return false;
+            /* Achievement attribution (plan §4.3 "Air Traffic Control"):
+               opts.byUnit = the unit that CAUSED the grounding. Only enemy
+               flyers count — self-crashes (reason 'wounded') and flying into
+               a standing field pass no byUnit and stay unattributed. */
+            if (opts.byUnit && !opts.byUnit.dead && opts.byUnit.player !== unit.player) {
+                opts.byUnit._matchGroundings = (opts.byUnit._matchGroundings || 0) + 1;
+            }
             const _fgFromZ = unit.z ?? 0;
             /* Pocket floor, not column top: slamming a flyer down while it is
                UNDER a bridge drops it to the ground beneath it — the old
@@ -42555,6 +42906,7 @@
                 }
             }
             if (typeof _balRecordBuildOp === 'function') _balRecordBuildOp(unit, tool, !!info.isTree);
+            trackTilesChanged(unit, 1);   // every validated build op reshapes one tile
 
             if (tool === 'dig') {
                 // Both dig ops read as axe/pick work on rigged models.
@@ -45554,7 +45906,7 @@
 
                     // Anti-air debuffs (Anchor, Stasis Beam…) drag flyers down.
                     if (spell.groundsFlyers && !target.dead && typeof forceGroundUnit === 'function') {
-                        forceGroundUnit(target, { byLabel: `by ${spell.name}` });
+                        forceGroundUnit(target, { byLabel: `by ${spell.name}`, byUnit: unit });
                     }
 
                     /* ── Spellsteal: take one of the target's spells and add it to the caster's kit ── */
@@ -47029,6 +47381,7 @@
                             const current = getTerrainAt(tile.x, tile.y);
                             if (current !== 'wall' && current !== spell.leaveTerrain) {
                                 setTerrainAt(tile.x, tile.y, spell.leaveTerrain);
+                                trackTilesChanged(unit, 1);
                             }
                         }
                     }
@@ -47314,7 +47667,7 @@
                     for (const _gcU of state.units.filter(u => !u.dead && !u._dying)) {
                         if (!_gcArea.some(t => t.x === _gcU.x && t.y === _gcU.y)) continue;
                         if (canFly(_gcU) && isUnitAirborne(_gcU)) {
-                            forceGroundUnit(_gcU, { byLabel: `by ${spell.name}` });
+                            forceGroundUnit(_gcU, { byLabel: `by ${spell.name}`, byUnit: unit });
                         }
                     }
                 }
@@ -47412,6 +47765,7 @@
                 unit.mp -= effectiveSpellCost;
                 if (_pbIsWater) {
                     setTerrainAt(x, y, blockTerrain);
+                    trackTilesChanged(unit, 1);
                     addLog(`${unitDisplayName(unit)} sinks a ${spell.name} into the water at ${coordLabel(x, y)} — a stepping stone forms!`);
                 } else {
                     if (_pbEnemyOcc && _pbShoveTo) {
@@ -47426,10 +47780,14 @@
                         });
                         showFloatingTextForUnit(_pbEnemyOcc, '🧱 SHOVED!', 'damage', { durationMs: 1000 });
                         addLog(`${unitDisplayName(unit)}'s ${spell.name} erupts under ${unitDisplayName(_pbEnemyOcc)}, hurling them aside!`);
+                        /* Manual shove (bypasses resolveForcedSlide) — count
+                           the displacement for the §4.3 ladder here. */
+                        unit._matchDisplacements = (unit._matchDisplacements || 0) + 1;
                         if (!_pbEnemyOcc.dead) _applyKnockbackHazard(_pbEnemyOcc);
                         if (!_pbEnemyOcc.dead && typeof checkTrapTrigger === 'function') checkTrapTrigger(_pbEnemyOcc);
                     }
                     setBlockAt(x, y, _pbOldH + 1, blockTerrain);
+                    trackTilesChanged(unit, 1);
                     const _pbRider = unitAt(x, y);
                     if (_pbRider && !_pbRider.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_pbRider)) && !isEnemyUnit(_pbRider, unit)) {
                         _pbRider.z = _pbOldH + 1;
@@ -47484,6 +47842,7 @@
                     if (b.dz === 0 && b.terrain) setTerrainAt(b.x, b.y, b.terrain);
                     stamped++;
                 }
+                trackTilesChanged(unit, stamped);
                 _invalidateBoardGrid();
                 if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
                 if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
@@ -47654,6 +48013,7 @@
                             if (_wpU && !_wpU.dead) _applyKnockbackHazard(_wpU);
                         }
                     }
+                    trackTilesChanged(unit, convertedTiles.length);
 
                     _invalidateBoardGrid();
                     scheduleBoardRender();
@@ -48962,6 +49322,7 @@
                             _dlPainted++;
                         }
                         if (_dlPainted) {
+                            trackTilesChanged(unit, _dlPainted);
                             addLog(`❄️ ${spell.name} leaves ${_dlPainted} tile${_dlPainted !== 1 ? 's' : ''} of ${spell.leaveTerrain} in the wake!`);
                             if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
                             scheduleBoardRender();

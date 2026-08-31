@@ -90,13 +90,56 @@ test('win-condition metrics stay in sync with the engine strings', () => {
 });
 
 test('high-water lines are marked', () => {
-    const streak = data.ACH_CATALOG.find(l => l.metric === 'bestStreak');
-    assert.ok(streak, 'bestStreak line missing');
-    assert.strictEqual(streak.hw, true, 'bestStreak must be a high-water (hw) line');
+    // Streak/best-run/mastery-count metrics merge by max(), not addition
+    // (battle.js hw() + _achEvaluateTiers) — the flags must match exactly.
+    const HW = new Set(['bestStreak', 'challenge_runWins', 'survival_bestStreak',
+        'md_bestFloor', 'champsMastered']);
+    for (const m of HW) {
+        const line = data.ACH_CATALOG.find(l => l.metric === m);
+        assert.ok(line, `hw line missing: ${m}`);
+        assert.strictEqual(line.hw, true, `${m} must be a high-water (hw) line`);
+    }
     // Everything else is additive.
     for (const line of data.ACH_CATALOG) {
-        if (line.metric !== 'bestStreak') {
+        if (!HW.has(line.metric)) {
             assert.ok(!line.hw, `${line.id}: unexpected hw flag`);
         }
     }
+});
+
+test('Phase-2 deferred metrics exist in the catalog', () => {
+    const metrics = new Set(data.ACH_CATALOG.map(l => l.metric));
+    for (const m of ['tilesChanged', 'flyersGrounded', 'comebacks',
+        'challenge_runWins', 'survival_bestStreak', 'md_bestFloor', 'champsMastered']) {
+        assert.ok(metrics.has(m), `catalog missing Phase-2 metric: ${m}`);
+    }
+});
+
+test('tier rewards cover every tier and are sane (§4.7)', () => {
+    const r = data.ACH_TIER_REWARDS;
+    assert.ok(Array.isArray(r), 'ACH_TIER_REWARDS must be an array');
+    const maxTiers = Math.max(...data.ACH_CATALOG.map(l => l.tiers.length),
+        ...data.ACH_CHAMP_LINES.map(s => s.tiers.length));
+    assert.ok(r.length >= maxTiers, `rewards array shorter than deepest ladder (${r.length} < ${maxTiers})`);
+    for (let i = 0; i < r.length; i++) {
+        assert.ok(Number.isInteger(r[i]) && r[i] > 0, `reward ${i} must be a positive integer`);
+        if (i > 0) assert.ok(r[i] >= r[i - 1], 'rewards must be non-decreasing by tier');
+    }
+});
+
+test('mastery bar matches the champ ladders (§4.1)', () => {
+    const M = data.ACH_MASTERY;
+    assert.ok(M && typeof M === 'object', 'ACH_MASTERY missing');
+    // Each requirement must be an actual threshold on its champ ladder —
+    // and deliberately NOT the top tier (the meta-chase must stay human).
+    for (const [metric, req] of Object.entries(M)) {
+        const spec = data.ACH_CHAMP_LINES.find(s => s.metric === metric);
+        assert.ok(spec, `ACH_MASTERY references unknown champ line: ${metric}`);
+        assert.ok(spec.tiers.includes(req), `${metric} mastery bar ${req} is not a ladder threshold`);
+        assert.ok(req < spec.tiers[spec.tiers.length - 1], `${metric} mastery bar must sit below the top tier`);
+    }
+    // The Heat Death line's final tier equals the roster size.
+    const heatDeath = data.ACH_CATALOG.find(l => l.metric === 'champsMastered');
+    assert.strictEqual(heatDeath.tiers[heatDeath.tiers.length - 1], data.AVAILABLE_RACES.length,
+        'champsMastered top tier must equal the champ roster size');
 });

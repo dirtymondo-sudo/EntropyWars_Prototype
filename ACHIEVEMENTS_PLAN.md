@@ -817,6 +817,57 @@ guest see?" pass. No playtesting unless explicitly requested (RULE #1c).
 >   render as cards on the victory screen; the full trophy-case rework stays
 >   Phase 2/4.
 
+> **Status 2026-08-31 (later session): Phase 2 implemented.** Notes /
+> deviations:
+>
+> - **Deferred Phase-1 metrics now live:** `tilesChanged` (all player-driven
+>   sites: terrainCreate paint loops, placeBlock both paths, buildStructure
+>   stamp count, AoE/line/dash `leaveTerrain` — change-guarded, and every
+>   validated `doBuildAction` op, via `trackTilesChanged(unit, n)`),
+>   `flyersGrounded` (`forceGroundUnit` gained `opts.byUnit`; plumbed at the
+>   root-status, gravity-zone (caster via `zone.casterUnitId`), anti-air
+>   spell and Gravity-Crush cast sites; enemy-only, wounded self-crashes and
+>   flying-into-a-field stay unattributed), `comebacks` (§4.5.1
+>   `_checkComebackArmed` at round advance; `state._comebackArmed` rides
+>   state-sync; **deviation:** the mid-match Arena check uses kill-deficit ≥3
+>   OR the Cube 30%/60% condition — `_arenaComposite` is scoped inside the
+>   timer-expiry closure, and kills are its dominant term), plus
+>   `challenge_runWins` / `survival_bestStreak` (hw from
+>   `state.campaignSave`, split by `challengeType`), `md_bestFloor`, and the
+>   mastery meta line `champsMastered` ("Heat Death", hw; bar =
+>   `ACH_MASTERY` in data.js: 100 kills · 100 wins · 10 deathless).
+>   Erupting-block shoves (which bypass `resolveForcedSlide`) now count into
+>   `displacements` too.
+> - **Live mid-match popups WITHOUT `state._achTally`:** a 2s viewer-local
+>   poll (`_achLivePoll`) compares cached profile base + per-unit `_match*`
+>   deltas (`_achFoldMatchDeltas`, shared with commit so they can't drift)
+>   against tier thresholds — the guest's counters arrive via state-sync, so
+>   both clients pop their own unlocks with zero relay code. Display-only:
+>   nothing persists until commit (abandon still commits nothing); a
+>   popped-set suppresses the duplicate commit-time popup.
+> - **Popup routing per §6.1:** Bronze/Silver → styled corner toast
+>   (`.achieve-toast`, styles-animations.css — the old toast had NO css at
+>   all), queued one-at-a-time, cinematic-suppressed; Gold/Diamond/Entropic →
+>   center banner through map.js's queued `showCombatBanner` (new kinds
+>   `ach-gold`/`ach-diamond`/`ach-entropic`). Progress pings (50%/90%) not
+>   implemented (optional in the plan).
+> - **§6.2 panel shipped** on ALL three end screens (PvP victory, Challenge,
+>   Dungeon): full unlock cards (tier color + reward chip) + "Almost there"
+>   (top-3 nearest locked tiers, this-match delta first) + trophy-case
+>   pointer. Records rows await Phase 3.
+> - **§4.7 rewards ON:** `ACH_TIER_REWARDS` (100/250/750/2000/5000g) paid at
+>   commit via `creditLocalGold` (silent career-seed pre-unlocks never pay —
+>   they're stamped at migration, before any commit); each newly-mastered
+>   champ pays one free unlock token via new
+>   `ProfileSystem.creditLocalFreeTokens`. Local-mirror only, like MD gold —
+>   server reconciliation is Phase 5's job.
+> - achievements.test.js extended: hw-flag set, Phase-2 metric presence,
+>   reward-ladder sanity, mastery-bar-vs-ladder consistency (Heat Death top
+>   tier pinned to `AVAILABLE_RACES.length`).
+> - **Still deferred:** records + juice (§5, Phase 3), profile trophy-case
+>   tab rework (§6.3, Phase 4), server sync (§7, Phase 5), remaining feats
+>   (§4.6).
+
 | phase | content | files touched | size |
 |---|---|---|---|
 | **0 — Kill the slop** | §1.2 fixes: profile auto-create + persistence fallback, `ace` gate, remove `_repairAchievementStore`, win-condition mapping fix, rename Flawless chip, RT-mode crit/cleanse counters, interim victory-screen cleanup (drop bare N/14, show names for new unlocks) | battle.js, profile.js, (index.html bump) | small — **one session, do first, ships value alone** |
