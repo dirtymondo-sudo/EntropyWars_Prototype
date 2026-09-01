@@ -59,6 +59,9 @@ function backfillProfile(p) {
   if (!p.unitBuilds) p.unitBuilds = [];
   if (!p.teamPresets) p.teamPresets = [];
   if (!p.favRaces) p.favRaces = [];
+  /* Achievement showcase (plan §6.3): picked achievement keys for a future
+     public profile. Data-only for now — the UI lands with public profiles. */
+  if (!p.showcase) p.showcase = [];
   // Account economy mirror. When a server token exists the server is the source
   // of truth and this is just a read cache; with no token (offline / local-only /
   // profiles made before the account system) this IS the wallet, and purchasing
@@ -1225,40 +1228,433 @@ function ChampionsTab({ profile }) {
   );
 }
 
-function AchievementsTab({ profile }) {
+/* ═══ Achievements trophy case (ACHIEVEMENTS_PLAN.md §6.3, Phase 4) ════════
+   Reads the same registries the battle.js runtime writes against —
+   ACH_CATALOG / ACH_CHAMP_LINES / ACH_RECORD_DEFS (data.js, on window) —
+   plus profile.progress (schema §3.5). Pip/ladder state derives from the
+   COUNTER totals (the source of truth), not the unlocked-key mirror, so the
+   display can never disagree with what the next match commit would
+   evaluate; unlock timestamps are tooltip garnish only. */
 
-  const defs = typeof ACHIEVEMENT_DEFS !== 'undefined' ? ACHIEVEMENT_DEFS
-             : (window.ACHIEVEMENT_DEFS || {});
+function _bagSum(c) { return c ? (c.pvp || 0) + (c.cpu || 0) + (c.legacy || 0) : 0; }
+function _bagMax(c) { return c ? Math.max(c.pvp || 0, c.cpu || 0, c.legacy || 0) : 0; }
+function _lineTotal(line, c) { return line.hw ? _bagMax(c) : _bagSum(c); }
+
+function _achReg() {
+  const w = (typeof window !== 'undefined') ? window : {};
+  return {
+    catalog: Array.isArray(w.ACH_CATALOG) ? w.ACH_CATALOG : [],
+    champLines: Array.isArray(w.ACH_CHAMP_LINES) ? w.ACH_CHAMP_LINES : [],
+    recordDefs: Array.isArray(w.ACH_RECORD_DEFS) ? w.ACH_RECORD_DEFS : [],
+    tierNames: Array.isArray(w.ACH_TIER_NAMES) ? w.ACH_TIER_NAMES : ['I', 'II', 'III', 'IV', 'V', 'VI'],
+    tierColors: Array.isArray(w.ACH_TIER_COLORS) ? w.ACH_TIER_COLORS : [],
+    mastery: w.ACH_MASTERY || { kills: 100, wins: 100, deathless: 10 },
+    races: Array.isArray(w.AVAILABLE_RACES) ? w.AVAILABLE_RACES : [],
+  };
+}
+
+function _achRaceLabel(race) {
+  try { if (typeof window.getRaceLabel === 'function') return window.getRaceLabel(race); } catch {}
+  return race;
+}
+
+/* Portrait for a bare race key (no unit): prefer the 128×128 HUD portrait
+   (either gender), fall back to the map sprite. sprites.js loads before
+   profile.js, but guard anyway — the grid renders a letter tile without it. */
+function _achRacePortrait(race) {
+  try {
+    if (typeof RACE_PORTRAITS !== 'undefined' && RACE_PORTRAITS[race]) {
+      const set = RACE_PORTRAITS[race];
+      if (set.male || set.female) return set.male || set.female;
+    }
+    if (typeof RACE_SPRITES !== 'undefined' && RACE_SPRITES[race]) return RACE_SPRITES[race];
+  } catch {}
+  return null;
+}
+
+/* Same rendering as battle.js _recFmt: 'ms' → m:ss, everything else a
+   locale-grouped integer. */
+function _achFmtRecord(def, v) {
+  if (def && def.fmt === 'ms') {
+    const s = Math.max(0, Math.round((Number(v) || 0) / 1000));
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }
+  return Math.round(Number(v) || 0).toLocaleString();
+}
+
+/* Tier pips: one chip per tier, colored through the shared rarity ladder
+   (Bronze/Silver/Gold/Diamond/Entropic) once the counter total crosses it. */
+function TierPips({ line, total, reg, keyPrefix, unlocked, small }) {
+  const sz = small ? { minWidth: 13, height: 13, fontSize: 7 } : { minWidth: 17, height: 16, fontSize: 8 };
+  return h('div', { style: { display: 'flex', gap: 3, flexShrink: 0 } },
+    (line.tiers || []).map((th, i) => {
+      const on = total >= th;
+      const tint = reg.tierColors[i] || '#ffd700';
+      const ts = unlocked && unlocked[keyPrefix + i];
+      return h('span', {
+        key: i,
+        title: 'Tier ' + (reg.tierNames[i] || (i + 1)) + ' — ' + th.toLocaleString()
+          + (on && ts ? ' · unlocked ' + new Date(ts).toLocaleDateString() : ''),
+        style: {
+          minWidth: sz.minWidth, height: sz.height, padding: '0 2px',
+          borderRadius: 3, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: sz.fontSize, fontWeight: 700, fontFamily: 'DotGothic16, monospace',
+          background: on ? tint : 'rgba(255,255,255,0.04)',
+          color: on ? '#000' : EW.inkDim,
+          border: '1px solid ' + (on ? tint : EW.panelEdge),
+          boxShadow: on && i >= 4 ? '0 0 7px rgba(176,106,240,0.85)' : 'none',
+        }
+      }, reg.tierNames[i] || String(i + 1));
+    })
+  );
+}
+
+/* One catalog line: icon · name/desc · pips · count · progress bar to the
+   next tier. Click to expand the exact PvP / vs-CPU split (§3.4). */
+function TierLadderRow({ line, prog, reg }) {
+  const [open, setOpen] = React.useState(false);
+  const c = (prog.counters || {})[line.metric];
+  const total = _lineTotal(line, c);
+  const tiers = line.tiers || [];
+  const ni = tiers.findIndex(th => total < th);      // next locked tier
+  const done = ni === -1;
+  const next = done ? tiers[tiers.length - 1] : tiers[ni];
+  const pct = done ? 1 : Math.min(1, next > 0 ? total / next : 0);
+  const curIdx = (done ? tiers.length : ni) - 1;     // highest tier reached
+  const tint = curIdx >= 0 ? (reg.tierColors[curIdx] || '#ffd700') : EW.inkDim;
+  const barTint = done ? tint : (reg.tierColors[ni] || '#ffd700');
+
+  return h('div', {
+    onClick: () => setOpen(!open),
+    title: 'Click for the PvP / vs-CPU split',
+    style: {
+      background: EW.panel, border: '1px solid ' + (curIdx >= 0 ? EW.panelEdgeHi : EW.panelEdge),
+      borderLeft: '3px solid ' + tint,
+      borderRadius: 6, padding: '10px 12px', cursor: 'pointer',
+      opacity: total > 0 ? 1 : 0.65,
+    }
+  },
+    h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
+      h('span', { style: { fontSize: 18, width: 24, textAlign: 'center', flexShrink: 0 } }, line.icon),
+      h('div', { style: { flex: 1, minWidth: 0 } },
+        h('div', { style: { fontWeight: 700, fontSize: 13, color: EW.ink, fontFamily: 'Cormorant SC, serif' } },
+          line.name,
+          curIdx >= 0 ? h('span', { style: { color: tint, marginLeft: 6, fontSize: 11, fontFamily: 'DotGothic16, monospace', textShadow: curIdx >= 4 ? '0 0 8px rgba(176,106,240,0.9)' : 'none' } },
+            reg.tierNames[curIdx] || '') : null,
+        ),
+        h('div', { style: { fontSize: 11, color: EW.inkMute } }, line.desc),
+      ),
+      h(TierPips, { line, total, reg, keyPrefix: line.id + '.', unlocked: prog.unlocked }),
+    ),
+    h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 7 } },
+      h('div', { style: { flex: 1, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' } },
+        h('div', { style: { width: Math.round(pct * 100) + '%', height: '100%', background: barTint, borderRadius: 3 } }),
+      ),
+      h('span', { style: { fontSize: 11, color: EW.inkMute, whiteSpace: 'nowrap' } },
+        done ? total.toLocaleString() + ' — complete'
+             : total.toLocaleString() + ' / ' + next.toLocaleString()),
+    ),
+    open ? h('div', { style: { marginTop: 7, fontSize: 11, color: EW.inkMute, display: 'flex', gap: 14, flexWrap: 'wrap' } },
+      h('span', null, 'PvP: ', h('b', { style: { color: EW.ink } }, (c && c.pvp || 0).toLocaleString())),
+      h('span', null, 'vs-CPU: ', h('b', { style: { color: EW.ink } }, (c && c.cpu || 0).toLocaleString())),
+      (c && c.legacy) ? h('span', null, 'Legacy: ', h('b', { style: { color: EW.ink } }, c.legacy.toLocaleString())) : null,
+      line.hw ? h('span', { style: { color: EW.inkDim } }, '(best of the three counts — this is a high-water line)') : null,
+    ) : null,
+  );
+}
+
+/* The 96-row champion mastery grid (§6.3) — the completionist centerpiece
+   and the "reason to play every champ" surface. */
+function ChampMasteryGrid({ prog, reg }) {
+  const [q, setQ] = React.useState('');
+  const [ownedOnly, setOwnedOnly] = React.useState(false);
+  const [sort, setSort] = React.useState('progress');
+
+  const owned = new Set((getAccountEconomy().unlockedUnits) || []);
+  const ML = reg.mastery;
+  const mlFor = m => ML[m] || 1;
+
+  let rows = reg.races.map(race => {
+    const bag = (prog.champs || {})[race] || {};
+    const tot = {};
+    for (const spec of reg.champLines) tot[spec.metric] = _bagSum(bag[spec.metric]);
+    const parts = Object.keys(ML).map(m => Math.min(1, (tot[m] || 0) / mlFor(m)));
+    const masteryPct = parts.reduce((s, v) => s + v, 0) / Math.max(1, parts.length);
+    return {
+      race, bag, tot, masteryPct,
+      mastered: parts.length > 0 && parts.every(v => v >= 1),
+      label: _achRaceLabel(race),
+      owned: owned.has(race),
+    };
+  });
+
+  const masteredCount = rows.filter(r => r.mastered).length;
+  if (q.trim()) {
+    const needle = q.trim().toLowerCase();
+    rows = rows.filter(r => r.label.toLowerCase().includes(needle) || r.race.toLowerCase().includes(needle));
+  }
+  if (ownedOnly) rows = rows.filter(r => r.owned);
+  if (sort === 'progress') rows.sort((a, b) => (b.masteryPct - a.masteryPct) || a.label.localeCompare(b.label));
+  else rows.sort((a, b) => a.label.localeCompare(b.label));
+
+  const ctlStyle = {
+    padding: '5px 10px', fontSize: 11, borderRadius: 4, cursor: 'pointer',
+    border: '1px solid ' + EW.panelEdge, fontFamily: 'DotGothic16, monospace',
+  };
+
+  return h('div', null,
+    h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 } },
+      h('span', { style: { fontSize: 12, color: '#b06af0', fontWeight: 700 } },
+        '👑 ' + masteredCount + ' / ' + reg.races.length + ' mastered'),
+      h('span', { style: { fontSize: 10, color: EW.inkDim } },
+        'Mastery = ' + mlFor('kills') + ' kills · ' + mlFor('wins') + ' wins · ' + mlFor('deathless') + ' deathless'),
+      h('span', { style: { flex: 1 } }),
+      h('input', {
+        type: 'text', placeholder: '🔍 search champs', value: q,
+        onChange: e => setQ(e.target.value),
+        style: Object.assign({}, ctlStyle, { cursor: 'text', background: 'rgba(255,255,255,0.06)', color: EW.ink, outline: 'none', width: 130 }),
+      }),
+      h('button', {
+        onClick: () => setOwnedOnly(!ownedOnly),
+        style: Object.assign({}, ctlStyle, { background: ownedOnly ? EW.accent : 'rgba(255,255,255,0.06)', color: ownedOnly ? '#000' : EW.inkMute, border: 'none' }),
+      }, 'Owned only'),
+      h('button', {
+        onClick: () => setSort(sort === 'progress' ? 'name' : 'progress'),
+        style: Object.assign({}, ctlStyle, { background: 'rgba(255,255,255,0.06)', color: EW.inkMute, border: 'none' }),
+      }, sort === 'progress' ? '↓ Progress' : 'A–Z'),
+    ),
+    rows.length === 0 ? h('div', { style: { color: EW.inkDim, padding: 20, textAlign: 'center' } }, 'No champs match.') :
+    h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))', gap: 8 } },
+      rows.map(r => h(ChampMasteryCard, { key: r.race, row: r, prog, reg })),
+    ),
+  );
+}
+
+function ChampMasteryCard({ row, prog, reg }) {
+  const portrait = _achRacePortrait(row.race);
+  return h('div', { style: {
+    background: row.mastered ? 'rgba(176,106,240,0.08)' : EW.panel,
+    border: '1px solid ' + (row.mastered ? 'rgba(176,106,240,0.55)' : EW.panelEdge),
+    boxShadow: row.mastered ? '0 0 12px rgba(176,106,240,0.25)' : 'none',
+    borderRadius: 6, padding: 10, opacity: row.owned || row.masteryPct > 0 ? 1 : 0.55,
+  }},
+    h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 } },
+      portrait ? h('img', {
+        src: portrait, alt: '', width: 34, height: 34,
+        style: { width: 34, height: 34, borderRadius: 5, objectFit: 'cover', background: '#000', border: '1px solid ' + EW.panelEdge, imageRendering: 'pixelated', flexShrink: 0 },
+        onError: e => { e.target.style.display = 'none'; },
+      }) : h('span', { style: {
+        width: 34, height: 34, borderRadius: 5, background: 'rgba(255,255,255,0.05)',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 15, color: EW.inkMute, border: '1px solid ' + EW.panelEdge, flexShrink: 0,
+        fontFamily: 'Cormorant SC, serif', textTransform: 'uppercase',
+      }}, (row.label || '?').charAt(0)),
+      h('div', { style: { flex: 1, minWidth: 0 } },
+        h('div', { style: {
+          fontWeight: 700, fontSize: 13, fontFamily: 'Cormorant SC, serif',
+          color: row.mastered ? '#d9b8ff' : EW.ink, textTransform: 'capitalize',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}, row.label),
+        h('div', { style: { fontSize: 9, color: row.mastered ? '#b06af0' : EW.inkDim, letterSpacing: 1 } },
+          row.mastered ? '👑 MASTERED' : (row.owned ? Math.round(row.masteryPct * 100) + '% to mastery' : '🔒 not owned')),
+      ),
+      row.mastered ? h('span', { style: { fontSize: 16, textShadow: '0 0 8px rgba(176,106,240,0.9)' } }, '⭐') : null,
+    ),
+    reg.champLines.map(spec => {
+      const total = row.tot[spec.metric] || 0;
+      const tiers = spec.tiers || [];
+      const ni = tiers.findIndex(th => total < th);
+      const done = ni === -1;
+      const next = done ? tiers[tiers.length - 1] : tiers[ni];
+      const pct = done ? 1 : Math.min(1, next > 0 ? total / next : 0);
+      return h('div', { key: spec.metric, style: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 } },
+        h('span', { style: { fontSize: 11, width: 16, textAlign: 'center', flexShrink: 0 } }, spec.icon),
+        h('span', { style: { fontSize: 10, color: EW.inkMute, width: 78, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, spec.name),
+        h(TierPips, { line: spec, total, reg, keyPrefix: 'champ.' + row.race + '.' + spec.metric + '.', unlocked: prog.unlocked, small: true }),
+        h('div', { style: { flex: 1, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' } },
+          h('div', { style: { width: Math.round(pct * 100) + '%', height: '100%', background: done ? '#b06af0' : EW.accent } }),
+        ),
+        h('span', { style: { fontSize: 10, color: EW.inkMute, whiteSpace: 'nowrap' } },
+          done ? total.toLocaleString() : total.toLocaleString() + '/' + next.toLocaleString()),
+      );
+    }),
+  );
+}
+
+/* Personal-record boards (§5 / §6.3): PvP and vs-CPU side by side, never
+   mixed — a best farmed vs Easy CPU can't overwrite a real PvP best. */
+function RecordsBoards({ prog, reg }) {
+  const recs = prog.records || {};
+  const cell = (def, bucket) => {
+    const e = recs[def.id] && recs[def.id][bucket];
+    if (!e || !(e.value > 0)) return h('div', { style: { color: EW.inkDim, fontSize: 13, textAlign: 'right' } }, '—');
+    const mode = e.meta && e.meta.mode ? String(e.meta.mode).toUpperCase() + ' · ' : '';
+    return h('div', { style: { textAlign: 'right' } },
+      h('div', { style: { fontSize: 15, fontWeight: 700, color: bucket === 'pvp' ? EW.gold : EW.accent, fontFamily: 'Cormorant SC, serif' } },
+        _achFmtRecord(def, e.value)),
+      h('div', { style: { fontSize: 9, color: EW.inkDim } }, mode + (e.ts ? new Date(e.ts).toLocaleDateString() : '')),
+    );
+  };
+  return h('div', null,
+    h('div', { style: { fontSize: 11, color: EW.inkDim, marginBottom: 10 } },
+      'Two boards, never mixed — PvP records only fall in PvP, vs-CPU records only vs the CPU.'),
+    h('div', { style: {
+      display: 'grid', gridTemplateColumns: 'minmax(140px, 1fr) 110px 110px',
+      gap: '0 10px', alignItems: 'center',
+      padding: '6px 12px', fontSize: 10, color: EW.inkMute, textTransform: 'uppercase', letterSpacing: 1,
+      borderBottom: '1px solid ' + EW.panelEdge,
+    }},
+      h('span', null, 'Record'),
+      h('span', { style: { textAlign: 'right', color: EW.gold } }, '⚔️ PvP'),
+      h('span', { style: { textAlign: 'right', color: EW.accent } }, '🤖 vs-CPU'),
+    ),
+    reg.recordDefs.map(def => h('div', { key: def.id, style: {
+      display: 'grid', gridTemplateColumns: 'minmax(140px, 1fr) 110px 110px',
+      gap: '0 10px', alignItems: 'center', padding: '8px 12px',
+      borderBottom: '1px solid rgba(255,255,255,0.04)',
+    }},
+      h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 } },
+        h('span', { style: { fontSize: 15, flexShrink: 0 } }, def.icon),
+        h('div', { style: { minWidth: 0 } },
+          h('div', { style: { fontSize: 12, fontWeight: 700, color: EW.ink, fontFamily: 'Cormorant SC, serif' } }, def.name),
+          h('div', { style: { fontSize: 10, color: EW.inkMute } }, def.desc),
+        ),
+      ),
+      cell(def, 'pvp'),
+      cell(def, 'cpu'),
+    )),
+  );
+}
+
+/* Legacy one-shot feats (the original 14) — the personality layer (§4.6). */
+function FeatsGrid({ profile }) {
+  const defs = window.ACHIEVEMENT_DEFS || {};
   const allIds = Object.keys(defs);
   const unlocked = profile.achievements || {};
-  const unlockedCount = allIds.filter(id => unlocked[id]).length;
+  if (allIds.length === 0) return h('div', { style: { color: EW.inkDim } }, 'No feats defined.');
+  return h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 } },
+    allIds.map(id => {
+      const def = defs[id];
+      const u = unlocked[id];
+      const isUnlocked = !!u;
+      return h('div', { key: id, style: {
+        background: isUnlocked ? EW.panel : 'rgba(10,12,20,0.5)',
+        border: '1px solid ' + (isUnlocked ? EW.panelEdgeHi : EW.panelEdge),
+        borderRadius: 6, padding: 12,
+        opacity: isUnlocked ? 1 : 0.5,
+      }},
+        h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 } },
+          h('span', { style: { fontSize: 20 } }, isUnlocked ? def.icon : '🔒'),
+          h('span', { style: { fontWeight: 700, fontSize: 13, color: isUnlocked ? EW.ink : EW.inkDim, fontFamily: 'Cormorant SC, serif' } }, def.name),
+        ),
+        h('div', { style: { fontSize: 11, color: EW.inkMute } }, def.desc),
+        isUnlocked && u.unlockedAt ? h('div', { style: { fontSize: 10, color: EW.inkDim, marginTop: 4 } },
+          'Unlocked ' + timeAgo(u.unlockedAt) + (u.unit ? ' — ' + u.unit : '')
+        ) : null,
+      );
+    })
+  );
+}
+
+/* Header strip: overall completion % + unlocked-by-rarity summary (§6.3).
+   Counts EVERYTHING a completionist can chase: every catalog tier, every
+   per-champ tier across the whole roster, and the one-shot feats. */
+function AchCompletionHeader({ profile, prog, reg }) {
+  let totalTiers = 0, gotTiers = 0;
+  const rarity = [0, 0, 0, 0, 0];                 // Bronze…Diamond, Entropic (4+5 merged)
+  for (const line of reg.catalog) {
+    const total = _lineTotal(line, (prog.counters || {})[line.metric]);
+    (line.tiers || []).forEach((th, i) => {
+      totalTiers++;
+      if (total >= th) { gotTiers++; rarity[Math.min(i, 4)]++; }
+    });
+  }
+  for (const race of reg.races) {
+    const bag = (prog.champs || {})[race] || {};
+    for (const spec of reg.champLines) {
+      const total = _bagSum(bag[spec.metric]);
+      (spec.tiers || []).forEach((th, i) => {
+        totalTiers++;
+        if (total >= th) { gotTiers++; rarity[Math.min(i, 4)]++; }
+      });
+    }
+  }
+  const featDefs = window.ACHIEVEMENT_DEFS || {};
+  const featIds = Object.keys(featDefs);
+  const featGot = featIds.filter(id => (profile.achievements || {})[id]).length;
+  totalTiers += featIds.length;
+  gotTiers += featGot;
+  const pct = totalTiers > 0 ? (gotTiers / totalTiers) * 100 : 0;
+
+  const RARITY_LABELS = ['Bronze', 'Silver', 'Gold', 'Diamond', 'Entropic'];
+  return h('div', { style: {
+    display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+    background: EW.panel, border: '1px solid ' + EW.panelEdge, borderRadius: 6,
+    padding: '10px 14px', marginBottom: 12,
+  }},
+    h('div', null,
+      h('span', { style: { fontSize: 22, fontWeight: 700, fontFamily: 'Cormorant SC, serif', color: EW.gold } },
+        pct.toFixed(1) + '%'),
+      h('span', { style: { fontSize: 11, color: EW.inkMute, marginLeft: 8 } },
+        gotTiers.toLocaleString() + ' / ' + totalTiers.toLocaleString() + ' unlocked'),
+    ),
+    h('div', { style: { flex: 1, minWidth: 120, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' } },
+      h('div', { style: { width: Math.min(100, pct).toFixed(1) + '%', height: '100%', background: 'linear-gradient(90deg, #cd7f32, #ffd700, #b06af0)' } }),
+    ),
+    h('div', { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
+      rarity.map((n, i) => h('span', { key: i, title: RARITY_LABELS[i], style: { fontSize: 11, color: EW.inkMute, display: 'inline-flex', alignItems: 'center', gap: 4 } },
+        h('span', { style: {
+          width: 9, height: 9, borderRadius: '50%', display: 'inline-block',
+          background: reg.tierColors[i] || '#888',
+          boxShadow: i >= 4 ? '0 0 6px rgba(176,106,240,0.85)' : 'none',
+        }}),
+        n.toLocaleString(),
+      )),
+      featGot > 0 ? h('span', { style: { fontSize: 11, color: EW.inkMute } }, '✨ ' + featGot + ' feats') : null,
+    ),
+  );
+}
+
+function AchievementsTab({ profile }) {
+  const [cat, setCat] = React.useState('combat');
+  const reg = _achReg();
+  const prog = profile.progress || {};
+
+  const CATS = [
+    ['combat', '⚔️ Combat'], ['support', '💚 Support'], ['battlefield', '🌌 Battlefield'],
+    ['objectives', '⏳ Objectives'], ['modes', '🏆 Modes'], ['feats', '✨ Feats'],
+    ['champions', '👑 Champions'], ['records', '📊 Records'],
+  ];
+
+  const subBtn = ([id, label]) => h('button', {
+    key: id,
+    onClick: () => setCat(id),
+    style: {
+      padding: '5px 11px', fontSize: 11, borderRadius: 4, cursor: 'pointer',
+      background: cat === id ? EW.accent : 'rgba(255,255,255,0.06)',
+      color: cat === id ? '#000' : EW.inkMute,
+      border: 'none', fontFamily: 'DotGothic16, monospace',
+      fontWeight: cat === id ? 700 : 400,
+    }
+  }, label);
+
+  /* Registry missing (data.js failed to load / very old cache) — fall back
+     to the feats grid so the tab never renders blank. */
+  if (!reg.catalog.length) {
+    return h('div', { style: { padding: '16px 0' } }, h(FeatsGrid, { profile }));
+  }
+
+  const lines = reg.catalog.filter(l => l.cat === cat);
 
   return h('div', { style: { padding: '16px 0' } },
-    h('div', { style: { fontSize: 13, color: EW.inkMute, marginBottom: 12 } },
-      unlockedCount + ' / ' + allIds.length + ' unlocked'
-    ),
-    allIds.length === 0 ? h('div', { style: { color: EW.inkDim } }, 'No achievements defined.') :
-    h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 } },
-      allIds.map(id => {
-        const def = defs[id];
-        const u = unlocked[id];
-        const isUnlocked = !!u;
-        return h('div', { key: id, style: {
-          background: isUnlocked ? EW.panel : 'rgba(10,12,20,0.5)',
-          border: '1px solid ' + (isUnlocked ? EW.panelEdgeHi : EW.panelEdge),
-          borderRadius: 6, padding: 12,
-          opacity: isUnlocked ? 1 : 0.5,
-        }},
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 } },
-            h('span', { style: { fontSize: 20 } }, isUnlocked ? def.icon : '🔒'),
-            h('span', { style: { fontWeight: 700, fontSize: 13, color: isUnlocked ? EW.ink : EW.inkDim, fontFamily: 'Cormorant SC, serif' } }, def.name),
-          ),
-          h('div', { style: { fontSize: 11, color: EW.inkMute } }, def.desc),
-          isUnlocked && u.unlockedAt ? h('div', { style: { fontSize: 10, color: EW.inkDim, marginTop: 4 } },
-            'Unlocked ' + timeAgo(u.unlockedAt) + (u.unit ? ' — ' + u.unit : '')
-          ) : null,
-        );
-      })
+    h(AchCompletionHeader, { profile, prog, reg }),
+    h('div', { style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 } },
+      CATS.map(subBtn)),
+    cat === 'feats' ? h(FeatsGrid, { profile }) :
+    cat === 'champions' ? h(ChampMasteryGrid, { prog, reg }) :
+    cat === 'records' ? h(RecordsBoards, { prog, reg }) :
+    h('div', { style: { display: 'flex', flexDirection: 'column', gap: 6 } },
+      lines.map(line => h(TierLadderRow, { key: line.id, line, prog, reg })),
     ),
   );
 }

@@ -920,6 +920,41 @@ guest see?" pass. No playtesting unless explicitly requested (RULE #1c).
 >   per-board max, keeping min-semantics for fastestWin), remaining feats
 >   (§4.6).
 
+> **Status 2026-09-01: Phase 4 implemented.** Notes / deviations:
+>
+> - **All in profile.js** — the profile screen's established idiom is inline
+>   React styles (zero CSS-file coupling), so the whole §6.3 rework ships in
+>   ONE R2 file + the index.html token bump; styles-*.css untouched.
+> - **Category sub-tabs** per §6.3: Combat · Support · Battlefield ·
+>   Objectives · Modes · Feats · Champions · Records, driven by
+>   `ACH_CATALOG[].cat`. The legacy 14 one-shots render as the Feats grid
+>   (the old tab's card UI, unchanged); the tab falls back to that grid
+>   alone if the data.js registries are somehow absent.
+> - **Tier ladders**: rarity-colored tier pips (unlock-date tooltips from
+>   `progress.unlocked`, Entropic pips glow), progress bar + exact
+>   `total / next` count, click-to-expand PvP / vs-CPU / Legacy split
+>   (hw lines annotated as best-of-buckets). **Pip/ladder state derives from
+>   the counter TOTALS, not the unlocked-key mirror**, so the display can
+>   never disagree with what the next commit would evaluate.
+> - **Champions grid**: all 96 roster rows (not just played ones), HUD
+>   portrait (either gender, map-sprite then letter-tile fallback), the 3
+>   mini-ladders with pips + bars, mastery % / 👑 MASTERED state with the
+>   entropic-purple treatment, `N/96 mastered` header, search box,
+>   owned-only filter (`getAccountEconomy().unlockedUnits` — unowned champs
+>   show 🔒, doubling as the §4.7 "reason to buy" surface), and
+>   progress/A–Z sort toggle.
+> - **Records tab**: §5.1 boards as one grid — PvP (gold) and vs-CPU (blue)
+>   columns per `ACH_RECORD_DEFS` row, value via the same fmt rules as
+>   battle.js `_recFmt` (ms → m:ss), date + mode meta beneath, '—' for
+>   unseeded cells.
+> - **Header**: overall completion % (every catalog tier + every per-champ
+>   tier across the roster + feats — the honest completionist number),
+>   gradient progress bar, and unlocked-count chips per rarity color.
+> - `profile.showcase` seeded as empty-array data in `backfillProfile`
+>   (§6.3 showcase — UI waits for public profiles, ROADMAP §6.6).
+> - **Still deferred:** server sync (§7, Phase 5), remaining feats (§4.6),
+>   progress pings (§6.1, optional), Steam (§8).
+
 | phase | content | files touched | size |
 |---|---|---|---|
 | **0 — Kill the slop** | §1.2 fixes: profile auto-create + persistence fallback, `ace` gate, remove `_repairAchievementStore`, win-condition mapping fix, rename Flawless chip, RT-mode crit/cleanse counters, interim victory-screen cleanup (drop bare N/14, show names for new unlocks) | battle.js, profile.js, (index.html bump) | small — **one session, do first, ships value alone** |
