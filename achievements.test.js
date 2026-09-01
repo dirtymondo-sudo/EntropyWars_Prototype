@@ -183,3 +183,150 @@ test('record defs are well-formed (§5, Phase 3)', () => {
             `${def.id}: id collides with a reserved namespace`);
     }
 });
+
+/* ═══ Phase 5 — progress sync merge + reward helpers (plan §7) ══════════ */
+
+test('progress-sync helpers are exported', () => {
+    for (const fn of ['mergeProgressBlobs', 'achUnlockKeyReward',
+        'achCountMasteredChamps', 'achComputeSyncRewards']) {
+        assert.strictEqual(typeof data[fn], 'function', `data.js must export ${fn}`);
+    }
+});
+
+test('mergeProgressBlobs: G-counter join semantics', () => {
+    const merge = data.mergeProgressBlobs;
+    const a = {
+        v: 2,
+        counters: { kills: { pvp: 5, cpu: 10, legacy: 3 }, backstabs: { pvp: 1, cpu: 0, legacy: 0 } },
+        champs: { wizard: { kills: { pvp: 2, cpu: 4, legacy: 0 } } },
+        records: {
+            biggestHit: { pvp: { value: 200, ts: 1000, meta: { mode: 'arena' } } },
+            fastestWin: { cpu: { value: 90000, ts: 1000, meta: { mode: 'tdm' } } },
+        },
+        unlocked: { 'kills.0': 500, 'feat_ace': 900 },
+    };
+    const b = {
+        v: 2,
+        counters: { kills: { pvp: 8, cpu: 2, legacy: 3 } },
+        champs: { wizard: { kills: { pvp: 1, cpu: 9, legacy: 0 }, wins: { pvp: 1, cpu: 0, legacy: 0 } } },
+        records: {
+            biggestHit: { pvp: { value: 150, ts: 2000, meta: { mode: 'clash' } } },
+            fastestWin: { cpu: { value: 70000, ts: 2000, meta: { mode: 'tdm' } } },
+        },
+        unlocked: { 'kills.0': 400, 'kills.1': 800 },
+    };
+    // merge() runs inside the load-data vm sandbox, so its objects carry the
+    // vm realm's prototypes — JSON-normalize before deep comparisons.
+    const norm = o => JSON.parse(JSON.stringify(o));
+    const m = merge(a, b);
+    // Counters: per-bucket max, union of metrics.
+    assert.deepStrictEqual(norm(m.counters.kills), { pvp: 8, cpu: 10, legacy: 3 });
+    assert.deepStrictEqual(norm(m.counters.backstabs), { pvp: 1, cpu: 0, legacy: 0 });
+    // Champ bags: same join.
+    assert.deepStrictEqual(norm(m.champs.wizard.kills), { pvp: 2, cpu: 9, legacy: 0 });
+    assert.deepStrictEqual(norm(m.champs.wizard.wins), { pvp: 1, cpu: 0, legacy: 0 });
+    // Records: max wins for normal records, MIN for fastestWin (min: true).
+    assert.strictEqual(m.records.biggestHit.pvp.value, 200);
+    assert.strictEqual(m.records.biggestHit.pvp.meta.mode, 'arena');
+    assert.strictEqual(m.records.fastestWin.cpu.value, 70000);
+    // Unlocked: union, earliest timestamp wins.
+    assert.strictEqual(m.unlocked['kills.0'], 400);
+    assert.strictEqual(m.unlocked['kills.1'], 800);
+    assert.strictEqual(m.unlocked['feat_ace'], 900);
+    // Commutative on values and idempotent (CRDT join — §2.3).
+    assert.deepStrictEqual(norm(merge(b, a)), norm(m));
+    assert.deepStrictEqual(norm(merge(m, m)), norm(m));
+    assert.deepStrictEqual(norm(merge(m, a)), norm(m));
+});
+
+test('mergeProgressBlobs: sanitizes hostile/garbage input', () => {
+    const merge = data.mergeProgressBlobs;
+    const evil = {
+        counters: {
+            'bad metric!': { pvp: 5 },                       // bad name → dropped
+            // computed key = a real own property (a plain '__proto__' literal
+            // would set the test object's prototype instead) — this is exactly
+            // what JSON.parse hands the server, and it must be dropped.
+            ['__proto__']: { pvp: 5 },
+            kills: { pvp: -50, cpu: Infinity, legacy: 'x' },  // clamped to 0 / capped
+            crits: { pvp: 1e15 },                             // capped at 1e9
+        },
+        champs: {
+            'dot.race': { kills: { pvp: 1 } },   // '.' breaks unlock-key parsing → dropped
+            wizard: { notALadder: { pvp: 9 }, kills: { pvp: 3 } },
+        },
+        records: {
+            fakeRecord: { pvp: { value: 5, ts: 1 } },         // unknown id → dropped
+            biggestHit: { pvp: { value: 'NaN', ts: 1 } },     // bad value → dropped
+        },
+        unlocked: { 'ok_key.1': 100, ' bad': 100, ['__proto__']: 100 },
+        junkTopLevel: { huge: true },                          // unknown field → dropped
+    };
+    const norm = o => JSON.parse(JSON.stringify(o)); // vm-realm prototypes, as above
+    const m = merge(evil, null);
+    assert.deepStrictEqual(Object.keys(m.counters).sort(), ['crits', 'kills']);
+    assert.deepStrictEqual(norm(m.counters.kills), { pvp: 0, cpu: 0, legacy: 0 });
+    assert.strictEqual(m.counters.crits.pvp, 1e9);
+    assert.deepStrictEqual(Object.keys(m.champs), ['wizard']);
+    assert.deepStrictEqual(Object.keys(m.champs.wizard), ['kills']);
+    assert.deepStrictEqual(norm(m.records), {});
+    assert.deepStrictEqual(Object.keys(m.unlocked), ['ok_key.1']);
+    assert.strictEqual(m.junkTopLevel, undefined);
+    // The evil '__proto__' bag must not have become the counters' prototype.
+    assert.strictEqual(Object.getPrototypeOf(m.counters).pvp, undefined, 'prototype must be untouched');
+    // Null/garbage inputs yield a clean empty blob.
+    assert.deepStrictEqual(norm(merge(null, undefined)), { v: 2, counters: {}, champs: {}, records: {}, unlocked: {} });
+});
+
+test('achUnlockKeyReward mirrors the client payout rules (§4.7)', () => {
+    const R = data.ACH_TIER_REWARDS;
+    const reward = data.achUnlockKeyReward;
+    assert.strictEqual(reward('kills.0'), R[0]);
+    assert.strictEqual(reward('kills.5'), R[5]);           // 6-tier line, top tier
+    assert.strictEqual(reward('kills.9'), 0);              // past the ladder
+    assert.strictEqual(reward('wins_clash.3'), R[3]);      // 4-tier line, top tier
+    assert.strictEqual(reward('wins_clash.4'), 0);
+    assert.strictEqual(reward('feat_ace'), 0);             // legacy one-shots never pay
+    assert.strictEqual(reward('champ.wizard.kills.2'), R[2]);
+    assert.strictEqual(reward('champ.men in black.deathless.3'), R[3]);
+    assert.strictEqual(reward('champ.wizard.kills.9'), 0);
+    assert.strictEqual(reward('champ.notarealrace.kills.1'), 0);
+    assert.strictEqual(reward('champ.wizard.notALadder.1'), 0);
+    assert.strictEqual(reward('noSuchLine.1'), 0);
+    assert.strictEqual(reward('kills'), 0);                // no tier suffix
+});
+
+test('achComputeSyncRewards: pays only newly-merged keys + mastery crossings', () => {
+    const R = data.ACH_TIER_REWARDS;
+    const M = data.ACH_MASTERY;
+    const before = {
+        counters: {},
+        champs: { wizard: { kills: { pvp: M.kills, cpu: 0, legacy: 0 }, wins: { pvp: M.wins, cpu: 0, legacy: 0 }, deathless: { pvp: M.deathless - 1, cpu: 0, legacy: 0 } } },
+        unlocked: { 'kills.0': 100 },
+    };
+    const after = {
+        counters: {},
+        champs: { wizard: { kills: { pvp: M.kills, cpu: 0, legacy: 0 }, wins: { pvp: M.wins, cpu: 0, legacy: 0 }, deathless: { pvp: M.deathless, cpu: 0, legacy: 0 } } },
+        unlocked: { 'kills.0': 100, 'kills.1': 200, 'feat_ace': 200, 'champ.wizard.deathless.1': 200 },
+    };
+    const r = data.achComputeSyncRewards(before, after);
+    assert.strictEqual(r.gold, R[1] + R[1]);   // kills.1 + champ deathless tier 1; feat pays 0
+    assert.strictEqual(r.tokens, 1);           // wizard crossed the mastery bar
+    // Idempotent: nothing new → nothing paid.
+    const r2 = data.achComputeSyncRewards(after, after);
+    assert.strictEqual(r2.gold, 0);
+    assert.strictEqual(r2.tokens, 0);
+});
+
+test('server.js wires the Phase-5 sync surface', () => {
+    // Source-text drift guard in the spirit of check-data-parity: the server
+    // must expose the endpoints and run the SAME shared helpers from data.js.
+    const fs = require('node:fs');
+    const src = fs.readFileSync(require('node:path').join(__dirname, 'server.js'), 'utf8');
+    for (const needle of ['/api/progress/sync', "'/api/progress'", 'player_progress',
+        'mergeProgressBlobs', 'achComputeSyncRewards']) {
+        assert.ok(src.includes(needle), `server.js missing: ${needle}`);
+    }
+    assert.ok(fs.existsSync(require('node:path').join(__dirname, 'migrations', '004_progress.sql')),
+        'migrations/004_progress.sql missing');
+});

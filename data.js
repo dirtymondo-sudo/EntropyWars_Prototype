@@ -9285,6 +9285,178 @@ const ACH_RECORD_DEFS = [
   { id: 'longestMatch',    icon: '⏱️', name: 'Longest Match',    desc: 'Longest completed match',              fmt: 'ms',    end: true },
 ];
 
+/* ═══ PROGRESS SYNC MERGE + REWARD HELPERS (ACHIEVEMENTS_PLAN.md §7, Phase 5)
+   Shared by THREE consumers so they can never drift: profile.js (merging the
+   server's sync response into the possibly-already-advanced local blob),
+   server.js (merging a pushed blob into the stored one — it loads data.js
+   headlessly via load-data.js, exactly like the ECON derivation), and
+   achievements.test.js. profile.progress is monotonic by construction, so
+   the merge is a G-counter CRDT join (plan §2.3): commutative, idempotent,
+   safe under retries, offline gaps and multi-device drift.
+   The merge also SANITIZES — the server feeds it untrusted client blobs —
+   so both inputs are treated defensively: unknown record ids, malformed
+   keys and non-finite/negative values are dropped, everything is clamped,
+   and unknown top-level fields do not survive (schema is v2; a future v3
+   extends this function first). ═══════════════════════════════════════ */
+
+// Hard ceilings so a hostile blob can't balloon the stored row: key-count
+// caps per section plus a universal value clamp.
+const ACH_MERGE_CAPS = { counters: 256, champs: 256, unlocked: 12000, value: 1e9 };
+
+function mergeProgressBlobs(a, b) {
+  const METRIC_RE = /^[A-Za-z0-9_]{1,48}$/;                 // counter metric names
+  const RACE_RE = /^[a-z0-9][a-z0-9 '&_-]{0,47}$/i;         // race keys (no '.', it delimits unlock keys)
+  const KEY_RE = /^[A-Za-z0-9_][A-Za-z0-9_. '&-]{0,95}$/;   // unlock keys
+  // Bracket-assigning these on a plain object mutates its prototype instead
+  // of adding an own property — never let them through as keys.
+  const badKey = k => k === '__proto__' || k === 'constructor' || k === 'prototype';
+  const clampVal = v => {
+    v = Math.round(Number(v));
+    return (isFinite(v) && v > 0) ? Math.min(v, ACH_MERGE_CAPS.value) : 0;
+  };
+  const clampTs = v => {
+    v = Math.round(Number(v));
+    return (isFinite(v) && v > 0 && v < 4e12) ? v : Date.now();
+  };
+  const champMetrics = new Set(ACH_CHAMP_LINES.map(s => s.metric));
+  const recDefs = {};
+  for (const d of ACH_RECORD_DEFS) recDefs[d.id] = d;
+
+  const out = { v: 2, counters: {}, champs: {}, records: {}, unlocked: {} };
+  let nCounters = 0, nChamps = 0, nUnlocked = 0;
+  for (const src of [a, b]) {
+    if (!src || typeof src !== 'object') continue;
+    // Counters: per-bucket max (G-counter join — correct for additive AND
+    // high-water metrics alike under full-blob pushes).
+    const counters = (src.counters && typeof src.counters === 'object') ? src.counters : {};
+    for (const m of Object.keys(counters)) {
+      if (!METRIC_RE.test(m) || badKey(m)) continue;
+      let dst = out.counters[m];
+      if (!dst) {
+        if (nCounters >= ACH_MERGE_CAPS.counters) continue;
+        dst = out.counters[m] = { pvp: 0, cpu: 0, legacy: 0 };
+        nCounters++;
+      }
+      const bag = counters[m] || {};
+      for (const bk of ['pvp', 'cpu', 'legacy']) dst[bk] = Math.max(dst[bk], clampVal(bag[bk]));
+    }
+    // Per-champ bags: same join, metrics restricted to the mastery ladders.
+    const champs = (src.champs && typeof src.champs === 'object') ? src.champs : {};
+    for (const race of Object.keys(champs)) {
+      if (!RACE_RE.test(race) || badKey(race)) continue;
+      let bagOut = out.champs[race];
+      if (!bagOut) {
+        if (nChamps >= ACH_MERGE_CAPS.champs) continue;
+        bagOut = out.champs[race] = {};
+        nChamps++;
+      }
+      const bagIn = champs[race] || {};
+      for (const m of Object.keys(bagIn)) {
+        if (!champMetrics.has(m)) continue;
+        const dst = bagOut[m] || (bagOut[m] = { pvp: 0, cpu: 0, legacy: 0 });
+        const c = bagIn[m] || {};
+        for (const bk of ['pvp', 'cpu', 'legacy']) dst[bk] = Math.max(dst[bk], clampVal(c[bk]));
+      }
+    }
+    // Records: per board (pvp/cpu) keep the BETTER value — min-is-better
+    // records (fastestWin) join by min, everything else by max; a tie keeps
+    // the incumbent side (earliest writer wins its metadata).
+    const records = (src.records && typeof src.records === 'object') ? src.records : {};
+    for (const id of Object.keys(records)) {
+      const def = recDefs[id];
+      if (!def) continue;
+      const boards = records[id] || {};
+      for (const bk of ['pvp', 'cpu']) {
+        const r = boards[bk];
+        if (!r || typeof r !== 'object') continue;
+        const value = clampVal(r.value);
+        if (!value) continue;
+        const dst = out.records[id] || (out.records[id] = {});
+        const cur = dst[bk];
+        if (cur && !(def.min ? value < cur.value : value > cur.value)) continue;
+        const meta = (r.meta && typeof r.meta === 'object' && typeof r.meta.mode === 'string')
+          ? { mode: r.meta.mode.slice(0, 40) } : {};
+        dst[bk] = { value, ts: clampTs(r.ts), meta };
+      }
+    }
+    // Unlocked: union, earliest timestamp wins.
+    const unlocked = (src.unlocked && typeof src.unlocked === 'object') ? src.unlocked : {};
+    for (const key of Object.keys(unlocked)) {
+      if (!KEY_RE.test(key) || badKey(key)) continue;
+      const ts = clampTs(unlocked[key]);
+      if (out.unlocked[key] !== undefined) {
+        if (ts < out.unlocked[key]) out.unlocked[key] = ts;
+      } else if (nUnlocked < ACH_MERGE_CAPS.unlocked) {
+        out.unlocked[key] = ts;
+        nUnlocked++;
+      }
+    }
+  }
+  return out;
+}
+
+/* Gold one unlock key is worth (§4.7) — mirrors what commitAchProgress pays
+   through creditLocalGold: catalog-line keys `${id}.${tierIdx}` and champ
+   keys `champ.${race}.${metric}.${tierIdx}` pay ACH_TIER_REWARDS[tierIdx];
+   grandfathered `feat_*` one-shots and anything unrecognized pay nothing. */
+let _achRaceSet = null;
+function achUnlockKeyReward(key) {
+  if (typeof key !== 'string' || key.startsWith('feat_')) return 0;
+  const champ = key.match(/^champ\.(.+)\.([A-Za-z]+)\.(\d+)$/);
+  if (champ) {
+    if (!_achRaceSet) _achRaceSet = new Set(AVAILABLE_RACES);
+    if (!_achRaceSet.has(champ[1])) return 0;
+    const spec = ACH_CHAMP_LINES.find(s => s.metric === champ[2]);
+    const tier = parseInt(champ[3], 10);
+    if (!spec || tier >= spec.tiers.length) return 0;
+    return ACH_TIER_REWARDS[tier] || 0;
+  }
+  const std = key.match(/^([A-Za-z0-9_]+)\.(\d+)$/);
+  if (std) {
+    const line = ACH_CATALOG.find(l => l.id === std[1]);
+    const tier = parseInt(std[2], 10);
+    if (!line || tier >= line.tiers.length) return 0;
+    return ACH_TIER_REWARDS[tier] || 0;
+  }
+  return 0;
+}
+
+/* Champs meeting the full mastery bar (§4.1) — the data-side twin of
+   battle.js _achCountMastered, for the server's token payout. */
+function achCountMasteredChamps(prog) {
+  const champs = (prog && prog.champs && typeof prog.champs === 'object') ? prog.champs : {};
+  let mastered = 0;
+  for (const race of Object.keys(champs)) {
+    const bag = champs[race] || {};
+    const tot = m => {
+      const c = bag[m];
+      return c ? (c.pvp || 0) + (c.cpu || 0) + (c.legacy || 0) : 0;
+    };
+    if (tot('kills') >= ACH_MASTERY.kills && tot('wins') >= ACH_MASTERY.wins
+      && tot('deathless') >= ACH_MASTERY.deathless) mastered++;
+  }
+  return mastered;
+}
+
+/* What a sync merge owes the account (server-side §4.7 reconciliation):
+   tier gold for every unlock key `after` carries that `before` did not,
+   plus one free token per newly-mastered champ. Idempotent by construction
+   — a key or mastery crossing can only be "new" once, so retries and
+   re-pushes never double-pay. The caller (server.js) applies this only
+   when a stored baseline exists: the FIRST sync of an account stores the
+   blob silently, so a veteran's migration-seeded pre-unlocks (which the
+   client deliberately never paid) don't arrive as a gold windfall. */
+function achComputeSyncRewards(before, after) {
+  const prevUnlocked = (before && before.unlocked) || {};
+  const nextUnlocked = (after && after.unlocked) || {};
+  let gold = 0;
+  for (const key of Object.keys(nextUnlocked)) {
+    if (prevUnlocked[key] === undefined) gold += achUnlockKeyReward(key);
+  }
+  const tokens = Math.max(0, achCountMasteredChamps(after) - achCountMasteredChamps(before));
+  return { gold, tokens };
+}
+
 const MAP_LAYOUT_PRESETS = {
     prebuilt_custommap: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 19, label: 'Earth', baseTerrain: 'grass_2' }, buffer2: null, below: null },
@@ -13193,6 +13365,7 @@ Object.assign(window, {
   ACCT_STARTER_UNITS, ACCT_PVP_MODES, isUnitUnlocked, computeAccountMatchGold,
   ACH_CATALOG, ACH_CHAMP_LINES, ACH_TIER_NAMES, ACH_TIER_COLORS,
   ACH_MASTERY, ACH_TIER_REWARDS, ACH_RECORD_DEFS,
+  mergeProgressBlobs, achUnlockKeyReward, achCountMasteredChamps, achComputeSyncRewards,
   /* spell tree (Tree of Life selector) */
   CLASS_TREE, RACE_TREE, classHasSpellTree, getClassTreeSpells, getRaceTreeSpells,
   TREE_RING_MP_COSTS, buildTreeRingIndex, getTreeRingCost, applyTreeRingCosts, snapCostToLadder,

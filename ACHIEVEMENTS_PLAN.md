@@ -955,6 +955,57 @@ guest see?" pass. No playtesting unless explicitly requested (RULE #1c).
 > - **Still deferred:** server sync (§7, Phase 5), remaining feats (§4.6),
 >   progress pings (§6.1, optional), Steam (§8).
 
+> **Status 2026-09-01 (later session): Phase 5 implemented.** Notes /
+> deviations:
+>
+> - `migrations/004_progress.sql` per §7.1, except `player_id` is TEXT —
+>   `players.id` is a uuid string, the plan's INTEGER sketch was wrong.
+> - **§7.2 endpoints shipped**: `GET /api/progress` (login-time/debug pull)
+>   and `POST /api/progress/sync` (the real path — push full blob, receive
+>   merged blob + authoritative wallet), token-auth via `findPlayerByToken`,
+>   own `progress` rate bucket, upsert via `ON CONFLICT(player_id)`.
+>   Deviations from the §7.2 sketch: the blob cap is 400KB, not ~64KB — a
+>   fully-completed 96-champ blob measures ~120KB (the plan's estimate was
+>   low) — and `express.json()` gained `limit: '512kb'` (the 100kb default
+>   would 413 the sync). The merge additionally hard-caps key counts
+>   (256 counters / 256 champs / 12000 unlock keys).
+> - **ONE merge implementation, three consumers** (`mergeProgressBlobs` in
+>   data.js, exported on window): profile.js, server.js — which loads it
+>   through the existing load-data.js sandbox exactly like the ECON
+>   derivation (no data.js ⇒ sync answers 503, never a drifted copy) — and
+>   achievements.test.js. It both joins (per-bucket max counters, per-board
+>   best records with min-semantics for `fastestWin` as Phase 3 prescribed,
+>   earliest-ts union of unlocks) and SANITIZES (unknown record ids and
+>   malformed keys dropped, values clamped, `__proto__` guarded), since the
+>   server feeds it untrusted client blobs.
+> - **Client replaces nothing**: on response, profile.js RE-MERGES the
+>   server blob against the *current* local one (a match can commit while
+>   the request is in flight) — the §7.2 "client replaces local" step is
+>   the only sketch line not followed literally, and the merge's
+>   idempotence is why the swap is safe.
+> - **§4.7 reconciliation (the Phase-2 IOU) done server-side**: a sync pays
+>   tier gold for every unlock key the merge newly added
+>   (`achUnlockKeyReward` mirrors commit's payout rules — champ tiers pay,
+>   `feat_*` pays 0) plus one free token per newly-mastered champ
+>   (`achCountMasteredChamps`), into the real wallet. The FIRST sync of an
+>   account stores a silent baseline instead — a veteran's migration-seeded
+>   pre-unlocks (never paid client-side either) don't arrive as a windfall.
+>   Payouts are idempotent and bounded once-ever by the finite catalog
+>   (§2.2 trust model unchanged). Wallet in the response is normalized
+>   through `getOrBackfillEconomy` so a pre-economy account can't wipe its
+>   local starter mirror.
+> - **Client sync points** (§7.2): login AND register (baseline), a
+>   debounced (2s, single-flight, loop-guarded) fire-and-forget push
+>   scheduled by `profileSaveProgress` itself — i.e. every match commit,
+>   with battle.js untouched this phase — and opening the Profile →
+>   Achievements tab, which re-renders with the merged blob when it lands.
+> - achievements.test.js extended: merge join semantics (commutative +
+>   idempotent, min-record, earliest-ts), hostile-input sanitization,
+>   payout-rule mirror, baseline/idempotence of rewards, and a server.js
+>   source-text drift guard (endpoints + shared helpers present).
+> - **Still deferred:** remaining feats (§4.6), progress pings (§6.1,
+>   optional), Steam (§8).
+
 | phase | content | files touched | size |
 |---|---|---|---|
 | **0 — Kill the slop** | §1.2 fixes: profile auto-create + persistence fallback, `ace` gate, remove `_repairAchievementStore`, win-condition mapping fix, rename Flawless chip, RT-mode crit/cleanse counters, interim victory-screen cleanup (drop bare N/14, show names for new unlocks) | battle.js, profile.js, (index.html bump) | small — **one session, do first, ships value alone** |

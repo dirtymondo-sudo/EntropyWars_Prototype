@@ -30,7 +30,10 @@ console.log(ALLOWED_ORIGINS.length
 // Optional so a stale node_modules can't crash the server.
 try { app.use(require('compression')()); } catch (e) { console.warn('[BOOT] compression middleware unavailable:', e.message); }
 
-app.use(express.json());
+// 512kb: a fully-completed profile.progress blob (96 champs × 3 ladders of
+// unlock keys) runs ~120KB — Express's 100kb default would 413 the progress
+// sync. Everything else stays tiny; flood protection is the rate limiters'.
+app.use(express.json({ limit: '512kb' }));
 
 // ── HTTP RATE LIMITING ─────────────────────────────────────────────────
 // Same token-bucket idea as the socket-event limiter below, keyed per
@@ -62,6 +65,7 @@ const limitAuth = httpRateLimit('auth', 15, 10);        // register/login
 const limitEcon = httpRateLimit('econ', 30, 20);        // wallet reads + writes
 const limitRead = httpRateLimit('read', 120, 60);       // profiles/leaderboard/maps browse
 const limitMapWrite = httpRateLimit('map-write', 10, 10); // map submit/rate/delete
+const limitProgress = httpRateLimit('progress', 20, 12);  // achievement progress sync
 
 // Serve ONLY the entry page. Every script/style/asset the game uses loads
 // from the CDN, so blanket express.static(__dirname) exposed things that must
@@ -137,6 +141,7 @@ const ECON = {
     ACCT_UNIT_PRICE, ACCT_STARTING_GOLD, ACCT_FREE_TOKENS, ACCT_MATCH_GOLD_CAP,
     ACCT_PVP_MODES, ACCT_STARTER_UNITS, AVAILABLE_RACES,
 };
+let _dataJs = null; // the loaded data.js sandbox (null if the load failed)
 (function deriveEconomyFromDataJs() {
     let data;
     try {
@@ -145,6 +150,7 @@ const ECON = {
         console.error('[ECON] FAILED to load data.js — running on hand-synced fallback literals:', e.message);
         return;
     }
+    _dataJs = data;
     const bad = [];
     const asList = v => (v instanceof Set) ? [...v] : (Array.isArray(v) ? v : null);
     for (const k of ['ACCT_UNIT_PRICE', 'ACCT_STARTING_GOLD', 'ACCT_FREE_TOKENS', 'ACCT_MATCH_GOLD_CAP']) {
@@ -164,6 +170,18 @@ const ECON = {
     if (bad.length) console.error('[ECON] data.js loaded but missing/invalid: ' + bad.join(', ') + ' — fallback literals kept for those');
     console.log(`[ECON] economy derived from data.js (${ECON.ACCT_STARTER_UNITS.length} starters, ${ECON.AVAILABLE_RACES.size} races, unit price ${ECON.ACCT_UNIT_PRICE})`);
 })();
+
+// ── ACHIEVEMENT PROGRESS SYNC — shared logic from data.js ──────────────
+// The merge (G-counter join, sanitizing) and the §4.7 reward computation
+// live in data.js so client, server and tests share ONE implementation
+// (ACHIEVEMENTS_PLAN.md §7, Phase 5). No hand-synced fallback here: if
+// data.js failed to load the sync endpoints answer 503 — a server that
+// can't evaluate the merge must not overwrite stored progress.
+const ACH = {
+    merge: (_dataJs && typeof _dataJs.mergeProgressBlobs === 'function') ? _dataJs.mergeProgressBlobs : null,
+    computeRewards: (_dataJs && typeof _dataJs.achComputeSyncRewards === 'function') ? _dataJs.achComputeSyncRewards : null,
+};
+if (!ACH.merge) console.error('[ACH] mergeProgressBlobs unavailable — /api/progress/sync disabled');
 
 // ── D1 SCHEMA MIGRATIONS ───────────────────────────────────────────────
 // Versioned SQL files under ./migrations, applied in filename order and
@@ -1103,6 +1121,120 @@ app.post('/api/economy/purchase', limitEcon, async (req, res) => {
     } catch (err) {
         console.error('[ECON] Purchase error:', err.message);
         res.status(500).json({ error: 'Failed to complete purchase.' });
+    }
+});
+
+// ── ACHIEVEMENT PROGRESS ENDPOINTS (ACHIEVEMENTS_PLAN.md §7, Phase 5) ──
+// Durability + multi-device continuity for profile.progress — NOT anti-
+// cheat (§2.2 sets that expectation; a forged blob only pollutes the
+// forger's own profile, and its payouts are bounded once-ever by the
+// finite catalog). The blob is monotonic, so sync is one idempotent
+// exchange: client pushes its full local blob, we merge (per-bucket max /
+// per-record best / earliest-ts union), store, pay out what the merge
+// newly unlocked (§4.7 — the client could only mirror those rewards
+// locally), and return the merged blob + the authoritative wallet.
+
+// Login-time / debugging pull of the stored blob.
+app.get('/api/progress', limitProgress, async (req, res) => {
+    if (!d1.isConfigured()) {
+        return res.status(503).json({ error: 'Database not configured.' });
+    }
+    try {
+        await ensureMigrations();
+        const token = req.headers['x-auth-token'] || req.query.token;
+        if (!token) {
+            return res.status(401).json({ error: 'Authentication required.' });
+        }
+        const player = await findPlayerByToken(token, 'id');
+        if (!player) {
+            return res.status(401).json({ error: 'Invalid token.' });
+        }
+        const row = await d1.getOne('SELECT data, updated_at FROM player_progress WHERE player_id = ?1', [player.id]);
+        let progress = null;
+        if (row) { try { progress = JSON.parse(row.data); } catch {} }
+        res.json({ progress, updatedAt: row ? row.updated_at : null });
+    } catch (err) {
+        console.error('[ACH] Progress get error:', err.message);
+        res.status(500).json({ error: 'Failed to load progress.' });
+    }
+});
+
+app.post('/api/progress/sync', limitProgress, async (req, res) => {
+    if (!d1.isConfigured()) {
+        return res.status(503).json({ error: 'Database not configured.' });
+    }
+    if (!ACH.merge) {
+        return res.status(503).json({ error: 'Progress sync unavailable.' });
+    }
+    try {
+        await ensureMigrations();
+        const { token, progress } = req.body || {};
+        if (!token) {
+            return res.status(401).json({ error: 'Authentication required.' });
+        }
+        if (!progress || typeof progress !== 'object' || Array.isArray(progress)) {
+            return res.status(400).json({ error: 'progress blob required.' });
+        }
+        let rawLen;
+        try { rawLen = JSON.stringify(progress).length; } catch {
+            return res.status(400).json({ error: 'Unserializable progress blob.' });
+        }
+        // ~120KB at full 96-champ completion; anything past this is not a
+        // real blob (the merge additionally hard-caps key counts).
+        if (rawLen > 400000) {
+            return res.status(400).json({ error: 'Progress blob too large.' });
+        }
+        const player = await findPlayerByToken(token, 'id');
+        if (!player) {
+            return res.status(401).json({ error: 'Invalid token.' });
+        }
+
+        const row = await d1.getOne('SELECT data FROM player_progress WHERE player_id = ?1', [player.id]);
+        let stored = null;
+        if (row) { try { stored = JSON.parse(row.data); } catch { stored = null; } }
+        // merge() sanitizes both sides — with no (or unparseable) stored row
+        // this still scrubs the client blob before it becomes the baseline.
+        const merged = ACH.merge(stored, progress);
+        await d1.execute(
+            "INSERT INTO player_progress (player_id, data, updated_at) VALUES (?1, ?2, datetime('now')) "
+            + 'ON CONFLICT(player_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at',
+            [player.id, JSON.stringify(merged)]
+        );
+
+        // §4.7 reconciliation: tier gold for unlock keys the merge newly
+        // added, one free token per newly-mastered champ. Only against an
+        // existing baseline — the FIRST sync stores silently, so a veteran's
+        // migration-seeded pre-unlocks (never paid client-side either) don't
+        // arrive as a windfall. Idempotent: a key is only ever new once.
+        let rewardGold = 0, rewardTokens = 0;
+        if (stored && ACH.computeRewards) {
+            const r = ACH.computeRewards(stored, merged);
+            rewardGold = r.gold || 0;
+            rewardTokens = r.tokens || 0;
+            if (rewardGold > 0 || rewardTokens > 0) {
+                await d1.execute(
+                    'UPDATE players SET gold = gold + ?1, free_tokens = free_tokens + ?2 WHERE id = ?3',
+                    [rewardGold, rewardTokens, player.id]
+                );
+                console.log(`[ACH] ${player.id}: synced unlocks paid +${rewardGold}g, +${rewardTokens} token(s)`);
+            }
+        }
+
+        // Normalize through the starter backfill like the economy endpoints —
+        // the client absorbs this wallet into its mirror, and a pre-economy
+        // account's raw row would hand it an empty unlock list.
+        const fresh = await d1.getOne('SELECT id, gold, unlocked_units, free_tokens FROM players WHERE id = ?1', [player.id]);
+        const econ = await getOrBackfillEconomy(fresh);
+        res.json({
+            progress: merged,
+            rewardGold, rewardTokens,
+            gold: econ.gold,
+            unlockedUnits: econ.unlockedUnits,
+            freeTokens: econ.freeTokens,
+        });
+    } catch (err) {
+        console.error('[ACH] Progress sync error:', err.message);
+        res.status(500).json({ error: 'Failed to sync progress.' });
     }
 });
 

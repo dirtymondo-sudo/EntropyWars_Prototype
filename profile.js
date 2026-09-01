@@ -461,6 +461,13 @@ function profileLoadProgress() {
   return prog;
 }
 
+/* Progress-sync state (ACHIEVEMENTS_PLAN.md §7, Phase 5 — the functions live
+   with the server glue below; declared here so profileSaveProgress can read
+   the guard). */
+let _progressSyncSaving = false;   // saveProgress-from-sync guard (no schedule loops)
+let _progressSyncTimer = null;     // debounce for post-commit pushes
+let _progressSyncInflight = null;  // single-flight promise
+
 function profileSaveProgress(progress) {
   const idx = getActiveProfileIndex();
   if (idx === null) return;
@@ -468,6 +475,10 @@ function profileSaveProgress(progress) {
   if (!p) return;
   p.progress = progress;
   saveProfile(idx, p);
+  // Every real save is a match commit (battle.js) — push it to the server
+  // shortly after, fire-and-forget (§7 sync point). Guarded so the save
+  // serverSyncProgress itself performs can't schedule a sync loop.
+  if (!_progressSyncSaving) scheduleProgressSync();
 }
 
 function profileUpdatePostMatch(viewerUnits, playerWon, matchSummary) {
@@ -551,6 +562,9 @@ async function serverRegister(username) {
 
     _syncServerEloToLocal(data.elo, data.peakElo);
     _absorbEconomyFromResponse(data);
+    // Establish the fresh account's progress baseline (fire-and-forget) so
+    // every unlock AFTER this pays out server-side (§7 sync point).
+    serverSyncProgress();
     console.log('[AUTH] Registered on server:', data.username, data.id);
     return { ok: true, data };
   } catch (err) {
@@ -580,6 +594,9 @@ async function serverLogin() {
 
     _syncServerEloToLocal(data.elo, data.peakElo);
     _absorbEconomyFromResponse(data);
+    // Login-time pull+push in one idempotent exchange (§7 sync point) —
+    // fire-and-forget so a slow sync never delays the login itself.
+    serverSyncProgress();
     console.log('[AUTH] Logged in:', data.username, '(ELO', data.elo + ')');
     return { ok: true, data };
   } catch (err) {
@@ -726,6 +743,70 @@ async function serverBankGold(matchGold, mode) {
   }
 }
 
+// ── ACHIEVEMENT PROGRESS SYNC (ACHIEVEMENTS_PLAN.md §7, Phase 5) ────────
+// Durability + multi-device continuity for profile.progress. The blob is
+// monotonic (counters only grow, records only improve, unlocked only
+// unions), so sync is one idempotent exchange: push the full local blob;
+// the server G-counter-merges it into its stored copy (mergeProgressBlobs
+// in data.js — the SAME function both sides run), pays out the tier gold +
+// mastery tokens that commit could only credit to the local mirror (§4.7
+// reconciliation), and returns the merged blob plus the authoritative
+// wallet. Safe under retries, offline gaps and multi-device drift —
+// offline vs-CPU play just accumulates locally until the next sync lands.
+// Sync points: login/register, each match commit (debounced push scheduled
+// by profileSaveProgress), and opening the Achievements tab.
+async function serverSyncProgress() {
+  const token = getServerToken();
+  if (!token) return { ok: false, error: 'No account.' };
+  if (_progressSyncInflight) return _progressSyncInflight;
+  _progressSyncInflight = (async () => {
+    try {
+      const resp = await fetch('/api/progress/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, progress: profileLoadProgress() }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) return { ok: false, error: data.error || 'Sync failed.' };
+      if (data.progress && typeof data.progress === 'object') {
+        // Re-merge against the CURRENT local blob rather than replacing it —
+        // a match may have committed while the request was in flight, and
+        // the merge is idempotent so this can never lose either side.
+        const local = profileLoadProgress();
+        const merged = (typeof window !== 'undefined' && typeof window.mergeProgressBlobs === 'function')
+          ? window.mergeProgressBlobs(local, data.progress)
+          : data.progress;
+        _progressSyncSaving = true;
+        try { profileSaveProgress(merged); } finally { _progressSyncSaving = false; }
+      }
+      _absorbEconomyFromResponse(data);
+      if (data.rewardGold || data.rewardTokens) {
+        console.log('[ACH] server reconciled achievement rewards: +' + (data.rewardGold || 0)
+          + 'g, +' + (data.rewardTokens || 0) + ' token(s)');
+      }
+      return { ok: true, data };
+    } catch (err) {
+      console.warn('[ACH] progress sync failed (retries on next commit/login):', err && err.message || err);
+      return { ok: false, error: 'Network error.' };
+    } finally {
+      _progressSyncInflight = null;
+    }
+  })();
+  return _progressSyncInflight;
+}
+
+// Debounced fire-and-forget push — one network call shortly after a match
+// commit (or a burst of saves), never a stampede.
+function scheduleProgressSync() {
+  if (!hasServerAccount()) return;
+  if (typeof fetch !== 'function') return;
+  if (_progressSyncTimer) return;
+  _progressSyncTimer = setTimeout(() => {
+    _progressSyncTimer = null;
+    serverSyncProgress();
+  }, 2000);
+}
+
 // Spend the LOCAL wallet when there's no server account (offline / Steam solo /
 // profiles made before the account system). Mirrors the server's purchase rules
 // (validate race, reject dupes, token-first then gold) against p.account so the
@@ -816,6 +897,7 @@ window.ProfileSystem = {
   getAccountEconomy,
   serverFetchEconomy,
   serverBankGold,
+  serverSyncProgress,
   serverPurchaseUnit,
   localPurchaseUnit,
   creditLocalGold,
@@ -1617,8 +1699,20 @@ function AchCompletionHeader({ profile, prog, reg }) {
 
 function AchievementsTab({ profile }) {
   const [cat, setCat] = React.useState('combat');
+  /* Progress state (not a plain prop read): opening the trophy case kicks a
+     server sync (§7 sync point), and when the merge lands the tab re-renders
+     with progress earned on other devices. No account / offline → no-op. */
+  const [prog, setProg] = React.useState(profile.progress || {});
+  React.useEffect(() => {
+    let alive = true;
+    if (hasServerAccount()) {
+      serverSyncProgress().then(r => {
+        if (alive && r && r.ok) setProg(profileLoadProgress());
+      });
+    }
+    return () => { alive = false; };
+  }, []);
   const reg = _achReg();
-  const prog = profile.progress || {};
 
   const CATS = [
     ['combat', '⚔️ Combat'], ['support', '💚 Support'], ['battlefield', '🌌 Battlefield'],
