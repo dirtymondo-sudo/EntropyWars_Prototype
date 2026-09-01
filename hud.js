@@ -2285,6 +2285,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
       + (muted ? ' muted' : '')
       + (catVars ? ' catc' : '')
       + (b.check ? ' pend' : '')
+      + (confirmBtn ? ' cfm' : '')
       + (active ? ' active' : '')
       + (fireId === b.id ? ' fire' : ''),
     style: {
@@ -8983,13 +8984,17 @@ function _injectHudHideStyles() {
       overflow: hidden; text-overflow: ellipsis; max-width: 260px;
     }
     .hrlg-confirm-tgt { color: #fff; font-size: 12px; letter-spacing: 0.06em; }
-    /* inline CONFIRM — the green seal at the END of the pending (✓) row */
+    /* inline CONFIRM — the green seal at the END of the pending (✓) row.
+       ABSOLUTE overlay, not a flex chip: as a flex-none chip, crowded rows
+       (portrait + HP bar + forecast chips) pushed it past the row's right
+       edge where the list's overflow-x:hidden cropped it. Pinned to the
+       row's right edge ON TOP of whatever is under it instead — the
+       confirm button always wins, it is never clipped. */
     .hrlg-confirm-inline {
-      flex: none; display: inline-flex; align-items: center; gap: 6px;
-      /* positive right margin: the row body's clip-path + skew slice off
-         anything that rides the very end of the blade — keep the seal
-         clear of the corner cut so it never gets cropped */
-      height: 26px; padding: 0 10px; margin-right: 2px;
+      position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+      z-index: 6;
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 26px; padding: 0 10px;
       cursor: pointer; pointer-events: auto;
       font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: #b8f5d0;
       background: linear-gradient(100deg, #10301c 0%, #0a1f12 100%);
@@ -8998,7 +9003,10 @@ function _injectHudHideStyles() {
       animation: hrlgConfirmPulse 1.1s ease-in-out infinite;
     }
     .hrlg-confirm-inline:hover { animation: none; filter: brightness(1.4); }
-    .hrlg-confirm-inline:active { transform: translateY(1px); }
+    .hrlg-confirm-inline:active { transform: translateY(calc(-50% + 1px)); }
+    /* the row carrying the seal reserves its footprint, so the HP readout /
+       chips only slide under it when the row is genuinely too tight */
+    .hrlg-blade.cfm .hrlg-body { padding-right: 112px; }
     .hrlg-confirm-inline-check {
       flex: none; width: 15px; height: 15px; border-radius: 50%;
       display: inline-flex; align-items: center; justify-content: center;

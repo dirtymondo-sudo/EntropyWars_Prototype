@@ -16653,18 +16653,39 @@
         // the round banner and again once the buffered round-start events have
         // finished playing.
         let _eorChipEl = null;
+        // The chip used to sit at a fixed top:64px, which landed it straight
+        // ON the scoreboard (score plate + turn-order flanks, top:8px,
+        // centered). Measure the scoreboard live instead — it scales with
+        // --ew-hud-scale on small screens — and sit just below it.
+        function _eorChipTop() {
+            try {
+                const sb = document.querySelector('.ew-scoreboard');
+                if (sb) {
+                    const r = sb.getBoundingClientRect();
+                    if (r.height > 0 && r.bottom > 0 && r.bottom < window.innerHeight * 0.5) {
+                        return Math.round(r.bottom + 10);
+                    }
+                }
+            } catch (e) { /* no scoreboard (hub etc.) — fall through */ }
+            return 64;
+        }
         function _eorPhaseLabel(text) {
             if (_skipVisuals() || state.winner) return;
             if (!_eorChipEl || !_eorChipEl.isConnected) {
                 _eorChipEl = document.createElement('div');
                 _eorChipEl.id = 'eorPhaseChip';
-                _eorChipEl.style.cssText = 'position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:960;'
-                    + 'background:rgba(10,12,20,0.78);color:#e8d9a8;border:1px solid rgba(220,190,130,0.35);'
-                    + 'border-radius:999px;padding:5px 18px;font-family:DotGothic16,monospace;font-size:13px;'
+                // PS1 data-plate chrome (matches the scoreboard's EW.panel /
+                // panelEdge material) so it reads as part of the HUD stack
+                // it now sits directly beneath.
+                _eorChipEl.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);z-index:960;'
+                    + 'background:rgba(8,7,12,0.88);color:#e8d9a8;border:1px solid #3a3548;'
+                    + 'border-top:1px solid rgba(220,190,130,0.35);'
+                    + 'padding:5px 18px;font-family:DotGothic16,monospace;font-size:13px;'
                     + 'letter-spacing:0.14em;text-transform:uppercase;pointer-events:none;white-space:nowrap;'
                     + 'opacity:0;transition:opacity 220ms ease;box-shadow:0 2px 14px rgba(0,0,0,0.45)';
                 (document.getElementById('game-viewport') || document.body).appendChild(_eorChipEl);
             }
+            _eorChipEl.style.top = _eorChipTop() + 'px';
             _eorChipEl.textContent = text;
             requestAnimationFrame(() => { if (_eorChipEl) _eorChipEl.style.opacity = '1'; });
         }
