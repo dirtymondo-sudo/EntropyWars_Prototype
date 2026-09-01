@@ -3130,6 +3130,15 @@ function spellTargetChip(sp) {
   return { label: '◎ ENEMY', color: '#ff8a7a', title: 'Select an enemy unit' };
 }
 
+// Per-element badge colors (legible over the near-black chip ground).
+// The six COMBAT_ELEMENTS check target affinities; the rest are flavor.
+const ELEM_BADGE_COLORS = {
+  fire: '#ff8a5c', ice: '#8fd8ff', lightning: '#ffd94f', water: '#58a8ff',
+  poison: '#9fe060', earth: '#c8a06a', wind: '#a8e0d8', nature: '#7cd08a',
+  shadow: '#8f7fb8', light: '#ffe8a0', psychic: '#ff8fd0', sonic: '#b8c8e8',
+  arcane: '#c88fff', blood: '#ff6a7a', metal: '#b0b8c0',
+};
+
 function _hrlgSpellBadges(sp) {
   const badges = [];
   if (sp.spellType) badges.push({
@@ -3137,6 +3146,22 @@ function _hrlgSpellBadges(sp) {
     style: typeBadgeStyleFor(sp.spellType, { fontSize: _HRLG_TYPE_FS, padding: _HRLG_TYPE_PAD }),
     title: 'Spell type — drives type advantage',
   });
+  // Element badge (ELEMENTAL_TYPES_PLAN P3): rides next to the type chip so
+  // the loadout reads coverage at a glance. Combat elements are affinity
+  // intel; flavor elements are VFX-only and say so on hover.
+  const _el = sp.element || null;
+  if (_el) {
+    const _elCol = ELEM_BADGE_COLORS[_el] || '#cfd6ea';
+    const _elIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_el]) || '';
+    const _elCombat = (typeof COMBAT_ELEMENTS !== 'undefined') && COMBAT_ELEMENTS.includes(_el);
+    badges.push({
+      label: (_elIcon ? _elIcon + ' ' : '') + _el.toUpperCase(),
+      style: typeBadgeStyle(_elCol, { fontSize: _HRLG_TYPE_FS, padding: _HRLG_TYPE_PAD, text: _elCol }),
+      title: _elCombat
+        ? 'Element — checks the target\'s affinity: weak ×1.5 · resist ×0.5 · null 0 · absorb heals'
+        : 'Element — flavor/VFX only (no affinity check)',
+    });
+  }
   return badges;
 }
 
@@ -3464,7 +3489,7 @@ function _hrlgTargetBlades(unit, st, mode) {
     // Type matchup vs THIS target — judged by the spell's own type when a
     // spell is being aimed (not the caster's types), STAB factored out so
     // "super effective" always means the actual weak/resist matchup.
-    let superEff = false, typeAdv = '';
+    let superEff = false, typeAdv = '', elemAff = null;
     // Matchup markers only make sense for casts that actually DEAL damage —
     // a pure debuff/utility can't be "super effective".
     if (tUnit && isOffensive && (mode === 'attack' || (spell && hudSpellShowsDamage(spell)))
@@ -3476,6 +3501,15 @@ function _hrlgTargetBlades(unit, st, mode) {
       const _eff = getTypeDamageMultiplier(unit, tUnit, _spType) / _stab;
       if (_eff > 1.001) superEff = true;
       else if (_eff < 0.999) typeAdv = '▼';
+      // 🜂 Elemental affinity of the aimed spell vs THIS target (ELEMENTAL_
+      // TYPES_PLAN P3): weak joins the green !, resist joins ▼; immune/
+      // absorb take over the forecast chip below (their previewDmg is 0).
+      if (spell) {
+        const _spEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
+        elemAff = (_spEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(tUnit, _spEl) : null;
+        if (elemAff === 'weak') superEff = true;
+        else if (elemAff === 'resist' && !typeAdv) typeAdv = '▼';
+      }
     }
     const hpPct = hpMax > 0 ? Math.max(0, Math.round((hpVal / hpMax) * 100)) : null;
     const tz = (tUnit && tUnit.z != null) ? tUnit.z : undefined;
@@ -3513,8 +3547,11 @@ function _hrlgTargetBlades(unit, st, mode) {
       superEff: superEff,
       previewDmg: previewDmg,
       previewHeal: previewHeal,
-      // Forecast chip on the armed row: "≈−34" / "≈+34" (reuses the power chip slot).
-      power: previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
+      // Forecast chip on the armed row: "≈−34" / "≈+34" (reuses the power chip
+      // slot). An immune/absorb target forecasts words, not numbers.
+      power: elemAff === 'immune' ? { v: 'IMMUNE', color: '#9aa0b4' }
+        : elemAff === 'absorb' ? { v: 'ABSORBS', color: '#57d97e' }
+        : previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
         : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' } : undefined,
       portrait: portrait,
       meta: portrait

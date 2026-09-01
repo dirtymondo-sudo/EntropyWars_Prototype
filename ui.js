@@ -3458,10 +3458,27 @@
             if (state.pendingTarget.mode === 'spell') {
                 const spell = getSelectedSpell(unit);
                 if (!spell) return null;
+                // 🜂 Elemental affinity forecast (ELEMENTAL_TYPES_PLAN P3):
+                // immune/absorb zero the numbers outright (mirrors the engine's
+                // early-outs); weak/resist speak through the note like the type
+                // chart does. Same affinity read as _estimateSpellDamage/ai.js.
+                const _pvEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
+                const _pvAff = (_pvEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _pvEl) : null;
+                const _pvElemNote = _pvAff === 'weak' ? `${_pvEl.toUpperCase()} WEAK ×1.5`
+                    : _pvAff === 'resist' ? `${_pvEl.toUpperCase()} resisted ×0.5` : '';
+                const _pvNote = (typeNote) => [typeNote, _pvElemNote].filter(Boolean).join(' · ');
+                const _pvNullHit = (_pvAff === 'immune' || _pvAff === 'absorb') ? {
+                    type: 'damage',
+                    amount: 0, min: 0, max: 0,
+                    after: target.hp,
+                    label: spell.name,
+                    note: _pvAff === 'immune' ? `IMMUNE to ${_pvEl}` : `ABSORBS ${_pvEl} — heals instead`
+                } : null;
                 const spellPower = (unit.spellPower || 0) + getSpellStatBonus(unit, spell);
                 const healBonus = getEffectiveHealBonus(unit, spell.heal || 0, target);
                 if (spell.kind === 'damage') {
                     if (target.dead || isAllyUnit(target, unit)) return null;
+                    if (_pvNullHit) return _pvNullHit;
                     let maxDamage = _pvSc(Math.max(32, (spell.dmg || 0) + spellPower + 16));
                     if (!spell.ignoreArmor && getEffectiveArmor(target, spell.damageType)) maxDamage = Math.max(1, maxDamage - Math.round(getEffectiveArmor(target, spell.damageType) * _pvLsT));
                     if (target.shield > 0) maxDamage = Math.max(0, maxDamage - target.shield);
@@ -3472,11 +3489,12 @@
                         max: maxDamage,
                         after: Math.max(0, target.hp - maxDamage),
                         label: spell.name,
-                        note: getTypeCombatNote(unit, target, spell ? spell.spellType : null)
+                        note: _pvNote(getTypeCombatNote(unit, target, spell ? spell.spellType : null))
                     };
                 }
                 if (spell.kind === 'ricochet') {
                     if (target.dead || isAllyUnit(target, unit)) return null;
+                    if (_pvNullHit) return _pvNullHit;
                     let maxDamage = _pvSc(Math.max(32, (spell.dmg || 0) + spellPower + 16));
                     if (getEffectiveArmor(target, spell.damageType)) maxDamage = Math.max(1, maxDamage - Math.round(getEffectiveArmor(target, spell.damageType) * _pvLsT));
                     if (target.shield > 0) maxDamage = Math.max(0, maxDamage - target.shield);
@@ -3487,7 +3505,7 @@
                         max: maxDamage,
                         after: Math.max(0, target.hp - maxDamage),
                         label: spell.name,
-                        note: getTypeCombatNote(unit, target, spell ? spell.spellType : null)
+                        note: _pvNote(getTypeCombatNote(unit, target, spell ? spell.spellType : null))
                     };
                 }
                 if (spell.kind === 'debuff') {
@@ -3828,6 +3846,29 @@
             return `<div class="acc-badges-row">${badges.join('')}</div>`;
         }
 
+        // ── Elemental affinity intel (ELEMENTAL_TYPES_PLAN P3) ──────────
+        // Affinities are always-visible race knowledge (no discovery
+        // mechanic), read live from data.js RACE_ELEMENT_AFFINITY. One
+        // helper feeds both the battle inspect card and the codex dossier
+        // so wording/order can't drift between the two.
+        const _ELEM_TIER_UI = {
+            weak:   { word: 'Weak',   color: '#ff9a66', tip: 'Takes ×1.5 damage from this element' },
+            resist: { word: 'Resist', color: '#8fb8e8', tip: 'Takes ×0.5 damage from this element (paired status sticks half as often)' },
+            immune: { word: 'Null',   color: '#c9c9d4', tip: 'Takes NO damage from this element — its statuses bounce too' },
+            absorb: { word: 'Drinks', color: '#7de08a', tip: 'This element HEALS the unit instead of hurting it' },
+        };
+        function _elemAffinityRows(race) {
+            const t = (typeof RACE_ELEMENT_AFFINITY !== 'undefined' && race) ? RACE_ELEMENT_AFFINITY[race] : null;
+            if (!t) return [];
+            const order = { weak: 0, resist: 1, immune: 2, absorb: 3 };
+            return Object.keys(t).map(el => {
+                const tier = t[el];
+                const ui = _ELEM_TIER_UI[tier] || { word: tier, color: '#cfd6ea', tip: '' };
+                const icon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[el]) || '';
+                return { el, tier, icon, word: ui.word, color: ui.color, tip: ui.tip };
+            }).sort((a, b) => (order[a.tier] ?? 9) - (order[b.tier] ?? 9));
+        }
+
         var _lastHoverPanelFP = '';
         // Portrait art for the INFO stat card — dedicated face art when the
         // race has it (sprites.js RACE_PORTRAITS), else the unit's map sprite.
@@ -3899,6 +3940,15 @@
                 }).join('') + '</div>';
             }
 
+            // Elemental affinity row — static race intel (always visible per
+            // the knowledge model), rides under the stats: Weak 🔥 · Resist ❄.
+            const affinEntries = _elemAffinityRows(unit.race);
+            const affinRow = affinEntries.length
+                ? '<div class="ins-affin">' + affinEntries.map(a =>
+                    `<span class="ins-affin-pill" style="color:${a.color};border-color:${a.color}66" title="${escapeHtml(a.tip)}">${a.word} ${a.icon} ${escapeHtml(a.el.toUpperCase())}</span>`
+                ).join('') + '</div>'
+                : '';
+
             // FFT-style horizontal stat bar: length reads at a glance, exact
             // number at the end. Buffed/debuffed values tint green/red with a
             // white tick marking the unbuffed base on the bar.
@@ -3953,6 +4003,7 @@
           <div class="ins-vital"><span class="ins-stat-label">MP</span><span class="selected-bar-track ins-vital-track"><span class="selected-bar-fill mp" style="width:${mpPct}%"></span>${buildPreviewSegment(unit.mp, unit.maxMp, preview?.type === 'mp' ? preview : null)}</span><span class="ins-vital-num">${unit.mp}/${unit.maxMp}</span></div>
           ${forecastNote ? `<div class="ins-note">${forecastNote}</div>` : ''}
           <div class="ins-stats">${statBars}</div>
+          ${affinRow}
           ${statusPills}
         </div>
       `;
@@ -7613,6 +7664,28 @@
             return html;
         }
 
+        // Elemental affinity grid beside the type matchups (ELEMENTAL_TYPES_
+        // PLAN P3): the spell-side layer — most races are neutral and say so.
+        function _codexBuildElementAffinity(race) {
+            const rows = _elemAffinityRows(race);
+            const label = { weak: '▼ ELEM WEAK', resist: '■ ELEM RESIST', immune: '∅ NULLIFIES', absorb: '♥ ABSORBS' };
+            let html = '<div class="cdx-matchups cdx-elem-matchups">';
+            if (!rows.length) {
+                html += `<div class="cdx-mu-row"><span class="cdx-mu-label">◇ ELEMENTS</span><span class="cdx-elem-neutral">Neutral — no elemental weaknesses or resistances</span></div>`;
+            } else {
+                const byTier = {};
+                for (const r of rows) (byTier[r.tier] = byTier[r.tier] || []).push(r);
+                for (const tier of ['weak', 'resist', 'immune', 'absorb']) {
+                    if (!byTier[tier]) continue;
+                    html += `<div class="cdx-mu-row"><span class="cdx-mu-label">${label[tier]}</span>` +
+                        byTier[tier].map(r => `<span class="cdx-elem-pill" style="color:${r.color};border-color:${r.color}66" title="${escapeHtml(r.tip)}">${r.icon} ${escapeHtml(r.el.toUpperCase())}</span>`).join('') +
+                        '</div>';
+                }
+            }
+            html += '</div>';
+            return html;
+        }
+
         function _codexBuildAbilities(race) {
             const abilities = RACE_ABILITIES[race];
             if (!abilities || abilities.length === 0) return '<div class="cdx-section-note">No racial abilities documented.</div>';
@@ -7784,6 +7857,7 @@
                 <div class="cdx-section">
                     <div class="cdx-section-header">3. &nbsp;TYPE EFFECTIVENESS:</div>
                     ${_codexBuildTypeMatchups(types)}
+                    ${_codexBuildElementAffinity(race)}
                 </div>
                 <div class="cdx-section">
                     <div class="cdx-section-header">4. &nbsp;DOCUMENTED CAPABILITIES:</div>
@@ -11222,6 +11296,9 @@
 
             const affectedTiles = _getIntentAffectedTiles(caster, spell, x, y);
             const kind = spell.kind;
+            // 🜂 Elemental affinity of the aimed spell (ELEMENTAL_TYPES_PLAN
+            // P3) — the element is per-spell, the affinity per-target below.
+            const _iEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
 
             for (const at of affectedTiles) {
                 const target = unitAt(at.x, at.y);
@@ -11229,9 +11306,19 @@
 
                 const badgeStack = [];
                 let yOff = 0;
+                const _iAff = (_iEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _iEl) : null;
 
                 if (spell.dmg || (spell.hitDamages && spell.hitDamages.length) || spell.dotDamage) {
                     if (isEnemyUnit(caster, target) || (spell.kind === 'aoe' && !isAllyUnit(target, caster))) {
+                        // Immune/absorb targets forecast no damage badge at all
+                        // (_estimateSpellDamage returns 0) — say WHY instead.
+                        if (_iAff === 'immune' || _iAff === 'absorb') {
+                            badgeStack.push({
+                                html: _iAff === 'immune' ? 'IMMUNE' : 'ABSORBS',
+                                cls: 'intent-type-eff not-effective', yOff
+                            });
+                            yOff += 14;
+                        }
                         const dmg = _estimateSpellDamage(caster, target, spell);
                         if (dmg > 0) {
                             const willKill = target.hp <= dmg && target.shield <= 0;
@@ -11266,6 +11353,15 @@
                     const typeEff = _getTypeEffLabel(caster, target, spell);
                     if (typeEff) {
                         badgeStack.push({ html: typeEff.text, cls: `intent-type-eff ${typeEff.cls}`, yOff });
+                        yOff += 14;
+                    }
+                    // Element weak/resist reads beside the type matchup, named
+                    // by its element (immune/absorb already spoke above).
+                    if (_iAff === 'weak' && isEnemyUnit(caster, target)) {
+                        badgeStack.push({ html: _SE_CIRCLE_HTML + `${_iEl.toUpperCase()} WEAK`, cls: 'intent-type-eff super-effective', yOff });
+                        yOff += 14;
+                    } else if (_iAff === 'resist' && isEnemyUnit(caster, target)) {
+                        badgeStack.push({ html: `${_iEl.toUpperCase()} RESISTED`, cls: 'intent-type-eff not-effective', yOff });
                         yOff += 14;
                     }
                 }

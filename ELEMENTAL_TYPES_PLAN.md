@@ -1,8 +1,42 @@
 # ELEMENTAL_TYPES_PLAN.md — Elemental affinities (weak / resist / immune / absorb)
 
-Status: **P0+P1+P2 SHIPPED** (2026-09-01). P3 (knowledge UI: inspect-panel
-resist row, codex grid, forecast badges) and P4 remain open. This doc is the
+Status: **P0+P1+P2+P3 SHIPPED** (2026-09-01). P4 (press-turn coupling,
+psychic/sonic promotion, new-spell waves) remains open, plus P3.14's optional
+polish (relaying the weakness battle-dialogue line + blood tier to guests —
+the floater callouts themselves already relay). This doc is the
 anti-"start over" memory for the elemental-types feature.
+
+## IMPLEMENTED P3 (2026-09-01) — knowledge UI, what shipped where
+- ui.js: `_ELEM_TIER_UI` + `_elemAffinityRows(race)` (single source for
+  wording/order/colors, placed above renderSelectedUnitPanel); inspect card
+  affinity pill row (`.ins-affin`, after the stat bars — static race intel,
+  always visible); codex/shop dossier `_codexBuildElementAffinity(race)`
+  rendered under `_codexBuildTypeMatchups` in section 3 (grouped rows
+  ▼ ELEM WEAK / ■ ELEM RESIST / ∅ NULLIFIES / ♥ ABSORBS; explicit
+  "Neutral" line for row-less races); getPreviewEffect spell damage/ricochet
+  branches: immune/absorb zero the forecast outright (`IMMUNE to X` /
+  `ABSORBS X — heals instead`), weak/resist join the type note
+  (`FIRE WEAK ×1.5` · `ICE resisted ×0.5`); updateIntentPreview: IMMUNE/
+  ABSORBS badge where the damage badge would be, plus `X WEAK` /
+  `X RESISTED` element badges beside the type-eff badge (reuses
+  intent-type-eff classes → 3D ti-type-eff mapping works unchanged).
+- hud.js: `_hrlgTargetBlades` — aimed spell's element affinity vs each
+  target row: weak joins the green `!` (superEff), resist joins `▼`;
+  immune/absorb replace the `≈−N` forecast chip with IMMUNE / ABSORBS
+  (their previewDmg is already 0 via _estimateSpellDamage).
+  `_hrlgSpellBadges` — element chip (icon + name, `ELEM_BADGE_COLORS`,
+  same typeBadgeStyle chip) next to the type badge on every spell blade;
+  hover title says combat (affinity check) vs flavor (VFX only).
+- styles-base.css `.ins-affin(-pill)`, styles-hud.css `.cdx-elem-matchups`
+  / `.cdx-elem-pill` / `.cdx-elem-neutral`.
+- NOT touched (deliberate): combo drum + _estimateComboDamage — two-unit
+  combos never pass spellElement to applyDamageToUnit (doComboAttack sends
+  spellType only), so combo hits are elementless engine-side and the UI
+  must not claim otherwise. If combos ever get elements, thread
+  spellElement in doComboAttack first, then mirror here.
+- Online parity: all P3 surfaces are viewer-local reads of data.js (same
+  ?v= file version both sides) over the viewer's own aiming state — no
+  relay/serialize changes needed, matching §Online parity below.
 
 ## DECISIONS (2026-09-01, from the user)
 1. **Multipliers**: weak ×1.5 / resist ×0.5 / immune ×0 / absorb→heal. Locked.
