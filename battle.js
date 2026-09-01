@@ -220,6 +220,19 @@
             return { mult: 1, supercharge: false, note: null };
         }
 
+        // Elemental affinity table (RACE_ELEMENT_AFFINITY tiers → multiplier).
+        // weak ×1.5 / resist ×0.5 / immune ×0 / anything else ×1. 'absorb'
+        // never reaches this — the caller converts the hit to healing first
+        // (the Thermal Regen path in applyDamageToUnit). Immune is likewise
+        // short-circuited by the caller before damage math; the ×0 row keeps
+        // the table total for the headless suite.
+        function calcElementAffinityMult(affinity) {
+            if (affinity === 'weak') return { mult: 1.5, note: 'elemWeak' };
+            if (affinity === 'resist') return { mult: 0.5, note: 'elemResist' };
+            if (affinity === 'immune') return { mult: 0, note: 'elemImmune' };
+            return { mult: 1, note: null };
+        }
+
         // THE damage-resolution pipeline: everything between "flat damage +
         // accumulated offensive product assembled" and "HP actually moves",
         // in the exact stage order the balance work established:
@@ -2238,14 +2251,33 @@
             cold: new RegExp('\\b(' + _ELEMENT_KEYWORDS.cold.join('|') + ')', 'i')
         };
 
-        function classifySpellElement(spell) {
+        // ── Canonical spell element (2026-09-01, elemental affinity system) ──
+        // TAG-FIRST: an authored data.js `element:` tag ALWAYS wins, for all
+        // 15 SPELL_ELEMENTS values. The legacy name-keyword sweep only
+        // guesses for UNTAGGED spells, and only for the three reaction
+        // elements — returned in canonical form ('ice', never 'cold'). This
+        // fixes the old misreads outright: Radiant Bolt (light) is no longer
+        // "lightning", Hail Mary (wind) no longer "hail", Suppressive Fire
+        // (metal) no longer "fire".
+        function getSpellElement(spell) {
             if (!spell) return null;
-            if (spell.element && _ELEMENT_REGEX[spell.element]) return spell.element;
+            if (spell.element && typeof SPELL_ELEMENTS !== 'undefined'
+                && SPELL_ELEMENTS.includes(spell.element)) return spell.element;
             const text = ((spell.id || '') + ' ' + (spell.name || ''));
             if (_ELEMENT_REGEX.lightning.test(text)) return 'lightning';
             if (_ELEMENT_REGEX.fire.test(text)) return 'fire';
-            if (_ELEMENT_REGEX.cold.test(text)) return 'cold';
+            if (_ELEMENT_REGEX.cold.test(text)) return 'ice';
             return null;
+        }
+        window.getSpellElement = getSpellElement;
+
+        // Legacy terrain-reaction vocabulary ('lightning'|'fire'|'cold') —
+        // now a thin mapper over getSpellElement so the two can never drift.
+        // Spells tagged with a non-reaction element (water, metal, light…)
+        // return null here: they neither conduct, ignite, nor freeze.
+        const _REACTION_EL = { fire: 'fire', lightning: 'lightning', ice: 'cold' };
+        function classifySpellElement(spell) {
+            return _REACTION_EL[getSpellElement(spell)] || null;
         }
         // Exported (2026-07-23) so the AI can ask "what element is this spell?"
         // with the ENGINE's classifier — e.g. never nuke a Thermal Regen kaiju
@@ -2681,7 +2713,7 @@
                     noRangeMult: true,
                     allowMarkBonus: false,
                     damageType: 'magic',
-                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
                     element: 'lightning',
                     flashColor: 'shock'
                 });
@@ -2781,7 +2813,7 @@
                     noRangeMult: true,
                     allowMarkBonus: false,
                     damageType: 'magic',
-                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
                     element: 'fire',
                     flashColor: 'burn'
                 });
@@ -2826,7 +2858,7 @@
                     noRangeMult: true,
                     allowMarkBonus: false,
                     damageType: 'magic',
-                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
                     element: 'lightning',
                     flashColor: 'shock'
                 });
@@ -2856,7 +2888,7 @@
                         noRangeMult: true,
                         allowMarkBonus: false,
                         damageType: 'magic',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                     });
                     showFloatingTextForUnit(u, '💎 SHARDS!', 'damage', { durationMs: 1100 });
                     cut++;
@@ -4315,7 +4347,7 @@
                                 ignoreArmor: !!spell.ignoreArmor,
                                 statusEffects: idx === 0 ? spell.statusEffects : null,
                                 damageType: spell.damageType || 'magic',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
                                 element: _spellEl
                             });
                     };
@@ -4357,7 +4389,7 @@
                         ignoreArmor: !!spell.ignoreArmor,
                         statusEffects: spell.statusEffects,
                         damageType: spell.damageType || 'magic',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
                         element: _spellEl
                     });
                 if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${damage}`, false);
@@ -4431,7 +4463,7 @@
                 sourcePlayer: unit.player,
                 spellId: spell.id,
                 spellType: spell.spellType,
-                bonusVsStatus: spell.bonusVsStatus || null,
+                bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
                 damageType: spell.damageType || 'physical',
                 spellName: spell.name,
                 impactSfx: spell.impactSfx || null,
@@ -4500,7 +4532,7 @@
                         {
                             sourceUnit: unit,
                             damageType: spell.damageType || 'physical',
-                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
                             element: classifySpellElement(spell)
                         });
                     if (idx === 0 && _activeCinematic?.showDamage) {
@@ -4542,7 +4574,7 @@
             applyDamageToUnit(first, dmg, `Ricochet from ${unit.cls}: `, {
                 sourceUnit: unit,
                 damageType: spell.damageType || 'physical',
-                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
                 element: classifySpellElement(spell)
             });
             if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${dmg}`, false);
@@ -4580,7 +4612,7 @@
                             `Ricochet bounces to `, {
                                 sourceUnit: unit,
                                 damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
                                 shieldIgnore: spell.bounceShieldIgnore || 0
                             });
                     }, bounceProjectileMs + actionMs(60));
@@ -4618,6 +4650,7 @@
                         statusEffects: spell.statusEffects,
                         damageType: spell.damageType || opts.damageType || 'magic',
                         spellType: spell.spellType || opts.spellType || null, bonusVsStatus: spell.bonusVsStatus || opts.bonusVsStatus || null,
+                        spellElement: getSpellElement(spell),
                         element: classifySpellElement(spell)
                     });
 
@@ -4962,7 +4995,7 @@
                 applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                     sourceUnit: unit,
                     damageType: spell.damageType || 'magic',
-                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
                     element: classifySpellElement(spell)
                 });
                 applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
@@ -6063,6 +6096,23 @@
             if (_immPassive) {
                 addLog(`${_immPassive.icon} ${unitDisplayName(target)}'s ${_immPassive.name} shrugs off ${(STATUS_DEFS[payload.id]?.label) || payload.id}!`);
                 showFloatingTextForUnit(target, `${_immPassive.icon} IMMUNE`, 'heal', { durationMs: 900 });
+                return false;
+            }
+            /* 🜂 Elemental status immunity (2026-09-01): a status that IS an
+               element (burn/frozen/poison — ELEMENTAL_STATUS) bounces off a
+               unit immune to (or drinking) that element, whatever applied it
+               (spell, terrain, weather). Element-RIDER statuses (lightning's
+               stun) bounce only when the applying hit itself carried the
+               element (payload._element, stamped by applyDamageToUnit).
+               Resist instead halves the stick chance — getStatusApplyChance. */
+            const _stAffEl = (typeof statusAffinityElement === 'function')
+                ? statusAffinityElement(payload.id, payload._element || null) : null;
+            const _stAff = (_stAffEl && typeof unitElementAffinity === 'function')
+                ? unitElementAffinity(target, _stAffEl) : null;
+            if (_stAff === 'immune' || _stAff === 'absorb') {
+                const _stIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_stAffEl]) || '∅';
+                addLog(`${_stIcon} ${unitDisplayName(target)} is immune to ${_stAffEl} — ${(STATUS_DEFS[payload.id]?.label) || payload.id} has no effect!`);
+                showFloatingTextForUnit(target, `${_stIcon} IMMUNE`, 'heal', { durationMs: 900 });
                 return false;
             }
             const status = ensureUnitStatus(target);
@@ -20063,23 +20113,55 @@
                 return false;
             }
 
-            // ── 🔥 Element-drinking passives (Thermal Regen, 2026-07-23) ───
-            // Driven by the healedByElement hook flag in data.js PASSIVE_DEFS:
-            // ANY hit of that element (spells, burn ticks, lava, fire weather)
-            // heals the unit instead of hurting it. Kaiju/fire today; the next
-            // "healed by X" passive is a data entry, not an engine patch.
+            // ── 🜂 Elemental affinity (2026-09-01, ELEMENTAL_TYPES_PLAN.md) ─
+            // Canonical 15-value element of THIS hit: opts.spellElement
+            // (threaded by every spell resolver via getSpellElement) wins;
+            // the legacy reaction-vocab opts.element ('lightning'|'fire'|
+            // 'cold' — DoT ticks, terrain hazards, weather) maps in as a
+            // fallback so those hazards hit affinities too. Side-agnostic on
+            // purpose, like the combo layer: the yeti burns whoever lit the
+            // fire, and a burn DoT ticks softer on a fire-resistant demon.
+            const _affEl = opts.spellElement
+                || ({ fire: 'fire', lightning: 'lightning', cold: 'ice' })[opts.element]
+                || null;
+            const _affinity = (_affEl && typeof unitElementAffinity === 'function')
+                ? unitElementAffinity(target, _affEl) : null;
+
+            // ── 🔥 Element-drinking (Thermal Regen passive + 'absorb' tier) ─
+            // healedByElement (data.js PASSIVE_DEFS) and the affinity table's
+            // 'absorb' tier share ONE path: ANY hit of that element (spells,
+            // burn ticks, lava, fire weather) heals the unit instead.
             // (The matching status DoT is also blocked — see applyStatusPayload.)
             const _drinkEl = (typeof unitPassiveValue === 'function')
                 ? unitPassiveValue(target, 'healedByElement') : undefined;
-            if (_drinkEl && opts.element === _drinkEl && damage > 0) {
+            if (((_drinkEl && opts.element === _drinkEl) || _affinity === 'absorb') && damage > 0) {
                 const _regen = Math.max(1, Math.round(damage));
                 target.hp = Math.min(target.maxHp, (target.hp || 0) + _regen);
-                addLog(`🔥 ${unitDisplayName(target)}'s Thermal Regen drinks the flames — restores ${_regen} HP!`);
+                if (_drinkEl && opts.element === _drinkEl) {
+                    addLog(`🔥 ${unitDisplayName(target)}'s Thermal Regen drinks the flames — restores ${_regen} HP!`);
+                } else {
+                    const _drinkIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_affEl]) || '🜂';
+                    addLog(`${_drinkIcon} ${unitDisplayName(target)} drinks the ${_affEl} — restores ${_regen} HP!`);
+                }
                 if (!_skipVisuals()) {
                     showFloatingTextForUnit(target, `🔥 +${_regen}`, 'heal', { durationMs: 1200 });
                     flashUnit(target.id, 'heal');
                 }
                 if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
+                return false;
+            }
+
+            // ── ∅ Elemental immunity: the hit simply does not exist for this
+            // unit — no damage, no statuses, no knock-on combos. (weak/resist
+            // multiply into the offensive product further down instead.)
+            if (_affinity === 'immune' && damage > 0) {
+                const _immIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_affEl]) || '∅';
+                addLog(`${_immIcon} ${unitDisplayName(target)} is immune to ${_affEl} — no effect!`);
+                if (!_skipVisuals()) {
+                    showFloatingTextForUnit(target, `${_immIcon} IMMUNE`, 'protect-block', { durationMs: 1200 });
+                    flashUnit(target.id, 'block');
+                    playSfx('block');
+                }
                 return false;
             }
 
@@ -20236,7 +20318,12 @@
             // flash-freeze, drying out) resolve after the damage lands below.
             // 2026-07-16: folded into the capped offensive product (used to
             // multiply the post-armor number, devaluing defense on big hits).
-            const _comboEl = opts.element || null;
+            // opts.element is the explicit reaction-vocab pass; resolvers that
+            // only thread spellElement still combo via the canonical mapping
+            // (a fire-tagged dash dries a soaked target like any fireball).
+            const _comboEl = opts.element
+                || ({ fire: 'fire', lightning: 'lightning', ice: 'cold' })[opts.spellElement]
+                || null;
             let _comboSupercharge = false;
             if (_comboEl && finalDamage > 0) {
                 // ★ Zodiac resonance: the active sign's trine empowers its
@@ -20265,6 +20352,26 @@
                     showFloatingTextForUnit(target, '⚡💧 ×1.5 SOAKED!', 'mult', { durationMs: 1100 });
                 } else if (_cmb.note === 'soakedFire') {
                     showFloatingTextForUnit(target, '💧 ×0.75 SOAKED', 'mult', { durationMs: 1000 });
+                }
+            }
+
+            // ── 🜂 ELEMENTAL AFFINITY LAYER (2026-09-01) ───────────────────
+            // weak ×1.5 / resist ×0.5 from RACE_ELEMENT_AFFINITY (immune and
+            // absorb short-circuited near the top). Rides the same capped
+            // offensive product as the type chart and the combo layer, so
+            // type × STAB × affinity × combo stays bounded at ×3 — and like
+            // the combo layer it is side-agnostic. The affinity is the
+            // TARGET's property, so both callouts pop over the target.
+            if (_affEl && finalDamage > 0 && (_affinity === 'weak' || _affinity === 'resist')) {
+                const _affRes = calcElementAffinityMult(_affinity);
+                _offMult *= _affRes.mult;
+                const _affIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_affEl]) || '';
+                if (_affinity === 'weak') {
+                    _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} ${_affEl.toUpperCase()} WEAK!`, 1100);
+                    addLog(`${_affIcon} ${unitDisplayName(target)} is weak to ${_affEl} — the hit lands ×${(+_affRes.mult.toFixed(2))} harder!`);
+                } else {
+                    _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} RESIST`, 1000);
+                    addLog(`${_affIcon} ${unitDisplayName(target)} resists the ${_affEl} — the hit is blunted.`);
                 }
             }
 
@@ -20557,7 +20664,17 @@
                 flashUnit(target.id, 'block');
             }
 
-            if (opts.statusEffects || opts.status) applyStatusEffects(target, opts.statusEffects || opts.status, '', sourceUnit);
+            if (opts.statusEffects || opts.status) {
+                let _stFx = opts.statusEffects || opts.status;
+                // Stamp the hit's element on the payloads so affinity-coupled
+                // statuses resolve correctly (lightning's stun rider, and the
+                // resist-halves-stick rule in getStatusApplyChance).
+                if (_affEl && Array.isArray(_stFx)) {
+                    _stFx = _stFx.map(s => (s && typeof s === 'object')
+                        ? Object.assign({ _element: _affEl }, s) : s);
+                }
+                applyStatusEffects(target, _stFx, '', sourceUnit);
+            }
 
             // ── ⚗️ Elemental combo layer, post-hit half ────────────────────
             if (_comboEl && !target.dead && !target._dying) {
@@ -20590,6 +20707,14 @@
                 // Frozen target on the spot (yes, that means a fireball is
                 // also a rescue tool for your own frozen bruiser).
                 if (_comboEl === 'fire') _thawFrozenUnit(target, 'The burst of fire');
+            }
+
+            // 💧 Water-element hits leave the target Soaked (and douse any
+            // burn) — every water spell sets up the ⚡ conduction and ❄️
+            // flash-freeze follow-ups. Centralized here so ALL current and
+            // future water-tagged damage soaks, no per-spell wiring.
+            if (_affEl === 'water' && damage > 0 && !target.dead && !target._dying) {
+                _soakUnit(target, { douseLabel: 'The deluge' });
             }
 
             if (sourceUnit && state.plantedSeeds && !target.dead) {
@@ -46295,7 +46420,7 @@
                             sourceUnit: unit,
                             allowMarkBonus: false,
                             damageType: spell.damageType || 'magic',
-                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                         });
                         if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${_debDmg}`, false);
                     }
@@ -47061,7 +47186,7 @@
                                         allowMarkBonus: false,
                                         statusEffects: spell.statusEffects,
                                         damageType: spell.damageType || 'physical',
-                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                                     });
                                 }, actionMs(400));
                             }, idx * barrageGap);
@@ -47148,7 +47273,7 @@
                     applyDamageToUnit(target, damage, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'magic',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
                         element: classifySpellElement(spell)
                     });
                     if (hitObstacle) {
@@ -47416,7 +47541,7 @@
                         if (terrain === 'lava' || terrain === 'poison') {
                             // Lava drags are fire-element (2026-07-23) so Thermal
                             // Regen units heal from the trip through the melt.
-                            applyDamageToUnit(target, 24, `Dragged through ${terrain}: `, { sourceUnit: unit, damageType: 'magic', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, element: terrain === 'lava' ? 'fire' : null });
+                            applyDamageToUnit(target, 24, `Dragged through ${terrain}: `, { sourceUnit: unit, damageType: 'magic', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: terrain === 'lava' ? 'fire' : null, element: terrain === 'lava' ? 'fire' : null });
                         }
                     }) : null
                 });
@@ -47462,7 +47587,7 @@
                         applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                             sourceUnit: unit,
                             damageType: spell.damageType || 'physical',
-                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                         });
                     }, Math.max(0, _yankDelayMs - actionMs(80)));
                 }
@@ -47826,7 +47951,7 @@
                     applyDamageToUnit(target, primaryDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'magic',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                     });
 
                     if (typeof window !== 'undefined' && window.ThreeVFXEffects
@@ -47859,7 +47984,7 @@
                                 applyDamageToUnit(hit, splitDmg + spellPower, `${spell.name} splits to `, {
                                     sourceUnit: unit,
                                     damageType: spell.damageType || 'magic',
-                                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                                 });
                             }, splitProjectileMs + actionMs(60));
                         }, hitDelay);
@@ -47884,7 +48009,7 @@
                     sourcePlayer: unit.player,
                     spellId: spell.id,
                     spellType: spell.spellType,
-                    bonusVsStatus: spell.bonusVsStatus || null,
+                    bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
                     damageType: spell.damageType || 'magic',
                     spellName: spell.name,
                     roundsLeft: delay,
@@ -48461,7 +48586,7 @@
                                 applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                                     sourceUnit: unit,
                                     damageType: spell.damageType || 'magic',
-                                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null,
+                                    spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell),
                                     statusEffects: spell.statusEffects
                                 });
                             }
@@ -48615,7 +48740,7 @@
                             }
 
                             const grappleDmg = Math.max(16, Math.floor(pwrAtk(unit) * 0.3) + spellPower);
-                            applyDamageToUnit(target, grappleDmg, `${unitDisplayName(unit)} grapples: `, { sourceUnit: unit, damageType: 'physical', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null });
+                            applyDamageToUnit(target, grappleDmg, `${unitDisplayName(unit)} grapples: `, { sourceUnit: unit, damageType: 'physical', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell) });
                             if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${grappleDmg}`, false);
                             addLog(`${unitDisplayName(unit)} grapples ${unitDisplayName(target)}, pulling them ${pulled} tile${pulled !== 1 ? 's' : ''} closer and dealing ${grappleDmg} damage.`);
                             showFloatingTextForUnit(target, `GRAPPLED!`, 'status', { durationMs: 1000 });
@@ -48728,7 +48853,7 @@
                             sourceUnit: unit,
                             allowMarkBonus: false,
                             damageType: spell.damageType || 'physical',
-                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                         });
                         if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${_plDmg}`, false);
                     }
@@ -48929,7 +49054,7 @@
                                 const hit = unitAt(x + dx, y + dy);
                                 if (hit && !hit.dead && isEnemyUnit(hit, unit)) {
                                     const dmg = Math.max(1, spell.dmg + spellPwr);
-                                    applyDamageToUnit(hit, dmg, `${spell.name}: `, { sourceUnit: unit, damageType: spell.damageType || 'magic', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null });
+                                    applyDamageToUnit(hit, dmg, `${spell.name}: `, { sourceUnit: unit, damageType: spell.damageType || 'magic', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell) });
                                     showFloatingTextForUnit(hit, `-${dmg}`, 'damage', { durationMs: 900 });
                                     addLog(`${unitDisplayName(hit)} takes ${dmg} damage from ${spell.name}!`);
                                     if (spell.statusEffects && spell.statusEffects.length > 0) {
@@ -49141,7 +49266,7 @@
                         damageType: 'magic',
                         // Type matchup keys off the SPELL's type (e.g. unholy vs
                         // anomaly), never the caster's own type.
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                     });
                     let drainMult = spell.drainPct || 0.50;
                     if (unit.cls === 'Harvester') drainMult *= 1.20;
@@ -49644,7 +49769,7 @@
                                 sourceUnit: unit,
                                 allowMarkBonus: true,
                                 damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                             });
                             if (spell.statusEffects && spell.statusEffects.length > 0) {
                                 applyStatusEffects(victim, spell.statusEffects, `${spell.name}: `, unit);
@@ -49801,7 +49926,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
 
@@ -49911,11 +50036,11 @@
                             const colBonus = spell.collisionBonus || 50;
                             applyDamageToUnit(throwTarget, totalDmg + colBonus, `${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                             });
                             applyDamageToUnit(collisionTarget, colBonus, `${spell.name} collision: `, {
                                 sourceUnit: unit, damageType: 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                             });
                             addLog(`${unitDisplayName(throwTarget)} is hurled into ${unitDisplayName(collisionTarget)}! Collision!`);
                             /* damage floats come from applyDamageToUnit; keep only
@@ -49943,7 +50068,7 @@
 
                             applyDamageToUnit(throwTarget, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                             });
                             applyStatusEffects(throwTarget, spell.statusEffects, `${spell.name}: `, unit);
                             throwTarget.x = x;
@@ -50116,7 +50241,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                     showFloatingTextForUnit(target, `-${totalDmg}`, 'damage', { durationMs: 900 });
@@ -50133,7 +50258,7 @@
                                 if (aoeVictim && !aoeVictim.dead && isEnemyUnit(aoeVictim, unit)) {
                                     applyDamageToUnit(aoeVictim, aoeDmg, `${spell.name} shockwave: `, {
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                                     });
                                     showFloatingTextForUnit(aoeVictim, `-${aoeDmg}`, 'damage', { durationMs: 800 });
                                 }
@@ -50268,7 +50393,7 @@
                     applyDamageToUnit(target, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                         sourceUnit: unit,
                         damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                     });
                     applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
                     showFloatingTextForUnit(target, `-${totalDmg}`, 'damage', { durationMs: 900 });
@@ -50285,7 +50410,7 @@
                                 if (aoeVictim && !aoeVictim.dead && aoeVictim.id !== target.id && isEnemyUnit(aoeVictim, unit)) {
                                     applyDamageToUnit(aoeVictim, aoeDmg, `${spell.name} shockwave: `, {
                                         sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null
+                                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell)
                                     });
                                     showFloatingTextForUnit(aoeVictim, `-${aoeDmg}`, 'damage', { durationMs: 800 });
                                 }

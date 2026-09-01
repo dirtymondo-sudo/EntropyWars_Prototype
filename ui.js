@@ -10786,6 +10786,12 @@
 
         function _estimateSpellDamage(caster, target, spell) {
             if (!caster || !target || !spell) return 0;
+            // 🜂 Elemental affinity forecast (mirrors applyDamageToUnit): an
+            // immune/absorb target takes nothing from this element — say so.
+            const _esEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : null;
+            const _esAff = (_esEl && typeof unitElementAffinity === 'function')
+                ? unitElementAffinity(target, _esEl) : null;
+            if (_esAff === 'immune' || _esAff === 'absorb') return 0;
             // Mirrors doSpell's spellPower assembly (incl. Arcane Surge).
             const spellPower = (caster.spellPower || 0) + getHourglassPower(caster)
                 + (typeof getSpellStatBonus === 'function' ? getSpellStatBonus(caster, spell) : 0)
@@ -10820,6 +10826,11 @@
             if (isEnemyUnit(caster, target)) {
                 baseDmg += getEffectiveAttackBonus(caster, spell.damageType === 'magic' ? 'magic' : 'physical');
                 let offMult = getTypeDamageMultiplier(caster, target, spell.spellType || null);
+                // 🜂 Elemental affinity: weak ×1.5 / resist ×0.5, inside the
+                // same capped product as the engine (immune/absorb returned 0
+                // above). Keep in lockstep with applyDamageToUnit + ai.js.
+                if (_esAff === 'weak') offMult *= 1.5;
+                else if (_esAff === 'resist') offMult *= 0.5;
 
                 if (typeof getUnitStandingHeight === 'function') {
                     const srcH = getUnitStandingHeight(caster);

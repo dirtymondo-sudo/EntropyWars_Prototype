@@ -184,6 +184,118 @@ const TYPE_CHART = {
 
 const STAB_MULTIPLIER = 1.25;
 
+/* ═══ ELEMENTAL AFFINITIES (2026-09-01 — see ELEMENTAL_TYPES_PLAN.md) ═══
+   A SECOND, spell-side layer under the type chart above — never a
+   replacement for it. Spells carry an optional `element:` tag (doc block
+   above SPELL_LIBRARY); the six COMBAT_ELEMENTS below also consult
+   RACE_ELEMENT_AFFINITY when they strike a unit:
+     weak ×1.5 · resist ×0.5 · immune ×0 (statuses bounce too) ·
+     absorb → the damage HEALS the target (Thermal Regen, generalized).
+   Everything else — the other nine tags AND untagged spells — is
+   elementally NEUTRAL and skips this layer entirely. The type-chart
+   matchup + STAB above ALWAYS apply regardless of element; both layers
+   multiply inside the capped offensive product (battle.js).
+   Design rules (keep these when adding rows):
+   - The table is SPARSE: most races carry 0–2 rows, neutral is the
+     default and must stay the common case. Max 2 weaknesses per race;
+     immune/absorb are signature-only.
+   - Basic attacks are elementless — always neutral.
+   - 'arcane' is deliberately never a combat element (raw magic nothing
+     resists or drinks) — the escape valve vs resist stacking.
+   - 'metal' is a weapon tag, never promote it (it would be stealth
+     physical-resist on top of DEF and gut the gun/blade classes).
+   - Mechanical races stay lightning-NEUTRAL on purpose: the dry-tech
+     Overclock / soaked short-circuit combo (calcElementComboMult) is
+     already their lightning story — water is their weakness instead. */
+const SPELL_ELEMENTS = ['fire', 'ice', 'lightning', 'water', 'earth', 'wind',
+    'poison', 'nature', 'shadow', 'light', 'psychic', 'sonic', 'arcane',
+    'blood', 'metal'];
+const COMBAT_ELEMENTS = ['fire', 'ice', 'lightning', 'water', 'poison', 'earth'];
+const ELEMENT_AFFINITY_TIERS = ['weak', 'resist', 'immune', 'absorb'];
+const ELEMENT_AFFINITY_MULT = { weak: 1.5, resist: 0.5, immune: 0 };
+const ELEMENT_ICONS = {
+    fire: '🔥', ice: '❄️', lightning: '⚡', water: '💧', poison: '☠️',
+    earth: '⛰️', wind: '🌪️', nature: '🌿', shadow: '🌑', light: '✨',
+    psychic: '🌀', sonic: '🔊', arcane: '🔮', blood: '🩸', metal: '⚙️'
+};
+
+// Statuses that ARE an element: the target's affinity for that element
+// governs every application, whatever the source (immune/absorb bounces
+// the status, resist halves its stick chance — getStatusApplyChance).
+const ELEMENTAL_STATUS = { burn: 'fire', frozen: 'ice', poison: 'poison' };
+// Statuses an element merely USES: coupled only when the applying hit
+// itself carried that element (lightning's paralysis — a psychic stun is
+// not electricity and ignores lightning affinity). `wet` stays a marker
+// with no resist roll by design (see its STATUS_DEFS note).
+const ELEMENT_RIDER_STATUS = { stun: 'lightning' };
+function statusAffinityElement(statusId, hitElement) {
+    if (ELEMENTAL_STATUS[statusId]) return ELEMENTAL_STATUS[statusId];
+    if (ELEMENT_RIDER_STATUS[statusId] && hitElement === ELEMENT_RIDER_STATUS[statusId]) return hitElement;
+    return null;
+}
+
+const RACE_ELEMENT_AFFINITY = {
+    // ── polar ──
+    'yeti':              { ice: 'resist', fire: 'weak' },
+    'ice queen':         { ice: 'immune', fire: 'weak' },
+    'santa clause':      { ice: 'resist' },
+    'loch ness monster': { ice: 'resist', water: 'resist', lightning: 'weak' },
+    // ── deep sea ── (stacks with soaked-shock on purpose: storm bait)
+    'siren':             { water: 'resist', lightning: 'weak' },
+    'mermaid':           { water: 'resist', lightning: 'weak' },
+    'atlantean':         { water: 'resist', lightning: 'weak' },
+    'kraken':            { water: 'resist', lightning: 'weak' },
+    // ── infernal ──
+    'demon':             { fire: 'resist', poison: 'resist', ice: 'weak' },
+    'demon prince':      { fire: 'resist', ice: 'weak' },
+    'demon princess':    { fire: 'resist', ice: 'weak' },
+    'halfdemon':         { fire: 'resist' },
+    'fallen angel':      { fire: 'resist', ice: 'weak' },
+    'overlord':          { fire: 'resist', ice: 'weak' },
+    'goatman':           { fire: 'resist' },
+    // ── undead & bloodless ──
+    'skeleton':          { poison: 'immune', fire: 'weak' },
+    'zombie':            { poison: 'resist', fire: 'weak' },
+    'ghost':             { poison: 'immune' },
+    'vampire':           { fire: 'weak' },
+    'necromancer':       { poison: 'resist' },
+    'ghoul':             { poison: 'resist' },
+    'gargoyle':          { poison: 'immune', earth: 'resist' },
+    // ── mechanical ── (lightning-neutral: the Overclock combo is their story)
+    'robot':             { poison: 'immune', water: 'weak' },
+    'android':           { poison: 'immune', water: 'weak' },
+    'droid':             { poison: 'immune', water: 'weak' },
+    'ai':                { poison: 'immune', water: 'weak' },
+    'honda civic':       { poison: 'immune', water: 'weak' },
+    'mech':              { poison: 'immune', water: 'weak' },
+    'cyborg':            { poison: 'resist' },
+    'super sentai':      { poison: 'resist' },
+    // ── stone & earth ──
+    'golem':             { poison: 'immune', earth: 'resist', water: 'weak' },
+    'giant':             { earth: 'resist' },
+    'cyclops':           { earth: 'resist' },
+    // ── beasts & wilds ──
+    'dragon':            { fire: 'resist', ice: 'weak' },
+    'dinosaur':          { ice: 'weak' },
+    'kaiju':             { fire: 'absorb' },   // Thermal Regen, generalized
+    'king kong':         { earth: 'resist' },
+    'bigfoot':           { earth: 'resist' },
+    // everyone else: elementally neutral (deliberately no row)
+};
+
+function getRaceElementAffinity(race, element) {
+    const t = race ? RACE_ELEMENT_AFFINITY[race] : null;
+    return (t && t[element]) || null;
+}
+/* Live per-hit read (same pattern as unitPassiveValue): nothing is stamped
+   on the unit instance, so serialization/state-sync is untouched and a
+   data.js retune applies everywhere at once. Returns 'weak'|'resist'|
+   'immune'|'absorb'|null. */
+function unitElementAffinity(unit, element) {
+    if (!unit || !element) return null;
+    return getRaceElementAffinity(unit.race, element);
+}
+
 const FACTION_BONUSES = {
     space: {
         label: 'Space Alignment',
@@ -3704,13 +3816,25 @@ function getRaceLabel(race, gender) {
     return p.label || race;
 }
 
-/* ── Spell `element` tags (organizational, NOT a combat type) ─────────────
+/* ── Spell `element` tags ─────────────────────────────────────────────────
    Optional field on any spell: element: 'fire'|'ice'|'lightning'|'water'|
    'earth'|'wind'|'poison'|'nature'|'shadow'|'light'|'psychic'|'sonic'|
-   'arcane'|'blood'|'metal'.
-   It does NOT interact with the type chart / badges / matchups — it exists so
-   VFX theming (classifySpellElement/_resolveTheme prefer it over name-regex
-   guessing) and future systems can group spells by element reliably. */
+   'arcane'|'blood'|'metal'  (canonical list: SPELL_ELEMENTS, near TYPE_CHART).
+   Since 2026-09-01 the six COMBAT_ELEMENTS (fire/ice/lightning/water/poison/
+   earth) are a real combat layer: damage of those elements consults
+   RACE_ELEMENT_AFFINITY (weak ×1.5 / resist ×0.5 / immune / absorb),
+   water-element damage Soaks the target, and elemental statuses couple to
+   affinities — see the ELEMENTAL AFFINITIES block + ELEMENTAL_TYPES_PLAN.md.
+   The other nine tags stay flavor-only (VFX theming via _resolveTheme, SFX,
+   library filters) and are elementally neutral — as is every untagged spell.
+   The element layer is SECONDARY: the type chart + STAB always apply on top.
+   The tag is authoritative for battle.js getSpellElement — the legacy
+   name-keyword sweep only guesses for UNTAGGED spells now (a tag can no
+   longer be overridden by an unlucky name like Radiant "Bolt").
+   RULE for new content: every new DAMAGE spell either carries an element:
+   tag or a deliberate `// element: none` note. A combat-element spell that
+   applies a status should apply its paired one (fire→burn, ice→frozen,
+   poison→poison, lightning→stun; water soaks automatically). */
 const SPELL_LIBRARY = [
 
     {
@@ -5221,7 +5345,7 @@ const SHARED_POISON_SWAMP = {
 };
 
 const SHARED_INFECTIOUS_BITE = {
-    id: 'raceInfectiousBite', spellType: 'unholy', name: 'Infectious Bite',
+    id: 'raceInfectiousBite', element: 'poison', spellType: 'unholy', name: 'Infectious Bite',
     type: 'damage', cost: 20, dmg: 100, range: 1,
     kind: 'damage', damageType: 'physical',
     statusEffects: [{ id: 'poison', duration: 3 }],
@@ -5454,7 +5578,7 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'discord', duration: 2 }],
           desc: 'Deals HEAVY magic damage to a Single Enemy. Lowers ATK by 2 stages and DEF by 1 stage.' },
-        { id: 'raceColdSpot', spellType: 'anomaly', name: 'Cold Spot',
+        { id: 'raceColdSpot', element: 'ice', spellType: 'anomaly', name: 'Cold Spot',
           type: 'utility', cost: 30, range: 4, apCost: 1,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
           statusEffects: [{ id: 'frozen', duration: 1 }],
@@ -5485,7 +5609,7 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff', statusEffects: [{ id: 'protect', duration: 1 }],
           desc: 'Empowers the caster. Applies Protect. Cooldown: 2 rounds.' },
-        { id: 'raceStonefall', spellType: 'unholy', name: 'Stonefall',
+        { id: 'raceStonefall', element: 'earth', spellType: 'unholy', name: 'Stonefall',
           type: 'damage', cost: 30, dmg: 100, range: 4,
           kind: 'damage', damageType: 'physical', ignoresLineOfSight: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
@@ -5496,7 +5620,7 @@ const RACE_ABILITIES = {
           dmg: 50, damageType: 'physical',
           terrainDeform: { centerDelta: 2, edgeDelta: 0 },
           desc: 'Raise 2 tiles of stone wall. Cheaper than Rampart but smaller. The cathedral grows.' },
-        { id: 'raceStoneDrop', spellType: 'unholy', name: 'Stone Drop',
+        { id: 'raceStoneDrop', element: 'earth', spellType: 'unholy', name: 'Stone Drop',
           type: 'damage', tier: 'III', cost: 25, dmg: 150, range: 1, apCost: 1,
           kind: 'skyDrop', damageType: 'physical', carryHeight: 4, dmgPerLevel: 25,
           requiresFlight: true,
@@ -5725,7 +5849,7 @@ const RACE_ABILITIES = {
         SHARED_POISON_SWAMP
     ],
     'antperson': [
-        { id: 'raceFormicAcid', spellType: 'alien', name: 'Formic Acid',
+        { id: 'raceFormicAcid', element: 'poison', spellType: 'alien', name: 'Formic Acid',
           type: 'damage', cost: 22, dmg: 80, range: 4,
           kind: 'line', damageType: 'magic', lineWidth: 1,
           statStageBoost: { def: -1 },
@@ -5787,23 +5911,23 @@ const RACE_ABILITIES = {
           desc: 'Deals HEAVY physical damage to a Single Enemy. The photo would have been blurry anyway. Deals bonus damage to Staggered targets.' }
     ],
     'siren': [
-        { id: 'raceSonicBreaker', spellType: 'anomaly', name: 'Sonic Breaker',
+        { id: 'raceSonicBreaker', element: 'sonic', spellType: 'anomaly', name: 'Sonic Breaker',
           type: 'damage', cost: 30, dmg: 120, range: 4,
           kind: 'linePush', damageType: 'magic', lineWidth: 1, pushDistance: 2,
           bonusVsStatus: { status: 'silence', mult: 1.5 },
           desc: 'Deals MEDIUM magic damage to All Enemies in a line and pushes them back. Deals bonus damage to Silenced targets.' },
-        { id: 'raceCallOfTheDeep', spellType: 'unholy', name: 'Call of the Deep',
+        { id: 'raceCallOfTheDeep', element: 'water', spellType: 'unholy', name: 'Call of the Deep',
           type: 'damage', tier: 'III', cost: 40, dmg: 160, range: 3, apCost: 2,
           kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 1,
           damageType: 'magic',
           bonusVsStatus: { status: 'silence', mult: 1.5 },
           desc: 'Reshapes the battlefield — creates deep_water across 1 tiles. Deals bonus damage to targets with Silence.' },
-        { id: 'raceDeafeningWail', spellType: 'anomaly', name: 'Deafening Wail',
+        { id: 'raceDeafeningWail', element: 'sonic', spellType: 'anomaly', name: 'Deafening Wail',
           type: 'damage', cost: 30, dmg: 125, range: 0,
           kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'silence', duration: 1 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Silence.' },
-        { id: 'raceSonicBoomerang', spellType: 'anomaly', name: 'Sonic Boomerang',
+        { id: 'raceSonicBoomerang', element: 'sonic', spellType: 'anomaly', name: 'Sonic Boomerang',
           type: 'damage', cost: 35, dmg: 80, range: 4, apCost: 1,
           kind: 'line', damageType: 'magic', lineWidth: 1, boomerang: true,
           desc: 'Hurl a scything crescent of sound down a line — then it comes BACK. Every enemy in its path takes WEAK magic damage on the way out AND again on the return.' },
@@ -6468,7 +6592,7 @@ const RACE_ABILITIES = {
           dashDamage: 56,
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Charges at a Single Enemy, dealing HEAVY physical damage. Enemies along the path also take damage. Applies Stun.' },
-        { id: 'raceStoneThrow', spellType: 'alien', name: 'Stone Throw',
+        { id: 'raceStoneThrow', element: 'earth', spellType: 'alien', name: 'Stone Throw',
           type: 'damage', cost: 25, dmg: 100, range: 5,
           kind: 'damage', damageType: 'physical', ignoresLineOfSight: true,
           bonusVsStatus: { status: 'stun', mult: 1.5 },
@@ -6484,7 +6608,7 @@ const RACE_ABILITIES = {
         /* (raceOverclock merged into the Engineer class spell 'overclock'
            2026-08-03 — same-name duplicate. Cyborg borrows 'overclock' via
            the movepool-share table; old id aliases to it.) */
-        { id: 'raceEMPGrenade', spellType: 'tech', name: 'EMP Grenade',
+        { id: 'raceEMPGrenade', element: 'lightning', spellType: 'tech', name: 'EMP Grenade',
           type: 'damage', cost: 30, dmg: 100, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'jammed', duration: 2 }],
@@ -6533,7 +6657,7 @@ const RACE_ABILITIES = {
           desc: 'Deals HEAVY magic damage to All Enemies in an AOE. Applies Silence. Deals bonus damage to targets with Silence.' },
         /* Ring-3 payoff since 2026-08-16 (was ring 1 — top-10 dmg/MP in
            stats18 at 25 MP): the drain kiss now prices as tier II. */
-        { id: 'raceKissOfDecay', spellType: 'unholy', name: 'Kiss of Decay',
+        { id: 'raceKissOfDecay', element: 'poison', spellType: 'unholy', name: 'Kiss of Decay',
           type: 'damage', cost: 75, dmg: 100, range: 2, tier: 'II',
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.40,
           statusEffects: [{ id: 'poison', duration: 2 }],
@@ -6688,7 +6812,7 @@ const RACE_ABILITIES = {
           projectileOverride: 'proj-spiderweb',
           statusEffects: [{ id: 'root', duration: 1 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Rooted.' },
-        { id: 'raceVenomFang', spellType: 'alien', name: 'Venom Fang',
+        { id: 'raceVenomFang', element: 'poison', spellType: 'alien', name: 'Venom Fang',
           type: 'damage', cost: 30, dmg: 100, range: 1,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'poison', duration: 3 }],
@@ -6733,7 +6857,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'burn', duration: 1 }],
           bonusVsStatus: { status: 'burn', mult: 1.5 },
           desc: 'Deals HEAVY magic damage to All Enemies in a line. Applies Burn. Deals bonus damage to Burning targets.' },
-        { id: 'raceShockwaveClap', spellType: 'human', name: 'Shockwave Clap',
+        { id: 'raceShockwaveClap', element: 'sonic', spellType: 'human', name: 'Shockwave Clap',
           type: 'damage', cost: 25, dmg: 125, range: 4,
           kind: 'linePush', damageType: 'physical', lineWidth: 1, pushDistance: 2,
           desc: 'Deals MEDIUM physical damage to All Enemies in a line. Pushes them back. Knocks the target back 2 tiles.' },
@@ -6773,7 +6897,7 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 35, range: 3, apCost: 2,
           kind: 'aoeShield', aoeRadius: 1, shieldHp: 120,
           desc: 'Grants a damage-absorbing shield to All Allies in an AOE.' },
-        { id: 'raceTaserBolt', spellType: 'tech', name: 'Taser Bolt',
+        { id: 'raceTaserBolt', element: 'lightning', spellType: 'tech', name: 'Taser Bolt',
           type: 'damage', cost: 20, dmg: 80, range: 3,
           kind: 'damage', damageType: 'magic',
           bonusVsStatus: { status: 'jammed', mult: 1.5 },
@@ -6938,7 +7062,7 @@ const RACE_ABILITIES = {
         SHARED_FISSURE,
     ],
     'dragon': [
-        { id: 'raceDragonfire', spellType: 'unholy', name: 'Dragonfire',
+        { id: 'raceDragonfire', element: 'fire', spellType: 'unholy', name: 'Dragonfire',
           type: 'damage', tier: 'III', cost: 60, dmg: 160, range: 4,
           kind: 'line', damageType: 'magic', lineWidth: 1,
           statusEffects: [{ id: 'burn', duration: 2 }],
@@ -6960,7 +7084,7 @@ const RACE_ABILITIES = {
         SHARED_FISSURE,
     ],
     'ghoul': [
-        { id: 'raceGhoulishBite', spellType: 'unholy', name: 'Ghoulish Bite',
+        { id: 'raceGhoulishBite', element: 'poison', spellType: 'unholy', name: 'Ghoulish Bite',
           type: 'damage', cost: 25, dmg: 100, range: 1,
           kind: 'lifeDrain', damageType: 'physical', drainPct: 0.40,
           statusEffects: [{ id: 'poison', duration: 2 }],
@@ -7004,6 +7128,8 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stagger', duration: 1 }],
           terrainDeform: { centerDelta: -2, edgeDelta: -1 },
           desc: 'Deals MEDIUM physical damage to All Enemies in an AOE. Applies Stagger.' },
+        // element: none (deliberate — nuclear, not fire: keeps kaiju mirror
+        // matches honest, since kaiju ABSORBS fire via its affinity row).
         { id: 'raceAtomicBreath', spellType: 'tech', name: 'Atomic Breath',
           type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 5,
           kind: 'line', damageType: 'magic', lineWidth: 1,
@@ -7035,7 +7161,7 @@ const RACE_ABILITIES = {
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
           statusEffects: [{ id: 'discord', duration: 2 }],
           desc: 'Spray blinding ink over a 3×3 area for 2 turns. Enemies inside are disoriented — ATK lowered by 2 stages and DEF by 1 stage for 2 turns.' },
-        { id: 'raceDepthCharge', spellType: 'anomaly', name: 'Depth Charge',
+        { id: 'raceDepthCharge', element: 'water', spellType: 'anomaly', name: 'Depth Charge',
           type: 'damage', cost: 35, dmg: 125, range: 4,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           bonusVsStatus: { status: 'discord', mult: 1.5 },
@@ -7049,7 +7175,7 @@ const RACE_ABILITIES = {
           kind: 'escape', teleportDistance: 3,
           statusEffects: [{ id: 'protect', duration: 1 }],
           desc: 'Submerge and resurface up to 3 tiles away. Protected 1 turn upon emerging.' },
-        { id: 'raceTidalSlam', spellType: 'anomaly', name: 'Tidal Slam',
+        { id: 'raceTidalSlam', element: 'water', spellType: 'anomaly', name: 'Tidal Slam',
           type: 'damage', tier: 'III', cost: 30, dmg: 170, range: 0,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
           leaveTerrain: 'deep_water',
@@ -7106,7 +7232,7 @@ const RACE_ABILITIES = {
     ],
 
     'barbarella': [
-        { id: 'raceStunRay', spellType: 'tech', name: 'Stun Ray',
+        { id: 'raceStunRay', element: 'lightning', spellType: 'tech', name: 'Stun Ray',
           type: 'damage', cost: 25, dmg: 100, range: 4,
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'stun', duration: 1 }],
@@ -7119,7 +7245,7 @@ const RACE_ABILITIES = {
           desc: 'Deals HEAVY magic damage to All Enemies around the caster (AOE) and lowers ATK by 2 stages and DEF by 1 stage. Deals bonus damage to Stunned targets.' },
         _mkBlink('short', { id: 'raceGravityBoots', spellType: 'tech', name: 'Gravity Boots',
           desc: 'Activate anti-gravity boots to reposition up to 3 tiles. Far out.' }),
-        { id: 'racePlasmaWhip', spellType: 'tech', name: 'Plasma Whip',
+        { id: 'racePlasmaWhip', element: 'fire', spellType: 'tech', name: 'Plasma Whip',
           type: 'damage', cost: 30, dmg: 125, range: 2,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'burn', duration: 2 }],
@@ -7129,7 +7255,7 @@ const RACE_ABILITIES = {
     ],
 
     'black goo': [
-        { id: 'raceCorrosiveSplash', spellType: 'unholy', name: 'Corrosive Splash',
+        { id: 'raceCorrosiveSplash', element: 'poison', spellType: 'unholy', name: 'Corrosive Splash',
           type: 'damage', cost: 25, dmg: 80, range: 3,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'poison', duration: 2 }],
@@ -7150,7 +7276,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Spit a glob of black ooze onto one tile. It oozes outward over the ground and downhill. Enemies caught in the slick are slowed.' },
         SHARED_POISON_SWAMP,
-        { id: 'raceToxicNova', spellType: 'unholy', name: 'Toxic Nova',
+        { id: 'raceToxicNova', element: 'poison', spellType: 'unholy', name: 'Toxic Nova',
           type: 'damage', cost: 35, dmg: 125, range: 0, apCost: 2,
           kind: 'barrage', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'poison', duration: 3 }],
@@ -7158,7 +7284,10 @@ const RACE_ABILITIES = {
     ],
 
     'golem': [
-        { id: 'raceBoulderHurl', spellType: 'human', name: 'Boulder Hurl',
+        /* NOTE: duplicate id with the giant's Boulder Hurl (a known dup —
+           see the EWSpellMods refsFor note). Keep the element tags in sync
+           so whichever copy wins SPELL_BY_ID, the affinity layer agrees. */
+        { id: 'raceBoulderHurl', spellType: 'human', element: 'earth', name: 'Boulder Hurl',
           type: 'damage', cost: 25, dmg: 100, range: 3,
           kind: 'damage', damageType: 'physical',
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
@@ -7168,7 +7297,7 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statStageBoost: { def: 2 },
           desc: 'Empowers the caster. Raises DEF by 2 stages.' },
-        { id: 'raceQuake', spellType: 'human', name: 'Quake',
+        { id: 'raceQuake', element: 'earth', spellType: 'human', name: 'Quake',
           type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 0, apCost: 2,
           kind: 'barrage', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
@@ -7205,14 +7334,14 @@ const RACE_ABILITIES = {
     ],
 
     'ice queen': [
-        { id: 'raceIceSpear', spellType: 'anomaly', name: 'Ice Spear',
+        { id: 'raceIceSpear', element: 'ice', spellType: 'anomaly', name: 'Ice Spear',
           type: 'damage', cost: 25, dmg: 100, range: 5,
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'slow', duration: 2 }],
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Applies Slow.' },
         /* 2026-07-17 shape pass: Diamond Dust now falls in a literal DIAMOND
            (Manhattan radius 2, 13 tiles) instead of another 3×3. */
-        { id: 'raceDiamondDust', spellType: 'divine', name: 'Diamond Dust',
+        { id: 'raceDiamondDust', element: 'ice', spellType: 'divine', name: 'Diamond Dust',
           type: 'damage', cost: 35, dmg: 125, range: 4, apCost: 2,
           kind: 'cross', diamond: true, crossRadius: 2, damageType: 'magic',
           statusEffects: [{ id: 'slow', duration: 2 }],
@@ -7479,7 +7608,7 @@ const RACE_ABILITIES = {
           kind: 'dash', damageType: 'physical', dashDamage: 70,
           bonusVsStatus: { status: 'frozen', mult: 1.5 },
           desc: 'Dashes through the battlefield, dealing WEAK physical damage to enemies along the path. Deals bonus damage to targets with Frozen.' },
-        { id: 'raceLumpOfCoal', spellType: 'divine', name: 'Lump of Coal',
+        { id: 'raceLumpOfCoal', element: 'fire', spellType: 'divine', name: 'Lump of Coal',
           type: 'damage', cost: 25, dmg: 100, range: 4,
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'burn', duration: 2 }],
@@ -7489,7 +7618,7 @@ const RACE_ABILITIES = {
           kind: 'debuff',
           statStageBoost: { atk: -2 },
           desc: 'Weakens a Single Enemy. Lowers ATK by 2 stages.' },
-        { id: 'raceBlizzardPresent', spellType: 'anomaly', name: 'Blizzard Present',
+        { id: 'raceBlizzardPresent', element: 'ice', spellType: 'anomaly', name: 'Blizzard Present',
           type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 4, apCost: 1,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'frozen', duration: 2 }],
@@ -7498,7 +7627,7 @@ const RACE_ABILITIES = {
     ],
 
     'super sentai': [
-        { id: 'sentaiRedSlash', spellType: 'human', name: 'Red Slash',
+        { id: 'sentaiRedSlash', element: 'fire', spellType: 'human', name: 'Red Slash',
           type: 'damage', cost: 20, dmg: 100, range: 1,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'burn', duration: 1 }],
@@ -7521,7 +7650,7 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           _sentaiColor: 'green',
           desc: 'Deals MEDIUM physical damage to a Single Enemy.' },
-        { id: 'sentaiYellowThunder', spellType: 'tech', name: 'Yellow Thunder',
+        { id: 'sentaiYellowThunder', element: 'lightning', spellType: 'tech', name: 'Yellow Thunder',
           type: 'damage', cost: 30, dmg: 80, range: 3,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           statusEffects: [{ id: 'stagger', duration: 1 }],
@@ -7547,7 +7676,7 @@ const RACE_ABILITIES = {
     ],
 
     'symbiote': [
-        { id: 'raceTendrilStrike', spellType: 'unholy', name: 'Tendril Strike',
+        { id: 'raceTendrilStrike', element: 'poison', spellType: 'unholy', name: 'Tendril Strike',
           type: 'damage', tier: 'III', cost: 45, dmg: 180, range: 2,
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'poison', duration: 2 }],
@@ -8408,7 +8537,8 @@ const STATUS_DEFS = {
                 damageType: 'dot',
                 consumeMarked: false,
                 scaleByTargetLevel: true,
-                flashColor: 'poison'
+                flashColor: 'poison',
+                spellElement: 'poison'   // affinity: resist halves the tick
             });
             const _dealt = _hpB - unit.hp;
             if (_src && !_src.dead && _src.player !== unit.player && _dealt > 0) {
@@ -13511,6 +13641,10 @@ Object.assign(window, {
   CONFIG, EQUIP_DEFS, RACE_PROFILES, AVAILABLE_RACES, RACE_DEFAULT_JOBS,
   MAX_UNIT_PASSIVES, PASSIVE_DEFS, RACE_PASSIVES,
   getUnitPassives, unitHasPassive, unitPassiveValue, unitPassiveBlocksStatus,
+  /* elemental affinity system (2026-09-01, ELEMENTAL_TYPES_PLAN.md) */
+  SPELL_ELEMENTS, COMBAT_ELEMENTS, ELEMENT_AFFINITY_TIERS, ELEMENT_AFFINITY_MULT,
+  ELEMENT_ICONS, ELEMENTAL_STATUS, ELEMENT_RIDER_STATUS, statusAffinityElement,
+  RACE_ELEMENT_AFFINITY, getRaceElementAffinity, unitElementAffinity,
   AVAILABLE_ZODIACS, ZODIAC_ICONS, JOB_MODIFIERS, CLASS_TEMPLATES,
   JOB_PASSIVES, CLASS_PASSIVES, getJobPassive,
   DEFAULT_BUILDS, ITEM_RULES, SPELL_LIBRARY, SPELL_SLOT_MAX,

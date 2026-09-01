@@ -1026,6 +1026,7 @@
                     damageType: ds.damageType || 'physical',
                     spellType: ds.spellType || null,
                     bonusVsStatus: ds.bonusVsStatus || null,
+                    spellElement: ds.spellElement || null,
                     ignoreArmor: !!ds.ignoreArmor,
                     flashColor: 'hit'
                 });
@@ -1037,7 +1038,7 @@
                         (mark.dead || (mark.hp || 0) <= 0) ? 1 : 0);
                 }
                 for (const eff of (ds.statusEffects || [])) {
-                    if (sourceUnit && !mark.dead) applyStatusPayload(mark, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${ds.spellName}: `, sourceUnit);
+                    if (sourceUnit && !mark.dead) applyStatusPayload(mark, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0, _element: ds.spellElement || null }, `${ds.spellName}: `, sourceUnit);
                 }
                 /* #21 To Be Continued — the delayed hit LANDS: freeze the
                    victim mid-reaction, sepia grade, arrow banner, sting. The
@@ -1060,7 +1061,8 @@
                         sourceUnit,
                         damageType: ds.damageType || 'magic',
                         spellType: ds.spellType || null,
-                        bonusVsStatus: ds.bonusVsStatus || null
+                        bonusVsStatus: ds.bonusVsStatus || null,
+                        spellElement: ds.spellElement || null
                     });
                     // Balance telemetry: delayed blasts land rounds after the
                     // cast — credit the originating spell's efficiency row.
@@ -1070,7 +1072,7 @@
                             (hit.dead || (hit.hp || 0) <= 0) ? 1 : 0);
                     }
                     for (const eff of (ds.statusEffects || [])) {
-                        if (sourceUnit && !hit.dead) applyStatusPayload(hit, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${ds.spellName}: `, sourceUnit);
+                        if (sourceUnit && !hit.dead) applyStatusPayload(hit, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0, _element: ds.spellElement || null }, `${ds.spellName}: `, sourceUnit);
                     }
                 }
             }
@@ -3426,8 +3428,29 @@
                 hexed: 0.84
             };
             const base = Number(payload.chance ?? baseByStatus[payload.id] ?? 1);
-            if (!sourceUnit || !targetUnit || sourceUnit.player === targetUnit.player || base >= 0.999) return Math.max(0, Math.min(1, base));
-            return Math.max(0.6, Math.min(0.95, base + getDebuffIntModifier(sourceUnit, targetUnit)));
+            let chance;
+            if (!sourceUnit || !targetUnit || sourceUnit.player === targetUnit.player || base >= 0.999) {
+                chance = Math.max(0, Math.min(1, base));
+            } else {
+                chance = Math.max(0.6, Math.min(0.95, base + getDebuffIntModifier(sourceUnit, targetUnit)));
+            }
+            /* 🜂 Elemental affinity coupling (2026-09-01): resisting an
+               element also hardens against its status — resist HALVES the
+               stick chance, immune/absorb zeroes it (applyStatusPayload also
+               hard-gates those, so the zero mostly keeps this function's
+               callers/forecasts honest). Applied OUTSIDE the 0.6 floor above,
+               otherwise the floor would cancel the resistance. Coupling map:
+               data.js ELEMENTAL_STATUS (burn/frozen/poison, unconditional) +
+               ELEMENT_RIDER_STATUS (stun, only off a lightning-element hit —
+               payload._element is stamped by applyDamageToUnit). */
+            if (targetUnit && typeof statusAffinityElement === 'function'
+                && typeof unitElementAffinity === 'function') {
+                const _cplEl = statusAffinityElement(payload.id, payload._element || null);
+                const _cplAff = _cplEl ? unitElementAffinity(targetUnit, _cplEl) : null;
+                if (_cplAff === 'immune' || _cplAff === 'absorb') return 0;
+                if (_cplAff === 'resist') chance *= 0.5;
+            }
+            return chance;
         }
 
         function getComboKey(weaponA, weaponB) {

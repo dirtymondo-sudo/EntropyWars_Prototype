@@ -357,6 +357,17 @@
                 if (_drink && classifySpellElement(sp) === _drink) return 0;
             } catch (e) {}
         }
+        // 🜂 Elemental affinity (2026-09-01): an immune/absorb target takes
+        // nothing from this element — same zero as the drink check above.
+        let _elAff = null;
+        if (sp) {
+            try {
+                const _el = (typeof getSpellElement === 'function') ? getSpellElement(sp) : null;
+                _elAff = (_el && typeof unitElementAffinity === 'function')
+                    ? unitElementAffinity(tg, _el) : null;
+                if (_elAff === 'immune' || _elAff === 'absorb') return 0;
+            } catch (e) {}
+        }
 
         const fromX = opts.fromX != null ? opts.fromX : unit.x;
         const fromY = opts.fromY != null ? opts.fromY : unit.y;
@@ -387,6 +398,10 @@
         let offMult = 1;
         try { offMult *= (typeof getTypeDamageMultiplier === 'function')
             ? (getTypeDamageMultiplier(unit, tg, sp ? (sp.spellType || null) : null) || 1) : 1; } catch (e) {}
+        // 🜂 Elemental affinity: weak ×1.5 / resist ×0.5, inside the capped
+        // product — mirrors applyDamageToUnit so the AI hunts weaknesses.
+        if (_elAff === 'weak') offMult *= 1.5;
+        else if (_elAff === 'resist') offMult *= 0.5;
         if (!ignoreArmor && myH > tgH) offMult *= 1 + 0.1 * (myH - tgH);      // downhill
         offMult *= _rangeMult(unit, dist);                                    // range profile
         if (sp && sp.bonusVsStatus && _bonusVsMatches(tg, sp.bonusVsStatus)) {

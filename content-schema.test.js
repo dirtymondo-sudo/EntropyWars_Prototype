@@ -267,3 +267,85 @@ test('Freelancer wildcard-socket tree: pool, placement, legality, random walks',
         JSON.stringify(D.treeLegalSubset('homosapien', 'Freelancer', '', ['improvise', 'noSuchSpell', 'reallyGoodPunch', 'jackOfAll', t2])),
         JSON.stringify(['improvise', 'jackOfAll', t2]));
 });
+
+/* ── Elemental affinity system (2026-09-01, ELEMENTAL_TYPES_PLAN.md) ────── */
+
+// Every unique spell object across both content sources (shared race
+// abilities are one object worn by many races — count once).
+function allSpellObjects() {
+    const seen = new Set();
+    const out = [];
+    for (const sp of D.SPELL_LIBRARY) { if (!seen.has(sp)) { seen.add(sp); out.push(sp); } }
+    for (const abs of Object.values(D.RACE_ABILITIES)) {
+        for (const sp of abs) { if (!seen.has(sp)) { seen.add(sp); out.push(sp); } }
+    }
+    return out;
+}
+
+test('spell element tags are canonical SPELL_ELEMENTS values', () => {
+    const els = new Set(D.SPELL_ELEMENTS);
+    const problems = [];
+    for (const sp of allSpellObjects()) {
+        if (sp.element !== undefined && !els.has(sp.element)) {
+            problems.push(`spell '${sp.id}': unknown element '${sp.element}'`);
+        }
+    }
+    assert.deepStrictEqual(problems, []);
+});
+
+test('RACE_ELEMENT_AFFINITY rows are valid, combat-element-only and sparse', () => {
+    const races = new Set(D.AVAILABLE_RACES);
+    const combat = new Set(D.COMBAT_ELEMENTS);
+    const tiers = new Set(D.ELEMENT_AFFINITY_TIERS);
+    const problems = [];
+    for (const [race, row] of Object.entries(D.RACE_ELEMENT_AFFINITY)) {
+        if (!races.has(race)) problems.push(`affinity key '${race}' is not in AVAILABLE_RACES`);
+        let weak = 0;
+        for (const [el, tier] of Object.entries(row)) {
+            if (!combat.has(el)) problems.push(`'${race}' affinity element '${el}' is not a COMBAT_ELEMENT`);
+            if (!tiers.has(tier)) problems.push(`'${race}' ${el}: unknown tier '${tier}'`);
+            if (tier === 'weak') weak++;
+        }
+        // Design rules from the data.js block: sparse rows, bounded downside.
+        if (weak > 2) problems.push(`'${race}' has ${weak} weaknesses (max 2)`);
+        if (Object.keys(row).length > 3) problems.push(`'${race}' carries ${Object.keys(row).length} affinity rows (keep sparse: max 3)`);
+    }
+    assert.deepStrictEqual(problems, []);
+});
+
+test('status↔element coupling maps reference real statuses and combat elements', () => {
+    const combat = new Set(D.COMBAT_ELEMENTS);
+    const problems = [];
+    for (const [statusId, el] of [...Object.entries(D.ELEMENTAL_STATUS), ...Object.entries(D.ELEMENT_RIDER_STATUS)]) {
+        if (!D.STATUS_DEFS[statusId]) problems.push(`coupling status '${statusId}' is not in STATUS_DEFS`);
+        if (!combat.has(el)) problems.push(`coupling element '${el}' (for '${statusId}') is not a COMBAT_ELEMENT`);
+    }
+    assert.deepStrictEqual(problems, []);
+});
+
+test('every declared weakness is exploitable: ≥5 damage spells of that element', () => {
+    const dealsDamage = sp => !!(sp.dmg > 0 || sp.dashDamage || sp.turretDmg
+        || (sp.hitDamages && sp.hitDamages.length) || sp.type === 'damage');
+    const damageByEl = {};
+    for (const sp of allSpellObjects()) {
+        if (sp.element && dealsDamage(sp)) damageByEl[sp.element] = (damageByEl[sp.element] || 0) + 1;
+    }
+    const weaknesses = new Set();
+    for (const row of Object.values(D.RACE_ELEMENT_AFFINITY)) {
+        for (const [el, tier] of Object.entries(row)) if (tier === 'weak') weaknesses.add(el);
+    }
+    const problems = [];
+    for (const el of weaknesses) {
+        if ((damageByEl[el] || 0) < 5) {
+            problems.push(`element '${el}' is a declared weakness but has only ${damageByEl[el] || 0} damage spells`);
+        }
+    }
+    assert.deepStrictEqual(problems, []);
+});
+
+test('kaiju absorb row agrees with the Thermal Regen passive', () => {
+    // Both paths drink fire through ONE code path in applyDamageToUnit —
+    // keep the data sources in agreement so neither silently drifts.
+    assert.strictEqual(D.RACE_ELEMENT_AFFINITY['kaiju'].fire, 'absorb');
+    assert.strictEqual(D.PASSIVE_DEFS.thermalRegen.healedByElement, 'fire');
+});

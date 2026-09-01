@@ -62,7 +62,8 @@ function extractFn(src, name) {
 }
 
 const CALC_FNS = ['calcRangeMult', 'calcSpellBase', 'calcStatusApplyChance',
-    'calcCounterChance', 'calcElementComboMult', 'calcDamageResolution',
+    'calcCounterChance', 'calcElementComboMult', 'calcElementAffinityMult',
+    'calcDamageResolution',
     'calcFlatSpellDamage', 'calcChainTargets', 'calcSpellHitRiders',
     'calcMultiHitDamage', 'calcBounceTarget', 'calcAoeVariance',
     'calcAoeHitDamage', 'calcStatusDurationTick'];
@@ -72,6 +73,7 @@ const calcSpellBase = extractFn(battleSrc, 'calcSpellBase');
 const calcStatusApplyChance = extractFn(battleSrc, 'calcStatusApplyChance');
 const calcCounterChance = extractFn(battleSrc, 'calcCounterChance');
 const calcElementComboMult = extractFn(battleSrc, 'calcElementComboMult');
+const calcElementAffinityMult = extractFn(battleSrc, 'calcElementAffinityMult');
 const calcDamageResolution = extractFn(battleSrc, 'calcDamageResolution');
 const calcFlatSpellDamage = extractFn(battleSrc, 'calcFlatSpellDamage');
 const calcChainTargets = extractFn(battleSrc, 'calcChainTargets');
@@ -117,6 +119,8 @@ test('wrappers delegate to the pure cores (no forked math)', () => {
     }
     assert.ok(extractFnSource(battleSrc, 'applyDamageToUnit').includes('calcElementComboMult('),
         'applyDamageToUnit must resolve elemental combos through calcElementComboMult');
+    assert.ok(extractFnSource(battleSrc, 'applyDamageToUnit').includes('calcElementAffinityMult('),
+        'applyDamageToUnit must resolve elemental affinities through calcElementAffinityMult');
 });
 
 test('resolver wrappers delegate to the stage-2 cores (no forked math)', () => {
@@ -221,6 +225,26 @@ test('elemental combo table: lightning/fire vs soaked/tech', () => {
         { mult: 1, supercharge: false, note: null });
     assert.deepStrictEqual(calcElementComboMult(null, { soaked: true, tech: true }),
         { mult: 1, supercharge: false, note: null });
+});
+
+test('elemental affinity table: weak/resist/immune tiers (2026-09-01)', () => {
+    assert.deepStrictEqual(calcElementAffinityMult('weak'),
+        { mult: 1.5, note: 'elemWeak' });
+    assert.deepStrictEqual(calcElementAffinityMult('resist'),
+        { mult: 0.5, note: 'elemResist' });
+    assert.deepStrictEqual(calcElementAffinityMult('immune'),
+        { mult: 0, note: 'elemImmune' });
+    // 'absorb' and neutral never multiply — the wrapper handles absorb
+    // (damage → healing) before the product is assembled.
+    assert.deepStrictEqual(calcElementAffinityMult('absorb'),
+        { mult: 1, note: null });
+    assert.deepStrictEqual(calcElementAffinityMult(null),
+        { mult: 1, note: null });
+    // Tiers must agree with data.js ELEMENT_AFFINITY_MULT (the UI reads that).
+    const data = require('./load-data.js').loadGameData();
+    assert.strictEqual(data.ELEMENT_AFFINITY_MULT.weak, 1.5);
+    assert.strictEqual(data.ELEMENT_AFFINITY_MULT.resist, 0.5);
+    assert.strictEqual(data.ELEMENT_AFFINITY_MULT.immune, 0);
 });
 
 // Baseline resolution input: every stage inert.
