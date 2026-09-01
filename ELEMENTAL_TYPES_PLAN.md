@@ -1,10 +1,20 @@
 # ELEMENTAL_TYPES_PLAN.md — Elemental affinities (weak / resist / immune / absorb)
 
-Status: **P0+P1+P2+P3 SHIPPED** (2026-09-01). P4 (press-turn coupling,
-psychic/sonic promotion, new-spell waves) remains open, plus P3.14's optional
-polish (relaying the weakness battle-dialogue line + blood tier to guests —
-the floater callouts themselves already relay). This doc is the
-anti-"start over" memory for the elemental-types feature.
+Status: **FEATURE COMPLETE — P0+P1+P2+P3 SHIPPED** (2026-09-01). Every open
+question is resolved (§8) and press-turn coupling is permanently REJECTED
+(decision #5 — P4.15 will not ship). This doc is the anti-"start over" memory
+for the elemental-types feature; nothing below needs deciding, only doing.
+
+The only live backlog, all optional, none blocking anything:
+1. **P3.14 polish** — relay the weakness battle-dialogue line + blood tier to
+   guests (both host-only today; the floater callouts themselves already
+   relay via the generic `'floating-text'` relay). Verified still unshipped
+   as of 2026-09-01 (no element/dialogue/blood relay types in online.js).
+2. **P4.16** — promote `psychic` and/or `sonic` to combat elements when
+   wanted. Sonic's tagging pass already shipped (siren block + Howl/Meow
+   etc.), so promotion is now a pure-data recipe — see P4.16.
+3. **P4.17** — new-spell waves to fatten lightning/water; optional
+   weather↔element boosts (zodiac resonance is the precedent).
 
 ## IMPLEMENTED P3 (2026-09-01) — knowledge UI, what shipped where
 - ui.js: `_ELEM_TIER_UI` + `_elemAffinityRows(race)` (single source for
@@ -362,8 +372,9 @@ const PAIRED_STATUS_ELEMENT = { burn:'fire', frozen:'ice', poison:'poison' };
 ```
 
 Start with only the 3 clean pairs (fire/burn, ice/frozen, poison/poison).
-Water→wet and lightning→shock are NOT pairs today (no spell applies wet; no
-shock status exists) — see §11 open questions before inventing one.
+Water→wet and lightning→shock were NOT pairs at audit time (no spell applied
+wet; no shock status exists) — resolved in §8 Q4: water→wet shipped as the
+central soak hook, lightning got stun as a rider coupling, no shock status.
 
 ### 3g. What makes elements distinct from the main types (the answer, condensed)
 | | Main types | Elements |
@@ -516,15 +527,32 @@ tag-first (§6 P0) and the dups get unique ids.
     battle.js:20545, `_vfxBlood`).
 
 ### P4 — Later / optional
-15. **Press-turn integration**: element weakness grants press tier like
-    type-strong does — extend `_pressOutcomeForHit` (battle.js:24363) and AI
-    `_pressTier` (ai.js:453). Use MAX(type tier, element tier), never
-    additive. Ship separately and playtest — this is the biggest power swing
-    in the whole plan.
-16. Promote `psychic` (mindless immunity: robot/zombie/skeleton/golem) and
-    `sonic` once tagged content exists.
-17. New-spell waves fill lightning/water gaps; consider weather↔element
-    boosts (blizzard buffs ice etc. — zodiac resonance is the precedent).
+15. ~~**Press-turn integration**~~ — **REJECTED, will not ship** (locked
+    decision #5, 2026-09-01: element results never grant or deny press).
+    Kept here only so a future session doesn't re-propose it. If the user
+    ever reverses the decision, the hooks were: `_pressOutcomeForHit`
+    (battle.js) + AI `_pressTier` (ai.js), MAX(type tier, element tier),
+    never additive.
+16. **Promote `psychic` and/or `sonic`** (OPEN, data-only now that the sonic
+    tagging pass shipped). The recipe — no engine code, the whole pipeline
+    keys off COMBAT_ELEMENTS membership:
+    a. data.js: add the element to `COMBAT_ELEMENTS` (line ~213).
+    b. data.js: add `RACE_ELEMENT_AFFINITY` rows (psychic: mindless
+       immunity — robot/android/droid/ai/zombie/skeleton/golem
+       `psychic:'immune'`; sonic: siren `sonic:'resist'`, glass-eared
+       beasts weak). Respect the §4 invariants (≤2 weaknesses, ≥~8
+       exploitable damage spells of that element — check with the
+       coverage counts in content-schema.test.js).
+    c. Optional status pairing: add to `ELEMENTAL_STATUS` /
+       `ELEMENT_RIDER_STATUS` only if a clean pairing exists (sonic→stun
+       as a rider would collide with lightning's — probably neither).
+    d. Run `npm test` — content-schema.test.js validates combat-set
+       membership, tier vocab, weakness-exploitability automatically.
+    e. UI/AI/forecasts/online need NOTHING: they all consult
+       COMBAT_ELEMENTS + the affinity helpers at runtime.
+17. New-spell waves fill lightning/water gaps (still the two thinnest
+    elements); consider weather↔element boosts (blizzard buffs ice etc. —
+    zodiac resonance ×1.25 is the precedent, battle.js `_zodiac*`).
 
 ### Online parity (RULE #2 checklist)
 Damage is host-computed and HP rides state-sync → the multiplier itself is
@@ -543,19 +571,26 @@ no `_serializeState` changes.
   check-grades.js): per-element damage-spell coverage vs every declared
   weakness; the §4 invariants; prints the SMT-style chart for eyeballing.
 
-## 8. Open questions (decide before P2)
-1. **Multiplier magnitudes** — 1.5/0.5 proposed; 1.4/0.6 if the swing feels
-   too spiky with type chart + STAB stacked.
-2. **Knowledge model** — affinities always visible in inspect/codex
-   (proposed: yes — PvP-fair, zero new state) vs SMT-style discovered-on-hit
-   (needs per-player knowledge state + serialization + fog interactions;
-   expensive, revisit post-launch).
-3. **Press turns** — in (P4) or out? Recommend: out at first, evaluate after
-   the multiplier has been felt.
-4. **Shock/wet as spell statuses** — should lightning get a paired status
-   (new 'shock' or reuse stun) and should water spells apply `wet` (huge
-   combo implications: every water caster enables their own lightning
-   follow-up)? Recommend: water→wet on the big water spells (it's the combo
-   the engine was built for), no new shock status.
-5. **Atomic Breath / Nuke class** — fire, or deliberately untagged
-   (almighty-ish)? Affects kaiju mirror matches (fire:absorb).
+## 8. Open questions — ALL RESOLVED (2026-09-01, by the user; see §DECISIONS)
+1. **Multiplier magnitudes** → **1.5 / 0.5 / 0 / absorb, locked** (decision
+   #1). Shipped in `ELEMENT_AFFINITY_MULT` (data.js) +
+   `calcElementAffinityMult` (battle.js PURE block). If it ever feels too
+   spiky in play, the retune is the one data.js map + the pure fn's table
+   test — nothing else hardcodes the numbers.
+2. **Knowledge model** → **always visible** (decision #2). Shipped as the P3
+   knowledge layer (inspect pill row, codex dossier, forecasts, target-drum
+   blades, spell-blade element chips). No discovery state, PvP-fair, zero
+   serialization.
+3. **Press turns** → **OUT, permanently** (decision #5). Element results
+   never grant or deny press. P4.15 is marked rejected above.
+4. **Shock/wet as spell statuses** → **water→wet YES, no new shock status**
+   (decisions #3–4). Shipped: ONE central `_soakUnit` hook in
+   applyDamageToUnit (every water-element hit soaks, douses burn, sets up
+   conduction/flash-freeze — future water spells inherit for free);
+   lightning got stun as a RIDER coupling only (`ELEMENT_RIDER_STATUS`): a
+   lightning-hit stun rolls lightning affinity, a psychic stun does not.
+5. **Atomic Breath / Nuke class** → **deliberately untagged (almighty)**.
+   Shipped as a `// element: none (deliberate)` note in data.js, so the
+   tagging-pass rule ("every damage spell carries element: or a deliberate
+   none note") is satisfied and kaiju mirror matches stay honest
+   (fire:absorb never eats a nuke).
