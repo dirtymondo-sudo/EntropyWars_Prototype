@@ -9457,6 +9457,172 @@ function achComputeSyncRewards(before, after) {
   return { gold, tokens };
 }
 
+/* ═══ CURATED STEAM SCHEMA (ACHIEVEMENTS_PLAN.md §8, Phase 6) ═══════════════
+   The in-game catalog is unlimited; Steam gets a curated subset that must
+   stay under Valve's 100-achievement cap for new games (§2.1). This registry
+   is the single source of truth for BOTH sides of the pipe:
+   - the game (battle.js `_steamPushProgress`) computes stat values and earned
+     achievement ids from profile.progress and asserts them through the
+     4-function SteamGlue surface (§8.1 — no-op in browser builds);
+   - the repo tool `steam-schema.js` prints this registry as the checklist the
+     owner types into the Steamworks admin panel (stat-backed achievements get
+     Valve's native progress bar for free).
+   Loads headlessly via load-data.js so achievements.test.js validates it.
+
+   Shape per achievement def:
+   - { id, kind:'stat', stat, threshold, name, desc } — earned when the named
+     Steam stat reaches threshold. `stat` is a STEAM_STAT_DEFS id; threshold
+     MUST be one of the backing catalog line's real tier values (test-pinned)
+     so Steam unlocks land at the same moment as the in-game tier.
+   - { id, kind:'feat', feat, name, desc } — 1:1 mirror of a legacy one-shot
+     (battle.js ACHIEVEMENT_DEFS id). Earned = present in the legacy
+     achievements store (or its `feat_*` migration mirror in progress.unlocked).
+   API ids are ACH_/STAT_-prefixed A-Z0-9_ — Steamworks-safe names. */
+
+/* Two Steam tiers per curated profile-wide line (§8.2: the "everyone gets
+   this" tier and the "dedication" tier); mode-spine lines expose only the
+   first win. Thresholds are validated against ACH_CATALOG tiers by
+   achievements.test.js — edit the catalog and this list together. */
+const STEAM_LINE_PICKS = [
+  ['kills',           100, 10000],
+  ['wins_total',      10,  1000],
+  ['critsLanded',     100, 10000],
+  ['attacksDodged',   100, 10000],
+  ['backstabs',       100, 1000],
+  ['followUps',       100, 1000],
+  ['combosDone',      100, 1000],
+  ['superBanes',      100, 1000],
+  ['statusesApplied', 100, 10000],
+  ['buffsApplied',    100, 10000],
+  ['debuffsApplied',  100, 10000],
+  ['healsApplied',    100, 1000],
+  ['cleansesDone',    100, 1000],
+  ['entropyStrikes',  100, 1000],
+  ['stormsSummoned',  100, 1000],
+  ['displacements',   100, 1000],
+  ['tilesChanged',    100, 10000],
+  ['flyersGrounded',  10,  500],
+  ['tilesScanned',    100, 10000],
+  ['hourglasses',     50,  1000],
+  ['comebacks',       10,  500],
+  ['bestStreak',      3,   20],       // 20 = "Perpetual Motion", a designed rare
+  // Mode spine (§8.2): first win in each of the five PvP modes.
+  ['wins_arena',      1],
+  ['wins_tdm',        1],
+  ['wins_clash',      1],
+  ['wins_simul',      1],
+  ['wins_gauntlet',   1],
+];
+
+/* Steam stats (all INT, default 0): one per curated line (id = the catalog
+   metric name, so the Steamworks panel reads like the profile store) plus two
+   derived roster stats backing the collapsed champion set (§8.2 — the 96-champ
+   grid can never be 1:1 Steam achievements, §2.1). */
+const STEAM_STAT_DEFS = STEAM_LINE_PICKS.map(p => ({ id: p[0], metric: p[0] }))
+  .concat([
+    { id: 'champs_won',      derived: 'champsWon' },      // distinct champs with ≥1 win
+    { id: 'champs_mastered', derived: 'champsMastered' }, // full ACH_MASTERY bar
+  ]);
+
+const STEAM_ACH_DEFS = (() => {
+  const defs = [];
+  // Stat-backed tiers from the picks.
+  for (const pick of STEAM_LINE_PICKS) {
+    const line = ACH_CATALOG.find(l => l.id === pick[0]);
+    if (!line) continue;
+    for (const th of pick.slice(1)) {
+      const tierIdx = line.tiers.indexOf(th);
+      defs.push({
+        id: 'ACH_' + line.id.toUpperCase() + '_' + th,
+        kind: 'stat', stat: line.metric, threshold: th,
+        name: line.name + (line.tiers.length > 1 && tierIdx >= 0 ? ' ' + ACH_TIER_NAMES[tierIdx] : ''),
+        desc: line.desc + ' — ' + th.toLocaleString('en-US'),
+      });
+    }
+  }
+  // Collapsed champion set (6): win with N distinct champs + mastery meta.
+  const roster = AVAILABLE_RACES.length;
+  defs.push(
+    { id: 'ACH_CHAMPS_WON_5',    kind: 'stat', stat: 'champs_won', threshold: 5,      name: 'Talent Scout',     desc: 'Win a match with 5 different champions' },
+    { id: 'ACH_CHAMPS_WON_25',   kind: 'stat', stat: 'champs_won', threshold: 25,     name: 'Headhunter',       desc: 'Win a match with 25 different champions' },
+    { id: 'ACH_CHAMPS_WON_ALL',  kind: 'stat', stat: 'champs_won', threshold: roster, name: 'The Whole Roster', desc: 'Win a match with every champion' },
+    { id: 'ACH_MASTER_1',        kind: 'stat', stat: 'champs_mastered', threshold: 1,      name: 'Mastered',    desc: 'Fully master a champion (100 kills · 100 wins · 10 deathless wins)' },
+    { id: 'ACH_MASTER_10',       kind: 'stat', stat: 'champs_mastered', threshold: 10,     name: 'Tenfold Crown', desc: 'Fully master 10 champions' },
+    { id: 'ACH_HEAT_DEATH',      kind: 'stat', stat: 'champs_mastered', threshold: roster, name: 'Heat Death',  desc: 'Fully master every champion' },
+  );
+  // Feats 1:1 (§8.2 — "they're the personality"). `feat` = the battle.js
+  // ACHIEVEMENT_DEFS id (test-guarded against the battle.js source). Display
+  // copy is duplicated here deliberately: the admin panel needs it at schema
+  // time, and Steam copy may diverge from in-game copy later.
+  defs.push(
+    { id: 'ACH_FEAT_FIRSTBLOOD',      kind: 'feat', feat: 'firstBlood',      name: 'First Blood',     desc: 'Get the first kill in a match' },
+    { id: 'ACH_FEAT_DOUBLEKILL',      kind: 'feat', feat: 'doubleKill',      name: 'Double Kill',     desc: 'Get 2 kills in the same turn with one unit' },
+    { id: 'ACH_FEAT_TRIPLEKILL',      kind: 'feat', feat: 'tripleKill',      name: 'Triple Kill',     desc: 'Get 3 kills in the same turn with one unit' },
+    { id: 'ACH_FEAT_RAMPAGE',         kind: 'feat', feat: 'rampage',         name: 'Rampage',         desc: 'Get 4+ kills in the same turn with one unit' },
+    { id: 'ACH_FEAT_OVERKILL',        kind: 'feat', feat: 'overkill',        name: 'Overkill',        desc: 'Deal 50%+ of target max HP as excess damage' },
+    { id: 'ACH_FEAT_LASTSTAND',       kind: 'feat', feat: 'lastStand',       name: 'Last Stand',      desc: 'Trigger Last Stand (drop below 20% HP)' },
+    { id: 'ACH_FEAT_ACE',             kind: 'feat', feat: 'ace',             name: 'Ace',             desc: 'Win a match by elimination' },
+    { id: 'ACH_FEAT_UNTOUCHABLE',     kind: 'feat', feat: 'untouchable',     name: 'Untouchable',     desc: 'Win with a unit that took 0 damage' },
+    { id: 'ACH_FEAT_CRITMASTER',      kind: 'feat', feat: 'critMaster',      name: 'Crit Master',     desc: 'Land 3+ critical hits in one match' },
+    { id: 'ACH_FEAT_COMBOKING',       kind: 'feat', feat: 'comboKing',       name: 'Combo King',      desc: 'Execute 3+ combo attacks in one match' },
+    { id: 'ACH_FEAT_WEATHERSURVIVOR', kind: 'feat', feat: 'weatherSurvivor', name: 'Storm Survivor',  desc: 'Win a match with 2+ active weather events' },
+    { id: 'ACH_FEAT_PERFECTVICTORY',  kind: 'feat', feat: 'perfectVictory',  name: 'Perfect Victory', desc: 'Win without losing any units' },
+    { id: 'ACH_FEAT_WINSTREAK3',      kind: 'feat', feat: 'winStreak3',      name: 'Hot Streak',      desc: 'Win 3 matches in a row' },
+    { id: 'ACH_FEAT_WINSTREAK5',      kind: 'feat', feat: 'winStreak5',      name: 'Unstoppable',     desc: 'Win 5 matches in a row' },
+  );
+  return defs;
+})();
+
+/* Current Steam stat values from a progress blob. Counter-backed stats sum
+   the {pvp,cpu,legacy} buckets (hw lines take the max — same rule as
+   battle.js `_achEvaluateTiers`, so Steam can never unlock before the
+   in-game tier). Pure + cheap: safe to call at every match commit. */
+function steamComputeStats(prog) {
+  const out = {};
+  const counters = (prog && prog.counters) || {};
+  const champs = (prog && prog.champs) || {};
+  for (const d of STEAM_STAT_DEFS) {
+    if (d.metric) {
+      const c = counters[d.metric];
+      const line = ACH_CATALOG.find(l => l.metric === d.metric);
+      out[d.id] = !c ? 0 : (line && line.hw
+        ? Math.max(c.pvp || 0, c.cpu || 0, c.legacy || 0)
+        : (c.pvp || 0) + (c.cpu || 0) + (c.legacy || 0));
+    } else if (d.derived === 'champsWon') {
+      let n = 0;
+      for (const race of Object.keys(champs)) {
+        const w = (champs[race] || {}).wins;
+        if (w && ((w.pvp || 0) + (w.cpu || 0) + (w.legacy || 0)) >= 1) n++;
+      }
+      out[d.id] = n;
+    } else if (d.derived === 'champsMastered') {
+      out[d.id] = achCountMasteredChamps(prog || {});
+    }
+  }
+  return out;
+}
+
+/* Every curated Steam achievement the local store has earned. Used by the
+   boot re-assert and by each match commit — re-asserting an already-unlocked
+   Steam achievement is a documented no-op (§2.1), so callers just assert the
+   whole list and let local profile and Steam converge. `legacyAchievements`
+   is the battle.js one-shot store (new feat unlocks land there first; the
+   `feat_*` mirror in progress.unlocked only exists for migrated profiles). */
+function steamEvalAchievements(prog, legacyAchievements) {
+  const stats = steamComputeStats(prog);
+  const legacy = legacyAchievements || {};
+  const unlocked = (prog && prog.unlocked) || {};
+  const out = [];
+  for (const d of STEAM_ACH_DEFS) {
+    if (d.kind === 'feat') {
+      if (legacy[d.feat] || unlocked['feat_' + d.feat]) out.push(d.id);
+    } else if ((stats[d.stat] || 0) >= d.threshold) {
+      out.push(d.id);
+    }
+  }
+  return out;
+}
+
 const MAP_LAYOUT_PRESETS = {
     prebuilt_custommap: {
         sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: 19, label: 'Earth', baseTerrain: 'grass_2' }, buffer2: null, below: null },
@@ -13366,6 +13532,7 @@ Object.assign(window, {
   ACH_CATALOG, ACH_CHAMP_LINES, ACH_TIER_NAMES, ACH_TIER_COLORS,
   ACH_MASTERY, ACH_TIER_REWARDS, ACH_RECORD_DEFS,
   mergeProgressBlobs, achUnlockKeyReward, achCountMasteredChamps, achComputeSyncRewards,
+  STEAM_STAT_DEFS, STEAM_ACH_DEFS, steamComputeStats, steamEvalAchievements,
   /* spell tree (Tree of Life selector) */
   CLASS_TREE, RACE_TREE, classHasSpellTree, getClassTreeSpells, getRaceTreeSpells,
   TREE_RING_MP_COSTS, buildTreeRingIndex, getTreeRingCost, applyTreeRingCosts, snapCostToLadder,

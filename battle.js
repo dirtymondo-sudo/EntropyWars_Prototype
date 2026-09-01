@@ -9705,6 +9705,9 @@
                 window._lastAchDeltas = folded.deltas;
                 window._lastRecordsBroken = recordsBroken;
                 _achAnnounceUnlocks(newly);
+                /* Steam build only (§8.1): push stats + earned set once per
+                   match — StoreStats at the match boundary per §2.1. */
+                _steamPushProgress(prog);
             } catch (e) { console.error('[ACH] commit failed:', e); }
         }
 
@@ -10316,6 +10319,76 @@
             } catch (e) {}
         }
 
+        /* ═══ STEAM GLUE CONSUMER (ACHIEVEMENTS_PLAN.md §8, Phase 6) ════════
+           In the wrapped Steam build the Electron preload injects
+           `window.SteamGlue = { available, setStat, setAchievement,
+           storeStats }` (repo tooling: electron/ — §8.1). In the browser it
+           simply doesn't exist and every call here is a cheap early return,
+           so this file stays identical across builds (RULE #1: no fork).
+
+           The curated schema (STEAM_ACH_DEFS / STEAM_STAT_DEFS) plus the
+           value/earned evaluators live in data.js. Assertion strategy per
+           §2.1: SetStat/SetAchievement are idempotent no-ops when already
+           set, so we always push the FULL current stat block + the FULL
+           earned list and let Steam converge — at boot (a profile played on
+           another machine catches Steam up) and at every match commit
+           (StoreStats at the match boundary is Valve's recommended cadence;
+           it also triggers the overlay toast for anything newly crossed).
+           Everything is viewer-local (reads only this client's own profile),
+           so online parity (RULE #2) is untouched by construction. */
+        function _steamGlue() {
+            const g = window.SteamGlue;
+            return (g && g.available) ? g : null;
+        }
+
+        function _steamPushProgress(prog) {
+            try {
+                const g = _steamGlue();
+                if (!g) return;
+                if (typeof window.steamComputeStats !== 'function'
+                    || typeof window.steamEvalAchievements !== 'function') return;
+                if (!prog) {
+                    if (!_achProgressAvailable()) return;
+                    prog = window.ProfileSystem.loadProgress();
+                }
+                if (!prog) return;
+                const stats = window.steamComputeStats(prog);
+                for (const id of Object.keys(stats)) g.setStat(id, stats[id]);
+                for (const id of window.steamEvalAchievements(prog, loadAchievements())) {
+                    g.setAchievement(id);
+                }
+                g.storeStats();
+                return true;
+            } catch (e) { /* Steam must never break the game */ }
+        }
+
+        /* Mid-match feat unlock → immediate overlay toast (a feat popped at
+           match end still reaches Steam through the commit push above). */
+        function _steamAssertFeat(id) {
+            try {
+                const g = _steamGlue();
+                if (!g) return;
+                const defs = window.STEAM_ACH_DEFS || [];
+                const def = defs.find(d => d.kind === 'feat' && d.feat === id);
+                if (!def) return;
+                g.setAchievement(def.id);
+                g.storeStats();
+            } catch (e) {}
+        }
+
+        /* Boot re-assert (§8.1): retry until the glue AND the profile system
+           are up, push once, stop. Bounded — if SteamGlue hasn't appeared
+           after ~60s this isn't a Steam build. */
+        (function _steamBootReassert() {
+            let tries = 0;
+            const tick = () => {
+                if (!window.SteamGlue && tries >= 12) return;
+                if (_steamGlue() && _achProgressAvailable() && _steamPushProgress()) return;
+                if (++tries < 60) window.setTimeout(tick, 5000);
+            };
+            window.setTimeout(tick, 3000);
+        })();
+
         function checkAchievement(id, unit) {
             if (!ACHIEVEMENT_DEFS[id]) return;
             /* Dev-sim batches must never farm the profile's trophy case. */
@@ -10343,6 +10416,7 @@
             saveAchievements(achievements);
 
             showAchievementToast(id);
+            _steamAssertFeat(id);   // Steam build only — mid-match overlay toast
 
             state._matchAchievements.push(id);
         }
