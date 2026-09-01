@@ -1,0 +1,16 @@
+{
+  "name": "entropy-wars-steam",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Entropy Wars — Electron wrapper for the Steam build (ACHIEVEMENTS_PLAN.md §8). Repo tooling, never uploaded to R2.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^32.0.0"
+  },
+  "optionalDependencies": {
+    "steamworks.js": "^0.4.1"
+  }
+}

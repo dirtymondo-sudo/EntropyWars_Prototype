@@ -330,3 +330,142 @@ test('server.js wires the Phase-5 sync surface', () => {
     assert.ok(fs.existsSync(require('node:path').join(__dirname, 'migrations', '004_progress.sql')),
         'migrations/004_progress.sql missing');
 });
+
+/* ═══ Phase 6 — curated Steam schema (plan §8) ═══════════════════════════ */
+
+test('STEAM_ACH_DEFS: well-formed, unique, under the 100-cap', () => {
+    const defs = data.STEAM_ACH_DEFS;
+    assert.ok(Array.isArray(defs) && defs.length >= 20, 'STEAM_ACH_DEFS missing or unexpectedly small');
+    assert.ok(defs.length <= 100, `Valve caps new games at 100 achievements; have ${defs.length}`);
+    const ids = new Set();
+    for (const d of defs) {
+        assert.match(d.id, /^ACH_[A-Z0-9_]{1,58}$/, `bad Steam API name: ${d.id}`);
+        assert.ok(!ids.has(d.id), `duplicate Steam id: ${d.id}`);
+        ids.add(d.id);
+        assert.ok(d.name && typeof d.name === 'string', `${d.id}: missing name`);
+        assert.ok(d.desc && typeof d.desc === 'string', `${d.id}: missing desc`);
+        assert.ok(['stat', 'feat'].includes(d.kind), `${d.id}: unknown kind ${d.kind}`);
+    }
+});
+
+test('STEAM_STAT_DEFS: unique ids, every metric backs a real catalog line', () => {
+    const stats = data.STEAM_STAT_DEFS;
+    assert.ok(Array.isArray(stats) && stats.length > 0);
+    const metricSet = new Set(data.ACH_CATALOG.map(l => l.metric));
+    const ids = new Set();
+    for (const s of stats) {
+        assert.match(s.id, /^[a-z0-9_]{1,32}$/i, `bad Steam stat name: ${s.id}`);
+        assert.ok(!ids.has(s.id), `duplicate Steam stat: ${s.id}`);
+        ids.add(s.id);
+        if (s.metric) {
+            assert.ok(metricSet.has(s.metric), `${s.id}: metric ${s.metric} not in ACH_CATALOG`);
+        } else {
+            assert.ok(['champsWon', 'champsMastered'].includes(s.derived),
+                `${s.id}: unknown derived source ${s.derived}`);
+        }
+    }
+});
+
+test('stat-backed Steam defs land exactly on in-game tier thresholds', () => {
+    const statById = new Map(data.STEAM_STAT_DEFS.map(s => [s.id, s]));
+    const lineByMetric = new Map(data.ACH_CATALOG.map(l => [l.metric, l]));
+    const roster = data.AVAILABLE_RACES.length;
+    for (const d of data.STEAM_ACH_DEFS) {
+        if (d.kind !== 'stat') continue;
+        const stat = statById.get(d.stat);
+        assert.ok(stat, `${d.id}: references unknown stat ${d.stat}`);
+        assert.ok(Number.isInteger(d.threshold) && d.threshold > 0, `${d.id}: bad threshold`);
+        if (stat.metric) {
+            const line = lineByMetric.get(stat.metric);
+            assert.ok(line.tiers.includes(d.threshold),
+                `${d.id}: threshold ${d.threshold} is not a tier of ${line.id} (${line.tiers}) — Steam would unlock out of step with the in-game tier`);
+        }
+    }
+    // The collapsed champion set tops out at the full roster (like Heat Death
+    // in the in-game catalog, which is pinned to roster size elsewhere).
+    const heat = data.STEAM_ACH_DEFS.find(d => d.id === 'ACH_HEAT_DEATH');
+    assert.ok(heat && heat.stat === 'champs_mastered' && heat.threshold === roster,
+        'ACH_HEAT_DEATH must require mastering the whole roster');
+    const allWon = data.STEAM_ACH_DEFS.find(d => d.id === 'ACH_CHAMPS_WON_ALL');
+    assert.ok(allWon && allWon.stat === 'champs_won' && allWon.threshold === roster,
+        'ACH_CHAMPS_WON_ALL must require winning with the whole roster');
+});
+
+test('feat Steam defs mirror battle.js ACHIEVEMENT_DEFS 1:1 (source-text guard)', () => {
+    const fs = require('node:fs');
+    const src = fs.readFileSync(require('node:path').join(__dirname, 'battle.js'), 'utf8');
+    const block = src.match(/const ACHIEVEMENT_DEFS = \{[\s\S]*?\n {8}\};/);
+    assert.ok(block, 'could not locate ACHIEVEMENT_DEFS in battle.js');
+    const legacyIds = [...block[0].matchAll(/^\s{12}([A-Za-z0-9]+): \{/gm)].map(m => m[1]);
+    assert.ok(legacyIds.length >= 14, `unexpectedly few legacy defs parsed (${legacyIds.length})`);
+    const featDefs = data.STEAM_ACH_DEFS.filter(d => d.kind === 'feat');
+    const featIds = new Set(featDefs.map(d => d.feat));
+    for (const d of featDefs) {
+        assert.ok(legacyIds.includes(d.feat), `${d.id}: feat '${d.feat}' not in battle.js ACHIEVEMENT_DEFS`);
+    }
+    for (const id of legacyIds) {
+        assert.ok(featIds.has(id), `legacy achievement '${id}' has no Steam mirror (§8.2 says feats go 1:1)`);
+    }
+});
+
+test('steamComputeStats: bucket sums, hw max, derived roster stats', () => {
+    const prog = {
+        counters: {
+            kills: { pvp: 3, cpu: 4, legacy: 5 },          // sum = 12
+            bestStreak: { pvp: 3, cpu: 9, legacy: 2 },      // hw line → max = 9
+        },
+        champs: {
+            wizard: { wins: { pvp: 1, cpu: 0, legacy: 0 },
+                kills: { pvp: data.ACH_MASTERY.kills, cpu: 0, legacy: 0 },
+                deathless: { pvp: data.ACH_MASTERY.deathless, cpu: 0, legacy: 0 } },
+            gnome: { wins: { pvp: 0, cpu: 0, legacy: 0 } }, // 0 wins → not "won"
+        },
+        unlocked: {},
+    };
+    // push wizard.wins over the mastery bar so champs_mastered = 1
+    prog.champs.wizard.wins.cpu = data.ACH_MASTERY.wins;
+    const stats = data.steamComputeStats(prog);
+    assert.strictEqual(stats.kills, 12);
+    assert.strictEqual(stats.bestStreak, 9);
+    assert.strictEqual(stats.champs_won, 1);
+    assert.strictEqual(stats.champs_mastered, 1);
+    // Empty blob: every stat defined, all zero.
+    const zero = data.steamComputeStats({ counters: {}, champs: {}, unlocked: {} });
+    for (const s of data.STEAM_STAT_DEFS) assert.strictEqual(zero[s.id], 0, `${s.id} not zero on empty blob`);
+});
+
+test('steamEvalAchievements: stat crossings + feats from either store', () => {
+    const killsLine = data.ACH_CATALOG.find(l => l.id === 'kills');
+    const th = data.STEAM_ACH_DEFS.find(d => d.id.startsWith('ACH_KILLS_')).threshold;
+    const prog = {
+        counters: { kills: { pvp: th, cpu: 0, legacy: 0 } },
+        champs: {},
+        unlocked: { 'feat_ace': 123 },      // migrated mirror
+    };
+    const legacy = { firstBlood: { unlockedAt: '2026-01-01' } };  // live legacy store
+    const earned = new Set(data.steamEvalAchievements(prog, legacy));
+    assert.ok(earned.has('ACH_KILLS_' + th), 'stat-backed unlock missing');
+    assert.ok(earned.has('ACH_FEAT_ACE'), 'feat via progress.unlocked mirror missing');
+    assert.ok(earned.has('ACH_FEAT_FIRSTBLOOD'), 'feat via legacy achievements store missing');
+    assert.ok(!earned.has('ACH_FEAT_RAMPAGE'), 'unearned feat leaked');
+    assert.ok(!earned.has('ACH_HEAT_DEATH'), 'unearned stat achievement leaked');
+    // Pure: same inputs, same answer (boot re-assert calls this repeatedly).
+    // (Spread both sides — vm-sandbox arrays carry a foreign Array prototype.)
+    assert.deepStrictEqual([...data.steamEvalAchievements(prog, legacy)],
+        [...data.steamEvalAchievements(prog, legacy)]);
+    assert.ok(killsLine, 'kills line vanished');
+});
+
+test('battle.js + tooling wire the Phase-6 Steam surface (drift guard)', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const src = fs.readFileSync(path.join(__dirname, 'battle.js'), 'utf8');
+    for (const needle of ['_steamPushProgress(prog)', '_steamAssertFeat(', 'window.SteamGlue',
+        'steamComputeStats', 'steamEvalAchievements']) {
+        assert.ok(src.includes(needle), `battle.js missing: ${needle}`);
+    }
+    for (const f of ['electron/main.js', 'electron/preload.js', 'electron/steam.js',
+        'electron/package.json', 'steam-schema.js']) {
+        assert.ok(fs.existsSync(path.join(__dirname, f)), `missing Phase-6 tooling file: ${f}`);
+    }
+});

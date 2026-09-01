@@ -1006,6 +1006,61 @@ guest see?" pass. No playtesting unless explicitly requested (RULE #1c).
 > - **Still deferred:** remaining feats (§4.6), progress pings (§6.1,
 >   optional), Steam (§8).
 
+> **Status 2026-09-01 (later session): Phase 6 implemented** (the game-side
+> half in full; the Steamworks-admin half is a checklist the owner runs).
+> Notes / deviations:
+>
+> - **Curated schema lives in data.js** (`STEAM_ACH_DEFS` / `STEAM_STAT_DEFS`
+>   + pure helpers `steamComputeStats` / `steamEvalAchievements`), loads
+>   headlessly, and is validated by achievements.test.js: **69 achievements**
+>   (cap 100 — 31 slots of headroom for the still-deferred §4.6 feats),
+>   29 INT stats. Composition per §8.2: all 14 feats 1:1; 22 profile-wide
+>   lines × 2 tiers (everyone-tier + dedication-tier, each pinned by test to
+>   a REAL in-game tier threshold so Steam never unlocks out of step);
+>   5 mode first-wins; the collapsed champion set (won-with 5/25/all,
+>   mastered 1/10/all = "Heat Death") on two derived stats
+>   `champs_won` / `champs_mastered`; rares = Heat Death, The Whole Roster,
+>   Perpetual Motion (streak 20) + the four 10000-tier Entropics.
+> - **SteamGlue consumer in battle.js** (browser-safe: every call no-ops
+>   unless the Electron preload injected `window.SteamGlue`): full-push
+>   (`_steamPushProgress`) = every stat + every earned achievement +
+>   ONE `storeStats()`, relying on §2.1 idempotence; called at every
+>   `commitAchProgress` (reusing the in-hand `prog` — no extra blob parse)
+>   and from a bounded boot re-assert loop (converges Steam after playing on
+>   another machine). Mid-match feats additionally assert immediately in
+>   `checkAchievement` (`_steamAssertFeat`) for the instant overlay toast.
+>   `steamEvalAchievements` reads feats from BOTH stores — the live legacy
+>   achievements store and the migrated `feat_*` mirror — because new feat
+>   unlocks only land in the former.
+> - **Electron shell shipped as repo tooling** (`electron/` — main.js,
+>   preload.js, steam.js, own package.json, steam_appid.txt=480, README):
+>   contextIsolation on; the preload exposes exactly the §8.1 four-function
+>   surface (sync availability handshake, fire-and-forget sends). The
+>   binding (steamworks.js, an optionalDependency) is confined to
+>   `electron/steam.js` with duck-typed calls — the §2.5 swap to
+>   steamworks-ffi-node is that one file. Window loads `EW_APP_URL` →
+>   `../dist/index.html` if present → the live site (interim until the
+>   separate LAUNCH_READINESS §6 self-containment track lands; NOT part of
+>   this phase). Missing binding / no Steam client / browser build all
+>   degrade to `available:false` silently.
+> - **`npm run steam:schema`** (new repo tool steam-schema.js, via
+>   load-data.js — real values, not a copy) prints the Steamworks-admin
+>   checklist: stat definitions, stat-backed achievements with their
+>   "unlock when ≥ N" thresholds (native progress bars, §2.1), and the
+>   client-asserted feats; `--csv` for spreadsheet import.
+> - achievements.test.js extended: schema shape + 100-cap, API-name regex,
+>   stat-backed thresholds ∈ catalog tiers, Heat-Death/Whole-Roster pinned
+>   to roster size, feat set == battle.js `ACHIEVEMENT_DEFS` 1:1 (source-text
+>   guard both directions), evaluator semantics (bucket sums, hw max,
+>   derived stats, feats from either store), and a battle.js/tooling
+>   presence guard.
+> - **Owner to-do when Steam day comes:** create the app in Steamworks,
+>   enter the schema (`npm run steam:schema`), replace steam_appid.txt,
+>   `cd electron && npm install && npm start`. Offline unlocks are Valve's
+>   client cache (§2.1) — nothing more to build. **Still deferred:**
+>   remaining §4.6 feats, progress pings (§6.1, optional), dist/
+>   self-containment + packaging/signing (separate Electron track).
+
 | phase | content | files touched | size |
 |---|---|---|---|
 | **0 — Kill the slop** | §1.2 fixes: profile auto-create + persistence fallback, `ace` gate, remove `_repairAchievementStore`, win-condition mapping fix, rename Flawless chip, RT-mode crit/cleanse counters, interim victory-screen cleanup (drop bare N/14, show names for new unlocks) | battle.js, profile.js, (index.html bump) | small — **one session, do first, ships value alone** |
