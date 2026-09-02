@@ -9249,3 +9249,43 @@ pop fired at frame 0. Fixes (battle.js/state.js/online.js):
   history (profile.js buildProfileMatchSummary) — the old mapping compared
   against strings the engine never emits and recorded 'elimination' for
   nearly everything. Do display-mapping in the UI (`_winCondLabels`).
+
+## 2026-09-02 — CAMERA PASS: flat floor, head-turn sky look, unit occluders (three-camera.js, three-renderer.js, index.html)
+
+Player complaints: (1) a zoomed-in orbit around a character SNAPPED up/down
+whenever the boom swept over a raised neighbouring tile; (2) looking up at the
+sky read as the camera zooming IN on the unit; (3) spell action cams were
+routinely blocked by a bystander unit's back.
+
+- **FLAT FLOOR (three-camera.js `sync`)**: the eye's hard floor is now a PLANE
+  at the subject's own footing — TPS rigs: the subject's ground; board view:
+  `min(focalY, ground under the focal)`. It is NO LONGER the terrain under
+  the eye, so the boom passes straight through hills/walls (the renderer's
+  occlusion fade ghosts them) and only ever stops at the map / the platform
+  the subject stands on. Strike Mode (`cam._tpsCollide`) alone keeps its
+  physical boom march (dolly in front of the blocker).
+- **HEAD TURN past the horizon**: for hand-held cameras (`state._userPanning`
+  / `_userOrbiting` / `cam._panElevLatch`) and every TPS rig, tilt > 90° no
+  longer keeps orbiting UNDER the pivot (the floor then slid the eye along the
+  ground toward the unit = the phantom zoom-in). The eye parks at the tilt-90
+  orbit point and only the GAZE pitches up. Bit-identical at 90°. The
+  cinematic SKY-GAZE LIFT (programmatic board shots: intro crane, zodiac),
+  the flyer subject-look and keep-subject action shots keep their own
+  past-horizon responses unchanged.
+- **Hand-held focal subject (three-renderer.js `_occComputeBlockers`)**: while
+  the camera is hand-held, the FOCAL TILE is an occlusion-fade subject too
+  (besides the selected/active unit), so orbiting low around any tile sees
+  through whatever the boom crosses. Bare tile point → no fog leak.
+- **UNIT OCCLUDERS (three-renderer.js `_occUnitBlockers` / `_occSetUnitGhost`)**:
+  during a cine action shot, any other unit whose vertical capsule
+  (feet→`_ew_spriteTopY`, radius `OCC_UNIT_RADIUS` 0.34 tiles) crosses an
+  eye→caster / eye→target segment is ghosted to `OCC_FADE_TARGET` (opacity +
+  `depthWrite:false` on its OWN `_ew_billboard`/`_ew_modelSkin` materials,
+  silhouettes/team rim hidden, nameplate hidden via `po._ew_occHid`).
+  Guard: the shot's subjects plus everything in `window._ewActionPlateFocus`
+  (battle.js `_focusPlatesForImpact` — caster + AoE/beam/team victims),
+  accumulated per `_cineShotId`, is never ghosted. Intro cinematic keeps every
+  unit solid. Analytic capsule test — no skinned-mesh raycasts.
+- Online parity: everything here is viewer-local rendering (the guest runs
+  the same shot code via the relayed action cam), nothing new to relay.
+

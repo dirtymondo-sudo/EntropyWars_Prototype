@@ -168,13 +168,8 @@ const ThreeCamera = (function () {
         let targetPosZ = focalZ - dist * dirZ;
         let targetLookX, targetLookY, targetLookZ;
 
-        /* ══ UNIFIED COLLISION ORBIT RIG ══
-           ONE behaviour for every camera mode — the eye can NEVER pass below
-           the terrain surface, in any mode, at any pitch. (The old free-look
-           branch deliberately let the eye dive under the board when the
-           player or a sky cinematic craned past the horizon, which meant
-           "looking at the sky" showed the dirt underside of the map. That
-           trade-off is gone.)
+        /* ══ UNIFIED ORBIT RIG ══
+           ONE behaviour for every camera mode.
 
            • Third-person (Strike Mode free-roam via cam._tpsCollide, and the
              cinematic/turn shots via cam._cineTps): pivot at the SUBJECT's
@@ -185,24 +180,29 @@ const ThreeCamera = (function () {
              character in the lower frame, like every modern TPS.
            • Board / tactical free look: pivot at the focal point. Looking
              down or level keeps the classic look-at-the-focal orbit; craning
-             PAST the horizon switches the aim to ride the view direction from
-             just above the ground, so the player sees their unit against the
-             SKY instead of the camera sinking under the map.
+             PAST the horizon parks the eye at the horizon pose and turns the
+             gaze up in place (head turn), so the player sees the SKY without
+             the camera sliding in toward the unit or sinking under the map.
            • Cinematic keep-subject shots (cam._cineKeepSubject) keep looking
-             straight AT the (possibly lifted) focal while the ground clamp
+             straight AT the (possibly lifted) focal while the floor clamp
              dollies the eye in along the ray — the subject stays framed while
              the camera cranes up at a sky target.
 
-           Collision is a cheap march against the tile height-field: walk from
-           the pivot out to the ideal orbit eye; the moment the boom dips
-           below ground+clearance, stop there (dolly in), then hard-floor the
-           eye above the ground actually under it. */
+           Terrain between the camera and the subject is NOT dodged: the boom
+           passes straight through hills and walls (the renderer's occlusion
+           fade ghosts whatever the eye looks through), and the only hard
+           limit is a FLAT FLOOR at the subject's own footing (see below).
+           Strike Mode's player-driven rig alone keeps a physical boom
+           collision (dolly in front of the blocker). */
         const isTps = !!(cam._tpsCollide || cam._cineTps);
         let pivX = focalX, pivY = focalY, pivZ = focalZ;
+        /* Ground under the third-person subject — also the flat floor the
+           TPS eye may never sink below (see FLAT FLOOR). */
+        let pivGroundY = 0;
         if (isTps) {
             const headLift = cam._tpsHeadLift || (ts * 0.9);
             const subj = cam._tpsSubject;
-            const pivGroundY = subj
+            pivGroundY = subj
                 ? _groundYWorld(subj.x * ts + ts / 2, subj.y * ts + ts / 2)
                 : _groundYWorld(focalX, focalZ);
             pivY = pivGroundY + headLift;
@@ -251,49 +251,70 @@ const ThreeCamera = (function () {
             threeCamera.lookAt(_smoothLookX, _smoothLookY, _smoothLookZ);
             return;
         }
-        let eyeX = pivX - dist * dirX;
-        let eyeY = pivY - dist * dirY;
-        let eyeZ = pivZ - dist * dirZ;
+        /* ══ WHO OWNS THE CAMERA THIS FRAME ══
+           handHeld: the PLAYER owns it — a live hand drag/orbit
+           (state._userPanning) or the post-drag height latch
+           (cam._panElevLatch, battle.js; cleared by the next programmatic
+           move). A hand-held camera pivots in place like a head turning; it
+           must never be auto-craned into the air just because the gaze
+           pitched up — that lift is a CINEMATIC framing device (intro
+           map-name crane, zodiac/celestial shot), not a free-look behavior.
+           subjectLook: the focal itself hangs well above the ground under it
+           — an airborne flyer the controller's focal height is tracking.
+           Looking up at that subject behaves like a normal orbit camera: eye
+           stays low, gaze stays ON the subject, the flyer reads against the
+           sky. */
+        const handHeld = !!((typeof state !== 'undefined' && state && (state._userPanning || state._userOrbiting))
+            || (cam._panElevLatch !== null && cam._panElevLatch !== undefined));
+        const focalGroundY = _groundYWorld(focalX, focalZ);
+        const subjectLook = !isTps && !cam._cineKeepSubject
+            && (focalY - focalGroundY) > ts * 0.85;
+        /* Cinematic sky crane (see SKY-GAZE LIFT below): programmatic board
+           shots that pitch at the sky get lifted well above the battlefield. */
+        const skyCrane = !isTps && !cam._cineKeepSubject && !handHeld && !subjectLook;
+
+        /* ══ HEAD TURN PAST THE HORIZON (2026-09-02) ══
+           Orbiting is only meaningful while the gaze points at or below the
+           horizon. Past it, the orbit eye would keep swinging UNDER the pivot
+           — every frame the floor then caught it and slid it along the ground
+           IN toward the character as the tilt rose, which read as the camera
+           zooming in on its own whenever the player tried to look at the sky.
+           Instead the eye now PARKS at the horizon pose (the tilt-90 orbit
+           point, `dist` away at pivot height) and only the GAZE keeps
+           pitching up — a head turning in place, the way every third-person
+           camera handles looking up. Bit-identical at tilt 90 (same eye, same
+           aim), so crossing the horizon is seamless. The cinematic sky crane,
+           the flyer subject-look and the keep-subject action shots keep their
+           own deliberate past-horizon responses. */
+        const headTurn = dirY > 1e-4 && !skyCrane && !subjectLook && !cam._cineKeepSubject;
+        const dirHX = -Math.sin(yawRad);
+        const dirHZ = -Math.cos(yawRad);
+        let eyeX, eyeY, eyeZ;
+        if (headTurn) {
+            eyeX = pivX - dist * dirHX;
+            eyeY = pivY;
+            eyeZ = pivZ - dist * dirHZ;
+        } else {
+            eyeX = pivX - dist * dirX;
+            eyeY = pivY - dist * dirY;
+            eyeZ = pivZ - dist * dirZ;
+        }
         const clear = isTps ? ts * 0.45 : ts * 0.35;
 
-        /* Boom collision — only for the modes that FRAME A SUBJECT up close
-           (TPS shots, keep-subject cine shots). The wide tactical view
-           deliberately skips it: a ridge clipping the low start of a long
-           boom would otherwise yank the whole board view in close.
-
-           Response = DOLLY IN, exactly like every standard third-person
-           game (Skyrim / Fortnite / GTA / Minecraft): pull the camera in
-           along the boom so it sits IN FRONT of the first blocker, in clear
-           air, still looking at the character. A wall right at the
-           character's back gives a tight over-the-shoulder shot of the
-           CHARACTER — never a close-up of the wall, never a camera perched
-           on top of the cliff, never a crane over it. Partial blockers the
-           spread rays catch are additionally made see-through by
-           three-renderer's occlusion fade, which keeps the active unit
-           visible every frame. The character is framed in third person
-           every single time. */
+        /* Boom collision — Strike Mode's player-driven third-person rig ONLY
+           (cam._tpsCollide). Response = DOLLY IN, exactly like every standard
+           third-person shooter: pull the camera in along the boom so it sits
+           IN FRONT of the first blocker, in clear air, still looking at the
+           character. Partial blockers the spread rays catch are additionally
+           made see-through by three-renderer's occlusion fade. */
         /* CINEMATIC shots (cam._cineTps without Strike Mode's per-frame
            controller) deliberately SKIP boom collision: the renderer's
            occlusion fade already makes any terrain/prop between the camera
            and the two shot subjects see-through, so a wall right behind a
            subject should be clipped THROUGH (and faded), not dodged — the
            dolly-in response here slammed those shots into a super-closeup
-           whenever the caster or victim stood against a wall/cliff. Strike
-           Mode free-roam keeps real collision (the player drives that
-           camera and expects it to behave physically). */
+           whenever the caster or victim stood against a wall/cliff. */
         const skipBoomCollide = !!(cam._cineTps && !cam._tpsCollide);
-        /* TPS rigs ONLY — never for a bare keep-subject flag. While a shot is
-           LIVE, _cineTps is set and skipBoomCollide already suppresses this
-           march; the only frames where "_cineKeepSubject without a rig" ever
-           occurred were the post-action RETURN windows (press-refund hold,
-           settle/restore tweens), where battle.js keeps the flag alive through
-           the un-tilt while _apply() has already auto-released _cineTps. In
-           that window the camera still sits at the shot's near-level pitch, so
-           the almost-horizontal boom skimmed the terrain and this march
-           dollied the eye hard in toward the focal on any raised tile/prop it
-           crossed — the "camera zooms in for no reason while returning from
-           the target to the caster" bug. Those frames now take the tactical
-           hard floor below instead (a lift, never a dolly-zoom). */
         if (isTps && !skipBoomCollide) {
             const STEPS = 12;
             let f = 1;
@@ -314,64 +335,45 @@ const ThreeCamera = (function () {
                 eyeZ = pivZ + (eyeZ - pivZ) * f;
             }
         }
-        /* Hard floor — the eye must not sink BELOW the map:
-           • board/tactical view: always (it has no boom collision).
-           • subject-framing modes: only while the gaze is pitched UP past
-             the horizon (sky look) — that is the genuine below-the-map
-             case. For level/down gazes the dolly already handled terrain,
-             and force-lifting a wall-adjacent eye onto the top of that wall
-             was the "camera standing on the clifftop staring at dirt
-             instead of my unit" bug. */
-        /* ── Hand-held / subject-framing free look (gates the sky-gaze lift
-           and the past-horizon aim below) ──
-           handHeld: the PLAYER owns the camera — a live hand drag
-           (state._userPanning) or the post-drag height latch
-           (cam._panElevLatch, battle.js; cleared by the next programmatic
-           move). A hand-held camera pivots in place like a head turning;
-           it must never be auto-craned 9 tiles into the air just because
-           the gaze pitched up — that lift is a CINEMATIC framing device
-           (intro map-name crane, zodiac/celestial shot), not a free-look
-           behavior.
-           subjectLook: the focal itself hangs well above the ground under
-           it — an airborne flyer the controller's focal height is
-           tracking. Looking up at that subject must behave like a normal
-           orbit camera: eye stays low, gaze stays ON the subject, the
-           flyer reads against the sky. The empty-sky crane response only
-           fits a GROUND-level focal (the cinematics'), which the height
-           test preserves exactly. */
-        const handHeld = !!((typeof state !== 'undefined' && state && state._userPanning)
-            || (cam._panElevLatch !== null && cam._panElevLatch !== undefined));
-        const subjectLook = !isTps && !cam._cineKeepSubject
-            && (focalY - _groundYWorld(focalX, focalZ)) > ts * 0.85;
 
-        /* keep-subject WITHOUT a live rig (post-action return tweens) counts
-           as tactical here: with its boom march gone (above) the floor is the
-           only thing keeping the eye above a ridge mid-return, and a floor
-           lift reads as a small crane — not the dolly zoom-in the march made. */
-        if (dirY > 1e-4 || !isTps) {
-            const eg = _groundYWorld(eyeX, eyeZ) + clear;
-            if (eyeY < eg) eyeY = eg;
-            /* ── SKY-GAZE LIFT (board/tactical modes only) ──
-               The hard floor above parks the eye a mere ⅓ tile over the
-               ground, so every look UP at the sky (the zodiac/celestial
-               cinematic, the intro's map-name crane, free-look past the
-               horizon) was shot from ankle height — any raised tile or prop
-               nearby jutted into what should be an open-sky view. As the
-               gaze pitches toward the sky, RAISE that floor smoothly so the
-               camera ends up hovering well above the battlefield looking up
-               at a clean firmament. The ramp starts a little BEFORE the
-               horizon so a continuous crane (sky cinematic up/down, intro
-               beat 6) glides through the transition instead of dipping to
-               the dirt at 90° and popping back up. Subject-framing modes
-               (TPS, keep-subject cine shots) keep their own dolly response —
-               they WANT to stay at the character's shoulder. */
-            if (!isTps && !cam._cineKeepSubject && !handHeld && !subjectLook && dirY > -0.35) {
-                const t01 = Math.min(1, (dirY + 0.35) / 0.8);
-                const skyF = t01 * t01 * (3 - 2 * t01);
-                const skyBase = Math.max(_groundYWorld(eyeX, eyeZ), focalY);
-                const skyFloor = skyBase + clear + ts * 9 * skyF;
-                if (eyeY < skyFloor) eyeY = skyFloor;
-            }
+        /* ══ FLAT FLOOR (2026-09-02) ══
+           The floor the eye may never sink below is a PLANE at the SUBJECT's
+           own footing — the ground under the character / focal point — NOT
+           the terrain under the eye. The old per-frame "lift the eye over
+           whatever tile it is above" clamp made a zoomed-in orbit around a
+           character SNAP up and down every time the boom swept across a
+           raised neighbour: pure jank, and pointless — the renderer's
+           occlusion fade already ghosts any terrain/prop between the camera
+           and the subject (and a block the eye sits INSIDE is back-face
+           culled), so passing the boom THROUGH a hill or wall is the normal,
+           standard camera trick. The flat floor only stops the camera from
+           diving under the map / the platform the subject stands on.
+             • Third-person rigs: the subject's ground.
+             • Board / tactical: the lower of the focal height and the ground
+               under the focal, so an airborne flyer can still be looked up
+               at from ground level, and a hand-pan height latch never bobs
+               the floor as the focal crosses hills. */
+        const floorBase = isTps ? pivGroundY : Math.min(focalY, focalGroundY);
+        const floorY = floorBase + clear;
+        if (eyeY < floorY) eyeY = floorY;
+        /* ── SKY-GAZE LIFT (cinematic board shots only) ──
+           The flat floor parks a sky-gazing eye a mere ⅓ tile over the
+           ground, so a programmatic look UP at the sky (the zodiac/celestial
+           cinematic, the intro's map-name crane) would be shot from ankle
+           height — any raised tile or prop nearby jutting into what should
+           be an open-sky view. As the gaze pitches toward the sky, RAISE that
+           floor smoothly so the camera ends up hovering well above the
+           battlefield looking up at a clean firmament. The ramp starts a
+           little BEFORE the horizon so a continuous crane (sky cinematic
+           up/down, intro beat 6) glides through the transition instead of
+           dipping to the dirt at 90° and popping back up. Hand-held free
+           look never takes this (it head-turns instead, above). */
+        if (skyCrane && dirY > -0.35) {
+            const t01 = Math.min(1, (dirY + 0.35) / 0.8);
+            const skyF = t01 * t01 * (3 - 2 * t01);
+            const skyBase = Math.max(_groundYWorld(eyeX, eyeZ), focalY);
+            const skyFloor = skyBase + clear + ts * 9 * skyF;
+            if (eyeY < skyFloor) eyeY = skyFloor;
         }
 
         targetPosX = eyeX; targetPosY = eyeY; targetPosZ = eyeZ;
@@ -386,11 +388,19 @@ const ThreeCamera = (function () {
                tilt > 90° genuinely look up — the subject simply rides the
                lower part of the frame. It also keeps the aim direction
                constant when terrain collision pulls the eye in, so the
-               reticle/framing never jumps. */
+               reticle/framing never jumps. Past the horizon the eye is
+               parked (head turn), so the ray is cast FROM THE EYE — at
+               tilt 90 both forms are the same ray, hence seamless. */
             const ahead = ts * 2.5;
-            targetLookX = pivX + dirX * ahead;
-            targetLookY = pivY + dirY * ahead;
-            targetLookZ = pivZ + dirZ * ahead;
+            if (headTurn) {
+                targetLookX = eyeX + dirX * ahead;
+                targetLookY = eyeY + dirY * ahead;
+                targetLookZ = eyeZ + dirZ * ahead;
+            } else {
+                targetLookX = pivX + dirX * ahead;
+                targetLookY = pivY + dirY * ahead;
+                targetLookZ = pivZ + dirZ * ahead;
+            }
         } else if (dirY > 1e-4 && !cam._cineKeepSubject) {
             if (subjectLook) {
                 /* Raised focal (airborne flyer): NORMAL ORBIT past the
@@ -403,19 +413,18 @@ const ThreeCamera = (function () {
                 targetLookY = focalY;
                 targetLookZ = focalZ;
             } else {
-                /* Board free-look / cinematic SKY gaze: aim along the view
-                   direction FROM THE CLAMPED EYE, not from the ground pivot.
-                   With the sky-gaze lift above, an aim point derived from the
-                   (ground-level) pivot could land BELOW the raised eye and pitch
-                   the camera back down at the terrain — aiming from the eye
-                   keeps the gaze direction exactly (dirX,dirY,dirZ) no matter
-                   how far the floor lifted it, so the sky subject stays framed.
-                   BLENDED in from the focal-aim the level branch uses: the old
+                /* Board free-look (head turn) / cinematic SKY gaze: aim
+                   along the view direction FROM THE EYE, not from the ground
+                   pivot — with the sky crane an aim point derived from the
+                   (ground-level) pivot could land BELOW the raised eye and
+                   pitch the camera back down at the terrain; aiming from the
+                   eye keeps the gaze direction exactly (dirX,dirY,dirZ).
+                   BLENDED in from the focal-aim the level branch uses: a
                    hard switch at 90° flicked the gaze from "at the focal" to
                    "level into the sky" in ONE frame whenever the floor had
-                   lifted the eye off the orbit ray — the visible snap when a
-                   hand crane crossed the horizon. Fully sky-aimed by ~100°,
-                   so the cinematic cranes (tilt 164+) are bit-identical. */
+                   lifted the eye off the orbit ray. Fully sky-aimed by
+                   ~100°, so the cinematic cranes (tilt 164+) are
+                   bit-identical. */
                 const ahead = ts * 6;
                 const bl = Math.min(1, dirY / 0.18);
                 const bs = bl * bl * (3 - 2 * bl);
@@ -435,7 +444,6 @@ const ThreeCamera = (function () {
             targetLookY = focalY;
             targetLookZ = focalZ;
         }
-
         const now = performance.now() / 1000;
         const dt = _lastSyncTime > 0 ? Math.min(now - _lastSyncTime, 0.05) : 0.016;
         _lastSyncTime = now;

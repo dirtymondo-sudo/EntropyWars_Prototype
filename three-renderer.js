@@ -11798,6 +11798,8 @@ const ThreeRenderer = (function () {
             if (vis && po.css2d.parent && !po.css2d.parent.visible) {
                 vis = false;
             }
+            /* ghosted as an action-cam blocker (see _occSetUnitGhost) */
+            if (vis && po._ew_occHid) vis = false;
 
             po.css2d.visible = vis;
         }
@@ -14140,7 +14142,7 @@ const ThreeRenderer = (function () {
             if (!unit || unit.dead || unit.player === vp) return;
             var base = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
             if (base && fog) base = _unitLosSeen(unit, vp);
-            po.css2d.visible = base && !_isConcealedFromViewer(unit, vp);
+            po.css2d.visible = base && !_isConcealedFromViewer(unit, vp) && !po._ew_occHid;
         });
     }
     function _applyConcealment(vp) { _updateEnemyConcealment(); }
@@ -14148,10 +14150,11 @@ const ThreeRenderer = (function () {
     // ════════════════════════════════════════════════════════════════════
     // ACTION-CAM OCCLUSION FADE
     // While a cinematic over-the-shoulder / sky-strike shot is live (the camera
-    // drops in low behind the caster and aims at the target), terrain tiles and
-    // map props that sit BETWEEN the camera and the caster (or the target) are
-    // faded toward near-invisible — so a dirt block or a tree can't swallow the
-    // screen and hide what's actually going on. The moment the shot ends, or an
+    // drops in low behind the caster and aims at the target), terrain tiles,
+    // map props AND bystander units that sit BETWEEN the camera and the caster
+    // (or the target) are faded toward near-invisible — so a dirt block, a tree
+    // or another unit's back can't swallow the screen and hide what's actually
+    // going on. The moment the shot ends, or an
     // occluder is no longer in the line of sight, it smoothly fades back to full.
     //
     // The shot publishes its caster (camera._cineShotUnitId) and target
@@ -14169,6 +14172,24 @@ const ThreeRenderer = (function () {
     var _occWant = null;         // cached blocking set (throttled during normal play)
     var _occWantTime = 0;
     var OCC_RECOMPUTE_DT = 0.06; // seconds between blocker raycasts when not in a shot
+
+    /* ── Unit occluders (2026-09-02) ──
+       During a cinematic action shot, any OTHER unit standing between the
+       camera and the caster / target is ghosted exactly like a terrain
+       block would be: the shot is about the caster and the victim, and a
+       bystander's back filling the frame hid the whole spell far too often.
+       Units are tested analytically (a vertical capsule per unit against the
+       eye→subject segments — no skinned-mesh raycasts), ghosted by mutating
+       their own materials (opacity + no depth write, so the subject behind
+       them renders as its real self, not its x-ray hologram) and restored
+       when the shot ends. The spell's OWN victims/beneficiaries are never
+       ghosted: battle.js publishes the affected set for the nameplate focus
+       (window._ewActionPlateFocus) and that same set guards the fade here,
+       remembered for the whole shot. */
+    var _occUnitFaded = new Map();   // uid -> { op, group }
+    var _occUnitWant = null;         // Set<uid> blocking this frame (refreshed with _occWant)
+    var _occShotGuard = { id: null, set: null };
+    var OCC_UNIT_RADIUS = 0.34;      // tiles — blocker capsule radius
 
     function _occInit() {
         if (_occRaycaster) return;
@@ -14393,8 +14414,9 @@ const ThreeRenderer = (function () {
     }
 
     /* Roots that block the line of sight to the caster or target this frame. */
-    function _occComputeBlockers(cam, cineActive, selUnit) {
+    function _occComputeBlockers(cam, cineActive, selUnit, focalTile) {
         var roots = new Set();
+        _occUnitWant = null;
         var groups = [];
         if (terrainGroup) groups.push(terrainGroup);
         if (objectGroup) groups.push(objectGroup);
@@ -14402,14 +14424,17 @@ const ThreeRenderer = (function () {
         if (!groups.length) return roots;
 
         var subs = [];   // [{P, feetY, tx, ty}] — see _occUnitPoint/_occTilePoint
+        var subjectIds = null;   // cine: units that must never be ghosted as blockers
         if (cineActive) {
+            subjectIds = new Set();
             var caster = _unitById.get(camera._cineShotUnitId);
-            if (caster) { var cp = _occUnitPoint(caster); if (cp) subs.push(cp); }
+            if (caster) { var cp = _occUnitPoint(caster); if (cp) subs.push(cp); subjectIds.add(caster.id); }
             var tgt = camera._cineShotTarget;
             if (tgt) {
                 var tUnit = (tgt.id != null) ? _unitById.get(tgt.id) : null;
                 var tp = (tUnit && !tUnit.dead) ? _occUnitPoint(tUnit) : _occTilePoint(tgt.x, tgt.y);
                 if (tp) subs.push(tp);
+                if (tgt.id != null) subjectIds.add(tgt.id);
             }
             /* Opening cinematic: keep the WHOLE framed team clear — one ray
                bundle per unit (introCineSetFocus publishes the current beat's
@@ -14420,9 +14445,22 @@ const ThreeRenderer = (function () {
                     if (iu && !iu.dead) { var ip = _occUnitPoint(iu); if (ip) subs.push(ip); }
                 }
             }
-        } else if (selUnit) {
-            // Normal play: keep just the selected/active unit clear.
-            var sp = _occUnitPoint(selUnit); if (sp) subs.push(sp);
+        } else {
+            // Normal play: keep the selected/active unit clear.
+            if (selUnit) { var sp = _occUnitPoint(selUnit); if (sp) subs.push(sp); }
+            /* Hand-held camera (2026-09-02): the player is orbiting/panning
+               by hand, so ALSO keep whatever the camera is pointed AT clear —
+               the focal tile. The camera rig no longer dodges terrain (it
+               passes straight through hills and walls and relies on this
+               fade), so orbiting low around any tile must see through
+               whatever the boom crosses, not only around the active unit.
+               A bare tile point carries no unit information, so no fog gate
+               is needed: the fade happens whether or not anyone stands there. */
+            if (focalTile && (!selUnit
+                    || Math.round(selUnit.x) !== focalTile.x || Math.round(selUnit.y) !== focalTile.y)) {
+                var fp = _occTilePoint(focalTile.x, focalTile.y);
+                if (fp) subs.push(fp);
+            }
         }
         if (!subs.length) return roots;
 
@@ -14464,7 +14502,109 @@ const ThreeRenderer = (function () {
                 }
             }
         }
+        /* Unit blockers — cinematic action shots only. The opening
+           cinematic frames whole rosters (units deliberately overlap in its
+           beats), so it keeps every unit solid. */
+        if (cineActive && subjectIds && !(_introOccUids && _introOccUids.length)) {
+            _occUnitWant = _occUnitBlockers(cam, subs, subjectIds, nearClear);
+        }
         return roots;
+    }
+
+    /* Which units (other than the shot's subjects and its own victims) stand
+       in the eye→subject sight lines this frame. Each unit is a vertical
+       capsule from its feet to its sprite/model top; the segment is sampled
+       every ⅕ tile, stopping short of the subject (nearClear) so a unit on
+       the subject's own tile — a stacked flyer, the target itself when the
+       shot aims at a tile — never counts as blocking. */
+    function _occUnitBlockers(cam, subs, subjectIds, nearClear) {
+        var out = new Set();
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var eye = cam.position;
+        var radius = ts * OCC_UNIT_RADIUS;
+        var r2 = radius * radius;
+        var eyeClear = ts * 0.15;
+        var step = ts * 0.2;
+        var guard = _occShotGuard.set;
+        var fpHide = (typeof window !== 'undefined' && window._ewFpHideUid != null) ? window._ewFpHideUid : null;
+        unitEntries.forEach(function (entry, uid) {
+            if (!entry.group || !entry.group.visible) return;
+            if (subjectIds.has(uid)) return;
+            if (guard && guard.has(uid)) return;
+            if (fpHide != null && fpHide === uid) return;
+            var u = _unitById.get(uid);
+            if (!u || u.dead || u._dying) return;
+            entry.group.getWorldPosition(_occVecA);
+            var ux = _occVecA.x, uz = _occVecA.z;
+            var feet = _occVecA.y - ts * 0.05;
+            var top = (entry.group._ew_spriteTopY != null) ? entry.group._ew_spriteTopY : (_occVecA.y + ts * 0.85);
+            var rad2 = r2;
+            if (u._isBoss && u._bossSize === 2) rad2 = (radius * 2.2) * (radius * 2.2);
+            for (var s = 0; s < subs.length; s++) {
+                var P = subs[s].P;
+                _occDir.subVectors(P, eye);
+                var len = _occDir.length();
+                var usable = len - nearClear;
+                if (usable <= eyeClear) continue;
+                _occDir.multiplyScalar(1 / len);
+                var n = Math.min(160, Math.max(1, Math.ceil((usable - eyeClear) / step)));
+                var hit = false;
+                for (var i = 0; i <= n; i++) {
+                    var d = eyeClear + (usable - eyeClear) * (i / n);
+                    var py = eye.y + _occDir.y * d;
+                    if (py < feet || py > top) continue;
+                    var dx = eye.x + _occDir.x * d - ux;
+                    var dz = eye.z + _occDir.z * d - uz;
+                    if (dx * dx + dz * dz <= rad2) { hit = true; break; }
+                }
+                if (hit) { out.add(uid); break; }
+            }
+        });
+        return out;
+    }
+
+    /* Ghost (op < 1) or restore (op = 1) one unit's own renderables. Mutates
+       the unit's OWN materials (they are per-unit: the sprite slab is built
+       per entry, model materials belong to the unit's cached rig), so a
+       mid-shot rebuild keeps the ghost and the per-frame re-apply below
+       catches a freshly rebuilt sprite slab. depthWrite is dropped while
+       ghosted so the subject behind the blocker renders as its real self
+       instead of being depth-cut into its hologram; the x-ray silhouette
+       and team rim are hidden outright (a bright rim across the shot would
+       defeat the ghosting). Runs AFTER the own-unit cloak sweep
+       (_updateEnemyConcealment) each frame, so its values win. */
+    function _occSetUnitGhost(group, op) {
+        if (!group) return;
+        var ghost = op < 0.999;
+        group.traverse(function (o) {
+            if (!o.isMesh || !o.material) return;
+            if (o._ew_silhouette) {
+                if (ghost) { if (o.visible) { o.visible = false; o._ew_occHidSil = true; } }
+                else if (o._ew_occHidSil) { o._ew_occHidSil = false; o.visible = true; }
+                return;
+            }
+            if (!(o._ew_billboard || o._ew_modelSkin)) return;
+            var m = o.material;
+            if (Array.isArray(m)) return;
+            if (ghost) {
+                if (m._ew_occGhostBase === undefined) {
+                    m._ew_occGhostBase = {
+                        op: (m.opacity !== undefined) ? m.opacity : 1,
+                        tr: !!m.transparent,
+                        dw: m.depthWrite !== false
+                    };
+                }
+                m.transparent = true;
+                m.opacity = Math.min(m._ew_occGhostBase.op, op);
+                m.depthWrite = false;
+            } else if (m._ew_occGhostBase !== undefined) {
+                var b = m._ew_occGhostBase;
+                m.transparent = b.tr;
+                m.opacity = b.op;
+                m.depthWrite = b.dw;
+                m._ew_occGhostBase = undefined;
+            }
+        });
     }
 
     /* During a cinematic shot the occluder FADE keeps the caster and target
@@ -14528,9 +14668,35 @@ const ThreeRenderer = (function () {
                 ? camera._cineShotTarget.id : null
         );
 
-        var active = cineActive || !!selUnit;
+        /* Hand-held camera → the focal tile is a fade subject too (see
+           _occComputeBlockers). battle.js's controller owns the focal. */
+        var focalTile = null;
+        if (inBattle && !cineActive && typeof camera !== 'undefined' && camera
+            && (state._userPanning || (camera._panElevLatch !== null && camera._panElevLatch !== undefined))
+            && Number.isFinite(camera.x) && Number.isFinite(camera.y)) {
+            focalTile = { x: Math.round(camera.x), y: Math.round(camera.y) };
+        }
 
-        if (!active && _occFaded.size === 0) return;   // nothing to do
+        /* Shot guard: the units this action affects (caster + blast/beam/
+           team — battle.js _focusPlatesForImpact) are never ghosted as
+           blockers. Accumulated per shot id so the guard outlives the
+           nameplate focus's own short hold. */
+        if (cineActive) {
+            if (_occShotGuard.id !== camera._cineShotId) {
+                _occShotGuard.id = camera._cineShotId;
+                _occShotGuard.set = new Set();
+            }
+            var _af = (typeof window !== 'undefined') ? window._ewActionPlateFocus : null;
+            if (_af && _af.set && _af.set.forEach) {
+                _af.set.forEach(function (id) { _occShotGuard.set.add(id); });
+            }
+        } else if (_occShotGuard.id !== null) {
+            _occShotGuard.id = null; _occShotGuard.set = null;
+        }
+
+        var active = cineActive || !!selUnit || !!focalTile;
+
+        if (!active && _occFaded.size === 0 && _occUnitFaded.size === 0) return;   // nothing to do
         _occInit();
 
         var now = performance.now() / 1000;
@@ -14543,7 +14709,7 @@ const ThreeRenderer = (function () {
         var want;
         if (active) {
             if (cineActive || _occWant === null || (now - _occWantTime) >= OCC_RECOMPUTE_DT) {
-                want = _occComputeBlockers(cam, cineActive, selUnit);
+                want = _occComputeBlockers(cam, cineActive, selUnit, focalTile);
                 _occWant = want;
                 _occWantTime = now;
             } else {
@@ -14552,6 +14718,7 @@ const ThreeRenderer = (function () {
         } else {
             want = null;
             _occWant = null;
+            _occUnitWant = null;
         }
 
         // Begin fading any newly-blocking root.
@@ -14587,6 +14754,40 @@ const ThreeRenderer = (function () {
             }
         });
         for (var d = 0; d < done.length; d++) _occFaded.delete(done[d]);
+
+        /* ── Unit blockers: begin / step / restore (cine shots only) ── */
+        var wantU = (active && cineActive) ? _occUnitWant : null;
+        if (wantU) {
+            wantU.forEach(function (uid) {
+                if (!_occUnitFaded.has(uid)) _occUnitFaded.set(uid, { op: 1.0, group: null });
+            });
+        }
+        if (_occUnitFaded.size) {
+            var doneU = [];
+            _occUnitFaded.forEach(function (rec, uid) {
+                var e = unitEntries.get(uid);
+                var grp = (e && e.group) ? e.group : null;
+                if (grp && rec.group && rec.group !== grp) {
+                    /* rebuilt under us: un-ghost the discarded group (its
+                       cached rig materials live on in the new one) */
+                    _occSetUnitGhost(rec.group, 1);
+                }
+                rec.group = grp || rec.group;
+                var blocking = !!(wantU && wantU.has(uid));
+                var tgtOp = blocking ? OCC_FADE_TARGET : 1.0;
+                rec.op += (tgtOp - rec.op) * k;
+                if (Math.abs(rec.op - tgtOp) < 0.012) rec.op = tgtOp;
+                if (rec.group) _occSetUnitGhost(rec.group, rec.op);
+                var po = _plateObjs.get(uid);
+                if (po) po._ew_occHid = rec.op < 0.6;
+                if (!grp || (!blocking && rec.op >= 0.999)) {
+                    if (rec.group) _occSetUnitGhost(rec.group, 1);
+                    if (po) po._ew_occHid = false;
+                    doneU.push(uid);
+                }
+            });
+            for (var du = 0; du < doneU.length; du++) _occUnitFaded.delete(doneU[du]);
+        }
     }
 
     /* ── Canopy cutaway ────────────────────────────────────────────────────
