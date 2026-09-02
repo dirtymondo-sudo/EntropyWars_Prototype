@@ -924,6 +924,20 @@
                     : (_descentVfxMs > 0 ? actionMs(_descentVfxMs)
                         : (_hasArmingVfx ? actionMs(1100) : 0));
 
+                /* Action tile glow: the blast footprint arms while the shell
+                   falls and goes white-hot on the detonation frame (no actor
+                   tile — the payload comes from the sky). Relayed sibling. */
+                if (_vfxAllowed && typeof window !== 'undefined' && window.ThreeVFXEffects
+                    && typeof window.ThreeVFXEffects.tileGlow === 'function') {
+                    try {
+                        window.ThreeVFXEffects.tileGlow(ds.x, ds.y, ds.x, ds.y, {
+                            impactMs: Math.max(160, _impactDelay), lingerMs: 560,
+                            radius: ds.aoeRadius || 0, hostile: true, noCaster: true,
+                            key: 'det' + ds.x + ',' + ds.y
+                        });
+                    } catch (e) {  }
+                }
+
                 window.setTimeout(() => {
                     _detonateDelayedSpell(ds);
 

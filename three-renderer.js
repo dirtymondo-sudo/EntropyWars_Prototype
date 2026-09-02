@@ -12291,6 +12291,7 @@ const ThreeRenderer = (function () {
 
     function clearAllOverlays() {
         for (var name in _overlayMeshes) clearOverlay(name);
+        actionGlowKillAll();
 
         for (var _zai = 0; _zai < _zoneBorderMeshes.length; _zai++) {
             var _zam = _zoneBorderMeshes[_zai];
@@ -12308,6 +12309,266 @@ const ThreeRenderer = (function () {
         setOverlay('telegraph', [{ x: tx, y: ty }], 0xffff44, 0.45);
         if (_telegraphTimer) clearTimeout(_telegraphTimer);
         _telegraphTimer = setTimeout(function() { clearOverlay('telegraph'); _telegraphTimer = null; }, 450);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ACTION TILE GLOW (2026-09-02) — "the ground lights up under the action"
+    // ═══════════════════════════════════════════════════════════════════════
+    // While an attack, spell, item throw or delayed detonation plays out, the
+    // tile under the actor and every tile the effect lands on glows. It is a
+    // three-beat envelope driven from the SAME clock the staging layer /
+    // attack scheduler use, so the light and the hit agree by construction:
+    //
+    //   ARM    (cast commit)  the actor tile snaps on WHITE; the footprint
+    //                         rises to a YELLOW "armed" level (hostile) or a
+    //                         soft WHITE (friendly / support), then breathes
+    //                         and slowly crescendos toward the impact frame.
+    //                         Beams / dashes light tile-by-tile outward from
+    //                         the actor (staggerMs) so the lane "draws".
+    //   BURST  (impact frame) the footprint flashes white-hot and settles to
+    //                         a lit afterglow; the actor tile releases (its
+    //                         power has left it).
+    //   END    (exhale)       everything eases back to bare ground.
+    //
+    // Colour language: WHITE = the actor + anything benign (heals, buffs,
+    // terrain shaping); YELLOW = ground that is about to take a hit. Any
+    // hostile footprint goes white-hot at the burst.
+    //
+    // Built from the same draped highlight quads as the range/AoE overlays
+    // (terrain-conforming, roof/stair/sub-floor aware, depth-tested) but
+    // ADDITIVE, so the ground reads as LIT rather than painted, and it pops
+    // under bloom. Per-tile ShaderMaterials are private (never cached, never
+    // _ew_dimmable) so the focus-dim loop can't stomp the animated opacity.
+    //
+    // ONLINE (RULE #2): callers never touch this directly from gameplay —
+    // spells ride the relayed staging beats (three-vfx-effects.js _fireStage)
+    // and attacks/items ride the relayed VFX3D.tileGlow sibling, so the guest
+    // runs this same code from the replayed beats. Fog: tiles the viewer
+    // can't see are dropped here (the renderer's own vision set), so a glow
+    // never leaks a hidden caster or victim.
+    //
+    // Kill-switch (console): window.EW_DISABLE_TILE_GLOW = true
+    var _glowLive = {};              // key -> rec
+    var _GLOW_COL = { hostile: 0xffd23d, friendly: 0xfff4d6, caster: 0xffffff, hot: 0xfffbe8 };
+    var _GLOW_MAX_TILES = 64;        // map-wide novae still stay cheap
+    var _glowTmpCol = null;
+
+    function _glowEaseOut(t) { return 1 - (1 - t) * (1 - t) * (1 - t); }
+    function _glowEaseIn(t) { return t * t; }
+    function _glowClamp01(t) { return t < 0 ? 0 : (t > 1 ? 1 : t); }
+
+    function _glowTileVisible(x, y) {
+        if (!state || !state.fogOfWar) return true;
+        if (_fogVisibleSet) return _fogVisibleSet.has(x + ',' + y);
+        if (typeof window._isTileVisibleToViewer === 'function') {
+            try { return !!window._isTileVisibleToViewer(x, y); } catch (e) { return true; }
+        }
+        return true;
+    }
+
+    function _glowMakeMat(color, fill, edge) {
+        var m = _makeHlMaterial(color, 0.0, edge, 0, { fill: fill });
+        m.blending = THREE.AdditiveBlending;
+        m._ew_glow = true;
+        m._ew_glowBase = new THREE.Color(color);
+        return m;
+    }
+
+    function _glowAddEntry(rec, x, y, z, isCaster, delayMs) {
+        if (!highlightGroup) return null;
+        if (typeof bw === 'function' && typeof bh === 'function'
+            && (x < 0 || y < 0 || x >= bw() || y >= bh())) return null;
+        var color = isCaster ? _GLOW_COL.caster : (rec.hostile ? _GLOW_COL.hostile : _GLOW_COL.friendly);
+        /* actor: thin bright outline, quieter body — "who is acting";
+           footprint: solid lit body — "where it lands" */
+        var mat = _glowMakeMat(color, isCaster ? 0.42 : 0.72, isCaster ? 1.45 : 1.15);
+        var mesh = _makeHlTile(x, y, mat, 0.96, 0.75, z);
+        mesh._ew_overlay = 'actionGlow';
+        mesh.renderOrder = 3;
+        highlightGroup.add(mesh);
+        var e = { x: x, y: y, mesh: mesh, mat: mat, isCaster: isCaster, delay: delayMs || 0, t0: rec.t0 };
+        rec.entries.push(e);
+        return e;
+    }
+
+    function _glowDispose(rec) {
+        for (var i = 0; i < rec.entries.length; i++) {
+            var e = rec.entries[i];
+            if (highlightGroup) highlightGroup.remove(e.mesh);
+            if (e.mesh.geometry && !e.mesh.geometry._ew_shared) e.mesh.geometry.dispose();
+            if (e.mat) e.mat.dispose();
+        }
+        rec.entries.length = 0;
+        if (_glowLive[rec.key] === rec) delete _glowLive[rec.key];
+    }
+
+    function _glowKill(key) {
+        var rec = _glowLive[key];
+        if (rec) _glowDispose(rec);
+    }
+
+    function actionGlowKillAll() {
+        for (var k in _glowLive) _glowDispose(_glowLive[k]);
+        _glowLive = {};
+    }
+
+    /* actionGlowStart(key, spec)
+         key       string — one glow per actor; a new start with the same key
+                   replaces the old one (fast re-cast, encore).
+         spec.caster    {x,y}        actor tile (white)
+         spec.tiles     [{x,y,z?}]   footprint (yellow if hostile, else white)
+         spec.hostile   bool         damage/debuff footprint → yellow → white-hot
+         spec.riseMs    ms           0→armed ramp (default 260; actor 180)
+         spec.holdMs    ms           expected time to the burst — drives the
+                                     slow crescendo; NOT a timeout (the burst /
+                                     end beats own the clock)
+         spec.staggerMs ms           per-tile onset delay in list order (beams,
+                                     dashes: the lane draws outward)
+         spec.autoEndMs ms           safety: end on our own after this long if
+                                     no burst/end beat arrives (default holdMs
+                                     + 6000; marks pass a short one) */
+    function actionGlowStart(key, spec) {
+        if (!highlightGroup || !spec) return null;
+        if (typeof window !== 'undefined' && window.EW_DISABLE_TILE_GLOW) return null;
+        if (state && state.devAutoSim && !state._devSimShowAnims) return null;
+        _glowKill(key);
+        var now = performance.now();
+        var holdMs = Math.max(120, spec.holdMs || 700);
+        var rec = {
+            key: key, t0: now, entries: [],
+            hostile: !!spec.hostile,
+            riseMs: Math.max(40, spec.riseMs || 260),
+            holdMs: holdMs,
+            staggerMs: Math.max(0, spec.staggerMs || 0),
+            burstAt: null, endAt: null, fadeMs: 420,
+            autoEndAt: now + (spec.autoEndMs != null ? Math.max(0, spec.autoEndMs) : holdMs + 6000),
+            casterKey: null
+        };
+        var seen = {};
+        if (spec.caster && spec.caster.x != null && spec.caster.y != null
+            && _glowTileVisible(spec.caster.x, spec.caster.y)) {
+            var ce = _glowAddEntry(rec, spec.caster.x, spec.caster.y, spec.caster.z, true, 0);
+            if (ce) { rec.casterKey = spec.caster.x + ',' + spec.caster.y; seen[rec.casterKey] = true; }
+        }
+        var tiles = Array.isArray(spec.tiles) ? spec.tiles : [];
+        var n = 0, idx = 0;
+        for (var i = 0; i < tiles.length && n < _GLOW_MAX_TILES; i++) {
+            var t = tiles[i];
+            if (!t || t.x == null || t.y == null) continue;
+            var k = t.x + ',' + t.y;
+            /* the actor standing inside its own nova: the actor quad already
+               marks the tile; the burst flashes it like the rest (casterInArea) */
+            if (seen[k]) { if (k === rec.casterKey) rec.casterInArea = true; idx++; continue; }
+            seen[k] = true;
+            if (!_glowTileVisible(t.x, t.y)) { idx++; continue; }
+            if (_glowAddEntry(rec, t.x, t.y, t.z, false, idx * rec.staggerMs)) n++;
+            idx++;
+        }
+        if (!rec.entries.length) return null;
+        _glowLive[key] = rec;
+        _updateActionGlow();
+        return rec;
+    }
+
+    /* actionGlowBurst(key, opts) — the impact frame. opts.tiles may add
+       footprint tiles the arm beat didn't know (a retargeted burst); a burst
+       with no live glow (guest that joined mid-cast, burst-only callers)
+       conjures a short one so the hit still lights the ground. */
+    function actionGlowBurst(key, opts) {
+        opts = opts || {};
+        var rec = _glowLive[key];
+        if (!rec) {
+            if (!opts.tiles && !opts.caster) return;
+            rec = actionGlowStart(key, { caster: opts.caster, tiles: opts.tiles,
+                hostile: opts.hostile !== undefined ? opts.hostile : true, riseMs: 60, holdMs: 200 });
+            if (!rec) return;
+        } else if (Array.isArray(opts.tiles)) {
+            var have = {};
+            for (var i = 0; i < rec.entries.length; i++) have[rec.entries[i].x + ',' + rec.entries[i].y] = true;
+            for (var j = 0; j < opts.tiles.length && rec.entries.length < _GLOW_MAX_TILES; j++) {
+                var t = opts.tiles[j];
+                if (!t || t.x == null || have[t.x + ',' + t.y]) continue;
+                if (!_glowTileVisible(t.x, t.y)) continue;
+                var ne = _glowAddEntry(rec, t.x, t.y, t.z, false, 0);
+                if (ne) { ne.t0 = performance.now(); ne.late = true; }
+            }
+        }
+        if (rec.burstAt == null) rec.burstAt = performance.now();
+        rec.autoEndAt = Math.max(rec.autoEndAt, rec.burstAt + 2600);
+        _updateActionGlow();
+    }
+
+    function actionGlowEnd(key, fadeMs) {
+        var rec = _glowLive[key];
+        if (!rec) return;
+        if (rec.endAt != null) return;
+        rec.endAt = performance.now();
+        if (fadeMs != null) rec.fadeMs = Math.max(0, fadeMs);
+    }
+
+    function _updateActionGlow() {
+        var any = false;
+        for (var k in _glowLive) { any = true; break; }
+        if (!any) return;
+        var now = performance.now();
+        if (!_glowTmpCol) _glowTmpCol = new THREE.Color();
+        var breathe = 0.5 + 0.5 * Math.sin(now / 1000 * 2 * Math.PI * 2.1);
+        for (var key in _glowLive) {
+            var rec = _glowLive[key];
+            if (rec.endAt == null && now >= rec.autoEndAt) rec.endAt = now;
+            var endF = rec.endAt != null ? _glowClamp01((now - rec.endAt) / Math.max(1, rec.fadeMs)) : 0;
+            if (rec.endAt != null && endF >= 1) { _glowDispose(rec); continue; }
+            var fadeMul = 1 - _glowEaseIn(endF);
+            var sinceBurst = rec.burstAt != null ? now - rec.burstAt : -1;
+            /* burst envelope: 0→1 in 50ms, holds, then settles to 0.62 over 340ms */
+            var burst = 0, hot = 0;
+            if (sinceBurst >= 0) {
+                var up = _glowClamp01(sinceBurst / 50);
+                var settle = _glowEaseOut(_glowClamp01((sinceBurst - 90) / 340));
+                burst = up * (1 - 0.38 * settle);
+                hot = up * (1 - 0.7 * settle);
+            }
+            var toImpact = _glowClamp01((now - rec.t0) / rec.holdMs);
+            for (var i = 0; i < rec.entries.length; i++) {
+                var e = rec.entries[i];
+                var el = now - e.t0 - e.delay;
+                var level;
+                if (el <= 0) level = 0;
+                else {
+                    var rise = _glowEaseOut(_glowClamp01(el / (e.isCaster ? Math.min(rec.riseMs, 180) : rec.riseMs)));
+                    if (e.isCaster) {
+                        /* actor: on fast, quiet breathe; releases after the burst
+                           unless it is standing inside its own footprint */
+                        var armed = 0.62 + 0.06 * breathe;
+                        level = rise * armed;
+                        if (sinceBurst >= 0) {
+                            level = rec.casterInArea ? Math.max(level, burst)
+                                                     : level * (1 - 0.45 * _glowEaseOut(_glowClamp01(sinceBurst / 260)));
+                        }
+                    } else {
+                        /* footprint: armed level + crescendo toward the impact
+                           frame + breathe; the burst overrides everything */
+                        var base = (rec.hostile ? 0.50 : 0.46) + 0.22 * toImpact + 0.05 * breathe;
+                        level = rise * base;
+                        if (sinceBurst >= 0) level = Math.max(level, burst);
+                    }
+                }
+                level = _glowClamp01(level) * fadeMul;
+                var u = e.mat.uniforms;
+                u.uOpacity.value = 0.92 * level;
+                u.uFill.value = (e.isCaster ? 0.30 : 0.52) + (e.isCaster ? 0.25 : 0.42) * level;
+                u.uEdgeGlow.value = (e.isCaster ? 1.25 : 0.95) + 0.55 * level;
+                /* white-hot mix at the burst (hostile ground goes incandescent) */
+                var mix = e.isCaster ? 0 : hot * (rec.hostile ? 0.85 : 0.5);
+                if (mix > 0.001) {
+                    _glowTmpCol.set(_GLOW_COL.hot);
+                    u.uColor.value.copy(e.mat._ew_glowBase).lerp(_glowTmpCol, mix);
+                } else if (!u.uColor.value.equals(e.mat._ew_glowBase)) {
+                    u.uColor.value.copy(e.mat._ew_glowBase);
+                }
+                e.mesh.visible = level > 0.002;
+            }
+        }
     }
 
     // ── Terrain-change ghost preview (2026-07-07 terraforming pass) ──────────
@@ -24959,6 +25220,7 @@ const ThreeRenderer = (function () {
         _updateZoneBorderPulse();
 
         _updatePreviewOverlayPulse();
+        _updateActionGlow();
         _updateTerrainGhostPulse();
 
         _updateActionPlanPulse();
@@ -26452,6 +26714,10 @@ const ThreeRenderer = (function () {
         scanSpriteOffset,
 
         setOverlay, clearOverlay, clearAllOverlays, flashTelegraph,
+
+        /* Action tile glow (2026-09-02): actor + footprint tiles light up for
+           the duration of an attack / spell — see the ACTION TILE GLOW block. */
+        actionGlowStart, actionGlowBurst, actionGlowEnd, actionGlowKillAll,
 
         drawArrow3D, drawPathArrow3D, clearArrows3D,
 

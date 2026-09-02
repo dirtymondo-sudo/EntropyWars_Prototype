@@ -5188,6 +5188,118 @@
         const _stageLive = new Map();      // seq   -> { timers, tx, ty, fired, burst }
         const _stageByUnit = new Map();    // unitId -> seq
 
+        // ═══════════════════════════════════════════════════════════════════
+        // ACTION TILE GLOW footprint (2026-09-02)
+        // ═══════════════════════════════════════════════════════════════════
+        // Which tiles light up under a cast. Uses the ENGINE's own shape
+        // helpers (getSpellAoeArea / getCrossArea / the beam walk / the dash
+        // line) — the same math the damage pass runs — so the glow can never
+        // disagree with what actually gets hit. Returns
+        //   { tiles: [{x,y}], hostile: bool, stagger: ms }
+        // tiles = the footprint (the caster tile is lit separately as the
+        // "actor" and deduped by the renderer); hostile picks yellow (→ white-
+        // hot at impact) vs. white; stagger draws lanes tile-by-tile (beams,
+        // dashes).
+        // Rides the relayed windup beat (`tiles` is on online.js's whitelist).
+        const _GLOW_FRIENDLY_KINDS = {
+            heal: 1, selfHeal: 1, healAll: 1, manaRestoreAll: 1, revive: 1, raiseDead: 1,
+            cleanse: 1, seedHeal: 1, shield: 1, aoeShield: 1, buff: 1, warCry: 1,
+            zoneHeal: 1, scan: 1, remoteView: 1, utility: 1, escape: 1, teleport: 1,
+            warpRune: 1, swap: 1, placeMirror: 1, tuneFrequency: 1, deployObject: 1,
+            deployPair: 1, deployTurret: 1, buildBridge: 1, buildStructure: 1,
+            placeBlock: 1, terrainCreate: 1, placeTrap: 1, summonWeather: 1,
+        };
+        function _spellGlowTiles(unit, spell, tx, ty) {
+            const out = { tiles: [], hostile: true, stagger: 0 };
+            if (!unit || !spell) return out;
+            const kind = spell.kind;
+            const meta = (typeof SPELL_KIND_META !== 'undefined' && SPELL_KIND_META[kind]) || null;
+            out.hostile = !_GLOW_FRIENDLY_KINDS[kind] && ((meta && meta.offensive) || (spell.dmg || 0) > 0
+                || kind === 'debuff' || kind === 'zoneDebuff' || kind === 'pull' || kind === 'aoePull'
+                || kind === 'displacement' || kind === 'lifeDrain' || kind === 'leechSeed' || kind === 'seedPoison');
+            if (_GLOW_FRIENDLY_KINDS[kind] && (spell.dmg || 0) > 0 && kind !== 'utility') out.hostile = true;
+            const self = (typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell)) || tx == null;
+            const cx = (spell.aoeOriginSelf || self) ? unit.x : tx;
+            const cy = (spell.aoeOriginSelf || self) ? unit.y : ty;
+            const inside = (t) => isInside(t.x, t.y);
+            let tiles = [];
+            try {
+                if (kind === 'aoe') {
+                    if (spell.hitsWetOnly && typeof _isWetTile === 'function') {
+                        for (let wy = 0; wy < bh(); wy++) for (let wx = 0; wx < bw(); wx++) {
+                            if (_isWetTile(wx, wy)) tiles.push({ x: wx, y: wy });
+                        }
+                    } else tiles = getSpellAoeArea(spell, cx, cy);
+                } else if (kind === 'bomb') {
+                    tiles = getSquareArea(tx, ty, spell.blastRadius || 1);
+                } else if (kind === 'summonWeather') {
+                    tiles = getSquareArea(tx, ty, spell.weatherTiles ? Math.floor(spell.weatherTiles[1] / 2) : 1);
+                } else if (kind === 'cross') {
+                    tiles = getCrossArea(spell, cx, cy);
+                } else if (kind === 'line' || kind === 'linePush') {
+                    /* the beam lane — same walk as _applyLineDamage (minus
+                       breach boring), lit outward from the muzzle */
+                    const dx = Math.sign(tx - unit.x), dy = Math.sign(ty - unit.y);
+                    if (dx !== 0 || dy !== 0) {
+                        const lineRange = spell.range || 4;
+                        for (let i = 1; i <= lineRange; i++) {
+                            const lx = unit.x + dx * i, ly = unit.y + dy * i;
+                            if (!isInside(lx, ly)) break;
+                            if (!isTerrainPassable(lx, ly) && !spell.destroysObstacles) break;
+                            if (typeof _lineLosBlocked === 'function' && _lineLosBlocked(unit, spell, lx, ly)) break;
+                            tiles.push({ x: lx, y: ly });
+                        }
+                        out.stagger = 45;
+                    }
+                } else if (kind === 'dash') {
+                    /* every tile the charge runs through, drawn along the run */
+                    tiles = getLinePoints(unit.x, unit.y, tx, ty);
+                    out.stagger = 70;
+                } else if (kind === 'leapStrike') {
+                    tiles = spell.aoeRadius ? getSquareArea(tx, ty, spell.aoeRadius) : [{ x: tx, y: ty }];
+                } else if (kind === 'barrage') {
+                    if (spell.aoeOriginSelf && !spell.hitsWetOnly) {
+                        tiles = getSquareArea(unit.x, unit.y, spell.aoeRadius != null ? spell.aoeRadius : 2);
+                    } else if (typeof _barrageTargets === 'function') {
+                        tiles = _barrageTargets(unit, spell).map(e => ({ x: e.x, y: e.y }));
+                    }
+                } else if (kind === 'splitBeam') {
+                    const t0 = unitAt(tx, ty);
+                    tiles = [{ x: tx, y: ty }];
+                    if (t0) {
+                        aliveUnitsFor(enemyOf(unit.player)).filter(e => e.id !== t0.id && !e.dead
+                            && Math.abs(e.x - t0.x) + Math.abs(e.y - t0.y) <= (spell.splitRadius || 2))
+                            .sort((a, b) => a.hp - b.hp).slice(0, spell.splitCount || 2)
+                            .forEach(e => tiles.push({ x: e.x, y: e.y }));
+                    }
+                } else if (kind === 'healAll' || kind === 'manaRestoreAll') {
+                    tiles = aliveUnitsFor(unit.player).map(a => ({ x: a.x, y: a.y }));
+                } else if (kind === 'warCry') {
+                    const r = spell.auraRadius || 3;
+                    tiles = aliveUnitsFor(unit.player)
+                        .filter(a => Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= r)
+                        .map(a => ({ x: a.x, y: a.y }));
+                } else if (kind === 'terrainCreate' && spell.orientable) {
+                    const count = (typeof _terrainSpellTileCount === 'function')
+                        ? _terrainSpellTileCount(spell) : (spell.tileCount || 3);
+                    tiles = getOrientedLineTiles(tx, ty, count, state._spellOrientation || 'horizontal');
+                } else if ((kind === 'aoePull' || kind === 'zoneDebuff' || kind === 'zoneHeal'
+                            || kind === 'aoeShield' || kind === 'delayed') && spell.aoeRadius) {
+                    tiles = getSquareArea(cx, cy, spell.aoeRadius);
+                } else if (!self && tx != null && ty != null) {
+                    tiles = [{ x: tx, y: ty }];
+                }
+            } catch (e) { tiles = (!self && tx != null) ? [{ x: tx, y: ty }] : []; }
+            const seen = new Set();
+            /* the caster's own tile stays IN the list when the footprint covers
+               it (self-centered novae): the renderer dedupes it against the
+               actor quad and flashes it with the rest at the burst */
+            out.tiles = tiles.filter(t => t && t.x != null && inside(t)
+                && !seen.has(t.x + ',' + t.y) && seen.add(t.x + ',' + t.y))
+                .map(t => ({ x: t.x, y: t.y }));
+            return out;
+        }
+
         function _stageSpellCast(unit, spell, tx, ty) {
             if (!unit || !spell || !spell.id) return;
             if (state.phase !== 'battle' || _skipVisuals()) return;
@@ -5241,17 +5353,25 @@
             // windup beat so the guest renders the same telegraph (RULE #2).
             const _marksOnly = spell.kind === 'delayed';
 
+            /* Action tile glow: the footprint rides the windup beat (and the
+               key rides all three) so the ground lights on the cast and
+               flashes on the burst — host and guest alike. */
+            const _glow = _spellGlowTiles(unit, spell, _trueSelf ? null : tx, _trueSelf ? null : ty);
+            const _glowKey = 'u' + unit.id;
             _fireStageBeat('windup', spell, {
                 sx: unit.x, sy: unit.y, tx: stx, ty: sty,
-                holdMs: Math.max(240, impactMs), mark: _marksOnly
+                holdMs: Math.max(240, impactMs), mark: _marksOnly,
+                tiles: _glow.tiles, glowKey: _glowKey,
+                glowHostile: _glow.hostile ? 1 : 0, glowStagger: _glow.stagger || 0
             });
 
             const burst = () => {
                 if (rec.fired) return;
                 rec.fired = true;
-                _fireStageBeat('burst', spell, { tx: rec.tx, ty: rec.ty, sx: unit.x, sy: unit.y });
+                _fireStageBeat('burst', spell, { tx: rec.tx, ty: rec.ty, sx: unit.x, sy: unit.y,
+                    glowKey: _glowKey, glowHostile: _glow.hostile ? 1 : 0 });
                 rec.timers.push(window.setTimeout(() => {
-                    _fireStageBeat('finish', spell, { tx: rec.tx, ty: rec.ty });
+                    _fireStageBeat('finish', spell, { tx: rec.tx, ty: rec.ty, glowKey: _glowKey });
                     _stageLive.delete(seq);
                     if (_stageByUnit.get(unit.id) === seq) _stageByUnit.delete(unit.id);
                 }, actionMs(520)));
@@ -42360,6 +42480,14 @@
             }
             let totalDelay = Math.max(impactDelay + actionMs(120), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
 
+            /* Action tile glow: attacker tile white, victim tile yellow →
+               white-hot exactly on the impact frame (relayed sibling). */
+            if (!_skipVisuals() && state.phase === 'battle'
+                && typeof ThreeVFXEffects !== 'undefined' && typeof ThreeVFXEffects.tileGlow === 'function') {
+                try { ThreeVFXEffects.tileGlow(unit.x, unit.y, target.x, target.y,
+                    { impactMs: impactDelay, lingerMs: actionMs(420), hostile: true, key: 'u' + unit.id }); } catch (e) {}
+            }
+
             if (_isMeleeStrike) {
 
                 window.setTimeout(() => {
@@ -45118,6 +45246,14 @@
                 }, _throwDelay + actionMs(120));
 
                 const _baneImpactMs = _throwDelay + actionMs(120) + _throwTravelMs + actionMs(80);
+                /* Action tile glow: thrower white, the landing tile (plus any
+                   grenade splash) yellow → white-hot on the impact frame. */
+                if (!_skipVisuals() && state.phase === 'battle'
+                    && typeof ThreeVFXEffects !== 'undefined' && typeof ThreeVFXEffects.tileGlow === 'function') {
+                    try { ThreeVFXEffects.tileGlow(unit.x, unit.y, target.x, target.y,
+                        { impactMs: _baneImpactMs, lingerMs: actionMs(480), radius: baneRule.aoeRadius || 0,
+                          hostile: true, key: 'u' + unit.id }); } catch (e) {}
+                }
                 window.setTimeout(() => {
                     applyDamageToUnit(target, damage, `${unitDisplayName(unit)} throws ${baneRule.name} at `, {
                         sourceUnit: unit,

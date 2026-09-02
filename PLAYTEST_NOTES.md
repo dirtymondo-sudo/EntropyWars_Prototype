@@ -4,6 +4,56 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## ✨ ACTION TILE GLOW (2026-09-02, LATEST) — three-renderer.js, three-vfx-effects.js, battle.js, state.js, online.js, index.html
+
+The ground lights up under every action: the ACTOR tile (white) plus every
+tile the effect lands on (YELLOW for damage/debuff footprints → white-hot on
+the impact frame; soft WHITE for heals/buffs/terrain shaping). Three beats,
+timed by the SAME clock the staging layer / attack scheduler use:
+- ARM (cast commit): actor snaps on (~180ms), footprint rises (~260ms) then
+  breathes and slowly crescendos toward the impact frame. Beams/dashes draw
+  tile-by-tile outward (`glowStagger` 45/70ms per tile).
+- BURST (impact): footprint flashes to 1.0 in 50ms, settles to ~0.62 over
+  340ms; hostile ground goes incandescent (colour lerps to `_GLOW_COL.hot`).
+  The actor tile releases (drops ~45%) unless it stands inside its own nova.
+- END (finish beat, +520ms after burst): everything eases out over 420ms.
+Plumbing:
+- Renderer primitive: `ThreeRenderer.actionGlowStart(key, spec)` /
+  `actionGlowBurst(key, opts)` / `actionGlowEnd(key, fadeMs)` /
+  `actionGlowKillAll()` (three-renderer.js, ACTION TILE GLOW block after
+  `flashTelegraph`). Draped highlight quads (`_makeHlTile`, frac 0.96, lift
+  0.75, renderOrder 3) with PRIVATE additive `_makeHlMaterial`s (never in
+  `_hlMatCache`, never `_ew_dimmable`); `_updateActionGlow()` runs in
+  `renderFrame` next to `_updatePreviewOverlayPulse()`. Fog: tiles outside
+  `_fogVisibleSet` are dropped at start (no position leaks). Safety
+  auto-end (holdMs + 6s, marks holdMs + 240ms) so a glow can never stick.
+  `clearAllOverlays()` (match reset) kills all glows.
+- Spells: `_spellGlowTiles(unit, spell, tx, ty)` (battle.js, just above
+  `_stageSpellCast`) computes the footprint with the ENGINE helpers
+  (`getSpellAoeArea` / `getCrossArea` / beam walk / `getLinePoints` /
+  `_barrageTargets` / ally lists…) and returns `{tiles, hostile, stagger}`.
+  `_stageSpellCast` puts `tiles`, `glowKey` ('u'+unit.id), `glowHostile`,
+  `glowStagger` on the relayed WINDUP beat and `glowKey` on BURST/FINISH;
+  three-vfx-effects.js `_stageGlow` (called first thing in `_fireStage`,
+  BEFORE the `_stageOK`/tier gates) maps the beats onto the renderer API.
+  Delayed marks (`params.mark`) arm and auto-release — no burst.
+- Attacks / bane throws / delayed detonations: `ThreeVFXEffects.tileGlow(sx,
+  sy, tx, ty, {impactMs, lingerMs, radius, hostile, noCaster, key})` — a
+  primitives-only sibling registered in online.js `_VFXX_ANCHORS`
+  (`tileGlow: [[0,1],[2,3]]`) so the guest replays it; each side schedules
+  its own burst/end timers. Call sites: `doAttack` (right after
+  `totalDelay`), the bane item branch (after `_baneImpactMs`), and
+  state.js `processDelayedSpellDetonations` (after `_impactDelay`,
+  `noCaster: true`).
+- online.js vfx3d relay whitelist gained `glowKey`, `glowHostile`,
+  `glowStagger`, `mark` (the last was documented as relayed but never was).
+- Kill-switch: `window.EW_DISABLE_TILE_GLOW = true`. Tunables: `_GLOW_COL`,
+  `_GLOW_MAX_TILES` (64), the envelope numbers inside `_updateActionGlow`.
+- NOT covered (single-tile fallback or nothing): counter-attacks / echo-band
+  follow-ups nested inside the attack impact callback, combo attacks
+  (`_comboPlayPresentation`), ricochet hops beyond the first target, bomb
+  detonations (`detonateBomb`), turret fire.
+
 ## 🗺 DELTA FORGE — the 8×8 Δ boards are HAND-AUTHORED now (2026-09-01, LATEST) — data.js, map.js, battle.js, match-select.js, sprites.js, three-renderer.js, three-vfx-effects.js, server.js, index.html
 User asked for a redesign of every Δ map: 8×8, FLAT, a nexus zone dead centre
 (Arena), a few obstacles / walls / trees that break line of sight and shape

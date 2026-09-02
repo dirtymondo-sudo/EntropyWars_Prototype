@@ -21154,8 +21154,104 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
+    /* ── ACTION TILE GLOW bridge (2026-09-02) ─────────────────────────
+       The ground lights up under the caster and under every tile the
+       spell lands on, riding the three staging beats so it is timed to
+       the impact frame by construction (ThreeRenderer.actionGlow*):
+         windup → actor tile on + footprint arms (params.tiles from
+                  battle.js _spellGlowTiles; single-target casts fall
+                  back to the clicked tile)
+         burst  → footprint flashes white-hot (retargeted bursts may add
+                  tiles)
+         finish → everything eases back to bare ground
+       Runs BEFORE the staging gates (_stageOK / tier) — a light poke
+       still lights its two tiles. Params ride the relayed beat, so the
+       guest draws the same glow (RULE #2). Kill: EW_DISABLE_TILE_GLOW. */
+    function _glowR() {
+        return (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive
+            && ThreeRenderer.isActive() && typeof ThreeRenderer.actionGlowStart === 'function')
+            ? ThreeRenderer : null;
+    }
+    function _stageGlow(phase, spellId, params) {
+        var R = _glowR(); if (!R) return;
+        if (typeof window !== 'undefined' && window.EW_DISABLE_TILE_GLOW) return;
+        var sx = params.sx != null ? params.sx : params.tx;
+        var sy = params.sy != null ? params.sy : params.ty;
+        var key = params.glowKey || ('c' + sx + ',' + sy);
+        if (phase === 'windup') {
+            if (sx == null || sy == null) return;
+            var tiles = Array.isArray(params.tiles) ? params.tiles : null;
+            if (!tiles) {
+                tiles = (params.tx != null && !(params.tx === sx && params.ty === sy))
+                    ? [{ x: params.tx, y: params.ty }] : [];
+            }
+            var hostile;
+            if (params.glowHostile != null) hostile = !!params.glowHostile;
+            else {
+                var info = stageInfo(spellId);
+                hostile = !(info && info.palette && info.palette.support);
+            }
+            var holdMs = params.holdMs || 700;
+            R.actionGlowStart(key, {
+                caster: { x: sx, y: sy }, tiles: tiles, hostile: hostile,
+                holdMs: holdMs, riseMs: 260,
+                staggerMs: params.glowStagger || 0,
+                /* delayed marks never burst: the light arms, then lets go */
+                autoEndMs: params.mark ? holdMs + 240 : undefined
+            });
+            return;
+        }
+        if (phase === 'burst') {
+            var extra = Array.isArray(params.tiles) ? params.tiles
+                : (params.tx != null ? [{ x: params.tx, y: params.ty }] : null);
+            R.actionGlowBurst(key, { tiles: extra, caster: (sx != null ? { x: sx, y: sy } : null),
+                hostile: params.glowHostile != null ? !!params.glowHostile : undefined });
+            return;
+        }
+        if (phase === 'finish') R.actionGlowEnd(key, 420);
+    }
+
+    /* tileGlow(sx, sy, tx, ty, opts) — the non-spell entry point (basic
+       attacks, bane throws, delayed detonations). Primitive args + a flat
+       opts bag so online.js's sibling wrapper relays it as-is; each side
+       schedules its own burst/end timers.
+         opts.impactMs  ms until the hit lands (burst)      default 600
+         opts.lingerMs  lit afterglow before the fade       default 520
+         opts.radius    Chebyshev blast radius around tx,ty default 0
+         opts.hostile   yellow → white-hot (default true)
+         opts.noCaster  no actor tile (a shell landing from the sky)
+         opts.key       glow key (default 'g' + sx,sy) */
+    function tileGlow(sx, sy, tx, ty, opts) {
+        opts = opts || {};
+        if (_suppressed()) return;
+        var R = _glowR(); if (!R) return;
+        if (typeof window !== 'undefined' && window.EW_DISABLE_TILE_GLOW) return;
+        if (tx == null || ty == null) return;
+        var key = opts.key || ('g' + sx + ',' + sy);
+        var r = Math.max(0, Math.round(opts.radius || 0));
+        var tiles = [];
+        for (var dy = -r; dy <= r; dy++) for (var dx = -r; dx <= r; dx++) tiles.push({ x: tx + dx, y: ty + dy });
+        var impactMs = Math.max(0, opts.impactMs != null ? opts.impactMs : 600);
+        var lingerMs = Math.max(0, opts.lingerMs != null ? opts.lingerMs : 520);
+        var rec = R.actionGlowStart(key, {
+            caster: (opts.noCaster || sx == null || sy == null) ? null : { x: sx, y: sy },
+            tiles: tiles,
+            hostile: opts.hostile != null ? !!opts.hostile : true,
+            holdMs: impactMs, riseMs: Math.min(260, Math.max(80, impactMs * 0.4)),
+            autoEndMs: impactMs + lingerMs + 3000
+        });
+        if (!rec) return;
+        window.setTimeout(function () {
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.actionGlowBurst) ThreeRenderer.actionGlowBurst(key, {});
+        }, impactMs);
+        window.setTimeout(function () {
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.actionGlowEnd) ThreeRenderer.actionGlowEnd(key, 420);
+        }, impactMs + lingerMs);
+    }
+
     function _fireStage(phase, spellId, params) {
         if (!params) return;
+        try { _stageGlow(phase, spellId, params); } catch (e) {}
         if (phase === 'windup') { _stageWindup(spellId, params); return; }
         if (phase === 'burst')  { _stageBurst(spellId, params);  return; }
         if (phase === 'finish') { _stageFinish(spellId, params); return; }
@@ -22751,6 +22847,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         fireBoltDirect: fireBoltDirect,
         fireGeometry: fireGeometry,
         hasMapping: hasMapping,
+
+        /* Action tile glow for non-spell hits (attacks, items, detonations).
+           Relayed host→guest by online.js's sibling wrapper (_VFXX_ANCHORS). */
+        tileGlow: tileGlow,
 
         /* Spell Lab timeline cues — CUE_LIB is the primitive catalog the
            editor's "＋ VFX" picker reads; fireCue routes through fire() so

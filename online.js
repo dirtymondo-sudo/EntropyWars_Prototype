@@ -2126,7 +2126,11 @@
                          /* timeline cue params (Spell Lab 'cue' intent) —
                             without these the guest gets a cue with no fx
                             name and silently drops it */
-                         'fx', 'anchor', 'scale', 'tint', 'durMs'].forEach(function(k) {
+                         'fx', 'anchor', 'scale', 'tint', 'durMs',
+                         /* action tile glow (2026-09-02) — key / colour /
+                            per-tile stagger ride the staging beats so the
+                            guest lights the same ground on the same clock */
+                         'glowKey', 'glowHostile', 'glowStagger', 'mark'].forEach(function(k) {
                             if (params[k] !== undefined) safeParams[k] = params[k];
                         });
                         if (params.hitTiles) {
@@ -2192,6 +2196,10 @@
                    so the generic wrapper serializes them as-is. */
                 sigUFOFleet3D:      [[0, 1]],
                 spawnProbeDescent3D:[[0, 1]],
+                /* action tile glow for attacks / bane throws / detonations
+                   (2026-09-02): (sx, sy, tx, ty, opts) — fog anchors on
+                   both ends; the renderer drops any hidden tile itself. */
+                tileGlow:           [[0, 1], [2, 3]],
             };
             Object.keys(window._VFXX_ANCHORS).forEach(function(fnName) {
                 var _origSib = VFX3D[fnName];
