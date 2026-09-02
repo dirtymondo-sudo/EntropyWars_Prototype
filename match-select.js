@@ -162,7 +162,7 @@ const EW = {
 
 /* ── D.O.O.R. layer (DOOR_DESIGN §3): the match-select screen is a customs
    desk — every map is a SITE FILE (data.js DOOR_TEXT.SITE_FILES: status
-   stamp, jurisdiction, executive summary, field advisory) and the roster's
+   stamp, jurisdiction, executive summary) and the roster's
    POINT OF ENTRY table tells you who crossed there. Everything degrades to
    the plain screen if data.js predates the layer. Plain game words stay:
    MODE / MAP / CONFIG / CONFIRM are not renamed. */
@@ -895,12 +895,8 @@ function MatchSelect() {
               h('div', { className: 'door-file-h' }, '1.  ' + ((DOOR.SITE_FILE_LABELS || {}).summary || 'EXECUTIVE SUMMARY')),
               h('p', { className: 'door-file-p' }, sf.summary)
             ),
-            sf && h('div', { style: { flexShrink: 0, maxWidth: 620 } },
-              h('div', { className: 'door-file-h' }, '2.  ' + ((DOOR.SITE_FILE_LABELS || {}).advisory || 'FIELD ADVISORY')),
-              h('p', { className: 'door-file-p' }, sf.advisory)
-            ),
             crossings.length > 0 && h('div', { style: { flexShrink: 0 } },
-              h('div', { className: 'door-file-h' }, '3.  ' + ((DOOR.SITE_FILE_LABELS || {}).crossings || 'KNOWN CROSSINGS'),
+              h('div', { className: 'door-file-h' }, '2.  ' + ((DOOR.SITE_FILE_LABELS || {}).crossings || 'KNOWN CROSSINGS'),
                 h('b', null, crossings.length + ' ON FILE · point of entry')),
               h('div', { style: { display: 'flex', flexWrap: 'wrap' } },
                 ...crossings.slice(0, 10).map(c => h('span', { key: c.key, className: 'door-file-chip', title: 'Codex: ' + c.label }, c.label)),

@@ -556,12 +556,15 @@ DOSSIER / SEAL YOUR FATE / Codex of Vessels all stay).
   the MapForge id (Δ boards share the parent's file). Fields: `tone`
   (stamp ink admit/deny/void), `status` (the rubber stamp: ACTIVE CROSSING,
   DISPUTED, CONDEMNED, DIPLOMATIC, NON-CANON, QUARANTINED, NATURALIZED…),
-  `juris`, `summary` (1. EXECUTIVE SUMMARY — dossier voice), `advisory`
-  (2. FIELD ADVISORY — the tactical read of the REAL layout from
-  `EW_MAP_META.desc`), `memo` (an interoffice memo about the site). Files
-  for all 30 launch maps + `clash_stage` (Temple) + `prebuilt_custommap` +
-  a `_default` for community/unfiled maps. `SITE_FILE_LABELS` holds the
-  section titles. Helpers (also on `window`): `doorSiteFile(modeId)`,
+  `juris` (short), `summary` (1. EXECUTIVE SUMMARY). **Voice rule (user
+  feedback, same day): the summary is about the REAL place and its lore —
+  loosely educational, ~300 chars, one cheeky line — NOT about the
+  Department.** A first draft in full DOOR-memo voice was rejected as wordy
+  and cheesy; the `advisory` (tactical read) and `memo` fields from that
+  draft were dropped (the Δ boards are flat 8×8s, nothing to advise).
+  Files for all 30 launch maps + `clash_stage` (Temple) +
+  `prebuilt_custommap` + a `_default` for community/unfiled maps.
+  `SITE_FILE_LABELS` holds the section titles. Helpers (also on `window`): `doorSiteFile(modeId)`,
   `doorSiteCrossings(label)` (reverse of POINT_OF_ENTRY — every launch map
   has ≥1 entity on file), `doorSiteCanonDate(modeId)` (stable per-site
   "FIRST CROSSING" year in the canon window). Validated with load-data.js:
@@ -572,8 +575,8 @@ DOSSIER / SEAL YOUR FATE / Codex of Vessels all stay).
   chip on the right (callsign + CLEARANCE, `.door-officer`). The map panel
   is now the **SITE FILE**: kicker with case no (`doorCaseNo(modeId)`) and
   FIRST CROSSING canon date, site name + rotated status stamp, JURISDICTION
-  line, numbered sections 1/2/3 (summary / advisory / KNOWN CROSSINGS chips
-  from the roster's points of entry, 10 shown then "+N redacted"), seal
+  line, numbered sections 1/2 (summary / KNOWN CROSSINGS chips from the
+  roster's points of entry, 10 shown then "+N redacted"), seal
   watermark (`.door-wm`), and the panel is a fixed band
   (`clamp(300px,46%,420px)`) whose dossier column scrolls so the map grid
   keeps its space. Map cards show the site's status in stamp ink instead of
@@ -594,14 +597,14 @@ DOSSIER / SEAL YOUR FATE / Codex of Vessels all stay).
   gets an ON FILE stamp; footer fine print adds "MANIFESTS REMAIN PROPERTY
   OF THE DEPARTMENT".
 - **battle.js** — the loading screen's hint rotation now LEADS with this
-  map's site file (`SITE FILE · <MAP>`: the field advisory, stamped with the
-  site's status/tone) then its memo (`re: <MAP>`), then the shuffled pool;
-  `setHint` honours a `stampTone` (void → grey). Local on both clients.
+  map's site file (`SITE FILE · <MAP>`: the summary, stamped with the
+  site's status/tone), then the shuffled pool; `setHint` honours a
+  `stampTone` (void → grey). Local on both clients.
 - **styles-base.css** — `.door-wm` (generic seal watermark), `.door-file-h`
   / `.door-file-p` / `.door-file-chip` (dossier sections, IBM Plex Mono
   paper voice), `.door-title-stamp` (stamp beside a big serif title),
   `.door-officer`.
-- Cache-bust: `?v=20260902f-cors` → `20260902g-cors`. `npm test` green.
+- Cache-bust: `?v=20260902f-cors` → `20260902h-cors`. `npm test` green.
 
 NOT done yet (next steps, in order): step 3 story track (thresholds →
 clearance, post-match check, case-file screen, memos 1–6 — the

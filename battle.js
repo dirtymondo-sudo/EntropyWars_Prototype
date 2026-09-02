@@ -31709,17 +31709,13 @@
                     const tmp = hintPool[i]; hintPool[i] = hintPool[j]; hintPool[j] = tmp;
                 }
                 /* The SITE FILE for THIS map leads the rotation (data.js
-                   DOOR_TEXT.SITE_FILES — the same dossier the match-select
-                   screen shows): the field advisory first, then the site's
-                   interoffice memo, then the shuffled pool. Local on both
+                   DOOR_TEXT.SITE_FILES — the same summary the match-select
+                   screen shows), then the shuffled pool. Local on both
                    clients (the guest builds its own loading screen). */
                 try {
                     if (typeof window.doorSiteFile === 'function' && typeof activeGameMode !== 'undefined') {
                         const sf = window.doorSiteFile(activeGameMode);
-                        const siteName = _lsMapTitle();
-                        hintPool.unshift(
-                            { t: 'SITE FILE · ' + siteName, q: sf.advisory, s: sf.status + ' · ' + sf.juris, stamp: sf.status, stampTone: sf.tone, cls: 'ls-memo' },
-                            { t: 'INTEROFFICE MEMORANDUM', q: sf.memo, s: 'Customs & Admissions · re: ' + siteName, stamp: 'DENY', cls: 'ls-memo' });
+                        hintPool.unshift({ t: 'SITE FILE · ' + _lsMapTitle(), q: sf.summary, s: sf.status + ' · ' + sf.juris, stamp: sf.status, stampTone: sf.tone, cls: 'ls-memo' });
                     }
                 } catch (_e) {}
                 let hintIdx = 0;
