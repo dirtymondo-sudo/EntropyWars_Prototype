@@ -4,6 +4,109 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## 🗺 DELTA FORGE — the 8×8 Δ boards are HAND-AUTHORED now (2026-09-01, LATEST) — data.js, map.js, battle.js, match-select.js, sprites.js, three-renderer.js, three-vfx-effects.js, server.js, index.html
+User asked for a redesign of every Δ map: 8×8, FLAT, a nexus zone dead centre
+(Arena), a few obstacles / walls / trees that break line of sight and shape
+lanes — Custom Robo Arena "Basic Arena" energy on a chess board — plus a shared
+layered bed under every board, marble → marble_light everywhere, grass_2 for
+all grass. Göbekli Tepe was the reference.
+
+### What changed
+- **`_mfDelta` (the blind 8×8 crop) is no longer used for any launch map.**
+  `data.js` "DELTA FORGE" (right before the EW_MAP_META roster) holds
+  `_mfDeltaNew(cfg)` — a thin kit over `_mfNew` — and `_MF_DELTA_BUILDERS`,
+  ONE builder per launch map (29). `_mfRegisterAll` registers
+  `<id>_delta` from the builder (crop fallback only if a builder is missing).
+- **The hidden 12×12 `_delta_arena` crop is GONE.** Arena plays the same 8×8
+  Δ as every other mode (map.js `_msConfirm` no longer swaps ids,
+  match-select.js no longer relabels, battle.js `_rerollMapForNextMatch` has
+  no arena-delta class, `isDeltaArena` no longer exists on EW_MAP_META).
+- **Kit vocabulary** (heights relative to the baseline surface z = 5):
+  `M.step` +1 ledge (climbable cover — a 1-high bump hides two flat units),
+  `M.block` +2 (a wall for jump-1 units, jump-2 races hop on; a step beside
+  it is a staircase onto it), `M.block(..,3)` +3 (wall for all),
+  `M.wall(x,y,side,{h:2,tex,see,cap})` THIN edge walls (h2 = blocks walking +
+  sight without eating a floor tile; `see:true` = chain-link/picket that
+  blocks walking only), `M.treeL` trees (block both), `M.pillarSym(kind,x,y,
+  maxH)` = 1×1 monument + its 180° twin — **ONLY collision kinds** (tpillar,
+  greekcol, mushroom, mushroom2, obelisk3d, monolith, greytube; dumpster is
+  2×1 so place both ends by hand). `finishDelta` forces `solid:false` on any
+  cosmetic kind, so nothing that looks like cover lies. `M.lake(x,y,tex,depth)`
+  = 1-deep pond (walkable, escapable); depth 2 also floods the dirt_4 stratum
+  via the new per-tile `M.under(x,y,z,key)` override so the cut edge of the
+  board shows a real lake sunk into the bed.
+- **Shared bed**: `MF_DELTA_STRATA = lava, cave_floor, cave_wall, dirt_4,
+  dirt_3` (z0..z4), surface at z5 (`MF_DELTA_BASE_H`). New `_mfNew` option
+  `fillAbove:'surface'` makes raised voxels wear the tile's own surface
+  texture all the way down (a rock_wall_1 block is rock, not dirt with a
+  stone cap). Both are opt-in — the full launch maps are byte-identical.
+- **Protected tiles** (`finishDelta`): spawn rows y0/y7 × x2..5, the egress
+  rows y1/y6 × x2..5, and the nexus 2×2 (x3..4, y3..4) are flattened to the
+  baseline, scrubbed of objects/walls/water, and the centre nexus is placed as
+  ONE `nexus` object at (3,3) AFTER symmetry (map.js `_initNexusFromObjects`
+  stamps the 2×2 nexus terrain in Arena; TDM/Simul/Gauntlet strip the object
+  and the centre stays plain floor). Author rows 0..3 only, then
+  `M.symAll()` (sym180 + middle-line wall twins), THEN monuments.
+- **Spawn apron gotcha**: `finishSpawns` clamps any |Δh|>1 tile within one
+  step of a spawn tile, and map.js `_clearSpawnZoneTiles` BFS-lowers such
+  neighbours again at runtime — so (1,0) (1,1) (6,0) (6,1) can hold trees /
+  walls / monuments / +1 ledges but never a +2 block. `finishDelta` warns.
+- **Textures**: sprites.js `marble` and `marble_2` now point at
+  `marble_light.png` (custom/community maps + spell props included); all
+  MapForge builders / meta / tints / MD dungeon palettes use `marble_light`
+  directly; the three direct `.png` refs in three-renderer.js (totem
+  feathers) and three-vfx-effects.js (spear-prison shaft/tip) were swapped.
+  `grass_3`/`grass_4` in the builders became `grass_2` (Fairy Forest / Flat
+  Lands bases too); `grass_rocky` (Skinwalker) and `grass_dark_fantasy` were
+  left alone — they are distinct looks, not plain grass.
+- **server.js MAP_POOL** rows say 8×8 now (they said 10×10; only `team` is
+  ever read). index.html token → `20260902a-cors`.
+
+### The validator — `delta-maps.test.js` (runs in `npm test`)
+Loads data.js headlessly and asserts, for every `*_delta`: 8×8 + spawn rows
++ the 5-layer bed; protected tiles flat/dry/clear/unwalled; one nexus object
+at (3,3); nothing tall on the spawn apron; strict 180° symmetry of terrain,
+heights, voxel stacks, objects, edge walls AND monument collision stamps;
+solid monuments are collision kinds; a jump-1 ground unit (climb 1, cardinal
+steps, h2 walls block, trees block, stamps honoured) reaches every nexus tile
+and every walkable tile from each spawn row; **no single tile is a choke
+point** (= ≥2 node-disjoint routes spawn→nexus); minimum cover. Stadium's
+team-coloured end zones (carpet vs carpet_2, identical rules) are the one
+allowed asymmetry. `node delta-maps.test.js --ascii` prints every board:
+`S` spawn, `:` egress, `N/n` nexus, `#` +2, `^` +1, `v/~/≈` dip/water/lava,
+`T` tree, `P/p` solid monument (2+ / 1 high), `|`/`‾` walls, `¦`/`·` see-through.
+
+### Board roster (what each Δ is)
+Shasta pines+boulder+terrace over a lake · Stonehenge sarsen diamond (monoliths)
++ ruin ledges · Giza sand causeway, mastaba steps stairing onto a tomb block,
+obelisks · Nuketown street, crates, dumpsters, picket fence · Heaven gold
+processional between marble daises + columns · Hell lava pools, obsidian
+blocks, basalt step, spike · Cyberpunk concrete blocks, dumpsters, chain-link ·
+Camelot crenellated curtain wall, towers, plank drawbridge · Stadium chalk
+lines, team end zones, bleacher steps, crates · Atlantis edge canal, columns,
+low wall · Babel brick terraces + obelisks · Olympus stylobates, columns,
+screen wall · Mars mesas, crater rims, dust bowl · Area 51 airstrip, chain-link
+compound, crate, specimen tank · Antarctica open-sea corner, iceberg blocks
+(igloo tex), ice_1 floe · Skinwalker ranch fence, hay bales, mesa, dead trees ·
+Hollow Earth stalagmite walls, mushrooms, crystal ledge, pool · Fairy Forest
+trees, mushroom, toadstool platform, spring · Moon boulders, crater+rim,
+monolith · Technoticlan canal, ziggurat steps, block · Agartha cave-rock blocks,
+mushrooms, crystal ledge, glowing river · Vatican colonnade, basilica steps,
+obelisk, fountain · Bohemian Grove redwoods, creek, log, altar stone · Göbekli
++1 ring wall with gates, T-pillars, trench · D.U.M.B. walled holding cell with
+its specimen, server banks, bulkhead · CERN beamline, tunnel arcs, terminals,
+screen · Backrooms wallpaper partitions, pillars, flooded corridor, monolith ·
+North Pole present depots, pines, frozen pond · Flat Lands faint circle, one
+dead tree, dips, mounds.
+
+### Not done / to watch
+- No browser playtest was run (RULE #1c). Visual things to eyeball first:
+  the 5-layer cut edge, `fillAbove` block sides, depth-2 lakes at the board
+  edge, igloo/ice_1 on Antarctica, tinted grass_2 on Fairy Forest / Bohemian
+  Grove / Flat Lands / Skinwalker.
+- Arena towers auto-place at (4,1)/(4,6) (row inward from each spawn zone,
+  centre column) — those tiles are protected egress tiles, so always free.
+
 ## 📏 STAT REWORK LANDED (2026-08-29, LATEST) — data/battle/state/map/ai/ui/hud/party-builder/three-renderer/styles-base
 
 STAT_REWORK.md phases 1–3 are implemented (see its STATUS header for the

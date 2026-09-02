@@ -2253,11 +2253,12 @@ const TERRAIN_SPRITES = {
     dirt_2:           [`${_T}/dirt_2.png`],
     dirt_3:           [`${_T}/dirt_3.png`],
     dirt_4:           [`${_T}/dirt_4.png`],
-    marble:           [`${_T}/marble.png`],
-    marble_2:         [`${_T}/marble_2.png`],
-    /* Pale polished marble — texture-only key (not a placeable terrain);
-       used by the 3D prop builders (thrones, statues, basilicas) which
-       looked muddy wearing plain marble.png. */
+    /* 2026-09-01 map redesign: marble.png / marble_2.png looked muddy on the
+       board, so EVERY marble key now wears the pale polished marble_light.png
+       (saved custom/community maps and spell props included). The old files
+       stay in the bucket but nothing references them. */
+    marble:           [`${_T}/marble_light.png`],
+    marble_2:         [`${_T}/marble_light.png`],
     marble_light:     [`${_T}/marble_light.png`],
     cobblestone:      [`${_T}/cobblestone.png`],
     cobblestone_2:    [`${_T}/cobblestone_2.png`],

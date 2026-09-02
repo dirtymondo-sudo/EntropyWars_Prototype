@@ -7253,7 +7253,7 @@ const ThreeRenderer = (function () {
         dream.position.y = ts * 0.62; g.add(dream);
         /* hanging feathers */
         for (var fe = -1; fe <= 1; fe++) {
-            var feather = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.02, ts * 0.12, 5), _deployMat('marble_2.png', 0xe8e2f2));
+            var feather = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.02, ts * 0.12, 5), _deployMat('marble_light.png', 0xe8e2f2));
             feather.position.set(fe * ts * 0.1, ts * 0.36, 0);
             feather.rotation.x = Math.PI;
             g.add(feather);

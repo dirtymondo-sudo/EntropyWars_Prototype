@@ -30468,8 +30468,7 @@
            through the lobby, AI training/balance rotates its own pool,
            campaign/dungeon/editor boards are authored, and Clash owns a
            single fixed stage. Rotates within the current map class — full
-           launch maps among full maps, ranked Δ crops among Δ crops (Arena
-           keeps its 12×12 Δ siblings). */
+           launch maps among full maps, 8×8 Δ boards among Δ boards. */
         function _rerollMapForNextMatch() {
             if (typeof isOnlineMatch === 'function' && isOnlineMatch()) return;
             if (state.isCampaign || state._mdRun) return;
@@ -30480,12 +30479,10 @@
             if (!/^prebuilt_/.test(cur) || cur === 'prebuilt_custommap') return;
             if (typeof EW_MAP_META === 'undefined' || !EW_MAP_META.length) return;
 
-            const isArenaDelta = /_delta_arena$/.test(cur);
-            const wantDelta = /_delta(_arena)?$/.test(cur);
+            const wantDelta = /_delta$/.test(cur);
             const pool = [];
             for (const m of EW_MAP_META) {
                 if (!!m.isDelta !== wantDelta) continue;
-                if (m.isDelta && !!m.isDeltaArena !== isArenaDelta) continue;
                 if (!GAME_MODES[m.id] || m.id === cur) continue;
                 pool.push(m.id);
             }

@@ -15260,7 +15260,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         collar.position.y = len * 0.15;
         group.add(collar);
         var tipMat = new THREE.MeshBasicMaterial({
-            map: _sigTerrainTex(opts.tipTex || 'marble.png', 1, 1),
+            map: _sigTerrainTex(opts.tipTex || 'marble_light.png', 1, 1),
             color: new THREE.Color(opts.tipTint != null ? opts.tipTint : 0xffffff),
             transparent: true, opacity: 0, depthWrite: true,
         });
@@ -18850,7 +18850,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigSpearPrison3D(tx, ty, {
                 count: 1, pitch: 1.4, lenTiles: 3.1,
                 color: 0x99e6ff, runeColor: 0xbbeeff, sphereTiles: 0.7,
-                shaftTex: 'marble.png', shaftTint: 0xcfeeff, tipTint: 0xffffff,
+                shaftTex: 'marble_light.png', shaftTint: 0xcfeeff, tipTint: 0xffffff,
                 glowColor: 0xbbf0ff, sparkSprite: 'spark-blue',
                 holdMs: 500, finisher: false,
             });

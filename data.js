@@ -355,7 +355,7 @@ window.EW_TERRAIN_COLORS = window.EW_TERRAIN_COLORS || {
     // ── Built / urban ──
     bricks_1:'rgba(150,100,70,0.46)', bricks_2:'rgba(140,90,65,0.46)', castle_wall:'rgba(130,95,75,0.55)', wood_planks:'rgba(160,120,70,0.45)',
     wood:'rgba(140,100,60,0.42)', urban_wall:'rgba(100,95,100,0.5)', urban_street:'rgba(130,125,120,0.42)',
-    marble:'rgba(226,222,214,0.46)', marble_2:'rgba(210,206,198,0.46)', cobblestone:'rgba(120,116,110,0.46)',
+    marble:'rgba(226,222,214,0.46)', marble_2:'rgba(210,206,198,0.46)', marble_light:'rgba(236,234,228,0.46)', cobblestone:'rgba(120,116,110,0.46)',
     cobblestone_2:'rgba(112,108,102,0.46)', checkerboard:'rgba(180,180,186,0.42)', wallpaper:'rgba(172,150,172,0.42)',
     carpet:'rgba(150,60,60,0.46)', carpet_2:'rgba(60,90,150,0.46)', carpet_3:'rgba(60,140,90,0.46)',
     carpet_4:'rgba(140,120,60,0.46)', drywall:'rgba(200,195,185,0.42)', drywall_2:'rgba(195,190,180,0.42)',
@@ -10016,6 +10016,13 @@ function _mfNew(cfg) {
         walls: {},              // "x,y,N|W" → edge-wall record (runtime state.edgeWalls shape)
         stairs: [],             // {x,y,sd} engine 1×1×1 staircases (sd = LOW-side direction)
         spawnsList: null,
+        /* 2026-09-01 (DELTA FORGE): per-tile stratum overrides "x,y" → {z: tid}
+           (a lake that floods a bed layer), and fillAbove = 'surface' makes
+           every voxel from the baseline UP wear the tile's own surface terrain
+           (a rock_wall_1 block is rock all the way down instead of dirt with
+           a stone cap). Both are opt-in; the launch maps are unchanged. */
+        underrides: {},
+        fillAbove: cfg.fillAbove || null,
     };
     for (let y = 0; y < H; y++) {
         M.ter.push(new Array(W).fill(MF_TID[cfg.base] || MF_TID.grass_2));
@@ -10068,6 +10075,11 @@ function _mfNew(cfg) {
         if (!M.in(x, y)) return;
         M.lintels.push({ x, y, z, t: MF_TID[key] || MF_TID.bricks_1 });
         M.hollow = true;
+    };
+    M.under = (x, y, z, key) => {                    // override ONE bed layer of a tile
+        if (!M.in(x, y)) return;
+        const k = x + ',' + y;
+        (M.underrides[k] = M.underrides[k] || {})[z] = MF_TID[key] || MF_TID.dirt;
     };
     /* ── THIN edge walls + roof slabs (the map editor's Walls & Roofs tech) ──
        M.wall(x,y,side,opts): a thin modular wall standing ON the tile edge —
@@ -10162,6 +10174,12 @@ function _mfNew(cfg) {
         M.lintels.slice().forEach(L => {
             if (L.y < half) M.lintels.push({ x: W - 1 - L.x, y: H - 1 - L.y, z: L.z, t: L.t });
         });
+        Object.keys(M.underrides).forEach(k => {
+            const [x, y] = k.split(',').map(Number);
+            if (y >= half) return;
+            const k2 = (W - 1 - x) + ',' + (H - 1 - y);
+            if (!M.underrides[k2]) M.underrides[k2] = Object.assign({}, M.underrides[k]);
+        });
         M.roofs.slice().forEach(R => {
             if (R.y < half) M.roofs.push({ x: W - 1 - R.x, y: H - 1 - R.y, z: R.z, t: R.t });
         });
@@ -10238,9 +10256,12 @@ function _mfNew(cfg) {
                 const stack = [];
                 if (!holeSet.has(x + ',' + y)) {
                     const top = Math.max(0, M.hgt[y][x]);
+                    const ov = M.underrides[x + ',' + y] || null;
                     for (let z = 0; z <= top; z++) {
                         let t;
                         if (z === top) t = M.ter[y][x];
+                        else if (ov && ov[z] != null) t = ov[z];
+                        else if (M.fillAbove === 'surface' && z >= baseH) t = M.ter[y][x];
                         else if (z < M.strata.length && z < top) t = MF_TID[M.strata[z]] || MF_TID.cave_floor;
                         else t = MF_TID[M.underTop] || MF_TID.dirt;
                         stack.push({ z, tid: t });
@@ -10392,19 +10413,19 @@ _MF_BUILDERS.prebuilt_heaven = function () {
     const M = _mfNew({
         name: 'Heaven', w: 20, h: 20, base: 'cloud_2', baseH: 3, seed: 7001,
         strata: ['cloud_thick', 'cloud_thick', 'cloud'], underTop: 'cloud_thick',
-        tints: { gold: '#ffe9a0', marble: '#fdfdf6' },
+        tints: { gold: '#ffe9a0', marble_light: '#fdfdf6' },
     });
     // void rifts sculpt the island silhouette (authored top half, mirrored)
     [[0, 0, 3, 1], [0, 2, 1, 3], [16, 0, 19, 0], [18, 1, 19, 2], [8, 4, 9, 4], [0, 8, 0, 9], [14, 6, 15, 7]]
         .forEach(r => { for (let y = r[1]; y <= r[3]; y++) for (let x = r[0]; x <= r[2]; x++) M.hole(x, y); });
     // marble causeway ring + golden gate plaza at center
-    M.ring(9.5, 9.5, 3.2, 4.4, 'marble');
+    M.ring(9.5, 9.5, 3.2, 4.4, 'marble_light');
     M.disc(9.5, 9.5, 2.2, 'gold');
-    M.rect(9, 7, 10, 12, 'marble');                     // N–S processional
-    M.rect(7, 9, 12, 10, 'marble');                     // W–E processional
+    M.rect(9, 7, 10, 12, 'marble_light');                     // N–S processional
+    M.rect(7, 9, 12, 10, 'marble_light');                     // W–E processional
     // elevated daises (rangeBonus celestial ruins) — mirrored flanks
     M.rect(3, 6, 4, 7, 'sky_ruin', 4); M.rect(15, 12, 16, 13, 'sky_ruin', 4);
-    M.rect(2, 12, 3, 13, 'marble', 4); M.rect(16, 6, 17, 7, 'marble', 4);
+    M.rect(2, 12, 3, 13, 'marble_light', 4); M.rect(16, 6, 17, 7, 'marble_light', 4);
     // healing pools by each approach
     M.rect(6, 3, 7, 4, 'healing_spring'); M.rect(12, 15, 13, 16, 'healing_spring');
     // thick-cloud slow banks as soft cover lanes
@@ -10509,7 +10530,7 @@ _MF_BUILDERS.prebuilt_stonehenge = function () {
         M.t(x, y, 'rock_wall_1'); M.h(x, y, 6);
     }
     // barrow mounds (climbable vantage) + druid springs — mirrored
-    M.disc(2.5, 2.5, 1.4, 'grass_3', 4);
+    M.disc(2.5, 2.5, 1.4, 'grass_2', 4);
     M.rect(12, 2, 13, 3, 'healing_spring');
     // fallen trilithon rubble (low platforms) + scattered stones
     M.rect(11, 11, 12, 11, 'ruins');
@@ -10562,10 +10583,10 @@ _MF_BUILDERS.prebuilt_shasta = function () {
     const M = _mfNew({
         name: 'Mount Shasta', w: 20, h: 20, base: 'grass_2', baseH: 3, seed: 2201,
         strata: ['lava', 'cave_floor', 'dirt'], underTop: 'rocks_1',
-        tints: { mountain_top: '#e6f2ff', mountain_2: '#c8d4e0', grass_2: '#9fce85', grass_3: '#b4dc9a' },
+        tints: { mountain_top: '#e6f2ff', mountain_2: '#c8d4e0', grass_2: '#9fce85' },
     });
     // the mountain: concentric terraces up to a snowy crown (all +1 steps)
-    M.disc(9.5, 9.5, 5.2, 'grass_3', 3);
+    M.disc(9.5, 9.5, 5.2, 'grass_2', 3);
     M.disc(9.5, 9.5, 4.0, 'rocks_1', 4);
     M.disc(9.5, 9.5, 2.9, 'mountain_2', 5);
     M.disc(9.5, 9.5, 1.6, 'mountain_top', 6);           // snow crown: rangeBonus perch
@@ -10724,17 +10745,17 @@ _MF_BUILDERS.prebuilt_stadium = function () {
         name: 'Football Stadium', w: 16, h: 28, base: 'grass_2', baseH: 3, seed: 7707,
         strata: ['lava', 'cave_floor', 'dirt'], underTop: 'urban_wall',
         tints: {
-            grass_2: '#5ec46a', marble: '#f4f4f4', carpet_2: '#5a80ff', carpet: '#ff6a55',
+            grass_2: '#5ec46a', marble_light: '#f4f4f4', carpet_2: '#5a80ff', carpet: '#ff6a55',
             gold: '#ffd34a', urban_wall: '#9aa0ac',
         },
     });
     // end zones (team colors) + goal lines
     M.rect(2, 2, 13, 3, 'carpet_2'); M.rect(2, 24, 13, 25, 'carpet');
     // chalk yard lines every 4 rows across the field
-    for (let y = 4; y <= 24; y += 4) M.rect(2, y, 13, y, 'marble');
+    for (let y = 4; y <= 24; y += 4) M.rect(2, y, 13, y, 'marble_light');
     // midfield sigil + hash marks
     M.rect(7, 13, 8, 14, 'gold');
-    for (let y = 5; y <= 23; y += 2) { M.t(5, y, 'marble'); M.t(10, y, 'marble'); }
+    for (let y = 5; y <= 23; y += 2) { M.t(5, y, 'marble_light'); M.t(10, y, 'marble_light'); }
     // bleacher tiers flanking the field (climbable +1 steps up to the rim)
     M.rect(0, 2, 0, 25, 'urban_wall', 5);
     M.rect(1, 2, 1, 25, 'urban_wall', 4);
@@ -10762,8 +10783,8 @@ _MF_BUILDERS.prebuilt_stadium = function () {
 _MF_BUILDERS.prebuilt_atlantis = function () {
     const M = _mfNew({
         name: 'Atlantis', w: 24, h: 24, base: 'water', baseH: 3, seed: 1101,
-        strata: ['lava', 'cave_floor', 'rocks_1'], underTop: 'marble_2',
-        tints: { marble: '#bfe8ef', marble_2: '#a8d4de', water: '#49c2d8', gold: '#ffe9a0' },
+        strata: ['lava', 'cave_floor', 'rocks_1'], underTop: 'marble_light',
+        tints: { marble_light: '#bfe8ef', water: '#49c2d8', gold: '#ffe9a0' },
     });
     // deep-water moat ring around the city heart (drowning: a soft barrier)
     M.ring(11.5, 11.5, 5.0, 6.4, 'deep_water', 2);
@@ -10771,19 +10792,19 @@ _MF_BUILDERS.prebuilt_atlantis = function () {
     M.rect(11, 5, 12, 7, 'bridge', 3); M.rect(11, 16, 12, 18, 'bridge', 3);
     M.rect(5, 11, 7, 12, 'bridge', 3); M.rect(16, 11, 18, 12, 'bridge', 3);
     // the city heart: marble plaza + gilded core + crystal spire dais
-    M.disc(11.5, 11.5, 4.6, 'marble');
+    M.disc(11.5, 11.5, 4.6, 'marble_light');
     M.disc(11.5, 11.5, 2.4, 'gold');
     M.rect(11, 11, 12, 12, 'crystal', 4);               // spire base: climbable, MP-rich
     // outer wards: plaza islands rising from the shallows (hop routes)
-    [[3, 3, 5, 5], [18, 3, 20, 5], [2, 8, 4, 9], [19, 14, 21, 15]].forEach(r => M.rect(r[0], r[1], r[2], r[3], 'marble'));
-    [[8, 2, 9, 3], [14, 20, 15, 21]].forEach(r => M.rect(r[0], r[1], r[2], r[3], 'marble_2', 4));
+    [[3, 3, 5, 5], [18, 3, 20, 5], [2, 8, 4, 9], [19, 14, 21, 15]].forEach(r => M.rect(r[0], r[1], r[2], r[3], 'marble_light'));
+    [[8, 2, 9, 3], [14, 20, 15, 21]].forEach(r => M.rect(r[0], r[1], r[2], r[3], 'marble_light', 4));
     // sunken quarters: ruins under the water (defBonus wading fights)
     M.rect(2, 14, 5, 16, 'ruins', 2); M.rect(18, 7, 21, 9, 'ruins', 2);
     // gardens of the deep: healing pools
     M.t(6, 4, 'healing_spring'); M.t(17, 19, 'healing_spring');
     // dry sand landings by the spawns
     M.rect(8, 22, 15, 23, 'dirt_3'); M.rect(8, 0, 15, 1, 'dirt_3');
-    M.rect(11, 1, 12, 4, 'marble');
+    M.rect(11, 1, 12, 4, 'marble_light');
     M.sym180();
     M.mon('crystal', 11, 11, 3, 4, { solid: false });
     M.mon('rings', 11, 11, 2, 2, { solid: false });
@@ -10833,19 +10854,19 @@ _MF_BUILDERS.prebuilt_babel = function () {
 _MF_BUILDERS.prebuilt_olympus = function () {
     const M = _mfNew({
         name: 'Mount Olympus', w: 24, h: 24, base: 'cloud_2', baseH: 3, seed: 1201,
-        strata: ['cloud_thick', 'cloud_thick', 'cloud'], underTop: 'marble_2',
-        tints: { marble: '#f8f8f2', gold: '#ffe27a', cloud_2: '#e8f0ff', sky_ruin: '#d8e2f4' },
+        strata: ['cloud_thick', 'cloud_thick', 'cloud'], underTop: 'marble_light',
+        tints: { marble_light: '#f8f8f2', gold: '#ffe27a', cloud_2: '#e8f0ff', sky_ruin: '#d8e2f4' },
     });
     // void rifts shape the holy mountain's silhouette
     [[0, 0, 2, 1], [21, 0, 23, 2], [0, 6, 0, 8], [11, 3, 12, 3], [5, 9, 5, 10]]
         .forEach(r => { for (let y = r[1]; y <= r[3]; y++) for (let x = r[0]; x <= r[2]; x++) M.hole(x, y); });
     // the acropolis: grand marble terraces rising to the sacred flame
-    M.disc(11.5, 11.5, 6.5, 'marble');
-    M.disc(11.5, 11.5, 4.4, 'marble', 4);
+    M.disc(11.5, 11.5, 6.5, 'marble_light');
+    M.disc(11.5, 11.5, 4.4, 'marble_light', 4);
     M.disc(11.5, 11.5, 2.4, 'gold', 5);
     M.rect(11, 11, 12, 12, 'gold', 5);
     // processional stairways N/S cut the terraces (+1 steps)
-    M.rect(11, 4, 12, 6, 'marble', 3); M.rect(11, 7, 12, 8, 'marble', 4);
+    M.rect(11, 4, 12, 6, 'marble_light', 3); M.rect(11, 7, 12, 8, 'marble_light', 4);
     // storm-charged flank lanes (risky, half-heal)
     M.rect(2, 10, 3, 13, 'storm'); M.rect(20, 10, 21, 13, 'storm');
     // celestial-ruin perches (rangeBonus) on the mid flanks
@@ -10943,10 +10964,10 @@ _MF_BUILDERS.prebuilt_area51 = function () {
    channels with iceberg hops, slide-gap chokepoints, frozen colossus. */
 _MF_BUILDERS.prebuilt_antarctica = function () {
     const M = _mfNew({
-        name: 'Antarctica', w: 24, h: 24, base: 'marble_2', baseH: 3, seed: 1501,
+        name: 'Antarctica', w: 24, h: 24, base: 'marble_light', baseH: 3, seed: 1501,
         strata: ['lava', 'cave_floor', 'rocks_1'], underTop: 'ice',
         tints: {
-            marble_2: '#e4f2fc', ice: '#bfe0ff', mountain_2: '#9fb8cc', deep_water: '#1d4e78',
+            marble_light: '#e4f2fc', ice: '#bfe0ff', mountain_2: '#9fb8cc', deep_water: '#1d4e78',
             rocks_1: '#8aa4b8', cliff: '#7f98ac',
         },
     });
@@ -10960,7 +10981,7 @@ _MF_BUILDERS.prebuilt_antarctica = function () {
     M.rect(2, 2, 4, 3, 'mountain_2', 5);
     M.rect(7, 6, 8, 6, 'cliff', 5);
     // snow trenches (sunken cover lanes)
-    M.rect(5, 8, 10, 9, 'marble_2', 2);
+    M.rect(5, 8, 10, 9, 'marble_light', 2);
     // research huts? no — the Old Ones' relics
     M.rect(2, 8, 3, 9, 'ruins');
     M.sym180();
@@ -10971,7 +10992,7 @@ _MF_BUILDERS.prebuilt_antarctica = function () {
     M.monSym('whalebones', 6, 4, 3, 2, { rot: 40, solid: false });
     M.monSym('monolith', 8, 3, 1, 3, {});
     M.spawnEdges('s', 8);
-    M.finishSpawns('marble_2');
+    M.finishSpawns('marble_light');
     return M;
 };
 
@@ -11026,7 +11047,7 @@ _MF_BUILDERS.prebuilt_hollow_earth = function () {
     [[2, 2], [5, 1], [15, 2], [17, 4], [3, 6]].forEach(p => M.tree(p[0], p[1]));
     [[8, 3], [12, 1]].forEach(p => M.tree(p[0], p[1], 'tree_3'));
     M.rect(0, 4, 3, 5, 'water');
-    M.disc(15, 6, 1.4, 'grass_3', 4);
+    M.disc(15, 6, 1.4, 'grass_2', 4);
     M.rect(6, 5, 7, 6, 'dark_woods');
     // the crossing: darkness veil row with two gate lanes
     M.rect(0, 9, 19, 10, 'fog_wall');
@@ -11036,7 +11057,7 @@ _MF_BUILDERS.prebuilt_hollow_earth = function () {
     for (let y = 10; y < 20; y++) for (let x = 0; x < 20; x++) {
         const k = M.tk(x, y);
         if (k === 'grass_2' || k === 'grass_rocky') M.t(x, y, 'cave_floor');
-        else if (k === 'grass_3') M.t(x, y, 'crystal');
+        else if (k === 'grass_2') M.t(x, y, 'crystal');
         else if (k === 'water') M.t(x, y, 'water');
         else if (k === 'dark_woods') M.t(x, y, 'mushroom');
         else if (k === 'dirt_2') M.t(x, y, 'dirt_2');
@@ -11062,11 +11083,11 @@ _MF_BUILDERS.prebuilt_hollow_earth = function () {
    that eat arrows, root paths, healing springs, crystal toadstools. */
 _MF_BUILDERS.prebuilt_fairy_forest = function () {
     const M = _mfNew({
-        name: 'Fairy Forest', w: 20, h: 20, base: 'grass_3', baseH: 3, seed: 1801,
+        name: 'Fairy Forest', w: 20, h: 20, base: 'grass_2', baseH: 3, seed: 1801,
         strata: ['lava', 'cave_floor', 'dirt'], underTop: 'dirt',
         tints: {
             purple_grass: '#8affc8', mushroom: '#ff9ad8', leaves: '#7ae08a',
-            grass_3: '#8fd47f', crystal: '#c8a8ff', healing_spring: '#8affd8',
+            grass_2: '#8fd47f', crystal: '#c8a8ff', healing_spring: '#8affd8',
         },
     });
     // winding fae paths (the three lanes)
@@ -11079,7 +11100,7 @@ _MF_BUILDERS.prebuilt_fairy_forest = function () {
     M.rect(9, 0, 10, 19, 'dirt_2');
     // the fairy ring: a mushroom hedge circle with an open heart (auto-nexus)
     M.ring(9.5, 9.5, 2.6, 3.4, 'mushroom');
-    M.rect(9, 6, 10, 6, 'grass_3'); M.rect(9, 13, 10, 13, 'grass_3');
+    M.rect(9, 6, 10, 6, 'grass_2'); M.rect(9, 13, 10, 13, 'grass_2');
     // dense woods between the lanes (real blocking cover)
     [[6, 2], [7, 4], [12, 3], [13, 1], [6, 16], [12, 17], [7, 8], [12, 11]].forEach(p => M.tree(p[0], p[1]));
     [[6, 6], [13, 5], [2, 2], [17, 3]].forEach(p => M.tree(p[0], p[1], 'tree_2'));
@@ -11096,9 +11117,9 @@ _MF_BUILDERS.prebuilt_fairy_forest = function () {
     M.monSym('mushroom2', 13, 15, 1, 1, {});                // squat cap — clamber onto it
     M.mon('fairyring', 9, 9, 2, 2, { solid: false });       // dance at your peril
     M.monSym('island', 1, 16, 2, 2, { solid: false });   // fae islet drifting over the wood
-    M.scatter(14, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'grass_3') M.obj(x, y, 'grass_tuft'); });
+    M.scatter(14, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'grass_2') M.obj(x, y, 'grass_tuft'); });
     M.spawnEdges('s', 6);
-    M.finishSpawns('grass_3');
+    M.finishSpawns('grass_2');
     return M;
 };
 
@@ -11180,7 +11201,7 @@ _MF_BUILDERS.prebuilt_agartha = function () {
         name: 'Agartha', w: 24, h: 24, base: 'cave_floor', baseH: 3, seed: 2101,
         strata: ['lava', 'lava', 'cave_floor'], underTop: 'rocks_5',
         tints: {
-            cave_floor: '#a89468', marble: '#bfe8c8', water: '#4ae0c8',
+            cave_floor: '#a89468', marble_light: '#bfe8c8', water: '#4ae0c8',
             crystal: '#8affd8', gold: '#ffe28a', mushroom: '#b8e07a',
         },
     });
@@ -11190,12 +11211,12 @@ _MF_BUILDERS.prebuilt_agartha = function () {
         if (x < 24) M.rect(x, y, x, y + 1, 'water', 2);
     }
     // the terraced city: three jade tiers to the sun-shaft plaza
-    M.disc(11.5, 11.5, 6.2, 'marble', 4);
-    M.disc(11.5, 11.5, 4.2, 'marble', 5);
+    M.disc(11.5, 11.5, 6.2, 'marble_light', 4);
+    M.disc(11.5, 11.5, 4.2, 'marble_light', 5);
     M.disc(11.5, 11.5, 2.2, 'gold', 6);
     // grand staircut approaches at the cardinals (+1 steps all the way up)
-    M.rect(11, 4, 12, 5, 'marble', 3); M.rect(11, 6, 12, 7, 'marble', 4); M.rect(11, 8, 12, 9, 'marble', 5);
-    M.rect(4, 11, 5, 12, 'marble', 3); M.rect(6, 11, 7, 12, 'marble', 4); M.rect(8, 11, 9, 12, 'marble', 5);
+    M.rect(11, 4, 12, 5, 'marble_light', 3); M.rect(11, 6, 12, 7, 'marble_light', 4); M.rect(11, 8, 12, 9, 'marble_light', 5);
+    M.rect(4, 11, 5, 12, 'marble_light', 3); M.rect(6, 11, 7, 12, 'marble_light', 4); M.rect(8, 11, 9, 12, 'marble_light', 5);
     // mushroom groves (arrow-eating flora) + crystal fields
     M.rect(3, 16, 5, 18, 'mushroom');
     M.rect(18, 3, 20, 5, 'crystal');
@@ -11217,16 +11238,16 @@ _MF_BUILDERS.prebuilt_agartha = function () {
 _MF_BUILDERS.prebuilt_vatican = function () {
     const M = _mfNew({
         name: 'Vatican City', w: 20, h: 20, base: 'cobblestone', baseH: 3, seed: 2201,
-        strata: ['lava', 'cave_floor', 'rocks_1'], underTop: 'marble_2',
-        tints: { cobblestone: '#c8beab', marble: '#f6f3ea', gold: '#ffe9a8', sanctuary: '#ffe8c0' },
+        strata: ['lava', 'cave_floor', 'rocks_1'], underTop: 'marble_light',
+        tints: { cobblestone: '#c8beab', marble_light: '#f6f3ea', gold: '#ffe9a8', sanctuary: '#ffe8c0' },
     });
     // the piazza: marble ellipse inscribed in the square
-    M.disc(9.5, 9.5, 6.4, 'marble');
+    M.disc(9.5, 9.5, 6.4, 'marble_light');
     // Bernini colonnades: raised marble arcs (hard cover) crowned with columns
-    M.ring(9.5, 9.5, 5.4, 6.2, 'marble_2', 5);
+    M.ring(9.5, 9.5, 5.4, 6.2, 'marble_light', 5);
     // four grand gaps open the piazza at the diagonals + cardinals
-    [[9, 3, 10, 4], [9, 15, 10, 16], [3, 9, 4, 10], [15, 9, 16, 10]].forEach(r => M.rect(r[0], r[1], r[2], r[3], 'marble', 3));
-    M.rect(2, 2, 4, 4, 'marble', 3); M.rect(15, 15, 17, 17, 'marble', 3);
+    [[9, 3, 10, 4], [9, 15, 10, 16], [3, 9, 4, 10], [15, 9, 16, 10]].forEach(r => M.rect(r[0], r[1], r[2], r[3], 'marble_light', 3));
+    M.rect(2, 2, 4, 4, 'marble_light', 3); M.rect(15, 15, 17, 17, 'marble_light', 3);
     // basilica steps: gilded dais pair (mirrored) with sanctuary ground
     M.rect(8, 6, 11, 7, 'gold', 4);
     M.rect(8, 5, 11, 5, 'sanctuary', 4);
@@ -11268,7 +11289,7 @@ _MF_BUILDERS.prebuilt_bohemian_grove = function () {
     M.disc(12.5, 12.5, 2.6, 'dirt');
     M.rect(12, 12, 13, 13, 'scorched');
     // the lakeside amphitheater (mirrored twin clearing)
-    M.disc(6.5, 6.5, 1.8, 'grass_3');
+    M.disc(6.5, 6.5, 1.8, 'grass_2');
     M.sym180();
     M.mon('effigy', 13, 14, 2, 1, { rot: 45, solid: false });
     M.obj(11, 12, 'torch'); M.obj(14, 13, 'torch'); M.obj(12, 14, 'torch');
@@ -11423,9 +11444,9 @@ _MF_BUILDERS.prebuilt_backrooms = function () {
    a frozen slide-pond over the objective, aurora overhead. */
 _MF_BUILDERS.prebuilt_northpole = function () {
     const M = _mfNew({
-        name: 'North Pole', w: 16, h: 16, base: 'marble_2', baseH: 3, seed: 2801,
+        name: 'North Pole', w: 16, h: 16, base: 'marble_light', baseH: 3, seed: 2801,
         strata: ['lava', 'cave_floor', 'rocks_1'], underTop: 'ice',
-        tints: { marble_2: '#e8f4ff', ice: '#c8e8ff', wood_planks: '#a86848', crystal: '#bfe8ff' },
+        tints: { marble_light: '#e8f4ff', ice: '#c8e8ff', wood_planks: '#a86848', crystal: '#bfe8ff' },
     });
     // the frozen pond: an ice slide-arena right over the center objective
     M.disc(7.5, 7.5, 2.8, 'ice');
@@ -11437,7 +11458,7 @@ _MF_BUILDERS.prebuilt_northpole = function () {
     [[8, 1], [10, 2], [13, 1], [1, 8], [2, 11]].forEach(p => M.tree(p[0], p[1], 'tree_2'));
     // ice sculptures + snow drifts
     M.rect(12, 6, 12, 7, 'crystal', 4);
-    M.disc(13.5, 12.5, 1.2, 'marble_2', 4);
+    M.disc(13.5, 12.5, 1.2, 'marble_light', 4);
     M.sym180();
     M.buildingSym(2, 3, 'building_6');                    // workshop + mirrored stable
     M.monSym('lightpillar', 7, 2, 1, 4, { solid: false }); // aurora beacons
@@ -11449,7 +11470,7 @@ _MF_BUILDERS.prebuilt_northpole = function () {
     M.monSym('crystal', 12, 6, 2, 2, { solid: false });
     M.mon('flag', 7, 7, 1, 2, { solid: false });          // the actual Pole
     M.spawnEdges('s', 6);
-    M.finishSpawns('marble_2');
+    M.finishSpawns('marble_light');
     return M;
 };
 
@@ -11457,9 +11478,9 @@ _MF_BUILDERS.prebuilt_northpole = function () {
    tree. A ring you can barely see. Nothing else. You are being watched. */
 _MF_BUILDERS.prebuilt_flatlands = function () {
     const M = _mfNew({
-        name: 'Flat Lands', w: 16, h: 16, base: 'grass_4', baseH: 3, seed: 2901,
+        name: 'Flat Lands', w: 16, h: 16, base: 'grass_2', baseH: 3, seed: 2901,
         strata: ['lava', 'cave_floor', 'dirt'], underTop: 'dirt',
-        tints: { grass_4: '#b8c8a8', purple_grass: '#a8b898', dirt_2: '#b0a890' },
+        tints: { grass_2: '#b8c8a8', purple_grass: '#a8b898', dirt_2: '#b0a890' },
     });
     // the circle (was it always there?)
     M.ring(7.5, 7.5, 4.4, 4.9, 'purple_grass');
@@ -11470,10 +11491,559 @@ _MF_BUILDERS.prebuilt_flatlands = function () {
     M.obj(4, 2, 'tree_5');
     M.sym180();
     M.rock(7, 7, 'rocks_1');
-    M.scatter(5, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'grass_4') M.obj(x, y, 'grass_tuft'); });
+    M.scatter(5, (x, y) => { if (M.hget(x, y) === 3 && M.tk(x, y) === 'grass_2') M.obj(x, y, 'grass_tuft'); });
     M.spawnEdges('s', 6);
-    M.finishSpawns('grass_4');
+    M.finishSpawns('grass_2');
     return M;
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DELTA FORGE — hand-authored 8×8 Δ boards (2026-09-01 delta redesign)
+   ─────────────────────────────────────────────────────────────────────────────
+   Every launch map's Δ used to be a blind 8×8 crop of its full map. They are
+   now AUTHORED, Custom-Robo-Arena style: a flat 8×8 chess board with a few
+   obstacles that break line of sight and shape lanes — and nothing else.
+   House rules (validated headlessly — see PLAYTEST_NOTES "DELTA FORGE"):
+     • 8×8, 4v4. P2 spawns on row 0 (x 2..5), P1 on row 7. The spawn rows,
+       the egress rows behind them (rows 1 / 6, x 2..5) and the 2×2 nexus
+       zone at dead centre (x 3..4, y 3..4) are ALWAYS flat at the shared
+       baseline, clear of objects, and never walled off. Arena stamps the
+       centre nexus from the authored `nexus` object; TDM & co. strip it.
+     • 180°-rotation symmetric (terrain, heights, objects, walls, monuments).
+     • At least two node-disjoint walkable routes from each spawn row to the
+       nexus for a jump-1 ground unit.
+     • Vocabulary (heights relative to the baseline surface z = MF_DELTA_BASE_H):
+         M.step(x,y,tex)      +1 ledge — climbable cover. A 1-high bump hides
+                              two flat-ground units; standing on it sees over.
+         M.block(x,y,tex)     +2 solid block — a wall for jump-1 units (most),
+                              jump-2 races hop onto it. Blocks sight. A step
+                              beside it is a staircase onto it.
+         M.block(x,y,tex,3)   +3 — a wall for everyone.
+         M.wall(x,y,side,o)   THIN edge wall (h 2 = blocks walking + sight and
+                              costs no floor tile; see:true = chain-link that
+                              blocks walking only; h 1 = hop-over parapet).
+         M.tree(x,y,kind)     tree object — blocks walking + sight.
+         M.pillarSym(kind,…)  ONLY collision monuments are allowed here
+                              (tpillar, greekcol, mushroom, mushroom2, obelisk3d,
+                              monolith, greytube, dumpster): they stamp real
+                              voxels, so what looks like cover IS cover.
+         M.lake(x,y,tex,d)    1-deep pond (walkable, escapable); depth 2 also
+                              floods the dirt_4 stratum so the board's cut edge
+                              shows a real lake sunk into the bed.
+     • Shared bed under every board: lava → cave floor → cave wall → dirt →
+       dirt, then the themed surface at z5. Raised blocks wear their own
+       surface texture all the way down (cfg.fillAbove = 'surface').
+     • Author the TOP HALF (rows 0..3) only, then M.symAll(); monuments go
+       AFTER symAll via pillarSym / mon pairs; M.finishDelta() seats spawns,
+       scrubs the protected tiles and places the centre nexus.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const MF_DELTA_S = 8;
+const MF_DELTA_BASE_H = 5;
+const MF_DELTA_STRATA = ['lava', 'cave_floor', 'cave_wall', 'dirt_4', 'dirt_3'];
+/* monument kinds with a real collision stamp (map.js _MON_COLLISION / _MON_GRID) */
+const MF_DELTA_SOLID_MONS = new Set(['tpillar', 'greekcol', 'mushroom', 'mushroom2', 'obelisk3d', 'monolith', 'greytube', 'dumpster', 'obelisk', 'colossus', 'greek']);
+
+function _mfDeltaNew(cfg) {
+    const S = MF_DELTA_S, B = MF_DELTA_BASE_H;
+    const M = _mfNew({
+        name: cfg.name, w: S, h: S, base: cfg.base || 'grass_2', baseH: B, seed: cfg.seed || 8008,
+        strata: MF_DELTA_STRATA, underTop: 'dirt_3', fillAbove: 'surface', tints: cfg.tints || null,
+    });
+    M.B = B;
+    M.deltaDesc = cfg.desc || '';
+    M.block = (x, y, key, h) => { if (key) M.t(x, y, key); M.h(x, y, B + (h == null ? 2 : h)); };
+    M.step = (x, y, key) => { if (key) M.t(x, y, key); M.h(x, y, B + 1); };
+    M.lake = (x, y, key, depth) => {
+        key = key || 'water';
+        M.t(x, y, key); M.h(x, y, B - 1);
+        if ((depth || 1) >= 2) M.under(x, y, B - 2, key);
+    };
+    M.treeL = (x, y, kind, leaf) => M.obj(x, y, kind || 'tree', leaf ? { leaf } : null);
+    M.wrun = (x0, y0, x1, y1, side, o) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) M.wall(x, y, side, o); };
+    /* strict 180° symmetry: sym180 mirrors the authored top half; the edge
+       walls sitting ON the middle line (N edges at y = 4) get their twins here */
+    M.symAll = () => {
+        M.sym180();
+        Object.keys(M.walls).forEach(k => {
+            const p = k.split(','), x = +p[0], y = +p[1], side = p[2];
+            const mk = (side === 'N') ? ((S - 1 - x) + ',' + (S - y) + ',N') : ((S - x) + ',' + (S - 1 - y) + ',W');
+            if (!M.walls[mk]) M.walls[mk] = Object.assign({}, M.walls[k]);
+        });
+    };
+    /* a 1×1 solid monument + its 180° twin (even-footprint kinds such as the
+       dumpster do not rotate-mirror onto the same tiles — place both by hand) */
+    M.pillarSym = (kind, x, y, maxH, o) => M.monSym(kind, x, y, 1, maxH || 3, o);
+    M.finishDelta = (padKey) => {
+        padKey = padKey || M.cfg.base || 'grass_2';
+        const sp1 = [], sp2 = [];
+        for (let i = 0; i < 4; i++) { sp1.push({ x: 2 + i, y: S - 1 }); sp2.push({ x: 2 + i, y: 0 }); }
+        M.spawns(sp1, sp2);
+        /* protected tiles: spawn rows, egress rows, nexus zone → flat baseline,
+           dry passable pad, no objects, no walls on any of their edges */
+        const HAZ = new Set([MF_TID.lava, MF_TID.deep_water, MF_TID.poison_bog, MF_TID.poison, MF_TID.cloud_gap, MF_TID.chasm, MF_TID.water].filter(Boolean));
+        const prot = [];
+        for (let x = 2; x <= 5; x++) prot.push([x, 0], [x, 1], [x, S - 2], [x, S - 1]);
+        prot.push([3, 3], [4, 3], [3, 4], [4, 4]);
+        prot.forEach(([x, y]) => {
+            if (M.hgt[y][x] !== B) { console.warn('[DeltaForge] ' + M.cfg.name + ': protected tile ' + x + ',' + y + ' was not flat — flattened'); M.h(x, y, B); }
+            if (HAZ.has(M.ter[y][x])) M.t(x, y, padKey);
+            delete M.underrides[x + ',' + y];
+            M.clearObj(x, y);
+            ['N', 'S', 'E', 'W'].forEach(side => { delete M.walls[M.wallKey(x, y, side)]; });
+        });
+        /* the spawn apron: finishSpawns clamps any |Δh| > 1 tile within one
+           step of a spawn tile — warn so nobody authors a +2 block there */
+        [sp1, sp2].forEach(list => list.forEach(p => {
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                const x = p.x + dx, y = p.y + dy;
+                if (M.in(x, y) && Math.abs(M.hgt[y][x] - B) > 1) console.warn('[DeltaForge] ' + M.cfg.name + ': ' + x + ',' + y + ' is too tall beside a spawn — clamped');
+            }
+        }));
+        M.finishSpawns(padKey);
+        /* the centre nexus zone: ONE authored object at the zone's NW anchor,
+           placed after symmetry so it is never doubled. Arena stamps the 2×2
+           nexus terrain from it (map.js _initNexusFromObjects); every mode
+           without a nexus strips it and the centre stays plain floor. */
+        M.objs[3][3] = M.objs[3][3].filter(e => e.oid !== MF_OID.nexus);
+        M.obj(3, 3, 'nexus');
+        /* cosmetic monument kinds have no collision — never let one pretend */
+        M.mons.forEach(m => { if (!MF_DELTA_SOLID_MONS.has(m.kind)) m.solid = false; });
+        const entry = M.finish();
+        entry.isDelta = true;
+        entry.base = M.cfg.base || 'grass_2';
+        entry.deltaDesc = M.deltaDesc;
+        return entry;
+    };
+    return M;
+}
+
+/* ═══════════════════════ THE Δ BOARDS — one per launch map ═════════════════
+   Coordinates: x 0..7 west→east, y 0..7 north→south. P2 row 0, P1 row 7,
+   nexus x3..4 × y3..4. Author rows 0..3 only, then symAll(). Tiles (1,0),
+   (1,1), (6,0), (6,1) sit on the spawn apron: trees / walls / monuments / +1
+   are fine there, +2 blocks are not (finishSpawns would clamp them). */
+const _MF_DELTA_BUILDERS = {};
+
+/* Tier 1 ───────────────────────────────────────────────────────────────── */
+
+/* MOUNT SHASTA — timberline meadow: pines, one granite boulder, a grassy
+   terrace above a cold lake shore. */
+_MF_DELTA_BUILDERS.prebuilt_shasta = function () {
+    const M = _mfDeltaNew({ name: 'Mount Shasta', base: 'grass_2', seed: 8101,
+        tints: { rocks_1: '#c0c4c8', water: '#5aa8d8' },
+        desc: 'timberline meadow — pines, a granite boulder, a grassy terrace over the cold lake shore' });
+    M.treeL(0, 0, 'tree_2'); M.treeL(6, 1, 'tree_3'); M.treeL(5, 3, 'tree_2');
+    M.block(2, 2, 'rocks_1');                              // granite boulder
+    M.step(0, 2, 'grass_2'); M.step(1, 2, 'grass_2');      // terrace
+    M.lake(0, 3, 'water', 2); M.lake(1, 3, 'water', 1);    // the lake shore
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* STONEHENGE — four sarsen stones in a diamond around the altar, corner
+   sentinels, ruined ledges on the flanks, a dirt processional. */
+_MF_DELTA_BUILDERS.prebuilt_stonehenge = function () {
+    const M = _mfDeltaNew({ name: 'Stonehenge', base: 'grass_2', seed: 8102,
+        tints: { ruins: '#b8b0a0', dirt: '#a08868' },
+        desc: 'the sarsen diamond — four standing stones around the altar, ruined ledges on the flanks' });
+    M.rect(3, 1, 4, 2, 'dirt');                            // processional
+    M.step(1, 3, 'ruins'); M.step(6, 3, 'ruins');          // fallen lintels
+    M.symAll();
+    M.pillarSym('monolith', 2, 2, 3); M.pillarSym('monolith', 5, 2, 3);   // the diamond
+    M.pillarSym('monolith', 0, 1, 3);                                     // sentinels
+    return M.finishDelta();
+};
+
+/* PYRAMIDS OF GIZA — sand, a sandstone causeway, mastaba ledges that stair
+   up onto a sandstone block, twin obelisks. */
+_MF_DELTA_BUILDERS.prebuilt_giza = function () {
+    const M = _mfDeltaNew({ name: 'Pyramids of Giza', base: 'dirt_2', seed: 8103,
+        tints: { dirt_2: '#e0c48c', bricks_1: '#dcb880' },
+        desc: 'the necropolis floor — sandstone causeway, mastaba ledges, a tomb block and twin obelisks' });
+    M.rect(3, 1, 4, 2, 'bricks_1');                        // causeway
+    M.step(2, 2, 'bricks_1'); M.step(5, 2, 'bricks_1');    // mastaba ledges
+    M.block(1, 2, 'bricks_1');                             // tomb block (climb it from the ledge)
+    M.step(6, 3, 'bricks_1');
+    M.symAll();
+    M.pillarSym('obelisk3d', 0, 1, 3); M.pillarSym('obelisk3d', 7, 2, 3);
+    return M.finishDelta();
+};
+
+/* NUKETOWN — the street down the middle, wooden crates, dumpsters you can
+   climb, a picket fence you can shoot over but not walk through. */
+_MF_DELTA_BUILDERS.prebuilt_nuketown = function () {
+    const M = _mfDeltaNew({ name: 'Nuketown', base: 'grass_2', seed: 8104,
+        tints: { urban_street: '#b8b4ac', wood_planks: '#c8a068' },
+        desc: 'suburbia — the street, wooden crates, climbable dumpsters and a picket fence you shoot over' });
+    M.rect(3, 1, 4, 2, 'urban_street');                    // the street
+    M.block(0, 1, 'wood_planks'); M.block(2, 3, 'wood_planks');   // crates
+    M.wall(0, 3, 'N', { h: 2, tex: 'wood_planks', see: true }); // picket fence
+    M.wall(1, 3, 'N', { h: 2, tex: 'wood_planks', see: true });
+    M.treeL(7, 1, 'tree_5');
+    M.symAll();
+    M.mon('dumpster', 5, 2, 2, 1, { rot: 0 });             // (5,2)-(6,2)
+    M.mon('dumpster', 1, 5, 2, 1, { rot: 180 });           // (1,5)-(2,5)
+    return M.finishDelta();
+};
+
+/* HEAVEN — the gate plaza: a golden processional, the nexus sunk between
+   two marble daises, pillars on the wings. */
+_MF_DELTA_BUILDERS.prebuilt_heaven = function () {
+    const M = _mfDeltaNew({ name: 'Heaven', base: 'cloud_2', seed: 8105,
+        tints: { gold: '#ffe9a0', marble_light: '#fdfdf6', cloud_2: '#eef2ff' },
+        desc: 'the gate plaza — a golden processional between marble daises, pillars on the wings' });
+    M.rect(3, 1, 4, 2, 'gold');                            // processional
+    M.step(2, 3, 'marble_light'); M.step(5, 3, 'marble_light');   // daises flanking the nexus
+    M.step(0, 1, 'marble_light'); M.step(1, 1, 'marble_light');
+    M.symAll();
+    M.pillarSym('greekcol', 1, 2, 2); M.pillarSym('greekcol', 6, 2, 2);
+    return M.finishDelta();
+};
+
+/* HELL — scorched rock, lava pools sunk into the bed, obsidian blocks, a
+   basalt step in front of the altar, a spike. */
+_MF_DELTA_BUILDERS.prebuilt_hell = function () {
+    const M = _mfDeltaNew({ name: 'Hell', base: 'scorched', seed: 8106,
+        tints: { scorched: '#e08060', rocks_3: '#b06a50', obsidian: '#584058' },
+        desc: 'the pit floor — lava pools, obsidian blocks, a basalt step before the altar' });
+    M.lake(0, 0, 'lava', 2); M.lake(7, 2, 'lava', 2);      // lava pools
+    M.block(1, 2, 'obsidian'); M.block(6, 3, 'obsidian');
+    M.step(3, 2, 'rocks_3');                               // basalt step in the lane
+    M.symAll();
+    M.pillarSym('monolith', 5, 2, 3);                      // obsidian spike
+    return M.finishDelta();
+};
+
+/* CYBERPUNK CITY — alleys: concrete blocks, dumpsters, chain-link you can
+   shoot through, side lanes of asphalt. */
+_MF_DELTA_BUILDERS.prebuilt_cyberpunk = function () {
+    const M = _mfDeltaNew({ name: 'Cyberpunk City', base: 'urban_street', seed: 8107,
+        tints: { urban_street: '#8a86a0', road: '#6a6a80', urban_wall: '#9a94b0', metal_3: '#8aa0b8' },
+        desc: 'back alleys — concrete blocks, dumpsters, chain-link you shoot through' });
+    M.rect(0, 1, 0, 3, 'road');                            // side alley
+    M.block(1, 2, 'urban_wall'); M.block(6, 2, 'urban_wall');
+    M.wall(1, 3, 'N', { h: 2, tex: 'metal_3', see: true }); // chain-link
+    M.wall(2, 3, 'N', { h: 2, tex: 'metal_3', see: true });
+    M.symAll();
+    M.mon('dumpster', 5, 3, 2, 1, { rot: 0 });             // (5,3)-(6,3)
+    M.mon('dumpster', 1, 4, 2, 1, { rot: 180 });           // (1,4)-(2,4)
+    return M.finishDelta();
+};
+
+/* CAMELOT — the courtyard: a crenellated curtain wall to go around, corner
+   towers, a drawbridge of planks, stair terraces. */
+_MF_DELTA_BUILDERS.prebuilt_camelot = function () {
+    const M = _mfDeltaNew({ name: 'Camelot', base: 'bricks_2', seed: 8108,
+        tints: { bricks_2: '#c8b8a8', wood_planks: '#a88458' },
+        desc: 'the courtyard — a crenellated curtain wall, corner towers and a plank drawbridge' });
+    M.rect(3, 1, 4, 2, 'wood_planks');                     // drawbridge
+    M.wrun(0, 3, 2, 3, 'N', { h: 2, tex: 'bricks_2', cap: 'crenel' });   // curtain wall
+    M.block(0, 2, 'bricks_2'); M.block(7, 1, 'bricks_2');  // towers
+    M.step(5, 2, 'bricks_2'); M.step(6, 2, 'bricks_2');    // terrace
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* FOOTBALL STADIUM — chalk lines, team end zones, sideline bleacher steps
+   and equipment crates. */
+_MF_DELTA_BUILDERS.prebuilt_stadium = function () {
+    const M = _mfDeltaNew({ name: 'Football Stadium', base: 'grass_2', seed: 8109,
+        tints: { grass_2: '#5ec46a', marble_light: '#f4f4f4', carpet_2: '#5a80ff', carpet: '#ff6a55', metal_2: '#b8bcc4' },
+        desc: 'the gridiron — chalk lines, end zones, bleacher steps and equipment crates' });
+    M.rect(0, 2, 7, 2, 'marble_light');                    // chalk line
+    M.rect(2, 0, 5, 0, 'carpet');                          // north end zone
+    M.step(0, 1, 'metal_2'); M.step(0, 2, 'metal_2'); M.step(0, 3, 'metal_2');   // bleachers
+    M.block(1, 2, 'metal_2'); M.block(5, 3, 'metal_2');    // equipment crates
+    M.symAll();
+    M.rect(2, 7, 5, 7, 'carpet_2');                        // south end zone (other team colour)
+    return M.finishDelta();
+};
+
+/* Tier 2 ───────────────────────────────────────────────────────────────── */
+
+/* ATLANTIS — a flooded canal along one edge, marble pillars, a low
+   marble wall under the east pillar. */
+_MF_DELTA_BUILDERS.prebuilt_atlantis = function () {
+    const M = _mfDeltaNew({ name: 'Atlantis', base: 'marble_light', seed: 8201,
+        tints: { marble_light: '#c8ecf2', water: '#49c2d8', gold: '#ffe9a0' },
+        desc: 'the sunken plaza — a canal along the edge, marble pillars, a low wall to hold' });
+    M.lake(0, 1, 'water', 2); M.lake(0, 2, 'water', 2); M.lake(0, 3, 'water', 2); M.lake(1, 3, 'water', 1);
+    M.step(6, 1, 'gold');
+    M.wall(5, 3, 'N', { h: 2, tex: 'marble_light' });
+    M.symAll();
+    M.pillarSym('greekcol', 2, 2, 2); M.pillarSym('greekcol', 5, 2, 2);
+    return M.finishDelta();
+};
+
+/* TOWER OF BABEL — brick terraces climbing toward the centre, obelisks,
+   one unfinished block. */
+_MF_DELTA_BUILDERS.prebuilt_babel = function () {
+    const M = _mfDeltaNew({ name: 'Tower of Babel', base: 'bricks_1', seed: 8202,
+        tints: { bricks_1: '#d8a878' },
+        desc: 'the ziggurat base — brick terraces beside the centre, obelisks, one unfinished block' });
+    M.step(2, 2, 'bricks_1'); M.step(2, 3, 'bricks_1'); M.step(5, 2, 'bricks_1');
+    M.block(0, 2, 'bricks_1');
+    M.symAll();
+    M.pillarSym('obelisk3d', 1, 1, 3); M.pillarSym('obelisk3d', 6, 2, 3);
+    return M.finishDelta();
+};
+
+/* MOUNT OLYMPUS — temple stylobates beside the centre, a golden
+   processional, columns and a marble screen wall. */
+_MF_DELTA_BUILDERS.prebuilt_olympus = function () {
+    const M = _mfDeltaNew({ name: 'Mount Olympus', base: 'marble_light', seed: 8203,
+        tints: { marble_light: '#f8f8f2', gold: '#ffe27a' },
+        desc: 'the acropolis floor — temple stylobates, a golden processional, columns and a screen wall' });
+    M.rect(3, 1, 4, 2, 'gold');
+    M.step(5, 3, 'marble_light'); M.step(6, 3, 'marble_light');
+    M.block(0, 3, 'marble_light');
+    M.wall(6, 3, 'N', { h: 2, tex: 'marble_light' });
+    M.symAll();
+    M.pillarSym('greekcol', 1, 1, 2); M.pillarSym('greekcol', 5, 2, 2);
+    return M.finishDelta();
+};
+
+/* MARS — red regolith: mesas, a western crater rim, a dust bowl in the lane. */
+_MF_DELTA_BUILDERS.prebuilt_mars = function () {
+    const M = _mfDeltaNew({ name: 'Mars', base: 'moon_2', seed: 8204,
+        tints: { moon_2: '#c88a5a', mars: '#c07a58', mars_2: '#a86048' },
+        desc: 'red regolith — mesas, a crater rim, a dust bowl sunk in the lane' });
+    M.block(1, 2, 'mars_2'); M.block(6, 3, 'mars_2');      // mesas
+    M.step(0, 1, 'moon_2'); M.step(0, 2, 'moon_2'); M.step(5, 2, 'moon_2');   // crater rims
+    M.lake(3, 2, 'mars', 1);                               // dust bowl
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* AREA 51 — the airstrip, a fenced compound in one corner, hangar crates,
+   a specimen tank beside the centre. */
+_MF_DELTA_BUILDERS.prebuilt_area51 = function () {
+    const M = _mfDeltaNew({ name: 'Area 51', base: 'dirt_4', seed: 8205,
+        tints: { dirt_4: '#c8b088', road: '#a8a49a', aluminium: '#cfd8e0', metal_2: '#9fb2bd' },
+        desc: 'the tarmac — an airstrip, a chain-link compound, hangar crates and a specimen tank' });
+    M.rect(3, 1, 4, 2, 'road');                            // airstrip
+    M.wall(0, 2, 'N', { h: 2, tex: 'aluminium', see: true }); M.wall(1, 2, 'N', { h: 2, tex: 'aluminium', see: true });
+    M.wall(2, 2, 'W', { h: 2, tex: 'aluminium', see: true }); M.wall(2, 3, 'W', { h: 2, tex: 'aluminium', see: true });
+    M.block(6, 2, 'metal_2');                              // hangar crate
+    M.symAll();
+    M.pillarSym('greytube', 5, 3, 3);                      // specimen tank
+    return M.finishDelta();
+};
+
+/* ANTARCTICA — pack ice: a corner of open sea sunk into the bed, iceberg
+   blocks, a floe ledge. */
+_MF_DELTA_BUILDERS.prebuilt_antarctica = function () {
+    const M = _mfDeltaNew({ name: 'Antarctica', base: 'marble_light', seed: 8206,
+        tints: { marble_light: '#e4f2fc', igloo: '#dcecf8', ice_1: '#bfe0ff', water: '#3a78b8' },
+        desc: 'pack ice — open sea in one corner, iceberg blocks and a floe ledge' });
+    M.lake(0, 0, 'water', 2); M.lake(1, 0, 'water', 2); M.lake(0, 1, 'water', 2);
+    M.block(2, 2, 'igloo'); M.block(6, 3, 'igloo');        // icebergs
+    M.step(0, 2, 'ice_1'); M.step(0, 3, 'ice_1');          // floe ledge
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* SKINWALKER RANCH — dry pasture, a ranch fence, hay bales, the mesa
+   corner, dead trees. */
+_MF_DELTA_BUILDERS.prebuilt_skinwalker = function () {
+    const M = _mfDeltaNew({ name: 'Skinwalker Ranch', base: 'grass_2', seed: 8207,
+        tints: { grass_2: '#b8b878', dirt: '#b89468', wood: '#a88860', rocks_1: '#b09878' },
+        desc: 'the pasture — a ranch fence, hay bales, a mesa corner and dead trees' });
+    M.rect(3, 1, 4, 2, 'dirt');                            // ranch road
+    M.wrun(5, 3, 7, 3, 'N', { h: 2, tex: 'wood_planks', see: true });   // ranch fence
+    M.block(1, 2, 'wood'); M.block(6, 2, 'wood');          // hay bales
+    M.step(0, 2, 'rocks_1'); M.step(0, 3, 'rocks_1');      // mesa
+    M.treeL(7, 0, 'tree_5'); M.treeL(2, 3, 'tree_6');
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* HOLLOW EARTH — cave floor under the inner sun: stalagmite walls, glowing
+   mushrooms, a crystal ledge, a lit pool. */
+_MF_DELTA_BUILDERS.prebuilt_hollow_earth = function () {
+    const M = _mfDeltaNew({ name: 'Hollow Earth', base: 'cave_floor', seed: 8208,
+        tints: { cave_floor: '#8a7a9c', cave_wall: '#6a5a7c', crystal: '#9affe4', water: '#5ae0d0' },
+        desc: 'the inner-earth floor — stalagmite walls, glowing mushrooms, a crystal ledge, a lit pool' });
+    M.block(0, 1, 'cave_wall'); M.block(1, 2, 'cave_wall');
+    M.step(2, 2, 'crystal');
+    M.lake(7, 2, 'water', 2);
+    M.symAll();
+    M.pillarSym('mushroom', 5, 2, 2); M.pillarSym('mushroom', 6, 3, 2);
+    return M.finishDelta();
+};
+
+/* FAIRY FOREST — glowing woodland: trees, a giant mushroom, a toadstool
+   platform, a spring. */
+_MF_DELTA_BUILDERS.prebuilt_fairy_forest = function () {
+    const M = _mfDeltaNew({ name: 'Fairy Forest', base: 'grass_2', seed: 8209,
+        tints: { grass_2: '#9fd48a', water: '#7ae0ff' },
+        desc: 'glowing woodland — trees, a giant mushroom, a toadstool platform and a spring' });
+    M.treeL(0, 0, 'tree', 'leaves_2'); M.treeL(1, 1, 'tree_2', 'leaves_3');
+    M.treeL(6, 2, 'tree_3', 'leaves_4'); M.treeL(5, 3, 'tree', 'leaves_5');
+    M.lake(1, 3, 'water', 1);
+    M.obj(0, 2, 'grass_tuft'); M.obj(7, 1, 'grass_tuft');
+    M.symAll();
+    M.pillarSym('mushroom', 2, 2, 2); M.pillarSym('mushroom2', 7, 2, 1);
+    return M.finishDelta();
+};
+
+/* MOON — regolith: boulders, a crater with its rim, the black monolith. */
+_MF_DELTA_BUILDERS.prebuilt_moon = function () {
+    const M = _mfDeltaNew({ name: 'Moon', base: 'moon', seed: 8210,
+        tints: { moon: '#c8ccd8', moon_2: '#b0b4c4', moon_3: '#989cb0' },
+        desc: 'the sparse regolith — boulders, a crater and its rim, the black monolith' });
+    M.block(1, 2, 'moon_3'); M.block(6, 2, 'moon_3');      // boulders
+    M.lake(0, 3, 'moon_2', 1);                             // crater
+    M.step(0, 2, 'moon_2'); M.step(1, 3, 'moon_2');        // rim
+    M.symAll();
+    M.pillarSym('monolith', 5, 2, 3);
+    return M.finishDelta();
+};
+
+/* Tier 3 ───────────────────────────────────────────────────────────────── */
+
+/* TECHNOTICLAN — neon-Aztec: a glowing canal, ziggurat steps, a stone
+   block, torches. */
+_MF_DELTA_BUILDERS.prebuilt_technoticlan = function () {
+    const M = _mfDeltaNew({ name: 'Technoticlan', base: 'cobblestone', seed: 8301,
+        tints: { cobblestone: '#8fb0b8', bricks_3: '#7aa0a8', water: '#3fe0d8' },
+        desc: 'the canal quarter — a glowing canal, ziggurat steps, a stone block, torches' });
+    M.lake(0, 2, 'water', 2); M.lake(1, 2, 'water', 2); M.lake(0, 3, 'water', 2);
+    M.step(5, 2, 'bricks_3'); M.step(6, 2, 'bricks_3'); M.step(5, 3, 'bricks_3');
+    M.block(2, 2, 'bricks_3');
+    M.obj(7, 1, 'torch', { leaf: 'floor' });
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* AGARTHA — jade floor: cave-rock blocks, mushrooms, a crystal ledge, the
+   glowing river along one edge. */
+_MF_DELTA_BUILDERS.prebuilt_agartha = function () {
+    const M = _mfDeltaNew({ name: 'Agartha', base: 'marble_light', seed: 8302,
+        tints: { marble_light: '#bfe8c8', rocks_dark_fantasy: '#8a9a88', crystal: '#9affe4', water: '#4ae0c8' },
+        desc: 'the jade terrace — cave-rock blocks, mushrooms, a crystal ledge, the glowing river' });
+    M.block(0, 2, 'rocks_dark_fantasy'); M.block(6, 3, 'rocks_dark_fantasy');
+    M.step(2, 3, 'crystal');
+    M.lake(7, 1, 'water', 2); M.lake(7, 2, 'water', 2);
+    M.symAll();
+    M.pillarSym('mushroom', 1, 2, 2); M.pillarSym('mushroom2', 5, 2, 1);
+    return M.finishDelta();
+};
+
+/* VATICAN CITY — the piazza: a colonnade, basilica steps, an obelisk, a
+   fountain. */
+_MF_DELTA_BUILDERS.prebuilt_vatican = function () {
+    const M = _mfDeltaNew({ name: 'Vatican City', base: 'cobblestone', seed: 8303,
+        tints: { cobblestone: '#c8beab', marble_light: '#f6f3ea', water: '#8ac8e8' },
+        desc: 'the piazza — a colonnade, basilica steps, an obelisk and a fountain' });
+    M.step(5, 2, 'marble_light'); M.step(6, 2, 'marble_light'); M.step(5, 3, 'marble_light');   // basilica steps
+    M.lake(0, 3, 'water', 1);                              // fountain
+    M.symAll();
+    M.pillarSym('greekcol', 1, 2, 2); M.pillarSym('greekcol', 2, 2, 2);   // colonnade
+    M.pillarSym('obelisk3d', 6, 1, 3);
+    return M.finishDelta();
+};
+
+/* BOHEMIAN GROVE — redwoods around the clearing, a creek, a felled log,
+   the owl altar stone, torches. */
+_MF_DELTA_BUILDERS.prebuilt_bohemian_grove = function () {
+    const M = _mfDeltaNew({ name: 'Bohemian Grove', base: 'grass_2', seed: 8304,
+        tints: { grass_2: '#6a9458', dirt: '#8a7458', wood: '#7a5838', water: '#4a8098' },
+        desc: 'the clearing — redwoods, a creek, a felled log and the owl altar stone' });
+    M.rect(3, 1, 4, 2, 'dirt');                            // lantern trail
+    M.treeL(0, 0, 'tree_3'); M.treeL(1, 2, 'tree_3'); M.treeL(6, 2, 'tree_2'); M.treeL(5, 3, 'tree_3');
+    M.lake(7, 1, 'water', 1); M.lake(7, 2, 'water', 1); M.lake(6, 3, 'water', 1);   // the creek
+    M.block(2, 2, 'wood');                                 // felled log
+    M.obj(0, 3, 'torch', { leaf: 'floor' });
+    M.symAll();
+    M.pillarSym('monolith', 0, 2, 2);                      // the altar stone (jumpable)
+    return M.finishDelta();
+};
+
+/* GÖBEKLI TEPE — the compact temple: a ring of waist-high wall with N/S
+   gates, T-pillars, an excavation dip, the grass fringe. */
+_MF_DELTA_BUILDERS.prebuilt_gobekli = function () {
+    const M = _mfDeltaNew({ name: 'Göbekli Tepe', base: 'dirt_3', seed: 8305,
+        tints: { rock_wall_1: '#d8c098', bricks_2: '#e0d0b0', dirt_3: '#c8a878', grass_2: '#a8b070', ruins: '#c0a888' },
+        desc: 'the first temple — a waist-high ring wall with gates, T-pillar sentinels, an excavation dip' });
+    M.box(0, 0, 7, 7, 'grass_2');                          // the tell's grass fringe
+    [[1, 2], [2, 2], [5, 2], [6, 2], [1, 3], [6, 3]].forEach(p => M.step(p[0], p[1], 'rock_wall_1'));   // ring wall
+    M.lake(0, 3, 'ruins', 1);                              // excavation trench
+    M.symAll();
+    M.pillarSym('tpillar', 5, 3, 3); M.pillarSym('tpillar', 0, 1, 3); M.pillarSym('tpillar', 7, 2, 3);
+    return M.finishDelta();
+};
+
+/* D.U.M.B. — the tram rail, a walled holding cell in one corner with its
+   specimen, server banks, a bulkhead block. */
+_MF_DELTA_BUILDERS.prebuilt_dumb = function () {
+    const M = _mfDeltaNew({ name: 'D.U.M.B.', base: 'tilefloor', seed: 8306,
+        tints: { tilefloor: '#a87878', dungeon_2: '#9a6a6a', metal_2: '#b88484', road: '#8a6a6a' },
+        desc: 'the base floor — the tram rail, a walled holding cell, server banks, a bulkhead' });
+    M.rect(3, 1, 4, 2, 'road');                            // tram rail
+    M.wall(2, 2, 'W', { h: 2, tex: 'dungeon_2' }); M.wall(2, 3, 'W', { h: 2, tex: 'dungeon_2' });   // cell wall
+    M.wall(0, 4, 'N', { h: 2, tex: 'dungeon_2' }); M.wall(1, 4, 'N', { h: 2, tex: 'dungeon_2' });
+    M.step(5, 2, 'metal_2'); M.step(6, 2, 'metal_2');      // server banks
+    M.block(6, 3, 'dungeon_2');                            // bulkhead
+    M.symAll();
+    M.pillarSym('greytube', 0, 2, 3);                      // specimen 0 — inside the cell
+    return M.finishDelta();
+};
+
+/* CERN — the beamline crossing, tunnel-wall arcs, terminal steps, a
+   containment screen, a checkerboard dais. */
+_MF_DELTA_BUILDERS.prebuilt_cern = function () {
+    const M = _mfDeltaNew({ name: 'CERN', base: 'tilefloor_2', seed: 8307,
+        tints: { tilefloor_2: '#9fb4c8', aluminium: '#cfd8e0', gold: '#c88a4a', metal_3: '#8aa0b8', checkerboard: '#7ae0ff' },
+        desc: 'the collider hall — the copper beamline, tunnel-wall arcs, terminal steps, a checkerboard dais' });
+    M.rect(3, 1, 4, 2, 'gold');                            // beamline
+    M.block(1, 2, 'aluminium'); M.block(6, 2, 'aluminium'); // tunnel arcs
+    M.step(2, 2, 'metal_3'); M.step(5, 2, 'metal_3');      // terminals
+    M.wall(6, 3, 'N', { h: 2, tex: 'aluminium' });         // containment screen
+    M.step(0, 3, 'checkerboard');
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* BACKROOMS — level 0: wallpaper partitions, a pillar, the flooded
+   corridor, something in the corner. */
+_MF_DELTA_BUILDERS.prebuilt_backrooms = function () {
+    const M = _mfDeltaNew({ name: 'Backrooms', base: 'carpet', seed: 8308,
+        tints: { carpet: '#c8b878', wallpaper: '#e8d890', water: '#b8b060' },
+        desc: 'level 0 — wallpaper partitions, a pillar, the flooded corridor, something in the corner' });
+    M.wall(2, 2, 'W', { h: 2, tex: 'wallpaper' }); M.wall(2, 3, 'W', { h: 2, tex: 'wallpaper' });
+    M.wrun(5, 3, 7, 3, 'N', { h: 2, tex: 'wallpaper' });
+    M.block(0, 1, 'wallpaper'); M.block(7, 1, 'wallpaper');
+    M.lake(0, 3, 'water', 1); M.lake(1, 3, 'water', 1);    // almond water
+    M.symAll();
+    M.pillarSym('monolith', 5, 2, 2);                      // it is here with you
+    return M.finishDelta();
+};
+
+/* NORTH POLE — snowfield: present depots, pines, a frozen pond. */
+_MF_DELTA_BUILDERS.prebuilt_northpole = function () {
+    const M = _mfDeltaNew({ name: 'North Pole', base: 'marble_light', seed: 8309,
+        tints: { marble_light: '#e8f4ff', wood_planks: '#a86848', water: '#c8e8ff' },
+        desc: 'the snowfield — present depots, pines and a frozen pond' });
+    M.block(1, 2, 'wood_planks'); M.block(6, 3, 'wood_planks');   // present depots
+    M.treeL(0, 0, 'tree_2'); M.treeL(7, 2, 'tree_2'); M.treeL(5, 3, 'tree_2');
+    M.lake(6, 1, 'water', 2); M.lake(7, 1, 'water', 2);    // frozen pond
+    M.symAll();
+    return M.finishDelta();
+};
+
+/* FLAT LANDS — the eerie plane: a faint circle, one dead tree, two
+   shallow dips, two low mounds. Nothing else. You are being watched. */
+_MF_DELTA_BUILDERS.prebuilt_flatlands = function () {
+    const M = _mfDeltaNew({ name: 'Flat Lands', base: 'grass_2', seed: 8310,
+        tints: { grass_2: '#c0c8b8', dirt_2: '#b0a890' },
+        desc: 'the eerie plane — a faint circle, one dead tree, two shallow dips, two low mounds' });
+    M.disc(3.5, 3.5, 1.7, 'dirt_2');                       // the circle you can barely see
+    M.treeL(2, 2, 'tree_5');
+    M.lake(5, 2, 'dirt_2', 1); M.lake(6, 2, 'dirt_2', 1);  // shallow dips
+    M.step(0, 2, 'grass_2'); M.step(7, 1, 'grass_2');      // mounds
+    M.symAll();
+    return M.finishDelta();
 };
 
 /* ═══════════════════════ META — roster, biomes, skies ══════════════════════
@@ -11523,7 +12093,7 @@ const EW_MAP_META = [
       env: { tint: 0x101822, tintAmt: 0.40, stars: 0.9, nebula: 0.6, fog: { color: 0x2a3448, amount: 0.4, top: 0.06, band: 0.5 }, scenery: 'city', density: 0.6 } },
     // ── Tier 2 — roster & lore expansion ──
     { id: 'prebuilt_atlantis', label: 'Atlantis', w: 24, h: 24, teamSize: 8, tier: 2, base: 'water',
-      biomes: ['deep_sea', 'ancient'], deltaPad: 'marble',
+      biomes: ['deep_sea', 'ancient'], deltaPad: 'marble_light',
       desc: '24×24 prebuilt, 8v8 — the half-sunken capital: deep-water moat, flooded streets, plaza islands & the crystal spire',
       env: { tint: 0x0e3a4a, tintAmt: 0.45, stars: 0.6, nebula: 0.8, fog: { color: 0x2a8a9a, amount: 0.6, top: 0.08, band: 0.55 }, scenery: 'ruins' } },
     { id: 'prebuilt_babel', label: 'Tower of Babel', w: 16, h: 24, teamSize: 6, tier: 2, base: 'bricks_1',
@@ -11531,7 +12101,7 @@ const EW_MAP_META = [
       desc: '16×24 prebuilt, 6v6 — the unfinished tower: a grand climbable ziggurat, brick streets, scaffolds & the rubble of scattered tongues',
       env: { tint: 0x8a6a3a, tintAmt: 0.40, stars: 0.55, nebula: 0.6, fog: { color: 0xa8854e, amount: 0.55, top: 0.06, band: 0.5 }, scenery: 'pyramids' } },
     { id: 'prebuilt_olympus', label: 'Mount Olympus', w: 24, h: 24, teamSize: 8, tier: 2, base: 'cloud_2',
-      biomes: ['divine', 'ancient'], deltaPad: 'marble',
+      biomes: ['divine', 'ancient'], deltaPad: 'marble_light',
       desc: '24×24 prebuilt, 8v8 — the marble acropolis over the cloud sea: temple terraces, stair ascents, storm lanes & void rifts',
       env: { tint: 0xcfe0f8, tintAmt: 0.35, stars: 0.3, nebula: 0.5, fog: { color: 0xe8ecf8, amount: 0.6, top: 0.02, band: 0.4 }, scenery: 'divine' } },
     { id: 'prebuilt_mars', label: 'Mars', w: 20, h: 20, teamSize: 6, tier: 2, base: 'moon_2',
@@ -11542,8 +12112,8 @@ const EW_MAP_META = [
       biomes: ['clandestine', 'space', 'desert'], deltaPad: 'dirt_4',
       desc: '20×20 prebuilt, 6v6 — the fenced base: airstrip, floodlight towers, twin hangars & the tarped saucer on its test rig',
       env: { tint: 0x0d1226, tintAmt: 0.50, stars: 1.5, nebula: 0.8, fog: { color: 0x1a2340, amount: 0.5, top: 0.06, band: 0.5 }, scenery: 'orbs' } },
-    { id: 'prebuilt_antarctica', label: 'Antarctica', w: 24, h: 24, teamSize: 8, tier: 2, base: 'marble_2',
-      biomes: ['polar', 'deep_sea'], deltaPad: 'marble_2', deltaY: 7,
+    { id: 'prebuilt_antarctica', label: 'Antarctica', w: 24, h: 24, teamSize: 8, tier: 2, base: 'marble_light',
+      biomes: ['polar', 'deep_sea'], deltaPad: 'marble_light', deltaY: 7,
       desc: '24×24 prebuilt, 8v8 — the ice wall and what waits behind it: seawater channels, iceberg hops, slide-gap chokes & a frozen colossus',
       env: { tint: 0xdae8f2, tintAmt: 0.40, stars: 0.5, nebula: 0.9, fog: { color: 0xe6f0f8, amount: 0.7, top: 0.04, band: 0.5 }, scenery: 'islands' } },
     { id: 'prebuilt_skinwalker', label: 'Skinwalker Ranch', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_rocky',
@@ -11554,8 +12124,8 @@ const EW_MAP_META = [
       biomes: ['inner_earth', 'forest'], deltaPad: 'cave_floor',
       desc: '20×20 prebuilt, 6v6 — the world above and its petrified mirror below, joined by two great gates under a darkness veil',
       env: { tint: 0x1c1428, tintAmt: 0.45, stars: 0.9, nebula: 1.0, fog: { color: 0x2a2038, amount: 0.55, top: 0.08, band: 0.55 }, scenery: 'crystals' } },
-    { id: 'prebuilt_fairy_forest', label: 'Fairy Forest', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_3',
-      biomes: ['forest', 'astral'], deltaPad: 'grass_3',
+    { id: 'prebuilt_fairy_forest', label: 'Fairy Forest', w: 20, h: 20, teamSize: 6, tier: 2, base: 'grass_2',
+      biomes: ['forest', 'astral'], deltaPad: 'grass_2',
       desc: '20×20 prebuilt, 6v6 — glowing woodland: mushroom-ring hedges that eat arrows, winding fae paths, springs & crystal toadstools',
       env: { tint: 0x0e2a1a, tintAmt: 0.50, stars: 1.1, nebula: 1.2, fog: { color: 0x1e4a30, amount: 0.55, top: 0.07, band: 0.55 }, scenery: 'crystals' } },
     { id: 'prebuilt_moon', label: 'Moon', w: 16, h: 16, teamSize: 6, tier: 2, base: 'moon',
@@ -11568,11 +12138,11 @@ const EW_MAP_META = [
       desc: '24×24 prebuilt, 8v8 — neon-Aztec canal city: glowing waterways, stone causeways, storming-ziggurats & the tech-altar',
       env: { tint: 0x0d1f2a, tintAmt: 0.50, stars: 0.9, nebula: 1.4, fog: { color: 0x0fdccf, amount: 0.45, top: 0.08, band: 0.5 }, scenery: 'pyramids' } },
     { id: 'prebuilt_agartha', label: 'Agartha', w: 24, h: 24, teamSize: 8, tier: 3, base: 'cave_floor',
-      biomes: ['inner_earth', 'ancient'], deltaPad: 'marble',
+      biomes: ['inner_earth', 'ancient'], deltaPad: 'marble_light',
       desc: '24×24 prebuilt, 8v8 — the inner-earth capital: jade terraces under the sun-shaft, crystal spires, glowing rivers & mushroom groves',
       env: { tint: 0x2a1f0d, tintAmt: 0.40, stars: 0.3, nebula: 0.9, fog: { color: 0x8a6f3a, amount: 0.5, top: 0.08, band: 0.55 }, scenery: 'crystals' } },
     { id: 'prebuilt_vatican', label: 'Vatican City', w: 20, h: 20, teamSize: 6, tier: 3, base: 'cobblestone',
-      biomes: ['holy_city', 'gothic', 'divine'], deltaPad: 'marble',
+      biomes: ['holy_city', 'gothic', 'divine'], deltaPad: 'marble_light',
       desc: '20×20 prebuilt, 6v6 — the colonnade piazza: central obelisk, twin basilica steps, fountains & consecrated ground',
       env: { tint: 0xd8c090, tintAmt: 0.35, stars: 0.4, nebula: 0.5, fog: { color: 0xd8c8a0, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'divine' } },
     { id: 'prebuilt_bohemian_grove', label: 'Bohemian Grove', w: 20, h: 20, teamSize: 6, tier: 3, base: 'grass_2',
@@ -11595,12 +12165,12 @@ const EW_MAP_META = [
       biomes: ['astral'], deltaPad: 'carpet',
       desc: '16×16 prebuilt, 6v6 — level 0: yellow wallpaper maze, damp carpet, humming lights, false exits & one flooded corridor',
       env: { tint: 0xc8b25e, tintAmt: 0.80, stars: 0.0, nebula: 0.0, fog: { color: 0xd8c470, amount: 0.75, top: 0.15, band: 0.8 }, scenery: 'none' } },
-    { id: 'prebuilt_northpole', label: 'North Pole', w: 16, h: 16, teamSize: 6, tier: 3, base: 'marble_2',
-      biomes: ['polar'], deltaPad: 'marble_2',
+    { id: 'prebuilt_northpole', label: 'North Pole', w: 16, h: 16, teamSize: 6, tier: 3, base: 'marble_light',
+      biomes: ['polar'], deltaPad: 'marble_light',
       desc: '16×16 prebuilt, 6v6 — the workshop compound: present depots, pine wind-breaks, aurora beacons & a frozen slide-pond objective',
       env: { tint: 0x0d1424, tintAmt: 0.50, stars: 1.4, nebula: 1.6, fog: { color: 0x1c2c48, amount: 0.5, top: 0.05, band: 0.5 }, scenery: 'islands', density: 0.6 } },
-    { id: 'prebuilt_flatlands', label: 'Flat Lands', w: 16, h: 16, teamSize: 6, tier: 3, base: 'grass_4',
-      biomes: ['astral'], deltaPad: 'grass_4',
+    { id: 'prebuilt_flatlands', label: 'Flat Lands', w: 16, h: 16, teamSize: 6, tier: 3, base: 'grass_2',
+      biomes: ['astral'], deltaPad: 'grass_2',
       desc: '16×16 prebuilt, 6v6 — the eerie empty plane: two shallow dips, one dead tree, a circle you can barely see. You are being watched',
       env: { tint: 0xc0c8b8, tintAmt: 0.60, stars: 0.05, nebula: 0.1, fog: { color: 0xd0d8c8, amount: 0.8, top: 0.20, band: 0.9 }, scenery: 'eyes', density: 0.35 } },
 ];
@@ -11618,26 +12188,28 @@ const EW_MAP_META = [
             barrierRows: [], barrierOpeningsX: [], hasFloors: false,
             env: meta.env || null, streetLamps: !!meta.streetLamps,
         };
-        // the Δ ranked variants: an 8×8 mirror-balanced 4v4 crop of the core
-        // (the default, used by every mode) plus a roomier 12×12 Arena crop
-        // (auto-selected for Arena, which wants space for towers/nexus/glasses).
-        [{ S: 8, suffix: '_delta', arena: false }, { S: 12, suffix: '_delta_arena', arena: true }].forEach(v => {
-            try {
-                const d = _mfDelta(full, meta, v.S);
-                const did = meta.id + v.suffix;
-                PREBUILT_MAPS[did] = d;
-                MAP_LAYOUT_PRESETS[did] = {
-                    sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: v.S - 1, label: 'Earth', baseTerrain: meta.base }, buffer2: null, below: null },
-                    barrierRows: [], barrierOpeningsX: [], hasFloors: false,
-                    env: meta.env || null, streetLamps: !!meta.streetLamps,
-                };
-                deltas.push({
-                    id: did, label: meta.label + ' Δ' + (v.arena ? ' ⚔' : ''), w: v.S, h: v.S, teamSize: 4, tier: meta.tier,
-                    biomes: meta.biomes, isDelta: true, isDeltaArena: v.arena, base: meta.base, env: meta.env,
-                    desc: v.S + '×' + v.S + (v.arena ? ' Arena Δ' : ' ranked Δ') + ', 4v4 — the mirror-balanced ' + (v.arena ? 'Arena' : 'competitive') + ' core of ' + meta.label,
-                });
-            } catch (e) { console.error('[MapForge] delta failed: ' + meta.id + v.suffix, e); }
-        });
+        /* the Δ variant (2026-09-01 redesign): ONE hand-authored 8×8 board per
+           launch map (DELTA FORGE above), played as-is in every mode — Arena
+           included, since each carries its own centre nexus zone. The old
+           hidden 12×12 "_delta_arena" crop is gone. A map without a delta
+           builder falls back to the legacy 8×8 crop of its core. */
+        try {
+            const S = MF_DELTA_S;
+            const did = meta.id + '_delta';
+            const d = _MF_DELTA_BUILDERS[meta.id] ? _MF_DELTA_BUILDERS[meta.id]() : _mfDelta(full, meta, S);
+            d.name = meta.label + ' Δ';
+            PREBUILT_MAPS[did] = d;
+            MAP_LAYOUT_PRESETS[did] = {
+                sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: S - 1, label: 'Earth', baseTerrain: d.base || meta.base }, buffer2: null, below: null },
+                barrierRows: [], barrierOpeningsX: [], hasFloors: false,
+                env: meta.env || null, streetLamps: !!meta.streetLamps,
+            };
+            deltas.push({
+                id: did, label: meta.label + ' Δ', w: S, h: S, teamSize: 4, tier: meta.tier,
+                biomes: meta.biomes, isDelta: true, base: d.base || meta.base, env: meta.env,
+                desc: S + '×' + S + ' Δ, 4v4 — ' + (d.deltaDesc || 'the flat mirror-balanced arena cut of ' + meta.label),
+            });
+        } catch (e) { console.error('[MapForge] delta failed: ' + meta.id, e); }
     });
     deltas.forEach(d => EW_MAP_META.push(d));
     if (typeof window !== 'undefined') window.EW_MAP_META = EW_MAP_META;
@@ -11677,12 +12249,12 @@ const MD_DUNGEONS = {
            (one per room, so no two chambers look alike); hallTerrain /
            hallWallTex dress the 2-wide hallways between them. */
         bedrockTerrain: 'rocks_dark_fantasy',
-        roomFloors: ['marble', 'dungeon', 'dungeon_2', 'cobblestone', 'bricks_1'],
-        wallTex: ['bricks_2', 'rock_wall_1', 'dungeon_3', 'marble_2', 'bricks_3'],
+        roomFloors: ['marble_light', 'dungeon', 'dungeon_2', 'cobblestone', 'bricks_1'],
+        wallTex: ['bricks_2', 'rock_wall_1', 'dungeon_3', 'marble_light', 'bricks_3'],
         wallTexIn: 'bricks_1',
         hallTerrain: 'cobblestone_2',
         hallWallTex: 'rock_wall_1',
-        accentTerrains: ['dirt_3', 'rocks_1', 'marble'],
+        accentTerrains: ['dirt_3', 'rocks_1', 'marble_light'],
         poolTerrain: 'water',
         enemyRaces: ['reptilian', 'antperson', 'skeleton', 'goatman', 'annunaki', 'demon'],
         bossRace: 'annunaki',
@@ -11892,7 +12464,7 @@ function generateMdFloor(dungeonId, floor, seed, partySize) {
     const ri = n => Math.floor(rng() * n);
     const pick = a => a[ri(a.length)];
 
-    const ROOM_FLOORS = D.roomFloors || ['marble', 'dungeon', 'cobblestone'];
+    const ROOM_FLOORS = D.roomFloors || ['marble_light', 'dungeon', 'cobblestone'];
     const WALL_TEX = D.wallTex || ['bricks_2'];
     const HALL_TER = D.hallTerrain || 'cobblestone_2';
     const HALL_WALL = D.hallWallTex || 'rock_wall_1';

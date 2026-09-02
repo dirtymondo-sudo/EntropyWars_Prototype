@@ -1457,8 +1457,8 @@
         /* ── 2026-07 map overhaul ────────────────────────────────────────────
            The picker list is GENERATED from the MapForge roster (data.js
            EW_MAP_META): full launch maps first (tier order), then Custom Map,
-           then the 10×10 Δ ranked variants. Thumbnails render live from
-           PREBUILT_MAPS.grid as before. */
+           then the 8×8 Δ boards (hand-authored in data.js DELTA FORGE).
+           Thumbnails render live from PREBUILT_MAPS.grid as before. */
         const MS_MAP_LIST = (() => {
             const list = [];
             const meta = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
@@ -1469,9 +1469,9 @@
             /* Clash's fixed JRPG stage — only ever offered when the Clash mode
                is selected (it's the mode's sole compatible map). */
             list.push({ modeId: 'clash_stage', name: 'Temple', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true });
-            // Only the 8×8 Δ appears in the picker; the 12×12 Arena Δ is a
-            // hidden sibling that _msConfirm swaps in when the mode is Arena.
-            meta.filter(m => m.isDelta && !m.isDeltaArena).forEach(m => {
+            // The 8×8 Δ boards — one per launch map, played as-is in every mode
+            // (Arena included: each carries its own centre nexus zone).
+            meta.filter(m => m.isDelta).forEach(m => {
                 list.push({ modeId: m.id, name: m.label, size: '8×8 Δ', team: m.teamSize, floors: false, w: 8, h: 8, isPrebuilt: true, isDelta: true, tier: m.tier, biomes: m.biomes });
             });
             return list;
@@ -1749,14 +1749,10 @@
             const mp = MS_MAP_LIST[_msSelectedMap];
             const gm = MS_GAME_MODES[_msSelectedGM];
 
-            // Δ maps are 8×8 by default, but Arena wants the roomier 12×12 crop
-            // (towers/nexus/hourglasses need space). Swap in the hidden Arena
-            // sibling map when the selected mode is Arena.
+            // Δ maps are the hand-authored 8×8 boards (data.js DELTA FORGE,
+            // 2026-09-01): flat, nexus zone dead centre, so Arena plays them
+            // as-is — the old hidden 12×12 "_delta_arena" crop is gone.
             let launchModeId = mp.modeId;
-            if (mp.isDelta && gm && gm.id === 'arena'
-                && typeof GAME_MODES !== 'undefined' && GAME_MODES[mp.modeId + '_arena']) {
-                launchModeId = mp.modeId + '_arena';
-            }
             /* Clash always plays 4v4 on its fixed JRPG stage — whatever map
                card or team size happened to be selected doesn't apply. */
             if (gm && gm.id === 'clash') {

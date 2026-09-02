@@ -616,9 +616,8 @@ function MatchSelect() {
 
   const mp = mapList[mapIdx] || { name: '—', size: '8×8', w: 8, h: 8, team: 4 };
   const accent = accentForMap(mp);
-  // Arena swaps a Δ map to its 12×12 sibling on launch — reflect that in the UI.
-  const boardSizeLabel = (mp.isDelta && gm.id === 'arena')
-    ? '12×12 Δ' : (mp.size || (mp.w + '×' + mp.h));
+  // Δ maps are the 8×8 hand-authored boards in every mode (Arena included).
+  const boardSizeLabel = mp.size || (mp.w + '×' + mp.h);
   const maxT = maxTeamForMap(mapIdx);
   const teamDisplay = isFFA ? '' + teamSize : teamSize + 'v' + teamSize;
   const winLabel = mpMode.isClash ? 'Wipeout' :
