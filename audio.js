@@ -996,3 +996,321 @@
         }, AMBIENCE_TICK_MS);
         // A fresh battle deserves a fresh terrain scan (lava/cloud counts).
         window._ewResetAmbienceCache = () => { _ambFlavourCache = { at: 0, val: null }; };
+
+        /* ═══════════════════════════════════════════════════════════════════
+           D.O.O.R. SOUND KIT (DOOR_DESIGN §5.3 / build step 2, 2026-09-02)
+           Procedural Web Audio placeholders for the bureaucratic layer: stamp
+           thunk, DENIED buzzer, lamination roller, CRT power-on, VHS eject,
+           dot-matrix burst, fax handshake, PA chime, security-door buzz and
+           the ident sting. No asset files: they are synthesized on demand from
+           oscillators + filtered noise, so nothing has to be uploaded to R2 and
+           nothing needs a cache-bust beyond audio.js itself.
+           UPGRADE PATH: to replace any of them with a real recording, add the
+           file to _R2_SFX under the key named in _DOOR_SFX_FILE_KEY (e.g.
+           `doorStamp`) — playDoorSfx() prefers the file and skips the synth.
+           All of them ride the SFX slider (state.sfxVolume) and the same
+           audioUnlocked gate as playSfx(); the ident additionally checks that
+           the AudioContext is actually running, because it fires on page load
+           before any gesture and must stay silent rather than error.
+           ═══════════════════════════════════════════════════════════════════ */
+        const _DOOR_SFX_FILE_KEY = {
+            stamp: 'doorStamp', denied: 'doorDenied', laminate: 'doorLaminate',
+            crtOn: 'doorCrtOn', vhsEject: 'doorVhsEject', dotMatrix: 'doorDotMatrix',
+            fax: 'doorFax', paChime: 'doorPaChime', doorBuzz: 'doorBuzz',
+            identSting: 'doorIdentSting',
+        };
+        const _DOOR_SFX_GAIN = {
+            stamp: 0.85, denied: 0.42, laminate: 0.5, crtOn: 0.45, vhsEject: 0.55,
+            dotMatrix: 0.32, fax: 0.3, paChime: 0.5, doorBuzz: 0.4, identSting: 0.55,
+        };
+        let _doorNoiseBuf = null;
+        function _doorCtx() {
+            if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            return _audioCtx;
+        }
+        function _doorNoise(ctx) {
+            if (_doorNoiseBuf && _doorNoiseBuf.sampleRate === ctx.sampleRate) return _doorNoiseBuf;
+            const len = Math.floor(ctx.sampleRate * 1.5);
+            const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+            const d = buf.getChannelData(0);
+            for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+            _doorNoiseBuf = buf;
+            return buf;
+        }
+        /* A gain node with an ADSR-ish envelope, already connected to `out`. */
+        function _doorEnv(ctx, out, t, peak, attack, hold, release, floor) {
+            const g = ctx.createGain();
+            const f = floor || 0.0005;
+            g.gain.setValueAtTime(f, t);
+            g.gain.linearRampToValueAtTime(Math.max(f, peak), t + Math.max(0.001, attack));
+            g.gain.setValueAtTime(Math.max(f, peak), t + attack + hold);
+            g.gain.exponentialRampToValueAtTime(f, t + attack + hold + Math.max(0.005, release));
+            g.connect(out);
+            return g;
+        }
+        function _doorOsc(ctx, dest, type, f0, t, dur, o) {
+            const osc = ctx.createOscillator();
+            osc.type = type;
+            osc.frequency.setValueAtTime(f0, t);
+            if (o && o.f1) osc.frequency.exponentialRampToValueAtTime(Math.max(1, o.f1), t + (o.slide || dur));
+            if (o && o.detune) osc.detune.setValueAtTime(o.detune, t);
+            osc.connect(dest);
+            osc.start(t);
+            osc.stop(t + dur + 0.02);
+            return osc;
+        }
+        function _doorNoiseSrc(ctx, dest, t, dur, filt) {
+            const src = ctx.createBufferSource();
+            src.buffer = _doorNoise(ctx);
+            src.loop = true;
+            let node = src;
+            if (filt) {
+                const bq = ctx.createBiquadFilter();
+                bq.type = filt.type || 'bandpass';
+                bq.frequency.setValueAtTime(filt.f0 || 1000, t);
+                if (filt.f1) bq.frequency.exponentialRampToValueAtTime(filt.f1, t + (filt.slide || dur));
+                bq.Q.value = filt.q || 1;
+                src.connect(bq);
+                node = bq;
+            }
+            node.connect(dest);
+            src.start(t);
+            src.stop(t + dur + 0.02);
+            return src;
+        }
+
+        /* Each recipe: (ctx, t, out, vol) → seconds of audio it scheduled. */
+        const _DOOR_SFX_RECIPES = {
+            /* Rubber stamp: a low wooden thump + a short, bright slap of ink. */
+            stamp(ctx, t, out, vol) {
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol, 0.003, 0.02, 0.16), 'sine', 190, t, 0.2, { f1: 48, slide: 0.12 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.55, 0.002, 0.01, 0.045), t, 0.07, { type: 'bandpass', f0: 1400, q: 0.8 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t + 0.004, vol * 0.25, 0.001, 0.004, 0.03), 'square', 2300, t + 0.004, 0.04);
+                return 0.35;
+            },
+            /* DENIED: two rough buzzer pulses (detuned squares, tremolo, lowpass). */
+            denied(ctx, t, out, vol) {
+                const lp = ctx.createBiquadFilter();
+                lp.type = 'lowpass'; lp.frequency.value = 1100; lp.Q.value = 2;
+                lp.connect(out);
+                for (let i = 0; i < 2; i++) {
+                    const t0 = t + i * 0.24;
+                    const g = _doorEnv(ctx, lp, t0, vol, 0.008, 0.15, 0.04);
+                    const lfo = ctx.createOscillator(); const lg = ctx.createGain();
+                    lfo.type = 'square'; lfo.frequency.value = 38; lg.gain.value = vol * 0.35;
+                    lfo.connect(lg).connect(g.gain); lfo.start(t0); lfo.stop(t0 + 0.22);
+                    _doorOsc(ctx, g, 'square', 112, t0, 0.2);
+                    _doorOsc(ctx, g, 'square', 167, t0, 0.2, { detune: 12 });
+                    _doorOsc(ctx, g, 'sawtooth', 56, t0, 0.2);
+                }
+                return 0.55;
+            },
+            /* Lamination roller: a motor whirr that swells as the card feeds
+               through, a click as it clears, and a clean "ready" ding. */
+            laminate(ctx, t, out, vol) {
+                const dur = 1.05;
+                const motor = _doorEnv(ctx, out, t, vol * 0.7, 0.12, dur - 0.3, 0.18);
+                _doorOsc(ctx, motor, 'sawtooth', 52, t, dur, { f1: 66, slide: dur });
+                _doorOsc(ctx, motor, 'triangle', 104, t, dur, { f1: 132, slide: dur });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.35, 0.15, dur - 0.35, 0.2), t, dur, { type: 'bandpass', f0: 320, f1: 760, slide: dur * 0.7, q: 1.4 });
+                const tc = t + dur + 0.02;
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tc, vol * 0.5, 0.001, 0.008, 0.04), tc, 0.06, { type: 'highpass', f0: 2500 });
+                const td = tc + 0.08;
+                _doorOsc(ctx, _doorEnv(ctx, out, td, vol * 0.5, 0.004, 0.05, 0.55), 'sine', 1760, td, 0.62);
+                _doorOsc(ctx, _doorEnv(ctx, out, td, vol * 0.18, 0.004, 0.03, 0.4), 'sine', 3520, td, 0.45);
+                return dur + 0.8;
+            },
+            /* CRT power-on: mains thump, degauss "bwong", flyback whine, static. */
+            crtOn(ctx, t, out, vol) {
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.9, 0.002, 0.03, 0.12), 'sine', 70, t, 0.16, { f1: 38, slide: 0.15 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t + 0.02, vol * 0.55, 0.01, 0.05, 0.5), 'sine', 96, t + 0.02, 0.58, { f1: 42, slide: 0.5 });
+                _doorOsc(ctx, _doorEnv(ctx, out, t + 0.05, vol * 0.09, 0.15, 0.4, 0.5), 'sine', 11800, t + 0.05, 1.05);
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t + 0.01, vol * 0.3, 0.01, 0.05, 0.42), t + 0.01, 0.5, { type: 'lowpass', f0: 4200, f1: 900, slide: 0.45, q: 0.7 });
+                return 0.7;
+            },
+            /* VHS eject: latch clack, a motor that spins down (tape stop), a
+               second clack as the cassette clears the slot. */
+            vhsEject(ctx, t, out, vol) {
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t, vol * 0.6, 0.001, 0.01, 0.05), t, 0.07, { type: 'bandpass', f0: 2600, q: 1.2 });
+                const m = _doorEnv(ctx, out, t + 0.04, vol * 0.5, 0.02, 0.25, 0.22);
+                _doorOsc(ctx, m, 'sawtooth', 48, t + 0.04, 0.5, { f1: 14, slide: 0.48 });
+                _doorOsc(ctx, m, 'square', 96, t + 0.04, 0.5, { f1: 28, slide: 0.48 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t + 0.05, vol * 0.2, 0.02, 0.2, 0.2), t + 0.05, 0.45, { type: 'bandpass', f0: 900, f1: 260, slide: 0.42, q: 1.5 });
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, t + 0.5, vol * 0.5, 0.001, 0.012, 0.06), t + 0.5, 0.08, { type: 'bandpass', f0: 1900, q: 1 });
+                return 0.65;
+            },
+            /* Dot-matrix printer: a gated buzz of pin strikes, then the
+               carriage return. Nine-pin, tractor feed, 1989. */
+            dotMatrix(ctx, t, out, vol) {
+                const dur = 0.85;
+                const g = _doorEnv(ctx, out, t, vol, 0.01, dur - 0.05, 0.04);
+                const gate = ctx.createOscillator(); const gg = ctx.createGain();
+                gate.type = 'square'; gate.frequency.value = 47; gg.gain.value = vol * 0.5;
+                gate.connect(gg).connect(g.gain); gate.start(t); gate.stop(t + dur);
+                _doorNoiseSrc(ctx, g, t, dur, { type: 'bandpass', f0: 3100, q: 2.2 });
+                _doorOsc(ctx, g, 'square', 94, t, dur);
+                const tr = t + dur + 0.03;
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tr, vol * 0.7, 0.002, 0.02, 0.09), tr, 0.12, { type: 'lowpass', f0: 1200, q: 0.8 });
+                _doorOsc(ctx, _doorEnv(ctx, out, tr, vol * 0.5, 0.002, 0.02, 0.1), 'sine', 140, tr, 0.13, { f1: 60, slide: 0.1 });
+                return dur + 0.25;
+            },
+            /* Fax handshake: the answer tone, two short pips, then the
+               modem-chirp negotiation nobody has ever wanted to hear. */
+            fax(ctx, t, out, vol) {
+                _doorOsc(ctx, _doorEnv(ctx, out, t, vol * 0.8, 0.01, 0.42, 0.04), 'sine', 2100, t, 0.48);
+                for (let i = 0; i < 2; i++) {
+                    const tp = t + 0.6 + i * 0.16;
+                    _doorOsc(ctx, _doorEnv(ctx, out, tp, vol * 0.7, 0.005, 0.08, 0.03), 'sine', 1100, tp, 0.12);
+                }
+                const tc = t + 1.0;
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tc, vol * 0.55, 0.02, 0.5, 0.08), tc, 0.6, { type: 'bandpass', f0: 700, f1: 2600, slide: 0.55, q: 6 });
+                _doorOsc(ctx, _doorEnv(ctx, out, tc, vol * 0.3, 0.02, 0.5, 0.06), 'square', 1650, tc, 0.6, { f1: 2250, slide: 0.55 });
+                return 1.7;
+            },
+            /* PA chime: bing – bong – bing, soft mallet, the ceiling speaker
+               in a facility that is round for a reason. */
+            paChime(ctx, t, out, vol) {
+                const notes = [784, 659, 523];
+                notes.forEach((f, i) => {
+                    const tn = t + i * 0.34;
+                    _doorOsc(ctx, _doorEnv(ctx, out, tn, vol * 0.7, 0.012, 0.12, 0.7), 'sine', f, tn, 0.85);
+                    _doorOsc(ctx, _doorEnv(ctx, out, tn, vol * 0.22, 0.012, 0.08, 0.5), 'sine', f * 2.01, tn, 0.6);
+                    _doorOsc(ctx, _doorEnv(ctx, out, tn, vol * 0.12, 0.012, 0.05, 0.35), 'triangle', f * 3, tn, 0.42);
+                });
+                return 1.6;
+            },
+            /* Security door: a long mains buzz through the strike plate, then
+               the lock bolt releasing. */
+            doorBuzz(ctx, t, out, vol) {
+                const lp = ctx.createBiquadFilter();
+                lp.type = 'lowpass'; lp.frequency.value = 820; lp.Q.value = 1.5; lp.connect(out);
+                const g = _doorEnv(ctx, lp, t, vol, 0.01, 0.62, 0.05);
+                _doorOsc(ctx, g, 'square', 60, t, 0.7);
+                _doorOsc(ctx, g, 'sawtooth', 120, t, 0.7, { detune: 9 });
+                _doorOsc(ctx, g, 'square', 180, t, 0.7, { detune: -7 });
+                const tk = t + 0.7;
+                _doorNoiseSrc(ctx, _doorEnv(ctx, out, tk, vol * 0.6, 0.001, 0.015, 0.06), tk, 0.08, { type: 'bandpass', f0: 1700, q: 1 });
+                _doorOsc(ctx, _doorEnv(ctx, out, tk, vol * 0.45, 0.001, 0.015, 0.08), 'sine', 220, tk, 0.1, { f1: 90, slide: 0.08 });
+                return 0.9;
+            },
+            /* Ident sting (placeholder for the hand-made jingle): CRT on, then a
+               DX7-style detuned-saw chord with a filter sweep, a bell arpeggio,
+               a lift to the IV chord, and a tape stop that matches the visual
+               tape-stop out of the ident overlay. ~3.6 s. */
+            identSting(ctx, t, out, vol) {
+                _DOOR_SFX_RECIPES.crtOn(ctx, t, out, vol * 0.8);
+                const master = ctx.createGain();
+                master.gain.setValueAtTime(1, t);
+                master.connect(out);
+                const lp = ctx.createBiquadFilter();
+                lp.type = 'lowpass'; lp.Q.value = 4;
+                lp.frequency.setValueAtTime(260, t + 0.3);
+                lp.frequency.exponentialRampToValueAtTime(4200, t + 1.5);
+                lp.frequency.exponentialRampToValueAtTime(1400, t + 3.1);
+                lp.connect(master);
+                const oscs = [];
+                const chord = (freqs, t0, dur, g) => {
+                    const env = _doorEnv(ctx, lp, t0, g, 0.06, dur - 0.3, 0.3);
+                    freqs.forEach(f => {
+                        [-7, 0, 7].forEach(d => oscs.push(_doorOsc(ctx, env, 'sawtooth', f, t0, dur + 0.5, { detune: d })));
+                    });
+                };
+                chord([110, 164.81, 220, 277.18], t + 0.3, 1.35, vol * 0.22);      /* A  (A2 E3 A3 C#4) */
+                chord([146.83, 185, 220, 293.66], t + 1.6, 1.75, vol * 0.22);       /* D  (D3 F#3 A3 D4) */
+                [880, 1108.73, 1318.51, 1760].forEach((f, i) => {
+                    const tb = t + 1.7 + i * 0.14;
+                    const env = _doorEnv(ctx, master, tb, vol * 0.28, 0.004, 0.08, 0.9);
+                    oscs.push(_doorOsc(ctx, env, 'sine', f, tb, 1.1));
+                    oscs.push(_doorOsc(ctx, env, 'sine', f * 2, tb, 0.7, { detune: 4 }));
+                });
+                /* tape stop: every oscillator sags to a quarter of its pitch
+                   while the master gain dies. The overlay's visual squish
+                   starts at the same offset (styles-cinematic.css). */
+                const ts = t + 3.15;
+                oscs.forEach(o => {
+                    try {
+                        const f = o.frequency.value;
+                        o.frequency.setValueAtTime(f, ts);
+                        o.frequency.exponentialRampToValueAtTime(Math.max(1, f * 0.22), ts + 0.42);
+                        o.stop(ts + 0.5);
+                    } catch (e) {}
+                });
+                master.gain.setValueAtTime(1, ts);
+                master.gain.exponentialRampToValueAtTime(0.0005, ts + 0.45);
+                _doorStingHandle = { master, oscs, ctx };
+                return 3.7;
+            },
+        };
+        let _doorStingHandle = null;
+
+        /* Play a DOOR kit sound. Returns true if something was scheduled. */
+        function playDoorSfx(key, opts = {}) {
+            try {
+                if (state.devAutoSim) return false;
+                if (!state.audioUnlocked && !opts.allowBeforeUnlock) return false;
+                const fileKey = _DOOR_SFX_FILE_KEY[key];
+                if (fileKey && sfxLibrary[fileKey]) return playSfx(fileKey, opts);
+                const recipe = _DOOR_SFX_RECIPES[key];
+                if (!recipe) return false;
+                const ctx = _doorCtx();
+                const vol = Math.max(0, Math.min(1, (_DOOR_SFX_GAIN[key] ?? 0.5) * (state.sfxVolume ?? 0.9) * (opts.volume ?? 1)));
+                if (vol <= 0) return false;
+                const schedule = () => {
+                    const out = ctx.createGain();
+                    out.gain.value = 1;
+                    out.connect(ctx.destination);
+                    const t = ctx.currentTime + (opts.delay || 0);
+                    const secs = recipe(ctx, t, out, vol);
+                    setTimeout(() => { try { out.disconnect(); } catch (e) {} }, ((opts.delay || 0) + secs + 0.6) * 1000);
+                };
+                if (ctx.state === 'running') { schedule(); return true; }
+                /* Suspended: inside a gesture resume() settles within a few ms
+                   and the sound still lands on cue; on a fresh page load with
+                   no gesture it never settles and we simply stay silent.
+                   opts.noLate (the ident sting) refuses to start late instead
+                   of drifting out of sync with the overlay. */
+                const started = performance.now();
+                try {
+                    ctx.resume().then(() => {
+                        if (ctx.state !== 'running') return;
+                        if (opts.noLate && performance.now() - started > 250) return;
+                        schedule();
+                    }).catch(() => {});
+                } catch (e) {}
+                return false;
+            } catch (e) {
+                return false;
+            }
+        }
+        /* Cut the ident sting short (skip) with a quick tape stop. */
+        function stopDoorIdentSting() {
+            const h = _doorStingHandle;
+            _doorStingHandle = null;
+            if (!h) return;
+            try {
+                const ts = h.ctx.currentTime;
+                h.master.gain.cancelScheduledValues(ts);
+                h.master.gain.setValueAtTime(Math.max(0.0005, h.master.gain.value), ts);
+                h.master.gain.exponentialRampToValueAtTime(0.0005, ts + 0.22);
+                h.oscs.forEach(o => {
+                    try {
+                        const f = o.frequency.value;
+                        o.frequency.cancelScheduledValues(ts);
+                        o.frequency.setValueAtTime(f, ts);
+                        o.frequency.exponentialRampToValueAtTime(Math.max(1, f * 0.3), ts + 0.22);
+                        o.stop(ts + 0.26);
+                    } catch (e) {}
+                });
+            } catch (e) {}
+        }
+        window.playDoorSfx = playDoorSfx;
+        window.stopDoorIdentSting = stopDoorIdentSting;
+        /* Console audition: window.doorSfxAudition() plays the whole kit in order. */
+        window.doorSfxAudition = function() {
+            const keys = Object.keys(_DOOR_SFX_RECIPES);
+            let delay = 0;
+            keys.forEach(k => {
+                setTimeout(() => { console.log('[DOOR SFX]', k); playDoorSfx(k, { allowBeforeUnlock: true }); }, delay * 1000);
+                delay += (k === 'identSting') ? 4.2 : 2.0;
+            });
+        };

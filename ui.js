@@ -8351,6 +8351,9 @@
             const d = document.getElementById('shopDetail');
             if (d) d.innerHTML = _shopRenderDetail(race);
             window._ewMountDossierViewer();
+            /* the DECLASSIFIED stamp on the confirm bar lands ~0.27s into its
+               .thunk animation (styles-base.css doorThunk, 60% keyframe) */
+            try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { delay: 0.25 }); } catch (e) {}
         };
 
         window._shopCancelConfirm = function() {
@@ -12071,7 +12074,97 @@
         window.enterGameFromTitle = enterGameFromTitle;
         window._gameReady = true;
 
+        /* ── D.O.O.R. ident (DOOR_DESIGN §3.4, build step 2): the studio card
+           before the feature. Plays once per page load, as soon as the game
+           JS is ready, over the title page; the title art stays hidden
+           (#titlePage.pre-ident, index.html) until it has played. Click,
+           Enter, Space or Esc skips it. The sting is synthesized in audio.js
+           (playDoorSfx 'identSting') and is silent on a cold load until the
+           browser lets audio through — the visuals never wait for it.
+           Kill-switches: window.EW_DISABLE_DOOR_IDENT, ?noident in the URL,
+           or localStorage ew_doorIdent = 'off'. Replay from the console with
+           window.doorIdentPlay({ force: true }). ── */
+        const DOOR_IDENT_MS = 4300;            /* must match .door-ident-stage in styles-cinematic.css */
+        const DOOR_IDENT_REDUCED_MS = 1800;
+        let _doorIdentActive = false;
+        let _doorIdentTimer = null;
+        let _doorIdentResolve = null;
+        const _doorIdentOnEnd = [];
+        function _doorIdentClearHold() {
+            try { const tp = document.getElementById('titlePage'); if (tp) tp.classList.remove('pre-ident'); } catch (e) {}
+        }
+        function _doorIdentDisabled() {
+            try {
+                if (window.EW_DISABLE_DOOR_IDENT) return true;
+                if (/[?&]noident\b/.test(location.search)) return true;
+                if (localStorage.getItem('ew_doorIdent') === 'off') return true;
+            } catch (e) {}
+            return false;
+        }
+        function doorIdentPlay(opts = {}) {
+            const el = document.getElementById('doorIdent');
+            if (!el || _doorIdentActive || (!opts.force && _doorIdentDisabled())) {
+                _doorIdentClearHold();
+                return Promise.resolve(false);
+            }
+            let reduced = false;
+            try { reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
+            el.classList.remove('off', 'skip', 'on');
+            el.classList.toggle('reduced', reduced);
+            void el.offsetWidth;                /* restart every CSS animation inside */
+            el.classList.add('on');
+            el.onclick = (e) => { e.preventDefault(); e.stopPropagation(); doorIdentSkip(); };
+            _doorIdentActive = true;
+            window._doorIdentActive = true;
+            _doorIdentClearHold();
+            if (!reduced) {
+                try { if (typeof playDoorSfx === 'function') playDoorSfx('identSting', { allowBeforeUnlock: true, noLate: true }); } catch (e) {}
+            }
+            return new Promise(resolve => {
+                _doorIdentResolve = resolve;
+                _doorIdentTimer = setTimeout(() => _doorIdentEnd(false), reduced ? DOOR_IDENT_REDUCED_MS : DOOR_IDENT_MS);
+            });
+        }
+        function _doorIdentEnd(skipped) {
+            if (!_doorIdentActive) return;
+            _doorIdentActive = false;
+            window._doorIdentActive = false;
+            clearTimeout(_doorIdentTimer);
+            _doorIdentTimer = null;
+            const el = document.getElementById('doorIdent');
+            if (el) {
+                el.onclick = null;
+                el.classList.add(skipped ? 'skip' : 'off');
+                setTimeout(() => { if (!_doorIdentActive) el.classList.remove('on', 'off', 'skip'); }, skipped ? 260 : 620);
+            }
+            if (skipped) {
+                try { if (typeof stopDoorIdentSting === 'function') stopDoorIdentSting(); } catch (e) {}
+                try { if (typeof playDoorSfx === 'function') playDoorSfx('vhsEject', { allowBeforeUnlock: true }); } catch (e) {}
+            }
+            const done = _doorIdentOnEnd.splice(0);
+            done.forEach(fn => { try { fn(); } catch (e) {} });
+            const r = _doorIdentResolve;
+            _doorIdentResolve = null;
+            if (r) r(true);
+        }
+        function doorIdentSkip() { if (_doorIdentActive) _doorIdentEnd(true); }
+        /* run fn after the ident (immediately if none is playing) */
+        function _doorIdentAfter(fn) { if (_doorIdentActive) _doorIdentOnEnd.push(fn); else fn(); }
+        window.doorIdentPlay = doorIdentPlay;
+        window.doorIdentSkip = doorIdentSkip;
+        window._doorIdentAfter = _doorIdentAfter;
+        /* Fire it now: the game is ready and the title page is up. An early
+           ENTER click (queued by the inline pre-load handler in index.html)
+           means the player is already on their way — no studio card. */
+        if (state.titleScreenVisible && state.gameState === GS.TITLE && !window.__queuedEnterGame) doorIdentPlay();
+        else _doorIdentClearHold();
+
         document.addEventListener('keydown', (e) => {
+            if (_doorIdentActive && (e.key === 'Enter' || e.key === 'Escape' || e.key === ' ')) {
+                e.preventDefault();
+                doorIdentSkip();
+                return;
+            }
             if (e.key === 'Enter' && state.titleScreenVisible && state.gameState === GS.TITLE) {
                 e.preventDefault();
                 enterGameFromTitle(e);
@@ -12571,7 +12664,9 @@
             passive: true
         });
         window.addEventListener('load', () => {
-            attemptTitleMusicAutoplay();
+            /* hold the title theme until the D.O.O.R. ident has finished
+               (its sting is the only thing that should play under it) */
+            _doorIdentAfter(attemptTitleMusicAutoplay);
             try {
 
                 document.body.classList.add('diorama-3d');

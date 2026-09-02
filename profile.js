@@ -1895,13 +1895,17 @@ function CreateProfileModal({ onCreated, onCancel }) {
   const submit = () => {
     if (!isValidUsername(name)) {
       setError((D && D.SYSTEM.badCallsign) || '2-16 chars, letters/numbers/underscores only');
+      try { if (window.playDoorSfx) window.playDoorSfx('denied'); } catch (e) {}
       return;
     }
     const slot = createProfile(name);
     if (slot === null) {
       setError((D && D.SYSTEM.slotsFull) || 'All 3 profile slots are full');
+      try { if (window.playDoorSfx) window.playDoorSfx('denied'); } catch (e) {}
       return;
     }
+    /* the card goes through the laminator (DOOR sound kit, audio.js) */
+    try { if (window.playDoorSfx) window.playDoorSfx('laminate'); } catch (e) {}
     /* the intake form's two optional answers go on the card */
     try {
       const np = loadProfile(slot);

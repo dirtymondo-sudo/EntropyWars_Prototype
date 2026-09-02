@@ -1,5 +1,5 @@
 # D.O.O.R. — Department of Orthogonal Realities
-### Integration design (rev 4, 2026-09-02) — build-order step 1 SHIPPED + polish pass, see §7
+### Integration design (rev 5, 2026-09-02) — build-order steps 1 + 2 SHIPPED, see §7
 
 Read CLAUDE.md first. This is the anti-"start over" memory for the DOOR
 fiction: what DOOR is, its role in the Entropy Wars, where it plugs into
@@ -208,8 +208,12 @@ Hook: title page index.html:578 (logo video), main menu index.html:597-643.
   (studio card → feature). Built in code from the seal PNG (§5), no mp4.
 - Menu buttons keep their names. The DOOR seal sits in the corner; the
   ELO/wallet strip gains "CLEARANCE L3" next to the rank.
-- `mainTheme` in audio.js is defined and NEVER PLAYED — free slot for a
-  DOOR menu theme.
+- ~~`mainTheme` in audio.js is defined and never played~~ — WRONG (rev 5):
+  `mainTheme` = `maintheme_v2.mp3`, played for the pre-battle setup phase
+  (`syncMusicToState`: not title, not battle) and also in the random battle
+  pool (`battleMusicKeys`). It is real music, not a free slot. The title
+  page plays `titleTheme`. A DOOR menu theme is therefore a NEW track, not a
+  placeholder fill — see §5.2.
 
 ### 3.5 Result screen: Victory stays Victory; a stamp lands beside it
 Hook: result overlay index.html:1086 (`vicTitle`, `vicGoldBreakdown`, MVP,
@@ -342,11 +346,15 @@ rev 1 is therefore Claude's job.
 That is the whole mandatory list. Everything below is optional upgrades.
 
 ### 5.2 The user SHOULD make eventually (Claude ships a placeholder first)
-- **Ident jingle** (3–6 s, DX7-style synth logo sting). Claude's placeholder:
-  a procedurally generated WAV (detuned saws, a filter sweep, a tape stop).
-  Usable, not iconic.
-- **Menu theme** for the empty `mainTheme` slot (muzak / hold-music). Same:
-  a generated loop as placeholder; real music later.
+- **Ident jingle** (3–6 s, DX7-style synth logo sting). Claude's placeholder
+  SHIPPED (step 2): synthesized at runtime in audio.js (`identSting` recipe:
+  CRT power-on, detuned-saw A→D chord with a filter sweep, bell arpeggio,
+  tape stop). Usable, not iconic. A real file drops in as
+  `_R2_SFX.doorIdentSting` and the synth is bypassed.
+- **Menu / hold music.** `mainTheme` turned out to be real music (§3.4), so
+  there is no empty slot to fill. If DOOR gets its own muzak it is a new
+  `_R2_MUSIC` key for the matchmaking queue (§3.7 hold music) — not
+  started; a synth loop that replaces the user's real track was rejected.
 - **Handler portrait** (the supervisor who issues directives). Placeholder:
   a CSS/SVG silhouette with a redaction bar over the face and a nameplate.
   Honestly, the placeholder might be the final joke.
@@ -371,11 +379,14 @@ That is the whole mandatory list. Everything below is optional upgrades.
   scans can replace them later if the nostalgia dial needs it.
 - **VHS overlay** for the orientation tape and memo reveals: CSS/SVG
   tracking bars + the existing post stack.
-- **SFX placeholders** as generated WAVs (Node script, no deps): stamp
-  thunk, dot-matrix burst, fax handshake, PA chime, DENIED buzzer, security
-  door buzz, CRT power-on, VHS insert/eject, lamination roller. Keyed into
-  audio.js `_R2_SFX`. These are the kind of sounds procedural synthesis is
-  actually good at; several may never need replacing.
+- **SFX placeholders** — SHIPPED (step 2) as RUNTIME Web Audio synthesis in
+  audio.js (`playDoorSfx(key)`), not as WAV files: stamp thunk, DENIED
+  buzzer, lamination roller, CRT power-on, VHS eject, dot-matrix burst, fax
+  handshake, PA chime, security-door buzz, ident sting. Zero asset uploads,
+  nothing to cache-bust beyond audio.js. Upgrade path: add a real file to
+  `_R2_SFX` under the key in `_DOOR_SFX_FILE_KEY` (`doorStamp`,
+  `doorDenied`, …) and that sound uses the file instead. Several may never
+  need replacing.
 - **All text**: memos (~30), canon notices (~20), the six directive scripts,
   customs status + point of entry for all ~95 dossiers, DOOR passes on the
   rival-relevant dossiers, orientation script, system-message voice.
@@ -400,7 +411,8 @@ the `?v=` token in index.html (CLAUDE.md 1b).
 1. Seal on title/menu/codex/shop; ID card intake + profile overview; codex
    customs stamps + points of entry (both lore copies); loading-screen
    memo/canon cards; result-screen stamp. (All visual layer, no new systems.)
-2. Ident animation + generated SFX + `mainTheme` placeholder.
+2. Ident animation + generated SFX (+ ~~`mainTheme` placeholder~~ — not a
+   free slot, see §3.4). **SHIPPED 2026-09-02, see §7.**
 3. Story track: `door` profile field, thresholds from existing counters,
    post-match check + cutscene hook, case-file screen, Memo 1 → Memo 6.
 4. Scripted directive matches (L2 MIB, L3 CERN) via the Challenge-run
@@ -494,8 +506,51 @@ Where the code lives (no new game files — RULE #1):
   `clamp(176px,22vw,280px)` at aspect 0.96 with the seal at 50% of the box
   (was 36%). Loading-screen `.ls-hint-stamp` has no seal (text only) — left.
 
-NOT done yet (next steps, in order): step 2 ident animation + generated SFX
-+ `mainTheme`; step 3 story track (thresholds → clearance, post-match
-check, case-file screen, memos 1–6 — the `.directive` tab and `door.*`
-fields are already waiting for it); §3.7 opponent card on the VS splash
-(needs relay); §3.8 hub dressing; §3.9 orientation tape.
+### 2026-09-02 (later still) — step 2: ident animation + DOOR sound kit
+- **Ident** (§3.4 "studio card → feature"). index.html: `#doorIdent`
+  overlay inside `#titlePage` (grain, CRT line, seal ×3 for the chromatic
+  split, two text lines, tracking bar, VCR OSD, skip hint); `#titlePage`
+  starts with class `pre-ident`, which hides the title video + sprites
+  (NOT the ENTER button / loading bar — the pre-load queued-click path is
+  untouched) until the ident has played; the inline boot script clears
+  the class after 20 s as a fallback. styles-cinematic.css (end):
+  `.door-ident*` — 4.3 s timeline (power-on line 0–0.55 s, seal scale-in
+  + red/blue split 0.3–1.6 s, department name types 1.25–2.15 s, tracking
+  sweep + jitter at 1.9 s, PRESENTS at 2.35 s, tape-stop squish at 3.15 s,
+  overlay fades), `.reduced` variant for prefers-reduced-motion (static
+  card, 1.8 s). ui.js (right after `window._gameReady = true`):
+  `doorIdentPlay()` / `doorIdentSkip()` / `_doorIdentAfter(fn)`;
+  `DOOR_IDENT_MS = 4300` must match the CSS. Fires once per page load when
+  the game JS is ready, unless an early ENTER click is queued. Click /
+  Enter / Space / Esc skips (keydown guard sits in front of the existing
+  title Enter handler). The window `load` title-theme autoplay is deferred
+  through `_doorIdentAfter` so the sting is the only audio under the card.
+  Kill-switches: `window.EW_DISABLE_DOOR_IDENT`, `?noident`, localStorage
+  `ew_doorIdent='off'`; replay: `doorIdentPlay({force:true})`.
+- **Sound kit** (§5.3), audio.js (end): `playDoorSfx(key, {delay, volume,
+  allowBeforeUnlock, noLate})` + recipes `stamp denied laminate crtOn
+  vhsEject dotMatrix fax paChime doorBuzz identSting`, `stopDoorIdentSting()`
+  (tape-stop on skip), `window.doorSfxAudition()` plays the whole kit in
+  order from the console. Reuses `_audioCtx`; rides the SFX slider and the
+  `audioUnlocked` gate; if the AudioContext is suspended it resumes and
+  schedules when that settles (a gesture) or stays silent (cold load).
+  On a cold page load the ident is therefore visual-only until the browser
+  grants audio — by design, never an error.
+- **Wired now:** result-screen CASE CLOSED / VOID stamp → `stamp` at 1.3 s
+  (battle.js `_stampDoorResult`, local on both clients); shop confirm bar
+  DECLASSIFIED thunk → `stamp` at 0.25 s (ui.js `_shopAskConfirm`); intake
+  form rejections → `denied`, card issued → `laminate` (profile.js
+  `CreateProfileModal.submit`); ident → `identSting`, skip → `vhsEject`.
+  **Defined, not yet wired** (for the story track): `dotMatrix` (memo
+  print-out), `fax` (directive arrival), `paChime` (promotion / clearance
+  up), `doorBuzz` (case-file screen open, scripted-match launch).
+- Cache-bust: `?v=20260902e-cors` → `20260902f-cors`. `npm test` green
+  (77 pass, server smoke skipped without node_modules).
+
+NOT done yet (next steps, in order): step 3 story track (thresholds →
+clearance, post-match check, case-file screen, memos 1–6 — the
+`.directive` tab, the `door.*` fields and the four unwired kit sounds are
+already waiting for it); §3.7 opponent card on the VS splash (needs relay)
++ queue hold music (new `_R2_MUSIC` key, user-made or synth loop — decide);
+§3.8 hub dressing; §3.9 orientation tape (the VHS OSD / tracking-bar CSS
+from the ident is reusable there).

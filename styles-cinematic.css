@@ -4398,3 +4398,147 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 @media (max-width: 720px), (max-height: 560px) {
     .door-result-stamp { width: 136px; bottom: 96px; right: 10px; }
 }
+
+
+/* ═══ D.O.O.R. IDENT (DOOR_DESIGN §3.4, build step 2 — 2026-09-02) ═══
+   The studio card before the feature: CRT power-on line, the seal scaling in
+   with a chromatic split, the department name typing out, one VHS tracking
+   bar sweep, then a tape-stop out. Total 4.3 s (ui.js DOOR_IDENT_MS must
+   match). Built from the seal PNG — no mp4. Lives inside #titlePage and
+   covers it; .on = playing, .off = natural end, .skip = user skipped,
+   .reduced = prefers-reduced-motion (static card, fade only, 1.8 s). */
+#titlePage.pre-ident .title-art-wrap,
+#titlePage.pre-ident .title-characters { visibility: hidden; }
+
+.door-ident {
+    position: absolute; inset: 0; z-index: 20; background: #000;
+    display: none; opacity: 1; overflow: hidden; cursor: pointer;
+    -webkit-user-select: none; user-select: none;
+}
+.door-ident.on { display: block; }
+.door-ident.off { opacity: 0; transition: opacity 0.55s ease; pointer-events: none; }
+.door-ident.skip { opacity: 0; transition: opacity 0.2s ease; pointer-events: none; }
+
+/* power-on: a white line grows across the screen, blooms, and vanishes */
+.door-ident-crt {
+    position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: #fff;
+    box-shadow: 0 0 22px 6px rgba(255,255,255,0.85);
+    transform: translateY(-50%) scaleX(0); opacity: 0;
+    animation: doorIdentCrt 0.55s ease-out 0.05s forwards;
+}
+@keyframes doorIdentCrt {
+    0%   { transform: translateY(-50%) scaleX(0) scaleY(1); opacity: 1; }
+    45%  { transform: translateY(-50%) scaleX(1) scaleY(1); opacity: 1; }
+    100% { transform: translateY(-50%) scaleX(1) scaleY(90); opacity: 0; }
+}
+
+.door-ident-stage {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3.2vh;
+    opacity: 0; transform-origin: 50% 50%;
+    animation: doorIdentStage 4.3s linear forwards;
+}
+@keyframes doorIdentStage {
+    0%    { opacity: 0; transform: none; filter: none; }
+    7%    { opacity: 1; transform: none; filter: none; }
+    73.3% { opacity: 1; transform: none; filter: none; }
+    82.6% { opacity: 0; transform: scaleY(0.03) scaleX(1.35); filter: blur(6px) brightness(3); }
+    100%  { opacity: 0; transform: scaleY(0.03) scaleX(1.35); filter: blur(6px) brightness(3); }
+}
+
+.door-ident-seal {
+    position: relative; width: clamp(180px, 32vmin, 380px); aspect-ratio: 1;
+    animation: doorIdentJitter 0.32s steps(2, end) 1.95s 1;
+}
+.door-ident-seal img {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+    pointer-events: none;
+}
+.door-ident-seal .di-main {
+    opacity: 0; filter: drop-shadow(0 0 18px rgba(255,255,255,0.25));
+    animation: doorIdentSeal 1.3s cubic-bezier(0.2, 0.9, 0.3, 1) 0.3s forwards;
+}
+@keyframes doorIdentSeal {
+    0%   { opacity: 0; transform: scale(1.75); filter: blur(14px) brightness(2.2); }
+    55%  { opacity: 1; }
+    100% { opacity: 1; transform: scale(1); filter: blur(0) drop-shadow(0 0 18px rgba(255,255,255,0.25)); }
+}
+/* chromatic split: two tinted copies fly in from either side and collapse
+   onto the white one (screen blend on black = pure colour fringing) */
+.door-ident-seal .di-r, .door-ident-seal .di-b { opacity: 0; mix-blend-mode: screen; }
+.door-ident-seal .di-r { filter: sepia(1) saturate(7) hue-rotate(-45deg) brightness(1.15); animation: doorIdentSplitR 1.3s cubic-bezier(0.2, 0.9, 0.3, 1) 0.3s forwards; }
+.door-ident-seal .di-b { filter: sepia(1) saturate(7) hue-rotate(165deg) brightness(1.15); animation: doorIdentSplitB 1.3s cubic-bezier(0.2, 0.9, 0.3, 1) 0.3s forwards; }
+@keyframes doorIdentSplitR {
+    0%   { opacity: 0;    transform: translateX(-34px) scale(1.75); }
+    35%  { opacity: 0.85; transform: translateX(-16px) scale(1.25); }
+    100% { opacity: 0;    transform: translateX(0) scale(1); }
+}
+@keyframes doorIdentSplitB {
+    0%   { opacity: 0;    transform: translateX(34px) scale(1.75); }
+    35%  { opacity: 0.85; transform: translateX(16px) scale(1.25); }
+    100% { opacity: 0;    transform: translateX(0) scale(1); }
+}
+@keyframes doorIdentJitter {
+    0%   { transform: translateX(0); }
+    25%  { transform: translateX(-4px) skewX(1.5deg); }
+    50%  { transform: translateX(3px); }
+    75%  { transform: translateX(-2px) skewX(-1deg); }
+    100% { transform: translateX(0); }
+}
+
+.door-ident-text {
+    text-align: center; font-family: 'DotGothic16', monospace;
+    color: rgba(255,255,255,0.86); white-space: nowrap;
+}
+.door-ident-text .di-l1 {
+    font-size: clamp(11px, 1.55vw, 17px); letter-spacing: 0.34em; padding-left: 0.34em;
+    clip-path: inset(0 100% 0 0);
+    animation: doorIdentType 0.9s steps(34, end) 1.25s forwards;
+}
+@keyframes doorIdentType { to { clip-path: inset(0 0 0 0); } }
+.door-ident-text .di-l2 {
+    margin-top: 1.2vh; font-size: clamp(9px, 1.1vw, 12px); letter-spacing: 0.55em; padding-left: 0.55em;
+    color: rgba(255,255,255,0.5); opacity: 0;
+    animation: doorIdentFade 0.4s ease 2.35s forwards;
+}
+@keyframes doorIdentFade { to { opacity: 1; } }
+
+/* one VHS tracking bar sweeps down the picture at ~1.9 s */
+.door-ident-tracking {
+    position: absolute; left: 0; right: 0; height: 7%; top: -12%;
+    background:
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.22) 0 2px, rgba(0,0,0,0.65) 2px 5px),
+        linear-gradient(rgba(255,255,255,0.08), rgba(255,255,255,0.08));
+    mix-blend-mode: screen; filter: blur(0.6px); opacity: 0; pointer-events: none;
+    animation: doorIdentTrack 0.55s linear 1.9s 1 forwards;
+}
+@keyframes doorIdentTrack {
+    0%   { top: -12%; opacity: 1; }
+    100% { top: 112%; opacity: 1; }
+}
+
+/* VCR on-screen display + skip hint */
+.door-ident-osd {
+    position: absolute; top: 6%; left: 6%;
+    font-family: 'DotGothic16', monospace; font-size: clamp(12px, 1.6vw, 18px);
+    color: #fff; letter-spacing: 0.2em;
+    text-shadow: 2px 0 rgba(255, 0, 70, 0.55), -2px 0 rgba(0, 190, 255, 0.55);
+    opacity: 0; animation: doorIdentFade 0.1s linear 0.5s forwards;
+}
+.door-ident-skip {
+    position: absolute; bottom: 5%; right: 5%;
+    font-family: 'DotGothic16', monospace; font-size: 10px; letter-spacing: 0.3em;
+    color: rgba(255,255,255,0.35); opacity: 0;
+    animation: doorIdentFade 0.4s ease 1.2s forwards;
+}
+
+/* reduced motion: static card, fade in, fade out — no split, no sweep, no squish */
+.door-ident.reduced .door-ident-crt,
+.door-ident.reduced .door-ident-tracking,
+.door-ident.reduced .di-r,
+.door-ident.reduced .di-b { display: none; }
+.door-ident.reduced .door-ident-stage { animation: doorIdentFade 0.4s ease forwards; }
+.door-ident.reduced .door-ident-seal { animation: none; }
+.door-ident.reduced .di-main { animation: none; opacity: 1; transform: none; }
+.door-ident.reduced .di-l1 { animation: none; clip-path: none; }
+.door-ident.reduced .di-l2 { animation: doorIdentFade 0.4s ease 0.3s forwards; }

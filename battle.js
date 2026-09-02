@@ -27168,6 +27168,9 @@
             /* restart the thunk animation on every result screen */
             void el.offsetWidth;
             el.classList.add('on');
+            /* the stamp lands ~1.3s in (1.05s delay + the doorResultThunk
+               overshoot); the sound is local on both clients, like the stamp */
+            try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { delay: 1.3 }); } catch (e) {}
         }
         window._stampDoorResult = _stampDoorResult;
 
