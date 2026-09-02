@@ -6077,7 +6077,7 @@
                 const _bounty = (typeof getUnitBountyGold === 'function') ? getUnitBountyGold(unit) : 0;
                 if (_bounty > 0) entries.push({
                     key: 'pickup',
-                    text: `💰 BOUNTY — worth +${_bounty}g to the enemy`
+                    text: `💰 BOUNTY — worth +${_bounty} Hazard Pay to the enemy`
                 });
             }
             if (unit._lastStandTriggered && !unit.dead) entries.push({
@@ -8811,9 +8811,9 @@
                 if (!state._arenaBountyPts) state._arenaBountyPts = { 1: 0, 2: 0 };
                 state._arenaBountyPts[killer.player] = (state._arenaBountyPts[killer.player] || 0) + bountyPts;
             }
-            addLog(`💰 BOUNTY CLAIMED! ${unitDisplayName(killer)} shatters ${unitDisplayName(victim)}'s flow (+${bounty}g${bountyPts ? `, +${bountyPts} pts` : ''})`);
+            addLog(`💰 BOUNTY CLAIMED! ${unitDisplayName(killer)} shatters ${unitDisplayName(victim)}'s flow (+${bounty} Hazard Pay${bountyPts ? `, +${bountyPts} pts` : ''})`);
             if (!_skipVisuals()) {
-                showFloatingTextForUnit(killer, `💰 BOUNTY +${bounty}g`, 'pickup', { durationMs: 1500 });
+                showFloatingTextForUnit(killer, `💰 BOUNTY +${bounty}`, 'pickup', { durationMs: 1500 });
                 showBattleDialogue([`<span class="dlg-effective">💰 Bounty claimed — ${unitDisplayName(victim)}'s flow is broken!</span>`], 1400);
             }
             addEntropy(killer.player, ENTROPY_PTS.bounty, 'bounty', killer);
@@ -8947,7 +8947,7 @@
             // Reaching FLOW STATE puts a bounty on your head — announce it so
             // the other team knows there's gold to collect.
             if (streak === BOUNTY_STREAK_MIN) {
-                addLog(`💰 BOUNTY POSTED: ${unitDisplayName(killer)} enters FLOW STATE — worth +${getUnitBountyGold(killer)}g to whoever puts them down!`);
+                addLog(`💰 BOUNTY POSTED: ${unitDisplayName(killer)} enters FLOW STATE — worth +${getUnitBountyGold(killer)} Hazard Pay to whoever puts them down!`);
                 if (!_skipVisuals()) {
                     showBattleDialogue([`<span class="dlg-effective">🌀 ${unitDisplayName(killer)} enters FLOW STATE! A bounty has been posted.</span>`], 1600);
                 }
@@ -9956,7 +9956,7 @@
                             + `<span class="ach-card-icon">${n.icon || '🏆'}</span>`
                             + `<span class="ach-card-main"><span class="ach-card-name">${escapeHtml(n.name)} <b class="ach-card-tier">${tierNames[n.tier] || ''}</b></span>`
                             + `<span class="ach-card-desc">${escapeHtml(n.desc)} (${(n.threshold || 0).toLocaleString()})</span></span>`
-                            + `${n.reward ? `<span class="ach-card-reward">+${n.reward.toLocaleString()}g</span>` : ''}`
+                            + `${n.reward ? `<span class="ach-card-reward">💰 +${n.reward.toLocaleString()}</span>` : ''}`
                             + `</div>`;
                     }
                     if (unlocks.length > 10) {
@@ -10119,7 +10119,7 @@
             if (!n.summary && n.tier >= 2 && typeof showCombatBanner === 'function') {
                 const kind = n.tier >= 4 ? 'ach-entropic' : (n.tier === 3 ? 'ach-diamond' : 'ach-gold');
                 showCombatBanner(`🏆 ${n.name} ${tierNames[n.tier] || ''}`,
-                    `${n.desc} — ${(n.threshold || 0).toLocaleString()}${n.reward ? ` · +${n.reward.toLocaleString()}g` : ''}`,
+                    `${n.desc} — ${(n.threshold || 0).toLocaleString()}${n.reward ? ` · 💰 +${n.reward.toLocaleString()}` : ''}`,
                     kind);
                 window.setTimeout(() => { _achPopupActive = false; _achDrainPopups(); }, 1400);
                 return;
@@ -10132,7 +10132,7 @@
             toast.innerHTML = `<div class="achieve-toast-icon">${n.icon || '🏆'}</div><div class="achieve-toast-body">`
                 + `<div class="achieve-toast-text">${n.summary ? n.name : `Achievement — Tier ${tierNames[n.tier] || (n.tier + 1)}`}</div>`
                 + `<div class="achieve-toast-sub">${n.summary ? n.desc : `${n.name} · ${n.desc} (${(n.threshold || 0).toLocaleString()})`}</div>`
-                + `${n.reward ? `<div class="achieve-toast-reward">+${n.reward.toLocaleString()}g</div>` : ''}</div>`;
+                + `${n.reward ? `<div class="achieve-toast-reward">💰 +${n.reward.toLocaleString()}</div>` : ''}</div>`;
             (document.getElementById('game-viewport') || document.body).appendChild(toast);
             window.setTimeout(() => {
                 toast.classList.add('achieve-toast-out');
@@ -20924,7 +20924,7 @@
                     grantXP(killer, computeKillXP(killer, target), 'kill');
 
                     killer.gold = (killer.gold || 0) + GOLD_PER_KILL;
-                    showFloatingTextForUnit(killer, `+${GOLD_PER_KILL}g`, 'pickup');
+                    showFloatingTextForUnit(killer, `💰 +${GOLD_PER_KILL}`, 'pickup');
 
                     awardAssists(target, killer);
 
@@ -26872,7 +26872,7 @@
             if (!el) return;
             const parts = [];
             parts.push(`<span style="white-space:nowrap">Match Complete <b style="color:#ffe9a8">+${calc.base}</b></span>`);
-            if (calc.collected > 0) parts.push(`<span style="white-space:nowrap">Gold Collected <b style="color:#ffe9a8">+${calc.collected}</b></span>`);
+            if (calc.collected > 0) parts.push(`<span style="white-space:nowrap">Hazard Pay Collected <b style="color:#ffe9a8">+${calc.collected}</b></span>`);
             if (calc.winMult > 1) parts.push(`<span style="white-space:nowrap;color:#9fe0a0">Win ×${calc.winMult}</span>`);
             if (calc.flawless) parts.push(`<span style="white-space:nowrap;color:#9fe0a0" title="Won without losing a single unit — no friendly deaths all match">Deathless ×1.25</span>`);
             if (calc.wipeout) parts.push(`<span style="white-space:nowrap;color:#9fe0a0" title="Won by wiping the enemy team">Wipeout ×1.25</span>`);
@@ -26880,7 +26880,7 @@
             const balanceLine = `<div id="vgbBalance" style="font-size:12px;color:#b8a060;margin-top:3px">Adding to wallet…</div>`;
             el.innerHTML = `
                 <div style="display:inline-flex;flex-direction:column;align-items:center;gap:5px;background:linear-gradient(168deg,rgba(34,26,10,0.82),rgba(20,16,8,0.82));border:1px solid rgba(184,160,96,0.45);border-radius:10px;padding:12px 26px;margin:0 auto;box-shadow:0 8px 30px rgba(0,0,0,0.45)">
-                    <div style="font-family:Cormorant SC,serif;font-size:12px;letter-spacing:0.2em;color:#ffd86a">💰 GOLD EARNED</div>
+                    <div style="font-family:Cormorant SC,serif;font-size:12px;letter-spacing:0.2em;color:#ffd86a">💰 HAZARD PAY EARNED</div>
                     <div style="font-size:38px;font-weight:800;color:#ffd86a;line-height:1;text-shadow:0 0 18px rgba(255,200,80,0.55)">+<span id="vgbTotalNum">0</span></div>
                     <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:5px;font-size:12px;color:#d8cfa8">${parts.join(sep)}</div>
                     ${balanceLine}
@@ -29595,8 +29595,8 @@
             try { if (typeof window._refreshWallets === 'function') window._refreshWallets(); } catch (e) {}
 
             addLog(victory
-                ? `🏆 ${D.label} CLEARED! All ${D.floors} floors conquered. +${gold} gold.`
-                : `☠️ The party has fallen on Floor ${run.floor}. Floors cleared: ${floorsCleared}. +${gold} gold.`);
+                ? `🏆 ${D.label} CLEARED! All ${D.floors} floors conquered. +${gold} Hazard Pay.`
+                : `☠️ The party has fallen on Floor ${run.floor}. Floors cleared: ${floorsCleared}. +${gold} Hazard Pay.`);
 
             /* Dungeon runs never reach finalizeMatch — commit here (whole-run
                combat counters + md_clears on victory). */
@@ -29640,7 +29640,7 @@
                 const ally = state._mdNewAlly;
                 vicMatchInfo.innerHTML = `<div class="camp-gold-section">
                     <div class="camp-gold-row"><span>Floors Cleared</span><span class="camp-gold-val">${floorsCleared} / ${D.floors}</span></div>
-                    <div class="camp-gold-row total"><span>Gold Earned</span><span class="camp-gold-val">+${gold}g</span></div>
+                    <div class="camp-gold-row total"><span>Hazard Pay Earned</span><span class="camp-gold-val">💰 +${gold}</span></div>
                     ${ally ? `<div class="camp-gold-row"><span>🤝 New Ally Recruited</span><span class="camp-gold-val">${ally.charAt(0).toUpperCase() + ally.slice(1)}</span></div>` : ''}
                     ${sv ? `<div class="camp-gold-row"><span>Best Depth</span><span class="camp-gold-val">Floor ${sv.bestFloor || 0}</span></div>
                     <div class="camp-gold-row"><span>Total Clears</span><span class="camp-gold-val">${sv.clears || 0}</span></div>` : ''}
@@ -29918,7 +29918,7 @@
                     const save = state.campaignSave;
                     const canRetry = save && save.gold >= retryCost;
                     vicSubtitle.innerHTML = `Battle ${result.battleNum} / ${maxLevel} failed · Retry cost: 💰 ${retryCost}`
-                        + (canRetry ? '' : ' <span style="color:#a33">(not enough gold)</span>');
+                        + (canRetry ? '' : ' <span style="color:#a33">(not enough Hazard Pay)</span>');
                 } else {
                     vicSubtitle.innerHTML = `You fell on Battle ${result.battleNum}. `
                         + `Final streak: <b>${result.runWins}</b> · Best streak: <b>${result.bestStreak}</b>`;
@@ -29941,9 +29941,9 @@
             if (result.playerWon && result.goldBreakdown) {
                 const gb = result.goldBreakdown;
                 let goldHtml = `<div class="camp-gold-section">`;
-                goldHtml += `<div class="camp-gold-row"><span>Battle Reward</span><span class="camp-gold-val">${gb.base}g</span></div>`;
-                if (gb.unitGold > 0) goldHtml += `<div class="camp-gold-row"><span>Unit Gold</span><span class="camp-gold-val">+${gb.unitGold}g</span></div>`;
-                goldHtml += `<div class="camp-gold-row total"><span>Total Gold</span><span class="camp-gold-val">${gb.total}g</span></div>`;
+                goldHtml += `<div class="camp-gold-row"><span>Battle Reward</span><span class="camp-gold-val">💰 ${gb.base}</span></div>`;
+                if (gb.unitGold > 0) goldHtml += `<div class="camp-gold-row"><span>Unit Hazard Pay</span><span class="camp-gold-val">💰 +${gb.unitGold}</span></div>`;
+                goldHtml += `<div class="camp-gold-row total"><span>Total Hazard Pay</span><span class="camp-gold-val">💰 ${gb.total}</span></div>`;
                 goldHtml += `</div>`;
                 infoHtml += goldHtml;
             } else if (!result.playerWon) {
@@ -29951,7 +29951,7 @@
                 if (cType2 === 'gauntlet') {
                     const retryCost = (typeof getGauntletRetryCost === 'function') ? getGauntletRetryCost(result.battleNum) : 50;
                     infoHtml += `<div class="camp-gold-section">
-                        <div class="camp-gold-row"><span>Retry Cost</span><span class="camp-gold-val">-${retryCost}g</span></div>
+                        <div class="camp-gold-row"><span>Retry Cost</span><span class="camp-gold-val">💰 -${retryCost}</span></div>
                         <div class="camp-gold-row"><span>Retries This Run</span><span class="camp-gold-val">${result.gauntletRetries || 0}</span></div>
                     </div>`;
                 } else {
@@ -31369,7 +31369,7 @@
             { t: 'FIELD MANUAL', q: 'The zodiac wheel turns as rounds pass. When the sky changes, the battlefield changes with it.' },
             { t: 'FIELD MANUAL', q: 'Distance is damage. Every hit lands at full strength up close — and sheds 10% per tile beyond the first, down to 80%. Close the gap or pay the toll.' },
             { t: 'FIELD MANUAL', q: 'Ping the field. A marked tile speaks louder than a typed apology.' },
-            { t: 'FIELD MANUAL', q: 'Victory pays gold, and gold buys new vessels in the shop. Defeat pays considerably less.' },
+            { t: 'FIELD MANUAL', q: 'Victory pays Hazard Pay, and Hazard Pay buys new vessels in the shop. Defeat pays considerably less.' },
             { t: 'FIELD MANUAL', q: 'Cinematics can be skipped with a tap. So can this screen — once the data is in.' },
             { t: 'INTEL FRAGMENT', q: '“It parallel parked itself. Then it stood up and punched a building.”', s: 'Civilian witness ████ — file: SEDAN' },
             { t: 'INTEL FRAGMENT', q: '“He knew about the classified operation. He knew everyone’s names. He gave Agent ████ socks. They were the right size.”', s: 'December incident report' },

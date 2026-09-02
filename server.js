@@ -1059,7 +1059,7 @@ app.post('/api/economy/bank', limitEcon, async (req, res) => {
         });
     } catch (err) {
         console.error('[ECON] Bank error:', err.message);
-        res.status(500).json({ error: 'Failed to bank gold.' });
+        res.status(500).json({ error: 'Failed to bank Hazard Pay.' });
     }
 });
 
@@ -1099,7 +1099,7 @@ app.post('/api/economy/purchase', limitEcon, async (req, res) => {
             );
         } else {
             if ((fresh.gold || 0) < ECON.ACCT_UNIT_PRICE) {
-                return res.status(402).json({ error: 'Insufficient gold.' });
+                return res.status(402).json({ error: 'Insufficient Hazard Pay.' });
             }
             // Atomic: WHERE gold >= price prevents double-spend on concurrent clicks.
             result = await d1.execute(

@@ -1,5 +1,5 @@
 # D.O.O.R. — Department of Orthogonal Realities
-### Integration design (rev 3, 2026-09-02) — build-order step 1 SHIPPED, see §7
+### Integration design (rev 4, 2026-09-02) — build-order step 1 SHIPPED + polish pass, see §7
 
 Read CLAUDE.md first. This is the anti-"start over" memory for the DOOR
 fiction: what DOOR is, its role in the Entropy Wars, where it plugs into
@@ -12,8 +12,16 @@ draw vs. what Claude can build).
 - **Do NOT rename the game.** Victory is Victory, Defeat is Defeat, the Shop
   is the Shop, the Codex is the Codex. DOOR is a *layer* (stamps, seals,
   memos, voice) on top of a turn-based fighting game, not a replacement
-  vocabulary. Dropped: "deputized assets", "requisitions", "hazard pay",
-  "petty cash", "processing event", renamed menu buttons.
+  vocabulary. Dropped: "deputized assets", "requisitions", "petty cash",
+  "processing event", renamed menu buttons.
+- **Rev 4 (2026-09-02): the ONE exception — the currency is called
+  'Hazard Pay'.** Every player-facing "gold" label (wallet, shop prices,
+  result-screen earnings, bounty/kill pops, Challenge/MD reward tables,
+  memos, error toasts) says Hazard Pay. The 💰 icon stays as the unit mark
+  where a suffix used to be (`+40g` → `💰 +40`; never "HP", that is hit
+  points). Code identifiers (`account.gold`, `save.gold`, `GOLD_PER_KILL`,
+  D1 column `gold`), the Gold RANK tier and Gold achievement rarity, and
+  CSS colour names are NOT renamed — this is a label, not a migration.
 - Stamps stay — as visuals that land NEXT TO the real words.
 - Story must be advanceable from online PvP as well as solo play (hit a
   threshold → cutscene right after the match). Primary single-player mode
@@ -58,7 +66,7 @@ that is the VFD move — but there is one canonical spine underneath:
 | Records / the Codex | **Archivists.** Neutral. "We only keep the file." | True and useless. |
 | The Shop / declassification | **Arms dealers**, by any honest reading: DOOR hands officers ever-stranger entities to fight each other with, for gold. | True. Nobody at DOOR uses the phrase. The memo calls it "asset reassignment". |
 | The Bureau of Continuity (Canon Office) | **Janitors.** They clean up the drift (the Mandela Effect) that entropy leaves in reality. | True. They are the only department that suspects WHY there is so much to clean. |
-| The Openers (the hidden hand) | **Profiteers — but not in gold.** A customs agency collects a duty on every crossing. DOOR's duty is paid in entropy. Every door opened, every battle fought, every ENTROPY STRIKE fired generates the stuff, and DOOR collects it. What for is Directive 6's question. | The truth. |
+| The Openers (the hidden hand) | **Profiteers — but not in Hazard Pay.** A customs agency collects a duty on every crossing. DOOR's duty is paid in entropy. Every door opened, every battle fought, every ENTROPY STRIKE fired generates the stuff, and DOOR collects it. What for is Directive 6's question. | The truth. |
 
 One line for the bible: **"Every crossing pays a duty. The duty is entropy."**
 
@@ -156,7 +164,7 @@ form"), profile shape `defaultProfile()` profile.js:26, 3 slots
 - Profile overview = the card, front and back. The back collects stamps
   over time (promotions, commendations, and — late — a second stamp when
   the story turns). Three profile slots = three cards on a lanyard. Delete
-  confirm fine print: "LOST CARD FEE: 5000 gold".
+  confirm fine print: "LOST CARD FEE: 5,000 Hazard Pay".
 - **Clearance is story progress, not ELO.** Ranks stay Iron→Grandmaster
   (`getRankInfo` profile.js:1025). Clearance L1–L6 comes from §4.
 
@@ -464,6 +472,27 @@ Where the code lives (no new game files — RULE #1):
   DOOR-voiced errors; profile header shows the card (click to flip) with
   rename beneath; delete confirm carries the LOST CARD FEE fine print.
 - **map.js** — main-menu ELO strip gains `CLEARANCE L1 · PROBATIONARY`.
+
+### 2026-09-02 (later) — polish pass before step 2
+- **Currency label → Hazard Pay** (rev 4 decision, see top). Touched:
+  ui.js (shop confirm + disabled-unlock tooltip, Nexus capture/income log
+  lines, dev grant button, editor price-tier help), battle.js (bounty
+  banner/log/pop, achievement card/toast/banner rewards, kill pop,
+  `_renderVicGoldBreakdown` "HAZARD PAY EARNED" + "Hazard Pay Collected",
+  MD + Gauntlet/Challenge result tables, retry "not enough", FIELD MANUAL
+  hint), map.js (Challenge map/shop stat labels + retry warning),
+  party-builder.js (Plunder passive desc), profile.js (unlock error),
+  data.js DOOR_TEXT (memo + `SYSTEM.lostCard`), server.js (two API error
+  strings — Render redeploy). Identifiers/columns untouched; `npm test`
+  parity still green.
+- **Seal sizing pass** — every placement was too small. New sizes:
+  title corner `clamp(76px,10vw,132px)` (was 38–56), main-menu corner
+  `clamp(150px,18vw,270px)` (was 72–128), codex/shop header 64px (was 30,
+  sub-line 9px), onboarding 136px (was 72), ID-card crest 27% wide capped
+  at 42% tall (fields/barcode shifted to left:32% to make room), card-back
+  watermark 46% (was 32), dossier watermark 52% (was 34), result stamp
+  `clamp(176px,22vw,280px)` at aspect 0.96 with the seal at 50% of the box
+  (was 36%). Loading-screen `.ls-hint-stamp` has no seal (text only) — left.
 
 NOT done yet (next steps, in order): step 2 ident animation + generated SFX
 + `mainTheme`; step 3 story track (thresholds → clearance, post-match

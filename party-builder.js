@@ -1408,7 +1408,7 @@ const RACE_TRAITS = {
   ],
   'pirate': [
     { icon: '⚓', name: 'Old Salt', desc: 'Cannot drown; deep water costs only 1 MOV.' },                             // CODED (Raider class)
-    { icon: '💰', name: 'Plunder', desc: 'Earns extra gold from kills.' },                                            // DESIGN
+    { icon: '💰', name: 'Plunder', desc: 'Earns extra Hazard Pay from kills.' },                                            // DESIGN
   ],
   'bigfoot': [
     { icon: '🌲', name: 'Forest Adapted', desc: 'Moves through trees at full speed.' },                               // CODED

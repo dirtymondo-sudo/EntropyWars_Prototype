@@ -731,7 +731,7 @@
                                     <div class="cmap-challenge-info-val">${save.gauntletRetries || 0}</div>
                                 </div>
                                 <div class="cmap-challenge-info">
-                                    <div class="cmap-challenge-info-label">Gold Earned</div>
+                                    <div class="cmap-challenge-info-label">Hazard Pay Earned</div>
                                     <div class="cmap-challenge-info-val">💰 ${save.totalGoldEarned || 0}</div>
                                 </div>
                                 <div class="cmap-challenge-info">
@@ -789,7 +789,7 @@
                         <div class="cmap-stat-val">${save.gauntletRetries || 0}</div>
                     </div>
                     <div class="cmap-stat">
-                        <div class="cmap-stat-label">Total Gold</div>
+                        <div class="cmap-stat-label">Total Hazard Pay</div>
                         <div class="cmap-stat-val">${save.totalGoldEarned || 0}</div>
                     </div>
                 `;
@@ -804,7 +804,7 @@
                         <div class="cmap-stat-val">${best}</div>
                     </div>
                     <div class="cmap-stat">
-                        <div class="cmap-stat-label">Total Gold Earned</div>
+                        <div class="cmap-stat-label">Total Hazard Pay Earned</div>
                         <div class="cmap-stat-val">${save.totalGoldEarned || 0}</div>
                     </div>
                 `;
@@ -813,7 +813,7 @@
             let warnHtml = '';
             if (isGauntlet) {
                 const retryCost = (typeof getGauntletRetryCost === 'function') ? getGauntletRetryCost(battleNum) : 50;
-                warnHtml = `<div class="cmap-challenge-warn cmap-warn-gauntlet">🔄 Retry on loss costs 💰 ${retryCost} gold</div>`;
+                warnHtml = `<div class="cmap-challenge-warn cmap-warn-gauntlet">🔄 Retry on loss costs 💰 ${retryCost} Hazard Pay</div>`;
             } else {
                 warnHtml = `<div class="cmap-challenge-warn">⚠ Lose this battle and your run ends.</div>`;
             }
@@ -849,7 +849,7 @@
                                 <div class="cmap-challenge-info-val">${lvlRangeLabel}</div>
                             </div>
                             <div class="cmap-challenge-info">
-                                <div class="cmap-challenge-info-label">Gold Reward</div>
+                                <div class="cmap-challenge-info-label">Hazard Pay Reward</div>
                                 <div class="cmap-challenge-info-val">💰 ${lvl ? lvl.goldReward : 0}</div>
                             </div>
                         </div>

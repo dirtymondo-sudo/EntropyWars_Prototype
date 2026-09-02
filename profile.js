@@ -843,7 +843,7 @@ function localPurchaseUnit(raceKey, useToken) {
   } else if ((p.account.gold || 0) >= price) {
     p.account.gold -= price;
   } else {
-    return { ok: false, error: 'Not enough gold. (' + (p.account.gold || 0).toLocaleString() + ' / ' + price.toLocaleString() + ')' };
+    return { ok: false, error: 'Not enough Hazard Pay. (' + (p.account.gold || 0).toLocaleString() + ' / ' + price.toLocaleString() + ')' };
   }
   p.account.unlockedUnits = p.account.unlockedUnits.concat([raceKey]);
   saveProfile(idx, p);

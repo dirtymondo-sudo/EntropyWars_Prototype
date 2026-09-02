@@ -3840,32 +3840,32 @@ body.diorama-3d .tile-underpass.jump::before {
    build-order step 2 — this is the static seal until then). */
 .door-title-seal {
     position: absolute; left: 18px; bottom: 12px; z-index: 3;
-    display: flex; align-items: center; gap: 10px; pointer-events: none;
+    display: flex; align-items: center; gap: 16px; pointer-events: none;
     opacity: 0; animation: doorSealIn 1.2s ease 0.6s forwards;
 }
-.door-title-seal img { width: clamp(38px, 5vw, 56px); height: auto; filter: drop-shadow(0 0 10px rgba(0,0,0,0.6)); }
+.door-title-seal img { width: clamp(76px, 10vw, 132px); height: auto; filter: drop-shadow(0 0 10px rgba(0,0,0,0.6)); }
 .door-title-seal span {
-    font-family: 'DotGothic16', monospace; font-size: 9px; letter-spacing: 0.22em;
+    font-family: 'DotGothic16', monospace; font-size: 11px; letter-spacing: 0.22em;
     color: rgba(255,255,255,0.38); line-height: 1.6; white-space: nowrap;
 }
 @keyframes doorSealIn { to { opacity: 1; } }
 /* Main menu: seal in the top-right corner (the button stack owns the left). */
 .void-menu .door-menu-seal {
     position: absolute; right: clamp(20px, 5vw, 80px); top: 4.2vh; z-index: 2;
-    width: clamp(72px, 9vw, 128px); pointer-events: none; opacity: 0.88;
-    display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+    width: clamp(150px, 18vw, 270px); pointer-events: none; opacity: 0.92;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
 }
 .void-menu .door-menu-seal img { width: 100%; height: auto; filter: drop-shadow(0 0 14px rgba(0,0,0,0.7)); }
 .void-menu .door-menu-seal span {
-    font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; letter-spacing: 0.24em;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; letter-spacing: 0.24em;
     color: #8f88a8; text-align: right; white-space: nowrap;
 }
 /* Codex / Shop headers: seal + a sub-line under the existing title. */
-.door-hdr { display: inline-flex; align-items: center; justify-content: center; gap: 12px; text-align: left; }
-.door-hdr img { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
+.door-hdr { display: inline-flex; align-items: center; justify-content: center; gap: 18px; text-align: left; }
+.door-hdr img { width: 64px; height: 64px; object-fit: contain; flex-shrink: 0; }
 .door-hdr-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; }
 .door-hdr-sub {
-    font-family: 'DotGothic16', monospace; font-size: 8px; letter-spacing: 0.22em;
+    font-family: 'DotGothic16', monospace; font-size: 9px; letter-spacing: 0.22em;
     color: rgba(160,140,200,0.55); font-weight: 400;
 }
 .door-clearance-tag {
@@ -3902,9 +3902,9 @@ body.diorama-3d .tile-underpass.jump::before {
 /* Dossier footer / body watermark (codex + shop dossiers). */
 .cdx-dossier { position: relative; }
 .cdx-dossier::before {
-    content: ''; position: absolute; right: 6%; top: 4%; width: 34%; aspect-ratio: 1;
+    content: ''; position: absolute; right: 5%; top: 3%; width: 52%; aspect-ratio: 1;
     background: var(--door-seal-dark) center / contain no-repeat;
-    opacity: 0.045; pointer-events: none;
+    opacity: 0.06; pointer-events: none;
 }
 .door-annotation { font-family: 'IBM Plex Mono', 'DotGothic16', monospace; font-size: 12px; line-height: 1.6; color: #d6cfbb; }
 .door-annotation .door-stamp { margin-right: 8px; vertical-align: middle; }
@@ -3948,8 +3948,8 @@ body.diorama-3d .tile-underpass.jump::before {
     position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen;
     background: linear-gradient(115deg, rgba(255,255,255,0) 32%, rgba(255,255,255,0.32) 46%, rgba(255,255,255,0) 58%);
 }
-.door-card-crest { position: absolute; left: 3.5cqw; top: 15%; width: 22%; }
-.door-card-crest img { width: 100%; height: auto; display: block; }
+.door-card-crest { position: absolute; left: 3cqw; top: 13.5%; width: 27%; height: 42%; display: flex; align-items: flex-start; }
+.door-card-crest img { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
 .door-card-photo {
     position: absolute; left: 3.5cqw; bottom: 8%; width: 22%; aspect-ratio: 1;
     background: #2a2620; border: 0.5cqw solid #7c7462; overflow: hidden;
@@ -3957,13 +3957,13 @@ body.diorama-3d .tile-underpass.jump::before {
 }
 .door-card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .door-card-photo .pending { font-size: 1.9cqw; letter-spacing: 0.2em; color: #b6ad98; text-align: center; line-height: 1.5; }
-.door-card-fields { position: absolute; left: 29%; top: 15.5%; right: 12.5%; display: grid; grid-template-columns: 1fr 1.25fr; gap: 1.5cqw 2cqw; }
+.door-card-fields { position: absolute; left: 32%; top: 15.5%; right: 12.5%; display: grid; grid-template-columns: 1fr 1.25fr; gap: 1.5cqw 2cqw; }
 .door-card-field label { display: block; font-size: 1.7cqw; letter-spacing: 0.24em; color: #6b6252; margin-bottom: 0.3cqw; }
 .door-card-field b { display: block; font-size: 2.4cqw; letter-spacing: 0.06em; color: var(--door-ink); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .door-card-field.wide { grid-column: 1 / -1; }
 .door-card-field.wide b { font-family: 'Cormorant SC', serif; font-size: 5.4cqw; letter-spacing: 0.06em; line-height: 1.05; }
 .door-card-flag { position: absolute; right: 13.5%; bottom: 7.5%; font-size: 2.3cqw; padding: 0.9cqw 1.6cqw 0.7cqw; transform: rotate(-8deg); z-index: 2; }
-.door-card-barcode { position: absolute; left: 29%; right: 12.5%; bottom: 8%; height: 12%; display: flex; align-items: stretch; gap: 0.25cqw; }
+.door-card-barcode { position: absolute; left: 32%; right: 12.5%; bottom: 8%; height: 12%; display: flex; align-items: stretch; gap: 0.25cqw; }
 .door-card-barcode i { display: block; background: var(--door-ink); flex: 0 0 auto; }
 .door-card-fine { position: absolute; left: 3.5cqw; right: 12.5%; bottom: 2.4%; font-size: 1.45cqw; letter-spacing: 0.16em; color: #7a7160; white-space: nowrap; overflow: hidden; }
 .door-card-magstripe { position: absolute; left: 0; right: 0; top: 12%; height: 15%; background: #1e1b17; }
@@ -3973,7 +3973,7 @@ body.diorama-3d .tile-underpass.jump::before {
 .door-card-stamps .door-stamp { font-size: 2.1cqw; padding: 0.9cqw 1.5cqw 0.7cqw; }
 .door-card-stamps .empty { font-size: 1.7cqw; letter-spacing: 0.16em; color: #9a917d; font-style: italic; }
 .door-card-back-note { font-size: 1.5cqw; letter-spacing: 0.12em; color: #6b6252; line-height: 1.7; margin-top: auto; }
-.door-card-wm { position: absolute; right: 6%; bottom: 6%; width: 32%; aspect-ratio: 1; background: var(--door-seal-mono) center / contain no-repeat; opacity: 0.07; pointer-events: none; }
+.door-card-wm { position: absolute; right: 5%; bottom: 5%; width: 46%; aspect-ratio: 1; background: var(--door-seal-mono) center / contain no-repeat; opacity: 0.085; pointer-events: none; }
 .door-card-hint { text-align: center; font-family: 'DotGothic16', monospace; font-size: 9px; letter-spacing: 0.24em; color: #555c70; margin-top: 10px; cursor: pointer; user-select: none; }
 .door-card-hint:hover { color: #8a93a8; }
 

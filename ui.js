@@ -5021,9 +5021,9 @@
             } else if (_capMode && _capMode.id === 'arena') {
                 if (!state._arenaNexusControl) state._arenaNexusControl = { 1: 0, 2: 0 };
                 state._arenaNexusControl[player] = (state._arenaNexusControl[player] || 0) + 3;
-                addLog(`⬡ ${who} captures the ${label} Nexus for Player ${player}! (+${NEXUS_GOLD_PER_ROUND}g/round)`);
+                addLog(`⬡ ${who} captures the ${label} Nexus for Player ${player}! (💰 +${NEXUS_GOLD_PER_ROUND}/round)`);
             } else {
-                addLog(`⬡ ${who} captures the ${label} Nexus for Player ${player}! (+${NEXUS_GOLD_PER_ROUND}g/round)`);
+                addLog(`⬡ ${who} captures the ${label} Nexus for Player ${player}! (💰 +${NEXUS_GOLD_PER_ROUND}/round)`);
             }
 
             showCombatBanner('⬡ NEXUS CAPTURED!', `${label} Nexus — Player ${player}`, player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
@@ -5168,7 +5168,7 @@
                    the zone = CONTESTED (bar frozen, no gold). Standing your ground
                    IS capturing; channeling (1 AP) stacks on top for speed. */
                 if (contested) {
-                    addLog(`⚔ The ${label} Nexus is CONTESTED — capture frozen, no gold.`);
+                    addLog(`⚔ The ${label} Nexus is CONTESTED — capture frozen, no Hazard Pay.`);
                 } else if (p1Units.length > 0 || p2Units.length > 0) {
                     const team = p1Units.length > 0 ? 1 : 2;
                     if (nex.owner !== team) {
@@ -5200,7 +5200,7 @@
                         u.gold = (u.gold || 0) + NEXUS_GOLD_PER_ROUND;
                     }
                     if (teamUnits.length > 0) {
-                        addLog(`⬡ ${label} Nexus generates +${NEXUS_GOLD_PER_ROUND}g for Player ${nex.owner}'s team.`);
+                        addLog(`⬡ ${label} Nexus generates 💰 +${NEXUS_GOLD_PER_ROUND} Hazard Pay for Player ${nex.owner}'s team.`);
                     }
                 }
             }
@@ -8203,7 +8203,7 @@
             if (_shopConfirming === race) {
                 const method = _shopConfirmToken
                     ? `<b style="color:#9ad0ff">1 free unlock token 🎟</b>`
-                    : `<b style="color:#ffd86a">💰 ${price.toLocaleString()} gold</b>`;
+                    : `<b style="color:#ffd86a">💰 ${price.toLocaleString()} Hazard Pay</b>`;
                 return `<div class="cdx-actionbar door-form-confirm">
                     <span class="door-stamp door-stamp-sm admit thunk">DECLASSIFIED</span>
                     <span class="cdx-action-status" style="color:#e8dfc0;font-weight:400">Declassify <b>${RACE_PROFILES[race].label}</b> for ${method}? <span style="opacity:.6;font-size:.85em">FORM 7 · ASSET REASSIGNMENT</span></span>
@@ -8218,7 +8218,7 @@
                 ? `<button class="cdx-btn cdx-btn-token" onclick="window._shopAskConfirm('${rk}', true)">🎟 Use Free Unlock (${econ.freeTokens})</button>` : '';
             const buyBtn = canAfford
                 ? `<button class="cdx-btn cdx-btn-primary" onclick="window._shopAskConfirm('${rk}', false)">Unlock · 💰 ${price.toLocaleString()}</button>`
-                : `<button class="cdx-btn cdx-btn-primary" disabled title="Not enough gold">Unlock · 💰 ${price.toLocaleString()}</button>`;
+                : `<button class="cdx-btn cdx-btn-primary" disabled title="Not enough Hazard Pay">Unlock · 💰 ${price.toLocaleString()}</button>`;
             return `<div class="cdx-actionbar">
                 <span class="cdx-action-status" style="color:#b8a060">🔒 SEALED FILE</span>
                 ${affordNote}
@@ -8574,7 +8574,7 @@
             weatherDuration: { t: 'json', h: '[min,max] rounds.' },
             weatherTiles: { t: 'json', h: '[min,max] coverage radius.' },
             cooldownRounds: { t: 'num', h: 'Rounds between casts (per unit).' },
-            tier: { t: 'enum', o: _SLB_TIERS, h: 'Shop price tier (I:40 / II:80 / III:140 gold).' },
+            tier: { t: 'enum', o: _SLB_TIERS, h: 'Shop price tier (I:40 / II:80 / III:140 Hazard Pay).' },
             school: { t: 'text', h: 'Owning job (job spells) — cross-class slot penalty pivots on it.' },
             classRestriction: { t: 'text', h: 'Hard job gate (one job name).' },
             classRestrictions: { t: 'json', h: 'Multi-job gate: ["Agent", ...].' },
@@ -10343,7 +10343,7 @@
                 ov.style.cssText = 'position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(4,3,8,0.82);backdrop-filter:blur(2px)';
                 ov.innerHTML = `
                     <div style="max-width:440px;text-align:center;border:1px solid rgba(184,160,96,0.5);background:linear-gradient(180deg,#15110a,#0c0a06);border-radius:10px;padding:26px 28px;box-shadow:0 12px 60px rgba(0,0,0,0.7)">
-                        <img src="${(window.DOOR_TEXT && window.DOOR_TEXT.LOGO.onDark) || ''}" alt="" draggable="false" style="width:72px;height:auto;margin:0 auto 8px;display:block;filter:drop-shadow(0 0 12px rgba(0,0,0,.6))">
+                        <img src="${(window.DOOR_TEXT && window.DOOR_TEXT.LOGO.onDark) || ''}" alt="" draggable="false" style="width:136px;height:auto;margin:0 auto 12px;display:block;filter:drop-shadow(0 0 12px rgba(0,0,0,.6))">
                         <div style="font-family:Cormorant SC,serif;font-size:13px;letter-spacing:0.2em;color:#b8455a;margin-bottom:6px">${(window.DOOR_TEXT && window.DOOR_TEXT.ONBOARD.kicker) || 'CLEARANCE GRANTED'}</div>
                         <div style="font-family:Cormorant SC,serif;font-size:22px;color:#ffd86a;margin-bottom:10px">${(window.DOOR_TEXT && window.DOOR_TEXT.ONBOARD.title) || 'Choose Your First Vessel'}</div>
                         <div style="font-size:13px;color:#b8b0a0;line-height:1.5;margin-bottom:18px">${(window.DOOR_TEXT && window.DOOR_TEXT.ONBOARD.body) || 'Welcome, operative. The Division issues every new recruit one <b style="color:#9ad0ff">free declassification token</b> 🎟. Spend it on <i>any</i> vessel in the roster — even the rarest files.'}</div>
@@ -10382,7 +10382,7 @@
                 panel.innerHTML = `
                     <div style="font-weight:700;letter-spacing:0.12em;color:#d59aff">⚙ DEV TOOLS</div>
                     <button id="ewDevUnlockAll" style="font:11px monospace;cursor:pointer">Unlock All: OFF</button>
-                    <button id="ewDevGrantGold" style="font:11px monospace;cursor:pointer">+99,999 Gold (local)</button>
+                    <button id="ewDevGrantGold" style="font:11px monospace;cursor:pointer">+99,999 Hazard Pay (local)</button>
                     <div id="ewDevNote" style="font-size:9px;color:#a88ac0;max-width:150px"></div>`;
                 document.body.appendChild(panel);
                 document.getElementById('ewDevUnlockAll').onclick = function() {

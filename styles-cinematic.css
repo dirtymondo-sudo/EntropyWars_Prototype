@@ -4357,7 +4357,7 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
    clear of the awards rail (top-right) and the MVP tag (bottom-centre). */
 .door-result-stamp {
     position: absolute; right: clamp(16px, 4vw, 64px); bottom: 118px; z-index: 12;
-    width: clamp(150px, 19vw, 236px); aspect-ratio: 1.12;
+    width: clamp(176px, 22vw, 280px); aspect-ratio: 0.96;
     color: var(--door-admit, #2e8b57); opacity: 0; pointer-events: none;
     filter: url(#doorInk) drop-shadow(0 6px 14px rgba(0,0,0,0.55));
     transform: rotate(-12deg);
@@ -4371,7 +4371,7 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
     gap: 3px; padding: 6% 8%; text-align: center; background: rgba(0,0,0,0.12);
 }
 .door-result-stamp .drs-seal {
-    width: 36%; aspect-ratio: 1; background: currentColor;
+    width: 50%; aspect-ratio: 1; background: currentColor;
     -webkit-mask: var(--door-seal-mono) center / contain no-repeat;
     mask: var(--door-seal-mono) center / contain no-repeat;
 }
@@ -4396,5 +4396,5 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
     100% { opacity: 0.94; transform: rotate(-12deg) scale(1); }
 }
 @media (max-width: 720px), (max-height: 560px) {
-    .door-result-stamp { width: 118px; bottom: 96px; right: 10px; }
+    .door-result-stamp { width: 136px; bottom: 96px; right: 10px; }
 }

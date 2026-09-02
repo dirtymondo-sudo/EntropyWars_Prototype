@@ -15054,7 +15054,7 @@ const DOOR_TEXT = {
         { q: "Reminder: the word is CROSSING. 'Portal' is a Swiss word. It will be red-penned." },
         { q: 'Do not stand in corners. This is not a metaphor. Facilities is aware the new wing has four of them.' },
         { q: 'Entities cannot be filed until they have been tested in the field. That is what the field is for. That is what you are for.' },
-        { q: "Lost card fee is 5,000 gold. Officers who 'found it in a different reality' still owe 5,000 gold." },
+        { q: "Lost card fee is 5,000 Hazard Pay. Officers who 'found it in a different reality' still owe 5,000 Hazard Pay." },
         { q: 'The Watcher has cancelled all leave. The Watcher is not in your chain of command. Leave remains cancelled anyway.' },
         { q: 'The Santa file reads FRIENDLY BUT UNCONTAINABLE. Stop asking Records to change it to CONTAINABLE BUT FRIENDLY. It is not funnier.' },
         { q: 'Vending machine B dispenses from a reality where the snacks are slightly different. Consume at own risk. Report the bears.' },
@@ -15109,7 +15109,7 @@ const DOOR_TEXT = {
     SYSTEM: {
         badCallsign: 'FORM REJECTED: callsign must be 2–16 characters (letters / numbers / underscores).',
         slotsFull: 'FORM REJECTED: all 3 card slots are issued. Surrender a card first.',
-        lostCard: 'LOST CARD FEE: 5,000 gold. The fee is never collected. The card is never found.',
+        lostCard: 'LOST CARD FEE: 5,000 Hazard Pay. The fee is never collected. The card is never found.',
     },
     RESULT_STAMP: { victory: 'CASE CLOSED', defeat: 'CASE CLOSED', noContest: 'VOID' },
     CANON_DATE_LABEL: 'CANON DATE · SUBJECT TO REVISION',
