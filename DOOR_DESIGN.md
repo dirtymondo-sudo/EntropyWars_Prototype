@@ -1,5 +1,5 @@
 # D.O.O.R. — Department of Orthogonal Realities
-### Integration design (rev 2, 2026-09-02) — NO CODE YET, design memory only
+### Integration design (rev 3, 2026-09-02) — build-order step 1 SHIPPED, see §7
 
 Read CLAUDE.md first. This is the anti-"start over" memory for the DOOR
 fiction: what DOOR is, its role in the Entropy Wars, where it plugs into
@@ -404,3 +404,69 @@ Guardrails: keep every plain game word; edit both lore copies; new asset
 paths get new filenames; `npm test` before delivery; every R2 delivery bumps
 `?v=`; anything shown mid-match to both players is relayed (the opponent's
 ID card on the VS splash is the only such item so far).
+
+---
+
+## 7. Build log (anti-"start over" memory — update on every DOOR session)
+
+### 2026-09-02 — step 1 (visual layer) implemented
+Seal exports on R2 `Assets/door/` (user-made, 4 PNGs): `DOOR_Colored_Logo_
+ForBlackBG.png` (white text — dark bg ONLY), `DOOR_Colored_Logo.png` (black
+text — paper/light), `DOOR_ColoredAndBlackLines_Logo.png` (black cube grid —
+mid-tone), `DOOR_BlackAndWhite_Logo.png` (all black — gov-doc look AND the
+alpha mask for ink-tinted stamps: CSS `mask-image` + `background: currentColor`).
+Which one goes where: dark → title/menu/codex/shop headers + onboarding;
+light → the ID card crest; mono → result-stamp seal, card-back watermark.
+
+Where the code lives (no new game files — RULE #1):
+- **data.js `DOOR_TEXT`** (end of file) — ALL new DOOR copy in one object:
+  LOGO urls, DEPARTMENTS, CLEARANCE L1–L6 titles, DESKS, CUSTOMS_BY_TYPE +
+  CUSTOMS_OVERRIDES (per-race dispositions), POINT_OF_ENTRY for all 96
+  races (site maps), DOSSIER_NOTES (the "D.O.O.R. ANNOTATION" paragraphs),
+  MEMOS (`admit:true` = ADMIT-stamped, hidden below clearance L4),
+  CANON_NOTICES, ONBOARD / INTAKE / SYSTEM copy, RESULT_STAMP words.
+  Helpers: `doorCustomsStatus(race)`, `doorPointOfEntry`, `doorCaseNo(seed)`,
+  `doorEmployeeNo(profile)` (FNV hash of createdAt), `doorClearance(profile)`,
+  `doorCanonDate`. All on `window.*` too.
+- **styles-base.css** (end) — `.door-seal*`, `.door-stamp` (+ `.admit`
+  `.void` `.paper` `-sm` `-lg` `.thunk`), `.door-hdr*`, `.door-clearance-tag`,
+  the whole `.door-card*` kit (CR80 aspect, cqw units, front/back flip, desk
+  stripe via `--desk`, holo strip, sheen, barcode, FLAGGED stamp), intake
+  form bits. Worn ink = SVG filter `#doorInk` defined in index.html (an
+  element with `filter:url(#doorInk)` needs that def in the same document).
+- **styles-cinematic.css** (end) — loading-screen `.ls-memo` / `.ls-canon`
+  hint variants + `.ls-hint-stamp`, `.ls-canon` date label, the result
+  `.door-result-stamp` (thunks in 1.05s after the title slam; bottom-right,
+  above the button bar; `.directive` shows the NEW DIRECTIVE tab — unused
+  until the story track).
+- **index.html** — title-page static seal (`.door-title-seal`, the animated
+  ident is step 2), main-menu seal top-right, codex header sub-line
+  "D.O.O.R. RECORDS · ENTITY REGISTRY", shop header "D.O.O.R. · SHOP",
+  `#vicDoorStamp` in the result overlay, the `#doorInk` SVG filter.
+- **ui.js** — `_codexHeroHtml`: customs stamp beside the faction stamp
+  (shown on sealed files too; point of entry redacted when locked), POINT OF
+  ENTRY on the doc line; `_codexDoorSection` = dossier section 5 (customs
+  disposition + annotation); footer watermark; shop confirm bar = stamped
+  form (DECLASSIFIED thunk); onboarding copy from DOOR_TEXT.ONBOARD.
+- **party-builder.js** — customs stamp next to the doc number in the forge
+  dossier (reads the same DOOR_TEXT, so no second copy of the table).
+- **battle.js** — `_lsDoorHints()` merges memo/canon cards into the
+  loading rotation (shuffled pool), stamp chip on the tag; `.ls-canon`
+  label under the random year; `_lsRandomYear` stores
+  `window._lsCanonYear`; `_stampDoorResult(kind)` called from
+  `showResultOverlay` (victory/defeat/void). Result overlay is local on both
+  clients → no relay needed (RULE #2 satisfied).
+- **profile.js** — `door` field (`defaultDoor()` + backfill); `DoorIdCard`
+  React component (front/back), `doorCardPortrait` (most-played race's
+  `RACE_PORTRAITS` entry, else PHOTO PENDING), `DoorBarcode`;
+  `CreateProfileModal` = the intake form: live card preview, DESK
+  (SPACE/TIME/CHAOS, optional) + Mandela checkbox (→ FLAGGED on the card),
+  DOOR-voiced errors; profile header shows the card (click to flip) with
+  rename beneath; delete confirm carries the LOST CARD FEE fine print.
+- **map.js** — main-menu ELO strip gains `CLEARANCE L1 · PROBATIONARY`.
+
+NOT done yet (next steps, in order): step 2 ident animation + generated SFX
++ `mainTheme`; step 3 story track (thresholds → clearance, post-match
+check, case-file screen, memos 1–6 — the `.directive` tab and `door.*`
+fields are already waiting for it); §3.7 opponent card on the VS splash
+(needs relay); §3.8 hub dressing; §3.9 orientation tape.

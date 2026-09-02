@@ -14892,3 +14892,276 @@ window.EWSpellMods = (function () {
         LS_KEY: EW_SPELL_MODS_LS_KEY,
     };
 })();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// D.O.O.R. — Department of Orthogonal Realities (see DOOR_DESIGN.md)
+// ═══════════════════════════════════════════════════════════════════════════
+// DOOR is a LAYER on top of the game, not a vocabulary swap: Victory stays
+// Victory, the Shop stays the Shop, the Codex stays the Codex. Everything the
+// layer adds — seals, stamps, memos, the ID card, customs dispositions — reads
+// its copy from THIS object so there is exactly one place to edit it.
+// Consumers: ui.js (codex/shop/onboarding), party-builder.js (dossier),
+// battle.js (loading screen + result stamp), profile.js (ID card), map.js
+// (menu clearance strip). data.js loads first, so all of them can rely on it.
+const DOOR_TEXT = {
+    NAME: 'D.O.O.R.',
+    FULL_NAME: 'DEPARTMENT OF ORTHOGONAL REALITIES',
+    MOTTO: 'As here, so there',
+    DOCTRINE: 'Parallel lines never meet. Adjacent realities meet at right angles — at corners. Do not stand in corners.',
+
+    // The four hand-made seal exports on R2 (Assets/door/). Pick by background:
+    //   onDark  — white text, no stroke → ONLY on black / near-black surfaces
+    //   onLight — black text            → paper, cream, light surfaces
+    //   onMid   — black text + black cube grid → mid-tone surfaces where the
+    //             white grid lines would vanish (memo paper, tinted forms)
+    //   mono    — solid black → government-doc look, and the alpha MASK for
+    //             ink-tinted stamps (CSS mask-image + background = ink colour)
+    LOGO: {
+        onDark:  'https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png',
+        onLight: 'https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo.png',
+        onMid:   'https://cdn.entropywars.net/Assets/door/DOOR_ColoredAndBlackLines_Logo.png',
+        mono:    'https://cdn.entropywars.net/Assets/door/DOOR_BlackAndWhite_Logo.png',
+    },
+
+    DEPARTMENTS: {
+        customs:     { label: 'CUSTOMS & ADMISSIONS',  short: 'C&A',  desc: "The player's desk. Every crossing is inspected; every entity is filed." },
+        continuity:  { label: 'BUREAU OF CONTINUITY',  short: 'BoC',  desc: 'The Canon Office. Owns the Mandela Effect. Retcon is a verb.' },
+        engineering: { label: 'ARCANE ENGINEERING',    short: 'AE',   desc: 'Spells.' },
+        records:     { label: 'RECORDS',               short: 'REC',  desc: 'The Codex. "We only keep the file."' },
+        internal:    { label: 'INTERNAL AFFAIRS',      short: 'IA',   desc: 'The ones who know.' },
+    },
+
+    // Story progress on the ID card. NOT the ELO rank (Iron→Grandmaster stays).
+    // Level thresholds/directives land with the story track (DOOR_DESIGN §4);
+    // until then everyone is L1 and the card simply says so.
+    CLEARANCE: [
+        { level: 1, title: 'PROBATIONARY' },
+        { level: 2, title: 'CLERK' },
+        { level: 3, title: 'OFFICER' },
+        { level: 4, title: 'INSPECTOR' },
+        { level: 5, title: 'AUDITOR' },
+        { level: 6, title: 'KEYHOLDER' },
+    ],
+
+    // The one optional intake question. Cosmetic: the card's colour stripe.
+    DESKS: {
+        space: { label: 'SPACE', color: '#5a8898', ink: '#2f5f73' },
+        time:  { label: 'TIME',  color: '#b8a060', ink: '#7a6320' },
+        chaos: { label: 'CHAOS', color: '#985050', ink: '#6e2c2c' },
+    },
+
+    // Customs disposition by entity type (first type wins; overrides below).
+    CUSTOMS_BY_TYPE: {
+        human:   'DOMESTIC',
+        alien:   'FOREIGN NATIONAL',
+        anomaly: 'UNDOCUMENTED',
+        divine:  'DIPLOMATIC',
+        unholy:  'DIPLOMATIC',
+        tech:    'IMPORTED',
+    },
+    // Per-entity dispositions where the joke is better than the rule.
+    CUSTOMS_OVERRIDES: {
+        'santa clause':         { status: 'NATURALIZED',       note: 'over the objections of Customs, at the insistence of everyone else' },
+        'honda civic':          { status: 'IMPORTED',          note: 'registration expired 2019 — it has been told' },
+        'politician':           { status: 'DOMESTIC',          note: 'unfortunately' },
+        'men in black':         { status: 'DOMESTIC',          note: 'DISPUTED — the other agency claims jurisdiction and has never filed a form' },
+        'glitch':               { status: 'NON-CANON',         note: 'Bureau of Continuity, Exhibit A — ruled four times, keeps arriving' },
+        'watcher':              { status: 'DIPLOMATIC',        note: 'immunity claimed; immunity under review; leave cancelled' },
+        'machine elves':        { status: 'UNDOCUMENTED',      note: "the Department's first documented crossing (1971)" },
+        'conspiracy theorist':  { status: 'DOMESTIC',          note: 'was right' },
+        'annunaki':             { status: 'DIPLOMATIC',        note: 'claims to have built the desk' },
+        'atlantean':            { status: 'DOMESTIC',          note: 'predates the Department; predates the form' },
+        'dinosaur':             { status: 'UNDOCUMENTED',      note: 'temporal — no point of origin on file' },
+        'ghost':                { status: 'DOMESTIC',          note: 'deceased; still filing' },
+        'king arthur':          { status: 'DOMESTIC',          note: 'Britain, c. 520 CE — visa long expired' },
+        'super sentai':         { status: 'IMPORTED',          note: 'five entities, one form' },
+        'symbiote':             { status: 'UNDOCUMENTED',      note: 'two entities, one form — "we"' },
+        'droid':                { status: 'IMPORTED',          note: 'classified as equipment. It has opinions about that.' },
+        'orb of light':         { status: 'DIPLOMATIC',        note: 'origin above your clearance' },
+        'grey':                 { status: 'FOREIGN NATIONAL',  note: 'frequent flyer' },
+        'nordic':               { status: 'FOREIGN NATIONAL',  note: '"benevolent" — Customs recommends skepticism' },
+        'martian':              { status: 'FOREIGN NATIONAL',  note: 'arrived armed; leaves armed' },
+        'skinwalker':           { status: 'UNDOCUMENTED',      note: 'do not say the name on the form' },
+        'black goo':            { status: 'UNDOCUMENTED',      note: 'three breaches this quarter' },
+        'kaiju':                { status: 'UNDOCUMENTED',      note: 'the form was not big enough' },
+        'demon':                { status: 'DIPLOMATIC',        note: 'terms of entry always favor the demon' },
+        'djinn':                { status: 'DIPLOMATIC',        note: 'do not phrase the interview as a request' },
+        'zombie':               { status: 'DOMESTIC',          note: 'deceased; not filing' },
+        'werewolf':             { status: 'DOMESTIC',          note: 'by day' },
+        'pirate':               { status: 'DOMESTIC',          note: 'legitimacy contested' },
+        'cowboy':               { status: 'DOMESTIC',          note: 'never misses twice' },
+        'quarterback':          { status: 'DOMESTIC',          note: 'went back to the huddle' },
+        'general':              { status: 'DOMESTIC',          note: 'asked to see the org chart' },
+        'antihero':             { status: 'DOMESTIC',          note: 'declined to align with any desk' },
+        'mech':                 { status: 'IMPORTED',          note: 'pilot filed separately' },
+        'robot':                { status: 'IMPORTED',          note: '47-year operational life; 47-year visa' },
+        'ai':                   { status: 'IMPORTED',          note: 'gen-7; the form was filled in before we handed it over' },
+    },
+
+    // Where each entity crossed — one of the existing site maps, so the roster
+    // and the map roster point at each other for free.
+    POINT_OF_ENTRY: {
+        'homosapien': 'Nuketown', 'pirate': 'Atlantis', 'swordfighter': 'Camelot', 'knight': 'Camelot',
+        'shaman': 'Mount Shasta', 'mad scientist': 'D.U.M.B.', 'cowboy': 'Area 51', 'men in black': 'Area 51',
+        'telepath': 'D.U.M.B.', 'marksman': 'Antarctica', 'priest': 'Vatican City', 'wizard': 'Stonehenge',
+        'fortune teller': 'Bohemian Grove', 'giant': 'Göbekli Tepe', 'fairy': 'Fairy Forest', 'martian': 'Mars',
+        'nordic': 'Antarctica', 'grey': 'Area 51', 'bigfoot': 'Mount Shasta', 'shadow entity': 'Backrooms',
+        'reptilian': 'Hollow Earth', 'ai': 'Cyberpunk City', 'robot': 'Technoticlan', 'android': 'Cyberpunk City',
+        'angel': 'Heaven', 'seraphim': 'Heaven', 'orb of light': 'Mount Olympus', 'demon': 'Hell',
+        'succubus': 'Hell', 'skeleton': 'Hell', 'mech': 'Technoticlan', 'ghost': 'Backrooms',
+        'zombie': 'Nuketown', 'annunaki': 'Pyramids of Giza', 'skinwalker': 'Skinwalker Ranch', 'werewolf': 'Fairy Forest',
+        'gargoyle': 'Vatican City', 'djinn': 'Pyramids of Giza', 'anubis': 'Pyramids of Giza', 'catgirl': 'Cyberpunk City',
+        'mantid': 'Moon', 'antperson': 'Hollow Earth', 'mothman': 'Skinwalker Ranch', 'siren': 'Atlantis',
+        'scarecrow': 'Flat Lands', 'glitch': 'CERN', 'machine elves': 'CERN', 'cyclops': 'Mount Olympus',
+        'cyborg': 'Technoticlan', 'demon prince': 'Hell', 'demon princess': 'Hell', 'dreameater': 'Backrooms',
+        'fallen angel': 'Hell', 'goatman': 'Skinwalker Ranch', 'halfdemon': 'Hell', 'mermaid': 'Atlantis',
+        'nephilim': 'Göbekli Tepe', 'vampire': 'Bohemian Grove', 'voidweaver': 'Moon', 'cosmic wraith': 'Mars',
+        'superhero': 'Cyberpunk City', 'general': 'Nuketown', 'droid': 'Mars', 'antihero': 'Cyberpunk City',
+        'conspiracy theorist': 'Area 51', 'overlord': 'Tower of Babel', 'chosen one': 'Mount Olympus', 'politician': 'Bohemian Grove',
+        'atlantean': 'Atlantis', 'dinosaur': 'Hollow Earth', 'dragon': 'Camelot', 'ghoul': 'Hell',
+        'gnome': 'Fairy Forest', 'kaiju': 'Antarctica', 'kraken': 'Atlantis', 'loch ness monster': 'Agartha',
+        'yeti': 'Antarctica', 'barbarella': 'Moon', 'black goo': 'D.U.M.B.', 'golem': 'Tower of Babel',
+        'honda civic': 'Nuketown', 'ice queen': 'North Pole', 'juggernaut': 'D.U.M.B.', 'ki fighter': 'Mount Shasta',
+        'king arthur': 'Camelot', 'king kong': 'Hollow Earth', 'minotaur': 'Mount Olympus', 'necromancer': 'Stonehenge',
+        'occulus': 'Backrooms', 'quarterback': 'Football Stadium', 'robinhood': 'Camelot', 'santa clause': 'North Pole',
+        'super sentai': 'Technoticlan', 'symbiote': 'D.U.M.B.', 'valkraye': 'Heaven', 'watcher': 'Göbekli Tepe',
+    },
+
+    // "D.O.O.R. ANNOTATION" — an extra paragraph on the dossiers where the
+    // Department has a point of view (the rival-relevant files).
+    DOSSIER_NOTES: {
+        'men in black': 'Customs status DISPUTED. The other agency claims these are "their people". They have never filed a form. They have never filed anything — 847 coverups and not one carbon copy. When they arrive on a scene, officers are to hand over nothing and remember everything. They will offer to help with the second part. Decline.',
+        'conspiracy theorist': 'Cleared for employment; declined it. Subject\'s 73% accuracy is the highest of any outside analyst and lower than he believes. Has correctly named the Department on three podcasts. Records has asked us to stop sending him corrections — they only make his numbers go up.',
+        'politician': 'Customs status DOMESTIC, unfortunately. Subject has never crossed anything. Subject was elected here. The Bureau of Continuity has ruled this canon four times. Each ruling felt worse than the last.',
+        'general': 'The only entity on file who has asked to see the org chart. Was shown it. Asked which hand was which. Was not answered. Has not stopped asking. Loyalty assessment stands at ABSOLUTE; the question is to whom.',
+        'glitch': 'Bureau of Continuity, Exhibit A. Ruled NON-CANON four times. Keeps arriving. Physical attacks pass through 73% of the time; forms pass through 100%. Officers who report having "seen this one before" have not. Do not stand in its corner.',
+        'watcher': 'The Watcher has cancelled all leave. Internal Affairs notes that the Watcher has no authority to do this, and that leave nevertheless remains cancelled. "It is time to act" was addressed to no one in the room. Continuity has declined to rule on who it was addressed to.',
+        'machine elves': 'Project ████████ (1971): the Department\'s first documented crossing, and the reason there is a Department. Revised finding: the entities were not the visitors. We were. They are still waiting for us to complete the second page.',
+        'honda civic': 'IMPORTED. Registration expired 2019. It has been told. It parallel parked itself in space 4, which is not ours. Do not wash it either.',
+        'santa clause': 'NATURALIZED over the objections of Customs, at the insistence of everyone else. He knew the desk numbers. He knew the founding date — all four of them. He gave the Director socks. They were the right size.',
+        'annunaki': 'DIPLOMATIC. Claims to have built the first door, the first desk, and the first form. Continuity cannot rule this non-canon: the form in question is the one they would have to rule on.',
+        'grey': 'FOREIGN NATIONAL, frequent flyer. Has crossed more times than any entity on file and has never once queued. Do not make sustained eye contact at the desk; the desk will fill itself in.',
+    },
+
+    // Loading-screen cards. A memo's stamp tells you which hand wrote it —
+    // early on every memo is DENY; ADMIT memos (admit:true) only appear once
+    // the player's clearance reaches L4 (story track, DOOR_DESIGN §3.3 / §4).
+    MEMOS: [
+        { q: 'The break room is not a designated crossing point. Stop using it as one.' },
+        { q: 'Whoever propped the Hollow Earth door open with a fire extinguisher: we know. Put it back.' },
+        { q: 'The black sedans in spaces 1–4 are not ours. Do not wash them. Do not lean on them. Do not wave.' },
+        { q: "CERN's press release of the 14th is NON-CANON. Do not forward. Do not 'like'." },
+        { q: "Reminder: the word is CROSSING. 'Portal' is a Swiss word. It will be red-penned." },
+        { q: 'Do not stand in corners. This is not a metaphor. Facilities is aware the new wing has four of them.' },
+        { q: 'Entities cannot be filed until they have been tested in the field. That is what the field is for. That is what you are for.' },
+        { q: "Lost card fee is 5,000 gold. Officers who 'found it in a different reality' still owe 5,000 gold." },
+        { q: 'The Watcher has cancelled all leave. The Watcher is not in your chain of command. Leave remains cancelled anyway.' },
+        { q: 'The Santa file reads FRIENDLY BUT UNCONTAINABLE. Stop asking Records to change it to CONTAINABLE BUT FRIENDLY. It is not funnier.' },
+        { q: 'Vending machine B dispenses from a reality where the snacks are slightly different. Consume at own risk. Report the bears.' },
+        { q: 'Do not look directly at a corner. If you have already looked, file Form 90 and do not look again.' },
+        { q: 'Orientation Tape 1 is missing. If you have it: be kind, rewind, return it to Records.' },
+        { q: 'The other agency has requested our files on the Roswell crossing. They may have them. In 1947. In that order.' },
+        { q: "'Parallel universe' is a comforting fiction. Parallel lines never meet. Ours do. That is the job." },
+        { q: "Politician file: stop adding 'unfortunately' to the customs status. It is already on the form. It stays on the form." },
+        { q: 'Re: the Honda Civic. Registration expired 2019. It has been told.' },
+        { q: "Hold music is being updated. 'Your crossing is important to us' will remain." },
+        { q: 'Personnel are reminded that "orthogonal" is a technical term and not an insult. Personnel are reminded to stop using it as one.' },
+        { q: 'The Department was not founded to fight the war. The Department processes it. Please process it faster.' },
+        { q: 'Every crossing pays a duty. Keep the doors open.', admit: true, s: '(unsigned)' },
+        { q: 'The schedule is the schedule. Do not ask Continuity why the breaches are punctual.', admit: true, s: '(unsigned)' },
+        { q: 'Whoever is filing the Entropy Strike residue under "weather": thank you. Continue.', admit: true, s: '(unsigned)' },
+    ],
+    CANON_NOTICES: [
+        { q: 'Effective immediately, the Berenstein spelling is non-canon. Update your files. Do not discuss.' },
+        { q: 'The Department was founded in 1954. Disregard the memo of the 3rd stating 1974.' },
+        { q: 'Correction to the notice of the 9th: the Department was founded in 1947. Disregard the notice of the 9th.' },
+        { q: 'Further correction: 1987. Officers who remember reading 1954 should report for re-filing, not to Optometry.' },
+        { q: 'The interaction point at CERN is a door. CERN\'s account of it is a press release. Only one of these is canon.' },
+        { q: 'A round room has no corners. This is why Department facilities are round. It is not a design choice. It is policy.' },
+        { q: 'The Mandela Effect is DRIFT. Drift is a maintenance issue. Continuity is Maintenance. Please stop calling us Janitorial.' },
+        { q: 'Entropy Strikes leave residue. Residue is drift. Drift is our problem. Strike responsibly.' },
+        { q: 'The Glitch has been ruled NON-CANON four times. It keeps arriving. This is under review. The review is under review.' },
+        { q: "'Retcon' is a verb, a form, and a department. Use all three correctly." },
+        { q: 'The moon has always been that size. Officers who remember otherwise are correct and should not be.' },
+        { q: 'Every battle happens somewhen between 12500 BC and 3333 AD. Dates outside this window are drift. Report them.' },
+        { q: 'The loading screen\'s date is canon at time of printing and subject to revision at time of reading.' },
+    ],
+
+    // Copy for surfaces that already exist (voice, not renaming).
+    ONBOARD: {
+        kicker: 'D.O.O.R. · CUSTOMS & ADMISSIONS',
+        title: 'Your First Vessel Is Issued',
+        body: 'Welcome, officer. The Department issues every new hire one <b style="color:#9ad0ff">free declassification token</b> 🎟. Spend it on <i>any</i> entity in the registry — even the files we are not supposed to have — and it is reassigned to your desk.',
+        go: 'Open the Registry',
+        later: 'File It Later',
+    },
+    INTAKE: {
+        kicker: 'D.O.O.R. · CUSTOMS & ADMISSIONS · NEW HIRE',
+        title: 'EMPLOYEE IDENTIFICATION · NEW ISSUE',
+        callsign: 'CALLSIGN',
+        desk: 'DESK ASSIGNMENT',
+        mandela: 'Have you experienced a Mandela Effect?',
+        submit: 'ISSUE CARD',
+        cancel: 'CANCEL',
+        finePrint: 'LAMINATE BEFORE USE · CARD REMAINS PROPERTY OF THE DEPARTMENT · DO NOT STAND IN CORNERS',
+        photoPending: 'PHOTO PENDING',
+    },
+    SYSTEM: {
+        badCallsign: 'FORM REJECTED: callsign must be 2–16 characters (letters / numbers / underscores).',
+        slotsFull: 'FORM REJECTED: all 3 card slots are issued. Surrender a card first.',
+        lostCard: 'LOST CARD FEE: 5,000 gold. The fee is never collected. The card is never found.',
+    },
+    RESULT_STAMP: { victory: 'CASE CLOSED', defeat: 'CASE CLOSED', noContest: 'VOID' },
+    CANON_DATE_LABEL: 'CANON DATE · SUBJECT TO REVISION',
+};
+
+/* Customs disposition for a race: {status, note}. Overrides first, then the
+   entity's primary type. */
+function doorCustomsStatus(race) {
+    const ov = DOOR_TEXT.CUSTOMS_OVERRIDES[race];
+    if (ov) return { status: ov.status, note: ov.note || '' };
+    const prof = (typeof RACE_PROFILES !== 'undefined') ? RACE_PROFILES[race] : null;
+    const t = (prof && prof.types && prof.types[0]) || 'anomaly';
+    return { status: DOOR_TEXT.CUSTOMS_BY_TYPE[t] || 'UNDOCUMENTED', note: '' };
+}
+function doorPointOfEntry(race) {
+    return DOOR_TEXT.POINT_OF_ENTRY[race] || 'UNKNOWN';
+}
+/* Case/doc number shared by the codex, the party-builder dossier and the
+   result stamp (same hash the codex has always used). */
+function doorCaseNo(seed) {
+    const s = String(seed || '');
+    return 'EW-' + (Math.abs(s.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 7) % 9000 + 1000);
+}
+/* Employee number printed on the ID card — derived from the profile's
+   createdAt (no new input). Stable for the life of the profile. */
+function doorEmployeeNo(profile) {
+    const seed = (profile && (profile.createdAt || profile.username)) || 'PENDING';
+    let h = 2166136261;
+    for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    const n = String(h % 1000000).padStart(6, '0');
+    return n.slice(0, 3) + '-' + n.slice(3);
+}
+/* Story clearance from the profile's door field (L1 until the story track
+   lands). Returns {level, title}. */
+function doorClearance(profile) {
+    const lv = Math.max(1, Math.min(DOOR_TEXT.CLEARANCE.length, (profile && profile.door && profile.door.clearance) | 0 || 1));
+    return DOOR_TEXT.CLEARANCE[lv - 1];
+}
+/* Canon date for stamps/cards — every battle happens somewhen between
+   12500 BC and 3333 AD (battle.js _lsRandomYear uses the same window). */
+function doorCanonDate(seedYear) {
+    const yr = (typeof seedYear === 'number') ? seedYear : Math.floor(Math.random() * (12500 + 3333 + 1)) - 12500;
+    if (yr < 0) return (-yr) + ' BC';
+    if (yr === 0) return '1 AD';
+    return yr + ' AD';
+}
+if (typeof window !== 'undefined') {
+    window.DOOR_TEXT = DOOR_TEXT;
+    window.doorCustomsStatus = doorCustomsStatus;
+    window.doorPointOfEntry = doorPointOfEntry;
+    window.doorCaseNo = doorCaseNo;
+    window.doorEmployeeNo = doorEmployeeNo;
+    window.doorClearance = doorClearance;
+    window.doorCanonDate = doorCanonDate;
+}

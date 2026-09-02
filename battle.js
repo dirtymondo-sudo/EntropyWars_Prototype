@@ -27139,6 +27139,38 @@
             } catch (e) {}
         }
 
+        /* D.O.O.R. case stamp (DOOR_DESIGN §3.5): after the title slams in, a
+           rubber stamp thunks down in the corner — the title text is never
+           touched. 'victory' = green CASE CLOSED, 'defeat' = red CASE CLOSED,
+           'void' = grey VOID. The case number is the match's, the date is the
+           canon date the loading screen printed. Purely local (the result
+           overlay is local on both clients) — nothing to relay. The
+           NEW DIRECTIVE tab (kind === 'directive') is wired by the story
+           track; until then it stays hidden. */
+        function _stampDoorResult(kind, opts) {
+            const el = document.getElementById('vicDoorStamp');
+            if (!el) return;
+            const D = window.DOOR_TEXT || {};
+            const words = D.RESULT_STAMP || { victory: 'CASE CLOSED', defeat: 'CASE CLOSED', noContest: 'VOID' };
+            const word = kind === 'void' ? words.noContest : (kind === 'defeat' ? words.defeat : words.victory);
+            const wordEl = document.getElementById('vicDoorStampWord');
+            const metaEl = document.getElementById('vicDoorStampMeta');
+            if (wordEl) wordEl.textContent = word;
+            const caseNo = (typeof window.doorCaseNo === 'function')
+                ? window.doorCaseNo('match-' + (state.matchNumber || 1) + '-' + (state.turn || 0) + '-' + (state.winner || 0))
+                : 'EW-' + (1000 + ((state.matchNumber || 1) * 37) % 9000);
+            const canon = window._lsCanonYear || ((typeof window.doorCanonDate === 'function') ? window.doorCanonDate() : '');
+            if (metaEl) {
+                metaEl.textContent = '';
+                metaEl.append('CASE No. ' + caseNo, document.createElement('br'), canon || 'D.O.O.R.');
+            }
+            el.className = 'door-result-stamp ' + kind + ((opts && opts.directive) ? ' directive' : '');
+            /* restart the thunk animation on every result screen */
+            void el.offsetWidth;
+            el.classList.add('on');
+        }
+        window._stampDoorResult = _stampDoorResult;
+
         function showResultOverlay() {
             const viewer = getViewerPlayer();
             const isNoContest = state.winner === 0;
@@ -27167,6 +27199,7 @@
             /* data-text feeds the chromatic-aberration ghost layers (CSS). */
             vicTitle.setAttribute('data-text', _titleText);
             vicTitle.className = 'vic-title ' + wonClass;
+            _stampDoorResult(isNoContest ? 'void' : wonClass);
 
             const careerStats = loadCareerStats();
             const _profileUsername = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : null;
@@ -31370,6 +31403,30 @@
             { t: 'INTEL FRAGMENT', q: '“We are not equipped for this. No one is.”', s: 'General ████ — KAIJU' },
         ];
 
+        /* D.O.O.R. cards (DOOR_DESIGN §3.3) join the rotation: INTEROFFICE
+           MEMORANDUM (Customs & Admissions) and CANON NOTICE (Bureau of
+           Continuity). Copy lives in data.js DOOR_TEXT. A memo's stamp says
+           which hand wrote it — DENY early on; ADMIT memos only once the
+           player's clearance reaches L4 (story track). */
+        function _lsDoorHints() {
+            const D = window.DOOR_TEXT;
+            if (!D) return [];
+            let clearance = 1;
+            try {
+                const prof = window.ProfileSystem && window.ProfileSystem.getActiveProfile && window.ProfileSystem.getActiveProfile();
+                clearance = (typeof window.doorClearance === 'function') ? window.doorClearance(prof).level : 1;
+            } catch (_e) {}
+            const out = [];
+            for (const m of (D.MEMOS || [])) {
+                if (m.admit && clearance < 4) continue;
+                out.push({ t: 'INTEROFFICE MEMORANDUM', q: m.q, s: m.s || 'Customs & Admissions', stamp: m.admit ? 'ADMIT' : 'DENY', cls: 'ls-memo' });
+            }
+            for (const c of (D.CANON_NOTICES || [])) {
+                out.push({ t: 'CANON NOTICE', q: c.q, s: c.s || 'Bureau of Continuity', stamp: 'DENY', cls: 'ls-canon' });
+            }
+            return out;
+        }
+
         /* Map title for the card — the bare map name ("MOON" / "PYRAMIDS OF
            GIZA"); the generic random-size boards (Small…Huge) have no name
            worth carving in serif, so they get a lore-safe one. */
@@ -31391,9 +31448,10 @@
            12500 BC and 3333 AD. */
         function _lsRandomYear() {
             const yr = Math.floor(Math.random() * (12500 + 3333 + 1)) - 12500; // −12500 … 3333
-            if (yr < 0) return 'YEAR ' + (-yr) + ' BC';
-            if (yr === 0) return 'YEAR 1 AD';
-            return 'YEAR ' + yr + ' AD';
+            const label = yr < 0 ? 'YEAR ' + (-yr) + ' BC' : (yr === 0 ? 'YEAR 1 AD' : 'YEAR ' + yr + ' AD');
+            /* the D.O.O.R. result stamp quotes the same canon date (§3.5) */
+            window._lsCanonYear = label;
+            return label;
         }
 
         function showBattleLoadingScreen(onDone) {
@@ -31603,6 +31661,10 @@
                 const line1 = document.createElement('div');
                 line1.className = 'ls-line ls-line-1';
                 line1.textContent = _lsRandomYear();
+                /* Bureau of Continuity's label on the date (DOOR_DESIGN §2). */
+                const canon = document.createElement('div');
+                canon.className = 'ls-canon';
+                canon.textContent = (window.DOOR_TEXT && window.DOOR_TEXT.CANON_DATE_LABEL) || 'CANON DATE · SUBJECT TO REVISION';
                 const line2 = document.createElement('div');
                 line2.className = 'ls-line ls-line-2';
                 line2.textContent = (mpMode && mpMode.label ? mpMode.label : 'Skirmish').toUpperCase();
@@ -31615,6 +31677,7 @@
                 battleLine.className = 'ls-line ls-battle';
                 battleLine.textContent = 'BATTLE:' + (state.matchNumber || 1);
                 card.appendChild(line1);
+                card.appendChild(canon);
                 card.appendChild(line2);
                 card.appendChild(title);
                 card.appendChild(rule);
@@ -31635,10 +31698,25 @@
                 hintBox.appendChild(hintSrc);
                 overlay.appendChild(hintBox);
 
-                let hintIdx = Math.floor(Math.random() * LS_HINTS.length);
+                /* Field manual / intel fragments + the DOOR memo & canon cards,
+                   shuffled so two memos don't run back to back every time. */
+                const hintPool = LS_HINTS.concat(_lsDoorHints());
+                for (let i = hintPool.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    const tmp = hintPool[i]; hintPool[i] = hintPool[j]; hintPool[j] = tmp;
+                }
+                let hintIdx = 0;
                 const setHint = () => {
-                    const h = LS_HINTS[hintIdx % LS_HINTS.length];
+                    const h = hintPool[hintIdx % hintPool.length];
+                    hintBox.classList.remove('ls-memo', 'ls-canon');
+                    if (h.cls) hintBox.classList.add(h.cls);
                     hintTag.textContent = '◈ ' + h.t;
+                    if (h.stamp) {
+                        const st = document.createElement('span');
+                        st.className = 'ls-hint-stamp' + (h.stamp === 'ADMIT' ? ' admit' : '');
+                        st.textContent = h.stamp;
+                        hintTag.appendChild(st);
+                    }
                     hintText.textContent = h.q;
                     hintSrc.textContent = h.s ? '— ' + h.s : '';
                     hintIdx++;

@@ -46,7 +46,16 @@
                     const eloTag = document.getElementById('mmEloTag');
                     const _pn = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : null;
                     const nameHtml = _pn ? `<span style="font-weight:700;color:#e6e9f2">${_pn}</span> · ` : '';
-                    if (eloTag) eloTag.innerHTML = `${nameHtml}${ri.icon} ${ri.name || ri.label} — ${cs.elo} Elo`;
+                    /* D.O.O.R. clearance (story progress, NOT the rank) rides beside the rank strip. */
+                    let clearanceHtml = '';
+                    try {
+                        const _prof = window.ProfileSystem && window.ProfileSystem.getActiveProfile();
+                        if (_prof && typeof window.doorClearance === 'function') {
+                            const cl = window.doorClearance(_prof);
+                            clearanceHtml = `<span class="door-clearance-tag">CLEARANCE L${cl.level} · ${cl.title}</span>`;
+                        }
+                    } catch {}
+                    if (eloTag) eloTag.innerHTML = `${nameHtml}${ri.icon} ${ri.name || ri.label} — ${cs.elo} Elo${clearanceHtml}`;
                 } catch {}
                 try { if (typeof window._refreshWallets === 'function') window._refreshWallets(); } catch {}
                 try { if (typeof window._ensureDevPanel === 'function') window._ensureDevPanel(); } catch {}

@@ -2242,7 +2242,9 @@ function PartyBuilder() {
               : h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:5, paddingTop:4 } },
                   h('div', { style:{ display:'flex', alignItems:'center', gap:6 } },
                     h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.04em', padding:'2px 6px', border:`1px solid ${EW.panelEdge}`, background:'rgba(0,0,0,0.3)' } }, classLabel),
-                    h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.04em' } }, docNum)),
+                    h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.04em' } }, docNum),
+                    /* D.O.O.R. customs disposition — same source as the codex (data.js DOOR_TEXT) */
+                    typeof window.doorCustomsStatus === 'function' && h('span', { className:'door-stamp door-stamp-sm' + (/^(NON-CANON|UNDOCUMENTED)$/.test(window.doorCustomsStatus(unitRace).status) ? '' : ' admit'), style:{ fontSize:7, padding:'2px 5px 1px', marginLeft:2 }, title:'Customs disposition · point of entry: ' + (typeof window.doorPointOfEntry === 'function' ? window.doorPointOfEntry(unitRace) : '?') }, window.doorCustomsStatus(unitRace).status)),
                   h('div', { style:{ fontSize:11, lineHeight:1.55, color:EW.inkMute, fontFamily:'Cormorant SC, serif', fontStyle:'italic', borderLeft:`2px solid ${fc}55`, paddingLeft:8 } }, codexLore),
                   h('div', { style:{ fontSize:7, color:EW.inkDim, letterSpacing:'0.08em', paddingTop:2 } }, 'TOP SECRET // ████████ // NOFORN')),
           ),

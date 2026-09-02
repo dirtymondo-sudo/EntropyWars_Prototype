@@ -4326,3 +4326,75 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
             0%, 100% { box-shadow: 0 0 25px rgba(0, 0, 0, 0.5), 0 0 18px rgba(255, 215, 0, 0.25); }
             50% { box-shadow: 0 0 25px rgba(0, 0, 0, 0.5), 0 0 34px rgba(255, 215, 0, 0.6); }
         }
+
+/* ═══ D.O.O.R. layer — loading-screen memo cards + result-screen stamp ═══ */
+/* Loading screen: INTEROFFICE MEMORANDUM / CANON NOTICE cards join the
+   FIELD MANUAL / INTEL FRAGMENT rotation. The stamp beside the tag (DENY or
+   ADMIT) quietly says which hand wrote the memo. */
+.ls-hint-tag { display: flex; align-items: center; gap: 10px; }
+.ls-hint-stamp {
+    font-family: 'Cinzel', 'Cormorant SC', serif; font-weight: 900;
+    font-size: 0.58rem; letter-spacing: 0.2em; line-height: 1;
+    padding: 3px 6px 2px; border: 1.5px solid currentColor; border-radius: 3px;
+    color: var(--door-deny, #c0392b); transform: rotate(-6deg);
+    filter: url(#doorInk); opacity: 0.92;
+}
+.ls-hint-stamp.admit { color: var(--door-admit, #2e8b57); }
+.ls-hint.ls-memo .ls-hint-tag { color: #c9b98a; }
+.ls-hint.ls-memo .ls-hint-text { font-family: 'IBM Plex Mono', 'DotGothic16', monospace; color: #e8e1cb; }
+.ls-hint.ls-canon .ls-hint-tag { color: #8fd0e8; }
+.ls-hint.ls-canon .ls-hint-text { font-family: 'IBM Plex Mono', 'DotGothic16', monospace; color: #dbe8ee; }
+/* The card's random year gets the Bureau of Continuity's label. */
+.ls-canon {
+    font-family: 'DotGothic16', monospace; font-size: 0.62rem; letter-spacing: 0.3em;
+    color: #8f88a8; margin-top: 0.35em; opacity: 0;
+    animation: lsLineIn 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s forwards;
+}
+
+/* Result screen: Victory stays Victory — a rubber stamp thunks down beside
+   it. Victory = green ink, Defeat = red ink, No-contest = VOID. Local on
+   both clients (no relay needed). Sits bottom-right, above the button bar,
+   clear of the awards rail (top-right) and the MVP tag (bottom-centre). */
+.door-result-stamp {
+    position: absolute; right: clamp(16px, 4vw, 64px); bottom: 118px; z-index: 12;
+    width: clamp(150px, 19vw, 236px); aspect-ratio: 1.12;
+    color: var(--door-admit, #2e8b57); opacity: 0; pointer-events: none;
+    filter: url(#doorInk) drop-shadow(0 6px 14px rgba(0,0,0,0.55));
+    transform: rotate(-12deg);
+}
+.door-result-stamp.on { animation: doorResultThunk 0.5s cubic-bezier(0.2, 1.4, 0.3, 1) 1.05s forwards; }
+.door-result-stamp.defeat { color: var(--door-deny, #c0392b); }
+.door-result-stamp.void { color: var(--door-void, #8a8a8a); }
+.door-result-stamp .drs-box {
+    position: absolute; inset: 0; border: 4px double currentColor; border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; padding: 6% 8%; text-align: center; background: rgba(0,0,0,0.12);
+}
+.door-result-stamp .drs-seal {
+    width: 36%; aspect-ratio: 1; background: currentColor;
+    -webkit-mask: var(--door-seal-mono) center / contain no-repeat;
+    mask: var(--door-seal-mono) center / contain no-repeat;
+}
+.door-result-stamp .drs-word {
+    font-family: 'Cinzel', 'Cormorant SC', serif; font-weight: 900;
+    font-size: clamp(15px, 2.2vw, 26px); letter-spacing: 0.14em; line-height: 1; white-space: nowrap;
+}
+.door-result-stamp .drs-meta {
+    font-family: 'DotGothic16', monospace; font-size: clamp(8px, 0.85vw, 11px);
+    letter-spacing: 0.2em; line-height: 1.55; white-space: normal;
+}
+.door-result-stamp .drs-tab {
+    position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%) rotate(0deg);
+    font-family: 'DotGothic16', monospace; font-size: 9px; letter-spacing: 0.22em;
+    padding: 3px 10px; background: currentColor; border-radius: 3px; display: none;
+}
+.door-result-stamp .drs-tab span { color: #fff; }
+.door-result-stamp.directive .drs-tab { display: block; }
+@keyframes doorResultThunk {
+    0%   { opacity: 0;    transform: rotate(-12deg) scale(2.4); }
+    60%  { opacity: 1;    transform: rotate(-12deg) scale(0.93); }
+    100% { opacity: 0.94; transform: rotate(-12deg) scale(1); }
+}
+@media (max-width: 720px), (max-height: 560px) {
+    .door-result-stamp { width: 118px; bottom: 96px; right: 10px; }
+}

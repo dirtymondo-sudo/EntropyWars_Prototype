@@ -3808,3 +3808,184 @@ body.diorama-3d .tile-underpass.jump::before {
     25%      { transform: translate(calc(-50% - 5px), -50%); }
     75%      { transform: translate(calc(-50% + 5px), -50%); }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   D.O.O.R. layer (DOOR_DESIGN.md) — seals, rubber stamps, the employee ID
+   card. A visual layer on top of existing surfaces; nothing is renamed.
+   Ink colours: DENY red / ADMIT green — which stamp a memo bears tells you
+   which hand wrote it. Seal PNGs live on R2 (Assets/door/, see
+   data.js DOOR_TEXT.LOGO for which variant suits which background).
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+    --door-deny: #c0392b;
+    --door-admit: #2e8b57;
+    --door-void: #8a8a8a;
+    --door-ink: #1a1712;
+    --door-paper: #ece5d3;
+    --door-seal-dark: url('https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png');
+    --door-seal-light: url('https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo.png');
+    --door-seal-mid: url('https://cdn.entropywars.net/Assets/door/DOOR_ColoredAndBlackLines_Logo.png');
+    --door-seal-mono: url('https://cdn.entropywars.net/Assets/door/DOOR_BlackAndWhite_Logo.png');
+}
+
+/* ── Seals ── */
+.door-seal { display: block; width: 100%; height: auto; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+/* Ink-tinted seal: the mono PNG as an alpha mask, colour = currentColor. */
+.door-seal-ink {
+    display: inline-block; background: currentColor;
+    -webkit-mask: var(--door-seal-mono) center / contain no-repeat;
+    mask: var(--door-seal-mono) center / contain no-repeat;
+}
+/* Title page: the studio card in the corner (the animated ident lands in
+   build-order step 2 — this is the static seal until then). */
+.door-title-seal {
+    position: absolute; left: 18px; bottom: 12px; z-index: 3;
+    display: flex; align-items: center; gap: 10px; pointer-events: none;
+    opacity: 0; animation: doorSealIn 1.2s ease 0.6s forwards;
+}
+.door-title-seal img { width: clamp(38px, 5vw, 56px); height: auto; filter: drop-shadow(0 0 10px rgba(0,0,0,0.6)); }
+.door-title-seal span {
+    font-family: 'DotGothic16', monospace; font-size: 9px; letter-spacing: 0.22em;
+    color: rgba(255,255,255,0.38); line-height: 1.6; white-space: nowrap;
+}
+@keyframes doorSealIn { to { opacity: 1; } }
+/* Main menu: seal in the top-right corner (the button stack owns the left). */
+.void-menu .door-menu-seal {
+    position: absolute; right: clamp(20px, 5vw, 80px); top: 4.2vh; z-index: 2;
+    width: clamp(72px, 9vw, 128px); pointer-events: none; opacity: 0.88;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+}
+.void-menu .door-menu-seal img { width: 100%; height: auto; filter: drop-shadow(0 0 14px rgba(0,0,0,0.7)); }
+.void-menu .door-menu-seal span {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; letter-spacing: 0.24em;
+    color: #8f88a8; text-align: right; white-space: nowrap;
+}
+/* Codex / Shop headers: seal + a sub-line under the existing title. */
+.door-hdr { display: inline-flex; align-items: center; justify-content: center; gap: 12px; text-align: left; }
+.door-hdr img { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
+.door-hdr-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; }
+.door-hdr-sub {
+    font-family: 'DotGothic16', monospace; font-size: 8px; letter-spacing: 0.22em;
+    color: rgba(160,140,200,0.55); font-weight: 400;
+}
+.door-clearance-tag {
+    font-family: 'DotGothic16', monospace; font-size: 0.68em; letter-spacing: 0.18em;
+    color: #b8a060; margin-left: 10px; white-space: nowrap;
+}
+
+/* ── Rubber stamps — any word from one template ── */
+.door-stamp {
+    display: inline-block; position: relative; white-space: nowrap;
+    font-family: 'Cinzel', 'Cormorant SC', serif; font-weight: 900;
+    font-size: 11px; letter-spacing: 0.22em; line-height: 1; text-transform: uppercase;
+    padding: 5px 10px 4px; color: var(--door-deny);
+    border: 2px solid currentColor; border-radius: 4px;
+    outline: 1px solid currentColor; outline-offset: 2px;
+    transform: rotate(-4deg); opacity: 0.92;
+    filter: url(#doorInk);
+}
+.door-stamp.admit { color: var(--door-admit); }
+.door-stamp.void { color: var(--door-void); }
+.door-stamp.paper { color: var(--door-ink); }
+.door-stamp-sm { font-size: 9px; letter-spacing: 0.18em; padding: 3px 7px 2px; outline-offset: 1px; }
+.door-stamp-lg { font-size: 15px; letter-spacing: 0.26em; padding: 7px 14px 6px; border-width: 3px; }
+.door-stamp.thunk { animation: doorThunk 0.45s cubic-bezier(0.2, 1.4, 0.3, 1) forwards; opacity: 0; }
+@keyframes doorThunk {
+    0%   { opacity: 0;    transform: rotate(-4deg) scale(2.2); }
+    60%  { opacity: 1;    transform: rotate(-4deg) scale(0.94); }
+    100% { opacity: 0.92; transform: rotate(-4deg) scale(1); }
+}
+/* Codex hero: the customs stamp sits beside the faction stamp. */
+.cdx-hero-topline .door-stamp { transform: rotate(-3deg) translateY(-1px); }
+.door-customs-line { font-size: 9px; letter-spacing: 1.5px; color: var(--muted, #8f88a8); }
+.door-customs-line b { color: #c9b98a; font-weight: 600; }
+/* Dossier footer / body watermark (codex + shop dossiers). */
+.cdx-dossier { position: relative; }
+.cdx-dossier::before {
+    content: ''; position: absolute; right: 6%; top: 4%; width: 34%; aspect-ratio: 1;
+    background: var(--door-seal-dark) center / contain no-repeat;
+    opacity: 0.045; pointer-events: none;
+}
+.door-annotation { font-family: 'IBM Plex Mono', 'DotGothic16', monospace; font-size: 12px; line-height: 1.6; color: #d6cfbb; }
+.door-annotation .door-stamp { margin-right: 8px; vertical-align: middle; }
+
+/* ── Shop: purchase confirm becomes a stamped form ── */
+.door-form-confirm { display: flex; align-items: center; gap: 12px; }
+.door-form-confirm .door-stamp { flex-shrink: 0; }
+
+/* ── Employee ID card (CR80, 3.375 : 2.125) ── */
+.door-card {
+    --desk: #5a8898;
+    position: relative; width: min(440px, 94vw); aspect-ratio: 3.375 / 2.125;
+    perspective: 1400px; container-type: inline-size;
+    font-family: 'DotGothic16', monospace; color: var(--door-ink); margin: 0 auto;
+}
+.door-card-inner { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 0.75s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.door-card.flipped .door-card-inner { transform: rotateY(180deg); }
+.door-card-face {
+    position: absolute; inset: 0; overflow: hidden; border-radius: 3.2cqw;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    background:
+        radial-gradient(ellipse 80% 60% at 70% 20%, rgba(255,255,255,0.35), transparent 60%),
+        linear-gradient(160deg, #f3edde 0%, #e8e0ca 55%, #d9d0b6 100%);
+    box-shadow: 0 18px 50px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(0,0,0,0.08);
+}
+.door-card-back { transform: rotateY(180deg); }
+.door-card-stripe {
+    position: absolute; left: 0; right: 0; top: 0; height: 11%;
+    background: linear-gradient(90deg, var(--desk), color-mix(in srgb, var(--desk) 55%, #000));
+    display: flex; align-items: center; justify-content: space-between; padding: 0 3.5cqw;
+}
+.door-card-stripe span { font-size: 2cqw; letter-spacing: 0.28em; color: rgba(255,255,255,0.88); white-space: nowrap; }
+.door-card-holo {
+    position: absolute; right: 0; top: 11%; bottom: 0; width: 8.5%;
+    background: linear-gradient(160deg, #ff9aa2, #ffe29a, #a2ffb9, #9ad0ff, #d6a2ff, #ff9aa2, #ffe29a);
+    background-size: 100% 400%; opacity: 0.55; mix-blend-mode: multiply;
+    animation: doorHolo 7s linear infinite;
+}
+@keyframes doorHolo { from { background-position: 0 0; } to { background-position: 0 400%; } }
+.door-card-sheen {
+    position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen;
+    background: linear-gradient(115deg, rgba(255,255,255,0) 32%, rgba(255,255,255,0.32) 46%, rgba(255,255,255,0) 58%);
+}
+.door-card-crest { position: absolute; left: 3.5cqw; top: 15%; width: 22%; }
+.door-card-crest img { width: 100%; height: auto; display: block; }
+.door-card-photo {
+    position: absolute; left: 3.5cqw; bottom: 8%; width: 22%; aspect-ratio: 1;
+    background: #2a2620; border: 0.5cqw solid #7c7462; overflow: hidden;
+    display: flex; align-items: center; justify-content: center; image-rendering: pixelated;
+}
+.door-card-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.door-card-photo .pending { font-size: 1.9cqw; letter-spacing: 0.2em; color: #b6ad98; text-align: center; line-height: 1.5; }
+.door-card-fields { position: absolute; left: 29%; top: 15.5%; right: 12.5%; display: grid; grid-template-columns: 1fr 1.25fr; gap: 1.5cqw 2cqw; }
+.door-card-field label { display: block; font-size: 1.7cqw; letter-spacing: 0.24em; color: #6b6252; margin-bottom: 0.3cqw; }
+.door-card-field b { display: block; font-size: 2.4cqw; letter-spacing: 0.06em; color: var(--door-ink); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.door-card-field.wide { grid-column: 1 / -1; }
+.door-card-field.wide b { font-family: 'Cormorant SC', serif; font-size: 5.4cqw; letter-spacing: 0.06em; line-height: 1.05; }
+.door-card-flag { position: absolute; right: 13.5%; bottom: 7.5%; font-size: 2.3cqw; padding: 0.9cqw 1.6cqw 0.7cqw; transform: rotate(-8deg); z-index: 2; }
+.door-card-barcode { position: absolute; left: 29%; right: 12.5%; bottom: 8%; height: 12%; display: flex; align-items: stretch; gap: 0.25cqw; }
+.door-card-barcode i { display: block; background: var(--door-ink); flex: 0 0 auto; }
+.door-card-fine { position: absolute; left: 3.5cqw; right: 12.5%; bottom: 2.4%; font-size: 1.45cqw; letter-spacing: 0.16em; color: #7a7160; white-space: nowrap; overflow: hidden; }
+.door-card-magstripe { position: absolute; left: 0; right: 0; top: 12%; height: 15%; background: #1e1b17; }
+.door-card-back-body { position: absolute; left: 3.5cqw; right: 3.5cqw; top: 31%; bottom: 3%; display: flex; flex-direction: column; gap: 1.6cqw; }
+.door-card-back-title { font-size: 1.8cqw; letter-spacing: 0.26em; color: #6b6252; }
+.door-card-stamps { display: flex; flex-wrap: wrap; gap: 2.2cqw 3cqw; align-items: flex-start; min-height: 9cqw; padding: 0.6cqw 0.4cqw; }
+.door-card-stamps .door-stamp { font-size: 2.1cqw; padding: 0.9cqw 1.5cqw 0.7cqw; }
+.door-card-stamps .empty { font-size: 1.7cqw; letter-spacing: 0.16em; color: #9a917d; font-style: italic; }
+.door-card-back-note { font-size: 1.5cqw; letter-spacing: 0.12em; color: #6b6252; line-height: 1.7; margin-top: auto; }
+.door-card-wm { position: absolute; right: 6%; bottom: 6%; width: 32%; aspect-ratio: 1; background: var(--door-seal-mono) center / contain no-repeat; opacity: 0.07; pointer-events: none; }
+.door-card-hint { text-align: center; font-family: 'DotGothic16', monospace; font-size: 9px; letter-spacing: 0.24em; color: #555c70; margin-top: 10px; cursor: pointer; user-select: none; }
+.door-card-hint:hover { color: #8a93a8; }
+
+/* Intake form (CreateProfileModal): the card being filled in, form below. */
+.door-intake { width: min(520px, 94vw); }
+.door-intake .door-card { width: min(400px, 88vw); }
+.door-intake-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.door-desk-btn {
+    flex: 1; min-width: 86px; padding: 8px 10px; cursor: pointer;
+    font-family: 'DotGothic16', monospace; font-size: 10px; letter-spacing: 0.18em;
+    background: #000; color: #8a8a8a; border: 1px solid rgba(255,255,255,0.22);
+}
+.door-desk-btn.active { color: #f2f2f2; border-color: var(--desk); box-shadow: inset 0 0 0 1px var(--desk), 0 0 14px color-mix(in srgb, var(--desk) 40%, transparent); }
+.door-check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-family: 'DotGothic16', monospace; font-size: 10px; letter-spacing: 0.12em; color: #9c9c9c; }
+.door-check input { accent-color: #c0392b; }

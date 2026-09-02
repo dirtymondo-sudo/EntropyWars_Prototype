@@ -7773,6 +7773,13 @@
             const stamp = locked
                 ? `<div class="cdx-stamp ${profile.faction}">🔒 SEALED FILE</div>`
                 : `<div class="cdx-stamp ${profile.faction}">${faction.stamp} ${faction.label} FACTION</div>`;
+            /* D.O.O.R. customs disposition (DOOR_DESIGN §3.2): the stamp shows
+               even on sealed files (it's the tease); the point of entry does not. */
+            const customs = (typeof doorCustomsStatus === 'function') ? doorCustomsStatus(race) : null;
+            const customsInk = customs && /^(NON-CANON|UNDOCUMENTED)$/.test(customs.status) ? '' : ' admit';
+            const customsStamp = customs ? `<div class="door-stamp door-stamp-sm${customsInk}" title="Customs disposition${customs.note ? ' — ' + escapeHtml(customs.note) : ''}">${escapeHtml(customs.status)}</div>` : '';
+            const poe = (typeof doorPointOfEntry === 'function') ? doorPointOfEntry(race) : null;
+            const poeHtml = poe ? ` · POINT OF ENTRY: ${locked ? blk(8) : escapeHtml(poe.toUpperCase())}` : '';
             const nameHtml = locked
                 ? `${blk(9)}<span class="cdx-subject-role">designation withheld</span>`
                 : `${profile.label.toUpperCase()}<span class="cdx-subject-role">the ${defaultJob.toLowerCase()}</span>`;
@@ -7796,7 +7803,8 @@
                 <div class="cdx-hero-id">
                     <div class="cdx-hero-topline">
                         ${stamp}
-                        <div class="cdx-doc-id">DOC# ${docNum} · ██/██/199█</div>
+                        ${customsStamp}
+                        <div class="cdx-doc-id">DOC# ${docNum}${poeHtml} · ██/██/199█</div>
                         <div class="cdx-classification">TOP SECRET // ████████ // NOFORN</div>
                         ${opts.priceTag || ''}
                     </div>
@@ -7862,6 +7870,27 @@
                 <div class="cdx-section">
                     <div class="cdx-section-header">4. &nbsp;DOCUMENTED CAPABILITIES:</div>
                     ${_codexBuildAbilities(race)}
+                </div>
+                ${_codexDoorSection(race)}`;
+        }
+
+        /* 5. D.O.O.R. CUSTOMS — disposition + point of entry for every file,
+           plus the Department's annotation on the files where it has a point
+           of view (data.js DOOR_TEXT.DOSSIER_NOTES). */
+        function _codexDoorSection(race) {
+            if (typeof doorCustomsStatus !== 'function' || !window.DOOR_TEXT) return '';
+            const c = doorCustomsStatus(race);
+            const poe = doorPointOfEntry(race);
+            const ink = /^(NON-CANON|UNDOCUMENTED)$/.test(c.status) ? '' : ' admit';
+            const note = window.DOOR_TEXT.DOSSIER_NOTES[race];
+            return `
+                <div class="cdx-section">
+                    <div class="cdx-section-header">5. &nbsp;D.O.O.R. CUSTOMS DISPOSITION:</div>
+                    <div class="door-annotation">
+                        <span class="door-stamp door-stamp-sm${ink}">${escapeHtml(c.status)}</span>
+                        <span class="door-customs-line">POINT OF ENTRY: <b>${escapeHtml(poe.toUpperCase())}</b>${c.note ? ' &nbsp;·&nbsp; ' + escapeHtml(c.note) : ''}</span>
+                    </div>
+                    ${note ? `<div class="cdx-lore" style="margin-top:8px">${escapeHtml(note)}</div>` : ''}
                 </div>`;
         }
 
@@ -7874,7 +7903,7 @@
                     <div class="cdx-dossier">
                         ${_codexDossierSections(race)}
                         <div class="cdx-footer-stamp">
-                            <div class="cdx-watermark">ENTROPY WARS INTELLIGENCE DIVISION</div>
+                            <div class="cdx-watermark">D.O.O.R. RECORDS · DEPARTMENT OF ORTHOGONAL REALITIES</div>
                             <div class="cdx-page-class">PAGE 1 OF 1 · DISTRIBUTION: ████████ ONLY</div>
                         </div>
                     </div>
@@ -8175,8 +8204,9 @@
                 const method = _shopConfirmToken
                     ? `<b style="color:#9ad0ff">1 free unlock token 🎟</b>`
                     : `<b style="color:#ffd86a">💰 ${price.toLocaleString()} gold</b>`;
-                return `<div class="cdx-actionbar">
-                    <span class="cdx-action-status" style="color:#e8dfc0;font-weight:400">Declassify <b>${RACE_PROFILES[race].label}</b> for ${method}?</span>
+                return `<div class="cdx-actionbar door-form-confirm">
+                    <span class="door-stamp door-stamp-sm admit thunk">DECLASSIFIED</span>
+                    <span class="cdx-action-status" style="color:#e8dfc0;font-weight:400">Declassify <b>${RACE_PROFILES[race].label}</b> for ${method}? <span style="opacity:.6;font-size:.85em">FORM 7 · ASSET REASSIGNMENT</span></span>
                     <div class="cdx-actionbar-spacer"></div>
                     <button class="cdx-btn cdx-btn-ghost" onclick="window._shopCancelConfirm()">✕ Cancel</button>
                     <button class="cdx-btn cdx-btn-confirm" onclick="window._shopBuy('${rk}', ${_shopConfirmToken ? 'true' : 'false'})">✓ Confirm Purchase</button>
@@ -10313,11 +10343,12 @@
                 ov.style.cssText = 'position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(4,3,8,0.82);backdrop-filter:blur(2px)';
                 ov.innerHTML = `
                     <div style="max-width:440px;text-align:center;border:1px solid rgba(184,160,96,0.5);background:linear-gradient(180deg,#15110a,#0c0a06);border-radius:10px;padding:26px 28px;box-shadow:0 12px 60px rgba(0,0,0,0.7)">
-                        <div style="font-family:Cormorant SC,serif;font-size:13px;letter-spacing:0.2em;color:#b8455a;margin-bottom:6px">CLEARANCE GRANTED</div>
-                        <div style="font-family:Cormorant SC,serif;font-size:22px;color:#ffd86a;margin-bottom:10px">Choose Your First Vessel</div>
-                        <div style="font-size:13px;color:#b8b0a0;line-height:1.5;margin-bottom:18px">Welcome, operative. The Division issues every new recruit one <b style="color:#9ad0ff">free declassification token</b> 🎟. Spend it on <i>any</i> vessel in the roster — even the rarest files.</div>
-                        <button class="primary" id="ewOnboardGo" style="margin-right:8px">Browse the Roster</button>
-                        <button id="ewOnboardLater">Maybe Later</button>
+                        <img src="${(window.DOOR_TEXT && window.DOOR_TEXT.LOGO.onDark) || ''}" alt="" draggable="false" style="width:72px;height:auto;margin:0 auto 8px;display:block;filter:drop-shadow(0 0 12px rgba(0,0,0,.6))">
+                        <div style="font-family:Cormorant SC,serif;font-size:13px;letter-spacing:0.2em;color:#b8455a;margin-bottom:6px">${(window.DOOR_TEXT && window.DOOR_TEXT.ONBOARD.kicker) || 'CLEARANCE GRANTED'}</div>
+                        <div style="font-family:Cormorant SC,serif;font-size:22px;color:#ffd86a;margin-bottom:10px">${(window.DOOR_TEXT && window.DOOR_TEXT.ONBOARD.title) || 'Choose Your First Vessel'}</div>
+                        <div style="font-size:13px;color:#b8b0a0;line-height:1.5;margin-bottom:18px">${(window.DOOR_TEXT && window.DOOR_TEXT.ONBOARD.body) || 'Welcome, operative. The Division issues every new recruit one <b style="color:#9ad0ff">free declassification token</b> 🎟. Spend it on <i>any</i> vessel in the roster — even the rarest files.'}</div>
+                        <button class="primary" id="ewOnboardGo" style="margin-right:8px">${(window.DOOR_TEXT && window.DOOR_TEXT.ONBOARD.go) || 'Browse the Roster'}</button>
+                        <button id="ewOnboardLater">${(window.DOOR_TEXT && window.DOOR_TEXT.ONBOARD.later) || 'Maybe Later'}</button>
                     </div>`;
                 document.body.appendChild(ov);
                 if (typeof playSfx === 'function') { try { playSfx('uiButtonConfirm'); } catch (e) {} }

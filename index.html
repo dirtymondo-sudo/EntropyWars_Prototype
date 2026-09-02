@@ -227,12 +227,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Cinzel:wght@700;900&family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+SC:wght@500;600;700&family=DotGothic16&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20260902c-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20260902c-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20260902c-cors">
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20260902c-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-base.css?v=20260902d-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-animations.css?v=20260902d-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-cinematic.css?v=20260902d-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-hud.css?v=20260902d-cors">
 
-    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20260902c-cors">
+    <link rel="stylesheet" href="https://cdn.entropywars.net/styles-editor.css?v=20260902d-cors">
     <!-- Three.js r128 for game board renderer -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- Three.js r128 postprocessing (bloom + FXAA) — adds to global THREE -->
@@ -246,7 +246,7 @@
     <!-- THREE.CSS2DRenderer — DOM labels synced to 3D camera (nameplates, nexus bars) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS2DRenderer.js"></script>
     <!-- THREE.MeshLine — thick 3D lines for lightning bolts -->
-    <script src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20260902c-cors"></script>
+    <script src="https://cdn.entropywars.net/THREE.MeshLine.js?v=20260902d-cors"></script>
     <!-- THREE.OBJLoader — real 3D foliage/tree models (Entropy Vale natural maps) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
     <!-- THREE.GLTFLoader — esoteric background props from /Assets/misc (Pyramid.glb)
@@ -577,7 +577,7 @@
         <!-- PAGE 1: Title Screen with artwork -->
         <div id="titlePage" class="title-page active">
             <div class="title-art-wrap">
-                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20260902c-cors" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
+                <video src="https://cdn.entropywars.net/Assets/Entropy%20Wars_Static%20Logo.mp4?v=20260902d-cors" class="title-art" autoplay muted loop playsinline disablePictureInPicture></video>
             </div>
             <div class="title-characters">
                 <div class="title-sprite sprite-steve"></div>
@@ -588,6 +588,11 @@
                 <div class="title-loading-fill"></div>
             </div>
             <button id="enterGameBtn" class="title-enter-btn">› ENTER ‹</button>
+            <!-- D.O.O.R. seal (DOOR_DESIGN §3.4) — white-text variant, dark bg only -->
+            <div class="door-title-seal" aria-hidden="true">
+                <img src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
+                <span>A DEPARTMENT OF ORTHOGONAL REALITIES PRODUCTION<br>EVERY CROSSING IS INSPECTED · EVERY ENTITY IS FILED</span>
+            </div>
             <div class="title-version-line" style="position:absolute;right:18px;bottom:12px;z-index:3;font-family:'DotGothic16',monospace;font-size:10px;letter-spacing:0.18em;color:rgba(255,255,255,0.32);pointer-events:none">ENTROPY WARS · BUILD v207 · © 2026 DIRTYMONDO</div>
         </div>
         <!-- PAGE 2: Main Menu — black void styled after the battle loading
@@ -637,6 +642,10 @@
                     <button class="mm-btn mm-btn-settings" onclick="window._openMainMenuSettings()"><span class="mm-label">Settings</span><span class="mm-desc-text">Audio, display, controls</span></button>
                 </div>
             </div>
+            <div class="door-menu-seal" aria-hidden="true">
+                <img src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
+                <span>DEPT. OF ORTHOGONAL REALITIES</span>
+            </div>
             <div class="mm-elo-display">
                 <span class="mm-elo-tag" id="mmEloTag"></span>
                 <span id="mmWallet" class="ew-wallet" style="margin-left:14px;display:inline-block"></span>
@@ -652,7 +661,7 @@
             <div class="ms-container codex-container">
                 <div class="ms-top-bar">
                     <button class="ms-back-btn" onclick="window._codexBack()">← Back</button>
-                    <div class="ms-title-text">CLASSIFIED DOSSIER INDEX</div>
+                    <div class="ms-title-text door-hdr"><img src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"><span class="door-hdr-text">CLASSIFIED DOSSIER INDEX<span class="door-hdr-sub">D.O.O.R. RECORDS · ENTITY REGISTRY</span></span></div>
                     <div style="width:60px"></div>
                 </div>
                 <div class="codex-body" id="codexBody"></div>
@@ -684,7 +693,7 @@
             <div class="ms-container codex-container">
                 <div class="ms-top-bar">
                     <button class="ms-back-btn" onclick="window._shopBack()">← Back</button>
-                    <div class="ms-title-text">INTELLIGENCE DIVISION — REQUISITIONS</div>
+                    <div class="ms-title-text door-hdr"><img src="https://cdn.entropywars.net/Assets/door/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"><span class="door-hdr-text">D.O.O.R. · SHOP<span class="door-hdr-sub">CUSTOMS &amp; ADMISSIONS · DECLASSIFICATION</span></span></div>
                     <div id="shopWallet" class="ew-wallet" style="min-width:80px;text-align:right"></div>
                 </div>
                 <div class="codex-body" id="shopBody"></div>
@@ -1107,6 +1116,16 @@
         </div>
         <div id="vicGoldBreakdown" class="vic-gold-breakdown" style="display:none"></div>
         <div id="vicMvpTag" class="vic-mvp-tag" style="display:none"></div>
+        <!-- D.O.O.R. case stamp (DOOR_DESIGN §3.5): thunks down beside the
+             title. Local on both clients — no relay. -->
+        <div id="vicDoorStamp" class="door-result-stamp" aria-hidden="true">
+            <div class="drs-box">
+                <div class="drs-seal"></div>
+                <div class="drs-word" id="vicDoorStampWord">CASE CLOSED</div>
+                <div class="drs-meta" id="vicDoorStampMeta"></div>
+            </div>
+            <div class="drs-tab"><span>NEW DIRECTIVE</span></div>
+        </div>
         <div class="vic-awards" id="vicAwards"></div>
         <div class="vic-stats-table-wrap" id="vicStatsTableWrap"></div>
         <div class="vic-bottom" id="vicBottom">
@@ -1118,6 +1137,18 @@
         </div>
     </div>
 
+    <!-- D.O.O.R. worn-ink filter for rubber stamps (referenced by CSS filter:url(#doorInk)) -->
+    <svg width="0" height="0" style="position:absolute;width:0;height:0" aria-hidden="true" focusable="false">
+        <defs>
+            <filter id="doorInk" x="-6%" y="-10%" width="112%" height="120%" color-interpolation-filters="sRGB">
+                <feTurbulence type="fractalNoise" baseFrequency="0.9 0.7" numOctaves="2" seed="7" result="noise"/>
+                <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.1 0.32" result="grain"/>
+                <feComposite in="SourceGraphic" in2="grain" operator="in" result="worn"/>
+                <feDisplacementMap in="worn" in2="noise" scale="1.1" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+        </defs>
+    </svg>
+
     <div id="uiDialogOverlay" class="ui-dialog-overlay hidden" aria-hidden="true">
         <div id="uiDialogCard" class="ui-dialog-card"></div>
     </div>
@@ -1125,18 +1156,18 @@
 
     <!-- External dependencies -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script src="https://cdn.entropywars.net/sprites.js?v=20260902c-cors"></script>
+    <script src="https://cdn.entropywars.net/sprites.js?v=20260902d-cors"></script>
     <script>window._spritesLoaded = true; window._EW_BUILD_TOKEN = '20260803h-cors';</script>
     <script>
     // NOTE: crossorigin="anonymous" removed from display <img> tags.
     // Only _getCachedImg (canvas compositing) uses CORS mode.
     </script>
-    <script src="https://cdn.entropywars.net/data.js?v=20260902c-cors"></script>
+    <script src="https://cdn.entropywars.net/data.js?v=20260902d-cors"></script>
     <script>
       // Fallback: if local data.js didn't load, try CDN
       if (typeof SPELL_LIBRARY === 'undefined') {
         var _djs = document.createElement('script');
-        _djs.src = 'https://cdn.entropywars.net/data.js?v=20260902c-cors';
+        _djs.src = 'https://cdn.entropywars.net/data.js?v=20260902d-cors';
         document.head.appendChild(_djs);
       }
     </script>
@@ -1287,23 +1318,23 @@
 
 
     <!-- React (for Party Builder UI) -->
-    <script src="https://cdn.entropywars.net/react.production.min.js?v=20260902c-cors"></script>
-    <script src="https://cdn.entropywars.net/react-dom.production.min.js?v=20260902c-cors"></script>
+    <script src="https://cdn.entropywars.net/react.production.min.js?v=20260902d-cors"></script>
+    <script src="https://cdn.entropywars.net/react-dom.production.min.js?v=20260902d-cors"></script>
 
     <!-- Game modules -->
-    <script src="https://cdn.entropywars.net/state.js?v=20260902c-cors"></script>
-    <script src="https://cdn.entropywars.net/audio.js?v=20260902c-cors"></script>
-    <script src="https://cdn.entropywars.net/map.js?v=20260902c-cors"></script>
+    <script src="https://cdn.entropywars.net/state.js?v=20260902d-cors"></script>
+    <script src="https://cdn.entropywars.net/audio.js?v=20260902d-cors"></script>
+    <script src="https://cdn.entropywars.net/map.js?v=20260902d-cors"></script>
     <!-- Three.js renderer — three-camera.js must load before battle.js, three-renderer.js after -->
-    <script src="https://cdn.entropywars.net/three-camera.js?v=20260902c-cors"></script>
-    <script src="https://cdn.entropywars.net/battle.js?v=20260902c-cors"></script>
-    <script src="https://cdn.entropywars.net/three-post.js?v=20260902c-cors"></script>
-    <script src="https://cdn.entropywars.net/three-renderer.js?v=20260902c-cors"></script>
-    <script src="https://cdn.entropywars.net/three-vfx.js?v=20260902c-cors"></script>
-    <script src="https://cdn.entropywars.net/three-lightning.js?v=20260902c-cors"></script>
-    <script src="https://cdn.entropywars.net/three-vfx-effects.js?v=20260902c-cors"></script>
-    <script src="https://cdn.entropywars.net/ui.js?v=20260902c-cors"></script>
-    <script src="https://cdn.entropywars.net/profile.js?v=20260902c-cors"></script>
+    <script src="https://cdn.entropywars.net/three-camera.js?v=20260902d-cors"></script>
+    <script src="https://cdn.entropywars.net/battle.js?v=20260902d-cors"></script>
+    <script src="https://cdn.entropywars.net/three-post.js?v=20260902d-cors"></script>
+    <script src="https://cdn.entropywars.net/three-renderer.js?v=20260902d-cors"></script>
+    <script src="https://cdn.entropywars.net/three-vfx.js?v=20260902d-cors"></script>
+    <script src="https://cdn.entropywars.net/three-lightning.js?v=20260902d-cors"></script>
+    <script src="https://cdn.entropywars.net/three-vfx-effects.js?v=20260902d-cors"></script>
+    <script src="https://cdn.entropywars.net/ui.js?v=20260902d-cors"></script>
+    <script src="https://cdn.entropywars.net/profile.js?v=20260902d-cors"></script>
     <script>
     // First-launch: if no profile exists after migration, open profile creation on ENTER click
     (function() {
@@ -1333,14 +1364,14 @@
         }
     })();
     </script>
-    <script src="https://cdn.entropywars.net/party-builder.js?v=20260902c-cors"></script>
-    <script src="https://cdn.entropywars.net/match-select.js?v=20260902c-cors"></script>
-    <script src="https://cdn.entropywars.net/online.js?v=20260902c-cors"></script>
+    <script src="https://cdn.entropywars.net/party-builder.js?v=20260902d-cors"></script>
+    <script src="https://cdn.entropywars.net/match-select.js?v=20260902d-cors"></script>
+    <script src="https://cdn.entropywars.net/online.js?v=20260902d-cors"></script>
     <!-- AI v4 (2026-08-15): ONE unified brain — the ainew.js overlay was
          merged into ai.js and deleted. Do not re-add an ainew.js tag. -->
-    <script src="https://cdn.entropywars.net/ai.js?v=20260902c-cors"></script>
+    <script src="https://cdn.entropywars.net/ai.js?v=20260902d-cors"></script>
     <!-- React HUD overlay (Codex visual system) -->
-    <script src="https://cdn.entropywars.net/hud.js?v=20260902c-cors"></script>
+    <script src="https://cdn.entropywars.net/hud.js?v=20260902d-cors"></script>
 
     <!-- ── Shader Sky Background (Three.js volumetric terrain) ── -->
     <script type="module">

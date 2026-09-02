@@ -23,11 +23,19 @@ function defaultCareer() {
   };
 }
 
+/* D.O.O.R. layer (DOOR_DESIGN §4.5): story clearance + the ID card's
+   cosmetic answers. clearance/memosSeen/pendingDirective/cardStamps/choice are
+   filled by the story track; desk + flagged come from the intake form. */
+function defaultDoor() {
+  return { clearance: 1, desk: null, flagged: false, memosSeen: [], pendingDirective: null, cardStamps: [], choice: null };
+}
+
 function defaultProfile(username) {
   return {
     version: PROFILE_VERSION,
     username: username || 'Player',
     createdAt: new Date().toISOString(),
+    door: defaultDoor(),
     career: defaultCareer(),
     classStats: {},
     raceStats: {},
@@ -62,6 +70,11 @@ function backfillProfile(p) {
   /* Achievement showcase (plan §6.3): picked achievement keys for a future
      public profile. Data-only for now — the UI lands with public profiles. */
   if (!p.showcase) p.showcase = [];
+  if (!p.door || typeof p.door !== 'object') p.door = defaultDoor();
+  else {
+    const dd = defaultDoor();
+    for (const k of Object.keys(dd)) if (p.door[k] === undefined) p.door[k] = dd[k];
+  }
   // Account economy mirror. When a server token exists the server is the source
   // of truth and this is just a read cache; with no token (offline / local-only /
   // profiles made before the account system) this IS the wallet, and purchasing
@@ -1753,20 +1766,152 @@ function AchievementsTab({ profile }) {
   );
 }
 
+/* ── D.O.O.R. employee ID card (DOOR_DESIGN §3.1) ──────────────────────
+   The profile IS the card: CR80 aspect, desk-colour stripe, crest, photo
+   (the most-played vessel's portrait, PHOTO PENDING until there is one),
+   employee number derived from createdAt, clearance (story progress — NOT
+   the rank), barcode, lamination sheen, holographic strip, and a back that
+   collects stamps over time. Markup classes live in styles-base.css. */
+const DOOR_T = () => (typeof window !== 'undefined' && window.DOOR_TEXT) || null;
+
+function doorCardPortrait(profile) {
+  try {
+    if (typeof RACE_PORTRAITS === 'undefined') return null;
+    let best = null, bestN = 0;
+    for (const [race, rs] of Object.entries((profile && profile.raceStats) || {})) {
+      const n = (rs && rs.played) || 0;
+      if (n > bestN && RACE_PORTRAITS[race]) { best = race; bestN = n; }
+    }
+    if (!best && profile && Array.isArray(profile.favRaces)) {
+      best = profile.favRaces.find(r => RACE_PORTRAITS[r]) || null;
+    }
+    if (!best) return null;
+    const set = RACE_PORTRAITS[best];
+    return { race: best, url: set.male || set.female || null };
+  } catch (e) { return null; }
+}
+
+function doorIssuedDate(profile) {
+  const d = profile && profile.createdAt ? new Date(profile.createdAt) : new Date();
+  if (isNaN(d.getTime())) return '██ ███ ████';
+  const M = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  return String(d.getDate()).padStart(2, '0') + ' ' + M[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+function DoorBarcode({ seed }) {
+  const digits = String(seed || '000000').replace(/\D/g, '') || '000000';
+  const bars = [];
+  for (let i = 0; i < digits.length * 4; i++) {
+    const d = digits.charCodeAt(i % digits.length) - 48;
+    const w = 1 + ((d + i * 7) % 3);           // 1–3 unit widths
+    const gap = ((d * 3 + i) % 2) ? 1 : 0.5;   // narrow / hair gaps
+    bars.push(h('i', { key: i, style: { width: (w * 0.55) + 'cqw', marginRight: (gap * 0.45) + 'cqw' } }));
+  }
+  return h('div', { className: 'door-card-barcode', 'aria-hidden': true }, bars);
+}
+
+function DoorIdCard({ profile, name, desk, flagged, flipped, onFlip, style }) {
+  const D = DOOR_T();
+  const p = profile || {};
+  const deskKey = desk !== undefined ? desk : (p.door && p.door.desk);
+  const deskDef = D && deskKey ? D.DESKS[deskKey] : null;
+  const isFlagged = flagged !== undefined ? !!flagged : !!(p.door && p.door.flagged);
+  const callsign = name !== undefined ? name : (p.username || '');
+  const empNo = (typeof window.doorEmployeeNo === 'function') ? window.doorEmployeeNo(p) : '000-000';
+  const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(p) : { level: 1, title: 'PROBATIONARY' };
+  const portrait = doorCardPortrait(p);
+  const rank = getRankInfo(typeof p.elo === 'number' ? p.elo : 1000);
+  const stamps = (p.door && Array.isArray(p.door.cardStamps)) ? p.door.cardStamps : [];
+  const career = p.career || {};
+  const finePrint = (D && D.INTAKE.finePrint) || 'LAMINATE BEFORE USE';
+  const crest = (D && D.LOGO.onLight) || '';
+  const dept = (D && D.DEPARTMENTS.customs.label) || 'CUSTOMS & ADMISSIONS';
+
+  return h('div', {
+    className: 'door-card' + (flipped ? ' flipped' : ''),
+    style: Object.assign({ '--desk': deskDef ? deskDef.color : '#6a6a72' }, style || {}),
+    onClick: onFlip || undefined,
+    title: onFlip ? 'Flip card' : undefined,
+  },
+    h('div', { className: 'door-card-inner' },
+      /* ── FRONT ── */
+      h('div', { className: 'door-card-face door-card-front' },
+        h('div', { className: 'door-card-stripe' },
+          h('span', null, 'D.O.O.R. · ' + dept),
+          h('span', null, deskDef ? 'DESK · ' + deskDef.label : 'DESK · UNASSIGNED'),
+        ),
+        h('div', { className: 'door-card-crest' }, crest ? h('img', { src: crest, alt: '', draggable: false }) : null),
+        h('div', { className: 'door-card-photo' },
+          portrait && portrait.url
+            ? h('img', { src: portrait.url, alt: '', draggable: false, title: portrait.race })
+            : h('div', { className: 'pending' }, (D && D.INTAKE.photoPending) || 'PHOTO PENDING')
+        ),
+        h('div', { className: 'door-card-fields' },
+          h('div', { className: 'door-card-field wide' }, h('label', null, 'CALLSIGN'), h('b', null, callsign || '\u00A0')),
+          h('div', { className: 'door-card-field' }, h('label', null, 'EMPLOYEE No.'), h('b', null, empNo)),
+          h('div', { className: 'door-card-field' }, h('label', null, 'CLEARANCE'), h('b', null, 'L' + cl.level + ' · ' + cl.title)),
+          h('div', { className: 'door-card-field' }, h('label', null, 'DEPARTMENT'), h('b', null, dept)),
+          h('div', { className: 'door-card-field' }, h('label', null, 'ISSUED'), h('b', null, doorIssuedDate(p))),
+        ),
+        isFlagged ? h('div', { className: 'door-stamp door-card-flag' }, 'FLAGGED') : null,
+        h(DoorBarcode, { seed: empNo }),
+        h('div', { className: 'door-card-fine' }, finePrint),
+        h('div', { className: 'door-card-holo' }),
+        h('div', { className: 'door-card-sheen' }),
+      ),
+      /* ── BACK ── */
+      h('div', { className: 'door-card-face door-card-back' },
+        h('div', { className: 'door-card-magstripe' }),
+        h('div', { className: 'door-card-back-body' },
+          h('div', { className: 'door-card-back-title' }, 'STAMPS · COMMENDATIONS · RULINGS'),
+          h('div', { className: 'door-card-stamps' },
+            stamps.length
+              ? stamps.map((st, i) => h('span', { key: i, className: 'door-stamp ' + (st.ink || '') , title: st.note || '' }, st.word || st))
+              : h('span', { className: 'empty' }, 'no stamps on file — tested in the field: ' + (career.matchesPlayed || 0))
+          ),
+          h('div', { className: 'door-card-back-note' },
+            'RANK ' + (rank.name || '') + ' · ' + (typeof p.elo === 'number' ? p.elo : 1000) + ' ELO · W ' + (career.wins || 0) + ' / L ' + (career.losses || 0),
+            h('br'),
+            (D && D.DOCTRINE) || 'Do not stand in corners.',
+            h('br'),
+            'IF FOUND, RETURN TO ANY DEPARTMENT FACILITY. FACILITIES ARE ROUND.'
+          ),
+        ),
+        h('div', { className: 'door-card-wm' }),
+        h('div', { className: 'door-card-sheen' }),
+      ),
+    )
+  );
+}
+
 function CreateProfileModal({ onCreated, onCancel }) {
   const [name, setName] = React.useState('');
   const [error, setError] = React.useState('');
+  const [desk, setDesk] = React.useState(null);
+  const [flagged, setFlagged] = React.useState(false);
+  const D = DOOR_T();
+  const previewProfile = React.useMemo(() => Object.assign(defaultProfile(name || ''), { createdAt: new Date().toISOString() }), []);
 
   const submit = () => {
     if (!isValidUsername(name)) {
-      setError('2-16 chars, letters/numbers/underscores only');
+      setError((D && D.SYSTEM.badCallsign) || '2-16 chars, letters/numbers/underscores only');
       return;
     }
     const slot = createProfile(name);
     if (slot === null) {
-      setError('All 3 profile slots are full');
+      setError((D && D.SYSTEM.slotsFull) || 'All 3 profile slots are full');
       return;
     }
+    /* the intake form's two optional answers go on the card */
+    try {
+      const np = loadProfile(slot);
+      if (np) {
+        if (!np.door) np.door = defaultDoor();
+        np.door.desk = desk || null;
+        np.door.flagged = !!flagged;
+        saveProfile(slot, np);
+      }
+    } catch (e) {}
 
     serverRegister(name).then(function(result) {
       if (result.ok) {
@@ -1785,27 +1930,29 @@ function CreateProfileModal({ onCreated, onCancel }) {
     position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center',
     background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)',
   }},
-    h('div', { style: {
+    h('div', { className: 'door-intake', style: {
       background: '#050505', border: '1px solid rgba(255,255,255,0.18)',
-      padding: '28px 34px 24px', minWidth: 340, maxWidth: 430,
+      padding: '22px 28px 20px', maxHeight: '94vh', overflowY: 'auto',
       textAlign: 'left', boxShadow: '0 12px 60px rgba(0,0,0,0.8)',
     }},
       h('div', { style: {
         fontFamily: 'DotGothic16, monospace', fontSize: 9, letterSpacing: '0.3em',
-        color: '#5c5c5c', marginBottom: 8,
-      } }, 'INTELLIGENCE DIVISION · NEW FILE'),
+        color: '#5c5c5c', marginBottom: 6,
+      } }, (D && D.INTAKE.kicker) || 'INTELLIGENCE DIVISION · NEW FILE'),
       h('div', { style: {
-        fontSize: 20, fontFamily: 'Cormorant SC, serif', color: '#f2f2f2',
+        fontSize: 18, fontFamily: 'Cormorant SC, serif', color: '#f2f2f2',
         letterSpacing: '0.08em',
-      } }, 'OPERATIVE REGISTRATION'),
+      } }, (D && D.INTAKE.title) || 'OPERATIVE REGISTRATION'),
       h('div', { style: {
         height: 1, background: 'linear-gradient(90deg, rgba(255,255,255,0.35), transparent)',
-        margin: '12px 0 16px',
+        margin: '10px 0 14px',
       } }),
+      /* the laminated card fills in live as the form is typed */
+      h(DoorIdCard, { profile: previewProfile, name: name, desk: desk, flagged: flagged, style: { marginBottom: 16 } }),
       h('div', { style: {
         fontFamily: 'DotGothic16, monospace', fontSize: 10, letterSpacing: '0.18em',
         color: '#9c9c9c', marginBottom: 8,
-      } }, 'ENTER CALLSIGN'),
+      } }, (D && D.INTAKE.callsign) || 'ENTER CALLSIGN'),
       h('input', {
         type: 'text', maxLength: 16, placeholder: 'callsign',
         value: name,
@@ -1823,6 +1970,27 @@ function CreateProfileModal({ onCreated, onCancel }) {
         fontFamily: 'DotGothic16, monospace', fontSize: 9, letterSpacing: '0.12em',
         color: error ? '#ff5c5c' : '#5c5c5c', marginTop: 7,
       } }, error || '2–16 CHARS · LETTERS / NUMBERS / UNDERSCORES'),
+      /* One optional form question, so it feels like a form and not a login
+         (DOOR_DESIGN §3.1): the desk sets the card's colour stripe. */
+      h('div', { style: {
+        fontFamily: 'DotGothic16, monospace', fontSize: 10, letterSpacing: '0.18em',
+        color: '#9c9c9c', margin: '16px 0 8px',
+      } }, ((D && D.INTAKE.desk) || 'DESK ASSIGNMENT') + ' · OPTIONAL'),
+      h('div', { className: 'door-intake-row' },
+        ['space', 'time', 'chaos'].map(k => {
+          const def = D ? D.DESKS[k] : { label: k.toUpperCase(), color: '#888' };
+          return h('button', {
+            key: k, type: 'button',
+            className: 'door-desk-btn' + (desk === k ? ' active' : ''),
+            style: { '--desk': def.color },
+            onClick: () => setDesk(desk === k ? null : k),
+          }, def.label);
+        })
+      ),
+      h('label', { className: 'door-check', style: { marginTop: 14 } },
+        h('input', { type: 'checkbox', checked: flagged, onChange: e => setFlagged(e.target.checked) }),
+        ((D && D.INTAKE.mandela) || 'Have you experienced a Mandela Effect?') + (flagged ? '  — FLAGGED' : ''),
+      ),
       h('div', { style: { display: 'flex', gap: 10, marginTop: 18, justifyContent: 'flex-end' } },
         onCancel ? h('button', {
           onClick: onCancel,
@@ -1832,7 +2000,7 @@ function CreateProfileModal({ onCreated, onCancel }) {
             border: '1px solid rgba(255,92,92,0.5)',
             fontFamily: 'DotGothic16, monospace',
           }
-        }, 'CANCEL') : null,
+        }, (D && D.INTAKE.cancel) || 'CANCEL') : null,
         h('button', {
           onClick: submit,
           style: {
@@ -1842,7 +2010,7 @@ function CreateProfileModal({ onCreated, onCancel }) {
             fontFamily: 'DotGothic16, monospace',
             boxShadow: '0 0 16px rgba(61,220,132,0.15)',
           }
-        }, 'REGISTER'),
+        }, (D && D.INTAKE.submit) || 'REGISTER'),
       ),
     )
   );
@@ -2240,6 +2408,7 @@ function ProfilePage() {
   const [newName, setNewName] = React.useState('');
   const [showCreate, setShowCreate] = React.useState(false);
   const [, forceRender] = React.useState(0);
+  const [cardFlipped, setCardFlipped] = React.useState(false);
 
   const refresh = React.useCallback(() => {
     const idx = getActiveProfileIndex();
@@ -2299,7 +2468,8 @@ function ProfilePage() {
   const handleDelete = (i) => {
     const p = loadProfile(i);
     if (!p) return;
-    if (!confirm('Delete profile "' + p.username + '"? This cannot be undone.')) return;
+    const lost = (DOOR_T() && DOOR_T().SYSTEM.lostCard) || '';
+    if (!confirm('Delete profile "' + p.username + '"? This cannot be undone.' + (lost ? '\n\n' + lost : ''))) return;
     deleteProfile(i);
     refresh();
   };
@@ -2373,7 +2543,12 @@ function ProfilePage() {
         }, '🗑'),
       ),
 
-      h('div', { style: { textAlign: 'center' } },
+      /* The profile overview IS the employee ID card (DOOR_DESIGN §3.1):
+         click to flip — the back collects stamps as the story turns. */
+      h(DoorIdCard, { profile, flipped: cardFlipped, onFlip: () => setCardFlipped(f => !f), style: { marginBottom: 4 } }),
+      h('div', { className: 'door-card-hint', onClick: () => setCardFlipped(f => !f) }, cardFlipped ? '↻ FRONT' : '↻ FLIP CARD'),
+
+      h('div', { style: { textAlign: 'center', marginTop: 10 } },
         editingName ? h('div', { style: { display: 'inline-flex', gap: 6, alignItems: 'center' } },
           h('input', {
             value: newName, onChange: e => setNewName(e.target.value),
@@ -2389,9 +2564,9 @@ function ProfilePage() {
           h('button', { onClick: () => setEditingName(false), style: { fontSize: 14, cursor: 'pointer', background: 'none', border: 'none', color: EW.bad } }, '✕'),
         ) : h('div', {
           onClick: () => { setNewName(profile.username); setEditingName(true); },
-          style: { fontSize: 24, fontFamily: 'Cormorant SC, serif', fontWeight: 700, cursor: 'pointer', display: 'inline-block' },
-          title: 'Click to edit username',
-        }, profile.username),
+          style: { fontSize: 18, fontFamily: 'Cormorant SC, serif', fontWeight: 700, cursor: 'pointer', display: 'inline-block' },
+          title: 'Click to edit callsign',
+        }, profile.username, h('span', { style: { fontSize: 10, color: EW.inkDim, marginLeft: 8, fontFamily: 'DotGothic16, monospace', letterSpacing: '0.12em' } }, '✎ RENAME')),
         h('div', { style: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 8 } },
           h('span', { style: { fontSize: 18 } }, rank.icon),
           h('span', { style: { fontSize: 14, color: rank.color, fontWeight: 600 } }, rank.name),
