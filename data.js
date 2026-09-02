@@ -15043,6 +15043,148 @@ const DOOR_TEXT = {
         'grey': 'FOREIGN NATIONAL, frequent flyer. Has crossed more times than any entity on file and has never once queued. Do not make sustained eye contact at the desk; the desk will fill itself in.',
     },
 
+    // ── SITE FILES (match select + loading screen) ────────────────────────
+    // One customs file per map, keyed by the MapForge id (Δ boards share
+    // their parent's file — doorSiteFile() strips the `_delta` suffix).
+    //   tone      — stamp ink: admit (green) · deny (red) · void (grey)
+    //   status    — the rubber stamp beside the site name
+    //   juris     — JURISDICTION line (who claims the crossing)
+    //   summary   — "1. EXECUTIVE SUMMARY" (dossier voice; never redact the joke)
+    //   advisory  — "2. FIELD ADVISORY" (the tactical read of the real layout)
+    //   memo      — an INTEROFFICE MEMORANDUM about the site (loading screen)
+    SITE_FILES: {
+        prebuilt_shasta: { tone: 'admit', status: 'ACTIVE CROSSING', juris: 'Customs & Admissions · Lemurian liaison pending since 1931',
+            summary: 'A dormant volcano with an active door. The Lemurians inside have been "about to make contact" since 1931 and have installed a waiting room. Officers report a strong urge to buy crystals; this is not a crossing symptom, it is the gift shop. The mountain is round at the top. The Department approves.',
+            advisory: 'Height is the whole file: the snow-crown sees every terrace and every terrace sees the lakes. Take the switchbacks early. Whoever holds the crown files the report.',
+            memo: 'Bigfoot is not "on staff". Stop listing him as an escort on Shasta expense forms.' },
+        prebuilt_stonehenge: { tone: 'admit', status: 'ACTIVE CROSSING', juris: 'Customs & Admissions · English Heritage (unaware)',
+            summary: 'A ring — which is to say a room with no corners, which is to say the only crossing on file the founders would have built themselves. The ley-lines meet at the altar at exactly ninety degrees. The druids knew. The tourists do not. The door opens at solstice, at equinox, and whenever a guide says "nobody knows how they moved the stones."',
+            advisory: 'Pillars are cover and the cardinal entrances are the only way through them. Casters own the ring from the altar; everyone else is walking a corridor.',
+            memo: 'The armillary over the altar is Department property. It is not "decorative", it is not "for sale", and Records would like it back.' },
+        prebuilt_giza: { tone: 'admit', status: 'DIPLOMATIC', juris: 'Contested — the Annunaki assert prior title to the desk',
+            summary: 'Three doors, stacked, disguised as tombs, aligned with a star the Annunaki insist is "home". Every ruler for four thousand years has dug here for treasure and found paperwork. The Sphinx faces the crossing point. It is not guarding it. It is queueing.',
+            advisory: 'The great diagonal is a firing lane; the trenches beside it are the only cover that is not a monument. Climb a pyramid for the view and expect to be seen doing it.',
+            memo: 'Re: the Anubis file. "Weighs the heart" is a customs procedure, and the Department would like the scales back.' },
+        prebuilt_nuketown: { tone: 'deny', status: 'CONDEMNED', juris: 'Customs & Admissions · Dept. of Energy (does not know)',
+            summary: 'A test suburb built to be destroyed at 09:00 sharp and rebuilt by lunch. Sixty years of scheduled apocalypse have worn a door into the street. The mannequins were moved in 1957. Nobody moved them. The Civic parked here first.',
+            advisory: 'The street is a kill-zone; the houses are the map. Fences block movement, not bullets. Cross at the hedges or not at all.',
+            memo: 'The mannequins in the kitchen have been counted. There are now eleven. There were nine. Do not count them again.' },
+        prebuilt_heaven: { tone: 'admit', status: 'DIPLOMATIC', juris: 'Foreign — immunity in effect; Customs observes from the gate',
+            summary: 'The gates are gilded, the pools heal, and the paperwork is ecclesiastical. Diplomatic immunity is claimed for every entity and granted for none; the Department stamps the forms anyway, because the alternative was explained to us. Do not step off the cloud. Falling is a crossing without a form.',
+            advisory: 'The rifts are bottomless and knockback is a weapon. Hold the daises for height and the pools for the heal. Anyone standing near an edge is asking.',
+            memo: "Heaven's customs desk is 'the pearly gates'. Ours is a folding table. The difference is budget, not authority." },
+        prebuilt_hell: { tone: 'deny', status: 'DIPLOMATIC', juris: 'Foreign — every treaty reviewed by their lawyers, in their favour',
+            summary: "Heaven's mirror: same floor plan, worse climate, better lawyers. Every treaty with this crossing is written in the resident language, which is fine print. The colossi are chained. The chains are not on the inventory. Ask nobody what they are chained to.",
+            advisory: 'The lava river cuts the field in half; the crossings over it are where the match is decided. Basalt spikes break line of sight — use them, because the altar is watching.',
+            memo: "Hell's paperwork arrives pre-signed. Do not sign it again. Do not read the part you did not sign." },
+        prebuilt_cyberpunk: { tone: 'admit', status: 'ACTIVE CROSSING', juris: 'Customs & Admissions — disputed by the corporations, who dispute everything',
+            summary: 'A city that arrived before its date: neon, rain, and a plaza that advertises to you personally. Entities file themselves here, electronically, in triplicate, before Customs has opened the envelope. The Department suspects the city is a corner that learned to advertise.',
+            advisory: 'Avenues are fast and fatal; rooftops are slow and safe. The alleys are chokes and the plaza is a stage. Decide which you are: traffic, or the audience.',
+            memo: 'The vending machines in the holo-plaza accept Hazard Pay. This was not approved. It is, however, convenient.' },
+        prebuilt_camelot: { tone: 'admit', status: 'ACTIVE CROSSING', juris: "Customs & Admissions — the Crown's claim lapsed c. 540 CE",
+            summary: 'The castle is real, the king is on file, and the round table was the first Department facility whether or not anyone will admit it. No corners. Twelve chairs. One seat nobody sits in. Camelot is the reason the doctrine says "round". The dragon is a separate file.',
+            advisory: 'Height wins in the keep; the moat lowland is a trap for anyone who lingers. Take the stairs in numbers and hold the parapets. The braziers mark the wards, and the wards mark the doors.',
+            memo: 'Excalibur is a listed artifact, not "a sword someone found". The Lady of the Lake has been asked for a receipt.' },
+        prebuilt_stadium: { tone: 'admit', status: 'ACTIVE CROSSING', juris: 'Customs & Admissions on game day · the league on every other day',
+            summary: 'A bowl with sixty thousand seats and nobody in them, floating in a void that does not show up on the broadcast. The goalposts are a door. Both of them. The chalk lines are older than the chalk. Officers may enjoy the game but may not place bets on crossings.',
+            advisory: 'Long, thin, and lined: the yard markers measure exactly how far the enemy can shoot you. The bleachers are the only height. End zones are spawn, which means end zones are targets.',
+            memo: 'Stop filing the halftime show as a "ritual". It is a ritual. Stop filing it.' },
+        prebuilt_atlantis: { tone: 'deny', status: 'SUBMERGED', juris: 'Atlantean (predates the Department) · Customs by courtesy',
+            summary: 'The first city to be filed and the first to be lost, in that order. The Atlanteans predate the Department, predate the form, and keep pointing this out. Half the capital is under water and the other half is on paper. The spire still works. Nobody has asked what it does.',
+            advisory: 'Deep water drowns the unwinged. The plaza islands are the only dry fights; the flooded streets belong to whatever can swim or fly. Control the causeways, or watch the match from below.',
+            memo: 'Atlantis has requested we "update our records to reflect their seniority". Records has replied that seniority is not a customs status. Atlantis has replied at length.' },
+        prebuilt_babel: { tone: 'deny', status: 'CONDEMNED', juris: 'Customs & Admissions · Bureau of Continuity (linguistic drift, case open)',
+            summary: 'An unfinished tower and the oldest open case in the Bureau of Continuity. Every language on Earth is drift from one incident here, which makes every translation a Mandela Effect with a dictionary. Construction was halted "until the paperwork clears". The paperwork is in eleven thousand languages.',
+            advisory: 'The ziggurat is the map: whoever climbs highest sees furthest and falls hardest. Scaffolds are cover with a weight limit. The brick streets below are a long walk under fire.',
+            memo: 'The interpreter assigned to Babel has requested reassignment in four languages. Approved in three.' },
+        prebuilt_olympus: { tone: 'admit', status: 'DIPLOMATIC', juris: 'Foreign — the residents claim to be the concept of jurisdiction',
+            summary: "The residents are not gods, according to the residents, who are gods. Every temple is a desk and every desk has an opinion. Lightning is used for punctuation. The Department's liaison to Olympus has been the same officer since 1954, 1947, 1974 and 1987, and is beginning to notice.",
+            advisory: 'Terraces stack, and height stacks with them. The storm lanes are open ground with a weather problem. Void rifts do not forgive a bad step or a good shove.',
+            memo: 'Do not accept ambrosia at the customs desk. It is a gift, and gifts here are contracts.' },
+        prebuilt_mars: { tone: 'deny', status: 'FOREIGN TERRITORY', juris: 'Martian · Customs by the treaty of 1976 (the photograph is disputed)',
+            summary: 'Red, dry, and armed. The rovers were sent to look for life and were found by it. Every face on Mars is a face; the Department\'s position is that the Martians are simply photogenic. The door is in a crater. Most of them are.',
+            advisory: 'Mesas are the only cover on the planet. The dust bowls are open and the dead rovers are bait. Ranged vessels rule the regolith — close the gap, or do not come.',
+            memo: 'The Martian delegation objects to the word "invasion" on their intake form and has suggested "return".' },
+        prebuilt_area51: { tone: 'deny', status: 'DISPUTED', juris: 'Claimed by the other agency · never filed · never will be',
+            summary: 'The most famous secret on Earth, which is how you know it is not the secret. The base is a lobby; the door is under the saucer; the saucer is under a tarp; the tarp is the only thing on site with proper clearance. The other agency parks here. They do not sign in.',
+            advisory: 'The floodlight towers own the night: height and vision across open tarmac. The hangars are the only interior. The airstrip is a lane, and lanes are for dying in.',
+            memo: 'The black sedans have moved from spaces 1–4 to the hangar. Do not follow them in. Do not ask why the hangar is bigger inside.' },
+        prebuilt_antarctica: { tone: 'deny', status: 'SEALED · BREACHED', juris: 'Treaty of 1959 · Customs by icebreaker',
+            summary: 'There is a wall of ice, there is something behind it, and the Department has an office on the wrong side. The colossus is frozen. "Frozen" is a status, not a guarantee. The Nordics landed here first and left a pamphlet. The kaiju did not read it.',
+            advisory: 'Ice slides; channels drown. The iceberg hops are the only route that is not a straight line into a marksman\'s field notes. Whoever holds the wall holds the file.',
+            memo: 'The pamphlet the Nordics left is titled "You Are Not Ready". Continuity has ruled it canon. Unfortunately.' },
+        prebuilt_skinwalker: { tone: 'deny', status: 'UNDOCUMENTED', juris: 'Customs & Admissions, from a distance',
+            summary: 'A ranch where the cattle are the least strange thing in the field. Every observation mesa has a camera and every camera has a shot of something leaving. The crop circle is a door. The door is a crop circle. Officers who write the resident\'s name in full on a form are reassigned to Flat Lands.',
+            advisory: 'The mesas see everything and the barn hides everything; the open pasture between them is a mistake. Whoever walks into the circle first is finding out what it is.',
+            memo: 'The "mutilation site" is a customs incident, not a crime scene, and the sheriff has been told so. Twice.' },
+        prebuilt_hollow_earth: { tone: 'admit', status: 'ACTIVE CROSSING', juris: 'Customs & Admissions · the Reptilians dispute this from below',
+            summary: 'The Earth is not hollow. It has a basement, the basement has a landlord, and the landlord is cold-blooded. Two gates connect the surface to a petrified copy of itself; the copy is older. Somebody propped the door with a fire extinguisher. We know who.',
+            advisory: 'Two gates, two lanes, one veil: the fight is above or below and the gates decide which. Take a gate and hold it, or be flanked from a floor that is not on the map.',
+            memo: 'The fire extinguisher has been removed. The door is still open. This is now a Continuity matter.' },
+        prebuilt_fairy_forest: { tone: 'admit', status: 'ACTIVE CROSSING', juris: 'The Fae Court · do not agree to anything',
+            summary: 'A forest that glows, rings of mushrooms that eat arrows, and a court that eats promises. Every path is a corner and every corner is a door. Officers are reminded that the Fae do not lie, which is much worse than lying. Do not give them your name. Do not give them a name.',
+            advisory: 'The rings block ranged fire, so this is a melee map wearing a pretty dress. The springs heal, the paths wind, and every hedge is an ambush that was there before you.',
+            memo: 'Whoever traded their lunch for "a favor" in the forest: the favor has been called in. Facilities is dealing with it.' },
+        prebuilt_moon: { tone: 'admit', status: 'ACTIVE CROSSING', juris: 'Customs & Admissions · the other agency claims the flag',
+            summary: 'The Moon has always been that size. The monolith was there first. The landing sites are real; the footage is real; the footage of the footage is the other agency\'s. The Department keeps a desk here for entities who prefer the quiet. The mantids do. The mantids prefer everything quiet.',
+            advisory: 'Sparse, open, and cratered: the ridges are the only cover and the bowls are the only fights. Range is everything when nothing blocks it.',
+            memo: 'The flag is not "ours". The flag is not "theirs". The flag is a flag. Stop saluting it during crossings.' },
+        prebuilt_technoticlan: { tone: 'admit', status: 'IMPORTED', juris: 'Customs & Admissions · the tech-altar files its own forms',
+            summary: 'An Aztec capital that took a firmware update. The canals glow, the causeways hum, and the altar on the ziggurat takes offerings in kilowatts. The Sentai posed here first. It should not have worked. The altar accepted the pose as a form.',
+            advisory: 'Canals cut the field into islands and the causeways are the only bridges. Storm a ziggurat for height; hold a causeway for control. Water is death for anything that is not a machine or a fish.',
+            memo: 'The tech-altar has begun issuing its own customs stamps. They are very good. This is a problem.' },
+        prebuilt_agartha: { tone: 'admit', status: 'DIPLOMATIC', juris: 'The Agarthan Council · Customs by invitation',
+            summary: 'The capital of the inside. The sun-shaft is not a metaphor: there is a sun in the middle of the Earth and it has an appointment book. The Agarthans are polite, ancient, and have never once asked for anything, which Internal Affairs finds alarming. The rivers glow because they are happy. That is the official finding.',
+            advisory: 'The terraces climb toward the shaft, and height is worth blood here. Glowing rivers are still rivers. The groves hide vessels and eat arrows — sweep them, or be swept from them.',
+            memo: "Nessie's presence in Agartha is 'a holiday'. Customs status unchanged. Postcards have been received." },
+        prebuilt_vatican: { tone: 'admit', status: 'DIPLOMATIC', juris: 'Foreign (the smallest) · Customs by concordat',
+            summary: 'The smallest country on Earth has the largest archive of crossings and does not share it. The obelisk is a needle. The colonnade is two arms. The piazza is round. Somebody knew. The gargoyles are on the payroll and the Department is not permitted to know whose.',
+            advisory: 'The steps are height, the fountains are cover, and the colonnade is a ring of pillars that ranged vessels will use against you. Consecrated ground favours certain types. Read the Codex before you deploy the others.',
+            memo: "The Swiss Guard's halberds are ceremonial. So is the Department's stamp. Both work." },
+        prebuilt_bohemian_grove: { tone: 'deny', status: 'MEMBERS ONLY', juris: 'Disputed · the members believe they are the jurisdiction',
+            summary: 'A summer camp for the people who own the summer. The Owl is forty feet tall and has never been seen to blink, which Records confirms is not a requirement. The Politician crossed here. Nothing crossed the Politician. The altar fire burns "care", and the ashes are drift.',
+            advisory: 'Redwoods make corridors; the clearing is the only open ground and everyone can see it. The lantern trails are lanes. The creek is slow going and a fine place to be shot.',
+            memo: 'Officers may not attend the Cremation of Care. Officers may not be "invited". Officers who were invited will please explain how.' },
+        prebuilt_gobekli: { tone: 'admit', status: 'ACTIVE CROSSING', juris: 'Customs & Admissions · predates every other claim, including ours',
+            summary: 'The oldest temple on Earth, buried on purpose by people who knew what it was for. Concentric rings. No corners. Twin pillars that are either a door or a warning, and the Department has stopped voting. The Watcher stands here. The Watcher has always stood here. Leave remains cancelled.',
+            advisory: 'Rings within rings: every wall is cover and every gap is a choke. The trenches are the only way across the field unseen. The twin pillars are the centre, and the centre is the fight.',
+            memo: 'The site was deliberately buried c. 8000 BC. Continuity has ruled this "a maintenance action". Continuity would like to know who authorized it.' },
+        prebuilt_dumb: { tone: 'deny', status: 'QUARANTINED', juris: 'Nobody claims it · everybody has a badge for it',
+            summary: 'A base so deep it has a basement of its own, and the basement leaks. Three breaches this quarter, all black, all goo. The red light is not an emergency; it is the default. The scientists here are mad in the clinical sense and the administrative sense. The elevator has a floor that is not on the panel.',
+            advisory: 'Corridors are lanes and the blast doors are the only chokes worth holding. Server banks give cover and nothing else. In red light, awareness is the stat that matters.',
+            memo: 'Level 4 does not exist. Officers on Level 4 should return to Level 3 and stop existing on Level 4.' },
+        prebuilt_cern: { tone: 'deny', status: 'DISPUTED', juris: 'Claimed by CERN · built by the Department · credited to the wrong one',
+            summary: 'A ring, twenty-seven kilometres round, no corners, under a border. The Department built the door. CERN built the press release. The "interaction point" is a crossing, and the crackling is an entity trying to fill in a form that keeps changing size. Do not say "portal". They will.',
+            advisory: 'The ring is a corridor with a curve, which means sightlines are short and corners are everywhere. The terminals are cover. The anomaly at the centre is the objective, and the objective is not stable.',
+            memo: "CERN's Director has been sent a DENY stamp. CERN's Director has framed it." },
+        prebuilt_backrooms: { tone: 'void', status: 'NON-CANON', juris: 'Bureau of Continuity, who would like it back',
+            summary: 'You have already been here. Everyone has: it is what is behind the corner you did not look at. Level 0 is yellow, damp, and humming at the frequency of a form being rejected. Continuity ruled it non-canon in 1987 and it has been fully booked since. There are no exits, only doors, and the doors are the problem.',
+            advisory: 'A maze with one flooded corridor and no long sightlines: a knife fight in a filing cabinet. False exits are dead ends. Real exits are worse.',
+            memo: 'The corridor that floods is the one that was dry yesterday. Stop asking Facilities. Facilities has been in there since Tuesday.' },
+        prebuilt_northpole: { tone: 'admit', status: 'NATURALIZED', juris: 'Him · Customs by invitation, cookies provided',
+            summary: 'The workshop is real, the list is real, and the Department is on it, in the column we deserve. The aurora is a door that opens once a year and closes on a schedule the Bureau of Continuity has never managed to argue with. The Ice Queen holds the pond. He holds everything else. They get along.',
+            advisory: 'Depots are cover, wind-breaks are walls, and the pond is ice: fast, slippery, and a very bad place to stand still. The beacons mark the objective. So does the singing.',
+            memo: 'He knew the desk numbers. He knew the founding date — all four of them. Do not attempt to inspect the sleigh.' },
+        prebuilt_flatlands: { tone: 'void', status: 'UNDER OBSERVATION', juris: 'Unknown · the eyes have not filed',
+            summary: 'Nothing. A plane, two dips, a tree that died on purpose, and a circle you can see if you do not look at it. This is the only site on file with no corners because it has no walls, and the Department has not decided whether that is safe or the opposite. You are being watched. The watching predates the Department.',
+            advisory: 'No cover, no height, no excuses. Every vessel sees every vessel; the dips are the only concealment and the circle is the only point. Bring range, or bring a great deal of HP.',
+            memo: 'The tree has been counted. There is one. Officers who report two should not report two.' },
+        clash_stage: { tone: 'deny', status: 'SEALED', juris: 'Arcane Engineering · they built the floor',
+            summary: 'A stage, not a site. Two parties face each other across consecrated flagstones and nobody moves, because the floor was engineered not to let them. Arcane Engineering calls it "the interview room". Customs calls it the only crossing where the paperwork is faster than the fight.',
+            advisory: 'No movement, no terrain, no excuses: it is speed, order, and what you brought. Guard is a verb here. Use it.',
+            memo: 'The Temple floor is not "sticky". The Temple floor is policy.' },
+        prebuilt_custommap: { tone: 'void', status: 'UNFILED', juris: 'Yours · the Department accepts no liability',
+            summary: 'A site that exists because an officer drew it. The Department has no file on it, no history, no memo, and no idea. This is either the most dangerous crossing on record or a very nice lake. File it afterwards.',
+            advisory: 'Read the map before you trust it. Nobody at the Department has.',
+            memo: 'Custom sites are the officer\'s responsibility. So is the cleanup. Continuity has been informed and is unhappy in advance.' },
+        // any map without a file (community maps, editor tests)
+        _default: { tone: 'void', status: 'UNFILED', juris: 'Pending · form not returned',
+            summary: 'No file exists for this site. Either nobody has crossed here, or everyone has and nobody came back to file. Both are a customs matter. One of them is urgent.',
+            advisory: 'Assume the terrain is hostile and the paperwork is worse.',
+            memo: 'Whoever keeps adding sites without filing them: the form is short. Fill it in.' },
+    },
+    SITE_FILE_LABELS: { summary: 'EXECUTIVE SUMMARY', advisory: 'FIELD ADVISORY', crossings: 'KNOWN CROSSINGS', juris: 'JURISDICTION', first: 'FIRST DOCUMENTED CROSSING' },
+
     // Loading-screen cards. A memo's stamp tells you which hand wrote it —
     // early on every memo is DENY; ADMIT memos (admit:true) only appear once
     // the player's clearance reaches L4 (story track, DOOR_DESIGN §3.3 / §4).
@@ -15127,6 +15269,34 @@ function doorCustomsStatus(race) {
 function doorPointOfEntry(race) {
     return DOOR_TEXT.POINT_OF_ENTRY[race] || 'UNKNOWN';
 }
+/* Site file for a map (match select dossier + loading-screen cards). Δ boards
+   share their parent's file; unknown ids get the _default file. Returns
+   {tone, status, juris, summary, advisory, memo, id, known:boolean}. */
+function doorSiteFile(modeId) {
+    const S = DOOR_TEXT.SITE_FILES;
+    let id = String(modeId || '').replace(/_delta$/, '');
+    const f = S[id] || null;
+    return Object.assign({ id: id, known: !!f }, f || S._default);
+}
+/* Entities whose POINT OF ENTRY is this site (by map label, Δ suffix
+   stripped) — the roster and the map roster point at each other for free. */
+function doorSiteCrossings(mapLabel) {
+    const lbl = String(mapLabel || '').replace(/\s*Δ$/, '').trim();
+    if (!lbl) return [];
+    const out = [];
+    for (const race in DOOR_TEXT.POINT_OF_ENTRY) {
+        if (DOOR_TEXT.POINT_OF_ENTRY[race] === lbl) out.push(race);
+    }
+    return out;
+}
+/* Stable "first documented crossing" canon date per site (FNV of the id →
+   the same 12500 BC … 3333 AD window as everything else). Subject to revision. */
+function doorSiteCanonDate(modeId) {
+    const seed = String(modeId || 'site').replace(/_delta$/, '');
+    let h = 2166136261;
+    for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return doorCanonDate((h % (12500 + 3333 + 1)) - 12500);
+}
 /* Case/doc number shared by the codex, the party-builder dossier and the
    result stamp (same hash the codex has always used). */
 function doorCaseNo(seed) {
@@ -15160,6 +15330,9 @@ if (typeof window !== 'undefined') {
     window.DOOR_TEXT = DOOR_TEXT;
     window.doorCustomsStatus = doorCustomsStatus;
     window.doorPointOfEntry = doorPointOfEntry;
+    window.doorSiteFile = doorSiteFile;
+    window.doorSiteCrossings = doorSiteCrossings;
+    window.doorSiteCanonDate = doorSiteCanonDate;
     window.doorCaseNo = doorCaseNo;
     window.doorEmployeeNo = doorEmployeeNo;
     window.doorClearance = doorClearance;

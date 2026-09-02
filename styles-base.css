@@ -3909,6 +3909,42 @@ body.diorama-3d .tile-underpass.jump::before {
 .door-annotation { font-family: 'IBM Plex Mono', 'DotGothic16', monospace; font-size: 12px; line-height: 1.6; color: #d6cfbb; }
 .door-annotation .door-stamp { margin-right: 8px; vertical-align: middle; }
 
+/* ── Match select / party builder: site files + form chrome ──
+   .door-wm       — faint seal watermark for any position:relative panel
+   .door-file-h   — numbered dossier section header ("1. EXECUTIVE SUMMARY")
+   .door-file-p   — dossier body copy (same voice as .door-annotation)
+   .door-file-chip — KNOWN CROSSINGS entity chips                          */
+.door-wm {
+    position: absolute; pointer-events: none; z-index: 0;
+    background: var(--door-seal-dark) center / contain no-repeat; opacity: 0.06;
+}
+.door-file-h {
+    font-family: 'IBM Plex Mono', 'DotGothic16', monospace; font-size: 9px; font-weight: 600;
+    letter-spacing: 0.22em; color: #c9b98a; text-transform: uppercase; margin-bottom: 3px;
+}
+.door-file-h b { color: #8f88a8; font-weight: 400; margin-left: 6px; letter-spacing: 0.12em; text-transform: none; }
+.door-file-p {
+    font-family: 'IBM Plex Mono', 'DotGothic16', monospace; font-size: 11.5px; line-height: 1.55;
+    color: #d6cfbb; margin: 0;
+}
+.door-file-p i { color: #b6ad98; font-style: italic; }
+.door-file-chip {
+    display: inline-block; font-family: 'DotGothic16', monospace; font-size: 9px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: #b6ad98; padding: 2px 7px; margin: 0 4px 4px 0;
+    border: 1px solid rgba(201,185,138,0.28); background: rgba(201,185,138,0.05); white-space: nowrap;
+}
+.door-file-chip.more { color: #6b6252; border-style: dashed; }
+/* Rubber stamp set beside a big serif title (site name / squad title). */
+.door-title-stamp { display: inline-flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.door-title-stamp .door-stamp { transform: rotate(-7deg) translateY(-4px); align-self: center; }
+/* Officer chip in screen headers: callsign + story clearance. */
+.door-officer {
+    display: inline-flex; flex-direction: column; align-items: flex-end; line-height: 1.3;
+    font-family: 'DotGothic16', monospace; white-space: nowrap;
+}
+.door-officer b { font-family: 'Cormorant SC', serif; font-weight: 600; font-size: 13px; letter-spacing: 0.08em; color: #f2f2f2; }
+.door-officer span { font-size: 8px; letter-spacing: 0.2em; color: #b8a060; }
+
 /* ── Shop: purchase confirm becomes a stamped form ── */
 .door-form-confirm { display: flex; align-items: center; gap: 12px; }
 .door-form-confirm .door-stamp { flex-shrink: 0; }

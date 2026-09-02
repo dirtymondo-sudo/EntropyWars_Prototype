@@ -160,32 +160,77 @@ const EW = {
   unholy: '#e8e8e8',
 };
 
-const LORE = {
-  Skirmish:     '"First blood, fastest drawn." — tight quarters, no cover.',
-  Apartment:    '"The walls remember everything." — cold open tutorial.',
-  Outpost:      '"Built to watch. Repurposed to fight." — elevated corners.',
-  Suburb:       '"Picket fences make bad cover." — suburban apocalypse.',
-  Bunker:       '"Three feet of concrete between you and regret." — hard cover.',
-  Ravine:       '"The river forgot which direction it was going." — deep canyon with bridges.',
-  'Bleed Arena':'"They painted it red before it earned the name." — open kill floor.',
-  Compound:     '"Where the first oath was sworn and the first broken." — city ruins.',
-  Battlefield:  '"Salt and oxide. Nothing else now." — dramatic elevation.',
-  Bastion:      '"The moat is decorative now." — castle siege.',
-  'Rift Plaza': '"The ground split. People kept shopping." — urban void.',
-  Cavern:       '"Stalactites are the only audience." — underground echo.',
-  Workshop:     '"Gears still turn if you listen." — industrial forge.',
-  'Kill Box':   '"No one remembers who named it." — symmetrical death.',
-  Dreamscape:   '"It only looks safe." — shifting reality.',
-  Crossroads:   '"Every direction leads to trouble." — four-way engagement.',
-  Highlands:    '"Rolling hills hide rolling ambushes." — elevation play.',
-  'Lattice Temple':'"Prayer beads or tripwires — hard to tell." — temple grid.',
-  Palimpsest:   '"Every match here has been played before." — layered history.',
-  'Pyramid Fortress':'"Built to outlast gods." — tiered defense.',
-  Citadel:      '"Where champions are unmade." — sprawling fortress.',
-  Caldera:      '"The forge that never cooled." — volcanic crater.',
-  'Nexus Core': '"Pure energy, poorly contained." — objective-dense.',
-  Apocalypse:   '"The end, but bigger." — maximum scale.',
-};
+/* ── D.O.O.R. layer (DOOR_DESIGN §3): the match-select screen is a customs
+   desk — every map is a SITE FILE (data.js DOOR_TEXT.SITE_FILES: status
+   stamp, jurisdiction, executive summary, field advisory) and the roster's
+   POINT OF ENTRY table tells you who crossed there. Everything degrades to
+   the plain screen if data.js predates the layer. Plain game words stay:
+   MODE / MAP / CONFIG / CONFIRM are not renamed. */
+const DOOR = (typeof window !== 'undefined' && window.DOOR_TEXT) || null;
+const DOOR_SEAL = DOOR && DOOR.LOGO ? DOOR.LOGO.onDark : null;
+const STAMP_INK = { admit: '#4fc07a', deny: '#e0554a', void: '#8f8f8f' };
+function siteFileFor(mp) {
+  if (!mp || typeof window.doorSiteFile !== 'function') return null;
+  return window.doorSiteFile(mp.modeId);
+}
+function siteCaseNo(mp) {
+  return (mp && typeof window.doorCaseNo === 'function') ? window.doorCaseNo(mp.modeId) : '';
+}
+function siteFirstCrossing(mp) {
+  return (mp && typeof window.doorSiteCanonDate === 'function') ? window.doorSiteCanonDate(mp.modeId) : '';
+}
+function siteCrossings(mp) {
+  if (!mp || typeof window.doorSiteCrossings !== 'function') return [];
+  return window.doorSiteCrossings(mp.name).map(r => ({
+    key: r,
+    label: (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(r, 'male') : null)
+      || (window.RACE_PROFILES && window.RACE_PROFILES[r] && window.RACE_PROFILES[r].label) || r,
+  }));
+}
+function officerInfo() {
+  try {
+    const p = window.ProfileSystem && window.ProfileSystem.getActiveProfile && window.ProfileSystem.getActiveProfile();
+    if (!p) return null;
+    const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(p) : { level: 1, title: 'PROBATIONARY' };
+    return { name: p.username || 'OFFICER', clearance: cl };
+  } catch (_e) { return null; }
+}
+function DoorStamp({ text, tone, size, style, title }) {
+  return h('span', {
+    className: 'door-stamp' + (tone === 'admit' ? ' admit' : tone === 'void' ? ' void' : '')
+      + (size === 'sm' ? ' door-stamp-sm' : size === 'lg' ? ' door-stamp-lg' : ''),
+    style: style, title: title,
+  }, text);
+}
+/* The seal (user-made PNG on R2). Falls back to the old sigil if data.js
+   predates the DOOR layer. */
+function DoorSeal({ size }) {
+  size = size || 40;
+  if (DOOR_SEAL) {
+    return h('img', { src: DOOR_SEAL, alt: '', draggable: false, style: {
+      width: size, height: size, objectFit: 'contain', flexShrink: 0,
+      filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.7))', userSelect: 'none',
+    }});
+  }
+  return h('svg', { width: 28, height: 28, viewBox: '0 0 28 28' },
+    h('circle', { cx: 14, cy: 14, r: 12, fill: 'none', stroke: EW.time, strokeWidth: 1 }),
+    h('circle', { cx: 14, cy: 14, r: 6, fill: 'none', stroke: EW.time, strokeWidth: 0.5 }),
+    h('circle', { cx: 14, cy: 14, r: 2, fill: EW.time }),
+    h('line', { x1: 14, y1: 0, x2: 14, y2: 4, stroke: EW.time, strokeWidth: 1 }),
+    h('line', { x1: 14, y1: 24, x2: 14, y2: 28, stroke: EW.time, strokeWidth: 1 }),
+    h('line', { x1: 0, y1: 14, x2: 4, y2: 14, stroke: EW.time, strokeWidth: 1 }),
+    h('line', { x1: 24, y1: 14, x2: 28, y2: 14, stroke: EW.time, strokeWidth: 1 }),
+  );
+}
+/* Officer chip: callsign + story clearance (NOT the ELO rank). */
+function OfficerChip() {
+  const o = officerInfo();
+  if (!o) return null;
+  return h('div', { className: 'door-officer', title: 'Employee on desk · clearance is story progress, not rank' },
+    h('b', null, o.name),
+    h('span', null, 'CLEARANCE L' + o.clearance.level + ' · ' + o.clearance.title)
+  );
+}
 
 const _TERRAIN_COLORS_FALLBACK = {
   blank:'transparent', grass:'rgba(80,140,60,0.45)', grass_2:'rgba(90,150,70,0.4)',
@@ -392,6 +437,7 @@ function ModeCard({ m, selected, onClick }) {
 }
 
 function MapCard({ mp, selected, onClick, accent }) {
+  const sf = siteFileFor(mp);
   return h('div', {
     onClick: onClick,
     className: 'ms-map-card',
@@ -422,8 +468,14 @@ function MapCard({ mp, selected, onClick, accent }) {
           color: EW.inkMute, letterSpacing: '0.12em',
           display: 'flex', justifyContent: 'space-between', gap: 6,
         }},
-          h('span', { style: { color: accent, fontWeight: 600 } }, mp.size),
-          h('span', null, mp.isPrebuilt ? 'PRESET' : 'RANDOM')
+          h('span', { style: { color: accent, fontWeight: 600, flexShrink: 0 } }, mp.size),
+          h('span', {
+            title: sf ? 'Customs status · ' + sf.juris : undefined,
+            style: {
+              color: sf ? STAMP_INK[sf.tone] || EW.inkMute : EW.inkMute, letterSpacing: '0.1em',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
+            },
+          }, sf ? sf.status : (mp.isPrebuilt ? 'PRESET' : 'RANDOM'))
         ),
         h('div', { style: {
           fontFamily: '"DotGothic16", monospace', fontSize: 8,
@@ -533,6 +585,12 @@ function MatchSelect() {
   const [ranked, setRanked] = useState(false);
   const [opponent, setOpponent] = useState('CPU');
   const [rounds, setRounds] = useState(15);
+  // CONFIRM = the form goes through: a FILED stamp thunks onto the button,
+  // then the existing launch path runs. filedRef blocks a double-click
+  // during the 420 ms beat; both reset after launch (the React root stays
+  // mounted between visits, so state must not stick).
+  const [filed, setFiled] = useState(false);
+  const filedRef = useRef(false);
 
   const gm = gameModes[gmIdx] || { id: 'arena', icon: '🏰', label: 'Arena', desc: '' };
   const mpMode = multiplayerModes[gm.id] || {};
@@ -616,6 +674,10 @@ function MatchSelect() {
 
   const mp = mapList[mapIdx] || { name: '—', size: '8×8', w: 8, h: 8, team: 4 };
   const accent = accentForMap(mp);
+  const sf = siteFileFor(mp);
+  const caseNo = siteCaseNo(mp);
+  const firstCrossing = siteFirstCrossing(mp);
+  const crossings = siteCrossings(mp);
   // Δ maps are the 8×8 hand-authored boards in every mode (Arena included).
   const boardSizeLabel = mp.size || (mp.w + '×' + mp.h);
   const maxT = maxTeamForMap(mapIdx);
@@ -625,7 +687,16 @@ function MatchSelect() {
     mpMode.scoringType === 'kills' ? 'Most Kills' : 'Composite';
 
   function handleConfirm() {
-    if (typeof window._msConfirm === 'function') window._msConfirm();
+    if (typeof window._msConfirm !== 'function') return;
+    if (filedRef.current) return;
+    filedRef.current = true;
+    setFiled(true);
+    try { if (typeof window.playDoorSfx === 'function') window.playDoorSfx('stamp', { volume: 0.8 }); } catch (_e) {}
+    setTimeout(() => {
+      filedRef.current = false;
+      setFiled(false);
+      window._msConfirm();
+    }, 420);
   }
 
   function handleBack() {
@@ -675,19 +746,14 @@ function MatchSelect() {
       }}, '← BACK'),
       h('div', { style: { display: 'flex', alignItems: 'center', gap: 14 } },
 
-        h('svg', { width: 28, height: 28, viewBox: '0 0 28 28' },
-          h('circle', { cx: 14, cy: 14, r: 12, fill: 'none', stroke: EW.time, strokeWidth: 1 }),
-          h('circle', { cx: 14, cy: 14, r: 6, fill: 'none', stroke: EW.time, strokeWidth: 0.5 }),
-          h('circle', { cx: 14, cy: 14, r: 2, fill: EW.time }),
-          h('line', { x1: 14, y1: 0, x2: 14, y2: 4, stroke: EW.time, strokeWidth: 1 }),
-          h('line', { x1: 14, y1: 24, x2: 14, y2: 28, stroke: EW.time, strokeWidth: 1 }),
-          h('line', { x1: 0, y1: 14, x2: 4, y2: 14, stroke: EW.time, strokeWidth: 1 }),
-          h('line', { x1: 24, y1: 14, x2: 28, y2: 14, stroke: EW.time, strokeWidth: 1 }),
+        h(DoorSeal, { size: 44 }),
+        h('div', { style: { display: 'flex', flexDirection: 'column', lineHeight: 1.15 } },
+          h('div', { style: {
+            fontFamily: '"Cormorant SC", serif',
+            fontSize: 18, letterSpacing: '0.16em', fontWeight: 500,
+          }}, 'ENTROPY WARS'),
+          DOOR && h('div', { className: 'door-hdr-sub' }, 'D.O.O.R. · CUSTOMS & ADMISSIONS · FIELD ASSIGNMENT')
         ),
-        h('div', { style: {
-          fontFamily: '"Cormorant SC", serif',
-          fontSize: 18, letterSpacing: '0.16em', fontWeight: 500,
-        }}, 'ENTROPY WARS'),
         h('div', { style: { width: 1, height: 18, background: EW.panelEdge } }),
         h('div', { style: {
           fontFamily: '"DotGothic16", monospace', fontSize: 10,
@@ -717,6 +783,7 @@ function MatchSelect() {
           )
         )
       ),
+      h(OfficerChip),
     ),
 
     h('div', { style: {
@@ -746,8 +813,12 @@ function MatchSelect() {
           position: 'relative',
           background: 'linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.85)), radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.05), transparent 60%)',
           border: '1px solid ' + EW.panelEdge,
-          padding: '18px 22px', display: 'flex', gap: 24, minHeight: 280,
+          padding: '18px 22px', display: 'flex', gap: 24,
+          /* fixed band: the dossier column scrolls inside it, the map grid
+             below keeps its share of the screen on every resolution */
+          height: 'clamp(300px, 46%, 420px)', flexShrink: 0, overflow: 'hidden',
         }},
+          DOOR && h('div', { className: 'door-wm', style: { right: '1.5%', top: '-4%', width: '34%', aspectRatio: '1' } }),
 
           ...[
             { top: -1, left: -1, rot: 0 },
@@ -772,39 +843,70 @@ function MatchSelect() {
 
           h('div', { style: {
             flex: 1, display: 'flex', flexDirection: 'column',
-            gap: 12, minWidth: 0,
+            gap: 10, minWidth: 0, minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
+            paddingRight: 8, position: 'relative', zIndex: 1,
           }},
-            h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
+            /* kicker: SITE FILE · case no ········ first documented crossing */
+            h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 } },
               h('span', { style: {
                 fontFamily: '"DotGothic16", monospace', fontSize: 10,
                 letterSpacing: '0.3em', color: EW.inkMute,
-              }}, 'MAP DOSSIER'),
+              }}, DOOR ? 'SITE FILE' : 'MAP DOSSIER'),
+              caseNo && h('span', { style: {
+                fontFamily: '"IBM Plex Mono", "DotGothic16", monospace', fontSize: 9,
+                letterSpacing: '0.12em', color: EW.inkDim,
+              }}, caseNo),
               h('div', { style: {
                 flex: 1, height: 1,
                 background: 'linear-gradient(90deg, ' + EW.panelEdge + ', transparent)',
-              }})
+              }}),
+              firstCrossing && h('span', {
+                title: (DOOR && DOOR.CANON_DATE_LABEL) || 'CANON DATE · SUBJECT TO REVISION',
+                style: {
+                  fontFamily: '"DotGothic16", monospace', fontSize: 9,
+                  letterSpacing: '0.18em', color: '#8f88a8', whiteSpace: 'nowrap',
+                },
+              }, 'FIRST CROSSING · ' + firstCrossing)
             ),
-            h('div', null,
-              h('div', { style: {
-                fontFamily: '"Cormorant SC", serif',
-                fontSize: 48, fontWeight: 400, margin: 0, lineHeight: 0.95,
-                color: EW.ink, textShadow: '0 0 24px ' + accent + '44',
-                letterSpacing: '-0.01em',
-              }}, mp.name),
+            /* site name + the rubber stamp */
+            h('div', { style: { flexShrink: 0 } },
+              h('div', { className: 'door-title-stamp' },
+                h('div', { style: {
+                  fontFamily: '"Cormorant SC", serif',
+                  fontSize: 44, fontWeight: 400, margin: 0, lineHeight: 0.95,
+                  color: EW.ink, textShadow: '0 0 24px ' + accent + '44',
+                  letterSpacing: '-0.01em',
+                }}, mp.name),
+                sf && h(DoorStamp, { text: sf.status, tone: sf.tone, title: 'Customs status · ' + sf.juris })
+              ),
               h('div', { style: {
                 fontFamily: '"Cormorant SC", serif', fontStyle: 'italic',
-                fontSize: 18, color: EW.inkMute, marginTop: 2,
-              }}, mp.isPrebuilt ? '· preset map' : '· procedural'),
+                fontSize: 17, color: EW.inkMute, marginTop: 2,
+              }}, mp.isDelta ? '· Δ map · hand-authored 8×8 board' : (mp.isPrebuilt ? '· full map · ' + boardSizeLabel : '· procedural')),
             ),
-            h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
+            h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 } },
               h(Meta, { label: 'SIZE', val: boardSizeLabel, accent: accent }),
               h(Meta, { label: 'SPAWNS', val: (mp.team || 4) + ' per side' }),
             ),
-            LORE[mp.name] && h('div', { style: {
-              fontFamily: '"Cormorant SC", serif', fontSize: 14, lineHeight: 1.5,
-              color: EW.inkMute, fontStyle: 'italic',
-              borderLeft: '2px solid ' + accent + '88', paddingLeft: 12, maxWidth: 520,
-            }}, LORE[mp.name]),
+            sf && h('div', { className: 'door-file-h', style: { flexShrink: 0 } },
+              (DOOR.SITE_FILE_LABELS || {}).juris || 'JURISDICTION', h('b', null, sf.juris)),
+            /* the file itself — same numbered-section voice as the codex */
+            sf && h('div', { style: { flexShrink: 0, maxWidth: 620 } },
+              h('div', { className: 'door-file-h' }, '1.  ' + ((DOOR.SITE_FILE_LABELS || {}).summary || 'EXECUTIVE SUMMARY')),
+              h('p', { className: 'door-file-p' }, sf.summary)
+            ),
+            sf && h('div', { style: { flexShrink: 0, maxWidth: 620 } },
+              h('div', { className: 'door-file-h' }, '2.  ' + ((DOOR.SITE_FILE_LABELS || {}).advisory || 'FIELD ADVISORY')),
+              h('p', { className: 'door-file-p' }, sf.advisory)
+            ),
+            crossings.length > 0 && h('div', { style: { flexShrink: 0 } },
+              h('div', { className: 'door-file-h' }, '3.  ' + ((DOOR.SITE_FILE_LABELS || {}).crossings || 'KNOWN CROSSINGS'),
+                h('b', null, crossings.length + ' ON FILE · point of entry')),
+              h('div', { style: { display: 'flex', flexWrap: 'wrap' } },
+                ...crossings.slice(0, 10).map(c => h('span', { key: c.key, className: 'door-file-chip', title: 'Codex: ' + c.label }, c.label)),
+                crossings.length > 10 && h('span', { className: 'door-file-chip more' }, '+' + (crossings.length - 10) + ' redacted')
+              )
+            ),
 
             h('div', { style: {
               display: 'flex', gap: 6, marginTop: 'auto', alignItems: 'center',
@@ -1010,7 +1112,11 @@ function MatchSelect() {
           h('div', { style: {
             fontFamily: '"DotGothic16", monospace', fontSize: 9,
             color: EW.inkMute, letterSpacing: '0.22em',
-          }}, 'SELECTED'),
+            display: 'flex', justifyContent: 'space-between', gap: 8,
+          }},
+            h('span', null, DOOR ? 'FIELD ASSIGNMENT' : 'SELECTED'),
+            caseNo && h('span', { style: { color: EW.inkDim, fontFamily: '"IBM Plex Mono", "DotGothic16", monospace', letterSpacing: '0.12em' } }, 'CASE ' + caseNo)
+          ),
           h('div', { style: {
             display: 'flex', justifyContent: 'space-between',
             alignItems: 'baseline', marginTop: 4,
@@ -1027,7 +1133,14 @@ function MatchSelect() {
           h('div', { style: {
             fontFamily: '"DotGothic16", monospace', fontSize: 9,
             color: EW.inkDim, letterSpacing: '0.16em', marginTop: 2,
-          }}, gm.label.toUpperCase() + ' · ' + teamDisplay + ' · ' + rounds + 'R')
+          }}, gm.label.toUpperCase() + ' · ' + teamDisplay + ' · ' + rounds + 'R'),
+          sf && h('div', { style: {
+            fontFamily: '"DotGothic16", monospace', fontSize: 9, letterSpacing: '0.14em', marginTop: 5,
+            display: 'flex', alignItems: 'center', gap: 8,
+          }},
+            h('span', { style: { color: EW.inkDim } }, 'SITE STATUS'),
+            h('span', { style: { color: STAMP_INK[sf.tone] || EW.inkMute } }, sf.status)
+          )
         ),
       ),
     ),
@@ -1064,13 +1177,16 @@ function MatchSelect() {
           h('span', { style: { color: EW.inkDim } }, ' · '),
           h('span', { style: { color: EW.ink } }, winLabel.toUpperCase()),
           h('span', { style: { color: EW.inkDim } }, ' · '),
-          h('span', { style: { color: EW.ink } }, 'VS CPU')
+          h('span', { style: { color: EW.ink } }, 'VS CPU'),
+          caseNo && h('span', { style: { color: EW.inkDim } }, ' · '),
+          caseNo && h('span', { style: { color: EW.inkDim, fontFamily: '"IBM Plex Mono", "DotGothic16", monospace' } }, 'CASE ' + caseNo)
         ),
       ),
       h('div', { style: { flex: 1 } }),
       h('button', {
         onClick: handleRandomize,
         className: 'ms-btn-ghost',
+        title: 'Let the Department assign the site',
         style: {
           background: 'transparent', color: EW.inkMute,
           border: '1px solid ' + EW.panelEdge, padding: '10px 16px',
@@ -1081,21 +1197,29 @@ function MatchSelect() {
       h('button', {
         onClick: handleConfirm,
         className: 'ms-btn-primary',
+        title: DOOR ? 'File the assignment' : undefined,
         style: {
           background: 'rgba(61,220,132,0.1)',
           color: EW.good, border: '1px solid ' + EW.good,
           padding: '18px 40px', display: 'flex', alignItems: 'center', gap: 16,
           cursor: 'pointer', boxShadow: '0 0 28px rgba(61,220,132,0.2)',
+          position: 'relative',
         },
       },
         h('span', { style: {
           fontFamily: '"Cormorant SC", serif', fontSize: 20,
           letterSpacing: '0.24em', fontWeight: 600,
+          opacity: filed ? 0.35 : 1, transition: 'opacity 0.2s',
         }}, 'CONFIRM'),
         h('span', { style: {
           fontFamily: '"DotGothic16", monospace', fontSize: 11,
-          opacity: 0.7, fontWeight: 700,
-        }}, '↵')
+          opacity: filed ? 0.2 : 0.7, fontWeight: 700,
+        }}, '↵'),
+        /* the FILED stamp thunks onto the form (styles-base.css .door-stamp.thunk) */
+        filed && h('span', { style: {
+          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center',
+          justifyContent: 'center', pointerEvents: 'none', zIndex: 2,
+        }}, h(DoorStamp, { text: 'FILED', tone: 'admit', size: 'lg', style: { animation: 'doorThunk 0.45s cubic-bezier(0.2, 1.4, 0.3, 1) forwards', opacity: 0 } }))
       ),
     ),
 

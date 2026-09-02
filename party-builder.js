@@ -887,6 +887,28 @@ function StarField() {
   return h('div',{style:{position:'absolute',inset:0,pointerEvents:'none',overflow:'hidden'}},
     h('div',{style:{position:'absolute',inset:0,backgroundImage:`linear-gradient(${EW.grid} 1px, transparent 1px), linear-gradient(90deg, ${EW.grid} 1px, transparent 1px)`,backgroundSize:'56px 56px',maskImage:'radial-gradient(ellipse at center, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0) 80%)',WebkitMaskImage:'radial-gradient(ellipse at center, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0) 80%)'}}), stars);
 }
+/* ── D.O.O.R. layer (DOOR_DESIGN §3): the forge is a customs desk. The seal
+   is the user-made PNG on R2 (data.js DOOR_TEXT.LOGO); SigilMark stays as
+   the fallback when data.js predates the layer. Plain game words stay —
+   THE PARTY, DOSSIER, SEAL YOUR FATE, Codex of Vessels are not renamed. */
+const DOOR = (typeof window !== 'undefined' && window.DOOR_TEXT) || null;
+function DoorSeal({ size }) {
+  size = size || 30;
+  if (!(DOOR && DOOR.LOGO && DOOR.LOGO.onDark)) return h(SigilMark);
+  return h('img', { src: DOOR.LOGO.onDark, alt: '', draggable: false, style: { width: size, height: size, objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.7))', userSelect: 'none' } });
+}
+/* Officer chip: callsign + story clearance (NOT the ELO rank). */
+function OfficerChip() {
+  let o = null;
+  try {
+    const p = window.ProfileSystem?.getActiveProfile?.();
+    if (p) o = { name: p.username || 'OFFICER', cl: (typeof window.doorClearance === 'function') ? window.doorClearance(p) : { level: 1, title: 'PROBATIONARY' } };
+  } catch (_e) {}
+  if (!o) return null;
+  return h('div', { className: 'door-officer', title: 'Employee on desk · clearance is story progress, not rank' },
+    h('b', null, o.name),
+    h('span', null, 'CLEARANCE L' + o.cl.level + ' · ' + o.cl.title));
+}
 function SigilMark() {
   return h('svg',{width:22,height:22,viewBox:'0 0 28 28'},h('circle',{cx:14,cy:14,r:12,fill:'none',stroke:EW.time,strokeWidth:1}),h('circle',{cx:14,cy:14,r:6,fill:'none',stroke:EW.time,strokeWidth:0.5}),h('circle',{cx:14,cy:14,r:2,fill:EW.time}),h('line',{x1:14,y1:0,x2:14,y2:4,stroke:EW.time,strokeWidth:1}),h('line',{x1:14,y1:24,x2:14,y2:28,stroke:EW.time,strokeWidth:1}),h('line',{x1:0,y1:14,x2:4,y2:14,stroke:EW.time,strokeWidth:1}),h('line',{x1:24,y1:14,x2:28,y2:14,stroke:EW.time,strokeWidth:1}));
 }
@@ -1882,7 +1904,7 @@ function PartyBuilder() {
     }
     st.teamLockedIn = false; if (st.builderConfirmedSlots?.[player]) delete st.builderConfirmedSlots[player][slot]; sfx('uiCursorMove'); refresh();
   }
-  function confirmSlot() { if (!st.builderConfirmedSlots) st.builderConfirmedSlots={}; if (!st.builderConfirmedSlots[player]) st.builderConfirmedSlots[player]={}; st.builderConfirmedSlots[player][slot]=true; sfx('uiButtonConfirm'); for (let ni=0;ni<teamSize;ni++){const nx=(slot+1+ni)%teamSize;if(!st.builderConfirmedSlots[player][nx]){setSlot(nx);break;}} refresh(); }
+  function confirmSlot() { if (!st.builderConfirmedSlots) st.builderConfirmedSlots={}; if (!st.builderConfirmedSlots[player]) st.builderConfirmedSlots[player]={}; st.builderConfirmedSlots[player][slot]=true; let thunk=false; try{ thunk = typeof window.playDoorSfx==='function' && window.playDoorSfx('stamp',{volume:0.75})!==false; }catch(e){} if(!thunk) sfx('uiButtonConfirm'); for (let ni=0;ni<teamSize;ni++){const nx=(slot+1+ni)%teamSize;if(!st.builderConfirmedSlots[player][nx]){setSlot(nx);break;}} refresh(); }
   function selectSlot(i) { setSlot(i); st.builderSelectedSlot=i; st.builderSelectedPlayer=player; sfx('uiCursorMove'); refresh(); }
   function doRandomize() { if (typeof window.randomizeUnitSlot==='function') window.randomizeUnitSlot(player,slot); if (st.builderConfirmedSlots?.[player]) delete st.builderConfirmedSlots[player][slot]; sfx('uiButtonConfirm'); refresh(); }
   function doRandomizeAll() { if (typeof window.randomizeParty==='function') window.randomizeParty(player); if (!st.builderConfirmedSlots) st.builderConfirmedSlots={}; st.builderConfirmedSlots[player]={}; for(let i=0;i<teamSize;i++) st.builderConfirmedSlots[player][i]=true; sfx('uiButtonConfirm'); refresh(); }
@@ -2092,11 +2114,15 @@ function PartyBuilder() {
     h(StarField),
 
     h('div', { style:{ display:'flex', alignItems:'center', height:46, padding:'0 14px 0 8px', gap:10, borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0, position:'relative', zIndex:2 }},
-      h(SigilMark),
-      h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, letterSpacing:'0.14em', fontWeight:500 } }, 'ENTROPY WARS'),
+      h(DoorSeal, { size:32 }),
+      h('div', { style:{ display:'flex', flexDirection:'column', lineHeight:1.15 } },
+        h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, letterSpacing:'0.14em', fontWeight:500 } }, 'ENTROPY WARS'),
+        DOOR && h('span', { className:'door-hdr-sub' }, 'D.O.O.R. · CUSTOMS & ADMISSIONS · VESSEL ASSIGNMENT')),
       h('span', { style:{ width:1, height:16, background:EW.panelEdge } }),
       h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.2em' } }, standalone ? 'THE PARTY FORGE' : 'CHOOSE YOUR VESSEL'),
       h('div', { style:{flex:1} }),
+      h(OfficerChip),
+      h('span', { style:{ width:1, height:16, background:EW.panelEdge } }),
       h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.14em' } }, teamSize, ' SLOTS \u00B7 ',
         h('span', { style:{color:EW.ink} }, standalone ? 'TEAM ARCHIVE' : (mpMode?.label || 'BATTLE').toUpperCase())),
     ),
@@ -2106,7 +2132,8 @@ function PartyBuilder() {
     h('div', { style:{ display:'grid', gridTemplateColumns:'112px minmax(0,1fr) clamp(380px,36vw,640px)', flex:1, minHeight:0, position:'relative', zIndex:1 } },
 
       h('div', { style:{ display:'flex', flexDirection:'column', gap:6, padding:'10px 6px 10px 8px', borderRight:`1px solid ${EW.panelEdge}`, background:'linear-gradient(90deg, rgba(0,0,0,0.35), transparent)', overflowY:'auto' }},
-        h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:11, letterSpacing:'0.16em', color:EW.inkMute, marginBottom:2, flexShrink:0 } }, 'THE PARTY'),
+        h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:11, letterSpacing:'0.16em', color:EW.inkMute, marginBottom:2, flexShrink:0 } }, 'THE PARTY',
+          DOOR && h('span', { style:{ display:'block', fontFamily:'DotGothic16, monospace', fontSize:7, letterSpacing:'0.22em', color:EW.inkDim, marginTop:1 } }, 'MANIFEST')),
         Array.from({length: teamSize}).map((_, i) => {
           const cn = typeof window.normalizeClassName==='function' ? window.normalizeClassName(st.partyBuilds?.[player]?.[i], window.DEFAULT_BUILDS?.[player]?.[i]) : (st.partyBuilds?.[player]?.[i]||'Warrior');
           const mt = st.partyMeta?.[player]?.[i] || (typeof window.getArchetypeForJob==='function' ? window.getArchetypeForJob(cn) : {});
@@ -2116,7 +2143,9 @@ function PartyBuilder() {
           const nm = resolveUnitName(player, i, cn);
           return h('div', { key:i, onClick:()=>selectSlot(i), className:'pb-slot-card', style:{ position:'relative', cursor:'pointer', flex:1, minHeight:0, background:isActive?`linear-gradient(180deg,${fCol}18,rgba(0,0,0,0.3))`:'rgba(0,0,0,0.3)', border:`1px solid ${isActive?fCol+'99':EW.panelEdge}`, padding:'4px', display:'flex', flexDirection:'column', alignItems:'center', gap:2, clipPath:'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }},
             isActive && h('div', { style:{ position:'absolute', top:0, bottom:0, left:0, width:3, background:fCol, boxShadow:`0 0 10px ${fCol}` } }),
-            confirmed && h('div', { style:{ position:'absolute', top:3, right:4, fontSize:10, color:'rgba(100,200,120,0.7)', fontWeight:700 } }, '✓'),
+            confirmed && (DOOR
+              ? h('div', { className:'door-stamp door-stamp-sm admit', title:'Locked in', style:{ position:'absolute', top:4, right:5, fontSize:6.5, letterSpacing:'0.12em', padding:'1px 3px 0', outline:'none', borderWidth:1.5, zIndex:1 } }, 'FILED')
+              : h('div', { style:{ position:'absolute', top:3, right:4, fontSize:10, color:'rgba(100,200,120,0.7)', fontWeight:700 } }, '✓')),
             h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:10, fontStyle:'italic', color:isActive?fCol:EW.inkDim, opacity:isActive?0.85:0.45, alignSelf:'flex-end', marginRight:4 } }, numerals[i]),
             /* Portraits are 128×128 art — the box stays a SQUARE no matter the
                party size (the outer flex row absorbs the leftover space). */
@@ -2239,14 +2268,29 @@ function PartyBuilder() {
                               h('span', { style:{ color:EW.ink, fontWeight:700, letterSpacing:'0.04em' } }, t.name),
                               h('span', { style:{ color:EW.inkMute } }, ' — ', t.desc))))
                         : h('div', { style:{ fontSize:10, color:EW.inkDim, fontStyle:'italic', padding:'4px 6px' } }, 'No documented traits — field research pending.'))))
-              : h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:5, paddingTop:4 } },
-                  h('div', { style:{ display:'flex', alignItems:'center', gap:6 } },
-                    h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.04em', padding:'2px 6px', border:`1px solid ${EW.panelEdge}`, background:'rgba(0,0,0,0.3)' } }, classLabel),
-                    h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.04em' } }, docNum),
-                    /* D.O.O.R. customs disposition — same source as the codex (data.js DOOR_TEXT) */
-                    typeof window.doorCustomsStatus === 'function' && h('span', { className:'door-stamp door-stamp-sm' + (/^(NON-CANON|UNDOCUMENTED)$/.test(window.doorCustomsStatus(unitRace).status) ? '' : ' admit'), style:{ fontSize:7, padding:'2px 5px 1px', marginLeft:2 }, title:'Customs disposition · point of entry: ' + (typeof window.doorPointOfEntry === 'function' ? window.doorPointOfEntry(unitRace) : '?') }, window.doorCustomsStatus(unitRace).status)),
-                  h('div', { style:{ fontSize:11, lineHeight:1.55, color:EW.inkMute, fontFamily:'Cormorant SC, serif', fontStyle:'italic', borderLeft:`2px solid ${fc}55`, paddingLeft:8 } }, codexLore),
-                  h('div', { style:{ fontSize:7, color:EW.inkDim, letterSpacing:'0.08em', paddingTop:2 } }, 'TOP SECRET // ████████ // NOFORN')),
+              : (() => {
+                  /* D.O.O.R. customs file — same source as the codex (data.js
+                     DOOR_TEXT: disposition, point of entry, annotation). */
+                  const cs = typeof window.doorCustomsStatus === 'function' ? window.doorCustomsStatus(unitRace) : null;
+                  const poe = typeof window.doorPointOfEntry === 'function' ? window.doorPointOfEntry(unitRace) : null;
+                  const note = DOOR?.DOSSIER_NOTES?.[unitRace] || null;
+                  const tone = !cs ? null : cs.status === 'NON-CANON' ? 'void' : /^(UNDOCUMENTED|DISPUTED)$/.test(cs.status) ? 'deny' : 'admit';
+                  return h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', overflowX:'hidden', display:'flex', flexDirection:'column', gap:5, paddingTop:4, position:'relative' } },
+                    DOOR && h('div', { className:'door-wm', style:{ right:'2%', top:'6%', width:'44%', aspectRatio:'1' } }),
+                    h('div', { style:{ display:'flex', alignItems:'center', gap:6, position:'relative', zIndex:1 } },
+                      h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.04em', padding:'2px 6px', border:`1px solid ${EW.panelEdge}`, background:'rgba(0,0,0,0.3)' } }, classLabel),
+                      h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.04em' } }, docNum),
+                      cs && h('span', { className:'door-stamp door-stamp-sm' + (tone === 'admit' ? ' admit' : tone === 'void' ? ' void' : ''), style:{ fontSize:7, padding:'2px 5px 1px', marginLeft:2 }, title:'Customs disposition · point of entry: ' + (poe || '?') }, cs.status)),
+                    DOOR && h('div', { className:'door-file-h', style:{ position:'relative', zIndex:1 } }, '1.  EXECUTIVE SUMMARY'),
+                    h('div', { style:{ fontSize:11, lineHeight:1.55, color:EW.inkMute, fontFamily:'Cormorant SC, serif', fontStyle:'italic', borderLeft:`2px solid ${fc}55`, paddingLeft:8, position:'relative', zIndex:1 } }, codexLore),
+                    cs && h('div', { className:'door-file-h', style:{ position:'relative', zIndex:1, marginTop:2 } }, '2.  CUSTOMS DISPOSITION'),
+                    cs && h('div', { className:'door-file-p', style:{ fontSize:10.5, position:'relative', zIndex:1 } },
+                      h('b', { style:{ color:'#c9b98a', letterSpacing:'0.08em' } }, cs.status), cs.note ? ' — ' + cs.note : '',
+                      poe ? h('span', { style:{ display:'block', color:'#b6ad98', marginTop:2, letterSpacing:'0.06em' } }, 'POINT OF ENTRY · ' + poe) : null),
+                    note && h('div', { className:'door-file-h', style:{ position:'relative', zIndex:1, marginTop:2 } }, '3.  D.O.O.R. ANNOTATION'),
+                    note && h('div', { className:'door-file-p', style:{ fontSize:10.5, position:'relative', zIndex:1 } }, note),
+                    h('div', { style:{ fontSize:7, color:EW.inkDim, letterSpacing:'0.08em', paddingTop:2, position:'relative', zIndex:1 } }, 'TOP SECRET // ████████ // NOFORN'));
+                })(),
           ),
         ),
 
@@ -2255,6 +2299,7 @@ function PartyBuilder() {
           h('div', { style:{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', flexShrink:0 } },
             h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(13px,1.1vw,17px)', letterSpacing:'0.14em', textTransform:'uppercase', color:EW.ink } }, 'Codex of Vessels'),
             h('span', { style:{ fontSize:10, color:EW.inkDim, letterSpacing:'0.1em', marginRight:6 } }, filteredRoster.length,'/',rosterEntries.length),
+            DOOR && h('span', { className:'door-hdr-sub', style:{ marginRight:6 } }, 'D.O.O.R. RECORDS · ENTITY REGISTRY'),
             h('input', { placeholder:'Search...', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), style:{ background:'rgba(0,0,0,0.3)', border:`1px solid ${EW.panelEdge}`, color:EW.ink, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 10px', width:130 }}),
             h('select', { value:`${sortKey}-${sortDir}`, onChange:e=>{const[k,d]=e.target.value.split('-');setSortKey(k);setSortDir(d);}, style:{ background:'rgba(0,0,0,0.4)', border:`1px solid ${EW.panelEdge}`, color:EW.time, fontFamily:'DotGothic16, monospace', fontSize:11, padding:'3px 7px', appearance:'none', WebkitAppearance:'none' }},
               ...STAT_KEYS.map(k=>[h('option',{key:`${k}-desc`,value:`${k}-desc`,style:{background:'#000000'}},`${statLabel(k)} ↓`),h('option',{key:`${k}-asc`,value:`${k}-asc`,style:{background:'#000000'}},`${statLabel(k)} ↑`)]).flat(),
@@ -2278,7 +2323,7 @@ function PartyBuilder() {
               const onCardClick = locked
                 ? ()=>{ try{ sfx('uiError'); }catch(e){} if (typeof window._goToShop==='function') window._goToShop(entry.race); }
                 : ()=>pickRace(entry.race,entry.gender,entry.job);
-              return h('div', { key:ei, onClick:onCardClick, title: locked?'Locked — unlock this vessel in the Shop':`${entry.label} · ${getJobDisplay(entry.cls)}`, className:'pb-vessel-card'+(locked?' pb-vessel-locked':''), style:{ cursor:'pointer', position:'relative', background:isActive?`${entryFc}18`:'rgba(0,0,0,0.3)', border:`1px solid ${isActive?entryFc:EW.panelEdge}`, display:'flex', flexDirection:'column', alignItems:'center', padding:'3px 2px 2px', gap:1, opacity: locked?0.55:1 }},
+              return h('div', { key:ei, onClick:onCardClick, title: locked?'NOT DECLASSIFIED — unlock this vessel in the Shop':`${entry.label} · ${getJobDisplay(entry.cls)}`, className:'pb-vessel-card'+(locked?' pb-vessel-locked':''), style:{ cursor:'pointer', position:'relative', background:isActive?`${entryFc}18`:'rgba(0,0,0,0.3)', border:`1px solid ${isActive?entryFc:EW.panelEdge}`, display:'flex', flexDirection:'column', alignItems:'center', padding:'3px 2px 2px', gap:1, opacity: locked?0.55:1 }},
                 h('div', { style:{ width:'100%', aspectRatio:'1', display:'flex', alignItems:'flex-end', justifyContent:'center', position:'relative', overflow:'hidden', background:`linear-gradient(180deg, transparent 40%, ${entryFc}10 100%)` }},
                   h(Sprite, { race:entry.race, gender:entry.gender, cls:entry.cls, size:'85%', style:{width:'85%',height:'85%', filter: locked?'brightness(0.18) grayscale(1)':'none'} }),
                   locked && h('div', { style:{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, color:'rgba(255,216,106,0.9)', textShadow:'0 1px 4px #000' } }, '🔒'),
@@ -2486,15 +2531,21 @@ function PartyBuilder() {
       return h('div', { style:{ position:'absolute', inset:0, zIndex:60, display:'flex', flexDirection:'column', background:`radial-gradient(ellipse 1000px 700px at 50% 20%, ${EW.time}0d, transparent 60%), radial-gradient(ellipse 1200px 900px at 20% 80%, #0b0b0b 0%, ${EW.bg} 60%, #000 100%)` }},
         h(StarField),
         h('div', { style:{ display:'flex', alignItems:'center', height:46, padding:'0 14px 0 8px', gap:10, borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0, position:'relative', zIndex:2 }},
-          h(SigilMark),
-          h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, letterSpacing:'0.14em', fontWeight:500 } }, 'ENTROPY WARS'),
+          h(DoorSeal, { size:32 }),
+          h('div', { style:{ display:'flex', flexDirection:'column', lineHeight:1.15 } },
+            h('span', { style:{ fontFamily:'Cormorant SC, serif', fontSize:15, letterSpacing:'0.14em', fontWeight:500 } }, 'ENTROPY WARS'),
+            DOOR && h('span', { className:'door-hdr-sub' }, 'D.O.O.R. · RECORDS · SQUAD MANIFESTS')),
           h('span', { style:{ width:1, height:16, background:EW.panelEdge } }),
           h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.2em' } }, 'THE PARTY FORGE'),
           h('div', { style:{flex:1} }),
+          h(OfficerChip),
+          h('span', { style:{ width:1, height:16, background:EW.panelEdge } }),
           h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.14em' } }, presets.length, ' / ', (window.ProfileSystem?.MAX_TEAM_PRESETS || 20), ' SQUADS ARCHIVED')),
         h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', padding:'26px clamp(20px,5vw,80px) 30px', position:'relative', zIndex:1 }},
           h('div', { style:{ marginBottom:18 }},
-            h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(22px,2.6vw,34px)', fontWeight:600, letterSpacing:'0.1em', textShadow:`0 0 30px ${EW.time}33` }}, 'TEAM ARCHIVE'),
+            h('div', { className:'door-title-stamp' },
+              h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:'clamp(22px,2.6vw,34px)', fontWeight:600, letterSpacing:'0.1em', textShadow:`0 0 30px ${EW.time}33` }}, 'TEAM ARCHIVE'),
+              DOOR && h('span', { className:'door-stamp admit', title:'Manifests on file are cleared for deployment' }, 'ON FILE')),
             h('div', { style:{ fontSize:11, color:EW.inkMute, letterSpacing:'0.08em', marginTop:4, lineHeight:1.5 }},
               'Forge squads here, before the war finds you. Saved teams appear under ', h('b', {style:{color:'rgba(100,180,255,0.9)'}}, '↑ LOAD'), ' whenever you build a party for any match.')),
           h('div', { style:{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:14, alignContent:'start' }},
@@ -2523,7 +2574,7 @@ function PartyBuilder() {
         h('div', { style:{ display:'flex', alignItems:'center', padding:'0 16px', height:56, gap:8, borderTop:`1px solid ${EW.panelEdge}`, background:'linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0.3))', flexShrink:0, position:'relative', zIndex:2 }},
           h('button', { onClick:()=>{ if (typeof window._teamBuilderBack==='function') window._teamBuilderBack(); }, className:'pb-btn-danger', style:{background:'rgba(255,92,92,0.08)',color:'#ff5c5c',border:'1px solid rgba(255,92,92,0.5)',padding:'9px 18px',fontFamily:'DotGothic16, monospace',fontSize:11,letterSpacing:'0.16em',cursor:'pointer',fontWeight:600}}, '← MAIN MENU'),
           h('div', { style:{flex:1} }),
-          h('span', { style:{ fontSize:10, color:EW.inkDim, letterSpacing:'0.12em' }}, 'SQUADS ARE SAVED TO YOUR PROFILE')));
+          h('span', { style:{ fontSize:10, color:EW.inkDim, letterSpacing:'0.12em' }}, 'SQUADS ARE SAVED TO YOUR PROFILE', DOOR ? ' · MANIFESTS REMAIN PROPERTY OF THE DEPARTMENT' : '')));
     })(),
 
     showTeamModal && h('div', { onClick:()=>setShowTeamModal(false), style:{ position:'absolute', inset:0, background:'rgba(0,0,0,0.75)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' }},

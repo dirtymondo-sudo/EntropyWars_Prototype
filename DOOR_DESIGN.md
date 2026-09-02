@@ -1,5 +1,5 @@
 # D.O.O.R. — Department of Orthogonal Realities
-### Integration design (rev 5, 2026-09-02) — build-order steps 1 + 2 SHIPPED, see §7
+### Integration design (rev 6, 2026-09-02) — steps 1 + 2 SHIPPED + pre-match screens sealed, see §7
 
 Read CLAUDE.md first. This is the anti-"start over" memory for the DOOR
 fiction: what DOOR is, its role in the Entropy Wars, where it plugs into
@@ -547,10 +547,67 @@ Where the code lives (no new game files — RULE #1):
 - Cache-bust: `?v=20260902e-cors` → `20260902f-cors`. `npm test` green
   (77 pass, server smoke skipped without node_modules).
 
+### 2026-09-02 (later) — match select + party builder DOOR-coded (pre-story pass)
+The two pre-match screens were the last un-sealed surfaces before the story
+track. Same rule as everywhere: a LAYER on the existing black/minimal
+screens, no renamed game words (MODE / MAP / CONFIG / CONFIRM / THE PARTY /
+DOSSIER / SEAL YOUR FATE / Codex of Vessels all stay).
+- **data.js `DOOR_TEXT.SITE_FILES`** — one customs file per map, keyed by
+  the MapForge id (Δ boards share the parent's file). Fields: `tone`
+  (stamp ink admit/deny/void), `status` (the rubber stamp: ACTIVE CROSSING,
+  DISPUTED, CONDEMNED, DIPLOMATIC, NON-CANON, QUARANTINED, NATURALIZED…),
+  `juris`, `summary` (1. EXECUTIVE SUMMARY — dossier voice), `advisory`
+  (2. FIELD ADVISORY — the tactical read of the REAL layout from
+  `EW_MAP_META.desc`), `memo` (an interoffice memo about the site). Files
+  for all 30 launch maps + `clash_stage` (Temple) + `prebuilt_custommap` +
+  a `_default` for community/unfiled maps. `SITE_FILE_LABELS` holds the
+  section titles. Helpers (also on `window`): `doorSiteFile(modeId)`,
+  `doorSiteCrossings(label)` (reverse of POINT_OF_ENTRY — every launch map
+  has ≥1 entity on file), `doorSiteCanonDate(modeId)` (stable per-site
+  "FIRST CROSSING" year in the canon window). Validated with load-data.js:
+  every non-Δ map id has a file.
+- **match-select.js** — dead `LORE` table (old map names, matched nothing)
+  replaced by the DOOR helpers. Header: seal (44px, `LOGO.onDark`) +
+  "D.O.O.R. · CUSTOMS & ADMISSIONS · FIELD ASSIGNMENT" sub-line, officer
+  chip on the right (callsign + CLEARANCE, `.door-officer`). The map panel
+  is now the **SITE FILE**: kicker with case no (`doorCaseNo(modeId)`) and
+  FIRST CROSSING canon date, site name + rotated status stamp, JURISDICTION
+  line, numbered sections 1/2/3 (summary / advisory / KNOWN CROSSINGS chips
+  from the roster's points of entry, 10 shown then "+N redacted"), seal
+  watermark (`.door-wm`), and the panel is a fixed band
+  (`clamp(300px,46%,420px)`) whose dossier column scrolls so the map grid
+  keeps its space. Map cards show the site's status in stamp ink instead of
+  the dead PRESET/RANDOM label. Config "SELECTED" slip → FIELD ASSIGNMENT
+  with CASE no + SITE STATUS. CONFIRM: a FILED stamp thunks onto the button
+  (`playDoorSfx('stamp')`), then the existing `_msConfirm` runs 420 ms
+  later (`filedRef` blocks double-clicks; state resets after launch because
+  the React root stays mounted between visits).
+- **party-builder.js** — `DoorSeal` (falls back to `SigilMark`) in both
+  headers (forge + TEAM ARCHIVE locker) with department sub-lines and the
+  officer chip; THE PARTY gets a MANIFEST sub-label; a locked slot shows a
+  tiny FILED stamp instead of ✓; CONFIRM-slot plays the stamp thunk (old
+  click if the kit is missing). The DOSSIER tab is now the numbered file:
+  1. EXECUTIVE SUMMARY (lore) · 2. CUSTOMS DISPOSITION (status + note +
+  POINT OF ENTRY) · 3. D.O.O.R. ANNOTATION (`DOSSIER_NOTES`, where one
+  exists), seal watermark behind. Roster header gains "D.O.O.R. RECORDS ·
+  ENTITY REGISTRY"; locked-card tooltip says NOT DECLASSIFIED. Locker title
+  gets an ON FILE stamp; footer fine print adds "MANIFESTS REMAIN PROPERTY
+  OF THE DEPARTMENT".
+- **battle.js** — the loading screen's hint rotation now LEADS with this
+  map's site file (`SITE FILE · <MAP>`: the field advisory, stamped with the
+  site's status/tone) then its memo (`re: <MAP>`), then the shuffled pool;
+  `setHint` honours a `stampTone` (void → grey). Local on both clients.
+- **styles-base.css** — `.door-wm` (generic seal watermark), `.door-file-h`
+  / `.door-file-p` / `.door-file-chip` (dossier sections, IBM Plex Mono
+  paper voice), `.door-title-stamp` (stamp beside a big serif title),
+  `.door-officer`.
+- Cache-bust: `?v=20260902f-cors` → `20260902g-cors`. `npm test` green.
+
 NOT done yet (next steps, in order): step 3 story track (thresholds →
 clearance, post-match check, case-file screen, memos 1–6 — the
 `.directive` tab, the `door.*` fields and the four unwired kit sounds are
 already waiting for it); §3.7 opponent card on the VS splash (needs relay)
 + queue hold music (new `_R2_MUSIC` key, user-made or synth loop — decide);
 §3.8 hub dressing; §3.9 orientation tape (the VHS OSD / tracking-bar CSS
-from the ident is reusable there).
+from the ident is reusable there). Site files could later feed the codex
+(a "SITE" tab beside the entity dossiers) and the L3 CERN directive.

@@ -31708,6 +31708,20 @@
                     const j = Math.floor(Math.random() * (i + 1));
                     const tmp = hintPool[i]; hintPool[i] = hintPool[j]; hintPool[j] = tmp;
                 }
+                /* The SITE FILE for THIS map leads the rotation (data.js
+                   DOOR_TEXT.SITE_FILES — the same dossier the match-select
+                   screen shows): the field advisory first, then the site's
+                   interoffice memo, then the shuffled pool. Local on both
+                   clients (the guest builds its own loading screen). */
+                try {
+                    if (typeof window.doorSiteFile === 'function' && typeof activeGameMode !== 'undefined') {
+                        const sf = window.doorSiteFile(activeGameMode);
+                        const siteName = _lsMapTitle();
+                        hintPool.unshift(
+                            { t: 'SITE FILE · ' + siteName, q: sf.advisory, s: sf.status + ' · ' + sf.juris, stamp: sf.status, stampTone: sf.tone, cls: 'ls-memo' },
+                            { t: 'INTEROFFICE MEMORANDUM', q: sf.memo, s: 'Customs & Admissions · re: ' + siteName, stamp: 'DENY', cls: 'ls-memo' });
+                    }
+                } catch (_e) {}
                 let hintIdx = 0;
                 const setHint = () => {
                     const h = hintPool[hintIdx % hintPool.length];
@@ -31716,7 +31730,8 @@
                     hintTag.textContent = '◈ ' + h.t;
                     if (h.stamp) {
                         const st = document.createElement('span');
-                        st.className = 'ls-hint-stamp' + (h.stamp === 'ADMIT' ? ' admit' : '');
+                        st.className = 'ls-hint-stamp' + ((h.stamp === 'ADMIT' || h.stampTone === 'admit') ? ' admit' : '');
+                        if (h.stampTone === 'void') st.style.color = 'var(--door-void, #8a8a8a)';
                         st.textContent = h.stamp;
                         hintTag.appendChild(st);
                     }
