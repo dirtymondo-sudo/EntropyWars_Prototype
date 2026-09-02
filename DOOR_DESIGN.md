@@ -557,11 +557,13 @@ DOSSIER / SEAL YOUR FATE / Codex of Vessels all stay).
   (stamp ink admit/deny/void), `status` (the rubber stamp: ACTIVE CROSSING,
   DISPUTED, CONDEMNED, DIPLOMATIC, NON-CANON, QUARANTINED, NATURALIZED…),
   `juris` (short), `summary` (1. EXECUTIVE SUMMARY). **Voice rule (user
-  feedback, same day): the summary is about the REAL place and its lore —
-  loosely educational, ~300 chars, one cheeky line — NOT about the
-  Department.** A first draft in full DOOR-memo voice was rejected as wordy
-  and cheesy; the `advisory` (tactical read) and `memo` fields from that
-  draft were dropped (the Δ boards are flat 8×8s, nothing to advise).
+  feedback, three drafts the same day): the summary is the REAL place and
+  its lore — loosely educational, ~300 chars — written by an officer with
+  an opinion: one or two dry lines, at most one Department reference.**
+  Draft 1 (full DOOR-memo voice) was "too wordy and cheesy"; draft 2
+  (facts + one quip) was "too dry / Wikipedia-y"; draft 3 sits between.
+  The `advisory` (tactical read) and `memo` fields from draft 1 were
+  dropped (the Δ boards are flat 8×8s, nothing to advise).
   Files for all 30 launch maps + `clash_stage` (Temple) +
   `prebuilt_custommap` + a `_default` for community/unfiled maps.
   `SITE_FILE_LABELS` holds the section titles. Helpers (also on `window`): `doorSiteFile(modeId)`,
@@ -604,7 +606,7 @@ DOSSIER / SEAL YOUR FATE / Codex of Vessels all stay).
   / `.door-file-p` / `.door-file-chip` (dossier sections, IBM Plex Mono
   paper voice), `.door-title-stamp` (stamp beside a big serif title),
   `.door-officer`.
-- Cache-bust: `?v=20260902f-cors` → `20260902h-cors`. `npm test` green.
+- Cache-bust: `?v=20260902f-cors` → `20260902i-cors`. `npm test` green.
 
 NOT done yet (next steps, in order): step 3 story track (thresholds →
 clearance, post-match check, case-file screen, memos 1–6 — the
