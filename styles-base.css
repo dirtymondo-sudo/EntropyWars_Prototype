@@ -4110,6 +4110,8 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-chips > span { flex-basis: 100%; font-size: 8px; letter-spacing: 0.26em; color: #b8a060; margin-bottom: 2px; }
 .hq-chip { font-family: 'IBM Plex Mono', monospace; font-style: normal; font-size: 8px; letter-spacing: 0.16em; padding: 2px 7px; border: 1px solid rgba(127,217,221,0.5); color: #7fd9dd; }
 .hq-chip.dim { border-color: rgba(255,255,255,0.15); color: #7f7a6e; }
+/* the in-tray rows (HQ plan 2.7): label · sub · chip */
+.hq-row.hq-row-tray { grid-template-columns: 1fr auto auto; }
 .hq-plate-bay { border-color: rgba(184,160,96,0.6); }
 .hq-plate-bay b { font-size: 16px; }
 /* the site tag on the result-screen stamp: THRESHOLD STABILIZED (green)

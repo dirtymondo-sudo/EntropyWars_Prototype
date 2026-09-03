@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 6 (2026-09-03 — Phase 2.6 the six bays as walkable corridors, §9)
+### The walkable facility that replaces the Play menu · rev 7 (2026-09-03 — Phase 2.7 the janitor’s closet, the first interior, §9)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -363,8 +363,11 @@ lamp/frame details → furniture → fixtures → machinery.
   map with its own leaf (`DOOR_HQ.thresholds`), the site file + entity
   chips + checklist on every threshold panel; `_hqGoRoom` walks between
   rooms and returns rebuild the room you launched from.
-- 2.7 ⚙ The **janitor's closet** as the first interior (a box room with
-  the closet props; `ref/janitor_closet_v1` is the layout).
+- 2.7 ✅ (2026-09-03, §9) The **janitor's closet** as the first interior:
+  `rooms.office`, the first `kind: 'box'` room (Cartesian frame, four
+  flat walls), the closet kit + ten procedural stand-ins for what the kit
+  lacks, the IN-TRAY counter on the desk (the case-file screen 4.1 grows
+  from it), the way out wearing the rank door.
 - 2.8 🧊 Ambience loop + muzak (user-made).
 
 ### Phase 3 — Doors that mean something (1 session, ⚙)
@@ -376,7 +379,9 @@ lamp/frame details → furniture → fixtures → machinery.
 - 3.3 Code Red: daily-seeded (date + profile) pick of one mastered map +
   one out-of-place race; `doorbell` recipe rings on entering the egress;
   the door strobes; the mission pins that race; bonus Hazard Pay/SP.
-- 3.4 Office door = rank (six leaves), `paChime` + card stamp on promotion.
+- 3.4 ◐ Office door = rank (six leaves) — the leaf half shipped with 2.7
+  (`rankDoor` doors wear `DOOR_TEXT.CLEARANCE[level].door`, both sides);
+  `paChime` + card stamp on promotion still open.
 
 ### Phase 4 — Story lives in the building (1–2 sessions, ⚙)
 - 4.1 The office in-tray = case-file screen: SP meter, chapters, pending
@@ -602,6 +607,106 @@ Guild Hub was the prototype; this plan is the building.
 - Hazard Pay wallet on the strip vs only at the Quartermaster. Rec: strip.
 
 ## 9. Build log (append per session)
+
+### 2026-09-03 — Phase 2.7: the janitor's closet (the first interior, the first box room)
+User: "continue with the build plan". `npm test` 102 (101 pass, the server
+smoke skips without node_modules); 3 new checks in `doorhq.test.js`.
+
+**The room (data.js `rooms.office`).** YOUR OFFICE is the first room with
+right angles: `kind: 'box'`, a Cartesian frame (x east, z south, metres
+from the room centre), 5.6 × 4.6 m, 3.4 m ceiling (door panels are 3.5 m
+to the plate, so box rooms clamp the lintel / cap / lamp under `h − 0.25`
+— a lower ceiling still works). Doors and wall props name a `wall`
+(`n | e | s | w`) and the spot along it (`x` on n / s, `z` on e / w); free
+props sit at `x, z` and `face` the heading their front points (deg cw
+from north); `rot` is extra yaw as before. Layout after
+`janitor_closet_v1`: the way out on the west wall (z −0.5) with the
+cleaning shelves beside it; the north wall left → right: hook rail with
+the broom and mop under it, the sink under two shelves of bottles, the
+breaker panel, the tanker desk (CRT, rotary phone, desk lamp, papers,
+pen, notebook, two clipboards above), the vent; the east wall: the locker
+(toilet paper on top), the cot, a shelf with the desk fan; the south wall:
+the clock, the extinguisher, boxes; the floor: mop bucket by the sink,
+the drain, the round rug; one fluorescent. Spawn just inside the door
+facing east. No NPCs (it is your closet).
+
+**Procedural props.** Catalogue entries may now carry `proc: '<builder>'`
+instead of `file` (`depth` = stand-off for wall-hung ones; the test
+accepts either). three-renderer.js `_hqProcBuilders` builds them in
+metres, base on y = 0, front +Z: `tanker_desk`, `floor_drain`,
+`vent_grille`, `wall_shelf` (with bottles), `metal_shelving` (with
+cans / boxes), `hook_rail`, `broom`, `rotary_phone`, `toilet_paper`,
+`clipboard`. Give any of them a `file` and the GLB takes over.
+
+**Renderer (three-renderer.js).** `HQ_WALLS` / `_hqBoxWall(room, wall,
+spec)` → the wall point, inward normal and the yaw that faces a +Z-front
+object into the room; `_hqHeadingOf`. `_hqBuildBoxShell`: floor + ceiling
+planes, four wall slabs with dado + three trims, two conduits + brackets
+across the ceiling with a cross pipe and a corner drop, a procedural
+fluorescent strip + glow at `shell.light`, the room plate (CSS2D) at
+`shell.plate`. Box branches in `_hqBuildDoors` (flat-wall placement,
+`rec.box`), `_hqBuildCounters` (`x, z, face`, plate only), `_hqPlaceProps`
+(rewritten around one `place(depth)` closure: box wall / box free / polar
+wall / polar free; proc props placed synchronously), `_hqSpawnCharacter`
+(`x, z` specs), `_hqSurface` (inside the four walls, prop discs),
+`_hqCamBlocked`, `_hqFindTarget` (2.6 m in front of the panel, inside its
+width), `_hqGoTo` (1.6 m in front, facing it / away; box counters: 1 m
+south of the spot), `_hqEnter` (lights: dim hemisphere, the fluorescent
+point, a warm pool at every `desk_lamp` / `table_lamp`; the boom starts at
+0.6 × d). **Rank door (3.4, leaf half):** a `rankDoor` wears
+`doorClearance(profile).door` and widens when that leaf is a double (L3
+wired pair, L6 futuristic) — the egress office door and the closet's way
+out both, so it is the same door from both sides. Scenes rebuild on every
+enter, so a promotion shows the next time you walk in.
+
+**Flow (map.js).** The egress office door's action is `{ room: 'office',
+at: 'egress' }` — the panel's INTERIOR NOT YET BUILT button became GO
+THROUGH ▸ YOUR OFFICE by itself (the room id exists now). Inside, the way
+out is `{ room: 'central_egress', at: 'office' }`. The **IN-TRAY** counter
+(`overlay: 'intray'`, prompt verb READ via the new counter `verb` key)
+opens `_hqInTrayHtml`: OFFICER + EMPLOYEE NO., CLEARANCE + the door it
+issues, NEXT DOOR (AWAITING FIELD WORK), the six-rung ladder as chips,
+DIRECTIVE (`profile.door.pendingDirective` or NONE PENDING), VISITS TO HQ,
+THRESHOLDS STABILIZED, MEMOS READ · STAMPS ON CARD, RECENT CASES (the
+last four `matchHistory` rows: site · CLOSED / OPEN · condition), then
+ANSWER A BELL CALL / YOUR CARD ▸ PROFILE (the modal pauses the closet
+underneath and resumes on close) / NOTED. Reads the profile only. The
+directory labels a box room's doors WALL N / E / S / W.
+
+**Files (RULE #1 placement):** data.js (proc catalogue entries,
+`rooms.office`, the office door action), three-renderer.js (`HQ_WALLS`,
+`_hqBoxWall`, `_hqHeadingOf`, `_hqBuildBoxShell`, `_hqProcBuilders` /
+`_hqProcProp`, `_hqRankLeaf`, box branches everywhere above, door-panel
+clamps), map.js (`_hqInTrayHtml`, counter verbs, directory walls),
+styles-base.css (`.hq-row-tray`), index.html (`?v=20260903e-cors`),
+doorhq.test.js (+3: the office ↔ egress door pair and every rank leaf;
+box doors on a named wall with a panel that fits; box props inside the
+walls, mounts under the ceiling, the reference kit present, the in-tray
+within reach of the desk). Docs: this file, DOOR_MASTER Part D. No
+mid-match surface → no relay work (RULE #2).
+
+**First-run checklist for the user:** (1) E at YOUR OFFICE (150°) → GO
+THROUGH: do you stand just inside the closet with the door at your back,
+facing the desk wall? (2) is the door's leaf the warped closet door on
+BOTH sides (L1)? (3) walk the room: do the desk, chair, locker, cot and
+shelving block you where they should, and is the boom camera usable in a
+5.6 m room (WHEEL in if not)? (4) do the wall props face into the room
+(sink, locker, breaker, extinguisher, clock — `EW_HQ_FLIP_LEAVES` does not
+touch props; report which ones are backwards and Claude flips their
+`rot`)? (5) does the cot run along the east wall (if it runs across the
+room its long axis is the other one — set `face: 0`)? (6) E at the desk →
+IN-TRAY reads your card; YOUR CARD opens the profile and closing it
+resumes the closet; (7) E at the door → back in the egress with the office
+door behind you; (8) `?hqdebug` positions are box-local (x z metres, the
+deg / r are about the room centre).
+
+**Next (in order):** 3.3 Code Red; 3.2 Keys; 3.4's promotion moment
+(`paChime`, the card stamp, the new leaf); 4.1 the case-file screen
+proper (SP meter, chapters, memos) growing out of the in-tray; §3.9 the
+in-game layout editor; gamepad in the hall; a first-visit micro-scene at
+the desk (4.2); the training room (6.1) as the next box room. Open: the
+egress bay-door panel's quick-dispatch rows; whether the closet gets a
+curved back wall (it sits in the ring — cosmetic, collision stays a box).
 
 ### 2026-09-03 — Phase 2.6: the six bays as walkable corridors
 User: "continue with the build plan". `npm test` 99 (98 pass, the server

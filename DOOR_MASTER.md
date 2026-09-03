@@ -1,5 +1,5 @@
 # D.O.O.R. — MASTER FILE
-### Story bible + integration design + build log — rev 10 (2026-09-03 — the six bays are walkable corridors)
+### Story bible + integration design + build log — rev 11 (2026-09-03 — the janitor’s closet is walkable)
 
 This file MERGES the two earlier DOOR documents and supersedes both:
 - `entropy_wars_claude_brief.md` (the ChatGPT-assisted story/world brief, 2026-09) → Part A
@@ -857,3 +857,20 @@ you are re-admitted into that bay at that door. Full account in
 map.js (`_hqGoRoom`, threshold panel), profile.js, styles-base.css,
 index.html (`?v=20260903d-cors`), doorhq.test.js. `npm test` 98 pass /
 1 skip. No mid-match surface → no relay work.
+
+### 2026-09-03 (later) — HQ Phase 2.7: the janitor's closet
+YOUR OFFICE (A5: the L1 office is a converted janitor's closet) is the
+first interior you can walk into: a box room off the egress ring laid out
+after the reference (mop and broom on hooks, the sink under shelves of
+bottles, the breaker panel, the tanker desk with the beige CRT, rotary
+phone, lamp and clipboards, the locker with toilet paper on top, the cot,
+the drain, the round rug). The door is the rank (C-1): both sides wear
+the clearance ladder's leaf, so a promotion changes your door. The
+IN-TRAY on the desk is where the story will arrive (B3) — today it reads
+the card on file, the ladder, a pending directive if any, and the last
+cases. Full account in `DOOR_HQ_BUILD_PLAN.md` §9 (this date, "Phase
+2.7"). Files: data.js (`rooms.office`, procedural catalogue entries),
+three-renderer.js (box rooms, procedural props, rank leaf), map.js
+(in-tray), styles-base.css, index.html (`?v=20260903e-cors`),
+doorhq.test.js. `npm test` 101 pass / 1 skip. No mid-match surface → no
+relay work.

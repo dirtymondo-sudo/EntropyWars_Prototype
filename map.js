@@ -463,7 +463,7 @@
             const el = _hqEl('hqPrompt');
             if (!el) return;
             if (!t || _hqPanelTarget) { el.style.display = 'none'; el.innerHTML = ''; return; }
-            const verb = t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? 'USE' : 'TALK');
+            const verb = t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK');
             el.innerHTML = `<b>▸ ${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span><i>[E] ${verb}</i>`;
             el.style.display = '';
         }
@@ -556,7 +556,8 @@
             const isBay = room.kind === 'bay';
             let html = `<div class="hq-panel-hd"><b>BUILDING DIRECTORY</b><span>${_hqEsc(room.label || 'CENTRAL EGRESS')} · YOU ARE HERE · LAYOUT SUBJECT TO REVISION</span></div><div class="hq-rows">`;
             const rows = [];
-            const where = d => isBay ? ((d.side === 'in') ? 'INNER WALL · ' : 'THRESHOLD · ') : (d.level ? 'MEZZANINE · ' : 'FLOOR · ');
+            const isBox = room.kind === 'box';
+            const where = d => isBox ? ('WALL ' + String(d.wall || '').toUpperCase() + ' · ') : isBay ? ((d.side === 'in') ? 'INNER WALL · ' : 'THRESHOLD · ') : (d.level ? 'MEZZANINE · ' : 'FLOOR · ');
             (room.doors || []).forEach(d => rows.push({ id: d.id, label: d.label, sub: where(d) + (d.sub || ''), st: (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, profile) : 'open' }));
             (room.counters || []).forEach(c => rows.push({ id: c.id, label: c.label, sub: (c.level ? 'MEZZANINE · ' : 'FLOOR · ') + (c.sub || ''), st: 'open' }));
             rows.forEach(r => {
@@ -573,11 +574,54 @@
                 + '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="_goToQuickPlay">ANSWER A BELL CALL ▸ QUICK PLAY</button><button class="hq-btn" data-fn="_goToFriendlyMatch">CALL A COLLEAGUE ▸ FRIENDLY MATCH</button></div>'
                 + online;
         }
+        /* The in-tray on your desk (HQ plan 2.7 — the case-file screen of
+           4.1 grows here): the card on file, the rank ladder and the door
+           it issues, what the tray holds (a pending directive, the sign-in
+           sheet, green lamps, memos + stamps), the last cases. Reads the
+           profile only — nothing here rides a match (RULE #2). */
+        function _hqInTrayHtml() {
+            const profile = _hqProfile();
+            const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(profile) : { level: 1, title: 'DOORMAT' };
+            const ladder = (typeof DOOR_TEXT !== 'undefined' && DOOR_TEXT.CLEARANCE) || [];
+            const next = ladder[cl.level] || null;
+            const empNo = (typeof window.doorEmployeeNo === 'function') ? window.doorEmployeeNo(profile) : '';
+            const name = (profile && profile.username) || 'UNFILED';
+            const door = (profile && profile.door) || {};
+            const hq = door.hq || {};
+            const mc = (typeof window.hqMasteryCount === 'function') ? window.hqMasteryCount(profile) : null;
+            const stamps = Array.isArray(door.cardStamps) ? door.cardStamps.length : 0;
+            const memos = Array.isArray(door.memosSeen) ? door.memosSeen.length : 0;
+            const leafName = k => String(k || '').replace(/^leaf_/, '').replace(/_/g, ' ').toUpperCase();
+            let html = `<div class="hq-panel-hd"><b>IN-TRAY</b><span>CASE FILE · OFFICE OF ${_hqEsc(name)}</span></div>`;
+            html += `<div class="hq-site"><span class="hq-row-stamp tone-admit">ON FILE</span>`
+                + `<span class="hq-site-kv"><b>OFFICER</b> ${_hqEsc(name)} · EMPLOYEE NO. ${_hqEsc(empNo)}</span>`
+                + `<span class="hq-site-kv"><b>CLEARANCE</b> L${cl.level} · ${_hqEsc(cl.title)} · DOOR ISSUED: ${_hqEsc(leafName(cl.door))}</span>`;
+            if (next) html += `<span class="hq-site-kv"><b>NEXT DOOR</b> L${next.level} · ${_hqEsc(next.title)} (${_hqEsc(leafName(next.door))}) — AWAITING FIELD WORK</span>`;
+            else html += '<span class="hq-site-kv"><b>NEXT DOOR</b> none on file. You are the door.</span>';
+            html += '</div>';
+            html += `<div class="hq-chips"><span>THE LADDER</span>${ladder.map(r => `<i class="hq-chip ${r.level <= cl.level ? '' : 'dim'}">L${r.level} ${_hqEsc(r.title)}</i>`).join('')}</div>`;
+            const pend = door.pendingDirective;
+            html += '<div class="hq-rows">';
+            if (pend) html += `<div class="hq-row hq-row-tray"><b>DIRECTIVE</b><span>PENDING</span><i class="hq-lamp-chip st-unstable">OPEN</i></div><p class="hq-panel-desc">${_hqEsc(typeof pend === 'string' ? pend : (pend.text || pend.title || 'See attached.'))}</p>`;
+            else html += '<div class="hq-row hq-row-tray"><b>DIRECTIVE</b><span>NONE PENDING</span><i class="hq-lamp-chip st-off">EMPTY</i></div>';
+            html += `<div class="hq-row hq-row-tray"><b>VISITS TO HQ</b><span>SIGN-IN SHEET</span><i class="hq-lamp-chip st-open">${(hq.visits || 0)}</i></div>`;
+            if (mc) html += `<div class="hq-row hq-row-tray"><b>THRESHOLDS STABILIZED</b><span>GREEN LAMPS</span><i class="hq-lamp-chip st-${mc.mastered ? 'stabilized' : 'off'}">${mc.mastered} / ${mc.total}</i></div>`;
+            html += `<div class="hq-row hq-row-tray"><b>MEMOS READ · STAMPS ON CARD</b><span>INTEROFFICE</span><i class="hq-lamp-chip st-open">${memos} · ${stamps}</i></div>`;
+            html += '</div>';
+            const hist = (profile && Array.isArray(profile.matchHistory)) ? profile.matchHistory.slice(0, 4) : [];
+            if (hist.length) {
+                html += `<div class="hq-chips"><span>RECENT CASES</span>${hist.map(m => `<i class="hq-chip ${m.result === 'win' ? '' : 'dim'}">${_hqEsc(_hqMapLabel(String(m.mapId || '').replace(/_delta$/, '')).toUpperCase())} · ${m.result === 'win' ? 'CLOSED' : 'OPEN'}${m.winCondition ? ' · ' + _hqEsc(String(m.winCondition).replace(/_/g, ' ').toUpperCase()) : ''}</i>`).join('')}</div>`;
+            } else html += '<p class="hq-panel-note">No cases on file. The tray is waiting for field work.</p>';
+            html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="_goToQuickPlay">ANSWER A BELL CALL ▸ QUICK PLAY</button><button class="hq-btn" data-fn="_mountReactProfile">YOUR CARD ▸ PROFILE</button><button class="hq-btn" data-close="1">NOTED</button></div>';
+            html += '<p class="hq-panel-note">Directives, memos and commendations land in this tray as the story is filed. Field work generates paperwork; paperwork generates directives.</p>';
+            return html;
+        }
         function _hqCounterPanelHtml(t) {
             const c = t.counter || {};
             const act = c.action || {};
             if (act.overlay === 'dispatch') return _hqDispatchHtml();
             if (act.overlay === 'directory') return _hqDirectoryHtml();
+            if (act.overlay === 'intray') return _hqInTrayHtml();
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
             if (c.id === 'board') html += '<p class="hq-panel-desc">Six laminated photographs. The frame in the corner has been empty since 1987. Nobody comments on it.</p>';
             if (act.fn) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="${_hqEsc(act.fn)}">READ THE BOARD ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button></div>`;

@@ -26832,15 +26832,41 @@ const ThreeRenderer = (function () {
        side: 'in' (those face OUTWARD, away from the arc centre). */
     function _hqWallR(room, level, side) {
         var S = room.shell;
+        if (room.kind === 'box') return 0;          // box rooms place by wall (see _hqBoxWall)
         if (room.kind === 'bay') return (side === 'in') ? S.rIn : S.rOut;
         return level ? S.mezz.outer : S.radius;
     }
     /* the ceiling height over a floor level (ceiling-hung props) */
     function _hqCeilY(room, level) {
         var S = room.shell;
+        if (room.kind === 'box') return S.h;
         if (room.kind === 'bay') return S.wallH;
         return level ? (S.wallH + S.upperWallH + S.domeH) : (S.wallH - S.mezz.thick);
     }
+    /* ── box rooms (HQ plan 2.7): a Cartesian frame, four flat walls ──
+       x east, z south, origin at the room centre. `wall` n | e | s | w picks
+       a wall for doors and wall props; the spot along it is `x` (n / s) or
+       `z` (e / w). yaw = the rotation that points a +Z-front object into
+       the room from that wall; (nx, nz) = the inward normal. */
+    var HQ_WALLS = {
+        n: { nx: 0,  nz: 1,  yaw: 0 },              // plane z = −d/2, inward = south
+        s: { nx: 0,  nz: -1, yaw: Math.PI },
+        e: { nx: -1, nz: 0,  yaw: -Math.PI / 2 },   // plane x = +w/2, inward = west
+        w: { nx: 1,  nz: 0,  yaw: Math.PI / 2 },
+    };
+    function _hqBoxWall(room, wall, spec) {
+        var S = room.shell, W = HQ_WALLS[wall] || HQ_WALLS.n;
+        spec = spec || {};
+        var along = (wall === 'e' || wall === 'w') ? (spec.z || 0) : (spec.x || 0);
+        var wx, wz;
+        if (wall === 's') { wx = along; wz = S.d / 2; }
+        else if (wall === 'e') { wx = S.w / 2; wz = along; }
+        else if (wall === 'w') { wx = -S.w / 2; wz = along; }
+        else { wall = 'n'; wx = along; wz = -S.d / 2; }
+        return { wall: wall, wx: wx, wz: wz, nx: W.nx, nz: W.nz, yaw: W.yaw, along: along };
+    }
+    /* heading (deg cw from north) of a direction vector (metres frame) */
+    function _hqHeadingOf(vx, vz) { return _hqNormDeg(Math.atan2(vx, -vz) * 180 / Math.PI); }
     /* torus arc over polar [deg0, deg1] at radius r, height y (metres) */
     function _hqRailArc(r, deg0, deg1, y, tube, mat) {
         var U = _hqUnits();
@@ -26943,6 +26969,14 @@ const ThreeRenderer = (function () {
             if (typeof doorSiteState === 'function') return doorSiteState(door, _hq ? _hq.profile : null);
         } catch (e) {}
         return 'open';
+    }
+    /* the leaf the profile's clearance issues (DOOR_TEXT.CLEARANCE[i].door) */
+    function _hqRankLeaf() {
+        try {
+            if (typeof doorClearance !== 'function') return null;
+            var cl = doorClearance(_hq ? _hq.profile : null);
+            return (cl && cl.door) || null;
+        } catch (e) { return null; }
     }
 
     /* ── the shell ─────────────────────────────────────────────────────── */
@@ -27165,6 +27199,225 @@ const ThreeRenderer = (function () {
         _hq.roomPlate = el;
     }
 
+    /* ── a box room (HQ plan 2.7): the janitor's closet and every later
+       interior with right angles. Floor + ceiling planes, four walls with
+       dado + trims, conduits across the ceiling, one procedural fluorescent
+       (so the room is lit without the kit), the room plate. Doors / props
+       come from the side-aware builders below via _hqBoxWall. */
+    function _hqBuildBoxShell(room) {
+        var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
+        var W = S.w, Dp = S.d, H = S.h;
+        var texFloor = S.floor || 'terrazzo', texWall = S.wall || 'stone', texDado = S.dado || 'oxblood', texTrim = S.trim || 'teal', texCeil = S.ceiling || 'concrete';
+        var fl = new THREE.Mesh(new THREE.PlaneGeometry(W * U, Dp * U), _hqMat(texFloor, W / 1.6, Dp / 1.6, { shininess: 18, specular: 0x2a2a2a }));
+        fl.rotation.x = -Math.PI / 2;
+        G.add(fl);
+        var ce = new THREE.Mesh(new THREE.PlaneGeometry(W * U, Dp * U), _hqMat(texCeil, W / 1.4, Dp / 1.4, { shininess: 2 }));
+        ce.rotation.x = Math.PI / 2; ce.position.y = H * U;
+        G.add(ce);
+        [['n', W], ['s', W], ['e', Dp], ['w', Dp]].forEach(function (ws) {
+            var B = _hqBoxWall(room, ws[0]), len = ws[1];
+            /* a slab along the wall: local x runs along it, local z is the inward normal */
+            function slab(y0, y1, inset, thick, mat) {
+                var m = _hqBox(len, y1 - y0, thick, mat);
+                m.position.set((B.wx + B.nx * inset) * U, ((y0 + y1) / 2) * U, (B.wz + B.nz * inset) * U);
+                m.rotation.y = B.yaw;
+                return m;
+            }
+            G.add(slab(0, H, -0.02, 0.04, _hqMat(texWall, len / 3.2, H / 3.2)));
+            G.add(slab(0.06, S.dadoH, 0.02, 0.03, _hqMat(texDado, len / 2.2, 1, { shininess: 14 })));
+            var trim = _hqMat(texTrim, len / 1.5, 1, { shininess: 40, specular: 0x555555 });
+            G.add(slab(0, 0.08, 0.03, 0.05, trim));
+            G.add(slab(S.dadoH, S.dadoH + 0.09, 0.03, 0.05, trim));
+            G.add(slab(H - 0.1, H, 0.03, 0.05, trim));
+        });
+        /* conduits across the ceiling near the far wall, one dropping to the floor in the corner */
+        if (S.pipes !== false) {
+            var pipeMat = _hqMat(null, 1, 1, { color: 0x4a4d55, shininess: 40, specular: 0x777777 });
+            [[0.05, H - 0.16, -Dp / 2 + 0.45], [0.035, H - 0.24, -Dp / 2 + 0.72]].forEach(function (pp) {
+                var pipe = new THREE.Mesh(new THREE.CylinderGeometry(pp[0] * U, pp[0] * U, (W - 0.1) * U, 10), pipeMat);
+                pipe.rotation.z = Math.PI / 2;
+                pipe.position.set(0, pp[1] * U, pp[2] * U);
+                G.add(pipe);
+                var nBr = Math.max(2, Math.round(W / 1.3));
+                for (var bi = 0; bi < nBr; bi++) {
+                    var br = _hqBox(0.06, 0.2, 0.16, pipeMat);
+                    br.position.set((-W / 2 + 0.3 + (W - 0.6) * bi / (nBr - 1)) * U, (pp[1] + 0.07) * U, pp[2] * U);
+                    G.add(br);
+                }
+            });
+            var cross = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.04 * U, (Dp - 0.9) * U, 10), pipeMat);
+            cross.rotation.x = Math.PI / 2;
+            cross.position.set((W / 2 - 0.5) * U, (H - 0.14) * U, 0.2 * U);
+            G.add(cross);
+            var drop = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * U, 0.04 * U, (H - 0.3) * U, 10), pipeMat);
+            drop.position.set((W / 2 - 0.5) * U, ((H - 0.3) / 2 + 0.05) * U, (Dp / 2 - 0.25) * U);
+            G.add(drop);
+        }
+        /* the fluorescent: a procedural strip + glow at S.light (the kit fixture hangs at the same spot) */
+        var L = S.light || { x: 0, z: 0 };
+        var strip = new THREE.Mesh(new THREE.BoxGeometry(1.3 * U, 0.08 * U, 0.3 * U), _hqBasic(0xeef3ff));
+        strip.position.set(L.x * U, (H - 0.05) * U, L.z * U);
+        G.add(strip);
+        var gl = _hzGlowSprite(1.6 * U, 0xdfe9ff, 0.22, 0.03, 0.02, 0.35);
+        gl.position.set(L.x * U, (H - 0.25) * U, L.z * U);
+        G.add(gl);
+        /* the room plate (CSS2D) */
+        var el = document.createElement('div');
+        el.className = 'hq-plate hq-plate-bay';
+        el.innerHTML = '<b>' + (room.label || 'ROOM') + '</b><span>' + (room.sub || '') + '</span>';
+        var plate = new THREE.CSS2DObject(el);
+        var P = S.plate || { x: 0, z: -Dp / 2, y: H - 0.5 };
+        plate.position.set(P.x * U, (P.y != null ? P.y : H - 0.5) * U, (P.z + 0.02) * U);
+        G.add(plate);
+        _hq.roomPlate = el;
+    }
+
+    /* ── procedural props (catalogue `proc`): the closet pieces the kit
+       has no model for. Each builder returns a Group in WORLD units, base
+       on y = 0, centred, front toward +Z (into the room when wall-hung). */
+    var _hqProcBuilders = {
+        tanker_desk: function (U) {
+            var g = new THREE.Group();
+            var body = _hqMat(null, 1, 1, { color: 0x3b4147, shininess: 35, specular: 0x556066 });
+            var dark = _hqMat(null, 1, 1, { color: 0x2c3136, shininess: 30 });
+            var chrome = _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 80, specular: 0x999999 });
+            var top = _hqMat('oxblood', 2, 1, { color: 0x8a6a52, shininess: 24 });
+            var w = 1.5, d = 0.75, h = 0.76;
+            var t = _hqBox(w, 0.05, d, top); t.position.y = (h - 0.025) * U; g.add(t);
+            var ped = _hqBox(0.42, h - 0.05, d - 0.06, body); ped.position.set(-(w / 2 - 0.21) * U, ((h - 0.05) / 2) * U, 0); g.add(ped);
+            for (var i = 0; i < 3; i++) {
+                var dr = _hqBox(0.36, 0.18, 0.02, dark); dr.position.set(ped.position.x, (0.14 + i * 0.22) * U, (d / 2 - 0.03) * U); g.add(dr);
+                var hd = _hqBox(0.12, 0.02, 0.03, chrome); hd.position.set(ped.position.x, (0.14 + i * 0.22) * U, (d / 2 - 0.01) * U); g.add(hd);
+            }
+            var leg = _hqBox(0.06, h - 0.05, d - 0.1, body); leg.position.set((w / 2 - 0.05) * U, ((h - 0.05) / 2) * U, 0); g.add(leg);
+            var mod = _hqBox(w - 0.5, h - 0.3, 0.03, body); mod.position.set(0.2 * U, ((h - 0.3) / 2 + 0.12) * U, -(d / 2 - 0.06) * U); g.add(mod);
+            return g;
+        },
+        floor_drain: function (U) {
+            var g = new THREE.Group();
+            var disc = new THREE.Mesh(new THREE.CircleGeometry(0.17 * U, 24), _hqMat(null, 1, 1, { color: 0x15161a, shininess: 6 }));
+            disc.rotation.x = -Math.PI / 2; disc.position.y = 0.006 * U; g.add(disc);
+            var metal = _hqMat(null, 1, 1, { color: 0x6b6f74, shininess: 50, specular: 0x888888 });
+            var ring = new THREE.Mesh(new THREE.RingGeometry(0.15 * U, 0.19 * U, 24), metal);
+            ring.rotation.x = -Math.PI / 2; ring.position.y = 0.009 * U; g.add(ring);
+            for (var i = 0; i < 6; i++) {
+                var bar = _hqBox(0.3, 0.006, 0.018, metal);
+                bar.rotation.y = i * Math.PI / 6; bar.position.y = 0.009 * U; g.add(bar);
+            }
+            return g;
+        },
+        vent_grille: function (U) {
+            var g = new THREE.Group();
+            var frame = _hqBox(0.45, 0.35, 0.03, _hqMat(null, 1, 1, { color: 0x4d5158, shininess: 30 }));
+            frame.position.set(0, 0.175 * U, 0.015 * U); g.add(frame);
+            var slat = _hqMat(null, 1, 1, { color: 0x2a2d33, shininess: 10 });
+            for (var i = 0; i < 6; i++) {
+                var s = _hqBox(0.39, 0.022, 0.012, slat);
+                s.position.set(0, (0.05 + i * 0.05) * U, 0.035 * U); s.rotation.x = -0.5; g.add(s);
+            }
+            return g;
+        },
+        wall_shelf: function (U) {
+            var g = new THREE.Group();
+            var plank = _hqBox(0.9, 0.03, 0.25, _hqMat('oxblood', 2, 0.5, { color: 0x9a8062, shininess: 12 }));
+            plank.position.set(0, 0.015 * U, 0.125 * U); g.add(plank);
+            var brMat = _hqMat(null, 1, 1, { color: 0x3b4147, shininess: 30 });
+            [-0.36, 0.36].forEach(function (x) {
+                var a = _hqBox(0.03, 0.03, 0.22, brMat); a.position.set(x * U, -0.015 * U, 0.11 * U); g.add(a);
+                var b = _hqBox(0.03, 0.2, 0.03, brMat); b.position.set(x * U, -0.1 * U, 0.015 * U); g.add(b);
+            });
+            var cols = [0xd8d2b8, 0x5a8fc0, 0xd9a13a, 0xf0f0f0, 0x7a9a5a];
+            for (var i = 0; i < 5; i++) {
+                var hgt = 0.16 + (i % 3) * 0.04, rad = 0.032 + (i % 2) * 0.008;
+                var b2 = new THREE.Mesh(new THREE.CylinderGeometry(rad * U, rad * U, hgt * U, 10), _hqMat(null, 1, 1, { color: cols[i], shininess: 40 }));
+                b2.position.set((-0.32 + i * 0.16) * U, (0.03 + hgt / 2) * U, (0.08 + (i % 2) * 0.07) * U);
+                g.add(b2);
+            }
+            return g;
+        },
+        metal_shelving: function (U) {
+            var g = new THREE.Group();
+            var w = 0.9, d = 0.4, h = 1.8;
+            var mat = _hqMat(null, 1, 1, { color: 0x555a60, shininess: 35, specular: 0x777777 });
+            [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (c) {
+                var up = _hqBox(0.03, h, 0.03, mat); up.position.set(c[0] * (w / 2 - 0.015) * U, (h / 2) * U, c[1] * (d / 2 - 0.015) * U); g.add(up);
+            });
+            var ys = [0.1, 0.55, 1.0, 1.45];
+            ys.forEach(function (y, si) {
+                var sh = _hqBox(w, 0.02, d, mat); sh.position.y = y * U; g.add(sh);
+                var cols = [0xd8d2b8, 0x5a8fc0, 0xd9a13a, 0xc9c9c9];
+                for (var i = 0; i < 3; i++) {
+                    if ((si + i) % 4 === 3) {
+                        var bx = _hqBox(0.22, 0.2, 0.22, _hqMat(null, 1, 1, { color: 0xa88a5a, shininess: 6 }));
+                        bx.position.set((-0.28 + i * 0.28) * U, (y + 0.11) * U, 0); g.add(bx);
+                    } else {
+                        var hgt = 0.18 + ((si + i) % 3) * 0.05, rad = 0.05 + ((i + si) % 2) * 0.02;
+                        var cy = new THREE.Mesh(new THREE.CylinderGeometry(rad * U, rad * U, hgt * U, 10), _hqMat(null, 1, 1, { color: cols[(si + i) % 4], shininess: 40 }));
+                        cy.position.set((-0.28 + i * 0.28) * U, (y + 0.01 + hgt / 2) * U, ((i % 2) ? 0.08 : -0.06) * U); g.add(cy);
+                    }
+                }
+            });
+            return g;
+        },
+        hook_rail: function (U) {
+            var g = new THREE.Group();
+            var rail = _hqBox(0.6, 0.06, 0.02, _hqMat('oxblood', 1, 0.2, { color: 0x8a7050, shininess: 10 }));
+            rail.position.set(0, 0.03 * U, 0.01 * U); g.add(rail);
+            var hm = _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 80, specular: 0x999999 });
+            [-0.2, 0, 0.2].forEach(function (x) {
+                var a = _hqBox(0.015, 0.015, 0.06, hm); a.position.set(x * U, 0.03 * U, 0.05 * U); g.add(a);
+                var b = _hqBox(0.015, 0.05, 0.015, hm); b.position.set(x * U, 0.05 * U, 0.075 * U); g.add(b);
+            });
+            return g;
+        },
+        broom: function (U) {
+            var g = new THREE.Group();
+            var handle = new THREE.Mesh(new THREE.CylinderGeometry(0.012 * U, 0.012 * U, 1.2 * U, 8), _hqMat(null, 1, 1, { color: 0x9a7a4a, shininess: 20 }));
+            handle.position.y = 0.72 * U; g.add(handle);
+            var head = _hqBox(0.26, 0.05, 0.05, _hqMat(null, 1, 1, { color: 0x6a4a30, shininess: 8 })); head.position.y = 0.14 * U; g.add(head);
+            var bristle = _hqBox(0.26, 0.12, 0.06, _hqMat(null, 1, 1, { color: 0xc9a55a, shininess: 4 })); bristle.position.y = 0.06 * U; g.add(bristle);
+            g.rotation.x = 0.1;   // leans back against the wall
+            return g;
+        },
+        rotary_phone: function (U) {
+            var g = new THREE.Group();
+            var black = _hqMat(null, 1, 1, { color: 0x141416, shininess: 70, specular: 0x666666 });
+            var base = _hqBox(0.22, 0.09, 0.2, black); base.position.y = 0.045 * U; g.add(base);
+            var dial = new THREE.Mesh(new THREE.CylinderGeometry(0.055 * U, 0.055 * U, 0.012 * U, 16), _hqMat(null, 1, 1, { color: 0xd8d2b8, shininess: 30 }));
+            dial.position.set(0, 0.095 * U, 0.03 * U); dial.rotation.x = 0.35; g.add(dial);
+            var inner = new THREE.Mesh(new THREE.CylinderGeometry(0.02 * U, 0.02 * U, 0.014 * U, 12), black);
+            inner.position.copy(dial.position); inner.rotation.x = 0.35; g.add(inner);
+            var hs = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, 0.2 * U, 8), black);
+            hs.rotation.z = Math.PI / 2; hs.position.set(0, 0.125 * U, -0.05 * U); g.add(hs);
+            [-0.1, 0.1].forEach(function (x) { var cup = new THREE.Mesh(new THREE.SphereGeometry(0.03 * U, 10, 8), black); cup.position.set(x * U, 0.12 * U, -0.05 * U); g.add(cup); });
+            return g;
+        },
+        toilet_paper: function (U) {
+            var g = new THREE.Group();
+            var white = _hqMat(null, 1, 1, { color: 0xf2efe6, shininess: 4 });
+            [[-0.06, 0.05, 0], [0.06, 0.05, 0], [0, 0.15, 0]].forEach(function (p) {
+                var r = new THREE.Mesh(new THREE.CylinderGeometry(0.055 * U, 0.055 * U, 0.1 * U, 14), white);
+                r.position.set(p[0] * U, p[1] * U, p[2] * U); g.add(r);
+                var hole = new THREE.Mesh(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, 0.102 * U, 10), _hqMat(null, 1, 1, { color: 0x6a5a48, shininess: 2 }));
+                hole.position.copy(r.position); g.add(hole);
+            });
+            return g;
+        },
+        clipboard: function (U) {
+            var g = new THREE.Group();
+            var board = _hqBox(0.23, 0.32, 0.012, _hqMat(null, 1, 1, { color: 0x6a4a30, shininess: 10 })); board.position.set(0, 0.16 * U, 0.006 * U); g.add(board);
+            var paper = _hqBox(0.2, 0.27, 0.004, _hqMat(null, 1, 1, { color: 0xe8e2d0, shininess: 2 })); paper.position.set(0, 0.145 * U, 0.014 * U); g.add(paper);
+            var clip = _hqBox(0.08, 0.035, 0.02, _hqMat(null, 1, 1, { color: 0xb9bec4, shininess: 80, specular: 0x999999 })); clip.position.set(0, 0.3 * U, 0.02 * U); g.add(clip);
+            return g;
+        },
+    };
+    function _hqProcProp(name) {
+        var b = _hqProcBuilders[name];
+        if (!b) return null;
+        try { var g = b(_hqUnits()); g.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; }); return g; }
+        catch (e) { console.warn('[HQ] proc prop failed', name, e); return null; }
+    }
+
     /* ── stairs: curved flights hugging the lower wall (InstancedMesh steps) ── */
     function _hqBuildStairs(room) {
         var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
@@ -27264,14 +27517,30 @@ const ThreeRenderer = (function () {
             var inward = door.side === 'in';       // hangs on a bay's inner wall, faces away from the arc centre
             var Rw = _hqWallR(room, level, door.side);
             var y0 = level ? S.wallH : 0;
-            var wide = !!door.wide;
+            /* the office door is the rank (HQ plan 3.4 / MASTER C-1): a
+               `rankDoor` wears the clearance ladder's leaf, and widens when
+               that leaf is a double (KNOCKER's wired pair, THE DOORMAN's) */
+            var leafKey = door.leaf;
+            if (door.rankDoor) { var rl = _hqRankLeaf(); if (rl && _hqData().catalogue[rl]) leafKey = rl; }
+            var leafCat = leafKey ? _hqData().catalogue[leafKey] : null;
+            var wide = !!door.wide || !!(door.rankDoor && leafCat && leafCat.wide);
             var ow = wide ? 2.2 : 1.1, oh = wide ? 2.45 : 2.25;
             var pw = wide ? 3.3 : 2.5, ph = oh + 1.25, pd = 0.55;
+            /* a box room's ceiling can be lower than the 4.2 m the panel was drawn for: keep the lintel, cap and lamp under it */
+            if (room.kind === 'box') ph = Math.min(ph, S.h - 0.25);
+            var lampY = Math.min(oh + 0.62, ph - 0.2);
             var jw = (pw - ow) / 2;
             var a = door.deg;
             var grp = new THREE.Group();
-            grp.position.copy(_hqPolarW(a, inward ? (Rw + pd / 2 - 0.05) : (Rw - pd / 2 + 0.05), y0));
-            grp.rotation.y = _hqFaceCentreYaw(a) + (inward ? Math.PI : 0);   // local +Z points into the room
+            /* a box room's door hangs on a flat wall (HQ plan 2.7) */
+            var box = (room.kind === 'box') ? _hqBoxWall(room, door.wall, door) : null;
+            if (box) {
+                grp.position.set((box.wx + box.nx * (pd / 2 - 0.05)) * U, y0 * U, (box.wz + box.nz * (pd / 2 - 0.05)) * U);
+                grp.rotation.y = box.yaw;
+            } else {
+                grp.position.copy(_hqPolarW(a, inward ? (Rw + pd / 2 - 0.05) : (Rw - pd / 2 + 0.05), y0));
+                grp.rotation.y = _hqFaceCentreYaw(a) + (inward ? Math.PI : 0);   // local +Z points into the room
+            }
             /* jambs (full depth), lintel, back plate, dado bands, cap */
             var jL = _hqBox(jw, ph, pd, wallMat); jL.position.set(-(ow / 2 + jw / 2) * U, ph / 2 * U, 0);
             var jR = _hqBox(jw, ph, pd, wallMat); jR.position.set((ow / 2 + jw / 2) * U, ph / 2 * U, 0);
@@ -27286,11 +27555,11 @@ const ThreeRenderer = (function () {
             var frameT = _hqBox(ow + 0.14, 0.07, 0.09, capMat); frameT.position.set(0, (oh + 0.035) * U, (pd / 2 - 0.045) * U);
             grp.add(jL, jR, lin, back, dL, dR, cap, sill, frameL, frameR, frameT);
             /* lamp housing + lens + glow */
-            var housing = _hqBox(0.46, 0.22, 0.12, housingMat); housing.position.set(0, (oh + 0.62) * U, (pd / 2 + 0.04) * U);
+            var housing = _hqBox(0.46, 0.22, 0.12, housingMat); housing.position.set(0, lampY * U, (pd / 2 + 0.04) * U);
             var lens = new THREE.Mesh(new THREE.BoxGeometry(0.30 * U, 0.12 * U, 0.025 * U), _hqBasic(0x1a1a1a));
-            lens.position.set(0, (oh + 0.62) * U, (pd / 2 + 0.11) * U);
+            lens.position.set(0, lampY * U, (pd / 2 + 0.11) * U);
             var glow = _hzGlowSprite(1.15 * U, 0xffffff, 0.55, 0.0, 0.0, 0.0);
-            glow.position.set(0, (oh + 0.62) * U, (pd / 2 + 0.22) * U);
+            glow.position.set(0, lampY * U, (pd / 2 + 0.22) * U);
             grp.add(housing, lens, glow);
             /* the leaf: catalogue GLB fitted to the recess, or a procedural elevator */
             var leafGroup = new THREE.Group();
@@ -27305,8 +27574,8 @@ const ThreeRenderer = (function () {
                 leafGroup.add(eL, eR, seam, ind);
                 var brace = _hqBox(0.05, oh * 0.55, 0.02, elMat); brace.position.set(0, (oh / 2) * U, 0.04 * U); brace.rotation.z = Math.PI / 4; leafGroup.add(brace);
                 var brace2 = brace.clone(); brace2.rotation.z = -Math.PI / 4; leafGroup.add(brace2);
-            } else if (door.leaf) {
-                var cat = _hqData().catalogue[door.leaf];
+            } else if (leafKey) {
+                var cat = leafCat;
                 if (cat && cat.file) {
                     var targetH = (oh - 0.10) * U, maxW = (ow - 0.06) * U;
                     var lg = _miscModelInstance(_hqModelUrl(cat), true, targetH, {
@@ -27329,10 +27598,10 @@ const ThreeRenderer = (function () {
             el.innerHTML = '<b>' + (door.label || door.id) + '</b><span>' + (door.sub || '') + '</span>';
             el.appendChild(chip);
             var plate = new THREE.CSS2DObject(el);
-            plate.position.set(0, (ph + 0.42) * U, (pd / 2) * U);
+            plate.position.set(0, ((room.kind === 'box') ? Math.min(ph + 0.42, S.h - 0.12) : (ph + 0.42)) * U, (pd / 2) * U);
             grp.add(plate);
             G.add(grp);
-            var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide, inward: inward };
+            var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide, inward: inward, box: box, leaf: leafKey };
             _hq.doors.push(rec);
             _hqLampApply(rec, _hqDoorState(door));
         });
@@ -27343,10 +27612,15 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), S = room.shell, G = _hq.doorGroup;
         (room.counters || []).forEach(function (c) {
             var level = c.level || 0, y0 = level ? S.wallH : 0;
-            var Rw = level ? S.mezz.outer : S.radius;
+            var Rw = (room.kind === 'box') ? 0 : (level ? S.mezz.outer : S.radius);
             var grp = new THREE.Group();
             var plateY = 2.6;
-            if (c.proc === 'board') {
+            if (room.kind === 'box') {
+                /* a box room's counter sits at (x, z) and faces `face` (a plate, no kiosk) */
+                grp.position.set((c.x || 0) * U, y0 * U, (c.z || 0) * U);
+                grp.rotation.y = _hqHeadingYaw(c.face || 0);
+                plateY = (c.plateY != null) ? c.plateY : 1.55;
+            } else if (c.proc === 'board') {
                 grp.position.copy(_hqPolarW(c.deg, Rw - 0.12, y0));
                 grp.rotation.y = _hqFaceCentreYaw(c.deg);
                 var frame = _hqBox(2.8, 1.7, 0.08, _hqMat(S.trim || 'teal', 3, 2, { shininess: 45 })); frame.position.set(0, 1.75 * U, 0);
@@ -27388,29 +27662,53 @@ const ThreeRenderer = (function () {
     function _hqPlaceProps(room) {
         if (typeof window !== 'undefined' && window.EW_HQ_NO_PROPS) return;
         var U = _hqUnits(), S = room.shell, G = _hq.propGroup, D = _hqData();
+        var isBox = room.kind === 'box';
         (room.props || []).forEach(function (p) {
             var cat = D.catalogue[p.key];
-            if (!cat || !cat.file) return;
+            if (!cat || (!cat.file && !cat.proc)) return;
             var level = p.level || 0, y0 = level ? S.wallH : 0;
             var inward = p.side === 'in';            // a bay's inner wall: the prop faces outward
             var Rw = _hqWallR(room, level, p.side);
-            var onWall = !!((cat.wall || p.wall) && p.r == null);
+            /* a box room's wall prop names its wall (`wall: 'n'|'e'|'s'|'w'`);
+               polar rooms hang catalogue `wall` props on the drum when no r is given */
+            var box = (isBox && typeof p.wall === 'string') ? _hqBoxWall(room, p.wall, p) : null;
+            var onWall = isBox ? !!box : !!((cat.wall || p.wall) && p.r == null);
             var r = onWall ? (inward ? Rw + 0.35 : Rw - 0.35) : (p.r || 0);
             var mount = (p.mount != null) ? p.mount : (cat.mount || 0);
             var onCeil = !!(cat.ceil || p.ceil);
             var y = onCeil ? (y0 + ((p.y != null) ? p.y : _hqCeilY(room, level))) : (y0 + (p.y || 0) + mount);
             var fitSpan = (cat.span != null && cat.h == null) || (p.span != null);
             var target = ((fitSpan ? (p.span || cat.span) : (p.h || cat.h)) || 1) * U;
-            if (p.ring && cat.wedge) { _hqPlaceWedgeRing(p, cat, r, y0, y, target); return; }
+            if (p.ring && cat.wedge && !isBox) { _hqPlaceWedgeRing(p, cat, r, y0, y, target); return; }
             var grp = new THREE.Group();
-            grp.position.copy(_hqPolarW(p.deg, r, y));
-            grp.rotation.y = _hqFaceCentreYaw(p.deg) + (inward ? Math.PI : 0) - _hqRad(p.rot || 0);
+            /* the spot: a wall point pushed in by `depth` (known now for proc props, on load for GLBs), else the free spot */
+            function place(depth) {
+                if (box) grp.position.set((box.wx + box.nx * (0.02 + depth / 2)) * U, y * U, (box.wz + box.nz * (0.02 + depth / 2)) * U);
+                else if (isBox) grp.position.set((p.x || 0) * U, y * U, (p.z || 0) * U);
+                else if (onWall) grp.position.copy(_hqPolarW(p.deg, inward ? (Rw + 0.02 + depth / 2) : (Rw - 0.02 - depth / 2), y));
+                else grp.position.copy(_hqPolarW(p.deg, r, y));
+            }
+            if (isBox) grp.rotation.y = (box ? box.yaw : _hqHeadingYaw(p.face || 0)) - _hqRad(p.rot || 0);
+            else grp.rotation.y = _hqFaceCentreYaw(p.deg) + (inward ? Math.PI : 0) - _hqRad(p.rot || 0);
+            if (cat.proc) {
+                /* procedural: built in metres, no async fit */
+                var pg = _hqProcProp(cat.proc);
+                if (!pg) return;
+                place(onWall ? (cat.depth || 0.1) : 0);
+                if (onCeil) grp.position.y = y * U - (cat.h || 0.1) * U;
+                grp.add(pg);
+                if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); }
+                G.add(grp);
+                if (cat.foot > 0 && !mount && !onCeil && !(p.y > 0.5)) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 });
+                return;
+            }
+            place(0.66);
             var inst = _miscModelInstance(_hqModelUrl(cat), true, target, {
                 fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
                 onDone: function (g, s, bb) {
                     if (onWall) {
                         var depth = (bb.max.z - bb.min.z) * s / U;
-                        grp.position.copy(_hqPolarW(p.deg, inward ? (Rw + 0.02 + depth / 2) : (Rw - 0.02 - depth / 2), y));
+                        place(depth);
                     }
                     /* ceiling-hung: the loader sits models on y = 0, so drop by the model's height */
                     if (onCeil) grp.position.y = y * U - (bb.max.y - bb.min.y) * s - 0.01 * U;
@@ -27497,7 +27795,8 @@ const ThreeRenderer = (function () {
         entry.group.name = 'hq_' + spec.id;
         _attachUnitModel(entry, unit, def, BASE_TILE);
         var y = (spec.level ? S.wallH : 0);
-        var p = _hqPolarW(spec.deg, spec.r, y);
+        /* box rooms place by (x, z) metres; polar rooms by (deg, r) */
+        var p = (spec.x != null && spec.deg == null) ? new THREE.Vector3(spec.x * _hqUnits(), y * _hqUnits(), (spec.z || 0) * _hqUnits()) : _hqPolarW(spec.deg, spec.r, y);
         entry.group.position.copy(p);
         _hq.charGroup.add(entry.group);
         var ch = {
@@ -27513,9 +27812,9 @@ const ThreeRenderer = (function () {
     function _hqSpawnPopulation(room, opts) {
         var av = opts.avatar || {};
         var sp = room.spawn || { deg: 180, r: 15, level: 0, face: 0 };
-        _hq.player = _hqSpawnCharacter({ id: 'hq-player', kind: 'player', race: av.race || 'men in black', gender: av.gender || 'male', deg: sp.deg, r: sp.r, level: sp.level || 0, face: sp.face || 0, label: 'YOU' });
+        _hq.player = _hqSpawnCharacter({ id: 'hq-player', kind: 'player', race: av.race || 'men in black', gender: av.gender || 'male', deg: sp.deg, r: sp.r, x: sp.x, z: sp.z, level: sp.level || 0, face: sp.face || 0, label: 'YOU' });
         (room.agents || []).forEach(function (ag, i) {
-            _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: 'men in black', gender: (i % 2) ? 'female' : 'male', deg: ag.deg, r: ag.r, level: ag.level || 0, face: ag.face || 0, line: ag.line, label: 'D.O.O.R. AGENT' });
+            _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: 'men in black', gender: (i % 2) ? 'female' : 'male', deg: ag.deg, r: ag.r, x: ag.x, z: ag.z, level: ag.level || 0, face: ag.face || 0, line: ag.line, label: 'D.O.O.R. AGENT' });
         });
         /* roster vessels: unlocked races with a rigged model, minus the avatar */
         try {
@@ -27535,7 +27834,7 @@ const ThreeRenderer = (function () {
             for (var k = 0; k < n; k++) {
                 var rk2 = owned[k];
                 var g = getRace3DModel(rk2, 'male') ? 'male' : 'female';
-                _hqSpawnCharacter({ id: 'hq-npc-' + k, kind: 'npc', race: rk2, gender: g, deg: spots[k].deg, r: spots[k].r, level: spots[k].level || 0, face: spots[k].face || 0 });
+                _hqSpawnCharacter({ id: 'hq-npc-' + k, kind: 'npc', race: rk2, gender: g, deg: spots[k].deg, r: spots[k].r, x: spots[k].x, z: spots[k].z, level: spots[k].level || 0, face: spots[k].face || 0 });
             }
         } catch (e) { console.warn('[HQ] roster NPCs skipped', e); }
     }
@@ -27549,6 +27848,18 @@ const ThreeRenderer = (function () {
         var r = Math.hypot(x, z);
         var deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
         var y = null;
+        if (room.kind === 'box') {
+            /* a box: inside the four walls, one level, prop footprints as discs */
+            if (Math.abs(x) > S.w / 2 - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 - HQ_BODY_R - 0.08) return null;
+            if (!ignoreBlockers) {
+                var Ux = _hqUnits();
+                for (var bx = 0; bx < _hq.blockers.length; bx++) {
+                    var bq = _hq.blockers[bx];
+                    if (Math.hypot(bq.obj.position.x / Ux - x, bq.obj.position.z / Ux - z) < bq.rad + HQ_BODY_R) return null;
+                }
+            }
+            return 0;
+        }
         if (room.kind === 'bay') {
             /* a corridor: between the two wall arcs, short of the end caps */
             var capPad = ((0.15 + HQ_BODY_R) / Math.max(1, r)) * 180 / Math.PI;
@@ -27616,6 +27927,10 @@ const ThreeRenderer = (function () {
     function _hqCamBlocked(px, pz, py) {
         var S = _hq.room.shell;
         var r = Math.hypot(px, pz);
+        if (_hq.room.kind === 'box') {
+            if (Math.abs(px) > S.w / 2 - 0.28 || Math.abs(pz) > S.d / 2 - 0.28) return true;
+            return py > S.h - 0.3 || py < 0.22;
+        }
         if (_hq.room.kind === 'bay') {
             if (r > S.rOut - 0.28 || r < S.rIn + 0.28) return true;
             if (py > S.wallH - 0.3 || py < 0.22) return true;
@@ -27645,6 +27960,15 @@ const ThreeRenderer = (function () {
         var best = null, bestD = 1e9;
         _hq.doors.forEach(function (d) {
             if (d.level !== lvl) return;
+            if (d.box) {
+                /* a flat wall: within 2.6 m in front of the panel, inside its width */
+                var ox = pl.x - d.box.wx, oz = pl.z - d.box.wz;
+                var inF = ox * d.box.nx + oz * d.box.nz, side = Math.abs(ox * d.box.nz - oz * d.box.nx);
+                if (inF < 0 || inF > 2.6 || side > (d.wide ? 1.3 : 0.95)) return;
+                var distB = inF + side;
+                if (distB < bestD) { bestD = distB; best = { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d }; }
+                return;
+            }
             var dd = Math.abs(_hqDegDiff(deg, d.door.deg));
             if (dd > (d.wide ? 7 : 6)) return;
             if (d.inward ? (r > d.Rw + 3.4) : (r < d.Rw - 3.4)) return;
@@ -27981,7 +28305,18 @@ const ThreeRenderer = (function () {
         sc.fog = new THREE.FogExp2(0x0d0e12, 0.00017);
         sc.add(_hq.shellGroup, _hq.doorGroup, _hq.propGroup, _hq.charGroup);
         /* lights: warm ceiling / cool floor hemisphere, a soft key, point lights over the hall */
-        if (room.kind === 'bay') {
+        if (room.kind === 'box') {
+            /* a small room: one fluorescent overhead, a warm pool at the desk lamp, dim fill */
+            sc.add(new THREE.HemisphereLight(0xd9d2c0, 0x1c1a1e, 0.5));
+            var bxk = new THREE.DirectionalLight(0xe8ecf5, 0.22); bxk.position.set(0.3, 1, 0.2).multiplyScalar(1000); sc.add(bxk);
+            var Lt = S.light || { x: 0, z: 0 };
+            var fl1 = new THREE.PointLight(0xe6eeff, 0.55, 9 * U, 2); fl1.position.set(Lt.x * U, (S.h - 0.35) * U, Lt.z * U); sc.add(fl1);
+            (room.props || []).forEach(function (pp) {
+                if (pp.key !== 'desk_lamp' && pp.key !== 'table_lamp') return;
+                var wl = new THREE.PointLight(0xffd9a0, 0.5, 5 * U, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); sc.add(wl);
+            });
+            _hq.cam.dist = Math.min(_hq.cam.dist, Math.max(2.2, S.d * 0.6));
+        } else if (room.kind === 'bay') {
             /* a fluorescent corridor: cooler, flatter, point lights along the centreline */
             sc.add(new THREE.HemisphereLight(0xe3e9f2, 0x24222a, 0.74));
             var bkey = new THREE.DirectionalLight(0xf2f5ff, 0.3); bkey.position.set(0.2, 1, 0.3).multiplyScalar(1000); sc.add(bkey);
@@ -28014,7 +28349,7 @@ const ThreeRenderer = (function () {
         if (ThreePost && ThreePost.resize) ThreePost.resize(w, h);
         _hq.w = w; _hq.h = h;
         /* build */
-        try { if (room.kind === 'bay') _hqBuildBayShell(room); else _hqBuildShell(room); } catch (e) { console.error('[HQ] shell build failed', e); }
+        try { if (room.kind === 'box') _hqBuildBoxShell(room); else if (room.kind === 'bay') _hqBuildBayShell(room); else _hqBuildShell(room); } catch (e) { console.error('[HQ] shell build failed', e); }
         try { _hqBuildStairs(room); } catch (e) { console.error('[HQ] stairs failed', e); }
         try { _hqBuildDesk(room); } catch (e) { console.error('[HQ] desk failed', e); }
         try { _hqBuildDoors(room); } catch (e) { console.error('[HQ] doors failed', e); }
@@ -28076,7 +28411,13 @@ const ThreeRenderer = (function () {
         var d = null;
         for (var i = 0; i < _hq.doors.length; i++) if (_hq.doors[i].door.id === id) { d = _hq.doors[i]; break; }
         var spot = null, face = 0;
-        if (d) {
+        if (d && d.box) {
+            /* a flat wall: 1.6 m in front of the panel, facing it (or away from it) */
+            spot = new THREE.Vector3((d.box.wx + d.box.nx * 1.6) * U, d.y0 * U, (d.box.wz + d.box.nz * 1.6) * U);
+            var towardB = _hqHeadingOf(-d.box.nx, -d.box.nz);
+            face = faceAway ? towardB + 180 : towardB;
+        }
+        else if (d) {
             /* an inner-wall door (a bay's way out) is faced by heading toward the arc centre */
             spot = _hqPolarW(d.door.deg, d.inward ? (d.Rw + 2.2) : (d.Rw - 2.2), d.y0);
             var toward = d.inward ? d.door.deg + 180 : d.door.deg;
@@ -28085,6 +28426,11 @@ const ThreeRenderer = (function () {
         else {
             for (var j = 0; j < _hq.counters.length; j++) {
                 var c = _hq.counters[j];
+                if (c.counter.id === id && _hq.room.kind === 'box') {
+                    /* stand a metre south of the counter spot, facing it */
+                    spot = new THREE.Vector3((c.counter.x || 0) * U, 0, ((c.counter.z || 0) + 1.0) * U); face = 0;
+                    break;
+                }
                 if (c.counter.id === id) {
                     var cr = (c.counter.proc === 'board') ? (c.counter.r - 2.0) : (c.counter.r + (c.counter.id === 'dispatch' ? 0.9 : 1.6));
                     spot = _hqPolarW(c.counter.deg, cr, c.level ? S.wallH : 0); face = (c.counter.id === 'dispatch') ? c.counter.deg + 180 : c.counter.deg;

@@ -15385,6 +15385,22 @@ const DOOR_HQ = {
         sink:              { file: 'Meshy_AI_a_sink_0903105415_texture.glb',                          h: 0.85, foot: 0.35, wall: true },
         rug_round:         { file: 'Meshy_AI_a_round_rug_0903110327_texture.glb',                     span: 1.8, foot: 0 },
         rug_office:        { file: 'Meshy_AI_a_round_office_rug_0903110253_texture.glb',              span: 2.0, foot: 0 },
+        /* ── procedural props (HQ plan 2.7): `proc` names a builder in
+           three-renderer.js (_hqProcBuilders) instead of a file — the pieces
+           the reference shows that the kit has no model for. Built in
+           metres directly (span / h are the built size, kept for the
+           tooling); `depth` = how far a wall-mounted one stands off the
+           wall. Replace any of them by giving the entry a `file`. */
+        tanker_desk:       { proc: 'tanker_desk',    span: 1.5,  foot: 0.7, wall: true, depth: 0.75 },
+        floor_drain:       { proc: 'floor_drain',    span: 0.36, foot: 0 },
+        vent_grille:       { proc: 'vent_grille',    span: 0.45, foot: 0, wall: true, mount: 2.35, depth: 0.03 },
+        wall_shelf:        { proc: 'wall_shelf',     span: 0.9,  foot: 0, wall: true, mount: 1.6,  depth: 0.25 },
+        metal_shelving:    { proc: 'metal_shelving', h: 1.8,     foot: 0.5, wall: true, depth: 0.4 },
+        hook_rail:         { proc: 'hook_rail',      span: 0.6,  foot: 0, wall: true, mount: 1.75, depth: 0.08 },
+        broom:             { proc: 'broom',          h: 1.3,     foot: 0 },
+        rotary_phone:      { proc: 'rotary_phone',   span: 0.22, foot: 0 },
+        toilet_paper:      { proc: 'toilet_paper',   span: 0.23, foot: 0 },
+        clipboard:         { proc: 'clipboard',      span: 0.32, foot: 0, wall: true, mount: 1.4,  depth: 0.03 },
         /* ── door leaves (fit to the opening; `leaf` marks them) ── */
         leaf_closet_warped:  { file: 'Meshy_AI_warped_janitor_s_closet_door_0903105738_texture.glb', leaf: true },
         leaf_closet:         { file: 'Meshy_AI_janitor_s_closet_door_0903105643_texture.glb',        leaf: true },
@@ -15535,7 +15551,7 @@ const DOOR_HQ = {
                 { id: 'bay_celestial',  deg: 0,   level: 0, leaf: 'leaf_futuristic',   wide: true,  label: 'BAY 4 · CELESTIAL',      sub: 'CONTAINMENT BAY',            action: { sector: 'celestial' } },
                 { id: 'quartermaster',  deg: 90,  level: 0, leaf: 'leaf_vault',        wide: true,  label: 'QUARTERMASTER',           sub: 'CUSTOMS & ADMISSIONS',       action: { fn: '_goToShop' },        desc: 'Declassification and asset reassignment. The Shop, and the manifests locker.', alt: { label: 'PARTY BUILDER', fn: '_goToTeamBuilder' } },
                 { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_office',                    label: 'RECEPTION · INTAKE',      sub: 'HUMAN RESOURCES',            action: { fn: '_mountReactProfile' }, desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
-                { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'JANITORIAL (CONVERTED)',     action: { room: 'office' },         desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
+                { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'JANITORIAL (CONVERTED)',     action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
                 { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING FACILITY',       sub: 'DOWNSTAIRS · ORIENTATION',   action: { room: 'training' },       desc: 'The only approved square room in the building. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.', alt: { label: 'CHALLENGE', fn: '_goToCampaign' }, alt2: { label: 'CONDEMNED CROSSING (MYSTERY DUNGEON)', fn: '_goToMysteryDungeon' } },
                 { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_office',                    label: 'MEDICAL',                 sub: 'SUPPORT SERVICES',           action: { fn: '_goToCampaign' },    desc: 'Where EXITED operatives are processed. Revives, retries, the Challenge services desk.' },
                 { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'ARCHIVES · ENTITY REGISTRY', action: { fn: '_goToCodex' },       desc: '“We only keep the file.” Entity dossiers, the tape library, unfiled sites.', alt: { label: 'REPLAY (TAPE LIBRARY)', fn: '_ewReplayLastMatch' }, alt2: { label: 'UNFILED SITES (COMMUNITY MAPS)', fn: '_mountCommunityMaps' } },
@@ -15683,6 +15699,84 @@ const DOOR_HQ = {
                 '“If it’s round it’s ours. If it’s square, fill out Form 90.”',
             ],
             spawn: { deg: 180, r: 15.4, level: 0, face: 0 },
+        },
+
+        /* ── YOUR OFFICE: the janitor's closet (HQ plan 2.7, ref
+           janitor_closet_v1) — the first interior, and the first `kind:
+           'box'` room. A box room is a CARTESIAN frame: x east, z south,
+           metres from the room centre, four flat walls n / e / s / w. Doors
+           and wall props name a `wall` and the spot along it (`x` on n / s,
+           `z` on e / w); free props sit at `x, z` and `face` the heading
+           (deg cw from north) their front points; `rot` is extra yaw. The
+           way out wears the rank leaf like the door in the egress does
+           (`rankDoor`) — it is the same door from both sides. */
+        office: {
+            label: 'YOUR OFFICE',
+            sub: 'JANITORIAL (CONVERTED)',
+            kind: 'box',
+            shell: {
+                w: 5.6, d: 4.6, h: 3.4,      // interior size (m): x extent, z extent, ceiling (door panels need ≥ 3.4)
+                wallH: 3.4, dadoH: 1.05,      // wallH mirrors h (the single-level plumbing reads it)
+                floor: 'terrazzo', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'concrete',
+                pipes: true,                  // conduits across the ceiling (procedural)
+                light: { x: 0.1, z: -0.55 },  // the one fluorescent (procedural strip + the kit fixture)
+                plate: { x: 1.65, z: -2.3, y: 2.5 },   // the room plate over the desk (CSS2D)
+            },
+            doors: [
+                { id: 'egress', wall: 'w', z: -0.5, leaf: 'leaf_closet_warped', rankDoor: true,
+                  label: 'CENTRAL EGRESS', sub: 'OPERATIONS RING · THE WAY BACK',
+                  action: { room: 'central_egress', at: 'office' },
+                  desc: 'Your door. It is the only thing in this room that is issued by rank.' },
+            ],
+            counters: [
+                { id: 'intray', x: 1.65, z: -1.55, label: 'IN-TRAY', sub: 'CASE FILE · YOUR DESK', action: { overlay: 'intray' }, radius: 1.5, verb: 'READ' },
+            ],
+            props: [
+                /* the north wall, left to right: hooks + tools, the sink under its shelves, the breaker panel, the desk, the vent */
+                { key: 'hook_rail',     wall: 'n', x: -2.15 },
+                { key: 'broom',         x: -2.05, z: -2.12, face: 0 },
+                { key: 'mop',           x: -1.75, z: -2.12, face: 0 },
+                { key: 'sink',          wall: 'n', x: -1.15 },
+                { key: 'wall_shelf',    wall: 'n', x: -1.15, mount: 1.55 },
+                { key: 'wall_shelf',    wall: 'n', x: -1.15, mount: 2.0 },
+                { key: 'breaker_panel', wall: 'n', x: 0.1 },
+                { key: 'tanker_desk',   wall: 'n', x: 1.65 },
+                { key: 'clipboard',     wall: 'n', x: 1.35, mount: 1.5, rot: 3 },
+                { key: 'clipboard',     wall: 'n', x: 1.7,  mount: 1.58, rot: -4 },
+                { key: 'vent_grille',   wall: 'n', x: 2.35, mount: 2.4 },
+                /* on the desk (top at 0.76 m): the beige CRT, the phone, the lamp, paperwork */
+                { key: 'crt_terminal',  x: 1.25, z: -1.98, y: 0.76, face: 180 },
+                { key: 'rotary_phone',  x: 1.8,  z: -1.85, y: 0.76, face: 160 },
+                { key: 'desk_lamp',     x: 2.2,  z: -2.05, y: 0.76, face: 210 },
+                { key: 'papers_a',      x: 1.55, z: -1.7,  y: 0.76, face: 15 },
+                { key: 'pen',           x: 1.95, z: -1.66, y: 0.76, face: 75 },
+                { key: 'notebook_paper',x: 2.25, z: -1.72, y: 0.76, face: -10 },
+                { key: 'folding_chair', x: 1.65, z: -1.22, face: 0 },
+                /* the east wall: the locker (toilet paper on top), the cot, a shelf with the fan */
+                { key: 'locker',        wall: 'e', z: -1.3 },
+                { key: 'toilet_paper',  x: 2.58, z: -1.3, y: 1.85, face: 270 },
+                { key: 'cot',           x: 2.28, z: 0.85, face: 90 },
+                { key: 'wall_shelf',    wall: 'e', z: 0.1, mount: 2.0 },
+                { key: 'desk_fan',      x: 2.62, z: 0.1, y: 2.0, face: 250 },
+                /* the south wall (behind you as you come in) */
+                { key: 'wall_clock',    wall: 's', x: 0.9, mount: 2.3 },
+                { key: 'fire_extinguisher', wall: 's', x: -0.6 },
+                { key: 'cardboard_boxes', x: 0.3, z: 1.9, face: -15 },
+                { key: 'cardboard_box', x: -1.5, z: 1.95, face: 25 },
+                /* the west wall beside the door: the cleaning shelves */
+                { key: 'metal_shelving', wall: 'w', z: 1.65 },
+                { key: 'wet_floor_sign', x: -1.7, z: 1.15, face: 140 },
+                /* the floor: the bucket by the sink, the drain, the rug */
+                { key: 'mop_bucket',    x: -1.45, z: -1.5, face: 20 },
+                { key: 'floor_drain',   x: -0.35, z: 0.35 },
+                { key: 'rug_round',     x: 0.85, z: 0.55, face: 30 },
+                /* the ceiling */
+                { key: 'fluorescent',   x: 0.1, z: -0.55, ceil: true, face: 90 },
+            ],
+            agents: [],
+            npcSpots: [],
+            lines: [],
+            spawn: { x: -1.55, z: -0.5, face: 90 },
         },
     },
 };

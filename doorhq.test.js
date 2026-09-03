@@ -44,7 +44,9 @@ test('every texture the shell names exists in the texture table', () => {
 test('every catalogue entry names a .glb and exactly one target size (leaves exempt)', () => {
     const problems = [];
     for (const [k, c] of Object.entries(HQ.catalogue)) {
-        if (!c.file || !/\.glb$/.test(c.file)) problems.push(k + ': no .glb file');
+        /* procedural entries (plan 2.7) name a builder instead of a file */
+        if (c.proc) { if (typeof c.proc !== 'string' || c.file) problems.push(k + ': proc entries name a builder and no file'); }
+        else if (!c.file || !/\.glb$/.test(c.file)) problems.push(k + ': no .glb file');
         if (/[\/\\]/.test(c.file || '')) problems.push(k + ': file must be a bare filename');
         if (c.leaf) continue;
         const sizes = ['h', 'span'].filter(s => typeof c[s] === 'number');
@@ -379,4 +381,94 @@ test('every launch map has a threshold leaf and doorSiteState reads a threshold 
     assert.strictEqual(D.hqBayRoom('nope'), null);
     /* every egress bay door's sector has a room the panel can walk into */
     for (const d of ROOM.doors.filter(d => d.action && d.action.sector)) assert.ok(HQ.rooms[D.hqBayId(d.action.sector)], d.id + ' has no bay room');
+});
+
+/* ── Phase 2.7 (2026-09-03): the janitor's closet — the first `kind: box` room ── */
+
+const OFFICE = HQ.rooms.office;
+const BOX_ROOMS = Object.entries(HQ.rooms).filter(([, r]) => r && r.kind === 'box');
+const WALLS = ['n', 'e', 's', 'w'];
+/* the extent along a wall (x on n/s, z on e/w) and the wall's half-length */
+const alongOf = (S, wall, p) => (wall === 'e' || wall === 'w') ? { v: p.z, half: S.d / 2 } : { v: p.x, half: S.w / 2 };
+
+test('the office is a box room off the egress: the way out lands at the egress office door and back', () => {
+    assert.ok(OFFICE && OFFICE.kind === 'box', 'rooms.office kind box');
+    const S = OFFICE.shell;
+    assert.ok(S.w > 3 && S.d > 3 && S.h > 2.4 && S.wallH === S.h && S.dadoH > 0, 'shell numbers');
+    for (const n of [S.floor, S.wall, S.dado, S.trim, S.ceiling]) assert.ok(HQ.textures[n], 'texture ' + n);
+    const egressDoor = ROOM.doors.find(d => d.id === 'office');
+    assert.ok(egressDoor && egressDoor.action.room === 'office' && egressDoor.action.at === 'egress' && egressDoor.rankDoor, 'the egress office door walks into the office at its way out');
+    const out = OFFICE.doors.find(d => d.id === 'egress');
+    assert.ok(out && out.action.room === 'central_egress' && out.action.at === 'office', 'the way out lands at the egress office door');
+    assert.ok(out.rankDoor && out.leaf === egressDoor.leaf, 'the same rank door from both sides');
+    /* every clearance level issues a leaf the door can wear */
+    for (const r of D.DOOR_TEXT.CLEARANCE) assert.ok(HQ.catalogue[r.door] && HQ.catalogue[r.door].leaf, 'rank leaf ' + r.door);
+    assert.strictEqual(D.doorSiteState(out, null), 'open');
+    assert.strictEqual(D.doorSiteState(egressDoor, null), 'open');
+});
+
+test('box-room doors hang on a named wall with a panel that fits, one action each, unique ids', () => {
+    const problems = [];
+    for (const [k, room] of BOX_ROOMS) {
+        const S = room.shell, ids = new Set();
+        for (const d of room.doors) {
+            if (ids.has(d.id)) problems.push(k + ': duplicate door id ' + d.id);
+            ids.add(d.id);
+            if (!WALLS.includes(d.wall)) { problems.push(k + ': door ' + d.id + ' names no wall'); continue; }
+            const a = alongOf(S, d.wall, d);
+            const wide = !!d.wide || (d.rankDoor && D.DOOR_TEXT.CLEARANCE.some(r => HQ.catalogue[r.door] && HQ.catalogue[r.door].wide));
+            const halfPanel = (wide ? 3.3 : 2.5) / 2;
+            if (typeof a.v !== 'number' || Math.abs(a.v) + halfPanel > a.half) problems.push(k + ': door ' + d.id + ' panel runs off the wall');
+            const keys = Object.keys(d.action || {}).filter(x => ['fn', 'sector', 'room', 'overlay', 'mission'].includes(x));
+            if (keys.length !== 1) problems.push(k + ': door ' + d.id + ' action');
+            if (d.action && d.action.room && !HQ.rooms[d.action.room]) problems.push(k + ': door ' + d.id + ' leads to no room');
+            if (d.leaf && !(HQ.catalogue[d.leaf] && HQ.catalogue[d.leaf].leaf)) problems.push(k + ': door ' + d.id + ' leaf ' + d.leaf);
+        }
+        for (const c of room.counters || []) { if (ids.has(c.id)) problems.push(k + ': counter id collides ' + c.id); ids.add(c.id); }
+    }
+    assert.deepStrictEqual(problems, []);
+});
+
+test('box-room props resolve (kit or procedural), sit inside the walls, wall props name a wall, mounts clear the ceiling', () => {
+    const problems = [];
+    for (const [k, room] of BOX_ROOMS) {
+        const S = room.shell;
+        for (const p of room.props) {
+            const c = HQ.catalogue[p.key];
+            if (!c) { problems.push(k + ': prop ' + p.key + ' not in catalogue'); continue; }
+            if (!c.file && !c.proc) problems.push(k + ': prop ' + p.key + ' has neither file nor proc');
+            const onWall = typeof p.wall === 'string';
+            if (onWall) {
+                if (!WALLS.includes(p.wall)) { problems.push(k + ': prop ' + p.key + ' wall ' + p.wall); continue; }
+                const a = alongOf(S, p.wall, p);
+                if (typeof a.v !== 'number' || Math.abs(a.v) > a.half - 0.15) problems.push(k + ': wall prop ' + p.key + ' runs off wall ' + p.wall);
+            } else {
+                if (typeof p.x !== 'number' || typeof p.z !== 'number') problems.push(k + ': prop ' + p.key + ' has no x/z');
+                else if (Math.abs(p.x) > S.w / 2 - 0.1 || Math.abs(p.z) > S.d / 2 - 0.1) problems.push(k + ': prop ' + p.key + ' @' + p.x + ',' + p.z + ' is in a wall');
+                if ((c.wall) && !onWall && p.y == null) { /* a wall-kit prop used free-standing is allowed (shelving, desks) */ }
+            }
+            const mount = (p.mount != null) ? p.mount : (c.mount || 0);
+            if (mount + (c.h || 0) > S.h - 0.05) problems.push(k + ': prop ' + p.key + ' mounts through the ceiling');
+            if ((p.y || 0) > S.h - 0.1) problems.push(k + ': prop ' + p.key + ' sits above the ceiling');
+            if ((c.ceil || p.ceil) && !(c.span || p.span || c.h)) problems.push(k + ': ceiling prop ' + p.key + ' has no size');
+            if (c.proc && c.wall && onWall && !(c.depth > 0)) problems.push(k + ': proc wall prop ' + p.key + ' needs a depth');
+        }
+        const sp = room.spawn;
+        if (!(sp && typeof sp.x === 'number' && typeof sp.z === 'number' && Math.abs(sp.x) < S.w / 2 - 0.6 && Math.abs(sp.z) < S.d / 2 - 0.6)) problems.push(k + ': spawn outside the room');
+        for (const c of room.counters || []) {
+            if (!(typeof c.x === 'number' && typeof c.z === 'number' && Math.abs(c.x) < S.w / 2 && Math.abs(c.z) < S.d / 2)) problems.push(k + ': counter ' + c.id + ' outside');
+            if (!(c.radius > 0)) problems.push(k + ': counter ' + c.id + ' has no reach');
+        }
+        for (const a of room.agents || []) if (!(typeof a.x === 'number' && typeof a.z === 'number')) problems.push(k + ': agent needs x/z');
+        assert.ok(room.props.some(p => p.key === 'fluorescent' && (p.ceil || HQ.catalogue.fluorescent.ceil)), k + ': lit by a fluorescent');
+    }
+    assert.deepStrictEqual(problems, []);
+    /* the closet reference (janitor_closet_v1): cot, sink, mop bucket, breaker panel, rug, drain, CRT, phone, desk, locker, chair */
+    for (const key of ['cot', 'sink', 'mop_bucket', 'breaker_panel', 'rug_round', 'floor_drain', 'crt_terminal', 'rotary_phone', 'tanker_desk', 'locker', 'folding_chair', 'desk_lamp']) {
+        assert.ok(OFFICE.props.some(p => p.key === key), 'the closet has its ' + key);
+    }
+    const tray = OFFICE.counters.find(c => c.id === 'intray');
+    assert.ok(tray && tray.action.overlay === 'intray', 'the in-tray is on the desk');
+    const desk = OFFICE.props.find(p => p.key === 'tanker_desk');
+    assert.ok(Math.hypot((desk.x || 0) - tray.x, -OFFICE.shell.d / 2 - tray.z) < tray.radius + 1, 'the in-tray sits within reach of the desk');
 });
