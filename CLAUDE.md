@@ -108,6 +108,21 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
 - Before delivering, ask: "what does PLAYER 2 (guest) see when this fires?"
   If the answer is "nothing" and it's player-facing, it's not done.
 
+## DOOR docs (story + headquarters) — read before ANY DOOR / story / hub work
+- `DOOR_MASTER.md` — the single DOOR file: Part A canon (world, factions,
+  ranks L1–L6, departments → rooms, arena objectives ↔ engine), Part B
+  integration layer (what's shipped where), Part C reconciliation decisions
+  (some awaiting the user's yes/no), Part D build log. APPEND to Part D on
+  every DOOR session. `DOOR_DESIGN.md` and `entropy_wars_claude_brief.md`
+  are stubs — don't resurrect them.
+- `DOOR_HQ_BUILD_PLAN.md` — the phased plan for the headquarters hub that
+  replaces the Play menu (pre-rendered rooms + DOM hotspots first; the MD
+  Guild Hub free-roam tech is the later walkable path). Has the file
+  placement per RULE #1, the room-graph data shape, the door-state rules,
+  and the reference-art protocol (`docs/door-hq/ref/` in the repo —
+  Claude can view images committed there; production backgrounds go to R2
+  `Assets/door/hq/`). Append to its §9 build log when you touch the HQ.
+
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /
 dev-sim — they can do that themselves) and report pain points: unresponsive
