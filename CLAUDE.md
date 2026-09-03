@@ -122,6 +122,11 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   and the reference-art protocol (`docs/door-hq/ref/` in the repo —
   Claude can view images committed there; production backgrounds go to R2
   `Assets/door/hq/`). Append to its §9 build log when you touch the HQ.
+- The HQ itself SHIPPED 2026-09-03 as an isolated build (three-renderer.js
+  `ThreeRenderer.hq`, data.js `DOOR_HQ`, map.js `_hqEnter`): reach it with
+  `index.html?hq` or `window._hqEnter()`; kit assets live on R2 under
+  `Assets/door/models/` + `Assets/door/textures/`; reference art is in the
+  repo at `door_reference_images/`. `npm test` runs `door-hq.test.js`.
 
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /

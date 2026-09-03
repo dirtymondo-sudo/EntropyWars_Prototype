@@ -60,6 +60,7 @@
                 try { if (typeof window._refreshWallets === 'function') window._refreshWallets(); } catch {}
                 try { if (typeof window._ensureDevPanel === 'function') window._ensureDevPanel(); } catch {}
                 try { if (typeof window._maybeShowOnboarding === 'function') window._maybeShowOnboarding(); } catch {}
+                try { if (typeof window._hqDevPillRefresh === 'function') window._hqDevPillRefresh(); } catch {}
             }
 
             if (pageId === 'modePage') {
@@ -68,7 +69,7 @@
 
             const bgCanvas = document.getElementById('menuBgCanvas');
             if (bgCanvas) {
-                const show = pageId !== 'titlePage';
+                const show = pageId !== 'titlePage' && pageId !== 'hqPage';
                 bgCanvas.style.display = show ? '' : 'none';
                 if (typeof window._menuBgSetActive === 'function') window._menuBgSetActive(show);
             }
@@ -115,6 +116,259 @@
             playSfx('uiButtonConfirm');
             state.gameState = GS.MAIN_MENU;
             _showTitlePage('mainMenuPage');
+        };
+
+        /* ══════════════════════════════════════════════════════════════════
+           D.O.O.R. HEADQUARTERS — flow + DOM (DOOR_HQ_BUILD_PLAN.md §3.4)
+           The building itself is ThreeRenderer.hq (three-renderer.js); this
+           layer is what a door / counter DOES: the prompt, the door panel,
+           the building directory, the dispatch (BELL) overlay, and the way
+           back to the menu. ISOLATED for now — reached via ?hq in the URL,
+           window._hqEnter() from the console, or the main-menu dev pill
+           (?hqdev once → localStorage ew_hqdev=1). Play is untouched until
+           Phase 1.3 wires _hqReturnOrMenu + the mission launcher.
+           ══════════════════════════════════════════════════════════════════ */
+        let _hqPanelTarget = null;
+        let _hqEnteredAt = 0;
+        const _HQ_FN_LABELS = {
+            _goToShop: 'SHOP', _goToTeamBuilder: 'PARTY BUILDER', _goToCodex: 'CODEX',
+            _mountReactProfile: 'PROFILE · ID CARD', _goToCampaign: 'CHALLENGE', _goToMysteryDungeon: 'MYSTERY DUNGEON',
+            _goToMapEditor: 'MAP EDITOR', _mountLeaderboard: 'LEADERBOARD', _mountCommunityMaps: 'COMMUNITY MAPS',
+            _ewReplayLastMatch: 'REPLAY', _goToQuickPlay: 'QUICK PLAY', _goToFriendlyMatch: 'FRIENDLY MATCH',
+        };
+        function _hqEl(id) { return document.getElementById(id); }
+        function _hqProfile() { try { return (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) || null; } catch (e) { return null; } }
+        function _hqEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+        function _hqRoom() { return (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ.rooms.central_egress : null; }
+        /* HQ plan D13: walk as your most-played vessel (the ID-card photo)
+           when it has a rigged model, else as a D.O.O.R. agent in black.
+           window.EW_HQ_AVATAR = 'race' | {race, gender} overrides. */
+        function _hqAvatar(profile) {
+            const ov = window.EW_HQ_AVATAR;
+            if (typeof ov === 'string') return { race: ov };
+            if (ov && ov.race) return ov;
+            try {
+                if (typeof getRace3DModel === 'function' && profile && profile.raceStats) {
+                    let best = null, bestN = 0;
+                    for (const [race, rs] of Object.entries(profile.raceStats)) {
+                        const n = (rs && rs.played) || 0;
+                        if (n > bestN && (getRace3DModel(race, 'male') || getRace3DModel(race, 'female'))) { best = race; bestN = n; }
+                    }
+                    if (best) return { race: best, gender: getRace3DModel(best, 'male') ? 'male' : 'female' };
+                }
+            } catch (e) {}
+            return { race: 'men in black', gender: 'male' };
+        }
+        function _hqFillStrip(profile) {
+            try {
+                const off = _hqEl('hqOfficer');
+                if (off) {
+                    const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(profile) : { level: 1, title: 'DOORMAT' };
+                    const name = (profile && profile.username) || 'UNFILED';
+                    off.innerHTML = `<b>${_hqEsc(name)}</b><span>CLEARANCE L${cl.level} · ${_hqEsc(cl.title)}</span>`;
+                }
+                const w = _hqEl('hqWallet');
+                if (w) {
+                    const gold = (profile && profile.account && profile.account.gold) || 0;
+                    w.textContent = '💰 ' + gold.toLocaleString() + ' Hazard Pay';
+                }
+                const room = _hqRoom();
+                const rn = _hqEl('hqRoomName');
+                if (rn && room) rn.textContent = room.label + ' · ' + room.sub;
+            } catch (e) {}
+        }
+        window._hqEnter = function (opts) {
+            opts = opts || {};
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || typeof DOOR_HQ === 'undefined') {
+                console.warn('[HQ] ThreeRenderer.hq or DOOR_HQ missing');
+                return false;
+            }
+            const host = _hqEl('hqStage');
+            if (!host) return false;
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.55 }); } catch (e) {}
+            const profile = _hqProfile();
+            state.gameState = GS.HQ;
+            state.titleScreenVisible = true;
+            _hqFillStrip(profile);
+            window._hqClosePanel();
+            _hqSetPrompt(null);
+            const load = _hqEl('hqLoad');
+            if (load) { load.style.display = ''; load.classList.remove('done'); }
+            const debug = /[?&]hqdebug\b/.test(location.search) || !!window.EW_HQ_DEBUG;
+            const dbg = _hqEl('hqDebug');
+            if (dbg) dbg.style.display = debug ? '' : 'none';
+            const hints = _hqEl('hqHints');
+            if (hints) hints.classList.remove('fp');
+            _hqEnteredAt = performance.now();
+            _showTitlePage('hqPage');
+            const ok = ThreeRenderer.hq.enter({
+                host, room: 'central_egress', profile, avatar: _hqAvatar(profile),
+                onPrompt: _hqSetPrompt,
+                onInteract: _hqOpenPanel,
+                onEscape: () => { if (_hqPanelTarget) window._hqClosePanel(); else window._hqExitToMenu(); },
+                onReady: () => {
+                    const wait = Math.max(0, 900 - (performance.now() - _hqEnteredAt));
+                    setTimeout(() => {
+                        const l = _hqEl('hqLoad');
+                        if (l) { l.classList.add('done'); setTimeout(() => { l.style.display = 'none'; }, 650); }
+                    }, wait);
+                },
+                onView: (fp) => { const h = _hqEl('hqHints'); if (h) h.classList.toggle('fp', !!fp); },
+                onDebug: debug ? (d) => { if (dbg) dbg.textContent = `deg ${d.deg} · r ${d.r} · y ${d.y} · L${d.level} · x ${d.x} z ${d.z}${d.fp ? ' · FP' : ''}`; } : null,
+            });
+            if (!ok) { window._hqExitToMenu(); return false; }
+            return true;
+        };
+        window._hqLeave = function () {
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) ThreeRenderer.hq.leave(); } catch (e) { console.error('[HQ] leave failed', e); }
+            window._hqClosePanel();
+            _hqSetPrompt(null);
+        };
+        window._hqExitToMenu = function () {
+            window._hqLeave();
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            state.gameState = GS.MAIN_MENU;
+            _showTitlePage('mainMenuPage');
+        };
+        function _hqSetPrompt(t) {
+            const el = _hqEl('hqPrompt');
+            if (!el) return;
+            if (!t || _hqPanelTarget) { el.style.display = 'none'; el.innerHTML = ''; return; }
+            const verb = t.kind === 'door' ? 'ENTER' : (t.kind === 'counter' ? 'USE' : 'TALK');
+            el.innerHTML = `<b>▸ ${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span><i>[E] ${verb}</i>`;
+            el.style.display = '';
+        }
+        function _hqStateChip(st) {
+            const label = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq) ? ThreeRenderer.hq.stateLabel(st) : st;
+            return `<i class="hq-lamp-chip st-${_hqEsc(st)}">${_hqEsc(label)}</i>`;
+        }
+        function _hqMapLabel(id) { try { const m = EW_MAP_META.find(x => x.id === id); return m ? m.label : id; } catch (e) { return id; } }
+        function _hqDoorPanelHtml(t) {
+            const d = t.door, profile = _hqProfile();
+            const st = (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, profile) : 'open';
+            const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(profile) : { level: 1, title: 'DOORMAT' };
+            let html = `<div class="hq-panel-hd"><b>${_hqEsc(d.label)}</b><span>${_hqEsc(d.sub || '')}</span>${_hqStateChip(st)}</div>`;
+            const act = d.action || {};
+            if (act.sector) {
+                const sec = DOOR_HQ.sectors[act.sector] || { label: act.sector, maps: [] };
+                html += `<p class="hq-panel-desc">Sector ${_hqEsc(sec.label)} · ${_hqEsc(sec.sub || '')}. ${sec.maps.length} threshold${sec.maps.length === 1 ? '' : 's'} on file. Green when every threshold in the bay is stabilized (won by every win condition).</p>`;
+                html += '<div class="hq-rows">';
+                sec.maps.forEach(id => {
+                    const sf = (typeof window.doorSiteFile === 'function') ? window.doorSiteFile(id) : null;
+                    const mastered = (typeof window.hqMapMastered === 'function') && window.hqMapMastered(id, profile);
+                    html += `<div class="hq-row"><b>${_hqEsc(_hqMapLabel(id))}</b><span class="hq-row-stamp tone-${_hqEsc((sf && sf.tone) || 'deny')}">${_hqEsc((sf && sf.status) || 'ON FILE')}</span><i class="hq-lamp-chip st-${mastered ? 'stabilized' : 'unstable'}">${mastered ? 'STABILIZED' : 'UNSTABLE'}</i></div>`;
+                });
+                html += '</div>';
+                if (st === 'sealed') html += '<p class="hq-panel-note">SEALED — this bay opens with a story chapter. The planks stay up.</p>';
+                html += '<div class="hq-panel-actions"><button class="hq-btn" disabled>CROSS ▸ 4v4 Δ BOARD</button><button class="hq-btn" disabled>DEEP CROSSING</button></div>';
+                html += '<p class="hq-panel-note">Crossing from a door lands in Phase 1.3 (the pre-selected match setup). Look, don’t touch.</p>';
+            } else {
+                if (d.desc) html += `<p class="hq-panel-desc">${_hqEsc(d.desc)}</p>`;
+                const locked = st === 'clearance';
+                html += '<div class="hq-panel-actions">';
+                if (act.fn) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-fn="${_hqEsc(act.fn)}">ENTER ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button>`;
+                else if (act.room) html += `<button class="hq-btn hq-btn-primary" disabled>${locked ? 'CLEARANCE L' + d.minClearance + ' REQUIRED' : 'INTERIOR NOT YET BUILT'}</button>`;
+                [d.alt, d.alt2].forEach(a => { if (a && a.fn) html += `<button class="hq-btn" ${locked ? 'disabled' : ''} data-fn="${_hqEsc(a.fn)}">${_hqEsc(a.label)}</button>`; });
+                html += '</div>';
+                if (locked) html += `<p class="hq-panel-note">CLEARANCE L${d.minClearance} required. Your card reads L${cl.level} · ${_hqEsc(cl.title)}.</p>`;
+                if (d.rankDoor) html += '<p class="hq-panel-note">Your office door is your rank. A promotion replaces it (DOORMAT → DOORSTOP → KNOCKER → KEYHOLDER → GATEKEEPER → THE DOORMAN).</p>';
+                if (act.room && !locked) html += `<p class="hq-panel-note">The interior behind this door (${_hqEsc(act.room)}) arrives in a later phase.</p>`;
+            }
+            return html;
+        }
+        function _hqDirectoryHtml() {
+            const room = _hqRoom(), profile = _hqProfile();
+            let html = '<div class="hq-panel-hd"><b>BUILDING DIRECTORY</b><span>CENTRAL EGRESS · YOU ARE HERE · LAYOUT SUBJECT TO REVISION</span></div><div class="hq-rows">';
+            const rows = [];
+            (room.doors || []).forEach(d => rows.push({ id: d.id, label: d.label, sub: (d.level ? 'MEZZANINE · ' : 'FLOOR · ') + (d.sub || ''), st: (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, profile) : 'open' }));
+            (room.counters || []).forEach(c => rows.push({ id: c.id, label: c.label, sub: (c.level ? 'MEZZANINE · ' : 'FLOOR · ') + (c.sub || ''), st: 'open' }));
+            rows.forEach(r => {
+                html += `<div class="hq-row"><b>${_hqEsc(r.label)}</b><span>${_hqEsc(r.sub)}</span>${_hqStateChip(r.st)}<button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(r.id)}">WALK</button></div>`;
+            });
+            html += '</div><p class="hq-panel-note">WALK moves you to the door. The building stays consistent long enough to be memorised.</p>';
+            return html;
+        }
+        function _hqDispatchHtml() {
+            let online = '';
+            try { const n = _hqEl('mmOnlineNum'); if (n && n.textContent) online = `<p class="hq-panel-note">${_hqEsc(n.textContent)} officer(s) on the BELL network.</p>`; } catch (e) {}
+            return '<div class="hq-panel-hd"><b>DISPATCH</b><span>BELL CONSOLE · BOUNDARY EVENT LOCATION AND LOGGING</span></div>'
+                + '<p class="hq-panel-desc">The agent slides a form across the counter without looking up. “Filing jurisdiction claim. Two field offices, one crossing. Settle it in the field.”</p>'
+                + '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="_goToQuickPlay">ANSWER A BELL CALL ▸ QUICK PLAY</button><button class="hq-btn" data-fn="_goToFriendlyMatch">CALL A COLLEAGUE ▸ FRIENDLY MATCH</button></div>'
+                + online;
+        }
+        function _hqCounterPanelHtml(t) {
+            const c = t.counter || {};
+            const act = c.action || {};
+            if (act.overlay === 'dispatch') return _hqDispatchHtml();
+            if (act.overlay === 'directory') return _hqDirectoryHtml();
+            let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
+            if (c.id === 'board') html += '<p class="hq-panel-desc">Six laminated photographs. The frame in the corner has been empty since 1987. Nobody comments on it.</p>';
+            if (act.fn) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="${_hqEsc(act.fn)}">READ THE BOARD ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button></div>`;
+            return html;
+        }
+        function _hqNpcPanelHtml(t) {
+            const room = _hqRoom();
+            let line = t.line;
+            if (!line && room && room.lines && room.lines.length) line = room.lines[Math.floor(Math.random() * room.lines.length)];
+            return `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div><p class="hq-panel-line">${_hqEsc(line || '…')}</p><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>`;
+        }
+        function _hqOpenPanel(t) {
+            if (!t) return;
+            const panel = _hqEl('hqPanel'), body = _hqEl('hqPanelBody');
+            if (!panel || !body) return;
+            _hqPanelTarget = t;
+            let html = '';
+            if (t.kind === 'door') html = _hqDoorPanelHtml(t);
+            else if (t.kind === 'counter') html = _hqCounterPanelHtml(t);
+            else html = _hqNpcPanelHtml(t);
+            body.innerHTML = html + '<p class="hq-panel-foot">ESC · CLOSE</p>';
+            panel.style.display = '';
+            _hqSetPrompt(null);
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq) ThreeRenderer.hq.setPaused(true); } catch (e) {}
+        }
+        window._hqClosePanel = function () {
+            const panel = _hqEl('hqPanel');
+            if (panel) panel.style.display = 'none';
+            _hqPanelTarget = null;
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) { ThreeRenderer.hq.setPaused(false); _hqSetPrompt(ThreeRenderer.hq.target()); } } catch (e) {}
+        };
+        /* Leave the building, land on the main menu, then run the screen's
+           own entry point (page screens switch title pages themselves;
+           modal screens open over the menu). Phase 1.3 replaces the menu
+           landing with _hqReturnOrMenu. */
+        window._hqDoAction = function (act) {
+            if (!act || !act.fn || typeof window[act.fn] !== 'function') return;
+            window._hqLeave();
+            state.gameState = GS.MAIN_MENU;
+            _showTitlePage('mainMenuPage');
+            setTimeout(() => { try { window[act.fn](); } catch (e) { console.error('[HQ] action failed', act.fn, e); } }, 40);
+        };
+        document.addEventListener('click', (e) => {
+            const body = _hqEl('hqPanelBody');
+            if (!body || !body.contains(e.target)) return;
+            const fnBtn = e.target.closest('[data-fn]');
+            if (fnBtn && !fnBtn.disabled) { window._hqDoAction({ fn: fnBtn.getAttribute('data-fn') }); return; }
+            const go = e.target.closest('[data-goto]');
+            if (go) {
+                const id = go.getAttribute('data-goto');
+                window._hqClosePanel();
+                try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq) ThreeRenderer.hq.goTo(id); } catch (err) {}
+                return;
+            }
+            if (e.target.closest('[data-close]')) window._hqClosePanel();
+        });
+        /* the main-menu dev pill (isolated entry): ?hqdev or ?hq once → sticky */
+        window._hqDevPillRefresh = function () {
+            const p = _hqEl('hqDevPill');
+            if (!p) return;
+            let on = false;
+            try {
+                if (/[?&]hq(dev)?\b/.test(location.search)) localStorage.setItem('ew_hqdev', '1');
+                on = localStorage.getItem('ew_hqdev') === '1' || !!window.EW_HQ_DEV;
+            } catch (e) {}
+            p.style.display = on ? '' : 'none';
         };
 
         window._goToQuickPlay = function() {

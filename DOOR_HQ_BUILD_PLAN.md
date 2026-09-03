@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 2 (2026-09-03)
+### The walkable facility that replaces the Play menu · rev 3 (2026-09-03 — Phase 1.1/1.2 built in isolation, §5.5 + §9)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -516,6 +516,43 @@ occasional doorbell), DOOR muzak loop for the dispatch queue.
 
 ---
 
+### 5.5 Inventory as uploaded (2026-09-03) — what the kit actually contains
+The user uploaded to R2 **`Assets/door/textures/`** and **`Assets/door/models/`**
+(NOT the `Assets/hq/…` paths §5.2 asked for — the data now points at the real
+paths; filenames are Meshy's own, kept verbatim in `DOOR_HQ.catalogue`, URL-
+encoded at load because one contains a `°`). Against the §5.3 list:
+- **A. Tileables — all 8** (`aged_acoustic_ceiling_panel`, `aged_beige_office_
+  drywall`, `aged_cracked_concrete`, `aged_oxblood_plaster_wall`,
+  `aged_teal_metal_trim`, `mid_century_terrazzo_floor`,
+  `muted_taupe_office_carpet`, `seamless_speckled_hallway_stone`).
+- **B. Hero props** — globe lamp ✓, round table ✓ (`A_round_office_desk`),
+  teal / office / folding chairs ✓, coffee table + oval conference table +
+  two curved couches (bonus). **No `hq_cube`** → the cube is procedural (a
+  black box with a canvas-drawn square-spiral emissive glyph on a rod).
+  **Desk wedges ×3** (`one_45°_wedge_of_a_reception_desk`, two
+  `wedge_of_a_round_office_desk`) are in the catalogue but NOT assembled:
+  a wedge's ring offset can't be derived without its real dimensions (the
+  sandbox can't fetch R2), so the dispatch desk is procedural
+  (`desk.mode: 'procedural'`; `'wedges'` is reserved).
+- **C. Door leaves — 18**: the six office doors (warped closet, hollow
+  core, wired double, security, frosted, futuristic = L1–L6, wired to
+  `DOOR_TEXT.CLEARANCE[i].door`), plus exit, office, shabby wood, suburban
+  ×2, vault, portcullis, revolving, bulkhead, plain closet ×2, bare frame.
+  No elevator leaf → procedural brushed pair with an X brace.
+- **D. Dressing** — filing cabinet, round cabinet, lockers ×2, boxes ×2,
+  CRT terminal, tube TV, desk lamp, table lamp, wall clock, extinguisher,
+  vending machine, water cooler, plants ×2, wet-floor sign, fluorescent
+  fixture, breaker panel, pipe run, 1 m railing (unused — railings are
+  procedural), blank nameplate, desk fan, papers/pens/keys. No vent grille,
+  bench, newel.
+- **E. Closet kit** — cot, sink, mop, mop bucket, lockers, breaker, two
+  round rugs ✓ (interior itself is Phase 2.7).
+- **F. Training room** — round observation window only.
+- **G. Characters** — none yet; D.O.O.R. agents are the *men in black*
+  race's rigged models (black suits already), the avatar is the profile's
+  most-played rigged vessel (falls back to the male agent).
+- **H. Audio** — none; the hall is silent except `doorBuzz` on entry.
+
 ## 6. Guardrails (repeat every session)
 - RULE #1: no new game .js files (§3.1 placement). `door-hq.test.js` is
   tooling and allowed.
@@ -550,6 +587,128 @@ Guild Hub was the prototype; this plan is the building.
 - Hazard Pay wallet on the strip vs only at the Quartermaster. Rec: strip.
 
 ## 9. Build log (append per session)
+
+### 2026-09-03 — Phase 1.1 + 1.2 shipped as an ISOLATED build (Play untouched)
+User: "build/design the facility isolated before connecting it to the main
+menu buttons"; uploaded the textures + most models (§5.5) and committed the
+reference art under `door_reference_images/` (not `docs/door-hq/ref/` —
+fine, the plan's file names in §5.1 map onto them by content).
+
+**How to enter (dev only, nothing on Play changed):**
+- `index.html?hq` — skips the ident + title, lands on the egress floor.
+- `window._hqEnter()` in the console from the main menu.
+- `?hqdev` once → a purple "🚪 D.O.O.R. HQ · DEV BUILD" pill sticks to the
+  main menu (localStorage `ew_hqdev`; `localStorage.removeItem('ew_hqdev')`
+  hides it). `window._hqExitToMenu()` / ESC / the strip's EXIT leave.
+- Controls: WASD/arrows walk, SHIFT run, SPACE hop, E/Enter use, V first
+  person (click locks the mouse), drag = orbit, wheel = boom, ESC = close
+  panel / leave. Gamepad not wired yet.
+- Tuning loop: `?hq&hqdebug` prints `deg · r · y · level · x z` bottom-right.
+  Report positions like "water cooler → deg 196 r 19.6" and Claude edits
+  `DOOR_HQ`; the §3.9 in-game editor is still to do.
+- Console switches: `EW_HQ_FLIP_LEAVES=true` (every leaf 180° — use this if
+  doors show their backs), `EW_HQ_NO_PROPS` (shell only), `EW_HQ_NO_POST`
+  (bypass the retro/bloom stack), `EW_HQ_AVATAR='race'|{race,gender}`,
+  `EW_HQ_DEBUG`, `EW_HQ_DEV`. All read at `_hqEnter` time except the first.
+
+**Files (RULE #1 placement, all existing):**
+- `data.js` — `DOOR_HQ` (units, R2 asset roots, the 8 textures, a 70-entry
+  catalogue with target sizes in metres + collision radii + wall/mount/glow
+  flags, the six sectors, `masteryConditions`, the `central_egress` room:
+  shell numbers, procedural desk, 2 stairs, 15 doors, 3 counters, ~75 props,
+  3 agents, 5 npc spots, 6 overheard lines, spawn) + helpers `hqPolar`,
+  `hqSectorOfMap`, `hqMapMastered`, `doorSiteState`. C-1 rank strings
+  landed (DOORMAT…THE DOORMAN) with a `door` leaf key per rank.
+- `three-renderer.js` — the HQ module (search `D.O.O.R. HEADQUARTERS`),
+  exported as `ThreeRenderer.hq = {enter, leave, active, setPaused,
+  interact, toggleView, isFirstPerson, refreshLamps, goTo, target, pos,
+  stateLabel}`. Own `THREE.Scene` + camera + `setAnimationLoop` on the
+  shared renderer; the canvas + CSS2D overlay are re-parented into
+  `#hqStage` for the visit. Procedural: floor + inlaid bands + 8 spokes,
+  lower drum (wall/dado/three trims), mezzanine slab (top/underside/fascia)
+  + instanced posts + torus rail arcs with gaps at the landings, upper
+  drum, ceiling cone + lid + 24 instanced light strips with glow sprites,
+  the cube (canvas glyph emissive, slow yaw) on its rod, two curved stairs
+  (one InstancedMesh each, sloped inner rail, top landing sector with
+  rails), the two-ring dispatch desk with the seal decal + a point light,
+  door frames (jambs/lintel/back plate/dado/cap/teal reveal + lamp housing
+  + lens + glow), the elevator pair, the EMPLOYEE OF THE MONTH board, the
+  directory kiosk. Kit props via `_miscModelInstance` (misc-model cache),
+  materials re-wrapped as linear Lambert, sizes auto-normalised from the
+  measured bounds, wall props pushed back to touch the wall once their
+  depth is known, glow sprites for lamps/screens. Leaves fitted by height
+  and clamped to the opening width. Characters = `createUnit` +
+  `_attachUnitModel` (shared animation library retargeting) with mixers
+  ticked in the HQ loop; silhouette/outline twins hidden.
+  Walking: polar walkable query (`_hqSurface`: stairs → landings → slab →
+  floor, ±0.62 m step tolerance = the railings, prop footprints as
+  circles), axis-separated slide, camera-relative input, idle/walk/run/
+  jump clips, lean + landing bounce. Camera: third-person orbit with a
+  12-sample boom march against walls/slab/ceiling/floor and auto-follow
+  behind the runner; first-person eye with pointer lock. Lamps from
+  `doorSiteState` (amber pulse, red, green, off; strobe reserved for Code
+  Red). CSS2D nameplates fade with distance. Interaction targets: door arc
+  (±6° within 3.4 m of the wall), counter radius, character within 1.75 m.
+- `three-post.js` — `ThreePost.renderScene(scene, cam)`: renders any scene
+  through the composer (bloom for the lenses, FXAA, grain/dither/levels
+  retro pass) with the tilt-shift DoF, night grade and unit pixel mask
+  switched off for the frame; everything restored after.
+- `map.js` — `_hqEnter/_hqLeave/_hqExitToMenu/_hqClosePanel/_hqDoAction/
+  _hqDevPillRefresh` (window.*), prompt + panel builders: room doors (ENTER
+  → the screen's own `_goTo*` / `_mount*` entry, ALT buttons for Party
+  Builder / Replay / Community Maps / Challenge / Mystery Dungeon), bay
+  doors (the sector's thresholds with site-file stamps + UNSTABLE/
+  STABILIZED chips, launch buttons DISABLED until Phase 1.3), dispatch
+  (Quick Play / Friendly), the board (Leaderboard), the directory (every
+  place + WALK teleport), agent/vessel one-liners. `_showTitlePage` hides
+  the menu-bg canvas on `hqPage` and refreshes the dev pill.
+- `index.html` — `#hqPage` (stage, strip with seal/officer chip/wallet/
+  EXIT, hints, prompt, debug, panel, loading card) + the dev pill; `?v=`
+  → `20260903a-cors`. `styles-base.css` — `.hq-*`. `state.js` — `GS.HQ`.
+  `ui.js` — `?hq` autostart after `_gameReady`. `door-hq.test.js` — 11
+  headless checks (catalogue shape, key resolution, door spacing vs stair
+  arcs, sector partition of the 29 launch maps, walkable radii, rank
+  ladder, `doorSiteState`/`hqMapMastered`). `npm test`: 89 pass.
+
+**Layout as built (metres; deg cw from north; north = the far wall from
+the spawn):** ground drum r 21, wall 4.2; mezzanine slab r 20.6→24 at 4.2;
+upper drum to 9.6; cone to 12.8; cube 3.6 m centred at 7.4 m. Desk rings
+r 2.6/5.6, 1.05 high. Stairs: E 18°→62°, W 342°→298°, treads r 19.35–20.6,
+24 steps, landings 6° past the top. Ground doors: 0 BAY 4 CELESTIAL
+(futuristic), 90 QUARTERMASTER (vault → Shop / Party Builder), 120
+RECEPTION (office → Profile), 150 YOUR OFFICE (warped closet, rank door),
+180 TRAINING FACILITY (exit door + EXIT sign; alts Challenge / Mystery
+Dungeon), 210 MEDICAL (office → Challenge), 240 RECORDS (wired double →
+Codex; alts Replay / Community Maps), 270 BAY 1 TERRESTRIAL (suburban).
+Mezzanine: 0 ELEVATOR (proc, L4), 45 BAY 2 ANCIENT (portcullis), 90
+ARCANE ENGINEERING (office → Map Editor), 150 BAY 5 DIPLOMATIC
+(revolving), 210 BAY 3 HOLLOW (bulkhead), 270 BAY 6 QUARANTINED (security,
+sealed), 315 BUREAU OF CONTINUITY (frosted, L5). Counters: DISPATCH (180°,
+r 6.9), EMPLOYEE OF THE MONTH (288°, wall), DIRECTORY (165°, r 19.6).
+Spawn 180° r 15.4 facing the desk. Agents at the desk centre, the board,
+and the ANCIENT bay.
+
+**Deviations / decisions taken:** asset paths (above); no `state._hq*`
+fields (state lives in the renderer module, so no `_serializeState` skip
+entry was needed); the model-front convention follows the unit pipeline
+(+Z toward the hall) — Meshy static exports may face the other way, hence
+`EW_HQ_FLIP_LEAVES`; prop target sizes are educated guesses per catalogue
+entry (`h`/`span` in metres) — expect a tuning pass; wall props ignore `r`
+unless given (the EXIT sign uses `r` + `mount` to sit on the lintel).
+
+**First-run checklist for the user:** (1) do leaves face the hall? (2) do
+props look the right size (globe lamp ≈ head height, CRT ≈ 40 cm)? (3) walk
+both stairs up and down, cross the mezzanine, try the railing; (4) E at
+every door / the desk / the board / the kiosk / an agent; (5) V for first
+person; (6) does the cube read? (7) FPS with the retro pass on vs
+`EW_HQ_NO_POST`. Report with `?hqdebug` positions.
+
+**Next (in order):** 1.3 Play → HQ + `_hqReturnOrMenu` at the 12 sites +
+result overlay, `_hqLaunchMission` + `_hqPreselect` in match-select (bay
+doors go live); 1.4 mastery flag write at match commit (`progress.unlocked`
+`site:<mapId>:<cond>`); 1.5 room tone + `paChime`; 2.2 wedge desk once
+the wedge dimensions are known; 2.6 bays as corridors; 2.7 the closet
+interior (kit is uploaded); §3.9 the in-game layout editor; gamepad.
 
 ### 2026-09-03 — rev 2: pivot to the walkable 3D facility from Phase 1
 User: the doors lead to maps anyway; wants to walk the building in third/

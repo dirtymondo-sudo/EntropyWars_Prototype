@@ -14935,12 +14935,14 @@ const DOOR_TEXT = {
     // Level thresholds/directives land with the story track (DOOR_DESIGN §4);
     // until then everyone is L1 and the card simply says so.
     CLEARANCE: [
-        { level: 1, title: 'PROBATIONARY' },
-        { level: 2, title: 'CLERK' },
-        { level: 3, title: 'OFFICER' },
-        { level: 4, title: 'INSPECTOR' },
-        { level: 5, title: 'AUDITOR' },
-        { level: 6, title: 'KEYHOLDER' },
+        /* DOOR_MASTER C-1 (decided 2026-09-03): the rank ladder is the door
+           you get. L1–L6 = the six office doors on the reference sheet. */
+        { level: 1, title: 'DOORMAT',     door: 'leaf_closet_warped' },
+        { level: 2, title: 'DOORSTOP',    door: 'leaf_hollow_core' },
+        { level: 3, title: 'KNOCKER',     door: 'leaf_wired_double' },
+        { level: 4, title: 'KEYHOLDER',   door: 'leaf_security' },
+        { level: 5, title: 'GATEKEEPER',  door: 'leaf_frosted' },
+        { level: 6, title: 'THE DOORMAN', door: 'leaf_futuristic' },
     ],
 
     // The one optional intake question. Cosmetic: the card's colour stripe.
@@ -15272,4 +15274,352 @@ if (typeof window !== 'undefined') {
     window.doorEmployeeNo = doorEmployeeNo;
     window.doorClearance = doorClearance;
     window.doorCanonDate = doorCanonDate;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   D.O.O.R. HEADQUARTERS — layout data (DOOR_HQ_BUILD_PLAN.md §3.2)
+   The Central Egress as a polar layout table. three-renderer.js builds the
+   procedural shell from `shell`, places the user's Meshy prop kit from
+   `props` (catalogue keys → R2 Assets/door/models/), and hangs the doors
+   from `doors`. map.js owns the flow (what a door / counter does).
+   Units: metres. `deg` = degrees CLOCKWISE from north (north = −Z, east =
+   +X). `r` = metres from the hall centre. `level` 0 = the floor, 1 = the
+   mezzanine. 1 m = DOOR_HQ.units world units (73 = BASE_TILE / 1.75).
+   Validated headlessly by door-hq.test.js (load-data.js).
+   ═══════════════════════════════════════════════════════════════════════ */
+const DOOR_HQ_ASSETS = 'https://cdn.entropywars.net/Assets/door/';
+const DOOR_HQ = {
+    units: 73,
+    assets: { models: DOOR_HQ_ASSETS + 'models/', textures: DOOR_HQ_ASSETS + 'textures/' },
+
+    /* The eight tileables the user painted (R2 Assets/door/textures/). */
+    textures: {
+        terrazzo: 'mid_century_terrazzo_floor.png',
+        stone:    'seamless_speckled_hallway_stone.png',
+        oxblood:  'aged_oxblood_plaster_wall.png',
+        teal:     'aged_teal_metal_trim.png',
+        ceiling:  'aged_acoustic_ceiling_panel.png',
+        concrete: 'aged_cracked_concrete.png',
+        drywall:  'aged_beige_office_drywall.png',
+        carpet:   'muted_taupe_office_carpet.png',
+    },
+
+    /* Every authored asset once. `file` = the exact R2 filename. Sizes are
+       TARGETS in metres: the renderer measures each GLB's real bounds at load
+       and scales it so `h` (height) — or `span` (longest horizontal extent)
+       when given — matches; Meshy exports are unit-normalised, never trust
+       their scale. `foot` = collision radius (m, 0 = walk-through).
+       `wall` = the prop stands against a wall (its back face touches the
+       wall; `deg` picks the wall, `r` is ignored). `mount` = wall-mounted at
+       that height (m). `ceil` = hangs from the ceiling at that height.
+       `glow` = an emissive glow sprite at that local height (lamp lenses).
+       `leaf: true` = a door leaf (fit to the door opening, see doors[]). */
+    catalogue: {
+        /* ── desk / terminals ── */
+        crt_terminal:      { file: 'Meshy_AI_crt_terminal_0903101952_texture.glb',                    h: 0.42, foot: 0 },
+        tube_tv:           { file: 'Meshy_AI_a_tube_tv_0903102007_texture.glb',                       h: 0.46, foot: 0 },
+        papers_a:          { file: 'Meshy_AI_a_stack_of_office_papers_0903110113_texture.glb',        h: 0.08, foot: 0 },
+        papers_b:          { file: 'Meshy_AI_a_stack_of_office_papers_0903110127_texture.glb',        h: 0.10, foot: 0 },
+        notebook_paper:    { file: 'Meshy_AI_a_stack_of_notebook_paper_0903110136_texture.glb',       h: 0.06, foot: 0 },
+        paper_sheet:       { file: 'Meshy_AI_a_piece_of_office_paper_0903105947_texture.glb',         span: 0.30, foot: 0 },
+        pencil:            { file: 'Meshy_AI_a_no_2_pencil_0903110156_texture.glb',                   span: 0.19, foot: 0 },
+        pen:               { file: 'Meshy_AI_an_office_pen_0903110146_texture.glb',                   span: 0.15, foot: 0 },
+        desk_fan:          { file: 'Meshy_AI_a_circular_desk_fan_0903105635_texture.glb',             h: 0.38, foot: 0 },
+        desk_lamp:         { file: 'Meshy_AI_an_office_desk_lamp_0903110208_texture.glb',             h: 0.45, foot: 0, glow: { y: 0.40, size: 0.9, color: 0xffd9a0 } },
+        table_lamp:        { file: 'Meshy_AI_a_lamp_0903110007_texture.glb',                          h: 0.55, foot: 0, glow: { y: 0.42, size: 1.0, color: 0xffe2b0 } },
+        house_key:         { file: 'Meshy_AI_a_house_key_0903110053_texture.glb',                     span: 0.07, foot: 0 },
+        key:               { file: 'Meshy_AI_a_key_0903110102_texture.glb',                           span: 0.08, foot: 0 },
+        car_key:           { file: 'Meshy_AI_car_key_0903110043_texture.glb',                         span: 0.08, foot: 0 },
+        /* the round desk kit — assembled into a ring only when the room's
+           `desk.mode` is 'wedges' (see central_egress.desk); the procedural
+           counter is the default until the wedge dimensions are confirmed */
+        reception_wedge:   { file: 'Meshy_AI_one_45°_wedge_of_a_reception_desk_0903105549_texture.glb', h: 1.10, foot: 0, wedge: 45 },
+        desk_wedge_a:      { file: 'Meshy_AI_wedge_of_a_round_office_desk_0903105601_texture.glb',    h: 0.76, foot: 0, wedge: 45 },
+        desk_wedge_b:      { file: 'Meshy_AI_wedge_of_a_round_office_desk_0903105612_texture.glb',    h: 0.76, foot: 0, wedge: 45 },
+        /* ── furniture ── */
+        round_desk:        { file: 'Meshy_AI_A_round_office_desk_0903092905_texture.glb',             h: 0.76, foot: 0.85 },
+        coffee_table:      { file: 'Meshy_AI_a_round_office_coffee_table_0903092838_texture.glb',     h: 0.46, foot: 0.55 },
+        conference_table:  { file: 'Meshy_AI_a_long_black_oval_conference_table_0903092858_texture.glb', span: 3.2, foot: 1.2 },
+        teal_chair:        { file: 'Meshy_AI_a_teal_office_chair_0903105124_texture.glb',             h: 0.96, foot: 0.32 },
+        office_chair:      { file: 'Meshy_AI_an_office_chair_0903105134_texture.glb',                 h: 0.96, foot: 0.32 },
+        folding_chair:     { file: 'Meshy_AI_a_folding_chair_0903105155_texture.glb',                 h: 0.84, foot: 0.28 },
+        curved_couch:      { file: 'Meshy_AI_a_curved_couch_0903105529_texture.glb',                  span: 2.6, foot: 1.0 },
+        curved_office_couch:{ file: 'Meshy_AI_a_curved_office_couch_0903105539_texture.glb',          span: 2.6, foot: 1.0 },
+        filing_cabinet:    { file: 'Meshy_AI_a_filing_cabinet_0903105233_texture.glb',                h: 1.32, foot: 0.40, wall: true },
+        round_cabinet:     { file: 'Meshy_AI_a_round_filing_cabinet_0903105248_texture.glb',          h: 1.10, foot: 0.45 },
+        office_locker:     { file: 'Meshy_AI_an_office_locker_0903110307_texture.glb',                h: 1.85, foot: 0.40, wall: true },
+        locker:            { file: 'Meshy_AI_a_locker_0903105424_texture.glb',                        h: 1.85, foot: 0.40, wall: true },
+        cardboard_box:     { file: 'Meshy_AI_a_cardboard_box_0903105957_texture.glb',                 h: 0.42, foot: 0.30 },
+        cardboard_boxes:   { file: 'Meshy_AI_cardboard_boxes_0903105142_texture.glb',                 h: 0.95, foot: 0.55 },
+        /* ── fixtures ── */
+        globe_lamp:        { file: 'Meshy_AI_a_standing_globe_lamp_0903105207_texture.glb',           h: 1.95, foot: 0.40, glow: { y: 1.70, size: 1.6, color: 0xfff1d6 } },
+        water_cooler:      { file: 'Meshy_AI_a_water_cooler_0903105259_texture.glb',                  h: 1.28, foot: 0.32, wall: true },
+        vending_machine:   { file: 'Meshy_AI_a_round_vending_machine_0903105625_texture.glb',         h: 1.85, foot: 0.55, wall: true, glow: { y: 1.2, size: 1.1, color: 0x9fd8ff } },
+        potted_plant:      { file: 'Meshy_AI_a_potted_plant_0903105322_texture.glb',                  h: 1.25, foot: 0.32 },
+        office_plant:      { file: 'Meshy_AI_an_office_plant_0903110228_texture.glb',                 h: 1.10, foot: 0.30 },
+        fire_extinguisher: { file: 'Meshy_AI_a_fire_extinguisher_0903105310_texture.glb',             h: 0.60, foot: 0, wall: true, mount: 0.95 },
+        wet_floor_sign:    { file: 'Meshy_AI_a_yellow_wet_floor_sign_0903105220_texture.glb',         h: 0.72, foot: 0.22 },
+        mop_bucket:        { file: 'Meshy_AI_a_yellow_mop_bucket_0903105455_texture.glb',             h: 0.90, foot: 0.30 },
+        mop:               { file: 'Meshy_AI_a_mop_0903105505_texture.glb',                           h: 1.45, foot: 0 },
+        wall_clock:        { file: 'Meshy_AI_a_clock_0903110243_texture.glb',                         h: 0.50, foot: 0, wall: true, mount: 3.05 },
+        exit_sign:         { file: 'Meshy_AI_an_exit_sign_0903110032_texture.glb',                    span: 0.55, foot: 0, wall: true, mount: 2.75, glow: { y: 0.1, size: 0.6, color: 0x5cff7a } },
+        fluorescent:       { file: 'Meshy_AI_a_fluorescent_fixture_0903105329_texture.glb',           span: 1.25, foot: 0, ceil: true },
+        breaker_panel:     { file: 'Meshy_AI_a_breaker_panel_0903105436_texture.glb',                 h: 0.80, foot: 0, wall: true, mount: 1.25 },
+        pipe_run:          { file: 'Meshy_AI_office_pipe_run_0903105348_texture.glb',                 span: 1.0, foot: 0 },
+        railing_1m:        { file: 'Meshy_AI_one_meter_of_railing_0903105339_texture.glb',            span: 1.0, foot: 0 },
+        nameplate:         { file: 'Meshy_AI_a_blank_office_nameplate_0903110218_texture.glb',        span: 0.40, foot: 0, wall: true, mount: 1.55 },
+        observation_window:{ file: 'Meshy_AI_a_round_observation_window_0903105519_texture.glb',      span: 1.8, foot: 0, wall: true, mount: 1.6 },
+        /* ── the janitor's closet kit (Phase 2.7) ── */
+        cot:               { file: 'Meshy_AI_a_cot_0903105358_texture.glb',                           span: 1.9, foot: 0.7 },
+        sink:              { file: 'Meshy_AI_a_sink_0903105415_texture.glb',                          h: 0.85, foot: 0.35, wall: true },
+        rug_round:         { file: 'Meshy_AI_a_round_rug_0903110327_texture.glb',                     span: 1.8, foot: 0 },
+        rug_office:        { file: 'Meshy_AI_a_round_office_rug_0903110253_texture.glb',              span: 2.0, foot: 0 },
+        /* ── door leaves (fit to the opening; `leaf` marks them) ── */
+        leaf_closet_warped:  { file: 'Meshy_AI_warped_janitor_s_closet_door_0903105738_texture.glb', leaf: true },
+        leaf_closet:         { file: 'Meshy_AI_janitor_s_closet_door_0903105643_texture.glb',        leaf: true },
+        leaf_closet_alt:     { file: 'Meshy_AI_a_janitor_s_closet_door_0903105815_texture.glb',      leaf: true },
+        leaf_hollow_core:    { file: 'Meshy_AI_cheap_hollow_core_door_0903105753_texture.glb',       leaf: true },
+        leaf_wired_double:   { file: 'Meshy_AI_institutional_wired_double_door_0903105727_texture.glb', leaf: true, wide: true },
+        leaf_security:       { file: 'Meshy_AI_security_door_0903110317_texture.glb',                leaf: true },
+        leaf_frosted:        { file: 'Meshy_AI_frosted_executive_glass_door_0903105709_texture.glb', leaf: true },
+        leaf_futuristic:     { file: 'Meshy_AI_futuristic_door_0903110023_texture.glb',              leaf: true, wide: true },
+        leaf_office:         { file: 'Meshy_AI_an_office_door_0903105857_texture.glb',               leaf: true },
+        leaf_exit:           { file: 'Meshy_AI_an_exit_door_0903105826_texture.glb',                 leaf: true },
+        leaf_shabby_wood:    { file: 'Meshy_AI_a_shabby_wooden_door_0903105805_texture.glb',         leaf: true },
+        leaf_suburban:       { file: 'Meshy_AI_a_suburban_door_0903105847_texture.glb',              leaf: true },
+        leaf_suburban_house: { file: 'Meshy_AI_a_suburban_house_door_0903105838_texture.glb',        leaf: true },
+        leaf_vault:          { file: 'Meshy_AI_a_bank_vault_door_0903105653_texture.glb',            leaf: true, wide: true },
+        leaf_portcullis:     { file: 'Meshy_AI_a_portcullis_0903105915_texture.glb',                 leaf: true, wide: true },
+        leaf_revolving:      { file: 'Meshy_AI_a_revolving_door_0903105938_texture.glb',             leaf: true, wide: true },
+        leaf_bulkhead:       { file: 'Meshy_AI_submarine_bulkhead_0903105925_texture.glb',           leaf: true, wide: true },
+        leaf_frame_only:     { file: 'Meshy_AI_a_door_frame_0903105906_texture.glb',                 leaf: true },
+    },
+
+    /* The six containment bays (DOOR_MASTER A10). Every launch map belongs
+       to exactly one (door-hq.test.js checks the partition against
+       EW_MAP_META). `locked` bays stay red until the story opens them. */
+    sectors: {
+        terrestrial: { label: 'TERRESTRIAL', sub: 'clandestine · urban',
+            maps: ['prebuilt_nuketown', 'prebuilt_area51', 'prebuilt_skinwalker', 'prebuilt_bohemian_grove', 'prebuilt_dumb', 'prebuilt_cern', 'prebuilt_vatican', 'prebuilt_stadium'] },
+        ancient:     { label: 'ANCIENT', sub: 'first crossings',
+            maps: ['prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_babel', 'prebuilt_gobekli', 'prebuilt_camelot', 'prebuilt_technoticlan', 'prebuilt_atlantis'] },
+        hollow:      { label: 'HOLLOW', sub: 'inner earth · polar',
+            maps: ['prebuilt_shasta', 'prebuilt_hollow_earth', 'prebuilt_agartha', 'prebuilt_antarctica', 'prebuilt_northpole'] },
+        celestial:   { label: 'CELESTIAL', sub: 'space · the far future',
+            maps: ['prebuilt_mars', 'prebuilt_moon', 'prebuilt_cyberpunk'] },
+        diplomatic:  { label: 'DIPLOMATIC', sub: 'immunity claimed',
+            maps: ['prebuilt_heaven', 'prebuilt_hell', 'prebuilt_olympus', 'prebuilt_fairy_forest'] },
+        quarantined: { label: 'QUARANTINED', sub: 'astral anomalies', locked: true,
+            maps: ['prebuilt_backrooms', 'prebuilt_flatlands'] },
+    },
+
+    /* Mastery v1 (HQ plan D9): a door turns green once the map has been won
+       by every one of these conditions. Read from progress.unlocked
+       ('site:<mapId>:<cond>') first, then the recent matchHistory. */
+    masteryConditions: ['wipeout', 'tower_destroyed', 'hourglasses_collected'],
+
+    rooms: {
+        central_egress: {
+            label: 'CENTRAL EGRESS',
+            sub: 'OPERATIONS RING',
+            kind: 'rotunda',
+            shell: {
+                radius: 21,            // ground-floor drum (inner face of the lower wall)
+                wallH: 4.2,            // lower wall = mezzanine height
+                mezz: { inner: 20.6, outer: 24, thick: 0.4 },   // the ring slab (r, m)
+                upperWallH: 5.4,       // upper drum, r = mezz.outer, from the slab up
+                domeH: 3.2,            // conical ceiling rise above the upper wall
+                dadoH: 1.05,
+                floor: 'terrazzo', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling', stair: 'concrete',
+                bands: [               // inlaid floor rings [rIn, rOut, tex]
+                    [6.9, 7.35, 'teal'], [9.6, 10.15, 'oxblood'], [14.8, 15.2, 'teal'],
+                ],
+                spokes: { n: 8, r0: 10.3, r1: 14.6, w: 0.18, tex: 'teal' },
+                cube: { size: 3.6, y: 7.4, rodR: 0.09 },  // the Saturnian black cube, centre height (m)
+            },
+            /* the round dispatch desk in the middle: two ring counters */
+            desk: { mode: 'procedural', rOuter: 5.6, rInner: 2.6, h: 1.05, top: 'terrazzo', front: 'oxblood', gapDeg: 200, gapWidth: 14 },
+            /* stairs: curved flights hugging the lower wall from `from` (floor)
+               to `to` (mezzanine). r band is the tread width. */
+            stairs: [
+                { id: 'stair_e', from: 18, to: 62,  rIn: 19.35, rOut: 20.6, steps: 24 },
+                { id: 'stair_w', from: 342, to: 298, rIn: 19.35, rOut: 20.6, steps: 24 },
+            ],
+            /* doors: `leaf` = catalogue key (leaf), `wide` = 2.2 m opening.
+               `action` is exactly one of {fn}, {sector}, {room}, {overlay}. */
+            doors: [
+                /* ── ground ring (operations) ── */
+                { id: 'bay_celestial',  deg: 0,   level: 0, leaf: 'leaf_futuristic',   wide: true,  label: 'BAY 4 · CELESTIAL',      sub: 'CONTAINMENT BAY',            action: { sector: 'celestial' } },
+                { id: 'quartermaster',  deg: 90,  level: 0, leaf: 'leaf_vault',        wide: true,  label: 'QUARTERMASTER',           sub: 'CUSTOMS & ADMISSIONS',       action: { fn: '_goToShop' },        desc: 'Declassification and asset reassignment. The Shop, and the manifests locker.', alt: { label: 'PARTY BUILDER', fn: '_goToTeamBuilder' } },
+                { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_office',                    label: 'RECEPTION · INTAKE',      sub: 'HUMAN RESOURCES',            action: { fn: '_mountReactProfile' }, desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
+                { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'JANITORIAL (CONVERTED)',     action: { room: 'office' },         desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
+                { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING FACILITY',       sub: 'DOWNSTAIRS · ORIENTATION',   action: { room: 'training' },       desc: 'The only approved square room in the building. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.', alt: { label: 'CHALLENGE', fn: '_goToCampaign' }, alt2: { label: 'CONDEMNED CROSSING (MYSTERY DUNGEON)', fn: '_goToMysteryDungeon' } },
+                { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_office',                    label: 'MEDICAL',                 sub: 'SUPPORT SERVICES',           action: { fn: '_goToCampaign' },    desc: 'Where EXITED operatives are processed. Revives, retries, the Challenge services desk.' },
+                { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'ARCHIVES · ENTITY REGISTRY', action: { fn: '_goToCodex' },       desc: '“We only keep the file.” Entity dossiers, the tape library, unfiled sites.', alt: { label: 'REPLAY (TAPE LIBRARY)', fn: '_ewReplayLastMatch' }, alt2: { label: 'UNFILED SITES (COMMUNITY MAPS)', fn: '_mountCommunityMaps' } },
+                { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'CONTAINMENT BAY',            action: { sector: 'terrestrial' } },
+                /* ── mezzanine (support / executive access) ── */
+                { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'EXECUTIVE RING',             action: { room: 'executive' },      minClearance: 4, desc: 'Director offices. KEYHOLDER clearance and above.' },
+                { id: 'bay_ancient',    deg: 45,  level: 1, leaf: 'leaf_portcullis',   wide: true,  label: 'BAY 2 · ANCIENT',         sub: 'CONTAINMENT BAY',            action: { sector: 'ancient' } },
+                { id: 'engineering',    deg: 90,  level: 1, leaf: 'leaf_office',                    label: 'ARCANE ENGINEERING',      sub: 'CARTOGRAPHY · RESEARCH',     action: { fn: '_goToMapEditor' },   desc: 'Research offices. The Map Editor, the Spell Library, and the fourth door that wasn’t there yesterday.' },
+                { id: 'bay_diplomatic', deg: 150, level: 1, leaf: 'leaf_revolving',    wide: true,  label: 'BAY 5 · DIPLOMATIC',      sub: 'CONTAINMENT BAY',            action: { sector: 'diplomatic' } },
+                { id: 'bay_hollow',     deg: 210, level: 1, leaf: 'leaf_bulkhead',     wide: true,  label: 'BAY 3 · HOLLOW',          sub: 'CONTAINMENT BAY',            action: { sector: 'hollow' } },
+                { id: 'bay_quarantined',deg: 270, level: 1, leaf: 'leaf_security',                  label: 'BAY 6 · QUARANTINED',     sub: 'CONTAINMENT BAY',            action: { sector: 'quarantined' } },
+                { id: 'continuity',     deg: 315, level: 1, leaf: 'leaf_frosted',                   label: 'BUREAU OF CONTINUITY',    sub: 'THE CANON OFFICE',           action: { room: 'continuity' },     minClearance: 5, desc: 'Canon notices. The motto plaque. The only department that suspects the schedule.' },
+            ],
+            /* walk-up interactions that are not doors */
+            counters: [
+                { id: 'dispatch',  deg: 180, r: 6.9,  level: 0, label: 'DISPATCH',               sub: 'BELL CONSOLE',          action: { overlay: 'dispatch' }, radius: 2.4 },
+                { id: 'board',     deg: 288, r: 20.1, level: 0, label: 'EMPLOYEE OF THE MONTH',  sub: 'LEADERBOARD',           action: { fn: '_mountLeaderboard' }, radius: 2.2, proc: 'board' },
+                { id: 'directory', deg: 165, r: 19.6, level: 0, label: 'BUILDING DIRECTORY',     sub: 'YOU ARE HERE',          action: { overlay: 'directory' }, radius: 1.8, proc: 'directory' },
+            ],
+            /* the dressing — catalogue key + polar spot; `rot` = extra yaw
+               (deg, clockwise) on top of facing the hall centre; `wall`
+               props ignore r; `on` = stack on another prop's top (key) */
+            props: [
+                /* desk top */
+                { key: 'crt_terminal', deg: 20,  r: 4.5, level: 0, y: 1.05, rot: 180 },
+                { key: 'crt_terminal', deg: 200, r: 4.5, level: 0, y: 1.05, rot: 180 },
+                { key: 'crt_terminal', deg: 110, r: 4.5, level: 0, y: 1.05, rot: 180 },
+                { key: 'tube_tv',      deg: 290, r: 4.5, level: 0, y: 1.05, rot: 160 },
+                { key: 'papers_a',     deg: 60,  r: 4.7, level: 0, y: 1.05 },
+                { key: 'papers_b',     deg: 150, r: 4.6, level: 0, y: 1.05, rot: 30 },
+                { key: 'notebook_paper', deg: 245, r: 4.8, level: 0, y: 1.05, rot: 12 },
+                { key: 'desk_lamp',    deg: 330, r: 4.6, level: 0, y: 1.05, rot: 200 },
+                { key: 'desk_fan',     deg: 80,  r: 4.9, level: 0, y: 1.05, rot: 90 },
+                { key: 'pen',          deg: 175, r: 4.9, level: 0, y: 1.05, rot: 70 },
+                { key: 'cardboard_box', deg: 40, r: 6.3, level: 0 },
+                { key: 'cardboard_box', deg: 46, r: 6.5, level: 0, rot: 35 },
+                { key: 'cardboard_boxes', deg: 140, r: 6.6, level: 0, rot: 20 },
+                /* seating clusters (ground) */
+                { key: 'round_desk',   deg: 250, r: 13.2, level: 0 },
+                { key: 'teal_chair',   deg: 246, r: 12.1, level: 0, rot: 180 },
+                { key: 'teal_chair',   deg: 257, r: 13.9, level: 0, rot: 0 },
+                { key: 'office_chair', deg: 243, r: 14.2, level: 0, rot: 40 },
+                { key: 'round_desk',   deg: 300, r: 14.6, level: 0 },
+                { key: 'teal_chair',   deg: 296, r: 13.5, level: 0, rot: 180 },
+                { key: 'teal_chair',   deg: 305, r: 15.6, level: 0, rot: 0 },
+                { key: 'coffee_table', deg: 60,  r: 13.8, level: 0 },
+                { key: 'curved_couch', deg: 60,  r: 15.6, level: 0 },
+                { key: 'office_plant', deg: 52,  r: 16.2, level: 0 },
+                { key: 'conference_table', deg: 110, r: 15.2, level: 0, rot: 90 },
+                { key: 'office_chair', deg: 106, r: 14.0, level: 0, rot: 180 },
+                { key: 'office_chair', deg: 114, r: 14.0, level: 0, rot: 180 },
+                { key: 'office_chair', deg: 106, r: 16.4, level: 0, rot: 0 },
+                { key: 'office_chair', deg: 114, r: 16.4, level: 0, rot: 0 },
+                /* globe lamps on the inner band */
+                { key: 'globe_lamp',   deg: 200, r: 9.9, level: 0 },
+                { key: 'globe_lamp',   deg: 160, r: 9.9, level: 0 },
+                { key: 'globe_lamp',   deg: 250, r: 9.9, level: 0 },
+                { key: 'globe_lamp',   deg: 110, r: 9.9, level: 0 },
+                { key: 'globe_lamp',   deg: 340, r: 9.9, level: 0 },
+                { key: 'globe_lamp',   deg: 20,  r: 9.9, level: 0 },
+                /* against the lower wall, between doors */
+                { key: 'filing_cabinet', deg: 226, level: 0, wall: true },
+                { key: 'filing_cabinet', deg: 229, level: 0, wall: true },
+                { key: 'cardboard_boxes', deg: 256, r: 19.3, level: 0, rot: 15 },
+                { key: 'office_locker',  deg: 134, level: 0, wall: true },
+                { key: 'locker',         deg: 137, level: 0, wall: true },
+                { key: 'vending_machine', deg: 105, level: 0, wall: true },
+                { key: 'water_cooler',   deg: 196, level: 0, wall: true },
+                { key: 'potted_plant',   deg: 76,  r: 19.2, level: 0 },
+                { key: 'potted_plant',   deg: 284, r: 19.2, level: 0 },
+                { key: 'fire_extinguisher', deg: 172, level: 0, wall: true },
+                { key: 'fire_extinguisher', deg: 258, level: 0, wall: true },
+                { key: 'wall_clock',     deg: 165, level: 0, wall: true },
+                { key: 'wall_clock',     deg: 345, level: 0, wall: true },
+                { key: 'exit_sign',      deg: 180, level: 0, r: 20.42, mount: 2.62 },
+                { key: 'wet_floor_sign', deg: 156, r: 18.4, level: 0, rot: -30 },
+                { key: 'mop_bucket',     deg: 143, r: 19.4, level: 0 },
+                { key: 'cardboard_box',  deg: 236, r: 19.0, level: 0, rot: 20 },
+                { key: 'cardboard_box',  deg: 236, r: 19.0, level: 0, y: 0.42, rot: 60 },
+                /* mezzanine */
+                { key: 'filing_cabinet', deg: 20,  level: 1, wall: true },
+                { key: 'filing_cabinet', deg: 23,  level: 1, wall: true },
+                { key: 'round_cabinet',  deg: 120, r: 22.9, level: 1 },
+                { key: 'cardboard_boxes', deg: 180, r: 23.0, level: 1, rot: 40 },
+                { key: 'cardboard_box',  deg: 183, r: 22.8, level: 1 },
+                { key: 'office_locker',  deg: 240, level: 1, wall: true },
+                { key: 'potted_plant',   deg: 300, r: 23.0, level: 1 },
+                { key: 'globe_lamp',     deg: 335, r: 22.7, level: 1 },
+                { key: 'globe_lamp',     deg: 70,  r: 22.7, level: 1 },
+                { key: 'globe_lamp',     deg: 195, r: 22.7, level: 1 },
+                { key: 'water_cooler',   deg: 165, level: 1, wall: true },
+                { key: 'fire_extinguisher', deg: 105, level: 1, wall: true },
+                { key: 'wall_clock',     deg: 255, level: 1, wall: true },
+            ],
+            /* where DOOR agents stand (fixed) and roster vessels loiter */
+            agents: [
+                { deg: 0,   r: 1.4, level: 0, face: 180, line: 'The agent does not look up. “Take a number.”' },
+                { deg: 288, r: 18.8, level: 0, face: 108, line: '“It’s 90 degrees.” … “Oh shit.”' },
+                { deg: 45,  r: 22.4, level: 1, face: 225, line: '“Check your corners.” Not a greeting.' },
+            ],
+            npcSpots: [
+                { deg: 63,  r: 14.6, level: 0, face: 240 },
+                { deg: 300, r: 13.4, level: 0, face: 120 },
+                { deg: 243, r: 12.9, level: 0, face: 60 },
+                { deg: 130, r: 22.2, level: 1, face: 310 },
+                { deg: 225, r: 22.6, level: 1, face: 45 },
+            ],
+            lines: [
+                '“Parallel lines never meet. Adjacent realities meet at corners. Please do not stand in corners.”',
+                '“You’re what remains of our standards.”',
+                '“Every crossing is inspected. Every entity is filed. Your entity will be filed.”',
+                '“The vending machine was on the other side yesterday.” “It has always been there.”',
+                '“We do not fight the war. We process it.”',
+                '“If it’s round it’s ours. If it’s square, fill out Form 90.”',
+            ],
+            spawn: { deg: 180, r: 15.4, level: 0, face: 0 },
+        },
+    },
+};
+
+/* ── pure helpers (also on window.*) ────────────────────────────────── */
+/* polar → metres (x east, z south; north = −z) */
+function hqPolar(deg, r) {
+    const a = (deg || 0) * Math.PI / 180;
+    return { x: Math.sin(a) * (r || 0), z: -Math.cos(a) * (r || 0) };
+}
+function hqSectorOfMap(mapId) {
+    const S = DOOR_HQ.sectors;
+    for (const k in S) if (S[k].maps.indexOf(mapId) >= 0) return k;
+    return null;
+}
+/* Mastery v1: every DOOR_HQ.masteryConditions win on that map, from the
+   monotonic progress flags first, then the (capped) match history. */
+function hqMapMastered(mapId, profile) {
+    if (!profile) return false;
+    const have = new Set();
+    try {
+        const un = (profile.progress && profile.progress.unlocked) || {};
+        for (const c of DOOR_HQ.masteryConditions) if (un['site:' + mapId + ':' + c]) have.add(c);
+    } catch (e) {}
+    try {
+        for (const m of (profile.matchHistory || [])) {
+            if (m && m.mapId === mapId && m.result === 'win' && m.winCondition) have.add(m.winCondition);
+        }
+    } catch (e) {}
+    return DOOR_HQ.masteryConditions.every(c => have.has(c));
+}
+/* Door lamp state (HQ plan §3.5): sealed | clearance | unstable | stabilized
+   | open. Rooms: open unless a clearance gate holds. Bays: green once every
+   map in the sector is mastered, red while the sector is locked. */
+function doorSiteState(door, profile) {
+    if (!door) return 'open';
+    const lv = (typeof doorClearance === 'function') ? doorClearance(profile).level : 1;
+    if (door.minClearance && lv < door.minClearance) return 'clearance';
+    const act = door.action || {};
+    if (act.sector) {
+        const sec = DOOR_HQ.sectors[act.sector];
+        if (!sec) return 'sealed';
+        if (sec.locked) return 'sealed';
+        return sec.maps.every(id => hqMapMastered(id, profile)) ? 'stabilized' : 'unstable';
+    }
+    return 'open';
+}
+if (typeof window !== 'undefined') {
+    window.DOOR_HQ = DOOR_HQ;
+    window.hqPolar = hqPolar;
+    window.hqSectorOfMap = hqSectorOfMap;
+    window.hqMapMastered = hqMapMastered;
+    window.doorSiteState = doorSiteState;
 }

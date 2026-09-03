@@ -1970,6 +1970,56 @@ const ThreePost = (function () {
         _composer.render();
     }
 
+    /* ── Render ANOTHER scene through the same post stack ──────────────
+       The D.O.O.R. headquarters (three-renderer.js HQ module) is its own
+       THREE.Scene with its own camera and lights; it wants the retro grade
+       (grain / dither / levels), bloom for the lamp lenses and FXAA, but
+       none of the battle-board plumbing: no sun sync, no tilt-shift band
+       (there is no board plane to focus on), no unit-silhouette pixel mask.
+       Swaps the RenderPass scene for one frame and restores everything —
+       the battle scene never notices. Falls back to a bare render when the
+       composer isn't up. */
+    function renderScene(scene, cam) {
+        if (!scene || !cam || !_renderer) return;
+        if (!_ready || !_composer) { _renderer.render(scene, cam); return; }
+        var rp = _composer.passes[0];
+        var prevScene = rp.scene;
+        var prevDofH = _dofPassH ? _dofPassH.enabled : false;
+        var prevDofV = _dofPassV ? _dofPassV.enabled : false;
+        var prevCine = _cinematicPass ? _cinematicPass.enabled : false;
+        var prevNight = _cinematicPass ? _cinematicPass.material.uniforms['uNightGrade'].value : 0;
+        var prevExposure = _renderer.toneMappingExposure;
+        var prevBloom = _bloomPass ? _bloomPass.strength : 0;
+        try {
+            rp.scene = scene; rp.camera = cam;
+            if (_dofPassH) _dofPassH.enabled = false;
+            if (_dofPassV) _dofPassV.enabled = false;
+            if (_cinematicPass) {
+                _cinematicPass.material.uniforms['uNightGrade'].value = 0;
+                _cinematicPass.material.uniforms['uTime'].value = performance.now() * 0.001;
+                _cinematicPass.enabled = !!(_cin.crt || _cin.vignette);
+            }
+            if (_retroPass && _retroPass.enabled) {
+                _retroPass.material.uniforms['uTime'].value = performance.now() * 0.001;
+                _retroPass.material.uniforms['tMask'].value = null;
+                _retroPass.material.uniforms['uMaskMode'].value = 0.0;
+            }
+            if (_bloomPass && _bloomPass.enabled) _bloomPass.strength = Math.max(BLOOM_USER_STRENGTH, 0.42);
+            _renderer.toneMappingExposure = _exposureUser * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
+            _composer.render();
+        } finally {
+            rp.scene = prevScene;
+            if (_dofPassH) _dofPassH.enabled = prevDofH;
+            if (_dofPassV) _dofPassV.enabled = prevDofV;
+            if (_cinematicPass) {
+                _cinematicPass.enabled = prevCine;
+                _cinematicPass.material.uniforms['uNightGrade'].value = prevNight;
+            }
+            if (_bloomPass) _bloomPass.strength = prevBloom;
+            _renderer.toneMappingExposure = prevExposure;
+        }
+    }
+
     function resize(w, h) {
         if (!_ready || !_composer) return;
         _composer.setSize(w, h);
@@ -2279,6 +2329,7 @@ const ThreePost = (function () {
     return {
         init: init,
         render: render,
+        renderScene: renderScene,
         resize: resize,
         setBloom: setBloom,
         setBloomEnabled: setBloomEnabled,

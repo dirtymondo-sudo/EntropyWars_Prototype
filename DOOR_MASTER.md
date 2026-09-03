@@ -1,5 +1,5 @@
 # D.O.O.R. — MASTER FILE
-### Story bible + integration design + build log — rev 7 (2026-09-03)
+### Story bible + integration design + build log — rev 8 (2026-09-03)
 
 This file MERGES the two earlier DOOR documents and supersedes both:
 - `entropy_wars_claude_brief.md` (the ChatGPT-assisted story/world brief, 2026-09) → Part A
@@ -775,9 +775,27 @@ DOSSIER / SEAL YOUR FATE / Codex of Vessels all stay).
   object count belongs to the voxel battle-board builder, which the
   facility does not use.
 
-NOT done yet (next steps, in order): HQ plan Phase 1 (the procedural
-Central Egress you can walk, replacing the Play hub; the user models the
-§5.3 prop kit in parallel) → story track step 3 (SP meter, thresholds →
+### 2026-09-03 (later) — HQ Phase 1.1 + 1.2 built in ISOLATION (Play untouched)
+The Central Egress exists and can be walked: `index.html?hq`, or
+`window._hqEnter()` from the main menu, or `?hqdev` once for a sticky
+dev pill. Full account in `DOOR_HQ_BUILD_PLAN.md` §9 (2026-09-03, Phase
+1.1 + 1.2) and the uploaded-kit inventory in its §5.5. Touched: data.js
+(`DOOR_HQ` layout + catalogue + helpers; **C-1 landed** — `DOOR_TEXT.
+CLEARANCE` now reads DOORMAT / DOORSTOP / KNOCKER / KEYHOLDER / GATEKEEPER /
+THE DOORMAN, each with its office-door leaf), three-renderer.js
+(`ThreeRenderer.hq`, own scene + loop), three-post.js (`renderScene`),
+map.js (flow + door panels + directory + dispatch), index.html (`#hqPage`,
+`?v=20260903a-cors`), styles-base.css (`.hq-*`), state.js (`GS.HQ`), ui.js
+(`?hq` autostart), door-hq.test.js (repo tooling). `npm test` 89 pass.
+Doors open the existing screens (Records → Codex, Quartermaster → Shop,
+Reception → Profile…); the six bay doors show their thresholds' site files
+but cannot launch a crossing until HQ 1.3. Nothing mid-match changed → no
+relay work (RULE #2). The reference art is committed under
+`door_reference_images/` (the HQ plan's §5.1 names map onto it by content).
+
+NOT done yet (next steps, in order): HQ plan Phase 1.3–1.5 (Play → HQ,
+return plumbing, the mission launcher for the bay doors, mastery flags,
+audio — the walkable egress itself shipped 2026-09-03) → story track step 3 (SP meter, thresholds →
 chapters, post-match scene, the office as the case-file screen; the
 `.directive` tab, the `door.*` fields and the four unwired kit sounds are
 already waiting for it) → orientation tape in the Training Room → PvP

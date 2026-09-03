@@ -4059,7 +4059,9 @@
             POST_MATCH: 'post_match',
             CAMPAIGN_CHAR_CREATE: 'campaign_char_create',
             CAMPAIGN_MAP: 'campaign_map',
-            CHALLENGE_PICK: 'challenge_pick'
+            CHALLENGE_PICK: 'challenge_pick',
+            /* D.O.O.R. headquarters — the walkable hub (map.js _hqEnter). */
+            HQ: 'hq'
         };
 
         const state = {

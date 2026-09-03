@@ -12073,6 +12073,14 @@
         }
         window.enterGameFromTitle = enterGameFromTitle;
         window._gameReady = true;
+        /* D.O.O.R. HQ dev entry: ?hq skips the ident + title and walks straight
+           into the building (map.js _hqEnter). ?hqdev only shows the menu pill. */
+        try {
+            if (/[?&]hq\b/.test(location.search) && typeof window._hqEnter === 'function') {
+                window.EW_DISABLE_DOOR_IDENT = true;
+                setTimeout(function () { try { window._hqEnter({ fromUrl: true }); } catch (e) { console.error('[HQ] autostart failed', e); } }, 350);
+            }
+        } catch (e) {}
 
         /* ── D.O.O.R. ident (DOOR_DESIGN §3.4, build step 2): the studio card
            before the feature. Plays once per page load, as soon as the game

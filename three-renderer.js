@@ -26701,6 +26701,1210 @@ const ThreeRenderer = (function () {
     // menu screens (ui.js codex/shop, party-builder.js) reach it here:
     if (typeof window !== 'undefined') window.EWCharViewer = charViewer;
 
+    /* ══════════════════════════════════════════════════════════════════
+     *  D.O.O.R. HEADQUARTERS — the walkable facility (DOOR_HQ_BUILD_PLAN.md)
+     *
+     *  A self-contained scene on the SHARED WebGL renderer: its own
+     *  THREE.Scene, camera, lights and animation loop. It never touches the
+     *  battle board, `state.units`, fog, or the turn engine — the canvas +
+     *  CSS2D overlay are re-parented into the HQ page (map.js _hqEnter) for
+     *  the visit and handed back on leave. Layout is DOOR_HQ (data.js):
+     *    • the shell (floor, inlaid bands, walls, dado, trim, mezzanine slab
+     *      + railing, two curved stairs, ceiling cone + light strips, the
+     *      hanging black cube, the round dispatch desk) is PROCEDURAL,
+     *      wrapped in the user's tileables (R2 Assets/door/textures/);
+     *    • props are the user's Meshy kit (R2 Assets/door/models/) through
+     *      the misc-model loader, auto-normalised to the catalogue's target
+     *      size (Meshy exports are unit-scaled — never trust their scale);
+     *    • doors = procedural frame panel + lamp + CSS2D nameplate, with the
+     *      catalogue leaf GLB fitted into the recess;
+     *    • the avatar + NPCs ride the rigged-unit pipeline (_attachUnitModel
+     *      + the shared animation library); their mixers are ticked HERE.
+     *  Coordinates: DOOR_HQ is in metres, polar (deg clockwise from north,
+     *  r from the hall centre); 1 m = DOOR_HQ.units world units (73).
+     *  Rigged models face local +Z in this pipeline (yaw = atan2(dx, dz)).
+     *  Kill-switches: window.EW_HQ_FLIP_LEAVES (turn every leaf 180°),
+     *  window.EW_HQ_NO_PROPS (shell only), window.EW_HQ_NO_POST (bare render).
+     * ══════════════════════════════════════════════════════════════════ */
+    var _hq = null;                      // live visit, or null
+    var _hqTexCache = {};                // 'name|ru|rv' -> THREE.Texture
+    var _hqPropMatCache = new Map();     // source material uuid -> converted Lambert
+    var _hqGlyphTex = null;
+    var _hqSealTex = null;
+    var HQ_BODY_R = 0.34;                // walker body radius (m)
+    var HQ_STEP_TOL = 0.62;              // max height change per move (m) — railings, ledges
+
+    function _hqData() { return (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null; }
+    function _hqUnits() { var D = _hqData(); return (D && D.units) || 73; }
+    function _hqRad(d) { return d * Math.PI / 180; }
+    function _hqNormDeg(d) { d = d % 360; if (d < 0) d += 360; return d; }
+    function _hqDegDiff(a, b) { var d = _hqNormDeg(a - b); return d > 180 ? d - 360 : d; }
+    /* metres polar → world Vector3 */
+    function _hqPolarW(deg, r, y) {
+        var U = _hqUnits(), a = _hqRad(deg);
+        return new THREE.Vector3(Math.sin(a) * r * U, (y || 0) * U, -Math.cos(a) * r * U);
+    }
+    /* yaw that points a +Z-front object standing at polar `deg` at the hall centre */
+    function _hqFaceCentreYaw(deg) { return -_hqRad(deg); }
+    /* yaw that points a +Z-front object toward polar heading `face` (deg cw from north) */
+    function _hqHeadingYaw(face) { return Math.PI - _hqRad(face); }
+    function _hqWithinArc(deg, a0, a1, pad) {
+        var lo = Math.min(a0, a1) - (pad || 0), hi = Math.max(a0, a1) + (pad || 0);
+        var d = _hqNormDeg(deg);
+        if (d >= lo && d <= hi) return true;
+        if (d + 360 >= lo && d + 360 <= hi) return true;
+        if (d - 360 >= lo && d - 360 <= hi) return true;
+        return false;
+    }
+
+    function _hqTex(name, ru, rv) {
+        var D = _hqData();
+        var file = D && D.textures && D.textures[name];
+        if (!file) return null;
+        var key = name + '|' + (ru || 1) + '|' + (rv || 1);
+        if (_hqTexCache[key]) return _hqTexCache[key];
+        var t = textureLoader.load(D.assets.textures + file, function () { if (_hq) _hq.dirty = true; });
+        t.wrapS = t.wrapT = THREE.RepeatWrapping;
+        t.repeat.set(ru || 1, rv || 1);
+        t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
+        t.generateMipmaps = true;
+        try { t.anisotropy = Math.min(8, (renderer && renderer.capabilities.getMaxAnisotropy()) || 1); } catch (e) {}
+        _hqTexCache[key] = t;
+        return t;
+    }
+    /* Phong (per-fragment) so the few point lights read on the big flat
+       floor/wall meshes — Lambert is per-vertex and a 96-segment disc has
+       no vertices in the middle. */
+    function _hqMat(name, ru, rv, opts) {
+        opts = opts || {};
+        var m = new THREE.MeshPhongMaterial({
+            map: name ? _hqTex(name, ru, rv) : null,
+            color: (opts.color != null) ? opts.color : 0xffffff,
+            shininess: (opts.shininess != null) ? opts.shininess : 8,
+            specular: (opts.specular != null) ? opts.specular : 0x1c1c1c,
+            side: opts.side || THREE.FrontSide,
+            transparent: !!opts.transparent,
+            opacity: (opts.opacity != null) ? opts.opacity : 1,
+        });
+        if (opts.emissive) { m.emissive = new THREE.Color(opts.emissive); m.emissiveIntensity = opts.emissiveIntensity || 1; }
+        return m;
+    }
+    function _hqBasic(color, opts) {
+        opts = opts || {};
+        return new THREE.MeshBasicMaterial({ color: color, transparent: !!opts.transparent, opacity: (opts.opacity != null) ? opts.opacity : 1, side: opts.side || THREE.FrontSide, fog: opts.fog !== false, depthWrite: opts.depthWrite !== false });
+    }
+    /* annular sector (metres) lying flat at y (metres), facing up (or down) */
+    function _hqSectorMesh(rIn, rOut, deg0, deg1, y, mat, down) {
+        var U = _hqUnits();
+        var a0 = Math.min(deg0, deg1), a1 = Math.max(deg0, deg1);
+        var segs = Math.max(4, Math.round((a1 - a0) / 2.5));
+        var g = new THREE.RingGeometry(rIn * U, rOut * U, segs, 1, Math.PI / 2 - _hqRad(a1), _hqRad(a1 - a0));
+        g.rotateX(down ? Math.PI / 2 : -Math.PI / 2);
+        var m = new THREE.Mesh(g, mat);
+        m.position.y = y * U;
+        return m;
+    }
+    /* open cylinder band (metres): radius, y0..y1 */
+    function _hqBand(r, y0, y1, mat, segs) {
+        var U = _hqUnits();
+        var g = new THREE.CylinderGeometry(r * U, r * U, (y1 - y0) * U, segs || 96, 1, true);
+        var m = new THREE.Mesh(g, mat);
+        m.position.y = (y0 + y1) * 0.5 * U;
+        return m;
+    }
+    /* torus arc over polar [deg0, deg1] at radius r, height y (metres) */
+    function _hqRailArc(r, deg0, deg1, y, tube, mat) {
+        var U = _hqUnits();
+        var a0 = Math.min(deg0, deg1), a1 = Math.max(deg0, deg1);
+        var g = new THREE.TorusGeometry(r * U, tube * U, 6, Math.max(6, Math.round((a1 - a0) / 2)), _hqRad(a1 - a0));
+        g.rotateX(-Math.PI / 2);
+        var m = new THREE.Mesh(g, mat);
+        m.rotation.y = Math.PI / 2 - _hqRad(a1);
+        m.position.y = y * U;
+        return m;
+    }
+    /* a bar between two world points (thin box), for sloped stair rails */
+    function _hqBar(p0, p1, thick, mat) {
+        var len = p0.distanceTo(p1);
+        var g = new THREE.BoxGeometry(thick, thick, len);
+        var m = new THREE.Mesh(g, mat);
+        m.position.copy(p0).add(p1).multiplyScalar(0.5);
+        m.lookAt(p1);
+        return m;
+    }
+    function _hqBox(w, h, d, mat) {
+        var U = _hqUnits();
+        return new THREE.Mesh(new THREE.BoxGeometry(w * U, h * U, d * U), mat);
+    }
+
+    /* The square-spiral glyph on the cube's faces (drawn once). */
+    function _hqGlyphTexture() {
+        if (_hqGlyphTex) return _hqGlyphTex;
+        var c = document.createElement('canvas'); c.width = c.height = 256;
+        var g = c.getContext('2d');
+        g.fillStyle = '#000'; g.fillRect(0, 0, 256, 256);
+        g.strokeStyle = '#cfe9ec'; g.lineWidth = 7; g.lineCap = 'square';
+        var pts = [[22, 22], [234, 22], [234, 234], [22, 234], [22, 60], [196, 60], [196, 196], [60, 196], [60, 98], [158, 98], [158, 158], [98, 158], [98, 128]];
+        g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+        for (var i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+        g.stroke();
+        var t = new THREE.CanvasTexture(c);
+        t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
+        _hqGlyphTex = t;
+        return t;
+    }
+    function _hqSealTexture() {
+        if (_hqSealTex) return _hqSealTex;
+        var url = (typeof DOOR_TEXT !== 'undefined' && DOOR_TEXT.LOGO && DOOR_TEXT.LOGO.onDark) || null;
+        if (!url) return null;
+        var t = textureLoader.load(url, function () { if (_hq) _hq.dirty = true; });
+        t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
+        _hqSealTex = t;
+        return t;
+    }
+
+    /* Meshy props ship MeshStandard materials with sRGB-flagged bakes; the
+       renderer's output is linear like the rest of the game, so re-wrap
+       them as Lambert + linear map (same treatment as the unit models).
+       Converted materials are shared across instances and flagged so
+       _disposeR leaves them alone. */
+    function _hqPropMatPick(node, sm) {
+        if (!sm) return null;
+        var cached = _hqPropMatCache.get(sm.uuid);
+        if (cached) return cached;
+        var tex = sm.map || null;
+        if (tex && tex.encoding !== THREE.LinearEncoding) { tex.encoding = THREE.LinearEncoding; tex.needsUpdate = true; }
+        var lm = new THREE.MeshLambertMaterial({ map: tex, color: 0xffffff, transparent: !!sm.transparent, opacity: (sm.opacity != null) ? sm.opacity : 1, side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });
+        if (sm.emissiveMap) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = sm.emissiveMap; lm.emissiveIntensity = 0.8; }
+        lm._ew_shared = true;
+        _hqPropMatCache.set(sm.uuid, lm);
+        return lm;
+    }
+    function _hqModelUrl(entry) {
+        var D = _hqData();
+        return D.assets.models + encodeURIComponent(entry.file);
+    }
+
+    /* ── lamps ─────────────────────────────────────────────────────────── */
+    var HQ_LAMP = {
+        off:        { lens: 0x1a1a1a, glow: null,     emis: 0 },
+        sealed:     { lens: 0x1a1a1a, glow: null,     emis: 0 },
+        clearance:  { lens: 0xff2e2e, glow: 0xff3a3a, emis: 1 },
+        codered:    { lens: 0xff2e2e, glow: 0xff3a3a, emis: 1, strobe: true },
+        unstable:   { lens: 0xffb020, glow: 0xffb44a, emis: 1, pulse: true },
+        stabilized: { lens: 0x39ff6a, glow: 0x4dff7d, emis: 1 },
+        open:       { lens: 0x39ff6a, glow: 0x4dff7d, emis: 1 },
+    };
+    var HQ_LAMP_LABEL = { off: 'OFF', sealed: 'SEALED', clearance: 'CLEARANCE REQUIRED', codered: 'CODE RED', unstable: 'ACTIVE CROSSING', stabilized: 'STABILIZED', open: 'OPEN' };
+    function _hqLampApply(l, st) {
+        var c = HQ_LAMP[st] || HQ_LAMP.off;
+        l.state = st;
+        l.lens.material.color.setHex(c.lens);
+        if (l.glow) {
+            l.glow.visible = !!c.glow;
+            if (c.glow) l.glow.material.color.setHex(c.glow);
+        }
+        if (l.plateChip) {
+            l.plateChip.className = 'hq-lamp-chip st-' + st;
+            l.plateChip.textContent = HQ_LAMP_LABEL[st] || st;
+        }
+    }
+    function _hqDoorState(door) {
+        try {
+            if (typeof doorSiteState === 'function') return doorSiteState(door, _hq ? _hq.profile : null);
+        } catch (e) {}
+        return 'open';
+    }
+
+    /* ── the shell ─────────────────────────────────────────────────────── */
+    function _hqBuildShell(room) {
+        var U = _hqUnits(), S = room.shell, sc = _hq.scene, G = _hq.shellGroup;
+        var R = S.radius, WH = S.wallH, MZ = S.mezz, UW = S.upperWallH, DH = S.domeH;
+        var topY = WH + UW + DH;
+        var texFloor = S.floor || 'terrazzo', texWall = S.wall || 'stone', texDado = S.dado || 'oxblood', texTrim = S.trim || 'teal', texCeil = S.ceiling || 'ceiling';
+
+        /* floor disc — planar UVs across the diameter; terrazzo tiles ~2.4 m */
+        var fl = new THREE.Mesh(new THREE.CircleGeometry(R * U, 96), _hqMat(texFloor, (R * 2) / 2.4, (R * 2) / 2.4, { shininess: 22, specular: 0x333333 }));
+        fl.rotation.x = -Math.PI / 2; fl.position.y = 0;
+        G.add(fl);
+        /* inlaid rings + spokes */
+        (S.bands || []).forEach(function (b) {
+            var m = _hqSectorMesh(b[0], b[1], 0, 360, 0.006, _hqMat(b[2], 24, 1, { shininess: 30 }));
+            G.add(m);
+        });
+        if (S.spokes) {
+            var sp = S.spokes, spMat = _hqMat(sp.tex || texTrim, 1, 3, { shininess: 30 });
+            for (var i = 0; i < sp.n; i++) {
+                var a = (360 / sp.n) * i + (180 / sp.n);
+                var len = (sp.r1 - sp.r0);
+                var m2 = _hqBox(sp.w, 0.012, len, spMat);
+                m2.position.copy(_hqPolarW(a, (sp.r0 + sp.r1) / 2, 0.006));
+                m2.rotation.y = -_hqRad(a);
+                G.add(m2);
+            }
+        }
+        /* lower drum: wall, dado, trims (BackSide = the inside faces) */
+        var circ = 2 * Math.PI * R;
+        G.add(_hqBand(R, 0, WH, _hqMat(texWall, circ / 3.2, WH / 3.2, { side: THREE.BackSide })));
+        G.add(_hqBand(R - 0.03, 0.06, S.dadoH, _hqMat(texDado, circ / 2.2, 1, { side: THREE.BackSide, shininess: 14 })));
+        var trimMat = _hqMat(texTrim, circ / 1.5, 1, { side: THREE.BackSide, shininess: 40, specular: 0x555555 });
+        G.add(_hqBand(R - 0.05, S.dadoH, S.dadoH + 0.09, trimMat));
+        G.add(_hqBand(R - 0.05, 0, 0.08, trimMat));
+        G.add(_hqBand(R - 0.05, WH - 0.12, WH, trimMat));
+        /* mezzanine slab: top (terrazzo), underside (ceiling panels), fascia (teal) */
+        G.add(_hqSectorMesh(MZ.inner, MZ.outer, 0, 360, WH, _hqMat(texFloor, 26, 2, { shininess: 22 })));
+        G.add(_hqSectorMesh(MZ.inner, MZ.outer, 0, 360, WH - MZ.thick, _hqMat(texCeil, 40, 2), true));
+        var fasciaMat = _hqMat(texTrim, circ / 1.2, 1, { side: THREE.FrontSide, shininess: 40, specular: 0x555555 });
+        G.add(_hqBand(MZ.inner, WH - MZ.thick, WH, fasciaMat));
+        /* upper drum */
+        var circ2 = 2 * Math.PI * MZ.outer;
+        G.add(_hqBand(MZ.outer, WH, WH + UW, _hqMat(texWall, circ2 / 3.2, UW / 3.2, { side: THREE.BackSide })));
+        G.add(_hqBand(MZ.outer - 0.03, WH + 0.06, WH + S.dadoH, _hqMat(texDado, circ2 / 2.2, 1, { side: THREE.BackSide, shininess: 14 })));
+        var trimMat2 = _hqMat(texTrim, circ2 / 1.5, 1, { side: THREE.BackSide, shininess: 40, specular: 0x555555 });
+        G.add(_hqBand(MZ.outer - 0.05, WH + S.dadoH, WH + S.dadoH + 0.09, trimMat2));
+        G.add(_hqBand(MZ.outer - 0.05, WH, WH + 0.08, trimMat2));
+        G.add(_hqBand(MZ.outer - 0.05, WH + UW - 0.14, WH + UW, trimMat2));
+        /* ceiling: a cone from the upper wall top in to a flat disc */
+        var topR = MZ.outer * 0.48;
+        var cone = new THREE.Mesh(new THREE.CylinderGeometry(topR * U, MZ.outer * U, DH * U, 96, 1, true), _hqMat(texCeil, 30, 3, { side: THREE.BackSide }));
+        cone.position.y = (WH + UW + DH / 2) * U;
+        G.add(cone);
+        var lid = new THREE.Mesh(new THREE.CircleGeometry(topR * U, 64), _hqMat(texCeil, 8, 8));
+        lid.rotation.x = Math.PI / 2; lid.position.y = topY * U;
+        G.add(lid);
+        /* fluorescent strips: a ring on the cone + a ring on the lid */
+        var stripMat = _hqBasic(0xf3f7ff);
+        var stripGeo = new THREE.BoxGeometry(2.2 * U, 0.1 * U, 0.34 * U);
+        var nStrip = 16, nLid = 8;
+        var strips = new THREE.InstancedMesh(stripGeo, stripMat, nStrip + nLid);
+        var mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), pos = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
+        var coneTilt = Math.atan2(DH, MZ.outer - topR);
+        for (var si = 0; si < nStrip; si++) {
+            var sa = (360 / nStrip) * si;
+            var rr = MZ.outer - (MZ.outer - topR) * 0.5;
+            pos.copy(_hqPolarW(sa, rr, WH + UW + DH * 0.5 - 0.06));
+            e.set(0, -_hqRad(sa), 0, 'YXZ'); e.x = -coneTilt;
+            q.setFromEuler(e);
+            mtx.compose(pos, q, one); strips.setMatrixAt(si, mtx);
+            var gl = _hzGlowSprite(1.9 * U, 0xdfe9ff, 0.28, 0.03, 0.02, 0.35);
+            gl.position.copy(pos); gl.position.y -= 0.25 * U;
+            G.add(gl);
+        }
+        for (var li = 0; li < nLid; li++) {
+            var la = (360 / nLid) * li;
+            pos.copy(_hqPolarW(la, topR * 0.55, topY - 0.06));
+            e.set(0, -_hqRad(la), 0); q.setFromEuler(e);
+            mtx.compose(pos, q, one); strips.setMatrixAt(nStrip + li, mtx);
+        }
+        strips.instanceMatrix.needsUpdate = true;
+        G.add(strips);
+        /* the Saturnian black cube on its rod */
+        if (S.cube) {
+            var cs = S.cube.size, cy = S.cube.y;
+            var cubeMat = new THREE.MeshPhongMaterial({ color: 0x141518, shininess: 60, specular: 0x555a66, emissive: 0x8fd3d8, emissiveIntensity: 0.55, emissiveMap: _hqGlyphTexture() });
+            var cube = new THREE.Mesh(new THREE.BoxGeometry(cs * U, cs * U, cs * U), cubeMat);
+            cube.position.y = cy * U;
+            cube.rotation.y = Math.PI / 4 * 0.35;
+            G.add(cube);
+            _hq.cube = cube;
+            var rodH = topY - (cy + cs / 2);
+            var rod = new THREE.Mesh(new THREE.CylinderGeometry(S.cube.rodR * U, S.cube.rodR * U, rodH * U, 10), _hqMat(null, 1, 1, { color: 0x2a2c30, shininess: 50 }));
+            rod.position.y = (cy + cs / 2 + rodH / 2) * U;
+            G.add(rod);
+            var cg = _hzGlowSprite(cs * 2.6 * U, 0x5fb4bb, 0.10, 0.05, 0.03, 0.2);
+            cg.position.y = cy * U;
+            G.add(cg);
+        }
+        /* mezzanine railing: posts (instanced) + two rail arcs, gaps at the stair landings */
+        var railR = MZ.inner + 0.28, railH = 1.05;
+        var railMat = _hqMat(texTrim, 4, 1, { shininess: 50, specular: 0x666666 });
+        var gaps = _hq.landings.map(function (L) { return [Math.min(L.a0, L.a1) - 1, Math.max(L.a0, L.a1) + 1]; });
+        function inGap(a) { for (var gi = 0; gi < gaps.length; gi++) if (_hqWithinArc(a, gaps[gi][0], gaps[gi][1], 0)) return true; return false; }
+        var postGeo = new THREE.BoxGeometry(0.06 * U, railH * U, 0.06 * U);
+        var nPost = Math.round(2 * Math.PI * railR / 1.35);
+        var postCount = 0, postMtx = [];
+        for (var pi = 0; pi < nPost; pi++) {
+            var pa = (360 / nPost) * pi;
+            if (inGap(pa)) continue;
+            pos.copy(_hqPolarW(pa, railR, WH + railH / 2));
+            e.set(0, -_hqRad(pa), 0); q.setFromEuler(e);
+            postMtx.push(new THREE.Matrix4().compose(pos, q, one));
+        }
+        var posts = new THREE.InstancedMesh(postGeo, railMat, postMtx.length);
+        for (var pm = 0; pm < postMtx.length; pm++) posts.setMatrixAt(pm, postMtx[pm]);
+        posts.instanceMatrix.needsUpdate = true;
+        G.add(posts);
+        /* rail arcs between the gaps */
+        var cuts = gaps.slice().sort(function (x, y) { return x[0] - y[0]; });
+        var segsArc = [];
+        if (!cuts.length) segsArc.push([0, 360]);
+        else {
+            for (var ci = 0; ci < cuts.length; ci++) {
+                var start = cuts[ci][1], end = (ci + 1 < cuts.length) ? cuts[ci + 1][0] : cuts[0][0] + 360;
+                if (end > start) segsArc.push([start, end]);
+            }
+        }
+        segsArc.forEach(function (sg) {
+            G.add(_hqRailArc(railR, sg[0], sg[1], WH + railH, 0.03, railMat));
+            G.add(_hqRailArc(railR, sg[0], sg[1], WH + railH * 0.55, 0.018, railMat));
+        });
+    }
+
+    /* ── stairs: curved flights hugging the lower wall (InstancedMesh steps) ── */
+    function _hqBuildStairs(room) {
+        var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
+        var stepMat = _hqMat(S.stair || 'concrete', 1.5, 1, { shininess: 6 });
+        var railMat = _hqMat(S.trim || 'teal', 4, 1, { shininess: 50, specular: 0x666666 });
+        (room.stairs || []).forEach(function (st) {
+            var n = st.steps || 24, dir = (st.to > st.from) ? 1 : -1;
+            var span = Math.abs(st.to - st.from);
+            var rOutGeo = S.radius;                      // the mass runs to the wall
+            var rMid = (st.rIn + rOutGeo) / 2;
+            var rise = S.wallH / n;
+            var stepLen = _hqRad(span / n) * rMid * U + 3;
+            var stepW = (rOutGeo - st.rIn) * U;
+            var geo = new THREE.BoxGeometry(1, 1, 1);
+            var inst = new THREE.InstancedMesh(geo, stepMat, n);
+            var mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), pos = new THREE.Vector3(), scl = new THREE.Vector3();
+            var railPts = [];
+            for (var i = 0; i < n; i++) {
+                var a = st.from + dir * span * (i + 0.5) / n;
+                var top = rise * (i + 1);
+                pos.copy(_hqPolarW(a, rMid, top / 2));
+                e.set(0, -_hqRad(a), 0); q.setFromEuler(e);
+                scl.set(stepLen, top * U, stepW);
+                mtx.compose(pos, q, scl); inst.setMatrixAt(i, mtx);
+                if (i % 3 === 0 || i === n - 1) railPts.push({ a: a, top: top });
+            }
+            inst.instanceMatrix.needsUpdate = true;
+            G.add(inst);
+            /* inner-edge railing: posts + a sloped rail, then the top landing */
+            var prev = null;
+            railPts.forEach(function (rp) {
+                var base = _hqPolarW(rp.a, st.rIn - 0.05, rp.top);
+                var post = _hqBox(0.06, 1.0, 0.06, railMat);
+                post.position.copy(base); post.position.y += 0.5 * U;
+                G.add(post);
+                var topPt = base.clone(); topPt.y += 1.0 * U;
+                if (prev) G.add(_hqBar(prev, topPt, 0.035 * U, railMat));
+                prev = topPt;
+            });
+            var L = st._landing;
+            if (L) {
+                G.add(_hqSectorMesh(st.rIn, S.mezz.inner + 0.02, L.a0, L.a1, S.wallH, _hqMat(S.floor || 'terrazzo', 4, 1, { shininess: 22 })));
+                G.add(_hqSectorMesh(st.rIn, S.mezz.inner + 0.02, L.a0, L.a1, S.wallH - S.mezz.thick, _hqMat(S.ceiling || 'ceiling', 4, 1), true));
+                /* landing edge rail on the far side (away from the stair) */
+                var farA = (dir > 0) ? Math.max(L.a0, L.a1) : Math.min(L.a0, L.a1);
+                var e0 = _hqPolarW(farA, st.rIn, S.wallH), e1 = _hqPolarW(farA, S.mezz.inner + 0.25, S.wallH);
+                var e0t = e0.clone(); e0t.y += 1.05 * U; var e1t = e1.clone(); e1t.y += 1.05 * U;
+                G.add(_hqBar(e0t, e1t, 0.03 * U, railMat));
+                var lp = _hqBox(0.06, 1.05, 0.06, railMat); lp.position.copy(e0); lp.position.y += 0.525 * U; G.add(lp);
+                G.add(_hqRailArc(st.rIn - 0.05, L.a0, L.a1, S.wallH + 1.05, 0.03, railMat));
+                G.add(_hqRailArc(st.rIn - 0.05, L.a0, L.a1, S.wallH + 0.58, 0.018, railMat));
+            }
+        });
+    }
+
+    /* ── the round dispatch desk (procedural) ───────────────────────────── */
+    function _hqBuildDesk(room) {
+        var U = _hqUnits(), S = room.shell, D = room.desk, G = _hq.shellGroup;
+        if (!D) return;
+        var top = _hqMat(D.top || 'terrazzo', 8, 1, { shininess: 30, specular: 0x444444 });
+        var front = _hqMat(D.front || 'oxblood', 8, 1, { shininess: 12 });
+        G.add(_hqSectorMesh(D.rInner, D.rOuter, 0, 360, D.h, top));
+        G.add(_hqBand(D.rOuter, 0, D.h, front, 96));
+        G.add(_hqBand(D.rInner, 0, D.h, _hqMat(D.front || 'oxblood', 4, 1, { shininess: 12, side: THREE.BackSide }), 64));
+        var trim = _hqMat(S.trim || 'teal', 10, 1, { shininess: 50, specular: 0x666666 });
+        G.add(_hqBand(D.rOuter + 0.012, D.h - 0.07, D.h, trim, 96));
+        G.add(_hqBand(D.rOuter + 0.012, 0, 0.08, trim, 96));
+        var inner = new THREE.Mesh(new THREE.CircleGeometry(D.rInner * U, 48), _hqMat(S.stair || 'concrete', 3, 3));
+        inner.rotation.x = -Math.PI / 2; inner.position.y = 0.05 * U;
+        G.add(inner);
+        /* the seal on the front, facing the spawn side */
+        var seal = _hqSealTexture();
+        if (seal) {
+            var sm = new THREE.MeshBasicMaterial({ map: seal, transparent: true, depthWrite: false, fog: false });
+            var pl = new THREE.Mesh(new THREE.PlaneGeometry(0.82 * U, 0.82 * U), sm);
+            var sa = (room.spawn && room.spawn.deg) || 180;
+            pl.position.copy(_hqPolarW(sa, D.rOuter + 0.02, D.h * 0.5));
+            pl.rotation.y = Math.PI - _hqRad(sa);
+            G.add(pl);
+        }
+        /* an in-ring warm light over the console */
+        var pl2 = new THREE.PointLight(0xffe2b8, 0.55, 22 * U, 2);
+        pl2.position.set(0, 3.2 * U, 0);
+        G.add(pl2);
+    }
+
+    /* ── doors: frame panel + recess + lamp + leaf + nameplate ─────────── */
+    function _hqBuildDoors(room) {
+        var U = _hqUnits(), S = room.shell, G = _hq.doorGroup;
+        var wallMat = _hqMat(S.wall || 'stone', 1.2, 1.4);
+        var dadoMat = _hqMat(S.dado || 'oxblood', 1.2, 0.5, { shininess: 14 });
+        var capMat = _hqMat(S.trim || 'teal', 2, 0.2, { shininess: 45, specular: 0x666666 });
+        var backMat = _hqMat(null, 1, 1, { color: 0x15161a, shininess: 4 });
+        var housingMat = _hqMat(null, 1, 1, { color: 0x2b2d33, shininess: 30 });
+        (room.doors || []).forEach(function (door) {
+            var level = door.level || 0;
+            var Rw = level ? S.mezz.outer : S.radius;
+            var y0 = level ? S.wallH : 0;
+            var wide = !!door.wide;
+            var ow = wide ? 2.2 : 1.1, oh = wide ? 2.45 : 2.25;
+            var pw = wide ? 3.3 : 2.5, ph = oh + 1.25, pd = 0.55;
+            var jw = (pw - ow) / 2;
+            var a = door.deg;
+            var grp = new THREE.Group();
+            grp.position.copy(_hqPolarW(a, Rw - pd / 2 + 0.05, y0));
+            grp.rotation.y = _hqFaceCentreYaw(a);   // local +Z points at the hall centre
+            /* jambs (full depth), lintel, back plate, dado bands, cap */
+            var jL = _hqBox(jw, ph, pd, wallMat); jL.position.set(-(ow / 2 + jw / 2) * U, ph / 2 * U, 0);
+            var jR = _hqBox(jw, ph, pd, wallMat); jR.position.set((ow / 2 + jw / 2) * U, ph / 2 * U, 0);
+            var lin = _hqBox(ow + 0.02, ph - oh, pd, wallMat); lin.position.set(0, (oh + (ph - oh) / 2) * U, 0);
+            var back = _hqBox(ow + 0.04, oh + 0.02, 0.12, backMat); back.position.set(0, (oh / 2) * U, (-pd / 2 + 0.06 + 0.05) * U);
+            var dL = _hqBox(jw + 0.02, S.dadoH, 0.03, dadoMat); dL.position.set(jL.position.x, (S.dadoH / 2 + 0.04) * U, (pd / 2 + 0.015) * U);
+            var dR = _hqBox(jw + 0.02, S.dadoH, 0.03, dadoMat); dR.position.set(jR.position.x, (S.dadoH / 2 + 0.04) * U, (pd / 2 + 0.015) * U);
+            var cap = _hqBox(pw + 0.06, 0.12, pd + 0.06, capMat); cap.position.set(0, (ph + 0.06) * U, 0);
+            var sill = _hqBox(pw + 0.04, 0.05, pd + 0.02, capMat); sill.position.set(0, 0.025 * U, 0);
+            var frameL = _hqBox(0.07, oh + 0.06, 0.09, capMat); frameL.position.set(-(ow / 2 + 0.035) * U, (oh / 2) * U, (pd / 2 - 0.045) * U);
+            var frameR = _hqBox(0.07, oh + 0.06, 0.09, capMat); frameR.position.set((ow / 2 + 0.035) * U, (oh / 2) * U, (pd / 2 - 0.045) * U);
+            var frameT = _hqBox(ow + 0.14, 0.07, 0.09, capMat); frameT.position.set(0, (oh + 0.035) * U, (pd / 2 - 0.045) * U);
+            grp.add(jL, jR, lin, back, dL, dR, cap, sill, frameL, frameR, frameT);
+            /* lamp housing + lens + glow */
+            var housing = _hqBox(0.46, 0.22, 0.12, housingMat); housing.position.set(0, (oh + 0.62) * U, (pd / 2 + 0.04) * U);
+            var lens = new THREE.Mesh(new THREE.BoxGeometry(0.30 * U, 0.12 * U, 0.025 * U), _hqBasic(0x1a1a1a));
+            lens.position.set(0, (oh + 0.62) * U, (pd / 2 + 0.11) * U);
+            var glow = _hzGlowSprite(1.15 * U, 0xffffff, 0.55, 0.0, 0.0, 0.0);
+            glow.position.set(0, (oh + 0.62) * U, (pd / 2 + 0.22) * U);
+            grp.add(housing, lens, glow);
+            /* the leaf: catalogue GLB fitted to the recess, or a procedural elevator */
+            var leafGroup = new THREE.Group();
+            leafGroup.position.set(0, 0, (-pd / 2 + 0.28) * U);
+            if (door.proc === 'elevator') {
+                var elMat = _hqMat(S.trim || 'teal', 1.5, 2, { color: 0xb9c2c4, shininess: 90, specular: 0x999999 });
+                var half = (ow / 2) - 0.02;
+                var eL = _hqBox(half, oh - 0.04, 0.06, elMat); eL.position.set(-(half / 2 + 0.01) * U, (oh / 2) * U, 0);
+                var eR = _hqBox(half, oh - 0.04, 0.06, elMat); eR.position.set((half / 2 + 0.01) * U, (oh / 2) * U, 0);
+                var seam = _hqBox(0.02, oh - 0.04, 0.07, _hqBasic(0x0a0a0c)); seam.position.set(0, (oh / 2) * U, 0);
+                var ind = new THREE.Mesh(new THREE.BoxGeometry(0.5 * U, 0.06 * U, 0.02 * U), _hqBasic(0xffb020)); ind.position.set(0, (oh - 0.18) * U, 0.04 * U);
+                leafGroup.add(eL, eR, seam, ind);
+                var brace = _hqBox(0.05, oh * 0.55, 0.02, elMat); brace.position.set(0, (oh / 2) * U, 0.04 * U); brace.rotation.z = Math.PI / 4; leafGroup.add(brace);
+                var brace2 = brace.clone(); brace2.rotation.z = -Math.PI / 4; leafGroup.add(brace2);
+            } else if (door.leaf) {
+                var cat = _hqData().catalogue[door.leaf];
+                if (cat && cat.file) {
+                    var targetH = (oh - 0.10) * U, maxW = (ow - 0.06) * U;
+                    var lg = _miscModelInstance(_hqModelUrl(cat), true, targetH, {
+                        fit: 'height', matPick: _hqPropMatPick,
+                        onDone: function (g, s, bb) {
+                            var w = (bb.max.x - bb.min.x) * s;
+                            if (w > maxW) g.scale.multiplyScalar(maxW / w);
+                            if (_hq) _hq.dirty = true;
+                        }
+                    });
+                    lg.rotation.y = (typeof window !== 'undefined' && window.EW_HQ_FLIP_LEAVES) ? Math.PI : 0;
+                    leafGroup.add(lg);
+                }
+            }
+            grp.add(leafGroup);
+            /* nameplate above the panel (CSS2D) */
+            var el = document.createElement('div');
+            el.className = 'hq-plate';
+            var chip = document.createElement('i');
+            el.innerHTML = '<b>' + (door.label || door.id) + '</b><span>' + (door.sub || '') + '</span>';
+            el.appendChild(chip);
+            var plate = new THREE.CSS2DObject(el);
+            plate.position.set(0, (ph + 0.42) * U, (pd / 2) * U);
+            grp.add(plate);
+            G.add(grp);
+            var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide };
+            _hq.doors.push(rec);
+            _hqLampApply(rec, _hqDoorState(door));
+        });
+    }
+
+    /* ── counters: the board, the directory kiosk (procedural), plates ─── */
+    function _hqBuildCounters(room) {
+        var U = _hqUnits(), S = room.shell, G = _hq.doorGroup;
+        (room.counters || []).forEach(function (c) {
+            var level = c.level || 0, y0 = level ? S.wallH : 0;
+            var Rw = level ? S.mezz.outer : S.radius;
+            var grp = new THREE.Group();
+            var plateY = 2.6;
+            if (c.proc === 'board') {
+                grp.position.copy(_hqPolarW(c.deg, Rw - 0.12, y0));
+                grp.rotation.y = _hqFaceCentreYaw(c.deg);
+                var frame = _hqBox(2.8, 1.7, 0.08, _hqMat(S.trim || 'teal', 3, 2, { shininess: 45 })); frame.position.set(0, 1.75 * U, 0);
+                var panel = _hqBox(2.62, 1.52, 0.03, _hqMat(null, 1, 1, { color: 0x2a2320, shininess: 4 })); panel.position.set(0, 1.75 * U, 0.05 * U);
+                grp.add(frame, panel);
+                for (var i = 0; i < 6; i++) {
+                    var ph = _hqBox(0.42, 0.52, 0.01, _hqMat(null, 1, 1, { color: (i === 0) ? 0xd8d0b8 : 0x8f8a80, shininess: 2 }));
+                    ph.position.set((-1.0 + (i % 3) * 1.0) * U, (2.2 - Math.floor(i / 3) * 0.72) * U, 0.075 * U);
+                    grp.add(ph);
+                }
+                var strip = _hqBox(2.4, 0.08, 0.01, _hqBasic(0xd9b45a)); strip.position.set(0, 2.55 * U, 0.075 * U); grp.add(strip);
+                plateY = 2.72;
+            } else if (c.proc === 'directory') {
+                grp.position.copy(_hqPolarW(c.deg, c.r, y0));
+                grp.rotation.y = _hqFaceCentreYaw(c.deg);
+                var stand = _hqBox(0.9, 1.55, 0.3, _hqMat(S.trim || 'teal', 1.5, 2, { color: 0xc9cfd0, shininess: 40 })); stand.position.set(0, 0.775 * U, 0);
+                var map = _hqBox(0.78, 0.9, 0.02, _hqMat(null, 1, 1, { color: 0x101a1c, shininess: 10, emissive: 0x1f5a60, emissiveIntensity: 0.5 })); map.position.set(0, 1.0 * U, 0.16 * U);
+                var ring = new THREE.Mesh(new THREE.RingGeometry(0.22 * U, 0.26 * U, 32), _hqBasic(0x7fd9dd)); ring.position.set(0, 1.0 * U, 0.175 * U);
+                var dot = new THREE.Mesh(new THREE.CircleGeometry(0.03 * U, 12), _hqBasic(0xffb020)); dot.position.set(0, 0.78 * U, 0.176 * U);
+                grp.add(stand, map, ring, dot);
+                _hq.blockers.push({ obj: grp, rad: 0.55, y: y0 });
+                plateY = 1.9;
+            } else {
+                grp.position.copy(_hqPolarW(c.deg, c.r, y0));
+                plateY = 1.7;
+            }
+            var el = document.createElement('div');
+            el.className = 'hq-plate hq-plate-counter';
+            el.innerHTML = '<b>' + c.label + '</b><span>' + (c.sub || '') + '</span>';
+            var plate = new THREE.CSS2DObject(el);
+            plate.position.set(0, plateY * U, 0);
+            grp.add(plate);
+            G.add(grp);
+            _hq.counters.push({ counter: c, group: grp, level: level, plateEl: el, x: null, z: null });
+        });
+    }
+
+    /* ── props: the Meshy kit, placed from the layout table ─────────────── */
+    function _hqPlaceProps(room) {
+        if (typeof window !== 'undefined' && window.EW_HQ_NO_PROPS) return;
+        var U = _hqUnits(), S = room.shell, G = _hq.propGroup, D = _hqData();
+        (room.props || []).forEach(function (p) {
+            var cat = D.catalogue[p.key];
+            if (!cat || !cat.file) return;
+            var level = p.level || 0, y0 = level ? S.wallH : 0;
+            var Rw = level ? S.mezz.outer : S.radius;
+            var onWall = !!(cat.wall && p.r == null);
+            var r = onWall ? (Rw - 0.35) : (p.r || 0);
+            var mount = (p.mount != null) ? p.mount : (cat.mount || 0);
+            var y = y0 + (p.y || 0) + mount;
+            var fitSpan = (cat.span != null && cat.h == null) || (p.span != null);
+            var target = ((fitSpan ? (p.span || cat.span) : (p.h || cat.h)) || 1) * U;
+            var grp = new THREE.Group();
+            grp.position.copy(_hqPolarW(p.deg, r, y));
+            grp.rotation.y = _hqFaceCentreYaw(p.deg) - _hqRad(p.rot || 0);
+            var inst = _miscModelInstance(_hqModelUrl(cat), true, target, {
+                fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
+                onDone: function (g, s, bb) {
+                    if (onWall) {
+                        var depth = (bb.max.z - bb.min.z) * s / U;
+                        grp.position.copy(_hqPolarW(p.deg, Rw - 0.02 - depth / 2, y));
+                    }
+                    if (_hq) _hq.dirty = true;
+                }
+            });
+            grp.add(inst);
+            if (cat.glow) {
+                var gl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4);
+                gl.position.y = cat.glow.y * U;
+                grp.add(gl);
+            }
+            G.add(grp);
+            if (cat.foot > 0 && !mount && !(p.y > 0.5)) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 });
+        });
+    }
+
+    /* ── characters: avatar, DOOR agents, roster vessels ────────────────── */
+    function _hqSpawnCharacter(spec) {
+        var U = _hqUnits(), S = _hq.room.shell;
+        var race = spec.race, gender = spec.gender || 'male';
+        var def = (typeof getRace3DModel === 'function') ? getRace3DModel(race, gender) : null;
+        if (!def && typeof getRace3DModel === 'function') {
+            /* other gender of the same race, then the DOOR agent stand-in */
+            var alt = (gender === 'male') ? 'female' : 'male';
+            def = getRace3DModel(race, alt);
+            if (def) gender = alt;
+        }
+        if (!def) { race = 'men in black'; def = getRace3DModel(race, gender) || getRace3DModel(race, 'male'); if (def && !getRace3DModel(race, gender)) gender = 'male'; }
+        if (!def) return null;
+        var unit;
+        try {
+            var job = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || 'Freelancer';
+            var template = CLASS_TEMPLATES[job] || CLASS_TEMPLATES[Object.keys(CLASS_TEMPLATES)[0]];
+            unit = createUnit(spec.id, 1, 0, 0, template, emptyLoadout(), { race: race, gender: gender });
+        } catch (e) { console.warn('[HQ] createUnit failed for', race, e); return null; }
+        unit.ap = 1;
+        var yaw = _hqHeadingYaw(spec.face || 0);
+        unit.facing = { dx: Math.sin(yaw), dy: Math.cos(yaw) };
+        var entry = { group: new THREE.Group(), id: spec.id, unit: unit, modelDef: def };
+        entry.group.name = 'hq_' + spec.id;
+        _attachUnitModel(entry, unit, def, BASE_TILE);
+        var y = (spec.level ? S.wallH : 0);
+        var p = _hqPolarW(spec.deg, spec.r, y);
+        entry.group.position.copy(p);
+        _hq.charGroup.add(entry.group);
+        var ch = {
+            id: spec.id, kind: spec.kind || 'npc', entry: entry, unit: unit, def: def,
+            x: p.x / U, z: p.z / U, y: y, visY: y, yaw: yaw, targetYaw: yaw,
+            line: spec.line || null, label: spec.label || (race.charAt(0).toUpperCase() + race.slice(1)),
+            race: race, gender: gender, heightM: 1.75 * (def.heightRatio || 1), cleaned: false, moving: false, running: false, jumpT: -1,
+        };
+        _hq.chars.push(ch);
+        if (spec.kind !== 'player') _hq.blockers.push({ obj: entry.group, rad: 0.42, y: y, npc: true });
+        return ch;
+    }
+    function _hqSpawnPopulation(room, opts) {
+        var av = opts.avatar || {};
+        var sp = room.spawn || { deg: 180, r: 15, level: 0, face: 0 };
+        _hq.player = _hqSpawnCharacter({ id: 'hq-player', kind: 'player', race: av.race || 'men in black', gender: av.gender || 'male', deg: sp.deg, r: sp.r, level: sp.level || 0, face: sp.face || 0, label: 'YOU' });
+        (room.agents || []).forEach(function (ag, i) {
+            _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: 'men in black', gender: (i % 2) ? 'female' : 'male', deg: ag.deg, r: ag.r, level: ag.level || 0, face: ag.face || 0, line: ag.line, label: 'D.O.O.R. AGENT' });
+        });
+        /* roster vessels: unlocked races with a rigged model, minus the avatar */
+        try {
+            var spots = room.npcSpots || [];
+            var owned = [];
+            var prof = opts.profile;
+            var unl = (prof && prof.account && prof.account.unlockedUnits) || [];
+            var pool = (typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES.slice() : [];
+            pool.forEach(function (rk) {
+                if (rk === (av.race || '') || rk === 'men in black') return;
+                if (typeof getRace3DModel !== 'function' || !getRace3DModel(rk, 'male') && !getRace3DModel(rk, 'female')) return;
+                if (unl.length && unl.indexOf(rk) < 0 && !(window._DEV_UNLOCK_ALL)) return;
+                owned.push(rk);
+            });
+            for (var i = owned.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = owned[i]; owned[i] = owned[j]; owned[j] = t; }
+            var n = Math.min(spots.length, owned.length, 3);
+            for (var k = 0; k < n; k++) {
+                var rk2 = owned[k];
+                var g = getRace3DModel(rk2, 'male') ? 'male' : 'female';
+                _hqSpawnCharacter({ id: 'hq-npc-' + k, kind: 'npc', race: rk2, gender: g, deg: spots[k].deg, r: spots[k].r, level: spots[k].level || 0, face: spots[k].face || 0 });
+            }
+        } catch (e) { console.warn('[HQ] roster NPCs skipped', e); }
+    }
+
+    /* ── walkable query: returns the floor height (m) at (x,z) or null ────
+       Order matters: stairs → top landings → mezzanine slab → ground; a
+       move is refused when it would change height by more than HQ_STEP_TOL
+       (that is the railing, the slab edge, the stair side). */
+    function _hqSurface(x, z, curY, ignoreBlockers) {
+        var room = _hq.room, S = room.shell;
+        var r = Math.hypot(x, z);
+        var deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
+        var y = null;
+        var stairs = room.stairs || [];
+        for (var i = 0; i < stairs.length && y === null; i++) {
+            var st = stairs[i];
+            if (!_hqWithinArc(deg, st.from, st.to, 0.4)) continue;
+            if (r < st.rIn - 0.25) continue;
+            if (r < st.rIn + 0.12 || r > st.rOut - 0.12) return null;   // the railing / the wall
+            var t = _hqDegDiff(deg, st.from) / (st.to - st.from);
+            t = Math.max(0, Math.min(1, t));
+            var n = st.steps || 24;
+            y = S.wallH * Math.min(1, Math.ceil(t * n - 0.0001) / n);
+            if (t <= 0.001) y = 0;
+        }
+        if (y === null) {
+            for (var li = 0; li < _hq.landings.length; li++) {
+                var L = _hq.landings[li];
+                if (_hqWithinArc(deg, L.a0, L.a1, 0) && r >= L.rIn + 0.12 && r <= S.mezz.inner + 0.62) { y = S.wallH; break; }
+            }
+        }
+        if (y === null) {
+            if (r >= S.mezz.inner + 0.62 && r <= S.mezz.outer - 0.55) y = S.wallH;
+            else if (r >= S.mezz.inner - 0.05 && r < S.mezz.inner + 0.62) {
+                /* the railing band: only from the slab side, and only if already up there */
+                if (curY != null && Math.abs(curY - S.wallH) < 0.3) return null;
+                y = null;
+            }
+        }
+        if (y === null) {
+            var inStairMass = false;
+            for (var si = 0; si < stairs.length; si++) {
+                if (_hqWithinArc(deg, stairs[si].from, stairs[si].to, 0.4) && r >= stairs[si].rIn - 0.25) { inStairMass = true; break; }
+            }
+            if (inStairMass) return null;
+            var deskR = (room.desk && room.desk.rOuter) || 0;
+            if (r <= S.radius - 0.5 && r >= deskR + HQ_BODY_R + 0.1) y = 0;
+        }
+        if (y === null) return null;
+        if (curY != null && Math.abs(y - curY) > HQ_STEP_TOL) return null;
+        if (!ignoreBlockers) {
+            var U = _hqUnits();
+            for (var bi = 0; bi < _hq.blockers.length; bi++) {
+                var b = _hq.blockers[bi];
+                if (Math.abs(b.y - y) > 1.2) continue;
+                var bx = b.obj.position.x / U, bz = b.obj.position.z / U;
+                if (Math.hypot(bx - x, bz - z) < b.rad + HQ_BODY_R) return null;
+            }
+        }
+        return y;
+    }
+    /* highest surface under a free point (camera boom), ignoring the walker's height */
+    function _hqCamBlocked(px, pz, py) {
+        var S = _hq.room.shell;
+        var r = Math.hypot(px, pz);
+        var pl = _hq.player;
+        var onMezz = pl && pl.y > S.wallH * 0.6;
+        var wallR = onMezz ? S.mezz.outer : S.radius;
+        if (r > wallR - 0.28) return true;
+        if (!onMezz && py > S.wallH - 0.2 && r > S.mezz.inner - 0.3 && py < S.wallH + 0.3) return true;   // the slab
+        if (py > S.wallH + S.upperWallH + S.domeH - 0.45) return true;
+        if (py < 0.22) return true;
+        if (onMezz && r > S.mezz.inner - 0.1 && py < S.wallH + 0.22) return true;
+        var ground = _hqSurface(px, pz, null, true);
+        if (ground !== null && py < ground + 0.24) return true;
+        return false;
+    }
+
+    /* ── interaction targets ───────────────────────────────────────────── */
+    function _hqFindTarget() {
+        var pl = _hq.player; if (!pl) return null;
+        var S = _hq.room.shell, U = _hqUnits();
+        var r = Math.hypot(pl.x, pl.z), deg = _hqNormDeg(Math.atan2(pl.x, -pl.z) * 180 / Math.PI);
+        var lvl = (pl.y > S.wallH * 0.6) ? 1 : 0;
+        var best = null, bestD = 1e9;
+        _hq.doors.forEach(function (d) {
+            if (d.level !== lvl) return;
+            var dd = Math.abs(_hqDegDiff(deg, d.door.deg));
+            if (dd > (d.wide ? 7 : 6)) return;
+            if (r < d.Rw - 3.4) return;
+            var dist = (d.Rw - 0.5 - r) + _hqRad(dd) * r;
+            if (dist < bestD) { bestD = dist; best = { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d }; }
+        });
+        _hq.counters.forEach(function (c) {
+            if (c.level !== lvl) return;
+            var cx = c.group.position.x / U, cz = c.group.position.z / U;
+            var dist = Math.hypot(cx - pl.x, cz - pl.z);
+            if (dist > (c.counter.radius || 2)) return;
+            if (dist < bestD) { bestD = dist; best = { kind: 'counter', id: c.counter.id, label: c.counter.label, sub: c.counter.sub, counter: c.counter }; }
+        });
+        _hq.chars.forEach(function (ch) {
+            if (ch.kind === 'player') return;
+            if (Math.abs(ch.y - pl.y) > 1) return;
+            var dist = Math.hypot(ch.x - pl.x, ch.z - pl.z);
+            if (dist > 1.75) return;
+            if (dist < bestD) { bestD = dist; best = { kind: ch.kind, id: ch.id, label: ch.label, sub: ch.kind === 'agent' ? 'D.O.O.R. PERSONNEL' : 'ON BREAK', line: ch.line, race: ch.race }; }
+        });
+        return best;
+    }
+
+    /* ── input ─────────────────────────────────────────────────────────── */
+    function _hqKeyName(e) {
+        var k = (e.key || '').toLowerCase();
+        if (k === 'arrowup') return 'w';
+        if (k === 'arrowdown') return 's';
+        if (k === 'arrowleft') return 'a';
+        if (k === 'arrowright') return 'd';
+        if (k === 'shift') return 'shift';
+        if (k === ' ' || k === 'spacebar') return 'space';
+        if (k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'e' || k === 'v' || k === 'q') return k;
+        if (k === 'enter') return 'e';
+        if (k === 'escape' || k === 'esc') return 'esc';
+        return null;
+    }
+    function _hqBindInput() {
+        var H = _hq;
+        H.onKeyDown = function (e) {
+            if (!_hq) return;
+            var t = e.target;
+            if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+            var k = _hqKeyName(e);
+            if (!k) return;
+            if (k === 'esc') { e.preventDefault(); e.stopPropagation(); if (H.opts.onEscape) H.opts.onEscape(); return; }
+            if (H.paused) return;
+            if (k === 'e') { e.preventDefault(); _hqInteract(); return; }
+            if (k === 'v') { e.preventDefault(); _hqToggleView(); return; }
+            H.keys[k] = true;
+            if (k === 'space' || (e.key && e.key.indexOf('Arrow') === 0)) e.preventDefault();
+        };
+        H.onKeyUp = function (e) { if (!_hq) return; var k = _hqKeyName(e); if (k) H.keys[k] = false; };
+        H.onBlur = function () { if (_hq) { H.keys = {}; H.drag = null; } };
+        H.onMouseDown = function (e) {
+            if (!_hq || H.paused) return;
+            if (H.fp) { try { if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); } catch (er) {} return; }
+            H.drag = { x: e.clientX, y: e.clientY, moved: false };
+            H.lastDragAt = performance.now();
+            e.preventDefault();
+        };
+        H.onMouseMove = function (e) {
+            if (!_hq || H.paused) return;
+            if (H.fp && document.pointerLockElement === canvas) {
+                H.cam.yaw += (e.movementX || 0) * 0.0032;
+                H.cam.pitch = Math.max(-1.25, Math.min(1.25, H.cam.pitch - (e.movementY || 0) * 0.0032));
+                return;
+            }
+            if (!H.drag) return;
+            var dx = e.clientX - H.drag.x, dy = e.clientY - H.drag.y;
+            H.drag.x = e.clientX; H.drag.y = e.clientY; H.drag.moved = true;
+            H.cam.yaw += dx * 0.0052;
+            H.cam.pitch = Math.max(-1.15, Math.min(0.75, H.cam.pitch - dy * 0.0036));
+            H.lastDragAt = performance.now();
+        };
+        H.onMouseUp = function () { if (_hq) H.drag = null; };
+        H.onWheel = function (e) {
+            if (!_hq || H.paused || H.fp) return;
+            H.cam.dist = Math.max(1.5, Math.min(7.5, H.cam.dist + Math.sign(e.deltaY) * 0.35));
+            e.preventDefault();
+        };
+        H.onContext = function (e) { e.preventDefault(); };
+        H.onPointerLock = function () { if (!_hq) return; if (document.pointerLockElement !== canvas && H.fp) { /* released: stay FP, mouse drag still works via drag */ } };
+        window.addEventListener('keydown', H.onKeyDown, true);
+        window.addEventListener('keyup', H.onKeyUp, true);
+        window.addEventListener('blur', H.onBlur);
+        canvas.addEventListener('mousedown', H.onMouseDown);
+        window.addEventListener('mousemove', H.onMouseMove);
+        window.addEventListener('mouseup', H.onMouseUp);
+        canvas.addEventListener('wheel', H.onWheel, { passive: false });
+        canvas.addEventListener('contextmenu', H.onContext);
+        document.addEventListener('pointerlockchange', H.onPointerLock);
+    }
+    function _hqUnbindInput() {
+        var H = _hq; if (!H) return;
+        window.removeEventListener('keydown', H.onKeyDown, true);
+        window.removeEventListener('keyup', H.onKeyUp, true);
+        window.removeEventListener('blur', H.onBlur);
+        if (canvas) {
+            canvas.removeEventListener('mousedown', H.onMouseDown);
+            canvas.removeEventListener('wheel', H.onWheel);
+            canvas.removeEventListener('contextmenu', H.onContext);
+        }
+        window.removeEventListener('mousemove', H.onMouseMove);
+        window.removeEventListener('mouseup', H.onMouseUp);
+        document.removeEventListener('pointerlockchange', H.onPointerLock);
+        try { if (document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {}
+    }
+    function _hqInteract() {
+        if (!_hq || _hq.paused) return;
+        var t = _hqFindTarget();
+        if (t && _hq.opts.onInteract) _hq.opts.onInteract(t);
+    }
+    function _hqToggleView() {
+        if (!_hq) return;
+        _hq.fp = !_hq.fp;
+        if (_hq.fp) { try { canvas.requestPointerLock(); } catch (e) {} }
+        else { try { if (document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {} }
+        if (_hq.opts.onView) _hq.opts.onView(_hq.fp);
+    }
+
+    /* ── per-frame ─────────────────────────────────────────────────────── */
+    function _hqTickWalker(dt) {
+        var H = _hq, pl = H.player; if (!pl) return;
+        var k = H.keys;
+        var ix = H.paused ? 0 : ((k.d ? 1 : 0) - (k.a ? 1 : 0));
+        var iy = H.paused ? 0 : ((k.s ? 1 : 0) - (k.w ? 1 : 0));
+        var moving = !!(ix || iy);
+        var running = !!k.shift && moving;
+        var mx = 0, mz = 0;
+        if (moving) {
+            var fx = Math.sin(H.cam.yaw), fz = -Math.cos(H.cam.yaw);     // camera forward, flattened
+            var rx = Math.cos(H.cam.yaw), rz = Math.sin(H.cam.yaw);      // camera right
+            mx = fx * (-iy) + rx * ix; mz = fz * (-iy) + rz * ix;
+            var ml = Math.hypot(mx, mz); if (ml > 0.001) { mx /= ml; mz /= ml; }
+            var speed = running ? 4.6 : 2.4;   // m/s
+            var nx = pl.x + mx * speed * dt, nz = pl.z + mz * speed * dt;
+            /* axis-separated slide with a body-radius look-ahead */
+            var y1 = _hqSurface(nx + Math.sign(mx) * HQ_BODY_R * 0.6, pl.z, pl.y);
+            if (y1 !== null) { pl.x = nx; pl.y = y1; }
+            var y2 = _hqSurface(pl.x, nz + Math.sign(mz) * HQ_BODY_R * 0.6, pl.y);
+            if (y2 !== null) { pl.z = nz; pl.y = y2; }
+            if (y1 === null && y2 === null) {
+                /* try the exact point (thin gaps like a stair mouth) */
+                var y3 = _hqSurface(nx, nz, pl.y);
+                if (y3 !== null) { pl.x = nx; pl.z = nz; pl.y = y3; }
+            }
+            pl.targetYaw = Math.atan2(mx, mz);
+        }
+        pl.moving = moving; pl.running = running;
+        /* cosmetic hop */
+        if (k.space && pl.jumpT < 0 && !H.paused) pl.jumpT = 0;
+        var yJump = 0;
+        if (pl.jumpT >= 0) {
+            pl.jumpT += dt;
+            var JT = 0.55;
+            if (pl.jumpT >= JT) { pl.jumpT = -1; if (pl.entry) pl.entry._ew_hqLandAt = performance.now(); }
+            else yJump = Math.sin((pl.jumpT / JT) * Math.PI) * 0.55;
+        }
+        pl.visY += (pl.y - pl.visY) * Math.min(1, dt * 14);
+        if (Math.abs(pl.y - pl.visY) < 0.004) pl.visY = pl.y;
+        /* turn toward the travel heading */
+        var dy = pl.targetYaw - pl.yaw;
+        while (dy > Math.PI) dy -= Math.PI * 2;
+        while (dy < -Math.PI) dy += Math.PI * 2;
+        pl.yaw += dy * Math.min(1, dt * 14);
+        var U = _hqUnits();
+        pl.entry.group.position.set(pl.x * U, (pl.visY + yJump) * U, pl.z * U);
+        /* auto-follow: swing behind the runner unless the player is steering the camera */
+        if (moving && !H.drag && !H.fp && (performance.now() - H.lastDragAt) > 1400) {
+            var want = Math.atan2(mx, -mz);
+            var cd = want - H.cam.yaw;
+            while (cd > Math.PI) cd -= Math.PI * 2;
+            while (cd < -Math.PI) cd += Math.PI * 2;
+            H.cam.yaw += cd * Math.min(1, dt * (running ? 2.2 : 1.5));
+        }
+    }
+    function _hqTickChars(dt) {
+        var H = _hq;
+        for (var i = 0; i < H.chars.length; i++) {
+            var ch = H.chars[i], e = ch.entry;
+            if (!e || !e.model) continue;
+            if (!ch.cleaned && e._ew_modelAttached) {
+                e.group.traverse(function (n) { if (n._ew_silhouette) n.visible = false; });
+                ch.cleaned = true;
+                if (ch.kind === 'player' && !H.ready) { H.ready = true; if (H.opts.onReady) { try { H.opts.onReady(); } catch (er) {} } }
+            }
+            e.model.rotation.y = ch.yaw;
+            if (ch.kind === 'player') e.group.visible = !H.fp;
+            var want = 'idle';
+            if (ch.kind === 'player') {
+                want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
+                var lean = e.model._ew_lean || 0;
+                var leanT = ch.moving ? (ch.running ? 0.16 : 0.07) : 0;
+                lean += (leanT - lean) * Math.min(1, dt * 10);
+                e.model._ew_lean = lean; e.model.rotation.x = lean;
+                if (e.actions && e.actions.walk) {
+                    var ts0 = e.actions.walk._ew_ts0 || 1;
+                    e.actions.walk.timeScale = ts0 * (ch.running ? 1.6 : 0.92);
+                }
+                if (e._ew_hqLandAt) {
+                    var lb = (performance.now() - e._ew_hqLandAt) / 200;
+                    if (lb >= 1) { e._ew_hqLandAt = 0; e.model.scale.set(1, 1, 1); }
+                    else { var lbS = Math.sin(lb * Math.PI); e.model.scale.set(1 + 0.07 * lbS, 1 - 0.11 * lbS, 1 + 0.07 * lbS); }
+                }
+            }
+            if (!e.mixer) continue;
+            if (want !== e._ew_curAnim) _playUnitModelAnim(e, want);
+            e.mixer.update(dt);
+        }
+    }
+    function _hqTickCamera(dt) {
+        var H = _hq, pl = H.player, cam = H.camera, U = _hqUnits();
+        if (!pl) return;
+        var c = H.cam;
+        var headY = pl.visY + pl.heightM * 0.86;
+        var lookDir = new THREE.Vector3(Math.sin(c.yaw) * Math.cos(c.pitch), Math.sin(c.pitch), -Math.cos(c.yaw) * Math.cos(c.pitch));
+        var eye, look;
+        if (H.fp) {
+            eye = new THREE.Vector3(pl.x, pl.visY + pl.heightM * 0.9, pl.z);
+            look = eye.clone().add(lookDir.clone().multiplyScalar(4));
+        } else {
+            var pivot = new THREE.Vector3(pl.x, headY, pl.z);
+            var ideal = pivot.clone().sub(lookDir.clone().multiplyScalar(c.dist));
+            /* boom march: pull in to the first clear point */
+            var f = 1;
+            for (var i = 1; i <= 12; i++) {
+                var t = i / 12;
+                var px = pivot.x + (ideal.x - pivot.x) * t, py = pivot.y + (ideal.y - pivot.y) * t, pz = pivot.z + (ideal.z - pivot.z) * t;
+                if (_hqCamBlocked(px, pz, py)) { f = Math.max(0.12, (i - 1) / 12); break; }
+            }
+            eye = pivot.clone().add(ideal.clone().sub(pivot).multiplyScalar(f));
+            look = pivot.clone().add(lookDir.clone().multiplyScalar(2.5));
+        }
+        var st = H.fp ? 0.03 : 0.085;
+        var a = 1 - Math.exp(-dt / st);
+        if (!c.init) { c.ex = eye.x; c.ey = eye.y; c.ez = eye.z; c.lx = look.x; c.ly = look.y; c.lz = look.z; c.init = true; }
+        else {
+            c.ex += (eye.x - c.ex) * a; c.ey += (eye.y - c.ey) * a; c.ez += (eye.z - c.ez) * a;
+            c.lx += (look.x - c.lx) * a; c.ly += (look.y - c.ly) * a; c.lz += (look.z - c.lz) * a;
+        }
+        cam.position.set(c.ex * U, c.ey * U, c.ez * U);
+        cam.lookAt(c.lx * U, c.ly * U, c.lz * U);
+    }
+    function _hqTickWorld(dt, now) {
+        var H = _hq;
+        if (H.cube) { H.cube.rotation.y += dt * 0.035; H.cube.position.y = (H.room.shell.cube.y + Math.sin(now * 0.0004) * 0.05) * _hqUnits(); }
+        for (var i = 0; i < H.doors.length; i++) {
+            var d = H.doors[i], c = HQ_LAMP[d.state] || HQ_LAMP.off;
+            if (c.pulse && d.glow) d.glow.material.opacity = 0.42 + 0.22 * Math.sin(now * 0.0025 + i);
+            else if (c.strobe && d.glow) { var on = Math.floor(now / 260) % 2 === 0; d.glow.material.opacity = on ? 0.7 : 0.05; d.lens.material.color.setHex(on ? c.lens : 0x3a0a0a); }
+            /* nameplate fade with distance from the camera */
+            var wp = d.group.position;
+            var cx = H.camera.position.x, cz = H.camera.position.z;
+            var dist = Math.hypot(wp.x - cx, wp.z - cz) / _hqUnits();
+            var op = Math.max(0, Math.min(1, 1 - (dist - 15) / 11));
+            if (d.plateEl.style.opacity !== String(op)) d.plateEl.style.opacity = String(op);
+        }
+        for (var ci = 0; ci < H.counters.length; ci++) {
+            var cc = H.counters[ci];
+            var dd = Math.hypot(cc.group.position.x - H.camera.position.x, cc.group.position.z - H.camera.position.z) / _hqUnits();
+            cc.plateEl.style.opacity = String(Math.max(0, Math.min(1, 1 - (dd - 12) / 9)));
+        }
+        /* interaction prompt */
+        var t = _hqFindTarget();
+        var key = t ? (t.kind + ':' + t.id) : '';
+        if (key !== H.targetKey) {
+            H.targetKey = key;
+            if (H.opts.onPrompt) { try { H.opts.onPrompt(t); } catch (e) {} }
+        }
+        if (H.opts.onDebug && now - H.lastDebug > 250) {
+            H.lastDebug = now;
+            var pl = H.player;
+            if (pl) H.opts.onDebug({ deg: Math.round(_hqNormDeg(Math.atan2(pl.x, -pl.z) * 180 / Math.PI) * 10) / 10, r: Math.round(Math.hypot(pl.x, pl.z) * 100) / 100, y: Math.round(pl.y * 100) / 100, level: pl.y > H.room.shell.wallH * 0.6 ? 1 : 0, x: Math.round(pl.x * 100) / 100, z: Math.round(pl.z * 100) / 100, fp: H.fp });
+        }
+    }
+    function _hqFrame() {
+        var H = _hq; if (!H || !renderer) return;
+        var now = performance.now();
+        var dt = H.lastMs ? Math.min(0.05, (now - H.lastMs) / 1000) : 0.016;
+        H.lastMs = now;
+        /* resize to the host */
+        var host = H.host;
+        var w = host.clientWidth, h = host.clientHeight;
+        if (w > 0 && h > 0 && (H.w !== w || H.h !== h)) {
+            H.w = w; H.h = h;
+            renderer.setSize(w, h);
+            H.camera.aspect = w / h; H.camera.updateProjectionMatrix();
+            if (ThreePost && ThreePost.resize) ThreePost.resize(w, h);
+            if (css2dRenderer) css2dRenderer.setSize(w, h);
+        }
+        _hqTickWalker(dt);
+        _hqTickChars(dt);
+        _hqTickCamera(dt);
+        _hqTickWorld(dt, now);
+        if (!H.ready && now - H.t0 > 9000) { H.ready = true; if (H.opts.onReady) { try { H.opts.onReady(); } catch (e) {} } }
+        var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST);
+        if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera);
+        else renderer.render(H.scene, H.camera);
+        if (css2dRenderer) css2dRenderer.render(H.scene, H.camera);
+    }
+
+    /* ── lifecycle ─────────────────────────────────────────────────────── */
+    function _hqEnter(opts) {
+        opts = opts || {};
+        var D = _hqData();
+        if (!D || !opts.host) { console.warn('[HQ] no DOOR_HQ data or host'); return false; }
+        if (!initialized) init();
+        if (!renderer || !canvas) return false;
+        if (_hq) _hqLeave();
+        if (active) { console.warn('[HQ] refusing to open over a live battle'); return false; }
+        var room = D.rooms[opts.room || 'central_egress'];
+        if (!room) return false;
+        var U = _hqUnits(), S = room.shell;
+        _hq = {
+            opts: opts, host: opts.host, room: room, profile: opts.profile || null,
+            scene: new THREE.Scene(), camera: null, cube: null,
+            shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), charGroup: new THREE.Group(),
+            doors: [], counters: [], chars: [], blockers: [], landings: [], player: null,
+            keys: {}, drag: null, lastDragAt: 0, fp: false, paused: false, ready: false, t0: performance.now(), lastMs: 0, lastDebug: 0,
+            cam: { yaw: 0, pitch: -0.24, dist: 3.6, init: false }, targetKey: '', w: 0, h: 0, dirty: true,
+        };
+        /* stair landings (top of each flight) are needed by the shell + collision */
+        (room.stairs || []).forEach(function (st) {
+            var dir = (st.to > st.from) ? 1 : -1;
+            var L = { a0: st.to, a1: st.to + dir * 6, rIn: st.rIn };
+            st._landing = L;
+            _hq.landings.push(L);
+        });
+        var sc = _hq.scene;
+        sc.background = new THREE.Color(0x07070a);
+        sc.fog = new THREE.FogExp2(0x0d0e12, 0.00017);
+        sc.add(_hq.shellGroup, _hq.doorGroup, _hq.propGroup, _hq.charGroup);
+        /* lights: warm ceiling / cool floor hemisphere, a soft key, point lights over the hall */
+        sc.add(new THREE.HemisphereLight(0xf1e6cf, 0x2d2a30, 0.78));
+        var key = new THREE.DirectionalLight(0xfff0d8, 0.42); key.position.set(0.35, 1, 0.25).multiplyScalar(1000); sc.add(key);
+        var fill = new THREE.DirectionalLight(0x9fb4c8, 0.16); fill.position.set(-0.6, 0.5, -0.4).multiplyScalar(1000); sc.add(fill);
+        [[90, 12], [270, 12], [0, 12], [180, 12]].forEach(function (pp) {
+            var pl = new THREE.PointLight(0xffe0bd, 0.5, 26 * U, 2);
+            pl.position.copy(_hqPolarW(pp[0], pp[1], S.wallH + S.upperWallH * 0.55));
+            sc.add(pl);
+        });
+        /* camera */
+        var host = opts.host;
+        var w = host.clientWidth || 960, h = host.clientHeight || 540;
+        _hq.camera = new THREE.PerspectiveCamera(52, w / h, 4, 20000);
+        /* re-parent the shared canvas + CSS2D overlay into the HQ page */
+        host.appendChild(canvas);
+        canvas.style.display = 'block';
+        if (css2dRenderer) { host.appendChild(css2dRenderer.domElement); css2dRenderer.domElement.style.display = ''; css2dRenderer.setSize(w, h); }
+        renderer.setSize(w, h);
+        if (ThreePost && ThreePost.resize) ThreePost.resize(w, h);
+        _hq.w = w; _hq.h = h;
+        /* build */
+        try { _hqBuildShell(room); } catch (e) { console.error('[HQ] shell build failed', e); }
+        try { _hqBuildStairs(room); } catch (e) { console.error('[HQ] stairs failed', e); }
+        try { _hqBuildDesk(room); } catch (e) { console.error('[HQ] desk failed', e); }
+        try { _hqBuildDoors(room); } catch (e) { console.error('[HQ] doors failed', e); }
+        try { _hqBuildCounters(room); } catch (e) { console.error('[HQ] counters failed', e); }
+        try { _hqPlaceProps(room); } catch (e) { console.error('[HQ] props failed', e); }
+        try { _hqSpawnPopulation(room, opts); } catch (e) { console.error('[HQ] population failed', e); }
+        /* face the camera the way the spawn faces */
+        var sp = room.spawn || { face: 0 };
+        _hq.cam.yaw = _hqRad(sp.face || 0);
+        _hqBindInput();
+        renderer.setAnimationLoop(_hqFrame);
+        console.log('[HQ] entered', opts.room || 'central_egress', '— doors:', _hq.doors.length, 'props:', (room.props || []).length, 'chars:', _hq.chars.length);
+        return true;
+    }
+    function _hqLeave() {
+        var H = _hq; if (!H) return;
+        _hqUnbindInput();
+        _hq = null;
+        try { renderer.setAnimationLoop(active ? renderFrame : null); } catch (e) {}
+        /* characters: evict their rig-cache records (ids are ours) */
+        H.chars.forEach(function (ch) {
+            try {
+                var rig = _unitModelRigs.get(ch.id);
+                if (rig) { _disposeModelRig(rig); _unitModelRigs.delete(ch.id); }
+                _modelAnimState.delete(ch.id);
+            } catch (e) {}
+        });
+        try {
+            for (var i = H.scene.children.length - 1; i >= 0; i--) {
+                var c = H.scene.children[i];
+                H.scene.remove(c);
+                _disposeR(c);
+            }
+        } catch (e) {}
+        /* hand the canvas back to the battle layout */
+        try {
+            if (_parentEl) {
+                _parentEl.appendChild(canvas);
+                if (css2dRenderer) _parentEl.appendChild(css2dRenderer.domElement);
+            }
+            if (!active) {
+                canvas.style.display = 'none';
+                if (css2dRenderer) css2dRenderer.domElement.style.display = 'none';
+            }
+        } catch (e) {}
+        console.log('[HQ] left');
+    }
+    function _hqRefreshLamps(profile) {
+        if (!_hq) return;
+        if (profile !== undefined) _hq.profile = profile;
+        _hq.doors.forEach(function (d) { _hqLampApply(d, _hqDoorState(d.door)); });
+    }
+    /* accessibility / directory: put the avatar in front of a door or counter */
+    function _hqGoTo(id) {
+        if (!_hq || !_hq.player) return false;
+        var S = _hq.room.shell, U = _hqUnits(), pl = _hq.player;
+        var d = null;
+        for (var i = 0; i < _hq.doors.length; i++) if (_hq.doors[i].door.id === id) { d = _hq.doors[i]; break; }
+        var spot = null, face = 0;
+        if (d) { spot = _hqPolarW(d.door.deg, d.Rw - 2.2, d.y0); face = d.door.deg; }
+        else {
+            for (var j = 0; j < _hq.counters.length; j++) {
+                var c = _hq.counters[j];
+                if (c.counter.id === id) {
+                    var cr = (c.counter.proc === 'board') ? (c.counter.r - 2.0) : (c.counter.r + (c.counter.id === 'dispatch' ? 0.9 : 1.6));
+                    spot = _hqPolarW(c.counter.deg, cr, c.level ? S.wallH : 0); face = (c.counter.id === 'dispatch') ? c.counter.deg + 180 : c.counter.deg;
+                    break;
+                }
+            }
+        }
+        if (!spot) return false;
+        pl.x = spot.x / U; pl.z = spot.z / U; pl.y = spot.y / U; pl.visY = pl.y;
+        pl.yaw = pl.targetYaw = _hqHeadingYaw(face);
+        _hq.cam.yaw = _hqRad(face); _hq.cam.init = false;
+        return true;
+    }
+    var _hqApi = {
+        enter: _hqEnter,
+        leave: _hqLeave,
+        active: function () { return !!_hq; },
+        setPaused: function (on) { if (_hq) { _hq.paused = !!on; if (on) { _hq.keys = {}; _hq.drag = null; } } },
+        interact: _hqInteract,
+        toggleView: _hqToggleView,
+        isFirstPerson: function () { return !!(_hq && _hq.fp); },
+        refreshLamps: _hqRefreshLamps,
+        goTo: _hqGoTo,
+        target: function () { return _hq ? _hqFindTarget() : null; },
+        pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z) }; },
+        stateLabel: function (st) { return HQ_LAMP_LABEL[st] || st; },
+    };
+
     return {
         init, activate, deactivate, isActive, dispose, hookCamera, resetForNewMatch,
         rebuildTerrain, rebuildObjects, rebuildTurrets, rebuildNexusWalls, rebuildSanctuaryWalls, rebuildUnits, rebuildHighlights,
@@ -26750,6 +27954,9 @@ const ThreeRenderer = (function () {
         startHitEffect,
 
         hasActiveAnims,
+
+        /* D.O.O.R. headquarters — the walkable facility (own scene + loop; map.js _hqEnter) */
+        hq: _hqApi,
 
         /* Mystery Dungeon Guild Hub: real-time free-roam movement controller */
         hubFreeRoam: {
