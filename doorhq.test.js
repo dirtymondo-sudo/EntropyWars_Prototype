@@ -244,3 +244,50 @@ test('every bay threshold has an 8×8 Δ board to cross onto (plan D3)', () => {
     for (const k of Object.keys(HQ.sectors)) for (const id of HQ.sectors[k].maps) if (!ids.has(id + '_delta')) missing.push(id);
     assert.deepStrictEqual(missing, []);
 });
+
+/* ── Phase 2.2 (2026-09-03): the wedge kit as furniture, and 3.1 checklists ── */
+
+test('wedge catalogue entries describe a real sector, ring props resolve, the dispatch desk stays procedural', () => {
+    const w = HQ.catalogue.desk_wedge_b.wedge;
+    assert.ok(w && w.deg > 20 && w.deg < 120 && w.apex > 0.5 && w.rOut > w.rIn && w.rIn > 0, 'desk_wedge_b.wedge geometry');
+    for (const p of ROOM.props.filter(p => p.ring)) {
+        const c = HQ.catalogue[p.key];
+        assert.ok(c && c.wedge, 'ring prop ' + p.key + ' needs a catalogue wedge entry');
+        assert.ok(p.ring.n >= 1 && p.ring.n * c.wedge.deg <= 361, 'ring ' + p.key + ' overfills the circle');
+        assert.strictEqual(typeof p.r, 'number', 'ring ' + p.key + ' needs r');
+    }
+    assert.ok(ROOM.props.some(p => p.ring), 'the briefing half-ring is placed');
+    assert.ok(ROOM.props.some(p => p.key === 'reception_wedge'), 'the reception counter is placed');
+    assert.ok(ROOM.desk && ROOM.desk.mode === 'procedural', 'the dispatch desk stays procedural (user decision 2026-09-03)');
+});
+
+test('mezzanine floor props leave a walkable band (the slab is only 2.2 m wide)', () => {
+    const S = ROOM.shell, BODY = 0.34;   // three-renderer HQ_BODY_R
+    const lo = S.mezz.inner + 0.62, hi = S.mezz.outer - 0.55;   // _hqSurface's slab band
+    const problems = [];
+    for (const p of ROOM.props) {
+        if ((p.level || 0) !== 1 || p.r == null || p.y > 0.5) continue;
+        const c = HQ.catalogue[p.key];
+        if (!c || !(c.foot > 0) || c.mount || p.mount) continue;
+        const free = Math.max((p.r - c.foot - BODY) - lo, hi - (p.r + c.foot + BODY));
+        if (free < 2 * BODY) problems.push(`${p.key}@${p.deg} leaves ${free.toFixed(2)} m of the mezzanine`);
+    }
+    assert.deepStrictEqual(problems, []);
+});
+
+test('hqSiteMastery lists the per-condition checklist behind hqMapMastered', () => {
+    const id = 'prebuilt_mars';
+    const none = D.hqSiteMastery(id, null);
+    assert.strictEqual(none.done, 0);
+    assert.strictEqual(none.mastered, false);
+    assert.deepStrictEqual(Array.from(none.missing), Array.from(HQ.masteryConditions));
+    const one = D.hqSiteMastery(id, { progress: { unlocked: { ['site:' + id + ':wipeout']: 1 } } });
+    assert.strictEqual(one.done, 1);
+    assert.ok(one.have.wipeout && !one.have.tower_destroyed);
+    const hist = HQ.masteryConditions.map(c => ({ mapId: id + '_delta', result: 'win', winCondition: c }));
+    const all = D.hqSiteMastery(id, { matchHistory: hist });
+    assert.strictEqual(all.mastered, true);
+    assert.strictEqual(all.done, all.total);
+    assert.strictEqual(D.hqMapMastered(id, { matchHistory: hist }), true);
+    for (const c of HQ.masteryConditions) assert.ok(HQ.masteryLabels[c], 'masteryLabels for ' + c);
+});

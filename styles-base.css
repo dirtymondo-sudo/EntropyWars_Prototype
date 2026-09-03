@@ -4097,6 +4097,15 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-row-stamp.tone-admit { color: #3a8f5c; }
 .hq-row-stamp.tone-void { color: #8a8a8a; }
 .hq-row .hq-lamp-chip { margin-top: 0; }
+/* the mastery checklist under a bay threshold row (plan 3.1) */
+.hq-row-checks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 2px; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.08); }
+.hq-check { font-family: 'IBM Plex Mono', monospace; font-style: normal; font-size: 8px; letter-spacing: 0.18em; color: #6f6a60; }
+.hq-check.ok { color: #39ff6a; }
+/* the site tag on the result-screen stamp: THRESHOLD STABILIZED (green)
+   or the condition just filed (amber). Rides the stamp's thunk. */
+.door-result-stamp .drs-site { position: absolute; left: 50%; top: -15px; transform: translateX(-50%); display: none; font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.2em; padding: 3px 10px; white-space: nowrap; background: #2e8b57; color: #f4fff7; border-radius: 3px; }
+.door-result-stamp .drs-site.on { display: block; }
+.door-result-stamp .drs-site.partial { background: #b8862a; }
 /* loading card: clearance check */
 .hq-load { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #050507; z-index: 40; transition: opacity 0.6s ease; }
 .hq-load.done { opacity: 0; pointer-events: none; }

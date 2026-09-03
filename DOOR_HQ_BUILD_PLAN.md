@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 4 (2026-09-03 — Phase 1.3–1.5 shipped: Play enters the building, §9)
+### The walkable facility that replaces the Play menu · rev 5 (2026-09-03 — Phase 2.2 wedge kit re-homed + 3.1 checklists shipped, §9)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -348,7 +348,11 @@ Each delivery from the user swaps placeholders for real props; nothing
 else changes. Order of impact: cube → dispatch wedge → door leaves →
 lamp/frame details → furniture → fixtures → machinery.
 - 2.1 🧊 Textures (§5.2) replace the terrain placeholders on the shell.
-- 2.2 🧊 Hero props: cube, dispatch wedge, globe lamp, round table, chairs.
+- 2.2 ✅ (2026-09-03, §9) Hero props: globe lamp, round table, chairs were in
+  since 1.2; the **dispatch wedge is retired** — the user keeps the
+  procedural ring desk, so the three wedge GLBs dress the hall instead
+  (reception counter, two mezzanine clerk stations, the briefing
+  half-ring). The cube stays procedural (no `hq_cube` was made).
 - 2.3 🧊 Door leaves: the six office doors + the institutional set.
 - 2.4 🧊 Dressing: cabinets, shelving, boxes, CRTs, vents, clocks, signs,
   extinguisher, vending machine, water cooler, plant.
@@ -362,7 +366,9 @@ lamp/frame details → furniture → fixtures → machinery.
 - 2.8 🧊 Ambience loop + muzak (user-made).
 
 ### Phase 3 — Doors that mean something (1 session, ⚙)
-- 3.1 Mastery v1 on every threshold; checklist in the door panel; plates.
+- 3.1 ✅ (2026-09-03, §9) Mastery v1 on every threshold (1.4); the
+  per-condition checklist in the bay door panel; the STABILIZED plate chip
+  (1.2); the result-screen THRESHOLD STABILIZED tag.
 - 3.2 Keys: per-profile counter from `hourglasses` wins/pickups;
   restricted doors require rank + Keys.
 - 3.3 Code Red: daily-seeded (date + profile) pick of one mastered map +
@@ -531,10 +537,16 @@ encoded at load because one contains a `°`). Against the §5.3 list:
   two curved couches (bonus). **No `hq_cube`** → the cube is procedural (a
   black box with a canvas-drawn square-spiral emissive glyph on a rod).
   **Desk wedges ×3** (`one_45°_wedge_of_a_reception_desk`, two
-  `wedge_of_a_round_office_desk`) are in the catalogue but NOT assembled:
-  a wedge's ring offset can't be derived without its real dimensions (the
-  sandbox can't fetch R2), so the dispatch desk is procedural
-  (`desk.mode: 'procedural'`; `'wedges'` is reserved).
+  `wedge_of_a_round_office_desk`) — measured 2026-09-03 from the GLBs the
+  user committed to the repo root (a node script rendered top / front /
+  iso views and fitted the sector edges; see §9): the "reception wedge"
+  is really a corner reception counter (curved banded front, raised
+  ledge, 1.0 × 0.67 × 0.87 model units); wedge A is a solid kidney
+  workstation; wedge B is a true 45.3° annular sector (outer r 1.075,
+  inner r 0.398, arc centre 1.087 × depth behind the bbox centre). The
+  user prefers the procedural dispatch ring, so `desk.mode` stays
+  `'procedural'` and the wedges are furniture (`ring: {n, start}` props
+  repeat wedge B around a spot).
 - **C. Door leaves — 18**: the six office doors (warped closet, hollow
   core, wired double, security, frosted, futuristic = L1–L6, wired to
   `DOOR_TEXT.CLEARANCE[i].door`), plus exit, office, shabby wood, suburban
@@ -588,6 +600,93 @@ Guild Hub was the prototype; this plan is the building.
 - Hazard Pay wallet on the strip vs only at the Quartermaster. Rec: strip.
 
 ## 9. Build log (append per session)
+
+### 2026-09-03 — Phase 2.2 (wedge kit re-homed) + Phase 3.1 (mastery checklists)
+User: "continue with the build plan; I uploaded the round wedge desks to
+the repo for their dimensions, but I like the generated circular desk —
+use the desk models somewhere else." `npm test` 96 (95 pass, the server
+smoke skips without node_modules); 3 new checks in `doorhq.test.js`.
+
+**Measuring the wedges (no R2 access from the sandbox).** The three
+GLBs sit at the repo root. A scratch node script parsed each JSON chunk
++ POSITION accessor, rasterised top / front / iso views to PNG (a 90-line
+software rasteriser — no browser, RULE #1c) and least-squares-fitted the
+straight edge of the top surface. Findings, model units (Meshy
+normalises the longest axis to 1.0):
+- `reception_wedge` (…0903105549): 1.000 × 0.674 × 0.865 — NOT a 45°
+  sector: a corner reception counter whose two straight sides meet at the
+  −x/−z corner, a banded curved front bulging to +x/+z with a raised
+  transaction ledge along it; the work surface sits at ≈ 0.70 × height
+  (0.77 m at the 1.10 m target).
+- `desk_wedge_a` (…0903105601): 1.000 × 0.637 × 0.686 — a solid
+  kidney-shaped workstation, convex side −z, concave (worker) side +z.
+- `desk_wedge_b` (…0903105612): 1.000 × 0.639 × 0.678 — a 45.3° annular
+  sector on two leg frames; edge fit x = 0.417 z − 0.307 → apex at
+  z = 0.737, outer r 1.075, inner r 0.398 → at the 0.76 m target
+  (s = 1.19) a ring of 8 would be r 1.28 m / hole r 0.47 m.
+
+**Where they went (data.js `central_egress.props`).**
+- RECEPTION · INTAKE (door @120°): the reception counter at 128° / r 17.9,
+  `rot: 45` so the curved front faces the hall and the clerk's
+  `office_chair` (129° / 18.95) sits on the wall side; `crt_terminal`,
+  `papers_a`, `pen` on the 0.77 m work surface. `foot: 0.85`.
+- The **briefing table**: `desk_wedge_b` with `ring: { n: 4, start:
+  -67.5 }` at 20° / r 14.5 — a half-ring (r 1.28 m) opening toward the
+  hall; four `folding_chair`s at the sectors' bisectors 0.5 m off the
+  outer edge (13.8°/15.27, 17.6°/16.16, 22.4°/16.16, 26.2°/15.27, `rot`
+  ±61 / ±20 = facing the ring centre); papers on top.
+- Two **mezzanine clerk stations** (`desk_wedge_a`, `rot: 180`, convex
+  side to the hall) against the upper wall at 100° (Arcane Engineering,
+  CRT + papers, office chair) and 325° (Bureau of Continuity, table lamp
+  + notebook, teal chair). The slab is only 2.2 m walkable, so the chairs
+  sit BESIDE the desks (±2.7°), never in front — a new test asserts every
+  mezzanine floor prop leaves ≥ 2 × HQ_BODY_R of the band free (the
+  existing globe lamps pass by 6 cm).
+- Orientation assumption: Meshy fronts are +z (the filing cabinets face
+  the hall at `rot: 0`); CRTs at the new stations use `rot: 0` = the same
+  screen-to-operator relation the dispatch desk's `rot: 180` CRTs have
+  (operator on the far side from the hall there, the near side here). If
+  a screen faces the wrong way, flip that prop's `rot` by 180 in data.js.
+
+**Ring props (three-renderer.js `_hqPlaceWedgeRing`).** A prop with
+`ring` and a catalogue `wedge: { deg, apex, rOut, rIn }` builds n copies
+under one group at the spot: copy i is a sub-group yawed −(start +
+i·deg) with the instance pushed `apex × depth × s` along −z so the arc
+centre sits on the sub-group origin; yaw 0 points the outer arc away from
+the hall (local −z). Each copy gets its own collision disc (radius 0.45 ×
+its longest span) placed as a bare Object3D directly in `propGroup`,
+because `_hqSurface` reads a blocker's own position without parent
+transforms.
+
+**Mastery checklist (3.1).** data.js `hqSiteMastery(mapId, profile)` →
+`{ have, done, total, missing, mastered }` (flags first, then match
+history, Δ-aware); `hqMapMastered` now wraps it; `DOOR_HQ.masteryLabels`
+names the conditions (WIPEOUT · TOWER · HOURGLASSES — engine-true words
+until Phase 6.2/6.3 rename the tower and hourglasses). The bay door panel
+(map.js `_hqDoorPanelHtml`) shows a ☑/☐ row per threshold under its
+CROSS / DEEP buttons and the lamp chip reads `n/3` until STABILIZED
+(`.hq-row-checks`, `.hq-check` in styles-base.css). The result screen's
+D.O.O.R. stamp grows a tag (battle.js `_stampHqSite`, `.drs-site`):
+green **THRESHOLD STABILIZED · <site>** when this match completed the
+set, amber **FILED · <condition> · <site> n/3** when it logged a new one.
+It reads the viewer-local `window._lastHqSiteFlag` (written by
+`commitAchProgress`, now reset per commit and on no-contest, consumed by
+the tag) — never on `state`, so nothing rides state-sync (RULE #2); the
+tag is local on both clients like the stamp itself.
+
+**Files (RULE #1 placement):** data.js (catalogue wedge geometry, props,
+`masteryLabels`, `hqSiteMastery`), three-renderer.js (`_hqPlaceWedgeRing`
++ the ring branch in `_hqPlaceProps`), map.js (checklist row), battle.js
+(flag reset, `_stampHqSite`), styles-base.css (checks + stamp tag),
+index.html (`?v=20260903c-cors`), doorhq.test.js (+3). Docs: this file,
+DOOR_MASTER Part D.
+
+**Next (in order):** 2.6 the six bays as corridors with their threshold
+doors; 2.7 the closet interior (kit uploaded); 3.3 Code Red; 3.2 Keys;
+§3.9 the in-game layout editor; gamepad in the hall; a first-visit
+micro-scene at the desk (4.2). Open: the wedge models are in the repo
+root — they must also be on R2 under `Assets/door/models/` with the
+catalogue filenames (they were listed there in the 1.1 inventory).
 
 ### 2026-09-03 — Phase 1.3 + 1.4 + 1.5: Play enters the building
 User: "continue with the build plan". The isolated egress became the Play

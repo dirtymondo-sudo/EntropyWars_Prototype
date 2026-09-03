@@ -823,3 +823,19 @@ state.js, battle.js, profile.js, ui.js, online.js, three-renderer.js,
 audio.js, match-select.js, map.js, styles-base.css, index.html
 (`?v=20260903b-cors`), doorhq.test.js. `npm test` 92 pass. No mid-match
 surface changed → no relay work (RULE #2).
+
+### 2026-09-03 (later) — HQ Phase 2.2 re-homed + 3.1 checklists
+The user keeps the procedural dispatch ring; the three "wedge" desk GLBs
+(measured from the repo copies — the "45° reception wedge" is actually a
+corner reception counter, wedge B a true 45.3° table sector) now dress
+the hall: a RECEPTION · INTAKE counter beside the HR door, two mezzanine
+clerk stations (Arcane Engineering, Bureau of Continuity), a half-ring
+briefing table with folding chairs (`ring` props, three-renderer
+`_hqPlaceWedgeRing`). Bay door panels list each threshold's ☑/☐ win
+conditions (`hqSiteMastery`, `DOOR_HQ.masteryLabels`); the result stamp
+gains a THRESHOLD STABILIZED / FILED tag from the viewer-local flag
+(`_stampHqSite`). Full account in `DOOR_HQ_BUILD_PLAN.md` §9 (this date,
+"Phase 2.2 … + 3.1"). Touched: data.js, three-renderer.js, map.js,
+battle.js, styles-base.css, index.html (`?v=20260903c-cors`),
+doorhq.test.js. `npm test` 95 pass / 1 skip. No mid-match surface → no
+relay work (RULE #2).

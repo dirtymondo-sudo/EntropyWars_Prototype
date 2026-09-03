@@ -457,17 +457,22 @@
                 html += '<div class="hq-rows">';
                 sec.maps.forEach(id => {
                     const sf = (typeof window.doorSiteFile === 'function') ? window.doorSiteFile(id) : null;
-                    const mastered = (typeof window.hqMapMastered === 'function') && window.hqMapMastered(id, profile);
+                    /* mastery checklist (plan 3.1): one tick per win condition on file */
+                    const sm = (typeof window.hqSiteMastery === 'function') ? window.hqSiteMastery(id, profile) : null;
+                    const mastered = sm ? sm.mastered : ((typeof window.hqMapMastered === 'function') && window.hqMapMastered(id, profile));
                     const natives = (typeof window.hqMissionPool === 'function') ? window.hqMissionPool(id, 4) : [];
                     const nat = natives.natives || 0;
                     const tip = nat ? `Native entities: ${natives.slice(0, nat).join(', ')}` : 'No entity on file — the bay fields its neighbours';
-                    html += `<div class="hq-row hq-row-bay" title="${_hqEsc(tip)}"><b>${_hqEsc(_hqMapLabel(id))}</b><span class="hq-row-stamp tone-${_hqEsc((sf && sf.tone) || 'deny')}">${_hqEsc((sf && sf.status) || 'ON FILE')}</span><i class="hq-lamp-chip st-${mastered ? 'stabilized' : 'unstable'}">${mastered ? 'STABILIZED' : 'UNSTABLE'}</i>`
-                        + `<div class="hq-row-btns"><button class="hq-btn hq-btn-sm hq-btn-primary" ${canCross ? '' : 'disabled'} data-cross="${_hqEsc(id)}" title="Arena · 4v4 on the 8×8 Δ board · CPU fields the site's natives">CROSS ▸ Δ</button><button class="hq-btn hq-btn-sm" ${canCross ? '' : 'disabled'} data-deep="${_hqEsc(id)}" title="Arena on the full map at its own team size">DEEP</button></div></div>`;
+                    const labels = DOOR_HQ.masteryLabels || {};
+                    const checks = sm ? DOOR_HQ.masteryConditions.map(c => `<i class="hq-check ${sm.have[c] ? 'ok' : 'no'}" title="${_hqEsc(c)}">${sm.have[c] ? '☑' : '☐'} ${_hqEsc(labels[c] || c)}</i>`).join('') : '';
+                    html += `<div class="hq-row hq-row-bay" title="${_hqEsc(tip)}"><b>${_hqEsc(_hqMapLabel(id))}</b><span class="hq-row-stamp tone-${_hqEsc((sf && sf.tone) || 'deny')}">${_hqEsc((sf && sf.status) || 'ON FILE')}</span><i class="hq-lamp-chip st-${mastered ? 'stabilized' : 'unstable'}">${mastered ? 'STABILIZED' : (sm ? `${sm.done}/${sm.total}` : 'UNSTABLE')}</i>`
+                        + `<div class="hq-row-btns"><button class="hq-btn hq-btn-sm hq-btn-primary" ${canCross ? '' : 'disabled'} data-cross="${_hqEsc(id)}" title="Arena · 4v4 on the 8×8 Δ board · CPU fields the site's natives">CROSS ▸ Δ</button><button class="hq-btn hq-btn-sm" ${canCross ? '' : 'disabled'} data-deep="${_hqEsc(id)}" title="Arena on the full map at its own team size">DEEP</button></div>`
+                        + (checks ? `<div class="hq-row-checks">${checks}</div>` : '') + '</div>';
                 });
                 html += '</div>';
                 if (st === 'sealed') html += '<p class="hq-panel-note">SEALED — this bay opens with a story chapter. The planks stay up.</p>';
                 else if (st === 'clearance') html += `<p class="hq-panel-note">CLEARANCE L${d.minClearance} required. Your card reads L${cl.level} · ${_hqEsc(cl.title)}.</p>`;
-                else html += '<p class="hq-panel-note">CROSS ▸ Δ = Arena, 4v4 on the site’s 8×8 board, the CPU fielding the entities on file for it. DEEP = the full map. Every win condition once turns the threshold green.</p>';
+                else html += '<p class="hq-panel-note">CROSS ▸ Δ = Arena, 4v4 on the site’s 8×8 board, the CPU fielding the entities on file for it. DEEP = the full map. Each ☐ is a win condition still to be filed for the threshold; all three turn it green.</p>';
             } else {
                 if (d.desc) html += `<p class="hq-panel-desc">${_hqEsc(d.desc)}</p>`;
                 const locked = st === 'clearance';

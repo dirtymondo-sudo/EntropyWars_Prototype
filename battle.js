@@ -9737,9 +9737,11 @@
                     window._lastAchTierUnlocks = []; // no contest — don't show a stale list
                     window._lastAchDeltas = {};      // …nor stale "almost there" rows
                     window._lastRecordsBroken = [];
+                    window._lastHqSiteFlag = null;   // …nor a stale HQ site tag on the stamp
                     return;
                 }
                 _achCommittedMatchKey = _matchKey;
+                window._lastHqSiteFlag = null;   // per match: the result screen only tags a flag written by THIS commit
 
                 const viewer = getViewerPlayer();
                 const won = state.winner === viewer;
@@ -27195,6 +27197,36 @@
         }
         window._stampDoorResult = _stampDoorResult;
 
+        /* D.O.O.R. HQ (DOOR_HQ_BUILD_PLAN 3.1): a tag on the stamp when this
+           match filed a new site-mastery flag — THRESHOLD STABILIZED once the
+           site has been won by every condition, else the condition just
+           logged with the running count. Reads the viewer-local
+           `window._lastHqSiteFlag` written by commitAchProgress (never on
+           state, so it never rides state-sync); consumed here. */
+        function _stampHqSite(flag) {
+            const stamp = document.getElementById('vicDoorStamp');
+            if (!stamp) return;
+            let el = document.getElementById('vicDoorStampSite');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'vicDoorStampSite';
+                el.className = 'drs-site';
+                stamp.appendChild(el);
+            }
+            window._lastHqSiteFlag = null;
+            if (!flag || !flag.site || typeof DOOR_HQ === 'undefined') { el.className = 'drs-site'; el.textContent = ''; return; }
+            let label = flag.site;
+            try { const m = EW_MAP_META.find(x => x.id === flag.site); if (m) label = m.label; } catch (e) {}
+            const labels = DOOR_HQ.masteryLabels || {};
+            const profile = (window.ProfileSystem && window.ProfileSystem.getActiveProfile && window.ProfileSystem.getActiveProfile()) || null;
+            const sm = (typeof hqSiteMastery === 'function' && profile) ? hqSiteMastery(flag.site, profile) : null;
+            const mastered = flag.mastered || (sm && sm.mastered);
+            el.textContent = mastered
+                ? 'THRESHOLD STABILIZED · ' + label
+                : 'FILED · ' + (labels[flag.cond] || flag.cond) + ' · ' + label + (sm ? ' ' + sm.done + '/' + sm.total : '');
+            el.className = 'drs-site on' + (mastered ? '' : ' partial');
+        }
+
         function showResultOverlay() {
             const viewer = getViewerPlayer();
             const isNoContest = state.winner === 0;
@@ -27224,6 +27256,7 @@
             vicTitle.setAttribute('data-text', _titleText);
             vicTitle.className = 'vic-title ' + wonClass;
             _stampDoorResult(isNoContest ? 'void' : wonClass);
+            try { _stampHqSite(playerWon ? window._lastHqSiteFlag : null); } catch (e) {}
 
             const careerStats = loadCareerStats();
             const _profileUsername = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : null;

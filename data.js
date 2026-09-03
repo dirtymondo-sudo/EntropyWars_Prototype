@@ -15330,12 +15330,23 @@ const DOOR_HQ = {
         house_key:         { file: 'Meshy_AI_a_house_key_0903110053_texture.glb',                     span: 0.07, foot: 0 },
         key:               { file: 'Meshy_AI_a_key_0903110102_texture.glb',                           span: 0.08, foot: 0 },
         car_key:           { file: 'Meshy_AI_car_key_0903110043_texture.glb',                         span: 0.08, foot: 0 },
-        /* the round desk kit — assembled into a ring only when the room's
-           `desk.mode` is 'wedges' (see central_egress.desk); the procedural
-           counter is the default until the wedge dimensions are confirmed */
-        reception_wedge:   { file: 'Meshy_AI_one_45°_wedge_of_a_reception_desk_0903105549_texture.glb', h: 1.10, foot: 0, wedge: 45 },
-        desk_wedge_a:      { file: 'Meshy_AI_wedge_of_a_round_office_desk_0903105601_texture.glb',    h: 0.76, foot: 0, wedge: 45 },
-        desk_wedge_b:      { file: 'Meshy_AI_wedge_of_a_round_office_desk_0903105612_texture.glb',    h: 0.76, foot: 0, wedge: 45 },
+        /* the "wedge" desk kit (HQ plan 2.2, re-homed 2026-09-03): the
+           dispatch desk STAYS procedural by the user's decision, so these
+           dress the hall as furniture. Measured from the GLBs (plan §9):
+           - reception_wedge: a corner reception counter — two straight
+             sides meet at the bbox's −x/−z corner, a banded curved front
+             with a raised transaction ledge bulges toward +x/+z. `rot: 45`
+             turns that curved front to the hall.
+           - desk_wedge_a: a solid kidney-shaped workstation, convex side
+             −z, concave (worker) side +z.
+           - desk_wedge_b: a true 45.3° annular table sector on two leg
+             frames (outer r 1.075 / inner r 0.398 in model units; the arc
+             centre lies `apex` × depth behind the bbox centre, +z). A prop
+             with `ring: { n, start }` repeats it around its (deg, r) spot —
+             8 make a full ring (r 1.28 m at desk height), 4 a half-ring. */
+        reception_wedge:   { file: 'Meshy_AI_one_45°_wedge_of_a_reception_desk_0903105549_texture.glb', h: 1.10, foot: 0.85 },
+        desk_wedge_a:      { file: 'Meshy_AI_wedge_of_a_round_office_desk_0903105601_texture.glb',    h: 0.76, foot: 0.60 },
+        desk_wedge_b:      { file: 'Meshy_AI_wedge_of_a_round_office_desk_0903105612_texture.glb',    h: 0.76, foot: 0, wedge: { deg: 45.3, apex: 1.087, rOut: 1.075, rIn: 0.398 } },
         /* ── furniture ── */
         round_desk:        { file: 'Meshy_AI_A_round_office_desk_0903092905_texture.glb',             h: 0.76, foot: 0.85 },
         coffee_table:      { file: 'Meshy_AI_a_round_office_coffee_table_0903092838_texture.glb',     h: 0.46, foot: 0.55 },
@@ -15417,6 +15428,8 @@ const DOOR_HQ = {
        by every one of these conditions. Read from progress.unlocked
        ('site:<mapId>:<cond>') first, then the recent matchHistory. */
     masteryConditions: ['wipeout', 'tower_destroyed', 'hourglasses_collected'],
+    /* how the door panel's checklist and the result-screen tag name them */
+    masteryLabels: { wipeout: 'WIPEOUT', tower_destroyed: 'TOWER', hourglasses_collected: 'HOURGLASSES' },
 
     rooms: {
         central_egress: {
@@ -15490,6 +15503,25 @@ const DOOR_HQ = {
                 { key: 'cardboard_box', deg: 40, r: 6.3, level: 0 },
                 { key: 'cardboard_box', deg: 46, r: 6.5, level: 0, rot: 35 },
                 { key: 'cardboard_boxes', deg: 140, r: 6.6, level: 0, rot: 20 },
+                /* RECEPTION · INTAKE counter (the reception wedge, plan 2.2):
+                   curved front to the hall, the clerk's chair on the wall
+                   side, a terminal on the 0.77 m work surface behind the ledge */
+                { key: 'reception_wedge', deg: 128, r: 17.9, level: 0, rot: 45 },
+                { key: 'office_chair',    deg: 129, r: 18.95, level: 0 },
+                { key: 'crt_terminal',    deg: 126.5, r: 18.45, level: 0, y: 0.77 },
+                { key: 'papers_a',        deg: 130.5, r: 18.3, level: 0, y: 0.77, rot: 20 },
+                { key: 'pen',             deg: 131.5, r: 18.15, level: 0, y: 0.77, rot: 60 },
+                /* the briefing table: four 45° table sectors as a half-ring
+                   (r 1.28 m) opening toward the hall, folding chairs on the
+                   convex side facing in — the seats are at the sectors'
+                   bisectors, 0.5 m off the outer edge */
+                { key: 'desk_wedge_b',    deg: 20, r: 14.5, level: 0, ring: { n: 4, start: -67.5 } },
+                { key: 'folding_chair',   deg: 13.8, r: 15.27, level: 0, rot: -61 },
+                { key: 'folding_chair',   deg: 17.6, r: 16.16, level: 0, rot: -20 },
+                { key: 'folding_chair',   deg: 22.4, r: 16.16, level: 0, rot: 20 },
+                { key: 'folding_chair',   deg: 26.2, r: 15.27, level: 0, rot: 61 },
+                { key: 'papers_b',        deg: 18.5, r: 15.3, level: 0, y: 0.76, rot: 35 },
+                { key: 'notebook_paper',  deg: 22, r: 15.4, level: 0, y: 0.76, rot: -15 },
                 /* seating clusters (ground) */
                 { key: 'round_desk',   deg: 250, r: 13.2, level: 0 },
                 { key: 'teal_chair',   deg: 246, r: 12.1, level: 0, rot: 180 },
@@ -15546,6 +15578,18 @@ const DOOR_HQ = {
                 { key: 'water_cooler',   deg: 165, level: 1, wall: true },
                 { key: 'fire_extinguisher', deg: 105, level: 1, wall: true },
                 { key: 'wall_clock',     deg: 255, level: 1, wall: true },
+                /* mezzanine clerk stations (the kidney desks, plan 2.2):
+                   against the upper wall so the 2.2 m ring stays walkable —
+                   convex side to the hall, the chair BESIDE the desk, never
+                   in front of it (doorhq.test.js checks the free band) */
+                { key: 'desk_wedge_a',   deg: 100, r: 23.05, level: 1, rot: 180 },
+                { key: 'office_chair',   deg: 97.3, r: 23.05, level: 1, rot: 60 },
+                { key: 'crt_terminal',   deg: 100, r: 23.1, level: 1, y: 0.76 },
+                { key: 'papers_b',       deg: 101.6, r: 22.95, level: 1, y: 0.76, rot: 25 },
+                { key: 'desk_wedge_a',   deg: 325, r: 23.05, level: 1, rot: 180 },
+                { key: 'teal_chair',     deg: 327.7, r: 23.05, level: 1, rot: -60 },
+                { key: 'table_lamp',     deg: 323.6, r: 23.1, level: 1, y: 0.76 },
+                { key: 'notebook_paper', deg: 325.8, r: 22.95, level: 1, y: 0.76, rot: -20 },
             ],
             /* where DOOR agents stand (fixed) and roster vessels loiter */
             agents: [
@@ -15589,20 +15633,29 @@ function hqSectorOfMap(mapId) {
    the map's 8×8 Δ board counts for the map (the flag writer in battle.js
    strips the suffix the same way — HQ plan Phase 1.4). */
 function hqSiteId(mapId) { return String(mapId || '').replace(/_delta$/, ''); }
+/* The per-condition checklist behind a threshold's lamp (plan 3.1):
+   { have: {cond: true}, done: n, total: n, missing: [cond…], mastered }. */
+function hqSiteMastery(mapId, profile) {
+    const site = hqSiteId(mapId);
+    const conds = DOOR_HQ.masteryConditions;
+    const have = {};
+    if (profile) {
+        try {
+            const un = (profile.progress && profile.progress.unlocked) || {};
+            for (const c of conds) if (un['site:' + site + ':' + c]) have[c] = true;
+        } catch (e) {}
+        try {
+            for (const m of (profile.matchHistory || [])) {
+                if (m && hqSiteId(m.mapId) === site && m.result === 'win' && m.winCondition && conds.indexOf(m.winCondition) >= 0) have[m.winCondition] = true;
+            }
+        } catch (e) {}
+    }
+    const missing = conds.filter(c => !have[c]);
+    return { site, have, done: conds.length - missing.length, total: conds.length, missing, mastered: missing.length === 0 };
+}
 function hqMapMastered(mapId, profile) {
     if (!profile) return false;
-    const site = hqSiteId(mapId);
-    const have = new Set();
-    try {
-        const un = (profile.progress && profile.progress.unlocked) || {};
-        for (const c of DOOR_HQ.masteryConditions) if (un['site:' + site + ':' + c]) have.add(c);
-    } catch (e) {}
-    try {
-        for (const m of (profile.matchHistory || [])) {
-            if (m && hqSiteId(m.mapId) === site && m.result === 'win' && m.winCondition) have.add(m.winCondition);
-        }
-    } catch (e) {}
-    return DOOR_HQ.masteryConditions.every(c => have.has(c));
+    return hqSiteMastery(mapId, profile).mastered;
 }
 /* How many launch maps (sites) the profile has stabilized, for the HQ strip. */
 function hqMasteryCount(profile) {
@@ -15668,6 +15721,7 @@ if (typeof window !== 'undefined') {
     window.hqPolar = hqPolar;
     window.hqSectorOfMap = hqSectorOfMap;
     window.hqSiteId = hqSiteId;
+    window.hqSiteMastery = hqSiteMastery;
     window.hqMapMastered = hqMapMastered;
     window.hqMasteryCount = hqMasteryCount;
     window.hqMissionPool = hqMissionPool;

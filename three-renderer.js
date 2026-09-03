@@ -27283,6 +27283,7 @@ const ThreeRenderer = (function () {
             var y = y0 + (p.y || 0) + mount;
             var fitSpan = (cat.span != null && cat.h == null) || (p.span != null);
             var target = ((fitSpan ? (p.span || cat.span) : (p.h || cat.h)) || 1) * U;
+            if (p.ring && cat.wedge) { _hqPlaceWedgeRing(p, cat, r, y0, y, target); return; }
             var grp = new THREE.Group();
             grp.position.copy(_hqPolarW(p.deg, r, y));
             grp.rotation.y = _hqFaceCentreYaw(p.deg) - _hqRad(p.rot || 0);
@@ -27305,6 +27306,49 @@ const ThreeRenderer = (function () {
             G.add(grp);
             if (cat.foot > 0 && !mount && !(p.y > 0.5)) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 });
         });
+    }
+
+    /* A ring of wedge props (plan 2.2): `cat.wedge` describes one annular
+       sector — `deg` its angle, `apex` how far behind the model's bbox
+       centre (+z, × bbox depth) the arc centre lies. Copy i sits at local
+       yaw −(start + i·deg) about the ring centre (deg, r); yaw 0 points
+       the wedge's outer arc AWAY from the hall (local −z). Each wedge gets
+       its own collision disc, placed directly in propGroup because
+       _hqSurface reads a blocker's own position (no parent transform). */
+    function _hqPlaceWedgeRing(p, cat, r, y0, y, target) {
+        var U = _hqUnits(), G = _hq.propGroup, W = cat.wedge;
+        var n = Math.max(1, Math.round(p.ring.n || 1));
+        var step = W.deg || 45;
+        var start = (p.ring.start != null) ? p.ring.start : -((n - 1) * step) / 2;
+        var grp = new THREE.Group();
+        grp.position.copy(_hqPolarW(p.deg, r, y));
+        grp.rotation.y = _hqFaceCentreYaw(p.deg) - _hqRad(p.rot || 0);
+        for (var i = 0; i < n; i++) {
+            (function (i) {
+                var sub = new THREE.Group();
+                sub.rotation.y = -_hqRad(start + i * step);
+                var inst = _miscModelInstance(_hqModelUrl(cat), true, target, {
+                    fit: 'height', matPick: _hqPropMatPick,
+                    onDone: function (g, s, bb) {
+                        var ex = (bb.max.x - bb.min.x) || 1, ez = (bb.max.z - bb.min.z) || 1;
+                        var cz = (W.apex || 1) * ez * s;          // arc centre → model origin, world units
+                        g.position.z = -cz;
+                        if (_hq && !sub._ew_blocker && !(p.y > 0.5)) {
+                            var yaw = grp.rotation.y + sub.rotation.y;
+                            var b = new THREE.Object3D();
+                            b.position.set(grp.position.x - cz * Math.sin(yaw), grp.position.y, grp.position.z - cz * Math.cos(yaw));
+                            G.add(b);
+                            sub._ew_blocker = b;
+                            _hq.blockers.push({ obj: b, rad: Math.max(ex, ez) * s / U * 0.45, y: y0 });
+                        }
+                        if (_hq) _hq.dirty = true;
+                    }
+                });
+                sub.add(inst);
+                grp.add(sub);
+            })(i);
+        }
+        G.add(grp);
     }
 
     /* ── characters: avatar, DOOR agents, roster vessels ────────────────── */
