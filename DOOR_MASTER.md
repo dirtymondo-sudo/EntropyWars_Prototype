@@ -767,12 +767,17 @@ DOSSIER / SEAL YOUR FATE / Codex of Vessels all stay).
   the next data.js delivery).
 - C-4 DECIDED: hybrid story gating (B3 rewritten): SP from every mode incl.
   PvP + per-chapter single-player field requirements inside the facility.
-- HQ plan D1 DECIDED: pre-rendered rooms first; the walkable third/first-
-  person facility is the committed end state (HQ plan Phase 7), with the
-  Guild Hub understood as its prototype.
+- HQ plan D1 DECIDED, then REVISED the same day (HQ plan rev 2): the
+  facility is a walkable 3D place from Phase 1 — procedural shell +
+  the user's authored prop kit + DOM overlays for the existing screens.
+  The pre-rendered-rooms idea is dropped; the Guild Hub was the prototype.
+  The "24×24 hall hits a perf ceiling" claim was wrong: ROADMAP §4's
+  object count belongs to the voxel battle-board builder, which the
+  facility does not use.
 
-NOT done yet (next steps, in order): HQ plan Phase 1 (the Central Egress
-replacing the Play hub) → story track step 3 (SP meter, thresholds →
+NOT done yet (next steps, in order): HQ plan Phase 1 (the procedural
+Central Egress you can walk, replacing the Play hub; the user models the
+§5.3 prop kit in parallel) → story track step 3 (SP meter, thresholds →
 chapters, post-match scene, the office as the case-file screen; the
 `.directive` tab, the `door.*` fields and the four unwired kit sounds are
 already waiting for it) → orientation tape in the Training Room → PvP
