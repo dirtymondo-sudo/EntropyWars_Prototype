@@ -78,8 +78,8 @@ test('doors carry exactly one action and unique ids', () => {
     for (const d of ROOM.doors) {
         if (ids.has(d.id)) problems.push('duplicate door id ' + d.id);
         ids.add(d.id);
-        const keys = Object.keys(d.action || {}).filter(k => ['fn', 'sector', 'room', 'overlay'].includes(k));
-        if (keys.length !== 1) problems.push(d.id + ': action must be exactly one of fn/sector/room/overlay');
+        const keys = Object.keys(d.action || {}).filter(k => ['fn', 'sector', 'room', 'overlay', 'mission'].includes(k));
+        if (keys.length !== 1) problems.push(d.id + ': action must be exactly one of fn/sector/room/overlay/mission');
         if (d.action && d.action.sector && !HQ.sectors[d.action.sector]) problems.push(d.id + ': unknown sector ' + d.action.sector);
         if (![0, 1].includes(d.level || 0)) problems.push(d.id + ': level must be 0 or 1');
     }
@@ -290,4 +290,93 @@ test('hqSiteMastery lists the per-condition checklist behind hqMapMastered', () 
     assert.strictEqual(all.done, all.total);
     assert.strictEqual(D.hqMapMastered(id, { matchHistory: hist }), true);
     for (const c of HQ.masteryConditions) assert.ok(HQ.masteryLabels[c], 'masteryLabels for ' + c);
+});
+
+
+/* ── Phase 2.6 (2026-09-03): the six bays as curved corridors ── */
+
+const BAYS = Object.keys(HQ.sectors).map(k => [k, HQ.rooms[D.hqBayId(k)]]);
+
+test('every sector generates a bay room: kind bay, a way out at deg 0, one threshold per map', () => {
+    const problems = [];
+    for (const [k, room] of BAYS) {
+        if (!room) { problems.push(k + ': no bay room'); continue; }
+        if (room.kind !== 'bay' || room.sector !== k) problems.push(k + ': kind/sector');
+        const S = room.shell;
+        if (!(S.rOut > S.rIn && S.rOut - S.rIn >= 3.5 && S.arc[0] < 0 && S.arc[1] === -S.arc[0] && S.wallH > 2.5)) problems.push(k + ': shell numbers');
+        const out = room.doors.find(d => d.id === 'egress');
+        if (!out || out.side !== 'in' || out.deg !== 0 || !out.action || out.action.room !== 'central_egress') problems.push(k + ': egress door');
+        const bayDoor = ROOM.doors.find(d => d.action && d.action.sector === k);
+        if (!out || !bayDoor || out.action.at !== bayDoor.id) problems.push(k + ': the way out must land at the egress bay door (' + (bayDoor && bayDoor.id) + ')');
+        if (out && bayDoor && (out.leaf !== bayDoor.leaf || !!out.wide !== !!bayDoor.wide)) problems.push(k + ': the way out must wear the same leaf as the egress bay door');
+        const th = room.doors.filter(d => d.action && d.action.mission);
+        const want = Array.from(HQ.sectors[k].maps).sort();
+        const got = Array.from(th.map(d => d.action.mission)).sort();
+        if (JSON.stringify(got) !== JSON.stringify(want)) problems.push(k + ': thresholds ' + got.join(',') + ' vs maps ' + want.join(','));
+        for (const d of th) {
+            if (d.side !== 'out') problems.push(d.id + ': thresholds hang on the outer wall');
+            if (!(d.deg > S.arc[0] + 4 && d.deg < S.arc[1] - 4)) problems.push(d.id + ' @' + d.deg + ' is outside the corridor arc ±' + S.arc[1]);
+            if (d.id !== 'site_' + d.action.mission) problems.push(d.id + ': id must be site_<mapId>');
+            if (!HQ.catalogue[d.leaf] || !HQ.catalogue[d.leaf].leaf) problems.push(d.id + ': leaf ' + d.leaf);
+        }
+        const ids = new Set();
+        for (const d of room.doors) { if (ids.has(d.id)) problems.push(k + ': duplicate door id ' + d.id); ids.add(d.id); }
+        /* neighbouring thresholds must not overlap along the outer wall (panels are 2.5 / 3.3 m wide) */
+        const sorted = th.slice().sort((a, b) => a.deg - b.deg);
+        for (let i = 1; i < sorted.length; i++) {
+            const gap = (sorted[i].deg - sorted[i - 1].deg) * Math.PI / 180 * S.rOut;
+            const need = ((sorted[i].wide ? 3.3 : 2.5) + (sorted[i - 1].wide ? 3.3 : 2.5)) / 2;
+            if (gap < need) problems.push(`${sorted[i - 1].id} and ${sorted[i].id} overlap (${gap.toFixed(2)} m of wall, need ${need})`);
+        }
+        /* the way out's panel must fit on the inner wall */
+        if (out) {
+            const innerLen = (S.arc[1] - S.arc[0]) * Math.PI / 180 * S.rIn;
+            if (innerLen < (out.wide ? 3.3 : 2.5) + 2) problems.push(k + ': inner wall too short for the way out');
+        }
+        if (!(room.spawn && room.spawn.deg === 0 && room.spawn.r > S.rIn + 0.8 && room.spawn.r < S.rOut - 0.8)) problems.push(k + ': spawn must stand in the corridor at the way out');
+    }
+    assert.deepStrictEqual(problems, []);
+});
+
+test('bay props resolve and sit inside the corridor; wall props name a side; ceiling props hang', () => {
+    const problems = [];
+    for (const [k, room] of BAYS) {
+        const S = room.shell;
+        for (const p of room.props) {
+            const c = HQ.catalogue[p.key];
+            if (!c) { problems.push(k + ': prop ' + p.key + ' not in catalogue'); continue; }
+            const onWall = (c.wall || p.wall) && p.r == null;
+            if (onWall && p.side !== 'in') problems.push(k + ': wall prop ' + p.key + '@' + p.deg + ' must hang on the inner wall (side in) — the outer wall is thresholds');
+            if (!onWall && p.r == null) problems.push(k + ': prop ' + p.key + '@' + p.deg + ' has no r');
+            if (p.r != null && (p.r < S.rIn + 0.3 || p.r > S.rOut - 0.3)) problems.push(k + ': prop ' + p.key + '@' + p.deg + ' r=' + p.r + ' is in a wall');
+            if (Math.abs(p.deg) > S.arc[1] - 1.5) problems.push(k + ': prop ' + p.key + '@' + p.deg + ' is in an end cap');
+            if ((c.ceil || p.ceil) && !(c.span || p.span || c.h)) problems.push(k + ': ceiling prop ' + p.key + ' has no size');
+        }
+        assert.ok(room.props.some(p => p.key === 'fluorescent' && (p.ceil || HQ.catalogue.fluorescent.ceil)), k + ': lit by fluorescents');
+        assert.ok(room.props.some(p => p.key === 'filing_cabinet'), k + ': the site files are on the wall');
+        for (const a of room.agents) if (!(a.r > S.rIn + 0.5 && a.r < S.rOut - 0.5 && Math.abs(a.deg) < S.arc[1] - 2)) problems.push(k + ': agent outside the corridor');
+    }
+    assert.deepStrictEqual(problems, []);
+});
+
+test('every launch map has a threshold leaf and doorSiteState reads a threshold from its own site', () => {
+    const launch = Array.from(D.EW_MAP_META.filter(m => !m.isDelta).map(m => m.id));
+    const missing = launch.filter(id => !HQ.thresholds[id] || !HQ.catalogue[HQ.thresholds[id].leaf] || !HQ.catalogue[HQ.thresholds[id].leaf].leaf);
+    assert.deepStrictEqual(missing, [], 'thresholds without a leaf');
+    const stray = Object.keys(HQ.thresholds).filter(id => !launch.includes(id));
+    assert.deepStrictEqual(stray, [], 'threshold entries for maps that are not launch maps');
+    const mars = HQ.rooms.bay_celestial.doors.find(d => d.action && d.action.mission === 'prebuilt_mars');
+    assert.strictEqual(D.doorSiteState(mars, null), 'unstable');
+    const unlocked = {};
+    for (const c of HQ.masteryConditions) unlocked['site:prebuilt_mars:' + c] = 1;
+    assert.strictEqual(D.doorSiteState(mars, { progress: { unlocked } }), 'stabilized');
+    const moon = HQ.rooms.bay_celestial.doors.find(d => d.action && d.action.mission === 'prebuilt_moon');
+    assert.strictEqual(D.doorSiteState(moon, { progress: { unlocked } }), 'unstable', 'mastering Mars does not stabilize the Moon');
+    const back = HQ.rooms.bay_quarantined.doors.find(d => d.action && d.action.mission === 'prebuilt_backrooms');
+    assert.strictEqual(D.doorSiteState(back, { progress: { unlocked } }), 'sealed', 'a locked sector seals its thresholds');
+    assert.strictEqual(D.doorSiteState(HQ.rooms.bay_celestial.doors.find(d => d.id === 'egress'), null), 'open');
+    assert.strictEqual(D.hqBayId('celestial'), 'bay_celestial');
+    assert.strictEqual(D.hqBayRoom('nope'), null);
+    /* every egress bay door's sector has a room the panel can walk into */
+    for (const d of ROOM.doors.filter(d => d.action && d.action.sector)) assert.ok(HQ.rooms[D.hqBayId(d.action.sector)], d.id + ' has no bay room');
 });

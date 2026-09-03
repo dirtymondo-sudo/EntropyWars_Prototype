@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 5 (2026-09-03 — Phase 2.2 wedge kit re-homed + 3.1 checklists shipped, §9)
+### The walkable facility that replaces the Play menu · rev 6 (2026-09-03 — Phase 2.6 the six bays as walkable corridors, §9)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -358,9 +358,11 @@ lamp/frame details → furniture → fixtures → machinery.
   extinguisher, vending machine, water cooler, plant.
 - 2.5 🧊 NPCs: DOOR agent (male/female) rigged via the CLAUDE.md recipe —
   also usable later as the playable DOOR officer race.
-- 2.6 ⚙ The six **bays** as short curved corridors off the ground ring
-  (same shell code, smaller radius arc), threshold doors with their own
-  leaves (§5.3 list), the bay's site files on the door panels.
+- 2.6 ✅ (2026-09-03, §9) The six **bays** as short curved corridors
+  (generated rooms `bay_<sector>`: `hqBayRoom`), one threshold door per
+  map with its own leaf (`DOOR_HQ.thresholds`), the site file + entity
+  chips + checklist on every threshold panel; `_hqGoRoom` walks between
+  rooms and returns rebuild the room you launched from.
 - 2.7 ⚙ The **janitor's closet** as the first interior (a box room with
   the closet props; `ref/janitor_closet_v1` is the layout).
 - 2.8 🧊 Ambience loop + muzak (user-made).
@@ -600,6 +602,120 @@ Guild Hub was the prototype; this plan is the building.
 - Hazard Pay wallet on the strip vs only at the Quartermaster. Rec: strip.
 
 ## 9. Build log (append per session)
+
+### 2026-09-03 — Phase 2.6: the six bays as walkable corridors
+User: "continue with the build plan". `npm test` 99 (98 pass, the server
+smoke skips without node_modules); 3 new checks in `doorhq.test.js`.
+
+**Rooms.** The building has more than one room now. `DOOR_HQ.rooms`
+gains six generated `bay_<sector>` rooms (`kind: 'bay'`) built at load
+by data.js `hqBayRoom(sector)` from three tables — never hand-edit the
+generated rooms:
+- `DOOR_HQ.bayShell` — the corridor: an annular sector r 8.5 → 12.5
+  (4 m wide) around its own centre, 4.2 m tall (the egress ground-floor
+  height, so the 3.76 m door caps and the nameplates above them clear the
+  ceiling), `spacing` 3.9 m of outer wall per threshold, `endPad` 9° of
+  blank wall before each end cap, `minHalf` ±24°. The arc is ±(n·17.9°/2
+  + 9): TERRESTRIAL (8 maps) ±80.5°, ANCIENT ±71.6°, HOLLOW ±53.7°,
+  DIPLOMATIC ±44.8°, CELESTIAL ±35.8°, QUARANTINED ±26.9°.
+- `DOOR_HQ.thresholds[mapId] = { leaf, wide, note }` — which of the 18
+  leaves hangs on each of the 29 thresholds (Moon / Stonehenge / Göbekli /
+  Hollow Earth / Olympus = the bare frame, Atlantis / Mars / D.U.M.B. /
+  Antarctica = the bulkhead, Camelot = the portcullis, Backrooms = the EXIT
+  door, …) plus a one-line "THE DOOR:" note for the panel. The test
+  requires an entry for every launch map and no strays.
+- `DOOR_HQ.bays[sector] = { agent, lines, props }` — the bay guard's
+  line, overheard lines, and a few extra props in the bay's local frame.
+
+Local polar frame per bay: deg 0 = **the way out** (door id `egress`) on
+the INNER wall, wearing the same leaf as the bay door shows in the egress
+(the same door from both sides), `action: { room: 'central_egress', at:
+<the egress bay door id> }`. Thresholds (`site_<mapId>`, `action: {
+mission: mapId }`) are spread evenly along the OUTER wall; for an odd
+count one sits straight across from the way out. Standard dressing:
+`fluorescent` fixtures every 3.2 m along the ceiling centreline (the
+first `ceil` props — the renderer now hangs `cat.ceil`/`p.ceil` props
+from `_hqCeilY`), extinguisher + breaker panel flanking the way out, a
+clock, site-file cabinets at the ends (papers on one), boxes in a corner,
+the guard by the outer wall just past the way in. Spawn: deg 0, r 10.7,
+facing the thresholds. New door / prop key: `side: 'in'` = hangs on the
+inner wall and faces OUTWARD (`_hqWallR(room, level, side)`); the test
+insists every wall prop in a bay names `side: 'in'` (the outer wall is
+thresholds).
+
+**Renderer (three-renderer.js).** `_hqBuildBayShell`: floor + ceiling
+sectors (concrete / acoustic panel), `_hqArcBand` partial-cylinder walls
+(outer BackSide, inner FrontSide) with dado + three trims each, two end
+caps with their own dado/trim strips, a teal guide line down the middle
+and an oxblood hazard band along the threshold wall, procedural
+fluorescent strips + glow, a two-conduit pipe run with brackets high on
+the inner wall, and the bay stencil (CSS2D) at the far end. Side-aware
+`_hqBuildDoors` / `_hqPlaceProps` / `_hqFindTarget` / `_hqGoTo` (an
+inner-wall door is faced by heading toward the arc centre; `goTo(id,
+faceAway)` still means "door at your back"). `_hqSurface` / `_hqCamBlocked`
+gained a corridor branch (between the wall arcs, short of the end caps,
+prop blockers as before). Bay lighting is cooler: a flatter hemisphere,
+point lights along the centreline. `ThreeRenderer.hq.room()` reports the
+live room. Side fix: `_hqSectorMesh(..., down)` used `rotateX(+90°)`,
+which mirrors the sector through X — the stair-landing undersides were
+drawn at the mirrored angle (hidden by the symmetric layout); it now
+mirrors Y, which flips the winding without moving the arc.
+
+**Flow (map.js).** `_hqCurRoom` / `_hqLastRoom` beside `_hqLastDoor`;
+`_hqRoom()` is the live room. `window._hqGoRoom(roomId, at)` rebuilds the
+scene for another room under the loading card ("admitting you to bay 1 ·
+terrestrial…") and stands you at door `at` with it at your back. Door
+actions: `{ sector }` (the egress bay doors) walks into `bay_<sector>` at
+its `egress` door; `{ room, at }` walks anywhere a room exists (the
+office / training / continuity / executive doors stay "INTERIOR NOT YET
+BUILT" until their rooms exist — the panel enables itself the moment a
+room id appears in `DOOR_HQ.rooms`). The egress bay-door panel keeps its
+quick-dispatch rows (CROSS / DEEP per threshold, the checklists) and
+gains **ENTER THE BAY ▸ WALK THE THRESHOLDS** on top; the user can drop
+the rows later if the corridor should be the only way. Inside a bay, a
+threshold's panel (`_hqThresholdPanelHtml`) is the site file: the customs
+stamp, JURISDICTION, FIRST DOCUMENTED CROSSING (`doorSiteCanonDate`) +
+case number, the file summary, the field description, THE DOOR note,
+ENTITIES ON FILE chips (`hqMissionPool` natives), the ☑/☐ checklist, then
+CROSS ▸ Δ BOARD · 4v4 / DEEP CROSSING ▸ FULL SITE · nvn. The prompt reads
+[E] OPEN on a threshold. `_hqLaunchMission` records the room, so the
+post-match return rebuilds THAT bay at THAT threshold; `_hqReturnOrMenu`
+passes `room: _hqLastRoom`. Play always starts on the egress floor.
+`Q` (dispatch) and the strip's DIRECTORY work from a bay by borrowing the
+egress counter definitions; the directory lists the live room's doors
+(INNER WALL / THRESHOLD) with WALK. `doorSiteState` handles `{ mission }`
+(the site's own mastery; a locked sector seals its thresholds).
+`profile.door.hq.lastRoom` joins `lastDoor` (profile.js backfill).
+
+**Files (RULE #1 placement):** data.js (`bayShell`, `thresholds`,
+`bays`, `hqBayId`, `hqBayRoom`, generated rooms, `doorSiteState`),
+three-renderer.js (`_hqArcBand`, `_hqWallR`, `_hqCeilY`,
+`_hqBuildBayShell`, side-aware doors/props/targets/goTo, corridor
+surface + camera, bay lights, `hq.room()`), map.js (rooms, `_hqGoRoom`,
+threshold panel, room-aware directory / counters / return), profile.js
+(`lastRoom`), styles-base.css (`.hq-site*`, `.hq-chips`, `.hq-chip`,
+`.hq-plate-bay`), index.html (`?v=20260903d-cors`), doorhq.test.js (+3).
+Docs: this file, DOOR_MASTER Part D. No mid-match surface → no relay work
+(RULE #2); the building is still never alive during a match.
+
+**First-run checklist for the user:** (1) E at BAY 1 · TERRESTRIAL →
+ENTER THE BAY: do you stand facing the thresholds with the suburban door
+at your back? (2) walk the arc: do the door leaves face into the corridor
+(else `EW_HQ_FLIP_LEAVES=true` — same convention as the egress)? (3) do
+the wall props on the inner wall face you (they use the same +Z
+convention flipped by `side: 'in'`)? (4) E at the way out: do you land in
+the egress with the bay door behind you? (5) open a threshold, CROSS, play,
+and confirm the result screen's D.O.O.R. HQ button re-admits you INTO the
+bay at that threshold; (6) Q from inside a bay opens Dispatch; (7) the
+fluorescent fixtures hang at the ceiling (if they float or sink, the
+`fluorescent` catalogue span is the knob). Report `?hqdebug` positions
+(they are bay-local: deg 0 = the way out).
+
+**Next (in order):** 2.7 the closet interior (kit uploaded — `kind:
+'box'` room, the same room plumbing now exists); 3.3 Code Red; 3.2 Keys;
+§3.9 the in-game layout editor; gamepad in the hall; a first-visit
+micro-scene at the desk (4.2). Open: whether the egress bay-door panel
+should lose its quick-dispatch rows now that the corridor exists.
 
 ### 2026-09-03 — Phase 2.2 (wedge kit re-homed) + Phase 3.1 (mastery checklists)
 User: "continue with the build plan; I uploaded the round wedge desks to

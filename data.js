@@ -15431,6 +15431,76 @@ const DOOR_HQ = {
     /* how the door panel's checklist and the result-screen tag name them */
     masteryLabels: { wipeout: 'WIPEOUT', tower_destroyed: 'TOWER', hourglasses_collected: 'HOURGLASSES' },
 
+    /* ── the six bays as corridors (HQ plan 2.6, 2026-09-03) ──
+       Every sector bay is a short CURVED corridor off the egress ring: the
+       egress door on its inner wall, one THRESHOLD door per launch map on
+       its outer wall. The rooms themselves are generated at load by
+       hqBayRoom(sector) from `bayShell` + `thresholds` + `bays` — never
+       hand-edit rooms.bay_*. Local polar frame per bay (deg 0 = the way
+       back to the egress). */
+    bayShell: {
+        rIn: 8.5, rOut: 12.5,      // the corridor is 4 m wide, curving around its own centre
+        wallH: 4.2, dadoH: 1.05,   // the egress ground-floor height: wide door frames are 3.76 m to the cap, plates sit above them
+        spacing: 3.9,              // metres of outer wall per threshold door (wide panels are 3.3 m)
+        endPad: 9,                 // degrees of blank wall past the last door, before the end cap
+        minHalf: 24,               // the shortest corridor is ±24°
+        floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+    },
+    /* Which leaf hangs on each threshold (HQ plan §5.3 C: "more thresholds
+       per map"). Unlisted maps fall back to `leaf_office`. */
+    thresholds: {
+        prebuilt_nuketown:      { leaf: 'leaf_suburban',       note: 'the suburban closet door — it opens onto the street' },
+        prebuilt_area51:        { leaf: 'leaf_security',       note: 'the hangar man-door; the keypad is a rival account' },
+        prebuilt_skinwalker:    { leaf: 'leaf_shabby_wood',    note: 'the ranch gate, rehung indoors' },
+        prebuilt_bohemian_grove:{ leaf: 'leaf_shabby_wood',    note: 'redwood lodge door; do not knock in rhythm' },
+        prebuilt_dumb:          { leaf: 'leaf_bulkhead',       wide: true, note: 'blast door, deep underground military base issue' },
+        prebuilt_cern:          { leaf: 'leaf_futuristic',     wide: true, note: 'the collider blast door; hum audible' },
+        prebuilt_vatican:       { leaf: 'leaf_frosted',        note: 'the archive service door; frosted by decree' },
+        prebuilt_stadium:       { leaf: 'leaf_wired_double',   wide: true, note: 'a turnstile that was a double door yesterday' },
+        prebuilt_stonehenge:    { leaf: 'leaf_frame_only',     note: 'a frame with nothing in it; the stones are on the other side' },
+        prebuilt_giza:          { leaf: 'leaf_vault',          wide: true, note: 'the sealed tomb door, opened by treaty' },
+        prebuilt_babel:         { leaf: 'leaf_shabby_wood',    note: 'scaffold-plank door; the sign is in eleven alphabets' },
+        prebuilt_gobekli:       { leaf: 'leaf_frame_only',     note: 'the oldest doorway on file; no leaf was ever made' },
+        prebuilt_camelot:       { leaf: 'leaf_portcullis',     wide: true, note: 'the portcullis; HINGE technology, no privileged side' },
+        prebuilt_technoticlan:  { leaf: 'leaf_futuristic',     wide: true, note: 'the temple gate, chrome over obsidian' },
+        prebuilt_atlantis:      { leaf: 'leaf_bulkhead',       wide: true, note: 'the wet submarine bulkhead; it drips on this side too' },
+        prebuilt_shasta:        { leaf: 'leaf_closet',         note: 'a cabin door with a mountain behind it' },
+        prebuilt_hollow_earth:  { leaf: 'leaf_frame_only',     note: 'a frame; the floor on the far side is the ceiling' },
+        prebuilt_agartha:       { leaf: 'leaf_vault',          wide: true, note: 'the inner gate; polished by a very long queue' },
+        prebuilt_antarctica:    { leaf: 'leaf_bulkhead',       wide: true, note: 'the ice-wall hatch; cold to the touch on both faces' },
+        prebuilt_northpole:     { leaf: 'leaf_closet_alt',     note: 'a workshop door; sleigh bells removed by Records' },
+        prebuilt_mars:          { leaf: 'leaf_bulkhead',       wide: true, note: 'the airlock; red dust in the seal' },
+        prebuilt_moon:          { leaf: 'leaf_frame_only',     note: 'a door standing without a wall; footprints lead to it' },
+        prebuilt_cyberpunk:     { leaf: 'leaf_futuristic',     wide: true, note: 'the tenement gate; the neon was added by tenants' },
+        prebuilt_heaven:        { leaf: 'leaf_frosted',        note: 'the service gate, immunity claimed; frosted for modesty' },
+        prebuilt_hell:          { leaf: 'leaf_security',       note: 'the furnace hatch; keypad warm' },
+        prebuilt_olympus:       { leaf: 'leaf_frame_only',     note: 'a marble frame; the lintel is a treaty' },
+        prebuilt_fairy_forest:  { leaf: 'leaf_shabby_wood',    note: 'a door made of one plank of a tree that objected' },
+        prebuilt_backrooms:     { leaf: 'leaf_exit',           note: 'an EXIT door; the sign is a lie' },
+        prebuilt_flatlands:     { leaf: 'leaf_hollow_core',    note: 'a hollow-core door; hollow all the way through' },
+    },
+    /* per-bay flavour: the guard's line, overheard lines, extra dressing (local polar) */
+    bays: {
+        terrestrial: { agent: 'Clipboard. “Suburbs, bases, ranches, a stadium. Everything on this corridor has a parking lot.”',
+            lines: ['“Nuketown’s door is a closet door. Nobody knows whose closet.”', '“Area 51 has its own customs. We do not recognise it. They do not recognise us.”', '“If the ranch gate is open, it is not open for you.”'],
+            props: [{ key: 'tube_tv', deg: -20, r: 9.0, y: 0.95, rot: 180 }, { key: 'cardboard_box', deg: -20, r: 9.0 }] },
+        ancient:     { agent: '“First crossings. The stones were here before the paperwork. The paperwork is catching up.”',
+            lines: ['“The portcullis has no privileged side. That is a technical term.”', '“Göbekli Tepe never had a door. We filed the frame.”', '“The bulkhead drips. It has always dripped. Do not mop it.”'],
+            props: [{ key: 'cardboard_boxes', deg: 22, r: 9.4, rot: 30 }] },
+        hollow:      { agent: '“Inner earth and the poles. Wear something warm and something that does not care which way is down.”',
+            lines: ['“Antarctica was the first Black Cube we destroyed. The ice remembers.”', '“The Agartha gate has a queue on the far side. Centuries.”', '“Below Shasta the Lemurians are still about to make contact.”'],
+            props: [{ key: 'water_cooler', deg: 20, side: 'in', wall: true }] },
+        celestial:   { agent: '“Space and the far future. The Moon door has no wall. Please do not walk around it.”',
+            lines: ['“Mars: red dust in the seal. Every crossing. We have written to them.”', '“The footprints lead to the Moon door and not away from it.”', '“Cyberpunk City files its complaints in advance.”'],
+            props: [{ key: 'crt_terminal', deg: -18, r: 9.0, y: 0.76, rot: 180 }, { key: 'round_cabinet', deg: -18, r: 9.0 }] },
+        diplomatic:  { agent: '“Immunity claimed. All four of them. Check your language and your footwear.”',
+            lines: ['“Heaven’s gate is frosted for modesty. Theirs.”', '“Hell’s keypad is warm. It is the friendliest thing about it.”', '“Fairy Forest lodged a complaint about the door. The door is a tree.”'],
+            props: [{ key: 'potted_plant', deg: 16, r: 11.4 }, { key: 'office_plant', deg: -16, r: 11.4 }] },
+        quarantined: { agent: '“You should not be able to read this sign.”',
+            lines: ['“The EXIT sign is a lie. It is filed as one.”', '“Flat Lands: hollow all the way through.”'],
+            props: [{ key: 'wet_floor_sign', deg: 8, r: 10.6, rot: 40 }] },
+    },
+
     rooms: {
         central_egress: {
             label: 'CENTRAL EGRESS',
@@ -15700,9 +15770,82 @@ function hqMissionPool(mapId, n) {
     out.natives = natives;
     return out;
 }
+/* ── the bays (HQ plan 2.6) ─────────────────────────────────────────
+   hqBayId(sector) → 'bay_<sector>' (the room id); hqBayRoom(sector) builds
+   the corridor room from DOOR_HQ.bayShell / thresholds / bays: the egress
+   door at deg 0 on the INNER wall (leaf = the same leaf the bay shows in
+   the egress, so it is the same door from both sides), one threshold door
+   per launch map spread along the OUTER wall (`spacing` metres apart,
+   `endPad` degrees of blank wall before each end cap), standard dressing
+   (fluorescents along the ceiling, site-file cabinets, an extinguisher, a
+   breaker panel, plants by the way out) and the bay's own extras. Door
+   `side: 'in'` = hangs on the inner wall and faces OUTWARD; `action:
+   {mission: mapId}` = a threshold. */
+function hqBayId(sector) { return 'bay_' + sector; }
+function hqBayRoom(sectorKey) {
+    const sec = DOOR_HQ.sectors[sectorKey];
+    if (!sec) return null;
+    const B = DOOR_HQ.bayShell, T = DOOR_HQ.thresholds || {}, F = (DOOR_HQ.bays || {})[sectorKey] || {};
+    const egress = DOOR_HQ.rooms.central_egress;
+    const bayDoor = ((egress && egress.doors) || []).find(d => d.action && d.action.sector === sectorKey) || {};
+    const n = sec.maps.length;
+    const stepDeg = (B.spacing / B.rOut) * 180 / Math.PI;
+    const half = Math.round(Math.max(B.minHalf, (n * stepDeg) / 2 + B.endPad) * 10) / 10;
+    const bayNo = (bayDoor.label || '').match(/BAY\s*(\d+)/);
+    const label = bayDoor.label || ('BAY · ' + sec.label);
+    const doors = [{
+        id: 'egress', deg: 0, side: 'in', level: 0, leaf: bayDoor.leaf || 'leaf_office', wide: !!bayDoor.wide,
+        label: 'CENTRAL EGRESS', sub: 'OPERATIONS RING · THE WAY BACK',
+        action: { room: 'central_egress', at: bayDoor.id || null },
+        desc: 'Back to the ring. The desk will still be there. Probably the same desk.',
+    }];
+    const META = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
+    sec.maps.forEach((id, i) => {
+        const th = T[id] || {};
+        const meta = META.find(m => m.id === id);
+        doors.push({
+            id: 'site_' + id, deg: -(n * stepDeg) / 2 + stepDeg * (i + 0.5), side: 'out', level: 0,
+            leaf: th.leaf || 'leaf_office', wide: !!th.wide,
+            label: ((meta && meta.label) || id).toUpperCase(), sub: 'THRESHOLD · ' + sec.label,
+            action: { mission: id }, note: th.note || '',
+        });
+    });
+    const props = [];
+    /* ceiling fluorescents along the centreline */
+    const mid = (B.rIn + B.rOut) / 2;
+    const stripStep = (3.2 / mid) * 180 / Math.PI;
+    for (let a = -half + 6; a <= half - 6 + 0.01; a += stripStep) props.push({ key: 'fluorescent', deg: Math.round(a * 10) / 10, r: mid, ceil: true, rot: 90 });
+    /* the inner wall: the way out flanked by plants, site-file cabinets at the ends */
+    const doorHalfDeg = ((bayDoor.wide ? 3.3 : 2.5) / 2 / B.rIn) * 180 / Math.PI;
+    props.push({ key: 'fire_extinguisher', deg: Math.round((doorHalfDeg + 4) * 10) / 10, side: 'in', wall: true });
+    props.push({ key: 'breaker_panel', deg: -Math.round((doorHalfDeg + 4.5) * 10) / 10, side: 'in', wall: true });
+    if (half >= 34) props.push({ key: 'wall_clock', deg: Math.round((doorHalfDeg + 12) * 10) / 10, side: 'in', wall: true });
+    props.push({ key: 'filing_cabinet', deg: Math.round((half - 5) * 10) / 10, side: 'in', wall: true });
+    props.push({ key: 'filing_cabinet', deg: Math.round((half - 8.2) * 10) / 10, side: 'in', wall: true });
+    if (half >= 40) props.push({ key: 'filing_cabinet', deg: -Math.round((half - 5) * 10) / 10, side: 'in', wall: true });
+    props.push({ key: 'cardboard_boxes', deg: -Math.round((half - 4) * 10) / 10, r: B.rIn + 1.0, rot: 25 });
+    props.push({ key: 'papers_a', deg: Math.round((half - 5) * 10) / 10, r: B.rIn + 0.62, y: 1.32, rot: 15 });
+    (F.props || []).forEach(p => props.push(Object.assign({}, p)));
+    return {
+        label: label, sub: 'CONTAINMENT BAY · ' + (sec.sub || '').toUpperCase(),
+        kind: 'bay', sector: sectorKey, bayNo: bayNo ? +bayNo[1] : null,
+        shell: { rIn: B.rIn, rOut: B.rOut, arc: [-half, half], wallH: B.wallH, dadoH: B.dadoH,
+                 floor: B.floor, wall: B.wall, dado: B.dado, trim: B.trim, ceiling: B.ceiling },
+        doors: doors,
+        counters: [],
+        props: props,
+        /* the bay guard: by the outer wall just past the way in, facing back across the corridor toward it */
+        agents: [{ deg: Math.round((doorHalfDeg + 9) * 10) / 10, r: B.rOut - 1.4, level: 0, face: Math.round(doorHalfDeg + 9 + 180 + 25), line: F.agent || '“Sign the book.”' }],
+        npcSpots: [],
+        lines: F.lines || [],
+        spawn: { deg: 0, r: B.rIn + 2.2, level: 0, face: 0 },
+    };
+}
+Object.keys(DOOR_HQ.sectors).forEach(k => { DOOR_HQ.rooms[hqBayId(k)] = hqBayRoom(k); });
 /* Door lamp state (HQ plan §3.5): sealed | clearance | unstable | stabilized
    | open. Rooms: open unless a clearance gate holds. Bays: green once every
-   map in the sector is mastered, red while the sector is locked. */
+   map in the sector is mastered, red while the sector is locked. A
+   threshold (action.mission) reads its own site's mastery. */
 function doorSiteState(door, profile) {
     if (!door) return 'open';
     const lv = (typeof doorClearance === 'function') ? doorClearance(profile).level : 1;
@@ -15713,6 +15856,13 @@ function doorSiteState(door, profile) {
         if (!sec) return 'sealed';
         if (sec.locked) return 'sealed';
         return sec.maps.every(id => hqMapMastered(id, profile)) ? 'stabilized' : 'unstable';
+    }
+    if (act.mission) {
+        const sk = hqSectorOfMap(hqSiteId(act.mission));
+        const sec = sk ? DOOR_HQ.sectors[sk] : null;
+        if (!sec) return 'sealed';
+        if (sec.locked) return 'sealed';
+        return hqMapMastered(act.mission, profile) ? 'stabilized' : 'unstable';
     }
     return 'open';
 }
@@ -15725,5 +15875,7 @@ if (typeof window !== 'undefined') {
     window.hqMapMastered = hqMapMastered;
     window.hqMasteryCount = hqMasteryCount;
     window.hqMissionPool = hqMissionPool;
+    window.hqBayId = hqBayId;
+    window.hqBayRoom = hqBayRoom;
     window.doorSiteState = doorSiteState;
 }

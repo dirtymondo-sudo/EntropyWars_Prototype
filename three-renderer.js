@@ -26799,7 +26799,11 @@ const ThreeRenderer = (function () {
         var a0 = Math.min(deg0, deg1), a1 = Math.max(deg0, deg1);
         var segs = Math.max(4, Math.round((a1 - a0) / 2.5));
         var g = new THREE.RingGeometry(rIn * U, rOut * U, segs, 1, Math.PI / 2 - _hqRad(a1), _hqRad(a1 - a0));
-        g.rotateX(down ? Math.PI / 2 : -Math.PI / 2);
+        g.rotateX(-Math.PI / 2);
+        /* face down by mirroring Y (flips the winding + normals) — rotating
+           +90° instead mirrors the sector through X, which put stair-landing
+           undersides at the wrong angle */
+        if (down) g.scale(1, -1, 1);
         var m = new THREE.Mesh(g, mat);
         m.position.y = y * U;
         return m;
@@ -26811,6 +26815,31 @@ const ThreeRenderer = (function () {
         var m = new THREE.Mesh(g, mat);
         m.position.y = (y0 + y1) * 0.5 * U;
         return m;
+    }
+    /* PARTIAL cylinder band over polar [deg0, deg1] (the bay corridors).
+       Cylinder θ runs x = r·sinθ, z = r·cosθ; our polar is x = r·sin d,
+       z = −r·cos d, so θ = π − d. */
+    function _hqArcBand(r, y0, y1, deg0, deg1, mat, segs) {
+        var U = _hqUnits();
+        var a0 = Math.min(deg0, deg1), a1 = Math.max(deg0, deg1);
+        var g = new THREE.CylinderGeometry(r * U, r * U, (y1 - y0) * U, segs || Math.max(8, Math.round((a1 - a0) / 2.5)), 1, true, Math.PI - _hqRad(a1), _hqRad(a1 - a0));
+        var m = new THREE.Mesh(g, mat);
+        m.position.y = (y0 + y1) * 0.5 * U;
+        return m;
+    }
+    /* radius of the wall a door / wall prop hangs on: the rotunda's lower or
+       upper drum by level; a bay's outer wall, or its inner wall for
+       side: 'in' (those face OUTWARD, away from the arc centre). */
+    function _hqWallR(room, level, side) {
+        var S = room.shell;
+        if (room.kind === 'bay') return (side === 'in') ? S.rIn : S.rOut;
+        return level ? S.mezz.outer : S.radius;
+    }
+    /* the ceiling height over a floor level (ceiling-hung props) */
+    function _hqCeilY(room, level) {
+        var S = room.shell;
+        if (room.kind === 'bay') return S.wallH;
+        return level ? (S.wallH + S.upperWallH + S.domeH) : (S.wallH - S.mezz.thick);
     }
     /* torus arc over polar [deg0, deg1] at radius r, height y (metres) */
     function _hqRailArc(r, deg0, deg1, y, tube, mat) {
@@ -27050,6 +27079,92 @@ const ThreeRenderer = (function () {
         });
     }
 
+    /* ── a bay: a short curved corridor (HQ plan 2.6) ──────────────────
+       Floor + ceiling sectors, an outer and an inner wall arc (dado + trims
+       on both), two end caps, procedural fluorescent strips along the
+       centreline, a pipe run high on the inner wall, and a hazard band at
+       the threshold side. Doors come from _hqBuildDoors (side-aware). */
+    function _hqBuildBayShell(room) {
+        var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
+        var a0 = S.arc[0], a1 = S.arc[1], WH = S.wallH, rIn = S.rIn, rOut = S.rOut, mid = (rIn + rOut) / 2;
+        var texFloor = S.floor || 'concrete', texWall = S.wall || 'stone', texDado = S.dado || 'oxblood', texTrim = S.trim || 'teal', texCeil = S.ceiling || 'ceiling';
+        var lenOut = _hqRad(a1 - a0) * rOut, lenIn = _hqRad(a1 - a0) * rIn;
+        /* floor + ceiling (planar UVs across the ring's bounding square) */
+        G.add(_hqSectorMesh(rIn, rOut, a0, a1, 0, _hqMat(texFloor, (rOut * 2) / 2.2, (rOut * 2) / 2.2, { shininess: 6, specular: 0x222222 })));
+        G.add(_hqSectorMesh(rIn, rOut, a0, a1, WH, _hqMat(texCeil, (rOut * 2) / 1.2, (rOut * 2) / 1.2), true));
+        /* a teal guide line down the middle, an oxblood hazard band along the threshold wall */
+        G.add(_hqSectorMesh(mid - 0.08, mid + 0.08, a0, a1, 0.006, _hqMat(texTrim, 20, 1, { shininess: 30 })));
+        G.add(_hqSectorMesh(rOut - 0.95, rOut - 0.6, a0, a1, 0.006, _hqMat(texDado, 20, 1, { shininess: 14 })));
+        /* the outer wall (seen from inside → BackSide) and the inner wall (FrontSide) */
+        G.add(_hqArcBand(rOut, 0, WH, a0, a1, _hqMat(texWall, lenOut / 3.2, WH / 3.2, { side: THREE.BackSide })));
+        G.add(_hqArcBand(rIn, 0, WH, a0, a1, _hqMat(texWall, lenIn / 3.2, WH / 3.2)));
+        G.add(_hqArcBand(rOut - 0.03, 0.06, S.dadoH, a0, a1, _hqMat(texDado, lenOut / 2.2, 1, { side: THREE.BackSide, shininess: 14 })));
+        G.add(_hqArcBand(rIn + 0.03, 0.06, S.dadoH, a0, a1, _hqMat(texDado, lenIn / 2.2, 1, { shininess: 14 })));
+        var trimOut = _hqMat(texTrim, lenOut / 1.5, 1, { side: THREE.BackSide, shininess: 40, specular: 0x555555 });
+        var trimIn = _hqMat(texTrim, lenIn / 1.5, 1, { shininess: 40, specular: 0x555555 });
+        [[0, 0.08], [S.dadoH, S.dadoH + 0.09], [WH - 0.12, WH]].forEach(function (b) {
+            G.add(_hqArcBand(rOut - 0.05, b[0], b[1], a0, a1, trimOut));
+            G.add(_hqArcBand(rIn + 0.05, b[0], b[1], a0, a1, trimIn));
+        });
+        /* end caps: a slab across the corridor at each end, dado + trim strips on its inward face */
+        var capMat = _hqMat(texWall, (rOut - rIn) / 3.2, WH / 3.2);
+        var capTrim = _hqMat(texTrim, 3, 1, { shininess: 40, specular: 0x555555 });
+        var capDado = _hqMat(texDado, 2, 1, { shininess: 14 });
+        [a0, a1].forEach(function (a, i) {
+            var inward = (i === 0) ? 1 : -1;   // toward the corridor's interior, along the local x axis
+            var cap = _hqBox(0.3, WH, rOut - rIn + 0.1, capMat);
+            cap.position.copy(_hqPolarW(a, mid, WH / 2));
+            cap.rotation.y = -_hqRad(a);
+            G.add(cap);
+            var cd = _hqBox(0.03, S.dadoH, rOut - rIn - 0.1, capDado);
+            cd.position.set(inward * 0.165 * U, (S.dadoH / 2 + 0.04) * U, 0);
+            cap.add(cd);
+            var ct = _hqBox(0.04, 0.09, rOut - rIn - 0.1, capTrim);
+            ct.position.set(inward * 0.17 * U, (S.dadoH + 0.045) * U, 0);
+            cap.add(ct);
+        });
+        /* fluorescent strips (procedural, so the corridor is lit without the kit) + glow */
+        var stripMat = _hqBasic(0xeef3ff);
+        var stripGeo = new THREE.BoxGeometry(0.3 * U, 0.08 * U, 1.3 * U);
+        var stepDeg = (3.2 / mid) * 180 / Math.PI;
+        var n = Math.max(1, Math.floor((a1 - a0 - 8) / stepDeg) + 1);
+        var strips = new THREE.InstancedMesh(stripGeo, stripMat, n);
+        var mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), pos = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
+        var start = (a0 + a1) / 2 - ((n - 1) * stepDeg) / 2;
+        for (var i = 0; i < n; i++) {
+            var sa = start + i * stepDeg;
+            pos.copy(_hqPolarW(sa, mid, WH - 0.05));
+            e.set(0, -_hqRad(sa), 0); q.setFromEuler(e);
+            mtx.compose(pos, q, one); strips.setMatrixAt(i, mtx);
+            var gl = _hzGlowSprite(1.6 * U, 0xdfe9ff, 0.22, 0.03, 0.02, 0.35);
+            gl.position.copy(pos); gl.position.y -= 0.2 * U;
+            G.add(gl);
+        }
+        strips.instanceMatrix.needsUpdate = true;
+        G.add(strips);
+        /* pipe run high on the inner wall: two conduits + brackets, above the
+           way out's frame cap (3.76 m for a wide door) */
+        var pipeMat = _hqMat(null, 1, 1, { color: 0x4a4d55, shininess: 40, specular: 0x777777 });
+        G.add(_hqRailArc(rIn + 0.16, a0, a1, WH - 0.2, 0.055, pipeMat));
+        G.add(_hqRailArc(rIn + 0.16, a0, a1, WH - 0.34, 0.035, pipeMat));
+        var nBr = Math.max(2, Math.round(lenIn / 2.4));
+        for (var bi = 0; bi < nBr; bi++) {
+            var ba = a0 + (a1 - a0) * (bi + 0.5) / nBr;
+            var br = _hqBox(0.06, 0.26, 0.2, pipeMat);
+            br.position.copy(_hqPolarW(ba, rIn + 0.1, WH - 0.24));
+            br.rotation.y = -_hqRad(ba);
+            G.add(br);
+        }
+        /* the bay's stencil on the inner wall at the far end of the corridor (CSS2D) */
+        var el = document.createElement('div');
+        el.className = 'hq-plate hq-plate-bay';
+        el.innerHTML = '<b>' + (room.label || 'BAY') + '</b><span>' + (room.sub || '') + '</span>';
+        var plate = new THREE.CSS2DObject(el);
+        plate.position.copy(_hqPolarW(a0 + 9, rIn + 0.02, 2.7));
+        G.add(plate);
+        _hq.roomPlate = el;
+    }
+
     /* ── stairs: curved flights hugging the lower wall (InstancedMesh steps) ── */
     function _hqBuildStairs(room) {
         var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
@@ -27146,7 +27261,8 @@ const ThreeRenderer = (function () {
         var housingMat = _hqMat(null, 1, 1, { color: 0x2b2d33, shininess: 30 });
         (room.doors || []).forEach(function (door) {
             var level = door.level || 0;
-            var Rw = level ? S.mezz.outer : S.radius;
+            var inward = door.side === 'in';       // hangs on a bay's inner wall, faces away from the arc centre
+            var Rw = _hqWallR(room, level, door.side);
             var y0 = level ? S.wallH : 0;
             var wide = !!door.wide;
             var ow = wide ? 2.2 : 1.1, oh = wide ? 2.45 : 2.25;
@@ -27154,8 +27270,8 @@ const ThreeRenderer = (function () {
             var jw = (pw - ow) / 2;
             var a = door.deg;
             var grp = new THREE.Group();
-            grp.position.copy(_hqPolarW(a, Rw - pd / 2 + 0.05, y0));
-            grp.rotation.y = _hqFaceCentreYaw(a);   // local +Z points at the hall centre
+            grp.position.copy(_hqPolarW(a, inward ? (Rw + pd / 2 - 0.05) : (Rw - pd / 2 + 0.05), y0));
+            grp.rotation.y = _hqFaceCentreYaw(a) + (inward ? Math.PI : 0);   // local +Z points into the room
             /* jambs (full depth), lintel, back plate, dado bands, cap */
             var jL = _hqBox(jw, ph, pd, wallMat); jL.position.set(-(ow / 2 + jw / 2) * U, ph / 2 * U, 0);
             var jR = _hqBox(jw, ph, pd, wallMat); jR.position.set((ow / 2 + jw / 2) * U, ph / 2 * U, 0);
@@ -27216,7 +27332,7 @@ const ThreeRenderer = (function () {
             plate.position.set(0, (ph + 0.42) * U, (pd / 2) * U);
             grp.add(plate);
             G.add(grp);
-            var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide };
+            var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide, inward: inward };
             _hq.doors.push(rec);
             _hqLampApply(rec, _hqDoorState(door));
         });
@@ -27276,24 +27392,28 @@ const ThreeRenderer = (function () {
             var cat = D.catalogue[p.key];
             if (!cat || !cat.file) return;
             var level = p.level || 0, y0 = level ? S.wallH : 0;
-            var Rw = level ? S.mezz.outer : S.radius;
-            var onWall = !!(cat.wall && p.r == null);
-            var r = onWall ? (Rw - 0.35) : (p.r || 0);
+            var inward = p.side === 'in';            // a bay's inner wall: the prop faces outward
+            var Rw = _hqWallR(room, level, p.side);
+            var onWall = !!((cat.wall || p.wall) && p.r == null);
+            var r = onWall ? (inward ? Rw + 0.35 : Rw - 0.35) : (p.r || 0);
             var mount = (p.mount != null) ? p.mount : (cat.mount || 0);
-            var y = y0 + (p.y || 0) + mount;
+            var onCeil = !!(cat.ceil || p.ceil);
+            var y = onCeil ? (y0 + ((p.y != null) ? p.y : _hqCeilY(room, level))) : (y0 + (p.y || 0) + mount);
             var fitSpan = (cat.span != null && cat.h == null) || (p.span != null);
             var target = ((fitSpan ? (p.span || cat.span) : (p.h || cat.h)) || 1) * U;
             if (p.ring && cat.wedge) { _hqPlaceWedgeRing(p, cat, r, y0, y, target); return; }
             var grp = new THREE.Group();
             grp.position.copy(_hqPolarW(p.deg, r, y));
-            grp.rotation.y = _hqFaceCentreYaw(p.deg) - _hqRad(p.rot || 0);
+            grp.rotation.y = _hqFaceCentreYaw(p.deg) + (inward ? Math.PI : 0) - _hqRad(p.rot || 0);
             var inst = _miscModelInstance(_hqModelUrl(cat), true, target, {
                 fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
                 onDone: function (g, s, bb) {
                     if (onWall) {
                         var depth = (bb.max.z - bb.min.z) * s / U;
-                        grp.position.copy(_hqPolarW(p.deg, Rw - 0.02 - depth / 2, y));
+                        grp.position.copy(_hqPolarW(p.deg, inward ? (Rw + 0.02 + depth / 2) : (Rw - 0.02 - depth / 2), y));
                     }
+                    /* ceiling-hung: the loader sits models on y = 0, so drop by the model's height */
+                    if (onCeil) grp.position.y = y * U - (bb.max.y - bb.min.y) * s - 0.01 * U;
                     if (_hq) _hq.dirty = true;
                 }
             });
@@ -27304,7 +27424,7 @@ const ThreeRenderer = (function () {
                 grp.add(gl);
             }
             G.add(grp);
-            if (cat.foot > 0 && !mount && !(p.y > 0.5)) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 });
+            if (cat.foot > 0 && !mount && !onCeil && !(p.y > 0.5)) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 });
         });
     }
 
@@ -27429,6 +27549,21 @@ const ThreeRenderer = (function () {
         var r = Math.hypot(x, z);
         var deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
         var y = null;
+        if (room.kind === 'bay') {
+            /* a corridor: between the two wall arcs, short of the end caps */
+            var capPad = ((0.15 + HQ_BODY_R) / Math.max(1, r)) * 180 / Math.PI;
+            if (!_hqWithinArc(deg, S.arc[0] + capPad, S.arc[1] - capPad, 0)) return null;
+            if (r < S.rIn + HQ_BODY_R + 0.08 || r > S.rOut - HQ_BODY_R - 0.08) return null;
+            y = 0;
+            if (!ignoreBlockers) {
+                var Ub = _hqUnits();
+                for (var bj = 0; bj < _hq.blockers.length; bj++) {
+                    var bb = _hq.blockers[bj];
+                    if (Math.hypot(bb.obj.position.x / Ub - x, bb.obj.position.z / Ub - z) < bb.rad + HQ_BODY_R) return null;
+                }
+            }
+            return y;
+        }
         var stairs = room.stairs || [];
         for (var i = 0; i < stairs.length && y === null; i++) {
             var st = stairs[i];
@@ -27481,6 +27616,13 @@ const ThreeRenderer = (function () {
     function _hqCamBlocked(px, pz, py) {
         var S = _hq.room.shell;
         var r = Math.hypot(px, pz);
+        if (_hq.room.kind === 'bay') {
+            if (r > S.rOut - 0.28 || r < S.rIn + 0.28) return true;
+            if (py > S.wallH - 0.3 || py < 0.22) return true;
+            var cp = (0.4 / Math.max(1, r)) * 180 / Math.PI;
+            var dg = _hqNormDeg(Math.atan2(px, -pz) * 180 / Math.PI);
+            return !_hqWithinArc(dg, S.arc[0] + cp, S.arc[1] - cp, 0);
+        }
         var pl = _hq.player;
         var onMezz = pl && pl.y > S.wallH * 0.6;
         var wallR = onMezz ? S.mezz.outer : S.radius;
@@ -27505,8 +27647,8 @@ const ThreeRenderer = (function () {
             if (d.level !== lvl) return;
             var dd = Math.abs(_hqDegDiff(deg, d.door.deg));
             if (dd > (d.wide ? 7 : 6)) return;
-            if (r < d.Rw - 3.4) return;
-            var dist = (d.Rw - 0.5 - r) + _hqRad(dd) * r;
+            if (d.inward ? (r > d.Rw + 3.4) : (r < d.Rw - 3.4)) return;
+            var dist = (d.inward ? (r - d.Rw - 0.5) : (d.Rw - 0.5 - r)) + _hqRad(dd) * r;
             if (dist < bestD) { bestD = dist; best = { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d }; }
         });
         _hq.counters.forEach(function (c) {
@@ -27839,14 +27981,27 @@ const ThreeRenderer = (function () {
         sc.fog = new THREE.FogExp2(0x0d0e12, 0.00017);
         sc.add(_hq.shellGroup, _hq.doorGroup, _hq.propGroup, _hq.charGroup);
         /* lights: warm ceiling / cool floor hemisphere, a soft key, point lights over the hall */
-        sc.add(new THREE.HemisphereLight(0xf1e6cf, 0x2d2a30, 0.78));
-        var key = new THREE.DirectionalLight(0xfff0d8, 0.42); key.position.set(0.35, 1, 0.25).multiplyScalar(1000); sc.add(key);
-        var fill = new THREE.DirectionalLight(0x9fb4c8, 0.16); fill.position.set(-0.6, 0.5, -0.4).multiplyScalar(1000); sc.add(fill);
-        [[90, 12], [270, 12], [0, 12], [180, 12]].forEach(function (pp) {
-            var pl = new THREE.PointLight(0xffe0bd, 0.5, 26 * U, 2);
-            pl.position.copy(_hqPolarW(pp[0], pp[1], S.wallH + S.upperWallH * 0.55));
-            sc.add(pl);
-        });
+        if (room.kind === 'bay') {
+            /* a fluorescent corridor: cooler, flatter, point lights along the centreline */
+            sc.add(new THREE.HemisphereLight(0xe3e9f2, 0x24222a, 0.74));
+            var bkey = new THREE.DirectionalLight(0xf2f5ff, 0.3); bkey.position.set(0.2, 1, 0.3).multiplyScalar(1000); sc.add(bkey);
+            var bmid = (S.rIn + S.rOut) / 2, bspan = S.arc[1] - S.arc[0];
+            var nb = Math.max(2, Math.round(bspan / 32));
+            for (var bl = 0; bl < nb; bl++) {
+                var bpl = new THREE.PointLight(0xe6eeff, 0.42, 13 * U, 2);
+                bpl.position.copy(_hqPolarW(S.arc[0] + bspan * (bl + 0.5) / nb, bmid, S.wallH - 0.5));
+                sc.add(bpl);
+            }
+        } else {
+            sc.add(new THREE.HemisphereLight(0xf1e6cf, 0x2d2a30, 0.78));
+            var key = new THREE.DirectionalLight(0xfff0d8, 0.42); key.position.set(0.35, 1, 0.25).multiplyScalar(1000); sc.add(key);
+            var fill = new THREE.DirectionalLight(0x9fb4c8, 0.16); fill.position.set(-0.6, 0.5, -0.4).multiplyScalar(1000); sc.add(fill);
+            [[90, 12], [270, 12], [0, 12], [180, 12]].forEach(function (pp) {
+                var pl = new THREE.PointLight(0xffe0bd, 0.5, 26 * U, 2);
+                pl.position.copy(_hqPolarW(pp[0], pp[1], S.wallH + S.upperWallH * 0.55));
+                sc.add(pl);
+            });
+        }
         /* camera */
         var host = opts.host;
         var w = host.clientWidth || 960, h = host.clientHeight || 540;
@@ -27859,7 +28014,7 @@ const ThreeRenderer = (function () {
         if (ThreePost && ThreePost.resize) ThreePost.resize(w, h);
         _hq.w = w; _hq.h = h;
         /* build */
-        try { _hqBuildShell(room); } catch (e) { console.error('[HQ] shell build failed', e); }
+        try { if (room.kind === 'bay') _hqBuildBayShell(room); else _hqBuildShell(room); } catch (e) { console.error('[HQ] shell build failed', e); }
         try { _hqBuildStairs(room); } catch (e) { console.error('[HQ] stairs failed', e); }
         try { _hqBuildDesk(room); } catch (e) { console.error('[HQ] desk failed', e); }
         try { _hqBuildDoors(room); } catch (e) { console.error('[HQ] doors failed', e); }
@@ -27871,7 +28026,7 @@ const ThreeRenderer = (function () {
         _hq.cam.yaw = _hqRad(sp.face || 0);
         _hqBindInput();
         renderer.setAnimationLoop(_hqFrame);
-        console.log('[HQ] entered', opts.room || 'central_egress', '— doors:', _hq.doors.length, 'props:', (room.props || []).length, 'chars:', _hq.chars.length);
+        console.log('[HQ] entered', opts.room || 'central_egress', '(' + (room.kind || 'rotunda') + ') — doors:', _hq.doors.length, 'props:', (room.props || []).length, 'chars:', _hq.chars.length);
         return true;
     }
     function _hqLeave() {
@@ -27921,7 +28076,12 @@ const ThreeRenderer = (function () {
         var d = null;
         for (var i = 0; i < _hq.doors.length; i++) if (_hq.doors[i].door.id === id) { d = _hq.doors[i]; break; }
         var spot = null, face = 0;
-        if (d) { spot = _hqPolarW(d.door.deg, d.Rw - 2.2, d.y0); face = faceAway ? d.door.deg + 180 : d.door.deg; }
+        if (d) {
+            /* an inner-wall door (a bay's way out) is faced by heading toward the arc centre */
+            spot = _hqPolarW(d.door.deg, d.inward ? (d.Rw + 2.2) : (d.Rw - 2.2), d.y0);
+            var toward = d.inward ? d.door.deg + 180 : d.door.deg;
+            face = faceAway ? toward + 180 : toward;
+        }
         else {
             for (var j = 0; j < _hq.counters.length; j++) {
                 var c = _hq.counters[j];
@@ -27942,6 +28102,7 @@ const ThreeRenderer = (function () {
         enter: _hqEnter,
         leave: _hqLeave,
         active: function () { return !!_hq; },
+        room: function () { return _hq ? (_hq.opts.room || 'central_egress') : null; },
         setPaused: function (on) { if (_hq) { _hq.paused = !!on; if (on) { _hq.keys = {}; _hq.drag = null; } } },
         interact: _hqInteract,
         toggleView: _hqToggleView,

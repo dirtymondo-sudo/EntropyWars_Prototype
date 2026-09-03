@@ -31,7 +31,7 @@ function defaultDoor() {
      visits, the last door walked through (post-match re-entry point),
      variantSeed / keys reserved for the unreliable-layout and Keys phases. */
   return { clearance: 1, desk: null, flagged: false, memosSeen: [], pendingDirective: null, cardStamps: [], choice: null,
-           hq: { visits: 0, lastDoor: null, variantSeed: null, keys: 0 } };
+           hq: { visits: 0, lastDoor: null, lastRoom: null, variantSeed: null, keys: 0 } };
 }
 
 function defaultProfile(username) {

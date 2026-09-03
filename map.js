@@ -147,6 +147,8 @@
         let _hqHome = false;        // the player entered through Play → screens return to the building
         let _hqSuspended = false;   // the scene is alive but paused under a modal / settings
         let _hqLastDoor = null;     // door id the player last left through (re-entry spot)
+        let _hqCurRoom = 'central_egress';   // the room the scene shows (HQ plan 2.6: the six bays are rooms)
+        let _hqLastRoom = 'central_egress';  // the room to rebuild on return (where _hqLastDoor is)
         /* screens that are pure DOM modals over whatever page is showing —
            the building waits underneath; their unmount resumes it */
         const _HQ_MODAL = { _mountReactProfile: '_unmountReactProfile', _mountLeaderboard: '_unmountLeaderboard' };
@@ -180,7 +182,7 @@
                 if (!p) return;
                 if (!p.door || typeof p.door !== 'object') p.door = {};
                 if (!p.door.hq || typeof p.door.hq !== 'object') p.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
-                if (doorId) p.door.hq.lastDoor = doorId;
+                if (doorId) { p.door.hq.lastDoor = doorId; p.door.hq.lastRoom = _hqCurRoom; }
                 else p.door.hq.visits = (p.door.hq.visits || 0) + 1;
                 PS.saveProfile(idx, p);
             } catch (e) {}
@@ -203,7 +205,8 @@
         function _hqEl(id) { return document.getElementById(id); }
         function _hqProfile() { try { return (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) || null; } catch (e) { return null; } }
         function _hqEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-        function _hqRoom() { return (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ.rooms.central_egress : null; }
+        function _hqRoom() { return (typeof DOOR_HQ !== 'undefined') ? (DOOR_HQ.rooms[_hqCurRoom] || DOOR_HQ.rooms.central_egress) : null; }
+        function _hqRoomExists(id) { return !!(typeof DOOR_HQ !== 'undefined' && id && DOOR_HQ.rooms[id]); }
         /* HQ plan D13: walk as your most-played vessel (the ID-card photo)
            when it has a rigged model, else as a D.O.O.R. agent in black.
            window.EW_HQ_AVATAR = 'race' | {race, gender} overrides. */
@@ -256,6 +259,13 @@
             const host = _hqEl('hqStage');
             if (!host) return false;
             const returning = !!opts.at || opts.from === 'return';
+            const walking = opts.from === 'walk';
+            /* which room: an explicit ask, else the room the player left from
+               (a return), else the egress (Play always starts on the floor) */
+            let roomId = opts.room || (returning ? _hqLastRoom : 'central_egress');
+            if (!_hqRoomExists(roomId)) roomId = 'central_egress';
+            _hqCurRoom = roomId;
+            const roomDef = DOOR_HQ.rooms[roomId];
             try { playSfx('uiButtonConfirm'); } catch (e) {}
             /* the strike plate buzzes on the way IN from Play; a return from a
                screen / match is quiet (the door already buzzed on the way out) */
@@ -272,7 +282,7 @@
             const load = _hqEl('hqLoad');
             if (load) { load.style.display = ''; load.classList.remove('done'); }
             const note = _hqEl('hqLoadNote');
-            if (note) note.textContent = returning ? 're-admitting… your corners are where you left them' : 'verifying your corners…';
+            if (note) note.textContent = walking ? ('admitting you to ' + String(roomDef.label || roomId).toLowerCase() + '…') : (returning ? 're-admitting… your corners are where you left them' : 'verifying your corners…');
             const debug = /[?&]hqdebug\b/.test(location.search) || !!window.EW_HQ_DEBUG;
             const dbg = _hqEl('hqDebug');
             if (dbg) dbg.style.display = debug ? '' : 'none';
@@ -286,7 +296,7 @@
                re-activates it (battle.js checks isActive before activate). */
             try { if (ThreeRenderer.isActive && ThreeRenderer.isActive() && state.phase !== 'battle') ThreeRenderer.deactivate(); } catch (e) { console.warn('[HQ] could not park the battle renderer', e); }
             const ok = ThreeRenderer.hq.enter({
-                host, room: 'central_egress', profile, avatar: _hqAvatar(profile),
+                host, room: roomId, profile, avatar: _hqAvatar(profile),
                 onPrompt: _hqSetPrompt,
                 onInteract: _hqOpenPanel,
                 /* ESC: close the panel, else Settings (plan D6 — an overlay,
@@ -315,7 +325,7 @@
             }
             /* post-match / post-screen: stand where you left, door at your back */
             if (opts.at) { try { ThreeRenderer.hq.goTo(opts.at, true); } catch (e) {} }
-            if (opts.from === 'play') _hqRecordVisit(null);
+            if (opts.from === 'play') { _hqLastRoom = roomId; _hqLastDoor = null; _hqRecordVisit(null); }
             window._hqRelabelMenuButtons();
             try { if (typeof startDoorRoomTone === 'function') startDoorRoomTone(); } catch (e) {}
             try { syncMusicToState().catch(() => {}); } catch (e) {}
@@ -327,6 +337,20 @@
             window._hqClosePanel();
             _hqSetPrompt(null);
             try { if (typeof stopDoorRoomTone === 'function') stopDoorRoomTone(); } catch (e) {}
+        };
+        /* Walk through a door into another room of the building (HQ plan
+           2.6): the scene is rebuilt for `roomId` under the loading card and
+           the avatar stands at door `at` in the new room with it at their
+           back. Returns from screens / matches rebuild the same room. */
+        window._hqGoRoom = function (roomId, at) {
+            if (!_hqRoomExists(roomId)) { console.warn('[HQ] no such room', roomId); return false; }
+            if (_hqSuspended) return false;
+            _hqLastRoom = roomId;
+            _hqLastDoor = at || null;
+            window._hqClosePanel();
+            _hqSetPrompt(null);
+            try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.5 }); } catch (e) {}
+            return window._hqEnter({ room: roomId, at: at || null, quiet: true, from: 'walk' });
         };
         /* EXIT on the strip: the building stops being home — Back buttons
            land on the main menu again until the next Play. */
@@ -375,7 +399,7 @@
             if (enabled && _hqHome) {
                 if (alive && _hqSuspended && window._hqResume()) return true;
                 if (alive) window._hqLeave();
-                if (window._hqEnter({ at: _hqLastDoor, quiet: true, from: 'return' })) return true;
+                if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return' })) return true;
             } else if (alive) {
                 window._hqLeave();
             }
@@ -397,7 +421,11 @@
         function _hqOpenCounter(id) {
             const room = _hqRoom();
             if (!room || _hqSuspended) return;
-            const c = (room.counters || []).find(x => x.id === id);
+            /* the overlays (dispatch, directory) work from any room — a bay
+               has no kiosk, so borrow the egress definition (plan D2: Q
+               answers a BELL call from anywhere in the building) */
+            let c = (room.counters || []).find(x => x.id === id);
+            if (!c && DOOR_HQ.rooms.central_egress) c = (DOOR_HQ.rooms.central_egress.counters || []).find(x => x.id === id && x.action && x.action.overlay);
             if (!c) return;
             if (_hqPanelTarget) window._hqClosePanel();
             _hqOpenPanel({ kind: 'counter', id: c.id, label: c.label, sub: c.sub, counter: c });
@@ -424,7 +452,7 @@
             const roster = (typeof window.hqMissionPool === 'function') ? window.hqMissionPool(site, teamSize) : [];
             window._hqPreselect = { mapId: site, launchId, delta, teamSize, gm: 'arena', roster, doorId: o.doorId || null, doorLabel: o.doorLabel || '' };
             window._msCpuOnly = true;
-            if (o.doorId) { _hqLastDoor = o.doorId; _hqRecordVisit(o.doorId); }
+            if (o.doorId) { _hqLastDoor = o.doorId; _hqLastRoom = _hqCurRoom; _hqRecordVisit(o.doorId); }
             try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
             window._hqLeave();
             state.gameState = GS.MODE_SELECT;
@@ -435,7 +463,7 @@
             const el = _hqEl('hqPrompt');
             if (!el) return;
             if (!t || _hqPanelTarget) { el.style.display = 'none'; el.innerHTML = ''; return; }
-            const verb = t.kind === 'door' ? 'ENTER' : (t.kind === 'counter' ? 'USE' : 'TALK');
+            const verb = t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? 'USE' : 'TALK');
             el.innerHTML = `<b>▸ ${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span><i>[E] ${verb}</i>`;
             el.style.display = '';
         }
@@ -444,16 +472,52 @@
             return `<i class="hq-lamp-chip st-${_hqEsc(st)}">${_hqEsc(label)}</i>`;
         }
         function _hqMapLabel(id) { try { const m = EW_MAP_META.find(x => x.id === id); return m ? m.label : id; } catch (e) { return id; } }
+        /* one threshold's mastery checklist (☑ per win condition on file) */
+        function _hqChecksHtml(sm) {
+            if (!sm) return '';
+            const labels = DOOR_HQ.masteryLabels || {};
+            return DOOR_HQ.masteryConditions.map(c => `<i class="hq-check ${sm.have[c] ? 'ok' : 'no'}" title="${_hqEsc(c)}">${sm.have[c] ? '☑' : '☐'} ${_hqEsc(labels[c] || c)}</i>`).join('');
+        }
+        /* A threshold door inside a bay (HQ plan 2.6): the site file, the
+           first documented crossing, the entities on file, the checklist,
+           CROSS ▸ Δ / DEEP. */
+        function _hqThresholdPanelHtml(t, st) {
+            const d = t.door, profile = _hqProfile(), id = d.action.mission;
+            const sf = (typeof window.doorSiteFile === 'function') ? window.doorSiteFile(id) : null;
+            const meta = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META.find(m => m.id === id) : null;
+            const sm = (typeof window.hqSiteMastery === 'function') ? window.hqSiteMastery(id, profile) : null;
+            const pool = (typeof window.hqMissionPool === 'function') ? window.hqMissionPool(id, 4) : [];
+            const nat = pool.natives || 0;
+            const canCross = st !== 'sealed' && st !== 'clearance';
+            const caseNo = (typeof window.doorCaseNo === 'function') ? window.doorCaseNo(id) : '';
+            const first = (typeof window.doorSiteCanonDate === 'function') ? window.doorSiteCanonDate(id) : '';
+            let html = `<div class="hq-panel-hd"><b>${_hqEsc(d.label)}</b><span>${_hqEsc(d.sub || '')}</span>${_hqStateChip(st)}</div>`;
+            html += `<div class="hq-site"><span class="hq-row-stamp tone-${_hqEsc((sf && sf.tone) || 'deny')}">${_hqEsc((sf && sf.status) || 'ON FILE')}</span><span class="hq-site-kv"><b>JURISDICTION</b> ${_hqEsc((sf && sf.juris) || 'unassigned')}</span><span class="hq-site-kv"><b>FIRST DOCUMENTED CROSSING</b> ${_hqEsc(first)} · ${_hqEsc(caseNo)}</span></div>`;
+            if (sf && sf.summary) html += `<p class="hq-panel-desc">${_hqEsc(sf.summary)}</p>`;
+            if (meta && meta.desc) html += `<p class="hq-panel-note">FIELD: ${_hqEsc(meta.desc)}</p>`;
+            if (d.note) html += `<p class="hq-panel-note">THE DOOR: ${_hqEsc(d.note)}</p>`;
+            html += `<div class="hq-chips"><span>ENTITIES ON FILE</span>${nat ? pool.slice(0, nat).map(r => `<i class="hq-chip">${_hqEsc(String(r).toUpperCase())}</i>`).join('') : '<i class="hq-chip dim">NONE — THE BAY FIELDS ITS NEIGHBOURS</i>'}</div>`;
+            const checks = _hqChecksHtml(sm);
+            if (checks) html += `<div class="hq-chips"><span>ON FILE FOR THIS THRESHOLD${sm ? ` · ${sm.done}/${sm.total}` : ''}</span>${checks}</div>`;
+            html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${canCross ? '' : 'disabled'} data-cross="${_hqEsc(id)}" title="Arena · 4v4 on the 8×8 Δ board · CPU fields the site's natives">CROSS ▸ Δ BOARD · 4v4</button><button class="hq-btn" ${canCross ? '' : 'disabled'} data-deep="${_hqEsc(id)}" title="Arena on the full map at its own team size">DEEP CROSSING ▸ FULL SITE${meta && meta.teamSize ? ` · ${meta.teamSize}v${meta.teamSize}` : ''}</button></div>`;
+            if (st === 'sealed') html += '<p class="hq-panel-note">SEALED — this threshold opens with a story chapter.</p>';
+            else html += '<p class="hq-panel-note">CROSS ▸ Δ = Arena, 4v4 on the site’s 8×8 board, the CPU fielding the entities on file for it. DEEP = the full map. Each ☐ is a win condition still to be filed; all three turn the lamp green.</p>';
+            return html;
+        }
         function _hqDoorPanelHtml(t) {
             const d = t.door, profile = _hqProfile();
             const st = (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, profile) : 'open';
             const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(profile) : { level: 1, title: 'DOORMAT' };
-            let html = `<div class="hq-panel-hd"><b>${_hqEsc(d.label)}</b><span>${_hqEsc(d.sub || '')}</span>${_hqStateChip(st)}</div>`;
             const act = d.action || {};
+            if (act.mission) return _hqThresholdPanelHtml(t, st);
+            let html = `<div class="hq-panel-hd"><b>${_hqEsc(d.label)}</b><span>${_hqEsc(d.sub || '')}</span>${_hqStateChip(st)}</div>`;
             if (act.sector) {
                 const sec = DOOR_HQ.sectors[act.sector] || { label: act.sector, maps: [] };
+                const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(act.sector) : ('bay_' + act.sector);
                 html += `<p class="hq-panel-desc">Sector ${_hqEsc(sec.label)} · ${_hqEsc(sec.sub || '')}. ${sec.maps.length} threshold${sec.maps.length === 1 ? '' : 's'} on file. Green when every threshold in the bay is stabilized (won by every win condition).</p>`;
                 const canCross = st !== 'sealed' && st !== 'clearance';
+                /* the bay is a corridor you walk (plan 2.6); the rows below are the quick dispatch */
+                if (_hqRoomExists(bayId)) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${canCross ? '' : 'disabled'} data-room="${_hqEsc(bayId)}" data-at="egress">ENTER THE BAY ▸ WALK THE THRESHOLDS</button></div>`;
                 html += '<div class="hq-rows">';
                 sec.maps.forEach(id => {
                     const sf = (typeof window.doorSiteFile === 'function') ? window.doorSiteFile(id) : null;
@@ -463,8 +527,7 @@
                     const natives = (typeof window.hqMissionPool === 'function') ? window.hqMissionPool(id, 4) : [];
                     const nat = natives.natives || 0;
                     const tip = nat ? `Native entities: ${natives.slice(0, nat).join(', ')}` : 'No entity on file — the bay fields its neighbours';
-                    const labels = DOOR_HQ.masteryLabels || {};
-                    const checks = sm ? DOOR_HQ.masteryConditions.map(c => `<i class="hq-check ${sm.have[c] ? 'ok' : 'no'}" title="${_hqEsc(c)}">${sm.have[c] ? '☑' : '☐'} ${_hqEsc(labels[c] || c)}</i>`).join('') : '';
+                    const checks = _hqChecksHtml(sm);
                     html += `<div class="hq-row hq-row-bay" title="${_hqEsc(tip)}"><b>${_hqEsc(_hqMapLabel(id))}</b><span class="hq-row-stamp tone-${_hqEsc((sf && sf.tone) || 'deny')}">${_hqEsc((sf && sf.status) || 'ON FILE')}</span><i class="hq-lamp-chip st-${mastered ? 'stabilized' : 'unstable'}">${mastered ? 'STABILIZED' : (sm ? `${sm.done}/${sm.total}` : 'UNSTABLE')}</i>`
                         + `<div class="hq-row-btns"><button class="hq-btn hq-btn-sm hq-btn-primary" ${canCross ? '' : 'disabled'} data-cross="${_hqEsc(id)}" title="Arena · 4v4 on the 8×8 Δ board · CPU fields the site's natives">CROSS ▸ Δ</button><button class="hq-btn hq-btn-sm" ${canCross ? '' : 'disabled'} data-deep="${_hqEsc(id)}" title="Arena on the full map at its own team size">DEEP</button></div>`
                         + (checks ? `<div class="hq-row-checks">${checks}</div>` : '') + '</div>';
@@ -478,20 +541,23 @@
                 const locked = st === 'clearance';
                 html += '<div class="hq-panel-actions">';
                 if (act.fn) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-fn="${_hqEsc(act.fn)}">ENTER ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button>`;
+                else if (act.room && _hqRoomExists(act.room)) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-room="${_hqEsc(act.room)}" data-at="${_hqEsc(act.at || '')}">${locked ? 'CLEARANCE L' + d.minClearance + ' REQUIRED' : 'GO THROUGH ▸ ' + _hqEsc(DOOR_HQ.rooms[act.room].label || act.room)}</button>`;
                 else if (act.room) html += `<button class="hq-btn hq-btn-primary" disabled>${locked ? 'CLEARANCE L' + d.minClearance + ' REQUIRED' : 'INTERIOR NOT YET BUILT'}</button>`;
                 [d.alt, d.alt2].forEach(a => { if (a && a.fn) html += `<button class="hq-btn" ${locked ? 'disabled' : ''} data-fn="${_hqEsc(a.fn)}">${_hqEsc(a.label)}</button>`; });
                 html += '</div>';
                 if (locked) html += `<p class="hq-panel-note">CLEARANCE L${d.minClearance} required. Your card reads L${cl.level} · ${_hqEsc(cl.title)}.</p>`;
                 if (d.rankDoor) html += '<p class="hq-panel-note">Your office door is your rank. A promotion replaces it (DOORMAT → DOORSTOP → KNOCKER → KEYHOLDER → GATEKEEPER → THE DOORMAN).</p>';
-                if (act.room && !locked) html += `<p class="hq-panel-note">The interior behind this door (${_hqEsc(act.room)}) arrives in a later phase.</p>`;
+                if (act.room && !locked && !_hqRoomExists(act.room)) html += `<p class="hq-panel-note">The interior behind this door (${_hqEsc(act.room)}) arrives in a later phase.</p>`;
             }
             return html;
         }
         function _hqDirectoryHtml() {
             const room = _hqRoom(), profile = _hqProfile();
-            let html = '<div class="hq-panel-hd"><b>BUILDING DIRECTORY</b><span>CENTRAL EGRESS · YOU ARE HERE · LAYOUT SUBJECT TO REVISION</span></div><div class="hq-rows">';
+            const isBay = room.kind === 'bay';
+            let html = `<div class="hq-panel-hd"><b>BUILDING DIRECTORY</b><span>${_hqEsc(room.label || 'CENTRAL EGRESS')} · YOU ARE HERE · LAYOUT SUBJECT TO REVISION</span></div><div class="hq-rows">`;
             const rows = [];
-            (room.doors || []).forEach(d => rows.push({ id: d.id, label: d.label, sub: (d.level ? 'MEZZANINE · ' : 'FLOOR · ') + (d.sub || ''), st: (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, profile) : 'open' }));
+            const where = d => isBay ? ((d.side === 'in') ? 'INNER WALL · ' : 'THRESHOLD · ') : (d.level ? 'MEZZANINE · ' : 'FLOOR · ');
+            (room.doors || []).forEach(d => rows.push({ id: d.id, label: d.label, sub: where(d) + (d.sub || ''), st: (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, profile) : 'open' }));
             (room.counters || []).forEach(c => rows.push({ id: c.id, label: c.label, sub: (c.level ? 'MEZZANINE · ' : 'FLOOR · ') + (c.sub || ''), st: 'open' }));
             rows.forEach(r => {
                 html += `<div class="hq-row"><b>${_hqEsc(r.label)}</b><span>${_hqEsc(r.sub)}</span>${_hqStateChip(r.st)}<button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(r.id)}">WALK</button></div>`;
@@ -562,7 +628,19 @@
            Back comes home through _hqReturnOrMenu. Pure DOM modals (the
            Reception's ID card, the board): the building waits, paused. */
         window._hqDoAction = function (act, t) {
-            if (!act || !act.fn || typeof window[act.fn] !== 'function') return;
+            if (!act) return;
+            /* into another room of the building: a bay corridor from its egress
+               door, the egress from a bay's way out (HQ plan 2.6). `at` = the
+               door to stand at in the NEW room, with it at your back. */
+            if (act.room || act.sector) {
+                const roomId = act.room || ((typeof window.hqBayId === 'function') ? window.hqBayId(act.sector) : ('bay_' + act.sector));
+                const from = t || _hqPanelTarget;
+                if (from && from.kind === 'door') _hqRecordVisit(from.id);
+                const at = act.at || (act.sector ? 'egress' : null);
+                window._hqGoRoom(roomId, at);
+                return;
+            }
+            if (!act.fn || typeof window[act.fn] !== 'function') return;
             const src = t || _hqPanelTarget;
             if (src && src.kind === 'door') { _hqLastDoor = src.id; _hqRecordVisit(src.id); }
             try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.5 }); } catch (e) {}
@@ -584,6 +662,8 @@
             if (!body || !body.contains(e.target)) return;
             const fnBtn = e.target.closest('[data-fn]');
             if (fnBtn && !fnBtn.disabled) { window._hqDoAction({ fn: fnBtn.getAttribute('data-fn') }); return; }
+            const roomBtn = e.target.closest('[data-room]');
+            if (roomBtn && !roomBtn.disabled) { window._hqDoAction({ room: roomBtn.getAttribute('data-room'), at: roomBtn.getAttribute('data-at') || null }); return; }
             const cross = e.target.closest('[data-cross],[data-deep]');
             if (cross && !cross.disabled) {
                 const deep = cross.hasAttribute('data-deep');

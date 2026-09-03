@@ -4101,6 +4101,17 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-row-checks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 2px; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.08); }
 .hq-check { font-family: 'IBM Plex Mono', monospace; font-style: normal; font-size: 8px; letter-spacing: 0.18em; color: #6f6a60; }
 .hq-check.ok { color: #39ff6a; }
+/* threshold door panel (HQ plan 2.6): the site file + entity chips */
+.hq-site { display: flex; flex-direction: column; gap: 5px; margin: 0 0 10px; padding: 8px 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); }
+.hq-site .hq-row-stamp { align-self: flex-start; font-size: 9px; margin-bottom: 2px; }
+.hq-site-kv { font-size: 9px; letter-spacing: 0.12em; color: #cfc9b8; }
+.hq-site-kv b { font-weight: 600; letter-spacing: 0.2em; color: #b8a060; margin-right: 6px; }
+.hq-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0 0 10px; }
+.hq-chips > span { flex-basis: 100%; font-size: 8px; letter-spacing: 0.26em; color: #b8a060; margin-bottom: 2px; }
+.hq-chip { font-family: 'IBM Plex Mono', monospace; font-style: normal; font-size: 8px; letter-spacing: 0.16em; padding: 2px 7px; border: 1px solid rgba(127,217,221,0.5); color: #7fd9dd; }
+.hq-chip.dim { border-color: rgba(255,255,255,0.15); color: #7f7a6e; }
+.hq-plate-bay { border-color: rgba(184,160,96,0.6); }
+.hq-plate-bay b { font-size: 16px; }
 /* the site tag on the result-screen stamp: THRESHOLD STABILIZED (green)
    or the condition just filed (amber). Rides the stamp's thunk. */
 .door-result-stamp .drs-site { position: absolute; left: 50%; top: -15px; transform: translateX(-50%); display: none; font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.2em; padding: 3px 10px; white-space: nowrap; background: #2e8b57; color: #f4fff7; border-radius: 3px; }

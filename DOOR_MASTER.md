@@ -1,5 +1,5 @@
 # D.O.O.R. — MASTER FILE
-### Story bible + integration design + build log — rev 9 (2026-09-03 — HQ is the Play hub)
+### Story bible + integration design + build log — rev 10 (2026-09-03 — the six bays are walkable corridors)
 
 This file MERGES the two earlier DOOR documents and supersedes both:
 - `entropy_wars_claude_brief.md` (the ChatGPT-assisted story/world brief, 2026-09) → Part A
@@ -488,7 +488,9 @@ sacrificed or protected.
   site's native entities; DEEP = the full map); every screen's Back and
   the result overlay come back to the building at the door you left
   through; bay lamps go green from real mastery flags written at match
-  commit. `?nohq` / Settings toggle keep the classic hub.
+  commit. `?nohq` / Settings toggle keep the classic hub. Phase 2.6
+  (2026-09-03): the six bays are walkable corridors with one threshold
+  door per site (the site file on its panel).
 
 ## B3. Story track (mode-agnostic; reconciled model)
 
@@ -839,3 +841,19 @@ gains a THRESHOLD STABILIZED / FILED tag from the viewer-local flag
 battle.js, styles-base.css, index.html (`?v=20260903c-cors`),
 doorhq.test.js. `npm test` 95 pass / 1 skip. No mid-match surface → no
 relay work (RULE #2).
+
+### 2026-09-03 (later) — HQ Phase 2.6: the six bays as corridors
+Every containment bay (A10) is now a room you walk: a 4 m curved
+corridor off the egress ring with the way out on its inner wall and one
+threshold door per launch map along its outer wall, each wearing a leaf
+chosen for the site (the Moon's door stands in a bare frame; Atlantis is
+the wet bulkhead; the Backrooms is an EXIT door). A threshold's panel is
+its site file (customs stamp, jurisdiction, first documented crossing,
+entities on file, the mastery checklist) with CROSS / DEEP; post-match
+you are re-admitted into that bay at that door. Full account in
+`DOOR_HQ_BUILD_PLAN.md` §9 (this date, "Phase 2.6"). Files: data.js
+(`bayShell` / `thresholds` / `bays` / `hqBayRoom` → generated
+`rooms.bay_*`), three-renderer.js (`_hqBuildBayShell`, side-aware doors),
+map.js (`_hqGoRoom`, threshold panel), profile.js, styles-base.css,
+index.html (`?v=20260903d-cors`), doorhq.test.js. `npm test` 98 pass /
+1 skip. No mid-match surface → no relay work.
