@@ -38,7 +38,11 @@ egress later — the existing Mystery Dungeon free-roam hub is the ready-made
 tech for that (§7). Phase 1 delivers the Central Egress; Phase 2 the rooms;
 Phase 3 door states and mastery; Phase 4 story hooks in the building;
 Phase 5 the unreliable layout, rings and H-Wing; Phase 6 the Training Room
-as a real 8×8 map and the Cube/Keys reskin.
+as a real 8×8 map and the Cube/Keys reskin; **Phase 7 makes the building
+walkable in third or first person on the 3D engine** — the committed end
+state, with the pre-rendered rooms surviving as the close-up views you
+step into (the Resident Evil split: walk the halls in 3D, enter a room,
+get the painted view).
 
 ---
 
@@ -46,7 +50,7 @@ as a real 8×8 map and the Cube/Keys reskin.
 
 | # | Decision | Recommendation | Why |
 |---|---|---|---|
-| D1 | Rendering approach for the hub | **Pre-rendered rooms + DOM hotspots first** (this plan). Evaluate a 3D walkable egress at Phase 6, reusing the MD free-roam tech (§7). | Ships in one session with existing art; zero engine risk; period-authentic; dynamic overlays are trivial in DOM; same room-graph data either way. |
+| D1 | Rendering approach for the hub | **DECIDED 2026-09-03: pre-rendered rooms + DOM hotspots first; the walkable third/first-person facility is the COMMITTED end state (Phase 7), not an option.** The Guild Hub is understood as its prototype. | Ships in one session with existing art; zero engine risk; the same room-graph data drives both; the 3D build needs props, interiors and a perf pass that should not block "menu functions become places". See §7 for what actually makes 3D slower to reach (it is not the renderer as such). |
 | D2 | Where Quick Play and Friendly live | Both at the **dispatch desk** in the Central Egress (Quick Play = "answer a BELL call"; Friendly = the desk phone, room code). One click from arriving. | Ranked players must not pay a navigation tax; the round desk is the room's focal point in the reference art. |
 | D3 | What a mission door launches | **VS CPU on that map's 8×8 Δ board, 4v4, enemy pool = that map's native entities** (`doorSiteCrossings`). The full-size map is a second option on the door panel ("deep crossing"). | The brief's core format IS 4v4 on 8×8; the Δ boards exist; native pools exist via POINT_OF_ENTRY. |
 | D4 | Sector grouping of the 29 maps into 6 bays | Table in DOOR_MASTER A10 (TERRESTRIAL / ANCIENT / HOLLOW / CELESTIAL / DIPLOMATIC / QUARANTINED). | Biomes in `EW_MAP_META` map cleanly; 4–8 doors per bay fits one room image. |
@@ -453,12 +457,48 @@ its main-menu button (D5) and gets first-visit copy from `DOOR_TEXT`.
   `hourglasses_collected` announces "THRESHOLD STABILIZED").
 - 6.4 ⚙ (decision C-5) Nexus hold → double damage to the Cube instead of a
   win condition. Engine + AI + online relay; treat as its own balance item.
-- 6.5 ⚙ **Evaluate the walkable egress** (D1 revisit): author
-  `door_hq_egress` with MapForge (`hollow` disc + ring corridor, `M.wall`
-  facades, `M.lintel` mezzanine, `M.stair`), generalise
-  `_mdSpawnHubNpcs`/`_mdCheckStairs`/`hubFreeRoam` into `hq*` variants,
-  door props as monuments. Only if the pre-rendered hub feels static after
-  Phase 5 — the room graph and door states carry over unchanged.
+- 6.5 ⚙ Perf groundwork for Phase 7: measure the Guild Hub's draw calls
+  and the ROADMAP §4 items (instancing, shadow pass) on a hub-sized map.
+
+### Phase 7 — The walkable facility (committed; 3–4 sessions + 3D art)
+Goal: walk the halls of headquarters in third or first person on the
+battle engine, the way the Guild Hub already lets you walk to the cave.
+The room graph, door states, gates and mission launcher from Phases 1–5
+carry over unchanged: hotspots become trigger tiles and `stand` points
+become prop/NPC positions.
+- 7.1 ⚙ **Author the egress as a MapForge map** (`door_hq_egress`,
+  data.js, registered like `md_hub` outside `EW_MAP_META`): `hollow` disc
+  floor (`tilefloor` rings, `marble` centre), a ring corridor, `M.wall`
+  facades in `drywall`/`gunmetal` with door openings, `M.lintel` mezzanine
+  slab + `M.stair` up to it, the central desk as a monument, the cube as
+  a hanging monument. The Guild Hub (`_mdBuildHub`, 8×8) is the template;
+  this one is ~24×24.
+- 7.2 ⚙ **Generalise the hub runtime**: `_mdOnBattlePrepared` (drop the
+  CPU team, seat NPCs), `_mdSpawnHubNpcs` (roster NPCs → DOOR staff:
+  agents in black at the desk, your recruited vessels on break),
+  `_mdCheckStairs` (entrance tiles → `_hqTrigger(hotspotId)`), and
+  `ThreeRenderer.hubFreeRoam` into `hq*` equivalents keyed off a
+  `state._hqWalk` flag instead of `_isDungeonMode()`.
+- 7.3 ⚙ **Camera**: the third-person rig already exists — Strike Mode's
+  player-driven boom with collision (three-camera.js ~174-310,
+  `cam._tpsCollide`) and its FIRST-PERSON EYE (three-camera.js ~211), with
+  pointer-lock mouse-look (battle.js ~14288) and `ShooterControls` owning
+  the keyboard. Expose a 3rd/1st toggle in Settings; default third person.
+- 7.4 🖼 **Interaction**: walking into a door's trigger tiles shows the
+  door panel (§3.7) / room prompt; `E` or click enters. Entering a ROOM
+  shows that room's pre-rendered view (Phase 2 art) — the halls are 3D,
+  the rooms are paintings, so only corridors and the egress need 3D
+  interiors. Rooms can be promoted to 3D one at a time later.
+- 7.5 🖼 **Door props**: one GLB (or a billboard from the D8 leaves) per
+  door type; lamps as emissive quads tinted by `doorSiteState`; tape and
+  planks as decals. User-made models follow the CLAUDE.md GLB recipe.
+- 7.6 ⚙ **NPC lines**: bump an NPC → a one-line `showBattleDialogue` /
+  `playCutscene` micro-scene (the break-room memos, "check your corners").
+- 7.7 ⚙ Rings + H-Wing as further maps reached by the elevator/stairs
+  triggers; H-Wing is the one map with right angles everywhere.
+- Exit criteria: Play → loading → you are standing in the egress in third
+  person; every door works; a room entry shows its painted view; 2D
+  fallback (no WebGL) drops back to the Phase 1 clickable rooms.
 
 ---
 
@@ -543,17 +583,22 @@ the full 29-line list when Phase 2.2 starts.
 - Keep `_goToPlayHubLegacy` and the old hub page for one release as a
   kill-switch (`?nohq`, localStorage `ew_hq='off'`).
 
-## 7. Why not build the walkable 3D hub first (and when to)
+## 7. Why the walkable 3D hub is Phase 7, not Phase 1
 The MD Guild Hub proves the engine can do a walkable hub with roster NPCs
-and trigger tiles today. It was not chosen for Phase 1 because: the result
-looks like a battle map (voxel tiles), not the reference art; every door
-needs a 3D prop; interiors need the hollow/lintel tech and the ROADMAP §4
-draw-call ceiling applies (an 8×8 match already carries ~1,800 objects);
-it requires the 3D renderer (no 2D fallback); and none of it advances
-"menu functions become places" — which is a data + DOM problem the
-pre-rendered approach solves in one session. Revisit at 6.5 with the room
-graph unchanged: `DOOR_HQ.rooms[x].hotspots` become trigger tiles and
-`stand` points become NPC/prop positions.
+and trigger tiles today, and Strike Mode already has the third-person and
+first-person camera rigs. The 3D facility is the committed destination
+(D1). It is not Phase 1 because of what is NOT there yet rather than how
+the engine renders: the facility needs 3D props (doors, desk, cube,
+lockers, a mezzanine) that do not exist and that the voxel/tile look
+cannot fake convincingly; interiors need the hollow/lintel tech per room;
+the ROADMAP §4 draw-call ceiling applies (an 8×8 match already carries
+~1,800 objects; a 24×24 hall with interiors needs the instancing work
+first); there is no 2D fallback; and none of that advances "menu
+functions become places", which is a data + DOM problem the pre-rendered
+approach solves in one session. Building the painted rooms first also
+gives the 3D version its interiors for free (walk the halls, enter a room,
+see the painting). The room graph is shared: `DOOR_HQ.rooms[x].hotspots`
+become trigger tiles and `stand` points become NPC/prop positions.
 
 ## 8. Open questions (beyond the D-table)
 - Should Community Maps / Map Editor be visible in the fiction at all at
@@ -568,6 +613,16 @@ graph unchanged: `DOOR_HQ.rooms[x].hotspots` become trigger tiles and
 - Hazard Pay wallet on the strip vs only at the Quartermaster. (Rec: strip.)
 
 ## 9. Build log (append per session)
+
+### 2026-09-03 (later) — rev 1.1: user decisions
+D1 decided: pre-rendered first, walkable third/first-person facility is
+the committed end state → new Phase 7 (uses the Guild Hub runtime + Strike
+Mode's existing third-person boom / first-person eye rigs; painted rooms
+become the interiors you step into). Rank titles decided (MASTER C-1).
+Story gating decided as hybrid (MASTER C-4 / B3): SP from any mode incl.
+PvP, plus single-player field requirements in the facility for certain
+chapters — `DOOR_TEXT.CHAPTERS[].requires` and the office's AWAITING FIELD
+WORK state are now part of Phase 4.1.
 
 ### 2026-09-03 — rev 1: plan written, no game files touched
 Research findings that shaped the plan: the Play hub is `_goToPlayHub`

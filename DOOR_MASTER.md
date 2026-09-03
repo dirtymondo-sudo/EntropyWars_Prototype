@@ -127,7 +127,10 @@ HINGE is revealed. Openers and Closers are never named in official documents.
 Ideology is separate from rank. Rank is story progress and is NOT the ELO
 rank (Iron→Grandmaster stays). The engine already stores it as
 `profile.door.clearance` (1–6) and prints it on the ID card and the
-main-menu strip; only the TITLES change (Part C, decision 1):
+main-menu strip; only the TITLES change (Part C, decision 1 — **DECIDED
+2026-09-03**; the shipped strings in data.js `DOOR_TEXT.CLEARANCE` still
+read PROBATIONARY…KEYHOLDER until the next data.js delivery, which should
+bundle the six-string edit):
 
 | Lvl | Rank | Who they are | Your office door (the promotion you can see) |
 |---|---|---|---|
@@ -483,12 +486,29 @@ sacrificed or protected.
 
 ## B3. Story track (mode-agnostic; reconciled model)
 
-**Meter.** One number, `profile.door.sp` (Story Progress), fed by the A11
-scoring from every mode including online. Chapter thresholds are a table in
-data.js (`DOOR_TEXT.CHAPTERS`, ~12 entries: `{sp, title, scene, promoteTo?}`).
-Reaching a threshold sets `door.pendingDirective`; the result screen's
-stamp grows the NEW DIRECTIVE tab; on leaving the result screen the scene
-plays through the existing `playCutscene(script)` (battle.js:11336 —
+**Hybrid model (user decision 2026-09-03).** The story is single-player
+at heart — it lives in the facility — but PvP feeds it. Two kinds of
+trigger, both required where a chapter lists both:
+
+- **Story Progress (SP)**: one number, `profile.door.sp`, fed by the A11
+  scoring from EVERY mode including online. Chapter thresholds are a table
+  in data.js (`DOOR_TEXT.CHAPTERS`, ~12 entries: `{sp, title, scene,
+  promoteTo?, requires?}`).
+- **Field requirements** (`requires`): things only done in single player
+  by moving through headquarters — walk through a specific door (the
+  Antarctica threshold), complete a specific mission on its map, visit a
+  room (the Canon Office), find H-Wing, secure N Keys. A chapter whose SP
+  is reached but whose field work is not shows in the office in-tray as
+  **AWAITING FIELD WORK** with the requirement named; its scene fires from
+  the facility the moment the requirement completes (at the door, not
+  post-match). A PvP-only player therefore banks SP endlessly but must
+  walk into the building to cash it in — which is where they land after
+  every match anyway.
+
+Reaching an SP threshold (with no `requires`, or with them already met)
+sets `door.pendingDirective`; the result screen's stamp grows the NEW
+DIRECTIVE tab; on leaving the result screen the scene plays through the
+existing `playCutscene(script)` (battle.js:11336 —
 `{location, subtitle, speakers:{key:{name, race|sprite}}, lines:[{direction:
 'location_card'|'battle_start'|'fade_in'} | {speaker, text, enterNew}]}`),
 skippable; "Find Next Match" waits for it. `pendingDirective` is written
@@ -541,10 +561,10 @@ yes/no; **USER** are the user's own calls from the brief.
 
 | # | Topic | Brief said | DOOR_DESIGN said | Resolution |
 |---|---|---|---|---|
-| 1 | Rank titles | Doormat → Doorstop → Knocker → Keyholder → Gatekeeper → the Doorman | clearance L1–L6: PROBATIONARY, CLERK, OFFICER, INSPECTOR, AUDITOR, KEYHOLDER (shipped strings in data.js `DOOR_TEXT.CLEARANCE`) | **REC: adopt the brief's six titles 1:1 onto L1–L6.** Same field, same card, a six-string edit. The office-door ladder is the visible promotion. |
+| 1 | Rank titles | Doormat → Doorstop → Knocker → Keyholder → Gatekeeper → the Doorman | clearance L1–L6: PROBATIONARY, CLERK, OFFICER, INSPECTOR, AUDITOR, KEYHOLDER (shipped strings in data.js `DOOR_TEXT.CLEARANCE`) | **USER 2026-09-03: the brief's six titles, 1:1 onto L1–L6.** Same field, same card, a six-string edit in data.js — bundle it with the next data.js delivery (HQ Phase 1). The office-door ladder is the visible promotion. |
 | 2 | Factions | OPEN / CLOSE / HINGE (three, with acronyms) + the conservation law | Closers vs Openers (two hidden hands), DENY/ADMIT | Both: Closers/Openers remain the spine and the two stamps; HINGE is the third, revealed mid-game, with its own stamp. **REC: HINGE's stamp is HOLD** (the LOCK freezes a state without closing it). |
 | 3 | DOOR's secret | conservation law; DOOR displaced the danger (H-Wing) | "every crossing pays a duty; the duty is entropy" | Both, layered: the law is the physics, the duty is the motive. What DOOR collects entropy FOR is Act III's question. |
-| 4 | Story gating | Story Progress points; never require PvP wins | per-level case-file checklists gate promotion | **REC: SP meter is the only gate; checklists become optional commendations** (B3). |
+| 4 | Story gating | Story Progress points; never require PvP wins | per-level case-file checklists gate promotion | **USER 2026-09-03: hybrid.** SP is earned in every mode, PvP included, and is the main gate; certain chapters ALSO require single-player field work in the facility (enter a given door, clear a given mission, find a room). The rev-6 checklists become optional commendations. The facility and the story lean single-player; PvP feeds the meter (B3). |
 | 5 | Arena objectives | Wipeout / Destroy the Cube / Secure three Keys; Nexus unclear | (not covered) | Reskin, don't re-engineer: tower → Black Cube, hourglasses → Keys (A9). **USER (tentative): Nexus hold → double Cube damage instead of a win** — engine change, schedule separately. |
 | 6 | The player | underqualified recruit, Doormat, janitor's closet, DOOR parents | newly hired officer at Customs & Admissions, DESK question | Both: the desk is at Customs & Admissions; the office is the closet; intake form unchanged. |
 | 7 | Motto | three shifting forms as a reality barometer | "As here, so there"; customs slogan | Both (A7): the motto is the barometer; the customs slogan is Customs & Admissions' own. |
@@ -740,6 +760,16 @@ DOSSIER / SEAL YOUR FATE / Codex of Vessels all stay).
 - Reference art received in chat (5 images, described in the HQ plan §5.1)
   — NOT yet in the repo; the user is asked to commit them under
   `docs/door-hq/ref/` so later sessions can view them.
+
+### 2026-09-03 (later) — user decisions recorded
+- C-1 DECIDED: rank titles are DOORMAT / DOORSTOP / KNOCKER / KEYHOLDER /
+  GATEKEEPER / THE DOORMAN (data.js strings not yet changed — bundle with
+  the next data.js delivery).
+- C-4 DECIDED: hybrid story gating (B3 rewritten): SP from every mode incl.
+  PvP + per-chapter single-player field requirements inside the facility.
+- HQ plan D1 DECIDED: pre-rendered rooms first; the walkable third/first-
+  person facility is the committed end state (HQ plan Phase 7), with the
+  Guild Hub understood as its prototype.
 
 NOT done yet (next steps, in order): HQ plan Phase 1 (the Central Egress
 replacing the Play hub) → story track step 3 (SP meter, thresholds →
