@@ -871,6 +871,8 @@
                 const t = _ambienceTracks[key];
                 if (t && !t.paused) { try { t.volume = _ambienceTargetVol(key); } catch (e) {} }
             });
+            /* the D.O.O.R. HQ room tone (below) rides the same slider */
+            try { if (typeof _doorRoomToneApplyVol === 'function') _doorRoomToneApplyVol(); } catch (e) {}
         }
 
         function _getAmbienceTrack(key) {
@@ -1305,6 +1307,86 @@
         }
         window.playDoorSfx = playDoorSfx;
         window.stopDoorIdentSting = stopDoorIdentSting;
+
+        /* ── D.O.O.R. HQ room tone (DOOR_HQ_BUILD_PLAN Phase 1.5) ─────────
+           A synthesized stand-in for the user's hall loop (§5.3 H): HVAC
+           rumble (looped noise through a slowly wobbling low-pass), a 60 Hz
+           mains hum with its second harmonic, and a faint ballast hiss. It
+           rides the Ambience slider like the battle beds (state.ambienceVolume
+           → applyAmbienceVolumeMix → _doorRoomToneApplyVol), needs the same
+           audio unlock, and fades in/out over ~1.2 s. The `doorMuzak` MUSIC
+           slot stays empty on purpose (map.js syncMusicToState plays it only
+           once audioTracks.doorMuzak exists — a user-made track, MASTER B4).
+           UPGRADE PATH: add `doorRoomTone` to _R2_AMBIENCE + the base-volume
+           table and play that bed instead of this synth.
+           Kill-switch: window.EW_DISABLE_AMBIENCE. */
+        let _doorRoomTone = null;
+        function _doorRoomToneVol() {
+            return Math.max(0, Math.min(1, 0.5 * (state.ambienceVolume ?? 0.8)));
+        }
+        function _doorRoomToneApplyVol() {
+            const h = _doorRoomTone;
+            if (!h) return;
+            try { h.master.gain.setTargetAtTime(_doorRoomToneVol(), h.ctx.currentTime, 0.25); } catch (e) {}
+        }
+        function startDoorRoomTone() {
+            try {
+                if (window.EW_DISABLE_AMBIENCE || state.devAutoSim) return false;
+                if (_doorRoomTone) { _doorRoomToneApplyVol(); return true; }
+                if (!state.audioUnlocked) return false;
+                const ctx = _doorCtx();
+                const build = () => {
+                    if (_doorRoomTone || ctx.state !== 'running') return;
+                    const t = ctx.currentTime;
+                    const master = ctx.createGain();
+                    master.gain.setValueAtTime(0.0001, t);
+                    master.gain.exponentialRampToValueAtTime(Math.max(0.0002, _doorRoomToneVol()), t + 1.2);
+                    master.connect(ctx.destination);
+                    const nodes = [];
+                    /* HVAC: looped noise → low-pass ~140 Hz, wobbling ±40 Hz every ~9 s */
+                    const hv = ctx.createBufferSource(); hv.buffer = _doorNoise(ctx); hv.loop = true;
+                    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 140; lp.Q.value = 0.9;
+                    const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.11;
+                    const lfoG = ctx.createGain(); lfoG.gain.value = 40;
+                    lfo.connect(lfoG); lfoG.connect(lp.frequency);
+                    const hvG = ctx.createGain(); hvG.gain.value = 0.9;
+                    hv.connect(lp); lp.connect(hvG); hvG.connect(master);
+                    hv.start(t); lfo.start(t); nodes.push(hv, lfo);
+                    /* mains hum: 60 Hz + 120 Hz, very quiet, a touch of beating */
+                    [[60, 0.05, 0], [120, 0.028, 0.6], [180, 0.01, -0.4]].forEach(([f, g, det]) => {
+                        const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f; o.detune.value = det;
+                        const og = ctx.createGain(); og.gain.value = g;
+                        o.connect(og); og.connect(master); o.start(t); nodes.push(o);
+                    });
+                    /* ballast hiss: band-passed noise up high, barely there */
+                    const hs = ctx.createBufferSource(); hs.buffer = _doorNoise(ctx); hs.loop = true;
+                    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 7800; bp.Q.value = 2.2;
+                    const hsG = ctx.createGain(); hsG.gain.value = 0.035;
+                    hs.connect(bp); bp.connect(hsG); hsG.connect(master); hs.start(t); nodes.push(hs);
+                    _doorRoomTone = { ctx, master, nodes };
+                };
+                if (ctx.state === 'running') { build(); return true; }
+                try { ctx.resume().then(build).catch(() => {}); } catch (e) {}
+                return false;
+            } catch (e) { return false; }
+        }
+        function stopDoorRoomTone() {
+            const h = _doorRoomTone;
+            _doorRoomTone = null;
+            if (!h) return;
+            try {
+                const ts = h.ctx.currentTime;
+                h.master.gain.cancelScheduledValues(ts);
+                h.master.gain.setValueAtTime(Math.max(0.0002, h.master.gain.value), ts);
+                h.master.gain.exponentialRampToValueAtTime(0.0002, ts + 1.0);
+                setTimeout(() => {
+                    h.nodes.forEach(n => { try { n.stop(); } catch (e) {} });
+                    try { h.master.disconnect(); } catch (e) {}
+                }, 1250);
+            } catch (e) {}
+        }
+        window.startDoorRoomTone = startDoorRoomTone;
+        window.stopDoorRoomTone = stopDoorRoomTone;
         /* Console audition: window.doorSfxAudition() plays the whole kit in order. */
         window.doorSfxAudition = function() {
             const keys = Object.keys(_DOOR_SFX_RECIPES);

@@ -27,7 +27,11 @@ function defaultCareer() {
    cosmetic answers. clearance/memosSeen/pendingDirective/cardStamps/choice are
    filled by the story track; desk + flagged come from the intake form. */
 function defaultDoor() {
-  return { clearance: 1, desk: null, flagged: false, memosSeen: [], pendingDirective: null, cardStamps: [], choice: null };
+  /* `hq` = the headquarters visit record (DOOR_HQ_BUILD_PLAN §3.1):
+     visits, the last door walked through (post-match re-entry point),
+     variantSeed / keys reserved for the unreliable-layout and Keys phases. */
+  return { clearance: 1, desk: null, flagged: false, memosSeen: [], pendingDirective: null, cardStamps: [], choice: null,
+           hq: { visits: 0, lastDoor: null, variantSeed: null, keys: 0 } };
 }
 
 function defaultProfile(username) {
@@ -983,7 +987,10 @@ function buildProfileMatchSummary() {
     gameMode: gmId,
     multiplayerMode: mpMode ? mpMode.id : 'arena',
     mapName: st._mapPresetName || 'Unknown',
-    mapId: st._mapPresetId || 'unknown',
+    /* The map id is the active GAME_MODES key (Δ boards keep their _delta
+       suffix; DOOR_HQ's hqSiteId strips it for site mastery). st._mapPresetId
+       was never written anywhere, so every history row used to say 'unknown'. */
+    mapId: st._mapPresetId || (typeof activeGameMode !== 'undefined' && activeGameMode) || 'unknown',
     ranked: !!st.isRankedMatch,
     opponent: (window._NET && window._NET.online) ? (window._NET.opponentName || 'Online') : 'CPU',
     result: playerWon ? 'win' : 'loss',

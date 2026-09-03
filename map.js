@@ -97,6 +97,13 @@
         }
 
         window._goToPlayHub = function() {
+            /* D.O.O.R. HQ (DOOR_HQ_BUILD_PLAN D5 / Phase 1.3): Play walks into
+               the building. ?nohq, localStorage ew_hq='off' or the Settings
+               toggle keep the classic Play hub; a failed 3D enter falls back
+               to it as well. */
+            if (typeof window._hqEnabled === 'function' && window._hqEnabled()) {
+                if (window._hqEnter({ from: 'play' })) return;
+            }
             playSfx('uiButtonConfirm');
             state.gameState = GS.MODE_SELECT;
 
@@ -122,14 +129,71 @@
            D.O.O.R. HEADQUARTERS — flow + DOM (DOOR_HQ_BUILD_PLAN.md §3.4)
            The building itself is ThreeRenderer.hq (three-renderer.js); this
            layer is what a door / counter DOES: the prompt, the door panel,
-           the building directory, the dispatch (BELL) overlay, and the way
-           back to the menu. ISOLATED for now — reached via ?hq in the URL,
-           window._hqEnter() from the console, or the main-menu dev pill
-           (?hqdev once → localStorage ew_hqdev=1). Play is untouched until
-           Phase 1.3 wires _hqReturnOrMenu + the mission launcher.
+           the building directory, the dispatch (BELL) overlay, the mission
+           launcher (bay doors → the pre-selected match setup) and the way
+           back. Since Phase 1.3 the main menu's Play enters here
+           (_goToPlayHub); ?hq in the URL, window._hqEnter() and the dev pill
+           (?hqdev once → localStorage ew_hqdev=1) remain as dev entries.
+           Return plumbing (plan D7): every screen's Back and the result
+           overlay's menu button call _hqReturnOrMenu, which re-enters the
+           building at the door you left through while _hqHome is set (the
+           player came in through Play) — otherwise the classic page shows.
+           Pure DOM modals (Profile, Leaderboard) and the Settings page keep
+           the building alive underneath, paused (_hqSuspend / _hqResume);
+           page screens and matches leave it and rebuild on return.
            ══════════════════════════════════════════════════════════════════ */
         let _hqPanelTarget = null;
         let _hqEnteredAt = 0;
+        let _hqHome = false;        // the player entered through Play → screens return to the building
+        let _hqSuspended = false;   // the scene is alive but paused under a modal / settings
+        let _hqLastDoor = null;     // door id the player last left through (re-entry spot)
+        /* screens that are pure DOM modals over whatever page is showing —
+           the building waits underneath; their unmount resumes it */
+        const _HQ_MODAL = { _mountReactProfile: '_unmountReactProfile', _mountLeaderboard: '_unmountLeaderboard' };
+        window._hqEnabled = function () {
+            try {
+                if (window.EW_DISABLE_HQ) return false;
+                if (/[?&]nohq\b/.test(location.search)) return false;
+                if (localStorage.getItem('ew_hq') === 'off') return false;
+            } catch (e) {}
+            return typeof ThreeRenderer !== 'undefined' && !!ThreeRenderer.hq && typeof DOOR_HQ !== 'undefined';
+        };
+        /* Settings toggle: Play → D.O.O.R. HQ on/off (persisted per browser) */
+        window._hqToggleHome = function () {
+            try {
+                if (localStorage.getItem('ew_hq') === 'off') localStorage.removeItem('ew_hq');
+                else localStorage.setItem('ew_hq', 'off');
+            } catch (e) {}
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            window._hqRelabelMenuButtons();
+        };
+        window._hqIsHome = function () { return !!_hqHome; };
+        /* the profile's visit record (profile.js door.hq): visits from Play,
+           and the last door walked through */
+        function _hqRecordVisit(doorId) {
+            try {
+                const PS = window.ProfileSystem;
+                if (!PS || typeof PS.getActiveProfileIndex !== 'function') return;
+                const idx = PS.getActiveProfileIndex();
+                if (idx === null || idx === undefined) return;
+                const p = PS.loadProfile(idx);
+                if (!p) return;
+                if (!p.door || typeof p.door !== 'object') p.door = {};
+                if (!p.door.hq || typeof p.door.hq !== 'object') p.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+                if (doorId) p.door.hq.lastDoor = doorId;
+                else p.door.hq.visits = (p.door.hq.visits || 0) + 1;
+                PS.saveProfile(idx, p);
+            } catch (e) {}
+        }
+        /* the result overlay's menu button reads "D.O.O.R. HQ" while the
+           building is home (battle.js _restoreResultOverlayButtons calls this
+           after rebuilding the bar) */
+        window._hqRelabelMenuButtons = function () {
+            try {
+                const on = _hqHome && window._hqEnabled();
+                document.querySelectorAll('#mainMenuBtn').forEach(b => { b.textContent = on ? 'D.O.O.R. HQ' : 'Main Menu'; });
+            } catch (e) {}
+        };
         const _HQ_FN_LABELS = {
             _goToShop: 'SHOP', _goToTeamBuilder: 'PARTY BUILDER', _goToCodex: 'CODEX',
             _mountReactProfile: 'PROFILE · ID CARD', _goToCampaign: 'CHALLENGE', _goToMysteryDungeon: 'MYSTERY DUNGEON',
@@ -175,6 +239,12 @@
                 const room = _hqRoom();
                 const rn = _hqEl('hqRoomName');
                 if (rn && room) rn.textContent = room.label + ' · ' + room.sub;
+                const ms = _hqEl('hqMastery');
+                if (ms) {
+                    const mc = (typeof window.hqMasteryCount === 'function') ? window.hqMasteryCount(profile) : null;
+                    ms.innerHTML = mc ? `STABILIZED <b>${mc.mastered}</b> / ${mc.total}` : '';
+                    ms.title = 'Thresholds won by every win condition (green bay lamps)';
+                }
             } catch (e) {}
         }
         window._hqEnter = function (opts) {
@@ -185,9 +255,15 @@
             }
             const host = _hqEl('hqStage');
             if (!host) return false;
+            const returning = !!opts.at || opts.from === 'return';
             try { playSfx('uiButtonConfirm'); } catch (e) {}
-            try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.55 }); } catch (e) {}
+            /* the strike plate buzzes on the way IN from Play; a return from a
+               screen / match is quiet (the door already buzzed on the way out) */
+            if (!opts.quiet && !returning) { try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.55 }); } catch (e) {} }
             const profile = _hqProfile();
+            _hqHome = true;
+            _hqSuspended = false;
+            window._hqPreselect = null;
             state.gameState = GS.HQ;
             state.titleScreenVisible = true;
             _hqFillStrip(profile);
@@ -195,6 +271,8 @@
             _hqSetPrompt(null);
             const load = _hqEl('hqLoad');
             if (load) { load.style.display = ''; load.classList.remove('done'); }
+            const note = _hqEl('hqLoadNote');
+            if (note) note.textContent = returning ? 're-admitting… your corners are where you left them' : 'verifying your corners…';
             const debug = /[?&]hqdebug\b/.test(location.search) || !!window.EW_HQ_DEBUG;
             const dbg = _hqEl('hqDebug');
             if (dbg) dbg.style.display = debug ? '' : 'none';
@@ -202,11 +280,20 @@
             if (hints) hints.classList.remove('fp');
             _hqEnteredAt = performance.now();
             _showTitlePage('hqPage');
+            /* the battle renderer stays alive behind the menu after a match
+               (only the map editor deactivates it) and the HQ needs the shared
+               canvas: put the board away first — the next startMatch
+               re-activates it (battle.js checks isActive before activate). */
+            try { if (ThreeRenderer.isActive && ThreeRenderer.isActive() && state.phase !== 'battle') ThreeRenderer.deactivate(); } catch (e) { console.warn('[HQ] could not park the battle renderer', e); }
             const ok = ThreeRenderer.hq.enter({
                 host, room: 'central_egress', profile, avatar: _hqAvatar(profile),
                 onPrompt: _hqSetPrompt,
                 onInteract: _hqOpenPanel,
-                onEscape: () => { if (_hqPanelTarget) window._hqClosePanel(); else window._hqExitToMenu(); },
+                /* ESC: close the panel, else Settings (plan D6 — an overlay,
+                   not a place); EXIT on the strip is how you leave */
+                onEscape: () => { if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenSettings(); },
+                /* Q: answer a BELL call from anywhere in the building (plan D2) */
+                onHotkey: (k) => { if (k === 'q') _hqOpenCounter('dispatch'); },
                 onReady: () => {
                     const wait = Math.max(0, 900 - (performance.now() - _hqEnteredAt));
                     setTimeout(() => {
@@ -217,19 +304,132 @@
                 onView: (fp) => { const h = _hqEl('hqHints'); if (h) h.classList.toggle('fp', !!fp); },
                 onDebug: debug ? (d) => { if (dbg) dbg.textContent = `deg ${d.deg} · r ${d.r} · y ${d.y} · L${d.level} · x ${d.x} z ${d.z}${d.fp ? ' · FP' : ''}`; } : null,
             });
-            if (!ok) { window._hqExitToMenu(); return false; }
+            if (!ok) {
+                /* no WebGL / renderer failure: fall back to the classic pages */
+                _hqHome = false;
+                if (load) load.style.display = 'none';
+                window._hqRelabelMenuButtons();
+                state.gameState = GS.MAIN_MENU;
+                _showTitlePage('mainMenuPage');
+                return false;
+            }
+            /* post-match / post-screen: stand where you left, door at your back */
+            if (opts.at) { try { ThreeRenderer.hq.goTo(opts.at, true); } catch (e) {} }
+            if (opts.from === 'play') _hqRecordVisit(null);
+            window._hqRelabelMenuButtons();
+            try { if (typeof startDoorRoomTone === 'function') startDoorRoomTone(); } catch (e) {}
+            try { syncMusicToState().catch(() => {}); } catch (e) {}
             return true;
         };
         window._hqLeave = function () {
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) ThreeRenderer.hq.leave(); } catch (e) { console.error('[HQ] leave failed', e); }
+            _hqSuspended = false;
             window._hqClosePanel();
             _hqSetPrompt(null);
+            try { if (typeof stopDoorRoomTone === 'function') stopDoorRoomTone(); } catch (e) {}
         };
+        /* EXIT on the strip: the building stops being home — Back buttons
+           land on the main menu again until the next Play. */
         window._hqExitToMenu = function () {
             window._hqLeave();
+            _hqHome = false;
+            window._hqPreselect = null;
             try { playSfx('uiButtonConfirm'); } catch (e) {}
+            window._hqRelabelMenuButtons();
             state.gameState = GS.MAIN_MENU;
             _showTitlePage('mainMenuPage');
+            try { syncMusicToState().catch(() => {}); } catch (e) {}
+        };
+        /* keep the scene, stop the walk: a modal or the settings page sits on
+           top; _hqResume brings it back where it stood */
+        function _hqSuspend() {
+            _hqSuspended = true;
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq) ThreeRenderer.hq.setPaused(true); } catch (e) {}
+            _hqSetPrompt(null);
+            try { if (typeof stopDoorRoomTone === 'function') stopDoorRoomTone(); } catch (e) {}
+        }
+        window._hqResume = function () {
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || !ThreeRenderer.hq.active()) { _hqSuspended = false; return false; }
+            /* never resume under a match that started from a modal (community
+               maps → play): the battle renderer owns the canvas then */
+            if (ThreeRenderer.isActive && ThreeRenderer.isActive()) { window._hqLeave(); return false; }
+            _hqSuspended = false;
+            const profile = _hqProfile();
+            state.gameState = GS.HQ;
+            state.titleScreenVisible = true;
+            _hqFillStrip(profile);
+            _showTitlePage('hqPage');
+            try { ThreeRenderer.hq.refreshLamps(profile); ThreeRenderer.hq.setPaused(false); _hqSetPrompt(ThreeRenderer.hq.target()); } catch (e) {}
+            window._hqRelabelMenuButtons();
+            try { if (typeof startDoorRoomTone === 'function') startDoorRoomTone(); } catch (e) {}
+            try { syncMusicToState().catch(() => {}); } catch (e) {}
+            return true;
+        };
+        /* Plan D7: the way back from every screen. Returns true when the
+           building took the player (resumed under a modal / settings, or
+           rebuilt at the last door); false = the classic page was shown. */
+        window._hqReturnOrMenu = function (fallbackPage) {
+            fallbackPage = fallbackPage || 'mainMenuPage';
+            const enabled = window._hqEnabled();
+            const alive = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active());
+            if (enabled && _hqHome) {
+                if (alive && _hqSuspended && window._hqResume()) return true;
+                if (alive) window._hqLeave();
+                if (window._hqEnter({ at: _hqLastDoor, quiet: true, from: 'return' })) return true;
+            } else if (alive) {
+                window._hqLeave();
+            }
+            _hqHome = false;
+            window._hqRelabelMenuButtons();
+            state.gameState = (fallbackPage === 'playHubPage') ? GS.MODE_SELECT : GS.MAIN_MENU;
+            _showTitlePage(fallbackPage);
+            return false;
+        };
+        /* ESC / the gear: Settings over the paused building */
+        window._hqOpenSettings = function () {
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || !ThreeRenderer.hq.active()) return;
+            if (_hqPanelTarget) window._hqClosePanel();
+            _hqSuspend();
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            if (typeof window._openMainMenuSettings === 'function') window._openMainMenuSettings();
+        };
+        /* open a counter's panel without walking to it (Q hotkey, the strip's DIRECTORY button) */
+        function _hqOpenCounter(id) {
+            const room = _hqRoom();
+            if (!room || _hqSuspended) return;
+            const c = (room.counters || []).find(x => x.id === id);
+            if (!c) return;
+            if (_hqPanelTarget) window._hqClosePanel();
+            _hqOpenPanel({ kind: 'counter', id: c.id, label: c.label, sub: c.sub, counter: c });
+        }
+        window._hqOpenDirectory = function () { _hqOpenCounter('directory'); };
+        window._hqOpenDispatch = function () { _hqOpenCounter('dispatch'); };
+        /* Bay door → the pre-selected match setup (plan D3 / §3.7): Arena on
+           the site's 8×8 Δ board, 4v4, the CPU pinned to the site's native
+           entities (data.js hqMissionPool); DEEP CROSSING = the full map at
+           its own team size. The match-select page still shows (mode / map /
+           team size / CONFIRM) and the party builder still runs — nothing
+           about match setup is bypassed, it is only pre-filled. */
+        window._hqLaunchMission = function (mapId, o) {
+            o = o || {};
+            if (typeof MS_MAP_LIST === 'undefined' || !MS_MAP_LIST.length) return false;
+            const site = (typeof window.hqSiteId === 'function') ? window.hqSiteId(mapId) : String(mapId || '').replace(/_delta$/, '');
+            const delta = o.delta !== false;
+            let launchId = delta ? site + '_delta' : site;
+            let idx = MS_MAP_LIST.findIndex(m => m.modeId === launchId);
+            if (idx < 0) { launchId = site; idx = MS_MAP_LIST.findIndex(m => m.modeId === launchId); }
+            if (idx < 0) { console.warn('[HQ] no launch entry for', mapId); return false; }
+            const entry = MS_MAP_LIST[idx];
+            const teamSize = o.teamSize || (delta ? 4 : (entry.team || 4));
+            const roster = (typeof window.hqMissionPool === 'function') ? window.hqMissionPool(site, teamSize) : [];
+            window._hqPreselect = { mapId: site, launchId, delta, teamSize, gm: 'arena', roster, doorId: o.doorId || null, doorLabel: o.doorLabel || '' };
+            window._msCpuOnly = true;
+            if (o.doorId) { _hqLastDoor = o.doorId; _hqRecordVisit(o.doorId); }
+            try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
+            window._hqLeave();
+            state.gameState = GS.MODE_SELECT;
+            _showTitlePage('modePage');
+            return true;
         };
         function _hqSetPrompt(t) {
             const el = _hqEl('hqPrompt');
@@ -253,16 +453,21 @@
             if (act.sector) {
                 const sec = DOOR_HQ.sectors[act.sector] || { label: act.sector, maps: [] };
                 html += `<p class="hq-panel-desc">Sector ${_hqEsc(sec.label)} · ${_hqEsc(sec.sub || '')}. ${sec.maps.length} threshold${sec.maps.length === 1 ? '' : 's'} on file. Green when every threshold in the bay is stabilized (won by every win condition).</p>`;
+                const canCross = st !== 'sealed' && st !== 'clearance';
                 html += '<div class="hq-rows">';
                 sec.maps.forEach(id => {
                     const sf = (typeof window.doorSiteFile === 'function') ? window.doorSiteFile(id) : null;
                     const mastered = (typeof window.hqMapMastered === 'function') && window.hqMapMastered(id, profile);
-                    html += `<div class="hq-row"><b>${_hqEsc(_hqMapLabel(id))}</b><span class="hq-row-stamp tone-${_hqEsc((sf && sf.tone) || 'deny')}">${_hqEsc((sf && sf.status) || 'ON FILE')}</span><i class="hq-lamp-chip st-${mastered ? 'stabilized' : 'unstable'}">${mastered ? 'STABILIZED' : 'UNSTABLE'}</i></div>`;
+                    const natives = (typeof window.hqMissionPool === 'function') ? window.hqMissionPool(id, 4) : [];
+                    const nat = natives.natives || 0;
+                    const tip = nat ? `Native entities: ${natives.slice(0, nat).join(', ')}` : 'No entity on file — the bay fields its neighbours';
+                    html += `<div class="hq-row hq-row-bay" title="${_hqEsc(tip)}"><b>${_hqEsc(_hqMapLabel(id))}</b><span class="hq-row-stamp tone-${_hqEsc((sf && sf.tone) || 'deny')}">${_hqEsc((sf && sf.status) || 'ON FILE')}</span><i class="hq-lamp-chip st-${mastered ? 'stabilized' : 'unstable'}">${mastered ? 'STABILIZED' : 'UNSTABLE'}</i>`
+                        + `<div class="hq-row-btns"><button class="hq-btn hq-btn-sm hq-btn-primary" ${canCross ? '' : 'disabled'} data-cross="${_hqEsc(id)}" title="Arena · 4v4 on the 8×8 Δ board · CPU fields the site's natives">CROSS ▸ Δ</button><button class="hq-btn hq-btn-sm" ${canCross ? '' : 'disabled'} data-deep="${_hqEsc(id)}" title="Arena on the full map at its own team size">DEEP</button></div></div>`;
                 });
                 html += '</div>';
                 if (st === 'sealed') html += '<p class="hq-panel-note">SEALED — this bay opens with a story chapter. The planks stay up.</p>';
-                html += '<div class="hq-panel-actions"><button class="hq-btn" disabled>CROSS ▸ 4v4 Δ BOARD</button><button class="hq-btn" disabled>DEEP CROSSING</button></div>';
-                html += '<p class="hq-panel-note">Crossing from a door lands in Phase 1.3 (the pre-selected match setup). Look, don’t touch.</p>';
+                else if (st === 'clearance') html += `<p class="hq-panel-note">CLEARANCE L${d.minClearance} required. Your card reads L${cl.level} · ${_hqEsc(cl.title)}.</p>`;
+                else html += '<p class="hq-panel-note">CROSS ▸ Δ = Arena, 4v4 on the site’s 8×8 board, the CPU fielding the entities on file for it. DEEP = the full map. Every win condition once turns the threshold green.</p>';
             } else {
                 if (d.desc) html += `<p class="hq-panel-desc">${_hqEsc(d.desc)}</p>`;
                 const locked = st === 'clearance';
@@ -334,12 +539,36 @@
             _hqPanelTarget = null;
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) { ThreeRenderer.hq.setPaused(false); _hqSetPrompt(ThreeRenderer.hq.target()); } } catch (e) {}
         };
-        /* Leave the building, land on the main menu, then run the screen's
-           own entry point (page screens switch title pages themselves;
-           modal screens open over the menu). Phase 1.3 replaces the menu
-           landing with _hqReturnOrMenu. */
-        window._hqDoAction = function (act) {
+        /* wrap a modal's unmount once so closing it resumes the building */
+        function _hqWrapUnmount(name) {
+            const f = window[name];
+            if (typeof f !== 'function' || f._hqWrapped) return;
+            const w = function () {
+                const r = f.apply(this, arguments);
+                /* deferred: a launch path (unmount → start a match) must win */
+                setTimeout(() => { try { if (_hqSuspended && state.gameState === GS.HQ) window._hqResume(); } catch (e) {} }, 0);
+                return r;
+            };
+            w._hqWrapped = true;
+            window[name] = w;
+        }
+        /* A door / counter action. Page screens: leave the building, land on
+           the main menu underneath, run the screen's own entry point — its
+           Back comes home through _hqReturnOrMenu. Pure DOM modals (the
+           Reception's ID card, the board): the building waits, paused. */
+        window._hqDoAction = function (act, t) {
             if (!act || !act.fn || typeof window[act.fn] !== 'function') return;
+            const src = t || _hqPanelTarget;
+            if (src && src.kind === 'door') { _hqLastDoor = src.id; _hqRecordVisit(src.id); }
+            try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.5 }); } catch (e) {}
+            window._hqClosePanel();
+            const unmountName = _HQ_MODAL[act.fn];
+            if (unmountName) {
+                _hqWrapUnmount(unmountName);
+                _hqSuspend();
+                setTimeout(() => { try { window[act.fn](); } catch (e) { console.error('[HQ] action failed', act.fn, e); window._hqResume(); } }, 40);
+                return;
+            }
             window._hqLeave();
             state.gameState = GS.MAIN_MENU;
             _showTitlePage('mainMenuPage');
@@ -350,6 +579,15 @@
             if (!body || !body.contains(e.target)) return;
             const fnBtn = e.target.closest('[data-fn]');
             if (fnBtn && !fnBtn.disabled) { window._hqDoAction({ fn: fnBtn.getAttribute('data-fn') }); return; }
+            const cross = e.target.closest('[data-cross],[data-deep]');
+            if (cross && !cross.disabled) {
+                const deep = cross.hasAttribute('data-deep');
+                const id = cross.getAttribute(deep ? 'data-deep' : 'data-cross');
+                const door = (_hqPanelTarget && _hqPanelTarget.kind === 'door') ? _hqPanelTarget : null;
+                window._hqClosePanel();
+                window._hqLaunchMission(id, { delta: !deep, doorId: door ? door.id : null, doorLabel: door ? door.label : '' });
+                return;
+            }
             const go = e.target.closest('[data-goto]');
             if (go) {
                 const id = go.getAttribute('data-goto');
@@ -393,6 +631,8 @@
             state.gameState = GS.MODE_SELECT;
 
             window._msCpuOnly = true;
+            window._hqPreselect = null;   // classic VS CPU: no D.O.O.R. pre-selection / pinned CPU pool
+            window._hqCpuPool = null;
             _showTitlePage('modePage');
         };
 
@@ -422,7 +662,7 @@
         window._mdCharBack = function() {
             playSfx('uiButtonConfirm');
             state.gameState = GS.MAIN_MENU;
-            _showTitlePage('mainMenuPage');
+            window._hqReturnOrMenu();
         };
 
         /* The MD roster is its own progression (ew-md-save-v1.unlockedRaces):
@@ -648,7 +888,7 @@
         window._settingsBack = function() {
             playSfx('uiButtonConfirm');
             state.gameState = GS.MAIN_MENU;
-            _showTitlePage('mainMenuPage');
+            window._hqReturnOrMenu();
         };
 
         window._goToCodex = function() {
@@ -660,7 +900,7 @@
             playSfx('uiButtonConfirm');
             if (window.EWCharViewer) window.EWCharViewer.unmount();
             state.gameState = GS.MAIN_MENU;
-            _showTitlePage('mainMenuPage');
+            window._hqReturnOrMenu();
         };
 
         /* ── Spell Library (Settings → Developer): the spell/ability dev
@@ -695,7 +935,7 @@
             if (window.EWCharViewer) window.EWCharViewer.unmount();
             if (typeof window._unmountReactTeamBuilder === 'function') window._unmountReactTeamBuilder();
             state.gameState = GS.MAIN_MENU;
-            _showTitlePage('mainMenuPage');
+            window._hqReturnOrMenu();
         };
 
         let _cccGender = 'male';
@@ -719,7 +959,7 @@
         window._challengePickBack = function() {
             playSfx('uiButtonConfirm');
             state.gameState = GS.MAIN_MENU;
-            _showTitlePage('mainMenuPage');
+            window._hqReturnOrMenu();
         };
 
         window._challengePickMode = function(mode) {
@@ -782,7 +1022,7 @@
             state.gameState = GS.MAIN_MENU;
 
             if (typeof _restoreResultOverlayButtons === 'function') _restoreResultOverlayButtons();
-            _showTitlePage('mainMenuPage');
+            window._hqReturnOrMenu();
         };
 
         function _cccRenderForm() {
@@ -1551,6 +1791,16 @@
                         </div>
                         ${window._buildPerfSettingsHTML('window._openMainMenuSettings();')}
                     </div>
+                    ${(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && typeof DOOR_HQ !== 'undefined') ? (() => {
+                        const on = (typeof window._hqEnabled === 'function') && window._hqEnabled();
+                        return `<div class="pm-set-group">
+                        <div class="pm-set-group-title">D.O.O.R. Headquarters</div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Play walks you into the facility — dispatch desk (Quick Play / Friendly), the containment bays (VS CPU by threshold), the Quartermaster, Records, Reception. Turn it off for the classic Play hub; ?nohq in the URL does the same for one visit.</div>
+                        <div class="pm-set-row" style="margin-bottom:6px">
+                            <button class="pm-set-btn${on ? ' active' : ''}" onclick="window._hqToggleHome();window._openMainMenuSettings();">${on ? 'Play → D.O.O.R. HQ: ON' : 'Play → D.O.O.R. HQ: OFF (classic hub)'}</button>
+                        </div>
+                    </div>`;
+                    })() : ''}
                     ${typeof window._buildAiDifficultyHTML === 'function' ? window._buildAiDifficultyHTML('window._openMainMenuSettings();') : ''}
                     ${typeof window._buildControlsSettingsHTML === 'function' ? window._buildControlsSettingsHTML() : ''}
                     <div class="pm-set-group">
@@ -1849,7 +2099,15 @@
         };
 
         function _msRenderAll() {
-
+            /* A D.O.O.R. crossing (window._hqPreselect, _hqLaunchMission) is
+               read by MatchSelect's initial state, so the component is
+               remounted once while a fresh pre-selection is pending. */
+            try {
+                if (window._hqPreselect && !window._hqPreselect._mounted && typeof window._unmountReactMatchSelect === 'function') {
+                    window._unmountReactMatchSelect();
+                    window._hqPreselect._mounted = true;
+                }
+            } catch (e) {}
             if (typeof window._mountReactMatchSelect === 'function') {
                 window._mountReactMatchSelect();
             }
@@ -2002,8 +2260,9 @@
         window._msBack = function() {
             playSfx('uiButtonConfirm');
             window._msCpuOnly = false;
+            window._hqPreselect = null;
             state.gameState = GS.MODE_SELECT;
-            _showTitlePage('playHubPage');
+            window._hqReturnOrMenu('playHubPage');
         };
 
         window._msConfirm = function() {
@@ -2011,6 +2270,16 @@
 
             const mp = MS_MAP_LIST[_msSelectedMap];
             const gm = MS_GAME_MODES[_msSelectedGM];
+
+            /* D.O.O.R. crossing: the CPU draws from the site's native pool
+               (state.js optimizeRandomizeParty / rerollOpponentForNextMatch
+               read window._hqCpuPool) — only while the launched map is still
+               that site (the player may have picked another card); any other
+               launch clears the pin. */
+            const _pre = window._hqPreselect || null;
+            const _preSite = (_pre && mp && typeof window.hqSiteId === 'function') ? window.hqSiteId(mp.modeId) : null;
+            window._hqCpuPool = (_pre && _preSite === _pre.mapId && Array.isArray(_pre.roster) && _pre.roster.length) ? _pre.roster : null;
+            window._hqPreselect = null;
 
             // Δ maps are the hand-authored 8×8 boards (data.js DELTA FORGE,
             // 2026-09-01): flat, nexus zone dead centre, so Arena plays them
@@ -2304,7 +2573,7 @@
 
         window._lobbyBack = function() {
             state.gameState = GS.MODE_SELECT;
-            _showTitlePage('playHubPage');
+            window._hqReturnOrMenu('playHubPage');
 
             if (window._NET && window._NET.socket) {
                 window._NET.socket.disconnect();
@@ -2336,6 +2605,12 @@
                 return await playMusic(battleKey);
             }
 
+            /* D.O.O.R. HQ: the `doorMuzak` slot (a user-made track, MASTER B4)
+               once it exists in audioTracks; the menu theme until then. */
+            if (state.gameState === GS.HQ) {
+                const hqKey = (typeof audioTracks !== 'undefined' && audioTracks && audioTracks.doorMuzak) ? 'doorMuzak' : 'mainTheme';
+                return await playMusic(hqKey);
+            }
             const key = state.titleScreenVisible ? 'titleTheme' : 'mainTheme';
             return await playMusic(key);
         }
@@ -10536,7 +10811,7 @@
             const reactHud = document.getElementById('reactHudRoot');
             if (reactHud) reactHud.style.display = '';
 
-            _showTitlePage('mainMenuPage');
+            window._hqReturnOrMenu();
         }
 
         function _meTerrainBg(terrainKey) {
@@ -14517,6 +14792,6 @@
             if (state.phase === 'editor') {
                 _meExitDioramaEditor();
             } else {
-                _showTitlePage('mainMenuPage');
+                window._hqReturnOrMenu();
             }
         };

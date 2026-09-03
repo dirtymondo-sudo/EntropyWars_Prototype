@@ -122,11 +122,17 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   and the reference-art protocol (`docs/door-hq/ref/` in the repo —
   Claude can view images committed there; production backgrounds go to R2
   `Assets/door/hq/`). Append to its §9 build log when you touch the HQ.
-- The HQ itself SHIPPED 2026-09-03 as an isolated build (three-renderer.js
-  `ThreeRenderer.hq`, data.js `DOOR_HQ`, map.js `_hqEnter`): reach it with
-  `index.html?hq` or `window._hqEnter()`; kit assets live on R2 under
+- The HQ SHIPPED 2026-09-03 (three-renderer.js `ThreeRenderer.hq`, data.js
+  `DOOR_HQ`, map.js `_hqEnter`) and since Phase 1.3 the main menu's **Play
+  enters it** (`_goToPlayHub`); every screen's Back / the result overlay
+  return to it via `_hqReturnOrMenu`; bay doors launch VS-CPU crossings
+  through `_hqLaunchMission` → `window._hqPreselect` (match-select) +
+  `window._hqCpuPool` (state.js). Classic hub: `?nohq`, localStorage
+  `ew_hq='off'`, or Settings → D.O.O.R. Headquarters. Dev entries:
+  `index.html?hq`, `window._hqEnter()`. Kit assets live on R2 under
   `Assets/door/models/` + `Assets/door/textures/`; reference art is in the
-  repo at `door_reference_images/`. `npm test` runs `door-hq.test.js`.
+  repo at `door_reference_images/`. `npm test` runs `doorhq.test.js`.
+  Playtest harnesses call `_goToVsCpu()` directly and bypass the building.
 
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /

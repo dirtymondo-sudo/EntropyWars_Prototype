@@ -2409,7 +2409,10 @@
                     sessionStorage.removeItem('ew_rejoinRole');
                 } catch(e) {}
 
-                if (window._showTitlePage) window._showTitlePage('playHubPage');
+                /* D.O.O.R. HQ (plan D7): the dispatch desk is where the
+                   lobby was answered from — go back to it, else the hub. */
+                if (typeof window._hqReturnOrMenu === 'function') window._hqReturnOrMenu('playHubPage');
+                else if (window._showTitlePage) window._showTitlePage('playHubPage');
                 else if (window._lobbyBack) window._lobbyBack();
             };
 

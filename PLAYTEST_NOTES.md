@@ -5503,6 +5503,11 @@ skinned GLB models instead of extruded sprite slabs. Entries are built by
   Sets, not arrays (`.add`, not `.push`).
 
 ## Menu flow to start a VS-CPU match (no auto-sim — drive the real UI)
+0. (2026-09-03) The main menu's **Play** button now enters the D.O.O.R. HQ
+   (a walkable 3D hub, `map.js _hqEnter`) instead of the play hub page; the
+   harness bypasses it by calling `_goToVsCpu()` directly (below), and
+   `?nohq` in the URL restores the classic hub for manual runs. Post-match
+   "Main Menu" returns to the building when the match was launched from it.
 1. `window._goToVsCpu()` → opens Mode Select (sets controllers {1:'local', 2:'ai'},
    parties auto-filled 4v4). Does NOT start a match.
 2. Click the `.ms-mode-card` whose text matches the mode → then `.ms-btn-primary`

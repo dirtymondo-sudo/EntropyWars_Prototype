@@ -192,3 +192,55 @@ test('hqMapMastered reads progress flags and the recent match history', () => {
     const n = D.hqPolar(0, 5);
     assert.ok(Math.abs(n.x) < 1e-9 && Math.abs(n.z + 5) < 1e-9, 'north is -z');
 });
+
+/* ── Phase 1.3 / 1.4 helpers (2026-09-03): mission pools + site mastery ── */
+
+test('hqMissionPool: natives first, at least 4 distinct races for every launch map', () => {
+    const problems = [];
+    for (const m of D.EW_MAP_META.filter(x => !x.isDelta)) {
+        const pool = D.hqMissionPool(m.id, 4);
+        const natives = D.doorSiteCrossings(m.label);
+        if (pool.length < 4) problems.push(m.id + ': only ' + pool.length);
+        if (new Set(pool).size !== pool.length) problems.push(m.id + ': duplicates');
+        if (pool.natives !== natives.length) problems.push(m.id + ': natives count ' + pool.natives + ' vs ' + natives.length);
+        for (let i = 0; i < natives.length; i++) if (pool[i] !== natives[i]) { problems.push(m.id + ': natives must lead the pool'); break; }
+        for (const r of pool) if (!D.AVAILABLE_RACES.includes(r)) problems.push(m.id + ': unknown race ' + r);
+    }
+    assert.deepStrictEqual(problems, []);
+    /* the Δ id resolves to its site; padding comes from a shared biome first */
+    const moon = D.hqMissionPool('prebuilt_moon_delta', 4);
+    assert.deepStrictEqual(Array.from(moon.slice(0, 3)), Array.from(D.doorSiteCrossings('Moon')));
+    assert.ok(D.doorSiteCrossings('Mars').includes(moon[3]), 'Moon pads from Mars (shared space biome), got ' + moon[3]);
+    assert.deepStrictEqual(Array.from(D.hqMissionPool('nope', 4)), []);
+});
+
+test('hqSiteId strips the Δ suffix and mastery counts Δ-board wins for the site', () => {
+    assert.strictEqual(D.hqSiteId('prebuilt_moon_delta'), 'prebuilt_moon');
+    assert.strictEqual(D.hqSiteId('prebuilt_moon'), 'prebuilt_moon');
+    assert.strictEqual(D.hqSiteId(null), '');
+    const hist = HQ.masteryConditions.map(c => ({ mapId: 'prebuilt_moon_delta', result: 'win', winCondition: c }));
+    assert.strictEqual(D.hqMapMastered('prebuilt_moon', { matchHistory: hist }), true);
+    assert.strictEqual(D.hqMapMastered('prebuilt_moon_delta', { matchHistory: hist }), true);
+    /* the flag writer (battle.js) stores site:<site>:<cond> — read back for either id */
+    const unlocked = {};
+    for (const c of HQ.masteryConditions) unlocked['site:prebuilt_mars:' + c] = 1;
+    assert.strictEqual(D.hqMapMastered('prebuilt_mars_delta', { progress: { unlocked } }), true);
+});
+
+test('hqMasteryCount tallies stabilized sites over the six bays', () => {
+    const none = D.hqMasteryCount(null);
+    const launch = D.EW_MAP_META.filter(m => !m.isDelta).length;
+    assert.deepStrictEqual({ mastered: none.mastered, total: none.total }, { mastered: 0, total: launch });
+    const unlocked = {};
+    for (const id of HQ.sectors.celestial.maps) for (const c of HQ.masteryConditions) unlocked['site:' + id + ':' + c] = 1;
+    const some = D.hqMasteryCount({ progress: { unlocked } });
+    assert.strictEqual(some.mastered, HQ.sectors.celestial.maps.length);
+    assert.strictEqual(some.total, launch);
+});
+
+test('every bay threshold has an 8×8 Δ board to cross onto (plan D3)', () => {
+    const ids = new Set(D.EW_MAP_META.map(m => m.id));
+    const missing = [];
+    for (const k of Object.keys(HQ.sectors)) for (const id of HQ.sectors[k].maps) if (!ids.has(id + '_delta')) missing.push(id);
+    assert.deepStrictEqual(missing, []);
+});

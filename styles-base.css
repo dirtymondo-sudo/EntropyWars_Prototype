@@ -4089,6 +4089,10 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-row b { font-family: 'Cormorant SC', serif; font-size: 14px; letter-spacing: 0.1em; }
 .hq-row span { font-size: 8px; letter-spacing: 0.2em; color: #b8a060; }
 .hq-row-stamp { font-size: 8px; letter-spacing: 0.18em; padding: 2px 6px; border: 1px solid currentColor; transform: rotate(-2deg); }
+.hq-row-btns { display: flex; gap: 4px; }
+.hq-row.hq-row-bay { grid-template-columns: 1fr auto auto auto; }
+.hq-strip-stat { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.22em; color: #8fd3a0; }
+.hq-strip-stat b { color: #ece7d8; font-weight: 600; }
 .hq-row-stamp.tone-deny { color: #c5453f; }
 .hq-row-stamp.tone-admit { color: #3a8f5c; }
 .hq-row-stamp.tone-void { color: #8a8a8a; }

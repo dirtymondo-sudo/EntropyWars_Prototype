@@ -2967,7 +2967,7 @@
             };
         }
 
-        function randomizeIdentity(ownedOnly) {
+        function randomizeIdentity(ownedOnly, forceRace) {
             let pool = AVAILABLE_RACES;
             // 3D-only roster rule: random picks (both the player's and the
             // CPU's) never land on a race without a rigged 3D model.
@@ -2979,7 +2979,11 @@
                 const owned = pool.filter(r => isUnitUnlocked(r));
                 if (owned.length) pool = owned;
             }
-            const race = pool[randInt(pool.length)];
+            /* A pinned race (D.O.O.R. crossings: the CPU fields the site's
+               native entities) — honoured when it is a real, 3D-ready race;
+               ownership never applies to the CPU's pinned pool. */
+            const race = (forceRace && AVAILABLE_RACES.includes(forceRace) && (typeof isRace3DReady !== 'function' || isRace3DReady(forceRace)))
+                ? forceRace : pool[randInt(pool.length)];
             const raceProfile = getRaceProfile(race);
             const zodiac = AVAILABLE_ZODIACS[randInt(AVAILABLE_ZODIACS.length)];
             const sleep = AVAILABLE_SLEEP_PREFERENCES[randInt(AVAILABLE_SLEEP_PREFERENCES.length)];
@@ -3000,8 +3004,20 @@
             };
         }
 
-        function randomizePartyIdentities(count, ownedOnly) {
-            const metas = Array.from({ length: count }, () => randomizeIdentity(ownedOnly));
+        /* `pool` (optional): an ordered race list to draw from instead of the
+           whole roster — the D.O.O.R. HQ mission launcher pins the CPU to a
+           site's natives (map.js _hqLaunchMission → window._hqCpuPool). The
+           pool's natives (`pool.natives` leading entries) are shuffled among
+           themselves so the same door fields a different line-up each time;
+           padding races only appear when the natives run out. */
+        function randomizePartyIdentities(count, ownedOnly, pool) {
+            let picks = null;
+            if (Array.isArray(pool) && pool.length) {
+                const nat = pool.slice(0, Math.max(1, Math.min(pool.length, pool.natives || pool.length)));
+                for (let i = nat.length - 1; i > 0; i--) { const j = randInt(i + 1); [nat[i], nat[j]] = [nat[j], nat[i]]; }
+                picks = nat.concat(pool.slice(nat.length));
+            }
+            const metas = Array.from({ length: count }, (_, i) => randomizeIdentity(ownedOnly, picks ? picks[i % picks.length] : null));
 
             const bothIdxs = [];
             for (let i = 0; i < metas.length; i++) {
@@ -3976,7 +3992,9 @@
             const size = Math.max(CONFIG.teamSize, state.partyBuilds?.[player]?.length || 0);
 
             if (!state.partyMeta) state.partyMeta = {};
-            state.partyMeta[player] = randomizePartyIdentities(size);
+            /* CPU side of a D.O.O.R. crossing: draw from the pinned native pool. */
+            const pinned = (player === 2 && typeof window !== 'undefined' && Array.isArray(window._hqCpuPool)) ? window._hqCpuPool : null;
+            state.partyMeta[player] = randomizePartyIdentities(size, false, pinned);
             state.partyBuilds[player] = state.partyMeta[player].map(meta => {
                 const race = meta.race || 'homosapien';
                 const lockedJob = (race !== 'homosapien' && typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race])
@@ -5085,7 +5103,8 @@
             const size = Math.max(CONFIG.teamSize, state.partyBuilds?.[2]?.length || 0);
 
             if (!state.partyMeta) state.partyMeta = {};
-            state.partyMeta[2] = randomizePartyIdentities(size);
+            const pinned = (typeof window !== 'undefined' && Array.isArray(window._hqCpuPool)) ? window._hqCpuPool : null;
+            state.partyMeta[2] = randomizePartyIdentities(size, false, pinned);
             state.partyBuilds[2] = state.partyMeta[2].map(meta => {
                 const race = meta.race || 'homosapien';
                 const lockedJob = (race !== 'homosapien' && typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race])

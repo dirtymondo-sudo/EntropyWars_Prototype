@@ -572,16 +572,26 @@ function MatchSelect() {
   const mapList = typeof MS_MAP_LIST !== 'undefined' ? MS_MAP_LIST : [];
   const multiplayerModes = typeof MULTIPLAYER_MODES !== 'undefined' ? MULTIPLAYER_MODES : {};
 
-  const [gmIdx, setGmIdx] = useState(0);
+  /* A crossing launched from a D.O.O.R. HQ bay door (map.js _hqLaunchMission,
+     DOOR_HQ_BUILD_PLAN §3.7) pre-selects mode / map / team size here. map.js
+     _msRenderAll remounts this component while the preselect is set, so the
+     initial state below IS the consumption; the object stays on window until
+     CONFIRM (_msConfirm reads its pinned CPU roster) or BACK clears it. */
+  const pre = (typeof window !== 'undefined' && window._hqPreselect && typeof window._hqPreselect === 'object') ? window._hqPreselect : null;
+  const [gmIdx, setGmIdx] = useState(() => {
+    if (pre && pre.gm) { const i = gameModes.findIndex(m => m.id === pre.gm); if (i >= 0) return i; }
+    return 0;
+  });
   // Default to the first Δ map — 4v4 8×8 delta maps are the competitive default.
   const [mapIdx, setMapIdx] = useState(() => {
+    if (pre && pre.launchId) { const i = mapList.findIndex(m => m.modeId === pre.launchId); if (i >= 0) return i; }
     const di = mapList.findIndex(m => m.isDelta);
     return di >= 0 ? di : 7;
   });
   const [sizeFilter, setSizeFilter] = useState(null);
-  const [deltaOnly, setDeltaOnly] = useState(true);
+  const [deltaOnly, setDeltaOnly] = useState(() => pre ? !!pre.delta : true);
   const [query, setQuery] = useState('');
-  const [teamSize, setTeamSize] = useState(0);
+  const [teamSize, setTeamSize] = useState(() => (pre && pre.teamSize > 0) ? pre.teamSize : 0);
   const [ranked, setRanked] = useState(false);
   const [opponent, setOpponent] = useState('CPU');
   const [rounds, setRounds] = useState(15);
@@ -1113,6 +1123,11 @@ function MatchSelect() {
             h('span', null, DOOR ? 'FIELD ASSIGNMENT' : 'SELECTED'),
             caseNo && h('span', { style: { color: EW.inkDim, fontFamily: '"IBM Plex Mono", "DotGothic16", monospace', letterSpacing: '0.12em' } }, 'CASE ' + caseNo)
           ),
+          pre && h('div', { style: {
+            marginTop: 6, padding: '5px 8px', fontFamily: '"IBM Plex Mono", "DotGothic16", monospace',
+            fontSize: 9, letterSpacing: '0.16em', color: '#7fd9dd',
+            border: '1px dashed rgba(127,217,221,0.45)', background: 'rgba(127,217,221,0.06)',
+          }}, 'DISPATCHED FROM ' + (pre.doorLabel || 'HEADQUARTERS') + ' · ' + (pre.delta ? '4v4 Δ BOARD' : 'DEEP CROSSING') + ' · CPU FIELDS THE SITE’S NATIVE ENTITIES'),
           h('div', { style: {
             display: 'flex', justifyContent: 'space-between',
             alignItems: 'baseline', marginTop: 4,

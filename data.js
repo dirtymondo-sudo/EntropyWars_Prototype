@@ -15585,20 +15585,67 @@ function hqSectorOfMap(mapId) {
     return null;
 }
 /* Mastery v1: every DOOR_HQ.masteryConditions win on that map, from the
-   monotonic progress flags first, then the (capped) match history. */
+   monotonic progress flags first, then the (capped) match history. A win on
+   the map's 8×8 Δ board counts for the map (the flag writer in battle.js
+   strips the suffix the same way — HQ plan Phase 1.4). */
+function hqSiteId(mapId) { return String(mapId || '').replace(/_delta$/, ''); }
 function hqMapMastered(mapId, profile) {
     if (!profile) return false;
+    const site = hqSiteId(mapId);
     const have = new Set();
     try {
         const un = (profile.progress && profile.progress.unlocked) || {};
-        for (const c of DOOR_HQ.masteryConditions) if (un['site:' + mapId + ':' + c]) have.add(c);
+        for (const c of DOOR_HQ.masteryConditions) if (un['site:' + site + ':' + c]) have.add(c);
     } catch (e) {}
     try {
         for (const m of (profile.matchHistory || [])) {
-            if (m && m.mapId === mapId && m.result === 'win' && m.winCondition) have.add(m.winCondition);
+            if (m && hqSiteId(m.mapId) === site && m.result === 'win' && m.winCondition) have.add(m.winCondition);
         }
     } catch (e) {}
     return DOOR_HQ.masteryConditions.every(c => have.has(c));
+}
+/* How many launch maps (sites) the profile has stabilized, for the HQ strip. */
+function hqMasteryCount(profile) {
+    let n = 0, total = 0;
+    for (const k in DOOR_HQ.sectors) {
+        for (const id of DOOR_HQ.sectors[k].maps) { total++; if (hqMapMastered(id, profile)) n++; }
+    }
+    return { mastered: n, total: total };
+}
+/* The CPU roster for a crossing through a bay door (HQ plan D3 / §3.7):
+   the site's native entities (doorSiteCrossings — the races whose POINT OF
+   ENTRY is this map), padded to at least `n` distinct races from the maps
+   that share a biome (most shared biomes first), then from the rest of the
+   sector, then from any launch map. Order = priority; the party randomizer
+   takes the first `teamSize` after a shuffle of the natives. Filtered to
+   races with a rigged 3D model when the sprite table is loaded (it is not
+   in the headless test), so the pool is never empty on the board. */
+function hqMissionPool(mapId, n) {
+    n = n || 4;
+    const site = hqSiteId(mapId);
+    const META = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
+    const meta = META.find(m => m.id === site);
+    if (!meta) return [];
+    const ready = (r) => (typeof isRace3DReady !== 'function') || isRace3DReady(r);
+    const out = [];
+    const push = (list) => { for (const r of list) if (out.indexOf(r) < 0 && ready(r)) out.push(r); };
+    push(doorSiteCrossings(meta.label));
+    const natives = out.length;
+    const shared = (m) => (m.biomes || []).filter(b => (meta.biomes || []).indexOf(b) >= 0).length;
+    if (out.length < n) {
+        const nb = META.filter(m => !m.isDelta && m.id !== site && shared(m) > 0).sort((a, b) => shared(b) - shared(a));
+        for (const m of nb) { if (out.length >= n) break; push(doorSiteCrossings(m.label)); }
+    }
+    if (out.length < n) {
+        const sec = hqSectorOfMap(site);
+        const ids = (sec && DOOR_HQ.sectors[sec]) ? DOOR_HQ.sectors[sec].maps : [];
+        for (const id of ids) { if (out.length >= n) break; const m = META.find(x => x.id === id); if (m) push(doorSiteCrossings(m.label)); }
+    }
+    if (out.length < n) {
+        for (const m of META) { if (out.length >= n) break; if (!m.isDelta) push(doorSiteCrossings(m.label)); }
+    }
+    out.natives = natives;
+    return out;
 }
 /* Door lamp state (HQ plan §3.5): sealed | clearance | unstable | stabilized
    | open. Rooms: open unless a clearance gate holds. Bays: green once every
@@ -15620,6 +15667,9 @@ if (typeof window !== 'undefined') {
     window.DOOR_HQ = DOOR_HQ;
     window.hqPolar = hqPolar;
     window.hqSectorOfMap = hqSectorOfMap;
+    window.hqSiteId = hqSiteId;
     window.hqMapMastered = hqMapMastered;
+    window.hqMasteryCount = hqMasteryCount;
+    window.hqMissionPool = hqMissionPool;
     window.doorSiteState = doorSiteState;
 }

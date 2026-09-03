@@ -8426,7 +8426,10 @@
             if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
             if (window.EWCharViewer) window.EWCharViewer.unmount();
             if (typeof GS !== 'undefined' && typeof state !== 'undefined') state.gameState = GS.MAIN_MENU;
-            if (typeof _showTitlePage === 'function') _showTitlePage('mainMenuPage');
+            /* D.O.O.R. HQ (plan D7): back through the Quartermaster's door
+               when the shop was entered from the building. */
+            if (typeof window._hqReturnOrMenu === 'function') window._hqReturnOrMenu();
+            else if (typeof _showTitlePage === 'function') _showTitlePage('mainMenuPage');
             window._refreshWallets();
         };
 

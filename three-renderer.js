@@ -27508,6 +27508,8 @@ const ThreeRenderer = (function () {
             if (H.paused) return;
             if (k === 'e') { e.preventDefault(); _hqInteract(); return; }
             if (k === 'v') { e.preventDefault(); _hqToggleView(); return; }
+            /* Q = answer a BELL call from anywhere in the building (HQ plan D2) */
+            if (k === 'q') { e.preventDefault(); if (H.opts.onHotkey) H.opts.onHotkey('q'); return; }
             H.keys[k] = true;
             if (k === 'space' || (e.key && e.key.indexOf('Arrow') === 0)) e.preventDefault();
         };
@@ -27866,14 +27868,16 @@ const ThreeRenderer = (function () {
         if (profile !== undefined) _hq.profile = profile;
         _hq.doors.forEach(function (d) { _hqLampApply(d, _hqDoorState(d.door)); });
     }
-    /* accessibility / directory: put the avatar in front of a door or counter */
-    function _hqGoTo(id) {
+    /* accessibility / directory: put the avatar in front of a door or counter.
+       `faceAway` = stand with the door at your back (post-match re-entry:
+       you just came out of it — HQ plan D7). */
+    function _hqGoTo(id, faceAway) {
         if (!_hq || !_hq.player) return false;
         var S = _hq.room.shell, U = _hqUnits(), pl = _hq.player;
         var d = null;
         for (var i = 0; i < _hq.doors.length; i++) if (_hq.doors[i].door.id === id) { d = _hq.doors[i]; break; }
         var spot = null, face = 0;
-        if (d) { spot = _hqPolarW(d.door.deg, d.Rw - 2.2, d.y0); face = d.door.deg; }
+        if (d) { spot = _hqPolarW(d.door.deg, d.Rw - 2.2, d.y0); face = faceAway ? d.door.deg + 180 : d.door.deg; }
         else {
             for (var j = 0; j < _hq.counters.length; j++) {
                 var c = _hq.counters[j];

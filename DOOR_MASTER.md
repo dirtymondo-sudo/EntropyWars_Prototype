@@ -1,5 +1,5 @@
 # D.O.O.R. — MASTER FILE
-### Story bible + integration design + build log — rev 8 (2026-09-03)
+### Story bible + integration design + build log — rev 9 (2026-09-03 — HQ is the Play hub)
 
 This file MERGES the two earlier DOOR documents and supersedes both:
 - `entropy_wars_claude_brief.md` (the ChatGPT-assisted story/world brief, 2026-09) → Part A
@@ -482,7 +482,13 @@ sacrificed or protected.
 - **○ A DOOR officer as a playable race** (later): support-controller —
   DENY ENTRY (knockback), RED TAPE (root), STAMP (mark), PAPERWORK (AP
   drain), FORM 90 (turn a tile into a corner — a mini door that teleports).
-- **○ Headquarters** → `DOOR_HQ_BUILD_PLAN.md`.
+- **◐ Headquarters** → `DOOR_HQ_BUILD_PLAN.md`. Phase 1 complete
+  (2026-09-03): **Play enters the Central Egress**; the six bay doors
+  launch VS-CPU crossings (Arena, 4v4 on the site's Δ board, CPU = the
+  site's native entities; DEEP = the full map); every screen's Back and
+  the result overlay come back to the building at the door you left
+  through; bay lamps go green from real mastery flags written at match
+  commit. `?nohq` / Settings toggle keep the classic hub.
 
 ## B3. Story track (mode-agnostic; reconciled model)
 
@@ -793,11 +799,27 @@ but cannot launch a crossing until HQ 1.3. Nothing mid-match changed → no
 relay work (RULE #2). The reference art is committed under
 `door_reference_images/` (the HQ plan's §5.1 names map onto it by content).
 
-NOT done yet (next steps, in order): HQ plan Phase 1.3–1.5 (Play → HQ,
-return plumbing, the mission launcher for the bay doors, mastery flags,
-audio — the walkable egress itself shipped 2026-09-03) → story track step 3 (SP meter, thresholds →
+NOT done yet (next steps, in order): HQ plan Phase 2.6/2.7 (bays as
+corridors, the closet interior) and 3.x (mastery checklist + result stamp,
+Code Red, promotion door) → story track step 3 (SP meter, thresholds →
 chapters, post-match scene, the office as the case-file screen; the
 `.directive` tab, the `door.*` fields and the four unwired kit sounds are
 already waiting for it) → orientation tape in the Training Room → PvP
-opponent card on the VS splash (relay) + queue hold music → the six
-containment bays → Code Red.
+opponent card on the VS splash (relay) + queue hold music.
+
+### 2026-09-03 (later) — HQ Phase 1.3 + 1.4 + 1.5: Play enters the building
+The isolated egress is now the Play hub. Full account in
+`DOOR_HQ_BUILD_PLAN.md` §9 (this date, "Play enters the building"):
+`_goToPlayHub` → `_hqEnter`; `_hqReturnOrMenu` at every Back + the result
+overlay (button reads D.O.O.R. HQ), re-entering at the last door;
+Profile / Leaderboard / Settings keep the building paused underneath;
+`_hqLaunchMission` + `window._hqPreselect` → match-select pre-filled (CPU
+pinned to the site's natives via `hqMissionPool` / `_hqCpuPool`);
+mastery flags `site:<mapId>:<cond>` written in the achievements commit;
+synth room tone + `doorBuzz` on doors; `door.hq` on the profile; a
+Settings toggle + `?nohq` for the classic hub. Match history finally
+records the map id (`_mapPresetId` was never set). Touched: data.js,
+state.js, battle.js, profile.js, ui.js, online.js, three-renderer.js,
+audio.js, match-select.js, map.js, styles-base.css, index.html
+(`?v=20260903b-cors`), doorhq.test.js. `npm test` 92 pass. No mid-match
+surface changed → no relay work (RULE #2).

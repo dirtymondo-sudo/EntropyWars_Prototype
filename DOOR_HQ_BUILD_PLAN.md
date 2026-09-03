@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 3 (2026-09-03 — Phase 1.1/1.2 built in isolation, §5.5 + §9)
+### The walkable facility that replaces the Play menu · rev 4 (2026-09-03 — Phase 1.3–1.5 shipped: Play enters the building, §9)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -332,15 +332,16 @@ real; back buttons return you to the hall.
 - 1.2 ⚙ `startHqScene` / `ThreeRenderer.hq` / shell builder / placeholder
   props / lamps / CSS2D nameplates / occupancy + free-roam / third-person
   rig + first-person toggle / triggers + prompt + door panel DOM.
-- 1.3 ⚙ Flow: `_hqEnter` (Play), `_hqLoading`, `_hqTrigger`,
+- 1.3 ⚙ ✅ (2026-09-03, §9) Flow: `_hqEnter` (Play), `_hqLoading`, `_hqTrigger`,
   `_hqReturnOrMenu` at the 12 sites + result overlay, `_hqLaunchMission`
   + `_hqPreselect` in match-select, `GS.HQ`, skip-list entries, `?nohq`.
-- 1.4 ⚙ Mastery flag write at match commit; lamps from it; strip counts.
-- 1.5 ⚙ Audio: room-tone placeholder, `doorBuzz` on doors, `paChime`
+- 1.4 ⚙ ✅ Mastery flag write at match commit; lamps from it; strip counts.
+- 1.5 ⚙ ✅ Audio: room-tone placeholder, `doorBuzz` on doors, `paChime`
   reserved; `doorMuzak` slot silent until a track exists.
-- 1.6 ⚙ Rank strings → DOORMAT…THE DOORMAN (rides this data.js delivery).
-- Exit: the hall works end to end on placeholder boxes and existing
-  textures; `npm test` green; online flows unchanged.
+- 1.6 ⚙ ✅ Rank strings → DOORMAT…THE DOORMAN (rode the 1.1 data.js delivery).
+- Exit: the hall works end to end; `npm test` green; online flows unchanged.
+  Phase 1 is complete — remaining Phase-1-era wishes (gamepad, the §3.9
+  in-game layout editor) moved to the §9 next-steps list.
 
 ### Phase 2 — The kit lands (2 sessions, 🧊 as assets arrive)
 Each delivery from the user swaps placeholders for real props; nothing
@@ -587,6 +588,120 @@ Guild Hub was the prototype; this plan is the building.
 - Hazard Pay wallet on the strip vs only at the Quartermaster. Rec: strip.
 
 ## 9. Build log (append per session)
+
+### 2026-09-03 — Phase 1.3 + 1.4 + 1.5: Play enters the building
+User: "continue with the build plan". The isolated egress became the Play
+hub. Every flow rule below is in map.js unless stated; `npm test` 92 pass
+(4 new checks in `doorhq.test.js` — note the real filename has no hyphen).
+
+**Play → HQ (D5).** `_goToPlayHub` calls `_hqEnter({from:'play'})` when
+`_hqEnabled()`; the classic hub survives via `?nohq`, localStorage
+`ew_hq='off'`, `window.EW_DISABLE_HQ`, the new **Settings → D.O.O.R.
+Headquarters** toggle (`_hqToggleHome`), and as the automatic fallback when
+the 3D enter fails (no WebGL). Main-menu buttons are otherwise unchanged;
+only the Play card's description changed. The battle renderer stays alive
+behind the menu after a match (only the map editor ever `deactivate()`d
+it) and the HQ needs the shared canvas, so `_hqEnter` parks it first when
+`state.phase !== 'battle'` — `startMatch` re-activates (it already checks
+`isActive`). The playtest harnesses call `_goToVsCpu()` directly and are
+unaffected.
+
+**Return plumbing (D7).** `window._hqReturnOrMenu(fallbackPage)` is the
+way back from every screen: while `_hqHome` is set (the player came in
+through Play) it re-enters the building at `_hqLastDoor` (the door last
+walked through, avatar placed with the door at its back —
+`ThreeRenderer.hq.goTo(id, faceAway)`), else it shows the classic page.
+Rewired sites: `_mdCharBack`, `_settingsBack`, `_codexBack`,
+`_teamBuilderBack`, `_challengePickBack`, the Challenge run's exit, both
+map-editor exits, `_msBack` + `_lobbyBack` + online.js
+`lobbyBackToPlayHub` (fallback `playHubPage`), ui.js `_shopBack`, and
+battle.js `backToMainMenu` (post-match; the result overlay's button reads
+**D.O.O.R. HQ** via `_hqRelabelMenuButtons`, called again after
+`_restoreResultOverlayButtons` rebuilds the bar). EXIT on the strip clears
+`_hqHome` — Back buttons land on the main menu again until the next Play.
+Two kinds of screen: **page screens and matches leave the building** and
+rebuild it on return (the loading card covers the ~1 s); **pure DOM modals
+(Profile / ID card, Leaderboard) and the Settings page keep it alive
+underneath, paused** (`_hqSuspend` / `_hqResume`; the modal's `_unmount*`
+is wrapped once so closing it resumes, deferred a tick so a launch path
+would win). Community Maps is deliberately a leave (its PLAY starts a
+match). ESC in the hall now opens Settings over the paused building
+(D6); `Q` opens the dispatch panel from anywhere (D2, three-renderer
+`onHotkey`); the strip gained a DIRECTORY button and a `STABILIZED n / 29`
+count; hints updated.
+
+**Mission launcher (D3 / §3.7).** Bay-door panels are live: every
+threshold row has **CROSS ▸ Δ** (Arena, 4v4 on the site's 8×8 Δ board) and
+**DEEP** (the full map at its own team size); sealed / clearance-gated bays
+show them disabled with the reason. `_hqLaunchMission(mapId, {delta,
+doorId, doorLabel})` sets `window._hqPreselect = {mapId, launchId, delta,
+teamSize, gm:'arena', roster, doorId, doorLabel}` + `_msCpuOnly`, buzzes,
+leaves the building and opens `modePage`. `_msRenderAll` remounts the
+MatchSelect React root once while a fresh preselect is pending, and the
+component's initial state reads it (mode / map / Δ filter / team size) and
+shows a "DISPATCHED FROM <door> · 4v4 Δ BOARD · CPU FIELDS THE SITE'S
+NATIVE ENTITIES" line in the FIELD ASSIGNMENT slip. Nothing about match
+setup is bypassed: the player can still change anything, CONFIRM files
+the form, the party builder runs. `_msConfirm` reads the preselect once:
+`window._hqCpuPool = roster` only if the launched map is still that site
+(else null); `_msBack` / `_goToVsCpu` clear it. **CPU roster pinning**
+(state.js): `randomizePartyIdentities(count, ownedOnly, pool)` /
+`randomizeIdentity(ownedOnly, forceRace)` — `optimizeRandomizeParty(2)`
+and `rerollOpponentForNextMatch` pass `window._hqCpuPool`; the natives are
+shuffled among themselves, padding races only appear when they run out;
+a pinned race must be real and 3D-ready, ownership never applies to the
+CPU. **Pool** (data.js `hqMissionPool(mapId, n)`): the site's natives
+(`doorSiteCrossings`), then maps sharing a biome (most shared first), then
+the rest of the sector, then any launch map, until ≥ n distinct;
+`pool.natives` = how many lead entries are true natives. Filtered by
+`isRace3DReady` when sprites.js is loaded (not in the headless test).
+
+**Mastery (D9 / 1.4).** battle.js writes `prog.unlocked['site:<site>:
+<winCondition>'] = Date.now()` inside the existing achievements commit
+(same `saveProgress` / server sync) for a standard-match win whose
+condition is in `DOOR_HQ.masteryConditions` and whose map is a bay
+threshold; the Δ suffix is stripped (`hqSiteId`) so a Δ-board win counts
+for the site; PvP wins count (MASTER B3). `hqMapMastered` now strips the
+suffix on history rows too; `hqMasteryCount(profile)` feeds the strip.
+Side fix: profile.js `buildProfileMatchSummary` recorded `mapId:
+'unknown'` for every match (`st._mapPresetId` was never written anywhere)
+— it now falls back to `activeGameMode`, so match history finally knows
+the map. `window._lastHqSiteFlag` (viewer-local) notes a freshly written
+flag for a later "THRESHOLD STABILIZED" stamp on the result screen.
+
+**Audio (1.5).** audio.js `startDoorRoomTone()` / `stopDoorRoomTone()`: a
+synthesized hall loop (looped noise through a wobbling low-pass = HVAC,
+60/120/180 Hz hum, a faint ballast hiss) riding the Ambience slider
+(`applyAmbienceVolumeMix` → `_doorRoomToneApplyVol`), started on enter /
+resume, stopped on leave / suspend; `EW_DISABLE_AMBIENCE` kills it.
+`doorBuzz` fires on every door use (`_hqDoAction`, `_hqLaunchMission`) and
+on the way in from Play, not on returns. `syncMusicToState` plays
+`doorMuzak` in the HQ once `audioTracks.doorMuzak` exists (user-made,
+MASTER B4) and `mainTheme` until then. `paChime` stays reserved for the
+promotion moment (Phase 3.4).
+
+**Profile.** `door.hq = {visits, lastDoor, variantSeed, keys}` backfilled
+(`defaultDoor`); `visits` counts entries from Play, `lastDoor` is the last
+door walked through (`_hqRecordVisit`). Data only.
+
+**Files (RULE #1 placement):** data.js (`hqSiteId`, `hqMasteryCount`,
+`hqMissionPool`, `hqMapMastered` Δ-aware), state.js (pool-aware party
+randomizer), battle.js (mastery flag, HQ return, relabel hook), profile.js
+(`door.hq`, `mapId`), ui.js (`_shopBack`), online.js
+(`lobbyBackToPlayHub`), three-renderer.js (`Q` hotkey → `onHotkey`,
+`goTo(id, faceAway)`), audio.js (room tone), match-select.js (preselect
++ dispatched line), map.js (everything above), styles-base.css
+(`.hq-row-bay`, `.hq-row-btns`, `.hq-strip-stat`), index.html (Play
+text, strip DIRECTORY + mastery, hints, `?v=20260903b-cors`),
+doorhq.test.js (+4 tests). No mid-match surface changed → no relay work
+(RULE #2); the building is still never alive during a match.
+
+**Next (in order):** 2.2 wedge desk once the wedge dimensions are known;
+2.6 the six bays as corridors with their threshold doors; 2.7 the closet
+interior (kit uploaded); 3.1 mastery checklist inside the door panel +
+the result-screen THRESHOLD STABILIZED stamp (reads
+`window._lastHqSiteFlag`); 3.3 Code Red; §3.9 the in-game layout editor;
+gamepad in the hall; a first-visit micro-scene at the desk (4.2).
 
 ### 2026-09-03 — Phase 1.1 + 1.2 shipped as an ISOLATED build (Play untouched)
 User: "build/design the facility isolated before connecting it to the main

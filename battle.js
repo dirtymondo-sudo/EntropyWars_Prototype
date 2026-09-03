@@ -9862,6 +9862,27 @@
                     window.ProfileSystem.creditLocalGold(_achGold);
                 }
 
+                /* D.O.O.R. HQ site mastery (DOOR_HQ_BUILD_PLAN D9 / Phase
+                   1.4): a standard-match win writes the monotonic flag
+                   `site:<mapId>:<winCondition>` (Δ suffix stripped — a win on
+                   the 8×8 board counts for the site). Bay doors turn green
+                   once a site has been won by every DOOR_HQ.masteryConditions
+                   entry; PvP wins count too (MASTER B3: every mode feeds
+                   the facility). Rides this same progress commit / sync. */
+                try {
+                    if (won && kind === 'match' && typeof DOOR_HQ !== 'undefined' && state._winCondition) {
+                        const _site = (typeof hqSiteId === 'function') ? hqSiteId(activeGameMode) : String(activeGameMode || '').replace(/_delta$/, '');
+                        const _cond = state._winCondition;
+                        if (_site && DOOR_HQ.masteryConditions.indexOf(_cond) >= 0 && (typeof hqSectorOfMap !== 'function' || hqSectorOfMap(_site))) {
+                            const _key = 'site:' + _site + ':' + _cond;
+                            if (!prog.unlocked[_key]) {
+                                prog.unlocked[_key] = Date.now();
+                                window._lastHqSiteFlag = { site: _site, cond: _cond, mastered: (typeof hqMapMastered === 'function') && hqMapMastered(_site, { progress: prog }) };
+                            }
+                        }
+                    }
+                } catch (e) { console.warn('[HQ] mastery flag skipped', e); }
+
                 /* Personal records (§5): fold this match's bests into the
                    bucket's board. Standard matches only (the helper gates on
                    kind); a blank board seeds silently. */
@@ -30177,6 +30198,8 @@
             if (elm) elm.onclick = exportLastMatch;
             if (emh) emh.onclick = exportMatchHistory;
             if (mmb) mmb.onclick = () => window.backToMainMenu();
+            /* the button reads "D.O.O.R. HQ" when the match was launched from the building */
+            try { if (typeof window._hqRelabelMenuButtons === 'function') window._hqRelabelMenuButtons(); } catch (e) {}
         }
 
         let _finalizing = false;
@@ -30901,7 +30924,10 @@
                 _mmOverlay.style.pointerEvents = '';
                 _mmOverlay.setAttribute('aria-hidden', 'false');
             }
-            if (typeof _showTitlePage === 'function') _showTitlePage('mainMenuPage');
+            /* D.O.O.R. HQ (plan D7): a match launched from the building
+               returns to the building, at the door it left through. */
+            if (typeof window._hqReturnOrMenu === 'function') window._hqReturnOrMenu();
+            else if (typeof _showTitlePage === 'function') _showTitlePage('mainMenuPage');
             await syncMusicToState();
             render();
         }
