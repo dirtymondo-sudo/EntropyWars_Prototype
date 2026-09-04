@@ -1,5 +1,5 @@
 # D.O.O.R. — MASTER FILE
-### Story bible + integration design + build log — rev 11 (2026-09-03 — the janitor’s closet is walkable)
+### Story bible + integration design + build log — rev 12 (2026-09-04 — HQ Phase 3 complete: Code Red, Keys, promotions)
 
 This file MERGES the two earlier DOOR documents and supersedes both:
 - `entropy_wars_claude_brief.md` (the ChatGPT-assisted story/world brief, 2026-09) → Part A
@@ -490,7 +490,14 @@ sacrificed or protected.
   through; bay lamps go green from real mastery flags written at match
   commit. `?nohq` / Settings toggle keep the classic hub. Phase 2.6
   (2026-09-03): the six bays are walkable corridors with one threshold
-  door per site (the site file on its panel).
+  door per site (the site file on its panel). **Phase 3 complete
+  (2026-09-04): doors mean something** — Keys (= hourglasses secured)
+  gate the elevator and the Canon Office on top of rank; one **Code
+  Red** a day puts an entity filed elsewhere behind a stabilized
+  threshold (doorbell, strobing lamps, the entity pinned to the CPU
+  roster, +200 Hazard Pay on a same-day win); a promotion is acknowledged
+  by the building (PA chime, PERSONNEL NOTICE, PROMOTED stamp, the new
+  office door).
 
 ## B3. Story track (mode-agnostic; reconciled model)
 
@@ -526,7 +533,10 @@ online players evaluate their OWN profile locally — nothing to relay.
 **Rank (clearance L1–L6)** is promoted at chapter milestones (`promoteTo`),
 so PvP-only players reach the Doorman without touching a solo mode.
 Promotion = `paChime`, a new office door, a stamp on the card back, new HQ
-access.
+access. **The moment itself shipped 2026-09-04** (HQ plan 3.4): whatever
+writes `door.clearance`, the building notices on the next entry
+(`door.hq.seenClearance`) and plays the ceremony; the story track only
+has to set the number (`window._doorPromote(n)` is the hook).
 
 **Case files** (the rev-6 per-level checklists — win 5, defeat 3 MIB, play
 CERN, land 5 Entropy Strikes, declassify 3, reach MD floor 5, Gold rank…)
@@ -910,6 +920,40 @@ fallback), three-renderer.js (`_hqBuildDoors` fit + motion rig,
 `_hqTickDoors`, `_hqFindTarget` reach from the real opening), doorhq.test.js
 (+3), DOOR_HQ_BUILD_PLAN.md §9, index.html (`?v=20260904b-cors`). Hub only →
 no relay work.
+
+### 2026-09-04 (later still) — HQ Phase 3 complete: Code Red, Keys, the promotion moment
+The next three items on the HQ plan's standing list (3.3, 3.2, 3.4), all
+⚙, all shipped; the HQ plan §9 entry has the mechanics. What matters for
+the fiction:
+- **Code Red** (A11 Act II: "Code Reds put characters in the wrong
+  worlds") is real: once a day one of the officer's STABILIZED
+  thresholds reports an entity whose POINT OF ENTRY is some other site —
+  a demon prince at Cyberpunk City, a yeti on Mars — picked from the
+  local date + the employee number so the whole day agrees on it. The
+  doorbell (a household ding-dong, rung twice, the second flat) sounds
+  on the way into the egress; the bay door and the threshold strobe; the
+  brief is on the strip; RESPOND crosses with that entity pinned to the
+  CPU side; a same-day win clears it, pays a 200 Hazard Pay hazard bonus
+  and tags the result stamp CODE RED CLEARED. Nothing is reported until
+  at least one lamp is green — the joke is a stabilized door going wrong.
+  Voice kept dry ("has no business being there"; "Everyone in the
+  building already knows; nobody will mention it.").
+- **Keys** are hourglasses (A9), counted for the officer's whole career
+  (the `hourglasses` achievement counter) plus anything the Department
+  issues later. The elevator wants 12, the Bureau of Continuity 24, each
+  on top of its rank — so both restricted doors now say exactly what
+  they want. Thresholds and bays never ask for Keys.
+- **Promotion** has its ceremony (B3): PA chime, a PERSONNEL NOTICE
+  ("EFFECTIVE IMMEDIATELY · <canon date> · DOORSTOP · formerly L1
+  DOORMAT · PROMOTED · your office door has been replaced with a hollow
+  core door. Do not comment on the old one."), a PROMOTED stamp on the
+  card back, the new leaf already hung. Nothing promotes yet; the story
+  track (HQ 4.1) only has to write `door.clearance`.
+Files: data.js, map.js, battle.js, three-renderer.js, audio.js,
+styles-base.css, index.html (`?v=20260904d-cors`), doorhq.test.js (+8),
+DOOR_HQ_BUILD_PLAN.md rev 8, this file rev 12. Open for the user: Code
+Red SP bonus once the meter exists (rec. +5); whether Code Red may pick
+an UNSTABLE site for veterans (rec. no).
 
 ### 2026-09-04 (later) — the second door batch
 The user generated the wishlist: 14 more single-leaf doors in `/doors`

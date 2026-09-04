@@ -1019,11 +1019,12 @@
             stamp: 'doorStamp', denied: 'doorDenied', laminate: 'doorLaminate',
             crtOn: 'doorCrtOn', vhsEject: 'doorVhsEject', dotMatrix: 'doorDotMatrix',
             fax: 'doorFax', paChime: 'doorPaChime', doorBuzz: 'doorBuzz',
-            identSting: 'doorIdentSting',
+            identSting: 'doorIdentSting', doorbell: 'doorDoorbell',
         };
         const _DOOR_SFX_GAIN = {
             stamp: 0.85, denied: 0.42, laminate: 0.5, crtOn: 0.45, vhsEject: 0.55,
             dotMatrix: 0.32, fax: 0.3, paChime: 0.5, doorBuzz: 0.4, identSting: 0.55,
+            doorbell: 0.5,
         };
         let _doorNoiseBuf = null;
         function _doorCtx() {
@@ -1180,6 +1181,24 @@
                     _doorOsc(ctx, _doorEnv(ctx, out, tn, vol * 0.12, 0.012, 0.05, 0.35), 'triangle', f * 3, tn, 0.42);
                 });
                 return 1.6;
+            },
+            /* Doorbell (HQ plan 3.3, Code Red): a two-tone household ding-dong
+               — E5 then C5, bar-chime partials — rung twice, the second time
+               a little harder and a little flat, by someone who should not
+               be on that side of the door. */
+            doorbell(ctx, t, out, vol) {
+                const ring = (t0, gain, cents) => {
+                    [[659.25, 0], [523.25, 0.42]].forEach(([f, dt]) => {
+                        const tn = t0 + dt, det = { detune: cents };
+                        _doorOsc(ctx, _doorEnv(ctx, out, tn, gain * 0.75, 0.004, 0.16, 1.15), 'sine', f, tn, 1.35, det);
+                        _doorOsc(ctx, _doorEnv(ctx, out, tn, gain * 0.28, 0.004, 0.10, 0.75), 'sine', f * 2.76, tn, 0.9, det);
+                        _doorOsc(ctx, _doorEnv(ctx, out, tn, gain * 0.14, 0.004, 0.06, 0.45), 'triangle', f * 5.4, tn, 0.55, det);
+                        _doorNoiseSrc(ctx, _doorEnv(ctx, out, tn, gain * 0.22, 0.001, 0.01, 0.03), tn, 0.05, { type: 'bandpass', f0: f * 4, q: 3 });
+                    });
+                };
+                ring(t, vol, 0);
+                ring(t + 1.25, vol * 1.15, -18);
+                return 3.0;
             },
             /* Security door: a long mains buzz through the strike plate, then
                the lock bolt releasing. */

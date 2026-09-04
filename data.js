@@ -15497,6 +15497,23 @@ const DOOR_HQ = {
     /* how the door panel's checklist and the result-screen tag name them */
     masteryLabels: { wipeout: 'WIPEOUT', tower_destroyed: 'TOWER', hourglasses_collected: 'HOURGLASSES' },
 
+    /* Keys (HQ plan 3.2 / MASTER A9: hourglasses ARE Keys). hqKeys(profile)
+       = every hourglass the profile has ever secured (the achievement
+       counter `hourglasses`, all buckets) + any Keys the Department issued
+       (door.hq.keys — story grants, none yet). Doors with `requiresKeys`
+       read red (CLEARANCE) until the count is met, on top of any rank gate. */
+    keys: { counter: 'hourglasses', label: 'KEYS' },
+
+    /* Code Red (HQ plan 3.3): once a day, one STABILIZED threshold goes wrong
+       — an entity filed at some other site is reported behind it. Picked
+       deterministically from the local date + the employee number (the same
+       Code Red all day, a different one tomorrow); the bay door and the
+       threshold strobe red, the doorbell rings on the way in, the crossing
+       pins that entity to the CPU roster, and clearing it (a win on that
+       site the same day) pays a hazard bonus. `force` = a launch-map id
+       that overrides the pick (dev: ?codered=<mapId>, no mastery needed). */
+    codeRed: { bonusGold: 200, force: null },
+
     /* ── the six bays as corridors (HQ plan 2.6, 2026-09-03) ──
        Every sector bay is a short CURVED corridor off the egress ring: the
        egress door on its inner wall, one THRESHOLD door per launch map on
@@ -15608,13 +15625,13 @@ const DOOR_HQ = {
                 { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'ARCHIVES · ENTITY REGISTRY', action: { fn: '_goToCodex' },       desc: '“We only keep the file.” Entity dossiers, the tape library, unfiled sites.', alt: { label: 'REPLAY (TAPE LIBRARY)', fn: '_ewReplayLastMatch' }, alt2: { label: 'UNFILED SITES (COMMUNITY MAPS)', fn: '_mountCommunityMaps' } },
                 { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'CONTAINMENT BAY',            action: { sector: 'terrestrial' } },
                 /* ── mezzanine (support / executive access) ── */
-                { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'EXECUTIVE RING',             action: { room: 'executive' },      minClearance: 4, desc: 'Director offices. KEYHOLDER clearance and above.' },
+                { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'EXECUTIVE RING',             action: { room: 'executive' },      minClearance: 4, requiresKeys: 12, desc: 'Director offices. KEYHOLDER clearance and above; the car does not move without Keys.' },
                 { id: 'bay_ancient',    deg: 45,  level: 1, leaf: 'leaf_portcullis',   wide: true,  label: 'BAY 2 · ANCIENT',         sub: 'CONTAINMENT BAY',            action: { sector: 'ancient' } },
                 { id: 'engineering',    deg: 90,  level: 1, leaf: 'leaf_glass_exec',                label: 'ARCANE ENGINEERING',      sub: 'CARTOGRAPHY · RESEARCH',     action: { fn: '_goToMapEditor' },   desc: 'Research offices. The Map Editor, the Spell Library, and the fourth door that wasn’t there yesterday.' },
                 { id: 'bay_diplomatic', deg: 150, level: 1, leaf: 'leaf_revolving',    wide: true,  label: 'BAY 5 · DIPLOMATIC',      sub: 'CONTAINMENT BAY',            action: { sector: 'diplomatic' } },
                 { id: 'bay_hollow',     deg: 210, level: 1, leaf: 'leaf_wired_double', wide: true,  label: 'BAY 3 · HOLLOW',          sub: 'CONTAINMENT BAY',            action: { sector: 'hollow' } },
                 { id: 'bay_quarantined',deg: 270, level: 1, leaf: 'leaf_cell',                      label: 'BAY 6 · QUARANTINED',     sub: 'CONTAINMENT BAY',            action: { sector: 'quarantined' } },
-                { id: 'continuity',     deg: 315, level: 1, leaf: 'leaf_suburban_house',            label: 'BUREAU OF CONTINUITY',    sub: 'THE CANON OFFICE',           action: { room: 'continuity' },     minClearance: 5, desc: 'Canon notices. The motto plaque. The only department that suspects the schedule.' },
+                { id: 'continuity',     deg: 315, level: 1, leaf: 'leaf_suburban_house',            label: 'BUREAU OF CONTINUITY',    sub: 'THE CANON OFFICE',           action: { room: 'continuity' },     minClearance: 5, requiresKeys: 24, desc: 'Canon notices. The motto plaque. The only department that suspects the schedule. GATEKEEPER clearance and two dozen Keys.' },
             ],
             /* walk-up interactions that are not doors */
             counters: [
@@ -15987,26 +16004,125 @@ function hqBayRoom(sectorKey) {
     };
 }
 Object.keys(DOOR_HQ.sectors).forEach(k => { DOOR_HQ.rooms[hqBayId(k)] = hqBayRoom(k); });
-/* Door lamp state (HQ plan §3.5): sealed | clearance | unstable | stabilized
-   | open. Rooms: open unless a clearance gate holds. Bays: green once every
-   map in the sector is mastered, red while the sector is locked. A
-   threshold (action.mission) reads its own site's mastery. */
+/* ── Keys (HQ plan 3.2) ────────────────────────────────────────────────
+   { keys, pickups, issued }: pickups = the `hourglasses` achievement counter
+   summed over its pvp / cpu / legacy buckets (monotonic, rides the progress
+   sync); issued = door.hq.keys (Department grants). */
+function hqKeys(profile) {
+    let pickups = 0, issued = 0;
+    try {
+        const c = profile && profile.progress && profile.progress.counters && profile.progress.counters[DOOR_HQ.keys.counter];
+        if (c) pickups = ((c.pvp | 0) + (c.cpu | 0) + (c.legacy | 0)) || 0;
+    } catch (e) {}
+    try { issued = (profile && profile.door && profile.door.hq && profile.door.hq.keys) | 0; } catch (e) {}
+    return { keys: pickups + issued, pickups: pickups, issued: issued };
+}
+/* Keys short on a door (0 when it has no requirement or the count is met). */
+function hqKeysShort(door, profile) {
+    const need = (door && door.requiresKeys) | 0;
+    if (!need) return 0;
+    return Math.max(0, need - hqKeys(profile).keys);
+}
+
+/* ── Code Red (HQ plan 3.3) ────────────────────────────────────────────
+   hqToday() → the LOCAL calendar date as 'YYYY-MM-DD' (a Code Red lasts a
+   day on the officer's own clock). hqHash(str) → FNV-1a uint32. */
+function hqToday(d) {
+    d = d || new Date();
+    const p = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+function hqHash(str) {
+    let h = 2166136261;
+    const s = String(str || '');
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    return h >>> 0;
+}
+/* The day's Code Red for a profile, or null when the building is quiet.
+   Candidates are the profile's STABILIZED launch maps in unlocked sectors
+   (a Code Red is a stabilized door going wrong — nothing is reported until
+   at least one threshold is green); `force` (opts.force, else
+   DOOR_HQ.codeRed.force) names a site outright. The out-of-place entity is
+   a race with a POINT OF ENTRY at some OTHER site (never one of this site's
+   natives), filtered to rigged 3D races when the sprite table is loaded.
+   Returns { date, site, sector, label, race, cleared, bonus, forced } —
+   `cleared` when door.hq.codeRed records a win on this site today. */
+function hqCodeRed(profile, opts) {
+    opts = opts || {};
+    const date = opts.date || hqToday();
+    const force = (opts.force !== undefined) ? opts.force : DOOR_HQ.codeRed.force;
+    const META = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
+    let site = null, forced = false;
+    if (force && META.some(m => m.id === hqSiteId(force))) { site = hqSiteId(force); forced = true; }
+    const who = (typeof doorEmployeeNo === 'function') ? doorEmployeeNo(profile) : 'PENDING';
+    const seed = hqHash(date + '|' + who + '|codered');
+    if (!site) {
+        if (!profile) return null;
+        const cands = [];
+        for (const k in DOOR_HQ.sectors) {
+            const sec = DOOR_HQ.sectors[k];
+            if (sec.locked) continue;
+            for (const id of sec.maps) if (hqMapMastered(id, profile)) cands.push(id);
+        }
+        if (!cands.length) return null;
+        site = cands[seed % cands.length];
+    }
+    const meta = META.find(m => m.id === site);
+    const label = meta ? meta.label : site;
+    const natives = (typeof doorSiteCrossings === 'function') ? doorSiteCrossings(label) : [];
+    const ready = (r) => (typeof isRace3DReady !== 'function') || isRace3DReady(r);
+    const all = (typeof AVAILABLE_RACES !== 'undefined') ? AVAILABLE_RACES : Object.keys(DOOR_TEXT.POINT_OF_ENTRY);
+    let pool = all.filter(r => natives.indexOf(r) < 0 && DOOR_TEXT.POINT_OF_ENTRY[r] && DOOR_TEXT.POINT_OF_ENTRY[r] !== label && ready(r));
+    if (!pool.length) pool = all.filter(r => natives.indexOf(r) < 0 && ready(r));
+    if (!pool.length) pool = all.slice();
+    const race = pool[hqHash(seed + '|' + site + '|entity') % pool.length];
+    let cleared = false;
+    try {
+        const rec = profile && profile.door && profile.door.hq && profile.door.hq.codeRed;
+        cleared = !!(rec && rec.cleared && rec.date === date && rec.site === site);
+    } catch (e) {}
+    return { date: date, site: site, sector: hqSectorOfMap(site), label: label, race: race, from: DOOR_TEXT.POINT_OF_ENTRY[race] || 'UNKNOWN',
+             cleared: cleared, bonus: DOOR_HQ.codeRed.bonusGold | 0, forced: forced, seed: seed };
+}
+/* The CPU roster for a Code Red crossing: the out-of-place entity leads
+   (drawn first — `natives` = 1 pins it), the site's own pool follows. */
+function hqCodeRedPool(cr, n) {
+    n = n || 4;
+    if (!cr || !cr.site) return [];
+    const base = hqMissionPool(cr.site, n);
+    const out = [cr.race];
+    for (const r of base) if (out.indexOf(r) < 0) out.push(r);
+    out.natives = 1;
+    return out;
+}
+/* Door lamp state (HQ plan §3.5): sealed | clearance | codered | unstable |
+   stabilized | open. Rooms: open unless a clearance / Keys gate holds.
+   Bays: green once every map in the sector is mastered, red while the
+   sector is locked, STROBING while the day's Code Red sits behind one of
+   its thresholds. A threshold (action.mission) reads its own site's
+   mastery, or strobes when it is the Code Red site (until cleared today). */
 function doorSiteState(door, profile) {
     if (!door) return 'open';
     const lv = (typeof doorClearance === 'function') ? doorClearance(profile).level : 1;
     if (door.minClearance && lv < door.minClearance) return 'clearance';
+    if (hqKeysShort(door, profile) > 0) return 'clearance';
     const act = door.action || {};
     if (act.sector) {
         const sec = DOOR_HQ.sectors[act.sector];
         if (!sec) return 'sealed';
         if (sec.locked) return 'sealed';
+        const cr = hqCodeRed(profile);
+        if (cr && !cr.cleared && cr.sector === act.sector) return 'codered';
         return sec.maps.every(id => hqMapMastered(id, profile)) ? 'stabilized' : 'unstable';
     }
     if (act.mission) {
-        const sk = hqSectorOfMap(hqSiteId(act.mission));
+        const site = hqSiteId(act.mission);
+        const sk = hqSectorOfMap(site);
         const sec = sk ? DOOR_HQ.sectors[sk] : null;
         if (!sec) return 'sealed';
         if (sec.locked) return 'sealed';
+        const cr = hqCodeRed(profile);
+        if (cr && !cr.cleared && cr.site === site) return 'codered';
         return hqMapMastered(act.mission, profile) ? 'stabilized' : 'unstable';
     }
     return 'open';
@@ -16023,4 +16139,10 @@ if (typeof window !== 'undefined') {
     window.hqBayId = hqBayId;
     window.hqBayRoom = hqBayRoom;
     window.doorSiteState = doorSiteState;
+    window.hqKeys = hqKeys;
+    window.hqKeysShort = hqKeysShort;
+    window.hqToday = hqToday;
+    window.hqHash = hqHash;
+    window.hqCodeRed = hqCodeRed;
+    window.hqCodeRedPool = hqCodeRedPool;
 }

@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 7 (2026-09-03 — Phase 2.7 the janitor’s closet, the first interior, §9)
+### The walkable facility that replaces the Play menu · rev 8 (2026-09-04 — Phase 3 complete: Code Red, Keys, the promotion moment, §9)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -272,10 +272,10 @@ building is complete on day one and fills in as assets arrive.
 | State | Lamp | Dressing | Rule |
 |---|---|---|---|
 | `sealed` | off | planks over the frame | sector `minChapter` not reached (Phase 4; never sealed before then) |
-| `clearance` | red | tape, "CLEARANCE REQUIRED" | `profile.door.clearance < minClearance` (or Keys short) |
+| `clearance` | red | tape, "CLEARANCE REQUIRED" | `profile.door.clearance < minClearance` **or `requiresKeys` short** (`hqKeysShort`, shipped 3.2) — the panel names which |
 | `unstable` | amber, slow pulse | — | playable, not mastered |
 | `stabilized` | green | "STABILIZED" plate | mastered (D9) |
-| `codered` | red strobe | doorbell icon | Code Red active (Phase 3) |
+| `codered` | red strobe | doorbell icon | the day's Code Red (`hqCodeRed(profile)`, shipped 3.3): the threshold of the picked site AND its bay door in the egress, until `door.hq.codeRed` records a win on that site today. The leaf still opens (you are being sent through it). |
 
 ### 3.6 Loading screen
 `_hqLoading(onDone)` reuses the `.ls-*` kit (grain, motes, the memo /
@@ -374,19 +374,32 @@ lamp/frame details → furniture → fixtures → machinery.
 - 3.1 ✅ (2026-09-03, §9) Mastery v1 on every threshold (1.4); the
   per-condition checklist in the bay door panel; the STABILIZED plate chip
   (1.2); the result-screen THRESHOLD STABILIZED tag.
-- 3.2 Keys: per-profile counter from `hourglasses` wins/pickups;
-  restricted doors require rank + Keys.
-- 3.3 Code Red: daily-seeded (date + profile) pick of one mastered map +
-  one out-of-place race; `doorbell` recipe rings on entering the egress;
-  the door strobes; the mission pins that race; bonus Hazard Pay/SP.
-- 3.4 ◐ Office door = rank (six leaves) — the leaf half shipped with 2.7
-  (`rankDoor` doors wear `DOOR_TEXT.CLEARANCE[level].door`, both sides);
-  `paChime` + card stamp on promotion still open.
+- 3.2 ✅ (2026-09-04, §9) Keys: `hqKeys(profile)` = the `hourglasses`
+  achievement counter (all buckets) + `door.hq.keys` (Department grants);
+  KEYS on the strip + in-tray; `requiresKeys` on the elevator (12) and the
+  Bureau of Continuity (24) on top of their rank gates; the panel says what
+  is short.
+- 3.3 ✅ (2026-09-04, §9) Code Red: `hqCodeRed(profile)` — one stabilized
+  site a day (date + employee no.), an entity filed elsewhere; the bay door
+  + threshold strobe; `doorbell` rings on the way into the egress; the
+  strip pill + brief; RESPOND pins the entity to the CPU roster
+  (`hqCodeRedPool`); a same-day win clears it and pays `codeRed.bonusGold`
+  (200) with a CODE RED CLEARED tag on the result stamp. SP bonus waits
+  for the SP meter (4.1). Dev: `?codered=<mapId>`.
+- 3.4 ✅ (2026-09-04, §9) Office door = rank (the leaf half shipped with
+  2.7) **and the promotion moment**: the building compares
+  `doorClearance` to `door.hq.seenClearance` on entry → `paChime`, the
+  PERSONNEL NOTICE panel, a PROMOTED stamp on the card back, the new leaf
+  already hung. What promotes is still the story track (4.1);
+  `window._doorPromote(n)` is the dev / story hook.
+- Exit: Phase 3 is complete — every lamp state in §3.5 is reachable.
 
 ### Phase 4 — Story lives in the building (1–2 sessions, ⚙)
 - 4.1 The office in-tray = case-file screen: SP meter, chapters, pending
   directive, AWAITING FIELD WORK (`requires`), memos (`dotMatrix`),
-  commendations; `fax` on arrival.
+  commendations; `fax` on arrival. Hooks already waiting: Code Red clears
+  (`door.hq.codeRedsCleared`) as a commendation + SP bonus; promotion via
+  `promoteTo` lands on `_hqCheckPromotion` for free.
 - 4.2 First-visit micro-scenes per place (`playCutscene`); the handler.
 - 4.3 Orientation in the Training Room: the VHS tape (ident CSS kit),
   "please do not turn around", the tutorial match on the Phase 6 map,
@@ -608,6 +621,115 @@ Guild Hub was the prototype; this plan is the building.
 - Hazard Pay wallet on the strip vs only at the Quartermaster. Rec: strip.
 
 ## 9. Build log (append per session)
+
+### 2026-09-04 (Phase 3 close) — Code Red, Keys, the promotion moment
+User: "continue with the DOOR master doc and the HQ build plan". Next in
+the standing list were 3.3 → 3.2 → 3.4; all three shipped, so **Phase 3
+is complete** and every §3.5 lamp state is now reachable. `npm test` 113
+(112 pass, the server smoke skips without node_modules; doorhq.test.js
++8, three older checks updated for the new rules). Cache token
+`20260904c-cors` → `20260904d-cors`. Files: data.js, map.js, battle.js,
+three-renderer.js, audio.js, styles-base.css, index.html, doorhq.test.js.
+No mid-match surface → no relay work (RULE #2); everything reads the
+local profile.
+
+**3.3 Code Red (data.js `hqCodeRed`, `hqCodeRedPool`, `hqToday`,
+`hqHash`, `DOOR_HQ.codeRed`).** Once a day one STABILIZED threshold goes
+wrong. Candidates = the profile's mastered launch maps in unlocked sectors
+(nothing is reported until at least one lamp is green — a Code Red is a
+green door misbehaving); the pick is `hqHash(localDate | employeeNo |
+'codered') % candidates`, so it is the same all day and different
+tomorrow. The out-of-place entity is a race whose POINT OF ENTRY is some
+OTHER site and never one of this site's natives (rigged-3D filter when
+the sprite table is loaded, like `hqMissionPool`). `doorSiteState`
+returns `codered` for that site's threshold AND its bay door in the
+egress (the strobe already existed in the renderer; the plate chip reads
+CODE RED) until `door.hq.codeRed = {date, site, race, cleared}` matches
+today. Flow (map.js): the strip grows a strobing **CODE RED · SITE**
+pill (`#hqCodeRed`, click → the brief overlay with WALK / ENTER THE BAY);
+the threshold panel and the bay-door row carry the brief + **RESPOND ▸
+CROSS · ENTITY PINNED** (`data-codered`); `_hqLaunchMission` treats ANY
+launch onto the Code Red site today (CROSS, DEEP or RESPOND) as the
+response: it builds the roster from `hqCodeRedPool` (the entity
+first, `natives = 1`, so `randomizePartyIdentities` always draws it,
+then the site's own pool) and sets `window._hqCodeRedRun = {date, site,
+race, label, bonus}`; `_msConfirm` keeps the marker only while the
+launched card is still that site, `_msBack` / `_goToVsCpu` / any
+`_hqEnter` clear it. **audio.js `doorbell`**: a household ding-dong
+(E5→C5, bar-chime partials) rung twice, the second a little harder and
+flat — plays 1.4 s after entering the egress from Play or a return, once
+per Code Red per session (`_hqBellRungFor`), never on room-to-room walks;
+file override key `doorDoorbell`. **battle.js commit**
+(`commitAchProgress`, after the mastery flag): a WIN with the marker on
+the same site + date writes `door.hq.codeRed` cleared, bumps
+`door.hq.codeRedsCleared`, `creditLocalGold(200)` (local mirror, like
+tier gold) and sets `window._lastHqCodeRed`; `_stampHqSite` shows
+**CODE RED CLEARED · SITE · 💰 +200 HAZARD PAY** (red tag) in place of
+the mastery tag. The marker is consumed win or lose. Renderer:
+`HQ_DOOR_LOCKED` drops `codered` — the breach door opens for the
+responder. Dev: `?codered=<mapId>` (or `DOOR_HQ.codeRed.force`) puts it
+on any site with no mastery.
+
+**3.2 Keys (data.js `hqKeys`, `hqKeysShort`, `DOOR_HQ.keys`).** Keys are
+hourglasses (MASTER A9): `keys = pickups + issued`, pickups = the
+`hourglasses` achievement counter summed over pvp / cpu / legacy
+(monotonic, already synced), issued = `door.hq.keys` (story grants, none
+yet). `requiresKeys` on a door → `clearance` (red) while short, on top of
+`minClearance`: the **elevator asks 12**, the **Bureau of Continuity
+24** (both still rank-gated too; thresholds and bays never ask — a test
+enforces it). The strip shows **KEYS n** (`#hqKeys`), the in-tray has a
+KEYS SECURED row, the panel's disabled button and note say exactly what
+is short (`_hqGateLabel` / `_hqGateText`: "CLEARANCE L4 + 12 KEYS
+REQUIRED", "12 KEYS REQUIRED · 9 SHORT"). Engine-side "Keys" wording on
+the pickups (6.3) is still open.
+
+**3.4 the promotion moment (map.js `_hqCheckPromotion`,
+`_hqNoticePanelHtml`, `window._doorPromote`).** Nothing in the game
+promotes yet (that is the story track, 4.1); what shipped is the
+building's reaction so any writer of `door.clearance` gets the ceremony
+for free. On every non-walk entry: if `doorClearance(p).level >
+door.hq.seenClearance` → ~1.7 s after entry (the load card is gone)
+`paChime`, then 1.5 s later the **PERSONNEL NOTICE** panel (kicker
+EFFECTIVE IMMEDIATELY · canon date, the new title large, "CLEARANCE L2 ·
+FORMERLY L1 DOORMAT", a thunking PROMOTED stamp, the memo line naming
+the new leaf, SEE THE DOOR ▸ YOUR OFFICE / YOUR CARD / NOTED) with a
+`stamp` thunk; `door.cardStamps` gains `{word:'PROMOTED', ink:'admit',
+note:'L2 · DOORSTOP · <canon>', kind:'promotion', level}` (the card back
+already renders these); `seenClearance` is saved. A profile seen for the
+first time is acknowledged silently at its current level (no ceremony
+for legacy L1s). The leaf itself needs no work: scenes rebuild on enter
+and `rankDoor` doors already wear `doorClearance().door`. Dev / story
+hook: `window._doorPromote(3)` → KNOCKER, re-enters the egress when it is
+open so the notice plays.
+
+**First-run checklist for the user:** (1) `index.html?codered=prebuilt_
+mars` → Play: the doorbell rings ~1.4 s in, the strip shows CODE RED ·
+MARS strobing, BAY 4 · CELESTIAL's lamp strobes; (2) click the pill: the
+brief names an entity and its point of entry, WALK TO BAY 4 works; (3) E
+at Bay 4 → the row for Mars reads CODE RED with RESPOND ▸ Δ; ENTER THE
+BAY → the Mars threshold strobes, its leaf still opens as you approach,
+its panel leads with the red brief; (4) RESPOND: match select is
+pre-filled on Mars Δ, and after CONFIRM the CPU party's first unit is the
+named entity; (5) win it: the result stamp carries CODE RED CLEARED · 💰
++200, the wallet grew by 200 beyond the match, and back in the building
+the pill reads CLEARED (green) and Bay 4 is green again; a LOSS leaves it
+strobing and RESPOND re-arms; (6) `?codered=` off, with a real mastered
+site the Code Red only appears once a threshold is green; (7) Keys: the
+strip's KEYS count equals your hourglass pickups on the achievements
+page; the ELEVATOR panel's disabled button reads CLEARANCE L4 + 12 KEYS
+REQUIRED; (8) console `_doorPromote(2)`: chime → PERSONNEL NOTICE
+DOORSTOP → PROMOTED stamp → the office door is the hollow-core leaf;
+`_doorPromote(1)` puts it back (no notice for a demotion).
+
+**Next (in order):** 4.1 the case-file screen proper (SP meter,
+`DOOR_TEXT.CHAPTERS`, `promoteTo` → `_hqCheckPromotion`, memos,
+commendations — Code Red clears and stabilized counts are the first
+two); 6.3 Keys wording on the hourglass pickups + THRESHOLD STABILIZED;
+§3.9 the in-game layout editor; gamepad in the hall; a first-visit
+micro-scene at the desk (4.2); the training room (6.1) as the next box
+room. Open: should a Code Red ALSO pay SP once the meter exists (yes,
+rec. +5); whether Code Red should pick among UNSTABLE sites too once a
+profile has stabilized ≥ 6 (rec. no — the joke is the green lamp).
 
 ### 2026-09-04 (batch 2) — fourteen more leaves, the whole rank ladder moves
 User uploaded the wishlist to `/doors` (14 GLBs, all single leaves, one

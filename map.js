@@ -152,6 +152,13 @@
         /* screens that are pure DOM modals over whatever page is showing —
            the building waits underneath; their unmount resumes it */
         const _HQ_MODAL = { _mountReactProfile: '_unmountReactProfile', _mountLeaderboard: '_unmountLeaderboard' };
+        /* dev: ?codered=<mapId> forces the day's Code Red onto that site (HQ
+           plan 3.3) — no mastery needed; data.js hqCodeRed reads the force */
+        try {
+            const _crm = location.search.match(/[?&]codered=([a-z0-9_]+)/i);
+            if (_crm && typeof DOOR_HQ !== 'undefined' && DOOR_HQ.codeRed) DOOR_HQ.codeRed.force = _crm[1];
+        } catch (e) {}
+        let _hqBellRungFor = null;   // 'date|site' the doorbell already rang for this session
         window._hqEnabled = function () {
             try {
                 if (window.EW_DISABLE_HQ) return false;
@@ -248,6 +255,24 @@
                     ms.innerHTML = mc ? `STABILIZED <b>${mc.mastered}</b> / ${mc.total}` : '';
                     ms.title = 'Thresholds won by every win condition (green bay lamps)';
                 }
+                /* Keys (plan 3.2): every hourglass ever secured + Department grants */
+                const ks = _hqEl('hqKeys');
+                if (ks) {
+                    const k = (typeof window.hqKeys === 'function') ? window.hqKeys(profile) : null;
+                    ks.innerHTML = k ? `KEYS <b>${k.keys}</b>` : '';
+                    ks.title = k ? `Keys secured: ${k.pickups} hourglass${k.pickups === 1 ? '' : 'es'} collected in the field${k.issued ? ` + ${k.issued} issued by the Department` : ''}. Restricted doors ask for rank AND Keys.` : '';
+                }
+                /* the day's Code Red (plan 3.3): strobes until cleared */
+                const cp = _hqEl('hqCodeRed');
+                if (cp) {
+                    const cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(profile) : null;
+                    if (cr) {
+                        cp.style.display = '';
+                        cp.classList.toggle('cleared', !!cr.cleared);
+                        cp.innerHTML = cr.cleared ? `CODE RED · <b>${_hqEsc(cr.label.toUpperCase())}</b> · CLEARED` : `CODE RED · <b>${_hqEsc(cr.label.toUpperCase())}</b>`;
+                        cp.title = cr.cleared ? 'Cleared today. The lamp is green again until tomorrow.' : `${String(cr.race).toUpperCase()} (filed at ${cr.from}) reported behind the ${cr.label} threshold. Click for the brief.`;
+                    } else { cp.style.display = 'none'; cp.innerHTML = ''; }
+                }
             } catch (e) {}
         }
         window._hqEnter = function (opts) {
@@ -274,6 +299,7 @@
             _hqHome = true;
             _hqSuspended = false;
             window._hqPreselect = null;
+            window._hqCodeRedRun = null;   // back in the building = not in a Code Red crossing (the commit consumed it)
             state.gameState = GS.HQ;
             state.titleScreenVisible = true;
             _hqFillStrip(profile);
@@ -329,7 +355,98 @@
             window._hqRelabelMenuButtons();
             try { if (typeof startDoorRoomTone === 'function') startDoorRoomTone(); } catch (e) {}
             try { syncMusicToState().catch(() => {}); } catch (e) {}
+            /* Code Red (plan 3.3): the doorbell rings once per Code Red per
+               session on the way into the egress — from Play or back from a
+               screen / match, never when walking room to room */
+            if (!walking && roomId === 'central_egress') {
+                try {
+                    const cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(profile) : null;
+                    const key = cr && !cr.cleared ? (cr.date + '|' + cr.site) : null;
+                    if (key && _hqBellRungFor !== key) {
+                        _hqBellRungFor = key;
+                        if (typeof playDoorSfx === 'function') playDoorSfx('doorbell', { delay: 1.4, volume: 0.9 });
+                    }
+                } catch (e) {}
+            }
+            /* the promotion moment (plan 3.4): a clearance the building has
+               not acknowledged yet → PA chime + the personnel notice */
+            if (!walking) { try { _hqCheckPromotion(profile); } catch (e) { console.warn('[HQ] promotion check failed', e); } }
             return true;
+        };
+        /* ── the promotion moment (HQ plan 3.4 / MASTER B3) ──────────────────
+           Whatever promotes the profile (the story track, a directive, the
+           dev entry below) only writes door.clearance; the BUILDING notices:
+           on the next entry the clearance is above door.hq.seenClearance, so
+           after the load card fades the PA chimes, the personnel notice opens
+           (the new title, the door it issues — already hung, scenes rebuild
+           on enter), a PROMOTED stamp lands on the card back, and the seen
+           level is saved. A profile seen for the first time is acknowledged
+           silently at its current level (legacy L1s get no ceremony). */
+        function _hqCheckPromotion(profile) {
+            if (!profile || typeof window.doorClearance !== 'function') return false;
+            const PS = window.ProfileSystem;
+            if (!PS || typeof PS.getActiveProfileIndex !== 'function') return false;
+            const idx = PS.getActiveProfileIndex();
+            if (idx === null || idx === undefined) return false;
+            const p = PS.loadProfile(idx);
+            if (!p) return false;
+            if (!p.door || typeof p.door !== 'object') p.door = {};
+            if (!p.door.hq || typeof p.door.hq !== 'object') p.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+            const cl = window.doorClearance(p);
+            const seen = p.door.hq.seenClearance | 0;
+            if (!seen) { p.door.hq.seenClearance = cl.level; PS.saveProfile(idx, p); return false; }
+            if (cl.level <= seen) return false;
+            const prev = (typeof DOOR_TEXT !== 'undefined' && DOOR_TEXT.CLEARANCE[seen - 1]) || { level: seen, title: '?' };
+            if (!Array.isArray(p.door.cardStamps)) p.door.cardStamps = [];
+            const canon = (typeof window.doorCanonDate === 'function') ? window.doorCanonDate() : '';
+            p.door.cardStamps.push({ word: 'PROMOTED', ink: 'admit', note: `L${cl.level} · ${cl.title} · ${canon}`, kind: 'promotion', level: cl.level, at: Date.now() });
+            p.door.hq.seenClearance = cl.level;
+            PS.saveProfile(idx, p);
+            const notice = { kind: 'notice', id: 'promotion', label: 'PERSONNEL NOTICE', sub: 'HUMAN RESOURCES · CLEARANCE', notice: 'promotion', level: cl.level, title: cl.title, door: cl.door, prevLevel: prev.level, prevTitle: prev.title, canon };
+            setTimeout(() => {
+                if (state.gameState !== GS.HQ || _hqSuspended) return;
+                try { if (typeof playDoorSfx === 'function') playDoorSfx('paChime', { volume: 0.9 }); } catch (e) {}
+                setTimeout(() => {
+                    if (state.gameState !== GS.HQ || _hqSuspended) return;
+                    if (_hqPanelTarget) window._hqClosePanel();
+                    _hqOpenPanel(notice);
+                    try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { delay: 0.35, volume: 0.8 }); } catch (e) {}
+                }, 1500);
+            }, Math.max(0, 1700 - (performance.now() - _hqEnteredAt)));
+            return true;
+        }
+        function _hqNoticePanelHtml(t) {
+            const leafName = k => String(k || '').replace(/^leaf_/, '').replace(/_/g, ' ').toUpperCase();
+            const name = (_hqProfile() || {}).username || 'OFFICER';
+            let html = `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div>`;
+            html += '<div class="hq-notice">';
+            html += `<div class="hq-notice-kicker">EFFECTIVE IMMEDIATELY · ${_hqEsc(t.canon || 'D.O.O.R.')}</div>`;
+            html += `<div class="hq-notice-title">${_hqEsc(t.title)}</div>`;
+            html += `<div class="hq-notice-sub">CLEARANCE L${t.level} · FORMERLY L${t.prevLevel} ${_hqEsc(t.prevTitle)}</div>`;
+            html += '<span class="door-stamp admit thunk">PROMOTED</span>';
+            html += `<p class="hq-panel-desc">${_hqEsc(name)} is hereby ${_hqEsc(t.title)}. Your office door has been replaced with a ${_hqEsc(leafName(t.door).toLowerCase())}. Do not comment on the old one. A stamp has been added to the back of your card; the laminator has been informed.</p>`;
+            html += '</div>';
+            html += '<div class="hq-panel-actions">' + (_hqCurRoom === 'central_egress' ? '<button class="hq-btn hq-btn-primary" data-goto="office">SEE THE DOOR ▸ YOUR OFFICE</button>' : '') + '<button class="hq-btn" data-fn="_mountReactProfile">YOUR CARD ▸ PROFILE</button><button class="hq-btn" data-close="1">NOTED</button></div>';
+            html += '<p class="hq-panel-note">Clearance is story progress, never ELO. The building acknowledges each promotion once.</p>';
+            return html;
+        }
+        /* dev / story hook: promote (or demote) the active profile and let the
+           building react on the next entry (re-enters the egress when it is
+           open). window._doorPromote(3) → KNOCKER. */
+        window._doorPromote = function (level) {
+            try {
+                const PS = window.ProfileSystem;
+                const idx = PS.getActiveProfileIndex();
+                const p = PS.loadProfile(idx);
+                if (!p) return false;
+                if (!p.door || typeof p.door !== 'object') p.door = {};
+                const max = (typeof DOOR_TEXT !== 'undefined') ? DOOR_TEXT.CLEARANCE.length : 6;
+                p.door.clearance = Math.max(1, Math.min(max, level | 0 || 1));
+                PS.saveProfile(idx, p);
+                console.log('[DOOR] clearance set to L' + p.door.clearance);
+                if (state.gameState === GS.HQ && !_hqSuspended) { window._hqLeave(); window._hqEnter({ room: 'central_egress', quiet: true, from: 'return' }); }
+                return p.door.clearance;
+            } catch (e) { console.warn('[DOOR] promote failed', e); return false; }
         };
         window._hqLeave = function () {
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) ThreeRenderer.hq.leave(); } catch (e) { console.error('[HQ] leave failed', e); }
@@ -449,8 +566,21 @@
             if (idx < 0) { console.warn('[HQ] no launch entry for', mapId); return false; }
             const entry = MS_MAP_LIST[idx];
             const teamSize = o.teamSize || (delta ? 4 : (entry.team || 4));
-            const roster = (typeof window.hqMissionPool === 'function') ? window.hqMissionPool(site, teamSize) : [];
-            window._hqPreselect = { mapId: site, launchId, delta, teamSize, gm: 'arena', roster, doorId: o.doorId || null, doorLabel: o.doorLabel || '' };
+            /* a Code Red response (plan 3.3): the out-of-place entity leads the
+               CPU roster; the run marker is what the match commit (battle.js)
+               reads to clear the Code Red and pay the hazard bonus */
+            let cr = null;
+            if (typeof window.hqCodeRed === 'function') {
+                /* ANY crossing onto the day's Code Red site is the response —
+                   CROSS, DEEP or RESPOND alike; the door is in Code Red
+                   whatever button you pressed */
+                cr = window.hqCodeRed(_hqProfile());
+                if (!cr || cr.cleared || cr.site !== site) cr = null;
+            }
+            const roster = cr && typeof window.hqCodeRedPool === 'function' ? window.hqCodeRedPool(cr, teamSize)
+                : ((typeof window.hqMissionPool === 'function') ? window.hqMissionPool(site, teamSize) : []);
+            window._hqCodeRedRun = cr ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;
+            window._hqPreselect = { mapId: site, launchId, delta, teamSize, gm: 'arena', roster, doorId: o.doorId || null, doorLabel: o.doorLabel || '', codeRed: !!cr };
             window._msCpuOnly = true;
             if (o.doorId) { _hqLastDoor = o.doorId; _hqLastRoom = _hqCurRoom; _hqRecordVisit(o.doorId); }
             try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.6 }); } catch (e) {}
@@ -478,6 +608,44 @@
             const labels = DOOR_HQ.masteryLabels || {};
             return DOOR_HQ.masteryConditions.map(c => `<i class="hq-check ${sm.have[c] ? 'ok' : 'no'}" title="${_hqEsc(c)}">${sm.have[c] ? '☑' : '☐'} ${_hqEsc(labels[c] || c)}</i>`).join('');
         }
+        /* The Code Red brief (HQ plan 3.3): who was reported where, what it
+           pays, RESPOND (the crossing with the entity pinned). Shared by the
+           threshold panel, the bay-door row and the strip pill's overlay. */
+        function _hqCodeRedBriefHtml(cr, o) {
+            o = o || {};
+            const ent = String(cr.race || '').toUpperCase();
+            let html = '<div class="hq-codered">';
+            html += cr.cleared ? '<b>CODE RED · CLEARED</b>' : '<b>CODE RED · ACTIVE BREACH</b>';
+            html += `<p>${cr.cleared ? 'Earlier today' : 'This morning'} the ${_hqEsc(cr.label)} threshold — STABILIZED, on file, green — reported <i class="hq-chip">${_hqEsc(ent)}</i> on the far side. ${_hqEsc(ent)} is filed at <em>${_hqEsc(String(cr.from).toUpperCase())}</em> and has no business being ${_hqEsc(cr.label === cr.from ? 'here' : 'there')}. ${cr.cleared ? 'You put it back. The lamp is green again until tomorrow.' : 'Cross, put it back, and the Department pays a hazard bonus of <em class="pay">💰 +' + (cr.bonus | 0) + ' Hazard Pay</em> on top of the match.'}</p>`;
+            if (o.respond && !cr.cleared) html += `<div class="hq-panel-actions" style="margin-top:8px"><button class="hq-btn hq-btn-codered" data-codered="${_hqEsc(cr.site)}" title="Arena · 4v4 on the Δ board · the CPU fields ${_hqEsc(ent)} and the site's natives">RESPOND ▸ CROSS · ${_hqEsc(ent)} PINNED</button></div>`;
+            html += '</div>';
+            return html;
+        }
+        /* the strip pill / anywhere in the building: the brief + the way there */
+        function _hqCodeRedHtml() {
+            const profile = _hqProfile();
+            const cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(profile) : null;
+            let html = '<div class="hq-panel-hd"><b>CODE RED</b><span>BOUNDARY EVENT · ONE PER DAY · DISPATCH HAS BEEN INFORMED</span></div>';
+            if (!cr) return html + '<p class="hq-panel-desc">No Code Red on the board. Stabilize a threshold and one of them will, eventually, go wrong.</p><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>';
+            html += _hqCodeRedBriefHtml(cr, { respond: true });
+            const room = _hqRoom();
+            const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(cr.sector) : ('bay_' + cr.sector);
+            html += '<div class="hq-panel-actions">';
+            if (room && room.kind === 'bay' && room.sector === cr.sector) html += `<button class="hq-btn" data-goto="site_${_hqEsc(cr.site)}">WALK TO THE THRESHOLD</button>`;
+            else if (_hqCurRoom === 'central_egress') {
+                const bd = (DOOR_HQ.rooms.central_egress.doors || []).find(d => d.action && d.action.sector === cr.sector);
+                if (bd) html += `<button class="hq-btn" data-goto="${_hqEsc(bd.id)}">WALK TO ${_hqEsc(bd.label)}</button>`;
+                if (_hqRoomExists(bayId)) html += `<button class="hq-btn" data-room="${_hqEsc(bayId)}" data-at="egress">ENTER THE BAY</button>`;
+            } else if (_hqRoomExists(bayId)) html += `<button class="hq-btn" data-room="${_hqEsc(bayId)}" data-at="egress">GO TO THE BAY</button>`;
+            html += '<button class="hq-btn" data-close="1">NOTED</button></div>';
+            html += '<p class="hq-panel-note">One Code Red a day, picked from your stabilized thresholds by the date and your employee number. Everyone in the building already knows; nobody will mention it.</p>';
+            return html;
+        }
+        window._hqOpenCodeRed = function () {
+            if (_hqSuspended || state.gameState !== GS.HQ) return;
+            if (_hqPanelTarget) window._hqClosePanel();
+            _hqOpenPanel({ kind: 'counter', id: 'codered', label: 'CODE RED', sub: 'BOUNDARY EVENT', counter: { id: 'codered', action: { overlay: 'codered' } } });
+        };
         /* A threshold door inside a bay (HQ plan 2.6): the site file, the
            first documented crossing, the entities on file, the checklist,
            CROSS ▸ Δ / DEEP. */
@@ -491,7 +659,9 @@
             const canCross = st !== 'sealed' && st !== 'clearance';
             const caseNo = (typeof window.doorCaseNo === 'function') ? window.doorCaseNo(id) : '';
             const first = (typeof window.doorSiteCanonDate === 'function') ? window.doorSiteCanonDate(id) : '';
+            const cr = (st === 'codered' && typeof window.hqCodeRed === 'function') ? window.hqCodeRed(profile) : null;
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(d.label)}</b><span>${_hqEsc(d.sub || '')}</span>${_hqStateChip(st)}</div>`;
+            if (cr && cr.site === id) html += _hqCodeRedBriefHtml(cr, { respond: true });
             html += `<div class="hq-site"><span class="hq-row-stamp tone-${_hqEsc((sf && sf.tone) || 'deny')}">${_hqEsc((sf && sf.status) || 'ON FILE')}</span><span class="hq-site-kv"><b>JURISDICTION</b> ${_hqEsc((sf && sf.juris) || 'unassigned')}</span><span class="hq-site-kv"><b>FIRST DOCUMENTED CROSSING</b> ${_hqEsc(first)} · ${_hqEsc(caseNo)}</span></div>`;
             if (sf && sf.summary) html += `<p class="hq-panel-desc">${_hqEsc(sf.summary)}</p>`;
             if (meta && meta.desc) html += `<p class="hq-panel-note">FIELD: ${_hqEsc(meta.desc)}</p>`;
@@ -503,6 +673,21 @@
             if (st === 'sealed') html += '<p class="hq-panel-note">SEALED — this threshold opens with a story chapter.</p>';
             else html += '<p class="hq-panel-note">CROSS ▸ Δ = Arena, 4v4 on the site’s 8×8 board, the CPU fielding the entities on file for it. DEEP = the full map. Each ☐ is a win condition still to be filed; all three turn the lamp green.</p>';
             return html;
+        }
+        /* what a red CLEARANCE lamp is asking for: rank, Keys, or both (plan 3.2) */
+        function _hqGateLabel(d, cl, profile) {
+            const short = (typeof window.hqKeysShort === 'function') ? window.hqKeysShort(d, profile) : 0;
+            const rank = d.minClearance && cl.level < d.minClearance;
+            if (rank && short) return `CLEARANCE L${d.minClearance} + ${d.requiresKeys} KEYS REQUIRED`;
+            if (short) return `${d.requiresKeys} KEYS REQUIRED · ${short} SHORT`;
+            return `CLEARANCE L${d.minClearance} REQUIRED`;
+        }
+        function _hqGateText(d, cl, profile) {
+            const k = (typeof window.hqKeys === 'function') ? window.hqKeys(profile) : { keys: 0 };
+            const parts = [];
+            if (d.minClearance && cl.level < d.minClearance) parts.push(`CLEARANCE L${d.minClearance} required. Your card reads L${cl.level} · ${_hqEsc(cl.title)}.`);
+            if (d.requiresKeys) parts.push(`${d.requiresKeys} KEYS required · you hold ${k.keys}${k.keys < d.requiresKeys ? ` (${d.requiresKeys - k.keys} short)` : ''}. Keys are the hourglasses you secure in the field; every one you have ever picked up counts.`);
+            return parts.join(' ');
         }
         function _hqDoorPanelHtml(t) {
             const d = t.door, profile = _hqProfile();
@@ -516,6 +701,9 @@
                 const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(act.sector) : ('bay_' + act.sector);
                 html += `<p class="hq-panel-desc">Sector ${_hqEsc(sec.label)} · ${_hqEsc(sec.sub || '')}. ${sec.maps.length} threshold${sec.maps.length === 1 ? '' : 's'} on file. Green when every threshold in the bay is stabilized (won by every win condition).</p>`;
                 const canCross = st !== 'sealed' && st !== 'clearance';
+                const cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(profile) : null;
+                const crHere = cr && !cr.cleared && cr.sector === act.sector ? cr : null;
+                if (crHere) html += _hqCodeRedBriefHtml(crHere, { respond: false });
                 /* the bay is a corridor you walk (plan 2.6); the rows below are the quick dispatch */
                 if (_hqRoomExists(bayId)) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${canCross ? '' : 'disabled'} data-room="${_hqEsc(bayId)}" data-at="egress">ENTER THE BAY ▸ WALK THE THRESHOLDS</button></div>`;
                 html += '<div class="hq-rows">';
@@ -528,24 +716,30 @@
                     const nat = natives.natives || 0;
                     const tip = nat ? `Native entities: ${natives.slice(0, nat).join(', ')}` : 'No entity on file — the bay fields its neighbours';
                     const checks = _hqChecksHtml(sm);
-                    html += `<div class="hq-row hq-row-bay" title="${_hqEsc(tip)}"><b>${_hqEsc(_hqMapLabel(id))}</b><span class="hq-row-stamp tone-${_hqEsc((sf && sf.tone) || 'deny')}">${_hqEsc((sf && sf.status) || 'ON FILE')}</span><i class="hq-lamp-chip st-${mastered ? 'stabilized' : 'unstable'}">${mastered ? 'STABILIZED' : (sm ? `${sm.done}/${sm.total}` : 'UNSTABLE')}</i>`
-                        + `<div class="hq-row-btns"><button class="hq-btn hq-btn-sm hq-btn-primary" ${canCross ? '' : 'disabled'} data-cross="${_hqEsc(id)}" title="Arena · 4v4 on the 8×8 Δ board · CPU fields the site's natives">CROSS ▸ Δ</button><button class="hq-btn hq-btn-sm" ${canCross ? '' : 'disabled'} data-deep="${_hqEsc(id)}" title="Arena on the full map at its own team size">DEEP</button></div>`
+                    const isCr = !!(crHere && crHere.site === id);
+                    const chip = isCr ? '<i class="hq-lamp-chip st-codered">CODE RED</i>' : `<i class="hq-lamp-chip st-${mastered ? 'stabilized' : 'unstable'}">${mastered ? 'STABILIZED' : (sm ? `${sm.done}/${sm.total}` : 'UNSTABLE')}</i>`;
+                    const crossBtn = isCr
+                        ? `<button class="hq-btn hq-btn-sm hq-btn-codered" ${canCross ? '' : 'disabled'} data-codered="${_hqEsc(id)}" title="Arena · 4v4 on the Δ board · the CPU fields ${_hqEsc(String(crHere.race).toUpperCase())} and the site's natives · +${crHere.bonus} Hazard Pay">RESPOND ▸ Δ</button>`
+                        : `<button class="hq-btn hq-btn-sm hq-btn-primary" ${canCross ? '' : 'disabled'} data-cross="${_hqEsc(id)}" title="Arena · 4v4 on the 8×8 Δ board · CPU fields the site's natives">CROSS ▸ Δ</button>`;
+                    html += `<div class="hq-row hq-row-bay" title="${_hqEsc(tip)}"><b>${_hqEsc(_hqMapLabel(id))}</b><span class="hq-row-stamp tone-${_hqEsc((sf && sf.tone) || 'deny')}">${_hqEsc((sf && sf.status) || 'ON FILE')}</span>${chip}`
+                        + `<div class="hq-row-btns">${crossBtn}<button class="hq-btn hq-btn-sm" ${canCross ? '' : 'disabled'} data-deep="${_hqEsc(id)}" title="Arena on the full map at its own team size">DEEP</button></div>`
                         + (checks ? `<div class="hq-row-checks">${checks}</div>` : '') + '</div>';
                 });
                 html += '</div>';
                 if (st === 'sealed') html += '<p class="hq-panel-note">SEALED — this bay opens with a story chapter. The planks stay up.</p>';
-                else if (st === 'clearance') html += `<p class="hq-panel-note">CLEARANCE L${d.minClearance} required. Your card reads L${cl.level} · ${_hqEsc(cl.title)}.</p>`;
+                else if (st === 'clearance') html += `<p class="hq-panel-note">${_hqGateText(d, cl, profile)}</p>`;
                 else html += '<p class="hq-panel-note">CROSS ▸ Δ = Arena, 4v4 on the site’s 8×8 board, the CPU fielding the entities on file for it. DEEP = the full map. Each ☐ is a win condition still to be filed for the threshold; all three turn it green.</p>';
             } else {
                 if (d.desc) html += `<p class="hq-panel-desc">${_hqEsc(d.desc)}</p>`;
                 const locked = st === 'clearance';
                 html += '<div class="hq-panel-actions">';
                 if (act.fn) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-fn="${_hqEsc(act.fn)}">ENTER ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button>`;
-                else if (act.room && _hqRoomExists(act.room)) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-room="${_hqEsc(act.room)}" data-at="${_hqEsc(act.at || '')}">${locked ? 'CLEARANCE L' + d.minClearance + ' REQUIRED' : 'GO THROUGH ▸ ' + _hqEsc(DOOR_HQ.rooms[act.room].label || act.room)}</button>`;
-                else if (act.room) html += `<button class="hq-btn hq-btn-primary" disabled>${locked ? 'CLEARANCE L' + d.minClearance + ' REQUIRED' : 'INTERIOR NOT YET BUILT'}</button>`;
+                else if (act.room && _hqRoomExists(act.room)) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-room="${_hqEsc(act.room)}" data-at="${_hqEsc(act.at || '')}">${locked ? _hqGateLabel(d, cl, profile) : 'GO THROUGH ▸ ' + _hqEsc(DOOR_HQ.rooms[act.room].label || act.room)}</button>`;
+                else if (act.room) html += `<button class="hq-btn hq-btn-primary" disabled>${locked ? _hqGateLabel(d, cl, profile) : 'INTERIOR NOT YET BUILT'}</button>`;
                 [d.alt, d.alt2].forEach(a => { if (a && a.fn) html += `<button class="hq-btn" ${locked ? 'disabled' : ''} data-fn="${_hqEsc(a.fn)}">${_hqEsc(a.label)}</button>`; });
                 html += '</div>';
-                if (locked) html += `<p class="hq-panel-note">CLEARANCE L${d.minClearance} required. Your card reads L${cl.level} · ${_hqEsc(cl.title)}.</p>`;
+                if (locked) html += `<p class="hq-panel-note">${_hqGateText(d, cl, profile)}</p>`;
+                else if (d.requiresKeys) html += `<p class="hq-panel-note">KEYS ${d.requiresKeys} on file · you hold ${(typeof window.hqKeys === 'function') ? window.hqKeys(profile).keys : 0}. Admitted.</p>`;
                 if (d.rankDoor) html += '<p class="hq-panel-note">Your office door is your rank. A promotion replaces it (DOORMAT → DOORSTOP → KNOCKER → KEYHOLDER → GATEKEEPER → THE DOORMAN).</p>';
                 if (act.room && !locked && !_hqRoomExists(act.room)) html += `<p class="hq-panel-note">The interior behind this door (${_hqEsc(act.room)}) arrives in a later phase.</p>`;
             }
@@ -606,6 +800,13 @@
             else html += '<div class="hq-row hq-row-tray"><b>DIRECTIVE</b><span>NONE PENDING</span><i class="hq-lamp-chip st-off">EMPTY</i></div>';
             html += `<div class="hq-row hq-row-tray"><b>VISITS TO HQ</b><span>SIGN-IN SHEET</span><i class="hq-lamp-chip st-open">${(hq.visits || 0)}</i></div>`;
             if (mc) html += `<div class="hq-row hq-row-tray"><b>THRESHOLDS STABILIZED</b><span>GREEN LAMPS</span><i class="hq-lamp-chip st-${mc.mastered ? 'stabilized' : 'off'}">${mc.mastered} / ${mc.total}</i></div>`;
+            const keys = (typeof window.hqKeys === 'function') ? window.hqKeys(profile) : null;
+            if (keys) html += `<div class="hq-row hq-row-tray"><b>KEYS SECURED</b><span>HOURGLASSES${keys.issued ? ' + ISSUED' : ''}</span><i class="hq-lamp-chip st-${keys.keys ? 'open' : 'off'}">${keys.keys}</i></div>`;
+            const cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(profile) : null;
+            const crN = hq.codeRedsCleared | 0;
+            if (cr) html += `<div class="hq-row hq-row-tray"><b>CODE RED · TODAY</b><span>${_hqEsc(cr.label.toUpperCase())} · ${_hqEsc(String(cr.race).toUpperCase())}</span><i class="hq-lamp-chip st-${cr.cleared ? 'stabilized' : 'codered'}">${cr.cleared ? 'CLEARED' : 'OPEN'}</i></div>`;
+            else html += `<div class="hq-row hq-row-tray"><b>CODE RED · TODAY</b><span>${crN ? 'NONE ON THE BOARD' : 'STABILIZE A THRESHOLD FIRST'}</span><i class="hq-lamp-chip st-off">QUIET</i></div>`;
+            if (crN) html += `<div class="hq-row hq-row-tray"><b>CODE REDS CLEARED</b><span>HAZARD BONUSES PAID</span><i class="hq-lamp-chip st-open">${crN}</i></div>`;
             html += `<div class="hq-row hq-row-tray"><b>MEMOS READ · STAMPS ON CARD</b><span>INTEROFFICE</span><i class="hq-lamp-chip st-open">${memos} · ${stamps}</i></div>`;
             html += '</div>';
             const hist = (profile && Array.isArray(profile.matchHistory)) ? profile.matchHistory.slice(0, 4) : [];
@@ -622,6 +823,7 @@
             if (act.overlay === 'dispatch') return _hqDispatchHtml();
             if (act.overlay === 'directory') return _hqDirectoryHtml();
             if (act.overlay === 'intray') return _hqInTrayHtml();
+            if (act.overlay === 'codered') return _hqCodeRedHtml();
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
             if (c.id === 'board') html += '<p class="hq-panel-desc">Six laminated photographs. The frame in the corner has been empty since 1987. Nobody comments on it.</p>';
             if (act.fn) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="${_hqEsc(act.fn)}">READ THE BOARD ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button></div>`;
@@ -641,6 +843,7 @@
             let html = '';
             if (t.kind === 'door') html = _hqDoorPanelHtml(t);
             else if (t.kind === 'counter') html = _hqCounterPanelHtml(t);
+            else if (t.kind === 'notice') html = _hqNoticePanelHtml(t);
             else html = _hqNpcPanelHtml(t);
             body.innerHTML = html + '<p class="hq-panel-foot">ESC · CLOSE</p>';
             panel.style.display = '';
@@ -708,13 +911,14 @@
             if (fnBtn && !fnBtn.disabled) { window._hqDoAction({ fn: fnBtn.getAttribute('data-fn') }); return; }
             const roomBtn = e.target.closest('[data-room]');
             if (roomBtn && !roomBtn.disabled) { window._hqDoAction({ room: roomBtn.getAttribute('data-room'), at: roomBtn.getAttribute('data-at') || null }); return; }
-            const cross = e.target.closest('[data-cross],[data-deep]');
+            const cross = e.target.closest('[data-cross],[data-deep],[data-codered]');
             if (cross && !cross.disabled) {
                 const deep = cross.hasAttribute('data-deep');
-                const id = cross.getAttribute(deep ? 'data-deep' : 'data-cross');
+                const codeRed = cross.hasAttribute('data-codered');
+                const id = cross.getAttribute(deep ? 'data-deep' : (codeRed ? 'data-codered' : 'data-cross'));
                 const door = (_hqPanelTarget && _hqPanelTarget.kind === 'door') ? _hqPanelTarget : null;
                 window._hqClosePanel();
-                window._hqLaunchMission(id, { delta: !deep, doorId: door ? door.id : null, doorLabel: door ? door.label : '' });
+                window._hqLaunchMission(id, { delta: !deep, codeRed, doorId: door ? door.id : null, doorLabel: door ? door.label : '' });
                 return;
             }
             const go = e.target.closest('[data-goto]');
@@ -762,6 +966,7 @@
             window._msCpuOnly = true;
             window._hqPreselect = null;   // classic VS CPU: no D.O.O.R. pre-selection / pinned CPU pool
             window._hqCpuPool = null;
+            window._hqCodeRedRun = null;
             _showTitlePage('modePage');
         };
 
@@ -2390,6 +2595,7 @@
             playSfx('uiButtonConfirm');
             window._msCpuOnly = false;
             window._hqPreselect = null;
+            window._hqCodeRedRun = null;
             state.gameState = GS.MODE_SELECT;
             window._hqReturnOrMenu('playHubPage');
         };
@@ -2408,6 +2614,8 @@
             const _pre = window._hqPreselect || null;
             const _preSite = (_pre && mp && typeof window.hqSiteId === 'function') ? window.hqSiteId(mp.modeId) : null;
             window._hqCpuPool = (_pre && _preSite === _pre.mapId && Array.isArray(_pre.roster) && _pre.roster.length) ? _pre.roster : null;
+            /* a Code Red response only counts on ITS site (plan 3.3) */
+            if (!(_pre && _pre.codeRed && _preSite === _pre.mapId)) window._hqCodeRedRun = null;
             window._hqPreselect = null;
 
             // Δ maps are the hand-authored 8×8 boards (data.js DELTA FORGE,

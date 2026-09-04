@@ -28331,11 +28331,13 @@ const ThreeRenderer = (function () {
     }
     /* Doors open for the walker (2026-09-04): the door you are standing at
        (the interaction target) swings / slides open while you are there and
-       closes behind you when you walk off — a sealed, clearance-gated or
-       code-red door stays shut. Rank leaves, thresholds and bay doors all
-       ride this; static leaves (doubles, hatches, the portcullis, the
-       revolving door, the frame) have no `motion` and never move. */
-    var HQ_DOOR_LOCKED = { sealed: 1, clearance: 1, codered: 1, off: 1 };
+       closes behind you when you walk off — a sealed or clearance-gated
+       door stays shut. A CODE RED door (HQ plan 3.3) is a breach and opens
+       like any other: you are the one being sent through it. Rank leaves,
+       thresholds and bay doors all ride this; static leaves (doubles,
+       hatches, the portcullis, the revolving door, the frame) have no
+       `motion` and never move. */
+    var HQ_DOOR_LOCKED = { sealed: 1, clearance: 1, off: 1 };
     function _hqTickDoors(dt, targetKey) {
         var H = _hq;
         for (var i = 0; i < H.doors.length; i++) {

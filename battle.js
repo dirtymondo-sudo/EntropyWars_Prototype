@@ -9738,10 +9738,12 @@
                     window._lastAchDeltas = {};      // …nor stale "almost there" rows
                     window._lastRecordsBroken = [];
                     window._lastHqSiteFlag = null;   // …nor a stale HQ site tag on the stamp
+                    window._lastHqCodeRed = null;
                     return;
                 }
                 _achCommittedMatchKey = _matchKey;
                 window._lastHqSiteFlag = null;   // per match: the result screen only tags a flag written by THIS commit
+                window._lastHqCodeRed = null;
 
                 const viewer = getViewerPlayer();
                 const won = state.winner === viewer;
@@ -9884,6 +9886,40 @@
                         }
                     }
                 } catch (e) { console.warn('[HQ] mastery flag skipped', e); }
+
+                /* D.O.O.R. HQ Code Red (DOOR_HQ_BUILD_PLAN 3.3): a win on the
+                   day's Code Red site, launched as a response from the
+                   building (map.js _hqLaunchMission sets window._hqCodeRedRun
+                   with the date + site), clears it for the day —
+                   door.hq.codeRed on the profile — and pays the hazard bonus
+                   (local-mirror credit, like tier gold). The marker is
+                   consumed win or lose; a loss leaves the door strobing and
+                   the building re-arms it on the next RESPOND. Viewer-local,
+                   never on state (RULE #2). */
+                try {
+                    const run = window._hqCodeRedRun;
+                    window._hqCodeRedRun = null;
+                    if (run && won && kind === 'match' && typeof DOOR_HQ !== 'undefined' && typeof hqToday === 'function'
+                        && run.date === hqToday() && (typeof hqSiteId === 'function' ? hqSiteId(activeGameMode) : String(activeGameMode || '').replace(/_delta$/, '')) === run.site) {
+                        const PS = window.ProfileSystem;
+                        const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
+                        const p = (idx !== null && idx !== undefined && typeof PS.loadProfile === 'function') ? PS.loadProfile(idx) : null;
+                        if (p) {
+                            if (!p.door || typeof p.door !== 'object') p.door = {};
+                            if (!p.door.hq || typeof p.door.hq !== 'object') p.door.hq = { visits: 0, lastDoor: null, variantSeed: null, keys: 0 };
+                            const already = p.door.hq.codeRed && p.door.hq.codeRed.cleared && p.door.hq.codeRed.date === run.date && p.door.hq.codeRed.site === run.site;
+                            if (!already) {
+                                p.door.hq.codeRed = { date: run.date, site: run.site, race: run.race, cleared: true, at: Date.now() };
+                                p.door.hq.codeRedsCleared = (p.door.hq.codeRedsCleared | 0) + 1;
+                                PS.saveProfile(idx, p);
+                                const bonus = (DOOR_HQ.codeRed && DOOR_HQ.codeRed.bonusGold) | 0;
+                                if (bonus > 0 && typeof PS.creditLocalGold === 'function') PS.creditLocalGold(bonus);
+                                window._lastHqCodeRed = { site: run.site, race: run.race, label: run.label || run.site, bonus: bonus };
+                                addLog(`🚨 CODE RED cleared at ${run.label || run.site} — ${String(run.race || '').toUpperCase()} returned to its point of entry. Hazard bonus 💰 +${bonus}.`);
+                            }
+                        }
+                    }
+                } catch (e) { console.warn('[HQ] code red commit skipped', e); }
 
                 /* Personal records (§5): fold this match's bests into the
                    bucket's board. Standard matches only (the helper gates on
@@ -27214,6 +27250,15 @@
                 stamp.appendChild(el);
             }
             window._lastHqSiteFlag = null;
+            /* a cleared Code Red (plan 3.3) outranks the mastery tag — the
+               site was already stabilized; what happened today is the bonus */
+            const cr = window._lastHqCodeRed;
+            window._lastHqCodeRed = null;
+            if (cr && cr.site && typeof DOOR_HQ !== 'undefined') {
+                el.textContent = 'CODE RED CLEARED · ' + cr.label + ' · 💰 +' + (cr.bonus | 0) + ' HAZARD PAY';
+                el.className = 'drs-site on codered';
+                return;
+            }
             if (!flag || !flag.site || typeof DOOR_HQ === 'undefined') { el.className = 'drs-site'; el.textContent = ''; return; }
             let label = flag.site;
             try { const m = EW_MAP_META.find(x => x.id === flag.site); if (m) label = m.label; } catch (e) {}

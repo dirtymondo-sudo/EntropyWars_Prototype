@@ -171,14 +171,21 @@ test('doorSiteState honours clearance gates, sector locks and mastery', () => {
     const quarantined = ROOM.doors.find(d => d.action && d.action.sector === 'quarantined');
     const celestial = ROOM.doors.find(d => d.action && d.action.sector === 'celestial');
     assert.strictEqual(D.doorSiteState(elevator, null), 'clearance');
-    assert.strictEqual(D.doorSiteState(elevator, { door: { clearance: 4 } }), 'open');
+    /* since plan 3.2 the elevator also asks for Keys (requiresKeys) — rank alone stays red */
+    assert.strictEqual(D.doorSiteState(elevator, { door: { clearance: 4 } }), 'clearance');
+    assert.strictEqual(D.doorSiteState(elevator, { door: { clearance: 4, hq: { keys: elevator.requiresKeys } } }), 'open');
     assert.strictEqual(D.doorSiteState(records, null), 'open');
     assert.strictEqual(D.doorSiteState(quarantined, { door: { clearance: 6 } }), 'sealed');
     assert.strictEqual(D.doorSiteState(celestial, null), 'unstable');
-    /* master every celestial map through the monotonic progress flags */
+    /* master every celestial map through the monotonic progress flags —
+       the only stabilized sector is also where today's Code Red sits (plan
+       3.3), so the bay strobes until it is cleared, then reads green */
     const unlocked = {};
     for (const id of HQ.sectors.celestial.maps) for (const c of HQ.masteryConditions) unlocked['site:' + id + ':' + c] = 1;
-    assert.strictEqual(D.doorSiteState(celestial, { progress: { unlocked } }), 'stabilized');
+    assert.strictEqual(D.doorSiteState(celestial, { progress: { unlocked } }), 'codered');
+    const cr = D.hqCodeRed({ progress: { unlocked } });
+    const cleared = { door: { hq: { codeRed: { date: D.hqToday(), site: cr.site, cleared: true } } }, progress: { unlocked } };
+    assert.strictEqual(D.doorSiteState(celestial, cleared), 'stabilized');
 });
 
 test('hqMapMastered reads progress flags and the recent match history', () => {
@@ -371,7 +378,11 @@ test('every launch map has a threshold leaf and doorSiteState reads a threshold 
     assert.strictEqual(D.doorSiteState(mars, null), 'unstable');
     const unlocked = {};
     for (const c of HQ.masteryConditions) unlocked['site:prebuilt_mars:' + c] = 1;
-    assert.strictEqual(D.doorSiteState(mars, { progress: { unlocked } }), 'stabilized');
+    /* Mars is this profile's ONLY stabilized site, so (plan 3.3) it is also
+       today's Code Red: the lamp strobes until cleared, then reads green */
+    assert.strictEqual(D.doorSiteState(mars, { progress: { unlocked } }), 'codered');
+    const clearedToday = { date: D.hqToday(), site: 'prebuilt_mars', cleared: true };
+    assert.strictEqual(D.doorSiteState(mars, { progress: { unlocked }, door: { hq: { codeRed: clearedToday } } }), 'stabilized');
     const moon = HQ.rooms.bay_celestial.doors.find(d => d.action && d.action.mission === 'prebuilt_moon');
     assert.strictEqual(D.doorSiteState(moon, { progress: { unlocked } }), 'unstable', 'mastering Mars does not stabilize the Moon');
     const back = HQ.rooms.bay_quarantined.doors.find(d => d.action && d.action.mission === 'prebuilt_backrooms');
@@ -528,4 +539,143 @@ test("every door's wide flag agrees with its leaf (the renderer lets the leaf de
     /* the static one-mesh doubles / hatches are used sparingly: the revolving door at most once */
     const revolving = ALL_DOORS.filter(d => d.leaf === 'leaf_revolving').length + Object.values(HQ.thresholds).filter(t => t.leaf === 'leaf_revolving').length;
     assert.ok(revolving <= 2, 'the revolving door is the one sparing use (bay + its way out), got ' + revolving);
+});
+
+/* ── Phase 3.2 / 3.3 / 3.4 (2026-09-04): Keys, Code Red, the promotion moment ── */
+
+const TODAY = D.hqToday();
+const masteredCelestial = () => {
+    const unlocked = {};
+    for (const id of HQ.sectors.celestial.maps) for (const c of HQ.masteryConditions) unlocked['site:' + id + ':' + c] = 1;
+    return unlocked;
+};
+
+test('hqKeys sums the hourglass counter over its buckets plus Department-issued Keys', () => {
+    assert.deepStrictEqual({ ...D.hqKeys(null) }, { keys: 0, pickups: 0, issued: 0 });
+    const p = { progress: { counters: { hourglasses: { pvp: 3, cpu: 4, legacy: 5 } } }, door: { hq: { keys: 2 } } };
+    assert.deepStrictEqual({ ...D.hqKeys(p) }, { keys: 14, pickups: 12, issued: 2 });
+    assert.strictEqual(HQ.keys.counter, 'hourglasses');
+    /* the counter the achievement catalog actually bumps (battle.js _achFoldMatchDeltas) */
+    assert.ok(D.ACH_CATALOG.some(l => l.metric === HQ.keys.counter), 'the Keys counter is a real achievement metric');
+});
+
+test('requiresKeys doors read CLEARANCE until rank AND Keys are met (plan 3.2)', () => {
+    const gated = ROOM.doors.filter(d => d.requiresKeys);
+    assert.ok(gated.length >= 2, 'at least two restricted doors ask for Keys');
+    for (const d of gated) {
+        assert.ok(d.minClearance, d.id + ': Keys ride on top of a rank gate');
+        const rankOnly = { door: { clearance: d.minClearance } };
+        const both = { door: { clearance: d.minClearance, hq: { keys: d.requiresKeys } } };
+        const keysOnly = { door: { clearance: 1, hq: { keys: d.requiresKeys } } };
+        assert.strictEqual(D.doorSiteState(d, rankOnly), 'clearance', d.id + ': rank without Keys');
+        assert.strictEqual(D.hqKeysShort(d, rankOnly), d.requiresKeys, d.id + ': short by the full count');
+        assert.strictEqual(D.doorSiteState(d, keysOnly), 'clearance', d.id + ': Keys without rank');
+        assert.strictEqual(D.doorSiteState(d, both), 'open', d.id + ': both met');
+        assert.strictEqual(D.hqKeysShort(d, both), 0);
+    }
+    /* thresholds and bays never ask for Keys — mastery is their gate */
+    for (const [, room] of BAYS) for (const d of room.doors) assert.ok(!d.requiresKeys, d.id + ' must not require Keys');
+    assert.strictEqual(D.hqKeysShort(ROOM.doors.find(d => d.id === 'records'), null), 0);
+});
+
+test('hqCodeRed: quiet until a threshold is stabilized, then one deterministic pick per day', () => {
+    assert.strictEqual(D.hqCodeRed(null), null);
+    assert.strictEqual(D.hqCodeRed({ createdAt: 'x' }), null, 'nothing mastered → no Code Red');
+    const p = { createdAt: '2026-01-01T00:00:00Z', progress: { unlocked: masteredCelestial() } };
+    const a = D.hqCodeRed(p, { date: '2026-09-04' });
+    assert.ok(a && HQ.sectors.celestial.maps.includes(a.site), 'picks a stabilized site');
+    assert.strictEqual(a.sector, 'celestial');
+    assert.strictEqual(a.cleared, false);
+    assert.strictEqual(a.forced, false);
+    assert.ok(a.bonus > 0 && a.bonus === HQ.codeRed.bonusGold);
+    const b = D.hqCodeRed(p, { date: '2026-09-04' });
+    assert.deepStrictEqual([b.site, b.race], [a.site, a.race], 'same day, same profile → same Code Red');
+    const other = D.hqCodeRed({ createdAt: '2020-05-05T00:00:00Z', progress: { unlocked: masteredCelestial() } }, { date: '2026-09-04' });
+    assert.ok(other, 'another employee has a Code Red too');
+    /* over a month of dates the pick actually moves */
+    const sites = new Set(), races = new Set();
+    for (let d = 1; d <= 30; d++) { const c = D.hqCodeRed(p, { date: '2026-10-' + String(d).padStart(2, '0') }); sites.add(c.site); races.add(c.race); }
+    assert.ok(sites.size >= 2 && races.size >= 5, 'the daily pick varies (sites ' + sites.size + ', races ' + races.size + ')');
+    /* a locked sector never reports */
+    const q = { createdAt: 'q', progress: { unlocked: {} } };
+    for (const id of HQ.sectors.quarantined.maps) for (const c of HQ.masteryConditions) q.progress.unlocked['site:' + id + ':' + c] = 1;
+    assert.strictEqual(D.hqCodeRed(q, { date: '2026-09-04' }), null, 'quarantined (locked) sites are not candidates');
+});
+
+test('the out-of-place entity is never a native of the site and is filed somewhere else', () => {
+    const p = { createdAt: 'e', progress: { unlocked: masteredCelestial() } };
+    for (let d = 1; d <= 20; d++) {
+        const cr = D.hqCodeRed(p, { date: '2026-11-' + String(d).padStart(2, '0') });
+        const natives = D.doorSiteCrossings(cr.label);
+        assert.ok(!natives.includes(cr.race), cr.race + ' is native to ' + cr.label);
+        assert.ok(D.AVAILABLE_RACES.includes(cr.race), 'unknown race ' + cr.race);
+        assert.ok(D.DOOR_TEXT.POINT_OF_ENTRY[cr.race] && D.DOOR_TEXT.POINT_OF_ENTRY[cr.race] !== cr.label, cr.race + ' has a point of entry elsewhere');
+        assert.strictEqual(cr.from, D.DOOR_TEXT.POINT_OF_ENTRY[cr.race]);
+        const pool = D.hqCodeRedPool(cr, 4);
+        assert.strictEqual(pool[0], cr.race, 'the entity leads the CPU roster');
+        assert.strictEqual(pool.natives, 1, 'only the entity is pinned to the first draw');
+        assert.ok(pool.length >= 4 && new Set(pool).size === pool.length, 'the roster is padded with distinct races');
+    }
+    assert.deepStrictEqual(Array.from(D.hqCodeRedPool(null, 4)), []);
+});
+
+test('Code Red drives the lamps: the bay door and the threshold strobe until cleared today', () => {
+    const p = { createdAt: 'l', progress: { unlocked: masteredCelestial() }, door: { clearance: 1, hq: {} } };
+    const cr = D.hqCodeRed(p);
+    assert.ok(cr && cr.date === TODAY);
+    const bay = ROOM.doors.find(d => d.action && d.action.sector === 'celestial');
+    const th = HQ.rooms.bay_celestial.doors.find(d => d.action && d.action.mission === cr.site);
+    const otherTh = HQ.rooms.bay_celestial.doors.find(d => d.action && d.action.mission && d.action.mission !== cr.site);
+    assert.strictEqual(D.doorSiteState(bay, p), 'codered');
+    assert.strictEqual(D.doorSiteState(th, p), 'codered');
+    assert.strictEqual(D.doorSiteState(otherTh, p), 'stabilized', 'the other stabilized thresholds stay green');
+    const otherBay = ROOM.doors.find(d => d.action && d.action.sector === 'ancient');
+    assert.strictEqual(D.doorSiteState(otherBay, p), 'unstable', 'other bays are untouched');
+    /* cleared today → green again; a stale clear (yesterday / another site) does not count */
+    p.door.hq.codeRed = { date: TODAY, site: cr.site, cleared: true };
+    assert.strictEqual(D.hqCodeRed(p).cleared, true);
+    assert.strictEqual(D.doorSiteState(bay, p), 'stabilized');
+    assert.strictEqual(D.doorSiteState(th, p), 'stabilized');
+    p.door.hq.codeRed = { date: '2000-01-01', site: cr.site, cleared: true };
+    assert.strictEqual(D.doorSiteState(th, p), 'codered', 'yesterday\'s clear does not cover today');
+    p.door.hq.codeRed = { date: TODAY, site: 'prebuilt_nope', cleared: true };
+    assert.strictEqual(D.doorSiteState(th, p), 'codered', 'a clear on another site does not cover this one');
+});
+
+test('DOOR_HQ.codeRed.force puts the Code Red on a named site with no mastery (dev ?codered=)', () => {
+    const prev = HQ.codeRed.force;
+    try {
+        HQ.codeRed.force = 'prebuilt_mars_delta';
+        const cr = D.hqCodeRed({ createdAt: 'f' });
+        assert.ok(cr && cr.site === 'prebuilt_mars' && cr.forced, 'forced onto Mars (Δ suffix stripped)');
+        const th = HQ.rooms.bay_celestial.doors.find(d => d.action && d.action.mission === 'prebuilt_mars');
+        assert.strictEqual(D.doorSiteState(th, { createdAt: 'f' }), 'codered');
+        HQ.codeRed.force = 'not_a_map';
+        assert.strictEqual(D.hqCodeRed({ createdAt: 'f' }), null, 'an unknown force falls through to the normal rule');
+    } finally { HQ.codeRed.force = prev; }
+    assert.strictEqual(D.hqCodeRed({ createdAt: 'f' }, { force: 'prebuilt_moon' }).site, 'prebuilt_moon');
+});
+
+test('hqToday / hqHash are stable helpers', () => {
+    assert.match(D.hqToday(), /^\d{4}-\d{2}-\d{2}$/);
+    assert.strictEqual(D.hqToday(new Date(2026, 0, 5)), '2026-01-05');
+    assert.strictEqual(D.hqHash('door'), D.hqHash('door'));
+    assert.notStrictEqual(D.hqHash('door'), D.hqHash('doors'));
+    assert.ok(D.hqHash('') >= 0 && D.hqHash('x') <= 0xffffffff);
+});
+
+test('the promotion moment has a leaf for every rung above L1 and the stamps kit knows PROMOTED ink', () => {
+    /* map.js _hqCheckPromotion writes {word:'PROMOTED', ink:'admit'} — the card back renders .door-stamp.<ink> */
+    const fs = require('node:fs');
+    const css = fs.readFileSync(require('node:path').join(__dirname, 'styles-base.css'), 'utf8');
+    assert.match(css, /\.door-stamp\.admit\b/);
+    assert.match(css, /\.hq-notice\b/);
+    assert.match(css, /\.hq-strip-alert\b/);
+    assert.match(css, /\.drs-site\.codered\b/);
+    for (const c of D.DOOR_TEXT.CLEARANCE.slice(1)) assert.ok(HQ.catalogue[c.door] && HQ.catalogue[c.door].leaf, 'L' + c.level + ' leaf');
+    const html = fs.readFileSync(require('node:path').join(__dirname, 'index.html'), 'utf8');
+    for (const id of ['hqKeys', 'hqCodeRed', 'hqMastery']) assert.ok(html.includes('id="' + id + '"'), 'index.html strip has #' + id);
+    const audio = fs.readFileSync(require('node:path').join(__dirname, 'audio.js'), 'utf8');
+    assert.match(audio, /doorbell\(ctx, t, out, vol\)/, 'the doorbell recipe exists');
+    assert.match(audio, /paChime\(ctx, t, out, vol\)/);
 });

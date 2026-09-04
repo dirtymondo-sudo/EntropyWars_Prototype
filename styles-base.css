@@ -4093,6 +4093,27 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-row.hq-row-bay { grid-template-columns: 1fr auto auto auto; }
 .hq-strip-stat { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.22em; color: #8fd3a0; }
 .hq-strip-stat b { color: #ece7d8; font-weight: 600; }
+.hq-strip-stat.hq-strip-keys { color: #d9b45a; }
+/* the CODE RED pill on the strip (HQ plan 3.3): strobes with the door lamps; click = the brief */
+.hq-strip-alert { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.22em; color: #ffd2d2; background: rgba(120,10,10,0.75); border: 1px solid #ff4a4a; padding: 4px 9px; cursor: pointer; animation: hqStrobe 0.52s steps(2) infinite; }
+.hq-strip-alert b { color: #fff; font-weight: 600; }
+.hq-strip-alert.cleared { animation: none; color: #c9f7d3; background: rgba(10,70,30,0.6); border-color: #39c26a; cursor: default; }
+@keyframes hqStrobe { 50% { background: rgba(255,60,60,0.85); border-color: #ffb0b0; } }
+/* the Code Red brief inside a door panel */
+.hq-codered { margin: 0 0 10px; padding: 9px 11px; border: 1px solid #ff4a4a; background: rgba(120,10,10,0.22); box-shadow: inset 0 0 18px rgba(255,40,40,0.12); }
+.hq-codered b { display: block; font-family: 'Cormorant SC', serif; font-size: 15px; letter-spacing: 0.2em; color: #ff8a8a; margin-bottom: 4px; animation: hqBlink 0.9s steps(2) infinite; }
+.hq-codered p { margin: 0; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.06em; line-height: 1.5; color: #f1dede; }
+.hq-codered .hq-chip { border-color: rgba(255,120,120,0.6); color: #ffb0b0; }
+.hq-codered em { font-style: normal; color: #ffb0b0; letter-spacing: 0.12em; }
+.hq-codered em.pay { color: #ffd86a; }
+.hq-btn-codered { border-color: #ff4a4a; color: #ffd2d2; }
+.hq-btn-codered:hover:not(:disabled) { background: rgba(255,74,74,0.22); }
+/* a personnel notice (HQ plan 3.4: the promotion moment) */
+.hq-notice { text-align: center; padding: 6px 0 2px; }
+.hq-notice .hq-notice-kicker { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.32em; color: #b8a060; }
+.hq-notice .hq-notice-title { font-family: 'Cormorant SC', serif; font-size: 34px; letter-spacing: 0.18em; color: #ece7d8; margin: 6px 0 2px; text-shadow: 0 0 18px rgba(184,160,96,0.35); }
+.hq-notice .hq-notice-sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.22em; color: #7fd9dd; margin-bottom: 10px; }
+.hq-notice .door-stamp { display: inline-block; margin: 6px 0 10px; }
 .hq-row-stamp.tone-deny { color: #c5453f; }
 .hq-row-stamp.tone-admit { color: #3a8f5c; }
 .hq-row-stamp.tone-void { color: #8a8a8a; }
@@ -4119,6 +4140,7 @@ body.diorama-3d .tile-underpass.jump::before {
 .door-result-stamp .drs-site { position: absolute; left: 50%; top: -15px; transform: translateX(-50%); display: none; font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.2em; padding: 3px 10px; white-space: nowrap; background: #2e8b57; color: #f4fff7; border-radius: 3px; }
 .door-result-stamp .drs-site.on { display: block; }
 .door-result-stamp .drs-site.partial { background: #b8862a; }
+.door-result-stamp .drs-site.codered { background: #b3261e; }
 /* loading card: clearance check */
 .hq-load { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #050507; z-index: 40; transition: opacity 0.6s ease; }
 .hq-load.done { opacity: 0; pointer-events: none; }
