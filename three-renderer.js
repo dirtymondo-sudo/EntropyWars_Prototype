@@ -14486,7 +14486,8 @@ const ThreeRenderer = (function () {
        (so a whole tree fades together, but only the ONE blocking decoration
        fades — not every grass tuft on the board). */
     function _occIsContainer(o) {
-        return o === terrainGroup || o === objectGroup || o === _terrainDecoGroup || o === wallGroup;
+        return o === terrainGroup || o === objectGroup || o === _terrainDecoGroup || o === wallGroup
+            || (_facilityNearGroup !== null && o === _facilityNearGroup);
     }
     function _occRootOf(obj) {
         var o = obj;
@@ -14532,6 +14533,14 @@ const ThreeRenderer = (function () {
        be "in the way" — they were getting faded because the sight line to
        the raised torso grazes the top of the supporting blocks). */
     function _occHitFadeable(root, sub) {
+        /* D.O.O.R. facility enclosure (2026-09-04): a whole wall of the
+           Training Room (panel + dado + trims + strips + everything hung on
+           it) is one root sitting at the group origin, so the position-
+           derived tile test below would refuse it whenever the subject
+           stands on tile (0,0). A room wall is never anyone's footing and
+           always rises above every head — it may fade whenever a sight
+           line crosses it. */
+        if (root._ew_occWall) return true;
         if (root._ew_wallKey != null) {
             /* Authored edge walls: a thin slab standing ON a tile edge is
                never the ground the subject stands on, so it may fade whenever
@@ -14611,7 +14620,13 @@ const ThreeRenderer = (function () {
     function _occCollect(root) {
         var arr = [];
         root.traverse(function (o) {
-            if (!o.isMesh || !o.material) return;
+            if (!o.material) return;
+            /* Facility scenery roots (the Training Room walls) carry glow
+               SPRITES (lamps, door lights) as well as meshes — a lamp halo
+               left hanging in mid-air over a faded wall reads as a glitch,
+               so those fade with their wall. Elsewhere sprites stay solid
+               (markers, props) exactly as before. */
+            if (!o.isMesh && !(o.isSprite && root._ew_occNear)) return;
             /* Canopy blocks (roof slabs, upper-storey floors) used to be
                excluded here and left entirely to the canopy cutaway. But the
                cutaway only peels the ceiling of the room the unit is actually
@@ -14702,6 +14717,14 @@ const ThreeRenderer = (function () {
         if (terrainGroup) groups.push(terrainGroup);
         if (objectGroup) groups.push(objectGroup);
         if (wallGroup) groups.push(wallGroup);
+        /* D.O.O.R. facility enclosure (2026-09-04): the Training Room's
+           walls, barriers, booths and corner machinery stand right at the
+           board edge and swallow the whole grid from any outside camera
+           angle — before this they were not raycast at all, so every unit
+           behind a wall dropped to its x-ray hologram. They are blockers
+           like any terrain column now. */
+        var facOcc = !!(_facilityNearGroup && _facilityNearGroup.parent);
+        if (facOcc) groups.push(_facilityNearGroup);
         if (!groups.length) return roots;
 
         var subs = [];   // [{P, feetY, tx, ty}] — see _occUnitPoint/_occTilePoint
@@ -14741,6 +14764,21 @@ const ThreeRenderer = (function () {
                     || Math.round(selUnit.x) !== focalTile.x || Math.round(selUnit.y) !== focalTile.y)) {
                 var fp = _occTilePoint(focalTile.x, focalTile.y);
                 if (fp) subs.push(fp);
+            }
+            /* Inside a facility enclosure the BOARD itself is a subject:
+               the centre tile plus the four inner corners, so a room wall
+               between the camera and any part of the grid fades out
+               (rather than only the one in front of the active unit) and
+               the board stays readable from every angle. */
+            if (facOcc) {
+                var fbw = (typeof bw === 'function') ? bw() : 0, fbh = (typeof bh === 'function') ? bh() : 0;
+                if (fbw > 2 && fbh > 2) {
+                    var fpts = [[(fbw - 1) / 2, (fbh - 1) / 2], [1, 1], [fbw - 2, 1], [1, fbh - 2], [fbw - 2, fbh - 2]];
+                    for (var fi = 0; fi < fpts.length; fi++) {
+                        var fq = _occTilePoint(fpts[fi][0], fpts[fi][1]);
+                        if (fq) subs.push(fq);
+                    }
+                }
             }
         }
         if (!subs.length) return roots;
@@ -14975,7 +15013,8 @@ const ThreeRenderer = (function () {
             _occShotGuard.id = null; _occShotGuard.set = null;
         }
 
-        var active = cineActive || !!selUnit || !!focalTile;
+        var active = cineActive || !!selUnit || !!focalTile
+            || !!(inBattle && _facilityNearGroup && _facilityNearGroup.parent);   // facility boards: the grid is always a subject
 
         if (!active && _occFaded.size === 0 && _occUnitFaded.size === 0) return;   // nothing to do
         _occInit();
@@ -15024,7 +15063,7 @@ const ThreeRenderer = (function () {
                 done.push(root); return;
             }
             var blocking = want && want.has(root);
-            var tgt = blocking ? OCC_FADE_TARGET : 1.0;
+            var tgt = blocking ? (root._ew_occFadeTarget != null ? root._ew_occFadeTarget : OCC_FADE_TARGET) : 1.0;
             rec.op += (tgt - rec.op) * k;
             if (Math.abs(rec.op - tgt) < 0.012) rec.op = tgt;
             for (var i = 0; i < rec.meshes.length; i++) _occSetOpacity(rec.meshes[i], rec.op);
@@ -20204,6 +20243,12 @@ const ThreeRenderer = (function () {
     //  day/night cycle + sky events just like the rest of the scene.
     // ════════════════════════════════════════════════════════════════════
     var _horizonGroup = null, _horizonKey = '', _horizonMats = [];
+    /* The facility NEAR scenery group when its builder opted into the
+       line-of-sight fade (group._ew_occNear — the Training Room): the
+       occlusion raycaster treats it as a blocker container, each direct
+       child (a whole wall, one barrier, one drum) being a single occluder.
+       Null on every other board. See _occComputeBlockers. */
+    var _facilityNearGroup = null;
     // per-map environment plumbing (state.mapEnv)
     var _hzTheme = 'cosmic', _hzThemeDensity = 1;
     var _mapEnvFog = null, _mapEnvFogKey = '';
@@ -22428,8 +22473,11 @@ const ThreeRenderer = (function () {
     //  Everything is built in board space (tile = ts, tile top = h × ts) and
     //  OUTSIDE the playable footprint. The room is SOLID (rev 2, same day):
     //  double-sided walls from the bed's floor up, the walkway meets the
-    //  board edge, nothing is culled or hidden as the camera moves — the
-    //  player only ever looks at the tile tops anyway. Lit pieces use
+    //  board edge. rev 4 (same day): the room joins the line-of-sight
+    //  occlusion fade (_facilityNearGroup / _occComputeBlockers) — a wall
+    //  the camera looks through fades to near-invisible as a whole so the
+    //  board and its units stay readable, instead of the units behind it
+    //  dropping to their x-ray holograms. Lit pieces use
     //  Lambert (they share the board's sun / hemisphere light) rather than
     //  the graded MeshBasic of the far scenery, so a night cycle never turns
     //  a concrete wall blue. Kill-switch: window.EW_NO_FACILITY_SCENERY.
@@ -22612,6 +22660,26 @@ const ThreeRenderer = (function () {
         var gun = _hzTex('gunmetal') || metal;
         var add = function (m) { group.add(m); return m; };
         var lit = function (mesh, cast) { mesh.receiveShadow = true; if (cast) mesh.castShadow = true; return mesh; };
+        /* rev 4 (2026-09-04): the room takes part in the line-of-sight
+           occlusion fade (_facilityNearGroup). Each WALL — panel, dado,
+           trims, light strips, and everything hung on it: doors, signs,
+           clocks, lamps, the observation booth — is ONE group, so a wall the
+           camera looks through fades out as a whole (to near-invisible,
+           _ew_occFadeTarget) instead of leaving trims and lamps floating,
+           and the units behind it render as themselves rather than as
+           x-ray holograms. Barriers, drums, consoles and crates stay
+           individual occluders (each fades on its own when it is in the way). */
+        group._ew_occNear = true;
+        var wallGroups = {};
+        var wallOf = function (side) {
+            if (!wallGroups[side]) {
+                var wg = new THREE.Group(); wg.name = 'tr_wall_' + side;
+                wg._ew_occWall = side; wg._ew_occFadeTarget = 0.04;
+                group.add(wg); wallGroups[side] = wg;
+            }
+            return wallGroups[side];
+        };
+        var addW = function (side, m) { wallOf(side).add(m); return m; };
 
         /* seams + corner lights on the grid, and the four scorch stars */
         add(_hzBoardSeams(ctx, 0xd6ecff, 0.42, 1.0, 0.9));
@@ -22694,92 +22762,92 @@ const ThreeRenderer = (function () {
         /* the walls: dado + upper panel + trims, single-sided, facing in */
         var WH = 3.2 * ts, DH = 1.0 * ts, WB = 0;                          // walls run from the bed's floor up to 3.2 tiles above the room floor
         var wallMat = _hzLit(concrete, 0x767b71, { side: THREE.DoubleSide }), dadoMat = _hzLit(concrete, 0x3b3d39, { side: THREE.DoubleSide }), trimMat = _hzLit(null, 0x2b6360);
-        function wall(len, cx0, cz0, ry) {
+        function wall(len, cx0, cz0, ry, side) {
             var lowH = fy + DH - WB;                                    // the dado panel doubles as the foundation below the floor
             var g1 = new THREE.PlaneGeometry(len, lowH); _hzTileUV(g1, len, lowH, ts);
-            var dado = new THREE.Mesh(g1, dadoMat); dado.position.set(cx0, WB + lowH / 2, cz0); dado.rotation.y = ry; add(lit(dado));
+            var dado = new THREE.Mesh(g1, dadoMat); dado.position.set(cx0, WB + lowH / 2, cz0); dado.rotation.y = ry; addW(side, lit(dado));
             var g2 = new THREE.PlaneGeometry(len, WH - DH); _hzTileUV(g2, len, WH - DH, ts);
-            var up = new THREE.Mesh(g2, wallMat); up.position.set(cx0, fy + DH + (WH - DH) / 2, cz0); up.rotation.y = ry; add(lit(up));
+            var up = new THREE.Mesh(g2, wallMat); up.position.set(cx0, fy + DH + (WH - DH) / 2, cz0); up.rotation.y = ry; addW(side, lit(up));
             var nx = Math.sin(ry), nz = Math.cos(ry);                     // inward normal of a +Z plane turned by ry
             [[fy + DH, 0.08 * ts], [fy + WH - 0.12 * ts, 0.12 * ts]].forEach(function (t) {
                 var tr = _hzBox(ry === 0 || Math.abs(ry) > 3 ? len : 0.08 * ts, t[1], ry === 0 || Math.abs(ry) > 3 ? 0.08 * ts : len, ts, trimMat);
-                tr.position.set(cx0 + nx * 0.04 * ts, t[0] + t[1] / 2, cz0 + nz * 0.04 * ts); add(tr);
+                tr.position.set(cx0 + nx * 0.04 * ts, t[0] + t[1] / 2, cz0 + nz * 0.04 * ts); addW(side, tr);
             });
             /* two fluorescent strips near the top of every wall — the cool light */
             [-0.25, 0.25].forEach(function (f) {
                 var gm = _hzGlowMat(0xf2f7ff, 0.85);
                 var st = new THREE.Mesh(new THREE.PlaneGeometry(len * 0.38, 0.09 * ts), gm);
                 st.position.set(cx0 + nx * 0.05 * ts + (ry === 0 || Math.abs(ry) > 3 ? f * len : 0), fy + WH - 0.42 * ts, cz0 + nz * 0.05 * ts + (ry === 0 || Math.abs(ry) > 3 ? 0 : f * len));
-                st.rotation.y = ry; add(st);
+                st.rotation.y = ry; addW(side, st);
                 _hzPulse(gm, null, 0.06, 0, 2.2 + Math.random() * 2.5);
             });
         }
-        wall(X1 - X0, CX, Z0, 0);                    // north (faces +Z)
-        wall(X1 - X0, CX, Z1, Math.PI);              // south (faces -Z)
-        wall(Z1 - Z0, X0, CZ, Math.PI / 2);          // west (faces +X)
-        wall(Z1 - Z0, X1, CZ, -Math.PI / 2);         // east (faces -X)
+        wall(X1 - X0, CX, Z0, 0, 'n');               // north (faces +Z)
+        wall(X1 - X0, CX, Z1, Math.PI, 's');         // south (faces -Z)
+        wall(Z1 - Z0, X0, CZ, Math.PI / 2, 'w');     // west (faces +X)
+        wall(Z1 - Z0, X1, CZ, -Math.PI / 2, 'e');    // east (faces -X)
 
         /* the doors (north + south): frame, two leaves, a green lamp above */
         var frameMat = _hzLit(gun, 0x3a3f46), leafMat = _hzLit(metal, 0x3d4b44), darkMat = _hzLit(null, 0x0b0c0e);
-        function door(cz0, sgn) {
+        function door(cz0, sgn, side) {
             var DW = 2.4 * ts, DHt = 2.7 * ts, zf = cz0 + sgn * 0.12 * ts;
             var back = new THREE.Mesh(new THREE.PlaneGeometry(DW, DHt), darkMat);
-            back.position.set(CX, fy + DHt / 2, cz0 + sgn * 0.02 * ts); back.rotation.y = sgn > 0 ? 0 : Math.PI; add(back);
+            back.position.set(CX, fy + DHt / 2, cz0 + sgn * 0.02 * ts); back.rotation.y = sgn > 0 ? 0 : Math.PI; addW(side, back);
             [[-1, 0], [1, 0]].forEach(function (s) {
                 var jamb = _hzBox(0.16 * ts, DHt, 0.24 * ts, ts, frameMat);
-                jamb.position.set(CX + s[0] * (DW / 2 - 0.08 * ts), fy + DHt / 2, zf); add(lit(jamb, true));
+                jamb.position.set(CX + s[0] * (DW / 2 - 0.08 * ts), fy + DHt / 2, zf); addW(side, lit(jamb, true));
                 var leaf = _hzBox(DW / 2 - 0.22 * ts, DHt - 0.24 * ts, 0.08 * ts, ts, leafMat);
-                leaf.position.set(CX + s[0] * (DW / 4 - 0.02 * ts), fy + (DHt - 0.24 * ts) / 2, cz0 + sgn * 0.08 * ts); add(lit(leaf, true));
+                leaf.position.set(CX + s[0] * (DW / 4 - 0.02 * ts), fy + (DHt - 0.24 * ts) / 2, cz0 + sgn * 0.08 * ts); addW(side, lit(leaf, true));
                 var win = new THREE.Mesh(new THREE.PlaneGeometry(0.34 * ts, 0.5 * ts), _hzGlowMat(0x8fe0ff, 0.22));
-                win.position.set(CX + s[0] * (DW / 4 - 0.02 * ts), fy + DHt * 0.62, cz0 + sgn * 0.13 * ts); win.rotation.y = sgn > 0 ? 0 : Math.PI; add(win);
+                win.position.set(CX + s[0] * (DW / 4 - 0.02 * ts), fy + DHt * 0.62, cz0 + sgn * 0.13 * ts); win.rotation.y = sgn > 0 ? 0 : Math.PI; addW(side, win);
             });
             var lintel = _hzBox(DW + 0.1 * ts, 0.18 * ts, 0.24 * ts, ts, frameMat);
-            lintel.position.set(CX, fy + DHt + 0.09 * ts, zf); add(lit(lintel, true));
+            lintel.position.set(CX, fy + DHt + 0.09 * ts, zf); addW(side, lit(lintel, true));
             var housing = _hzBox(0.44 * ts, 0.2 * ts, 0.14 * ts, ts, frameMat);
-            housing.position.set(CX, fy + DHt + 0.42 * ts, cz0 + sgn * 0.09 * ts); add(housing);
+            housing.position.set(CX, fy + DHt + 0.42 * ts, cz0 + sgn * 0.09 * ts); addW(side, housing);
             var lm = _hzGlowMat(0x4dff7a, 0.9);
             var lens = new THREE.Mesh(new THREE.PlaneGeometry(0.34 * ts, 0.12 * ts), lm);
-            lens.position.set(CX, fy + DHt + 0.42 * ts, cz0 + sgn * 0.165 * ts); lens.rotation.y = sgn > 0 ? 0 : Math.PI; add(lens);
+            lens.position.set(CX, fy + DHt + 0.42 * ts, cz0 + sgn * 0.165 * ts); lens.rotation.y = sgn > 0 ? 0 : Math.PI; addW(side, lens);
             _hzPulse(lm, null, 0.12, 0, 0.9);
             var glow = _hzGlowSprite(0.9 * ts, 0x5dff8a, 0.5, 0.15, 0.06, 0.7);
-            glow.position.set(CX, fy + DHt + 0.45 * ts, cz0 + sgn * 0.25 * ts); add(glow);
+            glow.position.set(CX, fy + DHt + 0.45 * ts, cz0 + sgn * 0.25 * ts); addW(side, glow);
         }
-        door(Z0, 1); door(Z1, -1);
+        door(Z0, 1, 'n'); door(Z1, -1, 's');
 
         /* the signs (canvas plates) */
-        function sign(key, lines, w, h, x, y, z, ry, o) {
+        function sign(key, lines, w, h, x, y, z, ry, o, side) {
             var t = _hzTextTex(key, lines, Object.assign({ w: 512, h: 256, bg: '#1b1a1c', border: '#c9bb96', color: '#efe4c4' }, o || {})); if (!t) return;
             var m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: t, color: 0xffffff, emissive: 0x2a2822 }));
-            m.position.set(x, y, z); m.rotation.y = ry; add(m);
+            m.position.set(x, y, z); m.rotation.y = ry; addW(side, m);
         }
         var nx0 = X0 + 0.06 * ts, nx1 = X1 - 0.06 * ts, nz0 = Z0 + 0.06 * ts, nz1 = Z1 - 0.06 * ts;
-        sign('tr_north', ['ORTHOGONAL GEOMETRY', 'EXPOSURE AREA', 'AUTHORIZED PERSONNEL ONLY'], 3.2 * ts, 1.25 * ts, CX, fy + 3.0 * ts + 0.02 * ts, nz0, 0, { sizes: [64, 92, 40] });
-        sign('tr_south', ['D.O.O.R. TRAINING FACILITY', 'ROOM 8×8', 'REALITY LEAKS POSSIBLE'], 3.2 * ts, 1.25 * ts, CX, fy + 3.0 * ts + 0.02 * ts, nz1, Math.PI, { sizes: [52, 96, 44] });
-        sign('tr_west', ['MAX OCCUPANCY', '45 MINUTES'], 2.2 * ts, 1.1 * ts, nx0, fy + 2.35 * ts, 5.8 * ts, Math.PI / 2, { sizes: [66, 92] });
-        sign('tr_east', ['REALITY LEAKS', 'POSSIBLE'], 2.2 * ts, 1.1 * ts, nx1, fy + 2.35 * ts, 2.2 * ts, -Math.PI / 2, { sizes: [72, 92], bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' });
+        sign('tr_north', ['ORTHOGONAL GEOMETRY', 'EXPOSURE AREA', 'AUTHORIZED PERSONNEL ONLY'], 3.2 * ts, 1.25 * ts, CX, fy + 3.0 * ts + 0.02 * ts, nz0, 0, { sizes: [64, 92, 40] }, 'n');
+        sign('tr_south', ['D.O.O.R. TRAINING FACILITY', 'ROOM 8×8', 'REALITY LEAKS POSSIBLE'], 3.2 * ts, 1.25 * ts, CX, fy + 3.0 * ts + 0.02 * ts, nz1, Math.PI, { sizes: [52, 96, 44] }, 's');
+        sign('tr_west', ['MAX OCCUPANCY', '45 MINUTES'], 2.2 * ts, 1.1 * ts, nx0, fy + 2.35 * ts, 5.8 * ts, Math.PI / 2, { sizes: [66, 92] }, 'w');
+        sign('tr_east', ['REALITY LEAKS', 'POSSIBLE'], 2.2 * ts, 1.1 * ts, nx1, fy + 2.35 * ts, 2.2 * ts, -Math.PI / 2, { sizes: [72, 92], bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' }, 'e');
 
         /* observation booths: a glass box off the west and east walls, lit inside */
         var glassMat = new THREE.MeshBasicMaterial({ color: 0x9fd2dc, transparent: true, opacity: 0.26, side: THREE.DoubleSide, depthWrite: false, fog: false });
-        function booth(xw, zc, sgn) {
+        function booth(xw, zc, sgn, wside) {
             var BWd = 2.6 * ts, BHt = 1.5 * ts, BDp = 1.05 * ts, y0 = fy + 1.5 * ts;
             var xc = xw + sgn * BDp / 2;
-            var floor = _hzBox(BDp, 0.1 * ts, BWd, ts, frameMat); floor.position.set(xc, y0, zc); add(lit(floor, true));
-            var roof = _hzBox(BDp, 0.1 * ts, BWd, ts, frameMat); roof.position.set(xc, y0 + BHt, zc); add(lit(roof, true));
+            var floor = _hzBox(BDp, 0.1 * ts, BWd, ts, frameMat); floor.position.set(xc, y0, zc); addW(wside, lit(floor, true));
+            var roof = _hzBox(BDp, 0.1 * ts, BWd, ts, frameMat); roof.position.set(xc, y0 + BHt, zc); addW(wside, lit(roof, true));
             [[xw + sgn * BDp, zc - BWd / 2], [xw + sgn * BDp, zc + BWd / 2]].forEach(function (p) {
-                var post = _hzBox(0.1 * ts, BHt, 0.1 * ts, ts, frameMat); post.position.set(p[0], y0 + BHt / 2, p[1]); add(lit(post));
+                var post = _hzBox(0.1 * ts, BHt, 0.1 * ts, ts, frameMat); post.position.set(p[0], y0 + BHt / 2, p[1]); addW(wside, lit(post));
             });
             var front = new THREE.Mesh(new THREE.PlaneGeometry(BWd, BHt - 0.1 * ts), glassMat);
-            front.position.set(xw + sgn * BDp, y0 + BHt / 2, zc); front.rotation.y = sgn > 0 ? Math.PI / 2 : -Math.PI / 2; add(front);
+            front.position.set(xw + sgn * BDp, y0 + BHt / 2, zc); front.rotation.y = sgn > 0 ? Math.PI / 2 : -Math.PI / 2; addW(wside, front);
             [-1, 1].forEach(function (s) {
                 var side = new THREE.Mesh(new THREE.PlaneGeometry(BDp, BHt - 0.1 * ts), glassMat);
-                side.position.set(xc, y0 + BHt / 2, zc + s * BWd / 2); add(side);
+                side.position.set(xc, y0 + BHt / 2, zc + s * BWd / 2); addW(wside, side);
             });
-            var desk = _hzBox(0.5 * ts, 0.3 * ts, 1.6 * ts, ts, _hzLit(gun, 0x4a4f57)); desk.position.set(xw + sgn * 0.35 * ts, y0 + 0.2 * ts, zc); add(desk);
+            var desk = _hzBox(0.5 * ts, 0.3 * ts, 1.6 * ts, ts, _hzLit(gun, 0x4a4f57)); desk.position.set(xw + sgn * 0.35 * ts, y0 + 0.2 * ts, zc); addW(wside, desk);
             var scr = new THREE.Mesh(new THREE.PlaneGeometry(0.32 * ts, 0.22 * ts), _hzGlowMat(0x7fd9ff, 0.7));
-            scr.position.set(xw + sgn * 0.42 * ts, y0 + 0.5 * ts, zc); scr.rotation.y = sgn > 0 ? Math.PI / 2 : -Math.PI / 2; add(scr);
-            var inner = _hzGlowSprite(1.6 * ts, 0xdfeeff, 0.28, 0.05, 0.0, 0.3); inner.position.set(xc, y0 + BHt * 0.6, zc); add(inner);
+            scr.position.set(xw + sgn * 0.42 * ts, y0 + 0.5 * ts, zc); scr.rotation.y = sgn > 0 ? Math.PI / 2 : -Math.PI / 2; addW(wside, scr);
+            var inner = _hzGlowSprite(1.6 * ts, 0xdfeeff, 0.28, 0.05, 0.0, 0.3); inner.position.set(xc, y0 + BHt * 0.6, zc); addW(wside, inner);
         }
-        booth(X0, 2.2 * ts, 1); booth(X1, 5.8 * ts, -1);
+        booth(X0, 2.2 * ts, 1, 'w'); booth(X1, 5.8 * ts, -1, 'e');
 
         /* corner machinery: a drum, a console, a wall pipe, a red lamp */
         var drumMat = _hzLit(gun, 0x565c64), consoleMat = _hzLit(metal, 0x4c5259), crateMat = _hzLit(metal, 0x8a7a3a);
@@ -22798,22 +22866,22 @@ const ThreeRenderer = (function () {
         /* wall clocks (north + south walls, both flanks) */
         var faceMat = new THREE.MeshBasicMaterial({ color: 0xe9e4d6, fog: false }), handMat = _hzLit(null, 0x1a1a1c);
         [[1.4 * ts, nz0, 0], [6.6 * ts, nz0, 0], [1.4 * ts, nz1, Math.PI], [6.6 * ts, nz1, Math.PI]].forEach(function (p, i) {
-            var y = fy + 2.75 * ts, sgn = (p[2] === 0) ? 1 : -1;
-            var rim = _hzCyl(0.34 * ts, 0.34 * ts, 0.06 * ts, 20, ts, frameMat); rim.rotation.x = Math.PI / 2; rim.position.set(p[0], y, p[1] + sgn * 0.03 * ts); add(rim);
-            var face = new THREE.Mesh(new THREE.CircleGeometry(0.29 * ts, 20), faceMat); face.position.set(p[0], y, p[1] + sgn * 0.065 * ts); face.rotation.y = p[2]; add(face);
+            var y = fy + 2.75 * ts, sgn = (p[2] === 0) ? 1 : -1, cside = (p[2] === 0) ? 'n' : 's';
+            var rim = _hzCyl(0.34 * ts, 0.34 * ts, 0.06 * ts, 20, ts, frameMat); rim.rotation.x = Math.PI / 2; rim.position.set(p[0], y, p[1] + sgn * 0.03 * ts); addW(cside, rim);
+            var face = new THREE.Mesh(new THREE.CircleGeometry(0.29 * ts, 20), faceMat); face.position.set(p[0], y, p[1] + sgn * 0.065 * ts); face.rotation.y = p[2]; addW(cside, face);
             var hourA = 0.9 + i * 1.3, minA = 2.4 + i * 0.7;
-            var hh = _hzBox(0.035 * ts, 0.18 * ts, 0.012 * ts, ts, handMat); hh.position.set(p[0] + Math.sin(hourA) * 0.08 * ts, y + Math.cos(hourA) * 0.08 * ts, p[1] + sgn * 0.075 * ts); hh.rotation.z = -hourA; add(hh);
-            var mh = _hzBox(0.028 * ts, 0.26 * ts, 0.012 * ts, ts, handMat); mh.position.set(p[0] + Math.sin(minA) * 0.12 * ts, y + Math.cos(minA) * 0.12 * ts, p[1] + sgn * 0.08 * ts); mh.rotation.z = -minA; add(mh);
+            var hh = _hzBox(0.035 * ts, 0.18 * ts, 0.012 * ts, ts, handMat); hh.position.set(p[0] + Math.sin(hourA) * 0.08 * ts, y + Math.cos(hourA) * 0.08 * ts, p[1] + sgn * 0.075 * ts); hh.rotation.z = -hourA; addW(cside, hh);
+            var mh = _hzBox(0.028 * ts, 0.26 * ts, 0.012 * ts, ts, handMat); mh.position.set(p[0] + Math.sin(minA) * 0.12 * ts, y + Math.cos(minA) * 0.12 * ts, p[1] + sgn * 0.08 * ts); mh.rotation.z = -minA; addW(cside, mh);
         });
 
         /* red wall lamps, two per wall */
         var lampMat = _hzLit(null, 0x2a2b2e);
         [[X0 + 0.1 * ts, 1.0 * ts, 1, 0], [X0 + 0.1 * ts, 7.0 * ts, 1, 0], [X1 - 0.1 * ts, 1.0 * ts, -1, 0], [X1 - 0.1 * ts, 7.0 * ts, -1, 0],
          [2.3 * ts, Z0 + 0.1 * ts, 0, 1], [5.7 * ts, Z0 + 0.1 * ts, 0, 1], [2.3 * ts, Z1 - 0.1 * ts, 0, -1], [5.7 * ts, Z1 - 0.1 * ts, 0, -1]].forEach(function (p, i) {
-            var y = fy + 2.45 * ts;
-            var h = _hzBox(0.16 * ts, 0.3 * ts, 0.16 * ts, ts, lampMat); h.position.set(p[0], y, p[1]); add(h);
-            var lens = new THREE.Mesh(new THREE.SphereGeometry(0.075 * ts, 8, 6), _hzGlowMat(0xff4a4a, 0.95)); lens.position.set(p[0] + p[2] * 0.1 * ts, y + 0.02 * ts, p[1] + p[3] * 0.1 * ts); add(lens);
-            var glow = _hzGlowSprite(0.7 * ts, 0xff3a3a, 0.6, 0.22, 0.08, 0.5 + (i % 3) * 0.3); glow.position.copy(lens.position); add(glow);
+            var y = fy + 2.45 * ts, lside = p[2] === 1 ? 'w' : p[2] === -1 ? 'e' : p[3] === 1 ? 'n' : 's';
+            var h = _hzBox(0.16 * ts, 0.3 * ts, 0.16 * ts, ts, lampMat); h.position.set(p[0], y, p[1]); addW(lside, h);
+            var lens = new THREE.Mesh(new THREE.SphereGeometry(0.075 * ts, 8, 6), _hzGlowMat(0xff4a4a, 0.95)); lens.position.set(p[0] + p[2] * 0.1 * ts, y + 0.02 * ts, p[1] + p[3] * 0.1 * ts); addW(lside, lens);
+            var glow = _hzGlowSprite(0.7 * ts, 0xff3a3a, 0.6, 0.22, 0.08, 0.5 + (i % 3) * 0.3); glow.position.copy(lens.position); addW(lside, glow);
         });
     }
 
@@ -22862,6 +22930,12 @@ const ThreeRenderer = (function () {
         var g = new THREE.Group();
         g.name = 'facilityNear';
         try { nearBuild(g, ctx); } catch (e) { console.error('[scenery] near builder failed', e); }
+        /* Occlusion opt-in (the Training Room): every direct child is one
+           occluder for the line-of-sight fade — see _facilityNearGroup. */
+        if (g._ew_occNear) {
+            for (var ci = 0; ci < g.children.length; ci++) g.children[ci]._ew_occNear = true;
+            _facilityNearGroup = g;
+        }
         g.traverse(function (o) {
             if (!o.material) return;
             var ms = Array.isArray(o.material) ? o.material : [o.material];
@@ -22998,6 +23072,7 @@ const ThreeRenderer = (function () {
         var key = cx.toFixed(0) + ',' + cz.toFixed(0) + ',' + discR.toFixed(0) + ',' + _hzTheme + ',' + _hzThemeDensity;
         if (_horizonGroup && _horizonKey === key) return;
         if (_horizonGroup) { scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
+        _facilityNearGroup = null;
         _horizonMats.length = 0;
         _horizonFloaters.length = 0;
         _hzGlowPulse.length = 0;
@@ -26294,7 +26369,7 @@ const ThreeRenderer = (function () {
         if (_floatDomOverlay && _floatDomOverlay.parentElement) _floatDomOverlay.parentElement.removeChild(_floatDomOverlay);
         _floatDomOverlay = null;
         if (_horizonGroup) { if (scene) scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
-        _horizonGroup = null; _horizonMats.length = 0; _horizonKey = '';
+        _horizonGroup = null; _horizonMats.length = 0; _horizonKey = ''; _facilityNearGroup = null;
         if (_arenaRuinsGroup) { if (scene) scene.remove(_arenaRuinsGroup); _disposeR(_arenaRuinsGroup); }
         _arenaRuinsGroup = null; _arenaRuinsKey = '';
         _envGroup = _envGround = _envWall = _envDome = null; _envInited = false;

@@ -1605,3 +1605,29 @@ sprites.js from the first build stand). `npm test` 113 (112 pass).
   (y 0) to 3.2 tiles above the room floor; the walkway meets the board edge
   (no moat, its top a hair under the tile tops so the rim never z-fights);
   barriers sit on the rim. Nothing is culled as the camera moves.
+
+### 2026-09-04 (rev 4 of the Training Room) — see-through walls; the Holo Sim floor goes black
+- **Training Room walls fade, not the units.** The enclosure was a solid
+  box the occlusion raycaster never saw, so from any outside camera angle
+  the wall in front swallowed the grid and every unit behind it dropped to
+  its red/blue x-ray hologram. `_hzTrainingRoom` now sets
+  `group._ew_occNear`, which `_hzRunNearBuilder` turns into
+  `_facilityNearGroup`: an occluder container for `_occComputeBlockers`
+  (each direct child is one occluder, `_occHitFadeable` always accepts a
+  `_ew_occWall` root, `_occCollect` takes the wall's glow sprites too).
+  Each wall — panel, dado, trims, light strips, doors, signs, clocks, red
+  lamps, the observation booth — is ONE group (`tr_wall_n/s/w/e`), so it
+  fades as a whole to `_ew_occFadeTarget` 0.04 (near-invisible; terrain
+  keeps `OCC_FADE_TARGET` 0.10). Barriers, drums, consoles and crates stay
+  individual occluders. On a facility board the grid itself is always a
+  fade subject (centre + four inner corners, beside the active unit /
+  focal tile), so the board reads from every angle, not only the tile the
+  active unit stands on. Reverts the rev-2 "nothing is culled or hidden"
+  stance — walls hide themselves now, never the board.
+- **Holo Sim floor is black.** The `holo` plate's fill was a dark navy
+  (8,16,34) that `_EMISSIVE_TERRAIN` + bloom lifted into a solid blue
+  floor, drowning the move/attack/danger overlays; the embedded PNG's fill
+  is (2,2,3) with (7,8,11) inner lines now — only the cyan rim glows.
+  `holo_red` untouched.
+- Files: three-renderer.js, sprites.js, index.html (`?v=20260904j-cors`);
+  DOOR_MASTER.md Part D.

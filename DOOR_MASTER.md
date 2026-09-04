@@ -995,3 +995,17 @@ exempt and stands solid, the floor is a new `training_floor` terrain (one
 warm plaster slab per tile, drawn at load), and two floor cracks join the
 scorch stars. No canon change. Files: three-renderer.js, sprites.js,
 data.js, map.js, index.html (`?v=20260904i-cors`); HQ plan §9 rev 3 entry.
+
+### 2026-09-04 (rev 4) — see-through walls, black holo floor
+Two readability fixes on the facility boards, no canon change. The
+Training Room's enclosure now takes part in the renderer's line-of-sight
+occlusion fade: a wall (panel, dado, trims, strips and everything hung on
+it — doors, signs, clocks, lamps, the booth) is one occluder that fades to
+near-invisible whenever it sits between the camera and the grid (the
+centre + four inner corner tiles are always subjects there, on top of the
+active unit), so units behind it render as themselves instead of the
+x-ray holograms the old solid walls forced. The Holo Sim's `holo` plate
+was a dark navy that the emissive rim pass and bloom turned into a solid
+blue floor under every highlight; the fill is black now, only the cyan rim
+glows. Files: three-renderer.js, sprites.js, index.html
+(`?v=20260904j-cors`); HQ plan §9 rev 4 entry.
