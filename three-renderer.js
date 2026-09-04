@@ -9054,7 +9054,7 @@ const ThreeRenderer = (function () {
         var movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
         var hgBuff = unit.hourglassBuff || 0;
         var totalMov = movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
-        if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Hourglass power: +' + hgBuff + ' ATK/DEF points">⏳+' + hgBuff + '</span>');
+        if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Key Charge: +' + hgBuff + ' ATK/DEF points">' + ((typeof keyIconHtml === 'function') ? keyIconHtml(9) : 'KEY') + '+' + hgBuff + '</span>');
         if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');
         else if (totalMov < 0) badges.push('<span class="tp-sbadge tp-stat-dn">MOV' + totalMov + '</span>');
 
@@ -16470,6 +16470,196 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* ── Key pickup celebration (DOOR 6.3, Mario-64-star beat) ───────────
+       A real 3D key rises and spins over the securing unit inside a gold
+       glow — rays of light via ThreeVFX, a ground shockwave ring, a sparkle
+       drip while it hovers, then a burst-out. ~2.6 s, fully non-blocking:
+       no camera move, no input lock (Keys land mid-competitive-match).
+       The mesh is the DOOR kit's own key GLB (DOOR_HQ.catalogue.key via the
+       misc-model loader); a chunky procedural gold key stands in until the
+       GLB is cached (keyFxWarm pre-warms it at battle start). Fog gating is
+       the CALLER's job (battle.js playKeySecuredFx is viewer-local). */
+    var _keyFxList = [];
+    var _keyFxGeo = null;          // cached procedural-key geometry parts
+    var _keyFxMat = null;
+    var _keyFxModelUrl;
+    function _keyFxUrl() {
+        if (_keyFxModelUrl !== undefined) return _keyFxModelUrl;
+        _keyFxModelUrl = '';
+        try {
+            var cat = (typeof DOOR_HQ !== 'undefined') && DOOR_HQ.catalogue && DOOR_HQ.catalogue.key;
+            if (cat && cat.file) _keyFxModelUrl = DOOR_HQ.assets.models + encodeURIComponent(cat.file);
+        } catch (e) {}
+        return _keyFxModelUrl;
+    }
+    function keyFxWarm() {
+        var u = _keyFxUrl();
+        if (u) _loadMiscModel(u, true, function () {});
+    }
+    function _keyFxProceduralKey(ts) {
+        if (!_keyFxMat) _keyFxMat = new THREE.MeshLambertMaterial({ color: 0xffc84a, emissive: 0x8a5c12 });
+        if (!_keyFxGeo) {
+            _keyFxGeo = {
+                bow: new THREE.TorusGeometry(1, 0.32, 6, 10),
+                shaft: new THREE.CylinderGeometry(0.28, 0.28, 3.0, 6),
+                tooth: new THREE.BoxGeometry(0.85, 0.3, 0.3),
+            };
+        }
+        var s = ts * 0.11;                       // torus radius in world units
+        var g = new THREE.Group();
+        var bow = new THREE.Mesh(_keyFxGeo.bow, _keyFxMat);
+        bow.position.y = s * 2.6;
+        var shaft = new THREE.Mesh(_keyFxGeo.shaft, _keyFxMat);
+        shaft.position.y = s * 0.2;
+        var t1 = new THREE.Mesh(_keyFxGeo.tooth, _keyFxMat);
+        t1.position.set(s * 0.55, -s * 0.75, 0);
+        var t2 = new THREE.Mesh(_keyFxGeo.tooth, _keyFxMat);
+        t2.position.set(s * 0.55, -s * 1.25, 0);
+        g.add(bow, shaft, t1, t2);
+        g.scale.setScalar(s);
+        g.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });
+        return g;
+    }
+    /* VFX-space helpers (board pixels incl. padding — _spawnGroundPuff's convention) */
+    function _keyFxVfxXY(tx, ty) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var gap = CONFIG.tileGap || 0;
+        var pad = CONFIG.boardPadding || 2;
+        return { x: pad + tx * (ts + gap) + ts / 2, y: pad + ty * (ts + gap) + ts / 2 };
+    }
+    function _keyFxSparkBurst(tx, ty, count, zBase, big) {
+        var V = window.ThreeVFX;
+        if (!V || typeof V.spawn !== 'function' || !V.isActive || !V.isActive()) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var p = _keyFxVfxXY(tx, ty);
+        for (var i = 0; i < count; i++) {
+            var a = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+            var sp = (big ? 130 : 70) + Math.random() * (big ? 160 : 90);
+            V.spawn({
+                x: p.x, y: p.y, z: zBase + Math.random() * ts * 0.2,
+                vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+                vz: (big ? 60 : 30) + Math.random() * (big ? 190 : 110),
+                mode: 'billboard', sprite: 'ember',
+                ml: (big ? 480 : 380) + Math.random() * 320,
+                size0: (big ? 10 : 7) + Math.random() * 7, size1: 2,
+                opacity0: 1, opacity1: 0,
+                gravity: 260, drag: 1.15,
+            });
+        }
+        if (big) {
+            V.spawn({
+                x: p.x, y: p.y, z: zBase, mode: 'billboard', sprite: 'flash',
+                ml: 340, size0: ts * 0.6, size1: ts * 1.5, opacity0: 0.95, opacity1: 0,
+            });
+        }
+    }
+    function _keyFxGroundRing(tx, ty) {
+        var V = window.ThreeVFX;
+        if (!V || typeof V.spawn !== 'function' || !V.isActive || !V.isActive()) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var p = _keyFxVfxXY(tx, ty);
+        V.spawn({
+            x: p.x, y: p.y, z: _tileSurfaceY(tx, ty) + 2,
+            mode: 'world', sprite: 'shockwave',
+            ml: 520, size0: ts * 0.35, size1: ts * 1.9, opacity0: 0.85, opacity1: 0,
+        });
+    }
+    function keyPickupFx(tx, ty, opts) {
+        if (!scene) return;
+        opts = opts || {};
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var wx = tx * ts + ts / 2;
+        var wz = ty * ts + ts / 2;
+        var baseY = _tileSurfaceY(tx, ty);
+        var g = new THREE.Group();
+        g.position.set(wx, baseY + ts * 0.30, wz);
+        var holder = new THREE.Group();
+        g.add(holder);
+        var url = _keyFxUrl();
+        var cached = url && _miscModelCache[url];
+        if (cached && cached.root) {
+            /* kit GLB (cached → the instance fills synchronously). Meshy props
+               usually lie flat: if the fitted instance is much wider than
+               tall, stand it up so it spins upright like an item pickup. */
+            holder.add(_miscModelInstance(url, true, ts * 0.5, {
+                fit: 'span',
+                onDone: function (inst, scale, bb) {
+                    /* cached root → this runs synchronously, before the group
+                       joins the scene, so the measured box is in local space */
+                    try {
+                        var ex = (bb.max.x - bb.min.x), ey = (bb.max.y - bb.min.y), ez = (bb.max.z - bb.min.z);
+                        if (ey < Math.max(ex, ez) * 0.45) inst.rotation.x = -Math.PI / 2;   // Meshy props lie flat — stand it up
+                        inst.updateMatrixWorld(true);
+                        var box = new THREE.Box3().setFromObject(inst);
+                        var c = box.getCenter(new THREE.Vector3());
+                        inst.position.x -= c.x; inst.position.y -= c.y; inst.position.z -= c.z;
+                    } catch (e) {}
+                }
+            }));
+        } else {
+            if (url) keyFxWarm();                 // GLB from the 2nd pickup on
+            holder.add(_keyFxProceduralKey(ts));
+        }
+        var light = new THREE.PointLight(0xffd070, 0, ts * 3.4);
+        light.position.set(0, ts * 0.25, 0);
+        g.add(light);
+        g.scale.setScalar(0.01);
+        scene.add(g);
+        _keyFxList.push({
+            g: g, holder: holder, light: light,
+            t0: _animNow(), ts: ts, baseY: baseY, tx: tx, ty: ty,
+            burst: false, nextSpark: 500,
+        });
+        _keyFxGroundRing(tx, ty);
+        _keyFxSparkBurst(tx, ty, 12, baseY + ts * 0.25, false);
+    }
+    var _KEYFX_RISE = 450, _KEYFX_HOLD = 1650, _KEYFX_OUT = 420;
+    function _updateKeyFx() {
+        if (!_keyFxList.length) return;
+        var now = _animNow();
+        for (var i = _keyFxList.length - 1; i >= 0; i--) {
+            var f = _keyFxList[i];
+            var t = now - f.t0;
+            var total = _KEYFX_RISE + _KEYFX_HOLD + _KEYFX_OUT;
+            if (t >= total || !f.g.parent) {
+                scene.remove(f.g);
+                _keyFxList.splice(i, 1);
+                continue;
+            }
+            var ts = f.ts;
+            var topY = f.baseY + ts * 1.05;
+            if (t < _KEYFX_RISE) {
+                var k = t / _KEYFX_RISE;
+                var e = 1 - Math.pow(1 - k, 3);
+                var over = 1 + Math.sin(Math.min(1, k * 1.15) * Math.PI) * 0.18;  // pop overshoot
+                f.g.scale.setScalar(Math.max(0.01, e * over));
+                f.g.position.y = f.baseY + ts * 0.30 + (topY - f.baseY - ts * 0.30) * e;
+                f.holder.rotation.y = k * Math.PI * 3.2;
+                f.light.intensity = e * 1.8;
+            } else if (t < _KEYFX_RISE + _KEYFX_HOLD) {
+                var h = t - _KEYFX_RISE;
+                f.g.scale.setScalar(1);
+                f.g.position.y = topY + Math.sin(h * 0.004) * ts * 0.05;
+                f.holder.rotation.y = Math.PI * 3.2 + h * 0.0038;
+                f.light.intensity = 1.6 + Math.sin(h * 0.008) * 0.35;
+                if (t >= f.nextSpark) {           // slow sparkle drip while hovering
+                    f.nextSpark = t + 240;
+                    _keyFxSparkBurst(f.tx, f.ty, 2, f.g.position.y, false);
+                }
+            } else {
+                var o = (t - _KEYFX_RISE - _KEYFX_HOLD) / _KEYFX_OUT;
+                if (!f.burst) {
+                    f.burst = true;
+                    _keyFxSparkBurst(f.tx, f.ty, 18, f.g.position.y, true);
+                }
+                f.g.scale.setScalar(Math.max(0.01, 1 - o * o));
+                f.g.position.y = topY + o * ts * 0.35;
+                f.holder.rotation.y += 0.02 + o * 0.05;
+                f.light.intensity = Math.max(0, 1.6 * (1 - o));
+            }
+        }
+    }
+
     function startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs, opts) {
         var fromZ = unit.z || 0;
         var toZ = (typeof getHeightAt === 'function') ? getHeightAt(toX, toY) : 0;
@@ -19057,6 +19247,7 @@ const ThreeRenderer = (function () {
         _updateCarryHolds();
         _updateThrowTweens();
         _updateDeathTweens();
+        _updateKeyFx();
         _updateProjectileTweens();
         _updateTetherTweens();
         _updateFloatTextTweens();
@@ -29527,6 +29718,9 @@ const ThreeRenderer = (function () {
         startFloatingText,
 
         startHitEffect,
+
+        /* DOOR 6.3: the Key pickup celebration (battle.js playKeySecuredFx) */
+        keyPickupFx, keyFxWarm,
 
         hasActiveAnims,
 

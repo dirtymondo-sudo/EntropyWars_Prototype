@@ -1736,7 +1736,7 @@ function AchievementsTab({ profile }) {
 
   const CATS = [
     ['combat', '⚔️ Combat'], ['support', '💚 Support'], ['battlefield', '🌌 Battlefield'],
-    ['objectives', '⏳ Objectives'], ['modes', '🏆 Modes'], ['feats', '✨ Feats'],
+    ['objectives', '🚩 Objectives'], ['modes', '🏆 Modes'], ['feats', '✨ Feats'],
     ['champions', '👑 Champions'], ['records', '📊 Records'],
   ];
 

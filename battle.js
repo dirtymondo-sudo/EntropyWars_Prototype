@@ -6064,7 +6064,7 @@
             const unitBuff = unit.hourglassBuff || 0;
             if (unitBuff > 0) entries.push({
                 key: 'hourglass',
-                text: `Temporal Buff Lv.${unitBuff}: +${unitBuff * HOURGLASS_POWER_PER_LEVEL} DMG, -${unitBuff * HOURGLASS_POWER_PER_LEVEL} DMG taken, +${Math.floor(unitBuff/2)} MOV`
+                text: `Key Charge Lv.${unitBuff}: +${unitBuff * HOURGLASS_POWER_PER_LEVEL} DMG, -${unitBuff * HOURGLASS_POWER_PER_LEVEL} DMG taken, +${Math.floor(unitBuff/2)} MOV`
             });
             if ((unit._killStreak || 0) >= 2) {
                 const _hot = (unit._killStreak >= 3);
@@ -6116,7 +6116,6 @@
                 .replace(/\bDrowning\b/gi, m => iconBadge('drowning', m))
                 .replace(/\bProtect(?:ed)?\b/gi, m => iconBadge('protect', m))
                 .replace(/\bshield\b/gi, m => iconBadge('shield', m))
-                .replace(/⏳(\d+)?/g, (_, n) => iconBadge('hourglass', n ? `Hourglass ×${n}` : 'Hourglass'))
                 .replace(/\bHP\b/g, m => iconBadge('heal', m))
                 .replace(/\bMP\b/g, m => iconBadge('mana', m));
         }
@@ -6131,8 +6130,7 @@
             output = output
                 .replace(/\bPlayer 1\b(?=(?:'s)?\s+(?:turn|wins?|won|party|auto mode|forfeits?|goes first|is computer-controlled))/g, '<span class="ally-text">Player 1</span>')
                 .replace(/\bPlayer 2\b(?=(?:'s)?\s+(?:turn|wins?|won|party|auto mode|forfeits?|goes first|is computer-controlled))/g, '<span class="enemy-text">Player 2</span>')
-                .replace(/\bTemporal scan\b/g, '<span class="hourglass-text">Temporal scan</span>')
-                .replace(/\bhourglasses?\b/gi, m => `<span class="hourglass-text">${m}</span>`)
+                .replace(/\bKeys?\b/g, m => `<span class="hourglass-text">${m}</span>`)
                 .replace(/It's super effective!/g, '<span style="color:#55d38a;font-weight:700">It\'s super effective!</span>')
                 .replace(/It wasn't very effective\.\.\./g, '<span style="color:#a9b0d0;font-style:italic">It wasn\'t very effective...</span>')
                 .replace(/CRITICAL HIT/g, '<span style="color:#ffd166;font-weight:900">CRITICAL HIT</span>')
@@ -7785,6 +7783,28 @@
                "AI" being followed is a human opponent). */
             return _isTileVisibleToViewer(unit.x, unit.y);
         }
+
+        /* ── DOOR 6.3: the Key pickup celebration ─────────────────────────
+           A secured Key gets a real moment — the kit's key GLB rises and
+           spins over the unit in a gold glow with light rays and a sparkle
+           burst (ThreeRenderer.keyPickupFx, ~2.6 s, non-blocking: no camera
+           move, no input lock, so it is safe mid-competitive-match).
+           Viewer-local like all display: devsim suppresses it, and the fog
+           gate means an ENEMY securing a Key inside your fog shows nothing
+           positional (the screen-wide banner still tells you it happened).
+           online.js wraps this for relay; the guest re-runs it locally where
+           ITS OWN fog gate decides. */
+        function playKeySecuredFx(x, y, count) {
+            try {
+                if (_skipVisuals()) return;
+                if (!_isTileVisibleToViewer(x, y)) return;
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive()
+                    && typeof ThreeRenderer.keyPickupFx === 'function') {
+                    ThreeRenderer.keyPickupFx(x, y, { count: count || 1 });
+                }
+            } catch (e) { console.warn('[KeyFx] failed', e); }
+        }
+        window.playKeySecuredFx = playKeySecuredFx;
 
         function _isTileVisibleToViewer(tx, ty) {
             if (!state.fogOfWar) return true;
@@ -22834,7 +22854,7 @@
             }
 
             if (placed > 0) {
-                addLog(`⏳ ${placed} new hourglass${placed > 1 ? 'es' : ''} materialized in the center of the battlefield!`);
+                addLog(`${placed} new Key${placed > 1 ? 's' : ''} materialized in the center of the battlefield!`);
             }
         }
 
@@ -27466,7 +27486,7 @@
             const _winCondLabels = {
                 wipeout: '💀 Wipeout',
                 tower_destroyed: '⬡ Cube Destroyed',
-                hourglasses_collected: '⏳ Hourglasses Collected',
+                hourglasses_collected: 'Keys Secured',
                 most_kills: '🗡 Most Kills',
                 most_points: '🚩 Most Points',
                 most_captures: '🏳️ Most Captures',
@@ -27513,7 +27533,7 @@
                     }
                     const hgPts = hgCount * ARENA_PTS.hourglass;
                     pts += hgPts;
-                    details.push({ label: 'Hourglasses', raw: hgCount, pts: hgPts, icon: '⏳' });
+                    details.push({ label: 'Keys', raw: hgCount, pts: hgPts, icon: (typeof keyIconHtml === 'function') ? keyIconHtml(11) : '' });
 
                     const nexRounds = state._arenaNexusControl?.[p] || 0;
                     const nexPts = nexRounds * ARENA_PTS.nexusRound;
@@ -31136,7 +31156,7 @@
             _lastHudSbHtml = '';
             _lastDialogueHtml = '';
             renderLog();
-            addLog('Game reset. Build both parties, then start the match. Hourglasses grant stacking team buffs — every 3rd triggers Time Travel!');
+            addLog('Game reset. Build both parties, then start the match. Keys grant stacking team buffs.');
             if (!state.titleScreenVisible) syncMusicToState();
             render();
         }
@@ -31381,9 +31401,9 @@
             if (_mpCheck && _mpCheck.hasHourglasses === false) {
 
             } else if (state.hourglasses.length < CONFIG.winHourglasses) {
-                addLog('Could not place all hourglasses with spacing rules on this roll.');
+                addLog('Could not place all Keys with spacing rules on this roll.');
             } else {
-                addLog(`${CONFIG.winHourglasses} hourglasses scattered across the battlefield. Collect hourglasses for permanent team buffs!`);
+                addLog(`${CONFIG.winHourglasses} Keys scattered across the battlefield. Secure Keys for permanent team buffs!`);
             }
             render();
         }
@@ -31463,7 +31483,7 @@
            _CODEX_LORE) so the lore does double duty as loading flavor. */
         const LS_HINTS = [
             { t: 'FIELD MANUAL', q: 'Turn order is decided by SPEED. The fastest vessels on the field always move first.' },
-            { t: 'FIELD MANUAL', q: 'Hourglasses grant permanent team-wide buffs. Every one you leave in the dirt is one the enemy collects.' },
+            { t: 'FIELD MANUAL', q: 'Keys grant permanent team-wide buffs. Every one you leave in the dirt is one the enemy secures.' },
             { t: 'FIELD MANUAL', q: 'The shot clock gives each turn 30 seconds. Entropy waits for no one.' },
             { t: 'FIELD MANUAL', q: 'Every vessel carries a type — and every type has prey it hunts and a predator it fears. The Codex knows which.' },
             { t: 'FIELD MANUAL', q: 'Deep water drowns the unwary. Winged vessels are untroubled by such things.' },
@@ -31573,6 +31593,14 @@
                dev-sim and animations-off matches still get a hot cache. ── */
             const prog = { model: [0, 0], img: [0, 0], tex: [0, 0], music: [0, 1] };
             const warmers = [];
+
+            // DOOR 6.3: pre-warm the kit's key GLB so the first Key secured
+            // celebrates with the real model, not the procedural stand-in.
+            // Fire-and-forget (tiny file) — never gates the loading screen.
+            if ((CONFIG.winHourglasses | 0) > 0 && typeof ThreeRenderer !== 'undefined'
+                && typeof ThreeRenderer.keyFxWarm === 'function') {
+                try { ThreeRenderer.keyFxWarm(); } catch (e) {}
+            }
 
             // Rigged GLBs: the actual 2D→3D pop-in killer (§3.1).
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer
@@ -32830,7 +32858,7 @@
                 addLog('🚩 Domination! Capture Nexus points to earn points every round. Most points when rounds end wins.');
             } else if (mpMode.id === 'arena') {
                 const rl = mpMode.roundLimit || '?';
-                addLog(`🏰 Arena! ${rl}-round limit. Destroy the tower, collect hourglasses, or wipe out the enemy. Composite score decides if no winner.`);
+                addLog(`🏰 Arena! ${rl}-round limit. Destroy the Cube, secure the Keys, or wipe out the enemy. Composite score decides if no winner.`);
             } else if (mpMode.id === 'dungeon') {
                 if (state._mdPhase === 'hub') {
                     addLog('🏘 Guild Hub — your unlocked characters hang out here. Rest at the spring, then step onto the cave entrance (east edge) to start the dungeon!');
@@ -43065,9 +43093,10 @@
                 const buffDesc = `+${newLevel * HOURGLASS_POWER_PER_LEVEL} DMG, -${newLevel * HOURGLASS_POWER_PER_LEVEL} DMG taken, +${Math.floor(newLevel/2)} MOV`;
                 grantXP(unit, XP_COLLECT_HOURGLASS * totalHourglasses, 'collectHourglass');
                 unit.gold = (unit.gold || 0) + (typeof GOLD_PER_HOURGLASS !== 'undefined' ? GOLD_PER_HOURGLASS : 0) * totalHourglasses;
-                showFloatingTextForUnit(unit, `⏳ +${totalHourglasses}`, 'streak');
+                showFloatingTextForUnit(unit, `+${totalHourglasses} KEY${totalHourglasses > 1 ? 'S' : ''}`, 'streak');
                 addEntropy(unit.player, ENTROPY_PTS.hourglass * totalHourglasses, 'hourglass', unit);
-                showCombatBanner(`⏳ Hourglass Found!`, `Buff Lv.${newLevel}: ${buffDesc}`, unit.player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
+                playKeySecuredFx(unit.x, unit.y, totalHourglasses);
+                showCombatBanner(`KEY SECURED!`, `Key Charge Lv.${newLevel}: ${buffDesc}`, unit.player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
                 playSfx(unit.player === getViewerPlayer() ? 'playerHourglass' : 'enemyHourglass');
                 shakeBoard('normal');
             }
@@ -43076,7 +43105,7 @@
 
             grantXP(unit, XP_INSPECT, 'inspect');
             if (totalHourglasses > 0) {
-                addLog(`⏳ Inspection uncovers ${totalHourglasses} hourglass${totalHourglasses !== 1 ? 'es' : ''}! Buff Lv.${unit.hourglassBuff}.`, unit.player);
+                addLog(`Inspection uncovers ${totalHourglasses} Key${totalHourglasses !== 1 ? 's' : ''}! Key Charge Lv.${unit.hourglassBuff}.`, unit.player);
             }
 
             if (totalHourglasses === 0) {
@@ -45336,12 +45365,12 @@
                         if (dist < bestDist) bestDist = dist;
                     }
                     let temp;
-                    if (bestDist <= 3) temp = '🔴 SCORCHING — An hourglass is very close!';
-                    else if (bestDist <= 6) temp = '🟠 HOT — An hourglass is nearby.';
-                    else if (bestDist <= 10) temp = '🟡 WARM — An hourglass is in the area.';
-                    else if (bestDist <= 16) temp = '🔵 COOL — An hourglass is fairly far away.';
+                    if (bestDist <= 3) temp = '🔴 SCORCHING — A Key is very close!';
+                    else if (bestDist <= 6) temp = '🟠 HOT — A Key is nearby.';
+                    else if (bestDist <= 10) temp = '🟡 WARM — A Key is in the area.';
+                    else if (bestDist <= 16) temp = '🔵 COOL — A Key is fairly far away.';
                     else temp = '❄️ FREEZING — Hourglasses are very far away.';
-                    addLog(`📡 Scanner detects hourglass energy: ${temp}`, unit.player);
+                    addLog(`📡 Scanner detects Key resonance: ${temp}`, unit.player);
                     showFloatingTextForUnit(unit, bestDist <= 3 ? '🔴 SCORCHING' : bestDist <= 6 ? '🟠 HOT' : bestDist <= 10 ? '🟡 WARM' : bestDist <= 16 ? '🔵 COOL' : '❄️ COLD', 'buff', { durationMs: 1800 });
                 } else {
                     addLog(`Scanner sweep finds nothing in the ${side}x${side} area.`, unit.player);
@@ -47078,15 +47107,15 @@
                         if (dist < bestDist) bestDist = dist;
                     }
                     let temp;
-                    if (bestDist <= 3) temp = '🔴 SCORCHING — An hourglass is very close!';
-                    else if (bestDist <= 6) temp = '🟠 HOT — An hourglass is nearby.';
-                    else if (bestDist <= 10) temp = '🟡 WARM — An hourglass is in the area.';
-                    else if (bestDist <= 16) temp = '🔵 COOL — An hourglass is fairly far away.';
+                    if (bestDist <= 3) temp = '🔴 SCORCHING — A Key is very close!';
+                    else if (bestDist <= 6) temp = '🟠 HOT — A Key is nearby.';
+                    else if (bestDist <= 10) temp = '🟡 WARM — A Key is in the area.';
+                    else if (bestDist <= 16) temp = '🔵 COOL — A Key is fairly far away.';
                     else temp = '❄️ FREEZING — Hourglasses are very far away.';
                     addLog(`${unitDisplayName(unit)} emits Scan Pulse (${side}x${side}). ${temp}`, unit.player);
                     showFloatingTextForUnit(unit, bestDist <= 3 ? '🔴 SCORCHING' : bestDist <= 6 ? '🟠 HOT' : bestDist <= 10 ? '🟡 WARM' : bestDist <= 16 ? '🔵 COOL' : '❄️ COLD', 'buff', { durationMs: 1800 });
                 } else {
-                    addLog(`${unitDisplayName(unit)} emits Scan Pulse (${side}x${side}). No hourglasses remain.`, unit.player);
+                    addLog(`${unitDisplayName(unit)} emits Scan Pulse (${side}x${side}). No Keys remain.`, unit.player);
                 }
 
                 focusBoardCameraOnTiles([{
@@ -49212,9 +49241,9 @@
                     if ((target.hourglasses || 0) > 0) {
                         target.hourglasses--;
                         unit.hourglasses = (unit.hourglasses || 0) + 1;
-                        addLog(`${unitDisplayName(unit)} plunders an hourglass from ${unitDisplayName(target)}! ⏳`);
-                        showFloatingTextForUnit(unit, '+1 ⏳', 'pickup', { durationMs: 1200 });
-                        showFloatingTextForUnit(target, '-1 ⏳', 'damage', { durationMs: 1000 });
+                        addLog(`${unitDisplayName(unit)} plunders a Key from ${unitDisplayName(target)}!`);
+                        showFloatingTextForUnit(unit, '+1 KEY', 'pickup', { durationMs: 1200 });
+                        showFloatingTextForUnit(target, '-1 KEY', 'damage', { durationMs: 1000 });
                         stolen = true;
                     }
                     if (!stolen && target.items) {
@@ -50881,7 +50910,7 @@
             if (state.winner) {
                 if (!state._winLogged) {
                     state._winLogged = true;
-                    addLog('All remaining hourglasses and hidden items are now revealed.');
+                    addLog('All remaining Keys and hidden items are now revealed.');
                     setTimeout(() => finalizeMatch(), 0);
                 }
                 return;
@@ -50958,8 +50987,8 @@
                 state._winLogged = true;
                 const winMsgs = {
                     wipeout: `Player ${state.winner} wins by eliminating all enemies!`,
-                    tower_destroyed: `Player ${state.winner} wins by destroying the enemy Cube!`,
-                    hourglasses_collected: `Player ${state.winner} wins by collecting all hourglasses!`,
+                    tower_destroyed: `⬡ THRESHOLD CLOSED — Player ${state.winner} destroys the enemy Cube!`,
+                    hourglasses_collected: `THRESHOLD STABILIZED — Player ${state.winner} secures every Key!`,
                     most_kills: `Player ${state.winner} wins with the most kills!`,
                     most_points: `Player ${state.winner} wins with the most points!`,
                     most_captures: `Player ${state.winner} wins with the most flag captures!`,
@@ -50969,7 +50998,7 @@
                     nexus_dominance: `⬡ NEXUS DOMINANCE! Player ${state.winner} wins by controlling every Nexus zone!`,
                 };
                 addLog(winMsgs[state._winCondition] || `Player ${state.winner} wins the match!`);
-                addLog('All remaining hourglasses and hidden items are now revealed.');
+                addLog('All remaining Keys and hidden items are now revealed.');
                 setTimeout(() => finalizeMatch(), 0);
             }
         }
@@ -51061,7 +51090,7 @@
                 }
                 const hgPts = hgCount * ARENA_PTS.hourglass;
                 pts += hgPts;
-                breakdown.push(`${hgCount} hourglasses (${hgPts})`);
+                breakdown.push(`${hgCount} Keys (${hgPts})`);
 
                 const nexRounds = state._arenaNexusControl?.[p] || 0;
                 const nexPts = nexRounds * ARENA_PTS.nexusRound;
@@ -51094,7 +51123,7 @@
 
                 state.suddenDeathActive = true;
                 state.matchClock.paused = true;
-                addLog('⚡ SCORES ARE TIED! SUDDEN DEATH! Next kill, hourglass pickup, or Nexus capture wins!');
+                addLog('⚡ SCORES ARE TIED! SUDDEN DEATH! Next kill, Key secured, or Nexus capture wins!');
                 showCombatBanner('⚡ SUDDEN DEATH!', 'Next score wins!', 'neutral');
                 shakeBoard('hard');
                 playSfx('levelUp');

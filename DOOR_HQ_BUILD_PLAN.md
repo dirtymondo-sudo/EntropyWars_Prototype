@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 11 (2026-09-04 — 6.1a SHIPPED: the walkable Training Room, §9)
+### The walkable facility that replaces the Play menu · rev 13 (2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge, §9)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -448,9 +448,13 @@ lamp/frame details → furniture → fixtures → machinery.
   Both ride the Δ list in match select and friendly online rooms
   (`EW_MAP_META` rows with `isDelta: true, facility: true`); never sites
   (no bay, no leaf, no native pool, no ranked rotation).
-- 6.2 Black Cube: the Arena tower's model/label/announcer → the Saturnian
-  Black Cube; "THRESHOLD CLOSED".
-- 6.3 Keys: hourglass pickups/objective → Keys; "THRESHOLD STABILIZED".
+- 6.2 ✅ (2026-09-04, §9) Black Cube: the tower was ALREADY the Cube in
+  model and label (user: "the towers are already cubes"); this session
+  added the missing announcer line ("⬡ THRESHOLD CLOSED — …") and the
+  CUBE mastery label. No model work was ever needed.
+- 6.3 ✅ (2026-09-04, §9) Keys: every player-facing hourglass label/icon/
+  log/banner → Key/🗝 (code identifiers untouched, Hazard Pay precedent);
+  the Keys win announces "🗝 THRESHOLD STABILIZED".
 - 6.4 (MASTER C-5) Nexus hold → double Cube damage instead of a win.
 - 6.5 Battle-board draw-call work (ROADMAP §4 items 1–3) — unrelated to
   the hub, listed here so nobody conflates the two again.
@@ -650,6 +654,118 @@ Guild Hub was the prototype; this plan is the building.
 - Hazard Pay wallet on the strip vs only at the Quartermaster. Rec: strip.
 
 ## 9. Build log (append per session)
+
+### 2026-09-04 (6.3 rev 2) — the Key pickup CELEBRATION; the emojis go
+User feedback on rev 1: "Why not make like an animation with the glb keys?
+i dont want god damn emojis infesting the game… like in mario 64 when you
+find a star… max 3-5 seconds" — a rename alone was not the ask. Token
+`20260904l-cors` → `20260904m-cors` (supersedes rev 1's l batch); files
+data.js, battle.js, ui.js, hud.js, three-renderer.js, online.js,
+profile.js, index.html. 113/114 green.
+
+**The celebration (three-renderer.js `keyPickupFx(tx, ty)` + `keyFxWarm`,
+exported).** A real 3D key rises out of the securing unit and spins in a
+gold glow — total ~2.6 s, NON-BLOCKING (no camera move, no input lock —
+Keys land mid-competitive-match, so it plays over live play): 450 ms pop-in
+rise with overshoot + fast spin → 1650 ms hover (bob, slow spin, pulsing
+gold PointLight, a sparkle drip every 240 ms) → 420 ms burst-out (spin-up,
+shrink, 18-ember + flash burst). At spawn: a world-mode `shockwave` ground
+ring + a 12-ember ring via ThreeVFX (same board-pixel convention as
+`_spawnGroundPuff`). The mesh is the DOOR kit's OWN key GLB
+(`DOOR_HQ.catalogue.key` = `Meshy_AI_a_key_…`, via `_loadMiscModel` /
+`_miscModelInstance` span-fit to 0.5 tile; a flat-lying Meshy bake is
+detected by its bbox and stood upright, then recentred so the spin axis
+runs through it). Until the GLB is cached a chunky procedural gold key
+(torus bow + hex shaft + two teeth, Lambert + emissive, cached geometry)
+stands in — and `showBattleLoadingScreen` pre-warms the GLB whenever the
+mode has Keys (`CONFIG.winHourglasses > 0`), so match one pickup one
+normally shows the real model. Tick rides the frame loop next to
+`_updateDeathTweens`; parent-check reaps fx across scene rebuilds.
+
+**Wiring (RULE #2 done properly).** battle.js `playKeySecuredFx(x, y, n)`
+(defined beside `_isTileVisibleToViewer`): devsim-suppressed, and
+FOG-GATED VIEWER-LOCALLY — an enemy securing a Key inside your fog plays
+nothing positional (the screen-level KEY SECURED banner still reports the
+event, as before). Called from the one live collection site (the
+inspect-scan collect, ~battle.js 43070). online.js wraps it
+(host/recording emits `relay {type:'key-fx', x, y, n}`) and the guest
+dispatcher re-runs it locally where the GUEST's own fog gate decides —
+the followUnitFall pattern.
+
+**Emoji purge (the game already had an emoji habit; the Key never joins
+it).** data.js `createKeyIconDataUri()` draws a real 16×16 pixel-art key
+(crispEdges SVG rects — bow ring, shaft, two teeth, highlight; same
+rounded-box frame as the status icons) → `KEY_ICON_URI` +
+`keyIconHtml(px)` (window-exported). It replaces 🗝 at: STATUS_DEFS
+`hourglass` iconSrc (log badges/status rows), roster count, scoreboard
+Keys row, trade-dialog row, the hidden-pickup dialog icon, the Arena
+score tally row, the 3D nameplate KEY+n badge, and the two sidebar
+held-count icons (index.html ships `.mini-hourglass` EMPTY; ui.js fills
+the background once per element). Text-only spots use the word: floating
+text `+1 KEY`, HUD chip `KEY+n`, banner `KEY SECURED!`; the 🗝 prefixes
+came OFF the logs, the win message and the result label, and
+`decorateTextWithIcons`' 🗝 rule was deleted (no emitters left).
+Achievement catalog icons (Keyring/Locksmith) stay emoji — that catalog
+is emoji-styled end to end and renders through React as text.
+Pre-existing 🗝️ in Mystery Dungeon strings is MD flavor, untouched.
+
+**Tune here:** `_KEYFX_RISE/_KEYFX_HOLD/_KEYFX_OUT` (450/1650/420 ms),
+hover height `ts*1.05`, light color 0xffd070, sparkle cadence 240 ms —
+all in the `keyPickupFx` block, three-renderer.js. Not verifiable here
+(CDN blocked): the GLB's real orientation/texture — if the kit key spins
+sideways, the bbox stand-up heuristic at `onDone` is the knob.
+
+### 2026-09-04 (6.3 + 6.2) — hourglasses are Keys; the Cube gets its announcer
+User: "let's do the keys. The towers are already cubes." (Story work — 4.1
+case-file screen, 4.3 tape, 4.2 micro-scenes — is ON HOLD until the user
+writes the outline; do not start it without them.) Token `20260904k-cors` →
+`20260904l-cors`; files data.js, state.js, battle.js, ui.js, hud.js, map.js,
+three-renderer.js, profile.js, index.html. `npm test` 113/114 green (server
+smoke skips).
+
+**The rule (B1's Hazard Pay precedent).** Player-facing text/icons only.
+Code identifiers are UNTOUCHED and must stay: `state.hourglasses`,
+`unit.hourglasses`, `hourglassBuff`, `winHourglasses`, `hasHourglasses`,
+`hourglasses_collected`, the `hourglasses` / `wins_hourglass` achievement
+metrics (hqKeys reads them), SFX keys `playerHourglass`/`enemyHourglass`,
+CSS classes `.hourglass-text` / `.mini-hourglass`, XP/GOLD constants, the
+STATUS_DEFS key `hourglass`. Time-semantic ⏳ stays ⏳ (cooldowns, END OF
+ROUND, WAITING FOR OPPONENT, Opponent's Turn, the TIME desk stamp).
+
+**What changed (🗝 everywhere a player reads it):**
+- data.js: STATUS_DEFS.hourglass → icon/glyph 🗝, short KEY, label Key
+  (same gold palette); the status blurb; achievements renamed 'Sands of
+  Time'→'Keyring' ('Secure Keys') and 'Timekeeper'→'Locksmith'; Plunder
+  desc; masteryLabels HOURGLASSES→KEYS and TOWER→CUBE.
+- battle.js: pickup banner '🗝 Key Secured!' + float '🗝 +N' + 'Key Charge
+  Lv.N' (was Temporal Buff); inspection/scanner logs ('Key resonance', 'A
+  Key is very close!'); scatter/materialize/reset logs; result-screen
+  label '🗝 Keys Secured' + details row 'Keys'; Arena intro + composite
+  breakdown + sudden-death line; plunder log; the Keys win message is now
+  '🗝 THRESHOLD STABILIZED — Player N secures every Key!' and (6.2's last
+  piece) the Cube win is '⬡ THRESHOLD CLOSED — Player N destroys the
+  enemy Cube!'; decorateTextWithIcons converts 🗝 (was ⏳) and the log
+  colorizer highlights capital-K Key/Keys (was any-case hourglass; capital
+  only, so prose "key" never lights up); the FIELD MANUAL loading hint.
+- ui.js: roster 🗝N, scoreboard 🗝 row, objective label 'Keys · … · Win by
+  Cube Destruction', Inspect/Hint/Keys help text, hidden-pickup dialog
+  (🗝, 'Something orthogonal is buried here.'), trade dialog row
+  Key/🗝 + trade logs, CPU-difficulty blurb (Cubes/Keys).
+- hud.js + three-renderer.js: the ⏳+N chip/badge → 🗝+N 'Key Charge'.
+- map.js: Arena mode desc (Cube/Keys), the drop log, the HQ strip Keys
+  tooltip ('recovered in the field'), the in-tray KEYS row sub FIELD, and
+  RECENT CASES chips now print masteryLabels (KEYS, CUBE) instead of raw
+  win-condition ids.
+- profile.js: achievements category '🗝 Objectives'. index.html: the two
+  sidebar mini-hourglass ⏳ → 🗝 (class name kept).
+
+**Parity (RULE #2):** every changed string renders locally on both clients
+from the same file version — no relay surface touched. Mismatched client
+versions during the rollout window would just read differently; harmless.
+**Not done / later:** no 3D Key model exists because loose hourglasses
+never had a board model either (they are hidden pickups — logs, scans,
+banners); if a visible pickup model ever lands, it lands as a Key. 6.4
+(Nexus → double Cube damage) still awaits the user's engine call.
 
 ### 2026-09-04 (6.1a) — the walkable Training Room ships
 User: "Let's build the walkable training room inside the facility." Token

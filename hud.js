@@ -2410,7 +2410,7 @@ function _hrlgStatusChips(unit) {
   const movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
   const hgBuff = unit.hourglassBuff || 0;
   const totalMov = movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
-  if (hgBuff > 0) chips.push({ key: 'hg', label: '⏳+' + hgBuff, kind: 'up', title: 'Hourglass power: +' + hgBuff + ' ATK/DEF points' });
+  if (hgBuff > 0) chips.push({ key: 'hg', label: 'KEY+' + hgBuff, kind: 'up', title: 'Key Charge: +' + hgBuff + ' ATK/DEF points' });
   if (totalMov) chips.push({
     key: 'mov', label: 'MOV' + (totalMov > 0 ? '+' : '') + totalMov, kind: totalMov > 0 ? 'up' : 'dn',
     title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects',

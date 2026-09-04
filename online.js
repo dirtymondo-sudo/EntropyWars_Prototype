@@ -1107,6 +1107,21 @@
             }
         };
 
+        /* Key pickup celebration (DOOR 6.3, battle.js playKeySecuredFx): the
+           engine-side pickup runs only on the HOST online, so relay it; the
+           guest re-runs it locally where its OWN fog gate (inside the
+           function) decides whether the position may be shown. */
+        const _origPlayKeySecuredFx = window.playKeySecuredFx;
+        if (typeof _origPlayKeySecuredFx === 'function') {
+            window.playKeySecuredFx = function(x, y, count) {
+                _origPlayKeySecuredFx(x, y, count);
+                var _netOn = window._NET && window._NET.online;
+                if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
+                    _emit('relay', { type: 'key-fx', x: x, y: y, n: count || 1 });
+                }
+            };
+        }
+
         /* Fall/grounding camera dive (battle.js followUnitFall): engine-side
            beat — a grounded flyer / knocked-down unit drops and the camera
            rides down with them. Runs only on the HOST online, so relay it;
@@ -3319,6 +3334,15 @@
                                breaks the GUEST's own Biggest Hit record. */
                             window.showFloatingTextAtTile(data.x, data.y, data.text, data.kind,
                                 (data.dmgAmt > 0) ? { _dmgAmt: data.dmgAmt, _dmgBy: data.dmgBy } : {});
+                        }
+                    }
+
+                    if (data.type === 'key-fx' && _ewMirrorView()) {
+                        /* DOOR 6.3: Key celebration at the securing unit. The
+                           function fog-gates on the GUEST's own viewer, so a
+                           hidden enemy's pickup shows nothing positional. */
+                        if (typeof window.playKeySecuredFx === 'function') {
+                            window.playKeySecuredFx(data.x, data.y, data.n || 1);
                         }
                     }
 

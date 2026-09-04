@@ -4137,7 +4137,7 @@
                 ${renderAccessoryBadges(u)}
                 <div class="mini-vital"><span class="mini-lbl">HP</span><div class="mini-track"><div class="mini-fill-hp${u.player === getViewerPlayer() ? '' : ' enemy'}" style="width:${hpPct}%"></div></div><span class="mini-num">${u.hp}/${u.maxHp}</span></div>
                 <div class="mini-vital"><span class="mini-lbl mp">MP</span><div class="mini-track"><div class="mini-fill-mp" style="width:${mpPct}%"></div></div><span class="mini-num">${u.mp}/${u.maxMp}</span></div>
-                ${u.hourglasses ? `<div class="roster-stats"><span>⏳${u.hourglasses}</span></div>` : ''}
+                ${u.hourglasses ? `<div class="roster-stats"><span>${(typeof keyIconHtml === 'function') ? keyIconHtml(10) : ''}${u.hourglasses}</span></div>` : ''}
                 ${getActiveStatusKeys(u).length > 0 ? `<div class="type-badges-block" style="margin-top:2px">${getActiveStatusKeys(u).map(k => { const m = STATUS_DEFS[k]; return (m && !m.statChange) ? `<span style="font-size:8px;background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px;color:var(--muted)">${m.icon || '•'} ${m.short || k}</span>` : ''; }).join('')}</div>` : ''}
                 ${rosterItemsHtml(u)}
               </div>
@@ -4254,11 +4254,11 @@
         <div class="small"><strong>Current Rule Set:</strong> 1 action per unit per round.</div>
         <div class="small"><strong>Cycle:</strong>${getCurrentCyclePhase() === 'day' ? 'Day' : 'Night'} · sleep preferences now matter.</div>
         <div class="small"><strong>Terrain:</strong> Grass, water, mountain, and desert are now modular rules with easy tweak points.</div>
-        <div class="small"><strong>Inspect:</strong> choose a nearby tile to reveal whether an hourglass is there.</div>
-        <div class="small"><strong>Hint System:</strong> a failed scan points toward the closest hidden hourglass.</div>
+        <div class="small"><strong>Inspect:</strong> choose a nearby tile to reveal whether a Key is there.</div>
+        <div class="small"><strong>Hint System:</strong> a failed scan points toward the closest hidden Key.</div>
         <div class="small"><strong>Leveling V2:</strong> units auto-learn spells as they level up in battle. At Lv.4, pick a secondary job for an offhand weapon and 6th spell. Use Recall to teleport to your spawn zone for healing!</div>
         <div class="small"><strong>Control Mode:</strong> Player 2 is computer-controlled.</div>
-        <div class="small"><strong>Hourglasses:</strong> scans reveal them, movement collects them, and defeated carriers drop them for both teams to see.</div>
+        <div class="small"><strong>Keys:</strong> scans reveal them, movement secures them, and defeated carriers drop them for both teams to see.</div>
       `;
 
             turnLabel.textContent = state.phase === 'setup' ?
@@ -4285,8 +4285,21 @@
             const perspectivePlayer = getViewerPlayer();
             const p1Held = state.phase === 'battle' ? carriedHourglassCount(1) : 0;
             const p2Held = state.phase === 'battle' ? carriedHourglassCount(2) : 0;
+            /* DOOR 6.3: the sidebar's held-count icons show the drawn pixel
+               key, not an emoji glyph (index.html ships the divs empty). */
+            if (typeof KEY_ICON_URI !== 'undefined') {
+                document.querySelectorAll('.mini-hourglass').forEach(el => {
+                    if (el._keyIconSet) return;
+                    el._keyIconSet = true;
+                    el.textContent = '';
+                    el.style.width = '16px';
+                    el.style.height = '16px';
+                    el.style.background = `url('${KEY_ICON_URI}') center/contain no-repeat`;
+                    el.style.imageRendering = 'pixelated';
+                });
+            }
             const cycle = getCurrentCyclePhase();
-            objectiveLabel.textContent = `Hourglasses · P1: ${p1Held} held · P2: ${p2Held} held · Win by Tower Destruction`;
+            objectiveLabel.textContent = `Keys · P1: ${p1Held} held · P2: ${p2Held} held · Win by Cube Destruction`;
             const cycleChanged = lastRenderedCycle && lastRenderedCycle !== cycle;
             if (cycleLabel) cycleLabel.textContent = `Cycle: ${cycle === 'day' ? '☀ Day' : '🌙 Night'}`;
 
@@ -4403,7 +4416,7 @@
                 secItems.push(`${zodiacIcon} <span class="sb-sec-val">${zodiacLabel}</span> ${zodiacLeft === 0 ? 'shifts' : zodiacLeft + 'rnd'}`);
                 secItems.push(`${skyActive ? `${skyActive.icon} <span class="sb-sec-val">${skyActive.label}</span> ${state.skyEvent.remaining}rnd` : 'Sky —'}`);
                 if (showHourglasses) {
-                    secItems.push(`⏳ <span class="sb-sec-val">${carriedHourglassCount(1)}</span>–<span class="sb-sec-val">${carriedHourglassCount(2)}</span>`);
+                    secItems.push(`${(typeof keyIconHtml === 'function') ? keyIconHtml(11) : ''} <span class="sb-sec-val">${carriedHourglassCount(1)}</span>–<span class="sb-sec-val">${carriedHourglassCount(2)}</span>`);
                 }
                 if (isArena || showTowers) {
                     secItems.push(`⬡<span class="sb-sec-val">${p1Nex}</span>–<span class="sb-sec-val">${p2Nex}</span>`);
@@ -5920,9 +5933,9 @@
                 const unit = state.units.find(u => u.id === dialog.unitId) || null;
                 const coord = coordLabel(dialog.event?.x, dialog.event?.y);
                 const isHourglass = dialog.event?.kind === 'hiddenHourglass';
-                const lootIcon = isHourglass ? '⏳' : '?';
+                const lootIcon = isHourglass ? ((typeof keyIconHtml === 'function') ? keyIconHtml(30) : 'KEY') : '?';
                 const flavorText = isHourglass ?
-                    'A faint shimmer ripples across the ground. Something ancient is buried here.' :
+                    'A faint shimmer ripples across the ground. Something orthogonal is buried here.' :
                     'Something is hidden here. Do you want to stop and find out what it is?';
 
                 card.innerHTML = `
@@ -6046,8 +6059,8 @@
                 const stg = dialog.staged;
                 const tradeRows = [{
                         key: 'hourglass',
-                        icon: '⏳',
-                        name: 'Hourglass',
+                        icon: (typeof keyIconHtml === 'function') ? keyIconHtml(14) : 'KEY',
+                        name: 'Key',
                         srcCount: stg.srcHourglasses,
                         tgtCount: stg.tgtHourglasses,
                         srcOrig: source.hourglasses || 0,
@@ -6314,10 +6327,10 @@
             const hgDiff = (source.hourglasses || 0) - stg.srcHourglasses;
             if (hgDiff > 0) {
                 moveHourglassesBetweenUnits(source, target, hgDiff);
-                logs.push(`${hgDiff} hourglass${hgDiff !== 1 ? 'es' : ''} → ${unitDisplayName(target)}`);
+                logs.push(`${hgDiff} Key${hgDiff !== 1 ? 's' : ''} → ${unitDisplayName(target)}`);
             } else if (hgDiff < 0) {
                 moveHourglassesBetweenUnits(target, source, -hgDiff);
-                logs.push(`${-hgDiff} hourglass${-hgDiff !== 1 ? 'es' : ''} ← ${unitDisplayName(target)}`);
+                logs.push(`${-hgDiff} Key${-hgDiff !== 1 ? 's' : ''} ← ${unitDisplayName(target)}`);
             }
 
             for (const itemKey of Object.keys(ITEM_RULES)) {
@@ -7446,7 +7459,7 @@
             return `
                 <div class="pm-set-group">
                     <div class="pm-set-group-title">CPU Difficulty</div>
-                    <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Changes how well the computer <b>plays</b>, never its stats. <b>Easy</b> skips combos, team focus-fire and press-turn lines, and sometimes takes the second-best action. <b>Normal</b> is the full trained AI. <b>Hard</b> additionally hunts win conditions — towers, zones, hourglasses, flags — instead of just trading kills. Applies to VS CPU, Challenge and Mystery Dungeon (never to online opponents). Takes effect from the CPU's next turn.</div>
+                    <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Changes how well the computer <b>plays</b>, never its stats. <b>Easy</b> skips combos, team focus-fire and press-turn lines, and sometimes takes the second-best action. <b>Normal</b> is the full trained AI. <b>Hard</b> additionally hunts win conditions — Cubes, zones, Keys, flags — instead of just trading kills. Applies to VS CPU, Challenge and Mystery Dungeon (never to online opponents). Takes effect from the CPU's next turn.</div>
                     <div class="pm-set-row">${btn('easy', 'Easy')}${btn('normal', 'Normal')}${btn('hard', 'Hard')}</div>
                 </div>`;
         };

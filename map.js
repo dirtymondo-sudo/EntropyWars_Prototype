@@ -260,7 +260,7 @@
                 if (ks) {
                     const k = (typeof window.hqKeys === 'function') ? window.hqKeys(profile) : null;
                     ks.innerHTML = k ? `KEYS <b>${k.keys}</b>` : '';
-                    ks.title = k ? `Keys secured: ${k.pickups} hourglass${k.pickups === 1 ? '' : 'es'} collected in the field${k.issued ? ` + ${k.issued} issued by the Department` : ''}. Restricted doors ask for rank AND Keys.` : '';
+                    ks.title = k ? `Keys secured: ${k.pickups} recovered in the field${k.issued ? ` + ${k.issued} issued by the Department` : ''}. Restricted doors ask for rank AND Keys.` : '';
                 }
                 /* the day's Code Red (plan 3.3): strobes until cleared */
                 const cp = _hqEl('hqCodeRed');
@@ -804,7 +804,7 @@
             html += `<div class="hq-row hq-row-tray"><b>VISITS TO HQ</b><span>SIGN-IN SHEET</span><i class="hq-lamp-chip st-open">${(hq.visits || 0)}</i></div>`;
             if (mc) html += `<div class="hq-row hq-row-tray"><b>THRESHOLDS STABILIZED</b><span>GREEN LAMPS</span><i class="hq-lamp-chip st-${mc.mastered ? 'stabilized' : 'off'}">${mc.mastered} / ${mc.total}</i></div>`;
             const keys = (typeof window.hqKeys === 'function') ? window.hqKeys(profile) : null;
-            if (keys) html += `<div class="hq-row hq-row-tray"><b>KEYS SECURED</b><span>HOURGLASSES${keys.issued ? ' + ISSUED' : ''}</span><i class="hq-lamp-chip st-${keys.keys ? 'open' : 'off'}">${keys.keys}</i></div>`;
+            if (keys) html += `<div class="hq-row hq-row-tray"><b>KEYS SECURED</b><span>FIELD${keys.issued ? ' + ISSUED' : ''}</span><i class="hq-lamp-chip st-${keys.keys ? 'open' : 'off'}">${keys.keys}</i></div>`;
             const cr = (typeof window.hqCodeRed === 'function') ? window.hqCodeRed(profile) : null;
             const crN = hq.codeRedsCleared | 0;
             if (cr) html += `<div class="hq-row hq-row-tray"><b>CODE RED · TODAY</b><span>${_hqEsc(cr.label.toUpperCase())} · ${_hqEsc(String(cr.race).toUpperCase())}</span><i class="hq-lamp-chip st-${cr.cleared ? 'stabilized' : 'codered'}">${cr.cleared ? 'CLEARED' : 'OPEN'}</i></div>`;
@@ -814,7 +814,7 @@
             html += '</div>';
             const hist = (profile && Array.isArray(profile.matchHistory)) ? profile.matchHistory.slice(0, 4) : [];
             if (hist.length) {
-                html += `<div class="hq-chips"><span>RECENT CASES</span>${hist.map(m => `<i class="hq-chip ${m.result === 'win' ? '' : 'dim'}">${_hqEsc(_hqMapLabel(String(m.mapId || '').replace(/_delta$/, '')).toUpperCase())} · ${m.result === 'win' ? 'CLOSED' : 'OPEN'}${m.winCondition ? ' · ' + _hqEsc(String(m.winCondition).replace(/_/g, ' ').toUpperCase()) : ''}</i>`).join('')}</div>`;
+                html += `<div class="hq-chips"><span>RECENT CASES</span>${hist.map(m => `<i class="hq-chip ${m.result === 'win' ? '' : 'dim'}">${_hqEsc(_hqMapLabel(String(m.mapId || '').replace(/_delta$/, '')).toUpperCase())} · ${m.result === 'win' ? 'CLOSED' : 'OPEN'}${m.winCondition ? ' · ' + _hqEsc((DOOR_HQ.masteryLabels && DOOR_HQ.masteryLabels[m.winCondition]) || String(m.winCondition).replace(/_/g, ' ').toUpperCase()) : ''}</i>`).join('')}</div>`;
             } else html += '<p class="hq-panel-note">No cases on file. The tray is waiting for field work.</p>';
             html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="_goToQuickPlay">ANSWER A BELL CALL ▸ QUICK PLAY</button><button class="hq-btn" data-fn="_mountReactProfile">YOUR CARD ▸ PROFILE</button><button class="hq-btn" data-close="1">NOTED</button></div>';
             html += '<p class="hq-panel-note">Directives, memos and commendations land in this tray as the story is filed. Field work generates paperwork; paperwork generates directives.</p>';
@@ -2321,7 +2321,7 @@
         };
 
         const MS_GAME_MODES = [
-            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the tower, wipe out the enemy, collect every hourglass — or hold ALL 3 Nexus zones at once for an instant win: the center Nexus plus BOTH spawn zones (yours starts captured — steal theirs by surviving inside their spawn). 15 rounds; Arena score decides otherwise.', tag: null, locked: false },
+            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the Cube, wipe out the enemy, secure every Key — or hold ALL 3 Nexus zones at once for an instant win: the center Nexus plus BOTH spawn zones (yours starts captured — steal theirs by surviving inside their spawn). 15 rounds; Arena score decides otherwise.', tag: null, locked: false },
             { id: 'tdm', icon: '💀', label: 'Team Deathmatch', desc: 'Most kills in 12 rounds wins. Wipeout also wins instantly. Sudden Death if tied.', tag: null, locked: false },
             { id: 'clash', icon: '🎴', label: 'Clash', desc: 'Classic JRPG battle — 4v4 on a fixed stage, no movement. Two parties face off across the field: attack, cast, use an item, or Guard, then the next unit steps up. Wipe out the enemy party to win.', tag: 'NEW', locked: false },
             { id: 'simul', icon: '♟️', label: 'Simul', desc: 'SIMULTANEOUS turns — both sides secretly order one unit (any unit, 2 AP), then the orders play out together: priority first, then speed. Displaced targets are re-acquired or the action whiffs. Most kills in 12 rounds wins.', tag: 'EXPERIMENTAL', locked: false },
@@ -7388,7 +7388,7 @@
                 h.visibleTo[1] = true;
                 h.visibleTo[2] = true;
             }
-            addLog(`${unitDisplayName(unit)} drops ${carried.length} hourglass${carried.length === 1 ? '' : 'es'} at ${coordLabel(unit.x, unit.y)}.`, unit.player);
+            addLog(`${unitDisplayName(unit)} drops ${carried.length} Key${carried.length === 1 ? '' : 's'} at ${coordLabel(unit.x, unit.y)}.`, unit.player);
 
             const lostBuff = unit.hourglassBuff || 0;
             unit.hourglassBuff = 0;

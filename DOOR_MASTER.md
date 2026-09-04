@@ -1,5 +1,5 @@
 # D.O.O.R. — MASTER FILE
-### Story bible + integration design + build log — rev 12 (2026-09-04 — HQ Phase 3 complete: Code Red, Keys, promotions)
+### Story bible + integration design + build log — rev 13 (2026-09-04 — A9 reskins shipped: hourglasses ARE Keys in-match, the Cube announces THRESHOLD CLOSED. Story track ON HOLD until the user writes the outline.)
 
 This file MERGES the two earlier DOOR documents and supersedes both:
 - `entropy_wars_claude_brief.md` (the ChatGPT-assisted story/world brief, 2026-09) → Part A
@@ -287,8 +287,8 @@ hold). Reskin the layer, not the engine:
 | Brief | Engine today | Philosophy | Change needed |
 |---|---|---|---|
 | **Wipeout** — eliminate the opposing team / invaders; the threshold stays open | `wipeout` | Opener | none |
-| **Destroy the Cube** — destroy the Saturnian Black Cube anchoring the threshold | `tower_destroyed` (the tower) | Closer | the tower's model/label becomes the Black Cube (its many corners anchor the threshold) |
-| **Secure three Keys** — find the scattered Keys and stabilise the threshold | `hourglasses_collected` (`winHourglasses`) | HINGE | hourglasses become KEYs (model + label); recovered Keys also count toward long-term progression and open restricted HQ doors |
+| **Destroy the Cube** — destroy the Saturnian Black Cube anchoring the threshold | `tower_destroyed` (the tower) | Closer | ✅ DONE (the model/labels were already the Cube; 2026-09-04 added the "⬡ THRESHOLD CLOSED" win announce + CUBE mastery label) |
+| **Secure three Keys** — find the scattered Keys and stabilise the threshold | `hourglasses_collected` (`winHourglasses`) | HINGE | ✅ DONE 2026-09-04 (every player-facing hourglass label/icon → Key/🗝, "🗝 THRESHOLD STABILIZED" win announce; loose pickups have no board model, so no model work; progression via hqKeys shipped earlier) |
 | Hold all 3 Nexus zones | 4th win condition | — | user's proposal: holding the Nexus doubles damage to the Cube instead of winning outright (engine change — decide later, Part C) |
 
 A player should keep useful Key progress even when the match ends another
@@ -1026,3 +1026,36 @@ the facility (the egress panel's shortcut buttons are gone); the walkable
 grid and the fought grid are established as the same room. Files: data.js,
 three-renderer.js, map.js, doorhq.test.js, index.html
 (`?v=20260904k-cors`); HQ plan §9 6.1a entry.
+
+### 2026-09-04 (later) — A9 reskins land: Keys in-match, the Cube's announcer; story ON HOLD
+User held off all directly story-related work ("I haven't even made a
+concrete outline or script yet") — the 4.1 case-file screen, the 4.3
+orientation tape and 4.2 micro-scenes wait for their outline; nothing was
+built for them. Instead the A9 table's two remaining reskins shipped in one
+pass (HQ plan §9 has the full string-by-string log): every player-facing
+hourglass label, icon, log, banner and help line is now Key/🗝 (achievement
+names Keyring/Locksmith, 'Key Charge' buff wording, 'Key resonance' scans,
+trade/roster/scoreboard rows, mastery label KEYS); the Keys win announces
+"🗝 THRESHOLD STABILIZED", the Cube win "⬡ THRESHOLD CLOSED" (the tower
+already WAS the Cube in model and label — only the announcer was missing).
+B1 discipline held: code identifiers, SFX keys, CSS class names and the
+achievement metrics are untouched, exactly like account.gold under Hazard
+Pay, so hqKeys and the progress sync see no change. Time-semantic ⏳
+(cooldowns, END OF ROUND, turn-wait) deliberately stays an hourglass.
+Files: data.js, state.js, battle.js, ui.js, hud.js, map.js,
+three-renderer.js, profile.js, index.html (`?v=20260904l-cors`). A9 table
+rows marked DONE; C-5's Nexus engine change (6.4) still awaits the user.
+
+### 2026-09-04 (later still) — the Key gets its Mario-star moment
+User (on the rename pass): the Keys deserve a real pickup animation with
+the kit's key GLB and light VFX, 3–5 s max, and no emoji infestation. Now
+in: securing a Key plays a ~2.6 s non-blocking celebration at the unit —
+the DOOR kit's own key GLB rises and spins in a gold glow with a ground
+shockwave ring, sparkle drip and a burst-out (procedural gold key stands in
+until the GLB caches; the loading screen pre-warms it). Fog-gated
+viewer-locally and relayed to the online guest (RULE #2), so a hidden
+enemy's pickup never leaks a position. Every 🗝 emoji from the rename pass
+was replaced by a drawn 16×16 pixel-art key icon (one shared data-URI) or
+plain words (KEY+n, +1 KEY, KEY SECURED!). Full detail in HQ plan §9
+"6.3 rev 2". Files: data.js, battle.js, ui.js, hud.js, three-renderer.js,
+online.js, profile.js, index.html (`?v=20260904m-cors`).

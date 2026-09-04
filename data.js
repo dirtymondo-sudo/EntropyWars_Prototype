@@ -6132,7 +6132,7 @@ const RACE_ABILITIES = {
         { id: 'racePlunder', spellType: 'human', element: 'metal', name: 'Plunder',
           type: 'utility', cost: 18, dmg: 70, apCost: 1, range: 1,
           kind: 'utility', damageType: 'physical',
-          desc: 'Strike an adjacent enemy and steal a random item or 1 hourglass from them.' },
+          desc: 'Strike an adjacent enemy and steal a random item or 1 Key from them.' },
         { id: 'raceYoHo', spellType: 'human', element: 'water', name: 'Yo Ho',
           type: 'heal', cost: 35, range: 0, apCost: 2,
           kind: 'healAll', healAmt: 130, cleanse: 2,
@@ -8465,6 +8465,30 @@ function createStatusIconDataUri(symbol, bg = '#223047', fg = '#ffffff', stroke 
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges"><rect x="1" y="1" width="14" height="14" rx="3" fill="${bg}" stroke="${stroke}"/><text x="8" y="${y}" text-anchor="middle" font-family="${fontFamily}" font-size="${fontSize}" font-weight="${fontWeight}" fill="${fg}">${symbol}</text></svg>`;
     return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
+/* DOOR 6.3: a DRAWN pixel key (crisp rects, not an emoji glyph) — the one
+   Key icon every UI surface shares (status badge, roster, scoreboard, trade
+   row, sidebar counters, nameplate badges). Same 16×16 rounded-box frame as
+   the other status icons. */
+function createKeyIconDataUri(bg = '#3d3212', gold = '#ffd968', hi = '#fff0bb', stroke = '#f1d15d') {
+    const px = (x, y, w, h, f) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}"/>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" shape-rendering="crispEdges">`
+        + `<rect x="1" y="1" width="14" height="14" rx="3" fill="${bg}" stroke="${stroke}"/>`
+        + px(3, 4, 4, 1, gold) + px(2, 5, 1, 4, gold) + px(6, 5, 1, 4, gold) + px(3, 9, 4, 1, gold)   // bow ring
+        + px(7, 6, 6, 2, gold)                                                                          // shaft
+        + px(10, 8, 1, 2, gold) + px(12, 8, 1, 3, gold)                                                 // teeth
+        + px(3, 4, 2, 1, hi) + px(7, 6, 3, 1, hi)                                                       // highlight
+        + `</svg>`;
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+const KEY_ICON_URI = createKeyIconDataUri();
+/* Inline HTML for the key icon at a given pixel size — for the innerHTML
+   surfaces (roster rows, scoreboard, trade dialog, score tally, badges). */
+function keyIconHtml(px, style) {
+    px = px | 0 || 12;
+    return `<span style="display:inline-block;width:${px}px;height:${px}px;vertical-align:-${Math.round(px * 0.15)}px;background:url('${KEY_ICON_URI}') center/contain no-repeat;image-rendering:pixelated;${style || ''}"></span>`;
+}
+if (typeof window !== 'undefined') { window.KEY_ICON_URI = KEY_ICON_URI; window.keyIconHtml = keyIconHtml; }
+
 const STATUS_DEFS = {
 
     burn: {
@@ -8886,13 +8910,16 @@ const STATUS_DEFS = {
         category: 'display',
         iconSrc: createStatusIconDataUri('🛡', '#163042', '#dff5ff', '#63d0ff')
     },
+    /* DOOR 6.3: hourglasses ARE Keys (MASTER A9 — KEY: Kinetic
+       Extradimensional Yoke). The status KEY stays 'hourglass' (code
+       identifier, like account.gold under Hazard Pay); only the face changes. */
     hourglass: {
-        icon: '⏳',
-        glyph: '⏳',
-        short: 'HGL',
-        label: 'Hourglass',
+        icon: 'KEY',
+        glyph: 'KEY',
+        short: 'KEY',
+        label: 'Key',
         category: 'display',
-        iconSrc: createStatusIconDataUri('⏳', '#3d3212', '#fff0bb', '#f1d15d')
+        iconSrc: KEY_ICON_URI
     },
     scanner: {
         icon: '📡',
@@ -9106,7 +9133,7 @@ const STATUS_LIBRARY_DESCS = {
     regen:     'Recovers HP at the end of every round.',
     guarding:  'Braced for impact — bonus defense until the next turn.',
     shield:    'A damage-absorbing barrier soaks incoming hits until it breaks.',
-    hourglass: 'Time-locked by hourglass magic.',
+    hourglass: 'Carrying a secured Key — its charge empowers the bearer.',
     scanner:   'Scanned — this unit is revealed and tracked.',
     invisible: 'Cannot be seen or directly targeted by enemies until it acts.',
     charm:     'Beguiled — cannot move against the charmer.',
@@ -9356,8 +9383,8 @@ const ACH_CATALOG = [
   { id: 'flyersGrounded',  metric: 'flyersGrounded',  cat: 'battlefield', icon: '🕸️', name: 'Air Traffic Control', desc: 'Slam enemy flyers out of the sky',       tiers: [1, 10, 100, 500, 1000] },
   // ── Objectives ──────────────────────────────────────────────────────────
   { id: 'tilesScanned',    metric: 'tilesScanned',    cat: 'objectives',  icon: '📡', name: 'Cartographer',      desc: 'Scan battlefield tiles',                   tiers: [1, 10, 100, 500, 1000, 10000] },
-  { id: 'hourglasses',     metric: 'hourglasses',     cat: 'objectives',  icon: '⏳', name: 'Sands of Time',     desc: 'Collect hourglasses',                      tiers: [1, 10, 50, 100, 500, 1000] },
-  { id: 'wins_hourglass',  metric: 'wins_hourglass',  cat: 'objectives',  icon: '⏳', name: 'Timekeeper',        desc: 'Win by collecting the hourglasses',        tiers: [1, 10, 100, 500, 1000] },
+  { id: 'hourglasses',     metric: 'hourglasses',     cat: 'objectives',  icon: '🗝', name: 'Keyring',           desc: 'Secure Keys',                              tiers: [1, 10, 50, 100, 500, 1000] },
+  { id: 'wins_hourglass',  metric: 'wins_hourglass',  cat: 'objectives',  icon: '🗝', name: 'Locksmith',         desc: 'Win by securing every Key',                tiers: [1, 10, 100, 500, 1000] },
   { id: 'wins_wipeout',    metric: 'wins_wipeout',    cat: 'objectives',  icon: '💀', name: 'Annihilator',       desc: 'Win by wiping the enemy team',             tiers: [1, 10, 100, 500, 1000] },
   { id: 'wins_tower',      metric: 'wins_tower',      cat: 'objectives',  icon: '🗼', name: 'Cube Breaker',      desc: 'Win by destroying the Black Cube',         tiers: [1, 10, 100, 500, 1000] },
   { id: 'wins_nexus',      metric: 'wins_nexus',      cat: 'objectives',  icon: '🔮', name: 'Nexus Sovereign',   desc: 'Win by Nexus control',                     tiers: [1, 10, 100, 500, 1000] },
@@ -15581,7 +15608,7 @@ const DOOR_HQ = {
        ('site:<mapId>:<cond>') first, then the recent matchHistory. */
     masteryConditions: ['wipeout', 'tower_destroyed', 'hourglasses_collected'],
     /* how the door panel's checklist and the result-screen tag name them */
-    masteryLabels: { wipeout: 'WIPEOUT', tower_destroyed: 'TOWER', hourglasses_collected: 'HOURGLASSES' },
+    masteryLabels: { wipeout: 'WIPEOUT', tower_destroyed: 'CUBE', hourglasses_collected: 'KEYS' },
 
     /* Keys (HQ plan 3.2 / MASTER A9: hourglasses ARE Keys). hqKeys(profile)
        = every hourglass the profile has ever secured (the achievement
