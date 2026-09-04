@@ -380,6 +380,8 @@ window.EW_TERRAIN_COLORS = window.EW_TERRAIN_COLORS || {
     sanctuary:'rgba(204,184,124,0.46)', sanctuary_church:'rgba(212,196,150,0.46)', sanctuary_shop:'rgba(200,170,110,0.46)',
     // ── Nexus (objective) tiles ──
     nexus:'rgba(255,215,90,0.55)', nexus_cave:'rgba(230,180,80,0.55)', nexus_sky:'rgba(190,225,255,0.55)',
+    // ── D.O.O.R. facility floors (2026-09-04) ──
+    holo:'rgba(60,220,255,0.45)', holo_red:'rgba(255,70,90,0.45)',
 };
 
 const TERRAIN_RULES = {
@@ -1390,7 +1392,13 @@ const TERRAIN_RULES = {
     latticegarden:  { label: 'Garden Lattice',  short: 'LAT', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     noise:          { label: 'Static Noise',    short: 'NSE', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     tigerfur:       { label: 'Tiger Fur',       short: 'TGR', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
-    tigerfur_2:     { label: 'Tiger Fur II',    short: 'TG2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } }
+    tigerfur_2:     { label: 'Tiger Fur II',    short: 'TG2', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    /* 2026-09-04 — D.O.O.R. facility floors (Holo Sim, DOOR_HQ_BUILD_PLAN 6.1b).
+       Plain passable floors, cosmetic for now: the look (pixel-art tiles
+       embedded in sprites.js as data URIs, self-lit rims) lives in
+       three-renderer _EMISSIVE_TERRAIN. holo_red = the warning cells. */
+    holo:           { label: 'Holo Floor',      short: 'HLO', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    holo_red:       { label: 'Holo Warning',    short: 'HLW', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
 };
 
 const OBJECT_RULES = {
@@ -9968,7 +9976,9 @@ const MF_TID = (() => {
         'bricks_3','marble_light','leather','leather_2','enamel_2','mars','mars_2','fur','fur_2','fur_3',
         'skin','rubber','rubber_2','damask','damask_2','damask_3','damask_4','floral','floral_2','diamond',
         'brokenglass','gunmetal','gunmetal_2','copper','concrete_floor','checkerboard_2','checkerboard_3','drywall_5','dirt_slope','grass_dark_fantasy',
-        'rocks_dark_fantasy','ice_1','igloo','latticegarden','noise','tigerfur','tigerfur_2','tilefloor','tilefloor_2'];
+        'rocks_dark_fantasy','ice_1','igloo','latticegarden','noise','tigerfur','tigerfur_2','tilefloor','tilefloor_2',
+        // 2026-07-14 (map.js mirror) — black liquid family; 2026-09-04 — D.O.O.R. facility floors
+        'swamp','oil','holo','holo_red'];
     const m = {}; L.forEach((k, i) => { if (k) m[k] = i; });
     return m;
 })();
@@ -12213,6 +12223,74 @@ const EW_MAP_META = [
     });
     deltas.forEach(d => EW_MAP_META.push(d));
     if (typeof window !== 'undefined') window.EW_MAP_META = EW_MAP_META;
+})();
+
+/* ═══════════════════════ D.O.O.R. FACILITY BOARDS (2026-09-04) ═════════════
+   Two 8×8 boards that live INSIDE the Department rather than beyond a door
+   (DOOR_HQ_BUILD_PLAN 6.1a / 6.1b). They are Δ boards in every engine sense
+   (the DELTA FORGE house rules, the shared lava→dirt bed, 4v4, the nexus at
+   dead centre, 180° symmetry — delta-maps.test.js checks them like the
+   rest) but they are NOT crossings: no full map, no sector bay, no threshold
+   leaf, no native entity pool, no ranked rotation. `facility: true` on their
+   EW_MAP_META rows is how the DOOR / HQ code tells them apart from launch
+   maps (everything that means "a site" already filters on !isDelta).
+     • prebuilt_training — the Training Room: the only approved square room
+       in the building. Bare cracked concrete over the raw bed; the lit
+       seams, the four scorch stars and the whole enclosure (pit barriers,
+       observation booths, corner machinery, clocks, red lamps, the green-lit
+       doors, the signs) are the three-renderer `training_room` scenery
+       theme, built around the board, never on it. Cutscenes / ORIENTATION
+       (plan 4.3) play here.
+     • prebuilt_holosim — the Simulation: Arcane Engineering's holographic
+       floor projected over the same bed. `holo` / `holo_red` tiles with
+       self-lit rims, a black starfield, neon rings and dark monoliths
+       (`holosim` theme) — the place to try a roster out before a crossing
+       tries it out on you.
+   Both are selectable in match select (they ride the Δ list) and in
+   friendly online rooms (state.js compatibleMaps takes every isDelta row). */
+const EW_FACILITY_BUILDERS = {};
+EW_FACILITY_BUILDERS.prebuilt_training = function () {
+    const M = _mfDeltaNew({ name: 'Training Room', base: 'concrete_floor', seed: 8401,
+        tints: { concrete_floor: '#cbb99a' },
+        desc: 'the Training Room — bare cracked concrete, lit seams, four scorch stars and nothing to hide behind. ORTHOGONAL GEOMETRY EXPOSURE AREA' });
+    /* an open floor by design (the reference render is an empty lit grid);
+       every feature of the room is scenery around the board */
+    M.symAll();
+    return M.finishDelta();
+};
+EW_FACILITY_BUILDERS.prebuilt_holosim = function () {
+    const M = _mfDeltaNew({ name: 'Holo Sim', base: 'holo', seed: 8402,
+        desc: 'the Simulation — a holographic floor projected over the raw bed. The red cells are where the last run went wrong; the two risers are the only solid things here' });
+    M.t(1, 1, 'holo_red'); M.t(6, 2, 'holo_red'); M.t(0, 3, 'holo_red');   // warning cells (mirrored below)
+    M.step(2, 2, 'holo'); M.step(7, 1, 'holo');                             // +1 holo risers (a whisper of cover)
+    M.symAll();
+    return M.finishDelta();
+};
+const EW_FACILITY_META = [
+    { id: 'prebuilt_training', label: 'Training Room', biomes: ['facility'],
+      env: { tint: 0x0b0b0e, tintAmt: 0.96, stars: 0.0, nebula: 0.0, fog: { color: 0x0c0c10, amount: 0.22, top: 0.0, band: 0.5 }, scenery: 'training_room' } },
+    { id: 'prebuilt_holosim', label: 'Holo Sim', biomes: ['facility', 'astral'],
+      env: { tint: 0x03040c, tintAmt: 0.92, stars: 1.5, nebula: 0.0, fog: { color: 0x04060e, amount: 0.30, top: 0.02, band: 0.5 }, scenery: 'holosim', density: 1.2 } },
+];
+(function _mfRegisterFacility() {
+    const S = MF_DELTA_S;
+    EW_FACILITY_META.forEach(meta => {
+        let d;
+        try { d = EW_FACILITY_BUILDERS[meta.id](); }
+        catch (e) { console.error('[MapForge] facility builder failed: ' + meta.id, e); return; }
+        d.name = meta.label;
+        PREBUILT_MAPS[meta.id] = d;
+        MAP_LAYOUT_PRESETS[meta.id] = {
+            sections: { above: null, buffer1: null, earth: { startRow: 0, endRow: S - 1, label: 'Earth', baseTerrain: d.base }, buffer2: null, below: null },
+            barrierRows: [], barrierOpeningsX: [], hasFloors: false,
+            env: meta.env || null, streetLamps: false,
+        };
+        EW_MAP_META.push({
+            id: meta.id, label: meta.label, w: S, h: S, teamSize: 4, tier: 3,
+            biomes: meta.biomes, isDelta: true, facility: true, base: d.base, env: meta.env,
+            desc: S + '×' + S + ' facility board, 4v4 — ' + (d.deltaDesc || meta.label),
+        });
+    });
 })();
 
 /* ═══════════════════════ MYSTERY DUNGEON — DATA LAYER ══════════════════════
@@ -15114,6 +15192,11 @@ const DOOR_TEXT = {
             summary: 'Edwin Abbott\'s 1884 satire imagined a two-dimensional world where women are lines, priests are circles and a visiting sphere is arrested for heresy. Out here it is a plane, two shallow dips and a dead tree; Kansas, for reference, has been measured as flatter than a pancake. No walls, so no corners, and the Department has not decided whether that is safe or the opposite. You are being watched. The tree is not.' },
         clash_stage: { tone: 'deny', status: 'SEALED', juris: 'Arcane Engineering · they built the floor',
             summary: 'Consecrated flagstones and two rows of combatants who do not move, in the tradition of every turn-based battle since 1987. Temples of antiquity roped off their holy ground for much the same reason. Arcane Engineering calls it the interview room. Guard is a verb here.' },
+        // the two facility boards (2026-09-04): inside the building, not crossings
+        prebuilt_training: { tone: 'void', status: 'INTERNAL', juris: 'Training Facility · not a crossing',
+            summary: 'The only approved square room in the building: an 8×8 grid on cracked concrete, four scorch marks nobody will explain, and observation booths that are always occupied. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES. Reality leaks possible; bring a form.' },
+        prebuilt_holosim: { tone: 'void', status: 'SIMULATION', juris: 'Arcane Engineering · the floor is a projection',
+            summary: 'A holographic 8×8 projected over the raw bed by Arcane Engineering, for trying things out before a crossing tries them out on you. The red cells mark where the last run went wrong. Nothing here is real, which is the same disclaimer as everywhere else, printed larger.' },
         prebuilt_custommap: { tone: 'void', status: 'UNFILED', juris: 'Yours',
             summary: 'A site that exists because an officer drew it in the editor. No history, no legend, no file, and no idea. Either the most dangerous crossing on record or a very nice lake. File it afterwards.' },
         // any map without a file (community maps, editor tests)

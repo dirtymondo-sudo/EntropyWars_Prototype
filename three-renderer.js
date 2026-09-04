@@ -1822,6 +1822,26 @@ const ThreeRenderer = (function () {
 
     var _terrainMatCache = new Map();
 
+    /* ── Self-lit terrains (2026-09-04, the D.O.O.R. facility floors) ────────
+       The tile's own texture doubles as the Lambert's emissiveMap, so only the
+       bright rim pixels of a `holo` plate glow (and bloom) while its dark fill
+       stays dark — a wireframe cube without a second material. Keyed per
+       terrain, so the shared material cache stays valid. Add a key here and a
+       data-URI tile in sprites.js TERRAIN_SPRITES to make another one. */
+    var _EMISSIVE_TERRAIN = {
+        holo:     { color: 0x7fe8ff, intensity: 0.95 },
+        holo_red: { color: 0xff6a78, intensity: 0.95 },
+    };
+    function _emissiveTerrainMat(mat, key, tex) {
+        var em = _EMISSIVE_TERRAIN[key];
+        if (em && mat && tex) {
+            mat.emissive = new THREE.Color(em.color);
+            mat.emissiveMap = tex;
+            mat.emissiveIntensity = em.intensity;
+        }
+        return mat;
+    }
+
     function buildBoxMaterials(topKey, sideKey) {
         var evp = _evPaletteActive();
         var ck = (evp ? 'EV|' : '') + (topKey || '_') + '|' + (sideKey || topKey || '_') + _tintKeyPart(topKey, sideKey);
@@ -1839,7 +1859,7 @@ const ThreeRenderer = (function () {
             var tex = isTop ? topTex : sideTex;
             var faceKey = isTop ? topKey : (sideKey || topKey);
 
-            if (tex) { mats.push(_evTintMat(new THREE.MeshLambertMaterial({ map: tex }), faceKey)); }
+            if (tex) { mats.push(_evTintMat(_emissiveTerrainMat(new THREE.MeshLambertMaterial({ map: tex }), faceKey, tex), faceKey)); }
             else {
                 var c = evp ? _evColor(faceKey) : new THREE.Color(isTop ? 0x556655 : 0x443322);
                 mats.push(new THREE.MeshLambertMaterial({ color: c }));
@@ -22385,6 +22405,456 @@ const ThreeRenderer = (function () {
     // 'none' = no scenery at all (underground / liminal maps).
     //   rows: [thr, builder, tumble, yLoFactor, yHiFactor]  (× discR)
     var _HZ_THEME_ROSTERS = null;
+    // ════════════════════════════════════════════════════════════════════
+    //  D.O.O.R. FACILITY BOARDS (2026-09-04, DOOR_HQ_BUILD_PLAN 6.1a / 6.1b)
+    //  Two scenery themes that dress the board's IMMEDIATE surroundings
+    //  instead of (or as well as) the far horizon. `training_room` builds
+    //  the Training Room around prebuilt_training — the walkway ring, the
+    //  maroon pit barriers, inward-facing walls with a dado, observation
+    //  booths, corner machinery, wall clocks, red lamps, the green-lit doors,
+    //  the signs, the lit seams + corner lights on the grid and four scorch
+    //  stars — and nothing on the far horizon (it is indoors). `holosim`
+    //  adds a fading holographic apron grid around prebuilt_holosim and lets
+    //  the roster scatter neon rings + dark monoliths in the void beyond.
+    //  Everything is built in board space (tile = ts, tile top = h × ts) and
+    //  OUTSIDE the playable footprint; the room walls are single-sided and
+    //  face inward, so an orbiting camera outside them looks straight
+    //  through (back-face culled) — the dollhouse trick — and the strata bed
+    //  under the board stays visible through the moat gap. Lit pieces use
+    //  Lambert (they share the board's sun / hemisphere light) rather than
+    //  the graded MeshBasic of the far scenery, so a night cycle never turns
+    //  a concrete wall blue. Kill-switch: window.EW_NO_FACILITY_SCENERY.
+    // ════════════════════════════════════════════════════════════════════
+    var _hzFacTexCache = {};
+    function _hzLit(tex, color, o) {
+        o = o || {};
+        var m = new THREE.MeshLambertMaterial({
+            map: tex || null, color: new THREE.Color(color == null ? 0xffffff : color),
+            side: o.side || THREE.FrontSide, transparent: !!o.transparent,
+            opacity: (o.opacity != null) ? o.opacity : 1, depthWrite: o.depthWrite !== false
+        });
+        if (o.emissive) { m.emissive = new THREE.Color(o.emissive); m.emissiveIntensity = o.emissiveIntensity || 1; }
+        return m;
+    }
+    /* canvas text plate (cached by key): lines centred, optional plate + border */
+    function _hzTextTex(key, lines, o) {
+        if (_hzFacTexCache[key]) return _hzFacTexCache[key];
+        if (typeof document === 'undefined') return null;
+        o = o || {};
+        var W = o.w || 512, H = o.h || 256;
+        var c = document.createElement('canvas'); c.width = W; c.height = H;
+        var g = c.getContext('2d');
+        if (o.bg) { g.fillStyle = o.bg; g.fillRect(0, 0, W, H); }
+        if (o.border) { g.strokeStyle = o.border; g.lineWidth = Math.max(4, W * 0.014); g.strokeRect(g.lineWidth * 1.5, g.lineWidth * 1.5, W - g.lineWidth * 3, H - g.lineWidth * 3); }
+        g.fillStyle = o.color || '#efe6cf'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        var n = lines.length, pad = H * (o.pad != null ? o.pad : 0.14), avail = H - pad * 2, lh = avail / n;
+        for (var i = 0; i < n; i++) {
+            var L = lines[i];
+            var sz = Math.min((o.sizes && o.sizes[i]) || lh * 0.74, lh * 0.92, (W * 0.92) / Math.max(1, L.length * 0.62));   // sizes are caps; the width fit always wins
+            g.font = (o.weight || 'bold') + ' ' + Math.round(sz) + 'px ' + (o.font || '"Arial Narrow", "Helvetica Neue", Arial, sans-serif');
+            g.fillText(L, W / 2, pad + lh * (i + 0.5));
+        }
+        var t = new THREE.CanvasTexture(c);
+        t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = true;
+        try { t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy() || 1); } catch (e) {}
+        _hzFacTexCache[key] = t;
+        return t;
+    }
+    /* yellow / black hazard stripes, tiling */
+    function _hzStripeTex() {
+        if (_hzFacTexCache.stripe) return _hzFacTexCache.stripe;
+        if (typeof document === 'undefined') return null;
+        var c = document.createElement('canvas'); c.width = c.height = 64;
+        var g = c.getContext('2d');
+        g.fillStyle = '#d9b23a'; g.fillRect(0, 0, 64, 64);
+        g.fillStyle = '#17171a';
+        for (var i = -2; i < 4; i++) { g.beginPath(); g.moveTo(i * 32, 64); g.lineTo(i * 32 + 32, 64); g.lineTo(i * 32 + 96, 0); g.lineTo(i * 32 + 64, 0); g.closePath(); g.fill(); }
+        var t = new THREE.CanvasTexture(c);
+        t.wrapS = t.wrapT = THREE.RepeatWrapping;
+        t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
+        _hzFacTexCache.stripe = t;
+        return t;
+    }
+    /* a scorch star: a dark blot with ragged rays, white outside — used with
+       MultiplyBlending so it darkens whatever floor it lies on */
+    function _hzScorchTex(seed) {
+        var key = 'scorch' + seed;
+        if (_hzFacTexCache[key]) return _hzFacTexCache[key];
+        if (typeof document === 'undefined') return null;
+        var rng = _mulberry32(0x5C0 + seed * 977);
+        var c = document.createElement('canvas'); c.width = c.height = 256;
+        var g = c.getContext('2d');
+        g.fillStyle = '#ffffff'; g.fillRect(0, 0, 256, 256);
+        g.translate(128, 128);
+        var rays = 9 + (rng() * 6 | 0);
+        for (var i = 0; i < rays; i++) {
+            var a = (i / rays) * Math.PI * 2 + (rng() - 0.5) * 0.5;
+            var len = 44 + rng() * 76, hw = 0.10 + rng() * 0.16;
+            g.fillStyle = 'rgba(28,18,12,' + (0.35 + rng() * 0.35).toFixed(2) + ')';
+            g.beginPath(); g.moveTo(0, 0);
+            g.lineTo(Math.cos(a - hw) * len * 0.55, Math.sin(a - hw) * len * 0.55);
+            g.lineTo(Math.cos(a) * len, Math.sin(a) * len);
+            g.lineTo(Math.cos(a + hw) * len * 0.55, Math.sin(a + hw) * len * 0.55);
+            g.closePath(); g.fill();
+        }
+        var grad = g.createRadialGradient(0, 0, 4, 0, 0, 62);
+        grad.addColorStop(0.0, 'rgba(18,10,8,0.92)');
+        grad.addColorStop(0.45, 'rgba(34,22,14,0.62)');
+        grad.addColorStop(1.0, 'rgba(60,44,30,0.0)');
+        g.fillStyle = grad; g.beginPath(); g.arc(0, 0, 62, 0, Math.PI * 2); g.fill();
+        var t = new THREE.CanvasTexture(c);
+        t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
+        _hzFacTexCache[key] = t;
+        return t;
+    }
+    /* Additive line-grid geometry with per-vertex brightness: axis-aligned
+       segments {x0,z0,x1,z1,y,f} of half-width hw and square dots {x,z,y,f}
+       of half-size dhw, lying flat. One mesh, one draw call. */
+    function _hzLineGridMesh(segs, dots, hw, dhw, color, opacity) {
+        var pos = [], col = [], idx = [], n = 0;
+        var base = new THREE.Color(color);
+        function quad(ax, az, bx, bz, cxx, czz, dx, dz, y, f) {
+            pos.push(ax, y, az, bx, y, bz, cxx, y, czz, dx, y, dz);
+            for (var k = 0; k < 4; k++) col.push(base.r * f, base.g * f, base.b * f);
+            idx.push(n, n + 1, n + 2, n, n + 2, n + 3);
+            n += 4;
+        }
+        for (var i = 0; i < segs.length; i++) {
+            var s = segs[i];
+            if (Math.abs(s.z1 - s.z0) < 1e-6) quad(s.x0, s.z0 - hw, s.x1, s.z0 - hw, s.x1, s.z0 + hw, s.x0, s.z0 + hw, s.y, s.f);
+            else quad(s.x0 - hw, s.z0, s.x0 + hw, s.z0, s.x0 + hw, s.z1, s.x0 - hw, s.z1, s.y, s.f);
+        }
+        for (var j = 0; j < dots.length; j++) {
+            var d = dots[j];
+            quad(d.x - dhw, d.z - dhw, d.x + dhw, d.z - dhw, d.x + dhw, d.z + dhw, d.x - dhw, d.z + dhw, d.y, d.f);
+        }
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+        geo.setIndex(idx);
+        var mat = new THREE.MeshBasicMaterial({
+            vertexColors: true, transparent: true, opacity: opacity,
+            blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false
+        });
+        return new THREE.Mesh(geo, mat);
+    }
+    /* the lit seams + corner lights on the board itself (each seam at the
+       taller of its two tiles, so a riser wears its own outline) */
+    function _hzBoardSeams(ctx, color, seamF, dotF, opacity) {
+        var ts = ctx.ts, bw = ctx.bw, bh = ctx.bh, elev = ts * ELEV_STEP_RATIO, lift = 1.4;
+        var H = function (x, y) { return (x < 0 || y < 0 || x >= bw || y >= bh) ? -1 : _hLevelAt(x, y); };
+        var segs = [], dots = [];
+        for (var i = 0; i <= bw; i++) for (var y = 0; y < bh; y++) {
+            var h = Math.max(H(i - 1, y), H(i, y)); if (h < 0) continue;
+            segs.push({ x0: i * ts, z0: y * ts, x1: i * ts, z1: (y + 1) * ts, y: h * elev + lift, f: seamF });
+        }
+        for (var j = 0; j <= bh; j++) for (var x = 0; x < bw; x++) {
+            var h2 = Math.max(H(x, j - 1), H(x, j)); if (h2 < 0) continue;
+            segs.push({ x0: x * ts, z0: j * ts, x1: (x + 1) * ts, z1: j * ts, y: h2 * elev + lift, f: seamF });
+        }
+        for (var gx = 0; gx <= bw; gx++) for (var gy = 0; gy <= bh; gy++) {
+            var hc = Math.max(H(gx - 1, gy - 1), H(gx, gy - 1), H(gx - 1, gy), H(gx, gy)); if (hc < 0) continue;
+            dots.push({ x: gx * ts, z: gy * ts, y: hc * elev + lift + 0.3, f: dotF });
+        }
+        return _hzLineGridMesh(segs, dots, ts * 0.020, ts * 0.052, color, opacity);
+    }
+
+    // ── The Training Room ─────────────────────────────────────────────────
+    function _hzTrainingRoom(group, ctx) {
+        var ts = ctx.ts, bw = ctx.bw, bh = ctx.bh, elev = ts * ELEV_STEP_RATIO;
+        var B = _hLevelAt(0, 0) || 5;              // the Δ baseline (z5)
+        var fy = B * elev;                           // floor level (tile tops)
+        var G = 0.34 * ts;                           // moat: the bed shows through it
+        var W = 3.2 * ts;                            // walls this far outside the board
+        var X0 = -W, X1 = bw * ts + W, Z0 = -W, Z1 = bh * ts + W;
+        var CX = bw * ts * 0.5, CZ = bh * ts * 0.5;
+        var concrete = _hzTex('concrete_floor') || _hzTex('bricks_3');
+        var metal = _hzTex('metal') || _hzTex('gunmetal');
+        var gun = _hzTex('gunmetal') || metal;
+        var add = function (m) { group.add(m); return m; };
+        var lit = function (mesh, cast) { mesh.receiveShadow = true; if (cast) mesh.castShadow = true; return mesh; };
+
+        /* seams + corner lights on the grid, and the four scorch stars */
+        add(_hzBoardSeams(ctx, 0xd6ecff, 0.42, 1.0, 0.9));
+        [[1.55, 1.35, 1.45, 0.3], [6.45, 6.65, 1.45, 2.4], [5.85, 2.95, 1.2, 1.1], [2.15, 5.05, 1.2, 4.2]].forEach(function (s, i) {
+            var tex = _hzScorchTex(i + 1); if (!tex) return;
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(s[2] * ts, s[2] * ts), new THREE.MeshBasicMaterial({
+                map: tex, blending: THREE.MultiplyBlending, transparent: true, depthWrite: false, fog: false
+            }));
+            m.rotation.x = -Math.PI / 2; m.rotation.z = s[3];
+            m.position.set(s[0] * ts, _hLevelAt(Math.floor(s[0]), Math.floor(s[1])) * elev + 0.9, s[1] * ts);
+            m.renderOrder = 2;
+            add(m);
+        });
+
+        /* the walkway ring (thin slabs at floor level, a moat's width out) */
+        var T = 0.18 * ts, wkMat = _hzLit(concrete, 0x8c8678);
+        [[X0, Z0, X1, -G], [X0, bh * ts + G, X1, Z1], [X0, -G, -G, bh * ts + G], [bw * ts + G, -G, X1, bh * ts + G]].forEach(function (r) {
+            var w = r[2] - r[0], d = r[3] - r[1];
+            var slab = _hzBox(w, T, d, ts, wkMat);
+            slab.position.set(r[0] + w / 2, fy - T / 2, r[1] + d / 2);
+            add(lit(slab));
+        });
+        /* hazard plates on the walkway in front of both doors */
+        var stripe = _hzStripeTex();
+        if (stripe) {
+            [[CX, -G - 0.55 * ts], [CX, bh * ts + G + 0.55 * ts]].forEach(function (p) {
+                var g = new THREE.PlaneGeometry(2.2 * ts, 0.6 * ts); _hzTileUV(g, 2.2 * ts, 0.6 * ts, ts * 0.5);
+                var pl = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: stripe, color: 0xb9b0a0 }));
+                pl.rotation.x = -Math.PI / 2; pl.position.set(p[0], fy + 0.6, p[1]); pl.renderOrder = 1;
+                add(lit(pl));
+            });
+        }
+        /* row letters (west walkway) + column numbers (south walkway) */
+        for (var i = 0; i < Math.max(bw, bh); i++) {
+            var lab = function (txt, x, z) {
+                var t = _hzTextTex('lab_' + txt, [txt], { w: 64, h: 64, color: '#d8d2c0', pad: 0.08 }); if (!t) return;
+                var m = new THREE.Mesh(new THREE.PlaneGeometry(0.5 * ts, 0.5 * ts), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, fog: false, opacity: 0.85 }));
+                m.rotation.x = -Math.PI / 2; m.position.set(x, fy + 0.7, z); m.renderOrder = 1; add(m);
+            };
+            if (i < bh) lab(String.fromCharCode(65 + i), -G - 0.62 * ts, (i + 0.5) * ts);
+            if (i < bw) lab(String(i + 1), (i + 0.5) * ts, bh * ts + G + 0.62 * ts);
+        }
+
+        /* the maroon pit barriers with a yellow lip, posts + red lamps at the ends */
+        var barMat = _hzLit(metal, 0x6a2430), lipMat = _hzLit(null, 0xd8b03c), postMat = _hzLit(gun, 0x7d838c);
+        var BH = 0.42 * ts, BD = 0.26 * ts;
+        function barrier(x0, z0, x1, z1) {
+            var horiz = Math.abs(z1 - z0) < 1e-6;
+            var len = horiz ? (x1 - x0) : (z1 - z0);
+            var b = _hzBox(horiz ? len : BD, BH, horiz ? BD : len, ts, barMat);
+            b.position.set((x0 + x1) / 2, fy + BH / 2, (z0 + z1) / 2);
+            add(lit(b, true));
+            var lip = _hzBox(horiz ? len : 0.06 * ts, 0.05 * ts, horiz ? 0.06 * ts : len, ts, lipMat);
+            var inward = horiz ? (z0 < CZ ? 1 : -1) : (x0 < CX ? 1 : -1);
+            lip.position.set((x0 + x1) / 2 + (horiz ? 0 : inward * (BD / 2 - 0.03 * ts)), fy + BH + 0.025 * ts, (z0 + z1) / 2 + (horiz ? inward * (BD / 2 - 0.03 * ts) : 0));
+            add(lip);
+            [[x0, z0], [x1, z1]].forEach(function (p) {
+                var post = _hzCyl(0.07 * ts, 0.08 * ts, 0.72 * ts, 8, ts, postMat);
+                post.position.set(p[0], fy + 0.36 * ts, p[1]); add(lit(post, true));
+                var lamp = _hzGlowSprite(0.42 * ts, 0xff3a3a, 0.75, 0.25, 0.08, 0.6 + Math.random() * 0.8);
+                lamp.position.set(p[0], fy + 0.78 * ts, p[1]); add(lamp);
+            });
+        }
+        var bz0 = -G - BD / 2, bz1 = bh * ts + G + BD / 2, bx0 = -G - BD / 2, bx1 = bw * ts + G + BD / 2;
+        var a0 = -G, a1 = CX - 1.15 * ts, a2 = CX + 1.15 * ts, a3 = bw * ts + G;
+        barrier(a0, bz0, a1, bz0); barrier(a2, bz0, a3, bz0);            // north, door gap in the middle
+        barrier(a0, bz1, a1, bz1); barrier(a2, bz1, a3, bz1);            // south
+        barrier(bx0, -G, bx0, CZ - 0.12 * ts); barrier(bx0, CZ + 0.12 * ts, bx0, bh * ts + G);   // west
+        barrier(bx1, -G, bx1, CZ - 0.12 * ts); barrier(bx1, CZ + 0.12 * ts, bx1, bh * ts + G);   // east
+
+        /* the walls: dado + upper panel + trims, single-sided, facing in */
+        var WH = 3.4 * ts, DH = 1.0 * ts, WB = fy - 0.5 * ts;
+        var wallMat = _hzLit(concrete, 0x767b71), dadoMat = _hzLit(concrete, 0x3b3d39), trimMat = _hzLit(null, 0x2b6360);
+        function wall(len, cx0, cz0, ry) {
+            var g1 = new THREE.PlaneGeometry(len, DH + 0.5 * ts); _hzTileUV(g1, len, DH + 0.5 * ts, ts);
+            var dado = new THREE.Mesh(g1, dadoMat); dado.position.set(cx0, WB + (DH + 0.5 * ts) / 2, cz0); dado.rotation.y = ry; add(lit(dado));
+            var g2 = new THREE.PlaneGeometry(len, WH - DH); _hzTileUV(g2, len, WH - DH, ts);
+            var up = new THREE.Mesh(g2, wallMat); up.position.set(cx0, fy + DH + (WH - DH) / 2, cz0); up.rotation.y = ry; add(lit(up));
+            var nx = Math.sin(ry), nz = Math.cos(ry);                     // inward normal of a +Z plane turned by ry
+            [[fy + DH, 0.08 * ts], [fy + WH - 0.12 * ts, 0.12 * ts]].forEach(function (t) {
+                var tr = _hzBox(ry === 0 || Math.abs(ry) > 3 ? len : 0.08 * ts, t[1], ry === 0 || Math.abs(ry) > 3 ? 0.08 * ts : len, ts, trimMat);
+                tr.position.set(cx0 + nx * 0.04 * ts, t[0] + t[1] / 2, cz0 + nz * 0.04 * ts); add(tr);
+            });
+            /* two fluorescent strips near the top of every wall — the cool light */
+            [-0.25, 0.25].forEach(function (f) {
+                var gm = _hzGlowMat(0xf2f7ff, 0.85);
+                var st = new THREE.Mesh(new THREE.PlaneGeometry(len * 0.38, 0.09 * ts), gm);
+                st.position.set(cx0 + nx * 0.05 * ts + (ry === 0 || Math.abs(ry) > 3 ? f * len : 0), fy + WH - 0.42 * ts, cz0 + nz * 0.05 * ts + (ry === 0 || Math.abs(ry) > 3 ? 0 : f * len));
+                st.rotation.y = ry; add(st);
+                _hzPulse(gm, null, 0.06, 0, 2.2 + Math.random() * 2.5);
+            });
+        }
+        wall(X1 - X0, CX, Z0, 0);                    // north (faces +Z)
+        wall(X1 - X0, CX, Z1, Math.PI);              // south (faces -Z)
+        wall(Z1 - Z0, X0, CZ, Math.PI / 2);          // west (faces +X)
+        wall(Z1 - Z0, X1, CZ, -Math.PI / 2);         // east (faces -X)
+
+        /* the doors (north + south): frame, two leaves, a green lamp above */
+        var frameMat = _hzLit(gun, 0x3a3f46), leafMat = _hzLit(metal, 0x3d4b44), darkMat = _hzLit(null, 0x0b0c0e);
+        function door(cz0, sgn) {
+            var DW = 2.4 * ts, DHt = 2.7 * ts, zf = cz0 + sgn * 0.12 * ts;
+            var back = new THREE.Mesh(new THREE.PlaneGeometry(DW, DHt), darkMat);
+            back.position.set(CX, fy + DHt / 2, cz0 + sgn * 0.02 * ts); back.rotation.y = sgn > 0 ? 0 : Math.PI; add(back);
+            [[-1, 0], [1, 0]].forEach(function (s) {
+                var jamb = _hzBox(0.16 * ts, DHt, 0.24 * ts, ts, frameMat);
+                jamb.position.set(CX + s[0] * (DW / 2 - 0.08 * ts), fy + DHt / 2, zf); add(lit(jamb, true));
+                var leaf = _hzBox(DW / 2 - 0.22 * ts, DHt - 0.24 * ts, 0.08 * ts, ts, leafMat);
+                leaf.position.set(CX + s[0] * (DW / 4 - 0.02 * ts), fy + (DHt - 0.24 * ts) / 2, cz0 + sgn * 0.08 * ts); add(lit(leaf, true));
+                var win = new THREE.Mesh(new THREE.PlaneGeometry(0.34 * ts, 0.5 * ts), _hzGlowMat(0x8fe0ff, 0.22));
+                win.position.set(CX + s[0] * (DW / 4 - 0.02 * ts), fy + DHt * 0.62, cz0 + sgn * 0.13 * ts); win.rotation.y = sgn > 0 ? 0 : Math.PI; add(win);
+            });
+            var lintel = _hzBox(DW + 0.1 * ts, 0.18 * ts, 0.24 * ts, ts, frameMat);
+            lintel.position.set(CX, fy + DHt + 0.09 * ts, zf); add(lit(lintel, true));
+            var housing = _hzBox(0.44 * ts, 0.2 * ts, 0.14 * ts, ts, frameMat);
+            housing.position.set(CX, fy + DHt + 0.42 * ts, cz0 + sgn * 0.09 * ts); add(housing);
+            var lm = _hzGlowMat(0x4dff7a, 0.9);
+            var lens = new THREE.Mesh(new THREE.PlaneGeometry(0.34 * ts, 0.12 * ts), lm);
+            lens.position.set(CX, fy + DHt + 0.42 * ts, cz0 + sgn * 0.165 * ts); lens.rotation.y = sgn > 0 ? 0 : Math.PI; add(lens);
+            _hzPulse(lm, null, 0.12, 0, 0.9);
+            var glow = _hzGlowSprite(0.9 * ts, 0x5dff8a, 0.5, 0.15, 0.06, 0.7);
+            glow.position.set(CX, fy + DHt + 0.45 * ts, cz0 + sgn * 0.25 * ts); add(glow);
+        }
+        door(Z0, 1); door(Z1, -1);
+
+        /* the signs (canvas plates) */
+        function sign(key, lines, w, h, x, y, z, ry, o) {
+            var t = _hzTextTex(key, lines, Object.assign({ w: 512, h: 256, bg: '#1b1a1c', border: '#c9bb96', color: '#efe4c4' }, o || {})); if (!t) return;
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: t, color: 0xffffff, emissive: 0x2a2822 }));
+            m.position.set(x, y, z); m.rotation.y = ry; add(m);
+        }
+        var nx0 = X0 + 0.06 * ts, nx1 = X1 - 0.06 * ts, nz0 = Z0 + 0.06 * ts, nz1 = Z1 - 0.06 * ts;
+        sign('tr_north', ['ORTHOGONAL GEOMETRY', 'EXPOSURE AREA', 'AUTHORIZED PERSONNEL ONLY'], 3.2 * ts, 1.25 * ts, CX, fy + 3.0 * ts + 0.02 * ts, nz0, 0, { sizes: [64, 92, 40] });
+        sign('tr_south', ['D.O.O.R. TRAINING FACILITY', 'ROOM 8×8', 'REALITY LEAKS POSSIBLE'], 3.2 * ts, 1.25 * ts, CX, fy + 3.0 * ts + 0.02 * ts, nz1, Math.PI, { sizes: [52, 96, 44] });
+        sign('tr_west', ['MAX OCCUPANCY', '45 MINUTES'], 2.2 * ts, 1.1 * ts, nx0, fy + 2.35 * ts, 5.8 * ts, Math.PI / 2, { sizes: [66, 92] });
+        sign('tr_east', ['REALITY LEAKS', 'POSSIBLE'], 2.2 * ts, 1.1 * ts, nx1, fy + 2.35 * ts, 2.2 * ts, -Math.PI / 2, { sizes: [72, 92], bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' });
+
+        /* observation booths: a glass box off the west and east walls, lit inside */
+        var glassMat = new THREE.MeshBasicMaterial({ color: 0x9fd2dc, transparent: true, opacity: 0.26, side: THREE.DoubleSide, depthWrite: false, fog: false });
+        function booth(xw, zc, sgn) {
+            var BWd = 2.6 * ts, BHt = 1.5 * ts, BDp = 1.05 * ts, y0 = fy + 1.5 * ts;
+            var xc = xw + sgn * BDp / 2;
+            var floor = _hzBox(BDp, 0.1 * ts, BWd, ts, frameMat); floor.position.set(xc, y0, zc); add(lit(floor, true));
+            var roof = _hzBox(BDp, 0.1 * ts, BWd, ts, frameMat); roof.position.set(xc, y0 + BHt, zc); add(lit(roof, true));
+            [[xw + sgn * BDp, zc - BWd / 2], [xw + sgn * BDp, zc + BWd / 2]].forEach(function (p) {
+                var post = _hzBox(0.1 * ts, BHt, 0.1 * ts, ts, frameMat); post.position.set(p[0], y0 + BHt / 2, p[1]); add(lit(post));
+            });
+            var front = new THREE.Mesh(new THREE.PlaneGeometry(BWd, BHt - 0.1 * ts), glassMat);
+            front.position.set(xw + sgn * BDp, y0 + BHt / 2, zc); front.rotation.y = sgn > 0 ? Math.PI / 2 : -Math.PI / 2; add(front);
+            [-1, 1].forEach(function (s) {
+                var side = new THREE.Mesh(new THREE.PlaneGeometry(BDp, BHt - 0.1 * ts), glassMat);
+                side.position.set(xc, y0 + BHt / 2, zc + s * BWd / 2); add(side);
+            });
+            var desk = _hzBox(0.5 * ts, 0.3 * ts, 1.6 * ts, ts, _hzLit(gun, 0x4a4f57)); desk.position.set(xw + sgn * 0.35 * ts, y0 + 0.2 * ts, zc); add(desk);
+            var scr = new THREE.Mesh(new THREE.PlaneGeometry(0.32 * ts, 0.22 * ts), _hzGlowMat(0x7fd9ff, 0.7));
+            scr.position.set(xw + sgn * 0.42 * ts, y0 + 0.5 * ts, zc); scr.rotation.y = sgn > 0 ? Math.PI / 2 : -Math.PI / 2; add(scr);
+            var inner = _hzGlowSprite(1.6 * ts, 0xdfeeff, 0.28, 0.05, 0.0, 0.3); inner.position.set(xc, y0 + BHt * 0.6, zc); add(inner);
+        }
+        booth(X0, 2.2 * ts, 1); booth(X1, 5.8 * ts, -1);
+
+        /* corner machinery: a drum, a console, a wall pipe, a red lamp */
+        var drumMat = _hzLit(gun, 0x565c64), consoleMat = _hzLit(metal, 0x4c5259), crateMat = _hzLit(metal, 0x8a7a3a);
+        [[X0, Z0, 1, 1], [X1, Z0, -1, 1], [X0, Z1, 1, -1], [X1, Z1, -1, -1]].forEach(function (c, ci) {
+            var cxx = c[0] + c[2] * 0.85 * ts, czz = c[1] + c[3] * 0.85 * ts;
+            var drum = _hzCyl(0.5 * ts, 0.55 * ts, 1.3 * ts, 12, ts, drumMat); drum.position.set(cxx, fy + 0.65 * ts, czz); add(lit(drum, true));
+            var cap = _hzCyl(0.54 * ts, 0.54 * ts, 0.08 * ts, 12, ts, frameMat); cap.position.set(cxx, fy + 1.32 * ts, czz); add(cap);
+            var con = _hzBox(0.9 * ts, 0.85 * ts, 0.6 * ts, ts, consoleMat); con.position.set(cxx + c[2] * 1.15 * ts, fy + 0.425 * ts, czz - c[3] * 0.1 * ts); add(lit(con, true));
+            var pipe = _hzCyl(0.06 * ts, 0.06 * ts, WH + 0.5 * ts, 6, ts, frameMat); pipe.position.set(c[0] + c[2] * 0.12 * ts, fy + WH / 2 - 0.25 * ts, czz + c[3] * 0.35 * ts); add(pipe);
+            var elbow = _hzCyl(0.06 * ts, 0.06 * ts, 0.75 * ts, 6, ts, frameMat); elbow.rotation.z = Math.PI / 2; elbow.position.set(c[0] + c[2] * 0.48 * ts, fy + 1.3 * ts, czz + c[3] * 0.35 * ts); add(elbow);
+            var crate = _hzBox(0.55 * ts, 0.5 * ts, 0.55 * ts, ts, crateMat); crate.position.set(cxx - c[2] * 0.15 * ts, fy + 0.25 * ts, czz + c[3] * 1.2 * ts); crate.rotation.y = 0.3 * ci; add(lit(crate, true));
+            var lamp = _hzGlowSprite(0.6 * ts, 0xff4040, 0.8, 0.3, 0.1, 0.45 + ci * 0.17); lamp.position.set(cxx, fy + 1.5 * ts, czz); add(lamp);
+            var lens = new THREE.Mesh(new THREE.SphereGeometry(0.07 * ts, 8, 6), _hzGlowMat(0xff5050, 0.95)); lens.position.copy(lamp.position); add(lens);
+        });
+
+        /* wall clocks (north + south walls, both flanks) */
+        var faceMat = new THREE.MeshBasicMaterial({ color: 0xe9e4d6, fog: false }), handMat = _hzLit(null, 0x1a1a1c);
+        [[1.4 * ts, nz0, 0], [6.6 * ts, nz0, 0], [1.4 * ts, nz1, Math.PI], [6.6 * ts, nz1, Math.PI]].forEach(function (p, i) {
+            var y = fy + 2.75 * ts, sgn = (p[2] === 0) ? 1 : -1;
+            var rim = _hzCyl(0.34 * ts, 0.34 * ts, 0.06 * ts, 20, ts, frameMat); rim.rotation.x = Math.PI / 2; rim.position.set(p[0], y, p[1] + sgn * 0.03 * ts); add(rim);
+            var face = new THREE.Mesh(new THREE.CircleGeometry(0.29 * ts, 20), faceMat); face.position.set(p[0], y, p[1] + sgn * 0.065 * ts); face.rotation.y = p[2]; add(face);
+            var hourA = 0.9 + i * 1.3, minA = 2.4 + i * 0.7;
+            var hh = _hzBox(0.035 * ts, 0.18 * ts, 0.012 * ts, ts, handMat); hh.position.set(p[0] + Math.sin(hourA) * 0.08 * ts, y + Math.cos(hourA) * 0.08 * ts, p[1] + sgn * 0.075 * ts); hh.rotation.z = -hourA; add(hh);
+            var mh = _hzBox(0.028 * ts, 0.26 * ts, 0.012 * ts, ts, handMat); mh.position.set(p[0] + Math.sin(minA) * 0.12 * ts, y + Math.cos(minA) * 0.12 * ts, p[1] + sgn * 0.08 * ts); mh.rotation.z = -minA; add(mh);
+        });
+
+        /* red wall lamps, two per wall */
+        var lampMat = _hzLit(null, 0x2a2b2e);
+        [[X0 + 0.1 * ts, 1.0 * ts, 1, 0], [X0 + 0.1 * ts, 7.0 * ts, 1, 0], [X1 - 0.1 * ts, 1.0 * ts, -1, 0], [X1 - 0.1 * ts, 7.0 * ts, -1, 0],
+         [2.3 * ts, Z0 + 0.1 * ts, 0, 1], [5.7 * ts, Z0 + 0.1 * ts, 0, 1], [2.3 * ts, Z1 - 0.1 * ts, 0, -1], [5.7 * ts, Z1 - 0.1 * ts, 0, -1]].forEach(function (p, i) {
+            var y = fy + 2.45 * ts;
+            var h = _hzBox(0.16 * ts, 0.3 * ts, 0.16 * ts, ts, lampMat); h.position.set(p[0], y, p[1]); add(h);
+            var lens = new THREE.Mesh(new THREE.SphereGeometry(0.075 * ts, 8, 6), _hzGlowMat(0xff4a4a, 0.95)); lens.position.set(p[0] + p[2] * 0.1 * ts, y + 0.02 * ts, p[1] + p[3] * 0.1 * ts); add(lens);
+            var glow = _hzGlowSprite(0.7 * ts, 0xff3a3a, 0.6, 0.22, 0.08, 0.5 + (i % 3) * 0.3); glow.position.copy(lens.position); add(glow);
+        });
+    }
+
+    // ── The Holo Sim apron: the projected grid keeps going past the board
+    //    and fades into the void; the tiles themselves carry their own rims ──
+    function _hzHoloApron(group, ctx) {
+        var ts = ctx.ts, bw = ctx.bw, bh = ctx.bh, elev = ts * ELEV_STEP_RATIO;
+        var B = _hLevelAt(0, 0) || 5, y = B * elev + 1.2, R = 5;
+        var cheb = function (cx, cy) {            // cell distance from the board rect, in cells
+            var dx = cx < 0 ? -cx : (cx >= bw ? cx - bw + 1 : 0);
+            var dy = cy < 0 ? -cy : (cy >= bh ? cy - bh + 1 : 0);
+            return Math.max(dx, dy);
+        };
+        var fade = function (d) { var t = 1 - (d - 0.5) / R; return t <= 0 ? 0 : Math.pow(t, 1.7); };
+        var segs = [], dots = [];
+        for (var i = -R; i <= bw + R; i++) for (var cy = -R; cy < bh + R; cy++) {
+            var d = Math.min(cheb(i - 1, cy), cheb(i, cy)); if (d === 0) continue;
+            segs.push({ x0: i * ts, z0: cy * ts, x1: i * ts, z1: (cy + 1) * ts, y: y, f: fade(d) });
+        }
+        for (var j = -R; j <= bh + R; j++) for (var cx = -R; cx < bw + R; cx++) {
+            var d2 = Math.min(cheb(cx, j - 1), cheb(cx, j)); if (d2 === 0) continue;
+            segs.push({ x0: cx * ts, z0: j * ts, x1: (cx + 1) * ts, z1: j * ts, y: y, f: fade(d2) });
+        }
+        for (var gx = -R; gx <= bw + R; gx++) for (var gy = -R; gy <= bh + R; gy++) {
+            var dd = Math.min(cheb(gx - 1, gy - 1), cheb(gx, gy - 1), cheb(gx - 1, gy), cheb(gx, gy)); if (dd === 0) continue;
+            dots.push({ x: gx * ts, z: gy * ts, y: y + 0.2, f: fade(dd) * 0.9 });
+        }
+        var mesh = _hzLineGridMesh(segs, dots, ts * 0.018, ts * 0.04, 0x5fe6ff, 0.75);
+        group.add(mesh);
+        _hzPulse(mesh.material, null, 0.10, 0, 0.35);
+        /* the projector: four faint beams rising from the board corners */
+        [[0, 0], [bw, 0], [0, bh], [bw, bh]].forEach(function (c) {
+            var bm = _hzGlowMat(0x35e0ff, 0.10);
+            var beam = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.18, ts * 9, 8, 1, true), bm);
+            beam.position.set(c[0] * ts, y + ts * 4.5, c[1] * ts); group.add(beam);
+            _hzPulse(bm, null, 0.05, 0, 0.5 + Math.random() * 0.4);
+        });
+    }
+    var _HZ_NEAR_BUILDERS = { training_room: _hzTrainingRoom, holosim: _hzHoloApron };
+
+    // ── Holo Sim far roster pieces ──
+    // a neon ring with a chromatic twin — the RGB-split haloes behind the
+    // reference floor, tumbling in the void
+    function _hzHoloRing(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var R = ts * (2.4 + rng() * 3.6);
+        var pal = [[0xff2f55, 0x35e0ff], [0xffffff, 0x8fd8ff], [0x35e0ff, 0xff2f55]];
+        var p = pal[(rng() * pal.length) | 0];
+        var n = 1 + (rng() * 2 | 0);
+        for (var i = 0; i < n; i++) {
+            var rr = R * (1 - i * 0.22);
+            var mat = _hzGlowMat(p[0], 0.62);
+            g.add(new THREE.Mesh(new THREE.TorusGeometry(rr, ts * 0.075, 6, 56), mat));
+            _hzPulse(mat, null, 0.22, 0, 0.5 + rng() * 0.9);
+            var mat2 = _hzGlowMat(p[1], 0.28);
+            var twin = new THREE.Mesh(new THREE.TorusGeometry(rr, ts * 0.05, 5, 56), mat2);
+            twin.position.set(ts * 0.09, -ts * 0.06, 0);
+            g.add(twin);
+            _hzPulse(mat2, null, 0.18, 0, 0.7 + rng() * 1.1);
+        }
+        g.add(_hzGlowSprite(R * 0.5, p[0], 0.10, 0.05, 0.05, 0.4));
+        return g;
+    }
+    // a dark monolith wearing ring glyphs — the speaker-cabinet silhouettes
+    function _hzHoloMonolith(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var w = ts * (2.6 + rng() * 2.4), h = ts * (5 + rng() * 6), d = ts * (1.0 + rng() * 0.8);
+        var body = _hzBox(w, h, d, ts, _hzGeoMat(null, 0x0c0e16));
+        body.position.y = h * 0.5; g.add(body);
+        var col = rng() < 0.5 ? 0xffffff : (rng() < 0.5 ? 0x35e0ff : 0xff2f55);
+        var rings = 1 + (rng() * 3 | 0);
+        for (var i = 0; i < rings; i++) {
+            var rr = Math.min(w, h / rings) * 0.28;
+            var mat = _hzGlowMat(col, 0.7);
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(rr, ts * 0.05, 5, 40), mat);
+            ring.position.set(0, h * (i + 0.5) / rings, d * 0.5 + 1.0); g.add(ring);
+            _hzPulse(mat, null, 0.25, 0, 0.4 + rng() * 0.8);
+            var inner = new THREE.Mesh(new THREE.TorusGeometry(rr * 0.45, ts * 0.03, 5, 32), _hzGlowMat(col, 0.35));
+            inner.position.copy(ring.position); g.add(inner);
+        }
+        var edge = _hzGlowMat(col, 0.35);
+        [-1, 1].forEach(function (s) {
+            var e = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.05, h * 0.9), edge);
+            e.position.set(s * (w * 0.5 - ts * 0.06), h * 0.5, d * 0.5 + 0.8); g.add(e);
+        });
+        return g;
+    }
+
     function _hzThemeRoster(name) {
         if (!_HZ_THEME_ROSTERS) _HZ_THEME_ROSTERS = {
             divine: [
@@ -22439,6 +22909,12 @@ const ThreeRenderer = (function () {
                 [0.70, _hzGateway, false, -0.45, 0.55],
                 [0.79, _hzObelisk, false, -0.45, 0.58], [0.87, _hzGrinSkull, false, -0.45, 0.40],
                 [0.94, _hzModelClock, false, -0.42, 0.55], [1.00, _hzWoodCross, false, -0.42, 0.45]],
+            // Holo Sim (2026-09-04): neon rings + dark ring-glyph monoliths in a
+            // black starfield; the near apron is _hzHoloApron (_HZ_NEAR_BUILDERS)
+            holosim: [
+                [0.34, _hzHoloRing, true, -0.50, 0.70], [0.62, _hzHoloMonolith, false, -0.40, 0.55],
+                [0.78, _hzAstralOrbs, true, -0.55, 0.75], [0.90, _hzHoloRing, true, -0.30, 0.60],
+                [1.00, _hzHoloMonolith, false, -0.45, 0.50]],
         };
         return _HZ_THEME_ROSTERS[name] || null;
     }
@@ -22467,6 +22943,15 @@ const ThreeRenderer = (function () {
         // per-map theme: 'none' leaves the void completely empty (underground
         // and liminal maps) — the group still registers so the key cache holds
         if (_hzTheme === 'none') { scene.add(_horizonGroup); return; }
+        /* D.O.O.R. facility boards (2026-09-04): a NEAR builder dresses the
+           board's immediate surroundings (the Training Room enclosure, the
+           Holo Sim apron). A theme with no roster is indoors — near-only. */
+        var nearBuild = (typeof window !== 'undefined' && window.EW_NO_FACILITY_SCENERY) ? null : (_HZ_NEAR_BUILDERS[_hzTheme] || null);
+        var nearCtx = { cx: cx, cz: cz, ts: ts, bw: _bw, bh: _bh, rng: rng, discR: discR };
+        if (nearBuild && !_hzThemeRoster(_hzTheme)) {
+            try { nearBuild(_horizonGroup, nearCtx); } catch (e) { console.error('[scenery] near builder failed', e); }
+            scene.add(_horizonGroup); return;
+        }
         var themeRoster = _hzThemeRoster(_hzTheme);
         var skipP = 1.0 - (1.0 - 0.62) * Math.max(0, Math.min(1.5, _hzThemeDensity));
 
@@ -22545,7 +23030,7 @@ const ThreeRenderer = (function () {
         // restore the old reliable behaviour: spawn a handful every map with the
         // same free-floating placement (varied compass dir / depth / elevation,
         // tumbling) the roster bodies use.
-        var ringWant = Math.round((5 + (rng() * 4 | 0)) * Math.min(1, _hzThemeDensity));
+        var ringWant = nearBuild ? 0 : Math.round((5 + (rng() * 4 | 0)) * Math.min(1, _hzThemeDensity));   // facility themes bring their own rings
         for (var rgi = 0; rgi < ringWant; rgi++) {
             var rMesh = _hzSacredRings(rng);
             if (!rMesh) continue;
@@ -22567,6 +23052,7 @@ const ThreeRenderer = (function () {
             });
         }
 
+        if (nearBuild) { try { nearBuild(_horizonGroup, nearCtx); } catch (e2) { console.error('[scenery] near builder failed', e2); } }
         scene.add(_horizonGroup);
     }
 

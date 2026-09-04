@@ -969,3 +969,22 @@ cyberpunk → holographic (slides), heaven → hotel, hell → the arch (static,
 its cracks glow). Bathroom, stall, suburban, plain closet doors and the
 frosted pair sit in the pool for later rooms. Files: data.js,
 DOOR_HQ_BUILD_PLAN.md §9, index.html (`?v=20260904c-cors`).
+
+### 2026-09-04 (later) — the Training Facility's two boards
+The 8×8 Training Room and a second, holographic floor shipped as BATTLE
+MAPS (HQ plan 6.1b / 6.1c; the walkable room is 6.1a, next). Canon
+consequences: the Training Room is literally the only square room in the
+building — a Δ board (the same lava → dirt bed as every crossing, seen
+through the moat around the grid) inside concrete walls with the signs
+from the concept board (ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY
+45 MINUTES · REALITY LEAKS POSSIBLE), observation booths, red lamps, two
+green-lit doors and four scorch stars nobody explains. The **Holo Sim** is
+Arcane Engineering's simulation floor: a holographic grid projected over
+the raw bed, red cells where the last run went wrong, neon rings and dark
+monoliths in the void beyond; its in-fiction purpose is open (rec.:
+PRACTICE — trying a manifest out before a crossing tries it out on you).
+Neither is a site: no file number, no stamp colour but grey (INTERNAL /
+SIMULATION), no native entities, no ranked rotation; both are selectable
+in match select and friendly rooms. Engine: two new terrains `holo` /
+`holo_red`. Files: data.js, sprites.js, three-renderer.js, map.js,
+index.html (`?v=20260904f-cors`), DOOR_HQ_BUILD_PLAN.md §4/§5.1/§9.

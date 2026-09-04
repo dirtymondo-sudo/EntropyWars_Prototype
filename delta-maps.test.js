@@ -52,7 +52,12 @@ function fail(id, msg) { failures++; problems.push(id + ': ' + msg); if (ascii) 
 
 const deltas = EW_MAP_META.filter(m => m.isDelta);
 if (ascii) console.log('delta boards: ' + deltas.length);
-if (deltas.length !== 29) fail('roster', 'expected 29 Δ boards, got ' + deltas.length);
+/* 29 = one Δ per launch map; the D.O.O.R. facility boards (data.js
+   EW_FACILITY_META, `facility: true`) ride the Δ roster too and obey the
+   same house rules, but they have no parent full map. */
+const facility = deltas.filter(m => m.facility);
+if (deltas.length - facility.length !== 29) fail('roster', 'expected 29 Δ boards, got ' + (deltas.length - facility.length));
+if (facility.length !== 2) fail('roster', 'expected 2 facility boards, got ' + facility.length);
 if (EW_MAP_META.some(m => m.isDeltaArena)) fail('roster', 'isDeltaArena entries still exist');
 
 const summary = [];
@@ -233,7 +238,9 @@ for (const meta of deltas) {
     }
     for (const m of mons) if (m.solid !== false) solidMons++;
     const cover = blocks + steps + trees + walls + solidMons;
-    if (cover < 4) fail(id, 'too little cover (' + cover + ')');
+    /* the Training Room is an empty lit grid by design (the reference render;
+       ORIENTATION plays on it) — facility boards skip the cover minimum only */
+    if (cover < 4 && !meta.facility) fail(id, 'too little cover (' + cover + ')');
     summary.push({ id, blocks, steps, dips, trees, walls, mons: solidMons });
 
     if (ascii) {
@@ -277,8 +284,9 @@ const assert = require('node:assert');
 test('every Δ board obeys the DELTA FORGE house rules', () => {
     assert.deepStrictEqual(problems, [], problems.join('\n'));
 });
-test('the Δ roster is exactly one 8×8 board per launch map', () => {
+test('the Δ roster is exactly one 8×8 board per launch map, plus the facility boards', () => {
     const fulls = EW_MAP_META.filter(m => !m.isDelta);
-    assert.strictEqual(deltas.length, fulls.length);
+    assert.strictEqual(deltas.length - facility.length, fulls.length);
     for (const f of fulls) assert.ok(PREBUILT_MAPS[f.id + '_delta'], f.id + ' has no Δ');
+    for (const f of facility) assert.ok(f.isDelta && !PREBUILT_MAPS[f.id + '_delta'] && PREBUILT_MAPS[f.id], f.id + ' must be a standalone Δ-flagged board');
 });

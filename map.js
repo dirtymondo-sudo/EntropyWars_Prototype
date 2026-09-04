@@ -8736,6 +8736,9 @@
             // 2026-07-14 — append-only: black liquid family (tinted water)
             'swamp',
             'oil',
+            // 2026-09-04 — append-only: D.O.O.R. facility floors (Holo Sim; data.js MF_TID mirrors these)
+            'holo',
+            'holo_red',
         ];
 
         const ME_TERRAIN_TO_ID = {};
@@ -8817,7 +8820,7 @@
             { label: 'Ground', keys: ['grass','grass_2','grass_3','grass_4','grass_rocky','grass_dark_fantasy','purple_grass','purple_bog','dirt','dirt_2','dirt_3','dirt_4','dirt_slope','road','cobblestone','cobblestone_2','desert','wasteland','dark_woods','mushroom','crystal','obsidian','healing_spring','scorched','poison','poison_bog','swamp','oil','well'] },
             { label: 'Rocky', keys: ['rocks_1','rocks_2','rocks_3','rocks_4','rocks_5','rocks_dark_fantasy','rubble_1','rubble_2','rubble_3','rubble_4'] },
             { label: 'Urban', keys: ['bricks_1','bricks_2','bricks_3','marble','marble_2','marble_light','checkerboard','wood_planks','wood','urban_street','urban_wall','metal','metal_2','metal_3','aluminium','gold','gold_2','gold_3','carpet','carpet_2','carpet_3','carpet_4','wallpaper','drywall','drywall_2','drywall_3','drywall_4','drywall_5'] },
-            { label: 'Floors', keys: ['tilefloor','tilefloor_2','concrete_floor','checkerboard_2','checkerboard_3','latticegarden','igloo'] },
+            { label: 'Floors', keys: ['tilefloor','tilefloor_2','concrete_floor','checkerboard_2','checkerboard_3','latticegarden','igloo','holo','holo_red'] },
             { label: 'Metal & Glass', keys: ['gunmetal','gunmetal_2','copper','diamond','brokenglass','noise'] },
             { label: 'Fabric & Hide', keys: ['leather','leather_2','fur','fur_2','fur_3','tigerfur','tigerfur_2','skin','rubber','rubber_2','enamel_2','damask','damask_2','damask_3','damask_4','floral','floral_2'] },
             { label: 'Dungeon', keys: ['dungeon','dungeon_2','dungeon_3','dungeon_4'] },

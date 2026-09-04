@@ -113,7 +113,7 @@ test('doors on a level are ≥ 25° apart and clear of the stair arcs', () => {
 });
 
 test('the six sector bays partition the launch maps exactly once', () => {
-    const launch = D.EW_MAP_META.map(m => m.id).filter(id => !/_delta$/.test(id));
+    const launch = D.EW_MAP_META.filter(m => !m.isDelta).map(m => m.id);   // facility boards are Δ-flagged, never sites
     const seen = new Map();
     for (const [k, s] of Object.entries(HQ.sectors)) {
         assert.ok(s.label && Array.isArray(s.maps) && s.maps.length, 'sector ' + k);

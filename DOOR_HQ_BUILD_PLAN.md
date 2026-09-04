@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 8 (2026-09-04 — Phase 3 complete: Code Red, Keys, the promotion moment, §9)
+### The walkable facility that replaces the Play menu · rev 9 (2026-09-04 — 6.1 split: the Training Room and Holo Sim BOARDS shipped; the walkable room is 6.1a, §9)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -421,10 +421,31 @@ lamp/frame details → furniture → fixtures → machinery.
   the Backrooms crossing.
 
 ### Phase 6 — Engine-side pieces (1 session each, ⚙)
-- 6.1 `prebuilt_training`: 8×8 square, flat z3, `tilefloor` with
-  `concrete_floor` gutters, `M.wall` ring, corner scorch marks, registered
-  like `clash_stage`; cool fluorescent env. `ref/training_room_v1` is the
-  look. (This one IS a battle map, so it uses the voxel path.)
+- 6.1 (split 2026-09-04, §9) — the Training Facility is TWO boards and one
+  room, all on the voxel path, and both boards are ✅:
+  - 6.1a ⚙ **the walkable Training Room** (`DOOR_HQ.rooms.training`, a box
+    room off the egress door at 180°, currently INTERIOR NOT YET BUILT): the
+    8×8 pit in the middle as room geometry, the booths, the VHS CRT, a
+    counter that launches ORIENTATION / PRACTICE onto 6.1b. Reuses the
+    enclosure vocabulary from 6.1b (three-renderer `_hzTrainingRoom`).
+  - 6.1b ✅ **`prebuilt_training` — the Training Room board.** A Δ board
+    (DELTA FORGE house rules, the shared lava→dirt bed, 4v4) authored flat
+    and open like `training_room_v1`: warm cracked concrete; the lit seams,
+    corner lights, four scorch stars and the whole enclosure are the
+    `training_room` scenery theme (walkway ring with A–H / 1–8, moat, maroon
+    barriers with red post lamps, inward-facing walls with dado + trims +
+    fluorescent strips, green-lit N/S doors, observation booths W/E, corner
+    machinery, clocks, red lamps, the signs). Cutscenes (4.3) play here.
+  - 6.1c ✅ **`prebuilt_holosim` — the Holo Sim board.** Arcane
+    Engineering's simulation floor from the `holo_sim_v1` refs: `holo` /
+    `holo_red` tiles (new terrains, pixel-art data-URI textures, self-lit
+    rims via `_EMISSIVE_TERRAIN`) over the same bed, black starfield, a
+    fading holographic apron grid + corner beams (`holosim` near builder),
+    neon rings + dark ring-glyph monoliths in the far roster. Purpose TBD
+    (rec. the practice / loadout-testing floor).
+  Both ride the Δ list in match select and friendly online rooms
+  (`EW_MAP_META` rows with `isDelta: true, facility: true`); never sites
+  (no bay, no leaf, no native pool, no ranked rotation).
 - 6.2 Black Cube: the Arena tower's model/label/announcer → the Saturnian
   Black Cube; "THRESHOLD CLOSED".
 - 6.3 Keys: hourglass pickups/objective → Keys; "THRESHOLD STABILIZED".
@@ -437,12 +458,18 @@ lamp/frame details → furniture → fixtures → machinery.
 ## 5. Assets
 
 ### 5.1 Reference images (commit to `docs/door-hq/ref/`, names in the README)
+*Reality check 2026-09-04: the images live in `door_reference_images/` under
+their raw filenames (`training_room_v1` = `ChatGPT Image Sep 3, 2026 at
+02_08_16 AM (1).png`, `concept_board_v1` = `…02_08_48 AM.png`; `D.O.O.R.
+Reality Door Rotunda.png` is a byte-identical duplicate of `…02_08_07 AM
+(1).png`). Renaming to the names below is optional housekeeping.*
 | File | What it shows | Drives |
 |---|---|---|
 | `central_egress_v1` | Two-tier round hall: mezzanine ring with five doors (green/amber/red lamps) and curved stairs both sides; ground ring with five more; a huge black cube with the DOOR square-spiral glyph hanging from the dome; round dispatch desk piled with CRTs and boxes; round tables, cabinets, globe lamps on pedestals; an agent in black at the desk. Cool speckled stone, oxblood dado, teal trim, terrazzo floor with inlaid rings. | shell proportions + palette (1.2), prop list (§5.3) |
 | `office_doors_sheet_v1` | Six doors in curved-wall panels with a lamp above, silhouette for scale: peeling wooden closet door with vent · plain hollow-core · blue-grey wired-glass institutional · black security door with keypad · brushed-steel frosted · glass biometric threshold. | the six office leaves (2.3) |
 | `training_room_v1` | Top-down 8×8 lit grid on cracked concrete, four scorch stars, red lamps, wall clocks, glass observation booths, corner machinery, green-lit doors top and bottom, two agents outside the grid. | 6.1 map, 4.3 backdrop |
 | `janitor_closet_v1` | The L1 office: door ajar onto the curved hall, mop bucket and broom, sink, cleaning shelves, breaker panel, desk with beige CRT + phone + lamp, clipboards, locker with toilet paper on top, folding chair, round rug, floor drain, army cot. | 2.7 interior |
+| `holo_sim_v1` (4 phone captures, `IMG_2998/2999/3004/3005.PNG`, added 2026-09-04) | A Tron-style battle floor: wireframe cells with glowing cyan/blue rims floating in a black starfield, red warning cells with a triangle glyph, yellow highlighted cells (in-game highlights), chromatic-split neon rings and dark speaker-cabinet monoliths behind, glitch scanlines. | 6.1c the Holo Sim board (`holo` / `holo_red` tiles, the `holosim` theme) |
 | `concept_board_v1` | Labelled egress doors (SUBURBAN SECTOR 12 / OCEANIC / MEDIEVAL / ASTRAL / QUARANTINED), the top-down ring map (Reception/Intake, Quartermaster, Archives, Personnel, Medical, Central Egress, TO TRAINING FACILITY), the training room with signs (ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES · REALITY LEAKS POSSIBLE), five door-state chips, the four-ring vertical diagram. | door-state vocabulary, ring plan, sign copy |
 
 ### 5.2 Export rules for every 3D asset (read this before modelling)
@@ -621,6 +648,126 @@ Guild Hub was the prototype; this plan is the building.
 - Hazard Pay wallet on the strip vs only at the Quartermaster. Rec: strip.
 
 ## 9. Build log (append per session)
+
+### 2026-09-04 (later) — 6.1b + 6.1c: the Training Room and Holo Sim boards
+User: brainstorm on the 8×8 training room ("can the map BE the room, with
+the lava layers underneath? a facility-style renderer, or keep the voxel
+engine?"), then "continue building the board… build both of them as two
+distinct things… both maps should become selectable in match select",
+with four new phone captures of a Tron-style holographic floor as the
+second reference. Decision recorded: **keep the voxel engine** — what makes
+the facility read better is textures, lighting and props layered on plain
+boxes, all of which can be added per map; a second map renderer would mean
+re-implementing fog, highlights, decals, water, buildings and every camera.
+`npm test` 113 (112 pass, server smoke skips), cache token
+`20260904e-cors` → `20260904f-cors`. Files: data.js, sprites.js,
+three-renderer.js, map.js, index.html; delta-maps.test.js, doorhq.test.js;
+this file, DOOR_MASTER Part D. No mid-match surface → no relay work (RULE
+#2): maps, env presets and the new terrains are data both clients load.
+
+**How they register (data.js `EW_FACILITY_BUILDERS` / `EW_FACILITY_META` /
+`_mfRegisterFacility`, after `_mfRegisterAll`).** Each is built with
+`_mfDeltaNew` (so it gets the shared lava → cave → cave wall → dirt → dirt
+bed under a z5 surface, the Δ spawn rows, the centre nexus and
+`finishDelta`'s protections) and pushed onto `EW_MAP_META` as a row with
+`isDelta: true, facility: true, teamSize 4, tier 3`. That one flag does the
+rest: state.js generates the GAME_MODES entry and puts them in every
+online mode's `compatibleMaps` (not Gauntlet); map.js MS_MAP_LIST lists
+them as `8×8 Δ` after the 29 Δ boards; match-select shows them under the
+default Δ filter with their own SITE_FILES (INTERNAL / SIMULATION, grey
+stamps); everything that means "a site" (`hqMissionPool`, mastery, the
+sector partition, threshold leaves, Code Red) already filters on
+`!isDelta`, so the building ignores them. The ranked `MAP_POOL` in
+server.js is hand-maintained and untouched, so they are never queued.
+Tests: delta-maps.test.js validates them under the full house rules (bed,
+symmetry, protected tiles, two disjoint routes) minus the cover minimum for
+`facility` rows (the Training Room is an empty grid on purpose); the
+roster tests count 29 + 2; doorhq.test.js's "launch map" is now `!isDelta`
+like every other check in the file.
+
+**prebuilt_training — the board.** `concrete_floor` tinted warm
+(`#cbb99a`), flat, nothing on it. Everything else is the new
+three-renderer `training_room` scenery theme (a NEAR builder — see below):
+`_hzBoardSeams` draws the lit seams at each tile's own height plus a bright
+light at every grid corner (one additive vertex-coloured mesh), four scorch
+stars are multiply-blended canvas decals; a walkway ring of thin concrete
+slabs sits a 0.34-tile moat away from the board so the bed shows through
+the gap; row letters A–H and column numbers 1–8 lie on the walkway; maroon
+pit barriers with a yellow lip, posts and pulsing red lamps line the moat
+(door gaps N/S); the four walls are single-sided planes facing INWARD (dado
++ upper panel + teal trims + two fluorescent strips each) so an orbiting
+camera outside them looks straight through; N/S double doors with a dark
+reveal, lit window slits, lintel and a pulsing green lamp; hazard-stripe
+plates on the walkway in front of them; observation booths off the W and E
+walls (glass, frame, desk, screen, interior glow); corner machinery (drum,
+console, wall pipe, crate, red lamp) in all four corners; wall clocks on
+N/S; eight red wall lamps; four canvas-text signs (ORTHOGONAL GEOMETRY
+EXPOSURE AREA · AUTHORIZED PERSONNEL ONLY / D.O.O.R. TRAINING FACILITY ·
+ROOM 8×8 · REALITY LEAKS POSSIBLE / MAX OCCUPANCY 45 MINUTES / REALITY
+LEAKS POSSIBLE). Lit pieces are Lambert (they share the board's sun and
+hemisphere light, not the far scenery's day/night grade). Env: near-black
+dome, no stars, light fog, `scenery: 'training_room'`, no far roster.
+Headless census (real three r128): 185 meshes + 32 sprites, ~3.9k tris.
+
+**prebuilt_holosim — the board.** Two NEW terrains, `holo` and `holo_red`
+(TERRAIN rules, MF_TID 158/159 mirrored into map.js ME_TERRAIN_IDS — which
+already carried `swamp`/`oil` at 156/157 that MF_TID lacked; both lists
+now agree index-for-index — EW_TERRAIN_COLORS, the editor's Floors
+palette). Their textures are 128² pixel-art PNGs embedded in sprites.js as
+data URIs (`HOLO_TILE_URI`, `HOLO_RED_TILE_URI`: a dark navy plate with a
+cyan rim and a faint sub-grid; a red twin with a warning triangle) — nothing
+to upload, `_ewCorsBust` ignores non-CDN URLs. three-renderer
+`_EMISSIVE_TERRAIN` gives those keys the tile texture as an emissiveMap in
+`buildBoxMaterials`, so only the rim pixels glow and bloom while the plate
+stays dark (sides too, so a riser is a glowing wire cube). The board: three
+`holo_red` warning cells + their 180° twins, two +1 holo risers, flat
+otherwise. Env: black dome with strong stars, `scenery: 'holosim'`,
+density 1.2. The `holosim` theme = a far roster (`_hzHoloRing`: thin
+additive tori with a chromatic twin, tumbling; `_hzHoloMonolith`: dark
+slabs wearing glowing ring glyphs and edge lights; `_hzAstralOrbs`) plus
+the `_hzHoloApron` near builder: the projected grid continues five cells
+past the board and fades into the void (per-vertex brightness, one mesh),
+corner dots, and four faint projector beams rising from the board corners.
+The obsidian sacred-ring haloes that every map gets are skipped for both
+facility themes.
+
+**Renderer plumbing.** `_HZ_NEAR_BUILDERS = { training_room, holosim }`;
+`_buildHorizonScenery` runs the near builder after the `'none'` early-out
+— alone when the theme has no roster (indoors), after the roster scatter
+otherwise — inside the same `_horizonGroup` / key cache, so it rebuilds
+with the map and disposes with it. Helpers: `_hzLit` (Lambert), `_hzTextTex`
+(cached canvas plates), `_hzStripeTex`, `_hzScorchTex`, `_hzLineGridMesh`,
+`_hzBoardSeams`. Kill-switch `window.EW_NO_FACILITY_SCENERY = true` (bare
+boards). Known soft spots: seams are drawn at the heights the board had
+when the scenery was built (a terrain spell that raises a tile buries its
+seams — harmless); `_rerollMapForNextMatch` (battle.js) rotates Δ boards
+among ALL `isDelta` rows, so "Find Next Match" can land on a facility
+board (left as is — cheap to exclude on `facility` if unwanted); the
+match-select size chip still reads "Δ map · hand-authored 8×8 board" for
+them (cosmetic, match-select.js untouched).
+
+**First-run checklist for the user:** (1) Play → any bay or Back → match
+select: the Δ list ends with TRAINING ROOM (stamp INTERNAL) and HOLO SIM
+(stamp SIMULATION); their site files read; VS CPU launches both; (2)
+Training Room: warm concrete, lit seams with a light at every corner, four
+scorch stars, A–H / 1–8 on the walkway, maroon barriers with red post
+lamps, the N/S doors with green lamps, the four signs legible from the
+default camera, booths W/E, drums in the corners, clocks; orbit low and
+outside the walls — they vanish and the lava bed shows through the moat;
+(3) Holo Sim: black starfield, dark cells with glowing cyan rims (bloom),
+three red warning cells + mirrors, two wire-cube risers, the apron grid
+fading out past the board, four faint beams at the corners, neon rings and
+dark monoliths drifting far out; (4) map editor → Floors: Holo Floor /
+Holo Warning paint and play-test; (5) a friendly online room offers both
+maps and the guest sees the same scenery (data-driven); (6) report scale
+(walls too tall / low vs units?), seam brightness, lamp glow, sign
+legibility, booth glass — all are single numbers in `_hzTrainingRoom`.
+
+**Next (in order):** 6.1a the walkable Training Room (box room, the pit as
+geometry, ORIENTATION counter → `prebuilt_training`); decide the Holo Sim's
+purpose (rec.: PRACTICE from the Training Facility door — free loadout
+testing vs CPU, no stamps); 4.1 the case-file screen; 6.3 Keys wording;
+§3.9 the layout editor; gamepad; 4.2 desk micro-scene.
 
 ### 2026-09-04 (Phase 3 close) — Code Red, Keys, the promotion moment
 User: "continue with the DOOR master doc and the HQ build plan". Next in
