@@ -12243,7 +12243,7 @@ const EW_MAP_META = [
        (plan 4.3) play here.
      • prebuilt_holosim — the Simulation: Arcane Engineering's holographic
        floor projected over the same bed. `holo` / `holo_red` tiles with
-       self-lit rims, a black starfield, neon rings and dark monoliths
+       self-lit rims (holo_red is the editor's spare), a black starfield, neon rings and dark monoliths
        (`holosim` theme) — the place to try a roster out before a crossing
        tries it out on you.
    Both are selectable in match select (they ride the Δ list) and in
@@ -12260,8 +12260,10 @@ EW_FACILITY_BUILDERS.prebuilt_training = function () {
 };
 EW_FACILITY_BUILDERS.prebuilt_holosim = function () {
     const M = _mfDeltaNew({ name: 'Holo Sim', base: 'holo', seed: 8402,
-        desc: 'the Simulation — a holographic floor projected over the raw bed. The red cells are where the last run went wrong; the two risers are the only solid things here' });
-    M.t(1, 1, 'holo_red'); M.t(6, 2, 'holo_red'); M.t(0, 3, 'holo_red');   // warning cells (mirrored below)
+        desc: 'the Simulation — a holographic floor projected over the raw bed; the two risers are the only solid things here' });
+    /* no permanent red cells: the red warning square is the DELAYED-ATTACK
+       telegraph (three-renderer _renderDangerCells paints one on every tile
+       of a pending blast's footprint, on every map) */
     M.step(2, 2, 'holo'); M.step(7, 1, 'holo');                             // +1 holo risers (a whisper of cover)
     M.symAll();
     return M.finishDelta();

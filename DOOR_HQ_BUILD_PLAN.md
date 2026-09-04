@@ -432,8 +432,8 @@ lamp/frame details → furniture → fixtures → machinery.
     (DELTA FORGE house rules, the shared lava→dirt bed, 4v4) authored flat
     and open like `training_room_v1`: warm cracked concrete; the lit seams,
     corner lights, four scorch stars and the whole enclosure are the
-    `training_room` scenery theme (walkway ring with A–H / 1–8, moat, maroon
-    barriers with red post lamps, inward-facing walls with dado + trims +
+    `training_room` scenery theme (walkway ring with A–H / 1–8, maroon
+    barriers with red post lamps, solid double-sided walls with dado + trims +
     fluorescent strips, green-lit N/S doors, observation booths W/E, corner
     machinery, clocks, red lamps, the signs). Cutscenes (4.3) play here.
   - 6.1c ✅ **`prebuilt_holosim` — the Holo Sim board.** Arcane
@@ -691,12 +691,13 @@ three-renderer `training_room` scenery theme (a NEAR builder — see below):
 `_hzBoardSeams` draws the lit seams at each tile's own height plus a bright
 light at every grid corner (one additive vertex-coloured mesh), four scorch
 stars are multiply-blended canvas decals; a walkway ring of thin concrete
-slabs sits a 0.34-tile moat away from the board so the bed shows through
-the gap; row letters A–H and column numbers 1–8 lie on the walkway; maroon
-pit barriers with a yellow lip, posts and pulsing red lamps line the moat
-(door gaps N/S); the four walls are single-sided planes facing INWARD (dado
-+ upper panel + teal trims + two fluorescent strips each) so an orbiting
-camera outside them looks straight through; N/S double doors with a dark
+slabs meets the board edge (rev 2: no moat — the player only sees the
+tops, covering the board's sides is fine); row letters A–H and column numbers 1–8 lie on the walkway; maroon
+pit barriers with a yellow lip, posts and pulsing red lamps line the rim
+(door gaps N/S); the four walls are double-sided planes running from the
+bed's floor to 3.2 tiles above the room floor (dado + upper panel + teal
+trims + two fluorescent strips each) — rev 2 dropped the inward-only
+"dollhouse" culling: nothing pops as the camera moves; N/S double doors with a dark
 reveal, lit window slits, lintel and a pulsing green lamp; hazard-stripe
 plates on the walkway in front of them; observation booths off the W and E
 walls (glass, frame, desk, screen, interior glow); corner machinery (drum,
@@ -719,9 +720,10 @@ cyan rim and a faint sub-grid; a red twin with a warning triangle) — nothing
 to upload, `_ewCorsBust` ignores non-CDN URLs. three-renderer
 `_EMISSIVE_TERRAIN` gives those keys the tile texture as an emissiveMap in
 `buildBoxMaterials`, so only the rim pixels glow and bloom while the plate
-stays dark (sides too, so a riser is a glowing wire cube). The board: three
-`holo_red` warning cells + their 180° twins, two +1 holo risers, flat
-otherwise. Env: black dome with strong stars, `scenery: 'holosim'`,
+stays dark (sides too, so a riser is a glowing wire cube). The board: two +1
+holo risers, flat otherwise — rev 2 removed the permanent red cells: the
+red warning square is the DELAYED-ATTACK telegraph (below), not terrain;
+`holo_red` stays registered as an editor terrain. Env: black dome with strong stars, `scenery: 'holosim'`,
 density 1.2. The `holosim` theme = a far roster (`_hzHoloRing`: thin
 additive tori with a chromatic twin, tumbling; `_hzHoloMonolith`: dark
 slabs wearing glowing ring glyphs and edge lights; `_hzAstralOrbs`) plus
@@ -753,9 +755,9 @@ Training Room: warm concrete, lit seams with a light at every corner, four
 scorch stars, A–H / 1–8 on the walkway, maroon barriers with red post
 lamps, the N/S doors with green lamps, the four signs legible from the
 default camera, booths W/E, drums in the corners, clocks; orbit low and
-outside the walls — they vanish and the lava bed shows through the moat;
+outside the walls — the room stays solid, nothing pops;
 (3) Holo Sim: black starfield, dark cells with glowing cyan rims (bloom),
-three red warning cells + mirrors, two wire-cube risers, the apron grid
+two wire-cube risers (no red cells), the apron grid
 fading out past the board, four faint beams at the corners, neon rings and
 dark monoliths drifting far out; (4) map editor → Floors: Holo Floor /
 Holo Warning paint and play-test; (5) a friendly online room offers both
@@ -1521,3 +1523,27 @@ has a `window.*` entry point; the Guild Hub is a working walkable hub
 `EW_MAP_META.biomes` groups the 29 maps into six bays; `doorSiteCrossings`
 gives each map its native enemy pool; the Δ boards are the brief's
 4v4-on-8×8 format.
+
+### 2026-09-04 (rev 2 of the boards) — danger cells over the whole footprint; the room goes solid
+User feedback on the first build: the Holo Sim's red squares are the
+DELAYED-ATTACK marker, not board terrain, and should cover the attack's
+entire area of effect; the Training Room's inward-only walls and the moat
+were "weird occlusion stuff" — the player only sees the tile tops, so
+covering the board's sides is fine. Token `20260904f-cors` →
+`20260904g-cors`; files data.js, three-renderer.js, index.html (map.js and
+sprites.js from the first build stand). `npm test` 113 (112 pass).
+- **Delayed attacks paint every tile.** three-renderer `_getZoneIconTex('cell')`
+  is a new canvas plate (red rim, faint red wash, warning triangle) and
+  `_renderDangerCells(tiles, small, pulseSpeed)` lays one on EVERY tile of
+  a pending blast's footprint (`_buildZoneBorderEdges`' Chebyshev square,
+  the same tiles the detonation hits), pushed onto `_zoneBorderMats` so
+  they blink at the telegraph's 3.4 countdown speed; the AoE border stays.
+  A laser mark (Headshot) is a one-tile footprint that follows its target.
+  Works on every map; `state._delayedSpells` already rides state-sync, so
+  the guest sees the same cells (RULE #2, no relay needed).
+- **Holo Sim board:** the three `holo_red` cells (and mirrors) are gone;
+  two risers remain. `holo_red` stays as an editor terrain.
+- **Training Room:** walls are double-sided and run from the bed's floor
+  (y 0) to 3.2 tiles above the room floor; the walkway meets the board edge
+  (no moat, its top a hair under the tile tops so the rim never z-fights);
+  barriers sit on the rim. Nothing is culled as the camera moves.

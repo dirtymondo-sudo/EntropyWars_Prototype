@@ -22417,10 +22417,10 @@ const ThreeRenderer = (function () {
     //  adds a fading holographic apron grid around prebuilt_holosim and lets
     //  the roster scatter neon rings + dark monoliths in the void beyond.
     //  Everything is built in board space (tile = ts, tile top = h × ts) and
-    //  OUTSIDE the playable footprint; the room walls are single-sided and
-    //  face inward, so an orbiting camera outside them looks straight
-    //  through (back-face culled) — the dollhouse trick — and the strata bed
-    //  under the board stays visible through the moat gap. Lit pieces use
+    //  OUTSIDE the playable footprint. The room is SOLID (rev 2, same day):
+    //  double-sided walls from the bed's floor up, the walkway meets the
+    //  board edge, nothing is culled or hidden as the camera moves — the
+    //  player only ever looks at the tile tops anyway. Lit pieces use
     //  Lambert (they share the board's sun / hemisphere light) rather than
     //  the graded MeshBasic of the far scenery, so a night cycle never turns
     //  a concrete wall blue. Kill-switch: window.EW_NO_FACILITY_SCENERY.
@@ -22564,7 +22564,7 @@ const ThreeRenderer = (function () {
         var ts = ctx.ts, bw = ctx.bw, bh = ctx.bh, elev = ts * ELEV_STEP_RATIO;
         var B = _hLevelAt(0, 0) || 5;              // the Δ baseline (z5)
         var fy = B * elev;                           // floor level (tile tops)
-        var G = 0.34 * ts;                           // moat: the bed shows through it
+        var G = 0;                                   // no moat: the walkway meets the board edge (the player only sees the tops)
         var W = 3.2 * ts;                            // walls this far outside the board
         var X0 = -W, X1 = bw * ts + W, Z0 = -W, Z1 = bh * ts + W;
         var CX = bw * ts * 0.5, CZ = bh * ts * 0.5;
@@ -22592,7 +22592,7 @@ const ThreeRenderer = (function () {
         [[X0, Z0, X1, -G], [X0, bh * ts + G, X1, Z1], [X0, -G, -G, bh * ts + G], [bw * ts + G, -G, X1, bh * ts + G]].forEach(function (r) {
             var w = r[2] - r[0], d = r[3] - r[1];
             var slab = _hzBox(w, T, d, ts, wkMat);
-            slab.position.set(r[0] + w / 2, fy - T / 2, r[1] + d / 2);
+            slab.position.set(r[0] + w / 2, fy - T / 2 - 0.6, r[1] + d / 2);   // a hair under the tile tops: no coplanar fight at the rim
             add(lit(slab));
         });
         /* hazard plates on the walkway in front of both doors */
@@ -22644,11 +22644,12 @@ const ThreeRenderer = (function () {
         barrier(bx1, -G, bx1, CZ - 0.12 * ts); barrier(bx1, CZ + 0.12 * ts, bx1, bh * ts + G);   // east
 
         /* the walls: dado + upper panel + trims, single-sided, facing in */
-        var WH = 3.4 * ts, DH = 1.0 * ts, WB = fy - 0.5 * ts;
-        var wallMat = _hzLit(concrete, 0x767b71), dadoMat = _hzLit(concrete, 0x3b3d39), trimMat = _hzLit(null, 0x2b6360);
+        var WH = 3.2 * ts, DH = 1.0 * ts, WB = 0;                          // walls run from the bed's floor up to 3.2 tiles above the room floor
+        var wallMat = _hzLit(concrete, 0x767b71, { side: THREE.DoubleSide }), dadoMat = _hzLit(concrete, 0x3b3d39, { side: THREE.DoubleSide }), trimMat = _hzLit(null, 0x2b6360);
         function wall(len, cx0, cz0, ry) {
-            var g1 = new THREE.PlaneGeometry(len, DH + 0.5 * ts); _hzTileUV(g1, len, DH + 0.5 * ts, ts);
-            var dado = new THREE.Mesh(g1, dadoMat); dado.position.set(cx0, WB + (DH + 0.5 * ts) / 2, cz0); dado.rotation.y = ry; add(lit(dado));
+            var lowH = fy + DH - WB;                                    // the dado panel doubles as the foundation below the floor
+            var g1 = new THREE.PlaneGeometry(len, lowH); _hzTileUV(g1, len, lowH, ts);
+            var dado = new THREE.Mesh(g1, dadoMat); dado.position.set(cx0, WB + lowH / 2, cz0); dado.rotation.y = ry; add(lit(dado));
             var g2 = new THREE.PlaneGeometry(len, WH - DH); _hzTileUV(g2, len, WH - DH, ts);
             var up = new THREE.Mesh(g2, wallMat); up.position.set(cx0, fy + DH + (WH - DH) / 2, cz0); up.rotation.y = ry; add(lit(up));
             var nx = Math.sin(ry), nz = Math.cos(ry);                     // inward normal of a +Z plane turned by ry
@@ -24141,6 +24142,21 @@ const ThreeRenderer = (function () {
             g.moveTo(56, 47); g.lineTo(72, 47); g.lineTo(68, 81); g.lineTo(60, 81);
             g.closePath(); g.fill();
             g.beginPath(); g.arc(64, 93, 7, 0, Math.PI * 2); g.fill();
+            /* 'cell' (2026-09-04): the delayed-attack danger CELL — a red rim, a
+               faint red wash and a small warning triangle, one per footprint
+               tile, so a telegraphed blast paints its WHOLE area of effect
+               (the reference: the Holo Sim's red warning squares). */
+        } else if (kind === 'cell') {
+            g.fillStyle = 'rgba(255,40,60,0.16)'; g.fillRect(0, 0, 128, 128);
+            g.strokeStyle = 'rgba(255,64,80,0.96)'; g.lineWidth = 9; g.strokeRect(4.5, 4.5, 119, 119);
+            g.strokeStyle = 'rgba(120,10,20,0.9)'; g.lineWidth = 3; g.strokeRect(12.5, 12.5, 103, 103);
+            g.beginPath(); g.moveTo(64, 34); g.lineTo(96, 92); g.lineTo(32, 92); g.closePath();
+            g.strokeStyle = 'rgba(70,0,0,0.9)'; g.lineWidth = 12; g.stroke();
+            g.strokeStyle = '#ff4a56'; g.lineWidth = 6; g.stroke();
+            g.fillStyle = 'rgba(255,74,86,0.25)'; g.fill();
+            g.fillStyle = '#fff';
+            g.beginPath(); g.moveTo(59, 50); g.lineTo(69, 50); g.lineTo(67, 74); g.lineTo(61, 74); g.closePath(); g.fill();
+            g.beginPath(); g.arc(64, 83, 4.2, 0, Math.PI * 2); g.fill();
         } else {
             /* green disc, white ring, bold white medic cross */
             g.beginPath(); g.arc(64, 64, 54, 0, Math.PI * 2);
@@ -24177,6 +24193,33 @@ const ThreeRenderer = (function () {
         /* meshes list only — icons keep a steady opacity (no border pulse)
            but still get disposed with the rest of the zone overlay */
         _zoneBorderMeshes.push(icon);
+    }
+
+    /* Danger cells for a delayed attack: one warning plate on EVERY tile of
+       the blast footprint (a laser mark is a one-tile footprint that follows
+       its target). They ride _zoneBorderMats so they blink at the telegraph's
+       countdown speed and are disposed with the rest of the zone overlay. */
+    function _renderDangerCells(tiles, small, pulseSpeed) {
+        if (!highlightGroup || !tiles || !tiles.length) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var tex = _getZoneIconTex('cell');
+        var size = ts * (small ? 0.80 : 0.96);
+        for (var i = 0; i < tiles.length; i++) {
+            var t = tiles[i];
+            var mat = new THREE.MeshBasicMaterial({
+                map: tex, transparent: true, opacity: 0.92,
+                depthWrite: false, side: THREE.DoubleSide
+            });
+            mat._pulseSpeed = pulseSpeed || 3.4;
+            var cell = new THREE.Mesh(new THREE.PlaneGeometry(size, size), mat);
+            cell.rotation.x = -Math.PI / 2;
+            cell.position.set(t.x * ts + ts / 2, tileTopY(t.x, t.y) + 0.55, t.y * ts + ts / 2);
+            cell.renderOrder = 6;
+            cell._ew_overlay = 'zone';
+            highlightGroup.add(cell);
+            _zoneBorderMeshes.push(cell);
+            _zoneBorderMats.push(mat);
+        }
     }
 
     var _spiderwebZoneTex = null;
@@ -24350,7 +24393,7 @@ const ThreeRenderer = (function () {
                 var dInfo = _buildZoneBorderEdges(dd.x, dd.y, dr);
                 /* delayed blasts (Nuke etc.) blink faster — they're a countdown */
                 _renderZoneBorderGroup(dInfo, dd.markedUnitId ? 0xff2020 : 0xdd4444, { pulseSpeed: 3.4 });
-                _renderZoneIcon(dd.x, dd.y, 'danger', !!dd.markedUnitId);
+                _renderDangerCells(dInfo.tiles, !!dd.markedUnitId, 3.4);   // every footprint tile, not just the centre
             }
         }
     }
