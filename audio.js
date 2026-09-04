@@ -1263,6 +1263,8 @@
             },
         };
         let _doorStingHandle = null;
+        /* Kit entries whose synthesized placeholder is suppressed. */
+        const _DOOR_SFX_SYNTH_MUTED = new Set(['doorBuzz', 'doorbell']);
 
         /* Play a DOOR kit sound. Returns true if something was scheduled. */
         function playDoorSfx(key, opts = {}) {
@@ -1271,6 +1273,12 @@
                 if (!state.audioUnlocked && !opts.allowBeforeUnlock) return false;
                 const fileKey = _DOOR_SFX_FILE_KEY[key];
                 if (fileKey && sfxLibrary[fileKey]) return playSfx(fileKey, opts);
+                /* Muted placeholders (2026-09-04): the synth door buzz/ring
+                   were far too loud, so they stay silent until the user's own
+                   recordings land. Adding the file to _R2_SFX under the
+                   _DOOR_SFX_FILE_KEY name above brings them straight back —
+                   the file branch runs before this check. */
+                if (_DOOR_SFX_SYNTH_MUTED.has(key)) return false;
                 const recipe = _DOOR_SFX_RECIPES[key];
                 if (!recipe) return false;
                 const ctx = _doorCtx();
@@ -1350,6 +1358,12 @@
         }
         function startDoorRoomTone() {
             try {
+                /* Muted 2026-09-04: the synthesized office bed (HVAC + mains
+                   hum + ballast hiss) was far too loud. It stays off until the
+                   user's own hall loop arrives — wire that up per the UPGRADE
+                   PATH above (a `doorRoomTone` bed in _R2_AMBIENCE) and drop
+                   this guard. stopDoorRoomTone stays safe to call meanwhile. */
+                if (!window.EW_ENABLE_DOOR_ROOM_TONE) return false;
                 if (window.EW_DISABLE_AMBIENCE || state.devAutoSim) return false;
                 if (_doorRoomTone) { _doorRoomToneApplyVol(); return true; }
                 if (!state.audioUnlocked) return false;
