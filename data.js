@@ -15382,15 +15382,25 @@ const DOOR_HQ = {
         observation_window:{ file: 'Meshy_AI_a_round_observation_window_0903105519_texture.glb',      span: 1.8, foot: 0, wall: true, mount: 1.6 },
         /* ── the janitor's closet kit (Phase 2.7) ── */
         cot:               { file: 'Meshy_AI_a_cot_0903105358_texture.glb',                           span: 1.9, foot: 0.7 },
-        sink:              { file: 'Meshy_AI_a_sink_0903105415_texture.glb',                          h: 0.85, foot: 0.35, wall: true },
-        rug_round:         { file: 'Meshy_AI_a_round_rug_0903110327_texture.glb',                     span: 1.8, foot: 0 },
-        rug_office:        { file: 'Meshy_AI_a_round_office_rug_0903110253_texture.glb',              span: 2.0, foot: 0 },
+        /* the sink is a shallow basin: fit its WIDTH (a height fit blew it up
+           to bathtub size) and hang it at waist height (`mount` = the
+           underside; the rim lands ~0.85 m). `block` keeps its floor
+           blocker even though it is mounted — you still can't walk into it. */
+        sink:              { file: 'Meshy_AI_a_sink_0903105415_texture.glb',                          span: 0.75, foot: 0.40, wall: true, mount: 0.60, block: true },
+        /* rugs: the GLBs are authored standing on edge; `lay` turns the
+           thinnest axis upright at load so they lie flat on the floor. */
+        rug_round:         { file: 'Meshy_AI_a_round_rug_0903110327_texture.glb',                     span: 1.5, foot: 0, lay: true },
+        rug_office:        { file: 'Meshy_AI_a_round_office_rug_0903110253_texture.glb',              span: 2.0, foot: 0, lay: true },
         /* ── procedural props (HQ plan 2.7): `proc` names a builder in
            three-renderer.js (_hqProcBuilders) instead of a file — the pieces
            the reference shows that the kit has no model for. Built in
            metres directly (span / h are the built size, kept for the
            tooling); `depth` = how far a wall-mounted one stands off the
-           wall. Replace any of them by giving the entry a `file`. */
+           wall. Replace any of them by giving the entry a `file`.
+           Catalogue flags any GLB entry can use: `lay` (lie flat — the
+           thinnest bbox axis becomes vertical, for rugs/mats), `block`
+           (keep the `foot` blocker even when `mount`ed, for waist-high
+           fixtures like the sink). */
         tanker_desk:       { proc: 'tanker_desk',    span: 1.5,  foot: 0.7, wall: true, depth: 0.75 },
         floor_drain:       { proc: 'floor_drain',    span: 0.36, foot: 0 },
         vent_grille:       { proc: 'vent_grille',    span: 0.45, foot: 0, wall: true, mount: 2.35, depth: 0.03 },

@@ -608,6 +608,25 @@ Guild Hub was the prototype; this plan is the building.
 
 ## 9. Build log (append per session)
 
+### 2026-09-04 — closet polish: the rug lies flat, the sink hangs at waist height
+User (with a screenshot): the round rug stood on edge and the sink was
+bathtub-sized on the floor. `npm test` 101 pass. Cache token
+`20260903e-cors` → `20260904a-cors`.
+- **Sink** (data.js catalogue): was `h: 0.85` — a height fit on a shallow
+  basin scaled it to ~3 m wide. Now `span: 0.75, mount: 0.60` (underside;
+  rim ≈ 0.85 m, the shelves above it at 1.55 / 2.0 clear it) with the new
+  `block: true` so it keeps its `foot` blocker even though it is mounted.
+- **Rugs** (data.js catalogue): `rug_round` / `rug_office` get `lay: true`;
+  `rug_round` span 1.8 → 1.5 for the closet.
+- **three-renderer.js `_hqPlaceProps`**: catalogue `lay` — after the GLB
+  fit, the thinnest bbox axis is turned upright (z-thin → tip back on x,
+  x-thin → tip on z, already-flat → no-op) and the group re-seated on the
+  floor with a 4 mm lift against z-fighting. Catalogue `block` forces the
+  floor blocker regardless of `mount` / `ceil` / `y`.
+- Could not verify the GLB bboxes (cdn.entropywars.net is blocked from the
+  agent): the sink `span`/`mount` are eyeballed from the screenshot — tune
+  `mount` (0.55–0.65) and `span` (0.65–0.85) in place if the rim is off.
+
 ### 2026-09-03 — Phase 2.7: the janitor's closet (the first interior, the first box room)
 User: "continue with the build plan". `npm test` 102 (101 pass, the server
 smoke skips without node_modules); 3 new checks in `doorhq.test.js`.

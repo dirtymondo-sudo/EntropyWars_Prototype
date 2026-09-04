@@ -27699,13 +27699,26 @@ const ThreeRenderer = (function () {
                 grp.add(pg);
                 if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); }
                 G.add(grp);
-                if (cat.foot > 0 && !mount && !onCeil && !(p.y > 0.5)) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 });
+                if (cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 });
                 return;
             }
             place(0.66);
             var inst = _miscModelInstance(_hqModelUrl(cat), true, target, {
                 fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
                 onDone: function (g, s, bb) {
+                    /* `lay`: the model is authored on edge (rugs) — turn its
+                       thinnest axis upright and re-seat it on the floor */
+                    if (cat.lay) {
+                        var LX = (bb.max.x - bb.min.x) * s, LY = (bb.max.y - bb.min.y) * s, LZ = (bb.max.z - bb.min.z) * s;
+                        var lift = 0.004 * U;                       // off the floor: no z-fight
+                        if (LZ < LY && LZ <= LX) {                  // thin in z: tip back onto the floor
+                            g.rotation.x = -Math.PI / 2;            // (x, y, z) → (x, z, −y)
+                            g.position.y = LZ / 2 + lift; g.position.z = LY / 2;
+                        } else if (LX < LY && LX < LZ) {            // thin in x: tip sideways
+                            g.rotation.z = Math.PI / 2;             // (x, y, z) → (−y, x, z)
+                            g.position.y = LX / 2 + lift; g.position.x = LY / 2;
+                        } else g.position.y = lift;                 // already flat
+                    }
                     if (onWall) {
                         var depth = (bb.max.z - bb.min.z) * s / U;
                         place(depth);
@@ -27722,7 +27735,7 @@ const ThreeRenderer = (function () {
                 grp.add(gl);
             }
             G.add(grp);
-            if (cat.foot > 0 && !mount && !onCeil && !(p.y > 0.5)) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 });
+            if (cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 });
         });
     }
 
