@@ -609,6 +609,25 @@ Guild Hub was the prototype; this plan is the building.
 
 ## 9. Build log (append per session)
 
+### 2026-09-04 (batch 2) — fourteen more leaves, the whole rank ladder moves
+User uploaded the wishlist to `/doors` (14 GLBs, all single leaves, one
+mesh, unit-scaled, no frame except the hell arch). Parsed + rendered
+offline; hinge side read from the handle. `npm test` 104 pass. Cache
+token `20260904b-cors` → `20260904c-cors`. data.js only.
+- **Catalogue +14**: barn .684 · saloon .572 · frosted_single .480 ·
+  stable .516 · bathroom .387 · stall .588 · cell .709 · hell_arch .734
+  (static, frame) · glass .439 · glass_exec .487 · holographic .609
+  (slide) · hospital .498 · hotel .508 · motel .533. `leaf_frosted` (the
+  pair) lost its rank and joined the pool.
+- **L5 GATEKEEPER = `leaf_frosted_single`** — six of six rank doors now
+  open (L1–L5 swing, L6 slides).
+- **Re-homed**: reception → glass, medical → hospital, engineering →
+  glass_exec, bay_quarantined → cell; thresholds nuketown → motel,
+  skinwalker → stable, bohemian_grove → saloon, babel → barn, cyberpunk →
+  holographic, heaven → hotel, hell → hell_arch (single opening, the dark
+  plate shows through the arch). Unassigned pool: bathroom, stall,
+  suburban, closet, closet_alt, shabby_wood, frosted pair.
+
 ### 2026-09-04 (later) — doors fit their frames, rank leaves exclusive, doors open
 User: doors were different sizes, did not fill their frames or looked
 awkward; the 18 GLBs were committed to `/doors`. Parsed + rendered offline

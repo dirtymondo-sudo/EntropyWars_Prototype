@@ -138,7 +138,7 @@ bundle the six-string edit):
 | L2 | **DOORSTOP** | junior permanent staff who can obstruct requests but rarely decide | cheap hollow-core door |
 | L3 | **KNOCKER** | field agents who investigate new thresholds and make first contact | a proper white office door (the wired-glass double was retired 2026-09-04: one mesh, no swing) |
 | L4 | **KEYHOLDER** | trusted staff with meaningful clearance | security door with keycard reader |
-| L5 | **GATEKEEPER** | managers who control access to people, information and realities | frosted executive glass |
+| L5 | **GATEKEEPER** | managers who control access to people, information and realities | frosted executive glass (a single leaf since 2026-09-04, so it swings; the double pair is in the pool) |
 | L6 | **THE DOORMAN** | the mysterious title of the agency's highest authority | a biometric seamless threshold that barely resembles a door — while the actual Doorman has an ancient battered wooden door nobody comments on |
 
 The reference sheet `docs/door-hq/ref/office_doors_sheet_v1.*` (six doors in
@@ -910,3 +910,18 @@ fallback), three-renderer.js (`_hqBuildDoors` fit + motion rig,
 `_hqTickDoors`, `_hqFindTarget` reach from the real opening), doorhq.test.js
 (+3), DOOR_HQ_BUILD_PLAN.md §9, index.html (`?v=20260904b-cors`). Hub only →
 no relay work.
+
+### 2026-09-04 (later) — the second door batch
+The user generated the wishlist: 14 more single-leaf doors in `/doors`
+(barn, saloon, stable, single frosted, bathroom, bathroom stall, cell
+with a slot, doorway to hell, glass, glass executive, holographic,
+hospital with a porthole, hotel, motel). All measured and catalogued
+(`aspect`, hinge from the handle side). L5 GATEKEEPER now wears the
+single frosted leaf, so every rung of the ladder opens (L6 slides). New
+homes: reception → glass door, medical → hospital door, engineering →
+glass executive, Bay 6 · Quarantined → the cell door; thresholds nuketown
+→ motel, skinwalker → stable, bohemian grove → saloon, babel → barn,
+cyberpunk → holographic (slides), heaven → hotel, hell → the arch (static,
+its cracks glow). Bathroom, stall, suburban, plain closet doors and the
+frosted pair sit in the pool for later rooms. Files: data.js,
+DOOR_HQ_BUILD_PLAN.md §9, index.html (`?v=20260904c-cors`).
