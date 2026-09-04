@@ -1009,3 +1009,20 @@ was a dark navy that the emissive rim pass and bloom turned into a solid
 blue floor under every highlight; the fill is black now, only the cyan rim
 glows. Files: three-renderer.js, sprites.js, index.html
 (`?v=20260904j-cors`); HQ plan §9 rev 4 entry.
+
+### 2026-09-04 (walkable) — 6.1a: the Training Room you walk into
+The Training Facility door in the egress (180°) opens now: `DOOR_HQ.rooms.
+training` is the second `kind: 'box'` room — a 20 × 20 m hall with the SAME
+8×8 grid the `prebuilt_training` board plays on, flush in the middle of the
+floor as walkable geometry (slab tiles, lit seams, scorch stars, maroon
+barriers with gaps at the green N/S doors, hazard plates, A–H / 1–8, the
+overhead observation booths — always occupied — the signs, the corner
+machinery). The RANGE console (a tanker desk with a CRT, and the VHS CRT
+beside it cued to TAPE 1 OF 1) launches ORIENTATION → the Training Room
+board and PRACTICE → the Holo Sim, both with a free CPU pool and nothing
+filed. Canon consequences: Challenge (Medical's long range) and the
+condemned Mystery-Dungeon crossing now have their PHYSICAL doors inside
+the facility (the egress panel's shortcut buttons are gone); the walkable
+grid and the fought grid are established as the same room. Files: data.js,
+three-renderer.js, map.js, doorhq.test.js, index.html
+(`?v=20260904k-cors`); HQ plan §9 6.1a entry.

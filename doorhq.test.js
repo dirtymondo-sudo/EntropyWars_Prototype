@@ -484,6 +484,40 @@ test('box-room props resolve (kit or procedural), sit inside the walls, wall pro
     assert.ok(Math.hypot((desk.x || 0) - tray.x, -OFFICE.shell.d / 2 - tray.z) < tray.radius + 1, 'the in-tray sits within reach of the desk');
 });
 
+/* ── Phase 6.1a (2026-09-04): the walkable Training Room ── */
+
+test('the training room is a box room off the egress: the pit, the console, the facility doors', () => {
+    const TR = HQ.rooms.training;
+    assert.ok(TR && TR.kind === 'box' && TR.fx === 'training', 'rooms.training kind box, fx training');
+    const S = TR.shell;
+    assert.ok(S.grid && S.grid.cells === 8 && S.grid.cell > 0, 'the 8×8 grid');
+    assert.ok(S.w >= S.grid.cells * S.grid.cell + 4 && S.d >= S.grid.cells * S.grid.cell + 4, 'at least 2 m of walkway around the pit');
+    /* the egress door walks in; the way out walks back to it; the panel
+       shortcuts (Challenge / Mystery Dungeon) moved into the facility */
+    const eg = ROOM.doors.find(d => d.id === 'training');
+    assert.ok(eg && eg.action.room === 'training' && eg.action.at === 'egress', 'the egress training door walks into the room at its way out');
+    assert.ok(!eg.alt && !eg.alt2, 'the egress panel shortcuts moved into the facility');
+    const out = TR.doors.find(d => d.id === 'egress');
+    assert.ok(out && out.wall === 'n' && out.x === 0 && out.action.room === 'central_egress' && out.action.at === 'training', 'the way out is centred on the north wall (the barrier gap) and lands at the egress door');
+    const ch = TR.doors.find(d => d.id === 'challenge');
+    assert.ok(ch && ch.wall === 's' && ch.x === 0 && ch.action.fn === '_goToCampaign', 'the Challenge range is the south door, on the other barrier gap');
+    const cd = TR.doors.find(d => d.id === 'condemned');
+    assert.ok(cd && cd.action.fn === '_goToMysteryDungeon', 'the condemned crossing is the Mystery Dungeon');
+    for (const d of TR.doors) assert.ok(!(HQ.catalogue[d.leaf] && HQ.catalogue[d.leaf].rank), 'rank leaf on ' + d.id);
+    /* the RANGE console: at the tanker desk, launching both facility boards */
+    const rc = TR.counters.find(c => c.id === 'range');
+    assert.ok(rc && rc.action.overlay === 'training' && rc.radius > 0, 'the RANGE console');
+    const desk = TR.props.find(p => p.key === 'tanker_desk');
+    assert.ok(desk && desk.wall === 'w' && Math.abs((desk.z || 0) - rc.z) < 2, 'the console counter stands at the tanker desk');
+    assert.ok(TR.props.some(p => p.key === 'tube_tv'), 'the VHS CRT is in the room');
+    for (const id of ['prebuilt_training', 'prebuilt_holosim']) {
+        const m = (D.EW_MAP_META || []).find(x => x.id === id);
+        assert.ok(m && m.isDelta && m.facility, id + ' is a facility board the console can launch');
+    }
+    assert.strictEqual(D.doorSiteState(out, null), 'open');
+    assert.strictEqual(D.doorSiteState(eg, null), 'open');
+});
+
 /* ── 2026-09-04: leaves fit their frames, rank leaves are exclusive ──── */
 const LEAVES = Object.entries(HQ.catalogue).filter(([, c]) => c.leaf);
 const ALL_DOORS = Object.entries(HQ.rooms).flatMap(([k, r]) => (r && r.doors || []).map(d => Object.assign({ room: k }, d)));

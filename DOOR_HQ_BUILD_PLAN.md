@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 10 (2026-09-04 — Training Room rev 3: the enclosure was being fogged out, the slab floor; the walkable room is 6.1a, §9)
+### The walkable facility that replaces the Play menu · rev 11 (2026-09-04 — 6.1a SHIPPED: the walkable Training Room, §9)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -423,11 +423,12 @@ lamp/frame details → furniture → fixtures → machinery.
 ### Phase 6 — Engine-side pieces (1 session each, ⚙)
 - 6.1 (split 2026-09-04, §9) — the Training Facility is TWO boards and one
   room, all on the voxel path, and both boards are ✅:
-  - 6.1a ⚙ **the walkable Training Room** (`DOOR_HQ.rooms.training`, a box
-    room off the egress door at 180°, currently INTERIOR NOT YET BUILT): the
-    8×8 pit in the middle as room geometry, the booths, the VHS CRT, a
-    counter that launches ORIENTATION / PRACTICE onto 6.1b. Reuses the
-    enclosure vocabulary from 6.1b (three-renderer `_hzTrainingRoom`).
+  - 6.1a ⚙ ✅ (2026-09-04, §9) **the walkable Training Room**
+    (`DOOR_HQ.rooms.training`, a box room off the egress door at 180°): the
+    8×8 pit in the middle as room geometry, the booths, the VHS CRT, the
+    RANGE console that launches ORIENTATION (6.1b) / PRACTICE (6.1c — the
+    Holo Sim IS the practice floor, decided here). Reuses the enclosure
+    vocabulary from 6.1b (`_hqBuildTrainingPit` beside `_hzTrainingRoom`).
   - 6.1b ✅ **`prebuilt_training` — the Training Room board.** A Δ board
     (DELTA FORGE house rules, the shared lava→dirt bed, 4v4) authored flat
     and open like `training_room_v1`: warm plaster-concrete SLABS (the
@@ -649,6 +650,93 @@ Guild Hub was the prototype; this plan is the building.
 - Hazard Pay wallet on the strip vs only at the Quartermaster. Rec: strip.
 
 ## 9. Build log (append per session)
+
+### 2026-09-04 (6.1a) — the walkable Training Room ships
+User: "Let's build the walkable training room inside the facility." Token
+`20260904j-cors` → `20260904k-cors`; files data.js, three-renderer.js,
+map.js, index.html; doorhq.test.js +1 (114 total, 113 pass, server smoke
+skips). No mid-match surface → no relay work (RULE #2); the room is
+single-player and local like the rest of the building.
+
+**The room (data.js `rooms.training`).** The egress TRAINING FACILITY door
+(180°) now opens into the second `kind: 'box'` room: 20 × 20 m, 5 m
+ceiling (the 8×8 grid is 14 m at 1.75 m per battle tile + 3 m of walkway
+each side), concrete floor / stone walls / oxblood dado / teal trim.
+`fx: 'training'` on the room + `shell.grid: {cells: 8, cell: 1.75}` are
+what the renderer reads. Doors: the way out is CENTRED ON THE NORTH WALL so
+the pit's barrier gap lines up with it (in from the egress, straight onto
+the grid; `at` round-trips both ways); the south gap door is the CHALLENGE
+RANGE (`_goToCampaign`, the wired institutional double); the east wall has
+the CONDEMNED CROSSING (`_goToMysteryDungeon`, the shabby wooden door,
+"somebody keeps oiling the hinges"). The egress door's alt/alt2 shortcut
+buttons are GONE — the facility is those functions' physical home now
+(guardrail: one physical home + the directory). Props: the tanker desk on
+the west wall wearing the signature CRT + rotary phone + papers is the
+RANGE console's body; the VHS CRT (tube_tv on a crate, aimed at the grid)
+sits beside it for 4.3; observation window, two clocks, extinguisher,
+water cooler, lockers, folding chairs, wet-floor sign standing over the SW
+crack, two ceiling fluorescents. Two agents watch the grid (one is timing
+their break); up to three roster vessels spawn — two of the spots are ON
+the grid, sparring.
+
+**The pit (three-renderer.js `_hqBuildTrainingPit`).** Runs after
+`_hqBuildBoxShell` when `room.fx === 'training'`; metres × U in the room
+frame, reusing the 6.1b enclosure vocabulary and its canvas caches
+(`_hzTex('training_floor')` slabs — the data-URI terrain, no CDN;
+`_hzLineGridMesh` seams + corner lights; `_hzScorchTex` / `_hzCrackTex`
+multiply decals with toneMapped off; `_hzStripeTex` hazard plates;
+`_hzTextTex` A–H / 1–8 and the four signs, same copy, shifted off the
+doors that now occupy the wall centres). The grid is FLUSH with the floor
+(rev 3's no-moat rule): what fences it is the maroon barriers (yellow lip,
+posts, breathing red lamps) with gaps at the N/S doors. New collision:
+barrier segments push RECT blockers (`rect: {hw, hd}`) that `_hqSurface`'s
+box branch now understands — the pit is really fenced, the gaps really
+admit you, and you can walk every cell. Overhead: glass observation booths
+on the W/E walls at 2.4 m (desk, glowing screen, inner light — never
+reachable), corner machinery (drum + crate + wall pipe + red lamp, disc
+blockers), seven red wall lamps, eight fluorescent strips, four point
+lights over the grid (the box-room lighting alone was sized for a closet).
+Pulses live in `_hq.fxPulse`, ticked by `_hqTickWorld` — the battle
+`_hzGlowPulse` list never runs under the HQ loop. Also: `_hqGoTo`'s
+box-counter branch now stands you in FRONT of a counter that declares
+`face` (the office in-tray keeps its old south-side behaviour).
+
+**The console (map.js).** Counter overlay `training` → `_hqTrainingHtml`:
+the tape label ("D.O.O.R. ORIENTATION · TAPE 1 OF 1 · 1987 · BE KIND,
+REWIND", "please do not turn around"), ORIENTATION ▸ TRAINING ROOM · 4v4
+and PRACTICE ▸ HOLO SIM · 4v4 (`data-range`), NOTED. `_hqLaunchMission`
+takes `o.roster` now: `[]` = nothing pinned (`_msConfirm` only pins a
+non-empty roster), so both launches draw a free CPU pool instead of
+`hqMissionPool`'s biome-neighbour padding — they are INTERNAL, no site
+file, no mastery, no Code Red. Post-match you re-enter the training room
+standing at the console (`doorId: 'range'` rides the existing
+`_hqLastDoor` plumbing; `goTo` handles box counters). **Decision recorded:
+the Holo Sim's purpose is PRACTICE** (the §9 6.1b open question).
+
+**Tests (doorhq.test.js +1).** The generic box-room checks picked the room
+up by themselves (panels fit, props inside walls, mounts clear the
+ceiling, lit by a fluorescent); the new test pins the contract: fx +
+8×8 grid + ≥2 m walkway, the egress door round-trip through `at`, the
+way out / challenge doors centred on the barrier gaps, no rank leaves, no
+leftover alt/alt2 shortcuts, the RANGE console at the tanker desk with the
+tube_tv present, and both launch ids present as `isDelta + facility` rows.
+One data fix the suite caught: the challenge door needed `wide: true` to
+agree with its double leaf.
+
+**Could not verify here (CDN blocked):** the kit GLBs in the room (the
+observation window's first-ever placement — if it faces the wall, flip its
+`rot`), texture read on the walls vs the slab grid, booth glass against
+the fog. First things to eyeball live: (1) walk in from the egress —
+straight through the gap onto the grid; (2) barriers block everywhere but
+the two gaps; (3) E at the console → ORIENTATION lands match select on
+TRAINING ROOM, PRACTICE on HOLO SIM, and the CPU roster is NOT pinned
+(different races per reroll); (4) post-match you stand at the console; (5)
+the sparring vessels on the grid; (6) sign / lamp / clock placement (all
+single numbers in `_hqBuildTrainingPit` / the props table).
+
+**Next (in order):** 4.1 the case-file screen; 4.3 the orientation tape
+playing on the VHS CRT before ORIENTATION's first run; 6.3 Keys wording;
+§3.9 the layout editor; gamepad; 4.2 the desk micro-scene.
 
 ### 2026-09-04 (rev 3 of the Training Room) — the room was there all along; the slab floor
 User (with a live capture): "still don't really know what's going on with

@@ -15706,7 +15706,7 @@ const DOOR_HQ = {
                 { id: 'quartermaster',  deg: 90,  level: 0, leaf: 'leaf_vault',        wide: true,  label: 'QUARTERMASTER',           sub: 'CUSTOMS & ADMISSIONS',       action: { fn: '_goToShop' },        desc: 'Declassification and asset reassignment. The Shop, and the manifests locker.', alt: { label: 'PARTY BUILDER', fn: '_goToTeamBuilder' } },
                 { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_glass',                     label: 'RECEPTION · INTAKE',      sub: 'HUMAN RESOURCES',            action: { fn: '_mountReactProfile' }, desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
                 { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'JANITORIAL (CONVERTED)',     action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
-                { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING FACILITY',       sub: 'DOWNSTAIRS · ORIENTATION',   action: { room: 'training' },       desc: 'The only approved square room in the building. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.', alt: { label: 'CHALLENGE', fn: '_goToCampaign' }, alt2: { label: 'CONDEMNED CROSSING (MYSTERY DUNGEON)', fn: '_goToMysteryDungeon' } },
+                { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING FACILITY',       sub: 'DOWNSTAIRS · ORIENTATION',   action: { room: 'training', at: 'egress' }, desc: 'The only approved square room in the building. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.' },
                 { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_hospital',                  label: 'MEDICAL',                 sub: 'SUPPORT SERVICES',           action: { fn: '_goToCampaign' },    desc: 'Where EXITED operatives are processed. Revives, retries, the Challenge services desk.' },
                 { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'ARCHIVES · ENTITY REGISTRY', action: { fn: '_goToCodex' },       desc: '“We only keep the file.” Entity dossiers, the tape library, unfiled sites.', alt: { label: 'REPLAY (TAPE LIBRARY)', fn: '_ewReplayLastMatch' }, alt2: { label: 'UNFILED SITES (COMMUNITY MAPS)', fn: '_mountCommunityMaps' } },
                 { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'CONTAINMENT BAY',            action: { sector: 'terrestrial' } },
@@ -15931,6 +15931,103 @@ const DOOR_HQ = {
             npcSpots: [],
             lines: [],
             spawn: { x: -1.55, z: -0.5, face: 90 },
+        },
+
+        /* ── THE TRAINING ROOM (HQ plan 6.1a, 2026-09-04) — the walkable
+           Training Facility off the egress door at 180°: the only approved
+           square room in the building, a 20 × 20 m box with the 8×8 grid
+           (`shell.grid`, one 1.75 m cell per battle tile) flush in the middle
+           of the floor — the same pit the `prebuilt_training` BOARD (6.1b)
+           plays on, drawn by the renderer's `_hqBuildTrainingPit` with the
+           enclosure vocabulary from `_hzTrainingRoom` (slab floor + lit
+           seams, scorch stars, maroon barriers with door gaps N/S, hazard
+           plates, A–H / 1–8, observation booths W/E, corner machinery,
+           signs, red lamps). `fx: 'training'` is what tells the renderer to
+           build it. The RANGE console launches ORIENTATION (the Training
+           Room board) and PRACTICE (the Holo Sim — free loadout testing, no
+           pinned CPU pool, nothing counts toward a threshold); the VHS CRT
+           beside it is the orientation tape (4.3 plays it later). Challenge
+           and the condemned Mystery-Dungeon crossing moved IN here from the
+           egress door panel — the facility is their physical home now. */
+        training: {
+            label: 'TRAINING ROOM',
+            sub: 'ORTHOGONAL GEOMETRY EXPOSURE AREA',
+            kind: 'box',
+            fx: 'training',
+            shell: {
+                w: 20, d: 20, h: 5.0,         // the grid is 14 m; 3 m of walkway each side
+                wallH: 5.0, dadoH: 1.05,
+                floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+                pipes: true,
+                light: { x: 0, z: 0 },        // the shell strip over the grid centre
+                plate: { x: 0, z: -9.6, y: 4.55 },
+                grid: { cells: 8, cell: 1.75 },   // the pit: 8×8 cells, one battle tile each
+            },
+            doors: [
+                /* the way back, centred on the north wall so the barrier gap
+                   lines up with it — in from the egress, straight onto the grid */
+                { id: 'egress',    wall: 'n', x: 0,   leaf: 'leaf_exit', label: 'CENTRAL EGRESS', sub: 'UPSTAIRS · THE WAY BACK',
+                  action: { room: 'central_egress', at: 'training' },
+                  desc: 'The way back up. The EXIT sign over this one is accurate, which is why it was chosen.' },
+                { id: 'challenge', wall: 's', x: 0,   leaf: 'leaf_wired_double', wide: true, label: 'CHALLENGE RANGE', sub: 'GAUNTLET · SURVIVAL',
+                  action: { fn: '_goToCampaign' },
+                  desc: 'The long range. Consecutive crossings, no resupply, a clipboard at the end. Medical is aware of you.' },
+                { id: 'condemned', wall: 'e', z: 6.2, leaf: 'leaf_shabby_wood', label: 'CONDEMNED CROSSING', sub: 'MYSTERY DUNGEON · DO NOT ENTER',
+                  action: { fn: '_goToMysteryDungeon' },
+                  desc: 'Condemned in 1987. The field office on the far side never acknowledged the memo, and somebody keeps oiling the hinges.' },
+            ],
+            counters: [
+                /* the launch console on the west wall (the tanker desk below
+                   is the physical counter; this is the interaction) */
+                { id: 'range', x: -8.9, z: 0, face: 90, plateY: 1.9, radius: 2.4, verb: 'USE',
+                  label: 'RANGE CONSOLE', sub: 'ORIENTATION · PRACTICE', action: { overlay: 'training' } },
+            ],
+            props: [
+                /* the range console: tanker desk against the west wall, CRT + phone + paperwork on it */
+                { key: 'tanker_desk',   wall: 'w', z: 0 },
+                { key: 'crt_terminal',  x: -9.6,  z: -0.35, y: 0.76, face: 90 },
+                { key: 'rotary_phone',  x: -9.62, z: 0.42,  y: 0.76, face: 70 },
+                { key: 'papers_a',      x: -9.5,  z: 0.05,  y: 0.76, face: 100 },
+                /* the VHS CRT: a tube TV on a crate beside the console, aimed at the grid (4.3 plays the tape) */
+                { key: 'cardboard_boxes', x: -8.9, z: 1.9, face: 90 },
+                { key: 'tube_tv',       x: -8.9,  z: 1.9,  y: 0.95, face: 90 },
+                /* north wall: the round observation window, a clock, the
+                   extinguisher (the sign takes x 2.6–7.4 — nothing else there) */
+                { key: 'observation_window', wall: 'n', x: -5.5 },
+                { key: 'wall_clock',    wall: 'n', x: -2.5 },
+                { key: 'fire_extinguisher', wall: 'n', x: 8.2 },
+                /* south wall: the second clock, the water cooler (45 minutes
+                   is a long time; the sign takes x −7.4…−2.6) */
+                { key: 'wall_clock',    wall: 's', x: 2.5 },
+                { key: 'water_cooler',  wall: 's', x: -7.8 },
+                /* east wall: lockers for the trainees, chairs under the east booth */
+                { key: 'locker',        wall: 'e', z: -6.6 },
+                { key: 'locker',        wall: 'e', z: -5.7 },
+                { key: 'folding_chair', x: 8.6, z: 3.9, face: 280 },
+                { key: 'folding_chair', x: 8.6, z: 2.4, face: 260 },
+                /* the wet-floor sign stands over the SW floor crack. It is not wet. */
+                { key: 'wet_floor_sign', x: -7.9, z: 5.8, face: 140 },
+                /* ceiling fixtures (the wall strips come with the fx builder) */
+                { key: 'fluorescent',   x: -3.5, z: -3.5, ceil: true, face: 90 },
+                { key: 'fluorescent',   x: 3.5,  z: 3.5,  ceil: true, face: 90 },
+            ],
+            agents: [
+                { x: 4.6,  z: -8.5, face: 150, line: 'Eyes on the grid, officer. It measured 7×7 on Tuesday. Nobody filed the change.' },
+                { x: -8.5, z: -4.4, face: 115, line: 'Forty-one minutes. I am taking my break at forty-four.' },
+            ],
+            npcSpots: [
+                /* two vessels sparring on the grid, one on the south walkway */
+                { x: -1.75, z: 0.9, face: 90 },
+                { x: 1.75,  z: 0.9, face: 270 },
+                { x: 5.3,   z: 8.5, face: 20 },
+            ],
+            lines: [
+                'The floor is load-bearing. The geometry is not.',
+                'Straight lines. On purpose. You get used to it.',
+                'PRACTICE is free. ORIENTATION is mandatory. There is a difference, on a form, somewhere.',
+                'Do not turn around during the tape. That part is not a joke.',
+            ],
+            spawn: { x: 0, z: -8.4, face: 180 },
         },
     },
 };

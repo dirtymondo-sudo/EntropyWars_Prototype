@@ -577,7 +577,10 @@
                 cr = window.hqCodeRed(_hqProfile());
                 if (!cr || cr.cleared || cr.site !== site) cr = null;
             }
-            const roster = cr && typeof window.hqCodeRedPool === 'function' ? window.hqCodeRedPool(cr, teamSize)
+            /* o.roster overrides the pool ([] = free CPU draw, nothing pinned
+               — the Training Facility's simulated crossings, HQ plan 6.1a) */
+            const roster = Array.isArray(o.roster) ? o.roster
+                : cr && typeof window.hqCodeRedPool === 'function' ? window.hqCodeRedPool(cr, teamSize)
                 : ((typeof window.hqMissionPool === 'function') ? window.hqMissionPool(site, teamSize) : []);
             window._hqCodeRedRun = cr ? { date: cr.date, site: cr.site, race: cr.race, label: cr.label, bonus: cr.bonus } : null;
             window._hqPreselect = { mapId: site, launchId, delta, teamSize, gm: 'arena', roster, doorId: o.doorId || null, doorLabel: o.doorLabel || '', codeRed: !!cr };
@@ -817,6 +820,20 @@
             html += '<p class="hq-panel-note">Directives, memos and commendations land in this tray as the story is filed. Field work generates paperwork; paperwork generates directives.</p>';
             return html;
         }
+        /* The RANGE console in the walkable Training Room (HQ plan 6.1a):
+           ORIENTATION launches the Training Room board (6.1b), PRACTICE the
+           Holo Sim (6.1c). Both are simulated crossings — the CPU pool is
+           free (no pinned roster), nothing is filed, no threshold moves. */
+        function _hqTrainingHtml() {
+            let html = '<div class="hq-panel-hd"><b>RANGE CONSOLE</b><span>TRAINING FACILITY · SIMULATED CROSSINGS · NO PAPERWORK</span></div>';
+            html += '<p class="hq-panel-desc">A tanker desk, a signature CRT, and a tube TV wearing a label gun’s best work: “D.O.O.R. ORIENTATION · TAPE 1 OF 1 · 1987 · BE KIND, REWIND”. The tape is cued. Please do not turn around during the tape.</p>';
+            html += '<div class="hq-panel-actions">'
+                + '<button class="hq-btn hq-btn-primary" data-range="prebuilt_training" title="Arena · 4v4 on the 8×8 Training Room board · free CPU pool">ORIENTATION ▸ TRAINING ROOM · 4v4</button>'
+                + '<button class="hq-btn" data-range="prebuilt_holosim" title="Arena · 4v4 on the Holo Sim floor · free CPU pool · nothing is filed">PRACTICE ▸ HOLO SIM · 4v4</button>'
+                + '<button class="hq-btn" data-close="1">NOTED</button></div>';
+            html += '<p class="hq-panel-note">Simulated crossings are INTERNAL: no site file, no mastery, no Code Red. The walls are real; the stakes are not. The grid beside you is the one you will fight on.</p>';
+            return html;
+        }
         function _hqCounterPanelHtml(t) {
             const c = t.counter || {};
             const act = c.action || {};
@@ -824,6 +841,7 @@
             if (act.overlay === 'directory') return _hqDirectoryHtml();
             if (act.overlay === 'intray') return _hqInTrayHtml();
             if (act.overlay === 'codered') return _hqCodeRedHtml();
+            if (act.overlay === 'training') return _hqTrainingHtml();
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
             if (c.id === 'board') html += '<p class="hq-panel-desc">Six laminated photographs. The frame in the corner has been empty since 1987. Nobody comments on it.</p>';
             if (act.fn) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="${_hqEsc(act.fn)}">READ THE BOARD ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button></div>`;
@@ -919,6 +937,15 @@
                 const door = (_hqPanelTarget && _hqPanelTarget.kind === 'door') ? _hqPanelTarget : null;
                 window._hqClosePanel();
                 window._hqLaunchMission(id, { delta: !deep, codeRed, doorId: door ? door.id : null, doorLabel: door ? door.label : '' });
+                return;
+            }
+            /* the RANGE console (HQ plan 6.1a): a facility board with a free
+               CPU pool; post-match returns to the console in the training room */
+            const range = e.target.closest('[data-range]');
+            if (range && !range.disabled) {
+                const id = range.getAttribute('data-range');
+                window._hqClosePanel();
+                window._hqLaunchMission(id, { delta: true, roster: [], doorId: 'range', doorLabel: 'RANGE CONSOLE' });
                 return;
             }
             const go = e.target.closest('[data-goto]');
