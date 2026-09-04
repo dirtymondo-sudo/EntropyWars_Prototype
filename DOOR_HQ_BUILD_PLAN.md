@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 9 (2026-09-04 — 6.1 split: the Training Room and Holo Sim BOARDS shipped; the walkable room is 6.1a, §9)
+### The walkable facility that replaces the Play menu · rev 10 (2026-09-04 — Training Room rev 3: the enclosure was being fogged out, the slab floor; the walkable room is 6.1a, §9)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -430,7 +430,8 @@ lamp/frame details → furniture → fixtures → machinery.
     enclosure vocabulary from 6.1b (three-renderer `_hzTrainingRoom`).
   - 6.1b ✅ **`prebuilt_training` — the Training Room board.** A Δ board
     (DELTA FORGE house rules, the shared lava→dirt bed, 4v4) authored flat
-    and open like `training_room_v1`: warm cracked concrete; the lit seams,
+    and open like `training_room_v1`: warm plaster-concrete SLABS (the
+    `training_floor` terrain, drawn at load — rev 3); the lit seams,
     corner lights, four scorch stars and the whole enclosure are the
     `training_room` scenery theme (walkway ring with A–H / 1–8, maroon
     barriers with red post lamps, solid double-sided walls with dado + trims +
@@ -648,6 +649,59 @@ Guild Hub was the prototype; this plan is the building.
 - Hazard Pay wallet on the strip vs only at the Quartermaster. Rec: strip.
 
 ## 9. Build log (append per session)
+
+### 2026-09-04 (rev 3 of the Training Room) — the room was there all along; the slab floor
+User (with a live capture): "still don't really know what's going on with
+the training room and why all the outer stuff is invisible… I don't like
+the texture you chose for the tiles… refer to the build plan and the
+reference images before moving on to the walkable version." Token
+`20260904g-cors` → `20260904h-cors`; files three-renderer.js, sprites.js,
+data.js, map.js, index.html; `npm test` 113/113. Verified with a headless
+render of the real match (this environment blocks the CDN, so every
+script was served from the repo and R2 sprites/textures were absent —
+flat colours, no units — enough to see the enclosure and the new floor).
+- **Root cause of the "invisible" room: the retro fog.** The enclosure was
+  fully built (headless census: the same 217 pieces, correct positions,
+  Lambert + sun/hemi/ambient all present). But `_applyHorizonFog` injects
+  the per-fragment HORIZON-ALTITUDE fog (`_injectHorizonFog`) into every
+  material under `_horizonGroup`, and the pause-menu retro fog is ON by
+  default (three-post `_retro.fogEnabled`, uFogAmount ≈ 0.98). That fog is
+  keyed on the view ray's altitude — anything below the horizon line
+  dissolves ~95% into the fog colour — and the whole room stands below the
+  horizon at the board's rim. So walls, walkway, barriers and booths were
+  drawn as 5% ghosts over the (also fogged) dome: exactly the faint slanted
+  quads in the capture. Fix: near builders now run through
+  `_hzRunNearBuilder` into a `facilityNear` sub-group and every material
+  they make is tagged `_ew_hzNear`; `_applyHorizonFog` skips those (no
+  injection, no forced `fog:false`), so lit pieces haze with the board
+  through ordinary `scene.fog` and the additive glows / sprites stay
+  unfogged as they declare. The map's own env fog (0.22) never touched the
+  room either way. Holo Sim's apron gets the same exemption.
+- **The floor: `training_floor`, a new terrain.** The reference grid is big
+  flat plaster-concrete slabs with a dark grout rim, not cobbles.
+  sprites.js `_mkTrainingSlabURI` draws one 256² slab into a canvas at load
+  (seeded — identical on every client): warm plaster `#bca98a`, soft
+  light/dark stains, elongated damp patches, fine grain, a few pale
+  scuffs, a vignette, a 3px grout rim with a bevel highlight top-left and a
+  shadow bottom-right. `TRAINING_SLAB_URI` feeds `TERRAIN_SPRITES.training_floor`
+  (falls back to concrete_floor.png without a DOM). Registered like the
+  holo floors: TERRAIN rule (Training Slab / TRN), EW_TERRAIN_COLORS,
+  MF_TID and map.js ME_TERRAIN_IDS (append-only, index-for-index), the
+  editor's Floors palette. `prebuilt_training` now builds on it and drops
+  the old concrete tint.
+- **Decals.** The scorch stars showed as dark translucent SQUARES: a
+  multiply plate's white base is tone-mapped below 1.0 by the exposure
+  grade. Decal materials are now `toneMapped = false`. Two crack decals
+  (`_hzCrackTex`, branching random walks) lie in the NE and SW corners like
+  the reference. Seams, corner lights, everything else unchanged.
+- Camera note for 6.1a: the default battle camera sits INSIDE the room's
+  footprint above the wall tops; only very low tilts put a wall between
+  the camera and the board, and even then it clips the bottom of the frame,
+  not the grid — no cutaway needed.
+- **Unverifiable here:** textured walls / booths / units (R2 blocked). First
+  thing to eyeball live: wall brightness vs the floor, and whether the slab
+  should be warmer or paler under the sun grade (one hex in
+  `_mkTrainingSlabURI`).
 
 ### 2026-09-04 (later) — 6.1b + 6.1c: the Training Room and Holo Sim boards
 User: brainstorm on the 8×8 training room ("can the map BE the room, with

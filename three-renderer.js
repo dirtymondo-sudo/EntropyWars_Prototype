@@ -20274,6 +20274,15 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < ms.length; i++) {
                 var m = ms[i];
                 if (!m) continue;
+                /* D.O.O.R. facility near-scenery (the Training Room enclosure,
+                   the Holo Sim apron) is NOT far backdrop: it stands right at
+                   the board's rim, BELOW the horizon line, so the altitude
+                   fog would dissolve the whole room into the fog colour (it
+                   did — the retro fog is on by default, uFogAmount ≈ 0.98,
+                   and "all the outer stuff" read as 5% ghosts). It keeps the
+                   ordinary scene.fog like the board instead (tagged by
+                   _hzRunNearBuilder). */
+                if (m._ew_hzNear) continue;
                 if (m.fog !== false) { m.fog = false; m.needsUpdate = true; }  // backdrop never uses uniform distance fog
                 _injectHorizonFog(m);   // per-fragment altitude fog (covers async misc models too)
             }
@@ -22507,6 +22516,36 @@ const ThreeRenderer = (function () {
         _hzFacTexCache[key] = t;
         return t;
     }
+    /* a floor crack: a branching dark random walk on white — multiply-blended
+       like the scorch stars (the reference grid is cracked in two corners) */
+    function _hzCrackTex(seed) {
+        var key = 'crack' + seed;
+        if (_hzFacTexCache[key]) return _hzFacTexCache[key];
+        if (typeof document === 'undefined') return null;
+        var rng = _mulberry32(0xC4AC + seed * 613);
+        var c = document.createElement('canvas'); c.width = c.height = 256;
+        var g = c.getContext('2d');
+        g.fillStyle = '#ffffff'; g.fillRect(0, 0, 256, 256);
+        g.lineCap = 'round'; g.lineJoin = 'round';
+        function walk(x, y, ang, len, w, depth) {
+            g.strokeStyle = 'rgba(40,30,22,' + (0.55 + rng() * 0.3).toFixed(2) + ')'; g.lineWidth = w;
+            g.beginPath(); g.moveTo(x, y);
+            for (var st = 0; st < len; st += 5) {
+                ang += (rng() - 0.5) * 0.9; x += Math.cos(ang) * 5; y += Math.sin(ang) * 5;
+                g.lineTo(x, y);
+                if (depth > 0 && rng() < 0.08) { g.stroke(); walk(x, y, ang + (rng() < 0.5 ? -1 : 1) * (0.5 + rng() * 0.8), len * 0.4, w * 0.6, depth - 1); g.beginPath(); g.moveTo(x, y); }
+            }
+            g.stroke();
+        }
+        walk(128 + (rng() - 0.5) * 60, 128 + (rng() - 0.5) * 60, rng() * Math.PI * 2, 120 + rng() * 60, 2.2, 2);
+        walk(128 + (rng() - 0.5) * 60, 128 + (rng() - 0.5) * 60, rng() * Math.PI * 2, 90 + rng() * 60, 1.6, 1);
+        /* a faint dusting of crumbs along the main crack */
+        for (var i = 0; i < 40; i++) { g.fillStyle = 'rgba(60,48,36,' + (0.1 + rng() * 0.25).toFixed(2) + ')'; g.fillRect(40 + rng() * 176, 40 + rng() * 176, 1 + rng() * 2, 1 + rng() * 2); }
+        var t = new THREE.CanvasTexture(c);
+        t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
+        _hzFacTexCache[key] = t;
+        return t;
+    }
     /* Additive line-grid geometry with per-vertex brightness: axis-aligned
        segments {x0,z0,x1,z1,y,f} of half-width hw and square dots {x,z,y,f}
        of half-size dhw, lying flat. One mesh, one draw call. */
@@ -22576,15 +22615,24 @@ const ThreeRenderer = (function () {
 
         /* seams + corner lights on the grid, and the four scorch stars */
         add(_hzBoardSeams(ctx, 0xd6ecff, 0.42, 1.0, 0.9));
-        [[1.55, 1.35, 1.45, 0.3], [6.45, 6.65, 1.45, 2.4], [5.85, 2.95, 1.2, 1.1], [2.15, 5.05, 1.2, 4.2]].forEach(function (s, i) {
-            var tex = _hzScorchTex(i + 1); if (!tex) return;
-            var m = new THREE.Mesh(new THREE.PlaneGeometry(s[2] * ts, s[2] * ts), new THREE.MeshBasicMaterial({
-                map: tex, blending: THREE.MultiplyBlending, transparent: true, depthWrite: false, fog: false
-            }));
-            m.rotation.x = -Math.PI / 2; m.rotation.z = s[3];
-            m.position.set(s[0] * ts, _hLevelAt(Math.floor(s[0]), Math.floor(s[1])) * elev + 0.9, s[1] * ts);
+        /* multiply decals on the floor: four scorch stars + two corner cracks.
+           toneMapped OFF — the exposure grade would pull the plate's white
+           below 1.0 and the whole square would show as a dark patch */
+        var decal = function (tex, size, x, y, rot) {
+            if (!tex) return;
+            var mat = new THREE.MeshBasicMaterial({ map: tex, blending: THREE.MultiplyBlending, transparent: true, depthWrite: false, fog: false });
+            mat.toneMapped = false;
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(size * ts, size * ts), mat);
+            m.rotation.x = -Math.PI / 2; m.rotation.z = rot;
+            m.position.set(x * ts, _hLevelAt(Math.floor(x), Math.floor(y)) * elev + 0.9, y * ts);
             m.renderOrder = 2;
             add(m);
+        };
+        [[1.55, 1.35, 1.45, 0.3], [6.45, 6.65, 1.45, 2.4], [5.85, 2.95, 1.2, 1.1], [2.15, 5.05, 1.2, 4.2]].forEach(function (s, i) {
+            decal(_hzScorchTex(i + 1), s[2], s[0], s[1], s[3]);
+        });
+        [[6.9, 0.9, 2.4, 0.4], [1.1, 7.0, 2.2, 3.5]].forEach(function (s, i) {
+            decal(_hzCrackTex(i + 1), s[2], s[0], s[1], s[3]);
         });
 
         /* the walkway ring (thin slabs at floor level, a moat's width out) */
@@ -22805,6 +22853,26 @@ const ThreeRenderer = (function () {
         });
     }
     var _HZ_NEAR_BUILDERS = { training_room: _hzTrainingRoom, holosim: _hzHoloApron };
+    /* Run a near builder into its own sub-group and tag everything it made as
+       near scenery: _applyHorizonFog leaves those materials alone (no
+       horizon-altitude fog — see there), so lit pieces haze with the board
+       through scene.fog while the self-lit glows (additive / sprites) stay
+       unfogged, as they declare. */
+    function _hzRunNearBuilder(nearBuild, ctx) {
+        var g = new THREE.Group();
+        g.name = 'facilityNear';
+        try { nearBuild(g, ctx); } catch (e) { console.error('[scenery] near builder failed', e); }
+        g.traverse(function (o) {
+            if (!o.material) return;
+            var ms = Array.isArray(o.material) ? o.material : [o.material];
+            for (var i = 0; i < ms.length; i++) {
+                var m = ms[i]; if (!m) continue;
+                m._ew_hzNear = true;
+                if (m.blending === THREE.AdditiveBlending || m.isSpriteMaterial) { if (m.fog !== false) { m.fog = false; m.needsUpdate = true; } }
+            }
+        });
+        _horizonGroup.add(g);
+    }
 
     // ── Holo Sim far roster pieces ──
     // a neon ring with a chromatic twin — the RGB-split haloes behind the
@@ -22950,7 +23018,7 @@ const ThreeRenderer = (function () {
         var nearBuild = (typeof window !== 'undefined' && window.EW_NO_FACILITY_SCENERY) ? null : (_HZ_NEAR_BUILDERS[_hzTheme] || null);
         var nearCtx = { cx: cx, cz: cz, ts: ts, bw: _bw, bh: _bh, rng: rng, discR: discR };
         if (nearBuild && !_hzThemeRoster(_hzTheme)) {
-            try { nearBuild(_horizonGroup, nearCtx); } catch (e) { console.error('[scenery] near builder failed', e); }
+            _hzRunNearBuilder(nearBuild, nearCtx);
             scene.add(_horizonGroup); return;
         }
         var themeRoster = _hzThemeRoster(_hzTheme);
@@ -23053,7 +23121,7 @@ const ThreeRenderer = (function () {
             });
         }
 
-        if (nearBuild) { try { nearBuild(_horizonGroup, nearCtx); } catch (e2) { console.error('[scenery] near builder failed', e2); } }
+        if (nearBuild) _hzRunNearBuilder(nearBuild, nearCtx);
         scene.add(_horizonGroup);
     }
 

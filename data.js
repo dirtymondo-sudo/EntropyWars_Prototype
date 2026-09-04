@@ -381,7 +381,7 @@ window.EW_TERRAIN_COLORS = window.EW_TERRAIN_COLORS || {
     // ── Nexus (objective) tiles ──
     nexus:'rgba(255,215,90,0.55)', nexus_cave:'rgba(230,180,80,0.55)', nexus_sky:'rgba(190,225,255,0.55)',
     // ── D.O.O.R. facility floors (2026-09-04) ──
-    holo:'rgba(60,220,255,0.45)', holo_red:'rgba(255,70,90,0.45)',
+    holo:'rgba(60,220,255,0.45)', holo_red:'rgba(255,70,90,0.45)', training_floor:'rgba(180,164,134,0.55)',
 };
 
 const TERRAIN_RULES = {
@@ -1399,6 +1399,8 @@ const TERRAIN_RULES = {
        three-renderer _EMISSIVE_TERRAIN. holo_red = the warning cells. */
     holo:           { label: 'Holo Floor',      short: 'HLO', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
     holo_red:       { label: 'Holo Warning',    short: 'HLW', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
+    /* the Training Room's plaster-concrete slab (sprites.js TRAINING_SLAB_URI, drawn at load) */
+    training_floor: { label: 'Training Slab',   short: 'TRN', passable: true, moveCost: 1, blocksRanged: false, healMultiplier: 1, endTurn(unit) { return null; } },
 };
 
 const OBJECT_RULES = {
@@ -9978,7 +9980,7 @@ const MF_TID = (() => {
         'brokenglass','gunmetal','gunmetal_2','copper','concrete_floor','checkerboard_2','checkerboard_3','drywall_5','dirt_slope','grass_dark_fantasy',
         'rocks_dark_fantasy','ice_1','igloo','latticegarden','noise','tigerfur','tigerfur_2','tilefloor','tilefloor_2',
         // 2026-07-14 (map.js mirror) — black liquid family; 2026-09-04 — D.O.O.R. facility floors
-        'swamp','oil','holo','holo_red'];
+        'swamp','oil','holo','holo_red','training_floor'];
     const m = {}; L.forEach((k, i) => { if (k) m[k] = i; });
     return m;
 })();
@@ -12250,8 +12252,7 @@ const EW_MAP_META = [
    friendly online rooms (state.js compatibleMaps takes every isDelta row). */
 const EW_FACILITY_BUILDERS = {};
 EW_FACILITY_BUILDERS.prebuilt_training = function () {
-    const M = _mfDeltaNew({ name: 'Training Room', base: 'concrete_floor', seed: 8401,
-        tints: { concrete_floor: '#cbb99a' },
+    const M = _mfDeltaNew({ name: 'Training Room', base: 'training_floor', seed: 8401,
         desc: 'the Training Room — bare cracked concrete, lit seams, four scorch stars and nothing to hide behind. ORTHOGONAL GEOMETRY EXPOSURE AREA' });
     /* an open floor by design (the reference render is an empty lit grid);
        every feature of the room is scenery around the board */

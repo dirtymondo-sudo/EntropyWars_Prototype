@@ -2160,6 +2160,65 @@ const OBJECT_SPRITES = {
    rim (three-renderer _EMISSIVE_TERRAIN lights the rim; the plate stays
    dark) and a red twin with a warning triangle for the holo_red cells.
    Regenerate with a 128² RGBA PNG of the same design if the look changes. */
+/* ── The Training Room floor (2026-09-04, DOOR_HQ_BUILD_PLAN 6.1b rev 3) ──
+   `training_floor`: one warm plaster-concrete SLAB per tile, drawn at load
+   into a 256² canvas (seeded, so every client draws the same pixels) — the
+   reference render's big flat cracked-plaster squares with a dark grout rim,
+   not the cobbled concrete_floor.png. Mottled low-frequency stains, fine
+   grain, a grout rim with an inner bevel highlight and a faint vignette so
+   each tile reads as a separate slab even before the lit seams land on the
+   grid. Cracks are NOT baked in (a crack repeated on 64 tiles is a pattern):
+   the room's scorch stars and crack decals are three-renderer scenery. Node /
+   no-DOM falls back to the concrete sprite (only the browser renders it). */
+function _mkTrainingSlabURI() {
+    if (typeof document === 'undefined') return null;
+    try {
+        var S = 256, c = document.createElement('canvas'); c.width = c.height = S;
+        var g = c.getContext('2d');
+        var seed = 0x7A11;
+        function rnd() { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+        g.fillStyle = '#bca98a'; g.fillRect(0, 0, S, S);
+        /* low-frequency mottling: soft light + dark stains */
+        for (var i = 0; i < 110; i++) {
+            var x = rnd() * S, y = rnd() * S, r = 14 + rnd() * 64, dark = rnd() < 0.55;
+            var gr = g.createRadialGradient(x, y, 0, x, y, r), a = (0.04 + rnd() * 0.09).toFixed(3);
+            gr.addColorStop(0, dark ? 'rgba(84,64,46,' + a + ')' : 'rgba(238,226,200,' + a + ')');
+            gr.addColorStop(1, 'rgba(0,0,0,0)');
+            g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+        }
+        /* a few broad damp patches, elongated */
+        for (var j = 0; j < 6; j++) {
+            g.save(); g.translate(rnd() * S, rnd() * S); g.rotate(rnd() * Math.PI); g.scale(1, 0.35 + rnd() * 0.5);
+            var rr = 30 + rnd() * 50, gp = g.createRadialGradient(0, 0, 0, 0, 0, rr);
+            gp.addColorStop(0, 'rgba(60,50,40,0.12)'); gp.addColorStop(1, 'rgba(0,0,0,0)');
+            g.fillStyle = gp; g.beginPath(); g.arc(0, 0, rr, 0, Math.PI * 2); g.fill(); g.restore();
+        }
+        /* fine grain */
+        var id = g.getImageData(0, 0, S, S), d = id.data;
+        for (var p = 0; p < d.length; p += 4) { var n = (rnd() - 0.5) * 20; d[p] += n; d[p + 1] += n; d[p + 2] += n * 0.85; }
+        g.putImageData(id, 0, 0);
+        /* pale scuffs */
+        g.lineCap = 'round';
+        for (var k = 0; k < 8; k++) {
+            var sx = rnd() * S, sy = rnd() * S, an = rnd() * Math.PI * 2, ln = 6 + rnd() * 26;
+            g.strokeStyle = 'rgba(236,226,204,' + (0.10 + rnd() * 0.14).toFixed(2) + ')'; g.lineWidth = 0.8 + rnd() * 1.2;
+            g.beginPath(); g.moveTo(sx, sy); g.lineTo(sx + Math.cos(an) * ln, sy + Math.sin(an) * ln); g.stroke();
+        }
+        /* the slab edge: grout rim, a bevel highlight top-left, a shadow bottom-right */
+        var vg = g.createRadialGradient(S / 2, S / 2, S * 0.22, S / 2, S / 2, S * 0.74);
+        vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(34,27,20,0.20)');
+        g.fillStyle = vg; g.fillRect(0, 0, S, S);
+        g.fillStyle = 'rgba(38,32,27,0.80)';
+        g.fillRect(0, 0, S, 3); g.fillRect(0, S - 3, S, 3); g.fillRect(0, 0, 3, S); g.fillRect(S - 3, 0, 3, S);
+        g.fillStyle = 'rgba(92,82,68,0.55)';
+        g.fillRect(3, 3, S - 6, 1); g.fillRect(3, S - 4, S - 6, 1); g.fillRect(3, 3, 1, S - 6); g.fillRect(S - 4, 3, 1, S - 6);
+        g.fillStyle = 'rgba(240,230,206,0.30)'; g.fillRect(4, 4, S - 8, 1); g.fillRect(4, 4, 1, S - 8);
+        g.fillStyle = 'rgba(30,25,20,0.26)'; g.fillRect(4, S - 5, S - 8, 1); g.fillRect(S - 5, 4, 1, S - 8);
+        return c.toDataURL('image/png');
+    } catch (e) { return null; }
+}
+const TRAINING_SLAB_URI = _mkTrainingSlabURI();
+
 const HOLO_TILE_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAABj0lEQVR42u3aqw2FQBRF0ZEIBBYkFVAFNVEJTVLEILCEjyLhLHHd22buepCQKfNWq8md4hAAcBAAHNMvqwkYAAC4BtAOk/nhAADAOwBNN97O09/pv+sBAAAAAAAAAAAAAAAAAAAAAAAAAHwJ9CXQE8ATAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcIAAOEAAHCIAFAGAB7gMY9wH8A70CLAAACwDAAgCwAAAsAAALAMACALAAACwAAAsAwAIAsAAALAAAC3AfwLgPoPcK0AOgB0APgB4APQB6APQA6AHQA6AHQA+AHgA9AHr3AYz7AHqvAD0AegD0AOgB0AOgB0APgB4APQB6APQA6AHQA6B3H8C4D6D3CtADoAdAD4AeAD0AegD0AOgB0AOgB0APgB4AAAAAwH0A9wE8ATwBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACM+wD+QV4BDhAABwiABQBgAQBYAAAWAIAF+BBkQj4EmVAA5t8DAADnAEzeAACAQ0ieHa7JSl+9CMqcAAAAAElFTkSuQmCC';
 const HOLO_RED_TILE_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAC40lEQVR42u3cMW7cMBAFUJcpjFSpfQADuUOq1D5Y7rxB4MZAtFquRGpmyFdMp++CfJS8Eocvt18fN7VuvRgEAAwEAJ/15+2nWqAAAGAfwPvrDzVhAQDAcwDevn1/WK3XycflAQAAAAAAAAAAAAAAAAAAAAAAAAC8CfQm0B3AHQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADCAABhAAAwiACQDABNgPoOwHsAI9AiYZwNvvj/8KAAAAWAHA1uQfRQAAAABUArA3+UcQAFAcwL88AIsA2FrtWwCeQQBAYQBf8wBMDuDeKr8HoBUBAEUBbOUBmBTA3ureA9CCAICCAPbyAEwG4NGqfgTgEQIAigFoyQMwyffve7/7R+XsB0i2AlpW8r18613AIyDpALQ+y0flAUgG4Oo7CACBA9CyentdA0ABAGdu8QAUA3B0Yo9eB0ByAD32BAJQBMCZST16LQCJAfTcFQxAcgBnJ/To9QAkBTCiLwCApAB6TObRDAAJAYzsDAIgGYBeEzk6B8BFAK7oDVwGwKzf+yOz9gN0zJ9ZiWdv5b3uAh4BQe3d0XkAOgOIOB8AgETt3VX/BgAdAESeEAJAgv7+TAAytpdPDSDDGUEABPf3ZwOQrb18WgCZTgkDILi/PxuATO3lUwKoviMJgAH9/ZX2JAIwqL+/yq5kAAb191fpSwBgYH9/hc4k+wGCv7tX/dtL7QcY2Z07+nNupvMFSgIY3Z9/NYDI9vIpAGTbUFLpfIFyAJ6ZnEoAov6JLQ8g45aySr9iSgG46nd0FICI9xilAWTdVFrpTWYZAFe+S48EcPW3jLIAZjmrOPprZgkAM5/XH32+QFkAsxcADf8DzDz5AAAAgEcAAPL2Ayj7AeQ9AuQBkAdAHgB5AOQBkAdAHgB5AOQBkAdAHgB5AOQBkLcfQNkPIO8RIA+APADyAMgDIA+APADyXgSpfi+C1KIA1NwFAADbANR6BQAABmHl+gu4GMAWRTQqBAAAAABJRU5ErkJggg==';
 
@@ -2338,6 +2397,7 @@ const TERRAIN_SPRITES = {
     // D.O.O.R. facility floors (2026-09-04) — embedded, see HOLO_TILE_URI above
     holo:             [HOLO_TILE_URI],
     holo_red:         [HOLO_RED_TILE_URI],
+    training_floor:   [TRAINING_SLAB_URI || `${_T}/concrete_floor.png`],   // canvas-drawn plaster slab (TRAINING_SLAB_URI above)
 };
 
 const TERRAIN_SIDE_SPRITES = {

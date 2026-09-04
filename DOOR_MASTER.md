@@ -987,3 +987,11 @@ SIMULATION), no native entities, no ranked rotation; both are selectable
 in match select and friendly rooms. Engine: two new terrains `holo` /
 `holo_red`. Files: data.js, sprites.js, three-renderer.js, map.js,
 index.html (`?v=20260904f-cors`), DOOR_HQ_BUILD_PLAN.md §4/§5.1/§9.
+
+### 2026-09-04 (later again) — the Training Room made visible
+The room had been built but was being dissolved by the default retro fog
+(the horizon-altitude haze meant for far scenery); the enclosure is now
+exempt and stands solid, the floor is a new `training_floor` terrain (one
+warm plaster slab per tile, drawn at load), and two floor cracks join the
+scorch stars. No canon change. Files: three-renderer.js, sprites.js,
+data.js, map.js, index.html (`?v=20260904h-cors`); HQ plan §9 rev 3 entry.
