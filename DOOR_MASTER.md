@@ -1,5 +1,5 @@
 # D.O.O.R. — MASTER FILE
-### Story bible + integration design + build log — rev 13 (2026-09-04 — A9 reskins shipped: hourglasses ARE Keys in-match, the Cube announces THRESHOLD CLOSED. Story track ON HOLD until the user writes the outline.)
+### Story bible + integration design + build log — rev 14 (2026-09-04 — story canon separated from ChatGPT scaffolding (A0); the authoring process recorded (A14); `DOOR_STORY.md` created as the empty worksheet. Story track code stays ON HOLD until the user writes the outline per A14.)
 
 This file MERGES the two earlier DOOR documents and supersedes both:
 - `entropy_wars_claude_brief.md` (the ChatGPT-assisted story/world brief, 2026-09) → Part A
@@ -13,13 +13,64 @@ hub that replaces the Play menu — lives in its own build plan:
 file, then the HQ plan when working on the facility.
 
 Precedence when writing new material: (1) the user's explicit decisions in
-Part C, (2) Part A canon, (3) Part B integration rules, (4) taste. Deliberate
+Part C and the hand-authored story canon in A0, (2) Part A institutional
+canon, (3) Part B integration rules, (4) taste. Material marked SCAFFOLDING
+in A0 has NO precedence — it is an idea quarry, never a decision. Deliberate
 contradictions about memory, mottos and institutional history are Mandela
 effects and are allowed; every other contradiction is a bug.
 
 ---
 
 # PART A — CANON (the world)
+
+## A0. Hand-authored canon vs scaffolding (USER, 2026-09-04 — read first)
+
+The brief behind Part A was ChatGPT-assisted, and ChatGPT knew nothing
+about the game beyond what the user typed at it. On 2026-09-04 the user
+drew the line: the INSTITUTIONAL LORE is canon; the STORY BEATS are not.
+
+**HAND-AUTHORED STORY CANON — the complete list. Nothing else about the
+plot is decided:**
+1. The player is recruited to DOOR after the Department lowered its
+   standards, helped in by an ANONYMOUS REFERRAL — "one foot in the
+   door". Who sent it, and why, is undecided (A14 Q1: the referral is a
+   mystery engine, not a solved fact).
+2. The player's parents died under mysterious circumstances — one in a
+   house fire, one in a home invasion. The truth: both were DOOR agents
+   on opposite sides of the Opener/Closer divide. DOOR did not order
+   either death, but it FALSIFIED THE AFTERMATH as mundane collateral
+   damage — the cover-up is the crime. (Confirmed the user's own idea,
+   2026-09-04.)
+3. The escalating global crisis — doorways to other realities opening
+   across the globe and the creatures coming through causing chaos — is
+   the ENTROPY WARS.
+4. Beneath DOOR HQ there is ONE STRAIGHT HALLWAY/SECTION (H-Wing),
+   discovered late game.
+5. Ending seed: the player becomes the Doorman — and the Doorman was the
+   janitor all along (why the office is a closet; why the Doorman's door
+   is old). (Confirmed the user's own idea, 2026-09-04.)
+
+**CANON — keep building on it:** everything institutional in Part A: the
+orthogonality doctrine (A1), what DOOR is and the entropy duty (A2), the
+factions (A3), the rank ladder (A4), departments → rooms (A5), the motto
+and Mandela effects (A7), vocabulary (A8), the arena mappings (A9), the
+bays and site lore (A10), the story DELIVERY model in A11 (milestones,
+SP, scene budgets — the machine, not the content), the tone rules (A12).
+Per-location lore flavor already shipped in site files (the Moon's
+freestanding door, Camelot's Round Table, Antarctica's "first Cube")
+stays as WORLD facts; whether and when the plot visits them is undecided.
+
+**SCAFFOLDING — ChatGPT-derived; mine for ideas, never build content on
+it:** the three-act "Narrative spine" in A11, any ordered sequence of
+story beats, the VHS tape's specific narration moments, the
+childhood-home threshold scene inside H-Wing, chapter titles, and any
+chapter-by-chapter content implied anywhere in this file. A scaffolding
+idea is promoted to canon only by the user, in writing, here or in
+`DOOR_STORY.md`.
+
+The story itself gets written by the user via the process in A14; the
+outline and scene scripts live in **`DOOR_STORY.md`** (created 2026-09-04
+as an empty worksheet).
 
 ## A1. Core concept
 
@@ -174,37 +225,44 @@ enough… All leave cancelled") is a ready-made whistleblower.
 
 ## A6. The player's story
 
-The player starts as a desperate, underqualified Doormat housed in a
-converted janitor's closet. Missions raise their rank, open new parts of
-headquarters, and reveal increasingly classified versions of reality.
+**Canon (A0 #1):** The player starts as a desperate, underqualified
+Doormat housed in a converted janitor's closet — hired only because
+recruitment standards collapsed, and helped in by an ANONYMOUS REFERRAL
+("one foot in the door"; sender undecided, A14 Q1). Missions raise their
+rank, open new parts of headquarters, and reveal increasingly classified
+versions of reality.
 
-The player grew up believing both parents died in incidents built around
-opposite kinds of doors: one in a house fire because a closed door prevented
-escape; the other in a home invasion made possible because he left a door
-open. The truth: both worked for DOOR and represented opposing philosophies.
-The first was a Closer who knowingly died holding an extradimensional
-threshold shut during the "fire". The second was connected to the Openers
-and died after letting someone or something through; DOOR recorded it as a
-mundane home invasion. **User decision:** DOOR did not order either death —
-it falsified the aftermath as routine collateral damage. That is the crime.
+**Canon (A0 #2):** The player grew up believing both parents died in
+incidents built around opposite kinds of doors: one in a house fire
+because a closed door prevented escape; the other in a home invasion made
+possible because he left a door open. The truth: both worked for DOOR and
+represented opposing philosophies. The first was a Closer who knowingly
+died holding an extradimensional threshold shut during the "fire". The
+second was connected to the Openers and died after letting someone or
+something through; DOOR recorded it as a mundane home invasion.
+**USER (confirmed 2026-09-04):** DOOR did not order either death — it
+falsified the aftermath as routine collateral damage. That cover-up is
+the crime.
 
-Late in the story a door in H-Wing leads to the childhood home. The player
-may witness their younger self mourning, or glimpse a reality where both
-parents survived. This is the emotional centre, not another conspiracy
-reveal. By the climax the player learns no faction can abolish the crisis
-and DOOR has preserved Canon Reality by exporting danger elsewhere. The
-final conflict forces a decision about responsibility and control, not
-"open everything" vs "close everything". **User's favoured ending seed:**
-the player becomes the Doorman — and the Doorman was the janitor all along
-(which is why the office is a closet, and why the Doorman's door is old).
+**Canon (A0 #5) — the ending seed:** the player becomes the Doorman — and
+the Doorman was the janitor all along (which is why the office is a
+closet, and why the Doorman's door is old).
 
-**H-Wing** is a forbidden straight corridor beneath the facility: perfect
-right angles, beige carpet, fluorescent lights, cubicles, many doors — older
-and more stable than the round headquarters. It is the physical
-accumulation of every corner DOOR removed during decades of institutional
-"corner-cutting", proof that the agency displaced the danger rather than
-solving it. Its stability raises the question: if right angles cause leaks,
-why did DOOR originally operate from a rectangular facility?
+**Scaffolding (non-canon ideas — A0):** the childhood-home threshold
+behind an H-Wing door; witnessing the younger self mourning or a reality
+where both parents survived; the "no faction can abolish the crisis /
+responsibility and control" climax framing. All usable, none decided —
+the user rules on them in the `DOOR_STORY.md` outline.
+
+**H-Wing (canon that it exists — A0 #4):** a forbidden straight corridor
+beneath the facility: perfect right angles, beige carpet, fluorescent
+lights, cubicles, many doors — older and more stable than the round
+headquarters, discovered late game. The institutional lore (A2) reads it
+as the physical accumulation of every corner DOOR removed during decades
+of "corner-cutting" — proof the agency displaced the danger rather than
+solving it. Its stability raises the question: if right angles cause
+leaks, why did DOOR originally operate from a rectangular facility? What
+actually waits inside H-Wing is undecided (A14 Q5).
 
 ## A7. Motto and Mandela effects
 
@@ -317,8 +375,9 @@ Community/custom maps are "unfiled sites" in Records, not bay doors.
 
 ## A11. Story delivery and scope
 
-Chapter 1, **Minimum Qualifications**, is the tutorial (= Orientation, the
-VHS tape). After it the full game opens and the story advances through
+Chapter 1 is the tutorial (= Orientation, the VHS tape — the mechanism is
+decided; the working title "Minimum Qualifications" and the tape's
+narration beats are scaffolding, A0). After it the full game opens and the story advances through
 milestones earned in ANY eligible mode, online PvP included:
 
 **Play matches → earn Story Progress → reach a threshold → post-match scene
@@ -338,7 +397,11 @@ chapter finales and the ending; everything else uses reusable models,
 portraits, animations, environments, camera work, dialogue UI, music,
 doorbells and knocks.
 
-### Narrative spine
+### Narrative spine — SCAFFOLDING (ChatGPT-derived, NON-CANON — see A0)
+
+*Kept only as an idea quarry. Do not build scenes, tape narration or
+chapter content from anything below; the real outline is the user's
+(process in A14) and lives in `DOOR_STORY.md`.*
 
 **Act I — Recruitment and containment.** A battered VHS recruitment tape
 explains orthogonal realities with cheerful training graphics (parallel
@@ -392,8 +455,9 @@ sacrificed or protected.
 
 ## A13. Intentionally unresolved (with the user's current leanings)
 
-- Who or what is the Doorman, and why is their door older than headquarters?
-  *Leaning: the janitor.*
+- ~~Who or what is the Doorman?~~ **USER 2026-09-04: the janitor — canon
+  ending seed (A0 #5).** Still open: why is their door older than
+  headquarters?
 - Is "Saturnian" the Cubes' true origin or DOOR's esoteric classification?
 - Why was the original rectangular facility stable?
 - Is Canon Reality special, or just the reality with the bureaucracy
@@ -402,6 +466,89 @@ sacrificed or protected.
   recruit/unlock every creature native to it* (the HQ plan implements the
   first as v1 and can add the second).
 - The final choice about where unavoidable breaches are distributed.
+
+## A14. Writing the story — the agreed process (2026-09-04)
+
+The story is written top-down BY THE USER; Claude wires finished material
+into the engine (chapters → `DOOR_TEXT.CHAPTERS`, scenes → `playCutscene`
+scripts). Recorded here so no session re-litigates it. The working file is
+`DOOR_STORY.md` (a fill-in worksheet mirroring these steps).
+
+**Step 0 — done (A0):** canon separated from scaffolding.
+
+**Step 1 — the spine questions (~1 page).** Answering these IS the story;
+everything after is elaboration:
+1. Who sent the anonymous referral, and what do they want from the player?
+2. What does the player want — externally and internally?
+3. What is escalating across the game (the force that makes chapter 10
+   worse than chapter 2 and compels an ending)?
+4. What did each parent actually do the night they died, and what did they
+   leave behind (an object, a file, an open door)?
+5. What is H-Wing evidence of, and what waits inside it?
+6. What does DOOR collect entropy FOR (A2's late-game question)?
+7. What is the final choice or closing image? (The janitor-Doorman seed,
+   A0 #5, is the fixed endpoint the outline aims at.)
+8. Who performed the parents' cover-up — how high does the falsification
+   go, and who still knows?
+
+**Step 2 — the cast sheet (~1 page).** Lore does not generate scenes;
+characters do. Six to ten recurring characters: name, department, faction
+(hidden or not), what they want, what they lie about, relationship (if
+any) to the player's parents — with only ~10 people, several SHOULD have
+known them. Minimum bench: the handler; a likeable face for each faction
+(A12 rule 5 needs faces, not abstractions); a peer or rival recruit;
+someone in Records or the Canon Office who notices things; the janitor.
+
+**Step 3 — outline on the RANK LADDER, not on acts.** Six bands (one per
+clearance level L1–L6), 2–3 chapters each → 12–15 chapters. Per band:
+what DOOR now trusts you with; what part of the building opens; which lie
+you believed at the previous rank gets replaced with a better lie; which
+parent-thread clue lands. The parents' file reveal sits naturally around
+L3–L4; H-Wing behind L5–L6. Per chapter (one page): title, rough SP
+threshold, field requirement (`requires`), `promoteTo?`, 3–6 scenes as
+one-liners, the ambient state (motto form; which memos land and their
+DENY/ADMIT/HOLD stamp; any building change), and one sentence: *what the
+player believes at the end of this chapter that they didn't before.*
+
+**Step 4 — scripts, one chapter at a time.** Ship chapters 1–3 while
+writing 4+; the milestone delivery model makes the story modular, and
+pacing is best judged in-game. Scene format maps 1:1 onto `playCutscene`:
+
+    ### C2-S3 · "<title>" (~60s)
+    LOCATION: <room / context>
+    SPEAKERS: NAME (race), NAME (race)
+    [location_card]
+    NAME: line
+    NAME: line
+
+Scene discipline: open every scene with a one-line re-anchor (the player
+may be ten matches past the last one); one job per scene; 30–90 s = 6–15
+lines; 3–6 minute scenes only for the opening, major reveals, chapter
+finales and the ending (the emotional centre gets one — don't spend that
+budget early).
+
+**Budgets (delivery-model-driven — independent of the ChatGPT targets).**
+25–50 h of gameplay ≈ 100–140 matches at ~15–20 min; the scene budget
+stays ~60–75 scenes / 1.5–2.5 h of total scene time regardless — gameplay
+length is tuned in the chapter table's SP column, never by adding pages.
+Writing volume: spine 1 p · cast 1 p · outline 12–15 p · scripts 50–80 p
+(~200 words/scene) · ambient paper (memos, canon notices, dossier
+annotations — A12 rule 4 makes this half the storytelling) 20–30 p.
+~100–125 pages total. If 50 h feels thin, add commendations, Code Reds
+and reactive optional scenes — not main-path pages.
+
+**Buildable before the story exists** (nothing here needs the outline):
+HQ-plan 4.1 plumbing against dummy chapters (SP meter, `DOOR_TEXT.
+CHAPTERS` machinery, `pendingDirective` → NEW DIRECTIVE tab → scene
+playback, AWAITING FIELD WORK, `fax`/`dotMatrix` wiring); the A11 SP
+scoring itself; commendations; the ○ items in B2 (PvP jurisdiction
+dressing + the opponent-card relay, DOOR-voiced system text, the MD
+field-office dressing, the DOOR officer race); all of HQ Phase 5 (the
+unreliable building, rings, shortcuts); 6.4 (Nexus → double Cube damage);
+and H-Wing's GEOMETRY (the straight-corridor kit) — but not its contents.
+HOLD the orientation tape's narration (the player's first five minutes;
+scaffolding until the user writes it) — the VHS mechanism itself is
+buildable.
 
 ---
 
@@ -594,6 +741,7 @@ yes/no; **USER** are the user's own calls from the brief.
 | 13 | Currency | (silent) | Hazard Pay | Hazard Pay stays. |
 | 14 | Mastery rule | "probably winning with all win conditions, or recruiting all native creatures" | (not covered) | v1 = all win conditions on that map (HQ plan §3); v2 may add the roster rule. |
 | 15 | Rings / vertical layout | (ChatGPT board: Executive / Operations / Support / Training) | (none) | Adopted as the HQ's floor plan (A5). |
+| 16 | Story beats vs lore | the brief's act spine + ordered beats read as Part A canon | (story on hold) | **USER 2026-09-04: only the A0 list is story canon** — recruitment + anonymous referral, the parents and the falsified aftermath, the Entropy Wars framing, H-Wing, the janitor-Doorman ending seed (the last two confirmed as the user's own ideas). The act spine and every ordered beat are SCAFFOLDING. Process = A14; outline + scripts → `DOOR_STORY.md`. |
 
 ---
 
@@ -1059,3 +1207,32 @@ was replaced by a drawn 16×16 pixel-art key icon (one shared data-URI) or
 plain words (KEY+n, +1 KEY, KEY SECURED!). Full detail in HQ plan §9
 "6.3 rev 2". Files: data.js, battle.js, ui.js, hud.js, three-renderer.js,
 online.js, profile.js, index.html (`?v=20260904m-cors`).
+
+### 2026-09-04 (docs only) — story canon separated from scaffolding; the writing process recorded
+No game files touched. The user clarified that the ChatGPT-derived story
+BEATS were never decisions — ChatGPT knew nothing about the game beyond
+what it was told. The only hand-authored story canon is the new A0 list:
+recruitment after lowered standards + the anonymous referral ("one foot in
+the door"), the parents' deaths and DOOR's falsified aftermath (the crime),
+the Entropy Wars framing, H-Wing, and the janitor-Doorman ending seed —
+the falsified-aftermath and janitor-Doorman items explicitly confirmed as
+the user's own ideas this session. Institutional lore stays canon;
+site-file location flavor stays as world facts.
+
+Changes in this file: A0 added (canon vs scaffolding, with the precedence
+paragraph updated to match); A6 rewritten to separate canon from
+scaffolding (childhood-home scene and climax framing demoted to ideas);
+A11's "Narrative spine" bannered as SCAFFOLDING and Chapter 1's working
+title marked likewise; A13's Doorman question answered (the janitor,
+canon); A14 added — the agreed authoring process (spine questions → cast
+sheet → rank-ladder outline in six L1–L6 bands → chapter-at-a-time scripts
+in a playCutscene-mappable format), the page/scene budgets (gameplay hours
+are tuned via SP thresholds, ~60–75 scenes / ~100–125 pages total
+regardless of 25 h vs 50 h), and the story-free build list; Part C row 16.
+
+**`DOOR_STORY.md` created** as an empty fill-in worksheet mirroring A14
+(spine questions, cast table, six band/chapter templates, scene format,
+change log). Nothing in it is canon until the user fills it in. Story-track
+code (HQ 4.x content: the case-file screen contents, the tape narration,
+micro-scenes) stays ON HOLD until the outline exists; the 4.1 PLUMBING
+against dummy chapters is fair game per A14's build list.
