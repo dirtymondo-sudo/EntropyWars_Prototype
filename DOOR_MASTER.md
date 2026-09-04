@@ -994,4 +994,4 @@ The room had been built but was being dissolved by the default retro fog
 exempt and stands solid, the floor is a new `training_floor` terrain (one
 warm plaster slab per tile, drawn at load), and two floor cracks join the
 scorch stars. No canon change. Files: three-renderer.js, sprites.js,
-data.js, map.js, index.html (`?v=20260904h-cors`); HQ plan §9 rev 3 entry.
+data.js, map.js, index.html (`?v=20260904i-cors`); HQ plan §9 rev 3 entry.

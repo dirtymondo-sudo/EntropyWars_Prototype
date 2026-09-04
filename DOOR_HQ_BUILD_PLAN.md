@@ -689,6 +689,10 @@ flat colours, no units — enough to see the enclosure and the new floor).
   MF_TID and map.js ME_TERRAIN_IDS (append-only, index-for-index), the
   editor's Floors palette. `prebuilt_training` now builds on it and drops
   the old concrete tint.
+- **Perimeter texture.** Follow-up in the same session: the walkway ring and
+  the walls had still been wearing concrete_floor.png; per the user they now
+  use `tilefloor` (R2 terrain folder) — one `_hzTex` key in `_hzTrainingRoom`.
+  Token → `20260904i-cors`.
 - **Decals.** The scorch stars showed as dark translucent SQUARES: a
   multiply plate's white base is tone-mapped below 1.0 by the exposure
   grade. Decal materials are now `toneMapped = false`. Two crack decals

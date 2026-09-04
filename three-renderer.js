@@ -22607,7 +22607,7 @@ const ThreeRenderer = (function () {
         var W = 3.2 * ts;                            // walls this far outside the board
         var X0 = -W, X1 = bw * ts + W, Z0 = -W, Z1 = bh * ts + W;
         var CX = bw * ts * 0.5, CZ = bh * ts * 0.5;
-        var concrete = _hzTex('concrete_floor') || _hzTex('bricks_3');
+        var concrete = _hzTex('tilefloor') || _hzTex('concrete_floor');   // rev 3: the walkway ring + walls wear tilefloor.png (user call), not the cobbled concrete
         var metal = _hzTex('metal') || _hzTex('gunmetal');
         var gun = _hzTex('gunmetal') || metal;
         var add = function (m) { group.add(m); return m; };
