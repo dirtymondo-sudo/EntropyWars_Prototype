@@ -27518,13 +27518,20 @@ const ThreeRenderer = (function () {
             var Rw = _hqWallR(room, level, door.side);
             var y0 = level ? S.wallH : 0;
             /* the office door is the rank (HQ plan 3.4 / MASTER C-1): a
-               `rankDoor` wears the clearance ladder's leaf, and widens when
-               that leaf is a double (KNOCKER's wired pair, THE DOORMAN's) */
+               `rankDoor` wears the clearance ladder's leaf (GATEKEEPER's
+               frosted pair is the one wide rung) */
             var leafKey = door.leaf;
             if (door.rankDoor) { var rl = _hqRankLeaf(); if (rl && _hqData().catalogue[rl]) leafKey = rl; }
             var leafCat = leafKey ? _hqData().catalogue[leafKey] : null;
-            var wide = !!door.wide || !!(door.rankDoor && leafCat && leafCat.wide);
-            var ow = wide ? 2.2 : 1.1, oh = wide ? 2.45 : 2.25;
+            /* THE LEAF DECIDES the opening (2026-09-04): its catalogue `wide`
+               picks the class, its measured `aspect` sets the opening width
+               so the leaf fills the frame edge to edge (single 0.95–1.6 m,
+               wide 1.9–2.5 m; the jambs absorb the rest of the fixed panel).
+               A procedural leaf (the elevator) still reads the door's flag. */
+            var wide = leafCat ? !!leafCat.wide : !!door.wide;
+            var oh = wide ? 2.45 : 2.25;
+            var ow = wide ? 2.2 : 1.1;
+            if (leafCat && leafCat.aspect > 0) ow = Math.round(Math.max(wide ? 1.9 : 0.95, Math.min(wide ? 2.5 : 1.6, leafCat.aspect * oh)) * 100) / 100;
             var pw = wide ? 3.3 : 2.5, ph = oh + 1.25, pd = 0.55;
             /* a box room's ceiling can be lower than the 4.2 m the panel was drawn for: keep the lintel, cap and lamp under it */
             if (room.kind === 'box') ph = Math.min(ph, S.h - 0.25);
@@ -27564,6 +27571,10 @@ const ThreeRenderer = (function () {
             /* the leaf: catalogue GLB fitted to the recess, or a procedural elevator */
             var leafGroup = new THREE.Group();
             leafGroup.position.set(0, 0, (-pd / 2 + 0.28) * U);
+            /* `motion` = how the leaf opens when the walker stands at it
+               (_hqTickDoors): swing (a hinge pivot), slide (pockets into
+               the jamb behind a clip plane), elevator (both halves pocket) */
+            var motion = null;
             if (door.proc === 'elevator') {
                 var elMat = _hqMat(S.trim || 'teal', 1.5, 2, { color: 0xb9c2c4, shininess: 90, specular: 0x999999 });
                 var half = (ow / 2) - 0.02;
@@ -27574,20 +27585,65 @@ const ThreeRenderer = (function () {
                 leafGroup.add(eL, eR, seam, ind);
                 var brace = _hqBox(0.05, oh * 0.55, 0.02, elMat); brace.position.set(0, (oh / 2) * U, 0.04 * U); brace.rotation.z = Math.PI / 4; leafGroup.add(brace);
                 var brace2 = brace.clone(); brace2.rotation.z = -Math.PI / 4; leafGroup.add(brace2);
+                /* the halves pocket into the jambs behind clip planes at the
+                   jamb edges; the braces and seam stay (they are the cage) */
+                var pL = new THREE.Plane(), pR = new THREE.Plane();
+                eL.material = eL.material.clone(); eL.material.clippingPlanes = [pL];
+                eR.material = eR.material.clone(); eR.material.clippingPlanes = [pR];
+                motion = { mode: 'elevator', parts: [{ m: eL, x0: eL.position.x, dir: -1 }, { m: eR, x0: eR.position.x, dir: 1 }], travel: half * 0.96 * U, ow: ow, clips: [{ dir: -1, plane: pL }, { dir: 1, plane: pR }] };
+                renderer.localClippingEnabled = true;
             } else if (leafKey) {
                 var cat = leafCat;
                 if (cat && cat.file) {
-                    var targetH = (oh - 0.10) * U, maxW = (ow - 0.06) * U;
+                    /* the motion rig FIRST: a cached model fires onDone synchronously */
+                    var hingeRight = cat.hinge === 'right';
+                    if (cat.open === 'swing') {
+                        /* hinge pivot on the jamb edge; the leaf opens TOWARD the walker (+Z) — behind it is the wall */
+                        motion = { mode: 'swing', pivot: new THREE.Group(), dir: hingeRight ? 1 : -1, angle: 1.45, ow: ow };
+                        motion.pivot.position.x = motion.dir * (ow / 2 - 0.02) * U;
+                        leafGroup.add(motion.pivot);
+                    } else if (cat.open === 'slide') {
+                        /* pocket door: slides into the `hinge`-side jamb; a local
+                           clip plane at the jamb's inner edge hides what has gone
+                           in (the jamb is a solid box, so nothing z-fights) */
+                        motion = { mode: 'slide', carrier: new THREE.Group(), dir: hingeRight ? 1 : -1, travel: (ow - 0.04) * U, plane: new THREE.Plane(), ow: ow };
+                        motion.clips = [{ dir: motion.dir, plane: motion.plane }];
+                        leafGroup.add(motion.carrier);
+                        renderer.localClippingEnabled = true;
+                    }
+                    /* fit BOTH axes: height to the opening, then width (the
+                       frame was cut to the leaf's aspect, so the residual
+                       stretch is a few percent; a leaf without a measured
+                       aspect is still clamped to the opening). `yaw` turns a
+                       model authored edge-on before measuring its width. */
+                    var targetH = (oh - 0.08) * U, targetW = (ow - 0.05) * U;
+                    var yawDeg = cat.yaw || 0;
+                    var slideMotion = (motion && motion.mode === 'slide') ? motion : null;
                     var lg = _miscModelInstance(_hqModelUrl(cat), true, targetH, {
                         fit: 'height', matPick: _hqPropMatPick,
                         onDone: function (g, s, bb) {
-                            var w = (bb.max.x - bb.min.x) * s;
-                            if (w > maxW) g.scale.multiplyScalar(maxW / w);
+                            var m = g.children[0];
+                            if (m && yawDeg) m.rotation.y = yawDeg * Math.PI / 180;
+                            var sideways = (Math.abs(yawDeg) % 180) === 90;
+                            var w = (sideways ? (bb.max.z - bb.min.z) : (bb.max.x - bb.min.x)) * s;
+                            if (w > 0) g.scale.x = cat.aspect ? (targetW / w) : Math.min(1, targetW / w);
+                            g.scale.z = Math.min(1, g.scale.x);
+                            /* a sliding leaf clones its materials: the clip plane
+                               must not leak into the same model on another door */
+                            if (slideMotion) {
+                                g.traverse(function (n) {
+                                    if (!n.isMesh) return;
+                                    var clip = function (mm) { var c = mm.clone(); c.clippingPlanes = [slideMotion.plane]; return c; };
+                                    n.material = Array.isArray(n.material) ? n.material.map(clip) : clip(n.material);
+                                });
+                            }
                             if (_hq) _hq.dirty = true;
                         }
                     });
                     lg.rotation.y = (typeof window !== 'undefined' && window.EW_HQ_FLIP_LEAVES) ? Math.PI : 0;
-                    leafGroup.add(lg);
+                    if (motion && motion.mode === 'swing') { lg.position.x = -motion.pivot.position.x; motion.pivot.add(lg); }
+                    else if (motion && motion.mode === 'slide') motion.carrier.add(lg);
+                    else leafGroup.add(lg);
                 }
             }
             grp.add(leafGroup);
@@ -27601,7 +27657,19 @@ const ThreeRenderer = (function () {
             plate.position.set(0, ((room.kind === 'box') ? Math.min(ph + 0.42, S.h - 0.12) : (ph + 0.42)) * U, (pd / 2) * U);
             grp.add(plate);
             G.add(grp);
-            var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide, inward: inward, box: box, leaf: leafKey };
+            var rec = { door: door, group: grp, lens: lens, glow: glow, plate: plate, plateEl: el, plateChip: chip, state: 'open', level: level, Rw: Rw, y0: y0, wide: wide, ow: ow, inward: inward, box: box, leaf: leafKey, motion: motion, openT: 0 };
+            if (motion && motion.clips) {
+                /* clip planes live in world space: each pocket's jamb edge,
+                   keeping the side of the opening AWAY from that pocket
+                   (doors never move once hung, so this is set once) */
+                grp.updateMatrixWorld(true);
+                var wq = grp.getWorldQuaternion(new THREE.Quaternion());
+                motion.clips.forEach(function (ce) {
+                    var n = new THREE.Vector3(-ce.dir, 0, 0).applyQuaternion(wq).normalize();
+                    var edge = new THREE.Vector3(ce.dir * (ow / 2) * U, 0, 0).applyMatrix4(grp.matrixWorld);
+                    ce.plane.setFromNormalAndCoplanarPoint(n, edge);
+                });
+            }
             _hq.doors.push(rec);
             _hqLampApply(rec, _hqDoorState(door));
         });
@@ -27977,7 +28045,7 @@ const ThreeRenderer = (function () {
                 /* a flat wall: within 2.6 m in front of the panel, inside its width */
                 var ox = pl.x - d.box.wx, oz = pl.z - d.box.wz;
                 var inF = ox * d.box.nx + oz * d.box.nz, side = Math.abs(ox * d.box.nz - oz * d.box.nx);
-                if (inF < 0 || inF > 2.6 || side > (d.wide ? 1.3 : 0.95)) return;
+                if (inF < 0 || inF > 2.6 || side > (d.ow || (d.wide ? 2.2 : 1.1)) / 2 + 0.4) return;
                 var distB = inF + side;
                 if (distB < bestD) { bestD = distB; best = { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d }; }
                 return;
@@ -28254,10 +28322,34 @@ const ThreeRenderer = (function () {
             H.targetKey = key;
             if (H.opts.onPrompt) { try { H.opts.onPrompt(t); } catch (e) {} }
         }
+        _hqTickDoors(dt, key);
         if (H.opts.onDebug && now - H.lastDebug > 250) {
             H.lastDebug = now;
             var pl = H.player;
             if (pl) H.opts.onDebug({ deg: Math.round(_hqNormDeg(Math.atan2(pl.x, -pl.z) * 180 / Math.PI) * 10) / 10, r: Math.round(Math.hypot(pl.x, pl.z) * 100) / 100, y: Math.round(pl.y * 100) / 100, level: pl.y > H.room.shell.wallH * 0.6 ? 1 : 0, x: Math.round(pl.x * 100) / 100, z: Math.round(pl.z * 100) / 100, fp: H.fp });
+        }
+    }
+    /* Doors open for the walker (2026-09-04): the door you are standing at
+       (the interaction target) swings / slides open while you are there and
+       closes behind you when you walk off — a sealed, clearance-gated or
+       code-red door stays shut. Rank leaves, thresholds and bay doors all
+       ride this; static leaves (doubles, hatches, the portcullis, the
+       revolving door, the frame) have no `motion` and never move. */
+    var HQ_DOOR_LOCKED = { sealed: 1, clearance: 1, codered: 1, off: 1 };
+    function _hqTickDoors(dt, targetKey) {
+        var H = _hq;
+        for (var i = 0; i < H.doors.length; i++) {
+            var d = H.doors[i], mo = d.motion;
+            if (!mo) continue;
+            var want = (targetKey === 'door:' + d.door.id && !HQ_DOOR_LOCKED[d.state]) ? 1 : 0;
+            if (d.openT === want && d.openApplied === want) continue;
+            var speed = (mo.mode === 'swing') ? 1.9 : 2.4;
+            d.openT = want ? Math.min(1, d.openT + dt * speed) : Math.max(0, d.openT - dt * speed);
+            var k = d.openT < 0.5 ? 2 * d.openT * d.openT : 1 - Math.pow(-2 * d.openT + 2, 2) / 2;   // ease in-out
+            if (mo.mode === 'swing') mo.pivot.rotation.y = mo.dir * mo.angle * k;
+            else if (mo.mode === 'slide') mo.carrier.position.x = mo.dir * mo.travel * k;
+            else if (mo.mode === 'elevator') for (var j = 0; j < mo.parts.length; j++) mo.parts[j].m.position.x = mo.parts[j].x0 + mo.parts[j].dir * mo.travel * k;
+            d.openApplied = (d.openT === want) ? want : -1;
         }
     }
     function _hqFrame() {

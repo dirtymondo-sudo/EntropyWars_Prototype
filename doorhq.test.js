@@ -472,3 +472,60 @@ test('box-room props resolve (kit or procedural), sit inside the walls, wall pro
     const desk = OFFICE.props.find(p => p.key === 'tanker_desk');
     assert.ok(Math.hypot((desk.x || 0) - tray.x, -OFFICE.shell.d / 2 - tray.z) < tray.radius + 1, 'the in-tray sits within reach of the desk');
 });
+
+/* ── 2026-09-04: leaves fit their frames, rank leaves are exclusive ──── */
+const LEAVES = Object.entries(HQ.catalogue).filter(([, c]) => c.leaf);
+const ALL_DOORS = Object.entries(HQ.rooms).flatMap(([k, r]) => (r && r.doors || []).map(d => Object.assign({ room: k }, d)));
+
+test('every leaf carries a measured aspect, a legal motion, and a hinge when it moves', () => {
+    const problems = [];
+    for (const [k, c] of LEAVES) {
+        if (!(typeof c.aspect === 'number' && c.aspect > 0.3 && c.aspect < 1.3)) problems.push(k + ': aspect (W/H) must be measured from the GLB, got ' + c.aspect);
+        if (c.open != null && c.open !== 'swing' && c.open !== 'slide') problems.push(k + ': open must be swing | slide | absent');
+        if (c.open && c.hinge !== 'left' && c.hinge !== 'right') problems.push(k + ': a moving leaf names its hinge side');
+        if (c.yaw != null && ![90, 180, 270, -90].includes(c.yaw)) problems.push(k + ': yaw is a quarter turn');
+        /* a wide leaf is at least 0.7 W/H (else it sits in a 2.5 m panel with 0.5 m jambs); a single is under 0.75 */
+        if (c.wide && c.aspect < 0.7) problems.push(k + ': too narrow for a wide opening');
+        if (!c.wide && c.aspect > 0.75) problems.push(k + ': too wide for a single opening');
+        /* one-mesh doubles / hatches / the frame never swing — they would take their frame with them */
+        if (c.open && c.wide) problems.push(k + ': wide leaves are one mesh with the frame baked in — static');
+    }
+    assert.deepStrictEqual(problems, []);
+});
+
+test('the six rank leaves are exclusive: each clearance level owns one, no other door or threshold wears it', () => {
+    const problems = [];
+    const ranks = D.DOOR_TEXT.CLEARANCE;
+    ranks.forEach((r, i) => {
+        const c = HQ.catalogue[r.door];
+        if (!c || c.rank !== i + 1) problems.push(r.title + ': catalogue.' + r.door + '.rank must be ' + (i + 1));
+    });
+    for (const [k, c] of LEAVES) if (c.rank && !ranks.some(r => r.door === k)) problems.push(k + ': rank ' + c.rank + ' but no clearance level issues it');
+    const rankKeys = new Set(ranks.map(r => r.door));
+    for (const d of ALL_DOORS) {
+        if (d.rankDoor) continue;   // wears the profile's rank at runtime; its static leaf is the L1 default
+        if (rankKeys.has(d.leaf)) problems.push(d.room + '/' + d.id + ': wears rank leaf ' + d.leaf);
+    }
+    for (const [id, th] of Object.entries(HQ.thresholds)) if (rankKeys.has(th.leaf)) problems.push('threshold ' + id + ': wears rank leaf ' + th.leaf);
+    /* the rank ladder mostly moves: a promotion should be a door that opens for you */
+    const moving = ranks.filter(r => HQ.catalogue[r.door].open).length;
+    assert.ok(moving >= 4, 'at least four of the six rank doors swing or slide, got ' + moving);
+    assert.deepStrictEqual(problems, []);
+});
+
+test("every door's wide flag agrees with its leaf (the renderer lets the leaf decide; the data must not lie)", () => {
+    const problems = [];
+    for (const d of ALL_DOORS) {
+        if (d.rankDoor || !d.leaf) continue;
+        const c = HQ.catalogue[d.leaf];
+        if (c && !!c.wide !== !!d.wide) problems.push(d.room + '/' + d.id + ': wide ' + !!d.wide + ' but leaf ' + d.leaf + ' is ' + (c.wide ? 'wide' : 'single'));
+    }
+    for (const [id, th] of Object.entries(HQ.thresholds)) {
+        const c = HQ.catalogue[th.leaf];
+        if (c && !!c.wide !== !!th.wide) problems.push('threshold ' + id + ': wide ' + !!th.wide + ' but leaf ' + th.leaf + ' is ' + (c.wide ? 'wide' : 'single'));
+    }
+    assert.deepStrictEqual(problems, []);
+    /* the static one-mesh doubles / hatches are used sparingly: the revolving door at most once */
+    const revolving = ALL_DOORS.filter(d => d.leaf === 'leaf_revolving').length + Object.values(HQ.thresholds).filter(t => t.leaf === 'leaf_revolving').length;
+    assert.ok(revolving <= 2, 'the revolving door is the one sparing use (bay + its way out), got ' + revolving);
+});

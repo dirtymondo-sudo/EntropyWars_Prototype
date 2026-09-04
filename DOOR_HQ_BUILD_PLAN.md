@@ -555,9 +555,10 @@ encoded at load because one contains a `°`). Against the §5.3 list:
   `'procedural'` and the wedges are furniture (`ring: {n, start}` props
   repeat wedge B around a spot).
 - **C. Door leaves — 18**: the six office doors (warped closet, hollow
-  core, wired double, security, frosted, futuristic = L1–L6, wired to
-  `DOOR_TEXT.CLEARANCE[i].door`), plus exit, office, shabby wood, suburban
-  ×2, vault, portcullis, revolving, bulkhead, plain closet ×2, bare frame.
+  core, office door, security, frosted, futuristic = L1–L6, wired to
+  `DOOR_TEXT.CLEARANCE[i].door`, EXCLUSIVE since 2026-09-04), plus exit,
+  wired double, shabby wood, suburban ×2, vault, portcullis, revolving,
+  bulkhead, plain closet ×2, bare frame (the shared pool).
   No elevator leaf → procedural brushed pair with an X brace.
 - **D. Dressing** — filing cabinet, round cabinet, lockers ×2, boxes ×2,
   CRT terminal, tube TV, desk lamp, table lamp, wall clock, extinguisher,
@@ -607,6 +608,51 @@ Guild Hub was the prototype; this plan is the building.
 - Hazard Pay wallet on the strip vs only at the Quartermaster. Rec: strip.
 
 ## 9. Build log (append per session)
+
+### 2026-09-04 (later) — doors fit their frames, rank leaves exclusive, doors open
+User: doors were different sizes, did not fill their frames or looked
+awkward; the 18 GLBs were committed to `/doors`. Parsed + rendered offline
+(one mesh each, unit-scaled, no animation). `npm test` 104 pass. Cache
+token `20260904a-cors` → `20260904b-cors`.
+- **Measured catalogue** (data.js): every leaf has `aspect` (W/H from the
+  GLB bbox), `wide` (opening class — THE LEAF DECIDES), `yaw: 90` on the
+  hollow-core door (authored edge-on), `open: 'swing' | 'slide'` +
+  `hinge`, `frame` (jambs baked into the mesh — informational) and `rank`
+  (1–6, exclusive). Aspects: closet_warped .604 · hollow_core .545 (after
+  yaw) · office .490 · security .686 · frosted .785 · futuristic .547 ·
+  closet .454 · closet_alt .477 · exit .451 · shabby .525 · suburban .433
+  · suburban_house .453 · wired_double .908 · vault 1.0 · portcullis .846
+  · revolving 1.143 · bulkhead 1.0 · frame_only .637.
+- **`_hqBuildDoors`** (three-renderer.js): opening width = aspect × opening
+  height, clamped (single 0.95–1.6 m, wide 1.9–2.5 m); the panel (2.5 /
+  3.3 m) is unchanged so the jambs absorb the difference. The leaf is
+  height-fitted then X-stretched the last few percent (`g.scale.x`), Z
+  scaled with it. A `swing` leaf hangs on a hinge pivot at the jamb edge
+  and opens ~83° TOWARD the walker (behind it is the wall); a `slide`
+  leaf rides a carrier into the `hinge`-side jamb with a world-space
+  `THREE.Plane` clip at the jamb edge (`renderer.localClippingEnabled`),
+  cloned materials so the plane never leaks to the same model on another
+  door. The elevator halves pocket the same way. `rec.ow` (real opening)
+  drives `_hqFindTarget`'s box-room reach.
+- **`_hqTickDoors`**: the current interaction target opens (ease in-out,
+  ~0.5 s) and closes when the target changes; `sealed` / `clearance` /
+  `codered` stay shut. Static leaves have no `motion`.
+- **Re-homed doors** (rank leaves freed): reception → closet_alt, medical
+  → closet, engineering → suburban, continuity → suburban_house, bay 4 →
+  bulkhead, bay 3 → wired_double, bay 6 → exit; thresholds area51 →
+  closet, cern → bulkhead, vatican → closet_alt, technoticlan → portcullis,
+  cyberpunk → closet (single now), heaven → suburban_house, hell →
+  bulkhead (wide now), flatlands → frame_only. `hqBayRoom` fallback →
+  `leaf_closet_alt`. L3 KNOCKER = `leaf_office`.
+- **doorhq.test.js +3**: measured aspect / legal motion per leaf; rank
+  exclusivity (+ at least four rank doors move); door `wide` flags agree
+  with the leaf; the revolving door stays sparing.
+- **Asset wishlist** (handed to the user): a SINGLE-leaf frosted executive
+  glass door (so L5 can swing), a motel/hotel room door with a number
+  plate, a hospital ward door with a porthole, a rusted steel hatch that
+  is a leaf only (no ring), a saloon/lodge door, a cell door with a slot,
+  a barn/stable door — all as ONE leaf, NO frame, hinge edge flush, front
+  face +Z. Avoid doubles, sliders and anything with the frame in the mesh.
 
 ### 2026-09-04 — closet polish: the rug lies flat, the sink hangs at waist height
 User (with a screenshot): the round rug stood on edge and the sink was
@@ -673,8 +719,8 @@ width), `_hqGoTo` (1.6 m in front, facing it / away; box counters: 1 m
 south of the spot), `_hqEnter` (lights: dim hemisphere, the fluorescent
 point, a warm pool at every `desk_lamp` / `table_lamp`; the boom starts at
 0.6 × d). **Rank door (3.4, leaf half):** a `rankDoor` wears
-`doorClearance(profile).door` and widens when that leaf is a double (L3
-wired pair, L6 futuristic) — the egress office door and the closet's way
+`doorClearance(profile).door` and widens when that leaf is wide (L5
+frosted pair; since 2026-09-04 the leaf decides every opening) — the egress office door and the closet's way
 out both, so it is the same door from both sides. Scenes rebuild on every
 enter, so a promotion shows the next time you walk in.
 

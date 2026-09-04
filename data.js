@@ -14939,7 +14939,7 @@ const DOOR_TEXT = {
            you get. L1–L6 = the six office doors on the reference sheet. */
         { level: 1, title: 'DOORMAT',     door: 'leaf_closet_warped' },
         { level: 2, title: 'DOORSTOP',    door: 'leaf_hollow_core' },
-        { level: 3, title: 'KNOCKER',     door: 'leaf_wired_double' },
+        { level: 3, title: 'KNOCKER',     door: 'leaf_office' },
         { level: 4, title: 'KEYHOLDER',   door: 'leaf_security' },
         { level: 5, title: 'GATEKEEPER',  door: 'leaf_frosted' },
         { level: 6, title: 'THE DOORMAN', door: 'leaf_futuristic' },
@@ -15411,25 +15411,50 @@ const DOOR_HQ = {
         rotary_phone:      { proc: 'rotary_phone',   span: 0.22, foot: 0 },
         toilet_paper:      { proc: 'toilet_paper',   span: 0.23, foot: 0 },
         clipboard:         { proc: 'clipboard',      span: 0.32, foot: 0, wall: true, mount: 1.4,  depth: 0.03 },
-        /* ── door leaves (fit to the opening; `leaf` marks them) ── */
-        leaf_closet_warped:  { file: 'Meshy_AI_warped_janitor_s_closet_door_0903105738_texture.glb', leaf: true },
-        leaf_closet:         { file: 'Meshy_AI_janitor_s_closet_door_0903105643_texture.glb',        leaf: true },
-        leaf_closet_alt:     { file: 'Meshy_AI_a_janitor_s_closet_door_0903105815_texture.glb',      leaf: true },
-        leaf_hollow_core:    { file: 'Meshy_AI_cheap_hollow_core_door_0903105753_texture.glb',       leaf: true },
-        leaf_wired_double:   { file: 'Meshy_AI_institutional_wired_double_door_0903105727_texture.glb', leaf: true, wide: true },
-        leaf_security:       { file: 'Meshy_AI_security_door_0903110317_texture.glb',                leaf: true },
-        leaf_frosted:        { file: 'Meshy_AI_frosted_executive_glass_door_0903105709_texture.glb', leaf: true },
-        leaf_futuristic:     { file: 'Meshy_AI_futuristic_door_0903110023_texture.glb',              leaf: true, wide: true },
-        leaf_office:         { file: 'Meshy_AI_an_office_door_0903105857_texture.glb',               leaf: true },
-        leaf_exit:           { file: 'Meshy_AI_an_exit_door_0903105826_texture.glb',                 leaf: true },
-        leaf_shabby_wood:    { file: 'Meshy_AI_a_shabby_wooden_door_0903105805_texture.glb',         leaf: true },
-        leaf_suburban:       { file: 'Meshy_AI_a_suburban_door_0903105847_texture.glb',              leaf: true },
-        leaf_suburban_house: { file: 'Meshy_AI_a_suburban_house_door_0903105838_texture.glb',        leaf: true },
-        leaf_vault:          { file: 'Meshy_AI_a_bank_vault_door_0903105653_texture.glb',            leaf: true, wide: true },
-        leaf_portcullis:     { file: 'Meshy_AI_a_portcullis_0903105915_texture.glb',                 leaf: true, wide: true },
-        leaf_revolving:      { file: 'Meshy_AI_a_revolving_door_0903105938_texture.glb',             leaf: true, wide: true },
-        leaf_bulkhead:       { file: 'Meshy_AI_submarine_bulkhead_0903105925_texture.glb',           leaf: true, wide: true },
-        leaf_frame_only:     { file: 'Meshy_AI_a_door_frame_0903105906_texture.glb',                 leaf: true },
+        /* ── door leaves (`leaf` marks them; the frame is procedural and is
+           CUT TO THE LEAF — HQ plan D8). Every field below was measured
+           offline from the GLB (2026-09-04, scratch glbinfo over /doors):
+             aspect  width ÷ height of the model's bounding box. The renderer
+                     sizes the opening to it (single leaves 0.95–1.6 m, wide
+                     ones 1.9–2.5 m) and then stretches the leaf the last few
+                     percent to fill it — no more gaps beside short leaves,
+                     no more leaves shrunk to a third of the frame.
+             wide    opening class: 2.45 m tall / up to 2.5 m wide, else
+                     2.25 m tall / up to 1.6 m. THE LEAF DECIDES — a door
+                     entry's own `wide` only matters for procedural leaves.
+             yaw     degrees to turn the model at load (the hollow-core door
+                     is authored edge-on: its width runs along Z).
+             open    'swing' (hinged at `hinge`, opens toward the walker),
+                     'slide' (pockets into the `hinge`-side jamb, clipped at
+                     the jamb edge), or absent = static. Doubles, the round
+                     hatches, the revolving door and the portcullis are ONE
+                     mesh with the frame baked in, so they stay static —
+                     use them sparingly and never for a rank.
+             frame   the model carries its own jambs/lintel (informational:
+                     a swinging one takes its thin frame with it).
+             rank    the clearance level that OWNS the leaf (DOOR_TEXT.
+                     CLEARANCE[rank-1].door). Rank leaves are EXCLUSIVE:
+                     doorhq.test.js fails if any other door wears one. */
+        /* the rank ladder, worst → best (DOORMAT … THE DOORMAN) */
+        leaf_closet_warped:  { file: 'Meshy_AI_warped_janitor_s_closet_door_0903105738_texture.glb', leaf: true, aspect: 0.604, open: 'swing', hinge: 'left',  frame: true, rank: 1 },
+        leaf_hollow_core:    { file: 'Meshy_AI_cheap_hollow_core_door_0903105753_texture.glb',       leaf: true, aspect: 0.545, open: 'swing', hinge: 'left',  yaw: 90,     rank: 2 },
+        leaf_office:         { file: 'Meshy_AI_an_office_door_0903105857_texture.glb',               leaf: true, aspect: 0.490, open: 'swing', hinge: 'left',  frame: true, rank: 3 },
+        leaf_security:       { file: 'Meshy_AI_security_door_0903110317_texture.glb',                leaf: true, aspect: 0.686, open: 'swing', hinge: 'left',  frame: true, rank: 4 },
+        leaf_frosted:        { file: 'Meshy_AI_frosted_executive_glass_door_0903105709_texture.glb', leaf: true, aspect: 0.785, wide: true,                                 rank: 5 },
+        leaf_futuristic:     { file: 'Meshy_AI_futuristic_door_0903110023_texture.glb',              leaf: true, aspect: 0.547, open: 'slide', hinge: 'right',              rank: 6 },
+        /* the pool — any other door, threshold or bay may wear these */
+        leaf_closet:         { file: 'Meshy_AI_janitor_s_closet_door_0903105643_texture.glb',        leaf: true, aspect: 0.454, open: 'swing', hinge: 'left',  frame: true },
+        leaf_closet_alt:     { file: 'Meshy_AI_a_janitor_s_closet_door_0903105815_texture.glb',      leaf: true, aspect: 0.477, open: 'swing', hinge: 'left' },
+        leaf_exit:           { file: 'Meshy_AI_an_exit_door_0903105826_texture.glb',                 leaf: true, aspect: 0.451, open: 'swing', hinge: 'right', frame: true },
+        leaf_shabby_wood:    { file: 'Meshy_AI_a_shabby_wooden_door_0903105805_texture.glb',         leaf: true, aspect: 0.525, open: 'swing', hinge: 'left' },
+        leaf_suburban:       { file: 'Meshy_AI_a_suburban_door_0903105847_texture.glb',              leaf: true, aspect: 0.433, open: 'swing', hinge: 'right' },
+        leaf_suburban_house: { file: 'Meshy_AI_a_suburban_house_door_0903105838_texture.glb',        leaf: true, aspect: 0.453, open: 'swing', hinge: 'right', frame: true },
+        leaf_wired_double:   { file: 'Meshy_AI_institutional_wired_double_door_0903105727_texture.glb', leaf: true, aspect: 0.908, wide: true, frame: true },
+        leaf_vault:          { file: 'Meshy_AI_a_bank_vault_door_0903105653_texture.glb',            leaf: true, aspect: 1.000, wide: true, frame: true },
+        leaf_portcullis:     { file: 'Meshy_AI_a_portcullis_0903105915_texture.glb',                 leaf: true, aspect: 0.846, wide: true, frame: true },
+        leaf_revolving:      { file: 'Meshy_AI_a_revolving_door_0903105938_texture.glb',             leaf: true, aspect: 1.143, wide: true, frame: true },
+        leaf_bulkhead:       { file: 'Meshy_AI_submarine_bulkhead_0903105925_texture.glb',           leaf: true, aspect: 1.000, wide: true, frame: true },
+        leaf_frame_only:     { file: 'Meshy_AI_a_door_frame_0903105906_texture.glb',                 leaf: true, aspect: 0.637, frame: true },
     },
 
     /* The six containment bays (DOOR_MASTER A10). Every launch map belongs
@@ -15473,22 +15498,23 @@ const DOOR_HQ = {
         floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
     },
     /* Which leaf hangs on each threshold (HQ plan §5.3 C: "more thresholds
-       per map"). Unlisted maps fall back to `leaf_office`. */
+       per map"). Unlisted maps fall back to `leaf_closet_alt`. Rank leaves
+       (catalogue `rank`) are off-limits here — doorhq.test.js enforces it. */
     thresholds: {
         prebuilt_nuketown:      { leaf: 'leaf_suburban',       note: 'the suburban closet door — it opens onto the street' },
-        prebuilt_area51:        { leaf: 'leaf_security',       note: 'the hangar man-door; the keypad is a rival account' },
+        prebuilt_area51:        { leaf: 'leaf_closet',         note: 'the hangar man-door; the keypad is a rival account' },
         prebuilt_skinwalker:    { leaf: 'leaf_shabby_wood',    note: 'the ranch gate, rehung indoors' },
         prebuilt_bohemian_grove:{ leaf: 'leaf_shabby_wood',    note: 'redwood lodge door; do not knock in rhythm' },
         prebuilt_dumb:          { leaf: 'leaf_bulkhead',       wide: true, note: 'blast door, deep underground military base issue' },
-        prebuilt_cern:          { leaf: 'leaf_futuristic',     wide: true, note: 'the collider blast door; hum audible' },
-        prebuilt_vatican:       { leaf: 'leaf_frosted',        note: 'the archive service door; frosted by decree' },
+        prebuilt_cern:          { leaf: 'leaf_bulkhead',       wide: true, note: 'the collider blast door; hum audible' },
+        prebuilt_vatican:       { leaf: 'leaf_closet_alt',     note: 'the archive service door; painted white by decree' },
         prebuilt_stadium:       { leaf: 'leaf_wired_double',   wide: true, note: 'a turnstile that was a double door yesterday' },
         prebuilt_stonehenge:    { leaf: 'leaf_frame_only',     note: 'a frame with nothing in it; the stones are on the other side' },
         prebuilt_giza:          { leaf: 'leaf_vault',          wide: true, note: 'the sealed tomb door, opened by treaty' },
         prebuilt_babel:         { leaf: 'leaf_shabby_wood',    note: 'scaffold-plank door; the sign is in eleven alphabets' },
         prebuilt_gobekli:       { leaf: 'leaf_frame_only',     note: 'the oldest doorway on file; no leaf was ever made' },
         prebuilt_camelot:       { leaf: 'leaf_portcullis',     wide: true, note: 'the portcullis; HINGE technology, no privileged side' },
-        prebuilt_technoticlan:  { leaf: 'leaf_futuristic',     wide: true, note: 'the temple gate, chrome over obsidian' },
+        prebuilt_technoticlan:  { leaf: 'leaf_portcullis',     wide: true, note: 'the temple gate, iron over obsidian' },
         prebuilt_atlantis:      { leaf: 'leaf_bulkhead',       wide: true, note: 'the wet submarine bulkhead; it drips on this side too' },
         prebuilt_shasta:        { leaf: 'leaf_closet',         note: 'a cabin door with a mountain behind it' },
         prebuilt_hollow_earth:  { leaf: 'leaf_frame_only',     note: 'a frame; the floor on the far side is the ceiling' },
@@ -15497,13 +15523,13 @@ const DOOR_HQ = {
         prebuilt_northpole:     { leaf: 'leaf_closet_alt',     note: 'a workshop door; sleigh bells removed by Records' },
         prebuilt_mars:          { leaf: 'leaf_bulkhead',       wide: true, note: 'the airlock; red dust in the seal' },
         prebuilt_moon:          { leaf: 'leaf_frame_only',     note: 'a door standing without a wall; footprints lead to it' },
-        prebuilt_cyberpunk:     { leaf: 'leaf_futuristic',     wide: true, note: 'the tenement gate; the neon was added by tenants' },
-        prebuilt_heaven:        { leaf: 'leaf_frosted',        note: 'the service gate, immunity claimed; frosted for modesty' },
-        prebuilt_hell:          { leaf: 'leaf_security',       note: 'the furnace hatch; keypad warm' },
+        prebuilt_cyberpunk:     { leaf: 'leaf_closet',         note: 'the tenement door; the neon was added by tenants' },
+        prebuilt_heaven:        { leaf: 'leaf_suburban_house', note: 'the service gate, immunity claimed; leaded glass for modesty' },
+        prebuilt_hell:          { leaf: 'leaf_bulkhead',       wide: true, note: 'the furnace hatch; wheel warm' },
         prebuilt_olympus:       { leaf: 'leaf_frame_only',     note: 'a marble frame; the lintel is a treaty' },
         prebuilt_fairy_forest:  { leaf: 'leaf_shabby_wood',    note: 'a door made of one plank of a tree that objected' },
         prebuilt_backrooms:     { leaf: 'leaf_exit',           note: 'an EXIT door; the sign is a lie' },
-        prebuilt_flatlands:     { leaf: 'leaf_hollow_core',    note: 'a hollow-core door; hollow all the way through' },
+        prebuilt_flatlands:     { leaf: 'leaf_frame_only',     note: 'a frame with no door; flat all the way through' },
     },
     /* per-bay flavour: the guard's line, overheard lines, extra dressing (local polar) */
     bays: {
@@ -15558,22 +15584,22 @@ const DOOR_HQ = {
                `action` is exactly one of {fn}, {sector}, {room}, {overlay}. */
             doors: [
                 /* ── ground ring (operations) ── */
-                { id: 'bay_celestial',  deg: 0,   level: 0, leaf: 'leaf_futuristic',   wide: true,  label: 'BAY 4 · CELESTIAL',      sub: 'CONTAINMENT BAY',            action: { sector: 'celestial' } },
+                { id: 'bay_celestial',  deg: 0,   level: 0, leaf: 'leaf_bulkhead',     wide: true,  label: 'BAY 4 · CELESTIAL',      sub: 'CONTAINMENT BAY',            action: { sector: 'celestial' } },
                 { id: 'quartermaster',  deg: 90,  level: 0, leaf: 'leaf_vault',        wide: true,  label: 'QUARTERMASTER',           sub: 'CUSTOMS & ADMISSIONS',       action: { fn: '_goToShop' },        desc: 'Declassification and asset reassignment. The Shop, and the manifests locker.', alt: { label: 'PARTY BUILDER', fn: '_goToTeamBuilder' } },
-                { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_office',                    label: 'RECEPTION · INTAKE',      sub: 'HUMAN RESOURCES',            action: { fn: '_mountReactProfile' }, desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
+                { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_closet_alt',                label: 'RECEPTION · INTAKE',      sub: 'HUMAN RESOURCES',            action: { fn: '_mountReactProfile' }, desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
                 { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'JANITORIAL (CONVERTED)',     action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
                 { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING FACILITY',       sub: 'DOWNSTAIRS · ORIENTATION',   action: { room: 'training' },       desc: 'The only approved square room in the building. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.', alt: { label: 'CHALLENGE', fn: '_goToCampaign' }, alt2: { label: 'CONDEMNED CROSSING (MYSTERY DUNGEON)', fn: '_goToMysteryDungeon' } },
-                { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_office',                    label: 'MEDICAL',                 sub: 'SUPPORT SERVICES',           action: { fn: '_goToCampaign' },    desc: 'Where EXITED operatives are processed. Revives, retries, the Challenge services desk.' },
+                { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_closet',                    label: 'MEDICAL',                 sub: 'SUPPORT SERVICES',           action: { fn: '_goToCampaign' },    desc: 'Where EXITED operatives are processed. Revives, retries, the Challenge services desk.' },
                 { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'ARCHIVES · ENTITY REGISTRY', action: { fn: '_goToCodex' },       desc: '“We only keep the file.” Entity dossiers, the tape library, unfiled sites.', alt: { label: 'REPLAY (TAPE LIBRARY)', fn: '_ewReplayLastMatch' }, alt2: { label: 'UNFILED SITES (COMMUNITY MAPS)', fn: '_mountCommunityMaps' } },
                 { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'CONTAINMENT BAY',            action: { sector: 'terrestrial' } },
                 /* ── mezzanine (support / executive access) ── */
                 { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'EXECUTIVE RING',             action: { room: 'executive' },      minClearance: 4, desc: 'Director offices. KEYHOLDER clearance and above.' },
                 { id: 'bay_ancient',    deg: 45,  level: 1, leaf: 'leaf_portcullis',   wide: true,  label: 'BAY 2 · ANCIENT',         sub: 'CONTAINMENT BAY',            action: { sector: 'ancient' } },
-                { id: 'engineering',    deg: 90,  level: 1, leaf: 'leaf_office',                    label: 'ARCANE ENGINEERING',      sub: 'CARTOGRAPHY · RESEARCH',     action: { fn: '_goToMapEditor' },   desc: 'Research offices. The Map Editor, the Spell Library, and the fourth door that wasn’t there yesterday.' },
+                { id: 'engineering',    deg: 90,  level: 1, leaf: 'leaf_suburban',                  label: 'ARCANE ENGINEERING',      sub: 'CARTOGRAPHY · RESEARCH',     action: { fn: '_goToMapEditor' },   desc: 'Research offices. The Map Editor, the Spell Library, and the fourth door that wasn’t there yesterday.' },
                 { id: 'bay_diplomatic', deg: 150, level: 1, leaf: 'leaf_revolving',    wide: true,  label: 'BAY 5 · DIPLOMATIC',      sub: 'CONTAINMENT BAY',            action: { sector: 'diplomatic' } },
-                { id: 'bay_hollow',     deg: 210, level: 1, leaf: 'leaf_bulkhead',     wide: true,  label: 'BAY 3 · HOLLOW',          sub: 'CONTAINMENT BAY',            action: { sector: 'hollow' } },
-                { id: 'bay_quarantined',deg: 270, level: 1, leaf: 'leaf_security',                  label: 'BAY 6 · QUARANTINED',     sub: 'CONTAINMENT BAY',            action: { sector: 'quarantined' } },
-                { id: 'continuity',     deg: 315, level: 1, leaf: 'leaf_frosted',                   label: 'BUREAU OF CONTINUITY',    sub: 'THE CANON OFFICE',           action: { room: 'continuity' },     minClearance: 5, desc: 'Canon notices. The motto plaque. The only department that suspects the schedule.' },
+                { id: 'bay_hollow',     deg: 210, level: 1, leaf: 'leaf_wired_double', wide: true,  label: 'BAY 3 · HOLLOW',          sub: 'CONTAINMENT BAY',            action: { sector: 'hollow' } },
+                { id: 'bay_quarantined',deg: 270, level: 1, leaf: 'leaf_exit',                      label: 'BAY 6 · QUARANTINED',     sub: 'CONTAINMENT BAY',            action: { sector: 'quarantined' } },
+                { id: 'continuity',     deg: 315, level: 1, leaf: 'leaf_suburban_house',            label: 'BUREAU OF CONTINUITY',    sub: 'THE CANON OFFICE',           action: { room: 'continuity' },     minClearance: 5, desc: 'Canon notices. The motto plaque. The only department that suspects the schedule.' },
             ],
             /* walk-up interactions that are not doors */
             counters: [
@@ -15898,7 +15924,7 @@ function hqBayRoom(sectorKey) {
     const bayNo = (bayDoor.label || '').match(/BAY\s*(\d+)/);
     const label = bayDoor.label || ('BAY · ' + sec.label);
     const doors = [{
-        id: 'egress', deg: 0, side: 'in', level: 0, leaf: bayDoor.leaf || 'leaf_office', wide: !!bayDoor.wide,
+        id: 'egress', deg: 0, side: 'in', level: 0, leaf: bayDoor.leaf || 'leaf_closet_alt', wide: !!bayDoor.wide,
         label: 'CENTRAL EGRESS', sub: 'OPERATIONS RING · THE WAY BACK',
         action: { room: 'central_egress', at: bayDoor.id || null },
         desc: 'Back to the ring. The desk will still be there. Probably the same desk.',
@@ -15909,7 +15935,7 @@ function hqBayRoom(sectorKey) {
         const meta = META.find(m => m.id === id);
         doors.push({
             id: 'site_' + id, deg: -(n * stepDeg) / 2 + stepDeg * (i + 0.5), side: 'out', level: 0,
-            leaf: th.leaf || 'leaf_office', wide: !!th.wide,
+            leaf: th.leaf || 'leaf_closet_alt', wide: !!th.wide,
             label: ((meta && meta.label) || id).toUpperCase(), sub: 'THRESHOLD · ' + sec.label,
             action: { mission: id }, note: th.note || '',
         });

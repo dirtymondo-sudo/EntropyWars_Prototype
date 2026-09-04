@@ -136,7 +136,7 @@ bundle the six-string edit):
 |---|---|---|---|
 | L1 | **DOORMAT** | interns, probationary hires, disposable assistants | warped janitor's-closet door with a vent (your office is a converted closet) |
 | L2 | **DOORSTOP** | junior permanent staff who can obstruct requests but rarely decide | cheap hollow-core door |
-| L3 | **KNOCKER** | field agents who investigate new thresholds and make first contact | institutional wired-glass door |
+| L3 | **KNOCKER** | field agents who investigate new thresholds and make first contact | a proper white office door (the wired-glass double was retired 2026-09-04: one mesh, no swing) |
 | L4 | **KEYHOLDER** | trusted staff with meaningful clearance | security door with keycard reader |
 | L5 | **GATEKEEPER** | managers who control access to people, information and realities | frosted executive glass |
 | L6 | **THE DOORMAN** | the mysterious title of the agency's highest authority | a biometric seamless threshold that barely resembles a door — while the actual Doorman has an ancient battered wooden door nobody comments on |
@@ -874,3 +874,39 @@ three-renderer.js (box rooms, procedural props, rank leaf), map.js
 (in-tray), styles-base.css, index.html (`?v=20260903e-cors`),
 doorhq.test.js. `npm test` 101 pass / 1 skip. No mid-match surface → no
 relay work.
+
+### 2026-09-04 — doors fit their frames; rank leaves are exclusive; doors open
+User: leaves were different sizes, left gaps, or looked wrong in the
+frame; the 18 door GLBs were committed to `/doors` for inspection. All
+18 were parsed and rendered offline (single mesh each, unit-scaled, no
+animation, three with the frame baked in per face). Findings and fixes:
+- **Fit.** The old rule (fit height, clamp width) shrank any leaf whose
+  aspect missed the fixed 1.1×2.25 / 2.2×2.45 opening (the L1 warped door
+  lost 0.5 m of height; the frosted pair rendered 1.3 m tall) and the
+  hollow-core door is authored edge-on (width along Z) so it showed as a
+  sliver. Every leaf now carries its measured `aspect` (+ `yaw: 90` for the
+  hollow-core), the procedural frame is CUT TO THE LEAF (opening width =
+  aspect × height, singles 0.95–1.6 m, wides 1.9–2.5 m; jambs absorb the
+  rest of the 2.5 / 3.3 m panel) and the leaf is then fitted on both axes.
+  The leaf's catalogue `wide` decides the opening class; the door entry's
+  own flag is data hygiene only (a test keeps them agreeing).
+- **Rank ladder (C-1) is now exclusive** (catalogue `rank`, test-enforced):
+  L1 warped closet · L2 hollow-core · L3 **office door** (was the wired
+  double) · L4 security · L5 frosted executive pair · L6 futuristic. No
+  other door or threshold may wear these six. Displaced doors were
+  re-homed from the pool (reception → plain white closet door, medical →
+  grey steel closet door, engineering → suburban six-panel, continuity →
+  dark house door with the leaded fanlight, bay 4 → bulkhead, bay 3 →
+  wired double, bay 6 → EXIT; thresholds likewise, notes updated).
+- **Doors open.** The door you stand at (the interaction target) swings
+  open toward you (hinged singles) or pockets into the jamb behind a clip
+  plane (the L6 futuristic door, the elevator halves) and closes when you
+  walk off; sealed / clearance / code-red doors stay shut. One-mesh
+  doubles, the round hatches, the portcullis, the revolving door and the
+  bare frame are static (their frame is part of the mesh); the revolving
+  door is kept to its one thematic use (Bay 5 · Diplomatic).
+Files: data.js (catalogue, CLEARANCE L3, doors, thresholds, `hqBayRoom`
+fallback), three-renderer.js (`_hqBuildDoors` fit + motion rig,
+`_hqTickDoors`, `_hqFindTarget` reach from the real opening), doorhq.test.js
+(+3), DOOR_HQ_BUILD_PLAN.md §9, index.html (`?v=20260904b-cors`). Hub only →
+no relay work.
