@@ -1,5 +1,5 @@
 # D.O.O.R. — MASTER FILE
-### Story bible + integration design + build log — rev 14 (2026-09-04 — story canon separated from ChatGPT scaffolding (A0); the authoring process recorded (A14); `DOOR_STORY.md` created as the empty worksheet. Story track code stays ON HOLD until the user writes the outline per A14.)
+### Story bible + integration design + build log — rev 15 (2026-09-05 — roster dialogue shipped, see A15 + Part D rev 6; 2026-09-04 — story canon separated from ChatGPT scaffolding (A0); the authoring process recorded (A14); `DOOR_STORY.md` created as the empty worksheet. Story track code stays ON HOLD until the user writes the outline per A14.)
 
 This file MERGES the two earlier DOOR documents and supersedes both:
 - `entropy_wars_claude_brief.md` (the ChatGPT-assisted story/world brief, 2026-09) → Part A
@@ -549,6 +549,52 @@ and H-Wing's GEOMETRY (the straight-corridor kit) — but not its contents.
 HOLD the orientation tape's narration (the player's first five minutes;
 scaffolding until the user writes it) — the VHS mechanism itself is
 buildable.
+
+## A15. Roster dialogue — the user's voice (2026-09-05)
+
+The lines a roster vessel says when the player talks to it in headquarters
+are HAND-AUTHORED BY THE USER and live in data.js `DOOR_ROSTER_LINES`
+(keyed by race id; `<race>:female` for the Nun and the Witch, who are
+separate characters with their own lines; `_cryptid` is a shared pool
+for `DOOR_ROSTER_CRYPTIDS`). **Rule: Claude does not add, rewrite or pad
+these lines.** Fixing a typo or a stray quote mark is fine; anything else
+is written by the user or explicitly requested. Line counts are uneven on
+purpose — some vessels get one line, some get six.
+
+What the voice is, for anyone writing new ones (the user included):
+- **Workplace first, monster second.** Every line is an employee complaint,
+  an HR form, a health-plan question or a coworker grudge; the creature is
+  the punchline's premise, never the joke. "Does the health plan cover
+  reattachment?" · "I submitted my lunar accommodation form three months
+  ago." · "This is workplace discrimination." (a running gag: the Zombie,
+  the Atlantean, the Mermaid, the Kraken all say it about their own
+  specific need — it is funnier the more petty the need).
+- **Short and dry.** One or two sentences. The best lines are one
+  declarative statement with no wind-up: "The table was round on
+  purpose." · "Valhalla had less paperwork." · "Doors are just walls with
+  weak resolve." No explaining the joke, no second beat after the
+  punchline.
+- **The building has names and a life of its own.** Otto (facilities),
+  Rhonda (HR), Ms. Vator, the aquarium, the water cooler, the black
+  budget, the naughty list with people missing from both columns.
+  Vessels talk about EACH OTHER: the Werewolf and the Vampire carpool,
+  the Gnome and the Quarterback have history, the Succubus is not the
+  Demon Princess's cousin, the Seraphim won't sit with the Fallen Angel.
+  New lines should keep adding to this web rather than inventing new lore.
+- **Doors are everywhere but never the whole joke.** "Who needs doors
+  when…" is a family of lines (Ghost, Santa, Wizard, Machine Elves);
+  the Marksman hates the round building; the Knight got a protractor.
+  Door and corner language stays light; the DOOR canon (A7/A8) is
+  background, not exposition — nobody explains the Openers.
+- **Deadpan, a little crude, never cute.** Innuendo is direct (the
+  Succubus), the Nun swears and apologises, the Werewolf threatens
+  hands, Anubis is cheerfully monstrous. Pop-culture nods are quick and
+  unlabelled ("over 9000", "Let it go", "Take me to your middle
+  manager", "BE NOT AFRAID"). Nothing winks at the player.
+- **Avoid AI slop:** no "I'm not X, I'm Y" symmetries stacked three deep,
+  no lines that only restate the character's gimmick, no "Explain that."
+  tags, no three-line escalations, no wholesome stingers. If a line could
+  be said by any character, cut it.
 
 ---
 
@@ -1316,3 +1362,21 @@ User feedback pass on the walkable HQ (four items, all shipped):
   only while it is enabled; rev 4's delta gates are removed (they hid
   nothing and swallowed fast flicks).
 - Files: battle.js, three-renderer.js, index.html (`?v=20260905e-cors`).
+
+
+### 2026-09-05 (rev 6) — roster dialogue in the headquarters
+- Talking to a roster vessel on break now shows that CHARACTER's line
+  (the user's hand-written roster dialogue, 82 entries), not a random
+  overheard line. data.js `DOOR_ROSTER_LINES` + `hqRosterLine(race,
+  gender)`; map.js `_hqNpcPanelHtml` asks it first and falls back to the
+  room's overheard lines for races without an entry. Female variants get
+  their own keys (`priest:female` = the Nun, `wizard:female` = the
+  Witch), the five cryptids share the "no pictures" pool on top of their
+  own lines, Android and Cyborg share one set pending the user's plan to
+  merge them into one unit.
+- HQ NPCs are now labelled with `getRaceLabel(race, gender)` (so the
+  panel says NUN / WITCH / COWGIRL, not "Priest") and spawn as either
+  gender when both are rigged.
+- The voice is documented in A15. Claude does not write these lines.
+- Files: data.js, map.js, three-renderer.js, index.html
+  (`?v=20260905f-cors`); DOOR_MASTER.md A15 + this entry.

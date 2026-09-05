@@ -28982,7 +28982,7 @@ const ThreeRenderer = (function () {
         var ch = {
             id: spec.id, kind: spec.kind || 'npc', entry: entry, unit: unit, def: def,
             x: p.x / U, z: p.z / U, y: y, visY: y, yaw: yaw, targetYaw: yaw,
-            line: spec.line || null, label: spec.label || (race.charAt(0).toUpperCase() + race.slice(1)),
+            line: spec.line || null, label: spec.label || ((typeof getRaceLabel === 'function') ? getRaceLabel(race, gender) : (race.charAt(0).toUpperCase() + race.slice(1))),
             race: race, gender: gender, heightM: 1.75 * (def.heightRatio || 1), cleaned: false, moving: false, running: false, jumpT: -1, air: false, vy: 0,
         };
         _hq.chars.push(ch);
@@ -29014,7 +29014,10 @@ const ThreeRenderer = (function () {
             var n = Math.min(spots.length, owned.length, 3);
             for (var k = 0; k < n; k++) {
                 var rk2 = owned[k];
-                var g = getRace3DModel(rk2, 'male') ? 'male' : 'female';
+                /* either gender when both are rigged, so the Nun and the Witch
+                   (their own names, their own lines) turn up on break too */
+                var hasM = !!getRace3DModel(rk2, 'male'), hasF = !!getRace3DModel(rk2, 'female');
+                var g = (hasM && hasF) ? (Math.random() < 0.5 ? 'male' : 'female') : (hasM ? 'male' : 'female');
                 _hqSpawnCharacter({ id: 'hq-npc-' + k, kind: 'npc', race: rk2, gender: g, deg: spots[k].deg, r: spots[k].r, x: spots[k].x, z: spots[k].z, level: spots[k].level || 0, face: spots[k].face || 0 });
             }
         } catch (e) { console.warn('[HQ] roster NPCs skipped', e); }
@@ -29252,7 +29255,7 @@ const ThreeRenderer = (function () {
             if (Math.abs(ch.y - pl.y) > 1) return;
             var dist = Math.hypot(ch.x - pl.x, ch.z - pl.z);
             if (dist > 1.75) return;
-            if (dist < bestD) { bestD = dist; best = { kind: ch.kind, id: ch.id, label: ch.label, sub: ch.kind === 'agent' ? 'D.O.O.R. PERSONNEL' : 'ON BREAK', line: ch.line, race: ch.race }; }
+            if (dist < bestD) { bestD = dist; best = { kind: ch.kind, id: ch.id, label: ch.label, sub: ch.kind === 'agent' ? 'D.O.O.R. PERSONNEL' : 'ON BREAK', line: ch.line, race: ch.race, gender: ch.gender }; }
         });
         return best;
     }

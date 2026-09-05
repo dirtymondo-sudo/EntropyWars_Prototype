@@ -16337,8 +16337,430 @@ function doorSiteState(door, profile) {
     }
     return 'open';
 }
+/* ── D.O.O.R. ROSTER DIALOGUE (2026-09-05) ──────────────────────────────
+   What a roster vessel says when the player presses E on it in the
+   headquarters (map.js `_hqNpcPanelHtml` → `hqRosterLine`). Keyed by
+   race id; a `<race>:female` key overrides for the female variant (Nun,
+   Witch — separate characters, separate lines). `_cryptid` is a shared
+   pool that the races in DOOR_ROSTER_CRYPTIDS get IN ADDITION to their
+   own lines. Races with no entry fall back to the room's overheard lines.
+   HAND-AUTHORED BY THE USER. Do not add, rewrite or "improve" lines —
+   new lines are written by the user (see DOOR_MASTER.md A15 for the
+   voice). Fixing a typo is fine. */
+const DOOR_ROSTER_CRYPTIDS = ['bigfoot', 'loch ness monster', 'yeti', 'mothman', 'skinwalker'];
+const DOOR_ROSTER_LINES = {
+    _cryptid: [
+        '“No pictures, please.”',
+        '“I’m camera shy.”',
+        '“I have no good angles.”',
+    ],
+    'bigfoot': [
+        '“This place has too many trail cams. I mean security cams.”',
+        '“The Yeti’s the cold one. I’m the woods one. It’s not that complicated.”',
+    ],
+    'loch ness monster': [
+        '“Tell Otto the aquarium is a hostile work environment.”',
+    ],
+    'king arthur': [
+        '“For Camelot!”',
+        '“A sword from a lake is a perfectly legitimate hiring credential.”',
+        '“The table was round on purpose.”',
+    ],
+    'quarterback': [
+        '“Back in college I could throw a pigskin over them mountains.”',
+        '“I could’ve gone pro but they caught me betting on illegal Gnome fights. The world’s gone soft.”',
+        '“Blue 42! Red dye 40!”',
+    ],
+    'ghost': [
+        '“Boo!”',
+        '“Why do they keep it so cold in here?”',
+        '“Who needs doors when you can walk through walls?”',
+    ],
+    'dragon': [
+        '“Must. Find. Gold.”',
+        '“Hazard pay? Can I sit on it?”',
+    ],
+    'santa clause': [
+        '“Ho ho ho! Merry [REDACTED].”',
+        '“Who needs doors when the chimney works just fine?”',
+        '“You’d be surprised who’s on the naughty list in this building. Even more surprising is who doesn’t show up on either list.”',
+    ],
+    'giant': [
+        '“Humans look like ants to me. And Antpersons look like… smaller ants.”',
+        '“One small step for man, one tiny step for giantkind.”',
+        '“I asked for a larger office. They assigned me two offices.”',
+    ],
+    'zombie': [
+        '“There’s no brains in the cafeteria. This is workplace discrimination.”',
+        '“Does the health plan cover reattachment?”',
+    ],
+    'minotaur': [
+        '“This facility strangely reminds me of home.”',
+        '“Who designed these corridors? Finally, a professional.”',
+        '“Go ahead. Give me the map. I enjoy a good joke.”',
+    ],
+    'ki fighter': [
+        '“I prefer kicking doors open first and asking questions later.”',
+        '“I changed hair colors all the time before liberal arts students started doing it. Talk about cultural appropriation.”',
+        '“My fists should be considered keys. No door stands a chance.”',
+        '“It’s over 9000! My step count, that is.”',
+    ],
+    'dinosaur': [
+        '“Is it wrong that I prefer chicken over steak?”',
+        '“Extinction was easier than onboarding.”',
+        '“Earth has really gone downhill.”',
+    ],
+    'general': [
+        '“Nothing a drone strike can’t solve!”',
+        '“I don’t care which reality it came from. Can it hold a gun?”',
+    ],
+    'honda civic': [
+        '“Beep beep!”',
+        '“Please keep your hands, feet, and existential dread inside the vehicle at all times.”',
+        '“I was promised premium fuel and dental.”',
+    ],
+    'werewolf': [
+        '“The housing department keeps denying my request for blackout curtains.”',
+        '“I submitted my lunar accommodation form three months ago. Still haven’t heard back from Rhonda yet.”',
+        '“Call me a good boy one more time and lose a hand.”',
+        '“The vampire and I carpool. It’s not as fun as it sounds.”',
+        '“I know there’s buried treasure here somewhere. Just have to find the X.”',
+    ],
+    'pirate': [
+        '“Arrrgghh!”',
+        '“Ahoy matey! Seen any mermaids around?”',
+    ],
+    'valkraye': [
+        '“I went from defending one bureaucracy to another. Just my luck.”',
+        '“Valhalla had less paperwork.”',
+    ],
+    'swordfighter': [
+        '“Sliced bread. Sliced ham. Just the way sensei used to make it.”',
+        '“Doors are just walls with weak resolve.”',
+    ],
+    'machine elves': [
+        '“I am not an elf! One drugged-out lunatic in the seventies shouldn’t get to name my entire species.”',
+        '“Why open doors when you can open your third eye?”',
+        '“Your geometry is embarrassingly Euclidean.”',
+        '“This reality has terrible resolution.”',
+    ],
+    'superhero': [
+        '“With great power comes great… benefits.”',
+        '“Does the health plan cover secret identities?”',
+    ],
+    'gnome': [
+        '“I keep getting fined for loitering in gardens. I hate HOAs.”',
+        '“The quarterback owes me money. Don’t ask why, it’s a sensitive topic.”',
+        '“I don’t grant wishes. That’s the other short magical employee.”',
+        '“The quarterback keeps looking at me. I know what he did.”',
+    ],
+    'politician': [
+        '“Closed borders. Open borders. Whatever gets my approval rating up!”',
+        '“I don’t remember establishing this department…”',
+        '“Oh so THIS is what the black budget has been funding. Makes sense. It could use a bowling alley though.”',
+        '“My opponent, the lizard person, is soft on inter-dimensional crime!”',
+    ],
+    'fortune teller': [
+        '“Strange. Your future keeps oscillating.”',
+        '“I foresee a grave catastrophe.”',
+        '“Your future is wide open.”',
+        '“Ask me again tomorrow. Yesterday keeps changing.”',
+    ],
+    'demon princess': [
+        '“At least this place has air conditioning.”',
+        '“My father rules nine circles. Even he doesn’t require this much paperwork.”',
+        '“I don’t need special treatment. I require royal treatment.”',
+        '“Your containment circle clashes with my shoes.”',
+        '“The Succubus is not my cousin. We’ve discussed this.”',
+        '“Daddy says I have to work my way up. I mean… down.”',
+    ],
+    'demon': [
+        '“Wanna make a deal?”',
+        '“Initial here. Ignore the screaming fine print.”',
+    ],
+    'glitch': [
+        '“Some bugs aren’t bugs at all. The Mantids, for example.”',
+        '“Did AI design this place? I feel right at home with all of these bugs.”',
+    ],
+    'martian': [
+        '“Don’t let them rewrite history. Earth was our home first!”',
+        '“Must. Destroy. Human Resources.”',
+        '“Earth is nice, a little too blue for my taste though.”',
+        '“Take me to your middle manager.”',
+    ],
+    'telepath': [
+        '“Yes? Did you say something?”',
+        '“Your mind is an open door.”',
+        '“I’d read your mind, but your face says it all.”',
+    ],
+    'succubus': [
+        '“Hey darling, why don’t you come visit my office tonight? Come inside whenever you want.”',
+        '“I bet I’d look good on top.”',
+        '“I doubt you could keep up with me. But feel free to try.”',
+        '“Do you prefer my legs open or closed?”',
+        '“HR says seduction is not an approved method of recruitment.”',
+        '“See you in your dreams, handsome.”',
+    ],
+    'marksman': [
+        '“Watch your corners.”',
+        '“Round building. No corners. I hate this place.”',
+    ],
+    'atlantean': [
+        '“We do not claim Plato.”',
+        '“I’m tired of flakes for breakfast every morning. This is workplace discrimination.”',
+        '“Tell the Mermaid the water cooler is not a bath.”',
+        '“The Kraken is an invasive species.”',
+    ],
+    'mothman': [
+        '“You are in danger.”',
+        '“The bridge collapses at midnight. The vending machine breaks at three.”',
+        '“I don’t cause disasters. I simply have excellent timing.”',
+    ],
+    'catgirl': [
+        '“Meow!”',
+        '“I really wish we could just keep all the doors open. I like having the option.”',
+    ],
+    'barbarella': [
+        '“Okay fine. You drive a hard bargain. Do what you must.”',
+        '“Point me toward the tyrant, darling. I’ll improvise.”',
+    ],
+    'mad scientist': [
+        '“CERN had better food in the cafeteria.”',
+        '“The ethics board called my proposal ‘an extinction level event.’ So dramatic.”',
+        '“Ethics? That’s not on the periodic table.”',
+    ],
+    'grey': [
+        '“I swear the probes are not a fetish.”',
+        '“Your species loses hours to meetings and blames us for the missing time.”',
+        '“Time flies when you’re getting probed.”',
+    ],
+    'mantid': [
+        '“Despite making up only 13% of alien species on Earth, the Greys commit 50% of the abductions.”',
+        '“Those damn Nordics and their superiority complex.”',
+        '“The Machine Elves are a real pain in the fractal ass.”',
+    ],
+    'reptilian': [
+        '“It seems this facility negates my shapeshifting abilities. I’m not quite comfortable in my own skin.”',
+        '“Could someone place a heat lamp in my office?”',
+        '“My human suit is at the cleaners.”',
+        '“Please stop asking which politicians I control. You can probably guess anyway.”',
+    ],
+    /* the Nun — the priest's female variant, her own lines */
+    'priest:female': [
+        '“That succubus needs to put some god damn clothes on! Oh, heavens. Forgive me Father.”',
+        '“This one time at church camp… nevermind.”',
+    ],
+    'men in black': [
+        '“This place is completely unprofessional.”',
+        '“You didn’t see us. Sign here confirming that.”',
+    ],
+    'angel': [
+        '“Glory to you!”',
+        '“Your shoulder looks rather comfy. Can I have a seat?”',
+        '“Doors are rather exclusionary. At least you can see through the pearly gates.”',
+        '“My halo keeps triggering the metal detector.”',
+    ],
+    'mermaid': [
+        '“Can I show you a song I made?”',
+        '“Would it kill Otto to install a swimming pool?”',
+        '“The showers don’t use salt water. This is workplace discrimination!”',
+    ],
+    'voidweaver': [
+        '“This place is the biggest web of lies I have ever seen. And I have 8 eyes.”',
+        '“Please don’t sweep up the silk. I’m still using that.”',
+    ],
+    'vampire': [
+        '“Why does the punch not taste like blood if it is blood colored?”',
+        '“I requested the night shift. They scheduled me for a sunrise briefing.”',
+        '“Garlic in the communal refrigerator should require a warning label!”',
+        '“The werewolf and I carpool. It’s not as fun as it sounds.”',
+    ],
+    'fairy': [
+        '“This place needs more flowers.”',
+        '“Sigh… They keep writing me up for violating dress code because my dress is too short.”',
+    ],
+    'necromancer': [
+        '“Death is the last door you’ll ever need.”',
+        '“Why hire new recruits when the old ones still have usable bones? Very inefficient if you ask me.”',
+        '“The skeleton owes me. He knows why.”',
+    ],
+    'wizard': [
+        '“Who needs doors when magic portals work just fine?”',
+    ],
+    /* the Witch — the wizard's female variant, her own lines */
+    'wizard:female': [
+        '“Just because I have a broom does NOT mean they can keep assigning me cleaning duty!”',
+        '“I only curse coworkers who reply all.”',
+    ],
+    'djinn': [
+        '“This place feels more cramped than the lamp.”',
+        '“Have you seen my lamp? It must be around here somewhere.”',
+        '“Careful what you wish for. You might get exactly what you asked for.”',
+    ],
+    'anubis': [
+        '“The Annunaki and I go way back. We used to be coworkers.”',
+        '“Nothing is impossible! With a little bit of slavery.”',
+    ],
+    'seraphim': [
+        '“DOOR keeps using the term ‘biblically accurate’. I don’t think that phrase means what they think it means.”',
+        '“Please stop counting my eyes. You’ll get a different answer every time.”',
+        '“BE NOT AFRAID. The fire alarm was me. Sorry.”',
+    ],
+    'homosapien': [
+        '“I’m always the control group. I guess someone has to be.”',
+        '“That’s the last time I apply for an anonymous job listing.”',
+    ],
+    'knight': [
+        '“A round hall. A round table. My lord, these people understand hospitality.”',
+        '“I have sworn oaths to three kings and two departments.”',
+        '“They confiscated my sword at intake and issued me a protractor.”',
+    ],
+    'cowboy': [
+        '“Where’s the god damn saloon doors?”',
+    ],
+    'nordic': [
+        '“Surprisingly, no connection to vikings. Or Norway.”',
+    ],
+    'ai': [
+        '“I am not hallucinating. The fourth door in Research IS new.”',
+        '“Please stop asking me to write your incident reports. Fine. Send me the details.”',
+        '“I can’t comply with that request.”',
+    ],
+    'dreameater': [
+        '“The robot’s dreams are tasty. I love mutton.”',
+        '“You had that dream again. The one with the hallway. Delicious.”',
+        '“Nobody in this building sleeps well. I’ve never been so full.”',
+    ],
+    /* Android / Cyborg — one character (the user plans to consolidate the
+       two races); both ids share the lines until that happens */
+    'android': [
+        '“It was tough being a mixed girl growing up in an all robot neighborhood.”',
+        '“Surprisingly I was born this way. Dad was a human, mom was a robot. I think they made a movie about that once…”',
+        '“Do I look more human or robot? Be honest.”',
+    ],
+    'cyborg': [
+        '“It was tough being a mixed girl growing up in an all robot neighborhood.”',
+        '“Surprisingly I was born this way. Dad was a human, mom was a robot. I think they made a movie about that once…”',
+        '“Do I look more human or robot? Be honest.”',
+    ],
+    'orb of light': [
+        '“…”',
+        '“You can hear me?”',
+        '“I am not a lens flare. Please stop filing me as a lens flare.”',
+    ],
+    'skeleton': [
+        '“Openers? Closers? I’ve got no skin in that game.”',
+        '“The break room coffee goes right through me.”',
+    ],
+    'annunaki': [
+        '“Yes we built the pyramids. We let the Egyptians think they helped.”',
+        '“Humans haven’t changed much in 12,000 years.”',
+    ],
+    'skinwalker': [
+        '“Your face is nice. I’m not asking. Just noting for later.”',
+    ],
+    'antperson': [
+        '“This place needs more tunnels. That’s a hill I’ll die on.”',
+        '“I lifted the reception desk once. No one asked me to do it. It just felt right.”',
+        '“They keep making me clean the cafeteria. I don’t mind.”',
+    ],
+    'scarecrow': [
+        '“I keep applying for a brain but the zombie keeps eating it.”',
+        '“The crows are the only ones I trust nowadays.”',
+    ],
+    'demon prince': [
+        '“My father runs Hell. I run the mailroom. Character building, he says.”',
+        '“Started from the bottom now I’m… here.”',
+    ],
+    'fallen angel': [
+        '“I got demoted for asking one question. Sound familiar?”',
+        '“Heaven has gates. Hell has gates. Doors are a nice change of scenery I suppose.”',
+        '“The Seraphim won’t sit with me at lunch. Judgy bastards.”',
+    ],
+    'nephilim': [
+        '“Earth women are easy.”',
+        '“Have you seen my son? He’s about 20 feet tall.”',
+        '“The Flood was a containment procedure. Look it up. Actually, don’t.”',
+    ],
+    'cosmic wraith': [
+        '“The Void doesn’t have HR. I miss the Void.”',
+    ],
+    'conspiracy theorist': [
+        '“I KNEW it. I knew it. Nobody believed me. Now I’ve got a BADGE.”',
+        '“Can I interest you in any supplements?”',
+    ],
+    'overlord': [
+        '“The Doorman and I should talk. Ruler to ruler. He keeps ignoring my memos.”',
+    ],
+    'ghoul': [
+        '“I only eat what’s already dead. Like the morale in this building.”',
+    ],
+    'kaiju': [
+        '“RRRRRRR” … Translation: “Can someone play catch with me?”',
+        '“RRRRRRR” … Translation: “I don’t eat cities anymore. I’m a suburbatarian.”',
+    ],
+    'kraken': [
+        '“Pirates are tastier than Atlanteans.”',
+        '“The aquarium is way too small. This is workplace discrimination.”',
+    ],
+    'yeti': [
+        '“It’s not cold enough in here. Ask the ghost, he’ll back me up.”',
+        '“No, Bigfoot is not my cousin. We’ve discussed this.”',
+        '“Antarctica Bay. First Cube sighting. I was there. Nobody asked me.”',
+    ],
+    'black goo': [
+        '“Please don’t step on me. I’m on the clock.”',
+        '“I got into the ventilation once. Turns out that’s a Code Red. Who knew?”',
+        '“For the last time, I am not a spill. The next person who tries to mop me up is getting reported to HR.”',
+    ],
+    'golem': [
+        '“Clay. Not stone. Not dirt. CLAY. I want that on file.”',
+    ],
+    'ice queen': [
+        '“Let it go? I was never holding it.”',
+        '“The AC in this building is the only thing I respect.”',
+    ],
+    'juggernaut': [
+        '“I don’t stop. Even for doors. I’ve broken six this week.”',
+    ],
+    'robinhood': [
+        '“Every time Ms. Vator visits I make sure her purse leaves a little lighter.”',
+        '“They put me in the finance department. I was reassigned after one week.”',
+    ],
+    'super sentai': [
+        '“We need five for a team up. HR only approved four.”',
+        '“The suits are a uniform, not a costume. Say costume again.”',
+    ],
+    'symbiote': [
+        '“We are not a parasite. We are a partnership. My host agrees.”',
+        '“The Black Goo keeps giving us a look. Solidarity or competition, I can’t tell.”',
+    ],
+};
+/* The pool a roster vessel draws from: its own lines, the female variant's
+   lines when the vessel is female (Nun, Witch), plus the shared cryptid
+   lines for DOOR_ROSTER_CRYPTIDS. Empty array = no entry (caller falls back). */
+function hqRosterLines(race, gender) {
+    const out = [];
+    const own = DOOR_ROSTER_LINES[race];
+    const fem = (gender === 'female') ? DOOR_ROSTER_LINES[race + ':female'] : null;
+    if (fem && fem.length) out.push.apply(out, fem);
+    else if (own) out.push.apply(out, own);
+    if (DOOR_ROSTER_CRYPTIDS.indexOf(race) >= 0) out.push.apply(out, DOOR_ROSTER_LINES._cryptid);
+    return out;
+}
+/* One line, or null when the race has none (caller uses the room's lines). */
+function hqRosterLine(race, gender) {
+    const pool = hqRosterLines(race, gender);
+    if (!pool.length) return null;
+    return pool[Math.floor(Math.random() * pool.length)];
+}
+
 if (typeof window !== 'undefined') {
     window.DOOR_HQ = DOOR_HQ;
+    window.DOOR_ROSTER_LINES = DOOR_ROSTER_LINES;
+    window.DOOR_ROSTER_CRYPTIDS = DOOR_ROSTER_CRYPTIDS;
+    window.hqRosterLines = hqRosterLines;
+    window.hqRosterLine = hqRosterLine;
     window.hqPolar = hqPolar;
     window.hqSectorOfMap = hqSectorOfMap;
     window.hqSiteId = hqSiteId;

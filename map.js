@@ -853,6 +853,10 @@
         function _hqNpcPanelHtml(t) {
             const room = _hqRoom();
             let line = t.line;
+            /* roster vessels speak their own lines (data.js DOOR_ROSTER_LINES,
+               keyed by race + gender so the Nun and the Witch get theirs);
+               a race without an entry overhears the room */
+            if (!line && t.kind === 'npc' && t.race && typeof window.hqRosterLine === 'function') line = window.hqRosterLine(t.race, t.gender);
             if (!line && room && room.lines && room.lines.length) line = room.lines[Math.floor(Math.random() * room.lines.length)];
             return `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div><p class="hq-panel-line">${_hqEsc(line || '…')}</p><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>`;
         }
