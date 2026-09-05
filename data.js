@@ -16424,11 +16424,11 @@ const DOOR_ROSTER_LINES = {
         '“I submitted my lunar accommodation form three months ago. Still haven’t heard back from Rhonda yet.”',
         '“Call me a good boy one more time and lose a hand.”',
         '“The vampire and I carpool. It’s not as fun as it sounds.”',
-        '“I know there’s buried treasure here somewhere. Just have to find the X.”',
     ],
     'pirate': [
         '“Arrrgghh!”',
         '“Ahoy matey! Seen any mermaids around?”',
+        '“I know there’s buried treasure here somewhere. Just have to find the X.”',
     ],
     'valkraye': [
         '“I went from defending one bureaucracy to another. Just my luck.”',

@@ -1379,4 +1379,4 @@ User feedback pass on the walkable HQ (four items, all shipped):
   gender when both are rigged.
 - The voice is documented in A15. Claude does not write these lines.
 - Files: data.js, map.js, three-renderer.js, index.html
-  (`?v=20260905f-cors`); DOOR_MASTER.md A15 + this entry.
+  (`?v=20260905g-cors`); DOOR_MASTER.md A15 + this entry. Buried-treasure line moved Werewolf → Pirate (user correction).
