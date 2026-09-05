@@ -1961,3 +1961,39 @@ sprites.js from the first build stand). `npm test` 113 (112 pass).
   out over 450 ms — passing the desk / a pillar / the stair mass no longer
   pops the eye a metre in a frame.
 - Files: three-renderer.js, index.html (`?v=20260905d-cors`).
+
+### 2026-09-05 (rev 5) — the walking 180° snap, root-caused for real: battle.js was releasing the HQ's pointer lock
+- Symptom (user): hold W, walk a few steps, the camera snaps ~180° and the
+  walk reverses (WASD is camera-relative, so a yaw flip reverses travel).
+  Rev 4's delta gates did not stop it.
+- Root cause: battle.js's Strike Mode module (the TPS/FPS rig for shooter
+  battles and the MD Guild Hub roam) listens to `pointerlockchange` on the
+  renderer's SHARED canvas and set its `locked` flag for ANY lock on it.
+  Its permanent rAF `_frame` then runs "release a stale pointer lock when
+  the mode ends" (`locked && !_enabled()`), and `_enabled()` is false in
+  the HQ — so every HQ lock (entry click, canvas click, the WASD/SPACE
+  grab) was exited ONE FRAME after it engaged, and its capture-phase
+  mousemove swallow ate the HQ's aim while it lasted. The HQ keydown grab
+  re-requests every 1.5 s while unlocked, so walking produced a lock →
+  release cycle every 1.5 s ("a few steps"). Each cycle warps the OS
+  cursor (to the lock origin, then back to where it was); that jump
+  arrives in the HQ's UNLOCKED hover-look branch as one huge movementX —
+  up to half the screen width, ≈ 180° at 0.0032 rad/px. Verified by
+  reading: `_canvas()` is `ThreeRenderer.getCanvas()`, the loop starts at
+  load, and only the mouse handlers / room entry write `H.cam.yaw`.
+- Fix (battle.js): `locked = el === _canvas() && _enabled()` — the module
+  owns a lock only while it is live, so it never releases or swallows the
+  HQ's. Its own stale-lock release still works (the flag was set while
+  enabled).
+- Bandaids removed (three-renderer.js): rev 4's `HQ_LOCK_GRACE`,
+  `HQ_MOVE_MAX`, `_hqMouseDelta`, the `pointerlockchange` stamp handler
+  and the drop-first-two-moves logic are gone; movementX/Y are used raw in
+  both the locked and hover-look branches. Those gates also swallowed real
+  fast flicks (>220 px per coalesced event). `_hqTryLock` (the promise-
+  rejection swallow) and the eased camera boom stay — neither is a
+  workaround for this bug.
+- Rev 4's diagnosis in this log ("Chrome's first-mousemove jump") was
+  wrong on the cause; the cursor jump was real but it was OUR lock churn
+  producing it.
+- Files: battle.js, three-renderer.js, index.html (`?v=20260905e-cors`);
+  DOOR_MASTER.md Part D.

@@ -27602,8 +27602,6 @@ const ThreeRenderer = (function () {
     var HQ_JUMP_V = 7.25;                // real jump (2026-09-04): takeoff speed (m/s) — apex ≈ 1.46 m
     var HQ_GRAV = 18;                    // walker gravity (m/s²) — snappy game-feel arcs
     var HQ_JUMP_AIR = 2 * HQ_JUMP_V / HQ_GRAV;   // flat-ground airtime (s) — sizes one jump-clip playthrough
-    var HQ_LOCK_GRACE = 180;             // ms after a pointer-lock change during which mouse deltas are dropped (2026-09-05 rev 3)
-    var HQ_MOVE_MAX = 220;               // px per mousemove: a bigger single delta is a lock artifact, not a flick
 
     function _hqData() { return (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null; }
     function _hqUnits() { var D = _hqData(); return (D && D.units) || 73; }
@@ -29313,11 +29311,9 @@ const ThreeRenderer = (function () {
         H.onMouseMove = function (e) {
             if (!_hq || H.paused) return;
             if (document.pointerLockElement === canvas) {
-                var dl = _hqMouseDelta(H, e);
-                if (!dl) return;
-                H.cam.yaw += dl.x * 0.0032;
+                H.cam.yaw += (e.movementX || 0) * 0.0032;
                 var pLo = H.fp ? -1.25 : -1.15, pHi = H.fp ? 1.25 : 0.85;
-                H.cam.pitch = Math.max(pLo, Math.min(pHi, H.cam.pitch - dl.y * 0.0032));
+                H.cam.pitch = Math.max(pLo, Math.min(pHi, H.cam.pitch - (e.movementY || 0) * 0.0032));
                 H.lastDragAt = performance.now();
                 return;
             }
@@ -29336,11 +29332,9 @@ const ThreeRenderer = (function () {
                over when the browser grants it, removing the screen edges. */
             var overScene = e.target === canvas || (css2dRenderer && css2dRenderer.domElement.contains(e.target));
             if (overScene) {
-                var dh = _hqMouseDelta(H, e);
-                if (!dh) return;
-                H.cam.yaw += dh.x * 0.0032;
+                H.cam.yaw += (e.movementX || 0) * 0.0032;
                 var hLo = H.fp ? -1.25 : -1.15, hHi = H.fp ? 1.25 : 0.85;
-                H.cam.pitch = Math.max(hLo, Math.min(hHi, H.cam.pitch - dh.y * 0.0032));
+                H.cam.pitch = Math.max(hLo, Math.min(hHi, H.cam.pitch - (e.movementY || 0) * 0.0032));
                 H.lastDragAt = performance.now();
             }
         };
@@ -29351,15 +29345,14 @@ const ThreeRenderer = (function () {
             e.preventDefault();
         };
         H.onContext = function (e) { e.preventDefault(); };
-        /* pointer-lock transitions (2026-09-05 rev 3): when the lock engages
-           Chrome reports the cursor's jump to the lock origin as one huge
-           movementX/Y on the first mousemove (and again as the cursor
-           reappears on release) — that was the "camera snap" on the key
-           that grabbed the lock (WASD grab it since rev 2). Every mouse
-           delta inside HQ_LOCK_GRACE of a transition is dropped, the first
-           two events after it are dropped outright, and any single delta
-           beyond HQ_MOVE_MAX is an artifact, never a flick. */
-        H.onPointerLock = function () { if (!_hq) return; H.lockChangedAt = performance.now(); H.dropMoves = 2; };
+        /* NOTE (2026-09-05 rev 5): the mouse deltas are used raw on purpose.
+           The "180° snap while walking" was never a mouse artifact to filter
+           — battle.js's Strike Mode module read every lock on the shared
+           canvas as its own and released the HQ's lock one frame after each
+           grab (see its pointerlockchange handler); the WASD re-grab every
+           1.5 s turned that into lock/unlock churn whose cursor warps landed
+           here as one huge hover-look delta. Do not reintroduce delta gates:
+           they also swallow real fast flicks. */
         window.addEventListener('keydown', H.onKeyDown, true);
         window.addEventListener('keyup', H.onKeyUp, true);
         window.addEventListener('blur', H.onBlur);
@@ -29368,7 +29361,6 @@ const ThreeRenderer = (function () {
         window.addEventListener('mouseup', H.onMouseUp);
         canvas.addEventListener('wheel', H.onWheel, { passive: false });
         canvas.addEventListener('contextmenu', H.onContext);
-        document.addEventListener('pointerlockchange', H.onPointerLock);
         /* entering rode a click (Play, a door): that activation usually lets
            us capture the pointer immediately — mouse-look with zero clicks */
         _hqTryLock();
@@ -29383,14 +29375,6 @@ const ThreeRenderer = (function () {
             if (p && typeof p.catch === 'function') p.catch(function () {});
         } catch (e) {}
     }
-    /* one mousemove's usable delta, or null while a lock transition settles */
-    function _hqMouseDelta(H, e) {
-        if (H.dropMoves > 0) { H.dropMoves--; return null; }
-        if (H.lockChangedAt && performance.now() - H.lockChangedAt < HQ_LOCK_GRACE) return null;
-        var mx = e.movementX || 0, my = e.movementY || 0;
-        if (Math.abs(mx) > HQ_MOVE_MAX || Math.abs(my) > HQ_MOVE_MAX) return null;
-        return { x: mx, y: my };
-    }
     function _hqUnbindInput() {
         var H = _hq; if (!H) return;
         window.removeEventListener('keydown', H.onKeyDown, true);
@@ -29403,7 +29387,6 @@ const ThreeRenderer = (function () {
         }
         window.removeEventListener('mousemove', H.onMouseMove);
         window.removeEventListener('mouseup', H.onMouseUp);
-        document.removeEventListener('pointerlockchange', H.onPointerLock);
         /* walking into the next room keeps the aim captured (the canvas is
            the same element); leaving the building releases it */
         try { if (!_hqKeepLock && document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {}

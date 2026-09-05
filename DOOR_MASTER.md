@@ -1306,3 +1306,13 @@ User feedback pass on the walkable HQ (four items, all shipped):
   lock transitions and artifact-sized deltas are dropped. Lock requests no
   longer spam rejected promises. The camera boom eases instead of stepping.
 - Files: three-renderer.js, index.html (`?v=20260905d-cors`).
+
+### 2026-09-05 (rev 5) — walking camera snap: battle.js was releasing the HQ's pointer lock
+- battle.js's Strike Mode module treated ANY pointer lock on the shared
+  renderer canvas as its own and its always-on frame loop released it one
+  frame later ("stale lock when the mode ends"). The HQ's WASD re-grab
+  every 1.5 s made a lock/unlock cycle whose cursor warp reached the HQ's
+  hover-look as one huge delta — the 180° snap. The module now owns a lock
+  only while it is enabled; rev 4's delta gates are removed (they hid
+  nothing and swallowed fast flicks).
+- Files: battle.js, three-renderer.js, index.html (`?v=20260905e-cors`).

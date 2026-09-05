@@ -14367,7 +14367,16 @@
                 if (c && c.requestPointerLock) { try { c.requestPointerLock(); } catch (e) {} }
             }
             document.addEventListener('pointerlockchange', () => {
-                locked = !!document.pointerLockElement && document.pointerLockElement === _canvas();
+                /* OWN the lock only while this mode is live. The canvas is the
+                   renderer's shared element and the D.O.O.R. HQ walker locks
+                   the very same canvas for its mouse-look: reading any lock on
+                   it as ours made _frame's stale-lock release below kill the
+                   HQ's lock one frame after every grab, and the capture-phase
+                   mousemove swallow ate its aim — the lock/unlock churn (and
+                   the cursor warps it causes) was the HQ camera's 180° snap
+                   while walking (2026-09-05). */
+                const el = document.pointerLockElement;
+                locked = !!el && el === _canvas() && _enabled();
                 if (!locked) { heldDirs = {}; runHeld = false; }
                 _refreshHud(true);
             });
@@ -15141,7 +15150,8 @@
                 const own = _owns();
                 if (own !== lastOwn) { _onOwnChange(own); lastOwn = own; }
 
-                /* release a stale pointer lock when the mode ends */
+                /* release OUR stale pointer lock when the mode ends (`locked`
+                   is only ever true for a lock this mode took — never the HQ's) */
                 if (locked && !_enabled()) { try { document.exitPointerLock(); } catch (e) {} }
 
                 const u = _localUnit();
