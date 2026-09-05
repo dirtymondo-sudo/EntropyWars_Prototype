@@ -1941,3 +1941,23 @@ sprites.js from the first build stand). `npm test` 113 (112 pass).
   registered and unused. Recruit / roster strings say "headquarters".
 - Files: three-renderer.js, map.js, battle.js, index.html
   (`?v=20260905c-cors`); DOOR_MASTER.md Part D, PLAYTEST_NOTES.md.
+
+### 2026-09-05 (rev 4) — the camera snap on A: a pointer-lock artifact, not the auto-follow
+- Diagnosis: with the mouse still, a keypress cannot touch the yaw (only the
+  mouse handlers write it — verified headlessly). What does fire on a
+  keypress since rev 2 is the pointer-lock grab, and Chrome reports the
+  cursor's jump to the lock origin as one huge movementX/Y on the first
+  mousemove after the lock engages (and again as the cursor reappears on
+  release). That single delta was the snap on A.
+- Fix: `H.onPointerLock` stamps the transition; `_hqMouseDelta` drops the
+  first two mousemoves after it and everything inside `HQ_LOCK_GRACE`
+  (180 ms), and rejects any single delta over `HQ_MOVE_MAX` (220 px) as an
+  artifact. Applies to the locked and the hover-look branches alike.
+- `_hqTryLock` funnels every lock request (entry, WASD/SPACE keydown, canvas
+  click, panel close, V) and swallows the rejected promise newer Chrome
+  returns ("a user gesture is required" / "already locked") — one uncaught
+  rejection per keypress otherwise.
+- Camera boom eased (`c.f`): 32-step march, pulls in over 40 ms, eases back
+  out over 450 ms — passing the desk / a pillar / the stair mass no longer
+  pops the eye a metre in a frame.
+- Files: three-renderer.js, index.html (`?v=20260905d-cors`).

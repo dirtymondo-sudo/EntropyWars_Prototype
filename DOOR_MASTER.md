@@ -1299,3 +1299,10 @@ User feedback pass on the walkable HQ (four items, all shipped):
   roster hangs out here as vessels.
 - Files: three-renderer.js, map.js, battle.js, index.html
   (`?v=20260905c-cors`); DOOR_HQ_BUILD_PLAN.md §9.
+
+### 2026-09-05 (rev 4) — camera snap root-caused
+- The snap on A was Chrome's first-mousemove jump after the pointer lock
+  engages (the keypress grabs the lock); mouse deltas are now gated around
+  lock transitions and artifact-sized deltas are dropped. Lock requests no
+  longer spam rejected promises. The camera boom eases instead of stepping.
+- Files: three-renderer.js, index.html (`?v=20260905d-cors`).

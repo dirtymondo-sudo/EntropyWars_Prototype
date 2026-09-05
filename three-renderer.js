@@ -27602,6 +27602,8 @@ const ThreeRenderer = (function () {
     var HQ_JUMP_V = 7.25;                // real jump (2026-09-04): takeoff speed (m/s) — apex ≈ 1.46 m
     var HQ_GRAV = 18;                    // walker gravity (m/s²) — snappy game-feel arcs
     var HQ_JUMP_AIR = 2 * HQ_JUMP_V / HQ_GRAV;   // flat-ground airtime (s) — sizes one jump-clip playthrough
+    var HQ_LOCK_GRACE = 180;             // ms after a pointer-lock change during which mouse deltas are dropped (2026-09-05 rev 3)
+    var HQ_MOVE_MAX = 220;               // px per mousemove: a bigger single delta is a lock artifact, not a flick
 
     function _hqData() { return (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null; }
     function _hqUnits() { var D = _hqData(); return (D && D.units) || 73; }
@@ -29286,7 +29288,7 @@ const ThreeRenderer = (function () {
                Throttled — a denied request should not spam the console. */
             if ((k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'space') && document.pointerLockElement !== canvas) {
                 var nowL = performance.now();
-                if (!H._lockTryAt || nowL - H._lockTryAt > 1500) { H._lockTryAt = nowL; try { canvas.requestPointerLock(); } catch (er) {} }
+                if (!H._lockTryAt || nowL - H._lockTryAt > 1500) { H._lockTryAt = nowL; _hqTryLock(); }
             }
             if (k === 'e') { e.preventDefault(); _hqInteract(); return; }
             if (k === 'v') { e.preventDefault(); _hqToggleView(); return; }
@@ -29303,7 +29305,7 @@ const ThreeRenderer = (function () {
                captures the pointer — a real third-person camera, not
                click-drag orbit. Drag stays as the fallback while the lock
                is refused or released (ESC gives the cursor back). */
-            try { if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); } catch (er) {}
+            _hqTryLock();
             H.drag = { x: e.clientX, y: e.clientY, moved: false };
             H.lastDragAt = performance.now();
             e.preventDefault();
@@ -29311,9 +29313,11 @@ const ThreeRenderer = (function () {
         H.onMouseMove = function (e) {
             if (!_hq || H.paused) return;
             if (document.pointerLockElement === canvas) {
-                H.cam.yaw += (e.movementX || 0) * 0.0032;
+                var dl = _hqMouseDelta(H, e);
+                if (!dl) return;
+                H.cam.yaw += dl.x * 0.0032;
                 var pLo = H.fp ? -1.25 : -1.15, pHi = H.fp ? 1.25 : 0.85;
-                H.cam.pitch = Math.max(pLo, Math.min(pHi, H.cam.pitch - (e.movementY || 0) * 0.0032));
+                H.cam.pitch = Math.max(pLo, Math.min(pHi, H.cam.pitch - dl.y * 0.0032));
                 H.lastDragAt = performance.now();
                 return;
             }
@@ -29332,9 +29336,11 @@ const ThreeRenderer = (function () {
                over when the browser grants it, removing the screen edges. */
             var overScene = e.target === canvas || (css2dRenderer && css2dRenderer.domElement.contains(e.target));
             if (overScene) {
-                H.cam.yaw += (e.movementX || 0) * 0.0032;
+                var dh = _hqMouseDelta(H, e);
+                if (!dh) return;
+                H.cam.yaw += dh.x * 0.0032;
                 var hLo = H.fp ? -1.25 : -1.15, hHi = H.fp ? 1.25 : 0.85;
-                H.cam.pitch = Math.max(hLo, Math.min(hHi, H.cam.pitch - (e.movementY || 0) * 0.0032));
+                H.cam.pitch = Math.max(hLo, Math.min(hHi, H.cam.pitch - dh.y * 0.0032));
                 H.lastDragAt = performance.now();
             }
         };
@@ -29345,7 +29351,15 @@ const ThreeRenderer = (function () {
             e.preventDefault();
         };
         H.onContext = function (e) { e.preventDefault(); };
-        H.onPointerLock = function () { if (!_hq) return; if (document.pointerLockElement !== canvas && H.fp) { /* released: stay FP, mouse drag still works via drag */ } };
+        /* pointer-lock transitions (2026-09-05 rev 3): when the lock engages
+           Chrome reports the cursor's jump to the lock origin as one huge
+           movementX/Y on the first mousemove (and again as the cursor
+           reappears on release) — that was the "camera snap" on the key
+           that grabbed the lock (WASD grab it since rev 2). Every mouse
+           delta inside HQ_LOCK_GRACE of a transition is dropped, the first
+           two events after it are dropped outright, and any single delta
+           beyond HQ_MOVE_MAX is an artifact, never a flick. */
+        H.onPointerLock = function () { if (!_hq) return; H.lockChangedAt = performance.now(); H.dropMoves = 2; };
         window.addEventListener('keydown', H.onKeyDown, true);
         window.addEventListener('keyup', H.onKeyUp, true);
         window.addEventListener('blur', H.onBlur);
@@ -29357,7 +29371,25 @@ const ThreeRenderer = (function () {
         document.addEventListener('pointerlockchange', H.onPointerLock);
         /* entering rode a click (Play, a door): that activation usually lets
            us capture the pointer immediately — mouse-look with zero clicks */
-        try { if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); } catch (e) {}
+        _hqTryLock();
+    }
+    /* request the lock without console noise: newer Chrome returns a promise
+       that REJECTS when there is no fresh gesture or the pointer is already
+       held — an unhandled rejection per keypress otherwise */
+    function _hqTryLock() {
+        try {
+            if (document.pointerLockElement === canvas) return;
+            var p = canvas.requestPointerLock();
+            if (p && typeof p.catch === 'function') p.catch(function () {});
+        } catch (e) {}
+    }
+    /* one mousemove's usable delta, or null while a lock transition settles */
+    function _hqMouseDelta(H, e) {
+        if (H.dropMoves > 0) { H.dropMoves--; return null; }
+        if (H.lockChangedAt && performance.now() - H.lockChangedAt < HQ_LOCK_GRACE) return null;
+        var mx = e.movementX || 0, my = e.movementY || 0;
+        if (Math.abs(mx) > HQ_MOVE_MAX || Math.abs(my) > HQ_MOVE_MAX) return null;
+        return { x: mx, y: my };
     }
     function _hqUnbindInput() {
         var H = _hq; if (!H) return;
@@ -29385,7 +29417,7 @@ const ThreeRenderer = (function () {
         if (!_hq) return;
         _hq.fp = !_hq.fp;
         /* both views are mouse-look — keep / acquire the pointer either way */
-        try { if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); } catch (e) {}
+        _hqTryLock();
         if (_hq.opts.onView) _hq.opts.onView(_hq.fp);
     }
 
@@ -29532,14 +29564,20 @@ const ThreeRenderer = (function () {
         } else {
             var pivot = new THREE.Vector3(pl.x, headY, pl.z);
             var ideal = pivot.clone().sub(lookDir.clone().multiplyScalar(c.dist));
-            /* boom march: pull in to the first clear point */
-            var f = 1;
-            for (var i = 1; i <= 12; i++) {
-                var t = i / 12;
+            /* boom march: pull in to the first clear point. The fraction is
+               EASED (2026-09-05 rev 3): in fast so the eye never clips, back
+               out slowly so a passing pillar / the desk / the stair mass no
+               longer pops the camera a metre in one frame */
+            var f = 1, NB = 32;
+            for (var i = 1; i <= NB; i++) {
+                var t = i / NB;
                 var px = pivot.x + (ideal.x - pivot.x) * t, py = pivot.y + (ideal.y - pivot.y) * t, pz = pivot.z + (ideal.z - pivot.z) * t;
-                if (_hqCamBlocked(px, pz, py)) { f = Math.max(0.12, (i - 1) / 12); break; }
+                if (_hqCamBlocked(px, pz, py)) { f = Math.max(0.12, (i - 1) / NB); break; }
             }
-            eye = pivot.clone().add(ideal.clone().sub(pivot).multiplyScalar(f));
+            if (c.f == null || !c.init) c.f = f;
+            else if (f < c.f) c.f += (f - c.f) * Math.min(1, dt / 0.04);
+            else c.f += (f - c.f) * Math.min(1, dt / 0.45);
+            eye = pivot.clone().add(ideal.clone().sub(pivot).multiplyScalar(c.f));
             look = pivot.clone().add(lookDir.clone().multiplyScalar(2.5));
         }
         var st = H.fp ? 0.03 : 0.085;
@@ -29868,7 +29906,7 @@ const ThreeRenderer = (function () {
             if (on) { _hq.keys = {}; _hq.drag = null; try { if (document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {} }
             /* unpausing rode the closing click — recapture the aim when the
                browser allows it (hover-look covers it when not) */
-            else { try { if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); } catch (e) {} }
+            else _hqTryLock();
         },
         interact: _hqInteract,
         toggleView: _hqToggleView,
