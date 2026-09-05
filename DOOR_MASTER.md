@@ -1267,3 +1267,16 @@ User feedback pass on the walkable HQ (four items, all shipped):
   on a blocker's footprint lets you walk out (`_hqInBlocker` escape).
 - Files: three-renderer.js, map.js, styles-base.css, index.html
   (`?v=20260905a-cors`); DOOR_HQ_BUILD_PLAN.md §9.
+
+### 2026-09-05 (rev 2) — feedback pass on the controls rework
+- Mouse look needs NO click: unlocked hover-look over the scene steers the
+  camera immediately; pointer lock is grabbed on any gesture (entry click,
+  movement keydowns, canvas clicks, panel closes) and takes over when
+  granted. ESC frees the cursor.
+- Doors that swing open are entered by WALKING through them (renderer
+  `_hqTickAutoEnter` → map.js `_hqWalkThroughDoor`, same direct set as E);
+  E remains for static leaves, locked doors and thresholds — exactly the
+  doors that do not swing.
+- The jump animation plays once per jump (LoopOnce sized to the airtime;
+  SPACE latched to one arc per press).
+- Files: three-renderer.js, map.js, index.html (`?v=20260905b-cors`).

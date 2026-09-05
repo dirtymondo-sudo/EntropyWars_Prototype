@@ -1873,3 +1873,29 @@ sprites.js from the first build stand). `npm test` 113 (112 pass).
 - Hints line updated (SPACE jump · E enter/use · CLICK aim · MOUSE look).
 - Files: three-renderer.js, map.js, styles-base.css, index.html
   (`?v=20260905a-cors`); DOOR_MASTER.md Part D.
+
+### 2026-09-05 (rev 2) — feedback pass: click-free look, walk-through doors, one-shot jump clip
+- **Mouse look with zero clicks.** Unlocked mousemove over the scene (the
+  canvas or the CSS2D nameplate layer) steers the camera via movementX/Y —
+  works the instant you move the mouse; the cursor goes quiet over UI
+  elements. Pointer lock is grabbed opportunistically on every available
+  gesture (the Play/door click that entered the room via `_hqBindInput`,
+  WASD/SPACE keydowns throttled to one try per 1.5 s, canvas clicks, panel-
+  closing clicks via `setPaused(false)`) and simply takes over when granted,
+  removing the screen-edge limit. ESC still frees the cursor.
+- **Walk-through doors.** `_hqTickAutoEnter` (per-frame, after the target
+  scan): when the targeted door has `motion`, is unlocked, and has swung
+  open (openT ≥ 0.55), pressing into the doorway while moving toward it
+  (within the opening width, ≤0.9 m off the wall plane, heading dot > 0.35)
+  fires `opts.onEnterDoor` once per approach (latch re-arms when you step
+  out). map.js `_hqWalkThroughDoor` runs the same direct set as E
+  (`_hqDoorDirectAction`, shared refactor); panel-only doors no-op — and
+  static leaves (vault, portcullis, revolving, wired doubles, bulkheads)
+  never swing, so exactly those still want E, per the user's rule.
+- **Jump fires once.** Two causes fixed: the jump clip looped (LoopRepeat)
+  because the physics airtime (0.81 s) outlived the short clip — the HQ
+  player's jump action is now LoopOnce + clampWhenFinished with timeScale
+  sized to `HQ_JUMP_AIR`, holding the last frame on long falls; and held
+  SPACE re-fired the arc on landing — `pl._jumpLatch` makes it one jump per
+  press.
+- Files: three-renderer.js, map.js, index.html (`?v=20260905b-cors`).

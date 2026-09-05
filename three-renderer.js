@@ -27599,6 +27599,7 @@ const ThreeRenderer = (function () {
     var HQ_STEP_TOL = 0.62;              // max height change per move (m) — railings, ledges
     var HQ_JUMP_V = 7.25;                // real jump (2026-09-04): takeoff speed (m/s) — apex ≈ 1.46 m
     var HQ_GRAV = 18;                    // walker gravity (m/s²) — snappy game-feel arcs
+    var HQ_JUMP_AIR = 2 * HQ_JUMP_V / HQ_GRAV;   // flat-ground airtime (s) — sizes one jump-clip playthrough
 
     function _hqData() { return (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null; }
     function _hqUnits() { var D = _hqData(); return (D && D.units) || 73; }
@@ -29236,6 +29237,13 @@ const ThreeRenderer = (function () {
             if (!k) return;
             if (k === 'esc') { e.preventDefault(); e.stopPropagation(); if (H.opts.onEscape) H.opts.onEscape(); return; }
             if (H.paused) return;
+            /* a gameplay key is a user gesture: grab the pointer so the mouse
+               aims edge-free with no click (hover-look covers it until then).
+               Throttled — a denied request should not spam the console. */
+            if ((k === 'w' || k === 'a' || k === 's' || k === 'd' || k === 'space') && document.pointerLockElement !== canvas) {
+                var nowL = performance.now();
+                if (!H._lockTryAt || nowL - H._lockTryAt > 1500) { H._lockTryAt = nowL; try { canvas.requestPointerLock(); } catch (er) {} }
+            }
             if (k === 'e') { e.preventDefault(); _hqInteract(); return; }
             if (k === 'v') { e.preventDefault(); _hqToggleView(); return; }
             /* Q = answer a BELL call from anywhere in the building (HQ plan D2) */
@@ -29265,12 +29273,26 @@ const ThreeRenderer = (function () {
                 H.lastDragAt = performance.now();
                 return;
             }
-            if (!H.drag) return;
-            var dx = e.clientX - H.drag.x, dy = e.clientY - H.drag.y;
-            H.drag.x = e.clientX; H.drag.y = e.clientY; H.drag.moved = true;
-            H.cam.yaw += dx * 0.0052;
-            H.cam.pitch = Math.max(-1.15, Math.min(0.75, H.cam.pitch - dy * 0.0036));
-            H.lastDragAt = performance.now();
+            if (H.drag) {
+                var dx = e.clientX - H.drag.x, dy = e.clientY - H.drag.y;
+                H.drag.x = e.clientX; H.drag.y = e.clientY; H.drag.moved = true;
+                H.cam.yaw += dx * 0.0052;
+                H.cam.pitch = Math.max(-1.15, Math.min(0.75, H.cam.pitch - dy * 0.0036));
+                H.lastDragAt = performance.now();
+                return;
+            }
+            /* no click needed (2026-09-05): moving the mouse over the scene
+               aims the camera — movementX/Y exist on plain mousemove too.
+               Buttons / panels are other elements, so the cursor goes quiet
+               over UI. Pointer lock (grabbed on any key/click gesture) takes
+               over when the browser grants it, removing the screen edges. */
+            var overScene = e.target === canvas || (css2dRenderer && css2dRenderer.domElement.contains(e.target));
+            if (overScene) {
+                H.cam.yaw += (e.movementX || 0) * 0.0032;
+                var hLo = H.fp ? -1.25 : -1.15, hHi = H.fp ? 1.25 : 0.85;
+                H.cam.pitch = Math.max(hLo, Math.min(hHi, H.cam.pitch - (e.movementY || 0) * 0.0032));
+                H.lastDragAt = performance.now();
+            }
         };
         H.onMouseUp = function () { if (_hq) H.drag = null; };
         H.onWheel = function (e) {
@@ -29289,6 +29311,9 @@ const ThreeRenderer = (function () {
         canvas.addEventListener('wheel', H.onWheel, { passive: false });
         canvas.addEventListener('contextmenu', H.onContext);
         document.addEventListener('pointerlockchange', H.onPointerLock);
+        /* entering rode a click (Play, a door): that activation usually lets
+           us capture the pointer immediately — mouse-look with zero clicks */
+        try { if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); } catch (e) {}
     }
     function _hqUnbindInput() {
         var H = _hq; if (!H) return;
@@ -29359,8 +29384,11 @@ const ThreeRenderer = (function () {
         pl.moving = moving; pl.running = running;
         /* real jump (2026-09-04): a physics arc replaces the cosmetic hop.
            Apex ≈ 1.46 m — over the mezzanine railing down to the floor, onto
-           and over the dispatch counter, over couches and cabinets. */
-        if (k.space && !pl.air && !H.paused) { pl.air = true; pl.vy = HQ_JUMP_V; pl.jumpT = 0; }
+           and over the dispatch counter, over couches and cabinets. The latch
+           makes SPACE one jump per press (held space no longer re-fires the
+           arc — and the clip — on landing). */
+        if (k.space && !pl.air && !pl._jumpLatch && !H.paused) { pl.air = true; pl.vy = HQ_JUMP_V; pl.jumpT = 0; }
+        pl._jumpLatch = !!k.space;
         if (pl.air && !H.paused) {
             pl.jumpT += dt;
             pl.vy -= HQ_GRAV * dt;
@@ -29421,7 +29449,21 @@ const ThreeRenderer = (function () {
                 }
             }
             if (!e.mixer) continue;
-            if (want !== e._ew_curAnim) _playUnitModelAnim(e, want);
+            if (want !== e._ew_curAnim) {
+                _playUnitModelAnim(e, want);
+                /* the HQ jump is ONE physics arc (2026-09-05): play the clip
+                   once, sized to the airtime, and hold the last frame until
+                   landing — at the default LoopRepeat the short clip fired
+                   twice per jump. The hq-player entry is HQ-local, so the
+                   action mutation never leaks into battle free-roam. */
+                if (ch.kind === 'player' && want === 'jump' && e.actions && e.actions.jump && e._ew_curAnim === 'jump') {
+                    var ja = e.actions.jump;
+                    ja.setLoop(THREE.LoopOnce, 1);
+                    ja.clampWhenFinished = true;
+                    var jc = ja.getClip();
+                    if (jc && jc.duration) ja.timeScale = jc.duration / HQ_JUMP_AIR;
+                }
+            }
             e.mixer.update(dt);
         }
     }
@@ -29491,6 +29533,7 @@ const ThreeRenderer = (function () {
             if (H.opts.onPrompt) { try { H.opts.onPrompt(t); } catch (e) {} }
         }
         _hqTickDoors(dt, key);
+        _hqTickAutoEnter(t);
         if (H.opts.onDebug && now - H.lastDebug > 250) {
             H.lastDebug = now;
             var pl = H.player;
@@ -29506,6 +29549,41 @@ const ThreeRenderer = (function () {
        hatches, the portcullis, the revolving door, the frame) have no
        `motion` and never move. */
     var HQ_DOOR_LOCKED = { sealed: 1, clearance: 1, off: 1 };
+    /* Walk-through doors (2026-09-05): a door that swung itself open is
+       entered by walking into it — no E. E stays for doors that keep still
+       (static leaves like the vault / portcullis / revolving door, locked
+       states, and thresholds — map.js decides what each door actually does;
+       the renderer only reports the press-in via opts.onEnterDoor). The
+       latch fires once per approach: step out of the doorway to re-arm. */
+    function _hqTickAutoEnter(t) {
+        var H = _hq, pl = H.player;
+        if (!pl || H.paused || !H.opts.onEnterDoor) return;
+        var rec = (t && t.kind === 'door') ? t.rec : null;
+        if (!rec || !rec.motion || rec.openT < 0.55 || HQ_DOOR_LOCKED[rec.state]) { H.enterDoorLatch = null; return; }
+        var press = false, toward = 0;
+        var dirX = Math.sin(pl.targetYaw), dirZ = Math.cos(pl.targetYaw);
+        var ow2 = (rec.ow || (rec.wide ? 2.2 : 1.1)) / 2 + 0.12;
+        if (rec.box) {
+            var ox = pl.x - rec.box.wx, oz = pl.z - rec.box.wz;
+            var inF = ox * rec.box.nx + oz * rec.box.nz;
+            var side = Math.abs(ox * rec.box.nz - oz * rec.box.nx);
+            toward = -(dirX * rec.box.nx + dirZ * rec.box.nz);
+            press = inF > -0.2 && inF < 0.9 && side < ow2;
+        } else {
+            var r = Math.hypot(pl.x, pl.z) || 0.001;
+            var deg = _hqNormDeg(Math.atan2(pl.x, -pl.z) * 180 / Math.PI);
+            var gap = rec.inward ? (r - rec.Rw) : (rec.Rw - r);
+            var arcOff = Math.abs(_hqDegDiff(deg, rec.door.deg)) * Math.PI / 180 * r;
+            toward = ((dirX * pl.x + dirZ * pl.z) / r) * (rec.inward ? -1 : 1);
+            press = gap > -0.2 && gap < 0.9 && arcOff < ow2;
+        }
+        if (press && pl.moving && toward > 0.35) {
+            if (H.enterDoorLatch !== rec.door.id) {
+                H.enterDoorLatch = rec.door.id;
+                try { H.opts.onEnterDoor(t); } catch (e) { console.warn('[HQ] onEnterDoor failed', e); }
+            }
+        } else if (!press) H.enterDoorLatch = null;
+    }
     function _hqTickDoors(dt, targetKey) {
         var H = _hq;
         for (var i = 0; i < H.doors.length; i++) {
@@ -29732,7 +29810,14 @@ const ThreeRenderer = (function () {
         leave: _hqLeave,
         active: function () { return !!_hq; },
         room: function () { return _hq ? (_hq.opts.room || 'central_egress') : null; },
-        setPaused: function (on) { if (_hq) { _hq.paused = !!on; if (on) { _hq.keys = {}; _hq.drag = null; try { if (document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {} } } },
+        setPaused: function (on) {
+            if (!_hq) return;
+            _hq.paused = !!on;
+            if (on) { _hq.keys = {}; _hq.drag = null; try { if (document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {} }
+            /* unpausing rode the closing click — recapture the aim when the
+               browser allows it (hover-look covers it when not) */
+            else { try { if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); } catch (e) {} }
+        },
         interact: _hqInteract,
         toggleView: _hqToggleView,
         isFirstPerson: function () { return !!(_hq && _hq.fp); },

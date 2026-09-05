@@ -327,6 +327,7 @@
                 host, room: roomId, profile, avatar: _hqAvatar(profile),
                 onPrompt: _hqSetPrompt,
                 onInteract: _hqInteractTarget,
+                onEnterDoor: _hqWalkThroughDoor,
                 /* ESC: close the panel, else Settings (plan D6 — an overlay,
                    not a place); EXIT on the strip is how you leave */
                 onEscape: () => { if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenSettings(); },
@@ -855,27 +856,40 @@
             if (!line && room && room.lines && room.lines.length) line = room.lines[Math.floor(Math.random() * room.lines.length)];
             return `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div><p class="hq-panel-line">${_hqEsc(line || '…')}</p><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>`;
         }
-        /* E on a plain unlocked door walks straight through (2026-09-04): no
-           confirmation panel when the door has exactly one obvious outcome —
-           a built room, a bay corridor, or a screen. Thresholds keep their
-           panel (the site file / CROSS vs DEEP choice IS the content), and so
-           do locked doors (the panel explains the gate), doors with alt
-           actions, unbuilt interiors, counters and NPCs. */
+        /* A plain unlocked door with exactly one obvious outcome — a built
+           room, a bay corridor, or a screen — is entered directly, no
+           confirmation panel. Thresholds keep their panel (the site file /
+           CROSS vs DEEP choice IS the content), and so do locked doors (the
+           panel explains the gate), doors with alt actions, and unbuilt
+           interiors. Returns the action to run, or null = panel material. */
+        function _hqDoorDirectAction(t) {
+            const d = t.door, act = d.action || {};
+            const st = (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, _hqProfile()) : 'open';
+            if (st === 'sealed' || st === 'clearance' || st === 'off') return null;
+            if (act.mission || d.alt || d.alt2) return null;
+            if (act.room && _hqRoomExists(act.room)) return { room: act.room, at: act.at || null };
+            if (act.sector) {
+                const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(act.sector) : ('bay_' + act.sector);
+                if (_hqRoomExists(bayId)) return { room: bayId, at: 'egress' };
+            }
+            if (act.fn && typeof window[act.fn] === 'function') return { fn: act.fn };
+            return null;
+        }
+        /* E: direct doors go through, everything else opens its panel */
         function _hqInteractTarget(t) {
             if (t && t.kind === 'door' && t.door) {
-                const d = t.door, act = d.action || {};
-                const st = (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, _hqProfile()) : 'open';
-                const locked = st === 'sealed' || st === 'clearance' || st === 'off';
-                if (!locked && !act.mission && !d.alt && !d.alt2) {
-                    if (act.room && _hqRoomExists(act.room)) { window._hqDoAction({ room: act.room, at: act.at || null }, t); return; }
-                    if (act.sector) {
-                        const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(act.sector) : ('bay_' + act.sector);
-                        if (_hqRoomExists(bayId)) { window._hqDoAction({ room: bayId, at: 'egress' }, t); return; }
-                    }
-                    if (act.fn && typeof window[act.fn] === 'function') { window._hqDoAction({ fn: act.fn }, t); return; }
-                }
+                const act = _hqDoorDirectAction(t);
+                if (act) { window._hqDoAction(act, t); return; }
             }
             _hqOpenPanel(t);
+        }
+        /* walking into a door that swung open (renderer onEnterDoor,
+           2026-09-05): same direct set, silently ignored for panel doors —
+           you cannot walk through a door that stayed shut anyway */
+        function _hqWalkThroughDoor(t) {
+            if (!t || t.kind !== 'door' || !t.door) return;
+            const act = _hqDoorDirectAction(t);
+            if (act) window._hqDoAction(act, t);
         }
         function _hqOpenPanel(t) {
             if (!t) return;
