@@ -306,7 +306,9 @@
             window._hqClosePanel();
             _hqSetPrompt(null);
             const load = _hqEl('hqLoad');
-            if (load) { load.style.display = ''; load.classList.remove('done'); }
+            /* walking room-to-room (2026-09-04): no load card — a fast
+               door-blink (dip to black) while the next room builds */
+            if (load) { load.style.display = ''; load.classList.remove('done'); load.classList.toggle('walk', walking); }
             const note = _hqEl('hqLoadNote');
             if (note) note.textContent = walking ? ('admitting you to ' + String(roomDef.label || roomId).toLowerCase() + '…') : (returning ? 're-admitting… your corners are where you left them' : 'verifying your corners…');
             const debug = /[?&]hqdebug\b/.test(location.search) || !!window.EW_HQ_DEBUG;
@@ -324,17 +326,17 @@
             const ok = ThreeRenderer.hq.enter({
                 host, room: roomId, profile, avatar: _hqAvatar(profile),
                 onPrompt: _hqSetPrompt,
-                onInteract: _hqOpenPanel,
+                onInteract: _hqInteractTarget,
                 /* ESC: close the panel, else Settings (plan D6 — an overlay,
                    not a place); EXIT on the strip is how you leave */
                 onEscape: () => { if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenSettings(); },
                 /* Q: answer a BELL call from anywhere in the building (plan D2) */
                 onHotkey: (k) => { if (k === 'q') _hqOpenCounter('dispatch'); },
                 onReady: () => {
-                    const wait = Math.max(0, 900 - (performance.now() - _hqEnteredAt));
+                    const wait = Math.max(0, (walking ? 150 : 900) - (performance.now() - _hqEnteredAt));
                     setTimeout(() => {
                         const l = _hqEl('hqLoad');
-                        if (l) { l.classList.add('done'); setTimeout(() => { l.style.display = 'none'; }, 650); }
+                        if (l) { l.classList.add('done'); setTimeout(() => { l.style.display = 'none'; l.classList.remove('walk'); }, walking ? 320 : 650); }
                     }, wait);
                 },
                 onView: (fp) => { const h = _hqEl('hqHints'); if (h) h.classList.toggle('fp', !!fp); },
@@ -852,6 +854,28 @@
             let line = t.line;
             if (!line && room && room.lines && room.lines.length) line = room.lines[Math.floor(Math.random() * room.lines.length)];
             return `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div><p class="hq-panel-line">${_hqEsc(line || '…')}</p><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>`;
+        }
+        /* E on a plain unlocked door walks straight through (2026-09-04): no
+           confirmation panel when the door has exactly one obvious outcome —
+           a built room, a bay corridor, or a screen. Thresholds keep their
+           panel (the site file / CROSS vs DEEP choice IS the content), and so
+           do locked doors (the panel explains the gate), doors with alt
+           actions, unbuilt interiors, counters and NPCs. */
+        function _hqInteractTarget(t) {
+            if (t && t.kind === 'door' && t.door) {
+                const d = t.door, act = d.action || {};
+                const st = (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, _hqProfile()) : 'open';
+                const locked = st === 'sealed' || st === 'clearance' || st === 'off';
+                if (!locked && !act.mission && !d.alt && !d.alt2) {
+                    if (act.room && _hqRoomExists(act.room)) { window._hqDoAction({ room: act.room, at: act.at || null }, t); return; }
+                    if (act.sector) {
+                        const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(act.sector) : ('bay_' + act.sector);
+                        if (_hqRoomExists(bayId)) { window._hqDoAction({ room: bayId, at: 'egress' }, t); return; }
+                    }
+                    if (act.fn && typeof window[act.fn] === 'function') { window._hqDoAction({ fn: act.fn }, t); return; }
+                }
+            }
+            _hqOpenPanel(t);
         }
         function _hqOpenPanel(t) {
             if (!t) return;

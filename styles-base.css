@@ -4150,6 +4150,10 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-load-card span { font-size: 10px; letter-spacing: 0.3em; color: #b8a060; }
 .hq-load-card i { font-style: normal; font-size: 10px; color: #7f7a6e; margin-top: 12px; animation: hqBlink 1.4s steps(2) infinite; }
 @keyframes hqBlink { 50% { opacity: 0.35; } }
+/* walking room-to-room (2026-09-04): the load screen becomes a door-blink —
+   no card, just a quick dip to black while the next room builds */
+.hq-load.walk { transition: opacity 0.26s ease; }
+.hq-load.walk .hq-load-card { display: none; }
 /* main-menu dev pill (isolated entry; hidden unless ?hqdev / localStorage ew_hqdev) */
 .hq-dev-pill { position: absolute; right: 18px; bottom: 44px; z-index: 5; font: 10px 'IBM Plex Mono', monospace; letter-spacing: 0.16em; color: #d59aff; background: rgba(20,4,24,0.85); border: 1px solid #8a3aa5; padding: 6px 10px; cursor: pointer; }
 .hq-dev-pill:hover { background: rgba(138,58,165,0.35); }

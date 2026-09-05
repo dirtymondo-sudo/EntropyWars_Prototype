@@ -1835,3 +1835,41 @@ sprites.js from the first build stand). `npm test` 113 (112 pass).
   `holo_red` untouched.
 - Files: three-renderer.js, sprites.js, index.html (`?v=20260904j-cors`);
   DOOR_MASTER.md Part D.
+
+### 2026-09-05 — controls rework (user feedback): mouse-look TP camera, E walks through doors, door-blink room transitions, a real jump
+- **Camera:** third person is pointer-lock mouse-look now, same as FP — click
+  the canvas once to capture, the mouse aims (yaw free, pitch clamped
+  −1.15…0.85 in TP), WHEEL still zooms, V still toggles FP. Click-drag orbit
+  remains only as the unlocked fallback. `setPaused(true)` (any panel/modal)
+  releases the lock so the cursor works; walking through a door KEEPS it
+  (`_hqKeepLock` holds the lock through the leave/enter rebuild since the
+  shared canvas is the same element). Auto-follow only runs while unlocked.
+- **Doors:** `_hqInteractTarget` (map.js) fronts `_hqOpenPanel`: E on an
+  unlocked single-outcome door (`action.room` with a built interior,
+  `action.sector` with a built bay, or `action.fn`) fires `_hqDoAction`
+  directly — no panel. Panels remain for thresholds (`action.mission`),
+  locked states (sealed/clearance/off — the panel explains the gate),
+  `alt`/`alt2` doors, unbuilt interiors, counters, NPCs, notices.
+- **Transitions:** `_hqEnter({from:'walk'})` adds `walk` to `#hqLoad` — the
+  card is hidden (styles-base.css `.hq-load.walk`), the overlay is a plain
+  0.26 s black blink, min-wait 150 ms (was 900 ms), fade-back 320 ms. First
+  entry from Play and post-match returns keep the full clearance-check card.
+  Props still stream in async on a first bay visit (browser-cached after) —
+  acceptable; full seamlessness would mean all rooms in one scene with real
+  doorways (collision + occlusion + memory work), logged as a later phase.
+- **Jump:** replaced the cosmetic hop with physics: `HQ_JUMP_V` 7.25,
+  `HQ_GRAV` 18 → apex ≈ 1.46 m, ~0.8 s air. Space (grounded) sets
+  `pl.air/vy`; airborne horizontal moves check `_hqAirOK` (hard walls, arcs,
+  stair masses; the mezz railing band crossable only with feet above
+  wallH+1.15) and ignore blockers; descent lands on
+  `_hqSurface(x,z,null,true)` (0 fallback under the band edges).
+  `_hqSurface` learned two surfaces on the rotunda desk: the counter top
+  (`desk.h`) and the hollow-centre plinth (0.05 m) — STEP_TOL still forbids
+  walking on/off, so the counter/middle are jump-only, as asked ("jump into
+  the middle circular table area"). Landing inside a blocker footprint is
+  escapable (`_hqInBlocker` → probes skip blockers until clear). `_hqGoTo`
+  resets air state. Anim: `jumpT` ≥ 0 still drives the jump clip + landing
+  squash.
+- Hints line updated (SPACE jump · E enter/use · CLICK aim · MOUSE look).
+- Files: three-renderer.js, map.js, styles-base.css, index.html
+  (`?v=20260905a-cors`); DOOR_MASTER.md Part D.

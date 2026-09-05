@@ -27590,12 +27590,15 @@ const ThreeRenderer = (function () {
      *  window.EW_HQ_NO_PROPS (shell only), window.EW_HQ_NO_POST (bare render).
      * ══════════════════════════════════════════════════════════════════ */
     var _hq = null;                      // live visit, or null
+    var _hqKeepLock = false;             // room-to-room rebuild: hold the pointer lock through leave/enter
     var _hqTexCache = {};                // 'name|ru|rv' -> THREE.Texture
     var _hqPropMatCache = new Map();     // source material uuid -> converted Lambert
     var _hqGlyphTex = null;
     var _hqSealTex = null;
     var HQ_BODY_R = 0.34;                // walker body radius (m)
     var HQ_STEP_TOL = 0.62;              // max height change per move (m) — railings, ledges
+    var HQ_JUMP_V = 7.25;                // real jump (2026-09-04): takeoff speed (m/s) — apex ≈ 1.46 m
+    var HQ_GRAV = 18;                    // walker gravity (m/s²) — snappy game-feel arcs
 
     function _hqData() { return (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null; }
     function _hqUnits() { var D = _hqData(); return (D && D.units) || 73; }
@@ -28969,7 +28972,7 @@ const ThreeRenderer = (function () {
             id: spec.id, kind: spec.kind || 'npc', entry: entry, unit: unit, def: def,
             x: p.x / U, z: p.z / U, y: y, visY: y, yaw: yaw, targetYaw: yaw,
             line: spec.line || null, label: spec.label || (race.charAt(0).toUpperCase() + race.slice(1)),
-            race: race, gender: gender, heightM: 1.75 * (def.heightRatio || 1), cleaned: false, moving: false, running: false, jumpT: -1,
+            race: race, gender: gender, heightM: 1.75 * (def.heightRatio || 1), cleaned: false, moving: false, running: false, jumpT: -1, air: false, vy: 0,
         };
         _hq.chars.push(ch);
         if (spec.kind !== 'player') _hq.blockers.push({ obj: entry.group, rad: 0.42, y: y, npc: true });
@@ -29079,8 +29082,17 @@ const ThreeRenderer = (function () {
                 if (_hqWithinArc(deg, stairs[si].from, stairs[si].to, 0.4) && r >= stairs[si].rIn - 0.25) { inStairMass = true; break; }
             }
             if (inStairMass) return null;
-            var deskR = (room.desk && room.desk.rOuter) || 0;
+            var DK = room.desk, deskR = (DK && DK.rOuter) || 0;
             if (r <= S.radius - 0.5 && r >= deskR + HQ_BODY_R + 0.1) y = 0;
+            else if (DK && r < deskR + HQ_BODY_R + 0.1) {
+                /* the dispatch desk (2026-09-04, real jump): the counter top
+                   is a surface a jump can land on, and the hollow centre is a
+                   floor (the concrete plinth sits at 0.05 m). HQ_STEP_TOL
+                   keeps walking on/off impossible — jumping is the only way
+                   onto the counter or into the middle. */
+                if (DK.rInner && r <= DK.rInner - HQ_BODY_R - 0.05) y = 0.05;
+                else y = DK.h || 1.05;
+            }
         }
         if (y === null) return null;
         if (curY != null && Math.abs(y - curY) > HQ_STEP_TOL) return null;
@@ -29094,6 +29106,42 @@ const ThreeRenderer = (function () {
             }
         }
         return y;
+    }
+    /* ── airborne queries (2026-09-04, real jump) ────────────────────────
+       _hqAirOK: may the airborne body occupy (x, z) at foot height y?
+       Hard walls stay hard; step tolerances and furniture blockers do NOT
+       apply (that is what jumping is for). Crossing a mass with no floor —
+       the mezzanine railing band, the slab edge — needs the feet above it. */
+    function _hqAirOK(x, z, y) {
+        var room = _hq.room, S = room.shell;
+        var r = Math.hypot(x, z);
+        if (room.kind === 'box') return Math.abs(x) <= S.w / 2 - HQ_BODY_R - 0.08 && Math.abs(z) <= S.d / 2 - HQ_BODY_R - 0.08;
+        var deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
+        if (room.kind === 'bay') {
+            var capPad = ((0.15 + HQ_BODY_R) / Math.max(1, r)) * 180 / Math.PI;
+            if (!_hqWithinArc(deg, S.arc[0] + capPad, S.arc[1] - capPad, 0)) return false;
+            return r >= S.rIn + HQ_BODY_R + 0.08 && r <= S.rOut - HQ_BODY_R - 0.08;
+        }
+        var wallR = (y > S.wallH * 0.6) ? S.mezz.outer : S.radius;
+        if (r > wallR - HQ_BODY_R - 0.08) return false;
+        var s = _hqSurface(x, z, null, true);
+        if (s !== null) return y >= s - 0.05;   // over a floor / stair / the desk top: stay above it
+        /* no floor here: only known jumpable masses may be overflown */
+        if (r >= S.mezz.inner - 0.15 && r <= S.mezz.inner + 0.62) return y > S.wallH + 1.15;   // the mezzanine railing
+        return false;   // stair flanks and the slab edge stay solid
+    }
+    /* is the walker's disc overlapping any blocker? (a jump can land on a
+       couch's footprint — movement then ignores blockers until clear) */
+    function _hqInBlocker(x, z, y) {
+        var U = _hqUnits();
+        for (var i = 0; i < _hq.blockers.length; i++) {
+            var b = _hq.blockers[i];
+            if (b.y != null && Math.abs(b.y - y) > 1.2) continue;
+            var bx = b.obj.position.x / U, bz = b.obj.position.z / U;
+            if (b.rect) { if (Math.abs(x - bx) < b.rect.hw + HQ_BODY_R && Math.abs(z - bz) < b.rect.hd + HQ_BODY_R) return true; continue; }
+            if (Math.hypot(bx - x, bz - z) < b.rad + HQ_BODY_R) return true;
+        }
+        return false;
     }
     /* highest surface under a free point (camera boom), ignoring the walker's height */
     function _hqCamBlocked(px, pz, py) {
@@ -29199,16 +29247,22 @@ const ThreeRenderer = (function () {
         H.onBlur = function () { if (_hq) { H.keys = {}; H.drag = null; } };
         H.onMouseDown = function (e) {
             if (!_hq || H.paused) return;
-            if (H.fp) { try { if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); } catch (er) {} return; }
+            /* both views aim with the mouse (2026-09-04): the first click
+               captures the pointer — a real third-person camera, not
+               click-drag orbit. Drag stays as the fallback while the lock
+               is refused or released (ESC gives the cursor back). */
+            try { if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); } catch (er) {}
             H.drag = { x: e.clientX, y: e.clientY, moved: false };
             H.lastDragAt = performance.now();
             e.preventDefault();
         };
         H.onMouseMove = function (e) {
             if (!_hq || H.paused) return;
-            if (H.fp && document.pointerLockElement === canvas) {
+            if (document.pointerLockElement === canvas) {
                 H.cam.yaw += (e.movementX || 0) * 0.0032;
-                H.cam.pitch = Math.max(-1.25, Math.min(1.25, H.cam.pitch - (e.movementY || 0) * 0.0032));
+                var pLo = H.fp ? -1.25 : -1.15, pHi = H.fp ? 1.25 : 0.85;
+                H.cam.pitch = Math.max(pLo, Math.min(pHi, H.cam.pitch - (e.movementY || 0) * 0.0032));
+                H.lastDragAt = performance.now();
                 return;
             }
             if (!H.drag) return;
@@ -29249,7 +29303,9 @@ const ThreeRenderer = (function () {
         window.removeEventListener('mousemove', H.onMouseMove);
         window.removeEventListener('mouseup', H.onMouseUp);
         document.removeEventListener('pointerlockchange', H.onPointerLock);
-        try { if (document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {}
+        /* walking into the next room keeps the aim captured (the canvas is
+           the same element); leaving the building releases it */
+        try { if (!_hqKeepLock && document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {}
     }
     function _hqInteract() {
         if (!_hq || _hq.paused) return;
@@ -29259,8 +29315,8 @@ const ThreeRenderer = (function () {
     function _hqToggleView() {
         if (!_hq) return;
         _hq.fp = !_hq.fp;
-        if (_hq.fp) { try { canvas.requestPointerLock(); } catch (e) {} }
-        else { try { if (document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {} }
+        /* both views are mouse-look — keep / acquire the pointer either way */
+        try { if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); } catch (e) {}
         if (_hq.opts.onView) _hq.opts.onView(_hq.fp);
     }
 
@@ -29278,31 +29334,45 @@ const ThreeRenderer = (function () {
             var rx = Math.cos(H.cam.yaw), rz = Math.sin(H.cam.yaw);      // camera right
             mx = fx * (-iy) + rx * ix; mz = fz * (-iy) + rz * ix;
             var ml = Math.hypot(mx, mz); if (ml > 0.001) { mx /= ml; mz /= ml; }
-            var speed = running ? 4.6 : 2.4;   // m/s
+            var speed = running ? 4.6 : 2.4;   // m/s (air control keeps it)
             var nx = pl.x + mx * speed * dt, nz = pl.z + mz * speed * dt;
-            /* axis-separated slide with a body-radius look-ahead */
-            var y1 = _hqSurface(nx + Math.sign(mx) * HQ_BODY_R * 0.6, pl.z, pl.y);
-            if (y1 !== null) { pl.x = nx; pl.y = y1; }
-            var y2 = _hqSurface(pl.x, nz + Math.sign(mz) * HQ_BODY_R * 0.6, pl.y);
-            if (y2 !== null) { pl.z = nz; pl.y = y2; }
-            if (y1 === null && y2 === null) {
-                /* try the exact point (thin gaps like a stair mouth) */
-                var y3 = _hqSurface(nx, nz, pl.y);
-                if (y3 !== null) { pl.x = nx; pl.z = nz; pl.y = y3; }
+            if (pl.air) {
+                /* airborne: hard walls only — no step limits, no furniture */
+                if (_hqAirOK(nx, pl.z, pl.y)) pl.x = nx;
+                if (_hqAirOK(pl.x, nz, pl.y)) pl.z = nz;
+            } else {
+                /* axis-separated slide with a body-radius look-ahead; a jump
+                   can land on a couch's footprint — then walk out of it */
+                var skipB = _hqInBlocker(pl.x, pl.z, pl.y);
+                var y1 = _hqSurface(nx + Math.sign(mx) * HQ_BODY_R * 0.6, pl.z, pl.y, skipB);
+                if (y1 !== null) { pl.x = nx; pl.y = y1; }
+                var y2 = _hqSurface(pl.x, nz + Math.sign(mz) * HQ_BODY_R * 0.6, pl.y, skipB);
+                if (y2 !== null) { pl.z = nz; pl.y = y2; }
+                if (y1 === null && y2 === null) {
+                    /* try the exact point (thin gaps like a stair mouth) */
+                    var y3 = _hqSurface(nx, nz, pl.y, skipB);
+                    if (y3 !== null) { pl.x = nx; pl.z = nz; pl.y = y3; }
+                }
             }
             pl.targetYaw = Math.atan2(mx, mz);
         }
         pl.moving = moving; pl.running = running;
-        /* cosmetic hop */
-        if (k.space && pl.jumpT < 0 && !H.paused) pl.jumpT = 0;
-        var yJump = 0;
-        if (pl.jumpT >= 0) {
+        /* real jump (2026-09-04): a physics arc replaces the cosmetic hop.
+           Apex ≈ 1.46 m — over the mezzanine railing down to the floor, onto
+           and over the dispatch counter, over couches and cabinets. */
+        if (k.space && !pl.air && !H.paused) { pl.air = true; pl.vy = HQ_JUMP_V; pl.jumpT = 0; }
+        if (pl.air && !H.paused) {
             pl.jumpT += dt;
-            var JT = 0.55;
-            if (pl.jumpT >= JT) { pl.jumpT = -1; if (pl.entry) pl.entry._ew_hqLandAt = performance.now(); }
-            else yJump = Math.sin((pl.jumpT / JT) * Math.PI) * 0.55;
+            pl.vy -= HQ_GRAV * dt;
+            var ny = pl.y + pl.vy * dt;
+            if (pl.vy < 0) {
+                var land = _hqSurface(pl.x, pl.z, null, true);
+                if (land === null || land > pl.y + 0.01) land = 0;   // over a band edge: the ground breaks the fall
+                if (ny <= land) { ny = land; pl.air = false; pl.vy = 0; pl.jumpT = -1; if (pl.entry) pl.entry._ew_hqLandAt = performance.now(); }
+            }
+            pl.y = ny;
         }
-        pl.visY += (pl.y - pl.visY) * Math.min(1, dt * 14);
+        pl.visY += (pl.y - pl.visY) * Math.min(1, dt * (pl.air ? 60 : 14));
         if (Math.abs(pl.y - pl.visY) < 0.004) pl.visY = pl.y;
         /* turn toward the travel heading */
         var dy = pl.targetYaw - pl.yaw;
@@ -29310,9 +29380,10 @@ const ThreeRenderer = (function () {
         while (dy < -Math.PI) dy += Math.PI * 2;
         pl.yaw += dy * Math.min(1, dt * 14);
         var U = _hqUnits();
-        pl.entry.group.position.set(pl.x * U, (pl.visY + yJump) * U, pl.z * U);
-        /* auto-follow: swing behind the runner unless the player is steering the camera */
-        if (moving && !H.drag && !H.fp && (performance.now() - H.lastDragAt) > 1400) {
+        pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
+        /* auto-follow: swing behind the runner unless the player is steering
+           the camera (mouse-look owns the camera while the pointer is locked) */
+        if (moving && !H.drag && !H.fp && document.pointerLockElement !== canvas && (performance.now() - H.lastDragAt) > 1400) {
             var want = Math.atan2(mx, -mz);
             var cd = want - H.cam.yaw;
             while (cd > Math.PI) cd -= Math.PI * 2;
@@ -29484,7 +29555,7 @@ const ThreeRenderer = (function () {
         if (!D || !opts.host) { console.warn('[HQ] no DOOR_HQ data or host'); return false; }
         if (!initialized) init();
         if (!renderer || !canvas) return false;
-        if (_hq) _hqLeave();
+        if (_hq) { _hqKeepLock = true; try { _hqLeave(); } finally { _hqKeepLock = false; } }
         if (active) { console.warn('[HQ] refusing to open over a live battle'); return false; }
         var room = D.rooms[opts.room || 'central_egress'];
         if (!room) return false;
@@ -29651,6 +29722,7 @@ const ThreeRenderer = (function () {
         }
         if (!spot) return false;
         pl.x = spot.x / U; pl.z = spot.z / U; pl.y = spot.y / U; pl.visY = pl.y;
+        pl.air = false; pl.vy = 0; pl.jumpT = -1;
         pl.yaw = pl.targetYaw = _hqHeadingYaw(face);
         _hq.cam.yaw = _hqRad(face); _hq.cam.init = false;
         return true;
@@ -29660,7 +29732,7 @@ const ThreeRenderer = (function () {
         leave: _hqLeave,
         active: function () { return !!_hq; },
         room: function () { return _hq ? (_hq.opts.room || 'central_egress') : null; },
-        setPaused: function (on) { if (_hq) { _hq.paused = !!on; if (on) { _hq.keys = {}; _hq.drag = null; } } },
+        setPaused: function (on) { if (_hq) { _hq.paused = !!on; if (on) { _hq.keys = {}; _hq.drag = null; try { if (document.pointerLockElement === canvas) document.exitPointerLock(); } catch (e) {} } } },
         interact: _hqInteract,
         toggleView: _hqToggleView,
         isFirstPerson: function () { return !!(_hq && _hq.fp); },

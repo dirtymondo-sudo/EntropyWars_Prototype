@@ -1236,3 +1236,34 @@ change log). Nothing in it is canon until the user fills it in. Story-track
 code (HQ 4.x content: the case-file screen contents, the tape narration,
 micro-scenes) stays ON HOLD until the outline exists; the 4.1 PLUMBING
 against dummy chapters is fair game per A14's build list.
+
+### 2026-09-05 — controls rework: mouse-look, real jump, E walks through, door-blink transitions
+User feedback pass on the walkable HQ (four items, all shipped):
+- **Third-person mouse-look.** Click-drag orbit replaced: the first click on
+  the canvas captures the pointer (pointer lock) in BOTH views and the mouse
+  aims the camera directly, like a real third-person game. Drag survives only
+  as the fallback while the lock is refused/released (ESC frees the cursor;
+  opening any panel releases it so its buttons stay clickable). Auto-follow
+  behind the runner is disabled while the pointer is locked. The lock is
+  HELD across room-to-room rebuilds (`_hqKeepLock`).
+- **E enters plain doors directly** (map.js `_hqInteractTarget`): an unlocked
+  door with exactly one obvious outcome — a built room, a bay corridor, or a
+  screen — is walked through on E with no confirmation panel. Thresholds
+  (CROSS Δ vs DEEP is a real choice), locked doors, alt-action doors
+  (Quartermaster, Records), unbuilt interiors, counters and NPCs keep panels.
+- **Door-blink transitions.** Walking room-to-room no longer shows the
+  clearance-check load card: `hqLoad` gets a `walk` class (styles-base.css) —
+  a quick dip to black, min wait 150 ms (was 900), 320 ms fade back. The full
+  card still greets entries from Play / returns from matches. True no-cut
+  seamlessness (all rooms resident in one scene behind real doorways) stays a
+  possible later phase; noted, not planned.
+- **Real jump** (three-renderer.js): the cosmetic 0.55 m sine hop became a
+  physics arc — `HQ_JUMP_V` 7.25 m/s, `HQ_GRAV` 18 m/s², apex ≈ 1.46 m.
+  Airborne movement keeps hard walls but ignores step tolerance and furniture
+  blockers (`_hqAirOK`), so you can jump the mezzanine railing down to the
+  hall floor, over couches/cabinets, ONTO the dispatch counter (its top and
+  hollow centre are now real surfaces in `_hqSurface`) and from the counter
+  into the middle circle. Landing picks the surface under the feet; landing
+  on a blocker's footprint lets you walk out (`_hqInBlocker` escape).
+- Files: three-renderer.js, map.js, styles-base.css, index.html
+  (`?v=20260905a-cors`); DOOR_HQ_BUILD_PLAN.md §9.
