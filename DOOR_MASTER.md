@@ -213,7 +213,7 @@ game words — the Shop stays the Shop inside the Quartermaster's office).
 | **Arcane Engineering / Cartography** | Operations | Map Editor; Spell Library (dev); balance lab | research offices, the fourth door that wasn't there yesterday |
 | **Your office** | Support (L1–L3) → Executive (L4+) | Case file / story progress; memos (in-tray, fax); achievements as wall plaques; stats | starts as the janitor's closet (cot, mop bucket, CRT, phone, drain) |
 | **Bureau of Continuity ("Canon Office")** | Executive | canon notices; the motto plaque (reality barometer); late-game Internal Affairs contact | the only department that suspects the schedule |
-| **Training Facility** (downstairs) | Training | **the Training Room** (tutorial / Orientation / practice; the ONLY approved square room — an 8×8 grid, notoriously leaky); Challenge (Gauntlet, Survival); Mystery Dungeon (a condemned crossing = the existing Guild Hub field office) | "ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES" |
+| **Training Facility** (downstairs) | Training | **the Training Room** (tutorial / Orientation / practice; the ONLY approved square room — an 8×8 grid, notoriously leaky); Challenge (Gauntlet, Survival); Mystery Dungeon (the condemned crossing — since 2026-09-05 the door opens the delver/party page straight to Floor 1; the old Guild Hub board is out of the flow) | "ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES" |
 | **H-Wing** | sub-basement (late game) | the forbidden straight corridor; the childhood-home door; the Backrooms crossing | beige carpet, fluorescent light, cubicles, right angles |
 | *(not a room)* Settings | — | stays an overlay (gear / Esc) | you do not walk to Settings |
 
@@ -615,9 +615,9 @@ buildable.
   agency. Queue line "Filing jurisdiction claim…", DOOR hold music (new
   `_R2_MUSIC` key — user-made or synth loop, undecided), the opponent's ID
   card on the VS splash (index.html:476 — relayed, RULE #2).
-- **○ Mystery Dungeon hub = a DOOR field office** (map.js `md_hub`
-  dressing; cosmetic) — in the HQ plan this becomes the "condemned crossing"
-  door in the Training Facility.
+- **● Mystery Dungeon hub = the headquarters** (2026-09-05): the old
+  `md_hub` board is out of the flow; the "condemned crossing" door in the
+  Training Facility opens the delver + party page and drops to Floor 1.
 - **○ Tutorial = ORIENTATION, DAY 1.** VHS tape ("D.O.O.R. ORIENTATION ·
   TAPE 1 OF 1 · 1987 · BE KIND, REWIND"), tracking lines, chipper narrator,
   FIELD MANUAL bullets; mistakes earn a memo, not a fail; ends with the card
@@ -1280,3 +1280,22 @@ User feedback pass on the walkable HQ (four items, all shipped):
 - The jump animation plays once per jump (LoopOnce sized to the airtime;
   SPACE latched to one arc per press).
 - Files: three-renderer.js, map.js, index.html (`?v=20260905b-cors`).
+
+### 2026-09-05 (rev 3) — controls feedback + the Condemned Crossing takes over from the Guild Hub
+- Camera: the walker's auto-follow is removed — the mouse owns the yaw;
+  no more swing-behind-the-runner "snap" while walking.
+- Walking off edges: climbing stays limited to a step, drops up to 1.6 m
+  are walked off (the walker falls); the counter is jumped onto and walked
+  off, into the well or back to the hall. The mezzanine (4.2 m) stays
+  railed everywhere.
+- Furniture is solid: every blocker has a top height — jumps land ON
+  props, sides stop the airborne body, low props are steps, tall ones are
+  walls; the walk-through-props bug is gone.
+- Mystery Dungeon: the Guild Hub board is out of the flow. The Condemned
+  Crossing door (Training Facility) opens the delver page, which now holds
+  the party menu (hero + job, up to 3 roster companions with jobs) and
+  drops straight to Floor 1; the run ends with "Return to Headquarters".
+  Canon: the field office on the far side IS this building now — the
+  roster hangs out here as vessels.
+- Files: three-renderer.js, map.js, battle.js, index.html
+  (`?v=20260905c-cors`); DOOR_HQ_BUILD_PLAN.md §9.

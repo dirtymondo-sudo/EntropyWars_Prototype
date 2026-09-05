@@ -29121,11 +29121,11 @@
                 icon: '🤝',
                 title: label + ' wants to join!',
                 text: partyFull
-                    ? 'The defeated ' + label + ' asks to join you — but your party is full (4 max). Accepting sends them to the Guild Hub roster for future runs.'
-                    : 'The defeated ' + label + ' rises and asks to join your party. They’ll fight beside you for the rest of the run — and join the Guild Hub roster.',
+                    ? 'The defeated ' + label + ' asks to join you — but your party is full (4 max). Accepting sends them to the roster at headquarters for future runs.'
+                    : 'The defeated ' + label + ' rises and asks to join your party. They’ll fight beside you for the rest of the run — and join the roster at headquarters.',
                 confirmIcon: '🤝',
-                confirmLabel: partyFull ? 'Send to the Guild' : 'Welcome them',
-                confirmSub: partyFull ? 'Joins the hub roster' : 'Joins the party now',
+                confirmLabel: partyFull ? 'Send to HQ' : 'Welcome them',
+                confirmSub: partyFull ? 'Joins the HQ roster' : 'Joins the party now',
                 cancelLabel: 'Turn them away',
                 cancelSub: 'They slink back into the dark',
                 onConfirm: () => {
@@ -29157,7 +29157,7 @@
             } catch (e) {}
             const slot = (state.partyBuilds[1] || []).length;
             if (slot >= 4) {
-                addLog(`🤝 The defeated ${label} wants to join — the party is full, so they head for the Guild Hub instead.`);
+                addLog(`🤝 The defeated ${label} wants to join — the party is full, so they report to headquarters instead.`);
                 return;
             }
             /* land on the fallen monster's tile, or the nearest free neighbour */
@@ -29194,7 +29194,7 @@
             if (!state.partyMeta[1]) state.partyMeta[1] = [];
             state.partyMeta[1][slot] = { race, gender, _campaignLevel: runLvl, _mdTactic: 'auto' };
             addLog(`🤝 The defeated ${label} rises and JOINS the party! (Lv.${runLvl} ${job} — AUTO tactics)`
-                + (newToRoster ? ` ${label} is now part of the Guild Hub roster.` : ''));
+                + (newToRoster ? ` ${label} is now on the roster at headquarters.` : ''));
             try { showFloatingTextForUnit(recruit, '🤝 RECRUITED!', 'levelup', { durationMs: 1800 }); } catch (e) {}
             if (typeof showCombatBanner === 'function') showCombatBanner('🤝 ' + label + ' joins!', 'A defeated foe changes sides', 'neutral');
             try { _vfxLevelUp(recruit.x, recruit.y); } catch (e) {}
@@ -29390,7 +29390,7 @@
             setTimeout(_mdStartFreeRoam, 120);
         };
 
-        function _mdStartRun(partyCfg) {
+        function _mdStartRun(partyCfg, immediate) {
             const dungeonId = 'agartha_depths';
             const D = (typeof MD_DUNGEONS !== 'undefined' && MD_DUNGEONS[dungeonId]) || null;
             if (!D || typeof generateMdFloor !== 'function') { addLog('⛔ The dungeon gate is sealed (dungeon data missing).'); return; }
@@ -29427,8 +29427,16 @@
             try { const sv = loadMdSave(); sv.runs = (sv.runs || 0) + 1; saveMdSave(sv); } catch (e) {}
             addLog(`🗝️ Entering ${D.label} — ${D.floors} floors below. Find the stairs on each one!`);
             if (typeof showCombatBanner === 'function') showCombatBanner('🗝️ ' + D.label, 'Floor 1 — find the stairs!', 'neutral');
-            setTimeout(() => { state._mdTransitioning = false; _mdLoadFloor(); }, 700);
+            if (immediate) { state._mdTransitioning = false; _mdLoadFloor(); }
+            else setTimeout(() => { state._mdTransitioning = false; _mdLoadFloor(); }, 700);
         }
+        /* The delver page's ENTER (map.js _mdCharStart, 2026-09-05): the
+           party comes from the page, the home party is already seated, the
+           title overlay is already down — load Floor 1 right now. The Guild
+           Hub board is no longer in the flow (the D.O.O.R. HQ is the hub). */
+        window._mdLaunchRun = function (partyCfg) {
+            _mdStartRun(partyCfg, true);
+        };
 
         /* Generate + register the current floor, seat both parties, relaunch. */
         function _mdLoadFloor() {
@@ -29707,7 +29715,7 @@
                 sv.goldEarned = (sv.goldEarned || 0) + gold;
                 saveMdSave(sv);
             } catch (e) {}
-            if (newAlly) addLog(`🤝 ${newAlly.charAt(0).toUpperCase() + newAlly.slice(1)} joins the Guild Hub! They're playable on your next run.`);
+            if (newAlly) addLog(`🤝 ${newAlly.charAt(0).toUpperCase() + newAlly.slice(1)} reports to headquarters! They're playable on your next run.`);
             state._mdNewAlly = newAlly;
             try {
                 if (gold > 0 && window.ProfileSystem && typeof window.ProfileSystem.creditLocalGold === 'function') {
@@ -29798,9 +29806,12 @@
                 const el = document.getElementById(id);
                 if (el) el.innerHTML = '';
             });
+            /* one way out (2026-09-05): the D.O.O.R. HQ is the hub — the run
+               ends back in the building at the Condemned Crossing (the plain
+               main menu when the HQ is off) */
+            const _mdHqOn = (typeof window._hqEnabled === 'function') && window._hqEnabled();
             vicBottom.innerHTML = `
-                <button class="primary camp-btn" onclick="window._mdReturnToHub()">🏘 Return to Hub</button>
-                <button class="warn camp-btn" onclick="window._mdExitToMenu()">Main Menu</button>
+                <button class="primary camp-btn" onclick="window._mdReturnToHub()">${_mdHqOn ? '🚪 Return to Headquarters' : '🏠 Main Menu'}</button>
             `;
             /* This overlay reuses the shared result DOM — make sure a prior
                PvP podium's 3D mode / MVP plate can't bleed into it. */
@@ -29810,34 +29821,12 @@
             resultOverlay.classList.remove('hidden');
         }
 
-        /* Back to the Guild Hub: restore the pre-run party, reload the hub board. */
-        window._mdReturnToHub = function() {
-            playSfx('uiButtonConfirm');
-            if (typeof hideResultOverlay === 'function') hideResultOverlay();
-            const home = state._mdHomeParty;
-            if (home) {
-                state.partyBuilds[1] = home.builds.slice();
-                state.partyNames[1] = home.names.slice();
-                state.loadouts[1] = home.loadouts.map(l => JSON.parse(JSON.stringify(l)));
-                state.partyMeta[1] = home.meta.map(m => JSON.parse(JSON.stringify(m)));
-            }
-            state._mdRun = null;
-            state._mdPhase = 'hub';
-            state._mdEnded = false;
-            state._mdTransitioning = false;
-            state.winner = null;
-            state._winLogged = false;
-            state._winCondition = null;
-            state._endingReason = null;
-            state._stalemateRounds = 0;
-            state._lastActivityTotal = 0;
-            state._challengeAiMult = null;
-            activeMultiplayerMode = 'dungeon';
-            applyGameMode('md_hub');
-            state.controllers[1] = CTRL.LOCAL;
-            state.controllers[2] = CTRL.AI;
-            startMatch();
-        };
+        /* Back to headquarters (2026-09-05): the hub IS the D.O.O.R. HQ —
+           restore the pre-run party, tear the run down, and let
+           backToMainMenu land in the building at the door you left through
+           (the classic main menu when the HQ is off). The 8×8 hub board is
+           never reloaded. */
+        window._mdReturnToHub = function() { window._mdExitToMenu(); };
 
         window._mdExitToMenu = function() {
             playSfx('uiButtonConfirm');

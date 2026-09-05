@@ -4149,6 +4149,16 @@ New PvE mode: PMD-style dungeon crawl. Entry = **main-menu "Mystery Dungeon" but
 cave entrance → 10 procedurally generated maze floors (id `md_floor`) → stairs on
 floor 10 = clear. Gold banked via `ProfileSystem.creditLocalGold`.
 
+> **2026-09-05 — the Guild Hub board is OUT of the flow.** The D.O.O.R. HQ is the
+> hub. Entry = the CONDEMNED CROSSING door (Training Facility) or the classic
+> main-menu button → `mdCharPage` (hero + job, first-companion pick on a fresh
+> save, roster companions with a job each — the old cave-gate `mdParty` menu) →
+> ENTER = `window._mdLaunchRun(cfg)` (battle.js) → Floor 1 directly. Run end =
+> "Return to Headquarters" (`_mdReturnToHub` → `_mdExitToMenu` → `backToMainMenu`
+> → `_hqReturnOrMenu`). `md_hub`, `hubFreeRoam`, `_mdOpenPartySelect` still exist,
+> unused. Harness note: a playtest of MD no longer needs the hub walk — the party
+> page's ENTER starts the floor.
+
 - **Data layer (data.js, after `_mfRegisterAll`):** `MD_DUNGEONS` registry (one
   dungeon: `agartha_depths`, themed on prebuilt_agartha), `_mdBuildHub()` (registers
   `PREBUILT_MAPS.md_hub` + layout preset; hub entry carries `_mdEntrance` +

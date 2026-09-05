@@ -1035,21 +1035,28 @@
             _showTitlePage('modePage');
         };
 
-        /* ── Mystery Dungeon entry point (main menu) ──────────────────────────
-           Flow: main menu → character-select page (pick ONE unlocked character,
-           PMD-style) → Guild Hub (free-roam). No map picker, no party builder.
-           startMatch's MD hook (battle.js) strips the CPU team and populates
-           the hub with the rest of the unlocked roster as NPCs; walking onto
-           the cave entrance starts the 10-floor run. */
+        /* ── Mystery Dungeon entry point ──────────────────────────────────────
+           Flow (2026-09-05): the CONDEMNED CROSSING door in the Training
+           Facility (or the classic main menu) → the delver page: pick your
+           hero and their job, tick up to three companions from the MD roster
+           (a job each) → ENTER — straight down to Floor 1 (_mdLaunchRun,
+           battle.js). The 8×8 Guild Hub free-roam map is GONE from the flow:
+           the D.O.O.R. headquarters is the hub now (the roster hangs out
+           there as vessels), and the party menu that used to sit at the
+           hub's cave gate lives on this page. The hub board, its mode and
+           the free-roam controller stay registered (md_hub) — nothing routes
+           through them any more. The run's end returns to the building. */
         /* comp: undefined = not decided yet (defaults to the first option),
            null = deliberately going alone, string = companion race. The
            companion picker only shows on a FRESH save (roster of 1) — that's
-           your FIRST companion; later allies are recruited by clearing runs. */
-        let _mdCharSel = { race: null, gender: null, comp: undefined };
+           your FIRST companion; later allies are recruited by clearing runs.
+           party: race → { on, job } for the roster companions (sticky across
+           re-renders); job: the hero's job (reset when the hero changes). */
+        let _mdCharSel = { race: null, gender: null, job: null, comp: undefined, party: {} };
 
         window._goToMysteryDungeon = function() {
             playSfx('uiButtonConfirm');
-            if (typeof GAME_MODES === 'undefined' || !GAME_MODES.md_hub) {
+            if (typeof GAME_MODES === 'undefined' || !GAME_MODES.md_floor) {
                 addLog('Mystery Dungeon data failed to load.');
                 return;
             }
@@ -1113,8 +1120,8 @@
             const sv = (typeof loadMdSave === 'function') ? loadMdSave() : { bestFloor: 0, clears: 0 };
             let html = '<div class="md-char-intro">Pick who you\'ll take into <b>Agartha Depths</b> — 10 floors, no respawns. '
                 + (pool.length > 1
-                    ? 'Recruited allies hang out at the Guild Hub — assemble your party (up to 4) at the cave gate.'
-                    : 'Pick a first companion below — more allies join the Guild Hub each time you clear the dungeon.')
+                    ? 'Assemble your party below (up to 4) — every ally you recruit reports back to headquarters.'
+                    : 'Pick a first companion below — more allies join the roster each time you clear the dungeon.')
                 + (sv.bestFloor > 0 ? ` &nbsp;·&nbsp; Best depth: <b>Floor ${sv.bestFloor}</b> · Clears: <b>${sv.clears || 0}</b>` : '')
                 + '</div>';
             html += '<div class="md-char-grid">';
@@ -1159,16 +1166,72 @@
                 html += '</div>';
             }
 
+            /* ── The party: the hero's job + roster companions with a job
+               each — the menu that used to be the hub's cave gate
+               (2026-09-05). Up to 3 companions; the first-companion pick
+               above joins automatically on a fresh save. ─────────────── */
+            const jobs = (typeof CLASS_TEMPLATES !== 'undefined') ? Object.keys(CLASS_TEMPLATES) : [];
+            const defJob = rk => (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[rk]) || 'Freelancer';
+            const esc = v => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            const jobOpts = cur => jobs.map(j => `<option value="${esc(j)}"${j === cur ? ' selected' : ''}>${esc(j)}</option>`).join('');
+            if (!_mdCharSel.job || !jobs.includes(_mdCharSel.job)) _mdCharSel.job = defJob(_mdCharSel.race);
+            const comps = pool.filter(rk => rk !== _mdCharSel.race);
+            let onCount = 0;
+            comps.forEach((rk, i) => {
+                if (!_mdCharSel.party[rk]) _mdCharSel.party[rk] = { on: i < 3, job: defJob(rk) };
+                const e = _mdCharSel.party[rk];
+                if (e.on) { if (onCount >= 3) e.on = false; else onCount++; }   // the hero changed: re-clamp to 3
+            });
+            html += '<div class="md-char-section">🗝 YOUR PARTY — up to 4 delvers, a job each (spells &amp; items auto-kit to it); companions fight on ⚔ AUTO tactics, switchable in battle</div>';
+            html += '<div class="md-party-list md-party-list-page">';
+            html += `<div class="md-party-row leader on"><span class="md-party-check">👑</span><span class="md-party-name">${esc(_mdRaceLabel(_mdCharSel.race))} <small>(you)</small></span>`
+                + `<select class="md-party-job" onchange="window._mdCharJob(this.value)">${jobOpts(_mdCharSel.job)}</select></div>`;
+            for (const rk of comps) {
+                const e = _mdCharSel.party[rk];
+                const key = rk.replace(/'/g, "\\'");
+                html += `<div class="md-party-row${e.on ? ' on' : ''}" onclick="window._mdPartyPick('${key}')"><span class="md-party-check">${e.on ? '✓' : ''}</span>`
+                    + `<span class="md-party-name">${esc(_mdRaceLabel(rk))}</span>`
+                    + `<select class="md-party-job" onclick="event.stopPropagation()" onchange="window._mdPartyPickJob('${key}', this.value)">${jobOpts(e.job)}</select></div>`;
+            }
+            if (!comps.length && !fresh) html += '<div class="md-party-empty">No companions on the roster yet — clear floors to recruit allies!</div>';
+            html += '</div>';
+            const partySize = 1 + onCount + ((fresh && _mdCharSel.comp) ? 1 : 0);
+            html += `<div class="md-party-count">${partySize} / 4 delvers</div>`;
+
             html += '<div class="md-char-footer">';
             if (genders.length > 1) {
                 html += '<div class="md-char-genders">' + genders.map(g =>
                     `<button class="md-char-gender${g === _mdCharSel.gender ? ' on' : ''}" onclick="window._mdCharGender('${g}')">${g === 'female' ? '♀ Female' : '♂ Male'}</button>`
                 ).join('') + '</div>';
             }
-            html += `<button class="md-char-start" onclick="window._mdCharStart()">🏘 ENTER THE GUILD HUB</button>`;
+            html += `<button class="md-char-start" onclick="window._mdCharStart()">🗝 ENTER THE CROSSING — FLOOR 1</button>`;
             html += '</div>';
             body.innerHTML = html;
         }
+
+        /* the party rows (2026-09-05): toggle a companion (3 max), set a job */
+        window._mdPartyPick = function(rk) {
+            const e = _mdCharSel.party[rk];
+            if (!e) return;
+            if (!e.on) {
+                const picked = Object.keys(_mdCharSel.party).filter(k => k !== _mdCharSel.race && _mdCharSel.party[k].on).length;
+                if (picked >= 3) { addLog('The party is full — 4 delvers max (you + 3).'); try { playErrorSfx(); } catch (err) {} return; }
+            }
+            e.on = !e.on;
+            playSfx('uiCursorMove');
+            _mdRenderCharSelect();
+        };
+        window._mdPartyPickJob = function(rk, job) {
+            const e = _mdCharSel.party[rk];
+            if (!e || typeof CLASS_TEMPLATES === 'undefined' || !CLASS_TEMPLATES[job]) return;
+            e.job = job;
+            playSfx('uiCursorMove');
+        };
+        window._mdCharJob = function(job) {
+            if (typeof CLASS_TEMPLATES === 'undefined' || !CLASS_TEMPLATES[job]) return;
+            _mdCharSel.job = job;
+            playSfx('uiCursorMove');
+        };
 
         /* Races eligible as the starter companion: 3D-ready, not the hero,
            not already in the MD roster. */
@@ -1193,6 +1256,7 @@
             playSfx('uiButtonConfirm');
             _mdCharSel.race = rk;
             _mdCharSel.gender = null;
+            _mdCharSel.job = null;   // the new hero's default job
             _mdRenderCharSelect();
         };
 
@@ -1205,30 +1269,49 @@
         window._mdCharStart = function() {
             playSfx('uiButtonConfirm');
             if (!_mdCharSel.race) return;
-            /* the chosen first companion joins the MD roster permanently —
-               they hang out at the Guild Hub and join the party by default
-               in the pre-run party select at the cave gate */
-            if (_mdCharSel.comp && _mdCharSel.comp !== _mdCharSel.race) {
+            if (typeof window._mdLaunchRun !== 'function') { addLog('Mystery Dungeon runtime failed to load.'); return; }
+            const race = _mdCharSel.race, gender = _mdCharSel.gender || 'male';
+            const defJob = rk => (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[rk]) || 'Freelancer';
+            const firstGender = rk => (typeof getAvailableGendersForRace === 'function') ? ((getAvailableGendersForRace(rk) || ['male'])[0] || 'male') : 'male';
+            const jobOk = j => !!(j && typeof CLASS_TEMPLATES !== 'undefined' && CLASS_TEMPLATES[j]);
+            const fresh = _mdUnlockedRoster().length === 1;
+            const cfg = [{ race, gender, name: _mdRaceLabel(race), job: jobOk(_mdCharSel.job) ? _mdCharSel.job : defJob(race) }];
+            /* the chosen first companion (fresh save) joins the MD roster
+               permanently and walks in with you on this first run */
+            let compRace = null;
+            if (fresh && _mdCharSel.comp && _mdCharSel.comp !== race) {
+                compRace = _mdCharSel.comp;
                 try {
                     const sv = loadMdSave();
-                    if (!(sv.unlockedRaces || []).includes(_mdCharSel.comp)) {
-                        sv.unlockedRaces = (sv.unlockedRaces || []).concat([_mdCharSel.comp]);
+                    if (!(sv.unlockedRaces || []).includes(compRace)) {
+                        sv.unlockedRaces = (sv.unlockedRaces || []).concat([compRace]);
                         saveMdSave(sv);
                     }
                 } catch (e) {}
+                cfg.push({ race: compRace, gender: firstGender(compRace), job: defJob(compRace) });
             }
-            _mdStartHubWithChar(_mdCharSel.race, _mdCharSel.gender || 'male');
+            /* the ticked roster companions (the page's party rows) */
+            for (const rk of _mdUnlockedRoster()) {
+                if (rk === race || rk === compRace || cfg.length >= 4) continue;
+                const e = _mdCharSel.party[rk];
+                if (!e || !e.on) continue;
+                cfg.push({ race: rk, gender: firstGender(rk), job: jobOk(e.job) ? e.job : defJob(rk) });
+            }
+            _mdSeatDelvers(race, gender, cfg[0].job);
+            window._mdLaunchRun(cfg);
         };
 
-        /* Seat the chosen character as a party of ONE and launch the hub
-           directly (same shape as startCampaignBattle: set the arrays, set the
-           mode, call startMatch — no party builder). */
-        function _mdStartHubWithChar(race, gender) {
+        /* Seat the chosen hero as the home party of ONE and hand the screen
+           to the engine (same shape as startCampaignBattle: set the arrays,
+           set the mode — battle.js _mdLaunchRun builds the delving party
+           from the page's picks and loads Floor 1; no party builder, no hub
+           board in between). */
+        function _mdSeatDelvers(race, gender, heroJob) {
             window._msCpuOnly = true;
             state.isRankedMatch = false;
             state._customRoundLimit = 0;
             state._mdRun = null;
-            state._mdPhase = 'hub';
+            state._mdPhase = 'floor';
             state._mdEnded = false;
             state._mdTransitioning = false;
             state.squadLeaderMode = false;
@@ -1236,10 +1319,9 @@
             CONFIG.gauntletDeploy = 0;
 
             activeMultiplayerMode = 'dungeon';
-            applyGameMode('md_hub');
             CONFIG.teamSize = 1;
 
-            const job = (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || 'Freelancer';
+            const job = heroJob || (typeof RACE_DEFAULT_JOBS !== 'undefined' && RACE_DEFAULT_JOBS[race]) || 'Freelancer';
             state.partyBuilds[1] = [job];
             state.partyNames[1] = [_mdRaceLabel(race)];
             state.partyMeta[1] = [{ race, gender }];
@@ -1259,7 +1341,8 @@
             state.controllers[2] = CTRL.AI;
 
             /* hide the title overlay (mirrors dismissTitleScreen, minus the
-               party-builder transition) and boot the hub */
+               party-builder transition) — the floor load (battle.js) boots
+               the match */
             if (startOverlay) {
                 startOverlay.classList.add('hidden');
                 startOverlay.style.display = 'none';
@@ -1268,7 +1351,6 @@
             }
             state.audioUnlocked = true;
             syncMusicToState().catch(() => {});
-            if (typeof window.startMatch === 'function') window.startMatch();
         }
 
         function _resetLobbyPages(showId) {

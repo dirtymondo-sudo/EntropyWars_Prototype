@@ -27596,7 +27596,9 @@ const ThreeRenderer = (function () {
     var _hqGlyphTex = null;
     var _hqSealTex = null;
     var HQ_BODY_R = 0.34;                // walker body radius (m)
-    var HQ_STEP_TOL = 0.62;              // max height change per move (m) — railings, ledges
+    var HQ_STEP_TOL = 0.62;              // max CLIMB per move (m) — a step up onto a box / ledge; taller is a wall
+    var HQ_DROP_MAX = 1.6;               // max walk-off drop (m, 2026-09-05): counters, couches, the desk well — the 4.2 m mezzanine is a balcony (railed)
+    var HQ_FALL_MIN = 0.5;               // a drop taller than this is a fall (airborne, gravity) — shorter is a stair tread
     var HQ_JUMP_V = 7.25;                // real jump (2026-09-04): takeoff speed (m/s) — apex ≈ 1.46 m
     var HQ_GRAV = 18;                    // walker gravity (m/s²) — snappy game-feel arcs
     var HQ_JUMP_AIR = 2 * HQ_JUMP_V / HQ_GRAV;   // flat-ground airtime (s) — sizes one jump-clip playthrough
@@ -28256,7 +28258,7 @@ const ThreeRenderer = (function () {
             var blk = new THREE.Object3D();
             blk.position.set(cx * U, 0, cz * U);
             G.add(blk);
-            _hq.blockers.push({ obj: blk, y: 0, rad: (horiz ? len : BD) / 2, rect: { hw: (horiz ? len : BD) / 2 + 0.06, hd: (horiz ? BD : len) / 2 + 0.06 } });
+            _hq.blockers.push({ obj: blk, y: 0, top: BH + 0.05, rad: (horiz ? len : BD) / 2, rect: { hw: (horiz ? len : BD) / 2 + 0.06, hd: (horiz ? BD : len) / 2 + 0.06 } });
         }
         var gap = 2.0;                                     // the door gaps (the N + S doors are centred at x 0)
         barrier(-BR, -BR, -gap, -BR); barrier(gap, -BR, BR, -BR);      // north
@@ -28320,9 +28322,9 @@ const ThreeRenderer = (function () {
             lamp.position.copy(lens.position); G.add(lamp);
             pulse(lamp.material, 0.28, 0.45 + ci * 0.17);
             var db = new THREE.Object3D(); db.position.copy(drum.position); G.add(db);
-            _hq.blockers.push({ obj: db, y: 0, rad: 0.62 });
+            _hq.blockers.push({ obj: db, y: 0, top: 1.52, rad: 0.62 });
             var cb = new THREE.Object3D(); cb.position.copy(crate.position); G.add(cb);
-            _hq.blockers.push({ obj: cb, y: 0, rad: 0.52 });
+            _hq.blockers.push({ obj: cb, y: 0, top: 0.75, rad: 0.52 });
         });
 
         /* red wall lamps (housing + lens + breathing glow) — kept off the
@@ -28798,7 +28800,7 @@ const ThreeRenderer = (function () {
                 var ring = new THREE.Mesh(new THREE.RingGeometry(0.22 * U, 0.26 * U, 32), _hqBasic(0x7fd9dd)); ring.position.set(0, 1.0 * U, 0.175 * U);
                 var dot = new THREE.Mesh(new THREE.CircleGeometry(0.03 * U, 12), _hqBasic(0xffb020)); dot.position.set(0, 0.78 * U, 0.176 * U);
                 grp.add(stand, map, ring, dot);
-                _hq.blockers.push({ obj: grp, rad: 0.55, y: y0 });
+                _hq.blockers.push({ obj: grp, rad: 0.55, y: y0, top: y0 + 1.55 });
                 plateY = 1.9;
             } else {
                 grp.position.copy(_hqPolarW(c.deg, c.r, y0));
@@ -28856,10 +28858,17 @@ const ThreeRenderer = (function () {
                 grp.add(pg);
                 if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); }
                 G.add(grp);
-                if (cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 });
+                if (cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0, top: y + (cat.h || 1) });
                 return;
             }
             place(0.66);
+            /* the collision disc carries the prop's TOP (2026-09-05): the
+               catalogue height now, the measured skinned height once the GLB
+               is in — a jump lands on it, a walker steps onto it if it is
+               low enough, and its side is solid in the air (no more jumping
+               into a cabinet and walking out through the wall of props) */
+            var blk = null;
+            if (cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot, y: y0, top: y + (cat.h || 1) }; _hq.blockers.push(blk); }
             var inst = _miscModelInstance(_hqModelUrl(cat), true, target, {
                 fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
                 onDone: function (g, s, bb) {
@@ -28882,6 +28891,8 @@ const ThreeRenderer = (function () {
                     }
                     /* ceiling-hung: the loader sits models on y = 0, so drop by the model's height */
                     if (onCeil) grp.position.y = y * U - (bb.max.y - bb.min.y) * s - 0.01 * U;
+                    /* the real top: the fitted height (a laid rug is thin-axis up, and has no disc anyway) */
+                    if (blk && !cat.lay) blk.top = y + (bb.max.y - bb.min.y) * s / U;
                     if (_hq) _hq.dirty = true;
                 }
             });
@@ -28892,7 +28903,6 @@ const ThreeRenderer = (function () {
                 grp.add(gl);
             }
             G.add(grp);
-            if (cat.foot > 0 && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) _hq.blockers.push({ obj: grp, rad: cat.foot, y: y0 });
         });
     }
 
@@ -28927,7 +28937,7 @@ const ThreeRenderer = (function () {
                             b.position.set(grp.position.x - cz * Math.sin(yaw), grp.position.y, grp.position.z - cz * Math.cos(yaw));
                             G.add(b);
                             sub._ew_blocker = b;
-                            _hq.blockers.push({ obj: b, rad: Math.max(ex, ez) * s / U * 0.45, y: y0 });
+                            _hq.blockers.push({ obj: b, rad: Math.max(ex, ez) * s / U * 0.45, y: y0, top: y + (bb.max.y - bb.min.y) * s / U });
                         }
                         if (_hq) _hq.dirty = true;
                     }
@@ -28976,7 +28986,8 @@ const ThreeRenderer = (function () {
             race: race, gender: gender, heightM: 1.75 * (def.heightRatio || 1), cleaned: false, moving: false, running: false, jumpT: -1, air: false, vy: 0,
         };
         _hq.chars.push(ch);
-        if (spec.kind !== 'player') _hq.blockers.push({ obj: entry.group, rad: 0.42, y: y, npc: true });
+        /* people are never a floor: the top sits above any jump apex */
+        if (spec.kind !== 'player') _hq.blockers.push({ obj: entry.group, rad: 0.42, y: y, top: y + 2.6, npc: true });
         return ch;
     }
     function _hqSpawnPopulation(room, opts) {
@@ -29019,130 +29030,163 @@ const ThreeRenderer = (function () {
         var deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
         var y = null;
         if (room.kind === 'box') {
-            /* a box: inside the four walls, one level, prop footprints as discs */
+            /* a box: inside the four walls, one level */
             if (Math.abs(x) > S.w / 2 - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 - HQ_BODY_R - 0.08) return null;
-            if (!ignoreBlockers) {
-                var Ux = _hqUnits();
-                for (var bx = 0; bx < _hq.blockers.length; bx++) {
-                    var bq = _hq.blockers[bx];
-                    var bxm = bq.obj.position.x / Ux, bzm = bq.obj.position.z / Ux;
-                    /* rect blockers (the training pit's barriers): axis-aligned in the room frame */
-                    if (bq.rect) {
-                        if (Math.abs(x - bxm) < bq.rect.hw + HQ_BODY_R && Math.abs(z - bzm) < bq.rect.hd + HQ_BODY_R) return null;
-                        continue;
-                    }
-                    if (Math.hypot(bxm - x, bzm - z) < bq.rad + HQ_BODY_R) return null;
-                }
-            }
-            return 0;
-        }
-        if (room.kind === 'bay') {
+            y = 0;
+        } else if (room.kind === 'bay') {
             /* a corridor: between the two wall arcs, short of the end caps */
             var capPad = ((0.15 + HQ_BODY_R) / Math.max(1, r)) * 180 / Math.PI;
             if (!_hqWithinArc(deg, S.arc[0] + capPad, S.arc[1] - capPad, 0)) return null;
             if (r < S.rIn + HQ_BODY_R + 0.08 || r > S.rOut - HQ_BODY_R - 0.08) return null;
             y = 0;
-            if (!ignoreBlockers) {
-                var Ub = _hqUnits();
-                for (var bj = 0; bj < _hq.blockers.length; bj++) {
-                    var bb = _hq.blockers[bj];
-                    if (Math.hypot(bb.obj.position.x / Ub - x, bb.obj.position.z / Ub - z) < bb.rad + HQ_BODY_R) return null;
+        } else {
+            var stairs = room.stairs || [];
+            for (var i = 0; i < stairs.length && y === null; i++) {
+                var st = stairs[i];
+                if (!_hqWithinArc(deg, st.from, st.to, 0.4)) continue;
+                if (r < st.rIn - 0.25) continue;
+                if (r < st.rIn + 0.12 || r > st.rOut - 0.12) return null;   // the railing / the wall
+                var t = _hqDegDiff(deg, st.from) / (st.to - st.from);
+                t = Math.max(0, Math.min(1, t));
+                var n = st.steps || 24;
+                y = S.wallH * Math.min(1, Math.ceil(t * n - 0.0001) / n);
+                if (t <= 0.001) y = 0;
+            }
+            if (y === null) {
+                for (var li = 0; li < _hq.landings.length; li++) {
+                    var L = _hq.landings[li];
+                    if (!_hqWithinArc(deg, L.a0, L.a1, 0)) continue;
+                    if (r >= L.rIn + 0.12 && r <= S.mezz.inner + 0.62) { y = S.wallH; break; }
+                    /* the landing's inner rail: solid from the landing side */
+                    if (r >= L.rIn - 0.25 && r < L.rIn + 0.12 && curY != null && Math.abs(curY - S.wallH) < 0.3) return null;
                 }
             }
-            return y;
-        }
-        var stairs = room.stairs || [];
-        for (var i = 0; i < stairs.length && y === null; i++) {
-            var st = stairs[i];
-            if (!_hqWithinArc(deg, st.from, st.to, 0.4)) continue;
-            if (r < st.rIn - 0.25) continue;
-            if (r < st.rIn + 0.12 || r > st.rOut - 0.12) return null;   // the railing / the wall
-            var t = _hqDegDiff(deg, st.from) / (st.to - st.from);
-            t = Math.max(0, Math.min(1, t));
-            var n = st.steps || 24;
-            y = S.wallH * Math.min(1, Math.ceil(t * n - 0.0001) / n);
-            if (t <= 0.001) y = 0;
-        }
-        if (y === null) {
-            for (var li = 0; li < _hq.landings.length; li++) {
-                var L = _hq.landings[li];
-                if (_hqWithinArc(deg, L.a0, L.a1, 0) && r >= L.rIn + 0.12 && r <= S.mezz.inner + 0.62) { y = S.wallH; break; }
+            if (y === null) {
+                if (r >= S.mezz.inner + 0.62 && r <= S.mezz.outer - 0.55) y = S.wallH;
+                else if (r >= S.mezz.inner - 0.05 && r < S.mezz.inner + 0.62) {
+                    /* the railing band: only from the slab side, and only if already up there */
+                    if (curY != null && Math.abs(curY - S.wallH) < 0.3) return null;
+                    y = null;
+                }
             }
-        }
-        if (y === null) {
-            if (r >= S.mezz.inner + 0.62 && r <= S.mezz.outer - 0.55) y = S.wallH;
-            else if (r >= S.mezz.inner - 0.05 && r < S.mezz.inner + 0.62) {
-                /* the railing band: only from the slab side, and only if already up there */
-                if (curY != null && Math.abs(curY - S.wallH) < 0.3) return null;
-                y = null;
+            if (y === null) {
+                var inStairMass = false;
+                for (var si = 0; si < stairs.length; si++) {
+                    if (_hqWithinArc(deg, stairs[si].from, stairs[si].to, 0.4) && r >= stairs[si].rIn - 0.25) { inStairMass = true; break; }
+                }
+                if (inStairMass) return null;
+                var DK = room.desk, deskR = (DK && DK.rOuter) || 0;
+                if (r <= S.radius - 0.5 && r >= deskR + HQ_BODY_R + 0.1) y = 0;
+                else if (DK && r < deskR + HQ_BODY_R + 0.1) {
+                    /* the dispatch desk (2026-09-04, real jump): the counter top
+                       is a surface a jump can land on, and the hollow centre is a
+                       floor (the concrete plinth sits at 0.05 m). Getting UP onto
+                       the counter takes a jump (1.05 m > HQ_STEP_TOL); getting
+                       down — into the well or back to the hall — is a walk off
+                       the edge (2026-09-05, HQ_DROP_MAX). */
+                    if (DK.rInner && r <= DK.rInner - HQ_BODY_R - 0.05) y = 0.05;
+                    else y = DK.h || 1.05;
+                }
             }
+            if (y === null) return null;
         }
-        if (y === null) {
-            var inStairMass = false;
-            for (var si = 0; si < stairs.length; si++) {
-                if (_hqWithinArc(deg, stairs[si].from, stairs[si].to, 0.4) && r >= stairs[si].rIn - 0.25) { inStairMass = true; break; }
-            }
-            if (inStairMass) return null;
-            var DK = room.desk, deskR = (DK && DK.rOuter) || 0;
-            if (r <= S.radius - 0.5 && r >= deskR + HQ_BODY_R + 0.1) y = 0;
-            else if (DK && r < deskR + HQ_BODY_R + 0.1) {
-                /* the dispatch desk (2026-09-04, real jump): the counter top
-                   is a surface a jump can land on, and the hollow centre is a
-                   floor (the concrete plinth sits at 0.05 m). HQ_STEP_TOL
-                   keeps walking on/off impossible — jumping is the only way
-                   onto the counter or into the middle. */
-                if (DK.rInner && r <= DK.rInner - HQ_BODY_R - 0.05) y = 0.05;
-                else y = DK.h || 1.05;
-            }
+        /* the step rule (2026-09-05): only CLIMBING is limited — a drop is
+           gravity's job (the walker steps off edges up to HQ_DROP_MAX and
+           falls; anything taller is a balcony, and balconies have railings:
+           the 4.2 m mezzanine stays railed from every edge) */
+        if (curY != null) {
+            if (y - curY > HQ_STEP_TOL) return null;
+            if (curY - y > HQ_DROP_MAX) return null;
         }
-        if (y === null) return null;
-        if (curY != null && Math.abs(y - curY) > HQ_STEP_TOL) return null;
         if (!ignoreBlockers) {
-            var U = _hqUnits();
-            for (var bi = 0; bi < _hq.blockers.length; bi++) {
-                var b = _hq.blockers[bi];
-                if (Math.abs(b.y - y) > 1.2) continue;
-                var bx = b.obj.position.x / U, bz = b.obj.position.z / U;
-                if (Math.hypot(bx - x, bz - z) < b.rad + HQ_BODY_R) return null;
+            /* furniture: a footprint's TOP is a floor when you stand on it or
+               can step up onto it (boxes, crates, the couch you jumped on);
+               anything taller than a step is a wall */
+            var hits = _hqBlockersUnder(x, z);
+            for (var bi = 0; bi < hits.length; bi++) {
+                var b = hits[bi], top = _hqBlkTop(b);
+                if (b.y != null && b.y > y + 1.2) continue;      // furniture on the level above (under the slab)
+                if (top <= y + 0.02) continue;                    // buried under this floor
+                if (curY != null && top - curY <= HQ_STEP_TOL) {
+                    /* a step / the thing you stand on: it is the floor only
+                       under the body's CENTRE (the full disc would hoist the
+                       walker up beside the box, floating) — the disc's edge
+                       may overhang, as on any real ledge */
+                    if (top > y && _hqBlkContains(b, x, z, HQ_BLK_STAND_PAD)) y = top;
+                } else return null;
             }
         }
         return y;
     }
+    /* ── furniture queries (2026-09-05) ─────────────────────────────────
+       Every blocker is a footprint (disc, or an axis-aligned rect) with a
+       base level `y` and a TOP height `top` (metres; a missing top = a
+       wall of unknown height, never a floor). */
+    function _hqBlkTop(b) { return (b.top != null) ? b.top : 1e9; }
+    var HQ_BLK_STAND_PAD = 0.12;   // standing on / landing on a top: the body's centre, not its disc, must be over it
+    /* does the blocker's footprint, grown by `pad`, contain (x, z)? */
+    function _hqBlkContains(b, x, z, pad) {
+        var U = _hqUnits();
+        var bx = b.obj.position.x / U, bz = b.obj.position.z / U;
+        if (b.rect) return Math.abs(x - bx) < b.rect.hw + pad && Math.abs(z - bz) < b.rect.hd + pad;
+        return Math.hypot(bx - x, bz - z) < b.rad + pad;
+    }
+    /* the blockers whose footprint overlaps the walker's disc at (x, z) */
+    function _hqBlockersUnder(x, z) {
+        var out = [];
+        for (var i = 0; i < _hq.blockers.length; i++) if (_hqBlkContains(_hq.blockers[i], x, z, HQ_BODY_R)) out.push(_hq.blockers[i]);
+        return out;
+    }
+    /* may the airborne body be at (x, z) with its feet at y? a blocker's
+       side is solid in the air too — the body clears it only with the feet
+       above its top (that is how you land ON a couch, not inside a cabinet) */
+    function _hqAirClearOfBlockers(x, z, y) {
+        var hits = _hqBlockersUnder(x, z);
+        for (var i = 0; i < hits.length; i++) {
+            var b = hits[i];
+            if (b.y != null && b.y > y + 1.2) continue;
+            if (y < _hqBlkTop(b) - 0.05) return false;
+        }
+        return true;
+    }
+    /* the highest furniture top under (x, z) at or below the feet — the
+       landing surface when it beats the floor (null = nothing under you) */
+    function _hqBlockerFloor(x, z, feetY) {
+        var best = null;
+        for (var i = 0; i < _hq.blockers.length; i++) {
+            var b = _hq.blockers[i], top = _hqBlkTop(b);
+            if (b.y != null && b.y > feetY + 1.2) continue;
+            if (top > feetY + 0.05 || (best !== null && top <= best)) continue;
+            if (_hqBlkContains(b, x, z, HQ_BLK_STAND_PAD)) best = top;
+        }
+        return best;
+    }
     /* ── airborne queries (2026-09-04, real jump) ────────────────────────
        _hqAirOK: may the airborne body occupy (x, z) at foot height y?
-       Hard walls stay hard; step tolerances and furniture blockers do NOT
-       apply (that is what jumping is for). Crossing a mass with no floor —
-       the mezzanine railing band, the slab edge — needs the feet above it. */
+       Hard walls stay hard and step tolerances do not apply (that is what
+       jumping is for); furniture is a solid SIDE until the feet clear its
+       top (2026-09-05). Crossing a mass with no floor — the mezzanine
+       railing band, the slab edge — needs the feet above it. */
     function _hqAirOK(x, z, y) {
         var room = _hq.room, S = room.shell;
         var r = Math.hypot(x, z);
-        if (room.kind === 'box') return Math.abs(x) <= S.w / 2 - HQ_BODY_R - 0.08 && Math.abs(z) <= S.d / 2 - HQ_BODY_R - 0.08;
-        var deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
-        if (room.kind === 'bay') {
+        if (room.kind === 'box') {
+            if (Math.abs(x) > S.w / 2 - HQ_BODY_R - 0.08 || Math.abs(z) > S.d / 2 - HQ_BODY_R - 0.08) return false;
+        } else if (room.kind === 'bay') {
+            var deg = _hqNormDeg(Math.atan2(x, -z) * 180 / Math.PI);
             var capPad = ((0.15 + HQ_BODY_R) / Math.max(1, r)) * 180 / Math.PI;
             if (!_hqWithinArc(deg, S.arc[0] + capPad, S.arc[1] - capPad, 0)) return false;
-            return r >= S.rIn + HQ_BODY_R + 0.08 && r <= S.rOut - HQ_BODY_R - 0.08;
+            if (r < S.rIn + HQ_BODY_R + 0.08 || r > S.rOut - HQ_BODY_R - 0.08) return false;
+        } else {
+            var wallR = (y > S.wallH * 0.6) ? S.mezz.outer : S.radius;
+            if (r > wallR - HQ_BODY_R - 0.08) return false;
+            var s = _hqSurface(x, z, null, true);
+            if (s !== null) { if (y < s - 0.05) return false; }   // over a floor / stair / the desk top: stay above it
+            /* no floor here: only known jumpable masses may be overflown */
+            else if (r >= S.mezz.inner - 0.15 && r <= S.mezz.inner + 0.62) { if (y <= S.wallH + 1.15) return false; }   // the mezzanine railing
+            else return false;   // stair flanks and the slab edge stay solid
         }
-        var wallR = (y > S.wallH * 0.6) ? S.mezz.outer : S.radius;
-        if (r > wallR - HQ_BODY_R - 0.08) return false;
-        var s = _hqSurface(x, z, null, true);
-        if (s !== null) return y >= s - 0.05;   // over a floor / stair / the desk top: stay above it
-        /* no floor here: only known jumpable masses may be overflown */
-        if (r >= S.mezz.inner - 0.15 && r <= S.mezz.inner + 0.62) return y > S.wallH + 1.15;   // the mezzanine railing
-        return false;   // stair flanks and the slab edge stay solid
-    }
-    /* is the walker's disc overlapping any blocker? (a jump can land on a
-       couch's footprint — movement then ignores blockers until clear) */
-    function _hqInBlocker(x, z, y) {
-        var U = _hqUnits();
-        for (var i = 0; i < _hq.blockers.length; i++) {
-            var b = _hq.blockers[i];
-            if (b.y != null && Math.abs(b.y - y) > 1.2) continue;
-            var bx = b.obj.position.x / U, bz = b.obj.position.z / U;
-            if (b.rect) { if (Math.abs(x - bx) < b.rect.hw + HQ_BODY_R && Math.abs(z - bz) < b.rect.hd + HQ_BODY_R) return true; continue; }
-            if (Math.hypot(bx - x, bz - z) < b.rad + HQ_BODY_R) return true;
-        }
-        return false;
+        return _hqAirClearOfBlockers(x, z, y);
     }
     /* highest surface under a free point (camera boom), ignoring the walker's height */
     function _hqCamBlocked(px, pz, py) {
@@ -29362,21 +29406,23 @@ const ThreeRenderer = (function () {
             var speed = running ? 4.6 : 2.4;   // m/s (air control keeps it)
             var nx = pl.x + mx * speed * dt, nz = pl.z + mz * speed * dt;
             if (pl.air) {
-                /* airborne: hard walls only — no step limits, no furniture */
+                /* airborne: hard walls and furniture SIDES — no step limits */
                 if (_hqAirOK(nx, pl.z, pl.y)) pl.x = nx;
                 if (_hqAirOK(pl.x, nz, pl.y)) pl.z = nz;
             } else {
-                /* axis-separated slide with a body-radius look-ahead; a jump
-                   can land on a couch's footprint — then walk out of it */
-                var skipB = _hqInBlocker(pl.x, pl.z, pl.y);
+                /* axis-separated slide with a body-radius look-ahead. Wedged
+                   in a footprint (a prop measured taller after you got there,
+                   an NPC): blockers are ignored for this move so you can walk
+                   out — the escape hatch only opens when the spot is invalid. */
+                var skipB = _hqSurface(pl.x, pl.z, pl.y, false) === null;
                 var y1 = _hqSurface(nx + Math.sign(mx) * HQ_BODY_R * 0.6, pl.z, pl.y, skipB);
-                if (y1 !== null) { pl.x = nx; pl.y = y1; }
+                if (y1 !== null) { pl.x = nx; _hqWalkerSetY(pl, y1); }
                 var y2 = _hqSurface(pl.x, nz + Math.sign(mz) * HQ_BODY_R * 0.6, pl.y, skipB);
-                if (y2 !== null) { pl.z = nz; pl.y = y2; }
+                if (y2 !== null) { pl.z = nz; _hqWalkerSetY(pl, y2); }
                 if (y1 === null && y2 === null) {
                     /* try the exact point (thin gaps like a stair mouth) */
                     var y3 = _hqSurface(nx, nz, pl.y, skipB);
-                    if (y3 !== null) { pl.x = nx; pl.z = nz; pl.y = y3; }
+                    if (y3 !== null) { pl.x = nx; pl.z = nz; _hqWalkerSetY(pl, y3); }
                 }
             }
             pl.targetYaw = Math.atan2(mx, mz);
@@ -29390,12 +29436,15 @@ const ThreeRenderer = (function () {
         if (k.space && !pl.air && !pl._jumpLatch && !H.paused) { pl.air = true; pl.vy = HQ_JUMP_V; pl.jumpT = 0; }
         pl._jumpLatch = !!k.space;
         if (pl.air && !H.paused) {
-            pl.jumpT += dt;
+            if (pl.jumpT >= 0) pl.jumpT += dt;   // a walk-off fall keeps jumpT at -1: no takeoff clip
             pl.vy -= HQ_GRAV * dt;
             var ny = pl.y + pl.vy * dt;
             if (pl.vy < 0) {
                 var land = _hqSurface(pl.x, pl.z, null, true);
                 if (land === null || land > pl.y + 0.01) land = 0;   // over a band edge: the ground breaks the fall
+                /* a furniture top under the feet is a floor too (2026-09-05) */
+                var bf = _hqBlockerFloor(pl.x, pl.z, pl.y);
+                if (bf !== null && bf > land) land = bf;
                 if (ny <= land) { ny = land; pl.air = false; pl.vy = 0; pl.jumpT = -1; if (pl.entry) pl.entry._ew_hqLandAt = performance.now(); }
             }
             pl.y = ny;
@@ -29409,15 +29458,18 @@ const ThreeRenderer = (function () {
         pl.yaw += dy * Math.min(1, dt * 14);
         var U = _hqUnits();
         pl.entry.group.position.set(pl.x * U, pl.visY * U, pl.z * U);
-        /* auto-follow: swing behind the runner unless the player is steering
-           the camera (mouse-look owns the camera while the pointer is locked) */
-        if (moving && !H.drag && !H.fp && document.pointerLockElement !== canvas && (performance.now() - H.lastDragAt) > 1400) {
-            var want = Math.atan2(mx, -mz);
-            var cd = want - H.cam.yaw;
-            while (cd > Math.PI) cd -= Math.PI * 2;
-            while (cd < -Math.PI) cd += Math.PI * 2;
-            H.cam.yaw += cd * Math.min(1, dt * (running ? 2.2 : 1.5));
-        }
+        /* NO auto-follow (2026-09-05): the mouse owns the camera outright —
+           hover-look and pointer lock both steer it — so walking never swings
+           the view behind the runner any more (that swing, kicking in 1.4 s
+           after the last mouse move, was the "snap" that fought mouse-look). */
+    }
+    /* a walking move's new floor height: treads and low steps are walked
+       (visY eases them), an EDGE is stepped off — the walker goes airborne
+       with no upward speed and gravity brings it down onto whatever is
+       below (2026-09-05: you walk off the counter instead of jumping) */
+    function _hqWalkerSetY(pl, y) {
+        if (pl.y - y > HQ_FALL_MIN) { pl.air = true; pl.vy = 0; pl.jumpT = -1; }
+        else pl.y = y;
     }
     function _hqTickChars(dt) {
         var H = _hq;

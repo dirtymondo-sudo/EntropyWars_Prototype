@@ -1899,3 +1899,45 @@ sprites.js from the first build stand). `npm test` 113 (112 pass).
   SPACE re-fired the arc on landing — `pl._jumpLatch` makes it one jump per
   press.
 - Files: three-renderer.js, map.js, index.html (`?v=20260905b-cors`).
+
+### 2026-09-05 (rev 3) — camera snap, walk-off edges, solid furniture; the MD door replaces the Guild Hub
+- **Camera no longer fights the mouse.** The walker's auto-follow (swing
+  the camera behind the runner 1.4 s after the last mouse move) is gone —
+  that swing was the "snap" the user saw while walking with hover-look.
+  The mouse (hover-look / pointer lock) owns the yaw outright.
+- **Edges are walked off.** `_hqSurface`'s step rule is one-sided: only
+  CLIMBING is limited (`HQ_STEP_TOL` 0.62); a drop up to `HQ_DROP_MAX`
+  (1.6 m) is allowed and the walker goes airborne with no upward speed
+  (`_hqWalkerSetY`, `HQ_FALL_MIN` 0.5 — stair treads are still walked).
+  So the dispatch counter (1.05 m) is jumped ONTO and walked OFF — into
+  the well (0.05 m plinth) or back to the hall — no second jump. The
+  4.2 m mezzanine is above the drop limit, so every slab / landing edge
+  stays railed (plus an explicit landing inner-rail check); the jump over
+  the railing is unchanged.
+- **Furniture has a top.** Every blocker carries `top` (metres): the
+  catalogue `h` at placement, the fitted GLB height once loaded
+  (`onDone`), fixed values for the pit barriers (0.79), drum (1.52),
+  crate (0.75), directory stand (1.55); NPCs are 2.6 m (never a floor).
+  `_hqBlockersUnder` / `_hqBlkTop` / `_hqAirClearOfBlockers` /
+  `_hqBlockerFloor` replace the old disc-only checks: a footprint's top
+  is a floor when you stand on it or can step up onto it (boxes, crates,
+  the couch you jumped on), anything taller than a step is a wall, a
+  blocker's SIDE is solid in the air until the feet clear its top, and a
+  jump lands on the top (not at floor level inside the prop). The old
+  "landed inside a footprint → ignore all blockers until clear" hack —
+  the walk-through-everything bug — is gone; the escape hatch only opens
+  when the current spot is invalid (`skipB` = current surface is null).
+- **Mystery Dungeon = the Condemned Crossing door.** The 8×8 Guild Hub
+  free-roam board is out of the flow: the HQ is the hub. The delver page
+  (map.js `_mdRenderCharSelect`) now carries the party menu that sat at
+  the hub's cave gate — hero job select, roster companions with a job
+  each (3 max, `_mdCharSel.party`), the fresh-save first-companion pick
+  joins automatically — and ENTER goes straight to Floor 1 via
+  battle.js `window._mdLaunchRun(cfg)` (`_mdStartRun(cfg, immediate)`).
+  The run's end has one button, "Return to Headquarters"
+  (`_mdReturnToHub` → `_mdExitToMenu` → `backToMainMenu` →
+  `_hqReturnOrMenu`, landing at the door). `md_hub` (board, mode,
+  `hubFreeRoam`, `_mdOpenPartySelect`, the `mdParty` dialog) stays
+  registered and unused. Recruit / roster strings say "headquarters".
+- Files: three-renderer.js, map.js, battle.js, index.html
+  (`?v=20260905c-cors`); DOOR_MASTER.md Part D, PLAYTEST_NOTES.md.
