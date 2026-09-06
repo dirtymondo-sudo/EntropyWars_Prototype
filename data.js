@@ -15733,7 +15733,7 @@ const DOOR_HQ = {
                 { id: 'quartermaster',  deg: 90,  level: 0, leaf: 'leaf_vault',        wide: true,  label: 'QUARTERMASTER',           sub: 'CUSTOMS & ADMISSIONS',       action: { fn: '_goToShop' },        desc: 'Declassification and asset reassignment. The Shop, and the manifests locker.', alt: { label: 'PARTY BUILDER', fn: '_goToTeamBuilder' } },
                 { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_glass',                     label: 'RECEPTION · INTAKE',      sub: 'HUMAN RESOURCES',            action: { fn: '_mountReactProfile' }, desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
                 { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'JANITORIAL (CONVERTED)',     action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
-                { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING FACILITY',       sub: 'DOWNSTAIRS · ORIENTATION',   action: { room: 'training', at: 'egress' }, desc: 'The only approved square room in the building. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.' },
+                { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING FACILITY',       sub: 'DOWNSTAIRS · ORIENTATION',   action: { room: 'training', at: 'egress' }, desc: 'Room 64. The only authorized square room in the building — an 8×8 grid, deemed totally safe, notoriously leaky. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.' },
                 { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_hospital',                  label: 'MEDICAL',                 sub: 'SUPPORT SERVICES',           action: { fn: '_goToCampaign' },    desc: 'Where EXITED operatives are processed. Revives, retries, the Challenge services desk.' },
                 { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'ARCHIVES · ENTITY REGISTRY', action: { fn: '_goToCodex' },       desc: '“We only keep the file.” Entity dossiers, the tape library, unfiled sites.', alt: { label: 'REPLAY (TAPE LIBRARY)', fn: '_ewReplayLastMatch' }, alt2: { label: 'UNFILED SITES (COMMUNITY MAPS)', fn: '_mountCommunityMaps' } },
                 { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'CONTAINMENT BAY',            action: { sector: 'terrestrial' } },
@@ -15778,6 +15778,7 @@ const DOOR_HQ = {
                 { key: 'crt_terminal',    deg: 126.5, r: 18.45, level: 0, y: 0.77 },
                 { key: 'papers_a',        deg: 130.5, r: 18.3, level: 0, y: 0.77, rot: 20 },
                 { key: 'pen',             deg: 131.5, r: 18.15, level: 0, y: 0.77, rot: 60 },
+                { key: 'notebook_paper',  deg: 128.3, r: 18.05, level: 0, y: 0.77, rot: -25 },   // Rhonda's: conveniently misfiled (DOOR_CAST)
                 /* the briefing table: four 45° table sectors as a half-ring
                    (r 1.28 m) opening toward the hall, folding chairs on the
                    convex side facing in — the seats are at the sectors'
@@ -15829,6 +15830,7 @@ const DOOR_HQ = {
                 { key: 'exit_sign',      deg: 180, level: 0, r: 20.42, mount: 2.62 },
                 { key: 'wet_floor_sign', deg: 156, r: 18.4, level: 0, rot: -30 },
                 { key: 'mop_bucket',     deg: 143, r: 19.4, level: 0 },
+                { key: 'mop',            deg: 143.8, r: 19.2, level: 0, rot: 35 },   // the Janitor's (DOOR_CAST) — leaning on the bucket
                 { key: 'cardboard_box',  deg: 236, r: 19.0, level: 0, rot: 20 },
                 { key: 'cardboard_box',  deg: 236, r: 19.0, level: 0, y: 0.42, rot: 60 },
                 /* mezzanine */
@@ -15845,6 +15847,9 @@ const DOOR_HQ = {
                 { key: 'water_cooler',   deg: 165, level: 1, wall: true },
                 { key: 'fire_extinguisher', deg: 105, level: 1, wall: true },
                 { key: 'wall_clock',     deg: 255, level: 1, wall: true },
+                /* Otto's tool crates (DOOR_CAST): one at each door he might be working on */
+                { key: 'cardboard_box',  deg: 304.8, r: 22.95, level: 1, rot: 20 },
+                { key: 'cardboard_box',  deg: 79.2,  r: 22.95, level: 1, rot: -30 },
                 /* mezzanine clerk stations (the kidney desks, plan 2.2):
                    against the upper wall so the 2.2 m ring stays walkable —
                    convex side to the hall, the chair BESIDE the desk, never
@@ -15978,7 +15983,7 @@ const DOOR_HQ = {
            egress door panel — the facility is their physical home now. */
         training: {
             label: 'TRAINING ROOM',
-            sub: 'ORTHOGONAL GEOMETRY EXPOSURE AREA',
+            sub: 'ROOM 64 · ORTHOGONAL GEOMETRY EXPOSURE AREA',
             kind: 'box',
             fx: 'training',
             shell: {
@@ -16755,6 +16760,187 @@ function hqRosterLine(race, gender) {
     return pool[Math.floor(Math.random() * pool.length)];
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   D.O.O.R. CAST — the story's people, at their posts in the building
+   (2026-09-06). WHO they are is hand-authored canon in DOOR_STORY.md §2
+   (the user's cast notes) — this table is only WHERE they stand and WHAT
+   they are doing. Models: sprites.js DOOR_CAST_MODELS (same ids) or a
+   roster race borrowed via `race` (Forrest is the bigfoot, Sedaniel the
+   Honda Civic). three-renderer.js _hqSpawnPopulation asks
+   hqCastInRoom(roomId, profile) after the props are placed; map.js
+   _hqNpcPanelHtml draws the panel.
+   Per member: name · title (the panel's sub-line) · dept · model | race ·
+   gender (library idle/walk flavour) · base (the roster race the unit
+   template is borrowed from; default 'men in black') · hidden (wired for
+   cutscenes, never stands in the building) · lines (USER-AUTHORED — the
+   DOOR_MASTER A15 rule applies to the cast exactly as to the roster:
+   Claude does not write, pad or rewrite these) · spots.
+   A spot: { room, deg/r/level | x/z (box rooms) | deg/r (a bay's local
+   frame), face (heading the character looks toward, deg cw from north),
+   pose (a sprites.js _CAST_POSES slot; none = idle), reach (m, how far
+   away you can talk to them — 1.75 default; a counter needs more),
+   rad (blocker radius, 0.42 default), p (weight, 1 default; weights
+   summing under 1 = sometimes nowhere), minClearance / maxClearance,
+   doing (the stage direction the panel shows; lines take precedence) }.
+   One spot per member is drawn ONCE PER SESSION (seeded by hqHash), so a
+   character stays where you found them until the page reloads.
+   ═══════════════════════════════════════════════════════════════════════ */
+const DOOR_CAST = {
+    player: {
+        name: 'YOU', title: 'DOORMAT · NEWEST RECRUIT', dept: 'Field (probationary)', model: 'player', gender: 'male',
+        avatar: true, hidden: true, spots: [], lines: [],
+    },
+    locke: {
+        name: 'AGENT LOCKE', title: 'YOUR SUPERIOR · BY THE BOOK', dept: 'Operations', model: 'locke', gender: 'female',
+        lines: [
+            '“You can trust me, I’m an open door.” … “You mean book?” … “…Yes.”',
+            '“Door opened or closed?”',
+        ],
+        spots: [
+            { room: 'central_egress', deg: 20, r: 12.7, level: 0, face: 20, pose: 'hqTalk', reach: 2.2,
+              doing: 'Briefing the half-ring. Strictly by the book. The book has changed twice since Tuesday.' },
+        ],
+    },
+    belle: {
+        name: 'AGENT BELLE', title: 'FIELD AGENT · YOUR COLLEAGUE', dept: 'Operations', model: 'belle', gender: 'female',
+        lines: [],
+        spots: [
+            { room: 'central_egress', deg: 246, r: 12.1, level: 0, face: 246, pose: 'hqSit', reach: 2.0, p: 0.6,
+              doing: 'On break, at the round desk. She sits where she can see every door.' },
+            { room: 'central_egress', deg: 58.5, r: 15.55, level: 0, face: 238, pose: 'hqSit', reach: 2.0, p: 0.4,
+              doing: 'On the couch, not reading the file in her lap. She has read it.' },
+        ],
+    },
+    glass: {
+        name: 'AGENT GLASS', title: 'FIELD AGENT · DECORATED', dept: 'Operations', model: 'glass', gender: 'male',
+        lines: [],
+        spots: [
+            { room: 'central_egress', deg: 199.5, r: 19.35, level: 0, face: 20, pose: 'hqArms', reach: 1.9,
+              doing: 'By the water cooler, arms folded. He has already decided about you.' },
+        ],
+    },
+    knox: {
+        name: 'AGENT KNOX', title: 'FIELD AGENT · YOUR FRIEND', dept: 'Operations', model: 'knox', gender: 'male',
+        lines: [],
+        spots: [
+            { room: 'training', x: 8.6, z: 2.4, face: 260, pose: 'hqSit', reach: 2.0, p: 0.6,
+              doing: 'Under the east booth, watching the grid. He started a few months before you. He is still watching the grid.' },
+            { room: 'central_egress', deg: 152.5, r: 19.5, level: 0, face: 150, reach: 1.9, p: 0.4,
+              doing: 'Waiting outside your office. He knocked. He always knocks first.' },
+        ],
+    },
+    ringer: {
+        name: 'AGENT RINGER', title: 'SENIOR FIELD AGENT · VETERAN', dept: 'Operations', model: 'ringer', gender: 'male',
+        lines: [],
+        spots: [
+            { room: 'training', x: 8.2, z: -4.6, face: 250, pose: 'hqArms', reach: 2.0,
+              doing: 'Belle’s father. He watches the grid the way other people watch a stove.' },
+        ],
+    },
+    rhonda: {
+        name: 'RHONDA', title: 'RECEPTION · INTAKE · HUMAN RESOURCES', dept: 'Support', model: 'rhonda', gender: 'female',
+        lines: [],
+        spots: [
+            { room: 'central_egress', deg: 129, r: 18.95, level: 0, face: 309, pose: 'hqSit', reach: 3.4,
+              doing: 'Behind the counter. Intake for interdimensional species, processed like the mail. A stamp comes down. Something is misfiled, conveniently.' },
+        ],
+    },
+    kit: {
+        name: 'KIT', title: 'INTAKE · PENDING · EMOTIONAL SUPPORT ANOMALY', dept: 'Reception (a chair)', model: 'kit', gender: 'female', base: 'catgirl',
+        lines: [],
+        spots: [
+            { room: 'central_egress', deg: 123.5, r: 16.4, level: 0, face: 160, pose: 'hqCrouch', reach: 2.0, p: 0.65,
+              doing: 'Crouched at the reception counter, watching Rhonda not find her paperwork. Scheduled for deportation. The schedule is several centuries out.' },
+            { room: 'central_egress', deg: 245, r: 19.5, level: 0, face: 245, pose: 'hqCrouch', reach: 2.0, p: 0.35,
+              doing: 'Scratching at the Records door. She does not want in. She wants the option.' },
+        ],
+    },
+    elle: {
+        name: 'ELLE VATOR', title: 'BENEFACTOR · UNSCHEDULED VISIT', dept: 'Funding', model: 'elle', gender: 'female',
+        lines: ['“Business is booming!”'],
+        spots: [
+            { room: 'central_egress', deg: 351.5, r: 22.4, level: 1, face: 172, pose: 'hqPhone', reach: 2.2, p: 0.5,
+              doing: 'By the elevator, on the phone, inspecting the mezzanine for quality. Funding is contingent.' },
+        ],
+    },
+    otto: {
+        name: 'OTTO MATIC', title: 'FACILITIES · MAINTENANCE', dept: 'Facilities', model: 'otto', gender: 'male',
+        lines: [],
+        spots: [
+            { room: 'central_egress', deg: 307.5, r: 22.9, level: 1, face: 307, pose: 'hqFix', reach: 2.0, p: 0.5,
+              doing: 'Working on the Canon Office door. It is not clear whether it is being installed or removed.' },
+            { room: 'central_egress', deg: 82, r: 22.9, level: 1, face: 82, pose: 'hqFix', reach: 2.0, p: 0.5,
+              doing: 'Installing a door beside Arcane Engineering. There was not a door here yesterday. There is a form.' },
+        ],
+    },
+    forrest: {
+        name: 'AGENT FORREST', title: 'FIELD AGENT · NO PHOTOGRAPHS', dept: 'Operations', race: 'bigfoot', gender: 'male', base: 'bigfoot',
+        lines: [],
+        spots: [
+            { room: 'central_egress', deg: 200.5, r: 22.35, level: 1, face: 200, reach: 2.4, p: 0.8,
+              doing: 'Facing the wall. Woody Forrest values his privacy. Please do not photograph Agent Forrest.' },
+        ],
+    },
+    sedaniel: {
+        name: 'SEDANIEL', title: 'COMPANY VEHICLE · ISSUED TO YOU', dept: 'Motor pool', race: 'honda civic', gender: 'male', base: 'honda civic',
+        lines: ['“I drive a lonely road.”', '“She’s for the streets.”'],
+        spots: [
+            { room: 'bay_terrestrial', deg: -38, r: 10.6, face: 52, reach: 2.8, rad: 1.5,
+              doing: 'Parked on the one corridor with a parking lot. Four doors, all of which open and close. He is paid in oil changes.' },
+        ],
+    },
+    janitor: {
+        name: 'THE JANITOR', title: 'CONTRACT CLEANING · $15/HR · NO BENEFITS', dept: 'Contractor', model: 'janitor', gender: 'male',
+        lines: [],
+        spots: [
+            { room: 'central_egress', deg: 146.5, r: 18.55, level: 0, face: 244, pose: 'hqPush', reach: 2.0, p: 0.7,
+              doing: 'Mopping outside your office. He has a key to every room. He cleans up messes.' },
+            { room: 'office', x: -0.95, z: 1.45, face: 270, pose: 'hqReach', reach: 2.0, p: 0.3,
+              doing: 'Getting cleaning supplies out of your office. It is still his closet, technically. This is awkward for both of you.' },
+        ],
+    },
+    /* wired for cutscenes — never on the floor */
+    dorian:  { name: 'DORIAN GATES', title: 'FORMERLY AGENT GATES · AT LARGE', dept: '—', model: 'dorian', gender: 'male', hidden: true, spots: [], lines: [] },
+    doorman: { name: 'THE DOORMAN', title: 'DIRECTOR', dept: 'Executive', model: 'doorman', gender: 'male', hidden: true, spots: [], lines: [] },
+    mother:  { name: 'YOUR MOTHER', title: 'AGENT · DECEASED', dept: 'Operations', model: 'mother', gender: 'female', hidden: true, spots: [], lines: [] },
+    father:  { name: 'YOUR FATHER', title: 'AGENT · DECEASED', dept: 'Operations', model: 'father', gender: 'male', hidden: true, spots: [], lines: [] },
+};
+/* the session's draw (a fresh building every reload, a stable one until then) */
+let _hqCastSalt = String(Math.floor(Math.random() * 1e9));
+/* Which cast members stand in `roomId` right now, and at which spot:
+   [{ id, member, spot }]. Every member draws ONE spot from all their
+   spots (weights `p`, clearance gates), so nobody is in two rooms at
+   once; `opts.salt` fixes the draw (tests), `opts.clearance` overrides
+   the profile's level. */
+function hqCastInRoom(roomId, profile, opts) {
+    opts = opts || {};
+    const out = [];
+    let cl = 1;
+    try { cl = (opts.clearance != null) ? opts.clearance : ((typeof doorClearance === 'function') ? (doorClearance(profile).level || 1) : 1); } catch (e) {}
+    const salt = (opts.salt != null) ? String(opts.salt) : _hqCastSalt;
+    for (const id in DOOR_CAST) {
+        const m = DOOR_CAST[id];
+        if (!m || m.hidden || !Array.isArray(m.spots) || !m.spots.length) continue;
+        const open = m.spots.filter(s => s && DOOR_HQ.rooms[s.room]
+            && (s.p == null || s.p > 0)
+            && (s.minClearance == null || cl >= s.minClearance)
+            && (s.maxClearance == null || cl <= s.maxClearance));
+        if (!open.length) continue;
+        const total = open.reduce((a, s) => a + (s.p == null ? 1 : s.p), 0);
+        let roll = ((hqHash(id + '|' + salt) % 100000) / 100000) * Math.max(1, total), pick = null;
+        for (const s of open) { roll -= (s.p == null ? 1 : s.p); if (roll <= 0) { pick = s; break; } }
+        if (pick && pick.room === roomId) out.push({ id: id, member: m, spot: pick });
+    }
+    return out;
+}
+/* One of the member's own lines, or null (the panel shows the spot's `doing`). */
+function hqCastLine(id) {
+    const m = DOOR_CAST[id];
+    const pool = (m && Array.isArray(m.lines)) ? m.lines.filter(Boolean) : [];
+    if (!pool.length) return null;
+    return pool[Math.floor(Math.random() * pool.length)];
+}
+
 if (typeof window !== 'undefined') {
     window.DOOR_HQ = DOOR_HQ;
     window.DOOR_ROSTER_LINES = DOOR_ROSTER_LINES;
@@ -16777,4 +16963,7 @@ if (typeof window !== 'undefined') {
     window.hqHash = hqHash;
     window.hqCodeRed = hqCodeRed;
     window.hqCodeRedPool = hqCodeRedPool;
+    window.DOOR_CAST = DOOR_CAST;
+    window.hqCastInRoom = hqCastInRoom;
+    window.hqCastLine = hqCastLine;
 }

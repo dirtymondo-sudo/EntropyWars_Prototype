@@ -713,3 +713,154 @@ test('the promotion moment has a leaf for every rung above L1 and the stamps kit
     assert.match(audio, /doorbell\(ctx, t, out, vol\)/, 'the doorbell recipe exists');
     assert.match(audio, /paChime\(ctx, t, out, vol\)/);
 });
+
+/* ── 2026-09-06: the cast — DOOR_CAST (data.js) ↔ DOOR_CAST_MODELS (sprites.js) ── */
+
+const fs = require('node:fs');
+const path = require('node:path');
+const CAST = D.DOOR_CAST;
+const SPRITES_SRC = fs.readFileSync(path.join(__dirname, 'sprites.js'), 'utf8');
+/* the registries are read from sprites.js SOURCE (it does not load headlessly on its own) */
+const CAST_MODEL_IDS = Array.from(SPRITES_SRC.matchAll(/^\s{2}(\w+):\s+_mkCast\('([^']+)'/gm), m => m[1]);
+const CAST_POSES = {};
+for (const m of SPRITES_SRC.matchAll(/^\s{2}(hq\w+):\s+\{ clip: '([^']+)',\s+lib: (\d)/gm)) CAST_POSES[m[1]] = { clip: m[2], lib: +m[3] };
+/* the shared animation libraries' clip inventories (R2 Assets/Models/, listed 2026-09-06) */
+const LIB_CLIPS = [
+    ['A_TPose', 'Crouch_Fwd_Loop', 'Crouch_Idle_Loop', 'Dance_Loop', 'Death01', 'Driving_Loop', 'Fixing_Kneeling', 'Hit_Chest', 'Hit_Head', 'Idle_Loop', 'Idle_Talking_Loop', 'Idle_Torch_Loop', 'Interact', 'Jog_Fwd_Loop', 'Jump_Land', 'Jump_Loop', 'Jump_Start', 'PickUp_Table', 'Pistol_Aim_Down', 'Pistol_Aim_Neutral', 'Pistol_Aim_Up', 'Pistol_Idle_Loop', 'Pistol_Reload', 'Pistol_Shoot', 'Punch_Cross', 'Punch_Jab', 'Push_Loop', 'Roll', 'Sitting_Enter', 'Sitting_Exit', 'Sitting_Idle_Loop', 'Sitting_Talking_Loop', 'Spell_Simple_Enter', 'Spell_Simple_Exit', 'Spell_Simple_Idle_Loop', 'Spell_Simple_Shoot', 'Sprint_Loop', 'Swim_Fwd_Loop', 'Swim_Idle_Loop', 'Sword_Attack', 'Sword_Idle', 'Walk_Formal_Loop', 'Walk_Loop'],
+    ['A_TPose', 'Chest_Open', 'ClimbUp_1m', 'Consume', 'Farm_Harvest', 'Farm_PlantSeed', 'Farm_Watering', 'Hit_Knockback', 'Idle_FoldArms_Loop', 'Idle_Lantern_Loop', 'Idle_No_Loop', 'Idle_Rail_Call', 'Idle_Rail_Loop', 'Idle_Shield_Break', 'Idle_Shield_Loop', 'Idle_TalkingPhone_Loop', 'LayToIdle', 'Melee_Hook', 'Melee_Hook_Rec', 'NinjaJump_Idle_Loop', 'NinjaJump_Land', 'NinjaJump_Start', 'OverhandThrow', 'Shield_Dash', 'Shield_OneShot', 'Slide_Exit', 'Slide_Loop', 'Slide_Start', 'Sword_Block', 'Sword_Dash', 'Sword_Heavy_Combo', 'Sword_Regular_A', 'Sword_Regular_A_Rec', 'Sword_Regular_B', 'Sword_Regular_B_Rec', 'Sword_Regular_C', 'Sword_Regular_Combo', 'TreeChopping_Loop', 'Walk_Carry_Loop', 'Yes', 'Zombie_Idle_Loop', 'Zombie_Scratch', 'Zombie_Walk_Fwd_Loop'],
+    ['Idle_5', 'Idle_10', 'Idle_11', 'Walking', 'Walking_Woman', 'Running', 'Regular_Jump', 'Dead', 'Block3', 'Hit_Reaction_1', 'Face_Punch_Reaction', 'Fall3', 'Cowboy_Quick_Draw_Shooting', 'Spartan_Kick', 'Archery_Shot_1', 'mage_soell_cast', 'mage_soell_cast_3', 'mage_soell_cast_7', 'Charged_Spell_Cast', 'Charged_Ground_Slam'],
+    ['Basic_Jump', 'Back_Jump', 'Punch_Combo', 'Punch_Combo_1', 'Punch_Combo_5'],
+];
+
+test('the cast registry exists on both sides: 15 rigged models in sprites.js, every DOOR_CAST model resolves', () => {
+    assert.ok(CAST && typeof CAST === 'object', 'DOOR_CAST missing');
+    assert.strictEqual(CAST_MODEL_IDS.length, 15, 'sprites.js DOOR_CAST_MODELS entries: ' + CAST_MODEL_IDS.join(','));
+    assert.ok(Object.keys(CAST_POSES).length >= 8, 'sprites.js _CAST_POSES parsed: ' + Object.keys(CAST_POSES).join(','));
+    for (const [slot, p] of Object.entries(CAST_POSES)) {
+        assert.ok(LIB_CLIPS[p.lib] && LIB_CLIPS[p.lib].includes(p.clip), `pose ${slot}: ${p.clip} is not in library ${p.lib}`);
+    }
+    const problems = [];
+    for (const [id, m] of Object.entries(CAST)) {
+        if (!m.name || !m.title) problems.push(id + ': needs name + title');
+        if (!!m.model === !!m.race) problems.push(id + ': exactly one of model / race');
+        if (m.model && !CAST_MODEL_IDS.includes(m.model)) problems.push(id + ': model ' + m.model + ' not in sprites.js DOOR_CAST_MODELS');
+        if (m.race && !D.AVAILABLE_RACES.includes(m.race)) problems.push(id + ': race ' + m.race + ' unknown');
+        if (m.base && !D.AVAILABLE_RACES.includes(m.base)) problems.push(id + ': base ' + m.base + ' unknown');
+        if (!['male', 'female'].includes(m.gender)) problems.push(id + ': gender');
+        if (!Array.isArray(m.spots) || !Array.isArray(m.lines)) problems.push(id + ': spots/lines arrays');
+        if (m.hidden && m.spots.length) problems.push(id + ': hidden members have no spots');
+        if (!m.hidden && !m.spots.length) problems.push(id + ': a placed member needs a spot');
+    }
+    assert.deepStrictEqual(problems, []);
+    /* every wired model is used by a member (a wired model nobody names is a typo somewhere) */
+    const used = new Set(Object.values(CAST).map(m => m.model).filter(Boolean));
+    assert.deepStrictEqual(CAST_MODEL_IDS.filter(id => !used.has(id)), [], 'wired models with no cast member');
+    assert.ok(CAST.player && CAST.player.avatar && CAST.player.model === 'player' && CAST.player.hidden, 'the Player is the avatar, never an NPC');
+});
+
+test('every cast spot names a real room, a known pose, sane weights, and stands on walkable floor', () => {
+    const S = ROOM.shell, BODY = 0.34;
+    const problems = [];
+    for (const [id, m] of Object.entries(CAST)) {
+        for (const s of m.spots) {
+            const room = HQ.rooms[s.room];
+            if (!room) { problems.push(id + ': room ' + s.room); continue; }
+            if (s.pose && !CAST_POSES[s.pose]) problems.push(id + ': pose ' + s.pose + ' is not a sprites.js _CAST_POSES slot');
+            if (s.p != null && !(s.p > 0 && s.p <= 1)) problems.push(id + ': p must be in (0, 1]');
+            if (s.reach != null && !(s.reach > 0 && s.reach <= 4)) problems.push(id + ': reach');
+            if (typeof s.face !== 'number') problems.push(id + ': face');
+            if (typeof s.doing !== 'string' || !s.doing) problems.push(id + ': every spot carries a stage direction');
+            if (room.kind === 'box') {
+                const RS = room.shell;
+                if (!(typeof s.x === 'number' && typeof s.z === 'number')) { problems.push(id + ': box spot needs x/z'); continue; }
+                if (Math.abs(s.x) > RS.w / 2 - BODY - 0.1 || Math.abs(s.z) > RS.d / 2 - BODY - 0.1) problems.push(id + ': box spot in a wall');
+            } else if (room.kind === 'bay') {
+                const RS = room.shell;
+                if (!(typeof s.deg === 'number' && typeof s.r === 'number')) { problems.push(id + ': bay spot needs deg/r'); continue; }
+                if (s.r < RS.rIn + BODY + 0.1 || s.r > RS.rOut - BODY - 0.1) problems.push(id + ': bay spot r=' + s.r + ' in a wall');
+                if (Math.abs(s.deg) > RS.arc[1] - 3) problems.push(id + ': bay spot in an end cap');
+            } else {
+                if (!(typeof s.deg === 'number' && typeof s.r === 'number')) { problems.push(id + ': polar spot needs deg/r'); continue; }
+                if (![0, 1].includes(s.level || 0)) problems.push(id + ': level');
+                if (s.level) {
+                    const lo = S.mezz.inner + 0.62, hi = S.mezz.outer - 0.55;
+                    if (s.r - BODY < lo || s.r + BODY > hi) problems.push(id + ': mezzanine spot r=' + s.r + ' off the slab band');
+                } else {
+                    const rMin = (ROOM.desk && ROOM.desk.rOuter || 0) + BODY;
+                    if (s.r > S.radius - BODY - 0.1 || s.r < rMin) problems.push(id + ': floor spot r=' + s.r + ' outside the ring');
+                    for (const st of ROOM.stairs) {
+                        const lo = Math.min(st.from, st.to) - 2, hi = Math.max(st.from, st.to) + 2;
+                        const a = ((s.deg % 360) + 360) % 360;
+                        if (a >= lo && a <= hi && s.r >= st.rIn - 0.5) problems.push(id + ': floor spot inside stair ' + st.id);
+                    }
+                }
+            }
+        }
+    }
+    assert.deepStrictEqual(problems, []);
+    /* the physical business the cast rely on is in the rooms */
+    assert.ok(ROOM.props.some(p => p.key === 'mop' && Math.abs(p.deg - 143) < 3), 'the Janitor’s mop leans by the egress bucket');
+    assert.ok(ROOM.props.filter(p => p.key === 'cardboard_box' && (p.level || 0) === 1).length >= 2, 'Otto’s crates on the mezzanine');
+    assert.ok(HQ.rooms.office.props.some(p => p.key === 'mop_bucket'), 'the closet keeps its bucket');
+    const rh = CAST.rhonda.spots[0];
+    assert.ok(rh.pose === 'hqSit' && rh.reach >= 3 && ROOM.props.some(p => p.key === 'office_chair' && Math.abs(p.deg - rh.deg) < 1 && Math.abs(p.r - rh.r) < 0.2), 'Rhonda sits on the reception chair, reachable across the counter');
+    assert.ok(/ROOM 64/.test(HQ.rooms.training.sub), 'the Training Room is Room 64');
+});
+
+test('hqCastInRoom draws one spot per member per session, honours hidden / weights / clearance', () => {
+    const rooms = Object.keys(HQ.rooms);
+    const seen = {};
+    for (let i = 0; i < 40; i++) {
+        const salt = 'salt' + i;
+        const where = {};
+        for (const rid of rooms) {
+            for (const c of D.hqCastInRoom(rid, null, { salt })) {
+                assert.ok(!CAST[c.id].hidden, c.id + ' is hidden');
+                assert.strictEqual(c.spot.room, rid, c.id + ' drawn into the wrong room');
+                assert.ok(CAST[c.id].spots.includes(c.spot));
+                where[c.id] = (where[c.id] || 0) + 1;
+                seen[c.id] = seen[c.id] || {}; seen[c.id][rid] = true;
+            }
+        }
+        for (const [id, n] of Object.entries(where)) assert.strictEqual(n, 1, id + ' is in ' + n + ' rooms at once (salt ' + salt + ')');
+        /* the same salt draws the same building twice */
+        const a = D.hqCastInRoom('central_egress', null, { salt }).map(c => c.id + '@' + c.spot.deg).join(',');
+        const b = D.hqCastInRoom('central_egress', null, { salt }).map(c => c.id + '@' + c.spot.deg).join(',');
+        assert.strictEqual(a, b);
+    }
+    /* weights work: Elle (p 0.5, one spot) is sometimes away; the Janitor turns up in both his rooms over 40 sessions */
+    assert.ok(seen.elle && Object.keys(seen.elle).length === 1, 'Elle only ever stands in the egress');
+    let elleAbsent = 0;
+    for (let i = 0; i < 40; i++) if (!D.hqCastInRoom('central_egress', null, { salt: 'salt' + i }).some(c => c.id === 'elle')) elleAbsent++;
+    assert.ok(elleAbsent > 0 && elleAbsent < 40, 'Elle’s visits are unscheduled (absent ' + elleAbsent + '/40)');
+    assert.ok(seen.janitor && seen.janitor.central_egress && seen.janitor.office, 'the Janitor is seen both mopping the hall and raiding your closet');
+    assert.ok(seen.rhonda && seen.rhonda.central_egress && Object.keys(seen.rhonda).length === 1, 'Rhonda never leaves the desk');
+    assert.ok(seen.sedaniel && seen.sedaniel.bay_terrestrial, 'Sedaniel is parked in the terrestrial bay');
+    assert.strictEqual(D.hqCastInRoom('nope', null, { salt: 'x' }).length, 0);
+    /* clearance gates are honoured (none set today, so a gated spot is simulated) */
+    const gated = { name: 'T', title: 'T', model: 'player', gender: 'male', lines: [], spots: [{ room: 'office', x: 0, z: 0, face: 0, minClearance: 4, doing: 'x' }] };
+    CAST._gatedTest = gated;
+    try {
+        assert.ok(!D.hqCastInRoom('office', null, { salt: 'g', clearance: 1 }).some(c => c.id === '_gatedTest'));
+        assert.ok(D.hqCastInRoom('office', null, { salt: 'g', clearance: 4 }).some(c => c.id === '_gatedTest'));
+    } finally { delete CAST._gatedTest; }
+    /* lines: only a member's own, or null */
+    for (let i = 0; i < 10; i++) assert.ok(CAST.locke.lines.includes(D.hqCastLine('locke')));
+    assert.strictEqual(D.hqCastLine('rhonda'), null);
+    assert.strictEqual(D.hqCastLine('nope'), null);
+});
+
+test('the building code carries the cast hooks (source scan)', () => {
+    const tr = fs.readFileSync(path.join(__dirname, 'three-renderer.js'), 'utf8');
+    const mp = fs.readFileSync(path.join(__dirname, 'map.js'), 'utf8');
+    assert.match(tr, /function _hqSpawnCast\(/);
+    assert.match(tr, /hqCastInRoom\(roomId, opts\.profile\)/);
+    assert.match(tr, /spec\.def \|\|/, 'a cast spec brings its own def');
+    assert.match(tr, /ch\.reach \|\| 1\.75/, 'the talk radius is per character');
+    assert.match(tr, /e\.actions\[ch\.pose\]/, 'the building pose plays');
+    assert.match(mp, /getCastModel\('player'\)/, 'the avatar prefers the Player model');
+    assert.match(mp, /t\.kind === 'cast'/, 'the panel knows cast members');
+    assert.match(SPRITES_SRC, /function getCastModel\(id\)/);
+    assert.match(SPRITES_SRC, /Meshy_AI_Agent_Glass_Character_output\.glb/, 'Glass’s export has no _biped');
+    assert.match(SPRITES_SRC, /Meshy_AI_Janitor_Character_output\.glb/, 'the Janitor’s export has no _biped');
+});

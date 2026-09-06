@@ -4,6 +4,56 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## 🎭 THE CAST IN THE HEADQUARTERS (2026-09-06, LATEST) — sprites.js, data.js, three-renderer.js, map.js, doorhq.test.js, index.html
+
+The story's named characters (the user's cast sheet — canon, `DOOR_STORY.md`
+§2, DOOR_MASTER A16) now stand in the walkable HQ, and **you walk as the
+Player model** instead of your most-played vessel. Full build log:
+DOOR_HQ_BUILD_PLAN §9 2026-09-06 + DOOR_MASTER Part D.
+- **Models**: sprites.js `DOOR_CAST_MODELS` — 15 rigged Meshy GLBs in R2
+  `Assets/Sprites/Races/maincharacters/` (`Meshy_AI_<Name>_biped_Character_
+  output.glb`; `Agent_Glass` and `Janitor` have NO `_biped`; `kit` is
+  lowercase). Built by `_mkCast(prefix, {heightRatio, female, file, lib})`
+  on top of `_mk3d` → the shared animation library retargets them like any
+  roster unit. `_CAST_POSES` adds ten building-pose slots (hqSit
+  Sitting_Idle_Loop, hqTalk Idle_Talking_Loop, hqPhone
+  Idle_TalkingPhone_Loop, hqArms Idle_FoldArms_Loop, hqFix Fixing_Kneeling,
+  hqPush Push_Loop, hqReach PickUp_Table, hqCrouch Crouch_Idle_Loop,
+  hqSitTalk, hqNo). Rig check recipe for the folder: fetch the first ~1.2 MB
+  with `curl -r 0-1200000`, read the GLB JSON chunk (length at byte 12) and
+  look at `skins` / `animations` / accessor min-max — all 15 are 1 skin, 24
+  joints, 1.70 m tall, so heightRatio is the only size lever.
+- **Placement**: data.js `DOOR_CAST` — per member `spots[]` (room + polar
+  deg/r/level, box x/z or bay-local deg/r; `face`, `pose`, `reach` = talk
+  radius, `rad` = blocker radius, `p` = weight, `doing` = the panel's stage
+  direction) and `lines[]` (USER-authored only). `hqCastInRoom(roomId,
+  profile, {salt, clearance})` draws one spot per member per SESSION
+  (`hqHash(id|salt)`), so the building is stable until reload; weights
+  under 1 = sometimes absent (Elle 0.5). `hqCastLine(id)`.
+- **Renderer**: `_hqSpawnCast` (after agents, before roster vessels);
+  `_hqSpawnCharacter` takes `spec.def` (cast) else the roster lookup;
+  `_hqTickChars` plays `ch.pose` once `e.actions[pose]` exists (the library
+  bake is async); the interaction picker uses `ch.reach` (Rhonda 3.4 m —
+  talk across the counter). map.js `_hqAvatar` → `{cast:'player'}` when
+  `getCastModel('player')` exists; `_hqNpcPanelHtml` handles `kind
+  'cast'` (name/title, own line if any, `doing` underneath).
+- **Console**: `EW_HQ_AVATAR = 'vessel'` (old avatar rule) · `EW_DISABLE_CAST
+  = true` (no cast, no Player avatar) · `EW_DISABLE_3D_UNITS` still covers
+  everything.
+- **Seating rule**: a seated member's spot IS the chair's spot, facing the
+  chair's heading (polar chair: deg + 180 + rot); the sitting clip lowers
+  the hips in-clip — no y offset.
+- **Tests**: doorhq.test.js has the UAL1/UAL2/MAL1/MAL2 clip inventories as
+  constants and checks every pose against them; registry parity is a
+  SOURCE scan of sprites.js (it does not evaluate headlessly alone — it
+  does after data.js in the same sandbox, if a future test needs values).
+- Not done: story gating (`minClearance` wired, unused), cutscenes, walking
+  NPCs, cast portraits (`portrait.png` per member would give the panels a
+  face), the office-door squeak (DOOR_MASTER C-18). NOT playtested (RULE
+  #1c) — first thing to eyeball: the seated poses on the reception chair /
+  teal chair / folding chair (hip height vs seat), the Push_Loop read as
+  "mopping", and Sedaniel's parked yaw in Bay 1.
+
 ## ✨ ACTION TILE GLOW (2026-09-02, LATEST) — three-renderer.js, three-vfx-effects.js, battle.js, state.js, online.js, index.html
 
 The ground lights up under every action: the ACTOR tile (white) plus every

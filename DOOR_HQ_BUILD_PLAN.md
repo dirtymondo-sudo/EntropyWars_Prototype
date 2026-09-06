@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 13 (2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge, §9)
+### The walkable facility that replaces the Play menu · rev 14 (2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar, §9; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -554,6 +554,11 @@ tie, lanyard; rigged, via the CLAUDE.md character recipe so the shared
 animation library retargets them), `door_janitor` (coveralls, the
 Doorman-in-waiting). Optional: `door_handler` (or keep the redaction-bar
 silhouette).
+✅ **Superseded 2026-09-06:** the user made the whole CAST instead —
+fifteen rigged Meshy characters in R2 `Assets/Sprites/Races/
+maincharacters/` (sprites.js `DOOR_CAST_MODELS`, data.js `DOOR_CAST`,
+§9). The generic agents in black stay as the MIB roster model. Still
+wanted: a 128×128 `portrait.png` per cast member for the panels.
 
 **H. Audio (2)** — hall room tone loop (HVAC hum, distant phones, the
 occasional doorbell), DOOR muzak loop for the dispatch queue.
@@ -1997,3 +2002,99 @@ sprites.js from the first build stand). `npm test` 113 (112 pass).
   producing it.
 - Files: battle.js, three-renderer.js, index.html (`?v=20260905e-cors`);
   DOOR_MASTER.md Part D.
+
+### 2026-09-06 — the cast moves in: fifteen rigged characters at their posts, the Player as the avatar
+- **What the user delivered**: the story cast (DOOR_MASTER A16 /
+  `DOOR_STORY.md` §2) and fifteen rigged Meshy models in R2
+  `Assets/Sprites/Races/maincharacters/` — verified this session with
+  HEAD requests and a JSON-chunk rig check (1 skin, 24 joints, `Hips`
+  root, 1.70 m normalised bounds on every one; `Agent_Glass` and
+  `Janitor` are named WITHOUT `_biped`, everything else with it; `kit` is
+  lowercase). No Forrest / Sedaniel GLB exists there (404s on the obvious
+  names) — they borrow the roster bigfoot and Honda Civic.
+- **sprites.js `DOOR_CAST_MODELS`** (after `getRace3DModel`): `_mkCast
+  (prefix, {heightRatio, female, file, lib})` = the roster's `_mk3d` on
+  the `maincharacters` folder + every building pose + the female
+  idle/walk where marked (the roster's gendered sweep only covers
+  RACE_MODELS_3D). `_CAST_POSES` = ten library slots the building can
+  ask for: hqSit `Sitting_Idle_Loop`, hqSitTalk `Sitting_Talking_Loop`,
+  hqTalk `Idle_Talking_Loop`, hqPhone `Idle_TalkingPhone_Loop`, hqArms
+  `Idle_FoldArms_Loop`, hqFix `Fixing_Kneeling`, hqPush `Push_Loop`,
+  hqReach `PickUp_Table`, hqCrouch `Crouch_Idle_Loop`, hqNo
+  `Idle_No_Loop` (UAL1 = lib 0, UAL2 = lib 1 — both inventories are now
+  listed in doorhq.test.js). Heights: humans 0.94–1.04, Kit 0.88 (the
+  roster catgirl), the Doorman and the Janitor both 1.0 on purpose.
+  `getCastModel(id)`; `EW_DISABLE_CAST` (console) removes the whole cast
+  and the Player avatar at once.
+- **data.js `DOOR_CAST`** (before the DOOR_HQ window exports): per
+  member name / title / dept / `model` or `race` / gender / `base` (the
+  roster race the unit template is borrowed from) / `hidden` / `lines`
+  (USER-authored, A15) / `spots`. A spot is a room + a polar (deg, r,
+  level), box (x, z) or bay-local (deg, r) position + `face` + optional
+  `pose`, `reach` (talk radius, 1.75 default — Rhonda's is 3.4 so the
+  counter is not in the way), `rad` (blocker radius; Sedaniel 1.5), `p`
+  (weight; the member's weights summing under 1 = sometimes nowhere),
+  `minClearance` / `maxClearance` (wired, unused), `doing` (the stage
+  direction the panel shows). `hqCastInRoom(roomId, profile, {salt,
+  clearance})` draws ONE spot per member per session (seeded with
+  `hqHash(id | salt)`, the salt is rolled once per page load) — so a
+  character stays where you found them until reload, and is never in two
+  rooms at once. `hqCastLine(id)`.
+  - Rhonda `129°/18.95 m` on the reception chair, face 309 (the centre),
+    hqSit, reach 3.4 · Kit `123.5°/16.4` crouched at the counter's public
+    side (p .65) or `245°/19.5` at the Records door (p .35) · the Janitor
+    `146.5°/18.55` mopping (hqPush, face 244, p .7; a `mop` prop now
+    leans on the bucket at 143.8°/19.2) or IN THE OFFICE at `(−0.95,
+    1.45)` facing the west shelves (hqReach, p .3) · Locke `20°/12.7` on
+    the hall side of the briefing half-ring, face 20, hqTalk · Belle on
+    the teal chair `246°/12.1` (face 246 = the chair's rot 180, p .6) or
+    the couch `58.5°/15.55` (p .4), hqSit · Glass `199.5°/19.35` by the
+    water cooler, hqArms · Knox on the Training Room's folding chair
+    `(8.6, 2.4)` face 260, hqSit (p .6) or `152.5°/19.5` outside the
+    office door (p .4) · Ringer `(8.2, −4.6)` face 250, hqArms · Elle
+    `351.5°/22.4 L1` by the elevator, face 172, hqPhone (p .5) · Otto
+    `307.5°/22.9 L1` at the Canon Office door or `82°/22.9 L1` beside
+    Arcane Engineering, hqFix, a `cardboard_box` crate at 304.8°/22.95
+    and 79.2°/22.95 (r chosen to pass the mezzanine-band test) · Forrest
+    `200.5°/22.35 L1` face 200 (the wall) · Sedaniel bay_terrestrial
+    `−38°/10.6` face 52 (along the corridor). All checked against the
+    prop table for collisions (≥ 0.7 m from every foot) and against door
+    trigger arcs (Otto is 7.5° off his doors so the door prompt does not
+    fight his).
+  - The Training Room's plate reads ROOM 64 · …; the egress door's desc
+    names it.
+- **three-renderer.js**: `_hqSpawnCharacter(spec)` takes `spec.def`
+  (a cast member brings its own model def — the roster lookup is the
+  fallback), `spec.sub / reach / pose / rad / cast / doing`; new
+  `_hqSpawnCast(room, opts)` runs after the agents and before the roster
+  vessels; `_hqTickChars` plays `ch.pose` for a non-player once
+  `e.actions[pose]` exists (the bake is async — idle until then); the
+  target picker uses `ch.reach` and carries `sub / cast / doing` into the
+  target. **The avatar**: `opts.avatar.cast` → `getCastModel(cast)` as the
+  player's def (map.js `_hqAvatar` returns `{cast: 'player', race: 'men
+  in black', gender: 'male'}` unless `EW_HQ_AVATAR` is set; `'vessel'`
+  keeps the old most-played rule).
+- **map.js** `_hqNpcPanelHtml`: `kind === 'cast'` → name / title header,
+  the member's own line (`hqCastLine`) in the big serif when there is
+  one, the `doing` stage direction in the desc font, NOTED. The E-prompt
+  says TALK with the member's title as the sub-line (the target's `sub`).
+- **Seating**: a seated member stands at the CHAIR's spot facing the
+  chair's heading (deg + 180 + rot for a polar chair) — the library
+  sitting clip lowers the hips in-clip, so no y offset is needed; the
+  chair's own blocker plus the NPC blocker keep you off their lap.
+- **Tests** (`doorhq.test.js`, +4): registry parity (every `DOOR_CAST`
+  model id is a `_mkCast` entry in sprites.js SOURCE — sprites.js does
+  not evaluate headlessly on its own; every wired model is named by a
+  member), every pose clip is in its library's listed inventory, every
+  spot is a real room on walkable floor (ring / slab band / corridor /
+  box), the draw's invariants over 40 salts (one room per member, hidden
+  never, Elle sometimes away, the Janitor seen in both his rooms,
+  Rhonda never leaves), the code hooks by source scan.
+- **Not done**: no story gating (`minClearance` unused), no cutscenes, no
+  walking NPCs (poses are static loops), no squeak on the office door
+  (DOOR_MASTER C-18), Kit is not in the party (C-20), no portraits for
+  the cast (no `portrait.png` in the folder — a 128×128 per member would
+  give the panel a face). Playtest not run (RULE #1c).
+- Files: sprites.js, data.js, three-renderer.js, map.js, doorhq.test.js,
+  index.html (`?v=20260906a-cors`); docs: this file, DOOR_MASTER.md (rev
+  16), DOOR_STORY.md (rev 1), CLAUDE.md, PLAYTEST_NOTES.md.

@@ -219,8 +219,13 @@
            window.EW_HQ_AVATAR = 'race' | {race, gender} overrides. */
         function _hqAvatar(profile) {
             const ov = window.EW_HQ_AVATAR;
-            if (typeof ov === 'string') return { race: ov };
+            if (typeof ov === 'string' && ov !== 'vessel') return { race: ov };
             if (ov && ov.race) return ov;
+            /* 2026-09-06: you walk as the PLAYER — the recruit's own rigged
+               model (sprites.js DOOR_CAST_MODELS.player) — whenever it is
+               wired. EW_HQ_AVATAR = 'vessel' (console) keeps the pre-cast
+               rule below: your most-played vessel, else an agent in black. */
+            if (ov !== 'vessel' && typeof getCastModel === 'function' && getCastModel('player')) return { cast: 'player', race: 'men in black', gender: 'male' };
             try {
                 if (typeof getRace3DModel === 'function' && profile && profile.raceStats) {
                     let best = null, bestN = 0;
@@ -852,6 +857,17 @@
         }
         function _hqNpcPanelHtml(t) {
             const room = _hqRoom();
+            if (t.kind === 'cast') {
+                /* a named cast member (data.js DOOR_CAST, 2026-09-06): their own
+                   line when they have one (user-authored, A15 rule), the stage
+                   direction for what they are doing under it */
+                const cl = (typeof window.hqCastLine === 'function') ? window.hqCastLine(t.cast) : null;
+                let html = `<div class="hq-panel-hd"><b>${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span></div>`;
+                if (cl) html += `<p class="hq-panel-line">${_hqEsc(cl)}</p>`;
+                if (t.doing) html += `<p class="hq-panel-desc">${_hqEsc(t.doing)}</p>`;
+                if (!cl && !t.doing) html += '<p class="hq-panel-line">…</p>';
+                return html + '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>';
+            }
             let line = t.line;
             /* roster vessels speak their own lines (data.js DOOR_ROSTER_LINES,
                keyed by race + gender so the Nun and the Witch get theirs);

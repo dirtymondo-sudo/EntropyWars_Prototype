@@ -1,5 +1,5 @@
 # D.O.O.R. — MASTER FILE
-### Story bible + integration design + build log — rev 15 (2026-09-05 — roster dialogue shipped, see A15 + Part D rev 6; 2026-09-04 — story canon separated from ChatGPT scaffolding (A0); the authoring process recorded (A14); `DOOR_STORY.md` created as the empty worksheet. Story track code stays ON HOLD until the user writes the outline per A14.)
+### Story bible + integration design + build log — rev 16 (2026-09-06 — THE CAST: twenty characters hand-authored by the user (A0 #6–#9, A16, `DOOR_STORY.md` §2), fifteen rigged models placed in the headquarters (Part D); rev 15 2026-09-05 — roster dialogue shipped, see A15 + Part D rev 6; 2026-09-04 — story canon separated from ChatGPT scaffolding (A0); the authoring process recorded (A14); `DOOR_STORY.md` created as the empty worksheet. Story track code stays ON HOLD until the user writes the outline per A14.)
 
 This file MERGES the two earlier DOOR documents and supersedes both:
 - `entropy_wars_claude_brief.md` (the ChatGPT-assisted story/world brief, 2026-09) → Part A
@@ -49,6 +49,30 @@ plot is decided:**
 5. Ending seed: the player becomes the Doorman — and the Doorman was the
    janitor all along (why the office is a closet; why the Doorman's door
    is old). (Confirmed the user's own idea, 2026-09-04.)
+6. **(2026-09-06)** THE CAST — twenty entries hand-authored by the user
+   in `DOOR_STORY.md` §2 (verbatim in §2b): names, departments,
+   allegiances and the arcs as written there are canon. Summary in A16.
+7. **(2026-09-06)** Chapter 1's four beats: the onboarding VHS video →
+   training/tutorial → a reality leak, the first mission, the catgirl
+   saved after the battle → Rhonda declares her an "emotional support
+   anomaly" and Kit joins the party (`DOOR_STORY.md` §3, Band L1).
+8. **(2026-09-06)** H-Wing's NATURE: the accumulated consequence of
+   Closer policy — every permanent closure displaces dimensional
+   pressure, collected under HQ for decades into a fractal, repeating
+   H-shaped corridor of straight lines and doors to realities that
+   officially no longer exist; Dorian's uncontrolled doors accelerate and
+   rupture it; the Doorman knows and is managing it. **Room 64** is the
+   Training Room: the only authorised square room, 8×8, "totally safe",
+   keeps leaking.
+9. **(2026-09-06)** The parents, specifically: the MOTHER was a Closer
+   who chose to keep the door closed in the "fire" so what was behind it
+   could not come through; the FATHER was an Opener who built the secret
+   backdoor network for refugee creatures and held its door open when the
+   Closers raided it — shot, at his own request, by his friend Agent
+   Glass (a double agent inside the raid). How this squares with item 2's
+   "DOOR did not order either death" is Part C row 17 (the raid was the
+   Closers'; the falsification was the Department's — awaiting the
+   user's ruling on how high it goes).
 
 **CANON — keep building on it:** everything institutional in Part A: the
 orthogonality doctrine (A1), what DOOR is and the entropy duty (A2), the
@@ -243,6 +267,15 @@ something through; DOOR recorded it as a mundane home invasion.
 **USER (confirmed 2026-09-04):** DOOR did not order either death — it
 falsified the aftermath as routine collateral damage. That cover-up is
 the crime.
+**USER (2026-09-06, the cast sheet):** the mother was the Closer (the
+fire: she could have left through a door and chose to keep it shut); the
+father was the Opener (the "home invasion" was the Closer raid on his
+refugee backdoor network — he held the door open for the creatures and
+stayed to fight; Agent Glass, undercover in the raid, shot him with his
+permission to keep the network and his cover). Locke was close with the
+mother; Dorian Gates helped build the network and witnessed the killing.
+The full text is `DOOR_STORY.md` §2b #3, #4, #7, #12.
+
 
 **Canon (A0 #5) — the ending seed:** the player becomes the Doorman — and
 the Doorman was the janitor all along (which is why the office is a
@@ -466,6 +499,16 @@ sacrificed or protected.
   recruit/unlock every creature native to it* (the HQ plan implements the
   first as v1 and can add the second).
 - The final choice about where unavoidable breaches are distributed.
+- ~~What is H-Wing evidence of?~~ **USER 2026-09-06 (A0 #8):** decades of
+  displaced dimensional pressure from permanent closures, now growing
+  faster under Dorian's doors. Still open: what is BEHIND its doors
+  (realities that officially no longer exist — which ones), and whether
+  the childhood-home door is one of them (scaffolding).
+- Who sent the referral (A0 #1) — the cast gives four candidates with a
+  motive (`DOOR_STORY.md` §1 Q1); undecided.
+- Sedaniel: the roster Honda Civic, or his own character (Part C row 19)?
+- Kit as a party member: the catgirl race's story skin, or her own unit
+  (Part C row 20)?
 
 ## A14. Writing the story — the agreed process (2026-09-04)
 
@@ -550,6 +593,14 @@ HOLD the orientation tape's narration (the player's first five minutes;
 scaffolding until the user writes it) — the VHS mechanism itself is
 buildable.
 
+**Status 2026-09-06 — Step 2 is DONE (the cast sheet, twenty entries,
+`DOOR_STORY.md` §2), and it answered spine questions 2, 3, 4 and 5
+outright and 7 and 8 in part (§1 there records which). Chapter 1 has
+its beats. Steps 3–4 (the L1–L6 outline, then scripts) remain the
+user's; the story-track code stays on hold until the outline exists,
+but the CAST is now buildable content in its own right — see A16 and
+Part D 2026-09-06 for what stands in the building.**
+
 ## A15. Roster dialogue — the user's voice (2026-09-05)
 
 The lines a roster vessel says when the player talks to it in headquarters
@@ -595,6 +646,45 @@ What the voice is, for anyone writing new ones (the user included):
   no lines that only restate the character's gimmick, no "Explain that."
   tags, no three-line escalations, no wholesome stingers. If a line could
   be said by any character, cut it.
+
+**The cast's lines follow the same rule (2026-09-06).** A named cast
+member's HQ dialogue lives in data.js `DOOR_CAST[<id>].lines`, hand-
+authored by the user; Claude does not write them. Shipped so far, all
+from the user's notes: Locke's "You can trust me, I'm an open door." /
+"You mean book?" / "…Yes." and "Door opened or closed?"; Elle Vator's
+"Business is booming!"; Sedaniel's "I drive a lonely road." / "She's for
+the streets." Members without lines show a one-sentence STAGE DIRECTION
+(`spots[].doing` — what they are doing, never what they say), which
+Claude may write and the user may overwrite. "They named the orb
+Silvia?" is waiting for a speaker.
+
+## A16. The cast (2026-09-06) — summary; the full sheet is `DOOR_STORY.md` §2
+
+Hand-authored by the user; verbatim text in `DOOR_STORY.md` §2b. In the
+engine: sprites.js `DOOR_CAST_MODELS` (15 rigged Meshy GLBs, R2
+`Assets/Sprites/Races/maincharacters/`), data.js `DOOR_CAST` (where each
+stands, doing what), the HQ spawns them (Part D). HINGE's one face is the
+Doorman; every other hand is Opener or Closer, which is the point.
+
+| Who | Role | Hand | Link to the parents | In the building |
+|---|---|---|---|---|
+| The Player | newest recruit, the closet office | undecided | their child | the avatar (the Player model) |
+| Agent Locke | your superior; orientation; door puns; the book keeps changing | Closer | close with the mother | briefing the half-ring table |
+| Agent Belle | colleague, love interest; later locks you in a room | Closer (ex-Opener, after Ringer's death) | — | seated, watching every door |
+| Agent Glass | cocky rival; secret Opener; shot the father; dies for you late | Opener (hidden) | the father's friend and killer | water cooler, arms folded |
+| Agent Knox | your friend; timid in the field; stands up for you | undecided (knocks first) | — | Room 64's east booth, or knocking at your office |
+| Rhonda | reception / intake; big heart, deadpan; "loses" paperwork | Opener | — | seated behind the reception counter |
+| Agent Ringer | Belle's father; veteran; dies so Belle switches sides | unimportant | — | Room 64, watching the grid |
+| Elle Vator | funds DOOR; profits from the Wars; Dorian's love interest | money | — | mezzanine, by the elevator, on the phone |
+| Dorian Gates | ex-Agent Gates; radical Opener; wants to write canon himself | Opener (radical) | co-built the network; saw the killing | never in the building |
+| Otto Matic | maintenance; new doors; Dorian's inside man; turns back late | Opener → switches | — | kneeling at a door on the mezzanine |
+| The Doorman | the director; keeps entropy consistent; manages H-Wing | HINGE (in effect) | — | never seen as himself |
+| The Janitor | $15/hr, no benefits, a key to every room; IS the Doorman | (the same) | the ending | mopping outside your office, or inside it |
+| Kit | refugee catgirl from the first mission; likes doors open, never enters | Opener | — | crouched at reception, or scratching a door |
+| Agent Forrest | Woody Forrest, bigfoot; slips between dimensions; hates cameras | Closer | — | mezzanine, facing the wall |
+| Sedaniel | sentient four-door sedan / killer robot; your company car; bugged by Otto | unaligned | — | parked in Bay 1 · Terrestrial |
+| The parents | Mother (Closer, the fire) · Father (Opener, the network) | both | — | wired for flashbacks |
+| H-Wing · Room 64 | places (A0 #8) | — | — | Room 64 labelled; H-Wing unbuilt |
 
 ---
 
@@ -788,6 +878,11 @@ yes/no; **USER** are the user's own calls from the brief.
 | 14 | Mastery rule | "probably winning with all win conditions, or recruiting all native creatures" | (not covered) | v1 = all win conditions on that map (HQ plan §3); v2 may add the roster rule. |
 | 15 | Rings / vertical layout | (ChatGPT board: Executive / Operations / Support / Training) | (none) | Adopted as the HQ's floor plan (A5). |
 | 16 | Story beats vs lore | the brief's act spine + ordered beats read as Part A canon | (story on hold) | **USER 2026-09-04: only the A0 list is story canon** — recruitment + anonymous referral, the parents and the falsified aftermath, the Entropy Wars framing, H-Wing, the janitor-Doorman ending seed (the last two confirmed as the user's own ideas). The act spine and every ordered beat are SCAFFOLDING. Process = A14; outline + scripts → `DOOR_STORY.md`. |
+| 17 | The father's death | (silent) | A0 #2: DOOR did not order either death; it falsified the aftermath | **USER 2026-09-06 (cast):** Agent Glass shot the father during the CLOSER raid on the backdoor network, at the father's request; Dorian "witnessed how they murdered the Player's father". **REC:** both stand if the raid was the Closers' (the hidden hand, never in official documents), not a Department directive, and the falsification stays DOOR's crime — but the user rules on how high the order and the cover-up go. |
+| 18 | The office door | "a shabby wooden door that squeaks" | L1 = the warped janitor's-closet leaf (rank ladder, C-1) | **REC:** keep the L1 leaf, add the squeak — a door-creak SFX on the office door only (new `playDoorSfx` recipe); it is then the one door in the building that makes a sound. Alternative: swap L1 to the kit's `leaf_shabby_wood`. |
+| 19 | Sedaniel | a sentient sedan, your company vehicle | the roster's Honda Civic (car ⇄ robot, IMPORTED) | **REC: Sedaniel IS the roster Honda Civic** — placed as such in Bay 1; his dossier gets a D.O.O.R. ANNOTATION naming him. A separate character would need a car + robot GLB of his own. |
+| 20 | Kit as a party member | "Kit joins the player's party" | a `catgirl` race with its own rigged model exists | **REC:** Kit's GLB becomes the catgirl race's STORY SKIN once you have met her (a per-unit model override, like the werewolf's day form) — no new race, no balance work. Alternative: Kit as a distinct locked unit that Chapter 1 unlocks. |
+| 21 | Room 64 | the Training Room's name | "the Training Room" | ✅ Shipped 2026-09-06 as the room plate and the egress door's description. The number is the grid (8×8). |
 
 ---
 
@@ -1380,3 +1475,67 @@ User feedback pass on the walkable HQ (four items, all shipped):
 - The voice is documented in A15. Claude does not write these lines.
 - Files: data.js, map.js, three-renderer.js, index.html
   (`?v=20260905g-cors`); DOOR_MASTER.md A15 + this entry. Buried-treasure line moved Werewolf → Pirate (user correction).
+
+### 2026-09-06 — THE CAST: twenty characters written by the user; fifteen rigged models placed in the building
+The user hand-authored the cast (twenty entries: the Player, DOOR, the
+parents, Locke, Belle, Glass, Knox, Rhonda, Ringer, Elle Vator, Dorian
+Gates, Otto Matic, the Doorman, the Janitor, Kit, Agent Forrest,
+Sedaniel, H-Wing, Room 64), Chapter 1's four beats and three misc notes,
+and uploaded fifteen rigged Meshy `..._Character_output.glb` models to R2
+`Assets/Sprites/Races/maincharacters/` (HEAD-verified + rig-checked
+this session: 1 skin, 24 joints, Hips root, 1.70 m normalised; Glass and
+the Janitor were exported without `_biped` in the filename). Everything
+the user wrote is now canon (A0 #6–#9) and lives verbatim in
+`DOOR_STORY.md` §2b; A6, A13, A14, A15 and A16 updated; Part C rows
+17–21 hold the frictions (the father's death vs "DOOR did not order it",
+the squeaking door, Sedaniel = Honda Civic, Kit as a party member, Room
+64 ✅).
+
+What shipped in the game (no story-track code — the cast is BUILDING
+content, which A14 allows):
+- **sprites.js `DOOR_CAST_MODELS`** — the 15 models via `_mkCast`
+  (the roster's `_mk3d` + the shared library + ten building poses
+  `_CAST_POSES`: hqSit / hqSitTalk / hqTalk / hqPhone / hqArms / hqFix /
+  hqPush / hqReach / hqCrouch / hqNo — UAL1/UAL2 clips retargeted at load
+  like everything else). `getCastModel(id)`; kill-switch
+  `EW_DISABLE_CAST`.
+- **data.js `DOOR_CAST`** — who stands where, doing what (one spot per
+  member drawn ONCE PER SESSION by `hqHash`, weighted so Elle's visits are
+  "unexpected" and the Janitor is sometimes in your office);
+  `hqCastInRoom(roomId, profile)`, `hqCastLine(id)`; the training room is
+  ROOM 64; a mop by the egress bucket, a misfiled stack on Rhonda's
+  desk, Otto's two crates on the mezzanine.
+- **three-renderer.js** — `_hqSpawnCast` (after the agents, before the
+  roster vessels), cast specs carry their own def / pose / talk radius /
+  blocker radius, the pose plays once the bake lands it, the target
+  picker uses the per-character reach so Rhonda can be spoken to ACROSS
+  the counter (3.4 m). **The avatar is the Player model** now (map.js
+  `_hqAvatar` → `{cast: 'player'}`; `EW_HQ_AVATAR = 'vessel'` restores
+  the most-played-vessel rule).
+- **map.js** — the cast panel: name, title, the member's own line when
+  one exists (user-authored), the stage direction under it.
+- Placements: Rhonda SEATED behind reception (`Sitting_Idle_Loop`); Kit
+  crouched at the counter (or scratching the Records door); the Janitor
+  mopping outside your office (`Push_Loop`) 7 visits in 10, rummaging
+  your closet shelves (`PickUp_Table`) the other 3; Locke briefing the
+  half-ring (`Idle_Talking_Loop`); Belle seated at the round desk or the
+  couch; Glass at the water cooler, arms folded (`Idle_FoldArms_Loop`);
+  Knox on a chair under Room 64's east booth, or outside your office
+  (he knocked); Ringer on Room 64's east walkway; Elle by the ELEVATOR
+  on the phone (`Idle_TalkingPhone_Loop`), half the time; Otto kneeling
+  (`Fixing_Kneeling`) at the Canon Office door or the fourth door beside
+  Arcane Engineering; Forrest (the roster bigfoot) on the mezzanine facing
+  the wall; Sedaniel (the roster Honda Civic) parked in Bay 1 ·
+  Terrestrial. Dorian, the Doorman and the parents are wired, never
+  placed. Forrest and Sedaniel have no GLB of their own in
+  `maincharacters/` (checked) — they borrow roster models.
+- `doorhq.test.js` +4 tests (registry parity between the two files, every
+  pose clip present in its library, every spot on walkable floor, the
+  session draw's invariants, the code hooks). `npm test`: 117 pass.
+- Files: sprites.js, data.js, three-renderer.js, map.js, index.html
+  (`?v=20260906a-cors`), doorhq.test.js; docs: DOOR_STORY.md (rev 1),
+  this file, DOOR_HQ_BUILD_PLAN.md §9, CLAUDE.md, PLAYTEST_NOTES.md.
+- NOT done, by design: no cutscenes, no chapter gating (the story track
+  is on hold per A14 until the outline); no per-chapter presence rules
+  (`minClearance`/`maxClearance` per spot are wired and unused); no
+  squeak on the office door (C-18); Kit is not a party member (C-20).

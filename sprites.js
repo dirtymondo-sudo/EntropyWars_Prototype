@@ -1701,6 +1701,99 @@ function getRace3DModel(race, gender) {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
+// D.O.O.R. CAST — the story's named people (2026-09-06)
+//
+// The cast are NOT races: they never appear on the roster, in the Shop or on
+// the board, so they live in their own registry instead of RACE_MODELS_3D.
+// Every model is a rigged Meshy `..._Character_output.glb` in
+// R2 Assets/Sprites/Races/maincharacters/ (all 15 HEAD-verified and
+// rig-checked 2026-09-06: 1 skin, 24 joints, Hips root, 1.70 m normalised —
+// so heightRatio below is the ONLY size signal, exactly like the roster).
+// Animation comes from the shared library like everything else; the extra
+// `hq*` slots are the BUILDING POSES three-renderer.js plays for a placed
+// cast member (data.js DOOR_CAST spots name one as `pose`; a member with no
+// pose idles). Who they are and where they stand is data.js DOOR_CAST; the
+// story is DOOR_STORY.md §2 (hand-authored by the user).
+//   hqSit      Sitting_Idle_Loop     (UAL1) behind a desk / on a chair
+//   hqSitTalk  Sitting_Talking_Loop  (UAL1) seated, mid-conversation
+//   hqTalk     Idle_Talking_Loop     (UAL1) standing, briefing someone
+//   hqPhone    Idle_TalkingPhone_Loop (UAL2) on the phone
+//   hqArms     Idle_FoldArms_Loop    (UAL2) arms folded, unimpressed
+//   hqFix      Fixing_Kneeling       (UAL1) kneeling at a door with tools
+//   hqPush     Push_Loop             (UAL1) leaning into a mop handle
+//   hqReach    PickUp_Table          (UAL1) rummaging a shelf
+//   hqCrouch   Crouch_Idle_Loop      (UAL1) low, cat-like, by a counter
+//   hqNo       Idle_No_Loop          (UAL2) shaking the head
+// Kill-switch (console): window.EW_DISABLE_CAST = true → getCastModel()
+// returns null, the building falls back to agents + roster vessels and the
+// avatar to the most-played vessel (EW_HQ_AVATAR = 'vessel' does only the
+// latter).
+// ───────────────────────────────────────────────────────────────────────────
+const _CAST_POSES = {
+  hqSit:     { clip: 'Sitting_Idle_Loop',      lib: 0, ts: 1.0 },
+  hqSitTalk: { clip: 'Sitting_Talking_Loop',   lib: 0, ts: 1.0 },
+  hqTalk:    { clip: 'Idle_Talking_Loop',      lib: 0, ts: 1.0 },
+  hqPhone:   { clip: 'Idle_TalkingPhone_Loop', lib: 1, ts: 1.0 },
+  hqArms:    { clip: 'Idle_FoldArms_Loop',     lib: 1, ts: 1.0 },
+  hqFix:     { clip: 'Fixing_Kneeling',        lib: 0, ts: 1.0 },
+  hqPush:    { clip: 'Push_Loop',              lib: 0, ts: 0.8 },
+  hqReach:   { clip: 'PickUp_Table',           lib: 0, ts: 0.7 },
+  hqCrouch:  { clip: 'Crouch_Idle_Loop',       lib: 0, ts: 1.0 },
+  hqNo:      { clip: 'Idle_No_Loop',           lib: 1, ts: 1.0 },
+};
+// A cast member: the shared library + every building pose + a per-character
+// flavour. `female` picks the female idle/walk (the roster's gendered
+// defaults only sweep RACE_MODELS_3D). `file` overrides the model filename
+// for the two exports Meshy named without `_biped`.
+function _mkCast(prefix, opts) {
+  opts = opts || {};
+  const lib = Object.assign({}, _CAST_POSES, opts.female ? _FEM_SLOT_DEFAULTS : {}, opts.lib || {});
+  const o = Object.assign({ heightRatio: 1.0 }, opts, { lib });
+  delete o.female; delete o.file;
+  if (opts.file) o.model = `${_S}/Races/maincharacters/${opts.file}`;
+  return _mk3d('maincharacters', prefix, {}, o);
+}
+const DOOR_CAST_MODELS = {
+  // the recruit — the default HQ avatar since 2026-09-06 (map.js _hqAvatar)
+  player:   _mkCast('Player',       { heightRatio: 1.0 }),
+  // your superior; by-the-book, the book keeps changing
+  locke:    _mkCast('Agent_Locke',  { heightRatio: 0.96, female: true }),
+  // colleague / love interest; Ringer's daughter
+  belle:    _mkCast('Agent_Belle',  { heightRatio: 0.94, female: true }),
+  // cocky; Meshy named this export without _biped
+  glass:    _mkCast('Agent_Glass',  { heightRatio: 1.02, file: 'Meshy_AI_Agent_Glass_Character_output.glb' }),
+  // your friend; started a few months before you; always knocks first
+  knox:     _mkCast('Agent_Knox',   { heightRatio: 0.98 }),
+  // Belle's father, the respected veteran
+  ringer:   _mkCast('Agent_Ringer', { heightRatio: 1.04 }),
+  // reception / intake — the big heart behind the counter
+  rhonda:   _mkCast('Rhonda',       { heightRatio: 0.94, female: true }),
+  // the mogul who funds DOOR; visits unannounced
+  elle:     _mkCast('Elle_Vator',   { heightRatio: 0.96, female: true }),
+  // formerly Agent Gates — the radical Opener; never in the building
+  dorian:   _mkCast('Dorian_Gates', { heightRatio: 1.02 }),
+  // facilities — renovations, new doors, the trap door in your closet
+  otto:     _mkCast('Otto',         { heightRatio: 1.0 }),
+  // the director; not seen. The Janitor is the same height on purpose.
+  doorman:  _mkCast('Doorman',      { heightRatio: 1.0 }),
+  // $15/hour, no benefits, a key to every room; Meshy export without _biped
+  janitor:  _mkCast('Janitor',      { heightRatio: 1.0, file: 'Meshy_AI_Janitor_Character_output.glb' }),
+  // the parents — flashbacks only
+  mother:   _mkCast('Mother',       { heightRatio: 0.95, female: true }),
+  father:   _mkCast('Father',       { heightRatio: 1.02 }),
+  // the refugee catgirl (petite, like the roster catgirl); lowercase on R2
+  kit:      _mkCast('kit',          { heightRatio: 0.88, female: true }),
+};
+function getCastModel(id) {
+  if (typeof window !== 'undefined' && (window.EW_DISABLE_3D_UNITS || window.EW_DISABLE_CAST)) return null;
+  return DOOR_CAST_MODELS[id] || null;
+}
+if (typeof window !== 'undefined') {
+  window.DOOR_CAST_MODELS = DOOR_CAST_MODELS;
+  window.getCastModel = getCastModel;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 // HUD portraits — close-up 128×128 face art shown in the HUD panels, the
 // turn-clock flanks, the horologe clock face + target menus, the far-zoom
 // nameplates and the party-builder rail. Same exact-gender rule as the

@@ -133,6 +133,18 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   `Assets/door/models/` + `Assets/door/textures/`; reference art is in the
   repo at `door_reference_images/`. `npm test` runs `doorhq.test.js`.
   Playtest harnesses call `_goToVsCpu()` directly and bypass the building.
+- **The CAST shipped 2026-09-06**: the story's named characters (the user's
+  cast sheet, canon, `DOOR_STORY.md` §2 / DOOR_MASTER A16) stand in the
+  building. Models: sprites.js `DOOR_CAST_MODELS` (15 rigged GLBs on R2
+  `Assets/Sprites/Races/maincharacters/`, `_mkCast`, the `_CAST_POSES`
+  library slots — sit/talk/phone/fold-arms/kneel-fix/push/reach/crouch).
+  Placement: data.js `DOOR_CAST` (spots per room, pose, talk radius,
+  weights; `hqCastInRoom`), spawned by three-renderer.js `_hqSpawnCast`,
+  panel in map.js. The HQ avatar is the Player model (`EW_HQ_AVATAR =
+  'vessel'` restores the most-played vessel; `EW_DISABLE_CAST` removes the
+  cast). Cast LINES are user-authored (A15 rule) — Claude writes only the
+  `doing` stage directions. Adding a cast member = one `_mkCast` line +
+  one `DOOR_CAST` entry; `npm test` (doorhq.test.js) checks both sides.
 
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /

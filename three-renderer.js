@@ -28953,7 +28953,9 @@ const ThreeRenderer = (function () {
     function _hqSpawnCharacter(spec) {
         var U = _hqUnits(), S = _hq.room.shell;
         var race = spec.race, gender = spec.gender || 'male';
-        var def = (typeof getRace3DModel === 'function') ? getRace3DModel(race, gender) : null;
+        /* a cast member (data.js DOOR_CAST, 2026-09-06) brings its own def;
+           everyone else resolves a roster race */
+        var def = spec.def || ((typeof getRace3DModel === 'function') ? getRace3DModel(race, gender) : null);
         if (!def && typeof getRace3DModel === 'function') {
             /* other gender of the same race, then the DOOR agent stand-in */
             var alt = (gender === 'male') ? 'female' : 'male';
@@ -28984,19 +28986,52 @@ const ThreeRenderer = (function () {
             x: p.x / U, z: p.z / U, y: y, visY: y, yaw: yaw, targetYaw: yaw,
             line: spec.line || null, label: spec.label || ((typeof getRaceLabel === 'function') ? getRaceLabel(race, gender) : (race.charAt(0).toUpperCase() + race.slice(1))),
             race: race, gender: gender, heightM: 1.75 * (def.heightRatio || 1), cleaned: false, moving: false, running: false, jumpT: -1, air: false, vy: 0,
+            /* cast extras (2026-09-06): the panel's sub-line, the talk radius
+               (a counter needs more than arm's length), the building pose
+               (a sprites.js _CAST_POSES slot) and the stage direction */
+            sub: spec.sub || null, reach: spec.reach || 1.75, pose: spec.pose || null, cast: spec.cast || null, doing: spec.doing || null,
         };
         _hq.chars.push(ch);
         /* people are never a floor: the top sits above any jump apex */
-        if (spec.kind !== 'player') _hq.blockers.push({ obj: entry.group, rad: 0.42, y: y, top: y + 2.6, npc: true });
+        if (spec.kind !== 'player') _hq.blockers.push({ obj: entry.group, rad: spec.rad || 0.42, y: y, top: y + 2.6, npc: true });
         return ch;
+    }
+    /* The story cast (data.js DOOR_CAST → sprites.js DOOR_CAST_MODELS,
+       2026-09-06): named people at their posts — Rhonda seated behind the
+       reception counter, the Janitor at his bucket, Otto kneeling at a door,
+       Elle Vator on the phone by the elevator — one spot per member drawn
+       once per session (hqCastInRoom). A member without a model (or with
+       EW_DISABLE_CAST set) is simply not in the building. */
+    function _hqSpawnCast(room, opts) {
+        if (typeof hqCastInRoom !== 'function') return;
+        var roomId = opts.room || 'central_egress';
+        var here = [];
+        try { here = hqCastInRoom(roomId, opts.profile) || []; } catch (e) { console.warn('[HQ] cast draw failed', e); return; }
+        here.forEach(function (c) {
+            var m = c.member, s = c.spot;
+            var gender = m.gender || 'male';
+            var def = null;
+            if (m.model && typeof getCastModel === 'function') def = getCastModel(m.model);
+            else if (m.race && typeof getRace3DModel === 'function') def = getRace3DModel(m.race, gender) || getRace3DModel(m.race, gender === 'male' ? 'female' : 'male');
+            if (!def) return;
+            try {
+                _hqSpawnCharacter({ id: 'hq-cast-' + c.id, kind: 'cast', cast: c.id, race: m.base || m.race || 'men in black', gender: gender, def: def,
+                    deg: s.deg, r: s.r, x: s.x, z: s.z, level: s.level || 0, face: s.face || 0,
+                    label: m.name, sub: m.title, pose: s.pose || null, reach: s.reach, rad: s.rad, doing: s.doing || null });
+            } catch (e) { console.warn('[HQ] cast member skipped', c.id, e); }
+        });
     }
     function _hqSpawnPopulation(room, opts) {
         var av = opts.avatar || {};
         var sp = room.spawn || { deg: 180, r: 15, level: 0, face: 0 };
-        _hq.player = _hqSpawnCharacter({ id: 'hq-player', kind: 'player', race: av.race || 'men in black', gender: av.gender || 'male', deg: sp.deg, r: sp.r, x: sp.x, z: sp.z, level: sp.level || 0, face: sp.face || 0, label: 'YOU' });
+        /* the avatar: the Player cast model (map.js _hqAvatar → {cast: 'player'},
+           2026-09-06) or a roster vessel / the agent in black */
+        var avDef = (av.cast && typeof getCastModel === 'function') ? getCastModel(av.cast) : null;
+        _hq.player = _hqSpawnCharacter({ id: 'hq-player', kind: 'player', race: av.race || 'men in black', gender: av.gender || 'male', def: avDef || undefined, deg: sp.deg, r: sp.r, x: sp.x, z: sp.z, level: sp.level || 0, face: sp.face || 0, label: 'YOU' });
         (room.agents || []).forEach(function (ag, i) {
             _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: 'men in black', gender: (i % 2) ? 'female' : 'male', deg: ag.deg, r: ag.r, x: ag.x, z: ag.z, level: ag.level || 0, face: ag.face || 0, line: ag.line, label: 'D.O.O.R. AGENT' });
         });
+        _hqSpawnCast(room, opts);
         /* roster vessels: unlocked races with a rigged model, minus the avatar */
         try {
             var spots = room.npcSpots || [];
@@ -29254,8 +29289,8 @@ const ThreeRenderer = (function () {
             if (ch.kind === 'player') return;
             if (Math.abs(ch.y - pl.y) > 1) return;
             var dist = Math.hypot(ch.x - pl.x, ch.z - pl.z);
-            if (dist > 1.75) return;
-            if (dist < bestD) { bestD = dist; best = { kind: ch.kind, id: ch.id, label: ch.label, sub: ch.kind === 'agent' ? 'D.O.O.R. PERSONNEL' : 'ON BREAK', line: ch.line, race: ch.race, gender: ch.gender }; }
+            if (dist > (ch.reach || 1.75)) return;
+            if (dist < bestD) { bestD = dist; best = { kind: ch.kind, id: ch.id, label: ch.label, sub: ch.sub || (ch.kind === 'agent' ? 'D.O.O.R. PERSONNEL' : 'ON BREAK'), line: ch.line, race: ch.race, gender: ch.gender, cast: ch.cast, doing: ch.doing }; }
         });
         return best;
     }
@@ -29502,6 +29537,9 @@ const ThreeRenderer = (function () {
             e.model.rotation.y = ch.yaw;
             if (ch.kind === 'player') e.group.visible = !H.fp;
             var want = 'idle';
+            /* a placed cast member holds its building pose (sits, mops,
+               kneels…) once the library bake has landed the clip */
+            if (ch.pose && ch.kind !== 'player' && e.actions && e.actions[ch.pose]) want = ch.pose;
             if (ch.kind === 'player') {
                 want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
                 var lean = e.model._ew_lean || 0;
