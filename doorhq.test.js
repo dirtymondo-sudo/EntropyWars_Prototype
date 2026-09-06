@@ -140,7 +140,9 @@ test('spawn, counters, npc spots and floor props sit inside the walkable ring', 
         const rMin = level ? S.mezz.inner : ((ROOM.desk && ROOM.desk.rOuter) || 0);
         if (p.r == null) return;
         if (p.r > rMax) problems.push(`${label} r=${p.r} is outside the wall (max ${rMax})`);
-        if (p.r < rMin && !(p.y > 0.5)) problems.push(`${label} r=${p.r} is inside the desk / off the slab (min ${rMin})`);
+        /* the dispatch desk's well (inside rInner, floor at 0.05 m) may hold furniture — Rhonda's chair */
+        const inWell = !level && ROOM.desk && p.r <= ROOM.desk.rInner - 0.3 && p.y === 0.05;
+        if (p.r < rMin && !(p.y > 0.5) && !inWell) problems.push(`${label} r=${p.r} is inside the desk / off the slab (min ${rMin})`);
     };
     check('spawn', ROOM.spawn);
     ROOM.counters.forEach(c => check('counter ' + c.id, c));
@@ -767,7 +769,7 @@ test('every cast spot names a real room, a known pose, sane weights, and stands 
             if (!room) { problems.push(id + ': room ' + s.room); continue; }
             if (s.pose && !CAST_POSES[s.pose]) problems.push(id + ': pose ' + s.pose + ' is not a sprites.js _CAST_POSES slot');
             if (s.p != null && !(s.p > 0 && s.p <= 1)) problems.push(id + ': p must be in (0, 1]');
-            if (s.reach != null && !(s.reach > 0 && s.reach <= 4)) problems.push(id + ': reach');
+            if (s.reach != null && !(s.reach > 0 && s.reach <= 5.5)) problems.push(id + ': reach');
             if (typeof s.face !== 'number') problems.push(id + ': face');
             if (typeof s.doing !== 'string' || !s.doing) problems.push(id + ': every spot carries a stage direction');
             if (room.kind === 'box') {
@@ -787,7 +789,9 @@ test('every cast spot names a real room, a known pose, sane weights, and stands 
                     if (s.r - BODY < lo || s.r + BODY > hi) problems.push(id + ': mezzanine spot r=' + s.r + ' off the slab band');
                 } else {
                     const rMin = (ROOM.desk && ROOM.desk.rOuter || 0) + BODY;
-                    if (s.r > S.radius - BODY - 0.1 || s.r < rMin) problems.push(id + ': floor spot r=' + s.r + ' outside the ring');
+                    /* the dispatch desk's WELL (inside rInner, floor at 0.05 m) is a legal post — Rhonda's */
+                    const inWell = ROOM.desk && s.r <= ROOM.desk.rInner - BODY && s.y === 0.05;
+                    if (s.r > S.radius - BODY - 0.1 || (s.r < rMin && !inWell)) problems.push(id + ': floor spot r=' + s.r + ' outside the ring');
                     for (const st of ROOM.stairs) {
                         const lo = Math.min(st.from, st.to) - 2, hi = Math.max(st.from, st.to) + 2;
                         const a = ((s.deg % 360) + 360) % 360;
@@ -799,11 +803,16 @@ test('every cast spot names a real room, a known pose, sane weights, and stands 
     }
     assert.deepStrictEqual(problems, []);
     /* the physical business the cast rely on is in the rooms */
-    assert.ok(ROOM.props.some(p => p.key === 'mop' && Math.abs(p.deg - 143) < 3), 'the Janitor’s mop leans by the egress bucket');
     assert.ok(ROOM.props.filter(p => p.key === 'cardboard_box' && (p.level || 0) === 1).length >= 2, 'Otto’s crates on the mezzanine');
     assert.ok(HQ.rooms.office.props.some(p => p.key === 'mop_bucket'), 'the closet keeps its bucket');
     const rh = CAST.rhonda.spots[0];
-    assert.ok(rh.pose === 'hqSit' && rh.reach >= 3 && ROOM.props.some(p => p.key === 'office_chair' && Math.abs(p.deg - rh.deg) < 1 && Math.abs(p.r - rh.r) < 0.2), 'Rhonda sits on the reception chair, reachable across the counter');
+    assert.ok(rh.pose === 'hqSit' && rh.reach >= 3 && rh.r < ROOM.desk.rInner && ROOM.props.some(p => p.key === 'office_chair' && Math.abs(p.deg - rh.deg) < 1 && Math.abs(p.r - rh.r) < 0.2 && p.y === 0.05), 'Rhonda sits on the chair inside the dispatch desk, reachable across the counter');
+    const kt = CAST.kit.spots[0];
+    assert.ok(kt.pose === 'hqSit' && ROOM.props.some(p => p.key === 'folding_chair' && Math.abs(p.deg - kt.deg) < 1 && Math.abs(p.r - kt.r) < 0.2), 'Kit waits on a folding chair at the desk');
+    const jn = CAST.janitor.spots[0];
+    assert.ok(jn.hold && jn.hold.key === 'mop' && HQ.catalogue.mop && /Hand$/.test(jn.hold.bone), 'the Janitor holds the mop');
+    /* every held prop names a catalogue GLB and a hand bone */
+    for (const [id, m] of Object.entries(CAST)) for (const sp of m.spots) if (sp.hold) assert.ok(HQ.catalogue[sp.hold.key] && HQ.catalogue[sp.hold.key].file && /^(Left|Right)Hand$/.test(sp.hold.bone), id + ': hold');
     assert.ok(/ROOM 64/.test(HQ.rooms.training.sub), 'the Training Room is Room 64');
 });
 

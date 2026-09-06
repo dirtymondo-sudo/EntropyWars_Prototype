@@ -145,6 +145,9 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   cast). Cast LINES are user-authored (A15 rule) — Claude writes only the
   `doing` stage directions. Adding a cast member = one `_mkCast` line +
   one `DOOR_CAST` entry; `npm test` (doorhq.test.js) checks both sides.
+  Placement is screenshot-driven: `node playtest_hq.js <room> [force-json]`
+  (repo tooling; needs the server + `NODE_USE_ENV_PROXY=1`) — see
+  PLAYTEST_NOTES "THE CAST IN THE HEADQUARTERS" before moving anyone.
 
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /

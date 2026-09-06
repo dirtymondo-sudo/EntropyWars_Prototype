@@ -47,6 +47,34 @@ DOOR_HQ_BUILD_PLAN §9 2026-09-06 + DOOR_MASTER Part D.
   constants and checks every pose against them; registry parity is a
   SOURCE scan of sprites.js (it does not evaluate headlessly alone — it
   does after data.js in the same sandbox, if a future test needs values).
+- **PLAYTESTED 2026-09-06 (rev 2)** — the user's feedback pass. Findings that
+  matter for anyone placing characters again:
+  - The UAL `Sitting_Idle_Loop` slides the pelvis ~0.5 m behind the root.
+    Retargeted raw, a seated member sits half a metre BEHIND the chair spot.
+    Fix = the `pinXZ` lib-clip flag (bake keeps vertical hips travel, pins
+    ground-plane travel) — on every in-place building pose. Measure with
+    `ThreeRenderer.hq.dev.bone(id, 'Hips')` (dx/dz ≈ 0, dy ≈ 0.55 seated).
+  - `Crouch_Idle_Loop` retargets as a hover on the petite Kit rig — avoid;
+    she sits on a folding chair instead.
+  - Held props: `spots[].hold = {key, bone: 'RightHand', upright: true,
+    pos, rot}`; with `upright` the pos/rot are WORLD-space and the prop
+    hangs plumb from the hand every frame. The mop GLB stands on its HEAD
+    (base = bristles), so pos [0, −(hand height), 0] puts the head on the
+    floor. `Idle_Rail_Loop` (hands ~1.1 m forward) + the mop = leaning on it.
+  - Room `agents[]` accept `pose`/`gender`/`label`/`reach`/`y`; a posed
+    agent gets the cast poses merged into the MIB def (bake key now includes
+    the slot count).
+  - **`playtest_hq.js`** (repo root): `node playtest_hq.js central_egress
+    '{"belle":1,"otto":0}' tag` → `shots/hq/*.png` + a chars/bones dump.
+    Chromium CANNOT reach the CDN through this sandbox's proxy (resets;
+    `--disable-quic` does not help) but Node fetch can, so the script
+    fetches every CDN asset Node-side (`NODE_USE_ENV_PROXY=1`) into
+    `.asset-cache/` and fulfills it; the browser runs `--proxy-server=
+    direct://`. First run ≈ 4 min (≈150 MB of GLBs), later runs ≈ 40 s.
+    `ThreeRenderer` is a script-scope const: check it with a bare
+    identifier inside `page.evaluate`, never `window.ThreeRenderer`. Static
+    models (the Honda Civic) have 0 actions, so the "everyone baked" wait
+    times out at 4 min for the bay — harmless.
 - Not done: story gating (`minClearance` wired, unused), cutscenes, walking
   NPCs, cast portraits (`portrait.png` per member would give the panels a
   face), the office-door squeak (DOOR_MASTER C-18). NOT playtested (RULE

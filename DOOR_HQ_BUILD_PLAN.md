@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 14 (2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar, §9; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
+### The walkable facility that replaces the Play menu · rev 15 (2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -2098,3 +2098,90 @@ sprites.js from the first build stand). `npm test` 113 (112 pass).
 - Files: sprites.js, data.js, three-renderer.js, map.js, doorhq.test.js,
   index.html (`?v=20260906a-cors`); docs: this file, DOOR_MASTER.md (rev
   16), DOOR_STORY.md (rev 1), CLAUDE.md, PLAYTEST_NOTES.md.
+
+### 2026-09-06 (rev 2) — the cast PLAYTESTED: seats, the round desk, the mop, Room 64
+User feedback on rev 1 (with permission to playtest): Rhonda belongs INSIDE
+the round dispatch desk; nobody was sitting on chairs properly; Belle faced
+the wall; the Janitor was "pushing nothing". Every placement was then
+screenshot-driven — `playtest_hq.js` (repo tooling, see below) enters a
+room with the LOCAL edits, forces each member to a chosen spot, walks a
+first-person eye in front of / over the shoulder of every character and
+saves the frames to `shots/hq/`.
+- **Why nobody sat properly — and the fix**: the UAL sitting clip slides
+  the pelvis ~0.5 m BEHIND the root (the character's feet stay put, the
+  hips move back onto an imaginary chair). Retargeted as-is, a member
+  placed at a chair's spot sat half a metre behind it (Rhonda vanished
+  behind her chair back; Belle only looked right because the teal chair
+  faced the other way). New bake flag **`pinXZ`** (three-renderer.js
+  `_libBakeClips`, sprites.js `_mk3d` lib merge): keep the clip's
+  VERTICAL hips travel, pin the ground-plane travel to the rest spot. The
+  hips now drop straight onto the seat (measured with `dev.bone`: hips
+  0.53–0.56 m up, ≤ 5 cm off the spot). Applied to hqSit / hqSitTalk /
+  hqFix / hqPush / hqReach / hqCrouch. The chairs were never too small —
+  the seat heights match (office/teal 0.96 m tall → ~0.48 seat; folding
+  0.84 → ~0.42).
+- **Rhonda inside the dispatch desk**: an `office_chair` on the well floor
+  (`y: 0.05`, deg 180 r 2.05, facing the BELL console side), Rhonda seated
+  on it facing south, reach 5.0 (the console still wins the prompt when
+  you stand at it; she takes over as you slide round the counter), a
+  `papers_b` stack on the counter above her. The "Take a number" agent in
+  the well now faces north so they work opposite halves. The reception
+  wedge keeps a SEATED **INTAKE CLERK** (a generic agent: room `agents[]`
+  entries accept `pose` / `gender` / `label` / `reach` / `y` now; an agent
+  with a pose borrows the MIB def with the cast poses merged, and the bake
+  cache key includes the slot count so the HQ bake and the battle bake of
+  the same MIB model never collide).
+- **Belle** sits on the teal chair at 257°/13.9 (the one facing the hall,
+  face 77) — she sees every door; the couch spot (p .4) faces the centre.
+- **Kit** — the crouch clip retargeted as a hover; replaced by a
+  `folding_chair` at 158°/6.7 by the dispatch counter, Kit seated on it
+  facing Rhonda. The Records-door scratching spot is dropped for now (no
+  clean "scratching" clip; `Interact` loops as a reach — try it later).
+- **The Janitor leans on his mop**: new **held props** — `spots[].hold =
+  { key, bone, upright, pos, rot, h }` parents a catalogue GLB to a hand
+  bone once the rig is in (`_hqAttachHeld`); `upright: true` re-aims the
+  holder to the world axes every frame (`_hqTickChars`), so the prop
+  hangs plumb from the hand at real size and only rides the hand's
+  position — pos/rot are then WORLD-space. Pose `hqLean` (`Idle_Rail_Loop`,
+  forearms forward at ~1.1 m) + the mop GLB (which stands on its HEAD:
+  base = bristles) at pos [0, −1.05, 0] → both hands on the handle, head
+  on the floor. `hqStaff` (`Sword_Idle`) stays wired as the alternative.
+  The standalone egress `mop` prop is gone (it is in his hand). His office
+  spot keeps `hqReach` at the shelves — reads as rummaging.
+- **Otto** kneels AT the door jambs now (312.5°/23.1 at the Canon Office
+  door, 87.5°/23.1 at Arcane Engineering — 1 m off the door centre, 0.55 m
+  off the wall), the crates beside him (309° / 84°, r 22.95).
+- **Room 64**: the training room's procedural wall sign reads
+  `ROOM 64` (was `ROOM 8×8`; both the Holo-Sim board's and the walkable
+  room's `sign('tr_south', …)`).
+- **Dev API** (three-renderer.js `ThreeRenderer.hq.dev`): `teleport({deg,r
+  | x,z, level, y, face, pitch, dist, fp})`, `lookAt(x, z, pitch)`,
+  `chars()` (id/kind/label/pos/deg/r/face/pose/anim/actions/attached),
+  `bone(charId, name)` (world + root-relative position, scale),
+  `props()`. data.js `hqCastInRoom(room, profile, {force: {id: spotIdx}})`
+  pins members for the probe (−1 = absent).
+- **`playtest_hq.js`** (repo root, `node playtest_hq.js <room> [force-json]
+  [tag]`, server on :3000): serves sprites.js / data.js / three-renderer.js
+  / map.js from the repo; every other CDN asset is fetched NODE-SIDE
+  (`NODE_USE_ENV_PROXY=1`) into `.asset-cache/` and fulfilled, because in
+  this sandbox Chromium cannot reach the CDN through the proxy (connection
+  resets) while Node's fetch can — the browser runs with
+  `--proxy-server=direct://`. Waits for every character's model + baked
+  actions (a static model like the Honda Civic has 0 actions — the wait
+  gives up after 4 min, harmless), prints `chars()` + hips/hand bones,
+  shoots `<room>_<tag>_<char>_{front,34|ots,ots2}.png` (over-the-shoulder
+  angles when the front eye would be inside a wall) and a third-person
+  `spawn_tp`. NOTE `ThreeRenderer` is a script-scope const — test it with
+  a bare identifier in `page.evaluate`, never `window.ThreeRenderer`.
+- Verified in frames: Rhonda seated in the well (head + shoulders over the
+  counter), the intake clerk seated at the wedge, Belle on the hall-facing
+  chair and on the couch, Kit on her folding chair, Knox on the Room 64
+  chair and outside the office door, Ringer arms folded at the lockers,
+  Locke talking at the half-ring, Glass at the cooler, Elle on the phone
+  by the elevator, Otto kneeling at both doors, Forrest nose to the wall,
+  the Janitor leaning on the mop / rummaging the closet shelves, Sedaniel
+  parked in Bay 1, the Player model in third person in every room, the
+  ROOM 64 sign.
+- Files: sprites.js, data.js, three-renderer.js (map.js unchanged since
+  rev 1), doorhq.test.js, index.html (`?v=20260906b-cors`), playtest_hq.js
+  (new, repo-only), this file, DOOR_MASTER.md Part D, PLAYTEST_NOTES.md.

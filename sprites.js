@@ -779,6 +779,7 @@ function _mk3d(folder, prefix, anims, opts) {
       const o = def.lib[slot];
       lc[slot] = { clip: o.clip, lib: o.lib || 0 };
       if (o.pinHips) lc[slot].pinHips = true;
+      if (o.pinXZ) lc[slot].pinXZ = true;     // keep the vertical hips travel, pin the ground-plane travel (HQ poses)
       if (o.ts) lt[slot] = o.ts;
     }
     def.libClips = lc; def.libTimeScales = lt;
@@ -1724,22 +1725,29 @@ function getRace3DModel(race, gender) {
 //   hqReach    PickUp_Table          (UAL1) rummaging a shelf
 //   hqCrouch   Crouch_Idle_Loop      (UAL1) low, cat-like, by a counter
 //   hqNo       Idle_No_Loop          (UAL2) shaking the head
+//   hqStaff    Sword_Idle            (UAL1) a pole held at the side
+//   hqLean     Idle_Rail_Loop        (UAL2) forearms on a rail — leaning on the mop
+// Poses that move the pelvis off the root in the ground plane (the UAL sit
+// slides it ~0.5 m back) bake with pinXZ: the hips drop but stay over the
+// spot, so a seated member is ON the chair the spot names, feet in front.
 // Kill-switch (console): window.EW_DISABLE_CAST = true → getCastModel()
 // returns null, the building falls back to agents + roster vessels and the
 // avatar to the most-played vessel (EW_HQ_AVATAR = 'vessel' does only the
 // latter).
 // ───────────────────────────────────────────────────────────────────────────
 const _CAST_POSES = {
-  hqSit:     { clip: 'Sitting_Idle_Loop',      lib: 0, ts: 1.0 },
-  hqSitTalk: { clip: 'Sitting_Talking_Loop',   lib: 0, ts: 1.0 },
+  hqSit:     { clip: 'Sitting_Idle_Loop',      lib: 0, ts: 1.0, pinXZ: true },
+  hqSitTalk: { clip: 'Sitting_Talking_Loop',   lib: 0, ts: 1.0, pinXZ: true },
   hqTalk:    { clip: 'Idle_Talking_Loop',      lib: 0, ts: 1.0 },
   hqPhone:   { clip: 'Idle_TalkingPhone_Loop', lib: 1, ts: 1.0 },
   hqArms:    { clip: 'Idle_FoldArms_Loop',     lib: 1, ts: 1.0 },
-  hqFix:     { clip: 'Fixing_Kneeling',        lib: 0, ts: 1.0 },
-  hqPush:    { clip: 'Push_Loop',              lib: 0, ts: 0.8 },
-  hqReach:   { clip: 'PickUp_Table',           lib: 0, ts: 0.7 },
-  hqCrouch:  { clip: 'Crouch_Idle_Loop',       lib: 0, ts: 1.0 },
+  hqFix:     { clip: 'Fixing_Kneeling',        lib: 0, ts: 1.0, pinXZ: true },
+  hqPush:    { clip: 'Push_Loop',              lib: 0, ts: 0.8, pinXZ: true },
+  hqReach:   { clip: 'PickUp_Table',           lib: 0, ts: 0.7, pinXZ: true },
+  hqCrouch:  { clip: 'Crouch_Idle_Loop',       lib: 0, ts: 1.0, pinXZ: true },
   hqNo:      { clip: 'Idle_No_Loop',           lib: 1, ts: 1.0 },
+  hqStaff:   { clip: 'Sword_Idle',             lib: 0, ts: 1.0 },
+  hqLean:    { clip: 'Idle_Rail_Loop',         lib: 1, ts: 1.0 },
 };
 // A cast member: the shared library + every building pose + a per-character
 // flavour. `female` picks the female idle/walk (the roster's gendered

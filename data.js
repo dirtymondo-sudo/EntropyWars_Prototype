@@ -15757,6 +15757,10 @@ const DOOR_HQ = {
                props ignore r; `on` = stack on another prop's top (key) */
             props: [
                 /* desk top */
+                /* Rhonda's post (DOOR_CAST, 2026-09-06): the clerk's chair INSIDE
+                   the ring, on the well floor (0.05 m), facing the BELL console side */
+                { key: 'office_chair', deg: 180, r: 2.05, level: 0, y: 0.05, rot: 180 },
+                { key: 'papers_b',     deg: 176, r: 4.45, level: 0, y: 1.05, rot: -20 },
                 { key: 'crt_terminal', deg: 20,  r: 4.5, level: 0, y: 1.05, rot: 180 },
                 { key: 'crt_terminal', deg: 200, r: 4.5, level: 0, y: 1.05, rot: 180 },
                 { key: 'crt_terminal', deg: 110, r: 4.5, level: 0, y: 1.05, rot: 180 },
@@ -15830,7 +15834,8 @@ const DOOR_HQ = {
                 { key: 'exit_sign',      deg: 180, level: 0, r: 20.42, mount: 2.62 },
                 { key: 'wet_floor_sign', deg: 156, r: 18.4, level: 0, rot: -30 },
                 { key: 'mop_bucket',     deg: 143, r: 19.4, level: 0 },
-                { key: 'mop',            deg: 143.8, r: 19.2, level: 0, rot: 35 },   // the Janitor's (DOOR_CAST) — leaning on the bucket
+                /* Kit's waiting chair (DOOR_CAST): a folding chair at the desk, facing Rhonda */
+                { key: 'folding_chair',  deg: 158, r: 6.7, level: 0 },
                 { key: 'cardboard_box',  deg: 236, r: 19.0, level: 0, rot: 20 },
                 { key: 'cardboard_box',  deg: 236, r: 19.0, level: 0, y: 0.42, rot: 60 },
                 /* mezzanine */
@@ -15848,8 +15853,8 @@ const DOOR_HQ = {
                 { key: 'fire_extinguisher', deg: 105, level: 1, wall: true },
                 { key: 'wall_clock',     deg: 255, level: 1, wall: true },
                 /* Otto's tool crates (DOOR_CAST): one at each door he might be working on */
-                { key: 'cardboard_box',  deg: 304.8, r: 22.95, level: 1, rot: 20 },
-                { key: 'cardboard_box',  deg: 79.2,  r: 22.95, level: 1, rot: -30 },
+                { key: 'cardboard_box',  deg: 309,   r: 22.95, level: 1, rot: 20 },
+                { key: 'cardboard_box',  deg: 84,    r: 22.95, level: 1, rot: -30 },
                 /* mezzanine clerk stations (the kidney desks, plan 2.2):
                    against the upper wall so the 2.2 m ring stays walkable —
                    convex side to the hall, the chair BESIDE the desk, never
@@ -15865,7 +15870,9 @@ const DOOR_HQ = {
             ],
             /* where DOOR agents stand (fixed) and roster vessels loiter */
             agents: [
-                { deg: 0,   r: 1.4, level: 0, face: 180, line: 'The agent does not look up. “Take a number.”' },
+                { deg: 0,   r: 1.4, level: 0, face: 0,   line: 'The agent does not look up. “Take a number.”' },
+                /* the intake clerk on the reception wedge's chair (seated; Rhonda moved to the round desk 2026-09-06) */
+                { deg: 129, r: 18.95, level: 0, face: 309, gender: 'female', pose: 'hqSit', reach: 3.2, label: 'INTAKE CLERK', line: '“Forms are on the left. The left has moved.”' },
                 { deg: 288, r: 18.8, level: 0, face: 108, line: '“It’s 90 degrees.” … “Oh shit.”' },
                 { deg: 45,  r: 22.4, level: 1, face: 225, line: '“Check your corners.” Not a greeting.' },
             ],
@@ -16805,7 +16812,7 @@ const DOOR_CAST = {
         name: 'AGENT BELLE', title: 'FIELD AGENT · YOUR COLLEAGUE', dept: 'Operations', model: 'belle', gender: 'female',
         lines: [],
         spots: [
-            { room: 'central_egress', deg: 246, r: 12.1, level: 0, face: 246, pose: 'hqSit', reach: 2.0, p: 0.6,
+            { room: 'central_egress', deg: 257, r: 13.9, level: 0, face: 77, pose: 'hqSit', reach: 2.0, p: 0.6,
               doing: 'On break, at the round desk. She sits where she can see every door.' },
             { room: 'central_egress', deg: 58.5, r: 15.55, level: 0, face: 238, pose: 'hqSit', reach: 2.0, p: 0.4,
               doing: 'On the couch, not reading the file in her lap. She has read it.' },
@@ -16841,18 +16848,20 @@ const DOOR_CAST = {
         name: 'RHONDA', title: 'RECEPTION · INTAKE · HUMAN RESOURCES', dept: 'Support', model: 'rhonda', gender: 'female',
         lines: [],
         spots: [
-            { room: 'central_egress', deg: 129, r: 18.95, level: 0, face: 309, pose: 'hqSit', reach: 3.4,
-              doing: 'Behind the counter. Intake for interdimensional species, processed like the mail. A stamp comes down. Something is misfiled, conveniently.' },
+            /* inside the round dispatch desk (the user's call, 2026-09-06): on the
+               clerk's chair in the well, facing the BELL console — head and
+               shoulders over the 1.05 m counter; reachable from the counter's
+               outer edge (the console itself wins the prompt when you stand at it) */
+            { room: 'central_egress', deg: 180, r: 2.05, y: 0.05, level: 0, face: 180, pose: 'hqSit', reach: 5.0,
+              doing: 'Behind the round counter. Intake for interdimensional species, processed like the mail. A stamp comes down. Something is misfiled, conveniently.' },
         ],
     },
     kit: {
         name: 'KIT', title: 'INTAKE · PENDING · EMOTIONAL SUPPORT ANOMALY', dept: 'Reception (a chair)', model: 'kit', gender: 'female', base: 'catgirl',
         lines: [],
         spots: [
-            { room: 'central_egress', deg: 123.5, r: 16.4, level: 0, face: 160, pose: 'hqCrouch', reach: 2.0, p: 0.65,
-              doing: 'Crouched at the reception counter, watching Rhonda not find her paperwork. Scheduled for deportation. The schedule is several centuries out.' },
-            { room: 'central_egress', deg: 245, r: 19.5, level: 0, face: 245, pose: 'hqCrouch', reach: 2.0, p: 0.35,
-              doing: 'Scratching at the Records door. She does not want in. She wants the option.' },
+            { room: 'central_egress', deg: 158, r: 6.7, level: 0, face: 338, pose: 'hqSit', reach: 2.0,
+              doing: 'On a folding chair at the counter, watching Rhonda not find her paperwork. Scheduled for deportation. The schedule is several centuries out.' },
         ],
     },
     elle: {
@@ -16867,10 +16876,10 @@ const DOOR_CAST = {
         name: 'OTTO MATIC', title: 'FACILITIES · MAINTENANCE', dept: 'Facilities', model: 'otto', gender: 'male',
         lines: [],
         spots: [
-            { room: 'central_egress', deg: 307.5, r: 22.9, level: 1, face: 307, pose: 'hqFix', reach: 2.0, p: 0.5,
+            { room: 'central_egress', deg: 312.5, r: 23.1, level: 1, face: 312, pose: 'hqFix', reach: 2.0, p: 0.5,
               doing: 'Working on the Canon Office door. It is not clear whether it is being installed or removed.' },
-            { room: 'central_egress', deg: 82, r: 22.9, level: 1, face: 82, pose: 'hqFix', reach: 2.0, p: 0.5,
-              doing: 'Installing a door beside Arcane Engineering. There was not a door here yesterday. There is a form.' },
+            { room: 'central_egress', deg: 87.5, r: 23.1, level: 1, face: 87, pose: 'hqFix', reach: 2.0, p: 0.5,
+              doing: 'Working on the Arcane Engineering door. There was not a door here yesterday. There is a form.' },
         ],
     },
     forrest: {
@@ -16893,8 +16902,13 @@ const DOOR_CAST = {
         name: 'THE JANITOR', title: 'CONTRACT CLEANING · $15/HR · NO BENEFITS', dept: 'Contractor', model: 'janitor', gender: 'male',
         lines: [],
         spots: [
-            { room: 'central_egress', deg: 146.5, r: 18.55, level: 0, face: 244, pose: 'hqPush', reach: 2.0, p: 0.7,
-              doing: 'Mopping outside your office. He has a key to every room. He cleans up messes.' },
+            { room: 'central_egress', deg: 146.5, r: 18.55, level: 0, face: 244, pose: 'hqLean', reach: 2.0, p: 0.7,
+              /* leaning on the mop: the rail-lean clip puts his forearms at ~1.1 m in
+                 front of him; the mop hangs plumb from the right hand (upright =
+                 world-space pos/rot) — the GLB stands on its HEAD, so no flip; the
+                 head sits on the floor 1.05 m below the hand */
+              hold: { key: 'mop', bone: 'RightHand', upright: true, pos: [0, -1.05, 0], rot: [0, 0, 0] },
+              doing: 'Outside your office with his mop. He has a key to every room. He cleans up messes.' },
             { room: 'office', x: -0.95, z: 1.45, face: 270, pose: 'hqReach', reach: 2.0, p: 0.3,
               doing: 'Getting cleaning supplies out of your office. It is still his closet, technically. This is awkward for both of you.' },
         ],
@@ -16911,7 +16925,8 @@ let _hqCastSalt = String(Math.floor(Math.random() * 1e9));
    [{ id, member, spot }]. Every member draws ONE spot from all their
    spots (weights `p`, clearance gates), so nobody is in two rooms at
    once; `opts.salt` fixes the draw (tests), `opts.clearance` overrides
-   the profile's level. */
+   the profile's level, `opts.force` = { id: spotIndex } pins members to a
+   given spot (the screenshot probe; -1 = absent). */
 function hqCastInRoom(roomId, profile, opts) {
     opts = opts || {};
     const out = [];
@@ -16929,6 +16944,7 @@ function hqCastInRoom(roomId, profile, opts) {
         const total = open.reduce((a, s) => a + (s.p == null ? 1 : s.p), 0);
         let roll = ((hqHash(id + '|' + salt) % 100000) / 100000) * Math.max(1, total), pick = null;
         for (const s of open) { roll -= (s.p == null ? 1 : s.p); if (roll <= 0) { pick = s; break; } }
+        if (opts.force && opts.force[id] != null) pick = (opts.force[id] < 0) ? null : (m.spots[opts.force[id]] || null);
         if (pick && pick.room === roomId) out.push({ id: id, member: m, spot: pick });
     }
     return out;

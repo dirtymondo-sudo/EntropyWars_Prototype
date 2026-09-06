@@ -1539,3 +1539,17 @@ content, which A14 allows):
   is on hold per A14 until the outline); no per-chapter presence rules
   (`minClearance`/`maxClearance` per spot are wired and unused); no
   squeak on the office door (C-18); Kit is not a party member (C-20).
+
+### 2026-09-06 (rev 2) — the cast playtested and re-seated (user feedback)
+The user asked for Rhonda INSIDE the round dispatch desk, proper seating,
+Belle facing the hall, and a mop in the Janitor's hands — and gave
+permission to playtest. Done from screenshots (new repo tool
+`playtest_hq.js`; HQ plan §9 rev 2 has the full log): a `pinXZ` bake flag
+fixes the UAL sitting clip's half-metre pelvis slide so every seated member
+is ON their chair; Rhonda sits on a chair in the dispatch well facing the
+BELL console (a seated INTAKE CLERK agent keeps the reception wedge); Belle
+sits on the hall-facing chair; Kit waits on a folding chair by the desk;
+Otto kneels at the door jambs; the Janitor LEANS ON HIS MOP (held props:
+a catalogue GLB parented to a hand bone, kept upright); the training sign
+reads ROOM 64. Files: sprites.js, data.js, three-renderer.js, doorhq.test.js,
+index.html (`?v=20260906b-cors`), playtest_hq.js.

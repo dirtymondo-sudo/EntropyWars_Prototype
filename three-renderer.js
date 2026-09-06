@@ -10018,7 +10018,13 @@ const ThreeRenderer = (function () {
             // rotations. Used by the fall slot (Fall3 bakes a 1.5×hips-height
             // plunge; the board tween owns the actual drop).
             var pinHips = !!(ref && typeof ref === 'object' && ref.pinHips);
-            var key = libIdx + ':' + clipName + (pinHips ? ':pin' : '');
+            // pinXZ (2026-09-06, the HQ cast's building poses): keep the clip's
+            // VERTICAL hips travel (a sit drops the hips onto the seat) but pin
+            // the hips over the rest spot in the ground plane — the UAL sitting
+            // clip slides the pelvis ~0.5 m behind the root, which put Rhonda
+            // behind her chair instead of on it.
+            var pinXZ = !pinHips && !!(ref && typeof ref === 'object' && ref.pinXZ);
+            var key = libIdx + ':' + clipName + (pinHips ? ':pin' : (pinXZ ? ':pxz' : ''));
             if (bakedByClip[key]) { out[slot] = bakedByClip[key]; return; }
             var ctx = libCtx(libIdx);
             if (!ctx) { missing.push(clipName + ' (lib ' + libIdx + ' unavailable)'); return; }
@@ -10075,6 +10081,7 @@ const ThreeRenderer = (function () {
                         setup.tgtHipsRestWp[0] + (pv.x - setup.srcHipsRestWp[0]) * setup.scaleRatio,
                         setup.tgtHipsRestWp[1] + (pv.y - setup.srcHipsRestWp[1]) * setup.scaleRatio,
                         setup.tgtHipsRestWp[2] + (pv.z - setup.srcHipsRestWp[2]) * setup.scaleRatio];
+                    if (pinXZ) { wpt[0] = setup.tgtHipsRestWp[0]; wpt[2] = setup.tgtHipsRestWp[2]; }
                     var loc = hp
                         ? _lqRotV(_lqInv(hp.wq), _lvSub(wpt, hp.wp))
                         : wpt.slice();
@@ -10107,7 +10114,7 @@ const ThreeRenderer = (function () {
        falls back to the def's Meshy clip GLBs. */
     function _animLibBakeForModel(def, modelEntry, cb) {
         var urls = _libUrls(def);
-        var bakeKey = urls.join('|') + (_libStandardPose(def) ? '|std' : '|keep');
+        var bakeKey = urls.join('|') + (_libStandardPose(def) ? '|std' : '|keep') + '|' + Object.keys(def.libClips || {}).length;
         if (modelEntry._libBakedFrom === bakeKey) { cb(modelEntry._libBaked); return; }
         if (modelEntry._libBakeCbs) { modelEntry._libBakeCbs.push(cb); return; }
         modelEntry._libBakeCbs = [cb];
@@ -23013,7 +23020,7 @@ const ThreeRenderer = (function () {
         }
         var nx0 = X0 + 0.06 * ts, nx1 = X1 - 0.06 * ts, nz0 = Z0 + 0.06 * ts, nz1 = Z1 - 0.06 * ts;
         sign('tr_north', ['ORTHOGONAL GEOMETRY', 'EXPOSURE AREA', 'AUTHORIZED PERSONNEL ONLY'], 3.2 * ts, 1.25 * ts, CX, fy + 3.0 * ts + 0.02 * ts, nz0, 0, { sizes: [64, 92, 40] }, 'n');
-        sign('tr_south', ['D.O.O.R. TRAINING FACILITY', 'ROOM 8×8', 'REALITY LEAKS POSSIBLE'], 3.2 * ts, 1.25 * ts, CX, fy + 3.0 * ts + 0.02 * ts, nz1, Math.PI, { sizes: [52, 96, 44] }, 's');
+        sign('tr_south', ['D.O.O.R. TRAINING FACILITY', 'ROOM 64', 'REALITY LEAKS POSSIBLE'], 3.2 * ts, 1.25 * ts, CX, fy + 3.0 * ts + 0.02 * ts, nz1, Math.PI, { sizes: [52, 96, 44] }, 's');
         sign('tr_west', ['MAX OCCUPANCY', '45 MINUTES'], 2.2 * ts, 1.1 * ts, nx0, fy + 2.35 * ts, 5.8 * ts, Math.PI / 2, { sizes: [66, 92] }, 'w');
         sign('tr_east', ['REALITY LEAKS', 'POSSIBLE'], 2.2 * ts, 1.1 * ts, nx1, fy + 2.35 * ts, 2.2 * ts, -Math.PI / 2, { sizes: [72, 92], bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' }, 'e');
 
@@ -28300,7 +28307,7 @@ const ThreeRenderer = (function () {
             G.add(m);
         }
         sign('tr_north', ['ORTHOGONAL GEOMETRY', 'EXPOSURE AREA', 'AUTHORIZED PERSONNEL ONLY'], 4.8, 1.7, 5.0, 3.6, -wallIn, 0, { sizes: [64, 92, 40] });
-        sign('tr_south', ['D.O.O.R. TRAINING FACILITY', 'ROOM 8×8', 'REALITY LEAKS POSSIBLE'], 4.8, 1.7, -5.0, 3.6, wallIn, Math.PI, { sizes: [52, 96, 44] });
+        sign('tr_south', ['D.O.O.R. TRAINING FACILITY', 'ROOM 64', 'REALITY LEAKS POSSIBLE'], 4.8, 1.7, -5.0, 3.6, wallIn, Math.PI, { sizes: [52, 96, 44] });
         sign('tr_west', ['MAX OCCUPANCY', '45 MINUTES'], 3.3, 1.6, -wallIn, 3.3, 4.5, Math.PI / 2, { sizes: [66, 92] });
         sign('tr_east', ['REALITY LEAKS', 'POSSIBLE'], 3.3, 1.6, wallIn, 3.3, -3.0, -Math.PI / 2, { sizes: [72, 92], bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' });
 
@@ -28976,7 +28983,7 @@ const ThreeRenderer = (function () {
         var entry = { group: new THREE.Group(), id: spec.id, unit: unit, modelDef: def };
         entry.group.name = 'hq_' + spec.id;
         _attachUnitModel(entry, unit, def, BASE_TILE);
-        var y = (spec.level ? S.wallH : 0);
+        var y = (spec.level ? S.wallH : 0) + (spec.y || 0);
         /* box rooms place by (x, z) metres; polar rooms by (deg, r) */
         var p = (spec.x != null && spec.deg == null) ? new THREE.Vector3(spec.x * _hqUnits(), y * _hqUnits(), (spec.z || 0) * _hqUnits()) : _hqPolarW(spec.deg, spec.r, y);
         entry.group.position.copy(p);
@@ -28992,6 +28999,7 @@ const ThreeRenderer = (function () {
             sub: spec.sub || null, reach: spec.reach || 1.75, pose: spec.pose || null, cast: spec.cast || null, doing: spec.doing || null,
         };
         _hq.chars.push(ch);
+        if (spec.hold) _hqAttachHeld(ch, spec.hold);
         /* people are never a floor: the top sits above any jump apex */
         if (spec.kind !== 'player') _hq.blockers.push({ obj: entry.group, rad: spec.rad || 0.42, y: y, top: y + 2.6, npc: true });
         return ch;
@@ -29017,9 +29025,48 @@ const ThreeRenderer = (function () {
             try {
                 _hqSpawnCharacter({ id: 'hq-cast-' + c.id, kind: 'cast', cast: c.id, race: m.base || m.race || 'men in black', gender: gender, def: def,
                     deg: s.deg, r: s.r, x: s.x, z: s.z, level: s.level || 0, face: s.face || 0,
-                    label: m.name, sub: m.title, pose: s.pose || null, reach: s.reach, rad: s.rad, doing: s.doing || null });
+                    label: m.name, sub: m.title, pose: s.pose || null, reach: s.reach, rad: s.rad, doing: s.doing || null, y: s.y || 0, hold: s.hold || null });
             } catch (e) { console.warn('[HQ] cast member skipped', c.id, e); }
         });
+    }
+    /* A held prop (2026-09-06): a catalogue GLB parented to one of the
+       character's hand bones once the rig is in — the Janitor's mop. `hold`
+       = { key, bone ('RightHand' | 'LeftHand' | …), h (metres; the
+       catalogue height by default), pos [x, y, z] (metres, bone space —
+       the prop's base sits at the bone origin, so -grip along y puts the
+       grip in the hand), rot [x, y, z] (degrees, bone space) }. The bone's
+       world scale (the model's fit scale rides on the skeleton) is undone
+       on a holder group so the prop keeps its real-world size. */
+    function _hqAttachHeld(ch, hold) {
+        var D = _hqData(), cat = D && D.catalogue[hold.key];
+        if (!cat || !cat.file) return;
+        var U = _hqUnits();
+        var tries = 0;
+        function attach() {
+            var e = ch.entry;
+            if (!e || !e.model || !e._ew_modelAttached) { if (tries++ < 400) setTimeout(attach, 100); return; }
+            var bone = e.model.getObjectByName(hold.bone || 'RightHand');
+            if (!bone) { console.warn('[HQ] held prop: no bone', hold.bone, 'on', ch.id); return; }
+            var ws = new THREE.Vector3(); bone.getWorldScale(ws);
+            var holder = new THREE.Group();
+            holder.name = 'hq_held_' + hold.key;
+            holder.scale.setScalar(1 / (ws.x || 1));
+            var inner = new THREE.Group();
+            var p = hold.pos || [0, 0, 0], r = hold.rot || [0, 0, 0];
+            inner.position.set(p[0] * U, p[1] * U, p[2] * U);
+            inner.rotation.set(_hqRad(r[0]), _hqRad(r[1]), _hqRad(r[2]));
+            var target = ((hold.h != null ? hold.h : (cat.h || cat.span)) || 1) * U;
+            inner.add(_miscModelInstance(_hqModelUrl(cat), true, target, { fit: (cat.span != null && cat.h == null) ? 'span' : 'height', matPick: _hqPropMatPick, onDone: function () { if (_hq) _hq.dirty = true; } }));
+            holder.add(inner);
+            bone.add(holder);
+            ch.held = holder; ch.heldBone = bone; ch.hold = hold;
+            /* upright: the prop hangs plumb from the hand (a mop, a lantern) —
+               _hqTickChars re-aims the holder to the world axes every frame,
+               so pos/rot read in WORLD terms and the hand only carries it */
+            if (hold.upright) { holder.scale.setScalar(1); ch.heldUpright = true; }
+            if (_hq) _hq.dirty = true;
+        }
+        attach();
     }
     function _hqSpawnPopulation(room, opts) {
         var av = opts.avatar || {};
@@ -29029,7 +29076,19 @@ const ThreeRenderer = (function () {
         var avDef = (av.cast && typeof getCastModel === 'function') ? getCastModel(av.cast) : null;
         _hq.player = _hqSpawnCharacter({ id: 'hq-player', kind: 'player', race: av.race || 'men in black', gender: av.gender || 'male', def: avDef || undefined, deg: sp.deg, r: sp.r, x: sp.x, z: sp.z, level: sp.level || 0, face: sp.face || 0, label: 'YOU' });
         (room.agents || []).forEach(function (ag, i) {
-            _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: 'men in black', gender: (i % 2) ? 'female' : 'male', deg: ag.deg, r: ag.r, x: ag.x, z: ag.z, level: ag.level || 0, face: ag.face || 0, line: ag.line, label: 'D.O.O.R. AGENT' });
+            var g = ag.gender || ((i % 2) ? 'female' : 'male');
+            /* an agent with a building pose (a seated clerk) borrows the MIB
+               def with the cast's pose slots merged in (2026-09-06) */
+            var agDef = null;
+            if (ag.pose && typeof getRace3DModel === 'function' && typeof _CAST_POSES !== 'undefined') {
+                var base = getRace3DModel('men in black', g) || getRace3DModel('men in black', 'male');
+                if (base && base.libClips) {
+                    var lc = Object.assign({}, base.libClips), lt = Object.assign({}, base.libTimeScales);
+                    Object.keys(_CAST_POSES).forEach(function (k) { var o = _CAST_POSES[k]; lc[k] = { clip: o.clip, lib: o.lib || 0 }; if (o.pinXZ) lc[k].pinXZ = true; if (o.pinHips) lc[k].pinHips = true; if (o.ts) lt[k] = o.ts; });
+                    agDef = Object.assign({}, base, { libClips: lc, libTimeScales: lt });
+                }
+            }
+            _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: 'men in black', gender: g, def: agDef || undefined, deg: ag.deg, r: ag.r, x: ag.x, z: ag.z, level: ag.level || 0, y: ag.y || 0, face: ag.face || 0, line: ag.line, label: ag.label || 'D.O.O.R. AGENT', pose: ag.pose || null, reach: ag.reach });
         });
         _hqSpawnCast(room, opts);
         /* roster vessels: unlocked races with a rigged model, minus the avatar */
@@ -29535,6 +29594,15 @@ const ThreeRenderer = (function () {
                 if (ch.kind === 'player' && !H.ready) { H.ready = true; if (H.opts.onReady) { try { H.opts.onReady(); } catch (er) {} } }
             }
             e.model.rotation.y = ch.yaw;
+            if (ch.heldUpright && ch.heldBone) {
+                /* undo the hand's world rotation + scale so the held prop stays
+                   world-upright at real size and only rides the hand's position */
+                ch.heldBone.updateWorldMatrix(true, false);
+                var hq = new THREE.Quaternion(), hs = new THREE.Vector3(), hp = new THREE.Vector3();
+                ch.heldBone.matrixWorld.decompose(hp, hq, hs);
+                ch.held.quaternion.copy(hq).invert();
+                ch.held.scale.setScalar(1 / (hs.x || 1));
+            }
             if (ch.kind === 'player') e.group.visible = !H.fp;
             var want = 'idle';
             /* a placed cast member holds its building pose (sits, mops,
@@ -29940,6 +30008,63 @@ const ThreeRenderer = (function () {
         target: function () { return _hq ? _hqFindTarget() : null; },
         pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z) }; },
         stateLabel: function (st) { return HQ_LAMP_LABEL[st] || st; },
+        /* dev / playtest helpers (2026-09-06): put the walker (or the
+           first-person eye) anywhere, aim it, and list who is in the room —
+           the screenshot probe drives the cast placement with these. Not
+           used by the game. */
+        dev: {
+            /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
+            teleport: function (o) {
+                if (!_hq || !_hq.player) return false;
+                o = o || {};
+                var U = _hqUnits(), pl = _hq.player, S = _hq.room.shell;
+                var p = (o.deg != null) ? _hqPolarW(o.deg, o.r || 0, 0) : new THREE.Vector3((o.x || 0) * U, 0, (o.z || 0) * U);
+                pl.x = p.x / U; pl.z = p.z / U;
+                pl.y = (o.level ? (S.wallH || 0) : 0) + (o.y || 0); pl.visY = pl.y;
+                pl.air = false; pl.vy = 0; pl.jumpT = -1; pl.moving = false;
+                if (o.face != null) { pl.yaw = pl.targetYaw = _hqHeadingYaw(o.face); _hq.cam.yaw = _hqRad(o.face); }
+                if (o.pitch != null) _hq.cam.pitch = o.pitch;
+                if (o.dist != null) _hq.cam.dist = o.dist;
+                if (o.fp != null) _hq.fp = !!o.fp;
+                _hq.cam.init = false; _hq.dirty = true;
+                return true;
+            },
+            /* aim the camera at a world point (metres) from where the walker stands */
+            lookAt: function (x, z, pitch) {
+                if (!_hq || !_hq.player) return false;
+                var pl = _hq.player;
+                _hq.cam.yaw = _hqRad(_hqHeadingOf(x - pl.x, z - pl.z));
+                if (pitch != null) _hq.cam.pitch = pitch;
+                _hq.cam.init = false;
+                return true;
+            },
+            chars: function () {
+                if (!_hq) return [];
+                return _hq.chars.map(function (ch) {
+                    var e = ch.entry || {};
+                    return { id: ch.id, kind: ch.kind, label: ch.label, x: +ch.x.toFixed(2), z: +ch.z.toFixed(2), y: +ch.y.toFixed(2),
+                        deg: +_hqNormDeg(Math.atan2(ch.x, -ch.z) * 180 / Math.PI).toFixed(1), r: +Math.hypot(ch.x, ch.z).toFixed(2),
+                        face: +_hqNormDeg((Math.PI - ch.yaw) * 180 / Math.PI).toFixed(0), pose: ch.pose, anim: e._ew_curAnim || null,
+                        actions: e.actions ? Object.keys(e.actions).length : 0, attached: !!e._ew_modelAttached, heightM: ch.heightM };
+                });
+            },
+            /* world position (m) of a named bone on a character, and relative to the character's root */
+            bone: function (charId, name) {
+                if (!_hq) return null;
+                var ch = null; for (var i = 0; i < _hq.chars.length; i++) if (_hq.chars[i].id === charId) ch = _hq.chars[i];
+                if (!ch || !ch.entry || !ch.entry.model) return null;
+                var b = ch.entry.model.getObjectByName(name); if (!b) return null;
+                var U = _hqUnits(), v = new THREE.Vector3(); b.getWorldPosition(v);
+                var s = new THREE.Vector3(); b.getWorldScale(s);
+                return { x: +(v.x / U).toFixed(3), y: +(v.y / U).toFixed(3), z: +(v.z / U).toFixed(3), dx: +((v.x / U) - ch.x).toFixed(3), dy: +((v.y / U) - ch.y).toFixed(3), dz: +((v.z / U) - ch.z).toFixed(3), scale: +s.x.toFixed(4) };
+            },
+            props: function () {
+                if (!_hq) return [];
+                var U = _hqUnits(), out = [];
+                _hq.propGroup.children.forEach(function (g) { out.push({ name: g.name || '', x: +(g.position.x / U).toFixed(2), z: +(g.position.z / U).toFixed(2), y: +(g.position.y / U).toFixed(2) }); });
+                return out;
+            },
+        },
     };
 
     return {
