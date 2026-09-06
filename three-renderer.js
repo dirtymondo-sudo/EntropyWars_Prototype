@@ -19747,6 +19747,7 @@ const ThreeRenderer = (function () {
         // horizon-scenery theme ring (per-map esoteric backdrop)
         _hzTheme = (me && me.scenery) || 'cosmic';
         _hzThemeDensity = (me && me.density != null) ? me.density : 1;
+        _hzNear = (me && me.near) || null;                 // the board's near setting (MAP SETTINGS, 2026-09-06)
 
         _envUni.uDayNight.value = S.night;
         _envUni.uSkyEvent.value = S.skyEvent;
@@ -20449,6 +20450,7 @@ const ThreeRenderer = (function () {
     var _facilityNearGroup = null;
     // per-map environment plumbing (state.mapEnv)
     var _hzTheme = 'cosmic', _hzThemeDensity = 1;
+    var _hzNear = null;     // env.near → a MAP SETTINGS builder key (_NR_BUILDERS), or null
     var _mapEnvFog = null, _mapEnvFogKey = '';
     var _mapTintScratch = null, _mapTintTarget = null;
     var _horizonFloaters = [];          // { obj, baseY, amp, spd, phase, spin }
@@ -23118,7 +23120,1072 @@ const ThreeRenderer = (function () {
             _hzPulse(bm, null, 0.05, 0, 0.5 + Math.random() * 0.4);
         });
     }
+    // ════════════════════════════════════════════════════════════════════
+    //  MAP SETTINGS (2026-09-06) — near scenery for every launch board.
+    //  The Training Room proved the idea: a board reads as a PLACE when its
+    //  immediate surroundings are built (the walkway, the walls, the signs),
+    //  not only when landmarks float in the far void. Every Δ board now has a
+    //  near builder — `near: '<key>'` on its EW_MAP_META row (data.js) flows
+    //  into the Δ preset's env → state.mapEnv.near → _HZ_NEAR_BUILDERS here.
+    //  The far roster theme (env.scenery) keeps floating its landmarks beyond.
+    //  Vocabulary (all in board space — tile = ts, tile tops at h × ts, the
+    //  board runs 0..bw*ts × 0..bh*ts — and always OUTSIDE the footprint):
+    //    _nrKit        the frame: floor y, apron bounds, materials, placement
+    //    _nrApron      the ground ring the board sits in (deep = a plateau
+    //                  whose outer faces hide the strata bed; gap = a moat)
+    //    _nrMoat       a liquid sheet in the gap (the board's own animated
+    //                  water / lava shader, so shores and canals line up)
+    //    _nrWallRing   curtain walls with gates, crenels, corner towers
+    //    _nrRoom       an indoor box like the Training Room (dado, strips)
+    //    _nrBlocks     a ring of city blocks with lit windows + neon
+    //    _nrTrees      a tree ring (the board's own foliage OBJs, async)
+    //    _nrRectRing   walk the rectangle at distance d and place things
+    //    _nrMounds / _nrRocks / _nrFence / _nrLamps / _nrProp / _nrSign
+    //  Lit pieces are Lambert (_hzLit) so they share the board's sun and
+    //  fog; glows are additive and stay unfogged. Enclosures opt into the
+    //  line-of-sight fade exactly like the Training Room (K.occ). Kill-
+    //  switch: window.EW_NO_FACILITY_SCENERY (same as the facility boards).
+    // ════════════════════════════════════════════════════════════════════
+    var _nrPending = [];      // async foliage swaps: [{g, fn}] polled in _animateFloaters
+    function _nrUV(geo, su, sv) {
+        var uv = geo.attributes && geo.attributes.uv; if (!uv) return;
+        for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+        uv.needsUpdate = true;
+    }
+    /* box UVs at ONE texture per tile (the board's density), per face */
+    function _nrBoxUV(geo, w, h, d, ts, dens) {
+        var uv = geo.attributes && geo.attributes.uv; if (!uv) return;
+        dens = dens || 1;
+        var dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
+        for (var face = 0; face < 6; face++) {
+            var su = dims[face][0] / ts * dens, sv = dims[face][1] / ts * dens;
+            for (var v = 0; v < 4; v++) { var idx = face * 4 + v; if (idx >= uv.count) break; uv.setXY(idx, uv.getX(idx) * su, uv.getY(idx) * sv); }
+        }
+        uv.needsUpdate = true;
+    }
+    function _nrKit(group, ctx, o) {
+        o = o || {};
+        var ts = ctx.ts, bw = ctx.bw, bh = ctx.bh, elev = ts * ELEV_STEP_RATIO;
+        var B = _hLevelAt(Math.min(3, bw - 1), 0); if (!(B > 0)) B = _hLevelAt(0, 0) || 5;
+        var fy = B * elev;
+        var W = (o.w != null ? o.w : 3.5) * ts, G = (o.gap || 0) * ts;
+        var K = {
+            g: group, ctx: ctx, ts: ts, bw: bw, bh: bh, elev: elev, B: B, fy: fy, W: W, G: G,
+            X0: -G - W, X1: bw * ts + G + W, Z0: -G - W, Z1: bh * ts + G + W,
+            BX0: 0, BX1: bw * ts, BZ0: 0, BZ1: bh * ts,          // the board footprint
+            CX: bw * ts * 0.5, CZ: bh * ts * 0.5, rng: ctx.rng, occ: !!o.occ, walls: {}
+        };
+        if (K.occ) group._ew_occNear = true;
+        K.add = function (m) { group.add(m); return m; };
+        K.wallOf = function (side) {
+            if (!K.occ) return group;
+            if (!K.walls[side]) { var wg = new THREE.Group(); wg.name = 'nr_wall_' + side; wg._ew_occWall = side; wg._ew_occFadeTarget = 0.05; group.add(wg); K.walls[side] = wg; }
+            return K.walls[side];
+        };
+        K.addW = function (side, m) { K.wallOf(side).add(m); return m; };
+        K.lit = function (m, cast) { m.receiveShadow = true; if (cast) m.castShadow = true; return m; };
+        /* Lambert wearing a terrain sprite, tinted like the board's own tiles */
+        K.mat = function (texKey, color, opts) {
+            var tex = texKey ? _hzTex(texKey) : null, m = _hzLit(tex, color, opts);
+            if (texKey) _evTintMat(m, texKey);
+            /* a small self-lit lift (22% of the base) so vertical faces on a dusk
+               map read as stone/brick instead of black — the board's own tiles
+               carry baked shading, plain Lambert on a low sun does not */
+            var lift = (opts && opts.lift != null) ? opts.lift : 0.22;
+            if (lift > 0) { m.emissive = m.color.clone().multiplyScalar(lift); if (tex) m.emissiveMap = tex; m.needsUpdate = true; }
+            return m;
+        };
+        K.glow = _hzGlowMat;
+        K.box = function (w, h, d, mat, dens) { var geo = new THREE.BoxGeometry(w, h, d); _nrBoxUV(geo, w, h, d, ts, dens); return new THREE.Mesh(geo, mat); };
+        K.cyl = function (rT, rB, h, seg, mat) { var geo = new THREE.CylinderGeometry(rT, rB, h, seg, 1); _nrUV(geo, Math.max(1, Math.PI * (rT + rB) / ts), Math.max(1, h / ts)); return new THREE.Mesh(geo, mat); };
+        K.plane = function (w, h, mat) { var geo = new THREE.PlaneGeometry(w, h); _nrUV(geo, Math.max(1, w / ts), Math.max(1, h / ts)); return new THREE.Mesh(geo, mat); };
+        K.at = function (m, x, y, z, ry) { m.position.set(x, y, z); if (ry) m.rotation.y = ry; return m; };
+        /* which board side a point is off (for the occlusion groups) */
+        K.side = function (x, z) {
+            var dx = x < 0 ? -x : (x > bw * ts ? x - bw * ts : 0), dz = z < 0 ? -z : (z > bh * ts ? z - bh * ts : 0);
+            if (dx >= dz) return x < K.CX ? 'w' : 'e';
+            return z < K.CZ ? 'n' : 's';
+        };
+        /* the yaw that faces the board centre from (x,z) */
+        K.face = function (x, z) { return Math.atan2(K.CX - x, K.CZ - z); };
+        /* is (x,z) inside the lane that runs out of a spawn row (the gates) */
+        K.inLane = function (x, z, half) { half = half == null ? 1.6 * ts : half; return Math.abs(x - K.CX) < half; };
+        /* a light with a soft halo */
+        K.lamp = function (x, y, z, color, size, op) { var s = _hzGlowSprite(size || 0.7 * ts, color, op || 0.6, 0.2, 0.08, 0.5 + K.rng() * 0.8); s.position.set(x, y, z); return s; };
+        return K;
+    }
+    /* Walk the rectangle `d` world units outside the board edge with `spacing`
+       between stops; fn(x, z, side, i, t) — t is 0..1 along that side. Corners
+       are visited once when o.corners is set. */
+    function _nrRectRing(K, d, spacing, fn, o) {
+        o = o || {};
+        var ts = K.ts, x0 = K.BX0 - d, x1 = K.BX1 + d, z0 = K.BZ0 - d, z1 = K.BZ1 + d, i = 0;
+        var sides = [['n', x0, z0, x1, z0], ['e', x1, z0, x1, z1], ['s', x1, z1, x0, z1], ['w', x0, z1, x0, z0]];
+        for (var s = 0; s < sides.length; s++) {
+            var S = sides[s], len = Math.hypot(S[3] - S[1], S[4] - S[2]);
+            var n = Math.max(1, Math.round(len / spacing));
+            for (var k = (o.corners ? 0 : 1); k < n; k++) {
+                var t = k / n, x = S[1] + (S[3] - S[1]) * t, z = S[2] + (S[4] - S[2]) * t;
+                if (o.skipLanes && ((S[0] === 'n' || S[0] === 's') && K.inLane(x, z, o.laneHalf))) continue;
+                if (o.only && o.only.indexOf(S[0]) < 0) continue;
+                fn(x, z, S[0], i++, t);
+            }
+        }
+    }
+    /* The apron: four ground strips around the board (past the gap). deep =
+       from the bed's floor (y 0) up, so its outer faces hide the strata; the
+       top sits a hair under the tile tops so the rim never z-fights. */
+    function _nrApron(K, o) {
+        o = o || {};
+        var ts = K.ts, fy = K.fy, G = K.G, top = fy - (o.drop || 0) * ts - 0.6;
+        var T = o.deep ? top : (o.thick || 0.2) * ts;
+        var topMat = K.mat(o.tex, o.color == null ? 0xffffff : o.color);
+        var sideMat = o.skirt ? K.mat(o.skirt, o.skirtColor == null ? 0xffffff : o.skirtColor) : topMat;
+        var mats = [sideMat, sideMat, topMat, topMat, sideMat, sideMat];
+        var rects = [[K.X0, K.Z0, K.X1, K.BZ0 - G], [K.X0, K.BZ1 + G, K.X1, K.Z1], [K.X0, K.BZ0 - G, K.BX0 - G, K.BZ1 + G], [K.BX1 + G, K.BZ0 - G, K.X1, K.BZ1 + G]];
+        var out = [];
+        rects.forEach(function (r) {
+            var w = r[2] - r[0], d = r[3] - r[1]; if (w <= 0 || d <= 0) return;
+            var m = K.box(w, T, d, mats, o.dens || 1);
+            m.position.set(r[0] + w / 2, top - T / 2, r[1] + d / 2);
+            out.push(K.add(K.lit(m)));
+        });
+        return out;
+    }
+    /* A liquid sheet under the whole setting (the moat / the sea / the lava
+       lake): the board's own fluid shader, one tile per texture repeat so a
+       board-edge lake continues out into it. depth 1 = the board's water level. */
+    function _nrMoat(K, o) {
+        o = o || {};
+        var ts = K.ts, depth = o.depth == null ? 1 : o.depth;
+        var y = K.fy - depth * ts - (o.key === 'lava' ? 0.02 : 0.18) * ts;
+        var pad = (o.pad == null ? 0 : o.pad) * ts;
+        var x0 = K.X0 - pad, x1 = K.X1 + pad, z0 = K.Z0 - pad, z1 = K.Z1 + pad;
+        var geo = new THREE.PlaneGeometry(x1 - x0, z1 - z0); _nrUV(geo, (x1 - x0) / ts, (z1 - z0) / ts);
+        var mat; try { mat = _buildFluidTopMat(o.key || 'water'); } catch (e) { mat = K.mat(o.key || 'water', 0xffffff); }
+        /* the board's lava tiles glow from their point lights + per-tile pulse;
+           a moat gets neither, so it carries a steady bright emissive instead */
+        if (o.key === 'lava' && mat.emissive) { mat.emissiveIntensity = 0.85; }
+        var m = new THREE.Mesh(geo, mat); m.name = 'moat:' + (o.key || 'water');
+        m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, y, (z0 + z1) / 2); m.receiveShadow = true;
+        return K.add(m);
+    }
+    /* Curtain walls at distance d (to the wall's centreline) with height h and
+       thickness t; o.gates = ['n','s'] leaves a lane-wide opening; o.crenel
+       grows merlons; o.towers = { r, h, tex, color, roof } plants a corner
+       tower on every corner. Each side goes into its occlusion group. */
+    function _nrWallRing(K, o) {
+        var ts = K.ts, fy = K.fy, d = o.d * ts, h = o.h * ts, t = (o.t || 0.6) * ts;
+        var mat = K.mat(o.tex, o.color == null ? 0xffffff : o.color, o.lift != null ? { lift: o.lift } : null);
+        var y0 = o.fromFloor ? 0 : fy - 0.4 * ts;                         // sink the foot a little
+        var x0 = K.BX0 - d, x1 = K.BX1 + d, z0 = K.BZ0 - d, z1 = K.BZ1 + d;
+        var gates = o.gates || [], gw = (o.gateW || 3.2) * ts;
+        function seg(side, ax, az, bx, bz) {
+            var horiz = Math.abs(bz - az) < 1e-6, len = horiz ? (bx - ax) : (bz - az);
+            var m = K.box(horiz ? len : t, h + (fy - y0), horiz ? t : len, mat);
+            m.position.set((ax + bx) / 2, y0 + (h + (fy - y0)) / 2, (az + bz) / 2);
+            K.addW(side, K.lit(m, true));
+            if (o.crenel) {
+                var n = Math.max(1, Math.round(len / (0.95 * ts)));
+                for (var i = 0; i < n; i++) {
+                    var u = (i + 0.5) / n, mx = ax + (bx - ax) * u, mz = az + (bz - az) * u;
+                    var mer = K.box(horiz ? 0.42 * ts : t, 0.38 * ts, horiz ? t : 0.42 * ts, mat);
+                    mer.position.set(mx, fy + h + 0.19 * ts, mz); K.addW(side, K.lit(mer, true));
+                }
+            }
+        }
+        function sideRun(side, ax, az, bx, bz) {
+            var horiz = Math.abs(bz - az) < 1e-6;
+            if (gates.indexOf(side) < 0) return seg(side, ax, az, bx, bz);
+            if (horiz) { seg(side, ax, az, K.CX - gw / 2, az); seg(side, K.CX + gw / 2, az, bx, bz); }
+            else { seg(side, ax, az, ax, K.CZ - gw / 2); seg(side, ax, K.CZ + gw / 2, bx, bz); }
+        }
+        sideRun('n', x0 - t / 2, z0, x1 + t / 2, z0); sideRun('s', x0 - t / 2, z1, x1 + t / 2, z1);
+        sideRun('w', x0, z0, x0, z1); sideRun('e', x1, z0, x1, z1);
+        if (o.towers) {
+            var T = o.towers, r = (T.r || 1.0) * ts, th = (T.h || o.h + 1.2) * ts;
+            var tmat = K.mat(T.tex || o.tex, T.color == null ? (o.color == null ? 0xffffff : o.color) : T.color, o.lift != null ? { lift: o.lift } : null);
+            [[x0, z0, 'n'], [x1, z0, 'n'], [x0, z1, 's'], [x1, z1, 's']].forEach(function (c) {
+                var tw = K.cyl(r, r * 1.08, th + (fy - y0), 12, tmat); tw.position.set(c[0], y0 + (th + (fy - y0)) / 2, c[1]); K.addW(c[2], K.lit(tw, true));
+                if (T.roof) {
+                    var roof = K.cyl(0.02 * ts, r * 1.2, r * 1.6, 12, K.mat(T.roof, T.roofColor == null ? 0xffffff : T.roofColor));
+                    roof.position.set(c[0], fy + th + r * 0.8, c[1]); K.addW(c[2], K.lit(roof, true));
+                } else if (o.crenel) {
+                    for (var i = 0; i < 8; i++) { var a = i * Math.PI / 4; var mer = K.box(0.3 * ts, 0.36 * ts, 0.3 * ts, tmat); mer.position.set(c[0] + Math.cos(a) * r * 0.85, fy + th + 0.18 * ts, c[1] + Math.sin(a) * r * 0.85); mer.rotation.y = -a; K.addW(c[2], mer); }
+                }
+                if (T.lamp) K.addW(c[2], K.lamp(c[0], fy + th + 0.5 * ts, c[1], T.lamp, 1.0 * ts, 0.55));
+            });
+        }
+    }
+    /* An indoor box: inward-facing walls from the bed's floor up (dado +
+       upper panel + trims + light strips), the Training Room recipe. */
+    function _nrRoom(K, o) {
+        var ts = K.ts, fy = K.fy, WH = (o.h || 3.2) * ts, DH = (o.dh || 1.0) * ts;
+        var wallMat = K.mat(o.tex, o.color == null ? 0xffffff : o.color, { side: THREE.DoubleSide });
+        var dadoMat = K.mat(o.dadoTex || o.tex, o.dadoColor == null ? 0x555555 : o.dadoColor, { side: THREE.DoubleSide });
+        var trimMat = _hzLit(null, o.trim == null ? 0x2b2f33 : o.trim);
+        function wall(len, cx0, cz0, ry, side) {
+            var lowH = fy + DH;
+            var dado = K.plane(len, lowH, dadoMat); dado.position.set(cx0, lowH / 2, cz0); dado.rotation.y = ry; K.addW(side, K.lit(dado));
+            var up = K.plane(len, WH - DH, wallMat); up.position.set(cx0, fy + DH + (WH - DH) / 2, cz0); up.rotation.y = ry; K.addW(side, K.lit(up));
+            var nx = Math.sin(ry), nz = Math.cos(ry), horiz = (ry === 0 || Math.abs(ry) > 3);
+            if (o.trim !== false) [[fy + DH, 0.08 * ts], [fy + WH - 0.12 * ts, 0.12 * ts]].forEach(function (t) {
+                var tr = K.box(horiz ? len : 0.08 * ts, t[1], horiz ? 0.08 * ts : len, trimMat);
+                tr.position.set(cx0 + nx * 0.04 * ts, t[0] + t[1] / 2, cz0 + nz * 0.04 * ts); K.addW(side, tr);
+            });
+            if (o.strip) [-0.25, 0.25].forEach(function (f) {
+                var gm = K.glow(o.strip, 0.85);
+                var st = new THREE.Mesh(new THREE.PlaneGeometry(len * 0.38, 0.09 * ts), gm);
+                st.position.set(cx0 + nx * 0.05 * ts + (horiz ? f * len : 0), fy + WH - 0.42 * ts, cz0 + nz * 0.05 * ts + (horiz ? 0 : f * len));
+                st.rotation.y = ry; K.addW(side, st); _hzPulse(gm, null, 0.06, 0, 2.2 + K.rng() * 2.5);
+            });
+        }
+        wall(K.X1 - K.X0, K.CX, K.Z0, 0, 'n'); wall(K.X1 - K.X0, K.CX, K.Z1, Math.PI, 's');
+        wall(K.Z1 - K.Z0, K.X0, K.CZ, Math.PI / 2, 'w'); wall(K.Z1 - K.Z0, K.X1, K.CZ, -Math.PI / 2, 'e');
+        /* corner pillars square the room off */
+        if (o.pillars !== false) [[K.X0, K.Z0, 'n'], [K.X1, K.Z0, 'n'], [K.X0, K.Z1, 's'], [K.X1, K.Z1, 's']].forEach(function (c) {
+            var p = K.box(0.36 * ts, WH + fy, 0.36 * ts, dadoMat); p.position.set(c[0], (WH + fy) / 2, c[1]); K.addW(c[2], K.lit(p));
+        });
+    }
+    /* canvas "lit windows" plate: a grid of windows, some lit, on a transparent
+       ground so it can sit over any facade texture. Cached by seed+style. */
+    function _nrWindowTex(seed, cols, rows, style) {
+        var key = 'win' + seed + '_' + cols + 'x' + rows + style;
+        if (_hzFacTexCache[key]) return _hzFacTexCache[key];
+        if (typeof document === 'undefined') return null;
+        var rng = _mulberry32(0xA11 + seed * 131);
+        var c = document.createElement('canvas'); c.width = 128; c.height = 256;
+        var g = c.getContext('2d'); g.clearRect(0, 0, 128, 256);
+        var cw = 128 / cols, rh = 256 / rows;
+        var pal = style === 'neon' ? ['#ffd070', '#ff7ad0', '#5fe0ff', '#9dff9d', '#ffffff'] : style === 'cold' ? ['#bfe0ff', '#dff3ff', '#8fc8ff'] : ['#ffd899', '#ffe9b8', '#ffc070'];
+        for (var y = 0; y < rows; y++) for (var x = 0; x < cols; x++) {
+            var lit = rng() < (style === 'dark' ? 0.18 : 0.45);
+            if (!lit) { g.fillStyle = 'rgba(8,10,16,0.75)'; g.fillRect(x * cw + cw * 0.22, y * rh + rh * 0.2, cw * 0.56, rh * 0.6); continue; }
+            g.fillStyle = pal[(rng() * pal.length) | 0];
+            g.fillRect(x * cw + cw * 0.22, y * rh + rh * 0.2, cw * 0.56, rh * 0.6);
+        }
+        var t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.NearestFilter;
+        _hzFacTexCache[key] = t; return t;
+    }
+    /* A ring of city blocks past the apron. Each block: a textured tower, a
+       lit-window plate on its board-facing face, a roof box / tank / antenna,
+       and (o.neon) a neon sign. Blocks go into their side's occlusion group. */
+    function _nrBlocks(K, o) {
+        var ts = K.ts, fy = K.fy, rng = K.rng, d0 = o.d * ts, depth = (o.depth || 2.6) * ts;
+        var facadeMat = K.mat(o.tex, o.color == null ? 0xffffff : o.color);
+        var roofMat = K.mat(o.roofTex || 'concrete_floor', o.roofColor == null ? 0x6a6d72 : o.roofColor);
+        var y0 = o.fromFloor === false ? fy - 0.5 * ts : 0;
+        var neon = o.neon || null, signs = o.signs || [];
+        var si = 0;
+        var sides = [['n', K.BX0 - d0, K.BZ0 - d0, K.BX1 + d0, K.BZ0 - d0, 0, -1], ['s', K.BX1 + d0, K.BZ1 + d0, K.BX0 - d0, K.BZ1 + d0, 0, 1], ['w', K.BX0 - d0, K.BZ1 + d0, K.BX0 - d0, K.BZ0 - d0, -1, 0], ['e', K.BX1 + d0, K.BZ0 - d0, K.BX1 + d0, K.BZ1 + d0, 1, 0]];
+        sides.forEach(function (S) {
+            if (o.only && o.only.indexOf(S[0]) < 0) return;
+            var side = S[0], ax = S[1], az = S[2], bx = S[3], bz = S[4], nx = S[5], nz = S[6];
+            var len = Math.hypot(bx - ax, bz - az), horiz = nz !== 0;
+            var u = 0;
+            while (u < len - 0.5 * ts) {
+                var w = ts * (o.minW || 2.0) + rng() * ts * ((o.maxW || 3.6) - (o.minW || 2.0));
+                if (u + w > len) w = len - u;
+                var alley = ts * (0.25 + rng() * 0.35);
+                var cu = u + w / 2, px = ax + (bx - ax) * (cu / len), pz = az + (bz - az) * (cu / len);
+                var lane = (horiz && K.inLane(px, pz, (o.laneHalf || 1.6) * ts)) && o.gates;
+                if (!lane) {
+                    var h = ts * ((o.minH || 4) + rng() * ((o.maxH || 9) - (o.minH || 4)));
+                    var bd = depth * (0.8 + rng() * 0.5);
+                    var cx = px + nx * bd / 2, cz = pz + nz * bd / 2;
+                    var box = K.box(horiz ? w : bd, h + (fy - y0), horiz ? bd : w, facadeMat, o.dens || 0.5);
+                    box.position.set(cx, y0 + (h + (fy - y0)) / 2, cz); K.addW(side, K.lit(box, true));
+                    /* lit windows on the face that looks at the board */
+                    var cols = Math.max(2, Math.round(w / ts * 2.2)), rows = Math.max(3, Math.round(h / ts * 2.2));
+                    var wt = _nrWindowTex((si * 7 + rng() * 1000) | 0, cols, rows, o.winStyle || 'warm');
+                    if (wt) {
+                        var wm = new THREE.MeshBasicMaterial({ map: wt, transparent: true, depthWrite: false, fog: false });
+                        var wp = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.96, h * 0.9), wm);
+                        wp.position.set(px - nx * 0.55, fy + h * 0.5 + 0.1 * ts, pz - nz * 0.55);
+                        wp.rotation.y = Math.atan2(-nx, -nz); K.addW(side, wp);
+                        if (o.winStyle === 'neon' && rng() < 0.5) _hzPulse(wm, null, 0.12, 0, 0.6 + rng() * 1.6);
+                        /* the two side faces too — at 45° the camera sees them as much as the front */
+                        var ex = (horiz ? w : bd) / 2, ez = (horiz ? bd : w) / 2;
+                        [-1, 1].forEach(function (sg) {
+                            var sw2 = _nrWindowTex((si * 11 + sg + 3 + rng() * 1000) | 0, Math.max(2, Math.round((horiz ? bd : w) / ts * 2.2)), rows, o.winStyle || 'warm'); if (!sw2) return;
+                            var sp2 = new THREE.Mesh(new THREE.PlaneGeometry((horiz ? bd : w) * 0.96, h * 0.9), new THREE.MeshBasicMaterial({ map: sw2, transparent: true, depthWrite: false, fog: false }));
+                            if (horiz) { sp2.position.set(cx + sg * (ex + 0.55), fy + h * 0.5 + 0.1 * ts, cz); sp2.rotation.y = sg * Math.PI / 2; }
+                            else { sp2.position.set(cx, fy + h * 0.5 + 0.1 * ts, cz + sg * (ez + 0.55)); sp2.rotation.y = sg > 0 ? 0 : Math.PI; }
+                            K.addW(side, sp2);
+                        });
+                    }
+                    /* roof furniture */
+                    if (rng() < 0.55) { var rb = K.box(w * 0.3, ts * (0.4 + rng() * 0.8), bd * 0.4, roofMat, 0.5); rb.position.set(cx + (rng() - 0.5) * w * 0.4, fy + h + rb.geometry.parameters.height / 2, cz + (rng() - 0.5) * bd * 0.3); K.addW(side, K.lit(rb, true)); }
+                    if (rng() < 0.4) { var tank = K.cyl(0.3 * ts, 0.3 * ts, 0.5 * ts, 8, roofMat); tank.position.set(cx + (rng() - 0.5) * w * 0.5, fy + h + 0.25 * ts, cz + (rng() - 0.5) * bd * 0.4); K.addW(side, tank); }
+                    if (rng() < 0.5) { var ant = K.cyl(0.02 * ts, 0.03 * ts, ts * (0.8 + rng() * 1.6), 5, _hzLit(null, 0x2a2d33)); ant.position.set(cx + (rng() - 0.5) * w * 0.6, fy + h + ant.geometry.parameters.height / 2, cz + (rng() - 0.5) * bd * 0.5); K.addW(side, ant); var bl = K.lamp(ant.position.x, ant.position.y + ant.geometry.parameters.height / 2, ant.position.z, 0xff3030, 0.35 * ts, 0.8); K.addW(side, bl); }
+                    /* neon */
+                    if (neon && rng() < (o.neonP || 0.7)) {
+                        var col = neon[(rng() * neon.length) | 0];
+                        var vert = rng() < 0.45;
+                        var txt = signs.length ? signs[si % signs.length] : null;
+                        var sw = vert ? Math.min(h * 0.6, 3.2 * ts) : Math.min(w * 0.8, 2.6 * ts), sh = vert ? 0.5 * ts : 0.6 * ts;
+                        var smat;
+                        if (txt) {
+                            var tt = _hzTextTex('neon_' + txt + col, [txt], { w: 512, h: 128, color: '#' + ('000000' + col.toString(16)).slice(-6), pad: 0.1, weight: 'bold', font: '"Arial Black", Impact, sans-serif' });
+                            smat = new THREE.MeshBasicMaterial({ map: tt, transparent: true, depthWrite: false, fog: false, color: 0xffffff, side: THREE.DoubleSide });
+                        } else smat = K.glow(col, 0.75);
+                        var sp = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), smat); sp.name = 'neon:' + (txt || 'bar');
+                        var sy = fy + ts * (1.2 + rng() * Math.max(0.5, (h / ts - 2.5)));
+                        sp.position.set(px - nx * 0.9 + (horiz ? (rng() - 0.5) * w * 0.4 : 0), sy, pz - nz * 0.9 + (horiz ? 0 : (rng() - 0.5) * w * 0.4));
+                        sp.rotation.y = Math.atan2(-nx, -nz); if (vert) sp.rotation.z = -Math.PI / 2;
+                        K.addW(side, sp); _hzPulse(smat, null, 0.25, 0, 1.4 + rng() * 3);
+                        var halo = K.lamp(sp.position.x, sp.position.y, sp.position.z, col, Math.max(sw, sh) * 0.9, 0.35); K.addW(side, halo);
+                    }
+                    si++;
+                }
+                u += w + alley;
+            }
+        });
+    }
+    /* Trees: the board's own foliage OBJs when loaded (swapped in as they
+       arrive — _nrPending), a procedural trunk + canopy meanwhile. */
+    function _nrTreeProc(K, kind, o) {
+        var ts = K.ts, g = new THREE.Group(), v = _TREE_VARIANTS[kind] || _TREE_VARIANTS.tree, dead = (kind === 'tree_5' || kind === 'tree_6');
+        var trunkH = ts * 1.3 * v.trunkHMul * (o.s || 1), r = ts * 0.55 * v.canopyRMul * (o.s || 1);
+        var trunk = K.cyl(ts * 0.06, ts * 0.13, trunkH, 7, K.mat('wood', v.trunkColor)); trunk.position.y = trunkH / 2; g.add(K.lit(trunk, true));
+        if (!dead) {
+            var cm = K.mat(o.leaf || 'leaves', o.tint == null ? 0xffffff : o.tint);
+            var cg = new THREE.SphereGeometry(r, 9, 7); _nrUV(cg, 2, 1.4);
+            var can = new THREE.Mesh(cg, cm); can.scale.set(1, v.canopySquish, 1); can.position.y = trunkH * 0.9; g.add(K.lit(can, true));
+        } else {
+            for (var i = 0; i < 3; i++) { var br = K.cyl(ts * 0.03, ts * 0.06, trunkH * 0.6, 5, K.mat('wood', v.trunkColor)); br.position.set(0, trunkH * 0.85, 0); br.rotation.set((K.rng() - 0.5) * 1.2, i * 2.1, 0.5 + K.rng() * 0.5); g.add(br); }
+        }
+        return g;
+    }
+    function _nrTree(K, kind, o) {
+        o = o || {};
+        var ts = K.ts, g = new THREE.Group(), name = _FOLIAGE_MODEL_FOR_KEY[kind] || 'Tree_1';
+        var proc = _nrTreeProc(K, kind, o); g.add(proc);
+        var target = ts * (o.h || 1.9) * (0.85 + K.rng() * 0.45);
+        var leafFile = (o.leaf || 'leaves') + '.png';
+        var tint = o.tint;
+        var fill = function (src) {
+            var bb = src._ew_bbox, modelH = (bb.max.y - bb.min.y) || 1, s = target / modelH;
+            var bark = _getFoliagePixelTex(_FOLIAGE_BARK_TEX, _FOLIAGE_BARK_REPEAT), leaf = _getFoliagePixelTex(leafFile, _FOLIAGE_LEAF_REPEAT);
+            var model = src.clone(true);
+            model.traverse(function (n) {
+                if (!n.isMesh) return;
+                var pick = function (sm) {
+                    var nm = (sm && sm.name) || '';
+                    if (nm === 'Tree_Leaves') { var lm = new THREE.MeshLambertMaterial({ map: leaf, side: THREE.DoubleSide }); if (tint != null) lm.color.setHex(tint); lm._ew_hzNear = true; return lm; }
+                    var bm = new THREE.MeshLambertMaterial({ map: bark }); bm._ew_hzNear = true; return bm;
+                };
+                n.material = Array.isArray(n.material) ? n.material.map(pick) : pick(n.material);
+                n.castShadow = true; n.receiveShadow = true;
+            });
+            model.scale.setScalar(s);
+            model.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+            model.rotation.y = K.rng() * Math.PI * 2;
+            g.remove(proc); _disposeR(proc); g.add(model); _objectsDirty = true;
+        };
+        var src = _loadFoliageModel(name);
+        if (src && src._ew_bbox) fill(src);
+        else _nrPending.push({ g: g, name: name, fill: fill });
+        return g;
+    }
+    function _nrTrees(K, o) {
+        o = o || {};
+        var ts = K.ts, rng = K.rng, kinds = o.kinds || ['tree', 'tree_2', 'tree_3'], n = 0;
+        _nrRectRing(K, (o.d || 1.6) * ts, (o.spacing || 1.3) * ts, function (x, z, side) {
+            if (rng() > (o.p == null ? 0.8 : o.p)) return;
+            if (o.max && n >= o.max) return;
+            var jx = x + (rng() - 0.5) * (o.jitter == null ? 0.9 : o.jitter) * ts, jz = z + (rng() - 0.5) * (o.jitter == null ? 0.9 : o.jitter) * ts;
+            if (jx > K.BX0 - 0.6 * ts && jx < K.BX1 + 0.6 * ts && jz > K.BZ0 - 0.6 * ts && jz < K.BZ1 + 0.6 * ts) return;   // never over the board
+            var t = _nrTree(K, kinds[(rng() * kinds.length) | 0], { h: o.h, leaf: o.leaf ? o.leaf[(rng() * o.leaf.length) | 0] : null, tint: o.tint });
+            t.position.set(jx, K.fy - (o.sink || 0) * ts, jz);
+            if (K.occ) K.addW(side, t); else K.add(t);
+            n++;
+        }, { skipLanes: o.skipLanes !== false, laneHalf: (o.laneHalf || 1.7) * ts, corners: true, only: o.only });
+    }
+    /* soft hills / dunes / drifts: squashed spheres wearing a terrain sprite */
+    function _nrMounds(K, o) {
+        o = o || {};
+        var ts = K.ts, rng = K.rng, mat = K.mat(o.tex, o.color == null ? 0xffffff : o.color);
+        _nrRectRing(K, (o.d || 2.8) * ts, (o.spacing || 2.2) * ts, function (x, z) {
+            if (rng() > (o.p == null ? 0.7 : o.p)) return;
+            var r = ts * ((o.r || 1.4) * (0.7 + rng() * 0.7));
+            var geo = new THREE.SphereGeometry(r, 12, 8); _nrUV(geo, r / ts * 6, r / ts * 3);
+            var m = new THREE.Mesh(geo, mat); m.scale.set(1 + rng() * 0.6, (o.flat || 0.35) * (0.7 + rng() * 0.6), 1 + rng() * 0.6);
+            m.position.set(x + (rng() - 0.5) * ts, K.fy - r * 0.15, z + (rng() - 0.5) * ts); m.rotation.y = rng() * 6;
+            K.add(K.lit(m, true));
+        }, { skipLanes: o.skipLanes !== false, corners: true, only: o.only });
+    }
+    /* boulders */
+    function _nrRocks(K, o) {
+        o = o || {};
+        var ts = K.ts, rng = K.rng, mat = K.mat(o.tex || 'rocks_1', o.color == null ? 0xffffff : o.color);
+        _nrRectRing(K, (o.d || 1.2) * ts, (o.spacing || 1.6) * ts, function (x, z) {
+            if (rng() > (o.p == null ? 0.35 : o.p)) return;
+            var r = ts * ((o.r || 0.35) * (0.6 + rng() * 0.9));
+            var m = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 0), mat); m.scale.y = 0.6 + rng() * 0.4;
+            m.position.set(x + (rng() - 0.5) * ts * 0.8, K.fy + r * 0.3, z + (rng() - 0.5) * ts * 0.8); m.rotation.set(rng(), rng() * 6, rng());
+            K.add(K.lit(m, true));
+        }, { skipLanes: true, corners: true, only: o.only });
+    }
+    /* white pickets (pointed tops) on a transparent ground — ONE plane per
+       fence segment instead of a box per picket (a ring of 300 pickets was
+       300 occluders for the line-of-sight raycast and 300 draw calls) */
+    function _nrPicketTex(color) {
+        var key = 'picket' + (color || '');
+        if (_hzFacTexCache[key]) return _hzFacTexCache[key];
+        if (typeof document === 'undefined') return null;
+        var c = document.createElement('canvas'); c.width = 96; c.height = 64;
+        var g = c.getContext('2d'); g.clearRect(0, 0, 96, 64);
+        g.fillStyle = color || '#f4f0e8';
+        for (var i = 0; i < 4; i++) { var x = i * 24 + 6; g.beginPath(); g.moveTo(x, 64); g.lineTo(x, 12); g.lineTo(x + 6, 4); g.lineTo(x + 12, 12); g.lineTo(x + 12, 64); g.closePath(); g.fill(); }
+        g.fillStyle = color || '#f4f0e8'; g.fillRect(0, 24, 96, 5); g.fillRect(0, 48, 96, 5);      // the two rails
+        g.fillStyle = 'rgba(0,0,0,0.18)'; for (var j = 0; j < 4; j++) g.fillRect(j * 24 + 14, 12, 4, 52);   // a shadow edge per picket
+        var t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
+        t.magFilter = THREE.NearestFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
+        _hzFacTexCache[key] = t; return t;
+    }
+    /* a fence ring: posts + rails; o.chain drapes chain-link between posts,
+       o.picket makes white pickets, o.barbed adds a wire on top */
+    function _nrFence(K, o) {
+        o = o || {};
+        var ts = K.ts, d = (o.d || 1.5) * ts, h = (o.h || 1.0) * ts, sp = (o.spacing || 1.5) * ts, fy = K.fy;
+        var postMat = K.mat(o.tex || 'wood', o.color == null ? 0xffffff : o.color);
+        var chain = o.chain ? new THREE.MeshBasicMaterial({ map: _getChainlinkTexture(), transparent: true, alphaTest: 0.2, side: THREE.DoubleSide, depthWrite: false }) : null;
+        var picket = o.picket ? new THREE.MeshLambertMaterial({ map: _nrPicketTex(o.picketColor), transparent: true, alphaTest: 0.3, side: THREE.DoubleSide, emissive: 0x404040 }) : null;
+        var prev = null;
+        _nrRectRing(K, d, sp, function (x, z, side) {
+            var gate = (side === 'n' || side === 's') && o.gates && K.inLane(x, z, (o.laneHalf || 1.7) * ts);
+            var post = K.box(0.1 * ts, h, 0.1 * ts, postMat); post.position.set(x, fy + h / 2, z); K.add(K.lit(post, true));
+            if (prev && !gate) {
+                var len = Math.hypot(x - prev.x, z - prev.z), mx = (x + prev.x) / 2, mz = (z + prev.z) / 2, ry = Math.atan2(x - prev.x, z - prev.z) + Math.PI / 2;
+                if (chain) { var g = new THREE.PlaneGeometry(len, h * 0.92); _nrUV(g, len / ts * 2.5, h / ts * 2.5); var pl = new THREE.Mesh(g, chain); pl.position.set(mx, fy + h * 0.5, mz); pl.rotation.y = ry; K.add(pl); }
+                else if (picket) { var pg = new THREE.PlaneGeometry(len, h * 0.9); _nrUV(pg, len / ts * 1.4, 1); var pk = new THREE.Mesh(pg, picket); pk.position.set(mx, fy + h * 0.45, mz); pk.rotation.y = ry; K.add(K.lit(pk, true)); }
+                else { [0.35, 0.72].forEach(function (f) { var rail = K.box(len, 0.07 * ts, 0.06 * ts, postMat); rail.position.set(mx, fy + h * f, mz); rail.rotation.y = ry; K.add(rail); }); }
+                if (o.barbed) { var wire = K.box(len, 0.02 * ts, 0.02 * ts, _hzLit(null, 0x9aa0a8)); wire.position.set(mx, fy + h * 1.06, mz); wire.rotation.y = ry; K.add(wire); }
+            }
+            prev = { x: x, z: z, side: side };
+        }, { corners: true });
+    }
+    /* street lamps (the /Assets/misc lamp OBJ) at ring stops */
+    function _nrLamps(K, o) {
+        o = o || {};
+        var ts = K.ts, lampH = ts * (o.h || 2.0), rng = K.rng, col = o.color || 0xffd27a;
+        function lampMat(node, srcMat) { var nm = (srcMat && srcMat.name) || ''; if (nm === 'Glass') return new THREE.MeshBasicMaterial({ color: col, fog: false }); return new THREE.MeshLambertMaterial({ color: 0x23262e }); }
+        _nrRectRing(K, (o.d || 1.2) * ts, (o.spacing || 3.5) * ts, function (x, z, side) {
+            if (o.p != null && rng() > o.p) return;
+            var lamp = _miscModelInstance(_R2_MISC + 'streetlamp/Street%20Lamp.obj', false, lampH, { matPick: lampMat });
+            lamp.position.set(x, K.fy, z); lamp.rotation.y = K.face(x, z); K.add(lamp);
+            var glow = _hzGlowCore(ts * 0.26, col, o.aura || 0xff9a3c); glow.position.set(x, K.fy + lampH * 0.86, z); K.add(glow);
+        }, { skipLanes: true, laneHalf: 1.4 * ts, corners: !!o.corners, only: o.only });
+    }
+    /* place a ready-made _hz* prop (built with rng) on the setting floor */
+    function _nrProp(K, build, x, z, o) {
+        o = o || {};
+        var m = build(K.rng); if (!m) return null;
+        m.position.set(x, K.fy + (o.y || 0) * K.ts, z);
+        m.rotation.y = o.ry != null ? o.ry : (o.faceBoard === false ? 0 : K.face(x, z));
+        if (o.s) m.scale.setScalar(o.s);
+        if (K.occ && o.wall !== false) K.addW(K.side(x, z), m); else K.add(m);
+        return m;
+    }
+    /* a sign plate: lines of text on a board, lit */
+    function _nrSign(K, key, lines, w, h, x, y, z, ry, o) {
+        o = o || {};
+        var t = _hzTextTex(key, lines, Object.assign({ w: 512, h: 256, bg: '#1b1a1c', border: '#c9bb96', color: '#efe4c4' }, o)); if (!t) return null;
+        var m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: t, color: 0xffffff, emissive: o.emissive == null ? 0x2a2822 : o.emissive, side: THREE.DoubleSide }));
+        m.position.set(x, y, z); m.rotation.y = ry;
+        if (K.occ) K.addW(K.side(x, z), m); else K.add(m);
+        return m;
+    }
+    /* a simple pitched-roof house (a ranch / a cottage / a barn) */
+    function _nrHouse(K, x, z, o) {
+        var ts = K.ts, fy = K.fy, w = (o.w || 3) * ts, d = (o.d || 2.4) * ts, h = (o.h || 1.6) * ts, ry = o.ry || 0;
+        var g = new THREE.Group();
+        var wallMat = K.mat(o.tex || 'wood_planks', o.color == null ? 0xffffff : o.color), roofMat = K.mat(o.roofTex || 'wood', o.roofColor == null ? 0x6a4a32 : o.roofColor);
+        var body = K.box(w, h, d, wallMat); body.position.y = h / 2; g.add(K.lit(body, true));
+        var rise = d * 0.42, slope = Math.hypot(d / 2, rise) + 0.12 * ts, ang = Math.atan2(rise, d / 2);
+        [-1, 1].forEach(function (s) {                                       // two sloped slabs meeting at the ridge
+            var slab = K.box(w * 1.12, 0.08 * ts, slope, roofMat); slab.rotation.x = s * ang; slab.position.set(0, h + rise / 2 + 0.02 * ts, s * d / 4); g.add(K.lit(slab, true));
+        });
+        var tri = new THREE.Shape(); tri.moveTo(-d / 2, 0); tri.lineTo(d / 2, 0); tri.lineTo(0, rise); tri.lineTo(-d / 2, 0);
+        [-1, 1].forEach(function (s) {                                       // the gable ends
+            var gm = new THREE.Mesh(new THREE.ShapeGeometry(tri), K.mat(o.tex || 'wood_planks', o.color == null ? 0xffffff : o.color, { side: THREE.DoubleSide }));
+            gm.rotation.y = Math.PI / 2; gm.position.set(s * w / 2, h, 0); g.add(gm);
+        });
+        var doorMat = _hzLit(null, o.doorColor == null ? 0x2a1e14 : o.doorColor);
+        var door = K.box(0.45 * ts, 0.85 * ts, 0.05 * ts, doorMat); door.position.set(0, 0.43 * ts, d / 2 + 0.02 * ts); g.add(door);
+        var wm = K.glow(o.window || 0xffd88a, 0.7);
+        [-1, 1].forEach(function (s) { var win = new THREE.Mesh(new THREE.PlaneGeometry(0.4 * ts, 0.36 * ts), wm); win.position.set(s * w * 0.3, h * 0.6, d / 2 + 0.03 * ts); g.add(win); });
+        _hzPulse(wm, null, 0.06, 0, 1.5);
+        if (o.chimney !== false) { var ch = K.box(0.28 * ts, 0.7 * ts, 0.28 * ts, K.mat('bricks_2', 0x9a7060)); ch.position.set(w * 0.3, h + 0.5 * ts, -d * 0.15); g.add(K.lit(ch, true)); }
+        g.position.set(x, fy, z); g.rotation.y = ry;
+        if (K.occ) K.addW(K.side(x, z), g); else K.add(g);
+        return g;
+    }
+    /* a colonnade: columns (the greek column GLB, or a fluted cylinder) with an
+       entablature over them along one board side at distance d */
+    function _nrColonnade(K, o) {
+        var ts = K.ts, fy = K.fy, d = (o.d || 1.6) * ts, sp = (o.spacing || 1.5) * ts, h = (o.h || 2.2) * ts;
+        var stone = K.mat(o.tex || 'marble_light', o.color == null ? 0xffffff : o.color);
+        var pts = [];
+        _nrRectRing(K, d, sp, function (x, z, side) { pts.push([x, z, side]); }, { skipLanes: o.gates !== false, laneHalf: (o.laneHalf || 1.7) * ts, corners: true, only: o.only });
+        pts.forEach(function (p) {
+            var col;
+            if (o.glb) { col = _hzPropGLB('greekcol', h); col.position.set(p[0], fy, p[1]); }
+            else { col = K.cyl(0.16 * ts, 0.2 * ts, h, 10, stone); col.position.set(p[0], fy + h / 2, p[1]); var cap = K.box(0.5 * ts, 0.14 * ts, 0.5 * ts, stone); cap.position.set(p[0], fy + h + 0.07 * ts, p[1]); (K.occ ? K.addW(p[2], cap) : K.add(cap)); }
+            K.lit(col, true); (K.occ ? K.addW(p[2], col) : K.add(col));
+        });
+        if (o.beam !== false) {
+            var x0 = K.BX0 - d, x1 = K.BX1 + d, z0 = K.BZ0 - d, z1 = K.BZ1 + d, by = fy + h + (o.glb ? 0.05 : 0.14) * ts, bh = 0.32 * ts, bd = 0.5 * ts;
+            var runs = [['n', x0, z0, x1, z0], ['s', x0, z1, x1, z1], ['w', x0, z0, x0, z1], ['e', x1, z0, x1, z1]];
+            runs.forEach(function (r) {
+                if (o.only && o.only.indexOf(r[0]) < 0) return;
+                var horiz = r[2] === r[4];
+                if (o.gates !== false && horiz) {
+                    [[r[1], K.CX - (o.laneHalf || 1.7) * ts], [K.CX + (o.laneHalf || 1.7) * ts, r[3]]].forEach(function (s) { var len = s[1] - s[0]; if (len <= 0) return; var b = K.box(len + bd, bh, bd, stone); b.position.set((s[0] + s[1]) / 2, by + bh / 2, r[2]); K.lit(b, true); (K.occ ? K.addW(r[0], b) : K.add(b)); });
+                } else {
+                    var len = horiz ? r[3] - r[1] : r[4] - r[2];
+                    var b = K.box(horiz ? len + bd : bd, bh, horiz ? bd : len + bd, stone); b.position.set((r[1] + r[3]) / 2, by + bh / 2, (r[2] + r[4]) / 2); K.lit(b, true); (K.occ ? K.addW(r[0], b) : K.add(b));
+                }
+            });
+        }
+    }
+    /* stepped tiers (bleachers, ziggurat terraces, amphitheatre seats) along a
+       side: n steps rising outward from distance d */
+    function _nrTiers(K, o) {
+        var ts = K.ts, fy = K.fy, d = (o.d || 1.5) * ts, n = o.n || 3, sw = (o.stepW || 0.9) * ts, sh = (o.stepH || 0.5) * ts;
+        var mat = K.mat(o.tex, o.color == null ? 0xffffff : o.color);
+        var sides = o.only || ['w', 'e'];
+        sides.forEach(function (side) {
+            for (var i = 0; i < n; i++) {
+                var y0 = o.fromFloor === false ? fy - 0.4 * ts : 0, top = fy + sh * (i + 1), h = top - y0, inner = d + i * sw;
+                var horiz = side === 'n' || side === 's';
+                var len = (horiz ? K.BX1 - K.BX0 : K.BZ1 - K.BZ0) + 2 * (o.overhang == null ? d : o.overhang * ts);
+                var b = K.box(horiz ? len : sw, h, horiz ? sw : len, mat, 0.5);
+                var cx = horiz ? K.CX : (side === 'w' ? K.BX0 - inner - sw / 2 : K.BX1 + inner + sw / 2);
+                var cz = horiz ? (side === 'n' ? K.BZ0 - inner - sw / 2 : K.BZ1 + inner + sw / 2) : K.CZ;
+                b.position.set(cx, y0 + h / 2, cz); K.lit(b, true); (K.occ ? K.addW(side, b) : K.add(b));
+            }
+        });
+    }
+    /* an animated liquid pool of its own (a fountain basin, a spring) */
+    function _nrPool(K, x, z, r, key, o) {
+        o = o || {};
+        var ts = K.ts, fy = K.fy, g = new THREE.Group();
+        var rim = K.cyl(r + 0.16 * ts, r + 0.2 * ts, 0.32 * ts, 16, K.mat(o.rimTex || 'marble_light', o.rimColor == null ? 0xffffff : o.rimColor)); rim.position.y = 0.16 * ts; g.add(K.lit(rim, true));
+        var geo = new THREE.CircleGeometry(r, 16); _nrUV(geo, r / ts * 2, r / ts * 2);
+        var mat; try { mat = _buildFluidTopMat(key || 'water'); } catch (e) { mat = K.mat('water', 0xffffff); }
+        var w = new THREE.Mesh(geo, mat); w.rotation.x = -Math.PI / 2; w.position.y = 0.26 * ts; g.add(w);
+        if (o.jet) { var jm = K.glow(o.jet, 0.35); var jet = new THREE.Mesh(new THREE.ConeGeometry(0.12 * ts, 1.1 * ts, 8, 1, true), jm); jet.position.y = 0.8 * ts; g.add(jet); _hzPulse(jm, jet, 0.15, 0.08, 1.2); var spr = K.cyl(0.1 * ts, 0.14 * ts, 0.5 * ts, 8, K.mat(o.rimTex || 'marble_light', 0xffffff)); spr.position.y = 0.5 * ts; g.add(spr); }
+        g.position.set(x, fy, z); K.add(g); return g;
+    }
+    /* a floodlight / lattice tower with a bank of lights on top */
+    function _nrTower(K, x, z, o) {
+        o = o || {};
+        var ts = K.ts, fy = K.fy, h = (o.h || 5) * ts, g = new THREE.Group(), mat = K.mat(o.tex || 'metal', o.color == null ? 0x7c828a : o.color);
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (c) { var leg = K.cyl(0.05 * ts, 0.07 * ts, h, 5, mat); leg.position.set(c[0] * 0.22 * ts, h / 2, c[1] * 0.22 * ts); leg.rotation.set(-c[1] * 0.04, 0, c[0] * 0.04); g.add(leg); });
+        for (var i = 1; i < 5; i++) { var br = K.box(0.5 * ts, 0.04 * ts, 0.5 * ts, mat); br.position.y = h * i / 5; g.add(br); }
+        var head = K.box(1.3 * ts, 0.5 * ts, 0.2 * ts, mat); head.position.set(0, h + 0.25 * ts, 0); g.add(head);
+        var col = o.light || 0xf4f7ff;
+        for (var j = 0; j < 4; j++) { var lm = K.glow(col, 0.85); var l = new THREE.Mesh(new THREE.PlaneGeometry(0.24 * ts, 0.24 * ts), lm); l.position.set(-0.45 * ts + j * 0.3 * ts, h + 0.25 * ts, 0.12 * ts); g.add(l); }
+        var beam = K.lamp(0, h + 0.3 * ts, 0.2 * ts, col, 2.4 * ts, 0.4); g.add(beam);
+        g.position.set(x, fy, z); g.rotation.y = K.face(x, z);
+        if (K.occ) K.addW(K.side(x, z), g); else K.add(g);
+        return g;
+    }
+    /* mountain backdrop: big cones (with a snow cap) some tiles out */
+    function _nrPeaks(K, o) {
+        o = o || {};
+        var ts = K.ts, rng = K.rng, rock = K.mat(o.tex || 'mountain', o.color == null ? 0xffffff : o.color), snow = o.snow ? K.mat(o.snow, 0xffffff) : null;
+        var dd = (o.d || 7) * ts;
+        _nrRectRing(K, dd, (o.spacing || 4) * ts, function (x, z) {
+            if (rng() > (o.p == null ? 0.75 : o.p)) return;
+            var h = ts * ((o.h || 7) * (0.6 + rng() * 0.8)), r = Math.min(h * (0.7 + rng() * 0.5), dd - 1.5 * ts);   // the foot never reaches the apron's inner half
+            var geo = new THREE.ConeGeometry(r, h, 6 + (rng() * 3 | 0), 1); _nrUV(geo, r / ts, h / ts);
+            var m = new THREE.Mesh(geo, rock); m.position.set(x, K.fy + h / 2 - ts * 0.6, z); m.rotation.y = rng() * 6; K.add(K.lit(m, true));
+            if (snow) { var cg = new THREE.ConeGeometry(r * 0.32, h * 0.32, geo.parameters.radialSegments, 1); _nrUV(cg, r / ts * 0.3, h / ts * 0.3); var cap = new THREE.Mesh(cg, snow); cap.position.set(x, K.fy + h - h * 0.16 - ts * 0.6 + 1, z); cap.rotation.y = m.rotation.y; K.add(cap); }
+        }, { skipLanes: !!o.skipLanes, corners: true, only: o.only });
+    }
+    /* a cave-wall ring: stalagmite cones and rock spires */
+    function _nrSpires(K, o) {
+        o = o || {};
+        var ts = K.ts, rng = K.rng, mat = K.mat(o.tex || 'cave_wall', o.color == null ? 0xffffff : o.color);
+        _nrRectRing(K, (o.d || 2.2) * ts, (o.spacing || 1.1) * ts, function (x, z, side) {
+            if (rng() > (o.p == null ? 0.85 : o.p)) return;
+            var h = ts * ((o.h || 3) * (0.5 + rng() * 1.0)), r = ts * ((o.r || 0.5) * (0.6 + rng() * 0.8));
+            var geo = new THREE.ConeGeometry(r, h, 6, 1); _nrUV(geo, r / ts * 2, h / ts);
+            var m = new THREE.Mesh(geo, mat); m.position.set(x + (rng() - 0.5) * ts * 0.6, K.fy + h / 2 - ts * 0.3, z + (rng() - 0.5) * ts * 0.6); m.rotation.set((rng() - 0.5) * 0.2, rng() * 6, (rng() - 0.5) * 0.2);
+            K.lit(m, true); if (K.occ) K.addW(side, m); else K.add(m);
+        }, { skipLanes: o.skipLanes !== false, corners: true, only: o.only });
+    }
+    /* road markings: a dashed centre line + edge lines on the lane strips */
+    function _nrRoadLines(K, o) {
+        o = o || {};
+        var ts = K.ts, fy = K.fy, col = o.color || 0xf2d24a, mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false });
+        var y = fy + 0.9;
+        function dash(x0, z0, x1, z1) { var n = Math.max(1, Math.round(Math.hypot(x1 - x0, z1 - z0) / (0.7 * ts))); for (var i = 0; i < n; i++) { var u0 = i / n, u1 = (i + 0.45) / n; var mx = x0 + (x1 - x0) * (u0 + u1) / 2, mz = z0 + (z1 - z0) * (u0 + u1) / 2; var len = Math.hypot(x1 - x0, z1 - z0) * 0.45 / n; var m = new THREE.Mesh(new THREE.PlaneGeometry(0.08 * ts, len), mat); m.rotation.x = -Math.PI / 2; m.rotation.z = Math.atan2(-(x1 - x0), -(z1 - z0)); m.position.set(mx, y, mz); m.renderOrder = 1; K.add(m); } }
+        if (o.lanes !== false) { dash(K.CX, K.Z0, K.CX, K.BZ0 - K.G); dash(K.CX, K.BZ1 + K.G, K.CX, K.Z1); }
+        if (o.ring) { var r = o.ring * ts; [[K.BX0 - r, K.BZ0 - r, K.BX1 + r, K.BZ0 - r], [K.BX0 - r, K.BZ1 + r, K.BX1 + r, K.BZ1 + r], [K.BX0 - r, K.BZ0 - r, K.BX0 - r, K.BZ1 + r], [K.BX1 + r, K.BZ0 - r, K.BX1 + r, K.BZ1 + r]].forEach(function (s) { dash(s[0], s[1], s[2], s[3]); }); }
+    }
+    /* a canvas hazard/warning plate lying on the floor */
+    function _nrFloorText(K, key, txt, w, h, x, z, rot, color) {
+        var t = _hzTextTex(key, [txt], { w: 512, h: 128, color: color || '#e8e2d0', pad: 0.1 }); if (!t) return null;
+        var m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, opacity: 0.85 }));
+        m.rotation.x = -Math.PI / 2; m.rotation.z = rot || 0; m.position.set(x, K.fy + 0.8, z); m.renderOrder = 1; K.add(m); return m;
+    }
+    /* hanging aurora / banner ribbons high over the setting */
+    function _nrRibbons(K, o) {
+        o = o || {};
+        var ts = K.ts, rng = K.rng, cols = o.colors || [0x5dffb0, 0x7ad0ff, 0xc08cff];
+        for (var i = 0; i < (o.n || 4); i++) {
+            var mat = K.glow(cols[i % cols.length], 0.16);
+            var w = ts * (8 + rng() * 10), h = ts * (2 + rng() * 3);
+            var geo = new THREE.PlaneGeometry(w, h, 24, 1), pos = geo.getAttribute('position');
+            for (var v = 0; v < pos.count; v++) { var u = (pos.getX(v) + w / 2) / w; pos.setZ(v, Math.sin(u * Math.PI * 4 + i) * ts * 0.8); }
+            var m = new THREE.Mesh(geo, mat);
+            var a = rng() * Math.PI * 2, r = ts * (6 + rng() * 5);
+            m.position.set(K.CX + Math.cos(a) * r, K.fy + ts * (7 + rng() * 5), K.CZ + Math.sin(a) * r); m.rotation.y = a + Math.PI / 2; m.rotation.x = (rng() - 0.5) * 0.6;
+            K.add(m); _hzPulse(mat, m, 0.08, 0.03, 0.15 + rng() * 0.2);
+        }
+    }
+
+    // ── The settings, one per launch board ────────────────────────────────
+    var _NR_BUILDERS = {};
+    /* MOUNT SHASTA — a timberline meadow: pines all round, granite, the cold
+       lake running off the west shore, snow peaks behind. */
+    _NR_BUILDERS.shasta = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.5, gap: 0 });
+        _nrApron(K, { tex: 'grass_2', deep: true, skirt: 'cliff', skirtColor: 0xb9b4a8 });
+        _nrMoat(K, { key: 'water', depth: 1, pad: 6 });                       // the lake bed below the meadow rim
+        _nrTrees(K, { d: 1.4, spacing: 1.3, kinds: ['tree_2', 'tree_3', 'tree_2'], p: 0.7, h: 2.3, max: 16 });
+        _nrTrees(K, { d: 3.2, spacing: 1.6, kinds: ['tree_2', 'tree_3'], p: 0.65, h: 2.6, max: 14 });
+        _nrRocks(K, { tex: 'rocks_1', color: 0xc0c4c8, d: 0.9, p: 0.3, r: 0.4 });
+        _nrPeaks(K, { d: 11, spacing: 5.5, tex: 'mountain', snow: 'marble_light', h: 8, p: 0.8, only: ['n', 'w', 'e'] });
+        _nrProp(K, _hzLenticular, K.BX1 + 6 * K.ts, K.BZ0 - 5 * K.ts, { y: 2 });
+    };
+    /* STONEHENGE — the outer sarsen ring stands around the board on the down. */
+    _NR_BUILDERS.stonehenge = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.5 }), ts = K.ts, rng = K.rng;
+        _nrApron(K, { tex: 'grass_2', deep: true, skirt: 'dirt', skirtColor: 0xa08868 });
+        var stone = K.mat('rock_wall_1', 0xd8d0c0);        // sarsen grey-beige (rocks_1 is a dark cobble and read as coal)
+        var n = 22, R = 6.4 * ts;
+        for (var i = 0; i < n; i++) {
+            var a = i * Math.PI * 2 / n + 0.14;
+            var x = K.CX + Math.cos(a) * R * 1.02, z = K.CZ + Math.sin(a) * R * 0.98;
+            if (Math.abs(Math.cos(a)) < 0.16 && rng() < 0.6) continue;             // the broken arcs at the lanes
+            if (rng() < 0.18) continue;
+            var h = ts * (1.9 + rng() * 0.7), w = ts * 0.85, d = ts * 0.5;
+            var m = K.box(w, h, d, stone); m.position.set(x, K.fy + h / 2 - ts * 0.15, z); m.rotation.y = -a + Math.PI / 2; m.rotation.z = (rng() - 0.5) * 0.06; K.add(K.lit(m, true));
+            if (rng() < 0.6) { var lintel = K.box(R * Math.PI * 2 / n * 1.05, ts * 0.55, d * 1.1, stone); lintel.position.set(K.CX + Math.cos(a + Math.PI / n) * R * 1.0, K.fy + h + ts * 0.12, K.CZ + Math.sin(a + Math.PI / n) * R * 0.98); lintel.rotation.y = -(a + Math.PI / n) + Math.PI / 2; K.add(K.lit(lintel, true)); }
+        }
+        _nrProp(K, _hzTrilithon, K.BX0 - 2.6 * ts, K.BZ0 - 2.6 * ts, { s: 0.9 }); _nrProp(K, _hzTrilithon, K.BX1 + 2.6 * ts, K.BZ1 + 2.6 * ts, { s: 0.9 });
+        _nrMounds(K, { tex: 'grass_2', d: 7.5, spacing: 3.5, r: 2.0, flat: 0.18, p: 0.5 });
+        var ditch = K.mat('dirt', 0x8a7a60); var ring = new THREE.Mesh(new THREE.RingGeometry(R * 1.28, R * 1.42, 40), ditch); ring.rotation.x = -Math.PI / 2; ring.position.set(K.CX, K.fy + 0.4, K.CZ); K.add(ring);
+    };
+    /* GIZA — the necropolis: dunes, two pyramids on the diagonal, obelisks. */
+    _NR_BUILDERS.giza = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.5 }), ts = K.ts;
+        _nrApron(K, { tex: 'desert', deep: true, skirt: 'dirt_2', skirtColor: 0xe0c48c });
+        _nrMounds(K, { tex: 'desert', d: 3.4, spacing: 2.4, r: 1.8, flat: 0.3, p: 0.75 });
+        var pyr = K.mat('desert', 0xd6c39a);
+        [[K.BX1 + 9 * ts, K.BZ0 - 8 * ts, 11], [K.BX0 - 10 * ts, K.BZ1 + 9 * ts, 13], [K.BX1 + 12 * ts, K.BZ1 + 11 * ts, 7]].forEach(function (p) {
+            var h = p[2] * ts, r = h * 0.95; var geo = new THREE.ConeGeometry(r, h, 4, 1); _nrUV(geo, r / ts, h / ts);
+            var m = new THREE.Mesh(geo, pyr); m.position.set(p[0], K.fy + h / 2 - ts * 0.4, p[1]); m.rotation.y = Math.PI / 4; K.add(K.lit(m, true));
+        });
+        [[K.BX0 - 1.6 * ts, K.BZ0 - 1.6 * ts], [K.BX1 + 1.6 * ts, K.BZ0 - 1.6 * ts], [K.BX0 - 1.6 * ts, K.BZ1 + 1.6 * ts], [K.BX1 + 1.6 * ts, K.BZ1 + 1.6 * ts]].forEach(function (p) { var o = _hzPropGLB('obelisk3d', 3.2 * ts); o.position.set(p[0], K.fy, p[1]); K.add(o); });
+        var trench = K.mat('dirt_2', 0xb89868);
+        [[K.BX0 - 3.2 * ts, K.CZ - 1.5 * ts], [K.BX1 + 3.2 * ts, K.CZ + 1.5 * ts]].forEach(function (p) { var t = K.box(1.2 * ts, 0.5 * ts, 3 * ts, trench); t.position.set(p[0], K.fy - 0.25 * ts - 0.7, p[1]); K.add(t); });
+        _nrRocks(K, { tex: 'bricks_1', color: 0xdcb880, d: 2.2, p: 0.25, r: 0.4 });
+    };
+    /* NUKETOWN — the cul-de-sac: the street runs on, two ranch houses face
+       each other, picket fences, lamps, the test tower on the horizon. */
+    _NR_BUILDERS.nuketown = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.5, occ: true }), ts = K.ts;
+        _nrApron(K, { tex: 'grass_2', deep: true, skirt: 'dirt', skirtColor: 0xb8a078 });
+        var road = K.mat('urban_street', 0xb8b4ac);
+        [[K.CX, K.Z0, K.BZ0], [K.CX, K.BZ1, K.Z1]].forEach(function (s) { var len = s[2] - s[1]; var r = K.box(2.0 * ts, 0.12 * ts, len, road); r.position.set(s[0], K.fy + 0.06 * ts - 0.6, (s[1] + s[2]) / 2); K.add(K.lit(r)); });
+        _nrRoadLines(K, { color: 0xf2d24a });
+        _nrHouse(K, K.BX0 - 2.7 * ts, K.CZ - 1.6 * ts, { w: 3.4, d: 2.6, h: 1.5, tex: 'wood_planks', color: 0xf0e2c8, roofTex: 'wood', roofColor: 0x5a4a3a, ry: Math.PI / 2, window: 0xffe0a0 });
+        _nrHouse(K, K.BX1 + 2.7 * ts, K.CZ + 1.6 * ts, { w: 3.4, d: 2.6, h: 1.5, tex: 'wood_planks', color: 0xd8e8c8, roofTex: 'wood', roofColor: 0x6a4a3a, ry: -Math.PI / 2, window: 0xffe0a0 });
+        _nrFence(K, { d: 1.2, h: 0.6, spacing: 1.6, tex: 'wood_planks', color: 0xf4f0e8, picket: true, gates: true });
+        _nrTrees(K, { d: 3.6, spacing: 2.4, kinds: ['tree', 'tree_4'], p: 0.55, h: 2.0, only: ['w', 'e'] });
+        _nrLamps(K, { d: 1.9, spacing: 4.5, only: ['w', 'e'] });
+        _nrSign(K, 'nk_sign', ['NUKETOWN', 'POP. 0 · TEST SITE'], 2.4 * ts, 1.0 * ts, K.CX + 2.2 * ts, K.fy + 1.2 * ts, K.Z0 + 1.2 * ts, 0, { sizes: [110, 44], bg: '#2d6b3a', border: '#e8e2c0' });
+        var mast = K.cyl(0.08 * ts, 0.14 * ts, 9 * ts, 6, K.mat('metal', 0x7a7f88)); mast.position.set(K.BX1 + 7 * ts, K.fy + 4.5 * ts, K.BZ0 - 6 * ts); K.add(mast);
+        var cab = K.box(0.9 * ts, 0.8 * ts, 0.9 * ts, K.mat('metal', 0x8a9098)); cab.position.set(mast.position.x, K.fy + 9.1 * ts, mast.position.z); K.add(cab);
+        K.add(K.lamp(mast.position.x, K.fy + 9.6 * ts, mast.position.z, 0xff3030, 0.9 * ts, 0.7));
+        [[K.BX0 - 1.5 * ts, K.BZ1 + 2.3 * ts], [K.BX1 + 1.7 * ts, K.BZ0 - 2.4 * ts]].forEach(function (p) { var bus = K.box(1.0 * ts, 0.9 * ts, 2.6 * ts, K.mat('metal_2', 0xd8b04a)); bus.position.set(p[0], K.fy + 0.55 * ts, p[1]); bus.rotation.y = 0.25; K.add(K.lit(bus, true)); });
+    };
+    /* HEAVEN — the gate plaza on the cloud sea: the Gates at both ends,
+       a columned promenade, pillars of light, cloud banks. */
+    _NR_BUILDERS.heaven = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.5 }), ts = K.ts;
+        _nrApron(K, { tex: 'cloud_2', deep: true, skirt: 'cloud_thick', skirtColor: 0xf4f0ff, dens: 0.5 });
+        _nrMounds(K, { tex: 'cloud_thick', color: 0xffffff, d: 3.6, spacing: 1.8, r: 1.6, flat: 0.45, p: 0.85, skipLanes: false });
+        _nrProp(K, _hzGoldGate, K.CX, K.BZ0 - 3.0 * ts, { ry: 0, s: 0.55 }); _nrProp(K, _hzGoldGate, K.CX, K.BZ1 + 3.0 * ts, { ry: Math.PI, s: 0.55 });
+        _nrColonnade(K, { d: 1.7, spacing: 1.7, glb: true, h: 2.2, only: ['w', 'e'], beam: true, tex: 'marble_light' });
+        _nrProp(K, _hzLightPillar, K.BX0 - 3.2 * ts, K.BZ0 - 3.2 * ts, { s: 0.28 }); _nrProp(K, _hzLightPillar, K.BX1 + 3.2 * ts, K.BZ1 + 3.2 * ts, { s: 0.28 });
+        var gold = K.mat('gold', 0xffe9a0);
+        [[K.BX0 - 1.1 * ts, K.CZ], [K.BX1 + 1.1 * ts, K.CZ]].forEach(function (p) { var basin = K.cyl(0.9 * ts, 1.0 * ts, 0.3 * ts, 14, gold); basin.position.set(p[0], K.fy + 0.15 * ts, p[1]); K.add(basin); K.add(K.lamp(p[0], K.fy + 0.5 * ts, p[1], 0xfff3c8, 1.6 * ts, 0.4)); });
+    };
+    /* HELL — the pit: a lava moat around the floor, obsidian spikes, braziers. */
+    _NR_BUILDERS.hell = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.0, gap: 1.2 }), ts = K.ts;
+        _nrApron(K, { tex: 'scorched', deep: true, skirt: 'obsidian', skirtColor: 0x584058 });
+        _nrMoat(K, { key: 'lava', depth: 1, pad: 8 });
+        [[K.CX, K.BZ0 - K.G / 2], [K.CX, K.BZ1 + K.G / 2]].forEach(function (p) { var b = K.box(2.2 * ts, 0.3 * ts, K.G + 0.4 * ts, K.mat('obsidian', 0x8a6a70)); b.position.set(p[0], K.fy - 0.15 * ts - 0.6, p[1]); K.add(K.lit(b)); });   // basalt causeways to the spawn rows
+        _nrSpires(K, { tex: 'obsidian', color: 0x7a5a78, d: 2.2, spacing: 1.2, h: 3.2, r: 0.45, p: 0.8 });
+        _nrRectRing(K, 3.6 * ts, 6.0 * ts, function (x, z) { _nrProp(K, _hzBrazier, x, z, { s: 0.6 }); }, { skipLanes: true, corners: true });
+        _nrRocks(K, { tex: 'rocks_3', color: 0xb06a50, d: 1.5, p: 0.3, r: 0.4 });
+        for (var i = 0; i < 6; i++) { var a = i * Math.PI / 3; K.add(K.lamp(K.CX + Math.cos(a) * 6.5 * ts, K.fy - 0.7 * ts, K.CZ + Math.sin(a) * 6.5 * ts, 0xff5a20, 3.5 * ts, 0.25)); }
+    };
+    /* CYBERPUNK CITY — a rain-slick intersection: asphalt, curbs, towers on
+       every side wearing lit windows and neon, holo billboards, lamps. */
+    _NR_BUILDERS.cyberpunk = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 3.2, occ: true }), ts = K.ts;
+        _nrApron(K, { tex: 'urban_street', color: 0x9a96a8, deep: true, skirt: 'urban_wall', skirtColor: 0x7a7488 });
+        var curb = K.mat('concrete_floor', 0x8e8a9a);
+        [[K.X0, K.Z0, K.X1, K.BZ0 - 1.9 * ts], [K.X0, K.BZ1 + 1.9 * ts, K.X1, K.Z1], [K.X0, K.BZ0 - 1.9 * ts, K.BX0 - 1.9 * ts, K.BZ1 + 1.9 * ts], [K.BX1 + 1.9 * ts, K.BZ0 - 1.9 * ts, K.X1, K.BZ1 + 1.9 * ts]].forEach(function (r) {
+            var w = r[2] - r[0], d = r[3] - r[1]; if (w <= 0 || d <= 0) return; var m = K.box(w, 0.12 * ts, d, curb); m.position.set(r[0] + w / 2, K.fy + 0.06 * ts - 0.6, r[1] + d / 2); K.add(K.lit(m));
+        });
+        _nrRoadLines(K, { color: 0xf2d24a, ring: 1.0 });
+        _nrBlocks(K, { d: 3.1, depth: 3.0, minW: 2.0, maxW: 3.8, minH: 5, maxH: 13, tex: 'urban_wall', color: 0x8c88a4, roofTex: 'concrete_floor', winStyle: 'neon', neon: [0xff3ad8, 0x35e0ff, 0xffd34a, 0x9dff5f], neonP: 0.75, gates: true, signs: ['ENTROPY', 'ノイズ', 'SYNTH', 'NOODLE', 'CLINIC', '24H', 'VOID', 'ARCADE', '夢', 'HOTEL'] });
+        _nrProp(K, _hzHoloboard, K.BX0 - 1.6 * ts, K.BZ0 - 1.6 * ts, {}); _nrProp(K, _hzHoloboard, K.BX1 + 1.6 * ts, K.BZ1 + 1.6 * ts, {});
+        _nrLamps(K, { d: 1.2, spacing: 3.2, color: 0xcfe8ff, aura: 0x7ac8ff });
+        _nrRectRing(K, 1.4 * ts, 2.6 * ts, function (x, z) { if (K.rng() < 0.5) return; var s = K.lamp(x, K.fy + 0.3 * ts, z, 0xbfe4ff, 1.4 * ts, 0.18); K.add(s); _hzPulse(s.material, s, 0.1, 0.25, 0.3 + K.rng() * 0.4); }, { skipLanes: true, corners: true });   // steam
+        [[K.BX0 - 1.2 * ts, K.CZ - 2.2 * ts, 0.4], [K.BX1 + 1.2 * ts, K.CZ + 2.4 * ts, -0.3]].forEach(function (p) { var d = _hzPropGLB('dumpster', 1.0 * ts); d.position.set(p[0], K.fy, p[1]); d.rotation.y = p[2]; K.add(d); });
+        var wet = new THREE.Mesh(new THREE.PlaneGeometry(K.X1 - K.X0, K.Z1 - K.Z0), new THREE.MeshBasicMaterial({ color: 0xff6ad8, transparent: true, opacity: 0.05, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+        wet.rotation.x = -Math.PI / 2; wet.position.set(K.CX, K.fy + 1.2, K.CZ); K.add(wet); _hzPulse(wet.material, null, 0.03, 0, 0.8);
+    };
+    /* CAMELOT — the bailey: a moat around the courtyard, the curtain wall with
+       its towers on the far bank, drawbridges at both gates, braziers. */
+    _NR_BUILDERS.camelot = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.0, gap: 1.3, occ: true }), ts = K.ts;
+        _nrApron(K, { tex: 'grass_2', color: 0xa8b890, deep: true, skirt: 'rock_wall_1', skirtColor: 0xb8b0a0 });
+        _nrMoat(K, { key: 'water', depth: 1, pad: 6 });
+        var plank = K.mat('wood_planks', 0xa88458);
+        [[K.CX, K.BZ0 - K.G / 2], [K.CX, K.BZ1 + K.G / 2]].forEach(function (p) { var b = K.box(2.2 * ts, 0.16 * ts, K.G + 0.5 * ts, plank); b.position.set(p[0], K.fy + 0.02 * ts, p[1]); K.add(K.lit(b, true)); [-1, 1].forEach(function (s) { var ch = K.cyl(0.03 * ts, 0.03 * ts, 2.2 * ts, 4, _hzLit(null, 0x555a60)); ch.position.set(p[0] + s * 1.0 * ts, K.fy + 1.0 * ts, p[1]); ch.rotation.x = (p[1] < K.CZ ? -1 : 1) * 0.6; K.add(ch); }); });
+        _nrWallRing(K, { d: 2.2, h: 2.6, t: 0.7, tex: 'bricks_2', color: 0xd8c8b8, lift: 0.38, crenel: true, gates: ['n', 's'], gateW: 3.0, towers: { r: 1.05, h: 3.8, tex: 'bricks_2', color: 0xbfb0a0, roof: 'wood', roofColor: 0x5a3a2a, lamp: 0xffb060 } });
+        [[K.CX - 1.9 * ts, K.BZ0 - 2.2 * ts, 'n'], [K.CX + 1.9 * ts, K.BZ0 - 2.2 * ts, 'n'], [K.CX - 1.9 * ts, K.BZ1 + 2.2 * ts, 's'], [K.CX + 1.9 * ts, K.BZ1 + 2.2 * ts, 's']].forEach(function (p) { var gy0 = K.fy - 0.4 * ts, gh = 4.0 * ts; var gt = K.box(0.9 * ts, gh, 1.1 * ts, K.mat('bricks_2', 0xbfb0a0)); gt.position.set(p[0], gy0 + gh / 2, p[1]); K.addW(p[2], K.lit(gt, true)); });
+        var banner = K.mat('damask', 0xa02030, { side: THREE.DoubleSide });
+        _nrRectRing(K, 2.2 * ts, 3.5 * ts, function (x, z, side) { var b = K.plane(0.5 * ts, 1.3 * ts, banner); b.position.set(x, K.fy + 2.0 * ts, z); b.rotation.y = K.face(x, z); K.addW(side, b); }, { skipLanes: true, corners: false });
+        _nrRectRing(K, 3.4 * ts, 4.0 * ts, function (x, z) { _nrProp(K, _hzBrazier, x, z, { s: 0.6 }); }, { skipLanes: true, corners: false });
+        _nrTrees(K, { d: 3.6, spacing: 2.2, kinds: ['tree', 'tree_2'], p: 0.45, h: 2.0, sink: 0.05 });
+        _nrProp(K, _hzExcalibur, K.BX1 + 3.4 * ts, K.BZ0 - 3.4 * ts, { s: 0.7 });
+    };
+    /* FOOTBALL STADIUM — the bowl: yard lines run on, bleacher tiers on the
+       long sides, goalposts, the jumbotron, floodlights. */
+    _NR_BUILDERS.stadium = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.5, occ: true }), ts = K.ts;
+        _nrApron(K, { tex: 'grass_2', color: 0x5ec46a, deep: true, skirt: 'concrete_floor', skirtColor: 0x9a9a96 });
+        var chalk = new THREE.MeshBasicMaterial({ color: 0xf4f4f4, transparent: true, opacity: 0.75, depthWrite: false });
+        for (var i = 0; i <= 4; i++) { [K.BZ0 - i * ts - 0.5 * ts, K.BZ1 + i * ts + 0.5 * ts].forEach(function (z) { var l = new THREE.Mesh(new THREE.PlaneGeometry(K.BX1 - K.BX0 + 2 * ts, 0.08 * ts), chalk); l.rotation.x = -Math.PI / 2; l.position.set(K.CX, K.fy + 0.9, z); l.renderOrder = 1; K.add(l); }); }
+        _nrTiers(K, { d: 1.6, n: 4, stepW: 0.7, stepH: 0.55, tex: 'concrete_floor', color: 0xb8bcc4, only: ['w', 'e'], overhang: 2.5 });
+        var seats = [0xd84040, 0x4060d8];
+        [['w', K.BX0 - 1.6 * ts, -1], ['e', K.BX1 + 1.6 * ts, 1]].forEach(function (s, si) { for (var t = 0; t < 4; t++) { var row = K.box(0.35 * ts, 0.18 * ts, K.BZ1 - K.BZ0 + 5 * ts, _hzLit(null, seats[si])); row.position.set(s[1] + s[2] * (t * 0.7 + 0.5) * ts, K.fy + 0.55 * ts * (t + 1) + 0.09 * ts, K.CZ); K.addW(s[0], row); } });
+        var post = K.mat('metal', 0xf2d24a);
+        [[K.CX, K.BZ0 - 1.4 * ts], [K.CX, K.BZ1 + 1.4 * ts]].forEach(function (p) { var up = K.cyl(0.06 * ts, 0.08 * ts, 1.6 * ts, 6, post); up.position.set(p[0], K.fy + 0.8 * ts, p[1]); K.add(up); var bar = K.box(2.4 * ts, 0.08 * ts, 0.08 * ts, post); bar.position.set(p[0], K.fy + 1.6 * ts, p[1]); K.add(bar); [-1.2, 1.2].forEach(function (o) { var u = K.cyl(0.05 * ts, 0.05 * ts, 2.4 * ts, 6, post); u.position.set(p[0] + o * ts, K.fy + 2.8 * ts, p[1]); K.add(u); }); });
+        _nrProp(K, _hzJumbotron, K.CX, K.BZ0 - 4.0 * ts, { ry: 0, s: 0.85 });
+        [[K.BX0 - 3.6 * ts, K.BZ0 - 3.6 * ts], [K.BX1 + 3.6 * ts, K.BZ0 - 3.6 * ts], [K.BX0 - 3.6 * ts, K.BZ1 + 3.6 * ts], [K.BX1 + 3.6 * ts, K.BZ1 + 3.6 * ts]].forEach(function (p) { _nrTower(K, p[0], p[1], { h: 6.5 }); });
+        var wall = K.mat('concrete_floor', 0x8a8e96);
+        [['n', K.CX, K.BZ0 - 4.4 * ts, K.X1 - K.X0, 0.4 * ts], ['s', K.CX, K.BZ1 + 4.4 * ts, K.X1 - K.X0, 0.4 * ts]].forEach(function (w) { var b = K.box(w[3], 1.4 * ts, w[4], wall); b.position.set(w[1], K.fy + 0.7 * ts, w[2]); K.addW(w[0], K.lit(b, true)); });
+    };
+    /* ATLANTIS — the sunken plaza: the city's water all around, half-drowned
+       colonnades on the banks, the crystal spire, kelp and bubbles. */
+    _NR_BUILDERS.atlantis = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.0, gap: 1.0 }), ts = K.ts, rng = K.rng;
+        _nrApron(K, { tex: 'marble_light', color: 0xc8ecf2, deep: true, skirt: 'ruins', skirtColor: 0x9ab8b8 });
+        _nrMoat(K, { key: 'water', depth: 1, pad: 8 });
+        [[K.CX, K.BZ0 - K.G / 2], [K.CX, K.BZ1 + K.G / 2]].forEach(function (p) { var b = K.box(2.2 * ts, 0.3 * ts, K.G + 0.4 * ts, K.mat('marble_light', 0xd0e8ec)); b.position.set(p[0], K.fy - 0.15 * ts - 0.6, p[1]); K.add(K.lit(b)); });
+        _nrColonnade(K, { d: 1.8, spacing: 1.6, glb: true, h: 2.2, beam: true, tex: 'marble_light', color: 0xcfe6ea, gates: true });
+        _nrProp(K, _hzGreekRuin, K.BX0 - 4.2 * ts, K.CZ, { s: 0.45, ry: Math.PI / 2 }); _nrProp(K, _hzGreekRuin, K.BX1 + 4.2 * ts, K.CZ, { s: 0.45, ry: -Math.PI / 2 });
+        var spire = _hzCrystalShards(rng); spire.position.set(K.BX1 + 3.4 * ts, K.fy - 0.3 * ts, K.BZ0 - 3.4 * ts); spire.scale.setScalar(0.8); K.add(spire);
+        var kelp = K.mat('leaves_3', 0x3aa880);
+        for (var i = 0; i < 18; i++) { var a = rng() * Math.PI * 2, r = ts * (5.2 + rng() * 2.5); var h = ts * (0.6 + rng() * 1.2); var k = K.cyl(0.02 * ts, 0.08 * ts, h, 5, kelp); k.position.set(K.CX + Math.cos(a) * r, K.fy - 1.2 * ts + h / 2, K.CZ + Math.sin(a) * r); k.rotation.z = (rng() - 0.5) * 0.5; K.add(k); }
+        for (var b = 0; b < 10; b++) { var s = K.lamp(K.X0 + rng() * (K.X1 - K.X0), K.fy + rng() * 3 * ts, K.Z0 + rng() * (K.Z1 - K.Z0), 0xbfe8ff, 0.25 * ts, 0.4); K.add(s); }
+    };
+    /* TOWER OF BABEL — the board is the tower's lowest court: brick terraces
+       step up and away on every side, cranes, tablets, the unfinished top. */
+    _NR_BUILDERS.babel = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.5, occ: true }), ts = K.ts;
+        _nrApron(K, { tex: 'bricks_1', color: 0xd8a878, deep: true });
+        _nrTiers(K, { d: 1.8, n: 3, stepW: 1.0, stepH: 1.0, tex: 'bricks_1', color: 0xd0a070, only: ['w', 'e', 'n'], overhang: 4.5 });
+        _nrTiers(K, { d: 1.8, n: 1, stepW: 1.0, stepH: 0.6, tex: 'bricks_1', color: 0xd0a070, only: ['s'], overhang: 4.5 });
+        _nrProp(K, _hzBabelCrane, K.BX0 - 3.3 * ts, K.BZ0 - 3.6 * ts, { y: 3.0, s: 0.9 }); _nrProp(K, _hzBabelCrane, K.BX1 + 3.3 * ts, K.BZ1 + 3.6 * ts, { y: 3.0, s: 0.9 });
+        _nrProp(K, _hzTablet, K.BX0 - 1.2 * ts, K.CZ - 2.3 * ts, { s: 0.7 }); _nrProp(K, _hzTablet, K.BX1 + 1.2 * ts, K.CZ + 2.3 * ts, { s: 0.7 });
+        var zig = _hzZiggurat(K.rng); zig.position.set(K.BX1 + 10 * ts, K.fy - 0.5 * ts, K.BZ0 - 9 * ts); zig.scale.setScalar(1.4); K.add(zig);
+        _nrRectRing(K, 1.2 * ts, 2.4 * ts, function (x, z, side) { var s = K.box(0.5 * ts, 1.4 * ts, 0.08 * ts, K.mat('wood', 0x8a6b40)); s.position.set(x, K.fy + 0.7 * ts, z); s.rotation.y = K.face(x, z); K.addW(side, s); var t = K.lamp(x, K.fy + 1.5 * ts, z, 0xffa040, 0.6 * ts, 0.55); K.addW(side, t); }, { skipLanes: true, corners: false });
+    };
+    /* MOUNT OLYMPUS — the acropolis over the cloud sea: colonnaded temples on
+       the wings, a golden stair, lightning-blue light pillars, clouds below. */
+    _NR_BUILDERS.olympus = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.0, occ: true }), ts = K.ts;
+        _nrApron(K, { tex: 'marble_light', color: 0xf8f8f2, deep: true, skirt: 'cloud_thick', skirtColor: 0xdfe6f8, dens: 0.5 });
+        _nrMounds(K, { tex: 'cloud_thick', color: 0xffffff, d: 4.4, spacing: 2.0, r: 1.9, flat: 0.4, p: 0.9, skipLanes: false });
+        _nrColonnade(K, { d: 1.9, spacing: 1.5, glb: true, h: 2.4, beam: true, tex: 'marble_light', only: ['w', 'e'], gates: false });
+        [['w', K.BX0 - 1.9 * ts], ['e', K.BX1 + 1.9 * ts]].forEach(function (s) { var ped = K.box(0.9 * ts, 2.9 * ts, K.BZ1 - K.BZ0 + 3.8 * ts, K.mat('marble_light', 0xf0f0ea)); ped.position.set(s[1], K.fy + 3.15 * ts, K.CZ); ped.scale.y = 0.26; K.addW(s[0], K.lit(ped, true)); });   // pediment roofs
+        var gold = K.mat('gold', 0xffe27a);
+        [[K.CX, K.BZ0 - 1.6 * ts, -1], [K.CX, K.BZ1 + 1.6 * ts, 1]].forEach(function (p) { for (var i = 0; i < 3; i++) { var st = K.box(3.0 * ts + i * 0.6 * ts, 0.16 * ts, 0.7 * ts, gold); st.position.set(p[0], K.fy - 0.6 - i * 0.16 * ts - 0.08 * ts, p[1] + p[2] * i * 0.7 * ts); K.add(K.lit(st)); } });
+        _nrProp(K, _hzLightPillar, K.BX0 - 3.4 * ts, K.BZ1 + 3.4 * ts, { s: 0.26 }); _nrProp(K, _hzLightPillar, K.BX1 + 3.4 * ts, K.BZ0 - 3.4 * ts, { s: 0.26 });
+        [[K.BX0 - 3.2 * ts, K.BZ0 - 2.8 * ts], [K.BX1 + 3.2 * ts, K.BZ1 + 2.8 * ts]].forEach(function (p) { var b = K.box(1.0 * ts, 1.6 * ts, 1.0 * ts, K.mat('marble_light', 0xf4f4ee)); b.position.set(p[0], K.fy + 0.8 * ts, p[1]); K.add(K.lit(b, true)); var f = K.lamp(p[0], K.fy + 1.9 * ts, p[1], 0x9fd0ff, 1.4 * ts, 0.5); K.add(f); });
+    };
+    /* MARS — the regolith flat: crater rims, mesas, the dead rover, a biodome. */
+    _NR_BUILDERS.mars = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 5.0 }), ts = K.ts, rng = K.rng;
+        _nrApron(K, { tex: 'mars', color: 0xc07a58, deep: true, skirt: 'mars_2', skirtColor: 0xa86048 });
+        _nrMounds(K, { tex: 'mars_2', color: 0xb07050, d: 3.2, spacing: 2.2, r: 1.4, flat: 0.3, p: 0.7 });
+        var mesa = K.mat('mars_2', 0xa86048);
+        [[K.BX0 - 3.8 * ts, K.BZ0 - 3.2 * ts, 3.2, 2.2, 2.4], [K.BX1 + 3.8 * ts, K.BZ1 + 3.2 * ts, 3.6, 2.4, 2.8], [K.BX1 + 9 * ts, K.BZ0 - 6 * ts, 6, 4, 3.6]].forEach(function (m) { var b = K.box(m[2] * ts, m[4] * ts, m[3] * ts, mesa, 0.5); b.position.set(m[0], K.fy + m[4] * ts / 2 - 0.3 * ts, m[1]); b.rotation.y = 0.3; K.add(K.lit(b, true)); var cap = K.box(m[2] * ts * 1.04, 0.2 * ts, m[3] * ts * 1.04, K.mat('mars', 0xc88a5a)); cap.position.set(m[0], K.fy + m[4] * ts - 0.2 * ts, m[1]); cap.rotation.y = 0.3; K.add(cap); });
+        for (var i = 0; i < 5; i++) { var a = rng() * Math.PI * 2, r = ts * (2.5 + rng() * 3); var cr = new THREE.Mesh(new THREE.TorusGeometry(ts * (0.6 + rng() * 0.6), ts * 0.18, 6, 18), mesa); cr.rotation.x = Math.PI / 2; cr.position.set(K.CX + Math.cos(a) * r, K.fy + 0.02 * ts, K.CZ + Math.sin(a) * r); if (cr.position.x > K.BX0 - 0.8 * ts && cr.position.x < K.BX1 + 0.8 * ts && cr.position.z > K.BZ0 - 0.8 * ts && cr.position.z < K.BZ1 + 0.8 * ts) continue; K.add(K.lit(cr, true)); }
+        _nrProp(K, _hzRover, K.BX1 + 1.9 * ts, K.BZ0 - 2.4 * ts, { s: 0.75, ry: 0.8 });
+        _nrProp(K, _hzBiodome, K.BX0 - 2.8 * ts, K.BZ1 + 2.6 * ts, { s: 0.8 });
+        _nrRocks(K, { tex: 'mars_2', color: 0x9a5a44, d: 1.0, p: 0.4, r: 0.3 });
+        K.add(K.lamp(K.CX, K.fy + 0.5 * ts, K.CZ, 0xff9a60, 30 * ts, 0.05));
+    };
+    /* AREA 51 — the base: tarmac, the perimeter fence with its floodlights,
+       two hangars, the saucer under its rig, the signs that mean it. */
+    _NR_BUILDERS.area51 = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.5, occ: true }), ts = K.ts;
+        _nrApron(K, { tex: 'dirt_4', color: 0xc8b088, deep: true, skirt: 'wasteland', skirtColor: 0xa89878 });
+        var road = K.mat('road', 0xa8a49a);
+        [[K.CX, K.Z0, K.BZ0], [K.CX, K.BZ1, K.Z1]].forEach(function (s) { var len = s[2] - s[1]; var r = K.box(2.0 * ts, 0.1 * ts, len, road); r.position.set(s[0], K.fy + 0.05 * ts - 0.6, (s[1] + s[2]) / 2); K.add(K.lit(r)); });
+        _nrRoadLines(K, { color: 0xf4f4f4 });
+        _nrFloorText(K, 'a51_rw', '▮▮▮  33  ▮▮▮', 2.0 * ts, 0.6 * ts, K.CX, K.BZ1 + 2.6 * ts, 0, '#f4f4f4');
+        _nrFence(K, { d: 3.3, h: 1.1, spacing: 1.4, tex: 'metal', color: 0xb0b6be, chain: true, barbed: true, gates: true });
+        [[K.BX0 - 3.3 * ts, K.BZ0 - 3.3 * ts], [K.BX1 + 3.3 * ts, K.BZ0 - 3.3 * ts], [K.BX0 - 3.3 * ts, K.BZ1 + 3.3 * ts], [K.BX1 + 3.3 * ts, K.BZ1 + 3.3 * ts]].forEach(function (p) { _nrTower(K, p[0], p[1], { h: 4.2 }); });
+        var alu = K.mat('aluminium', 0xcfd8e0);
+        [['w', K.BX0 - 2.4 * ts, K.CZ - 1.5 * ts], ['e', K.BX1 + 2.4 * ts, K.CZ + 1.5 * ts]].forEach(function (h) { var geo = new THREE.CylinderGeometry(1.4 * ts, 1.4 * ts, 3.2 * ts, 12, 1, false, 0, Math.PI); _nrUV(geo, 4, 3); var hg = new THREE.Mesh(geo, alu); hg.rotation.z = Math.PI / 2; hg.position.set(h[1], K.fy, h[2]); K.addW(h[0], K.lit(hg, true)); var mouth = K.plane(2.6 * ts, 1.2 * ts, _hzLit(null, 0x1a1c20)); mouth.position.set(h[1] + (h[0] === 'w' ? 1.61 * ts : -1.61 * ts), K.fy + 0.6 * ts, h[2]); mouth.rotation.y = h[0] === 'w' ? Math.PI / 2 : -Math.PI / 2; K.addW(h[0], mouth); });
+        _nrProp(K, _hzSaucer, K.BX1 + 2.6 * ts, K.BZ0 - 2.2 * ts, { s: 0.7 });
+        _nrSign(K, 'a51_s1', ['RESTRICTED AREA', 'USE OF DEADLY FORCE', 'AUTHORIZED'], 1.8 * ts, 1.0 * ts, K.CX + 2.0 * ts, K.fy + 1.1 * ts, K.BZ0 - 3.3 * ts, 0, { sizes: [64, 46, 46], bg: '#f4f0e0', color: '#b81818', border: '#b81818' });
+        _nrSign(K, 'a51_s2', ['WARNING', 'PHOTOGRAPHY PROHIBITED'], 1.8 * ts, 0.9 * ts, K.CX - 2.0 * ts, K.fy + 1.1 * ts, K.BZ1 + 3.3 * ts, Math.PI, { sizes: [80, 40], bg: '#f4f0e0', color: '#202020', border: '#b81818' });
+        [[K.BX0 - 1.3 * ts, K.BZ1 + 2.4 * ts], [K.BX1 + 1.4 * ts, K.BZ1 + 2.2 * ts]].forEach(function (p, i) { var c = K.box(0.8 * ts, 0.7 * ts, 0.8 * ts, K.mat('metal_2', 0x9fb2bd)); c.position.set(p[0], K.fy + 0.35 * ts, p[1]); c.rotation.y = i * 0.5; K.add(K.lit(c, true)); });
+    };
+    /* ANTARCTICA — the shelf: the open sea on the board's flank, icebergs in
+       it, drifts, an igloo, a whalefall, the aurora. */
+    _NR_BUILDERS.antarctica = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.5, gap: 0 }), ts = K.ts, rng = K.rng;
+        _nrApron(K, { tex: 'marble_light', color: 0xe4f2fc, deep: true, skirt: 'ice_1', skirtColor: 0xbfe0ff });
+        _nrMoat(K, { key: 'deep_water', depth: 1, pad: 10 });
+        var ice = K.mat('igloo', 0xdcecf8);
+        for (var i = 0; i < 9; i++) { var a = rng() * Math.PI * 2, r = ts * (6.5 + rng() * 4); var w = ts * (1 + rng() * 2), h = ts * (0.4 + rng() * 1.4); var b = K.box(w, h, w * (0.6 + rng() * 0.8), ice, 0.5); b.position.set(K.CX + Math.cos(a) * r, K.fy - 1.2 * ts + h / 2, K.CZ + Math.sin(a) * r); b.rotation.y = rng() * 6; K.add(K.lit(b, true)); }
+        _nrMounds(K, { tex: 'marble_light', color: 0xf4faff, d: 2.6, spacing: 2.0, r: 1.3, flat: 0.3, p: 0.7 });
+        _nrProp(K, _hzIgloo, K.BX0 - 2.8 * ts, K.BZ1 + 2.4 * ts, { s: 0.8 });
+        _nrProp(K, _hzWhalebones, K.BX1 + 2.8 * ts, K.BZ0 - 2.4 * ts, { s: 0.8 });
+        _nrRibbons(K, { n: 4, colors: [0x5dffb0, 0x7ad0ff, 0xc08cff] });
+        var ridge = K.mat('ice_1', 0xbfe0ff); for (var j = 0; j < 6; j++) { var rr = K.box(ts * (1.2 + rng()), ts * (0.5 + rng() * 0.8), ts * 0.5, ridge); rr.position.set(K.X0 + rng() * (K.X1 - K.X0), K.fy + 0.2 * ts, rng() < 0.5 ? K.Z0 + 0.8 * ts : K.Z1 - 0.8 * ts); rr.rotation.y = (rng() - 0.5) * 0.6; if (K.inLane(rr.position.x, rr.position.z, 2 * ts)) continue; K.add(K.lit(rr, true)); }
+    };
+    /* SKINWALKER RANCH — the pasture: rail fence, the barn, the windpump,
+       dead cottonwoods, the mesas, something in the sky. */
+    _NR_BUILDERS.skinwalker = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 5.0, occ: true }), ts = K.ts;
+        _nrApron(K, { tex: 'grass_2', color: 0xb8b878, deep: true, skirt: 'dirt', skirtColor: 0xb89468 });
+        var road = K.mat('dirt', 0xb89468);
+        [[K.CX, K.Z0, K.BZ0], [K.CX, K.BZ1, K.Z1]].forEach(function (s) { var len = s[2] - s[1]; var r = K.box(2.0 * ts, 0.1 * ts, len, road); r.position.set(s[0], K.fy + 0.05 * ts - 0.6, (s[1] + s[2]) / 2); K.add(K.lit(r)); });
+        _nrFence(K, { d: 1.4, h: 0.8, spacing: 1.8, tex: 'wood', color: 0xa88860, gates: true });
+        _nrHouse(K, K.BX1 + 3.2 * ts, K.CZ - 0.5 * ts, { w: 3.0, d: 3.6, h: 2.2, tex: 'wood_planks', color: 0xa83a30, roofTex: 'metal', roofColor: 0x6a6e74, ry: -Math.PI / 2, window: 0xffc060, chimney: false });
+        _nrProp(K, _hzWindmill, K.BX0 - 3.0 * ts, K.BZ0 - 2.4 * ts, { s: 0.9 });
+        _nrTrees(K, { d: 3.4, spacing: 2.6, kinds: ['tree_5', 'tree_6'], p: 0.6, h: 2.2 });
+        _nrMounds(K, { tex: 'rocks_1', color: 0xb09878, d: 8.5, spacing: 5, r: 4, flat: 0.5, p: 0.8 });
+        var bale = K.mat('wood', 0xc8a860); [[K.BX0 - 1.1 * ts, K.BZ1 + 2.0 * ts], [K.BX0 - 2.0 * ts, K.BZ1 + 2.2 * ts]].forEach(function (p) { var b = K.cyl(0.4 * ts, 0.4 * ts, 0.7 * ts, 10, bale); b.rotation.z = Math.PI / 2; b.position.set(p[0], K.fy + 0.4 * ts, p[1]); K.add(K.lit(b, true)); });
+        var tank = K.cyl(0.9 * ts, 0.9 * ts, 0.5 * ts, 12, K.mat('metal_2', 0x9a9088)); tank.position.set(K.BX1 + 1.6 * ts, K.fy + 0.25 * ts, K.BZ1 + 2.6 * ts); K.add(K.lit(tank, true));
+        var eye = K.lamp(K.CX + 4 * ts, K.fy + 9 * ts, K.CZ - 7 * ts, 0xff4060, 1.2 * ts, 0.35); K.add(eye); _hzPulse(eye.material, eye, 0.3, 0.2, 0.25);
+    };
+    /* HOLLOW EARTH — the cavern floor under the inner sun: stalagmite walls,
+       glowing fungus, crystal, the sun-shaft. */
+    _NR_BUILDERS.hollow_earth = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.5, occ: true }), ts = K.ts, rng = K.rng;
+        _nrApron(K, { tex: 'cave_floor', color: 0x8a7a9c, deep: true, skirt: 'cave_wall', skirtColor: 0x6a5a7c });
+        _nrSpires(K, { tex: 'cave_wall', color: 0x7a6a8c, d: 2.6, spacing: 1.1, h: 4.0, r: 0.6, p: 0.85 });
+        _nrSpires(K, { tex: 'cave_wall', color: 0x5a4a6c, d: 4.2, spacing: 1.4, h: 7, r: 1.1, p: 0.7, skipLanes: false });
+        for (var i = 0; i < 6; i++) { var a = rng() * Math.PI * 2, r = ts * (1.6 + rng() * 2.4); var x = K.CX + Math.cos(a) * r * 1.4, z = K.CZ + Math.sin(a) * r; if (x > K.BX0 - 0.7 * ts && x < K.BX1 + 0.7 * ts && z > K.BZ0 - 0.7 * ts && z < K.BZ1 + 0.7 * ts) continue; var m = _hzPropGLB(rng() < 0.5 ? 'mushroom' : 'mushroom2', ts * (1.0 + rng() * 1.2)); m.position.set(x, K.fy, z); K.add(m); K.add(K.lamp(x, K.fy + 0.8 * ts, z, 0x9affe4, 1.2 * ts, 0.3)); }
+        var cry = _hzCrystalShards(rng); cry.position.set(K.BX0 - 2.4 * ts, K.fy - 0.2 * ts, K.BZ0 - 2.2 * ts); cry.scale.setScalar(0.5); K.add(cry);
+        var cry2 = _hzCrystalShards(rng); cry2.position.set(K.BX1 + 2.4 * ts, K.fy - 0.2 * ts, K.BZ1 + 2.2 * ts); cry2.scale.setScalar(0.5); K.add(cry2);
+        _nrProp(K, _hzInnerSun, K.CX, K.CZ, { y: 6.0, s: 1.1, wall: false });
+        _nrPool(K, K.BX1 + 2.4 * ts, K.BZ0 - 2.4 * ts, 0.9 * ts, 'water', { rimTex: 'cave_wall', rimColor: 0x6a5a7c });
+    };
+    /* FAIRY FOREST — the glade: a wall of trees, toadstools, will-o-wisps. */
+    _NR_BUILDERS.fairy_forest = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.5 }), ts = K.ts, rng = K.rng;
+        _nrApron(K, { tex: 'grass_2', color: 0x9fd48a, deep: true, skirt: 'dirt', skirtColor: 0x8a7a5a });
+        _nrTrees(K, { d: 1.3, spacing: 1.3, kinds: ['tree', 'tree_2', 'tree_3', 'tree_4'], leaf: ['leaves_2', 'leaves_3', 'leaves_4', 'leaves_5'], p: 0.7, h: 2.4, max: 18 });
+        _nrTrees(K, { d: 3.0, spacing: 1.6, kinds: ['tree', 'tree_2', 'tree_3'], leaf: ['leaves_2', 'leaves_4', 'leaves_5'], p: 0.7, h: 2.9, max: 16 });
+        _nrProp(K, _hzToadstool, K.BX0 - 2.2 * ts, K.BZ1 + 1.6 * ts, { s: 0.7 }); _nrProp(K, _hzToadstool, K.BX1 + 2.2 * ts, K.BZ0 - 1.6 * ts, { s: 0.7 });
+        _nrProp(K, _hzFairyRing, K.BX1 + 1.6 * ts, K.BZ1 + 2.6 * ts, { s: 0.8 }); _nrProp(K, _hzFairyRing, K.BX0 - 1.6 * ts, K.BZ0 - 2.6 * ts, { s: 0.8 });
+        for (var i = 0; i < 24; i++) { var s = K.lamp(K.X0 + rng() * (K.X1 - K.X0), K.fy + ts * (0.3 + rng() * 2.2), K.Z0 + rng() * (K.Z1 - K.Z0), [0x9affd0, 0xffd0f2, 0xcfe0ff][i % 3], 0.22 * ts, 0.7); K.add(s); }
+        _nrPool(K, K.BX0 - 2.6 * ts, K.CZ, 0.8 * ts, 'water', { rimTex: 'rocks_1', rimColor: 0x8a9a80 });
+        for (var m = 0; m < 6; m++) { var a = rng() * Math.PI * 2, r = ts * (1.2 + rng() * 2.6); var x = K.CX + Math.cos(a) * r * 1.4, z = K.CZ + Math.sin(a) * r; if (x > K.BX0 - 0.7 * ts && x < K.BX1 + 0.7 * ts && z > K.BZ0 - 0.7 * ts && z < K.BZ1 + 0.7 * ts) continue; var mu = _hzPropGLB('mushroom2', ts * (0.5 + rng() * 0.6)); mu.position.set(x, K.fy, z); K.add(mu); }
+    };
+    /* MOON — Tranquility: regolith, craters, the lander and its flag, the
+       rover tracks, the black monolith, the Earth in the sky (far roster). */
+    _NR_BUILDERS.moon = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 5.0 }), ts = K.ts, rng = K.rng;
+        _nrApron(K, { tex: 'moon', color: 0xc8ccd8, deep: true, skirt: 'moon_3', skirtColor: 0x989cb0 });
+        var reg = K.mat('moon_2', 0xb0b4c4);
+        for (var i = 0; i < 8; i++) { var a = rng() * Math.PI * 2, r = ts * (2.2 + rng() * 3.2); var cr = new THREE.Mesh(new THREE.TorusGeometry(ts * (0.5 + rng() * 0.8), ts * 0.16, 6, 18), reg); cr.rotation.x = Math.PI / 2; cr.position.set(K.CX + Math.cos(a) * r * 1.3, K.fy + 0.02 * ts, K.CZ + Math.sin(a) * r); if (cr.position.x > K.BX0 - 0.9 * ts && cr.position.x < K.BX1 + 0.9 * ts && cr.position.z > K.BZ0 - 0.9 * ts && cr.position.z < K.BZ1 + 0.9 * ts) continue; K.add(K.lit(cr, true)); }
+        _nrMounds(K, { tex: 'moon_3', color: 0xa0a4b8, d: 3.6, spacing: 2.4, r: 1.6, flat: 0.3, p: 0.6 });
+        _nrRocks(K, { tex: 'moon_3', color: 0x9a9eb0, d: 1.0, p: 0.4, r: 0.3 });
+        var lx = K.BX1 + 2.6 * ts, lz = K.BZ0 - 2.4 * ts, foil = K.mat('gold', 0xd8b050), alu = K.mat('aluminium', 0xd0d4dc);
+        var desc = K.box(1.3 * ts, 0.7 * ts, 1.3 * ts, foil); desc.position.set(lx, K.fy + 0.75 * ts, lz); desc.rotation.y = Math.PI / 4; K.add(K.lit(desc, true));
+        var asc = K.box(0.9 * ts, 0.6 * ts, 0.9 * ts, alu); asc.position.set(lx, K.fy + 1.4 * ts, lz); K.add(K.lit(asc, true));
+        for (var l = 0; l < 4; l++) { var la = l * Math.PI / 2 + Math.PI / 4; var leg = K.cyl(0.03 * ts, 0.04 * ts, 1.1 * ts, 5, alu); leg.position.set(lx + Math.cos(la) * 0.9 * ts, K.fy + 0.45 * ts, lz + Math.sin(la) * 0.9 * ts); leg.rotation.set(Math.sin(la) * 0.5, 0, -Math.cos(la) * 0.5); K.add(leg); var pad = K.cyl(0.18 * ts, 0.18 * ts, 0.05 * ts, 8, alu); pad.position.set(lx + Math.cos(la) * 1.15 * ts, K.fy + 0.03 * ts, lz + Math.sin(la) * 1.15 * ts); K.add(pad); }
+        _nrProp(K, _hzFlag, lx - 1.6 * ts, lz + 0.4 * ts, { s: 0.5, ry: 0.4 });
+        _nrProp(K, _hzRover, K.BX0 - 2.4 * ts, K.BZ1 + 2.2 * ts, { s: 0.7, ry: 2.4 });
+        var trk = new THREE.MeshBasicMaterial({ color: 0x7a7e90, transparent: true, opacity: 0.5, depthWrite: false });
+        for (var t = 0; t < 2; t++) { var tr = new THREE.Mesh(new THREE.PlaneGeometry(0.08 * ts, 6 * ts), trk); tr.rotation.x = -Math.PI / 2; tr.rotation.z = 0.9; tr.position.set(K.BX0 - 1.6 * ts + t * 0.5 * ts, K.fy + 0.7, K.BZ1 + 1.4 * ts); tr.renderOrder = 1; K.add(tr); }
+        _nrProp(K, _hzMonolith, K.BX1 + 4.6 * ts, K.BZ1 + 4.2 * ts, { s: 0.28 });
+    };
+    /* TECHNOTICLAN — the canal quarter: glowing canals ring the causeway
+       board, stepped ziggurat terraces, torches, the hologram. */
+    _NR_BUILDERS.technoticlan = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.0, gap: 1.0, occ: true }), ts = K.ts;
+        _nrApron(K, { tex: 'cobblestone', color: 0x8fb0b8, deep: true, skirt: 'bricks_3', skirtColor: 0x7aa0a8 });
+        _nrMoat(K, { key: 'water', depth: 1, pad: 6 });
+        [[K.CX, K.BZ0 - K.G / 2], [K.CX, K.BZ1 + K.G / 2]].forEach(function (p) { var b = K.box(2.2 * ts, 0.3 * ts, K.G + 0.4 * ts, K.mat('bricks_3', 0x8ab0b8)); b.position.set(p[0], K.fy - 0.15 * ts - 0.6, p[1]); K.add(K.lit(b)); });
+        _nrTiers(K, { d: 1.6, n: 3, stepW: 0.9, stepH: 0.8, tex: 'bricks_3', color: 0x7aa0a8, only: ['w', 'e'], overhang: 3.0 });
+        _nrRectRing(K, 1.3 * ts, 1.6 * ts, function (x, z, side) { var gm = K.glow(0x3fe0d8, 0.7); var s = new THREE.Mesh(new THREE.PlaneGeometry(0.9 * ts, 0.06 * ts), gm); s.position.set(x, K.fy + 0.3 * ts, z); s.rotation.y = K.face(x, z); K.addW(side, s); _hzPulse(gm, null, 0.2, 0, 0.8 + K.rng()); }, { skipLanes: true, corners: false, only: ['w', 'e'] });
+        _nrRectRing(K, 3.2 * ts, 3.0 * ts, function (x, z, side) { var t = K.cyl(0.06 * ts, 0.08 * ts, 1.4 * ts, 6, K.mat('wood', 0x6a5a40)); t.position.set(x, K.fy + 0.7 * ts, z); K.addW(side, t); var f = K.lamp(x, K.fy + 1.55 * ts, z, 0xffa040, 0.8 * ts, 0.65); K.addW(side, f); }, { skipLanes: true, corners: true });
+        _nrProp(K, _hzHoloPyramid, K.BX1 + 3.0 * ts, K.BZ0 - 2.6 * ts, { s: 0.8 });
+        var zig = _hzZiggurat(K.rng); zig.position.set(K.BX0 - 9 * ts, K.fy - 0.6 * ts, K.BZ1 + 8 * ts); zig.scale.setScalar(1.1); K.add(zig);
+        var glyph = K.mat('bricks_3', 0x5a8a94); [[K.BX0 - 3.4 * ts, K.BZ0 - 3.4 * ts], [K.BX1 + 3.4 * ts, K.BZ1 + 3.4 * ts]].forEach(function (p) { var h = K.box(0.9 * ts, 2.4 * ts, 0.9 * ts, glyph); h.position.set(p[0], K.fy + 1.2 * ts, p[1]); K.add(K.lit(h, true)); var e = K.lamp(p[0], K.fy + 2.6 * ts, p[1], 0x3fe0d8, 1.2 * ts, 0.5); K.add(e); });
+    };
+    /* AGARTHA — the jade terrace: the glowing river on two flanks, crystal
+       spires, fungus groves, geodes, the sun-shaft. */
+    _NR_BUILDERS.agartha = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.5, gap: 0.9, occ: true }), ts = K.ts, rng = K.rng;
+        _nrApron(K, { tex: 'marble_light', color: 0xbfe8c8, deep: true, skirt: 'rocks_dark_fantasy', skirtColor: 0x8a9a88 });
+        _nrMoat(K, { key: 'water', depth: 1, pad: 6 });
+        [[K.CX, K.BZ0 - K.G / 2], [K.CX, K.BZ1 + K.G / 2]].forEach(function (p) { var b = K.box(2.2 * ts, 0.3 * ts, K.G + 0.4 * ts, K.mat('marble_light', 0xbfe8c8)); b.position.set(p[0], K.fy - 0.15 * ts - 0.6, p[1]); K.add(K.lit(b)); });
+        _nrSpires(K, { tex: 'rocks_dark_fantasy', color: 0x8a9a88, d: 3.0, spacing: 1.3, h: 4.5, r: 0.6, p: 0.7 });
+        for (var i = 0; i < 4; i++) { var c = _hzCrystalShards(rng); var a = i * Math.PI / 2 + 0.6; c.position.set(K.CX + Math.cos(a) * 6.2 * ts, K.fy - 0.2 * ts, K.CZ + Math.sin(a) * 5.6 * ts); c.scale.setScalar(0.7); K.add(c); }
+        for (var m = 0; m < 6; m++) { var ma = rng() * Math.PI * 2, r = ts * (2.2 + rng() * 2.0); var x = K.CX + Math.cos(ma) * r * 1.5, z = K.CZ + Math.sin(ma) * r * 1.2; if (x > K.BX0 - 1.2 * ts && x < K.BX1 + 1.2 * ts && z > K.BZ0 - 1.2 * ts && z < K.BZ1 + 1.2 * ts) continue; var mu = _hzPropGLB(rng() < 0.6 ? 'mushroom' : 'mushroom2', ts * (0.8 + rng() * 1.0)); mu.position.set(x, K.fy, z); K.add(mu); }
+        _nrProp(K, _hzGeode, K.BX0 - 2.6 * ts, K.BZ0 - 2.6 * ts, { s: 0.7 }); _nrProp(K, _hzGeode, K.BX1 + 2.6 * ts, K.BZ1 + 2.6 * ts, { s: 0.7 });
+        _nrProp(K, _hzInnerSun, K.CX, K.CZ, { y: 7.0, s: 1.2, wall: false });
+        for (var g = 0; g < 8; g++) { K.add(K.lamp(K.X0 + rng() * (K.X1 - K.X0), K.fy - 0.9 * ts, K.Z0 + rng() * (K.Z1 - K.Z0), 0x4ae0c8, 2.2 * ts, 0.2)); }
+    };
+    /* VATICAN CITY — the piazza: Bernini's colonnade arms on the flanks, the
+       basilica front and dome to the north, fountains, censers. */
+    _NR_BUILDERS.vatican = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.5, occ: true }), ts = K.ts;
+        _nrApron(K, { tex: 'cobblestone', color: 0xc8beab, deep: true, skirt: 'marble_light', skirtColor: 0xe8e2d4 });
+        _nrColonnade(K, { d: 2.0, spacing: 1.1, glb: true, h: 2.2, beam: true, tex: 'marble_light', color: 0xf6f3ea, only: ['w', 'e'], gates: false });
+        _nrColonnade(K, { d: 3.2, spacing: 1.1, glb: true, h: 2.2, beam: true, tex: 'marble_light', color: 0xf6f3ea, only: ['w', 'e'], gates: false });
+        var marble = K.mat('marble_light', 0xf6f3ea);
+        var fy0 = K.fy - 0.4 * ts, fh = 3.8 * ts; var facade = K.box(K.X1 - K.X0 - 2 * ts, fh, 1.4 * ts, marble, 0.5); facade.position.set(K.CX, fy0 + fh / 2, K.BZ0 - 3.6 * ts); K.addW('n', K.lit(facade, true));
+        for (var i = -3; i <= 3; i++) { var col = K.cyl(0.18 * ts, 0.2 * ts, 2.6 * ts, 10, marble); col.position.set(K.CX + i * 1.4 * ts, K.fy + 1.3 * ts, K.BZ0 - 2.8 * ts); K.addW('n', K.lit(col, true)); }
+        var door = K.plane(1.6 * ts, 2.2 * ts, _hzLit(null, 0x2a2018)); door.position.set(K.CX, K.fy + 1.1 * ts, K.BZ0 - 2.88 * ts); K.addW('n', door);
+        K.addW('n', K.lamp(K.CX, K.fy + 1.5 * ts, K.BZ0 - 2.7 * ts, 0xffe0a0, 2.0 * ts, 0.35));
+        _nrProp(K, _hzBasilicaDome, K.CX, K.BZ0 - 6.0 * ts, { y: 3.0, s: 1.6, ry: 0 });
+        _nrPool(K, K.BX0 - 1.2 * ts, K.BZ1 + 1.6 * ts, 0.7 * ts, 'water', { rimTex: 'marble_light', jet: 0xbfe4ff }); _nrPool(K, K.BX1 + 1.2 * ts, K.BZ1 + 1.6 * ts, 0.7 * ts, 'water', { rimTex: 'marble_light', jet: 0xbfe4ff });
+        _nrProp(K, _hzCenser, K.BX0 - 1.1 * ts, K.BZ0 - 1.4 * ts, { s: 0.6 }); _nrProp(K, _hzCenser, K.BX1 + 1.1 * ts, K.BZ0 - 1.4 * ts, { s: 0.6 });
+        var ob = _hzPropGLB('obelisk3d', 3.4 * ts); ob.position.set(K.CX, K.fy, K.BZ1 + 3.0 * ts); K.add(ob);
+    };
+    /* BOHEMIAN GROVE — the clearing: a wall of redwoods, the Owl, the altar
+       fire, the lantern trail, the creek. */
+    _NR_BUILDERS.bohemian_grove = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 5.0, occ: true }), ts = K.ts, rng = K.rng;
+        _nrApron(K, { tex: 'grass_2', color: 0x6a9458, deep: true, skirt: 'dirt', skirtColor: 0x8a7458 });
+        var bark = K.mat('wood', 0x6a4a30), canopy = K.mat('leaves', 0x2a6a30);
+        /* the redwoods stand 3+ tiles out with modest crowns: from the gameplay
+           camera a crown must never hang over the far rows (occ:true fades any
+           trunk or crown that does cross a sight line) */
+        _nrRectRing(K, 3.2 * ts, 1.6 * ts, function (x, z) { if (rng() < 0.2) return; var h = ts * (7 + rng() * 5), r = ts * (0.24 + rng() * 0.18); var t = K.cyl(r * 0.7, r, h, 8, bark); t.position.set(x + (rng() - 0.5) * ts * 0.6, K.fy + h / 2 - 0.2 * ts, z + (rng() - 0.5) * ts * 0.6); K.add(K.lit(t, true)); var cg = new THREE.SphereGeometry(ts * (0.9 + rng() * 0.5), 8, 6); _nrUV(cg, 3, 2); var c = new THREE.Mesh(cg, canopy); c.scale.y = 0.55; c.position.set(t.position.x, K.fy + h - 0.3 * ts, t.position.z); K.add(K.lit(c, true)); }, { skipLanes: true, corners: true });
+        _nrTrees(K, { d: 3.6, spacing: 1.6, kinds: ['tree_3', 'tree_2'], p: 0.6, h: 2.6 });
+        var owl = new THREE.Group(), stone = K.mat('rocks_1', 0x8a8478);
+        var ob = K.cyl(0.9 * ts, 1.1 * ts, 3.2 * ts, 10, stone); ob.position.y = 1.6 * ts; owl.add(K.lit(ob, true));
+        var oh = new THREE.Mesh(new THREE.SphereGeometry(0.95 * ts, 10, 8), stone); oh.position.y = 3.6 * ts; oh.scale.y = 0.85; owl.add(K.lit(oh, true));
+        [-1, 1].forEach(function (s) { var ear = new THREE.Mesh(new THREE.ConeGeometry(0.3 * ts, 0.6 * ts, 5), stone); ear.position.set(s * 0.6 * ts, 4.4 * ts, 0); owl.add(ear); var eye = K.lamp(s * 0.36 * ts, 3.7 * ts, 0.8 * ts, 0xffb040, 0.55 * ts, 0.85); owl.add(eye); });
+        owl.position.set(K.CX, K.fy, K.BZ0 - 3.6 * ts); K.add(owl);
+        _nrProp(K, _hzBrazier, K.CX - 1.6 * ts, K.BZ0 - 2.4 * ts, { s: 0.6 }); _nrProp(K, _hzBrazier, K.CX + 1.6 * ts, K.BZ0 - 2.4 * ts, { s: 0.6 });
+        _nrProp(K, _hzEffigy, K.CX, K.BZ1 + 2.8 * ts, { s: 0.8, ry: Math.PI / 2 });
+        _nrRectRing(K, 1.2 * ts, 2.2 * ts, function (x, z) { var l = K.lamp(x, K.fy + 0.9 * ts, z, 0xffb060, 0.7 * ts, 0.6); K.add(l); var p = K.cyl(0.03 * ts, 0.04 * ts, 0.8 * ts, 5, bark); p.position.set(x, K.fy + 0.4 * ts, z); K.add(p); }, { skipLanes: true, corners: false });
+        _nrMoat(K, { key: 'water', depth: 1, pad: 6 });
+    };
+    /* GÖBEKLI TEPE — the tell: concentric ring walls, T-pillars, the digs,
+       the hills of the Fertile Crescent behind. */
+    _NR_BUILDERS.gobekli = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 5.0 }), ts = K.ts, rng = K.rng;
+        _nrApron(K, { tex: 'grass_2', color: 0xa8b070, deep: true, skirt: 'dirt_3', skirtColor: 0xc8a878 });
+        var wall = K.mat('rock_wall_1', 0xd8c098);
+        [1.6, 3.2].forEach(function (d, ri) { _nrRectRing(K, d * ts, 0.7 * ts, function (x, z) { if (rng() < 0.12) return; var h = ts * (0.5 + rng() * 0.35); var b = K.box(0.72 * ts, h, 0.5 * ts, wall); b.position.set(x, K.fy + h / 2 - 0.1 * ts, z); b.rotation.y = K.face(x, z) + (rng() - 0.5) * 0.2; K.add(K.lit(b, true)); }, { skipLanes: true, corners: true }); });
+        _nrRectRing(K, 2.4 * ts, 2.6 * ts, function (x, z) { _nrProp(K, _hzTPillar, x, z, { s: 0.55 }); }, { skipLanes: true, corners: true });
+        var dig = K.mat('dirt_3', 0xb89868); [[K.BX0 - 4.0 * ts, K.BZ0 - 1.5 * ts], [K.BX1 + 4.0 * ts, K.BZ1 + 1.5 * ts]].forEach(function (p) { var t = K.box(1.6 * ts, 0.6 * ts, 2.6 * ts, dig); t.position.set(p[0], K.fy - 0.3 * ts - 0.7, p[1]); K.add(t); var tent = new THREE.Mesh(new THREE.ConeGeometry(0.9 * ts, 0.9 * ts, 4), K.mat('drywall', 0xe8dcc0)); tent.position.set(p[0] + 1.6 * ts, K.fy + 0.45 * ts, p[1]); tent.rotation.y = Math.PI / 4; K.add(K.lit(tent, true)); });
+        _nrMounds(K, { tex: 'grass_2', color: 0xa8b070, d: 5.5, spacing: 3.2, r: 2.8, flat: 0.28, p: 0.85, skipLanes: false });
+        _nrMounds(K, { tex: 'dirt_3', color: 0xc8a878, d: 9, spacing: 5, r: 5, flat: 0.35, p: 0.8, skipLanes: false });
+    };
+    /* D.U.M.B. — a bay of the base: concrete walls, blast doors at both ends,
+       server banks, pipes, red emergency light, the cameras. */
+    _NR_BUILDERS.dumb = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 3.0, occ: true }), ts = K.ts;
+        _nrApron(K, { tex: 'tilefloor', color: 0xa87878, deep: true });
+        _nrRoom(K, { tex: 'concrete_floor', color: 0x7a6a6c, dadoTex: 'metal', dadoColor: 0x4a3a3c, h: 3.4, dh: 0.9, trim: 0x3a2a2c, strip: 0xff5a5a });
+        _nrProp(K, _hzBlastDoor, K.CX, K.Z0 + 0.4 * ts, { ry: 0, s: 0.95 }); _nrProp(K, _hzBlastDoor, K.CX, K.Z1 - 0.4 * ts, { ry: Math.PI, s: 0.95 });
+        var srv = K.mat('metal_2', 0x6a6068);
+        _nrRectRing(K, 2.5 * ts, 1.3 * ts, function (x, z, side) { var b = K.box(0.9 * ts, 2.0 * ts, 0.6 * ts, srv); b.position.set(x, K.fy + 1.0 * ts, z); b.rotation.y = K.face(x, z); K.addW(side, K.lit(b, true)); for (var i = 0; i < 4; i++) { var led = K.lamp(x + Math.sin(b.rotation.y) * 0.32 * ts, K.fy + (0.5 + i * 0.4) * ts, z + Math.cos(b.rotation.y) * 0.32 * ts, i % 2 ? 0x4dff7a : 0xff4040, 0.2 * ts, 0.8); K.addW(side, led); } }, { skipLanes: true, corners: false, only: ['w', 'e'] });
+        var pipe = K.mat('metal', 0x5a5a60); [K.X0 + 0.25 * ts, K.X1 - 0.25 * ts].forEach(function (x) { var p = K.cyl(0.1 * ts, 0.1 * ts, K.Z1 - K.Z0, 8, pipe); p.rotation.x = Math.PI / 2; p.position.set(x, K.fy + 2.9 * ts, K.CZ); K.addW(x < K.CX ? 'w' : 'e', p); });
+        _nrRectRing(K, 2.9 * ts, 3.5 * ts, function (x, z, side) { var l = K.lamp(x, K.fy + 2.6 * ts, z, 0xff3030, 1.6 * ts, 0.5); K.addW(side, l); var h = K.box(0.2 * ts, 0.3 * ts, 0.2 * ts, _hzLit(null, 0x2a2b2e)); h.position.set(x, K.fy + 2.6 * ts, z); K.addW(side, h); }, { skipLanes: false, corners: false });
+        _nrProp(K, _hzSecurityCam, K.BX0 - 2.4 * ts, K.BZ0 - 2.4 * ts, { s: 0.8 }); _nrProp(K, _hzSecurityCam, K.BX1 + 2.4 * ts, K.BZ1 + 2.4 * ts, { s: 0.8 });
+        _nrSign(K, 'dumb_n', ['LEVEL 7', 'SUB-BASEMENT · RESTRICTED'], 2.6 * ts, 1.0 * ts, K.CX + 2.6 * ts, K.fy + 2.5 * ts, K.Z0 + 0.06 * ts, 0, { sizes: [96, 42], bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' });
+        _nrSign(K, 'dumb_s', ['CONTAINMENT', 'DO NOT OPEN'], 2.6 * ts, 1.0 * ts, K.CX - 2.6 * ts, K.fy + 2.5 * ts, K.Z1 - 0.06 * ts, Math.PI, { sizes: [80, 60], bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' });
+        var stripe = _hzStripeTex(); if (stripe) [[K.CX, K.Z0 + 1.4 * ts], [K.CX, K.Z1 - 1.4 * ts]].forEach(function (p) { var g = new THREE.PlaneGeometry(3.0 * ts, 0.5 * ts); _nrUV(g, 6, 1); var pl = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: stripe, color: 0xb9b0a0 })); pl.rotation.x = -Math.PI / 2; pl.position.set(p[0], K.fy + 0.6, p[1]); pl.renderOrder = 1; K.add(pl); });
+    };
+    /* CERN — the collider hall: aluminium tunnel walls, the beamline running
+       along both flanks, magnet collars, terminals, blue light. */
+    _NR_BUILDERS.cern = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 3.2, occ: true }), ts = K.ts;
+        _nrApron(K, { tex: 'tilefloor_2', color: 0x9fb4c8, deep: true });
+        _nrRoom(K, { tex: 'aluminium', color: 0x9aa4b0, dadoTex: 'metal_3', dadoColor: 0x5a6a7c, h: 3.6, dh: 1.1, trim: 0x2a3a4c, strip: 0x8fd8ff });
+        [K.X0 + 1.2 * ts, K.X1 - 1.2 * ts].forEach(function (x, i) { var side = i ? 'e' : 'w'; for (var s = 0; s < 4; s++) { var seg = _hzBeamRing(K.rng); seg.position.set(x, K.fy, K.Z0 + (s + 0.5) * (K.Z1 - K.Z0) / 4); seg.rotation.y = Math.PI / 2; seg.scale.setScalar(0.9); K.addW(side, seg); } });
+        var term = K.mat('metal_3', 0x6a7a8c);
+        _nrRectRing(K, 2.3 * ts, 2.0 * ts, function (x, z, side) { var b = K.box(0.9 * ts, 0.9 * ts, 0.6 * ts, term); b.position.set(x, K.fy + 0.45 * ts, z); b.rotation.y = K.face(x, z); K.addW(side, K.lit(b, true)); var gm = K.glow(0x7fd9ff, 0.7); var scr = new THREE.Mesh(new THREE.PlaneGeometry(0.6 * ts, 0.32 * ts), gm); scr.position.set(x + Math.sin(b.rotation.y) * 0.31 * ts, K.fy + 0.75 * ts, z + Math.cos(b.rotation.y) * 0.31 * ts); scr.rotation.y = b.rotation.y; scr.rotation.x = -0.3; K.addW(side, scr); _hzPulse(gm, null, 0.15, 0, 1.2 + K.rng()); }, { skipLanes: true, corners: false, only: ['n', 's'] });
+        var tray = K.mat('metal', 0x4a5260); [K.Z0 + 0.3 * ts, K.Z1 - 0.3 * ts].forEach(function (z) { var t = K.box(K.X1 - K.X0, 0.08 * ts, 0.3 * ts, tray); t.position.set(K.CX, K.fy + 3.0 * ts, z); K.addW(z < K.CZ ? 'n' : 's', t); });
+        _nrRectRing(K, 2.9 * ts, 3.0 * ts, function (x, z, side) { var l = K.lamp(x, K.fy + 2.8 * ts, z, 0x6ac8ff, 1.8 * ts, 0.4); K.addW(side, l); }, { corners: false });
+        _nrSign(K, 'cern_n', ['LHC · POINT 5', 'CMS EXPERIMENT'], 2.6 * ts, 1.0 * ts, K.CX, K.fy + 2.7 * ts, K.Z0 + 0.06 * ts, 0, { sizes: [80, 60], bg: '#10202c', border: '#8fd8ff', color: '#dff4ff' });
+        _nrSign(K, 'cern_s', ['BEAM ON', 'DO NOT ENTER TUNNEL'], 2.6 * ts, 1.0 * ts, K.CX, K.fy + 2.7 * ts, K.Z1 - 0.06 * ts, Math.PI, { sizes: [96, 40], bg: '#2a1010', border: '#ff8080', color: '#ffe0e0' });
+        var stripe = _hzStripeTex(); if (stripe) _nrRectRing(K, 1.0 * ts, 2.4 * ts, function (x, z, side) { var g = new THREE.PlaneGeometry(1.4 * ts, 0.3 * ts); _nrUV(g, 3, 1); var pl = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: stripe, color: 0xb9b0a0 })); pl.rotation.x = -Math.PI / 2; pl.rotation.z = (side === 'w' || side === 'e') ? Math.PI / 2 : 0; pl.position.set(x, K.fy + 0.6, z); pl.renderOrder = 1; K.add(pl); }, { skipLanes: true, corners: false });
+    };
+    /* BACKROOMS — level 0 goes on: wallpaper partitions in every direction,
+       the humming fluorescents, exit signs that lie, damp carpet. */
+    _NR_BUILDERS.backrooms = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.0, occ: true }), ts = K.ts, rng = K.rng;
+        _nrApron(K, { tex: 'carpet', color: 0xc8b878, deep: true });
+        _nrRoom(K, { tex: 'wallpaper', color: 0xe8d890, dadoTex: 'wallpaper', dadoColor: 0xd8c880, h: 2.6, dh: 0.6, trim: 0xb8a860, strip: null });
+        var paper = K.mat('wallpaper', 0xe8d890, { side: THREE.DoubleSide });
+        var parts = [[K.BX0 - 1.8 * ts, K.BZ0 - 1.2 * ts, 2.6, 0], [K.BX1 + 1.8 * ts, K.BZ1 + 1.2 * ts, 2.6, 0], [K.BX0 - 2.6 * ts, K.CZ + 0.4 * ts, 3.2, Math.PI / 2], [K.BX1 + 2.6 * ts, K.CZ - 0.4 * ts, 3.2, Math.PI / 2], [K.CX + 2.2 * ts, K.BZ0 - 2.6 * ts, 2.2, Math.PI / 2], [K.CX - 2.2 * ts, K.BZ1 + 2.6 * ts, 2.2, Math.PI / 2], [K.BX0 - 1.2 * ts, K.BZ1 + 2.2 * ts, 2.0, 0], [K.BX1 + 1.2 * ts, K.BZ0 - 2.2 * ts, 2.0, 0]];
+        parts.forEach(function (p) { var w = K.box(p[2] * ts, 2.4 * ts, 0.12 * ts, paper); w.position.set(p[0], K.fy + 1.2 * ts, p[1]); w.rotation.y = p[3]; K.addW(K.side(p[0], p[1]), K.lit(w, true)); });
+        _nrRectRing(K, 1.6 * ts, 2.4 * ts, function (x, z, side) { var f = _hzFluorescent(rng); f.position.set(x, K.fy, z); f.rotation.y = (side === 'w' || side === 'e') ? Math.PI / 2 : 0; K.addW(side, f); }, { skipLanes: false, corners: true });
+        _nrRectRing(K, 3.2 * ts, 3.0 * ts, function (x, z, side) { var f = _hzFluorescent(rng); f.position.set(x, K.fy, z); f.rotation.y = (side === 'w' || side === 'e') ? Math.PI / 2 : 0; K.addW(side, f); }, { skipLanes: false, corners: false });
+        _nrProp(K, _hzExitSign, K.BX0 - 3.0 * ts, K.BZ0 - 3.0 * ts, { s: 0.9 }); _nrProp(K, _hzExitSign, K.BX1 + 3.0 * ts, K.BZ1 + 3.0 * ts, { s: 0.9 });
+        var wet = new THREE.Mesh(new THREE.PlaneGeometry(K.X1 - K.X0, K.Z1 - K.Z0), new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.05, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+        wet.rotation.x = -Math.PI / 2; wet.position.set(K.CX, K.fy + 1.2, K.CZ); K.add(wet); _hzPulse(wet.material, null, 0.04, 0, 3.0);
+        var ceil = K.mat('drywall_2', 0xd8d0b0, { side: THREE.DoubleSide });
+        [[K.X0, K.Z0, K.X1, K.BZ0 - 2.2 * ts], [K.X0, K.BZ1 + 2.2 * ts, K.X1, K.Z1]].forEach(function (r) { var w = r[2] - r[0], d = r[3] - r[1]; if (w <= 0 || d <= 0) return; var m = K.plane(w, d, ceil); m.rotation.x = Math.PI / 2; m.position.set(r[0] + w / 2, K.fy + 2.6 * ts, r[1] + d / 2); K.addW(r[1] < K.CZ ? 'n' : 's', m); });   // a ceiling only over the far ends: the maze goes on
+    };
+    /* NORTH POLE — the compound: snow, the workshop with its lit windows,
+       candy poles, the sleigh, present depots, pines, the aurora. */
+    _NR_BUILDERS.northpole = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 4.5, occ: true }), ts = K.ts, rng = K.rng;
+        _nrApron(K, { tex: 'marble_light', color: 0xe8f4ff, deep: true, skirt: 'ice_1', skirtColor: 0xbfe0ff });
+        _nrHouse(K, K.BX0 - 3.0 * ts, K.CZ, { w: 3.6, d: 3.0, h: 1.9, tex: 'wood_planks', color: 0xc84a40, roofTex: 'marble_light', roofColor: 0xffffff, ry: Math.PI / 2, window: 0xffd070 });
+        _nrTrees(K, { d: 2.0, spacing: 1.7, kinds: ['tree_2', 'tree_2', 'tree_4'], p: 0.6, h: 2.4, tint: 0xa8c8b0, only: ['n', 's', 'e'] });
+        _nrRectRing(K, 1.2 * ts, 3.0 * ts, function (x, z) { _nrProp(K, _hzCandyCane, x, z, { s: 0.55 }); }, { skipLanes: true, corners: true });
+        _nrProp(K, _hzSleigh, K.BX1 + 2.4 * ts, K.BZ1 + 2.0 * ts, { s: 1.0, ry: 2.2 });
+        var wrap = [0xd84040, 0x40a860, 0xf0d040, 0x5080e0];
+        for (var i = 0; i < 8; i++) { var s = ts * (0.35 + rng() * 0.4); var b = K.box(s, s, s, K.mat('wood_planks', wrap[i % 4])); b.position.set(K.BX1 + (1.4 + rng() * 2.2) * ts, K.fy + s / 2, K.BZ0 - (1.2 + rng() * 2.0) * ts); b.rotation.y = rng(); K.add(K.lit(b, true)); var rib = K.box(s * 1.04, 0.08 * ts, s * 1.04, _hzLit(null, 0xfff0a0)); rib.position.copy(b.position); rib.rotation.y = b.rotation.y; K.add(rib); }
+        _nrMounds(K, { tex: 'marble_light', color: 0xf8fcff, d: 3.6, spacing: 2.2, r: 1.4, flat: 0.35, p: 0.7 });
+        _nrRibbons(K, { n: 5, colors: [0x5dffb0, 0x7ad0ff, 0xc08cff, 0xff9ad0] });
+        var pole = K.cyl(0.06 * ts, 0.06 * ts, 2.4 * ts, 8, K.mat('marble_light', 0xffffff)); pole.position.set(K.BX1 + 1.4 * ts, K.fy + 1.2 * ts, K.CZ); K.add(pole); var stripe = K.cyl(0.07 * ts, 0.07 * ts, 2.4 * ts, 8, _hzLit(null, 0xd03030)); stripe.scale.set(1, 1, 1); stripe.position.copy(pole.position); stripe.scale.y = 0.5; K.add(stripe); K.add(K.lamp(K.BX1 + 1.4 * ts, K.fy + 2.5 * ts, K.CZ, 0xfff2c0, 0.8 * ts, 0.7));
+        _nrPool(K, K.BX0 - 2.2 * ts, K.BZ0 - 2.6 * ts, 1.1 * ts, 'water', { rimTex: 'marble_light', rimColor: 0xffffff });
+    };
+    /* FLAT LANDS — the plane goes on and on. A dead tree. Nothing else. */
+    _NR_BUILDERS.flatlands = function (group, ctx) {
+        var K = _nrKit(group, ctx, { w: 14 }), ts = K.ts;
+        _nrApron(K, { tex: 'grass_2', color: 0xc0c8b8, deep: true, skirt: 'dirt_2', skirtColor: 0xb0a890 });
+        var t = _nrTree(K, 'tree_5', { h: 2.4 }); t.position.set(K.BX1 + 9 * ts, K.fy, K.BZ0 - 6 * ts); K.add(t);
+        var circle = new THREE.Mesh(new THREE.RingGeometry(3.2 * ts, 3.4 * ts, 48), new THREE.MeshBasicMaterial({ color: 0xb0a890, transparent: true, opacity: 0.35, depthWrite: false })); circle.rotation.x = -Math.PI / 2; circle.position.set(K.BX0 - 7 * ts, K.fy + 0.8, K.BZ1 + 5 * ts); K.add(circle);
+        var stone = K.box(0.5 * ts, 0.7 * ts, 0.3 * ts, K.mat('rocks_1', 0xa8a8a0)); stone.position.set(K.BX0 - 7 * ts, K.fy + 0.3 * ts, K.BZ1 + 5 * ts); stone.rotation.y = 0.4; K.add(K.lit(stone, true));
+    };
     var _HZ_NEAR_BUILDERS = { training_room: _hzTrainingRoom, holosim: _hzHoloApron };
+    Object.keys(_NR_BUILDERS).forEach(function (k) { _HZ_NEAR_BUILDERS[k] = _NR_BUILDERS[k]; });
     /* Run a near builder into its own sub-group and tag everything it made as
        near scenery: _applyHorizonFog leaves those materials alone (no
        horizon-altitude fog — see there), so lit pieces haze with the board
@@ -23267,13 +24334,14 @@ const ThreeRenderer = (function () {
         var _bh = (typeof bh === 'function') ? bh() : 8;
         var cx = _bw * ts * 0.5, cz = _bh * ts * 0.5;
         var discR = Math.min(11000, Math.max(6000, Math.max(_bw, _bh) * ts * 2.5 + 3500));
-        var key = cx.toFixed(0) + ',' + cz.toFixed(0) + ',' + discR.toFixed(0) + ',' + _hzTheme + ',' + _hzThemeDensity;
+        var key = cx.toFixed(0) + ',' + cz.toFixed(0) + ',' + discR.toFixed(0) + ',' + _hzTheme + ',' + _hzThemeDensity + ',' + (_hzNear || '');
         if (_horizonGroup && _horizonKey === key) return;
         if (_horizonGroup) { scene.remove(_horizonGroup); _disposeR(_horizonGroup); }
         _facilityNearGroup = null;
         _horizonMats.length = 0;
         _horizonFloaters.length = 0;
         _hzGlowPulse.length = 0;
+        _nrPending.length = 0;
         _horizonGroup = new THREE.Group();
         _horizonGroup.name = 'horizonScenery';
         _horizonGroup.renderOrder = -40;
@@ -23282,18 +24350,25 @@ const ThreeRenderer = (function () {
 
         var rng = _mulberry32(0x5151 + Math.round(discR) + Math.round(cx) * 7 + Math.round(cz) * 13);
 
-        // per-map theme: 'none' leaves the void completely empty (underground
-        // and liminal maps) — the group still registers so the key cache holds
-        if (_hzTheme === 'none') { scene.add(_horizonGroup); return; }
         /* D.O.O.R. facility boards (2026-09-04): a NEAR builder dresses the
            board's immediate surroundings (the Training Room enclosure, the
-           Holo Sim apron). A theme with no roster is indoors — near-only. */
-        var nearBuild = (typeof window !== 'undefined' && window.EW_NO_FACILITY_SCENERY) ? null : (_HZ_NEAR_BUILDERS[_hzTheme] || null);
+           Holo Sim apron). A theme with no roster is indoors — near-only.
+           (MAP SETTINGS: the 'none' early-return below now comes AFTER this,
+           so an indoor map — D.U.M.B., CERN, Backrooms — still gets its room.) */
+        /* MAP SETTINGS (2026-09-06): env.near names a per-map near builder
+           (the castle bailey, the neon intersection, the collider hall…);
+           the facility themes still key theirs off the scenery name. */
+        var nearBuild = (typeof window !== 'undefined' && window.EW_NO_FACILITY_SCENERY) ? null : ((_hzNear && _HZ_NEAR_BUILDERS[_hzNear]) || _HZ_NEAR_BUILDERS[_hzTheme] || null);
+        /* low-performance mode keeps only the facility rooms (a setting is a few hundred extra meshes) */
+        if (nearBuild && _hzNear && typeof window !== 'undefined' && window.EW_PERF_LOW && !_HZ_NEAR_BUILDERS[_hzTheme]) nearBuild = null;
         var nearCtx = { cx: cx, cz: cz, ts: ts, bw: _bw, bh: _bh, rng: rng, discR: discR };
         if (nearBuild && !_hzThemeRoster(_hzTheme)) {
             _hzRunNearBuilder(nearBuild, nearCtx);
             scene.add(_horizonGroup); return;
         }
+        // per-map theme: 'none' leaves the void completely empty (underground
+        // and liminal maps) — the group still registers so the key cache holds
+        if (_hzTheme === 'none') { scene.add(_horizonGroup); return; }
         var themeRoster = _hzThemeRoster(_hzTheme);
         var skipP = 1.0 - (1.0 - 0.62) * Math.max(0, Math.min(1.5, _hzThemeDensity));
 
@@ -23372,7 +24447,7 @@ const ThreeRenderer = (function () {
         // restore the old reliable behaviour: spawn a handful every map with the
         // same free-floating placement (varied compass dir / depth / elevation,
         // tumbling) the roster bodies use.
-        var ringWant = nearBuild ? 0 : Math.round((5 + (rng() * 4 | 0)) * Math.min(1, _hzThemeDensity));   // facility themes bring their own rings
+        var ringWant = (nearBuild && !themeRoster) ? 0 : Math.round((5 + (rng() * 4 | 0)) * Math.min(1, _hzThemeDensity));   // indoor (near-only) themes bring their own rings
         for (var rgi = 0; rgi < ringWant; rgi++) {
             var rMesh = _hzSacredRings(rng);
             if (!rMesh) continue;
@@ -23646,6 +24721,17 @@ const ThreeRenderer = (function () {
     // Gentle drift for the floating background scenery — a slow vertical bob
     // plus a lazy spin, giving the skyline cinematic, dream-like motion.
     function _animateFloaters(t) {
+        /* MAP SETTINGS: swap procedural stand-in trees for the foliage OBJs as they land */
+        if (_nrPending.length) {
+            for (var pi = _nrPending.length - 1; pi >= 0; pi--) {
+                var pe = _nrPending[pi];
+                if (!pe.g.parent) { _nrPending.splice(pi, 1); continue; }
+                var ce = _foliageModelCache[pe.name];
+                if (ce && ce.failed) { _nrPending.splice(pi, 1); continue; }
+                var src = _loadFoliageModel(pe.name);
+                if (src && src._ew_bbox) { _nrPending.splice(pi, 1); try { pe.fill(src); } catch (e) { console.error('[scenery] tree swap failed', e); } }
+            }
+        }
         for (var i = 0; i < _horizonFloaters.length; i++) {
             var f = _horizonFloaters[i];
             f.obj.position.y = f.baseY + Math.sin(t * f.spd + f.phase) * f.amp;
@@ -30013,6 +31099,8 @@ const ThreeRenderer = (function () {
            the screenshot probe drives the cast placement with these. Not
            used by the game. */
         dev: {
+            /* the live scene graph (repo probes: playtest_maps.js PROBE) */
+            scene: function () { return scene; },
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
             teleport: function (o) {
                 if (!_hq || !_hq.player) return false;

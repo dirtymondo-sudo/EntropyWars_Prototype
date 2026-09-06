@@ -149,6 +149,19 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   (repo tooling; needs the server + `NODE_USE_ENV_PROXY=1`) — see
   PLAYTEST_NOTES "THE CAST IN THE HEADQUARTERS" before moving anyone.
 
+## MAP SETTINGS (near scenery) — added 2026-09-06
+Every Δ board is dressed like the Training Room: a NEAR builder builds the
+board's immediate surroundings (apron/plateau, moats, walls, buildings, trees,
+props) in three-renderer.js `_NR_BUILDERS` ("MAP SETTINGS" block, right before
+`_HZ_NEAR_BUILDERS`), keyed by `near: '<key>'` on the map's EW_MAP_META row
+(data.js; folded into the Δ preset env → `state.mapEnv.near`). The far
+floating roster (`env.scenery`) is untouched. Use the `_nr*` kit (apron,
+moat, wall ring, room, blocks, trees, fence, lamps, props…) — never new
+files. Enclosures opt into the line-of-sight fade with `occ:true`. Screenshot
+any board with `NODE_USE_ENV_PROXY=1 node playtest_maps.js <map…>` (repo
+tooling; see PLAYTEST_NOTES "MAP SETTINGS"). Kill-switch:
+`window.EW_NO_FACILITY_SCENERY`.
+
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /
 dev-sim — they can do that themselves) and report pain points: unresponsive

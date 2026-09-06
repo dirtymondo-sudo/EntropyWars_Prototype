@@ -4,6 +4,143 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## 🏞 MAP SETTINGS — every Δ board gets a place around it (2026-09-06, LATEST) — three-renderer.js, data.js, playtest_maps.js, index.html
+User asked for the Training Room treatment ("a moat and set pieces and a
+setting, making it feel more real") on the other maps — Cyberpunk City "looks
+nothing like a cyberpunk city". Playtesting was explicitly allowed for this
+(visual screenshots of every board, before + after).
+
+### What shipped
+- **`near` on every EW_MAP_META row** (data.js) names a three-renderer NEAR
+  builder; `_mfRegisterAll` folds it into the Δ preset's env only
+  (`dEnv = {...meta.env, near}` → `state.mapEnv.near`). The full launch maps
+  keep their hand-built environments (move `near` into `env` to try one).
+  `env.scenery` (the far floating roster) is unchanged and still draws
+  beyond the setting; indoor maps with `scenery:'none'` (D.U.M.B., CERN,
+  Backrooms) are near-only like the Training Room.
+- **three-renderer.js "MAP SETTINGS"** block (right after `_hzHoloApron`,
+  before `_HZ_NEAR_BUILDERS`): a kit + 29 builders in `_NR_BUILDERS`, merged
+  into `_HZ_NEAR_BUILDERS`. `_buildHorizonScenery` picks
+  `_HZ_NEAR_BUILDERS[_hzNear] || _HZ_NEAR_BUILDERS[_hzTheme]`; `_hzNear`
+  is read from `state.mapEnv.near` in `_updateEnvironment` and is part of the
+  horizon cache key. Kill-switch is the facility one: `window.EW_NO_FACILITY_SCENERY`.
+- **Kit vocabulary** (board space, always outside the footprint; `K = _nrKit(group, ctx, {w, gap, occ})`):
+  `_nrApron` (the ground ring; `deep:true` = a plateau from the bed's floor
+  up, hiding the strata; `gap` leaves a moat), `_nrMoat` (a liquid sheet
+  using the board's own `_buildFluidTopMat` — water/deep_water/lava — one
+  texture per tile so board-edge lakes run straight into it; `depth:1` = the
+  board's water level), `_nrWallRing` (curtain walls, gates in the spawn
+  lanes, crenels, corner towers with cone roofs + lamps), `_nrRoom` (the
+  Training-Room wall recipe: dado + panel + trims + light strips, per-side
+  occlusion groups), `_nrBlocks` (city towers with a canvas lit-window plate
+  on the board-facing face, roof tanks/antennae, text neon via `_hzTextTex`,
+  the spawn lanes left open so the street runs to the horizon), `_nrTrees`
+  (the board's OWN foliage OBJs — `_loadFoliageModel` — swapped in as they
+  arrive via `_nrPending`, polled in `_animateFloaters`; a procedural trunk +
+  canopy stands in meanwhile), `_nrRectRing` (walk the rectangle at distance
+  d, `skipLanes` keeps the two spawn approaches clear), `_nrMounds`,
+  `_nrRocks`, `_nrFence` (rails / pickets / chain-link + barbed wire),
+  `_nrLamps` (the misc street-lamp OBJ), `_nrProp` (any `_hz*` prop),
+  `_nrSign`, `_nrHouse` (gable roof from two slabs + ShapeGeometry gables),
+  `_nrColonnade` (greekcol GLB or fluted cylinders + entablature),
+  `_nrTiers` (bleachers / ziggurat terraces), `_nrPool`, `_nrTower`
+  (floodlights), `_nrPeaks` (snow-capped cones), `_nrSpires` (stalagmites),
+  `_nrRoadLines`, `_nrFloorText`, `_nrRibbons` (aurora).
+  `K.mat(texKey, color)` = `_hzLit` + `_evTintMat`, so the apron wears the
+  same per-map `terrainTints` as the board (Agartha's jade, Skinwalker's dry
+  grass). `K.box/cyl/plane` tile UVs at ONE texture per tile (the board's
+  density; `_hzBox` is 1-per-2-tiles for far scenery).
+- **Occlusion**: `occ:true` opts a setting into the Training Room's
+  line-of-sight fade (`group._ew_occNear`, per-side `K.addW(side, mesh)`
+  groups with `_ew_occWall` + `_ew_occFadeTarget 0.05`). Used by every
+  enclosure (Camelot, Cyberpunk, Stadium, the three indoor maps, Nuketown,
+  Babel, Olympus, Vatican, Technoticlan, Agartha, Hollow Earth, North Pole,
+  Skinwalker, Area 51). Open nature maps (Shasta, Giza, Fairy Forest, Moon…)
+  don't — nothing there rises between the camera and the grid.
+- **The 29 settings** (Δ ids minus `prebuilt_`): shasta pines + granite +
+  snow peaks + lake · stonehenge the outer sarsen circle + ditch + trilithons
+  · giza dunes + 3 pyramids + obelisks + digs · nuketown street + 2 ranch
+  houses + picket fence + lamps + buses + the test mast · heaven cloud banks
+  + Gates both ends + columns + light pillars · hell LAVA MOAT + basalt
+  causeways + obsidian spikes + braziers · cyberpunk asphalt + curbs + road
+  lines + 5–13-tile towers with lit windows + text neon + holoboards + cold
+  lamps + steam + dumpsters · camelot WATER MOAT + plank drawbridges with
+  chains + crenellated curtain wall + 4 cone-roof towers + gatehouse piers +
+  banners + braziers + Excalibur · stadium yard lines + 4-tier bleachers with
+  team-colour seats + goalposts + jumbotron + 4 floodlight towers · atlantis
+  WATER MOAT + causeways + drowned colonnade + ruins + crystal spire + kelp +
+  bubbles · babel brick terraces (3 sides) + cranes + tablets + torches +
+  a far ziggurat · olympus cloud sea + two temple wings (columns +
+  pediment) + golden stairs + light pillars · mars mesas + crater rims +
+  rover + biodome · area51 tarmac + runway numbers + chain-link/barbed fence
+  + 4 floodlight towers + 2 hangars + saucer + signs · antarctica DEEP-SEA
+  moat + icebergs + drifts + igloo + whalefall + aurora · skinwalker rail
+  fence + red barn + windpump + dead trees + far mesas + the red light in the
+  sky · hollow_earth stalagmite walls (2 rings) + glowing mushrooms + crystal
+  + inner sun + pool · fairy_forest 2 tree rings with leaves_2..5 + toadstools
+  + fairy rings + fireflies + spring · moon craters + lander + flag + rover +
+  tracks + monolith · technoticlan CANAL MOAT + causeways + terraces + neon
+  strips + torches + holo pyramid + far ziggurat · agartha RIVER MOAT + rock
+  spires + crystal + fungus + geodes + sun-shaft · vatican double colonnade
+  arms + basilica facade + dome + fountains with jets + censers + obelisk ·
+  bohemian_grove redwood ring + the Owl (eyes lit) + altar braziers + effigy
+  + lantern trail + creek · gobekli two ring walls + T-pillars + digs with
+  tents + hills · dumb ROOM: concrete + red strips + blast doors both ends +
+  server banks + pipes + cameras + signs · cern ROOM: aluminium + beamline
+  segments both flanks + terminals + cable trays + blue lamps + signs ·
+  backrooms ROOM: wallpaper + partitions + fluorescents + exit signs + a
+  ceiling only over the far ends · northpole workshop + snowy pines + candy
+  poles + sleigh + presents + aurora + the Pole + pond · flatlands a 14-tile
+  empty apron, one dead tree far off, a faint circle.
+
+### `playtest_maps.js` (repo tooling)
+`NODE_USE_ENV_PROXY=1 node playtest_maps.js prebuilt_cyberpunk prebuilt_camelot`
+(or `--all`; `POSES=wide,low`) → `shots/maps/<map>_<default|wide|low|top>.png`.
+Starts a VS-CPU TDM on each Δ with the LOCAL sprites/data/three-renderer/map/
+state.js (same Node-side CDN cache trick as playtest_hq.js), freezes both
+controllers to 'local', clicks through the loading gate + VS splash, then
+snaps the camera (`camera.snap({_force:true, x,y,zoom,tilt,yaw})` + the
+`_smooth*` twins). ~100 s per map on swiftshader. GOTCHA: `page.reload()`
+between maps served Chromium's memory-cached copy of the fulfilled local
+scripts — the local route now answers with `Cache-Control: no-store`.
+`[scenery]` console lines are echoed (a near builder that throws logs
+`[scenery] near builder failed`).
+
+### Findings (after-shots reviewed for ~20 boards; see shots/maps/*.png)
+- **Readable places now**: Cyberpunk (towers with lit windows on every side,
+  lamps, dumpsters, asphalt), Nuketown (houses, picket fence, mast), Area 51
+  (chain-link + floodlights + hangar + saucer), Stadium (bleachers, goalposts,
+  jumbotron), Skinwalker (rail fence, barn, windpump, mesas), Mars (craters,
+  mesas, rover), Giza (dunes, obelisks, pyramids), Antarctica (icebergs,
+  whalefall, igloo), Heaven (Gates + colonnade), Olympus, Hollow Earth,
+  Shasta (pines + peaks), Stonehenge (sarsen ring), Hell (spikes + braziers).
+- **Fixed during the pass**: Shasta's peaks were the size of the board and
+  crowded the apron (foot now clamped to `d − 1.5` tiles, camera side
+  skipped); Stonehenge's `rocks_1` sarsens read as coal (→ `rock_wall_1`,
+  shorter); light pillars were screen-crossing beams (scale 0.5 → ~0.27);
+  Lambert vertical faces went black on dusk maps (K.mat carries a 22%
+  emissive lift with `emissiveMap`); a lava moat is dim without the tiles'
+  point lights (steady `emissiveIntensity 0.85`); per-picket fence boxes were
+  ~300 occluders (one alpha-textured plane per segment now); additive
+  `MeshBasicMaterial + map` neon text planes never showed on screen even
+  though the probe found them placed and textured → normal alpha blending;
+  the three indoor maps rendered NO room at first — `_buildHorizonScenery`
+  returned early for `scenery:'none'` before picking a near builder (the
+  early return now sits after the near-only branch).
+- **Re-shot and confirmed**: the neon text shows with normal blending, the
+  towers wear lit windows on their side faces too, Stonehenge's sarsens are
+  pale, Shasta's peaks sit back, the lava moat glows, the picket fence is one
+  plane per segment, the Backrooms room builds.
+- **Swiftshader caveat**: three browsers at once timed out the 25 s
+  screenshot cap on the heavy boards (Camelot, Fairy Forest, Bohemian Grove);
+  use `SHOT_TIMEOUT=60000` and one run at a time. Foliage-OBJ tree rings are the
+  heaviest pieces on software GL (counts now capped: `max` per ring).
+- **Eyeball on a real GPU first**: the moat water seams where a board-edge
+  lake meets the sheet (Shasta, Atlantis, Technoticlan, Agartha, Bohemian);
+  the day/night grade on the emissive lift (may look flat at noon — lower
+  `lift` in K.mat); occlusion fade on the Camelot wall groups when orbiting
+  low; the neon text after the blending change.
+
 ## 🎭 THE CAST IN THE HEADQUARTERS (2026-09-06, LATEST) — sprites.js, data.js, three-renderer.js, map.js, doorhq.test.js, index.html
 
 The story's named characters (the user's cast sheet — canon, `DOOR_STORY.md`
