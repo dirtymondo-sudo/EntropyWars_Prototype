@@ -6287,7 +6287,9 @@ const ThreeRenderer = (function () {
             // 2026-07 gap-fill batch — graveyard / unholy / arcane lore pieces
             woodcross: _hzWoodCross, skull: _hzGrinSkull,
             fleshmound: _hzFleshMound, tome: _hzTome,
-            igloo: _hzIgloo, rosewindow: _hzRoseWindow
+            igloo: _hzIgloo, rosewindow: _hzRoseWindow,
+            // 2026-09-06 D.O.O.R. — a lone door, ajar, light through the gap
+            door: _hzLoneDoor
         };
         return _MON_BUILDERS;
     }
@@ -16202,7 +16204,7 @@ const ThreeRenderer = (function () {
             var tw = _walkTweens.get(uid);
             if (tw) {
                 // Same segment math as _updateWalkTweens.
-                var gt = Math.min((now - tw.startTime) / tw.totalMs, 1);
+                var gt = Math.max(0, Math.min((now - tw.startTime) / tw.totalMs, 1));
                 var traveled = _easeInOut(gt) * tw.segs;
                 var stepIdx = Math.min(Math.floor(traveled), tw.segs - 1);
                 var from = tw.path[stepIdx], to = tw.path[stepIdx + 1];
@@ -16360,6 +16362,13 @@ const ThreeRenderer = (function () {
         var _wkVp = (state.fogOfWar && typeof getViewerPlayer === 'function') ? getViewerPlayer() : 0;
         for (var entry of _walkTweens) {
             var uid = entry[0], tw = entry[1];
+            /* Opening cinematic: a walker still "on the other side" of its
+               team's door stays hidden until its turn through it. */
+            if (tw._holdHidden && now < tw.startTime) {
+                var _hh = _getUnitEntry(uid);
+                if (_hh && _hh.group) _hh.group.visible = false;
+                continue;
+            }
             // Progress along the ENTIRE path, eased once end-to-end: gentle accel
             // leaving the start tile, constant speed through the middle, gentle
             // decel into the destination. No more easing (and stopping) per tile.
@@ -19248,6 +19257,7 @@ const ThreeRenderer = (function () {
         _rtTick();
         _syncCombatAnims();
         _updateWalkTweens();
+        _introUpdateDoors();
         _updateDisplaceTweens();
         _updateJumpTweens();
         _updateStrikeTweens();
@@ -23147,6 +23157,11 @@ const ThreeRenderer = (function () {
     //  switch: window.EW_NO_FACILITY_SCENERY (same as the facility boards).
     // ════════════════════════════════════════════════════════════════════
     var _nrPending = [];      // async foliage swaps: [{g, fn}] polled in _animateFloaters
+    /* THE CROSSING (2026-09-06): what the opening cinematic needs to know
+       about the setting the last near builder made — the apron's level +
+       top and the moat gap — so each team's door stands ON the apron, past
+       the moat (see _introBuildDoor). null = no setting (floating landing). */
+    var _nrLastKit = null;
     function _nrUV(geo, su, sv) {
         var uv = geo.attributes && geo.attributes.uv; if (!uv) return;
         for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
@@ -23176,6 +23191,7 @@ const ThreeRenderer = (function () {
             CX: bw * ts * 0.5, CZ: bh * ts * 0.5, rng: ctx.rng, occ: !!o.occ, walls: {}
         };
         if (K.occ) group._ew_occNear = true;
+        _nrLastKit = { B: B, fy: fy, W: W, G: G, apronTop: fy - 0.6, moat: null };
         K.add = function (m) { group.add(m); return m; };
         K.wallOf = function (side) {
             if (!K.occ) return group;
@@ -23239,6 +23255,7 @@ const ThreeRenderer = (function () {
         o = o || {};
         var ts = K.ts, fy = K.fy, G = K.G, top = fy - (o.drop || 0) * ts - 0.6;
         var T = o.deep ? top : (o.thick || 0.2) * ts;
+        if (_nrLastKit) _nrLastKit.apronTop = top;
         var topMat = K.mat(o.tex, o.color == null ? 0xffffff : o.color);
         var sideMat = o.skirt ? K.mat(o.skirt, o.skirtColor == null ? 0xffffff : o.skirtColor) : topMat;
         var mats = [sideMat, sideMat, topMat, topMat, sideMat, sideMat];
@@ -23259,6 +23276,7 @@ const ThreeRenderer = (function () {
         o = o || {};
         var ts = K.ts, depth = o.depth == null ? 1 : o.depth;
         var y = K.fy - depth * ts - (o.key === 'lava' ? 0.02 : 0.18) * ts;
+        if (_nrLastKit) { _nrLastKit.moat = o.key || 'water'; _nrLastKit.moatY = y; }
         var pad = (o.pad == null ? 0 : o.pad) * ts;
         var x0 = K.X0 - pad, x1 = K.X1 + pad, z0 = K.Z0 - pad, z1 = K.Z1 + pad;
         var geo = new THREE.PlaneGeometry(x1 - x0, z1 - z0); _nrUV(geo, (x1 - x0) / ts, (z1 - z0) / ts);
@@ -24263,6 +24281,59 @@ const ThreeRenderer = (function () {
         return g;
     }
 
+    // ── D.O.O.R. — a door standing alone in the void (2026-09-06) ──────────
+    // The Department's own image: a frame, a leaf ajar, and light from
+    // somewhere else pouring through the gap. Floats with the roster on every
+    // outdoor theme (_buildHorizonScenery's door pass) and is placeable as an
+    // on-board monument (`door`). Palettes: the HQ's oxblood + teal, an office
+    // grey, a hospital white, a black leaf with ember light (the doorway to
+    // hell), a gold one. One in five is a bare frame ("a frame with nothing in
+    // it"); one in six hangs upside down ("the floor on the far side is the
+    // ceiling"). Local +Z is the side the light spills toward — the caller
+    // faces it at the board like every other landmark.
+    function _hzLoneDoor(rng) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group();
+        var h = ts * (4.2 + rng() * 3.4);
+        var w = h * (0.42 + rng() * 0.12);
+        var jw = w * 0.11, d = w * 0.16;
+        var pal = [[0x6d3a3a, 0x2f6b66, 0xfff1c8], [0x8a8f96, 0x3a3f46, 0xd8f0ff], [0xe8e2d4, 0xb8a078, 0xfff6d8],
+                   [0x2a2226, 0x4a3030, 0xff9a40], [0xf0d27a, 0xe9c25a, 0xfff3c8], [0x6d3a3a, 0x2f6b66, 0xfff1c8]];
+        var p = pal[(rng() * pal.length) | 0];
+        var frameMat = _hzGeoMat(_hzTex('metal') || _hzTex('wood'), p[1]);
+        var L = _hzBox(jw, h + jw, d, ts, frameMat); L.position.set(-(w / 2 + jw / 2), (h + jw) / 2, 0); g.add(L);
+        var R = _hzBox(jw, h + jw, d, ts, frameMat); R.position.set((w / 2 + jw / 2), (h + jw) / 2, 0); g.add(R);
+        var T = _hzBox(w + jw * 2, jw, d, ts, frameMat); T.position.set(0, h + jw / 2, 0); g.add(T);
+        var S = _hzBox(w + jw * 2.6, jw * 0.35, d * 1.4, ts, frameMat); S.position.set(0, jw * 0.175, 0); g.add(S);
+        /* the light in the opening */
+        var veilMat = _hzGlowMat(p[2], 0.5);
+        var veil = new THREE.Mesh(new THREE.PlaneGeometry(w, h), veilMat);
+        veil.position.set(0, h / 2, -d * 0.3); g.add(veil);
+        _hzPulse(veilMat, veil, 0.14, 0.02, 0.3 + rng() * 0.5);
+        if (rng() >= 0.2) {
+            /* the leaf, ajar on the left jamb, swung toward the viewer */
+            var pivot = new THREE.Group(); pivot.position.set(-(w / 2 - jw * 0.1), 0, d * 0.35); g.add(pivot);
+            var leafMat = _hzGeoMat(_hzTex('wood_planks') || _hzTex('wood'), p[0]);
+            var leaf = _hzBox(w * 0.96, h * 0.985, d * 0.35, ts, leafMat); leaf.position.set(w * 0.48, h * 0.4925 + jw * 0.35, 0); pivot.add(leaf);
+            var knob = new THREE.Mesh(new THREE.SphereGeometry(w * 0.035, 8, 6), _hzGeoMat(null, 0xe0c070));
+            knob.position.set(w * 0.86, h * 0.47, d * 0.25); pivot.add(knob);
+            pivot.rotation.y = -(0.55 + rng() * 0.7);
+        }
+        /* the beam out of the opening — a long soft wedge from the lintel down
+           past the sill, and a lit core in the gap itself */
+        var beamLen = Math.hypot(h, h * 1.4);
+        var beamMat = _hzGlowMat(p[2], 0.10);
+        var beam = new THREE.Mesh(new THREE.PlaneGeometry(w * 1.5, beamLen), beamMat);
+        beam.position.set(0, h * 0.5, h * 0.7);
+        beam.rotation.x = Math.atan2(-1.4, 1);
+        g.add(beam);
+        _hzPulse(beamMat, null, 0.04, 0, 0.25 + rng() * 0.4);
+        var core = _hzGlowCore(w * 0.22, p[2], p[2]);
+        core.position.set(0, h * 0.5, d * 0.1); g.add(core);
+        if (rng() < 0.16) g.rotation.z = Math.PI;
+        return g;
+    }
+
     function _hzThemeRoster(name) {
         if (!_HZ_THEME_ROSTERS) _HZ_THEME_ROSTERS = {
             divine: [
@@ -24342,6 +24413,7 @@ const ThreeRenderer = (function () {
         _horizonFloaters.length = 0;
         _hzGlowPulse.length = 0;
         _nrPending.length = 0;
+        _nrLastKit = null;
         _horizonGroup = new THREE.Group();
         _horizonGroup.name = 'horizonScenery';
         _horizonGroup.renderOrder = -40;
@@ -24466,6 +24538,34 @@ const ThreeRenderer = (function () {
                 spd: 0.08 + rng() * 0.22,
                 phase: rng() * Math.PI * 2,
                 spin: (rng() < 0.5 ? 1 : -1) * (0.0012 + rng() * 0.0028)
+            });
+        }
+
+        // ── D.O.O.R. — doors in the void (2026-09-06) ───────────────────────
+        // The Department's own image floats with every outdoor roster: a few
+        // lone doors, ajar, light pouring through, hung at the same varied
+        // bearings / depths / heights as the rest and drifting with them —
+        // upright (a door has an up, most of the time) with a slow turn.
+        var doorWant = Math.round((3 + (rng() * 3 | 0)) * Math.min(1, _hzThemeDensity));
+        for (var dgi = 0; dgi < doorWant; dgi++) {
+            var dMesh = _hzLoneDoor(rng);
+            if (!dMesh) continue;
+            var dAng = (dgi / doorWant) * Math.PI * 2 + (rng() - 0.5) * 0.9 + 0.7;
+            var dRad = discR * (0.58 + rng() * 0.7);
+            var dX = cx + Math.cos(dAng) * dRad, dZ = cz + Math.sin(dAng) * dRad;
+            var dY = (-0.45 + rng() * 1.0) * discR;
+            dMesh.position.set(dX, dY, dZ);
+            dMesh.rotation.y += Math.atan2(cx - dX, cz - dZ);    // face the board
+            dMesh.rotation.z += (rng() - 0.5) * 0.12;
+            dMesh.rotation.x += (rng() - 0.5) * 0.08;
+            _stampHorizonHaze(dMesh, dRad, dY, discR);
+            _horizonGroup.add(dMesh);
+            _horizonFloaters.push({
+                obj: dMesh, baseY: dY,
+                amp: ts * (0.5 + rng() * 1.4),
+                spd: 0.08 + rng() * 0.2,
+                phase: rng() * Math.PI * 2,
+                spin: rng() < 0.5 ? (rng() < 0.5 ? 1 : -1) * (0.0002 + rng() * 0.0006) : 0
             });
         }
 
@@ -27737,15 +27837,31 @@ const ThreeRenderer = (function () {
     }
 
     /* ═════════ Opening cinematic (match intro) — battle.js playOpeningCinematic ═════════
-       Builds a temporary "grand staircase" prop off each team's spawn-zone edge
-       (the board floats in a void, so the steps rise out of the abyss like the
-       horizon's stairways-to-nowhere) and marches each team up it into the zone
-       through the regular walk-tween pipeline — real walk clips, real facing,
-       real surface heights. Everything here is transient scenery + visual
-       offsets: unit LOGIC tiles never change, so skipping at any moment just
-       deletes the tweens and every unit is already home. */
-    var _introStairGroup = null;
-    var _introStairMats = [];
+       THE CROSSING (2026-09-06). Every team arrives through a D.O.O.R.
+       threshold. A freestanding door — the same catalogue leaf the map's
+       threshold wears in the headquarters bay (data.js DOOR_HQ.thresholds:
+       the portcullis for Camelot, the bulkhead for CERN, a bare frame for
+       Stonehenge…) — stands on the MAP SETTING's apron just outside the
+       team's spawn lane, past the moat where there is one. It is buzzed
+       open (the DOOR sound kit), light from the other side floods out, and
+       the roster files through one at a time: each unit is hidden "on the
+       other side" until its turn, then walks out of the light to its own
+       tile through the regular walk-tween pipeline (real walk clips, real
+       facing, one steady pace). The leaf swings shut behind the last of
+       them and the crossing is stamped closed; by the cross-map push it has
+       dissolved — "every crossing is inspected; every entity is filed".
+       Replaces the 2026-08 grand staircase: its steps rose out of the void
+       from one level BELOW the zone lip — exactly where the MAP SETTINGS
+       plateau (2026-09-06) now stands — so the flight was buried and the
+       march walked inside the apron. Everything here is transient scenery
+       + visual offsets: unit LOGIC tiles never change, so skipping at any
+       moment just deletes the tweens and every unit is already home. Both
+       online clients play the intro locally from the same data, so the
+       guest sees the same door with nothing relayed (RULE #2). */
+    var _introDoorGroup = null;      // one child group per marching team
+    var _introDoors = [];            // per-door animation records (see _introUpdateDoors)
+    var _introFadeMats = [];         // every door material the dissolve fades
+    var _introFadeK = 1;             // 1 = fully there, 0 = dissolved (the lights scale by it)
     var _introWalkUids = [];
     var _introFadeTimer = null;
     var _introOccUids = [];          // units the occlusion fade keeps clear this beat
@@ -27756,6 +27872,13 @@ const ThreeRenderer = (function () {
        public knowledge; real fog snaps back the moment the intro ends, so
        nothing mid-match is ever leaked.) */
     var _introCineActive = false;
+    var _INTRO_LEAF_FALLBACK = 'leaf_closet_alt';   // DOOR_HQ.thresholds' own fallback
+    /* Leaves whose catalogue entry has no `open` (the wide gates, the bare
+       frames) get an intro-only motion: the portcullis LIFTS, the revolving
+       door SPINS, a frame stands open from the start; everything else swings
+       (a vault or bulkhead on its hinges) or slides (the holographic door). */
+    var _INTRO_DOOR_MOTION = { leaf_portcullis: 'lift', leaf_revolving: 'spin', leaf_frame_only: 'none', leaf_hell_arch: 'none' };
+    var _introSealTex = null;        // the DOOR seal above every threshold (loaded once)
 
     function _introAllTilesVisible() {
         var s = new Set();
@@ -27785,129 +27908,247 @@ const ThreeRenderer = (function () {
         var m = Math.min(dL, dR, dT, dB);
         var ox = 0, oy = 0;
         if (m === dL) ox = -1; else if (m === dR) ox = 1; else if (m === dT) oy = -1; else oy = 1;
-        /* Zone lip height (levels) — the stairs rise to meet the highest tile. */
+        /* Zone lip height (levels) — the door's landing floats here when the
+           board has no setting to stand it on. */
         var topZ = 0;
         for (var j = 0; j < zone.length; j++) {
             var h = (typeof getHeightAt === 'function') ? (getHeightAt(zone[j].x, zone[j].y) || 0)
                   : ((state.boardHeights && state.boardHeights[zone[j].y]) ? (state.boardHeights[zone[j].y][zone[j].x] || 0) : 0);
             if (h > topZ) topZ = h;
         }
-        return { zone: zone, cx: ax, cy: ay, ox: ox, oy: oy, topZ: topZ, len: zone.length };
+        /* tiles from the zone centre to the board's edge LINE along (ox, oy) */
+        var edgeDist = (ox < 0) ? ax + 0.5 : (ox > 0) ? (_bwv - 1 - ax) + 0.5 : (oy < 0) ? ay + 0.5 : (_bhv - 1 - ay) + 0.5;
+        return { zone: zone, cx: ax, cy: ay, ox: ox, oy: oy, topZ: topZ, len: zone.length, edgeDist: edgeDist, bw: _bwv, bh: _bhv };
     }
 
-    /* Scale a stair box's UVs so the 1-tile terrain texture TILES across it
-       at board pixel density (one repeat per tile of surface) instead of one
-       copy smeared across the whole prop. Needs RepeatWrapping on the map. */
-    function _introTileBoxUVs(geo, w, h, d, ts) {
-        var uv = geo.getAttribute('uv');
-        if (!uv || uv.count < 24) return geo;
-        /* BoxGeometry face order: ±X (u=depth, v=height), ±Y (u=width,
-           v=depth), ±Z (u=width, v=height) — 4 verts each. */
-        var scale = [
-            [d / ts, h / ts], [d / ts, h / ts],
-            [w / ts, d / ts], [w / ts, d / ts],
-            [w / ts, h / ts], [w / ts, h / ts]
-        ];
-        for (var f = 0; f < 6; f++) {
-            for (var v = 0; v < 4; v++) {
-                var i = f * 4 + v;
-                uv.setXY(i, uv.getX(i) * scale[f][0], uv.getY(i) * scale[f][1]);
+    /* The leaf this map's crossing wears: DOOR_HQ.thresholds by map id (Δ ids
+       drop their _delta suffix), else by the MAP SETTINGS near key, else the
+       bay corridors' own fallback leaf. null when the DOOR data isn't loaded. */
+    function _introLeafFor(mapId) {
+        var D = (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null;
+        if (!D || !D.catalogue) return null;
+        var th = D.thresholds || {};
+        var id = String(mapId || '').replace(/_delta$/, '');
+        var near = (state.mapEnv && state.mapEnv.near) || _hzNear || null;
+        var rec = th[id] || (near ? th['prebuilt_' + near] : null) || null;
+        var key = (rec && rec.leaf && D.catalogue[rec.leaf]) ? rec.leaf
+                : (D.catalogue[_INTRO_LEAF_FALLBACK] ? _INTRO_LEAF_FALLBACK : null);
+        return key ? { key: key, cat: D.catalogue[key] } : null;
+    }
+    function _introMotionFor(leaf) {
+        if (!leaf) return 'swing';
+        if (_INTRO_DOOR_MOTION[leaf.key]) return _INTRO_DOOR_MOTION[leaf.key];
+        if (leaf.cat && leaf.cat.open === 'slide') return 'slide';
+        return 'swing';
+    }
+    function _introSfx(key) {
+        try { if (typeof playDoorSfx === 'function') playDoorSfx(key); } catch (e) {}
+    }
+
+    /* Build one team's threshold in board space. Local +Z runs OUTWARD from
+       the board (the group is spun onto the zone's edge); the door plane sits
+       `doorOut` tiles out from the zone centre — past the apron rim and the
+       moat gap — with its sill on the apron top, or on a floating DOOR-issue
+       landing when the board has no setting (custom maps, EW_NO_FACILITY_
+       SCENERY, low-perf). Returns the animation record _introUpdateDoors
+       drives. */
+    function _introBuildDoor(zi, ts, leaf, mapId) {
+        var kit = _nrLastKit;
+        var elev = ts * ELEV_STEP_RATIO;
+        var apronY = kit ? kit.apronTop : zi.topZ * elev;
+        var zB = kit ? kit.B : zi.topZ;
+        var gap = kit ? (kit.G / ts) : 0;                 // moat gap in tiles
+        var doorOut = zi.edgeDist + gap + 0.85;
+        var cat = leaf ? leaf.cat : null;
+        var wide = !!(cat && cat.wide);
+        var oh = (wide ? 1.5 : 1.35) * ts;
+        var ow = wide ? 1.2 * ts : 0.72 * ts;
+        if (cat && cat.aspect > 0) ow = Math.max(wide ? 1.05 : 0.6, Math.min(wide ? 1.5 : 0.95, cat.aspect * (oh / ts))) * ts;
+        var jw = 0.14 * ts, lh = 0.2 * ts, pd = 0.2 * ts;
+        var hqOk = (typeof DOOR_HQ !== 'undefined');
+        var rec = {
+            group: null, doorOut: doorOut, zB: zB, gap: gap, apronY: apronY,
+            motion: { mode: _introMotionFor(leaf), dir: (cat && cat.hinge === 'right') ? 1 : -1, angle: 1.5, ow: ow, oh: oh },
+            leafMats: [], leaks: [], openMs: 650, closeMs: 620, openAt: 0, closeAt: 0, starts: [], revealIdx: 0, flash: 0,
+            sfxOpen: false, sfxClose: false, lastNow: 0
+        };
+        function _reg(m) { m.transparent = true; m._ew_introOp = m.opacity; _introFadeMats.push(m); return m; }
+        /* DOOR-issue frame: the headquarters' teal metal trim + hallway stone
+           (R2 Assets/door/textures/), plain lit colour when the data is absent */
+        var frameMat = _reg(hqOk ? _hqMat('teal', 0.6, 2.2, { color: 0xc9d3d1, shininess: 30, specular: 0x555555 }) : _hzLit(null, 0x2f6b66));
+        var sillMat  = _reg(hqOk ? _hqMat('stone', 1.5, 1.5, { color: 0xd8d4cc }) : _hzLit(null, 0x8a8a88));
+        var plateMat = _reg(_hzLit(null, 0x101114));
+        function _box(w, h, d, mat) { var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.castShadow = true; m.receiveShadow = true; return m; }
+        var g = new THREE.Group(); g.name = 'introCrossing';
+        rec.group = g;
+        var D = new THREE.Group();                        // the door proper, at the door plane
+        D.position.set(0, 0, doorOut * ts);
+        g.add(D);
+        /* the landing: a threshold slab on an apron, a floating slab in the void */
+        var daisH = kit ? 0.06 * ts : 0.42 * ts, daisR = Math.max(ow * 1.15, 1.05 * ts);
+        var dais = new THREE.Mesh(new THREE.CylinderGeometry(daisR, daisR * (kit ? 1 : 0.86), daisH, 22), sillMat);
+        dais.position.set(0, -daisH / 2 + 0.6, 0); dais.receiveShadow = true; D.add(dais);
+        /* jambs, lintel, cap, sill */
+        var jL = _box(jw, oh + lh, pd, frameMat); jL.position.set(-(ow / 2 + jw / 2), (oh + lh) / 2, 0); D.add(jL);
+        var jR = _box(jw, oh + lh, pd, frameMat); jR.position.set((ow / 2 + jw / 2), (oh + lh) / 2, 0); D.add(jR);
+        var lin = _box(ow + jw * 2, lh, pd, frameMat); lin.position.set(0, oh + lh / 2, 0); D.add(lin);
+        var cap = _box(ow + jw * 2 + 0.08 * ts, 0.06 * ts, pd + 0.08 * ts, sillMat); cap.position.set(0, oh + lh + 0.03 * ts, 0); D.add(cap);
+        var sill = _box(ow + jw * 2 + 0.04 * ts, 0.035 * ts, pd + 0.04 * ts, sillMat); sill.position.set(0, 0.0175 * ts, 0); D.add(sill);
+        /* the seal above the door, the case line on the lintel — both face
+           the board (-Z), where the camera and the arriving line are */
+        var plateW = Math.max(ow, 0.7 * ts);
+        var plate = _box(plateW * 0.62, plateW * 0.62, 0.03 * ts, plateMat);
+        plate.position.set(0, oh + lh + 0.08 * ts + plateW * 0.31, 0); D.add(plate);
+        var sealUrl = (typeof DOOR_TEXT !== 'undefined' && DOOR_TEXT.LOGO) ? DOOR_TEXT.LOGO.onDark : null;
+        if (sealUrl && typeof textureLoader !== 'undefined') {
+            if (!_introSealTex) {
+                _introSealTex = textureLoader.load(sealUrl, function () { _objectsDirty = true; });
+                _introSealTex.minFilter = THREE.LinearMipmapLinearFilter; _introSealTex.magFilter = THREE.LinearFilter; _introSealTex.generateMipmaps = true;
             }
+            var sealMat = new THREE.MeshBasicMaterial({ map: _introSealTex, transparent: true, depthWrite: false, fog: false });
+            _introFadeMats.push(sealMat);
+            var seal = new THREE.Mesh(new THREE.PlaneGeometry(plateW * 0.54, plateW * 0.54), sealMat);
+            seal.position.set(0, plate.position.y, -0.02 * ts); seal.rotation.y = Math.PI;
+            D.add(seal);
         }
-        uv.needsUpdate = true;
-        return geo;
-    }
-
-    function _introBuildStairs(zi, ts) {
-        var group = new THREE.Group();
-        var mats = [];
-        /* Dress the prop in the zone's own terrain texture so it reads as part
-           of the map; plain flat-shaded masonry when no texture resolves. */
-        var tKey = null;
         try {
-            var t0 = zi.zone[Math.floor(zi.zone.length / 2)];
-            var col = state.boardColumns && state.boardColumns[t0.y] && state.boardColumns[t0.y][t0.x];
-            if (col && col.length) tKey = col[col.length - 1].terrain;
-            else if (state.boardTerrain && state.boardTerrain[t0.y]) tKey = state.boardTerrain[t0.y][t0.x];
-        } catch (e) {}
-        var tex = null;
-        try {
-            var srcTex = tKey ? getTerrainTexture(tKey) : null;
-            if (srcTex) {
-                /* Per-prop CLONE with RepeatWrapping: the cached original is
-                   shared by the board tiles and must stay clamped. If the
-                   shared copy is still downloading, refresh the clone's image
-                   when it lands (clone() copies the empty image reference). */
-                tex = srcTex.clone();
-                tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-                /* Flag the upload only when pixel data exists — needsUpdate on
-                   an image-less clone makes the renderer warn every frame and
-                   draw the prop black until the download lands. */
-                if (srcTex.image) tex.needsUpdate = true;
-                if ((!srcTex.image || !srcTex.image.complete)
-                    && typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[tKey]) {
-                    getTexture(TERRAIN_SPRITES[tKey][0], function (loaded) {
-                        tex.image = loaded.image;
-                        tex.needsUpdate = true;
-                    });
-                }
+            /* the same seed the match select's dossier hashes (the raw mode id) */
+            var caseNo = (typeof doorCaseNo === 'function' && mapId) ? doorCaseNo(String(mapId)) : null;
+            var caseTex = _hzTextTex('intro_case_' + (caseNo || 'x'), [caseNo ? ('CROSSING ' + caseNo) : 'CROSSING'],
+                { w: 512, h: 96, color: '#f2efe6', pad: 0.16, weight: 'bold', font: '"Courier New", Courier, monospace' });
+            if (caseTex) {
+                var caseMat = new THREE.MeshBasicMaterial({ map: caseTex, transparent: true, depthWrite: false, fog: false });
+                _introFadeMats.push(caseMat);
+                var caseM = new THREE.Mesh(new THREE.PlaneGeometry((ow + jw * 2) * 0.92, lh * 0.7), caseMat);
+                caseM.position.set(0, oh + lh / 2, -pd / 2 - 1); caseM.rotation.y = Math.PI;
+                D.add(caseM);
             }
-        } catch (e) { tex = null; }
-        function _mat(shade) {
-            var m = tex
-                ? new THREE.MeshLambertMaterial({ map: tex, color: new THREE.Color(shade, shade, shade), transparent: true })
-                : new THREE.MeshLambertMaterial({ color: new THREE.Color(0.45 * shade, 0.42 * shade, 0.37 * shade), transparent: true });
-            mats.push(m);
+        } catch (e) {}
+        /* the light from the other side: a veil in the opening, a halo behind
+           it, a wedge falling onto the apron and the pool it makes there —
+           all additive, all driven by the open amount (+ a flare per walker) */
+        var veilMat = _hzGlowMat(0xfff0cc, 0);
+        var veil = new THREE.Mesh(new THREE.PlaneGeometry(ow, oh), veilMat);
+        veil.position.set(0, oh / 2, 0.06 * ts); D.add(veil);
+        rec.veil = veilMat;
+        var halo = _hzGlowSprite(oh * 1.7, 0xfff0cc, 0, 0, 0, 0);
+        halo.position.set(0, oh * 0.5, 0.12 * ts); D.add(halo);
+        rec.halo = halo.material;
+        var poolMat = new THREE.MeshBasicMaterial({ map: _hzGlowTexture(), color: new THREE.Color(0xfff0cc), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+        var pool = new THREE.Mesh(new THREE.PlaneGeometry(ow * 3.2, 2.2 * ts), poolMat);
+        pool.rotation.x = -Math.PI / 2; pool.position.set(0, 1.2, -1.0 * ts); D.add(pool);
+        rec.pool = poolMat;
+        var wedgeLen = Math.hypot(1.5 * ts, oh);
+        var wedgeMat = _hzGlowMat(0xfff0cc, 0);
+        var wedge = new THREE.Mesh(new THREE.PlaneGeometry(ow * 1.5, wedgeLen), wedgeMat);
+        wedge.rotation.x = Math.atan2(-1.5 * ts, oh);
+        wedge.position.set(0, oh / 2, -0.75 * ts); D.add(wedge);
+        rec.wedge = wedgeMat;
+        /* the tell before it opens: light in the cracks and under the door */
+        function _leak(w, h, x, y, z) {
+            var lm = _hzGlowMat(0xfff0cc, 0);
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), lm);
+            m.position.set(x, y, z); D.add(m); rec.leaks.push(lm);
             return m;
         }
-        function _box(w, h, d) {
-            var g = new THREE.BoxGeometry(w, h, d);
-            return tex ? _introTileBoxUVs(g, w, h, d, ts) : g;
+        if (rec.motion.mode !== 'none') {
+            _leak(0.035 * ts, oh - 0.03 * ts, -(ow / 2 - 0.012 * ts), oh / 2, 0.02 * ts);
+            _leak(0.035 * ts, oh - 0.03 * ts, (ow / 2 - 0.012 * ts), oh / 2, 0.02 * ts);
+            var under = _leak(ow * 1.1, 0.26 * ts, 0, 0.9, -0.16 * ts);
+            under.rotation.x = -Math.PI / 2;
         }
-        var elevStep = ts * ELEV_STEP_RATIO;
-        var topY = zi.topZ * elevStep;
-        var baseY = topY - elevStep;            // one full level below the zone lip
-        var rise = topY - baseY;
-        var width = zi.len * ts + ts * 0.7;
-        var STEPS = 6;
-        /* Steps span 0.5..1.6 tiles outward from the zone tile centers — the
-           exact band the walk path climbs — each a chunky box (PS1 masonry). */
-        var d0 = ts * 0.5, d1 = ts * 1.6;
-        var depth = (d1 - d0) / STEPS;
-        for (var i = 0; i < STEPS; i++) {
-            var stepTop = baseY + rise * (i + 1) / STEPS;
-            var dOut = d1 - depth * (i + 0.5);
-            var hgt = (stepTop - baseY) + ts * 0.55;
-            var sm = new THREE.Mesh(_box(width, hgt, depth), _mat(0.8 + 0.05 * (i % 2)));
-            sm.position.set(0, stepTop - hgt / 2, dOut);
-            group.add(sm);
+        /* the leaf: a procedural panel at once (the intro never waits), the
+           catalogue GLB fitted into the same rig when it lands (hot from the
+           loading screen — introCineWarm — after a visit to the building) */
+        var mo = rec.motion;
+        var leafRoot = new THREE.Group();
+        if (mo.mode === 'swing') {
+            mo.pivot = new THREE.Group();
+            mo.pivot.position.x = mo.dir * (ow / 2 - 0.02 * ts);
+            leafRoot.position.x = -mo.pivot.position.x;
+            mo.pivot.add(leafRoot); D.add(mo.pivot);
+        } else {
+            mo.carrier = new THREE.Group();
+            mo.carrier.add(leafRoot); D.add(mo.carrier);
         }
-        /* Approach causeway floating out into the void behind the steps. */
-        var cwLen = ts * 3.6;
-        var cw = new THREE.Mesh(_box(width, ts * 0.6, cwLen), _mat(0.72));
-        cw.position.set(0, baseY - ts * 0.3, d1 + cwLen / 2);
-        group.add(cw);
-        /* Flanking pillars at the stair head — a little ceremonial gate. */
-        for (var s = -1; s <= 1; s += 2) {
-            var pw = ts * 0.24, ph = ts * 1.25;
-            var p = new THREE.Mesh(_box(pw, ph, pw), _mat(0.9));
-            p.position.set(s * (width / 2 + pw * 0.7), topY + ph / 2, d0 + ts * 0.2);
-            group.add(p);
-            var c = new THREE.Mesh(_box(pw * 1.5, pw * 0.5, pw * 1.5), _mat(1.0));
-            c.position.set(s * (width / 2 + pw * 0.7), topY + ph + pw * 0.25, d0 + ts * 0.2);
-            group.add(c);
+        mo.leafRoot = leafRoot;
+        var ph = null;
+        if (mo.mode !== 'none') {
+            var phMat = _reg(hqOk ? _hqMat('oxblood', 1, 2, { color: 0xc8aaa0, shininess: 12 }) : _hzLit(null, 0x6a3a3a));
+            rec.leafMats.push(phMat);
+            ph = new THREE.Group();
+            var panel = _box(ow * 0.96, oh - 0.02 * ts, 0.05 * ts, phMat);
+            panel.position.set(0, (oh - 0.02 * ts) / 2 + 0.01 * ts, 0); ph.add(panel);
+            var knobMat = _reg(_hzLit(null, 0xd8b060)); rec.leafMats.push(knobMat);
+            var knob = new THREE.Mesh(new THREE.SphereGeometry(0.035 * ts, 8, 6), knobMat);
+            knob.position.set(-mo.dir * (ow / 2 - 0.1 * ts), oh * 0.46, -0.045 * ts); ph.add(knob);
+            leafRoot.add(ph);
         }
-        /* Local +Z runs outward; spin the whole flight onto the zone's edge. */
-        group.rotation.y = Math.atan2(zi.ox, zi.oy);
-        group.position.set(zi.cx * ts + ts / 2, 0, zi.cy * ts + ts / 2);
-        return { group: group, mats: mats };
+        if (cat && cat.file && typeof _hqModelUrl === 'function' && typeof THREE.GLTFLoader === 'function') {
+            var targetH = (mo.mode === 'none') ? (oh + lh) : (oh - 0.03 * ts);
+            var targetW = (mo.mode === 'none') ? (ow + jw * 2) : ow * 0.96;
+            var yawDeg = cat.yaw || 0;
+            var lg = _miscModelInstance(_hqModelUrl(cat), true, targetH, {
+                fit: 'height',
+                /* per-instance clones of the HQ's shared Lambert conversions,
+                   so the dissolve (and a sliding leaf's fade) never touches
+                   the materials the building's own doors wear */
+                matPick: function (n, sm) {
+                    var lm = _hqPropMatPick(n, sm); if (!lm) return null;
+                    var c = lm.clone(); c._ew_shared = false; c.transparent = true; c._ew_introOp = c.opacity;
+                    _introFadeMats.push(c); rec.leafMats.push(c);
+                    return c;
+                },
+                onDone: function (grp, s, bb) {
+                    if (!g.parent) return;                    // the intro ended before the leaf landed
+                    var m = grp.children[0];
+                    if (m && yawDeg) m.rotation.y = yawDeg * Math.PI / 180;
+                    var sideways = (Math.abs(yawDeg) % 180) === 90;
+                    var w = (sideways ? (bb.max.z - bb.min.z) : (bb.max.x - bb.min.x)) * s;
+                    if (w > 0) grp.scale.x = cat.aspect ? (targetW / w) : Math.min(1, targetW / w);
+                    grp.scale.z = Math.min(1, grp.scale.x);
+                    grp.traverse(function (n) { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
+                    if (ph) ph.visible = false;
+                    /* a bare frame IS the door: the GLB replaces the procedural jambs */
+                    if (mo.mode === 'none') { jL.visible = false; jR.visible = false; lin.visible = false; }
+                    _objectsDirty = true;
+                }
+            });
+            /* the leaf's authored front faces the board (where the line arrives) */
+            lg.rotation.y = (typeof window !== 'undefined' && window.EW_HQ_FLIP_LEAVES) ? 0 : Math.PI;
+            leafRoot.add(lg);
+        }
+        /* local +Z runs outward; spin the whole threshold onto the zone's edge */
+        g.rotation.y = Math.atan2(zi.ox, zi.oy);
+        g.position.set(zi.cx * ts + ts / 2, apronY, zi.cy * ts + ts / 2);
+        return rec;
     }
 
-    /* Arm the intro: build stairs for each requested team and stage its march.
-       opts: { walkTeams: [1,2], walkDelayMs: {p:ms}, walkMs: {p:ms},
-               startOutTiles: {p:tiles} }.
-       Returns {player: {cx, cy, ox, oy, topZ, len}} camera-framing info
-       (tile space) for battle.js, or null when the scene isn't up. */
+    /* Resample a polyline (tile space, z per node) into equal-length legs so
+       the end-to-end eased walk tween moves at ONE pace whatever the leg
+       lengths (the file's short hop through the doorway vs the long fan-out
+       to the far end of the line). z rides the original leg it falls on. */
+    function _introResample(pts, step) {
+        var cum = [0], total = 0, i;
+        for (i = 1; i < pts.length; i++) { total += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); cum.push(total); }
+        var last = pts[pts.length - 1];
+        if (total < 1e-6) return { path: [pts[0], { x: last.x, y: last.y, z: last.z }], len: 0 };
+        var n = Math.max(2, Math.ceil(total / step)), out = [];
+        for (var k = 0; k < n; k++) {
+            var d = total * k / n, seg = 1;
+            while (seg < cum.length - 1 && cum[seg] < d) seg++;
+            var a = pts[seg - 1], b = pts[seg], L = cum[seg] - cum[seg - 1], t = L > 1e-6 ? (d - cum[seg - 1]) / L : 1;
+            out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t });
+        }
+        out.push({ x: last.x, y: last.y, z: last.z });
+        return { path: out, len: total };
+    }
+
+    /* Arm the intro: build a threshold for each requested team and stage its
+       file through it. opts: { walkTeams: [1,2], walkDelayMs: {p:ms},
+       msPerTile, staggerMs, mapId }. Returns {player: {cx, cy, ox, oy,
+       topZ, len, doorOut, zB, edgeDist, gap}} camera-framing info (tile
+       space) for battle.js, or null when the scene isn't up. */
     function introCineStart(opts) {
         opts = opts || {};
         if (!scene) return null;
@@ -27915,6 +28156,7 @@ const ThreeRenderer = (function () {
         var ts = CONFIG.tileSize || BASE_TILE;
         var info = {};
         var walkTeams = opts.walkTeams || [];
+        var msPerTile = opts.msPerTile || 680, stagger = opts.staggerMs || 280;
         /* Ground every flyer for the duration (see unitSurfaceY) so the low
            shots frame the whole roster, and park the spawn-zone dressing —
            overlays and sanctuary walls sit exactly where the camera needs to
@@ -27927,82 +28169,189 @@ const ThreeRenderer = (function () {
            the intro's opaque veil, so the hard rebuild is never seen. */
         _introCineActive = true;
         if (state.fogOfWar) { try { rebuildFog(); } catch (e) {} }
-        _introStairGroup = new THREE.Group();
-        _introStairGroup.name = 'introCineStairs';
+        /* the setting (apron, moat) must exist before a door can stand on it */
+        try { _updateEnvironment(); } catch (e) {}
+        var leaf = _introLeafFor(opts.mapId);
+        _introDoorGroup = new THREE.Group();
+        _introDoorGroup.name = 'introCrossings';
+        _introFadeK = 1;
+        var now = _animNow();
         for (var w = 0; w < walkTeams.length; w++) {
             var p = walkTeams[w];
             var zi = _introZoneInfo(p);
             if (!zi) continue;
-            var built = _introBuildStairs(zi, ts);
-            _introStairGroup.add(built.group);
-            _introStairMats = _introStairMats.concat(built.mats);
+            var d = _introBuildDoor(zi, ts, leaf, opts.mapId);
+            _introDoorGroup.add(d.group);
             var team = (state.units || []).filter(function (u) { return u.player === p && !u.dead; });
             var delay = (opts.walkDelayMs && opts.walkDelayMs[p]) || 0;
-            var dur = (opts.walkMs && opts.walkMs[p]) || 3600;
-            var startOut = (opts.startOutTiles && opts.startOutTiles[p]) || 2.8;
+            var ox = zi.ox, oy = zi.oy, cxT = zi.cx, cyT = zi.cy;
+            var rimOut = zi.edgeDist + 0.15;
+            /* one path per unit: the other side → the threshold → the lane's
+               landing on the rim → its own column just inside the rim → home */
+            var plans = [];
             for (var u = 0; u < team.length; u++) {
                 var un = team[u];
                 var uz = (typeof getHeightAt === 'function') ? (getHeightAt(un.x, un.y) || 0) : 0;
-                var jit = ((u * 7) % 3) * 0.22;      // deterministic per-slot stagger
-                var o0 = startOut + jit;
-                /* causeway (one level down) → stair foot → stair top → own tile */
-                var path = [
-                    { x: un.x + zi.ox * o0,  y: un.y + zi.oy * o0,  z: zi.topZ - 1 },
-                    { x: un.x + zi.ox * 1.6, y: un.y + zi.oy * 1.6, z: zi.topZ - 1 },
-                    { x: un.x + zi.ox * 0.5, y: un.y + zi.oy * 0.5, z: uz },
-                    { x: un.x, y: un.y }
+                var dEdge = (ox < 0) ? un.x + 0.5 : (ox > 0) ? (zi.bw - 1 - un.x) + 0.5 : (oy < 0) ? un.y + 0.5 : (zi.bh - 1 - un.y) + 0.5;
+                var pts = [
+                    { x: cxT + ox * (d.doorOut + 0.6), y: cyT + oy * (d.doorOut + 0.6), z: d.zB },
+                    { x: cxT + ox * d.doorOut,         y: cyT + oy * d.doorOut,         z: d.zB },
+                    { x: cxT + ox * rimOut,            y: cyT + oy * rimOut,            z: d.zB },
+                    { x: un.x + ox * (dEdge - 0.1),    y: un.y + oy * (dEdge - 0.1),    z: uz },
+                    { x: un.x, y: un.y, z: uz }
                 ];
-                _walkTweens.set(un.id, {
-                    path: path,
-                    segs: path.length - 1,
-                    startTime: _animNow() + delay + jit * 300,
-                    totalMs: dur + jit * 500,
+                var rs = _introResample(pts, 0.5);
+                plans.push({ unit: un, path: rs.path, len: rs.len });
+            }
+            /* the farthest walker leads the file so the whole line settles together */
+            plans.sort(function (a, b) { return b.len - a.len; });
+            var starts = [];
+            for (var k = 0; k < plans.length; k++) {
+                var pl = plans[k];
+                var t0 = now + delay + 550 + k * stagger;
+                _walkTweens.set(pl.unit.id, {
+                    path: pl.path,
+                    segs: pl.path.length - 1,
+                    startTime: t0,
+                    totalMs: Math.max(400, pl.len * msPerTile),
                     isFlying: false,
                     onDone: null,
-                    _intro: true
+                    _intro: true,
+                    _holdHidden: true      // on the other side until its turn (see _updateWalkTweens)
                 });
-                _introWalkUids.push(un.id);
-                var entry = _getUnitEntry(un.id);
-                if (entry && entry.group) entry.group.visible = false;   // updater re-places it at the path start next frame
-                var plate = _plateObjs.get(un.id);
+                _introWalkUids.push(pl.unit.id);
+                starts.push(t0);
+                var entry = _getUnitEntry(pl.unit.id);
+                if (entry && entry.group) entry.group.visible = false;
+                var plate = _plateObjs.get(pl.unit.id);
                 if (plate) plate.css2d.visible = false;
-                /* The march glides far slower than a combat move — slow the walk
-                   clip to match so the feet don't skate. Restored in introCineEnd. */
+                /* The walk clip is paced for combat moves — slow it to the
+                   file's ceremonial pace so the feet don't skate (the 2026-08
+                   march ran 0.55× at ~1360 ms/tile). Restored in introCineEnd. */
                 if (entry && entry.actions && entry.actions.walk) {
                     if (entry._ew_introTsOrig == null) entry._ew_introTsOrig = entry.actions.walk.timeScale;
-                    entry.actions.walk.timeScale = entry._ew_introTsOrig * 0.55;
+                    entry.actions.walk.timeScale = entry._ew_introTsOrig * Math.max(0.45, Math.min(1.6, 0.55 * 1357 / msPerTile));
                 }
             }
-            info[p] = { cx: zi.cx, cy: zi.cy, ox: zi.ox, oy: zi.oy, topZ: zi.topZ, len: zi.len };
+            d.openAt = now + delay + 150;
+            d.closeAt = (starts.length ? starts[starts.length - 1] : (now + delay + 550)) + 950;
+            d.starts = starts;
+            d.lastNow = now;
+            _introDoors.push(d);
+            info[p] = { cx: zi.cx, cy: zi.cy, ox: ox, oy: oy, topZ: zi.topZ, len: zi.len,
+                        doorOut: d.doorOut, zB: d.zB, edgeDist: zi.edgeDist, gap: d.gap };
         }
-        scene.add(_introStairGroup);
+        scene.add(_introDoorGroup);
         return info;
     }
 
-    /* Dissolve the staircases — by the cross-map push they were never part of
-       the map at all. */
-    function introCineFadeStairs(ms) {
-        if (!_introStairGroup) return;
-        var mats = _introStairMats;
+    /* Per-frame door drive (called from _updateAnimations right after the
+       walk tweens, on the same animation clock): the leaf's open amount over
+       its open → hold → close schedule, the light through it (+ a flare each
+       time a walker steps through), the crack/under-door leaks before and
+       after, and the DOOR sound kit — buzzed open, stamped shut. */
+    function _introUpdateDoors() {
+        if (!_introDoors.length) return;
+        var now = _animNow();
+        function ease(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+        for (var i = 0; i < _introDoors.length; i++) {
+            var d = _introDoors[i];
+            var dt = Math.max(0, Math.min(0.1, (now - (d.lastNow || now)) / 1000)); d.lastNow = now;
+            var k;
+            if (now < d.openAt) k = 0;
+            else if (now < d.openAt + d.openMs) k = ease((now - d.openAt) / d.openMs);
+            else if (now < d.closeAt) k = 1;
+            else if (now < d.closeAt + d.closeMs) k = 1 - ease((now - d.closeAt) / d.closeMs);
+            else k = 0;
+            if (!d.sfxOpen && now >= d.openAt) { d.sfxOpen = true; _introSfx(d.motion.mode === 'none' ? 'paChime' : 'doorBuzz'); }
+            if (!d.sfxClose && now >= d.closeAt + d.closeMs) { d.sfxClose = true; _introSfx('stamp'); }
+            var mo = d.motion;
+            if (mo.mode === 'swing' && mo.pivot) mo.pivot.rotation.y = -mo.dir * mo.angle * k;
+            else if (mo.mode === 'slide' && mo.carrier) {
+                mo.carrier.position.x = mo.dir * mo.ow * 0.98 * k;
+                for (var lm = 0; lm < d.leafMats.length; lm++) d.leafMats[lm].opacity = (d.leafMats[lm]._ew_introOp != null ? d.leafMats[lm]._ew_introOp : 1) * (1 - k * 0.92) * _introFadeK;
+            }
+            else if (mo.mode === 'lift' && mo.carrier) {
+                mo.carrier.position.y = mo.oh * 0.94 * k;
+                for (var lf = 0; lf < d.leafMats.length; lf++) d.leafMats[lf].opacity = (d.leafMats[lf]._ew_introOp != null ? d.leafMats[lf]._ew_introOp : 1) * (1 - Math.max(0, k - 0.35) / 0.65 * 0.85) * _introFadeK;
+            }
+            else if (mo.mode === 'spin' && mo.carrier) mo.carrier.rotation.y += k * dt * 3.4;
+            while (d.revealIdx < d.starts.length && now >= d.starts[d.revealIdx]) { d.flash = 1; d.revealIdx++; }
+            d.flash = Math.max(0, (d.flash || 0) - dt * 2.8);
+            var F = _introFadeK;
+            var breathe = 0.85 + 0.15 * Math.sin(now * 0.005 + i);
+            d.veil.opacity = Math.min(1, (k * 0.8 + d.flash * 0.35) * breathe) * F;
+            d.halo.opacity = (k * 0.55 + d.flash * 0.3) * F;
+            d.pool.opacity = (k * 0.5 + d.flash * 0.25) * F;
+            d.wedge.opacity = (k * 0.12 + d.flash * 0.06) * F;
+            var sealAt = d.closeAt + d.closeMs + 350;
+            var leak = now >= sealAt ? Math.max(0, 1 - (now - sealAt) / 600) : 1;
+            var leakOp = (1 - k) * (0.30 + 0.18 * Math.sin(now * 0.007 + i * 2)) * leak * F;
+            for (var L = 0; L < d.leaks.length; L++) d.leaks[L].opacity = leakOp;
+        }
+    }
+
+    function _introDropDoors() {
+        _introDoors = [];
+        if (_introDoorGroup) {
+            if (scene) scene.remove(_introDoorGroup);
+            _disposeR(_introDoorGroup);
+            _introDoorGroup = null;
+        }
+        _introFadeMats = [];
+        _introFadeK = 1;
+    }
+
+    /* Dissolve the thresholds — by the cross-map push the crossing is
+       sealed and was never part of the map at all. */
+    function introCineFadeDoors(ms) {
+        if (!_introDoorGroup) return;
         var t0 = performance.now();
         var dur = Math.max(100, ms || 900);
         if (_introFadeTimer) clearInterval(_introFadeTimer);
         _introFadeTimer = setInterval(function () {
             var k = Math.min(1, (performance.now() - t0) / dur);
-            for (var i = 0; i < mats.length; i++) mats[i].opacity = 1 - k;
+            _introFadeK = 1 - k;
+            for (var i = 0; i < _introFadeMats.length; i++) {
+                var m = _introFadeMats[i];
+                m.opacity = (m._ew_introOp != null ? m._ew_introOp : 1) * (1 - k);
+            }
             if (k >= 1) {
                 clearInterval(_introFadeTimer); _introFadeTimer = null;
-                if (_introStairGroup) {
-                    if (scene) scene.remove(_introStairGroup);
-                    _disposeR(_introStairGroup);
-                    _introStairGroup = null; _introStairMats = [];
-                }
+                _introDropDoors();
             }
         }, 33);
     }
 
-    /* Tear the whole intro down (natural end OR skip): remove scenery, drop any
-       still-running intro march (units snap to their real tiles — where they
+    /* Loading-screen warmer (battle.js showLoadingScreen): fetch the map's
+       threshold leaf + the frame's tileables so the crossing opens with the
+       real door, not the procedural stand-in. Resolves true when the leaf
+       is cached, false on failure / no data / a 7 s cap — never rejects. */
+    function introCineWarm(mapId) {
+        return new Promise(function (resolve) {
+            var done = false;
+            function fin(ok) { if (!done) { done = true; resolve(!!ok); } }
+            try {
+                if (typeof DOOR_HQ !== 'undefined') { _hqTex('teal', 0.6, 2.2); _hqTex('stone', 1.5, 1.5); _hqTex('oxblood', 1, 2); }
+            } catch (e) {}
+            var leaf = null;
+            try { leaf = _introLeafFor(mapId); } catch (e) {}
+            if (!leaf || !leaf.cat || !leaf.cat.file || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') { fin(false); return; }
+            var url;
+            try { url = _hqModelUrl(leaf.cat); _loadMiscModel(url, true, function () { fin(true); }); }
+            catch (e) { fin(false); return; }
+            var t0 = performance.now();
+            (function poll() {
+                if (done) return;
+                var e = _miscModelCache[url];
+                if (!e || e.failed || performance.now() - t0 > 7000) { fin(false); return; }
+                setTimeout(poll, 250);
+            })();
+        });
+    }
+
+    /* Tear the whole intro down (natural end OR skip): remove the doors, drop
+       any still-running file (units snap to their real tiles — where they
        already logically are), restore walk-clip speeds and visibility. */
     function introCineEnd() {
         if (_introCineActive) {
@@ -28013,12 +28362,7 @@ const ThreeRenderer = (function () {
             _fogNoGridLastKey = '';
         }
         if (_introFadeTimer) { clearInterval(_introFadeTimer); _introFadeTimer = null; }
-        if (_introStairGroup) {
-            if (scene) scene.remove(_introStairGroup);
-            _disposeR(_introStairGroup);
-            _introStairGroup = null;
-        }
-        _introStairMats = [];
+        _introDropDoors();
         _introOccUids = [];
         _introGroundSet.clear();
         if (_spawnZoneGroup) _spawnZoneGroup.visible = true;
@@ -31192,7 +31536,8 @@ const ThreeRenderer = (function () {
         setTimeWarp,
 
         /* Opening cinematic (battle.js playOpeningCinematic) */
-        introCineStart, introCineFadeStairs, introCineEnd,
+        introCineStart, introCineFadeDoors, introCineEnd, introCineWarm,
+        introCineFadeStairs: introCineFadeDoors,   // 2026-08 name, kept for any caller still holding it
         introCineSetFocus: function (uids) { _introOccUids = uids || []; },
 
         startProjectileTween,

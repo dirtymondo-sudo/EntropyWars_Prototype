@@ -1553,3 +1553,23 @@ Otto kneels at the door jambs; the Janitor LEANS ON HIS MOP (held props:
 a catalogue GLB parented to a hand bone, kept upright); the training sign
 reads ROOM 64. Files: sprites.js, data.js, three-renderer.js, doorhq.test.js,
 index.html (`?v=20260906b-cors`), playtest_hq.js.
+
+### 2026-09-06 (rev 3) — THE CROSSING: the match intro arrives through a door
+The MAP SETTINGS aprons buried the 2026-08 intro staircase (its steps rose
+from one level below the zone lip — where the plateau now stands). The
+user asked how the teams could arrive "through a door or a portal thing"
+to go with the lore, and for doors among the floating esoteric backdrop.
+Built (three-renderer.js + battle.js, index.html `?v=20260906d-cors`, no
+data change): each team now files through a freestanding D.O.O.R.
+threshold on the setting's apron outside its spawn lane — the leaf is the
+map's own `DOOR_HQ.thresholds` catalogue door (the one it wears in the bay
+corridor: Camelot's portcullis lifts, CERN's bulkhead swings, Stonehenge's
+bare frame just stands open), DOOR teal trim + hallway stone frame, the
+seal on a plate above the lintel, a `CROSSING EW-nnnn` plate (the
+dossier's case number), buzzed open and stamped shut with the sound kit,
+light from the other side spilling onto the apron, dissolved by the
+cross-map push. The title card's sub-line now reads `CROSSING EW-nnnn ·
+MODE`. The far roster gains lone doors ajar in the void (`_hzLoneDoor`,
+3–5 per outdoor theme; monument key `door`). Vocabulary kept: it is a
+crossing / threshold, never a portal (A8). Not playtested (RULE #1c);
+PLAYTEST_NOTES "THE CROSSING" lists what to eyeball first.

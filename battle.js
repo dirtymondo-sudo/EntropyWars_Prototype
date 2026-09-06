@@ -31601,6 +31601,19 @@
                 try { ThreeRenderer.keyFxWarm(); } catch (e) {}
             }
 
+            // THE CROSSING (2026-09-06): pre-warm the map's threshold leaf —
+            // the catalogue door each team files through in the opening
+            // cinematic — so it opens with the real door, not the procedural
+            // stand-in. Capped inside the renderer (7 s); never rejects.
+            if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer
+                && typeof ThreeRenderer.introCineWarm === 'function'
+                && !window.EW_DISABLE_INTRO_CINE && !state.devAutoSim) {
+                try {
+                    warmers.push(ThreeRenderer.introCineWarm(
+                        (typeof activeGameMode !== 'undefined') ? activeGameMode : null));
+                } catch (e) {}
+            }
+
             // Rigged GLBs: the actual 2D→3D pop-in killer (§3.1).
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer
                 && typeof ThreeRenderer.preloadUnitModels === 'function') {
@@ -31964,10 +31977,12 @@
 
         /* ═════════ OPENING CINEMATIC — the match-intro multi-cam ═════════
            Replaces the flat VS splash with a ~13s scripted sequence shot on the
-           REAL battlefield with the action-cam rig: both teams march up a grand
-           staircase out of the void into their spawn zones (ground-level feet
-           shot for each), a skewed medium shot of your party settling into
-           line, a slow push clean across the map into the enemy's faces, a
+           REAL battlefield with the action-cam rig: both teams arrive through
+           a D.O.O.R. threshold — the map's own catalogue door, buzzed open on
+           the setting's apron outside each spawn lane, the roster filing out
+           of the light one by one and the door stamped shut behind them (a
+           low shot at each door), a skewed medium shot of your party settling
+           into line, a slow push clean across the map into the enemy's faces, a
            hard cut up to the sun (moon at night) while the map title slams in,
            then a crane down that lands EXACTLY on the gameplay framing —
            FIGHT! — and round 1 starts with no cut.
@@ -31986,7 +32001,7 @@
             return true;
         }
 
-        /* A team only gets the stair-march treatment when its units actually
+        /* A team only gets the door treatment when its units actually
            sit in a tidy edge spawn zone — FFA scatter-spawns and hand-authored
            custom maps fail this and simply keep their units in place (they
            still get their camera beats, just no walk). */
@@ -32033,7 +32048,13 @@
             try {
                 const mp = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
                 $ei('ewi-title').textContent = (typeof _lsMapTitle === 'function') ? _lsMapTitle() : 'PROVING GROUNDS';
-                $ei('ewi-sub').textContent = (mp && mp.label) ? mp.label.toUpperCase() : '';
+                /* the D.O.O.R. case line — every crossing is inspected and
+                   every crossing has a number (the same doorCaseNo the match
+                   select's dossier prints for this mode) */
+                const modeLbl = (mp && mp.label) ? mp.label.toUpperCase() : '';
+                const caseNo = (typeof doorCaseNo === 'function' && typeof activeGameMode !== 'undefined' && activeGameMode)
+                    ? doorCaseNo(activeGameMode) : null;
+                $ei('ewi-sub').textContent = (caseNo ? 'CROSSING ' + caseNo : '') + (caseNo && modeLbl ? ' · ' : '') + modeLbl;
             } catch (e) {}
 
             let finished = false;
@@ -32177,8 +32198,8 @@
             }
             function _hideTag() { $ei('ewi-team-tag').classList.remove('ewi-tag-in'); }
 
-            /* Framing info for a team: from the renderer's stair info when it
-               marched, otherwise derived from where its units stand. */
+            /* Framing info for a team: from the renderer's door info when it
+               filed through one, otherwise derived from where its units stand. */
             function _frame(p, info) {
                 if (info && info[p]) return info[p];
                 const team = (state.units || []).filter(u => u.player === p && !u.dead);
@@ -32256,23 +32277,31 @@
                 veil.style.transition = 'opacity 0.7s ease-out';
                 veil.style.opacity = '0';
 
-                /* BEAT 1 (0.0–2.2s) — ground level, Team A's feet on the stairs.
-                   A team that didn't march (scatter spawns) gets the same low
-                   shot framed on where it already stands. */
-                const feetLift = (F, g, marched) => marched
-                    ? ((F.topZ - 1) * ts + ts * 0.55) - g
+                /* BEAT 1 (0.0–2.2s) — the crossing opens. Ground level at Team
+                   A's door: the eye sits on the BOARD side of the threshold,
+                   low and off to one shoulder, looking back out through the
+                   doorway as it is buzzed open and the file walks out of the
+                   light toward it; the focal glides from the door plane in
+                   toward the settling line. A team that didn't file through a
+                   door (scatter spawns) keeps the old low feet shot where it
+                   already stands. */
+                const doorA = !!(walkable[teamA] && A.doorOut != null);
+                const doorB = !!(walkable[teamB] && B.doorOut != null);
+                const doorLift = (F, g, hasDoor) => hasDoor
+                    ? ((F.zB * ts + unitH * 0.75) - g)      // pivot at the walkers' chests on the apron
                     : ts * 0.5;
-                const outA1 = walkable[teamA] ? 1.1 : 0.15, outA2 = walkable[teamA] ? 0.55 : 0.0;
-                const outB1 = walkable[teamB] ? 1.7 : 0.15, outB2 = walkable[teamB] ? 0.9 : 0.0;
+                const dOutA = doorA ? A.doorOut : 0.15, dOutB = doorB ? B.doorOut : 0.15;
                 focusTeam(teamA);
-                shot({ x: A.cx, y: A.cy }, feetLift(A, gA, walkable[teamA]), {
-                    x: A.cx + A.ox * outA1 + axA * 0.15, y: A.cy + A.oy * outA1 + ayA * 0.15,
-                    zoom: _tpsZoomForBoomTiles(2.7), tilt: 87,
-                    yaw: _yawFor(axA * 1.0 + A.ox * 0.62, ayA * 1.0 + A.oy * 0.62)
+                shot({ x: A.cx, y: A.cy }, doorLift(A, gA, doorA), {
+                    x: A.cx + A.ox * dOutA + axA * 0.12, y: A.cy + A.oy * dOutA + ayA * 0.12,
+                    zoom: _tpsZoomForBoomTiles(doorA ? 3.3 : 2.7), tilt: doorA ? 79 : 87,
+                    yaw: doorA
+                        ? _yawFor(axA * 1.0 - A.ox * 0.85, ayA * 1.0 - A.oy * 0.85)   // beside + inside the door, looking out through it
+                        : _yawFor(axA * 1.0 + A.ox * 0.62, ayA * 1.0 + A.oy * 0.62)
                 }, true);
                 _cineBeatMove({
-                    x: A.cx + A.ox * outA2, y: A.cy + A.oy * outA2,
-                    zoom: _tpsZoomForBoomTiles(2.4),
+                    x: A.cx + A.ox * (doorA ? dOutA * 0.45 : 0.0), y: A.cy + A.oy * (doorA ? dOutA * 0.45 : 0.0),
+                    zoom: _tpsZoomForBoomTiles(doorA ? 3.6 : 2.4),
                     duration: 2100, easing: 'linear',
                     _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                 });
@@ -32280,18 +32309,21 @@
                     for (let ft = 480; ft < 4000; ft += 370) later(() => playSfx('moveStep'), ft);
                 }
 
-                /* BEAT 2 (2.2–4.0s) — cut: Team B's feet, mid-march */
+                /* BEAT 2 (2.2–4.0s) — cut: Team B's door, mid-file (its crossing
+                   was buzzed 0.6 s after A's), shot from the other shoulder */
                 later(() => {
                     dip();
                     focusTeam(teamB);
-                    shot({ x: B.cx, y: B.cy }, feetLift(B, gB, walkable[teamB]), {
-                        x: B.cx + B.ox * outB1 - axB * 0.15, y: B.cy + B.oy * outB1 - ayB * 0.15,
-                        zoom: _tpsZoomForBoomTiles(2.7), tilt: 87,
-                        yaw: _yawFor(-axB * 1.0 + B.ox * 0.62, -ayB * 1.0 + B.oy * 0.62)
+                    shot({ x: B.cx, y: B.cy }, doorLift(B, gB, doorB), {
+                        x: B.cx + B.ox * dOutB - axB * 0.12, y: B.cy + B.oy * dOutB - ayB * 0.12,
+                        zoom: _tpsZoomForBoomTiles(doorB ? 3.3 : 2.7), tilt: doorB ? 79 : 87,
+                        yaw: doorB
+                            ? _yawFor(-axB * 1.0 - B.ox * 0.85, -ayB * 1.0 - B.oy * 0.85)
+                            : _yawFor(-axB * 1.0 + B.ox * 0.62, -ayB * 1.0 + B.oy * 0.62)
                     }, true);
                     _cineBeatMove({
-                        x: B.cx + B.ox * outB2, y: B.cy + B.oy * outB2,
-                        zoom: _tpsZoomForBoomTiles(2.4),
+                        x: B.cx + B.ox * (doorB ? dOutB * 0.5 : 0.0), y: B.cy + B.oy * (doorB ? dOutB * 0.5 : 0.0),
+                        zoom: _tpsZoomForBoomTiles(doorB ? 3.5 : 2.4),
                         duration: 1700, easing: 'linear',
                         _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
                     });
@@ -32319,7 +32351,7 @@
                    beside your line and whips around to face the enemy across
                    the map. (Orbit trick: refocus on the enemy line with a boom
                    as long as the map — the eye barely moves, the view spins.) */
-                later(() => { try { ThreeRenderer.introCineFadeStairs(1200); } catch (e) {} }, 5900);
+                later(() => { try { ThreeRenderer.introCineFadeDoors(1200); } catch (e) {} }, 5900);
                 later(() => {
                     _hideTag();
                     focusTeam(teamB);
@@ -32462,16 +32494,21 @@
                     let shotsInfo = null;
                     try {
                         const walkTeams = [teamA, teamB].filter(p => walkable[p]);
-                        const delays = {}, durs = {}, outs = {};
-                        delays[teamA] = 0;    durs[teamA] = 3800; outs[teamA] = 2.8;
-                        delays[teamB] = 600;  durs[teamB] = 4600; outs[teamB] = 3.6;
+                        /* your door is buzzed first; the enemy's 0.6 s later so
+                           BEAT 2 catches it mid-file. One pace for everyone
+                           (ms per tile) and one file cadence (ms between
+                           walkers) — the renderer paces the walk clip to it. */
+                        const delays = {};
+                        delays[teamA] = 0;
+                        delays[teamB] = 600;
                         shotsInfo = ThreeRenderer.introCineStart({
                             walkTeams: walkTeams,
                             walkDelayMs: delays,
-                            walkMs: durs,
-                            startOutTiles: outs
+                            msPerTile: 680,
+                            staggerMs: 280,
+                            mapId: (typeof activeGameMode !== 'undefined') ? activeGameMode : null
                         });
-                    } catch (e) { console.warn('[IntroCine] stair/march setup failed:', e); }
+                    } catch (e) { console.warn('[IntroCine] door/file setup failed:', e); }
                     try { _runBeats(shotsInfo || {}); }
                     catch (e) { console.warn('[IntroCine] beats failed:', e); finish(); }
                 });

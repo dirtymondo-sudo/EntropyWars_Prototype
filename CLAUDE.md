@@ -162,6 +162,23 @@ any board with `NODE_USE_ENV_PROXY=1 node playtest_maps.js <map…>` (repo
 tooling; see PLAYTEST_NOTES "MAP SETTINGS"). Kill-switch:
 `window.EW_NO_FACILITY_SCENERY`.
 
+## THE CROSSING (opening cinematic) — added 2026-09-06
+The match intro (battle.js `playOpeningCinematic` + three-renderer.js
+`introCineStart/_introBuildDoor/_introUpdateDoors`) no longer marches teams up
+a staircase (the MAP SETTINGS aprons buried it). Each team files through a
+freestanding D.O.O.R. threshold standing on the setting's apron outside its
+spawn lane (past the moat): the leaf is the map's own `DOOR_HQ.thresholds`
+catalogue door (data.js; `_delta` stripped from the mode id, else the `near`
+key, else `leaf_closet_alt`), buzzed open / stamped shut with the DOOR sound
+kit, dissolved at the cross-map push. Units are hidden "on the other side"
+until their turn (walk-tween `_holdHidden`). The near kit publishes the apron
+facts in `_nrLastKit` (apron top, level `B`, moat gap) — a board with no
+setting gets a floating landing instead. Loading screen pre-warms the leaf
+(`introCineWarm`). Lone doors also float in every far roster (`_hzLoneDoor`,
+monument key `door`). Kill-switch unchanged: `window.EW_DISABLE_INTRO_CINE`.
+Camera framing for beats 1–2 is anchored on `info[p].doorOut`/`zB` (battle.js
+`doorLift`) — tune those two numbers before touching the renderer.
+
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /
 dev-sim — they can do that themselves) and report pain points: unresponsive

@@ -4,6 +4,77 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## 🚪 THE CROSSING — the opening cinematic arrives through a door (2026-09-06, LATEST) — three-renderer.js, battle.js, index.html
+The 2026-08 intro marched both teams up a "grand staircase out of the void"
+built from one level BELOW the spawn-zone lip, 0.5–1.6 tiles out, with a
+causeway floating 1.6–5.2 tiles out. MAP SETTINGS (same day) put a plateau
+apron flush with the tile tops exactly there, so the flight and the causeway
+were inside the apron and the units walked up through solid ground (and
+through the moat on Camelot/Hell/Atlantis/Technoticlan/Agartha). Not
+playtested (RULE #1c) — eyeball on a real GPU first.
+
+### What shipped
+- **three-renderer.js** — the intro block (search `THE CROSSING`) replaces
+  `_introBuildStairs` with `_introBuildDoor`: a freestanding threshold per
+  marching team on the apron in the spawn lane, `doorOut = edgeDist + moatGap
+  + 0.85` tiles from the zone centre (Camelot: it stands in the gatehouse
+  opening between the piers, past the drawbridge). Frame = DOOR HQ teal trim
+  + hallway stone (`_hqMat`), a threshold slab (a floating slab when the
+  board has no setting: `_nrLastKit == null`), the DOOR seal on a black plate
+  above the lintel, a `CROSSING EW-nnnn` plate (`doorCaseNo(modeId)`, the same
+  number the match-select dossier prints), the leaf = the map's
+  `DOOR_HQ.thresholds` catalogue GLB via `_miscModelInstance` + `_hqModelUrl`
+  (procedural oxblood panel until it lands; materials cloned per instance so
+  the dissolve never touches the HQ's shared Lambert conversions). Motion by
+  catalogue: `swing` (vault/bulkhead/closet/motel…), `slide` + fade
+  (holographic), `lift` + fade (portcullis), `spin` (revolving), `none` for
+  the bare frames (`leaf_frame_only`, `leaf_hell_arch` — the GLB frame
+  replaces the procedural jambs when it lands). Light: additive veil in the
+  opening + halo + a wedge onto the apron + a floor pool, all driven by the
+  open amount; crack/under-door leaks pulse before it opens and after it
+  shuts. `_introUpdateDoors` runs from `_updateAnimations` on `_animNow()`.
+  SFX: `playDoorSfx('doorBuzz')` at open (`paChime` for a bare frame),
+  `playDoorSfx('stamp')` when the leaf shuts.
+- **Paths**: other side (door + 0.6, hidden — walk tween `_holdHidden`) →
+  threshold → the lane's landing on the rim (edge + 0.15) → the unit's own
+  column just inside the rim → home; resampled into 0.5-tile legs
+  (`_introResample`) so the end-to-end eased tween moves at ONE pace
+  (`msPerTile` 680), farthest walker first (`staggerMs` 280) so the line
+  settles together. Walk clip timescale = orig × 0.55 × 1357 / msPerTile.
+  Door schedule: buzz at delay + 150 ms (650 ms swing), first walker at
+  +550 ms, close 950 ms after the last walker starts, fade at 5.9 s
+  (`introCineFadeDoors`, the old `introCineFadeStairs` name is an alias).
+- **`_nrLastKit`** — `_nrKit` records `{B, fy, W, G, apronTop, moat}`,
+  `_nrApron` corrects `apronTop` (drop), `_nrMoat` records the moat key;
+  reset at the top of every `_buildHorizonScenery` rebuild. `introCineStart`
+  calls `_updateEnvironment()` first so the setting exists before the door.
+- **battle.js** — beats 1–2 are anchored on the door: pivot at the walkers'
+  chests on the apron (`doorLift`: `zB*ts + unitH*0.75 - ground`), the eye
+  beside + INSIDE the door (`_yawFor(ax - ox*0.85, …)`), tilt 79, boom 3.3
+  tiles, focal gliding from the door plane to 45% of the way in. Teams that
+  didn't file (scatter spawns / custom maps) keep the old feet shot verbatim.
+  `introCineStart` opts are now `{walkTeams, walkDelayMs, msPerTile,
+  staggerMs, mapId}`. Loading screen: `ThreeRenderer.introCineWarm(modeId)`
+  joins the warmers (7 s cap inside, never rejects). Title card sub-line:
+  `CROSSING EW-nnnn · <MODE>`.
+- **Far roster** — `_hzLoneDoor` (frame, leaf ajar, light through the gap,
+  5 palettes, 1-in-5 bare frame, 1-in-6 upside down) placed 3–5× per outdoor
+  theme by a door pass after the guaranteed rings in `_buildHorizonScenery`;
+  also a monument key `door` for map data.
+
+### To eyeball (no playtest run)
+- Beat 1/2 framing: does the door top (seal plate ≈ 2.2 tiles) fit at boom
+  3.3 / tilt 79? Tune `doorLift` and the two zoom numbers in battle.js first.
+- Fence posts in the lane (Nuketown d 1.2, Skinwalker d 1.4): posts stand at
+  ring stops even in the gate lane; the door at 0.85 tiles out should sit
+  just inside them — check nobody walks through a post.
+- Raised spawn rows (zone lip ≠ apron level): the file steps up over the
+  last 0.35 tiles at the rim (no stair prop any more).
+- The leaf GLB's front: `lg.rotation.y = Math.PI` faces the HQ-authored
+  front at the board; `EW_HQ_FLIP_LEAVES` inverts it here too.
+- Cold cache: the procedural panel shows until the GLB lands; a visit to the
+  building or the loading-screen warmer makes it hot.
+
 ## 🏞 MAP SETTINGS — every Δ board gets a place around it (2026-09-06, LATEST) — three-renderer.js, data.js, playtest_maps.js, index.html
 User asked for the Training Room treatment ("a moat and set pieces and a
 setting, making it feel more real") on the other maps — Cyberpunk City "looks
