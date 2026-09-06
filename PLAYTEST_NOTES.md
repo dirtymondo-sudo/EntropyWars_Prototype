@@ -4,6 +4,117 @@ Reverse-engineered notes so any future session can drive the game without
 rediscovering it. The game is a browser Tactical-JRPG PvP; the server is just
 matchmaking/relay — all gameplay logic is client-side.
 
+## 🧠 AI GEN-305 CHAMPION ADOPTED + HEADLESS LAB RUNNER + SIM CLOCK (2026-09-06, LATEST) — battle.js, ai.js, map.js, state.js, three-renderer.js, index.html, train_headless.js, ai-weights.test.js, asset_cache.js
+Token → `20260906e-cors`. The user's gen-305 export (17,832 matches, 18 passes,
+`ewaiweightsgen305.json`) is now the shipped default weight set, the trainer
+grew 11 knobs, every lab records HOW matches end, and the sims run ~5× faster
+per tab (and N tabs at once via a repo-tooling runner).
+
+### Weights (schema 13 stays — new keys need no bump, loadAIWeights defaults them)
+- `AI_WEIGHT_DEFAULTS` values = gen-305; every entry keeps the value it
+  replaced in **`prev`** (gen-105). Six `_v4` defaults are mirrored into ai.js
+  `AI_TUNE` (killBase 116.6, supportKillPremium 128.1, mpValuePerPoint 0.529,
+  pressActionValue 181.6, focusCommitBonus 117.5, threatCostFactor 0.082) and
+  the `wght()` fallback literals follow. `ai-weights.test.js` enforces
+  table↔AI_TUNE parity, no dead keys, no `AI_TUNE.<trainable>` bypass reads,
+  ranges sane, probes handled (`npm test` runs it).
+- Shape of gen-305 vs gen-105: MORE kill-hungry (killBase +66%, killBonus
+  99, comboKill 25, press refund 113 / floor 182, focus fire 117) and MUCH
+  less cautious (threatCostFactor pinned at the range FLOOR 0.25→0.082;
+  mpValue barely moved), while objective seeking came back UP (nexus 19→39,
+  HG seek 4→19, scanner 12→34 near its ceiling). Tower weights never moved in
+  200 gens. Ranges were widened on the saturated side (killBonus max 160,
+  pressRefund max 180, scanner max 50, killBase max 160, threatCost min 0.02).
+- **CAVEAT — self-play degeneracy**: mirror self-play rewards whichever side
+  closes first (the timid mirror loses on composite points), so
+  threatCostFactor→floor is expected in self-play and NOT proof it's better
+  vs humans. Gauntlet it (below) and playtest it before trusting the
+  recklessness. `deathRiskFactor_v4` is now trainable as the other safety
+  valve.
+- **11 NEW trainable knobs** (all live every match, routed via `tuneW()`):
+  killOutputTurns, woundedPileOn, reviveBase, ccOutputFactor,
+  statusSetupFactor, buffStageFactor, deathRiskFactor, jointSearchDiscount,
+  healSafetyDiscount (noMult fractions), towerLowHpPush (probe `tower`),
+  moveHighGroundMelee (probe `height` = board has any elevated tile).
+  towerBase/towerDefend now carry probe `tower` too. 28 keys total.
+- **Strength test baseline toggle**: dashboard buttons / console
+  `_ewSetStrengthBaseline('prev'|'default')` (persisted). `prev` = gauntlet
+  the shipped champion against the gen-105 values it replaced — the ONLY way
+  to verify an adoption after the defaults have moved (with `default` the two
+  sides are identical → the panel warns). Export carries `baselineSource` +
+  the baseline weight table. **The gen-305 adoption has NOT been gauntleted
+  yet** — run Strength Test with Baseline: previous champion (or
+  `node train_headless.js --lab strength --baseline prev`).
+
+### Win-condition telemetry ("which win condition carries the game?")
+- Training, Strength and Balance stats all tally `state._winCondition` +
+  rounds per match: `stats.winConds[cond] = {n, rounds}`; the three
+  dashboards render a **How Matches End** bar group; the training export has
+  `_meta.winConditions` and each experiment carries `winConds.{high,low}`
+  (did HIGH win by racing the Cube while LOW wiped?); strength splits
+  champion-wins-by vs baseline-wins-by; Balance `matchLog` rows gain `wc`.
+- First data (headless, arena, map rotation, gen-305 mirror teams, 149 + 11
+  matches): **arena_composite 93 %, sudden_death 5 %, wipeout 3 %, Cube 0 %,
+  Keys 0 %, Nexus dominance 0 %**, avg 16 rounds = the 15-round limit. In
+  AI-vs-AI arena the game is decided by the clock composite (kills ×15,
+  tower-dmg %, Keys ×35, nexus rounds ×6), essentially never by an objective
+  finish. Consequences: (1) the tower/HG/nexus weights are being graded by
+  their composite POINTS, not by closing games — fine if that is the arena
+  you want, but "balanced win conditions" needs the objectives to be
+  reachable in 15 rounds for an AI (Cube HP / Key spawn timing / nexus hold
+  requirements) or a longer limit; (2) TDM/clash/gauntlet training never
+  exercises them at all. Re-run Balance Lab per mode and read the new group
+  before touching numbers.
+
+### Faster sims: the SIM CLOCK + no-render + parallel headless runner
+- Measured here (4-core sandbox, swiftshader): real clock 7.3 matches/min per
+  tab (≈ the user's 7–8/min from the gen-305 timestamps) → **virtual clock
+  37 matches/min per tab (~5×)**, 2 tabs = 74/min, 0 AI-watchdog fires, 0
+  page errors. Where the time went: not the AI — ~300 nested `setTimeout`
+  links per match, each ≥4 ms (Chrome's nested-timer clamp) even at ×64.
+- **battle.js SIM CLOCK** (search `SIM CLOCK`): while `window.EW_SIM_VIRTUAL_CLOCK`
+  and a turbo auto-sim are on, `window.setTimeout/clearTimeout` route into a
+  due-time-ordered queue drained back-to-back via MessageChannel (8 ms
+  slices, `EW_SIM_CLOCK_BUDGET_MS`). Relative order is preserved exactly;
+  only idle gaps vanish. `setInterval`/rAF stay real. Raw timers stay at
+  `window._ewRawSetTimeout`; `_ewSimClockStats()` for inspection. map.js
+  auto-enables it on entering the three labs (`_ewLabSimClockDefault`) and
+  hands the flag back on leaving; set `EW_SIM_VIRTUAL_CLOCK = false` in the
+  console before launching to keep real time (watchable board).
+  `state._aiSafetyFires` counts 3 s watchdog rescues — non-zero under the
+  virtual clock would mean a real-time gap in the action chain (none seen).
+- **No render**: `window.EW_SIM_NO_RENDER = true` → three-renderer.js
+  renderFrame skips every GPU pass (1 fps bookkeeping tick so tweens retire)
+  and state.js renderIfDirty coalesces battle-phase DOM renders to one per
+  500 ms (`EW_SIM_DOM_RENDER_MS`). Gameplay never needed frames — the AI
+  reads state. Opt-in; the runner sets it.
+- **`node train_headless.js`** (repo tooling; `--lab train|strength|balance
+  --workers N --minutes M --mode --map --weights file.json --baseline prev`):
+  starts the server if needed, N Chromium contexts (own localStorage each),
+  serves the REPO copies of the R2 scripts (asset_cache `LOCAL_ASSETS`, so
+  local edits are what runs; `LOCAL_ASSETS=none` for the live build), shards
+  the 28 weights across workers (`window.EW_TRAIN_KEYS`), polls
+  `_ewTrainSnapshot()`/`_ewStrengthSnapshot()`, writes
+  `shots/train/<stamp>/worker-N.json` + **`merged-weights.json`** (Export
+  format — Import it in the Training panel or `--weights` it into the next
+  run). Sharded coordinate descent: every worker tests its keys against the
+  same starting champion, merged at the end. Hooks added for it:
+  map.js `_ewSimSetup(mode,map)`, battle.js `_ewTrainImportWeights`,
+  `_applyImportedWeights` (shared with the Import button).
+- asset_cache.js gained an **npm mirror** fallback (three r128 build +
+  examples, socket.io client, React UMD, THREE.MeshLine from node_modules)
+  used when a CDN fetch fails or `ASSET_CACHE_NPM_MIRROR=1`; install with
+  `npm install --no-save three@0.128.0 react@18.3.1 react-dom@18.3.1
+  three.meshline`. (This sandbox's egress blocks every CDN, which is how it
+  got tested.)
+
+### Next
+1. Gauntlet gen-305: `node train_headless.js --lab strength --baseline prev
+   --workers 4 --minutes 30` (or the in-browser Strength Test with Baseline:
+   previous champion). Ship only if Wilson-95 low > 50 %.
+2. Read How-Matches-End per mode in Balance Lab before any balance change.
+3. Long headless training pass on the 28 keys from gen-305 (`--weights`).
+
 ## 🚪 THE CROSSING — the opening cinematic arrives through a door (2026-09-06, LATEST) — three-renderer.js, battle.js, index.html
 The 2026-08 intro marched both teams up a "grand staircase out of the void"
 built from one level BELOW the spawn-zone lip, 0.5–1.6 tiles out, with a

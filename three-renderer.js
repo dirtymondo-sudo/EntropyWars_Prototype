@@ -27114,11 +27114,24 @@ const ThreeRenderer = (function () {
            time-based and finish on the next processed frame. This plus the
            frozen mixers is where the balance-lab / AI-training speedup comes
            from. Override with window.EW_TURBO_FRAME_MS (0 disables). */
+        var _simNoDraw = false;
         if (state.devAutoSim && !state._devSimShowAnims) {
-            var _turboMs = (window.EW_TURBO_FRAME_MS == null) ? 200 : window.EW_TURBO_FRAME_MS;
-            if (_turboMs > 0) {
+            /* Headless labs (window.EW_SIM_NO_RENDER, set by train_headless.js
+               or from the console): the engine never needs a drawn frame —
+               gameplay is timer-driven and the AI reads state, not pixels.
+               Keep a slow bookkeeping tick (1 fps) so time-based tweens
+               retire and hasActiveAnims() stays truthful, but skip every GPU
+               pass below (post, scene draw, CSS2D plates). */
+            if (window.EW_SIM_NO_RENDER) {
                 if (_frameNow < _turboNextDue) return;
-                _turboNextDue = _frameNow + _turboMs;
+                _turboNextDue = _frameNow + 1000;
+                _simNoDraw = true;
+            } else {
+                var _turboMs = (window.EW_TURBO_FRAME_MS == null) ? 200 : window.EW_TURBO_FRAME_MS;
+                if (_turboMs > 0) {
+                    if (_frameNow < _turboNextDue) return;
+                    _turboNextDue = _frameNow + _turboMs;
+                }
             }
         }
 
@@ -27346,7 +27359,9 @@ const ThreeRenderer = (function () {
             }
             _shadowMotion = false;
 
-            if (_ss.active) {
+            if (_simNoDraw) {
+                /* headless lab tick: bookkeeping only, no draw */
+            } else if (_ss.active) {
                 /* Splitscreen cinematic owns the frame: one scissored render
                    per pane camera. Post/CSS2D are bypassed — their overlays
                    are hidden for the duration (see showSplitscreen). */

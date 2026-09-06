@@ -4467,7 +4467,27 @@
         }
         const _ewStateChangeEvent = new Event('ew-state-change');
 
+        // Headless labs (window.EW_SIM_NO_RENDER): the DOM HUD/board/log
+        // re-render after every AI action is pure cost when nobody is looking
+        // — coalesce battle-phase renders to one per EW_SIM_DOM_RENDER_MS
+        // (default 500 ms; dirty flags accumulate, so nothing is lost, the
+        // trailing render catches up). Builder/transition phases render
+        // normally. Uses the raw timer so the virtual sim clock can't collapse
+        // the gap to zero.
+        let _hlRenderLast = 0, _hlRenderTrail = 0;
         function renderIfDirty() {
+            if (window.EW_SIM_NO_RENDER && state.devAutoSim && !state._devSimShowAnims && state.phase === 'battle') {
+                const now = performance.now();
+                const gap = (window.EW_SIM_DOM_RENDER_MS > 0) ? window.EW_SIM_DOM_RENDER_MS : 500;
+                if (now - _hlRenderLast < gap) {
+                    if (!_hlRenderTrail) {
+                        const st = window._ewRawSetTimeout || window.setTimeout;
+                        _hlRenderTrail = st(() => { _hlRenderTrail = 0; renderIfDirty(); }, gap);
+                    }
+                    return;
+                }
+                _hlRenderLast = now;
+            }
             if (dirty.screenMode) {
                 dirty.screenMode = false;
                 renderScreenMode();

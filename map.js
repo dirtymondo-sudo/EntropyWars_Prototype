@@ -2442,6 +2442,28 @@
             } catch (e) {}
         };
 
+        // Headless runner hook (train_headless.js): pick the lab mode/map
+        // without the Settings DOM (the selects only exist while Settings is
+        // open). Same values the dropdowns offer.
+        window._ewSimSetup = function (mode, map) {
+            if (mode) _trainModeSetting = String(mode);
+            if (map) _trainMapSetting = String(map);
+            return { mode: _trainModeSetting, map: _trainMapSetting };
+        };
+
+        /* SIM CLOCK default for the labs (2026-09-06): battle.js's virtual
+           timer queue drains the sim's setTimeout chains back-to-back (≈4-5×
+           more matches per minute per tab, and no more 4 ms nested-timer
+           clamp). Labs turn it on unless the console already decided
+           (window.EW_SIM_VIRTUAL_CLOCK = false keeps real time, e.g. to watch
+           the board). Manual Dev Sim is untouched. */
+        function _ewLabSimClockDefault() {
+            if (window.EW_SIM_VIRTUAL_CLOCK === undefined) {
+                window.EW_SIM_VIRTUAL_CLOCK = true;
+                window._ewSimClockAuto = true;
+            }
+        }
+
         window._launchAITraining = function() {
             _trainModeSetting = document.getElementById('mmTrainMode')?.value || 'arena';
             _trainMapSetting = document.getElementById('mmTrainMap')?.value || 'rotate';
@@ -2953,6 +2975,10 @@
                 _aiTrainingMode = false;
                 _balanceSimMode = false;
                 _strengthTestMode = false;
+                // The labs auto-enable the virtual sim clock (below); leaving
+                // them hands the choice back so a later manual Dev Sim stays
+                // watchable. An explicit console setting is never touched.
+                if (window._ewSimClockAuto) { window.EW_SIM_VIRTUAL_CLOCK = undefined; window._ewSimClockAuto = false; }
                 // Leaving sim land: give the user back their camera/animation
                 // preferences (the sim launchers force both off by default).
                 if (typeof _restoreSimVisualDefaults === 'function') _restoreSimVisualDefaults();
@@ -2969,6 +2995,7 @@
                 _strengthTestMode = false;
                 state.devAutoSim = true;
                 state.devSimSpeed = 16;   // turbo: renderer + waits are gated in dev-sim
+                _ewLabSimClockDefault();
                 _applySimVisualDefaults();  // camera follow + anims OFF by default in sims
 
                 // Mirror-team A/B needs ONE consistent mode per run — mode
@@ -3010,6 +3037,7 @@
                 _strengthTestMode = false;
                 state.devAutoSim = true;
                 state.devSimSpeed = 16;   // turbo: renderer + waits are gated in dev-sim
+                _ewLabSimClockDefault();
                 _applySimVisualDefaults();  // camera follow + anims OFF by default in sims
 
                 _simApplyModeAndMap();
@@ -3051,6 +3079,7 @@
                 _strengthTestMode = true;
                 state.devAutoSim = true;
                 state.devSimSpeed = 16;
+                _ewLabSimClockDefault();
                 _applySimVisualDefaults();  // camera follow + anims OFF by default in sims
 
                 // Same coercion as training: the gauntlet needs one mode.

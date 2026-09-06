@@ -118,13 +118,13 @@
     // baseline all apply. The values here stay the canonical defaults.
     const AI_TUNE = {
         // ── value model ──
-        killBase: 70,               // flat premium for removing a unit (on top of its denied output)
+        killBase: 116.563,          // flat premium for removing a unit (on top of its denied output) — gen-305 champion (was 70)
         killOutputTurns: 1.6,       // turns of the victim's output a kill denies (they'd respawn/act ~1.6 more times near-term)
-        supportKillPremium: 130,    // extra for killing a healer/reviver kit
-        mpValuePerPoint: 0.5,       // HP-equivalent value of 1 MP (opportunity cost of casting; 0.9 caused MP hoarding — 59% of sim units ended matches >90% MP)
-        pressActionValue: 150,      // floor value of the free action a press refund grants
+        supportKillPremium: 128.125,// extra for killing a healer/reviver kit — gen-305 (was 130)
+        mpValuePerPoint: 0.529,     // HP-equivalent value of 1 MP (opportunity cost of casting; 0.9 caused MP hoarding — 59% of sim units ended matches >90% MP) — gen-305 (was 0.5)
+        pressActionValue: 181.563,  // floor value of the free action a press refund grants — gen-305 (was 150)
         overkillWaste: 1.0,         // damage past the target's effective HP is worth 0 (cap factor)
-        focusCommitBonus: 90,       // bonus for hitting the team's shared focus target
+        focusCommitBonus: 117.5,    // bonus for hitting the team's shared focus target — gen-305 (was 90)
         woundedPileOn: 0.35,        // × missing HP added to target priority (finish jobs)
         healSafetyDiscount: 0.45,   // heal value multiplier when the target is out of enemy reach
         healNoEnemyDiscount: 0.35,  // heal value multiplier when no enemy is even visible
@@ -135,7 +135,7 @@
         buffTurnsHorizon: 2.2,      // expected turns a buff stays relevant
         delayedEscapeStatic: 0.35,  // P(target still in blast) for ground-tile delayed casts
         delayedEscapeTracking: 0.75,// P for unit-tracking delayed marks
-        threatCostFactor: 0.25,     // fraction of expected incoming damage charged to a tile (0.35 made both AIs too timid to ever close — mutual standoff)
+        threatCostFactor: 0.082,    // fraction of expected incoming damage charged to a tile (0.35 made both AIs too timid to ever close — mutual standoff) — gen-305 pinned this at the range floor (0.08): self-play rewards the side that closes
         deathRiskFactor: 0.9,       // × own kill-value charged when a tile's threat covers our whole HP bar
         jointSearchDiscount: 0.92,  // move-then-act value discount vs acting right now
         // ── kept legacy knobs (movement / modes / items) ──
@@ -494,7 +494,7 @@
         const critP = (opts.canCrit && typeof g.getCritChance === 'function')
             ? (g.getCritChance(unit) || 0) : 0;
         const landP = opts.landP != null ? opts.landP : 1;
-        const refund = Math.max(tuneW(g, 'pressActionValue'), (wght(g, 'pressRefundValue_v1', 96) || 0) * 1.5);
+        const refund = Math.max(tuneW(g, 'pressActionValue'), (wght(g, 'pressRefundValue_v1', 113) || 0) * 1.5);
         const pressP = Math.min(1, landP * (tier > 0 ? 1 : critP));
         let v = 0;
         if (pressP > 0) v += pressP * (alreadyPressed ? refund * 0.15 : refund);
@@ -521,6 +521,20 @@
         supportKillPremium: 'supportKillPremium_v4',
         pressActionValue:   'pressActionValue_v4',
         focusCommitBonus:   'focusCommitBonus_v4',
+        // gen-305 audit (2026-09-06): the next tier of live, every-match
+        // value-model knobs. Each has exactly the call sites listed in
+        // ai-weights.test.js — a knob with no live read is not trainable.
+        killOutputTurns:    'killOutputTurns_v4',
+        woundedPileOn:      'woundedPileOn_v4',
+        reviveBase:         'reviveBase_v4',
+        ccOutputFactor:     'ccOutputFactor_v4',
+        statusSetupFactor:  'statusSetupFactor_v4',
+        buffStageFactor:    'buffStageFactor_v4',
+        deathRiskFactor:    'deathRiskFactor_v4',
+        jointSearchDiscount:'jointSearchDiscount_v4',
+        healSafetyDiscount: 'healSafetyDiscount_v4',
+        towerLowHpPush:     'towerLowHpPush_v4',
+        moveHighGroundMelee:'moveHighGroundMelee_v4',
     };
     function tuneW(g, key) {
         const wk = _TUNE_TRAINED_KEYS[key];
@@ -571,7 +585,7 @@
     // Value of REMOVING tg from the board (the kill premium, added on top
     // of the damage that does it).
     function killValue(g, unit, tg, v) {
-        let val = tuneW(g, 'killBase') + AI_TUNE.killOutputTurns * unitThreatOutput(g, tg, unit);
+        let val = tuneW(g, 'killBase') + tuneW(g, 'killOutputTurns') * unitThreatOutput(g, tg, unit);
         if (unitIsHealerKit(tg)) val += tuneW(g, 'supportKillPremium');
         val += Math.min(150, (tg.intStat || tg.int || 0) * 1.2);   // big casters
         if ((tg.hourglasses || 0) > 0) val += AI_TUNE.hourglassTargetBonus + tg.hourglasses * 12;
@@ -580,7 +594,7 @@
             const mode = (typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null);
             if (mode && (mode.id === 'tdm' || mode.id === 'ffa' || mode.id === 'arena')) val += 60;
         } catch (e) {}
-        val += wght(g, 'killBonusScore_v1', 97);
+        val += wght(g, 'killBonusScore_v1', 99);
         return val;
     }
 
@@ -597,7 +611,7 @@
         let reality = AI_TUNE.healNoEnemyDiscount;
         const enemies = (v && v.visibleEnemies) || [];
         if (enemies.length) {
-            reality = AI_TUNE.healSafetyDiscount;
+            reality = tuneW(g, 'healSafetyDiscount');
             for (const e of enemies) {
                 let er = 1, em = 2;
                 try { er = g.getEffectiveRange(e) || (e.range || 1); } catch (q) {}
@@ -619,7 +633,7 @@
         const turns = Math.min(dur || 1, 2);
         const notYetActed = (tg.ap || 0) > 0 ? 1 : 0.45;   // denying a spent unit is worth less
         if (HARD_CC.has(id)) {
-            let val = AI_TUNE.ccOutputFactor * output * turns * notYetActed;
+            let val = tuneW(g, 'ccOutputFactor') * output * turns * notYetActed;
             if (id === 'stagger') val *= 0.45;             // partial denial
             if (unitIsHealerKit(tg)) val += 120;
             return val;
@@ -682,7 +696,7 @@
                 try { em = g.getEffectiveMove(mate) || (mate.move || 2); } catch (e) {}
                 if (_dist(g, mate.x, mate.y, mate.z, tg) > em + er + 1) continue;
                 const payoff = estDamage(g, mate, tg, sp);
-                total += AI_TUNE.statusSetupFactor * payoff * ((sp.bonusVsStatus.mult || 1.5) - 1);
+                total += tuneW(g, 'statusSetupFactor') * payoff * ((sp.bonusVsStatus.mult || 1.5) - 1);
                 break;   // one payoff per teammate is enough credit
             }
         }
@@ -744,7 +758,7 @@
                 // only credit the axis the recipient actually uses
                 const physKit = (tg.atk || 0) >= (tg.intStat || tg.int || 0);
                 const axisFits = (k === 'atk') === physKit;
-                val += stages * AI_TUNE.buffStageFactor * output * horizon * (axisFits ? 1 : 0.25);
+                val += stages * tuneW(g, 'buffStageFactor') * output * horizon * (axisFits ? 1 : 0.25);
             } else if (k === 'def' || k === 'mdef') {
                 // one stage = 20 flat armor since the rework (was 9) — ~2.2×
                 // the old per-stage soak, priced accordingly.
@@ -777,7 +791,7 @@
             priority += 40;
             if (target.hp <= priorDmg + 20) priority += 60;
         }
-        priority += AI_TUNE.woundedPileOn * Math.max(0, (target.maxHp || 0) - (target.hp || 0)) * 0.35;
+        priority += tuneW(g, 'woundedPileOn') * Math.max(0, (target.maxHp || 0) - (target.hp || 0)) * 0.35;
         const hpPct = target.hp / (target.maxHp || 1);
         if (hpPct < 0.25) priority += 50;
         else if (hpPct < 0.5) priority += 25;
@@ -919,8 +933,8 @@
         let cost = t.totalDmg * tuneW(g, 'threatCostFactor');
         const mine = effHp(unit);
         if (t.totalDmg >= mine && t.count >= 1 && mine > 0) {
-            cost += AI_TUNE.deathRiskFactor *
-                (tuneW(g, 'killBase') + AI_TUNE.killOutputTurns * unitThreatOutput(g, unit, v.closestEnemy || unit));
+            cost += tuneW(g, 'deathRiskFactor') *
+                (tuneW(g, 'killBase') + tuneW(g, 'killOutputTurns') * unitThreatOutput(g, unit, v.closestEnemy || unit));
         }
         // Fragile units fear crowded pockets more.
         const hpFrac = unit.hp / (unit.maxHp || 1);
@@ -1463,7 +1477,7 @@
         // damage on the objective competitive with chip damage on units.
         let score = estDmg + wght(g, 'towerBaseBonus_v1', 39) * 3;
 
-        if (tower.hp <= estDmg * 3) score += AI_TUNE.towerLowHpPush * 3;
+        if (tower.hp <= estDmg * 3) score += tuneW(g, 'towerLowHpPush') * 3;
         else if (tower.hp <= tower.maxHp * 0.5) score += AI_TUNE.towerMidHpPush;
 
         const groundEnemies = v.visibleEnemies.filter(e =>
@@ -1545,7 +1559,7 @@
                 h.carriedBy === null && !h.visibleTo[unit.player]
             ).length;
             if (unrevHG > 0) {
-                let scanScore = wght(g, 'scannerPriority_v1', 12) * 3 + unrevHG * 20;
+                let scanScore = wght(g, 'scannerPriority_v1', 34) * 3 + unrevHG * 20;
                 const round = g.state.round || 0;
                 if (round <= 10) scanScore += 25;
                 out.push({ type: 'item', item: 'scanner', score: scanScore });
@@ -1697,7 +1711,7 @@
                 };
                 const est = Math.round(estDamage(g, unit, comboTarget, pseudo) * (synergy.mult || 1));
                 score = Math.min(est, effHp(comboTarget));
-                if (est >= effHp(comboTarget)) score += killValue(g, unit, comboTarget, v) + wght(g, 'comboKillBonus_v1', 14);
+                if (est >= effHp(comboTarget)) score += killValue(g, unit, comboTarget, v) + wght(g, 'comboKillBonus_v1', 25);
                 score += pressEV(g, unit, comboTarget, { spellType: combo.spellType || null });
             } else {
                 score = ((combo.heal || 0)) * 1.0 * (synergy.mult || 1);
@@ -1705,7 +1719,7 @@
             if (combo.statusEffects?.length && comboTarget) {
                 score += statusRiderValue(g, unit, comboTarget, combo, v);
             }
-            if (synergy.mult > 1) score += wght(g, 'comboSynergyBonus_v1', 24);
+            if (synergy.mult > 1) score += wght(g, 'comboSynergyBonus_v1', 26);
             // The partner spends 1 AP too — charge their opportunity cost.
             score -= 0.35 * unitThreatOutput(g, partner, comboTarget || unit);
 
@@ -2084,7 +2098,7 @@
         }
         if (kind === 'revive') {
             if (!target) return 0;
-            return AI_TUNE.reviveBase + 0.25 * (target.maxHp || 400);
+            return tuneW(g, 'reviveBase') + 0.25 * (target.maxHp || 400);
         }
         if (kind === 'raiseDead') {
             if (!target) return 0;
@@ -2099,7 +2113,7 @@
             if (gain < 8) return 0;
             let reality = AI_TUNE.healNoEnemyDiscount;
             if (v.visibleEnemies.some(e => _dist(g, target.x, target.y, target.z, e) <= 8)) reality = 1;
-            else if (v.visibleEnemies.length) reality = AI_TUNE.healSafetyDiscount;
+            else if (v.visibleEnemies.length) reality = tuneW(g, 'healSafetyDiscount');
             return gain * 0.9 * reality;
         }
         if (kind === 'aoeShield') {
@@ -2625,7 +2639,7 @@
                     if (t.x === unit.x && t.y === unit.y) continue;
                     let gain = curCost - tileDangerCost(g, unit, v, t.x, t.y, t.z);
                     gain += tileH(g, t) * AI_TUNE.moveRetreatHeight * 0.5;
-                    if (recent.has(g.posKey(t.x, t.y))) gain += wght(g, 'antiOscillationPen_v1', -2) * 10;
+                    if (recent.has(g.posKey(t.x, t.y))) gain += wght(g, 'antiOscillationPen_v1', -4) * 10;
                     if (gain > bestGain) { bestGain = gain; best = t; }
                 }
                 // score = danger delta; the central danger charge then makes
@@ -2718,8 +2732,8 @@
                 }
             }
             if (bestShot <= 0) continue;
-            let score = bestShot * AI_TUNE.jointSearchDiscount;
-            if (recent.has(g.posKey(t.x, t.y))) score += wght(g, 'antiOscillationPen_v1', -2) * 10;
+            let score = bestShot * tuneW(g, 'jointSearchDiscount');
+            if (recent.has(g.posKey(t.x, t.y))) score += wght(g, 'antiOscillationPen_v1', -4) * 10;
             // NOTE: end-tile danger is charged centrally (aiTakeTurn), so a
             // tile that opens a big shot but eats the whole enemy team's
             // focus loses to a safer shooting tile automatically.
@@ -2888,7 +2902,7 @@
             const nearest = v.visibleHourglasses.slice().sort((a, b) =>
                 (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y)) -
                 (Math.abs(b.x - unit.x) + Math.abs(b.y - unit.y)))[0];
-            let s2 = 110 + wght(g, 'hgSeekPriority_v1', 4) * 6;
+            let s2 = 110 + wght(g, 'hgSeekPriority_v1', 19) * 6;
             if (Math.abs(nearest.x - unit.x) + Math.abs(nearest.y - unit.y) <= 4) s2 += 30;
             if (ws.phase === 'hg_losing') s2 += 50;
             goals.push({ x: nearest.x, y: nearest.y, score: s2, reason: 'approach_hg' });
@@ -2952,7 +2966,7 @@
                 if (d < bestNexDist) { bestNexDist = d; bestNex = nex; bestNexCenter = { x: cx, y: cy }; }
             }
             if (bestNex && bestNexDist <= 10) {
-                let s = wght(g, 'nexusCapBonus_v1', 19) * 4;
+                let s = wght(g, 'nexusCapBonus_v1', 39) * 4;
                 const ownedCount = Object.keys(g.state.nexusPoints).filter(f =>
                     g.state.nexusPoints[f]?.owner === unit.player).length;
                 s += ownedCount * 20;
@@ -3221,7 +3235,7 @@
                 }
                 score -= v.threatFn(tile.x, tile.y, tile.z).totalDmg * 0.4;
                 score -= aiHazardPenaltyAt(unit, tile.x, tile.y) * 2;
-                if ((unit._aiRecentTiles || []).includes(g.posKey(tile.x, tile.y))) score += wght(g, 'antiOscillationPen_v1', -2) * 10;
+                if ((unit._aiRecentTiles || []).includes(g.posKey(tile.x, tile.y))) score += wght(g, 'antiOscillationPen_v1', -4) * 10;
                 if (score > bestScore) { bestScore = score; best = tile; }
             }
             return best;
@@ -3266,9 +3280,9 @@
 
             if (typeof g.getHeightAt === 'function') {
                 const th = tileH(g, tile);
-                score += Math.min(th, 4) * (isRanged ? AI_TUNE.moveHighGroundRanged : AI_TUNE.moveHighGroundMelee);
+                score += Math.min(th, 4) * (isRanged ? AI_TUNE.moveHighGroundRanged : tuneW(g, 'moveHighGroundMelee'));
             }
-            if ((unit._aiRecentTiles || []).includes(g.posKey(tile.x, tile.y))) score += wght(g, 'antiOscillationPen_v1', -2) * 10;
+            if ((unit._aiRecentTiles || []).includes(g.posKey(tile.x, tile.y))) score += wght(g, 'antiOscillationPen_v1', -4) * 10;
             if (score > bestScore) { bestScore = score; best = tile; }
         }
         return best;
@@ -3426,7 +3440,7 @@
         const distToCenter = Math.abs(unit.x - zoneCenterX) + Math.abs(unit.y - zoneCenterY);
 
         if (inZone && nex.owner !== unit.player) {
-            let score = wght(g, 'nexusCapBonus_v1', 19) * 5;
+            let score = wght(g, 'nexusCapBonus_v1', 39) * 5;
             const mpMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
             if (mpMode && (mpMode.id === 'domination' || mpMode.id === 'arena')) score += 90;
             if (mpMode && mpMode.id === 'arena') {

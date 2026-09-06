@@ -26723,6 +26723,98 @@
             return Math.max(min, Math.round((Number(ms) || 0) / getDevSimSpeedMultiplier()));
         }
 
+        /* ═══════════ SIM CLOCK — discrete-event timers for the labs ═══════════
+           (2026-09-06) The auto-sim is a chain of hundreds of nested
+           setTimeouts per match (telegraph → action → completion → wait →
+           next unit …). Even at ×64 every link still costs real wall-clock:
+           Chrome clamps nested timers to ≥4 ms, so a ~7 s training match is
+           ~90 % waiting and ~10 % thinking. With the sim clock ON, timers
+           created while a turbo auto-sim runs go into a due-time-ordered
+           queue that is drained back-to-back (virtual time jumps to each
+           timer's due instead of waiting for it). Relative ORDER is
+           preserved exactly — a 600 ms completion still fires after a 2 ms
+           telegraph — so gameplay sequencing is unchanged; only the idle gaps
+           vanish. setInterval and rAF stay real (watchdogs, match clock,
+           dashboards). Opt-in: window.EW_SIM_VIRTUAL_CLOCK = true (the
+           headless runner sets it; the in-browser labs can too — the board
+           just stops being watchable). Turn it off mid-run and pending
+           timers are handed back to the real scheduler in order. */
+        const _simClock = { q: [], seq: 0, now: 0, pumping: false, scheduled: false, chan: null, fired: 0 };
+        const _rawSetTimeout = window.setTimeout.bind(window);
+        const _rawClearTimeout = window.clearTimeout.bind(window);
+        window._ewRawSetTimeout = _rawSetTimeout;
+        window._ewRawClearTimeout = _rawClearTimeout;
+        function _simClockActive() {
+            if (!window.EW_SIM_VIRTUAL_CLOCK) return false;
+            if (typeof state === 'undefined' || !state || !state.devAutoSim || state._devSimShowAnims) return false;
+            try { if (typeof isOnlineMatch === 'function' && isOnlineMatch()) return false; } catch (e) {}
+            return true;
+        }
+        function _simClockSchedulePump() {
+            if (_simClock.pumping || _simClock.scheduled) return;
+            _simClock.scheduled = true;
+            if (!_simClock.chan) {
+                // MessageChannel = a macrotask with no nesting clamp (unlike
+                // setTimeout(0)), so each pump slice yields to microtasks /
+                // rendering / input and comes straight back.
+                _simClock.chan = new MessageChannel();
+                _simClock.chan.port1.onmessage = _simClockPump;
+            }
+            _simClock.chan.port2.postMessage(0);
+        }
+        function _simClockFlushToReal() {
+            const items = _simClock.q.splice(0);
+            for (const it of items) {
+                const delay = Math.max(0, it.due - _simClock.now);
+                _rawSetTimeout(() => { try { it.fn.apply(window, it.args); } catch (e) { console.error('[SimClock] flushed timer threw:', e); } }, delay);
+            }
+        }
+        function _simClockPump() {
+            _simClock.scheduled = false;
+            if (_simClock.pumping) return;
+            _simClock.pumping = true;
+            const budget = (window.EW_SIM_CLOCK_BUDGET_MS > 0) ? window.EW_SIM_CLOCK_BUDGET_MS : 8;
+            const start = performance.now();
+            try {
+                while (_simClock.q.length) {
+                    if (!_simClockActive()) { _simClockFlushToReal(); break; }
+                    const item = _simClock.q.shift();
+                    if (item.due > _simClock.now) _simClock.now = item.due;
+                    _simClock.fired++;
+                    try { item.fn.apply(window, item.args); }
+                    catch (e) { console.error('[SimClock] timer threw:', e); }
+                    if (performance.now() - start > budget) break;
+                }
+            } finally {
+                _simClock.pumping = false;
+            }
+            if (_simClock.q.length) _simClockSchedulePump();
+        }
+        window.setTimeout = function (fn, ms) {
+            if (typeof fn !== 'function' || !_simClockActive()) return _rawSetTimeout.apply(window, arguments);
+            const args = Array.prototype.slice.call(arguments, 2);
+            const due = _simClock.now + Math.max(0, Number(ms) || 0);
+            const seq = ++_simClock.seq;
+            const item = { id: -seq, due, seq, fn, args };
+            let lo = 0, hi = _simClock.q.length;
+            while (lo < hi) {
+                const mid = (lo + hi) >> 1, m = _simClock.q[mid];
+                if (m.due < due || (m.due === due && m.seq < seq)) lo = mid + 1; else hi = mid;
+            }
+            _simClock.q.splice(lo, 0, item);
+            _simClockSchedulePump();
+            return item.id;
+        };
+        window.clearTimeout = function (id) {
+            if (typeof id === 'number' && id < 0) {
+                const i = _simClock.q.findIndex(t => t.id === id);
+                if (i >= 0) _simClock.q.splice(i, 1);
+                return;
+            }
+            return _rawClearTimeout(id);
+        };
+        window._ewSimClockStats = () => ({ active: _simClockActive(), pending: _simClock.q.length, fired: _simClock.fired, virtualNow: _simClock.now });
+
         function setDevSimSpeed(speed) {
             // x8/x16 are the turbo tiers the AI-Training / Balance-Lab / Strength-Test
             // launchers use (effective ×32 / ×64 with the auto-sim multiplier).
@@ -35379,6 +35471,10 @@
                 if (state.aiThinking && state.phase === 'battle' && !state.winner) {
 
                     if (_blitzTurnGen !== safetyGen) return;
+                    // Diagnostic: how often the 3 s watchdog had to unstick an
+                    // AI unit (labs read it via _ewTrainSnapshot; a non-zero
+                    // count under the virtual sim clock means a real-time gap).
+                    state._aiSafetyFires = (state._aiSafetyFires || 0) + 1;
                     state.aiThinking = false;
                     state.actionMode = null;
                     state.comboPartner = null;
@@ -35447,30 +35543,96 @@
         const AI_WEIGHT_DEFAULTS = {
             // NOTE: these defaults are also the BASELINE side of the
             // strength-test gauntlet — adopting a new export moves that goalpost.
+            // Every entry keeps the PREVIOUS champion in `prev` so the gauntlet
+            // can still measure "this adoption vs the last one" after the
+            // defaults move (Strength Test → Baseline: previous champion, or
+            // window._ewSetStrengthBaseline('prev')).
+            //
+            // 2026-09-06: values = the gen-305 training champion (17,832
+            // matches, 18 passes, exported ewaiweightsgen305.json); `prev` =
+            // the gen-105 champion these replaced. Two keys never moved in
+            // 200 generations (towerBaseBonus, towerDefendBonus). Several
+            // landed ON a range edge (threatCostFactor at its floor,
+            // scannerPriority/pressRefundValue/killBonusScore near their
+            // ceilings) — the ranges below were widened on that side so the
+            // next run can keep exploring instead of saturating.
 
             // ── kept schema-12 keys (live code paths in ai.js v4) ──
-            killBonusScore_v1:        { value: 97.188, min: 10,  max: 120,  label: 'Kill Bonus', desc: 'Flat score bonus added to attacks that would kill (on top of the kill value model)' },
-            comboSynergyBonus_v1:     { value: 23.953, min: 4,   max: 40,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
-            comboKillBonus_v1:        { value: 13.688, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
-            pressRefundValue_v1:      { value: 96.379, min: 10,  max: 140,  label: 'Press: Refund Value', desc: 'Feeds the expected press-refund value (×1.5, floored at pressActionValue_v4) for actions likely to hit a weakness/crit' },
-            engageAdvantage_v1:       { value: -0.45, min: -1.0, max: 0.3,  noMult: true, label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
-            towerBaseBonus_v1:       { value: 39.112, min: 10,   max: 60,   label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
-            towerDefendBonus_v1:     { value: 47.899, min: 10,   max: 55,   label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
-            hgSeekPriority_v1:       { value: 4,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'Movement pull toward visible loose hourglasses' },
-            scannerPriority_v1:      { value: 12.032, min: 5,   max: 35,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
-            antiOscillationPen_v1:   { value: -1.663, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
-            nexusCapBonus_v1:        { value: 19.469, min: 10,  max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
+            killBonusScore_v1:        { value: 99.375, prev: 97.188, min: 10,  max: 160,  label: 'Kill Bonus', desc: 'Flat score bonus added to attacks that would kill (on top of the kill value model)' },
+            comboSynergyBonus_v1:     { value: 26.285, prev: 23.953, min: 4,   max: 40,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
+            comboKillBonus_v1:        { value: 25,     prev: 13.688, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
+            pressRefundValue_v1:      { value: 112.899, prev: 96.379, min: 10, max: 180,  label: 'Press: Refund Value', desc: 'Feeds the expected press-refund value (×1.5, floored at pressActionValue_v4) for actions likely to hit a weakness/crit' },
+            engageAdvantage_v1:       { value: -0.444, prev: -0.45, min: -1.0, max: 0.3,  noMult: true, label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
+            towerBaseBonus_v1:       { value: 39.112, prev: 39.112, min: 10,   max: 60,   probe: 'tower', label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
+            towerDefendBonus_v1:     { value: 47.899, prev: 47.899, min: 10,   max: 55,   probe: 'tower', label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
+            hgSeekPriority_v1:       { value: 18.75,  prev: 4,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'Movement pull toward visible loose hourglasses' },
+            scannerPriority_v1:      { value: 34.282, prev: 12.032, min: 5,   max: 50,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
+            antiOscillationPen_v1:   { value: -3.615, prev: -1.663, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
+            nexusCapBonus_v1:        { value: 39.046, prev: 19.469, min: 10,  max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
 
-            // ── NEW v4 value-model knobs (AI_TUNE routed through the
-            //    trainer — defaults MUST equal ai.js AI_TUNE or an untrained
-            //    install changes behavior) ──
-            mpValuePerPoint_v4:      { value: 0.5,   min: 0.15, max: 1.1,  noMult: true, label: 'MP Value / Point', desc: 'HP-equivalent opportunity cost of 1 MP per cast (0.9 caused MP hoarding; 0 = spam every cast)' },
-            threatCostFactor_v4:     { value: 0.25,  min: 0.08, max: 0.45, noMult: true, label: 'Threat Cost Factor', desc: 'Fraction of expected incoming damage charged against a destination tile (0.35 made both sides too timid to close)' },
-            killBase_v4:             { value: 70,    min: 30,   max: 140,  label: 'Kill Base Premium', desc: 'Flat currency premium for removing a unit, on top of its denied per-turn output' },
-            supportKillPremium_v4:   { value: 130,   min: 40,   max: 260,  label: 'Support Kill Premium', desc: 'Extra kill value on healer/reviver kits' },
-            pressActionValue_v4:     { value: 150,   min: 60,   max: 260,  label: 'Press Action Floor', desc: 'Floor value of the free action a press refund grants' },
-            focusCommitBonus_v4:     { value: 90,    min: 20,   max: 180,  label: 'Focus-Fire Bonus', desc: 'Bonus for hitting the team’s shared focus target (target spreading vs focus-firing)' },
+            // ── v4 value-model knobs (AI_TUNE routed through the trainer —
+            //    defaults MUST equal ai.js AI_TUNE or an untrained install
+            //    changes behavior; ai-weights.test.js enforces it) ──
+            mpValuePerPoint_v4:      { value: 0.529, prev: 0.5,   min: 0.15, max: 1.1,  noMult: true, label: 'MP Value / Point', desc: 'HP-equivalent opportunity cost of 1 MP per cast (0.9 caused MP hoarding; 0 = spam every cast)' },
+            threatCostFactor_v4:     { value: 0.082, prev: 0.25,  min: 0.02, max: 0.45, noMult: true, label: 'Threat Cost Factor', desc: 'Fraction of expected incoming damage charged against a destination tile (0.35 made both sides too timid to close; self-play drove this to the floor — sanity-check vs humans)' },
+            killBase_v4:             { value: 116.563, prev: 70, min: 30,   max: 160,  label: 'Kill Base Premium', desc: 'Flat currency premium for removing a unit, on top of its denied per-turn output' },
+            supportKillPremium_v4:   { value: 128.125, prev: 130, min: 40,  max: 260,  label: 'Support Kill Premium', desc: 'Extra kill value on healer/reviver kits' },
+            pressActionValue_v4:     { value: 181.563, prev: 150, min: 60,  max: 260,  label: 'Press Action Floor', desc: 'Floor value of the free action a press refund grants' },
+            focusCommitBonus_v4:     { value: 117.5, prev: 90,    min: 20,   max: 180,  label: 'Focus-Fire Bonus', desc: 'Bonus for hitting the team’s shared focus target (target spreading vs focus-firing)' },
+
+            // ── NEW 2026-09-06: second tier of v4 knobs (every one has a live,
+            //    every-match call site in ai.js — see ai-weights.test.js). New
+            //    keys need NO schema bump: loadAIWeights starts them at their
+            //    default and the next pass tests untested keys first. ──
+            killOutputTurns_v4:      { value: 1.6,   prev: 1.6,   min: 0.6,  max: 3.2,  noMult: true, label: 'Kill: Denied Turns', desc: 'Turns of the victim’s per-turn output a kill is credited with denying (the kill premium’s other axis)' },
+            woundedPileOn_v4:        { value: 0.35,  prev: 0.35,  min: 0.1,  max: 0.9,  noMult: true, label: 'Finish Wounded', desc: 'Target priority per missing HP — finish jobs vs spread damage' },
+            reviveBase_v4:           { value: 320,   prev: 320,   min: 120,  max: 600,  label: 'Revive Value', desc: 'Base value of reviving a fallen ally (≈ a kill in reverse)' },
+            ccOutputFactor_v4:       { value: 0.8,   prev: 0.8,   min: 0.2,  max: 1.6,  noMult: true, label: 'Hard CC Value', desc: 'Fraction of a denied unit’s per-turn output a stun/sleep/freeze is worth per denied turn' },
+            statusSetupFactor_v4:    { value: 0.5,   prev: 0.5,   min: 0.1,  max: 1.2,  noMult: true, label: 'Status Setup Credit', desc: 'Share of a teammate’s bonus-vs-status payoff credited to the setup cast (combo plays)' },
+            buffStageFactor_v4:      { value: 0.14,  prev: 0.14,  min: 0.04, max: 0.32, noMult: true, label: 'Buff Stage Value', desc: 'Value of one offensive stat stage as a fraction of the recipient’s output per remaining turn' },
+            deathRiskFactor_v4:      { value: 0.9,   prev: 0.9,   min: 0.3,  max: 1.8,  noMult: true, label: 'Death Risk Aversion', desc: '× own kill-value charged when a tile’s threat covers the whole HP bar (the safety valve threatCostFactor no longer provides)' },
+            jointSearchDiscount_v4:  { value: 0.92,  prev: 0.92,  min: 0.7,  max: 1.0,  noMult: true, label: 'Move-Then-Act Discount', desc: 'Value discount on a move-then-act plan vs acting from the current tile' },
+            healSafetyDiscount_v4:   { value: 0.45,  prev: 0.45,  min: 0.15, max: 0.9,  noMult: true, label: 'Safe-Heal Discount', desc: 'Heal value multiplier when the patient is out of enemy reach (1 = heal like it’s urgent)' },
+            towerLowHpPush_v4:       { value: 120,   prev: 120,   min: 40,   max: 240,  probe: 'tower', label: 'Tower Finish Push', desc: 'Extra pull onto the enemy Cube once it is within three hits of falling' },
+            moveHighGroundMelee_v4:  { value: 7,     prev: 7,     min: 0,    max: 16,   probe: 'height', label: 'High Ground (Melee)', desc: 'Per-height-level pull toward elevated tiles for melee units' },
         };
+
+        // Human-readable labels for state._winCondition — shared by the three
+        // lab dashboards' "How Matches End" breakdown and the exports.
+        const _WIN_COND_LABELS = {
+            tower_destroyed: 'Cube destroyed', wipeout: 'Wipeout', hourglasses_collected: 'Keys secured',
+            nexus_dominance: 'Nexus dominance', arena_composite: 'Arena score (time)', most_kills: 'Most kills (time)',
+            most_points: 'Most points (time)', sudden_death: 'Sudden death', flag_captures: 'Flag captures',
+            most_captures: 'Most captures (time)', no_contest: 'No contest', unknown: 'Unknown',
+        };
+        function _tallyWinCond(stats, wc, rounds) {
+            if (!stats) return;
+            if (!stats.winConds) stats.winConds = {};
+            const key = wc || 'unknown';
+            const b = stats.winConds[key] || (stats.winConds[key] = { n: 0, rounds: 0 });
+            b.n++;
+            b.rounds += Number(rounds) || 0;
+        }
+        function _winCondSummaryHtml(winConds, title) {
+            const entries = Object.entries(winConds || {}).filter(([, b]) => b && b.n > 0)
+                .sort((a, b) => b[1].n - a[1].n);
+            const total = entries.reduce((acc, [, b]) => acc + b.n, 0);
+            if (!total) return '';
+            const rows = entries.map(([k, b]) => {
+                const pct = Math.round(b.n / total * 100);
+                const avgR = b.n ? (b.rounds / b.n).toFixed(1) : '—';
+                return `<div class="train-wt-row" title="${b.n} matches · avg ${avgR} rounds">
+                    <span class="train-wt-name">${_WIN_COND_LABELS[k] || k}</span>
+                    <span class="train-wt-val" style="color:var(--gold)">${pct}%</span>
+                    <div class="train-wt-bar-wrap"><div class="train-wt-bar" style="width:${pct}%;background:var(--gold)"></div></div>
+                    <span class="train-wt-val" style="color:var(--muted);font-size:9px">${b.n} · ${avgR}r</span>
+                </div>`;
+            }).join('');
+            return `<div class="train-group">
+                <div class="train-group-title">${title || 'How Matches End'} <span style="font-weight:400;text-transform:none;letter-spacing:0">(${total} matches · n · avg rounds)</span></div>
+                <div class="train-wt-list">${rows}</div>
+            </div>`;
+        }
 
         let _aiTrainedWeights = null;
         let _aiP2ChallengerWeights = null;
@@ -35497,6 +35659,18 @@
         // the proof that a training run actually made the CPU harder.
         let _strengthTestMode = false;
         let _strengthStats = null;
+        // 'default' = the schema defaults (the shipped champion); 'prev' = the
+        // champion each default replaced (AI_WEIGHT_DEFAULTS[k].prev). 'prev'
+        // is how you verify an adoption AFTER it has shipped — otherwise the
+        // gauntlet is champion ≡ baseline the moment the defaults move.
+        let _strengthBaselineSource = 'default';
+        try { const _sb = localStorage.getItem('ew-strength-baseline-src'); if (_sb === 'prev' || _sb === 'default') _strengthBaselineSource = _sb; } catch (e) {}
+        window._ewSetStrengthBaseline = function (src) {
+            _strengthBaselineSource = (src === 'prev') ? 'prev' : 'default';
+            try { localStorage.setItem('ew-strength-baseline-src', _strengthBaselineSource); } catch (e) {}
+            if (typeof renderStrengthDashboard === 'function' && _strengthTestMode) renderStrengthDashboard();
+            return _strengthBaselineSource;
+        };
 
         function _strengthBaselinePlayer() {
             if (!_strengthTestMode) return null;
@@ -35520,8 +35694,28 @@
                 if (!def || !def.probe) return true;
                 if (def.probe === 'hourglass') return !!(state.hourglasses && state.hourglasses.length);
                 if (def.probe === 'nexus') return !!(state.nexusPoints && Object.keys(state.nexusPoints).length);
+                if (def.probe === 'tower') return !!(state.towers && state.towers[1] && state.towers[2]);
+                if (def.probe === 'height') return _boardHasHeight();
             } catch (e) {}
             return true;
+        }
+        // Any elevated tile on the current board? (flat boards never exercise
+        // the high-ground movement weights).
+        function _boardHasHeight() {
+            try {
+                if (typeof getHeightAt !== 'function') return false;
+                const w = bw(), h = bh();
+                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if ((getHeightAt(x, y) || 0) > 0) return true;
+            } catch (e) {}
+            return false;
+        }
+        // Headless sharding (train_headless.js): window.EW_TRAIN_KEYS = [...]
+        // restricts a worker to a subset of weights so N browsers can train
+        // disjoint shards of the table in parallel and be merged afterwards.
+        function _trainKeyAllowed(key) {
+            const f = window.EW_TRAIN_KEYS;
+            if (!Array.isArray(f) || f.length === 0) return true;
+            return f.includes(key);
         }
 
         function getAIWeight(key, player) {
@@ -35538,10 +35732,13 @@
                 if (p === 2) return p1GetsMax ? testLow : testHigh;
             }
 
-            // Strength test: the baseline side always plays the untrained
-            // defaults; the champion side plays the trained weights below.
+            // Strength test: the baseline side plays the untrained defaults
+            // (or, when selected, the PREVIOUS champion each default replaced);
+            // the champion side plays the trained weights below.
             if (_strengthTestMode && p === _strengthBaselinePlayer()) {
-                return AI_WEIGHT_DEFAULTS[key] ? AI_WEIGHT_DEFAULTS[key].value : 0;
+                const def = AI_WEIGHT_DEFAULTS[key];
+                if (!def) return 0;
+                return (_strengthBaselineSource === 'prev' && def.prev != null) ? def.prev : def.value;
             }
 
             let val = (_aiTrainedWeights && _aiTrainedWeights[key] != null)
@@ -35561,7 +35758,7 @@
         }
 
         function _startNextExperiment() {
-            const keys = Object.keys(AI_WEIGHT_DEFAULTS);
+            const keys = Object.keys(AI_WEIGHT_DEFAULTS).filter(_trainKeyAllowed);
 
             if (!_abWeightQueue || _abWeightQueue.length === 0) {
                 _abPassNumber = (_abPassNumber || 0) + 1;
@@ -35579,8 +35776,10 @@
             let nextKey = _abWeightQueue.shift();
             // Skip weights the current board can't exercise (see _weightRelevantNow).
             let _skipGuard = 0;
-            while (nextKey && !_weightRelevantNow(nextKey) && _skipGuard++ < 100) {
-                addLog(`🧪 Skipping ${AI_WEIGHT_DEFAULTS[nextKey]?.label || nextKey} — this board/mode never exercises it.`);
+            while (nextKey && (!_weightRelevantNow(nextKey) || !_trainKeyAllowed(nextKey) || !AI_WEIGHT_DEFAULTS[nextKey]) && _skipGuard++ < 100) {
+                if (AI_WEIGHT_DEFAULTS[nextKey] && _trainKeyAllowed(nextKey)) {
+                    addLog(`🧪 Skipping ${AI_WEIGHT_DEFAULTS[nextKey]?.label || nextKey} — this board/mode never exercises it.`);
+                }
                 nextKey = _abWeightQueue.shift();
             }
             if (!nextKey) {
@@ -35768,15 +35967,22 @@
             }
             if (!_aiTrainingMode) return;
 
+            const _wc = state._winCondition || 'unknown';
+            const _rounds = state.round || 0;
+
             if (winnerPlayer === 0 || winnerPlayer === null) {
                 _aiTrainingStats.noContests = (_aiTrainingStats.noContests || 0) + 1;
                 _aiTrainingStats.totalMatches++;
+                _tallyWinCond(_aiTrainingStats, 'no_contest', _rounds);
                 saveAIWeights();
                 return;
             }
 
             _aiTrainingStats.totalMatches++;
             _aiTrainingStats.batchMatches++;
+            // How the match ended (tower / wipeout / keys / nexus / clock) —
+            // the "which win condition is carrying the game" signal.
+            _tallyWinCond(_aiTrainingStats, _wc, _rounds);
             if (winnerPlayer === 1) { _aiTrainingStats.p1Wins++; _aiTrainingStats.batchP1Wins++; }
             else { _aiTrainingStats.p2Wins++; }
 
@@ -35791,8 +35997,12 @@
                 } else {
                     exp.minWins++;
                 }
-                exp.results.push({ winner: winnerPlayer, p1GetsMax, maxPlayerWon });
+                exp.results.push({ winner: winnerPlayer, p1GetsMax, maxPlayerWon, wc: _wc, rounds: _rounds });
                 exp.matchIndex++;
+                // Per-side end-condition tally: did the HIGH value win by
+                // racing the Cube while LOW won by wiping — or the same way?
+                if (!exp.winConds) exp.winConds = { high: {}, low: {} };
+                _tallyWinCond({ winConds: exp.winConds[maxPlayerWon ? 'high' : 'low'] }, _wc, _rounds);
 
                 // SPRT early stopping (how Stockfish's fishtest gates patches):
                 // sequential probability ratio test of H1 "this side wins 65%"
@@ -35894,6 +36104,7 @@
                 adopted,
                 sprt: exp.sprtEarly || null,
                 pass: _abPassNumber,
+                winConds: exp.winConds || null,
                 timestamp: Date.now(),
             };
             _abCompletedExperiments.push(histEntry);
@@ -36110,6 +36321,8 @@
                     <div class="train-hist">${histHtml}</div>
                 </div>` : ''}
 
+                ${_winCondSummaryHtml(stats.winConds, 'How Matches End')}
+
                 <div class="train-group">
                     <div class="train-group-title">Trained Weights <span style="font-weight:400;text-transform:none;letter-spacing:0">(${changedWeights.length} / ${totalWeights} changed)</span></div>
                     <div class="train-wt-list">${weightRowsHtml}</div>
@@ -36195,6 +36408,13 @@
                     championWinRate: champWR + '%',
                     pass: _abPassNumber || 0,
                     batchCap: _aiTrainingBatchSize,
+                    aiVersion: window.EW_AI_VERSION || null,
+                    mode: (typeof _trainModeSetting !== 'undefined') ? _trainModeSetting : null,
+                    map: (typeof _trainMapSetting !== 'undefined') ? _trainMapSetting : null,
+                    // How the training matches ended (n + avg rounds per
+                    // win condition) — the per-experiment split is in
+                    // experiments[].winConds.{high,low}.
+                    winConditions: stats.winConds || {},
                     exportedAt: new Date().toISOString()
                 },
                 weights: {},
@@ -36222,6 +36442,68 @@
             addLog(`Exported weights to ew-ai-weights-gen${gen}.json`);
         }
 
+        // Shared by the Import button and the headless runner: clamp each
+        // known key into its range, drop unknown keys, persist.
+        async function _applyImportedWeights(data) {
+            if (!_aiTrainedWeights) _aiTrainedWeights = {};
+            let imported = 0, skipped = 0;
+            const weights = (data && data.weights) || data || {};
+            for (const key of Object.keys(weights)) {
+                const def = AI_WEIGHT_DEFAULTS[key];
+                if (!def) { skipped++; continue; }
+                const entry = weights[key];
+                const val = typeof entry === 'number' ? entry : (entry?.value ?? null);
+                if (val == null || typeof val !== 'number' || isNaN(val)) { skipped++; continue; }
+                _aiTrainedWeights[key] = Math.max(def.min, Math.min(def.max, val));
+                imported++;
+            }
+            if (_aiTrainingStats && data && data._meta) {
+                if (data._meta.generation) _aiTrainingStats.generation = data._meta.generation;
+                if (data._meta.totalMatches) _aiTrainingStats.totalMatches = data._meta.totalMatches;
+            }
+            await saveAIWeights();
+            return { imported, skipped };
+        }
+
+        /* ── Headless lab hooks (train_headless.js) ──────────────────────
+           Plain-data snapshots of the three labs so a Playwright runner can
+           poll progress, harvest results and merge shards without the
+           download-based Export buttons. */
+        window._ewTrainSnapshot = function () {
+            const stats = _aiTrainingStats || {};
+            const weights = {};
+            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
+                const def = AI_WEIGHT_DEFAULTS[k];
+                weights[k] = { value: (_aiTrainedWeights && _aiTrainedWeights[k] != null) ? _aiTrainedWeights[k] : def.value,
+                               default: def.value, prev: def.prev, min: def.min, max: def.max };
+            }
+            const exp = _abExperiment;
+            return {
+                schemaVersion: AI_WEIGHT_SCHEMA_VERSION,
+                aiVersion: window.EW_AI_VERSION || null,
+                generation: stats.generation || 0,
+                totalMatches: stats.totalMatches || 0,
+                noContests: stats.noContests || 0,
+                pass: _abPassNumber || 0,
+                queueLeft: (_abWeightQueue || []).length,
+                keyFilter: Array.isArray(window.EW_TRAIN_KEYS) ? window.EW_TRAIN_KEYS.slice() : null,
+                current: exp ? { key: exp.key, label: exp.label, matches: exp.maxWins + exp.minWins, maxWins: exp.maxWins, minWins: exp.minWins, highVal: exp.highVal, lowVal: exp.lowVal, currentVal: exp.currentVal } : null,
+                completed: (_abCompletedExperiments || []).slice(),
+                winConditions: stats.winConds || {},
+                aiSafetyFires: state._aiSafetyFires || 0,
+                phase: state.phase, round: state.round, matchNumber: state.matchNumber,
+                weights,
+            };
+        };
+        window._ewTrainImportWeights = function (data) { return _applyImportedWeights(data); };
+        window._ewStrengthSnapshot = function () {
+            const s = _strengthStats || _freshStrengthStats();
+            const n = s.matches || 0, wr = n ? s.champWins / n : 0.5, ci = _wilson(s.champWins, n);
+            return { matches: n, champWins: s.champWins, baseWins: s.baseWins, noContests: s.noContests, winRate: wr,
+                     wilson95: ci, eloDelta: n ? _eloFromWr(wr) : 0, baselineSource: _strengthBaselineSource,
+                     winConds: s.winConds || null, aiSafetyFires: state._aiSafetyFires || 0 };
+        };
+
         async function _importTrainedWeights() {
             const input = document.createElement('input');
             input.type = 'file';
@@ -36236,24 +36518,7 @@
                         addLog('⚠️ Invalid weight file — no "weights" object found.');
                         return;
                     }
-                    if (!_aiTrainedWeights) _aiTrainedWeights = {};
-                    let imported = 0, skipped = 0;
-                    for (const key of Object.keys(data.weights)) {
-                        const def = AI_WEIGHT_DEFAULTS[key];
-                        if (!def) { skipped++; continue; }
-                        const entry = data.weights[key];
-                        const val = typeof entry === 'number' ? entry : (entry?.value ?? null);
-                        if (val == null || typeof val !== 'number') { skipped++; continue; }
-
-                        _aiTrainedWeights[key] = Math.max(def.min, Math.min(def.max, val));
-                        imported++;
-                    }
-
-                    if (_aiTrainingStats) {
-                        if (data._meta?.generation) _aiTrainingStats.generation = data._meta.generation;
-                        if (data._meta?.totalMatches) _aiTrainingStats.totalMatches = data._meta.totalMatches;
-                    }
-                    await saveAIWeights();
+                    const { imported, skipped } = await _applyImportedWeights(data);
                     addLog(`✅ Imported ${imported} weights from gen${data._meta?.generation || '?'} (${skipped} skipped). Saved.`);
                     if (typeof renderTrainingDashboard === 'function') renderTrainingDashboard();
                 } catch (err) {
@@ -36288,7 +36553,7 @@
         // its default the two sides are literally identical — train first.
         // ════════════════════════════════════════════════════════════════════
         function _freshStrengthStats() {
-            return { matches: 0, champWins: 0, baseWins: 0, noContests: 0, byMatch: [], startedAt: Date.now() };
+            return { matches: 0, champWins: 0, baseWins: 0, noContests: 0, byMatch: [], winConds: { champ: {}, base: {} }, startedAt: Date.now() };
         }
         async function loadStrengthStats() {
             try {
@@ -36320,6 +36585,11 @@
             _strengthStats.matches++;
             if (champWon) _strengthStats.champWins++; else _strengthStats.baseWins++;
             _strengthStats.byMatch.push(champWon ? 1 : 0);
+            // How each side wins — a champion that only wins by wipeout while
+            // the baseline wins by objectives is a different (not just
+            // stronger) AI, and worth knowing before shipping it.
+            if (!_strengthStats.winConds) _strengthStats.winConds = { champ: {}, base: {} };
+            _tallyWinCond({ winConds: _strengthStats.winConds[champWon ? 'champ' : 'base'] }, state._winCondition || 'unknown', state.round || 0);
             if (_strengthStats.byMatch.length > 500) {
                 _strengthStats.byMatch.splice(0, _strengthStats.byMatch.length - 500);
             }
@@ -36347,13 +36617,22 @@
             let allDefault = true;
             try {
                 for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
-                    const v = _aiTrainedWeights ? _aiTrainedWeights[k] : null;
-                    if (v != null && Math.abs(v - AI_WEIGHT_DEFAULTS[k].value) > 0.005) { allDefault = false; break; }
+                    const def = AI_WEIGHT_DEFAULTS[k];
+                    const base = (_strengthBaselineSource === 'prev' && def.prev != null) ? def.prev : def.value;
+                    const v = (_aiTrainedWeights && _aiTrainedWeights[k] != null) ? _aiTrainedWeights[k] : def.value;
+                    if (Math.abs(v - base) > 0.005) { allDefault = false; break; }
                 }
             } catch (e) { allDefault = false; }
             const sameSideWarn = allDefault
-                ? `<div style="text-align:center;color:var(--red);font-size:10px;padding:4px 0 8px">⚠ Every trained weight equals its default — champion and baseline are IDENTICAL. Run AI Training first, then gauntlet the result.</div>`
+                ? `<div style="text-align:center;color:var(--red);font-size:10px;padding:4px 0 8px">⚠ Every champion weight equals the ${_strengthBaselineSource === 'prev' ? 'previous champion' : 'schema default'} — champion and baseline are IDENTICAL. ${_strengthBaselineSource === 'prev' ? 'Train first, then gauntlet.' : 'Switch the baseline to the PREVIOUS champion to measure the shipped adoption, or train first.'}</div>`
                 : '';
+            const baselineLabel = _strengthBaselineSource === 'prev' ? 'previous champion (defaults[k].prev)' : 'schema defaults';
+            const baselineBtns = `<div class="train-btns" style="margin:4px 0 6px">
+                <button class="train-btn${_strengthBaselineSource !== 'prev' ? ' active' : ''}" onclick="_ewSetStrengthBaseline('default')">Baseline: defaults</button>
+                <button class="train-btn${_strengthBaselineSource === 'prev' ? ' active' : ''}" onclick="_ewSetStrengthBaseline('prev')">Baseline: previous champion</button>
+            </div>`;
+            const wcChamp = _winCondSummaryHtml((s.winConds || {}).champ, 'Champion wins by');
+            const wcBase = _winCondSummaryHtml((s.winConds || {}).base, 'Baseline wins by');
 
             let verdict;
             if (n < 10) verdict = `<span style="color:var(--muted)">Collecting data… (${n} matches)</span>`;
@@ -36366,7 +36645,8 @@
                     <div class="train-title" style="margin:0">AI Strength Test</div>
                     <span class="train-drag-grip">⠿ drag</span>
                 </div>
-                <div class="train-subtitle">Champion (trained weights) vs Baseline (schema defaults) · same v4 brain · mirror teams · sides alternate</div>
+                <div class="train-subtitle">Champion (trained weights) vs Baseline (${baselineLabel}) · same v4 brain · mirror teams · sides alternate</div>
+                ${baselineBtns}
 
                 <div class="train-cards">
                     <div class="train-card"><span class="train-card-label">Matches</span><span class="train-card-value">${n}</span></div>
@@ -36382,6 +36662,7 @@
                     <div class="train-batch-dots" style="flex-wrap:wrap">${dots}</div>
                     <div style="text-align:center;font-size:9px;color:var(--muted);margin-top:4px">last ${Math.min(60, (s.byMatch || []).length)} matches · green = champion won</div>
                 </div>
+                ${wcChamp}${wcBase}
 
                 <div class="train-btns">
                     <button class="train-btn danger" onclick="if(confirm('Reset strength-test results?')){resetStrengthStats().then(()=>{renderStrengthDashboard();addLog('Strength test reset.');});}">Reset</button>
@@ -36406,9 +36687,15 @@
                     wilson95: { lo: Number(ci.lo.toFixed(4)), hi: Number(ci.hi.toFixed(4)) },
                     eloDelta: n > 0 ? _eloFromWr(wr) : 0,
                     significantAt95: n >= 10 && (ci.lo > 0.5 || ci.hi < 0.5),
+                    baselineSource: _strengthBaselineSource,
+                    aiVersion: window.EW_AI_VERSION || null,
                 },
                 stats: s,
                 championWeights: _aiTrainedWeights || {},
+                baselineWeights: Object.fromEntries(Object.keys(AI_WEIGHT_DEFAULTS).map(k => {
+                    const d = AI_WEIGHT_DEFAULTS[k];
+                    return [k, (_strengthBaselineSource === 'prev' && d.prev != null) ? d.prev : d.value];
+                })),
             };
             downloadJson('ew-strength-test.json', data);
             addLog('Exported strength test to ew-strength-test.json');
@@ -36492,6 +36779,8 @@
                 // action was invisible to every prior dataset — no way to tell
                 // if terrain-craft is a real strategic axis or dead weight.
                 buildUse: { tools: {}, jobs: {} },
+                // How matches end (per state._winCondition): n + summed rounds.
+                winConds: {},
                 matchLog: [],
                 updatedAt: 0,
             };
@@ -36503,6 +36792,7 @@
                 if (!_balanceStats[k]) _balanceStats[k] = {};
             }
             if (!Array.isArray(_balanceStats.matchLog)) _balanceStats.matchLog = [];
+            if (!_balanceStats.winConds) _balanceStats.winConds = {};
             if (!_balanceStats.buildUse) _balanceStats.buildUse = { tools: {}, jobs: {} };
             if (!_balanceStats.buildUse.tools) _balanceStats.buildUse.tools = {};
             if (!_balanceStats.buildUse.jobs) _balanceStats.buildUse.jobs = {};
@@ -36692,12 +36982,15 @@
             if (winner === 0 || winner === null) {
                 _balanceStats.noContests++;
                 _balanceStats.totalMatches++;
+                _tallyWinCond(_balanceStats, 'no_contest', state.round || 0);
                 state._balMatch = null;
                 saveBalanceStats();
                 return;
             }
 
             _balanceStats.totalMatches++;
+            const wc = state._winCondition || 'unknown';
+            _tallyWinCond(_balanceStats, wc, state.round || 0);
             const mode = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode())
                 ? getActiveMultiplayerMode().id : null;
             if (mode) { const mb = _balBucket(_balanceStats.modes, mode); if (mb) mb.games++; }
@@ -36771,6 +37064,7 @@
             _balanceStats.matchLog.push({
                 n: _balanceStats.totalMatches,
                 mode, rounds, winner, comeback,
+                wc,
                 firstKill: bm ? bm.firstKill : null,
                 firstDeath: bm ? bm.firstDeath : null,
                 teams,
@@ -37051,6 +37345,8 @@
                     <div class="train-group-title">Balance Flags <span style="font-weight:400;text-transform:none;letter-spacing:0">(win-rate vs 50% · ${BALANCE_MIN_SAMPLE}+ games)</span></div>
                     <div class="train-hist">${flagsHtml}</div>
                 </div>
+
+                ${_winCondSummaryHtml(s.winConds, 'How Matches End')}
 
                 <div class="train-group">
                     <div class="train-group-title">Breakdown</div>

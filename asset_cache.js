@@ -23,6 +23,34 @@ const CACHEABLE_HOSTS = new Set([
 function hostOf(url) { try { return new URL(url).host; } catch (e) { return ''; } }
 function baseOf(url) { try { return path.basename(new URL(url).pathname); } catch (e) { return ''; } }
 
+// npm-mirror fallback (2026-09-06): the same third-party libraries the page
+// pulls from cdnjs / jsdelivr / cdn.socket.io / R2 also ship in npm packages.
+// When the network fetch FAILS (blocked egress, throttled CDN, offline) and
+// the package is installed (`npm install --no-save three@0.128.0 react@18.3.1
+// react-dom@18.3.1 three.meshline`), serve the local copy instead. Set
+// ASSET_CACHE_NPM_MIRROR=1 to prefer the mirror without trying the network.
+// Matched against the URL *pathname* (no query string).
+const NPM_MIRROR = [
+  [/\/three\.js\/r128\/three\.min\.js$/, 'three/build/three.min.js'],
+  [/\/three@0\.128\.0\/(examples\/js\/.+)$/, 'three/$1'],
+  [/\/socket\.io\.min\.js$/, 'socket.io/client-dist/socket.io.min.js'],
+  [/\/react\.production\.min\.js$/, 'react/umd/react.production.min.js'],
+  [/\/react-dom\.production\.min\.js$/, 'react-dom/umd/react-dom.production.min.js'],
+  [/\/THREE\.MeshLine\.js$/, 'three.meshline/src/THREE.MeshLine.js'],
+];
+function npmMirrorPath(url) {
+  let pathname = '';
+  try { pathname = new URL(url).pathname; } catch (e) { return null; }
+  for (const [re, target] of NPM_MIRROR) {
+    const m = re.exec(pathname);
+    if (!m) continue;
+    const rel = target.replace(/\$(\d)/g, (_, i) => m[Number(i)]);
+    const abs = path.join(__dirname, 'node_modules', rel);
+    if (fs.existsSync(abs)) return abs;
+  }
+  return null;
+}
+
 // Content-type by extension, for locally-served overrides.
 const CT = { '.js': 'application/javascript', '.css': 'text/css', '.json': 'application/json',
              '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
@@ -51,7 +79,7 @@ async function installAssetCache(context, dir = path.join(__dirname, '.asset-cac
   // re-upload — this only affects the Playwright harness.)
   const localNames = new Set(String(process.env.LOCAL_ASSETS || '').split(',').map(s => s.trim()).filter(Boolean));
   fs.mkdirSync(dir, { recursive: true });
-  let hits = 0, misses = 0, locals = 0;
+  let hits = 0, misses = 0, locals = 0, mirrors = 0;
   await context.route('**/*', async (route) => {
     const url = route.request().url();
     if (!CACHEABLE_HOSTS.has(hostOf(url))) return route.continue();
@@ -63,6 +91,12 @@ async function installAssetCache(context, dir = path.join(__dirname, '.asset-cac
         const ct = CT[path.extname(base)] || 'application/octet-stream';
         return route.fulfill({ status: 200, contentType: ct, body: fs.readFileSync(local) });
       }
+    }
+    const preferMirror = String(process.env.ASSET_CACHE_NPM_MIRROR || '') === '1';
+    const mirror = npmMirrorPath(url);
+    if (preferMirror && mirror) {
+      mirrors++;
+      return route.fulfill({ status: 200, contentType: CT[path.extname(mirror)] || 'application/javascript', body: fs.readFileSync(mirror) });
     }
     const { file, meta } = cachePaths(dir, url);
     try {
@@ -83,13 +117,20 @@ async function installAssetCache(context, dir = path.join(__dirname, '.asset-cac
         fs.writeFileSync(file, body);
         fs.writeFileSync(meta, JSON.stringify({ contentType, url }));
         misses++;
+      } else if (mirror) {
+        mirrors++;
+        return route.fulfill({ status: 200, contentType: CT[path.extname(mirror)] || 'application/javascript', body: fs.readFileSync(mirror) });
       }
       return route.fulfill({ status: resp.status(), contentType, body });
     } catch (e) {
+      if (mirror) {
+        mirrors++;
+        return route.fulfill({ status: 200, contentType: CT[path.extname(mirror)] || 'application/javascript', body: fs.readFileSync(mirror) });
+      }
       return route.continue();
     }
   });
-  return { stats: () => ({ hits, misses, locals }) };
+  return { stats: () => ({ hits, misses, locals, mirrors }) };
 }
 
 module.exports = { installAssetCache };
