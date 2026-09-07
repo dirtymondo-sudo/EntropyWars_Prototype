@@ -1108,7 +1108,7 @@ function MatchSelect() {
               }}, 'R')
             ),
             h('button', {
-              onClick: () => setRounds(Math.min(99, rounds + 1)),
+              onClick: () => setRounds(Math.min(100, rounds + 1)),
               className: 'ms-stepper-btn',
               style: {
                 background: 'transparent', border: '1px solid ' + EW.panelEdge,

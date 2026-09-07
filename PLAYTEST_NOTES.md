@@ -9795,3 +9795,32 @@ full / no visible enemy) — the pusher shouldn't have been there. (4) A
 cinematic camera shot on a fogged enemy — every director beat is
 `_see`-gated; a position leak is a bug.
 
+
+## ARENA RULES PASS — fixed 5-Key pool, 3 to win, 100-round safety cap (2026-09-07)
+Balance/AI-training request: every Arena win condition must stay live and
+a match ends ONLY on a real win. Shipped in state.js / battle.js / hud.js /
+map.js / match-select.js:
+- `MULTIPLAYER_MODES.arena` (state.js) now carries `keySpawnCount: 5`,
+  `keysToWin: 3`, `roundLimit: 100`. Only Arena has the two key fields —
+  every other mode keeps the legacy "carry EVERY Key on the board" rule and
+  the map's `CONFIG.winHourglasses` spawn count.
+- battle.js `getArenaKeyRules(mp)` → `{ spawn, toWin, fixedPool }` and
+  `getKeysToWin(mp)` (both on `window`) are the ONLY readers. Used by
+  `randomizeSharedObjectives` (spawn count), `checkWin`
+  (`hourglasses_collected` threshold), the round-10 `spawnPeriodicHourglasses`
+  restock (SKIPPED for a fixed pool — a top-up would hand out extra Keys
+  against a fixed 3-of-5 target), the match-start log, the win banner text.
+- `state.hourglassTarget` is set at spawn (ai.js `assessWinCondition` reads it
+  for `hg_winning` / `hg_losing` — it used to default to 5). It is a plain
+  state scalar, so the online guest gets it through `state-sync`.
+- HUD: the Arena scoreboard tower block shows `🗝 held/needed` per team
+  (hud.js `_scoreboardModeData` → `keysToWin/p1Keys/p2Keys`; flares gold
+  when a team is one Key from the win).
+- Round cap: 100 is a "never literally forever" backstop. Past it the old
+  composite Arena score still decides, tie → Sudden Death. Nexus Surge now
+  covers rounds 96–100. match-select ROUNDS stepper cap raised 99 → 100.
+  A tighter limit is planned once the objectives are balanced.
+- Key placement: `canPlaceHourglassAt` keeps the Chebyshev-2 spacing; the
+  centre band (2–4 columns) fills first, the fallback pool is the rest of
+  the board, so 5 Keys always fit on 8×8+. The log reports `placed/spawn`
+  if spacing ever loses one.

@@ -524,6 +524,24 @@ function _getModeInfo(st) {
     }
   }
 
+  /* Keys carried vs the win target (Arena rules pass 2026-09-07: carry 3 of
+     the 5-Key pool). battle.js getKeysToWin folds the legacy "every Key"
+     rule; st.hourglassTarget is the synced copy the guest reads. */
+  const _keysHeld = p => (st.hourglasses || []).filter(hg => {
+    if (!hg.carriedBy) return false;
+    const c = (st.units || []).find(u => u.id === hg.carriedBy);
+    return c && !c.dead && c.player === p;
+  }).length;
+  const keysToWin = (typeof window.getKeysToWin === 'function')
+    ? (window.getKeysToWin() | 0)
+    : Math.min((st.hourglassTarget | 0), (st.hourglasses || []).length);
+  const p1Keys = _keysHeld(1), p2Keys = _keysHeld(2);
+  let keyAlertPlayer = 0;
+  if (keysToWin > 1) {
+    if (p1Keys === keysToWin - 1) keyAlertPlayer = 1;
+    else if (p2Keys === keysToWin - 1) keyAlertPlayer = 2;
+  }
+
   return {
     id: 'arena', label: 'Arena',
     p1Score: _fullArenaScore(1), p2Score: _fullArenaScore(2),
@@ -532,6 +550,7 @@ function _getModeInfo(st) {
     p1TowerHp, p1TowerMax, p2TowerHp, p2TowerMax,
     p1Wins, p2Wins,
     nexusPips, nexusAlertPlayer,
+    keysToWin, p1Keys, p2Keys, keyAlertPlayer,
   };
 }
 
@@ -790,6 +809,16 @@ function ScoreSideColumn({ st, mode, player, side, color, nextId }) {
           fontFamily: mono, fontSize: 8, color: EW.inkMute, letterSpacing: '0.08em',
           textShadow: '0 1px 3px rgba(0,0,0,0.95)',
         }}, '🏰 ' + towerHp + '/' + towerMax),
+        /* Keys carried / Keys needed — the win-condition readout for the
+           fixed Arena pool (3 of 5). Flares when one Key from the win. */
+        (mode.keysToWin | 0) > 0 && h('span', { style: {
+          fontFamily: mono, fontSize: 8, letterSpacing: '0.08em',
+          color: mode.keyAlertPlayer === player ? '#ffd76a' : EW.inkMute,
+          fontWeight: mode.keyAlertPlayer === player ? 700 : 400,
+          textShadow: mode.keyAlertPlayer === player
+            ? '0 1px 3px rgba(0,0,0,0.95), 0 0 8px rgba(255,215,106,0.7)'
+            : '0 1px 3px rgba(0,0,0,0.95)',
+        }}, '🗝 ' + (player === 1 ? mode.p1Keys : mode.p2Keys) + '/' + mode.keysToWin),
       ),
     ),
 

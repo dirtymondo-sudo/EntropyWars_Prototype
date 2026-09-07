@@ -2549,7 +2549,7 @@
         };
 
         const MS_GAME_MODES = [
-            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the Cube, wipe out the enemy, secure every Key — or hold ALL 3 Nexus zones at once for an instant win: the center Nexus plus BOTH spawn zones (yours starts captured — steal theirs by surviving inside their spawn). 15 rounds; Arena score decides otherwise.', tag: null, locked: false },
+            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the Cube, wipe out the enemy, secure 3 of the 5 Keys — or hold ALL 3 Nexus zones at once for an instant win: the center Nexus plus BOTH spawn zones (yours starts captured — steal theirs by surviving inside their spawn). One win condition MUST be met; a 100-round safety cap (Arena score, then Sudden Death) only stops matches that would run forever.', tag: null, locked: false },
             { id: 'tdm', icon: '💀', label: 'Team Deathmatch', desc: 'Most kills in 12 rounds wins. Wipeout also wins instantly. Sudden Death if tied.', tag: null, locked: false },
             { id: 'clash', icon: '🎴', label: 'Clash', desc: 'Classic JRPG battle — 4v4 on a fixed stage, no movement. Two parties face off across the field: attack, cast, use an item, or Guard, then the next unit steps up. Wipe out the enemy party to win.', tag: 'NEW', locked: false },
             { id: 'simul', icon: '♟️', label: 'Simul', desc: 'SIMULTANEOUS turns — both sides secretly order one unit (any unit, 2 AP), then the orders play out together: priority first, then speed. Displaced targets are re-acquired or the action whiffs. Most kills in 12 rounds wins.', tag: 'EXPERIMENTAL', locked: false },

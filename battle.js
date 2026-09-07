@@ -23342,6 +23342,36 @@
             return !state.hourglasses.some(h => h.carriedBy === null && Math.max(Math.abs(h.x - x), Math.abs(h.y - y)) <= 2);
         }
 
+        /* Key rules for the active mode (2026-09-07 Arena rules pass).
+           { spawn, toWin, fixedPool }:
+             spawn     — how many Keys randomizeSharedObjectives scatters
+                         (mode.keySpawnCount, else the map's CONFIG.winHourglasses)
+             toWin     — how many one team must CARRY for THRESHOLD STABILIZED
+                         (mode.keysToWin, else "every Key on the board")
+             fixedPool — true when the mode pins both numbers: the pool never
+                         restocks (the old round-10 spawnPeriodicHourglasses top-up
+                         would hand out extra Keys against a fixed 3-of-5 target).
+           Arena: 5 spawned / 3 to win. Every other mode is unchanged. */
+        function getArenaKeyRules(mpModeArg) {
+            const mp = mpModeArg || (typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null);
+            const spawnCfg = mp && (mp.keySpawnCount | 0) > 0 ? (mp.keySpawnCount | 0) : 0;
+            const winCfg = mp && (mp.keysToWin | 0) > 0 ? (mp.keysToWin | 0) : 0;
+            const spawn = spawnCfg || (CONFIG.winHourglasses | 0);
+            const toWin = winCfg ? Math.min(winCfg, Math.max(1, spawn)) : 0;
+            return { spawn, toWin, fixedPool: !!(spawnCfg && winCfg) };
+        }
+        window.getArenaKeyRules = getArenaKeyRules;
+
+        /* The Key count that wins the match RIGHT NOW: the mode's keysToWin, else
+           every Key currently on the board (legacy rule). 0 = no Keys in play. */
+        function getKeysToWin(mpModeArg) {
+            const total = (state.hourglasses || []).length;
+            if (total <= 0) return 0;
+            const rules = getArenaKeyRules(mpModeArg);
+            return rules.toWin > 0 ? Math.min(rules.toWin, total) : total;
+        }
+        window.getKeysToWin = getKeysToWin;
+
         function _spawnHiddenItemsOnly() {
 
         }
@@ -23445,8 +23475,11 @@
                 return placed;
             }
 
-            const hgPerSection = Math.max(1, Math.ceil(CONFIG.winHourglasses / (MAP_HAS_FLOORS ? 3 : 1)));
-            spawnHourglassesOnFloor('earth', state.boardTerrain, MAP_HAS_FLOORS ? hgPerSection : CONFIG.winHourglasses);
+            // Arena scatters its FIXED POOL (mode.keySpawnCount); other modes keep
+            // the map's CONFIG.winHourglasses. See getArenaKeyRules.
+            const _keyTotal = getArenaKeyRules(mpMode).spawn;
+            const hgPerSection = Math.max(1, Math.ceil(_keyTotal / (MAP_HAS_FLOORS ? 3 : 1)));
+            spawnHourglassesOnFloor('earth', state.boardTerrain, MAP_HAS_FLOORS ? hgPerSection : _keyTotal);
             if (MAP_HAS_FLOORS) {
                 spawnHourglassesOnFloor('above', state.boardTerrain, hgPerSection);
                 spawnHourglassesOnFloor('below', state.boardTerrain, hgPerSection);
@@ -32503,10 +32536,21 @@
             const _mpCheck = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
             if (_mpCheck && _mpCheck.hasHourglasses === false) {
 
-            } else if (state.hourglasses.length < CONFIG.winHourglasses) {
-                addLog('Could not place all Keys with spacing rules on this roll.');
             } else {
-                addLog(`${CONFIG.winHourglasses} Keys scattered across the battlefield. Secure Keys for permanent team buffs!`);
+                const _kr = getArenaKeyRules(_mpCheck);
+                const _placed = state.hourglasses.length;
+                const _need = getKeysToWin(_mpCheck);
+                /* ai.js assessWinCondition reads this for its hg_winning /
+                   hg_losing phases (it used to guess 5). Synced to the guest. */
+                state.hourglassTarget = _need;
+                if (_placed < _kr.spawn) {
+                    addLog(`Could not place all Keys with spacing rules on this roll (${_placed}/${_kr.spawn}).`);
+                }
+                if (_placed > 0 && _need > 0 && _need < _placed) {
+                    addLog(`${_placed} Keys scattered across the battlefield. Carry ${_need} at once to STABILIZE THE THRESHOLD — every Key secured is a permanent team buff!`);
+                } else if (_placed > 0) {
+                    addLog(`${_placed} Keys scattered across the battlefield. Secure Keys for permanent team buffs!`);
+                }
             }
             render();
         }
@@ -34017,8 +34061,10 @@
             } else if (mpMode.id === 'domination') {
                 addLog('🚩 Domination! Capture Nexus points to earn points every round. Most points when rounds end wins.');
             } else if (mpMode.id === 'arena') {
-                const rl = mpMode.roundLimit || '?';
-                addLog(`🏰 Arena! ${rl}-round limit. Destroy the Cube, secure the Keys, or wipe out the enemy. Composite score decides if no winner.`);
+                const rl = (state.matchClock && state.matchClock.roundLimit) || mpMode.roundLimit || '?';
+                const _kr = getArenaKeyRules(mpMode);
+                const _keyTxt = _kr.fixedPool ? `carry ${_kr.toWin} of the ${_kr.spawn} Keys` : 'secure the Keys';
+                addLog(`🏰 Arena! Destroy the Cube, ${_keyTxt}, wipe out the enemy, or hold every Nexus zone — a win condition MUST be met. ${rl}-round safety cap (Arena score, then Sudden Death) only stops a match that would run forever.`);
             } else if (mpMode.id === 'dungeon') {
                 if (state._mdPhase === 'hub') {
                     addLog('🏘 Guild Hub — your unlocked characters hang out here. Rest at the spring, then step onto the cave entrance (east edge) to start the dungeon!');
@@ -35767,9 +35813,11 @@
                     // `round % 10` schedule re-fired at round 20+ when sudden death
                     // pushed a match past the round limit, dropping fresh hourglasses
                     // into an instant-win-on-pickup situation.)
+                    // A FIXED Key pool (Arena: 5 spawned / 3 to win) never restocks —
+                    // a top-up would hand out extra Keys against a fixed target.
                     if (state.round === 10 && !state.suddenDeathActive) {
                         const _hgMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
-                        if (!_hgMode || _hgMode.hasHourglasses) {
+                        if ((!_hgMode || _hgMode.hasHourglasses) && !getArenaKeyRules(_hgMode).fixedPool) {
                             spawnPeriodicHourglasses();
                         }
                     }
@@ -52357,12 +52405,14 @@
             }
 
             if (!state.winner && wcs.includes('hourglasses_collected')) {
-                const totalHG = state.hourglasses.length;
-                if (totalHG > 0) {
+                // Arena: carry keysToWin (3 of the 5-Key pool); legacy modes: carry
+                // every Key on the board. getKeysToWin folds both rules.
+                const needHG = getKeysToWin(mpMode);
+                if (needHG > 0) {
                     const p1HG = state.hourglasses.filter(h => h.carriedBy !== null && state.units.find(u => u.id === h.carriedBy)?.player === 1).length;
                     const p2HG = state.hourglasses.filter(h => h.carriedBy !== null && state.units.find(u => u.id === h.carriedBy)?.player === 2).length;
-                    if (p1HG >= totalHG) { state.winner = 1; state._winCondition = 'hourglasses_collected'; }
-                    else if (p2HG >= totalHG) { state.winner = 2; state._winCondition = 'hourglasses_collected'; }
+                    if (p1HG >= needHG) { state.winner = 1; state._winCondition = 'hourglasses_collected'; }
+                    else if (p2HG >= needHG) { state.winner = 2; state._winCondition = 'hourglasses_collected'; }
                 }
             }
 
@@ -52395,7 +52445,11 @@
                 const winMsgs = {
                     wipeout: `Player ${state.winner} wins by eliminating all enemies!`,
                     tower_destroyed: `⬡ THRESHOLD CLOSED — Player ${state.winner} destroys the enemy Cube!`,
-                    hourglasses_collected: `THRESHOLD STABILIZED — Player ${state.winner} secures every Key!`,
+                    hourglasses_collected: (() => {
+                        const _n = getKeysToWin(mpMode);
+                        const _all = _n >= (state.hourglasses || []).length;
+                        return `THRESHOLD STABILIZED — Player ${state.winner} secures ${_all ? 'every Key' : `${_n} Keys`}!`;
+                    })(),
                     most_kills: `Player ${state.winner} wins with the most kills!`,
                     most_points: `Player ${state.winner} wins with the most points!`,
                     most_captures: `Player ${state.winner} wins with the most flag captures!`,

@@ -241,8 +241,19 @@
                 id: 'arena',
                 label: 'Arena',
                 icon: '🏰',
-                desc: 'Destroy the Cube, secure the Keys, wipe out the enemy — or hold all 3 Nexus zones (center + both spawns; yours starts captured). 15-round limit with composite scoring fallback.',
-                roundLimit: 15,
+                desc: 'Destroy the Cube, secure 3 of the 5 Keys, wipe out the enemy — or hold all 3 Nexus zones (center + both spawns; yours starts captured). A win condition MUST be met; the 100-round cap is only a safety net (composite score, then Sudden Death).',
+                /* 2026-09-07 Arena rules pass: matches end ONLY on a real win
+                   condition. The round cap is a "never literally forever"
+                   backstop (AI training / balance runs want every objective to
+                   stay live, comebacks included) — a tighter limit comes back
+                   later. Keys are a FIXED POOL: keySpawnCount are scattered at
+                   match start (no round-10 restock), keysToWin secures the
+                   THRESHOLD STABILIZED win. Read through battle.js
+                   getArenaKeyRules(); every mode without these two fields keeps
+                   the legacy "carry every Key on the board" rule. */
+                roundLimit: 100,
+                keySpawnCount: 5,
+                keysToWin: 3,
                 timeLimitSec: 0,
                 hasTowers: true,
                 hasNexus: true,

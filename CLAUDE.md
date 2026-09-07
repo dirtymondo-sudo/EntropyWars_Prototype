@@ -284,6 +284,20 @@ screens voice it. Online: `strikeType` rides the `doEntropyStrike`
 game-action and the `entropy-cine` relay; Simul plan steps carry it too.
 `npm test` runs `entropy-strike.test.js` (catalogue ↔ directors ↔ CSS).
 
+## ARENA RULES — fixed Key pool + round safety cap — added 2026-09-07
+Arena (state.js `MULTIPLAYER_MODES.arena`) scatters a FIXED pool of
+`keySpawnCount` (5) Keys and wins THRESHOLD STABILIZED when one team CARRIES
+`keysToWin` (3) at once; `roundLimit` is 100 — a safety cap only (composite
+Arena score, then Sudden Death), because a match must end on a real win
+condition (AI training / balancing wants every objective live, comebacks
+included; a tighter cap returns later). Read the numbers ONLY through
+battle.js `getArenaKeyRules(mp)` / `getKeysToWin(mp)` — modes without the
+two fields keep the legacy "carry every Key on the board" rule and the map's
+`CONFIG.winHourglasses`. A fixed pool never restocks (the round-10
+`spawnPeriodicHourglasses` top-up is skipped). `state.hourglassTarget` is set
+at spawn for ai.js `assessWinCondition` and syncs to the guest. HUD tower
+block shows `🗝 held/needed`. See PLAYTEST_NOTES "ARENA RULES PASS".
+
 ## TWIN NODES (race-tree nodes that hold two spells) — added 2026-09-07
 CHAMP_REWORK_PLAN §4 / §4.6 (Phase 2). A `RACE_TREE` entry (data.js) may be
 a 2-id array: the node holds two ALTERNATES, exactly one equips (1 slot,
