@@ -742,6 +742,9 @@ function legalCustomSpellIds(race, cls, secJob) {
     const sealed = typeof window.treeSealedIds === 'function' ? window.treeSealedIds(tree) : new Set();
     const ok = new Set();
     for (const id of Object.values(tree.nodes)) if (id && !sealed.has(id)) ok.add(id);
+    // twin nodes (CHAMP_REWORK_PLAN §4): either alternate is legal — one at a
+    // time, which treeLegalSubset enforces.
+    for (const pair of Object.values(tree.alts || {})) for (const id of pair) if (id && !sealed.has(id)) ok.add(id);
     /* Freelancer: any wildcard-pool spell may legally sit in a socket —
        connectivity is enforced separately by treeLegalSubset. */
     if (cls === 'Freelancer' && typeof window.flWildcardPool === 'function') {
@@ -1205,7 +1208,7 @@ function computeTreeEquipPath(tree, sealed, equippedIds, targetKey) {
 
 function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, raceLabel,
                           onNodeClick, onNodeHoverIn, onNodeHoverOut, hoverPath, shakeKey, onOpenSubjob,
-                          onSocketClick }) {
+                          onSocketClick, onTwinPick }) {
   const equippedSet = new Set(equipped || []);
   const connected = (typeof window.treeReachableKeys === 'function')
     ? window.treeReachableKeys(tree, equippedSet) : new Set(['root']);
@@ -1307,16 +1310,35 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
     }
     if (key === 'R3' && st8 !== 'equipped') style.borderStyle = 'dashed';       // Da'at
     if (shakeKey === key) style.animation = 'ewTreeShake 0.3s linear';
+    /* TWIN NODE (CHAMP_REWORK_PLAN §4): the node holds two alternates. An
+       UNEQUIPPED twin opens the picker instead of auto-equipping its face;
+       an EQUIPPED twin still unequips on click, and its ⇄ badge opens the
+       picker to swap in place. The badge is the one visual tell. */
+    const twin = (tree.alts && tree.alts[key]) || null;
+    const otherAlt = twin ? twin.find(a => a !== id) : null;
+    const otherSp = otherAlt && typeof window.getSpellById === 'function' ? window.getSpellById(otherAlt) : null;
+    const clickable = (st8 === 'equipped' || st8 === 'reachable' || st8 === 'far');
+    const twinPickable = twin && clickable && !!onTwinPick;
+    const chipClick = st8 === 'socket' ? () => onSocketClick && onSocketClick(key)
+      : (twinPickable && st8 !== 'equipped') ? () => onTwinPick(key)
+      : clickable ? () => onNodeClick(key) : undefined;
     return h('div', { key, style: { position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', pointerEvents: 'none' } },
       h('div', {
         style: { ...style, pointerEvents: 'auto' },
-        onClick: st8 === 'socket' ? () => onSocketClick && onSocketClick(key)
-          : (st8 === 'equipped' || st8 === 'reachable' || st8 === 'far') ? () => onNodeClick(key) : undefined,
+        onClick: chipClick,
         onMouseEnter: sp ? (e) => onNodeHoverIn(key, sp, e) : undefined,
         onMouseLeave: sp ? () => onNodeHoverOut() : undefined,
       },
         isCap && st8 !== 'empty' ? h('span', { style: { position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', fontSize: 11, color: nc } }, '♛') : null,
-        glyph),
+        glyph,
+        twin ? h('span', {
+          style: { position: 'absolute', right: -7, bottom: -5, width: 16, height: 16, borderRadius: '50%',
+            background: TREE_NODE_BG, border: '1px solid ' + (twinPickable ? EW.time : 'rgba(242,196,104,0.35)'),
+            color: twinPickable ? EW.time : EW.inkDim, fontSize: 10, lineHeight: '14px', textAlign: 'center',
+            fontFamily: 'sans-serif', fontWeight: 700, cursor: twinPickable ? 'pointer' : 'default',
+            boxShadow: st8 === 'equipped' ? '0 0 6px rgba(242,196,104,0.45)' : 'none' },
+          onClick: twinPickable ? (e) => { e.stopPropagation(); onTwinPick(key); } : undefined,
+        }, '⇄') : null),
       (st8 !== 'empty') ? h('div', { style: {
         position: 'absolute', left: x + '%', top: 'calc(' + y + '% + 27px)',
         transform: 'translateX(-50%)', width: 84, textAlign: 'center',
@@ -1328,6 +1350,8 @@ function SpellTreePanel({ tree, sealed, equipped, slotCap, fc, clsName, secJob, 
         textTransform: 'uppercase',
       } },
         label,
+        // twin node: the alternate it is NOT wearing, so the choice reads at a glance
+        twin && otherSp ? h('div', { style: { marginTop: 1, color: st8 === 'equipped' ? 'rgba(242,196,104,0.75)' : EW.inkDim, fontSize: 7, letterSpacing: '0.08em' } }, '⇄ ' + otherSp.name) : null,
         // the canonical TYPE badge rides under the name — matchup intel
         // on the node itself, same chip as the blades / battle menu
         sp && sp.spellType ? h('div', { style: { marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 } },
@@ -2014,7 +2038,9 @@ function PartyBuilder() {
   const [treeShake, setTreeShake] = React.useState(null);
   // Freelancer wildcard sockets: which socket's picker is open (node key or null).
   const [flSocketPick, setFlSocketPick] = React.useState(null);
-  React.useEffect(() => { setFlSocketPick(null); }, [player, slot, clsName, unitRace]);
+  // Twin nodes (CHAMP_REWORK_PLAN §4): which twin node's picker is open (node key or null).
+  const [twinPick, setTwinPick] = React.useState(null);
+  React.useEffect(() => { setFlSocketPick(null); setTwinPick(null); }, [player, slot, clsName, unitRace]);
   const treeShakeTimer = React.useRef(null);
   const shakeTreeNode = (key) => {
     setTreeShake(key);
@@ -2075,6 +2101,38 @@ function PartyBuilder() {
         && !window.isTreeLoadoutLegal(unitRace, clsName, secJob, candidate)) { sfx('uiError'); return; }
     arr.push(spellId);
     setFlSocketPick(null);
+    hideSpellTip();
+    st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
+  }
+  /* Twin-node flow: the candidate loadout that equips ALTERNATE spellId on
+     twin node twinKey — a swap in place when the node's other alternate is
+     equipped (never severs: same node), else the cheapest path with the
+     chosen alternate on the target node. null = impossible. */
+  function twinCandidate(twinKey, spellId) {
+    if (!unitTree || !unitTree.alts || !unitTree.alts[twinKey]) return null;
+    const pair = unitTree.alts[twinKey];
+    if (!pair.includes(spellId) || treeSealed.has(spellId)) return null;
+    const arr = customSpells || [];
+    const cur = pair.find(id => arr.includes(id));
+    if (cur === spellId) return arr.slice();
+    if (cur) return arr.map(id => id === cur ? spellId : id);
+    const path = computeTreeEquipPath(unitTree, treeSealed, arr, twinKey);
+    if (!path || !path.length) return null;
+    const newIds = path.map(k => k === twinKey ? spellId : unitTree.nodes[k]).filter(pid => pid && !arr.includes(pid));
+    if (arr.length + newIds.length > slotCap) return null;
+    return [...arr, ...newIds];
+  }
+  function twinPickSpell(spellId) {
+    if (!twinPick) return;
+    const candidate = twinCandidate(twinPick, spellId);
+    if (!candidate || (typeof window.isTreeLoadoutLegal === 'function'
+        && !window.isTreeLoadoutLegal(unitRace, clsName, secJob, candidate))) { sfx('uiError'); shakeTreeNode(twinPick); return; }
+    if (!st.partyMeta[player]) st.partyMeta[player] = [];
+    if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
+    const m = st.partyMeta[player][slot];
+    m.customSpells = candidate;
+    setTwinPick(null);
+    setTreeHoverPath(null);
     hideSpellTip();
     st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
   }
@@ -2390,7 +2448,9 @@ function PartyBuilder() {
             h('span', { style:{ fontSize:10, color:EW.inkMute, letterSpacing:'0.16em' } }, 'SPELL TREE'),
             h('span', { style:{ fontSize:9, color:`${fc}bb`, letterSpacing:'0.08em', textTransform:'uppercase' } }, getJobDisplay(clsName), unitTree.isFreelancer ? ' + WILDCARDS' : (secJob ? ' + ' + getJobDisplay(secJob) : '')),
             h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.06em', marginLeft:'auto' } },
-              unitTree.isFreelancer ? 'CLICK A ＋ SOCKET · BORROW ANY JOB\'S SPELL' : 'CLICK A NODE · DISTANT NODES AUTO-EQUIP THE PATH')),
+              unitTree.isFreelancer ? 'CLICK A ＋ SOCKET · BORROW ANY JOB\'S SPELL'
+                : (unitTree.alts && Object.keys(unitTree.alts).length) ? 'CLICK A NODE · ⇄ NODES HOLD TWO SPELLS — PICK ONE'
+                : 'CLICK A NODE · DISTANT NODES AUTO-EQUIP THE PATH')),
           h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', paddingTop:6, paddingBottom:4, position:'relative' } },
             h(SpellTreePanel, { tree: unitTree, sealed: treeSealed, equipped: customSpells || [],
               slotCap, fc, clsName, secJob,
@@ -2398,21 +2458,34 @@ function PartyBuilder() {
               onNodeClick: treeNodeClick, onNodeHoverIn: treeNodeHoverIn, onNodeHoverOut: treeNodeHoverOut,
               hoverPath: treeHoverPath, shakeKey: treeShake,
               onOpenSubjob: (!isArena && !unitTree.isFreelancer) ? () => { setEquipPicker('subjob'); sfx('uiCursorMove'); } : undefined,
-              onSocketClick: unitTree.isFreelancer ? (key) => { setFlSocketPick(key); sfx('uiCursorMove'); } : undefined }),
-            // ── wildcard socket picker (Freelancer) ──
-            flSocketPick && unitTree.isFreelancer && h('div', {
-              style:{ position:'absolute', inset:0, zIndex:5, background:'rgba(5,5,9,0.88)',
-                display:'flex', flexDirection:'column' },
-              onClick:(e)=>{ if (e.target === e.currentTarget) { setFlSocketPick(null); hideSpellTip(); } } },
-              h('div', { style:{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0 } },
-                h('span', { style:{ fontSize:10, color:EW.time, letterSpacing:'0.16em' } }, '＋ WILDCARD SOCKET'),
-                h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.1em' } },
-                  'TIER ' + (((unitTree.sockets||{})[flSocketPick]||[]).join(' / ')) + ' · ANY JOB'),
-                h('span', { style:{ flex:1 } }),
-                h('span', { style:{ fontSize:10, color:EW.inkDim, cursor:'pointer', padding:'2px 6px', border:`1px solid ${EW.panelEdge}` },
-                  onClick:()=>{ setFlSocketPick(null); hideSpellTip(); } }, '✕ CLOSE')),
-              h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:3, padding:'4px 2px' } },
-                flSocketPool.map(sp => {
+              onSocketClick: unitTree.isFreelancer ? (key) => { setFlSocketPick(key); sfx('uiCursorMove'); } : undefined,
+              onTwinPick: (unitTree.alts && Object.keys(unitTree.alts).length) ? (key) => { setTwinPick(key); sfx('uiCursorMove'); } : undefined }),
+            // ── node picker: ONE overlay for Freelancer wildcard sockets AND twin
+            //    nodes (CHAMP_REWORK_PLAN §10 decision 10 — one UI, not two) ──
+            (() => {
+              const twinOpen = twinPick && unitTree.alts && unitTree.alts[twinPick];
+              const socketOpen = !twinOpen && flSocketPick && unitTree.isFreelancer;
+              if (!twinOpen && !socketOpen) return null;
+              const close = () => { setTwinPick(null); setFlSocketPick(null); hideSpellTip(); };
+              let title, sub, rows;
+              if (twinOpen) {
+                const pair = unitTree.alts[twinPick];
+                const curAlt = pair.find(id => (customSpells || []).includes(id)) || null;
+                title = '⇄ TWIN NODE';
+                sub = 'RING ' + twinPick.slice(1) + ' · TWO SPELLS, ONE SLOT' + (curAlt ? ' · SWAPS IN PLACE' : ' · PICK ONE');
+                rows = pair.map(id => typeof window.getSpellById === 'function' ? window.getSpellById(id) : null).filter(Boolean).map(sp => {
+                  const already = sp.id === curAlt;
+                  const cand = already ? null : twinCandidate(twinPick, sp.id);
+                  const cantEquip = !already && (!cand || (typeof window.isTreeLoadoutLegal === 'function'
+                        && !window.isTreeLoadoutLegal(unitRace, clsName, secJob, cand)));
+                  return h(SpellBlade, { key: sp.id, sp, pool:true, raceAbility:true, equipped: already, dim: cantEquip,
+                    onClick: () => (already ? close() : twinPickSpell(sp.id)),
+                    onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
+                });
+              } else {
+                title = '＋ WILDCARD SOCKET';
+                sub = 'TIER ' + (((unitTree.sockets||{})[flSocketPick]||[]).join(' / ')) + ' · ANY JOB';
+                rows = flSocketPool.map(sp => {
                   const already = (customSpells || []).includes(sp.id);
                   const cantEquip = already || (customSpells || []).length >= slotCap
                     || (typeof window.isTreeLoadoutLegal === 'function'
@@ -2420,7 +2493,20 @@ function PartyBuilder() {
                   return h(SpellBlade, { key: sp.id, sp, pool:true, equipped: already, dim: cantEquip && !already,
                     onClick: () => flEquipWildcard(sp.id),
                     onHoverIn: e=>showSpellTip(sp, e), onHoverOut: hideSpellTip });
-                })))
+                });
+              }
+              return h('div', {
+                style:{ position:'absolute', inset:0, zIndex:5, background:'rgba(5,5,9,0.88)',
+                  display:'flex', flexDirection:'column' },
+                onClick:(e)=>{ if (e.target === e.currentTarget) close(); } },
+                h('div', { style:{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderBottom:`1px solid ${EW.panelEdge}`, flexShrink:0 } },
+                  h('span', { style:{ fontSize:10, color:EW.time, letterSpacing:'0.16em' } }, title),
+                  h('span', { style:{ fontSize:9, color:EW.inkMute, letterSpacing:'0.1em' } }, sub),
+                  h('span', { style:{ flex:1 } }),
+                  h('span', { style:{ fontSize:10, color:EW.inkDim, cursor:'pointer', padding:'2px 6px', border:`1px solid ${EW.panelEdge}` },
+                    onClick: close }, '✕ CLOSE')),
+                h('div', { style:{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:3, padding:'4px 2px' } }, rows));
+            })()
           )),
 
         // ── flat pool — FALLBACK only (tree fns unavailable) ──

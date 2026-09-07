@@ -6,10 +6,16 @@
 > (`RACE_DEFAULT_JOBS`); `npm run grades` (check-grades.js) now FAILS when a
 > race leaves the budget band or a reworked champ stops matching the words it
 > was designed from. Token `20260907f-cors` → `20260907g-cors`.
-> **Phases 2–6 are PLANNED here, not built** — twin nodes, passives, statuses,
-> the new spells (with their VFX / animation / cinematic specs), and the two
-> new champs. §10 lists the yes/no decisions the owner should make before
-> Phase 2 starts.
+> **PHASE 2 SHIPPED 2026-09-07 (§4, §4.6):** twin nodes are live — a race-tree
+> entry may be a 2-id array, one alternate equips per node, the builder shows
+> a ⇄ badge and a picker (the Freelancer socket overlay, generalised), the
+> legality / repair / random-walk functions and content-schema tests know the
+> shape. Nine races wear the §6 pairs whose two spells both exist today.
+> Token `20260907g-cors` → `20260907h-cors`.
+> **Phases 3–6 are PLANNED here, not built** — passives, statuses, the new
+> spells (with their VFX / animation / cinematic specs), and the two new
+> champs. §10 lists the yes/no decisions the owner should make (items 14–15
+> came out of Phase 2).
 
 This is the single planning doc for the owner's 2026-09-07 "champ reworks"
 notes. It is written so that any later session can build one phase from it
@@ -30,7 +36,7 @@ are measured).
 | §1 | The rules already in the game that the rework leans on | reference |
 | §2 | The vocabulary: the owner's words → numbers; the power budget; the checkable constraints | **shipped** |
 | §3 | "Speed is both" — what changed, who is fast now | **shipped** |
-| §4 | Twin nodes — "each node could have 2 abilities and you pick one" | planned (Phase 2) |
+| §4 | Twin nodes — "each node could have 2 abilities and you pick one" | **shipped** (Phase 2, §4.6) |
 | §5 | New game-wide systems the kits need: statuses, passives, spell kinds/flags, terrain, forms, control, links, the shadow realm, summons | planned (Phases 3–4) |
 | §6 | The champs — 27 reworked + 2 new: role, stats, passives, race pillar, every new spell with numbers + presentation | planned (Phase 5–6), stats shipped |
 | §7 | The roster sweep — before/after table for all 96 races | **shipped** |
@@ -281,6 +287,69 @@ fighter `raceFlurryOfBlows` + `raceKiWave` · dragon `sharedFissure` · demon
 `raceGothicRampart` + `raceWingGust` · black goo `raceOozeTrail` · robin hood
 `raceBombArrow` + `racePoisonArrow` · superhero `sharedNebula` · mad scientist
 `sharedShrinkRay` + `freeEnergy` · vampire `raceLifetap`. §6 places them.
+
+---
+
+### 4.6 SHIPPED 2026-09-07 — what landed, and where it differs from §4.2
+
+**Rows now twinned** (data.js `RACE_TREE`; `A ⇄ B`, A = face):
+
+| Race | r1 | r2 | r3 | r4★ | Ring-cost moves |
+|---|---|---|---|---|---|
+| quarterback | Bullet Pass | Blitz | Audible ⇄ Spike the Ball | Hail Mary | Spike 25 → 75 |
+| honda civic | Ram Charge | Exhaust Cloud | Robo Punch ⇄ Nitro Boost | Vehicular Manslaughter | Robo Punch 25 → 75 |
+| ki fighter | Ki Volley ⇄ Flurry of Blows | Ki Charge ⇄ Ki Wave | Instant Transmission | Dragon Fist | — |
+| atlantean | Whirlpool | Water Pulse | Temporal Tide | Poseidon's Wrath ⇄ Great Flood | — |
+| skeleton | Bone Toss | Reassemble | Poison Swamp ⇄ Fissure | Marrowstorm | — |
+| bigfoot | Big Kick ⇄ Tremor Stomp | Blurry Photo | Trunk Throw | Sasquatch Smash | Tremor Stomp 75 → 25 · Trunk Throw 25 → 75 |
+| gargoyle | Wing Attack ⇄ Stonefall | Gothic Rampart | Calcify | Stone Drop | Rampart 25 → 50 · Perch Form off-tree |
+| robinhood | Fire Arrow ⇄ Poison Arrow | Steal from the Rich ⇄ Bomb Arrow | Splitting Arrow | Arrow Rain | Bomb Arrow 25 → 50 |
+| shaman | Herbal Remedy | Spirit Walk | Ayahuasca Retreat | Bad Trip ⇄ Ego Death | — |
+
+Every §6 pair with a NEW spell in it lands with that spell (Phase 5). The
+bigfoot / gargoyle rows are the §6 pillar ORDER too (Trunk Throw is tier II,
+so ring 3 is where it belongs; Perch Form leaves the tree as §6.17 says and
+stays an off-tree race ability until Stoneform replaces it).
+
+**Deviations from §4.2 (deliberate):**
+- `getRaceTreeSpells(race, cls)` still returns a FLAT list — the faces — so
+  every pre-twin caller (builder defaults, battle.js optimize, the balance
+  export) keeps working unchanged. The row with pairs intact is
+  `getRaceTreeRow`; `getRaceTreeAlts` gives `{ R3: [a, b] }`;
+  `getRaceTreeAllIds` flattens both alternates. battle.js was not touched.
+- **Great Flood twins at r4, not r3** (§6.12 said Temporal Tide ⇄ Great
+  Flood): it is tier III — the mermaid's capstone — and the twin rule says
+  both alternates carry the node's tier, so ring 3 is illegal for it. When
+  Tsunami★ lands, decide whether it displaces Flood or joins it (§10 #15).
+- The face in Clash is the first alternate that isn't a banned movement
+  spell, so a sealed dash never hides its castable twin.
+- `treeLegalSubset` keeps the FIRST alternate it meets in the wish-list and
+  drops the other (stale saves that somehow hold both repair to one);
+  `buildTreeLegalLoadout` rebuilds the tree after every pick so a walked-on
+  alternate becomes its node (about half of random walks pick a non-face).
+- Freelancer: race twins resolve the same way; the wildcard pool excludes
+  both alternates; the other alternate of an equipped twin is reported as
+  `unplaced` (illegal) rather than silently socketed.
+
+**Builder (party-builder.js):** twin chips carry a ⇄ badge (gold when the
+node is clickable) and print "⇄ <other name>" under the face name. An
+UNEQUIPPED twin opens the picker instead of auto-equipping its face; an
+EQUIPPED twin unequips on click, and its badge opens the picker to SWAP IN
+PLACE (same node, so it can never sever the chain). The picker is the
+Freelancer socket overlay generalised (one overlay, two sources — §10 #10
+taken as yes). Legal-id scrubbing (`legalCustomSpellIds`) accepts both
+alternates; `treeLegalSubset` still enforces one.
+
+**Tests:** content-schema.test.js — rows are 4 entries, each a string or a
+2-string array, ids known / owned / not on a job tree / never on two nodes,
+capstone twins both tier III, the one-alternate rule, repair, random walks
+(twin races and Freelancer), pool exclusion.
+
+**Not twinned (no permanent home in §6):** werewolf Pounce, dragon Fissure,
+demon Wing Attack, shaman Hex of Agony, black goo Ooze Trail, superhero
+Nebula, mad scientist Shrink Ray + Free Energy, vampire Lifetap — §4.5
+listed them, §6's final pillars have no node for them. Interim twins would
+have to be undone in Phase 5, so they wait for §10 #14.
 
 ---
 
@@ -811,9 +880,15 @@ data.js `RACE_BASE_STATS` (96 lines + header comment), `RACE_DEFAULT_JOBS`
 (santa → Black Mage, gargoyle → Tank, black goo → Tank, cyborg → Engineer),
 `JOB_KITS` window export; check-grades.js budget + constraints; this doc.
 
-### 9.2 Phase 2 — twin nodes (data.js tree fns, party-builder.js `SpellTreePanel`, content-schema.test.js)
-Ship with the §4.5 free twins so the feature is visible on day one. No new
-spells, no engine change, no relay.
+### 9.2 Phase 2 — twin nodes (SHIPPED 2026-09-07)
+data.js (`RACE_TREE` rows, `getRaceTreeRow` / `getRaceTreeAlts` /
+`getRaceTreeAllIds`, `_resolveRaceNodes`, `buildUnitSpellTree`,
+`buildFreelancerTree`, `flWildcardPool`, `_treeSealedIds`,
+`isTreeLoadoutLegal`, `treeLegalSubset`, `buildTreeLegalLoadout`,
+`buildTreeRingIndex`), party-builder.js (`SpellTreePanel` twin badge +
+`onTwinPick`, `twinCandidate` / `twinPickSpell`, the shared node picker,
+`legalCustomSpellIds`), content-schema.test.js, index.html token. No new
+spells, no engine change, no relay — see §4.6 for the placements.
 
 ### 9.3 Phase 3 — the passive batch (data.js `PASSIVE_DEFS`/`RACE_PASSIVES`, battle.js hooks, map.js respawn/vision, state.js `getEffectiveSpd`, party-builder.js `RACE_TRAITS` overlay)
 All 19 rows of §5.2. Pure engine, no art. Delete the matching
@@ -875,3 +950,16 @@ crumble (gargoyle), arm-cannon morph (cyborg).
 12. **Flat Earth flattens DOWN** to the lowest tile in the 3×3 (never raises).
 13. **Sweep scope:** the other 67 races kept their tile counts and identities;
     say which ones deserve their own rethink and they get a §6 entry.
+14. **The unplaced §4.5 free twins** (werewolf Pounce, dragon Fissure, demon
+    Wing Attack, shaman Hex of Agony, black goo Ooze Trail, superhero Nebula,
+    mad scientist Shrink Ray + Free Energy, vampire Lifetap): §6's final
+    pillars have no node for them. Leave them off-tree (Phase 2 did), or name
+    the node each should share — an interim twin is one row edit.
+15. **Great Flood sits at atlantean r4** (tier III, the mermaid's capstone —
+    ring 3 is illegal for it). When Tsunami★ ships: Tsunami replaces Flood
+    at r4, or Flood is re-authored as a tier-II variant for ring 3?
+16. **Ring-cost moves from the §6 pillar order** — Tremor Stomp 75 → 25 MP
+    at bigfoot r1 (125 AOE + Stagger for 25 is the strongest ring-1 area
+    spell), Trunk Throw 25 → 75, Robo Punch / Spike the Ball 25 → 75, Bomb
+    Arrow / Gothic Rampart 25 → 50. All follow the ring ladder; veto any and
+    the pair moves ring.

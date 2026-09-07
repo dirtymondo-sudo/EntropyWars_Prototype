@@ -13602,9 +13602,27 @@ for (const [_job, _order] of Object.entries(CLASS_SPELL_LEARN_ORDER)) {
    dreameater, goatman, chosen one, gnome, kaiju… see doc) fall back to
    their first 4 existing abilities via getRaceTreeSpells until their
    Phase-B content lands. */
+/* ═══════════ TWIN NODES (CHAMP_REWORK_PLAN §4 — Phase 2, 2026-09-07) ═══════════
+   A RACE-pillar entry may be a 2-element array: the node holds two
+   ALTERNATES and exactly one of them can be equipped. The equipped
+   alternate occupies the node (1 slot, the node's ring cost and tier);
+   the other stays available as a free respec in the builder. When neither
+   is equipped the node shows its FACE — the first alternate (in Clash the
+   first alternate that isn't banned, so a sealed dash never hides its
+   twin). Job pillars stay single. Saves are untouched: customSpells is
+   still a flat id list, and both alternates price by the node's ring
+   (buildTreeRingIndex flattens pairs).
+     getRaceTreeRow()    → the row with pairs intact
+     getRaceTreeSpells() → faces only (flat, what every legacy caller wants)
+     getRaceTreeAlts()   → { R2: [idA, idB], … }
+   content-schema.test.js: 4 entries, each a string or a 2-string array, no
+   id on two nodes, capstone twins both tier III, a loadout with both
+   alternates is illegal and treeLegalSubset repairs it to the first. */
 const RACE_TREE = {
     /* Phase-B curated rows (2026-08-07): the 17 formerly-thin races now have
-       authored final-4s — no race falls back to "first 4 abilities" anymore. */
+       authored final-4s — no race falls back to "first 4 abilities" anymore.
+       Phase 2 twins (2026-09-07) are the CHAMP_REWORK_PLAN §6 pairs whose
+       two spells both exist today; a pair with a NEW spell lands with it. */
     'homosapien':    ['raceElbowGrease', 'raceAdrenalineRush', 'raceUnderdogSpirit', 'raceIndomitableWill'],
     'knight':        ['raceChivalry', 'raceShieldWall', 'raceOathOfValor', 'raceCrusade'],
     'cowboy':        ['raceLasso', 'raceFanTheHammer', 'raceQuickDraw', 'raceHighNoon'],
@@ -13612,10 +13630,10 @@ const RACE_TREE = {
     'wizard':        ['raceArcaneBlast', 'raceSpellsteal', 'racePolymorph', 'raceHocusPocus'],
     'giant':         ['raceBoulderHurl', 'raceEarthenGrasp', 'raceTitanStep', 'raceColossalCrush'],
     'fairy':         ['raceGlitterburst', 'racePixieDust', 'raceTrickRoom', 'raceFaeRing'],  // Fae Ring is a ring-shaped damage capstone since 2026-08-12
-    'bigfoot':       ['trunkThrow', 'raceRealityShift', 'raceTremorStomp', 'raceSasquatchSmash'],
+    'bigfoot':       [['raceBigKick', 'raceTremorStomp'], 'raceRealityShift', 'trunkThrow', 'raceSasquatchSmash'],   // §6.16 (Trunk Throw is tier II → r3)
     'ai':            ['racePredictiveModel', 'raceOvercalculate', 'raceRecursiveLoop', 'raceSingularity'],
     'orb of light':  ['racePhotonScatter', 'raceLuminousShield', 'racePrismBurst', 'raceSupernova'],
-    'skeleton':      ['raceBoneToss', 'raceReassemble', 'sharedPoisonSwamp', 'raceMarrowstorm'],
+    'skeleton':      ['raceBoneToss', 'raceReassemble', ['sharedPoisonSwamp', 'sharedFissure'], 'raceMarrowstorm'],   // §6.13
     'zombie':        ['raceInfectiousBite', 'raceZombieRush', 'raceOutbreak', 'raceShamblingHorde'],
     'dreameater':    ['raceDreamSiphon', 'raceLucidTrap', 'raceNightmarePulse', 'raceEternalSlumber'],
     'goatman':       ['raceGoreCharge', 'raceCliffCharge', 'raceBloodRitual', 'raceBaphometsRite'],
@@ -13624,7 +13642,7 @@ const RACE_TREE = {
     'gnome':         ['raceFlashbangMine', 'raceTinkersContraption', 'raceClockworkTurret', 'raceOvertinker'],
     'pirate':        ['racePlunder', 'raceBoardingRush', 'raceYoHo', 'raceCannonball'],
     'swordfighter':  ['raceSadBackstory', 'racePlotArmor', 'raceToBeContinued', 'raceBlessedBlade'],
-    'shaman':        ['raceHerbalRemedy', 'raceSpiritWalk', 'raceAyahuascaRetreat', 'raceBadTrip'],
+    'shaman':        ['raceHerbalRemedy', 'raceSpiritWalk', 'raceAyahuascaRetreat', ['raceBadTrip', 'sharedEgoDeath']],   // §4.5 capstone twin (both tier III)
     'mad scientist': ['raceTeslaTrap', 'raceCloneDecoy', 'raceOvercharge', 'racePlandemic'],
     'men in black':  ['raceDeneuralizer', 'raceAgentVanish', 'sharedSmokeScreen', 'raceClassifiedWeapon'],
     'telepath':      ['raceTelepathicLink', 'racePsychicBarrier', 'raceBrainwash', 'raceMindCrush'],
@@ -13646,7 +13664,7 @@ const RACE_TREE = {
     'annunaki':      ['raceGravityWell', 'raceZigguratProtocol', 'sharedGravityCrush', 'raceStarDecree'],
     'skinwalker':    ['raceBorrowedClaw', 'sharedSmokeScreen', 'raceSkinSwap', 'raceMimicry'],
     'werewolf':      ['raceBite', 'raceHowl', 'raceFeralDive', 'raceBloodFrenzy'],
-    'gargoyle':      ['raceStonefall', 'racePerchForm', 'raceCalcify', 'raceStoneDrop'],
+    'gargoyle':      [['raceWingGust', 'raceStonefall'], 'raceGothicRampart', 'raceCalcify', 'raceStoneDrop'],   // §6.17 — Perch Form retired from the tree (Stoneform twins Rampart in Phase 5)
     'djinn':         ['raceDustDevil', 'sharedSummonSandstorm', 'raceWishGranted', 'raceAncientMagic'],
     'anubis':        ['sharedFissure', 'raceGravePassage', 'sharedSummonSandstorm', 'raceWeighTheHeart'],
     'catgirl':       ['raceLoveBite', 'raceNimbleDodge', 'raceMeow', 'raceNinefoldScratch'],
@@ -13678,7 +13696,7 @@ const RACE_TREE = {
     'conspiracy theorist': ['raceTinFoilHat', 'raceChemtrails', 'raceFluorideWater', 'raceTruthBomb'],
     'overlord':      ['raceHellfireCrown', 'raceInfernalDecree', 'sharedScorchedEarth', 'raceCataclysmDecree'],
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
-    'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', 'racePoseidonsWrath'],
+    'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['racePoseidonsWrath', 'raceFlood']],   // §6.12 — Great Flood is tier III (mermaid capstone) so it twins at r4, not r3
     'dinosaur':      ['racePrimalRoar', 'raceApexCharge', 'sharedFissure', 'raceJurassicJaw'],
     'dragon':        ['raceWingGust', 'raceDragonfear', 'raceDragonToss', 'raceDragonfire'],
     'ghoul':         ['raceGhoulishBite', 'raceCorpseCrawl', 'sharedPoisonSwamp', 'raceCarrionFeast'],
@@ -13689,17 +13707,17 @@ const RACE_TREE = {
     'barbarella':    ['raceStunRay', 'raceGravityBoots', 'racePlasmaWhip', 'raceSpaceDisco'],
     'black goo':     ['raceCorrosiveSplash', 'raceAbsorb', 'raceToxicNova', 'raceMitosisSplit'],
     'golem':         ['raceBoulderHurl', 'raceStoneSkin', 'sharedFissure', 'raceQuake'],
-    'honda civic':   ['raceRamCharge', 'raceExhaustCloud', 'raceNitroBoost', 'raceMissileBarrage'],
+    'honda civic':   ['raceRamCharge', 'raceExhaustCloud', ['raceRoboPunch', 'raceNitroBoost'], 'raceMissileBarrage'],   // §6.2
     'ice queen':     ['raceIceSpear', 'sharedFlashFreeze', 'raceDiamondDust', 'raceAbsoluteZero'],
     'juggernaut':    ['raceBodyCheck', 'raceThickHide', 'raceBrutalSlam', 'raceUnstoppableCharge'],
-    'ki fighter':    ['raceKiBlast', 'raceKiCharge', 'raceInstantTransmission', 'raceDragonFist'],
+    'ki fighter':    [['raceKiBlast', 'raceFlurryOfBlows'], ['raceKiCharge', 'raceKiWave'], 'raceInstantTransmission', 'raceDragonFist'],   // §6.10
     'king arthur':   ['raceRoyalDecree', 'raceShieldWall', 'raceKnightsOfRound', 'raceExcaliburStrike'],
     'king kong':     ['raceChestPound', 'raceBoulderHurl', 'raceApeFury', 'racePrimalSmash'],
     'minotaur':      ['raceHornToss', 'raceLabyrinthRoar', 'raceGoreCharge', 'raceBullRush'],
     'necromancer':   ['raceSoulDrain', 'racePlaguefield', 'raceBoneBarrage', 'raceRaiseDead'],
     'occulus':       ['racePsychicBeam', 'raceOmniVision', 'raceHypnoticPulse', 'raceDeathGaze'],
-    'quarterback':   ['raceBulletPass', 'raceBlitz', 'raceAudible', 'raceHailMary'],
-    'robinhood':     ['raceFireArrow', 'raceStealFromRich', 'raceSplittingArrow', 'raceArrowRain'],
+    'quarterback':   ['raceBulletPass', 'raceBlitz', ['raceAudible', 'raceSpikeTheBall'], 'raceHailMary'],   // §6.1
+    'robinhood':     [['raceFireArrow', 'racePoisonArrow'], ['raceStealFromRich', 'raceBombArrow'], 'raceSplittingArrow', 'raceArrowRain'],   // §6.24
     'santa clause':  ['raceLumpOfCoal', 'raceSleighDash', 'raceNaughtyList', 'raceBlizzardPresent'],
     'super sentai':  ['sentaiRedSlash', 'sentaiPinkHeal', 'sentaiTeamStrike', 'sentaiMegazordBlast'],
     'symbiote':      ['raceWebLaunch', 'raceSymbioteArmor', 'raceSymbioticDrain', 'raceTendrilStrike'],
@@ -13739,10 +13757,12 @@ function buildTreeRingIndex() {
     const rings = {};
     const noteOrder = (order) => {
         if (!Array.isArray(order)) return;
-        order.forEach((id, i) => {
-            if (!id) return;
+        order.forEach((entry, i) => {
             const ring = (i >= order.length - 1) ? 3 : Math.min(i, 2);
-            if (rings[id] == null || ring < rings[id]) rings[id] = ring;
+            // a twin node prices BOTH alternates at its ring
+            for (const id of _treeEntryIds(entry)) {
+                if (rings[id] == null || ring < rings[id]) rings[id] = ring;
+            }
         });
     };
     for (const order of Object.values(CLASS_SPELL_LEARN_ORDER)) noteOrder(order);
@@ -13801,11 +13821,20 @@ function getClassTreeSpells(cls) {
     return CLASS_TREE[cls] ? CLASS_TREE[cls].slice() : null;
 }
 
-/* Audited races use their curated final-4; everything else falls back to
-   its first 4 existing abilities (job-gated), skipping ids owned by a job
-   tree (rampart/groundSlam/rampage/empBurst stay with their branch owner). */
-function getRaceTreeSpells(race, cls) {
-    if (RACE_TREE[race]) return RACE_TREE[race].slice();
+/* A tree-row entry is a spell id or a twin pair (2-element array). */
+function _treeEntryIds(entry) {
+    return Array.isArray(entry) ? entry.filter(Boolean) : (entry ? [entry] : []);
+}
+function _treeEntryFace(entry) {
+    return Array.isArray(entry) ? (entry.find(Boolean) || null) : (entry || null);
+}
+
+/* Audited races use their curated final-4 (twin pairs intact); everything
+   else falls back to its first 4 existing abilities (job-gated), skipping
+   ids owned by a job tree (rampart/groundSlam/rampage/empBurst stay with
+   their branch owner). */
+function getRaceTreeRow(race, cls) {
+    if (RACE_TREE[race]) return RACE_TREE[race].map(e => Array.isArray(e) ? e.slice() : e);
     const abs = (typeof RACE_ABILITIES !== 'undefined' && RACE_ABILITIES[race]) || [];
     const out = [];
     for (const a of abs) {
@@ -13815,6 +13844,66 @@ function getRaceTreeSpells(race, cls) {
         if (out.length >= 4) break;
     }
     return out;
+}
+
+/* Flat FACE ids (the first alternate of every twin) — the shape every
+   pre-twin caller expects (default loadouts, optimize, balance exports). */
+function getRaceTreeSpells(race, cls) {
+    return getRaceTreeRow(race, cls).map(_treeEntryFace);
+}
+
+/* { R2: ['raceBlitz', 'raceQbSneak'], … } — only the twin nodes. */
+function getRaceTreeAlts(race, cls) {
+    const alts = {};
+    getRaceTreeRow(race, cls).forEach((e, i) => {
+        if (Array.isArray(e) && _treeEntryIds(e).length > 1) alts['R' + (i + 1)] = _treeEntryIds(e);
+    });
+    return alts;
+}
+
+/* Every id on the race pillar, both alternates of every twin included. */
+function getRaceTreeAllIds(race, cls) {
+    const out = [];
+    for (const e of getRaceTreeRow(race, cls)) for (const id of _treeEntryIds(e)) if (!out.includes(id)) out.push(id);
+    return out;
+}
+
+/* Clash bans movement spells; a twin's FACE should be the alternate that
+   is still castable so a banned dash never hides its castable twin. */
+function _twinAltAllowed(id) {
+    const clash = (typeof _isClashMode === 'function' && _isClashMode());
+    const allowFn = (typeof window !== 'undefined' && typeof window._clashSpellAllowed === 'function')
+        ? window._clashSpellAllowed : null;
+    if (!clash || !allowFn) return true;
+    const sp = (typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[id] : null;
+    return !sp || !!allowFn(sp);
+}
+
+/* The race pillar's four CONCRETE node ids for one unit: a twin node
+   resolves to its equipped alternate, else its face. Also returns the
+   alts map so the tree can render the ⇄ picker. */
+function _resolveRaceNodes(race, cls, equippedIds) {
+    const row = getRaceTreeRow(race, cls);
+    const eq = new Set((equippedIds || []).filter(Boolean));
+    const ids = [], alts = {};
+    for (let i = 0; i < 4; i++) {
+        const e = row[i];
+        if (Array.isArray(e)) {
+            const pair = _treeEntryIds(e);
+            if (pair.length > 1) alts['R' + (i + 1)] = pair.slice();
+            ids[i] = pair.find(id => eq.has(id)) || pair.find(_twinAltAllowed) || pair[0] || null;
+        } else ids[i] = e || null;
+    }
+    return { ids, alts };
+}
+
+/* True when a loadout holds BOTH alternates of some twin node. */
+function _treeTwinConflict(race, cls, ids) {
+    const set = new Set(ids || []);
+    for (const pair of Object.values(getRaceTreeAlts(race, cls))) {
+        if (pair.filter(id => set.has(id)).length > 1) return true;
+    }
+    return false;
 }
 
 /* Functional adjacency, by node key. Root connects to all three ring-1
@@ -13851,10 +13940,11 @@ function buildUnitSpellTree(race, cls, secJob, equippedIds) {
             }
         }
     };
-    fill('R', getRaceTreeSpells(race, cls));
+    const rr = _resolveRaceNodes(race, cls, equippedIds);
+    fill('R', rr.ids);
     fill('P', getClassTreeSpells(cls) || []);
     fill('S', secJob && secJob !== cls ? (getClassTreeSpells(secJob) || []) : []);
-    return { nodes, edges: getTreeEdges() };
+    return { nodes, edges: getTreeEdges(), alts: rr.alts };
 }
 
 /* ═══════════ FREELANCER — the wildcard-socket tree (Phase B) ═══════════
@@ -13877,7 +13967,7 @@ function _flTierOf(sp) {
    (Freelancer's own three fixed spells aren't in CLASS_TREE), minus ids on
    this race's own tree (the no-duplicate rule). */
 function flWildcardPool(race) {
-    const raceIds = new Set(getRaceTreeSpells(race, 'Freelancer') || []);
+    const raceIds = new Set(getRaceTreeAllIds(race, 'Freelancer') || []);
     const fixed = new Set(Object.values(FL_FIXED));
     const out = [];
     const seen = new Set();
@@ -13896,9 +13986,10 @@ function buildFreelancerTree(race, equippedIds) {
     const edges = getTreeEdges();
     const nodes = { root: null };
     const seen = new Set();
-    const raceIds = getRaceTreeSpells(race, 'Freelancer') || [];
+    const rr = _resolveRaceNodes(race, 'Freelancer', equippedIds);
+    const raceAll = new Set(getRaceTreeAllIds(race, 'Freelancer') || []);
     for (let i = 0; i < 4; i++) {
-        const id = raceIds[i] || null;
+        const id = rr.ids[i] || null;
         const known = id && SPELL_BY_ID[id];
         if (known && !seen.has(id)) { nodes['R' + (i + 1)] = id; seen.add(id); }
         else nodes['R' + (i + 1)] = null;
@@ -13914,13 +14005,14 @@ function buildFreelancerTree(race, equippedIds) {
     const wild = [], unplaced = [];
     for (const id of equipped) {
         if (seen.has(id)) continue;                       // race / fixed node
+        if (raceAll.has(id)) { unplaced.push(id); continue; }   // the OTHER alternate of an equipped twin
         (poolIds.has(id) ? wild : unplaced).push(id);
     }
 
     const mkTree = (placement) => {
         const n2 = { ...nodes };
         for (const [k, id] of Object.entries(placement)) n2[k] = id;
-        return { nodes: n2, edges, isFreelancer: true, sockets: FL_SOCKET_TIERS };
+        return { nodes: n2, edges, isFreelancer: true, sockets: FL_SOCKET_TIERS, alts: rr.alts };
     };
     let firstComplete = null;
     const placed = {};
@@ -13965,7 +14057,9 @@ function _treeSealedIds(tree) {
     const allowFn = (typeof window !== 'undefined' && typeof window._clashSpellAllowed === 'function')
         ? window._clashSpellAllowed : null;
     if (!clash || !allowFn) return sealed;
-    for (const id of Object.values(tree.nodes)) {
+    const ids = Object.values(tree.nodes).slice();
+    for (const pair of Object.values(tree.alts || {})) ids.push(...pair);
+    for (const id of ids) {
         if (!id) continue;
         const sp = SPELL_BY_ID[id];
         if (sp && !allowFn(sp)) sealed.add(id);
@@ -14026,8 +14120,9 @@ function isTreeLoadoutLegal(race, cls, secJob, spellIds) {
     const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
     if (ids.length > cap) return false;
     if (new Set(ids).size !== ids.length) return false;
-    // buildUnitSpellTree needs the equipped list for Freelancer (socket
-    // placement is derived from it); other classes ignore the 4th arg.
+    if (_treeTwinConflict(race, cls, ids)) return false;   // both alternates of one node
+    // buildUnitSpellTree needs the equipped list: Freelancer derives socket
+    // placement from it and every class resolves twin nodes with it.
     const tree = buildUnitSpellTree(race, cls, secJob, ids);
     if (tree.isFreelancer && (tree.unplaced.length || !tree.connected)) return false;
     const inTree = new Set(Object.values(tree.nodes).filter(Boolean));
@@ -14057,17 +14152,29 @@ function treeLegalSubset(race, cls, secJob, spellIds) {
         }
         return out;
     }
-    const tree = buildUnitSpellTree(race, cls, secJob);
-    const inTree = new Set(Object.values(tree.nodes).filter(Boolean));
-    const sealed = _treeSealedIds(tree);
+    const tree0 = buildUnitSpellTree(race, cls, secJob);
+    const inTree = new Set(Object.values(tree0.nodes).filter(Boolean));
+    // twin alternates are all "in the tree" — but only ONE per node survives
+    const twinNodeOf = {};
+    for (const [key, pair] of Object.entries(tree0.alts || {})) {
+        for (const id of pair) {
+            if (typeof SPELL_BY_ID === 'undefined' || SPELL_BY_ID[id]) { inTree.add(id); twinNodeOf[id] = key; }
+        }
+    }
+    const sealed = _treeSealedIds(tree0);
     const seen = new Set();
+    const usedTwin = new Set();
     const ids = [];
     for (const id of (spellIds || [])) {
         if (!id || seen.has(id) || !inTree.has(id) || sealed.has(id)) continue;
+        const tk = twinNodeOf[id];
+        if (tk) { if (usedTwin.has(tk)) continue; usedTwin.add(tk); }   // earlier alternate wins
         seen.add(id);
         ids.push(id);
         if (ids.length >= cap) break;
     }
+    // re-resolve so each twin node wears the alternate we kept
+    const tree = buildUnitSpellTree(race, cls, secJob, ids);
     const connected = _treeConnectedEquipped(tree, ids);
     return ids.filter(id => connected.has(id));
 }
@@ -14098,7 +14205,11 @@ function buildTreeLegalLoadout(race, cls, secJob, budget, rng) {
                     const adjacent = tree.edges.some(([a, b]) =>
                         (a === key && reached.has(b)) || (b === key && reached.has(a)));
                     if (!adjacent) continue;
-                    if (id) {
+                    const pair = tree.alts && tree.alts[key];
+                    if (pair && !picks.includes(id)) {
+                        const cands = pair.filter(a => !sealed.has(a) && SPELL_BY_ID[a]);
+                        if (cands.length) opts.push(cands[Math.floor(rand() * cands.length)]);
+                    } else if (id) {
                         if (!picks.includes(id) && !sealed.has(id)) opts.push(id);
                     } else if (FL_SOCKET_TIERS[key]) {
                         const cands = pool.filter(sp => FL_SOCKET_TIERS[key].includes(_flTierOf(sp))
@@ -14123,20 +14234,28 @@ function buildTreeLegalLoadout(race, cls, secJob, budget, rng) {
         }
         return best;
     }
-    const tree = buildUnitSpellTree(race, cls, secJob);
-    const sealed = _treeSealedIds(tree);
     const attempt = () => {
         const equipped = new Set();
         const picks = [];
         while (picks.length < cap) {
+            // rebuilt per pick so an equipped twin alternate becomes its node
+            const tree = buildUnitSpellTree(race, cls, secJob, picks);
+            const sealed = _treeSealedIds(tree);
             const reached = _treeReachableKeys(tree, equipped, sealed);
             const frontier = [];
             for (const [key, id] of Object.entries(tree.nodes)) {
-                if (!id || equipped.has(id) || sealed.has(id)) continue;
+                if (!id || equipped.has(id)) continue;
                 // adjacent to any reached node?
                 const adjacent = tree.edges.some(([a, b]) =>
                     (a === key && reached.has(b)) || (b === key && reached.has(a)));
-                if (adjacent) frontier.push(id);
+                if (!adjacent) continue;
+                const pair = tree.alts && tree.alts[key];
+                if (pair) {
+                    // an unequipped twin node: either alternate may be walked onto
+                    const cands = pair.filter(a => !sealed.has(a)
+                        && (typeof SPELL_BY_ID === 'undefined' || SPELL_BY_ID[a]));
+                    if (cands.length) frontier.push(cands[Math.floor(rand() * cands.length)]);
+                } else if (!sealed.has(id)) frontier.push(id);
             }
             if (!frontier.length) break;
             const pick = frontier[Math.floor(rand() * frontier.length)];
@@ -14427,6 +14546,7 @@ Object.assign(window, {
   STEAM_STAT_DEFS, STEAM_ACH_DEFS, steamComputeStats, steamEvalAchievements,
   /* spell tree (Tree of Life selector) */
   CLASS_TREE, RACE_TREE, classHasSpellTree, getClassTreeSpells, getRaceTreeSpells,
+  getRaceTreeRow, getRaceTreeAlts, getRaceTreeAllIds,   // twin nodes (CHAMP_REWORK_PLAN §4)
   TREE_RING_MP_COSTS, buildTreeRingIndex, getTreeRingCost, applyTreeRingCosts, snapCostToLadder,
   getTreeEdges, buildUnitSpellTree, isTreeLoadoutLegal, treeLegalSubset,
   buildTreeLegalLoadout, treeSealedIds, treeReachableKeys,

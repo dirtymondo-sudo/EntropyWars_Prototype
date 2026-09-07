@@ -258,6 +258,25 @@ screens voice it. Online: `strikeType` rides the `doEntropyStrike`
 game-action and the `entropy-cine` relay; Simul plan steps carry it too.
 `npm test` runs `entropy-strike.test.js` (catalogue ↔ directors ↔ CSS).
 
+## TWIN NODES (race-tree nodes that hold two spells) — added 2026-09-07
+CHAMP_REWORK_PLAN §4 / §4.6 (Phase 2). A `RACE_TREE` entry (data.js) may be
+a 2-id array: the node holds two ALTERNATES, exactly one equips (1 slot,
+the node's ring cost + tier), the other is a free respec. Read rows only
+through `getRaceTreeRow` (pairs intact) / `getRaceTreeSpells` (faces =
+first alternate, the flat shape every legacy caller expects) /
+`getRaceTreeAlts` (`{ R3: [a, b] }`) / `getRaceTreeAllIds`. A unit's
+tree (`buildUnitSpellTree(race, cls, sec, equippedIds)`) resolves each twin
+node to its equipped alternate else its face and exposes `tree.alts`; ALWAYS
+pass the equipped ids so the node wears the right spell. `isTreeLoadoutLegal`
+rejects both alternates at once, `treeLegalSubset` keeps the first,
+`buildTreeLegalLoadout` rebuilds the tree per pick. Builder: ⇄ badge on the
+chip, "⇄ other" under the name, one picker overlay shared with the
+Freelancer sockets (`twinPick` / `flSocketPick`), swap-in-place via
+`twinCandidate`. Saves unchanged (flat `customSpells`); online host
+validation already funnels through `treeLegalSubset`. Adding a twin = one
+row edit + `npm test` (content-schema.test.js checks the shape, tiers,
+one-alternate rule, repair and random walks).
+
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /
 dev-sim — they can do that themselves) and report pain points: unresponsive

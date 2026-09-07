@@ -149,21 +149,35 @@ test('every CLASS_TREE branch is 4 known spells in ring-tier order (I,I,II,III)'
     assert.deepStrictEqual(problems, []);
 });
 
-test('every RACE_TREE entry is 4 known abilities of that race, none owned by a job tree', () => {
+/* A race-tree entry is a spell id OR a twin pair (2-string array) —
+   CHAMP_REWORK_PLAN §4: the node holds two alternates, one equips. */
+const treeEntryIds = (e) => Array.isArray(e) ? e : [e];
+
+test('every RACE_TREE entry is 4 known abilities of that race (or twin pairs), none owned by a job tree', () => {
     const jobIds = new Set(Object.values(D.CLASS_TREE).flat());
     const problems = [];
-    for (const [race, ids] of Object.entries(D.RACE_TREE)) {
+    for (const [race, row] of Object.entries(D.RACE_TREE)) {
         if (!D.RACE_ABILITIES[race]) { problems.push(`RACE_TREE race '${race}' unknown`); continue; }
-        if (!Array.isArray(ids) || ids.length !== 4) { problems.push(`race '${race}' tree is not 4 ids`); continue; }
+        if (!Array.isArray(row) || row.length !== 4) { problems.push(`race '${race}' tree is not 4 entries`); continue; }
         const own = new Set(D.RACE_ABILITIES[race].map(a => a.id));
         const seen = new Set();
-        for (const id of ids) {
-            if (!D.SPELL_BY_ID[id]) problems.push(`race '${race}' tree id '${id}' unknown`);
-            else if (!own.has(id)) problems.push(`race '${race}' tree id '${id}' not in its RACE_ABILITIES`);
-            if (jobIds.has(id)) problems.push(`race '${race}' tree id '${id}' also lives in a job tree`);
-            if (seen.has(id)) problems.push(`race '${race}' tree repeats '${id}'`);
-            seen.add(id);
-        }
+        row.forEach((entry, i) => {
+            if (Array.isArray(entry)) {
+                if (entry.length !== 2 || entry.some(id => typeof id !== 'string' || !id)) {
+                    problems.push(`race '${race}' ring ${i + 1} twin must be exactly 2 spell ids`);
+                }
+                if (entry[0] === entry[1]) problems.push(`race '${race}' ring ${i + 1} twins the same id`);
+            } else if (typeof entry !== 'string' || !entry) {
+                problems.push(`race '${race}' ring ${i + 1} entry is neither an id nor a twin pair`);
+            }
+            for (const id of treeEntryIds(entry)) {
+                if (!D.SPELL_BY_ID[id]) problems.push(`race '${race}' tree id '${id}' unknown`);
+                else if (!own.has(id)) problems.push(`race '${race}' tree id '${id}' not in its RACE_ABILITIES`);
+                if (jobIds.has(id)) problems.push(`race '${race}' tree id '${id}' also lives in a job tree`);
+                if (seen.has(id)) problems.push(`race '${race}' tree repeats '${id}'`);
+                seen.add(id);
+            }
+        });
     }
     assert.deepStrictEqual(problems, []);
 });
@@ -175,28 +189,86 @@ test('every available race has a curated RACE_TREE row (Phase B: no fallbacks le
     assert.strictEqual(JSON.stringify(missing), '[]');
 });
 
-test('every race capstone (ring 4) is tier III; rings 1–3 are not', () => {
+test('every race capstone (ring 4) is tier III; rings 1–3 are not — twins share their ring\'s tier', () => {
     const problems = [];
-    for (const [race, ids] of Object.entries(D.RACE_TREE)) {
-        const cap = D.SPELL_BY_ID[ids[3]];
-        if (!cap || cap.tier !== 'III') problems.push(`race '${race}' capstone '${ids[3]}' is not tier III`);
-        ids.slice(0, 3).forEach((id, i) => {
-            const sp = D.SPELL_BY_ID[id];
-            if (sp && sp.tier === 'III') problems.push(`race '${race}' ring ${i + 1} '${id}' is tier III`);
+    for (const [race, row] of Object.entries(D.RACE_TREE)) {
+        for (const id of treeEntryIds(row[3])) {
+            const cap = D.SPELL_BY_ID[id];
+            if (!cap || cap.tier !== 'III') problems.push(`race '${race}' capstone '${id}' is not tier III`);
+        }
+        row.slice(0, 3).forEach((entry, i) => {
+            for (const id of treeEntryIds(entry)) {
+                const sp = D.SPELL_BY_ID[id];
+                if (sp && sp.tier === 'III') problems.push(`race '${race}' ring ${i + 1} '${id}' is tier III`);
+            }
         });
     }
     assert.deepStrictEqual(problems, []);
 });
 
+test('twin nodes: faces, alts, one-alternate rule, repair, random walks, Freelancer', () => {
+    // at least the Phase-2 free twins exist
+    const twinRaces = Object.keys(D.RACE_TREE).filter(r => D.RACE_TREE[r].some(Array.isArray));
+    assert.ok(twinRaces.length >= 8, `expected the Phase-2 twin rows, found ${twinRaces.length}`);
+    // faces = first alternate; alts keyed by node; all-ids covers both
+    assert.strictEqual(JSON.stringify(D.getRaceTreeSpells('quarterback')),
+        JSON.stringify(['raceBulletPass', 'raceBlitz', 'raceAudible', 'raceHailMary']));
+    assert.strictEqual(JSON.stringify(D.getRaceTreeAlts('quarterback')),
+        JSON.stringify({ R3: ['raceAudible', 'raceSpikeTheBall'] }));
+    assert.ok(D.getRaceTreeAllIds('quarterback').includes('raceSpikeTheBall'));
+    // a non-twin race exposes no alts
+    assert.strictEqual(JSON.stringify(D.getRaceTreeAlts('vampire')), '{}');
+    // the node wears the equipped alternate, else the face
+    assert.strictEqual(D.buildUnitSpellTree('quarterback', 'Sniper', '', []).nodes.R3, 'raceAudible');
+    assert.strictEqual(D.buildUnitSpellTree('quarterback', 'Sniper', '', ['raceBulletPass', 'raceBlitz', 'raceSpikeTheBall']).nodes.R3, 'raceSpikeTheBall');
+    const ok = (ids) => D.isTreeLoadoutLegal('quarterback', 'Sniper', '', ids);
+    assert.ok(ok(['raceBulletPass', 'raceBlitz', 'raceAudible']), 'face alternate legal');
+    assert.ok(ok(['raceBulletPass', 'raceBlitz', 'raceSpikeTheBall']), 'other alternate legal');
+    assert.ok(ok(['raceBulletPass', 'raceBlitz', 'raceSpikeTheBall', 'raceHailMary']), 'capstone reachable through either alternate');
+    assert.ok(!ok(['raceBulletPass', 'raceBlitz', 'raceAudible', 'raceSpikeTheBall']), 'both alternates illegal');
+    assert.ok(!ok(['raceBulletPass', 'raceSpikeTheBall']), 'alternate still needs ring 2');
+    // both alternates price by the node's ring
+    const rings = D.buildTreeRingIndex();
+    assert.strictEqual(rings.raceSpikeTheBall, rings.raceAudible);
+    assert.strictEqual(D.SPELL_BY_ID.raceSpikeTheBall.cost, D.TREE_RING_MP_COSTS[2]);
+    // repair keeps the FIRST alternate listed and drops the other
+    assert.strictEqual(
+        JSON.stringify(D.treeLegalSubset('quarterback', 'Sniper', '', ['raceBulletPass', 'raceBlitz', 'raceSpikeTheBall', 'raceAudible', 'raceHailMary'])),
+        JSON.stringify(['raceBulletPass', 'raceBlitz', 'raceSpikeTheBall', 'raceHailMary']));
+    // random walks over twin races stay legal and do reach the alternates
+    let altSeen = 0;
+    for (const race of twinRaces) {
+        const cls = D.RACE_DEFAULT_JOBS[race] || 'Warrior';
+        for (let i = 0; i < 15; i++) {
+            const walk = D.buildTreeLegalLoadout(race, cls, '');
+            assert.ok(D.isTreeLoadoutLegal(race, cls, '', walk), `twin walk illegal for ${race}: ${walk.join(',')}`);
+            const alts = Object.values(D.getRaceTreeAlts(race, cls)).flat();
+            if (walk.some(id => alts.includes(id) && id !== D.getRaceTreeSpells(race, cls).find(f => alts.includes(f)))) altSeen++;
+        }
+    }
+    assert.ok(altSeen > 0, 'random walks never picked a non-face alternate');
+    // Freelancer: race twins resolve the same way, pool excludes both alternates
+    assert.ok(D.isTreeLoadoutLegal('ki fighter', 'Freelancer', '', ['raceFlurryOfBlows', 'raceKiWave']), 'FL alternates legal');
+    assert.ok(!D.isTreeLoadoutLegal('ki fighter', 'Freelancer', '', ['raceKiBlast', 'raceFlurryOfBlows']), 'FL both alternates illegal');
+    assert.ok(!D.flWildcardPool('ki fighter').some(sp => sp.id === 'raceKiWave' || sp.id === 'raceKiBlast'), 'FL pool excludes race twins');
+    assert.strictEqual(
+        JSON.stringify(D.treeLegalSubset('ki fighter', 'Freelancer', '', ['raceKiBlast', 'raceFlurryOfBlows', 'raceKiWave'])),
+        JSON.stringify(['raceKiBlast', 'raceKiWave']));
+    for (let i = 0; i < 20; i++) {
+        const walk = D.buildTreeLegalLoadout('ki fighter', 'Freelancer', '');
+        assert.ok(D.isTreeLoadoutLegal('ki fighter', 'Freelancer', '', walk), `FL twin walk illegal: ${walk.join(',')}`);
+    }
+});
+
 test('§2.1 single-stat rule: only capstones may boost two stats at once', () => {
     const problems = [];
     for (const [race, abs] of Object.entries(D.RACE_ABILITIES)) {
-        const capId = (D.RACE_TREE[race] || [])[3];
+        const capIds = treeEntryIds((D.RACE_TREE[race] || [])[3]);
         for (const a of abs) {
             const b = a.statStageBoost || null;
             if (!b) continue;
             const raised = Object.keys(b).filter(k => b[k] > 0);
-            if (raised.length >= 2 && a.id !== capId && a.tier !== 'III') {
+            if (raised.length >= 2 && !capIds.includes(a.id) && a.tier !== 'III') {
                 problems.push(`${race} :: ${a.id} raises ${raised.join('+')} (non-capstone)`);
             }
         }
