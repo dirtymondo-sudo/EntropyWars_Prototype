@@ -39465,7 +39465,10 @@
             if (state.towers) {
                 const tw = state.towers[enemyOf(unit.player)];
                 if (tw && tw.hp > 0) {
-                    const d = Math.abs(tw.x - unit.x) + Math.abs(tw.y - unit.y);
+                    // Same reach rule as a unit: 3D combatDist to the Cube's
+                    // standing surface (diagonal neighbours are point-blank).
+                    const _twZ = (typeof getHeightAt === 'function') ? getHeightAt(tw.x, tw.y) : 0;
+                    const d = combatDist(unit.x, unit.y, unitZ, tw.x, tw.y, _twZ);
                     if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, tw.x, tw.y, unitZ)) {
                         targets.push({ x: tw.x, y: tw.y, dist: d, tower: tw, kind: 'tower' });
                     }
@@ -42915,6 +42918,20 @@
             return true;
         }
 
+        /* Is there an attackable structure on (x, y) for `unit`? Mirrors the
+           target order doAttack resolves below (Cube, mirror, turret, deployed
+           object, planted seed). */
+        function _structureAt(x, y, unit) {
+            const tw = (typeof towerAt === 'function') ? towerAt(x, y) : null;
+            if (tw && tw.hp > 0 && (!unit || tw.owner !== unit.player)) return tw;
+            if (state.mirrors && state.mirrors.some(m => m.x === x && m.y === y && m.hp > 0 && (!unit || m.owner !== unit.player))) return true;
+            if (state.turrets && state.turrets.some(t => t.x === x && t.y === y && t.hp > 0 && (!unit || t.owner !== unit.player))) return true;
+            if (state._deployedObjects && state._deployedObjects.some(o => o.x === x && o.y === y && o.hp > 0
+                && (!unit || o.ownerPlayer !== unit.player || (o.detonateOnAttack && o.blastRadius > 0)))) return true;
+            if (state.plantedSeeds && state.plantedSeeds.some(sd => sd.x === x && sd.y === y && (!unit || sd.owner !== unit.player))) return true;
+            return null;
+        }
+
         function doAttack(unit, x, y, z) {
             /* SIMUL plan phase: queue the order instead of executing. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
@@ -42945,6 +42962,14 @@
                 d = distToTarget(unit.x, unit.y, _clickedTarget, unit.z);
             } else {
                 let _tz = _clickedTarget ? (_clickedTarget.z ?? 0) : (z ?? 0);
+                // ⬡ A structure (Cube / turret / mirror / deployed object /
+                // seed) with no explicit z stands on its tile's surface —
+                // measure 3D range to THAT, not to z=0. The AI and the tile
+                // quick menu both call in without a z, and a Cube on a
+                // plateau used to read "out of range" from the tile beside it.
+                if (!_clickedTarget && z == null && _structureAt(x, y, unit)) {
+                    _tz = (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0;
+                }
                 // 🔨 Attacking a raised terrain column strikes its exposed FACE
                 // at the attacker's own height (or its top when striking down),
                 // so melee can smash a tall pillar it stands beside.

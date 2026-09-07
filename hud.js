@@ -6831,6 +6831,36 @@ function _hrlgTileBlades(actingUnit, st) {
 }
 
 
+/* One-click structure attack (2026-09-07). The object rows (Cube / turret /
+   deployed object / seed / tree) used to arm setActionMode('attack') and THEN
+   call doAttack: arming the mode opened the attack-target drum, cleared the
+   tile card, and when the swing bounced (the row measured flat Manhattan
+   distance while doAttack measured 3D range to z=0, so a Cube on a plateau
+   read "out of range") the player was stranded in targeting — click the Cube
+   again, then confirm. Structures now fire exactly like the enemy-unit
+   "Attack" row: no mode, one engine call through _execAction (latch + stuck-
+   input watchdog), and the structure's own standing height as the target z.
+   Online: doAttack is the relayed engine wrapper, so the guest's click emits
+   and the host resolves — same path as attacking a unit. */
+function _fireObjectAttack(actingUnit, tx, ty, tz) {
+  if (!actingUnit || typeof doAttack !== 'function') return;
+  state._tileActionTarget = null;
+  state._enemyActionTargetId = null;
+  state.pendingTarget = null;
+  state.selectedTool = null;
+  state.actionMode = null;
+  state.actionMenuView = 'root';
+  if (typeof clearAoePreview === 'function') clearAoePreview();
+  if (typeof hideSpellTooltip === 'function') hideSpellTooltip();
+  state._actionExecuting = true;
+  const _run = (fn) => (typeof _execAction === 'function') ? _execAction(fn) : fn();
+  const r = _run(() => doAttack(actingUnit, tx, ty, tz));
+  if (r === 0 || r === false) state._actionExecuting = false;
+  if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+  if (typeof renderIfDirty === 'function') renderIfDirty();
+  if (typeof scheduleBoardRender === 'function') scheduleBoardRender();
+}
+
 function _computeTileActions(actingUnit, tx, ty, tz) {
   if (!actingUnit || actingUnit.dead) return [];
   const actions = [];
@@ -7159,62 +7189,51 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     const inRange = dist <= effRange;
     const inRangeUnit = dist >= 1 && dist <= effRange;
     const losBlocked = typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(actingUnit.x, actingUnit.y, tx, ty);
+    // Fog parity with doAttack: a structure the unit can't see is never offered
+    // (the swing would only bounce off the engine's own vision gate).
+    const _fogSees = !state.fogOfWar || !!state.autoPlayers?.[actingUnit.player]
+      || typeof isInVision !== 'function' || isInVision(actingUnit, tx, ty);
+    const _atkReason = (ok) => ok ? '' : (!_fogSees ? 'Hidden in fog' : losBlocked ? 'No LOS' : 'Out of range');
 
-    // Enemy base tower / Cube — give it the same one-click "Attack" entry as turrets.
+    // Enemy base tower / Cube — one-click Attack, exactly like an enemy unit.
     const tower = (state.towers && typeof enemyOf === 'function') ? state.towers[enemyOf(actingUnit.player)] : null;
     if (tower && tower.hp > 0 && tower.x === tx && tower.y === ty) {
-      const canAtk = inRangeUnit && !losBlocked;
+      const canAtk = inRangeUnit && !losBlocked && _fogSees;
       actions.push({
         id: 'attack:tower', label: 'Attack Cube', icon: '⚔', category: 'attack',
-        apCost: 1, available: canAtk, reason: canAtk ? '' : (losBlocked ? 'No LOS' : 'Out of range'),
-        handler: canAtk ? () => {
-          state._tileActionTarget = null;
-          if (typeof setActionMode === 'function') setActionMode('attack');
-          if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty);
-        } : null,
+        apCost: 1, available: canAtk, reason: _atkReason(canAtk),
+        handler: canAtk ? () => _fireObjectAttack(actingUnit, tx, ty, _tileZ) : null,
       });
     }
 
     const turret = (state.turrets || []).find(t => t.x === tx && t.y === ty && t.owner !== actingUnit.player && t.hp > 0);
     if (turret) {
-      const canAtk = inRange && !losBlocked;
+      const canAtk = inRange && !losBlocked && _fogSees;
       actions.push({
         id: 'attack:turret', label: 'Attack ' + _turretDisplayName(turret), icon: '⚔', category: 'attack',
-        apCost: 1, available: canAtk, reason: canAtk ? '' : (losBlocked ? 'No LOS' : 'Out of range'),
-        handler: canAtk ? () => {
-          state._tileActionTarget = null;
-          if (typeof setActionMode === 'function') setActionMode('attack');
-          if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty);
-        } : null,
+        apCost: 1, available: canAtk, reason: _atkReason(canAtk),
+        handler: canAtk ? () => _fireObjectAttack(actingUnit, tx, ty, _tileZ) : null,
       });
     }
 
     const deploy = (state._deployedObjects || []).find(o => o.x === tx && o.y === ty && o.hp > 0 && (o.ownerPlayer !== actingUnit.player || (o.detonateOnAttack && o.blastRadius > 0)));
     if (deploy) {
-      const canAtk = inRange && !losBlocked;
+      const canAtk = inRange && !losBlocked && _fogSees;
       actions.push({
         id: 'attack:deploy', label: 'Attack ' + (deploy.spellName || 'Object'), icon: '⚔', category: 'attack',
-        apCost: 1, available: canAtk, reason: canAtk ? '' : (losBlocked ? 'No LOS' : 'Out of range'),
-        handler: canAtk ? () => {
-          state._tileActionTarget = null;
-          if (typeof setActionMode === 'function') setActionMode('attack');
-          if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty);
-        } : null,
+        apCost: 1, available: canAtk, reason: _atkReason(canAtk),
+        handler: canAtk ? () => _fireObjectAttack(actingUnit, tx, ty, _tileZ) : null,
       });
     }
 
     const seed = (state.plantedSeeds || []).find(s => s.x === tx && s.y === ty && s.owner !== actingUnit.player);
     if (seed) {
       const seedName = seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
-      const canAtk = inRange && !losBlocked;
+      const canAtk = inRange && !losBlocked && _fogSees;
       actions.push({
         id: 'attack:seed', label: 'Attack ' + seedName, icon: '⚔', category: 'attack',
-        apCost: 1, available: canAtk, reason: canAtk ? '' : (losBlocked ? 'No LOS' : 'Out of range'),
-        handler: canAtk ? () => {
-          state._tileActionTarget = null;
-          if (typeof setActionMode === 'function') setActionMode('attack');
-          if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty);
-        } : null,
+        apCost: 1, available: canAtk, reason: _atkReason(canAtk),
+        handler: canAtk ? () => _fireObjectAttack(actingUnit, tx, ty, _tileZ) : null,
       });
     }
 
@@ -7228,11 +7247,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       actions.push({
         id: 'attack:tree', label: 'Chop Tree', icon: '🪓', category: 'attack',
         apCost: 1, available: canChop, reason: canChop ? '' : (losBlocked ? 'No LOS' : 'Out of range'),
-        handler: canChop ? () => {
-          state._tileActionTarget = null;
-          if (typeof setActionMode === 'function') setActionMode('attack');
-          if (typeof doAttack === 'function') doAttack(actingUnit, tx, ty);
-        } : null,
+        handler: canChop ? () => _fireObjectAttack(actingUnit, tx, ty, _tileZ) : null,
       });
     }
 

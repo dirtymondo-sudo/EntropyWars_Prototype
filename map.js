@@ -6428,11 +6428,11 @@
                 ? (typeof getTerrainAt3D === 'function' ? getTerrainAt3D(x, y, z) : getTerrainAt(x, y))
                 : getTerrainAt(x, y);
 
-            const tOwner = isTowerTile(x, y);
-            if (tOwner) {
-                if (unit && tOwner === unit.player) return true;
-                return false;
-            }
+            /* ⬡ The Cube is a physical body: NO unit walks through or stands on
+               its tile — not even its own team (they used to path straight
+               through their own Cube), flyers included (canOccupy3D already
+               refuses the whole column). Same rule as a unit-occupied tile. */
+            if (isTowerTile(x, y)) return false;
 
             if (terrain === 'tower_base') {
                 return false;
@@ -7127,6 +7127,8 @@
             const interior = points.slice(0, -1);
             return interior.some(p => {
                 if (getTerrainRule(getTerrainAt(p.x, p.y)).blocksRanged) return true;
+                /* ⬡ The Cube is a solid body — it blocks sight like a wall. */
+                if (!(p.x === x1 && p.y === y1) && isTowerTile(p.x, p.y)) return true;
                 /* Check object blocksRanged (trees etc.) */
                 const obj = getObjectAt(p.x, p.y);
                 if (obj) {
@@ -7192,6 +7194,19 @@
                 else hi = mid - 1;
             }
             return false;
+        }
+
+        /* ⬡ Does the Cube's body fill voxel (ix, iy, iz)? The Cube floats a
+           tile above its standing surface, so it occupies the two cells
+           above the column top — a ray through them is blocked. */
+        function _towerBodyBlocksCell(ix, iy, iz) {
+            if (!state.towers) return false;
+            const tw = state.towers[1] && state.towers[1].x === ix && state.towers[1].y === iy ? state.towers[1]
+                : state.towers[2] && state.towers[2].x === ix && state.towers[2].y === iy ? state.towers[2] : null;
+            if (!tw || tw.hp <= 0) return false;
+            const col = state.boardColumns?.[iy]?.[ix];
+            const base = (col && col.length) ? col[col.length - 1].z : (state.boardHeights?.[iy]?.[ix] ?? 0);
+            return iz >= base + 1 && iz <= base + 2;
         }
 
         function _isRayBlocked3D(x1, y1, z1, x2, y2, z2, forVision) {
@@ -7278,6 +7293,12 @@
                 else if (ix === x2 && iy === y2) { if (iz <= z2 + 1) continue; }
 
                 if (_hasBlockAt(ix, iy, iz)) return true;
+
+                /* ⬡ The Cube is a solid body hovering over its tile: it blocks
+                   sight (and shots) through the two cells above its surface —
+                   the same band a standing unit's body fills. Never occludes
+                   itself (endpoint columns are excluded above). */
+                if (_towerBodyBlocksCell(ix, iy, iz)) return true;
 
                 if (iz >= 0 && ix >= 0 && iy >= 0 && ix < bw() && iy < bh()) {
                     /* Sight-blocking TERRAIN (walls, thickets…) occludes the two
