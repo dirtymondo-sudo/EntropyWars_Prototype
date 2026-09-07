@@ -197,6 +197,20 @@ online.js). Renderer/VFX gates that used to read only
 `devAutoSim && !_devSimShowAnims` now also honour `state._aiTurbo`
 (three-renderer.js `actionGlowStart`, three-vfx-effects.js timers, state.js
 storm lightning). Blitz-turn modes only — Simul has no per-side turn.
+**Imitation (same session):** in a training match the CPU LEARNS from the
+human. At each human doMove/doAttack/doSpell/doGuard, battle.js
+`_imitObserve` calls ai.js `window.aiScoreMargin(unit, action)` — which
+runs the CPU's own ranking (`rankCandidates`, now shared with `aiTakeTurn`)
+for that unit, finds the human's action among the candidates (a move the
+scorer never proposed is scored synthetically: joint move×action value −
+tile danger) and returns human − CPU-best score margin. On a disagreement
+a random subset of `AI_WEIGHT_DEFAULTS` keys is probed by finite
+differences (`_aiWeightProbe` override in `getAIWeight`) and each key that
+closes the gap steps 2% of its range, clamped, into `_aiTrainedWeights`
+(the same champion table the A/B lab tunes; persisted via saveAIWeights).
+Match-end log line summarises; `window._ewImitationSnapshot()` for numbers;
+`EW_AI_DEBUG` logs each disagreement; kill-switch `EW_NO_IMITATION`.
+Stats key `ai-imitation-stats-v<schema>`. Reset = Training panel → Reset.
 
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /

@@ -1210,69 +1210,9 @@
         }
 
         const vision = buildVision(unit);
-        const candidates = gatherCandidates(unit, vision);
-
-        // ── per-candidate adjustments ──
-        for (const c of candidates) {
-            // Repeat dampening: damage spells may repeat within an
-            // activation (press refunds make double-casts legal); utility
-            // kinds clamp hard so the AI doesn't loop self-buffs.
-            if (c.type === 'spell' && c.spell) {
-                const priorUses = countPriorUses('spell', c.spell.id);
-                if (DMG_KINDS.has(c.spell.kind)) {
-                    if (priorUses >= 3) { c.score = -999; continue; }
-                    if (priorUses >= 1) c.score *= Math.pow(0.65, priorUses);
-                } else {
-                    if (priorUses >= 2) { c.score = -999; continue; }
-                    if (priorUses >= 1) c.score *= 0.15;
-                }
-                const nonRepeatableKinds = ['swap', 'terrainCreate', 'summonWeather', 'deployObject',
-                    'deployPair', 'warpRune', 'remoteView', 'scan', 'encore',
-                    'placeTrap', 'placeBlock', 'buildStructure', 'tuneFrequency', 'pulseLattice'];
-                if (nonRepeatableKinds.includes(c.spell.kind) && hasUsedSpellKind(c.spell.kind)) {
-                    c.score *= 0.1;
-                }
-            }
-            // Target spreading — but never away from a nearly-dead enemy.
-            if (c.target?.id) {
-                const priorTargets = countPriorTargeting(c.target.id);
-                const _finishing = typeof c.target.hp === 'number' && typeof c.target.maxHp === 'number'
-                    && c.target.hp / c.target.maxHp <= 0.45;
-                if (!_finishing) {
-                    if (priorTargets >= 2) c.score *= 0.45;
-                    else if (priorTargets >= 1) c.score *= 0.75;
-                }
-            }
-            // End-tile danger: every candidate ends the activation
-            // somewhere — charge that tile's real threat. (Moves end on
-            // their destination; everything else ends where we stand.)
-            if (c._noDanger) continue;
-            const endX = (c.type === 'move' && c.x != null) ? c.x : unit.x;
-            const endY = (c.type === 'move' && c.y != null) ? c.y : unit.y;
-            const endZ = (c.type === 'move' && c.z != null) ? c.z : unit.z;
-            if (c._dangerCost == null) c._dangerCost = tileDangerCost(g, unit, vision, endX, endY, endZ);
-            c.score -= c._dangerCost;
-        }
-
-        candidates.sort((a, b) => b.score - a.score);
-        let best = candidates[0];
-
-        // FE rule: kills trump accumulated niceness. If a confirmed kill is
-        // anywhere near the best candidate's score, take the kill — removed
-        // units stop doing damage; "nice position" doesn't.
-        if (best && best.score > 0) {
-            for (const c of candidates.slice(0, 12)) {
-                if (c.score <= 0) break;
-                let sp = null, tg = null;
-                if (c.type === 'attack' && c.target && c.target.id) tg = c.target;
-                else if (c.type === 'spell' && c.target && c.target.id && DMG_KINDS.has(c.spell?.kind)) { sp = c.spell; tg = c.target; }
-                else continue;
-                if (estDamage(g, unit, tg, sp) >= effHp(tg)) {
-                    if (c !== best && c.score >= best.score * 0.7) best = c;
-                    break;   // candidates are sorted — the first kill is the best kill
-                }
-            }
-        }
+        const _ranked = rankCandidates(unit, vision);
+        const candidates = _ranked.candidates;
+        let best = _ranked.best;
 
         if (window.EW_AI_DEBUG) {
             console.log(`[AI] ${g.unitDisplayName(unit)} candidates:`,
@@ -1359,6 +1299,163 @@
         }
 
         executeAction(unit, best, vision);
+    };
+
+    // ═════════════════════════════════════════════════════════════════════
+    // RANKING — gather → per-candidate adjustments → end-tile danger →
+    // sort → kill rule. Shared by aiTakeTurn and the imitation preview
+    // (aiScoreMargin below), so "what would the CPU do here?" is answered
+    // by exactly the code that decides it.
+    // ═════════════════════════════════════════════════════════════════════
+    function rankCandidates(unit, vision) {
+        const g = G();
+        const candidates = gatherCandidates(unit, vision);
+
+        // ── per-candidate adjustments ──
+        for (const c of candidates) {
+            // Repeat dampening: damage spells may repeat within an
+            // activation (press refunds make double-casts legal); utility
+            // kinds clamp hard so the AI doesn't loop self-buffs.
+            if (c.type === 'spell' && c.spell) {
+                const priorUses = countPriorUses('spell', c.spell.id);
+                if (DMG_KINDS.has(c.spell.kind)) {
+                    if (priorUses >= 3) { c.score = -999; continue; }
+                    if (priorUses >= 1) c.score *= Math.pow(0.65, priorUses);
+                } else {
+                    if (priorUses >= 2) { c.score = -999; continue; }
+                    if (priorUses >= 1) c.score *= 0.15;
+                }
+                const nonRepeatableKinds = ['swap', 'terrainCreate', 'summonWeather', 'deployObject',
+                    'deployPair', 'warpRune', 'remoteView', 'scan', 'encore',
+                    'placeTrap', 'placeBlock', 'buildStructure', 'tuneFrequency', 'pulseLattice'];
+                if (nonRepeatableKinds.includes(c.spell.kind) && hasUsedSpellKind(c.spell.kind)) {
+                    c.score *= 0.1;
+                }
+            }
+            // Target spreading — but never away from a nearly-dead enemy.
+            if (c.target?.id) {
+                const priorTargets = countPriorTargeting(c.target.id);
+                const _finishing = typeof c.target.hp === 'number' && typeof c.target.maxHp === 'number'
+                    && c.target.hp / c.target.maxHp <= 0.45;
+                if (!_finishing) {
+                    if (priorTargets >= 2) c.score *= 0.45;
+                    else if (priorTargets >= 1) c.score *= 0.75;
+                }
+            }
+            // End-tile danger: every candidate ends the activation
+            // somewhere — charge that tile's real threat. (Moves end on
+            // their destination; everything else ends where we stand.)
+            if (c._noDanger) continue;
+            const endX = (c.type === 'move' && c.x != null) ? c.x : unit.x;
+            const endY = (c.type === 'move' && c.y != null) ? c.y : unit.y;
+            const endZ = (c.type === 'move' && c.z != null) ? c.z : unit.z;
+            if (c._dangerCost == null) c._dangerCost = tileDangerCost(g, unit, vision, endX, endY, endZ);
+            c.score -= c._dangerCost;
+        }
+
+        candidates.sort((a, b) => b.score - a.score);
+        let best = candidates[0];
+
+        // FE rule: kills trump accumulated niceness. If a confirmed kill is
+        // anywhere near the best candidate's score, take the kill — removed
+        // units stop doing damage; "nice position" doesn't.
+        if (best && best.score > 0) {
+            for (const c of candidates.slice(0, 12)) {
+                if (c.score <= 0) break;
+                let sp = null, tg = null;
+                if (c.type === 'attack' && c.target && c.target.id) tg = c.target;
+                else if (c.type === 'spell' && c.target && c.target.id && DMG_KINDS.has(c.spell?.kind)) { sp = c.spell; tg = c.target; }
+                else continue;
+                if (estDamage(g, unit, tg, sp) >= effHp(tg)) {
+                    if (c !== best && c.score >= best.score * 0.7) best = c;
+                    break;   // candidates are sorted — the first kill is the best kill
+                }
+            }
+        }
+
+        return { candidates, best };
+    }
+
+    /* ═══ IMITATION PREVIEW (training match, 2026-09-07) ═══════════════════
+       battle.js _imitObserve calls this at the moment the HUMAN commits an
+       action: it ranks the candidates the CPU would have considered for
+       that same unit on the same board, finds the human's action in the
+       list (or scores it synthetically for a move the scorer never
+       proposed: that tile's joint move×action value minus its danger), and
+       returns the score margin human − CPU-best. battle.js then probes the
+       weights (getAIWeight override) and nudges them so the human's choice
+       would have ranked first. Pure: every piece of per-activation module
+       state is saved and restored, and the team-focus memo is untouched. */
+    function _snapActivationState() {
+        const g = G();
+        return { fs: _failedSpells, fc: _failedCombos, sa: _skipAttack, st: _skipTowerAttack,
+                 sm: _skipMove, fn: _failedNexus, fi: _failedItems, tl: _turnActionLog,
+                 oc: _outputCache, focus: g && g.state ? g.state._aiFocusId : null };
+    }
+    function _restoreActivationState(s) {
+        _failedSpells = s.fs; _failedCombos = s.fc; _skipAttack = s.sa; _skipTowerAttack = s.st;
+        _skipMove = s.sm; _failedNexus = s.fn; _failedItems = s.fi; _turnActionLog = s.tl;
+        _outputCache = s.oc;
+        const g = G(); if (g && g.state) g.state._aiFocusId = s.focus;
+    }
+    function _candMatchesHuman(c, h) {
+        if (!c || !h || c.type !== h.type) return false;
+        if (h.type === 'move') return c.x === h.x && c.y === h.y;
+        if (h.type === 'guard') return true;
+        if (h.type === 'attack') return !!(c.target && c.target.x === h.x && c.target.y === h.y);
+        if (h.type === 'spell') {
+            if (!c.spell) return false;
+            const sameSpell = (h.spellId != null && c.spell.id === h.spellId) || (h.spellName && c.spell.name === h.spellName);
+            if (!sameSpell) return false;
+            if (!c.target || c.target.x == null) return true;
+            return c.target.x === h.x && c.target.y === h.y;
+        }
+        return false;
+    }
+    function _candDesc(c) {
+        if (!c) return 'wait';
+        const g = G();
+        const tn = (t) => (t && t.id && g) ? g.unitDisplayName(t) : (t && t.x != null ? t.x + ',' + t.y : '');
+        if (c.type === 'move') return 'move→' + c.x + ',' + c.y + (c._intent ? ' (' + c._intent + ')' : '');
+        if (c.type === 'attack') return 'attack ' + tn(c.target);
+        if (c.type === 'spell') return (c.spell ? c.spell.name : 'spell') + '→' + tn(c.target);
+        return c.type;
+    }
+    window.aiScoreMargin = function (unit, human) {
+        const g = G();
+        if (!g || !unit || !human) return null;
+        const saved = _snapActivationState();
+        try {
+            _failedSpells = new Set(); _failedCombos = new Set(); _skipAttack = false; _skipTowerAttack = false;
+            _skipMove = false; _failedNexus = false; _failedItems = new Set(); _turnActionLog = []; _outputCache = new Map();
+            const v = buildVision(unit);
+            const r = rankCandidates(unit, v);
+            const cands = r.candidates || [];
+            const best = (r.best && r.best.score > 0) ? r.best : null;
+            const bestScore = best ? best.score : 0;
+            let hc = null;
+            for (const c of cands) { if (_candMatchesHuman(c, human)) { hc = c; break; } }
+            let humanScore = null, matched = false, synthetic = false;
+            if (hc) { humanScore = hc.score; matched = true; }
+            else if (human.type === 'move' && human.x != null) {
+                const tiles = g.TargetQuery.moveTiles(unit).filter(t => t.x === human.x && t.y === human.y);
+                if (tiles.length) {
+                    let s = 0;
+                    try { const j = jointMoveActionSearch(unit, tiles, v); if (j && j.score > 0) s = j.score; } catch (e) {}
+                    humanScore = s - tileDangerCost(g, unit, v, tiles[0].x, tiles[0].y, tiles[0].z);
+                    matched = true; synthetic = true;
+                }
+            } else if (human.type === 'guard') { humanScore = 0; matched = true; synthetic = true; }
+            if (!matched) return { matched: false, best: _candDesc(best) };
+            const agree = !!(best && hc && best === hc);
+            return { matched: true, synthetic, agree, margin: humanScore - bestScore,
+                     humanScore, bestScore, best: _candDesc(best), human: _candDesc(hc || human) };
+        } catch (e) {
+            console.warn('[AI] aiScoreMargin failed:', e);
+            return null;
+        } finally {
+            _restoreActivationState(saved);
+        }
     };
 
     // ═════════════════════════════════════════════════════════════════════

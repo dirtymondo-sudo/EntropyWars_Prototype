@@ -1132,7 +1132,7 @@ function MatchSelect() {
               fontFamily: '"DotGothic16", monospace', fontSize: 9,
               color: training ? EW.good : EW.inkDim, letterSpacing: '0.1em', lineHeight: 1.5,
             }}, training
-              ? 'CPU turns resolve instantly — no animations, no camera. Your turns play as normal.'
+              ? 'CPU turns resolve instantly — no animations, no camera — and the CPU learns from your decisions, re-tuning its weights toward how you play.'
               : 'CPU turns play out with full animations and action camera.')
           )
         ),

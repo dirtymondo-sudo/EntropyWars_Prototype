@@ -26919,6 +26919,152 @@
         function _syncTrainingTurbo(unit) { _setAiTurbo(_trainingTurboWanted(unit)); }
         window._setAiTurbo = _setAiTurbo;
 
+        /* ═══════════ IMITATION — the CPU learns from the human's decisions ═══════════
+           (2026-09-07) Runs in a TRAINING MATCH only (state.trainingMatch,
+           offline). Every time the human commits an action for one of their
+           units (doMove / doAttack / doSpell / doGuard), ai.js aiScoreMargin
+           ranks what the CPU would have done for that unit on that board
+           and scores the human's choice against the CPU's pick. A
+           disagreement (human's choice scored below the CPU's) is a
+           demonstration: a handful of random trainable weights are probed
+           by finite differences (getAIWeight honours _aiWeightProbe), and
+           each one that would have closed the gap is stepped 2% of its
+           range in that direction, clamped to its [min,max]. The step lands
+           in _aiTrainedWeights — the same champion table the A/B lab tunes
+           and the CPU plays with immediately — so the CPU converges toward
+           the human's judgement one decision at a time (a perceptron on the
+           scorer's ranking). Nothing is learned from agreements, and no
+           weight moves once the human's choice already ranks first.
+           Summary in the log at match end; window._ewImitationSnapshot()
+           for the numbers. Kill-switch: window.EW_NO_IMITATION = true. */
+        let _aiWeightProbe = null;
+        let _imitStats = null;
+        let _imitStatsLoaded = false;
+        let _imitMatch = null;
+        let _imitBusy = false;
+        let _imitSaveTimer = null;
+        const IMIT_STEP = 0.02;     // one nudge = 2% of the weight's range
+        const IMIT_PROBE = 0.05;    // finite-difference δ = 5% of range
+        const IMIT_MIN_D = 0.5;     // margin changes below this are noise (score units)
+
+        function _imitStorageKey() { return 'ai-imitation-stats-v' + AI_WEIGHT_SCHEMA_VERSION; }
+        function _imitBlankStats() { return { matches: 0, observed: 0, agree: 0, disagree: 0, unmatched: 0, nudges: {} }; }
+        async function _imitLoadStats() {
+            if (_imitStatsLoaded) return;
+            _imitStatsLoaded = true;
+            try {
+                const raw = await _aiStorageGet(_imitStorageKey());
+                if (raw) _imitStats = Object.assign(_imitBlankStats(), JSON.parse(raw));
+            } catch (e) { _imitStats = null; }
+            if (!_imitStats) _imitStats = _imitBlankStats();
+        }
+        function _imitScheduleSave() {
+            if (_imitSaveTimer) return;
+            _imitSaveTimer = window.setTimeout(() => {
+                _imitSaveTimer = null;
+                saveAIWeights();
+                if (_imitStats) _aiStorageSet(_imitStorageKey(), JSON.stringify(_imitStats)).catch(() => {});
+            }, 1500);
+        }
+        function _imitEnabled(unit) {
+            if (!state.trainingMatch || state.devAutoSim || window.EW_NO_IMITATION) return false;
+            if (state.phase !== 'battle' || state.winner) return false;
+            try { if (isOnlineMatch()) return false; } catch (e) {}
+            if (!unit || unit.dead) return false;
+            if (state.controllers?.[unit.player] !== CTRL.LOCAL) return false;
+            if (state.autoPlayers?.[unit.player]) return false;
+            if (typeof _mdUnitAuto === 'function' && _mdUnitAuto(unit)) return false;
+            if (state._blitzActiveUnitId && state._blitzActiveUnitId !== unit.id) return false;
+            return typeof window.aiScoreMargin === 'function';
+        }
+        function _imitMatchTally() {
+            if (!_imitMatch) _imitMatch = Object.assign(_imitBlankStats(), { examples: [] });
+            return _imitMatch;
+        }
+        function _imitObserve(unit, human) {
+            if (_imitBusy || !_imitEnabled(unit)) return;
+            _imitBusy = true;
+            try {
+                _imitLoadStats();
+                const st = _imitMatchTally();
+                const t0 = performance.now();
+                const base = window.aiScoreMargin(unit, human);
+                const dt = performance.now() - t0;
+                if (!base || !base.matched) { st.unmatched++; return; }
+                st.observed++;
+                if (base.agree || base.margin >= -IMIT_MIN_D) { st.agree++; return; }
+                st.disagree++;
+                // Random subset of the trainable, board-relevant weights. The
+                // ranking pass is re-run twice per probed key, so the subset
+                // shrinks when a pass is slow to keep the click responsive.
+                const keys = Object.keys(AI_WEIGHT_DEFAULTS).filter(k => _trainKeyAllowed(k) && _weightRelevantNow(k));
+                for (let i = keys.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = keys[i]; keys[i] = keys[j]; keys[j] = t; }
+                const perStep = dt > 40 ? 2 : (dt > 15 ? 4 : 6);
+                const changes = [];
+                for (const key of keys.slice(0, perStep)) {
+                    const def = AI_WEIGHT_DEFAULTS[key];
+                    const range = def.max - def.min;
+                    if (!(range > 0)) continue;
+                    const cur = getAIWeight(key, unit.player);
+                    const d = range * IMIT_PROBE;
+                    _aiWeightProbe = { [key]: Math.min(def.max, cur + d) };
+                    const up = window.aiScoreMargin(unit, human);
+                    _aiWeightProbe = { [key]: Math.max(def.min, cur - d) };
+                    const dn = window.aiScoreMargin(unit, human);
+                    _aiWeightProbe = null;
+                    if (!up || !dn || !up.matched || !dn.matched) continue;
+                    const slope = up.margin - dn.margin;
+                    if (Math.abs(slope) < IMIT_MIN_D) continue;
+                    const next = Math.max(def.min, Math.min(def.max, cur + Math.sign(slope) * range * IMIT_STEP));
+                    if (Math.abs(next - cur) < 1e-9) continue;
+                    if (!_aiTrainedWeights) _aiTrainedWeights = {};
+                    _aiTrainedWeights[key] = Math.round(next * 1000) / 1000;
+                    changes.push({ key, from: cur, to: _aiTrainedWeights[key] });
+                    const n = st.nudges[key] || (st.nudges[key] = { n: 0, from: cur, to: cur });
+                    n.n++; n.to = _aiTrainedWeights[key];
+                }
+                if (st.examples.length < 40) {
+                    st.examples.push({ unit: unitDisplayName(unit), human: base.human, cpu: base.best,
+                        margin: Math.round(base.margin), changed: changes.map(c => c.key) });
+                }
+                if (changes.length) _imitScheduleSave();
+                if (window.EW_AI_DEBUG) console.log('[Imitation]', unitDisplayName(unit), 'you:', base.human, 'cpu:', base.best,
+                    'margin', Math.round(base.margin), changes.map(c => `${c.key} ${c.from.toFixed(3)}→${c.to.toFixed(3)}`).join(' '));
+            } catch (e) {
+                console.warn('[Imitation] observe failed:', e);
+            } finally {
+                _aiWeightProbe = null;
+                _imitBusy = false;
+            }
+        }
+        function _imitFmt(v) { return (Math.abs(v) >= 10 ? Math.round(v) : Math.round(v * 100) / 100).toString(); }
+        function _imitMatchSummary() {
+            const st = _imitMatch;
+            _imitMatch = null;
+            if (!st || (!st.observed && !st.unmatched)) return;
+            const nudged = Object.keys(st.nudges);
+            const parts = nudged.map(k => {
+                const n = st.nudges[k];
+                const label = (AI_WEIGHT_DEFAULTS[k] && AI_WEIGHT_DEFAULTS[k].label) || k;
+                return `${label} ${_imitFmt(n.from)}→${_imitFmt(n.to)} (×${n.n})`;
+            });
+            addLog(`🧠 Imitation: ${st.observed} of your decisions scored · CPU agreed ${st.agree} · learned from ${st.disagree}`
+                + (st.unmatched ? ` · ${st.unmatched} unscorable` : '')
+                + (parts.length ? `. Nudged: ${parts.join(', ')}.` : '. No weight moved.'));
+            if (_imitStats) {
+                _imitStats.matches++;
+                _imitStats.observed += st.observed; _imitStats.agree += st.agree;
+                _imitStats.disagree += st.disagree; _imitStats.unmatched += st.unmatched;
+                for (const k of nudged) {
+                    const n = _imitStats.nudges[k] || (_imitStats.nudges[k] = { n: 0, from: st.nudges[k].from, to: st.nudges[k].to });
+                    n.n += st.nudges[k].n; n.to = st.nudges[k].to;
+                }
+                _imitScheduleSave();
+            }
+        }
+        window._ewImitationSnapshot = () => ({ match: _imitMatch, total: _imitStats, weights: _aiTrainedWeights });
+        window._imitObserve = _imitObserve;
+
         function setDevAutoSim(enabled) {
             if (isOnlineMatch() && enabled) return;
             state.devAutoSim = !!enabled;
@@ -30462,6 +30608,7 @@
             state._matchAchievements = state._matchAchievements || [];
             clearAiSafetyTimer();
             recordCompletedMatch();
+            _imitMatchSummary();
 
             /* Sim telemetry must never kill the match-end sequence: an
                exception here used to leave _finalizing latched true, which
@@ -32945,6 +33092,9 @@
             _setAiTurbo(false);
             if (state.trainingMatch && !isOnlineMatch() && !state.devAutoSim) {
                 addLog('⚡ TRAINING MATCH — CPU turns resolve instantly (no animations, no camera). Your turns play as normal.');
+                _imitMatch = null;
+                _imitLoadStats();
+                if (!window.EW_NO_IMITATION) addLog('🧠 The CPU studies every decision you make and re-tunes its weights toward your play — summary at match end.');
             }
 
             state.shotClock = { startedAt: 0, limitSec: 30, active: false };
@@ -35806,6 +35956,9 @@
                 if (!def) return 0;
                 return (_strengthBaselineSource === 'prev' && def.prev != null) ? def.prev : def.value;
             }
+
+            // Imitation finite-difference probe (training match, _imitObserve).
+            if (_aiWeightProbe && _aiWeightProbe[key] != null) return _aiWeightProbe[key];
 
             let val = (_aiTrainedWeights && _aiTrainedWeights[key] != null)
                 ? _aiTrainedWeights[key]
@@ -41942,6 +42095,7 @@
                 }
                 return false;
             }
+            _imitObserve(unit, { type: 'move', x, y });
             const moveTiles = getMoveTiles(unit);
 
             let _matchedTile = null;
@@ -42639,6 +42793,7 @@
                     return 0;
                 }
             }
+            _imitObserve(unit, { type: 'attack', x, y });
             // Balance Lab: a basic attack must never be attributed to a spell
             // whose cast fizzled earlier without reaching finishAction.
             _balSpellCollector = null;
@@ -46481,6 +46636,8 @@
                 playErrorSfx();
                 return 0;
             }
+
+            _imitObserve(unit, { type: 'spell', x, y, spellId: spell.id, spellName: spell.name });
 
             if (spell.kind !== 'teleport') state._teleportingUnit = null;
 

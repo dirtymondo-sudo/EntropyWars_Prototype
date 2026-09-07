@@ -4797,6 +4797,7 @@
                 addLog('Guard requires at least 1 AP.');
                 return;
             }
+            if (typeof window._imitObserve === 'function') window._imitObserve(unit, { type: 'guard' });
             pushUndoSnapshot(true);
 
             applyStatusEffects(unit, [{ id: 'guarding', duration: 1 }], 'Guard: ');
