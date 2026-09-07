@@ -7474,6 +7474,12 @@
                 awr: 0,
                 label: cycle
             };
+            /* 🌕 Lycanthropy (plan §5.2): the day/night FORM (wolfForm stance
+               carrier) replaces the ±nudge — a unit carrying dayNightForms
+               takes no sleep-preference swing whatever its saved identity says. */
+            if (typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'dayNightForms')) {
+                return { atk: 0, armor: 0, int: 0, awr: 0, label: cycle === 'night' ? 'The Beast' : 'Human by day' };
+            }
             if (unit.sleepPreference === 'nocturnal') {
                 return cycle === 'night' ?
                     {
@@ -8141,7 +8147,14 @@
                     unit._respawnIn = null;
                 } else {
                     unit._respawnIn = Math.min(Math.pow(2, unit._deathCount - 1), 8);
+                    /* 💀 Bone Deep (skeleton passive, plan §5.2): the countdown
+                       scales — 1, 1, 2, 4 instead of 1, 2, 4, 8. */
+                    const _rsMult = (typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'respawnMult') : undefined;
+                    if (_rsMult && _rsMult !== 1) unit._respawnIn = Math.max(1, Math.round(unit._respawnIn * _rsMult));
                 }
+                /* Where it fell — Return of the Dead (zombie passive) respawns
+                   here; plain unit data, so it state-syncs. */
+                unit._deathTile = { x: unit.x, y: unit.y };
             }
 
             scheduleBoardRender();
@@ -8281,6 +8294,55 @@
 
                         if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
                         continue;
+                    }
+
+                    /* 🧟 Return of the Dead (zombie passive, plan §5.2): claw
+                       back out where it fell — the death tile if it is open,
+                       else the nearest open tile, else the spawn zone below. */
+                    const _rotd = (typeof unitPassiveValue === 'function') && unitPassiveValue(unit, 'respawnAtDeathTile') === true
+                        && unit._deathTile && Number.isFinite(unit._deathTile.x) && Number.isFinite(unit._deathTile.y);
+                    if (_rotd) {
+                        const dx = unit._deathTile.x, dy = unit._deathTile.y;
+                        const _openAt = (x, y) => {
+                            if (x < 0 || y < 0 || y >= floorTerrain.length || x >= (floorTerrain[0]?.length || 0)) return false;
+                            const t = floorTerrain[y][x];
+                            const rule = getTerrainRule(t || 'grass');
+                            if (rule.passable === false) return false;
+                            if (t === 'tower_base') return false;
+                            if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
+                            return !state.units.some(o => o !== unit && !o.dead && o.x === x && o.y === y);
+                        };
+                        let placed = false;
+                        if (_openAt(dx, dy)) {
+                            unit.x = dx; unit.y = dy; placed = true;
+                        } else {
+                            for (let radius = 1; radius <= 3 && !placed; radius++) {
+                                for (let oy = -radius; oy <= radius && !placed; oy++) {
+                                    for (let ox = -radius; ox <= radius && !placed; ox++) {
+                                        if (Math.abs(ox) !== radius && Math.abs(oy) !== radius) continue;
+                                        if (_openAt(dx + ox, dy + oy)) { unit.x = dx + ox; unit.y = dy + oy; placed = true; }
+                                    }
+                                }
+                            }
+                        }
+                        if (placed) {
+                            unit.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(unit.x, unit.y) : (state.boardHeights?.[unit.y]?.[unit.x] ?? 0);
+                            unit.dead = false;
+                            unit._dying = false;
+                            unit.hp = unit.maxHp;
+                            unit.mp = unit.maxMp;
+                            unit.shield = 0;
+                            unit.ap = 0;
+                            unit.status = { spawnGuard: 1 };
+                            delete unit.statStageMods;   // fresh life — no carried stat stages
+                            unit._respawnIn = null;
+                            unit._justRespawned = true;
+                            unit._showRespawnBanner = true;
+                            resetUnitPowerState(unit);
+                            addLog(`🧟 ${unitDisplayName(unit)} claws back out of the ground where it fell! (${unit.hp}/${unit.maxHp} HP) 🛡️ Spawn Guard: half damage for 1 round.`);
+                            if (window.RenderBus) window.RenderBus.emit('unit:spawned', { unit });
+                            continue;
+                        }
                     }
 
                     /* Spawn Zone respawn: fixed tile, full HP/MP */

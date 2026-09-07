@@ -2153,7 +2153,7 @@ const JOB_ARCHETYPES = {
         types: ['human', 'unholy'],
         gender: 'other',
         zodiac: 'scorpio',
-        sleepPreference: 'nocturnal',
+        sleepPreference: 'none',   // Lycanthropy (PASSIVE_DEFS) owns the night now
         terrainPreference: 'grass',
         weatherPreference: 'none'
     },
@@ -2693,6 +2693,35 @@ const RACE_PROFILES = {
                                  (unitIsPhasing, map.js → getMoveTiles/findMovePath)
      basicAttackLifesteal: 0.25  basic attacks drain this fraction of damage
                                  dealt as HP (performBasicAttack, battle.js)
+   CHAMP REWORK Phase 3 flags (2026-09-07, CHAMP_REWORK_PLAN.md §5.2):
+     immuneDamageType: 'physical'  hits of that damageType never land
+                                 (applyDamageToUnit early-out; DoTs untouched)
+     dayNightForms: {night:{…}}  round-start hook wears the `wolfForm` stance
+                                 carrier (STATUS_DEFS) while the cycle is night
+     lowHpBonus: {threshold,dmgMult,spdStages}  damage ×mult vs targets at or
+                                 under the HP fraction; +SPD stages while any
+                                 VISIBLE enemy is that low (getEffectiveSpd)
+     respawnMult: 0.5            death handler scales the respawn countdown
+     respawnAtDeathTile: true    processRespawns returns the unit where it fell
+     rangeBonus: 1               basic-attack reach (getEffectiveRange)
+     targetableWithin: 3         enemies see/target the unit only from ≤N tiles
+                                 (isUnitConcealedFrom → renderer, AI, doAttack,
+                                 doSpell); allies always see it; Marked pierces
+     oppAttackChance / oppAttackMult  checkOpportunityAttack odds & damage
+     immuneKind: 'debuff'        every kind:'debuff' status bounces
+     immuneStatDown: true        negative stat stages never apply
+     physicalHitStatus: {id,duration}  every physical hit the unit lands
+                                 applies the status (applyDamageToUnit)
+     basicAttackRange: 99        basic attacks reach any visible tile with
+                                 line of sight (item throws excluded)
+     closeRangeBonus: {within,mult}  basic-attack damage ×mult at ≤N tiles
+     contactStatus: 'goo'        melee basic attacks (either direction) apply it
+     spellCostMult / mpOnBasicHit / mpFromMagicDamage  the cyborg reactor
+     stagePerRounds: {int,every} + resetOnDeath  permanent stage every N rounds
+     basicAttackMagic: true      basic attacks use M.ATK vs M.DEF (+ range via
+                                 basicAttackRangeBonus)
+     healMult: 1.2               heals this unit CASTS are scaled
+     speedTiePriority: true      buildBlitzTurnOrder: first among equal SPD
    `flying` has no flag — being a SKY_RACE (canFly/isUnitAirborne, map.js) IS
    the hook; the registry entry exists so flight shows up, and counts, as a
    passive.
@@ -2718,10 +2747,14 @@ const PASSIVE_DEFS = {
         immuneStatus: ['burn'],
         desc: 'Fire feeds it: fire damage heals instead of harming, Burn never takes hold, and a lava bath knits its wounds.',
     },
-    spectralPassage: {
-        id: 'spectralPassage', icon: '👻', name: 'Spectral Passage',
+    /* 👻 Incorporeal (Phase 3) absorbs the old Spectral Passage: the same
+       phasing plus immunity to every PHYSICAL hit — basic attacks, physical
+       abilities, opportunity attacks. Magic and DoT ticks still land. */
+    incorporeal: {
+        id: 'incorporeal', icon: '👻', name: 'Incorporeal',
         phasing: true,
-        desc: 'Moves through walls, enemies and barricades as if they were not there (must still stop on an open tile).',
+        immuneDamageType: 'physical',
+        desc: 'No body to strike: physical hits pass straight through (basic attacks, physical abilities, opportunity attacks), and it drifts through walls, enemies and barricades while moving. Magic and damage over time still bite.',
     },
     manAtArms: {
         id: 'manAtArms', icon: '🛡️', name: 'Man-at-Arms',
@@ -2748,6 +2781,105 @@ const PASSIVE_DEFS = {
         basicAttackLifesteal: 0.25,
         desc: 'Basic attacks drink deep — restores 25% of the damage dealt as HP.',
     },
+
+    /* ══ CHAMP REWORK Phase 3 — the passive batch (2026-09-07) ══
+       CHAMP_REWORK_PLAN.md §5.2. Pure engine hooks, no art. */
+    lycanthropy: {
+        id: 'lycanthropy', icon: '🌕', name: 'Lycanthropy',
+        dayNightForms: { night: { atk: 2, spd: 3, def: 2, mdef: 1 } },
+        desc: 'Human by day, beast by night: while the cycle is night the wolf wears +2 ATK, +3 SPD, +2 DEF and +1 M.DEF stages (The Beast), and the stages fall away at dawn.',
+    },
+    bloodcraze: {
+        id: 'bloodcraze', icon: '🩸', name: 'Bloodcraze',
+        lowHpBonus: { threshold: 0.30, dmgMult: 1.25, spdStages: 1 },
+        desc: 'Smells the kill: +25% damage against enemies at or under 30% HP, and +1 SPD stage while any visible enemy is that wounded.',
+    },
+    boneDeep: {
+        id: 'boneDeep', icon: '💀', name: 'Bone Deep',
+        respawnMult: 0.5,
+        desc: 'Bones reassemble twice as fast — every respawn countdown is halved (1, 1, 2, 4 rounds instead of 1, 2, 4, 8).',
+    },
+    returnOfTheDead: {
+        id: 'returnOfTheDead', icon: '🧟', name: 'Return of the Dead',
+        respawnAtDeathTile: true,
+        desc: 'Claws back out of the ground where it fell: respawns on its death tile (or the nearest open tile) instead of the spawn zone.',
+    },
+    reach: {
+        id: 'reach', icon: '🦖', name: 'Reach',
+        rangeBonus: 1,
+        desc: 'A neck and tail that cover ground — basic attacks reach 1 tile further.',
+    },
+    dragonReach: {
+        id: 'dragonReach', icon: '🐉', name: 'Dragon Reach',
+        rangeBonus: 1,
+        desc: 'Fangs on a serpent\'s neck — basic attacks reach 1 tile further.',
+    },
+    cryptid: {
+        id: 'cryptid', icon: '📷', name: 'Cryptid',
+        targetableWithin: 3,
+        desc: 'Never a clear photo: enemies can only see or target him from within 3 tiles (a Marked cryptid is exposed). Allies always see him.',
+    },
+    shank: {
+        id: 'shank', icon: '🔪', name: 'Shank',
+        oppAttackChance: 1.0, oppAttackMult: 1.5,
+        desc: 'Nobody walks away: opportunity attacks on retreating enemies always land and deal ×1.5 damage.',
+    },
+    pureNegativity: {
+        id: 'pureNegativity', icon: '🖤', name: 'Pure Negativity',
+        immuneKind: 'debuff', immuneStatDown: true,
+        desc: 'Already as low as it gets — immune to every debuff and to stat drops.',
+    },
+    serrated: {
+        id: 'serrated', icon: '🏹', name: 'Serrated',
+        physicalHitStatus: { id: 'bleed', duration: 2 },
+        desc: 'Barbed arrowheads: every physical hit leaves the target Bleeding (20 damage a round for 2 rounds).',
+    },
+    longshot: {
+        id: 'longshot', icon: '🎯', name: 'Longshot',
+        basicAttackRange: 99,
+        desc: 'If he can see it, he can shoot it: basic attacks reach any visible enemy with a clear line of sight (thrown items keep normal range).',
+    },
+    pointBlank: {
+        id: 'pointBlank', icon: '💥', name: 'Point Blank',
+        closeRangeBonus: { within: 2, mult: 1.3 },
+        desc: 'Basic attacks from 2 tiles or closer hit ×1.3.',
+    },
+    oozing: {
+        id: 'oozing', icon: '🛢️', name: 'Oozing',
+        contactStatus: 'goo',
+        desc: 'Everything it touches comes away Gooed: melee basic attacks it lands OR takes coat the other unit in goo (heals halved, −1 MOV, magic hits ×1.25).',
+    },
+    powerCore: {
+        id: 'powerCore', icon: '⚡', name: 'Power Core',
+        spellCostMult: 1.5, mpOnBasicHit: 25, mpFromMagicDamage: 0.30,
+        desc: 'A reactor, not a mana pool: spells cost ×1.5 MP, but every basic attack that lands feeds it 25 MP and 30% of any magic damage taken is stored as MP.',
+    },
+    madGenius: {
+        id: 'madGenius', icon: '🧪', name: 'Mad Genius',
+        stagePerRounds: { int: 1, every: 3 }, resetOnDeath: true,
+        desc: 'The longer the experiment runs, the madder it gets: +1 M.ATK stage at the start of every 3rd round, permanent until death.',
+    },
+    rayGun: {
+        id: 'rayGun', icon: '🔫', name: 'Ray Gun',
+        basicAttackMagic: true, basicAttackRangeBonus: 1,
+        desc: 'The sidearm is a ray gun: basic attacks use M.ATK against M.DEF and reach 1 tile further.',
+    },
+    devout: {
+        id: 'devout', icon: '🙏', name: 'Devout',
+        healMult: 1.2,
+        desc: 'Faith moves the needle — every heal she casts restores 20% more.',
+    },
+    quickdraw: {
+        id: 'quickdraw', icon: '🤠', name: 'Quickdraw',
+        speedTiePriority: true,
+        desc: 'Wins every speed tie — always acts first among units of equal SPD.',
+    },
+    fairyDustTrail: {
+        id: 'fairyDustTrail', icon: '✨', name: 'Pixie Dust Trail',
+        // The trail itself is the existing fairy mote system (battle.js);
+        // this entry registers it so it shows, and is budgeted, as a passive.
+        desc: 'Sheds glowing dust where she moves — allies who step on a mote recover HP and MP.',
+    },
 };
 
 /* race → up to 2 passive ids. For SKY_RACES `flying` is inserted
@@ -2755,12 +2887,28 @@ const PASSIVE_DEFS = {
    race gets at most ONE entry from this table. */
 const RACE_PASSIVES = {
     'kaiju':         ['thermalRegen'],
-    'ghost':         ['spectralPassage'],     // ghost also flies → slots full
+    'ghost':         ['incorporeal'],         // ghost also flies → slots full
     'knight':        ['manAtArms'],
     'telepath':      ['unquietMind'],         // telepath levitates → slots full
     'machine elves': ['fractalMind'],
     'nordic':        ['sereneMind'],
     'vampire':       ['hemophage'],           // vampire also flies → slots full
+    // CHAMP REWORK Phase 3 (2026-09-07, plan §5.2). Gangster (shank) and nun
+    // (devout) join when the races exist (Phase 6) — their defs are above.
+    'werewolf':      ['lycanthropy', 'bloodcraze'],
+    'skeleton':      ['boneDeep'],
+    'zombie':        ['returnOfTheDead'],
+    'dinosaur':      ['reach'],
+    'dragon':        ['dragonReach'],         // dragon also flies → slots full
+    'bigfoot':       ['cryptid'],
+    'ghoul':         ['pureNegativity'],
+    'robinhood':     ['serrated'],
+    'marksman':      ['longshot', 'pointBlank'],
+    'black goo':     ['oozing'],
+    'cyborg':        ['powerCore'],           // cyborg also flies → slots full
+    'mad scientist': ['madGenius', 'rayGun'],
+    'fairy':         ['fairyDustTrail'],      // fairy also flies → slots full
+    'cowboy':        ['quickdraw'],
 };
 
 function getUnitPassives(unit) {
@@ -8649,6 +8797,76 @@ const STATUS_DEFS = {
             }
         }
     },
+    /* 🩸 Bleeding (CHAMP REWORK Phase 3/4, plan §5.1): a PHYSICAL DoT —
+       20 a round for 2 rounds, armor ignored like every tick. Applied by the
+       robin hood's Serrated passive on every physical hit; Piercing Arrow's
+       ×1.5 payoff lands with Phase 5. The applier is credited like poison. */
+    bleed: {
+        icon: '🩸',
+        glyph: '🩸',
+        short: 'BLD',
+        label: 'Bleeding',
+        colorText: 'bleeding',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'max',
+        dot: 20,
+        iconSrc: createStatusIconDataUri('🩸', '#3a0f14', '#ffd6da', '#e0455a'),
+        onRoundEnd(unit) {
+            const _srcId = unit._statusSrc && unit._statusSrc.bleed;
+            const _src = (_srcId && typeof unitFromId === 'function') ? unitFromId(_srcId) : null;
+            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSource = _src;
+            const _hpB = unit.hp;
+            applyDamageToUnit(unit, 20, `${unitDisplayName(unit)} bleeds: `, {
+                ignoreArmor: true,
+                damageType: 'dot',
+                consumeMarked: false,
+                scaleByTargetLevel: true,
+                flashColor: 'hit'
+            });
+            const _dealt = _hpB - unit.hp;
+            if (_src && !_src.dead && _src.player !== unit.player && _dealt > 0) {
+                _src._trackDmgDealt = (_src._trackDmgDealt || 0) + _dealt;
+            }
+        }
+    },
+    /* 🛢️ Gooed (plan §5.1): the black goo's contact debuff bundle — heals
+       received halved, −1 MOV, magic damage taken ×1.25, 2 rounds. One
+       named status, three effects (the §2.1 rule). healTakenMult and
+       magicDamageTakenMult are consumed in battle.js applyHealingToUnit /
+       applyDamageToUnit; moveDelta by getStatusMoveDelta. */
+    goo: {
+        icon: '🛢️',
+        glyph: '🛢️',
+        short: 'GOO',
+        label: 'Gooed',
+        colorText: 'gooed',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'max',
+        moveDelta: -1,
+        healTakenMult: 0.5,
+        magicDamageTakenMult: 1.25,
+        iconSrc: createStatusIconDataUri('🛢️', '#101216', '#d8dce6', '#4a4f5c')
+    },
+    /* 🐺 The Beast (plan §5.1 `wolfForm`): the werewolf's night stance. A
+       stageMod carrier like Overclock — no ledger entry, so it never shows
+       as a timed buff. battle.js _applyRoundStartPassives wears it every
+       night round (Lycanthropy passive) and strips it at dawn; the value is
+       1 so the ordinary status tick retires it at the end of the round and
+       the hook re-decides at the next round start. */
+    wolfForm: {
+        icon: '🐺',
+        glyph: '🐺',
+        short: 'WLF',
+        label: 'The Beast',
+        colorText: 'unleashed as the Beast',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'replace',
+        stageMod: { atk: 2, spd: 3, def: 2, mdef: 1 },
+        iconSrc: createStatusIconDataUri('🐺', '#1a1424', '#e8dcff', '#8a6ad4')
+    },
     silence: {
         icon: '🔇',
         glyph: '🔇',
@@ -9188,6 +9406,9 @@ const STATUS_META = STATUS_DEFS;
 const STATUS_LIBRARY_DESCS = {
     burn:      'Takes fire damage at the end of every round. Standing in water or getting soaked puts it out.',
     poison:    'Takes poison damage at the end of every round.',
+    bleed:     'Bleeding out: takes 20 physical damage at the end of every round (armor ignored).',
+    goo:       'Coated in black goo: healing received is halved, −1 MOV, and magic hits land ×1.25.',
+    wolfForm:  'The Beast is loose: +2 ATK, +3 SPD, +2 DEF and +1 M.DEF stages while the night lasts.',
     silence:   'Cannot cast spells.',
     stun:      'Knocked senseless: cannot move OR act — the unit\'s next activation is skipped. Evasion drops to zero.',
     root:      'Bound in place: cannot move (flyers are dragged to the ground), but can still attack and cast. Evasion drops to zero.',

@@ -523,7 +523,30 @@
         // because movement, turn order and cooldown divisions all feed on it).
         function getEffectiveSpd(unit) {
             if (!unit) return 1;
-            return Math.max(1, (unit.spd || 1) + getStatStageDelta(unit, 'spd'));
+            const base = Math.max(1, (unit.spd || 1) + getStatStageDelta(unit, 'spd'));
+            // 🩸 Bloodcraze (werewolf passive, plan §5.2): +N SPD stages while
+            // any VISIBLE enemy is at or under the HP threshold. Ruler-clamped
+            // like every stage, so an S-speedster gains nothing.
+            const _bc = _bloodcrazeSpdStages(unit);
+            if (!_bc) return base;
+            const _step = (typeof STAT_STAGE_STEP !== 'undefined' && STAT_STAGE_STEP.spd) || 20;
+            return Math.min(Math.max(100, unit.spd || 1), base + _bc * _step);
+        }
+        let _bloodcrazeBusy = false;
+        function _bloodcrazeSpdStages(unit) {
+            if (_bloodcrazeBusy || !unit || typeof unitPassiveValue !== 'function' || !state.units) return 0;
+            const lh = unitPassiveValue(unit, 'lowHpBonus');
+            if (!lh || !lh.spdStages) return 0;
+            _bloodcrazeBusy = true;
+            try {
+                for (const e of state.units) {
+                    if (e.dead || e._dying || !isEnemyUnit(e, unit)) continue;
+                    if ((e.hp || 0) > (e.maxHp || 1) * (lh.threshold || 0.3)) continue;
+                    if (typeof isUnitSeenByTeam !== 'function' || isUnitSeenByTeam(e, unit.player)) return lh.spdStages;
+                }
+            } catch (err) { /* vision helpers not ready yet */ }
+            finally { _bloodcrazeBusy = false; }
+            return 0;
         }
 
         /* 2026-08-29 stat rework, phase 3: base movement DERIVES from SPD —
@@ -581,10 +604,15 @@
                 // math is unchanged.
                 const spdDiff = getEffectiveSpd(enemy) - getEffectiveSpd(unit);
                 const awrDiff = (getEffectiveAwr(enemy) || 0) - (getEffectiveAwr(unit) || 0);
-                const chance = Math.min(0.70, Math.max(0.10, 0.30 + spdDiff * (0.03 / 10) + awrDiff * (0.02 / 14)));
+                let chance = Math.min(0.70, Math.max(0.10, 0.30 + spdDiff * (0.03 / 10) + awrDiff * (0.02 / 14)));
+                // 🔪 Shank (gangster passive, plan §5.2): the striker's
+                // opportunity attacks always land and hit ×1.5.
+                const _shankChance = (typeof unitPassiveValue === 'function') ? unitPassiveValue(enemy, 'oppAttackChance') : undefined;
+                const _shankMult = ((typeof unitPassiveValue === 'function') ? unitPassiveValue(enemy, 'oppAttackMult') : undefined) || 1;
+                if (_shankChance != null) chance = Math.max(chance, Math.min(1, _shankChance));
                 if (engineRng() >= chance) continue;
 
-                const baseDmg = Math.max(1, Math.round(pwrAtk(enemy) * 0.5));
+                const baseDmg = Math.max(1, Math.round(pwrAtk(enemy) * 0.5 * _shankMult));
                 const armor = getEffectiveArmor(unit);
                 const dmg = Math.max(1, baseDmg - armor);
                 applyDamageToUnit(unit, dmg, `${unitDisplayName(enemy)} strikes ${unitDisplayName(unit)} while retreating! `, {
@@ -603,11 +631,23 @@
             }
         }
 
-        function getEffectiveRange(unit) {
+        /* opts.item: the caller is measuring a THROWN ITEM's reach (banes),
+           which rides the basic-attack range + a bonus — the marksman's
+           Longshot (basic attacks only) is excluded there on purpose. */
+        function getEffectiveRange(unit, opts) {
             if (!unit) return 1;
             /* Clash: range is waived — any combatant can strike any other
                across the battlefield, exactly like a menu-driven JRPG. */
             if (typeof _isClashMode === 'function' && _isClashMode()) return 99;
+            // CHAMP REWORK Phase 3 passives (data.js PASSIVE_DEFS): Reach /
+            // Dragon Reach (rangeBonus), Ray Gun (basicAttackRangeBonus),
+            // Longshot (basicAttackRange — any visible tile, LOS still ruled
+            // by isRangeBlockedByTerrain and the fog gate in doAttack).
+            let _passiveRange = 0, _longshot = 0;
+            if (typeof unitPassiveValue === 'function') {
+                _passiveRange = (unitPassiveValue(unit, 'rangeBonus') || 0) + (unitPassiveValue(unit, 'basicAttackRangeBonus') || 0);
+                if (!(opts && opts.item)) _longshot = unitPassiveValue(unit, 'basicAttackRange') || 0;
+            }
             const weatherMod = getWeatherStatMod(unit).rng || 0;
             const mountainBonus = (isOnMountain(unit) && unitHasClimbingBoots(unit)) ? 1 : 0;
             const overclockRangeBonus = (unitHasStatus(unit, 'overclock') && unit.types && unit.types.includes('tech')) ? 1 : 0;
@@ -618,7 +658,8 @@
                 const unitH = (typeof getUnitStandingHeight === 'function') ? getUnitStandingHeight(unit) : (unit.z ?? 0);
                 if (unitH >= 2) highGroundRangeBonus = HIGH_GROUND_RANGE_BONUS;
             }
-            return Math.max(1, (unit.range || 1) + 1 + weatherMod + mountainBonus + overclockRangeBonus + camoRangeBonus + highGroundRangeBonus);
+            const _reach = Math.max(1, (unit.range || 1) + 1 + weatherMod + mountainBonus + overclockRangeBonus + camoRangeBonus + highGroundRangeBonus + _passiveRange);
+            return _longshot ? Math.max(_reach, _longshot) : _reach;
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -2439,6 +2480,10 @@
             if (base > 0 && isEarthZodiacActive() && isTerraformSpell(spell)) {
                 base = Math.max(1, Math.round(base * EARTH_RESONANCE_COST_MULT));
             }
+            // ⚡ Power Core (cyborg passive, plan §5.2): spells cost ×1.5 —
+            // the reactor refunds it through basic hits and magic taken.
+            const _pcMult = (unit && typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'spellCostMult') : undefined;
+            if (base > 0 && _pcMult && _pcMult !== 1) base = Math.max(1, Math.round(base * _pcMult));
             const delta = (unit && typeof getStatusMpCostDelta === 'function') ? getStatusMpCostDelta(unit) : 0;
             return Math.max(0, base + delta);
         }
@@ -5814,7 +5859,7 @@
             // through here, so cleanse never leaves invisible live stages.
             if ((key === 'statUp' || key === 'statDown') && Array.isArray(unit.statStageMods)) {
                 const dropPos = key === 'statUp';
-                unit.statStageMods = unit.statStageMods.filter(m => m && (dropPos ? m.n < 0 : m.n > 0));
+                unit.statStageMods = unit.statStageMods.filter(m => m && (m.perm || (dropPos ? m.n < 0 : m.n > 0)));
                 if (!unit.statStageMods.length) delete unit.statStageMods;
             }
             // Every removal path (tick expiry, cleanse, censer purge, …) funnels
@@ -5927,6 +5972,7 @@
             if (Array.isArray(unit.statStageMods)) {
                 unit.statStageMods = unit.statStageMods.filter(m => m && (m.left || 0) > 0 && (m.n || 0) !== 0);
                 for (const m of unit.statStageMods) {
+                    if (m.perm) continue;   // permanent (Mad Genius) — no badge timer
                     if (m.n > 0) posLeft = Math.max(posLeft, m.left);
                     else negLeft = Math.max(negLeft, m.left);
                 }
@@ -5939,8 +5985,23 @@
             else if (status.statDown) clearStatus(unit, 'statDown');
         }
 
-        function applyStatStageBoost(target, boost, sourceLabel = '', sourceUnit = null) {
+        function applyStatStageBoost(target, boost, sourceLabel = '', sourceUnit = null, opts = {}) {
             if (!target || target.dead || !boost) return;
+            // 🖤 Pure Negativity (ghoul passive, plan §5.2): negative stages
+            // never apply — the positive half of a mixed boost still lands.
+            if (typeof unitPassiveValue === 'function' && unitPassiveValue(target, 'immuneStatDown') === true) {
+                const _kept = {};
+                let _dropped = false;
+                for (const k of Object.keys(boost)) {
+                    if ((boost[k] || 0) < 0) _dropped = true; else if (boost[k]) _kept[k] = boost[k];
+                }
+                if (_dropped) {
+                    addLog(`🖤 ${unitDisplayName(target)}'s Pure Negativity shrugs off the stat drop${sourceLabel ? ` (${sourceLabel.trim()})` : ''}.`);
+                    if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(target, '🖤 IMMUNE', 'heal', { durationMs: 900 });
+                }
+                if (!Object.keys(_kept).length) return;
+                boost = _kept;
+            }
             // 🔏 Fermata (statLock): NO stat stage can change while the lock
             // holds — enemy debuffs fizzle, but so do fresh friendly buffs.
             // This is the single chokepoint every statStageBoost routes
@@ -5990,7 +6051,12 @@
                 let left = STAT_STAGE_DURATION;
                 if (applied < 0 && isEnemy && sourceUnit.cls === 'Psychic') left += 1;      // Third Eye
                 if (applied > 0 && isAllyBuff && sourceUnit.cls === 'Harbinger') left += 1; // Crescendo
-                target.statStageMods.push({ stat, n: applied, left });
+                // opts.perm (Mad Genius, plan §5.2): a PERMANENT entry — never
+                // ticks, never feeds the statUp/statDown badge timer, survives a
+                // buff purge; only death (the respawn ledger reset) clears it.
+                // 999, not Infinity: the ledger rides JSON state-sync.
+                if (opts && opts.perm) target.statStageMods.push({ stat, n: applied, left: 999, perm: true });
+                else target.statStageMods.push({ stat, n: applied, left });
                 if (applied > 0) anyPos = true; else anyNeg = true;
                 const atBound = (base + getStatStageCount(target, stat) * step) >= hi
                     || (base + getStatStageCount(target, stat) * step) <= lo;
@@ -6001,8 +6067,8 @@
             // behavior (a censer purge of statDown clears the fresh negative
             // entries through the clearStatus funnel), then the sync below
             // makes the badge timer the ledger's own maximum.
-            if (anyPos) applyStatusPayload(target, { id: 'statUp', duration: STAT_STAGE_DURATION }, sourceLabel, sourceUnit);
-            if (anyNeg) applyStatusPayload(target, { id: 'statDown', duration: STAT_STAGE_DURATION }, sourceLabel, sourceUnit);
+            if (anyPos && !(opts && opts.perm)) applyStatusPayload(target, { id: 'statUp', duration: STAT_STAGE_DURATION }, sourceLabel, sourceUnit);
+            if (anyNeg && !(opts && opts.perm)) applyStatusPayload(target, { id: 'statDown', duration: STAT_STAGE_DURATION }, sourceLabel, sourceUnit);
             _syncStatStageBadges(target);
             const net = STAT_STAGE_KEYS.reduce((s, k) => s + (boost[k] || 0), 0);
             if (typeof showFloatingTextForUnit === 'function') {
@@ -6036,6 +6102,12 @@
         // any source — spells, DoT, environment). Used by spawnGuard (0.5).
         function getStatusDamageTakenMultiplier(unit) {
             return getActiveStatusKeys(unit).reduce((mult, key) => mult * (STATUS_DEFS[key]?.damageTakenMult || 1), 1);
+        }
+        // Magic-only incoming multiplier (Gooed ×1.25 — STATUS_DEFS
+        // magicDamageTakenMult). Applied in applyDamageToUnit when the hit's
+        // damageType is 'magic'; physical and DoT ticks ignore it.
+        function getStatusMagicDamageTakenMultiplier(unit) {
+            return getActiveStatusKeys(unit).reduce((mult, key) => mult * (STATUS_DEFS[key]?.magicDamageTakenMult || 1), 1);
         }
 
         function getStatusEntries(unit) {
@@ -6218,6 +6290,16 @@
                 showFloatingTextForUnit(target, `${_immPassive.icon} IMMUNE`, 'heal', { durationMs: 900 });
                 return false;
             }
+            /* 🖤 Pure Negativity (ghoul, plan §5.2): a passive with
+               immuneKind bounces EVERY status of that kind — spell debuffs,
+               terrain DoTs, the statDown carrier — whoever applied it. */
+            const _immKind = (typeof unitPassiveValue === 'function') ? unitPassiveValue(target, 'immuneKind') : undefined;
+            if (_immKind && STATUS_DEFS[payload.id]?.kind === _immKind) {
+                const _immDef = (typeof getUnitPassives === 'function' ? getUnitPassives(target) : []).find(p => p.immuneKind === _immKind);
+                addLog(`${_immDef?.icon || '🖤'} ${unitDisplayName(target)}'s ${_immDef?.name || 'passive'} shrugs off ${(STATUS_DEFS[payload.id]?.label) || payload.id}!`);
+                showFloatingTextForUnit(target, `${_immDef?.icon || '🖤'} IMMUNE`, 'heal', { durationMs: 900 });
+                return false;
+            }
             /* 🜂 Elemental status immunity (2026-09-01): a status that IS an
                element (burn/frozen/poison — ELEMENTAL_STATUS) bounces off a
                unit immune to (or drinking) that element, whatever applied it
@@ -6281,7 +6363,7 @@
             // DOT appliers get credit for their ticks: poison/burn end-of-round
             // damage resolves source-less (STATUS_DEFS onRoundEnd), so the
             // applier is remembered here and credited at tick time.
-            if ((payload.id === 'poison' || payload.id === 'burn') && sourceUnit
+            if ((payload.id === 'poison' || payload.id === 'burn' || payload.id === 'bleed') && sourceUnit
                 && sourceUnit.player !== target.player) {
                 target._statusSrc = target._statusSrc || {};
                 target._statusSrc[payload.id] = sourceUnit.id;
@@ -7508,6 +7590,12 @@
                then the cloak means nothing — reliable stealth counterplay. */
             if (unitHasStatus(unit, 'marked')) return false;
 
+            /* 📷 Cryptid (bigfoot passive, plan §5.2): concealed from a viewer
+               with no living unit within `targetableWithin` tiles. Rides the
+               same gate as invisibility, so the renderer hides the mesh, the
+               AI won't target him and the nameplate eye closes. */
+            if (unitCryptidHiddenFrom(unit, viewer)) return true;
+
             const invisible = unitHasStatus(unit, 'invisible');
 
             let smokeHidden = false;
@@ -7537,6 +7625,66 @@
                     const detectR = ((typeof getEffectiveAwr === 'function' ? getEffectiveAwr(f) : (f.awr || 42)) >= 84) ? 2 : 1;
                     if (Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y) <= detectR) return false;
                 }
+            }
+            return true;
+        }
+
+        /* ═══ CHAMP REWORK Phase 3 — round-start passives (plan §5.2) ═══
+           Called from the round transition right after respawns and right
+           before buildBlitzTurnOrder (and at match start). Host-computed;
+           everything it writes is unit status / ledger data, which rides
+           state-sync to the guest (RULE #2).
+             • Lycanthropy (dayNightForms): while getCurrentCyclePhase() is
+               night the unit wears the `wolfForm` stance carrier (STATUS_DEFS
+               stageMod), refreshed to 2 every night round so it survives the
+               end-of-round tick (Mystery Dungeon night FLOORS are many rounds
+               long) and is cleared here at dawn; if the hook ever didn't run
+               it still expires on its own. A dispel strips it for the rest
+               of that round only.
+             • Mad Genius (stagePerRounds): every `every`-th round the unit
+               gains a PERMANENT stage entry (applyStatStageBoost opts.perm);
+               the respawn ledger reset is the resetOnDeath. */
+        function _applyRoundStartPassives() {
+            if (typeof unitPassiveValue !== 'function' || !state.units) return;
+            const cycle = (typeof getCurrentCyclePhase === 'function') ? getCurrentCyclePhase() : 'day';
+            for (const u of state.units) {
+                if (u.dead || u._dying) continue;
+                const forms = unitPassiveValue(u, 'dayNightForms');
+                if (forms && STATUS_DEFS.wolfForm) {
+                    const wearing = unitHasStatus(u, 'wolfForm');
+                    if (cycle === 'night' && forms.night) {
+                        if (!wearing) {
+                            applyStatusPayload(u, { id: 'wolfForm', duration: 2 }, '🌕 The moon is up — ', null);
+                            if (!_skipVisuals() && typeof showFloatingTextForUnit === 'function') {
+                                showFloatingTextForUnit(u, '🐺 THE BEAST', 'buff', { durationMs: 1300 });
+                            }
+                        } else {
+                            ensureUnitStatus(u).wolfForm = 2;
+                        }
+                    } else if (wearing) {
+                        clearStatus(u, 'wolfForm');
+                        addLog(`🌅 Dawn — ${unitDisplayName(u)} is human again.`);
+                    }
+                }
+                const spr = unitPassiveValue(u, 'stagePerRounds');
+                if (spr && spr.every > 0 && (state.round || 0) > 0 && state.round % spr.every === 0) {
+                    const boost = {};
+                    for (const k of Object.keys(spr)) if (k !== 'every' && spr[k]) boost[k] = spr[k];
+                    if (Object.keys(boost).length) {
+                        applyStatStageBoost(u, boost, '🧪 Mad Genius: ', null, { perm: true });
+                    }
+                }
+            }
+        }
+
+        function unitCryptidHiddenFrom(unit, viewer) {
+            if (!unit || unit.dead || unit.player === viewer) return false;
+            const within = (typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'targetableWithin') : undefined;
+            if (!within) return false;
+            if (unitHasStatus(unit, 'marked')) return false;   // a Mark pierces every kind of hiding
+            for (const f of state.units) {
+                if (f.dead || f._dying || f.player !== viewer) continue;
+                if (Math.abs(f.x - unit.x) + Math.abs(f.y - unit.y) <= within) return false;
             }
             return true;
         }
@@ -7880,6 +8028,7 @@
                 if (Array.isArray(u.statStageMods) && u.statStageMods.length) {
                     let expired = false;
                     for (const m of u.statStageMods) {
+                        if (m.perm) continue;   // permanent entries never tick
                         m.left = (m.left || 0) - 1;
                         if (m.left <= 0) expired = true;
                     }
@@ -8497,6 +8646,14 @@
                     _amt = _amt * supportScale(_tgtLvl, _srcLvl);
                 }
             }
+            // 🙏 Devout (nun passive, plan §5.2): heals this unit CASTS are
+            // scaled. Self-heals count — it is her faith, not the recipient's.
+            const _devout = (sourceUnit && typeof unitPassiveValue === 'function') ? unitPassiveValue(sourceUnit, 'healMult') : undefined;
+            if (_devout && _devout !== 1) _amt *= _devout;
+            // 🛢️ Gooed / Grievous Wound (STATUS_DEFS healTakenMult): the
+            // recipient's healing is scaled — every heal source, regen too.
+            const _healTaken = getActiveStatusKeys(target).reduce((m, k) => m * (STATUS_DEFS[k]?.healTakenMult ?? 1), 1);
+            if (_healTaken !== 1) _amt *= _healTaken;
             const rawAmount = Math.max(0, Math.round(_amt));
             const actual = Math.min(rawAmount, Math.max(0, target.maxHp - target.hp));
             if (actual <= 0) return 0;
@@ -21028,6 +21185,26 @@
                 return false;
             }
 
+            // ── 👻 Incorporeal (ghost passive, plan §5.2): a passive with
+            // immuneDamageType makes hits of that damageType not exist for
+            // the unit — basic attacks, physical abilities, opportunity
+            // attacks, fall damage. DoT ticks ('dot') and magic still land.
+            const _immDT = (typeof unitPassiveValue === 'function') ? unitPassiveValue(target, 'immuneDamageType') : undefined;
+            if (_immDT && (opts.damageType || 'physical') === _immDT && damage > 0) {
+                if (_pressDamageCollector && opts.sourceUnit
+                    && opts.sourceUnit.id === _pressDamageCollector.casterId
+                    && opts.sourceUnit.player !== target.player) {
+                    _pressDamageCollector.hits.push({ evaded: true });
+                }
+                addLog(`👻 ${sourceText}${unitDisplayName(target)} has no body to strike — the ${_immDT} blow passes straight through!`);
+                if (!_skipVisuals()) {
+                    showFloatingTextForUnit(target, '👻 PASSES THROUGH', 'protect-block', { durationMs: 1200 });
+                    flashUnit(target.id, 'block');
+                    playSfx('block');
+                }
+                return false;
+            }
+
             let finalDamage = Math.max(0, damage);
             const sourceUnit = opts.sourceUnit || null;
             const damageType = opts.damageType || 'physical';
@@ -21107,6 +21284,13 @@
                     const _effMult = _stabMult ? _typeMult / _stabMult : _typeMult;
                     if (_effMult > 1.001) _multCallout(target, `${_fmtMult(_effMult)} WEAK!`);
                     else if (_effMult < 0.999) _multCallout(target, `${_fmtMult(_effMult)} RESIST`);
+                }
+                // 🩸 Bloodcraze (werewolf passive, plan §5.2): ×dmgMult vs a
+                // target at or under the HP threshold (measured pre-hit).
+                const _bcLow = (damageType !== 'dot' && typeof unitPassiveValue === 'function') ? unitPassiveValue(sourceUnit, 'lowHpBonus') : undefined;
+                if (_bcLow && _bcLow.dmgMult && (target.hp || 0) <= (target.maxHp || 1) * (_bcLow.threshold || 0.3)) {
+                    _offMult *= _bcLow.dmgMult;
+                    _multCallout(sourceUnit, `🩸 ${_fmtMult(_bcLow.dmgMult)} BLOODCRAZE!`, 1000);
                 }
                 // Zodiac is a whole-match buff — call it out once per round
                 // per unit, not on every single swing.
@@ -21291,7 +21475,8 @@
                 hourglassSoak: hourglassReduction,
                 rangedMult: (damageType === 'physical' && sourceUnit && isEnemyUnit(sourceUnit, target))
                     ? getStatusRangedDamageTakenMultiplier(target) : null,
-                statusTakenMult: getStatusDamageTakenMultiplier(target),
+                statusTakenMult: getStatusDamageTakenMultiplier(target)
+                    * (damageType === 'magic' ? getStatusMagicDamageTakenMultiplier(target) : 1),
                 shield: target.shield || 0,
                 shieldIgnore: Number(opts.shieldIgnore || 0),
             });
@@ -21372,6 +21557,17 @@
                     target._lastDamageSourceRound = state.round || 0;
                     if (!target._damageContributors) target._damageContributors = {};
                     target._damageContributors[sourceUnit.id] = (target._damageContributors[sourceUnit.id] || 0) + finalDamage;
+
+                    /* 🏹 Serrated (robin hood passive, plan §5.2): every
+                       PHYSICAL hit this unit lands on an enemy applies its
+                       status (Bleeding) — basic attacks, physical abilities,
+                       opportunity attacks. Runs through applyStatusPayload so
+                       resist rolls, immunities and the credit ledger apply. */
+                    const _serr = (damageType === 'physical' && target.hp > 0 && typeof unitPassiveValue === 'function')
+                        ? unitPassiveValue(sourceUnit, 'physicalHitStatus') : undefined;
+                    if (_serr && _serr.id && isEnemyUnit(sourceUnit, target) && STATUS_DEFS[_serr.id]) {
+                        applyStatusPayload(target, { id: _serr.id, duration: _serr.duration || 2 }, `${unitDisplayName(sourceUnit)}'s serrated hit: `, sourceUnit);
+                    }
 
                     grantXP(sourceUnit, XP_DAMAGE_FLAT, 'damage');
 
@@ -21477,6 +21673,19 @@
                     _popDamageFeedback();
                 }
                 _tallyDamage(target, finalDamage);
+
+                /* ⚡ Power Core (cyborg passive, plan §5.2): a fraction of
+                   MAGIC damage taken is stored as MP. */
+                const _pcMagic = (damageType === 'magic' && target.hp > 0 && typeof unitPassiveValue === 'function')
+                    ? unitPassiveValue(target, 'mpFromMagicDamage') : undefined;
+                if (_pcMagic && (target.mp || 0) < (target.maxMp || 0)) {
+                    const _mpGain = Math.min(Math.round(finalDamage * _pcMagic), (target.maxMp || 0) - (target.mp || 0));
+                    if (_mpGain > 0) {
+                        target.mp = (target.mp || 0) + _mpGain;
+                        addLog(`⚡ ${unitDisplayName(target)}'s Power Core stores the blast — +${_mpGain} MP.`);
+                        if (!_skipVisuals()) showFloatingTextForUnit(target, `⚡ +${_mpGain} MP`, 'mp', { durationMs: 1000 });
+                    }
+                }
 
                 if (window.RenderBus) window.RenderBus.emit('unit:damaged', { unit: target, damage: finalDamage });
 
@@ -32066,6 +32275,7 @@
                 }
             }
 
+            _applyRoundStartPassives();
             buildBlitzTurnOrder();
             beginBlitzRound();
 
@@ -34082,6 +34292,7 @@
             }
 
             if (getActiveGameMode().blitzMode) {
+                _applyRoundStartPassives();
                 buildBlitzTurnOrder();
             }
 
@@ -35789,6 +36000,11 @@
                     state._skippedUnit = null;
 
                     enforceUnitSeparation('roundStart:' + state.round);
+
+                    // CHAMP REWORK Phase 3: Lycanthropy / Mad Genius decide
+                    // BEFORE the turn order is built, so the Beast's SPD
+                    // stages count for initiative the round they appear.
+                    _applyRoundStartPassives();
 
                     buildBlitzTurnOrder();
 
@@ -44067,6 +44283,11 @@
                 playErrorSfx();
                 return 0;
             }
+            if (unitCryptidHiddenFrom(target, unit.player)) {
+                addLog(`📷 ${unitDisplayName(target)} is a blur at this distance — get within ${unitPassiveValue(target, 'targetableWithin')} tiles to target him.`);
+                playErrorSfx();
+                return 0;
+            }
 
             pushUndoSnapshot(true);
 
@@ -44108,11 +44329,19 @@
             // flows into applyDamageToUnit, which adds it for every enemy hit.
             // Adding it in both places double-counted chaos/killstreak/terrain
             // attack bonuses for basic attacks (spells only ever got it once).
-            let damage = Math.max(24, Math.floor(pwrAtk(unit) * 0.65) + getPlantedTreeBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
+            // 🔫 Ray Gun (mad scientist passive, plan §5.2): the basic attack
+            // is a magic shot — M.ATK on the roll, M.DEF on the soak.
+            const _rayGun = (typeof unitPassiveValue === 'function') && unitPassiveValue(unit, 'basicAttackMagic') === true;
+            const _atkStat = _rayGun ? pwrInt(unit) : pwrAtk(unit);
+            let damage = Math.max(24, Math.floor(_atkStat * 0.65) + getPlantedTreeBonus(unit) + getHourglassPower(unit) + randInt(2 * SPELL_DMG_VARIANCE + 1) - SPELL_DMG_VARIANCE);
             // Brute Force (Raider passive): basic attacks land +20% harder.
             if (unit.cls === 'Raider') damage = Math.floor(damage * 1.2);
             // Warpath (Warrior passive): basic attacks hit +15% harder.
             else if (unit.cls === 'Warrior') damage = Math.floor(damage * 1.15);
+            // 💥 Point Blank (marksman passive): ×mult from ≤N tiles.
+            const _pbRule = (typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'closeRangeBonus') : undefined;
+            const _pointBlank = !!(_pbRule && _pbRule.mult && d <= (_pbRule.within || 2));
+            if (_pointBlank) damage = Math.floor(damage * _pbRule.mult);
             if (isCrit) {
                 damage = Math.floor(damage * getCritMultiplier(unit));
                 unit._matchCrits = (unit._matchCrits || 0) + 1;
@@ -44239,10 +44468,39 @@
                         const _typeNote = getTypeCombatNote(unit, target);
                         if (_typeNote) _activeCinematic.showTypeEffect(_typeNote);
                     }
+                    if (_pointBlank && !_skipVisuals()) showFloatingTextForUnit(unit, `💥 ×${_pbRule.mult} POINT BLANK`, 'mult', { durationMs: 1000 });
                     const killed = applyDamageToUnit(target, damage, `${unitDisplayName(unit)} attacks${isCrit ? ' (CRIT!)' : ''}: `, {
                         sourceUnit: unit,
-                        isCrit
+                        isCrit,
+                        // Ray Gun: magic damage type (M.DEF soak, INT-axis
+                        // bonuses); the mark is still consumed like a basic hit.
+                        damageType: _rayGun ? 'magic' : 'physical',
+                        consumeMarked: true
                     });
+
+                    /* ⚡ Power Core (cyborg passive, plan §5.2): a landed basic
+                       attack feeds the reactor a flat MP charge. */
+                    const _pcHit = (typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'mpOnBasicHit') : undefined;
+                    if (_pcHit && !unit.dead && (unit.mp || 0) < (unit.maxMp || 0)) {
+                        const _pcGain = Math.min(_pcHit, (unit.maxMp || 0) - (unit.mp || 0));
+                        unit.mp = (unit.mp || 0) + _pcGain;
+                        addLog(`⚡ ${unitDisplayName(unit)}'s Power Core recharges +${_pcGain} MP.`);
+                        if (!_skipVisuals()) showFloatingTextForUnit(unit, `⚡ +${_pcGain} MP`, 'mp', { durationMs: 1000 });
+                    }
+
+                    /* 🛢️ Oozing (black goo passive, plan §5.2): a melee basic
+                       attack that connects coats the OTHER unit in the passive's
+                       contact status — whichever side the ooze is on. */
+                    if (d <= 1 && typeof unitPassiveValue === 'function' && typeof STATUS_DEFS !== 'undefined') {
+                        const _oozeA = unitPassiveValue(unit, 'contactStatus');
+                        if (_oozeA && STATUS_DEFS[_oozeA] && !target.dead && target.hp > 0) {
+                            applyStatusPayload(target, { id: _oozeA, duration: 2 }, `${unitDisplayName(unit)}'s ooze: `, unit);
+                        }
+                        const _oozeD = unitPassiveValue(target, 'contactStatus');
+                        if (_oozeD && STATUS_DEFS[_oozeD] && !unit.dead) {
+                            applyStatusPayload(unit, { id: _oozeD, duration: 2 }, `${unitDisplayName(target)}'s ooze: `, target);
+                        }
+                    }
 
                     /* 🩸 Hemophage (vampire race passive, data.js PASSIVE_DEFS):
                        basic attacks drain a fraction of the HP actually removed
@@ -46888,7 +47146,7 @@
                     playErrorSfx();
                     return;
                 }
-                const baneRange = getEffectiveRange(unit) + 2;
+                const baneRange = getEffectiveRange(unit, { item: true }) + 2;
                 if (chebyshev > baneRange) {
                     addLog(`Target is out of range for ${baneRule.name}.`);
                     playErrorSfx();
@@ -47670,6 +47928,22 @@
                     addLog('Target is hidden in the fog.');
                     state._teleportingUnit = null;
                     playErrorSfx();
+                    return 0;
+                }
+            }
+            /* 📷 Cryptid (plan §5.2): a UNIT-targeted offensive cast can't aim
+               at a bigfoot no friendly stands within his reveal radius of.
+               Tile-targeted sweeps (AoE, lines, zones) still splash him —
+               the same counterplay rule stealth has. */
+            if (!isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && d > 0
+                && _kindMeta(spell).offensive && !_kindMeta(spell).tileTargeted) {
+                const _cryTgt = unitAt(x, y);
+                if (_cryTgt && isEnemyUnit(_cryTgt, unit) && unitCryptidHiddenFrom(_cryTgt, unit.player)) {
+                    if (!_silentReject) {
+                        addLog(`📷 ${unitDisplayName(_cryTgt)} is a blur at this distance — get within ${unitPassiveValue(_cryTgt, 'targetableWithin')} tiles to target him.`);
+                        playErrorSfx();
+                    }
+                    state._teleportingUnit = null;
                     return 0;
                 }
             }

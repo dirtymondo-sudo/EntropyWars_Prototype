@@ -1,0 +1,198 @@
+// champ-rework.test.js — CHAMP_REWORK_PLAN.md mechanics guards (Phase 3+).
+//
+// Loads the REAL data.js headlessly (load-data.js) and reads the engine files
+// as SOURCE TEXT (the same extractConst trick data-parity.test.js uses for
+// server.js), so the passive registry, its check-grades pricing, the statuses
+// the passives apply and the engine hooks that consume them can never drift
+// apart silently. Phase 3 = the passive batch (plan §5.2, shipped 2026-09-07).
+
+'use strict';
+
+const { test } = require('node:test');
+const assert = require('node:assert');
+const fs = require('node:fs');
+const path = require('node:path');
+const { loadGameData, extractConst, REPO_ROOT } = require('./load-data');
+
+const D = loadGameData();
+const src = f => fs.readFileSync(path.join(REPO_ROOT, f), 'utf8');
+const dataSrc = src('data.js');
+// data.js only exposes what it Object.assigns onto window; the two tables
+// below are plain literals, so read them straight out of the source.
+const STATUS_LIBRARY_DESCS = extractConst(dataSrc, 'STATUS_LIBRARY_DESCS');
+const JOB_ARCHETYPES = extractConst(dataSrc, 'JOB_ARCHETYPES');
+// Values from the data.js vm realm carry that realm's prototypes — compare
+// by structure, not identity (deepStrictEqual would fail on Array/Object).
+const same = (actual, expected, msg) => assert.deepStrictEqual(JSON.parse(JSON.stringify(actual)), expected, msg);
+const battleSrc = src('battle.js');
+const stateSrc = src('state.js');
+const mapSrc = src('map.js');
+const hudSrc = src('hud.js');
+const gradesSrc = src('check-grades.js');
+
+const SKY_RACES = extractConst(mapSrc, 'SKY_RACES');
+const PASSIVE_VALUE = extractConst(gradesSrc, 'PASSIVE_VALUE');
+const PLANNED = extractConst(gradesSrc, 'PLANNED_PASSIVE_ALLOWANCE');
+const STATUS_EFFECT_IDS = extractConst(stateSrc, '_STATUS_EFFECT_IDS');
+const SB_COLORS = extractConst(hudSrc, '_HRLG_SB_COLORS');
+
+/* Plan §5.2 — every passive of the batch and the hook field(s) it wears. */
+const PHASE3 = {
+    incorporeal:     ['phasing', 'immuneDamageType'],
+    lycanthropy:     ['dayNightForms'],
+    bloodcraze:      ['lowHpBonus'],
+    boneDeep:        ['respawnMult'],
+    returnOfTheDead: ['respawnAtDeathTile'],
+    reach:           ['rangeBonus'],
+    dragonReach:     ['rangeBonus'],
+    cryptid:         ['targetableWithin'],
+    shank:           ['oppAttackChance', 'oppAttackMult'],
+    pureNegativity:  ['immuneKind', 'immuneStatDown'],
+    serrated:        ['physicalHitStatus'],
+    longshot:        ['basicAttackRange'],
+    pointBlank:      ['closeRangeBonus'],
+    oozing:          ['contactStatus'],
+    powerCore:       ['spellCostMult', 'mpOnBasicHit', 'mpFromMagicDamage'],
+    madGenius:       ['stagePerRounds', 'resetOnDeath'],
+    rayGun:          ['basicAttackMagic', 'basicAttackRangeBonus'],
+    devout:          ['healMult'],
+    quickdraw:       ['speedTiePriority'],
+    fairyDustTrail:  [],
+};
+/* Plan §5.2 slot check — who wears what today (gangster/nun join in Phase 6). */
+const EXPECTED_RACE_PASSIVES = {
+    ghost: ['incorporeal'], werewolf: ['lycanthropy', 'bloodcraze'], skeleton: ['boneDeep'],
+    zombie: ['returnOfTheDead'], dinosaur: ['reach'], dragon: ['dragonReach'], bigfoot: ['cryptid'],
+    ghoul: ['pureNegativity'], robinhood: ['serrated'], marksman: ['longshot', 'pointBlank'],
+    'black goo': ['oozing'], cyborg: ['powerCore'], 'mad scientist': ['madGenius', 'rayGun'],
+    fairy: ['fairyDustTrail'], cowboy: ['quickdraw'],
+};
+
+test('passive registry: every RACE_PASSIVES row names a real race and real defs, inside the slot cap', () => {
+    const races = new Set(D.AVAILABLE_RACES);
+    const problems = [];
+    for (const [race, ids] of Object.entries(D.RACE_PASSIVES)) {
+        if (!races.has(race)) problems.push(`RACE_PASSIVES key '${race}' is not in AVAILABLE_RACES`);
+        if (!Array.isArray(ids) || !ids.length) { problems.push(`RACE_PASSIVES['${race}'] is not a non-empty list`); continue; }
+        const cap = D.MAX_UNIT_PASSIVES - (SKY_RACES.includes(race) ? 1 : 0);
+        if (ids.length > cap) problems.push(`'${race}' lists ${ids.length} passives but only ${cap} slot(s) are free${SKY_RACES.includes(race) ? ' (flying takes one)' : ''}`);
+        if (new Set(ids).size !== ids.length) problems.push(`'${race}' lists a passive twice`);
+        for (const id of ids) {
+            const def = D.PASSIVE_DEFS[id];
+            if (!def) { problems.push(`'${race}' → '${id}' is not in PASSIVE_DEFS`); continue; }
+            if (def.id !== id) problems.push(`PASSIVE_DEFS.${id}.id is '${def.id}'`);
+            for (const f of ['icon', 'name', 'desc']) if (!def[f]) problems.push(`PASSIVE_DEFS.${id} has no ${f}`);
+        }
+    }
+    for (const [id, def] of Object.entries(D.PASSIVE_DEFS)) {
+        if (def.id !== id) problems.push(`PASSIVE_DEFS key '${id}' carries id '${def.id}'`);
+    }
+    assert.deepStrictEqual(problems, []);
+});
+
+test('phase 3 batch: every §5.2 passive exists with its hook fields, and the champs wear them', () => {
+    const problems = [];
+    for (const [id, fields] of Object.entries(PHASE3)) {
+        const def = D.PASSIVE_DEFS[id];
+        if (!def) { problems.push(`missing PASSIVE_DEFS.${id}`); continue; }
+        for (const f of fields) if (def[f] === undefined) problems.push(`PASSIVE_DEFS.${id} lacks hook field '${f}'`);
+    }
+    for (const [race, ids] of Object.entries(EXPECTED_RACE_PASSIVES)) {
+        same(D.RACE_PASSIVES[race], ids, `RACE_PASSIVES['${race}']`);
+    }
+    if (D.PASSIVE_DEFS.spectralPassage) problems.push('spectralPassage should be folded into incorporeal');
+    // The numbers the plan pinned.
+    const P = D.PASSIVE_DEFS;
+    if (P.incorporeal.immuneDamageType !== 'physical') problems.push('incorporeal must be immune to physical');
+    same(P.lycanthropy.dayNightForms, { night: { atk: 2, spd: 3, def: 2, mdef: 1 } });
+    same(P.bloodcraze.lowHpBonus, { threshold: 0.30, dmgMult: 1.25, spdStages: 1 });
+    if (P.boneDeep.respawnMult !== 0.5) problems.push('boneDeep respawnMult must be 0.5');
+    if (P.cryptid.targetableWithin !== 3) problems.push('cryptid targetableWithin must be 3');
+    if (P.shank.oppAttackChance !== 1 || P.shank.oppAttackMult !== 1.5) problems.push('shank must be 100% / ×1.5');
+    if (P.longshot.basicAttackRange < 99) problems.push('longshot must reach any visible tile (99)');
+    same(P.pointBlank.closeRangeBonus, { within: 2, mult: 1.3 });
+    if (P.powerCore.spellCostMult !== 1.5 || P.powerCore.mpOnBasicHit !== 25 || P.powerCore.mpFromMagicDamage !== 0.3) problems.push('powerCore numbers drifted (×1.5 / 25 / 30%)');
+    same(P.madGenius.stagePerRounds, { int: 1, every: 3 });
+    if (P.devout.healMult !== 1.2) problems.push('devout healMult must be 1.2');
+    assert.deepStrictEqual(problems, []);
+});
+
+test('passives that apply a status name a status that exists (and the carriers agree)', () => {
+    const S = D.STATUS_DEFS;
+    assert.ok(S.bleed, 'bleed status (Serrated)');
+    assert.ok(S.goo, 'goo status (Oozing)');
+    assert.ok(S.wolfForm, 'wolfForm carrier (Lycanthropy)');
+    assert.strictEqual(D.PASSIVE_DEFS.serrated.physicalHitStatus.id, 'bleed');
+    assert.strictEqual(D.PASSIVE_DEFS.oozing.contactStatus, 'goo');
+    // The Beast's stance carrier must wear exactly the night stages Lycanthropy promises.
+    same(S.wolfForm.stageMod, JSON.parse(JSON.stringify(D.PASSIVE_DEFS.lycanthropy.dayNightForms.night)));
+    // bleed is a DoT: 20 a round, ticks through onRoundEnd; goo is the §5.1 bundle.
+    assert.strictEqual(S.bleed.dot, 20);
+    assert.strictEqual(typeof S.bleed.onRoundEnd, 'function');
+    assert.strictEqual(S.bleed.kind, 'debuff');
+    assert.strictEqual(S.goo.kind, 'debuff');
+    assert.strictEqual(S.goo.moveDelta, -1);
+    assert.strictEqual(S.goo.healTakenMult, 0.5);
+    assert.strictEqual(S.goo.magicDamageTakenMult, 1.25);
+    assert.strictEqual(S.wolfForm.kind, 'buff');
+    for (const id of ['bleed', 'goo', 'wolfForm']) {
+        assert.ok(STATUS_LIBRARY_DESCS[id], `STATUS_LIBRARY_DESCS.${id}`);
+        assert.ok(STATUS_EFFECT_IDS.has(id), `state.js _STATUS_EFFECT_IDS lacks '${id}' (HUD chips / end-of-round tick)`);
+        assert.ok(SB_COLORS[id], `hud.js _HRLG_SB_COLORS lacks '${id}'`);
+        assert.ok(S[id].iconSrc, `${id} has no iconSrc`);
+    }
+});
+
+test('check-grades prices every live passive and plans none that already shipped', () => {
+    const problems = [];
+    const live = new Set();
+    for (const ids of Object.values(D.RACE_PASSIVES)) for (const id of ids) live.add(id);
+    for (const id of live) if (PASSIVE_VALUE[id] === undefined) problems.push(`check-grades PASSIVE_VALUE has no price for live passive '${id}'`);
+    for (const race of Object.keys(PLANNED)) {
+        if (D.RACE_PASSIVES[race]) problems.push(`PLANNED_PASSIVE_ALLOWANCE still lists '${race}', whose passive shipped (it would be counted twice)`);
+    }
+    for (const id of Object.keys(PASSIVE_VALUE)) {
+        if (!D.PASSIVE_DEFS[id]) problems.push(`check-grades prices '${id}', which is not in PASSIVE_DEFS`);
+    }
+    assert.deepStrictEqual(problems, []);
+});
+
+test('werewolf: Lycanthropy replaced the nocturnal sleep nudge', () => {
+    const raider = Object.values(JOB_ARCHETYPES).find(a => a && a.race === 'werewolf');
+    assert.ok(raider, 'werewolf job archetype');
+    assert.strictEqual(raider.sleepPreference, 'none');
+    assert.ok(/dayNightForms/.test(mapSrc), 'map.js getSleepAffinityModifier honours dayNightForms');
+});
+
+test('engine hooks are wired where the plan says (source-text guards)', () => {
+    // Round-start passives run before the turn order is built (initiative
+    // sees the Beast's SPD the round it appears).
+    const hookIdx = battleSrc.indexOf('_applyRoundStartPassives();\n\n                    buildBlitzTurnOrder();');
+    assert.ok(hookIdx > 0, 'battle.js round transition calls _applyRoundStartPassives() right before buildBlitzTurnOrder()');
+    assert.ok(/function _applyRoundStartPassives\(\)/.test(battleSrc));
+    // Initiative reads live SPD + Quickdraw wins ties.
+    assert.ok(/function buildBlitzTurnOrder\(\)[\s\S]{0,1500}getEffectiveSpd/.test(stateSrc), 'buildBlitzTurnOrder uses getEffectiveSpd');
+    assert.ok(/speedTiePriority/.test(stateSrc), 'buildBlitzTurnOrder honours speedTiePriority');
+    // Consumers of each hook field (one grep per field the engine must read).
+    for (const [field, file, text] of [
+        ['immuneDamageType', 'battle.js', battleSrc], ['lowHpBonus', 'battle.js', battleSrc],
+        ['respawnMult', 'map.js', mapSrc], ['respawnAtDeathTile', 'map.js', mapSrc],
+        ['rangeBonus', 'battle.js', battleSrc], ['targetableWithin', 'battle.js', battleSrc],
+        ['oppAttackChance', 'battle.js', battleSrc], ['immuneKind', 'battle.js', battleSrc],
+        ['immuneStatDown', 'battle.js', battleSrc], ['physicalHitStatus', 'battle.js', battleSrc],
+        ['basicAttackRange', 'battle.js', battleSrc], ['closeRangeBonus', 'battle.js', battleSrc],
+        ['contactStatus', 'battle.js', battleSrc], ['spellCostMult', 'battle.js', battleSrc],
+        ['mpOnBasicHit', 'battle.js', battleSrc], ['mpFromMagicDamage', 'battle.js', battleSrc],
+        ['stagePerRounds', 'battle.js', battleSrc], ['basicAttackMagic', 'battle.js', battleSrc],
+        ['healMult', 'battle.js', battleSrc], ['dayNightForms', 'battle.js', battleSrc],
+        ['healTakenMult', 'battle.js', battleSrc], ['magicDamageTakenMult', 'battle.js', battleSrc],
+    ]) {
+        assert.ok(text.includes(`'${field}'`) || text.includes(`.${field}`) || text.includes(`?.${field}`), `${file} never reads passive/status field '${field}'`);
+    }
+    // Longshot is basic-attack only: every thrown-item reach passes { item: true }.
+    const itemSites = ['battle.js', 'ui.js', 'hud.js', 'ai.js']
+        .reduce((n, f) => n + (src(f).match(/getEffectiveRange\([^)]*\{ item: true \}\)/g) || []).length, 0);
+    assert.ok(itemSites >= 6, `expected ≥6 item-reach call sites passing { item: true }, found ${itemSites}`);
+    // Permanent ledger entries (Mad Genius) are respected by the three ledger walkers.
+    assert.ok((battleSrc.match(/m\.perm/g) || []).length >= 3, 'statStageMods perm flag honoured by purge, badge sync and tick');
+});

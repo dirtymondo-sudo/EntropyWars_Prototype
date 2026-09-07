@@ -2874,7 +2874,7 @@
           } else if (ITEM_RULES[state.selectedTool]?.baneType) {
 
             const _baneRule = ITEM_RULES[state.selectedTool];
-            const _baneRange = getEffectiveRange(_selectedForHl) + 1;
+            const _baneRange = getEffectiveRange(_selectedForHl, { item: true }) + 1;
             const _fogLimitBane = state.fogOfWar && !state.autoPlayers?.[_selectedForHl.player];
             for (let cy = 0; cy < bh(); cy++) {
               for (let cx = 0; cx < bw(); cx++) {
@@ -3436,7 +3436,7 @@
                 const _baneRule = ITEM_RULES[state.selectedTool];
                 if (_baneRule?.baneType) {
                     if (target.dead || isAllyUnit(target, unit)) return null;
-                    const baneRange = getEffectiveRange(unit) + 1;
+                    const baneRange = getEffectiveRange(unit, { item: true }) + 1;
                     const _dist = Math.max(Math.abs(unit.x - target.x), Math.abs(unit.y - target.y));
                     if (_dist > baneRange) return null;
                     const isEffective = (target.types || []).includes(_baneRule.baneType);

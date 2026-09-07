@@ -12,10 +12,20 @@
 > legality / repair / random-walk functions and content-schema tests know the
 > shape. Nine races wear the §6 pairs whose two spells both exist today.
 > Token `20260907g-cors` → `20260907h-cors`.
-> **Phases 3–6 are PLANNED here, not built** — passives, statuses, the new
-> spells (with their VFX / animation / cinematic specs), and the two new
-> champs. §10 lists the yes/no decisions the owner should make (items 14–15
-> came out of Phase 2).
+> **PHASE 3 SHIPPED 2026-09-07 (§5.2, §9.3):** the passive batch — all 20
+> `PASSIVE_DEFS` rows exist (Incorporeal absorbed Spectral Passage), 15
+> races wear them today (gangster's Shank and nun's Devout wait for their
+> races in Phase 6), every hook field has its engine consumer, and three
+> statuses the passives need shipped early from §5.1 (`bleed`, `goo`, the
+> `wolfForm` stance carrier). Initiative now reads LIVE SPD (stages count)
+> and Quickdraw wins ties. `champ-rework.test.js` guards the batch; the
+> check-grades planned-allowance rows are gone for every shipped passive.
+> Token `20260907l-cors` → `20260907m-cors`. See §5.7 for what differs from
+> the §5.2 table.
+> **Phases 4–6 are PLANNED here, not built** — the remaining statuses + the
+> stage-buff retune, the new spells (with their VFX / animation / cinematic
+> specs), and the two new champs. §10 lists the yes/no decisions the owner
+> should make (items 14–15 came out of Phase 2; 17–19 out of Phase 3).
 
 This is the single planning doc for the owner's 2026-09-07 "champ reworks"
 notes. It is written so that any later session can build one phase from it
@@ -37,7 +47,7 @@ are measured).
 | §2 | The vocabulary: the owner's words → numbers; the power budget; the checkable constraints | **shipped** |
 | §3 | "Speed is both" — what changed, who is fast now | **shipped** |
 | §4 | Twin nodes — "each node could have 2 abilities and you pick one" | **shipped** (Phase 2, §4.6) |
-| §5 | New game-wide systems the kits need: statuses, passives, spell kinds/flags, terrain, forms, control, links, the shadow realm, summons | planned (Phases 3–4) |
+| §5 | New game-wide systems the kits need: statuses, passives, spell kinds/flags, terrain, forms, control, links, the shadow realm, summons | §5.2 passives **shipped** (Phase 3, see §5.7); the rest planned (Phase 4+) |
 | §6 | The champs — 27 reworked + 2 new: role, stats, passives, race pillar, every new spell with numbers + presentation | planned (Phase 5–6), stats shipped |
 | §7 | The roster sweep — before/after table for all 96 races | **shipped** |
 | §8 | The per-spell presentation checklist (VFX / anim / cinematic / SFX / AI / online) | reference for Phase 5 |
@@ -475,6 +485,42 @@ longshot + pointBlank · mad scientist = madGenius + rayGun · everyone else ≤
   precedent); the relay is the existing `entropy-cine`-style state, plus the
   two units' `shadowRealm` status in state-sync.
 
+### 5.7 SHIPPED 2026-09-07 — Phase 3, the passive batch (what landed, and where it differs from §5.2)
+
+Every row of §5.2 is a `PASSIVE_DEFS` entry (data.js) with the hook field(s)
+the table names; `RACE_PASSIVES` wears them on ghost, werewolf, skeleton,
+zombie, dinosaur, dragon, bigfoot, ghoul, robinhood, marksman, black goo,
+cyborg, mad scientist, fairy and cowboy. Consumers, per hook:
+
+| Passive | Where the engine reads it |
+|---|---|
+| Incorporeal | battle.js `applyDamageToUnit` — a `damageType:'physical'` hit returns before the pipeline ("👻 PASSES THROUGH", counts as a Press-Turn miss); `phasing` unchanged (map.js `unitIsPhasing`). `spectralPassage` is gone. |
+| Lycanthropy | battle.js `_applyRoundStartPassives` (called at match start and in the round transition right BEFORE `buildBlitzTurnOrder`) wears the **`wolfForm`** stance carrier (STATUS_DEFS, `stageMod {atk:2, spd:3, def:2, mdef:1}`) every night round and clears it at dawn. map.js `getSleepAffinityModifier` returns no nudge for a `dayNightForms` unit; the Raider archetype's `sleepPreference` is `'none'`. |
+| Bloodcraze | damage: `applyDamageToUnit` offensive product (×1.25 vs targets ≤30 %, pre-hit HP). Speed: `getEffectiveSpd` adds the stage while any enemy ≤30 % is `isUnitSeenByTeam` (fog + concealment + LOS), ruler-clamped. |
+| Bone Deep | map.js death handler: `_respawnIn = max(1, round(base × 0.5))` → 1, 1, 2, 4. |
+| Return of the Dead | map.js `processRespawns`: `_deathTile` (stamped at death) if open, else the nearest open tile within 3, else the zone path. |
+| Reach / Dragon Reach / Ray Gun range | `getEffectiveRange` adds `rangeBonus` + `basicAttackRangeBonus`. |
+| Cryptid | battle.js `unitCryptidHiddenFrom(unit, viewer)`: no living unit of the viewer within 3 Manhattan tiles ⇒ concealed. Wired INTO `isUnitConcealedFrom`, so the renderer hides the mesh, the AI's `isConcealed` skips him and the nameplate eye closes — no `computeVisibleTiles` change was needed (§10 #11 taken as yes). `doAttack` and unit-targeted offensive `doSpell` refuse him; tile-targeted sweeps still splash him (the stealth rule). A **Marked** cryptid is exposed, like a marked invisible unit. |
+| Shank | `checkOpportunityAttack`: chance `max(rolled, 1.0)`, base damage ×1.5. Def only until the gangster exists. |
+| Pure Negativity | `applyStatusPayload` bounces every `kind:'debuff'` status (spell, terrain, statDown carrier); `applyStatStageBoost` strips the negative half of a boost and applies any positive half. |
+| Serrated | `applyDamageToUnit` after a landed enemy PHYSICAL hit (basic, ability, opp attack): `applyStatusPayload(bleed, 2)` — resist rolls and immunities apply; `_statusSrc.bleed` credits the tick. |
+| Longshot | `getEffectiveRange(unit, opts)`: `max(reach, 99)` unless `opts.item` — every bane/item-throw site (battle, ui ×2, hud ×2, ai) passes `{ item: true }`. LOS (`isRangeBlockedByTerrain`) and the fog gate in `doAttack` still rule. HUD RNG chip prints ∞. |
+| Point Blank | `doAttack`: `d ≤ 2` ⇒ damage ×1.3 before crit (💥 callout). |
+| Oozing | `doAttack`, melee hits only: the OTHER unit gets `goo` (2 rounds) whichever side the ooze is on. The **trail** half (`trailTerrain`) is NOT in the def yet — it lands with the `goo` terrain in Phase 5 wave C. |
+| Power Core | `getSpellMpCostFor` ×1.5; `doAttack` +25 MP on a landed basic hit; `applyDamageToUnit` +30 % of magic damage taken as MP. |
+| Mad Genius | `_applyRoundStartPassives` on every 3rd round: `applyStatStageBoost(u, {int:1}, …, {perm:true})` — a **permanent ledger entry** (`{perm:true, left:999}`) that the tick, the statUp/statDown badge timer and a buff purge all skip; the respawn ledger reset is the death reset. |
+| Ray Gun | `doAttack`: `pwrInt` on the roll, `damageType:'magic'` (M.DEF soak, INT-axis bonuses), the mark still consumed. |
+| Devout | `applyHealingToUnit` ×1.2 when the SOURCE has it (self-heals included). Def only until the nun exists. |
+| Quickdraw | state.js `buildBlitzTurnOrder`: quickdraw units head their SPD tier, then the rest (both halves keep the P1/P2 alternation). |
+| Pixie Dust Trail | registered for display + budget only (the mote system is unchanged). |
+
+**Engine changes that fell out of it (deliberate):**
+- **Initiative reads LIVE SPD.** `buildBlitzTurnOrder` tiers by `getEffectiveSpd` (base + stages, ruler-clamped) instead of the stored stat, so The Beast, Slow, Haste and Audible reorder the round they are worn. Guests rebuild from `_blitzTurnOrderIds`, so nothing new is relayed.
+- **Statuses shipped early from §5.1:** `bleed` (20 physical DoT, 2 rounds, `_STATUS_EFFECT_IDS` + HUD colour), `goo` (`moveDelta −1`, **new status fields** `healTakenMult` 0.5 and `magicDamageTakenMult` 1.25 — consumed in `applyHealingToUnit` and `applyDamageToUnit`; Grievous Wound can reuse `healTakenMult`), and `wolfForm` (The Beast). Phase 4 adds the rest.
+- **Permanent stat-stage entries** exist now (`statStageMods[i].perm`) — any later "permanent until death" buff can use `applyStatStageBoost(…, { perm: true })`.
+- **Budget:** `PLANNED_PASSIVE_ALLOWANCE` keeps only gangster + nun; every shipped id is priced in `PASSIVE_VALUE` (incorporeal 18, lycanthropy 0 — the night stages are averaged in — bloodcraze 8, fairyDustTrail 4, powerCore −6 …). Roster mean/sd unchanged (265 / 9.5); every race still in the band.
+- **Tests:** `champ-rework.test.js` (registry integrity + slot cap incl. flying, the §5.2 field table, the statuses' four registries, check-grades pricing/planned-row drift, the werewolf archetype, and source-text guards for every hook consumer, the round-start ordering, the item-reach sites and the perm ledger).
+
 ### 5.6 Stage-buff retune that this pass makes necessary
 
 STAT_REWORK §7 warned that +2-stage buffs doubled in strength when a stage
@@ -890,10 +936,21 @@ data.js (`RACE_TREE` rows, `getRaceTreeRow` / `getRaceTreeAlts` /
 `legalCustomSpellIds`), content-schema.test.js, index.html token. No new
 spells, no engine change, no relay — see §4.6 for the placements.
 
-### 9.3 Phase 3 — the passive batch (data.js `PASSIVE_DEFS`/`RACE_PASSIVES`, battle.js hooks, map.js respawn/vision, state.js `getEffectiveSpd`, party-builder.js `RACE_TRAITS` overlay)
-All 19 rows of §5.2. Pure engine, no art. Delete the matching
-`PLANNED_PASSIVE_ALLOWANCE` rows as they land. The werewolf's
-`sleepPreference` flips to `'none'` in the same commit.
+### 9.3 Phase 3 — the passive batch (SHIPPED 2026-09-07)
+data.js (`PASSIVE_DEFS` ×20 with the hook-flag header, `RACE_PASSIVES` ×15
+races, `STATUS_DEFS` bleed / goo / wolfForm + `STATUS_LIBRARY_DESCS`, the
+Raider archetype's `sleepPreference`), battle.js (`getEffectiveSpd` +
+`_bloodcrazeSpdStages`, `checkOpportunityAttack`, `getEffectiveRange(unit,
+opts)`, `applyStatStageBoost(…, opts.perm)` + the perm-aware ledger walkers,
+`applyStatusPayload`, `applyHealingToUnit`, `applyDamageToUnit`,
+`getStatusMagicDamageTakenMultiplier`, `getSpellMpCostFor`,
+`isUnitConcealedFrom` + `unitCryptidHiddenFrom`, `doAttack`, `doSpell`,
+`_applyRoundStartPassives` at the three turn-order build sites, the bane
+reach), map.js (death handler, `processRespawns`, `getSleepAffinityModifier`),
+state.js (`buildBlitzTurnOrder`, `_STATUS_EFFECT_IDS`), hud.js (`_HRLG_SB_COLORS`,
+RNG ∞, item reach), ui.js + ai.js (item reach), party-builder.js
+(`RACE_TRAITS` rows the overlay now owns), check-grades.js, champ-rework.test.js,
+this doc. Details and deviations: §5.7.
 
 ### 9.4 Phase 4 — statuses + the stage-buff retune (data.js `STATUS_DEFS`, state.js `_STATUS_EFFECT_IDS`, hud.js colors, ai.js `HARD_CC`, battle.js processors)
 All of §5.1 that no spell yet applies can still ship (the library shows
@@ -963,3 +1020,13 @@ crumble (gargoyle), arm-cannon morph (cyborg).
     spell), Trunk Throw 25 → 75, Robo Punch / Spike the Ball 25 → 75, Bomb
     Arrow / Gothic Rampart 25 → 50. All follow the ring ladder; veto any and
     the pair moves ring.
+17. **Initiative now reads live SPD** (Phase 3, §5.7): stage buffs/debuffs
+    reorder the NEXT round's turn order, not just movement. Keep? (Reverting
+    is one line in state.js `buildBlitzTurnOrder`; The Beast would then be
+    5 tiles but still act at its day-form initiative.)
+18. **A Marked cryptid is exposed** (Marked pierces Cryptid exactly like it
+    pierces Invisible). The alternative is Cryptid ignoring marks — then
+    the only counterplay is closing to 3 tiles.
+19. **Pure Negativity bounces environmental debuffs too** (lava Burn,
+    Drowning, terrain Poison) — "immune to every debuff" taken literally. If
+    the ghoul should still drown, the hook needs a source-based carve-out.

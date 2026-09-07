@@ -60,6 +60,9 @@
             // 2026-07-17 spell/status pass: taunt (Provoke), minimize (Shrink
             // Ray), statLock (Fermata), hexed (Hex of Toil).
             'taunt','minimize','statLock','hexed',
+            // CHAMP REWORK Phase 3 (2026-09-07): bleed (Serrated DoT), goo
+            // (the ooze's contact debuff), wolfForm (the werewolf's night).
+            'bleed','goo','wolfForm',
             // 2026-07-23 yeti rework: frozen (hard CC with thaw-outs), blind
             // (attack accuracy loss from blizzards).
             'frozen','blind']);
@@ -568,12 +571,25 @@
             // Hub-world roster NPCs (Mystery Dungeon) are scenery: never in the turn order.
             const alive = state.units.filter(u => !u.dead && !u._mdNpc);
 
+            /* CHAMP REWORK Phase 3 (2026-09-07): initiative reads the LIVE
+               SPD — base + stages (getEffectiveSpd, battle.js) — so the
+               werewolf's night stance (+3 SPD stages) and any Slow/Haste
+               stage actually reorder the round they are worn. Stages are
+               ruler-clamped, so nothing exceeds the S band. Falls back to
+               the stored stat when the getter isn't loaded (tests). */
+            const _liveSpd = (typeof getEffectiveSpd === 'function')
+                ? (u => { try { return getEffectiveSpd(u); } catch (e) { return u.spd || 0; } })
+                : (u => u.spd || 0);
             const tiers = {};
             for (const u of alive) {
-                const spd = u.spd || 0;
+                const spd = _liveSpd(u);
                 if (!tiers[spd]) tiers[spd] = [];
                 tiers[spd].push(u);
             }
+            /* 🤠 Quickdraw (cowboy passive, plan §5.2): wins every speed tie —
+               inside a tier the quickdraw units go before everyone else. */
+            const _quick = (typeof unitPassiveValue === 'function')
+                ? (u => unitPassiveValue(u, 'speedTiePriority') === true) : (() => false);
 
             // Trick Room: while active, reverse the speed ordering so the slowest units act first.
             const trickRoomActive = (state._trickRoomRounds || 0) > 0;
@@ -582,22 +598,27 @@
             _blitzTurnOrder = [];
             for (const spd of sortedSpeeds) {
                 const tierUnits = tiers[spd];
-                const p0 = tierUnits.filter(u => u.player === 0);
-                const p1 = tierUnits.filter(u => u.player === 1);
-                const p2 = tierUnits.filter(u => u.player === 2);
+                // Quickdraw units head the tier, then the rest — both halves
+                // keep the P1/P2 alternation and the per-side shuffle.
+                for (const bucket of [tierUnits.filter(_quick), tierUnits.filter(u => !_quick(u))]) {
+                    if (!bucket.length) continue;
+                    const p0 = bucket.filter(u => u.player === 0);
+                    const p1 = bucket.filter(u => u.player === 1);
+                    const p2 = bucket.filter(u => u.player === 2);
 
-                for (let i = p1.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p1[i], p1[j]] = [p1[j], p1[i]]; }
-                for (let i = p2.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p2[i], p2[j]] = [p2[j], p2[i]]; }
+                    for (let i = p1.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p1[i], p1[j]] = [p1[j], p1[i]]; }
+                    for (let i = p2.length - 1; i > 0; i--) { const j = engineRandInt(i + 1); [p2[i], p2[j]] = [p2[j], p2[i]]; }
 
-                let first = (state.round % 2 === 1) ? p1 : p2;
-                let second = (first === p1) ? p2 : p1;
-                let fi = 0, si = 0;
-                while (fi < first.length || si < second.length) {
-                    if (fi < first.length) _blitzTurnOrder.push(first[fi++]);
-                    if (si < second.length) _blitzTurnOrder.push(second[si++]);
+                    let first = (state.round % 2 === 1) ? p1 : p2;
+                    let second = (first === p1) ? p2 : p1;
+                    let fi = 0, si = 0;
+                    while (fi < first.length || si < second.length) {
+                        if (fi < first.length) _blitzTurnOrder.push(first[fi++]);
+                        if (si < second.length) _blitzTurnOrder.push(second[si++]);
+                    }
+
+                    for (const boss of p0) _blitzTurnOrder.push(boss);
                 }
-
-                for (const boss of p0) _blitzTurnOrder.push(boss);
             }
             _blitzTurnIndex = 0;
 

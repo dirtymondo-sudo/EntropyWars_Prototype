@@ -1416,13 +1416,13 @@ const RACE_TRAITS = {
   ],
   'fairy': [
     { icon: '🪽', name: 'Flight', desc: 'Airborne — crosses chasms, lava and deep water unharmed. Grounded below 25% HP.' },  // CODED
-    { icon: '✨', name: 'Pixie Dust Trail', desc: 'Sheds glowing dust where she moves — allies who step on a mote recover HP and MP.' }, // CODED
+    { icon: '✨', name: 'Pixie Dust Trail', desc: 'Sheds glowing dust where she moves — allies who step on a mote recover HP and MP.' }, // CODED (PASSIVE_DEFS fairyDustTrail overlays this row)
     { icon: '☀️', name: 'Daywalker', desc: 'Stronger in daylight; weakened at night.' },                              // CODED
     { icon: '🌲', name: 'Forest Spirit', desc: 'Moves through trees at full speed.' },                                // CODED
   ],
   'werewolf': [
-    { icon: '🌕', name: 'Lunar Shift', desc: 'Walks as a human by day — becomes the beast at night.' },               // CODED
-    { icon: '🌙', name: 'Nocturnal', desc: '+ATK/DEF/M ATK at night; penalized in daylight.' },                         // CODED
+    // Lycanthropy + Bloodcraze overlay from PASSIVE_DEFS (Phase 3, 2026-09-07);
+    // the old Lunar Shift / Nocturnal rows folded into Lycanthropy.
     { icon: '🌲', name: 'Forest Adapted', desc: 'Moves through trees at full speed.' },                               // CODED
   ],
   'grey': [
@@ -1457,9 +1457,9 @@ const RACE_TRAITS = {
     { icon: '💰', name: 'Plunder', desc: 'Earns extra Hazard Pay from kills.' },                                            // DESIGN
   ],
   'bigfoot': [
+    // Cryptid overlays from PASSIVE_DEFS (Phase 3) — it replaced the Elusive design row.
     { icon: '🌲', name: 'Forest Adapted', desc: 'Moves through trees at full speed.' },                               // CODED
     { icon: '☀️', name: 'Daywalker', desc: 'Stronger in daylight; weakened at night.' },                              // CODED
-    { icon: '🦶', name: 'Elusive', desc: 'Hidden while in forest until it acts.' },                                   // DESIGN
   ],
   'catgirl': [
     { icon: '🌲', name: 'Forest Adapted', desc: 'Moves through trees at full speed.' },                               // CODED
@@ -1503,7 +1503,7 @@ const RACE_TRAITS = {
     { icon: '🧘', name: 'Centered', desc: 'Immune to knockback until she moves each turn.' },                         // DESIGN
   ],
   'cowboy': [
-    { icon: '🤠', name: 'Quickdraw', desc: 'Wins every speed tie — always acts first among equals.' },                // DESIGN
+    { icon: '🤠', name: 'Quickdraw', desc: 'Wins every speed tie — always acts first among equals.' },                // CODED (PASSIVE_DEFS)
     { icon: '🎯', name: 'Deadeye', desc: '+15% damage to targets at maximum range.' },                                // DESIGN
   ],
   'machine elves': [
@@ -1523,7 +1523,7 @@ const RACE_TRAITS = {
     { icon: '🔥', name: 'Infernal Blood', desc: 'Burns on her end 1 turn sooner.' },                                  // DESIGN
   ],
   'ghost': [
-    { icon: '👻', name: 'Spectral Passage', desc: 'Phases through walls, enemies and barricades while moving — only needs a real tile to stop on.' }, // CODED (battle.js pathing)
+    // Incorporeal (phasing + physical immunity) overlays from PASSIVE_DEFS (Phase 3).
     { icon: '☠️', name: 'Beyond Poison', desc: 'Immune to poison terrain.' },                                          // CODED (map.js)
   ],
   'kaiju': [

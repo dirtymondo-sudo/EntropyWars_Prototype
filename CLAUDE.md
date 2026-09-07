@@ -298,6 +298,26 @@ two fields keep the legacy "carry every Key on the board" rule and the map's
 at spawn for ai.js `assessWinCondition` and syncs to the guest. HUD tower
 block shows `🗝 held/needed`. See PLAYTEST_NOTES "ARENA RULES PASS".
 
+## THE PASSIVE BATCH (CHAMP_REWORK_PLAN Phase 3) — added 2026-09-07
+Every §5.2 passive is a `PASSIVE_DEFS` row (data.js) whose HOOK FIELDS the
+engine reads through `unitPassiveValue(unit, key)` — never the race. The
+header comment above `PASSIVE_DEFS` lists every field and its consumer; plan
+§5.7 has the per-passive table. Rules that came with it: `getEffectiveRange
+(unit, opts)` — pass `{ item: true }` for thrown-item reach (Longshot is
+basic-attack only); `applyStatStageBoost(…, { perm: true })` makes a
+permanent ledger entry (`statStageMods[i].perm`, skipped by the tick, the
+badge timer and buff purges; death resets it); `unitCryptidHiddenFrom` rides
+`isUnitConcealedFrom` (renderer + AI + nameplate eye) and is gated again in
+`doAttack` / unit-targeted `doSpell`; `_applyRoundStartPassives()` runs
+before EVERY `buildBlitzTurnOrder()` (Lycanthropy's `wolfForm` carrier, Mad
+Genius); `buildBlitzTurnOrder` tiers by `getEffectiveSpd` (stages reorder
+initiative) and Quickdraw heads its tier. New status fields: `healTakenMult`
+(applyHealingToUnit), `magicDamageTakenMult` (applyDamageToUnit, magic only).
+Adding a passive = one `PASSIVE_DEFS` row + one `RACE_PASSIVES` id + a
+`PASSIVE_VALUE` price in check-grades.js; `npm test` (champ-rework.test.js)
+fails on a missing def, a slot overflow (flying counts), an unpriced id, or a
+`PLANNED_PASSIVE_ALLOWANCE` row for a race that already wears its passive.
+
 ## TWIN NODES (race-tree nodes that hold two spells) — added 2026-09-07
 CHAMP_REWORK_PLAN §4 / §4.6 (Phase 2). A `RACE_TREE` entry (data.js) may be
 a 2-id array: the node holds two ALTERNATES, exactly one equips (1 slot,

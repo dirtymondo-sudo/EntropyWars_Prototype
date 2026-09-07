@@ -99,28 +99,23 @@ if (!failures) console.log('  ✓ all ' + races.length + ' races inside the rule
 const BUDGET_W = { hp: 1 / 12.5, mp: 1 / 6.7, atk: 1, int: 1, def: 1 / 1.5, mdef: 1 / 2, spd: 0.8, awr: 1 / 14 };
 const BUDGET_TARGET = 262, BUDGET_TOL = 0.05;
 const RANGE_VALUE = 8;                     // per point of job-kit basic-attack range above 1
-const PASSIVE_VALUE = {                    // live PASSIVE_DEFS ids
-    flying: 10, spectralPassage: 6, hemophage: 6, thermalRegen: 4,
+const PASSIVE_VALUE = {                    // live PASSIVE_DEFS ids (plan §2.3)
+    flying: 10, hemophage: 6, thermalRegen: 4,
     manAtArms: 2, unquietMind: 2, fractalMind: 2, sereneMind: 2,
+    // CHAMP REWORK Phase 3 batch (shipped 2026-09-07)
+    incorporeal: 18, lycanthropy: 0 /* priced via the night stages */, bloodcraze: 8,
+    boneDeep: 6, returnOfTheDead: 10, reach: 8, dragonReach: 8, cryptid: 10,
+    shank: 8, pureNegativity: 12, serrated: 12, longshot: 40, pointBlank: 8,
+    oozing: 8, powerCore: -6 /* a tax with a rebate */, madGenius: 6, rayGun: 8,
+    devout: 8, quickdraw: 4, fairyDustTrail: 4,
 };
 const PLANNED_PASSIVE_ALLOWANCE = {        // CHAMP_REWORK_PLAN §5.2 — remove rows as they ship
-    ghost: 12,             // incorporeal (18) replaces spectralPassage (6)
-    werewolf: 8,           // bloodcraze (lycanthropy itself is priced via the night stages)
-    skeleton: 6,           // boneDeep
-    dinosaur: 8,           // reach
-    zombie: 10,            // returnOfTheDead
-    bigfoot: 10,           // cryptid
+    // Phase 3 shipped every row for a race that exists; only the two new
+    // races' passives remain planned (their RACE_PASSIVES rows land with
+    // the races in Phase 6). champ-rework.test.js fails if a planned row
+    // names a race that already has live passives.
     gangster: 8,           // shank
-    ghoul: 12,             // pureNegativity
-    robinhood: 12,         // serrated
-    marksman: 48,          // longshot (40) + pointBlank (8)
-    'black goo': 8,        // oozing
-    cyborg: -6,            // powerCore (spells cost double, MP back from hits)
-    'mad scientist': 14,   // madGenius (6) + rayGun (8)
-    fairy: 4,              // fairyDustTrail (already coded, never budgeted)
-    dragon: 8,             // dragonReach
     nun: 8,                // devout
-    cowboy: 4,             // quickdraw (speed-tie priority)
 };
 const WEREWOLF_NIGHT_STAGES = { atk: 2, spd: 3, def: 2, mdef: 1 };
 const SKY_RACES = ['fairy', 'shadow entity', 'ai', 'angel', 'seraphim', 'orb of light', 'demon', 'mech', 'ghost',

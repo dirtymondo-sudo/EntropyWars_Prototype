@@ -2400,7 +2400,8 @@ const _HRLG_SB_COLORS = {
   root:'#d4b45a',contract:'#d45a5a',
   invisible:'#1a7a4a',regen:'#2ecc71',
   taunt:'#ff8a50',minimize:'#5ab0d4',statLock:'#a88ae0',hexed:'#b06ad3',
-  frozen:'#7fd7ff',blind:'#9aa8b5'
+  frozen:'#7fd7ff',blind:'#9aa8b5',
+  bleed:'#e0455a',goo:'#4a4f5c',wolfForm:'#8a6ad4'
 };
 function _hrlgStatusChips(unit) {
   const chips = [];
@@ -2544,7 +2545,8 @@ function _hrlgQuickStats(panelKey) {
     { k: 'DEF',   v: def,        base: u.def || 0,     tip: HELP.def,  g: 'def' },
     { k: 'M DEF', v: mdef,       base: u.mdef || 0,    tip: HELP.mdef, g: 'mdef' },
     { k: 'MOV',  v: mov,        base: u.move || 0,    tip: HELP.move },
-    { k: 'RNG',  v: rng,        base: u.range || 0,   tip: HELP.range },
+    // Longshot (marksman passive) reports 99 — read it as "any visible tile".
+    { k: 'RNG',  v: rng >= 99 ? '∞' : rng, base: u.range || 0, tip: HELP.range },
     { k: 'AWR',  v: awr,        base: u.awr || 0, tip: HELP.awr, g: 'awr' },
     { k: 'CRT',  v: crt + '%',  tip: HELP.crt },
     { k: 'EVA',  v: eva + '%',  tip: HELP.eva },
@@ -3711,7 +3713,7 @@ function _hrlgItemTargetBlades(unit, st) {
   let targets = [];
   const living = (st.units || []).filter(u => !u.dead);
   if (isBane) {
-    const range = (typeof getEffectiveRange === 'function' ? getEffectiveRange(unit) : 1) + 2;
+    const range = (typeof getEffectiveRange === 'function' ? getEffectiveRange(unit, { item: true }) : 1) + 2;
     targets = living
       .filter(u => (typeof isEnemyUnit === 'function' ? isEnemyUnit(u, unit) : u.player !== unit.player))
       .map(u => ({ unit: u, dist: Math.max(Math.abs(u.x - unit.x), Math.abs(u.y - unit.y)) }))
@@ -5401,7 +5403,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
   }
 
   if (typeof ITEM_RULES !== 'undefined' && actingUnit.items) {
-    const baneRange = typeof getEffectiveRange === 'function' ? getEffectiveRange(actingUnit) + 1 : 2;
+    const baneRange = typeof getEffectiveRange === 'function' ? getEffectiveRange(actingUnit, { item: true }) + 1 : 2;
     const itemApCost = G.AP_COST_ACTION || 1;
     const baneKeys = Object.keys(ITEM_RULES).filter(k => ITEM_RULES[k].baneType && (actingUnit.items[k] || 0) > 0);
     for (const bKey of baneKeys) {
