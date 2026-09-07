@@ -15240,7 +15240,7 @@ const DOOR_TEXT = {
         _default: { tone: 'void', status: 'UNFILED', juris: 'Pending',
             summary: 'No file exists for this site. Either nobody has crossed here, or everyone has and nobody came back to write it up. Both are a customs matter. One of them is urgent.' },
     },
-    SITE_FILE_LABELS: { summary: 'EXECUTIVE SUMMARY', crossings: 'KNOWN CROSSINGS', juris: 'JURISDICTION', first: 'FIRST DOCUMENTED CROSSING' },
+    SITE_FILE_LABELS: { summary: 'EXECUTIVE SUMMARY', crossings: 'KNOWN CROSSINGS', juris: 'JURISDICTION', first: 'FIRST DOCUMENTED CROSSING', room: 'ROOM' },
 
     // Loading-screen cards. A memo's stamp tells you which hand wrote it —
     // early on every memo is DENY; ADMIT memos (admit:true) only appear once
@@ -15651,37 +15651,53 @@ const DOOR_HQ = {
     },
     /* Which leaf hangs on each threshold (HQ plan §5.3 C: "more thresholds
        per map"). Unlisted maps fall back to `leaf_closet_alt`. Rank leaves
-       (catalogue `rank`) are off-limits here — doorhq.test.js enforces it. */
+       (catalogue `rank`) are off-limits here — doorhq.test.js enforces it.
+       THE ROOM REGISTER (HQ plan 7.1 / 7.3, 2026-09-07): `roomNo` is the
+       number on the plate over the door — one number, one place, never
+       shared (doorhq.test.js), alphanumerics allowed (i, 2D, 90S, H-20) —
+       and `why` is the one-clause hook the panel prints beside it. A
+       threshold's `sub` replaces the bay's THRESHOLD · SECTOR sub-line.
+       `hqRoomNo(mapId)` reads it (Δ suffix stripped); `hqRoomRegister()`
+       lists every numbered place in the building, sorted for a directory. */
     thresholds: {
-        prebuilt_nuketown:      { leaf: 'leaf_motel',          note: 'the motel off the highway; it opens onto the street' },
-        prebuilt_area51:        { leaf: 'leaf_closet',         note: 'the hangar man-door; the keypad is a rival account' },
-        prebuilt_skinwalker:    { leaf: 'leaf_stable',         note: 'the stable door, rehung indoors; the top half stays shut' },
-        prebuilt_bohemian_grove:{ leaf: 'leaf_saloon',         note: 'the lodge saloon door; do not knock in rhythm' },
-        prebuilt_dumb:          { leaf: 'leaf_bulkhead',       wide: true, note: 'blast door, deep underground military base issue' },
-        prebuilt_cern:          { leaf: 'leaf_bulkhead',       wide: true, note: 'the collider blast door; hum audible' },
-        prebuilt_vatican:       { leaf: 'leaf_closet_alt',     note: 'the archive service door; painted white by decree' },
-        prebuilt_stadium:       { leaf: 'leaf_wired_double',   wide: true, note: 'a turnstile that was a double door yesterday' },
-        prebuilt_stonehenge:    { leaf: 'leaf_frame_only',     note: 'a frame with nothing in it; the stones are on the other side' },
-        prebuilt_giza:          { leaf: 'leaf_vault',          wide: true, note: 'the sealed tomb door, opened by treaty' },
-        prebuilt_babel:         { leaf: 'leaf_barn',           note: 'scaffold-plank barn door; the sign is in eleven alphabets' },
-        prebuilt_gobekli:       { leaf: 'leaf_frame_only',     note: 'the oldest doorway on file; no leaf was ever made' },
-        prebuilt_camelot:       { leaf: 'leaf_portcullis',     wide: true, note: 'the portcullis; HINGE technology, no privileged side' },
-        prebuilt_technoticlan:  { leaf: 'leaf_portcullis',     wide: true, note: 'the temple gate, iron over obsidian' },
-        prebuilt_atlantis:      { leaf: 'leaf_bulkhead',       wide: true, note: 'the wet submarine bulkhead; it drips on this side too' },
-        prebuilt_shasta:        { leaf: 'leaf_closet',         note: 'a cabin door with a mountain behind it' },
-        prebuilt_hollow_earth:  { leaf: 'leaf_frame_only',     note: 'a frame; the floor on the far side is the ceiling' },
-        prebuilt_agartha:       { leaf: 'leaf_vault',          wide: true, note: 'the inner gate; polished by a very long queue' },
-        prebuilt_antarctica:    { leaf: 'leaf_bulkhead',       wide: true, note: 'the ice-wall hatch; cold to the touch on both faces' },
-        prebuilt_northpole:     { leaf: 'leaf_closet_alt',     note: 'a workshop door; sleigh bells removed by Records' },
-        prebuilt_mars:          { leaf: 'leaf_bulkhead',       wide: true, note: 'the airlock; red dust in the seal' },
-        prebuilt_moon:          { leaf: 'leaf_frame_only',     note: 'a door standing without a wall; footprints lead to it' },
-        prebuilt_cyberpunk:     { leaf: 'leaf_holographic',    note: 'the tenement door; the hologram was added by tenants' },
-        prebuilt_heaven:        { leaf: 'leaf_hotel',          note: 'a hotel room door, immunity claimed; checkout is never' },
-        prebuilt_hell:          { leaf: 'leaf_hell_arch',      note: 'the doorway itself; the cracks glow on this side too' },
-        prebuilt_olympus:       { leaf: 'leaf_frame_only',     note: 'a marble frame; the lintel is a treaty' },
-        prebuilt_fairy_forest:  { leaf: 'leaf_shabby_wood',    note: 'a door made of one plank of a tree that objected' },
-        prebuilt_backrooms:     { leaf: 'leaf_exit',           note: 'an EXIT door; the sign is a lie' },
-        prebuilt_flatlands:     { leaf: 'leaf_frame_only',     note: 'a frame with no door; flat all the way through' },
+        prebuilt_nuketown:      { roomNo: '1945', leaf: 'leaf_motel',          why: 'the test', note: 'the motel off the highway; it opens onto the street' },
+        prebuilt_area51:        { roomNo: '51', leaf: 'leaf_closet',         why: 'itself · EST. 1947', note: 'the hangar man-door; the keypad is a rival account' },
+        prebuilt_skinwalker:    { roomNo: '512', leaf: 'leaf_stable',         why: 'the ranch is 512 acres', note: 'the stable door, rehung indoors; the top half stays shut' },
+        prebuilt_bohemian_grove:{ roomNo: '23', leaf: 'leaf_saloon',         why: 'the 23 enigma', note: 'the lodge saloon door; do not knock in rhythm' },
+        prebuilt_dumb:          { roomNo: '555', leaf: 'leaf_bulkhead',       wide: true, why: 'five sides above ground; the sixth is down', note: 'blast door, deep underground military base issue' },
+        prebuilt_cern:          { roomNo: '999', leaf: 'leaf_bulkhead',       wide: true, why: '666, upside down', note: 'the collider blast door; hum audible' },
+        prebuilt_vatican:       { roomNo: '888', leaf: 'leaf_closet_alt',     why: 'immunity claimed, three times', note: 'the archive service door; painted white by decree' },
+        prebuilt_stadium:       { roomNo: '50', leaf: 'leaf_wired_double',   wide: true, why: 'the 50-yard line', note: 'a turnstile that was a double door yesterday' },
+        prebuilt_stonehenge:    { roomNo: '56', leaf: 'leaf_frame_only',     why: 'the 56 Aubrey holes', note: 'a frame with nothing in it; the stones are on the other side' },
+        prebuilt_giza:          { roomNo: '444', leaf: 'leaf_vault',          wide: true, why: 'four faces, three times', note: 'the sealed tomb door, opened by treaty' },
+        prebuilt_babel:         { roomNo: '11', leaf: 'leaf_barn',           why: 'Genesis 11', note: 'scaffold-plank barn door; the sign is in eleven alphabets' },
+        prebuilt_gobekli:       { roomNo: '9600', leaf: 'leaf_frame_only',     why: '9600 BC', note: 'the oldest doorway on file; no leaf was ever made' },
+        prebuilt_camelot:       { roomNo: 'i', leaf: 'leaf_portcullis',     wide: true, why: 'the imaginary kingdom (√−1)', note: 'the portcullis; HINGE technology, no privileged side' },
+        prebuilt_technoticlan:  { roomNo: '2012', leaf: 'leaf_portcullis',     wide: true, why: 'the calendar', note: 'the temple gate, iron over obsidian' },
+        prebuilt_atlantis:      { roomNo: 'H-20', sub: 'DEEP OCEAN ORICHALCUM RESEARCH', leaf: 'leaf_bulkhead',       wide: true, why: 'the formula, as filed', note: 'the wet submarine bulkhead; it drips on this side too' },
+        prebuilt_shasta:        { roomNo: '14179', leaf: 'leaf_closet',         why: 'the summit, in feet', note: 'a cabin door with a mountain behind it' },
+        prebuilt_hollow_earth:  { roomNo: '180', leaf: 'leaf_frame_only',     why: 'the floor on the far side is the ceiling', note: 'a frame; the floor on the far side is the ceiling' },
+        prebuilt_agartha:       { roomNo: '88', leaf: 'leaf_vault',          wide: true, why: '∞ stacked on ∞ — the world inside the world', note: 'the inner gate; polished by a very long queue' },
+        prebuilt_antarctica:    { roomNo: '90S', leaf: 'leaf_bulkhead',       wide: true, why: '90° south', note: 'the ice-wall hatch; cold to the touch on both faces' },
+        prebuilt_northpole:     { roomNo: '1225', leaf: 'leaf_closet_alt',     why: 'December 25', note: 'a workshop door; sleigh bells removed by Records' },
+        prebuilt_mars:          { roomNo: '4', leaf: 'leaf_bulkhead',       wide: true, why: 'the fourth planet', note: 'the airlock; red dust in the seal' },
+        prebuilt_moon:          { roomNo: '1969', leaf: 'leaf_frame_only',     why: 'the footage', note: 'a door standing without a wall; footprints lead to it' },
+        prebuilt_cyberpunk:     { roomNo: '2047', leaf: 'leaf_holographic',    why: 'the year on the lease', note: 'the tenement door; the hologram was added by tenants' },
+        prebuilt_heaven:        { roomNo: '777', leaf: 'leaf_hotel',          why: 'immunity claimed', note: 'a hotel room door, immunity claimed; checkout is never' },
+        prebuilt_hell:          { roomNo: '666', leaf: 'leaf_hell_arch',      why: 'the number is the address', note: 'the doorway itself; the cracks glow on this side too' },
+        prebuilt_olympus:       { roomNo: '12', leaf: 'leaf_frame_only',     why: 'the Twelve', note: 'a marble frame; the lintel is a treaty' },
+        prebuilt_fairy_forest:  { roomNo: '420', leaf: 'leaf_shabby_wood',    why: 'the mushrooms are not that kind', note: 'a door made of one plank of a tree that objected' },
+        prebuilt_backrooms:     { roomNo: '90', leaf: 'leaf_exit',           why: 'it is 90 degrees', note: 'an EXIT door; the sign is a lie' },
+        prebuilt_flatlands:     { roomNo: '2D', leaf: 'leaf_frame_only',     why: 'two dimensions; pairs with 4D', note: 'a frame with no door; flat all the way through' },
+    },
+    /* The two FACILITY boards (HQ plan 7.0 rule 3) are not sites: no bay,
+       no threshold. They wear the room they are projected in — the Training
+       Room board IS Room 64 (`room` = the walkable room that carries the
+       number), the Holo Sim is a projection, not a room, so it is Room 404
+       (room not found). Read through hqRoomNo(mapId). */
+    facility: {
+        prebuilt_training: { room: 'training' },
+        prebuilt_holosim:  { roomNo: '404', label: 'HOLO SIM', sub: 'ARCANE ENGINEERING · ROOM NOT FOUND', why: 'the Simulation is a projection, not a room' },
     },
     /* per-bay flavour: the guard's line, overheard lines, extra dressing (local polar) */
     bays: {
@@ -15733,25 +15749,31 @@ const DOOR_HQ = {
                 { id: 'stair_w', from: 342, to: 298, rIn: 19.35, rOut: 20.6, steps: 24 },
             ],
             /* doors: `leaf` = catalogue key (leaf), `wide` = 2.2 m opening.
-               `action` is exactly one of {fn}, {sector}, {room}, {overlay}. */
+               `action` is exactly one of {fn}, {sector}, {room}, {overlay}.
+               `roomNo` / `why` (plan 7.1 / 7.4) number a department that has
+               no interior yet; a door INTO a room takes the room's own
+               `roomNo` (hqDoorNo), so the number lives in one place. Bays
+               wear bay numbers, not room numbers. The elevator's `floors`
+               is its floor panel — there is no 13 (Room 13 is a door in
+               Bay 1, not a floor). */
             doors: [
                 /* ── ground ring (operations) ── */
                 { id: 'bay_celestial',  deg: 0,   level: 0, leaf: 'leaf_bulkhead',     wide: true,  label: 'BAY 4 · CELESTIAL',      sub: 'CONTAINMENT BAY',            action: { sector: 'celestial' } },
                 { id: 'quartermaster',  deg: 90,  level: 0, leaf: 'leaf_vault',        wide: true,  label: 'QUARTERMASTER',           sub: 'CUSTOMS & ADMISSIONS',       action: { fn: '_goToShop' },        desc: 'Declassification and asset reassignment. The Shop, and the manifests locker.', alt: { label: 'PARTY BUILDER', fn: '_goToTeamBuilder' } },
-                { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_glass',                     label: 'RECEPTION · INTAKE',      sub: 'HUMAN RESOURCES',            action: { fn: '_mountReactProfile' }, desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
+                { id: 'reception',      deg: 120, level: 0, leaf: 'leaf_glass',                     label: 'RECEPTION · INTAKE',      sub: 'HUMAN RESOURCES',            action: { fn: '_mountReactProfile' }, roomNo: '1', why: 'one foot in the door; forms start at 1', desc: 'Employee ID cards, laminator, LOST CARD FEE. Your profile lives here.' },
                 { id: 'office',         deg: 150, level: 0, leaf: 'leaf_closet_warped',             label: 'YOUR OFFICE',             sub: 'JANITORIAL (CONVERTED)',     action: { room: 'office', at: 'egress' }, desc: 'A converted janitor’s closet. Cot, mop bucket, CRT, phone, drain. The in-tray is where the story arrives.', rankDoor: true },
                 { id: 'training',       deg: 180, level: 0, leaf: 'leaf_exit',                      label: 'TRAINING FACILITY',       sub: 'DOWNSTAIRS · ORIENTATION',   action: { room: 'training', at: 'egress' }, desc: 'Room 64. The only authorized square room in the building — an 8×8 grid, deemed totally safe, notoriously leaky. ORTHOGONAL GEOMETRY EXPOSURE AREA · MAX OCCUPANCY 45 MINUTES.' },
-                { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_hospital',                  label: 'MEDICAL',                 sub: 'SUPPORT SERVICES',           action: { fn: '_goToCampaign' },    desc: 'Where EXITED operatives are processed. Revives, retries, the Challenge services desk.' },
-                { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'ARCHIVES · ENTITY REGISTRY', action: { fn: '_goToCodex' },       desc: '“We only keep the file.” Entity dossiers, the tape library, unfiled sites.', alt: { label: 'REPLAY (TAPE LIBRARY)', fn: '_ewReplayLastMatch' }, alt2: { label: 'UNFILED SITES (COMMUNITY MAPS)', fn: '_mountCommunityMaps' } },
+                { id: 'medical',        deg: 210, level: 0, leaf: 'leaf_hospital',                  label: 'MEDICAL',                 sub: 'SUPPORT SERVICES',           action: { fn: '_goToCampaign' },    roomNo: '1111', why: 'the number you dial', desc: 'Where EXITED operatives are processed. Revives, retries, the Challenge services desk.' },
+                { id: 'records',        deg: 240, level: 0, leaf: 'leaf_wired_double', wide: true,  label: 'RECORDS',                 sub: 'ARCHIVES · ENTITY REGISTRY', action: { fn: '_goToCodex' },       roomNo: '42', why: 'the room with the answer; it only keeps the file', desc: '“We only keep the file.” Entity dossiers, the tape library, unfiled sites.', alt: { label: 'REPLAY (TAPE LIBRARY)', fn: '_ewReplayLastMatch' }, alt2: { label: 'UNFILED SITES (COMMUNITY MAPS)', fn: '_mountCommunityMaps' } },
                 { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'CONTAINMENT BAY',            action: { sector: 'terrestrial' } },
                 /* ── mezzanine (support / executive access) ── */
-                { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'EXECUTIVE RING',             action: { room: 'executive' },      minClearance: 4, requiresKeys: 12, desc: 'Director offices. KEYHOLDER clearance and above; the car does not move without Keys.' },
+                { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'EXECUTIVE RING',             action: { room: 'executive' },      minClearance: 4, requiresKeys: 12, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'Director offices. KEYHOLDER clearance and above; the car does not move without Keys.' },
                 { id: 'bay_ancient',    deg: 45,  level: 1, leaf: 'leaf_portcullis',   wide: true,  label: 'BAY 2 · ANCIENT',         sub: 'CONTAINMENT BAY',            action: { sector: 'ancient' } },
                 { id: 'engineering',    deg: 90,  level: 1, leaf: 'leaf_glass_exec',                label: 'ARCANE ENGINEERING',      sub: 'CARTOGRAPHY · RESEARCH',     action: { fn: '_goToMapEditor' },   desc: 'Research offices. The Map Editor, the Spell Library, and the fourth door that wasn’t there yesterday.' },
                 { id: 'bay_diplomatic', deg: 150, level: 1, leaf: 'leaf_revolving',    wide: true,  label: 'BAY 5 · DIPLOMATIC',      sub: 'CONTAINMENT BAY',            action: { sector: 'diplomatic' } },
                 { id: 'bay_hollow',     deg: 210, level: 1, leaf: 'leaf_wired_double', wide: true,  label: 'BAY 3 · HOLLOW',          sub: 'CONTAINMENT BAY',            action: { sector: 'hollow' } },
                 { id: 'bay_quarantined',deg: 270, level: 1, leaf: 'leaf_cell',                      label: 'BAY 6 · QUARANTINED',     sub: 'CONTAINMENT BAY',            action: { sector: 'quarantined' } },
-                { id: 'continuity',     deg: 315, level: 1, leaf: 'leaf_suburban_house',            label: 'BUREAU OF CONTINUITY',    sub: 'THE CANON OFFICE',           action: { room: 'continuity' },     minClearance: 5, requiresKeys: 24, desc: 'Canon notices. The motto plaque. The only department that suspects the schedule. GATEKEEPER clearance and two dozen Keys.' },
+                { id: 'continuity',     deg: 315, level: 1, leaf: 'leaf_suburban_house',            label: 'BUREAU OF CONTINUITY',    sub: 'THE CANON OFFICE',           action: { room: 'continuity' },     minClearance: 5, requiresKeys: 24, roomNo: '№ — CONTESTED', why: 'a joke, and a policy', desc: 'Canon notices. The motto plaque. The only department that suspects the schedule. GATEKEEPER clearance and two dozen Keys.' },
             ],
             /* walk-up interactions that are not doors */
             counters: [
@@ -15913,6 +15935,7 @@ const DOOR_HQ = {
         office: {
             label: 'YOUR OFFICE',
             sub: 'JANITORIAL (CONVERTED)',
+            roomNo: '101', why: 'the room holds your worst fear; yours is a closet',
             kind: 'box',
             shell: {
                 w: 5.6, d: 4.6, h: 3.4,      // interior size (m): x extent, z extent, ceiling (door panels need ≥ 3.4)
@@ -15997,7 +16020,8 @@ const DOOR_HQ = {
            egress door panel — the facility is their physical home now. */
         training: {
             label: 'TRAINING ROOM',
-            sub: 'ROOM 64 · ORTHOGONAL GEOMETRY EXPOSURE AREA',
+            sub: 'ORTHOGONAL GEOMETRY EXPOSURE AREA',
+            roomNo: '64', why: '8 × 8',
             kind: 'box',
             fx: 'training',
             shell: {
@@ -16197,8 +16221,10 @@ function hqBayRoom(sectorKey) {
         doors.push({
             id: 'site_' + id, deg: -(n * stepDeg) / 2 + stepDeg * (i + 0.5), side: 'out', level: 0,
             leaf: th.leaf || 'leaf_closet_alt', wide: !!th.wide,
-            label: ((meta && meta.label) || id).toUpperCase(), sub: 'THRESHOLD · ' + sec.label,
+            label: ((meta && meta.label) || id).toUpperCase(), sub: th.sub || ('THRESHOLD · ' + sec.label),
             action: { mission: id }, note: th.note || '',
+            /* the plate's number (HQ plan 7.1): the site's roomNo, one place one number */
+            roomNo: (th.roomNo != null) ? String(th.roomNo) : null, why: th.why || '',
         });
     });
     const props = [];
@@ -16233,6 +16259,90 @@ function hqBayRoom(sectorKey) {
     };
 }
 Object.keys(DOOR_HQ.sectors).forEach(k => { DOOR_HQ.rooms[hqBayId(k)] = hqBayRoom(k); });
+/* ── THE ROOM REGISTER (HQ plan 7.1, 2026-09-07) ───────────────────────
+   Every site and every numbered HQ room wears ONE number (7.0 rule 1). The
+   number lives with the thing it names — `roomNo` on the threshold (site),
+   on the room (a walkable interior), on a department door with no interior
+   yet, on a facility board — and these helpers read it from anywhere:
+     hqRoomNo(idOrMapId)  → '56' | 'H-20' | '' — a launch map (Δ suffix
+                            stripped), a facility board, a room id, or a
+                            door / counter id anywhere in the building.
+     hqDoorNo(entry)      → the number a door / counter PLATE shows: its own
+                            roomNo, else its mission's, else the room it
+                            opens into (so the egress door to Room 64 and
+                            Room 64 itself are one place, one number).
+     hqRoomNoCompare(a,b) → directory order: plain numbers ascending, then
+                            alphanumerics (2D, 90S, H-20, i…) alphabetically.
+     hqRoomRegister()     → every numbered place, sorted: { no, label, sub,
+                            kind: 'site'|'room'|'door'|'counter'|'facility',
+                            id, room, sector, bayNo, why, mapId }. */
+function hqRoomNoStr(v) { return (v == null || v === '') ? '' : String(v); }
+function hqRoomNo(idOrMapId) {
+    const id = hqSiteId(idOrMapId);
+    if (!id) return '';
+    const T = DOOR_HQ.thresholds || {};
+    if (T[id] && T[id].roomNo != null) return hqRoomNoStr(T[id].roomNo);
+    const F = DOOR_HQ.facility || {};
+    if (F[id]) {
+        if (F[id].roomNo != null) return hqRoomNoStr(F[id].roomNo);
+        if (F[id].room && DOOR_HQ.rooms[F[id].room]) return hqRoomNoStr(DOOR_HQ.rooms[F[id].room].roomNo);
+    }
+    const rooms = DOOR_HQ.rooms || {};
+    if (rooms[id] && rooms[id].roomNo != null) return hqRoomNoStr(rooms[id].roomNo);
+    for (const rid in rooms) {
+        const r = rooms[rid];
+        if (!r) continue;
+        const hit = (r.doors || []).concat(r.counters || []).find(e => e && e.id === id);
+        if (hit) return hqDoorNo(hit);
+    }
+    return '';
+}
+function hqDoorNo(entry) {
+    if (!entry) return '';
+    if (entry.roomNo != null) return hqRoomNoStr(entry.roomNo);
+    const act = entry.action || {};
+    if (act.mission) return hqRoomNo(act.mission);
+    if (act.room && DOOR_HQ.rooms[act.room] && DOOR_HQ.rooms[act.room].roomNo != null) return hqRoomNoStr(DOOR_HQ.rooms[act.room].roomNo);
+    return '';
+}
+function hqRoomNoCompare(a, b) {
+    a = hqRoomNoStr(a); b = hqRoomNoStr(b);
+    const na = /^\d+$/.test(a), nb = /^\d+$/.test(b);
+    if (na && nb) return (+a) - (+b);
+    if (na !== nb) return na ? -1 : 1;
+    return a < b ? -1 : (a > b ? 1 : 0);
+}
+function hqRoomRegister() {
+    const out = [];
+    const META = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
+    const T = DOOR_HQ.thresholds || {};
+    for (const id in T) {
+        if (T[id].roomNo == null) continue;
+        const meta = META.find(m => m.id === id);
+        const sector = hqSectorOfMap(id);
+        const bay = sector ? DOOR_HQ.rooms[hqBayId(sector)] : null;
+        out.push({ no: hqRoomNoStr(T[id].roomNo), label: ((meta && meta.label) || id).toUpperCase(), sub: T[id].sub || ('THRESHOLD · ' + ((DOOR_HQ.sectors[sector] || {}).label || '')),
+                   kind: 'site', id: id, mapId: id, room: bay ? hqBayId(sector) : null, sector: sector, bayNo: bay ? bay.bayNo : null, why: T[id].why || '' });
+    }
+    const F = DOOR_HQ.facility || {};
+    for (const id in F) {
+        if (F[id].roomNo == null) continue;   // a board that wears a room's number is listed by the room
+        const meta = META.find(m => m.id === id);
+        out.push({ no: hqRoomNoStr(F[id].roomNo), label: F[id].label || ((meta && meta.label) || id).toUpperCase(), sub: F[id].sub || 'FACILITY BOARD',
+                   kind: 'facility', id: id, mapId: id, room: null, sector: null, bayNo: null, why: F[id].why || '' });
+    }
+    const rooms = DOOR_HQ.rooms || {};
+    for (const rid in rooms) {
+        const r = rooms[rid];
+        if (!r) continue;
+        if (r.roomNo != null) out.push({ no: hqRoomNoStr(r.roomNo), label: r.label || rid, sub: r.sub || '', kind: 'room', id: rid, mapId: null, room: rid, sector: null, bayNo: null, why: r.why || '' });
+        /* a bay's threshold doors carry the site's number (hqBayRoom) — the site row above already lists them */
+        (r.doors || []).forEach(d => { if (d.roomNo != null && !(d.action && d.action.mission)) out.push({ no: hqRoomNoStr(d.roomNo), label: d.label || d.id, sub: d.sub || '', kind: 'door', id: d.id, mapId: null, room: rid, sector: null, bayNo: null, why: d.why || '' }); });
+        (r.counters || []).forEach(c => { if (c.roomNo != null) out.push({ no: hqRoomNoStr(c.roomNo), label: c.label || c.id, sub: c.sub || '', kind: 'counter', id: c.id, mapId: null, room: rid, sector: null, bayNo: null, why: c.why || '' }); });
+    }
+    out.sort((a, b) => hqRoomNoCompare(a.no, b.no) || (a.label < b.label ? -1 : 1));
+    return out;
+}
 /* ── Keys (HQ plan 3.2) ────────────────────────────────────────────────
    { keys, pickups, issued }: pickups = the `hourglasses` achievement counter
    summed over its pvp / cpu / legacy buckets (monotonic, rides the progress
@@ -16979,6 +17089,10 @@ if (typeof window !== 'undefined') {
     window.hqMissionPool = hqMissionPool;
     window.hqBayId = hqBayId;
     window.hqBayRoom = hqBayRoom;
+    window.hqRoomNo = hqRoomNo;
+    window.hqDoorNo = hqDoorNo;
+    window.hqRoomNoCompare = hqRoomNoCompare;
+    window.hqRoomRegister = hqRoomRegister;
     window.doorSiteState = doorSiteState;
     window.hqKeys = hqKeys;
     window.hqKeysShort = hqKeysShort;

@@ -813,7 +813,7 @@ test('every cast spot names a real room, a known pose, sane weights, and stands 
     assert.ok(jn.hold && jn.hold.key === 'mop' && HQ.catalogue.mop && /Hand$/.test(jn.hold.bone), 'the Janitor holds the mop');
     /* every held prop names a catalogue GLB and a hand bone */
     for (const [id, m] of Object.entries(CAST)) for (const sp of m.spots) if (sp.hold) assert.ok(HQ.catalogue[sp.hold.key] && HQ.catalogue[sp.hold.key].file && /^(Left|Right)Hand$/.test(sp.hold.bone), id + ': hold');
-    assert.ok(/ROOM 64/.test(HQ.rooms.training.sub), 'the Training Room is Room 64');
+    assert.strictEqual(HQ.rooms.training.roomNo, '64', 'the Training Room is Room 64');
 });
 
 test('hqCastInRoom draws one spot per member per session, honours hidden / weights / clearance', () => {
@@ -872,4 +872,104 @@ test('the building code carries the cast hooks (source scan)', () => {
     assert.match(SPRITES_SRC, /function getCastModel\(id\)/);
     assert.match(SPRITES_SRC, /Meshy_AI_Agent_Glass_Character_output\.glb/, 'Glass’s export has no _biped');
     assert.match(SPRITES_SRC, /Meshy_AI_Janitor_Character_output\.glb/, 'the Janitor’s export has no _biped');
+});
+
+/* ── Phase 7.1 (2026-09-07): THE ROOM REGISTER — a number on every door ── */
+
+test('every launch map wears a roomNo on its threshold; hqRoomNo reads it (Δ suffix stripped)', () => {
+    const launch = Array.from(D.EW_MAP_META.filter(m => !m.isDelta).map(m => m.id));
+    const missing = launch.filter(id => !HQ.thresholds[id] || HQ.thresholds[id].roomNo == null || String(HQ.thresholds[id].roomNo).trim() === '');
+    assert.deepStrictEqual(missing, [], 'launch maps without a room number');
+    for (const id of launch) {
+        assert.strictEqual(typeof HQ.thresholds[id].roomNo, 'string', id + ': roomNo is a string (alphanumerics ride the same field)');
+        assert.strictEqual(D.hqRoomNo(id + '_delta'), HQ.thresholds[id].roomNo, id + ': the Δ board wears the site number');
+        assert.ok(HQ.thresholds[id].why, id + ': every number has its hook (why)');
+    }
+    /* the user's numbers, spot-checked */
+    assert.strictEqual(D.hqRoomNo('prebuilt_stonehenge'), '56');
+    assert.strictEqual(D.hqRoomNo('prebuilt_camelot'), 'i');
+    assert.strictEqual(D.hqRoomNo('prebuilt_atlantis'), 'H-20');
+    assert.strictEqual(D.hqRoomNo('prebuilt_antarctica'), '90S');
+    assert.strictEqual(D.hqRoomNo('prebuilt_flatlands'), '2D');
+    assert.strictEqual(D.hqRoomNo('prebuilt_backrooms'), '90');
+    assert.strictEqual(D.hqRoomNo('prebuilt_hell'), '666');
+    assert.strictEqual(D.hqRoomNo('nope'), '');
+    assert.strictEqual(D.hqRoomNo(null), '');
+    assert.strictEqual(D.DOOR_TEXT.SITE_FILE_LABELS.room, 'ROOM', 'the site file header knows the word');
+});
+
+test('the facility boards wear rooms: the Training Room board is Room 64, the Holo Sim is 404', () => {
+    assert.strictEqual(HQ.rooms.training.roomNo, '64');
+    assert.strictEqual(D.hqRoomNo('prebuilt_training'), '64');
+    assert.strictEqual(D.hqRoomNo('prebuilt_training_delta'), '64');
+    assert.strictEqual(D.hqRoomNo('prebuilt_holosim'), '404');
+    assert.strictEqual(D.hqRoomNo('training'), '64', 'the room id resolves too');
+    assert.strictEqual(D.hqRoomNo('office'), '101');
+    assert.ok(!/ROOM 64/.test(HQ.rooms.training.sub), 'the hand-written ROOM 64 moved onto the field');
+    /* never sites: no threshold, no bay */
+    for (const id of Object.keys(HQ.facility)) {
+        assert.ok(D.EW_MAP_META.some(m => m.id === id && m.isDelta), id + ' is a Δ facility board in EW_MAP_META');
+        assert.ok(!HQ.thresholds[id] && !D.hqSectorOfMap(id), id + ' is a facility board, not a site');
+    }
+});
+
+test('one number, one place: the register is unique, every entry resolves, and it sorts numbers first then alphanumerics', () => {
+    const reg = D.hqRoomRegister();
+    assert.ok(reg.length >= 36, 'register short: ' + reg.length);
+    const seen = new Map();
+    for (const r of reg) {
+        assert.ok(r.no && typeof r.no === 'string', 'blank number on ' + r.label);
+        assert.ok(r.label, 'no label on ' + r.no);
+        assert.ok(['site', 'room', 'door', 'counter', 'facility'].includes(r.kind), r.no + ': kind');
+        assert.strictEqual(D.hqRoomNo(r.mapId || r.id), r.no, r.no + ': hqRoomNo round-trips');
+        seen.set(r.no, (seen.get(r.no) || 0) + 1);
+    }
+    const dups = Array.from(seen.entries()).filter(([, n]) => n > 1).map(([no]) => no);
+    assert.deepStrictEqual(dups, [], 'numbers shared by more than one place');
+    /* every site is in it exactly once, with its bay */
+    const launch = Array.from(D.EW_MAP_META.filter(m => !m.isDelta).map(m => m.id));
+    for (const id of launch) {
+        const rows = reg.filter(r => r.mapId === id);
+        assert.strictEqual(rows.length, 1, id + ' listed ' + rows.length + ' times');
+        assert.ok(rows[0].kind === 'site' && rows[0].sector && rows[0].room === D.hqBayId(rows[0].sector) && rows[0].bayNo >= 1, id + ': site row carries its bay');
+    }
+    /* the order: plain numbers ascending, then the alphanumerics */
+    const nos = reg.map(r => r.no);
+    const firstAlpha = nos.findIndex(n => !/^\d+$/.test(n));
+    assert.ok(firstAlpha > 0, 'alphanumerics exist and come after the numbers');
+    for (let i = 1; i < firstAlpha; i++) assert.ok(+nos[i] > +nos[i - 1], 'numeric order at ' + nos[i]);
+    for (let i = firstAlpha; i < nos.length; i++) assert.ok(!/^\d+$/.test(nos[i]), 'a plain number after the alphanumerics: ' + nos[i]);
+    assert.ok(D.hqRoomNoCompare('56', '444') < 0 && D.hqRoomNoCompare('444', '56') > 0 && D.hqRoomNoCompare('9600', 'H-20') < 0 && D.hqRoomNoCompare('2D', '90S') < 0 && D.hqRoomNoCompare('i', 'i') === 0);
+    /* the plate machine: a door into a numbered room shows the room's number; a threshold shows its site's; a bay door shows none */
+    const E = ROOM.doors;
+    assert.strictEqual(D.hqDoorNo(E.find(d => d.id === 'training')), '64');
+    assert.strictEqual(D.hqDoorNo(E.find(d => d.id === 'office')), '101');
+    assert.strictEqual(D.hqDoorNo(E.find(d => d.id === 'records')), '42');
+    assert.strictEqual(D.hqDoorNo(E.find(d => d.id === 'bay_ancient')), '', 'bays wear bay numbers, not room numbers');
+    for (const d of E.filter(d => d.action && d.action.sector)) assert.ok(d.roomNo == null, d.id + ': bay doors carry no roomNo');
+    for (const d of E.filter(d => d.action && d.action.room)) assert.ok(d.roomNo == null || !HQ.rooms[d.action.room] || HQ.rooms[d.action.room].roomNo == null, d.id + ': a door into a numbered room does not carry its own number');
+    const stone = HQ.rooms.bay_ancient.doors.find(d => d.action && d.action.mission === 'prebuilt_stonehenge');
+    assert.strictEqual(D.hqDoorNo(stone), '56');
+    assert.strictEqual(stone.roomNo, '56');
+    const atl = HQ.rooms.bay_ancient.doors.find(d => d.action && d.action.mission === 'prebuilt_atlantis');
+    assert.strictEqual(atl.sub, 'DEEP OCEAN ORICHALCUM RESEARCH', "a threshold's sub replaces the bay sub-line");
+    /* the Canon Office's plate is a joke and a policy */
+    assert.ok(/CONTESTED/.test(D.hqRoomNo('continuity')));
+});
+
+test('the elevator floor panel skips 13', () => {
+    const el = ROOM.doors.find(d => d.id === 'elevator');
+    assert.ok(Array.isArray(el.floors) && el.floors.length > 10, 'the elevator has a floor panel');
+    assert.ok(!el.floors.includes('13'), 'there is no 13th floor');
+    assert.ok(el.floors.includes('12') && el.floors.includes('14'), '12 and 14 are both there');
+    assert.strictEqual(new Set(el.floors).size, el.floors.length, 'no floor twice');
+});
+
+test('the register reaches every surface it is due on (source scan)', () => {
+    const has = (file, re) => re.test(fs.readFileSync(path.join(__dirname, file), 'utf8'));
+    assert.ok(has('three-renderer.js', /_hqPlateNo\(door\)/) && has('three-renderer.js', /_hqPlateNo\(c\)/) && has('three-renderer.js', /room\.roomNo/), 'renderer: door, counter and room plates');
+    assert.ok(has('map.js', /hqDoorNo/) && has('map.js', /hqRoomRegister/) && has('map.js', /d\.floors/), 'map.js: panels, the directory register, the elevator panel');
+    assert.ok(has('match-select.js', /siteRoomNo\(mp\)/) && has('match-select.js', /SITE_FILE_LABELS[^\n]*room/), 'match-select: the SITE FILE header');
+    assert.ok(has('battle.js', /' · ROOM ' \+ roomNo/) && has('battle.js', /'SITE FILE · ' \+ \(roomNo/), 'battle.js: the result stamp case line and the loading card');
+    assert.ok(has('styles-base.css', /\.hq-plate em/) && has('styles-base.css', /\.hq-no/), 'the plate + tag styles');
 });

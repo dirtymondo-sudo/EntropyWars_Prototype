@@ -253,7 +253,7 @@
                 }
                 const room = _hqRoom();
                 const rn = _hqEl('hqRoomName');
-                if (rn && room) rn.textContent = room.label + ' · ' + room.sub;
+                if (rn && room) rn.textContent = ((room.roomNo != null) ? 'ROOM ' + room.roomNo + ' · ' : '') + room.label + ' · ' + room.sub;
                 const ms = _hqEl('hqMastery');
                 if (ms) {
                     const mc = (typeof window.hqMasteryCount === 'function') ? window.hqMasteryCount(profile) : null;
@@ -605,7 +605,8 @@
             if (!el) return;
             if (!t || _hqPanelTarget) { el.style.display = 'none'; el.innerHTML = ''; return; }
             const verb = t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK');
-            el.innerHTML = `<b>▸ ${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span><i>[E] ${verb}</i>`;
+            const pNo = _hqNo(t.door || t.counter);
+            el.innerHTML = `<b>▸ ${pNo ? 'ROOM ' + _hqEsc(pNo) + ' · ' : ''}${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span><i>[E] ${verb}</i>`;
             el.style.display = '';
         }
         function _hqStateChip(st) {
@@ -613,6 +614,10 @@
             return `<i class="hq-lamp-chip st-${_hqEsc(st)}">${_hqEsc(label)}</i>`;
         }
         function _hqMapLabel(id) { try { const m = EW_MAP_META.find(x => x.id === id); return m ? m.label : id; } catch (e) { return id; } }
+        /* the room register (HQ plan 7.1): the number a door / counter / site wears, and its tag */
+        function _hqNo(entry) { try { return (typeof window.hqDoorNo === 'function') ? window.hqDoorNo(entry) : ((entry && entry.roomNo != null) ? String(entry.roomNo) : ''); } catch (e) { return ''; } }
+        function _hqSiteNo(id) { try { return (typeof window.hqRoomNo === 'function') ? window.hqRoomNo(id) : ''; } catch (e) { return ''; } }
+        function _hqNoTag(no, why) { return no ? `<em class="hq-no">ROOM ${_hqEsc(no)}${why ? `<i>${_hqEsc(why)}</i>` : ''}</em>` : ''; }
         /* one threshold's mastery checklist (☑ per win condition on file) */
         function _hqChecksHtml(sm) {
             if (!sm) return '';
@@ -671,7 +676,7 @@
             const caseNo = (typeof window.doorCaseNo === 'function') ? window.doorCaseNo(id) : '';
             const first = (typeof window.doorSiteCanonDate === 'function') ? window.doorSiteCanonDate(id) : '';
             const cr = (st === 'codered' && typeof window.hqCodeRed === 'function') ? window.hqCodeRed(profile) : null;
-            let html = `<div class="hq-panel-hd"><b>${_hqEsc(d.label)}</b><span>${_hqEsc(d.sub || '')}</span>${_hqStateChip(st)}</div>`;
+            let html = `<div class="hq-panel-hd">${_hqNoTag(_hqNo(d), d.why)}<b>${_hqEsc(d.label)}</b><span>${_hqEsc(d.sub || '')}</span>${_hqStateChip(st)}</div>`;
             if (cr && cr.site === id) html += _hqCodeRedBriefHtml(cr, { respond: true });
             html += `<div class="hq-site"><span class="hq-row-stamp tone-${_hqEsc((sf && sf.tone) || 'deny')}">${_hqEsc((sf && sf.status) || 'ON FILE')}</span><span class="hq-site-kv"><b>JURISDICTION</b> ${_hqEsc((sf && sf.juris) || 'unassigned')}</span><span class="hq-site-kv"><b>FIRST DOCUMENTED CROSSING</b> ${_hqEsc(first)} · ${_hqEsc(caseNo)}</span></div>`;
             if (sf && sf.summary) html += `<p class="hq-panel-desc">${_hqEsc(sf.summary)}</p>`;
@@ -706,7 +711,7 @@
             const cl = (typeof window.doorClearance === 'function') ? window.doorClearance(profile) : { level: 1, title: 'DOORMAT' };
             const act = d.action || {};
             if (act.mission) return _hqThresholdPanelHtml(t, st);
-            let html = `<div class="hq-panel-hd"><b>${_hqEsc(d.label)}</b><span>${_hqEsc(d.sub || '')}</span>${_hqStateChip(st)}</div>`;
+            let html = `<div class="hq-panel-hd">${_hqNoTag(_hqNo(d), d.why || (act.room && DOOR_HQ.rooms[act.room] && DOOR_HQ.rooms[act.room].why) || '')}<b>${_hqEsc(d.label)}</b><span>${_hqEsc(d.sub || '')}</span>${_hqStateChip(st)}</div>`;
             if (act.sector) {
                 const sec = DOOR_HQ.sectors[act.sector] || { label: act.sector, maps: [] };
                 const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(act.sector) : ('bay_' + act.sector);
@@ -732,7 +737,7 @@
                     const crossBtn = isCr
                         ? `<button class="hq-btn hq-btn-sm hq-btn-codered" ${canCross ? '' : 'disabled'} data-codered="${_hqEsc(id)}" title="Arena · 4v4 on the Δ board · the CPU fields ${_hqEsc(String(crHere.race).toUpperCase())} and the site's natives · +${crHere.bonus} Hazard Pay">RESPOND ▸ Δ</button>`
                         : `<button class="hq-btn hq-btn-sm hq-btn-primary" ${canCross ? '' : 'disabled'} data-cross="${_hqEsc(id)}" title="Arena · 4v4 on the 8×8 Δ board · CPU fields the site's natives">CROSS ▸ Δ</button>`;
-                    html += `<div class="hq-row hq-row-bay" title="${_hqEsc(tip)}"><b>${_hqEsc(_hqMapLabel(id))}</b><span class="hq-row-stamp tone-${_hqEsc((sf && sf.tone) || 'deny')}">${_hqEsc((sf && sf.status) || 'ON FILE')}</span>${chip}`
+                    html += `<div class="hq-row hq-row-bay" title="${_hqEsc(tip)}"><b>${_hqNoTag(_hqSiteNo(id))}${_hqEsc(_hqMapLabel(id))}</b><span class="hq-row-stamp tone-${_hqEsc((sf && sf.tone) || 'deny')}">${_hqEsc((sf && sf.status) || 'ON FILE')}</span>${chip}`
                         + `<div class="hq-row-btns">${crossBtn}<button class="hq-btn hq-btn-sm" ${canCross ? '' : 'disabled'} data-deep="${_hqEsc(id)}" title="Arena on the full map at its own team size">DEEP</button></div>`
                         + (checks ? `<div class="hq-row-checks">${checks}</div>` : '') + '</div>';
                 });
@@ -742,6 +747,8 @@
                 else html += '<p class="hq-panel-note">CROSS ▸ Δ = Arena, 4v4 on the site’s 8×8 board, the CPU fielding the entities on file for it. DEEP = the full map. Each ☐ is a win condition still to be filed for the threshold; all three turn it green.</p>';
             } else {
                 if (d.desc) html += `<p class="hq-panel-desc">${_hqEsc(d.desc)}</p>`;
+                /* the elevator's floor panel (HQ plan 7.1): one line, and there is no 13 */
+                if (Array.isArray(d.floors) && d.floors.length) html += `<p class="hq-panel-note">FLOOR PANEL · ${d.floors.map(f => _hqEsc(f)).join(' · ')}. There is no 13. Room 13 is filed in Bay 1, not on a floor.</p>`;
                 const locked = st === 'clearance';
                 html += '<div class="hq-panel-actions">';
                 if (act.fn) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-fn="${_hqEsc(act.fn)}">ENTER ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button>`;
@@ -763,12 +770,34 @@
             const rows = [];
             const isBox = room.kind === 'box';
             const where = d => isBox ? ('WALL ' + String(d.wall || '').toUpperCase() + ' · ') : isBay ? ((d.side === 'in') ? 'INNER WALL · ' : 'THRESHOLD · ') : (d.level ? 'MEZZANINE · ' : 'FLOOR · ');
-            (room.doors || []).forEach(d => rows.push({ id: d.id, label: d.label, sub: where(d) + (d.sub || ''), st: (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, profile) : 'open' }));
-            (room.counters || []).forEach(c => rows.push({ id: c.id, label: c.label, sub: (c.level ? 'MEZZANINE · ' : 'FLOOR · ') + (c.sub || ''), st: 'open' }));
+            const noPre = e => { const n = _hqNo(e); return n ? 'ROOM ' + n + ' · ' : ''; };
+            (room.doors || []).forEach(d => rows.push({ id: d.id, label: d.label, sub: noPre(d) + where(d) + (d.sub || ''), st: (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, profile) : 'open' }));
+            (room.counters || []).forEach(c => rows.push({ id: c.id, label: c.label, sub: noPre(c) + (c.level ? 'MEZZANINE · ' : 'FLOOR · ') + (c.sub || ''), st: 'open' }));
             rows.forEach(r => {
                 html += `<div class="hq-row"><b>${_hqEsc(r.label)}</b><span>${_hqEsc(r.sub)}</span>${_hqStateChip(r.st)}<button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(r.id)}">WALK</button></div>`;
             });
-            html += '</div><p class="hq-panel-note">WALK moves you to the door. The building stays consistent long enough to be memorised.</p>';
+            html += '</div>';
+            /* THE ROOM REGISTER (HQ plan 7.1): every numbered place in the
+               building, numbers first then the alphanumerics, each with the
+               way there — WALK inside this room, GO into the room that holds
+               it (a bay at that threshold, the training room at the console). */
+            const reg = (typeof window.hqRoomRegister === 'function') ? window.hqRoomRegister() : [];
+            if (reg.length) {
+                html += `<div class="hq-chips" style="margin-top:12px"><span>THE ROOM REGISTER · ${reg.length} NUMBERED PLACES · ONE NUMBER, ONE PLACE</span></div><div class="hq-rows">`;
+                reg.forEach(r => {
+                    let go = '';
+                    const hereId = r.kind === 'site' ? 'site_' + r.id : (r.kind === 'room' ? null : r.id);
+                    if (r.room && r.room === _hqCurRoom && hereId) go = `<button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(hereId)}">WALK</button>`;
+                    else if (r.kind === 'site' && r.room && _hqRoomExists(r.room)) go = `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(r.room)}" data-at="site_${_hqEsc(r.id)}">GO</button>`;
+                    else if (r.kind === 'room' && _hqRoomExists(r.id)) go = (r.id === _hqCurRoom) ? '<span>YOU ARE HERE</span>' : `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(r.id)}">GO</button>`;
+                    else if (r.kind === 'facility' && _hqRoomExists('training')) go = `<button class="hq-btn hq-btn-sm" data-room="training" data-at="range">GO</button>`;
+                    else if (r.room && _hqRoomExists(r.room)) go = `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(r.room)}" data-at="${_hqEsc(r.id)}">GO</button>`;
+                    const where = r.kind === 'site' ? `BAY ${r.bayNo || '?'} · ${_hqEsc(r.sub)}` : _hqEsc(r.sub);
+                    html += `<div class="hq-row hq-row-tray" title="${_hqEsc(r.why || '')}"><b>${_hqNoTag(r.no)}${_hqEsc(r.label)}</b><span>${where}</span>${go}</div>`;
+                });
+                html += '</div>';
+            }
+            html += '<p class="hq-panel-note">WALK moves you to the door; GO takes you to the room that holds it. The building stays consistent long enough to be memorised. The numbers are permanent, which is more than can be said for the rooms.</p>';
             return html;
         }
         function _hqDispatchHtml() {

@@ -133,6 +133,15 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   `Assets/door/models/` + `Assets/door/textures/`; reference art is in the
   repo at `door_reference_images/`. `npm test` runs `doorhq.test.js`.
   Playtest harnesses call `_goToVsCpu()` directly and bypass the building.
+  **The ROOM REGISTER (HQ plan Phase 7.1, shipped 2026-09-07)**: every site
+  and numbered HQ room wears ONE `roomNo` (a string; `i`, `2D`, `H-20` are
+  legal) — on `DOOR_HQ.thresholds[mapId]`, on a room, on a department
+  door, or in `DOOR_HQ.facility` (64 / 404). Read it ONLY through
+  `hqRoomNo(idOrMapId)` / `hqDoorNo(entry)`; `hqRoomRegister()` lists
+  every numbered place sorted. doorhq.test.js fails on a shared number, a
+  launch map without one, or a door that duplicates its room's number.
+  Adding a site = a `roomNo` + `why` on its threshold (plan 7.3 has the
+  number; 7.10 the checklist).
 - **The CAST shipped 2026-09-06**: the story's named characters (the user's
   cast sheet, canon, `DOOR_STORY.md` §2 / DOOR_MASTER A16) stand in the
   building. Models: sprites.js `DOOR_CAST_MODELS` (15 rigged GLBs on R2

@@ -29291,6 +29291,13 @@ const ThreeRenderer = (function () {
         } catch (e) {}
         return 'open';
     }
+    /* the number on a door / counter plate (HQ plan 7.1, the room register):
+       data.js hqDoorNo — the entry's own roomNo, the site's for a threshold,
+       the room's for a way in. '' = no plate line (bays, the elevator). */
+    function _hqPlateNo(entry) {
+        try { if (typeof hqDoorNo === 'function') return hqDoorNo(entry) || ''; } catch (e) {}
+        return (entry && entry.roomNo != null) ? String(entry.roomNo) : '';
+    }
     /* the leaf the profile's clearance issues (DOOR_TEXT.CLEARANCE[i].door) */
     function _hqRankLeaf() {
         try {
@@ -29585,7 +29592,7 @@ const ThreeRenderer = (function () {
         /* the room plate (CSS2D) */
         var el = document.createElement('div');
         el.className = 'hq-plate hq-plate-bay';
-        el.innerHTML = '<b>' + (room.label || 'ROOM') + '</b><span>' + (room.sub || '') + '</span>';
+        el.innerHTML = ((room.roomNo != null) ? '<em>ROOM ' + room.roomNo + '</em>' : '') + '<b>' + (room.label || 'ROOM') + '</b><span>' + (room.sub || '') + '</span>';
         var plate = new THREE.CSS2DObject(el);
         var P = S.plate || { x: 0, z: -Dp / 2, y: H - 0.5 };
         plate.position.set(P.x * U, (P.y != null ? P.y : H - 0.5) * U, (P.z + 0.02) * U);
@@ -29752,7 +29759,7 @@ const ThreeRenderer = (function () {
             G.add(m);
         }
         sign('tr_north', ['ORTHOGONAL GEOMETRY', 'EXPOSURE AREA', 'AUTHORIZED PERSONNEL ONLY'], 4.8, 1.7, 5.0, 3.6, -wallIn, 0, { sizes: [64, 92, 40] });
-        sign('tr_south', ['D.O.O.R. TRAINING FACILITY', 'ROOM 64', 'REALITY LEAKS POSSIBLE'], 4.8, 1.7, -5.0, 3.6, wallIn, Math.PI, { sizes: [52, 96, 44] });
+        sign('tr_south', ['D.O.O.R. TRAINING FACILITY', 'ROOM ' + ((room.roomNo != null) ? room.roomNo : '64'), 'REALITY LEAKS POSSIBLE'], 4.8, 1.7, -5.0, 3.6, wallIn, Math.PI, { sizes: [52, 96, 44] });
         sign('tr_west', ['MAX OCCUPANCY', '45 MINUTES'], 3.3, 1.6, -wallIn, 3.3, 4.5, Math.PI / 2, { sizes: [66, 92] });
         sign('tr_east', ['REALITY LEAKS', 'POSSIBLE'], 3.3, 1.6, wallIn, 3.3, -3.0, -Math.PI / 2, { sizes: [72, 92], bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' });
 
@@ -30194,7 +30201,8 @@ const ThreeRenderer = (function () {
             var el = document.createElement('div');
             el.className = 'hq-plate';
             var chip = document.createElement('i');
-            el.innerHTML = '<b>' + (door.label || door.id) + '</b><span>' + (door.sub || '') + '</span>';
+            var doorNo = _hqPlateNo(door);
+            el.innerHTML = (doorNo ? '<em>ROOM ' + doorNo + '</em>' : '') + '<b>' + (door.label || door.id) + '</b><span>' + (door.sub || '') + '</span>';
             el.appendChild(chip);
             var plate = new THREE.CSS2DObject(el);
             plate.position.set(0, ((room.kind === 'box') ? Math.min(ph + 0.42, S.h - 0.12) : (ph + 0.42)) * U, (pd / 2) * U);
@@ -30260,7 +30268,8 @@ const ThreeRenderer = (function () {
             }
             var el = document.createElement('div');
             el.className = 'hq-plate hq-plate-counter';
-            el.innerHTML = '<b>' + c.label + '</b><span>' + (c.sub || '') + '</span>';
+            var cNo = _hqPlateNo(c);
+            el.innerHTML = (cNo ? '<em>ROOM ' + cNo + '</em>' : '') + '<b>' + c.label + '</b><span>' + (c.sub || '') + '</span>';
             var plate = new THREE.CSS2DObject(el);
             plate.position.set(0, plateY * U, 0);
             grp.add(plate);

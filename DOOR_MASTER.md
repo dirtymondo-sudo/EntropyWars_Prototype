@@ -1603,3 +1603,20 @@ folded (7.8), a seventh bay (7.5, C-23), the walkable-site mechanism (7.2:
 dailies as `FORM 365` (7.9), the adding-a-site checklist (7.10), and the
 asset split (§5.6: one hero prop per place; one new tileable). No game
 files touched. A10 carries a pointer.
+
+### 2026-09-07 (rev 2) — 7.1 shipped: the numbers are on the doors
+The register is data now (HQ plan §9): `roomNo` + `why` on all 29
+thresholds (the user's numbers as given; Claude's fills and the three
+C-22 swaps as proposed — the stadium ships as 50, Records as 42, one field
+each to flip), `101` on the office, `64` on the Training Room (its board
+wears the room), `404` on the Holo Sim, `1` / `42` / `1111` on the
+Reception / Records / Medical doors, `№ — CONTESTED` on the Bureau of
+Continuity; bays keep bay numbers. `hqRoomNo` / `hqDoorNo` /
+`hqRoomRegister` read it; it prints on every door plate (small caps over
+the name), the strip, the [E] prompt, the threshold + department panels,
+the bay door's rows, the building directory (now with THE ROOM REGISTER —
+every numbered place, numbers first then alphanumerics, GO to any of
+them), the match-select SITE FILE kicker, the result stamp's case line
+(`CASE No. EW-nnnn · ROOM 56`) and the loading screen's site-file card.
+The elevator's floor panel skips 13. doorhq.test.js enforces one number,
+one place. Vocabulary unchanged (A8): threshold, crossing, room, bay.

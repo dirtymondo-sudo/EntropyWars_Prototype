@@ -4065,6 +4065,12 @@ body.diorama-3d .tile-underpass.jump::before {
 .hq-plate b { font-family: 'Cormorant SC', serif; font-size: 13px; letter-spacing: 0.16em; color: #ece7d8; text-shadow: 0 1px 2px #000; }
 .hq-plate span { font-family: 'IBM Plex Mono', monospace; font-size: 8px; letter-spacing: 0.24em; color: #b8a060; }
 .hq-plate span:empty { display: none; }
+/* the room register (HQ plan 7.1): ROOM 56 in small caps over the name */
+.hq-plate em { font-family: 'Cormorant SC', serif; font-style: normal; font-size: 9px; letter-spacing: 0.3em; color: #b8a060; text-shadow: 0 1px 2px #000; }
+.hq-plate-bay em { font-size: 11px; }
+.hq-no { display: block; font-family: 'Cormorant SC', serif; font-style: normal; font-size: 10px; letter-spacing: 0.3em; color: #b8a060; }
+.hq-no i { font-family: 'IBM Plex Mono', monospace; font-style: italic; font-size: 8px; letter-spacing: 0.06em; color: #8f8a7a; margin-left: 8px; }
+.hq-row b .hq-no { display: inline; font-size: 9px; margin-right: 6px; }
 .hq-plate-counter { border-color: rgba(127,217,221,0.4); }
 .hq-lamp-chip { font-family: 'IBM Plex Mono', monospace; font-style: normal; font-size: 8px; letter-spacing: 0.2em; padding: 2px 6px; margin-top: 3px; border: 1px solid currentColor; color: #8a8a8a; }
 .hq-lamp-chip.st-open, .hq-lamp-chip.st-stabilized { color: #39ff6a; }

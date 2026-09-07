@@ -27663,9 +27663,15 @@
                 ? window.doorCaseNo('match-' + (state.matchNumber || 1) + '-' + (state.turn || 0) + '-' + (state.winner || 0))
                 : 'EW-' + (1000 + ((state.matchNumber || 1) * 37) % 9000);
             const canon = window._lsCanonYear || ((typeof window.doorCanonDate === 'function') ? window.doorCanonDate() : '');
+            /* the room register (HQ plan 7.1): the case line names the room
+               the crossing was filed in — the same number on the plate over
+               the threshold. Derived locally on both clients (activeGameMode
+               is shared match setup), nothing to relay. */
+            let roomNo = '';
+            try { if (typeof activeGameMode !== 'undefined' && typeof window.hqRoomNo === 'function') roomNo = window.hqRoomNo(activeGameMode) || ''; } catch (e) {}
             if (metaEl) {
                 metaEl.textContent = '';
-                metaEl.append('CASE No. ' + caseNo, document.createElement('br'), canon || 'D.O.O.R.');
+                metaEl.append('CASE No. ' + caseNo + (roomNo ? ' · ROOM ' + roomNo : ''), document.createElement('br'), canon || 'D.O.O.R.');
             }
             el.className = 'door-result-stamp ' + kind + ((opts && opts.directive) ? ' directive' : '');
             /* restart the thunk animation on every result screen */
@@ -32284,7 +32290,9 @@
                 try {
                     if (typeof window.doorSiteFile === 'function' && typeof activeGameMode !== 'undefined') {
                         const sf = window.doorSiteFile(activeGameMode);
-                        hintPool.unshift({ t: 'SITE FILE · ' + _lsMapTitle(), q: sf.summary, s: sf.status + ' · ' + sf.juris, stamp: sf.status, stampTone: sf.tone, cls: 'ls-memo' });
+                        /* the room register (HQ plan 7.1): the card is filed under its room number */
+                        const roomNo = (typeof window.hqRoomNo === 'function') ? (window.hqRoomNo(activeGameMode) || '') : '';
+                        hintPool.unshift({ t: 'SITE FILE · ' + (roomNo ? 'ROOM ' + roomNo + ' · ' : '') + _lsMapTitle(), q: sf.summary, s: sf.status + ' · ' + sf.juris, stamp: sf.status, stampTone: sf.tone, cls: 'ls-memo' });
                     }
                 } catch (_e) {}
                 let hintIdx = 0;

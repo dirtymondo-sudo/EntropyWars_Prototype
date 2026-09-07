@@ -176,6 +176,10 @@ function siteFileFor(mp) {
 function siteCaseNo(mp) {
   return (mp && typeof window.doorCaseNo === 'function') ? window.doorCaseNo(mp.modeId) : '';
 }
+/* the room register (HQ plan 7.1): the number on the plate over this site's door */
+function siteRoomNo(mp) {
+  return (mp && typeof window.hqRoomNo === 'function') ? (window.hqRoomNo(mp.modeId) || '') : '';
+}
 function siteFirstCrossing(mp) {
   return (mp && typeof window.doorSiteCanonDate === 'function') ? window.doorSiteCanonDate(mp.modeId) : '';
 }
@@ -698,6 +702,7 @@ function MatchSelect() {
   const accent = accentForMap(mp);
   const sf = siteFileFor(mp);
   const caseNo = siteCaseNo(mp);
+  const roomNo = siteRoomNo(mp);
   const firstCrossing = siteFirstCrossing(mp);
   const crossings = siteCrossings(mp);
   // Δ maps are the 8×8 hand-authored boards in every mode (Arena included).
@@ -878,6 +883,14 @@ function MatchSelect() {
                 fontFamily: '"IBM Plex Mono", "DotGothic16", monospace', fontSize: 9,
                 letterSpacing: '0.12em', color: EW.inkDim,
               }}, caseNo),
+              /* the room register (HQ plan 7.1): the number on the plate over this site's door */
+              roomNo && h('span', {
+                title: 'The number on the plate over this threshold in the D.O.O.R. headquarters',
+                style: {
+                  fontFamily: '"Cormorant SC", serif', fontSize: 12,
+                  letterSpacing: '0.24em', color: '#b8a060', whiteSpace: 'nowrap',
+                },
+              }, (((DOOR && DOOR.SITE_FILE_LABELS) || {}).room || 'ROOM') + ' ' + roomNo),
               h('div', { style: {
                 flex: 1, height: 1,
                 background: 'linear-gradient(90deg, ' + EW.panelEdge + ', transparent)',

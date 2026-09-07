@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 16 (2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
+### The walkable facility that replaces the Play menu · rev 17 (2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -486,11 +486,11 @@ proposes and the user has not ruled on (MASTER Part C rows 22–24).
 4. **Repetitive ideas fold into the site they overlap** as its DEEP
    CROSSING nickname, its threshold note, or a piece of its setting —
    the idea survives as flavour instead of costing a map.
-5. **Nothing is built by this phase on its own.** 7.1 is a data edit; 7.2
-   is the engine piece; the rooms and sites are one session each and the
-   user picks the order.
+5. **Nothing is built by this phase on its own.** 7.1 is a data edit (✅
+   shipped 2026-09-07, §9); 7.2 is the engine piece; the rooms and sites are
+   one session each and the user picks the order.
 
-#### 7.1 ⚙ Numbers on the doors (one data.js + doorhq.test.js delivery)
+#### 7.1 ⚙ ✅ (2026-09-07, §9) Numbers on the doors (one data.js + doorhq.test.js delivery)
 - `roomNo` on every `DOOR_HQ.thresholds[mapId]` entry (sites) and on any
   door / counter entry in `DOOR_HQ.rooms.*` (departments, amenities);
   `hqRoomNo(idOrMapId)` helper. doorhq.test.js: every launch map has a
@@ -2631,3 +2631,64 @@ needed). Written up as **Phase 7 (§4)** + **§5.6 (assets)**:
   hand-synced and unchecked — a parity gap to close with the first new site.
 - Files: this file (rev 16), DOOR_MASTER.md (A10 note, Part C rows 22–24,
   Part D). Nothing shipped; `npm test` green on the untouched game files.
+
+### 2026-09-07 (rev 2) — 7.1 SHIPPED: the numbers are on the doors
+Phase 7's entry step, exactly as 7.1 specified it — a data edit, a helper,
+and the number printed wherever a site or a room is named. No new files,
+no art, no engine work (7.2 is untouched).
+- **data.js — the register itself.** `roomNo` (a STRING, so `i`, `2D`,
+  `90S`, `H-20` ride the same field) + `why` (the one-clause hook from
+  the 7.3 table) on all 29 `DOOR_HQ.thresholds`; Atlantis carries
+  `sub: 'DEEP OCEAN ORICHALCUM RESEARCH'` (a threshold's `sub` now replaces
+  the bay's THRESHOLD · SECTOR sub-line, via `hqBayRoom`). The numbered HQ
+  places (7.4): `rooms.office.roomNo = '101'`, `rooms.training.roomNo =
+  '64'` (the hand-written `ROOM 64 ·` left the training room's `sub` — it
+  is on the field now), and on the egress doors with no interior yet:
+  Reception **1**, Records **42**, Medical **1111**, the Bureau of
+  Continuity **№ — CONTESTED** (7.0 rule 2: a joke and a policy). Bays wear
+  bay numbers, not room numbers; the Quartermaster, Arcane Engineering and
+  the elevator stay blank. New `DOOR_HQ.facility`: the two facility boards
+  wear the room they are projected in — `prebuilt_training → { room:
+  'training' }` (so the board and the room are ONE place, one 64) and
+  `prebuilt_holosim → 404`. The elevator door carries `floors: ['B', 'G',
+  'M', '2' … '12', '14', 'PH']` — there is no 13.
+- **Helpers** (window.*): `hqRoomNo(idOrMapId)` — a launch map (Δ suffix
+  stripped, so the Δ board wears the site's number), a facility board, a
+  room id, or any door / counter id in the building; `hqDoorNo(entry)` —
+  what a PLATE shows: the entry's own `roomNo`, else its mission's, else
+  the room it opens into (the egress door to the Training Room says ROOM 64
+  without carrying a second copy of the number); `hqRoomNoCompare` —
+  plain numbers ascending, then the alphanumerics; `hqRoomRegister()` —
+  every numbered place, sorted, with kind / room / bay / why (36 today).
+- **Where it shows.** three-renderer.js: `<em>ROOM 56</em>` in small caps
+  over the name on every door plate (`_hqPlateNo`), counter plate and box
+  room plate (`.hq-plate em`); the Training Room's south sign reads the
+  room's `roomNo`. map.js: the strip's room name (`ROOM 64 · TRAINING
+  ROOM · …`), the [E] prompt, the threshold panel header (number + hook:
+  `ROOM 56 · the 56 Aubrey holes`), the department door header, the bay
+  door panel's rows, the elevator panel's FLOOR PANEL line ("There is no
+  13. Room 13 is filed in Bay 1, not on a floor."), and the BUILDING
+  DIRECTORY: the current room's rows carry their number, and below them
+  THE ROOM REGISTER — every numbered place in the building in register
+  order, with WALK (in this room) / GO (into the bay at that threshold,
+  the training room at the RANGE console for 404, the egress at a
+  department door). match-select.js: the SITE FILE kicker prints
+  `ROOM 56` after the case number (`SITE_FILE_LABELS.room`). battle.js:
+  the result stamp's case line is `CASE No. EW-nnnn · ROOM 56`; the loading
+  screen's site-file card is filed as `SITE FILE · ROOM 56 · STONEHENGE`.
+  Both are derived locally from `activeGameMode` on either client — no
+  relay (RULE #2 satisfied by construction).
+- **doorhq.test.js** (five new tests): every launch map has a string
+  `roomNo` and a `why`; the Δ board resolves to the site; the facility
+  boards are 64 / 404 and never sites; the register is UNIQUE (one number,
+  one place), every row round-trips through `hqRoomNo`, every site appears
+  once with its bay, the order is numeric-then-alphanumeric; bay doors and
+  doors into numbered rooms carry no number of their own; Atlantis's
+  sub-line; the elevator skips 13; a source scan for every surface above.
+  `npm test`: 130 tests, all green. index.html bumped to `20260907d-cors`.
+- **REC still open** (MASTER C-22): the stadium ships as **50** and Records
+  as **42** — the user's yes/no can flip either with a one-field edit.
+  Not playtested (RULE #1c); what to eyeball first: a bay threshold plate
+  (ROOM line over the name), the directory's register, the result stamp.
+  Next: 7.5 (Bay 7 · URBAN, a data edit + the mezzanine placement, awaiting
+  C-23) or 7.2 (the walkable site, the engine piece — D.U.M.B. first).
