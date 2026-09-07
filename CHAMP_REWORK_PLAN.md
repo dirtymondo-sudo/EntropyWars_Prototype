@@ -22,10 +22,23 @@
 > check-grades planned-allowance rows are gone for every shipped passive.
 > Token `20260907l-cors` → `20260907m-cors`. See §5.7 for what differs from
 > the §5.2 table.
-> **Phases 4–6 are PLANNED here, not built** — the remaining statuses + the
-> stage-buff retune, the new spells (with their VFX / animation / cinematic
-> specs), and the two new champs. §10 lists the yes/no decisions the owner
-> should make (items 14–15 came out of Phase 2; 17–19 out of Phase 3).
+> **PHASE 4 SHIPPED 2026-09-07 (§5.1, §5.6, §9.4):** the status batch — all
+> 19 remaining §5.1 rows exist in `STATUS_DEFS` (haunted, corroded,
+> grievous, feared, possessed, infected, stoneform, soulBound, voodoo,
+> shadowRealm, tethered, incendiary, sparkling, levitating, blessed,
+> monster, extendedClips, carForm, mechaForm; shield is a real library row)
+> with GENERIC hook fields the engine reads (countsAs, blockSpells,
+> basicAttackStatus, hpMaxMult, grantsFlight, shedMotes, linkEcho, the
+> rope, the fear flight, the realm gates, onApply/onRemove), the four
+> registries know them, and §5.6 landed: 34 non-capstone stage spells are
+> ±1 (Calcify −2; the three ring-3 capstones keep ±2). Control
+> (possessed/infected) is rows + partner fields only — the hand-off lands
+> with the `possess` kind in wave B. Token `20260907n-cors` →
+> `20260907o-cors`. See §5.8.
+> **Phases 5–6 are PLANNED here, not built** — the new spells (with their
+> VFX / animation / cinematic specs) and the two new champs. §10 lists the
+> yes/no decisions the owner should make (items 14–15 came out of Phase 2;
+> 17–19 out of Phase 3; 20–24 out of Phase 4).
 
 This is the single planning doc for the owner's 2026-09-07 "champ reworks"
 notes. It is written so that any later session can build one phase from it
@@ -521,6 +534,44 @@ cyborg, mad scientist, fairy and cowboy. Consumers, per hook:
 - **Budget:** `PLANNED_PASSIVE_ALLOWANCE` keeps only gangster + nun; every shipped id is priced in `PASSIVE_VALUE` (incorporeal 18, lycanthropy 0 — the night stages are averaged in — bloodcraze 8, fairyDustTrail 4, powerCore −6 …). Roster mean/sd unchanged (265 / 9.5); every race still in the band.
 - **Tests:** `champ-rework.test.js` (registry integrity + slot cap incl. flying, the §5.2 field table, the statuses' four registries, check-grades pricing/planned-row drift, the werewolf archetype, and source-text guards for every hook consumer, the round-start ordering, the item-reach sites and the perm ledger).
 
+### 5.8 SHIPPED 2026-09-07 — Phase 4, the status batch (what landed, and where it differs from §5.1)
+
+Every §5.1 row that Phase 3 had not already shipped is a `STATUS_DEFS`
+entry (data.js, the "Phase 4" block after `wolfForm`; the header comment
+above the block lists every hook field and its consumer). All of them are in
+`STATUS_LIBRARY_DESCS` (the pause-menu library shows them today), state.js
+`_STATUS_EFFECT_IDS`, hud.js `_HRLG_SB_COLORS`, and the mana-formula
+tables (`_MF_HARD_CC` / `_MF_DOT` / `_MF_DEBUFF` / `_MF_BUFF`); ai.js
+`HARD_CC` counts feared / possessed / infected as denial. Nothing applies
+them yet (that is Phase 5) — but the engine already honours each one:
+
+| Status | Where the engine reads it |
+|---|---|
+| Haunted / Corroded | `onRoundEnd` DoT ticks (28 / 44, armor ignored, applier credited through `_statusSrc` like poison). **Corroded wears `countsAs: ['burn','poison']`** — battle.js `bonusStatusMatches` treats it as both for every `bonusVsStatus` payoff. It does NOT trigger burn-only mechanics (water dousing, lava escalation, Wet immunity) — those key on the burn id on purpose. |
+| Grievous Wound | `healTakenMult 0.5` — the Phase 3 field, `applyHealingToUnit`. |
+| Feared | `blockAction` + `fear`. state.js `getNextBlitzUnit` is now GENERIC: a status with blockMove AND blockAction skips the activation (stun, frozen, Stoneform); Feared blocks only actions, so the unit activates and battle.js `_continueBlitzWithUnit_impl` spends that activation on `_fearFleeMove` — the reachable `getMoveTiles` tile farthest (Manhattan) from `_fearSourceId`, through the ordinary `doMove` (animation, opportunity attacks, state-sync), then AP 0 and `maybeAdvanceTurn`. Human and CPU alike; "nowhere to run" just ends the turn. |
+| Possessed / Infected | Rows + fields only: `control: true`, `_controllerPlayer` / `_possessLeft` stamped by `applyStatusPayload`; Infected also `blockSpells` + `stageMod {atk:1, spd:1}`. **The controller hand-off (§5.5 `getControllingPlayer` in the blitz activation, the HUD ownership gate, the online guest-emit path) is NOT built** — it lands with the `possess` spell kind (wave B). Until then no spell applies either status. |
+| Stoneform | `blockMove` + `blockAction` (activation skipped), **`invulnerable: true`** instead of `damageTakenMult 0` (the existing Protected pipeline: "takes no damage", Press-Turn miss), `regenPct 0.15` via `onRoundEnd` (`applyHealingToUnit` preScaled). It is a buff, so cleanse never touches it; `dispelProof: true` is the flag the future purge kinds (`cleanseArea`) must honour. |
+| Soul-Bound / Voodoo | `_procLinks(target, dealt, opts)` runs in `applyDamageToUnit` right after HP drops. Soul-Bound: partner `_boundToId` takes `linkEcho` 30 % (`linkEchoBoosted` 45 % while the binder — `_statusSrc.soulBound` — has a live positive M.ATK stage). Voodoo: every enemy whose `_voodooAllyId` is the victim takes 50 %. Echoes resolve like DoT ticks (armor ignored, no offensive multipliers, the link's caster credited) and carry `opts._linkEcho` so they never chain. **Partner ids ride the payload** (`{ id:'soulBound', partnerId }`, `{ id:'voodoo', allyId }`) — the `link` spell kind supplies them. |
+| Shadow Realm | `kind: 'marker'`, `realm: true`, `_realmPartnerId` from `payload.partnerId` (apply it to BOTH units). Helpers `unitShadowRealmPartnerId` / `isUnitRealmShieldedFrom(unit, actor)` (on `window` for the AI) gate: `doAttack` + unit-targeted offensive `doSpell` (refused), `applyDamageToUnit` (source-less damage — zones, weather, DoTs — and every non-partner no-op; link echoes pass), `applyHealingToUnit` (sourced heals from non-partners no-op; regen / pixie dust / self-heals pass), `applyStatusPayload` (non-partner statuses bounce), `isUnitConcealedFrom` (hidden from a viewer who owns neither — moot in 2P). Zone/weather TICKS still run and are absorbed by the damage gate rather than skipped. The Void Stage presentation and the AI's target filter arrive with Shadow Realm★ (wave B). |
+| Roped | `blockMove` + `dragDamagePerTile 20`; `_tetherCasterId` from the applier. battle.js `_tetherFollow` runs in `finishMoveAt` for EVERY move the roper makes (forced moves included): each victim is dragged into the tile the roper just left (skipped when a unit stands there or the victim can't traverse it), 20 × tiles displaced, rig tween through `ThreeAnim.walkPath`. Simplification vs §5.1: the victim lands on the roper's ORIGIN tile rather than walking the whole path tile-for-tile. |
+| Incendiary Rounds | `basicAttackStatus {burn, 2}` — `applyDamageToUnit` after a landed physical hit with no `spellType` (basic + opportunity attacks), next to Serrated. |
+| Sparkling | `stageMod {spd:1}` + `shedMotes {blindOnStep:1}`: `finishMoveAt` calls `dropPixieDust(unit, ox, oy, { force, blindOnStep })` for any mote-shedding status (non-fairies included); an enemy stamping such a mote (`checkPixieDustPickup`) is Blinded 1 by the mote's caster. Motes are the fairy's `state.pixieDust` objects (already synced). |
+| Levitating | `grantsFlight`: map.js `canFly` reads the raw status; `onApply` → battle.js `levitateUnit` (`_resolveTakeoffZ`, the rig tween); `onRemove` → `forceGroundUnit` (runs BEFORE the key is deleted so the unit still counts as a flyer while it is set down). |
+| Blessed | `stageMod {def:1, mdef:1}` + 40 regen `onRoundEnd`. |
+| Monstrous | `blockSpells`, `stageMod` ×4, `rangeDelta 1`, `hpMaxMult 1.25` via `onApply` (adds 25 % of max HP to max AND current, guarded by `_monsterHpBonus` so a refresh never stacks) / `onRemove` (takes it back, HP clamped). |
+| Extended Clips | `stageMod {atk:1}` + `rangeDelta 1`. |
+| Car / Mecha | Visible stance carriers (`stack: 'replace'`, `form`); Mecha `stageMod {spd:-3, def:1, mdef:2}` + `rangeDelta 2`. The `transform` kind and the model swap are wave A. |
+| Shield | `kind: 'buff'` + a library desc; still the display badge over `unit.shield`. |
+
+**Engine changes that fell out of it (deliberate):**
+- **`unitSpellsBlocked(unit)`** replaces every `unitHasStatus(x, 'silence')` gate in battle.js and ui.js (15 + 2 sites): silence OR any `blockSpells` status (Monstrous, Infected). The refusal text still says "silenced".
+- **`rangeDelta` is generic:** `getEffectiveRange` sums every active status' `rangeDelta`. Invisible's +1 now rides its def instead of a hard-code; **Jack of All's RNG +1 is live for the first time** (its desc always promised it; the field was never read).
+- **`onApply(unit, src, {refreshed, payload})` / `onRemove(unit)`** def hooks fire from `applyStatusPayload` / `clearStatus`; `removeDebuffs` (the wipe-everything reset) now routes active keys through `clearStatus` so the hooks (and the RenderBus repaint) fire there too.
+- **Generic blitz skip** (state.js `getNextBlitzUnit`): blockMove + blockAction ⇒ skipped, same log text as before for stun / frozen.
+- **§5.6 retune:** 34 spells went ±2 → ±1 (Howl, Siege Mode, Overcalculate, Underdog Spirit, Sad Backstory, Plot Armor, Oath of Valor, Ayahuasca Retreat, Telepathic Link, Polymorph, Pleiadian Shield, Chitin Armor, Wish Granted, Blood Ritual, Inner Demon, Rally Command, Iron Bulwark, Grim Resolve, Tin Foil Hat, Hellfire Crown, Stone Skin, Nitro Boost, Thick Hide, Ki Charge, Royal Decree, Monkey Business, Death Pact, Audible, End Zone Dance, Steal from the Rich, Forest Ambush, Naughty List, and the Psychic job spell Psychosis); Calcify −3 → −2; Mimicry, Swarm Signal and Awakening (ring-3 capstones) keep ±2. Descriptions changed with the numbers. NOT touched: the Discord STATUS carrier (−2 ATK / −1 DEF, six spells) — it is a status, not a `statStageBoost`; §10 #22 asks.
+- **Tests:** champ-rework.test.js Phase 4 block — the §5.1 table (kind + hook fields + the four registries), the promised numbers (incl. Monstrous apply/remove on a stub), the AI / mana / spell-card registries, source-text guards for every consumer (incl. "no site still reads silence alone"), and the §5.6 rule (any ±2 `statStageBoost` must be a ring-3 capstone or Calcify; descs agree).
+
 ### 5.6 Stage-buff retune that this pass makes necessary
 
 STAT_REWORK §7 warned that +2-stage buffs doubled in strength when a stage
@@ -952,9 +1003,20 @@ RNG ∞, item reach), ui.js + ai.js (item reach), party-builder.js
 (`RACE_TRAITS` rows the overlay now owns), check-grades.js, champ-rework.test.js,
 this doc. Details and deviations: §5.7.
 
-### 9.4 Phase 4 — statuses + the stage-buff retune (data.js `STATUS_DEFS`, state.js `_STATUS_EFFECT_IDS`, hud.js colors, ai.js `HARD_CC`, battle.js processors)
-All of §5.1 that no spell yet applies can still ship (the library shows
-them; tests cover them), plus §5.6 (+2 → +1 non-capstone stages roster-wide).
+### 9.4 Phase 4 — statuses + the stage-buff retune (SHIPPED 2026-09-07)
+data.js (`STATUS_DEFS` ×19 + shield, `STATUS_LIBRARY_DESCS`, the `_MF_*`
+tables, 35 spell rows for §5.6), battle.js (`unitSpellsBlocked`,
+`unitShadowRealmPartnerId` / `isUnitRealmShieldedFrom`, `_procLinks`,
+`_tetherFollow`, `_fearFleeMove`, `levitateUnit`, `bonusStatusMatches`
+countsAs, `getEffectiveRange` rangeDelta, `applyStatusPayload` partner
+fields + onApply + realm gate, `clearStatus` onRemove, `removeDebuffs`,
+`applyDamageToUnit` realm / incendiary / links, `applyHealingToUnit`,
+`doAttack` / `doSpell` realm gates, `finishMoveAt`, `dropPixieDust` /
+`checkPixieDustPickup`, the fear branch in `_continueBlitzWithUnit_impl`,
+15 silence gates), ui.js (2 silence gates, the spell-card kind read),
+state.js (`_STATUS_EFFECT_IDS`, generic `getNextBlitzUnit` skip), hud.js
+(colours), ai.js (`HARD_CC`), map.js (`canFly`), champ-rework.test.js,
+index.html token. Details and deviations: §5.8.
 
 ### 9.5 Phase 5 — spells, in three waves
 - **Wave A (reuse-heavy, no new kinds):** QB, sedan (needs `transform`),
@@ -1030,3 +1092,18 @@ crumble (gargoyle), arm-cannon morph (cyborg).
 19. **Pure Negativity bounces environmental debuffs too** (lava Burn,
     Drowning, terrain Poison) — "immune to every debuff" taken literally. If
     the ghoul should still drown, the hook needs a source-based carve-out.
+20. **Feared flees on the engine's terms** (Phase 4, §5.8): the victim's
+    activation is one forced move to the reachable tile farthest from the
+    source, then the turn ends — a human never gets to pick the tile. The
+    alternative (the human picks any tile that increases distance, the CPU
+    auto-picks) costs a move-preview filter; say if you want it.
+21. **Stoneform is Protected** (invulnerable — "takes no damage", Press-Turn
+    miss) rather than a ×0 multiplier that still runs on-hit riders. Keep?
+22. **Discord's −2 ATK stays** (the six Discord spells apply a STATUS whose
+    stageMod is −2 ATK / −1 DEF; §5.6 only swept `statStageBoost` spells).
+    Sweep it to −1 too?
+23. **Roped drags to the roper's origin tile** (one hop per move, not the
+    whole path tile-for-tile) — cheaper, and the 20/tile damage still counts
+    every tile displaced. Fine, or must the victim trace the path?
+24. **Jack of All's RNG +1 is live** now that `rangeDelta` is generic (the
+    desc always claimed it). Keep, or drop the field from the def?

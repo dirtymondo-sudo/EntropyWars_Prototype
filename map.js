@@ -4732,6 +4732,10 @@
         }
         function canFly(unit) {
             if (SKY_RACES.includes(unit.race)) return true;
+            /* 🪽 Levitating (CHAMP REWORK Phase 4, STATUS_DEFS grantsFlight):
+               temporary flight for the status' duration. Raw status read —
+               this is a per-frame hot path. */
+            if (unit.status && (unit.status.levitating | 0) > 0) return true;
 
             if ((unit.race === 'homosapien' && unit.cls === 'Psychic') || unit.race === 'telepath') return true;
             return unitHasJetpack(unit);

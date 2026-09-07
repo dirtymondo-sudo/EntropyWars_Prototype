@@ -318,6 +318,30 @@ Adding a passive = one `PASSIVE_DEFS` row + one `RACE_PASSIVES` id + a
 fails on a missing def, a slot overflow (flying counts), an unpriced id, or a
 `PLANNED_PASSIVE_ALLOWANCE` row for a race that already wears its passive.
 
+## THE STATUS BATCH (CHAMP_REWORK_PLAN Phase 4) — added 2026-09-07
+Every §5.1 status is a `STATUS_DEFS` row (data.js, the Phase 4 block after
+`wolfForm`; its header comment lists every hook field → consumer). The
+engine reads FIELDS, never ids: `countsAs` (bonusStatusMatches — Corroded
+is Burn AND Poison), `blockSpells` (`unitSpellsBlocked` — the ONLY
+silence gate; never call `unitHasStatus(u,'silence')` at a cast site),
+`rangeDelta` (getEffectiveRange, generic), `basicAttackStatus`
+(Incendiary), `hpMaxMult` + `onApply`/`onRemove` (Monstrous; the hooks
+fire from applyStatusPayload / clearStatus — `onRemove` runs BEFORE the key
+is deleted), `grantsFlight` (map.js canFly + `levitateUnit` /
+forceGroundUnit), `shedMotes` (finishMoveAt → dropPixieDust, blind on
+step), `linkEcho` (`_procLinks` after every damage application; partner
+ids ride the PAYLOAD: `partnerId` / `allyId`), `dragDamagePerTile`
+(`_tetherFollow` in finishMoveAt), `fear` (`_fearFleeMove` at the
+victim's activation), `realm` (`isUnitRealmShieldedFrom` — target /
+damage / heal / status gates). state.js `getNextBlitzUnit` skips ANY
+status with blockMove + blockAction (stun, frozen, Stoneform). Adding a
+status = one row + `STATUS_LIBRARY_DESCS` + `_STATUS_EFFECT_IDS` +
+`_HRLG_SB_COLORS` (+ ai.js `HARD_CC` / data.js `_MF_*` if it denies
+turns); champ-rework.test.js fails on a missing registry. §5.6 RULE: a
+non-capstone `statStageBoost` is ±1 (ring-3 capstones ±2; Calcify −2) —
+the test enforces it. Possessed / Infected are rows only until the
+`possess` kind (Phase 5 wave B) wires `getControllingPlayer`.
+
 ## TWIN NODES (race-tree nodes that hold two spells) — added 2026-09-07
 CHAMP_REWORK_PLAN §4 / §4.6 (Phase 2). A `RACE_TREE` entry (data.js) may be
 a 2-id array: the node holds two ALTERNATES, exactly one equips (1 slot,

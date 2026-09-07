@@ -2643,7 +2643,7 @@
             const _OFF_KINDS = { damage:1, aoe:1, barrage:1, lifeDrain:1, line:1, zoneDebuff:1,
                                  debuff:1, multiHit:1, cross:1, ricochet:1, splitBeam:1, pull:1,
                                  aoePull:1, linePush:1, delayed:1, seedPoison:1 };
-            const _silenced = typeof unitHasStatus === 'function' && unitHasStatus(_self, 'silence');
+            const _silenced = typeof unitSpellsBlocked === 'function' && unitSpellsBlocked(_self);
             if (!_silenced) {
               const _allSpells = [].concat(_self.spells || [], _self._raceAbilities || []);
               for (const _sp of _allSpells) {
@@ -4721,7 +4721,7 @@
                 addLog(`${unitDisplayName(unit)} already acted this round.`);
                 return;
             }
-            if (view === 'spells' && unitHasStatus(unit, 'silence')) {
+            if (view === 'spells' && unitSpellsBlocked(unit)) {
                 addLog(`${unitDisplayName(unit)} is silenced and cannot cast this turn.`);
                 return;
             }
@@ -11340,7 +11340,10 @@
                 const def = STATUS_DEFS[se.id];
                 const label = def?.label || se.id;
                 const dur = se.duration || 1;
-                const isDebuff = ['stun', 'silence', 'slow', 'blind', 'poison', 'burn', 'stagger', 'marked', 'fear', 'frozen', 'bleed', 'confused', 'drowning', 'sleep'].includes(se.id);
+                // The def's kind is the truth (CHAMP REWORK Phase 4 statuses
+                // included); the legacy id list only covers ids with no def.
+                const isDebuff = def ? def.kind === 'debuff'
+                    : ['stun', 'silence', 'slow', 'blind', 'poison', 'burn', 'stagger', 'marked', 'fear', 'frozen', 'bleed', 'confused', 'drowning', 'sleep'].includes(se.id);
                 labels.push({ text: `${label} ${dur}t`, isDebuff });
             }
             return labels;

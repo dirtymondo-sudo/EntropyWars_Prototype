@@ -172,7 +172,9 @@
     const SPLASH_KINDS = new Set(['aoe', 'cross', 'barrage']);
     const HEAL_KINDS = new Set(['heal', 'healAll', 'selfHeal', 'revive', 'zoneHeal', 'seedHeal']);
     // Hard CC = the target loses control of (part of) its turn.
-    const HARD_CC = new Set(['stun', 'sleep', 'freeze', 'frozen', 'charm', 'stagger']);
+    const HARD_CC = new Set(['stun', 'sleep', 'freeze', 'frozen', 'charm', 'stagger',
+        // CHAMP REWORK Phase 4 (plan §5.1): the victim loses (part of) its activation.
+        'feared', 'possessed', 'infected']);
 
     // ── per-turn action memory (anti-loop, target spreading) ─────────────
     let _turnActionLog = [];

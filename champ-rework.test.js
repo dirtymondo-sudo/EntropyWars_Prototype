@@ -196,3 +196,166 @@ test('engine hooks are wired where the plan says (source-text guards)', () => {
     // Permanent ledger entries (Mad Genius) are respected by the three ledger walkers.
     assert.ok((battleSrc.match(/m\.perm/g) || []).length >= 3, 'statStageMods perm flag honoured by purge, badge sync and tick');
 });
+
+/* ═══════════════ Phase 4 — the §5.1 status batch + the §5.6 retune ═══════════════ */
+
+const aiSrc = src('ai.js');
+const uiSrc = src('ui.js');
+
+/* Plan §5.1 — every status of the batch, its kind and the hook field(s) the
+   engine reads (data.js STATUS_DEFS header lists each field's consumer). */
+const PHASE4 = {
+    haunted:       { kind: 'debuff', fields: ['dot', 'onRoundEnd'] },
+    corroded:      { kind: 'debuff', fields: ['dot', 'onRoundEnd', 'countsAs'] },
+    grievous:      { kind: 'debuff', fields: ['healTakenMult'] },
+    feared:        { kind: 'debuff', fields: ['blockAction', 'fear'] },
+    possessed:     { kind: 'debuff', fields: ['control'] },
+    infected:      { kind: 'debuff', fields: ['control', 'blockSpells', 'stageMod'] },
+    stoneform:     { kind: 'buff',   fields: ['blockMove', 'blockAction', 'invulnerable', 'regenPct', 'onRoundEnd', 'dispelProof'] },
+    soulBound:     { kind: 'debuff', fields: ['link', 'linkEcho', 'linkEchoBoosted'] },
+    voodoo:        { kind: 'debuff', fields: ['link', 'linkEcho'] },
+    shadowRealm:   { kind: 'marker', fields: ['realm'] },
+    tethered:      { kind: 'debuff', fields: ['blockMove', 'dragDamagePerTile'] },
+    incendiary:    { kind: 'buff',   fields: ['basicAttackStatus'] },
+    sparkling:     { kind: 'buff',   fields: ['stageMod', 'shedMotes'] },
+    levitating:    { kind: 'buff',   fields: ['grantsFlight', 'onApply', 'onRemove'] },
+    blessed:       { kind: 'buff',   fields: ['stageMod', 'onRoundEnd'] },
+    monster:       { kind: 'buff',   fields: ['blockSpells', 'stageMod', 'rangeDelta', 'hpMaxMult', 'onApply', 'onRemove'] },
+    extendedClips: { kind: 'buff',   fields: ['stageMod', 'rangeDelta'] },
+    carForm:       { kind: 'buff',   fields: ['form'] },
+    mechaForm:     { kind: 'buff',   fields: ['form', 'stageMod', 'rangeDelta'] },
+};
+
+test('phase 4 batch: every §5.1 status exists with its kind, hook fields and the four registries', () => {
+    const S = D.STATUS_DEFS;
+    for (const [id, want] of Object.entries(PHASE4)) {
+        const d = S[id];
+        assert.ok(d, `STATUS_DEFS.${id} missing`);
+        assert.strictEqual(d.kind, want.kind, `${id}.kind`);
+        for (const f of want.fields) assert.ok(d[f] !== undefined, `${id}.${f} missing`);
+        for (const f of ['icon', 'glyph', 'short', 'label', 'colorText', 'category', 'stack', 'iconSrc']) assert.ok(d[f], `${id}.${f}`);
+        assert.ok(STATUS_LIBRARY_DESCS[id], `STATUS_LIBRARY_DESCS.${id}`);
+        assert.ok(STATUS_EFFECT_IDS.has(id), `state.js _STATUS_EFFECT_IDS lacks '${id}'`);
+        assert.ok(SB_COLORS[id], `hud.js _HRLG_SB_COLORS lacks '${id}'`);
+        assert.ok(!d.statChange, `${id} must be a visible status, not a statChange carrier`);
+    }
+    // Shield became a real library row (plan §5.1 last line).
+    assert.strictEqual(S.shield.kind, 'buff');
+    assert.ok(STATUS_LIBRARY_DESCS.shield && SB_COLORS.shield);
+});
+
+test('phase 4 batch: the numbers the plan promises', () => {
+    const S = D.STATUS_DEFS;
+    assert.strictEqual(S.haunted.dot, 28);
+    assert.strictEqual(S.corroded.dot, 44);
+    same(S.corroded.countsAs, ['burn', 'poison']);
+    assert.strictEqual(S.grievous.healTakenMult, 0.5);
+    assert.strictEqual(S.goo.healTakenMult, S.grievous.healTakenMult, 'Grievous reuses the Gooed heal multiplier');
+    assert.ok(S.feared.blockAction && !S.feared.blockMove, 'Feared blocks actions but must still activate (the flee is the move)');
+    assert.ok(S.stoneform.blockMove && S.stoneform.blockAction && S.stoneform.invulnerable);
+    assert.strictEqual(S.stoneform.regenPct, 0.15);
+    assert.strictEqual(S.soulBound.linkEcho, 0.30);
+    assert.strictEqual(S.soulBound.linkEchoBoosted, 0.45);
+    assert.strictEqual(S.voodoo.linkEcho, 0.5);
+    assert.strictEqual(S.tethered.dragDamagePerTile, 20);
+    same(S.incendiary.basicAttackStatus, { id: 'burn', duration: 2 });
+    same(S.sparkling.stageMod, { spd: 1 });
+    same(S.sparkling.shedMotes, { blindOnStep: 1 });
+    same(S.blessed.stageMod, { def: 1, mdef: 1 });
+    same(S.monster.stageMod, { atk: 1, spd: 1, def: 1, mdef: 1 });
+    assert.strictEqual(S.monster.rangeDelta, 1);
+    assert.strictEqual(S.monster.hpMaxMult, 1.25);
+    same(S.extendedClips.stageMod, { atk: 1 });
+    assert.strictEqual(S.extendedClips.rangeDelta, 1);
+    same(S.infected.stageMod, { atk: 1, spd: 1 });
+    same(S.mechaForm.stageMod, { spd: -3, def: 1, mdef: 2 });
+    assert.strictEqual(S.mechaForm.rangeDelta, 2);
+    // Every status a hook applies exists.
+    assert.ok(S[S.incendiary.basicAttackStatus.id]);
+    assert.ok(S.blind, 'glitter motes blind');
+    // Monstrous hands the HP back on removal (pure functions — run them on a stub).
+    const u = { maxHp: 400, hp: 100, dead: false, status: { monster: 3 } };
+    S.monster.onApply(u, null, { refreshed: false });
+    assert.strictEqual(u.maxHp, 500); assert.strictEqual(u.hp, 200);
+    S.monster.onApply(u, null, { refreshed: true });
+    assert.strictEqual(u.maxHp, 500, 'a refresh never stacks the bonus');
+    S.monster.onRemove(u);
+    assert.strictEqual(u.maxHp, 400); assert.strictEqual(u.hp, 200);
+    assert.strictEqual(u._monsterHpBonus, undefined);
+});
+
+test('phase 4: the AI, the mana formula and the spell card know the new statuses', () => {
+    const hardCc = (aiSrc.match(/const HARD_CC = new Set\(\[([\s\S]*?)\]\)/) || [])[1] || '';
+    for (const id of ['feared', 'possessed', 'infected']) assert.ok(hardCc.includes(`'${id}'`), `ai.js HARD_CC lacks ${id}`);
+    const mfHard = (dataSrc.match(/const _MF_HARD_CC = \{([\s\S]*?)\};/) || [])[1] || '';
+    for (const id of ['feared', 'possessed', 'infected']) assert.ok(new RegExp(`\\b${id}:`).test(mfHard), `_MF_HARD_CC lacks ${id}`);
+    const mfDot = (dataSrc.match(/const _MF_DOT\s*= \{([\s\S]*?)\};/) || [])[1] || '';
+    for (const id of ['haunted', 'corroded']) assert.ok(new RegExp(`\\b${id}:`).test(mfDot), `_MF_DOT lacks ${id}`);
+    const mfBuff = (dataSrc.match(/const _MF_BUFF\s*= \{([\s\S]*?)\};/) || [])[1] || '';
+    for (const id of ['stoneform', 'blessed', 'monster', 'extendedClips', 'incendiary', 'sparkling', 'levitating']) assert.ok(new RegExp(`\\b${id}:`).test(mfBuff), `_MF_BUFF lacks ${id}`);
+    assert.ok(/const isDebuff = def \? def\.kind === 'debuff'/.test(uiSrc), 'ui.js spell-card status label reads STATUS_DEFS kind');
+});
+
+test('phase 4: engine hooks are wired where the plan says (source-text guards)', () => {
+    const count = (text, re) => (text.match(re) || []).length;
+    // blockSpells: one gate, and no site still asks for silence alone.
+    assert.ok(/function unitSpellsBlocked\(unit\)/.test(battleSrc));
+    assert.strictEqual(count(battleSrc, /unitHasStatus\([A-Za-z_]+, 'silence'\)/g), 1, 'battle.js: only unitSpellsBlocked itself may read silence directly');
+    assert.strictEqual(count(uiSrc, /unitHasStatus\([A-Za-z_]+, 'silence'\)/g), 0, 'ui.js silence gates route through unitSpellsBlocked');
+    assert.ok(count(battleSrc, /unitSpellsBlocked\(/g) >= 12, 'silence gates converted');
+    // countsAs (Corroded), generic rangeDelta, basicAttackStatus (Incendiary).
+    assert.ok(/function bonusStatusMatches[\s\S]{0,600}countsAs/.test(battleSrc));
+    assert.ok(/function getEffectiveRange[\s\S]{0,2500}\?\.rangeDelta/.test(battleSrc), 'getEffectiveRange sums STATUS_DEFS rangeDelta');
+    assert.ok(/basicAttackStatus/.test(battleSrc));
+    // Links, the rope, the flight from fear, levitation, the realm.
+    assert.ok(count(battleSrc, /_procLinks\(/g) >= 2, '_procLinks defined and called from applyDamageToUnit');
+    assert.ok(count(battleSrc, /_tetherFollow\(/g) >= 2, '_tetherFollow defined and called from finishMoveAt');
+    assert.ok(count(battleSrc, /_fearFleeMove\(/g) >= 2, '_fearFleeMove defined and called at activation');
+    assert.ok(count(battleSrc, /isUnitRealmShieldedFrom\(/g) >= 6, 'realm gate on target / damage / heal / status sites');
+    assert.ok(/function levitateUnit\(/.test(battleSrc));
+    assert.ok(/unit\.status\.levitating/.test(mapSrc), 'map.js canFly honours Levitating');
+    // Glitter motes ride the pixie-dust system.
+    assert.ok(/shedMotes/.test(battleSrc) && /blindOnStep/.test(battleSrc));
+    // onApply / onRemove hooks fire from the two status funnels.
+    assert.ok(/meta\.onApply\(target, sourceUnit/.test(battleSrc));
+    assert.ok(/_def\.onRemove\(unit\)/.test(battleSrc));
+    // The blitz skip is generic (blockMove + blockAction), not a stun/frozen id list.
+    assert.ok(/function getNextBlitzUnit\(\)[\s\S]{0,1500}blockMove && STATUS_DEFS\[k\]\?\.blockAction/.test(stateSrc));
+    // Partner fields land on the unit (state-sync carries them).
+    for (const f of ['_fearSourceId', '_tetherCasterId', '_boundToId', '_voodooAllyId', '_realmPartnerId', '_controllerPlayer']) {
+        assert.ok(battleSrc.includes(f), `applyStatusPayload stamps ${f}`);
+    }
+});
+
+test('§5.6 retune: non-capstone stage buffs/debuffs are ±1 (capstones may do ±2)', () => {
+    // Ring 3 of a race tree is the capstone (tier III); everything else, and
+    // every off-tree / class spell, is ±1. Calcify keeps −2 by the plan's
+    // explicit carve-out (the only M.ATK debuff).
+    const capstoneIds = new Set();
+    for (const tree of Object.values(D.RACE_TREE || {})) {
+        for (const [node, v] of Object.entries(tree)) {
+            if (String(node) !== '3') continue;
+            for (const id of (Array.isArray(v) ? v : [v])) capstoneIds.add(id);
+        }
+    }
+    const ALLOWED_TWO = new Set(['raceCalcify']);
+    const seen = new Set();
+    const check = (sp, where) => {
+        if (!sp || !sp.id || seen.has(sp.id) || !sp.statStageBoost) return;
+        seen.add(sp.id);
+        const big = Object.entries(sp.statStageBoost).filter(([, v]) => Math.abs(v) >= 2);
+        if (!big.length) return;
+        assert.ok(capstoneIds.has(sp.id) || ALLOWED_TWO.has(sp.id), `${sp.id} (${where}) wears ${JSON.stringify(sp.statStageBoost)} but is not a capstone`);
+        for (const [, v] of big) assert.ok(Math.abs(v) <= 2, `${sp.id}: no stage boost beyond ±2`);
+    };
+    for (const [race, arr] of Object.entries(D.RACE_ABILITIES || {})) (arr || []).forEach(sp => check(sp, race));
+    for (const sp of Object.values(D.SPELL_LIBRARY || {})) check(sp, 'class');
+    assert.ok(capstoneIds.size > 0 && seen.size > 30, 'the sweep saw the roster');
+    // The words follow the math: no non-capstone desc still promises 2 stages.
+    for (const [race, arr] of Object.entries(D.RACE_ABILITIES || {})) {
+        for (const sp of arr || []) {
+            if (!sp.statStageBoost || capstoneIds.has(sp.id) || ALLOWED_TWO.has(sp.id)) continue;
+            assert.ok(!/by [23] stages/.test(sp.desc || ''), `${sp.id} (${race}) desc still says 2+ stages`);
+        }
+    }
+});

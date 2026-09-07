@@ -4509,8 +4509,8 @@ const SPELL_LIBRARY = [
         tier: 'I',
         school: 'Psychic',
         classRestriction: 'Psychic',
-        statStageBoost: { mdef: -2 },
-        desc: 'Weakens a Single Enemy. Lowers M DEF by 2 stages.'
+        statStageBoost: { mdef: -1 },
+        desc: 'Weakens a Single Enemy. Lowers M DEF by 1 stage.'
     },
 
     {
@@ -5857,8 +5857,8 @@ const RACE_ABILITIES = {
         { id: 'raceCalcify', spellType: 'unholy', element: 'earth', name: 'Calcify',
           type: 'debuff', cost: 25, range: 3, apCost: 1,
           kind: 'debuff',
-          statStageBoost: { int: -3 },
-          desc: 'Turn the target\'s thoughts to stone. Grey creeps up from their skull as the mind petrifies — lowers M ATK by 3 stages.' },
+          statStageBoost: { int: -2 },
+          desc: 'Turn the target\'s thoughts to stone. Grey creeps up from their skull as the mind petrifies — lowers M ATK by 2 stages.' },
         SHARED_FISSURE,
         SHARED_WING_ATTACK
     ],
@@ -6003,8 +6003,8 @@ const RACE_ABILITIES = {
         { id: 'raceHowl', spellType: 'human', element: 'sonic', name: 'Howl',
           type: 'buff', cost: 20, range: 0, apCost: 1,
           kind: 'buff',
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers the caster. Raises ATK by 1 stage.' },
         _mkCharge({ id: 'raceBloodFrenzy', spellType: 'unholy', element: 'blood', name: 'Blood Frenzy',
           tier: 'III', cost: 45, dmg: 180, apCost: 2, range: 6, autoTargetLowestHp: true,
           desc: 'Deals HEAVY physical damage to a Single Enemy. Automatically strikes the visible enemy with the lowest HP.' }),
@@ -6170,8 +6170,8 @@ const RACE_ABILITIES = {
         { id: 'raceSiegeMode', spellType: 'tech', name: 'Siege Mode',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers the caster. Raises ATK by 1 stage.' },
         { id: 'raceEject', spellType: 'tech', name: 'Eject!',
           type: 'utility', cost: 15, range: 0, apCost: 1,
           kind: 'escape', teleportDistance: 3,
@@ -6205,8 +6205,8 @@ const RACE_ABILITIES = {
     'ai': [
         { id: 'raceOvercalculate', spellType: 'tech', name: 'Overcalculate',
           type: 'buff', cost: 20, apCost: 1, range: 0,
-          kind: 'buff', statStageBoost: { atk: 2 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages.' },
+          kind: 'buff', statStageBoost: { atk: 1 },
+          desc: 'Empowers the caster. Raises ATK by 1 stage.' },
         { id: 'racePredictiveModel', spellType: 'tech', name: 'Predictive Model',
           type: 'debuff', cost: 25, range: 4, apCost: 1,
           kind: 'debuff',
@@ -6327,8 +6327,8 @@ const RACE_ABILITIES = {
         { id: 'raceUnderdogSpirit', spellType: 'human', element: 'blood', name: 'Underdog Spirit',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages. Nobody believed in you — good.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers the caster. Raises ATK by 1 stage. Nobody believed in you — good.' },
         { id: 'raceIndomitableWill', spellType: 'human', element: 'blood', name: 'Indomitable Will',
           type: 'buff', cost: 40, apCost: 2, range: 0, tier: 'III',
           kind: 'buff', cooldownRounds: 3,
@@ -6377,13 +6377,13 @@ const RACE_ABILITIES = {
         { id: 'raceSadBackstory', spellType: 'human', element: 'psychic', name: 'Sad Backstory',
           type: 'buff', cost: 20, range: 0, apCost: 1,
           kind: 'buff',
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers the caster. Raises ATK by 1 stage.' },
         { id: 'racePlotArmor', spellType: 'human', element: 'light', name: 'Plot Armor',
           type: 'buff', cost: 20, range: 0, apCost: 1,
           kind: 'buff',
-          statStageBoost: { def: 2 },
-          desc: 'Empowers the caster. Raises DEF by 2 stages.' },
+          statStageBoost: { def: 1 },
+          desc: 'Empowers the caster. Raises DEF by 1 stage.' },
         { id: 'raceToBeContinued', spellType: 'human', element: 'metal', name: 'To Be Continued',
           type: 'damage', cost: 35, dmg: 135, range: 3, apCost: 1,
           kind: 'damage', damageType: 'physical',
@@ -6404,8 +6404,8 @@ const RACE_ABILITIES = {
         { id: 'raceOathOfValor', spellType: 'divine', element: 'light', name: 'Oath of Valor',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'warCry', auraRadius: 2,
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers All Allies nearby. Raises ATK by 2 stages.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers All Allies nearby. Raises ATK by 1 stage.' },
         { id: 'raceChivalry', spellType: 'human', element: 'light', name: 'Chivalry',
           type: 'utility', cost: 15, apCost: 1, range: 4,
           kind: 'guard', cooldownRounds: 2,
@@ -6432,8 +6432,8 @@ const RACE_ABILITIES = {
           type: 'buff', cost: 35, apCost: 2, range: 0,
           kind: 'buff',
           selfHealPct: 0.50, cleanse: 99,
-          statStageBoost: { mdef: 2 },
-          desc: 'Empowers the caster. Raises M DEF by 2 stages.' },
+          statStageBoost: { mdef: 1 },
+          desc: 'Empowers the caster. Raises M DEF by 1 stage.' },
         /* Shaman capstone since the 2026-08-12 capstone pass. */
         { id: 'raceBadTrip', spellType: 'anomaly', element: 'psychic', name: 'Bad Trip',
           type: 'damage', tier: 'III', cost: 55, dmg: 180, range: 3,
@@ -6525,8 +6525,8 @@ const RACE_ABILITIES = {
         { id: 'raceTelepathicLink', spellType: 'human', element: 'psychic', name: 'Telepathic Link',
           type: 'buff', cost: 20, range: 3, apCost: 1,
           kind: 'warCry', auraRadius: 3,
-          statStageBoost: { int: 2 },
-          desc: 'Empowers All Allies nearby. Raises M ATK by 2 stages.' },
+          statStageBoost: { int: 1 },
+          desc: 'Empowers All Allies nearby. Raises M ATK by 1 stage.' },
         { id: 'racePsychicBarrier', spellType: 'anomaly', element: 'psychic', name: 'Psychic Barrier',
           type: 'buff', cost: 25, range: 3, apCost: 1,
           kind: 'buff',
@@ -6594,8 +6594,8 @@ const RACE_ABILITIES = {
         { id: 'racePolymorph', spellType: 'unholy', element: 'arcane', name: 'Polymorph',
           type: 'debuff', cost: 55, range: 4, apCost: 2,
           kind: 'debuff', cooldownRounds: 3,
-          statStageBoost: { atk: -2, int: -2 },
-          desc: 'Transmute an enemy into something small and harmless. Lowers the target\'s ATK by 2 stages and M ATK by 2 stages. Ribbit.' },
+          statStageBoost: { atk: -1, int: -1 },
+          desc: 'Transmute an enemy into something small and harmless. Lowers the target\'s ATK by 1 stage and M ATK by 1 stage. Ribbit.' },
         /* Wizard capstone since the 2026-08-12 capstone pass (was Polymorph). */
         { id: 'raceHocusPocus', spellType: 'unholy', element: 'arcane', name: 'Hocus Pocus',
           type: 'damage', tier: 'III', cost: 55, dmg: 180, range: 4,
@@ -6709,8 +6709,8 @@ const RACE_ABILITIES = {
         { id: 'racePleiadianShield', spellType: 'alien', element: 'light', name: 'Pleiadian Shield',
           type: 'buff', cost: 25, apCost: 1, range: 3,
           kind: 'aoeShield', aoeRadius: 0, shieldHp: 220,
-          statStageBoost: { def: 2 },
-          desc: 'Grants a damage-absorbing shield to All Allies in an AOE. Raises DEF by 2 stages.' },
+          statStageBoost: { def: 1 },
+          desc: 'Grants a damage-absorbing shield to All Allies in an AOE. Raises DEF by 1 stage.' },
         { id: 'raceNordicAccord', spellType: 'alien', element: 'psychic', name: 'Nordic Accord',
           type: 'buff', tier: 'III', cost: 40, apCost: 1, heal: 0, range: 0,
           kind: 'healAll',
@@ -6748,8 +6748,8 @@ const RACE_ABILITIES = {
         { id: 'raceChitinArmor', spellType: 'alien', name: 'Chitin Armor',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { def: 2 },
-          desc: 'Empowers the caster. Raises DEF by 2 stages.' },
+          statStageBoost: { def: 1 },
+          desc: 'Empowers the caster. Raises DEF by 1 stage.' },
         _mkCharge({ id: 'raceAmbushLunge', spellType: 'alien', name: 'Ambush Lunge', dmg: 125, desc: 'Deals MEDIUM physical damage to a Single Enemy. The caster charges into melee first.' }),
         { id: 'raceFractalNeedle', spellType: 'alien', element: 'arcane', name: 'Fractal Needle',
           type: 'damage', tier: 'III', cost: 45, dmg: 170, range: 4,
@@ -6770,8 +6770,8 @@ const RACE_ABILITIES = {
         { id: 'raceWishGranted', spellType: 'divine', name: 'Wish Granted',
           type: 'buff', cost: 30, apCost: 1, range: 3,
           kind: 'buff', cleanse: 2,
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers a Single Ally. Raises ATK by 2 stages.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers a Single Ally. Raises ATK by 1 stage.' },
         /* (Sandglass Prison deleted 2026-08-12 — Ancient Magic took its tree
            slot.) Djinn capstone since the 2026-08-12 capstone pass. */
         { id: 'raceAncientMagic', spellType: 'divine', name: 'Ancient Magic',
@@ -6946,8 +6946,8 @@ const RACE_ABILITIES = {
         { id: 'raceBloodRitual', spellType: 'anomaly', name: 'Blood Ritual',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff', selfDamagePct: 0.10,
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages. Costs a portion of your HP.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers the caster. Raises ATK by 1 stage. Costs a portion of your HP.' },
         { id: 'raceCliffCharge', spellType: 'unholy', name: 'Cliff Charge',
           type: 'damage', cost: 25, dmg: 100, range: 2, apCost: 1,
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 20,
@@ -6976,8 +6976,8 @@ const RACE_ABILITIES = {
         { id: 'raceInnerDemon', spellType: 'unholy', element: 'shadow', name: 'Inner Demon',
           type: 'buff', cost: 25, apCost: 1, range: 0, cooldownRounds: 2,
           kind: 'buff', selfDamagePct: 0.20,
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages. Costs a portion of your HP. Cooldown: 2 rounds.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers the caster. Raises ATK by 1 stage. Costs a portion of your HP. Cooldown: 2 rounds.' },
         SHARED_SCORCHED_EARTH,
         SHARED_SMOKE_SCREEN
     ],
@@ -7099,13 +7099,13 @@ const RACE_ABILITIES = {
         { id: 'raceRallyCommand', spellType: 'human', name: 'Rally Command',
           type: 'buff', cost: 30, range: 0, apCost: 2,
           kind: 'warCry', aoeRadius: 2,
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers All Allies nearby. Raises ATK by 2 stages.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers All Allies nearby. Raises ATK by 1 stage.' },
         { id: 'raceIronBulwark', spellType: 'human', name: 'Iron Bulwark',
           type: 'buff', cost: 20, range: 0, apCost: 1,
           kind: 'buff',
-          statStageBoost: { def: 2 },
-          desc: 'Empowers the caster. Raises DEF by 2 stages.' },
+          statStageBoost: { def: 1 },
+          desc: 'Empowers the caster. Raises DEF by 1 stage.' },
         { id: 'raceArtilleryStrike', spellType: 'human', name: 'Artillery Strike',
           type: 'damage', cost: 40, dmg: 135, range: 6, apCost: 2,
           kind: 'delayed', damageType: 'physical', aoeRadius: 1, delayTurns: 1,
@@ -7144,8 +7144,8 @@ const RACE_ABILITIES = {
         { id: 'raceGrimResolve', spellType: 'human', element: 'shadow', name: 'Grim Resolve',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages. Heroes make speeches. You make a list.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers the caster. Raises ATK by 1 stage. Heroes make speeches. You make a list.' },
         { id: 'raceNoMercy', spellType: 'human', element: 'shadow', name: 'No Mercy',
           type: 'damage', cost: 45, dmg: 180, range: 1, apCost: 2, tier: 'III',
           kind: 'damage', damageType: 'physical', executeBonusPct: 0.75,
@@ -7160,8 +7160,8 @@ const RACE_ABILITIES = {
         { id: 'raceTinFoilHat', spellType: 'human', element: 'metal', name: 'Tin Foil Hat',
           type: 'buff', cost: 20, apCost: 1, range: 2,
           kind: 'buff',
-          statStageBoost: { mdef: 2 },
-          desc: 'Empowers a Single Ally. Raises M DEF by 2 stages.' },
+          statStageBoost: { mdef: 1 },
+          desc: 'Empowers a Single Ally. Raises M DEF by 1 stage.' },
         { id: 'raceChemtrails', spellType: 'human', element: 'poison', name: 'Chemtrails',
           type: 'damage', cost: 25, dmg: 100, range: 4,
           kind: 'line', damageType: 'magic', lineWidth: 1,
@@ -7189,8 +7189,8 @@ const RACE_ABILITIES = {
         { id: 'raceHellfireCrown', spellType: 'unholy', name: 'Hellfire Crown',
           type: 'buff', cost: 30, range: 0, apCost: 1,
           kind: 'buff',
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers the caster. Raises ATK by 1 stage.' },
         { id: 'raceCataclysmDecree', spellType: 'unholy', name: 'Cataclysm Decree',
           type: 'damage', tier: 'III', cost: 40, dmg: 160, range: 5, apCost: 2,
           kind: 'delayed', damageType: 'magic', aoeRadius: 1, delayTurns: 1,
@@ -7522,8 +7522,8 @@ const RACE_ABILITIES = {
         { id: 'raceStoneSkin', spellType: 'divine', name: 'Stone Skin',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { def: 2 },
-          desc: 'Empowers the caster. Raises DEF by 2 stages.' },
+          statStageBoost: { def: 1 },
+          desc: 'Empowers the caster. Raises DEF by 1 stage.' },
         { id: 'raceQuake', element: 'earth', spellType: 'human', name: 'Quake',
           type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 0, apCost: 2,
           kind: 'barrage', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
@@ -7556,8 +7556,8 @@ const RACE_ABILITIES = {
         { id: 'raceNitroBoost', spellType: 'tech', name: 'Nitro Boost',
           type: 'buff', cost: 15, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { spd: 2 },
-          desc: 'Empowers the caster. Raises SPD by 2 stages.' },
+          statStageBoost: { spd: 1 },
+          desc: 'Empowers the caster. Raises SPD by 1 stage.' },
     ],
 
     'ice queen': [
@@ -7594,8 +7594,8 @@ const RACE_ABILITIES = {
         { id: 'raceThickHide', spellType: 'human', name: 'Thick Hide',
           type: 'buff', cost: 15, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { def: 2 },
-          desc: 'Empowers the caster. Raises DEF by 2 stages.' },
+          statStageBoost: { def: 1 },
+          desc: 'Empowers the caster. Raises DEF by 1 stage.' },
         { id: 'raceBodyCheck', spellType: 'human', name: 'Body Check',
           type: 'damage', cost: 20, dmg: 100, range: 1,
           kind: 'displacement', damageType: 'physical', pushDistance: 2,
@@ -7620,8 +7620,8 @@ const RACE_ABILITIES = {
         { id: 'raceKiCharge', spellType: 'human', element: 'light', name: 'Ki Charge',
           type: 'buff', cost: 15, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers the caster. Raises ATK by 1 stage.' },
         { id: 'raceKiWave', spellType: 'human', element: 'light', name: 'Ki Wave',
           type: 'damage', cost: 35, dmg: 135, range: 5, apCost: 2,
           kind: 'line', damageType: 'magic', lineWidth: 1,
@@ -7644,8 +7644,8 @@ const RACE_ABILITIES = {
         { id: 'raceRoyalDecree', spellType: 'divine', name: 'Royal Decree',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'warCry', aoeRadius: 2,
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers All Allies nearby. Raises ATK by 2 stages.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers All Allies nearby. Raises ATK by 1 stage.' },
         SHARED_WALLS_OF_CAMELOT,
         { id: 'raceKnightsOfRound', spellType: 'divine', name: 'Knights of Round',
           type: 'utility', cost: 30, range: 0, apCost: 1,
@@ -7670,8 +7670,8 @@ const RACE_ABILITIES = {
         { id: 'raceApeFury', spellType: 'anomaly', name: 'Monkey Business',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers the caster. Raises ATK by 1 stage.' },
     ],
 
     'minotaur': [
@@ -7710,8 +7710,8 @@ const RACE_ABILITIES = {
         { id: 'raceDeathPact', spellType: 'unholy', name: 'Death Pact',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers the caster. Raises ATK by 1 stage.' },
         { id: 'racePlaguefield', spellType: 'unholy', name: 'Plaguefield',
           type: 'utility', cost: 30, range: 4, apCost: 1,
           kind: 'terrainCreate', terrainType: 'plague_flesh', squareFlood: true, aoeRadius: 1,
@@ -7773,8 +7773,8 @@ const RACE_ABILITIES = {
         { id: 'raceAudible', spellType: 'human', element: 'sonic', name: 'Audible',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'warCry', aoeRadius: 2,
-          statStageBoost: { spd: 2 },
-          desc: 'Empowers All Allies nearby. Raises SPD by 2 stages.' },
+          statStageBoost: { spd: 1 },
+          desc: 'Empowers All Allies nearby. Raises SPD by 1 stage.' },
         { id: 'raceSpikeTheBall', spellType: 'human', element: 'earth', name: 'Spike the Ball',
           type: 'damage', cost: 25, dmg: 80, range: 3,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
@@ -7783,8 +7783,8 @@ const RACE_ABILITIES = {
         { id: 'raceEndZoneDance', spellType: 'human', element: 'sonic', name: 'End Zone Dance',
           type: 'buff', cost: 15, apCost: 1, range: 0,
           kind: 'buff',
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages.' }
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers the caster. Raises ATK by 1 stage.' }
     ],
 
     /* 2026-07-23: racePrecisionShot CUT (duplicate of the Sniper-school
@@ -7811,13 +7811,13 @@ const RACE_ABILITIES = {
         { id: 'raceStealFromRich', spellType: 'human', name: 'Steal from the Rich',
           type: 'utility', cost: 20, range: 3, apCost: 1,
           kind: 'debuff',
-          statStageBoost: { atk: -2 },
-          desc: 'Weakens a Single Enemy. Lowers ATK by 2 stages.' },
+          statStageBoost: { atk: -1 },
+          desc: 'Weakens a Single Enemy. Lowers ATK by 1 stage.' },
         { id: 'raceForestAmbush', spellType: 'human', name: 'Forest Ambush',
           type: 'utility', cost: 15, range: 0, apCost: 1,
           kind: 'buff',
-          statStageBoost: { atk: 2 },
-          desc: 'Empowers the caster. Raises ATK by 2 stages.' },
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers the caster. Raises ATK by 1 stage.' },
         { id: 'raceSplittingArrow', spellType: 'human', name: 'Splitting Arrow',
           type: 'damage', cost: 30, dmg: 125, range: 4,
           kind: 'ricochet', damageType: 'physical',
@@ -7843,8 +7843,8 @@ const RACE_ABILITIES = {
         { id: 'raceNaughtyList', spellType: 'anomaly', name: 'Naughty List',
           type: 'debuff', cost: 25, range: 3, apCost: 1,
           kind: 'debuff',
-          statStageBoost: { atk: -2 },
-          desc: 'Weakens a Single Enemy. Lowers ATK by 2 stages.' },
+          statStageBoost: { atk: -1 },
+          desc: 'Weakens a Single Enemy. Lowers ATK by 1 stage.' },
         { id: 'raceBlizzardPresent', element: 'ice', spellType: 'anomaly', name: 'Blizzard Present',
           type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 4, apCost: 1,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -8178,13 +8178,19 @@ const MANA_FORMULA = {
     MAX_TARGETS: 4.0,   // a spell never realistically hits more than ~4 of 6 enemies
 };
 
-const _MF_HARD_CC = { stun:13, freeze:13, frozen:14, sleep:13, charm:13, silence:12, jammed:11, drowning:10, hourglass:11 };
+const _MF_HARD_CC = { stun:13, freeze:13, frozen:14, sleep:13, charm:13, silence:12, jammed:11, drowning:10, hourglass:11,
+                      // CHAMP REWORK Phase 4: the victim loses (part of) its turn
+                      feared:12, possessed:14, infected:13 };
 const _MF_SOFT_CC = { slow:6, stagger:6, root:6, blockMove:6, snare:6, blind:7 };
-const _MF_DOT     = { burn:7, poison:7, bleed:7 };
-const _MF_DEBUFF  = { marked:5, discord:6, vulnerable:5, weak:5 };
+const _MF_DOT     = { burn:7, poison:7, bleed:7, haunted:8, corroded:9 };
+const _MF_DEBUFF  = { marked:5, discord:6, vulnerable:5, weak:5,
+                      goo:6, grievous:5, soulBound:6, voodoo:6, tethered:7 };
 const _MF_BUFF    = { protect:20, invulnerable:15, invisible:12, untargetable:12, regen:6,
                       guarding:6, guard:6, overclock:8, encore:9, warpRune:5, scanner:3,
-                      remoteView:3, warCry:7 };
+                      remoteView:3, warCry:7,
+                      // CHAMP REWORK Phase 4 buffs
+                      stoneform:14, blessed:9, monster:10, extendedClips:8, incendiary:6,
+                      sparkling:6, levitating:5, shadowRealm:10, mechaForm:6, carForm:3 };
 
 function _mfSumArr(a){ return Array.isArray(a) ? a.reduce((x, y) => x + (+y || 0), 0) : 0; }
 
@@ -8867,6 +8873,415 @@ const STATUS_DEFS = {
         stageMod: { atk: 2, spd: 3, def: 2, mdef: 1 },
         iconSrc: createStatusIconDataUri('🐺', '#1a1424', '#e8dcff', '#8a6ad4')
     },
+    /* ═══════════ CHAMP REWORK Phase 4 — the §5.1 status batch (2026-09-07) ═══
+       Every remaining CHAMP_REWORK_PLAN §5.1 row. The ENGINE reads these
+       through generic hook fields (battle.js unless noted) — a spell that
+       wants the effect only has to apply the status:
+         dot / onRoundEnd        end-of-round tick (processEndOfRoundStatuses)
+         countsAs: [ids]         bonusStatusMatches — Corroded IS Burn and Poison
+         healTakenMult           applyHealingToUnit (Gooed, Grievous Wound)
+         blockMove / blockAction canUnitMove / doAttack / doSpell; a status with
+                                 BOTH skips the whole activation (state.js
+                                 getNextBlitzUnit — stun, frozen, Stoneform)
+         blockSpells             unitSpellsBlocked — every silence gate
+         invulnerable            applyDamageToUnit early-out (Stoneform)
+         stageMod / moveDelta    the stat-stage / MOV getters (statChange rules)
+         rangeDelta              getEffectiveRange (generic since Phase 4)
+         basicAttackStatus       applyDamageToUnit after a landed basic hit
+         hpMaxMult               onApply / onRemove (Monstrous)
+         grantsFlight            map.js canFly + onApply lift / onRemove landing
+         shedMotes               finishMoveAt → dropPixieDust (blindOnStep)
+         linkEcho (+partner id)  _procLinks after every damage application
+         dragDamagePerTile       _tetherFollow (finishMoveAt of the roper)
+         fear (+_fearSourceId)   _fearFleeMove at the victim's activation
+         realm (+_realmPartnerId) isUnitRealmShieldedFrom — target / damage /
+                                 heal / status gates, isUnitConcealedFrom
+         control                 possessed / infected: rows + partner fields
+                                 only — the controller hand-off
+                                 (getControllingPlayer) lands with the
+                                 `possess` spell kind, plan Phase 5 wave B
+         onApply(unit, src, {refreshed}) / onRemove(unit)
+                                 applyStatusPayload / clearStatus hooks
+       Partner ids ride the status payload (payload.partnerId / allyId) and
+       land on the unit as _boundToId / _voodooAllyId / _realmPartnerId /
+       _fearSourceId / _tetherCasterId — unit fields, so state-sync carries
+       them to the guest for free (RULE #2). */
+    /* 👻 Haunted: 28 magic a round (armor ignored), 3 rounds. Ghost Haunt;
+       Boo lands ×1.5 on a Haunted target (bonusVsStatus). */
+    haunted: {
+        icon: '👻',
+        glyph: '👻',
+        short: 'HNT',
+        label: 'Haunted',
+        colorText: 'haunted',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'max',
+        dot: 28,
+        iconSrc: createStatusIconDataUri('👻', '#1c2238', '#e6ecff', '#7f8fd4'),
+        onRoundEnd(unit) {
+            const _srcId = unit._statusSrc && unit._statusSrc.haunted;
+            const _src = (_srcId && typeof unitFromId === 'function') ? unitFromId(_srcId) : null;
+            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSource = _src;
+            const _hpB = unit.hp;
+            applyDamageToUnit(unit, 28, `${unitDisplayName(unit)} is wracked by the haunting: `, {
+                ignoreArmor: true,
+                damageType: 'dot',
+                consumeMarked: false,
+                scaleByTargetLevel: true,
+                flashColor: 'poison'
+            });
+            const _dealt = _hpB - unit.hp;
+            if (_src && !_src.dead && _src.player !== unit.player && _dealt > 0) {
+                _src._trackDmgDealt = (_src._trackDmgDealt || 0) + _dealt;
+            }
+        }
+    },
+    /* ⚗️ Corroded: 44 a round (fire + poison), 2 rounds, and it COUNTS AS
+       Burn and Poison for every bonusVsStatus payoff (countsAs) — the
+       single-status rule keeps Chemical Concoction to one badge. */
+    corroded: {
+        icon: '⚗️',
+        glyph: '⚗',
+        short: 'COR',
+        label: 'Corroded',
+        colorText: 'corroded',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'max',
+        dot: 44,
+        countsAs: ['burn', 'poison'],
+        iconSrc: createStatusIconDataUri('⚗', '#2d3a12', '#f0ffd0', '#a4d43a'),
+        onRoundEnd(unit) {
+            const _srcId = unit._statusSrc && unit._statusSrc.corroded;
+            const _src = (_srcId && typeof unitFromId === 'function') ? unitFromId(_srcId) : null;
+            if (_src && !_src.dead && _src.player !== unit.player) unit._lastDamageSource = _src;
+            const _hpB = unit.hp;
+            applyDamageToUnit(unit, 44, `Corrosion eats at ${unitDisplayName(unit)}: `, {
+                ignoreArmor: true,
+                damageType: 'dot',
+                consumeMarked: false,
+                scaleByTargetLevel: true,
+                flashColor: 'burn'
+            });
+            const _dealt = _hpB - unit.hp;
+            if (_src && !_src.dead && _src.player !== unit.player && _dealt > 0) {
+                _src._trackDmgDealt = (_src._trackDmgDealt || 0) + _dealt;
+            }
+        }
+    },
+    /* 🩹 Grievous Wound: healing received halved, 2 rounds — the requested
+       "reduces healing received" (Ghoul Frenzy, Gangster Stomp Out). */
+    grievous: {
+        icon: '🩹',
+        glyph: '🩹',
+        short: 'GRV',
+        label: 'Grievous Wound',
+        colorText: 'grievously wounded',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'max',
+        healTakenMult: 0.5,
+        iconSrc: createStatusIconDataUri('🩹', '#3a1a1a', '#ffe0e0', '#d46a6a')
+    },
+    /* 😱 Feared: hard CC. At its next activation the unit spends its move
+       fleeing the source (_fearSourceId; battle.js _fearFleeMove picks the
+       reachable tile farthest from it) and can neither attack nor cast —
+       the activation ends after the flight. 1 round. Terror Pounce ×1.5. */
+    feared: {
+        icon: '😱',
+        glyph: '😱',
+        short: 'FEA',
+        label: 'Feared',
+        colorText: 'paralysed with fear',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'max',
+        blockAction: true,
+        fear: true,
+        iconSrc: createStatusIconDataUri('😱', '#2a1a3a', '#f0e0ff', '#a070d4'),
+        onRemove(unit) { delete unit._fearSourceId; }
+    },
+    /* 🎭 Possessed: the unit is CONTROLLED by the caster's player for
+       `activations` (payload.duration) — _controllerPlayer / _possessLeft.
+       Phase 4 ships the row + fields; the controller hand-off
+       (getControllingPlayer in the blitz activation, HUD ownership gate,
+       online guest-emit path) lands with the `possess` spell kind (plan
+       §5.3 / Phase 5 wave B) — until then nothing applies it. */
+    possessed: {
+        icon: '🎭',
+        glyph: '🎭',
+        short: 'POS',
+        label: 'Possessed',
+        colorText: 'possessed',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'replace',
+        control: true,
+        iconSrc: createStatusIconDataUri('🎭', '#2a1030', '#f4d6ff', '#c060e0'),
+        onRemove(unit) { delete unit._controllerPlayer; delete unit._possessLeft; }
+    },
+    /* 🧟 Infected: the zombie's control variant — controlled for 4
+       activations, MELEE ONLY (blockSpells), +1 ATK and +1 SPD stage.
+       Shambling Horde ×1.5. Same wave-B hand-off as Possessed. */
+    infected: {
+        icon: '🧟',
+        glyph: '🧟',
+        short: 'INF',
+        label: 'Infected',
+        colorText: 'infected',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'replace',
+        control: true,
+        blockSpells: true,
+        stageMod: { atk: 1, spd: 1 },
+        iconSrc: createStatusIconDataUri('🧟', '#1e2e14', '#e2ffd0', '#7fb84a'),
+        onRemove(unit) { delete unit._controllerPlayer; delete unit._possessLeft; }
+    },
+    /* 🗿 Stoneform: the gargoyle turns to stone — cannot move or act (the
+       activation is skipped like stun), immune to all damage, regenerates
+       15% max HP a round, 2 rounds. Not a debuff, so cleanse never touches
+       it; dispelProof keeps future purge kinds off it too. */
+    stoneform: {
+        icon: '🗿',
+        glyph: '🗿',
+        short: 'STO',
+        label: 'Stoneform',
+        colorText: 'turned to stone',
+        kind: 'buff',
+        category: 'status',
+        stack: 'max',
+        blockMove: true,
+        blockAction: true,
+        invulnerable: true,
+        regenPct: 0.15,
+        dispelProof: true,
+        iconSrc: createStatusIconDataUri('🗿', '#2c2c30', '#e8e8ec', '#8c8c98'),
+        onRoundEnd(unit) {
+            if (!unit || unit.dead) return;
+            const _amt = Math.max(1, Math.round((unit.maxHp || 0) * 0.15));
+            applyHealingToUnit(unit, _amt, null, { preScaled: true });
+        }
+    },
+    /* ⛓ Soul-Bound: paired with _boundToId — when either takes damage the
+       other takes 30% (45% while the binding demon carries a live +M.ATK
+       stage). 3 rounds. Devour Soul ×1.5. battle.js _procLinks. */
+    soulBound: {
+        icon: '⛓',
+        glyph: '⛓',
+        short: 'SBD',
+        label: 'Soul-Bound',
+        colorText: 'soul-bound',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'max',
+        link: 'pair',
+        linkEcho: 0.30,
+        linkEchoBoosted: 0.45,
+        iconSrc: createStatusIconDataUri('⛓', '#2a1a2a', '#ffd6f0', '#c050a0'),
+        onRemove(unit) { delete unit._boundToId; }
+    },
+    /* 🪆 Voodoo: an ENEMY linked to one of the shaman's allies
+       (_voodooAllyId) — whenever that ally takes damage the enemy takes
+       50% of it. 3 rounds. Bad Trip ×1.5. battle.js _procLinks. */
+    voodoo: {
+        icon: '🪆',
+        glyph: '🪆',
+        short: 'VDO',
+        label: 'Voodoo',
+        colorText: 'bound by voodoo',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'max',
+        link: 'ally',
+        linkEcho: 0.5,
+        iconSrc: createStatusIconDataUri('🪆', '#3a2210', '#ffe8d0', '#d49050'),
+        onRemove(unit) { delete unit._voodooAllyId; }
+    },
+    /* 🌑 In the Shadow Realm: a PAIR marker (caster + target, each carrying
+       the other's id in _realmPartnerId). To everyone else the pair is
+       invisible and untargetable; damage, heals and statuses from anyone
+       but the partner (or the unit itself) no-op; zone / weather damage is
+       source-less so it no-ops too. 2 rounds. The Void Stage presentation
+       ships with Shadow Realm★ (Phase 5 wave B). */
+    shadowRealm: {
+        icon: '🌑',
+        glyph: '🌑',
+        short: 'RLM',
+        label: 'In the Shadow Realm',
+        colorText: 'lost in the Shadow Realm',
+        kind: 'marker',
+        category: 'status',
+        stack: 'max',
+        realm: true,
+        iconSrc: createStatusIconDataUri('🌑', '#08080e', '#d0d0e8', '#40405c'),
+        onRemove(unit) { delete unit._realmPartnerId; }
+    },
+    /* 🪢 Roped: cannot move on its own; whenever the roper (_tetherCasterId)
+       moves, the victim is dragged into the tile the roper just left (the
+       rope stops on a blocker) for 20 damage per tile dragged. 2 rounds.
+       High Noon ×1.5 vs Roped. battle.js _tetherFollow. */
+    tethered: {
+        icon: '🪢',
+        glyph: '🪢',
+        short: 'RPD',
+        label: 'Roped',
+        colorText: 'roped',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'max',
+        blockMove: true,
+        dragDamagePerTile: 20,
+        iconSrc: createStatusIconDataUri('🪢', '#3a2a10', '#fff0d0', '#d4a050'),
+        onRemove(unit) { delete unit._tetherCasterId; }
+    },
+    /* 🔥 Incendiary Rounds (self): every landed BASIC hit applies Burn for 2
+       rounds. 2 rounds. Fire for Effect ×1.5 vs Burn. */
+    incendiary: {
+        icon: '🧨',
+        glyph: '🧨',
+        short: 'INC',
+        label: 'Incendiary Rounds',
+        colorText: 'loading incendiary rounds',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'max',
+        basicAttackStatus: { id: 'burn', duration: 2 },
+        iconSrc: createStatusIconDataUri('🧨', '#3a1a10', '#ffe0c0', '#ff8040')
+    },
+    /* ✨ Sparkling: +1 SPD stage and the unit sheds glitter motes on the
+       tiles it leaves (the pixie-dust system, shedMotes); an enemy stepping
+       on one is Blinded for 1 round. 2 rounds. Glitter Bomb ×1.5 vs Blind. */
+    sparkling: {
+        icon: '✨',
+        glyph: '✨',
+        short: 'SPK',
+        label: 'Sparkling',
+        colorText: 'sparkling',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'max',
+        stageMod: { spd: 1 },
+        shedMotes: { blindOnStep: 1 },
+        iconSrc: createStatusIconDataUri('✨', '#2a2a14', '#ffffd0', '#e8d060')
+    },
+    /* 🪽 Levitating: temporary flight — the unit lifts to clearance when it
+       lands (onApply), counts as a flyer (map.js canFly) and is set down
+       when it wears off (onRemove → forceGroundUnit). 2 rounds. */
+    levitating: {
+        icon: '🪽',
+        glyph: '🪽',
+        short: 'LEV',
+        label: 'Levitating',
+        colorText: 'levitating',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'max',
+        grantsFlight: true,
+        iconSrc: createStatusIconDataUri('🪽', '#182838', '#e0f4ff', '#70b8e0'),
+        onApply(unit, src, info) {
+            if (typeof levitateUnit === 'function') levitateUnit(unit, info);
+        },
+        onRemove(unit) {
+            if (typeof forceGroundUnit === 'function') forceGroundUnit(unit, { byLabel: 'as the fairy dust fades' });
+        }
+    },
+    /* 🙏 Blessed: +1 DEF stage, +1 M.DEF stage and 40 HP of regen a round,
+       3 rounds. Nun Blessing. */
+    blessed: {
+        icon: '🙏',
+        glyph: '🙏',
+        short: 'BLS',
+        label: 'Blessed',
+        colorText: 'blessed',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'max',
+        stageMod: { def: 1, mdef: 1 },
+        iconSrc: createStatusIconDataUri('🙏', '#3a3010', '#fff8d0', '#e8c850'),
+        onRoundEnd(unit) {
+            if (!unit || unit.dead) return;
+            applyHealingToUnit(unit, 40, null);
+        }
+    },
+    /* 🧪 Monstrous: the serum — no spells, +1 ATK / SPD / DEF / M.DEF stage,
+       +1 melee range and +25% max HP (hpMaxMult, granted on apply and
+       taken back on removal), 3 rounds. Mad Scientist Monster Serum. */
+    monster: {
+        icon: '🧪',
+        glyph: '🧪',
+        short: 'MON',
+        label: 'Monstrous',
+        colorText: 'monstrous',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'max',
+        blockSpells: true,
+        stageMod: { atk: 1, spd: 1, def: 1, mdef: 1 },
+        rangeDelta: 1,
+        hpMaxMult: 1.25,
+        iconSrc: createStatusIconDataUri('🧪', '#1a3a20', '#d0ffe0', '#40c070'),
+        onApply(unit, src, info) {
+            if (!unit || unit.dead || unit._monsterHpBonus) return;
+            const bonus = Math.max(1, Math.round((unit.maxHp || 0) * 0.25));
+            unit._monsterHpBonus = bonus;
+            unit.maxHp = (unit.maxHp || 0) + bonus;
+            unit.hp = Math.min(unit.maxHp, (unit.hp || 0) + bonus);
+        },
+        onRemove(unit) {
+            const bonus = unit._monsterHpBonus | 0;
+            if (!bonus) return;
+            delete unit._monsterHpBonus;
+            unit.maxHp = Math.max(1, (unit.maxHp || 0) - bonus);
+            if (!unit.dead) unit.hp = Math.max(1, Math.min(unit.hp, unit.maxHp));
+        }
+    },
+    /* 🔫 Extended Clips (team): +1 RNG and +1 ATK stage, 3 rounds. */
+    extendedClips: {
+        icon: '🔫',
+        glyph: '🔫',
+        short: 'CLP',
+        label: 'Extended Clips',
+        colorText: 'packing extended clips',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'max',
+        stageMod: { atk: 1 },
+        rangeDelta: 1,
+        iconSrc: createStatusIconDataUri('🔫', '#2a2a2a', '#f0f0f0', '#a0a0a0')
+    },
+    /* 🚗 / 🤖 Car and Mecha: the sedan's two stances — statChange carriers
+       like Overclock, toggled by the `transform` spell kind (plan §5.3,
+       wave A) and permanent until re-cast (value refreshed by the caster).
+       Mecha: −3 SPD, +1 DEF, +2 M.DEF stages, +2 RNG; the model swap rides
+       overrideForms exactly like the combat robot does today. */
+    carForm: {
+        icon: '🚗',
+        glyph: '🚗',
+        short: 'CAR',
+        label: 'Car',
+        colorText: 'back in car form',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'replace',
+        form: 'car',
+        iconSrc: createStatusIconDataUri('🚗', '#1a2a3a', '#d0e8ff', '#5090d0')
+    },
+    mechaForm: {
+        icon: '🤖',
+        glyph: '🤖',
+        short: 'MEC',
+        label: 'Mecha',
+        colorText: 'transformed into the mecha',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'replace',
+        form: 'mecha',
+        stageMod: { spd: -3, def: 1, mdef: 2 },
+        rangeDelta: 2,
+        iconSrc: createStatusIconDataUri('🤖', '#2a2a3a', '#e0e0ff', '#8080d0')
+    },
     silence: {
         icon: '🔇',
         glyph: '🔇',
@@ -9194,6 +9609,7 @@ const STATUS_DEFS = {
         glyph: '🛡',
         short: 'SHD',
         label: 'Shield',
+        kind: 'buff',
         category: 'display',
         iconSrc: createStatusIconDataUri('🛡', '#163042', '#dff5ff', '#63d0ff')
     },
@@ -9409,6 +9825,27 @@ const STATUS_LIBRARY_DESCS = {
     bleed:     'Bleeding out: takes 20 physical damage at the end of every round (armor ignored).',
     goo:       'Coated in black goo: healing received is halved, −1 MOV, and magic hits land ×1.25.',
     wolfForm:  'The Beast is loose: +2 ATK, +3 SPD, +2 DEF and +1 M.DEF stages while the night lasts.',
+    // CHAMP REWORK Phase 4 (2026-09-07): the §5.1 batch.
+    haunted:   'Wracked by a restless spirit: takes 28 magic damage at the end of every round (armor ignored). Boo hits Haunted targets harder.',
+    corroded:  'Eaten by chemical fire: takes 44 damage at the end of every round (armor ignored). Counts as BOTH Burn and Poison for every payoff.',
+    grievous:  'A wound that will not close: healing received is halved.',
+    feared:    'Paralysed with fear: at its next activation the unit can only flee from what frightened it — no attacks, no spells.',
+    possessed: 'A hostile will steers this body: the possessor\'s player controls the unit for its next activation(s), whole kit included.',
+    infected:  'The rot spreads: the zombie\'s player controls the unit for 4 activations — melee only, but +1 ATK and +1 SPD stage.',
+    stoneform: 'Turned to stone: cannot move or act (the turn is skipped) and immune to all damage, regenerating 15% max HP a round. Cannot be cleansed or dispelled.',
+    soulBound: 'Bound soul to soul with another: when either takes damage the other takes 30% of it (45% while the binder\'s M.ATK is raised). Devour Soul hits Soul-Bound targets harder.',
+    voodoo:    'A doll of this enemy is tied to an ally: whenever that ally takes damage, this enemy takes half of it. Bad Trip hits Voodoo targets harder.',
+    shadowRealm: 'Dragged into the Shadow Realm with one other: invisible and untargetable to everyone else, immune to everything not from each other, and nobody else can heal either of them.',
+    tethered:  'Roped: cannot move on its own. Whenever the roper moves, the unit is dragged into the tile they left — 20 damage per tile dragged. High Noon hits Roped targets harder.',
+    incendiary: 'Incendiary rounds loaded: every landed basic attack sets the target on fire (Burn, 2 rounds).',
+    sparkling: '+1 SPD stage, and the unit sheds glitter motes on the tiles it leaves — an enemy stepping on one is Blinded for a round.',
+    levitating: 'Lifted on fairy dust: the unit flies until it wears off, then settles back to the ground.',
+    blessed:   '+1 DEF and +1 M.DEF stage, and 40 HP regenerates at the end of every round.',
+    monster:   'Monster serum: no spells, but +1 ATK / SPD / DEF / M.DEF stage, +1 melee reach and +25% max HP while it lasts.',
+    extendedClips: 'Extended clips for the whole crew: +1 RNG and +1 ATK stage.',
+    carForm:   'Car form: the sedan\'s road stance — fast and nimble.',
+    mechaForm: 'Mecha form: −3 SPD stages, +1 DEF and +2 M.DEF stages, +2 RNG. Transform again to drive off.',
+    shield:    'A barrier of shield points absorbs damage before HP does (Prayer, Pleiadian Shield, Bulwark…). Shown as the blue bar segment.',
     silence:   'Cannot cast spells.',
     stun:      'Knocked senseless: cannot move OR act — the unit\'s next activation is skipped. Evasion drops to zero.',
     root:      'Bound in place: cannot move (flyers are dragged to the ground), but can still attack and cast. Evasion drops to zero.',

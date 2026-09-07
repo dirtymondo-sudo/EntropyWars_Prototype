@@ -63,6 +63,12 @@
             // CHAMP REWORK Phase 3 (2026-09-07): bleed (Serrated DoT), goo
             // (the ooze's contact debuff), wolfForm (the werewolf's night).
             'bleed','goo','wolfForm',
+            // CHAMP REWORK Phase 4 (2026-09-07): the §5.1 batch — DoTs
+            // (haunted, corroded), regen buffs (stoneform, blessed), the
+            // control / link / marker rows and the stance carriers.
+            'haunted','corroded','grievous','feared','possessed','infected','stoneform',
+            'soulBound','voodoo','shadowRealm','tethered','incendiary','sparkling',
+            'levitating','blessed','monster','extendedClips','carForm','mechaForm',
             // 2026-07-23 yeti rework: frozen (hard CC with thaw-outs), blind
             // (attack accuracy loss from blizzards).
             'frozen','blind']);
@@ -652,15 +658,18 @@
                 // (2026-08-10: stun is blockMove + blockAction now, the real
                 // "lose a turn" — Rooted is the move-only lockdown) sits out
                 // the one activation its stun covers.
-                if (u.status && (u.status.frozen | 0) > 0) {
-                    u._skippedTurn = true;
-                    if (typeof addLog === 'function') addLog(`🧊 ${unitDisplayName(u)} is frozen solid — turn skipped!`);
-                    continue;
-                }
-                if (u.status && (u.status.stun | 0) > 0) {
-                    u._skippedTurn = true;
-                    if (typeof addLog === 'function') addLog(`⚡ ${unitDisplayName(u)} is stunned — turn skipped!`);
-                    continue;
+                // CHAMP REWORK Phase 4: generic — ANY status that blocks both
+                // move and action (stun, frozen, Stoneform…) skips the
+                // activation; a status that blocks only actions (Feared) still
+                // activates, and battle.js spends that activation on the flee.
+                if (u.status && typeof STATUS_DEFS !== 'undefined') {
+                    const _lock = Object.keys(u.status).find(k => (u.status[k] | 0) > 0 && STATUS_DEFS[k]?.blockMove && STATUS_DEFS[k]?.blockAction);
+                    if (_lock) {
+                        const _ld = STATUS_DEFS[_lock];
+                        u._skippedTurn = true;
+                        if (typeof addLog === 'function') addLog(`${_ld.icon || '⚠'} ${unitDisplayName(u)} is ${_ld.colorText || _ld.label || _lock} — turn skipped!`);
+                        continue;
+                    }
                 }
                 _blitzTurnIndex = i;
                 return u;

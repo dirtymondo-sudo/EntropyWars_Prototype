@@ -651,7 +651,11 @@
             const weatherMod = getWeatherStatMod(unit).rng || 0;
             const mountainBonus = (isOnMountain(unit) && unitHasClimbingBoots(unit)) ? 1 : 0;
             const overclockRangeBonus = (unitHasStatus(unit, 'overclock') && unit.types && unit.types.includes('tech')) ? 1 : 0;
-            const camoRangeBonus = unitHasStatus(unit, 'invisible') ? 1 : 0;
+            // Generic status reach (CHAMP REWORK Phase 4): every active
+            // status' rangeDelta — Invisible's +1, Jack of All, Monstrous,
+            // Extended Clips, the Mecha stance. Overclock's tech-only +1 stays
+            // conditional above.
+            const camoRangeBonus = getActiveStatusKeys(unit).reduce((sum, k) => sum + (STATUS_DEFS[k]?.rangeDelta || 0), 0);
 
             let highGroundRangeBonus = 0;
             if (HIGH_GROUND_RANGE_BONUS && unit.range >= 2) {
@@ -5849,6 +5853,15 @@
         function clearStatus(unit, key) {
             if (!unit?.status) return;
             if (!(key in unit.status)) return;
+            // CHAMP REWORK Phase 4: a def's onRemove runs BEFORE the key goes
+            // (Levitating still counts as a flyer while it is set down,
+            // Monstrous gives its HP back, partner ids are dropped).
+            {
+                const _def = STATUS_DEFS[key];
+                if (_def && typeof _def.onRemove === 'function' && Number(unit.status[key] || 0) > 0) {
+                    try { _def.onRemove(unit); } catch (e) { console.warn('[status] onRemove', key, e); }
+                }
+            }
             delete unit.status[key];
             // Burn is the one status lava escalates — when it ends (expiry,
             // douse, cleanse), the lava escalation resets with it.
@@ -6087,7 +6100,13 @@
         function bonusStatusMatches(target, statusId) {
             if (!target || !statusId) return false;
             if (Array.isArray(statusId)) return statusId.some(id => bonusStatusMatches(target, id));
-            return unitHasStatus(target, statusId);
+            if (unitHasStatus(target, statusId)) return true;
+            // CHAMP REWORK Phase 4: a status that COUNTS AS others for the
+            // payoff check (Corroded is Burn and Poison — STATUS_DEFS countsAs).
+            return getActiveStatusKeys(target).some(k => {
+                const ca = STATUS_DEFS[k]?.countsAs;
+                return Array.isArray(ca) && ca.includes(statusId);
+            });
         }
 
         function getStatusMpCostDelta(unit) {
@@ -6249,7 +6268,7 @@
             if (!unit || !unit.status) return 0;
             let removed = 0;
             Object.keys(STATUS_DEFS).forEach(key => {
-                if (unit.status[key] > 0) removed += 1;
+                if (unit.status[key] > 0) { removed += 1; clearStatus(unit, key); }
                 unit.status[key] = 0;
             });
             // Both stat-stage carriers just died with the rest — drop their
@@ -6317,6 +6336,12 @@
                 showFloatingTextForUnit(target, `${_stIcon} IMMUNE`, 'heal', { durationMs: 900 });
                 return false;
             }
+            /* 🌑 Shadow Realm (plan §5.5): a status from anyone but the
+               partner (or the unit itself) never reaches a unit in the realm. */
+            if (sourceUnit && isUnitRealmShieldedFrom(target, sourceUnit)) {
+                addLog(`🌑 ${unitDisplayName(target)} is beyond reach in the Shadow Realm.`);
+                return false;
+            }
             const status = ensureUnitStatus(target);
             const meta = STATUS_DEFS[payload.id];
             // 🔏 Fermata (statLock): statuses that carry a stageMod (Discord,
@@ -6346,6 +6371,7 @@
             // Crescendo (Harbinger passive): buffs this unit grants last +1 turn.
             if (sourceUnit && sourceUnit.cls === 'Harbinger' && meta.kind === 'buff'
                 && !isEnemyUnit(sourceUnit, target)) nextValue += 1;
+            const _hadBefore = Number(status[payload.id] || 0) > 0;
             if (meta.stack === 'replace') {
                 status[payload.id] = nextValue;
             } else {
@@ -6363,10 +6389,28 @@
             // DOT appliers get credit for their ticks: poison/burn end-of-round
             // damage resolves source-less (STATUS_DEFS onRoundEnd), so the
             // applier is remembered here and credited at tick time.
-            if ((payload.id === 'poison' || payload.id === 'burn' || payload.id === 'bleed') && sourceUnit
+            if ((payload.id === 'poison' || payload.id === 'burn' || payload.id === 'bleed'
+                || payload.id === 'haunted' || payload.id === 'corroded'
+                || payload.id === 'soulBound' || payload.id === 'voodoo') && sourceUnit
                 && sourceUnit.player !== target.player) {
                 target._statusSrc = target._statusSrc || {};
                 target._statusSrc[payload.id] = sourceUnit.id;
+            }
+            /* CHAMP REWORK Phase 4 partner fields (plan §5.1 / §5.5) — unit
+               fields, so state-sync carries them. Link / realm partners ride
+               the payload (partnerId / allyId) because the spell resolver is
+               the only thing that knows both ends. */
+            if (payload.id === 'feared' && sourceUnit) target._fearSourceId = sourceUnit.id;
+            if (payload.id === 'tethered' && sourceUnit) target._tetherCasterId = sourceUnit.id;
+            if (payload.id === 'soulBound' && payload.partnerId) target._boundToId = payload.partnerId;
+            if (payload.id === 'voodoo' && payload.allyId) target._voodooAllyId = payload.allyId;
+            if (payload.id === 'shadowRealm' && payload.partnerId) target._realmPartnerId = payload.partnerId;
+            if (meta.control && sourceUnit) {
+                target._controllerPlayer = sourceUnit.player;
+                target._possessLeft = status[payload.id];
+            }
+            if (typeof meta.onApply === 'function') {
+                try { meta.onApply(target, sourceUnit, { refreshed: _hadBefore, payload }); } catch (e) { console.warn('[status] onApply', payload.id, e); }
             }
             addLog(`${sourceLabel}${unitDisplayName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
 
@@ -7596,6 +7640,16 @@
                AI won't target him and the nameplate eye closes. */
             if (unitCryptidHiddenFrom(unit, viewer)) return true;
 
+            /* 🌑 Shadow Realm: the pair is invisible to any viewer who owns
+               neither of them (own units returned above). */
+            {
+                const _rp = unitShadowRealmPartnerId(unit);
+                if (_rp) {
+                    const _partner = unitFromId(_rp);
+                    if (!_partner || _partner.player !== viewer) return true;
+                }
+            }
+
             const invisible = unitHasStatus(unit, 'invisible');
 
             let smokeHidden = false;
@@ -8044,6 +8098,176 @@
 
         function unitHasStatus(unit, key) {
             return getStatusValue(unit, key) > 0;
+        }
+
+        /* ═══════ CHAMP REWORK Phase 4 — generic status hooks (plan §5.1) ═══════
+           Every helper below reads a STATUS_DEFS hook field, never a status id
+           list, so a new status only has to declare the field. */
+
+        /* 🔇 Silence and every `blockSpells` status (Monstrous, Infected):
+           the one gate every "can this unit cast" site reads. */
+        function unitSpellsBlocked(unit) {
+            if (!unit) return false;
+            if (unitHasStatus(unit, 'silence')) return true;
+            return getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockSpells);
+        }
+        window.unitSpellsBlocked = unitSpellsBlocked;
+
+        /* 🌑 Shadow Realm: the partner id of a unit inside the realm, else
+           null. isUnitRealmShieldedFrom(unit, actor): true when the unit is
+           in the realm and the actor is neither the unit nor its partner
+           (a null actor — zone / weather / DoT — is "everyone else"). */
+        function unitShadowRealmPartnerId(unit) {
+            if (!unit || !unit._realmPartnerId) return null;
+            return unitHasStatus(unit, 'shadowRealm') ? unit._realmPartnerId : null;
+        }
+        function isUnitRealmShieldedFrom(unit, actor) {
+            const pid = unitShadowRealmPartnerId(unit);
+            if (!pid) return false;
+            if (!actor) return true;
+            return actor.id !== pid && actor.id !== unit.id;
+        }
+        window.unitShadowRealmPartnerId = unitShadowRealmPartnerId;
+        window.isUnitRealmShieldedFrom = isUnitRealmShieldedFrom;
+
+        /* ⛓ / 🪆 Links (plan §5.5): after a hit resolves, echo a share of it
+           down every link the victim is part of. Soul-Bound pairs echo
+           linkEcho (linkEchoBoosted while the binder carries a live +M.ATK
+           stage); a Voodoo enemy takes linkEcho of what its linked ALLY
+           takes. Echoes resolve like DoT ticks (armor ignored, source-less
+           multipliers) with the link's caster credited, and carry
+           opts._linkEcho so they never chain. */
+        function _procLinks(target, dealt, opts) {
+            if (!target || !(dealt > 0) || (opts && opts._linkEcho) || !state.units) return;
+            const _echo = (victim, pct, srcId, label, icon) => {
+                if (!victim || victim.dead || victim._dying || !(pct > 0)) return;
+                const src = (srcId && typeof unitFromId === 'function') ? unitFromId(srcId) : null;
+                if (src && !src.dead && src.player !== victim.player) victim._lastDamageSource = src;
+                const amount = Math.max(1, Math.round(dealt * pct));
+                const hpB = victim.hp;
+                applyDamageToUnit(victim, amount, `${icon} ${label}: `, {
+                    _linkEcho: true,
+                    ignoreArmor: true,
+                    damageType: 'dot',
+                    consumeMarked: false,
+                    allowMarkBonus: false,
+                    noRangeMult: true,
+                    flashColor: 'hit',
+                    floatKind: 'combo'
+                });
+                const took = hpB - victim.hp;
+                if (src && !src.dead && src.player !== victim.player && took > 0) {
+                    src._trackDmgDealt = (src._trackDmgDealt || 0) + took;
+                }
+            };
+            // Soul-Bound: the pair share the wound.
+            const sbDef = STATUS_DEFS.soulBound;
+            if (sbDef && unitHasStatus(target, 'soulBound') && target._boundToId) {
+                const partner = unitFromId(target._boundToId);
+                if (partner && partner.id !== target.id && unitHasStatus(partner, 'soulBound')) {
+                    const binderId = target._statusSrc && target._statusSrc.soulBound;
+                    const binder = binderId ? unitFromId(binderId) : null;
+                    let pct = sbDef.linkEcho || 0.3;
+                    if (sbDef.linkEchoBoosted && binder && !binder.dead
+                        && typeof getStatStageCount === 'function' && getStatStageCount(binder, 'int') > 0) pct = sbDef.linkEchoBoosted;
+                    _echo(partner, pct, binderId, 'Soul Bind', sbDef.icon || '⛓');
+                }
+            }
+            // Voodoo: every enemy doll tied to THIS unit.
+            const vdDef = STATUS_DEFS.voodoo;
+            if (vdDef) {
+                for (const e of state.units) {
+                    if (!e || e.dead || e._dying || e.id === target.id) continue;
+                    if (e._voodooAllyId !== target.id || !unitHasStatus(e, 'voodoo')) continue;
+                    _echo(e, vdDef.linkEcho || 0.5, e._statusSrc && e._statusSrc.voodoo, 'Voodoo', vdDef.icon || '🪆');
+                }
+            }
+        }
+
+        /* 🪢 Roped (plan §5.1 tethered): the roper just left (ox, oy, oz) —
+           every victim tethered to it is dragged into that tile (the rope
+           stops on a blocker or impassable ground) for dragDamagePerTile ×
+           tiles displaced. Called from finishMoveAt, so it also fires for
+           the roper's forced moves. */
+        function _tetherFollow(roper, ox, oy, oz) {
+            if (!roper || !state.units) return;
+            const def = STATUS_DEFS.tethered;
+            if (!def) return;
+            for (const v of state.units) {
+                if (!v || v.dead || v._dying || v.id === roper.id) continue;
+                if (v._tetherCasterId !== roper.id || !unitHasStatus(v, 'tethered')) continue;
+                if (v.x === ox && v.y === oy) continue;
+                if (typeof unitAt === 'function' && unitAt(ox, oy)) continue;
+                if (typeof unitCanTraverse === 'function' && !unitCanTraverse(v, ox, oy, oz)) continue;
+                const tiles = Math.abs(v.x - ox) + Math.abs(v.y - oy);
+                const toZ = (typeof getHeightAt === 'function') ? getHeightAt(ox, oy) : (oz ?? 0);
+                if (window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive() && !_skipVisuals()) {
+                    try { window.ThreeAnim.walkPath(v, [{ x: ox, y: oy, z: toZ }]); } catch (e) {}
+                }
+                v.x = ox; v.y = oy; v.z = toZ;
+                addLog(`${def.icon || '🪢'} ${unitDisplayName(v)} is dragged ${tiles} tile${tiles === 1 ? '' : 's'} behind ${unitDisplayName(roper)}!`);
+                const dmg = (def.dragDamagePerTile || 0) * tiles;
+                if (dmg > 0) {
+                    if (roper.player !== v.player) v._lastDamageSource = roper;
+                    const hpB = v.hp;
+                    applyDamageToUnit(v, dmg, 'Dragged by the rope: ', {
+                        ignoreArmor: true,
+                        damageType: 'dot',
+                        consumeMarked: false,
+                        scaleByTargetLevel: true,
+                        flashColor: 'hit'
+                    });
+                    const took = hpB - v.hp;
+                    if (took > 0 && roper.player !== v.player) roper._trackDmgDealt = (roper._trackDmgDealt || 0) + took;
+                }
+                if (typeof markDirty === 'function') markDirty('board');
+            }
+        }
+
+        /* 😱 Feared: the victim's activation is spent fleeing — the reachable
+           tile farthest (Manhattan) from _fearSourceId, through the normal
+           doMove (animation, opportunity attacks, online mirror). Returns
+           true when a step was taken. */
+        function _fearFleeMove(unit) {
+            if (!unit || unit.dead || !unitHasStatus(unit, 'feared')) return false;
+            const src = unit._fearSourceId ? unitFromId(unit._fearSourceId) : null;
+            let tiles = [];
+            try { tiles = getMoveTiles(unit) || []; } catch (e) { tiles = []; }
+            if (!tiles.length) return false;
+            const dist = t => src ? (Math.abs(t.x - src.x) + Math.abs(t.y - src.y)) : (Math.abs(t.x - unit.x) + Math.abs(t.y - unit.y));
+            const d0 = src ? dist(unit) : 0;
+            let best = null, bestD = d0;
+            for (const t of tiles) {
+                if (t.x === unit.x && t.y === unit.y) continue;
+                if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
+                const d = dist(t);
+                if (d > bestD) { best = t; bestD = d; }
+            }
+            if (!best) {
+                addLog(`😱 ${unitDisplayName(unit)} cowers in fear — nowhere to run!`);
+                return false;
+            }
+            addLog(`😱 ${unitDisplayName(unit)} flees in terror${src ? ' from ' + unitDisplayName(src) : ''}!`);
+            if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(unit, '😱 FLEE!', 'debuff', { durationMs: 1000 });
+            try { return doMove(unit, best.x, best.y, best.z) !== false; } catch (e) { return false; }
+        }
+
+        /* 🪽 Levitating (STATUS_DEFS grantsFlight, onApply): lift a grounded
+           unit to its takeoff altitude the moment the status lands — the
+           same _resolveTakeoffZ the ascend action uses, tweened by the rig. */
+        function levitateUnit(unit, info) {
+            if (!unit || unit.dead || unit._dying) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
+            if (typeof _resolveTakeoffZ !== 'function') return false;
+            const newZ = _resolveTakeoffZ(unit);
+            if (newZ === null || newZ === undefined) return false;
+            if (window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive() && !_skipVisuals()) {
+                try { window.ThreeAnim.walkPath(unit, [{ x: unit.x, y: unit.y, z: newZ }]); } catch (e) {}
+            }
+            unit.z = newZ;
+            addLog(`🪽 ${unitDisplayName(unit)} rises on fairy dust!`);
+            if (typeof markDirty === 'function') markDirty('board');
+            return true;
         }
 
         function focusUnitPanel(unitOrId, flashKind = null, source = 'program') {
@@ -8634,6 +8858,10 @@
 
         function applyHealingToUnit(target, amount, sourceUnit = null, opts = {}) {
             if (!target || target.dead || target._dying) return 0;
+            /* 🌑 Shadow Realm: nobody but the partner (or the unit itself —
+               regen, pixie dust and self-heals pass source-less) heals a unit
+               inside the realm. */
+            if (sourceUnit && isUnitRealmShieldedFrom(target, sourceUnit)) return 0;
             // Flat heals are HP-SPACE numbers: they resolve in the RECIPIENT's
             // magnitude (supportScale — no combat pace, no level gap), so a
             // spell that restores ~30% of a bar restores ~30% at every level.
@@ -16307,7 +16535,7 @@
                 if (cdLeft > 0) return { ready: false, cdFrac: Math.min(1, cdLeft / d.cdMs), cdLeft, reason: 'cd' };
                 if ((u.mp || 0) < d.mp) return { ready: false, cdFrac: 0, cdLeft: 0, reason: 'mp' };
                 if (typeof unitHasStatus === 'function' && sp.damageType !== 'physical'
-                    && unitHasStatus(u, 'silence')) return { ready: false, cdFrac: 0, cdLeft: 0, reason: 'silence' };
+                    && unitSpellsBlocked(u)) return { ready: false, cdFrac: 0, cdLeft: 0, reason: 'silence' };
                 return { ready: true, cdFrac: 0, cdLeft: 0, reason: '' };
             }
             function slotState(u, i) {
@@ -21132,6 +21360,18 @@
                 showCombatBanner(`🛡️ ${unitDisplayName(target)} is Protected!`, 'Immune to all damage this turn', 'protect');
                 return false;
             }
+            /* 🌑 Shadow Realm (plan §5.5): inside the realm only the partner
+               can hurt you — zone ticks, weather, DoTs and every other unit
+               no-op. Link echoes are the partner's own damage, so they pass. */
+            if (!opts._linkEcho && isUnitRealmShieldedFrom(target, opts.sourceUnit || null)) {
+                if (_pressDamageCollector && opts.sourceUnit
+                    && opts.sourceUnit.id === _pressDamageCollector.casterId
+                    && opts.sourceUnit.player !== target.player) {
+                    _pressDamageCollector.hits.push({ evaded: true });
+                }
+                addLog(`🌑 ${sourceText}${unitDisplayName(target)} is beyond reach in the Shadow Realm.`);
+                return false;
+            }
 
             // ── 🜂 Elemental affinity (2026-09-01, ELEMENTAL_TYPES_PLAN.md) ─
             // Canonical 15-value element of THIS hit: opts.spellElement
@@ -21568,6 +21808,18 @@
                     if (_serr && _serr.id && isEnemyUnit(sourceUnit, target) && STATUS_DEFS[_serr.id]) {
                         applyStatusPayload(target, { id: _serr.id, duration: _serr.duration || 2 }, `${unitDisplayName(sourceUnit)}'s serrated hit: `, sourceUnit);
                     }
+                    /* 🧨 Incendiary Rounds (CHAMP REWORK Phase 4, STATUS_DEFS
+                       basicAttackStatus): a landed BASIC hit (physical, no
+                       spellType) rides the same path — Burn for the rounds
+                       the buff names. */
+                    if (damageType === 'physical' && !opts.spellType && target.hp > 0 && isEnemyUnit(sourceUnit, target)) {
+                        for (const _bk of getActiveStatusKeys(sourceUnit)) {
+                            const _bas = STATUS_DEFS[_bk]?.basicAttackStatus;
+                            if (_bas && _bas.id && STATUS_DEFS[_bas.id]) {
+                                applyStatusPayload(target, { id: _bas.id, duration: _bas.duration || 2 }, `${unitDisplayName(sourceUnit)}'s ${STATUS_DEFS[_bk].label || _bk}: `, sourceUnit);
+                            }
+                        }
+                    }
 
                     grantXP(sourceUnit, XP_DAMAGE_FLAT, 'damage');
 
@@ -21585,6 +21837,10 @@
                         }
                     }
                 }
+                // ⛓ / 🪆 Links (CHAMP REWORK Phase 4): echo this wound down
+                // Soul Bind / Voodoo. Echoes carry _linkEcho, so they never chain.
+                _procLinks(target, finalDamage, opts);
+
                 /* ── 📜 Contract (fixed 2026-08-10): the contracted unit's own
                    violence feeds the fiend — every time a CONTRACTED unit
                    DEALS damage, the contract-holder siphons 40% of it as
@@ -22901,7 +23157,7 @@
         // this gate always agrees with what the list would show.
         function anyCastableSpellNow(unit) {
             if (!unit || unit.dead) return false;
-            if (unitHasStatus(unit, 'silence')) return false;
+            if (unitSpellsBlocked(unit)) return false;
             const spells = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(Boolean);
             return spells.some(sp => {
                 if (!canAffordSpell(unit, sp)) return false;
@@ -23341,7 +23597,18 @@
             // Fairy passive: shed pixie dust on the tile she left; anyone
             // arriving on a mote resolves it (ally collects / enemy stamps).
             if (unit.race === 'fairy' && typeof dropPixieDust === 'function') dropPixieDust(unit, _originX, _originY);
+            // ✨ Sparkling (CHAMP REWORK Phase 4, STATUS_DEFS shedMotes): any
+            // unit wearing a mote-shedding status leaves glitter behind —
+            // enemies who step on it are Blinded.
+            {
+                const _shed = getActiveStatusKeys(unit).map(k => STATUS_DEFS[k]?.shedMotes).find(Boolean);
+                if (_shed && unit.race !== 'fairy' && typeof dropPixieDust === 'function') {
+                    dropPixieDust(unit, _originX, _originY, { force: true, blindOnStep: _shed.blindOnStep || 0 });
+                }
+            }
             if (typeof checkPixieDustPickup === 'function') checkPixieDustPickup(unit);
+            // 🪢 Roped victims are dragged into the tile this unit just left.
+            _tetherFollow(unit, _originX, _originY, _fromZ);
 
             checkOpportunityAttack(unit, _originX, _originY);
 
@@ -25333,7 +25600,7 @@
                hasSpellTargetInRange / spellTargetUsableOn). */
             spellBlockReason(unit, spell) {
                 if (!unit || !spell) return null;
-                if (unitHasStatus(unit, 'silence')) return 'Silenced';
+                if (unitSpellsBlocked(unit)) return 'Silenced';
                 if (!unitMeetsSpellTierReq(unit, spell)) {
                     const trl = spell.tier === 'II' ? 2 : spell.tier === 'III' ? 3 : 1;
                     return 'Req Lv.' + trl;
@@ -25408,11 +25675,11 @@
 
             canCastAny(unit) {
                 const allSpells = (unit.spells || []);
-                return allSpells.some(s => TargetQuery.canAfford(unit, s) && unit.mp >= getSpellMpCostFor(unit, s) && !unitHasStatus(unit, 'silence'));
+                return allSpells.some(s => TargetQuery.canAfford(unit, s) && unit.mp >= getSpellMpCostFor(unit, s) && !unitSpellsBlocked(unit));
             },
 
             canCastAnyWithTargets(unit) {
-                const silenced = unitHasStatus(unit, 'silence');
+                const silenced = unitSpellsBlocked(unit);
                 if (silenced) return false;
                 const allSpells = (unit.spells || []);
                 return allSpells.some(s =>
@@ -26538,7 +26805,7 @@
             const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
                 || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
             if (!spell || isSpellSelfCast(spell)) return false;
-            if (unitHasStatus(actingUnit, 'silence')) return false;
+            if (unitSpellsBlocked(actingUnit)) return false;
             if (typeof unitMeetsSpellTierReq === 'function' && !unitMeetsSpellTierReq(actingUnit, spell)) return false;
             if ((actingUnit.mp || 0) < getSpellMpCostFor(actingUnit, spell)) return false;
             const approach = findSpellApproachTile(actingUnit, spell, x, y, z != null ? z : clickedUnit.z);
@@ -27228,7 +27495,7 @@
             if (state._spellApproachKey === k) return !!state._spellApproachTile;
             state._spellApproachKey = k;
             state._spellApproachTile = null;
-            if (unitHasStatus(unit, 'silence')
+            if (unitSpellsBlocked(unit)
                 || (typeof unitMeetsSpellTierReq === 'function' && !unitMeetsSpellTierReq(unit, spell))
                 || (unit.mp || 0) < getSpellMpCostFor(unit, spell)) {
                 _clearSpellApproachPreview(); state._spellApproachKey = k; return false;
@@ -36555,6 +36822,23 @@
                     return;
                 }
 
+                /* 😱 Feared (CHAMP REWORK Phase 4, STATUS_DEFS fear): the
+                   activation is the flight — one engine-driven move away from
+                   the source, then the unit is done (human and CPU alike; the
+                   status wears off with the round tick). */
+                if (unitHasStatus(nextUnit, 'feared') && STATUS_DEFS.feared?.fear) {
+                    _fearFleeMove(nextUnit);
+                    nextUnit.ap = 0;
+                    nextUnit.movesThisTurn = UNIT_MAX_MOVES;
+                    scheduleBoardRender();
+                    const _fearGen = _blitzTurnGen;
+                    _waitForAnimationsThen(() => {
+                        if (_fearGen !== _blitzTurnGen || state.winner) return;
+                        maybeAdvanceTurn();
+                    });
+                    return;
+                }
+
                 if (nextUnit._pendingSecondaryJobPick) {
                     if (state.autoPlayers?.[nextUnit.player]) {
 
@@ -39674,7 +39958,7 @@
                 addLog(`${unitDisplayName(unit)} already acted this round.`);
                 return;
             }
-            if (mode === 'spell' && unitHasStatus(unit, 'silence')) {
+            if (mode === 'spell' && unitSpellsBlocked(unit)) {
                 addLog(`${unitDisplayName(unit)} is silenced and cannot cast this turn.`);
                 return;
             }
@@ -40020,7 +40304,7 @@
             if (!unit || !spell) return [];
             if (isSpellSelfCast(spell)) return [];
             if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return [];
-            if (unitHasStatus(unit, 'silence')) return [];
+            if (unitSpellsBlocked(unit)) return [];
             if (typeof unitMeetsSpellTierReq === 'function' && !unitMeetsSpellTierReq(unit, spell)) return [];
             if (typeof canAffordSpell === 'function' && !canAffordSpell(unit, spell)) return [];
             if ((unit.mp || 0) < getSpellMpCostFor(unit, spell)) return [];
@@ -40611,7 +40895,7 @@
                         || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
                     let _mtcApproach = null;
                     if (_mtcSp && !isSpellSelfCast(_mtcSp)
-                        && !unitHasStatus(unit, 'silence')
+                        && !unitSpellsBlocked(unit)
                         && (typeof unitMeetsSpellTierReq !== 'function' || unitMeetsSpellTierReq(unit, _mtcSp))
                         && (unit.mp || 0) >= getSpellMpCostFor(unit, _mtcSp)
                         && !(typeof getSpellRangeTiles === 'function'
@@ -40711,7 +40995,7 @@
                 addLog(`${unitDisplayName(unit)} already acted this round.`);
                 return;
             }
-            if (mode === 'spell' && unitHasStatus(unit, 'silence')) {
+            if (mode === 'spell' && unitSpellsBlocked(unit)) {
                 addLog(`${unitDisplayName(unit)} is silenced and cannot cast this turn.`);
                 return;
             }
@@ -42051,8 +42335,8 @@
             state.pixieDust = state.pixieDust.filter(d => r <= (d.expiresRound ?? r));
         }
 
-        function dropPixieDust(unit, x, y) {
-            if (!unit || unit.dead || unit.race !== 'fairy') return;
+        function dropPixieDust(unit, x, y, opts = {}) {
+            if (!unit || unit.dead || (unit.race !== 'fairy' && !opts.force)) return;
             if (!state.pixieDust) state.pixieDust = [];
             _prunePixieDust();
             if (state.pixieDust.some(d => d.x === x && d.y === y)) return;
@@ -42065,7 +42349,9 @@
                 x, y,
                 owner: unit.player,
                 casterId: unit.id,
-                expiresRound: (state.round || 0) + PIXIE_DUST_LIFETIME_ROUNDS
+                expiresRound: (state.round || 0) + PIXIE_DUST_LIFETIME_ROUNDS,
+                // ✨ Sparkling glitter (Phase 4): an enemy stepping on it is Blinded.
+                blindOnStep: opts.blindOnStep || 0
             });
             markDirty('board');
         }
@@ -42095,6 +42381,12 @@
                 if (typeof flashHeal === 'function') flashHeal(unit);
             } else {
                 addLog(`${unitDisplayName(unit)} stamps out a patch of pixie dust.`);
+                // ✨ Glitter (Sparkling, STATUS_DEFS shedMotes.blindOnStep):
+                // the enemy who stamped it out gets an eyeful.
+                if (mote.blindOnStep > 0 && typeof applyStatusPayload === 'function' && STATUS_DEFS.blind) {
+                    const _glitterSrc = (typeof unitFromId === 'function') ? unitFromId(mote.casterId) : null;
+                    applyStatusPayload(unit, { id: 'blind', duration: mote.blindOnStep }, '✨ Glitter: ', _glitterSrc && !_glitterSrc.dead ? _glitterSrc : null);
+                }
             }
             return true;
         }
@@ -44285,6 +44577,12 @@
             }
             if (unitCryptidHiddenFrom(target, unit.player)) {
                 addLog(`📷 ${unitDisplayName(target)} is a blur at this distance — get within ${unitPassiveValue(target, 'targetableWithin')} tiles to target him.`);
+                playErrorSfx();
+                return 0;
+            }
+            // 🌑 Shadow Realm (plan §5.5): untargetable to everyone but the partner.
+            if (isUnitRealmShieldedFrom(target, unit)) {
+                addLog(`🌑 ${unitDisplayName(target)} is beyond reach in the Shadow Realm.`);
                 playErrorSfx();
                 return 0;
             }
@@ -47831,7 +48129,7 @@
                     ? nearestWalkableZ(x, y, unit.z ?? 0)
                     : (state.boardHeights?.[y]?.[x] ?? 0);
             }
-            if (unitHasStatus(unit, 'silence')) {
+            if (unitSpellsBlocked(unit)) {
                 addLog(`${unitDisplayName(unit)} is silenced and cannot cast spells this turn.`);
                 state._teleportingUnit = null;
                 return 0;
@@ -47941,6 +48239,16 @@
                 if (_cryTgt && isEnemyUnit(_cryTgt, unit) && unitCryptidHiddenFrom(_cryTgt, unit.player)) {
                     if (!_silentReject) {
                         addLog(`📷 ${unitDisplayName(_cryTgt)} is a blur at this distance — get within ${unitPassiveValue(_cryTgt, 'targetableWithin')} tiles to target him.`);
+                        playErrorSfx();
+                    }
+                    state._teleportingUnit = null;
+                    return 0;
+                }
+                // 🌑 Shadow Realm (plan §5.5): a unit inside the realm can be
+                // aimed at only by its partner.
+                if (_cryTgt && isUnitRealmShieldedFrom(_cryTgt, unit)) {
+                    if (!_silentReject) {
+                        addLog(`🌑 ${unitDisplayName(_cryTgt)} is beyond reach in the Shadow Realm.`);
                         playErrorSfx();
                     }
                     state._teleportingUnit = null;
@@ -48226,7 +48534,7 @@
                     // this spell and the very next click is already a target pick,
                     // so re-casting costs zero re-navigation. Otherwise fall back
                     // to the open spellbook.
-                    if (canAffordSpell(unit, spell) && !unitHasStatus(unit, 'silence')) {
+                    if (canAffordSpell(unit, spell) && !unitSpellsBlocked(unit)) {
                         state.actionMode = 'spell';
                         state.actionMenuView = 'spells';
                         state.selectedTool = spell.name;
