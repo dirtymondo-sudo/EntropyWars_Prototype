@@ -9579,6 +9579,7 @@
                 // sticky flags from earlier menu picks would derail the sandbox
                 state.squadLeaderMode = false;
                 state.isRankedMatch = false;
+                state.trainingMatch = false;
                 state.isCampaign = false;
                 state._customRoundLimit = 0;
 

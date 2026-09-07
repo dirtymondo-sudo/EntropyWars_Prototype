@@ -595,6 +595,17 @@ function MatchSelect() {
   const [ranked, setRanked] = useState(false);
   const [opponent, setOpponent] = useState('CPU');
   const [rounds, setRounds] = useState(15);
+  /* CPU TEMPO (2026-09-07): ⚡ TRAINING = the CPU's turns resolve instantly
+     (no animations, no camera, no banners — battle.js _setAiTurbo); the
+     player's own turns are untouched. Sticky across visits (localStorage). */
+  const [training, setTraining] = useState(() => {
+    try { return localStorage.getItem('ew_training_match') === '1'; } catch (_e) { return false; }
+  });
+  function pickTraining(on) {
+    setTraining(on);
+    try { localStorage.setItem('ew_training_match', on ? '1' : '0'); } catch (_e) {}
+    if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+  }
   // CONFIRM = the form goes through: a FILED stamp thunks onto the button,
   // then the existing launch path runs. filedRef blocks a double-click
   // during the 420 ms beat; both reset after launch (the React root stays
@@ -681,6 +692,7 @@ function MatchSelect() {
   _msRanked = false;
   _msOnline = false;
   _msSelectedRounds = rounds;
+  _msTraining = training;
 
   const mp = mapList[mapIdx] || { name: '—', size: '8×8', w: 8, h: 8, team: 4 };
   const accent = accentForMap(mp);
@@ -1110,6 +1122,21 @@ function MatchSelect() {
           )
         ),
 
+        h(CfgRow, { label: 'CPU TEMPO' },
+          h('div', { style: { display: 'flex', flexDirection: 'column', gap: 6 } },
+            h('div', { style: { display: 'flex', gap: 6, flexWrap: 'wrap' } },
+              h(ChipPick, { on: !training, onClick: () => pickTraining(false) }, 'Cinematic'),
+              h(ChipPick, { on: training, onClick: () => pickTraining(true) }, '⚡ Training')
+            ),
+            h('div', { style: {
+              fontFamily: '"DotGothic16", monospace', fontSize: 9,
+              color: training ? EW.good : EW.inkDim, letterSpacing: '0.1em', lineHeight: 1.5,
+            }}, training
+              ? 'CPU turns resolve instantly — no animations, no camera. Your turns play as normal.'
+              : 'CPU turns play out with full animations and action camera.')
+          )
+        ),
+
         h('div', { style: {
           marginTop: 'auto', padding: '12px 14px',
           background: 'linear-gradient(180deg, ' + accent + '14, transparent)',
@@ -1144,7 +1171,7 @@ function MatchSelect() {
           h('div', { style: {
             fontFamily: '"DotGothic16", monospace', fontSize: 9,
             color: EW.inkDim, letterSpacing: '0.16em', marginTop: 2,
-          }}, gm.label.toUpperCase() + ' · ' + teamDisplay + ' · ' + rounds + 'R'),
+          }}, gm.label.toUpperCase() + ' · ' + teamDisplay + ' · ' + rounds + 'R' + (training ? ' · ⚡ TRAINING' : '')),
           sf && h('div', { style: {
             fontFamily: '"DotGothic16", monospace', fontSize: 9, letterSpacing: '0.14em', marginTop: 5,
             display: 'flex', alignItems: 'center', gap: 8,
@@ -1189,6 +1216,8 @@ function MatchSelect() {
           h('span', { style: { color: EW.ink } }, winLabel.toUpperCase()),
           h('span', { style: { color: EW.inkDim } }, ' · '),
           h('span', { style: { color: EW.ink } }, 'VS CPU'),
+          training && h('span', { style: { color: EW.inkDim } }, ' · '),
+          training && h('span', { style: { color: EW.good } }, '⚡ TRAINING'),
           caseNo && h('span', { style: { color: EW.inkDim } }, ' · '),
           caseNo && h('span', { style: { color: EW.inkDim, fontFamily: '"IBM Plex Mono", "DotGothic16", monospace' } }, 'CASE ' + caseNo)
         ),

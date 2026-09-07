@@ -3,6 +3,8 @@
             // end-of-round camera + dialogue theatre stays muted (_mdBeatUpkeep).
             if (state._mdQuietUpkeep) return true;
             if (state.devAutoSim) return !state._devSimShowAnims;
+            // Training match: the CPU's turn is a no-visuals turbo turn.
+            if (state._aiTurbo) return true;
             return !!state.animationsDisabled;
         }
 
@@ -26706,7 +26708,10 @@
         function getDevSimSpeedMultiplier() {
             const base = Math.max(1, Number(state.devSimSpeed) || 1);
 
-            return state.devAutoSim ? base * 4 : base;
+            if (state.devAutoSim) return base * 4;
+            // Training match, CPU unit active: same effective ×64 the AI lab runs at.
+            if (state._aiTurbo) return TRAINING_TURBO_MULT;
+            return base;
         }
 
         function actionMs(ms) {
@@ -26864,6 +26869,55 @@
                 if (cb) cb.checked = !state.animationsDisabled;
             });
         }
+
+        /* ═══════════ TRAINING MATCH — instant CPU turns vs a human ═══════════
+           (2026-09-07) Match-select "CPU TEMPO → ⚡ TRAINING" (map.js _msConfirm
+           → state.trainingMatch). The human plays P1 exactly as in a normal
+           VS-CPU match; while a CPU-controlled unit is the active blitz unit
+           the engine runs the same turbo path the AI-Training / Balance-Lab
+           auto-sims use: state._aiTurbo → _skipVisuals() true (no VFX, no
+           banners, no cinematics), camera + animations forced OFF (rig
+           mixers frozen, walks instant), every actionMs / scaleDevSimDelay
+           divided by TRAINING_TURBO_MULT, and _waitForAnimationsThen on its
+           tight poll. The flag flips at the blitz handoff (_continueBlitz-
+           WithUnit_impl → _syncTrainingTurbo) and is cleared for the human's
+           units, the end-of-round sequence, and match end — so the player's
+           own turns, the round banners and the result screen play normally.
+           Floating damage numbers are NOT visual-gated, so the CPU's hits
+           still pop over the units. Offline only (isOnlineMatch → never). */
+        const TRAINING_TURBO_MULT = 64;
+        function _trainingTurboWanted(unit) {
+            if (!state.trainingMatch || state.devAutoSim) return false;
+            if (state.phase !== 'battle' || state.winner) return false;
+            try { if (typeof isOnlineMatch === 'function' && isOnlineMatch()) return false; } catch (e) {}
+            if (!unit || unit.dead) return false;
+            if (state.controllers?.[unit.player] === CTRL.AI) return true;
+            if (state.autoPlayers?.[unit.player]) return true;
+            return false;
+        }
+        function _setAiTurbo(on) {
+            on = !!on;
+            if (on === !!state._aiTurbo) return;
+            if (on) {
+                state._preTurboVisualPrefs = {
+                    cameraDisabled: !!state.cameraDisabled,
+                    animationsDisabled: !!state.animationsDisabled,
+                };
+                state._aiTurbo = true;
+                state.cameraDisabled = true;
+                state.animationsDisabled = true;
+            } else {
+                state._aiTurbo = false;
+                const saved = state._preTurboVisualPrefs;
+                state._preTurboVisualPrefs = null;
+                if (saved) {
+                    state.cameraDisabled = !!saved.cameraDisabled;
+                    state.animationsDisabled = !!saved.animationsDisabled;
+                }
+            }
+        }
+        function _syncTrainingTurbo(unit) { _setAiTurbo(_trainingTurboWanted(unit)); }
+        window._setAiTurbo = _setAiTurbo;
 
         function setDevAutoSim(enabled) {
             if (isOnlineMatch() && enabled) return;
@@ -30396,6 +30450,7 @@
         function finalizeMatch() {
             if (_finalizing) return;
             _finalizing = true;
+            _setAiTurbo(false);   // training match: result screen / podium play normally
             _stopMatchClockInterval();
             revealAllHourglasses();
             revealAllHiddenItems();
@@ -32887,6 +32942,11 @@
             };
             state._customRoundLimit = 0;
 
+            _setAiTurbo(false);
+            if (state.trainingMatch && !isOnlineMatch() && !state.devAutoSim) {
+                addLog('⚡ TRAINING MATCH — CPU turns resolve instantly (no animations, no camera). Your turns play as normal.');
+            }
+
             state.shotClock = { startedAt: 0, limitSec: 30, active: false };
 
             _startMatchClockInterval();
@@ -34560,6 +34620,9 @@
                 if (!nextUnit) {
 
                     _roundAdvanceInProgress = true;
+                    // Training match: the round banners / end-of-round beats
+                    // play at normal speed even when a CPU unit closed the round.
+                    _setAiTurbo(false);
 
                     // ═══ END-OF-ROUND SEQUENCE — canonical order, every round ═══
                     // One camera language throughout: every beat frames its
@@ -34786,7 +34849,7 @@
             // a 0ms timer. Only gameplay-coupled flags are worth waiting on,
             // at a tight poll. This alone removes several hundred ms of
             // wall-clock per AI action from simulated matches.
-            const _turbo = state.devAutoSim && !state._devSimShowAnims;
+            const _turbo = (state.devAutoSim && !state._devSimShowAnims) || !!state._aiTurbo;
             const MAX_WAIT = _turbo ? 2000 : 8000;
             // Dwell ONLY after something actually played: a fixed 350ms tax on
             // every call — including the two or three back-to-back calls in a
@@ -35119,6 +35182,9 @@
                 state.activePlayer = nextUnit.player;
                 state._blitzActiveUnitId = nextUnit.id;
 
+                // Training match: turbo ON for a CPU unit, OFF for the human's.
+                _syncTrainingTurbo(nextUnit);
+
                 state._fogCameraAllowed = (state.autoPlayers?.[nextUnit.player] && _shouldCameraFollowUnit(nextUnit)) || false;
 
                 /* Mystery Dungeon: a fogged monster's turn resolves silently —
@@ -35218,7 +35284,7 @@
                 // has registered", not the whole pan. (650/280/900 read as a
                 // hitch on every single handoff — the #1 "the game feels
                 // laggy even at 120fps" complaint.)
-                const delay = state.devAutoSim ? scaleDevSimDelay(400, 4) : (_mdSilent ? 60 : 500);
+                const delay = (state.devAutoSim || state._aiTurbo) ? scaleDevSimDelay(400, 4) : (_mdSilent ? 60 : 500);
 
                 const _tookDmgRecently = !state.devAutoSim && !state.autoPlayers?.[nextUnit.player] && nextUnit._tookDamageThisRound;
                 const humanDelay = state.devAutoSim ? scaleDevSimDelay(400, 4) : (_tookDmgRecently ? 500 : 140);
@@ -35234,7 +35300,7 @@
                     if (!_emerged) {
                         nextUnit.ap = 0;
                         scheduleBoardRender();
-                        window.setTimeout(() => maybeAdvanceTurn(), state.devAutoSim ? 0 : 400);
+                        window.setTimeout(() => maybeAdvanceTurn(), (state.devAutoSim || state._aiTurbo) ? 0 : 400);
                         return;
                     }
                 }
@@ -35245,7 +35311,7 @@
                     checkWin();
                     if (state.winner) return;
                     scheduleBoardRender();
-                    window.setTimeout(() => maybeAdvanceTurn(), state.devAutoSim ? 0 : 900);
+                    window.setTimeout(() => maybeAdvanceTurn(), (state.devAutoSim || state._aiTurbo) ? 0 : 900);
                     return;
                 }
 
@@ -35516,7 +35582,7 @@
                     }
                 }
                 runComputerTurn();
-            }, state.devAutoSim ? scaleDevSimDelay(35, 2) : (_rctHidden ? 60 : 200));
+            }, (state.devAutoSim || state._aiTurbo) ? scaleDevSimDelay(35, 2) : (_rctHidden ? 60 : 200));
         }
 
         /* Schema 13 — the AI v4 rebase (2026-08-15):
@@ -37668,7 +37734,7 @@
                 markDirty('board', 'selectedUnit', 'hud');
                 renderIfDirty();
 
-                const isDevSim = state.devAutoSim;
+                const isDevSim = state.devAutoSim || !!state._aiTurbo;
                 const telegraphMs = isDevSim ? 0 : 220;
                 const actionDelay = isDevSim ? scaleDevSimDelay(delay, 2) : delay;
                 if (!isDevSim && target.x !== undefined && target.y !== undefined) {

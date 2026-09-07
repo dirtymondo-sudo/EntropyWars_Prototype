@@ -1329,6 +1329,7 @@
         function _mdSeatDelvers(race, gender, heroJob) {
             window._msCpuOnly = true;
             state.isRankedMatch = false;
+            state.trainingMatch = false;
             state._customRoundLimit = 0;
             state._mdRun = null;
             state._mdPhase = 'floor';
@@ -2519,6 +2520,7 @@
         let _msRanked = false;
         let _msOnline = false;
         let _msSelectedRounds = 0;
+        let _msTraining = false;   // CPU TEMPO → ⚡ TRAINING (instant CPU turns), mirrored by match-select.js
 
         function _msMaxTeamForMap(mapIdx) {
             const mp = MS_MAP_LIST[mapIdx];
@@ -2929,6 +2931,10 @@
             }
 
             state.isRankedMatch = _msRanked;
+            /* Training match: CPU turns run on the no-visuals turbo path
+               (battle.js _setAiTurbo). Sticks across rematches; every other
+               launch path clears it. */
+            state.trainingMatch = !!_msTraining;
 
             if (_msSelectedRounds > 0) {
                 state._customRoundLimit = _msSelectedRounds;
@@ -2968,6 +2974,7 @@
             playSfx('uiButtonConfirm');
 
             state.isRankedMatch = false;
+            state.trainingMatch = false;
 
             // Leaving for any non-sim mode clears the sim-mode flags so a
             // stale training/balance/strength session can't keep recording.
@@ -15307,6 +15314,7 @@
             state.showPlayer2Builder = false;
             state.squadLeaderMode = false;
             state.isRankedMatch = false;
+            state.trainingMatch = false;
 
             if (typeof MULTIPLAYER_MODES !== 'undefined') {
                 state.activeMultiplayerMode = 'arena';

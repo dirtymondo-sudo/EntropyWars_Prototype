@@ -179,6 +179,25 @@ monument key `door`). Kill-switch unchanged: `window.EW_DISABLE_INTRO_CINE`.
 Camera framing for beats 1–2 is anchored on `info[p].doorOut`/`zB` (battle.js
 `doorLift`) — tune those two numbers before touching the renderer.
 
+## TRAINING MATCH (instant CPU turns vs a human) — added 2026-09-07
+Match-select → CONFIG column → **CPU TEMPO: Cinematic / ⚡ Training**
+(match-select.js, sticky via localStorage `ew_training_match`; mirrored into
+map.js `_msTraining` → `_msConfirm` sets `state.trainingMatch`). The human
+plays P1 normally; whenever a CPU-controlled unit becomes the active blitz
+unit, battle.js `_syncTrainingTurbo` (called from `_continueBlitzWithUnit_impl`)
+flips `state._aiTurbo` on: `_skipVisuals()` → true, camera + animations
+forced off (restored from `_preTurboVisualPrefs`), `getDevSimSpeedMultiplier`
+→ `TRAINING_TURBO_MULT` (64), `_waitForAnimationsThen` tight poll, AI
+telegraph/activation delays zeroed, SFX muted (audio.js). It's cleared for
+the human's units, at the end-of-round sequence, in `finalizeMatch` and at
+match start. Floating damage numbers are NOT visual-gated so the CPU's hits
+still pop. Other launch paths (campaign, MD, spell lab, `_selectMode` labs)
+reset `state.trainingMatch = false`; online never turbos (skip-listed in
+online.js). Renderer/VFX gates that used to read only
+`devAutoSim && !_devSimShowAnims` now also honour `state._aiTurbo`
+(three-renderer.js `actionGlowStart`, three-vfx-effects.js timers, state.js
+storm lightning). Blitz-turn modes only — Simul has no per-side turn.
+
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /
 dev-sim — they can do that themselves) and report pain points: unresponsive

@@ -2807,6 +2807,7 @@ window._mePlayCommunityMap = function(mapData) {
     state.showPlayer2Builder = false;
     state.squadLeaderMode = false;
     state.isRankedMatch = false;
+    state.trainingMatch = false;
     if (typeof MULTIPLAYER_MODES !== 'undefined') state.activeMultiplayerMode = 'arena';
 
     if (typeof dismissTitleScreen === 'function') dismissTitleScreen();

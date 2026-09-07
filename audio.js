@@ -551,6 +551,9 @@
         function playSfx(key, opts = {}) {
 
             if (state.devAutoSim) return false;
+            // Training match: the CPU's instant turn would fire a burst of
+            // overlapping cues in a few ms — mute SFX for it (music untouched).
+            if (state._aiTurbo) return false;
             if (!state.audioUnlocked && !opts.allowBeforeUnlock) return false;
             const src = sfxLibrary[key];
             if (!src) return false;

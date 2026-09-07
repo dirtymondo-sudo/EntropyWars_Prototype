@@ -1784,7 +1784,7 @@
         // it and the guest sees the bolt too (RULE #2).
         window.playStormLightningFx = function (x, y) {
             if (!window.ThreeLightning) return;
-            if (state.devAutoSim && !state._devSimShowAnims) return;
+            if ((state.devAutoSim && !state._devSimShowAnims) || state._aiTurbo) return;
             if (typeof playSfx === 'function') {
                 playSfx('lightningStrike');
                 window.setTimeout(() => playSfx('thunderRumble'),
@@ -4221,6 +4221,13 @@
             builderSelectedSlot: 0,
             devSimSpeed: 1,
             devSimTimer: null,
+            /* TRAINING MATCH (2026-09-07): a VS-CPU game where the CPU's
+               turns resolve instantly — battle.js _setAiTurbo flips _aiTurbo
+               on while an AI unit is active (anims + camera off, delays ×64)
+               and back off for the human's units. Match-select CPU TEMPO. */
+            trainingMatch: false,
+            _aiTurbo: false,
+            _preTurboVisualPrefs: null,
             activeZodiac: ZODIAC_CYCLE[0],
             zodiacOffset: 0,
             startingPlayer: 1,

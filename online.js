@@ -3945,6 +3945,10 @@
                     devSimSpeed: 1,
                     _devSimShowAnims: 1,
                     _preSimVisualPrefs: 1,
+                    /* training match (instant CPU turns) is offline-only */
+                    trainingMatch: 1,
+                    _aiTurbo: 1,
+                    _preTurboVisualPrefs: 1,
 
                     _fogAnchorUnitId: 1,
                     _fogRevealTiles: 1,

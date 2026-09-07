@@ -3532,7 +3532,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var _zi = 0; _zi < _zapCount; _zi++) {
                 (function(idx) {
                     window.setTimeout(function() {
-                        if (typeof state !== 'undefined' && state.devAutoSim && !state._devSimShowAnims) return;
+                        if (typeof state !== 'undefined' && (state.devAutoSim && !state._devSimShowAnims || state._aiTurbo)) return;
                         var _zc = tilePx(params.tx, params.ty);
                         var _zz = unitSurfaceZ(params.tx, params.ty);
                         var _ub = unitZBoost();
@@ -4169,7 +4169,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 for (var li = 0; li < tileOffsets.length; li++) {
                     (function(off, delay) {
                         window.setTimeout(function() {
-                            if (typeof state !== 'undefined' && state.devAutoSim && !state._devSimShowAnims) return;
+                            if (typeof state !== 'undefined' && (state.devAutoSim && !state._devSimShowAnims || state._aiTurbo)) return;
                             ThreeLightning.strikeFromSky(tx + off.dx, ty + off.dy, {
                                 durationMs: Math.max(200, descentMs * 0.85),
                                 segments: 14,
@@ -5041,7 +5041,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var _ali = 0; _ali < tileOffsets.length; _ali++) {
                 (function(off, idx) {
                     window.setTimeout(function() {
-                        if (typeof state !== 'undefined' && state.devAutoSim && !state._devSimShowAnims) return;
+                        if (typeof state !== 'undefined' && (state.devAutoSim && !state._devSimShowAnims || state._aiTurbo)) return;
                         ThreeLightning.strikeFromSky(tx + off.dx, ty + off.dy, {
                             durationMs: 250,
                             segments: 12,
@@ -15917,7 +15917,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try {
             if (typeof document === 'undefined') return;
             if (_catOff('spells')) return;
-            if (typeof state !== 'undefined' && state.devAutoSim && !state._devSimShowAnims) return;
+            if (typeof state !== 'undefined' && (state.devAutoSim && !state._devSimShowAnims || state._aiTurbo)) return;
             if (_sigFlashbackActive) return;
             var cv = document.getElementById('threeCanvas');
             if (!cv) return;
@@ -15961,7 +15961,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try {
             if (typeof document === 'undefined') return;
             if (_catOff('spells')) return;
-            if (typeof state !== 'undefined' && state.devAutoSim && !state._devSimShowAnims) return;
+            if (typeof state !== 'undefined' && (state.devAutoSim && !state._devSimShowAnims || state._aiTurbo)) return;
             var el = document.createElement('div');
             el.textContent = '⬅ To Be Continued';
             el.style.cssText = 'position:fixed;left:0;bottom:13%;pointer-events:none;z-index:9002;'
@@ -16353,7 +16353,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try {
             if (typeof document === 'undefined') return;
             if (_catOff('spells')) return;
-            if (typeof state !== 'undefined' && state.devAutoSim && !state._devSimShowAnims) return;
+            if (typeof state !== 'undefined' && (state.devAutoSim && !state._devSimShowAnims || state._aiTurbo)) return;
             if (_sigTripActive) return;
 
             /* SHADER PATH (preferred). The CSS-filter version below predates
@@ -19175,7 +19175,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigSparks(tx, ty, 'steel-spark', 26, { vxy: 480, vz0: 20, vz1: 160, gravity: 300 });
             var wave = function (count, phase, core, glow, thick, delay) {
                 window.setTimeout(function () {
-                    if (typeof state !== 'undefined' && state.devAutoSim && !state._devSimShowAnims) return;
+                    if (typeof state !== 'undefined' && (state.devAutoSim && !state._devSimShowAnims || state._aiTurbo)) return;
                     for (var i = 0; i < count; i++) {
                         var a = phase + i * (Math.PI * 2 / count);
                         var ex = tx + Math.round(Math.cos(a) * R);
@@ -19191,7 +19191,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             wave(8, Math.PI / 16, 0xfff2cc, 0xffaa33, 1.0, 340);  /* cannon volley */
             /* spent casings + heat venting once the guns wind down */
             window.setTimeout(function () {
-                if (typeof state !== 'undefined' && state.devAutoSim && !state._devSimShowAnims) return;
+                if (typeof state !== 'undefined' && (state.devAutoSim && !state._devSimShowAnims || state._aiTurbo)) return;
                 _sigSparks(tx, ty, 'steel-spark', 18, { vxy: 420, vz0: 30, vz1: 140, gravity: 320 });
                 _sigSparks(tx, ty, 'smoke', 8, { vxy: 60, vz0: 20, vz1: 80, gravity: -20 });
                 _sigScreenFlash('#aaffee', 120, 0.14);

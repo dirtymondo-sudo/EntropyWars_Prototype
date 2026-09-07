@@ -12459,7 +12459,7 @@ const ThreeRenderer = (function () {
     function actionGlowStart(key, spec) {
         if (!highlightGroup || !spec) return null;
         if (typeof window !== 'undefined' && window.EW_DISABLE_TILE_GLOW) return null;
-        if (state && state.devAutoSim && !state._devSimShowAnims) return null;
+        if (state && ((state.devAutoSim && !state._devSimShowAnims) || state._aiTurbo)) return null;
         _glowKill(key);
         var now = performance.now();
         var holdMs = Math.max(120, spec.holdMs || 700);
