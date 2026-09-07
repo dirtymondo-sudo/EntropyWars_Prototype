@@ -227,6 +227,37 @@ start; `window._ewImitationReport()` reopens the last one. (Also fixed
 2026-09-07: the Arena victory tally zipped P1/P2 detail rows by index and
 crashed `showResultOverlay` when only one side had a Bounties row.)
 
+## ENTROPY STRIKE — THE SIX APOCALYPSES (typed team attack) — added 2026-09-07
+The full-gauge team attack is no longer typeless: the ⚛ ENTROPY row on the
+bezel now OPENS a picker (hud.js `_hrlgEntropyBlades`, `actionMenuView ===
+'entropy'`, gated in ui.js `chooseActionMenu`) with one row per damage
+type — **For All Mankind** (human) · **Invasion Day** (alien) ·
+**Revelations** (divine) · **Hell on Earth** (unholy) · **Robot Uprising**
+(tech) · **Reality Shift** (anomaly). Catalogue: data.js
+`ENTROPY_STRIKE_TYPES` / `ENTROPY_STRIKE_TYPE_ORDER` (also on `window`);
+read it through battle.js `getEntropyStrikeType(id)`. Damage: `doEntropyStrike
+(unit, strikeType)` passes the type as `spellType` to applyDamageToUnit, so the
+TYPE_CHART judges every victim (weak ×1.30 / resist ×0.75 + the trigger's
+STAB) — no element layer. `getEntropyStrikeForecast(unit, type)` (weak /
+resist / neutral counts, avg mult, stab) feeds the picker's intel chips and
+`getEntropyStrikeBestType(unit)` (the AI's pick, ai.js `scoreEntropyStrike`
+→ `strikeType` on the candidate; also the default for any caller that omits
+the type). Presentation: `_ewsPlayCinematic` is a shared skeleton (typed
+banner `.ews-t-<id>` in styles-cinematic.css, splitscreen charge, crane,
+per-enemy camera beats, restore) that delegates every beat to the type's
+DIRECTOR in `_EWS_DIRECTORS` (siren / pane / world / enemyCam / lead /
+strike / resolve + FIXED chargeMs/staggerMs/resolveMs). Directors use the
+CineFX kit (cineGrade, cineInsert — new kinds k-stamp / k-signal /
+k-scripture / k-terminal / k-glitch — cineFreezeFrame, cineSlowMo,
+cineDollyZoom, the named shots) and the VoidStage (`opts.maxMs` added so
+the ultimate holds the void through every strike; scarcity gate bypassed
+on purpose). RELAY RULE: VFX that online.js relays by itself
+(sigUFOFleet3D, spawnProbeDescent3D, tileGlow) fire only when
+`!ctx.relayed`; the DOOR synth kit (`playDoorSfx`) is NOT relayed so both
+screens voice it. Online: `strikeType` rides the `doEntropyStrike`
+game-action and the `entropy-cine` relay; Simul plan steps carry it too.
+`npm test` runs `entropy-strike.test.js` (catalogue ↔ directors ↔ CSS).
+
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /
 dev-sim — they can do that themselves) and report pain points: unresponsive

@@ -3373,6 +3373,91 @@ function _hrlgBuildBlades(unit, st) {
   return blades;
 }
 
+/* ⚛ THE SIX APOCALYPSES — the Entropy Strike type picker (2026-09-07).
+   One row per damage type (data.js ENTROPY_STRIKE_TYPES, catalogue order),
+   each wearing its type colour edge to edge and carrying the matchup
+   INTEL the choice is about: the projected per-enemy damage chip, how
+   many visible enemies are WEAK / RESIST to that type (battle.js
+   getEntropyStrikeForecast — the same branches the engine will use), a
+   STAB chip when the triggering unit shares the type, a green ! when the
+   pick is super-effective across the board, and BEST on the row the CPU
+   would take. Hover/cursor feeds the bottom description bar with the
+   apocalypse's flavour + the forecast sentence. Firing a row IS the strike. */
+function _hrlgEntropyBlades(unit, st) {
+  const order = (typeof window.getEntropyStrikeTypeOrder === 'function') ? window.getEntropyStrikeTypeOrder()
+    : ((typeof ENTROPY_STRIKE_TYPE_ORDER !== 'undefined') ? ENTROPY_STRIKE_TYPE_ORDER : ['human', 'alien', 'divine', 'unholy', 'tech', 'anomaly']);
+  const ready = typeof window.canUseEntropyStrike === 'function' && window.canUseEntropyStrike(unit);
+  let dmg = 0;
+  try { if (ready && typeof window.getEntropyStrikeDamage === 'function') dmg = window.getEntropyStrikeDamage(unit) || 0; } catch (e) { dmg = 0; }
+  let best = null;
+  try { if (ready && typeof window.getEntropyStrikeBestType === 'function') best = window.getEntropyStrikeBestType(unit); } catch (e) { best = null; }
+  const stabMult = (typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25;
+  let nTargets = 0;
+  const blades = order.map(id => {
+    const def = (typeof window.getEntropyStrikeType === 'function') ? window.getEntropyStrikeType(id)
+      : ((typeof ENTROPY_STRIKE_TYPES !== 'undefined' && ENTROPY_STRIKE_TYPES[id]) || { id, name: id, glyph: '⚛', desc: '' });
+    let fc = null;
+    try { if (typeof window.getEntropyStrikeForecast === 'function') fc = window.getEntropyStrikeForecast(unit, id); } catch (e) { fc = null; }
+    if (fc) nTargets = fc.targets;
+    const tc = TYPE_TEXT_COLORS[id] || def.color || '#c9a5ff';
+    const mult = fc ? fc.mult * (fc.stab ? stabMult : 1) : 1;
+    const proj = Math.max(1, Math.round(dmg * mult));
+    const good = fc && fc.weak > 0 && fc.resist === 0;
+    const bad = fc && fc.resist > 0 && fc.weak === 0;
+    const powerColor = good ? '#7dff9a' : (bad ? '#ff7a7a' : '#f0e6c8');
+    // the intel chip: "▲2 WEAK" / "▼1 RESIST" / "▲2 ▼1" / "NEUTRAL"
+    let metaText = 'NEUTRAL', metaColor = '#9a94ad';
+    if (fc && (fc.weak || fc.resist)) {
+      const bits = [];
+      if (fc.weak) bits.push('▲' + fc.weak + (fc.resist ? '' : ' WEAK'));
+      if (fc.resist) bits.push('▼' + fc.resist + (fc.weak ? '' : ' RESIST'));
+      metaText = bits.join(' ');
+      metaColor = good ? '#7dff9a' : (bad ? '#ff7a7a' : '#f2c468');
+    }
+    const badges = [{
+      label: id.toUpperCase(),
+      style: typeBadgeStyleFor(id, { fontSize: _HRLG_TYPE_FS, padding: _HRLG_TYPE_PAD }),
+      title: 'Damage type the whole team\'s strike carries — judged by the type chart on every enemy',
+    }];
+    if (fc && fc.stab) badges.push({ label: 'STAB', plain: true, title: 'Your unit shares this type: ×' + stabMult + ' on every hit' });
+    // description-bar card (the _objectCard path: name + stats line + prose)
+    const fcLine = fc
+      ? (fc.targets + ' target' + (fc.targets === 1 ? '' : 's')
+        + ' · ' + fc.weak + ' weak ×1.3 · ' + fc.resist + ' resist ×0.75 · ' + fc.neutral + ' neutral'
+        + (fc.stab ? ' · STAB ×' + stabMult : '')
+        + ' → ~' + proj + ' per enemy')
+      : '';
+    const card = {
+      _objectCard: true,
+      name: (def.glyph || '⚛') + ' ' + String(def.name || id).toUpperCase(),
+      _hpLine: 'ENTROPY STRIKE · ' + id.toUpperCase() + ' TYPE · 1 AP · drains the gauge',
+      desc: (def.desc || '') + (fcLine ? '<br><b>' + fcLine + '</b>' : ''),
+    };
+    return {
+      id: 'ews:' + id,
+      icon: def.glyph || '⚛', iconColor: tc,
+      catColor: TYPE_COLORS[id] || tc,
+      label: def.name || id,
+      badges,
+      available: ready,
+      power: { v: '~' + proj, color: powerColor },
+      meta: { text: metaText, color: metaColor, title: 'Visible enemies weak (▲) / resistant (▼) to this type' },
+      note: (best && best.type === id) ? 'BEST' : null,
+      superEff: !!good,
+      sub: ready ? null : 'Not ready',
+      fire: () => {
+        hideSpellTooltip();
+        if (ready && typeof window.doEntropyStrike === 'function' && typeof getSelectedUnit === 'function') {
+          window.doEntropyStrike(getSelectedUnit(), id);
+        }
+      },
+      hoverIn: () => showSpellTooltip(card),
+      hoverOut: () => hideSpellTooltip(),
+    };
+  });
+  return { title: { icon: '⚛', text: 'Choose the apocalypse', count: nTargets + ' in sight' }, blades };
+}
+
 function _hrlgSwitchBlades(unit, st) {
   const reserves = typeof _gauntletReserves === 'function' ? _gauntletReserves(unit.player) : [];
   const switchCost = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode()?.switchApCost) || 2;
@@ -4061,12 +4146,17 @@ function ActionMenu({ st, hidden }) {
   // them). Only built when usable right now — presence == opportunity.
   const pushers = [];
   // ⚛ Full Entropy Gauge → the team attack is live on ANY of your units.
+  // 2026-09-07: the row no longer fires blind — it opens the SIX
+  // APOCALYPSES picker (_hrlgEntropyBlades): the player chooses the damage
+  // type the whole team's strike carries, with the matchup forecast on
+  // every row.
   if (typeof window.canUseEntropyStrike === 'function' && window.canUseEntropyStrike(unit)) {
     pushers.push({
       id: 'entropyStrike', glyph: '⚛', label: 'ENTROPY', color: '#c9a5ff',
       hint: 'READY',
-      title: 'ENTROPY STRIKE — the whole team hammers every visible enemy (1 AP, drains the gauge)',
-      fire: () => { if (typeof window.doEntropyStrike === 'function' && typeof getSelectedUnit === 'function') window.doEntropyStrike(getSelectedUnit()); },
+      active: menuView === 'entropy',
+      title: 'ENTROPY STRIKE — choose the apocalypse: the whole team hammers every visible enemy with the damage type you pick (1 AP, drains the gauge)',
+      fire: () => { if (typeof chooseActionMenu === 'function') chooseActionMenu('entropy'); },
     });
   }
   // ⬡ CHANNEL is a PERMANENT tool row — always on the column, greyed with
@@ -4286,6 +4376,8 @@ function ActionMenu({ st, hidden }) {
     panels.push(_mkPanel('items', _hrlgItemBlades(unit, st))); view = 'sub';
   } else if (menuView === 'switch') {
     panels.push(_mkPanel('switch', _hrlgSwitchBlades(unit, st))); view = 'sub';
+  } else if (menuView === 'entropy') {
+    panels.push(_mkPanel('entropy', _hrlgEntropyBlades(unit, st), cancelBlade)); view = 'sub';
   } else if (menuView === 'pings') {
     panels.push(_mkPanel('pings', _hrlgPingBlades())); view = 'sub';
   } else if (menuView === 'spellOrientation') {

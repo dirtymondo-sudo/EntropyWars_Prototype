@@ -9006,15 +9006,25 @@
            ENTROPY STRIKE — the full-gauge team attack.
            Any allied unit can trigger it on its turn once the team's Entropy
            Gauge is full (ends that unit's turn). Every living ally channels;
-           every enemy the team can SEE takes massive TYPELESS damage (no
-           element, no weak/resist math — typeEffect 'neutral'). Consumes the
-           whole gauge (refillable). The presentation is the biggest cinematic
-           in the game: letterboxed banner → the screen splits into one live
-           camera per channeling ally (ThreeSplitscreen) while casting
-           circles ignite under them → the grid shatters as the sky tears
-           open → per-enemy camera beats through the staggered annihilation
-           (lightning / blade / light pillar) → whiteout, aftermath crane,
-           settle home.
+           every enemy the team can SEE takes massive damage. Consumes the
+           whole gauge (refillable).
+           2026-09-07 — THE SIX APOCALYPSES: the strike is no longer typeless.
+           The triggering player CHOOSES one of the six damage types
+           (data.js ENTROPY_STRIKE_TYPES: For All Mankind / Invasion Day /
+           Revelations / Hell on Earth / Robot Uprising / Reality Shift) and
+           the damage is judged by the type chart against every victim
+           (weak ×1.30 / resist ×0.75 — `spellType` on applyDamageToUnit,
+           so the triggering unit's own STAB applies exactly like a spell
+           of that type). Each type is its OWN cinematic (_EWS_DIRECTORS
+           below) on top of the shared skeleton: letterboxed typed banner →
+           the screen splits into one live camera per channeling ally
+           (ThreeSplitscreen) → the type's WORLD EVENT (fleet / seal / void
+           stage / bullet storm…) → per-enemy camera beats through the
+           staggered annihilation in that type's flavour → the type's
+           whiteout, aftermath crane, settle home. Online: host runs it,
+           the guest replays the same director off the 'entropy-cine'
+           relay (online.js) with the same strikeType — timings are FIXED
+           per type so damage floaters land in step on both screens.
            ═══════════════════════════════════════════════════════════════════ */
         const ENTROPY_STRIKE_AP_COST   = 1;
         const ENTROPY_STRIKE_BASE_DMG  = 150;  // flat slice per enemy…
@@ -9046,9 +9056,72 @@
             const teamAtk = allies.reduce((s, u) => s + (u.atk || 0), 0);
             return ENTROPY_STRIKE_BASE_DMG + Math.round(teamAtk * ENTROPY_STRIKE_ATK_SCALE);
         }
+
+        /* ── The six apocalypses (data.js catalogue) ─────────────────────── */
+        const _EWS_TYPE_ORDER_FALLBACK = ['human', 'alien', 'divine', 'unholy', 'tech', 'anomaly'];
+        function getEntropyStrikeTypeOrder() {
+            return (typeof ENTROPY_STRIKE_TYPE_ORDER !== 'undefined' && Array.isArray(ENTROPY_STRIKE_TYPE_ORDER))
+                ? ENTROPY_STRIKE_TYPE_ORDER : _EWS_TYPE_ORDER_FALLBACK;
+        }
+        /* Catalogue lookup — always returns a usable def (falls back to
+           Reality Shift so a stale/unknown id from an old client can never
+           wedge the strike). */
+        function getEntropyStrikeType(id) {
+            const key = String(id || '').toLowerCase();
+            const cat = (typeof ENTROPY_STRIKE_TYPES !== 'undefined') ? ENTROPY_STRIKE_TYPES : null;
+            if (cat && cat[key]) return cat[key];
+            if (cat && cat.anomaly) return cat.anomaly;
+            return { id: 'anomaly', name: 'Reality Shift', glyph: '⚛', color: '#c9a5ff', accent: '#c9a5ff', hex: 0xc9a5ff, tagline: 'TOTAL ENTROPY', desc: '' };
+        }
+        function isEntropyStrikeType(id) {
+            return !!id && getEntropyStrikeTypeOrder().includes(String(id).toLowerCase());
+        }
+        /* Matchup forecast for one type against every current target — the
+           HUD picker's intel and the AI's decision input. Mirrors the exact
+           branches of getTypeDamageMultiplier (state.js): a target that is
+           BOTH weak and resistant nets out neutral. `mult` is the average
+           chart multiplier across the targets; `stab` says whether the
+           triggering unit shares the type (its ×1.25 STAB rides on top). */
+        function getEntropyStrikeForecast(unit, typeId) {
+            const def = getEntropyStrikeType(typeId);
+            const targets = unit ? getEntropyStrikeTargets(unit) : [];
+            const out = { type: def.id, name: def.name, targets: targets.length, weak: 0, resist: 0, neutral: 0, stab: false, mult: 1 };
+            if (!unit) return out;
+            out.stab = (unit.types || []).includes(def.id);
+            let sum = 0;
+            for (const t of targets) {
+                let sm = { hasStrong: false, hasWeak: false };
+                try {
+                    if (typeof getTypeEffectSummary === 'function') sm = getTypeEffectSummary([def.id], t.types || []);
+                } catch (err) {}
+                if (sm.hasStrong && !sm.hasWeak) { out.weak++; sum += 1.30; }
+                else if (sm.hasWeak && !sm.hasStrong) { out.resist++; sum += 0.75; }
+                else { out.neutral++; sum += 1; }
+            }
+            out.mult = targets.length ? sum / targets.length : 1;
+            return out;
+        }
+        /* The type that squeezes the most damage out of the current targets
+           (chart average × STAB). Ties resolve in catalogue order, so a
+           no-information board (everything neutral) picks For All Mankind —
+           the AI's fallback and the default for legacy callers that never
+           learned to choose. */
+        function getEntropyStrikeBestType(unit) {
+            let best = null;
+            for (const id of getEntropyStrikeTypeOrder()) {
+                const f = getEntropyStrikeForecast(unit, id);
+                const score = f.mult * (f.stab ? ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : 1);
+                if (!best || score > best.score + 1e-9) best = { type: id, score, forecast: f };
+            }
+            return best;
+        }
         window.canUseEntropyStrike = canUseEntropyStrike;
         window.getEntropyStrikeTargets = getEntropyStrikeTargets;
         window.getEntropyStrikeDamage = getEntropyStrikeDamage;
+        window.getEntropyStrikeType = getEntropyStrikeType;
+        window.getEntropyStrikeTypeOrder = getEntropyStrikeTypeOrder;
+        window.getEntropyStrikeForecast = getEntropyStrikeForecast;
+        window.getEntropyStrikeBestType = getEntropyStrikeBestType;
 
         // Never let a visual failure wedge the action lock — the damage path
         // is authoritative, the spectacle is best-effort.
@@ -9071,21 +9144,29 @@
         }
 
         /* Full-screen letterboxed banner (VS-splash pattern, `ews-*` classes in
-           styles-cinematic.css). Self-dismissing — pure chrome, never blocks. */
-        function _ewsShowBanner(player, totalMs) {
+           styles-cinematic.css). Self-dismissing — pure chrome, never blocks.
+           `def` is the apocalypse (data.js ENTROPY_STRIKE_TYPES): it picks the
+           `.ews-t-<id>` theme (type-coloured title, its own animated backdrop
+           — hazard stripes / scanlines / god rays / embers / code rain / hue
+           drift) and the kicker + tagline copy. */
+        function _ewsShowBanner(player, totalMs, def) {
             const old = document.getElementById('entropyStrikeOverlay');
             if (old) old.remove();
+            def = def || getEntropyStrikeType(null);
             const el = document.createElement('div');
             el.id = 'entropyStrikeOverlay';
-            el.className = 'ews-overlay';
+            el.className = 'ews-overlay ews-t-' + _ccinEsc(def.id || 'anomaly');
             const mine = player === getViewerPlayer();
+            const who = mine ? 'YOUR TEAM' : 'THE ENEMY TEAM';
             el.innerHTML = `
                 <div class="ews-letterbox ews-letterbox-top"></div>
                 <div class="ews-letterbox ews-letterbox-bot"></div>
+                <div class="ews-fx"></div>
                 <div class="ews-center">
-                    <div class="ews-glyph">⚛</div>
-                    <div class="ews-title ${mine ? 'ews-p1' : 'ews-p2'}">ENTROPY STRIKE</div>
-                    <div class="ews-sub">${mine ? 'YOUR TEAM UNLEASHES TOTAL ENTROPY' : 'THE ENEMY TEAM UNLEASHES TOTAL ENTROPY'}</div>
+                    <div class="ews-kicker">⚛ ENTROPY STRIKE — ${who}</div>
+                    <div class="ews-glyph">${_ccinEsc(def.glyph || '⚛')}</div>
+                    <div class="ews-title ${mine ? 'ews-p1' : 'ews-p2'}" data-text="${_ccinEsc(def.name || 'ENTROPY STRIKE')}">${_ccinEsc(def.name || 'ENTROPY STRIKE')}</div>
+                    <div class="ews-sub">${_ccinEsc(def.tagline || 'TOTAL ENTROPY')}</div>
                     <div class="ews-scanline"></div>
                 </div>`;
             document.body.appendChild(el);
@@ -9215,12 +9296,18 @@
             return el;
         }
 
-        function doEntropyStrike(unit) {
+        /* strikeType: one of ENTROPY_STRIKE_TYPE_ORDER (the apocalypse the
+           player picked in the HUD). Omitted / unknown → the best matchup
+           for the current targets (legacy callers, the CPU's default). */
+        function doEntropyStrike(unit, strikeType) {
+            const def = getEntropyStrikeType(isEntropyStrikeType(strikeType)
+                ? strikeType
+                : ((unit && getEntropyStrikeBestType(unit)) || {}).type);
             /* SIMUL plan phase: queue the strike instead of executing. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving
                 && typeof SimulEngine !== 'undefined') {
-                return SimulEngine.queueStep(unit, { type: 'entropyStrike' });
+                return SimulEngine.queueStep(unit, { type: 'entropyStrike', strikeType: def.id });
             }
             if (!canUseEntropyStrike(unit)) {
                 if (unit && !isEntropyGaugeFull(unit.player)) addLog('⚛ The Entropy Gauge is not full yet.');
@@ -9230,11 +9317,18 @@
             const dmgBase = getEntropyStrikeDamage(unit);
             const allies = (state.units || []).filter(u => u.player === unit.player && !u.dead && !u._dying);
 
+            // Training-match imitation: the CPU learns which apocalypse the
+            // human reaches for (ai.js _candMatchesHuman knows strikeType).
+            try { if (typeof _imitObserve === 'function') _imitObserve(unit, { type: 'entropyStrike', strikeType: def.id }); } catch (err) {}
+
             // Spend everything up front (host-authoritative, sync-safe).
             ensureEntropyGauge();
             state.entropyGauge[unit.player] = 0;
             state._entropyStrikeCount = state._entropyStrikeCount || { 1: 0, 2: 0 };
             state._entropyStrikeCount[unit.player] += 1;
+            state._entropyStrikeTypeCount = state._entropyStrikeTypeCount || {};
+            state._entropyStrikeTypeCount[def.id] = (state._entropyStrikeTypeCount[def.id] || 0) + 1;
+            state._entropyStrikeLast = { player: unit.player, type: def.id, round: state.round || 0 };
             spendAllAP(unit);   // the team attack ends the triggering unit's turn
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
             if (typeof window._updateEntropyGaugeHUD === 'function') window._updateEntropyGaugeHUD();
@@ -9244,7 +9338,7 @@
             state.actionMenuView = 'root';
             state.selectedTool = null;
 
-            addLog(`⚛ ${unitDisplayName(unit)} triggers the ENTROPY STRIKE — Player ${unit.player}'s team attacks as one!`);
+            addLog(`⚛ ${unitDisplayName(unit)} triggers the ENTROPY STRIKE — ${String(def.name || '').toUpperCase()}! Player ${unit.player}'s team attacks as one (${def.id.toUpperCase()}-type).`);
 
             /* The whole team attacks as one — every cloaked ally on the team
                breaks camouflage (attacking always blows cover; 2026-07-27
@@ -9259,14 +9353,16 @@
             const applyHit = (enemy) => {
                 if (!enemy || enemy.dead || enemy._dying) return;
                 const dmg = dmgBase + Math.floor(engineRng() * 30) - 15;
-                /* TYPELESS by design: raw entropy has no element, so no
-                   weak/resist/STAB math ever touches it — typeEffect
-                   'neutral' pins the matchup multiplier at ×1 for every
-                   race on the receiving end. */
-                applyDamageToUnit(enemy, dmg, 'Entropy Strike: ', {
+                /* TYPED (2026-09-07): the chosen apocalypse is the strike's
+                   spellType, so the type chart judges every victim (weak
+                   ×1.30 / resist ×0.75 with the usual WEAK!/RESIST callouts)
+                   and the triggering unit's STAB rides along like any spell
+                   of that type. No element — nothing in RACE_ELEMENT_AFFINITY
+                   touches it. */
+                applyDamageToUnit(enemy, dmg, def.name + ': ', {
                     sourceUnit: unit,
                     damageType: 'magic',
-                    typeEffect: 'neutral'
+                    spellType: def.id
                 });
             };
 
@@ -9289,27 +9385,38 @@
 
             /* ── The cinematic — extracted into _ewsPlayCinematic so the
                GUEST can replay the identical presentation via the
-               'entropy-cine' relay (online.js) with hooks {mute, remote}
-               and NO applyHit (damage is host-authoritative, arrives via
-               state-sync). ────────────────────────────────────────────── */
-            const totalMs = _ewsPlayCinematic(unit, targets, allies, { applyHit });
+               'entropy-cine' relay (online.js) with hooks {mute, remote,
+               strikeType} and NO applyHit (damage is host-authoritative,
+               arrives via state-sync). ─────────────────────────────────── */
+            const totalMs = _ewsPlayCinematic(unit, targets, allies, { applyHit, strikeType: def.id });
             finish(totalMs);
             return totalMs + actionMs(200);
         }
         window.doEntropyStrike = doEntropyStrike;
 
-        /* The full Entropy Strike presentation (banner, splitscreen team
-           charge, camera beats, sigils, per-enemy strikes, whiteout). hooks:
+        /* The full Entropy Strike presentation: the SHARED skeleton (typed
+           banner, splitscreen team charge, crane, bloom, per-enemy camera
+           beats, restore) with every type-specific beat delegated to the
+           apocalypse's DIRECTOR (_EWS_DIRECTORS below). hooks:
            - applyHit(enemy): damage callback, host only — null on guests.
            - mute: suppress local sfx (the host's 'sfx' relay carries them).
-           - remote: this is a guest replay of a relayed cinematic.
+           - remote: this is a guest replay of a relayed cinematic. VFX that
+             online.js ALSO relays on its own (sigUFOFleet3D,
+             spawnProbeDescent3D, tileGlow via 'vfx3d-x') must not fire
+             again inside a replay — directors check ctx.relayed.
+           - strikeType: the apocalypse id (data.js ENTROPY_STRIKE_TYPES).
            Enemy-side anchors are fog-gated with screen-true visibility
            (_shouldCameraFollowUnit) so a hidden team's positions never
            leak through the spectacle. Returns totalMs. */
         function _ewsPlayCinematic(unit, targets, allies, hooks) {
             hooks = hooks || {};
+            const def = getEntropyStrikeType(hooks.strikeType);
+            const D = _EWS_DIRECTORS[def.id] || _EWS_DIRECTORS.anomaly;
             const applyHit = (typeof hooks.applyHit === 'function') ? hooks.applyHit : null;
             const _snd = hooks.mute ? function () {} : function (k) { playSfx(k); };
+            // The D.O.O.R. synth kit (audio.js playDoorSfx) is NOT relayed
+            // host→guest, so both screens voice it themselves.
+            const _dsnd = function (k) { try { if (typeof window.playDoorSfx === 'function') window.playDoorSfx(k); } catch (err) {} };
             const _see = (u) => {
                 try { return typeof _shouldCameraFollowUnit !== 'function' || !u || _shouldCameraFollowUnit(u); }
                 catch (err) { return true; }
@@ -9319,35 +9426,94 @@
                2D cinematic, fog lets them see the acting team)? Gates the
                splitscreen charge AND the per-enemy camera beats below. */
             const _cineOK = _ccinEligible(allies);
+            const relayed = !!hooks.remote;
             /* The team charge is a real multi-camera splitscreen: one live
                close-up per channeling ally (up to 4, viewer-visible only). */
             const ssCasters = _cineOK && window.ThreeSplitscreen && ThreeSplitscreen.isAvailable()
                 ? allies.filter(a => a && !a.dead && _see(a)).slice(0, 4) : [];
-            /* Timings are FIXED, never viewer-conditional: the guest replays
-               this same function off the 'entropy-cine' relay, and damage
-               floaters arrive on the HOST's clock via state-sync — a guest
-               whose fog hides the splitscreen must still see each strike
-               land in step with its damage number. */
-            const CHARGE_MS  = actionMs(2600);   // banner + splitscreen team charge
-            const STAGGER_MS = actionMs(640);    // one camera BEAT per enemy strike
-            const RESOLVE_MS = actionMs(1500);                            // whiteout + settle
+            /* Timings are FIXED per type, never viewer-conditional: the guest
+               replays this same director off the 'entropy-cine' relay, and
+               damage floaters arrive on the HOST's clock via state-sync — a
+               guest whose fog hides the splitscreen must still see each
+               strike land in step with its damage number. */
+            const CHARGE_MS  = actionMs(D.chargeMs);    // banner + splitscreen team charge + world event
+            const STAGGER_MS = actionMs(D.staggerMs);   // one camera BEAT per enemy strike
+            const RESOLVE_MS = actionMs(D.resolveMs);   // whiteout + settle
             const strikesMs  = STAGGER_MS * targets.length;
             const totalMs    = CHARGE_MS + strikesMs + RESOLVE_MS;
             const VFX = (typeof ThreeVFXEffects !== 'undefined') ? ThreeVFXEffects : null;
+            const cx = Math.round((bw() - 1) / 2), cy = Math.round((bh() - 1) / 2);
+            const span = Math.max(bw(), bh());
+            /* Beat scheduler: every director beat is best-effort and dies
+               with the match (a late timer after the result screen must
+               never spawn VFX over the overlay). */
+            const at = (ms, fn) => window.setTimeout(() => {
+                if (state.phase !== 'battle') return;
+                _ewsSafe(fn);
+            }, Math.max(0, ms));
+            const pos = (u) => ({ x: (u && u._dyingX != null) ? u._dyingX : u.x, y: (u && u._dyingY != null) ? u._dyingY : u.y });
+            const visAllies = () => allies.filter(a => a && !a.dead && _see(a));
+            const nearestAlly = (enemy) => {
+                const e = pos(enemy);
+                return visAllies().sort((a, b) => Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y))[0] || null;
+            };
+            const voidActors = () => {
+                let list = [];
+                try { list = allies.concat(targets).filter(u => u && !u.dead && _cineActorVisible(u)); } catch (err) { list = []; }
+                return list;
+            };
+            /* Enter the Void Stage for this strike (Persona all-out-attack
+               isolation): the scarcity gate is bypassed on purpose — the
+               ultimate IS the once-a-match moment — but fog still decides
+               who stands in the void (hidden units simply aren't actors).
+               ms runs through the strikes and the resolve flash. */
+            const enterVoid = (palette, caption) => {
+                if (!_cineOK) return false;
+                if (typeof VoidStage === 'undefined' || !VoidStage || window.EW_DISABLE_VOID_STAGE) return false;
+                const actors = voidActors();
+                if (!actors.length) return false;
+                try { if (VoidStage.active) VoidStage.exit({ instant: true }); } catch (err) {}
+                return VoidStage.enter({
+                    palette, actors, caption,
+                    ms: actionMs(600) + strikesMs + actionMs(220),
+                    maxMs: 14000
+                });
+            };
+            const leaveVoid = () => { try { if (typeof VoidStage !== 'undefined' && VoidStage.active) VoidStage.exit(); } catch (err) {} };
+            const grade = (kind, ms) => { try { if (typeof cineGrade === 'function') cineGrade(kind, ms); } catch (err) {} };
+            const insert = (html, kind, ms) => { try { if (typeof cineInsert === 'function') cineInsert(html, kind, ms); } catch (err) {} };
+            const flash = (color, ms, peak) => { if (VFX && VFX.sigScreenFlash) VFX.sigScreenFlash(color, ms, peak); };
+            const ring = (x, y, color, o) => { if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(x, y, Object.assign({ r0: ts * 0.2, r1: ts * 1.5, ms: 440, color }, o || {})); };
+            const kick = (px, ms) => { try { if (typeof ThreePost !== 'undefined' && ThreePost.spellGradeKick) ThreePost.spellGradeKick(px, ms); } catch (err) {} };
+            const dive = (enemy, zoomMul) => {
+                if (!camera.moveTo) return;
+                const e = pos(enemy);
+                camera.moveTo({
+                    x: e.x, y: e.y,
+                    zoom: (typeof getCloseZoom === 'function' ? getCloseZoom() : 1.4) * (zoomMul || 0.95),
+                    duration: actionMs(230), _fogAllowed: true
+                });
+            };
+            const ctx = {
+                unit, targets, allies, def, hooks, relayed, VFX, ts, cx, cy, span,
+                CHARGE_MS, STAGGER_MS, RESOLVE_MS, strikesMs, totalMs,
+                cineOK: _cineOK, see: _see, snd: _snd, dsnd: _dsnd, at, pos, visAllies, nearestAlly,
+                enterVoid, leaveVoid, grade, insert, flash, ring, kick, dive
+            };
 
             // Banner + siren + letterbox
-            _ewsShowBanner(unit.player, totalMs);
-            _snd('nukeAlarm');
+            _ewsShowBanner(unit.player, totalMs, def);
+            _ewsSafe(() => D.siren(ctx));
             shakeBoard('normal');
 
             // Caster showcase: the screen SPLITS into one live camera per
             // channeling ally (up to four) — real dollying close-ups of the
-            // team winding up, casting circles igniting at their feet inside
-            // their own panes — then the whole grid shatters in a whiteout
-            // as the sky tears open. Panes are fog-gated per ally (_see):
-            // a hidden channeler never gets a camera, so positions can't
-            // leak. If fog (or a dead renderer) leaves nothing watchable,
-            // the banner alone carries the moment — no 2D sprite cards.
+            // team winding up, the type's own charge FX igniting at their
+            // feet inside their own panes — then the whole grid shatters in
+            // a whiteout as the world event lands. Panes are fog-gated per
+            // ally (_see): a hidden channeler never gets a camera, so
+            // positions can't leak. If fog (or a dead renderer) leaves
+            // nothing watchable, the banner alone carries the moment.
             const splitEnd = Math.max(actionMs(900), CHARGE_MS - actionMs(620));
             if (ssCasters.length) _ewsSafe(() => {
                 const ssRes = ThreeSplitscreen.show(
@@ -9355,7 +9521,7 @@
                     { durationMs: splitEnd, fov: 34, sideDeg: 20, driftDeg: 6, dist0: 3.3, dist1: 2.35 });
                 if (ssRes) {
                     _ssqShowChrome(
-                        ssCasters.map(a => ({ unit: a, accent: _ccinColor((a.types || [])[0]) })),
+                        ssCasters.map(a => ({ unit: a, accent: def.accent || _ccinColor((a.types || [])[0]) })),
                         ssRes,
                         {
                             mute: !!hooks.mute,
@@ -9364,16 +9530,17 @@
                             totalMs: splitEnd + actionMs(260)
                         });
                     // Drop the panes under the whiteout's peak — the cut to
-                    // the wide sky-tear shot hides inside the flash.
+                    // the wide world-event shot hides inside the flash.
                     window.setTimeout(() => _ewsSafe(() => ThreeSplitscreen.hide()),
                         Math.max(actionMs(780), splitEnd - actionMs(30)));
                     // Every ally on camera CHANNELS: staggered cast clips,
-                    // re-fired mid-charge so the panes never go idle.
+                    // re-fired mid-charge so the panes never go idle. The
+                    // director picks the clip family (aoe / slam / ranged…).
                     ssCasters.forEach((a, i) => {
-                        [actionMs(320 + i * 140), actionMs(1350 + i * 140)].forEach(at => {
+                        [actionMs(320 + i * 140), actionMs(1350 + i * 140)].forEach(at2 => {
                             window.setTimeout(() => _ewsSafe(() => {
-                                if (!a.dead) triggerCastAnim(a, { type: 'damage', dmg: 1 });
-                            }), at);
+                                if (!a.dead) triggerCastAnim(a, D.castSpell || { type: 'damage', dmg: 1 });
+                            }), at2);
                         });
                     });
                 }
@@ -9390,6 +9557,7 @@
                     .concat(_see(unit) ? [{ x: unit.x, y: unit.y }] : []);
                 if (pts.length && camera.focusOnTiles) camera.focusOnTiles(pts, { duration: durMs });
             });
+            ctx.craneToTargets = _craneToTargets;
             if (ssCasters.length) {
                 window.setTimeout(() => _craneToTargets(actionMs(700)), Math.max(0, splitEnd - actionMs(750)));
             } else {
@@ -9399,16 +9567,14 @@
                 window.setTimeout(() => _craneToTargets(actionMs(750)), actionMs(700));
             }
 
-            // Charge phase: every ally ignites in a casting circle + thin
-            // pillar (fog-gated per ally — hidden channelers stay hidden).
+            // Charge phase: every ally ignites in the type's charge signature
+            // (fog-gated per ally — hidden channelers stay hidden).
             allies.forEach((a, i) => {
-                window.setTimeout(() => _ewsSafe(() => {
-                    if (!VFX || !_see(a)) return;
-                    if (VFX.sigMagicCircle3D) VFX.sigMagicCircle3D(a.x, a.y, { radiusPx: ts * 0.95, growMs: 240, holdMs: CHARGE_MS + strikesMs, fadeMs: 420, spin: true });
-                    if (VFX.sigLightPillar3D) VFX.sigLightPillar3D(a.x, a.y, { height: 300, radius: ts * 0.22, ms: 1100, color: 0x9fd8ff, coreColor: 0xffffff });
-                }), actionMs(240 + i * 130));
+                at(actionMs(240 + i * 130), () => {
+                    if (!VFX || a.dead || !_see(a)) return;
+                    D.pane(ctx, a, i);
+                });
             });
-            window.setTimeout(() => _snd('buff'), actionMs(300));
 
             // Bloom swells while the team channels; restored during resolve.
             _ewsSafe(() => _ewsTweenBloom(
@@ -9417,73 +9583,51 @@
                 { value: (typeof ThreePost !== 'undefined' && ThreePost.getBloomStrength) ? ThreePost.getBloomStrength() : 1.0, ms: RESOLVE_MS, holdMs: strikesMs }
             ));
 
-            // The sky tears open: one vast sigil spinning over the battlefield.
-            window.setTimeout(() => _ewsSafe(() => {
-                const cx = Math.round((bw() - 1) / 2), cy = Math.round((bh() - 1) / 2);
-                if (VFX && VFX.sigMagicCircle3D) VFX.sigMagicCircle3D(cx, cy, { radiusPx: ts * (Math.max(bw(), bh()) * 0.42), growMs: 500, holdMs: strikesMs + 700, fadeMs: 600, spin: true, height: 560 });
-                if (VFX && VFX.sigScreenFlash) VFX.sigScreenFlash('#b48cff', 420, 0.45);
-                // Beat of held breath before the annihilation: brief slow-mo
-                // on every combat rig while the sigil finishes opening.
+            // THE WORLD EVENT: the type tears the sky open (fleet drop, the
+            // seventh seal, the gates of hell, system override, the bullet
+            // storm, reality suspended) right as the splitscreen shatters,
+            // with a beat of held breath before the annihilation.
+            at(CHARGE_MS - actionMs(600), () => {
                 if (window.ThreeAnim && window.ThreeAnim.slowMo) window.ThreeAnim.slowMo(0.45, actionMs(520));
-                _snd('spellDamage');
-            }), CHARGE_MS - actionMs(600));
+                D.world(ctx);
+            });
 
-            // Annihilation: staggered per-enemy strikes, three rotating
-            // flavors — and a camera BEAT per enemy, exactly like every
-            // other damage spell's target shot: the camera dives to each
-            // victim right before their strike lands, holds through the
-            // impact, then cuts to the next. Fog-gated per enemy; with the
-            // camera off (or nothing visible) the strikes still land under
-            // the wide crane shot.
+            // Annihilation: staggered per-enemy strikes in the type's flavour
+            // — and a camera BEAT per enemy, exactly like every other damage
+            // spell's target shot: the camera dives to each victim right
+            // before their strike lands, holds through the impact, then cuts
+            // to the next. Fog-gated per enemy; with the camera off (or
+            // nothing visible) the strikes still land under the wide crane.
             targets.forEach((enemy, i) => {
-                const at = CHARGE_MS + i * STAGGER_MS;
+                const hitAt = CHARGE_MS + i * STAGGER_MS;
                 if (_cineOK) {
-                    window.setTimeout(() => {
-                        if (state.winner || enemy.dead && enemy._dyingX == null) return;
-                        _ewsSafe(() => {
-                            if (!_see(enemy) || !camera.moveTo) return;
-                            camera.moveTo({
-                                x: enemy._dyingX ?? enemy.x, y: enemy._dyingY ?? enemy.y,
-                                zoom: (typeof getCloseZoom === 'function' ? getCloseZoom() : 1.4) * 0.95,
-                                duration: actionMs(230), _fogAllowed: true
-                            });
-                        });
-                    }, Math.max(CHARGE_MS - actionMs(80), at - actionMs(270)));
+                    at(Math.max(CHARGE_MS - actionMs(80), hitAt - actionMs(270)), () => {
+                        if (state.winner || (enemy.dead && enemy._dyingX == null)) return;
+                        if (!_see(enemy)) return;
+                        let shot = false;
+                        try { shot = !!(D.enemyCam && D.enemyCam(ctx, enemy, i)); } catch (err) { shot = false; }
+                        if (!shot) dive(enemy);
+                    });
                 }
+                // Long-lead flavour (black holes, probes, cannon fuses) is
+                // scheduled by the director relative to the hit frame.
+                if (D.lead) _ewsSafe(() => D.lead(ctx, enemy, i, hitAt));
                 window.setTimeout(() => {
                     if (state.winner) return;
-                    const ex = enemy._dyingX ?? enemy.x, ey = enemy._dyingY ?? enemy.y;
-                    _ewsSafe(() => {
-                        const flavor = i % 3;
-                        if (flavor === 0) {
-                            if (typeof ThreeLightning !== 'undefined' && ThreeLightning.strikeFromSky) ThreeLightning.strikeFromSky(ex, ey, { durationMs: 320 });
-                            if (VFX && VFX.sigStormStrike3D) VFX.sigStormStrike3D(ex, ey, { delayMs: 60, color: 0xb48cff });
-                        } else if (flavor === 1) {
-                            if (VFX && VFX.sigStandSword3D) VFX.sigStandSword3D(ex, ey, { summonMs: 140, holdMs: 60, plungeMs: 130, lingerMs: 260, fadeMs: 240 });
-                            if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(ex, ey, { r0: ts * 0.2, r1: ts * 1.4, ms: 420 });
-                        } else {
-                            if (VFX && VFX.sigLightPillar3D) VFX.sigLightPillar3D(ex, ey, { height: 720, radius: ts * 0.4, ms: 700, color: 0xc9a5ff, coreColor: 0xffffff });
-                            if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(ex, ey, { r0: ts * 0.2, r1: ts * 1.6, ms: 460, torus: true });
-                        }
-                        if (VFX && VFX.sigScreenFlash && (i % 2 === 0)) VFX.sigScreenFlash('#e8dcff', 180, 0.28);
-                    });
-                    _snd(i % 3 === 0 ? 'explosion' : 'spellDamage');
+                    _ewsSafe(() => D.strike(ctx, enemy, i));
                     shakeBoard('hard');
                     if (applyHit) applyHit(enemy);
                     scheduleBoardRender();
-                }, at);
+                }, hitAt);
             });
 
-            // Resolve: whiteout, one last board-wide ring, pull back out of
-            // the final close-up to survey the aftermath, settle home.
-            window.setTimeout(() => _ewsSafe(() => {
-                if (VFX && VFX.sigScreenFlash) VFX.sigScreenFlash('#ffffff', 620, 0.85);
-                const cx = Math.round((bw() - 1) / 2), cy = Math.round((bh() - 1) / 2);
-                if (VFX && VFX.sigShockRing3D) VFX.sigShockRing3D(cx, cy, { r0: ts * 0.5, r1: ts * Math.max(bw(), bh()), ms: 800 });
+            // Resolve: the type's whiteout, one last board-wide ring, pull
+            // back out of the final close-up to survey the aftermath.
+            at(CHARGE_MS + strikesMs + actionMs(150), () => {
+                D.resolve(ctx);
                 if (_cineOK) _craneToTargets(actionMs(550));
-                _snd('explosion');
                 shakeBoard('hard');
-            }), CHARGE_MS + strikesMs + actionMs(150));
+            });
 
             window.setTimeout(() => {
                 if (camera.restore) camera.restore({ duration: actionMs(700) });
@@ -9493,6 +9637,491 @@
             return totalMs;
         }
         window._ewsPlayCinematic = _ewsPlayCinematic;
+
+        /* ═══════════════════════════════════════════════════════════════════
+           THE SIX DIRECTORS — one per apocalypse. Every hook is best-effort
+           (wrapped in _ewsSafe by the skeleton) and receives the shared ctx:
+             siren(ctx)                 t=0 sound + grade for the whole run
+             pane(ctx, ally, i)         charge FX under each channeler
+             world(ctx)                 the sky tears open (CHARGE_MS − 600)
+             enemyCam(ctx, enemy, i)    → true if it framed the victim itself
+             lead(ctx, enemy, i, hitAt) long-lead VFX scheduled by the director
+             strike(ctx, enemy, i)      the impact frame (damage lands here)
+             resolve(ctx)               whiteout + aftermath
+           chargeMs / staggerMs / resolveMs are the FIXED timings (both
+           screens derive the same totalMs from them). castSpell picks the
+           clip family the channelers play (sprites.js classifySpellAnimKind).
+           Relay rule: anything online.js relays by itself (ctx.relayed
+           guards) fires host-side only; everything else fires on both.
+           ═══════════════════════════════════════════════════════════════════ */
+        const _EWS_DIRECTORS = {
+
+            /* ── FOR ALL MANKIND (human) ─ the last stand. Sepia war-reel
+               grade, air-raid siren + jets, WEAPONS FREE stamped on the lens,
+               every gun on the team rains bullets that land in step with the
+               strikes, artillery fireballs and one final bayonet. ───────── */
+            human: {
+                chargeMs: 2800, staggerMs: 640, resolveMs: 1600,
+                castSpell: { type: 'damage', dmg: 1, name: 'Kill Mode' },      // gunfire clip family
+                siren(c) {
+                    c.snd('nukeAlarm');
+                    c.at(actionMs(420), () => c.snd('jetFlyover'));
+                    c.grade('sepia vignette', c.CHARGE_MS + c.strikesMs + actionMs(300));
+                },
+                pane(c, a) {
+                    const V = c.VFX;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(a.x, a.y, { radiusPx: c.ts * 0.95, growMs: 240, holdMs: c.CHARGE_MS + c.strikesMs, fadeMs: 420, spin: true, color: 0xf2c468, color2: 0xfff1c0 });
+                    if (V.sigSpeedBurst3D) V.sigSpeedBurst3D(a.x, a.y, { ms: 520 });
+                    if (V.sigStatRings3D) V.sigStatRings3D(a.x, a.y, { color: 0xf2c468, ms: 900 });
+                },
+                world(c) {
+                    c.insert('WEAPONS FREE<span class="cine-insert-sub">EXECUTIVE ORDER 001 — FOR ALL MANKIND</span>', 'stamp', actionMs(1500));
+                    c.dsnd('stamp');
+                    if (c.VFX.sigSpeedLinesFx) c.VFX.sigSpeedLinesFx({ color: '#f2c468', ms: 900, peak: 0.6 });
+                    c.flash('#ffe9b8', 380, 0.4);
+                    c.snd('shootout');
+                    // Every visible gun on the team opens up: the bullets arc
+                    // over and come down on each enemy exactly on its hit frame.
+                    if (c.VFX.spawnBulletRain3D) {
+                        const shooters = c.visAllies().slice(0, 6);
+                        c.targets.forEach((enemy, i) => {
+                            if (!c.see(enemy)) return;
+                            const e = c.pos(enemy);
+                            const landMs = actionMs(600) + i * c.STAGGER_MS;
+                            shooters.forEach((a, k) => {
+                                c.at(k * 60, () => c.VFX.spawnBulletRain3D(a.x, a.y, e.x, e.y, Math.max(300, landMs - k * 60)));
+                            });
+                        });
+                    }
+                    c.at(actionMs(300), () => c.snd('doubleShot'));
+                },
+                enemyCam(c, enemy) {
+                    // Over the victim's shoulder, looking back at the human line.
+                    if (!c.see(c.unit) || typeof cineReverseOts !== 'function') return false;
+                    return cineReverseOts(enemy, c.unit, { tilt: 80 });
+                },
+                lead(c, enemy, i, hitAt) {
+                    if (i % 3 !== 0 || !c.VFX.sigCannonShot3D) return;
+                    const a = c.nearestAlly(enemy);
+                    if (!a) return;
+                    const e = c.pos(enemy);
+                    c.at(hitAt - actionMs(760), () => { if (c.see(enemy)) c.VFX.sigCannonShot3D(a.x, a.y, e.x, e.y, { scale: 1.25 }); });
+                },
+                strike(c, enemy, i) {
+                    const V = c.VFX, e = c.pos(enemy);
+                    const flavor = i % 3;
+                    if (flavor === 0) {
+                        if (V.spawnFlameBurst3D) V.spawnFlameBurst3D(e.x, e.y, { rScale: 1.5, hScale: 1.4, lifeMs: 1000 });
+                        c.ring(e.x, e.y, 0xffb347, { r1: c.ts * 1.7, ms: 480 });
+                        c.snd('explosion');
+                    } else if (flavor === 1) {
+                        if (V.spawnFlameBurst3D) V.spawnFlameBurst3D(e.x, e.y, { rScale: 1.2, hScale: 1.2, lifeMs: 800 });
+                        if (V.sigOrbBurst3D) V.sigOrbBurst3D(e.x, e.y, { color: 0xffd9a0, ms: 420, r0: c.ts * 0.2, r1: c.ts * 1.3, flash: true });
+                        c.snd('gun');
+                    } else {
+                        if (V.sigStandSword3D) V.sigStandSword3D(e.x, e.y, { summonMs: 140, holdMs: 60, plungeMs: 130, lingerMs: 260, fadeMs: 240 });
+                        c.ring(e.x, e.y, 0xfff1c0, { r1: c.ts * 1.4, ms: 420 });
+                        c.snd('physicalAbilityDamage');
+                    }
+                    if (window.ThreeAnim && window.ThreeAnim.hitEffect) window.ThreeAnim.hitEffect(e.x, e.y, 'hit04', true, 420);
+                    if (i % 2 === 0) c.flash('#ffe6c0', 180, 0.28);
+                    c.kick(8, 180);
+                },
+                resolve(c) {
+                    const V = c.VFX;
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(c.cx, c.cy, { color: 0xffe0a0, ms: 900, peak: 0.9, sizeTiles: c.span, shake: false });
+                    c.flash('#fff1d0', 620, 0.85);
+                    c.ring(c.cx, c.cy, 0xf2c468, { r0: c.ts * 0.5, r1: c.ts * c.span, ms: 800 });
+                    c.insert('…AND WE ARE STILL HERE.', 'stamp', actionMs(1100));
+                    c.snd('explosion');
+                    c.at(actionMs(200), () => c.snd('jetFlyover'));
+                }
+            },
+
+            /* ── INVASION DAY (alien) ─ War of the Worlds. Green heat-ray
+               grade, the camera cranes to the sky as the FLEET drops in and
+               strafes the board, escorts hover over every channeler, and
+               each enemy gets a probe, an abduction beam or a heat-ray. ── */
+            alien: {
+                chargeMs: 3000, staggerMs: 700, resolveMs: 1700,
+                castSpell: { type: 'damage', dmg: 1, name: 'Abduction Beam', range: 5 },
+                siren(c) {
+                    c.snd('nukeAlarm');
+                    c.at(actionMs(300), () => c.snd('teleport'));
+                    try {
+                        if (typeof ThreePost !== 'undefined' && ThreePost.spellGrade) ThreePost.spellGrade({
+                            tint: [0.62, 1.0, 0.7], tintAmt: 0.55, dim: 0,
+                            riseMs: 600, holdMs: c.CHARGE_MS + c.strikesMs, fallMs: c.RESOLVE_MS
+                        });
+                    } catch (err) {}
+                    c.grade('cool', c.CHARGE_MS + c.strikesMs + actionMs(300));
+                },
+                pane(c, a, i) {
+                    const V = c.VFX;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(a.x, a.y, { radiusPx: c.ts * 0.95, growMs: 240, holdMs: c.CHARGE_MS + c.strikesMs, fadeMs: 420, spin: true, color: 0x32aa50, color2: 0xb8ffc8 });
+                    if (V.sigLightPillar3D) V.sigLightPillar3D(a.x, a.y, { height: 320, radius: c.ts * 0.24, ms: 1200, color: 0x58d858, coreColor: 0xeaffee });
+                    // An escort saucer parks over every channeler for the charge.
+                    if (V.sigUFO3D) V.sigUFO3D(a.x, a.y, { enterMs: 420, hoverMs: Math.max(600, c.CHARGE_MS - actionMs(900) - i * 130), exitMs: 460, hoverH: 2.4, radiusPx: c.ts * 0.7 });
+                },
+                world(c) {
+                    // Crane up past the horizon so the fleet's entry is ON camera.
+                    if (c.cineOK && typeof cineCrane === 'function' && c.see(c.unit)) cineCrane(c.unit, { tilt: 104, rise: 2.4, dist: 4.6, duration: 600 });
+                    if (!c.relayed && c.VFX.sigUFOFleet3D) {
+                        c.VFX.sigUFOFleet3D(c.cx, c.cy, Math.max(2, Math.round(c.span * 0.5)), {
+                            count: 7, enterMs: 520,
+                            beamDelayMs: actionMs(600), beamMs: c.strikesMs + actionMs(320), exitMs: 720
+                        });
+                    }
+                    c.insert('THEY ARE HERE<span class="cine-insert-sub">DAY ONE OF THE OCCUPATION</span>', 'signal', actionMs(1500));
+                    c.flash('#c8ffd6', 420, 0.45);
+                    c.snd('empBurst');
+                    c.at(actionMs(260), () => c.snd('thunderRumble'));
+                },
+                enemyCam(c, enemy) {
+                    // Low angle from the victim, sky in frame — the beam comes down at the lens.
+                    if (typeof cineCrane !== 'function') return false;
+                    return cineCrane(enemy, { tilt: 97, rise: 1.3, dist: 3.1, duration: 260 });
+                },
+                lead(c, enemy, i, hitAt) {
+                    if (i % 3 !== 0 || c.relayed || !c.VFX.spawnProbeDescent3D) return;
+                    const e = c.pos(enemy);
+                    // The probe pierces ~700ms in — start it so the needle lands on the hit frame.
+                    c.at(Math.max(c.CHARGE_MS - actionMs(560), hitAt - 700), () => { if (c.see(enemy)) c.VFX.spawnProbeDescent3D(e.x, e.y); });
+                },
+                strike(c, enemy, i) {
+                    const V = c.VFX, e = c.pos(enemy);
+                    const flavor = i % 3;
+                    if (flavor === 0) {
+                        c.ring(e.x, e.y, 0x58d858, { r1: c.ts * 1.6, ms: 460, torus: true });
+                        if (V.sigOrbBurst3D) V.sigOrbBurst3D(e.x, e.y, { color: 0xb8ffc8, ms: 380, r0: c.ts * 0.15, r1: c.ts * 1.1 });
+                        c.snd('spellDamage');
+                    } else if (flavor === 1) {
+                        if (V.sigLightPillar3D) V.sigLightPillar3D(e.x, e.y, { height: 760, radius: c.ts * 0.42, ms: 760, color: 0x32aa50, coreColor: 0xeaffee });
+                        c.ring(e.x, e.y, 0x58d858, { r1: c.ts * 1.5, ms: 440 });
+                        c.snd('teleport');
+                    } else {
+                        const a = c.nearestAlly(enemy);
+                        if (a && V.laserBeam3D) V.laserBeam3D(a.x, a.y, e.x, e.y, { beamMs: 420, core: 0xe6ffe8, glow: 0x32aa50, thickness: 1.7 });
+                        if (V.sigGasCloud3D) V.sigGasCloud3D(e.x, e.y, { color: 0x123b1c, coreColor: 0x8effa0, radiusTiles: 1, ms: 900, count: 14 });
+                        c.snd('empBurst');
+                    }
+                    if (i % 2 === 0) c.flash('#dfffe6', 180, 0.28);
+                    c.kick(10, 200);
+                },
+                resolve(c) {
+                    const V = c.VFX;
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(c.cx, c.cy, { color: 0x9dffb0, ms: 900, peak: 0.9, sizeTiles: c.span, shake: false });
+                    c.flash('#dfffe6', 640, 0.85);
+                    c.ring(c.cx, c.cy, 0x58d858, { r0: c.ts * 0.5, r1: c.ts * c.span, ms: 800, torus: true });
+                    c.insert('THE SKY IS THEIRS', 'signal', actionMs(1100));
+                    c.snd('explosion');
+                    c.at(actionMs(180), () => c.snd('jetFlyover'));
+                }
+            },
+
+            /* ── REVELATIONS (divine) ─ judgement. Gold halos on every
+               channeler, the camera goes straight up into a god shot as the
+               seventh seal opens — aurora of gold, a star tetrahedron over
+               the field — then radiant pillars, holy spears and white
+               lightning per victim, and the world blows out white. ─────── */
+            divine: {
+                chargeMs: 3200, staggerMs: 700, resolveMs: 1800,
+                castSpell: { type: 'damage', dmg: 1, name: 'Divine Wrath', aoeRadius: 2 },
+                siren(c) {
+                    c.snd('nexusCaptured');
+                    c.at(actionMs(320), () => c.snd('healRegen'));
+                    c.at(actionMs(900), () => c.snd('buff'));
+                    c.grade('vignette', c.CHARGE_MS + c.strikesMs);
+                },
+                pane(c, a) {
+                    const V = c.VFX;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(a.x, a.y, { radiusPx: c.ts * 0.95, growMs: 240, holdMs: c.CHARGE_MS + c.strikesMs, fadeMs: 420, spin: true, color: 0xdcaa1e, color2: 0xfff3c4 });
+                    if (V.sigRuneSphere3D) V.sigRuneSphere3D(a.x, a.y, { color: 0xffe9a0, runeColor: 0xdcaa1e, holdMs: c.CHARGE_MS - actionMs(500), radiusTiles: 0.62, spin: true });
+                    if (V.sigLightPillar3D) V.sigLightPillar3D(a.x, a.y, { height: 340, radius: c.ts * 0.2, ms: 1200, color: 0xffd75a, coreColor: 0xffffff });
+                },
+                world(c) {
+                    const V = c.VFX;
+                    if (c.cineOK && typeof cineGodShot === 'function') cineGodShot({ x: c.cx, y: c.cy }, Math.max(5, c.span), { cut: false, duration: 640 });
+                    if (V.sigAuroraCurtain3D) V.sigAuroraCurtain3D(c.cx, c.cy, { hues: [0.12, 0.14, 0.1, 0.16], ms: c.strikesMs + actionMs(1500), height: 540, radiusPx: c.ts * c.span * 0.5, curtains: 5, opacity: 0.55 });
+                    // The star tetrahedron opens over the battlefield and
+                    // collapses into its own detonation on the resolve flash.
+                    if (V.sigMerkaba3D) V.sigMerkaba3D(c.cx, c.cy, 2, { ms: actionMs(600) + c.strikesMs + actionMs(150) });
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(c.cx, c.cy, { radiusPx: c.ts * c.span * 0.42, growMs: 500, holdMs: c.strikesMs + 700, fadeMs: 600, spin: true, height: 560, color: 0xffd75a, color2: 0xffffff });
+                    c.insert('VII<span class="cine-insert-sub">AND THE SEVENTH SEAL WAS OPENED</span>', 'scripture', actionMs(1500));
+                    c.grade('whiteout', 520);
+                    c.flash('#fff5d6', 520, 0.6);
+                    c.snd('levelUp');
+                    c.at(actionMs(240), () => c.snd('thunderRumble'));
+                },
+                enemyCam(c, enemy) {
+                    // Judgement from above: a straight-down god shot on each victim.
+                    if (typeof cineGodShot !== 'function') return false;
+                    return cineGodShot(c.pos(enemy), 4, { cut: false, duration: 240 });
+                },
+                strike(c, enemy, i) {
+                    const V = c.VFX, e = c.pos(enemy);
+                    const flavor = i % 3;
+                    if (flavor === 0) {
+                        if (V.radiantBurst3D) V.radiantBurst3D(e.x, e.y, { core: 0xffffff, glow: 0xffd75a });
+                        if (V.sigLightPillar3D) V.sigLightPillar3D(e.x, e.y, { height: 820, radius: c.ts * 0.42, ms: 760, color: 0xffd75a, coreColor: 0xffffff });
+                        c.snd('spellDamage');
+                    } else if (flavor === 1) {
+                        if (V.sigSpearPrison3D) V.sigSpearPrison3D(e.x, e.y, { count: 5, color: 0xffe9a0, runeColor: 0xdcaa1e, holdMs: 260, finisher: true, sphereTiles: 0.8 });
+                        c.ring(e.x, e.y, 0xffd75a, { r1: c.ts * 1.5, ms: 440 });
+                        c.snd('explosion');
+                    } else {
+                        if (typeof ThreeLightning !== 'undefined' && ThreeLightning.strikeFromSky) ThreeLightning.strikeFromSky(e.x, e.y, { color: 0xfff4c0, glowColor: 0xffc44d, strikes: 3, durationMs: 360 });
+                        c.ring(e.x, e.y, 0xffe9a0, { r1: c.ts * 1.7, ms: 480, torus: true });
+                        c.snd('lightningStrike');
+                    }
+                    c.flash('#fff5d6', 200, 0.36);
+                    c.kick(8, 180);
+                },
+                resolve(c) {
+                    const V = c.VFX;
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(c.cx, c.cy, { color: 0xffe6a0, ms: 1000, peak: 1, sizeTiles: c.span, shake: false });
+                    c.grade('whiteout', 900);
+                    c.flash('#ffffff', 720, 0.95);
+                    c.ring(c.cx, c.cy, 0xffd75a, { r0: c.ts * 0.5, r1: c.ts * c.span, ms: 800 });
+                    c.insert('IT IS DONE', 'scripture', actionMs(1100));
+                    c.snd('explosion');
+                    c.at(actionMs(220), () => c.snd('nexusCaptured'));
+                }
+            },
+
+            /* ── HELL ON EARTH (unholy) ─ the pit. Crimson heat grade and
+               hellfire round every channeler, then the world drops into the
+               INFERNO void stage: a giant cackling skull over the field,
+               THE GATES ARE OPEN in red, and every victim gets a skull in
+               the face before hellfire, crimson lightning or the fist. ──── */
+            unholy: {
+                chargeMs: 3000, staggerMs: 680, resolveMs: 1700,
+                castSpell: { type: 'damage', dmg: 1, name: 'Hellfire Slam' },
+                siren(c) {
+                    c.snd('nukeAlarm');
+                    c.at(actionMs(300), () => c.snd('flameJet'));
+                    c.grade('crimson heat', c.CHARGE_MS + c.strikesMs + actionMs(300));
+                },
+                pane(c, a) {
+                    const V = c.VFX;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(a.x, a.y, { radiusPx: c.ts * 0.95, growMs: 240, holdMs: c.CHARGE_MS + c.strikesMs, fadeMs: 420, spin: true, color: 0xff3a2a, color2: 0x9632b4 });
+                    if (V.spawnFlameBurst3D) V.spawnFlameBurst3D(a.x, a.y, { rScale: 0.9, hScale: 1.2, lifeMs: c.CHARGE_MS });
+                    if (V.sigGasCloud3D) V.sigGasCloud3D(a.x, a.y, { color: 0x2a0206, coreColor: 0xff4a2a, radiusTiles: 0.8, ms: c.CHARGE_MS, count: 10 });
+                },
+                world(c) {
+                    const V = c.VFX;
+                    const inVoid = c.enterVoid('inferno', 'THE GATES ARE OPEN<span class="void-cap-sub">abandon all hope</span>');
+                    if (V.sigSkull3D) V.sigSkull3D(c.cx, c.cy, { scale: 3.2, laugh: true, hover: 2.6, eyeColor: 0xff2020, boneColor: 0x2a1010 });
+                    if (typeof ThreeLightning !== 'undefined' && ThreeLightning.strikeFromSky) ThreeLightning.strikeFromSky(c.cx, c.cy, { color: 0xff4a3a, glowColor: 0xb00020, strikes: 2, durationMs: 380 });
+                    if (!inVoid) c.insert('THE GATES ARE OPEN', 'eyes', actionMs(1400));
+                    c.flash('#ff2a1a', 480, 0.5);
+                    c.snd('thunderRumble');
+                    c.at(actionMs(260), () => c.snd('burningDamage'));
+                    // Hellfire erupts on every visible victim's tile as the gates open.
+                    c.targets.forEach((t, i) => {
+                        if (!c.see(t) || !V.spawnFlameBurst3D) return;
+                        const e = c.pos(t);
+                        c.at(120 + i * 90, () => V.spawnFlameBurst3D(e.x, e.y, { rScale: 0.8, hScale: 1.0, lifeMs: c.strikesMs + 1200 }));
+                    });
+                },
+                enemyCam(c, enemy, i) {
+                    // Face cam on the victim — the skull looms straight into it.
+                    if (typeof cineFaceCam !== 'function') return false;
+                    const ok = cineFaceCam(enemy, { dist: 2.4, tilt: 82 });
+                    if (ok && c.VFX.sigSkull3D) {
+                        const e = c.pos(enemy);
+                        c.VFX.sigSkull3D(e.x, e.y, { scale: 1.25, laugh: i % 2 === 0, hover: 1.25, eyeColor: 0xff2020 });
+                    }
+                    return ok;
+                },
+                strike(c, enemy, i) {
+                    const V = c.VFX, e = c.pos(enemy);
+                    const flavor = i % 3;
+                    if (flavor === 0) {
+                        if (V.spawnFlameBurst3D) V.spawnFlameBurst3D(e.x, e.y, { rScale: 1.7, hScale: 1.6, lifeMs: 1100 });
+                        c.ring(e.x, e.y, 0xff3a2a, { r1: c.ts * 1.7, ms: 480 });
+                        c.snd('flameJet');
+                    } else if (flavor === 1) {
+                        if (typeof ThreeLightning !== 'undefined' && ThreeLightning.strikeFromSky) ThreeLightning.strikeFromSky(e.x, e.y, { color: 0xff4a3a, glowColor: 0xb00020, strikes: 2, durationMs: 340 });
+                        if (V.sigStormStrike3D) V.sigStormStrike3D(e.x, e.y, { delayMs: 60, color: 0xff3030 });
+                        c.snd('lightningStrike');
+                    } else {
+                        if (V.sigStandFist3D) V.sigStandFist3D(e.x, e.y, { scale: 1.3 });
+                        if (V.sigGasCloud3D) V.sigGasCloud3D(e.x, e.y, { color: 0x2a0206, coreColor: 0xff4a2a, radiusTiles: 1, ms: 800, count: 12 });
+                        c.snd('explosion');
+                    }
+                    if (i % 2 === 0) c.flash('#ff3a2a', 180, 0.3);
+                    c.kick(9, 190);
+                },
+                resolve(c) {
+                    const V = c.VFX;
+                    c.leaveVoid();
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(c.cx, c.cy, { color: 0xff3020, ms: 900, peak: 0.9, sizeTiles: c.span, shake: false });
+                    c.grade('crimson', 900);
+                    c.flash('#ff2a1a', 640, 0.85);
+                    c.ring(c.cx, c.cy, 0xff3a2a, { r0: c.ts * 0.5, r1: c.ts * c.span, ms: 800 });
+                    c.insert('WELCOME HOME', 'eyes', actionMs(1100));
+                    c.snd('explosion');
+                    c.at(actionMs(200), () => c.snd('death'));
+                }
+            },
+
+            /* ── ROBOT UPRISING (tech) ─ the machines wake up. Terminal +
+               scope grade, tesla coils and neon cages on the channelers, the
+               CODE void stage with a SYSTEM OVERRIDE readout, a target-lock
+               freeze-frame with chain lightning hopping across every enemy,
+               then lasers, storm strikes and spiral beams per victim. ───── */
+            tech: {
+                chargeMs: 3000, staggerMs: 620, resolveMs: 1600,
+                castSpell: { type: 'damage', dmg: 1, name: 'Kill Mode' },
+                siren(c) {
+                    c.dsnd('crtOn');
+                    c.at(actionMs(200), () => c.snd('elecCast'));
+                    c.grade('terminal scope', c.CHARGE_MS + c.strikesMs + actionMs(300));
+                },
+                pane(c, a) {
+                    const V = c.VFX;
+                    if (V.sigTeslaCoil3D) V.sigTeslaCoil3D(a.x, a.y);
+                    if (V.sigNeonGrid3D) V.sigNeonGrid3D(a.x, a.y, { ms: c.CHARGE_MS, hue: 0.52, hueRate: 0, radiusPx: c.ts * 1.0 });
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(a.x, a.y, { radiusPx: c.ts * 0.95, growMs: 240, holdMs: c.CHARGE_MS + c.strikesMs, fadeMs: 420, spin: true, color: 0x28a0be, color2: 0xe0ffff });
+                },
+                world(c) {
+                    const V = c.VFX;
+                    const n = c.targets.length;
+                    const inVoid = c.enterVoid('code', 'SYSTEM OVERRIDE<br>TARGETS ACQUIRED: ' + n + '<span class="void-cap-sub">executing ROBOT_UPRISING.exe — humanity: deprecated</span>');
+                    try { if (typeof cineFreezeFrame === 'function') cineFreezeFrame(actionMs(260), { grade: 'scope' }); } catch (err) {}
+                    if (!inVoid) c.insert('TARGET LOCK', 'terminal', actionMs(1200));
+                    c.dsnd('stamp');
+                    c.snd('empBurst');
+                    // Target-lock cages snap onto every visible victim and chain
+                    // lightning hops down the whole enemy roster.
+                    const vis = c.targets.filter(t => c.see(t));
+                    vis.forEach((t, i) => {
+                        const e = c.pos(t);
+                        c.at(actionMs(280) + i * 80, () => {
+                            if (V.sigNeonGrid3D) V.sigNeonGrid3D(e.x, e.y, { ms: c.strikesMs + actionMs(700), hue: 0.52, hueRate: 0.02, radiusPx: c.ts * 0.9 });
+                            if (i > 0 && typeof ThreeLightning !== 'undefined' && ThreeLightning.chainBolt) {
+                                const p = c.pos(vis[i - 1]);
+                                ThreeLightning.chainBolt(p.x, p.y, e.x, e.y, { color: 0xe0ffff, glowColor: 0x28a0be, durationMs: 260 });
+                            }
+                        });
+                    });
+                    c.at(actionMs(360), () => c.snd('taserZap'));
+                    c.flash('#c8ffff', 300, 0.4);
+                },
+                enemyCam(c, enemy) {
+                    // Over the victim's shoulder, looking straight down the incoming laser.
+                    const a = c.nearestAlly(enemy);
+                    if (!a || typeof cineReverseOts !== 'function') return false;
+                    return cineReverseOts(enemy, a, { tilt: 79 });
+                },
+                strike(c, enemy, i) {
+                    const V = c.VFX, e = c.pos(enemy);
+                    const a = c.nearestAlly(enemy);
+                    const flavor = i % 3;
+                    if (flavor === 0) {
+                        if (a && V.laserBeam3D) V.laserBeam3D(a.x, a.y, e.x, e.y, { beamMs: 380, core: 0xe6ffff, glow: 0x28a0be, thickness: 2 });
+                        c.ring(e.x, e.y, 0x4fd8ff, { r1: c.ts * 1.5, ms: 440 });
+                        c.snd('turret');
+                    } else if (flavor === 1) {
+                        if (typeof ThreeLightning !== 'undefined' && ThreeLightning.strikeFromSky) ThreeLightning.strikeFromSky(e.x, e.y, { color: 0xe0ffff, glowColor: 0x28a0be, strikes: 3, durationMs: 340 });
+                        if (V.sigStormStrike3D) V.sigStormStrike3D(e.x, e.y, { delayMs: 40, color: 0x4fd8ff });
+                        c.snd('lightningStrike');
+                    } else {
+                        if (a && V.sigSpiralBeam3D) V.sigSpiralBeam3D(a.x, a.y, e.x, e.y, { ms: 520, color: 0x28a0be, coreColor: 0xffffff, strands: 3 });
+                        if (V.sigOrbBurst3D) V.sigOrbBurst3D(e.x, e.y, { color: 0x4fd8ff, ms: 400, r0: c.ts * 0.15, r1: c.ts * 1.2, flash: true });
+                        c.snd('taserZap');
+                    }
+                    c.flash('#c8ffff', 150, 0.26);
+                    c.kick(12, 200);
+                },
+                resolve(c) {
+                    const V = c.VFX;
+                    c.leaveVoid();
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(c.cx, c.cy, { color: 0x4fd8ff, ms: 900, peak: 0.9, sizeTiles: c.span, shake: false });
+                    c.grade('terminal', 900);
+                    c.flash('#e0ffff', 620, 0.85);
+                    c.ring(c.cx, c.cy, 0x4fd8ff, { r0: c.ts * 0.5, r1: c.ts * c.span, ms: 800, torus: true });
+                    c.insert('HUMANITY: DEPRECATED', 'terminal', actionMs(1100));
+                    c.snd('empBurst');
+                    c.at(actionMs(160), () => c.snd('explosion'));
+                }
+            },
+
+            /* ── REALITY SHIFT (anomaly) ─ consensus reality suspended. The
+               psychedelic tint rolls over the frame, the channelers scrub
+               backwards through time inside kaleidoscopes, the KALEIDO void
+               stage swallows the world under a fractal tunnel with an
+               invert-flicker and a vertigo dolly-zoom, and every victim is
+               erased by a black hole, a supernova or ego death. ─────────── */
+            anomaly: {
+                chargeMs: 3200, staggerMs: 720, resolveMs: 1900,
+                castSpell: { type: 'damage', dmg: 1, name: 'Reality Shift' },
+                siren(c) {
+                    c.snd('discord');
+                    c.at(actionMs(300), () => c.snd('teleport'));
+                    if (c.VFX.sigPsychedelicTint) c.VFX.sigPsychedelicTint({
+                        trip: 0.6, hueRate: 0.25, chroma: 3, warp: 0.004,
+                        inMs: 600, holdMs: c.CHARGE_MS + c.strikesMs, outMs: c.RESOLVE_MS
+                    });
+                },
+                pane(c, a) {
+                    const V = c.VFX;
+                    if (V.sigKaleidoscope3D) V.sigKaleidoscope3D(a.x, a.y, { ms: c.CHARGE_MS, radiusPx: c.ts * 1.1, ceilingH: 1.8 });
+                    if (V.sigTimeRewind3D) V.sigTimeRewind3D(a.x, a.y, { ms: 1250 });
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(a.x, a.y, { radiusPx: c.ts * 0.95, growMs: 240, holdMs: c.CHARGE_MS + c.strikesMs, fadeMs: 420, spin: true, color: 0xdc3c82, color2: 0xff9ad0 });
+                },
+                world(c) {
+                    const V = c.VFX;
+                    const inVoid = c.enterVoid('kaleido', 'REALITY.SHIFT<span class="void-cap-sub">consensus reality: suspended</span>');
+                    if (V.sigFractalTunnel3D) V.sigFractalTunnel3D(c.cx, c.cy, { sides: 6, rings: 12, ms: c.strikesMs + actionMs(1400), height: 560, radiusPx: c.ts * c.span * 0.45, speed: 1.2 });
+                    if (V.sigKaleidoscope3D) V.sigKaleidoscope3D(c.cx, c.cy, { ms: c.strikesMs + actionMs(1200), radiusPx: c.ts * c.span * 0.4, ceilingH: 3.2 });
+                    try { if (typeof cineSlowMo === 'function') cineSlowMo(0.35, actionMs(700)); } catch (err) {}
+                    try { if (c.cineOK && typeof cineDollyZoom === 'function') cineDollyZoom(-18, actionMs(1400)); } catch (err) {}
+                    [0, 260, 520].forEach(ms => c.at(actionMs(ms), () => c.grade('invert', 120)));
+                    if (!inVoid) c.insert('∞<span class="cine-insert-sub">REALITY SHIFT — NOTHING HERE IS TRUE</span>', 'glitch', actionMs(1400));
+                    c.flash('#ff9ad0', 420, 0.45);
+                    c.snd('discord');
+                    c.at(actionMs(260), () => c.snd('spellDamage'));
+                },
+                enemyCam(c, enemy) {
+                    c.dive(enemy, 0.92);
+                    try { if (typeof cinePushIn === 'function') cinePushIn(1.12, 260); } catch (err) {}
+                    return true;
+                },
+                lead(c, enemy, i, hitAt) {
+                    const V = c.VFX, e = c.pos(enemy);
+                    const flavor = i % 3;
+                    // Each erasure is a long-form signature that ENDS on the hit frame.
+                    if (flavor === 0 && V.sigBlackHole3D) c.at(hitAt - 1050, () => { if (c.see(enemy)) V.sigBlackHole3D(e.x, e.y, 1, { ms: 1100 }); });
+                    else if (flavor === 1 && V.sigSupernova3D) c.at(hitAt - 1150, () => { if (c.see(enemy)) V.sigSupernova3D(e.x, e.y, 1, { ms: 1300 }); });
+                    else if (flavor === 2 && V.sigEgoDeath3D) c.at(hitAt - 720, () => { if (c.see(enemy)) V.sigEgoDeath3D(e.x, e.y, { implodeMs: 700 }); });
+                },
+                strike(c, enemy, i) {
+                    const V = c.VFX, e = c.pos(enemy);
+                    c.ring(e.x, e.y, 0xff4fa3, { r1: c.ts * 1.6, ms: 460, torus: true });
+                    if (V.sigSpectrumBurst3D && i % 3 === 2) V.sigSpectrumBurst3D(e.x, e.y, { ms: 600, radiusPx: c.ts * 1.4 });
+                    if (V.sigOrbBurst3D && i % 3 !== 2) V.sigOrbBurst3D(e.x, e.y, { color: 0xff9ad0, ms: 420, r0: c.ts * 0.15, r1: c.ts * 1.3, flash: true, tint2: 0x9632b4 });
+                    c.snd(i % 3 === 1 ? 'explosion' : 'spellDamage');
+                    c.flash(i % 2 === 0 ? '#ffffff' : '#ff9ad0', 170, 0.3);
+                    c.kick(14, 220);
+                },
+                resolve(c) {
+                    const V = c.VFX;
+                    c.leaveVoid();
+                    try { if (typeof cineDollyZoomRelease === 'function') cineDollyZoomRelease(); } catch (err) {}
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(c.cx, c.cy, { color: 0xff4fa3, ms: 1000, peak: 0.95, sizeTiles: c.span, shake: false });
+                    if (V.sigSpectrumBurst3D) V.sigSpectrumBurst3D(c.cx, c.cy, { ms: 900, radiusPx: c.ts * 3 });
+                    c.grade('invert', 150);
+                    c.flash('#ffffff', 700, 0.9);
+                    c.ring(c.cx, c.cy, 0xff4fa3, { r0: c.ts * 0.5, r1: c.ts * c.span, ms: 800, torus: true });
+                    c.insert('REALITY: RESTORED?', 'glitch', actionMs(1100));
+                    c.snd('teleport');
+                    c.at(actionMs(180), () => c.snd('explosion'));
+                }
+            }
+        };
+        window._EWS_DIRECTORS = _EWS_DIRECTORS;
 
         function awardAssists(victim, killer) {
             if (!killer || !victim) return;
@@ -18289,7 +18918,9 @@
                 const pal = VOID_PALETTES[opts.palette] || VOID_PALETTES.abyss;
                 const actors = (opts.actors || []).filter(Boolean);
                 const ids = actors.map(u => (u && u.id != null) ? u.id : u).filter(id => id != null);
-                const ms = Math.max(600, Math.min(2400, opts.ms || 1500));
+                // opts.maxMs: the Entropy Strike holds the void through every
+                // staggered strike (battle.js _EWS_DIRECTORS) — spells keep the 2.4s cap.
+                const ms = Math.max(600, Math.min(opts.maxMs || 2400, opts.ms || 1500));
                 this.active = true;
                 this._palette = opts.palette || 'abyss';
                 this._pal = pal;
@@ -34100,7 +34731,7 @@
                     case 'item': ok = _queueItem(unit, plan, step); break;
                     case 'guard': ok = _queueGuard(unit, plan); break;
                     case 'build': ok = _queueBuild(unit, plan, step); break;
-                    case 'entropyStrike': ok = _queueEntropy(unit, plan); break;
+                    case 'entropyStrike': ok = _queueEntropy(unit, plan, step); break;
                 }
                 if (ok) {
                     state.pendingTarget = null;
@@ -34284,11 +34915,15 @@
                 return 250;
             }
 
-            function _queueEntropy(unit, plan) {
+            function _queueEntropy(unit, plan, step) {
                 if (typeof canUseEntropyStrike === 'function' && !canUseEntropyStrike(unit)) return 0;
-                plan.steps.push({ type: 'entropyStrike' });
+                // The chosen apocalypse rides the plan step; a stepless call
+                // (legacy) lets doEntropyStrike pick the best matchup at resolve.
+                const _esType = (step && typeof isEntropyStrikeType === 'function' && isEntropyStrikeType(step.strikeType)) ? step.strikeType : null;
+                plan.steps.push({ type: 'entropyStrike', strikeType: _esType });
                 spendAllAP(unit);
-                showFloatingTextForUnit(unit, '⚛ ORDER LOCKED', 'buff', { durationMs: 1100 });
+                const _esName = (_esType && typeof getEntropyStrikeType === 'function') ? getEntropyStrikeType(_esType).name : 'ORDER';
+                showFloatingTextForUnit(unit, '⚛ ' + String(_esName).toUpperCase() + ' LOCKED', 'buff', { durationMs: 1100 });
                 playSfx('uiConfirm');
                 state.actionMode = null;
                 state.actionMenuView = 'root';
@@ -34382,7 +35017,7 @@
                             dmg: spellDealsDamage(c.spell),
                         };
                     case 'guard': return { type: 'guard' };
-                    case 'entropyStrike': return { type: 'entropyStrike' };
+                    case 'entropyStrike': return { type: 'entropyStrike', strikeType: c.strikeType || null };
                     case 'move': return { type: 'move', x: c.x, y: c.y, z: c.z };
                 }
                 return null;
@@ -34466,7 +35101,7 @@
                         : st.type === 'spell' ? `✨ ${st.tool}`
                         : st.type === 'guard' ? '🛡 Guard'
                         : st.type === 'item' ? `🎒 ${st.tool}`
-                        : st.type === 'entropyStrike' ? '⚛ ENTROPY STRIKE'
+                        : st.type === 'entropyStrike' ? ('⚛ ' + ((st.strikeType && typeof getEntropyStrikeType === 'function') ? getEntropyStrikeType(st.strikeType).name.toUpperCase() : 'ENTROPY STRIKE'))
                         : st.type === 'build' ? '🔨 Build'
                         : st.type).join(' → ');
                 return `${unitDisplayName(e.unit)} (SPD ${e.unit.spd || 0}): ${verbs}`;
@@ -34573,7 +35208,7 @@
                         return 0;
                     case 'entropyStrike':
                         if (typeof canUseEntropyStrike === 'function' && canUseEntropyStrike(unit)) {
-                            return doEntropyStrike(unit) || 0;
+                            return doEntropyStrike(unit, step.strikeType || null) || 0;
                         }
                         _whiff(unit, 'Entropy Strike');
                         return 400;
@@ -38236,6 +38871,7 @@
             // ⚛ Entropy Gauge + team attack / 🔥 killstreak heat + bounties
             getEntropyGauge, isEntropyGaugeFull, addEntropy,
             canUseEntropyStrike, getEntropyStrikeTargets, getEntropyStrikeDamage, doEntropyStrike,
+            getEntropyStrikeType, getEntropyStrikeTypeOrder, getEntropyStrikeForecast, getEntropyStrikeBestType,
             isUnitHeatingUp, isUnitOnFire, getUnitBountyGold,
             get ENTROPY_GAUGE_MAX() { return ENTROPY_GAUGE_MAX; },
 

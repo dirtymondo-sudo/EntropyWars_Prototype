@@ -184,6 +184,58 @@ const TYPE_CHART = {
 
 const STAB_MULTIPLIER = 1.25;
 
+/* ═══ ENTROPY STRIKE — THE SIX APOCALYPSES (2026-09-07) ═══════════════════
+   The full-gauge team attack is no longer typeless: the player who
+   triggers it CHOOSES which of the six damage types the strike carries,
+   and the whole team's annihilation is judged by the TYPE_CHART above
+   against every enemy it hits (weak ×1.30 / resist ×0.75, exactly like a
+   spell of that type — the triggering unit's own STAB applies too). Each
+   type is its own full cinematic (battle.js `_EWS_DIRECTORS`) and its own
+   banner theme (styles-cinematic.css `.ews-t-<id>`). Read the catalogue
+   ONLY through battle.js `getEntropyStrikeType(id)`; the HUD picker
+   (hud.js `_hrlgEntropyBlades`) and the AI (`getEntropyStrikeBestType`)
+   iterate ENTROPY_STRIKE_TYPE_ORDER. `color` is the type's canonical text
+   colour (hud.js TYPE_TEXT_COLORS), `accent` the cinematic's hot colour. */
+const ENTROPY_STRIKE_TYPE_ORDER = ['human', 'alien', 'divine', 'unholy', 'tech', 'anomaly'];
+const ENTROPY_STRIKE_TYPES = {
+    human: {
+        id: 'human', name: 'For All Mankind', glyph: '✊',
+        color: '#d8cfa8', accent: '#f2c468', hex: 0xf2c468,
+        tagline: 'EVERY GUN ON EARTH FIRES AT ONCE',
+        desc: 'HUMAN-type strike. The species that refused to go quietly: bullet rain, artillery and one last unanimous charge.',
+    },
+    alien: {
+        id: 'alien', name: 'Invasion Day', glyph: '🛸',
+        color: '#58d858', accent: '#32aa50', hex: 0x58d858,
+        tagline: 'THE SKY BELONGS TO THEM NOW',
+        desc: 'ALIEN-type strike. The fleet drops out of orbit: heat-rays, abduction beams and probes for every enemy in sight.',
+    },
+    divine: {
+        id: 'divine', name: 'Revelations', glyph: '☀',
+        color: '#f0c860', accent: '#dcaa1e', hex: 0xffd75a,
+        tagline: 'AND THE SEVENTH SEAL WAS OPENED',
+        desc: 'DIVINE-type strike. Judgement from a torn-open sky: radiant pillars, holy spears and the trumpets of the end.',
+    },
+    unholy: {
+        id: 'unholy', name: 'Hell on Earth', glyph: '👹',
+        color: '#a06bff', accent: '#ff3a2a', hex: 0xff3a2a,
+        tagline: 'THE GATES ARE OPEN',
+        desc: 'UNHOLY-type strike. The battlefield becomes the pit: hellfire, crimson lightning and a demon skull for every victim.',
+    },
+    tech: {
+        id: 'tech', name: 'Robot Uprising', glyph: '🤖',
+        color: '#4fd8ff', accent: '#28a0be', hex: 0x4fd8ff,
+        tagline: 'SYSTEM OVERRIDE — TARGETS ACQUIRED',
+        desc: 'TECH-type strike. The machines wake up: target locks, laser grids and chain lightning through the whole enemy roster.',
+    },
+    anomaly: {
+        id: 'anomaly', name: 'Reality Shift', glyph: '🌀',
+        color: '#ff4fa3', accent: '#dc3c82', hex: 0xff4fa3,
+        tagline: 'NOTHING HERE IS TRUE',
+        desc: 'ANOMALY-type strike. Consensus reality is suspended: black holes, supernovae and ego death, one per enemy.',
+    },
+};
+
 /* ═══ ELEMENTAL AFFINITIES (2026-09-01 — see ELEMENTAL_TYPES_PLAN.md) ═══
    A SECOND, spell-side layer under the type chart above — never a
    replacement for it. Spells carry an optional `element:` tag (doc block
@@ -14328,6 +14380,8 @@ Object.assign(window, {
   CONFIG, EQUIP_DEFS, RACE_PROFILES, AVAILABLE_RACES, RACE_DEFAULT_JOBS,
   MAX_UNIT_PASSIVES, PASSIVE_DEFS, RACE_PASSIVES,
   getUnitPassives, unitHasPassive, unitPassiveValue, unitPassiveBlocksStatus,
+  /* type chart + the Entropy Strike's six apocalypses (2026-09-07) */
+  TYPE_CHART, STAB_MULTIPLIER, ENTROPY_STRIKE_TYPE_ORDER, ENTROPY_STRIKE_TYPES,
   /* elemental affinity system (2026-09-01, ELEMENTAL_TYPES_PLAN.md) */
   SPELL_ELEMENTS, COMBAT_ELEMENTS, ELEMENT_AFFINITY_TIERS, ELEMENT_AFFINITY_MULT,
   ELEMENT_ICONS, ELEMENTAL_STATUS, ELEMENT_RIDER_STATUS, statusAffinityElement,

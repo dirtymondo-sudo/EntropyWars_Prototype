@@ -612,11 +612,15 @@
 
         const _origDoEntropyStrike = (typeof doEntropyStrike === 'function') ? doEntropyStrike : null;
         if (_origDoEntropyStrike) {
-            doEntropyStrike = function(unit) {
-                if (!_isOnline() || state._remoteAction) return _origDoEntropyStrike(unit);
-                if (_isHost()) return _hostRunAndSync(_origDoEntropyStrike, [unit]);
+            /* strikeType (2026-09-07): the apocalypse the player picked in the
+               HUD rides the engine action so the HOST resolves the same type
+               the guest chose (a missing type → the engine's best-matchup
+               default, never a mismatch). */
+            doEntropyStrike = function(unit, strikeType) {
+                if (!_isOnline() || state._remoteAction) return _origDoEntropyStrike(unit, strikeType);
+                if (_isHost()) return _hostRunAndSync(_origDoEntropyStrike, [unit, strikeType]);
                 if (!_guestOwnsAction(unit)) return 0;
-                _emit('game-action', { type: 'engine', fn: 'doEntropyStrike', unitId: unit.id });
+                _emit('game-action', { type: 'engine', fn: 'doEntropyStrike', unitId: unit.id, strikeType: strikeType || null });
                 return 1200;
             };
             window.doEntropyStrike = doEntropyStrike;
@@ -1521,7 +1525,7 @@
                                 if (typeof channelNexus === 'function') channelNexus(engUnit);
                                 break;
                             case 'doEntropyStrike':
-                                if (typeof doEntropyStrike === 'function') doEntropyStrike(engUnit);
+                                if (typeof doEntropyStrike === 'function') doEntropyStrike(engUnit, data.strikeType || null);
                                 break;
                             case 'doGuard':
                                 if (typeof doGuard === 'function') doGuard(engUnit);
@@ -2081,6 +2085,9 @@
                     _emit('relay', {
                         type: 'entropy-cine',
                         unitId: unit.id,
+                        /* the apocalypse: the guest must run the SAME director
+                           (same fixed timings, same banner, same VFX flavour) */
+                        strikeType: (hooks && hooks.strikeType) || null,
                         targetIds: (targets || []).map(function(t) { return t && t.id; }),
                         allyIds: (allies || []).map(function(a) { return a && a.id; })
                     });
@@ -3780,7 +3787,8 @@
                             var _ecAllies = (data.allyIds || []).map(_ecFind).filter(Boolean);
                             if (_ecUnit && !st.winner && typeof window._ewsPlayCinematic === 'function') {
                                 window._ewsPlayCinematic(_ecUnit, _ecTargets, _ecAllies, {
-                                    applyHit: null, mute: true, remote: true
+                                    applyHit: null, mute: true, remote: true,
+                                    strikeType: data.strikeType || null
                                 });
                             }
                         } catch (e) { /* cosmetic replay must never break the sync */ }

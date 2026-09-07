@@ -1402,6 +1402,8 @@
         if (!c || !h || c.type !== h.type) return false;
         if (h.type === 'move') return c.x === h.x && c.y === h.y;
         if (h.type === 'guard') return true;
+        // Entropy Strike: same verb, and the same apocalypse when the human named one.
+        if (h.type === 'entropyStrike') return !h.strikeType || !c.strikeType || c.strikeType === h.strikeType;
         if (h.type === 'attack') return !!(c.target && c.target.x === h.x && c.target.y === h.y);
         if (h.type === 'spell') {
             if (!c.spell) return false;
@@ -1419,6 +1421,7 @@
         if (c.type === 'move') return 'move→' + c.x + ',' + c.y + (c._intent ? ' (' + c._intent + ')' : '');
         if (c.type === 'attack') return 'attack ' + tn(c.target);
         if (c.type === 'spell') return (c.spell ? c.spell.name : 'spell') + '→' + tn(c.target);
+        if (c.type === 'entropyStrike') return 'entropy:' + (c.strikeType || 'best');
         return c.type;
     }
     window.aiScoreMargin = function (unit, human) {
@@ -1768,7 +1771,14 @@
         if (!targets.length) return;
         let per = 250;
         try { if (typeof g.getEntropyStrikeDamage === 'function') per = g.getEntropyStrikeDamage(unit) || 250; } catch (e) {}
-        out.push({ type: 'entropyStrike', score: 300 + targets.length * per * 0.8, _noDanger: true });
+        // THE SIX APOCALYPSES (2026-09-07): pick the damage type the current
+        // targets are weakest to (type-chart average × the trigger's STAB) —
+        // battle.js getEntropyStrikeBestType. The multiplier feeds the score
+        // so a board full of resists still fires, just less eagerly.
+        let best = null;
+        try { if (typeof g.getEntropyStrikeBestType === 'function') best = g.getEntropyStrikeBestType(unit); } catch (e) { best = null; }
+        const mult = (best && best.score > 0) ? best.score : 1;
+        out.push({ type: 'entropyStrike', strikeType: best ? best.type : null, score: 300 + targets.length * per * 0.8 * mult, _noDanger: true });
     }
 
     function scoreCombos(unit, v, out) {
@@ -4684,7 +4694,7 @@
             }
 
             case 'entropyStrike': {
-                const delay = (typeof g.doEntropyStrike === 'function') ? (g.doEntropyStrike(unit) || 0) : 0;
+                const delay = (typeof g.doEntropyStrike === 'function') ? (g.doEntropyStrike(unit, action.strikeType || null) || 0) : 0;
                 if (delay > 0) {
                     window.setTimeout(() => g.finishComputerAction(), delay);
                 } else {

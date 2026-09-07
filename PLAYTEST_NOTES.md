@@ -9751,3 +9751,47 @@ routinely blocked by a bystander unit's back.
 - Online parity: everything here is viewer-local rendering (the guest runs
   the same shot code via the relayed action cam), nothing new to relay.
 
+## ENTROPY STRIKE — THE SIX APOCALYPSES (2026-09-07)
+
+**What changed for a playtester.** A full Entropy Gauge no longer fires on
+one click. The ⚛ ENTROPY row opens a six-row picker (root → `entropy`
+sub-panel, ESC / CANCEL backs out): For All Mankind (human), Invasion Day
+(alien), Revelations (divine), Hell on Earth (unholy), Robot Uprising
+(tech), Reality Shift (anomaly). Each row shows `~dmg` per enemy (chart
+average × STAB), a ▲weak / ▼resist chip counted over the enemies currently
+in sight, a STAB chip when the triggering unit shares the type, a green
+`!` when every visible enemy is weak to it, and BEST on the row the CPU
+would take. Hover any row for the flavour + forecast sentence in the
+description bar. Clicking a row IS the strike (1 AP, drains the gauge,
+ends the unit's turn).
+
+**Damage.** `applyDamageToUnit(enemy, dmg, name + ': ', { sourceUnit,
+damageType: 'magic', spellType })` — so expect the usual `×1.3 WEAK!` /
+`×0.75 RESIST` pops on each victim and silent STAB. Log line names the
+apocalypse. Stats: `state._entropyStrikeTypeCount[type]`,
+`state._entropyStrikeLast = {player, type, round}`.
+
+**Harness.** `GAME.doEntropyStrike(unit, 'divine')` fires a chosen type
+directly (any unknown/omitted type → `getEntropyStrikeBestType`).
+`GAME.getEntropyStrikeForecast(unit, type)` / `getEntropyStrikeBestType
+(unit)` for the numbers. Simul: the plan step carries `strikeType`.
+
+**Cinematic anatomy (per type, fixed timings so guests stay in step):**
+| type | charge / stagger / resolve | world event | per-enemy flavours | resolve |
+|---|---|---|---|---|
+| human | 2800 / 640 / 1600 | sepia+grain grade, WEAPONS FREE stamp, every gun's bullet rain landing on the hit frames, reverse-OTS beats | flame burst / cannon (lead −760ms) + orb / stand-sword | brass whiteout, "…AND WE ARE STILL HERE." |
+| alien | 3000 / 700 / 1700 | green tint, crane to the sky, `sigUFOFleet3D` strafing the board (host-only call, relayed), escort saucers over channelers, THEY ARE HERE | probe descent (lead −700ms) / abduction pillar / heat-ray laser + black smoke | green whiteout, "THE SKY IS THEIRS" |
+| divine | 3200 / 700 / 1800 | god shot, gold aurora, merkaba over the field (detonates on resolve), VII seal card, whiteout grade | radiant burst + pillar / spear prison finisher / triple white lightning | blinding whiteout, "IT IS DONE" |
+| unholy | 3000 / 680 / 1700 | INFERNO void stage (allies + visible targets), giant cackling skull, red lightning, hellfire on every target tile | face-cam + skull in the face, then flame / crimson bolt / stand-fist | crimson whiteout, "WELCOME HOME" |
+| tech | 3000 / 620 / 1600 | CODE void stage with SYSTEM OVERRIDE readout, freeze-frame + scope grade, neon cages on every target, chain lightning down the roster | reverse-OTS down the beam: laser / storm strike / spiral beam | cyan whiteout, "HUMANITY: DEPRECATED" |
+| anomaly | 3200 / 720 / 1900 | psychedelic tint, KALEIDO void stage, board-wide fractal tunnel + kaleidoscope, slow-mo, dolly-zoom, invert flicker | black hole (lead −1050) / supernova (−1150) / ego death (−720), each ending on the hit frame | spectrum burst + whiteout, "REALITY: RESTORED?" |
+
+**Bug classes to watch.** (1) A void stage that outlives the strike — the
+camera restore's `_cineReleaseAllFx` is the safety net; if the board stays
+hidden after the whiteout, that's the bug. (2) Guest double VFX (two fleets
+/ two probes): a director called a relayed VFX without the `ctx.relayed`
+guard. (3) Picker rows all grey: `canUseEntropyStrike` false (gauge not
+full / no visible enemy) — the pusher shouldn't have been there. (4) A
+cinematic camera shot on a fogged enemy — every director beat is
+`_see`-gated; a position leak is a bug.
+

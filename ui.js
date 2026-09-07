@@ -4732,6 +4732,14 @@
                 playErrorSfx();
                 return;
             }
+            // ⚛ The apocalypse picker only opens on a full gauge with something
+            // to hit — same "never open an all-grey menu" rule as the others.
+            if (view === 'entropy' && !(typeof canUseEntropyStrike === 'function' && canUseEntropyStrike(unit))) {
+                addLog(unit && typeof isEntropyGaugeFull === 'function' && !isEntropyGaugeFull(unit.player)
+                    ? '⚛ The Entropy Gauge is not full yet.' : '⚛ No visible enemy for the Entropy Strike.');
+                playErrorSfx();
+                return;
+            }
             if (view === 'items' && typeof anyUsableItemNow === 'function' && !anyUsableItemNow(unit)) {
                 const _holdsAny = unit.items && Object.values(unit.items).some(n => (n || 0) > 0);
                 addLog(_holdsAny ? 'No items can be used right now.' : `${unitDisplayName(unit)} has no items.`);
