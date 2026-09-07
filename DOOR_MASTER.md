@@ -1,5 +1,5 @@
 # D.O.O.R. — MASTER FILE
-### Story bible + integration design + build log — rev 18 (2026-09-07 rev 3 — C-22 and C-23 DECIDED and shipped: seven bays (Bay 7 · URBAN), the CONTAINMENT RING joins the bays end to end on each floor (HQ plan 5.4a); rev 17 2026-09-07 — the ROOM REGISTER proposed: room numbers on every site and HQ room, seven new sites, a seventh bay — HQ plan Phase 7, Part C rows 22–24, Part D; rev 16 2026-09-06 — THE CAST: twenty characters hand-authored by the user (A0 #6–#9, A16, `DOOR_STORY.md` §2), fifteen rigged models placed in the headquarters (Part D); rev 15 2026-09-05 — roster dialogue shipped, see A15 + Part D rev 6; 2026-09-04 — story canon separated from ChatGPT scaffolding (A0); the authoring process recorded (A14); `DOOR_STORY.md` created as the empty worksheet. Story track code stays ON HOLD until the user writes the outline per A14.)
+### Story bible + integration design + build log — rev 19 (2026-09-07 rev 4 — the first WALKABLE SITE: Room 555 · D.U.M.B. is a room behind its threshold with its own Δ board on the floor (HQ plan 7.2 stage 1); rev 18 2026-09-07 rev 3 — C-22 and C-23 DECIDED and shipped: seven bays (Bay 7 · URBAN), the CONTAINMENT RING joins the bays end to end on each floor (HQ plan 5.4a); rev 17 2026-09-07 — the ROOM REGISTER proposed: room numbers on every site and HQ room, seven new sites, a seventh bay — HQ plan Phase 7, Part C rows 22–24, Part D; rev 16 2026-09-06 — THE CAST: twenty characters hand-authored by the user (A0 #6–#9, A16, `DOOR_STORY.md` §2), fifteen rigged models placed in the headquarters (Part D); rev 15 2026-09-05 — roster dialogue shipped, see A15 + Part D rev 6; 2026-09-04 — story canon separated from ChatGPT scaffolding (A0); the authoring process recorded (A14); `DOOR_STORY.md` created as the empty worksheet. Story track code stays ON HOLD until the user writes the outline per A14.)
 
 This file MERGES the two earlier DOOR documents and supersedes both:
 - `entropy_wars_claude_brief.md` (the ChatGPT-assisted story/world brief, 2026-09) → Part A
@@ -1646,3 +1646,22 @@ guard lines are Claude's Phase 2.6 flavour, moved with their sites and one
 new set for Bay 7 — the user may rewrite any of them (A15). Files:
 data.js, three-renderer.js, map.js, index.html (`20260907i-cors`),
 doorhq.test.js (137 green). Story track still ON HOLD (A14).
+
+### 2026-09-07 (rev 4) — the first walkable site: Room 555 is a room
+HQ plan **7.2** stage 1 (§9 there has the mechanics). The D.U.M.B.
+threshold in Bay 1 now opens INTO a room: the site's own 8×8 Δ board on
+the floor at 1:1 (the tram rail, the holding cell's walls, the server-bank
+steps you climb, the bulkhead blocks you cannot, the specimen tubes, the
+nexus ring), a walkway round it, the CROSSING console at a tanker desk
+that files the crossing (the same site file, CROSS ▸ Δ / DEEP / RESPOND),
+the natives (mad scientist, telepath, black goo) loitering on the
+walkway, a guard by the door. Post-match you stand at the console. The
+room IS Room 555 — no number of its own (Part C / plan 7.0 rule 1).
+Vocabulary (A8): a site with a room is **a walkable site**; the console
+is **the crossing console**; the door from the bay is still **the
+threshold** (the same leaf from both sides). Guard and overheard lines
+are Claude placeholders in `DOOR_HQ.siteRooms.flavour` — the user may
+rewrite (A15). Next rooms in the plan's order: CERN (999), Backrooms
+(90), then the outdoor sites. Files: data.js, three-renderer.js, map.js,
+index.html (`20260907j-cors`), doorhq.test.js (140 green). Story track
+still ON HOLD (A14).

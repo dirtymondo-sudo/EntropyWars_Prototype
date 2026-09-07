@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 18 (2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
+### The walkable facility that replaces the Play menu · rev 19 (2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -541,7 +541,44 @@ proposes and the user has not ruled on (MASTER Part C rows 22–24).
 - The elevator's floor panel skips 13 (Room 13 is filed in Bay 1, not on a
   floor). One line of procedural text; the joke is free.
 
-#### 7.2 ⚙ The walkable site (the engine piece, 1–2 sessions)
+#### 7.2 ⚙ The walkable site (the engine piece) — stage 1 ✅ (2026-09-07, §9: D.U.M.B.); the rest one session per site
+**What shipped** (rev 4): the mechanism and the first room. A site in
+`DOOR_HQ.siteRooms.built` gets `hqSiteRoom(mapId)` → a **box** room
+(`kind: 'box', fx: 'site', site: mapId` — the Training Room's pattern
+reused whole, so shell / doors / counters / props / collision / camera
+came for free; the `kind: 'site'` name below is kept for the OUTDOOR
+rooms that will need a sky and the map's far roster). The board is read
+by `hqSiteBoardInfo(mapId)` from the finished Δ (`PREBUILT_MAPS`) — cells
+with a level relative to the Δ baseline, `walk` from `TERRAIN_RULES` +
+`HQ_SITE_HAZARDS`, `fluid`, the Δ's tints; the edge walls; the monuments;
+the objects; the nexus anchor — and drawn by three-renderer.js
+`_hqBuildSiteBoard` (never the battle mesher): one InstancedMesh of cell
+quads per terrain, one instanced box per raised cell, a sunk pit + sheet
+per lake / lava cell, the thin edge walls, the monuments through the
+shared `_monBuilders`, the nexus ring, the Training Room's lit seams and
+A–H / 1–8. Walking: `_hqSurface` gained a board layer (`_hq.site`,
+`_hqSiteCellAt`) — a +1 step is climbed (the jump-1 rule: raised cells are
+rect blockers with `step` = one level), a +2 block is a wall, an edge wall
+is a thin blocker, shallow water is a −1 pit you drop into and wade, lava /
+deep water are never entered or overflown. The way in is the threshold
+leaf from the other side on the SOUTH wall (P1's lane), landing back at the
+bay's threshold door; the CROSSING console (west wall, the tanker desk) is
+the way on — map.js `_hqCrossingHtml` opens the same site-file panel
+(CROSS ▸ Δ / DEEP / Code Red RESPOND) and post-match you stand at the
+console. A threshold whose site has a room is walked INTO on E
+(`_hqDoorDirectAction`; sealed / clearance doors keep their panel); the
+directory GOes into the room; the register's site row carries `siteRoom`.
+The room wears no `roomNo` — `hqRoomNo(roomId)` and the console's plate
+resolve to the threshold's (7.0 rule 1). The natives stand on the walkway
+(`npcSpots` with a `race` hint from `hqMissionPool`; a race with no rigged
+model falls back to the roster draw). Still to do per site: the map's
+`near` setting inside the room (today: the generic dressing + red lamps +
+the site's signs, per-site props in `siteRooms.flavour`), the outdoor
+sky, the cast lines (A15). **Adding a site room = one id in
+`siteRooms.built`** (+ optional `shells[id]` / `flavour[id]`);
+doorhq.test.js checks the room against its threshold, its bay door, its
+board and the register.
+
 The Training Room is already the pattern: a `kind: 'box'` room whose floor
 carries the 8×8 pit (`shell.grid`, one 1.75 m cell per battle tile — a
 battle tile IS 128 world units = 1.75 m at `DOOR_HQ.units` 73, so a Δ
@@ -2795,3 +2832,98 @@ its renderer and map.js companions; docs.
 - Next: 7.2 (the walkable site — D.U.M.B. first), then 5.4a stage 2 (one
   continuous ring corridor) once the site rooms hang off it; 7.9 dailies;
   4.1 the case-file screen.
+
+### 2026-09-07 (rev 4) — 7.2 stage 1 SHIPPED: Room 555 is a room you walk
+The plan's next step ("7.2, D.U.M.B. first"). No new files; data.js +
+three-renderer.js + map.js + doorhq.test.js + index.html; docs.
+- **The decision**: a site room is a **box room** (`kind: 'box', fx:
+  'site', site: <mapId>`), not a new `kind: 'site'`. The renderer branches
+  on `kind === 'box'` in a dozen places (shell, flat-wall doors, counters,
+  props, `_hqSurface`, `_hqAirOK`, the camera boom, `_hqGoTo`); forking
+  them for an indoor site would have bought nothing. `kind: 'site'` stays
+  reserved for the outdoor rooms that need the map's sky and far roster.
+- **data.js.** `DOOR_HQ.siteRooms` (`built`, `shell` defaults, `shells[id]`
+  texture overrides, `flavour[id]` = guard line + overheard lines + extra
+  props — Claude-written placeholders, the user may rewrite, A15).
+  `hqSiteRoomId(mapId)` → `site_<id>`; `hqSiteBoard(mapId)` (the finished
+  Δ, a facility board under its own id); `hqSiteBoardInfo(mapId)` → `{ w,
+  h, base, cells[y][x]: { key, lvl, walk, fluid, tint }, walls, mons, objs,
+  nexus }` with `HQ_SITE_HAZARDS` / `HQ_SITE_FLUIDS`; `hqSiteRoom(mapId)`
+  → the room: a 22 m box (8 × 1.75 + 4 m walkway each side, h 4.4), the
+  way in on the south wall wearing the threshold's leaf (`action: { room:
+  bay_<sector>, at: 'site_<id>' }`), the CROSSING console (`action: {
+  overlay: 'crossing' }`, `site: id`, verb CROSS) at a tanker desk on the
+  west wall with the CRT / phone / papers / clipboard, four fluorescents
+  (`shell.lights`, one strip + point light per quarter), lockers, clock,
+  breaker, extinguisher, boxes, chair, the wet-floor sign, one guard, three
+  walkway spots hinted with the natives (`hqMissionPool(id, 3)`: mad
+  scientist, telepath, black goo for D.U.M.B.), the spawn on the walkway
+  facing the board. `hqRoomNo` resolves a site room to its site's number,
+  `hqDoorNo` resolves a door INTO a site room and a counter with `site` the
+  same way, the register's site row carries `siteRoom`. Rooms are
+  generated at load from `siteRooms.built` (`['prebuilt_dumb']`).
+- **three-renderer.js.** `_hqBuildSiteBoard(room)` (after the training
+  pit; wired in `_hqEnter` on `fx === 'site'`): the cell tops as one
+  InstancedMesh per terrain/tint (PlaneGeometry, one repeat per cell, the
+  Δ tint multiplied, a 12% self-lit lift), raised cells as one instanced
+  unit box per group scaled to the level height (`fillAbove: 'surface'`
+  look) — each a rect blocker `{ top: lvl × 1.75, step: 1.81 }` — lakes as
+  a BackSide box sunk one level with a translucent sheet at −0.3 m (lava
+  orange + glow, oil black, bogs purple, water blue), edge walls as 0.14 m
+  slabs with a cap (blockers with no top; `low` walls are steppable, `see`
+  walls translucent), monuments via `_monBuilders()[kind](_monRng(seed))`
+  fitted foot / maxH like the battle's classic branch and seated on the
+  cell top (solid ones block), trees as trunk + crown, the nexus as two
+  rings + a glow at the 2×2 centre, the lit seam grid, A–H / 1–8, the
+  hazard plate before the way in, two signs (the site's name + ROOM № over
+  the board, the site file's status by the door), eight red corner lamps
+  and the fluorescent strips. The walker: `_hq.site = { N, C, half, cells
+  }` + `_hqSiteCellAt(x, z)`; `_hqSurface`'s box branch returns the cell's
+  top for pits and null for `walk: false`, the climb tolerance on a board
+  cell is one level (+0.06) and the drop tolerance one level (+0.1), and
+  the blocker loop honours a per-blocker `step` (`b.step ||
+  HQ_STEP_TOL`); `_hqAirOK` refuses hazards and a pit's floor; the landing
+  over a pit is the pit's floor; `_hqCamBlocked` keeps the boom out of
+  raised cells and above a pit. Box shells draw a strip per `shell.lights`
+  entry and `_hqEnter` hangs a point light per entry; the box plate reads
+  the site's number when the room has none. `_hqSpawnPopulation` honours a
+  spot's `race` hint (a rigged native spawns as `hq-native-<i>`; hinted
+  races leave the roster draw).
+- **map.js.** `_hqSiteRoomId` helper; `_hqDoorDirectAction`: a threshold
+  with a room → `{ room, at: 'egress' }` (the prompt says ENTER, not OPEN);
+  `_hqCrossingHtml` builds the threshold panel for the room's site from
+  the console (`doorSiteState` on a synthetic mission door, the note / why
+  / roomNo from the threshold); the launch buttons from that panel pass
+  `doorId: 'crossing'` so `_hqReturnOrMenu` rebuilds the site room at the
+  console; the Code Red overlay offers WALK TO THE CONSOLE inside the site;
+  the directory's site row GOes into the room (YOU ARE HERE when in it);
+  the bay threshold panel (still shown for sealed / clearance doors and by
+  RESPOND) gains WALK IN ▸ ROOM №.
+- **doorhq.test.js** (three new tests): the board info for D.U.M.B. (4
+  steps, 2 blocks, 8 cell walls, the two grey tubes, the nexus at 3,3, no
+  trees; Backrooms' almond water wades, Hell's lava never walks); every
+  built site is a launch map with a threshold and generates the room —
+  kind / fx / site / sector, no roomNo but `hqRoomNo` resolves, the grid
+  at 1:1, ≥ 2 m walkway, textures, four lights, the way in on the south
+  wall wearing the threshold leaf (wide agreeing with the catalogue) and
+  landing at the bay's threshold door, the console at the desk with the
+  site's number, native hints from the pool standing on the walkway, the
+  spawn facing the board, the register row's `siteRoom`; a source scan of
+  the renderer and map.js hooks. `npm test`: 140 green (141 with the
+  server smoke test skipped — no node_modules here). index.html →
+  `20260907j-cors`.
+- Not playtested (RULE #1c). What to eyeball first: Bay 1, the bulkhead
+  (ROOM 555), E — you should stand on the south walkway facing the board,
+  the plate reading ROOM 555 · D.U.M.B. over the far wall, the tram-rail
+  tint on rows 3–4, the two +2 bulkhead cubes and four server-bank steps
+  (walk up a step, walk off it), the holding cell's four walls (solid),
+  the specimen tubes at A3 / H6, the teal nexus ring at the centre, three
+  natives on the walkways, the guard by the door. Then the console: E →
+  the site file with CROSS ▸ Δ / DEEP; cross, win or lose, and you should
+  come back standing at the console. Then Bay 1's door panel from the
+  Code Red row (RESPOND) still launches directly.
+- Next: the plan's order — 999 CERN and 90 Backrooms (indoor, one id each
+  in `siteRooms.built` + a `shells` / `flavour` entry), then 1945 Nuketown
+  and 50 Stadium (outdoor: the sky + far roster, the `kind: 'site'` work);
+  the map's `near` setting inside the room; 5.4a stage 2 once the site
+  rooms hang off the ring; 7.9 dailies; 4.1 the case-file screen.

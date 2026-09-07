@@ -152,6 +152,22 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   edit `sectors` only — everything else derives. Kill-switch:
   `bayShell.ring: false`. Stage 2 (one continuous ring corridor) is
   planned in the HQ plan 5.4a, after 7.2.
+  **THE WALKABLE SITE (plan 7.2 stage 1, shipped 2026-09-07)**: a site
+  listed in `DOOR_HQ.siteRooms.built` (today `prebuilt_dumb`) is a ROOM
+  behind its bay threshold — `hqSiteRoom(mapId)` (data.js) generates a
+  box room (`kind: 'box', fx: 'site', site: mapId`; never hand-edit
+  `rooms.site_*`) with the site's Δ board on the floor at 1:1, read by
+  `hqSiteBoardInfo(mapId)` and drawn by three-renderer.js
+  `_hqBuildSiteBoard` (instanced cell quads / raised boxes / pits /
+  edge-wall slabs / `_monBuilders` monuments / the nexus ring — never the
+  battle mesher). Walking = `_hqSurface`'s board layer (`_hq.site`,
+  `_hqSiteCellAt`): +1 climbed, +2 a wall, water waded, lava never. The
+  bay threshold walks you in (map.js `_hqDoorDirectAction`); the CROSSING
+  console (`overlay: 'crossing'`, `_hqCrossingHtml`) files the crossing
+  and is where post-match returns you. The room wears NO `roomNo`
+  (`hqRoomNo(roomId)` → the threshold's). Adding a site room = one id in
+  `siteRooms.built` (+ `shells[id]` / `flavour[id]`); doorhq.test.js
+  checks it. Natives stand at `npcSpots` with a `race` hint.
 - **The CAST shipped 2026-09-06**: the story's named characters (the user's
   cast sheet, canon, `DOOR_STORY.md` §2 / DOOR_MASTER A16) stand in the
   building. Models: sprites.js `DOOR_CAST_MODELS` (15 rigged GLBs on R2

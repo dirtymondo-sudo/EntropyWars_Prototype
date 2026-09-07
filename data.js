@@ -15907,6 +15907,54 @@ const DOOR_HQ = {
         prebuilt_training: { room: 'training' },
         prebuilt_holosim:  { roomNo: '404', label: 'HOLO SIM', sub: 'ARCANE ENGINEERING · ROOM NOT FOUND', why: 'the Simulation is a projection, not a room' },
     },
+    /* ── THE WALKABLE SITES (HQ plan 7.2, 2026-09-07) ──────────────────────
+       A site in `built` gets a ROOM behind its bay threshold, generated at
+       load by hqSiteRoom(mapId) — never hand-edit rooms.site_*. It is a box
+       room (the Training Room's pattern, 6.1a) whose floor carries the
+       site's own 8×8 Δ board at 1:1 (one 1.75 m cell per battle tile, the
+       board's heights, walls, monuments and the nexus drawn from
+       PREBUILT_MAPS[<id>_delta] by three-renderer.js _hqBuildSiteBoard and
+       walked by _hqSurface's board layer: a +1 step is climbed, a +2 block
+       is a wall, water is waded, lava and deep water are not crossed). The
+       way in is the threshold leaf seen from the other side (the bay's door
+       walks you in — map.js _hqDoorDirectAction — and the room's way out
+       lands you back at that door); the way ON is the CROSSING console,
+       which opens the same site file / CROSS ▸ Δ / DEEP CROSSING panel the
+       bay door used to, and post-match you stand at the console again. The
+       room wears NO roomNo of its own — it IS the site's number (7.0 rule
+       1): hqRoomNo(roomId) and the console's plate resolve to the
+       threshold's roomNo. `shell` = the defaults, `shells[id]` = per-site
+       texture overrides (HQ texture table keys only), `flavour[id]` = the
+       guard's line, the overheard lines and extra dressing in the room's
+       Cartesian frame (Claude-written placeholders — the user may rewrite
+       any line, A15). The natives loiter on the walkway (`npcSpots` with a
+       `race` hint from hqMissionPool). Order of construction (plan 7.2):
+       555 D.U.M.B. → 999 CERN → 90 Backrooms → 1945 → 50 → the moat maps. */
+    siteRooms: {
+        built: ['prebuilt_dumb'],
+        shell: { pad: 4.0, h: 4.4, dadoH: 1.05, floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling', pipes: true },
+        shells: {
+            prebuilt_dumb: { floor: 'concrete', wall: 'concrete', dado: 'teal', trim: 'teal', ceiling: 'concrete' },
+        },
+        flavour: {
+            prebuilt_dumb: {
+                agent: '“Level 7. There is no Level 4. If you find one, you were never here, and neither was it.”',
+                lines: [
+                    'The red light is not an emergency. It is the default.',
+                    'The tram runs on the hour. Nobody has seen the tram.',
+                    'Do not open the cell. Do not close the cell. The cell is a cell.',
+                    'Every badge here works. That is the problem.',
+                ],
+                /* the base's own dressing on the walkway (room frame, metres) */
+                props: [
+                    { key: 'round_cabinet',  x: 8.9,  z: -8.6, face: 225 },
+                    { key: 'cardboard_box',  x: 8.2,  z: -7.6, face: 20 },
+                    { key: 'pipe_run',       x: -6.0, z: -9.9, y: 3.9, face: 0 },
+                    { key: 'pipe_run',       x: 6.0,  z: -9.9, y: 3.9, face: 0 },
+                ],
+            },
+        },
+    },
     /* per-bay flavour: the guard's line, overheard lines, extra dressing (local polar) */
     bays: {
         terrestrial: { agent: 'Clipboard. “Suburbs, bases, ranches, a collider. Everything on this corridor has a parking lot.”',
@@ -16514,6 +16562,157 @@ function hqBayRoom(sectorKey) {
     };
 }
 Object.keys(DOOR_HQ.sectors).forEach(k => { DOOR_HQ.rooms[hqBayId(k)] = hqBayRoom(k); });
+/* ── THE WALKABLE SITE (HQ plan 7.2, 2026-09-07) ────────────────────────
+   hqSiteRoomId(mapId) → 'site_<id>' (the room id; the bay's threshold DOOR
+   wears the same id in its own room — doors and rooms are separate
+   namespaces, and hqRoomNo resolves both to the site's number).
+   hqSiteBoard(mapId) → the finished Δ board (PREBUILT_MAPS) or null.
+   hqSiteBoardInfo(mapId) → what a room needs to draw and walk the board:
+     { w, h, base, cells[y][x]: { key, lvl, walk, fluid, tint }, walls: [{ x, y,
+       side: 'N'|'W', z0, h, tex }], mons: [{ kind, x, y, foot, maxH, seed,
+       rot }], objs: [{ x, y, kind }], nexus: { x, y } | null }
+     lvl = levels above the Δ baseline (a step +1, a block +2, a lake −1);
+     walk = TERRAIN_RULES passable and not a hazard (HQ_SITE_HAZARDS);
+     fluid = wears a water / lava sheet.
+   hqSiteRoom(mapId) → the box room: the board in the middle, the way in on
+   the south wall (P1's lane — you stand where your team spawns), the
+   CROSSING console on the west wall, the natives on the walkway. */
+const HQ_SITE_HAZARDS = ['deep_water', 'lava', 'poison', 'poison_bog', 'purple_bog', 'chasm', 'void', 'cloud_gap', 'oil', 'swamp', 'fog_wall', 'barrier', 'storm'];
+const HQ_SITE_FLUIDS = ['water', 'deep_water', 'lava', 'oil', 'swamp', 'poison_bog', 'purple_bog', 'healing_spring'];
+let _hqTidKeys = null;
+function hqSiteTerrainKey(tid) {
+    if (!_hqTidKeys) { _hqTidKeys = {}; for (const k in MF_TID) _hqTidKeys[MF_TID[k]] = k; }
+    return _hqTidKeys[tid] || 'grass_2';
+}
+function hqSiteRoomId(mapId) { return 'site_' + hqSiteId(mapId); }
+function hqSiteBoard(mapId) {
+    const id = hqSiteId(mapId);
+    const P = (typeof PREBUILT_MAPS !== 'undefined') ? PREBUILT_MAPS : {};
+    const b = P[id + '_delta'] || P[id];   // a site's Δ; a facility board is the Δ under its own id
+    return (b && b.isDelta && b.heightMap && b.grid) ? b : null;
+}
+function hqSiteBoardInfo(mapId) {
+    const b = hqSiteBoard(mapId);
+    if (!b) return null;
+    const B = (typeof MF_DELTA_BASE_H !== 'undefined') ? MF_DELTA_BASE_H : 5;
+    const tints = b.terrainTints || {};
+    const cells = [];
+    for (let y = 0; y < b.h; y++) {
+        const row = [];
+        for (let x = 0; x < b.w; x++) {
+            const key = hqSiteTerrainKey(b.grid[y][x]);
+            const rule = (typeof TERRAIN_RULES !== 'undefined') ? TERRAIN_RULES[key] : null;
+            row.push({ key: key, lvl: (b.heightMap[y][x] | 0) - B,
+                       walk: !(rule && rule.passable === false) && HQ_SITE_HAZARDS.indexOf(key) < 0,
+                       fluid: HQ_SITE_FLUIDS.indexOf(key) >= 0, tint: tints[key] || null });
+        }
+        cells.push(row);
+    }
+    const walls = [];
+    for (const k in (b.edgeWalls || {})) {
+        const p = k.split(','), w = b.edgeWalls[k];
+        walls.push({ x: +p[0], y: +p[1], side: p[2], z0: (w.z0 | 0) - B, h: w.h || 2, tex: w.tex || 'bricks_2', texIn: w.texIn || null, low: !!w.low, see: !!w.see });
+    }
+    const mons = (b.monuments || []).map(m => ({ kind: m.kind, x: m.x, y: m.y, foot: m.foot || 1, maxH: m.maxH || 2, seed: m.seed || 1, rot: m.rot || 0, solid: m.solid !== false }));
+    const objs = [];
+    let nexus = null;
+    let oidKeys = null;
+    (b.objects || []).forEach((row, y) => row.forEach((list, x) => (list || []).forEach(o => {
+        if (!oidKeys) { oidKeys = {}; for (const k in MF_OID) oidKeys[MF_OID[k]] = k; }
+        const kind = oidKeys[o.oid] || String(o.oid);
+        if (kind === 'nexus') { if (!nexus) nexus = { x: x, y: y }; return; }
+        objs.push({ x: x, y: y, kind: kind, leaf: o.leaf || null });
+    })));
+    return { w: b.w, h: b.h, base: B, cells: cells, walls: walls, mons: mons, objs: objs, nexus: nexus, name: b.name || '' };
+}
+function hqSiteRoom(mapId) {
+    const id = hqSiteId(mapId);
+    const SR = DOOR_HQ.siteRooms || {};
+    const T = (DOOR_HQ.thresholds || {})[id] || {};
+    const sector = hqSectorOfMap(id);
+    if (!sector) return null;
+    const META = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
+    const meta = META.find(m => m.id === id) || {};
+    const board = hqSiteBoard(id);
+    const cells = board ? board.w : ((typeof MF_DELTA_S !== 'undefined') ? MF_DELTA_S : 8);
+    const cell = 128 / DOOR_HQ.units;                       // one battle tile in metres (1.75)
+    const shell = Object.assign({}, SR.shell || {}, (SR.shells || {})[id] || {});
+    const pad = (shell.pad != null) ? shell.pad : 4;
+    const size = Math.round((cells * cell + pad * 2) * 100) / 100;
+    const half = size / 2;
+    const egress = DOOR_HQ.rooms.central_egress;
+    const bayDoor = ((egress && egress.doors) || []).find(d => d.action && d.action.sector === sector) || {};
+    const sec = DOOR_HQ.sectors[sector] || {};
+    const leaf = T.leaf || 'leaf_closet_alt';
+    const F = (SR.flavour || {})[id] || {};
+    const label = ((meta.label) || id).toUpperCase();
+    const doors = [{
+        /* the way back: the threshold leaf from the other side, centred on
+           the south wall (P1's spawn lane is the south row), landing at the
+           bay's own threshold door with it at your back */
+        id: 'egress', wall: 's', x: 0, leaf: leaf, wide: !!((DOOR_HQ.catalogue[leaf] || {}).wide),
+        label: bayDoor.label || ('BAY · ' + (sec.label || sector).toUpperCase()), sub: 'CONTAINMENT BAY · THE WAY BACK',
+        action: { room: hqBayId(sector), at: 'site_' + id }, note: T.note || '',
+        desc: 'The same door from the other side. ' + (T.note ? T.note.charAt(0).toUpperCase() + T.note.slice(1) + '. ' : '') + 'The bay is behind it; the paperwork is in front of you.',
+    }];
+    const counters = [{
+        /* the CROSSING console: the site file, CROSS ▸ Δ / DEEP, on the west
+           wall at the tanker desk (the Training Room's RANGE console pattern) */
+        id: 'crossing', x: -(half - 1.1), z: 0, face: 90, plateY: 1.9, radius: 2.4, verb: 'CROSS', site: id,
+        label: 'CROSSING CONSOLE', sub: label + ' · THE WAY ON', action: { overlay: 'crossing' },
+    }];
+    const props = [
+        { key: 'tanker_desk',   wall: 'w', z: 0 },
+        { key: 'crt_terminal',  x: -(half - 0.4), z: -0.35, y: 0.76, face: 90 },
+        { key: 'rotary_phone',  x: -(half - 0.38), z: 0.42, y: 0.76, face: 70 },
+        { key: 'papers_a',      x: -(half - 0.5), z: 0.05, y: 0.76, face: 100 },
+        { key: 'clipboard',     wall: 'w', z: -1.6 },
+        /* the south wall: the way in at x 0 (a 3.3 m panel), the extinguisher
+           and the breaker either side of it, the wet-floor sign on the sill */
+        { key: 'fire_extinguisher', wall: 's', x: 3.4 },
+        { key: 'breaker_panel', wall: 's', x: -3.4 },
+        { key: 'wet_floor_sign', x: 2.6, z: half - 1.4, face: 150 },
+        /* the north wall: the plate over the board, a clock, lockers in the corner */
+        { key: 'wall_clock',    wall: 'n', x: -3.0 },
+        { key: 'locker',        wall: 'n', x: half - 1.2 },
+        { key: 'locker',        wall: 'n', x: half - 2.1 },
+        /* the east walkway: file boxes for the site file, a chair for the guard */
+        { key: 'cardboard_boxes', x: half - 1.3, z: half - 1.6, face: 30 },
+        { key: 'folding_chair', x: half - 1.3, z: 2.2, face: 250 },
+        /* ceiling fixtures: one over each quarter of the board */
+        { key: 'fluorescent', x: -3.5, z: -3.5, ceil: true, face: 90 },
+        { key: 'fluorescent', x: 3.5,  z: -3.5, ceil: true, face: 90 },
+        { key: 'fluorescent', x: -3.5, z: 3.5,  ceil: true, face: 90 },
+        { key: 'fluorescent', x: 3.5,  z: 3.5,  ceil: true, face: 90 },
+    ];
+    (F.props || []).forEach(p => props.push(Object.assign({}, p)));
+    /* the natives on the walkway (hqMissionPool: natives first) — a race hint
+       per spot; a race with no rigged model falls back to the roster draw */
+    const pool = hqMissionPool(id, 3);
+    const nat = pool.natives || 0;
+    const spotXZ = [{ x: half - 1.4, z: -4.2, face: 270 }, { x: half - 1.4, z: 4.6, face: 290 }, { x: -(half - 1.4), z: 5.6, face: 80 }];
+    const npcSpots = spotXZ.map((sp, i) => Object.assign({}, sp, (i < nat && pool[i]) ? { race: pool[i] } : {}));
+    return {
+        label: label, sub: T.sub || ('THE SITE · ' + (sec.label || sector).toUpperCase() + ' · BAY ' + (DOOR_HQ.rooms[hqBayId(sector)] ? DOOR_HQ.rooms[hqBayId(sector)].bayNo : '?')),
+        kind: 'box', fx: 'site', site: id, sector: sector, why: T.why || '',
+        shell: {
+            w: size, d: size, h: shell.h || 4.4, wallH: shell.h || 4.4, dadoH: shell.dadoH || 1.05,
+            floor: shell.floor, wall: shell.wall, dado: shell.dado, trim: shell.trim, ceiling: shell.ceiling,
+            pipes: shell.pipes !== false,
+            light: { x: 0, z: 0 },
+            lights: [{ x: -3.5, z: -3.5 }, { x: 3.5, z: -3.5 }, { x: -3.5, z: 3.5 }, { x: 3.5, z: 3.5 }],
+            plate: { x: 0, z: -(half - 0.4), y: (shell.h || 4.4) - 0.45 },
+            grid: { cells: cells, cell: cell },
+        },
+        doors: doors, counters: counters, props: props,
+        /* the site guard: just inside the way in, facing across the board */
+        agents: [{ x: -4.4, z: half - 1.5, face: 20, line: F.agent || '“Sign the book. Then sign it again on the way out; they compare the signatures.”' }],
+        npcSpots: npcSpots,
+        lines: F.lines || ['The board is the board. The room is a formality.'],
+        spawn: { x: 0, z: half - 1.6, face: 0 },
+    };
+}
+((DOOR_HQ.siteRooms || {}).built || []).forEach(id => { const r = hqSiteRoom(id); if (r) DOOR_HQ.rooms[hqSiteRoomId(id)] = r; });
 /* ── THE ROOM REGISTER (HQ plan 7.1, 2026-09-07) ───────────────────────
    Every site and every numbered HQ room wears ONE number (7.0 rule 1). The
    number lives with the thing it names — `roomNo` on the threshold (site),
@@ -16544,6 +16743,7 @@ function hqRoomNo(idOrMapId) {
     }
     const rooms = DOOR_HQ.rooms || {};
     if (rooms[id] && rooms[id].roomNo != null) return hqRoomNoStr(rooms[id].roomNo);
+    if (rooms[id] && rooms[id].site) return hqRoomNo(rooms[id].site);   // a walkable site (plan 7.2) IS the site's number
     for (const rid in rooms) {
         const r = rooms[rid];
         if (!r) continue;
@@ -16557,7 +16757,9 @@ function hqDoorNo(entry) {
     if (entry.roomNo != null) return hqRoomNoStr(entry.roomNo);
     const act = entry.action || {};
     if (act.mission) return hqRoomNo(act.mission);
+    if (entry.site) return hqRoomNo(entry.site);   // a site room's console wears the site's number (plan 7.2)
     if (act.room && DOOR_HQ.rooms[act.room] && DOOR_HQ.rooms[act.room].roomNo != null) return hqRoomNoStr(DOOR_HQ.rooms[act.room].roomNo);
+    if (act.room && DOOR_HQ.rooms[act.room] && DOOR_HQ.rooms[act.room].site) return hqRoomNo(DOOR_HQ.rooms[act.room].site);
     return '';
 }
 function hqRoomNoCompare(a, b) {
@@ -16577,7 +16779,8 @@ function hqRoomRegister() {
         const sector = hqSectorOfMap(id);
         const bay = sector ? DOOR_HQ.rooms[hqBayId(sector)] : null;
         out.push({ no: hqRoomNoStr(T[id].roomNo), label: ((meta && meta.label) || id).toUpperCase(), sub: T[id].sub || ('THRESHOLD · ' + ((DOOR_HQ.sectors[sector] || {}).label || '')),
-                   kind: 'site', id: id, mapId: id, room: bay ? hqBayId(sector) : null, sector: sector, bayNo: bay ? bay.bayNo : null, why: T[id].why || '' });
+                   kind: 'site', id: id, mapId: id, room: bay ? hqBayId(sector) : null, sector: sector, bayNo: bay ? bay.bayNo : null, why: T[id].why || '',
+                   siteRoom: DOOR_HQ.rooms[hqSiteRoomId(id)] ? hqSiteRoomId(id) : null });
     }
     const F = DOOR_HQ.facility || {};
     for (const id in F) {
@@ -17345,6 +17548,10 @@ if (typeof window !== 'undefined') {
     window.hqBayId = hqBayId;
     window.hqBayRoom = hqBayRoom;
     window.hqBayRing = hqBayRing;
+    window.hqSiteRoomId = hqSiteRoomId;
+    window.hqSiteRoom = hqSiteRoom;
+    window.hqSiteBoard = hqSiteBoard;
+    window.hqSiteBoardInfo = hqSiteBoardInfo;
     window.hqRoomNo = hqRoomNo;
     window.hqDoorNo = hqDoorNo;
     window.hqRoomNoCompare = hqRoomNoCompare;

@@ -214,6 +214,8 @@
         function _hqEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
         function _hqRoom() { return (typeof DOOR_HQ !== 'undefined') ? (DOOR_HQ.rooms[_hqCurRoom] || DOOR_HQ.rooms.central_egress) : null; }
         function _hqRoomExists(id) { return !!(typeof DOOR_HQ !== 'undefined' && id && DOOR_HQ.rooms[id]); }
+        /* the walkable site behind a threshold (HQ plan 7.2): data.js hqSiteRoomId; '' when the helper is missing */
+        function _hqSiteRoomId(mapId) { try { return (typeof window.hqSiteRoomId === 'function') ? window.hqSiteRoomId(mapId) : ''; } catch (e) { return ''; } }
         /* HQ plan D13: walk as your most-played vessel (the ID-card photo)
            when it has a rigged model, else as a D.O.O.R. agent in black.
            window.EW_HQ_AVATAR = 'race' | {race, gender} overrides. */
@@ -604,7 +606,7 @@
             const el = _hqEl('hqPrompt');
             if (!el) return;
             if (!t || _hqPanelTarget) { el.style.display = 'none'; el.innerHTML = ''; return; }
-            const verb = t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK');
+            const verb = t.kind === 'door' ? ((t.door && t.door.action && t.door.action.mission && !_hqRoomExists(_hqSiteRoomId(t.door.action.mission))) ? 'OPEN' : 'ENTER') : (t.kind === 'counter' ? ((t.counter && t.counter.verb) || 'USE') : 'TALK');
             const pNo = _hqNo(t.door || t.counter);
             el.innerHTML = `<b>▸ ${pNo ? 'ROOM ' + _hqEsc(pNo) + ' · ' : ''}${_hqEsc(t.label)}</b><span>${_hqEsc(t.sub || '')}</span><i>[E] ${verb}</i>`;
             el.style.display = '';
@@ -648,6 +650,7 @@
             const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(cr.sector) : ('bay_' + cr.sector);
             html += '<div class="hq-panel-actions">';
             if (room && room.kind === 'bay' && room.sector === cr.sector) html += `<button class="hq-btn" data-goto="site_${_hqEsc(cr.site)}">WALK TO THE THRESHOLD</button>`;
+            else if (room && room.site === cr.site) html += '<button class="hq-btn" data-goto="crossing">WALK TO THE CONSOLE</button>';
             else if (_hqCurRoom === 'central_egress') {
                 const bd = (DOOR_HQ.rooms.central_egress.doors || []).find(d => d.action && d.action.sector === cr.sector);
                 if (bd) html += `<button class="hq-btn" data-goto="${_hqEsc(bd.id)}">WALK TO ${_hqEsc(bd.label)}</button>`;
@@ -685,7 +688,9 @@
             html += `<div class="hq-chips"><span>ENTITIES ON FILE</span>${nat ? pool.slice(0, nat).map(r => `<i class="hq-chip">${_hqEsc(String(r).toUpperCase())}</i>`).join('') : '<i class="hq-chip dim">NONE — THE BAY FIELDS ITS NEIGHBOURS</i>'}</div>`;
             const checks = _hqChecksHtml(sm);
             if (checks) html += `<div class="hq-chips"><span>ON FILE FOR THIS THRESHOLD${sm ? ` · ${sm.done}/${sm.total}` : ''}</span>${checks}</div>`;
-            html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${canCross ? '' : 'disabled'} data-cross="${_hqEsc(id)}" title="Arena · 4v4 on the 8×8 Δ board · CPU fields the site's natives">CROSS ▸ Δ BOARD · 4v4</button><button class="hq-btn" ${canCross ? '' : 'disabled'} data-deep="${_hqEsc(id)}" title="Arena on the full map at its own team size">DEEP CROSSING ▸ FULL SITE${meta && meta.teamSize ? ` · ${meta.teamSize}v${meta.teamSize}` : ''}</button></div>`;
+            const siteRoom = _hqSiteRoomId(id);
+            const walkIn = (siteRoom && _hqRoomExists(siteRoom) && siteRoom !== _hqCurRoom && t.door && t.door.action && t.door.action.mission) ? `<button class="hq-btn" ${canCross ? '' : 'disabled'} data-room="${_hqEsc(siteRoom)}" data-at="egress" title="The site is a room: walk the board, cross from the console inside">WALK IN ▸ ROOM ${_hqEsc(_hqSiteNo(id) || '')}</button>` : '';
+            html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${canCross ? '' : 'disabled'} data-cross="${_hqEsc(id)}" title="Arena · 4v4 on the 8×8 Δ board · CPU fields the site's natives">CROSS ▸ Δ BOARD · 4v4</button><button class="hq-btn" ${canCross ? '' : 'disabled'} data-deep="${_hqEsc(id)}" title="Arena on the full map at its own team size">DEEP CROSSING ▸ FULL SITE${meta && meta.teamSize ? ` · ${meta.teamSize}v${meta.teamSize}` : ''}</button>${walkIn}</div>`;
             if (st === 'sealed') html += '<p class="hq-panel-note">SEALED — this threshold opens with a story chapter.</p>';
             else html += '<p class="hq-panel-note">CROSS ▸ Δ = Arena, 4v4 on the site’s 8×8 board, the CPU fielding the entities on file for it. DEEP = the full map. Each ☐ is a win condition still to be filed; all three turn the lamp green.</p>';
             return html;
@@ -788,6 +793,7 @@
                     let go = '';
                     const hereId = r.kind === 'site' ? 'site_' + r.id : (r.kind === 'room' ? null : r.id);
                     if (r.room && r.room === _hqCurRoom && hereId) go = `<button class="hq-btn hq-btn-sm" data-goto="${_hqEsc(hereId)}">WALK</button>`;
+                    else if (r.kind === 'site' && r.siteRoom && _hqRoomExists(r.siteRoom)) go = (r.siteRoom === _hqCurRoom) ? '<span>YOU ARE HERE</span>' : `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(r.siteRoom)}" data-at="egress">GO</button>`;
                     else if (r.kind === 'site' && r.room && _hqRoomExists(r.room)) go = `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(r.room)}" data-at="site_${_hqEsc(r.id)}">GO</button>`;
                     else if (r.kind === 'room' && _hqRoomExists(r.id)) go = (r.id === _hqCurRoom) ? '<span>YOU ARE HERE</span>' : `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(r.id)}">GO</button>`;
                     else if (r.kind === 'facility' && _hqRoomExists('training')) go = `<button class="hq-btn hq-btn-sm" data-room="training" data-at="range">GO</button>`;
@@ -871,6 +877,25 @@
             html += '<p class="hq-panel-note">Simulated crossings are INTERNAL: no site file, no mastery, no Code Red. The walls are real; the stakes are not. The grid beside you is the one you will fight on.</p>';
             return html;
         }
+        /* The CROSSING console in a walkable site (HQ plan 7.2): the same
+           site file / CROSS ▸ Δ / DEEP CROSSING panel the bay threshold shows,
+           read for the room's own site (`room.site`, or the counter's), with
+           the threshold's number, note and hook; the Code Red brief rides in
+           when today's is this site. The launch buttons carry the console as
+           the door, so post-match you stand at it again. */
+        function _hqCrossingHtml(t) {
+            const room = _hqRoom();
+            const c = t.counter || {};
+            const id = c.site || (room && room.site);
+            if (!id) return `<div class="hq-panel-hd"><b>${_hqEsc(c.label || 'CROSSING CONSOLE')}</b><span>NO SITE ON FILE</span></div><div class="hq-panel-actions"><button class="hq-btn" data-close="1">NOTED</button></div>`;
+            const th = (DOOR_HQ.thresholds || {})[id] || {};
+            const door = { id: c.id || 'crossing', label: (c.label || 'CROSSING CONSOLE'), sub: (room && room.label ? room.label + ' · ' : '') + 'THE WAY ON', action: { mission: id },
+                           note: th.note || '', why: th.why || '', roomNo: (th.roomNo != null) ? String(th.roomNo) : null };
+            const st = (typeof window.doorSiteState === 'function') ? window.doorSiteState(door, _hqProfile()) : 'unstable';
+            let html = _hqThresholdPanelHtml({ kind: 'door', id: door.id, label: door.label, sub: door.sub, door: door }, st);
+            html += '<p class="hq-panel-note">You are standing on the board. The console files the crossing; the door behind you is the way back to the bay.</p>';
+            return html;
+        }
         function _hqCounterPanelHtml(t) {
             const c = t.counter || {};
             const act = c.action || {};
@@ -879,6 +904,7 @@
             if (act.overlay === 'intray') return _hqInTrayHtml();
             if (act.overlay === 'codered') return _hqCodeRedHtml();
             if (act.overlay === 'training') return _hqTrainingHtml();
+            if (act.overlay === 'crossing') return _hqCrossingHtml(t);
             let html = `<div class="hq-panel-hd"><b>${_hqEsc(c.label)}</b><span>${_hqEsc(c.sub || '')}</span></div>`;
             if (c.id === 'board') html += '<p class="hq-panel-desc">Six laminated photographs. The frame in the corner has been empty since 1987. Nobody comments on it.</p>';
             if (act.fn) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-fn="${_hqEsc(act.fn)}">READ THE BOARD ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button></div>`;
@@ -915,7 +941,15 @@
             const d = t.door, act = d.action || {};
             const st = (typeof window.doorSiteState === 'function') ? window.doorSiteState(d, _hqProfile()) : 'open';
             if (st === 'sealed' || st === 'clearance' || st === 'off') return null;
-            if (act.mission || d.alt || d.alt2) return null;
+            /* a threshold whose site is a walkable room (HQ plan 7.2): the
+               door opens INTO the site — the crossing is launched from the
+               console inside; a site with no room keeps its panel */
+            if (act.mission) {
+                const sr = _hqSiteRoomId(act.mission);
+                if (sr && _hqRoomExists(sr)) return { room: sr, at: 'egress' };
+                return null;
+            }
+            if (d.alt || d.alt2) return null;
             if (act.room && _hqRoomExists(act.room)) return { room: act.room, at: act.at || null };
             if (act.sector) {
                 const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(act.sector) : ('bay_' + act.sector);
@@ -1022,8 +1056,10 @@
                 const codeRed = cross.hasAttribute('data-codered');
                 const id = cross.getAttribute(deep ? 'data-deep' : (codeRed ? 'data-codered' : 'data-cross'));
                 const door = (_hqPanelTarget && _hqPanelTarget.kind === 'door') ? _hqPanelTarget : null;
+                /* the CROSSING console of a walkable site (plan 7.2) is the door you left through */
+                const console_ = (_hqPanelTarget && _hqPanelTarget.kind === 'counter' && _hqPanelTarget.counter && _hqPanelTarget.counter.action && _hqPanelTarget.counter.action.overlay === 'crossing') ? _hqPanelTarget : null;
                 window._hqClosePanel();
-                window._hqLaunchMission(id, { delta: !deep, codeRed, doorId: door ? door.id : null, doorLabel: door ? door.label : '' });
+                window._hqLaunchMission(id, { delta: !deep, codeRed, doorId: door ? door.id : (console_ ? (console_.counter.id || 'crossing') : null), doorLabel: door ? door.label : (console_ ? console_.label : '') });
                 return;
             }
             /* the RANGE console (HQ plan 6.1a): a facility board with a free
