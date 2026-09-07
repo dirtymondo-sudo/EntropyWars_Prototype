@@ -27038,6 +27038,7 @@
             }
         }
         function _imitFmt(v) { return (Math.abs(v) >= 10 ? Math.round(v) : Math.round(v * 100) / 100).toString(); }
+        let _imitLastReport = null;
         function _imitMatchSummary() {
             const st = _imitMatch;
             _imitMatch = null;
@@ -27061,7 +27062,128 @@
                 }
                 _imitScheduleSave();
             }
+            // Weights that currently differ from the shipped defaults (all sources).
+            const weights = {};
+            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
+                const def = AI_WEIGHT_DEFAULTS[k];
+                const cur = (_aiTrainedWeights && _aiTrainedWeights[k] != null) ? _aiTrainedWeights[k] : def.value;
+                if (Math.abs(cur - def.value) > 1e-6) weights[k] = { label: def.label || k, default: def.value, current: cur, min: def.min, max: def.max };
+            }
+            let modeId = '';
+            try { modeId = (getActiveMultiplayerMode() || {}).id || ''; } catch (e) {}
+            _imitLastReport = {
+                when: new Date().toISOString(), mode: modeId, map: (typeof activeGameMode !== 'undefined') ? activeGameMode : '',
+                winner: state.winner, match: st,
+                totals: _imitStats ? JSON.parse(JSON.stringify(_imitStats)) : null,
+                weightsChanged: weights, trainedWeights: _aiTrainedWeights ? JSON.parse(JSON.stringify(_aiTrainedWeights)) : {},
+                schema: AI_WEIGHT_SCHEMA_VERSION,
+            };
+            _imitShowReport(_imitLastReport);
         }
+
+        /* ── The report panel: stays up until closed (or the match screen is
+              left), sits above the result overlay, exports JSON / copies text. */
+        function _imitReportText(r) {
+            const st = r.match || {};
+            const lines = [];
+            lines.push(`ENTROPY WARS — IMITATION REPORT (${r.when})`);
+            lines.push(`Mode ${r.mode || '?'} · map ${r.map || '?'} · winner P${r.winner}`);
+            lines.push(`This match: ${st.observed || 0} decisions scored · CPU agreed ${st.agree || 0} · learned from ${st.disagree || 0} · ${st.unmatched || 0} unscorable`);
+            const nudged = Object.keys(st.nudges || {});
+            lines.push(nudged.length ? 'Weights nudged this match:' : 'No weight moved this match.');
+            for (const k of nudged) { const n = st.nudges[k]; lines.push(`  ${(AI_WEIGHT_DEFAULTS[k] && AI_WEIGHT_DEFAULTS[k].label) || k}: ${_imitFmt(n.from)} → ${_imitFmt(n.to)} (×${n.n})`); }
+            if (st.examples && st.examples.length) {
+                lines.push('Disagreements:');
+                for (const ex of st.examples) lines.push(`  ${ex.unit}: you → ${ex.human} | CPU → ${ex.cpu} | margin ${ex.margin}${ex.changed.length ? ' | nudged ' + ex.changed.join(', ') : ''}`);
+            }
+            if (r.totals) {
+                const t = r.totals;
+                const agreePct = t.observed ? Math.round(100 * t.agree / t.observed) : 0;
+                lines.push(`All-time: ${t.matches} training matches · ${t.observed} decisions scored · CPU agreement ${agreePct}%`);
+            }
+            const wk = Object.keys(r.weightsChanged || {});
+            if (wk.length) {
+                lines.push('Trained weights vs shipped defaults:');
+                for (const k of wk) { const w = r.weightsChanged[k]; lines.push(`  ${w.label}: ${_imitFmt(w.default)} → ${_imitFmt(w.current)}  [${_imitFmt(w.min)}..${_imitFmt(w.max)}]`); }
+            }
+            return lines.join('\n');
+        }
+        function _imitReportEl() {
+            let el = document.getElementById('imitReportPanel');
+            if (el) return el;
+            el = document.createElement('div');
+            el.id = 'imitReportPanel';
+            el.className = 'training-panel';
+            el.style.cssText = 'display:none;position:fixed;top:12px;right:12px;left:auto;width:380px;z-index:1200;';
+            document.body.appendChild(el);
+            return el;
+        }
+        function _imitShowReport(r) {
+            if (!r) return;
+            const el = _imitReportEl();
+            const st = r.match || {};
+            const esc = (s) => escapeHtml(String(s == null ? '' : s));
+            const chip = (n, label, color) => `<div style="flex:1;text-align:center;padding:6px 4px;border:1px solid rgba(140,140,200,0.1);border-radius:4px">
+                <div style="font-size:18px;font-weight:800;color:${color}">${n}</div><div style="font-size:9px;color:var(--muted);letter-spacing:0.5px">${label}</div></div>`;
+            const nudged = Object.keys(st.nudges || {});
+            const nudgeRows = nudged.map(k => {
+                const n = st.nudges[k]; const dir = n.to > n.from ? '▲' : '▼'; const col = n.to > n.from ? '#7fd97f' : '#e0a060';
+                return `<tr><td style="padding:2px 4px">${esc((AI_WEIGHT_DEFAULTS[k] && AI_WEIGHT_DEFAULTS[k].label) || k)}</td>
+                    <td style="padding:2px 4px;text-align:right;color:var(--muted)">${_imitFmt(n.from)}</td>
+                    <td style="padding:2px 4px;text-align:center;color:${col}">${dir}</td>
+                    <td style="padding:2px 4px;font-weight:700">${_imitFmt(n.to)}</td>
+                    <td style="padding:2px 4px;color:var(--muted)">×${n.n}</td></tr>`;
+            }).join('');
+            const exRows = (st.examples || []).map(ex => `<div style="padding:3px 0;border-bottom:1px solid rgba(140,140,200,0.06)">
+                <b>${esc(ex.unit)}</b> · you <span style="color:#7fd9dd">${esc(ex.human)}</span> · CPU <span style="color:#e0a060">${esc(ex.cpu)}</span>
+                <span style="color:var(--muted)"> · ${ex.margin}</span>${ex.changed.length ? `<div style="font-size:10px;color:var(--muted)">nudged ${esc(ex.changed.join(', '))}</div>` : ''}</div>`).join('');
+            const t = r.totals || {};
+            const agreePct = t.observed ? Math.round(100 * t.agree / t.observed) : 0;
+            const wk = Object.keys(r.weightsChanged || {});
+            const wRows = wk.map(k => { const w = r.weightsChanged[k];
+                return `<tr><td style="padding:1px 4px">${esc(w.label)}</td><td style="padding:1px 4px;text-align:right;color:var(--muted)">${_imitFmt(w.default)}</td><td style="padding:1px 4px;font-weight:700">${_imitFmt(w.current)}</td></tr>`; }).join('');
+            const h = (txt) => `<div style="font-size:10px;letter-spacing:1px;color:var(--muted);margin:12px 0 4px">${txt}</div>`;
+            el.innerHTML = `
+                <div class="train-drag-handle"><span class="train-title">🧠 Imitation Report</span>
+                    <button class="train-btn" style="flex:0;padding:2px 8px" onclick="window._ewImitationReportClose()">✕</button></div>
+                <div class="train-subtitle" style="margin-bottom:8px">Training match · ${esc(r.mode || '')} · ${esc(new Date(r.when).toLocaleString())}</div>
+                <div style="display:flex;gap:6px">${chip(st.observed || 0, 'SCORED', 'var(--text)')}${chip(st.agree || 0, 'AGREED', '#7fd9dd')}${chip(st.disagree || 0, 'LEARNED', '#7fd97f')}${chip(st.unmatched || 0, 'UNSCORED', 'var(--muted)')}</div>
+                ${h('WEIGHTS NUDGED THIS MATCH')}
+                ${nudged.length ? `<table style="width:100%;border-collapse:collapse;font-size:11px">${nudgeRows}</table>` : `<div style="color:var(--muted)">No weight moved — the CPU agreed with every scored decision.</div>`}
+                ${h('DISAGREEMENTS')}
+                <div style="max-height:170px;overflow-y:auto;font-size:11px">${exRows || '<div style="color:var(--muted)">None.</div>'}</div>
+                ${h('ALL-TIME')}
+                <div style="font-size:11px">${t.matches || 0} training matches · ${t.observed || 0} decisions scored · CPU agreement <b>${agreePct}%</b></div>
+                ${wk.length ? `<div style="max-height:150px;overflow-y:auto;margin-top:4px"><table style="width:100%;border-collapse:collapse;font-size:11px"><tr style="color:var(--muted);font-size:9px"><td>WEIGHT</td><td style="text-align:right">DEFAULT</td><td>NOW</td></tr>${wRows}</table></div>` : ''}
+                <div style="display:flex;gap:6px;margin-top:12px">
+                    <button class="train-btn" onclick="window._ewImitationReportExport()">⬇ Export JSON</button>
+                    <button class="train-btn" onclick="window._ewImitationReportCopy(this)">📋 Copy</button>
+                    <button class="train-btn danger" onclick="window._ewImitationReportClose()">Close</button>
+                </div>`;
+            el.style.display = 'block';
+        }
+        window._ewImitationReport = () => { if (_imitLastReport) _imitShowReport(_imitLastReport); else addLog('No imitation report yet — finish a training match first.'); };
+        window._ewImitationReportClose = () => { const el = document.getElementById('imitReportPanel'); if (el) el.style.display = 'none'; };
+        window._ewImitationReportExport = () => {
+            if (!_imitLastReport) return;
+            try {
+                const blob = new Blob([JSON.stringify(_imitLastReport, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'ew-imitation-' + _imitLastReport.when.replace(/[:.]/g, '-') + '.json';
+                document.body.appendChild(a); a.click();
+                window.setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+            } catch (e) { console.warn('[Imitation] export failed:', e); }
+        };
+        window._ewImitationReportCopy = (btn) => {
+            if (!_imitLastReport) return;
+            const text = _imitReportText(_imitLastReport);
+            const done = () => { if (btn) { btn.textContent = '✓ Copied'; window.setTimeout(() => { btn.textContent = '📋 Copy'; }, 1500); } };
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, () => {});
+                else { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); done(); }
+            } catch (e) {}
+        };
         window._ewImitationSnapshot = () => ({ match: _imitMatch, total: _imitStats, weights: _aiTrainedWeights });
         window._imitObserve = _imitObserve;
 
@@ -27853,8 +27975,16 @@
                 const as1 = _vicArenaScore(1), as2 = _vicArenaScore(2);
 
                 let tallyRows = '';
-                for (let i = 0; i < as1.details.length; i++) {
-                    const d1 = as1.details[i], d2 = as2.details[i];
+                /* Rows are matched by LABEL, not index: the Bounties row is
+                   only pushed for a side that earned some, so a per-index zip
+                   crashed the victory screen (d2 undefined) whenever exactly
+                   one side had bounties. */
+                const _tallyLabels = [];
+                for (const d of as1.details.concat(as2.details)) if (!_tallyLabels.includes(d.label)) _tallyLabels.push(d.label);
+                for (const _lbl of _tallyLabels) {
+                    const _f1 = as1.details.find(d => d.label === _lbl), _f2 = as2.details.find(d => d.label === _lbl);
+                    const _tpl = _f1 || _f2;
+                    const d1 = _f1 || { pts: 0, icon: _tpl.icon, label: _lbl }, d2 = _f2 || { pts: 0, icon: _tpl.icon, label: _lbl };
                     tallyRows += `<tr>
                         <td style="text-align:right;color:var(--p1-score);padding:1px 6px">${d1.pts}</td>
                         <td style="text-align:center;color:var(--muted);font-size:10px;padding:1px 4px;white-space:nowrap">${d1.icon} ${d1.label}</td>
@@ -28122,6 +28252,7 @@
         }
 
         function hideResultOverlay() {
+            if (typeof window._ewImitationReportClose === 'function') window._ewImitationReportClose();
             resultOverlay.classList.add('hidden');
             resultOverlay.classList.remove('vic-3d');
             const _mvp = document.getElementById('vicMvpTag');
@@ -33094,6 +33225,7 @@
                 addLog('⚡ TRAINING MATCH — CPU turns resolve instantly (no animations, no camera). Your turns play as normal.');
                 _imitMatch = null;
                 _imitLoadStats();
+                window._ewImitationReportClose();
                 if (!window.EW_NO_IMITATION) addLog('🧠 The CPU studies every decision you make and re-tunes its weights toward your play — summary at match end.');
             }
 

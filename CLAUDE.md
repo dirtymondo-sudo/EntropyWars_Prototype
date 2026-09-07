@@ -211,6 +211,12 @@ closes the gap steps 2% of its range, clamped, into `_aiTrainedWeights`
 Match-end log line summarises; `window._ewImitationSnapshot()` for numbers;
 `EW_AI_DEBUG` logs each disagreement; kill-switch `EW_NO_IMITATION`.
 Stats key `ai-imitation-stats-v<schema>`. Reset = Training panel → Reset.
+The match-end REPORT is a persistent panel (`#imitReportPanel`, created by
+battle.js `_imitShowReport`, z-index above the result overlay) with Export
+JSON / Copy / Close; it hides on `hideResultOverlay` and at the next match
+start; `window._ewImitationReport()` reopens the last one. (Also fixed
+2026-09-07: the Arena victory tally zipped P1/P2 detail rows by index and
+crashed `showResultOverlay` when only one side had a Bounties row.)
 
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /
