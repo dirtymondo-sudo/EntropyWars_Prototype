@@ -29597,11 +29597,12 @@ const ThreeRenderer = (function () {
         }
         /* the fluorescent: a procedural strip + glow at S.light (the kit fixture hangs at the same spot) */
         var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
+        var lightC = (S.mood && S.mood.light != null) ? S.mood.light : null;   // a site room's mood tints its fluorescents
         lightsAt.forEach(function (L) {
-            var strip = new THREE.Mesh(new THREE.BoxGeometry(1.3 * U, 0.08 * U, 0.3 * U), _hqBasic(0xeef3ff));
+            var strip = new THREE.Mesh(new THREE.BoxGeometry(1.3 * U, 0.08 * U, 0.3 * U), _hqBasic(lightC != null ? lightC : 0xeef3ff));
             strip.position.set(L.x * U, (H - 0.05) * U, L.z * U);
             G.add(strip);
-            var gl = _hzGlowSprite(1.6 * U, 0xdfe9ff, 0.22, 0.03, 0.02, 0.35);
+            var gl = _hzGlowSprite(1.6 * U, lightC != null ? lightC : 0xdfe9ff, 0.22, 0.03, 0.02, 0.35);
             gl.position.set(L.x * U, (H - 0.25) * U, L.z * U);
             G.add(gl);
         });
@@ -29950,6 +29951,8 @@ const ThreeRenderer = (function () {
             G.add(pit);
             if (pc.fluid) {
                 var fluidColor = (pc.key === 'lava') ? 0xff6a2a : (pc.key === 'oil' || pc.key === 'swamp') ? 0x1a1610 : (pc.key === 'poison_bog' || pc.key === 'purple_bog') ? 0x7a4aa0 : 0x4a9ad0;
+                /* water wears the Δ's own tint when it has one (the Backrooms' almond water is not blue) */
+                if ((pc.key === 'water' || pc.key === 'deep_water') && pc.tint) fluidColor = new THREE.Color(pc.tint);
                 var fm = new THREE.MeshBasicMaterial({ color: fluidColor, transparent: true, opacity: (pc.key === 'lava') ? 0.85 : 0.55, depthWrite: false, fog: false });
                 var sheet = new THREE.Mesh(new THREE.PlaneGeometry(CM, CM), fm);
                 sheet.rotation.x = -Math.PI / 2; sheet.position.set(cellX(px) * U, -0.3 * U, cellX(py) * U); sheet.renderOrder = 2;
@@ -30061,18 +30064,26 @@ const ThreeRenderer = (function () {
         };
         var no = (typeof hqRoomNo === 'function') ? (hqRoomNo(room.site) || '') : '';
         var sf = (typeof doorSiteFile === 'function') ? doorSiteFile(room.site) : null;
-        sign('site_n_' + room.site, [String(room.label || room.site), 'ROOM ' + (no || '—'), 'THE SITE · WALK IT'], 4.8, 1.7, 5.0, 3.5, -wallIn, 0, { sizes: [72, 96, 40] });
-        sign('site_s_' + room.site, [(sf && sf.status) || 'ON FILE', 'THE THRESHOLD IS BEHIND YOU', 'THE CROSSING IS AT THE CONSOLE'], 4.8, 1.7, -5.0, 3.5, wallIn, Math.PI, { sizes: [92, 44, 44], bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' });
-        /* red wall lamps in the corners (the site is under containment) */
+        /* the room's LIGHT (7.2 stage 2): DOOR_HQ.siteRooms.shell.mood under the
+           site's own overrides — lamp / glow / strip colours and the sign
+           palettes; `signLines` replaces a sign's text outright. Heights hang
+           from the ceiling so a low room keeps its signs on the wall. */
+        var mood = S.mood || {};
+        var lampC = (mood.lamp != null) ? mood.lamp : 0xff4a4a, glowC = (mood.glow != null) ? mood.glow : 0xff3a3a, stripC = (mood.strip != null) ? mood.strip : 0xf2f7ff;
+        var signY = S.h - 0.9, lampY = S.h - 1.0;
+        var SL = mood.signLines || {};
+        sign('site_n_' + room.site, SL.n || [String(room.label || room.site), 'ROOM ' + (no || '—'), 'THE SITE · WALK IT'], 4.8, 1.7, 5.0, signY, -wallIn, 0, Object.assign({ sizes: [72, 96, 40] }, mood.signN || {}));
+        sign('site_s_' + room.site, SL.s || [(sf && sf.status) || 'ON FILE', 'THE THRESHOLD IS BEHIND YOU', 'THE CROSSING IS AT THE CONSOLE'], 4.8, 1.7, -5.0, signY, wallIn, Math.PI, Object.assign({ sizes: [92, 44, 44], bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' }, mood.signS || {}));
+        /* the containment lamps in the corners (red by default; the site's mood recolours them) */
         var lampMat = new THREE.MeshPhongMaterial({ color: 0x2a2b2e, shininess: 20 });
         [['n', -8.6], ['n', 8.6], ['s', -8.6], ['s', 8.6], ['w', -7.0], ['w', 7.0], ['e', -7.0], ['e', 7.0]].forEach(function (L, i) {
             var B = _hqBoxWall(room, L[0], (L[0] === 'e' || L[0] === 'w') ? { z: L[1] } : { x: L[1] });
-            var yL = 3.4;
+            var yL = lampY;
             var h = _hqBox(0.28, 0.5, 0.28, lampMat);
             h.position.set((B.wx + B.nx * 0.12) * U, yL * U, (B.wz + B.nz * 0.12) * U); G.add(h);
-            var lens = new THREE.Mesh(new THREE.SphereGeometry(0.11 * U, 8, 6), _hzGlowMat(0xff4a4a, 0.95));
+            var lens = new THREE.Mesh(new THREE.SphereGeometry(0.11 * U, 8, 6), _hzGlowMat(lampC, 0.95));
             lens.position.set((B.wx + B.nx * 0.3) * U, (yL + 0.03) * U, (B.wz + B.nz * 0.3) * U); G.add(lens);
-            var glow = _hzGlowSprite(0.7 * CM, 0xff3a3a, 0.45, 0, 0, 0);
+            var glow = _hzGlowSprite(0.7 * CM, glowC, 0.45, 0, 0, 0);
             glow.position.copy(lens.position); G.add(glow);
             pulse(glow.material, 0.18, 0.5 + (i % 3) * 0.3);
         });
@@ -30080,7 +30091,7 @@ const ThreeRenderer = (function () {
         [['n', 0], ['s', Math.PI], ['w', Math.PI / 2], ['e', -Math.PI / 2]].forEach(function (wd) {
             var B = _hqBoxWall(room, wd[0], {});
             [-5, 5].forEach(function (f) {
-                var gm = _hzGlowMat(0xf2f7ff, 0.75);
+                var gm = _hzGlowMat(stripC, 0.75);
                 var along = (wd[0] === 'n' || wd[0] === 's');
                 var st = new THREE.Mesh(new THREE.PlaneGeometry(7.2 * U, 0.16 * U), gm);
                 st.position.set((B.wx + B.nx * 0.09 + (along ? f : 0)) * U, (S.h - 0.5) * U, (B.wz + B.nz * 0.09 + (along ? 0 : f)) * U);
@@ -31601,8 +31612,9 @@ const ThreeRenderer = (function () {
             sc.add(new THREE.HemisphereLight(0xd9d2c0, 0x1c1a1e, 0.5));
             var bxk = new THREE.DirectionalLight(0xe8ecf5, 0.22); bxk.position.set(0.3, 1, 0.2).multiplyScalar(1000); sc.add(bxk);
             var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
+            var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;   // a site room's mood (blue under the collider, yellow in the Backrooms)
             lightsAt.forEach(function (Lt) {
-                var fl1 = new THREE.PointLight(0xe6eeff, lightsAt.length > 1 ? 0.5 : 0.55, (lightsAt.length > 1 ? 12 : 9) * U, 2); fl1.position.set(Lt.x * U, (S.h - 0.35) * U, Lt.z * U); sc.add(fl1);
+                var fl1 = new THREE.PointLight(plC, lightsAt.length > 1 ? 0.5 : 0.55, (lightsAt.length > 1 ? 12 : 9) * U, 2); fl1.position.set(Lt.x * U, (S.h - 0.35) * U, Lt.z * U); sc.add(fl1);
             });
             (room.props || []).forEach(function (pp) {
                 if (pp.key !== 'desk_lamp' && pp.key !== 'table_lamp') return;

@@ -153,7 +153,8 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   `bayShell.ring: false`. Stage 2 (one continuous ring corridor) is
   planned in the HQ plan 5.4a, after 7.2.
   **THE WALKABLE SITE (plan 7.2 stage 1, shipped 2026-09-07)**: a site
-  listed in `DOOR_HQ.siteRooms.built` (today `prebuilt_dumb`) is a ROOM
+  listed in `DOOR_HQ.siteRooms.built` (today `prebuilt_dumb`,
+  `prebuilt_cern`, `prebuilt_backrooms` — stage 2 shipped 2026-09-07) is a ROOM
   behind its bay threshold — `hqSiteRoom(mapId)` (data.js) generates a
   box room (`kind: 'box', fx: 'site', site: mapId`; never hand-edit
   `rooms.site_*`) with the site's Δ board on the floor at 1:1, read by
@@ -167,7 +168,10 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   and is where post-match returns you. The room wears NO `roomNo`
   (`hqRoomNo(roomId)` → the threshold's). Adding a site room = one id in
   `siteRooms.built` (+ `shells[id]` / `flavour[id]`); doorhq.test.js
-  checks it. Natives stand at `npcSpots` with a `race` hint.
+  checks it. Natives stand at `npcSpots` with a `race` hint. A room's
+  LIGHT is `shells[id].mood` (lamp / glow / strip / light colours, the two
+  sign palettes, optional `signLines`) merged over `siteRooms.shell.mood`
+  (= D.U.M.B.'s red); the renderer's signs and lamps hang from `S.h`.
 - **The CAST shipped 2026-09-06**: the story's named characters (the user's
   cast sheet, canon, `DOOR_STORY.md` §2 / DOOR_MASTER A16) stand in the
   building. Models: sprites.js `DOOR_CAST_MODELS` (15 rigged GLBs on R2

@@ -16589,10 +16589,26 @@ const DOOR_HQ = {
        `race` hint from hqMissionPool). Order of construction (plan 7.2):
        555 D.U.M.B. → 999 CERN → 90 Backrooms → 1945 → 50 → the moat maps. */
     siteRooms: {
-        built: ['prebuilt_dumb'],
-        shell: { pad: 4.0, h: 4.4, dadoH: 1.05, floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling', pipes: true },
+        built: ['prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms'],
+        shell: { pad: 4.0, h: 4.4, dadoH: 1.05, floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling', pipes: true,
+            /* the room's LIGHT (plan 7.2 stage 2): `lamp` = the containment
+               lamps in the corners (lens + glow), `strip` = the wall strips,
+               `light` = the fluorescents' point lights and the ceiling
+               fixtures, `signN` / `signS` = the palettes of the two signs.
+               D.U.M.B. is the default: red lamps, white strips. */
+            mood: { lamp: 0xff4a4a, glow: 0xff3a3a, strip: 0xf2f7ff, light: 0xe6eeff, signN: { bg: '#1b1a1c', border: '#c9bb96', color: '#efe4c4' }, signS: { bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' } } },
         shells: {
             prebuilt_dumb: { floor: 'concrete', wall: 'concrete', dado: 'teal', trim: 'teal', ceiling: 'concrete' },
+            /* 999 · the collider hall: speckled stone and teal trim under
+               blue light — the beam is on, the lamps say so */
+            prebuilt_cern: { floor: 'concrete', wall: 'stone', dado: 'teal', trim: 'teal', ceiling: 'ceiling', h: 4.6,
+                mood: { lamp: 0x6ac8ff, glow: 0x4ab0ff, strip: 0xbfe6ff, light: 0xd0e6ff, signN: { bg: '#10202c', border: '#8fd8ff', color: '#dff4ff' }, signS: { bg: '#2a1010', border: '#ff8080', color: '#ffe0e0' } } },
+            /* 90 · level 0 goes on: office carpet, beige drywall, acoustic
+               tile, a low ceiling, no conduits (nothing runs through here),
+               the hum of the yellow light; the way in is an EXIT door */
+            prebuilt_backrooms: { floor: 'carpet', wall: 'drywall', dado: 'drywall', trim: 'drywall', ceiling: 'ceiling', h: 3.9, dadoH: 0.7, pipes: false,
+                mood: { lamp: 0xfff0a0, glow: 0xffe070, strip: 0xfff2b0, light: 0xfff0c0, signN: { bg: '#3a3418', border: '#e8d890', color: '#fff4c0' }, signS: { bg: '#3a3418', border: '#e8d890', color: '#fff4c0' },
+                    signLines: { n: ['BACKROOMS', 'ROOM 90', 'LEVEL 0 · NO EXIT'], s: ['NON-CANON', 'THE EXIT SIGN IS A LIE', 'THE CROSSING IS AT THE CONSOLE'] } } },
         },
         flavour: {
             prebuilt_dumb: {
@@ -16609,6 +16625,61 @@ const DOOR_HQ = {
                     { key: 'cardboard_box',  x: 8.2,  z: -7.6, face: 20 },
                     { key: 'pipe_run',       x: -6.0, z: -9.9, y: 3.9, face: 0 },
                     { key: 'pipe_run',       x: 6.0,  z: -9.9, y: 3.9, face: 0 },
+                ],
+            },
+            /* 999 · CERN — the control bank in the north-east corner, spares
+               on the east wall, the cable trays along the far wall */
+            prebuilt_cern: {
+                agent: '“Beam on. Do not say portal. Do not think portal near the terminals; they log it.”',
+                lines: [
+                    'The ring is twenty-seven kilometres round. This room is the part they let us see.',
+                    'CERN wrote the press release. The Department wrote the door.',
+                    'The hum is the magnets. Probably the magnets.',
+                    '99.9999991% of the speed of light. The last digit was a compromise.',
+                    'The Web was invented here by accident. So was the rest of it.',
+                ],
+                props: [
+                    { key: 'round_cabinet',  x: 9.6,  z: -8.8, face: 225 },
+                    { key: 'crt_terminal',   x: 9.6,  z: -8.8, y: 0.76, face: 225 },
+                    { key: 'round_cabinet',  x: 9.6,  z: -7.5, face: 250 },
+                    { key: 'crt_terminal',   x: 9.6,  z: -7.5, y: 0.76, face: 250 },
+                    { key: 'office_chair',   x: 8.5,  z: -8.1, face: 60 },
+                    { key: 'metal_shelving', wall: 'e', z: 7.4 },
+                    { key: 'vent_grille',    wall: 'n', x: 7.0 },
+                    { key: 'vent_grille',    wall: 'n', x: -7.5 },
+                    { key: 'pipe_run',       x: -6.0, z: -9.9, y: 4.1, face: 0 },
+                    { key: 'pipe_run',       x: 6.0,  z: -9.9, y: 4.1, face: 0 },
+                    { key: 'cardboard_box',  x: -9.3, z: -8.9, face: 15 },
+                ],
+            },
+            /* 90 · BACKROOMS — a chair facing the corner, EXIT signs over
+               walls with no door in them, loose paper on the carpet, more
+               fluorescents than the room needs, a fan that is on */
+            prebuilt_backrooms: {
+                agent: '“Sign in. There is no sign-out sheet. There has never been a sign-out sheet.”',
+                lines: [
+                    'The hum is not the lights. The lights are the hum.',
+                    'Level 0 has no exits. It has an EXIT door. Those are different things.',
+                    'The carpet is damp because it is always damp.',
+                    'Continuity ruled it non-canon. It has been fully booked since.',
+                    'If the wallpaper looks familiar, keep walking. If it does not, keep walking.',
+                ],
+                props: [
+                    { key: 'office_chair',   x: 9.4,  z: -9.4, face: 45 },
+                    { key: 'water_cooler',   wall: 'e', z: 3.0 },
+                    { key: 'exit_sign',      wall: 'n', x: 8.4 },
+                    { key: 'exit_sign',      wall: 'w', z: 6.4 },
+                    { key: 'exit_sign',      wall: 'e', z: -8.2 },
+                    { key: 'office_plant',   x: -9.5, z: -9.5 },
+                    { key: 'filing_cabinet', wall: 'e', z: -3.0 },
+                    { key: 'paper_sheet',    x: 7.8,  z: 6.6, y: 0.01, face: 130 },
+                    { key: 'paper_sheet',    x: -8.4, z: -2.2, y: 0.01, face: 20 },
+                    { key: 'paper_sheet',    x: 3.2,  z: 9.6, y: 0.01, face: 260 },
+                    { key: 'desk_fan',       x: -9.9, z: 8.8, face: 120 },
+                    { key: 'fluorescent',    x: -8.6, z: 0,   ceil: true, face: 0 },
+                    { key: 'fluorescent',    x: 8.6,  z: 0,   ceil: true, face: 0 },
+                    { key: 'fluorescent',    x: 0,    z: -8.6, ceil: true, face: 90 },
+                    { key: 'fluorescent',    x: 0,    z: 8.6,  ceil: true, face: 90 },
                 ],
             },
         },
@@ -17357,6 +17428,8 @@ function hqSiteRoom(mapId) {
             w: size, d: size, h: shell.h || 4.4, wallH: shell.h || 4.4, dadoH: shell.dadoH || 1.05,
             floor: shell.floor, wall: shell.wall, dado: shell.dado, trim: shell.trim, ceiling: shell.ceiling,
             pipes: shell.pipes !== false,
+            /* the light (7.2 stage 2): the defaults under the site's overrides */
+            mood: Object.assign({}, ((SR.shell || {}).mood) || {}, (((SR.shells || {})[id] || {}).mood) || {}),
             light: { x: 0, z: 0 },
             lights: [{ x: -3.5, z: -3.5 }, { x: 3.5, z: -3.5 }, { x: -3.5, z: 3.5 }, { x: 3.5, z: 3.5 }],
             plate: { x: 0, z: -(half - 0.4), y: (shell.h || 4.4) - 0.45 },

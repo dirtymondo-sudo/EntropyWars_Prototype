@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 19 (2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
+### The walkable facility that replaces the Play menu · rev 20 (2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -541,7 +541,7 @@ proposes and the user has not ruled on (MASTER Part C rows 22–24).
 - The elevator's floor panel skips 13 (Room 13 is filed in Bay 1, not on a
   floor). One line of procedural text; the joke is free.
 
-#### 7.2 ⚙ The walkable site (the engine piece) — stage 1 ✅ (2026-09-07, §9: D.U.M.B.); the rest one session per site
+#### 7.2 ⚙ The walkable site (the engine piece) — stage 1 ✅ (2026-09-07, §9: D.U.M.B.) · stage 2 ✅ (2026-09-07 rev 5, §9: CERN + Backrooms, the room's `mood`); the rest one session per site
 **What shipped** (rev 4): the mechanism and the first room. A site in
 `DOOR_HQ.siteRooms.built` gets `hqSiteRoom(mapId)` → a **box** room
 (`kind: 'box', fx: 'site', site: mapId` — the Training Room's pattern
@@ -575,7 +575,8 @@ model falls back to the roster draw). Still to do per site: the map's
 `near` setting inside the room (today: the generic dressing + red lamps +
 the site's signs, per-site props in `siteRooms.flavour`), the outdoor
 sky, the cast lines (A15). **Adding a site room = one id in
-`siteRooms.built`** (+ optional `shells[id]` / `flavour[id]`);
+`siteRooms.built`** (+ optional `shells[id]` — textures, `h`, `pipes`, and
+a `mood` for its light — / `flavour[id]`);
 doorhq.test.js checks the room against its threshold, its bay door, its
 board and the register.
 
@@ -2927,3 +2928,70 @@ three-renderer.js + map.js + doorhq.test.js + index.html; docs.
   and 50 Stadium (outdoor: the sky + far roster, the `kind: 'site'` work);
   the map's `near` setting inside the room; 5.4a stage 2 once the site
   rooms hang off the ring; 7.9 dailies; 4.1 the case-file screen.
+
+### 2026-09-07 (rev 5) — 7.2 stage 2 SHIPPED: Rooms 999 and 90, each in its own light
+The plan's next step ("999 CERN and 90 Backrooms, one id each in
+`siteRooms.built`"). No new files; data.js + three-renderer.js +
+doorhq.test.js + index.html; docs.
+- **data.js.** `siteRooms.built` → `['prebuilt_dumb', 'prebuilt_cern',
+  'prebuilt_backrooms']`. The generator was already general — the work was
+  making the two rooms not look like D.U.M.B. with the number changed, so
+  the shell grew a **`mood`**: `lamp` / `glow` (the containment lamps in
+  the corners), `strip` (the wall strips), `light` (the fluorescents' point
+  lights and the box shell's strip + glow), `signN` / `signS` (the two
+  signs' palettes) and an optional `signLines` (`{ n: [3 lines], s: [3
+  lines] }` replacing a sign's text outright). The default mood in
+  `siteRooms.shell` IS D.U.M.B. (red lamps, white strips); `hqSiteRoom`
+  merges the site's `shells[id].mood` over it into `shell.mood`.
+  - **999 · CERN**: speckled stone over concrete, teal dado + trim,
+    acoustic ceiling, h 4.6, conduits on; blue lamps (`0x6ac8ff`), blue
+    strips and light, the north sign in the collider's palette, the south
+    warning in red. Flavour: the control bank in the NE corner (two round
+    cabinets wearing CRTs, an office chair), spares shelving on the east
+    wall, two vent grilles, the pipe runs at 4.1, a box. Guard + five
+    overheard lines (Claude placeholders, A15).
+  - **90 · BACKROOMS**: office carpet, beige drywall for wall / dado /
+    trim (the kit has no wallpaper — the Δ's own +2 wallpaper blocks bring
+    the yellow), acoustic tile, **h 3.9** (the board's 3.5 m blocks clear
+    it; the signs and lamps now hang from `S.h` instead of fixed heights),
+    dado 0.7, **`pipes: false`**; yellow lamps and strips, warm light, both
+    signs in the yellow palette with `signLines` (`LEVEL 0 · NO EXIT` /
+    `THE EXIT SIGN IS A LIE`). Flavour: an office chair facing the NE
+    corner, three EXIT signs over walls with no door in them (n / w / e —
+    the way in is the `leaf_exit` on the south), a water cooler, a filing
+    cabinet, an office plant, loose paper on the carpet, a desk fan on the
+    floor, four more ceiling fluorescents on the walkway (the hum). Guard +
+    five lines.
+- **three-renderer.js.** `_hqBuildSiteBoard`: `var mood = S.mood || {}` →
+  `lampC` / `glowC` / `stripC`, `signY = S.h − 0.9`, `lampY = S.h − 1.0`,
+  the sign palettes merged over the old defaults, `signLines` honoured;
+  **water wears the Δ's tint** on its sheet when it has one (the Backrooms'
+  almond water was rendering blue; lava / oil / bogs unchanged). The box
+  shell's fluorescent strip + glow and `_hqEnter`'s point lights take
+  `S.mood.light` when a room has one (plain box rooms unchanged).
+- **doorhq.test.js.** The built-site test now requires CERN + Backrooms,
+  no duplicates, a mood on every room (four colours, two palettes,
+  `signLines` shape), the ceiling clearing the tallest CELL (monuments are
+  fitted by the builder, not by maxH — the first draft counted them and
+  D.U.M.B.'s tubes failed it), every prop in the catalogue and on a wall /
+  the ceiling / the floor inside the room; per-room checks (CERN's wide
+  bulkhead, blue lamps, the control bank; the Backrooms' EXIT leaf, no
+  pipes, the lower carpeted ceiling, the three lying EXIT signs, the two
+  solid monoliths, the tinted water, the Quarantined bay); the source scan
+  covers the mood reads, `signLines`, the lamp / strip colours, the
+  ceiling-relative heights, the water tint and the point-light colour.
+  `npm test`: 151 green (the server smoke test skipped — no node_modules).
+  index.html → `20260907p-cors`.
+- Not playtested (RULE #1c). What to eyeball first: Bay 1, the second
+  bulkhead (ROOM 999), E — blue corner lamps, the beamline's copper cells,
+  the two aluminium arcs, the terminal steps, the checkerboard dais, the
+  control bank in the far right corner; then Bay 6, the EXIT door (ROOM
+  90), E — yellow light, a low ceiling, the wallpaper partitions and
+  blocks, the almond water (wade it), the two monoliths, the chair in the
+  corner, EXIT signs over blank walls. Both consoles should file the
+  crossing and return you to the desk.
+- Next: 1945 Nuketown and 50 Stadium — the OUTDOOR rooms (the `kind:
+  'site'` work: the map's sky from `env`, its far roster, no ceiling);
+  then the moat maps once a fluid sheet edge is in; the map's `near`
+  setting inside the room; 5.4a stage 2; 7.9 dailies; 4.1 the case-file
+  screen.

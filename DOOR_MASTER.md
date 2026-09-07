@@ -1665,3 +1665,19 @@ rewrite (A15). Next rooms in the plan's order: CERN (999), Backrooms
 (90), then the outdoor sites. Files: data.js, three-renderer.js, map.js,
 index.html (`20260907j-cors`), doorhq.test.js (140 green). Story track
 still ON HOLD (A14).
+
+### 2026-09-07 (rev 5) — two more walkable sites: Rooms 999 and 90
+HQ plan **7.2** stage 2 (§9 there has the mechanics). The CERN threshold
+in Bay 1 and the Backrooms' EXIT door in Bay 6 now open INTO rooms: each
+site's Δ board on the floor at 1:1, the walkway, the crossing console,
+the natives (glitch and the machine elves under the collider; a shadow
+entity, a ghost and a dreameater on the carpet), a guard. Each room has
+its own LIGHT (`DOOR_HQ.siteRooms.shell.mood`): the collider hall is blue
+under a high ceiling with the conduits on; level 0 is yellow under a low
+acoustic ceiling with no conduits, EXIT signs over walls with no door in
+them, and the almond water finally the colour of almond water. Guard and
+overheard lines are Claude placeholders in `siteRooms.flavour` — the user
+may rewrite (A15). Next in the plan's order: the outdoor rooms, Nuketown
+(1945) and the Stadium (50). Files: data.js, three-renderer.js,
+index.html (`20260907p-cors`), doorhq.test.js (151 green). Story track
+still ON HOLD (A14).

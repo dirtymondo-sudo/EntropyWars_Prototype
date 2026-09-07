@@ -1118,6 +1118,9 @@ test('hqSiteBoardInfo reads a Δ board as room geometry: 8×8 cells with levels,
 test('every built site is a launch map with a threshold and generates a box room that IS the site (no number of its own)', () => {
     const built = HQ.siteRooms && HQ.siteRooms.built;
     assert.ok(Array.isArray(built) && built.includes('prebuilt_dumb'), 'D.U.M.B. is the first walkable site (plan 7.2 order)');
+    assert.ok(built.includes('prebuilt_cern') && built.includes('prebuilt_backrooms'), 'CERN and the Backrooms follow (plan 7.2 stage 2)');
+    assert.strictEqual(new Set(built).size, built.length, 'no site is built twice');
+    const CAT = HQ.catalogue;
     for (const id of built) {
         const th = HQ.thresholds[id];
         assert.ok(th && th.roomNo, id + ': a built site has a threshold with a number');
@@ -1137,6 +1140,24 @@ test('every built site is a launch map with a threshold and generates a box room
         assert.ok(S.w >= S.grid.cells * S.grid.cell + 4 && S.d === S.w && S.h === S.wallH && S.h > 3.5, id + ': at least 2 m of walkway round the board');
         for (const n of [S.floor, S.wall, S.dado, S.trim, S.ceiling]) assert.ok(HQ.textures[n], id + ': texture ' + n);
         assert.ok(Array.isArray(S.lights) && S.lights.length >= 4, id + ': lit over every quarter of the board');
+        /* the room's LIGHT (7.2 stage 2): the defaults under the site's overrides */
+        const M = S.mood;
+        assert.ok(M && typeof M === 'object', id + ': a mood');
+        for (const k of ['lamp', 'glow', 'strip', 'light']) assert.ok(Number.isInteger(M[k]) && M[k] >= 0 && M[k] <= 0xffffff, id + ': mood.' + k + ' is a colour');
+        for (const k of ['signN', 'signS']) assert.ok(M[k] && /^#[0-9a-f]{6}$/i.test(M[k].bg) && /^#[0-9a-f]{6}$/i.test(M[k].color), id + ': mood.' + k + ' is a sign palette');
+        if (M.signLines) for (const side of Object.keys(M.signLines)) assert.ok(['n', 's'].includes(side) && Array.isArray(M.signLines[side]) && M.signLines[side].length === 3 && M.signLines[side].every(l => typeof l === 'string' && l), id + ': signLines.' + side + ' is three lines');
+        /* the ceiling clears the tallest cell on the board (a +2 block is
+           3.5 m; monuments are fitted by the builder, not by maxH) */
+        const infoB = D.hqSiteBoardInfo(id);
+        const tallest = Math.max(0, ...infoB.cells.flat().map(c => c.lvl));
+        assert.ok(S.h >= tallest * S.grid.cell + 0.3, id + ': the ceiling (' + S.h + ') clears the board (' + (tallest * S.grid.cell).toFixed(2) + ')');
+        /* every prop is in the kit, on a wall, the ceiling or the floor inside the room */
+        for (const p of room.props) {
+            assert.ok(CAT[p.key], id + ': prop ' + p.key + ' is in the catalogue');
+            if (p.wall) assert.ok(['n', 's', 'e', 'w'].includes(p.wall), id + ': ' + p.key + ' on a wall');
+            else assert.ok(Math.abs(p.x || 0) <= S.w / 2 && Math.abs(p.z || 0) <= S.d / 2, id + ': ' + p.key + ' inside the room');
+            if (p.ceil) assert.ok(CAT[p.key].ceil, id + ': ' + p.key + ' hangs from the ceiling');
+        }
         /* the way in: the threshold leaf from the other side, on the south
            wall (P1's lane), landing at the bay's own threshold door */
         const out = room.doors.find(d => d.id === 'egress');
@@ -1169,6 +1190,22 @@ test('every built site is a launch map with a threshold and generates a box room
         assert.strictEqual(rows.length, 1);
         assert.strictEqual(rows[0].siteRoom, rid);
     }
+    /* the two stage-2 rooms, each in its own light */
+    const cern = HQ.rooms[D.hqSiteRoomId('prebuilt_cern')];
+    assert.ok(cern.doors[0].leaf === 'leaf_bulkhead' && cern.doors[0].wide === true, 'CERN: the blast door, wide');
+    assert.ok(((cern.shell.mood.lamp & 0xff) > (cern.shell.mood.lamp >> 16)), 'CERN: blue lamps (the beam is on)');
+    assert.ok(cern.props.filter(p => p.key === 'crt_terminal').length >= 3, 'CERN: the control bank');
+    const br = HQ.rooms[D.hqSiteRoomId('prebuilt_backrooms')];
+    assert.ok(br.doors[0].leaf === 'leaf_exit' && br.doors[0].wide === false, 'Backrooms: the way in is an EXIT door');
+    assert.strictEqual(br.shell.pipes, false, 'Backrooms: nothing runs through here');
+    assert.ok(br.shell.h < 4.4 && br.shell.floor === 'carpet', 'Backrooms: a lower ceiling over office carpet');
+    const lies = br.props.filter(p => p.key === 'exit_sign');
+    assert.ok(lies.length >= 3 && lies.every(p => p.wall && p.wall !== 's'), 'Backrooms: EXIT signs over walls with no door in them');
+    assert.ok(br.shell.mood.signLines && br.shell.mood.signLines.s[1] === 'THE EXIT SIGN IS A LIE');
+    const brInfo = D.hqSiteBoardInfo('prebuilt_backrooms');
+    assert.ok(brInfo.mons.length === 2 && brInfo.mons.every(m => m.kind === 'monolith' && m.solid), 'Backrooms: two solid monoliths, here with you');
+    assert.ok(brInfo.cells.flat().filter(c => c.key === 'water').every(c => c.tint), 'Backrooms: the almond water carries its tint for the sheet');
+    assert.strictEqual(D.hqSectorOfMap('prebuilt_backrooms'), 'quarantined');
     /* sites without a room: no room, the register says so */
     assert.ok(!HQ.rooms[D.hqSiteRoomId('prebuilt_moon')], 'the Moon is not walkable yet');
     assert.strictEqual(D.hqRoomRegister().find(r => r.mapId === 'prebuilt_moon').siteRoom, null);
@@ -1183,6 +1220,13 @@ test('source scan: the renderer builds the site board and walks it; map.js walks
     assert.match(tr, /top - curY <= \(b\.step \|\| HQ_STEP_TOL\)/, 'a site step climbs one level');
     assert.match(tr, /hqSiteBoardInfo\(room\.site\)/);
     assert.match(tr, /'hq-native-' \+ si/, 'the natives spawn from the race hint');
+    assert.match(tr, /var mood = S\.mood \|\| \{\};/, 'the site board reads the room\'s mood');
+    assert.match(tr, /var SL = mood\.signLines \|\| \{\};/, 'signLines replace a sign\'s text');
+    assert.match(tr, /_hzGlowMat\(lampC, 0\.95\)/, 'the containment lamps take the mood\'s colour');
+    assert.match(tr, /_hzGlowMat\(stripC, 0\.75\)/, 'the wall strips take the mood\'s colour');
+    assert.match(tr, /var signY = S\.h - 0\.9, lampY = S\.h - 1\.0;/, 'signs and lamps hang from the ceiling height');
+    assert.match(tr, /\(pc\.key === 'water' \|\| pc\.key === 'deep_water'\) && pc\.tint\) fluidColor = new THREE\.Color\(pc\.tint\)/, 'water wears the Δ tint');
+    assert.match(tr, /new THREE\.PointLight\(plC,/, 'the fluorescents\' point lights take the mood');
     const mp = fs.readFileSync(require('path').join(__dirname, 'map.js'), 'utf8');
     assert.match(mp, /if \(sr && _hqRoomExists\(sr\)\) return \{ room: sr, at: 'egress' \};/, 'a threshold with a room walks you in');
     assert.match(mp, /if \(act\.overlay === 'crossing'\) return _hqCrossingHtml\(t\);/);
