@@ -2797,7 +2797,7 @@ const PASSIVE_DEFS = {
     boneDeep: {
         id: 'boneDeep', icon: '💀', name: 'Bone Deep',
         respawnMult: 0.5,
-        desc: 'Bones reassemble twice as fast — every respawn countdown is halved (1, 1, 2, 4 rounds instead of 1, 2, 4, 8).',
+        desc: 'Bones reassemble twice as fast — every respawn countdown is halved (1, 2, 3, 4 rounds instead of 2, 3, 5, 8).',
     },
     returnOfTheDead: {
         id: 'returnOfTheDead', icon: '🧟', name: 'Return of the Dead',

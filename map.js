@@ -4969,7 +4969,7 @@
             return noBuff;
         }
 
-        const TOWER_MAX_HP = 2500;   // level-1 base magnitude
+        const TOWER_MAX_HP = 1800;   // level-1 base magnitude (2500 → 1800 on 2026-09-07: Arena matches ran ~35 rounds)
         const TOWER_DEF = 15;        // level-1 base magnitude
         const TOWER_VISION_RANGE = 4;
 
@@ -4978,7 +4978,7 @@
            PvP (where towers normally appear), the run's current level in
            campaign/MD. Attack rolls against towers scale by the attacker's
            level to match (battle.js doAttack), so time-to-kill a tower is
-           unchanged from the 2500-HP days. */
+           set purely by TOWER_MAX_HP, not by the level cap. */
         function _towerLevelScale() {
             if (typeof levelScale !== 'function') return 1;
             let lvl = (typeof LEVEL_CAP !== 'undefined') ? LEVEL_CAP : 100;
@@ -8146,9 +8146,15 @@
                        (MD party members return when the run ends, back at the hub). */
                     unit._respawnIn = null;
                 } else {
-                    unit._respawnIn = Math.min(Math.pow(2, unit._deathCount - 1), 8);
+                    /* Respawn ladder 2, 3, 5, 8 (2026-09-07; was 1, 2, 4, 8).
+                       processRespawns ticks the counter at the round
+                       transition, so a 1-round timer put a unit back on the
+                       board for the very next round — the first death cost
+                       nothing. Every death now costs at least one full
+                       skipped round; the ladder still escalates. */
+                    unit._respawnIn = Math.min(1 + Math.pow(2, unit._deathCount - 1), 8);
                     /* 💀 Bone Deep (skeleton passive, plan §5.2): the countdown
-                       scales — 1, 1, 2, 4 instead of 1, 2, 4, 8. */
+                       is halved — 1, 2, 3, 4 instead of 2, 3, 5, 8. */
                     const _rsMult = (typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'respawnMult') : undefined;
                     if (_rsMult && _rsMult !== 1) unit._respawnIn = Math.max(1, Math.round(unit._respawnIn * _rsMult));
                 }
