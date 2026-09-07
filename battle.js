@@ -27567,8 +27567,16 @@
            scorer's ranking). Nothing is learned from agreements, and no
            weight moves once the human's choice already ranks first.
            Summary in the log at match end; window._ewImitationSnapshot()
-           for the numbers. Kill-switch: window.EW_NO_IMITATION = true. */
+           for the numbers. Kill-switch: window.EW_NO_IMITATION = true.
+           WIN GATE (2026-09-07): nudges apply live so the CPU adapts within
+           the match, but they only PERSIST when the human wins. On a loss,
+           draw or no-contest the trained table rolls back to the snapshot
+           taken at match start and nothing is written — a losing line of
+           play must not become the CPU's judgement. Nothing is saved
+           mid-match; the outcome decides at _imitMatchSummary. */
         let _aiWeightProbe = null;
+        let _imitSnapshot = null;   // trained table as it stood at match start (null = defaults)
+        let _imitPending = false;   // true while a training match is in progress (defers persistence)
         let _imitStats = null;
         let _imitStatsLoaded = false;
         let _imitMatch = null;
@@ -27590,6 +27598,7 @@
             if (!_imitStats) _imitStats = _imitBlankStats();
         }
         function _imitScheduleSave() {
+            if (_imitPending) return; // outcome unknown yet — persisted (or rolled back) at match end
             if (_imitSaveTimer) return;
             _imitSaveTimer = window.setTimeout(() => {
                 _imitSaveTimer = null;
@@ -27670,19 +27679,43 @@
         }
         function _imitFmt(v) { return (Math.abs(v) >= 10 ? Math.round(v) : Math.round(v * 100) / 100).toString(); }
         let _imitLastReport = null;
+        function _imitHumanPlayer() {
+            for (const p of [1, 2]) {
+                if (state.controllers?.[p] === CTRL.LOCAL && !state.autoPlayers?.[p]) return p;
+            }
+            return 1;
+        }
         function _imitMatchSummary() {
             const st = _imitMatch;
+            const snapshot = _imitSnapshot;
+            const pending = _imitPending;
             _imitMatch = null;
+            _imitSnapshot = null;
+            _imitPending = false;
             if (!st || (!st.observed && !st.unmatched)) return;
+            const human = _imitHumanPlayer();
+            const won = state.winner === human;
+            const outcome = won ? 'win' : (state.winner === 0 || state.winner == null ? 'draw' : 'loss');
+            const nudgedAll = Object.keys(st.nudges);
+            if (!won && pending && nudgedAll.length) {
+                // Roll back every nudge from this match: the CPU learned from
+                // a line of play that did not win.
+                _aiTrainedWeights = snapshot ? JSON.parse(JSON.stringify(snapshot)) : null;
+                st.discarded = st.nudges;
+                st.nudges = {};
+            }
+            st.outcome = outcome;
             const nudged = Object.keys(st.nudges);
             const parts = nudged.map(k => {
                 const n = st.nudges[k];
                 const label = (AI_WEIGHT_DEFAULTS[k] && AI_WEIGHT_DEFAULTS[k].label) || k;
                 return `${label} ${_imitFmt(n.from)}→${_imitFmt(n.to)} (×${n.n})`;
             });
+            const discardedN = Object.keys(st.discarded || {}).length;
             addLog(`🧠 Imitation: ${st.observed} of your decisions scored · CPU agreed ${st.agree} · learned from ${st.disagree}`
                 + (st.unmatched ? ` · ${st.unmatched} unscorable` : '')
-                + (parts.length ? `. Nudged: ${parts.join(', ')}.` : '. No weight moved.'));
+                + (parts.length ? `. Nudged: ${parts.join(', ')}.` : (discardedN ? '' : '. No weight moved.'))
+                + (discardedN ? ` ${outcome === 'draw' ? 'No winner' : 'You lost'} — ${discardedN} weight nudge${discardedN === 1 ? '' : 's'} rolled back; the CPU only keeps what beats it.` : ''));
             if (_imitStats) {
                 _imitStats.matches++;
                 _imitStats.observed += st.observed; _imitStats.agree += st.agree;
@@ -27691,8 +27724,10 @@
                     const n = _imitStats.nudges[k] || (_imitStats.nudges[k] = { n: 0, from: st.nudges[k].from, to: st.nudges[k].to });
                     n.n += st.nudges[k].n; n.to = st.nudges[k].to;
                 }
-                _imitScheduleSave();
+                _imitStats.wins = (_imitStats.wins || 0) + (won ? 1 : 0);
+                _imitStats.rolledBack = (_imitStats.rolledBack || 0) + discardedN;
             }
+            _imitScheduleSave(); // first (and only) write of the match — pending is cleared above
             // Weights that currently differ from the shipped defaults (all sources).
             const weights = {};
             for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
@@ -27704,7 +27739,7 @@
             try { modeId = (getActiveMultiplayerMode() || {}).id || ''; } catch (e) {}
             _imitLastReport = {
                 when: new Date().toISOString(), mode: modeId, map: (typeof activeGameMode !== 'undefined') ? activeGameMode : '',
-                winner: state.winner, match: st,
+                winner: state.winner, outcome, kept: won, match: st,
                 totals: _imitStats ? JSON.parse(JSON.stringify(_imitStats)) : null,
                 weightsChanged: weights, trainedWeights: _aiTrainedWeights ? JSON.parse(JSON.stringify(_aiTrainedWeights)) : {},
                 schema: AI_WEIGHT_SCHEMA_VERSION,
@@ -27721,8 +27756,11 @@
             lines.push(`Mode ${r.mode || '?'} · map ${r.map || '?'} · winner P${r.winner}`);
             lines.push(`This match: ${st.observed || 0} decisions scored · CPU agreed ${st.agree || 0} · learned from ${st.disagree || 0} · ${st.unmatched || 0} unscorable`);
             const nudged = Object.keys(st.nudges || {});
-            lines.push(nudged.length ? 'Weights nudged this match:' : 'No weight moved this match.');
+            const discarded = Object.keys(st.discarded || {});
+            lines.push(r.kept ? 'Outcome: WIN — nudges kept.' : `Outcome: ${(r.outcome || 'loss').toUpperCase()} — nudges rolled back (the CPU only keeps what beats it).`);
+            lines.push(nudged.length ? 'Weights nudged this match:' : (discarded.length ? 'Weights nudged this match (ROLLED BACK):' : 'No weight moved this match.'));
             for (const k of nudged) { const n = st.nudges[k]; lines.push(`  ${(AI_WEIGHT_DEFAULTS[k] && AI_WEIGHT_DEFAULTS[k].label) || k}: ${_imitFmt(n.from)} → ${_imitFmt(n.to)} (×${n.n})`); }
+            for (const k of discarded) { const n = st.discarded[k]; lines.push(`  ${(AI_WEIGHT_DEFAULTS[k] && AI_WEIGHT_DEFAULTS[k].label) || k}: ${_imitFmt(n.from)} → ${_imitFmt(n.to)} (×${n.n}) [discarded]`); }
             if (st.examples && st.examples.length) {
                 lines.push('Disagreements:');
                 for (const ex of st.examples) lines.push(`  ${ex.unit}: you → ${ex.human} | CPU → ${ex.cpu} | margin ${ex.margin}${ex.changed.length ? ' | nudged ' + ex.changed.join(', ') : ''}`);
@@ -27756,9 +27794,11 @@
             const esc = (s) => escapeHtml(String(s == null ? '' : s));
             const chip = (n, label, color) => `<div style="flex:1;text-align:center;padding:6px 4px;border:1px solid rgba(140,140,200,0.1);border-radius:4px">
                 <div style="font-size:18px;font-weight:800;color:${color}">${n}</div><div style="font-size:9px;color:var(--muted);letter-spacing:0.5px">${label}</div></div>`;
-            const nudged = Object.keys(st.nudges || {});
+            const kept = !!r.kept;
+            const nudgeSrc = kept ? (st.nudges || {}) : (Object.keys(st.nudges || {}).length ? st.nudges : (st.discarded || {}));
+            const nudged = Object.keys(nudgeSrc);
             const nudgeRows = nudged.map(k => {
-                const n = st.nudges[k]; const dir = n.to > n.from ? '▲' : '▼'; const col = n.to > n.from ? '#7fd97f' : '#e0a060';
+                const n = nudgeSrc[k]; const dir = n.to > n.from ? '▲' : '▼'; const col = n.to > n.from ? '#7fd97f' : '#e0a060';
                 return `<tr><td style="padding:2px 4px">${esc((AI_WEIGHT_DEFAULTS[k] && AI_WEIGHT_DEFAULTS[k].label) || k)}</td>
                     <td style="padding:2px 4px;text-align:right;color:var(--muted)">${_imitFmt(n.from)}</td>
                     <td style="padding:2px 4px;text-align:center;color:${col}">${dir}</td>
@@ -27779,12 +27819,14 @@
                     <button class="train-btn" style="flex:0;padding:2px 8px" onclick="window._ewImitationReportClose()">✕</button></div>
                 <div class="train-subtitle" style="margin-bottom:8px">Training match · ${esc(r.mode || '')} · ${esc(new Date(r.when).toLocaleString())}</div>
                 <div style="display:flex;gap:6px">${chip(st.observed || 0, 'SCORED', 'var(--text)')}${chip(st.agree || 0, 'AGREED', '#7fd9dd')}${chip(st.disagree || 0, 'LEARNED', '#7fd97f')}${chip(st.unmatched || 0, 'UNSCORED', 'var(--muted)')}</div>
-                ${h('WEIGHTS NUDGED THIS MATCH')}
-                ${nudged.length ? `<table style="width:100%;border-collapse:collapse;font-size:11px">${nudgeRows}</table>` : `<div style="color:var(--muted)">No weight moved — the CPU agreed with every scored decision.</div>`}
+                <div style="margin-top:8px;padding:5px 8px;border-radius:4px;font-size:11px;font-weight:700;background:${kept ? 'rgba(127,217,127,0.12)' : 'rgba(224,160,96,0.14)'};color:${kept ? '#7fd97f' : '#e0a060'}">
+                    ${kept ? '✔ WIN — nudges kept' : `✖ ${esc((r.outcome || 'loss').toUpperCase())} — nudges rolled back. The CPU only keeps what beats it.`}</div>
+                ${h(kept ? 'WEIGHTS NUDGED THIS MATCH' : 'WEIGHTS NUDGED THIS MATCH (ROLLED BACK)')}
+                ${nudged.length ? `<table style="width:100%;border-collapse:collapse;font-size:11px${kept ? '' : ';opacity:0.6;text-decoration:line-through'}">${nudgeRows}</table>` : `<div style="color:var(--muted)">No weight moved — the CPU agreed with every scored decision.</div>`}
                 ${h('DISAGREEMENTS')}
                 <div style="max-height:170px;overflow-y:auto;font-size:11px">${exRows || '<div style="color:var(--muted)">None.</div>'}</div>
                 ${h('ALL-TIME')}
-                <div style="font-size:11px">${t.matches || 0} training matches · ${t.observed || 0} decisions scored · CPU agreement <b>${agreePct}%</b></div>
+                <div style="font-size:11px">${t.matches || 0} training matches (${t.wins || 0} won) · ${t.observed || 0} decisions scored · CPU agreement <b>${agreePct}%</b>${t.rolledBack ? ` · ${t.rolledBack} nudges rolled back on losses` : ''}</div>
                 ${wk.length ? `<div style="max-height:150px;overflow-y:auto;margin-top:4px"><table style="width:100%;border-collapse:collapse;font-size:11px"><tr style="color:var(--muted);font-size:9px"><td>WEIGHT</td><td style="text-align:right">DEFAULT</td><td>NOW</td></tr>${wRows}</table></div>` : ''}
                 <div style="display:flex;gap:6px;margin-top:12px">
                     <button class="train-btn" onclick="window._ewImitationReportExport()">⬇ Export JSON</button>
@@ -33860,9 +33902,18 @@
             state._customRoundLimit = 0;
 
             _setAiTurbo(false);
+            if (_imitPending) {
+                // A training match was abandoned before its summary ran: its
+                // live nudges never earned a win, so drop them before anything
+                // (this match, the A/B lab) could persist them.
+                _aiTrainedWeights = _imitSnapshot ? JSON.parse(JSON.stringify(_imitSnapshot)) : null;
+                _imitSnapshot = null; _imitPending = false; _imitMatch = null;
+            }
             if (state.trainingMatch && !isOnlineMatch() && !state.devAutoSim) {
                 addLog('⚡ TRAINING MATCH — CPU turns resolve instantly (no animations, no camera). Your turns play as normal.');
                 _imitMatch = null;
+                _imitSnapshot = _aiTrainedWeights ? JSON.parse(JSON.stringify(_aiTrainedWeights)) : null;
+                _imitPending = !window.EW_NO_IMITATION;
                 _imitLoadStats();
                 window._ewImitationReportClose();
                 if (!window.EW_NO_IMITATION) addLog('🧠 The CPU studies every decision you make and re-tunes its weights toward your play — summary at match end.');
