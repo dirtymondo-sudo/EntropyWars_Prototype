@@ -1,5 +1,5 @@
 # D.O.O.R. — MASTER FILE
-### Story bible + integration design + build log — rev 16 (2026-09-06 — THE CAST: twenty characters hand-authored by the user (A0 #6–#9, A16, `DOOR_STORY.md` §2), fifteen rigged models placed in the headquarters (Part D); rev 15 2026-09-05 — roster dialogue shipped, see A15 + Part D rev 6; 2026-09-04 — story canon separated from ChatGPT scaffolding (A0); the authoring process recorded (A14); `DOOR_STORY.md` created as the empty worksheet. Story track code stays ON HOLD until the user writes the outline per A14.)
+### Story bible + integration design + build log — rev 17 (2026-09-07 — the ROOM REGISTER proposed: room numbers on every site and HQ room, seven new sites, a seventh bay — HQ plan Phase 7, Part C rows 22–24, Part D; rev 16 2026-09-06 — THE CAST: twenty characters hand-authored by the user (A0 #6–#9, A16, `DOOR_STORY.md` §2), fifteen rigged models placed in the headquarters (Part D); rev 15 2026-09-05 — roster dialogue shipped, see A15 + Part D rev 6; 2026-09-04 — story canon separated from ChatGPT scaffolding (A0); the authoring process recorded (A14); `DOOR_STORY.md` created as the empty worksheet. Story track code stays ON HOLD until the user writes the outline per A14.)
 
 This file MERGES the two earlier DOOR documents and supersedes both:
 - `entropy_wars_claude_brief.md` (the ChatGPT-assisted story/world brief, 2026-09) → Part A
@@ -405,6 +405,19 @@ in bold. Grouping is a proposal (Part C, decision 4).
 | **QUARANTINED** (astral anomalies) | red until cleared | **Backrooms** (→ H-Wing, C-12), Flat Lands, (the Desert threshold — an isolated absurd door where no structure should exist — is a future map) |
 
 Community/custom maps are "unfiled sites" in Records, not bay doors.
+
+**Room numbers and new sites (2026-09-07, proposed — HQ plan Phase 7):**
+every site above wears a room number on its threshold plate (the user's
+list: Camelot i, Mars 4, Grove 23, Area 51 51, Stonehenge 56, Agartha 88,
+Antarctica 90S, Backrooms 90, Fairy Forest 420, Giza 444, D.U.M.B. 555,
+Hell 666, Heaven 777, Vatican 888, CERN 999, North Pole 1225, Nuketown
+1945, Moon 1969, Technoticlan 2012, Cyberpunk 2047, Göbekli 9600, Atlantis
+H-20; Claude's fills for the rest — Part C row 22). Seven new sites are
+proposed for wave 1 — 13 the Haunted House, 33 the Lodge, 21 the Strip,
+1954 Downtown, 6 Saturn (the Cube's home), E4 the Looking-Glass, 0 the
+Singularity — and a seventh bay, URBAN (Part C row 23). The Desert
+threshold above stays a future map. The full register, the walkable-site
+mechanism and the cuts are HQ plan 7.2–7.10.
 
 ## A11. Story delivery and scope
 
@@ -883,6 +896,9 @@ yes/no; **USER** are the user's own calls from the brief.
 | 19 | Sedaniel | a sentient sedan, your company vehicle | the roster's Honda Civic (car ⇄ robot, IMPORTED) | **REC: Sedaniel IS the roster Honda Civic** — placed as such in Bay 1; his dossier gets a D.O.O.R. ANNOTATION naming him. A separate character would need a car + robot GLB of his own. |
 | 20 | Kit as a party member | "Kit joins the player's party" | a `catgirl` race with its own rigged model exists | **REC:** Kit's GLB becomes the catgirl race's STORY SKIN once you have met her (a per-unit model override, like the werewolf's day form) — no new race, no balance work. Alternative: Kit as a distinct locked unit that Chapter 1 unlocks. |
 | 21 | Room 64 | the Training Room's name | "the Training Room" | ✅ Shipped 2026-09-06 as the room plate and the egress door's description. The number is the grid (8×8). |
+| 22 | Room numbers | (silent) | (silent) | **REC (2026-09-07):** the Room Register — HQ plan Phase 7.3 / 7.4. The user's numbers stand as given; Claude's fills (180 Hollow Earth, 2D Flat Lands, 11 Babel, 12 Olympus, 512 Skinwalker, 14179 Shasta, 1 Reception, 42 Records, 1287 the Barbershop, 1600 / 80 / 369 / 1954 as alts) and three swaps await yes/no: Football Stadium 42 → **50**, Gladiator Arena 300 → **80**, Tesla 333 → **369**. |
+| 23 | Seven bays | six bays (A10) | six bays | **REC (2026-09-07):** a seventh bay, **URBAN** (Cyberpunk City + Football Stadium move in; the Strip, Downtown, later Club 27 and the Gas Station join); **Vatican City → DIPLOMATIC** (a sovereign state — "immunity claimed" is its actual position); **Atlantis → HOLLOW** ("inner earth · polar · the deep", Pirate Bay later). HQ plan 7.5. |
+| 24 | "Room 911 · Disaster City" | (the user's list, 2026-09-07) | — | **REC:** the ruined-metropolis map is wanted (the kaiju / superhero cluster has no downtown) but 911 + a collapsing skyline reads as 9/11 to a lot of players — comedy supports the danger (A12 #2), and that is the wrong danger. Rec **Room 1954 · DOWNTOWN** (the first kaiju film); alt 1933 (Kong). The user rules. |
 
 ---
 
@@ -1573,3 +1589,17 @@ MODE`. The far roster gains lone doors ajar in the void (`_hzLoneDoor`,
 3–5 per outdoor theme; monument key `door`). Vocabulary kept: it is a
 crossing / threshold, never a portal (A8). Not playtested (RULE #1c);
 PLAYTEST_NOTES "THE CROSSING" lists what to eyeball first.
+
+### 2026-09-07 — the Room Register (docs only)
+The user's list of ~75 room / map ideas ("all the maps become walkable
+rooms inside the HQ, like the Training Room; every map gets a room number
+that makes sense") is curated into **HQ plan Phase 7**: a number for every
+site and HQ room (7.3 / 7.4 — the user's numbers kept, blanks filled,
+three swaps for yes/no: C-22), seven new sites for wave 1 (7.6: 13 Haunted
+House, 33 the Lodge, 21 the Strip, 1954 Downtown, 6 Saturn, E4 the
+Looking-Glass, 0 the Singularity), thirteen on hold (7.7), the rest cut or
+folded (7.8), a seventh bay (7.5, C-23), the walkable-site mechanism (7.2:
+`kind: 'site'` rooms generated from the Δ board + its near setting), the
+dailies as `FORM 365` (7.9), the adding-a-site checklist (7.10), and the
+asset split (§5.6: one hero prop per place; one new tileable). No game
+files touched. A10 carries a pointer.
