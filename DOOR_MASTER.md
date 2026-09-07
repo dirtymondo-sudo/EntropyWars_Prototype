@@ -1,5 +1,5 @@
 # D.O.O.R. — MASTER FILE
-### Story bible + integration design + build log — rev 17 (2026-09-07 — the ROOM REGISTER proposed: room numbers on every site and HQ room, seven new sites, a seventh bay — HQ plan Phase 7, Part C rows 22–24, Part D; rev 16 2026-09-06 — THE CAST: twenty characters hand-authored by the user (A0 #6–#9, A16, `DOOR_STORY.md` §2), fifteen rigged models placed in the headquarters (Part D); rev 15 2026-09-05 — roster dialogue shipped, see A15 + Part D rev 6; 2026-09-04 — story canon separated from ChatGPT scaffolding (A0); the authoring process recorded (A14); `DOOR_STORY.md` created as the empty worksheet. Story track code stays ON HOLD until the user writes the outline per A14.)
+### Story bible + integration design + build log — rev 18 (2026-09-07 rev 3 — C-22 and C-23 DECIDED and shipped: seven bays (Bay 7 · URBAN), the CONTAINMENT RING joins the bays end to end on each floor (HQ plan 5.4a); rev 17 2026-09-07 — the ROOM REGISTER proposed: room numbers on every site and HQ room, seven new sites, a seventh bay — HQ plan Phase 7, Part C rows 22–24, Part D; rev 16 2026-09-06 — THE CAST: twenty characters hand-authored by the user (A0 #6–#9, A16, `DOOR_STORY.md` §2), fifteen rigged models placed in the headquarters (Part D); rev 15 2026-09-05 — roster dialogue shipped, see A15 + Part D rev 6; 2026-09-04 — story canon separated from ChatGPT scaffolding (A0); the authoring process recorded (A14); `DOOR_STORY.md` created as the empty worksheet. Story track code stays ON HOLD until the user writes the outline per A14.)
 
 This file MERGES the two earlier DOOR documents and supersedes both:
 - `entropy_wars_claude_brief.md` (the ChatGPT-assisted story/world brief, 2026-09) → Part A
@@ -389,20 +389,25 @@ its mission door spawns. Cleared maps later receive **Code Red** anomalies:
 an unauthorised character somewhere it does not belong, announced by a
 doorbell, giving a reason to revisit.
 
-## A10. Location anchors ↔ launch maps (the six containment bays)
+## A10. Location anchors ↔ launch maps (the seven containment bays)
 
 The 29 launch maps (`EW_MAP_META`, each with a `SITE_FILES` customs file
-and a hand-authored 8×8 Δ board) group into six sector bays. Story anchors
-in bold. Grouping is a proposal (Part C, decision 4).
+and a hand-authored 8×8 Δ board) group into seven sector bays (six until
+2026-09-07; the seventh, URBAN, and the two moves are C-23, DECIDED). Story
+anchors in bold. Grouping is a proposal (Part C, decision 4). Since HQ plan
+5.4a the bays on one floor of the egress link end to end through fire
+doors on their caps — downstairs 1 ⇄ 4, upstairs 2 → 5 → 7 → 3 → 6 → 2 —
+so a corridor walk goes all the way round its floor.
 
 | Bay | Door light colour band | Maps |
 |---|---|---|
-| **TERRESTRIAL** (clandestine / urban) | amber | Nuketown (the suburban closet door), **Area 51** (the MIB's rival account), Skinwalker Ranch, Bohemian Grove, D.U.M.B., **CERN**, Vatican City, Football Stadium |
-| **ANCIENT** | amber | Stonehenge, Pyramids of Giza, Tower of Babel, Göbekli Tepe, **Camelot** (the Round Table was early HINGE technology with no privileged side), Technoticlan, Atlantis (the wet submarine bulkhead) |
-| **HOLLOW** (inner earth + polar) | amber | Mount Shasta, Hollow Earth, Agartha, **Antarctica** (the first Black Cube DOOR claims to have destroyed), North Pole |
-| **CELESTIAL** (space + the far future) | amber | Mars, **the Moon** (a door standing without a wall; footprints from missions that never happened), Cyberpunk City |
-| **DIPLOMATIC** (mythic ecosystems, "immunity claimed") | amber | **Heaven**, **Hell**, Mount Olympus, Fairy Forest |
-| **QUARANTINED** (astral anomalies) | red until cleared | **Backrooms** (→ H-Wing, C-12), Flat Lands, (the Desert threshold — an isolated absurd door where no structure should exist — is a future map) |
+| **TERRESTRIAL** (clandestine / the bases) — Bay 1, ground | amber | Nuketown (the suburban closet door), **Area 51** (the MIB's rival account), Skinwalker Ranch, Bohemian Grove, D.U.M.B., **CERN** |
+| **ANCIENT** — Bay 2, mezzanine | amber | Stonehenge, Pyramids of Giza, Tower of Babel, Göbekli Tepe, **Camelot** (the Round Table was early HINGE technology with no privileged side), Technoticlan |
+| **HOLLOW** (inner earth + polar + the deep) — Bay 3, mezzanine | amber | Mount Shasta, Hollow Earth, Agartha, **Antarctica** (the first Black Cube DOOR claims to have destroyed), North Pole, Atlantis (the wet submarine bulkhead; moved from Ancient, C-23) |
+| **CELESTIAL** (space + the far future) — Bay 4, ground | amber | Mars, **the Moon** (a door standing without a wall; footprints from missions that never happened) |
+| **DIPLOMATIC** (mythic ecosystems, "immunity claimed") — Bay 5, mezzanine | amber | **Heaven**, **Hell**, Mount Olympus, Fairy Forest, Vatican City (a sovereign state; moved from Terrestrial, C-23) |
+| **QUARANTINED** (astral anomalies) — Bay 6, mezzanine | red until cleared | **Backrooms** (→ H-Wing, C-12), Flat Lands, (the Desert threshold — an isolated absurd door where no structure should exist — is a future map) |
+| **URBAN** (cities · the strip · the night shift) — Bay 7, mezzanine at 180°, a glass shopfront | amber | Cyberpunk City (from Celestial), Football Stadium (from Terrestrial); the Strip and Downtown join from wave 1 (HQ plan 7.6), Club 27 and the Gas Station later |
 
 Community/custom maps are "unfiled sites" in Records, not bay doors.
 
@@ -896,8 +901,8 @@ yes/no; **USER** are the user's own calls from the brief.
 | 19 | Sedaniel | a sentient sedan, your company vehicle | the roster's Honda Civic (car ⇄ robot, IMPORTED) | **REC: Sedaniel IS the roster Honda Civic** — placed as such in Bay 1; his dossier gets a D.O.O.R. ANNOTATION naming him. A separate character would need a car + robot GLB of his own. |
 | 20 | Kit as a party member | "Kit joins the player's party" | a `catgirl` race with its own rigged model exists | **REC:** Kit's GLB becomes the catgirl race's STORY SKIN once you have met her (a per-unit model override, like the werewolf's day form) — no new race, no balance work. Alternative: Kit as a distinct locked unit that Chapter 1 unlocks. |
 | 21 | Room 64 | the Training Room's name | "the Training Room" | ✅ Shipped 2026-09-06 as the room plate and the egress door's description. The number is the grid (8×8). |
-| 22 | Room numbers | (silent) | (silent) | **REC (2026-09-07):** the Room Register — HQ plan Phase 7.3 / 7.4. The user's numbers stand as given; Claude's fills (180 Hollow Earth, 2D Flat Lands, 11 Babel, 12 Olympus, 512 Skinwalker, 14179 Shasta, 1 Reception, 42 Records, 1287 the Barbershop, 1600 / 80 / 369 / 1954 as alts) and three swaps await yes/no: Football Stadium 42 → **50**, Gladiator Arena 300 → **80**, Tesla 333 → **369**. |
-| 23 | Seven bays | six bays (A10) | six bays | **REC (2026-09-07):** a seventh bay, **URBAN** (Cyberpunk City + Football Stadium move in; the Strip, Downtown, later Club 27 and the Gas Station join); **Vatican City → DIPLOMATIC** (a sovereign state — "immunity claimed" is its actual position); **Atlantis → HOLLOW** ("inner earth · polar · the deep", Pirate Bay later). HQ plan 7.5. |
+| 22 | Room numbers | (silent) | (silent) | **DECIDED (2026-09-07 rev 3, the user: "yes to all that") — as proposed.** The Room Register — HQ plan Phase 7.3 / 7.4. The user's numbers stand as given; Claude's fills (180 Hollow Earth, 2D Flat Lands, 11 Babel, 12 Olympus, 512 Skinwalker, 14179 Shasta, 1 Reception, 42 Records, 1287 the Barbershop, 1600 / 80 / 369 / 1954 as alts) and the three swaps stand: Football Stadium **50**, Gladiator Arena **80**, Tesla **369**. The stadium and Records already ship as 50 / 42 (7.1). |
+| 23 | Seven bays | six bays (A10) | six bays | **DECIDED (2026-09-07 rev 3) and SHIPPED (HQ plan 7.5, §9):** a seventh bay, **URBAN** on the mezzanine at 180° (Cyberpunk City + Football Stadium moved in; the Strip, Downtown, later Club 27 and the Gas Station join); **Vatican City → DIPLOMATIC** (a sovereign state — "immunity claimed" is its actual position); **Atlantis → HOLLOW** ("inner earth · polar · the deep", Pirate Bay later). A10 updated. |
 | 24 | "Room 911 · Disaster City" | (the user's list, 2026-09-07) | — | **REC:** the ruined-metropolis map is wanted (the kaiju / superhero cluster has no downtown) but 911 + a collapsing skyline reads as 9/11 to a lot of players — comedy supports the danger (A12 #2), and that is the wrong danger. Rec **Room 1954 · DOWNTOWN** (the first kaiju film); alt 1933 (Kong). The user rules. |
 
 ---
@@ -1620,3 +1625,24 @@ them), the match-select SITE FILE kicker, the result stamp's case line
 (`CASE No. EW-nnnn · ROOM 56`) and the loading screen's site-file card.
 The elevator's floor panel skips 13. doorhq.test.js enforces one number,
 one place. Vocabulary unchanged (A8): threshold, crossing, room, bay.
+
+### 2026-09-07 (rev 3) — C-22 + C-23 decided and shipped; the CONTAINMENT RING joins the bays
+The user's "yes to all that": rows 22 and 23 are DECIDED as proposed, and
+the corridor wish ("the hallways … can be made longer and go all the way
+around, or at least halfway") is HQ plan **5.4a**, stage 1 shipped (§9
+there has the mechanics). In the building: a seventh bay, **BAY 7 ·
+URBAN**, on the mezzanine at 180° behind a glass shopfront (Cyberpunk City
+and the Stadium; the Strip and Downtown will join from wave 1); Vatican
+City files under DIPLOMATIC, Atlantis under HOLLOW (A10 rewritten). And
+every bay's end caps now wear fire doors into the next bay on the same
+floor — downstairs Bay 1 ⇄ Bay 4, upstairs 2 → 5 → 7 → 3 → 6 → 2 — each
+door wearing the neighbour bay's lamp (the doors INTO Quarantined read
+SEALED until its chapter, so the upstairs ring is open from 2 round to 3
+today), the panel being the neighbour's bay panel, and the far side
+landing you at the matching cap walking the same way round. Vocabulary
+(A8): the linked hallway is **the ring** (the Containment Ring), a cap
+door is **a ring door**; threshold / crossing / room / bay unchanged. Bay
+guard lines are Claude's Phase 2.6 flavour, moved with their sites and one
+new set for Bay 7 — the user may rewrite any of them (A15). Files:
+data.js, three-renderer.js, map.js, index.html (`20260907i-cors`),
+doorhq.test.js (137 green). Story track still ON HOLD (A14).

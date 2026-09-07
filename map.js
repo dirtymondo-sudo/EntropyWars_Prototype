@@ -147,7 +147,7 @@
         let _hqHome = false;        // the player entered through Play → screens return to the building
         let _hqSuspended = false;   // the scene is alive but paused under a modal / settings
         let _hqLastDoor = null;     // door id the player last left through (re-entry spot)
-        let _hqCurRoom = 'central_egress';   // the room the scene shows (HQ plan 2.6: the six bays are rooms)
+        let _hqCurRoom = 'central_egress';   // the room the scene shows (HQ plan 2.6: the seven bays are rooms)
         let _hqLastRoom = 'central_egress';  // the room to rebuild on return (where _hqLastDoor is)
         /* screens that are pure DOM modals over whatever page is showing —
            the building waits underneath; their unmount resumes it */
@@ -721,7 +721,7 @@
                 const crHere = cr && !cr.cleared && cr.sector === act.sector ? cr : null;
                 if (crHere) html += _hqCodeRedBriefHtml(crHere, { respond: false });
                 /* the bay is a corridor you walk (plan 2.6); the rows below are the quick dispatch */
-                if (_hqRoomExists(bayId)) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${canCross ? '' : 'disabled'} data-room="${_hqEsc(bayId)}" data-at="egress">ENTER THE BAY ▸ WALK THE THRESHOLDS</button></div>`;
+                if (_hqRoomExists(bayId)) html += `<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" ${canCross ? '' : 'disabled'} data-room="${_hqEsc(bayId)}" data-at="${_hqEsc(act.at || 'egress')}">${act.at ? 'THROUGH THE RING ▸ ' + _hqEsc(sec.label) : 'ENTER THE BAY ▸ WALK THE THRESHOLDS'}</button></div>`;
                 html += '<div class="hq-rows">';
                 sec.maps.forEach(id => {
                     const sf = (typeof window.doorSiteFile === 'function') ? window.doorSiteFile(id) : null;
@@ -919,7 +919,7 @@
             if (act.room && _hqRoomExists(act.room)) return { room: act.room, at: act.at || null };
             if (act.sector) {
                 const bayId = (typeof window.hqBayId === 'function') ? window.hqBayId(act.sector) : ('bay_' + act.sector);
-                if (_hqRoomExists(bayId)) return { room: bayId, at: 'egress' };
+                if (_hqRoomExists(bayId)) return { room: bayId, at: act.at || 'egress' };   // a ring door lands at the far cap (plan 5.4a)
             }
             if (act.fn && typeof window[act.fn] === 'function') return { fn: act.fn };
             return null;

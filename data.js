@@ -15783,22 +15783,28 @@ const DOOR_HQ = {
         leaf_motel:          { file: 'Meshy_AI_motel_room_door_with__0904014925_texture.glb',        leaf: true, aspect: 0.533, open: 'swing', hinge: 'right' },
     },
 
-    /* The six containment bays (DOOR_MASTER A10). Every launch map belongs
+    /* The seven containment bays (DOOR_MASTER A10; the seventh, URBAN, plan 7.5). Every launch map belongs
        to exactly one (door-hq.test.js checks the partition against
        EW_MAP_META). `locked` bays stay red until the story opens them. */
     sectors: {
-        terrestrial: { label: 'TERRESTRIAL', sub: 'clandestine · urban',
-            maps: ['prebuilt_nuketown', 'prebuilt_area51', 'prebuilt_skinwalker', 'prebuilt_bohemian_grove', 'prebuilt_dumb', 'prebuilt_cern', 'prebuilt_vatican', 'prebuilt_stadium'] },
+        /* the 7.5 rebalance (2026-09-07, MASTER C-23 DECIDED): Bay 7 · URBAN
+           takes Cyberpunk City (from Celestial) and the Stadium (from
+           Terrestrial); Vatican City → Diplomatic (a sovereign state);
+           Atlantis → Hollow (the deep). Wave-1 sites join their bays here. */
+        terrestrial: { label: 'TERRESTRIAL', sub: 'clandestine · the bases',
+            maps: ['prebuilt_nuketown', 'prebuilt_area51', 'prebuilt_skinwalker', 'prebuilt_bohemian_grove', 'prebuilt_dumb', 'prebuilt_cern'] },
         ancient:     { label: 'ANCIENT', sub: 'first crossings',
-            maps: ['prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_babel', 'prebuilt_gobekli', 'prebuilt_camelot', 'prebuilt_technoticlan', 'prebuilt_atlantis'] },
-        hollow:      { label: 'HOLLOW', sub: 'inner earth · polar',
-            maps: ['prebuilt_shasta', 'prebuilt_hollow_earth', 'prebuilt_agartha', 'prebuilt_antarctica', 'prebuilt_northpole'] },
+            maps: ['prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_babel', 'prebuilt_gobekli', 'prebuilt_camelot', 'prebuilt_technoticlan'] },
+        hollow:      { label: 'HOLLOW', sub: 'inner earth · polar · the deep',
+            maps: ['prebuilt_shasta', 'prebuilt_hollow_earth', 'prebuilt_agartha', 'prebuilt_antarctica', 'prebuilt_northpole', 'prebuilt_atlantis'] },
         celestial:   { label: 'CELESTIAL', sub: 'space · the far future',
-            maps: ['prebuilt_mars', 'prebuilt_moon', 'prebuilt_cyberpunk'] },
+            maps: ['prebuilt_mars', 'prebuilt_moon'] },
         diplomatic:  { label: 'DIPLOMATIC', sub: 'immunity claimed',
-            maps: ['prebuilt_heaven', 'prebuilt_hell', 'prebuilt_olympus', 'prebuilt_fairy_forest'] },
+            maps: ['prebuilt_heaven', 'prebuilt_hell', 'prebuilt_olympus', 'prebuilt_fairy_forest', 'prebuilt_vatican'] },
         quarantined: { label: 'QUARANTINED', sub: 'astral anomalies', locked: true,
             maps: ['prebuilt_backrooms', 'prebuilt_flatlands'] },
+        urban:       { label: 'URBAN', sub: 'cities · the strip · the night shift',
+            maps: ['prebuilt_cyberpunk', 'prebuilt_stadium'] },
     },
 
     /* Mastery v1 (HQ plan D9): a door turns green once the map has been won
@@ -15825,13 +15831,22 @@ const DOOR_HQ = {
        that overrides the pick (dev: ?codered=<mapId>, no mastery needed). */
     codeRed: { bonusGold: 200, force: null },
 
-    /* ── the six bays as corridors (HQ plan 2.6, 2026-09-03) ──
+    /* ── the seven bays as corridors (HQ plan 2.6, 2026-09-03) ──
        Every sector bay is a short CURVED corridor off the egress ring: the
        egress door on its inner wall, one THRESHOLD door per launch map on
        its outer wall. The rooms themselves are generated at load by
        hqBayRoom(sector) from `bayShell` + `thresholds` + `bays` — never
        hand-edit rooms.bay_*. Local polar frame per bay (deg 0 = the way
-       back to the egress). */
+       back to the egress).
+       THE CONTAINMENT RING (HQ plan 5.4a, 2026-09-07): with `ring: true`
+       the bays on one floor of the egress link end to end — each end cap
+       wears a fire door (`ringLeaf`) into the NEXT bay clockwise (the
+       `cap_cw` door) or counter-clockwise (`cap_ccw`), ordered by the bays'
+       egress-door angles on that level, wrapping. A cap door's action is
+       the neighbour's SECTOR (so it wears the neighbour bay's lamp — sealed
+       for a locked sector, strobing on its Code Red) and lands you at the
+       matching cap of the far side. Ground floor: Bay 1 ⇄ Bay 4; the
+       mezzanine ring: 2 → 5 → 7 → 3 → 6 → 2. One bay on a floor = no caps. */
     bayShell: {
         rIn: 8.5, rOut: 12.5,      // the corridor is 4 m wide, curving around its own centre
         wallH: 4.2, dadoH: 1.05,   // the egress ground-floor height: wide door frames are 3.76 m to the cap, plates sit above them
@@ -15839,6 +15854,8 @@ const DOOR_HQ = {
         endPad: 9,                 // degrees of blank wall past the last door, before the end cap
         minHalf: 24,               // the shortest corridor is ±24°
         floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling',
+        ring: true,                // the bays link end to end (plan 5.4a); false = dead-end caps as before
+        ringLeaf: 'leaf_wired_double',   // the fire door on every linked cap (wide; the 4 m cap takes a 3.3 m panel)
     },
     /* Which leaf hangs on each threshold (HQ plan §5.3 C: "more thresholds
        per map"). Unlisted maps fall back to `leaf_closet_alt`. Rank leaves
@@ -15892,24 +15909,28 @@ const DOOR_HQ = {
     },
     /* per-bay flavour: the guard's line, overheard lines, extra dressing (local polar) */
     bays: {
-        terrestrial: { agent: 'Clipboard. “Suburbs, bases, ranches, a stadium. Everything on this corridor has a parking lot.”',
+        terrestrial: { agent: 'Clipboard. “Suburbs, bases, ranches, a collider. Everything on this corridor has a parking lot.”',
             lines: ['“Nuketown’s door is a closet door. Nobody knows whose closet.”', '“Area 51 has its own customs. We do not recognise it. They do not recognise us.”', '“If the ranch gate is open, it is not open for you.”'],
             props: [{ key: 'tube_tv', deg: -20, r: 9.0, y: 0.95, rot: 180 }, { key: 'cardboard_box', deg: -20, r: 9.0 }] },
         ancient:     { agent: '“First crossings. The stones were here before the paperwork. The paperwork is catching up.”',
-            lines: ['“The portcullis has no privileged side. That is a technical term.”', '“Göbekli Tepe never had a door. We filed the frame.”', '“The bulkhead drips. It has always dripped. Do not mop it.”'],
+            lines: ['“The portcullis has no privileged side. That is a technical term.”', '“Göbekli Tepe never had a door. We filed the frame.”', '“The stones were counted. The count is classified.”'],
             props: [{ key: 'cardboard_boxes', deg: 22, r: 9.4, rot: 30 }] },
         hollow:      { agent: '“Inner earth and the poles. Wear something warm and something that does not care which way is down.”',
-            lines: ['“Antarctica was the first Black Cube we destroyed. The ice remembers.”', '“The Agartha gate has a queue on the far side. Centuries.”', '“Below Shasta the Lemurians are still about to make contact.”'],
+            lines: ['“Antarctica was the first Black Cube we destroyed. The ice remembers.”', '“The Agartha gate has a queue on the far side. Centuries.”', '“Below Shasta the Lemurians are still about to make contact.”', '“The bulkhead drips. It has always dripped. Do not mop it.”'],
             props: [{ key: 'water_cooler', deg: 20, side: 'in', wall: true }] },
         celestial:   { agent: '“Space and the far future. The Moon door has no wall. Please do not walk around it.”',
-            lines: ['“Mars: red dust in the seal. Every crossing. We have written to them.”', '“The footprints lead to the Moon door and not away from it.”', '“Cyberpunk City files its complaints in advance.”'],
+            lines: ['“Mars: red dust in the seal. Every crossing. We have written to them.”', '“The footprints lead to the Moon door and not away from it.”'],
             props: [{ key: 'crt_terminal', deg: -18, r: 9.0, y: 0.76, rot: 180 }, { key: 'round_cabinet', deg: -18, r: 9.0 }] },
-        diplomatic:  { agent: '“Immunity claimed. All four of them. Check your language and your footwear.”',
-            lines: ['“Heaven’s gate is frosted for modesty. Theirs.”', '“Hell’s keypad is warm. It is the friendliest thing about it.”', '“Fairy Forest lodged a complaint about the door. The door is a tree.”'],
+        diplomatic:  { agent: '“Immunity claimed. All five of them. Check your language and your footwear.”',
+            lines: ['“Heaven’s gate is frosted for modesty. Theirs.”', '“Hell’s keypad is warm. It is the friendliest thing about it.”', '“Fairy Forest lodged a complaint about the door. The door is a tree.”', '“The Vatican door was painted white by decree. The decree is also white.”'],
             props: [{ key: 'potted_plant', deg: 16, r: 11.4 }, { key: 'office_plant', deg: -16, r: 11.4 }] },
         quarantined: { agent: '“You should not be able to read this sign.”',
             lines: ['“The EXIT sign is a lie. It is filed as one.”', '“Flat Lands: hollow all the way through.”'],
             props: [{ key: 'wet_floor_sign', deg: 8, r: 10.6, rot: 40 }] },
+        /* Bay 7 (plan 7.5): the shopfront on the mezzanine — the night shift */
+        urban:       { agent: '“Cities. The strip, the stadium, the night shift. Everything on this corridor is open late and none of it is open to you.”',
+            lines: ['“Cyberpunk City files its complaints in advance.”', '“The turnstile was a double door yesterday. The stadium says it was always a turnstile.”', '“Nothing on this corridor closes. It just stops answering.”'],
+            props: [{ key: 'crt_terminal', deg: -14, r: 9.0, y: 0.76, rot: 180 }, { key: 'round_cabinet', deg: -14, r: 9.0 }, { key: 'wet_floor_sign', deg: 12, r: 10.8, rot: -30 }] },
     },
 
     rooms: {
@@ -15962,6 +15983,7 @@ const DOOR_HQ = {
                 { id: 'bay_ancient',    deg: 45,  level: 1, leaf: 'leaf_portcullis',   wide: true,  label: 'BAY 2 · ANCIENT',         sub: 'CONTAINMENT BAY',            action: { sector: 'ancient' } },
                 { id: 'engineering',    deg: 90,  level: 1, leaf: 'leaf_glass_exec',                label: 'ARCANE ENGINEERING',      sub: 'CARTOGRAPHY · RESEARCH',     action: { fn: '_goToMapEditor' },   desc: 'Research offices. The Map Editor, the Spell Library, and the fourth door that wasn’t there yesterday.' },
                 { id: 'bay_diplomatic', deg: 150, level: 1, leaf: 'leaf_revolving',    wide: true,  label: 'BAY 5 · DIPLOMATIC',      sub: 'CONTAINMENT BAY',            action: { sector: 'diplomatic' } },
+                { id: 'bay_urban',      deg: 180, level: 1, leaf: 'leaf_glass',                     label: 'BAY 7 · URBAN',           sub: 'CONTAINMENT BAY',            action: { sector: 'urban' } },
                 { id: 'bay_hollow',     deg: 210, level: 1, leaf: 'leaf_wired_double', wide: true,  label: 'BAY 3 · HOLLOW',          sub: 'CONTAINMENT BAY',            action: { sector: 'hollow' } },
                 { id: 'bay_quarantined',deg: 270, level: 1, leaf: 'leaf_cell',                      label: 'BAY 6 · QUARANTINED',     sub: 'CONTAINMENT BAY',            action: { sector: 'quarantined' } },
                 { id: 'continuity',     deg: 315, level: 1, leaf: 'leaf_suburban_house',            label: 'BUREAU OF CONTINUITY',    sub: 'THE CANON OFFICE',           action: { room: 'continuity' },     minClearance: 5, requiresKeys: 24, roomNo: '№ — CONTESTED', why: 'a joke, and a policy', desc: 'Canon notices. The motto plaque. The only department that suspects the schedule. GATEKEEPER clearance and two dozen Keys.' },
@@ -16062,8 +16084,8 @@ const DOOR_HQ = {
                 { key: 'filing_cabinet', deg: 20,  level: 1, wall: true },
                 { key: 'filing_cabinet', deg: 23,  level: 1, wall: true },
                 { key: 'round_cabinet',  deg: 120, r: 22.9, level: 1 },
-                { key: 'cardboard_boxes', deg: 180, r: 23.0, level: 1, rot: 40 },
-                { key: 'cardboard_box',  deg: 183, r: 22.8, level: 1 },
+                { key: 'cardboard_boxes', deg: 133, r: 23.0, level: 1, rot: 40 },   // moved from 180° for Bay 7's door (plan 7.5)
+                { key: 'cardboard_box',  deg: 136, r: 22.8, level: 1 },
                 { key: 'office_locker',  deg: 240, level: 1, wall: true },
                 { key: 'potted_plant',   deg: 300, r: 23.0, level: 1 },
                 { key: 'globe_lamp',     deg: 335, r: 22.7, level: 1 },
@@ -16388,6 +16410,28 @@ function hqMissionPool(mapId, n) {
    `side: 'in'` = hangs on the inner wall and faces OUTWARD; `action:
    {mission: mapId}` = a threshold. */
 function hqBayId(sector) { return 'bay_' + sector; }
+/* THE CONTAINMENT RING (HQ plan 5.4a): the bays on one floor of the egress
+   link end to end, ordered by their egress-door angle (clockwise = the
+   increasing direction). hqBayRing(sector) → { level, cw, ccw, count } —
+   the neighbouring SECTORS this bay's end caps open into (cw = the cap at
+   +half, ccw = the cap at −half), or null when the ring is off or the bay
+   is alone on its floor. With two bays on a floor cw and ccw are the same
+   bay (a two-room loop). */
+function hqBayRing(sectorKey) {
+    const B = DOOR_HQ.bayShell || {};
+    if (!B.ring) return null;
+    const egress = DOOR_HQ.rooms.central_egress;
+    const bayDoors = ((egress && egress.doors) || []).filter(d => d.action && d.action.sector && DOOR_HQ.sectors[d.action.sector]);
+    const mine = bayDoors.find(d => d.action.sector === sectorKey);
+    if (!mine) return null;
+    const level = mine.level || 0;
+    const ring = bayDoors.filter(d => (d.level || 0) === level).sort((a, b) => a.deg - b.deg);
+    if (ring.length < 2) return null;
+    const i = ring.findIndex(d => d.action.sector === sectorKey);
+    return { level: level, count: ring.length,
+             cw: ring[(i + 1) % ring.length].action.sector,
+             ccw: ring[(i - 1 + ring.length) % ring.length].action.sector };
+}
 function hqBayRoom(sectorKey) {
     const sec = DOOR_HQ.sectors[sectorKey];
     if (!sec) return null;
@@ -16418,6 +16462,25 @@ function hqBayRoom(sectorKey) {
             roomNo: (th.roomNo != null) ? String(th.roomNo) : null, why: th.why || '',
         });
     });
+    /* the ring (plan 5.4a): a fire door on each end cap into the neighbour
+       bay, hung on the cap slab (`cap: 'cw' | 'ccw'`; the renderer treats
+       it as a flat wall at ±half). Its ACTION is the neighbour's sector, so
+       the lamp and the panel are the neighbour bay's own; `at` is the far
+       side's matching cap, so you arrive walking the same way round. */
+    const ring = hqBayRing(sectorKey);
+    if (ring) {
+        [['cw', ring.cw, 'cap_ccw', 'CLOCKWISE'], ['ccw', ring.ccw, 'cap_cw', 'COUNTER-CLOCKWISE']].forEach(([cap, nbSector, farCap, way]) => {
+            const nbDoor = ((egress && egress.doors) || []).find(d => d.action && d.action.sector === nbSector) || {};
+            const nbSec = DOOR_HQ.sectors[nbSector] || {};
+            doors.push({
+                id: 'cap_' + cap, cap: cap, deg: (cap === 'cw') ? half : -half, level: 0,
+                leaf: B.ringLeaf || 'leaf_wired_double', wide: !!((DOOR_HQ.catalogue[B.ringLeaf || 'leaf_wired_double'] || {}).wide),
+                label: nbDoor.label || ('BAY · ' + (nbSec.label || nbSector).toUpperCase()), sub: 'CONTAINMENT RING · ' + way,
+                action: { sector: nbSector, at: farCap }, ring: true,
+                desc: 'The ring. Fire door, held open by a wedge that is not on the inventory. The next bay is on the other side, the same way round.',
+            });
+        });
+    }
     const props = [];
     /* ceiling fluorescents along the centreline */
     const mid = (B.rIn + B.rOut) / 2;
@@ -16428,15 +16491,16 @@ function hqBayRoom(sectorKey) {
     props.push({ key: 'fire_extinguisher', deg: Math.round((doorHalfDeg + 4) * 10) / 10, side: 'in', wall: true });
     props.push({ key: 'breaker_panel', deg: -Math.round((doorHalfDeg + 4.5) * 10) / 10, side: 'in', wall: true });
     if (half >= 34) props.push({ key: 'wall_clock', deg: Math.round((doorHalfDeg + 12) * 10) / 10, side: 'in', wall: true });
-    props.push({ key: 'filing_cabinet', deg: Math.round((half - 5) * 10) / 10, side: 'in', wall: true });
-    props.push({ key: 'filing_cabinet', deg: Math.round((half - 8.2) * 10) / 10, side: 'in', wall: true });
-    if (half >= 40) props.push({ key: 'filing_cabinet', deg: -Math.round((half - 5) * 10) / 10, side: 'in', wall: true });
-    props.push({ key: 'cardboard_boxes', deg: -Math.round((half - 4) * 10) / 10, r: B.rIn + 1.0, rot: 25 });
-    props.push({ key: 'papers_a', deg: Math.round((half - 5) * 10) / 10, r: B.rIn + 0.62, y: 1.32, rot: 15 });
+    const capBack = ring ? 2 : 0;   // degrees the cap-side dressing steps back from a linked cap's door frame
+    props.push({ key: 'filing_cabinet', deg: Math.round((half - 5 - capBack) * 10) / 10, side: 'in', wall: true });
+    props.push({ key: 'filing_cabinet', deg: Math.round((half - 8.2 - capBack) * 10) / 10, side: 'in', wall: true });
+    if (half >= 40) props.push({ key: 'filing_cabinet', deg: -Math.round((half - 5 - capBack) * 10) / 10, side: 'in', wall: true });
+    props.push({ key: 'cardboard_boxes', deg: -Math.round((half - 4 - capBack) * 10) / 10, r: B.rIn + 1.0, rot: 25 });
+    props.push({ key: 'papers_a', deg: Math.round((half - 5 - capBack) * 10) / 10, r: B.rIn + 0.62, y: 1.32, rot: 15 });
     (F.props || []).forEach(p => props.push(Object.assign({}, p)));
     return {
         label: label, sub: 'CONTAINMENT BAY · ' + (sec.sub || '').toUpperCase(),
-        kind: 'bay', sector: sectorKey, bayNo: bayNo ? +bayNo[1] : null,
+        kind: 'bay', sector: sectorKey, bayNo: bayNo ? +bayNo[1] : null, level: bayDoor.level || 0, ring: ring,
         shell: { rIn: B.rIn, rOut: B.rOut, arc: [-half, half], wallH: B.wallH, dadoH: B.dadoH,
                  floor: B.floor, wall: B.wall, dado: B.dado, trim: B.trim, ceiling: B.ceiling },
         doors: doors,
@@ -17280,6 +17344,7 @@ if (typeof window !== 'undefined') {
     window.hqMissionPool = hqMissionPool;
     window.hqBayId = hqBayId;
     window.hqBayRoom = hqBayRoom;
+    window.hqBayRing = hqBayRing;
     window.hqRoomNo = hqRoomNo;
     window.hqDoorNo = hqDoorNo;
     window.hqRoomNoCompare = hqRoomNoCompare;

@@ -29186,6 +29186,20 @@ const ThreeRenderer = (function () {
         else { wall = 'n'; wx = along; wz = -S.d / 2; }
         return { wall: wall, wx: wx, wz: wz, nx: W.nx, nz: W.nz, yaw: W.yaw, along: along };
     }
+    /* a bay's END CAP as a flat wall (the containment ring, HQ plan 5.4a):
+       the same {wx, wz, nx, nz, yaw} shape _hqBoxWall returns, so a door
+       with `cap: 'cw' | 'ccw'` places, targets and spawns exactly like a
+       box-room door. The cap slab is 0.3 m thick across the corridor at
+       ±half; its inward face is 0.15 m toward the interior, and the inward
+       normal is the arc's tangent pointing back into the corridor. */
+    function _hqCapWall(room, door) {
+        var S = room.shell, mid = (S.rIn + S.rOut) / 2;
+        var cw = door.cap === 'cw';
+        var a = cw ? S.arc[1] : S.arc[0], ra = _hqRad(a), sgn = cw ? -1 : 1;
+        var nx = sgn * Math.cos(ra), nz = sgn * Math.sin(ra);
+        var wx = Math.sin(ra) * mid + nx * 0.15, wz = -Math.cos(ra) * mid + nz * 0.15;
+        return { wall: 'cap', wx: wx, wz: wz, nx: nx, nz: nz, yaw: Math.atan2(nx, nz), along: 0 };
+    }
     /* heading (deg cw from north) of a direction vector (metres frame) */
     function _hqHeadingOf(vx, vz) { return _hqNormDeg(Math.atan2(vx, -vz) * 180 / Math.PI); }
     /* torus arc over polar [deg0, deg1] at radius r, height y (metres) */
@@ -30089,8 +30103,9 @@ const ThreeRenderer = (function () {
             var jw = (pw - ow) / 2;
             var a = door.deg;
             var grp = new THREE.Group();
-            /* a box room's door hangs on a flat wall (HQ plan 2.7) */
-            var box = (room.kind === 'box') ? _hqBoxWall(room, door.wall, door) : null;
+            /* a box room's door hangs on a flat wall (HQ plan 2.7); a bay's
+               ring door hangs on its end cap, which is also a flat wall (5.4a) */
+            var box = (room.kind === 'box') ? _hqBoxWall(room, door.wall, door) : ((room.kind === 'bay' && door.cap) ? _hqCapWall(room, door) : null);
             if (box) {
                 grp.position.set((box.wx + box.nx * (pd / 2 - 0.05)) * U, y0 * U, (box.wz + box.nz * (pd / 2 - 0.05)) * U);
                 grp.rotation.y = box.yaw;

@@ -4,7 +4,7 @@
 // builder (three-renderer.js) and the flow layer (map.js) silently rely on:
 // every door leaf / prop key resolves, every catalogue entry names a .glb
 // with exactly one target size, doors don't overlap each other or the stair
-// arcs, the six sector bays partition the launch maps, and the door-state /
+// arcs, the seven sector bays partition the launch maps, and the door-state /
 // mastery helpers behave. Repo-only tooling (CLAUDE.md TOOLING) — not an R2
 // file. Runs under `npm test`.
 
@@ -112,7 +112,7 @@ test('doors on a level are ≥ 25° apart and clear of the stair arcs', () => {
     assert.deepStrictEqual(problems, []);
 });
 
-test('the six sector bays partition the launch maps exactly once', () => {
+test('the seven sector bays partition the launch maps exactly once', () => {
     const launch = D.EW_MAP_META.filter(m => !m.isDelta).map(m => m.id);   // facility boards are Δ-flagged, never sites
     const seen = new Map();
     for (const [k, s] of Object.entries(HQ.sectors)) {
@@ -238,7 +238,7 @@ test('hqSiteId strips the Δ suffix and mastery counts Δ-board wins for the sit
     assert.strictEqual(D.hqMapMastered('prebuilt_mars_delta', { progress: { unlocked } }), true);
 });
 
-test('hqMasteryCount tallies stabilized sites over the six bays', () => {
+test('hqMasteryCount tallies stabilized sites over the seven bays', () => {
     const none = D.hqMasteryCount(null);
     const launch = D.EW_MAP_META.filter(m => !m.isDelta).length;
     assert.deepStrictEqual({ mastered: none.mastered, total: none.total }, { mastered: 0, total: launch });
@@ -304,7 +304,7 @@ test('hqSiteMastery lists the per-condition checklist behind hqMapMastered', () 
 });
 
 
-/* ── Phase 2.6 (2026-09-03): the six bays as curved corridors ── */
+/* ── Phase 2.6 (2026-09-03): the bays as curved corridors (six then; seven since 7.5) ── */
 
 const BAYS = Object.keys(HQ.sectors).map(k => [k, HQ.rooms[D.hqBayId(k)]]);
 
@@ -575,6 +575,116 @@ test("every door's wide flag agrees with its leaf (the renderer lets the leaf de
     /* the static one-mesh doubles / hatches are used sparingly: the revolving door at most once */
     const revolving = ALL_DOORS.filter(d => d.leaf === 'leaf_revolving').length + Object.values(HQ.thresholds).filter(t => t.leaf === 'leaf_revolving').length;
     assert.ok(revolving <= 2, 'the revolving door is the one sparing use (bay + its way out), got ' + revolving);
+});
+
+/* ── Phase 7.5 (2026-09-07, MASTER C-23 DECIDED): Bay 7 · URBAN and the rebalance ── */
+
+test('seven bays: Bay 7 · URBAN hangs on the mezzanine at 180° and the rebalance moved the right sites', () => {
+    assert.strictEqual(Object.keys(HQ.sectors).length, 7, 'seven sectors');
+    const urban = ROOM.doors.find(d => d.action && d.action.sector === 'urban');
+    assert.ok(urban, 'the urban bay door exists');
+    assert.strictEqual(urban.level, 1);
+    assert.strictEqual(urban.deg, 180);
+    assert.match(urban.label, /BAY 7/);
+    assert.deepStrictEqual(Array.from(HQ.sectors.urban.maps).sort(), ['prebuilt_cyberpunk', 'prebuilt_stadium']);
+    assert.strictEqual(D.hqSectorOfMap('prebuilt_vatican'), 'diplomatic', 'Vatican City → Diplomatic');
+    assert.strictEqual(D.hqSectorOfMap('prebuilt_atlantis'), 'hollow', 'Atlantis → Hollow');
+    assert.ok(!HQ.sectors.celestial.maps.includes('prebuilt_cyberpunk') && !HQ.sectors.terrestrial.maps.includes('prebuilt_stadium'));
+    /* the bay numbers on the egress doors are 1–7, each once */
+    const nos = ROOM.doors.filter(d => d.action && d.action.sector).map(d => +(d.label.match(/BAY\s*(\d+)/) || [])[1]).sort((a, b) => a - b);
+    assert.strictEqual(JSON.stringify(nos), JSON.stringify([1, 2, 3, 4, 5, 6, 7]));
+    /* nothing else stands where the door now hangs (the two boxes moved) */
+    const near = ROOM.props.filter(p => (p.level || 0) === 1 && p.r != null && Math.abs(((p.deg - 180 + 540) % 360) - 180) < 8);
+    assert.deepStrictEqual(Array.from(near.map(p => p.key + '@' + p.deg)), [], 'floor props inside Bay 7\'s door panel');
+});
+
+/* ── Phase 5.4a (2026-09-07): THE CONTAINMENT RING — the bays link end to end ── */
+
+test('the ring: every bay on a shared floor wears two cap doors that lead to its neighbours and back', () => {
+    assert.ok(HQ.bayShell.ring, 'the ring is on');
+    assert.strictEqual(typeof D.hqBayRing, 'function');
+    const problems = [];
+    const leafCat = HQ.catalogue[HQ.bayShell.ringLeaf];
+    assert.ok(leafCat && leafCat.leaf && leafCat.wide && !leafCat.rank, 'the ring leaf is a wide, non-rank catalogue leaf');
+    for (const [k, room] of BAYS) {
+        const ring = D.hqBayRing(k);
+        const caps = room.doors.filter(d => d.cap);
+        const bayDoor = ROOM.doors.find(d => d.action && d.action.sector === k);
+        const floorMates = ROOM.doors.filter(d => d.action && d.action.sector && (d.level || 0) === (bayDoor.level || 0));
+        if (floorMates.length < 2) { if (ring || caps.length) problems.push(k + ': a bay alone on its floor has no ring'); continue; }
+        if (!ring || caps.length !== 2) { problems.push(k + ': expected two cap doors, got ' + caps.length); continue; }
+        assert.strictEqual(JSON.stringify(room.ring), JSON.stringify(ring), k + ': the room carries its ring');
+        for (const d of caps) {
+            const nbSector = d.action && d.action.sector;
+            if (!(d.id === 'cap_' + d.cap && ['cw', 'ccw'].includes(d.cap))) problems.push(k + ': cap door id/cap ' + d.id);
+            if (Math.abs(d.deg) !== room.shell.arc[1]) problems.push(k + ': ' + d.id + ' stands at ' + d.deg + ', not on the cap ±' + room.shell.arc[1]);
+            if (d.leaf !== HQ.bayShell.ringLeaf || !d.wide) problems.push(k + ': ' + d.id + ' leaf');
+            if (nbSector !== (d.cap === 'cw' ? ring.cw : ring.ccw)) problems.push(k + ': ' + d.id + ' leads to ' + nbSector);
+            if (d.roomNo != null) problems.push(k + ': ' + d.id + ' carries a room number');
+            const far = HQ.rooms[D.hqBayId(nbSector)];
+            const farCap = far && far.doors.find(x => x.id === d.action.at);
+            if (!farCap || !farCap.cap) { problems.push(k + ': ' + d.id + ' lands at no cap (' + d.action.at + ')'); continue; }
+            if (farCap.cap === d.cap) problems.push(k + ': ' + d.id + ' lands at the same-handed cap');
+            if (farCap.action.sector !== k || farCap.action.at !== d.id) problems.push(k + ': ' + d.id + ' is not reciprocated by ' + nbSector + '/' + farCap.id);
+            /* the neighbour on the far side is on the same floor */
+            const nbDoor = ROOM.doors.find(x => x.action && x.action.sector === nbSector);
+            if ((nbDoor.level || 0) !== (bayDoor.level || 0)) problems.push(k + ': ' + d.id + ' crosses floors');
+            /* the cap door is a bay door in every way the lamp cares about */
+            if (D.doorSiteState(d, null) !== D.doorSiteState(nbDoor, null)) problems.push(k + ': ' + d.id + ' lamp differs from the egress door of ' + nbSector);
+        }
+        /* the cap-side dressing steps back from the door frame (a 3.3 m panel on a 4 m cap protrudes 0.5 m) */
+        for (const p of room.props) {
+            if (p.ceil || typeof p.deg !== 'number') continue;
+            const capDeg = room.shell.arc[1] - Math.abs(p.deg);
+            const r = p.r != null ? p.r : (p.side === 'in' ? room.shell.rIn : room.shell.rOut);
+            if (capDeg * Math.PI / 180 * r < 0.75) problems.push(k + ': ' + p.key + ' @' + p.deg + ' stands in the cap door');
+        }
+    }
+    assert.deepStrictEqual(problems, []);
+    /* walking clockwise from any bay comes home after exactly one lap of its floor */
+    for (const [k] of BAYS) {
+        const ring = D.hqBayRing(k);
+        if (!ring) continue;
+        const seen = [k];
+        let cur = k;
+        for (let i = 0; i < ring.count; i++) { cur = D.hqBayRing(cur).cw; if (i < ring.count - 1) seen.push(cur); }
+        assert.strictEqual(cur, k, k + ': one clockwise lap returns home');
+        assert.strictEqual(new Set(seen).size, ring.count, k + ': the lap visits every bay on the floor once');
+        const lvl = (ROOM.doors.find(d => d.action && d.action.sector === k).level || 0);
+        assert.strictEqual(ring.count, ROOM.doors.filter(d => d.action && d.action.sector && (d.level || 0) === lvl).length);
+    }
+    /* the ground floor is a two-bay loop (1 ⇄ 4); the mezzanine ring is the other five */
+    assert.strictEqual(JSON.stringify(D.hqBayRing('terrestrial')), JSON.stringify({ level: 0, count: 2, cw: 'celestial', ccw: 'celestial' }));
+    assert.strictEqual(D.hqBayRing('ancient').count, 5);
+    assert.strictEqual(D.hqBayRing('urban').cw, 'hollow');
+    assert.strictEqual(D.hqBayRing('urban').ccw, 'diplomatic');
+    /* a locked sector seals the ring doors INTO it (the lamp is the neighbour bay's) */
+    const intoQ = HQ.rooms.bay_hollow.doors.find(d => d.cap && d.action.sector === 'quarantined');
+    assert.ok(intoQ, 'hollow\'s clockwise cap opens on the quarantined bay');
+    assert.strictEqual(D.doorSiteState(intoQ, null), 'sealed');
+});
+
+test('the ring can be switched off: dead-end caps and no cap doors (the pre-5.4a bays)', () => {
+    const was = HQ.bayShell.ring;
+    try {
+        HQ.bayShell.ring = false;
+        assert.strictEqual(D.hqBayRing('ancient'), null);
+        const room = D.hqBayRoom('ancient');
+        assert.strictEqual(room.doors.filter(d => d.cap).length, 0);
+        assert.strictEqual(room.ring, null);
+    } finally { HQ.bayShell.ring = was; }
+    assert.ok(D.hqBayRing('ancient'), 'restored');
+});
+
+/* the renderer hangs a cap door on a flat wall (the _hqCapWall path) and map.js lands ring walks at the far cap */
+test('source scan: the renderer knows cap doors and map.js honours a sector door\'s `at`', () => {
+    const fs = require('fs');
+    const tr = fs.readFileSync(require('path').join(__dirname, 'three-renderer.js'), 'utf8');
+    assert.match(tr, /function _hqCapWall\(room, door\)/);
+    assert.match(tr, /room\.kind === 'bay' && door\.cap\) \? _hqCapWall\(room, door\)/);
+    const mp = fs.readFileSync(require('path').join(__dirname, 'map.js'), 'utf8');
+    assert.match(mp, /return \{ room: bayId, at: act\.at \|\| 'egress' \}/);
+    assert.match(mp, /data-at="\$\{_hqEsc\(act\.at \|\| 'egress'\)\}"/);
 });
 
 /* ── Phase 3.2 / 3.3 / 3.4 (2026-09-04): Keys, Code Red, the promotion moment ── */
@@ -951,7 +1061,7 @@ test('one number, one place: the register is unique, every entry resolves, and i
     const stone = HQ.rooms.bay_ancient.doors.find(d => d.action && d.action.mission === 'prebuilt_stonehenge');
     assert.strictEqual(D.hqDoorNo(stone), '56');
     assert.strictEqual(stone.roomNo, '56');
-    const atl = HQ.rooms.bay_ancient.doors.find(d => d.action && d.action.mission === 'prebuilt_atlantis');
+    const atl = HQ.rooms.bay_hollow.doors.find(d => d.action && d.action.mission === 'prebuilt_atlantis');   // Atlantis → Hollow (plan 7.5)
     assert.strictEqual(atl.sub, 'DEEP OCEAN ORICHALCUM RESEARCH', "a threshold's sub replaces the bay sub-line");
     /* the Canon Office's plate is a joke and a policy */
     assert.ok(/CONTESTED/.test(D.hqRoomNo('continuity')));

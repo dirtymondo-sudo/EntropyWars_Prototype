@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 17 (2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
+### The walkable facility that replaces the Play menu · rev 18 (2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -416,6 +416,42 @@ lamp/frame details → furniture → fixtures → machinery.
 - 5.4 Rings: Support / Operations / Executive as further rotunda instances
   reached by the elevator (a small room with buttons); the office moves up
   at L4.
+- 5.4a **THE CONTAINMENT RING** (added 2026-09-07, the user's ask: "the
+  hallways with the different doors can be made longer and go all the way
+  around, or at least halfway"). Today each bay is an isolated arc that
+  only connects back to the desk; the ring makes the bays one continuous
+  hallway around the rotunda. Two stages:
+  - **Stage 1 ⚙ ✅ (2026-09-07, §9) — the caps link.** Every bay's two end
+    caps wear a fire door (`bayShell.ringLeaf`, the institutional wired
+    double) into the NEXT bay on the same floor of the egress, ordered by
+    the bays' egress-door angles and wrapping: downstairs Bay 1 ⇄ Bay 4 (a
+    two-room loop), upstairs 2 → 5 → 7 → 3 → 6 → 2. `hqBayRing(sector)`
+    (data.js) computes the neighbours; `hqBayRoom` hangs the doors (`cap:
+    'cw' | 'ccw'`, id `cap_cw` / `cap_ccw`); the renderer places a cap door
+    as a FLAT wall (`_hqCapWall`, the same shape as a box-room wall, so
+    targeting / E / the spawn-at-door all work unchanged); the action is
+    the neighbour's SECTOR with `at` = the far side's matching cap, so the
+    door wears the neighbour bay's lamp (sealed into Quarantined until its
+    chapter, strobing on its Code Red), the panel is the neighbour's bay
+    panel, and you arrive on the far side walking the same way round. The
+    transition is the existing door-blink rebuild. Kill-switch:
+    `bayShell.ring: false` restores the dead-end caps. doorhq.test.js walks
+    every ring and checks the reciprocity.
+  - **Stage 2 ⚙ (planned) — one continuous corridor.** Re-frame the bays
+    in the egress's polar frame at a radius just outside the rotunda wall
+    (rIn ≈ 21.5, rOut ≈ 25.5): the bay doors on the egress wall become the
+    ring's inner-wall doors, the thresholds sit on its outer wall, one
+    `kind: 'ring'` room per floor with NO rebuild between bays — the bay
+    stencils, lamps and flavour become segments of one hallway. The arc
+    band builder and `_hqSurface`'s annulus already take any span; the
+    work is the frame change in `hqBayRoom` (a global angle per bay = its
+    egress door's angle; thresholds spread either side of it), the
+    per-segment dressing, and the two floors: downstairs the ground ring
+    passes the training / office / records doors on its inner wall (they
+    stay egress doors — the ring only wraps the bays' arcs, ~90° each side
+    of 1 and 4), upstairs the mezzanine ring is five bays deep and nearly
+    closes. Do this after 7.2 lands (the site rooms hang off the ring's
+    outer wall, so their doors are the same doors).
 - 5.5 H-Wing: a straight corridor kit (drywall, carpet, fluorescent,
   cubicles) — the only place with right angles; the childhood-home door;
   the Backrooms crossing.
@@ -639,7 +675,7 @@ the hero prop named in §5.6.
 | — | Quartermaster, Arcane Engineering, the Bureau of Continuity, the Elevator, H-Wing | — | as A5 | no number; Continuity's plate reads `ROOM № — CONTESTED`; the elevator skips 13; H-Wing is a wing |
 | Bay 1–7 | the containment bays | Operations | as 7.5 | bay numbers, not room numbers |
 
-#### 7.5 REC — seven bays (the sector rebalance; MASTER C-23)
+#### 7.5 ⚙ ✅ (2026-09-07, §9) Seven bays (the sector rebalance; MASTER C-23 DECIDED)
 Terrestrial holds 8 sites and every good new idea is terrestrial; the
 Quarantined bay holds 2. A seventh bay door is a data edit (doorhq.test.js
 wants one bay door per sector; the two curved stairs hug the lower wall
@@ -660,6 +696,13 @@ Resulting bays after wave 1 (36 sites): Terrestrial 8 (1945, 51, 512, 23,
 9600, i, 2012) · Hollow 6 (14179, 180, 88, 90S, 1225, H-20) · Celestial 3
 (4, 1969, 6) · Diplomatic 5 (777, 666, 12, 420, 888) · Quarantined 4 (90,
 2D, 0, E4).
+**Shipped 2026-09-07 (§9):** `sectors.urban` (Cyberpunk City + the
+Stadium today; the wave-1 sites join here), `bay_urban` at 180° on the
+mezzanine wearing `leaf_glass` (the shopfront; the two boxes that stood
+there moved to 133°), Vatican City → Diplomatic, Atlantis → Hollow (sub
+`inner earth · polar · the deep`), the bay guards' lines follow their
+sites. Bays today (29 sites): Terrestrial 6 · Ancient 6 · Hollow 6 ·
+Celestial 2 · Diplomatic 5 · Quarantined 2 · Urban 2.
 
 #### 7.6 New sites — wave 1 (seven, one session each, ⚙ + 🧊 the hero prop)
 Chosen for: a roster gap (races with no home of their own), a silhouette
@@ -2692,3 +2735,63 @@ no art, no engine work (7.2 is untouched).
   (ROOM line over the name), the directory's register, the result stamp.
   Next: 7.5 (Bay 7 · URBAN, a data edit + the mezzanine placement, awaiting
   C-23) or 7.2 (the walkable site, the engine piece — D.U.M.B. first).
+
+### 2026-09-07 (rev 3) — 7.5 SHIPPED + THE CONTAINMENT RING stage 1: seven bays, and the bays join hands
+The user's yes to C-22 and C-23, and the ask that started the session:
+"the hallways with the different doors can be made longer and go all the
+way around, or at least halfway." No new files; one data.js delivery with
+its renderer and map.js companions; docs.
+- **7.5 — Bay 7 · URBAN (data.js).** `DOOR_HQ.sectors.urban` (`cities ·
+  the strip · the night shift`) takes Cyberpunk City from Celestial and the
+  Stadium from Terrestrial; Vatican City → Diplomatic; Atlantis → Hollow
+  (its sub-line gains `the deep`). The seventh egress door hangs on the
+  mezzanine at 180° (`bay_urban`, `leaf_glass` — the shopfront, per 7.5),
+  30° clear of Bays 5 and 3; the two cardboard boxes that stood there moved
+  to 133° / 136°. The bay guard's line and three overheard lines for the
+  urban bay, and the guards whose sites moved say so (Terrestrial no longer
+  lists a stadium, Diplomatic counts five, the Atlantis drip line moved to
+  Hollow, the Cyberpunk complaint line to Urban) — Claude-written bay
+  flavour in the Phase 2.6 register, **the user may rewrite any of it**
+  (A15). No map, threshold, room number or server row changed:
+  `hqSectorOfMap` / `doorSiteState` / the Code Red pool / the register all
+  derive from `sectors`, so the moves are one edit.
+- **5.4a stage 1 — the ring (data.js + three-renderer.js + map.js).**
+  `bayShell.ring: true` + `ringLeaf: 'leaf_wired_double'`. New
+  `hqBayRing(sector)` → `{ level, count, cw, ccw }`: the bays on the same
+  floor of the egress sorted by their door angle, wrapping; null with the
+  ring off or a bay alone on its floor. `hqBayRoom` adds two doors per
+  linked bay — `cap_cw` at +half and `cap_ccw` at −half, `cap: 'cw'|'ccw'`,
+  the wide fire door, `action: { sector: <neighbour>, at: <the far side's
+  opposite cap> }`, `ring: true` — and steps the cap-side dressing back 2°
+  so the frame (a 3.3 m panel on the 4 m cap, protruding 0.5 m) is clear.
+  The room carries `level` and `ring`. Renderer: `_hqCapWall(room, door)`
+  returns the flat-wall shape `_hqBoxWall` returns (`wx, wz, nx, nz, yaw`
+  — the slab's inward face at 0.15 m, the normal = the arc's tangent back
+  into the corridor), and `_hqBuildDoors` uses it for `door.cap` on a bay,
+  so the panel, the plate, `_hqFindTarget`, `_hqTickAutoEnter` and
+  `_hqGoTo` (spawn 1.6 m in front, door at your back) all take the
+  existing box-door path. The leaf is static, so E walks through (as with
+  the vault / portcullis). map.js: a sector door's `at` is honoured in
+  `_hqDoorDirectAction` and the bay panel's button (`THROUGH THE RING ▸
+  <SECTOR>` on a cap door; the panel itself is the neighbour bay's — its
+  sites, checklists and Code Red brief). Rings today: downstairs 1 ⇄ 4;
+  upstairs 2 → 5 → 7 → 3 → 6 → 2 — with Quarantined locked, the doors INTO
+  Bay 6 from 3 and 2 read SEALED (the lamp is the neighbour's), so the
+  mezzanine ring is open from 2 round to 3 until the chapter opens 6.
+- **doorhq.test.js** (four new tests; the Atlantis sub-line test follows
+  it to Hollow): seven sectors, Bay 7 on the mezzanine at 180° with
+  nothing in its panel, the rebalance; every linked bay wears two cap doors
+  on its caps, wide, unnumbered, leading to `hqBayRing`'s neighbours on the
+  same floor, reciprocated exactly by the far cap, wearing the neighbour's
+  lamp, with no dressing inside the frame; one clockwise lap from any bay
+  comes home having visited every bay on its floor once; the ring switches
+  off cleanly; a source scan for `_hqCapWall` and the two map.js `at`
+  sites. `npm test`: 137 tests, all green. index.html → `20260907i-cors`.
+- Not playtested (RULE #1c). What to eyeball first: stand in Bay 2 and
+  walk clockwise to the cap — the fire door, its plate (`BAY 5 ·
+  DIPLOMATIC · CONTAINMENT RING · CLOCKWISE`), E, arrive in Bay 5 at its
+  counter-clockwise cap with the door at your back, keep walking. Then Bay
+  7's glass door on the mezzanine at 180° over the training door.
+- Next: 7.2 (the walkable site — D.U.M.B. first), then 5.4a stage 2 (one
+  continuous ring corridor) once the site rooms hang off it; 7.9 dailies;
+  4.1 the case-file screen.

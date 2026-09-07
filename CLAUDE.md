@@ -142,6 +142,16 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   launch map without one, or a door that duplicates its room's number.
   Adding a site = a `roomNo` + `why` on its threshold (plan 7.3 has the
   number; 7.10 the checklist).
+  **SEVEN BAYS + THE CONTAINMENT RING (plan 7.5 + 5.4a stage 1, shipped
+  2026-09-07)**: `DOOR_HQ.sectors` has seven bays (Bay 7 · URBAN on the
+  mezzanine at 180°); every bay's end caps wear fire doors into the next
+  bay on the same egress floor (`hqBayRing(sector)` → cw/ccw neighbours;
+  `hqBayRoom` hangs `cap_cw` / `cap_ccw` with `cap: 'cw'|'ccw'` and an
+  `action: { sector, at }`; three-renderer.js `_hqCapWall` places a cap
+  door as a flat wall like a box-room door). Moving a map between bays =
+  edit `sectors` only — everything else derives. Kill-switch:
+  `bayShell.ring: false`. Stage 2 (one continuous ring corridor) is
+  planned in the HQ plan 5.4a, after 7.2.
 - **The CAST shipped 2026-09-06**: the story's named characters (the user's
   cast sheet, canon, `DOOR_STORY.md` §2 / DOOR_MASTER A16) stand in the
   building. Models: sprites.js `DOOR_CAST_MODELS` (15 rigged GLBs on R2
