@@ -214,7 +214,7 @@ test('twin nodes: faces, alts, one-alternate rule, repair, random walks, Freelan
     assert.strictEqual(JSON.stringify(D.getRaceTreeSpells('quarterback')),
         JSON.stringify(['raceBulletPass', 'raceBlitz', 'raceAudible', 'raceHailMary']));
     assert.strictEqual(JSON.stringify(D.getRaceTreeAlts('quarterback')),
-        JSON.stringify({ R3: ['raceAudible', 'raceSpikeTheBall'] }));
+        JSON.stringify({ R2: ['raceBlitz', 'raceQBSneak'], R3: ['raceAudible', 'raceSpikeTheBall'] }));   // R2 twin landed with QB Sneak (Phase 5 wave A)
     assert.ok(D.getRaceTreeAllIds('quarterback').includes('raceSpikeTheBall'));
     // a non-twin race exposes no alts
     assert.strictEqual(JSON.stringify(D.getRaceTreeAlts('vampire')), '{}');

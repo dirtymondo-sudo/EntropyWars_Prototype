@@ -1076,6 +1076,8 @@
                     window.CineFX.play('grade', { kind: 'scope', ms: 700 });
                 }
                 const _dsHpB = mark.hp;
+                // Phase 5 wave A: the Sniper's execute (judged on the HP before the shot).
+                const _dsExec = !!ds.executeBelowPct && mark.maxHp > 0 && (mark.hp / mark.maxHp) <= ds.executeBelowPct;
                 applyDamageToUnit(mark, ds.dmg, `${ds.spellName} strikes `, {
                     sourceUnit,
                     damageType: ds.damageType || 'physical',
@@ -1085,6 +1087,10 @@
                     ignoreArmor: !!ds.ignoreArmor,
                     flashColor: 'hit'
                 });
+                if (_dsExec && !mark.dead && typeof window !== 'undefined' && typeof window._applyExecuteRider === 'function') {
+                    window._applyExecuteRider(sourceUnit || null, mark,
+                        { name: ds.spellName, damageType: ds.damageType || 'physical', spellType: ds.spellType || null, spellElement: ds.spellElement || null });
+                }
                 // Balance telemetry: the landed shot belongs to the spell that
                 // painted the mark (its cast resolved damage-less by design).
                 if (typeof _balAddSpellEffect === 'function' && ds.spellId) {

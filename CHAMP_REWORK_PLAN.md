@@ -572,6 +572,99 @@ them yet (that is Phase 5) — but the engine already honours each one:
 - **§5.6 retune:** 34 spells went ±2 → ±1 (Howl, Siege Mode, Overcalculate, Underdog Spirit, Sad Backstory, Plot Armor, Oath of Valor, Ayahuasca Retreat, Telepathic Link, Polymorph, Pleiadian Shield, Chitin Armor, Wish Granted, Blood Ritual, Inner Demon, Rally Command, Iron Bulwark, Grim Resolve, Tin Foil Hat, Hellfire Crown, Stone Skin, Nitro Boost, Thick Hide, Ki Charge, Royal Decree, Monkey Business, Death Pact, Audible, End Zone Dance, Steal from the Rich, Forest Ambush, Naughty List, and the Psychic job spell Psychosis); Calcify −3 → −2; Mimicry, Swarm Signal and Awakening (ring-3 capstones) keep ±2. Descriptions changed with the numbers. NOT touched: the Discord STATUS carrier (−2 ATK / −1 DEF, six spells) — it is a status, not a `statStageBoost`; §10 #22 asks.
 - **Tests:** champ-rework.test.js Phase 4 block — the §5.1 table (kind + hook fields + the four registries), the promised numbers (incl. Monstrous apply/remove on a stub), the AI / mana / spell-card registries, source-text guards for every consumer (incl. "no site still reads silence alone"), and the §5.6 rule (any ±2 `statStageBoost` must be a ring-3 capstone or Calcify; descs agree).
 
+### 5.9 SHIPPED 2026-09-08 — Phase 5 wave A, the reuse-heavy spell wave (what landed, and where it differs from §6)
+
+Sixteen new spell rows, six renames / retunes, two new kinds, five new
+flags, one new status field and one new zone field. Every new spell is a
+`RACE_ABILITIES` row on its §6 node (twin arrays in `RACE_TREE`), rides an
+existing VFX recipe by family (three-vfx-effects.js `SPELL_MAP['<id>'] =
+Object.assign({}, SPELL_MAP['<sibling>'])` block at the end of the pass-3
+section; Ice Shard / Grave Chill also sit in the bolt-preset table), and is
+guarded by champ-rework.test.js (the `WAVE_A` table).
+
+| Race | Landed | Node |
+|---|---|---|
+| quarterback | **QB Sneak** `raceQBSneak` (escape 3 + Invisible 1) | r2 Blitz ⇄ QB Sneak |
+| honda civic | **Transform** `raceTransform` (`transform`, formA carForm / formB mechaForm) | r2 Transform ⇄ Exhaust Cloud |
+| santa clause | **Snowball Volley** `raceSnowballVolley` (aoe 3×3, r4, 80 ice, Slow 1) · **White Christmas** `raceWhiteChristmas` (zoneDebuff 3×3, 2 rounds, Slow 1 each tick, `expireTerrain: 'ice'`) | r1 Coal ⇄ Volley · r3 Naughty List ⇄ White Christmas |
+| yeti | **Ice Shard** `raceIceShard` (100 magic, r3, Slow 1) | r1 Frozen Punch ⇄ Ice Shard |
+| ki fighter | Ki Volley range 3 → **4** | — |
+| marksman | **Incendiary Rounds** `raceIncendiaryRounds` (self buff, `incendiary` 2) · Fire for Effect payoff → ×1.5 vs **Burn** · Take Aim (`headshot`, job-wide) `executeBelowPct: 0.15` | r2 Smoke Screen ⇄ Incendiary Rounds |
+| skeleton | **Grave Chill** `raceGraveChill` (100 magic, r3, Slow 1) | r1 Bone Toss ⇄ Grave Chill |
+| dinosaur | Apex Charge → **Stampede** (id kept) · **Tail Whip** `raceDinoTailWhip` (100 phys, r1, push 2) · **Apex Roar** `raceApexRoar` (warCry radius 2, +1 ATK) · Jurassic Jaw `onKillHealPct 0.25` + `onKillRefundAp 1` | r1 Primal Roar ⇄ Tail Whip · r3 Fissure ⇄ Apex Roar |
+| bigfoot | **Treeline Retreat** `raceTreelineRetreat` (escape 3 + Regen 2) | r2 Blurry Photo ⇄ Treeline Retreat |
+| gargoyle | **Stoneform** `raceStoneform` (self buff, `stoneform` 2) · **Perch Form deleted** | r2 Stoneform ⇄ Gothic Rampart |
+| robinhood | **Piercing Arrow** `racePiercingArrow` (linePush r5, 120, push 2, `collisionBonus 60`, `collisionStatus root 1`, `collisionStatusBoth`) · Arrow Rain → **Arrow Volley** (id kept), range 4 → 6 | r3 Splitting ⇄ Piercing |
+| superhero | **Freeze Breath** `raceFreezeBreath` (line r2, 40 ice, Frozen 1) · **Sky Tackle** `raceSkyTackle` (`tackle`: charge, push 4, `collisionBonus 50`, `collisionStatus stagger`) · Laser Beam → **Heat Vision** (id kept), range 5 → 3 | r2 Invulnerable ⇄ Freeze Breath · r3 Clap ⇄ Sky Tackle |
+| cyborg | **Cluster Rockets** `raceClusterRockets` (aoe 3×3, r4, 110, Stagger 1) · **Plasma Cannon** `racePlasmaCannon` (line r4, **lineWidth 2**, 130, Burn 1) | r2 EMP ⇄ Rockets · r3 overclock ⇄ Plasma Cannon |
+| conspiracy theorist | Truth Bomb → **Flat Earth** (id kept) + `terrainDeform: { flatten: true, radius: 1 }` | — |
+
+**Engine (battle.js unless noted):**
+- `SPELL_KIND_META.transform` / `.tackle`. **transform** branch in `doSpell`:
+  clears the worn carrier, applies the other at 99 rounds ("permanent until
+  re-cast"), sets `_spriteOverride` from the new `UNIT_ANIM_OVERRIDES[race]
+  .formSprites[form]` table (`unitStanceForm` / `_formSpriteFor`; the
+  `_applySpriteOverride` / `_revertSpriteOverride` beats now keep a worn
+  form's sprite, so the mecha drives, casts and punches as the robot). The
+  car wears NO badge at spawn; `carForm` only appears after a transform
+  back. New STATUS field **`spellRangeDelta`** (`getEffectiveSpellRange`,
+  ranged spells only) — mechaForm wears 2 so Robo Punch reaches 3.
+  **tackle** = the damage branch (`spell.kind === 'damage' || 'tackle'`) +
+  `_runPostEffects`: after the strike the victim slides `pushDistance`
+  down the charge line, the caster lands one tile behind it, a wall or a
+  bystander = `collisionBonus` (armour-proof) + `collisionStatus`.
+- `_runPostEffects` also applies a **`damage`-kind `pushDistance`** now —
+  Synthetic Punch, Rocket Fist and the reptilian's Tail Whip promised a
+  knockback their engine never did (only the approach hologram believed
+  it). Deliberate fix, veto in §10.
+- **Escape-kind `statusEffects` land on the caster** (`escape` branch) —
+  Mist Form's Invisible had never applied either; QB Sneak / Treeline
+  Retreat / (wave B) Skulk depend on it.
+- `_applyLineDamage`: **`getLineSpellLaneOffsets(spell, dx, dy)`** — width 2
+  = one lane on the right hand of the firing direction, width 3 = both
+  sides; lane cells inside + passable are swept (units, turrets,
+  leaveTerrain), the spine keeps the LOS / bore / building logic. Same
+  lanes in `getLineSpellRayTiles` (targets + click gate) and the direction
+  preview. The AI's line scorer still values the spine only.
+  **linePush pin riders** `collisionBonus` / `collisionStatus` /
+  `collisionStatusBoth` after `resolveForcedSlide` reports a wall/unit.
+- `applyTerrainDeform` **`flatten`** mode: `deform.radius` overrides the
+  caller's radius; every footprint tile drops to the footprint's LOWEST
+  base height (never raises; walls / mountains / objectives / solid props
+  untouched, water settles, architecture re-settles as before).
+- **`executeBelowPct`**: `_applyDamageSpellHit` arms it on the HP BEFORE the
+  hit and, if the target still stands, `_applyExecuteRider` finishes it
+  with a mitigation-proof follow-up (armour ignored, ×4 of what's left).
+  Protected / invulnerable / realm-shielded units survive (the damage gate
+  no-ops). The delayed Take Aim shot carries it on the `_delayedSpells`
+  record; state.js `_detonateDelayedSpell` calls `window._applyExecuteRider`.
+- **`onKillHealPct` / `onKillRefundAp`** (`_applyOnKillRiders`, AP capped at
+  `UNIT_MAX_AP + _xpBonusAP`).
+- zoneDebuff **`expireTerrain`**: stored on the zone, painted on the fade
+  tick (walls / mountains / impassable skipped).
+- ai.js: `tackle` in `DMG_KINDS` / `PRESS_KINDS`, scored as a hit + 16 per
+  carried tile, targeted like damage; `transform` scorer (mecha when an
+  enemy is within 4 or HP < 50 %, car otherwise, 0 when already in the
+  wanted stance). hud.js spell-card parts, ui.js library filter.
+- Online: nothing new to relay — transform is a `doSpell` game-action,
+  the carriers + `_spriteOverride` + `_activeZones` ride state-sync, the
+  morph aura goes through the relayed `VFX3D.fire`.
+
+**Deviations from §6 (deliberate):**
+- The dinosaur's Tail Whip id is **`raceDinoTailWhip`** (the reptilian's
+  capstone owns `raceTailWhip`).
+- Snowball Volley has no `proj-snowball` class yet (asset wishlist) — it
+  rides Blizzard Present's aoe recipe.
+- Apex Roar declares BOTH `aoeRadius: 2` and `auraRadius: 2` because the
+  warCry branch reads `auraRadius || 3` — Audible's `aoeRadius: 2` has
+  always resolved to 3 there (§10 #28).
+- Stoneform's "HUD shows the lost activations" is the generic skip log.
+- No cooldowns: the engine has no cooldown field; "Cooldown: N" in legacy
+  descs is prose only.
+- Tests: champ-rework.test.js "Phase 5 wave A" ×3 (the spell table, the
+  renames / retunes / retirements, source-text guards for every engine
+  site above); content-schema's twin test learned the QB's R2 pair.
+
 ### 5.6 Stage-buff retune that this pass makes necessary
 
 STAT_REWORK §7 warned that +2-stage buffs doubled in strength when a stage
@@ -1019,10 +1112,12 @@ state.js (`_STATUS_EFFECT_IDS`, generic `getNextBlitzUnit` skip), hud.js
 index.html token. Details and deviations: §5.8.
 
 ### 9.5 Phase 5 — spells, in three waves
-- **Wave A (reuse-heavy, no new kinds):** QB, sedan (needs `transform`),
-  santa, yeti, ki fighter, marksman (+ headshot execute), skeleton, dinosaur,
-  bigfoot, gargoyle, robin hood, superhero (needs `tackle`), cyborg,
-  conspiracy theorist (needs flatten).
+- **Wave A (reuse-heavy) — SHIPPED 2026-09-08 (§5.9):** QB, sedan
+  (`transform`), santa, yeti, ki fighter, marksman (+ headshot execute),
+  skeleton, dinosaur, bigfoot, gargoyle, robin hood, superhero (`tackle`),
+  cyborg (lineWidth 2), conspiracy theorist (flatten). data.js, battle.js,
+  state.js, ai.js, hud.js, ui.js, three-vfx-effects.js,
+  champ-rework.test.js, content-schema.test.js, index.html token.
 - **Wave B (control + links):** ghost, zombie, demon, shaman, succubus,
   vampire — `possess`, `link`, `shadowRealm`, `transfer`.
 - **Wave C (summons, tethers, terrain):** cowboy, mad scientist, black goo,
@@ -1107,3 +1202,21 @@ crumble (gargoyle), arm-cannon morph (cyborg).
     every tile displaced. Fine, or must the victim trace the path?
 24. **Jack of All's RNG +1 is live** now that `rangeDelta` is generic (the
     desc always claimed it). Keep, or drop the field from the def?
+25. **The execute rider respects Protected / invulnerable** (wave A): a
+    Protected unit at 10 % shrugs off Take Aim. Keep, or should the execute
+    pierce shields too?
+26. **Mecha's +2 RNG reaches spells** through a new `spellRangeDelta` field
+    (Robo Punch at 3); Extended Clips' and Invisible's `rangeDelta` stay
+    basic-attack-only. Keep the split, or make `rangeDelta` count for spells
+    roster-wide?
+27. **Three legacy `damage` spells now really knock back** (Synthetic Punch,
+    Rocket Fist, reptilian Tail Whip — their descs always said so) and
+    **Mist Form's Invisible now lands** (the escape branch never applied
+    it). Both are bug fixes that came with wave A; veto either.
+28. **Audible declares `aoeRadius: 2` but the warCry branch reads
+    `auraRadius || 3`** — it has always been radius 3 in play. Apex Roar
+    wears both fields at 2. Should Audible be 2 (one field edit)?
+29. **Wide beams:** a width-2 lane sits on the RIGHT hand of the firing
+    direction (Plasma Cannon). Fine, or prefer the left / a UI choice?
+30. **Sky Tackle's carry lands the hero one tile behind the body** (never on
+    an occupied tile; a blocked landing leaves him where he struck). Fine?

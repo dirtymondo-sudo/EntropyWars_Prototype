@@ -4601,6 +4601,8 @@ function spellTagline(sp) {
   else if (k === 'raiseDead') parts.push('Raise zombie');
   else if (k === 'rallyPull') parts.push('Rally allies');
   else if (k === 'cleanse') parts.push('Cleanse');
+  else if (k === 'tackle') parts.push('Charge · carries ' + (sp.pushDistance || 1) + ' tiles');
+  else if (k === 'transform') parts.push('Self · transform');
   else parts.push('Single target');
 
   if (sp.damageType === 'physical') parts.push('physical');

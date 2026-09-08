@@ -4928,7 +4928,11 @@ const SPELL_LIBRARY = [
         classRestriction: 'Sniper',
         jobPreference: ['Sniper'],
         bonusVsStatus: { status: 'stun', mult: 1.5 },
-        desc: 'Deals HEAVY physical damage to a Single Enemy. Ignores DEF. Deals bonus damage to targets with Stun. Marks the target: the hit lands at the end of the round, but only while your team can still see them.'
+        /* CHAMP_REWORK_PLAN §5.3 / §6.11 (Phase 5 wave A): a Sniper's shot
+           EXECUTES a target at or below 15% HP (battle.js _applyDamageSpellHit
+           + state.js _detonateDelayedSpell honour executeBelowPct). */
+        executeBelowPct: 0.15,
+        desc: 'Deals HEAVY physical damage to a Single Enemy. Ignores DEF. Deals bonus damage to targets with Stun. Marks the target: the hit lands at the end of the round, but only while your team can still see them. A target at 15% HP or less is killed outright.'
     },
     {
         id: 'camouflage',
@@ -5832,10 +5836,14 @@ const RACE_ABILITIES = {
         SHARED_WING_ATTACK,
     ],
     'gargoyle': [
-        { id: 'racePerchForm', spellType: 'unholy', name: 'Perch Form',
-          type: 'buff', cost: 20, apCost: 1, range: 0,
-          kind: 'buff', statusEffects: [{ id: 'protect', duration: 1 }],
-          desc: 'Empowers the caster. Applies Protect. Cooldown: 2 rounds.' },
+        /* §6.17 Stoneform (Phase 5 wave A, 2026-09-08) — Perch Form's grown-up
+           version; Perch Form is retired (the Phase 4 `stoneform` carrier:
+           blockMove + blockAction + invulnerable + 15% regen, dispelProof). */
+        { id: 'raceStoneform', spellType: 'unholy', element: 'earth', name: 'Stoneform',
+          type: 'buff', cost: 25, apCost: 1, range: 0,
+          kind: 'buff',
+          statusEffects: [{ id: 'stoneform', duration: 2 }],
+          desc: 'The gargoyle turns to stone for 2 rounds: it cannot move or act, takes no damage at all, and regenerates 15% of its max HP every round.' },
         { id: 'raceStonefall', element: 'earth', spellType: 'unholy', name: 'Stonefall',
           type: 'damage', cost: 30, dmg: 100, range: 4,
           kind: 'damage', damageType: 'physical', ignoresLineOfSight: true,
@@ -5948,6 +5956,13 @@ const RACE_ABILITIES = {
           type: 'damage', cost: 15, dmg: 80, range: 3,
           kind: 'damage', damageType: 'physical', ignoreArmor: true,
           desc: 'Deals WEAK physical damage to a Single Enemy. Ignores DEF.' },
+        /* §6.13 Grave Chill (Phase 5 wave A, 2026-09-08): the spell half of
+           the sword-and-sorcery read. Twins Bone Toss at r1. */
+        { id: 'raceGraveChill', spellType: 'unholy', element: 'ice', name: 'Grave Chill',
+          type: 'damage', cost: 20, dmg: 100, range: 3, apCost: 1,
+          kind: 'damage', damageType: 'magic',
+          statusEffects: [{ id: 'slow', duration: 1 }],
+          desc: 'A skull-shaped bolt of grave cold. Deals MEDIUM magic damage to a Single Enemy. Applies Slow.' },
         { id: 'raceReassemble', spellType: 'unholy', name: 'Reassemble',
           type: 'heal', cost: 25, range: 0, apCost: 1,
           kind: 'selfHeal', selfHealPct: 0.30,
@@ -6127,6 +6142,13 @@ const RACE_ABILITIES = {
           kind: 'buff', cleanse: 99,
           statusEffects: [{ id: 'invisible', duration: 2 }],
           desc: 'Empowers the caster. Applies Invisible. Cooldown: 2 rounds.' },
+        /* §6.16 Treeline Retreat (Phase 5 wave A, 2026-09-08): disengage +
+           heal in one spell so Cryptid can re-engage. Twins Blurry Photo. */
+        { id: 'raceTreelineRetreat', spellType: 'anomaly', element: 'nature', name: 'Treeline Retreat',
+          type: 'utility', cost: 25, range: 0, apCost: 1,
+          kind: 'escape', teleportDistance: 3,
+          statusEffects: [{ id: 'regen', duration: 2 }],
+          desc: 'Lopes backwards into the treeline to eat berries. Teleport 3 tiles away and gain Regen for 2 rounds.' },
         { id: 'raceBigKick', spellType: 'anomaly', element: 'earth', name: 'Big Kick',
           type: 'damage', cost: 20, dmg: 120, range: 1,
           kind: 'damage', damageType: 'physical',
@@ -6544,6 +6566,13 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'slow', duration: 2 }],
           desc: 'Deals WEAK physical damage to All Enemies in a line. Applies Slow.' },
         SHARED_SMOKE_SCREEN,
+        /* §6.11 Incendiary Rounds (Phase 5 wave A, 2026-09-08): the Phase 4
+           `incendiary` carrier (basicAttackStatus burn 2). Twins Smoke Screen. */
+        { id: 'raceIncendiaryRounds', spellType: 'human', element: 'fire', name: 'Incendiary Rounds',
+          type: 'buff', cost: 20, apCost: 1, range: 0,
+          kind: 'buff',
+          statusEffects: [{ id: 'incendiary', duration: 2 }],
+          desc: 'Loads a magazine of incendiary rounds: for 2 rounds every landed basic attack sets the target on fire (Burn, 2 rounds).' },
         { id: 'raceRangefinder', spellType: 'human', element: 'metal', name: 'Rangefinder',
           type: 'utility', cost: 20, range: 8, apCost: 1,
           kind: 'remoteView',
@@ -6553,8 +6582,8 @@ const RACE_ABILITIES = {
           kind: 'delayed', damageType: 'physical', aoeRadius: 2, delayTurns: 1,
           leaveTerrain: 'scorched',
           terrainDeform: { centerDelta: -2, edgeDelta: -1 },
-          bonusVsStatus: { status: 'slow', mult: 1.5 },
-          desc: 'Calls in the whole battery on a marked grid. After 1 turn, deals HEAVY physical damage to All Enemies inside (AOE). Leaves scorched tiles behind. Reshapes the ground on impact. Deals bonus damage to Slowed targets.' }
+          bonusVsStatus: { status: 'burn', mult: 1.5 },   // §6.11: the payoff flips to Burn (Incendiary Rounds)
+          desc: 'Calls in the whole battery on a marked grid. After 1 turn, deals HEAVY physical damage to All Enemies inside (AOE). Leaves scorched tiles behind. Reshapes the ground on impact. Deals bonus damage to Burning targets.' }
     ],
     'priest': [
         { id: 'raceDivineLight', spellType: 'divine', name: 'Divine Light',
@@ -6846,6 +6875,19 @@ const RACE_ABILITIES = {
           pushDistance: 2,
           bonusVsStatus: { status: 'jammed', mult: 1.5 },
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Deals bonus damage to targets with Jammed. Knocks the target back 2 tiles.' },
+        /* §6.27 (Phase 5 wave A, 2026-09-08): Cluster Rockets twins EMP
+           Grenade; Plasma Cannon twins overclock and is the first beam with
+           lineWidth 2 (battle.js _applyLineDamage honours widths > 1). */
+        { id: 'raceClusterRockets', element: 'fire', spellType: 'tech', name: 'Cluster Rockets',
+          type: 'damage', cost: 35, dmg: 110, range: 4,
+          kind: 'aoe', damageType: 'magic', aoeRadius: 1,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'A shoulder rack of rockets rains on a 3×3. Deals MEDIUM magic damage to All Enemies in an AOE. Applies Stagger.' },
+        { id: 'racePlasmaCannon', element: 'fire', spellType: 'tech', name: 'Plasma Cannon',
+          type: 'damage', cost: 45, dmg: 130, range: 4, apCost: 1,
+          kind: 'line', damageType: 'magic', lineWidth: 2,
+          statusEffects: [{ id: 'burn', duration: 1 }],
+          desc: 'The arm morphs into a cannon and fires a beam two tiles wide. Deals MEDIUM magic damage to All Enemies in the line. Applies Burn.' },
         /* Cyborg capstone since the 2026-08-12 capstone pass (was overclock). */
         { id: 'raceRocketToss', spellType: 'tech', name: 'Rocket Toss',
           type: 'damage', tier: 'III', cost: 55, dmg: 150, range: 1, apCost: 1,
@@ -7078,8 +7120,11 @@ const RACE_ABILITIES = {
     ],
     'superhero': [
         _mkCharge({ id: 'raceHeroicLeap', spellType: 'human', name: 'Heroic Leap', dmg: 100, desc: 'Deals MEDIUM physical damage to a Single Enemy. The caster charges into melee first.' }),
-        { id: 'raceLaserBeam', spellType: 'alien', name: 'Laser Beam',
-          type: 'damage', tier: 'III', cost: 60, dmg: 160, range: 5,
+        /* §6.25 (Phase 5 wave A, 2026-09-08): Laser Beam → Heat Vision (id
+           kept), range 5 → 3; Freeze Breath + Sky Tackle (the `tackle` kind)
+           are new. */
+        { id: 'raceLaserBeam', spellType: 'alien', name: 'Heat Vision',
+          type: 'damage', tier: 'III', cost: 60, dmg: 160, range: 3,
           kind: 'line', damageType: 'magic', lineWidth: 1,
           statusEffects: [{ id: 'burn', duration: 1 }],
           bonusVsStatus: { status: 'burn', mult: 1.5 },
@@ -7093,6 +7138,16 @@ const RACE_ABILITIES = {
           kind: 'buff',
           statusEffects: [{ id: 'protect', duration: 2 }],
           desc: 'Empowers the caster. Applies Protect. Cooldown: 2 rounds.' },
+        { id: 'raceFreezeBreath', spellType: 'alien', element: 'ice', name: 'Freeze Breath',
+          type: 'damage', cost: 25, dmg: 40, range: 2,
+          kind: 'line', damageType: 'magic', lineWidth: 1,
+          statusEffects: [{ id: 'frozen', duration: 1 }],
+          desc: 'A short blast of arctic breath. Deals WEAK magic damage to All Enemies in a 2-tile line. Applies Frozen.' },
+        { id: 'raceSkyTackle', spellType: 'human', element: 'wind', name: 'Sky Tackle',
+          type: 'damage', cost: 35, dmg: 110, range: 3, apCost: 1,
+          kind: 'tackle', damageType: 'physical', chargeToTarget: true, pushDistance: 4,
+          collisionBonus: 50, collisionStatus: { id: 'stagger', duration: 1 },
+          desc: 'Charges a Single Enemy and carries it up to 4 tiles along the line. Deals MEDIUM physical damage; crashing into a wall or another unit deals 50 more and Staggers the target.' },
         SHARED_NEBULA,
     ],
     'general': [
@@ -7174,11 +7229,15 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'silence', duration: 2 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Silence.' },
         /* Conspiracy theorist capstone since the 2026-08-12 kit rework. */
-        { id: 'raceTruthBomb', spellType: 'human', name: 'Truth Bomb',
+        /* §6.28 (Phase 5 wave A, 2026-09-08): Truth Bomb → Flat Earth (id
+           kept) + the `flatten` deform mode (battle.js applyTerrainDeform):
+           the 3×3 round the victim collapses to its LOWEST height. */
+        { id: 'raceTruthBomb', spellType: 'human', name: 'Flat Earth',
           type: 'damage', tier: 'III', cost: 55, dmg: 180, range: 4,
           kind: 'damage', damageType: 'magic',
           bonusVsStatus: { status: ['silence', 'poison'], mult: 1.5 },
-          desc: 'Deals HEAVY magic damage to a Single Enemy. Deals bonus damage to Silenced or Poisoned targets. The truth hurts.' },
+          terrainDeform: { flatten: true, radius: 1 },
+          desc: 'Deals HEAVY magic damage to a Single Enemy. Deals bonus damage to Silenced or Poisoned targets. The ground around them is flattened to its lowest point — it was never round.' },
     ],
     'overlord': [
         { id: 'raceInfernalDecree', spellType: 'unholy', name: 'Infernal Decree',
@@ -7271,9 +7330,21 @@ const RACE_ABILITIES = {
         SHARED_TIDAL_SURGE,
     ],
     'dinosaur': [
-        _mkCharge({ id: 'raceApexCharge', spellType: 'anomaly', name: 'Apex Charge',
+        /* §6.14 (Phase 5 wave A, 2026-09-08): Apex Charge → Stampede (id kept
+           for VFX/saves); Tail Whip + Apex Roar are new; Jurassic Jaw gains
+           the on-kill riders (battle.js _applyDamageSpellHit). */
+        _mkCharge({ id: 'raceApexCharge', spellType: 'anomaly', name: 'Stampede',
           kind: 'dash', cost: 30, apCost: 2, statusEffects: _STAGGER_1,
-          desc: 'Dashes through the battlefield. Applies Stagger. The caster charges into melee first.', dmg: 130 }),
+          desc: 'Stampedes through the battlefield and ends up behind them. Applies Stagger. The caster charges into melee first.', dmg: 130 }),
+        { id: 'raceDinoTailWhip', spellType: 'anomaly', name: 'Tail Whip',   // (raceTailWhip is the reptilian's capstone)
+          type: 'damage', cost: 20, dmg: 100, range: 1, apCost: 1,
+          kind: 'damage', damageType: 'physical', pushDistance: 2,
+          desc: 'A spinning tail strike. Deals MEDIUM physical damage to a Single Enemy. Knocks the target back 2 tiles.' },
+        { id: 'raceApexRoar', spellType: 'anomaly', element: 'sonic', name: 'Apex Roar',
+          type: 'buff', cost: 30, apCost: 1, range: 0,
+          kind: 'warCry', aoeRadius: 2, auraRadius: 2,
+          statStageBoost: { atk: 1 },
+          desc: 'Empowers All Allies nearby. Raises ATK by 1 stage.' },
         { id: 'racePrimalRoar', spellType: 'anomaly', name: 'Primal Roar',
           type: 'debuff', cost: 20, range: 0, apCost: 1,
           kind: 'aoe', aoeRadius: 1, aoeOriginSelf: true,
@@ -7285,7 +7356,8 @@ const RACE_ABILITIES = {
           type: 'damage', tier: 'III', cost: 55, dmg: 180, range: 1,
           kind: 'damage', damageType: 'physical', ignoreArmor: true,
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
-          desc: 'Deals HEAVY physical damage to a Single Enemy. Ignores DEF. Deals bonus damage to Staggered targets.' },
+          onKillHealPct: 0.25, onKillRefundAp: 1,
+          desc: 'Deals HEAVY physical damage to a Single Enemy. Ignores DEF. Deals bonus damage to Staggered targets. A kill heals 25% max HP and refunds 1 AP.' },
         SHARED_FISSURE,
     ],
     'dragon': [
@@ -7455,6 +7527,13 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           bonusVsStatus: { status: 'frozen', mult: 1.5 },
           desc: 'A frostbitten haymaker on a Single Enemy — MEDIUM physical damage. Deals bonus damage to Frozen targets.' },
+        /* §6.5 Ice Shard (Phase 5 wave A, 2026-09-08): the single-target spell
+           his new M.ATK exists for. Twins Frozen Punch at r1. */
+        { id: 'raceIceShard', spellType: 'anomaly', element: 'ice', name: 'Ice Shard',
+          type: 'damage', cost: 20, dmg: 100, range: 3, apCost: 1,
+          kind: 'damage', damageType: 'magic',
+          statusEffects: [{ id: 'slow', duration: 1 }],
+          desc: 'Hurls a jagged shard of ice at a Single Enemy — MEDIUM magic damage. Applies Slow.' },
         SHARED_SUMMON_BLIZZARD
     ],
 
@@ -7542,6 +7621,14 @@ const RACE_ABILITIES = {
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'discord', duration: 1 }],
           desc: 'Pump toxic exhaust in a 3x3 cloud for 2 turns. Enemies inside are confused.' },
+        /* §6.2 Transform (Phase 5 wave A, 2026-09-08): the `transform` kind
+           toggles the two stance carriers (STATUS_DEFS carForm / mechaForm);
+           the model swap rides _spriteOverride → overrideForms (sprites.js).
+           Permanent until re-cast (battle.js re-applies the carrier at 99). */
+        { id: 'raceTransform', spellType: 'tech', name: 'Transform',
+          type: 'utility', cost: 20, range: 0, apCost: 1,
+          kind: 'transform', formA: 'carForm', formB: 'mechaForm',
+          desc: 'Car ⇄ Mecha. Stands up into the combat platform (−3 SPD, +1 DEF and +2 M DEF stages, +2 RNG) or folds back down into the car. Lasts until you transform again.' },
         { id: 'raceRoboPunch', spellType: 'tech', name: 'Robo Punch',
           type: 'damage', cost: 25, dmg: 135, range: 1,
           kind: 'damage', damageType: 'physical',
@@ -7608,7 +7695,7 @@ const RACE_ABILITIES = {
 
     'ki fighter': [
         { id: 'raceKiBlast', spellType: 'human', element: 'light', name: 'Ki Volley',
-          type: 'damage', cost: 20, range: 3,
+          type: 'damage', cost: 20, range: 4,   // §6.10: 3 → 4 (Phase 5 wave A)
           kind: 'multiHit', damageType: 'magic',
           hitDamages: [45, 45, 45],
           desc: 'Deals MEDIUM magic damage to a Single Enemy across 3 hits.' },
@@ -7770,6 +7857,13 @@ const RACE_ABILITIES = {
         _mkCharge({ id: 'raceBlitz', spellType: 'human', element: 'earth', name: 'Blitz',
           kind: 'dash', dmg: 100, statusEffects: _STAGGER_1,
           desc: 'Dashes through the battlefield. Applies Stagger. The caster charges into melee first.' }),
+        /* §6.1 QB Sneak (Phase 5 wave A, 2026-09-08): the Mist Form archetype —
+           teleport 3 + Invisible 1. Twins Blitz at r2. */
+        { id: 'raceQBSneak', spellType: 'human', element: 'earth', name: 'QB Sneak',
+          type: 'utility', cost: 20, range: 0, apCost: 1,
+          kind: 'escape', teleportDistance: 3,
+          statusEffects: [{ id: 'invisible', duration: 1 }],
+          desc: 'Drops into a three-point stance and jukes clean out of the pile. Teleport 3 tiles and become Invisible for 1 turn.' },
         { id: 'raceAudible', spellType: 'human', element: 'sonic', name: 'Audible',
           type: 'buff', cost: 20, apCost: 1, range: 0,
           kind: 'warCry', aoeRadius: 2,
@@ -7804,10 +7898,19 @@ const RACE_ABILITIES = {
           kind: 'damage', damageType: 'physical',
           statusEffects: [{ id: 'poison', duration: 3 }],
           desc: 'Deals WEAK physical damage to a Single Enemy. Applies Poison.' },
-        { id: 'raceArrowRain', spellType: 'human', name: 'Arrow Rain',
-          type: 'damage', tier: 'III', cost: 50, dmg: 160, range: 4, apCost: 1,
+        /* §6.24 (Phase 5 wave A, 2026-09-08): Arrow Rain → Arrow Volley (id
+           kept), range 4 → 6; Piercing Arrow twins Splitting Arrow at r3 —
+           the first linePush with collision riders (battle.js _applyLineDamage
+           `collisionBonus` / `collisionStatus` / `collisionStatusBoth`). */
+        { id: 'raceArrowRain', spellType: 'human', name: 'Arrow Volley',
+          type: 'damage', tier: 'III', cost: 50, dmg: 160, range: 6, apCost: 1,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           desc: 'Deals HEAVY physical damage to All Enemies in an AOE.' },
+        { id: 'racePiercingArrow', spellType: 'human', element: 'metal', name: 'Piercing Arrow',
+          type: 'damage', cost: 35, dmg: 120, range: 5, apCost: 1,
+          kind: 'linePush', damageType: 'physical', lineWidth: 1, pushDistance: 2,
+          collisionBonus: 60, collisionStatus: { id: 'root', duration: 1 }, collisionStatusBoth: true,
+          desc: 'A bodkin that carries its victim with it. Deals MEDIUM physical damage to All Enemies in a line and knocks them back 2 tiles; anyone pinned against a wall or another unit takes 60 more and both are Rooted for 1 turn.' },
         { id: 'raceStealFromRich', spellType: 'human', name: 'Steal from the Rich',
           type: 'utility', cost: 20, range: 3, apCost: 1,
           kind: 'debuff',
@@ -7845,6 +7948,20 @@ const RACE_ABILITIES = {
           kind: 'debuff',
           statStageBoost: { atk: -1 },
           desc: 'Weakens a Single Enemy. Lowers ATK by 1 stage.' },
+        /* §6.3 (Phase 5 wave A, 2026-09-08): the third area spell and the
+           snow squall. White Christmas is the first zone that leaves terrain
+           when it fades (`expireTerrain`, battle.js zone tick). */
+        { id: 'raceSnowballVolley', element: 'ice', spellType: 'divine', name: 'Snowball Volley',
+          type: 'damage', cost: 25, dmg: 80, range: 4,
+          kind: 'aoe', damageType: 'magic', aoeRadius: 1,
+          statusEffects: [{ id: 'slow', duration: 1 }],
+          desc: 'A fan of snowballs lobbed in a high arc. Deals WEAK magic damage to All Enemies in an AOE. Applies Slow.' },
+        { id: 'raceWhiteChristmas', element: 'ice', spellType: 'anomaly', name: 'White Christmas',
+          type: 'utility', cost: 30, range: 4, apCost: 1,
+          kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
+          statusEffects: [{ id: 'slow', duration: 1 }],
+          expireTerrain: 'ice',
+          desc: 'A 3×3 snow squall for 2 rounds: enemies inside are Slowed every round, and the ground freezes to ice when it clears.' },
         { id: 'raceBlizzardPresent', element: 'ice', spellType: 'anomaly', name: 'Blizzard Present',
           type: 'damage', tier: 'III', cost: 55, dmg: 160, range: 4, apCost: 1,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -9280,6 +9397,7 @@ const STATUS_DEFS = {
         form: 'mecha',
         stageMod: { spd: -3, def: 1, mdef: 2 },
         rangeDelta: 2,
+        spellRangeDelta: 2,   // battle.js getEffectiveSpellRange — Robo Punch reaches 3 in mecha (§6.2)
         iconSrc: createStatusIconDataUri('🤖', '#2a2a3a', '#e0e0ff', '#8080d0')
     },
     silence: {
@@ -14284,14 +14402,14 @@ const RACE_TREE = {
     'homosapien':    ['raceElbowGrease', 'raceAdrenalineRush', 'raceUnderdogSpirit', 'raceIndomitableWill'],
     'knight':        ['raceChivalry', 'raceShieldWall', 'raceOathOfValor', 'raceCrusade'],
     'cowboy':        ['raceLasso', 'raceFanTheHammer', 'raceQuickDraw', 'raceHighNoon'],
-    'marksman':      ['raceSuppressiveFire', 'sharedSmokeScreen', 'raceRangefinder', 'raceFireForEffect'],
+    'marksman':      ['raceSuppressiveFire', ['sharedSmokeScreen', 'raceIncendiaryRounds'], 'raceRangefinder', 'raceFireForEffect'],   // §6.11
     'wizard':        ['raceArcaneBlast', 'raceSpellsteal', 'racePolymorph', 'raceHocusPocus'],
     'giant':         ['raceBoulderHurl', 'raceEarthenGrasp', 'raceTitanStep', 'raceColossalCrush'],
     'fairy':         ['raceGlitterburst', 'racePixieDust', 'raceTrickRoom', 'raceFaeRing'],  // Fae Ring is a ring-shaped damage capstone since 2026-08-12
-    'bigfoot':       [['raceBigKick', 'raceTremorStomp'], 'raceRealityShift', 'trunkThrow', 'raceSasquatchSmash'],   // §6.16 (Trunk Throw is tier II → r3)
+    'bigfoot':       [['raceBigKick', 'raceTremorStomp'], ['raceRealityShift', 'raceTreelineRetreat'], 'trunkThrow', 'raceSasquatchSmash'],   // §6.16 (Trunk Throw is tier II → r3)
     'ai':            ['racePredictiveModel', 'raceOvercalculate', 'raceRecursiveLoop', 'raceSingularity'],
     'orb of light':  ['racePhotonScatter', 'raceLuminousShield', 'racePrismBurst', 'raceSupernova'],
-    'skeleton':      ['raceBoneToss', 'raceReassemble', ['sharedPoisonSwamp', 'sharedFissure'], 'raceMarrowstorm'],   // §6.13
+    'skeleton':      [['raceBoneToss', 'raceGraveChill'], 'raceReassemble', ['sharedPoisonSwamp', 'sharedFissure'], 'raceMarrowstorm'],   // §6.13
     'zombie':        ['raceInfectiousBite', 'raceZombieRush', 'raceOutbreak', 'raceShamblingHorde'],
     'dreameater':    ['raceDreamSiphon', 'raceLucidTrap', 'raceNightmarePulse', 'raceEternalSlumber'],
     'goatman':       ['raceGoreCharge', 'raceCliffCharge', 'raceBloodRitual', 'raceBaphometsRite'],
@@ -14322,7 +14440,7 @@ const RACE_TREE = {
     'annunaki':      ['raceGravityWell', 'raceZigguratProtocol', 'sharedGravityCrush', 'raceStarDecree'],
     'skinwalker':    ['raceBorrowedClaw', 'sharedSmokeScreen', 'raceSkinSwap', 'raceMimicry'],
     'werewolf':      ['raceBite', 'raceHowl', 'raceFeralDive', 'raceBloodFrenzy'],
-    'gargoyle':      [['raceWingGust', 'raceStonefall'], 'raceGothicRampart', 'raceCalcify', 'raceStoneDrop'],   // §6.17 — Perch Form retired from the tree (Stoneform twins Rampart in Phase 5)
+    'gargoyle':      [['raceWingGust', 'raceStonefall'], ['raceStoneform', 'raceGothicRampart'], 'raceCalcify', 'raceStoneDrop'],   // §6.17 — Perch Form retired; Stoneform twins Rampart
     'djinn':         ['raceDustDevil', 'sharedSummonSandstorm', 'raceWishGranted', 'raceAncientMagic'],
     'anubis':        ['sharedFissure', 'raceGravePassage', 'sharedSummonSandstorm', 'raceWeighTheHeart'],
     'catgirl':       ['raceLoveBite', 'raceNimbleDodge', 'raceMeow', 'raceNinefoldScratch'],
@@ -14334,7 +14452,7 @@ const RACE_TREE = {
     'glitch':        ['raceCrashLoop', 'raceMemoryLeak', 'raceBlueScreen', 'raceTimeRewind'],
     'machine elves': ['racePrismMirror', 'racePulseLattice', 'raceTuneFrequency', 'sharedEgoDeath'],
     'cyclops':       ['raceStoneThrow', 'raceBalefulGaze', 'raceTitanDrop', 'raceGiantSmash'],
-    'cyborg':        ['raceHydraulicPunch', 'raceEMPGrenade', 'overclock', 'raceRocketToss'],
+    'cyborg':        ['raceHydraulicPunch', ['raceEMPGrenade', 'raceClusterRockets'], ['overclock', 'racePlasmaCannon'], 'raceRocketToss'],   // §6.27
     'demon prince':  ['raceDemonicRoar', 'raceInfernalConscription', 'sharedScorchedEarth', 'raceDarkDominion'],
     /* 2026-08-16 balance (stats18): demon princess ran +16.6 residual — Kiss
        of Decay (top-10 dmg/MP at 25 MP) moves to ring 3 (75 MP, tier II);
@@ -14348,24 +14466,24 @@ const RACE_TREE = {
     'vampire':       ['raceBite', 'raceMistForm', 'raceBatSwarm', 'racePredatorDrop'],
     'voidweaver':    ['raceVenomFang', 'raceWebSnare', 'raceDimensionalWeb', 'sharedBlackHole'],
     'cosmic wraith': ['raceEntropicBeam', 'racePhaseWalk', 'sharedNebula', 'raceHeatDeath'],
-    'superhero':     ['raceHeroicLeap', 'raceInvulnerable', 'raceShockwaveClap', 'raceLaserBeam'],
+    'superhero':     ['raceHeroicLeap', ['raceInvulnerable', 'raceFreezeBreath'], ['raceShockwaveClap', 'raceSkyTackle'], 'raceLaserBeam'],   // §6.25 (Heat Vision = raceLaserBeam)
     'general':       ['raceRallyCommand', 'raceIronBulwark', 'raceArtilleryStrike', 'sharedNuke'],
     'droid':         ['raceTaserBolt', 'raceSystemAnalysis', 'raceFirewallProtocol', 'empBurst'],
     'conspiracy theorist': ['raceTinFoilHat', 'raceChemtrails', 'raceFluorideWater', 'raceTruthBomb'],
     'overlord':      ['raceHellfireCrown', 'raceInfernalDecree', 'sharedScorchedEarth', 'raceCataclysmDecree'],
     'politician':    ['raceFilibuster', 'raceBlackBudget', 'raceExecutiveOrder', 'sharedNuke'],
     'atlantean':     ['raceRiptide', 'sharedTidalSurge', 'raceTemporalTide', ['racePoseidonsWrath', 'raceFlood']],   // §6.12 — Great Flood is tier III (mermaid capstone) so it twins at r4, not r3
-    'dinosaur':      ['racePrimalRoar', 'raceApexCharge', 'sharedFissure', 'raceJurassicJaw'],
+    'dinosaur':      [['racePrimalRoar', 'raceDinoTailWhip'], 'raceApexCharge', ['sharedFissure', 'raceApexRoar'], 'raceJurassicJaw'],   // §6.14 (Stampede = raceApexCharge)
     'dragon':        ['raceWingGust', 'raceDragonfear', 'raceDragonToss', 'raceDragonfire'],
     'ghoul':         ['raceGhoulishBite', 'raceCorpseCrawl', 'sharedPoisonSwamp', 'raceCarrionFeast'],
     'kaiju':         ['raceCataclysmStomp', 'raceSeismicLeap', 'raceSkyscraperToss', 'raceAtomicBreath'],
     'kraken':        ['raceTentacleLash', 'raceInkCloud', 'raceDepthCharge', 'sharedVortexSlam'],
     'loch ness monster': ['raceRiptide', 'raceDeepDive', 'raceCryptidVanish', 'raceTidalSlam'],
-    'yeti':          ['raceFrozenPunch', 'raceIceSlide', 'racePermafrost', 'raceAvalancheStrike'],
+    'yeti':          [['raceFrozenPunch', 'raceIceShard'], 'raceIceSlide', 'racePermafrost', 'raceAvalancheStrike'],   // §6.5
     'barbarella':    ['raceStunRay', 'raceGravityBoots', 'racePlasmaWhip', 'raceSpaceDisco'],
     'black goo':     ['raceCorrosiveSplash', 'raceAbsorb', 'raceToxicNova', 'raceMitosisSplit'],
     'golem':         ['raceBoulderHurl', 'raceStoneSkin', 'sharedFissure', 'raceQuake'],
-    'honda civic':   ['raceRamCharge', 'raceExhaustCloud', ['raceRoboPunch', 'raceNitroBoost'], 'raceMissileBarrage'],   // §6.2
+    'honda civic':   ['raceRamCharge', ['raceTransform', 'raceExhaustCloud'], ['raceRoboPunch', 'raceNitroBoost'], 'raceMissileBarrage'],   // §6.2
     'ice queen':     ['raceIceSpear', 'sharedFlashFreeze', 'raceDiamondDust', 'raceAbsoluteZero'],
     'juggernaut':    ['raceBodyCheck', 'raceThickHide', 'raceBrutalSlam', 'raceUnstoppableCharge'],
     'ki fighter':    [['raceKiBlast', 'raceFlurryOfBlows'], ['raceKiCharge', 'raceKiWave'], 'raceInstantTransmission', 'raceDragonFist'],   // §6.10
@@ -14374,9 +14492,9 @@ const RACE_TREE = {
     'minotaur':      ['raceHornToss', 'raceLabyrinthRoar', 'raceGoreCharge', 'raceBullRush'],
     'necromancer':   ['raceSoulDrain', 'racePlaguefield', 'raceBoneBarrage', 'raceRaiseDead'],
     'occulus':       ['racePsychicBeam', 'raceOmniVision', 'raceHypnoticPulse', 'raceDeathGaze'],
-    'quarterback':   ['raceBulletPass', 'raceBlitz', ['raceAudible', 'raceSpikeTheBall'], 'raceHailMary'],   // §6.1
-    'robinhood':     [['raceFireArrow', 'racePoisonArrow'], ['raceStealFromRich', 'raceBombArrow'], 'raceSplittingArrow', 'raceArrowRain'],   // §6.24
-    'santa clause':  ['raceLumpOfCoal', 'raceSleighDash', 'raceNaughtyList', 'raceBlizzardPresent'],
+    'quarterback':   ['raceBulletPass', ['raceBlitz', 'raceQBSneak'], ['raceAudible', 'raceSpikeTheBall'], 'raceHailMary'],   // §6.1
+    'robinhood':     [['raceFireArrow', 'racePoisonArrow'], ['raceStealFromRich', 'raceBombArrow'], ['raceSplittingArrow', 'racePiercingArrow'], 'raceArrowRain'],   // §6.24 (Arrow Volley = raceArrowRain)
+    'santa clause':  [['raceLumpOfCoal', 'raceSnowballVolley'], 'raceSleighDash', ['raceNaughtyList', 'raceWhiteChristmas'], 'raceBlizzardPresent'],   // §6.3
     'super sentai':  ['sentaiRedSlash', 'sentaiPinkHeal', 'sentaiTeamStrike', 'sentaiMegazordBlast'],
     'symbiote':      ['raceWebLaunch', 'raceSymbioteArmor', 'raceSymbioticDrain', 'raceTendrilStrike'],
     'valkraye':      ['raceValkyrieSpear', 'raceShieldMaiden', 'raceDivineSwoop', 'raceChooserOfSlain'],

@@ -731,6 +731,13 @@
             encore:       { minRange: 0, offensive: false, selfCast: true, fogExempt: true },
             selfHeal:     { minRange: 0, offensive: false, selfCast: true, fogExempt: true },
             escape:       { minRange: 0, offensive: false, selfCast: true, fogExempt: true, noStrikeLeap: true },
+            // CHAMP_REWORK_PLAN §5.3 (Phase 5 wave A, 2026-09-08):
+            // transform — self-cast stance toggle (the Sedan's Car ⇄ Mecha).
+            // tackle — charge-to-target melee that then CARRIES the victim
+            // down the charge line (Sky Tackle); rides the damage pipeline
+            // (doSpell's damage branch + _runPostEffects).
+            transform:    { minRange: 0, offensive: false, selfCast: true, fogExempt: true, noStrikeLeap: true },
+            tackle:       { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
 
             // ── Movement / positioning ──
             teleport:     { minRange: 0, offensive: false, tileTargeted: true, noStrikeLeap: true },
@@ -812,6 +819,13 @@
                 attackSprite: () => (typeof HONDA_CIVIC_SPRITES !== 'undefined') ? HONDA_CIVIC_SPRITES.combat : null,
                 revertAfter: true,
                 flipOnTravel: true,
+                // §6.2 Transform (Phase 5 wave A): while the unit wears a
+                // STATUS_DEFS stance carrier whose `form` is listed here, the
+                // form's sprite is the resting sprite — moves, casts and the
+                // revertAfter reset all keep it (the mecha walks as the robot).
+                formSprites: {
+                    mecha: () => (typeof HONDA_CIVIC_SPRITES !== 'undefined') ? HONDA_CIVIC_SPRITES.combat : null,
+                },
             },
             'super sentai': {
                 castSprite: (_unit, spell) => {
@@ -823,6 +837,27 @@
                 revertAfter: true,
             },
         };
+
+        /* §6.2 stance carriers (Phase 5 wave A, 2026-09-08): the form a unit
+           currently wears ('car' / 'mecha' / null) — read from the active
+           STATUS_DEFS rows' `form` field, never the race. */
+        function unitStanceForm(unit) {
+            if (!unit || !unit.status || typeof STATUS_DEFS === 'undefined') return null;
+            for (const k of getActiveStatusKeys(unit)) {
+                const f = STATUS_DEFS[k]?.form;
+                if (f) return f;
+            }
+            return null;
+        }
+        /* The sprite a unit's current form pins it to (UNIT_ANIM_OVERRIDES
+           formSprites), or null when it wears no listed form. */
+        function _formSpriteFor(unit) {
+            const ov = UNIT_ANIM_OVERRIDES[unit?.race];
+            if (!ov || !ov.formSprites) return null;
+            const f = unitStanceForm(unit);
+            if (!f || !ov.formSprites[f]) return null;
+            return _resolveOverrideProp(ov.formSprites[f], unit, null);
+        }
 
         /** Check if a unit override applies to a given spell/context */
         function _overrideApplies(override, spell) {
@@ -844,6 +879,10 @@
         function _applySpriteOverride(unit, spell, propName) {
             const ov = UNIT_ANIM_OVERRIDES[unit?.race];
             if (!ov) return false;
+            // A worn form (Mecha) is the sprite for EVERY beat — the robot
+            // drives, casts and punches as the robot.
+            const _formUrl = _formSpriteFor(unit);
+            if (_formUrl) { unit._spriteOverride = _formUrl; unit._spriteFlipX = false; return true; }
             const spriteProp = ov[propName];
             if (!spriteProp) return false;
             if (propName === 'castSprite' && !_overrideApplies(ov, spell)) return false;
@@ -862,7 +901,8 @@
         function _revertSpriteOverride(unit) {
             const ov = UNIT_ANIM_OVERRIDES[unit?.race];
             if (ov?.revertAfter && unit?._spriteOverride) {
-                unit._spriteOverride = null;
+                // Reverting lands on the worn form's sprite (Mecha stays the robot).
+                unit._spriteOverride = _formSpriteFor(unit) || null;
                 unit._spriteFlipX = false;
             }
         }
@@ -2161,6 +2201,56 @@
                         showFloatingTextForUnit(unit, 'SWAP!', 'streak', { durationMs: 800 });
                         animateDisplacement(unit, ux, uy, tx, ty, 200);
                         animateDisplacement(target, tx, ty, ux, uy, 200);
+                    }
+                }
+            }
+
+            /* CHAMP_REWORK_PLAN Phase 5 wave A (2026-09-08):
+               (a) single-target knockback — a `damage` spell's pushDistance
+                   (Synthetic Punch, Rocket Fist, the Tail Whips) shoves the
+                   victim straight away from the caster with the full slide
+                   physics; until now only the approach preview believed it.
+               (b) `tackle` (Sky Tackle): the caster has just charged in and
+                   struck; now it CARRIES the victim up to pushDistance tiles
+                   down the charge line and lands one tile behind the body.
+                   A wall or a bystander at the end of the ride = the spell's
+                   collisionBonus damage + collisionStatus (Stagger). */
+            if (spell.pushDistance && target && !target.dead && !unit.dead
+                && (spell.kind === 'damage' || spell.kind === 'tackle')
+                && !(typeof _isClashMode === 'function' && _isClashMode())) {
+                const pdx = Math.sign(target.x - unit.x), pdy = Math.sign(target.y - unit.y);
+                if (pdx || pdy) {
+                    const _isTackle = spell.kind === 'tackle';
+                    const slide = resolveForcedSlide(target, pdx, pdy, getUnitPushDistance(target, spell.pushDistance), {
+                        byUnit: unit, label: `${spell.name}: `,
+                        perStepMs: 120, delayMs: actionMs(320)
+                    });
+                    if (_isTackle && slide) {
+                        const hitObstacle = slide.hitWall || slide.hitUnits.length > 0;
+                        if (slide.moved > 0) {
+                            const rx = slide.x - pdx, ry = slide.y - pdy;
+                            if (isInside(rx, ry) && canOccupy(rx, ry) && !(rx === unit.x && ry === unit.y)) {
+                                const _ufx = unit.x, _ufy = unit.y;
+                                unit.x = rx; unit.y = ry;
+                                if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(rx, ry, unit.z);
+                                unit._trackTilesMoved = (unit._trackTilesMoved || 0) + Math.abs(rx - _ufx) + Math.abs(ry - _ufy);
+                                animateDisplacement(unit, _ufx, _ufy, rx, ry, Math.max(200, slide.animMs || 0));
+                            }
+                            addLog(`${unitDisplayName(unit)} carries ${unitDisplayName(target)} ${slide.moved} tile${slide.moved !== 1 ? 's' : ''} down the line!`);
+                        }
+                        if (hitObstacle && !target.dead) {
+                            if (spell.collisionBonus) {
+                                applyDamageToUnit(target, spell.collisionBonus, `${spell.name} collision: `, {
+                                    sourceUnit: unit, damageType: spell.damageType || 'physical', ignoreArmor: true, consumeMarked: false,
+                                    spellType: spell.spellType || null, spellElement: getSpellElement(spell), element: classifySpellElement(spell)
+                                });
+                            }
+                            if (spell.collisionStatus && !target.dead) {
+                                applyStatusEffects(target, [spell.collisionStatus], `${spell.name} collision: `, unit);
+                            }
+                            showFloatingTextForUnit(target, 'COLLISION!', 'streak', { durationMs: 1000 });
+                            addLog(`${unitDisplayName(target)} is slammed into an obstacle by ${spell.name}!`);
+                        }
                     }
                 }
             }
@@ -4427,6 +4517,10 @@
                     sneakMult: (spell.sneakBonus && unit._sneakStrikeBonus) ? 1.5 : null,
                 });
                 const damage = _riders.dmg;
+                /* Phase 5 wave A (2026-09-08): executeBelowPct (Take Aim) is
+                   judged on the HP the target had BEFORE this hit. */
+                const _execArmed = !!spell.executeBelowPct && target.maxHp > 0
+                    && (target.hp / target.maxHp) <= spell.executeBelowPct;
                 if (_riders.echoed) {
                     addLog(`⏪ ${spell.name} replays ${unitDisplayName(target)}'s last blow in reverse — ${_riders.echoDmg} damage returns to sender!`);
                 }
@@ -4444,7 +4538,9 @@
                         element: _spellEl
                     });
                 if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${damage}`, false);
+                if (_execArmed && !target.dead) _applyExecuteRider(unit, target, spell);
                 if (target.dead && _activeCinematic?.showKO) _activeCinematic.showKO();
+                _applyOnKillRiders(unit, target, spell);
             }
 
             // Post-effects (chargeToTarget, swap, selfStun)
@@ -4456,6 +4552,49 @@
             // Terrain reaction: lightning conducts through water, fire ignites
             // forest, frost freezes water (keys off the struck tile's terrain).
             triggerTerrainSpellReaction(unit, spell, [{ x: target.x, y: target.y }]);
+        }
+
+        /* Phase 5 wave A (2026-09-08): executeBelowPct — the hit left a
+           target that was at/below the fraction standing, so finish it.
+           Protected / invulnerable / realm-shielded units survive (the damage
+           gate no-ops); everything else dies to a mitigation-proof follow-up
+           (armour ignored, ×4 of what's left so no resistance saves it).
+           `spell` may be a stub ({ name, damageType, spellType }) — state.js
+           calls this for the delayed Take Aim shot. */
+        function _applyExecuteRider(unit, target, spell) {
+            if (!target || target.dead || target._dying || !(target.maxHp > 0)) return false;
+            const lethal = Math.ceil((Math.max(0, target.hp) + (target.shield || 0)) * 4) + 50;
+            const nm = (spell && spell.name) || 'Execute';
+            addLog(`💀 ${nm}: ${unitDisplayName(target)} was at ${Math.max(1, Math.round(100 * target.hp / target.maxHp))}% — EXECUTED!`);
+            showFloatingTextForUnit(target, '💀 EXECUTED', 'streak', { durationMs: 1200 });
+            applyDamageToUnit(target, lethal, `${nm} executes `, {
+                sourceUnit: unit || null, ignoreArmor: true, consumeMarked: false, allowMarkBonus: false,
+                damageType: (spell && spell.damageType) || 'physical', spellType: (spell && spell.spellType) || null,
+                spellElement: (spell && spell.id) ? getSpellElement(spell) : ((spell && spell.spellElement) || null),
+                element: (spell && spell.id) ? classifySpellElement(spell) : null
+            });
+            return !!target.dead;
+        }
+        window._applyExecuteRider = _applyExecuteRider;
+
+        /* Phase 5 wave A (2026-09-08): onKillHealPct / onKillRefundAp
+           (Jurassic Jaw) — a kill feeds the caster and hands back AP. */
+        function _applyOnKillRiders(unit, target, spell) {
+            if (!spell || !target || !target.dead || !unit || unit.dead) return;
+            if (spell.onKillHealPct) {
+                const healed = applyHealingToUnit(unit, Math.round((unit.maxHp || 0) * spell.onKillHealPct), unit);
+                if (healed > 0) addLog(`🩸 ${spell.name}: the kill feeds ${unitDisplayName(unit)} — +${healed} HP.`);
+            }
+            if (spell.onKillRefundAp) {
+                const cap = (typeof UNIT_MAX_AP !== 'undefined' ? UNIT_MAX_AP : 2) + (unit._xpBonusAP || 0);
+                const before = unit.ap || 0;
+                unit.ap = Math.min(before + spell.onKillRefundAp, cap);
+                if (unit.ap > before) {
+                    addLog(`⚡ ${spell.name}: ${unitDisplayName(unit)} regains ${unit.ap - before} AP.`);
+                    showFloatingTextForUnit(unit, `+${unit.ap - before} AP`, 'buff', { durationMs: 900 });
+                    markDirty('hud', 'selectedUnit');
+                }
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -4519,6 +4658,7 @@
                 spellName: spell.name,
                 impactSfx: spell.impactSfx || null,
                 roundsLeft: delayRounds,
+                executeBelowPct: spell.executeBelowPct || 0,   // Phase 5 wave A: the Sniper's execute rides the mark
                 statusEffects: spell.statusEffects || []
             });
 
@@ -5040,6 +5180,30 @@
                 }
                 cx += dx; cy += dy;
             }
+            /* Phase 5 wave A (2026-09-08): beams wider than one tile (Plasma
+               Cannon 2, Tsunami 3). The spine above decides the reach; each
+               extra lane runs alongside it — lane cells that are inside and
+               passable are swept too (one hit per unit; walls/buildings are
+               the spine's business). */
+            const _lanes = getLineSpellLaneOffsets(spell, dx, dy);
+            if (_lanes.length && _lineCells.length) {
+                const _spine = _lineCells.slice();
+                for (const [ox, oy] of _lanes) {
+                    for (const c of _spine) {
+                        const lx = c.x + ox, ly = c.y + oy;
+                        if (!isInside(lx, ly) || !isTerrainPassable(lx, ly)) continue;
+                        if (_lineCells.some(t => t.x === lx && t.y === ly)) continue;
+                        _lineCells.push({ x: lx, y: ly });
+                        const lh = unitAt(lx, ly);
+                        if (lh && lh.player !== unit.player && !lh.dead && !hitTargets.includes(lh)) hitTargets.push(lh);
+                        damageTurretAt(lx, ly, spell.dmg || 80, unit);
+                        if (spell.leaveTerrain && getTerrainAt(lx, ly) !== spell.leaveTerrain) {
+                            setTerrainAt(lx, ly, spell.leaveTerrain);
+                            trackTilesChanged(unit, 1);
+                        }
+                    }
+                }
+            }
             const dmgBase = calcFlatSpellDamage(baseDmg, spellPower, 32);
             for (const hit of hitTargets) {
                 const dmg = computeSpellBase(null, 0, { baseDmg: dmgBase, floor: 1 });
@@ -5056,10 +5220,30 @@
                 // waits a beat past the impact frame so the sequence still
                 // reads impact → knockback.
                 if (spell.kind === 'linePush' && !hit.dead) {
-                    resolveForcedSlide(hit, dx, dy, getUnitPushDistance(hit, spell.pushDistance || 1), {
+                    const _lpSlide = resolveForcedSlide(hit, dx, dy, getUnitPushDistance(hit, spell.pushDistance || 1), {
                         byUnit: unit, label: `${spell.name}: `,
                         perStepMs: 120, delayMs: actionMs(320)
                     });
+                    /* Phase 5 wave A (2026-09-08): pin riders (Piercing Arrow).
+                       A victim that slams a wall or a bystander takes
+                       collisionBonus (armour-proof) and wears collisionStatus;
+                       with collisionStatusBoth the bodies it hit wear it too. */
+                    if (_lpSlide && (_lpSlide.hitWall || _lpSlide.hitUnits.length)
+                        && (spell.collisionBonus || spell.collisionStatus)) {
+                        if (spell.collisionBonus && !hit.dead) {
+                            applyDamageToUnit(hit, spell.collisionBonus, `${spell.name} pins `, {
+                                sourceUnit: unit, damageType: spell.damageType || 'physical', ignoreArmor: true, consumeMarked: false,
+                                spellType: spell.spellType || null, spellElement: getSpellElement(spell), element: classifySpellElement(spell)
+                            });
+                        }
+                        if (spell.collisionStatus) {
+                            const _pinned = [hit];
+                            if (spell.collisionStatusBoth) for (const o of _lpSlide.hitUnits) if (o && !o.dead && !_pinned.includes(o)) _pinned.push(o);
+                            for (const p of _pinned) if (!p.dead) applyStatusEffects(p, [spell.collisionStatus], `${spell.name} pins: `, unit);
+                        }
+                        showFloatingTextForUnit(hit, '📌 PINNED!', 'streak', { durationMs: 1000 });
+                        addLog(`${unitDisplayName(hit)} is pinned by ${spell.name}!`);
+                    }
                 }
             }
             triggerTerrainSpellReaction(unit, spell, _lineCells);
@@ -5691,6 +5875,15 @@
                (self-cast) spells keep their shape. */
             if ((spell.range || 0) > 0 && typeof _isClashMode === 'function' && _isClashMode()) return 99;
             let range = spell.range || 0;
+            /* Phase 5 wave A (2026-09-08): a stance carrier's spellRangeDelta
+               (Mecha +2) stretches every ranged spell — Robo Punch reaches 3
+               in mecha form. Self-cast (range 0) spells keep their shape. */
+            if (range > 0 && unit.status && typeof STATUS_DEFS !== 'undefined') {
+                for (const k of getActiveStatusKeys(unit)) {
+                    const d = STATUS_DEFS[k]?.spellRangeDelta;
+                    if (d) range += d;
+                }
+            }
 
             // 2026-08-10: NO high-ground bonus on spell range. The old +1 here
             // keyed off the caster's ABSOLUTE standing height (>= 2) with no
@@ -5744,17 +5937,36 @@
         // range/approach consumer (findSpellApproachTile, hud fallbacks,
         // highlights) routes through here so move+cast lands on a tile the
         // beam actually fires from.
+        /* Lane offsets for a beam of lineWidth > 1 (Phase 5 wave A,
+           2026-09-08): the perpendicular steps that run alongside the spine.
+           Width 2 = one lane on the right hand of the firing direction, width
+           3 = one on each side (diagonal beams use the diagonal perpendicular).
+           Width 1 (the default) = no lanes. Shared by _applyLineDamage, the
+           ray footprint below and the direction preview. */
+        function getLineSpellLaneOffsets(spell, dx, dy) {
+            const w = Math.max(1, Math.min(3, (spell && spell.lineWidth) || 1));
+            if (w <= 1 || (!dx && !dy)) return [];
+            const px = -dy, py = dx;
+            return w === 2 ? [[px, py]] : [[px, py], [-px, -py]];
+        }
+
         function getLineSpellRayTiles(unit, spell) {
             const lineRange = spell.range || 4;   // must match _applyLineDamage
             const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
             const tiles = [];
+            const _push = (x, y) => { if (!tiles.some(t => t.x === x && t.y === y)) tiles.push({ x, y }); };
             for (const [dx, dy] of dirs) {
+                const _lanes = getLineSpellLaneOffsets(spell, dx, dy);
                 for (let i = 1; i <= lineRange; i++) {
                     const cx = unit.x + dx * i, cy = unit.y + dy * i;
                     if (!isInside(cx, cy)) break;
                     if (!isTerrainPassable(cx, cy) && !spell.destroysObstacles) break;
                     if (_lineLosBlocked(unit, spell, cx, cy)) break;
-                    tiles.push({ x: cx, y: cy });
+                    _push(cx, cy);
+                    for (const [ox, oy] of _lanes) {
+                        const lx = cx + ox, ly = cy + oy;
+                        if (isInside(lx, ly) && isTerrainPassable(lx, ly)) _push(lx, ly);
+                    }
                 }
             }
             return tiles;
@@ -6747,6 +6959,19 @@
                     }
                     zone.duration--;
                     if (zone.duration <= 0) {
+                        /* Phase 5 wave A (2026-09-08): White Christmas — the
+                           squall paints its footprint (expireTerrain) as it clears. */
+                        if (zone.expireTerrain) {
+                            let _zt = 0;
+                            for (const t of getSquareArea(zone.x, zone.y, zone.radius || 1)) {
+                                if (!isInside(t.x, t.y)) continue;
+                                const cur = getTerrainAt(t.x, t.y);
+                                if (cur === 'wall' || cur === 'mountain' || cur === zone.expireTerrain) continue;
+                                if (!isTerrainPassable(t.x, t.y)) continue;
+                                setTerrainAt(t.x, t.y, zone.expireTerrain); _zt++;
+                            }
+                            if (_zt) addLog(`❄️ ${zone.spellName} leaves ${_zt} tile${_zt !== 1 ? 's' : ''} of ${zone.expireTerrain} behind.`);
+                        }
                         addLog(`${zone.spellName} zone at ${coordLabel(zone.x, zone.y)} fades.`);
                         return false;
                     }
@@ -16471,7 +16696,7 @@
                 else if (kind === 'cleanse') cat = 'cleanse';
                 else if (kind === 'encore') cat = 'encore';
                 else if (kind === 'shield' || kind === 'aoeShield' || kind === 'buff' || kind === 'warCry' || type === 'buff') cat = 'buff';
-                else if (kind === 'dash' || kind === 'displacement' || kind === 'teleport' || kind === 'chargeToTarget' || kind === 'grapple' || kind === 'leapStrike') cat = 'dash';
+                else if (kind === 'dash' || kind === 'displacement' || kind === 'teleport' || kind === 'chargeToTarget' || kind === 'grapple' || kind === 'leapStrike' || kind === 'tackle') cat = 'dash';
                 else if (kind === 'deployTurret') cat = 'turret';
                 else if (kind === 'aoe' || kind === 'bomb' || kind === 'line' || kind === 'linePush' || kind === 'cross'
                     || kind === 'barrage' || kind === 'terrainCreate' || kind === 'summonWeather' || kind === 'placeTrap'
@@ -24976,7 +25201,7 @@
 
         // Offensive spell kinds that are eligible to press (damaging only).
         const _PRESS_SPELL_KINDS = new Set([
-            'damage', 'multiHit', 'ricochet', 'lifeDrain',
+            'damage', 'multiHit', 'ricochet', 'lifeDrain', 'tackle',
             'line', 'linePush', 'splitBeam',
             'aoe', 'barrage', 'cross', 'aoePull',
         ]);
@@ -26401,7 +26626,7 @@
                 });
             }
 
-            if (['damage', 'ricochet', 'multiHit', 'lifeDrain', 'debuff', 'aoe', 'displacement', 'cross', 'pull', 'swap', 'aoePull', 'splitBeam'].includes(kind)) {
+            if (['damage', 'ricochet', 'multiHit', 'lifeDrain', 'debuff', 'aoe', 'displacement', 'cross', 'pull', 'swap', 'aoePull', 'splitBeam', 'tackle'].includes(kind)) {
                 const effectiveRange = (kind === 'aoe' && spell.aoeOriginSelf) ? (spell.aoeRadius || 1) : range;
                 const _longRange = isLongRangeSpell(spell);
                 const enemies = state.units.filter(u => !u.dead && u.player !== unit.player);
@@ -41175,6 +41400,15 @@
 
                         }
                         rangeTiles.push({ x: tx, y: ty });
+                        // Wide beams (lineWidth 2–3) hint their lanes too.
+                        if (isDirectional) {
+                            for (const [ox, oy] of getLineSpellLaneOffsets(spell, dx, dy)) {
+                                const lx = tx + ox, ly = ty + oy;
+                                if (lx < 0 || ly < 0 || lx >= bw() || ly >= bh()) continue;
+                                if (typeof isTerrainPassable === 'function' && !isTerrainPassable(lx, ly)) continue;
+                                if (!rangeTiles.some(t => t.x === lx && t.y === ly)) rangeTiles.push({ x: lx, y: ly });
+                            }
+                        }
                     }
                 }
             } else {
@@ -41185,7 +41419,7 @@
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                 let rangeColor = 0xaa33ff;
                 const k = spell.kind;
-                if (['damage', 'aoe', 'barrage', 'multiHit', 'ricochet', 'bomb', 'delayed', 'line', 'linePush', 'splitBeam', 'cross', 'leapStrike'].includes(k)) {
+                if (['damage', 'aoe', 'barrage', 'multiHit', 'ricochet', 'bomb', 'delayed', 'line', 'linePush', 'splitBeam', 'cross', 'leapStrike', 'tackle'].includes(k)) {
                     rangeColor = 0xff5544;
                 } else if (['heal', 'healAll', 'selfHeal', 'seedHeal', 'revive', 'cleanse'].includes(k)) {
                     rangeColor = 0x33cc55;
@@ -45934,7 +46168,24 @@
             const maxH = TERRAIN_RESHAPE_CONFIG.maxHeight;
             const cDelta = deform.centerDelta || 0;
             const eDelta = deform.edgeDelta || 0;
-            if (cDelta === 0 && eDelta === 0) return;
+            /* Phase 5 wave A (2026-09-08): `flatten` mode (Flat Earth) — every
+               footprint tile drops to the LOWEST base height in the footprint
+               (never raises). Walls, mountains, objectives and solid props
+               stand, the same guards as the delta modes; `deform.radius`
+               overrides the caller's radius so a single-target spell can
+               flatten its 3×3. */
+            const _flatten = !!deform.flatten;
+            if (_flatten && deform.radius != null) radius = Math.max(0, deform.radius | 0);
+            let _floorH = null;
+            if (_flatten) {
+                for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
+                    const tx = cx + dx, ty = cy + dy;
+                    if (!isInside(tx, ty)) continue;
+                    const h = getBaseHeightAt(tx, ty);
+                    if (_floorH === null || h < _floorH) _floorH = h;
+                }
+                if (_floorH === null) return;
+            } else if (cDelta === 0 && eDelta === 0) return;
 
             const modified = [];
             const _excavated = [];   // material-bearing blocks the blast tore out
@@ -45946,7 +46197,7 @@
 
                     const terrain = getTerrainAt(tx, ty);
                     if (terrain === 'wall') continue;
-                    if (terrain === 'mountain' && cDelta < 0) continue;
+                    if (terrain === 'mountain' && (cDelta < 0 || _flatten)) continue;
                     if (typeof isObjectiveTile === 'function' && isObjectiveTile(tx, ty)) continue;
                     const obj = getObjectAt(tx, ty);
                     if (obj) {
@@ -45965,9 +46216,10 @@
                         const t = dist / radius;
                         delta = Math.round(cDelta + (eDelta - cDelta) * t);
                     }
+                    const oldH = getBaseHeightAt(tx, ty);
+                    if (_flatten) delta = _floorH - oldH;
                     if (delta === 0) continue;
 
-                    const oldH = getBaseHeightAt(tx, ty);
                     const newH = Math.max(minH, Math.min(maxH, oldH + delta));
                     if (newH === oldH) continue;
 
@@ -48583,8 +48835,10 @@
                 renderIfDirty();
             };
 
-            if (spell.kind === 'damage') {
-                // Phase 4 migration: damage kind uses unified pipeline
+            if (spell.kind === 'damage' || spell.kind === 'tackle') {
+                // Phase 4 migration: damage kind uses unified pipeline.
+                // `tackle` (Phase 5 wave A) is a charge-to-target damage spell
+                // whose carry + collision live in _runPostEffects.
                 const _tgtResult = _resolveOffensiveTarget(
                     unit, spell, x, y, z, effectiveSpellCost, spellPower, finishAction, spellApCost);
                 if (_tgtResult.handled) return _tgtResult.returnVal;
@@ -50148,6 +50402,40 @@
                     (_swapCam?.totalMs ?? 0) + actionMs(120));
             }
 
+            else if (spell.kind === 'transform') {
+                /* CHAMP_REWORK_PLAN §5.3 / §6.2 (Phase 5 wave A, 2026-09-08):
+                   Car ⇄ Mecha. formA / formB are STATUS_DEFS stance carriers
+                   (stack 'replace', `form`); whichever the unit wears comes off
+                   and the other goes on at 99 rounds ("permanent until
+                   re-cast"). The stat side is the carrier's stageMod /
+                   rangeDelta / spellRangeDelta; the model swap is
+                   _spriteOverride → overrideForms (sprites.js), which
+                   state-sync carries to the guest along with the status. */
+                const _fA = spell.formA || 'carForm', _fB = spell.formB || 'mechaForm';
+                const _wasB = unitHasStatus(unit, _fB);
+                const _next = _wasB ? _fA : _fB;
+                const _nextDef = STATUS_DEFS[_next] || {};
+                playSfx('buff');
+                try { if (typeof playDoorSfx === 'function') playDoorSfx('buzz'); } catch (e) {}
+                _spellFocusCamera(unit, unit.x, unit.y);
+                unit.mp -= effectiveSpellCost;
+                clearStatus(unit, _wasB ? _fB : _fA);
+                applyStatusPayload(unit, { id: _next, duration: 99 }, `${spell.name}: `, unit);
+                // Model swap: the mecha wears the combat form for good; the car drops every override.
+                unit._spriteOverride = _formSpriteFor(unit) || null;
+                unit._spriteFlipX = false;
+                if (state.phase === 'battle' && !_skipVisuals()) {
+                    const _tVFX = window.ThreeVFXEffects;
+                    if (_tVFX && _tVFX.hasMapping(spell.id, 'aura')) _tVFX.fire('aura', spell.id, { tx: unit.x, ty: unit.y, aoeRadius: 0 });
+                    else _vfxBuff(unit.x, unit.y);
+                }
+                showFloatingTextForUnit(unit, `${_nextDef.icon || '🔁'} ${String(_nextDef.label || _next).toUpperCase()}`, 'buff', { durationMs: 1100 });
+                addLog(`${unitDisplayName(unit)} transforms — ${_nextDef.colorText || _nextDef.label || _next}!`);
+                markDirty('board', 'hud', 'selectedUnit');
+                scheduleBoardRender();
+                completionDelay = actionMs(700);
+            }
+
             else if (spell.kind === 'escape') {
                 playSfx('teleport');
                 /* When an ENEMY leaves a decoy, the whole point is that the opponent
@@ -50221,6 +50509,13 @@
                             );
                         }
                     }
+                }
+
+                /* Phase 5 wave A (2026-09-08): an escape's own statusEffects
+                   land on the CASTER — Mist Form's Invisible, QB Sneak,
+                   Treeline Retreat's Regen. The branch never applied them. */
+                if (spell.statusEffects && spell.statusEffects.length) {
+                    applyStatusEffects(unit, spell.statusEffects, `${spell.name}: `, unit);
                 }
 
                 if (spell.spawnDecoy) {
@@ -50599,6 +50894,8 @@
                     // Gravity fields (2026-07-17): 'super' | 'weak' — physics
                     // zones consumed by getGravityFieldAt.
                     gravityField: spell.gravityField || null,
+                    // Phase 5 wave A: terrain the zone paints when it clears (White Christmas → ice).
+                    expireTerrain: spell.expireTerrain || null,
                     spellName: spell.name
                 });
                 // 🕳 Gravity Crush lands: every airborne unit already inside the

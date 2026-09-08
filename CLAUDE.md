@@ -423,6 +423,34 @@ validation already funnels through `treeLegalSubset`. Adding a twin = one
 row edit + `npm test` (content-schema.test.js checks the shape, tiers,
 one-alternate rule, repair and random walks).
 
+## PHASE 5 WAVE A (CHAMP_REWORK_PLAN §5.9) — added 2026-09-08
+The first spell wave: 16 new `RACE_ABILITIES` rows on their §6 twin nodes
+(QB Sneak, Transform, Snowball Volley, White Christmas, Ice Shard,
+Incendiary Rounds, Grave Chill, Tail Whip `raceDinoTailWhip`, Apex Roar,
+Treeline Retreat, Stoneform, Piercing Arrow, Freeze Breath, Sky Tackle,
+Cluster Rockets, Plasma Cannon), renames with ids kept (Stampede, Arrow
+Volley, Heat Vision, Flat Earth), Perch Form deleted. New kinds:
+**`transform`** (battle.js `doSpell` branch toggles the `carForm` /
+`mechaForm` carriers at 99 rounds; the model rides `UNIT_ANIM_OVERRIDES
+[race].formSprites` via `unitStanceForm` / `_formSpriteFor`, which the
+apply/revert sprite beats honour) and **`tackle`** (the damage branch +
+`_runPostEffects`: carry `pushDistance` down the charge line, caster lands
+one tile behind, `collisionBonus` / `collisionStatus` on a wall or body).
+New flags the engine reads: `executeBelowPct` (`_applyExecuteRider`, also
+on the delayed Take Aim record → state.js), `onKillHealPct` /
+`onKillRefundAp` (`_applyOnKillRiders`), `lineWidth` 2–3
+(`getLineSpellLaneOffsets` — `_applyLineDamage`, ray footprint, direction
+preview), linePush `collisionBonus` / `collisionStatus` /
+`collisionStatusBoth`, `terrainDeform.flatten` (+ `radius`), zoneDebuff
+`expireTerrain`, STATUS `spellRangeDelta` (`getEffectiveSpellRange`).
+Fixes that came with it: `damage`-kind `pushDistance` and escape-kind
+`statusEffects` were never applied (now they are — plan §10 #27). Adding
+a wave-B/C spell = data row + tree node + a `SPELL_MAP['<id>']` family
+alias in three-vfx-effects.js + a `WAVE_A`-style row in
+champ-rework.test.js; a new KIND also needs `SPELL_KIND_META`, a `doSpell`
+branch, ai.js `scoreSpell` + `findSpellTarget`, hud.js parts, ui.js
+`_SLB_KINDS`. `npm test` guards all of it.
+
 ## Most common request: "playtest <mode>"
 The user wants Claude to **actually play Player 1 against the CPU** (NOT auto-sim /
 dev-sim — they can do that themselves) and report pain points: unresponsive

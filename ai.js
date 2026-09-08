@@ -165,9 +165,9 @@
     // ── spell-kind taxonomies ────────────────────────────────────────────
     const DMG_KINDS = new Set(['damage', 'ricochet', 'multiHit', 'aoe', 'barrage',
         'lifeDrain', 'line', 'linePush', 'cross', 'aoePull', 'splitBeam',
-        'displacement', 'pull', 'dash', 'skyDrop', 'skyThrow', 'skySlam', 'leapStrike']);
+        'displacement', 'pull', 'dash', 'skyDrop', 'skyThrow', 'skySlam', 'leapStrike', 'tackle']);
     // Kinds that participate in Press Turn (battle.js _PRESS_SPELL_KINDS).
-    const PRESS_KINDS = new Set(['damage', 'multiHit', 'ricochet', 'lifeDrain',
+    const PRESS_KINDS = new Set(['damage', 'multiHit', 'ricochet', 'lifeDrain', 'tackle',
         'line', 'linePush', 'splitBeam', 'aoe', 'barrage', 'cross', 'aoePull']);
     const SPLASH_KINDS = new Set(['aoe', 'cross', 'barrage']);
     const HEAL_KINDS = new Set(['heal', 'healAll', 'selfHeal', 'revive', 'zoneHeal', 'seedHeal']);
@@ -1873,7 +1873,7 @@
 
             const target = findSpellTarget(unit, spell, v);
             const noTargetKinds = ['healAll', 'manaRestoreAll', 'barrage', 'warCry', 'encore', 'deployTurret', 'utility',
-                'escape', 'selfHeal', 'tuneFrequency', 'pulseLattice'];
+                'escape', 'selfHeal', 'tuneFrequency', 'pulseLattice', 'transform'];
             if (!target && !noTargetKinds.includes(spell.kind)) continue;
 
             let score = scoreSpell(unit, spell, target, v);
@@ -1892,14 +1892,28 @@
         const kind = spell.kind;
 
         // ── single-target damage family ──
-        if (['damage', 'ricochet', 'multiHit'].includes(kind)) {
+        if (['damage', 'ricochet', 'multiHit', 'tackle'].includes(kind)) {
             // Elemental tile cast: the target is a TILE the reaction makes
             // worthwhile (bolt the pool, torch the brush).
             if (target && target._elemTile) {
                 return ((spell.dmg || 112) + _spellPowerOf(g, unit, spell)) * 0.8;
             }
             if (!target) return 0;
-            return scoreOffensiveHit(g, unit, target, spell, v, {}).val;
+            const hit = scoreOffensiveHit(g, unit, target, spell, v, {});
+            // tackle (Sky Tackle, Phase 5 wave A): the carry is worth what a
+            // linePush's shove is — displacement per tile.
+            return kind === 'tackle' ? hit.val + (spell.pushDistance || 1) * 16 : hit.val;
+        }
+
+        if (kind === 'transform') {
+            // Sedan (Phase 5 wave A): mecha when the fight is in reach (range +
+            // armour) or it's hurt; car when it has to cross the map. Never
+            // flip for nothing — same stance as wanted scores 0.
+            const inMecha = g.unitHasStatus(unit, spell.formB || 'mechaForm');
+            const near = (v.closestEnemyDist ?? Infinity) <= 4;
+            const wantMecha = near || (unit.hp / unit.maxHp) < 0.5;
+            if (wantMecha === inMecha) return 0;
+            return 60 + (near ? 40 : 0);
         }
 
         if (kind === 'lifeDrain') {
@@ -3891,7 +3905,7 @@
         const g = G();
         const kind = spell.kind;
 
-        if (['damage', 'ricochet', 'debuff', 'multiHit', 'lifeDrain'].includes(kind)) {
+        if (['damage', 'ricochet', 'debuff', 'multiHit', 'lifeDrain', 'tackle'].includes(kind)) {
             const R = _effRange(unit, spell);
             const longR = _isLongRange(spell);
             const srcZ = standH(g, unit);
@@ -3914,7 +3928,7 @@
             // reactive tile might still reach one.
             if (!inRange.length) return kind === 'damage' ? _elementalTileFallback(unit, spell, v) : null;
 
-            if (['damage', 'ricochet', 'multiHit', 'lifeDrain'].includes(kind)) {
+            if (['damage', 'ricochet', 'multiHit', 'lifeDrain', 'tackle'].includes(kind)) {
                 const killable = inRange.filter(e => estDamage(g, unit, e.enemy, spell) >= effHp(e.enemy));
                 if (killable.length > 0) {
                     killable.sort((a, b) => b.priority - a.priority);
@@ -4349,6 +4363,7 @@
         }
 
         if (kind === 'escape') return { x: unit.x, y: unit.y };
+        if (kind === 'transform') return { x: unit.x, y: unit.y };
         if (kind === 'selfHeal') return { x: unit.x, y: unit.y };
 
         if (kind === 'aoePull') {

@@ -1951,6 +1951,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         racePlasmaWhip:       '_bolt_plasma',
         raceKiBlast:          '_bolt_ki',
         raceIceSpear:         '_bolt_ice',
+        raceIceShard:         '_bolt_ice',     /* yeti (Phase 5 wave A) */
+        raceGraveChill:       '_bolt_ice',     /* skeleton (Phase 5 wave A) */
         /* raceAbsoluteZero moved to '_bolt_abszero' — see the psychedelic/
            cosmic drop block further down; the bolt now detonates the full
            deep-freeze signature on arrival (boltGeometry). */
@@ -22824,6 +22826,26 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['sharedShrinkRay'] = Object.assign({}, SPELL_MAP['sharedShrinkRay'], { impact: 'sharedShrinkRay_impact' });
     SPELL_MAP['trunkThrow'] = Object.assign({}, SPELL_MAP['trunkThrow'], { impact: 'trunkThrow_impact' });
     SPELL_MAP['raceCalcify'] = Object.assign({}, SPELL_MAP['raceCalcify'], { impact: 'raceCalcify_impact' });
+
+    /* ── CHAMP_REWORK_PLAN Phase 5 wave A (2026-09-08): the new spells ride
+       existing recipes by family (plan §6 "family treatment"); a bespoke
+       director can replace any of these later without touching data.js. ── */
+    SPELL_MAP['raceIceShard']         = Object.assign({}, SPELL_MAP['raceIceSpear']);          /* yeti — ice bolt */
+    SPELL_MAP['raceGraveChill']       = Object.assign({}, SPELL_MAP['raceFrostbite']);         /* skeleton — cold bolt */
+    SPELL_MAP['raceSnowballVolley']   = Object.assign({}, SPELL_MAP['raceBlizzardPresent']);   /* santa — snow aoe */
+    SPELL_MAP['raceWhiteChristmas']   = Object.assign({}, SPELL_MAP['raceExhaustCloud']);      /* santa — the squall zone */
+    SPELL_MAP['raceClusterRockets']   = Object.assign({}, SPELL_MAP['raceMissileBarrage']);    /* cyborg — missile descent */
+    SPELL_MAP['racePlasmaCannon']     = Object.assign({}, SPELL_MAP['plasmaGun']);             /* cyborg — plasma beam */
+    SPELL_MAP['raceFreezeBreath']     = Object.assign({}, SPELL_MAP['raceKiWave'], { impact: '_ice_impact_tile' });   /* superhero — short beam, ice impact */
+    SPELL_MAP['racePiercingArrow']    = Object.assign({}, SPELL_MAP['raceShockwaveClap']);     /* robin hood — line push */
+    SPELL_MAP['raceDinoTailWhip']     = Object.assign({}, SPELL_MAP['raceHydraulicPunch']);    /* dinosaur — heavy melee */
+    SPELL_MAP['raceApexRoar']         = Object.assign({}, SPELL_MAP['raceHowl']);              /* dinosaur — the roar aura */
+    SPELL_MAP['raceSkyTackle']        = Object.assign({}, SPELL_MAP['raceHeroicLeap']);        /* superhero — charge impact */
+    SPELL_MAP['raceIncendiaryRounds'] = Object.assign({}, SPELL_MAP['raceSiegeMode']);         /* marksman — self buff */
+    SPELL_MAP['raceStoneform']        = Object.assign({}, SPELL_MAP['raceStoneSkin']);         /* gargoyle — stone aura */
+    SPELL_MAP['raceQBSneak']          = Object.assign({}, SPELL_MAP['raceMistForm']);          /* quarterback — escape */
+    SPELL_MAP['raceTreelineRetreat']  = Object.assign({}, SPELL_MAP['raceEject']);             /* bigfoot — escape */
+    SPELL_MAP['raceTransform']        = Object.assign({}, SPELL_MAP['overclock']);             /* sedan — the morph aura */
 
     /* ═════════ END VFX PASS-3 COVERAGE SECTION ═════════ */
 

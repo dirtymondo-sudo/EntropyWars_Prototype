@@ -359,3 +359,142 @@ test('§5.6 retune: non-capstone stage buffs/debuffs are ±1 (capstones may do �
         }
     }
 });
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Phase 5 wave A — the reuse-heavy spell wave (plan §9.5, shipped 2026-09-08).
+   Every new spell, every rename / retune, the two new kinds (transform,
+   tackle), the four new flags (executeBelowPct, onKill*, lineWidth > 1,
+   terrainDeform.flatten, expireTerrain) and the engine sites that honour them.
+   ═══════════════════════════════════════════════════════════════════════ */
+// (aiSrc is declared above)
+const vfxSrc = src('three-vfx-effects.js');
+const uiSrc2 = src('ui.js');
+
+/* id → [race, kind, { field: expected }] — the §6 numbers that matter. */
+const WAVE_A = {
+    raceQBSneak:          ['quarterback',      'escape',    { teleportDistance: 3 }],
+    raceTransform:        ['honda civic',      'transform', { formA: 'carForm', formB: 'mechaForm', range: 0 }],
+    raceSnowballVolley:   ['santa clause',     'aoe',       { aoeRadius: 1, range: 4, dmg: 80, damageType: 'magic' }],
+    raceWhiteChristmas:   ['santa clause',     'zoneDebuff',{ aoeRadius: 1, zoneDuration: 2, expireTerrain: 'ice' }],
+    raceIceShard:         ['yeti',             'damage',    { dmg: 100, range: 3, damageType: 'magic' }],
+    raceIncendiaryRounds: ['marksman',         'buff',      { range: 0 }],
+    raceGraveChill:       ['skeleton',         'damage',    { dmg: 100, range: 3, damageType: 'magic' }],
+    raceDinoTailWhip:     ['dinosaur',         'damage',    { dmg: 100, range: 1, pushDistance: 2, damageType: 'physical' }],
+    raceApexRoar:         ['dinosaur',         'warCry',    { auraRadius: 2 }],
+    raceTreelineRetreat:  ['bigfoot',          'escape',    { teleportDistance: 3 }],
+    raceStoneform:        ['gargoyle',         'buff',      { range: 0 }],
+    racePiercingArrow:    ['robinhood',        'linePush',  { range: 5, dmg: 120, pushDistance: 2, collisionBonus: 60, collisionStatusBoth: true }],
+    raceFreezeBreath:     ['superhero',        'line',      { range: 2, dmg: 40, damageType: 'magic' }],
+    raceSkyTackle:        ['superhero',        'tackle',    { chargeToTarget: true, pushDistance: 4, collisionBonus: 50, damageType: 'physical' }],
+    raceClusterRockets:   ['cyborg',           'aoe',       { aoeRadius: 1, range: 4, dmg: 110, damageType: 'magic' }],
+    racePlasmaCannon:     ['cyborg',           'line',      { range: 4, dmg: 130, lineWidth: 2, damageType: 'magic' }],
+};
+/* id → the ONE status each carrier/rider applies. */
+const WAVE_A_STATUS = {
+    raceQBSneak: 'invisible', raceSnowballVolley: 'slow', raceWhiteChristmas: 'slow', raceIceShard: 'slow',
+    raceIncendiaryRounds: 'incendiary', raceGraveChill: 'slow', raceTreelineRetreat: 'regen', raceStoneform: 'stoneform',
+    raceFreezeBreath: 'frozen', raceClusterRockets: 'stagger', racePlasmaCannon: 'burn',
+};
+const raceSpell = (race, id) => (D.RACE_ABILITIES[race] || []).find(s => s && s.id === id);
+const treeHas = (race, id) => (D.RACE_TREE[race] || []).some(n => (Array.isArray(n) ? n : [n]).includes(id));
+
+test('Phase 5 wave A: every §6 spell exists on its race with its kind, numbers, status and tree node', () => {
+    for (const [id, [race, kind, fields]] of Object.entries(WAVE_A)) {
+        const sp = raceSpell(race, id);
+        assert.ok(sp, `${race} has ${id}`);
+        assert.strictEqual(sp.kind, kind, `${id} kind`);
+        for (const [k, v] of Object.entries(fields)) same(sp[k], v, `${id}.${k}`);
+        assert.ok(sp.desc && sp.desc.length > 20, `${id} has a desc`);
+        assert.ok(treeHas(race, id), `${id} sits on ${race}'s RACE_TREE`);
+        assert.ok(D.getRaceTreeAllIds(race).includes(id), `${id} reachable through getRaceTreeAllIds`);
+        if (WAVE_A_STATUS[id]) {
+            const fx = sp.statusEffects || (sp.collisionStatus ? [sp.collisionStatus] : []);
+            assert.strictEqual(fx.length, 1, `${id} applies exactly one status`);
+            assert.strictEqual(fx[0].id, WAVE_A_STATUS[id], `${id} applies ${WAVE_A_STATUS[id]}`);
+            assert.ok(D.STATUS_DEFS[fx[0].id], `${id}'s status is a STATUS_DEFS row`);
+        }
+    }
+    // The riders' statuses are rows too.
+    assert.strictEqual(raceSpell('robinhood', 'racePiercingArrow').collisionStatus.id, 'root');
+    assert.strictEqual(raceSpell('superhero', 'raceSkyTackle').collisionStatus.id, 'stagger');
+    // Twins: every wave-A pair is a 2-array on its node (both alternates exist).
+    const pairs = {
+        quarterback: ['raceBlitz', 'raceQBSneak'], 'honda civic': ['raceTransform', 'raceExhaustCloud'],
+        'santa clause': ['raceNaughtyList', 'raceWhiteChristmas'], yeti: ['raceFrozenPunch', 'raceIceShard'],
+        marksman: ['sharedSmokeScreen', 'raceIncendiaryRounds'], skeleton: ['raceBoneToss', 'raceGraveChill'],
+        dinosaur: ['sharedFissure', 'raceApexRoar'], bigfoot: ['raceRealityShift', 'raceTreelineRetreat'],
+        gargoyle: ['raceStoneform', 'raceGothicRampart'], robinhood: ['raceSplittingArrow', 'racePiercingArrow'],
+        superhero: ['raceShockwaveClap', 'raceSkyTackle'], cyborg: ['overclock', 'racePlasmaCannon'],
+    };
+    for (const [race, pair] of Object.entries(pairs)) {
+        const alts = Object.values(D.getRaceTreeAlts(race)).map(a => JSON.stringify(a));
+        assert.ok(alts.includes(JSON.stringify(pair)), `${race} twins ${pair.join(' ⇄ ')} (has ${alts.join(' | ')})`);
+    }
+});
+
+test('Phase 5 wave A: renames, retunes and retirements', () => {
+    assert.strictEqual(raceSpell('dinosaur', 'raceApexCharge').name, 'Stampede');
+    same(raceSpell('dinosaur', 'raceJurassicJaw').onKillHealPct, 0.25);
+    same(raceSpell('dinosaur', 'raceJurassicJaw').onKillRefundAp, 1);
+    assert.strictEqual(raceSpell('robinhood', 'raceArrowRain').name, 'Arrow Volley');
+    assert.strictEqual(raceSpell('robinhood', 'raceArrowRain').range, 6);
+    assert.strictEqual(raceSpell('superhero', 'raceLaserBeam').name, 'Heat Vision');
+    assert.strictEqual(raceSpell('superhero', 'raceLaserBeam').range, 3);
+    assert.strictEqual(raceSpell('ki fighter', 'raceKiBlast').range, 4);
+    same(raceSpell('marksman', 'raceFireForEffect').bonusVsStatus, { status: 'burn', mult: 1.5 });
+    assert.strictEqual(raceSpell('conspiracy theorist', 'raceTruthBomb').name, 'Flat Earth');
+    same(raceSpell('conspiracy theorist', 'raceTruthBomb').terrainDeform, { flatten: true, radius: 1 });
+    // Take Aim executes at ≤15% for every Sniper (§10 #4 taken as yes).
+    const headshot = D.SPELL_BY_ID.headshot;
+    assert.ok(headshot && headshot.executeBelowPct === 0.15, 'headshot executeBelowPct 0.15');
+    assert.ok(/killed outright/i.test(headshot.desc));
+    // Perch Form is retired (Stoneform replaced it); the reptilian keeps ITS Tail Whip id.
+    assert.ok(!raceSpell('gargoyle', 'racePerchForm'), 'Perch Form retired');
+    assert.ok(!D.SPELL_BY_ID.racePerchForm, 'no orphan racePerchForm');
+    assert.ok(raceSpell('reptilian', 'raceTailWhip') && raceSpell('dinosaur', 'raceDinoTailWhip'), 'two Tail Whips, two ids');
+    // Mecha reaches +2 with spells too (Robo Punch at 3).
+    same(D.STATUS_DEFS.mechaForm.spellRangeDelta, 2);
+    same(D.STATUS_DEFS.mechaForm.rangeDelta, 2);
+    // Every wave-A id has a VFX family recipe.
+    for (const id of Object.keys(WAVE_A)) assert.ok(vfxSrc.includes(`SPELL_MAP['${id}']`), `${id} has a SPELL_MAP recipe`);
+    assert.ok(vfxSrc.includes("SPELL_MAP['raceDinoTailWhip']"));
+});
+
+test('Phase 5 wave A: the engine honours the new kinds and flags (source-text guards)', () => {
+    const count = (text, re) => (text.match(re) || []).length;
+    // Kinds registered + the damage pipeline takes tackle.
+    assert.ok(/transform:\s*\{ minRange: 0, offensive: false, selfCast: true/.test(battleSrc), 'SPELL_KIND_META.transform');
+    assert.ok(/tackle:\s*\{ minRange: 1, offensive: true,\s*breaksStealth: true/.test(battleSrc), 'SPELL_KIND_META.tackle');
+    assert.ok(/'damage', 'multiHit', 'ricochet', 'lifeDrain', 'tackle',/.test(battleSrc), 'tackle is a Press-Turn kind');
+    assert.ok(/spell\.kind === 'damage' \|\| spell\.kind === 'tackle'/.test(battleSrc), 'doSpell routes tackle through the damage branch');
+    assert.ok(/else if \(spell\.kind === 'transform'\)/.test(battleSrc), 'doSpell transform branch');
+    // Stance carriers: the form pins the sprite, the transform toggles the carriers.
+    assert.ok(/function unitStanceForm\(unit\)/.test(battleSrc) && /function _formSpriteFor\(unit\)/.test(battleSrc));
+    assert.ok(count(battleSrc, /_formSpriteFor\(unit\)/g) >= 3, 'apply / revert / transform all read the worn form');
+    assert.ok(/formSprites:\s*\{\s*mecha:/.test(battleSrc), "UNIT_ANIM_OVERRIDES['honda civic'].formSprites.mecha");
+    assert.ok(/spellRangeDelta/.test(battleSrc.slice(battleSrc.indexOf('function getEffectiveSpellRange'), battleSrc.indexOf('function getEffectiveSpellRange') + 2000)), 'getEffectiveSpellRange sums spellRangeDelta');
+    // Knockback + the tackle carry live in _runPostEffects.
+    const post = battleSrc.slice(battleSrc.indexOf('function _runPostEffects'), battleSrc.indexOf('function _runChargeToTargetSpell'));
+    assert.ok(/spell\.pushDistance && target && !target\.dead/.test(post) && /_isTackle/.test(post) && /collisionStatus/.test(post), '_runPostEffects: knockback + tackle carry + collision riders');
+    // Wide beams + pin riders.
+    assert.ok(/function getLineSpellLaneOffsets\(spell, dx, dy\)/.test(battleSrc));
+    assert.ok(count(battleSrc, /getLineSpellLaneOffsets\(/g) >= 4, 'lanes: _applyLineDamage, ray footprint, direction preview');
+    const line = battleSrc.slice(battleSrc.indexOf('function _applyLineDamage'), battleSrc.indexOf('function _executeAllySpellAnimation'));
+    assert.ok(/collisionStatusBoth/.test(line) && /collisionBonus/.test(line), '_applyLineDamage pin riders');
+    // Flatten deform.
+    const deform = battleSrc.slice(battleSrc.indexOf('function applyTerrainDeform'), battleSrc.indexOf('function applyTerrainDeform') + 6000);
+    assert.ok(/deform\.flatten/.test(deform) && /_floorH - oldH/.test(deform), 'applyTerrainDeform flatten mode');
+    // Execute + on-kill riders, on the live hit AND the delayed Take Aim shot.
+    assert.ok(/function _applyExecuteRider\(unit, target, spell\)/.test(battleSrc) && /function _applyOnKillRiders\(unit, target, spell\)/.test(battleSrc));
+    assert.ok(/_execArmed && !target\.dead\) _applyExecuteRider/.test(battleSrc) && /_applyOnKillRiders\(unit, target, spell\);/.test(battleSrc));
+    assert.ok(/executeBelowPct: spell\.executeBelowPct \|\| 0/.test(battleSrc), '_castLaserMark carries executeBelowPct');
+    assert.ok(/ds\.executeBelowPct/.test(stateSrc) && /_applyExecuteRider/.test(stateSrc), 'state.js detonation honours the execute');
+    // Escapes land their own statuses; zones paint terrain when they clear.
+    const esc = battleSrc.slice(battleSrc.indexOf("else if (spell.kind === 'escape')"), battleSrc.indexOf("else if (spell.kind === 'selfHeal')"));
+    assert.ok(/applyStatusEffects\(unit, spell\.statusEffects/.test(esc), 'escape applies statusEffects to the caster');
+    assert.ok(/expireTerrain: spell\.expireTerrain \|\| null/.test(battleSrc) && /zone\.expireTerrain/.test(battleSrc), 'zoneDebuff expireTerrain');
+    // AI + HUD + library filter know the kinds.
+    assert.ok(/'leapStrike', 'tackle'\]\)/.test(aiSrc) && /kind === 'transform'/.test(aiSrc) && /'lifeDrain', 'tackle'\]\.includes\(kind\)/.test(aiSrc), 'ai.js tackle + transform');
+    assert.ok(/k === 'tackle'/.test(hudSrc) && /k === 'transform'/.test(hudSrc), 'hud.js spell-card parts');
+    assert.ok(/'damage','tackle','transform'/.test(uiSrc2), 'ui.js spell library kinds');
+});
