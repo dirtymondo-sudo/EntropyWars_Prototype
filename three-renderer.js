@@ -23180,18 +23180,27 @@ const ThreeRenderer = (function () {
     }
     function _nrKit(group, ctx, o) {
         o = o || {};
+        /* THE SETTING IN THE ROOM (HQ plan 7.2 stage 5): _hqBuildSetting runs
+           a builder inside a walkable site room with `ctx.hq` = { w, gap, B,
+           tints } — the apron width and moat gap are the ROOM's (so the
+           kit's X0..X1 is the room's walls), the base level is the Δ's, and
+           the tints are the board's (state.terrainTints is the last battle's).
+           The enclosure primitives (_nrApron / _nrMoat / _nrRoom / _nrSign)
+           are no-ops under K.hq — the room's shell is those already. */
+        var HQ = ctx.hq || null;
+        if (HQ) { o = Object.assign({}, o); if (HQ.w != null) o.w = HQ.w; if (HQ.gap != null) o.gap = HQ.gap; }
         var ts = ctx.ts, bw = ctx.bw, bh = ctx.bh, elev = ts * ELEV_STEP_RATIO;
-        var B = _hLevelAt(Math.min(3, bw - 1), 0); if (!(B > 0)) B = _hLevelAt(0, 0) || 5;
+        var B = (HQ && HQ.B != null) ? HQ.B : _hLevelAt(Math.min(3, bw - 1), 0); if (!(B > 0)) B = _hLevelAt(0, 0) || 5;
         var fy = B * elev;
         var W = (o.w != null ? o.w : 3.5) * ts, G = (o.gap || 0) * ts;
         var K = {
             g: group, ctx: ctx, ts: ts, bw: bw, bh: bh, elev: elev, B: B, fy: fy, W: W, G: G,
             X0: -G - W, X1: bw * ts + G + W, Z0: -G - W, Z1: bh * ts + G + W,
             BX0: 0, BX1: bw * ts, BZ0: 0, BZ1: bh * ts,          // the board footprint
-            CX: bw * ts * 0.5, CZ: bh * ts * 0.5, rng: ctx.rng, occ: !!o.occ, walls: {}
+            CX: bw * ts * 0.5, CZ: bh * ts * 0.5, rng: ctx.rng, occ: !!o.occ, walls: {}, hq: HQ
         };
         if (K.occ) group._ew_occNear = true;
-        _nrLastKit = { B: B, fy: fy, W: W, G: G, apronTop: fy - 0.6, moat: null };
+        if (!HQ) _nrLastKit = { B: B, fy: fy, W: W, G: G, apronTop: fy - 0.6, moat: null };
         K.add = function (m) { group.add(m); return m; };
         K.wallOf = function (side) {
             if (!K.occ) return group;
@@ -23203,7 +23212,8 @@ const ThreeRenderer = (function () {
         /* Lambert wearing a terrain sprite, tinted like the board's own tiles */
         K.mat = function (texKey, color, opts) {
             var tex = texKey ? _hzTex(texKey) : null, m = _hzLit(tex, color, opts);
-            if (texKey) _evTintMat(m, texKey);
+            if (texKey && HQ) { var ht = HQ.tints && HQ.tints[texKey]; if (ht) m.color.multiply(new THREE.Color(ht)); }
+            else if (texKey) _evTintMat(m, texKey);
             /* a small self-lit lift (22% of the base) so vertical faces on a dusk
                map read as stone/brick instead of black — the board's own tiles
                carry baked shading, plain Lambert on a low sun does not */
@@ -23253,6 +23263,7 @@ const ThreeRenderer = (function () {
        top sits a hair under the tile tops so the rim never z-fights. */
     function _nrApron(K, o) {
         o = o || {};
+        if (K.hq) return [];                      // the room's floor + apron stand for it (stage 5)
         var ts = K.ts, fy = K.fy, G = K.G, top = fy - (o.drop || 0) * ts - 0.6;
         var T = o.deep ? top : (o.thick || 0.2) * ts;
         if (_nrLastKit) _nrLastKit.apronTop = top;
@@ -23274,6 +23285,7 @@ const ThreeRenderer = (function () {
        board-edge lake continues out into it. depth 1 = the board's water level. */
     function _nrMoat(K, o) {
         o = o || {};
+        if (K.hq) return null;                    // the room's own moat (_hqBuildSiteBoard) stands for it
         var ts = K.ts, depth = o.depth == null ? 1 : o.depth;
         var y = K.fy - depth * ts - (o.key === 'lava' ? 0.02 : 0.18) * ts;
         if (_nrLastKit) { _nrLastKit.moat = o.key || 'water'; _nrLastKit.moatY = y; }
@@ -23338,6 +23350,7 @@ const ThreeRenderer = (function () {
     /* An indoor box: inward-facing walls from the bed's floor up (dado +
        upper panel + trims + light strips), the Training Room recipe. */
     function _nrRoom(K, o) {
+        if (K.hq) return;                         // the room's shell IS the enclosure
         var ts = K.ts, fy = K.fy, WH = (o.h || 3.2) * ts, DH = (o.dh || 1.0) * ts;
         var wallMat = K.mat(o.tex, o.color == null ? 0xffffff : o.color, { side: THREE.DoubleSide });
         var dadoMat = K.mat(o.dadoTex || o.tex, o.dadoColor == null ? 0x555555 : o.dadoColor, { side: THREE.DoubleSide });
@@ -23609,6 +23622,7 @@ const ThreeRenderer = (function () {
     /* a sign plate: lines of text on a board, lit */
     function _nrSign(K, key, lines, w, h, x, y, z, ry, o) {
         o = o || {};
+        if (K.hq) return null;                    // the room hangs its own signs (the mood's palette)
         var t = _hzTextTex(key, lines, Object.assign({ w: 512, h: 256, bg: '#1b1a1c', border: '#c9bb96', color: '#efe4c4' }, o)); if (!t) return null;
         var m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: t, color: 0xffffff, emissive: o.emissive == null ? 0x2a2822 : o.emissive, side: THREE.DoubleSide }));
         m.position.set(x, y, z); m.rotation.y = ry;
@@ -24825,18 +24839,22 @@ const ThreeRenderer = (function () {
 
     // Gentle drift for the floating background scenery — a slow vertical bob
     // plus a lazy spin, giving the skyline cinematic, dream-like motion.
-    function _animateFloaters(t) {
-        /* MAP SETTINGS: swap procedural stand-in trees for the foliage OBJs as they land */
-        if (_nrPending.length) {
-            for (var pi = _nrPending.length - 1; pi >= 0; pi--) {
-                var pe = _nrPending[pi];
-                if (!pe.g.parent) { _nrPending.splice(pi, 1); continue; }
-                var ce = _foliageModelCache[pe.name];
-                if (ce && ce.failed) { _nrPending.splice(pi, 1); continue; }
-                var src = _loadFoliageModel(pe.name);
-                if (src && src._ew_bbox) { _nrPending.splice(pi, 1); try { pe.fill(src); } catch (e) { console.error('[scenery] tree swap failed', e); } }
-            }
+    /* MAP SETTINGS: swap procedural stand-in trees for the foliage OBJs as
+       they land — polled by the battle loop and by the HQ loop (a site room's
+       setting plants the same trees) */
+    function _nrPollPending() {
+        if (!_nrPending.length) return;
+        for (var pi = _nrPending.length - 1; pi >= 0; pi--) {
+            var pe = _nrPending[pi];
+            if (!pe.g.parent) { _nrPending.splice(pi, 1); continue; }
+            var ce = _foliageModelCache[pe.name];
+            if (ce && ce.failed) { _nrPending.splice(pi, 1); continue; }
+            var src = _loadFoliageModel(pe.name);
+            if (src && src._ew_bbox) { _nrPending.splice(pi, 1); try { pe.fill(src); } catch (e) { console.error('[scenery] tree swap failed', e); } }
         }
+    }
+    function _animateFloaters(t) {
+        _nrPollPending();
         for (var i = 0; i < _horizonFloaters.length; i++) {
             var f = _horizonFloaters[i];
             f.obj.position.y = f.baseY + Math.sin(t * f.spd + f.phase) * f.amp;
@@ -30293,6 +30311,128 @@ const ThreeRenderer = (function () {
         });
     }
 
+    /* ── THE SETTING IN THE ROOM (HQ plan 7.2 stage 5, 2026-09-08) ────────
+       A site room whose shell carries `near` (data.js hqSiteRoom: the map's
+       EW_MAP_META `near` key, the builder's apron width `w` in tiles, the
+       moat's gap in tiles) runs the map's own MAP SETTINGS builder
+       (_NR_BUILDERS[key]) INSIDE the room at 1:1 — the same servers,
+       beamline, partitions, fence, houses, stands, curtain wall, colonnade,
+       spires the battle stands in. The kit builds in board space (the board
+       at 0..N×ts, tops at B×elev); the group is shifted so the board lands
+       on the room's board (centred, tops at 0). ctx.hq makes _nrKit take
+       the room's w / gap / base level / tints and turns the enclosure
+       primitives (apron, moat, room, signs) into no-ops — the shell is
+       those. Afterwards every piece (a direct child, or a child of an
+       occlusion wall group) is: DROPPED if it doubles the perimeter (a
+       thin long run hugging the room's wall), or stands in the way in
+       (the south lane at the wall) or at the console; else it becomes a
+       BLOCKER (a rect from its bounds, or a trunk-sized disc for a tall
+       narrow thing — a tree, a mast) unless it is flat (a road, a decal),
+       overhead, over the board, or a sheet the size of the room. Natives
+       and floor props are nudged off a blocker by _hqSettingFreeSpot.
+       Glow pulses join H.fxPulse; the foliage swaps poll under the HQ
+       loop. Kill-switches: window.EW_HQ_NO_SETTING (this), and
+       EW_NO_FACILITY_SCENERY (same as the battle). */
+    function _hqBuildSetting(room) {
+        var S = room.shell, NR = S.near, H = _hq;
+        if (!NR || !H || !S.grid || typeof _NR_BUILDERS === 'undefined') return;
+        if (typeof window !== 'undefined' && (window.EW_HQ_NO_SETTING || window.EW_NO_FACILITY_SCENERY)) return;
+        var build = _NR_BUILDERS[NR.key];
+        if (!build) { console.warn('[HQ] no near builder for', NR.key); return; }
+        var U = _hqUnits(), N = S.grid.cells, C = S.grid.cell, ts = C * U, elev = ts * ELEV_STEP_RATIO;
+        var info = (typeof hqSiteBoardInfo === 'function') ? hqSiteBoardInfo(room.site) : null;
+        var B = (info && info.base) || 5;
+        var board = (typeof hqSiteBoard === 'function') ? hqSiteBoard(room.site) : null;
+        var g = new THREE.Group(); g.name = 'hqSetting:' + NR.key;
+        var seed = 0x5e77 + N * 31; for (var si = 0; si < NR.key.length; si++) seed = (seed * 31 + NR.key.charCodeAt(si)) | 0;
+        var ctx = { cx: N * ts / 2, cz: N * ts / 2, ts: ts, bw: N, bh: N, rng: _mulberry32(seed >>> 0), discR: 6000,
+                    hq: { w: NR.w, gap: NR.gap || 0, B: B, tints: (board && board.terrainTints) || null } };
+        var pulse0 = _hzGlowPulse.length;
+        try { build(g, ctx); } catch (e) { console.error('[HQ] setting failed', NR.key, e); }
+        /* the glow pulses breathe under the HQ loop, not the battle's */
+        _hzGlowPulse.splice(pulse0).forEach(function (p) { if (p && p.mat) H.fxPulse.push(p); });
+        g.traverse(function (o) {
+            if (!o.material) return;
+            var ms = Array.isArray(o.material) ? o.material : [o.material];
+            for (var i = 0; i < ms.length; i++) {
+                var m = ms[i]; if (!m) continue;
+                if (m.blending === THREE.AdditiveBlending || m.isSpriteMaterial) { if (m.fog !== false) { m.fog = false; m.needsUpdate = true; } }
+            }
+        });
+        g.position.set(-N * ts / 2, -B * elev, -N * ts / 2);
+        H.shellGroup.add(g);
+        g.updateMatrixWorld(true);
+        /* the pieces: direct children, or the children of an occlusion wall group */
+        var units = [];
+        g.children.slice().forEach(function (ch) {
+            if (ch._ew_occWall) ch.children.slice().forEach(function (u) { units.push({ o: u, parent: ch }); });
+            else units.push({ o: ch, parent: g });
+        });
+        var half = S.w / 2, dry = N * C / 2 + (S.moat ? S.moat.gap : 0);
+        /* kept clear: the way in (the south lane at the wall) and the console */
+        var zones = [{ x0: -2.2, x1: 2.2, z0: half - 2.8, z1: half + 1 }];   // the leaf's 3.3 m panel + a shoulder; Camelot's gate towers stand at ±2.5
+        (room.counters || []).forEach(function (c) {
+            if (!c || c.action == null || c.action.overlay !== 'crossing') return;
+            /* the console stands 1.1 m off its wall with the desk behind it: a
+               5.6 m run along that wall, 2.4 m deep, is kept clear */
+            var cx = c.x || 0, cz = c.z || 0, onEW = Math.abs(cx) > Math.abs(cz);
+            if (onEW) zones.push({ x0: cx > 0 ? half - 2.4 : -half - 1, x1: cx > 0 ? half + 1 : -(half - 2.4), z0: cz - 2.8, z1: cz + 2.8 });
+            else zones.push({ x0: cx - 2.8, x1: cx + 2.8, z0: cz > 0 ? half - 2.4 : -half - 1, z1: cz > 0 ? half + 1 : -(half - 2.4) });
+        });
+        var box = new THREE.Box3(), wp = new THREE.Vector3(), kept = 0, dropped = 0, blockers = 0;
+        units.forEach(function (u) {
+            if (u.o.isSprite) return;
+            box.setFromObject(u.o);
+            if (box.isEmpty()) return;
+            var x0 = box.min.x / U, x1 = box.max.x / U, z0 = box.min.z / U, z1 = box.max.z / U, y0 = box.min.y / U, y1 = box.max.y / U;
+            var w = x1 - x0, d = z1 - z0, h = y1 - y0;
+            var flat = h < 0.35, high = y0 > 1.5;
+            /* the perimeter doubled: a thin long run hugging the room's wall */
+            var hugX = w < 1.4 && d > 6 && (x1 > half - 0.9 || x0 < -(half - 0.9));
+            var hugZ = d < 1.4 && w > 6 && (z1 > half - 0.9 || z0 < -(half - 0.9));
+            var inZone = zones.some(function (zn) { return x1 > zn.x0 && x0 < zn.x1 && z1 > zn.z0 && z0 < zn.z1; });
+            if ((hugX || hugZ || inZone) && !high && !flat) { u.parent.remove(u.o); _disposeR(u.o); dropped++; return; }
+            kept++;
+            if (flat || high) return;
+            if (x1 < dry && x0 > -dry && z1 < dry && z0 > -dry) return;   // over the board / the moat: the board rules there
+            if (Math.max(w, d) > 40) return;                                // a sheet the size of the room
+            /* a slender thing (a tree, a lamp, a tower — taller than it is wide): a
+               disc at its foot, the trunk's size, not the canopy's; a house is a rect */
+            var slender = h > 2.6 && h > 1.2 * Math.max(w, d);
+            var pb = new THREE.Object3D();
+            if (slender) { u.o.getWorldPosition(wp); pb.position.set(wp.x, 0, wp.z); }
+            else pb.position.set((x0 + x1) / 2 * U, 0, (z0 + z1) / 2 * U);
+            H.shellGroup.add(pb);
+            if (slender) H.blockers.push({ obj: pb, y: 0, top: null, rad: Math.max(0.22, Math.min(w, d) * (Math.min(w, d) > 2.5 ? 0.45 : 0.3)), site: true, setting: true });
+            else H.blockers.push({ obj: pb, y: 0, top: Math.round(y1 * 100) / 100, rad: Math.max(w, d) / 2, rect: { hw: w / 2 + 0.04, hd: d / 2 + 0.04 }, site: true, setting: true });
+            blockers++;
+        });
+        H.setting = { group: g, key: NR.key, kept: kept, dropped: dropped, blockers: blockers };
+        console.log('[HQ] setting', NR.key, '— pieces:', kept, 'dropped:', dropped, 'blockers:', blockers);
+    }
+    /* a floor spot (metres) clear of the setting's blockers: the same spot
+       when it is free, else the nearest free one sliding along the wall it
+       stands by (the coordinate nearer the wall is kept), up to 9 m either
+       way; the spot itself if nothing is free (the room's own props win) */
+    function _hqSettingFreeSpot(x, z) {
+        var H = _hq; if (!H || !H.setting) return { x: x, z: z };
+        var S = H.room.shell, half = S.w / 2;
+        function hit(px, pz) {
+            for (var i = 0; i < H.blockers.length; i++) { var b = H.blockers[i]; if (b.setting && _hqBlkContains(b, px, pz, HQ_BODY_R + 0.1)) return true; }
+            return false;
+        }
+        if (!hit(x, z)) return { x: x, z: z };
+        var alongX = (half - Math.abs(z)) < (half - Math.abs(x));   // nearer the n/s wall: slide along x
+        for (var step = 0.5; step <= 9; step += 0.5) {
+            for (var sgn = -1; sgn <= 1; sgn += 2) {
+                var px = alongX ? x + sgn * step : x, pz = alongX ? z : z + sgn * step;
+                if (Math.abs(px) > half - 0.6 || Math.abs(pz) > half - 0.6) continue;
+                if (!hit(px, pz)) return { x: Math.round(px * 100) / 100, z: Math.round(pz * 100) / 100 };
+            }
+        }
+        return { x: x, z: z };
+    }
+
     /* ── THE SKY OVER AN OUTDOOR ROOM (HQ plan 7.2 stage 3, 2026-09-08) ──
        A site room with `shell.open` stands under the map's own sky: a second
        firmament dome (the battle's dome shader and its SHARED uniforms —
@@ -30853,6 +30993,8 @@ const ThreeRenderer = (function () {
         (room.props || []).forEach(function (p) {
             var cat = D.catalogue[p.key];
             if (!cat || (!cat.file && !cat.proc)) return;
+            /* a site room's setting (stage 5): a floor prop stands clear of its houses / stands */
+            if (isBox && _hq.setting && !p.wall && !p.ceil && !cat.ceil && !(p.y > 0.5)) { var fsp = _hqSettingFreeSpot(p.x || 0, p.z || 0); if (fsp.x !== (p.x || 0) || fsp.z !== (p.z || 0)) p = Object.assign({}, p, { x: fsp.x, z: fsp.z }); }
             var level = p.level || 0, y0 = level ? S.wallH : 0;
             var inward = p.side === 'in';            // a bay's inner wall: the prop faces outward
             var Rw = _hqWallR(room, level, p.side);
@@ -31135,7 +31277,8 @@ const ThreeRenderer = (function () {
                 if (rh && typeof getRace3DModel === 'function' && (getRace3DModel(rh, 'male') || getRace3DModel(rh, 'female'))) {
                     var hm = !!getRace3DModel(rh, 'male'), hf = !!getRace3DModel(rh, 'female');
                     var hg = (hm && hf) ? (Math.random() < 0.5 ? 'male' : 'female') : (hm ? 'male' : 'female');
-                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, face: spot.face || 0 });
+                    var nsp = _hqSettingFreeSpot(spot.x, spot.z);   // off the setting's houses / stands (stage 5)
+                    _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: nsp.x, z: nsp.z, level: spot.level || 0, face: spot.face || 0 });
                     var oi = owned.indexOf(rh); if (oi >= 0) owned.splice(oi, 1);
                 } else free.push(spot);
             });
@@ -31147,7 +31290,8 @@ const ThreeRenderer = (function () {
                    (their own names, their own lines) turn up on break too */
                 var hasM = !!getRace3DModel(rk2, 'male'), hasF = !!getRace3DModel(rk2, 'female');
                 var g = (hasM && hasF) ? (Math.random() < 0.5 ? 'male' : 'female') : (hasM ? 'male' : 'female');
-                _hqSpawnCharacter({ id: 'hq-npc-' + k, kind: 'npc', race: rk2, gender: g, deg: spots[k].deg, r: spots[k].r, x: spots[k].x, z: spots[k].z, level: spots[k].level || 0, face: spots[k].face || 0 });
+                var ksp = _hqSettingFreeSpot(spots[k].x, spots[k].z);
+                _hqSpawnCharacter({ id: 'hq-npc-' + k, kind: 'npc', race: rk2, gender: g, deg: spots[k].deg, r: spots[k].r, x: ksp.x, z: ksp.z, level: spots[k].level || 0, face: spots[k].face || 0 });
             }
         } catch (e) { console.warn('[HQ] roster NPCs skipped', e); }
     }
@@ -31759,6 +31903,8 @@ const ThreeRenderer = (function () {
            reads shared time / drift uniforms that only the battle loop
            advances — drive them here for the moat's liquid */
         if (H.moatTick) _hqTickMoat(dt);
+        /* a setting's trees land as their OBJs arrive (HQ plan 7.2 stage 5) */
+        if (H.setting) _nrPollPending();
         /* room-fx glow pulses (the training pit's lamps and strips) — the
            battle _hzGlowPulse list is not ticked under the HQ loop */
         for (var fp = 0; fp < H.fxPulse.length; fp++) {
@@ -31898,7 +32044,7 @@ const ThreeRenderer = (function () {
             opts: opts, host: opts.host, room: room, profile: opts.profile || null,
             scene: new THREE.Scene(), camera: null, cube: null,
             shellGroup: new THREE.Group(), doorGroup: new THREE.Group(), propGroup: new THREE.Group(), charGroup: new THREE.Group(),
-            doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null,
+            doors: [], counters: [], chars: [], blockers: [], landings: [], player: null, fxPulse: [], site: null, sky: null, setting: null,
             keys: {}, drag: null, lastDragAt: 0, fp: false, paused: false, ready: false, t0: performance.now(), lastMs: 0, lastDebug: 0,
             cam: { yaw: 0, pitch: -0.24, dist: 3.6, init: false }, targetKey: '', w: 0, h: 0, dirty: true,
         };
@@ -31981,6 +32127,8 @@ const ThreeRenderer = (function () {
         if (room.fx === 'training') { try { _hqBuildTrainingPit(room); } catch (e) { console.error('[HQ] training pit failed', e); } }
         /* a walkable site (HQ plan 7.2): the Δ board in the middle of the room */
         if (room.fx === 'site') { try { _hqBuildSiteBoard(room); } catch (e) { console.error('[HQ] site board failed', e); } }
+        /* the setting in the room (HQ plan 7.2 stage 5): the map's near builder, at 1:1 */
+        if (room.fx === 'site' && S.near) { try { _hqBuildSetting(room); } catch (e) { console.error('[HQ] setting failed', e); } }
         /* an outdoor room (HQ plan 7.2 stage 3): the map's sky and far roster */
         if (S.open) { try { _hqBuildSky(room); } catch (e) { console.error('[HQ] sky failed', e); } }
         try { _hqBuildStairs(room); } catch (e) { console.error('[HQ] stairs failed', e); }

@@ -1134,6 +1134,15 @@ test('every built site is a launch map with a threshold and generates a box room
     const META = Object.fromEntries(D.EW_MAP_META.map(m => [m.id, m]));
     /* where the dry walkway starts: the board's edge, or the quay's inner edge in a moat room */
     const dryFrom = S => S.grid.cells * S.grid.cell / 2 + (S.moat ? S.moat.gap : 0);
+    /* THE SETTING (plan 7.2 stage 5): the renderer's builders and the apron width each hands _nrKit */
+    const trSrc = require('fs').readFileSync(require('path').join(__dirname, 'three-renderer.js'), 'utf8');
+    const builderW = key => { const m = trSrc.match(new RegExp('_NR_BUILDERS\\.' + key + ' = function \\(group, ctx\\) \\{\\s*var K = _nrKit\\(group, ctx, \\{ w: ([0-9.]+)')); return m ? +m[1] : null; };
+    const NEAR = HQ.siteRooms.near || {};
+    assert.ok(Object.keys(NEAR).length >= 11, 'the setting table covers the built sites');
+    for (const key of Object.keys(NEAR)) {
+        assert.strictEqual(builderW(key), NEAR[key].w, 'siteRooms.near.' + key + '.w must equal the w its builder hands _nrKit (' + builderW(key) + ')');
+        if (NEAR[key].h != null) assert.ok(NEAR[key].h >= 2.4 && NEAR[key].h <= 4, key + ': a room height in tiles');
+    }
     const onCauseway = (S, x, z) => !!S.moat && S.moat.causeways.some(sd => Math.abs(sd === 'n' || sd === 's' ? x : z) < S.moat.deckW / 2 && (sd === 's' ? z > 0 : sd === 'n' ? z < 0 : sd === 'e' ? x > 0 : x < 0));
     for (const id of built) {
         const th = HQ.thresholds[id];
@@ -1152,6 +1161,15 @@ test('every built site is a launch map with a threshold and generates a box room
         const board = D.hqSiteBoard(id);
         assert.ok(S.grid && S.grid.cells === board.w && Math.abs(S.grid.cell - 128 / HQ.units) < 1e-9, id + ': one battle tile per cell, 1:1');
         assert.ok(S.w >= S.grid.cells * S.grid.cell + 4 && S.d === S.w && S.h === S.wallH && S.h > (S.open ? 2.8 : 3.5), id + ': at least 2 m of walkway round the board');
+        /* the setting in the room (stage 5): the map's near builder, the room grown to its apron */
+        const nearKey = META[id].near;
+        if (nearKey && NEAR[nearKey] && (HQ.siteRooms.shells[id] || {}).setting !== false) {
+            assert.ok(S.near && S.near.key === nearKey && S.near.w === NEAR[nearKey].w, id + ': the room carries its setting (' + nearKey + ')');
+            assert.ok(Math.abs((S.w / 2 - dryFrom(S)) - S.near.w * S.grid.cell) < 0.02, id + ': the walkway is the setting\'s apron (' + (S.w / 2 - dryFrom(S)).toFixed(2) + ' m vs ' + (S.near.w * S.grid.cell).toFixed(2) + ')');
+            assert.ok(Math.abs(S.near.gap * S.grid.cell - (S.moat ? S.moat.gap : 0)) < 0.01, id + ': the setting\'s gap is the moat\'s');
+            assert.strictEqual(S.near.stands, !!NEAR[nearKey].stands);
+            if (NEAR[nearKey].h != null) assert.ok(Math.abs(S.h - NEAR[nearKey].h * S.grid.cell) < 0.02, id + ': the room is as tall as the setting\'s');
+        } else assert.ok(!S.near, id + ': no setting');
         for (const n of [S.floor, S.wall, S.dado, S.trim].concat(S.open ? [] : [S.ceiling])) assert.ok(texOK(n), id + ': texture ' + n);
         assert.ok(Array.isArray(S.lights) && S.lights.length >= 4, id + ': lit over every quarter of the board');
         if (S.open) {
@@ -1226,7 +1244,13 @@ test('every built site is a launch map with a threshold and generates a box room
         assert.ok(cc && cc.action.overlay === 'crossing' && cc.site === id && cc.radius > 0 && cc.verb === 'CROSS', id + ': the crossing console');
         assert.strictEqual(D.hqDoorNo(cc), th.roomNo, 'the console\'s plate wears the site\'s number');
         const desk = room.props.find(p => p.key === 'tanker_desk');
-        assert.ok(desk && desk.wall === 'w' && Math.abs((desk.z || 0) - cc.z) < 2, id + ': the console stands at the tanker desk');
+        const cWall = (HQ.siteRooms.shells[id] && HQ.siteRooms.shells[id].console && HQ.siteRooms.shells[id].console.wall) || 'w';
+        assert.ok(cWall !== 's', id + ': the console is never on the wall with the way in');
+        const ewWall = cWall === 'w' || cWall === 'e';
+        assert.ok(desk && desk.wall === cWall && Math.abs((ewWall ? (desk.z || 0) : (desk.x || 0)) - (ewWall ? cc.z : cc.x)) < 2, id + ': the console stands at the tanker desk on the ' + cWall + ' wall');
+        assert.ok(Math.abs(ewWall ? cc.x : cc.z) > dryFrom(S) && Math.abs(ewWall ? cc.x : cc.z) < S.w / 2, id + ': the console is on the walkway by its wall');
+        assert.strictEqual(cc.face, { w: 90, n: 180, e: 270 }[cWall], id + ': the console faces into the room');
+        for (const p of room.props.slice(1, 4)) assert.ok(p.y === 0.76 && Math.hypot(p.x - cc.x, p.z - cc.z) < 1.6, id + ': ' + p.key + ' is on the desk by the console');
         assert.ok(room.props.some(p => p.key === 'crt_terminal'), 'a CRT on the desk');
         /* the natives on the walkway: race hints from the mission pool, inside the room */
         const pool = D.hqMissionPool(id, 3);
@@ -1270,7 +1294,8 @@ test('every built site is a launch map with a threshold and generates a box room
     assert.ok(st.shell.open === true && st.shell.sky.night === 1 && st.shell.sky.scenery === 'city', 'the Stadium: night, the city overhead');
     assert.ok(st.shell.h >= 4 && st.shell.wall === 'concrete_floor', 'the Stadium: the bowl\'s concrete wall');
     assert.ok(st.doors[0].leaf === 'leaf_wired_double' && st.doors[0].wide === true, 'the Stadium: the turnstile, wide');
-    assert.ok(st.props.filter(p => p.key === 'folding_chair').length >= 3 && st.props.some(p => p.key === 'water_cooler' && p.wall === 'e'), 'the Stadium: the home bench and its cooler on the east wall');
+    assert.ok(st.props.filter(p => p.key === 'folding_chair').length >= 3 && st.props.some(p => p.key === 'water_cooler' && p.wall === 's'), 'the Stadium: the home bench and its cooler on the south wall (the stands fill the sides — stage 5)');
+    assert.ok(st.shell.near && st.shell.near.stands && st.npcSpots.every(sp => Math.abs(sp.z) > Math.abs(sp.x)) && st.counters[0].z < 0, 'the Stadium: natives and the console on the n/s strips');
     assert.strictEqual(D.hqSectorOfMap('prebuilt_stadium'), 'urban');
     /* the six stage-4 rooms — the MOAT rooms: outdoors, an island in the map's liquid */
     const moatRoom = id => HQ.rooms[D.hqSiteRoomId(id)];
@@ -1347,6 +1372,18 @@ test('source scan: the renderer builds the site board and walks it; map.js walks
     assert.match(tr, /if \(H\.moatTick\) _hqTickMoat\(dt\);/, '_hqTickWorld drives it');
     assert.match(tr, /var siteHole = \(room\.fx === 'site' && S\.grid\) \? \(S\.grid\.cells \* S\.grid\.cell \/ 2 \+ \(S\.moat \? S\.moat\.gap : 0\)\) : 0;/, 'a site room\'s floor is a frame round the board / the moat, so pits show');
     const mp = fs.readFileSync(require('path').join(__dirname, 'map.js'), 'utf8');
+    /* stage 5: the setting in the room */
+    assert.match(tr, /function _hqBuildSetting\(room\)/, 'the map\'s near builder runs in the room');
+    assert.match(tr, /if \(room\.fx === 'site' && S\.near\) \{ try \{ _hqBuildSetting\(room\); \}/, '_hqEnter builds it after the board');
+    assert.match(tr, /var HQ = ctx\.hq \|\| null;/, '_nrKit takes the room\'s w / gap / base / tints');
+    assert.match(tr, /if \(!HQ\) _nrLastKit = \{/, 'the crossing\'s kit facts are the battle\'s only');
+    for (const fn of ['_nrApron', '_nrMoat', '_nrRoom', '_nrSign']) assert.ok(new RegExp('function ' + fn + '\\([^)]*\\) \\{\\s*(o = o \\|\\| \\{\\};\\s*)?if \\(K\\.hq\\) return').test(tr), fn + ' is a no-op in the room (the shell stands for it)');
+    assert.match(tr, /function _hqSettingFreeSpot\(x, z\)/, 'natives and props stand clear of the setting');
+    assert.match(tr, /var nsp = _hqSettingFreeSpot\(spot\.x, spot\.z\);/, 'the natives are nudged');
+    assert.match(tr, /var fsp = _hqSettingFreeSpot\(p\.x \|\| 0, p\.z \|\| 0\);/, 'the floor props are nudged');
+    assert.match(tr, /if \(H\.setting\) _nrPollPending\(\);/, 'the setting\'s trees land under the HQ loop');
+    assert.match(tr, /site: true, setting: true \}\);/, 'every piece is a blocker');
+    assert.match(tr, /window\.EW_HQ_NO_SETTING/, 'the kill-switch');
     assert.match(mp, /if \(sr && _hqRoomExists\(sr\)\) return \{ room: sr, at: 'egress' \};/, 'a threshold with a room walks you in');
     assert.match(mp, /if \(act\.overlay === 'crossing'\) return _hqCrossingHtml\(t\);/);
     assert.match(mp, /doorId: door \? door\.id : \(console_ \? \(console_\.counter\.id \|\| 'crossing'\) : null\)/, 'post-match returns to the console');

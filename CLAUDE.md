@@ -190,7 +190,23 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   open into it. A site room's floor is a FRAME (box shell `siteHole`)
   so pits show. Adding a moat room = `open` + `pad: 5` + `moat` on the
   shell; the test checks the quay ≥ 2 m, the liquid, the tint, and that
-  no prop / native / mast stands in the water. A room's
+  no prop / native / mast stands in the water. **THE SETTING IN THE
+  ROOM (stage 5, shipped 2026-09-08 rev 3)**: every site room runs its
+  map's MAP SETTINGS near builder (`_NR_BUILDERS[meta.near]`) inside
+  itself at 1:1 — `DOOR_HQ.siteRooms.near[key] = { w, h?, stands? }`
+  (`w` MUST equal the builder's `_nrKit` `w`; doorhq.test.js diffs the
+  renderer source), `hqSiteRoom` grows `pad` to `w × tile + the moat's
+  gap` and hands the renderer `shell.near`; three-renderer.js
+  `_hqBuildSetting` runs the builder with `ctx.hq` (`_nrKit` takes the
+  room's w / gap / base / tints; `_nrApron` / `_nrMoat` / `_nrRoom` /
+  `_nrSign` are no-ops under `K.hq` — the shell is those), culls pieces
+  that double the perimeter or stand in the way in / at the console,
+  makes every other piece a blocker, and `_hqSettingFreeSpot` nudges
+  natives + floor props off them. A console off the west wall =
+  `shells[id].console = { wall: 'n'|'e', at }`; `stands: true` moves the
+  natives / boxes / chair to the n/s strips; flavour props keep their
+  distance to the wall when the room grows (`flavour[id].fitted: true`
+  = already placed). Kill-switch `window.EW_HQ_NO_SETTING`. A room's
   LIGHT is `shells[id].mood` (lamp / glow / strip / light colours, the two
   sign palettes, optional `signLines`) merged over `siteRooms.shell.mood`
   (= D.U.M.B.'s red); the renderer's signs and lamps hang from `S.h`.

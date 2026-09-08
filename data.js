@@ -16607,23 +16607,51 @@ const DOOR_HQ = {
                fixtures, `signN` / `signS` = the palettes of the two signs.
                D.U.M.B. is the default: red lamps, white strips. */
             mood: { lamp: 0xff4a4a, glow: 0xff3a3a, strip: 0xf2f7ff, light: 0xe6eeff, signN: { bg: '#1b1a1c', border: '#c9bb96', color: '#efe4c4' }, signS: { bg: '#2a1416', border: '#d8a0a0', color: '#f2d8d2' } } },
+        /* ── THE SETTING IN THE ROOM (plan 7.2 stage 5, 2026-09-08) ────
+           A built site whose EW_MAP_META row names a `near` builder (the
+           MAP SETTINGS kit, three-renderer.js _NR_BUILDERS) gets that
+           setting built INSIDE its room at 1:1 — the servers, the beamline,
+           the partitions, the picket fence and the houses, the stands, the
+           curtain wall, the colonnade, the spires — so the room looks like
+           the map it is. The room grows to the setting's apron: `pad` =
+           `w` × one tile (+ the moat's gap), which is exactly the kit's
+           X0..X1, so the setting's own enclosure lands on the room's walls
+           (the renderer skips the kit's apron / moat / room / signs — the
+           shell IS those — and keeps everything else, culled clear of the
+           way in and the console, every piece a blocker).
+             w       the builder's apron width in tiles — MUST equal the
+                     `w` the builder hands _nrKit (doorhq.test.js reads the
+                     renderer source and fails on drift)
+             h       (indoor) the builder's room height in tiles → the
+                     room's `h`, so the kit's pipes and lamps fit under it
+             stands  the setting fills the w/e strips (tiers) — the natives,
+                     the boxes and the chair move to the n/s strips
+           Opt out per room with `shells[id].setting: false`; the console
+           moves off a filled wall with `shells[id].console = { wall, at }`.
+           Flavour props keep their distance to the wall when the room
+           grows (`fitted: true` on the flavour entry = already placed). */
+        near: {
+            dumb: { w: 3.0, h: 3.4 }, cern: { w: 3.2, h: 3.6 }, backrooms: { w: 4.0 },
+            nuketown: { w: 4.5 }, stadium: { w: 4.5, stands: true },
+            camelot: { w: 4.0 }, atlantis: { w: 4.0 }, hell: { w: 4.0 }, technoticlan: { w: 4.0, stands: true }, agartha: { w: 4.5 }, antarctica: { w: 4.5 },
+        },
         shells: {
             prebuilt_dumb: { floor: 'concrete', wall: 'concrete', dado: 'teal', trim: 'teal', ceiling: 'concrete' },
             /* 999 · the collider hall: speckled stone and teal trim under
                blue light — the beam is on, the lamps say so */
-            prebuilt_cern: { floor: 'concrete', wall: 'stone', dado: 'teal', trim: 'teal', ceiling: 'ceiling', h: 4.6,
+            prebuilt_cern: { floor: 'concrete', wall: 'stone', dado: 'teal', trim: 'teal', ceiling: 'ceiling', h: 4.6, console: { wall: 'n', at: 0 },
                 mood: { lamp: 0x6ac8ff, glow: 0x4ab0ff, strip: 0xbfe6ff, light: 0xd0e6ff, signN: { bg: '#10202c', border: '#8fd8ff', color: '#dff4ff' }, signS: { bg: '#2a1010', border: '#ff8080', color: '#ffe0e0' } } },
             /* 90 · level 0 goes on: office carpet, beige drywall, acoustic
                tile, a low ceiling, no conduits (nothing runs through here),
                the hum of the yellow light; the way in is an EXIT door */
-            prebuilt_backrooms: { floor: 'carpet', wall: 'drywall', dado: 'drywall', trim: 'drywall', ceiling: 'ceiling', h: 3.9, dadoH: 0.7, pipes: false,
+            prebuilt_backrooms: { floor: 'carpet', wall: 'drywall', dado: 'drywall', trim: 'drywall', ceiling: 'ceiling', h: 4.3, dadoH: 0.7, pipes: false,
                 mood: { lamp: 0xfff0a0, glow: 0xffe070, strip: 0xfff2b0, light: 0xfff0c0, signN: { bg: '#3a3418', border: '#e8d890', color: '#fff4c0' }, signS: { bg: '#3a3418', border: '#e8d890', color: '#fff4c0' },
                     signLines: { n: ['BACKROOMS', 'ROOM 90', 'LEVEL 0 · NO EXIT'], s: ['NON-CANON', 'THE EXIT SIGN IS A LIE', 'THE CROSSING IS AT THE CONSOLE'] } } },
             /* 1945 · NUKETOWN — the first OUTDOOR room (stage 3): the test
                site's board fence for a wall, lawn underfoot, dusk overhead
                (the map's own khaki sky and its orbs), sodium lamp masts at
                the corners; the way in is the motel door in the fence */
-            prebuilt_nuketown: { open: true, floor: 'grass_2', wall: 'wood_planks', dado: 'wood_planks', trim: 'concrete', ceiling: null, h: 3.2, dadoH: 0.5, pipes: false,
+            prebuilt_nuketown: { open: true, floor: 'grass_2', wall: 'wood_planks', dado: 'wood_planks', trim: 'concrete', ceiling: null, h: 3.2, dadoH: 0.5, pipes: false, console: { wall: 'n', at: 6 },
                 apron: 'grass_2', skirt: 'dirt', apronColor: 0xa8b888,
                 mood: { lamp: 0xffd890, glow: 0xffc060, strip: 0xffe8b0, light: 0xfff0d0, night: 0,
                     signN: { bg: '#2d6b3a', border: '#e8e2c0', color: '#fff6dc' }, signS: { bg: '#3a2a10', border: '#ffd060', color: '#fff0c0' },
@@ -16631,7 +16659,7 @@ const DOOR_HQ = {
             /* 50 · FOOTBALL STADIUM — the bowl at night: the inner concrete
                wall round the field, turf underfoot, floodlight masts, the
                city's roster and its stars overhead; the turnstile lets you in */
-            prebuilt_stadium: { open: true, floor: 'grass_2', wall: 'concrete_floor', dado: 'concrete_floor', trim: 'concrete', ceiling: null, h: 4.2, dadoH: 1.0, pipes: false,
+            prebuilt_stadium: { open: true, floor: 'grass_2', wall: 'concrete_floor', dado: 'concrete_floor', trim: 'concrete', ceiling: null, h: 4.2, dadoH: 1.0, pipes: false, console: { wall: 'n', at: 7 },
                 apron: 'concrete_floor', skirt: 'concrete_floor', apronColor: 0x9a9a96, floorColor: 0x5ec46a,
                 mood: { lamp: 0xeaf4ff, glow: 0xbfe0ff, strip: 0xffffff, light: 0xe8f2ff, night: 1,
                     signN: { bg: '#10203a', border: '#ffd34a', color: '#ffffff' }, signS: { bg: '#1a1a1a', border: '#f4f4f4', color: '#f4f4f4' },
@@ -16679,7 +16707,7 @@ const DOOR_HQ = {
                     signLines: { n: ['HELL', 'ROOM 666', 'THE NUMBER IS THE ADDRESS'], s: ['IMMUNITY CLAIMED', 'THE KEYPAD IS WARM', 'THE CROSSING IS AT THE CONSOLE'] } } },
             /* 2012 · TECHNOTICLAN — the temple precinct: cobbles, the glyph
                wall, the canal moat in the calendar's cyan, torches */
-            prebuilt_technoticlan: { open: true, pad: 5.0, floor: 'cobblestone', wall: 'bricks_3', dado: 'bricks_3', trim: 'gold', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
+            prebuilt_technoticlan: { open: true, pad: 5.0, floor: 'cobblestone', wall: 'bricks_3', dado: 'bricks_3', trim: 'gold', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false, console: { wall: 'n', at: -6 },
                 apron: 'cobblestone', skirt: 'bricks_3', apronColor: 0x8fb0b8, floorColor: 0x8fb0b8,
                 moat: { key: 'water', gap: 2.6, bank: 'bricks_3', bankColor: 0x7aa0a8, bed: 'bricks_3', deck: 'bricks_3', deckColor: 0x8ab0b8, causeways: ['s', 'n'] },
                 mood: { lamp: 0xffa040, glow: 0xff8a30, strip: 0x3fe0d8, light: 0xffc890, night: 1,
@@ -16807,14 +16835,17 @@ const DOOR_HQ = {
                     'The quarterback has crossed more times than any officer in the building. He calls it a season.',
                     'The turnstile counts in. It does not count out.',
                 ],
+                /* stage 5: the stands fill the w/e strips — the bench sits on
+                   the south strip by the turnstile, the cooler on the wall behind it */
+                fitted: true,
                 props: [
-                    { key: 'folding_chair',  x: 9.6,  z: -4.0, face: 270 },
-                    { key: 'folding_chair',  x: 9.6,  z: -2.9, face: 270 },
-                    { key: 'folding_chair',  x: 9.6,  z: -1.8, face: 270 },
-                    { key: 'water_cooler',   wall: 'e', z: -0.6 },
-                    { key: 'cardboard_boxes', x: 9.4, z: 8.4, face: 20 },
-                    { key: 'mop_bucket',     x: -3.6, z: 9.6, face: 200 },
-                    { key: 'potted_plant',   x: -9.6, z: -9.5 },
+                    { key: 'folding_chair',  x: -7.4, z: 13.5, face: 0 },
+                    { key: 'folding_chair',  x: -8.5, z: 13.5, face: 0 },
+                    { key: 'folding_chair',  x: -9.6, z: 13.5, face: 0 },
+                    { key: 'water_cooler',   wall: 's', x: -11.0 },
+                    { key: 'cardboard_boxes', x: 11.8, z: 13.4, face: 20 },
+                    { key: 'mop_bucket',     x: -5.2, z: 13.6, face: 200 },
+                    { key: 'potted_plant',   x: -12.2, z: -13.5 },
                 ],
             },
             /* ── the moat rooms (stage 4): everything stands on the QUAY, the
@@ -16891,13 +16922,16 @@ const DOOR_HQ = {
                     'The canals run to the moat. The moat runs to the canals. Nobody has found the pump.',
                     '2012 was a Tuesday. The site file says so twice.',
                 ],
+                /* stage 5: the temple's tiers fill the w/e strips — the calendar
+                   terminal stands on the north strip's east end, the rail beside it */
+                fitted: true,
                 props: [
-                    { key: 'round_cabinet',  x: 10.9,  z: -9.3, face: 225 },
-                    { key: 'crt_terminal',   x: 10.9,  z: -9.3, y: 0.76, face: 225 },
-                    { key: 'office_chair',   x: 9.8,   z: -8.5, face: 60 },
-                    { key: 'hook_rail',      wall: 'e', z: 5.0 },
-                    { key: 'cardboard_box',  x: -11.2, z: -10.9, face: 10 },
-                    { key: 'mop_bucket',     x: -10.9, z: 8.6, face: 30 },
+                    { key: 'round_cabinet',  x: 11.4,  z: -15.3, face: 200 },
+                    { key: 'crt_terminal',   x: 11.4,  z: -15.3, y: 0.76, face: 200 },
+                    { key: 'office_chair',   x: 10.2,  z: -14.4, face: 30 },
+                    { key: 'hook_rail',      wall: 'n', x: 8.0 },
+                    { key: 'cardboard_box',  x: -13.0, z: -15.2, face: 10 },
+                    { key: 'mop_bucket',     x: 12.6,  z: 15.2, face: 30 },
                 ],
             },
             /* 88 · AGARTHA — things grow here: plants in every corner, the
@@ -17630,14 +17664,22 @@ function hqSiteRoom(mapId) {
     const cells = board ? board.w : ((typeof MF_DELTA_S !== 'undefined') ? MF_DELTA_S : 8);
     const cell = 128 / DOOR_HQ.units;                       // one battle tile in metres (1.75)
     const shell = Object.assign({}, SR.shell || {}, (SR.shells || {})[id] || {});
-    const pad = (shell.pad != null) ? shell.pad : 4;
+    const basePad = (shell.pad != null) ? shell.pad : 4;
+    /* THE SETTING (stage 5): the map's near builder inside the room — the
+       room grows to the builder's apron (`w` tiles past the board, plus
+       the moat's gap) so the kit's X0..X1 is the room's walls */
+    const moatGapM = shell.moat ? ((shell.moat.gap != null) ? shell.moat.gap : 2.6) : 0;
+    const NR = (shell.setting !== false && meta.near && (SR.near || {})[meta.near]) ? (SR.near || {})[meta.near] : null;
+    const pad = NR ? Math.round((NR.w * cell + moatGapM) * 100) / 100 : basePad;
+    const near = NR ? { key: meta.near, w: NR.w, gap: Math.round(moatGapM / cell * 1e4) / 1e4, stands: !!NR.stands } : null;
+    const roomH = (NR && NR.h) ? Math.round(NR.h * cell * 100) / 100 : (shell.h || 4.4);
     const size = Math.round((cells * cell + pad * 2) * 100) / 100;
     const half = size / 2;
     const egress = DOOR_HQ.rooms.central_egress;
     const bayDoor = ((egress && egress.doors) || []).find(d => d.action && d.action.sector === sector) || {};
     const sec = DOOR_HQ.sectors[sector] || {};
     const leaf = T.leaf || 'leaf_closet_alt';
-    const F = (SR.flavour || {})[id] || {};
+    const FL = (SR.flavour || {})[id] || {};
     const label = ((meta.label) || id).toUpperCase();
     /* an OUTDOOR room (stage 3): no ceiling, the map's sky and far roster
        overhead, the lights are masts on the walkway corners */
@@ -17670,26 +17712,43 @@ function hqSiteRoom(mapId) {
         action: { room: hqBayId(sector), at: 'site_' + id }, note: T.note || '',
         desc: 'The same door from the other side. ' + (T.note ? T.note.charAt(0).toUpperCase() + T.note.slice(1) + '. ' : '') + 'The bay is behind it; the paperwork is in front of you.',
     }];
-    const counters = [{
-        /* the CROSSING console: the site file, CROSS ▸ Δ / DEEP, on the west
-           wall at the tanker desk (the Training Room's RANGE console pattern) */
-        id: 'crossing', x: -(half - 1.1), z: 0, face: 90, plateY: 1.9, radius: 2.4, verb: 'CROSS', site: id,
+    /* the CROSSING console's wall: the west wall at the tanker desk by
+       default (the Training Room's RANGE console pattern); a shell whose
+       setting fills a wall names another with `console: { wall, at }` —
+       `at` runs along the wall. The desk layout is the west one turned:
+       W(along, depth) is the point `along` metres along the wall (west's
+       +z) and `depth` in from it; faces turn with it. */
+    const CW = (shell.console && shell.console.wall && shell.console.wall !== 's') ? shell.console.wall : 'w';
+    const CAT_ = (shell.console && shell.console.at) || 0;
+    const ROT = { w: 0, n: 90, e: 180 }[CW];
+    const W = (along, depth) => CW === 'w' ? { x: -(half - depth), z: CAT_ + along }
+                            : CW === 'n' ? { x: -(CAT_ + along), z: -(half - depth) }
+                                         : { x: half - depth, z: -(CAT_ + along) };
+    const WA = (along) => CW === 'w' ? { wall: 'w', z: CAT_ + along } : CW === 'n' ? { wall: 'n', x: -(CAT_ + along) } : { wall: 'e', z: -(CAT_ + along) };
+    const F = (f) => (f + ROT) % 360;
+    const rc = (v) => Math.round(v * 100) / 100 + 0;   // (+ 0: never a -0)
+    const at = (o, extra) => Object.assign({ x: rc(o.x), z: rc(o.z) }, extra);
+    const counters = [Object.assign(at(W(0, 1.1)), {
+        /* the CROSSING console: the site file, CROSS ▸ Δ / DEEP, at the tanker desk */
+        id: 'crossing', face: F(90), plateY: 1.9, radius: 2.4, verb: 'CROSS', site: id,
         label: 'CROSSING CONSOLE', sub: label + ' · THE WAY ON', action: { overlay: 'crossing' },
-    }];
+    })];
+    const stands = !!(near && near.stands);
     const props = [
-        { key: 'tanker_desk',   wall: 'w', z: 0 },
-        { key: 'crt_terminal',  x: -(half - 0.4), z: -0.35, y: 0.76, face: 90 },
-        { key: 'rotary_phone',  x: -(half - 0.38), z: 0.42, y: 0.76, face: 70 },
-        { key: 'papers_a',      x: -(half - 0.5), z: 0.05, y: 0.76, face: 100 },
-        { key: 'clipboard',     wall: 'w', z: -1.6 },
+        Object.assign({ key: 'tanker_desk' }, WA(0)),
+        at(W(-0.35, 0.4), { key: 'crt_terminal', y: 0.76, face: F(90) }),
+        at(W(0.42, 0.38), { key: 'rotary_phone', y: 0.76, face: F(70) }),
+        at(W(0.05, 0.5), { key: 'papers_a', y: 0.76, face: F(100) }),
+        Object.assign({ key: 'clipboard' }, WA(-1.6)),
         /* the south wall: the way in at x 0 (a 3.3 m panel), the extinguisher
            and the breaker either side of it, the wet-floor sign on the sill */
         { key: 'fire_extinguisher', wall: 's', x: 3.4 },
         { key: 'breaker_panel', wall: 's', x: -3.4 },
         { key: 'wet_floor_sign', x: 2.6, z: half - 1.4, face: 150 },
-        /* the east walkway: file boxes for the site file, a chair for the guard */
-        { key: 'cardboard_boxes', x: half - 1.3, z: half - 1.6, face: 30 },
-        { key: 'folding_chair', x: half - 1.3, z: 2.2, face: 250 },
+        /* the east walkway: file boxes for the site file, a chair for the
+           guard (on the south strip when the setting's stands fill the east) */
+        stands ? { key: 'cardboard_boxes', x: 9.2, z: rc(half - 1.3), face: 30 } : { key: 'cardboard_boxes', x: half - 1.3, z: half - 1.6, face: 30 },
+        stands ? { key: 'folding_chair', x: 6.0, z: rc(half - 1.3), face: 0 } : { key: 'folding_chair', x: half - 1.3, z: 2.2, face: 250 },
     ];
     if (!open) props.push(
         /* the north wall: the plate over the board, a clock, lockers in the corner */
@@ -17701,18 +17760,29 @@ function hqSiteRoom(mapId) {
         { key: 'fluorescent', x: 3.5,  z: -3.5, ceil: true, face: 90 },
         { key: 'fluorescent', x: -3.5, z: 3.5,  ceil: true, face: 90 },
         { key: 'fluorescent', x: 3.5,  z: 3.5,  ceil: true, face: 90 });
-    (F.props || []).forEach(p => props.push(Object.assign({}, p)));
+    /* the flavour props were placed against the walls of the room before
+       its setting grew it: a coordinate past the old dry edge keeps its
+       distance to the wall (`fitted: true` = placed for this room already) */
+    const grow = Math.round((pad - basePad) * 100) / 100;
+    const dry0 = cells * cell / 2 + moatGapM - 0.05;
+    const fit = (v) => (grow > 0 && v != null && Math.abs(v) >= dry0) ? rc(Math.sign(v) * (Math.abs(v) + grow)) : v;
+    (FL.props || []).forEach(p => props.push(Object.assign({}, p, (FL.fitted || p.wall) ? {} : { x: fit(p.x), z: fit(p.z) })));
     /* the natives on the walkway (hqMissionPool: natives first) — a race hint
-       per spot; a race with no rigged model falls back to the roster draw */
+       per spot; a race with no rigged model falls back to the roster draw;
+       on the n/s strips when the setting's stands fill the sides */
     const pool = hqMissionPool(id, 3);
     const nat = pool.natives || 0;
-    const spotXZ = [{ x: half - 1.4, z: -4.2, face: 270 }, { x: half - 1.4, z: 4.6, face: 290 }, { x: -(half - 1.4), z: 5.6, face: 80 }];
+    const spotXZ = stands
+        ? [{ x: 7.2, z: rc(half - 1.4), face: 0 }, { x: -7.8, z: rc(half - 1.4), face: 0 }, { x: 9.6, z: -rc(half - 1.4), face: 180 }]
+        : [{ x: half - 1.4, z: -4.2, face: 270 }, { x: half - 1.4, z: 4.6, face: 290 }, { x: -(half - 1.4), z: 5.6, face: 80 }];
     const npcSpots = spotXZ.map((sp, i) => Object.assign({}, sp, (i < nat && pool[i]) ? { race: pool[i] } : {}));
     return {
         label: label, sub: T.sub || ('THE SITE · ' + (sec.label || sector).toUpperCase() + ' · BAY ' + (DOOR_HQ.rooms[hqBayId(sector)] ? DOOR_HQ.rooms[hqBayId(sector)].bayNo : '?')),
         kind: 'box', fx: 'site', site: id, sector: sector, why: T.why || '',
         shell: {
-            w: size, d: size, h: shell.h || 4.4, wallH: shell.h || 4.4, dadoH: shell.dadoH || 1.05,
+            w: size, d: size, h: roomH, wallH: roomH, dadoH: shell.dadoH || 1.05,
+            /* the setting (stage 5): the map's near builder, run in the room by the renderer */
+            near: near,
             floor: shell.floor, wall: shell.wall, dado: shell.dado, trim: shell.trim, ceiling: open ? null : shell.ceiling,
             pipes: !open && shell.pipes !== false,
             /* an outdoor room (stage 3): the sky it stands under, the ground past its walls */
@@ -17725,14 +17795,14 @@ function hqSiteRoom(mapId) {
             mood: mood,
             light: { x: 0, z: 0 },
             lights: lightsAt,
-            plate: { x: 0, z: -(half - 0.4), y: (shell.h || 4.4) - 0.45 },
+            plate: { x: 0, z: -(half - 0.4), y: roomH - 0.45 },
             grid: { cells: cells, cell: cell },
         },
         doors: doors, counters: counters, props: props,
         /* the site guard: just inside the way in, facing across the board */
-        agents: [{ x: -4.4, z: half - 1.5, face: 20, line: F.agent || '“Sign the book. Then sign it again on the way out; they compare the signatures.”' }],
+        agents: [{ x: -4.4, z: half - 1.5, face: 20, line: FL.agent || '“Sign the book. Then sign it again on the way out; they compare the signatures.”' }],
         npcSpots: npcSpots,
-        lines: F.lines || ['The board is the board. The room is a formality.'],
+        lines: FL.lines || ['The board is the board. The room is a formality.'],
         spawn: { x: 0, z: half - 1.6, face: 0 },
     };
 }

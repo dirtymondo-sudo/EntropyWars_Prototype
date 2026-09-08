@@ -1723,3 +1723,18 @@ setting inside the rooms, then the remaining sites one per session.
 Files: data.js, three-renderer.js, index.html (`20260908b-cors`),
 doorhq.test.js (152 tests, 151 green + 1 skip). Story track still ON
 HOLD (A14).
+
+### 2026-09-08 (rev 3) — THE SETTING IN THE ROOM: the site rooms look like their maps
+HQ plan 7.2 stage 5 (the plan's standing next step, the user's ask).
+Every walkable site room now runs its map's own MAP SETTINGS near
+builder inside itself at 1:1 — the same racks, beamline, partitions,
+fence and houses, tiers, curtain wall, colonnade, spires the battle
+stands in — with the room grown to the setting's apron (data.js
+`DOOR_HQ.siteRooms.near`, `hqSiteRoom` → `shell.near`; three-renderer.js
+`_hqBuildSetting`, `_nrKit` `ctx.hq`). Every piece is a blocker; the way
+in and the console are kept clear; four consoles moved to the north
+wall (`shells[id].console`). No canon change; the cast lines are still
+the user's (A15). Files: data.js, three-renderer.js, index.html
+(`20260908c-cors`), doorhq.test.js (152 tests, 151 green + 1 skip).
+Next in the plan's order: the remaining sites one per session. Story
+track still ON HOLD (A14).

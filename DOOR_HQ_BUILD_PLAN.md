@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 22 (2026-09-08 rev 2 — 7.2 stage 4 SHIPPED: the MOAT rooms — Rooms i · CAMELOT, H-20 · ATLANTIS, 666 · HELL, 2012 · TECHNOTICLAN, 88 · AGARTHA and 90S · ANTARCTICA are outdoor sites whose walkway is a QUAY: the ring between the island and the quay is the map's own liquid one level down in the battle's animated fluid sheet, board-edge canals open into it, a causeway either way (the south one is the way in), deep water and lava never entered; `shells[id].moat`, `hqSiteRoom` → `shell.moat`, three-renderer.js `_hqSiteOnCauseway` / `_hqTickMoat`, and a site room's floor is now a FRAME so every board pit finally shows; rev 21 2026-09-08 — 7.2 stage 3 SHIPPED: the first OUTDOOR rooms — Room 1945 · NUKETOWN and Room 50 · FOOTBALL STADIUM are walkable sites with no ceiling, the map's own sky on the battle's firmament dome, its far roster drifting round the room, lamp masts on the walkway corners, a fence / the bowl's wall for a perimeter and the ground running out past it; `shells[id].open`, `shell.sky`, three-renderer.js `_hqBuildSky` / `_hqTickSky`, `_hqTex` reads terrain keys; rev 20 2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
+### The walkable facility that replaces the Play menu · rev 23 (2026-09-08 rev 3 — 7.2 stage 5 SHIPPED: THE SETTING IN THE ROOM — every walkable site room now runs its map's own MAP SETTINGS near builder inside it at 1:1 (D.U.M.B.'s server racks and blast door, CERN's beamline and terminals, the Backrooms' partitions and stalk fluorescents, Nuketown's picket fence, houses, road and buses, the Stadium's tiers and floodlights, Camelot's curtain wall with its towers and drawbridge, Atlantis' colonnade and kelp, Hell's spires and braziers, Technoticlan's temple tiers and torches, Agartha's crystal spires, Antarctica's ice ridges and igloo) — the room grows to the setting's apron (`siteRooms.near[key].w` tiles, + the moat's gap), the kit's enclosure primitives are no-ops in the room (the shell is those), every piece is culled clear of the way in and the console and becomes a blocker, natives and props are nudged off the houses and the stands, and four consoles moved to the north wall (`shells[id].console`); `hqSiteRoom` `near`, three-renderer.js `_hqBuildSetting` / `_hqSettingFreeSpot`, `_nrKit` `ctx.hq`; rev 22 2026-09-08 rev 2 — 7.2 stage 4 SHIPPED: the MOAT rooms — Rooms i · CAMELOT, H-20 · ATLANTIS, 666 · HELL, 2012 · TECHNOTICLAN, 88 · AGARTHA and 90S · ANTARCTICA are outdoor sites whose walkway is a QUAY: the ring between the island and the quay is the map's own liquid one level down in the battle's animated fluid sheet, board-edge canals open into it, a causeway either way (the south one is the way in), deep water and lava never entered; `shells[id].moat`, `hqSiteRoom` → `shell.moat`, three-renderer.js `_hqSiteOnCauseway` / `_hqTickMoat`, and a site room's floor is now a FRAME so every board pit finally shows; rev 21 2026-09-08 — 7.2 stage 3 SHIPPED: the first OUTDOOR rooms — Room 1945 · NUKETOWN and Room 50 · FOOTBALL STADIUM are walkable sites with no ceiling, the map's own sky on the battle's firmament dome, its far roster drifting round the room, lamp masts on the walkway corners, a fence / the bowl's wall for a perimeter and the ground running out past it; `shells[id].open`, `shell.sky`, three-renderer.js `_hqBuildSky` / `_hqTickSky`, `_hqTex` reads terrain keys; rev 20 2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -541,7 +541,7 @@ proposes and the user has not ruled on (MASTER Part C rows 22–24).
 - The elevator's floor panel skips 13 (Room 13 is filed in Bay 1, not on a
   floor). One line of procedural text; the joke is free.
 
-#### 7.2 ⚙ The walkable site (the engine piece) — stage 1 ✅ (2026-09-07, §9: D.U.M.B.) · stage 2 ✅ (2026-09-07 rev 5, §9: CERN + Backrooms, the room's `mood`) · stage 3 ✅ (2026-09-08, §9: Nuketown + the Stadium, the OUTDOOR room — `open`, the sky, the masts) · stage 4 ✅ (2026-09-08 rev 2, §9: the six MOAT rooms — `moat`, the quay, the causeways, the fluid sheet); the rest one session per site
+#### 7.2 ⚙ The walkable site (the engine piece) — stage 1 ✅ (2026-09-07, §9: D.U.M.B.) · stage 2 ✅ (2026-09-07 rev 5, §9: CERN + Backrooms, the room's `mood`) · stage 3 ✅ (2026-09-08, §9: Nuketown + the Stadium, the OUTDOOR room — `open`, the sky, the masts) · stage 4 ✅ (2026-09-08 rev 2, §9: the six MOAT rooms — `moat`, the quay, the causeways, the fluid sheet) · stage 5 ✅ (2026-09-08 rev 3, §9: THE SETTING IN THE ROOM — the map's near builder at 1:1, `siteRooms.near`, `_hqBuildSetting`); the rest one session per site
 **What shipped** (rev 4): the mechanism and the first room. A site in
 `DOOR_HQ.siteRooms.built` gets `hqSiteRoom(mapId)` → a **box** room
 (`kind: 'box', fx: 'site', site: mapId` — the Training Room's pattern
@@ -3232,3 +3232,108 @@ coping and the wall but the sign.
   beyond the generic quay kit); the remaining sites one session each (the
   plan's order: the rest); 5.4a stage 2; 7.9 dailies; 4.1 the case-file
   screen.
+
+### 2026-09-08 (rev 3) — 7.2 stage 5 SHIPPED: THE SETTING IN THE ROOM — the rooms look like their maps
+The user's ask ("I imagined the walkable rooms of the maps inside the HQ
+to look more like their battle maps") = the plan's standing next step
+("the map's `near` setting inside the room"). No new files; data.js +
+three-renderer.js + doorhq.test.js + index.html; docs. The reading: the
+battle already dresses every Δ board with a MAP SETTINGS near builder
+(three-renderer.js `_NR_BUILDERS`, keyed by the map's EW_MAP_META
+`near`) — so the room runs THE SAME BUILDER inside itself at 1:1, and
+grows to the builder's apron so the setting's own enclosure lands on
+the room's walls. Nothing is redrawn by hand; a site room is now the
+battle's setting with a roof (or the map's sky) and a door.
+- **data.js.** `DOOR_HQ.siteRooms.near[key] = { w, h?, stands? }` — one
+  row per builder the built sites use (11): `w` MUST equal the `w` the
+  builder hands `_nrKit` (doorhq.test.js reads the renderer source and
+  fails on drift), `h` (indoor: dumb 3.4, cern 3.6 tiles) becomes the
+  room's height so the kit's pipes / lamps / trays fit under the
+  ceiling, `stands` (stadium, technoticlan) says the setting's tiers
+  fill the w/e strips. `hqSiteRoom`: `pad = w × tile + the moat's gap`
+  (the shell's `pad` is the fallback when there is no setting or
+  `shells[id].setting: false`), `shell.near = { key, w, gap (tiles),
+  stands }`, `shell.h` from `near.h`. The CROSSING console can leave the
+  west wall: `shells[id].console = { wall: 'n' | 'e', at }` — the desk
+  layout (console, tanker desk, CRT, phone, papers, clipboard) is the
+  west one turned (`W(along, depth)` / `WA(along)` / faces + ROT); CERN
+  (n · 0 — the beamline runs down both flanks), Nuketown (n · +6 — the
+  houses stand on the flanks; the road sign is on the other side), the
+  Stadium (n · −7) and Technoticlan (n · +6) (the tiers fill the
+  flanks). `stands` moves the natives' spots, the file boxes and the
+  guard's chair to the n/s strips. Flavour props keep their DISTANCE
+  TO THE WALL when the room grows (`fit`: a coordinate past the old dry
+  edge shifts by the growth; `flavour[id].fitted: true` = placed for
+  this room — the Stadium's bench is on the south strip by the
+  turnstile now, the cooler on the south wall; Technoticlan's calendar
+  terminal on the north strip's east end). Rooms: D.U.M.B. 24.55 m ·
+  h 5.96, CERN 25.25 · 6.31, Backrooms 28.05 (h 4.3 — the partitions
+  are 4.2), Nuketown / Stadium 29.81, the four w-4 moat rooms 33.25, Agartha /
+  Antarctica 35.01.
+- **three-renderer.js.** `_nrKit(group, ctx, o)` takes `ctx.hq = { w,
+  gap, B, tints }`: the apron width and gap are the ROOM's (so X0..X1 is
+  the walls), the base level is the Δ's (not `_hLevelAt`, which reads
+  the last battle), the tints are the board's (not `state.terrainTints`),
+  `_nrLastKit` is left alone (the crossing's facts stay the battle's),
+  `K.hq` set. Under `K.hq` the enclosure primitives are no-ops:
+  `_nrApron` (the floor frame + apron), `_nrMoat` (the room's own moat),
+  `_nrRoom` (the shell), `_nrSign` (the mood's signs). New
+  `_hqBuildSetting(room)` (before `_hqBuildSky`; called from `_hqEnter`
+  right after `_hqBuildSiteBoard`): builds into its own group with a
+  seeded rng, shifts it by (−N·ts/2, −B·elev, −N·ts/2) so the kit's
+  board lands on the room's, splices the builder's `_hzGlowPulse`
+  entries into `H.fxPulse` (the HQ loop breathes them), unfogs the
+  additive / sprite materials like `_hzRunNearBuilder`, then walks the
+  PIECES (direct children, or the children of an occlusion wall group)
+  by world bounds: DROPPED when it doubles the perimeter (thinner than
+  0.9 m, longer than 6 m, hugging the room's wall — the Stadium's bowl
+  wall) or stands in the way in (the south lane ±2.2 m at the wall —
+  D.U.M.B.'s south blast door) or at the console (a 5.6 × 2.4 m run on
+  its wall); else a BLOCKER — a rect from the bounds with `top` (a
+  house, a bus, a tier, a wall run, a fence panel), or a disc at the
+  foot for a slender piece (taller than 1.2 × its width: a tree, a
+  stalk fluorescent, a tower, a mast) — unless flat (< 0.35 m: the
+  road, the chalk lines, the stripes), overhead (bottom above 1.5 m: the
+  pipes, the trays, the banners, the aurora), over the board / the moat,
+  or wider than 40 m. `_hqSettingFreeSpot(x, z)`: a floor spot inside a
+  setting blocker slides along the wall it stands by (0.5 m steps, 9 m
+  either way) to the nearest free one — applied to the natives and the
+  roster NPCs in `_hqSpawnPopulation` and to floor props in
+  `_hqPlaceProps` (never wall / ceiling / desk-top props). `_hqTickWorld`
+  polls the foliage swaps (`_nrPollPending`, factored out of
+  `_animateFloaters`) so the trees land. `_hq.setting = { group, key,
+  kept, dropped, blockers }` (a console line reports the three counts).
+  Kill-switches: `window.EW_HQ_NO_SETTING`, `EW_NO_FACILITY_SCENERY`.
+- **doorhq.test.js.** The setting table vs the renderer source (`w` per
+  builder), every built site with a `near` key carries `shell.near`, the
+  walkway equals the setting's apron (to 2 cm), the gap is the moat's,
+  the room height is the setting's where it has one; the console's wall
+  from `shells[id].console`, never the south, the desk on that wall with
+  the three desk props by it, the console on the walkway; the Stadium's
+  bench and cooler on the south, natives + console on the n/s strips;
+  source scan for `_hqBuildSetting`, its call, `ctx.hq`, `_nrLastKit`
+  guarded, the four no-ops, `_hqSettingFreeSpot` + both nudges, the
+  poll, the blocker tag, the kill-switch. `npm test`: 152 tests, 151
+  green + 1 skip. index.html → `20260908c-cors`.
+- Not playtested (RULE #1c). What to eyeball first: Bay 1, Room 555 —
+  you should walk in past the extinguisher into a 24.5 m red room with
+  the server racks along both flanks (LEDs blinking), the north blast
+  door across the board, the pipes overhead under a 6 m ceiling; the
+  console on the west wall between two racks (two were culled for it).
+  Then Bay 2, Room i: the portcullis opens onto the LAWN OUTSIDE the
+  curtain wall — the crenellated wall with its corner towers and gate
+  towers is 3.85 m in from the board with the drawbridge through its
+  south gate; walk round it to the console on the west wall past the
+  trees and braziers (you cannot walk through the wall; the gates are
+  the way). Room 50: the tiers rise on both flanks, the goalposts and
+  the jumbotron at the ends; the bench and the natives are on the south
+  strip. If a room is EMPTY of setting, the console line `[HQ] setting
+  <key> — pieces: … dropped: … blockers: …` is missing (the builder threw
+  — the error is logged just before) or the kill-switch is set. If you
+  can walk through something, it was skipped as flat / overhead / wide
+  (`_hq.blockers.filter(b => b.setting).length` in the console). If a
+  native stands inside a house, `_hqSettingFreeSpot` found nothing free
+  within 9 m along that wall.
+- Next: the remaining sites one session each (the plan's order: the
+  rest — each is now one id in `siteRooms.built` + a shell + a `near`
+  row); 5.4a stage 2; 7.9 dailies; 4.1 the case-file screen.
