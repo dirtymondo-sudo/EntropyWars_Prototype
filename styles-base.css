@@ -2780,6 +2780,29 @@
             background: #000;
             overflow: hidden;
         }
+        /* The lone-door scene (three-renderer.js ThreeRenderer.menu,
+           2026-09-08): the shared 3D canvas is re-parented into #menuStage
+           under the grain, the motes and the text; .menu-3d on the page
+           (map.js _menuSceneEnter) adds the scrim that keeps the left
+           column readable over the sand and pins the vignette. */
+        .void-menu .menu-stage {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .void-menu .menu-stage canvas { display: block; }
+        .void-menu.menu-3d .menu-stage::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 6;
+            pointer-events: none;
+            background:
+                linear-gradient(90deg, rgba(0,0,0,0.90) 0%, rgba(0,0,0,0.72) 24%, rgba(0,0,0,0.30) 48%, rgba(0,0,0,0.05) 64%, rgba(0,0,0,0) 76%),
+                linear-gradient(180deg, rgba(0,0,0,0.42) 0%, rgba(0,0,0,0) 20%, rgba(0,0,0,0) 74%, rgba(0,0,0,0.62) 100%);
+        }
         .void-menu .mm-stack {
             position: absolute;
             left: clamp(24px, 9vw, 160px);

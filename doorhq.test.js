@@ -1587,8 +1587,12 @@ test('source scan: the renderer builds the site board and walks it; map.js walks
     assert.match(tr, /\(pc\.key === 'water' \|\| pc\.key === 'deep_water'\) && pc\.tint\) fluidColor = new THREE\.Color\(pc\.tint\)/, 'water wears the Δ tint');
     assert.match(tr, /new THREE\.PointLight\(plC,/, 'the fluorescents\' point lights take the mood');
     /* stage 3: the outdoor room */
-    assert.match(tr, /function _hqBuildSky\(room\)/, 'the sky over an outdoor room');
-    assert.match(tr, /function _hqTickSky\(now\)/, 'the sky ticks under the HQ loop');
+    /* (room, Hx) since 2026-09-08: the main menu's lone-door scene builds the same sky into its own record */
+    assert.match(tr, /function _hqBuildSky\(room, Hx\)/, 'the sky over an outdoor room');
+    assert.match(tr, /function _hqTickSky\(now, Hx\)/, 'the sky ticks under the HQ loop');
+    assert.match(tr, /menu: _menuApi,/, 'the main menu scene rides the public API (ThreeRenderer.menu)');
+    assert.match(tr, /_hqBuildSky\(M\.room, M\)/, 'the menu scene borrows the outdoor-room sky');
+    assert.match(tr, /rec = _introBuildDoor\(zi, ts, leaf, B\.mapId\)/, 'the menu door is the crossing\'s own threshold');
     assert.match(tr, /if \(S\.open\) \{ try \{ _hqBuildSky\(room\); \}/, '_hqEnter builds the sky for an open room');
     assert.match(tr, /if \(H\.sky\) _hqTickSky\(now\);/, '_hqTickWorld drives it');
     assert.match(tr, /function _hzCosmicRoster\(\)/, 'the default roster is shared with the battle');

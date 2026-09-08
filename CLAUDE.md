@@ -276,6 +276,39 @@ monument key `door`). Kill-switch unchanged: `window.EW_DISABLE_INTRO_CINE`.
 Camera framing for beats 1–2 is anchored on `info[p].doorOut`/`zB` (battle.js
 `doorLift`) — tune those two numbers before touching the renderer.
 
+## THE MAIN MENU SCENE (the lone door in the open) — added 2026-09-08
+The main menu's black void is a PLACE: three-renderer.js `ThreeRenderer.menu`
+(`_menuEnter/_menuLeave/_menuBuild`, right after `_hqApi`) is a self-contained
+scene on the SHARED renderer — same contract as the HQ — re-parented into
+`#menuStage` (index.html, first child of `#mainMenuPage`) by map.js
+`_menuSceneEnter` (called from `_showTitlePage` for `mainMenuPage`; every
+other page calls `_menuSceneLeave`). ONE crossing door stands ~65% across
+the frame (right of the text column) in the middle of a desert or out on
+the Antarctic ice, the Sedan (the honda civic's static car GLB) is parked
+off to the side with its headlights on the door, the site's own sky + far
+roster (`_hqBuildSky(room, Hx)` / `_hqTickSky(now, Hx)` now take a target
+record) hang round it, the page's CSS motes drift over it, and a scrim
+(`.void-menu.menu-3d .menu-stage::after`, styles-base.css) keeps the left
+column readable. The door IS the match door: `_introBuildDoor` (the
+crossing's threshold builder — frame, seal, case line, catalogue leaf) on a
+flat kit at y=0; `_MENU_BIOMES` (renderer) holds every framing number
+(camAt / lookAt / doorAt / doorYaw / sedanAt / sedanYaw in METRES, the leaf
+key, the floor terrain key, the far roster) — tune those, not the code.
+ENTER on the title (`enterGameFromTitle`) → `menu.openDoor(650)` (the buzz,
+the light through it); ENTER on the menu (ui.js keydown) toggles it
+(open → the stamp). Built once per session and kept across visits;
+`menu.dispose()` drops it (the Settings biome button rebuilds). Off = the
+classic void: `?nomenu3d`, localStorage `ew_menu3d='off'` (Settings → Main
+Menu Scene), `window.EW_NO_MENU_SCENE`; `EW_MENU_BIOME` / `?menubiome=` /
+localStorage `ew_menu_biome` pick desert / antarctica (else a coin toss per
+load); `EW_MENU_NO_POST` = bare render. Entering parks a post-match battle
+renderer (same guard as `_hqEnter`) and refuses over a live battle or the
+building (map.js leaves a suspended HQ first). Fixed on the way: a HOT
+crossing leaf (introCineWarm) landed synchronously before its group was
+parented, so `_introBuildDoor`'s fit ran on `g.parent` = null and bailed —
+the guard is now `rec.dead` (set by `_introDropDoors`). doorhq.test.js
+source-scans the signatures.
+
 ## TRAINING MATCH (instant CPU turns vs a human) — added 2026-09-07
 Match-select → CONFIG column → **CPU TEMPO: Cinematic / ⚡ Training**
 (match-select.js, sticky via localStorage `ew_training_match`; mirrored into

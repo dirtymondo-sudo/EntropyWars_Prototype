@@ -1778,3 +1778,29 @@ three-renderer.js, map.js, index.html (`20260908e-cors`),
 doorhq.test.js (157 tests, 156 green + 1 skip). Kill-switch
 `corridor.on: false` = the stage-1 bays. Next in the plan: 7.9 dailies,
 4.1, wave 1 of the new sites. Story track still ON HOLD (A14).
+
+### 2026-09-08 (rev 6) — THE LONE DOOR: the main menu stands in the open
+The user's ask: the main menu as a lone door (right of frame) in the
+middle of a desert or Antarctica, the Sedan off to the side, the door
+swinging open on ENTER, the ambient motes kept — "set the mood before the
+game starts". The black void behind the menu text is now a place:
+three-renderer.js `ThreeRenderer.menu` (a self-contained scene on the
+shared renderer, the HQ's contract) puts the crossing's own threshold
+(`_introBuildDoor` — DOOR-issue frame, seal, case line, the catalogue
+leaf: the shabby wooden door on the sand, the ice-wall bulkhead at 90°
+south) on a flat apron ~65% across the frame, the honda civic's static
+car GLB parked back-left with its headlights on the door, the site's sky
+and far roster (Giza's pyramids / Antarctica's islands, no floating
+doors — the threshold is alone) on the shared firmament, dusk lighting
+and the doorway's own light; map.js `_menuSceneEnter` hosts it in
+`#menuStage` under the grain, the motes and the text (a scrim keeps the
+left column legible); ENTER on the title buzzes it open, ENTER on the
+menu toggles it (the stamp on close). Settings → Main Menu Scene turns
+it off (the classic void) and picks the biome (coin toss per load by
+default). No canon change: the door is the crossing's, the Sedan is the
+IMPORTED vehicle in space 4 (A16), the sound kit is the DOOR kit. Files:
+three-renderer.js, map.js, ui.js, index.html (`20260908g-cors`),
+styles-base.css, doorhq.test.js (source-scan rows). Also fixed: a hot
+crossing leaf (introCineWarm) bailed out of its fit because the group
+was not yet parented — `rec.dead` gates it now. Story track still ON
+HOLD (A14).

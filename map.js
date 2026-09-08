@@ -67,9 +67,16 @@
                 _msRenderAll();
             }
 
+            /* the main menu's lone door in the open (ThreeRenderer.menu,
+               2026-09-08): into the page with the menu, out with any other */
+            let menuLive = false;
+            try {
+                if (pageId === 'mainMenuPage') menuLive = (typeof window._menuSceneEnter === 'function') && !!window._menuSceneEnter();
+                else if (typeof window._menuSceneLeave === 'function') window._menuSceneLeave();
+            } catch (e) { console.warn('[MENU] scene', e); }
             const bgCanvas = document.getElementById('menuBgCanvas');
             if (bgCanvas) {
-                const show = pageId !== 'titlePage' && pageId !== 'hqPage';
+                const show = pageId !== 'titlePage' && pageId !== 'hqPage' && !menuLive;
                 bgCanvas.style.display = show ? '' : 'none';
                 if (typeof window._menuBgSetActive === 'function') window._menuBgSetActive(show);
             }
@@ -94,6 +101,9 @@
 
             state.gameState = GS.MAIN_MENU;
             _showTitlePage('mainMenuPage');
+            /* ENTER opened the way: the menu's lone door swings open a beat
+               after the page lands (three-renderer.js ThreeRenderer.menu) */
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.menu && ThreeRenderer.menu.active()) ThreeRenderer.menu.openDoor(650); } catch (e) {}
         }
 
         window._goToPlayHub = function() {
@@ -177,6 +187,80 @@
             window._hqRelabelMenuButtons();
         };
         window._hqIsHome = function () { return !!_hqHome; };
+        /* ── THE MAIN MENU SCENE (2026-09-08): the lone door in the open
+           behind the menu text (three-renderer.js ThreeRenderer.menu — the
+           crossing's own threshold on the sand / the ice, the Sedan parked
+           off to the side, the site's sky). Off = the classic black void:
+           ?nomenu3d for one visit, localStorage ew_menu3d='off' (the
+           Settings toggle) to keep it off, window.EW_NO_MENU_SCENE from the
+           console. The scene is entered/left by _showTitlePage. ── */
+        window._menuSceneEnabled = function () {
+            try {
+                if (window.EW_NO_MENU_SCENE) return false;
+                if (/[?&]nomenu3d\b/.test(location.search)) return false;
+                if (localStorage.getItem('ew_menu3d') === 'off') return false;
+            } catch (e) {}
+            return typeof ThreeRenderer !== 'undefined' && !!ThreeRenderer.menu && typeof THREE !== 'undefined';
+        };
+        window._menuSceneEnter = function () {
+            const page = document.getElementById('mainMenuPage');
+            const host = document.getElementById('menuStage');
+            if (!page || !host || !window._menuSceneEnabled()) { if (page) page.classList.remove('menu-3d'); return false; }
+            let ok = false;
+            try {
+                if (ThreeRenderer.menu.active()) ok = true;
+                else {
+                    /* the building holds the canvas while suspended behind a
+                       screen — the main menu is not that screen: let it go */
+                    if (ThreeRenderer.hq && ThreeRenderer.hq.active()) {
+                        if (state.gameState === GS.HQ) return false;
+                        window._hqLeave();
+                    }
+                    /* the battle renderer stays alive behind the menu after a
+                       match (only the map editor deactivates it) and the scene
+                       needs the shared canvas: park it — the next startMatch
+                       re-activates it (same guard as _hqEnter) */
+                    if (ThreeRenderer.isActive && ThreeRenderer.isActive() && state.phase !== 'battle') ThreeRenderer.deactivate();
+                    ok = !!ThreeRenderer.menu.enter({ host });
+                }
+            } catch (e) { console.warn('[MENU] scene enter failed', e); ok = false; }
+            page.classList.toggle('menu-3d', ok);
+            return ok;
+        };
+        window._menuSceneLeave = function () {
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.menu && ThreeRenderer.menu.active()) ThreeRenderer.menu.leave(); } catch (e) {}
+        };
+        /* Settings: the scene on/off, and where it stands (desert /
+           antarctica / a coin toss per page load) */
+        window._menuSceneToggle = function () {
+            try {
+                if (localStorage.getItem('ew_menu3d') === 'off') localStorage.removeItem('ew_menu3d');
+                else localStorage.setItem('ew_menu3d', 'off');
+            } catch (e) {}
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            if (!window._menuSceneEnabled()) window._menuSceneLeave();
+            const page = document.getElementById('mainMenuPage');
+            if (page && page.classList.contains('active')) window._menuSceneEnter();
+            else if (page) page.classList.remove('menu-3d');
+        };
+        window._menuSceneBiome = function (next) {
+            const order = ['random', 'desert', 'antarctica'];
+            let cur = 'random';
+            try { cur = localStorage.getItem('ew_menu_biome') || 'random'; } catch (e) {}
+            if (next == null) next = order[(order.indexOf(cur) + 1) % order.length];
+            try { if (next === 'random') localStorage.removeItem('ew_menu_biome'); else localStorage.setItem('ew_menu_biome', next); } catch (e) {}
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            /* rebuild on the spot so the choice shows (the door keeps its state) */
+            try {
+                if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.menu) {
+                    const wasOpen = ThreeRenderer.menu.isOpen();
+                    ThreeRenderer.menu.dispose();
+                    const page = document.getElementById('mainMenuPage');
+                    if (page && page.classList.contains('active') && window._menuSceneEnter() && wasOpen) ThreeRenderer.menu.openDoor(250);
+                }
+            } catch (e) {}
+            return next;
+        };
         /* the profile's visit record (profile.js door.hq): visits from Play,
            and the last door walked through */
         function _hqRecordVisit(doorId) {
@@ -2376,6 +2460,19 @@
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Play walks you into the facility — dispatch desk (Quick Play / Friendly), the containment bays (VS CPU by threshold), the Quartermaster, Records, Reception. Turn it off for the classic Play hub; ?nohq in the URL does the same for one visit.</div>
                         <div class="pm-set-row" style="margin-bottom:6px">
                             <button class="pm-set-btn${on ? ' active' : ''}" onclick="window._hqToggleHome();window._openMainMenuSettings();">${on ? 'Play → D.O.O.R. HQ: ON' : 'Play → D.O.O.R. HQ: OFF (classic hub)'}</button>
+                        </div>
+                    </div>`;
+                    })() : ''}
+                    ${(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.menu) ? (() => {
+                        const on = (typeof window._menuSceneEnabled === 'function') && window._menuSceneEnabled();
+                        let biome = 'random'; try { biome = localStorage.getItem('ew_menu_biome') || 'random'; } catch (e) {}
+                        const bl = { random: 'Coin toss', desert: 'Desert', antarctica: 'Antarctica' };
+                        return `<div class="pm-set-group">
+                        <div class="pm-set-group-title">Main Menu Scene</div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">The lone door in the open behind the menu — the Sedan parked off to the side, the site's own sky. ENTER swings it open. Off = the classic black void; ?nomenu3d in the URL does the same for one visit.</div>
+                        <div class="pm-set-row" style="margin-bottom:6px">
+                            <button class="pm-set-btn${on ? ' active' : ''}" onclick="window._menuSceneToggle();window._openMainMenuSettings();">${on ? 'Lone door scene: ON' : 'Lone door scene: OFF (void)'}</button>
+                            <button class="pm-set-btn" onclick="window._menuSceneBiome();window._openMainMenuSettings();">Where: ${bl[biome] || biome}</button>
                         </div>
                     </div>`;
                     })() : ''}

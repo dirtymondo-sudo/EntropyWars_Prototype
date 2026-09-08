@@ -25264,6 +25264,7 @@ const ThreeRenderer = (function () {
     function activate() {
         if (!initialized) init();
         if (!canvas || !renderer) return;
+        if (_menuLive) _menuLeave();             // the main menu scene hands the canvas back first
         active = true;
         canvas.style.display = 'block';
         if (css2dRenderer) css2dRenderer.domElement.style.display = '';
@@ -28138,7 +28139,7 @@ const ThreeRenderer = (function () {
                     return c;
                 },
                 onDone: function (grp, s, bb) {
-                    if (!g.parent) return;                    // the intro ended before the leaf landed
+                    if (rec.dead) return;                     // the crossing was torn down before the leaf landed (a HOT leaf lands synchronously, before the group is parented — never gate on g.parent)
                     var m = grp.children[0];
                     if (m && yawDeg) m.rotation.y = yawDeg * Math.PI / 180;
                     var sideways = (Math.abs(yawDeg) % 180) === 90;
@@ -28330,6 +28331,7 @@ const ThreeRenderer = (function () {
     }
 
     function _introDropDoors() {
+        for (var di = 0; di < _introDoors.length; di++) _introDoors[di].dead = true;
         _introDoors = [];
         if (_introDoorGroup) {
             if (scene) scene.remove(_introDoorGroup);
@@ -30446,8 +30448,9 @@ const ThreeRenderer = (function () {
        loop (_hq.sky.floaters), plus the Department's lone doors and a few
        haloes like every outdoor battle roster. Nothing here is the battle
        horizon: that group, its key cache and its floaters are untouched. */
-    function _hqBuildSky(room) {
-        var S = room.shell, sky = S.sky, H = _hq;
+    function _hqBuildSky(room, Hx) {
+        /* Hx: the record to build into (the main menu scene, 2026-09-08); default the live visit */
+        var S = room.shell, sky = S.sky, H = Hx || _hq;
         if (!S.open || !sky || !H) return;
         if (!_envInited) { try { _initEnvironment(); } catch (e) {} }
         if (!_envUni) return;
@@ -30455,7 +30458,7 @@ const ThreeRenderer = (function () {
         var dome = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), domeMat);
         dome.renderOrder = -1000; dome.frustumCulled = false; dome.scale.setScalar(_ENV_DOME_R);
         H.scene.add(dome);
-        H.sky = { dome: dome, tint: new THREE.Color((sky.tint != null) ? sky.tint : 0x000000), fogC: new THREE.Color((sky.fog && sky.fog.color != null) ? sky.fog.color : 0x000000), floaters: [], group: null, night: sky.night ? 1 : 0 };
+        H.sky = { dome: dome, tint: new THREE.Color((sky.tint != null) ? sky.tint : 0x000000), fogC: new THREE.Color((sky.fog && sky.fog.color != null) ? sky.fog.color : 0x000000), floaters: [], group: null, night: (typeof sky.night === 'number') ? sky.night : (sky.night ? 1 : 0) };
         var theme = sky.scenery || 'cosmic';
         if (theme === 'none') return;
         var roster = _hzThemeRoster(theme) || _hzCosmicRoster();
@@ -30491,7 +30494,7 @@ const ThreeRenderer = (function () {
         }
         var ringWant = Math.round(3 * Math.min(1, dens));
         for (var rgi = 0; rgi < ringWant; rgi++) { var rM = _hzSacredRings(rng); if (rM) hang(rM, (rgi / ringWant) * Math.PI * 2 + rng() * 0.8, discR * (0.7 + rng() * 0.6), (-0.4 + rng() * 1.0) * discR, true, 0.0012, 0.004); }
-        for (var dgi = 0; dgi < 3; dgi++) {
+        for (var dgi = 0; dgi < (sky.doors === false ? 0 : 3); dgi++) {
             var dM = _hzLoneDoor(rng); if (!dM) continue;
             var dAng = (dgi / 3) * Math.PI * 2 + rng() * 0.9 + 0.7, dRad = discR * (0.6 + rng() * 0.6), dY = (-0.2 + rng() * 0.7) * discR;
             dM.position.set(Math.cos(dAng) * dRad, dY, Math.sin(dAng) * dRad);
@@ -30508,8 +30511,8 @@ const ThreeRenderer = (function () {
         try { _gradeHorizonScenery(H.sky.night, 0, 0); } catch (e) {}
         console.log('[HQ] sky:', theme, '—', group.children.length, 'bodies');
     }
-    function _hqTickSky(now) {
-        var H = _hq, sk = H && H.sky, env = H && H.room.shell.sky;
+    function _hqTickSky(now, Hx) {
+        var H = Hx || _hq, sk = H && H.sky, env = H && H.room.shell.sky;
         if (!sk || !env || !_envUni) return;
         sk.dome.position.copy(H.camera.position);
         var u = _envUni, t = now / 1000;
@@ -32038,6 +32041,7 @@ const ThreeRenderer = (function () {
         if (!D || !opts.host) { console.warn('[HQ] no DOOR_HQ data or host'); return false; }
         if (!initialized) init();
         if (!renderer || !canvas) return false;
+        if (_menuLive) _menuLeave();             // the main menu scene hands the canvas back first
         if (_hq) { _hqKeepLock = true; try { _hqLeave(); } finally { _hqKeepLock = false; } }
         if (active) { console.warn('[HQ] refusing to open over a live battle'); return false; }
         var room = D.rooms[opts.room || 'central_egress'];
@@ -32321,6 +32325,389 @@ const ThreeRenderer = (function () {
         },
     };
 
+    /* ══════════════════════════════════════════════════════════════════
+     *  THE MAIN MENU SCENE — a lone threshold in the open (2026-09-08)
+     *
+     *  Behind the main menu's text (right of frame, where the text isn't):
+     *  ONE crossing door standing in the middle of a desert — or out on
+     *  the Antarctic ice — the Sedan parked off to the side with its
+     *  lights on, the map's own sky + far roster round it, and the page's
+     *  CSS motes drifting over all of it. The leaf swings open when the
+     *  player presses ENTER (map.js enterGameFromTitle → openDoor; ui.js
+     *  keydown on the menu re-opens a closed one).
+     *
+     *  Same contract as the headquarters: a self-contained scene + camera
+     *  + loop on the SHARED WebGL renderer; the canvas is re-parented into
+     *  #menuStage (map.js _menuSceneEnter) for the visit and handed back
+     *  on leave; never opened over a live battle or the building. The
+     *  door is the crossing's own threshold builder (_introBuildDoor —
+     *  the menu door IS the match door, case line and seal included), the
+     *  sky is the HQ outdoor-room sky (_hqBuildSky) on the battle's shared
+     *  firmament uniforms, the Sedan is the race's static car GLB through
+     *  the misc-model loader. Built ONCE per session (the menu is visited
+     *  constantly) and kept; ThreeRenderer.menu.dispose() drops it.
+     *  Kill-switches: window.EW_NO_MENU_SCENE (map.js: also ?nomenu3d and
+     *  localStorage ew_menu3d='off' → the classic void menu),
+     *  window.EW_MENU_NO_POST (bare render), window.EW_MENU_BIOME /
+     *  ?menubiome= / localStorage ew_menu_biome = 'desert'|'antarctica'
+     *  (else a coin toss per page load).
+     * ══════════════════════════════════════════════════════════════════ */
+    var _menu = null;          // the built scene record (kept across visits), or null
+    var _menuLive = false;     // true while the loop renders into the page
+    /* positions in METRES (1 m = DOOR_HQ.units world units): the camera
+       stands at camAt looking at lookAt; the door stands at doorAt turned
+       doorYaw (its seal face toward the camera; the leaf swings toward
+       the viewer); the Sedan parks at sedanAt with its nose on sedanYaw.
+       The door lands ~65% across the frame, the car left of it and
+       farther back, both clear of the text column. */
+    var _MENU_BIOMES = {
+        desert: {
+            mapId: 'prebuilt_giza', leaf: 'leaf_shabby_wood', roster: 'pyramids', density: 0.55, night: 0.62,
+            floor: 'desert', floorColor: 0xd9bf8c, floorRepeat: 240,
+            sky: { tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45 } },
+            hemi: [0xe8c58a, 0x4a3a2a, 0.42], sun: [0xffb070, 0.5, [-0.7, 0.2, -0.4]], fog: [0xc9a46a, 0.00030],
+            camAt: [0, 1.5, 0], lookAt: [1.15, 1.02, 9], doorAt: [2.3, 8.0], doorYaw: -0.14,
+            sedanAt: [-0.9, 16.5], sedanYaw: 2.78, dunes: true,
+        },
+        antarctica: {
+            mapId: 'prebuilt_antarctica', leaf: 'leaf_bulkhead', roster: 'islands', density: 0.5, night: 0.7,
+            floor: 'marble_light', floorColor: 0xe4f0fa, floorRepeat: 200,
+            sky: { tint: 0xdae8f2, tintAmt: 0.40, stars: 0.5, nebula: 0.9, fog: { color: 0xe6f0f8, amount: 0.7, top: 0.04, band: 0.5 } },
+            hemi: [0xcfe0f4, 0x3a4658, 0.5], sun: [0xbcd4f0, 0.34, [-0.5, 0.3, -0.6]], fog: [0xb9cfe4, 0.00034],
+            camAt: [0, 1.5, 0], lookAt: [1.15, 1.02, 9], doorAt: [2.3, 8.0], doorYaw: -0.14,
+            sedanAt: [-0.9, 16.5], sedanYaw: 2.78, ice: true,
+        },
+    };
+    function _menuBiomePick() {
+        var pick = null;
+        try {
+            if (typeof window !== 'undefined' && window.EW_MENU_BIOME) pick = String(window.EW_MENU_BIOME);
+            var m = /[?&]menubiome=([a-z]+)/.exec(location.search); if (m) pick = m[1];
+            if (!pick) pick = localStorage.getItem('ew_menu_biome');
+        } catch (e) {}
+        if (!pick || !_MENU_BIOMES[pick]) pick = (Math.random() < 0.6) ? 'desert' : 'antarctica';
+        return pick;
+    }
+    /* the map's canonical sky (EW_MAP_META env) when data.js is up, else the biome's copy */
+    function _menuSkyEnv(B) {
+        try {
+            var rows = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : (window.EW_MAP_META || null);
+            if (rows) for (var i = 0; i < rows.length; i++) if (rows[i].id === B.mapId && rows[i].env) return rows[i].env;
+        } catch (e) {}
+        return B.sky;
+    }
+    function _menuBuild(host) {
+        var biome = _menuBiomePick(), B = _MENU_BIOMES[biome];
+        var U = _hqUnits();
+        var ts = 116;                                   // the threshold builder's tile: 1.35 ts ≈ a 2.15 m leaf
+        var M = {
+            biome: biome, cfg: B, host: host, scene: new THREE.Scene(), camera: null, U: U, ts: ts,
+            door: null, doorGroup: new THREE.Group(), doorLight: null, sedan: null, lamps: [], sky: null, fxPulse: [], mats: [],
+            open: 0, target: 0, swing: null, lastNow: 0, room: null,
+            leafUrl: null, leafHot: false, leafAsked: false, leafLanded: false,
+            w: 0, h: 0, t0: performance.now(),
+        };
+        var sc = M.scene;
+        var env = _menuSkyEnv(B);
+        sc.background = new THREE.Color((env.fog && env.fog.color != null) ? env.fog.color : 0x07070a);
+        sc.fog = new THREE.FogExp2(B.fog[0], B.fog[1]);
+        sc.add(M.doorGroup);
+        /* light: a dusk hemisphere, a low sun from behind the camera's left,
+           and the light out of the doorway (driven by the open amount) */
+        sc.add(new THREE.HemisphereLight(B.hemi[0], B.hemi[1], B.hemi[2]));
+        var sun = new THREE.DirectionalLight(B.sun[0], B.sun[1]);
+        sun.position.set(B.sun[2][0], B.sun[2][1], B.sun[2][2]).multiplyScalar(1000); sc.add(sun);
+        var dl = new THREE.PointLight(0xffe2b0, 0.16, 16 * U, 2);
+        dl.position.set(B.doorAt[0] * U, 1.2 * U, (B.doorAt[1] - 0.9) * U); sc.add(dl); M.doorLight = dl;
+        /* camera */
+        var w = host.clientWidth || 960, h = host.clientHeight || 540;
+        M.camera = new THREE.PerspectiveCamera(38, w / h, 4, 30000);
+        M.camera.position.set(B.camAt[0] * U, B.camAt[1] * U, B.camAt[2] * U);
+        M.camera.lookAt(B.lookAt[0] * U, B.lookAt[1] * U, B.lookAt[2] * U);
+        var pulse0 = _hzGlowPulse.length;
+        /* the ground: the map's own terrain sheet, out to the fog */
+        var gm = _hqMat(B.floor, B.floorRepeat, B.floorRepeat, { color: B.floorColor, shininess: B.ice ? 30 : 3, specular: B.ice ? 0x6688aa : 0x111111 });
+        var ground = new THREE.Mesh(new THREE.PlaneGeometry(700 * U, 700 * U), gm);
+        ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; sc.add(ground);
+        var rng = _mulberry32(biome === 'desert' ? 0xd00e : 0x905);
+        if (B.dunes) {
+            /* low dunes all round, none between the camera and the door */
+            var dm = _hqMat('desert', 6, 3, { color: 0xd4b985, shininess: 2 });
+            var dg = new THREE.SphereGeometry(1, 22, 12);
+            for (var i = 0; i < 16; i++) {
+                var ang = rng() * Math.PI * 2, rad = 15 + rng() * 60;
+                var x = Math.sin(ang) * rad, z = Math.cos(ang) * rad;
+                if (z > 2 && z < 30 && x > -8 && x < 9) continue;
+                var rx = 6 + rng() * 15, ry = 0.9 + rng() * 2.6, rz = 4 + rng() * 11;
+                var dn = new THREE.Mesh(dg, dm);
+                dn.scale.set(rx * U, ry * U, rz * U); dn.position.set(x * U, -0.2 * ry * U, z * U); dn.rotation.y = rng() * Math.PI;
+                dn.receiveShadow = true; sc.add(dn);
+            }
+        }
+        if (B.ice) {
+            /* pressure ridges + drifts, the igloo and the whalebones far off */
+            var im = _hqMat('ice_1', 3, 2, { color: 0xd8eaf8, shininess: 40, specular: 0x88aacc });
+            var sm = _hqMat('marble_light', 5, 3, { color: 0xf2f8ff, shininess: 12 });
+            var sg = new THREE.SphereGeometry(1, 20, 10);
+            for (var r = 0; r < 12; r++) {
+                var ra = rng() * Math.PI * 2, rr = 14 + rng() * 55;
+                var rxp = Math.sin(ra) * rr, rzp = Math.cos(ra) * rr;
+                if (rzp > 2 && rzp < 30 && rxp > -8 && rxp < 9) continue;
+                var bl = 3 + rng() * 10, bh = 0.6 + rng() * 2.2, bd = 0.6 + rng() * 1.2;
+                var rb = new THREE.Mesh(new THREE.BoxGeometry(bl * U, bh * U, bd * U), im);
+                rb.position.set(rxp * U, (bh / 2 - 0.15) * U, rzp * U); rb.rotation.y = rng() * Math.PI; rb.rotation.z = (rng() - 0.5) * 0.25;
+                rb.castShadow = true; rb.receiveShadow = true; sc.add(rb);
+                var dr = new THREE.Mesh(sg, sm);
+                dr.scale.set((4 + rng() * 9) * U, (0.5 + rng() * 1.2) * U, (3 + rng() * 6) * U);
+                dr.position.set((rxp + (rng() - 0.5) * 6) * U, -0.25 * U, (rzp + (rng() - 0.5) * 6) * U); dr.receiveShadow = true; sc.add(dr);
+            }
+            try { var ig = _hzIgloo(rng); ig.position.set(-24 * U, 0, 46 * U); ig.rotation.y = 0.6; sc.add(ig); } catch (e) {}
+            try { var wb = _hzWhalebones(rng); wb.position.set(27 * U, 0, 38 * U); wb.rotation.y = -0.4; sc.add(wb); } catch (e) {}
+        }
+        try { _menuBuildDoor(M); } catch (e) { console.error('[MENU] door failed', e); }
+        try { _menuBuildSedan(M); } catch (e) { console.error('[MENU] sedan failed', e); }
+        /* the map's sky and far roster on the shared firmament — no
+           floating doors in this one: the threshold on the sand is alone */
+        var skyEnv = {};
+        for (var k in env) skyEnv[k] = env[k];
+        skyEnv.scenery = B.roster; skyEnv.density = B.density; skyEnv.night = B.night; skyEnv.doors = false;
+        M.room = { shell: { open: true, sky: skyEnv }, site: 'menu_' + biome };
+        try { _hqBuildSky(M.room, M); } catch (e) { console.error('[MENU] sky failed', e); }
+        /* every glow accent raised in here breathes under the menu loop */
+        _hzGlowPulse.splice(pulse0).forEach(function (p) { if (p && p.mat) M.fxPulse.push(p); });
+        console.log('[MENU] scene built:', biome);
+        return M;
+    }
+    /* The threshold: the crossing's own builder on a flat "apron" at y=0,
+       turned to face the camera. The leaf GLB is fitted synchronously when
+       it is hot in the misc-model cache; otherwise the procedural stand-in
+       stands in and the door is rebuilt the frame the GLB lands. */
+    function _menuBuildDoor(M) {
+        var B = M.cfg, ts = M.ts, U = M.U;
+        if (M.door) { M.door.dead = true; M.doorGroup.remove(M.door.group); _disposeR(M.door.group); M.door = null; }
+        var D = _hqData(), leaf = null;
+        if (D && D.catalogue) {
+            var key = (B.leaf && D.catalogue[B.leaf]) ? B.leaf : null;
+            var lf = key ? { key: key, cat: D.catalogue[key] } : _introLeafFor(B.mapId);
+            if (lf && lf.cat) {
+                var url = null;
+                try { url = lf.cat.file ? _hqModelUrl(lf.cat) : null; } catch (e) {}
+                var ce = url ? _miscModelCache[url] : null;
+                var hot = !!(ce && ce.root);
+                if (url && !hot && !M.leafAsked && typeof THREE.GLTFLoader === 'function') {
+                    M.leafAsked = true; M.leafUrl = url;
+                    _loadMiscModel(url, true, function () { M.leafLanded = true; });
+                }
+                M.leafHot = hot;
+                if (hot) leaf = lf;
+                else { var cat = {}; for (var k in lf.cat) cat[k] = lf.cat[k]; cat.file = null; leaf = { key: lf.key, cat: cat }; }
+            }
+        }
+        /* a zone whose door plane sits ON the group origin (edgeDist + gap + 0.85 = 0) */
+        var zi = { cx: 0, cy: 0, ox: 0, oy: 1, topZ: 0, len: 0, edgeDist: -0.85, bw: 1, bh: 1 };
+        var savedKit = _nrLastKit, n0 = _introFadeMats.length, rec;
+        _nrLastKit = { apronTop: 0, B: 0, G: 0, fy: 0, W: 0, moat: null };
+        try { rec = _introBuildDoor(zi, ts, leaf, B.mapId); }
+        finally { _nrLastKit = savedKit; }
+        /* the dissolve list belongs to the battle's intro — take ours out of it */
+        M.mats = M.mats.concat(_introFadeMats.splice(n0));
+        rec.group.rotation.y = B.doorYaw;
+        rec.group.position.set(B.doorAt[0] * U, 0, B.doorAt[1] * U);
+        M.doorGroup.add(rec.group);
+        M.door = rec;
+        _menuApplyDoor(M, M.open, performance.now());
+    }
+    /* The Sedan (the honda civic's static car GLB — sprites.js RACE_MODELS_3D,
+       nose on +Z after its yawOffset), parked off to the side facing the
+       door, headlights on. */
+    function _menuBuildSedan(M) {
+        var B = M.cfg, U = M.U;
+        var def = null, url = null, yawOff = Math.PI / 2;
+        try { def = (typeof getRace3DModel === 'function') ? getRace3DModel('honda civic', 'male') : null; } catch (e) {}
+        if (def && def.model) { url = def.model; if (def.yawOffset != null) yawOff = def.yawOffset; }
+        if (!url) url = 'https://cdn.entropywars.net/Assets/Sprites/Races/hondacivic/Meshy_AI_1990s_sedan_0719015525_texture.glb';
+        if (typeof THREE.GLTFLoader !== 'function') return;
+        var g = _miscModelInstance(url, true, 1.42 * U, {
+            fit: 'height',
+            matPick: function (n, sm) {
+                var lm = _hqPropMatPick(n, sm); if (!lm) return null;
+                var c = lm.clone(); c._ew_shared = false; return c;
+            },
+            onDone: function (grp, s, bb) {
+                grp.traverse(function (n) { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
+                /* headlights: the nose is the raw model's -X end (yawOffset
+                   +π/2 swings it to +Z); the instance is centred on x */
+                var len = (bb.max.x - bb.min.x) * s, wid = (bb.max.z - bb.min.z) * s;
+                var nx = -len / 2 + 0.03 * U, hy = 0.66 * U;
+                /* (no _hzPulse registrations: the menu loop flickers these itself) */
+                [-1, 1].forEach(function (side) {
+                    var lamp = _hzGlowSprite(0.55 * U, 0xfff2cc, 0.85, 0, 0);
+                    lamp.position.set(nx, hy, side * wid * 0.36); grp.add(lamp); M.lamps.push(lamp.material);
+                    var halo = _hzGlowSprite(1.6 * U, 0xffe0a0, 0.28, 0, 0);
+                    halo.position.set(nx - 0.2 * U, hy, side * wid * 0.36); grp.add(halo); M.lamps.push(halo.material);
+                    var tail = _hzGlowSprite(0.3 * U, 0xff3030, 0.7, 0, 0);
+                    tail.position.set(len / 2 - 0.03 * U, 0.72 * U, side * wid * 0.38); grp.add(tail); M.lamps.push(tail.material);
+                });
+                var beam = new THREE.SpotLight(0xffe6b8, 0.9, 22 * U, 0.42, 0.6, 1.2);
+                beam.position.set(nx, hy, 0);
+                beam.target.position.set(nx - 12 * U, 0, 0);
+                grp.add(beam); grp.add(beam.target); M.beam = beam;
+            }
+        });
+        g.rotation.y = yawOff + B.sedanYaw;
+        g.position.set(B.sedanAt[0] * U, 0, B.sedanAt[1] * U);
+        M.scene.add(g);
+        M.sedan = g;
+    }
+    /* Per-frame door pose at open amount k (0 shut … 1 open): the leaf on
+       its motion, the light through it, the tell in the cracks before it
+       opens, the doorway lamp — the crossing's own beats (_introUpdateDoors)
+       without the walkers. */
+    function _menuApplyDoor(M, k, now) {
+        var d = M.door; if (!d) return;
+        var mo = d.motion;
+        if (mo.mode === 'swing' && mo.pivot) mo.pivot.rotation.y = -mo.dir * mo.angle * k;
+        else if (mo.mode === 'slide' && mo.carrier) {
+            mo.carrier.position.x = mo.dir * mo.ow * 0.98 * k;
+            for (var lm = 0; lm < d.leafMats.length; lm++) d.leafMats[lm].opacity = (d.leafMats[lm]._ew_introOp != null ? d.leafMats[lm]._ew_introOp : 1) * (1 - k * 0.92);
+        }
+        else if (mo.mode === 'lift' && mo.carrier) {
+            mo.carrier.position.y = mo.oh * 0.94 * k;
+            for (var lf = 0; lf < d.leafMats.length; lf++) d.leafMats[lf].opacity = (d.leafMats[lf]._ew_introOp != null ? d.leafMats[lf]._ew_introOp : 1) * (1 - Math.max(0, k - 0.35) / 0.65 * 0.85);
+        }
+        else if (mo.mode === 'spin' && mo.carrier) mo.carrier.rotation.y = k * Math.PI * 0.5;
+        var breathe = 0.85 + 0.15 * Math.sin(now * 0.004);
+        d.veil.opacity = Math.min(1, k * 0.8 * breathe);
+        d.halo.opacity = k * 0.55;
+        d.pool.opacity = k * 0.5;
+        d.wedge.opacity = k * 0.12;
+        var leakOp = (1 - k) * (0.30 + 0.18 * Math.sin(now * 0.006));
+        for (var L = 0; L < d.leaks.length; L++) d.leaks[L].opacity = leakOp;
+        if (M.doorLight) M.doorLight.intensity = 0.16 + k * 1.5 * breathe;
+    }
+    function _menuTickDoor(M, now) {
+        var sw = M.swing;
+        if (sw && now >= sw.at) {
+            if (!sw.sfx) { sw.sfx = true; if (sw.to === 1) _introSfx('doorBuzz'); }
+            var t = sw.ms > 0 ? Math.min(1, (now - sw.at) / sw.ms) : 1;
+            var e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+            M.open = sw.from + (sw.to - sw.from) * e;
+            if (t >= 1) { M.swing = null; M.open = sw.to; if (sw.to === 0) _introSfx('stamp'); }
+        }
+        _menuApplyDoor(M, M.open, now);
+    }
+    /* Swing the leaf: to = 1 open / 0 shut, after delayMs. Returns false
+       when it already is (or is already on its way) there. */
+    function _menuSwing(to, delayMs) {
+        var M = _menu; if (!M) return false;
+        if (M.swing && M.swing.to === to) return false;
+        if (!M.swing && M.target === to) return false;
+        M.target = to;
+        var span = Math.abs(to - M.open);
+        M.swing = { from: M.open, to: to, at: performance.now() + Math.max(0, delayMs || 0), ms: (to === 1 ? 1150 : 900) * Math.max(0.15, span), sfx: false };
+        return true;
+    }
+    /* a barely-there drift: the camera breathes, the eye line wanders */
+    function _menuTickCamera(M, now) {
+        var t = now / 1000, B = M.cfg, U = M.U, cam = M.camera;
+        cam.position.set((B.camAt[0] + Math.sin(t * 0.09) * 0.10) * U, (B.camAt[1] + Math.sin(t * 0.13) * 0.035) * U, (B.camAt[2] + Math.cos(t * 0.07) * 0.08) * U);
+        cam.lookAt((B.lookAt[0] + Math.sin(t * 0.05) * 0.10) * U, (B.lookAt[1] + Math.cos(t * 0.08) * 0.04) * U, B.lookAt[2] * U);
+    }
+    function _menuFrame() {
+        var M = _menu; if (!M || !_menuLive || !renderer) return;
+        var host = M.host, w = host.clientWidth, h = host.clientHeight;
+        if (!(w > 0 && h > 0)) return;              // the page is hidden (display:none) — nothing to draw
+        var now = performance.now();
+        if (M.w !== w || M.h !== h) {
+            M.w = w; M.h = h;
+            renderer.setSize(w, h);
+            M.camera.aspect = w / h; M.camera.updateProjectionMatrix();
+            if (ThreePost && ThreePost.resize) ThreePost.resize(w, h);
+        }
+        if (M.leafLanded && !M.leafHot) { M.leafLanded = false; try { _menuBuildDoor(M); } catch (e) { console.error('[MENU] door rebuild failed', e); } }
+        _menuTickCamera(M, now);
+        _menuTickDoor(M, now);
+        if (M.sky) _hqTickSky(now, M);
+        for (var fp = 0; fp < M.fxPulse.length; fp++) {
+            var fx = M.fxPulse[fp];
+            fx.mat.opacity = Math.max(0, fx.baseOp + Math.sin(now * 0.001 * fx.spd + fx.phase) * fx.opAmp);
+        }
+        /* the headlights flicker like an old alternator */
+        if (M.lamps.length) {
+            var fl = 0.9 + 0.1 * Math.sin(now * 0.021) * Math.sin(now * 0.0073);
+            for (var l = 0; l < M.lamps.length; l++) { var lm = M.lamps[l]; lm.opacity = Math.max(0, (lm._ew_menuOp != null ? lm._ew_menuOp : (lm._ew_menuOp = lm.opacity)) * fl); }
+            if (M.beam) M.beam.intensity = 0.9 * fl;
+        }
+        var noPost = (typeof window !== 'undefined' && window.EW_MENU_NO_POST);
+        if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(M.scene, M.camera);
+        else renderer.render(M.scene, M.camera);
+    }
+    /* ── lifecycle ─────────────────────────────────────────────────────── */
+    function _menuEnter(opts) {
+        opts = opts || {};
+        var host = opts.host;
+        if (!host || typeof THREE === 'undefined') return false;
+        if (!initialized) init();
+        if (!renderer || !canvas) return false;
+        if (active) { console.warn('[MENU] refusing to open over a live battle'); return false; }
+        if (_hq) { console.warn('[MENU] the building owns the canvas'); return false; }
+        if (_menuLive) { if (_menu && _menu.host === host) return true; _menuLeave(); }
+        if (!_menu) {
+            try { _menu = _menuBuild(host); }
+            catch (e) { console.error('[MENU] build failed', e); _menu = null; return false; }
+        }
+        _menu.host = host;
+        host.appendChild(canvas);
+        canvas.style.display = 'block';
+        canvas.style.pointerEvents = 'none';          // the menu's buttons live above it
+        var w = host.clientWidth || 960, h = host.clientHeight || 540;
+        renderer.setSize(w, h);
+        _menu.camera.aspect = w / h; _menu.camera.updateProjectionMatrix();
+        if (ThreePost && ThreePost.resize) ThreePost.resize(w, h);
+        _menu.w = w; _menu.h = h; _menu.lastNow = 0;
+        _menuLive = true;
+        renderer.setAnimationLoop(_menuFrame);
+        if (opts.open === true) _menuSwing(1, opts.delayMs || 0);
+        else if (opts.open === false) { _menu.swing = null; _menu.open = 0; _menu.target = 0; }
+        return true;
+    }
+    function _menuLeave() {
+        if (!_menuLive) return;
+        _menuLive = false;
+        try { renderer.setAnimationLoop(active ? renderFrame : null); } catch (e) {}
+        if (_menu && _menu.sky) _horizonFogDirty = true;   // the menu drove the shared sky uniforms: the battle re-applies its fog
+        try {
+            canvas.style.pointerEvents = 'auto';
+            if (_parentEl) _parentEl.appendChild(canvas);
+            if (!active) canvas.style.display = 'none';
+        } catch (e) {}
+    }
+    function _menuDispose() {
+        _menuLeave();
+        var M = _menu; if (!M) return;
+        _menu = null;
+        if (M.door) M.door.dead = true;
+        try {
+            for (var i = M.scene.children.length - 1; i >= 0; i--) {
+                var c = M.scene.children[i];
+                M.scene.remove(c);
+                _disposeR(c);
+            }
+        } catch (e) {}
+    }
+    var _menuApi = {
+        enter: _menuEnter,
+        leave: _menuLeave,
+        dispose: _menuDispose,
+        active: function () { return _menuLive; },
+        biome: function () { return _menu ? _menu.biome : null; },
+        openDoor: function (delayMs) { return _menuSwing(1, delayMs); },
+        closeDoor: function (delayMs) { return _menuSwing(0, delayMs); },
+        isOpen: function () { return !!(_menu && _menu.target === 1); },
+        /* dev: the live scene graph + record (repo probes) */
+        dev: { scene: function () { return _menu ? _menu.scene : null; }, rec: function () { return _menu; } },
+    };
+
     return {
         init, activate, deactivate, isActive, dispose, hookCamera, resetForNewMatch,
         rebuildTerrain, rebuildObjects, rebuildTurrets, rebuildNexusWalls, rebuildSanctuaryWalls, rebuildUnits, rebuildHighlights,
@@ -32377,6 +32764,9 @@ const ThreeRenderer = (function () {
 
         /* D.O.O.R. headquarters — the walkable facility (own scene + loop; map.js _hqEnter) */
         hq: _hqApi,
+
+        /* The main menu's lone door in the open (own scene + loop; map.js _menuSceneEnter) */
+        menu: _menuApi,
 
         /* Mystery Dungeon Guild Hub: real-time free-roam movement controller */
         hubFreeRoam: {
