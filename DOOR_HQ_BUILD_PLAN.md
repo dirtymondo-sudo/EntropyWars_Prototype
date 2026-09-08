@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 23 (2026-09-08 rev 3 — 7.2 stage 5 SHIPPED: THE SETTING IN THE ROOM — every walkable site room now runs its map's own MAP SETTINGS near builder inside it at 1:1 (D.U.M.B.'s server racks and blast door, CERN's beamline and terminals, the Backrooms' partitions and stalk fluorescents, Nuketown's picket fence, houses, road and buses, the Stadium's tiers and floodlights, Camelot's curtain wall with its towers and drawbridge, Atlantis' colonnade and kelp, Hell's spires and braziers, Technoticlan's temple tiers and torches, Agartha's crystal spires, Antarctica's ice ridges and igloo) — the room grows to the setting's apron (`siteRooms.near[key].w` tiles, + the moat's gap), the kit's enclosure primitives are no-ops in the room (the shell is those), every piece is culled clear of the way in and the console and becomes a blocker, natives and props are nudged off the houses and the stands, and four consoles moved to the north wall (`shells[id].console`); `hqSiteRoom` `near`, three-renderer.js `_hqBuildSetting` / `_hqSettingFreeSpot`, `_nrKit` `ctx.hq`; rev 22 2026-09-08 rev 2 — 7.2 stage 4 SHIPPED: the MOAT rooms — Rooms i · CAMELOT, H-20 · ATLANTIS, 666 · HELL, 2012 · TECHNOTICLAN, 88 · AGARTHA and 90S · ANTARCTICA are outdoor sites whose walkway is a QUAY: the ring between the island and the quay is the map's own liquid one level down in the battle's animated fluid sheet, board-edge canals open into it, a causeway either way (the south one is the way in), deep water and lava never entered; `shells[id].moat`, `hqSiteRoom` → `shell.moat`, three-renderer.js `_hqSiteOnCauseway` / `_hqTickMoat`, and a site room's floor is now a FRAME so every board pit finally shows; rev 21 2026-09-08 — 7.2 stage 3 SHIPPED: the first OUTDOOR rooms — Room 1945 · NUKETOWN and Room 50 · FOOTBALL STADIUM are walkable sites with no ceiling, the map's own sky on the battle's firmament dome, its far roster drifting round the room, lamp masts on the walkway corners, a fence / the bowl's wall for a perimeter and the ground running out past it; `shells[id].open`, `shell.sky`, three-renderer.js `_hqBuildSky` / `_hqTickSky`, `_hqTex` reads terrain keys; rev 20 2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
+### The walkable facility that replaces the Play menu · rev 24 (2026-09-08 rev 4 — 7.2 stage 6 SHIPPED: THE REST OF THE REGISTER — every launch map is a walkable room: Rooms 14179 · SHASTA, 56 · STONEHENGE, 444 · GIZA, 777 · HEAVEN, 2047 · CYBERPUNK CITY, 11 · BABEL, 12 · OLYMPUS, 4 · MARS, 51 · AREA 51, 512 · SKINWALKER RANCH, 180 · HOLLOW EARTH, 420 · FAIRY FOREST, 1969 · MOON, 888 · VATICAN CITY, 23 · BOHEMIAN GROVE, 9600 · GÖBEKLI TEPE, 1225 · NORTH POLE and 2D · FLAT LANDS are outdoor rooms behind their bay thresholds, each with its map's setting inside it at 1:1 and its sky overhead (Flat Lands opts out of its fourteen-tile setting), four consoles off the west wall, Babel's terraces as stands, the Moon under a 3 m berm; data-only — `siteRooms.built` / `near` / `shells` / `flavour`, no renderer change; doorhq.test.js now insists every site in the register has a room; rev 23 2026-09-08 rev 3 — 7.2 stage 5 SHIPPED: THE SETTING IN THE ROOM — every walkable site room now runs its map's own MAP SETTINGS near builder inside it at 1:1 (D.U.M.B.'s server racks and blast door, CERN's beamline and terminals, the Backrooms' partitions and stalk fluorescents, Nuketown's picket fence, houses, road and buses, the Stadium's tiers and floodlights, Camelot's curtain wall with its towers and drawbridge, Atlantis' colonnade and kelp, Hell's spires and braziers, Technoticlan's temple tiers and torches, Agartha's crystal spires, Antarctica's ice ridges and igloo) — the room grows to the setting's apron (`siteRooms.near[key].w` tiles, + the moat's gap), the kit's enclosure primitives are no-ops in the room (the shell is those), every piece is culled clear of the way in and the console and becomes a blocker, natives and props are nudged off the houses and the stands, and four consoles moved to the north wall (`shells[id].console`); `hqSiteRoom` `near`, three-renderer.js `_hqBuildSetting` / `_hqSettingFreeSpot`, `_nrKit` `ctx.hq`; rev 22 2026-09-08 rev 2 — 7.2 stage 4 SHIPPED: the MOAT rooms — Rooms i · CAMELOT, H-20 · ATLANTIS, 666 · HELL, 2012 · TECHNOTICLAN, 88 · AGARTHA and 90S · ANTARCTICA are outdoor sites whose walkway is a QUAY: the ring between the island and the quay is the map's own liquid one level down in the battle's animated fluid sheet, board-edge canals open into it, a causeway either way (the south one is the way in), deep water and lava never entered; `shells[id].moat`, `hqSiteRoom` → `shell.moat`, three-renderer.js `_hqSiteOnCauseway` / `_hqTickMoat`, and a site room's floor is now a FRAME so every board pit finally shows; rev 21 2026-09-08 — 7.2 stage 3 SHIPPED: the first OUTDOOR rooms — Room 1945 · NUKETOWN and Room 50 · FOOTBALL STADIUM are walkable sites with no ceiling, the map's own sky on the battle's firmament dome, its far roster drifting round the room, lamp masts on the walkway corners, a fence / the bowl's wall for a perimeter and the ground running out past it; `shells[id].open`, `shell.sky`, three-renderer.js `_hqBuildSky` / `_hqTickSky`, `_hqTex` reads terrain keys; rev 20 2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -541,7 +541,7 @@ proposes and the user has not ruled on (MASTER Part C rows 22–24).
 - The elevator's floor panel skips 13 (Room 13 is filed in Bay 1, not on a
   floor). One line of procedural text; the joke is free.
 
-#### 7.2 ⚙ The walkable site (the engine piece) — stage 1 ✅ (2026-09-07, §9: D.U.M.B.) · stage 2 ✅ (2026-09-07 rev 5, §9: CERN + Backrooms, the room's `mood`) · stage 3 ✅ (2026-09-08, §9: Nuketown + the Stadium, the OUTDOOR room — `open`, the sky, the masts) · stage 4 ✅ (2026-09-08 rev 2, §9: the six MOAT rooms — `moat`, the quay, the causeways, the fluid sheet) · stage 5 ✅ (2026-09-08 rev 3, §9: THE SETTING IN THE ROOM — the map's near builder at 1:1, `siteRooms.near`, `_hqBuildSetting`); the rest one session per site
+#### 7.2 ⚙ The walkable site (the engine piece) — stage 1 ✅ (2026-09-07, §9: D.U.M.B.) · stage 2 ✅ (2026-09-07 rev 5, §9: CERN + Backrooms, the room's `mood`) · stage 3 ✅ (2026-09-08, §9: Nuketown + the Stadium, the OUTDOOR room — `open`, the sky, the masts) · stage 4 ✅ (2026-09-08 rev 2, §9: the six MOAT rooms — `moat`, the quay, the causeways, the fluid sheet) · stage 5 ✅ (2026-09-08 rev 3, §9: THE SETTING IN THE ROOM — the map's near builder at 1:1, `siteRooms.near`, `_hqBuildSetting`) · stage 6 ✅ (2026-09-08 rev 4, §9: THE REST OF THE REGISTER — the eighteen remaining sites, all outdoor rooms; every launch map is walkable) — 7.2 is COMPLETE
 **What shipped** (rev 4): the mechanism and the first room. A site in
 `DOOR_HQ.siteRooms.built` gets `hqSiteRoom(mapId)` → a **box** room
 (`kind: 'box', fx: 'site', site: mapId` — the Training Room's pattern
@@ -641,6 +641,38 @@ H-20 (marble under a ruined wall, the canals' teal moat at night), 666
 2012 (cobbles, the glyph wall, the calendar's cyan canal, torches), 88
 (marble under the cavern wall, the inner sea, crystal light by day), 90S
 (snow under the ice wall, deep water, an ice bridge, polar day).
+
+**Stage 6 (2026-09-08 rev 4): THE REST OF THE REGISTER.** The eighteen
+sites that had no room got one each — a data batch, no renderer change,
+because stages 3–5 made a site room `built` + `shells[id]` + a `near`
+row + `flavour[id]`: 14179 Shasta (a cliff wall, the pines in the room),
+56 Stonehenge (the sarsen ring on the walkway, violet night), 444 Giza
+(casing-stone walls, the pyramids over them), 777 Heaven (cloud
+underfoot, the north Gate — the south one is the hotel door), 2047
+Cyberpunk City (the towers right behind a 12.6 m tenement wall, neon
+strips), 11 Babel (the terraces as `stands`, the console on the north
+wall — the north terraces make way for it), 12 Olympus, 4 Mars, 51 Area
+51 (the fence and the towers inside, the console on the north wall
+because the west hangar has the west), 512 Skinwalker Ranch, 180 Hollow
+Earth (the inner sun overhead), 420 Fairy Forest (the console on the
+east wall; the spring has the west), 1969 Moon (a 3.0 m regolith berm —
+the door had no wall; Records built one), 888 Vatican City (the
+basilica front across the north strip, the dome over the wall), 23
+Bohemian Grove, 9600 Göbekli Tepe, 1225 North Pole (the workshop has
+the west wall; console north), and 2D Flat Lands — the one room WITHOUT
+its setting (`setting: false`, `pad: 7`): the plane's builder hands
+`_nrKit` a fourteen-tile apron, which would make a 63 m room for one
+dead tree, so it keeps a 7 m walkway and its emptiness. None of the
+eighteen boards holds lava, void or an edge lake worth opening, so none
+is a moat room (Shasta's lake and the Grove's creek lie OUTSIDE the
+kit's apron in the battle, and `_nrMoat` is a no-op in the room). Day
+or night per room follows the map's sky. **7.2 is complete: every
+launch map in the register is a room you walk.** Known and accepted:
+the setting cull drops what stands in the console's run or the way in
+(Vatican's obelisk stands on the south lane; Babel's north terraces),
+and a GLB prop that has not loaded when `_hqBuildSetting` runs (the
+obelisks, the mushrooms, the dumpsters) has no bounds yet and so is
+neither culled nor a blocker — it lands where the battle puts it.
 
 The Training Room is already the pattern: a `kind: 'box'` room whose floor
 carries the 8×8 pit (`shell.grid`, one 1.75 m cell per battle tile — a
@@ -3337,3 +3369,69 @@ battle's setting with a roof (or the map's sky) and a door.
 - Next: the remaining sites one session each (the plan's order: the
   rest — each is now one id in `siteRooms.built` + a shell + a `near`
   row); 5.4a stage 2; 7.9 dailies; 4.1 the case-file screen.
+
+### 2026-09-08 (rev 4) — 7.2 stage 6 SHIPPED: THE REST OF THE REGISTER — every launch map is a room
+The plan's standing next step ("the remaining sites one session each")
+done as ONE batch, because stages 3–5 had made a site room a data
+entry: `siteRooms.built` + `shells[id]` + a `near` row + `flavour[id]`.
+No renderer change; data.js + doorhq.test.js + index.html; docs.
+- **data.js.** `siteRooms.built` gains the eighteen (29 sites in the
+  register, 29 rooms). `siteRooms.near` gains seventeen rows — `w` per
+  builder read off the renderer (shasta / stonehenge / giza / heaven /
+  area51 / hollow_earth / fairy_forest / vatican / northpole 4.5, olympus
+  4.0, cyberpunk 3.2, mars / skinwalker / moon / bohemian_grove / gobekli
+  5.0, babel 4.5 `stands`); Flat Lands has no row. Eighteen `shells`,
+  all `open` (no board in the batch holds lava, void or a lake worth
+  opening — Shasta's lake and the Grove's creek stand outside the kit's
+  apron in the battle), each in the map's own terrain keys (a cliff, a
+  dry-stone wall, casing stone, marble with gold at its foot, tenement
+  wall, brick, rock, metal, timber, cave wall, a wall of leaves, a
+  regolith berm, bark, planks, earth), its own light (`mood`, day / night
+  per the sky), its own two signs (`signLines`: the north sign wears the
+  number). Consoles: Babel n·0 (the terraces fill w/e/n; the north tier
+  is what the cull removes for it), Area 51 n·5 (the west hangar), Fairy
+  Forest e·8 (the spring on the west), North Pole n·0 (the workshop on
+  the west). The Moon's wall is 3.0 m (the lowest the leaf + lintel
+  allow: 2.65 + 0.25). Flat Lands: `setting: false`, `pad: 7.0`, `h:
+  3.0` — a 28 m room instead of the 63 m the fourteen-tile apron would
+  make. Eighteen `flavour` entries (guard line, five overheard lines,
+  two to six props each, `fitted: true`, on the walkway clear of the way
+  in / the console's run / the guard). Rooms: Cyberpunk 25.2 m, Olympus
+  28, the 4.5s 29.75, the 5.0s 31.5, Flat Lands 28.
+- **doorhq.test.js.** The stale "the Moon is not walkable yet" gives
+  way to: every threshold id is in `built` and the lists are the same
+  length; every bay site's register row knows its room (the Holo Sim
+  facility row does not count); each stage-6 room is outdoors without
+  a moat, its north sign says `ROOM <no>`, its south sign ends at the
+  console, its flavour is `fitted`; the four console walls; Babel's
+  stands (natives + console on the n/s strips); Flat Lands' opt-out
+  (no `near`, no `near.flatlands`, under 30 m); the Moon's 3.0 m berm,
+  frame leaf, night; seven day/night spot checks. `npm test`: 152
+  tests, 151 green + 1 skip. index.html → `20260908d-cors`.
+- Not playtested (RULE #1c). What to eyeball first: Bay 2 (ANCIENT),
+  Room 56 — through the empty frame onto the down at night, the sarsen
+  ring standing mid-walkway round the board, the trilithons at two
+  corners, the console on the west wall between stones. Bay 1, Room 51 —
+  the chain fence and the floodlight towers inside a metal wall, the
+  hangar half-cylinders on the flanks, the saucer on its rig in the
+  north-east, the console under the RESTRICTED AREA sign on the north
+  wall (a fence panel or two are culled for it). Bay 4, Room 1969 — a
+  waist-high berm, the lander and the flag on the north-east, the
+  monolith in the south-east corner, the Earth in the roster. Bay 5,
+  Room 777 — the north Gate across the board, the colonnades on the
+  flanks; the cloud mounds hug the wall and are rect blockers (the same
+  as Antarctica's drifts). Bay 6, Room 2D — a near-empty 28 m room, one
+  chair, one sheet of paper, the eyes overhead. If a native stands
+  inside a piece of setting, `_hqSettingFreeSpot` found nothing free
+  within 9 m along that wall (the Skinwalker barn on the east wall is
+  the likely one). If Babel's north terraces are still there, the
+  console zone did not reach them (they should be culled).
+- Decisions the user may reverse: Flat Lands without its setting
+  (alternative: a `near.flatlands` row `{ w: 14 }` and a 63 m room);
+  the Moon's berm at 3.0 m (a taller wall hides less sky); Babel with
+  `stands` and the north terraces culled (alternative: `setting:
+  false`).
+- Next: 5.4a stage 2 (the ring corridor); 7.9 dailies; 4.1 the
+  case-file screen; the cast lines for the site rooms (A15, the user's);
+  wave 1 of the new sites (7.6) — each is now a room the moment its
+  threshold exists.

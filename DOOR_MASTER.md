@@ -1738,3 +1738,19 @@ the user's (A15). Files: data.js, three-renderer.js, index.html
 (`20260908c-cors`), doorhq.test.js (152 tests, 151 green + 1 skip).
 Next in the plan's order: the remaining sites one per session. Story
 track still ON HOLD (A14).
+
+### 2026-09-08 (rev 4) — THE REST OF THE REGISTER: every launch map is a walkable room
+HQ plan 7.2 stage 6 — the plan's standing next step, done as one data
+batch. The eighteen sites without a room (Shasta, Stonehenge, Giza,
+Heaven, Cyberpunk City, Babel, Olympus, Mars, Area 51, Skinwalker
+Ranch, Hollow Earth, Fairy Forest, the Moon, Vatican City, Bohemian
+Grove, Göbekli Tepe, the North Pole, Flat Lands) are outdoor rooms
+behind their bay thresholds, each with its map's setting inside it at
+1:1 and its sky overhead (data.js `siteRooms.built` / `near` / `shells`
+/ `flavour`; no renderer change). Flat Lands keeps a plain walkway (its
+setting's apron is fourteen tiles). 7.2 is complete: all 29 sites in
+the register are rooms. No canon change; guard and overheard lines are
+Claude placeholders the user may rewrite (A15). Files: data.js,
+index.html (`20260908d-cors`), doorhq.test.js (152 tests, 151 green +
+1 skip). Next in the plan: 5.4a stage 2, 7.9 dailies, 4.1. Story track
+still ON HOLD (A14).

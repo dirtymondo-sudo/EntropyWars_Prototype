@@ -1329,9 +1329,39 @@ test('every built site is a launch map with a threshold and generates a box room
     assert.ok(ant.shell.moat.key === 'deep_water' && ant.shell.moat.walk === false && ant.shell.moat.tint === '#3a78b8', 'Antarctica: deep water, never entered, the board\'s water tint');
     assert.ok(ant.doors[0].leaf === 'leaf_bulkhead' && ant.shell.wall === 'ice_1' && ant.shell.moat.deck === 'igloo' && ant.shell.sky.night === 0, 'Antarctica: the ice-wall hatch, an ice bridge, polar day');
     assert.ok(ant.props.some(p => p.key === 'cot'), 'Antarctica: the overwinter cot');
-    /* sites without a room: no room, the register says so */
-    assert.ok(!HQ.rooms[D.hqSiteRoomId('prebuilt_moon')], 'the Moon is not walkable yet');
-    assert.strictEqual(D.hqRoomRegister().find(r => r.mapId === 'prebuilt_moon').siteRoom, null);
+    /* THE REST OF THE REGISTER (plan 7.2 stage 6, 2026-09-08 rev 4): every
+       launch map with a threshold is a room now — the register has no
+       site without one; the eighteen new rooms are all outdoors, none of
+       them a moat room (no board in the batch holds lava, void or a lake
+       worth opening), each under its own map's sky */
+    const siteIds = Object.keys(HQ.thresholds);
+    for (const id of siteIds) assert.ok(built.includes(id), id + ': every site in the register is walkable (stage 6)');
+    assert.strictEqual(siteIds.length, built.length, 'the built list is exactly the register');
+    assert.ok(D.hqRoomRegister().filter(r => r.mapId && r.sector).every(r => r.siteRoom), 'the register knows every site\'s room (the facility boards are not sites)');
+    const STAGE6 = ['prebuilt_shasta', 'prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_heaven', 'prebuilt_cyberpunk', 'prebuilt_babel', 'prebuilt_olympus', 'prebuilt_mars', 'prebuilt_area51',
+        'prebuilt_skinwalker', 'prebuilt_hollow_earth', 'prebuilt_fairy_forest', 'prebuilt_moon', 'prebuilt_vatican', 'prebuilt_bohemian_grove', 'prebuilt_gobekli', 'prebuilt_northpole', 'prebuilt_flatlands'];
+    for (const id of STAGE6) {
+        const r = HQ.rooms[D.hqSiteRoomId(id)];
+        assert.ok(r.shell.open === true && !r.shell.moat, id + ': an outdoor room without a moat');
+        assert.ok(r.shell.mood.signLines && r.shell.mood.signLines.n[1] === 'ROOM ' + HQ.thresholds[id].roomNo, id + ': the north sign wears the room number');
+        assert.ok(r.shell.mood.signLines.s[2] === 'THE CROSSING IS AT THE CONSOLE', id + ': the south sign points at the console');
+        assert.ok((HQ.siteRooms.flavour[id] || {}).fitted === true, id + ': the flavour props are placed for this room');
+    }
+    /* the settings that fill a wall move the console off it */
+    assert.strictEqual(HQ.siteRooms.shells.prebuilt_area51.console.wall, 'n', 'Area 51: the hangar has the west wall');
+    assert.strictEqual(HQ.siteRooms.shells.prebuilt_fairy_forest.console.wall, 'e', 'Fairy Forest: the spring has the west wall');
+    assert.strictEqual(HQ.siteRooms.shells.prebuilt_northpole.console.wall, 'n', 'North Pole: the workshop has the west wall');
+    const bab = HQ.rooms[D.hqSiteRoomId('prebuilt_babel')];
+    assert.ok(bab.shell.near.stands && bab.counters[0].z < 0 && bab.npcSpots.every(sp => Math.abs(sp.z) > Math.abs(sp.x)), 'Babel: the terraces fill the flanks — natives and the console on the n/s strips');
+    /* Flat Lands opts out of its setting: the plane's apron is fourteen tiles, the room keeps a plain walkway */
+    const flat = HQ.rooms[D.hqSiteRoomId('prebuilt_flatlands')];
+    assert.ok(HQ.siteRooms.shells.prebuilt_flatlands.setting === false && !flat.shell.near && !HQ.siteRooms.near.flatlands && flat.shell.w < 30, 'Flat Lands: no setting, a room you can cross');
+    /* the Moon's berm: the lowest wall in the register still holds the leaf */
+    const moon = HQ.rooms[D.hqSiteRoomId('prebuilt_moon')];
+    assert.ok(moon.shell.h === 3.0 && moon.doors[0].leaf === 'leaf_frame_only' && moon.shell.sky.night === 1, 'the Moon: a low regolith berm, the frame, night');
+    /* day and night follow the map's sky */
+    for (const [id, night] of [['prebuilt_heaven', 0], ['prebuilt_giza', 0], ['prebuilt_vatican', 0], ['prebuilt_cyberpunk', 1], ['prebuilt_area51', 1], ['prebuilt_stonehenge', 1], ['prebuilt_northpole', 1]])
+        assert.strictEqual(HQ.rooms[D.hqSiteRoomId(id)].shell.sky.night, night, id + ': day/night');
 });
 
 test('source scan: the renderer builds the site board and walks it; map.js walks a threshold in and crosses from the console', () => {

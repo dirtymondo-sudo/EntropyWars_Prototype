@@ -153,10 +153,12 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   `bayShell.ring: false`. Stage 2 (one continuous ring corridor) is
   planned in the HQ plan 5.4a, after 7.2.
   **THE WALKABLE SITE (plan 7.2 stage 1, shipped 2026-09-07)**: a site
-  listed in `DOOR_HQ.siteRooms.built` (today `prebuilt_dumb`,
-  `prebuilt_cern`, `prebuilt_backrooms` — stage 2 shipped 2026-09-07 —
-  and the OUTDOOR rooms `prebuilt_nuketown`, `prebuilt_stadium` — stage 3
-  shipped 2026-09-08: `shells[id].open: true` = no ceiling, the walls are
+  listed in `DOOR_HQ.siteRooms.built` (since stage 6, 2026-09-08 rev 4,
+  ALL 29 launch maps — doorhq.test.js insists every threshold id is
+  built; the first were `prebuilt_dumb`, `prebuilt_cern`,
+  `prebuilt_backrooms` — stage 2 shipped 2026-09-07 — then the OUTDOOR
+  rooms `prebuilt_nuketown`, `prebuilt_stadium` — stage 3 shipped
+  2026-09-08: `shells[id].open: true` = no ceiling, the walls are
   the site's perimeter in battle TERRAIN keys (`_hqTex` falls through to
   the terrain sheet), an `apron` / `skirt` past them, lamp MASTS at the
   walkway corners, and `shell.sky` = the map's EW_MAP_META `env` drawn by
@@ -206,7 +208,11 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   `shells[id].console = { wall: 'n'|'e', at }`; `stands: true` moves the
   natives / boxes / chair to the n/s strips; flavour props keep their
   distance to the wall when the room grows (`flavour[id].fitted: true`
-  = already placed). Kill-switch `window.EW_HQ_NO_SETTING`. A room's
+  = already placed). Kill-switch `window.EW_HQ_NO_SETTING`. A site can
+  opt OUT of its setting (`shells[id].setting: false` + a plain `pad`
+  — Flat Lands, whose builder's apron is fourteen tiles). **Adding a
+  site room today = `built` + `shells[id]` + a `near` row (`w` = the
+  builder's) + `flavour[id]`; nothing in the renderer.** A room's
   LIGHT is `shells[id].mood` (lamp / glow / strip / light colours, the two
   sign palettes, optional `signLines`) merged over `siteRooms.shell.mood`
   (= D.U.M.B.'s red); the renderer's signs and lamps hang from `S.h`.

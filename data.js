@@ -16599,7 +16599,11 @@ const DOOR_HQ = {
        `lights` become lamp MASTS on the walkway corners. */
     siteRooms: {
         built: ['prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms', 'prebuilt_nuketown', 'prebuilt_stadium',
-                'prebuilt_camelot', 'prebuilt_atlantis', 'prebuilt_hell', 'prebuilt_technoticlan', 'prebuilt_agartha', 'prebuilt_antarctica'],
+                'prebuilt_camelot', 'prebuilt_atlantis', 'prebuilt_hell', 'prebuilt_technoticlan', 'prebuilt_agartha', 'prebuilt_antarctica',
+                /* stage 6 (2026-09-08 rev 4): the rest of the register — every launch map is a room */
+                'prebuilt_shasta', 'prebuilt_stonehenge', 'prebuilt_giza', 'prebuilt_heaven', 'prebuilt_cyberpunk', 'prebuilt_babel',
+                'prebuilt_olympus', 'prebuilt_mars', 'prebuilt_area51', 'prebuilt_skinwalker', 'prebuilt_hollow_earth', 'prebuilt_fairy_forest',
+                'prebuilt_moon', 'prebuilt_vatican', 'prebuilt_bohemian_grove', 'prebuilt_gobekli', 'prebuilt_northpole', 'prebuilt_flatlands'],
         shell: { pad: 4.0, h: 4.4, dadoH: 1.05, floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling', pipes: true,
             /* the room's LIGHT (plan 7.2 stage 2): `lamp` = the containment
                lamps in the corners (lens + glow), `strip` = the wall strips,
@@ -16634,6 +16638,10 @@ const DOOR_HQ = {
             dumb: { w: 3.0, h: 3.4 }, cern: { w: 3.2, h: 3.6 }, backrooms: { w: 4.0 },
             nuketown: { w: 4.5 }, stadium: { w: 4.5, stands: true },
             camelot: { w: 4.0 }, atlantis: { w: 4.0 }, hell: { w: 4.0 }, technoticlan: { w: 4.0, stands: true }, agartha: { w: 4.5 }, antarctica: { w: 4.5 },
+            /* stage 6: the rest (Flat Lands has no row — its builder's apron is 14 tiles; the room opts out) */
+            shasta: { w: 4.5 }, stonehenge: { w: 4.5 }, giza: { w: 4.5 }, heaven: { w: 4.5 }, cyberpunk: { w: 3.2 }, babel: { w: 4.5, stands: true },
+            olympus: { w: 4.0 }, mars: { w: 5.0 }, area51: { w: 4.5 }, skinwalker: { w: 5.0 }, hollow_earth: { w: 4.5 }, fairy_forest: { w: 4.5 },
+            moon: { w: 5.0 }, vatican: { w: 4.5 }, bohemian_grove: { w: 5.0 }, gobekli: { w: 5.0 }, northpole: { w: 4.5 },
         },
         shells: {
             prebuilt_dumb: { floor: 'concrete', wall: 'concrete', dado: 'teal', trim: 'teal', ceiling: 'concrete' },
@@ -16729,6 +16737,165 @@ const DOOR_HQ = {
                 mood: { lamp: 0xeaf6ff, glow: 0xcfe8ff, strip: 0xffffff, light: 0xf0f8ff, night: 0,
                     signN: { bg: '#14243a', border: '#bfe0ff', color: '#f4faff' }, signS: { bg: '#1a2a3a', border: '#ff8080', color: '#ffe8e8' },
                     signLines: { n: ['ANTARCTICA', 'ROOM 90S', 'THE ICE REMEMBERS'], s: ['ICE-WALL HATCH', 'COLD ON BOTH FACES', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* ── THE REST OF THE REGISTER (plan 7.2 stage 6, 2026-09-08 rev 4) ──
+               Every remaining launch map is a walkable room: eighteen OUTDOOR
+               rooms (none of these boards holds lava, void or a moat's worth
+               of water — the map's near setting runs inside each at 1:1,
+               its sky overhead, its ground running out past the walls). The
+               console leaves the west wall where the setting fills it
+               (`console`); a setting that tiers the flanks says `stands`
+               in `near`. Flat Lands is the one room WITHOUT its setting
+               (`setting: false`): the builder's apron is fourteen tiles —
+               a 63 m room for one dead tree — so it keeps a plain 7 m
+               walkway and the emptiness is the point. */
+            /* 14179 · MOUNT SHASTA — the timberline meadow: a cliff face for
+               a wall, granite dado, the pines in the room, the peaks over it;
+               alpine day */
+            prebuilt_shasta: { open: true, floor: 'grass_2', wall: 'cliff', dado: 'rocks_1', trim: 'wood', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
+                apron: 'grass_2', skirt: 'cliff', apronColor: 0xa8c890,
+                mood: { lamp: 0xdfe8ff, glow: 0xbfd8ff, strip: 0xffffff, light: 0xf0f6ff, night: 0,
+                    signN: { bg: '#1e3a2a', border: '#dfe8d0', color: '#f4fff0' }, signS: { bg: '#2a2a3a', border: '#bfd8ff', color: '#eef4ff' },
+                    signLines: { n: ['MOUNT SHASTA', 'ROOM 14179', 'SUMMIT · 14,179 FT'], s: ['LEMURIAN GATE', 'CONTACT IS IMMINENT · STILL', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 56 · STONEHENGE — the down at night: the sarsen ring stands in
+               the room, a dry-stone wall round it, the ditch under the wall;
+               violet light off the ley-lines */
+            prebuilt_stonehenge: { open: true, floor: 'grass_2', wall: 'rock_wall_1', dado: 'dirt', trim: 'ruins', ceiling: null, h: 4.4, dadoH: 0.9, pipes: false,
+                apron: 'grass_2', skirt: 'dirt', apronColor: 0x9ab080,
+                mood: { lamp: 0xb8a0ff, glow: 0x9a7aff, strip: 0xd8ccff, light: 0xd0c8ff, night: 1,
+                    signN: { bg: '#241b3e', border: '#b8a0ff', color: '#efe8ff' }, signS: { bg: '#2a2418', border: '#d8c8a0', color: '#f4ecd8' },
+                    signLines: { n: ['STONEHENGE', 'ROOM 56', 'FIFTY-SIX HOLES · ONE FRAME'], s: ['LEY-LINE CROSSING', 'THE COUNT IS CLASSIFIED', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 444 · PYRAMIDS OF GIZA — the necropolis: casing-stone walls,
+               sand underfoot, the obelisks at the corners, the pyramids over
+               the wall; desert noon */
+            prebuilt_giza: { open: true, floor: 'dirt_2', wall: 'bricks_1', dado: 'desert', trim: 'gold', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
+                apron: 'desert', skirt: 'dirt_2', apronColor: 0xe0c48c, floorColor: 0xe0c48c,
+                mood: { lamp: 0xffe0a0, glow: 0xffc870, strip: 0xfff0d0, light: 0xfff4e0, night: 0,
+                    signN: { bg: '#3a2a10', border: '#ffe0a0', color: '#fff4dc' }, signS: { bg: '#2a1c0c', border: '#d8b070', color: '#f4e8c8' },
+                    signLines: { n: ['PYRAMIDS OF GIZA', 'ROOM 444', 'FOUR FACES · THREE TIMES'], s: ['SEALED BY TREATY', 'THE TOMB WAS EMPTY. IT IS NOT NOW', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 777 · HEAVEN — the gate plaza: cloud underfoot, a marble wall
+               with gold at its foot, the north Gate in the room (the south one
+               is the hotel door you came through); gold light, no night */
+            prebuilt_heaven: { open: true, floor: 'cloud_2', wall: 'marble_light', dado: 'gold', trim: 'gold', ceiling: null, h: 4.8, dadoH: 1.1, pipes: false,
+                apron: 'cloud_2', skirt: 'cloud_thick', apronColor: 0xf4f0ff, floorColor: 0xeef2ff,
+                mood: { lamp: 0xfff3c8, glow: 0xffe8a0, strip: 0xffffff, light: 0xfff8e8, night: 0,
+                    signN: { bg: '#f4efe0', border: '#d8b860', color: '#5a4a20' }, signS: { bg: '#3a3020', border: '#ffe9a0', color: '#fff4d8' },
+                    signLines: { n: ['HEAVEN', 'ROOM 777', 'IMMUNITY CLAIMED'], s: ['CHECKOUT · NEVER', 'THE GATES ARE FROSTED FOR MODESTY', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 2047 · CYBERPUNK CITY — the intersection: asphalt, the tenement
+               walls with the towers right behind them, neon strips, rain
+               that is not falling in here; night */
+            prebuilt_cyberpunk: { open: true, floor: 'urban_street', wall: 'urban_wall', dado: 'metal_3', trim: 'metal', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
+                apron: 'urban_street', skirt: 'urban_wall', apronColor: 0x9a96a8, floorColor: 0x8a86a0,
+                mood: { lamp: 0xff3ad8, glow: 0x35e0ff, strip: 0xff6ad8, light: 0xcfe8ff, night: 1,
+                    signN: { bg: '#1a0f33', border: '#ff3ad8', color: '#ffe0f8' }, signS: { bg: '#0f1a2a', border: '#35e0ff', color: '#dffaff' },
+                    signLines: { n: ['CYBERPUNK CITY', 'ROOM 2047', 'THE YEAR ON THE LEASE'], s: ['TENEMENT ENTRANCE', 'COMPLAINTS FILED IN ADVANCE', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 11 · TOWER OF BABEL — the lowest court: brick every way, the
+               terraces up the flanks (`stands`), the console on the north
+               wall under the plate (the north terraces make way for it);
+               torchlight under a dust sky */
+            prebuilt_babel: { open: true, floor: 'bricks_1', wall: 'bricks_1', dado: 'bricks_1', trim: 'wood', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false, console: { wall: 'n', at: 0 },
+                apron: 'bricks_1', skirt: 'dirt_2', apronColor: 0xd8a878, floorColor: 0xd8a878,
+                mood: { lamp: 0xffa040, glow: 0xff8a30, strip: 0xffd8a0, light: 0xffe0b0, night: 0,
+                    signN: { bg: '#3a2410', border: '#ffc070', color: '#fff0d8' }, signS: { bg: '#2a1a0c', border: '#d8a060', color: '#f4e4c8' },
+                    signLines: { n: ['TOWER OF BABEL', 'ROOM 11', 'GENESIS 11 · UNFINISHED'], s: ['ELEVEN ALPHABETS', 'THE SIGN SAYS THE SAME IN NONE OF THEM', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 12 · MOUNT OLYMPUS — the acropolis: marble, gold at the foot of
+               the wall, the colonnades in the room, the cloud sea past it;
+               lightning-blue lamps, day */
+            prebuilt_olympus: { open: true, floor: 'marble_light', wall: 'marble_light', dado: 'gold', trim: 'gold', ceiling: null, h: 4.8, dadoH: 1.1, pipes: false,
+                apron: 'marble_light', skirt: 'cloud_thick', apronColor: 0xf8f8f2, floorColor: 0xf8f8f2,
+                mood: { lamp: 0x9fd0ff, glow: 0x7ab8ff, strip: 0xffffff, light: 0xf0f6ff, night: 0,
+                    signN: { bg: '#f4f4ee', border: '#ffe27a', color: '#3a3a5a' }, signS: { bg: '#2a3048', border: '#9fd0ff', color: '#eef4ff' },
+                    signLines: { n: ['MOUNT OLYMPUS', 'ROOM 12', 'THE TWELVE · IN SESSION'], s: ['THE LINTEL IS A TREATY', 'DO NOT LOOK DOWN. THE CLOUDS OBJECT', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 4 · MARS — the regolith flat: a rock wall, a metal trim, the
+               mesas and the rover in the room, the biodome by the way in;
+               red day */
+            prebuilt_mars: { open: true, floor: 'moon_2', wall: 'mars_2', dado: 'mars_2', trim: 'metal', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
+                apron: 'mars', skirt: 'mars_2', apronColor: 0xc07a58, floorColor: 0xc88a5a,
+                mood: { lamp: 0xff9a60, glow: 0xff7a40, strip: 0xffd0b0, light: 0xffe0c8, night: 0,
+                    signN: { bg: '#3a1408', border: '#ff9a60', color: '#ffe4d0' }, signS: { bg: '#2a2a30', border: '#cfd8e0', color: '#eef2f8' },
+                    signLines: { n: ['MARS', 'ROOM 4', 'THE FOURTH PLANET'], s: ['AIRLOCK CYCLED', 'RED DUST IN THE SEAL · EVERY CROSSING', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 51 · AREA 51 — the base: a metal wall, hardstanding, the fence
+               and the towers inside, the hangars on the flanks, the saucer on
+               its rig; floodlit night. The console is on the north wall
+               (the hangar fills the west) */
+            prebuilt_area51: { open: true, floor: 'dirt_4', wall: 'metal', dado: 'metal_2', trim: 'metal', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false, console: { wall: 'n', at: 5 },
+                apron: 'dirt_4', skirt: 'wasteland', apronColor: 0xc8b088, floorColor: 0xc8b088,
+                mood: { lamp: 0xeaf4ff, glow: 0xbfe0ff, strip: 0xffffff, light: 0xe8f0ff, night: 1,
+                    signN: { bg: '#f4f0e0', border: '#b81818', color: '#b81818' }, signS: { bg: '#1a1c24', border: '#f4f0e0', color: '#f4f0e0' },
+                    signLines: { n: ['AREA 51', 'ROOM 51', 'EST. 1947'], s: ['RESTRICTED AREA', 'USE OF DEADLY PAPERWORK AUTHORIZED', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 512 · SKINWALKER RANCH — the pasture: a timber wall, the rail
+               fence and the barn inside it, the windpump, the mesas over the
+               wall, something in the sky; night */
+            prebuilt_skinwalker: { open: true, floor: 'grass_2', wall: 'wood', dado: 'dirt', trim: 'wood', ceiling: null, h: 4.4, dadoH: 0.9, pipes: false,
+                apron: 'grass_2', skirt: 'dirt', apronColor: 0xb8b878, floorColor: 0xb8b878,
+                mood: { lamp: 0xffc890, glow: 0xff9a60, strip: 0xd8c8ff, light: 0xe8d8ff, night: 1,
+                    signN: { bg: '#2a1638', border: '#d8c8ff', color: '#f0e8ff' }, signS: { bg: '#3a2a18', border: '#ffc890', color: '#fff0dc' },
+                    signLines: { n: ['SKINWALKER RANCH', 'ROOM 512', '512 ACRES · ALL OF THEM WATCHED'], s: ['GATE OPEN', 'IT IS NOT OPEN FOR YOU', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 180 · HOLLOW EARTH — the cavern floor: cave walls, crystal
+               trim, the stalagmites and the fungus in the room, the inner
+               sun overhead; the far side's ceiling is this side's floor */
+            prebuilt_hollow_earth: { open: true, floor: 'cave_floor', wall: 'cave_wall', dado: 'cave_wall', trim: 'crystal', ceiling: null, h: 4.8, dadoH: 1.1, pipes: false,
+                apron: 'cave_floor', skirt: 'cave_wall', apronColor: 0x8a7a9c, floorColor: 0x8a7a9c,
+                mood: { lamp: 0x9affe4, glow: 0x6af0d0, strip: 0xd0fff0, light: 0xc8e8ff, night: 1,
+                    signN: { bg: '#1c1428', border: '#9affe4', color: '#e8fff8' }, signS: { bg: '#2a2038', border: '#c8b0e8', color: '#f0e8ff' },
+                    signLines: { n: ['HOLLOW EARTH', 'ROOM 180', 'THE FAR SIDE IS THE CEILING'], s: ['INNER GATE · LOWER', 'MIND THE CEILING. IT IS THE FLOOR', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 420 · FAIRY FOREST — the glade: a wall of leaves, the trees and
+               the toadstools in the room, the spring on the west; wisp-light,
+               night. The console is on the east wall (the spring has the west) */
+            prebuilt_fairy_forest: { open: true, floor: 'grass_2', wall: 'leaves_3', dado: 'wood', trim: 'wood', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false, console: { wall: 'e', at: 8 },
+                apron: 'grass_2', skirt: 'dirt', apronColor: 0x9fd48a, floorColor: 0x9fd48a,
+                mood: { lamp: 0x9affd0, glow: 0xffd0f2, strip: 0xcfe0ff, light: 0xd8ffe8, night: 1,
+                    signN: { bg: '#0e2a1a', border: '#9affd0', color: '#e8fff0' }, signS: { bg: '#2a1a2a', border: '#ffd0f2', color: '#ffeefa' },
+                    signLines: { n: ['FAIRY FOREST', 'ROOM 420', 'THE MUSHROOMS ARE NOT THAT KIND'], s: ['COMPLAINT LODGED', 'THE DOOR IS A TREE. THE TREE OBJECTED', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 1969 · MOON — Tranquility: regolith, a LOW berm for a wall (the
+               door had no wall; Records built one), the lander and the
+               monolith in the room, the Earth in the sky; night */
+            prebuilt_moon: { open: true, floor: 'moon', wall: 'moon_3', dado: 'moon_3', trim: 'aluminium', ceiling: null, h: 3.0, dadoH: 0.8, pipes: false,
+                apron: 'moon', skirt: 'moon_3', apronColor: 0xc8ccd8, floorColor: 0xc8ccd8,
+                mood: { lamp: 0xeaf0ff, glow: 0xcfd8ff, strip: 0xffffff, light: 0xe8ecff, night: 1,
+                    signN: { bg: '#05060d', border: '#cfd8ff', color: '#f4f6ff' }, signS: { bg: '#1a1a20', border: '#d8b050', color: '#fff0c8' },
+                    signLines: { n: ['MOON', 'ROOM 1969', 'THE FOOTAGE'], s: ['SOUNDSTAGE B', 'THE FOOTPRINTS LEAD IN. NONE LEAD OUT', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 888 · VATICAN CITY — the piazza: cobbles, a marble wall, the
+               colonnade arms in the room, the basilica front across the
+               north, the dome over the wall; day */
+            prebuilt_vatican: { open: true, floor: 'cobblestone', wall: 'marble_light', dado: 'marble_light', trim: 'gold', ceiling: null, h: 4.8, dadoH: 1.1, pipes: false,
+                apron: 'cobblestone', skirt: 'marble_light', apronColor: 0xc8beab, floorColor: 0xc8beab,
+                mood: { lamp: 0xffe0a0, glow: 0xffd080, strip: 0xfff4e0, light: 0xfff8f0, night: 0,
+                    signN: { bg: '#f6f3ea', border: '#d8b860', color: '#4a3a1a' }, signS: { bg: '#3a2a18', border: '#ffe0a0', color: '#fff4dc' },
+                    signLines: { n: ['VATICAN CITY', 'ROOM 888', 'IMMUNITY CLAIMED · THREE TIMES'], s: ['SERVICE ENTRANCE', 'PAINTED WHITE BY DECREE', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 23 · BOHEMIAN GROVE — the clearing: redwood bark for a wall,
+               the big trees in the room, the Owl on the north strip, the
+               lantern trail; night */
+            prebuilt_bohemian_grove: { open: true, floor: 'grass_2', wall: 'wood', dado: 'wood', trim: 'wood', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
+                apron: 'grass_2', skirt: 'dirt', apronColor: 0x6a9458, floorColor: 0x6a9458,
+                mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b0, night: 1,
+                    signN: { bg: '#0d1810', border: '#ffb060', color: '#fff0d8' }, signS: { bg: '#2a1a0c', border: '#d8a860', color: '#f4e8c8' },
+                    signLines: { n: ['BOHEMIAN GROVE', 'ROOM 23', 'THE ENIGMA · MEMBERS ONLY'], s: ['SALOON DOOR', 'DO NOT KNOCK IN RHYTHM', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 9600 · GÖBEKLI TEPE — the tell: a dry-stone wall, the ring
+               walls and the T-pillars in the room, the digs, the hills over
+               the wall; day */
+            prebuilt_gobekli: { open: true, floor: 'grass_2', wall: 'rock_wall_1', dado: 'rock_wall_1', trim: 'ruins', ceiling: null, h: 4.4, dadoH: 0.9, pipes: false,
+                apron: 'grass_2', skirt: 'dirt_3', apronColor: 0xa8b070, floorColor: 0xa8b070,
+                mood: { lamp: 0xffd8a0, glow: 0xffc070, strip: 0xfff0d8, light: 0xfff4e4, night: 0,
+                    signN: { bg: '#3a2c18', border: '#d8c098', color: '#f8f0dc' }, signS: { bg: '#2a2418', border: '#c0a888', color: '#f0e8d8' },
+                    signLines: { n: ['GÖBEKLI TEPE', 'ROOM 9600', '9600 BC · THE FIRST TEMPLE'], s: ['NO LEAF WAS EVER MADE', 'THE FRAME IS THE PAPERWORK', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 1225 · NORTH POLE — the compound: snow underfoot, the workshop's
+               red planks for a wall, the workshop itself on the west, the
+               sleigh and the presents in the room, the aurora over it. The
+               console is on the north wall (the workshop has the west) */
+            prebuilt_northpole: { open: true, floor: 'marble_light', wall: 'wood_planks', dado: 'wood_planks', trim: 'marble_light', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false, console: { wall: 'n', at: 0 },
+                apron: 'marble_light', skirt: 'ice_1', apronColor: 0xe8f4ff, floorColor: 0xe8f4ff,
+                mood: { lamp: 0xfff2c0, glow: 0xffd070, strip: 0x5dffb0, light: 0xe8f4ff, night: 1,
+                    signN: { bg: '#c84a40', border: '#ffffff', color: '#fff8f0' }, signS: { bg: '#0d1424', border: '#5dffb0', color: '#eafff4' },
+                    signLines: { n: ['NORTH POLE', 'ROOM 1225', 'THE WORKSHOP · DEC 25'], s: ['SLEIGH BELLS REMOVED', 'BY RECORDS. RECORDS IS NOT SORRY', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 2D · FLAT LANDS — the plane, with edges: a low earth wall, grass,
+               nothing in the room but the board and the paperwork (no
+               setting: the plane's apron is fourteen tiles; see above);
+               pale day, nothing overhead but the eyes */
+            prebuilt_flatlands: { open: true, setting: false, pad: 7.0, floor: 'grass_2', wall: 'dirt_2', dado: 'dirt_2', trim: 'dirt_2', ceiling: null, h: 3.0, dadoH: 0.8, pipes: false,
+                apron: 'grass_2', skirt: 'dirt_2', apronColor: 0xc0c8b8, floorColor: 0xc0c8b8,
+                mood: { lamp: 0xe8ece0, glow: 0xd0d8c8, strip: 0xf4f4f0, light: 0xf0f0ea, night: 0,
+                    signN: { bg: '#d0d8c8', border: '#8a8a80', color: '#3a3a38' }, signS: { bg: '#3a3a38', border: '#d0d8c8', color: '#f0f0ea' },
+                    signLines: { n: ['FLAT LANDS', 'ROOM 2D', 'TWO DIMENSIONS · NO DEPTH'], s: ['HOLLOW ALL THE WAY THROUGH', 'YOU ARE BEING WATCHED. SIGN HERE', 'THE CROSSING IS AT THE CONSOLE'] } } },
         },
         flavour: {
             prebuilt_dumb: {
@@ -16974,6 +17141,385 @@ const DOOR_HQ = {
                     { key: 'mop_bucket',     x: -10.9, z: 8.6, face: 40 },
                     { key: 'desk_fan',       x: -11.5, z: -1.1, y: 0.76, face: 100 },
                     { key: 'paper_sheet',    x: 7.6,   z: 10.4, y: 0.01, face: 110 },
+                ],
+            },
+            /* ── the rest of the register (stage 6): eighteen outdoor rooms.
+               Every prop below is placed for its room (`fitted: true`): the
+               walkway runs from 7 m out to the wall — 14.9 m for a 4.5-tile
+               setting, 14 m for 4.0, 15.75 m for 5.0, 12.6 m for Cyberpunk's
+               3.2 — and the props keep clear of the way in (x ±2.2 on the
+               south), the console's run and the guard's post ── */
+            /* 14179 · MOUNT SHASTA — the ranger's cot in the north-east
+               corner, a cooler of meltwater, the trail register on the rail */
+            prebuilt_shasta: {
+                agent: '“Fourteen thousand one hundred and seventy-nine feet. The cabin door is at the bottom. Everything else is a rumour.”',
+                lines: [
+                    'The Lemurians are about to make contact. They have been about to since 1931.',
+                    'The lakes are cold because the mountain is cold. The mountain is cold because it is a mountain. Records accepted this.',
+                    'The pines were counted. One of them moved.',
+                    'The lenticular cloud is a cloud. That is the official position and the cloud agrees.',
+                    'Do not hike the switchbacks in dress shoes. The last officer who did is a trail sign now.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'cot',            x: 12.2,  z: -13.2, face: 0 },
+                    { key: 'cardboard_box',  x: 13.4,  z: -12.0, face: 15 },
+                    { key: 'water_cooler',   wall: 'e', z: -7.6 },
+                    { key: 'hook_rail',      wall: 'w', z: 7.4 },
+                    { key: 'paper_sheet',    x: -9.4,  z: 10.6, y: 0.01, face: 40 },
+                    { key: 'mop_bucket',     x: -13.2, z: 12.6, face: 40 },
+                ],
+            },
+            /* 56 · STONEHENGE — the night watch: a chair and a TV that gets
+               the solstice feed, the survey's boxes, the count on a clipboard */
+            prebuilt_stonehenge: {
+                agent: '“Fifty-six holes, twenty-two stones, one frame. The frame is ours. Do not touch the stones; they have a lawyer.”',
+                lines: [
+                    'The stones align with the solstice. The solstice was moved to fit.',
+                    'The armillary over the altar is not part of the monument. It is part of the Department.',
+                    'Nobody built Stonehenge. It was filed.',
+                    'The ley-lines cross here. So does the A303. Only one of them is classified.',
+                    'If a stone is warm, do not lean on it. If a stone is cold, do not lean on it either.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'folding_chair',  x: 13.2,  z: -9.6,  face: 240 },
+                    { key: 'tube_tv',        x: 13.6,  z: -11.0, y: 0, face: 250 },
+                    { key: 'cardboard_boxes', x: -13.2, z: -12.8, face: 20 },
+                    { key: 'clipboard',      wall: 'e', z: 8.0 },
+                    { key: 'paper_sheet',    x: 8.8,   z: 12.4, y: 0.01, face: 300 },
+                ],
+            },
+            /* 444 · PYRAMIDS OF GIZA — the dig's shelving, the crates of
+               finds, a fan on the desk that moves sand from one side to the
+               other, a broom for the rest of it */
+            prebuilt_giza: {
+                agent: '“Four faces, three times. The fourth pyramid is not missing. It is filed under something else.”',
+                lines: [
+                    'The tomb was opened by treaty. The treaty was written inside the tomb.',
+                    'Sand gets into everything. Records has a form for it. The form is full of sand.',
+                    'The obelisks are the originals. The ones in Rome and London are on loan and overdue.',
+                    'The Sphinx is not here. The Sphinx does not come to us.',
+                    'Three pyramids on the diagonal. The diagonal was here first.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'metal_shelving', wall: 'e', z: -9.0 },
+                    { key: 'cardboard_box',  x: 13.4,  z: -11.4, face: 25 },
+                    { key: 'cardboard_box',  x: 12.6,  z: -12.4, face: 60 },
+                    { key: 'desk_fan',       x: -14.45, z: -1.2, y: 0.76, face: 100 },
+                    { key: 'broom',          x: -13.4, z: 11.8, face: 200 },
+                ],
+            },
+            /* 777 · HEAVEN — a waiting chair by the east wall, the guest book
+               on the cloud beside it, plants that never needed watering, a
+               shelf for the immunity paperwork */
+            prebuilt_heaven: {
+                agent: '“Immunity claimed. Checkout is never. Sign the book; the book already knows.”',
+                lines: [
+                    'The gates are frosted for modesty. Theirs.',
+                    'The healing pools are for the injured. The injured are on the other side.',
+                    'Nobody has been refused entry. Several have been asked to wait. Some are still waiting.',
+                    'The pillars of light are structural. The structure is faith. The faith is load-bearing.',
+                    'Room 777 has no door on the inside. That is the hotel’s policy and not ours.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'potted_plant',   x: -13.4, z: -13.4 },
+                    { key: 'potted_plant',   x: 13.4,  z: -13.4 },
+                    { key: 'teal_chair',     x: 13.2,  z: 9.8, face: 250 },
+                    { key: 'notebook_paper', x: 12.9,  z: 11.2, y: 0.01, face: 30 },
+                    { key: 'wall_shelf',     wall: 'e', z: -8.4 },
+                ],
+            },
+            /* 2047 · CYBERPUNK CITY — a vending machine on the east kerb that
+               takes a currency Records has not approved, an EXIT sign the
+               tenants added, the wet paperwork */
+            prebuilt_cyberpunk: {
+                agent: '“The lease says 2047. The tenants say otherwise. Badge, retina, and do not look at the billboard; it looks back.”',
+                lines: [
+                    'The hologram over the door was added by the tenants. So were the tenants.',
+                    'It rains here on a lease. The lease is up.',
+                    'Every window is lit. Nobody is home. That is the whole city.',
+                    'Complaints are filed in advance. This one was filed about you.',
+                    'The vending machine takes crypto, cash, and a form of ID that does not exist yet.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'vending_machine', x: 11.5, z: 8.6, face: 270 },
+                    { key: 'cardboard_boxes', x: 11.2, z: -10.8, face: 30 },
+                    { key: 'exit_sign',      wall: 'n', x: 9.0 },
+                    { key: 'paper_sheet',    x: -9.6,  z: 9.4, y: 0.01, face: 200 },
+                    { key: 'mop_bucket',     x: -11.3, z: 11.0, face: 30 },
+                ],
+            },
+            /* 11 · TOWER OF BABEL — everything on the south strip below the
+               one low terrace: the crates of bricks, the plans, the rail the
+               masons hang their aprons on */
+            prebuilt_babel: {
+                agent: '“Eleven alphabets on the sign. It says the same thing in none of them. That is the sign working.”',
+                lines: [
+                    'The tower is unfinished. That is the finished state.',
+                    'The cranes were built by people who could not talk to each other. So was the Department.',
+                    'Every brick is the same brick. The mortar is the argument.',
+                    'The plans are in eleven languages. The mistake is in all of them.',
+                    'Genesis 11. The chapter number is a coincidence. Records does not believe in those but wrote it down.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'cardboard_box',  x: -11.4, z: 13.4, face: 15 },
+                    { key: 'cardboard_box',  x: -12.5, z: 13.6, face: 50 },
+                    { key: 'notebook_paper', x: -8.9,  z: 13.0, y: 0.01, face: 320 },
+                    { key: 'clipboard',      wall: 's', x: 6.4 },
+                    { key: 'hook_rail',      wall: 's', x: -6.6 },
+                ],
+            },
+            /* 12 · MOUNT OLYMPUS — a chair for the thirteenth, the treaty on
+               the marble, laurels in pots, a shelf for the ambrosia */
+            prebuilt_olympus: {
+                agent: '“The Twelve are in session. You are not one of them. The lintel is a treaty; read it on the way in and again on the way out.”',
+                lines: [
+                    'There are twelve seats. There is a thirteenth chair. Nobody sits in it. It is for us.',
+                    'The cloud sea is below. The floor is above. The treaty covers both and the gap.',
+                    'Lightning is a courtesy here. It arrives before the paperwork.',
+                    'The temples are on the wings so the gods can watch. They are watching.',
+                    'The golden stair goes down. Do not take it. It goes down.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'teal_chair',     x: 12.6,  z: -9.8, face: 240 },
+                    { key: 'potted_plant',   x: -12.6, z: -12.6 },
+                    { key: 'potted_plant',   x: 12.6,  z: -12.6 },
+                    { key: 'papers_b',       x: -13.2, z: 8.2, y: 0.01, face: 60 },
+                    { key: 'wall_shelf',     wall: 'e', z: 8.6 },
+                ],
+            },
+            /* 4 · MARS — the airlock side: suit lockers on the north wall, a
+               cot for the long shift, the spares shelf, an extinguisher for a
+               planet with no air */
+            prebuilt_mars: {
+                agent: '“Fourth planet. Red dust in the seal, every crossing. We have written to them. They have written back in dust.”',
+                lines: [
+                    'The rovers are dead. They send a postcard every sol.',
+                    'The biodome grows one tomato a year. Records has the tomato.',
+                    'The dust is in the seal, the paperwork, the coffee. The coffee is the paperwork.',
+                    'Nobody lives on Mars. Several people work here. The difference is the badge.',
+                    'The mesas are natural. The faces on them are a matter of lighting.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'locker',         wall: 'n', x: 13.8 },
+                    { key: 'locker',         wall: 'n', x: 12.9 },
+                    { key: 'metal_shelving', wall: 'e', z: -8.8 },
+                    { key: 'cot',            x: 13.9,  z: -11.6, face: 0 },
+                    { key: 'fire_extinguisher', wall: 'e', z: 9.0 },
+                    { key: 'cardboard_box',  x: -14.2, z: 12.4, face: 20 },
+                ],
+            },
+            /* 51 · AREA 51 — the guard shack's terminal in the north-east
+               corner, a chair, the base's own filing cabinet on the wall the
+               console shares, crates of things that are not weather balloons */
+            prebuilt_area51: {
+                agent: '“Est. 1947. The keypad is a rival account. Your badge works here. That is not a compliment.”',
+                lines: [
+                    'The saucer is under a tarp. The tarp is the classified part.',
+                    'Photography prohibited. Memory discouraged. Drawing is a grey area.',
+                    'Runway 33 runs into the desert. The desert has its own customs. We do not recognise it. It does not recognise us.',
+                    'The weather balloon story is true. The balloon was the weather.',
+                    'Deadly force is authorized. Deadly paperwork is preferred; it has a longer range.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'round_cabinet',  x: 13.4,  z: -12.8, face: 220 },
+                    { key: 'crt_terminal',   x: 13.4,  z: -12.8, y: 0.76, face: 220 },
+                    { key: 'office_chair',   x: 12.3,  z: -11.8, face: 45 },
+                    { key: 'filing_cabinet', wall: 'n', x: -10.4 },
+                    { key: 'cardboard_boxes', x: -13.2, z: 12.6, face: 20 },
+                ],
+            },
+            /* 512 · SKINWALKER RANCH — the observation post by the west wall
+               (a TV that gets the barn cameras, a chair), the tack rail, the
+                boxes the sensors came in, a broom for the feathers */
+            prebuilt_skinwalker: {
+                agent: '“Five hundred and twelve acres. All of them watched. The gate is open. It is not open for you.”',
+                lines: [
+                    'The cameras cover the whole ranch. The ranch does not appear on them.',
+                    'The cattle were counted twice. The numbers differ by one. It is not the cattle that changed.',
+                    'The crop circle is not a message. It is a signature. We are checking it against the register.',
+                    'Something is in the sky. It is on the site file as “something.” The site file is correct.',
+                    'The stable door is in two halves. The top half stays shut. Ask the top half why.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'tube_tv',        x: -14.5, z: -10.0, y: 0, face: 110 },
+                    { key: 'folding_chair',  x: -13.3, z: -8.6, face: 100 },
+                    { key: 'cardboard_boxes', x: 14.2, z: -13.6, face: 30 },
+                    { key: 'hook_rail',      wall: 'w', z: 9.4 },
+                    { key: 'broom',          x: -14.3, z: 12.4, face: 200 },
+                ],
+            },
+            /* 180 · HOLLOW EARTH — fungus in pots that came with the room, a
+               cooler the reptilians will not touch, a lamp on the desk for the
+               officer who does not trust the sun */
+            prebuilt_hollow_earth: {
+                agent: '“Room 180. The floor on the far side is the ceiling. Do not jump; you would land on your own head, and the form for that is long.”',
+                lines: [
+                    'The inner sun does not set. It is not allowed to. Continuity has it in writing.',
+                    'Up is a matter of which side you signed in on.',
+                    'The gates are two. One is a way in. The other is the same way in from underneath.',
+                    'The mushrooms glow because they are happy. Nobody has asked what about.',
+                    'Agartha is the capital. This is the countryside. The countryside is upside down.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'office_plant',   x: 13.4,  z: -13.2 },
+                    { key: 'office_plant',   x: -13.4, z: -13.2 },
+                    { key: 'water_cooler',   wall: 'e', z: -8.2 },
+                    { key: 'paper_sheet',    x: 10.2,  z: 12.2, y: 0.01, face: 70 },
+                    { key: 'desk_lamp',      x: -14.45, z: -1.2, y: 0.76, face: 200 },
+                ],
+            },
+            /* 420 · FAIRY FOREST — the complaint on the grass, a chair the
+               fairies let us keep, plants in pots for the irony, a shelf on
+               the west wall by the spring */
+            prebuilt_fairy_forest: {
+                agent: '“The mushrooms are not that kind. The door is a tree. The tree objected. Sign here, and apologise to the door.”',
+                lines: [
+                    'The Forest lodged a complaint about the door. The door lodged one about the Forest. Both are pending.',
+                    'The rings eat arrows. They have been asked to stop. They have not.',
+                    'Wisps are not lights. They are opinions.',
+                    'The spring is drinkable. The water remembers who drank it.',
+                    'Room 420: the number was the Forest’s idea. We do not make the jokes; we file them.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'potted_plant',   x: -13.4, z: -13.4 },
+                    { key: 'office_plant',   x: 13.4,  z: -13.4 },
+                    { key: 'paper_sheet',    x: -12.2, z: 9.6, y: 0.01, face: 140 },
+                    { key: 'folding_chair',  x: -13.6, z: -7.8, face: 80 },
+                    { key: 'wall_shelf',     wall: 'w', z: -10.4 },
+                ],
+            },
+            /* 1969 · MOON — the soundstage side of it: the director's chair,
+               the monitor, the props crate, the shot list on the berm */
+            prebuilt_moon: {
+                agent: '“Room 1969. The door stood without a wall until Records built one. The footprints lead in. Do not follow them out.”',
+                lines: [
+                    'The footage is real. The Moon is the reconstruction.',
+                    'One small step. The form is longer.',
+                    'The monolith is not ours. It was here when we filed the frame. It has been very patient.',
+                    'The flag does not move because there is no wind. The wind is in the paperwork.',
+                    'Low gravity is not an excuse. It is a condition. Both are on the site file.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'cardboard_box',  x: 14.2,  z: -13.4, face: 25 },
+                    { key: 'folding_chair',  x: 13.6,  z: -12.2, face: 230 },
+                    { key: 'tube_tv',        x: 14.4,  z: -10.9, y: 0, face: 250 },
+                    { key: 'clipboard',      wall: 'w', z: 8.8 },
+                    { key: 'paper_sheet',    x: -12.4, z: 11.8, y: 0.01, face: 210 },
+                ],
+            },
+            /* 888 · VATICAN CITY — a chair by the east arm of the colonnade,
+               the decree on the cobbles, the plants the archive sent, a shelf
+               for the white paint */
+            prebuilt_vatican: {
+                agent: '“Immunity claimed, three times. The door was painted white by decree. The decree is also white. Badge, please, and cover your head.”',
+                lines: [
+                    'The colonnade has two arms. They are open. That is the message and the trap.',
+                    'The obelisk was Egyptian. Then it was Roman. Now it is a hazard on the south lane.',
+                    'The fountains run on consecrated water. The pump is not consecrated. Nobody asks.',
+                    'The dome is over the wall. The wall is over the paperwork. The paperwork is over everything.',
+                    'Eight eight eight. The plate was approved on the third try.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'potted_plant',   x: -13.4, z: 9.6 },
+                    { key: 'potted_plant',   x: 13.4,  z: 9.6 },
+                    { key: 'teal_chair',     x: 13.3,  z: -9.4, face: 250 },
+                    { key: 'notebook_paper', x: 12.6,  z: -8.4, y: 0.01, face: 40 },
+                    { key: 'wall_shelf',     wall: 'w', z: -9.2 },
+                ],
+            },
+            /* 23 · BOHEMIAN GROVE — the robe rail on the east wall, the
+               members' crates, a chair for the non-member, the programme on
+               the grass, a broom for the ash */
+            prebuilt_bohemian_grove: {
+                agent: '“Room 23. Members only; you are staff, which is worse. Do not knock in rhythm. Do not look at the Owl. The Owl has already looked at you.”',
+                lines: [
+                    'The Owl is a statue. The statue is on the payroll.',
+                    'The altar fire is lit once a year. It is always that day here.',
+                    'Twenty-three: the enigma. Records has a folder. The folder has twenty-three pages. Nobody planned that.',
+                    'The redwoods are older than the Department. They have seniority and they use it.',
+                    'The creek runs out of the room. Nothing runs into it. Continuity is aware.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'hook_rail',      wall: 'e', z: 9.2 },
+                    { key: 'cardboard_boxes', x: 14.2, z: -13.8, face: 30 },
+                    { key: 'folding_chair',  x: -14.3, z: -9.0, face: 90 },
+                    { key: 'paper_sheet',    x: -9.8,  z: 13.2, y: 0.01, face: 40 },
+                    { key: 'broom',          x: 14.3,  z: 11.6, face: 160 },
+                ],
+            },
+            /* 9600 · GÖBEKLI TEPE — the dig's crates in the north-east, the
+               find sheets on the grass, the trench log on the wall, a broom
+               for eleven thousand years of dust */
+            prebuilt_gobekli: {
+                agent: '“Ninety-six hundred BC. No leaf was ever made for this doorway; we filed the frame. The frame is the paperwork.”',
+                lines: [
+                    'The temple came before the town. The paperwork came before the temple.',
+                    'The T-pillars are people. That is not a metaphor here.',
+                    'It was buried on purpose. Records would like to know whose.',
+                    'The digs go down. Everything they find was already filed. By whom is the question.',
+                    'The oldest door on file. Nobody knows what it kept out. It is still keeping it out.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'cardboard_box',  x: 14.2,  z: -13.6, face: 20 },
+                    { key: 'cardboard_box',  x: 13.2,  z: -14.2, face: 70 },
+                    { key: 'clipboard',      wall: 'e', z: 8.6 },
+                    { key: 'paper_sheet',    x: 9.6,   z: 13.0, y: 0.01, face: 300 },
+                    { key: 'broom',          x: -14.3, z: 12.6, face: 200 },
+                ],
+            },
+            /* 1225 · NORTH POLE — two presents that were never wrapped, the
+               overwinter cot, a cooler that froze, the coat rail, a lamp on
+               the desk under the aurora */
+            prebuilt_northpole: {
+                agent: '“December twenty-fifth, every day, by decree. The sleigh bells were removed by Records. Records is not sorry.”',
+                lines: [
+                    'The workshop makes one thing. Nobody has seen it. Everybody has received it.',
+                    'The aurora is a notice board. It is written in a colour we do not have clearance for.',
+                    'The slide-pond is frozen. It was frozen in July. It was frozen before July existed.',
+                    'The elves are contractors. The contract is long and mostly about cookies.',
+                    'The candy canes are load-bearing. That was a surprise to everyone including the candy canes.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'cardboard_box',  x: -13.4, z: 12.2, face: 15 },
+                    { key: 'cardboard_box',  x: -12.4, z: 13.2, face: 55 },
+                    { key: 'cot',            x: 12.9,  z: -11.6, face: 0 },
+                    { key: 'water_cooler',   wall: 'e', z: -8.4 },
+                    { key: 'hook_rail',      wall: 'w', z: -8.6 },
+                    { key: 'desk_lamp',      x: 1.3,   z: -14.45, y: 0.76, face: 200 },
+                ],
+            },
+            /* 2D · FLAT LANDS — one chair. One sheet of paper. Nothing else;
+               the room is the joke and the joke is the room */
+            prebuilt_flatlands: {
+                agent: '“Room 2D. Two dimensions, no depth, and a frame with no door in it. Sign here. You are being watched, and so is the pen.”',
+                lines: [
+                    'Flat all the way through. Records checked with a ruler.',
+                    'There is one tree. It is dead. It was dead when we filed it. It is the liveliest thing here.',
+                    'The circle you can barely see is a circle. That is all the site file says. It is enough.',
+                    'The eyes in the sky are not ours. Ours are on the other side of the frame.',
+                    'It pairs with 4D. 4D is on hold. 2D is not on hold; it is on the floor.',
+                ],
+                fitted: true,
+                props: [
+                    { key: 'folding_chair',  x: 13.2,  z: -9.6, face: 250 },
+                    { key: 'paper_sheet',    x: -10.4, z: 9.2, y: 0.01, face: 20 },
                 ],
             },
         },
