@@ -1,5 +1,5 @@
 # DOOR HEADQUARTERS — BUILD PLAN
-### The walkable facility that replaces the Play menu · rev 21 (2026-09-08 — 7.2 stage 3 SHIPPED: the first OUTDOOR rooms — Room 1945 · NUKETOWN and Room 50 · FOOTBALL STADIUM are walkable sites with no ceiling, the map's own sky on the battle's firmament dome, its far roster drifting round the room, lamp masts on the walkway corners, a fence / the bowl's wall for a perimeter and the ground running out past it; `shells[id].open`, `shell.sky`, three-renderer.js `_hqBuildSky` / `_hqTickSky`, `_hqTex` reads terrain keys; rev 20 2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
+### The walkable facility that replaces the Play menu · rev 22 (2026-09-08 rev 2 — 7.2 stage 4 SHIPPED: the MOAT rooms — Rooms i · CAMELOT, H-20 · ATLANTIS, 666 · HELL, 2012 · TECHNOTICLAN, 88 · AGARTHA and 90S · ANTARCTICA are outdoor sites whose walkway is a QUAY: the ring between the island and the quay is the map's own liquid one level down in the battle's animated fluid sheet, board-edge canals open into it, a causeway either way (the south one is the way in), deep water and lava never entered; `shells[id].moat`, `hqSiteRoom` → `shell.moat`, three-renderer.js `_hqSiteOnCauseway` / `_hqTickMoat`, and a site room's floor is now a FRAME so every board pit finally shows; rev 21 2026-09-08 — 7.2 stage 3 SHIPPED: the first OUTDOOR rooms — Room 1945 · NUKETOWN and Room 50 · FOOTBALL STADIUM are walkable sites with no ceiling, the map's own sky on the battle's firmament dome, its far roster drifting round the room, lamp masts on the walkway corners, a fence / the bowl's wall for a perimeter and the ground running out past it; `shells[id].open`, `shell.sky`, three-renderer.js `_hqBuildSky` / `_hqTickSky`, `_hqTex` reads terrain keys; rev 20 2026-09-07 rev 5 — 7.2 stage 2 SHIPPED: Rooms 999 · CERN and 90 · BACKROOMS are walkable sites, each in its own LIGHT (`siteRooms.shell.mood`: lamps, strips, sign palettes, `signLines`; the Backrooms under a low yellow ceiling with no conduits, the almond water tinted); rev 19 2026-09-07 rev 4 — 7.2 stage 1 SHIPPED: the first WALKABLE SITE — Room 555 · D.U.M.B. is a room behind its bay threshold, its own Δ board in the middle at 1:1 (steps climbed, blocks solid, the cell walls, the specimen tubes, the nexus ring), the CROSSING console files the crossing, the natives loiter on the walkway; `hqSiteRoom` / `hqSiteBoardInfo`, the renderer's `_hqBuildSiteBoard` + the board layer in `_hqSurface`; rev 18 2026-09-07 rev 3 — 7.5 SHIPPED + THE CONTAINMENT RING (new 5.4a) stage 1: Bay 7 · URBAN on the mezzanine, the rebalance (C-22 + C-23 DECIDED), and every bay's end caps wear fire doors into the next bay on its floor — 1 ⇄ 4 downstairs, 2 → 5 → 7 → 3 → 6 → 2 upstairs; rev 17 2026-09-07 rev 2 — 7.1 SHIPPED, the numbers are on the doors: `roomNo` on every threshold and numbered room, `hqRoomNo` / `hqRoomRegister`, the plate · the panels · the SITE FILE header · the result stamp · the loading card · the directory's register; the elevator skips 13; rev 16 2026-09-07 — the ROOM REGISTER: Phase 7 — a number on every site and HQ room, seven new sites for wave 1, the walkable-site mechanism, seven bays, the dailies, §5.6 assets; rev 15 2026-09-06 rev 2 — the cast PLAYTESTED and re-seated: pinXZ sitting, Rhonda in the round desk, held props, playtest_hq.js, §9; rev 14 2026-09-06 — the CAST moves in: fifteen rigged story characters at their posts, the Player as the avatar; rev 13 2026-09-04 — 6.3 rev 2: the Key pickup celebration + emoji purge)
 
 Read CLAUDE.md first (RULE #1 delivery, #1b cache-bust, #1c no playtest,
 #2 online parity), then `DOOR_MASTER.md` Part A5 (the department → room
@@ -541,7 +541,7 @@ proposes and the user has not ruled on (MASTER Part C rows 22–24).
 - The elevator's floor panel skips 13 (Room 13 is filed in Bay 1, not on a
   floor). One line of procedural text; the joke is free.
 
-#### 7.2 ⚙ The walkable site (the engine piece) — stage 1 ✅ (2026-09-07, §9: D.U.M.B.) · stage 2 ✅ (2026-09-07 rev 5, §9: CERN + Backrooms, the room's `mood`) · stage 3 ✅ (2026-09-08, §9: Nuketown + the Stadium, the OUTDOOR room — `open`, the sky, the masts); the rest one session per site
+#### 7.2 ⚙ The walkable site (the engine piece) — stage 1 ✅ (2026-09-07, §9: D.U.M.B.) · stage 2 ✅ (2026-09-07 rev 5, §9: CERN + Backrooms, the room's `mood`) · stage 3 ✅ (2026-09-08, §9: Nuketown + the Stadium, the OUTDOOR room — `open`, the sky, the masts) · stage 4 ✅ (2026-09-08 rev 2, §9: the six MOAT rooms — `moat`, the quay, the causeways, the fluid sheet); the rest one session per site
 **What shipped** (rev 4): the mechanism and the first room. A site in
 `DOOR_HQ.siteRooms.built` gets `hqSiteRoom(mapId)` → a **box** room
 (`kind: 'box', fx: 'site', site: mapId` — the Training Room's pattern
@@ -602,6 +602,45 @@ textures, `h`, `pipes`, a `mood` for its light, `open` + `apron` /
 doorhq.test.js checks the room against its threshold, its bay door, its
 board and the register (an open room: a sky that is the map's, masts on
 the walkway, nothing hung from a ceiling, a wall tall enough for the leaf).
+**Stage 4 (2026-09-08 rev 2): the MOAT room.** `shells[id].moat = { key,
+gap, bank, bed, deck, causeways }` on an open room makes its walkway a
+QUAY (`pad` grows to quay + gap; the quay keeps the 2.4 m every prop,
+native, mast, the guard and the console already stand on): the ring
+between the board (the island) and the quay is sunk one level and filled
+with the map's own liquid — `hqSiteRoom` fills in `walk` (TERRAIN_RULES +
+`HQ_SITE_HAZARDS`, exactly a board lake's rule: water wades, deep water
+and lava are never entered), `tint` (the Δ's `terrainTints` for the key,
+water falling back to the board's water tint) and `quay`, and hands the
+renderer `shell.moat`. three-renderer.js `_hqBuildSiteBoard` draws it as
+the near kit's `_nrMoat` brought indoors: one sheet per side in the
+battle's own animated fluid material (`_buildFluidTopMat(key)`, the tint
+set on it, lava's emissive up; a translucent basic sheet if the shader
+is unavailable), the bed under it, the quay's face + coping and the
+island's face per dry edge cell in the bank texture (an InstancedMesh),
+corner posts, a deck with kerbs across the gap per causeway (the south
+one is the way in and always exists; the north one matches the near
+kit's pair), four glow sprites on a lava moat — and every board-edge
+lake cell of the same liquid OPENS into the moat (its pit box and sheet
+are dropped, the moat's sheet covers it, a bank stands only on the
+sides that meet a dry cell), so Atlantis's canals and Antarctica's bays
+run out into the ring. Walking: `_hqSiteCellAt` returns the moat as one
+more pseudo-cell (`_hq.site.moat.cell`: top −1 level, walk from the
+data) anywhere in the ring that is not a causeway (`_hqSiteOnCauseway`),
+so `_hqSurface` / `_hqAirOK` / the landing / `_hqCamBlocked` treat it
+like a board lake with no new branches; climbing out of any pit onto the
+walkway is one level (`curY < -0.5` extends the board tolerance). The
+water animates under the HQ loop (`_hqTickMoat`: the shared fluid
+clock, the key's drift offsets, caustic tile = one cell). The A–H / 1–8
+labels and the hazard plate move onto the quay. **A fix that came with
+it**: a site room's floor is now a FRAME round the board (or round the
+moat) instead of one plane over everything — before this the plane hid
+every board pit (D.U.M.B.'s and the Backrooms' water sat under it). Six
+rooms: i (grass quay, the curtain wall, a plank drawbridge, torchlight),
+H-20 (marble under a ruined wall, the canals' teal moat at night), 666
+(scorched ground, obsidian, a lava moat, basalt causeways, red light),
+2012 (cobbles, the glyph wall, the calendar's cyan canal, torches), 88
+(marble under the cavern wall, the inner sea, crystal light by day), 90S
+(snow under the ice wall, deep water, an ice bridge, polar day).
 
 The Training Room is already the pattern: a `kind: 'box'` room whose floor
 carries the 8×8 pit (`shell.grid`, one 1.75 m cell per battle tile — a
@@ -3096,3 +3135,100 @@ skips its ceiling and the site builder swaps its indoor kit for masts.
   Hell, Technoticlan, Agartha, Antarctica — they are outdoor rooms too,
   `open` + a lake that reaches the walls); the map's `near` setting
   inside the room; 5.4a stage 2; 7.9 dailies; 4.1 the case-file screen.
+
+### 2026-09-08 (rev 2) — 7.2 stage 4 SHIPPED: the six MOAT rooms — the walkway is a quay
+The plan's next step ("the moat maps once a fluid sheet edge is in —
+Camelot, Atlantis, Hell, Technoticlan, Agartha, Antarctica — outdoor
+rooms too, `open` + a lake that reaches the walls"). No new files;
+data.js + three-renderer.js + doorhq.test.js + index.html; docs. The
+"lake that reaches the walls" became a MOAT with a QUAY: the water fills
+the ring from the board's edge out to a 2.4 m dry strip along the walls
+(that strip is where every prop, native, mast, the guard and the console
+already stood, so nothing in the shipped room recipe moved — the room
+just grew 2 m and the ring between sank), bridged by a causeway on the
+way-in side and its opposite, exactly the near kit's `_nrMoat` + the
+spawn-row causeways brought indoors. That reading keeps the room walkable
+without rails or a swim, and keeps "reaches the walls" for the water's
+look along the north side, where nothing stands between the moat's
+coping and the wall but the sign.
+- **data.js.** `siteRooms.built` gains the six. Each `shells[id]` is an
+  open room with `pad: 5.0` and `moat: { key, gap: 2.6, bank, bankColor,
+  bed, (bedColor), deck, deckColor, causeways: ['s', 'n'] }` plus its own
+  perimeter / floor / apron / skirt / mood / signs (comment block above
+  the six has the field list). `hqSiteRoom`: `moat = defaults ← shell.moat`,
+  then `walk` (TERRAIN_RULES passable AND not in `HQ_SITE_HAZARDS` — the
+  same rule as a board lake: water wades, deep_water / lava never),
+  `tint` (the Δ's `terrainTints[key]`; a water key falls back to the
+  board's `water` / `deep_water` tint — Antarctica's deep water wears
+  the board's water blue), `quay` (= pad − gap), and 's' is forced into
+  `causeways` (the way in always has a bridge); `shell.moat` carries it.
+  Six flavour entries (agent + five lines + quay props; the lines are
+  Claude placeholders, A15).
+- **three-renderer.js.** `_hqSiteCellAt`: outside the board, a moat room
+  returns `_hq.site.moat.cell` (`{ top: -depth, walk, fluid, key, moat }`)
+  anywhere inside the quay's inner edge that is not a causeway — new
+  `_hqSiteOnCauseway(x, z)` (the deck is `deckW` wide, centred on its
+  side, from the island's edge to the quay). Every site consumer
+  (`_hqSurface`, `_hqAirOK`, the landing, `_hqCamBlocked`) therefore
+  treats the moat as one more board lake with no new branch. `_hqSurface`:
+  the one-level climb tolerance also applies when `curY < -0.5` (out of
+  the moat onto the quay — the target is not a board cell). `_hqBuildBoxShell`:
+  a site room's floor is a FRAME (`siteHole` = board half + the moat's
+  gap; four bands) — the fix for a bug the stages before never saw
+  without a playtest: the single floor plane at y 0 sat OVER every board
+  pit (D.U.M.B.'s tubes were fine, but the Backrooms' almond water and
+  every −1 lake were hidden under the floor). `_hqBuildSiteBoard`: the
+  MOAT block before the pits — merged edge cells (`moatMerged`: a
+  board-edge pit of the same liquid family), `_hq.site.moat`, the bank /
+  bed / deck materials through `siteMat`, `_buildFluidTopMat(M.key)` with
+  the Δ tint set on `color` (the material's `_evTintMat` may have read a
+  stale `state.terrainTints`) and lava's emissive at 0.85 (fallback: the
+  cells' translucent basic sheet, pulsed), `_hq.moatTick = { key, tile:
+  CM }`; the ring as four bed + four sheet rectangles (`_hzTileUV` per
+  cell so the wave layers repeat), the quay's face + coping in one or two
+  runs per side (a causeway breaks the run), the island's face as an
+  InstancedMesh of one segment per dry edge cell plus corner posts, the
+  merged cells' sheet + banks on dry sides only, the deck (0.3 m thick,
+  top at +0.012 m) with two kerbs per causeway, four pulsing glows on a
+  lava moat. The pits loop skips merged cells. The A–H / 1–8 labels sit
+  at the quay's edge and the hazard plate before the causeway. New
+  `_hqTickMoat(dt)` (before `_hqTickWorld`, which calls it when
+  `H.moatTick`): advances `_fluidTimeSec` / `_fluidTimeUniform`, sets
+  `_fluidTileUniform` to one cell, drives the key's `_off1` / `_off2`
+  drift — the battle resets all three the moment it renders.
+- **doorhq.test.js.** The built-site test requires the six; `dryFrom(S)`
+  (board half + gap) replaces the board half in the walkway checks for
+  masts, natives, the spawn and (new) the guard; floor props in a moat
+  room must stand on the quay, the island or a causeway (`onCauseway`);
+  a moat block: the key is in `HQ_SITE_FLUIDS` and TERRAIN_RULES, `walk`
+  equals the board-lake rule, gap / depth / deck minimums, the quay ≥ 2 m
+  and equal to the room's (to 2 cm — the size is rounded to centimetres),
+  the south causeway, the textures, the tint rule; an indoor room has no
+  moat. Per-room checks (Camelot: dry board + plank drawbridge + the
+  portcullis + torchlight; Atlantis: canals on the board, the #49c2d8
+  tint; Hell: lava never waded, obsidian decks, red light, the
+  extinguisher; Technoticlan: the cyan tint, the terminal in the corner;
+  Agartha: the inner sea, day, three plants; Antarctica: deep water never
+  entered, the water tint, an ice bridge, the cot). Source scan: the
+  causeway helper, the moat cell, the climb-out tolerance, the fluid
+  sheet, the merge skip, `_hqTickMoat` + its call, the floor frame. The
+  test caught one placement on the first run (an Agartha paper sheet in
+  the water — moved). `npm test`: 152 tests, 151 green + 1 skip.
+  index.html → `20260908b-cors`.
+- Not playtested (RULE #1c). What to eyeball first: Bay 2 (the mezzanine
+  portcullis), Room i, E — you should be on a lawn quay inside a brick
+  curtain wall at night under Camelot's dark sky, the plank drawbridge
+  ahead crossing a water moat to the castle board (the board's wall
+  slabs and plank lanes); walk the drawbridge, step off it into the moat
+  (you wade at −1.75 m, climb out onto the island or the quay), lap the
+  quay — the north side is coping, water, wall, sign. Then Bay 5, Room
+  666: the lava moat glows and refuses you at the coping; Bay 3, Room
+  H-20: the board's canals run out into the moat with no wall between.
+  If the water is a flat blue sheet with no ripples, `_buildFluidTopMat`
+  threw (the fallback) — the console has no line for it, so check
+  `_hq.moatTick` in the console (null = fallback). If a board pit still
+  looks covered anywhere, the floor frame is the suspect (`siteHole`).
+- Next: the map's `near` setting inside the room (per-site dressing
+  beyond the generic quay kit); the remaining sites one session each (the
+  plan's order: the rest); 5.4a stage 2; 7.9 dailies; 4.1 the case-file
+  screen.

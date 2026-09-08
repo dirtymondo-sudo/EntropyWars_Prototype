@@ -16598,7 +16598,8 @@ const DOOR_HQ = {
        own firmament dome, `mood.night` picks day or night, and the four
        `lights` become lamp MASTS on the walkway corners. */
     siteRooms: {
-        built: ['prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms', 'prebuilt_nuketown', 'prebuilt_stadium'],
+        built: ['prebuilt_dumb', 'prebuilt_cern', 'prebuilt_backrooms', 'prebuilt_nuketown', 'prebuilt_stadium',
+                'prebuilt_camelot', 'prebuilt_atlantis', 'prebuilt_hell', 'prebuilt_technoticlan', 'prebuilt_agartha', 'prebuilt_antarctica'],
         shell: { pad: 4.0, h: 4.4, dadoH: 1.05, floor: 'concrete', wall: 'stone', dado: 'oxblood', trim: 'teal', ceiling: 'ceiling', pipes: true,
             /* the room's LIGHT (plan 7.2 stage 2): `lamp` = the containment
                lamps in the corners (lens + glow), `strip` = the wall strips,
@@ -16635,6 +16636,71 @@ const DOOR_HQ = {
                 mood: { lamp: 0xeaf4ff, glow: 0xbfe0ff, strip: 0xffffff, light: 0xe8f2ff, night: 1,
                     signN: { bg: '#10203a', border: '#ffd34a', color: '#ffffff' }, signS: { bg: '#1a1a1a', border: '#f4f4f4', color: '#f4f4f4' },
                     signLines: { n: ['FOOTBALL STADIUM', 'ROOM 50', 'HOME 0 · AWAY 0 · Q1'], s: ['ACTIVE CROSSING', 'NO RE-ENTRY WITHOUT A STAMP', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* ── THE MOAT ROOMS (plan 7.2 stage 4, 2026-09-08) ──────────────
+               An outdoor room whose walkway is a QUAY: `moat` sinks the ring
+               between the board (the island) and the quay one level and
+               fills it with the map's own liquid — the near kit's moat, in
+               the room. `pad` grows to quay + gap (the quay keeps the 2.4 m
+               the props, the natives, the console and the masts stand on).
+                 key       the liquid (a battle terrain key; water / deep_water
+                           / lava) — the Δ's terrainTints tint it, TERRAIN_RULES
+                           + HQ_SITE_HAZARDS decide whether it is waded
+                 gap       the moat's width (m) from the board edge to the quay
+                 bank      the quay's face + coping and the island's face
+                 bed       the bottom (seen when the sheet is translucent)
+                 deck      the causeway across it (`causeways`: the sides that
+                           get one — the way in is always the south)
+               A board-edge lake cell of the same liquid opens into the moat
+               (the renderer drops its pit wall). hqSiteRoom fills in walk /
+               tint / quay from the board. */
+            /* i · CAMELOT — the bailey lawn for a quay, the curtain wall
+               round it, the drawbridge down over the moat; torchlight */
+            prebuilt_camelot: { open: true, pad: 5.0, floor: 'grass_2', wall: 'bricks_2', dado: 'bricks_2', trim: 'wood', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
+                apron: 'grass_2', skirt: 'rock_wall_1', apronColor: 0xa8b890, floorColor: 0xa8b890,
+                moat: { key: 'water', gap: 2.6, bank: 'rock_wall_1', bankColor: 0xb8b0a0, bed: 'dirt_3', deck: 'wood_planks', deckColor: 0xa88458, causeways: ['s', 'n'] },
+                mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffe0b0, night: 1,
+                    signN: { bg: '#3a2a18', border: '#d8b070', color: '#f4e4c0' }, signS: { bg: '#5a1a1a', border: '#e0b060', color: '#f8e8d0' },
+                    signLines: { n: ['CAMELOT', 'ROOM i', 'THE IMAGINARY KINGDOM'], s: ['DRAWBRIDGE DOWN', 'NO PRIVILEGED SIDE', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* H-20 · ATLANTIS — the sunken hall: marble underfoot, the ruined
+               wall, the canals opening into the moat, teal light from below */
+            prebuilt_atlantis: { open: true, pad: 5.0, floor: 'marble_light', wall: 'marble_light', dado: 'ruins', trim: 'gold', ceiling: null, h: 4.6, dadoH: 1.1, pipes: false,
+                apron: 'marble_light', skirt: 'ruins', apronColor: 0xc8ecf2, floorColor: 0xc8ecf2,
+                moat: { key: 'water', gap: 2.6, bank: 'ruins', bankColor: 0x9ab8b8, bed: 'ruins', deck: 'marble_light', deckColor: 0xd0e8ec, causeways: ['s', 'n'] },
+                mood: { lamp: 0x49e0f0, glow: 0x2ac0e0, strip: 0xbff4ff, light: 0xc8f0ff, night: 1,
+                    signN: { bg: '#0c2a34', border: '#7fe0ea', color: '#dffaff' }, signS: { bg: '#10303a', border: '#ffe9a0', color: '#f4f4e0' },
+                    signLines: { n: ['ATLANTIS', 'ROOM H-20', 'ORICHALCUM RESEARCH'], s: ['SUBMERGED', 'IT DRIPS ON THIS SIDE TOO', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 666 · HELL — scorched ground for a quay, an obsidian wall, a
+               lava moat you do not wade, basalt causeways; the red light */
+            prebuilt_hell: { open: true, pad: 5.0, floor: 'scorched', wall: 'obsidian', dado: 'rocks_3', trim: 'obsidian', ceiling: null, h: 4.6, dadoH: 1.05, pipes: false,
+                apron: 'scorched', skirt: 'obsidian', apronColor: 0xe08060, floorColor: 0xe08060,
+                moat: { key: 'lava', gap: 2.6, bank: 'obsidian', bankColor: 0x8a6a70, bed: 'obsidian', deck: 'obsidian', deckColor: 0x8a6a70, causeways: ['s', 'n'] },
+                mood: { lamp: 0xff5a2a, glow: 0xff3a10, strip: 0xffb080, light: 0xff9060, night: 1,
+                    signN: { bg: '#2a0a08', border: '#ff7a40', color: '#ffd8c0' }, signS: { bg: '#1a0808', border: '#ff4040', color: '#ffe0e0' },
+                    signLines: { n: ['HELL', 'ROOM 666', 'THE NUMBER IS THE ADDRESS'], s: ['IMMUNITY CLAIMED', 'THE KEYPAD IS WARM', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 2012 · TECHNOTICLAN — the temple precinct: cobbles, the glyph
+               wall, the canal moat in the calendar's cyan, torches */
+            prebuilt_technoticlan: { open: true, pad: 5.0, floor: 'cobblestone', wall: 'bricks_3', dado: 'bricks_3', trim: 'gold', ceiling: null, h: 4.4, dadoH: 1.0, pipes: false,
+                apron: 'cobblestone', skirt: 'bricks_3', apronColor: 0x8fb0b8, floorColor: 0x8fb0b8,
+                moat: { key: 'water', gap: 2.6, bank: 'bricks_3', bankColor: 0x7aa0a8, bed: 'bricks_3', deck: 'bricks_3', deckColor: 0x8ab0b8, causeways: ['s', 'n'] },
+                mood: { lamp: 0xffa040, glow: 0xff8a30, strip: 0x3fe0d8, light: 0xffc890, night: 1,
+                    signN: { bg: '#0e2a2c', border: '#3fe0d8', color: '#dffcf8' }, signS: { bg: '#2a1a0c', border: '#ffa040', color: '#ffe8c8' },
+                    signLines: { n: ['TECHNOTICLAN', 'ROOM 2012', 'THE CALENDAR · STILL RUNNING'], s: ['TEMPLE GATE', 'IRON OVER OBSIDIAN', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 88 · AGARTHA — the cavern wall, marble underfoot, the inner
+               sea round the island, crystal light; day, by the inner sun */
+            prebuilt_agartha: { open: true, pad: 5.0, floor: 'marble_light', wall: 'rocks_dark_fantasy', dado: 'rocks_dark_fantasy', trim: 'crystal', ceiling: null, h: 4.8, dadoH: 1.1, pipes: false,
+                apron: 'marble_light', skirt: 'rocks_dark_fantasy', apronColor: 0xbfe8c8, floorColor: 0xbfe8c8,
+                moat: { key: 'water', gap: 2.6, bank: 'rocks_dark_fantasy', bankColor: 0x8a9a88, bed: 'rocks_dark_fantasy', deck: 'marble_light', deckColor: 0xbfe8c8, causeways: ['s', 'n'] },
+                mood: { lamp: 0x9affe4, glow: 0x6af0d0, strip: 0xd0fff0, light: 0xe0fff4, night: 0,
+                    signN: { bg: '#0f2a22', border: '#9affe4', color: '#e8fff8' }, signS: { bg: '#1a2a1a', border: '#bfe8c8', color: '#f0fff0' },
+                    signLines: { n: ['AGARTHA', 'ROOM 88', 'THE WORLD INSIDE THE WORLD'], s: ['INNER GATE', 'THE QUEUE IS ON THE FAR SIDE', 'THE CROSSING IS AT THE CONSOLE'] } } },
+            /* 90S · ANTARCTICA — the ice wall, snow for a quay, deep water
+               round the island (never waded), an ice bridge; polar day */
+            prebuilt_antarctica: { open: true, pad: 5.0, floor: 'marble_light', wall: 'ice_1', dado: 'ice_1', trim: 'igloo', ceiling: null, h: 4.6, dadoH: 1.0, pipes: false,
+                apron: 'marble_light', skirt: 'ice_1', apronColor: 0xe4f2fc, floorColor: 0xe4f2fc,
+                moat: { key: 'deep_water', gap: 2.6, bank: 'ice_1', bankColor: 0xbfe0ff, bed: 'rocks_dark_fantasy', bedColor: 0x6a7a88, deck: 'igloo', deckColor: 0xdcecf8, causeways: ['s', 'n'] },
+                mood: { lamp: 0xeaf6ff, glow: 0xcfe8ff, strip: 0xffffff, light: 0xf0f8ff, night: 0,
+                    signN: { bg: '#14243a', border: '#bfe0ff', color: '#f4faff' }, signS: { bg: '#1a2a3a', border: '#ff8080', color: '#ffe8e8' },
+                    signLines: { n: ['ANTARCTICA', 'ROOM 90S', 'THE ICE REMEMBERS'], s: ['ICE-WALL HATCH', 'COLD ON BOTH FACES', 'THE CROSSING IS AT THE CONSOLE'] } } },
         },
         flavour: {
             prebuilt_dumb: {
@@ -16749,6 +16815,131 @@ const DOOR_HQ = {
                     { key: 'cardboard_boxes', x: 9.4, z: 8.4, face: 20 },
                     { key: 'mop_bucket',     x: -3.6, z: 9.6, face: 200 },
                     { key: 'potted_plant',   x: -9.6, z: -9.5 },
+                ],
+            },
+            /* ── the moat rooms (stage 4): everything stands on the QUAY, the
+               2.4 m strip along the walls (the room is 24 m across; the quay
+               runs from 9.6 m to 12 m out) ── */
+            /* i · CAMELOT — the armoury cabinet in the north-east corner, the
+               cloak rail, a broom by the wall the drawbridge chain runs up */
+            prebuilt_camelot: {
+                agent: '“The portcullis is HINGE technology. Both sides are the outside. Sign here, and here, and on the drawbridge.”',
+                lines: [
+                    'The moat is the record. The drawbridge is the amendment.',
+                    'The round table was round so nobody sat at the head. Continuity sits at the head.',
+                    'The banners are heraldic. The heraldry is classified.',
+                    'i is a real number here. That is the whole trouble with the place.',
+                    'Do not lean on the merlons. The merlons lean back.',
+                ],
+                props: [
+                    { key: 'round_cabinet',  x: 10.9,  z: -9.3, face: 225 },
+                    { key: 'cardboard_box',  x: 10.2,  z: -8.3, face: 15 },
+                    { key: 'hook_rail',      wall: 'e', z: 6.0 },
+                    { key: 'broom',          x: 11.5,  z: 7.8, face: 200 },
+                    { key: 'potted_plant',   x: -11.2, z: -11.1 },
+                ],
+            },
+            /* H-20 · ATLANTIS — the specimen shelves, a cooler of bottled
+               water eleven thousand feet under the sea, a chair for the diver */
+            prebuilt_atlantis: {
+                agent: '“Orichalcum research. Do not pocket the orichalcum. It knows.”',
+                lines: [
+                    'The canals were streets. The streets were canals. Records filed both.',
+                    'The bulkhead drips. The drip is on a schedule.',
+                    'Nobody sank Atlantis. It clocked out.',
+                    'H-20 is the formula and the room. The formula was here first.',
+                    'The columns hold up nothing. That is the research.',
+                ],
+                props: [
+                    { key: 'metal_shelving', wall: 'e', z: 7.0 },
+                    { key: 'water_cooler',   wall: 'e', z: -6.4 },
+                    { key: 'office_chair',   x: 10.6,  z: -9.4, face: 40 },
+                    { key: 'cardboard_box',  x: 10.3,  z: -8.5, face: 20 },
+                    { key: 'wall_shelf',     wall: 'w', z: 6.4 },
+                    { key: 'potted_plant',   x: -11.2, z: -11.1 },
+                ],
+            },
+            /* 666 · HELL — an extinguisher on the wall (compliance), the
+               waiting-room TV with the queue number, the drain, a fan on the
+               desk that does nothing */
+            prebuilt_hell: {
+                agent: '“Immunity claimed. The lava is not the hazard. The paperwork is the hazard; the lava is the deterrent.”',
+                lines: [
+                    'The keypad is warm. It is the friendliest thing about it.',
+                    'Take a number. The number is 666. Every number is 666.',
+                    'The causeways are basalt. The basalt was something else first.',
+                    'Nobody has ever used the extinguisher. It is inspected monthly.',
+                    'The drain goes down. Everything here goes down.',
+                ],
+                props: [
+                    { key: 'fire_extinguisher', wall: 'e', z: -6.0 },
+                    { key: 'tube_tv',        x: 10.9,  z: -7.0, y: 0, face: 250 },
+                    { key: 'folding_chair',  x: 9.9,   z: -6.2, face: 60 },
+                    { key: 'floor_drain',    x: -7.6,  z: 10.9 },
+                    { key: 'mop_bucket',     x: -11.0, z: 8.4, face: 40 },
+                    { key: 'desk_fan',       x: -11.5, z: -1.1, y: 0.76, face: 100 },
+                ],
+            },
+            /* 2012 · TECHNOTICLAN — the calendar terminal on its cabinet in
+               the north-east corner, a chair for the priest, the cloak rail */
+            prebuilt_technoticlan: {
+                agent: '“Iron over obsidian. The gate is older than the iron and the iron is older than you. Badge, please.”',
+                lines: [
+                    'The calendar did not end. It rolled over. Records was not consulted.',
+                    'The pyramid is a projection. The projection is load-bearing.',
+                    'The torches are lit at dusk. It is always dusk.',
+                    'The canals run to the moat. The moat runs to the canals. Nobody has found the pump.',
+                    '2012 was a Tuesday. The site file says so twice.',
+                ],
+                props: [
+                    { key: 'round_cabinet',  x: 10.9,  z: -9.3, face: 225 },
+                    { key: 'crt_terminal',   x: 10.9,  z: -9.3, y: 0.76, face: 225 },
+                    { key: 'office_chair',   x: 9.8,   z: -8.5, face: 60 },
+                    { key: 'hook_rail',      wall: 'e', z: 5.0 },
+                    { key: 'cardboard_box',  x: -11.2, z: -10.9, face: 10 },
+                    { key: 'mop_bucket',     x: -10.9, z: 8.6, face: 30 },
+                ],
+            },
+            /* 88 · AGARTHA — things grow here: plants in every corner, the
+               queue tickets on the quay, a lamp on the desk under the inner sun */
+            prebuilt_agartha: {
+                agent: '“The inner gate. The queue on the far side is centuries long; on this side it is you. Sign in.”',
+                lines: [
+                    'The inner sun does not set. It is on a rota.',
+                    '88 is infinity stacked on infinity. The plate was cheaper than the concept.',
+                    'The mushrooms are not that kind either. Different room, same policy.',
+                    'The crystals hum in the key of the building. The building denies having a key.',
+                    'Water in, water out. The moat is the same water. Records is looking into it.',
+                ],
+                props: [
+                    { key: 'potted_plant',   x: -11.2, z: -11.1 },
+                    { key: 'office_plant',   x: 11.2,  z: -11.0 },
+                    { key: 'office_plant',   x: -11.2, z: 8.0 },
+                    { key: 'desk_lamp',      x: -11.5, z: -1.1, y: 0.76, face: 200 },
+                    { key: 'folding_chair',  x: 10.7,  z: -6.4, face: 250 },
+                    { key: 'paper_sheet',    x: 8.9,   z: 9.8, y: 0.01, face: 130 },
+                    { key: 'paper_sheet',    x: -10.2, z: -8.2, y: 0.01, face: 20 },
+                ],
+            },
+            /* 90S · ANTARCTICA — the frozen cooler, a cot for the overwinter
+               shift, the shelves of core samples, a fan they were sent
+               instead of a heater */
+            prebuilt_antarctica: {
+                agent: '“Ninety south. Everything is north of here, including the exit. Cold on both faces; do not lick the hatch.”',
+                lines: [
+                    'The first Black Cube was destroyed here. The ice remembers. The ice is under review.',
+                    'The moat is deep water. The site file says do not enter. The site file is laminated.',
+                    'The cot is for the overwinter shift. The shift is one person. The person is you.',
+                    'The fan was a clerical error. It stays on so the error is consistent.',
+                    'The bridge is ice. The ice is the bridge. That is the whole engineering report.',
+                ],
+                props: [
+                    { key: 'water_cooler',   wall: 'e', z: -5.0 },
+                    { key: 'cot',            x: 11.0,  z: -8.6, face: 0 },
+                    { key: 'metal_shelving', wall: 'e', z: 6.8 },
+                    { key: 'mop_bucket',     x: -10.9, z: 8.6, face: 40 },
+                    { key: 'desk_fan',       x: -11.5, z: -1.1, y: 0.76, face: 100 },
+                    { key: 'paper_sheet',    x: 7.6,   z: 10.4, y: 0.01, face: 110 },
                 ],
             },
         },
@@ -17374,7 +17565,11 @@ Object.keys(DOOR_HQ.sectors).forEach(k => { DOOR_HQ.rooms[hqBayId(k)] = hqBayRoo
      fluid = wears a water / lava sheet.
    hqSiteRoom(mapId) → the box room: the board in the middle, the way in on
    the south wall (P1's lane — you stand where your team spawns), the
-   CROSSING console on the west wall, the natives on the walkway. */
+   CROSSING console on the west wall, the natives on the walkway. A shell
+   with `moat` (stage 4) makes the walkway a QUAY: shell.moat = { key,
+   depth, gap, deckW, causeways, bank, bed, deck, walk, tint, quay } —
+   the ring between the board and the quay is the map's liquid, one level
+   down; the causeways bridge it (the south one is the way in). */
 const HQ_SITE_HAZARDS = ['deep_water', 'lava', 'poison', 'poison_bog', 'purple_bog', 'chasm', 'void', 'cloud_gap', 'oil', 'swamp', 'fog_wall', 'barrier', 'storm'];
 const HQ_SITE_FLUIDS = ['water', 'deep_water', 'lava', 'oil', 'swamp', 'poison_bog', 'purple_bog', 'healing_spring'];
 let _hqTidKeys = null;
@@ -17452,6 +17647,20 @@ function hqSiteRoom(mapId) {
         ? [{ x: -(half - 1.3), z: -(half - 1.3) }, { x: half - 1.3, z: -(half - 1.3) }, { x: -(half - 1.3), z: half - 1.3 }, { x: half - 1.3, z: half - 1.3 }]
         : [{ x: -3.5, z: -3.5 }, { x: 3.5, z: -3.5 }, { x: -3.5, z: 3.5 }, { x: 3.5, z: 3.5 }];
     const sky = open ? Object.assign({ night: mood.night ? 1 : 0 }, meta.env || {}) : null;
+    /* THE MOAT (stage 4): the ring between the island and the quay, one
+       level down, full of the map's liquid — walk / tint / quay filled in
+       from the board and the terrain rules (the renderer reads only this) */
+    let moat = null;
+    if (shell.moat) {
+        moat = Object.assign({ key: 'water', depth: 1, gap: 2.6, deckW: 2.4, causeways: ['s', 'n'] }, shell.moat);
+        const rule = (typeof TERRAIN_RULES !== 'undefined') ? TERRAIN_RULES[moat.key] : null;
+        moat.walk = !(rule && rule.passable === false) && HQ_SITE_HAZARDS.indexOf(moat.key) < 0;
+        const tints = (board && board.terrainTints) || {};
+        const waterK = (k) => k === 'water' || k === 'deep_water';
+        moat.tint = tints[moat.key] || (waterK(moat.key) ? (tints.water || tints.deep_water) : null) || moat.tint || null;
+        moat.quay = Math.round((pad - moat.gap) * 100) / 100;
+        if (moat.causeways.indexOf('s') < 0) moat.causeways = ['s'].concat(moat.causeways);   // the way in always has a bridge
+    }
     const doors = [{
         /* the way back: the threshold leaf from the other side, centred on
            the south wall (P1's spawn lane is the south row), landing at the
@@ -17508,6 +17717,8 @@ function hqSiteRoom(mapId) {
             pipes: !open && shell.pipes !== false,
             /* an outdoor room (stage 3): the sky it stands under, the ground past its walls */
             open: open, sky: sky,
+            /* the moat room (stage 4): the quay's inner edge, the causeways, the liquid */
+            moat: moat,
             apron: open ? (shell.apron || shell.floor || 'grass_2') : null, skirt: open ? (shell.skirt || 'dirt') : null,
             apronColor: (open && shell.apronColor != null) ? shell.apronColor : null, floorColor: (shell.floorColor != null) ? shell.floorColor : null,
             /* the light (7.2 stage 2): the defaults under the site's overrides */

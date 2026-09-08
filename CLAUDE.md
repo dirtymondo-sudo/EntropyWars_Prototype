@@ -177,7 +177,20 @@ That's why online kept drifting behind VS-CPU. So, for EVERY change:
   and is where post-match returns you. The room wears NO `roomNo`
   (`hqRoomNo(roomId)` → the threshold's). Adding a site room = one id in
   `siteRooms.built` (+ `shells[id]` / `flavour[id]`); doorhq.test.js
-  checks it. Natives stand at `npcSpots` with a `race` hint. A room's
+  checks it. Natives stand at `npcSpots` with a `race` hint. **THE MOAT
+  ROOMS (stage 4, shipped 2026-09-08 rev 2: `prebuilt_camelot`,
+  `_atlantis`, `_hell`, `_technoticlan`, `_agartha`, `_antarctica`)**:
+  `shells[id].moat = { key, gap, bank, bed, deck, causeways }` on an open
+  room makes the walkway a QUAY (`pad` = quay + gap) and sinks the ring
+  round the board one level, full of the map's liquid — `hqSiteRoom` →
+  `shell.moat` (+ `walk` / `tint` / `quay` derived); the renderer draws
+  it in the battle's own fluid sheet (`_buildFluidTopMat`, ticked by
+  `_hqTickMoat`), the walker gets it as a pseudo-cell from `_hqSiteCellAt`
+  (`_hqSiteOnCauseway` = the deck), board-edge lakes of the same liquid
+  open into it. A site room's floor is a FRAME (box shell `siteHole`)
+  so pits show. Adding a moat room = `open` + `pad: 5` + `moat` on the
+  shell; the test checks the quay ≥ 2 m, the liquid, the tint, and that
+  no prop / native / mast stands in the water. A room's
   LIGHT is `shells[id].mood` (lamp / glow / strip / light colours, the two
   sign palettes, optional `signLines`) merged over `siteRooms.shell.mood`
   (= D.U.M.B.'s red); the renderer's signs and lamps hang from `S.h`.

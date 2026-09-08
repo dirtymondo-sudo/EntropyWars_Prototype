@@ -1122,12 +1122,19 @@ test('every built site is a launch map with a threshold and generates a box room
     assert.ok(Array.isArray(built) && built.includes('prebuilt_dumb'), 'D.U.M.B. is the first walkable site (plan 7.2 order)');
     assert.ok(built.includes('prebuilt_cern') && built.includes('prebuilt_backrooms'), 'CERN and the Backrooms follow (plan 7.2 stage 2)');
     assert.ok(built.includes('prebuilt_nuketown') && built.includes('prebuilt_stadium'), 'Nuketown and the Stadium follow (plan 7.2 stage 3: the outdoor rooms)');
+    const MOAT_SITES = ['prebuilt_camelot', 'prebuilt_atlantis', 'prebuilt_hell', 'prebuilt_technoticlan', 'prebuilt_agartha', 'prebuilt_antarctica'];
+    for (const id of MOAT_SITES) assert.ok(built.includes(id), id + ' is a moat room (plan 7.2 stage 4)');
     assert.strictEqual(new Set(built).size, built.length, 'no site is built twice');
     const CAT = HQ.catalogue;
     /* an outdoor room dresses itself in battle terrain keys (the renderer's _hqTex falls through to the terrain sheet) */
     const TERRAIN_RULES = require('vm').runInContext('TERRAIN_RULES', D);
+    const HQ_SITE_FLUIDS = require('vm').runInContext('HQ_SITE_FLUIDS', D);
+    const HQ_SITE_HAZARDS = require('vm').runInContext('HQ_SITE_HAZARDS', D);
     const texOK = n => !!(HQ.textures[n] || TERRAIN_RULES[n]);
     const META = Object.fromEntries(D.EW_MAP_META.map(m => [m.id, m]));
+    /* where the dry walkway starts: the board's edge, or the quay's inner edge in a moat room */
+    const dryFrom = S => S.grid.cells * S.grid.cell / 2 + (S.moat ? S.moat.gap : 0);
+    const onCauseway = (S, x, z) => !!S.moat && S.moat.causeways.some(sd => Math.abs(sd === 'n' || sd === 's' ? x : z) < S.moat.deckW / 2 && (sd === 's' ? z > 0 : sd === 'n' ? z < 0 : sd === 'e' ? x > 0 : x < 0));
     for (const id of built) {
         const th = HQ.thresholds[id];
         assert.ok(th && th.roomNo, id + ': a built site has a threshold with a number');
@@ -1156,10 +1163,27 @@ test('every built site is a launch map with a threshold and generates a box room
             assert.strictEqual(S.sky.tint, (META[id].env || {}).tint, id + ': the sky\'s tint is the map\'s');
             assert.ok(!S.sky.fog || (typeof S.sky.fog.color === 'number' && S.sky.fog.amount >= 0), id + ': the fog is the map\'s');
             assert.ok(texOK(S.apron) && texOK(S.skirt), id + ': the apron and the skirt are textures');
-            for (const L of S.lights) assert.ok(Math.max(Math.abs(L.x), Math.abs(L.z)) > S.grid.cells * S.grid.cell / 2 && Math.abs(L.x) < S.w / 2 && Math.abs(L.z) < S.d / 2, id + ': a mast stands on the walkway, not the board');
+            for (const L of S.lights) assert.ok(Math.max(Math.abs(L.x), Math.abs(L.z)) > dryFrom(S) && Math.abs(L.x) < S.w / 2 && Math.abs(L.z) < S.d / 2, id + ': a mast stands on the walkway (the quay), not the board or the moat');
         } else {
             assert.ok(!S.sky && S.apron == null, id + ': an indoor room has no sky');
+            assert.ok(!S.moat, id + ': a moat is outdoors');
             for (const L of S.lights) assert.ok(Math.abs(L.x) < S.grid.cells * S.grid.cell / 2, id + ': a fluorescent hangs over the board');
+        }
+        if (S.moat) {
+            /* THE MOAT (plan 7.2 stage 4): the map's liquid in the ring between
+               the island and the quay; the walker's rules come from the same
+               tables as a board lake; the way in always has a bridge */
+            const Mo = S.moat;
+            assert.ok(HQ_SITE_FLUIDS.includes(Mo.key) && TERRAIN_RULES[Mo.key], id + ': the moat is a liquid the boards know (' + Mo.key + ')');
+            assert.strictEqual(Mo.walk, !(TERRAIN_RULES[Mo.key].passable === false) && !HQ_SITE_HAZARDS.includes(Mo.key), id + ': waded exactly when a board lake of it is');
+            assert.ok(Mo.gap >= 2 && Mo.depth >= 1 && Mo.deckW >= 2, id + ': a moat at least 2 m wide, one level deep, a deck at least 2 m wide');
+            assert.ok(Math.abs(Mo.quay - (S.w / 2 - dryFrom(S))) < 0.02 && Mo.quay >= 2, id + ': the quay keeps at least 2 m of dry walkway (' + Mo.quay + ')');
+            assert.ok(Mo.causeways.includes('s') && Mo.causeways.every(sd => 'nsew'.includes(sd)), id + ': the south causeway is the way in');
+            for (const n of [Mo.bank, Mo.bed, Mo.deck]) assert.ok(texOK(n), id + ': moat texture ' + n);
+            const tints = (D.hqSiteBoard(id).terrainTints) || {};
+            const expTint = tints[Mo.key] || ((Mo.key === 'water' || Mo.key === 'deep_water') ? (tints.water || tints.deep_water) : null) || null;
+            assert.strictEqual(Mo.tint, expTint, id + ': the moat wears the Δ\'s tint for its liquid');
+            assert.ok(!S.moat.causeways.some(sd => sd === 's') || Math.abs(room.spawn.x) < Mo.deckW / 2 || Math.abs(room.spawn.z) > dryFrom(S), id + ': you arrive on the quay or the bridge');
         }
         /* the room's LIGHT (7.2 stage 2): the defaults under the site's overrides */
         const M = S.mood;
@@ -1178,7 +1202,11 @@ test('every built site is a launch map with a threshold and generates a box room
         for (const p of room.props) {
             assert.ok(CAT[p.key], id + ': prop ' + p.key + ' is in the catalogue');
             if (p.wall) assert.ok(['n', 's', 'e', 'w'].includes(p.wall), id + ': ' + p.key + ' on a wall');
-            else assert.ok(Math.abs(p.x || 0) <= S.w / 2 && Math.abs(p.z || 0) <= S.d / 2, id + ': ' + p.key + ' inside the room');
+            else {
+                assert.ok(Math.abs(p.x || 0) <= S.w / 2 && Math.abs(p.z || 0) <= S.d / 2, id + ': ' + p.key + ' inside the room');
+                /* a moat room's floor props stand on the quay (or a causeway), never in the water */
+                if (S.moat && !p.ceil) assert.ok(Math.max(Math.abs(p.x || 0), Math.abs(p.z || 0)) > dryFrom(S) || Math.max(Math.abs(p.x || 0), Math.abs(p.z || 0)) < S.grid.cells * S.grid.cell / 2 || onCauseway(S, p.x || 0, p.z || 0), id + ': ' + p.key + ' is in the moat');
+            }
             if (p.ceil) assert.ok(CAT[p.key].ceil, id + ': ' + p.key + ' hangs from the ceiling');
         }
         /* the way in: the threshold leaf from the other side, on the south
@@ -1205,9 +1233,10 @@ test('every built site is a launch map with a threshold and generates a box room
         const hinted = room.npcSpots.filter(s => s.race);
         assert.strictEqual(hinted.length, Math.min(3, pool.natives || 0), id + ': one spot per native');
         for (const s of hinted) assert.ok(pool.slice(0, pool.natives).includes(s.race), s.race + ' is not a native of ' + id);
-        for (const s of room.npcSpots) assert.ok(Math.abs(s.x) < S.w / 2 - 0.6 && Math.abs(s.z) < S.d / 2 - 0.6 && Math.max(Math.abs(s.x), Math.abs(s.z)) > S.grid.cells * S.grid.cell / 2, id + ': the natives stand on the walkway, not the board');
-        assert.ok(Math.abs(room.spawn.z) > S.grid.cells * S.grid.cell / 2 && room.spawn.face === 0, id + ': you arrive on the walkway facing the board');
+        for (const s of room.npcSpots) assert.ok(Math.abs(s.x) < S.w / 2 - 0.6 && Math.abs(s.z) < S.d / 2 - 0.6 && Math.max(Math.abs(s.x), Math.abs(s.z)) > dryFrom(S), id + ': the natives stand on the walkway (the quay), not the board or the moat');
+        assert.ok(Math.abs(room.spawn.z) > dryFrom(S) && room.spawn.face === 0, id + ': you arrive on the walkway facing the board');
         assert.ok(room.agents.length >= 1 && room.lines.length >= 1, id + ': a guard and the overheard lines');
+        for (const a of room.agents) assert.ok(Math.max(Math.abs(a.x), Math.abs(a.z)) > dryFrom(S), id + ': the guard stands on the walkway (the quay)');
         /* the register: the site is listed once, and knows its room */
         const rows = D.hqRoomRegister().filter(r => r.mapId === id);
         assert.strictEqual(rows.length, 1);
@@ -1243,6 +1272,38 @@ test('every built site is a launch map with a threshold and generates a box room
     assert.ok(st.doors[0].leaf === 'leaf_wired_double' && st.doors[0].wide === true, 'the Stadium: the turnstile, wide');
     assert.ok(st.props.filter(p => p.key === 'folding_chair').length >= 3 && st.props.some(p => p.key === 'water_cooler' && p.wall === 'e'), 'the Stadium: the home bench and its cooler on the east wall');
     assert.strictEqual(D.hqSectorOfMap('prebuilt_stadium'), 'urban');
+    /* the six stage-4 rooms — the MOAT rooms: outdoors, an island in the map's liquid */
+    const moatRoom = id => HQ.rooms[D.hqSiteRoomId(id)];
+    for (const id of MOAT_SITES) {
+        const r = moatRoom(id);
+        assert.ok(r.shell.open === true && r.shell.moat && r.shell.pad == null, id + ': an outdoor room with a moat');
+        assert.ok(r.shell.moat.causeways.length >= 2 && r.shell.moat.causeways.includes('n'), id + ': causeways both ways, like the near kit');
+        assert.ok(!r.props.some(p => p.key === 'wall_clock' || p.key === 'locker' || p.key === 'fluorescent'), id + ': nothing hung from a ceiling that is not there');
+        assert.strictEqual(r.shell.sky.scenery, META[id].env.scenery, id + ': the map\'s roster overhead');
+    }
+    const cam = moatRoom('prebuilt_camelot');
+    assert.ok(cam.shell.moat.key === 'water' && cam.shell.moat.walk === true && cam.shell.moat.deck === 'wood_planks', 'Camelot: a water moat you can wade, the drawbridge in planks');
+    assert.ok(cam.doors[0].leaf === 'leaf_portcullis' && cam.doors[0].wide === true, 'Camelot: the portcullis, wide');
+    assert.ok(cam.shell.wall === 'bricks_2' && cam.shell.sky.night === 1, 'Camelot: the curtain wall, torchlight');
+    assert.ok(D.hqSiteBoardInfo('prebuilt_camelot').cells.flat().every(c => !c.fluid), 'Camelot: the board is dry — the moat is the room\'s');
+    const atl = moatRoom('prebuilt_atlantis');
+    assert.ok(atl.shell.moat.key === 'water' && atl.shell.moat.tint === '#49c2d8' && atl.shell.moat.walk === true, 'Atlantis: the canals\' own tint on the moat');
+    assert.ok(atl.doors[0].leaf === 'leaf_bulkhead' && atl.shell.sky.night === 1 && atl.shell.wall === 'marble_light', 'Atlantis: the wet bulkhead, the marble hall at night');
+    assert.ok(D.hqSiteBoardInfo('prebuilt_atlantis').cells.flat().some(c => c.key === 'water' && c.lvl < 0), 'Atlantis: canals on the board to open into the moat');
+    const hel = moatRoom('prebuilt_hell');
+    assert.ok(hel.shell.moat.key === 'lava' && hel.shell.moat.walk === false && hel.shell.moat.deck === 'obsidian', 'Hell: a lava moat never waded, basalt causeways');
+    assert.ok(hel.doors[0].leaf === 'leaf_hell_arch' && hel.shell.wall === 'obsidian' && ((hel.shell.mood.lamp >> 16) > (hel.shell.mood.lamp & 0xff)), 'Hell: the arch, obsidian, red light');
+    assert.ok(hel.props.some(p => p.key === 'fire_extinguisher' && p.wall === 'e'), 'Hell: the extinguisher, inspected monthly');
+    const tec = moatRoom('prebuilt_technoticlan');
+    assert.ok(tec.shell.moat.key === 'water' && tec.shell.moat.tint === '#3fe0d8' && tec.shell.wall === 'bricks_3', 'Technoticlan: the canal cyan, the glyph wall');
+    assert.ok(tec.doors[0].leaf === 'leaf_portcullis' && tec.props.some(p => p.key === 'crt_terminal' && p.z < -5), 'Technoticlan: the temple gate, the calendar terminal in the corner');
+    const aga = moatRoom('prebuilt_agartha');
+    assert.ok(aga.shell.moat.key === 'water' && aga.shell.moat.tint === '#4ae0c8' && aga.shell.sky.night === 0, 'Agartha: the inner sea, day by the inner sun');
+    assert.ok(aga.doors[0].leaf === 'leaf_vault' && aga.props.filter(p => /plant/.test(p.key)).length >= 3, 'Agartha: the inner gate; things grow');
+    const ant = moatRoom('prebuilt_antarctica');
+    assert.ok(ant.shell.moat.key === 'deep_water' && ant.shell.moat.walk === false && ant.shell.moat.tint === '#3a78b8', 'Antarctica: deep water, never entered, the board\'s water tint');
+    assert.ok(ant.doors[0].leaf === 'leaf_bulkhead' && ant.shell.wall === 'ice_1' && ant.shell.moat.deck === 'igloo' && ant.shell.sky.night === 0, 'Antarctica: the ice-wall hatch, an ice bridge, polar day');
+    assert.ok(ant.props.some(p => p.key === 'cot'), 'Antarctica: the overwinter cot');
     /* sites without a room: no room, the register says so */
     assert.ok(!HQ.rooms[D.hqSiteRoomId('prebuilt_moon')], 'the Moon is not walkable yet');
     assert.strictEqual(D.hqRoomRegister().find(r => r.mapId === 'prebuilt_moon').siteRoom, null);
@@ -1275,6 +1336,16 @@ test('source scan: the renderer builds the site board and walks it; map.js walks
     assert.match(tr, /if \(!S\.open && py > S\.h - 0\.3\) return true;/, 'the camera boom has no ceiling outdoors');
     assert.match(tr, /_horizonFogDirty = true;   \/\/ an outdoor room drove the shared sky uniforms/, 'leaving re-arms the battle\'s fog');
     assert.match(tr, /\(S\.open \? \[\] : \[\['n', -8\.6\]/, 'no containment lamps outdoors');
+    /* stage 4: the moat room */
+    assert.match(tr, /function _hqSiteOnCauseway\(x, z\)/, 'a causeway is the quay\'s floor');
+    assert.match(tr, /var M = st\.moat; if \(!M\) return null;/, '_hqSiteCellAt hands the walker the moat cell');
+    assert.match(tr, /_hq\.site\.moat = \{ gap: gap, deckW: deckW, causeways: cw, cell: \{ top: -mDepth, walk: !!M\.walk, fluid: true, key: M\.key, moat: true \} \};/, 'the moat cell: one level down, walk from the data');
+    assert.match(tr, /\(_hqSiteCellAt\(x, z\) \|\| curY < -0\.5\)/, 'climbing out of the moat onto the quay is one level');
+    assert.match(tr, /try \{ fluidMat = _buildFluidTopMat\(M\.key\); \}/, 'the moat is the battle\'s own fluid sheet');
+    assert.match(tr, /if \(moatMerged\[px \+ ',' \+ py\]\) continue;   \/\/ opens into the moat/, 'a board-edge lake of the same liquid opens into the moat');
+    assert.match(tr, /function _hqTickMoat\(dt\)/, 'the moat\'s water animates under the HQ loop');
+    assert.match(tr, /if \(H\.moatTick\) _hqTickMoat\(dt\);/, '_hqTickWorld drives it');
+    assert.match(tr, /var siteHole = \(room\.fx === 'site' && S\.grid\) \? \(S\.grid\.cells \* S\.grid\.cell \/ 2 \+ \(S\.moat \? S\.moat\.gap : 0\)\) : 0;/, 'a site room\'s floor is a frame round the board / the moat, so pits show');
     const mp = fs.readFileSync(require('path').join(__dirname, 'map.js'), 'utf8');
     assert.match(mp, /if \(sr && _hqRoomExists\(sr\)\) return \{ room: sr, at: 'egress' \};/, 'a threshold with a room walks you in');
     assert.match(mp, /if \(act\.overlay === 'crossing'\) return _hqCrossingHtml\(t\);/);

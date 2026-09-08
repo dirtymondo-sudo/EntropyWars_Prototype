@@ -29564,9 +29564,24 @@ const ThreeRenderer = (function () {
            tile at one battle tile = 1.75 m), an apron of ground runs out
            past them over a dark skirt, and the sky is _hqBuildSky's */
         var open = !!S.open, TR = open ? 1.75 : null;
-        var fl = new THREE.Mesh(new THREE.PlaneGeometry(W * U, Dp * U), _hqMat(texFloor, W / (TR || 1.6), Dp / (TR || 1.6), { shininess: open ? 4 : 18, specular: open ? 0x101010 : 0x2a2a2a, color: (S.floorColor != null) ? S.floorColor : 0xffffff }));
-        fl.rotation.x = -Math.PI / 2;
-        G.add(fl);
+        var flOpts = { shininess: open ? 4 : 18, specular: open ? 0x101010 : 0x2a2a2a, color: (S.floorColor != null) ? S.floorColor : 0xffffff };
+        /* a site room's floor is the WALKWAY: a frame round the board (or,
+           in a moat room, round the moat — plan 7.2 stage 4) so the board's
+           own cells and its pits show; every other box gets one plane */
+        var siteHole = (room.fx === 'site' && S.grid) ? (S.grid.cells * S.grid.cell / 2 + (S.moat ? S.moat.gap : 0)) : 0;
+        if (siteHole > 0 && siteHole < Math.min(W, Dp) / 2) {
+            var TRf = TR || 1.6;
+            [[0, -(Dp / 2 + siteHole) / 2, W, Dp / 2 - siteHole], [0, (Dp / 2 + siteHole) / 2, W, Dp / 2 - siteHole],
+             [-(W / 2 + siteHole) / 2, 0, W / 2 - siteHole, 2 * siteHole], [(W / 2 + siteHole) / 2, 0, W / 2 - siteHole, 2 * siteHole]].forEach(function (b) {
+                var band = new THREE.Mesh(new THREE.PlaneGeometry(b[2] * U, b[3] * U), _hqMat(texFloor, b[2] / TRf, b[3] / TRf, flOpts));
+                band.rotation.x = -Math.PI / 2; band.position.set(b[0] * U, 0, b[1] * U);
+                G.add(band);
+            });
+        } else {
+            var fl = new THREE.Mesh(new THREE.PlaneGeometry(W * U, Dp * U), _hqMat(texFloor, W / (TR || 1.6), Dp / (TR || 1.6), flOpts));
+            fl.rotation.x = -Math.PI / 2;
+            G.add(fl);
+        }
         if (!open) {
             var ce = new THREE.Mesh(new THREE.PlaneGeometry(W * U, Dp * U), _hqMat(texCeil, W / 1.4, Dp / 1.4, { shininess: 2 }));
             ce.rotation.x = Math.PI / 2; ce.position.y = H * U;
@@ -29892,8 +29907,30 @@ const ThreeRenderer = (function () {
     function _hqSiteCellAt(x, z) {
         var st = _hq && _hq.site; if (!st) return null;
         var cx = Math.floor((x + st.half) / st.C), cy = Math.floor((z + st.half) / st.C);
-        if (cx < 0 || cy < 0 || cx >= st.N || cy >= st.N) return null;
-        return st.cells[cy][cx];
+        if (cx >= 0 && cy >= 0 && cx < st.N && cy < st.N) return st.cells[cy][cx];
+        /* THE MOAT (plan 7.2 stage 4): the ring between the island and the
+           quay is one more cell of the site — a pit of the map's liquid,
+           waded or never entered like any board lake; a causeway across it
+           is the quay's own floor (null → level 0) */
+        var M = st.moat; if (!M) return null;
+        var outer = st.half + M.gap;
+        if (Math.abs(x) >= outer || Math.abs(z) >= outer) return null;
+        if (_hqSiteOnCauseway(x, z)) return null;
+        return M.cell;
+    }
+    /* on one of the moat's causeways? (board frame, metres; the deck spans
+       the gap from the island's edge to the quay, deckW wide, centred on its side) */
+    function _hqSiteOnCauseway(x, z) {
+        var st = _hq && _hq.site, M = st && st.moat; if (!M) return false;
+        var hw = M.deckW / 2, h = st.half - 0.01;
+        for (var i = 0; i < M.causeways.length; i++) {
+            var s = M.causeways[i];
+            if (s === 's' && z > h && Math.abs(x) < hw) return true;
+            if (s === 'n' && z < -h && Math.abs(x) < hw) return true;
+            if (s === 'e' && x > h && Math.abs(z) < hw) return true;
+            if (s === 'w' && x < -h && Math.abs(z) < hw) return true;
+        }
+        return false;
     }
     function _hqBuildSiteBoard(room) {
         var U = _hqUnits(), S = room.shell, G = _hq.shellGroup;
@@ -29963,12 +30000,118 @@ const ThreeRenderer = (function () {
                 G.add(bm);
             }
         });
+        /* ── THE MOAT (plan 7.2 stage 4): the ring between the island and the
+           quay, one level down, full of the map's liquid — the near kit's
+           moat brought indoors. One sheet per side in the battle's own
+           animated fluid material (the Δ tint on it; a translucent basic
+           sheet if the shader is unavailable), the bed under it, the quay's
+           face + coping and the island's face in the bank texture, a deck
+           across it per causeway (the south one is the way in), and every
+           board-edge lake cell of the same liquid OPENS into it — its pit
+           wall is dropped, its own bank only where it meets dry cells.
+           The walker's moat cell is _hq.site.moat (read by _hqSiteCellAt). */
+        var M = S.moat || null, moatMerged = {};
+        if (M) {
+            var gap = M.gap, mDepth = (M.depth || 1) * C, outer = half + gap, deckW = M.deckW || 2.4, cw = M.causeways || ['s'];
+            var isWaterK = function (k) { return k === 'water' || k === 'deep_water' || k === 'healing_spring'; };
+            var sameFluid = function (k) { return k === M.key || (isWaterK(k) && isWaterK(M.key)); };
+            var isPit = function (ix, iy) { var c = info.cells[iy] && info.cells[iy][ix]; return !!(c && c.fluid && c.lvl < 0); };
+            for (var ey = 0; ey < N; ey++) for (var ex = 0; ex < N; ex++) {
+                if (ex > 0 && ey > 0 && ex < N - 1 && ey < N - 1) continue;
+                if (isPit(ex, ey) && sameFluid(info.cells[ey][ex].key)) moatMerged[ex + ',' + ey] = true;
+            }
+            _hq.site.moat = { gap: gap, deckW: deckW, causeways: cw, cell: { top: -mDepth, walk: !!M.walk, fluid: true, key: M.key, moat: true } };
+            var bankMat = siteMat(M.bank || 'stone', M.bankColor || null, { sh: 10 });
+            var bedMatM = siteMat(M.bed || 'dirt_3', M.bedColor || null, { sh: 4 });
+            var deckMat = siteMat(M.deck || 'wood_planks', M.deckColor || null, { sh: 8 });
+            var fluidMat = null;
+            try { fluidMat = _buildFluidTopMat(M.key); } catch (e) { fluidMat = null; }
+            if (fluidMat) {
+                /* the battle's sheet: the map-editor tint it may have picked up from a stale state is replaced by the Δ's own */
+                fluidMat.color.set(M.tint || 0xffffff);
+                if (M.key === 'lava' && fluidMat.emissive) fluidMat.emissiveIntensity = 0.85;
+                _hq.moatTick = { key: M.key, tile: CM };
+            } else {
+                var fc = (M.key === 'lava') ? 0xff6a2a : (M.tint ? new THREE.Color(M.tint) : 0x4a9ad0);
+                fluidMat = new THREE.MeshBasicMaterial({ color: fc, transparent: true, opacity: (M.key === 'lava') ? 0.85 : 0.55, depthWrite: false, fog: false });
+                pulse(fluidMat, 0.08, 0.9);
+            }
+            var flat = function (w, d, x, y, z, mat, tile) {
+                var g = new THREE.PlaneGeometry(w * U, d * U); if (tile) _hzTileUV(g, w * U, d * U, CM);
+                var m = new THREE.Mesh(g, mat); m.rotation.x = -Math.PI / 2; m.position.set(x * U, y * U, z * U); m.renderOrder = 2; G.add(m); return m;
+            };
+            /* the ring: bed + sheet, one rectangle per side */
+            [[0, -(half + gap / 2), 2 * outer, gap], [0, half + gap / 2, 2 * outer, gap], [-(half + gap / 2), 0, gap, 2 * half], [half + gap / 2, 0, gap, 2 * half]].forEach(function (r) {
+                flat(r[2], r[3], r[0], -mDepth + 0.006, r[1], bedMatM, true);
+                flat(r[2], r[3], r[0], -0.3, r[1], fluidMat, true);
+            });
+            /* the quay's face (toward the water) with its coping, in one or
+               two runs per side — a causeway breaks the run */
+            [['n', 0, -1], ['s', 0, 1], ['w', -1, 0], ['e', 1, 0]].forEach(function (sd) {
+                var horiz = sd[2] !== 0, runs = (cw.indexOf(sd[0]) >= 0) ? [[-outer, -deckW / 2], [deckW / 2, outer]] : [[-outer, outer]];
+                runs.forEach(function (rn) {
+                    var len = rn[1] - rn[0], mid = (rn[0] + rn[1]) / 2;
+                    var wall = _hqBox(horiz ? len : 0.12, mDepth, horiz ? 0.12 : len, bankMat);
+                    wall.position.set((horiz ? mid : sd[1] * (outer - 0.06)) * U, (-mDepth / 2) * U, (horiz ? sd[2] * (outer - 0.06) : mid) * U); G.add(wall);
+                    var cop = _hqBox(horiz ? len + 0.12 : 0.26, 0.06, horiz ? 0.26 : len + 0.12, bankMat);
+                    cop.position.set((horiz ? mid : sd[1] * (outer + 0.02)) * U, 0.03 * U, (horiz ? sd[2] * (outer + 0.02) : mid) * U); G.add(cop);
+                });
+            });
+            /* the island's face: one segment per dry edge cell (a merged lake
+               cell leaves its side open), corner posts where the cell is dry */
+            var segGeo = new THREE.BoxGeometry(CM, mDepth * U, 0.12 * U), bankSegs = [];
+            for (var si = 0; si < N; si++) {
+                if (!moatMerged[si + ',0']) bankSegs.push([cellX(si), -(half + 0.06), 0]);
+                if (!moatMerged[si + ',' + (N - 1)]) bankSegs.push([cellX(si), half + 0.06, 0]);
+                if (!moatMerged['0,' + si]) bankSegs.push([-(half + 0.06), cellX(si), Math.PI / 2]);
+                if (!moatMerged[(N - 1) + ',' + si]) bankSegs.push([half + 0.06, cellX(si), Math.PI / 2]);
+            }
+            if (bankSegs.length) {
+                var segMesh = new THREE.InstancedMesh(segGeo, bankMat, bankSegs.length);
+                bankSegs.forEach(function (sg, i) { dummy.position.set(sg[0] * U, (-mDepth / 2) * U, sg[1] * U); dummy.rotation.set(0, sg[2], 0); dummy.scale.set(1, 1, 1); dummy.updateMatrix(); segMesh.setMatrixAt(i, dummy.matrix); });
+                segMesh.instanceMatrix.needsUpdate = true; G.add(segMesh);
+            }
+            [[0, 0], [N - 1, 0], [0, N - 1], [N - 1, N - 1]].forEach(function (cc) {
+                if (moatMerged[cc[0] + ',' + cc[1]]) return;
+                var post = _hqBox(0.14, mDepth, 0.14, bankMat);
+                post.position.set((cc[0] ? 1 : -1) * (half + 0.06) * U, (-mDepth / 2) * U, (cc[1] ? 1 : -1) * (half + 0.06) * U); G.add(post);
+            });
+            /* the merged cells: the sheet over them, a bank on any side that meets a dry cell */
+            Object.keys(moatMerged).forEach(function (k) {
+                var p = k.split(','), mx = +p[0], my = +p[1], mc = info.cells[my][mx], d = -mc.lvl * C;
+                flat(C, C, cellX(mx), -0.3, cellX(my), fluidMat, true);
+                [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (nb) {
+                    var nx = mx + nb[0], ny = my + nb[1];
+                    if (nx < 0 || ny < 0 || nx >= N || ny >= N) return;              // the moat side: open
+                    if (moatMerged[nx + ',' + ny]) return;                            // water meets water
+                    var horiz = nb[1] !== 0;
+                    var w = _hqBox(horiz ? C : 0.1, d, horiz ? 0.1 : C, bankMat);
+                    w.position.set((cellX(mx) + nb[0] * (C / 2 - 0.05)) * U, (-d / 2) * U, (cellX(my) + nb[1] * (C / 2 - 0.05)) * U); G.add(w);
+                });
+            });
+            /* the causeways: a deck across the gap with a low kerb either side */
+            cw.forEach(function (sd) {
+                var horiz = (sd === 'n' || sd === 's'), sg = (sd === 's' || sd === 'e') ? 1 : -1, mid = sg * (half + gap / 2);
+                var deck = _hqBox(horiz ? deckW : gap + 0.3, 0.3, horiz ? gap + 0.3 : deckW, deckMat);
+                deck.position.set((horiz ? 0 : mid) * U, -0.138 * U, (horiz ? mid : 0) * U); G.add(deck);
+                [-1, 1].forEach(function (kb) {
+                    var kerb = _hqBox(horiz ? 0.12 : gap + 0.3, 0.16, horiz ? gap + 0.3 : 0.12, bankMat);
+                    kerb.position.set((horiz ? kb * (deckW / 2 - 0.06) : mid) * U, 0.09 * U, (horiz ? mid : kb * (deckW / 2 - 0.06)) * U); G.add(kerb);
+                });
+            });
+            if (M.key === 'lava') {
+                [[0, -(half + gap / 2)], [0, half + gap / 2], [-(half + gap / 2), 0], [half + gap / 2, 0]].forEach(function (gp, i) {
+                    var lg = _hzGlowSprite(3.2 * CM, 0xff7a30, 0.28, 0, 0, 0); lg.position.set(gp[0] * U, -0.1 * U, gp[1] * U); G.add(lg); pulse(lg.material, 0.12, 0.7 + i * 0.2);
+                });
+            }
+        }
         /* ── pits: a lake / lava cell is one level down, bed texture on the
            walls, a translucent sheet just under the rim ── */
         var bedMat = siteMat('dirt_3', null, { sh: 4 });
         for (var py = 0; py < N; py++) for (var px = 0; px < N; px++) {
             var pc = info.cells[py][px];
             if (pc.lvl >= 0) continue;
+            if (moatMerged[px + ',' + py]) continue;   // opens into the moat (above)
             var depth = -pc.lvl * C;
             var pit = new THREE.Mesh(new THREE.BoxGeometry(CM, depth * U, CM), bedMat);
             pit.material.side = THREE.BackSide;   // seen from inside
@@ -30068,14 +30211,16 @@ const ThreeRenderer = (function () {
                 var m = new THREE.Mesh(new THREE.PlaneGeometry(0.5 * CM, 0.5 * CM), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, fog: false, opacity: 0.8 }));
                 m.rotation.x = -Math.PI / 2; m.position.set(x * U, 0.9, z * U); m.renderOrder = 1; G.add(m);
             };
-            mkLab(String.fromCharCode(65 + li), -(half + 0.62 * C), (li + 0.5) * C - half);
-            mkLab(String(li + 1), (li + 0.5) * C - half, half + 0.62 * C);
+            /* in a moat room the letters and numbers sit on the quay, by its edge */
+            var labOff = M ? (M.gap + 0.5) : 0.62 * C;
+            mkLab(String.fromCharCode(65 + li), -(half + labOff), (li + 0.5) * C - half);
+            mkLab(String(li + 1), (li + 0.5) * C - half, half + labOff);
         }
         var stripe = _hzStripeTex();
         if (stripe) {
             var sg = new THREE.PlaneGeometry(2.2 * CM, 0.6 * CM); _hzTileUV(sg, 2.2 * CM, 0.6 * CM, CM * 0.5);
             var pl = new THREE.Mesh(sg, new THREE.MeshPhongMaterial({ map: stripe, color: 0xb9b0a0, shininess: 6 }));
-            pl.rotation.x = -Math.PI / 2; pl.position.set(0, 0.8, (half + 0.95) * U); pl.renderOrder = 1;
+            pl.rotation.x = -Math.PI / 2; pl.position.set(0, 0.8, (half + (M ? M.gap : 0) + 0.95) * U); pl.renderOrder = 1;   // before the causeway in a moat room
             G.add(pl);
         }
         /* ── the site's signs: the room's own name over the board, the
@@ -31090,7 +31235,7 @@ const ThreeRenderer = (function () {
            the 4.2 m mezzanine stays railed from every edge) */
         if (curY != null) {
             /* on a site board a step is one Δ level (the jump-1 rule); a pit is a drop the walker takes */
-            var floorTol = (_hq.site && _hqSiteCellAt(x, z)) ? Math.max(HQ_STEP_TOL, _hq.site.C + 0.06) : HQ_STEP_TOL;
+            var floorTol = (_hq.site && (_hqSiteCellAt(x, z) || curY < -0.5)) ? Math.max(HQ_STEP_TOL, _hq.site.C + 0.06) : HQ_STEP_TOL;   // out of a pit — or the moat — onto the walkway is one level too
             if (y - curY > floorTol) return null;
             if (curY - y > Math.max(HQ_DROP_MAX, _hq.site ? _hq.site.C + 0.1 : 0)) return null;
         }
@@ -31197,7 +31342,7 @@ const ThreeRenderer = (function () {
                 /* the site board (plan 7.2): the boom stays out of raised cells and off a pit's floor */
                 var sc = _hqSiteCellAt(px, pz);
                 if (sc && sc.top > 0 && py < sc.top + 0.24) return true;
-                return py < ((sc && sc.top < 0) ? sc.top : 0) + 0.22;
+                return py < ((sc && sc.top < 0) ? (sc.fluid ? -0.3 : sc.top) : 0) + 0.22;   // over a lake (or the moat) the boom stays above the sheet
             }
             return py < 0.22;
         }
@@ -31590,12 +31735,30 @@ const ThreeRenderer = (function () {
         cam.position.set(c.ex * U, c.ey * U, c.ez * U);
         cam.lookAt(c.lx * U, c.ly * U, c.lz * U);
     }
+    /* the moat's liquid under the HQ loop: the shared fluid clock, the wave
+       drift for the moat's key, and the caustic tile = one cell (the
+       battle sets all three again the moment it renders) */
+    function _hqTickMoat(dt) {
+        var mt = _hq && _hq.moatTick; if (!mt) return;
+        _fluidTimeSec += dt;
+        var t = _fluidTimeSec;
+        _fluidTimeUniform.value = t;
+        _fluidTileUniform.value = mt.tile;
+        var drift = _FLUID_DRIFT_3D[mt.key];
+        var o1 = _fluidTextures[mt.key + '_off1'], o2 = _fluidTextures[mt.key + '_off2'];
+        if (drift && o1) { o1.x = (drift.l1dx * t) % 1.0; o1.y = (drift.l1dy * t) % 1.0; }
+        if (drift && o2) { o2.x = (drift.l2dx * t) % 1.0; o2.y = (drift.l2dy * t) % 1.0; }
+    }
     function _hqTickWorld(dt, now) {
         var H = _hq;
         if (H.cube) { H.cube.rotation.y += dt * 0.035; H.cube.position.y = (H.room.shell.cube.y + Math.sin(now * 0.0004) * 0.05) * _hqUnits(); }
         /* an outdoor room's sky: the dome rides the camera, the uniforms are
            the room's, the far roster drifts (HQ plan 7.2 stage 3) */
         if (H.sky) _hqTickSky(now);
+        /* a moat room's water (plan 7.2 stage 4): the battle's fluid shader
+           reads shared time / drift uniforms that only the battle loop
+           advances — drive them here for the moat's liquid */
+        if (H.moatTick) _hqTickMoat(dt);
         /* room-fx glow pulses (the training pit's lamps and strips) — the
            battle _hzGlowPulse list is not ticked under the HQ loop */
         for (var fp = 0; fp < H.fxPulse.length; fp++) {

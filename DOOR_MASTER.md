@@ -1700,3 +1700,26 @@ Next in the plan's order: the moat maps (outdoor rooms with water to the
 walls). Files: data.js, three-renderer.js, index.html
 (`20260908a-cors`), doorhq.test.js (151 green). Story track still ON
 HOLD (A14).
+
+### 2026-09-08 (rev 2) — the MOAT rooms: Rooms i, H-20, 666, 2012, 88 and 90S are islands
+HQ plan **7.2** stage 4 (§9 there has the mechanics). Six more
+thresholds open INTO rooms, and these ones have water — or lava — in
+them: the walkway is a quay along the walls, the board is an island, the
+ring between is the map's own liquid one level down in the battle's
+animated water (the Δ's tint on it), bridged by a drawbridge / a marble
+causeway / basalt / bricks / an ice bridge on the way-in side and its
+opposite. Water wades, deep water and lava refuse you at the coping —
+the same rule as a board lake. Atlantis's canals and Antarctica's bays
+run out into the moat with no wall between. Camelot stands under its
+curtain wall in torchlight, Atlantis in a marble hall at night, Hell
+between an obsidian wall and a lava moat under red light, Technoticlan
+behind the glyph wall with the calendar's cyan canal, Agartha under the
+cavern wall by the inner sun, Antarctica inside the ice wall in polar
+day. A fix rode along: every site room's floor is now a frame, so the
+board pits that the earlier rooms hid under the floor plane show. Guard
+and overheard lines are Claude placeholders in `siteRooms.flavour` — the
+user may rewrite (A15). Next in the plan's order: the map's `near`
+setting inside the rooms, then the remaining sites one per session.
+Files: data.js, three-renderer.js, index.html (`20260908b-cors`),
+doorhq.test.js (152 tests, 151 green + 1 skip). Story track still ON
+HOLD (A14).
